@@ -14,7 +14,7 @@
 
 --- a/luci-app-passwall/Makefile
 +++ b/luci-app-passwall/Makefile
-@@ -36,7 +35,30 @@ LUCI_PKGARCH:=all
+@@ -39,7 +39,30 @@ LUCI_PKGARCH:=all
  LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+chinadns-ng +dns2socks +dnsmasq-full +ip-full \
  	+libuci-lua +lua +luci-compat +luci-lib-jsonc \
@@ -46,7 +46,7 @@
  
  define Package/$(PKG_NAME)/config
  menu "Configuration"
-@@ -71,8 +94,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Geoview
+@@ -74,8 +97,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Geoview
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy
  	bool "Include Haproxy"
@@ -56,7 +56,7 @@
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria
  	bool "Include Hysteria"
-@@ -87,19 +109,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
+@@ -90,19 +112,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client
  	bool "Include Shadowsocks Libev Client"
@@ -76,7 +76,7 @@
  	default y if aarch64||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
-@@ -110,8 +128,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
+@@ -113,8 +131,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client
  	bool "Include ShadowsocksR Libev Client"
@@ -85,7 +85,7 @@
  	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
-@@ -121,21 +137,19 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server
+@@ -130,22 +146,20 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
  	bool "Include Simple-Obfs (Shadowsocks Plugin)"
@@ -101,7 +101,8 @@
  config PACKAGE_$(PKG_NAME)_INCLUDE_Trojan_Plus
  	bool "Include Trojan-Plus"
 -	select PACKAGE_trojan-plus
- 	default y
+-	default y
++	default y if aarch64||i386||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
  	bool "Include tuic-client"
@@ -110,7 +111,7 @@
  	select PACKAGE_tuic-client
  	default n
  
-@@ -148,14 +162,11 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
+@@ -157,14 +171,11 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
  	bool "Include V2ray-Plugin (Shadowsocks Plugin)"
