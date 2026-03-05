@@ -1,0 +1,78 @@
+# Quectel modems
+function modem_data(){
+	generic_data
+	O=$(echo "$O" | grep -Ev '^$|OK')
+	# hwinfo
+	OIFS="$IFS"; IFS="|"
+	set -- $(echo "$O" | awk -v fam="$FAMILY" '
+		BEGIN { IGNORECASE=1; temp_found = 0 }
+		!temp_found && /\+QTEMP:/ {
+		    sub(/.*\+QTEMP:[^0-9]*/, "")
+		    temp = $0+0
+		    temp_found = 1
+		}
+		/ICCID:/ {
+			gsub(/"/, "", $0)
+			split($0, parts, /:[[:space:]]*/)
+			if (parts[2] != "") {
+				iccid = parts[2]
+			}
+		}
+		$0 ~ fam && manuf == "" {
+		    manuf = $1
+			if ((getline line) > 0) {
+			        model = line
+		
+			if ((getline line) > 0) fw = line
+			if ((getline line) > 0) imsi = line
+			if ((getline line) > 0) imei = line
+		}
+	}
+	END {
+	if (!temp_found) temp = "N/A"
+		print manuf "|" model "|" fw "|" iccid "|" imsi "|" imei "|" temp
+	}')
+	MANUF=${1}; MDL=${2}; FW=${3} ICCID=${4}; IMSI=${5}; IMEI=${6} CHIPTEMP=${7}
+	IFS="$OIFS"; unset OIFS
+	DEVICE="$MANUF $MDL"
+	# signal info
+	OIFS="$IFS"; IFS="|"
+	set -- $(echo "$O" | awk -v mode="$MODE" -v model="$MDL" -F "," '
+		$0 ~ /^\+QENG/ {
+			if (mode == "") { mode = gsub("\"",""); mode=$3 }
+			if (mode ~ /LTE/) {
+				lac=$13; cid=$7; earfcn=$9; sinr=$(NF-1); rsrp=$(NF-4); rsrq=$(NF-3)
+				bw=$11; bwc=bw*5-5; pci=$8
+				if (model !~/EC200/){ # EC200 send incorrect RSSI value, use value from AT+CSQ
+					rssi=$(NF-2)
+				}
+				cell = sprintf("%d", "0x" substr(cid, length(cid) - 1, 2)) 
+				enbid = sprintf("%d", "0x" substr(cid, 1, length(cid) - 2))
+			}
+			else {
+				lac=$6; cid=$7; earfcn=$8; sinr=$13
+				if (model !~/EC200/){ # EC200 send incorrect RSSI value, use value from AT+CSQ
+					rssi=$11; sinr=$12
+				}
+			}
+		}
+		/^\+QCAINFO/{lte_ca++}
+		END { print lac "|" cid "|" earfcn "|" rssi "|" sinr "|" rsrp "|" rsrq "|" bw "|" bwc "|" pci "|" lte_ca "|" enbid "|" cell}
+	')
+	LAC=${1}; CID=${2}; EARFCN=${3}; [ "${4}" != "" ] && CSQ_RSSI=${4}; SINR=${5}; RSRP=${6} RSRQ=${7}
+	BWDL=${8}; BWDx=${9}; PCI=${10}; LTE_CA=${11}; ENBID=${12}; CELL=${13}
+	IFS="$OIFS"; unset OIFS
+	if [ $LTE_CA -ge 2 ]; then
+		OIFS="$IFS"; IFS="|"
+		set -- $(echo "$O" | awk -v bwdl=$BWDL -F [,] '/^\+QCAINFO.*"scc"/{for(i=1;i<=NF;i++) if($i~/BAND/){gsub(/[^0-9]/,"",$i); scc = scc"+"$i}
+			{bwcx+=$3/5; bwca=bwcx + (bwdl==1 ? 3 : bwdl*5 - 5)}
+		} END{print scc "|" bwca }')
+		SCC=${1}; BWCA=${2}
+		IFS="$OIFS"; unset OIFS
+	fi
+
+	if [ $(uci -q get modeminfo.@general[0].decimail) = "1" ]; then
+		LAC=$(printf %d 0x$LAC)
+		CID=$(printf %d 0x$CID)
+	fi
+}

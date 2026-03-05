@@ -1,0 +1,48 @@
+#!/bin/sh /etc/rc.common
+
+START=50
+USE_PROCD=1
+
+CONF="autoreboot"
+CRON_FILE="/tmp/autoreboot.cron"
+
+setup_cron() {
+	local cfg="$1"
+
+	local enabled
+	config_get_bool enabled "$cfg" "enabled" "0"
+
+	[ "$enabled" -eq "1" ] || return 1
+
+	local minute hour day month week
+	config_get minute "$cfg" "minute"
+	config_get hour "$cfg" "hour"
+	config_get day "$cfg" "day"
+	config_get month "$cfg" "month"
+	config_get week "$cfg" "week"
+
+	echo "$minute $hour $day $month $week sleep 5 && touch /etc/banner && reboot #${CONF}_$cfg" >> "$CRON_FILE"
+}
+
+start_service() {
+	crontab -l | sed "/#${CONF}_/d" > "$CRON_FILE"
+
+	config_load "$CONF"
+	config_foreach setup_cron schedule
+
+	crontab "$CRON_FILE"
+	rm -f "$CRON_FILE"
+}
+
+stop_service() {
+	sed -i "/#${CONF}_/d" "/etc/crontabs/root"
+	/etc/init.d/cron restart
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$CONF"
+}
+
+reload_service() {
+	restart
+}

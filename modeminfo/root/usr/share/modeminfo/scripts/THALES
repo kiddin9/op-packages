@@ -1,0 +1,64 @@
+modem_data(){
+        # hwinfo
+	O=$(echo "$O" | grep -Ev '^OK|^$|^NO|^ERR')
+	OIFS="$IFS"; IFS="|"
+	set -- $(echo "$O" | awk '
+		/^\+CEREG/{getline manuf; getline model; getline fw}
+		/ICCID/{iccid=$2;getline imei; getline imsi}
+		/^TSENS|xo_therm_buf:/{gsub("C", ""); temp=$2}
+		END {print manuf "|" model "|" fw "|" iccid "|" imei "|" imsi "|" temp}
+	')
+	MANUF=${1}; MODEL=${2}; FW=${3}; ICCID=${4}; IMEI=${5}; IMSI=${6}; CHIPTEMP=${7}
+	IFS=$OIFS; unset OIFS
+        DEVICE="$MANUF $MODEL"
+	# signal info
+	generic_data
+	OIFS="$IFS"; IFS="|"
+	set -- $(echo "$O" | awk -v mode="$MODE" '
+	BEGIN { map[3]=1; map[5]=2; map[10]=3; map[15]=4; map[20]=5 }
+	mode ~ /LTE/ { # LTE mode
+		if (/\+CEREG/) { gsub("\"",""); split($0,a,","); lac=a[3]; cid=a[4]}
+		if (/pcell:/) { f=1
+			for (i=1; i<=NF; i++) {
+				if ($i ~ /lte_band_width:/) { split($i, b, ":"); bwc_raw = b[2]; sub("MHz", "", bwc_raw)
+				bwc = sprintf("%.0f", bwc_raw);bw = map[bwc]
+			}
+		}; next }
+		if (/^scell:/) { f=0; next }
+		if (f && /channel:/) { split($0,a," "); earfcn=substr(a[1],9)+0; pci=substr(a[2],5)+0 }
+		if (f && /lte_rsrp:/) { split($0,a,","); rsrp=sprintf("%.0f", substr(a[1],10)+0); rsrq=sprintf("%.0f", substr(a[2],6)+0)}
+		if (f && /lte_snr:/) { split($0,a,","); sinr=sprintf("%.0f", substr(a[2],10)+0) }
+		if (/^SCC[0-9]+ info:/) { lte_ca++ }
+		if (/\+$QCSQ/) { split($0,a,","); rssi=a[5] }
+	}
+	mode !~ /LTE/{ # 3G mode
+		if (/\+CREG/) { gsub("\"",""); split($0,a,","); lac=a[3]; cid=a[4]}
+		if (/channel:/) {split($0,a,":"); earfcn=a[2]}
+		if (/\+$QCSQ/) { split($0,a,","); rssi=a[5] }
+		if (/cell1:/) { split($0,a,","); sinr=sprintf("%.0f", substr(a[3],6)) }
+	}
+	END { print earfcn "|" lac "|" cid "|" rssi "|" sinr "|" rsrp "|" rsrq "|" pci "|" bw "|" bwc "|" lte_ca }
+	')
+	EARFCN=${1}; LAC=${2}; CID=${3}; RSSI=${4}; SINR=${5}; RSRP=${6}; RSRQ=${7}; PCI=${8}; BWDL=${9}; BWDx=${10}; LTE_CA=${11}
+	IFS=$OIFS; unset OIFS
+	if [ "$MODE" = "LTE" ]; then
+		ENBx=$(echo $CID | sed -e 's/..$//')
+		CELL=$(printf %d 0x${CID: -2})
+		ENBID=$(printf %d 0x$ENBx)
+		# CA calc
+		if [ $LTE_CA -ge 1 ]; then
+			OIFS="$IFS"; IFS="|"
+			set -- $(echo "$O" | awk -v bwc=${BWDx:-0} '
+				/^SCC\d info:/ {for(i=1; i<=NF; i++) { if($i ~ /LTE_B/) { gsub(/[^0-9]/, "", $i); scc = scc "+" $i}}
+					bwca_raw += sprintf("%.0f", $8); bwca=bwca_raw+bwc}
+			END { print scc "|" bwca }')
+			IFS="$OIFS"; unset BWDx OIFS
+			SCC=${1}; BWCA=${2}
+                fi
+	fi
+
+        if [ $(uci -q get modeminfo.@general[0].decimail) -eq 1 ]; then
+                LAC=$(printf %d 0x$LAC)
+                CID=$(printf %d 0x$CID)
+        fi
+}

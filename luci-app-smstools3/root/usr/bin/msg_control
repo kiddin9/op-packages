@@ -1,0 +1,75 @@
+#!/bin/sh
+
+IFS=$'\n'
+
+function send_msg(){
+	local filename=$(basename "$2")
+	modem=$(echo "$1" | awk '/Modem:/{print $2}')
+	to=$(echo "$1" | awk '/To:/{print $2}')
+	sent=$(echo "$1" | awk '/Sent:/{gsub("Sent: ","");print $0}')
+	time=$(echo "$1" | awk '/Sending_time:/{print $2}')
+	msg=$(echo "$1" |sed -e '1,/^$/ d' -e 's/[]["]/\\&/g')
+
+	# jq processing
+	modem_json=$(jq -Rn --arg str "$modem" '$str')
+	msg_json=$(jq -Rn --arg str "$msg" '$str')
+
+	string="{ \"filename\": \"$filename\", \"modem\": $modem_json, \"to\": \"$to\", \"sent\": \"$sent\", \"time\": \"$time\", \"content\": $msg_json },"
+}
+
+
+function recv_msg(){
+	local filename=$(basename "$2")
+	local modem from srecv drecv msg
+	modem=$(echo "$1" | awk '/Modem:/{print $2}')
+	from=$(echo "$1" | awk '/From:/{print $2}')
+	srecv=$(echo "$1" | awk '/Sent:/{gsub("Sent: ","");print $0}')
+	drecv=$(echo "$1" | awk '/Received:/{gsub("Received: ","");print $0}')
+	msg=$(echo "$1" |sed -e '1,/^$/ d' -e 's/[]["]/\\&/g' -e 's/[\r\n\^M]//g' | awk '{printf "%s<br />",$0} END {print ""}')
+
+	# jq processing
+	modem_json=$(jq -Rn --arg str "$modem" '$str')
+	from_json=$(jq -Rn --arg str "$from" '$str')
+	srecv_json=$(jq -Rn --arg str "$srecv" '$str')
+	drecv_json=$(jq -Rn --arg str "$drecv" '$str')
+	msg_json=$(jq -Rn --arg str "$msg" '$str')
+
+	string="{ \"filename\": \"$filename\", \"modem\": $modem_json, \"from\": $from_json, \"srecv\": $srecv_json, \"drecv\": $drecv_json, \"content\": $msg_json },"
+}
+
+
+case $1 in
+	sent)
+		MSG=$(find /var/spool/sms/sent/ -type f | sort -r)
+		echo "{ \"sent\": ["
+		for m in $MSG; do
+			f=$(cat $m)
+			send_msg "$f" "$m"
+			json="$json $string"
+		done
+		echo -e $json | sed 's/.$//'
+		echo " ]}"
+	;;
+	recv)
+		MSG=$(find /var/spool/sms/incoming/ -type f | sort -r)
+		echo "{ \"recv\": ["
+		for m in $MSG; do
+			f=$(cat $m)
+			recv_msg "$f" "$m"
+			json="$json $string"
+		done
+			echo -e $json | sed 's/.$//'
+		echo " ]}"
+	;;
+	rmsent) rm -rf /var/spool/sms/sent/* ;;
+	rmrecv) rm -rf /var/spool/sms/incoming/* ;;
+	delete)
+		if [ -n "$2" ]; then
+			if [ -f "/var/spool/sms/incoming/$2" ]; then
+				rm -f "/var/spool/sms/incoming/$2"
+			elif [ -f "/var/spool/sms/sent/$2" ]; then
+				rm -f "/var/spool/sms/sent/$2"
+			fi
+		fi
+	;;
+esac

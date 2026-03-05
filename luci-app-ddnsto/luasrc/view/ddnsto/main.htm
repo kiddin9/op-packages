@@ -1,0 +1,20 @@
+<%+header%>
+<script>
+  (function () {
+    window.ddnstoConfig = {
+      token: "<%=token or ''%>",
+      prefix: "<%=prefix or '/cgi-bin/luci/admin/services/ddnsto'%>",
+      api_base: "<%=api_base or '/cgi-bin/luci'%>",
+      lang: "<%=lang or 'zh-cn'%>"
+    };
+
+  })();
+</script>
+
+<div class="ddnsto-host">
+  <div id="app" class="ddnsto-root" data-ddnsto-shadow></div>
+</div>
+
+<% local cache_bust = os.time() %>
+<script type="module" crossorigin src="/luci-static/ddnsto/index.js?v=<%=cache_bust%>"></script>
+<%+footer%>

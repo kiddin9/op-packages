@@ -1,0 +1,91 @@
+Index: accel-ppp-1.13.0/accel-pppd/ctrl/ipoe/arp.c
+===================================================================
+--- accel-ppp-1.13.0.orig/accel-pppd/ctrl/ipoe/arp.c
++++ accel-ppp-1.13.0/accel-pppd/ctrl/ipoe/arp.c
+@@ -14,9 +14,9 @@
+ #include <sys/socket.h>
+ #include <sys/ioctl.h>
+ #ifdef HAVE_GOOD_IFARP
+-#include <linux/if_arp.h>
++#include <net/if_arp.h>
+ #endif
+-#include <linux/if_packet.h>
++#include <netpacket/packet.h>
+ 
+ #include "list.h"
+ #include "triton.h"
+Index: accel-ppp-1.13.0/accel-pppd/ctrl/ipoe/ipoe.c
+===================================================================
+--- accel-ppp-1.13.0.orig/accel-pppd/ctrl/ipoe/ipoe.c
++++ accel-ppp-1.13.0/accel-pppd/ctrl/ipoe/ipoe.c
+@@ -16,7 +16,7 @@
+ #include <sys/ioctl.h>
+ #include <linux/if.h>
+ #ifdef HAVE_GOOD_IFARP
+-#include <linux/if_arp.h>
++#include <net/if_arp.h>
+ #endif
+ #include <linux/route.h>
+ 
+Index: accel-ppp-1.13.0/accel-pppd/ctrl/pppoe/pppoe.c
+===================================================================
+--- accel-ppp-1.13.0.orig/accel-pppd/ctrl/pppoe/pppoe.c
++++ accel-ppp-1.13.0/accel-pppd/ctrl/pppoe/pppoe.c
+@@ -8,6 +8,7 @@
+ #include <fcntl.h>
+ #include <sys/socket.h>
+ #include <sys/ioctl.h>
++#include <linux/sockios.h>
+ #include <net/ethernet.h>
+ #include <netpacket/packet.h>
+ #include <arpa/inet.h>
+Index: accel-ppp-1.13.0/accel-pppd/include/ap_session.h
+===================================================================
+--- accel-ppp-1.13.0.orig/accel-pppd/include/ap_session.h
++++ accel-ppp-1.13.0/accel-pppd/include/ap_session.h
+@@ -5,6 +5,7 @@
+ 
+ #include "triton.h"
+ #include "ap_net.h"
++#include "pthread.h"
+ 
+ //#define AP_SESSIONID_LEN 16
+ #define AP_IFNAME_LEN 16
+@@ -124,9 +125,9 @@ struct ap_session
+ 
+ struct ap_session_stat
+ {
+-	unsigned int active;
+-	unsigned int starting;
+-	unsigned int finishing;
++	uint32_t active;
++	uint32_t starting;
++	uint32_t finishing;
+ };
+ 
+ 
+Index: accel-ppp-1.13.0/accel-pppd/ppp/ppp.c
+===================================================================
+--- accel-ppp-1.13.0.orig/accel-pppd/ppp/ppp.c
++++ accel-ppp-1.13.0/accel-pppd/ppp/ppp.c
+@@ -10,6 +10,7 @@
+ #include <signal.h>
+ #include <sys/socket.h>
+ #include <sys/ioctl.h>
++#include <linux/sockios.h>
+ #include "linux_ppp.h"
+ 
+ #include "crypto.h"
+Index: accel-ppp-1.13.0/accel-pppd/session_backup.c
+===================================================================
+--- accel-ppp-1.13.0.orig/accel-pppd/session_backup.c
++++ accel-ppp-1.13.0/accel-pppd/session_backup.c
+@@ -4,7 +4,7 @@
+ #include <errno.h>
+ #include <unistd.h>
+ #include <netinet/in.h>
+-
++#include "pthread.h"
+ #include "events.h"
+ #include "triton.h"
+ #include "log.h"

@@ -1,0 +1,27 @@
+<script type="text/javascript">//<![CDATA[
+	XHR.poll(5, '<%=url("admin/services/istoreenhance_status")%>', null,
+		function(x, st)
+		{
+			var tb = document.getElementById('istoreenhance_status');
+			if (st && tb)
+			{
+				if (st.running)
+				{
+					tb.innerHTML = '<br/><em style=\"color:green\"><%:The KSpeeder service is running.%></em>'
+						+ "<br/><br/><input class=\"btn cbi-button cbi-button-apply\" type=\"button\" value=\" <%:Click to open KSpeeder%> \" onclick=\"window.open('http://" + window.location.hostname + ":" + st.port + "/')\"/>";
+				}
+				else
+				{
+					tb.innerHTML = '<br/><em style=\"color:red\"><%:The KSpeeder service is not running.%></em>';
+				}
+			}
+		}
+	);
+//]]></script>
+
+<fieldset class="cbi-section">
+	<legend><%:KSpeeder Status%></legend>
+	<p id="istoreenhance_status">
+		<em><%:Collecting data...%></em>
+	</p>
+</fieldset>

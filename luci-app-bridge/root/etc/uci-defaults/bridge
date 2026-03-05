@@ -1,0 +1,15 @@
+#!/bin/sh
+
+[ ! -f "/usr/share/ucitrack/luci-app-bridge.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-bridge.json << EEOF
+{
+    "config": "bridge",
+    "init": "bridge"
+}
+EEOF
+}
+
+chmod +x /etc/init.d/bridge
+
+rm -f /tmp/luci-indexcache
+exit 0

@@ -1,0 +1,15 @@
+{
+	"luci-app-disks-info": {
+		"description": "Grant access to disks-info procedures",
+		"read": {
+			"ubus": {
+				"luci.disks-info": [ "getDevices" ]
+			},
+			"cgi-io": [ "exec" ],
+			"file": {
+				"/usr/sbin/smartctl -d* -iAHl scttemp -l error -l devstat --json=c /dev/*": [ "exec" ],
+				"/usr/sbin/smartctl -l scttempint,[0-9,p]* /dev/*": [ "exec" ]
+			}
+		}
+	}
+}

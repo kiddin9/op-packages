@@ -1,0 +1,77 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=65
+STOP=35
+
+SERVICE_DAEMONIZE=1
+SERVICE_WRITE_PID=1
+
+start_service() {
+    procd_open_instance
+    procd_set_param command /usr/local/hsbuilder/hsbuilder.sh
+    procd_append_param command -conf /usr/local/hsbuilder/hsbuilder.conf
+    procd_append_param command -mypath /usr/local/hsbuilder/hsbuilder.sh
+    procd_append_param command -nomsgfile
+    procd_append_param command -noresolve
+    procd_append_param command -envinfo "wiwiz-opsrc"
+    procd_set_param respawn
+    procd_close_instance
+
+    # 启动 wiwizroaming.sh
+    procd_open_instance
+    procd_set_param command /usr/local/hsbuilder/wiwizroaming.sh
+    procd_set_param respawn
+    procd_close_instance
+
+    # 设置临时文件
+    echo 1 > /tmp/wiwizroaming
+    echo 1 > /tmp/wiwizroaming.debug
+
+    # 更新版本信息
+    MY_VERSION="$(cat /usr/local/hsbuilder/ver 2>/dev/null)"
+    uci set wiwiz.portal.ver="$MY_VERSION"
+    uci commit wiwiz
+}
+
+stop_service() {
+    # 停止 hsbuilder.sh
+    local s=$(ps w | grep -F 'hsbuilder.sh' | grep -v grep)
+    if [ -n "$s" ]; then
+        kill $(echo "$s" | awk '{print $1}')
+    fi
+    killall hsbuilder.sh 2>/dev/null
+
+    # 删除临时文件
+    rm -f /tmp/wiwizroaming
+    rm -f /tmp/wiwizroaming.debug
+
+    # 停止 wiwizroaming.sh
+    s=$(ps w | grep -F 'wiwizroaming.sh' | grep -v grep)
+    if [ -n "$s" ]; then
+        kill $(echo "$s" | awk '{print $1}')
+    fi
+    killall wiwizroaming.sh 2>/dev/null
+    killall logread 2>/dev/null
+
+    # 停止 wifidog
+    if $WD_DIR/wdctl status 2> /dev/null; then
+        if $WD_DIR/wdctl stop; then
+            echo "OK"
+        else
+            echo "FAILED: wdctl stop exited with non 0 status"
+        fi
+    else
+        echo "FAILED: Wifidog was not running"
+    fi
+}
+
+reload_service() {
+    stop_service
+    sleep 2
+    start_service
+}
+
+# service_triggers() {
+#     procd_add_reload_trigger "wiwiz"
+# }

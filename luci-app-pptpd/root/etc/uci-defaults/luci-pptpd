@@ -1,0 +1,14 @@
+#!/bin/sh
+
+[ ! -f "/usr/share/ucitrack/luci-app-pptpd.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-pptpd.json << EEOF
+{
+    "config": "pptpd",
+    "init": "pptpd"
+}
+EEOF
+}
+
+chmod +x /etc/init.d/pptpd
+rm -f /tmp/luci-indexcahe
+exit 0

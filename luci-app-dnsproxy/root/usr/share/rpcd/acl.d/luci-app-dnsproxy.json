@@ -1,0 +1,15 @@
+{
+	"luci-app-dnsproxy": {
+		"description": "Grant access to LuCI app dnsproxy",
+		"read": {
+			"ubus": {
+				"luci-rpc": [ "getHostHints" ],
+				"service": [ "list" ]
+			},
+			"uci": ["dnsproxy"]
+		},
+		"write": {
+			"uci": ["dnsproxy"]
+		}
+	}
+}

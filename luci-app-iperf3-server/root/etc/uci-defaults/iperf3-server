@@ -1,0 +1,22 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-iperf3-server.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-iperf3-server.json << EEOF
+{
+    "config": "iperf3-server",
+    "init": "iperf3-server"
+}
+EEOF
+}
+
+# 已存在就不重复写
+if uci -q show ucitrack | grep -q "=iperf3-server"; then
+	exit 0
+fi
+
+uci -q batch <<'EOF' >/dev/null
+	add ucitrack iperf3-server
+	set ucitrack.@iperf3-server[-1].init='iperf3-server'
+	commit ucitrack
+EOF
+
+exit 0

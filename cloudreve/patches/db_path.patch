@@ -1,0 +1,19 @@
+--- a/application/migrator/model/init.go
++++ b/application/migrator/model/init.go
+@@ -7,7 +7,6 @@ import (
+ 	"github.com/jinzhu/gorm"
+ 
+ 	"github.com/cloudreve/Cloudreve/v4/application/migrator/conf"
+-	"github.com/cloudreve/Cloudreve/v4/pkg/util"
+ 	_ "github.com/jinzhu/gorm/dialects/mssql"
+ 	_ "github.com/jinzhu/gorm/dialects/mysql"
+ 	_ "github.com/jinzhu/gorm/dialects/postgres"
+@@ -37,7 +36,7 @@ func Init() error {
+ 	switch confDBType {
+ 	case "UNSET", "sqlite":
+ 		// 未指定数据库或者明确指定为 sqlite 时，使用 SQLite 数据库
+-		db, err = gorm.Open("sqlite3", util.RelativePath(conf.DatabaseConfig.DBFile))
++		db, err = gorm.Open("sqlite3", "/etc/cloudreve/" + conf.DatabaseConfig.DBFile)
+ 	case "postgres":
+ 		db, err = gorm.Open(confDBType, fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable",
+ 			conf.DatabaseConfig.Host,

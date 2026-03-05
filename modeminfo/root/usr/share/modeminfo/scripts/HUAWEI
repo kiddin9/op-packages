@@ -1,0 +1,68 @@
+# Huawei modems
+function modem_data(){
+	# Get hw and sim info
+	OIFS="$IFS"; IFS="|"
+	set -- $(echo "$O" | awk -F [:] -v fam=$FAMILY '
+		BEGIN { IGNORECASE=1 }
+		$0 ~ fam { gsub(",", "")
+			manuf = $1 $2
+			if ((getline line) > 0) model = line
+			if ((getline line) > 0) fw = line
+		}
+		/ICCID/ { split($0, parts, /:[[:space:]]*/)
+			iccid = parts[2]
+			if ((getline line) > 0) imsi = line
+			if ((getline line) > 0) imei = line
+		}
+		/^\^CHIPTEMP/ {n=split($0, t, ",")
+			temp=sprintf("%.0f", t[n]/10)
+		}
+		END { print model "|" fw "|" iccid "|" imsi "|" imei "|" temp "|" manuf}
+	')
+	
+	MANUF=${7}; MODEL=${1}; FW=${2}; ICCID=${3}; IMSI=${4}; IMEI=${5}; CHIPTEMP=${6}
+	IFS="$OIFS"; unset OIFS
+	DEVICE="$MANUF $MODEL"
+
+	# get signal info
+	OIFS="$IFS"; IFS="|"
+	set -- $(echo "$O" | awk -v mode="$MODE" '
+		BEGIN {
+			tmap[1]="GSM"; tmap[2]="GPRS"; tmap[3]="EDGE"; tmap[4]="UMTS"; tmap[5]="HSDPA"; tmap[6]="HSUPA"
+			tmap[7]="HSPA"; tmap[9]=tmap[17]=tmap[18]="HSPA+"
+			bmap[1400]=0; bmap[3000]=1; bmap[5000]=2; bmap[10000]=3; bmap[15000]=4; bmap[20000]=5
+		}
+		/^\^SYSINFOEX/{ gsub("\"",""); n=split($0, m, ",")
+			mode=m[n]; tech=m[6]
+			if (length(mode) == 0) mode=tmap[tech]
+		}
+		/^\+CGREG/ {gsub("\"","");split($0, r, ","); gsub("\"","")
+			lac=r[3]; cid=r[4]
+			cell = sprintf("%d", "0x" substr(cid, length(cid) - 1, 2))
+			enbid = sprintf("%d", "0x" substr(cid, 1, length(cid) - 2))
+		}
+		/^\^HFREQINFO/{split($0, r, ",")
+			earfcn=r[4]
+		}
+		/^\^MONSC/{ split($0, r, ",")
+			pci=r[6]
+			if (earfcn !~ "") earfcn=r[5]
+		}
+		/^\^HCSQ:/{split($0, r, ",")
+			rssi=-121+r[2]
+			if (mode ~ /LTE/)sinr=sprintf("%.0f", -20+r[4]/5); rsrp=-141+r[2]; rsrq=-20+r[5]/2
+			if (mode ~ /WCDMA|UMTS|3G|HS/) sinr=sprintf("%.0f",-32+a[4]); rscp=-121+a[3]
+		}
+		/^\^HFREQINFO/ { split($0, r, ",")
+			bwc=r[6]/1000; bw=bmap[r[6]]
+		}
+		END {print mode "|" lac "|" cid "|" earfcn "|" rssi "|" sinr "|" rsrp "|" rsrq "|" pci "|" cell "|" enbid "|" bw }
+	')
+	MODE=${1}; LAC=${2}; CID=${3}; EARFCN=${4}; CSQ_RSSI=${5}; SINR=${6}; RSRP=${7}; RSRQ=${8}; PCI=${9}; CELL=${10}; ENBID=${11} BWDL=${12}
+	IFS="$OIFS"; unset OIFS
+
+	if [ $(uci -q get modeminfo.@general[0].decimail) = "1" ]; then
+                LAC=$(printf %d 0x$LAC)
+                CID=$(printf %d 0x$CID)
+        fi
+}

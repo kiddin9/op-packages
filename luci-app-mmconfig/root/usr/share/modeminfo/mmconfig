@@ -1,0 +1,34 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+# get vars
+
+get_mm_config(){
+	local device bands preffer
+	config_get device $1 device
+	config_get bands $1 bands
+	config_get preffer $1 preffer
+
+	mmcli -m $device > /dev/null 2>&1 && {
+		
+		setpref=$(echo "$preffer" | awk -F'[:;]' '{ gsub(/[ \t]+/, "", $0); gsub(",", "|", $0); print "--set-"$1"-modes="$2"  --set-"$3"-mode="$NF}')
+		setbands=$(echo $bands | awk -v OFS='|' '{$1=$1}1')
+		defbands=$(mmcli -J -m $device | jsonfilter -e '@["modem"]["generic"]["supported-bands"].*' | awk '{bands = (NR==1 ? $1 : bands "|"$1)} END {print bands}')
+		curbands=$(mmcli -J -m $device | jsonfilter -e '@["modem"]["generic"]["current-bands"].*' | awk '{bands = (NR==1 ? $1 : bands "|"$1)} END {print bands}')
+		curpref=$(mmcli -J -m $device | jsonfilter -e '@["modem"]["generic"]["current-modes"]')
+		[ -n "$bands" ] || {
+			setbands=$defbands
+		}
+		[ "$curbands" = "$setbands" ] && [ "$preffer" = "$curpref" ] || {
+			modemif=$(uci show network | grep "$device" | awk -F [.] '{print $2}')
+			[ "$preffer" = "$curpref" ] ||	mmcli -m $device $setpref
+			[ "$curbands" = "$setbands" ] || mmcli -m $device --set-current-bands="$setbands"
+			sleep 3
+			ifup $modemif
+		}
+	}
+}
+
+config_load mmconfig
+config_foreach get_mm_config modem

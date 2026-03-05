@@ -1,0 +1,463 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: htdocs/luci-static/resources/view/natmap.js:517
+msgid "%s set 0 will rewrite client listen port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:598
+#: htdocs/luci-static/resources/view/natmap.js:634
+msgid "<code># All external tokens required</code> Field"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:640
+msgid "A Record"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:647
+msgid "AAAA Record"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:46
+msgid "Active NATMap Portmap"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:396
+msgid "Allocation ports randomly instead of sequentially."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:152
+#: htdocs/luci-static/resources/view/natmap.js:158
+msgid "Available server <a href=\"%s\" target=\"_blank\">references</a>"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:381
+msgid "Bind port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:675
+#: htdocs/luci-static/resources/view/natmap.js:684
+msgid "Can refer to RFC8552"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:267
+msgid "Check"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:266
+msgid "Check NAT Behavior"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:334
+msgid "Comment"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:302
+#: htdocs/luci-static/resources/view/natmap.js:755
+msgid "Custom Script"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:301
+#: htdocs/luci-static/resources/view/natmap.js:620
+msgid "DDNS Scripts"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:151
+#: htdocs/luci-static/resources/view/natmap.js:157
+#: htdocs/luci-static/resources/view/natmap.js:163
+#: htdocs/luci-static/resources/view/natmap.js:167
+#: htdocs/luci-static/resources/view/natmap.js:170
+#: htdocs/luci-static/resources/view/natmap.js:175
+#: htdocs/luci-static/resources/view/natmap.js:180
+#: htdocs/luci-static/resources/view/natmap.js:447
+msgid "Default"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:615
+msgid "EnDDNS"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:579
+msgid "EnNotify"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:147
+#: htdocs/luci-static/resources/view/natmap.js:304
+msgid "Enable"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:288
+msgid "Expand/Collapse result"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:390
+#: htdocs/luci-static/resources/view/natmap.js:471
+msgid "Expecting: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:565
+msgid "External IP"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:572
+msgid "External Port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:640
+#: htdocs/luci-static/resources/view/natmap.js:647
+#: htdocs/luci-static/resources/view/natmap.js:669
+#: htdocs/luci-static/resources/view/natmap.js:727
+msgid "FQDN"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:419
+msgid "Firewall DNAT"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:325
+#: htdocs/luci-static/resources/view/natmap.js:446
+msgid "For TCP mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:315
+msgid "For UDP mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:299
+msgid "Forward Settings"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:418
+msgid "Forward method"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:401
+msgid "Forward mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:462
+msgid "Forward target"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:494
+#: htdocs/luci-static/resources/view/natmap.js:517
+msgid "Forward target port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:455
+msgid "Forward timeout"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:167
+#: htdocs/luci-static/resources/view/natmap.js:330
+msgid "Fwmark value"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:298
+msgid "General Settings"
+msgstr ""
+
+#: root/usr/share/rpcd/acl.d/luci-app-natmap.json:3
+msgid "Grant access to LuCI app natmap"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:163
+msgid "HTTP keep-alive"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:325
+msgid "HTTP server"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:714
+msgid "HTTPS Record"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:349
+msgid "IPv4"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:350
+msgid "IPv6"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:383
+msgid ""
+"If you enable <b>Notify Scripts</b>, you will be bombarded with messages"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:61
+msgid "Inner Addr"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:62
+msgid "Inner Port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:374
+msgid "Interface"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:310
+msgid "Keep-alive interval"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:330
+msgid "Mark fwmark for STUN/HTTP outbound traffic"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:439
+msgid "NAT loopback"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:185
+msgid "NATBehavior-Test port open on"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:133
+#: root/usr/share/luci/menu.d/luci-app-natmap.json:3
+msgid "NATMap"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:59
+msgid "Name"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:415
+#: htdocs/luci-static/resources/view/natmap.js:491
+#: htdocs/luci-static/resources/view/natmap.js:514
+msgid "No"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:390
+msgid "Non-0 port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:382
+msgid ""
+"Note: After using <code>portrange</code>, the public ports will be opened in "
+"rotation</br>"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:300
+#: htdocs/luci-static/resources/view/natmap.js:584
+msgid "Notify Scripts"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:63
+msgid "Outer Addr"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:64
+msgid "Outer Port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:559
+msgid "Password"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:185
+msgid ""
+"Please check <a href=\"%s\"><b>Firewall Rules</b></a> to avoid port "
+"conflicts.</br>"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:455
+msgid "Port forwarding session idle timeout in seconds"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:700
+#: htdocs/luci-static/resources/view/natmap.js:748
+msgid "Priority"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:604
+msgid "Private API Domain"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:337
+#: htdocs/luci-static/resources/view/natmap.js:684
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:60
+msgid "Protocol"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:395
+msgid "Randomly allocation ports"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:524
+msgid "Refresh Scripts"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:517
+msgid "Refresh client"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:138
+#: htdocs/luci-static/resources/view/natmap.js:139
+msgid "Reload"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:347
+msgid "Restrict to address family"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:654
+msgid "SRV Record"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:180
+#: htdocs/luci-static/resources/view/natmap.js:315
+msgid "STUN check cycle (once every n intervals)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:320
+msgid "STUN server"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:151
+#: htdocs/luci-static/resources/view/natmap.js:157
+#: htdocs/luci-static/resources/view/natmap.js:163
+msgid "Server"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:675
+msgid "Service"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:494
+msgid "Set 0 will follow Public port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:741
+msgid "SvcParams"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:170
+#: htdocs/luci-static/resources/view/natmap.js:685
+msgid "TCP"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:446
+msgid "TCP Congestion control"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:151
+msgid "TCP STUN"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:687
+msgid "TLS"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:693
+#: htdocs/luci-static/resources/view/natmap.js:733
+msgid "Target"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:610
+msgid "Text content"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:418
+#: htdocs/luci-static/resources/view/natmap.js:434
+msgid "The DNAT method not support under IPv6"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:595
+#: htdocs/luci-static/resources/view/natmap.js:631
+msgid ""
+"The KEY required by the script above. See <a href=\"%s\" "
+"target=\"_blank\">%s</a> for the format of KEY required by each script. Add "
+"multiple entries here in KEY=VAL shell variable format to supply multiple "
+"KEY variables."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:471
+msgid "The hostname not support under DNAT mode"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/status/include/72_natmap.js:83
+msgid "There are no active portmap"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:366
+#: htdocs/luci-static/resources/view/natmap.js:464
+msgid "This device default Lan"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:367
+#: htdocs/luci-static/resources/view/natmap.js:465
+msgid "This device default Wan"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:199
+#: htdocs/luci-static/resources/view/natmap.js:208
+msgid "This port is already used"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:270
+msgid ""
+"To check NAT Behavior you need to install <a href=\"%s\"><b>stuntman-client</"
+"b></a> first"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:594
+#: htdocs/luci-static/resources/view/natmap.js:630
+msgid "Tokens"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:175
+#: htdocs/luci-static/resources/view/natmap.js:180
+#: htdocs/luci-static/resources/view/natmap.js:686
+msgid "UDP"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:157
+msgid "UDP STUN"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:536
+msgid "URI Scheme"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:553
+msgid "Username"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:420
+msgid "Via natmap"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:545
+msgid "Web UI Port"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:707
+msgid "Weight"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:159
+msgid ""
+"https://github.com/muink/rfc5780-stun-server/blob/master/valid_hosts_rfc5780."
+"txt"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:153
+msgid ""
+"https://github.com/muink/rfc5780-stun-server/blob/master/"
+"valid_hosts_rfc5780_tcp.txt"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:170
+#: htdocs/luci-static/resources/view/natmap.js:175
+msgid "keep-alive interval (seconds)"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:187
+msgid "luci check may not detect all conflicts."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/natmap.js:760
+msgid "⭮"
+msgstr ""

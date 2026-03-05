@@ -1,0 +1,173 @@
+#!/usr/bin/env lua
+
+local jsonc = require "luci.jsonc"
+
+-- Check if an IP address is private - not needed at the moment
+local function is_private_ip(ip)
+    if not ip or ip == "" then
+        return false
+    end
+
+    if ip:match(":") then  -- IPv6
+        -- Check for ULA (fc00::/7), link-local (fe80::/10), or loopback (::1)
+        return ip:match("^f[cd]") or ip:match("^fe80:") or ip == "::1"
+    else  -- IPv4
+        local octets = {ip:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")}
+        if not octets[1] then return false end
+        local first, second = tonumber(octets[1]), tonumber(octets[2])
+        -- Check for private IPv4 ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+        return (first == 10) or
+               (first == 172 and second >= 16 and second <= 31) or
+               (first == 192 and second == 168)
+    end
+end
+
+-- Parse a single connection line from nf_conntrack
+local function parse_connection(line)
+    local conn = {}
+    conn.layer3, conn.layer4, conn.protocol, conn.timeout = line:match("(%w+)%s+(%d+)%s+(%w+)%s+(%d+)")
+    if not (conn.layer3 and conn.layer4 and conn.protocol and conn.timeout) then
+        return nil
+    end
+
+    if conn.protocol == "icmp" or conn.protocol == "icmpv6" then
+        -- Handle ICMP and ICMPv6 protocols
+        conn.src, conn.dst, conn.type, conn.code, conn.id = 
+            line:match("src=(%S+)%s+dst=(%S+)%s+type=(%d+)%s+code=(%d+)%s+id=(%d+)")
+        conn.in_packets, conn.in_bytes = line:match("packets=(%d+)%s+bytes=(%d+)")
+        conn.out_packets, conn.out_bytes = conn.in_packets, conn.in_bytes
+        conn.sport, conn.dport = "-", "-"  -- ICMP doesn't use ports
+    else
+        -- Handle other protocols (e.g., TCP, UDP)
+        local src1, dst1, sport1, dport1, packets1, bytes1,
+              src2, dst2, sport2, dport2, packets2, bytes2 = 
+            line:match("src=(%S+)%s+dst=(%S+)%s+sport=(%d+)%s+dport=(%d+)%s+packets=(%d+)%s+bytes=(%d+).*src=(%S+)%s+dst=(%S+)%s+sport=(%d+)%s+dport=(%d+)%s+packets=(%d+)%s+bytes=(%d+)")
+        
+        -- Always use the first direction as the original
+        conn.src, conn.dst, conn.sport, conn.dport = src1, dst1, sport1, dport1
+        conn.out_packets, conn.in_packets = tonumber(packets1), tonumber(packets2)
+        conn.out_bytes, conn.in_bytes = tonumber(bytes1), tonumber(bytes2)
+    end
+
+    if not (conn.src and conn.dst) then
+        return nil
+    end
+
+    -- Extract additional connection information
+    conn.dscp = math.floor(tonumber(line:match("mark=(%d+)") or "0"))
+    conn.use = tonumber(line:match("use=(%d+)") or "0")
+    conn.timeout = tonumber(conn.timeout) or 0
+
+    -- Determine connection state
+    if line:match("%[ASSURED%]") then
+        conn.state = "ASSURED"
+    elseif line:match("%[UNREPLIED%]") then
+        conn.state = "UNREPLIED"
+    else
+        conn.state = "UNKNOWN"
+    end
+
+    return conn
+end
+
+-- Retrieve all current connections from nf_conntrack
+local function get_connections()
+    local conn_list = {}
+    
+    -- Read MAX_CONNECTIONS from config
+    local max_connections = 0
+    local config = io.popen("uci get qosmate.advanced.MAX_CONNECTIONS 2>/dev/null")
+    if config then
+        local value = config:read("*line")
+        config:close()
+        if value and value ~= "" then
+            max_connections = tonumber(value) or 0
+        end
+    end
+    
+    local f = io.open("/proc/net/nf_conntrack", "r")
+    if not f then
+        return {}, max_connections
+    end
+
+    local count = 0
+    
+    -- Read connections from nf_conntrack (with early exit if limited)
+    for line in f:lines() do
+        -- Early exit if we have a limit and reached it
+        if max_connections > 0 and count >= max_connections then
+            break
+        end
+        
+        local conn = parse_connection(line)
+        if conn then
+            conn.total_bytes = (conn.in_bytes or 0) + (conn.out_bytes or 0)
+            table.insert(conn_list, conn)
+            count = count + 1
+        end
+    end
+    f:close()
+
+    -- Sort only the connections we actually loaded
+    table.sort(conn_list, function(a, b)
+        return a.total_bytes > b.total_bytes
+    end)
+
+    -- Determine max_entries based on system load (only if no manual limit)
+    local max_entries = #conn_list
+    if max_connections == 0 then
+        local load_avg = io.open("/proc/loadavg"):read("*a")
+        local load1 = tonumber(load_avg:match("^(%d+%.%d+)")) or 0
+        
+        -- Apply load-based limits only if no manual limit
+        if load1 > 2.0 then
+            max_entries = math.min(100, #conn_list)
+        elseif load1 > 1.5 then
+            max_entries = math.min(500, #conn_list)
+        elseif load1 > 0.8 then
+            max_entries = math.min(1000, #conn_list)
+        end
+    end
+
+    -- Final connections table
+    local connections = {}
+    for i = 1, max_entries do
+        local conn = conn_list[i]
+        if not conn then break end
+        local key = string.format("%s:%s:%s:%s:%s:%s",
+            conn.layer3, conn.protocol, conn.src, conn.sport, conn.dst, conn.dport)
+        connections[key] = conn
+    end
+
+    return connections, max_connections
+end
+
+-- Define RPC methods
+local methods = {
+    getConntrackDSCP = {
+        call = function()
+            local connections, max_connections = get_connections()
+            return {result = jsonc.stringify({connections = connections, max_connections = max_connections})}
+        end
+    }
+}
+
+-- Handle RPC calls
+if arg[1] == "list" then
+    local rv = {}
+    for _, v in pairs(methods) do
+        rv[_] = v.args or {}
+    end
+    print((jsonc.stringify(rv):gsub(":%[%]", ":{}")))
+elseif arg[1] == "call" then
+    local args = jsonc.parse(io.stdin:read("*a"))
+    local method = methods[arg[2]]
+    if method then
+        local result = method.call(args)
+        print(result.result)
+        os.exit(result.code or 0)
+    else
+        print(jsonc.stringify({error = "Method not found"}))
+        os.exit(1)
+    end
+end

@@ -1,0 +1,21 @@
+{
+	"luci-app-einat": {
+		"description": "Grant access to LuCI app einat",
+		"read": {
+			"file": {
+				"/etc/init.d/einat reload": [ "exec" ]
+			},
+			"ubus": {
+				"service": [ "list" ],
+				"luci.einat": [ "*" ]
+			},
+			"uci": ["einat"]
+		},
+		"write": {
+			"ubus": {
+				"rc": [ "init" ]
+			},
+			"uci": ["einat"]
+		}
+	}
+}

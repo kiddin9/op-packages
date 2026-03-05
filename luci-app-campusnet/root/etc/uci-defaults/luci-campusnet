@@ -1,0 +1,17 @@
+[ ! -f "/usr/share/ucitrack/luci-app-campusnet.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-campusnet.json << EEOF
+{
+    "config": "campusnet",
+    "init": "campusnet"
+}
+EEOF
+}
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@campusnet[-1]
+	add ucitrack campusnet
+	set ucitrack.@campusnet[-1].init=campusnet
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

@@ -1,0 +1,60 @@
+<%
+	local uci = require 'luci.model.uci'.cursor()
+	protocol="http://"
+%>
+<script type="text/javascript">//<![CDATA[
+XHR.poll(3, '<%=url([[admin]], [[vpn]], [[easytier]], [[status]])%>', null,
+    function(x, data) {
+        var st = document.getElementById('easytier_status');
+        if (data && st) {
+            var html = '';
+            
+            // easytier-core 状态
+            var coreStatus = data.crunning 
+                ? "<span style='color:#4CAF50;font-weight:bold;'>● 运行中</span>" 
+                : "<span style='color:#F44336;font-weight:bold;'>○ 未运行</span>";
+            
+            html += "<div style='margin-bottom:16px;'>";
+            html += "<div style='font-size:15px;font-weight:bold;margin-bottom:8px;'>easytier-core " + coreStatus + "</div>";
+            
+            if (data.crunning) {
+                html += "<table style='border-collapse:collapse;'>";
+                html += "<tr><td style='padding:2px 16px 2px 0;'>运行时间</td><td>" + data.etsta + "</td></tr>";
+                html += "<tr><td style='padding:2px 16px 2px 0;'>CPU / 内存</td><td>" + data.etcpu + " / " + data.etram + "</td></tr>";
+                html += "<tr><td style='padding:2px 16px 2px 0;'>当前 / 最新版本</td><td>" + data.ettag + " / " + data.etnewtag + "</td></tr>";
+                html += "</table>";
+            }
+            html += "</div>";
+            
+            // easytier-web 状态
+            var webStatus = data.wrunning 
+                ? "<span style='color:#4CAF50;font-weight:bold;'>● 运行中</span>" 
+                : "<span style='color:#F44336;font-weight:bold;'>○ 未运行</span>";
+            
+            html += "<div>";
+            html += "<div style='font-size:15px;font-weight:bold;margin-bottom:8px;'>easytier-web " + webStatus + "</div>";
+            
+            if (data.wrunning) {
+                html += "<table style='border-collapse:collapse;'>";
+                html += "<tr><td style='padding:2px 16px 2px 0;'>运行时间</td><td>" + data.etwebsta + "</td></tr>";
+                html += "<tr><td style='padding:2px 16px 2px 0;'>CPU / 内存</td><td>" + data.etwebcpu + " / " + data.etwebram + "</td></tr>";
+                html += "<tr><td style='padding:2px 16px 2px 0;'>当前 / 最新版本</td><td>" + data.ettag + " / " + data.etnewtag + "</td></tr>";
+                html += "</table>";
+                
+                if (data.port !== 0) {
+                    html += "<div style='margin-top:8px;'><input class='cbi-button cbi-button-reload' type='button' value=' <%:Web Console%> ' onclick=\"window.open('<%=protocol%>" + window.location.hostname + ":" + data.port + "')\"/></div>";
+                }
+            }
+            html += "</div>";
+            
+            st.innerHTML = html;
+        }
+    }
+);
+//]]>
+</script>
+<fieldset class="cbi-section">
+    <p id="easytier_status">
+        <em><%:Collecting data...%></em>
+    </p>
+</fieldset>

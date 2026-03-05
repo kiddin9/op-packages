@@ -1,0 +1,50 @@
+{
+	"luci-app-kucat-config": {
+		"description": "Grant UCI access for luci-app-kucat-config",
+		"read": {
+			"file": {
+				"/www/luci-static/kucat/background/*": [ "list", "read" ],
+				"/www/luci-static/resources/background/*": [ "list", "read" ],
+				"/etc/init.d/kucat": [ "exec" ],
+				"/usr/bin/kucat-apply-config": [ "exec" ],
+				"/usr/libexec/rpcd/luci.kucatconfig": [ "exec" ],
+				"/www/luci-static/kucat/img/*": [ "list", "read" ],
+				"/tmp/kucat_*": [ "read", "write" ], 
+				"/tmp/upload/*": [ "list", "read" ],
+				"/tmp/*": [ "stat" ] ,
+				"/etc/config/kucat": [ "read" ] ,
+				"/dev/urandom": [ "read" ]
+			},
+			"ubus": {
+				"luci.kucatconfig": [ "space", "del", "rename", "deld", "renamed", "read_file" ],
+				"file": [ "list", "read", "write", "stat", "exec" ],
+				"uci": [ "get", "state" ],
+				"luci": [ "getMenuConfig" ],
+				"session": [ "access" ]
+			},
+			"uci": [ "kucat", "system" ]
+		},
+		"write": {
+			"file": {
+				"/tmp/kucat/*": [ "write", "read", "delete", "exec" ],
+				"/tmp/kucat_*": [ "write", "read", "delete" ],
+				"/tmp/upload/*": [ "write", "read", "delete", "exec" ],
+				"/usr/libexec/rpcd/luci.kucatconfig": [ "exec" ],
+				"/www/luci-static/kucat/background/*": [ "write", "read", "delete", "upload" ],  
+				"/www/luci-static/resources/background/*": [ "write", "read", "delete", "upload" ],
+				"/www/luci-static/kucat/custom.css": [ "write", "read" ],
+				"/etc/config/kucat": [ "write" ],
+				"/tmp/": [ "write", "exec" ]
+			},
+			"ubus": {
+				"file": [ "write", "delete", "exec", "upload", "archive", "md5" ],
+				"luci.kucatconfig": [ "space", "del", "rename", "deld", "renamed", "read_file" ],
+				"uci": [ "set", "add", "delete", "commit", "reorder", "apply" ],
+				"service": [ "reload", "restart", "stop", "start" ],
+				"luci": [ "setMenuConfig" ],
+				"session": [ "login" ]
+			},
+			"uci": [ "kucat" ]
+		}
+	}
+}

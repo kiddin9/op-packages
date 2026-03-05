@@ -1,0 +1,13 @@
+#!/bin/sh
+
+[ ! -f "/usr/share/ucitrack/luci-app-timedreboot.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-timedreboot.json << EEOF
+{
+    "config": "timedreboot",
+    "init": "timedreboot"
+}
+EEOF
+}
+
+rm -f /tmp/luci-indexcache
+exit 0

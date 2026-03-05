@@ -1,0 +1,444 @@
+#!/bin/sh
+
+# author github@sirpdboy
+
+#   luci-theme-kucat
+#   Copyright (C) 2019-2026 The Sirpdboy Team <herboy2008@gmail.com> 
+# 
+#   Have a bug? Please create an issue here on GitHub!
+#       https://github.com/sirpdboy/luci-theme-kucat/issues
+# 
+# Licensed to the public under the Apache License 2.0
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+
+kucat='kucat'
+background="$(uci -q get $kucat.@basic[0].background || echo '0')"
+
+PIC_TMP_DIR="/var/kucat"
+PIC_LINK_DIR="/www/luci-static/kucat/img"
+PIC_CACHE="${PIC_TMP_DIR}/kucat_pic_${background}.cache"
+PIC_TMP_PATH="${PIC_TMP_DIR}/down${background}.jpg"
+PIC_LINK_PATH="${PIC_LINK_DIR}/down${background}.jpg"
+
+PIC_RE_URL="/luci-static/kucat/img/down${background}.jpg"
+PIC_DF_URL="/luci-static/kucat/img/bg1.jpg"
+PIC_LOCK="/var/lock/kucat_lock_pic.lock"
+
+LANG=$(uci get luci.main.lang 2>/dev/null || echo "zh_cn")
+WORD_CACHE="${PIC_TMP_DIR}/kucat_daily_word_$LANG.cache"
+WORD_LOCK="/var/lock/kucat_daily_word.lock"
+
+mkdir -p "$PIC_LINK_DIR" "$PIC_TMP_DIR"
+chmod 755 "$PIC_LINK_DIR" "$PIC_TMP_DIR"
+# 只在文件存在时设置权限
+[ -f "$PIC_TMP_PATH" ] && chmod 644 "$PIC_TMP_PATH"
+
+# 获取可用的WAN接口
+get_available_wan_interfaces() {
+    ifaces=$(ip route | grep default | awk '{print $5}' | sort -u)
+    [ $ifaces = 'br-lan' ] && return
+    for iface in $ifaces; do
+        if [ -n "$iface" ] && ip link show "$iface" 2>/dev/null | grep -q "state UP"; then
+            echo "$iface"
+        fi
+    done
+}
+
+# 检查HTTP工具可用性
+check_http_tool() {
+    if command -v curl >/dev/null 2>&1; then
+        # 测试curl是否正常工作
+        if curl --version >/dev/null 2>&1; then
+            echo "curl"
+            return 0
+        fi
+    fi
+    
+    if command -v wget >/dev/null 2>&1; then
+        echo "wget"
+        return 0
+    fi
+    
+    return 1
+}
+
+# 使用可用工具进行HTTP请求（支持多WAN接口）
+http_request() {
+    local url="$1"
+    local tool=$(check_http_tool)
+    local interfaces=$(get_available_wan_interfaces)
+    
+    case "$tool" in
+        "curl")
+            # 使用curl
+            if [ -z "$interfaces" ]; then
+                curl -s --connect-timeout 5 --max-time 15 "$url" 2>/dev/null
+            else
+                for iface in $interfaces; do
+                    local result=$(curl --interface "$iface" -s --connect-timeout 5 --max-time 15 "$url" 2>/dev/null)
+                    if [ $? -eq 0 ] && [ -n "$result" ]; then
+                        echo "$result"
+                        return 0
+                    fi
+                done
+            fi
+            ;;
+        "wget")
+            # 使用wget (不支持接口绑定，但可以设置超时)
+            wget -q -T 15 -t 2 -O - "$url" 2>/dev/null
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+
+# 使用可用工具进行HTTP请求（支持自定义header和多WAN接口）
+http_request_with_header() {
+    local url="$1"
+    local header="$2"
+    local tool=$(check_http_tool)
+    local interfaces=$(get_available_wan_interfaces)
+    
+    case "$tool" in
+        "curl")
+            if [ -z "$interfaces" ]; then
+                if [ -n "$header" ]; then
+                    curl -fks --max-time 15 --header "$header" "$url" 2>/dev/null
+                else
+                    curl -fks --max-time 15 "$url" 2>/dev/null
+                fi
+            else
+                for iface in $interfaces; do
+                    local result
+                    if [ -n "$header" ]; then
+                        result=$(curl --interface "$iface" -fks --max-time 15 --header "$header" "$url" 2>/dev/null)
+                    else
+                        result=$(curl --interface "$iface" -fks --max-time 15 "$url" 2>/dev/null)
+                    fi
+                    if [ $? -eq 0 ] && [ -n "$result" ]; then
+                        echo "$result"
+                        return 0
+                    fi
+                done
+            fi
+            ;;
+        "wget")
+            if [ -n "$header" ]; then
+                wget -q -T 15 -t 2 --header="$header" -O - "$url" 2>/dev/null
+            else
+                wget -q -T 15 -t 2 -O - "$url" 2>/dev/null
+            fi
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# 获取每日一言
+fetch_daily_word() {
+
+    dayword="$(uci -q get $kucat.@basic[0].dayword || echo '0')"
+    case "$dayword" in
+        1)
+            [ "X$LANG" == "Xen" ] && gwordjson=$(http_request 'https://open.iciba.com/dsapi/' | jsonfilter -qe '@.content') || gwordjson=$(http_request 'https://open.iciba.com/dsapi/' | jsonfilter -qe '@.note')
+            [ -n "${gwordjson}" ] && echo "$gwordjson"
+            ;;
+        2)
+            # form iciba : https://api.vvhan.com/api/en
+            [ "X$LANG" == "Xen" ] && gwordjson=$(http_request 'https://api.vvhan.com/api/en?type=sj' | jsonfilter -qe '@.data.zh') || gwordjson=$(http_request 'https://api.vvhan.com/api/en?type=sj' | jsonfilter -qe '@.data.en')
+            [ -n "${gwordjson}" ] && echo "$gwordjson"
+            ;;
+        3)
+            local gwordjson=$(http_request 'https://api.yixiangzhilv.com/yiyan/sentence/get/')
+            local gword=$(echo $gwordjson | jsonfilter -qe '@.content')
+            local gfrom=$(echo $gwordjson | jsonfilter -qe '@.author')
+            [ -n "${gfrom}" ] && gfrom=$(echo "$gfrom") || gfrom=''
+            [ -n "${gword}" ] && echo "$gword       $gfrom"
+            ;;
+        4)
+            local gwordjson=$(http_request 'https://yijuzhan.com/api/word.php?m=json')
+            local gword=$(echo $gwordjson | jsonfilter -qe '@.content')
+            local gfrom=$(echo $gwordjson | jsonfilter -qe '@.source')
+            [ -n "${gfrom}" ] && gfrom=$(echo "$gfrom") || gfrom=''
+            [ -n "${gword}" ] && echo "$gword     $gfrom"
+            ;;
+        5)
+            local gword=$(http_request 'https://v.api.aa1.cn/api/api-wenan-dujitang/index.php?aa1=json' | sed 's/\[//g' | sed 's/\]//g' | jsonfilter -qe '@.dujitang')
+            [ -n "${gword}" ] && echo "$gword"
+            ;;
+        *)
+            local gwordjson=$(http_request 'https://v1.hitokoto.cn')
+            local gword=$(echo $gwordjson | jsonfilter -qe '@.hitokoto')
+            local gfrom=$(echo $gwordjson | jsonfilter -qe '@.from_who')
+            [ -n "${gfrom}" ] && gfrom=$(echo "$gfrom") || gfrom=''
+            [ -n "${gword}" ] && echo "$gword     $gfrom"
+            ;;
+    esac
+}
+check_network() {
+    if ! nslookup "www.qq.com" 114.114.114.114 >/dev/null 2>&1 ; then
+        return 1  # 失败
+    fi
+
+    for test_url in "https://www.qq.com" "https://www.baidu.com" "https://www.taobao.com"; do
+        if curl -s --connect-timeout 3 -I "$test_url" >/dev/null 2>&1; then
+            return 0  # 成功
+        fi
+    done
+    
+    return 1  # 失败
+}
+
+
+try_update_word() {
+    local lock="$WORD_LOCK"
+    exec 200>"$lock"
+
+    if flock -n 200 >"/dev/null" 2>&1; then
+        local tword="$(fetch_daily_word)"
+        if [ -n "$tword" ]; then
+            echo "$tword" >"$WORD_CACHE" && date +%Y%m%d >> "$WORD_CACHE"
+        else
+            if [ -s "$WORD_CACHE" ]; then
+                cat "$WORD_CACHE" | head -n1
+            else
+                if [ "$LANG" = "en" ]; then
+                    echo "Enjoy the quiet moments of today."
+                else
+                    echo "今日无感，静享时光。"
+                fi
+            fi
+        fi
+        flock -u 200 >"/dev/null" 2>&1
+    elif [ -s "$WORD_CACHE" ]; then
+        cat "$WORD_CACHE" | head -n1
+    fi
+}
+
+fetch_PicUrl() {
+    local picurl
+    case "$background" in
+        1)
+             picurl=$(http_request 'https://open.iciba.com/dsapi/' | jsonfilter -qe '@.picture4')
+            [ -n "${picurl}" ] && echo "$picurl"
+            ;;
+        2)
+            http_request_with_header \
+                "https://api.unsplash.com/photos/random?count=1&orientation=landscape" \
+                "Authorization: Client-ID kmFIroj2ELqXJPtC0XUoyww-Tr_lDU8Ho8uxjptIrCo" |
+                jsonfilter -e "@[0]['urls']['regular']"
+            ;;
+        3)
+            picurl=$(http_request "https://www.bing.com/HPImageArchive.aspx?format=js&n=1" | jsonfilter -qe '@.images[0].url')
+            [ -n "${picurl}" ] && echo "https://www.bing.com${picurl}"
+            ;;
+        4)
+            # 使用 /dev/urandom 生成随机数，兼容 BusyBox
+            i=$(hexdump -n 1 -e '"%u"' /dev/urandom 2>/dev/null | awk '{print $1 % 8}')
+            j=$(hexdump -n 2 -e '"%u"' /dev/urandom 2>/dev/null | awk '{print $1 % 200}')
+            http_request "http://wp.birdpaper.com.cn/intf/search?content=4k&pageno=$j&count=9" | 
+	    awk -F '\"count\":9' '{print $2}' | awk -F ',\"processTime\"' '{print $1}' | 
+	    sed 's#,#{#' | 
+	    jsonfilter -e "@.list[$i].url"
+            ;;
+        5)
+            http_request_with_header \
+                "https://wallhaven.cc/api/v1/search?resolutions=1920x1080&sorting=random" "" |
+                jsonfilter -qe '@.data[0].path'
+            ;;
+    esac
+}
+
+try_down_pic() {
+    local lock="$PIC_LOCK"
+    exec 200>$lock
+    if flock -n 200 >/dev/null 2>&1; then
+        local bgurl="$(fetch_PicUrl)"
+        if [ -n "$bgurl" ]; then
+            rm -rf "$PIC_TMP_PATH" "$PIC_LINK_PATH"
+            local tmp_file="${PIC_TMP_PATH}.$$.tmp"
+            local download_success=0
+            local tool=$(check_http_tool)
+            local interfaces=$(get_available_wan_interfaces)
+            
+            case "$tool" in
+                "curl")
+                    if  [ -n "$interfaces" ] && [ "$interfaces" != "" ] ; then
+
+                        # 尝试每个可用的WAN接口
+                        for iface in $interfaces; do
+                            if curl --interface "$iface" -kLfsm 3 "$bgurl" -o "${tmp_file}" > /dev/null 2>&1; then
+                                download_success=1
+                                break
+                            fi
+                        done
+		    else
+		        curl -kLfsm 3 "$bgurl" -o "${tmp_file}" > /dev/null 2>&1 && download_success=1
+                    fi
+                    ;;
+                "wget")
+                    wget -q -T 3 -t 2 -O "${tmp_file}" "$bgurl" > /dev/null 2>&1 && download_success=1
+                    ;;
+            esac
+            
+            if [ $download_success -eq 1 ] && [ -s "$tmp_file" ]; then
+                mv "${tmp_file}" "${PIC_TMP_PATH}"
+                chmod 644 "${PIC_TMP_PATH}"
+                date +%Y%m%d > "$PIC_CACHE"
+                ln -sf "$PIC_TMP_PATH" "$PIC_LINK_PATH"
+            else
+                rm -f "${tmp_file}"
+            fi
+        fi
+        flock -u 200 >/dev/null 2>&1
+    fi
+    if [ -L "$PIC_LINK_PATH" ] && [ -e "$PIC_LINK_PATH" ]; then
+        echo -ne $PIC_RE_URL
+    else
+        echo -ne $PIC_DF_URL
+    fi
+}
+
+case "$1" in
+"list")
+    json_init
+    json_add_object "get_url"
+    json_close_object
+    json_add_object "get_word"
+    json_close_object
+    json_add_object "get_config"
+    json_close_object
+    json_add_object "set_config"
+    json_close_object
+    json_add_object "get_auto_theme"
+    json_close_object
+    json_dump
+    json_cleanup
+    ;;
+"call")
+    case "$2" in
+    "get_config")
+            read -r input
+        mode="$(uci -q get $kucat.@basic[0].mode || echo 'light')"
+        automode="$(uci -q get $kucat.@basic[0].automode || echo 'light')"
+        
+        json_init
+        json_add_string "mode" "$mode"
+        json_add_string "automode" "$automode"
+        json_add_boolean "success" 1
+        json_dump
+            json_cleanup
+        ;;
+        
+    "set_config")
+            read -r input
+        json_load "$input" 2>/dev/null
+        
+        json_get_var new_mode "mode"
+        json_get_var new_automode "automode"
+        if [ -n "$new_mode" ]; then
+            case "$new_mode" in
+                "light"|"dark"|"auto")
+                    uci set $kucat.@basic[0].mode="$new_mode"
+                    ;;
+            esac
+        fi
+        
+        # 设置自动模式
+        if [ -n "$new_automode" ]; then
+            case "$new_automode" in
+                "light"|"dark")
+                    uci set $kucat.@basic[0].automode="$new_automode"
+                    ;;
+            esac
+        fi
+        
+        uci commit $kucat
+        
+        json_init
+        json_add_boolean "success" 1
+        json_dump
+	            json_cleanup
+        ;;
+        
+    "get_auto_theme")
+            read -r input
+        hour=$(date +%H)
+        if [ $hour -ge 6 ] && [ $hour -lt 18 ]; then
+            auto_theme="light"
+        else
+            auto_theme="dark"
+        fi
+        
+        json_init
+        json_add_string "auto_theme" "$auto_theme"
+        json_add_boolean "success" 1
+        json_dump
+            json_cleanup
+        ;;
+        "get_url")
+            read -r input
+            if [ -s "$PIC_CACHE" ]; then
+                  pictime=$(grep $(date +%Y%m%d) $PIC_CACHE)
+                  if [ -n "$pictime" ]; then
+                    json_init
+                    json_add_string "url" "$PIC_RE_URL"
+                    json_add_boolean "success" 1
+                    json_dump
+                    json_cleanup
+                    return 0
+
+                  fi
+            fi
+
+                if check_network; then
+                    final_url="$(try_down_pic)"
+                else
+                    final_url=$PIC_DF_URL
+                fi
+
+            json_init
+            json_add_string "url" "$final_url"
+            json_add_boolean "success" 1
+            json_dump
+            json_cleanup
+
+                ;;
+    "get_word")
+        read -r input
+        if [ -s "$WORD_CACHE" ]; then
+            wordtime=$(grep $(date +%Y%m%d) $WORD_CACHE )
+            if [ -n "$wordtime" ]; then
+                    json_init
+                    json_add_string "word" "$(cat "$WORD_CACHE" | head -n1)"
+                    json_add_boolean "success" 1
+                    json_dump
+                    json_cleanup
+                    return 0
+
+            fi
+        fi
+        if check_network; then
+             word_content="$(try_update_word)"
+        else
+             if [ "x$LANG" = "xen" ]; then
+                    word_content="Enjoy the quiet moments of today."
+                else
+                    word_content="今日无感，静享时光。"
+              fi
+        fi
+	                
+        json_init
+        json_add_string "word" "$word_content"
+        json_add_boolean "success" 1
+        json_dump
+        json_cleanup
+        ;;
+    esac
+    ;;
+esac
