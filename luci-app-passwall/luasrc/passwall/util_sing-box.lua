@@ -924,6 +924,7 @@ function gen_config(var)
 	local remote_dns_doh_host = var["remote_dns_doh_host"]
 	local remote_dns_doh_ip = var["remote_dns_doh_ip"]
 	local remote_dns_doh_port = var["remote_dns_doh_port"]
+	local remote_dns_http3 = var["remote_dns_http3"]
 	local remote_dns_client_ip = var["remote_dns_client_ip"]
 	local remote_dns_query_strategy = var["remote_dns_query_strategy"]
 	local remote_dns_fake = var["remote_dns_fake"]
@@ -1666,6 +1667,9 @@ function gen_config(var)
 			local _a = api.parseURL(remote_dns_doh_url)
 			if _a then
 				remote_server.type = "https"
+				if remote_dns_http3 then
+					remote_server.type = "h3"
+				end
 				remote_server.server = _a.hostname
 				if _a.port then
 					remote_server.server_port = _a.port
