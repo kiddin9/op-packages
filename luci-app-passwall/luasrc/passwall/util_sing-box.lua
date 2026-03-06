@@ -922,6 +922,8 @@ function gen_config(var)
 	local remote_dns_tcp_port = var["remote_dns_tcp_port"]
 	local remote_dns_doh_url = var["remote_dns_doh_url"]
 	local remote_dns_doh_host = var["remote_dns_doh_host"]
+	local remote_dns_doh_ip = var["remote_dns_doh_ip"]
+	local remote_dns_doh_port = var["remote_dns_doh_port"]
 	local remote_dns_client_ip = var["remote_dns_client_ip"]
 	local remote_dns_query_strategy = var["remote_dns_query_strategy"]
 	local remote_dns_fake = var["remote_dns_fake"]
@@ -1672,10 +1674,33 @@ function gen_config(var)
 				end
 				remote_server.path = _a.pathname
 			end
+			if remote_dns_doh_ip and remote_dns_doh_host ~= remote_dns_doh_ip and not api.is_ip(remote_dns_doh_host) then
+				local domains = {}
+				local hosts_server = {
+					tag = "hosts",
+					type = "hosts",
+					predefined = {}
+				}
+				hosts_server.predefined[remote_dns_doh_host] = remote_dns_doh_ip
+				table.insert(domains, remote_dns_doh_host)
+				remote_server_domain_resolver = "hosts"
+				table.insert(dns.servers, hosts_server)
+				table.insert(dns.rules, {
+					query_type = {
+						"A", "AAAA"
+					},
+					domain = domains,
+					server = "hosts"
+				})
+			end
 		end
 
 		if api.is_local_ip(remote_server.server) then  --dns为本地ip，不走代理
 			remote_server.detour = "direct"
+		end
+
+		if remote_server_domain_resolver then
+			remote_server.domain_resolver = remote_server_domain_resolver
 		end
 
 		table.insert(dns.servers, remote_server)
@@ -1685,7 +1710,7 @@ function gen_config(var)
 			table.insert(dns.servers, {
 				tag = fakedns_tag,
 				type = "fakeip",
-				inet4_range = "198.18.0.0/16",
+				inet4_range = "198.18.0.0/15",
 				inet6_range = "fc00::/18",
 			})
 
