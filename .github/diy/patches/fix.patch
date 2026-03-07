@@ -10,15 +10,13 @@
 
 --- a/totd/root/etc/init.d/totd
 +++ b/totd/root/etc/init.d/totd
-@@ -55,7 +55,7 @@ start_service(){
+@@ -55,5 +55,5 @@ start_service(){
  }
  
  stop_service(){
 -	killall $PROG > /dev/null 2>&1
 +	kill `pgrep -f $PROG` > /dev/null 2>&1
  }
- 
- reload_service() {
 
 --- a/gowebdav/files/webdav.init
 +++ b/gowebdav/files/webdav.init
