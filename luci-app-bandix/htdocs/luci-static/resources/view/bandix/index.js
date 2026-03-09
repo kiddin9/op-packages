@@ -850,6 +850,72 @@ return view.extend({
                 opacity: 0.7;
                 font-size: 0.875rem;
             }
+
+            .device-uplink-badges {
+                display: inline-flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                align-items: center;
+                margin-left: 6px;
+                vertical-align: middle;
+            }
+
+            .device-uplink-badge,
+            .device-ch-badge {
+                display: inline-block;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                line-height: 1.2;
+            }
+
+            .device-uplink-badge {
+                background: rgba(107, 114, 128, 0.2);
+                color: #4b5563;
+            }
+
+            .theme-dark .device-uplink-badge {
+                background: rgba(156, 163, 175, 0.25);
+                color: #9ca3af;
+            }
+
+            .device-ch-badge.device-ch-g24 {
+                background: rgba(245, 158, 11, 0.2);
+                color: #b45309;
+            }
+
+            .theme-dark .device-ch-badge.device-ch-g24 {
+                background: rgba(251, 191, 36, 0.2);
+                color: #fbbf24;
+            }
+
+            .device-ch-badge.device-ch-g5 {
+                background: rgba(59, 130, 246, 0.2);
+                color: #2563eb;
+            }
+
+            .theme-dark .device-ch-badge.device-ch-g5 {
+                background: rgba(96, 165, 250, 0.2);
+                color: #60a5fa;
+            }
+
+            .device-ch-badge.device-ch-g6 {
+                background: rgba(139, 92, 246, 0.2);
+                color: #6d28d9;
+            }
+
+            .theme-dark .device-ch-badge.device-ch-g6 {
+                background: rgba(167, 139, 250, 0.2);
+                color: #a78bfa;
+            }
+
+            .device-uplink-badges-wrap {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+                align-items: center;
+            }
             
             .device-ipv6 {
                 opacity: 0.7;
@@ -1367,7 +1433,11 @@ return view.extend({
                 opacity: 0.7;
                 font-size: 0.875rem;
             }
-            
+
+            .device-summary-badges {
+                margin-top: 8px;
+            }
+
             /* 加载动画 */
             .loading-spinner {
                 display: inline-block;
@@ -1595,6 +1665,12 @@ return view.extend({
                     font-size: 0.75rem;
                     opacity: 0.7;
                     margin-top: 4px;
+                }
+
+                .device-card-ip .device-uplink-badges .device-uplink-badge,
+                .device-card-ip .device-uplink-badges .device-ch-badge {
+                    padding: 1px 5px;
+                    font-size: 0.65rem;
                 }
                 
                 .device-card-action {
@@ -3042,8 +3118,8 @@ return view.extend({
                 };
                 var daysText = days.length > 0 ? days.map(function (d) { return dayNames[d] || d; }).join(', ') : '-';
 
-                var uploadLimit = rule.wan_tx_rate_limit || 0;
-                var downloadLimit = rule.wan_rx_rate_limit || 0;
+                var uploadLimit = rule.w_tx_r_limit || 0;
+                var downloadLimit = rule.w_rx_r_limit || 0;
 
                 // 使用 isRuleActive 函数检查规则是否激活
                 var isActive = isRuleActive(rule);
@@ -3349,8 +3425,8 @@ return view.extend({
         }
 
         function getDeviceLabel(d) {
-            var name = d && (d.hostname || d.name) ? (d.hostname || d.name) : '';
-            var ip = d && d.ip ? d.ip : '';
+            var name = d && (d.host || d.name) ? (d.host || d.name) : '';
+            var ip = d && d.ip4 ? d.ip4 : '';
             var mac = d && d.mac ? d.mac : '';
             var left = name || ip || mac || '';
             var right = mac && left !== mac ? (' ' + mac) : '';
@@ -3428,8 +3504,8 @@ return view.extend({
 
             macs.slice().sort().forEach(function (mac) {
                 var d = deviceMap[mac];
-                var hostname = d && d.hostname ? d.hostname : '';
-                var ip = d && d.ip ? d.ip : '';
+                var hostname = d && d.host ? d.host : '';
+                var ip = d && d.ip4 ? d.ip4 : '';
                 var title = hostname || ip || mac;
 
                 var item = E('div', { 'class': 'whitelist-modal-item' }, [
@@ -3670,8 +3746,8 @@ return view.extend({
                 });
 
                 // 设置限速值
-                var uploadLimit = editingRule.wan_tx_rate_limit || 0;
-                var downloadLimit = editingRule.wan_rx_rate_limit || 0;
+                var uploadLimit = editingRule.w_tx_r_limit || 0;
+                var downloadLimit = editingRule.w_rx_r_limit || 0;
 
                 // 根据限速值选择合适的单位
                 var uploadUnit, uploadValue, downloadUnit, downloadValue;
@@ -3888,14 +3964,18 @@ return view.extend({
             // 加载定时限速规则列表
             loadScheduleRules();
 
-            // 更新设备信息
-            deviceSummary.innerHTML = E('div', {}, [
-                E('div', { 'class': 'device-summary-name' }, device.hostname || device.ip),
-                E('div', { 'class': 'device-summary-details' }, device.ip + ' (' + device.mac + ')')
-            ]).innerHTML;
+            var modalContent = [
+                E('div', { 'class': 'device-summary-name' }, device.host || device.ip4),
+                E('div', { 'class': 'device-summary-details' }, device.ip4 + ' (' + device.mac + ')')
+            ];
+            var modalBadges = buildDeviceUplinkChBadges(device);
+            if (modalBadges.length) {
+                modalContent.push(E('div', { 'class': 'device-summary-badges device-uplink-badges-wrap' }, modalBadges));
+            }
+            deviceSummary.innerHTML = E('div', {}, modalContent).innerHTML;
 
             // 设置当前hostname值
-            document.getElementById('device-hostname-input').value = device.hostname || '';
+            document.getElementById('device-hostname-input').value = device.host || '';
 
 
             // 显示模态框并添加动画
@@ -3984,8 +4064,8 @@ return view.extend({
 
                     var startTime = rule.time_slot && rule.time_slot.start ? rule.time_slot.start : '';
                     var endTime = rule.time_slot && rule.time_slot.end ? rule.time_slot.end : '';
-                    var uploadLimit = rule.wan_tx_rate_limit || 0;
-                    var downloadLimit = rule.wan_rx_rate_limit || 0;
+                    var uploadLimit = rule.w_tx_r_limit || 0;
+                    var downloadLimit = rule.w_rx_r_limit || 0;
 
                     var ruleItem = E('div', { 'class': 'schedule-rule-item' }, [
                         E('div', { 'class': 'schedule-rule-info' }, [
@@ -4050,7 +4130,7 @@ return view.extend({
             var newHostname = document.getElementById('device-hostname-input').value.trim();
 
             // 如果hostname没有变化，不需要保存
-            if (newHostname === (currentDevice.hostname || '')) {
+            if (newHostname === (currentDevice.host || '')) {
                 return;
             }
 
@@ -4066,7 +4146,7 @@ return view.extend({
                 saveButton.disabled = false;
 
                 // 更新当前设备信息
-                currentDevice.hostname = newHostname;
+                currentDevice.host = newHostname;
 
                 // 刷新设备数据
                 updateDeviceData();
@@ -4182,8 +4262,8 @@ return view.extend({
             var downloadLimits = [];
 
             activeRules.forEach(function (rule) {
-                var uploadLimit = rule.wan_tx_rate_limit || 0;
-                var downloadLimit = rule.wan_rx_rate_limit || 0;
+                var uploadLimit = rule.w_tx_r_limit || 0;
+                var downloadLimit = rule.w_rx_r_limit || 0;
 
                 // 只收集非零的限制值
                 if (uploadLimit > 0) {
@@ -4272,8 +4352,8 @@ return view.extend({
                 if (!aOnline && bOnline) return 1;
 
                 // 在线状态相同时，按IP地址排序
-                var aIp = a.ip || '';
-                var bIp = b.ip || '';
+                var aIp = a.ip4 || '';
+                var bIp = b.ip4 || '';
 
                 // 将IP地址转换为数字进行比较
                 var aIpParts = aIp.split('.').map(function (part) { return parseInt(part) || 0; });
@@ -4303,7 +4383,7 @@ return view.extend({
             select.innerHTML = '';
             select.appendChild(E('option', { 'value': '' }, _('All Devices')));
             sortedDevices.forEach(function (d) {
-                var label = (d.hostname || d.ip || d.mac || '-') + (d.ip ? ' (' + d.ip + ')' : '') + (d.mac ? ' [' + d.mac + ']' : '');
+                var label = (d.host || d.ip4 || d.mac || '-') + (d.ip4 ? ' (' + d.ip4 + ')' : '') + (d.mac ? ' [' + d.mac + ']' : '');
                 select.appendChild(E('option', { 'value': d.mac }, label));
             });
             // 尽量保留之前选择
@@ -4660,11 +4740,11 @@ return view.extend({
                     '<div class="ht-kpis">' +
                     '<div class="ht-kpi up">' +
                     '<div class="ht-k-label">' + _('WAN Upload') + ' (P95)</div>' +
-                    '<div class="ht-k-value">' + formatByterate(point.wan_tx_rate_p95 || 0, speedUnit) + '</div>' +
+                    '<div class="ht-k-value">' + formatByterate(point.w_tx_p95 || 0, speedUnit) + '</div>' +
                     '</div>' +
                     '<div class="ht-kpi down">' +
                     '<div class="ht-k-label">' + _('WAN Download') + ' (P95)</div>' +
-                    '<div class="ht-k-value">' + formatByterate(point.wan_rx_rate_p95 || 0, speedUnit) + '</div>' +
+                    '<div class="ht-k-value">' + formatByterate(point.w_rx_p95 || 0, speedUnit) + '</div>' +
                     '</div>' +
                     '</div>'
                 );
@@ -4672,20 +4752,20 @@ return view.extend({
                 // 详细统计信息
                 lines.push('<div class="ht-divider"></div>');
                 lines.push('<div class="ht-section-title">' + _('Upload Statistics') + '</div>');
-                row(_('Average'), formatByterate(point.wan_tx_rate_avg || 0, speedUnit));
-                row(_('Maximum'), formatByterate(point.wan_tx_rate_max || 0, speedUnit));
-                row(_('Minimum'), formatByterate(point.wan_tx_rate_min || 0, speedUnit));
-                row('P90', formatByterate(point.wan_tx_rate_p90 || 0, speedUnit));
-                row('P95', formatByterate(point.wan_tx_rate_p95 || 0, speedUnit));
-                row('P99', formatByterate(point.wan_tx_rate_p99 || 0, speedUnit));
+                row(_('Average'), formatByterate(point.w_tx_avg || 0, speedUnit));
+                row(_('Maximum'), formatByterate(point.w_tx_max || 0, speedUnit));
+                row(_('Minimum'), formatByterate(point.w_tx_min || 0, speedUnit));
+                row('P90', formatByterate(point.w_tx_p90 || 0, speedUnit));
+                row('P95', formatByterate(point.w_tx_p95 || 0, speedUnit));
+                row('P99', formatByterate(point.w_tx_p99 || 0, speedUnit));
 
                 lines.push('<div class="ht-section-title" style="margin-top: 8px;">' + _('Download Statistics') + '</div>');
-                row(_('Average'), formatByterate(point.wan_rx_rate_avg || 0, speedUnit));
-                row(_('Maximum'), formatByterate(point.wan_rx_rate_max || 0, speedUnit));
-                row(_('Minimum'), formatByterate(point.wan_rx_rate_min || 0, speedUnit));
-                row('P90', formatByterate(point.wan_rx_rate_p90 || 0, speedUnit));
-                row('P95', formatByterate(point.wan_rx_rate_p95 || 0, speedUnit));
-                row('P99', formatByterate(point.wan_rx_rate_p99 || 0, speedUnit));
+                row(_('Average'), formatByterate(point.w_rx_avg || 0, speedUnit));
+                row(_('Maximum'), formatByterate(point.w_rx_max || 0, speedUnit));
+                row(_('Minimum'), formatByterate(point.w_rx_min || 0, speedUnit));
+                row('P90', formatByterate(point.w_rx_p90 || 0, speedUnit));
+                row('P95', formatByterate(point.w_rx_p95 || 0, speedUnit));
+                row('P99', formatByterate(point.w_rx_p99 || 0, speedUnit));
 
                 // 累计流量（只显示 WAN）
                 lines.push('<div class="ht-divider"></div>');
@@ -4766,7 +4846,7 @@ return view.extend({
                         }
 
                         // 在线状态相同时，按IP地址排序（小的在前）
-                        var ipCompare = compareIP(a.ip, b.ip);
+                        var ipCompare = compareIP(a.ip4, b.ip4);
                         if (ipCompare !== 0) return ipCompare;
 
                         // IP地址也相同时，按MAC地址排序
@@ -4784,14 +4864,14 @@ return view.extend({
                         }
 
                         // 在线状态相同时，按LAN速度排序
-                        var aSpeed = (a.lan_tx_rate || 0) + (a.lan_rx_rate || 0);
-                        var bSpeed = (b.lan_tx_rate || 0) + (b.lan_rx_rate || 0);
+                        var aSpeed = (a.l_tx_r || 0) + (a.l_rx_r || 0);
+                        var bSpeed = (b.l_tx_r || 0) + (b.l_rx_r || 0);
                         if (aSpeed !== bSpeed) {
                             return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
                         }
 
                         // 速度相同时，按IP地址排序
-                        return compareIP(a.ip, b.ip);
+                        return compareIP(a.ip4, b.ip4);
                     });
                     break;
 
@@ -4805,14 +4885,14 @@ return view.extend({
                         }
 
                         // 在线状态相同时，按WAN速度排序
-                        var aSpeed = (a.wan_tx_rate || 0) + (a.wan_rx_rate || 0);
-                        var bSpeed = (b.wan_tx_rate || 0) + (b.wan_rx_rate || 0);
+                        var aSpeed = (a.w_tx_r || 0) + (a.w_rx_r || 0);
+                        var bSpeed = (b.w_tx_r || 0) + (b.w_rx_r || 0);
                         if (aSpeed !== bSpeed) {
                             return ascending ? (aSpeed - bSpeed) : (bSpeed - aSpeed);
                         }
 
                         // 速度相同时，按IP地址排序
-                        return compareIP(a.ip, b.ip);
+                        return compareIP(a.ip4, b.ip4);
                     });
                     break;
 
@@ -4826,14 +4906,14 @@ return view.extend({
                         }
 
                         // 在线状态相同时，按LAN流量排序
-                        var aTraffic = (a.lan_tx_bytes || 0) + (a.lan_rx_bytes || 0);
-                        var bTraffic = (b.lan_tx_bytes || 0) + (b.lan_rx_bytes || 0);
+                        var aTraffic = (a.l_tx_b || 0) + (a.l_rx_b || 0);
+                        var bTraffic = (b.l_tx_b || 0) + (b.l_rx_b || 0);
                         if (aTraffic !== bTraffic) {
                             return ascending ? (aTraffic - bTraffic) : (bTraffic - aTraffic);
                         }
 
                         // 流量相同时，按IP地址排序
-                        return compareIP(a.ip, b.ip);
+                        return compareIP(a.ip4, b.ip4);
                     });
                     break;
 
@@ -4847,14 +4927,14 @@ return view.extend({
                         }
 
                         // 在线状态相同时，按WAN流量排序
-                        var aTraffic = (a.wan_tx_bytes || 0) + (a.wan_rx_bytes || 0);
-                        var bTraffic = (b.wan_tx_bytes || 0) + (b.wan_rx_bytes || 0);
+                        var aTraffic = (a.w_tx_b || 0) + (a.w_rx_b || 0);
+                        var bTraffic = (b.w_tx_b || 0) + (b.w_rx_b || 0);
                         if (aTraffic !== bTraffic) {
                             return ascending ? (aTraffic - bTraffic) : (bTraffic - aTraffic);
                         }
 
                         // 流量相同时，按IP地址排序
-                        return compareIP(a.ip, b.ip);
+                        return compareIP(a.ip4, b.ip4);
                     });
                     break;
 
@@ -4869,7 +4949,7 @@ return view.extend({
                         }
 
                         // 在线状态相同时，按IP地址排序（小的在前）
-                        var ipCompare = compareIP(a.ip, b.ip);
+                        var ipCompare = compareIP(a.ip4, b.ip4);
                         if (ipCompare !== 0) return ipCompare;
 
                         // IP相同时，按MAC地址排序
@@ -4883,19 +4963,19 @@ return view.extend({
         // 判断设备是否在线（基于 last_online_ts）
         function isDeviceOnline(device) {
             // 如果没有 last_online_ts 字段，使用原有的 online 字段
-            if (typeof device.last_online_ts === 'undefined') {
+            if (typeof device.last === 'undefined') {
                 return device.online !== false;
             }
 
             // 如果 last_online_ts 为 0 或无效值，认为离线
-            if (!device.last_online_ts || device.last_online_ts <= 0) {
+            if (!device.last || device.last <= 0) {
                 return false;
             }
 
             // 计算当前时间与最后在线时间的差值（毫秒）
             var currentTime = Date.now();
             // 如果时间戳小于1000000000000，说明是秒级时间戳，需要转换为毫秒
-            var lastOnlineTime = device.last_online_ts < 1000000000000 ? device.last_online_ts * 1000 : device.last_online_ts;
+            var lastOnlineTime = device.last < 1000000000000 ? device.last * 1000 : device.last;
             var timeDiff = currentTime - lastOnlineTime;
 
             // 从UCI配置获取离线超时时间（秒），默认10分钟
@@ -4903,6 +4983,52 @@ return view.extend({
             var offlineThreshold = offlineTimeoutSeconds * 1000; // 转换为毫秒
 
             return timeDiff <= offlineThreshold;
+        }
+
+        function channelToBand(ch) {
+            var c = Number(ch);
+            if (c < 1) return null;
+            if (c <= 14) return '2.4 GHz';
+            if (c <= 165) return '5 GHz';
+            if (c <= 233) return '6 GHz';
+            return null;
+        }
+
+        function channelToBandClass(ch) {
+            var c = Number(ch);
+            if (c <= 14) return 'g24';
+            if (c <= 165) return 'g5';
+            if (c <= 233) return 'g6';
+            return '';
+        }
+
+        function buildDeviceUplinkChBadges(device) {
+            var badges = [];
+            if (device.uplink && String(device.uplink).trim() !== '') {
+                badges.push(E('span', { 'class': 'device-uplink-badge', 'title': _('Interface') }, device.uplink.trim()));
+            }
+            if (device.w_ch && Number(device.w_ch) > 0) {
+                var ch = Number(device.w_ch);
+                var band = channelToBand(ch);
+                var bandClass = channelToBandClass(ch);
+                if (band && bandClass) {
+                    badges.push(E('span', {
+                        'class': 'device-ch-badge device-ch-' + bandClass,
+                        'title': _('WiFi Channel') + ' ' + ch
+                    }, band));
+                }
+            }
+            return badges;
+        }
+
+        function formatDeviceUplinkCh(device) {
+            var parts = [];
+            if (device.uplink && String(device.uplink).trim() !== '') parts.push(device.uplink.trim());
+            if (device.w_ch && Number(device.w_ch) > 0) {
+                var band = channelToBand(Number(device.w_ch));
+                if (band) parts.push(band);
+            }
+            return parts.join(' · ');
         }
 
         // 格式化最后上线时间
@@ -5470,7 +5596,7 @@ return view.extend({
                 var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
 
                 var stats = result;
-                if (!stats || !stats.devices) {
+                if (!stats || !stats.d) {
                     if (trafficDiv) {
                         trafficDiv.innerHTML = '<div class="error">' + _('Unable to fetch data') + '</div>';
                     }
@@ -5479,19 +5605,19 @@ return view.extend({
 
                 // 更新设备计数
                 if (deviceCountDiv) {
-                    var onlineCount = stats.devices.filter(d => isDeviceOnline(d)).length;
-                    deviceCountDiv.textContent = _('Online Devices') + ': ' + onlineCount + ' / ' + stats.devices.length;
+                    var onlineCount = stats.d.filter(d => isDeviceOnline(d)).length;
+                    deviceCountDiv.textContent = _('Online Devices') + ': ' + onlineCount + ' / ' + stats.d.length;
                 }
 
                 // 计算统计数据（包含所有设备）
-                var totalLanUp = stats.devices.reduce((sum, d) => sum + (d.lan_tx_bytes || 0), 0);
-                var totalLanDown = stats.devices.reduce((sum, d) => sum + (d.lan_rx_bytes || 0), 0);
-                var totalWanUp = stats.devices.reduce((sum, d) => sum + (d.wan_tx_bytes || 0), 0);
-                var totalWanDown = stats.devices.reduce((sum, d) => sum + (d.wan_rx_bytes || 0), 0);
-                var totalLanSpeedUp = stats.devices.reduce((sum, d) => sum + (d.lan_tx_rate || 0), 0);
-                var totalLanSpeedDown = stats.devices.reduce((sum, d) => sum + (d.lan_rx_rate || 0), 0);
-                var totalWanSpeedUp = stats.devices.reduce((sum, d) => sum + (d.wan_tx_rate || 0), 0);
-                var totalWanSpeedDown = stats.devices.reduce((sum, d) => sum + (d.wan_rx_rate || 0), 0);
+                var totalLanUp = stats.d.reduce((sum, d) => sum + (d.l_tx_b || 0), 0);
+                var totalLanDown = stats.d.reduce((sum, d) => sum + (d.l_rx_b || 0), 0);
+                var totalWanUp = stats.d.reduce((sum, d) => sum + (d.w_tx_b || 0), 0);
+                var totalWanDown = stats.d.reduce((sum, d) => sum + (d.w_rx_b || 0), 0);
+                var totalLanSpeedUp = stats.d.reduce((sum, d) => sum + (d.l_tx_r || 0), 0);
+                var totalLanSpeedDown = stats.d.reduce((sum, d) => sum + (d.l_rx_r || 0), 0);
+                var totalWanSpeedUp = stats.d.reduce((sum, d) => sum + (d.w_tx_r || 0), 0);
+                var totalWanSpeedDown = stats.d.reduce((sum, d) => sum + (d.w_rx_r || 0), 0);
                 var totalSpeedUp = totalLanSpeedUp + totalWanSpeedUp;
                 var totalSpeedDown = totalLanSpeedDown + totalWanSpeedDown;
                 var totalUp = totalLanUp + totalWanUp;
@@ -5749,14 +5875,14 @@ return view.extend({
 
                 // 过滤：按选择设备
                 var selectedMac = (typeof document !== 'undefined' ? (document.getElementById('history-device-select')?.value || '') : '');
-                var filteredDevices = (!selectedMac) ? stats.devices : stats.devices.filter(function (d) { return (d.mac === selectedMac); });
+                var filteredDevices = (!selectedMac) ? stats.d : stats.d.filter(function (d) { return (d.mac === selectedMac); });
 
                 // 应用排序
                 filteredDevices = sortDevices(filteredDevices, currentSortBy, currentSortOrder);
 
                 // 检查是否有任何设备有 IPv6 地址
                 var hasAnyIPv6 = filteredDevices.some(function (device) {
-                    var lanIPv6 = filterLanIPv6(device.ipv6_addresses);
+                    var lanIPv6 = filterLanIPv6(device.ip6);
                     return lanIPv6.length > 0;
                 });
 
@@ -5802,20 +5928,21 @@ return view.extend({
                     var deviceMode = isMobileScreen ? 'simple' : (localStorage.getItem('bandix_device_mode') || 'simple');
                     var isDetailedMode = deviceMode === 'detailed';
 
-                    // 构建设备信息元素
+                    var uplinkChBadges = buildDeviceUplinkChBadges(device);
                     var deviceInfoElements = [
                         E('div', { 'class': 'device-name' }, [
                             E('span', {
                                 'class': 'device-status ' + (isOnline ? 'online' : 'offline')
                             }),
-                            device.hostname || '-'
+                            device.host || '-'
                         ]),
                         E('div', { 'class': 'device-ip' }, [
-                            device.connection_type ? E('span', {
+                            device.conn ? E('span', {
                                 'class': 'device-connection-type',
-                                'title': device.connection_type === 'wifi' ? _('Wireless') : (device.connection_type === 'router' ? _('Router') : _('Wired'))
-                            }, getConnectionTypeIcon(device.connection_type)) : '',
-                            device.ip
+                                'title': device.conn === 'wifi' ? _('Wireless') : (device.conn === 'router' ? _('Router') : _('Wired'))
+                            }, getConnectionTypeIcon(device.conn)) : '',
+                            device.ip4,
+                            uplinkChBadges.length ? E('span', { 'class': 'device-uplink-badges' }, uplinkChBadges) : ''
                         ])
                     ];
 
@@ -5823,9 +5950,9 @@ return view.extend({
                     if (isDetailedMode) {
                         // 只有当有设备有 IPv6 时才添加 IPv6 行
                         if (hasAnyIPv6) {
-                            var lanIPv6 = filterLanIPv6(device.ipv6_addresses);
+                            var lanIPv6 = filterLanIPv6(device.ip6);
                             if (lanIPv6.length > 0) {
-                                var allIPv6 = device.ipv6_addresses ? device.ipv6_addresses.join(', ') : '';
+                                var allIPv6 = device.ip6 ? device.ip6.join(', ') : '';
                                 deviceInfoElements.push(E('div', {
                                     'class': 'device-ipv6',
                                     'title': allIPv6
@@ -5840,8 +5967,8 @@ return view.extend({
                             E('div', { 'class': 'device-mac' }, device.mac),
                             E('div', { 'class': 'device-last-online' }, [
                                 E('span', {}, _('Last Online') + ': '),
-                                E('span', { 'class': 'device-last-online-value' }, formatLastOnlineTime(device.last_online_ts)),
-                                E('span', { 'class': 'device-last-online-exact' }, formatLastOnlineExactTime(device.last_online_ts))
+                                E('span', { 'class': 'device-last-online-value' }, formatLastOnlineTime(device.last)),
+                                E('span', { 'class': 'device-last-online-exact' }, formatLastOnlineExactTime(device.last))
                             ])
                         );
                     }
@@ -5857,13 +5984,13 @@ return view.extend({
                             E('div', { 'class': 'traffic-info' }, [
                                 E('div', { 'class': 'traffic-row' }, [
                                     E('span', { 'class': 'traffic-icon upload' }, '↑'),
-                                    E('span', { 'class': 'traffic-speed lan' }, formatByterate(device.lan_tx_rate || 0, speedUnit)),
-                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.lan_tx_bytes || 0) + ')')
+                                    E('span', { 'class': 'traffic-speed lan' }, formatByterate(device.l_tx_r || 0, speedUnit)),
+                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.l_tx_b || 0) + ')')
                                 ]),
                                 E('div', { 'class': 'traffic-row' }, [
                                     E('span', { 'class': 'traffic-icon download' }, '↓'),
-                                    E('span', { 'class': 'traffic-speed lan' }, formatByterate(device.lan_rx_rate || 0, speedUnit)),
-                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.lan_rx_bytes || 0) + ')')
+                                    E('span', { 'class': 'traffic-speed lan' }, formatByterate(device.l_rx_r || 0, speedUnit)),
+                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.l_rx_b || 0) + ')')
                                 ])
                             ])
                         ]),
@@ -5873,13 +6000,13 @@ return view.extend({
                             E('div', { 'class': 'traffic-info' }, [
                                 E('div', { 'class': 'traffic-row' }, [
                                     E('span', { 'class': 'traffic-icon upload' }, '↑'),
-                                    E('span', { 'class': 'traffic-speed wan' }, formatByterate(device.wan_tx_rate || 0, speedUnit)),
-                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.wan_tx_bytes || 0) + ')')
+                                    E('span', { 'class': 'traffic-speed wan' }, formatByterate(device.w_tx_r || 0, speedUnit)),
+                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.w_tx_b || 0) + ')')
                                 ]),
                                 E('div', { 'class': 'traffic-row' }, [
                                     E('span', { 'class': 'traffic-icon download' }, '↓'),
-                                    E('span', { 'class': 'traffic-speed wan' }, formatByterate(device.wan_rx_rate || 0, speedUnit)),
-                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.wan_rx_bytes || 0) + ')')
+                                    E('span', { 'class': 'traffic-speed wan' }, formatByterate(device.w_rx_r || 0, speedUnit)),
+                                    E('span', { 'class': 'traffic-total' }, '(' + formatSize(device.w_rx_b || 0) + ')')
                                 ])
                             ])
                         ]),
@@ -6040,13 +6167,17 @@ return view.extend({
                             E('div', { 'class': 'device-card-name' }, [
                                 E('span', { 'class': 'device-status ' + (isOnline ? 'online' : 'offline') }),
                                 E('div', {}, [
-                                    E('div', { 'style': 'font-weight: 600;' }, device.hostname || '-'),
+                                    E('div', { 'style': 'font-weight: 600;' }, device.host || '-'),
                                     E('div', { 'class': 'device-card-ip' }, [
-                                        device.connection_type ? E('span', {
+                                        device.conn ? E('span', {
                                             'class': 'device-connection-type',
-                                            'title': device.connection_type === 'wifi' ? _('Wireless') : (device.connection_type === 'router' ? _('Router') : _('Wired'))
-                                        }, getConnectionTypeIcon(device.connection_type)) : '',
-                                        device.ip
+                                            'title': device.conn === 'wifi' ? _('Wireless') : (device.conn === 'router' ? _('Router') : _('Wired'))
+                                        }, getConnectionTypeIcon(device.conn)) : '',
+                                        device.ip4,
+                                        (function () {
+                                            var badges = buildDeviceUplinkChBadges(device);
+                                            return badges.length ? E('span', { 'class': 'device-uplink-badges' }, badges) : '';
+                                        })()
                                     ])
                                 ])
                             ]),
@@ -6092,13 +6223,13 @@ return view.extend({
                                 E('div', { 'class': 'device-card-traffic' }, [
                                     E('div', { 'class': 'device-card-traffic-row' }, [
                                         E('span', { 'style': 'color: ' + BANDIX_COLOR_UPLOAD + '; font-size: 0.75rem; font-weight: bold;' }, '↑'),
-                                        E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.wan_tx_rate || 0, speedUnit)),
-                                        E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.wan_tx_bytes || 0) + ')')
+                                        E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.w_tx_r || 0, speedUnit)),
+                                        E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.w_tx_b || 0) + ')')
                                     ]),
                                     E('div', { 'class': 'device-card-traffic-row' }, [
                                         E('span', { 'style': 'color: ' + BANDIX_COLOR_DOWNLOAD + '; font-size: 0.75rem; font-weight: bold;' }, '↓'),
-                                        E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.wan_rx_rate || 0, speedUnit)),
-                                        E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.wan_rx_bytes || 0) + ')')
+                                        E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.w_rx_r || 0, speedUnit)),
+                                        E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.w_rx_b || 0) + ')')
                                     ])
                                 ])
                             ])
@@ -6153,13 +6284,13 @@ return view.extend({
                             E('div', { 'class': 'device-card-traffic' }, [
                                 E('div', { 'class': 'device-card-traffic-row' }, [
                                     E('span', { 'style': 'color: ' + BANDIX_COLOR_UPLOAD + '; font-size: 0.75rem; font-weight: bold;' }, '↑'),
-                                    E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.lan_tx_rate || 0, speedUnit)),
-                                    E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.lan_tx_bytes || 0) + ')')
+                                    E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.l_tx_r || 0, speedUnit)),
+                                    E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.l_tx_b || 0) + ')')
                                 ]),
                                 E('div', { 'class': 'device-card-traffic-row' }, [
                                     E('span', { 'style': 'color: ' + BANDIX_COLOR_DOWNLOAD + '; font-size: 0.75rem; font-weight: bold;' }, '↓'),
-                                    E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.lan_rx_rate || 0, speedUnit)),
-                                    E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.lan_rx_bytes || 0) + ')')
+                                    E('span', { 'style': 'font-weight: 600;' }, formatByterate(device.l_rx_r || 0, speedUnit)),
+                                    E('span', { 'style': 'font-size: 0.75rem; opacity: 0.7;' }, '(' + formatSize(device.l_rx_b || 0) + ')')
                                 ])
                             ])
                         ])
@@ -6182,7 +6313,7 @@ return view.extend({
 
                 // 更新历史趋势中的设备下拉
                 try {
-                    latestDevices = stats.devices || [];
+                    latestDevices = stats.d || [];
                     updateDeviceOptions(latestDevices);
                 } catch (e) { }
             });
@@ -6233,33 +6364,33 @@ return view.extend({
             displayData.forEach(function (item) {
                 var rankingItem = E('div', {
                     'class': 'usage-ranking-item',
-                    'style': '--progress-width: ' + (item.percentage || 0) + '%;'
+                    'style': '--progress-width: ' + (item.pct || 0) + '%;'
                 }, [
-                    E('div', { 'class': 'usage-ranking-rank' }, (item.rank || '-')),
+                    E('div', { 'class': 'usage-ranking-rank' }, (item.r || '-')),
                     E('div', { 'class': 'usage-ranking-info' }, [
                         E('div', { 'class': 'usage-ranking-device' }, [
-                            E('div', { 'class': 'usage-ranking-name' }, item.hostname || item.ip || item.mac || '-'),
+                            E('div', { 'class': 'usage-ranking-name' }, item.host || item.ip4 || item.mac || '-'),
                             E('div', { 'class': 'usage-ranking-meta' }, [
-                                E('span', {}, item.ip || '-'),
+                                E('span', {}, item.ip4 || '-'),
                                 E('span', {}, item.mac || '-'),
-                                E('span', { 'class': 'usage-ranking-meta-total' }, formatSize(item.total_bytes || 0))
+                                E('span', { 'class': 'usage-ranking-meta-total' }, formatSize(item.t_b || 0))
                             ])
                         ]),
                         E('div', { 'class': 'usage-ranking-stats' }, [
                             E('div', { 'class': 'usage-ranking-traffic' }, [
                                 E('span', { 'class': 'usage-ranking-traffic-item tx' }, [
                                     E('span', { 'class': 'usage-ranking-traffic-arrow' }, '↑'),
-                                    E('span', {}, formatSize(item.tx_bytes || 0))
+                                    E('span', {}, formatSize(item.tx_b || 0))
                                 ]),
                                 E('span', { 'class': 'usage-ranking-traffic-item rx' }, [
                                     E('span', { 'class': 'usage-ranking-traffic-arrow' }, '↓'),
-                                    E('span', {}, formatSize(item.rx_bytes || 0))
+                                    E('span', {}, formatSize(item.rx_b || 0))
                                 ]),
                                 E('span', { 'class': 'usage-ranking-traffic-item total' }, [
-                                    E('span', {}, formatSize(item.total_bytes || 0))
+                                    E('span', {}, formatSize(item.t_b || 0))
                                 ])
                             ]),
-                            E('div', { 'class': 'usage-ranking-percentage' }, (item.percentage || 0).toFixed(1) + '%')
+                            E('div', { 'class': 'usage-ranking-percentage' }, (item.pct || 0).toFixed(1) + '%')
                         ])
                     ])
                 ]);
@@ -6312,25 +6443,25 @@ return view.extend({
             // 获取设备用量排行
             callGetTrafficUsageRanking(startMs, endMs, networkType).then(function (result) {
                 console.log('Query result:', result);
-                if (!result || !result.rankings) {
+                if (!result || !result.r) {
                     return;
                 }
 
-                usageRankingData = result.rankings;
+                usageRankingData = result.r;
 
                 // 更新时间范围显示（包含上下行流量和总流量）
                 var timeRangeEl = document.getElementById('usage-ranking-timerange');
-                if (timeRangeEl && result.start_ms && result.end_ms) {
-                    var timeRangeText = formatTimeRange(result.start_ms, result.end_ms);
+                if (timeRangeEl && result.start && result.end) {
+                    var timeRangeText = formatTimeRange(result.start, result.end);
                     var parts = [];
-                    if (result.total_tx_bytes !== undefined && result.total_tx_bytes !== null) {
-                        parts.push('↑' + formatSize(result.total_tx_bytes));
+                    if (result.t_tx_b !== undefined && result.t_tx_b !== null) {
+                        parts.push('↑' + formatSize(result.t_tx_b));
                     }
-                    if (result.total_rx_bytes !== undefined && result.total_rx_bytes !== null) {
-                        parts.push('↓' + formatSize(result.total_rx_bytes));
+                    if (result.t_rx_b !== undefined && result.t_rx_b !== null) {
+                        parts.push('↓' + formatSize(result.t_rx_b));
                     }
-                    if (result.total_bytes !== undefined && result.total_bytes !== null) {
-                        parts.push(formatSize(result.total_bytes));
+                    if (result.t_b !== undefined && result.t_b !== null) {
+                        parts.push(formatSize(result.t_b));
                     }
                     if (parts.length > 0) {
                         timeRangeText += ' · ' + parts.join(' · ');
@@ -6344,8 +6475,8 @@ return view.extend({
                 } else {
                     // 如果还没有设备数据，先获取设备数据
                     callStatus().then(function (deviceResult) {
-                        if (deviceResult && deviceResult.devices) {
-                            latestDevices = deviceResult.devices;
+                        if (deviceResult && deviceResult.d) {
+                            latestDevices = deviceResult.d;
                             updateDeviceSelectForIncrements(latestDevices);
                         }
                     }).catch(function (err) {
@@ -6374,18 +6505,18 @@ return view.extend({
             if (!item) return null;
 
             var tsMs = item.ts_ms;
-            if (!tsMs && item.start_ts_ms) tsMs = item.start_ts_ms;
-            if (!tsMs && item.end_ts_ms) tsMs = item.end_ts_ms;
+            if (!tsMs && item.start) tsMs = item.start;
+            if (!tsMs && item.end) tsMs = item.end;
 
             var rxBytes = (item.rx_bytes !== undefined && item.rx_bytes !== null) ? item.rx_bytes : null;
             var txBytes = (item.tx_bytes !== undefined && item.tx_bytes !== null) ? item.tx_bytes : null;
             var totalBytes = (item.total_bytes !== undefined && item.total_bytes !== null) ? item.total_bytes : null;
 
             if (rxBytes === null) {
-                rxBytes = (item.wan_rx_bytes_inc || 0) + (item.lan_rx_bytes_inc || 0);
+                rxBytes = (item.w_rx_b || 0) + (item.l_rx_b || 0);
             }
             if (txBytes === null) {
-                txBytes = (item.wan_tx_bytes_inc || 0) + (item.lan_tx_bytes_inc || 0);
+                txBytes = (item.w_tx_b || 0) + (item.l_tx_b || 0);
             }
             if (totalBytes === null) {
                 totalBytes = rxBytes + txBytes;
@@ -6438,7 +6569,7 @@ return view.extend({
             }
 
             callGetTrafficUsageIncrements(startMs, endMs, selectedAggregation, selectedMac, selectedNetworkType).then(function (result) {
-                if (!result || !result.increments) {
+                if (!result || !result.inc) {
                     var container = document.getElementById('traffic-increments-container');
                     if (container) {
                         container.innerHTML = '<div class="loading-state">' + _('No data') + '</div>';
@@ -6448,21 +6579,21 @@ return view.extend({
                     return;
                 }
 
-                var normalizedIncrements = normalizeTrafficIncrementsList(result.increments);
+                var normalizedIncrements = normalizeTrafficIncrementsList(result.inc);
 
                 // 更新时间范围显示（包含上下行流量和总流量）
                 var timeRangeEl = document.getElementById('traffic-increments-timerange');
-                if (timeRangeEl && result.start_ms && result.end_ms) {
-                    var timeRangeText = formatTimeRange(result.start_ms, result.end_ms);
+                if (timeRangeEl && result.start && result.end) {
+                    var timeRangeText = formatTimeRange(result.start, result.end);
                     var parts = [];
-                    if (result.total_tx_bytes !== undefined && result.total_tx_bytes !== null) {
-                        parts.push('↑' + formatSize(result.total_tx_bytes));
+                    if (result.t_tx_b !== undefined && result.t_tx_b !== null) {
+                        parts.push('↑' + formatSize(result.t_tx_b));
                     }
-                    if (result.total_rx_bytes !== undefined && result.total_rx_bytes !== null) {
-                        parts.push('↓' + formatSize(result.total_rx_bytes));
+                    if (result.t_rx_b !== undefined && result.t_rx_b !== null) {
+                        parts.push('↓' + formatSize(result.t_rx_b));
                     }
-                    if (result.total_bytes !== undefined && result.total_bytes !== null) {
-                        parts.push(formatSize(result.total_bytes));
+                    if (result.t_b !== undefined && result.t_b !== null) {
+                        parts.push(formatSize(result.t_b));
                     }
                     if (parts.length > 0) {
                         timeRangeText += ' · ' + parts.join(' · ');
@@ -6507,15 +6638,15 @@ return view.extend({
                 var summary = E('div', { 'class': 'traffic-increments-summary' }, [
                     E('div', { 'class': 'traffic-increments-summary-item' }, [
                         E('div', { 'class': 'traffic-increments-summary-label' }, _('Total Upload')),
-                        E('div', { 'class': 'traffic-increments-summary-value' }, formatSize(result.total_tx_bytes || 0))
+                        E('div', { 'class': 'traffic-increments-summary-value' }, formatSize(result.t_tx_b || 0))
                     ]),
                     E('div', { 'class': 'traffic-increments-summary-item' }, [
                         E('div', { 'class': 'traffic-increments-summary-label' }, _('Total Download')),
-                        E('div', { 'class': 'traffic-increments-summary-value' }, formatSize(result.total_rx_bytes || 0))
+                        E('div', { 'class': 'traffic-increments-summary-value' }, formatSize(result.t_rx_b || 0))
                     ]),
                     E('div', { 'class': 'traffic-increments-summary-item' }, [
                         E('div', { 'class': 'traffic-increments-summary-label' }, _('Total')),
-                        E('div', { 'class': 'traffic-increments-summary-value' }, formatSize(result.total_bytes || 0))
+                        E('div', { 'class': 'traffic-increments-summary-value' }, formatSize(result.t_b || 0))
                     ])
                 ]);
 
@@ -6526,7 +6657,7 @@ return view.extend({
 
                 // 绘制图表
                 setTimeout(function () {
-                    var aggregation = result.aggregation || 'hourly';
+                    var aggregation = result.agg || 'hourly';
                     
                     // 重置缩放状态
                     if (incrementsZoomTimer) {
@@ -6639,8 +6770,8 @@ return view.extend({
                 if (!aOnline && bOnline) return 1;
 
                 // 在线状态相同时，按IP地址排序
-                var aIp = a.ip || '';
-                var bIp = b.ip || '';
+                var aIp = a.ip4 || '';
+                var bIp = b.ip4 || '';
 
                 // 将IP地址转换为数字进行比较
                 var aIpParts = aIp.split('.').map(function (part) { return parseInt(part) || 0; });
@@ -6662,7 +6793,7 @@ return view.extend({
             // 添加设备选项
             sortedDevices.forEach(function (device) {
                 if (device.mac) {
-                    var label = (device.hostname || device.ip || device.mac || '-') + (device.ip ? ' (' + device.ip + ')' : '') + (device.mac ? ' [' + device.mac + ']' : '');
+                    var label = (device.host || device.ip4 || device.mac || '-') + (device.ip4 ? ' (' + device.ip4 + ')' : '') + (device.mac ? ' [' + device.mac + ']' : '');
                     var option = E('option', { 'value': device.mac }, label);
                     macSelect.appendChild(option);
                 }
@@ -6897,7 +7028,7 @@ return view.extend({
                 } else {
                     // 按小时聚合：显示整点小时
                     // 使用 start_ts_ms 来确定这个时间段代表哪个小时
-                    var startTs = item.start_ts_ms || item.ts_ms;
+                    var startTs = item.start || item.ts_ms;
                     var startDate = new Date(startTs);
 
                     // 使用开始时间的整点小时
@@ -7053,7 +7184,7 @@ return view.extend({
                     }
 
                     var item = originalIncrements[barIndex];
-                    var timeStr = formatTimeRange(item.start_ts_ms || item.ts_ms, item.end_ts_ms || item.ts_ms, isDaily);
+                    var timeStr = formatTimeRange(item.start || item.ts_ms, item.end || item.ts_ms, isDaily);
 
                     // Get speed unit from UCI config
                     var speedUnit = uci.get('bandix', 'traffic', 'speed_unit') || 'bytes';
@@ -7071,25 +7202,25 @@ return view.extend({
                             '<div class="ht-kpis">' +
                             '<div class="ht-kpi up">' +
                             '<div class="ht-k-label">WAN Upload</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.wan_tx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.w_tx_b || 0) + '</div>' +
                             '</div>' +
                             '<div class="ht-kpi down">' +
                             '<div class="ht-k-label">WAN Download</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.wan_rx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.w_rx_b || 0) + '</div>' +
                             '</div>' +
                             '</div>' +
 
                             // 速度统计分组
                             '<div class="ht-divider"></div>' +
                             '<div class="ht-section-title">' + _('Upload Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.wan_tx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.wan_tx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.wan_tx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.w_tx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.w_tx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.w_tx_max || 0, speedUnit) + '</span></div>' +
 
                             '<div class="ht-section-title" style="margin-top: 8px;">' + _('Download Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.wan_rx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.wan_rx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.wan_rx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.w_rx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.w_rx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.w_rx_max || 0, speedUnit) + '</span></div>' +
                             '</div>';
                     } else if (networkType === 'lan') {
                         tooltipContent +=
@@ -7101,25 +7232,25 @@ return view.extend({
                             '<div class="ht-kpis">' +
                             '<div class="ht-kpi up">' +
                             '<div class="ht-k-label">LAN Upload</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.lan_tx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.l_tx_b || 0) + '</div>' +
                             '</div>' +
                             '<div class="ht-kpi down">' +
                             '<div class="ht-k-label">LAN Download</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.lan_rx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.l_rx_b || 0) + '</div>' +
                             '</div>' +
                             '</div>' +
 
                             // 速度统计分组
                             '<div class="ht-divider"></div>' +
                             '<div class="ht-section-title">' + _('Upload Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.lan_tx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.lan_tx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.lan_tx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.l_tx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.l_tx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.l_tx_max || 0, speedUnit) + '</span></div>' +
 
                             '<div class="ht-section-title" style="margin-top: 8px;">' + _('Download Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.lan_rx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.lan_rx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.lan_rx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.l_rx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.l_rx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.l_rx_max || 0, speedUnit) + '</span></div>' +
                             '</div>';
                     } else {
                         // networkType === 'all' 或其他情况，显示所有section
@@ -7132,25 +7263,25 @@ return view.extend({
                             '<div class="ht-kpis">' +
                             '<div class="ht-kpi up">' +
                             '<div class="ht-k-label">WAN Upload</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.wan_tx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.w_tx_b || 0) + '</div>' +
                             '</div>' +
                             '<div class="ht-kpi down">' +
                             '<div class="ht-k-label">WAN Download</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.wan_rx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.w_rx_b || 0) + '</div>' +
                             '</div>' +
                             '</div>' +
 
                             // 速度统计分组
                             '<div class="ht-divider"></div>' +
                             '<div class="ht-section-title">' + _('Upload Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.wan_tx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.wan_tx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.wan_tx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.w_tx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.w_tx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.w_tx_max || 0, speedUnit) + '</span></div>' +
 
                             '<div class="ht-section-title" style="margin-top: 8px;">' + _('Download Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.wan_rx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.wan_rx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.wan_rx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.w_rx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.w_rx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.w_rx_max || 0, speedUnit) + '</span></div>' +
                             '</div>' +
 
                             // LAN Traffic Section
@@ -7161,25 +7292,25 @@ return view.extend({
                             '<div class="ht-kpis">' +
                             '<div class="ht-kpi up">' +
                             '<div class="ht-k-label">LAN Upload</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.lan_tx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.l_tx_b || 0) + '</div>' +
                             '</div>' +
                             '<div class="ht-kpi down">' +
                             '<div class="ht-k-label">LAN Download</div>' +
-                            '<div class="ht-k-value">' + formatSize(item.lan_rx_bytes_inc || 0) + '</div>' +
+                            '<div class="ht-k-value">' + formatSize(item.l_rx_b || 0) + '</div>' +
                             '</div>' +
                             '</div>' +
 
                             // 速度统计分组
                             '<div class="ht-divider"></div>' +
                             '<div class="ht-section-title">' + _('Upload Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.lan_tx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.lan_tx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.lan_tx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.l_tx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.l_tx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.l_tx_max || 0, speedUnit) + '</span></div>' +
 
                             '<div class="ht-section-title" style="margin-top: 8px;">' + _('Download Statistics') + '</div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.lan_rx_rate_avg || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.lan_rx_rate_p95 || 0, speedUnit) + '</span></div>' +
-                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.lan_rx_rate_max || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Average') + '</span><span class="ht-val">' + formatByterate(item.l_rx_avg || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">P95</span><span class="ht-val">' + formatByterate(item.l_rx_p95 || 0, speedUnit) + '</span></div>' +
+                            '<div class="ht-row"><span class="ht-key">' + _('Maximum') + '</span><span class="ht-val">' + formatByterate(item.l_rx_max || 0, speedUnit) + '</span></div>' +
                             '</div>';
                     }
 
