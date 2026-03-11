@@ -1,16 +1,16 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=hickory-dns
-PKG_VERSION:=2026.02.27
-PKG_RELEASE:=1
+PKG_VERSION:=2026.03.11
+PKG_RELEASE:=2
 
-HICKORY_COMMIT:=f8795e4dd942a87a9346531c8acd5759bfb0c942
+HICKORY_COMMIT:=b4a402c0799db444f85c6dfef6424fa89ff957b6
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/hickory-dns/hickory-dns/tar.gz/f8795e4dd942a87a9346531c8acd5759bfb0c942?
+PKG_SOURCE_URL:=https://codeload.github.com/hickory-dns/hickory-dns/tar.gz/b4a402c0799db444f85c6dfef6424fa89ff957b6?
 PKG_HASH:=skip
 
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-f8795e4dd942a87a9346531c8acd5759bfb0c942
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-b4a402c0799db444f85c6dfef6424fa89ff957b6
 
 PKG_BUILD_DEPENDS:=rust/host
 PKG_BUILD_PARALLEL:=1
