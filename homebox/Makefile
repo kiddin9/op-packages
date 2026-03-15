@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=homebox
 PKG_VERSION:=1.0.1
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 ifneq ($(filter aarch64%,$(ARCH)),)
   PKG_ARCH:=arm64
@@ -58,7 +58,7 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/bin/homebox
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/homebox $(1)/usr/bin/homebox
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
