@@ -16,7 +16,8 @@
 				"tailscale": [
 					"do_login",
 					"do_logout",
-					"setup_firewall"
+					"setup_firewall",
+					"set_settings"
 				]
 			},
 			"uci": [ "tailscale" ]
