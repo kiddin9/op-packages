@@ -280,6 +280,7 @@ jobs:
         git_clone https://github.com/EkkoG/openwrt-natmap
         git_clone https://github.com/EkkoG/luci-app-natmap
         git_clone https://github.com/yichya/openwrt-hv-tools
+        git_clone https://github.com/papagaye744/luci-theme-design
         ) &
         (
         git_clone https://github.com/EasyTier/luci-app-easytier luci-app-easytier1 && mvdir luci-app-easytier1
@@ -381,7 +382,7 @@ jobs:
         sound/spotifyd devel/go-rice devel/rust-bindgen admin/gotop \
         lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./; rm -rf modemfeed
-        git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications themes/luci-theme-design libs/luci-lib-fs
+        git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications libs/luci-lib-fs
         mv -f applications luciapp;rm -rf luciapp/{luci-app-turboacc,luci-app-frp*}
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications
         mv -n applications/* luciapp/; rm -rf applications
