@@ -91,20 +91,100 @@ json_get() {
 
 json_set() {
 	local key="$1" value="$2"
+	local _js_err=""
+	
+	# 步骤1: 确保配置文件存在
 	if [ ! -f "$CONFIG_FILE" ]; then
-		mkdir -p "$(dirname "$CONFIG_FILE")"
+		# 检查父目录是否可创建
+		local parent_dir="$(dirname "$CONFIG_FILE")"
+		if ! mkdir -p "$parent_dir" 2>/dev/null; then
+			echo "ERROR: 无法创建配置目录 $parent_dir" >&2
+			echo "HINT: 请检查 /opt/openclaw/data 是否存在且有写权限" >&2
+			return 1
+		fi
+		
+		# 检查目录权限
+		if [ ! -w "$parent_dir" ]; then
+			echo "ERROR: 配置目录 $parent_dir 不可写" >&2
+			echo "HINT: 请运行: chmod 755 $parent_dir" >&2
+			return 1
+		fi
+		
+		# 尝试修复所有权
 		chown -R openclaw:openclaw "$OC_STATE_DIR" 2>/dev/null || true
-		echo '{}' > "$CONFIG_FILE"
+		
+		# 创建空配置文件
+		if ! echo '{}' > "$CONFIG_FILE" 2>/dev/null; then
+			echo "ERROR: 无法创建配置文件 $CONFIG_FILE" >&2
+			echo "HINT: 请检查磁盘空间和文件系统状态" >&2
+			return 1
+		fi
+		
+		chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 	fi
-	_JS_KEY="$key" _JS_VAL="$value" "$NODE_BIN" -e "
+	
+	# 步骤2: 检查配置文件是否可写
+	if [ ! -w "$CONFIG_FILE" ]; then
+		echo "ERROR: 配置文件 $CONFIG_FILE 不可写" >&2
+		echo "HINT: 请运行: chmod 644 $CONFIG_FILE" >&2
+		return 1
+	fi
+	
+	# 步骤3: 检查 Node.js 是否可用
+	if [ ! -x "$NODE_BIN" ]; then
+		echo "ERROR: Node.js 不可用: $NODE_BIN" >&2
+		echo "HINT: 请先运行 openclaw-env setup 安装 Node.js" >&2
+		return 1
+	fi
+	
+	# 步骤4: 使用临时文件传递值，避免环境变量转义问题
+	local tmp_val_file="/tmp/.oc_json_val_$$"
+	if ! printf '%s' "$value" > "$tmp_val_file" 2>/dev/null; then
+		echo "ERROR: 无法创建临时文件 $tmp_val_file" >&2
+		return 1
+	fi
+	
+	# 步骤5: 执行 JSON 写入
+	_JS_KEY="$key" _JS_DEBUG="${OC_CONFIG_DEBUG:-0}" "$NODE_BIN" -e "
 		const fs=require('fs');let d={};
-		try{d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));}catch(e){}
+		const debug=process.env._JS_DEBUG==='1';
+		try{
+			const content=fs.readFileSync('${CONFIG_FILE}','utf8');
+			d=JSON.parse(content);
+		}catch(e){
+			if(debug)console.error('JSON parse warning:',e.message);
+		}
 		const ks=process.env._JS_KEY.split('.');let o=d;
-		for(let i=0;i<ks.length-1;i++){if(!o[ks[i]]||typeof o[ks[i]]!=='object')o[ks[i]]={};o=o[ks[i]];}
-		let v=process.env._JS_VAL;try{v=JSON.parse(v);}catch(e){}
+		for(let i=0;i<ks.length-1;i++){
+			if(!o[ks[i]]||typeof o[ks[i]]!=='object')o[ks[i]]={};
+			o=o[ks[i]];
+		}
+		// 读取值并作为字符串保存
+		let v=fs.readFileSync('${tmp_val_file}','utf8');
 		o[ks[ks.length-1]]=v;
-		fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
-	" 2>/dev/null
+		try{
+			fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+			if(debug)console.log('JSON saved successfully');
+		}catch(e){
+			console.error('ERROR: Failed to write config:',e.message);
+			process.exit(1);
+		}
+	" 2>&1
+	local _js_rc=$?
+	
+	# 清理临时文件
+	rm -f "$tmp_val_file" 2>/dev/null
+	
+	# 步骤6: 检查执行结果
+	if [ $_js_rc -ne 0 ]; then
+		echo "ERROR: JSON 写入失败 (exit code: $_js_rc)" >&2
+		return 1
+	fi
+	
+	# 步骤7: 修复文件所有权
+	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+	
+	return 0
 }
 
 # ── 启用 auth 插件 ──
@@ -123,6 +203,100 @@ enable_auth_plugins() {
 			fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
 		}catch(e){}
 	" 2>/dev/null
+}
+
+# ── 修复插件配置中的插件名称不匹配问题 ──
+# v2026.3.13: OpenClaw 加强了配置验证，plugins.allow 中的名称必须与实际插件名完全匹配
+# 问题: 旧版本写入的是 "openclaw-qqbot"，但实际插件名是 "@tencent-connect/openclaw-qqbot"
+# 此函数会自动检测并修正不匹配的插件名称
+fix_plugin_config() {
+	[ ! -f "$CONFIG_FILE" ] && return
+	[ ! -x "$NODE_BIN" ] && return
+	
+	# 检查是否存在 qqbot 插件目录
+	local qqbot_ext_dir="${OC_STATE_DIR}/extensions/openclaw-qqbot"
+	[ ! -d "$qqbot_ext_dir" ] && return
+	
+	# 读取并修复 plugins.allow 中的插件名称
+	local fixed=0
+	"$NODE_BIN" -e "
+		const fs=require('fs');
+		try{
+			const d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));
+			if(!d.plugins)d.plugins={};
+			
+			// 修复 plugins.allow 数组中的插件名称
+			if(Array.isArray(d.plugins.allow)){
+				const oldName='openclaw-qqbot';
+				const newName='@tencent-connect/openclaw-qqbot';
+				const idx=d.plugins.allow.indexOf(oldName);
+				if(idx!==-1){
+					// 检查是否已有正确的名称
+					if(!d.plugins.allow.includes(newName)){
+						d.plugins.allow[idx]=newName;
+						console.log('FIXED');
+					}else{
+						// 已有正确名称，删除错误的
+						d.plugins.allow.splice(idx,1);
+						console.log('REMOVED_DUPLICATE');
+					}
+					fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+				}
+			}
+			
+			// 同时修复 plugins.entries 中的键名
+			if(d.plugins.entries && d.plugins.entries['openclaw-qqbot']){
+				if(!d.plugins.entries['@tencent-connect/openclaw-qqbot']){
+					d.plugins.entries['@tencent-connect/openclaw-qqbot']=d.plugins.entries['openclaw-qqbot'];
+				}
+				delete d.plugins.entries['openclaw-qqbot'];
+				fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+				console.log('FIXED_ENTRIES');
+			}
+		}catch(e){}
+	" 2>/dev/null | while read line; do
+		case "$line" in
+			FIXED|REMOVED_DUPLICATE|FIXED_ENTRIES)
+				echo -e "  ${GREEN}✅ 已修复插件配置名称: openclaw-qqbot → @tencent-connect/openclaw-qqbot${NC}"
+				fixed=1
+				;;
+		esac
+	done
+	
+	# 确保配置文件权限正确
+	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+	
+	return $fixed
+}
+
+# ── 确保 qqbot 插件在 plugins.allow 中 ──
+ensure_qqbot_plugin_allowed() {
+	[ ! -f "$CONFIG_FILE" ] && return
+	[ ! -x "$NODE_BIN" ] && return
+	
+	"$NODE_BIN" -e "
+		const fs=require('fs');
+		try{
+			const d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));
+			if(!d.plugins)d.plugins={};
+			if(!Array.isArray(d.plugins.allow))d.plugins.allow=[];
+			
+			const correctName='@tencent-connect/openclaw-qqbot';
+			const oldName='openclaw-qqbot';
+			
+			// 移除旧的不正确名称
+			d.plugins.allow=d.plugins.allow.filter(n=>n!==oldName);
+			
+			// 添加正确的名称（如果不存在）
+			if(!d.plugins.allow.includes(correctName)){
+				d.plugins.allow.push(correctName);
+				fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+				console.log('ADDED');
+			}
+		}catch(e){}
+	" 2>/dev/null
+	
+	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 }
 
 # ── 模型认证: 将 API Key 写入 auth-profiles.json (而非 openclaw.json) ──
@@ -1262,6 +1436,12 @@ configure_qq() {
 				fi
 				echo ""
 			fi
+			
+			# v2026.3.13: 确保插件名称正确写入 plugins.allow
+			# OpenClaw 要求 plugins.allow 中的名称必须与实际插件名完全匹配
+			if [ "$plugin_installed" -eq 1 ]; then
+				ensure_qqbot_plugin_allowed
+			fi
 		else
 			echo -e "  ${YELLOW}已跳过插件安装，继续配置 QQ 机器人参数。${NC}"
 			echo -e "  ${CYAN}稍后安装命令: openclaw plugins install @tencent-connect/openclaw-qqbot@latest${NC}"
@@ -1449,27 +1629,87 @@ configure_feishu() {
 	echo ""
 	echo -e "  ${BOLD}🐦 飞书 Bot 配置${NC}"
 	echo ""
-	echo -e "  ${YELLOW}获取凭据: ${CYAN}https://open.feishu.cn${NC} → 创建企业自建应用"
-	echo ""
 
-	local current_appid=$(json_get channels.feishu.appId)
-	if [ -n "$current_appid" ]; then
-		echo -e "  ${GREEN}当前 App ID: ${current_appid}${NC}"
+	# 检查 Node.js 是否可用
+	if [ ! -x "$NODE_BIN" ]; then
+		echo -e "  ${RED}❌ Node.js 不可用，请先安装运行环境${NC}"
+		return 1
 	fi
 
-	prompt_with_default "请输入飞书 App ID" "" fs_appid
-	prompt_with_default "请输入飞书 App Secret" "" fs_secret
-	fs_appid=$(sanitize_input "$fs_appid" | tr -d '[:space:]')
-	fs_secret=$(sanitize_input "$fs_secret" | tr -d '[:space:]')
+	# 检查并安装 Python 3 (飞书插件依赖)
+	if ! command -v python3 >/dev/null 2>&1; then
+		echo -e "  ${YELLOW}⚠️  飞书插件需要 Python 3 支持${NC}"
+		echo -e "  ${CYAN}正在尝试安装 python3-light...${NC}"
+		opkg update >/dev/null 2>&1
+		# 使用 python3-light 减少安装体积 (约 2MB vs 完整版 30MB+)
+		opkg install python3-light 2>&1 | tail -5 || true
+		if command -v python3 >/dev/null 2>&1; then
+			echo -e "  ${GREEN}✅ Python 3 安装成功${NC}"
+		else
+			echo -e "  ${RED}❌ Python 3 安装失败${NC}"
+			echo -e "  ${YELLOW}请手动安装: opkg install python3-light${NC}"
+			echo ""
+			prompt_with_default "是否继续尝试安装飞书? (y/n)" "n" continue_install
+			if ! confirm_yes "$continue_install"; then
+				return 1
+			fi
+		fi
+	fi
 
-	if [ -n "$fs_appid" ] && [ -n "$fs_secret" ]; then
-		json_set channels.feishu.appId "$fs_appid"
-		json_set channels.feishu.appSecret "$fs_secret"
-		chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
-		echo -e "  ${GREEN}✅ 飞书配置已保存${NC}"
-		ask_restart
+	echo -e "  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+	echo -e "  ${CYAN}飞书官方安装向导${NC}"
+	echo -e "  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+	echo ""
+	echo -e "  ${YELLOW}即将执行飞书官方安装命令:${NC}"
+	echo -e "  ${CYAN}npx -y @larksuite/openclaw-lark-tools install${NC}"
+	echo ""
+	echo -e "  ${DIM}安装过程中可以:${NC}"
+	echo -e "  ${DIM}  • 新建机器人: 扫描二维码一键创建${NC}"
+	echo -e "  ${DIM}  • 关联已有机器人: 输入 App ID 和 App Secret${NC}"
+	echo ""
+	echo -e "  ${YELLOW}提示: 若命令行出错，可在命令前增加 sudo 重新执行${NC}"
+	echo ""
+
+	prompt_with_default "是否开始安装? (y/n)" "y" do_install
+	if ! confirm_yes "$do_install"; then
+		echo -e "  ${YELLOW}已取消安装${NC}"
+		return
+	fi
+
+	echo ""
+	echo -e "  ${CYAN}正在启动飞书安装向导...${NC}"
+	echo ""
+
+	# 执行官方安装命令
+	cd "$OC_DATA"
+	NPX_BIN="${NODE_BASE}/bin/npx"
+	local install_rc=0
+	if [ -x "$NPX_BIN" ]; then
+		"$NPX_BIN" -y @larksuite/openclaw-lark-tools install || install_rc=$?
 	else
-		echo -e "  ${YELLOW}信息不完整，已取消。${NC}"
+		# 如果 npx 不存在，使用 node 运行
+		"$NODE_BIN" "$NODE_BASE/lib/node_modules/npm/bin/npx-cli.js" -y @larksuite/openclaw-lark-tools install || install_rc=$?
+	fi
+
+	echo ""
+	if [ $install_rc -eq 0 ]; then
+		echo -e "  ${GREEN}✅ 飞书安装完成！${NC}"
+		echo ""
+		echo -e "  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+		echo -e "  ${YELLOW}下一步:${NC}"
+		echo -e "  ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+		echo ""
+		echo -e "  1. 在飞书中向机器人发送任意消息，即可开始对话"
+		echo -e "  2. 发送 ${CYAN}/feishu auth${NC} 完成批量授权"
+		echo -e "  3. 发送 ${CYAN}/feishu start${NC} 验证安装是否成功"
+		echo -e "  4. 发送 ${CYAN}学习一下我安装的新飞书插件，列出有哪些能力${NC}"
+		echo ""
+	else
+		echo -e "  ${YELLOW}⚠️ 安装向导退出 (exit: $install_rc)${NC}"
+		echo ""
+		echo -e "  ${CYAN}手动安装命令:${NC}"
+		echo -e "  ${CYAN}npx -y @larksuite/openclaw-lark-tools install${NC}"
+		echo ""
 	fi
 }
 
@@ -2086,26 +2326,161 @@ main_menu() {
 		echo -e "${GREEN}║${NC}           ${BOLD}OpenClaw AI Gateway — OpenWrt 配置管理${NC}             ${GREEN}║${NC}"
 		echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
 		echo ""
-		echo -e "  ${CYAN}1)${NC} 📋 查看当前配置"
-		echo -e "  ${CYAN}2)${NC} 🤖 配置 AI 模型提供商"
-		echo -e "  ${CYAN}3)${NC} 🔄 设定当前活跃模型"
-		echo -e "  ${CYAN}4)${NC} 📡 配置消息渠道 (QQ/Telegram/Discord/飞书/Slack)"
-		echo -e "  ${CYAN}5)${NC} 🔍 健康检查 / 诊断"
+		echo -e "  ${DIM}━━━ AI 模型配置 ━━━${NC}"
+		echo -e "  ${CYAN}1)${NC} 🤖 配置 AI 模型和提供商"
+		echo -e "  ${CYAN}2)${NC} 🎯 设置活动模型"
+		echo ""
+		echo -e "  ${DIM}━━━ 消息渠道 ━━━${NC}"
+		echo -e "  ${CYAN}3)${NC} 📡 配置消息渠道 (电报/QQ/飞书)"
+		echo ""
+		echo -e "  ${DIM}━━━ 系统管理 ━━━${NC}"
+		echo -e "  ${CYAN}4)${NC} 🩺 健康检查与状态"
+		echo -e "  ${CYAN}5)${NC} 📋 查看日志"
 		echo -e "  ${CYAN}6)${NC} 🔄 重启 Gateway"
-		echo -e "  ${CYAN}7)${NC} 📝 查看原始配置文件"
-		echo -e "  ${CYAN}8)${NC} 💾 备份/还原配置"
-		echo -e "  ${CYAN}9)${NC} ⚠️  恢复默认配置"
+		echo ""
+		echo -e "  ${DIM}━━━ 高级选项 ━━━${NC}"
+		echo -e "  ${CYAN}7)${NC} 🔧 高级配置"
+		echo -e "  ${CYAN}8)${NC} ♻️ 重置配置"
+		echo -e "  ${CYAN}9)${NC} 📊 显示当前配置概览"
+		echo ""
 		echo -e "  ${CYAN}0)${NC} 退出"
 		echo ""
 		prompt_with_default "请选择" "1" menu_choice
 
 		case "$menu_choice" in
-			1) show_current_config ;;
-			2) configure_model ;;
-			3) set_active_model ;;
-			4) configure_channels ;;
-			5) health_check ;;
+			1) configure_model ;;
+			2) set_active_model ;;
+			3) configure_channels ;;
+			4) health_check ;;
+			5)
+				echo ""
+				echo -e "  ${CYAN}=== OpenClaw 日志 ===${NC}"
+				echo ""
+				logread -e openclaw 2>/dev/null | tail -100 || echo "  (无法读取日志)"
+				echo ""
+				prompt_with_default "按回车继续" "" _
+				;;
 			6) restart_gateway ;;
+			7) advanced_menu ;;
+			8) reset_to_defaults ;;
+			9) show_current_config ;;
+			0)
+				echo -e "  ${GREEN}再见！${NC}"
+				exit 0
+				;;
+			*) echo -e "  ${YELLOW}无效选择${NC}" ;;
+		esac
+	done
+}
+
+# ── 高级配置菜单 ──
+advanced_menu() {
+	while true; do
+		local gw_port gw_bind gw_mode log_level acp_dispatch
+		gw_port=$(json_get "gateway.port" 2>/dev/null || echo "18789")
+		gw_bind=$(json_get "gateway.bind" 2>/dev/null || echo "lan")
+		gw_mode=$(json_get "gateway.mode" 2>/dev/null || echo "local")
+		log_level=$(json_get "gateway.logLevel" 2>/dev/null || echo "")
+		acp_dispatch=$(json_get "acp.dispatch.enabled" 2>/dev/null || echo "false")
+
+		echo ""
+		echo -e "  ${BOLD}🔧 高级配置${NC}"
+		echo ""
+		echo -e "  ${CYAN}1)${NC} Gateway 端口  ${DIM}(当前: ${gw_port})${NC}"
+		echo -e "  ${CYAN}2)${NC} Gateway 绑定地址  ${DIM}(当前: ${gw_bind})${NC}"
+		echo -e "  ${CYAN}3)${NC} Gateway 运行模式  ${DIM}(当前: ${gw_mode})${NC}"
+		echo -e "  ${CYAN}4)${NC} 日志级别  ${DIM}(当前: ${log_level:-未设置})${NC}"
+		echo -e "  ${CYAN}5)${NC} ACP Dispatch 设置  ${DIM}(当前: ${acp_dispatch})${NC}"
+		echo -e "  ${CYAN}6)${NC} 官方完整配置向导  ${DIM}(oc configure)${NC}"
+		echo -e "  ${CYAN}7)${NC} 查看原始配置 JSON"
+		echo -e "  ${CYAN}8)${NC} 编辑配置文件  ${DIM}(vi / nano)${NC}"
+		echo -e "  ${CYAN}9)${NC} 导出配置备份"
+		echo -e "  ${CYAN}10)${NC} 导入配置"
+		echo -e "  ${CYAN}0)${NC} 返回主菜单"
+		echo ""
+		prompt_with_default "请选择" "0" adv_choice
+
+		case "$adv_choice" in
+			1)
+				echo ""
+				prompt_with_default "请输入 Gateway 端口" "$gw_port" new_port
+				if [ -n "$new_port" ] && [ "$new_port" != "$gw_port" ]; then
+					json_set "gateway.port" "$new_port"
+					# 同步到 UCI
+					uci set openclaw.main.port="$new_port" 2>/dev/null
+					uci commit openclaw 2>/dev/null
+					echo -e "  ${GREEN}✅ 端口已设置为 ${new_port}${NC}"
+					ask_restart
+				fi
+				;;
+			2)
+				echo ""
+				echo -e "  ${CYAN}绑定地址选项:${NC}"
+				echo "    lan      - 仅 LAN 接口 (推荐)"
+				echo "    loopback - 仅本机访问"
+				echo "    all      - 所有接口 (0.0.0.0)"
+				echo ""
+				prompt_with_default "请输入绑定地址" "$gw_bind" new_bind
+				if [ -n "$new_bind" ]; then
+					case "$new_bind" in
+						lan|loopback|all)
+							json_set "gateway.bind" "$new_bind"
+							uci set openclaw.main.bind="$new_bind" 2>/dev/null
+							uci commit openclaw 2>/dev/null
+							echo -e "  ${GREEN}✅ 绑定地址已设置为 ${new_bind}${NC}"
+							ask_restart
+							;;
+						*) echo -e "  ${YELLOW}无效选项${NC}" ;;
+					esac
+				fi
+				;;
+			3)
+				echo ""
+				echo -e "  ${CYAN}运行模式选项:${NC}"
+				echo "    local  - 本地模式 (推荐)"
+				echo "    remote - 远程模式"
+				echo ""
+				prompt_with_default "请输入运行模式" "$gw_mode" new_mode
+				if [ -n "$new_mode" ] && [ "$new_mode" != "$gw_mode" ]; then
+					json_set "gateway.mode" "$new_mode"
+					echo -e "  ${GREEN}✅ 运行模式已设置为 ${new_mode}${NC}"
+					ask_restart
+				fi
+				;;
+			4)
+				echo ""
+				echo -e "  ${CYAN}日志级别选项:${NC}"
+				echo "    debug, info, warn, error"
+				echo ""
+				prompt_with_default "请输入日志级别" "${log_level:-info}" new_level
+				if [ -n "$new_level" ]; then
+					json_set "gateway.logLevel" "$new_level"
+					echo -e "  ${GREEN}✅ 日志级别已设置为 ${new_level}${NC}"
+					ask_restart
+				fi
+				;;
+			5)
+				echo ""
+				echo -e "  ${CYAN}ACP Dispatch 选项:${NC}"
+				echo "    true  - 启用 (可能占用大量内存)"
+				echo "    false - 禁用 (推荐路由器使用)"
+				echo ""
+				prompt_with_default "请输入设置" "$acp_dispatch" new_acp
+				case "$new_acp" in
+					true|false)
+						json_set "acp.dispatch.enabled" "$new_acp"
+						echo -e "  ${GREEN}✅ ACP Dispatch 已设置为 ${new_acp}${NC}"
+						ask_restart
+						;;
+					*) echo -e "  ${YELLOW}无效选项${NC}" ;;
+				esac
+				;;
+			6)
+				echo ""
+				echo -e "  ${CYAN}启动官方配置向导...${NC}"
+				oc_cmd configure
+				ask_restart
+				;;
 			7)
 				echo ""
 				echo -e "  ${CYAN}配置文件路径: ${CONFIG_FILE}${NC}"
@@ -2116,18 +2491,41 @@ main_menu() {
 					echo "  (配置文件不存在)"
 				fi
 				echo ""
-				prompt_with_default "是否用 vi 编辑? (y/n)" "n" do_edit
-				if confirm_yes "$do_edit"; then
+				prompt_with_default "按回车继续" "" _
+				;;
+			8)
+				echo ""
+				if [ -f "$CONFIG_FILE" ]; then
 					vi "$CONFIG_FILE"
 					ask_restart
+				else
+					echo -e "  ${YELLOW}配置文件不存在${NC}"
 				fi
 				;;
-			8) backup_restore_menu ;;
-			9) reset_to_defaults ;;
-			0)
-				echo -e "  ${GREEN}再见！${NC}"
-				exit 0
+			9) backup_restore_menu ;;
+			10)
+				echo ""
+				echo -e "  ${CYAN}导入配置${NC}"
+				echo ""
+				local backup_dir="${OC_STATE_DIR}/backups"
+				if [ -d "$backup_dir" ]; then
+					echo "  可用备份:"
+					ls -lt "$backup_dir"/*.json 2>/dev/null | head -5 | while read -r line; do
+						echo "    $(echo "$line" | awk '{print $NF}')"
+					done
+				fi
+				echo ""
+				prompt_with_default "请输入备份文件路径" "" import_path
+				if [ -n "$import_path" ] && [ -f "$import_path" ]; then
+					cp "$import_path" "$CONFIG_FILE"
+					chown openclaw:openclaw "$CONFIG_FILE"
+					echo -e "  ${GREEN}✅ 配置已导入${NC}"
+					ask_restart
+				else
+					echo -e "  ${YELLOW}文件不存在${NC}"
+				fi
 				;;
+			0) return ;;
 			*) echo -e "  ${YELLOW}无效选择${NC}" ;;
 		esac
 	done

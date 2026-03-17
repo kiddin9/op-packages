@@ -1,5 +1,32 @@
 #!/bin/sh
-# luci-app-openclaw — 首次安装初始化脚本
+# luci-app-openclaw — 首次安装/升级初始化脚本
+
+# ── v1.0.16: 清理错误路径下的配置文件 (Issue #42) ──
+# 用户在 SSH 中直接运行 openclaw 命令时，可能创建了 /root/.openclaw/ 目录
+# 需要迁移数据并清理，避免路径混乱
+if [ -d "/root/.openclaw" ]; then
+	OC_DATA="/opt/openclaw/data"
+	# 迁移 skills 目录 (如果存在且目标不存在)
+	if [ -d "/root/.openclaw/skills" ] && [ ! -d "${OC_DATA}/.openclaw/skills" ]; then
+		mkdir -p "${OC_DATA}/.openclaw"
+		mv "/root/.openclaw/skills" "${OC_DATA}/.openclaw/" 2>/dev/null
+		chown -R openclaw:openclaw "${OC_DATA}/.openclaw/skills" 2>/dev/null
+	fi
+	# 迁移 sessions 目录 (如果存在且目标不存在)
+	if [ -d "/root/.openclaw/sessions" ] && [ ! -d "${OC_DATA}/.openclaw/sessions" ]; then
+		mkdir -p "${OC_DATA}/.openclaw"
+		mv "/root/.openclaw/sessions" "${OC_DATA}/.openclaw/" 2>/dev/null
+		chown -R openclaw:openclaw "${OC_DATA}/.openclaw/sessions" 2>/dev/null
+	fi
+	# 迁移 openclaw.json (仅当目标不存在时)
+	if [ -f "/root/.openclaw/openclaw.json" ] && [ ! -f "${OC_DATA}/.openclaw/openclaw.json" ]; then
+		mkdir -p "${OC_DATA}/.openclaw"
+		mv "/root/.openclaw/openclaw.json" "${OC_DATA}/.openclaw/" 2>/dev/null
+		chown openclaw:openclaw "${OC_DATA}/.openclaw/openclaw.json" 2>/dev/null
+	fi
+	# 清理空的旧目录
+	rmdir "/root/.openclaw" 2>/dev/null || true
+fi
 
 # 创建 openclaw 系统用户 (无 home, 无 shell)
 if ! id openclaw >/dev/null 2>&1; then

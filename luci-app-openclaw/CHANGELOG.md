@@ -4,6 +4,83 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.0] - 2026-03-16
+
+### 重大变更
+- **配置管理菜单重构**: 主菜单采用分组样式，更清晰的导航结构
+  - AI 模型配置：配置 AI 模型和提供商、设置活动模型
+  - 消息渠道：配置消息渠道 (电报/QQ/飞书)
+  - 系统管理：健康检查与状态、查看日志、重启 Gateway
+  - 高级选项：高级配置、重置配置、显示当前配置概览
+- **新增高级配置菜单**: 独立的高级配置入口，包含：
+  - Gateway 端口/绑定地址/运行模式配置
+  - 日志级别设置
+  - ACP Dispatch 开关
+  - 官方完整配置向导入口
+  - 原始 JSON 查看/编辑
+  - 配置备份导出/导入
+
+### 修复
+- **QQ 机器人插件配置名称不匹配** (#XX): OpenClaw v2026.3.13 加强了配置验证，`plugins.allow` 中的插件名称必须与实际安装的插件名完全匹配
+  - 问题：旧版本写入的是 `openclaw-qqbot`，但实际插件名是 `@tencent-connect/openclaw-qqbot`
+  - 影响：配置验证失败导致 Gateway 启动后立即退出，procd 进入 crash loop 保护
+  - 修复：新增 `fix_plugin_config` 函数自动检测并修正不匹配的插件名称
+  - 修复：`configure_qq` 安装插件后调用 `ensure_qqbot_plugin_allowed` 确保正确的插件名写入配置
+  - 修复：`init.d` 服务启动前自动修复配置中的插件名称
+- **安装运行环境报错** (#28): 部分系统缺少 `libstdcpp6` 导致 Node.js 无法运行，安装 pnpm 时卡住
+  - 依赖声明新增 `libstdcpp6`，安装时自动拉取 C++ 标准库
+  - Node.js 验证逻辑改进：检测到运行失败时提示缺失的库并给出修复命令
+- **环境变量路径混乱** (#42): 用户通过 SSH 直接运行 `openclaw` 命令时，CLI 使用默认 `HOME=/root` 导致配置文件和 skills 散落在 `/root/.openclaw/` 而非正确的 `/opt/openclaw/data/.openclaw/`
+  - 新增 `/etc/profile.d/openclaw.sh` 全局环境变量脚本，SSH 登录后自动设置正确的 PATH、OPENCLAW_HOME 等变量
+  - 升级时自动迁移 `/root/.openclaw/` 下的 skills、sessions、openclaw.json 到正确路径
+  - 用户现在可以直接运行 `npm`、`npx`、`openclaw config` 等命令
+
+### 新增
+- **全局环境变量**: `/etc/profile.d/openclaw.sh` 为 SSH 用户提供：
+  - PATH 包含 Node.js 和 OpenClaw bin 目录
+  - OPENCLAW_HOME、OPENCLAW_STATE_DIR、OPENCLAW_CONFIG_PATH 正确指向安装路径
+  - `openclaw` 命令别名（当全局安装时）
+- **查看日志功能**: 主菜单新增「查看日志」选项，显示最近 100 条 OpenClaw 日志
+
+### 变更
+- Makefile 新增 `/etc/profile.d/openclaw.sh` 安装步骤
+- 依赖声明新增 `libstdcpp6`
+- **飞书 Bot 配置流程优化**: 参考 QQ Bot 实现，大幅简化配置步骤
+  - 新增 App ID 格式验证（`cli_xxx` 格式）
+  - 新增 App Secret 长度检查
+  - 使用 OpenClaw CLI 一键配置（`oc_cmd channels add --channel feishu`）
+  - 配置保存后自动验证
+  - 新增详细的事件订阅、权限配置、插件安装指引
+
+### 适配 OpenClaw v2026.3.13
+
+#### 升级说明
+- **Node.js 版本升级**: 从 22.15.1 升级到 22.16.0 (OpenClaw v2026.3.11+ 最低要求)
+- **OpenClaw 版本升级**: 从 v2026.3.8 升级到 v2026.3.13
+
+#### 重要安全修复
+- WebSocket 跨站劫持漏洞修复 (GHSA-5wcw-8jjv-m286)
+- 设备配对安全增强：切换到短期引导令牌 (GHSA-99qw-6mr3-36qr)
+- 命令审批安全加固：Unicode 不可见字符转义、执行检测规范化
+- 多渠道 Webhook 安全增强：飞书/LINE/Zalo 签名验证强化
+
+#### 新功能支持
+- **Fast Mode**: OpenAI/Anthropic 快速响应模式支持
+- **Control UI 重构**: 新版 Dashboard-v2 模块化界面
+- **Ollama 本地向导**: 支持本地或云端+本地混合模式
+- **Kubernetes 部署**: 新增 K8s 部署清单和文档
+- **Docker 时区**: 新增 `OPENCLAW_TZ` 环境变量支持
+
+#### 破坏性变更处理
+- **Cron 主动投递收紧**: 升级后建议运行 `openclaw doctor --fix` 迁移旧版 cron 存储
+- **插件安全策略**: 禁用隐式工作区插件自动加载，需显式信任决策
+- **Node.js 最低版本**: 要求 >= 22.16.0 (已在 openclaw-env 中更新)
+
+#### 配置兼容性
+- 现有配置文件完全兼容，无需手动迁移
+- 已预设 `gateway.controlUi.dangerouslyDisableDeviceAuth=true` 禁用设备认证
+- 已预设 `gateway.controlUi.allowInsecureAuth=true` 允许不安全认证
+
 ## [1.0.15] - 2026-03-13
 
 ### 修复

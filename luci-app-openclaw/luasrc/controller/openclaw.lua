@@ -374,6 +374,8 @@ function action_uninstall()
 	sys.exec("uci set openclaw.main.enabled=0; uci commit openclaw 2>/dev/null")
 	-- 删除 Node.js + OpenClaw 运行环境
 	sys.exec("rm -rf /opt/openclaw")
+	-- 清理旧数据迁移后可能残留的目录
+	sys.exec("rm -rf /root/.openclaw 2>/dev/null")
 	-- 清理临时文件
 	sys.exec("rm -f /tmp/openclaw-setup.* /tmp/openclaw-update.log /var/run/openclaw*.pid")
 	-- 删除 openclaw 系统用户
@@ -382,7 +384,7 @@ function action_uninstall()
 	http.prepare_content("application/json")
 	http.write_json({
 		status = "ok",
-		message = "运行环境已卸载。Node.js、OpenClaw 及相关数据已清理。"
+		message = "运行环境已卸载。已清理: Node.js 运行环境 (/opt/openclaw)、旧数据目录 (/root/.openclaw)、临时文件。"
 	})
 end
 

@@ -10,7 +10,7 @@
 在路由器上运行 OpenClaw，通过 LuCI 管理界面完成安装、配置和服务管理。
 
 <div align="center">
-  <img src="docs/images/1.png" alt="OpenClaw LuCI 管理界面" width="800" style="border-radius:8px;" />
+  <img src="docs/images/2.png" alt="OpenClaw LuCI 管理界面" width="800" style="border-radius:8px;" />
 </div>
 
 **系统要求**

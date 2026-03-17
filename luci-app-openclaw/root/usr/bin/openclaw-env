@@ -11,9 +11,15 @@
 # ============================================================================
 set -e
 
-NODE_VERSION="${NODE_VERSION:-22.15.1}"
+# ── Node.js 版本策略 (双版本兼容) ──
+# V2: 当前推荐版本，用于 OpenClaw v2026.3.11+ (要求 >= 22.16.0)
+# V1: 旧版兼容，用于 OpenClaw v2026.3.8 及更早版本
+NODE_VERSION_V2="22.16.0"
+NODE_VERSION_V1="22.15.1"
+# 默认使用 V2 版本 (可通过 NODE_VERSION 环境变量覆盖)
+NODE_VERSION="${NODE_VERSION:-${NODE_VERSION_V2}}"
 # 经过验证的 OpenClaw 稳定版本 (更新此值需同步测试)
-OC_TESTED_VERSION="2026.3.8"
+OC_TESTED_VERSION="2026.3.13"
 # 用户可通过 OC_VERSION 环境变量覆盖安装版本
 OC_VERSION="${OC_VERSION:-}"
 NODE_BASE="/opt/openclaw/node"
@@ -155,7 +161,7 @@ download_node() {
 		log_warn "当前 Node.js v${current_ver}, 将更新到 v${node_ver}"
 	fi
 
-	# ── 构建下载 URL 列表 (按优先级排列) ──
+	# ── 构建下载 URL 列表 (按优先级排列，支持双版本回退) ──
 	local mirror_list=""
 	local musl_tarball="node-v${node_ver}-${node_arch}-musl.tar.xz"
 	local glibc_tarball="node-v${node_ver}-${node_arch}.tar.xz"
@@ -166,10 +172,15 @@ download_node() {
 
 		if [ "$node_arch" = "linux-arm64" ]; then
 			# ARM64 musl: unofficial-builds 不提供，从项目自托管下载
-			# 1) 项目自托管 ARM64 musl 构建
+			# 1) 项目自托管 ARM64 musl 构建 (当前版本)
 			mirror_list="${NODE_SELF_HOST}/${musl_tarball}"
 			# 2) unofficial-builds (留作将来可能支持)
 			mirror_list="$mirror_list ${NODE_MUSL_MIRROR}/v${node_ver}/${musl_tarball}"
+			# 3) 回退到 V1 版本 (兼容旧环境，仅当请求 V2 时)
+			if [ "$node_ver" = "$NODE_VERSION_V2" ]; then
+				local v1_tarball="node-v${NODE_VERSION_V1}-${node_arch}-musl.tar.xz"
+				mirror_list="$mirror_list ${NODE_SELF_HOST}/${v1_tarball}"
+			fi
 		else
 			# x64 musl: unofficial-builds 提供
 			# 1) unofficial-builds
@@ -623,30 +634,135 @@ do_factory_reset() {
 	log_info "出厂设置已恢复，Gateway 重启中..."
 }
 
+# ── 离线安装 (从本地文件安装 Node.js + OpenClaw) ──
+do_setup_offline() {
+	local offline_dir="${2:-/tmp/openclaw-offline}"
+
+	if [ ! -d "$offline_dir" ]; then
+		log_error "离线安装目录不存在: $offline_dir"
+		log_error "此命令通常由离线 .run 安装器自动调用"
+		exit 1
+	fi
+
+	# 检查是否已安装
+	if [ -x "$NODE_BIN" ] && [ -n "$(find_oc_entry)" ]; then
+		log_warn "OpenClaw 运行环境已安装"
+		log_warn "如需重新离线安装，请先卸载现有环境"
+		exit 0
+	fi
+
+	echo "╔══════════════════════════════════════════════════════════════╗"
+	echo "║       一万AI分享  OpenClaw 离线安装                          ║"
+	echo "╚══════════════════════════════════════════════════════════════╝"
+	echo ""
+	echo "  架构:       $(uname -m)"
+	echo "  安装路径:   ${NODE_BASE}"
+	echo "  数据路径:   ${OC_DATA}"
+	echo "  离线包:     ${offline_dir}"
+	echo ""
+
+	# [1] 安装 Node.js
+	local node_tarball="$offline_dir/node.tar.xz"
+	if [ -f "$node_tarball" ]; then
+		echo "=== 安装 Node.js (离线) ==="
+		rm -rf "$NODE_BASE" 2>/dev/null
+		[ -d /overlay/upper ] && rm -rf "/overlay/upper${NODE_BASE}" 2>/dev/null
+		ensure_mkdir "$NODE_BASE"
+
+		if tar --strip-components=1 -xf "$node_tarball" -C "$NODE_BASE" 2>/dev/null; then
+			: # GNU tar
+		else
+			local tmp_extract="/tmp/node-extract-$$"
+			ensure_mkdir "$tmp_extract"
+			tar xf "$node_tarball" -C "$tmp_extract"
+			local top_dir=$(ls "$tmp_extract" 2>/dev/null | head -1)
+			if [ -n "$top_dir" ] && [ -d "$tmp_extract/$top_dir" ]; then
+				cp -a "$tmp_extract/$top_dir/." "$NODE_BASE/"
+			fi
+			rm -rf "$tmp_extract"
+		fi
+
+		if [ -x "$NODE_BIN" ]; then
+			log_info "Node.js $($NODE_BIN --version 2>/dev/null) 安装成功"
+		else
+			log_error "Node.js 安装失败"
+			exit 1
+		fi
+	else
+		log_error "未找到 Node.js 离线包: $node_tarball"
+		exit 1
+	fi
+
+	# [2] 安装 OpenClaw
+	local oc_tarball="$offline_dir/openclaw-deps.tar.gz"
+	if [ -f "$oc_tarball" ]; then
+		echo ""
+		echo "=== 安装 OpenClaw (离线) ==="
+		rm -rf "$OC_GLOBAL" 2>/dev/null
+		[ -d /overlay/upper ] && rm -rf "/overlay/upper${OC_GLOBAL}" 2>/dev/null
+		ensure_mkdir "$OC_GLOBAL"
+
+		tar xzf "$oc_tarball" -C "$OC_GLOBAL"
+
+		local oc_entry=$(find_oc_entry)
+		if [ -n "$oc_entry" ]; then
+			local oc_ver=$("$NODE_BIN" "$oc_entry" --version 2>/dev/null | tr -d '[:space:]')
+			log_info "OpenClaw v${oc_ver} 安装成功"
+		else
+			log_error "OpenClaw 安装验证失败"
+			exit 1
+		fi
+	else
+		log_error "未找到 OpenClaw 离线包: $oc_tarball"
+		exit 1
+	fi
+
+	# [3] 初始化
+	init_openclaw
+
+	echo ""
+	echo "╔══════════════════════════════════════════════════════════════╗"
+	echo "║  ✅ 离线安装完成！                                           ║"
+	echo "║                                                              ║"
+	echo "║  下一步:                                                     ║"
+	echo "║    uci set openclaw.main.enabled=1                           ║"
+	echo "║    uci commit openclaw                                       ║"
+	echo "║    /etc/init.d/openclaw enable                               ║"
+	echo "║    /etc/init.d/openclaw start                                ║"
+	echo "║                                                              ║"
+	echo "║  或在 LuCI → 服务 → OpenClaw 中启用                        ║"
+	echo "╚══════════════════════════════════════════════════════════════╝"
+}
+
 # ── 主入口 ──
 case "${1:-}" in
-setup)
-do_setup
-;;
-check)
-do_check
-;;
-upgrade)
-do_upgrade
-;;
-node)
-download_node "$NODE_VERSION"
-;;
-factory-reset)
-do_factory_reset
-;;
-*)
-echo ""
-echo "  setup          — 完整安装 (下载 Node.js + pnpm + OpenClaw)"
-echo "  check          — 检查环境状态"
-echo "  upgrade        — 升级 OpenClaw 到最新版"
-echo "  node           — 仅下载/更新 Node.js"
-echo "  factory-reset  — 恢复出厂设置 (清除所有配置)"
-exit 1
-;;
+	setup)
+		do_setup
+		;;
+	setup-offline)
+		do_setup_offline "$@"
+		;;
+	check)
+		do_check
+		;;
+	upgrade)
+		do_upgrade
+		;;
+	node)
+		download_node "$NODE_VERSION"
+		;;
+	factory-reset)
+		do_factory_reset
+		;;
+	*)
+		echo "用法: openclaw-env {setup|setup-offline|check|upgrade|node|factory-reset}"
+		echo ""
+		echo "  setup          — 完整安装 (下载 Node.js + pnpm + OpenClaw)"
+		echo "  setup-offline  — 离线安装 (从本地文件安装，由 .run 安装器调用)"
+		echo "  check          — 检查环境状态"
+		echo "  upgrade        — 升级 OpenClaw 到最新版"
+		echo "  node           — 仅下载/更新 Node.js"
+		echo "  factory-reset  — 恢复出厂设置 (清除所有配置)"
+		exit 1
+		;;
 esac

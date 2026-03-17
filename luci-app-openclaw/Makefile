@@ -7,13 +7,13 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openclaw
 PKG_VERSION:=$(strip $(shell cat $(CURDIR)/VERSION 2>/dev/null || echo "1.0.0"))
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=10000ge10000 <10000ge10000@users.noreply.github.com>
 PKG_LICENSE:=GPL-3.0
 
 LUCI_TITLE:=OpenClaw AI 网关 LuCI 管理插件
-LUCI_DEPENDS:=+luci-compat +luci-base +curl +openssl-util +script-utils +tar
+LUCI_DEPENDS:=+luci-compat +luci-base +curl +openssl-util +script-utils +tar +libstdcpp6
 LUCI_PKGARCH:=all
 
 # 优先使用 luci.mk (feeds 模式), 不可用时回退 package.mk
@@ -52,6 +52,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) ./root/etc/uci-defaults/99-openclaw $(1)/etc/uci-defaults/99-openclaw
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/init.d/openclaw $(1)/etc/init.d/openclaw
+	$(INSTALL_DIR) $(1)/etc/profile.d
+	$(INSTALL_DATA) ./root/etc/profile.d/openclaw.sh $(1)/etc/profile.d/openclaw.sh
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./root/usr/bin/openclaw-env $(1)/usr/bin/openclaw-env
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller

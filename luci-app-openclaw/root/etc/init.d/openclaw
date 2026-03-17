@@ -193,6 +193,55 @@ fi
 	# 同步 UCI 到 JSON
 	sync_uci_to_json
 
+	# v2026.3.13: 修复插件配置中的插件名称不匹配问题
+	# OpenClaw 加强了配置验证，plugins.allow 中的名称必须与实际插件名完全匹配
+	# 问题: 旧版本写入的是 "openclaw-qqbot"，但实际插件名是 "@tencent-connect/openclaw-qqbot"
+	fix_plugin_config() {
+		local qqbot_ext_dir="${OC_DATA}/.openclaw/extensions/openclaw-qqbot"
+		[ ! -d "$qqbot_ext_dir" ] && return
+		[ ! -f "$CONFIG_FILE" ] && return
+		
+		"$NODE_BIN" -e "
+			const fs=require('fs');
+			try{
+				const d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));
+				if(!d.plugins)d.plugins={};
+				let modified=false;
+				
+				// 修复 plugins.allow 数组中的插件名称
+				if(Array.isArray(d.plugins.allow)){
+					const oldName='openclaw-qqbot';
+					const newName='@tencent-connect/openclaw-qqbot';
+					const idx=d.plugins.allow.indexOf(oldName);
+					if(idx!==-1){
+						if(!d.plugins.allow.includes(newName)){
+							d.plugins.allow[idx]=newName;
+							modified=true;
+						}else{
+							d.plugins.allow.splice(idx,1);
+							modified=true;
+						}
+					}
+				}
+				
+				// 同时修复 plugins.entries 中的键名
+				if(d.plugins.entries && d.plugins.entries['openclaw-qqbot']){
+					if(!d.plugins.entries['@tencent-connect/openclaw-qqbot']){
+						d.plugins.entries['@tencent-connect/openclaw-qqbot']=d.plugins.entries['openclaw-qqbot'];
+					}
+					delete d.plugins.entries['openclaw-qqbot'];
+					modified=true;
+				}
+				
+				if(modified){
+					fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+					console.log('FIXED');
+				}
+			}catch(e){}
+		" 2>/dev/null && chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null
+	}
+	fix_plugin_config
+
 	# 修复数据目录权限 (防止 root 用户操作后留下无法读取的文件)
 	chown -R openclaw:openclaw "$OC_DATA" 2>/dev/null || true
 
