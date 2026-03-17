@@ -452,13 +452,8 @@ do_setup() {
 	echo "╔══════════════════════════════════════════════════════════════╗"
 	echo "║  ✅ 安装完成！                                               ║"
 	echo "║                                                              ║"
-	echo "║  下一步:                                                     ║"
-	echo "║    uci set openclaw.main.enabled=1                           ║"
-	echo "║    uci commit openclaw                                       ║"
-	echo "║    /etc/init.d/openclaw enable                               ║"
-	echo "║    /etc/init.d/openclaw start                                ║"
-	echo "║                                                              ║"
-	echo "║  或在 LuCI → 服务 → OpenClaw 中启用                        ║"
+	echo "║  如通过 LuCI 安装，服务已自动启用并启动。                    ║"
+	echo "║  如通过命令行安装，请在 LuCI → 服务 → OpenClaw 中启用。      ║"
 	echo "╚══════════════════════════════════════════════════════════════╝"
 }
 
@@ -724,13 +719,7 @@ do_setup_offline() {
 	echo "╔══════════════════════════════════════════════════════════════╗"
 	echo "║  ✅ 离线安装完成！                                           ║"
 	echo "║                                                              ║"
-	echo "║  下一步:                                                     ║"
-	echo "║    uci set openclaw.main.enabled=1                           ║"
-	echo "║    uci commit openclaw                                       ║"
-	echo "║    /etc/init.d/openclaw enable                               ║"
-	echo "║    /etc/init.d/openclaw start                                ║"
-	echo "║                                                              ║"
-	echo "║  或在 LuCI → 服务 → OpenClaw 中启用                        ║"
+	echo "║  请在 LuCI → 服务 → OpenClaw 中启用服务。                    ║"
 	echo "╚══════════════════════════════════════════════════════════════╝"
 }
 

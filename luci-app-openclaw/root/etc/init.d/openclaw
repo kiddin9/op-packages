@@ -258,24 +258,33 @@ all)      gw_bind="custom" ;;  # custom = 0.0.0.0
 esac
 
 # 确保网关端口未被残留进程占用 (防止 restart 时 crash loop)
+# v2026.3.14 优化: 快速轮询 + 批量 kill
 _ensure_port_free() {
-	local p="$1" max_wait="${2:-5}" i=0
+	local p="$1"
+	local i=0 max_wait=10  # 10 * 0.2 = 2 秒
+	
+	# 先检查端口是否已被占用
+	if command -v ss >/dev/null 2>&1; then
+		ss -tulnp 2>/dev/null | grep -q ":${p} " || return 0
+	else
+		netstat -tulnp 2>/dev/null | grep -q ":${p} " || return 0
+	fi
+	
+	# 端口被占用，尝试清理
+	for occ_pid in $(pgrep -f "openclaw-gateway" 2>/dev/null); do
+		kill "$occ_pid" 2>/dev/null
+	done
+	
 	while [ $i -lt $max_wait ]; do
 		if command -v ss >/dev/null 2>&1; then
 			ss -tulnp 2>/dev/null | grep -q ":${p} " || return 0
 		else
 			netstat -tulnp 2>/dev/null | grep -q ":${p} " || return 0
 		fi
-		# 尝试杀掉占用端口的 gateway 进程
-		if [ $i -eq 0 ]; then
-			local occ_pid
-			for occ_pid in $(pgrep -f "openclaw-gateway" 2>/dev/null); do
-				kill "$occ_pid" 2>/dev/null
-			done
-		fi
-		sleep 1
+		usleep 200000 2>/dev/null || sleep 0.2
 		i=$((i + 1))
 	done
+	
 	# 最后手段: SIGKILL
 	local port_pid=""
 	if command -v ss >/dev/null 2>&1; then
@@ -283,7 +292,7 @@ _ensure_port_free() {
 	else
 		port_pid=$(netstat -tulnp 2>/dev/null | grep ":${p} " | sed -n 's|.* \([0-9]*\)/.*|\1|p' | head -1)
 	fi
-	[ -n "$port_pid" ] && kill -9 "$port_pid" 2>/dev/null && sleep 1
+	[ -n "$port_pid" ] && kill -9 "$port_pid" 2>/dev/null && usleep 300000 2>/dev/null
 	return 0
 }
 _ensure_port_free "$port"
@@ -350,36 +359,43 @@ stop_service() {
 local port
 port=$(uci -q get openclaw.main.port || echo "18789")
 
-# 杀掉所有 openclaw / openclaw-gateway 残留进程
-# (排除 web-pty.js 和 oc-config.sh，它们由 pty 实例管理)
-local pid
-for pid in $(pgrep -f "openclaw-gateway" 2>/dev/null) \
-           $(pgrep -f "openclaw.*gateway.*run" 2>/dev/null); do
-	kill "$pid" 2>/dev/null
+# v2026.3.14 优化: 快速终止进程树，减少等待时间
+# 1) 先获取所有相关 PID
+local gw_pids=""
+gw_pids=$(pgrep -f "openclaw-gateway" 2>/dev/null)
+gw_pids="$gw_pids $(pgrep -f "openclaw.*gateway.*run" 2>/dev/null)"
+
+# 2) 同时发送 SIGTERM 给所有进程
+for pid in $gw_pids; do
+	[ -n "$pid" ] && kill "$pid" 2>/dev/null
 done
 
-# 等待端口真正释放 (最多 8 秒)
+# 3) 快速轮询等待端口释放 (200ms 间隔，最多 3 秒)
 local wait_count=0
-while [ $wait_count -lt 8 ]; do
+local max_wait=15  # 15 * 0.2 = 3 秒
+while [ $wait_count -lt $max_wait ]; do
 	if command -v ss >/dev/null 2>&1; then
 		ss -tulnp 2>/dev/null | grep -q ":${port} " || break
 	else
 		netstat -tulnp 2>/dev/null | grep -q ":${port} " || break
 	fi
-	sleep 1
+	usleep 200000 2>/dev/null || sleep 0.2
 	wait_count=$((wait_count + 1))
 done
 
-# 如果端口仍被占用，强制杀掉占用者
-if [ $wait_count -ge 8 ]; then
+# 4) 如果端口仍被占用，强制 SIGKILL
+if [ $wait_count -ge $max_wait ]; then
 	local port_pid=""
 	if command -v ss >/dev/null 2>&1; then
 		port_pid=$(ss -tulnp 2>/dev/null | grep ":${port} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)
 	else
 		port_pid=$(netstat -tulnp 2>/dev/null | grep ":${port} " | sed -n 's|.* \([0-9]*\)/.*|\1|p' | head -1)
 	fi
-	[ -n "$port_pid" ] && kill -9 "$port_pid" 2>/dev/null
-	sleep 1
+	if [ -n "$port_pid" ]; then
+		kill -9 "$port_pid" 2>/dev/null
+		# 等待内核回收 (缩短到 0.5 秒)
+		usleep 500000 2>/dev/null || sleep 0.5
+	fi
 fi
 }
 
@@ -390,8 +406,8 @@ procd_add_reload_trigger "openclaw"
 
 reload_service() {
 stop
-# stop_service 已确保端口释放，但额外等待 1 秒让内核回收
-sleep 1
+# v2026.3.14: stop_service 已优化等待逻辑，缩短额外等待时间
+usleep 300000 2>/dev/null || sleep 0.3
 start
 }
 
@@ -407,47 +423,45 @@ restart_gateway() {
 local port
 port=$(uci -q get openclaw.main.port || echo "18789")
 
-# ── 第一步: kill 监听端口的 gateway 子进程 (openclaw-gateway) ──
-# openclaw 启动后会 fork 出 openclaw-gateway 子进程实际监听端口
-# 必须先杀子进程释放端口，否则 procd respawn 的新实例会因端口冲突而崩溃
-local port_pid=""
+# v2026.3.14 优化: 快速终止并重启
+# 1) 同时获取端口 PID 和 procd 管理的 PID
+local port_pid="" gw_pid=""
 if command -v ss >/dev/null 2>&1; then
 	port_pid=$(ss -tulnp 2>/dev/null | grep ":${port} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)
 else
 	port_pid=$(netstat -tulnp 2>/dev/null | grep ":${port} " | sed -n 's|.* \([0-9]*\)/.*|\1|p' | head -1)
 fi
-[ -n "$port_pid" ] && kill "$port_pid" 2>/dev/null
-
-# ── 第二步: kill procd 管理的 gateway 主进程 (openclaw) ──
-# procd 追踪的是主进程 PID，kill 它才能触发 respawn
-local gw_pid=""
 gw_pid=$(ubus call service list '{"name":"openclaw"}' 2>/dev/null | \
 	jsonfilter -e '$.openclaw.instances.gateway.pid' 2>/dev/null) || true
 
-if [ -n "$gw_pid" ] && kill -0 "$gw_pid" 2>/dev/null; then
-	kill "$gw_pid" 2>/dev/null
-fi
+# 2) 同时发送 SIGTERM 给所有相关进程
+[ -n "$port_pid" ] && kill "$port_pid" 2>/dev/null
+[ -n "$gw_pid" ] && kill -0 "$gw_pid" 2>/dev/null && kill "$gw_pid" 2>/dev/null
 
-# ── 第三步: 兜底 — kill 所有 openclaw gateway 相关残留进程 ──
-# 避免任何残留进程占据端口
-sleep 1
+# 3) 兜底: kill 所有残留进程
 for pid in $(pgrep -f "openclaw-gateway" 2>/dev/null) $(pgrep -f "openclaw.*gateway.*run" 2>/dev/null); do
 	kill "$pid" 2>/dev/null
 done
 
-# ── 第四步: 等待端口真正释放 (最多 5 秒) ──
+# 4) 快速轮询等待端口释放 (200ms 间隔，最多 2 秒)
 local wait_count=0
-while [ $wait_count -lt 5 ]; do
+while [ $wait_count -lt 10 ]; do
 	if command -v ss >/dev/null 2>&1; then
 		ss -tulnp 2>/dev/null | grep -q ":${port} " || break
 	else
 		netstat -tulnp 2>/dev/null | grep -q ":${port} " || break
 	fi
-	sleep 1
+	usleep 200000 2>/dev/null || sleep 0.2
 	wait_count=$((wait_count + 1))
 done
 
-# ── 第五步: 如果 procd 中没有 gateway 服务注册 (首次/崩溃)，调用 start ──
+# 5) 如果端口仍被占用，强制 SIGKILL
+if [ $wait_count -ge 10 ]; then
+	[ -n "$port_pid" ] && kill -9 "$port_pid" 2>/dev/null
+	usleep 300000 2>/dev/null || sleep 0.3
+fi
+
+# 6) 如果 procd 中没有 gateway 服务注册，调用 start
 if [ -z "$gw_pid" ]; then
 	/etc/init.d/openclaw start >/dev/null 2>&1
 fi

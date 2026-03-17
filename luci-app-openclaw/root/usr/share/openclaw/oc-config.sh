@@ -2059,7 +2059,69 @@ reset_to_defaults() {
 			if [ "$confirm" = "yes" ]; then
 				echo ""
 				echo -e "  ${CYAN}正在清除渠道配置...${NC}"
+				# 清除 openclaw.json 中的 channels 配置
 				oc_cmd config unset channels >/dev/null 2>&1 || true
+				
+				# v2026.3.14: 同时清除 plugins 中与渠道相关的配置
+				# 防止重置后插件配置残留导致状态不一致
+				if [ -f "$CONFIG_FILE" ] && [ -x "$NODE_BIN" ]; then
+					"$NODE_BIN" -e "
+						const fs=require('fs');
+						try{
+							const d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));
+							let modified=false;
+							
+							// 清除 plugins.entries 中与消息渠道相关的插件
+							if(d.plugins && d.plugins.entries){
+								const channelPlugins=['openclaw-qqbot','@tencent-connect/openclaw-qqbot','openclaw-lark','@larksuite/openclaw-lark'];
+								channelPlugins.forEach(p=>{
+									if(d.plugins.entries[p]){
+										delete d.plugins.entries[p];
+										modified=true;
+									}
+								});
+							}
+							
+							// 清除 plugins.allow 中的渠道插件
+							if(Array.isArray(d.plugins && d.plugins.allow)){
+								const beforeLen=d.plugins.allow.length;
+								d.plugins.allow=d.plugins.allow.filter(p=>
+									!p.includes('qqbot') && 
+									!p.includes('lark') && 
+									!p.includes('telegram') &&
+									!p.includes('discord') &&
+									!p.includes('slack') &&
+									!p.includes('whatsapp')
+								);
+								if(d.plugins.allow.length!==beforeLen)modified=true;
+							}
+							
+							if(modified){
+								fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+								console.log('CLEANED');
+							}
+						}catch(e){}
+					" 2>/dev/null
+					chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+				fi
+				
+				# 清除飞书扩展目录中的敏感数据 (保留插件本体)
+				local feishu_ext_dir="${OC_STATE_DIR}/extensions/openclaw-lark"
+				if [ -d "$feishu_ext_dir" ]; then
+					# 只清除配置文件，保留插件代码
+					rm -f "${feishu_ext_dir}/.credentials"* 2>/dev/null
+					rm -f "${feishu_ext_dir}/config.json" 2>/dev/null
+					rm -rf "${feishu_ext_dir}/.cache" 2>/dev/null
+					echo -e "  ${CYAN}已清理飞书插件缓存数据${NC}"
+				fi
+				
+				# 清除 QQ 机器人扩展目录中的敏感数据
+				local qqbot_ext_dir="${OC_STATE_DIR}/extensions/openclaw-qqbot"
+				if [ -d "$qqbot_ext_dir" ]; then
+					rm -f "${qqbot_ext_dir}/credentials"* 2>/dev/null
+					rm -f "${qqbot_ext_dir}/config.json" 2>/dev/null
+				fi
+				
 				echo -e "  ${GREEN}✅ 渠道配置已清除${NC}"
 				echo -e "  ${YELLOW}请通过菜单 [4] 重新配置消息渠道${NC}"
 				ask_restart

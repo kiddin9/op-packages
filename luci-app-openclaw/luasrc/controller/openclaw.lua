@@ -41,6 +41,9 @@ function index()
 
 	-- 配置备份 API (v2026.3.8+: openclaw backup create/verify)
 	entry({"admin", "services", "openclaw", "backup"}, call("action_backup"), nil).leaf = true
+
+	-- 系统配置检测 API (安装前检测)
+	entry({"admin", "services", "openclaw", "check_system"}, call("action_check_system"), nil).leaf = true
 end
 
 -- ═══════════════════════════════════════════
@@ -372,19 +375,21 @@ function action_uninstall()
 	sys.exec("/etc/init.d/openclaw disable 2>/dev/null")
 	-- 设置 UCI enabled=0
 	sys.exec("uci set openclaw.main.enabled=0; uci commit openclaw 2>/dev/null")
-	-- 删除 Node.js + OpenClaw 运行环境
+	-- 删除 Node.js + OpenClaw 运行环境 (包含所有插件: qqbot, 飞书等)
 	sys.exec("rm -rf /opt/openclaw")
 	-- 清理旧数据迁移后可能残留的目录
 	sys.exec("rm -rf /root/.openclaw 2>/dev/null")
 	-- 清理临时文件
-	sys.exec("rm -f /tmp/openclaw-setup.* /tmp/openclaw-update.log /var/run/openclaw*.pid")
+	sys.exec("rm -f /tmp/openclaw-setup.* /tmp/openclaw-update.log /tmp/openclaw-plugin-upgrade.* /var/run/openclaw*.pid")
+	-- 清理 LuCI 缓存
+	sys.exec("rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null")
 	-- 删除 openclaw 系统用户
 	sys.exec("sed -i '/^openclaw:/d' /etc/passwd /etc/shadow /etc/group 2>/dev/null")
 
 	http.prepare_content("application/json")
 	http.write_json({
 		status = "ok",
-		message = "运行环境已卸载。已清理: Node.js 运行环境 (/opt/openclaw)、旧数据目录 (/root/.openclaw)、临时文件。"
+		message = "运行环境已卸载。已清理: Node.js 运行环境 (/opt/openclaw)、所有插件 (qqbot/飞书等)、旧数据目录 (/root/.openclaw)、临时文件、LuCI 缓存。"
 	})
 end
 
@@ -800,4 +805,75 @@ function action_backup()
 		http.prepare_content("application/json")
 		http.write_json({ status = "error", message = "未知备份操作: " .. action })
 	end
+end
+
+-- ═══════════════════════════════════════════
+-- 系统配置检测 API (安装前检测)
+-- 检测内存和磁盘空间是否满足最低要求
+-- 要求: 内存 > 1GB, 磁盘可用空间 > 1.5GB
+-- ═══════════════════════════════════════════
+function action_check_system()
+	local http = require "luci.http"
+	local sys = require "luci.sys"
+
+	-- 最低要求配置
+	local MIN_MEMORY_MB = 1024      -- 1GB
+	local MIN_DISK_MB = 1536        -- 1.5GB
+
+	local result = {
+		memory_mb = 0,
+		memory_ok = false,
+		disk_mb = 0,
+		disk_ok = false,
+		disk_path = "",
+		pass = false,
+		message = ""
+	}
+
+	-- 检测总内存 (从 /proc/meminfo 读取 MemTotal)
+	local meminfo = io.open("/proc/meminfo", "r")
+	if meminfo then
+		for line in meminfo:lines() do
+			local mem_total = line:match("MemTotal:%s+(%d+)%s+kB")
+			if mem_total then
+				result.memory_mb = math.floor(tonumber(mem_total) / 1024)
+				break
+			end
+		end
+		meminfo:close()
+	end
+	result.memory_ok = result.memory_mb >= MIN_MEMORY_MB
+
+	-- 检测磁盘可用空间
+	-- 优先检测 /opt 所在分区，如果 /opt 不存在则检测 /overlay 或 /
+	local disk_paths = {"/opt", "/overlay", "/"}
+	for _, path in ipairs(disk_paths) do
+		local df_output = sys.exec("df -m " .. path .. " 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
+		if df_output and df_output ~= "" and tonumber(df_output) then
+			result.disk_mb = tonumber(df_output)
+			result.disk_path = path
+			break
+		end
+	end
+	result.disk_ok = result.disk_mb >= MIN_DISK_MB
+
+	-- 综合判断
+	result.pass = result.memory_ok and result.disk_ok
+
+	-- 生成提示信息
+	if result.pass then
+		result.message = "系统配置检测通过"
+	else
+		local issues = {}
+		if not result.memory_ok then
+			table.insert(issues, string.format("内存不足: 当前 %d MB，需要至少 %d MB", result.memory_mb, MIN_MEMORY_MB))
+		end
+		if not result.disk_ok then
+			table.insert(issues, string.format("磁盘空间不足: 当前 %d MB 可用，需要至少 %d MB", result.disk_mb, MIN_DISK_MB))
+		end
+		result.message = table.concat(issues, "；")
+	end
+
+	http.prepare_content("application/json")
+	http.write_json(result)
 end
