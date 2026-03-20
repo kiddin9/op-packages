@@ -3,11 +3,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.0.2-20240822
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 LUCI_TITLE:=LuCI support for HTReader
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd +luci-lib-docker
+LUCI_DEPENDS:=+lsblk +docker +luci-lib-taskd +luci-lib-docker
 
 define Package/luci-app-htreader/conffiles
 /etc/config/htreader

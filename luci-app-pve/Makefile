@@ -3,11 +3,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=8.3.2-20250106
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 LUCI_TITLE:=LuCI support for pve
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd +vmease
+LUCI_DEPENDS:=+lsblk +docker +luci-lib-taskd +vmease
 
 define Package/luci-app-pve/conffiles
 /etc/config/pve
