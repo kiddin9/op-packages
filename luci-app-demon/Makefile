@@ -3,11 +3,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.2.0-20250625
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 LUCI_TITLE:=LuCI support for demon
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd
+LUCI_DEPENDS:=+lsblk +docker +luci-lib-taskd
 
 define Package/luci-app-demon/conffiles
 /etc/config/demon
