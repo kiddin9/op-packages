@@ -1,5 +1,5 @@
 --- /dev/null
-+++ b/applications/luci-app-dockerman/root/etc/uci-defaults/luci-app-dockerman
++++ b/luci-app-dockerman/root/etc/uci-defaults/luci-app-dockerman
 @@ -0,0 +1,8 @@
 +#!/bin/sh
 +
