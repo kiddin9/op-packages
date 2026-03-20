@@ -5,12 +5,12 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-zdinnav
 LUCI_TITLE:=LuCI support for ZdinNav
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+lsblk +docker +luci-lib-taskd +luci-lib-docker +docker-compose +luci-compat
+LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd +luci-lib-docker +docker-compose +luci-compat
 
 PKG_MAINTAINER:=tkme <tkme@qq.com>
 
 PKG_VERSION:=1.1.1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 define Package/luci-app-zdinnav/conffiles
 /etc/config/zdinnav

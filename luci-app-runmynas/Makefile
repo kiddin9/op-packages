@@ -3,11 +3,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.1.1-20231208
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 LUCI_TITLE:=LuCI support for runmynas
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+docker +luci-lib-iform +luci-lib-taskd
+LUCI_DEPENDS:=+docker +dockerd +luci-lib-iform +luci-lib-taskd
 LUCI_EXTRA_DEPENDS:=luci-lib-iform (>=1.1)
 
 define Package/luci-app-runmynas/conffiles

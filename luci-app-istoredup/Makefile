@@ -3,11 +3,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.1.7-20241211
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 LUCI_TITLE:=LuCI support for istoredup
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+lsblk +docker +luci-lib-taskd +vmease
+LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd +vmease
 
 define Package/luci-app-istoredup/conffiles
 /etc/config/istoredup

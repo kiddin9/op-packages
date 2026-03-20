@@ -3,11 +3,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=0.8.5-20241221-1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 LUCI_TITLE:=LuCI support for webvirtcloud
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+lsblk +docker +luci-lib-taskd +vmease
+LUCI_DEPENDS:=+lsblk +docker +dockerd +luci-lib-taskd +vmease
 
 define Package/luci-app-webvirtcloud/conffiles
 /etc/config/webvirtcloud
