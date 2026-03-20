@@ -9,3 +9,14 @@
 +EOF
 +
 +/etc/init.d/dockerd restart
+
+--- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js
+@@ -66,6 +66,7 @@ return L.view.extend({
+ 		o.value('https://docker.io');
+ 		o.value('https://ghcr.io');
+ 		o.value('https://hub-mirror.c.163.com');
++		o.value('https://ustc-edu-cn.mirror.aliyuncs.com');
+ 
+ 		o = s.taboption('globals', form.ListValue, 'log_level',
+ 			_('Log Level'),
