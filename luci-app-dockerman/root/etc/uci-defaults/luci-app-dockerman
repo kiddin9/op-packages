@@ -1,9 +1,0 @@
-#!/bin/sh
-
-uci -q batch <<-EOF >/dev/null
-	set uhttpd.main.script_timeout="360"
-	commit uhttpd
-EOF
-
-/etc/init.d/dockerd restart
-
