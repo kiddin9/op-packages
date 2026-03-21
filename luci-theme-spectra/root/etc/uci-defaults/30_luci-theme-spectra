@@ -15,6 +15,7 @@ EOF
         if [ ! -f /etc/nginx/conf.d/spectra.locations ]; then
 cat << 'EOF' > /etc/nginx/conf.d/spectra.locations
 location /spectra/ {
+    index index.php index.html index.htm;
     location ~ \.php$ {
         if (!-f $request_filename) {
             return 404;

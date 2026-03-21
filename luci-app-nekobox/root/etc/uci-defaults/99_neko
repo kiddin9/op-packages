@@ -12,6 +12,7 @@ files_check() {
     if [ -n "$(command -v nginx)" ];then
 cat << 'EOF' > /etc/nginx/conf.d/nekobox.locations
 location /nekobox {
+    index index.php index.html index.htm;
     location ~ \.php$ {
         if (!-f $request_filename) {
             return 404;
