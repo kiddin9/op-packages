@@ -137,7 +137,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-kucat-config
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
-        git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
+        # git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -146,7 +146,6 @@ jobs:
         git_clone https://github.com/peter-tank/luci-app-autorepeater
         git_clone https://github.com/brvphoenix/luci-app-wrtbwmon wrtbwmon1 && mvdir wrtbwmon1
         git_clone https://github.com/brvphoenix/wrtbwmon wrtbwmon2 && mvdir wrtbwmon2
-        git_clone https://github.com/muink/openwrt-fastfetch
         git_clone https://github.com/timsaya/luci-app-bandix bandix1 && mv -f bandix1/luci-app-bandix ./;rm -rf bandix1
         git_clone https://github.com/timsaya/openwrt-bandix bandix2 && mv -f bandix2/openwrt-bandix ./;rm -rf bandix2
         ) &
@@ -251,6 +250,8 @@ jobs:
         git_clone https://github.com/muink/openwrt-go-stun
         git_clone https://github.com/muink/luci-app-tinyfilemanager
         git_clone https://github.com/muink/openwrt-Toolkit
+        git_clone https://github.com/muink/openwrt-fastfetch
+        git_clone https://github.com/muink/luci-app-netdata
         ) &
         (
         git_clone https://github.com/gSpotx2f/luci-app-temp-status
