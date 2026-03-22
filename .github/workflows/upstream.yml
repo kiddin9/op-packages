@@ -123,8 +123,6 @@ jobs:
         git_clone https://github.com/hudra0/luci-app-qosmate
         ) &
         (
-        #git_clone https://github.com/jerrykuku/luci-app-vssr
-        #git_clone https://github.com/jerrykuku/luci-app-ttnode
         git_clone https://github.com/sirpdboy/luci-app-advancedplus
         git_clone https://github.com/sirpdboy/luci-app-taskplan taskplan && mvdir taskplan
         git_clone https://github.com/sirpdboy/luci-app-lucky oplucky && mvdir oplucky
@@ -139,7 +137,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-kucat-config
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
-        # git_clone https://github.com/muink/luci-app-homeproxy
+        git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -329,7 +327,6 @@ jobs:
         #git_clone https://github.com/bobbyunknown/luci-app-insomclash
         git_clone https://github.com/muink/luci-app-ssrust
         git_clone https://github.com/hudra0/qosmate
-        git_clone https://github.com/muink/luci-app-netdata
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
