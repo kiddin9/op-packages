@@ -12,12 +12,12 @@
 
 --- a/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 +++ b/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
-@@ -28,11 +28,67 @@ function index()
+@@ -76,10 +76,66 @@ function index()
  	entry({"admin", "services", "shadowsocksr", "remove_node"}, call("act_remove"))
  	entry({"admin", "services", "shadowsocksr", "save_node_order"}, call("act_save_order")).leaf = true
  	entry({"admin", "services", "shadowsocksr", "get_now_use_node"}, call("act_get_now_use_node")).leaf = true
 +	entry({'admin', 'services', "shadowsocksr", 'ip'}, call('check_ip')) -- 获取ip情况
- 		--[[Backup]]
+ 	--[[Backup]]
  	entry({"admin", "services", "shadowsocksr", "backup"}, call("create_backup")).leaf = true
  end
  
