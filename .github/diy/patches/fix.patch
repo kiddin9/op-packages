@@ -58,16 +58,6 @@
 +	kill -q -9 `pidof pppoe-server | sed "s/$$//g"`
  }
 
---- a/luci-app-pppoe-user/root/etc/init.d/pppoe-user
-+++ b/luci-app-pppoe-user/root/etc/init.d/pppoe-user
-@@ -70,5 +70,5 @@ start() {
- }
- 
- stop() {
--    killall -q pppoe-user
-+    kill -q `pidof pppoe-user | sed "s/$$//g"`
- }
-
 --- a/luci-app-speedtest-web/root/etc/init.d/speedtest-web
 +++ b/luci-app-speedtest-web/root/etc/init.d/speedtest-web
 @@ -15,5 +15,5 @@ start() {
