@@ -1,0 +1,5 @@
+#!/bin/sh
+
+chmod +x /etc/hotplug.d/block/20-smb-ksmbd
+
+exit 0
