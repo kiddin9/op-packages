@@ -89,7 +89,6 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-dnsfilter
         git_clone https://github.com/kiddin9/aria2
         git_clone https://github.com/kiddin9/luci-theme-edge
-        git_clone https://github.com/kiddin9/autoshare && mvdir autoshare
         git_clone https://github.com/kiddin9/luci-app-xlnetacc
         git_clone https://github.com/kiddin9/luci-app-wizard
         git_clone https://github.com/kiddin9/luci-app-adguardhome
