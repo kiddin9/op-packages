@@ -117,7 +117,7 @@ return view.extend({
 		o.default = 'no'; // smb.conf default is 'yes'
 		o.rmempty = false;
 
-		s.option(form.Flag, 'force_root', _('Force Root'));
+		o = s.option(form.Flag, 'force_root', _('Force Root'));
 		o.enabled = 'yes';
 		o.disabled = 'no';
 		o.default = 'yes';
