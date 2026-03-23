@@ -1,5 +1,5 @@
---- a/applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js
-+++ b/applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js
+--- a/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js
++++ b/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js
 @@ -54,6 +54,11 @@ return view.extend({
  		o = s.taboption('general', form.Value, 'description', _('Description'));
  		o.placeholder = 'Samba4 on OpenWrt';
