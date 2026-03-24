@@ -4,6 +4,39 @@
 'require view';
 'require poll';
 
+const DEFAULT_CONFIG_FILE = '/etc/adguardhome/adguardhome.yaml';
+const DEFAULT_WORK_DIR = '/var/lib/adguardhome';
+const DEFAULT_USER = 'adguardhome';
+const DEFAULT_GROUP = DEFAULT_USER;
+
+const PATH_REGEX = new RegExp('^/etc(/[^/]+)?/?$');
+
+function validateConfigFile(_unused, value) {
+	if (value == null || value === '') {
+		return true;
+	}
+	if (!value.startsWith('/')) {
+		return _('Path must be absolute.');
+	}
+	if (value.endsWith('/')) {
+		return _('Path must not end with a slash.');
+	}
+	if (PATH_REGEX.test(value)) {
+		return _('Configuration file must be stored in its own directory, and not in \'/etc\'.');
+	}
+	return true;
+}
+
+function validateWorkDir(_unused, value) {
+	if (value == null || value === '') {
+		return true;
+	}
+	if (!value.startsWith('/')) {
+		return _('Path must be absolute.');
+	}
+	return true;
+}
+
 function renderStatus(status, agh_config) {
 	var spanTemp = '<span style="color:%s"><strong>%s %s</strong></span>';
 	var renderHTML;
@@ -65,9 +98,23 @@ return view.extend({
 		o.default = o.disabled;
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'workdir', _('Work Dir'));
+		o = s.option(form.Value, 'config_file', _('Configuration file'));
 		o.datatype = 'string';
-		o.default = '/var/lib/adguardhome';
+		o.placeholder = DEFAULT_CONFIG_FILE;
+		o.validate = validateConfigFile;
+
+		o = s.option(form.Value, 'work_dir', _('Work Dir'));
+		o.datatype = 'string';
+		o.placeholder = DEFAULT_WORK_DIR;
+		o.validate = validateWorkDir;
+
+		o = s.option(form.Value, 'user', _('Service user'), _('User the service runs under.'));
+		o.datatype = 'string';
+		o.placeholder = DEFAULT_USER;
+
+		o = s.option(form.Value, 'group', _('Service group'), _('Group the service runs under.'));
+		o.datatype = 'string';
+		o.placeholder = DEFAULT_GROUP;
 
 		// 添加重定向模式选择
 		o = s.option(form.ListValue, 'redirect', _('Redirect'), _('AdGuardHome redirect mode'));

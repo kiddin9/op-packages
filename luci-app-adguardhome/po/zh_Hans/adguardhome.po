@@ -163,8 +163,17 @@ msgstr "使用53端口替换dnsmasq"
 msgid "AdGuardHome redirect mode"
 msgstr "重定向模式"
 
+msgid "Change Password"
+msgstr "修改密码"
+
 msgid "Work Dir"
 msgstr "工作目录"
 
-msgid "Change Password"
-msgstr "修改密码"
+msgid "Service user"
+msgstr "以此用户权限运行"
+
+msgid "Service group"
+msgstr "以此用户组权限运行"
+
+msgid "Configuration file"
+msgstr "配置文件"
