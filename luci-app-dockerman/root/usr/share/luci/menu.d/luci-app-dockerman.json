@@ -1,7 +1,7 @@
 {
 	"admin/dockerman": {
 		"title": "Docker",
-		"order": "40",
+		"order": 40,
 		"action": {
 			"type": "firstchild"
 		},
