@@ -1,0 +1,258 @@
+#!/bin/sh /etc/rc.common
+
+# Start after network (19 matches dnsmasq)
+START=19
+# Stop before network stops
+STOP=89
+
+PROG=/usr/bin/AdGuardHome
+USE_PROCD=1
+
+boot() {
+	ADGUARDHOME_BOOT=1
+	start "$@"
+}
+
+# Configure DNS to use port 53
+use_port53() {
+    local dns_port="$1"
+    local adguard_port="$2"
+    local config_file="$3"
+
+    [ "$dns_port" != "53" ] && return
+    
+    # Update AdGuardHome config
+    sed -i '/dns:/,/^[^ ]/{ /[[:space:]]*port:/ s/port:[[:space:]]*[0-9]\+/port: 53/ }' "$config_file"
+    
+    # Update dnsmasq config
+    uci set "dhcp.@dnsmasq[0].port=$adguard_port"
+    uci commit dhcp
+    /etc/init.d/dnsmasq restart
+}
+
+# Restore original port configuration
+rm_port53() {
+    local current_port="$1"
+    local new_port="$2"
+    local config_file="$3"
+
+    [ "$current_port" != "53" ] && return
+    
+    # Update AdGuardHome config
+    sed -i '/dns:/,/^[^ ]/{ /[[:space:]]*port:/ s/port:[[:space:]]*[0-9]\+/port: '"$new_port"'/ }' "$config_file"
+    
+    # Restore dnsmasq config
+    uci -q set "dhcp.@dnsmasq[0].port=53"
+    uci commit dhcp
+    /etc/init.d/dnsmasq restart
+}
+
+# Set up firewall redirect rules
+set_redirect() {
+    local dest_port="$1"
+    local section
+    
+    # Add new redirect section
+    section=$(uci add firewall redirect)
+    [ -z "$section" ] && return
+    [ "$(uci -q get "firewall.$section.dest_port")" = "$dest_port" ] && return
+    
+    # Configure redirect rules
+    uci -q set "firewall.$section.target=DNAT"
+    uci -q set "firewall.$section.name=AdGuard Home"
+    uci -q set "firewall.$section.src=lan"
+    uci -q set "firewall.$section.src_dport=53"
+    uci -q set "firewall.$section.dest_port=$dest_port"
+    
+    # Apply changes
+    uci commit firewall
+    /etc/init.d/firewall reload
+    echo "Firewall rules updated."
+}
+
+# Clear all AdGuard Home redirect rules
+clear_redirect() {
+    local redirects
+    redirects=$(uci show firewall | grep "AdGuard Home" | cut -d'.' -f1-2)
+    [ -z "$redirects" ] && return
+    
+    for redirect in $redirects; do
+        uci -q delete "$redirect"
+        echo "Deleted redirect rule: $redirect"
+    done
+    
+    uci commit firewall
+    /etc/init.d/firewall reload
+    echo "Firewall rules updated."
+}
+
+# Configure dnsmasq to forward requests to AdGuard Home
+set_forward_dnsmasq() {
+    local port="$1"
+    local current_server="$2"
+    local addr="127.0.0.1#$port"
+    
+    echo "$current_server" | grep -q "^$addr" && return
+    
+    uci -q add_list dhcp.@dnsmasq[0].server="$addr"
+    uci -q delete "dhcp.@dnsmasq[0].resolvfile"
+    uci set "dhcp.@dnsmasq[0].noresolv=1"
+    uci commit dhcp
+    /etc/init.d/dnsmasq restart
+}
+
+# Stop forwarding requests to AdGuard Home
+stop_forward_dnsmasq() {
+    local port="$1"
+    local current_server="$2"
+    local addr="127.0.0.1#$port"
+    
+    echo "$current_server" | grep -q "^$addr" || return
+    
+    uci -q delete "dhcp.@dnsmasq[0].server"
+    uci -q delete "dhcp.@dnsmasq[0].noresolv"
+    uci commit dhcp
+    /etc/init.d/dnsmasq restart
+}
+
+# Start AdGuard Home service
+start_service() {
+	if [ -n "$ADGUARDHOME_BOOT" ]; then
+		# Do not start yet, wait for triggers
+		return 0
+	fi
+
+	config_load 'adguardhome'
+
+	local config_name='config'
+	local config_file config group user verbose work_dir workdir
+	local gc maxprocs memlimit redirect enabled
+
+	uci_validate_section 'adguardhome' 'adguardhome' "$config_name" \
+		'enabled:bool:0' \
+		'redirect:string:none' \
+		'gc:uinteger:0' \
+		'group:string:adguardhome' \
+		'config:string' \
+		'config_file:string:/etc/adguardhome/adguardhome.yaml' \
+		'jail_mount:list(string)' \
+		'jail_mount_rw:list(string)' \
+		'maxprocs:uinteger:0' \
+		'memlimit:uinteger:0' \
+		'user:string:adguardhome' \
+		'verbose:bool:0' \
+		'workdir:string' \
+		'work_dir:string:/var/lib/adguardhome'
+
+	# Compatibility with older configs
+	[ -n "$config" ] && config_file="$config"
+	[ -n "$workdir" ] && work_dir="$workdir"
+
+    [ "$enabled" -eq 0 ] && return 1
+
+	local config_dir
+	config_dir=$(dirname "$config_file")
+	if [ "$config_dir" = '/etc' ]; then
+		echo 'AdGuard Home config must be stored in its own directory, and not in /etc' >&2
+		return 1
+	fi
+	mkdir -m 0700 -p "$config_dir"
+	chown -R "$user":"$group" "$config_dir"
+
+	mkdir -m 0700 -p "$work_dir"
+	chown -R "$user":"$group" "$work_dir"
+    
+    # Get ports configuration
+    local AdGuardHome_PORT=$(awk '/dns:/{f=1} f&&/port:/{split($0,a,": *");print a[2];exit}' "$config_file")
+    local dnsmasq_port=$(uci -q get dhcp.@dnsmasq[0].port)
+    local DNSMASQ_SERVER=$(uci -q get dhcp.@dnsmasq[0].server)
+
+    # Configure redirect mode
+    case "$redirect" in
+        "redirect")
+            set_redirect "$AdGuardHome_PORT"
+            ;;
+        "dnsmasq-upstream")
+            set_forward_dnsmasq "$AdGuardHome_PORT" "$DNSMASQ_SERVER"
+            ;;
+        "exchange")
+            use_port53 "$dnsmasq_port" "$AdGuardHome_PORT" "$config_file"
+            ;;
+    esac
+
+    procd_open_instance adguardhome
+
+	procd_set_param command "$PROG"
+
+	[ "$gc" -le 0 ] || procd_append_param env GOGC="$gc"
+	[ "$maxprocs" -le 0 ] || procd_append_param env GOMAXPROCS="$maxprocs"
+	[ "$memlimit" -le 0 ] || procd_append_param env GOMEMLIMIT="$memlimit"
+
+	procd_append_param command --config "$config_file"
+	procd_append_param command --logfile syslog
+	procd_append_param command --no-check-update
+	[ "$verbose" = 1 ] && procd_append_param command --verbose
+	procd_append_param command --work-dir "$work_dir"
+
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param user "$user"
+	procd_set_param group "$group"
+	procd_set_param capabilities '/etc/capabilities/adguardhome.json'
+	procd_set_param no_new_privs 1
+	procd_set_param respawn
+
+	# log is needed for logging to syslog instead of stdout
+	# procfs is needed to readlink /proc/self/exe
+	procd_add_jail adguardhome log procfs
+
+	# config directory must be writable to write new config files
+	procd_add_jail_mount_rw "$config_dir"
+	procd_add_jail_mount_rw "$work_dir"
+
+	procd_add_jail_mount '/etc/hosts'
+	procd_add_jail_mount '/etc/ssl/certs'
+	config_list_foreach "$config_name" jail_mount procd_add_jail_mount
+	config_list_foreach "$config_name" jail_mount_rw procd_add_jail_mount_rw
+
+	procd_close_instance
+}
+
+# Stop AdGuard Home service
+stop_service() {
+	if [ -n "$ADGUARDHOME_BOOT" ]; then
+		# Do not start yet, wait for triggers
+		return 0
+	fi
+
+	local config_file='/etc/adguardhome/adguardhome.yaml'
+
+	config_load 'adguardhome'
+    
+    # Get ports configuration
+    local AdGuardHome_PORT=$(awk '/dns:/{f=1} f&&/port:/{split($0,a,": *");print a[2];exit}' "$config_file")
+    local dnsmasq_port=$(uci -q get dhcp.@dnsmasq[0].port)
+    local DNSMASQ_SERVER=$(uci -q get dhcp.@dnsmasq[0].server)
+    
+    # Clean up configurations
+    rm_port53 "$AdGuardHome_PORT" "$dnsmasq_port" "$config_file"
+    clear_redirect
+    stop_forward_dnsmasq "$AdGuardHome_PORT" "$DNSMASQ_SERVER"
+}
+
+# Reload service
+reload_service() {
+    restart
+}
+
+# Service triggers
+service_triggers() {
+    procd_add_reload_trigger adguardhome
+    
+    # Add interface trigger during boot
+    if [ -n "$ADGUARDHOME_BOOT" ]; then
+        # Wait for interfaces to be up before starting AdGuard Home
+        # Prevents issues like https://github.com/openwrt/packages/issues/21868
+        procd_add_raw_trigger 'interface.*.up' 5000 /etc/init.d/adguardhome restart
+    fi
+}
