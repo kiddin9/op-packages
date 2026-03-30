@@ -437,7 +437,7 @@ const dv = view.extend({
 	outputText: '', // Initialize output text
 
 	get dockerman_url() {
-		return L.url('admin/services/dockerman');
+		return L.url('admin/dockerman');
 	},
 
 	parseHeaders(headers, array) {
