@@ -48,6 +48,13 @@ for _, device in ipairs(sys.net.devices()) do
 	end
 end
 
+-- wake device
+local btn = client_section:option(Button, "_awake",translate("Wake Up Host"))
+btn.inputtitle	= translate("Awake")
+btn.inputstyle	= "apply"
+btn.disabled	= false
+btn.template = "timewol/awake"
+
 -- Function to validate cron field values
 local function validate_cron_field(option_name, value, min, max, default)
 	if value == "" then
