@@ -1,5 +1,4 @@
-# Copyright (C) 2016 Openwrt.org
-# Copyright (C) 2024 iv7777 <hongba@rocketmail.com>
+# Copyright (C) 2025 Openwrt.org
 #
 # This is free software, licensed under the Apache License, Version 2.0 .
 #
@@ -7,15 +6,14 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for Timewol
-LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+etherwake
+PKG_VERSION:=20250407
+PKG_RELEASE:=2
 
-define Package/luci-app-timewol/postinst
-	#!/bin/sh
-	if [ -z "$${IPKG_INSTROOT}" ]; then
-		chmod +x /etc/init.d/timewol
-	fi
-	exit 0
+LUCI_DEPENDS:=+luci-base +etherwake
+LUCI_PKGARCH:=all
+
+define Package/luci-app-timewol/conffiles
+/etc/config/timewol
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
