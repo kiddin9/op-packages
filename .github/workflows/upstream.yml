@@ -102,7 +102,6 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-chinadns-ng
         git_clone https://github.com/kiddin9/openwrt-my-dnshelper && mvdir openwrt-my-dnshelper
         git_clone https://github.com/kiddin9/openwrt-lingtigameacc && mvdir openwrt-lingtigameacc
-        git_clone https://github.com/kiddin9/luci-app-timewol
         git_clone https://github.com/kiddin9/luci-app-vsftpd
         git_clone https://github.com/kiddin9/openwrt-subconverter && mvdir openwrt-subconverter
         git_clone https://github.com/kiddin9/luci-app-syncdial
@@ -186,7 +185,7 @@ jobs:
         git_clone https://github.com/lucikap/luci-app-brukamen && mv -n luci-app-brukamen/luci* ./;rm -rf luci-app-brukamen luci-app-autoshell_*.ipk
         git_clone https://github.com/yichya/luci-app-xray yichya && mv -f yichya/status ./luci-app-xray-status;mv -f yichya/core ./luci-app-xray;rm -rf yichya
         git_clone https://github.com/rafmilecki/luci-app-xjay
-        # git_clone https://github.com/kiddin9/openwrt-thunder && mvdir openwrt-thunder
+        git_clone https://github.com/lwb1978/luci-app-timewol
         ) &
         (
         git_clone https://github.com/honwen/luci-app-aliddns
