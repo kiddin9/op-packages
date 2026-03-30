@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for Timewol
 PKG_VERSION:=20250407
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 LUCI_DEPENDS:=+luci-base +etherwake
 LUCI_PKGARCH:=all

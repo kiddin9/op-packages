@@ -49,7 +49,7 @@ for _, device in ipairs(sys.net.devices()) do
 end
 
 -- wake device
-local btn = client_section:option(Button, "_awake",translate("Wake Up Host"))
+local btn = s:option(Button, "_awake",translate("Wake Up Host"))
 btn.inputtitle	= translate("Awake")
 btn.inputstyle	= "apply"
 btn.disabled	= false
