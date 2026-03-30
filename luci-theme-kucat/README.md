@@ -120,6 +120,13 @@ wget --no-check-certificate -O luci-i18n-kucat-config-zh-cn_0_all.ipk  https://g
 opkg install luci-app-kucat-config_2.2.0-r20260227_all.ipk  luci-i18n-kucat-config-zh-cn_0_all.ipk
 ```
 
+### 1、 Switch to display all menus
+<img width="1050" height="902" alt="image" src="https://github.com/user-attachments/assets/f4e20444-3466-4b9e-9215-9da469fbb00e" />
+
+### 2、 Manually customize menu items
+ Location: [System] ->[KUCAT Settings] ->[Menu Configuration]
+<img width="1050" height="902" alt="image" src="https://github.com/user-attachments/assets/f2531551-1da4-44ae-b768-207e7666d341" />
+
 
 ## interface
 
