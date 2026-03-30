@@ -312,7 +312,6 @@ jobs:
         (
         git_clone https://github.com/ttimasdf/luci-app-jederproxy
         git_clone https://github.com/ApeaSuperz/luci-app-cqustdotnet cqustdotnet && mv cqustdotnet/luci-app-cqustdotnet ./;rm -rf cqustdotnet
-        git_clone https://github.com/shenyunet/luci-app-hypercpe
         git_clone https://github.com/xcode75/luci-app-xclient
         git_clone https://github.com/chenzhen6666/luci-app-mproxy mproxy && mvdir mproxy
         git_clone https://github.com/a904055262/luci-app-ipv6clientfilter
