@@ -647,7 +647,9 @@ configure_model() {
 	echo -e "  ${CYAN}11)${NC} 硅基流动 SiliconFlow"
 	echo -e "  ${CYAN}12)${NC} Ollama (本地模型，无需 API Key)"
 	echo -e "  ${CYAN}13)${NC} 腾讯云 Coding Plan (HY T1/TurboS/GLM-5/Kimi)"
-	echo -e "  ${CYAN}14)${NC} 自定义 OpenAI 兼容 API"
+	echo -e "  ${CYAN}14)${NC} Mistral AI (Mistral Large, Codestral)"
+	echo -e "  ${CYAN}15)${NC} 百度千帆 (ERNIE-4.0, ERNIE-3.5)"
+	echo -e "  ${CYAN}16)${NC} 自定义 OpenAI 兼容 API"
 	echo -e "  ${CYAN}0)${NC} 返回"
 	echo ""
 	prompt_with_default "请选择" "1" choice
@@ -1264,6 +1266,70 @@ configure_model() {
 			fi
 			;;
 		14)
+			echo ""
+			echo -e "  ${BOLD}Mistral AI 配置${NC}"
+			echo -e "  ${YELLOW}获取 API Key: https://console.mistral.ai/api-keys/${NC}"
+			echo ""
+			prompt_with_default "请输入 Mistral API Key" "" api_key
+			if [ -n "$api_key" ]; then
+				auth_set_apikey mistral "$api_key"
+				echo ""
+				echo -e "  ${CYAN}可用模型:${NC}"
+				echo -e "    ${CYAN}a)${NC} mistral-large-latest   — 旗舰模型，最强性能 (推荐)"
+				echo -e "    ${CYAN}b)${NC} mistral-medium-latest  — 均衡模型"
+				echo -e "    ${CYAN}c)${NC} codestral-latest      — 代码专用，极速补全"
+				echo -e "    ${CYAN}d)${NC} mistral-small-latest   — 轻量快速"
+				echo -e "    ${CYAN}e)${NC} 手动输入模型名"
+				echo ""
+				prompt_with_default "请选择模型" "a" model_choice
+				case "$model_choice" in
+					a) model_name="mistral-large-latest" ;;
+					b) model_name="mistral-medium-latest" ;;
+					c) model_name="codestral-latest" ;;
+					d) model_name="mistral-small-latest" ;;
+					e) prompt_with_default "请输入模型名称" "mistral-large-latest" model_name ;;
+					*) model_name="mistral-large-latest" ;;
+				esac
+				register_custom_provider mistral "https://api.mistral.ai/v1" "$api_key" "$model_name" "$model_name"
+				register_and_set_model "mistral/${model_name}"
+				echo -e "  ${GREEN}✅ Mistral AI 已配置，活跃模型: mistral/${model_name}${NC}"
+			fi
+			;;
+		15)
+			echo ""
+			echo -e "  ${BOLD}百度千帆大模型配置${NC}"
+			echo -e "  ${YELLOW}获取 API Key: https://console.bce.baidu.com/qianfan/ais/console/onlineService${NC}"
+			echo ""
+			echo -e "  ${DIM}提示: 需要 API Key (Access Token) 和可选的 Secret Key${NC}"
+			echo ""
+			prompt_with_default "请输入百度千帆 API Key (Access Token)" "" api_key
+			if [ -n "$api_key" ]; then
+				auth_set_apikey qianfan "$api_key"
+				echo ""
+				echo -e "  ${CYAN}可用模型:${NC}"
+				echo -e "    ${CYAN}a)${NC} ernie-4.0-8k        — 文心一言 4.0 (推荐)"
+				echo -e "    ${CYAN}b)${NC} ernie-3.5-8k        — 文心一言 3.5"
+				echo -e "    ${CYAN}c)${NC} ernie-4.0-turbo-8k  — 文心一言 4.0 Turbo"
+				echo -e "    ${CYAN}d)${NC} ernie-speed-8k      — 文心一言 Speed 极速"
+				echo -e "    ${CYAN}e)${NC} 手动输入模型名"
+				echo ""
+				prompt_with_default "请选择模型" "a" model_choice
+				case "$model_choice" in
+					a) model_name="ernie-4.0-8k" ;;
+					b) model_name="ernie-3.5-8k" ;;
+					c) model_name="ernie-4.0-turbo-8k" ;;
+					d) model_name="ernie-speed-8k" ;;
+					e) prompt_with_default "请输入模型名称" "ernie-4.0-8k" model_name ;;
+					*) model_name="ernie-4.0-8k" ;;
+				esac
+				# 百度千帆使用 OpenAI 兼容接口
+				# 注: OpenClaw v2026.3.28+ 支持 qianfan 原生 provider
+				register_custom_provider qianfan "https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop" "$api_key" "$model_name" "$model_name"
+				register_and_set_model "qianfan/${model_name}"
+				echo -e "  ${GREEN}✅ 百度千帆已配置，活跃模型: qianfan/${model_name}${NC}"
+			fi
+			;;
+		16)
 			echo ""
 			echo -e "  ${BOLD}自定义 OpenAI 兼容 API${NC}"
 			echo -e "  ${YELLOW}支持任何兼容 OpenAI API 格式的服务商${NC}"

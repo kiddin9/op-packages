@@ -21,3 +21,9 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Claude Code local settings
+.claude/
+
+# Internal notes (not for release)
+docs/notes/
