@@ -17,9 +17,16 @@ const os = require('os');
 // ── 配置 (OpenWrt 适配) ──
 const PORT = parseInt(process.env.OC_CONFIG_PORT || '18793', 10);
 const HOST = process.env.OC_CONFIG_HOST || '0.0.0.0'; // token 认证保护，可安全绑定所有接口
-const NODE_BASE = process.env.NODE_BASE || '/opt/openclaw/node';
-const OC_GLOBAL = process.env.OC_GLOBAL || '/opt/openclaw/global';
-const OC_DATA = process.env.OC_DATA || '/opt/openclaw/data';
+// 从 UCI 读取安装路径，默认为 /opt/openclaw
+const { execSync } = require('child_process');
+let installPath = '/opt/openclaw';
+try {
+  const uciPath = execSync('uci -q get openclaw.main.install_path 2>/dev/null', { encoding: 'utf8', timeout: 3000 }).trim();
+  if (uciPath) installPath = uciPath + '/openclaw';
+} catch {}
+const NODE_BASE = process.env.NODE_BASE || installPath + '/node';
+const OC_GLOBAL = process.env.OC_GLOBAL || installPath + '/global';
+const OC_DATA = process.env.OC_DATA || installPath + '/data';
 const SCRIPT_PATH = process.env.OC_CONFIG_SCRIPT || '/usr/share/openclaw/oc-config.sh';
 const SSL_CERT = '/etc/uhttpd.crt';
 const SSL_KEY = '/etc/uhttpd.key';

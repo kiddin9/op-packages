@@ -28,10 +28,14 @@ get_pid_by_port() {
 	fi
 }
 
-# ── 路径 (OpenWrt 适配) ──
-NODE_BASE="${NODE_BASE:-/opt/openclaw/node}"
-OC_GLOBAL="${OC_GLOBAL:-/opt/openclaw/global}"
-OC_DATA="${OC_DATA:-/opt/openclaw/data}"
+# ── 路径 (OpenWrt 适配，支持自定义安装路径) ──
+# 从 UCI 配置读取自定义路径，环境变量可覆盖
+# 用户配置的是基础路径，程序会在此路径下创建 openclaw 目录
+OC_BASE_PATH="${OC_INSTALL_PATH:-$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')}"
+OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+NODE_BASE="${NODE_BASE:-${OC_INSTALL_PATH}/node}"
+OC_GLOBAL="${OC_GLOBAL:-${OC_INSTALL_PATH}/global}"
+OC_DATA="${OC_DATA:-${OC_INSTALL_PATH}/data}"
 NODE_BIN="${NODE_BASE}/bin/node"
 OC_STATE_DIR="${OC_DATA}/.openclaw"
 CONFIG_FILE="${OC_STATE_DIR}/openclaw.json"
@@ -99,7 +103,7 @@ json_set() {
 		local parent_dir="$(dirname "$CONFIG_FILE")"
 		if ! mkdir -p "$parent_dir" 2>/dev/null; then
 			echo "ERROR: 无法创建配置目录 $parent_dir" >&2
-			echo "HINT: 请检查 /opt/openclaw/data 是否存在且有写权限" >&2
+			echo "HINT: 请检查 $OC_DATA 是否存在且有写权限" >&2
 			return 1
 		fi
 		
@@ -2428,7 +2432,7 @@ backup_restore_menu() {
 							# 提取 payload 到根目录 (还原到原始绝对路径)
 							tar -xzf "$latest" --strip-components=3 -C / "${backup_name}/payload/posix/" 2>&1
 							# 修复权限
-							chown -R openclaw:openclaw /opt/openclaw/data/.openclaw 2>/dev/null
+							chown -R openclaw:openclaw "$OC_STATE_DIR" 2>/dev/null
 							echo -e "  ${GREEN}✅ 配置和数据已完整恢复！原配置已保存为 openclaw.json.pre-restore${NC}"
 							echo ""
 							prompt_with_default "是否重启服务使配置生效? (Y/n)" "Y" do_restart

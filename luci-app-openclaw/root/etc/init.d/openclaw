@@ -10,14 +10,21 @@ EXTRA_HELP="    setup            下载 Node.js 并安装 OpenClaw
         status_service   显示服务状态
         restart_gateway  仅重启 Gateway 实例 (不影响 Web PTY)"
 
-NODE_BASE="/opt/openclaw/node"
-OC_GLOBAL="/opt/openclaw/global"
-OC_DATA="/opt/openclaw/data"
+# ── 安装路径 (支持自定义) ──
+# 从 UCI 配置读取自定义路径，默认为 /opt
+# 程序会在此路径下自动创建 openclaw 目录
+OC_BASE_PATH="$(uci -q get openclaw.main.install_path || echo '/opt')"
+OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+NODE_BASE="${OC_INSTALL_PATH}/node"
+OC_GLOBAL="${OC_INSTALL_PATH}/global"
+OC_DATA="${OC_INSTALL_PATH}/data"
 
 # ── OverlayFS 兼容性修复 ──
 # Docker bind mount (/overlay/upper/opt/docker) 会导致 /opt 不可写
 # 解决: bind mount upper 层的 /opt 到合并视图的 /opt
+# 注意: 仅当基础路径为 /opt 时才需要此修复
 _oc_fix_opt() {
+	[ "$OC_BASE_PATH" != "/opt" ] && return 0
 	mkdir -p /opt/openclaw/.probe 2>/dev/null && { rmdir /opt/openclaw/.probe 2>/dev/null; return 0; }
 	if [ -d /overlay/upper/opt ]; then
 		mkdir -p /overlay/upper/opt/openclaw 2>/dev/null

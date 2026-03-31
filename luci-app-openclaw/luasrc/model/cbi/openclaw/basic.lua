@@ -42,9 +42,9 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '<div id="action-result" style="margin-top:8px;"></div>'
 	html[#html+1] = '<div id="oc-update-action" style="margin-top:8px;display:none;"></div>'
 
-	-- 版本选择对话框 (默认隐藏)
+	-- 版本选择对话框 (默认隐藏) - 支持自定义安装路径
 	html[#html+1] = '<div id="oc-setup-dialog" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;align-items:center;justify-content:center;">'
-	html[#html+1] = '<div style="background:#fff;border-radius:12px;padding:24px 28px;max-width:480px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">'
+	html[#html+1] = '<div style="background:#fff;border-radius:12px;padding:24px 28px;max-width:520px;width:92%;box-shadow:0 8px 32px rgba(0,0,0,0.2);">'
 	html[#html+1] = '<h3 style="margin:0 0 16px 0;font-size:16px;color:#333;">📦 选择安装版本</h3>'
 	html[#html+1] = '<div style="display:flex;flex-direction:column;gap:12px;">'
 	-- 稳定版选项
@@ -59,6 +59,15 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '<div><strong style="color:#333;">🆕 最新版</strong>'
 	html[#html+1] = '<div style="font-size:12px;color:#e36209;margin-top:4px;">⚠️ 安装 npm 上的最新发布版本，可能存在未经验证的兼容性问题。</div>'
 	html[#html+1] = '</div></label>'
+	html[#html+1] = '</div>'
+	-- 自定义安装路径
+	html[#html+1] = '<div style="margin-top:16px;padding-top:14px;border-top:1px solid #eee;">'
+	html[#html+1] = '<div style="font-weight:600;font-size:13px;color:#333;margin-bottom:8px;">📂 安装路径</div>'
+	html[#html+1] = '<div style="display:flex;gap:8px;align-items:center;">'
+	html[#html+1] = '<input type="text" id="oc-install-path" value="/opt" style="flex:1;padding:8px 12px;border:1px solid #d0d7de;border-radius:6px;font-size:13px;" placeholder="/opt">'
+	html[#html+1] = '<button class="btn cbi-button" type="button" onclick="ocCheckInstallPath()" style="font-size:12px;padding:4px 10px;">检测空间</button>'
+	html[#html+1] = '</div>'
+	html[#html+1] = '<div id="oc-path-info" style="font-size:11px;color:#666;margin-top:6px;">💡 程序将在此路径下创建 openclaw 目录进行安装。最小需要 2GB 可用空间。如安装在第二块硬盘，请确保硬盘已挂载。</div>'
 	html[#html+1] = '</div>'
 	-- 按钮区
 	html[#html+1] = '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">'
@@ -79,6 +88,7 @@ act.cfgvalue = function(self, section)
 
 	-- JavaScript
 	html[#html+1] = '<script type="text/javascript">'
+	html[#html+1] = 'console.log("OpenClaw JS loading...");'
 
 	-- 版本选择对话框逻辑
 	html[#html+1] = 'var _setupTimer=null;'
@@ -91,10 +101,30 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'function ocCloseSetupDialog(){'
 	html[#html+1] = 'document.getElementById("oc-setup-dialog").style.display="none";'
 	html[#html+1] = '}'
+	-- 检测自定义安装路径的磁盘空间
+	html[#html+1] = 'function ocCheckInstallPath(){'
+	html[#html+1] = 'var pathEl=document.getElementById("oc-install-path");'
+	html[#html+1] = 'var infoEl=document.getElementById("oc-path-info");'
+	html[#html+1] = 'var path=pathEl.value.trim();'
+	html[#html+1] = 'if(!path){path="/opt";pathEl.value=path;}'
+	html[#html+1] = 'infoEl.innerHTML="⏳ 正在检测空间...";'
+	html[#html+1] = '(new XHR()).get("' .. check_system_url .. '?install_path="+encodeURIComponent(path),null,function(x){'
+	html[#html+1] = 'try{'
+	html[#html+1] = 'var r=JSON.parse(x.responseText);'
+	html[#html+1] = 'if(r.disk_ok){'
+	html[#html+1] = 'infoEl.innerHTML="<span style=\\"color:#1a7f37;\\">✅ 可用空间: "+r.disk_free_str+" (检测路径: "+r.disk_path+")</span>";'
+	html[#html+1] = '}else{'
+	html[#html+1] = 'infoEl.innerHTML="<span style=\\"color:#cf222e;\\">❌ 空间不足: "+r.disk_mb+" MB 可用，需要 ≥ 2048 MB (检测路径: "+r.disk_path+")</span>";'
+	html[#html+1] = '}'
+	html[#html+1] = '}catch(e){infoEl.innerHTML="<span style=\\"color:#e36209;\\">⚠️ 检测失败</span>";}'
+	html[#html+1] = '});'
+	html[#html+1] = '}'
 	html[#html+1] = 'function ocConfirmSetup(){'
 	html[#html+1] = 'var btn=document.getElementById("btn-setup");'
+	html[#html+1] = 'var pathEl=document.getElementById("oc-install-path");'
+	html[#html+1] = 'var installPath=pathEl.value.trim()||"/opt";'
 	html[#html+1] = 'btn.disabled=true;btn.textContent="⏳ 检测系统配置...";'
-	html[#html+1] = '(new XHR()).get("' .. check_system_url .. '",null,function(x){'
+	html[#html+1] = '(new XHR()).get("' .. check_system_url .. '?install_path="+encodeURIComponent(installPath),null,function(x){'
 	html[#html+1] = 'try{'
 	html[#html+1] = 'var r=JSON.parse(x.responseText);'
 	html[#html+1] = 'var panel=document.getElementById("setup-log-panel");'
@@ -111,6 +141,7 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'logEl.textContent+="════════════════════════════════════════\\n";'
 	html[#html+1] = 'logEl.textContent+="🔍 系统配置检测\\n";'
 	html[#html+1] = 'logEl.textContent+="════════════════════════════════════════\\n";'
+	html[#html+1] = 'logEl.textContent+="安装路径: "+r.install_path+"\\n";'
 	html[#html+1] = 'logEl.textContent+="内存: "+r.memory_mb+" MB (需要 ≥ 1024 MB) — "+(r.memory_ok?"✅ 通过":"❌ 不达标")+"\\n";'
 	html[#html+1] = 'logEl.textContent+="磁盘: "+r.disk_mb+" MB 可用 (需要 ≥ 2048 MB) — "+(r.disk_ok?"✅ 通过":"❌ 不达标")+"\\n";'
 	html[#html+1] = 'logEl.textContent+="\\n";'
@@ -133,7 +164,7 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'var choice="stable";'
 	html[#html+1] = 'for(var i=0;i<radios.length;i++){if(radios[i].checked){choice=radios[i].value;break;}}'
 	html[#html+1] = 'var verParam=(choice==="stable")?"stable":"latest";'
-	html[#html+1] = 'ocSetup(verParam,r.memory_mb,r.disk_mb);'
+	html[#html+1] = 'ocSetup(verParam,r.memory_mb,r.disk_mb,r.install_path);'
 	html[#html+1] = '}catch(e){'
 	html[#html+1] = 'ocCloseSetupDialog();'
 	html[#html+1] = 'btn.disabled=false;btn.textContent="📦 安装运行环境";'
@@ -141,16 +172,17 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '}});'
 	html[#html+1] = '}'
 
-	-- 安装运行环境 (带实时日志)
-	html[#html+1] = 'function ocSetup(version,mem_mb,disk_mb){'
+	-- 安装运行环境 (带实时日志，支持自定义路径)
+	html[#html+1] = 'function ocSetup(version,mem_mb,disk_mb,install_path){'
 	html[#html+1] = 'var btn=document.getElementById("btn-setup");'
 	html[#html+1] = 'var logEl=document.getElementById("setup-log-content");'
 	html[#html+1] = 'btn.disabled=true;btn.textContent="⏳ 安装中...";'
 	html[#html+1] = 'logEl.textContent+="════════════════════════════════════════\\n";'
 	html[#html+1] = 'logEl.textContent+="📦 安装运行环境 ("+((version==="stable")?"稳定版":"最新版")+")\\n";'
 	html[#html+1] = 'logEl.textContent+="════════════════════════════════════════\\n";'
+	html[#html+1] = 'logEl.textContent+="安装路径: "+install_path+"\\n";'
 	html[#html+1] = 'logEl.textContent+="正在启动安装...\\n";'
-	html[#html+1] = '(new XHR()).get("' .. ctl_url .. '?action=setup&version="+encodeURIComponent(version),null,function(x){'
+	html[#html+1] = '(new XHR()).get("' .. ctl_url .. '?action=setup&version="+encodeURIComponent(version)+"&install_path="+encodeURIComponent(install_path),null,function(x){'
 	html[#html+1] = 'try{JSON.parse(x.responseText);}catch(e){}'
 	html[#html+1] = 'ocPollSetupLog();'
 	html[#html+1] = '});'
@@ -231,15 +263,15 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '}'
 	-- npm 安装失败
 	html[#html+1] = 'if(ll.indexOf("npm err")>=0||ll.indexOf("npm warn")>=0&&ll.indexOf("openclaw 安装验证失败")>=0){'
-	html[#html+1] = 'reasons.push("📦 <b>npm 安装 OpenClaw 失败</b> — npm 包下载或安装出错。<br/>&nbsp;&nbsp;💡 解决: 尝试手动安装 <code>PATH=/opt/openclaw/node/bin:$PATH npm install -g openclaw@latest --prefix=/opt/openclaw/global</code>");'
+	html[#html+1] = 'reasons.push("📦 <b>npm 安装 OpenClaw 失败</b> — npm 包下载或安装出错。<br/>&nbsp;&nbsp;💡 解决: 尝试手动安装 <code>openclaw-env setup</code> 或检查网络连接。");'
 	html[#html+1] = '}'
 	-- 权限问题
 	html[#html+1] = 'if(ll.indexOf("permission denied")>=0||ll.indexOf("eacces")>=0){'
-	html[#html+1] = 'reasons.push("🔒 <b>权限不足</b> — 文件或目录权限问题。<br/>&nbsp;&nbsp;💡 解决: 运行 <code>chown -R openclaw:openclaw /opt/openclaw</code> 或以 root 用户重试。");'
+	html[#html+1] = 'reasons.push("🔒 <b>权限不足</b> — 文件或目录权限问题。<br/>&nbsp;&nbsp;💡 解决: 运行 <code>openclaw-env setup</code> 或以 root 用户重试。");'
 	html[#html+1] = '}'
 	-- tar 解压失败
 	html[#html+1] = 'if(ll.indexOf("tar")>=0&&(ll.indexOf("error")>=0||ll.indexOf("fail")>=0)){'
-	html[#html+1] = 'reasons.push("📂 <b>解压失败</b> — Node.js 安装包可能下载不完整。<br/>&nbsp;&nbsp;💡 解决: 删除缓存重试 <code>rm -rf /opt/openclaw/node && openclaw-env setup</code>");'
+	html[#html+1] = 'reasons.push("📂 <b>解压失败</b> — Node.js 安装包可能下载不完整。<br/>&nbsp;&nbsp;💡 解决: 删除缓存重试 <code>openclaw-env setup</code>");'
 	html[#html+1] = '}'
 	-- 验证失败
 	html[#html+1] = 'if(ll.indexOf("安装验证失败")>=0){'
@@ -384,7 +416,7 @@ act.cfgvalue = function(self, section)
 
 	-- 卸载运行环境
 	html[#html+1] = 'function ocUninstall(){'
-	html[#html+1] = 'if(!confirm("确定要卸载 OpenClaw 运行环境？\\n\\n将删除 Node.js、OpenClaw 程序及配置数据（/opt/openclaw 目录），服务将停止运行。\\n\\n插件本身不会被删除，之后可重新安装运行环境。"))return;'
+	html[#html+1] = 'if(!confirm("确定要卸载 OpenClaw 运行环境？\\n\\n将删除 Node.js、OpenClaw 程序及配置数据，服务将停止运行。\\n\\n插件本身不会被删除，之后可重新安装运行环境。"))return;'
 	html[#html+1] = 'var btn=document.getElementById("btn-uninstall");'
 	html[#html+1] = 'var el=document.getElementById("action-result");'
 	html[#html+1] = 'btn.disabled=true;btn.textContent="⏳ 正在卸载...";'
@@ -400,6 +432,7 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '}else{el.innerHTML="<span style=\\"color:red\\">❌ "+(r.message||"卸载失败")+"</span>";}'
 	html[#html+1] = '}catch(e){el.innerHTML="<span style=\\"color:red\\">❌ 请求失败</span>";}'
 	html[#html+1] = '});}'
+	html[#html+1] = 'console.log("OpenClaw JS first block loaded");'
 
 	-- ═══ 备份/恢复 对话框 + 功能 (v2026.3.8+ openclaw backup) ═══
 	local backup_url = luci.dispatcher.build_url("admin", "services", "openclaw", "backup")

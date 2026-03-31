@@ -4,6 +4,37 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.2] - 2026-03-31
+
+### 新增功能
+
+#### 支持自定义安装路径
+
+- **功能描述**: 用户现在可以将 OpenClaw 运行环境安装到自定义路径（如第二块硬盘 `/mnt/data`）
+- **LuCI 界面**: 安装对话框增加自定义路径输入框，支持实时检测目标路径的可用空间
+- **系统检测**: 安装前系统配置检测会检测自定义路径的磁盘空间，而非默认的 `/opt`
+- **服务状态**: 状态 API 返回当前安装路径信息
+- **最小空间提示**: 安装界面提示最小需要 2GB 可用空间
+
+#### 技术实现
+
+- 新增 UCI 配置项 `openclaw.main.install_path`，默认值为 `/opt`
+- 程序会在用户指定路径下自动创建 `openclaw` 目录进行安装
+  - 例如：用户输入 `/mnt/data`，实际安装路径为 `/mnt/data/openclaw`
+- 所有脚本和配置文件支持从 UCI 读取自定义路径：
+  - `openclaw-env`: 通过 `OC_INSTALL_PATH` 环境变量或 UCI 配置
+  - `init.d/openclaw`: 启动时从 UCI 读取路径
+  - `oc-config.sh`: 支持自定义路径的环境变量
+  - `profile.d/openclaw.sh`: SSH 环境变量支持
+  - `uci-defaults/99-openclaw`: 首次安装初始化支持
+
+
+### 感谢
+
+感谢 @hotwa 提供的修改思路和建议。
+
+---
+
 ## [2.0.1] - 2026-03-30
 
 ### 适配 OpenClaw v2026.3.28

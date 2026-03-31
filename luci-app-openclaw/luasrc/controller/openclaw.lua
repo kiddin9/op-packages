@@ -57,6 +57,9 @@ function action_status()
 	local port = uci:get("openclaw", "main", "port") or "18789"
 	local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 	local enabled = uci:get("openclaw", "main", "enabled") or "0"
+	local install_path_uci = uci:get("openclaw", "main", "install_path") or "/opt"
+	-- 实际安装路径会在用户路径下创建 openclaw 子目录
+	local install_path = install_path_uci .. "/openclaw"
 
 	-- 验证端口值为纯数字，防止命令注入
 	if not port:match("^%d+$") then port = "18789" end
@@ -66,6 +69,7 @@ function action_status()
 		enabled = enabled,
 		port = port,
 		pty_port = pty_port,
+		install_path = install_path,
 		gateway_running = false,
 		gateway_starting = false,
 		pty_running = false,
@@ -75,6 +79,7 @@ function action_status()
 		node_version = "",
 		oc_version = "",
 		plugin_version = "",
+		disk_free = "",
 	}
 
 	-- 插件版本
@@ -86,8 +91,8 @@ function action_status()
 
 	-- 安装方式检测 (离线 / 在线)
 
-	-- 检查 Node.js
-	local node_bin = "/opt/openclaw/node/bin/node"
+	-- 检查 Node.js (使用自定义安装路径)
+	local node_bin = install_path .. "/node/bin/node"
 	local f = io.open(node_bin, "r")
 	if f then
 		f:close()
@@ -95,11 +100,11 @@ function action_status()
 		result.node_version = node_ver
 	end
 
-	-- OpenClaw 版本 (从 package.json 读取)
+	-- OpenClaw 版本 (从 package.json 读取，使用自定义安装路径)
 	local oc_dirs = {
-		"/opt/openclaw/global/lib/node_modules/openclaw",
-		"/opt/openclaw/global/node_modules/openclaw",
-		"/opt/openclaw/node/lib/node_modules/openclaw",
+		install_path .. "/global/lib/node_modules/openclaw",
+		install_path .. "/global/node_modules/openclaw",
+		install_path .. "/node/lib/node_modules/openclaw",
 	}
 	for _, d in ipairs(oc_dirs) do
 		local pf = io.open(d .. "/package.json", "r")
@@ -131,8 +136,8 @@ function action_status()
 	local pty_check = sys.exec("netstat -tulnp 2>/dev/null | grep -c ':" .. pty_port .. " ' || echo 0"):gsub("%s+", "")
 	result.pty_running = (tonumber(pty_check) or 0) > 0
 
-	-- 读取当前活跃模型
-	local config_file = "/opt/openclaw/data/.openclaw/openclaw.json"
+	-- 读取当前活跃模型 (使用自定义安装路径)
+	local config_file = install_path .. "/data/.openclaw/openclaw.json"
 	local cf = io.open(config_file, "r")
 	if cf then
 		local content = cf:read("*a")
@@ -192,6 +197,13 @@ function action_status()
 		end
 	end
 
+	-- 磁盘剩余空间 (检测安装路径所在分区)
+	local install_parent = install_path:match("^(.*)/[^/]*$") or "/"
+	local df_output = sys.exec("df -h " .. install_parent .. " 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
+	if df_output and df_output ~= "" then
+		result.disk_free = df_output
+	end
+
 	http.prepare_content("application/json")
 	http.write_json(result)
 end
@@ -225,6 +237,8 @@ function action_service_ctl()
 		sys.exec("rm -f /tmp/openclaw-setup.log /tmp/openclaw-setup.pid /tmp/openclaw-setup.exit")
 		-- 获取用户选择的版本 (stable=指定版本, latest=最新版)
 		local version = http.formvalue("version") or ""
+		-- 获取自定义安装路径 (用户输入的是基础路径，如 /opt 或 /mnt/data)
+		local install_path = http.formvalue("install_path") or ""
 		local env_prefix = ""
 		if version == "stable" then
 			-- 稳定版: 读取 openclaw-env 中定义的 OC_TESTED_VERSION
@@ -236,6 +250,17 @@ function action_service_ctl()
 			-- 校验版本号格式 (仅允许数字、点、横线、字母)
 			if version:match("^[%d%.%-a-zA-Z]+$") then
 				env_prefix = "OC_VERSION=" .. version .. " "
+			end
+		end
+		-- 处理自定义安装路径
+		if install_path ~= "" and install_path ~= "/opt" then
+			-- 安全检查: 路径不能包含危险字符
+			install_path = install_path:gsub("[`$;&|<>]", "")
+			install_path = install_path:gsub("/+$", "")
+			if install_path ~= "" then
+				-- 保存到 UCI 配置 (保存用户输入的基础路径)
+				sys.exec("uci set openclaw.main.install_path='" .. install_path .. "'; uci commit openclaw 2>/dev/null")
+				env_prefix = env_prefix .. "OC_INSTALL_PATH='" .. install_path .. "' "
 			end
 		end
 		-- 后台安装，成功后自动启用并启动服务
@@ -368,6 +393,12 @@ end
 function action_uninstall()
 	local http = require "luci.http"
 	local sys = require "luci.sys"
+	local uci = require "luci.model.uci".cursor()
+
+	-- 获取安装路径
+	local install_path_uci = uci:get("openclaw", "main", "install_path") or "/opt"
+	-- 实际安装路径
+	local install_path = install_path_uci .. "/openclaw"
 
 	-- 停止服务
 	sys.exec("/etc/init.d/openclaw stop >/dev/null 2>&1")
@@ -376,7 +407,7 @@ function action_uninstall()
 	-- 设置 UCI enabled=0
 	sys.exec("uci set openclaw.main.enabled=0; uci commit openclaw 2>/dev/null")
 	-- 删除 Node.js + OpenClaw 运行环境 (包含所有插件: qqbot, 飞书等)
-	sys.exec("rm -rf /opt/openclaw")
+	sys.exec("rm -rf " .. install_path)
 	-- 清理旧数据迁移后可能残留的目录
 	sys.exec("rm -rf /root/.openclaw 2>/dev/null")
 	-- 清理临时文件
@@ -389,7 +420,7 @@ function action_uninstall()
 	http.prepare_content("application/json")
 	http.write_json({
 		status = "ok",
-		message = "运行环境已卸载。已清理: Node.js 运行环境 (/opt/openclaw)、所有插件 (qqbot/飞书等)、旧数据目录 (/root/.openclaw)、临时文件、LuCI 缓存。"
+		message = "运行环境已卸载。已清理: Node.js 运行环境 (" .. install_path .. ")、所有插件 (qqbot/飞书等)、旧数据目录 (/root/.openclaw)、临时文件、LuCI 缓存。"
 	})
 end
 
@@ -544,16 +575,21 @@ end
 function action_backup()
 	local http = require "luci.http"
 	local sys = require "luci.sys"
+	local uci = require "luci.model.uci".cursor()
 	local action = http.formvalue("action") or "create"
 
-	local node_bin = "/opt/openclaw/node/bin/node"
+	-- 获取安装路径
+	local install_path_uci = uci:get("openclaw", "main", "install_path") or "/opt"
+	-- 实际安装路径
+	local install_path = install_path_uci .. "/openclaw"
+	local node_bin = install_path .. "/node/bin/node"
 	local oc_entry = ""
 
-	-- 查找 openclaw 入口
+	-- 查找 openclaw 入口 (使用自定义安装路径)
 	local search_dirs = {
-		"/opt/openclaw/global/lib/node_modules/openclaw",
-		"/opt/openclaw/global/node_modules/openclaw",
-		"/opt/openclaw/node/lib/node_modules/openclaw",
+		install_path .. "/global/lib/node_modules/openclaw",
+		install_path .. "/global/node_modules/openclaw",
+		install_path .. "/node/lib/node_modules/openclaw",
 	}
 	for _, d in ipairs(search_dirs) do
 		if nixio.fs.stat(d .. "/openclaw.mjs", "type") then
@@ -572,14 +608,15 @@ function action_backup()
 	end
 
 	local env_prefix = string.format(
-		"HOME=/opt/openclaw/data OPENCLAW_HOME=/opt/openclaw/data " ..
-		"OPENCLAW_STATE_DIR=/opt/openclaw/data/.openclaw " ..
-		"OPENCLAW_CONFIG_PATH=/opt/openclaw/data/.openclaw/openclaw.json " ..
-		"PATH=/opt/openclaw/node/bin:/opt/openclaw/global/bin:$PATH "
+		"HOME=%s/data OPENCLAW_HOME=%s/data " ..
+		"OPENCLAW_STATE_DIR=%s/data/.openclaw " ..
+		"OPENCLAW_CONFIG_PATH=%s/data/.openclaw/openclaw.json " ..
+		"PATH=%s/node/bin:%s/global/bin:$PATH ",
+		install_path, install_path, install_path, install_path, install_path, install_path
 	)
 
 	-- 备份目录 (openclaw backup create 输出到 CWD，需要 cd)
-	local backup_dir = "/opt/openclaw/data/.openclaw/backups"
+	local backup_dir = install_path .. "/data/.openclaw/backups"
 	local cd_prefix = "mkdir -p " .. backup_dir .. " && cd " .. backup_dir .. " && "
 
 	-- ── 辅助: 解析单个备份文件的 manifest 信息 ──
@@ -646,7 +683,7 @@ function action_backup()
 		end
 		local output = sys.exec(backup_cmd)
 		-- 完整备份可能输出到 HOME，移动到 backup_dir
-		sys.exec("mv /opt/openclaw/data/*-openclaw-backup.tar.gz " .. backup_dir .. "/ 2>/dev/null")
+		sys.exec("mv " .. install_path .. "/data/*-openclaw-backup.tar.gz " .. backup_dir .. "/ 2>/dev/null")
 		-- 提取备份文件路径
 		local backup_path = output:match("([%S]+%.tar%.gz)")
 		http.prepare_content("application/json")
@@ -692,7 +729,7 @@ function action_backup()
 			http.write_json({ status = "error", message = "未找到备份文件，请先创建备份" })
 			return
 		end
-		local oc_data_dir = "/opt/openclaw/data/.openclaw"
+		local oc_data_dir = install_path .. "/data/.openclaw"
 		local config_path = oc_data_dir .. "/openclaw.json"
 
 		-- 1) 先验证备份中的 openclaw.json 是否有效
@@ -811,10 +848,20 @@ end
 -- 系统配置检测 API (安装前检测)
 -- 检测内存和磁盘空间是否满足最低要求
 -- 要求: 内存 > 1GB, 磁盘可用空间 > 2GB (OpenClaw v2026.3.28+ 包体积约 200MB)
+-- 支持自定义安装路径，检测对应路径的磁盘空间
 -- ═══════════════════════════════════════════
 function action_check_system()
 	local http = require "luci.http"
 	local sys = require "luci.sys"
+	local uci = require "luci.model.uci".cursor()
+
+	-- 获取自定义安装路径 (用户输入的是基础路径，如 /opt 或 /mnt/data)
+	local install_path = http.formvalue("install_path") or uci:get("openclaw", "main", "install_path") or "/opt"
+	-- 安全检查: 路径不能包含危险字符
+	install_path = install_path:gsub("[`$;&|<>]", "")
+	-- 确保路径不以 / 结尾
+	install_path = install_path:gsub("/+$", "")
+	if install_path == "" then install_path = "/opt" end
 
 	-- 最低要求配置 (v2026.3.28: 包体积 ~200MB, 建议 2GB 可用空间)
 	local MIN_MEMORY_MB = 1024      -- 1GB
@@ -826,6 +873,8 @@ function action_check_system()
 		disk_mb = 0,
 		disk_ok = false,
 		disk_path = "",
+		install_path = install_path,
+		disk_free_str = "",
 		pass = false,
 		message = ""
 	}
@@ -845,14 +894,40 @@ function action_check_system()
 	result.memory_ok = result.memory_mb >= MIN_MEMORY_MB
 
 	-- 检测磁盘可用空间
-	-- 优先检测 /opt 所在分区，如果 /opt 不存在则检测 /overlay 或 /
-	local disk_paths = {"/opt", "/overlay", "/"}
-	for _, path in ipairs(disk_paths) do
-		local df_output = sys.exec("df -m " .. path .. " 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
+	-- 策略: 从目标路径开始，逐级向上找到存在的挂载点进行检测
+	-- 例如: /mnt/data -> /mnt/data (若存在) -> /mnt (若存在) -> /
+	local function find_mount_point(path)
+		-- 如果路径存在，直接返回
+		if nixio.fs.stat(path, "type") then
+			return path
+		end
+		-- 逐级向上查找
+		while path ~= "/" and path ~= "" do
+			path = path:match("^(.*)/[^/]*$") or "/"
+			if path == "" then path = "/" end
+			if nixio.fs.stat(path, "type") then
+				return path
+			end
+		end
+		return "/"
+	end
+
+	local disk_check_path = find_mount_point(install_path)
+
+	-- 使用 df 检测磁盘空间
+	local df_output = sys.exec("df -m " .. disk_check_path .. " 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
+	if df_output and df_output ~= "" and tonumber(df_output) then
+		result.disk_mb = tonumber(df_output)
+		result.disk_path = disk_check_path
+		-- 获取可读的磁盘空间格式
+		result.disk_free_str = sys.exec("df -h " .. disk_check_path .. " 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
+	else
+		-- 如果检测失败，尝试检测根分区
+		df_output = sys.exec("df -m / 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
 		if df_output and df_output ~= "" and tonumber(df_output) then
 			result.disk_mb = tonumber(df_output)
-			result.disk_path = path
-			break
+			result.disk_path = "/"
+			result.disk_free_str = sys.exec("df -h / 2>/dev/null | tail -1 | awk '{print $4}'"):gsub("%s+", "")
 		end
 	end
 	result.disk_ok = result.disk_mb >= MIN_DISK_MB

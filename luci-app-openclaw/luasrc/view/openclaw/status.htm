@@ -78,6 +78,8 @@
 			<tr><td>Node.js</td><td id="oc-st-node">-</td></tr>
 			<tr><td>OpenClaw</td><td id="oc-st-oc-ver">-</td></tr>
 			<tr><td>插件版本</td><td id="oc-st-plugin">-</td></tr>
+			<tr><td>安装路径</td><td id="oc-st-path">-</td></tr>
+			<tr><td>剩余空间</td><td id="oc-st-disk">-</td></tr>
 		</table>
 	</div>
 </div>
@@ -147,6 +149,22 @@
 				document.getElementById('oc-st-node').textContent = d.node_version || '未安装';
 				document.getElementById('oc-st-oc-ver').textContent = d.oc_version ? ('v' + d.oc_version) : '未安装';
 				document.getElementById('oc-st-plugin').textContent = d.plugin_version ? ('v' + d.plugin_version) : '-';
+
+				// 安装路径和剩余空间
+				var pathEl = document.getElementById('oc-st-path');
+				if (d.install_path) {
+					pathEl.innerHTML = '<code style="padding:2px 8px;background:#f0f3f6;border-radius:4px;font-size:12px;">' + d.install_path + '</code>';
+				} else {
+					pathEl.textContent = '-';
+				}
+
+				// 剩余空间
+				var diskEl = document.getElementById('oc-st-disk');
+				if (d.disk_free) {
+					diskEl.innerHTML = '<span style="color:#1a7f37;font-weight:500;">' + d.disk_free + '</span> 可用';
+				} else {
+					diskEl.textContent = '-';
+				}
                         } catch(e) {
 				document.getElementById('oc-st-status').innerHTML = '<span class="oc-badge oc-badge-unknown">查询失败</span>';
 			}
