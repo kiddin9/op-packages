@@ -295,6 +295,37 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '}catch(e){el.innerHTML="<span style=\\"color:red\\">❌ 错误</span>";}'
 	html[#html+1] = '});}'
 
+	-- 简单的 Markdown 转 HTML 函数 (用于渲染 GitHub Release Notes)
+	html[#html+1] = 'function ocMarkdownToHtml(md){'
+	html[#html+1] = 'if(!md)return "";'
+	-- 转义 HTML 特殊字符
+	html[#html+1] = 'var html=md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");'
+	-- 代码块 (```code```)
+	html[#html+1] = 'html=html.replace(/```(\\w*)\\n([\\s\\S]*?)```/g,function(m,lang,code){return"<pre style=\\"background:#f6f8fa;padding:10px 14px;border-radius:6px;overflow-x:auto;font-size:13px;line-height:1.5;\\"><code>"+code.trim()+"</code></pre>";});'
+	-- 行内代码 (`code`)
+	html[#html+1] = 'html=html.replace(/`([^`]+)`/g,"<code style=\\"background:#f6f8fa;padding:2px 6px;border-radius:3px;font-size:13px;\\">$1</code>");'
+	-- 标题 (### ## #)
+	html[#html+1] = 'html=html.replace(/^### (.+)$/gm,"<h4 style=\\"margin:14px 0 8px;font-size:15px;font-weight:600;color:#24292f;\\">$1</h4>");'
+	html[#html+1] = 'html=html.replace(/^## (.+)$/gm,"<h3 style=\\"margin:16px 0 10px;font-size:16px;font-weight:600;color:#24292f;\\">$1</h3>");'
+	html[#html+1] = 'html=html.replace(/^# (.+)$/gm,"<h2 style=\\"margin:18px 0 12px;font-size:17px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;padding-bottom:6px;\\">$1</h2>");'
+	-- 粗体和斜体
+	html[#html+1] = 'html=html.replace(/\\*\\*([^*]+)\\*\\*/g,"<strong>$1</strong>");'
+	html[#html+1] = 'html=html.replace(/\\*([^*]+)\\*/g,"<em>$1</em>");'
+	-- 链接 [text](url)
+	html[#html+1] = 'html=html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g,"<a href=\\"$2\\" target=\\"_blank\\" rel=\\"noopener\\" style=\\"color:#0969da;text-decoration:none;\\">$1</a>");'
+	-- 无序列表 (- 或 *)
+	html[#html+1] = 'html=html.replace(/^[*-] (.+)$/gm,"<li style=\\"margin:6px 0 6px 20px;line-height:1.7;\\">$1</li>");'
+	-- 有序列表 (1. 2. 等)
+	html[#html+1] = 'html=html.replace(/^\\d+\\. (.+)$/gm,"<li style=\\"margin:6px 0 6px 20px;list-style-type:decimal;line-height:1.7;\\">$1</li>");'
+	-- 水平线 (--- 或 ***)
+	html[#html+1] = 'html=html.replace(/^(---|\\*\\*\\*)$/gm,"<hr style=\\"border:none;border-top:1px solid #d0d7de;margin:14px 0;\\"/>");'
+	-- 段落 (连续的非空行合并)
+	html[#html+1] = 'html=html.replace(/\\n\\n/g,"</p><p style=\\"margin:10px 0;line-height:1.7;\\">");'
+	-- 换行
+	html[#html+1] = 'html=html.replace(/\\n/g,"<br/>");'
+	html[#html+1] = 'return"<div style=\\"font-size:14px;color:#24292f;line-height:1.7;\\">"+html+"</div>";'
+	html[#html+1] = '}'
+
 	-- 检测升级 (只检查插件版本，有新版本时显示更新内容)
 	html[#html+1] = 'function ocCheckUpdate(){'
 	html[#html+1] = 'var btn=document.getElementById("btn-check-update");'
@@ -320,10 +351,10 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'window._pluginLatestVer=r.plugin_latest;'
 	html[#html+1] = 'var notesHtml="";'
 	html[#html+1] = 'if(r.release_notes){'
-	html[#html+1] = 'var escaped=r.release_notes.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");'
-	html[#html+1] = 'notesHtml=\'<div style="margin:10px 0 8px;padding:10px 14px;background:#fffbf0;border:1px solid #f0c040;border-radius:6px;">\''
-	html[#html+1] = '+\'<div style="font-size:12px;font-weight:600;color:#8a6a00;margin-bottom:6px;">📋 v\'+r.plugin_latest+\' 更新内容</div>\''
-	html[#html+1] = '+\'<pre style="margin:0;font-size:12px;color:#444;white-space:pre-wrap;word-break:break-word;line-height:1.6;">\'+escaped+\'</pre>\''
+	html[#html+1] = 'var rendered=ocMarkdownToHtml(r.release_notes);'
+	html[#html+1] = 'notesHtml=\'<div style="margin:10px 0 8px;padding:12px 16px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px;max-height:400px;overflow-y:auto;">\''
+	html[#html+1] = '+\'<div style="font-size:13px;font-weight:600;color:#24292f;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #d0d7de;">📋 v\'+r.plugin_latest+\' 更新内容</div>\''
+	html[#html+1] = '+rendered'
 	html[#html+1] = '+\'</div>\';'
 	html[#html+1] = '}'
 	html[#html+1] = 'act.innerHTML=notesHtml'

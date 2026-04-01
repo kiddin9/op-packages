@@ -578,6 +578,14 @@ show_current_config() {
 	echo -e "${GREEN}├──────────────────────────────────────────────────────────┤${NC}"
 	echo -e "${GREEN}│${NC}  ${BOLD}渠道配置状态${NC}"
 
+	# 检测微信渠道
+	local wechat_ext_dir="${OC_STATE_DIR}/extensions/openclaw-weixin"
+	if [ -d "$wechat_ext_dir" ] && [ -f "${wechat_ext_dir}/openclaw.plugin.json" ]; then
+		echo -e "${GREEN}│${NC}  微信 .............. ${GREEN}✅ 已配置${NC}"
+	else
+		echo -e "${GREEN}│${NC}  微信 .............. ${YELLOW}❌ 未配置${NC}"
+	fi
+
 	local tg_token=$(json_get channels.telegram.botToken)
 	local dc_token=$(json_get channels.discord.botToken)
 	local fs_appid=$(json_get channels.feishu.appId)
@@ -1084,18 +1092,36 @@ configure_model() {
 			prompt_with_default "请输入 SiliconFlow API Key" "" api_key
 			if [ -n "$api_key" ]; then
 				echo ""
-				echo -e "  ${CYAN}可用模型:${NC}"
-				echo -e "    ${CYAN}a)${NC} deepseek-ai/DeepSeek-V3      — DeepSeek V3 (推荐)"
-				echo -e "    ${CYAN}b)${NC} deepseek-ai/DeepSeek-R1      — DeepSeek R1"
-				echo -e "    ${CYAN}c)${NC} Qwen/Qwen3-235B-A22B        — 通义千问 Qwen3 235B"
-				echo -e "    ${CYAN}d)${NC} 手动输入模型名"
+				echo -e "  ${CYAN}可用模型分类说明:${NC}"
+				echo -e "  ${YELLOW}* Pro模型 (带 Pro/ 前缀): 仅支持充值余额支付，并发与速率(Rate Limits)可变。${NC}"
+				echo -e "  ${YELLOW}* 非Pro模型 (无 Pro/ 前缀): 支持赠费余额（代金券）和充值余额支付，Rate Limits 固定。${NC}"
+				echo -e "  ${GREEN}【建议】如果您是代金券/赠送余额用户，请务必选择【非Pro模型】。${NC}"
 				echo ""
-				prompt_with_default "请选择模型" "a" model_choice
+				echo -e "  ${CYAN}── 非Pro模型 (支持代金券/免费额度) ──${NC}"
+				echo -e "    ${CYAN}1)${NC} deepseek-ai/DeepSeek-V3       — DeepSeek-V3 (推荐)"
+				echo -e "    ${CYAN}2)${NC} deepseek-ai/DeepSeek-R1       — DeepSeek-R1 (推理模型)"
+				echo -e "    ${CYAN}3)${NC} Qwen/Qwen2.5-72B-Instruct     — 通义千问 2.5 72B"
+				echo -e "    ${CYAN}4)${NC} Qwen/Qwen2.5-7B-Instruct      — 通义千问 2.5 7B"
+				echo -e "    ${CYAN}5)${NC} THUDM/glm-4-9b-chat           — 智谱 GLM-4 9B"
+				echo -e "    ${CYAN}6)${NC} 01-ai/Yi-1.5-34B-Chat-16K     — 零一万物 Yi-1.5 34B"
+				echo ""
+				echo -e "  ${CYAN}── Pro模型 (仅支持充值余额) ──${NC}"
+				echo -e "    ${CYAN}7)${NC} Pro/deepseek-ai/DeepSeek-V3   — DeepSeek-V3 (Pro增强侧)"
+				echo -e "    ${CYAN}8)${NC} Pro/zai-org/GLM-5             — 智谱 GLM-5"
+				echo ""
+				echo -e "    ${CYAN}0)${NC} 手动输入其他任意模型名称"
+				echo ""
+				prompt_with_default "请选择模型 [0-8]" "1" model_choice
 				case "$model_choice" in
-					a) model_name="deepseek-ai/DeepSeek-V3" ;;
-					b) model_name="deepseek-ai/DeepSeek-R1" ;;
-					c) model_name="Qwen/Qwen3-235B-A22B" ;;
-					d) prompt_with_default "请输入模型名称" "deepseek-ai/DeepSeek-V3" model_name ;;
+					1) model_name="deepseek-ai/DeepSeek-V3" ;;
+					2) model_name="deepseek-ai/DeepSeek-R1" ;;
+					3) model_name="Qwen/Qwen2.5-72B-Instruct" ;;
+					4) model_name="Qwen/Qwen2.5-7B-Instruct" ;;
+					5) model_name="THUDM/glm-4-9b-chat" ;;
+					6) model_name="01-ai/Yi-1.5-34B-Chat-16K" ;;
+					7) model_name="Pro/deepseek-ai/DeepSeek-V3" ;;
+					8) model_name="Pro/zai-org/GLM-5" ;;
+					0) prompt_with_default "请输入模型详细名称" "deepseek-ai/DeepSeek-V3" model_name ;;
 					*) model_name="deepseek-ai/DeepSeek-V3" ;;
 				esac
 				auth_set_apikey siliconflow "$api_key"
@@ -1910,8 +1936,10 @@ configure_channels() {
 		echo ""
 		echo -e "  ${BOLD}📡 配置消息渠道${NC}"
 		echo ""
-		echo -e "  ${CYAN}1)${NC} QQ 机器人  ${GREEN}(腾讯QQ，推荐国内用户)${NC}"
-		echo -e "  ${CYAN}2)${NC} Telegram  ${GREEN}(最常用，推荐)${NC}"
+		echo -e "  ${CYAN}提示: 微信配置请使用 LuCI 界面「微信配置」菜单${NC}"
+		echo ""
+		echo -e "  ${CYAN}1)${NC} QQ 机器人  ${GREEN}(腾讯QQ)${NC}"
+		echo -e "  ${CYAN}2)${NC} Telegram  ${GREEN}(最常用)${NC}"
 		echo -e "  ${CYAN}3)${NC} Discord"
 		echo -e "  ${CYAN}4)${NC} 飞书 (Feishu)"
 		echo -e "  ${CYAN}5)${NC} Slack"
