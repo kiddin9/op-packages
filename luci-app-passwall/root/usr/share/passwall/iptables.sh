@@ -25,12 +25,11 @@ IPSET_BLACK6="passwall_black6"
 IPSET_WHITE6="passwall_white6"
 IPSET_BLOCK6="passwall_block6"
 
-FORCE_INDEX=2
-
 USE_SHUNT_TCP=0
 USE_SHUNT_UDP=0
 
-FWMARK="0x50535732"
+# ASCII code for PSW1.Use whatever,just not the same.
+FWMARK="0x50535731"
 
 ipt=$(command -v iptables-legacy || command -v iptables)
 ip6t=$(command -v ip6tables-legacy || command -v ip6tables)
@@ -180,7 +179,8 @@ REDIRECT() {
 get_jump_ipt() {
 	case "$1" in
 	direct)
-		local mark="-m mark ! --mark 1"
+		local s=""
+		local mark="-m mark ! --mark ${FWMARK}"
 		s="${mark} -j RETURN"
 		echo $s
 		;;
@@ -1349,7 +1349,7 @@ del_firewall_rule() {
 	ip rule del fwmark ${FWMARK} lookup 999 priority 999 2>/dev/null
 	ip route del local 0.0.0.0/0 dev lo table 999 2>/dev/null
 
-	ip -6 rule del fwmark ${FWMARK} table 999 priority 999 2>/dev/null
+	ip -6 rule del fwmark ${FWMARK} lookup 999 priority 999 2>/dev/null
 	ip -6 route del local ::/0 dev lo table 999 2>/dev/null
 
 	destroy_ipset $IPSET_LOCAL

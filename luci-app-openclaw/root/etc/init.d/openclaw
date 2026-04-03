@@ -205,15 +205,19 @@ fi
 	# 问题: 旧版本写入的是 "openclaw-qqbot"，但实际插件名是 "@tencent-connect/openclaw-qqbot"
 	fix_plugin_config() {
 		local qqbot_ext_dir="${OC_DATA}/.openclaw/extensions/openclaw-qqbot"
-		[ ! -d "$qqbot_ext_dir" ] && return
+                local weixin_ext_dir="${OC_DATA}/.openclaw/extensions/openclaw-weixin"
+		[ ! -d "$qqbot_ext_dir" ] && [ ! -d "$weixin_ext_dir" ] && return
 		[ ! -f "$CONFIG_FILE" ] && return
 		
 		"$NODE_BIN" -e "
 			const fs=require('fs');
 			try{
 				const d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));
-				if(!d.plugins)d.plugins={};
 				let modified=false;
+                                if(!d.plugins)d.plugins={};
+                                if(!Array.isArray(d.plugins.allow))d.plugins.allow=[];
+                                const hasWechat=fs.existsSync('${weixin_ext_dir}'); if(hasWechat && !d.plugins.allow.includes("@tencent-weixin/openclaw-weixin")) { d.plugins.allow.push("@tencent-weixin/openclaw-weixin"); modified=true; }
+				
 				
 				// 修复 plugins.allow 数组中的插件名称
 				if(Array.isArray(d.plugins.allow)){
