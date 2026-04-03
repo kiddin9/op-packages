@@ -389,34 +389,9 @@ install_openclaw() {
 	fi
 }
 
-ensure_openclaw_user() {
-	if ! id openclaw >/dev/null 2>&1; then
-		echo "  正在创建 openclaw 系统用户..."
-		local OC_UID=1000
-		while grep -q "^[^:]*:x:${OC_UID}:" /etc/passwd 2>/dev/null; do
-			OC_UID=$((OC_UID + 1))
-		done
-		local OC_GID=$OC_UID
-		while grep -q "^[^:]*:x:${OC_GID}:" /etc/group 2>/dev/null; do
-			OC_GID=$((OC_GID + 1))
-		done
-		if ! grep -q "^openclaw:" /etc/passwd 2>/dev/null; then
-			echo "openclaw:x:${OC_UID}:${OC_GID}:openclaw:/opt/openclaw/data:/bin/false" >> /etc/passwd
-		fi
-		if ! grep -q "^openclaw:" /etc/shadow 2>/dev/null; then
-			echo "openclaw:x:0:0:99999:7:::" >> /etc/shadow
-		fi
-		if ! grep -q "^openclaw:" /etc/group 2>/dev/null; then
-			echo "openclaw:x:${OC_GID}:" >> /etc/group
-		fi
-		log_info "用户 openclaw 创建成功"
-	fi
-}
-
 init_openclaw() {
 	echo ""
 	echo "=== 初始化 OpenClaw ==="
-	ensure_openclaw_user
 
 	# 创建数据目录
 	ensure_mkdir "$OC_DATA/.openclaw"
