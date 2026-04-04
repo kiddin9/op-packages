@@ -4,6 +4,20 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.3] - 2026-04-03
+
+### 修复
+
+- **微信插件安装失败 (exit: 127)**: 当 Gateway 未运行或路径检测失败时，`npx` 命令指向不存在的路径导致安装失败
+  - 根因: `get_actual_install_path()` 依赖 Gateway 进程运行时返回正确路径，Gateway 未启动时返回默认值 `/opt/openclaw`，但实际安装路径可能是 `/mnt/data/openclaw` 等自定义路径
+  - 修复: `action_wechat_install()` 和 `action_wechat_upgrade_plugin()` 新增多层路径校验逻辑：
+    1. 先检查默认检测到的 `npx` 是否存在
+    2. 不存在时回退到 UCI 配置的 `install_path`
+    3. 最后遍历常见备用路径 (`/mnt/data/openclaw`, `/opt/openclaw`, `/overlay/upper/opt/openclaw`)
+    4. 所有路径都无效时返回明确的错误提示，而非模糊的 exit 127
+
+---
+
 ## [2.0.2] - 2026-03-31
 
 ### 新增功能

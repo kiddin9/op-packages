@@ -297,7 +297,7 @@ _ensure_port_free() {
 	if command -v ss >/dev/null 2>&1; then
 		port_pid=$(ss -tulnp 2>/dev/null | grep ":${p} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)
 	else
-		port_pid=$(netstat -tulnp 2>/dev/null | grep ":${p} " | sed -n 's|.* \([0-9]*\)/.*|\1|p' | head -1)
+		port_pid=$(netstat -tulnp 2>/dev/null | grep ":${p} " | awk '{print $7}' | cut -d'/' -f1 | grep -E '^[0-9]+$' | head -n 1)
 	fi
 	[ -n "$port_pid" ] && kill -9 "$port_pid" 2>/dev/null && usleep 300000 2>/dev/null
 	return 0
@@ -392,17 +392,36 @@ done
 
 # 4) 如果端口仍被占用，强制 SIGKILL
 if [ $wait_count -ge $max_wait ]; then
-	local port_pid=""
-	if command -v ss >/dev/null 2>&1; then
-		port_pid=$(ss -tulnp 2>/dev/null | grep ":${port} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)
-	else
-		port_pid=$(netstat -tulnp 2>/dev/null | grep ":${port} " | sed -n 's|.* \([0-9]*\)/.*|\1|p' | head -1)
-	fi
-	if [ -n "$port_pid" ]; then
-		kill -9 "$port_pid" 2>/dev/null
-		# 等待内核回收 (缩短到 0.5 秒)
-		usleep 500000 2>/dev/null || sleep 0.5
-	fi
+        local port_pid=""
+        if command -v ss >/dev/null 2>&1; then
+                port_pid=$(ss -tulnp 2>/dev/null | grep ":${port} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)
+        else
+                port_pid=$(netstat -tulnp 2>/dev/null | grep ":${port} " | awk '{print $7}' | cut -d'/' -f1 | grep -E '^[0-9]+$' | head -n 1)
+        fi
+        if [ -n "$port_pid" ]; then
+                kill -9 "$port_pid" 2>/dev/null
+                # 等待内核回收 (缩短到 0.5 秒)
+                usleep 500000 2>/dev/null || sleep 0.5
+        fi
+fi
+
+# 5) 终极保险：使用暴力匹配端口杀死该名下任何相关占用进程
+local _pty_port=$(uci -q get openclaw.main.pty_port || echo "18793")
+for _p in "$port" "$_pty_port"; do
+        local _spid=""
+        if command -v ss >/dev/null 2>&1; then
+                _spid=$(ss -tulnp 2>/dev/null | grep ":${_p} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1)
+        else
+                _spid=$(netstat -tulnp 2>/dev/null | grep ":${_p} " | awk '{print $7}' | cut -d'/' -f1 | grep -E '^[0-9]+$' | head -n 1)
+        fi
+        [ -n "$_spid" ] && kill -9 "$_spid" 2>/dev/null || true
+done
+
+# 6) 清理该特定系统用户下任何悬挂或离群孤儿进程
+if getent passwd openclaw >/dev/null 2>&1 || grep -q '^openclaw:' /etc/passwd 2>/dev/null; then
+        for _opcup in $(pgrep -u openclaw 2>/dev/null); do
+                kill -9 "$_opcup" 2>/dev/null || true
+        done
 fi
 }
 

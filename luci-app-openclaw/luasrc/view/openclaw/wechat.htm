@@ -412,6 +412,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 <script type="text/javascript">
 //<![CDATA[
 (function() {
+	var csrfToken = '<%=token%>';
 	var statusUrl = '<%=luci.dispatcher.build_url("admin", "services", "openclaw", "status_api")%>';
 	var wechatStatusUrl = '<%=luci.dispatcher.build_url("admin", "services", "openclaw", "wechat_status")%>';
 	var wechatInstallUrl = '<%=luci.dispatcher.build_url("admin", "services", "openclaw", "wechat_install")%>';
@@ -522,7 +523,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 		document.getElementById('oc-install-log').textContent = '正在启动安装...\n';
 
 		// 启动安装
-		(new XHR()).post(wechatInstallUrl, null, function(x) {
+		(new XHR()).post(wechatInstallUrl, { token: csrfToken }, function(x) {
 			try {
 				var d = JSON.parse(x.responseText);
 				if (d.status === 'ok') {
@@ -632,7 +633,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 		document.getElementById('oc-login-result').style.display = 'none';
 
 		// 启动登录流程
-		(new XHR()).post(wechatLoginUrl, null, function(x) {
+		(new XHR()).post(wechatLoginUrl, { token: csrfToken }, function(x) {
 			try {
 				var d = JSON.parse(x.responseText);
 				if (d.status === 'ok') {
@@ -653,7 +654,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 			btn.textContent = '退出中...';
 			btn.disabled = true;
 
-			(new XHR()).post(wechatLogoutUrl + '?account=' + encodeURIComponent(accountId), null, function(x) {
+			(new XHR()).post(wechatLogoutUrl + '?account=' + encodeURIComponent(accountId), { token: csrfToken }, function(x) {
 				btn.textContent = oldText;
 				btn.disabled = false;
 				ocRefreshWechatStatus();
@@ -833,7 +834,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 
 		var upgradeUrl = '<%=luci.dispatcher.build_url("admin", "services", "openclaw", "wechat_upgrade_plugin")%>';
 
-		(new XHR()).post(upgradeUrl, null, function(x) {
+		(new XHR()).post(upgradeUrl, { token: csrfToken }, function(x) {
 			try {
 				var d = JSON.parse(x.responseText);
 				if (d.status === 'ok') {
@@ -905,7 +906,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 		btn.disabled = true;
 		btn.textContent = '⏳ 卸载中...';
 
-		(new XHR()).post('<%=luci.dispatcher.build_url("admin", "services", "openclaw", "wechat_uninstall")%>', null, function(x) {
+		(new XHR()).post('<%=luci.dispatcher.build_url("admin", "services", "openclaw", "wechat_uninstall")%>', { token: csrfToken }, function(x) {
 			try {
 				var d = JSON.parse(x.responseText);
 				if (d.status === 'ok') {
