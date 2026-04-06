@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=netdata
 PKG_VERSION:=2.9.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Josef Schlehofer <pepe.schlehofer@gmail.com>, Daniel Engberg <daniel.engberg.lists@pyret.net>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -126,11 +126,9 @@ define Package/netdata/install
 	#netdata webdir and remove uneeded files
 	$(INSTALL_DIR) $(1)/usr/share/netdata
 	$(CP) $(PKG_INSTALL_DIR)/usr/share/netdata $(1)/usr/share
+	$(CP) $(1)/usr/share/netdata/web/v3/* $(1)/usr/share/netdata/web/
+	rm -r $(1)/usr/share/netdata/web/v3/*
 	rm $(1)/usr/share/netdata/build-info-cmake-cache.gz
-	rm $(1)/usr/share/netdata/web/v3/3D_PARTY_LICENSES.txt
-	rm $(1)/usr/share/netdata/web/v3/LICENSE.md
-	rm $(1)/usr/share/netdata/web/v3/*.LICENSE.txt
-	rm -r $(1)/usr/share/netdata/web/static/*
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/netdata.init $(1)/etc/init.d/netdata
 	$(INSTALL_DIR) $(1)/etc/config
@@ -138,8 +136,6 @@ define Package/netdata/install
 	$(INSTALL_DIR) $(1)/etc/nginx/conf.d
 	$(INSTALL_DATA) ./files/netdata.locations $(1)/etc/nginx/conf.d/netdata.locations
 	$(INSTALL_DATA) ./files/netdata.htpasswd  $(1)/etc/nginx/conf.d/netdata.htpasswd
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_DATA) ./files/netdata.uci-defaults $(1)/etc/uci-defaults/luci-netdata
 endef
 
 $(eval $(call Download,netdata-dashboard))
