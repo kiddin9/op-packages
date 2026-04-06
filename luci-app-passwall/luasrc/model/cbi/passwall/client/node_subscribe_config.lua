@@ -134,7 +134,7 @@ o.validate = function(self, value)
 end
 
 o = s:option(Flag, "allowInsecure", translate("allowInsecure"))
-o.default = "0"
+o.default = "1"
 o.rmempty = false
 o.description = translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped.") .. "<br>" ..
 		translate("Used when the node link does not include this parameter.")

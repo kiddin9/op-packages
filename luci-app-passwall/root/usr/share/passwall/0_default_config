@@ -32,7 +32,7 @@ config global_haproxy
 
 config global_delay
 	option start_daemon '1'
-	option start_delay '60'
+	option start_delay '30'
 
 config global_forwarding
 	option tcp_no_redir_ports 'disable'
