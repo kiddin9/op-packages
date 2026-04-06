@@ -129,6 +129,18 @@
  config PACKAGE_$(PKG_NAME)_INCLUDE_Xray_Plugin
  	bool "Include Xray-Plugin (Shadowsocks Plugin)"
 
+--- a/luci-app-passwall/luasrc/model/cbi/passwall/client/node_subscribe_config.lua
++++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/node_subscribe_config.lua
+@@ -134,7 +134,7 @@ o.validate = function(self, value)
+ end
+ 
+ o = s:option(Flag, "allowInsecure", translate("allowInsecure"))
+-o.default = "0"
++o.default = "1"
+ o.rmempty = false
+ o.description = translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped.") .. "<br>" ..
+ 		translate("Used when the node link does not include this parameter.")
+
 --- a/luci-app-passwall/luasrc/controller/passwall.lua
 +++ b/luci-app-passwall/luasrc/controller/passwall.lua
 @@ -21,6 +21,7 @@ function index()
@@ -349,6 +361,15 @@ index 000000000000..a00fff9c79b3
 
 --- a/luci-app-passwall/root/usr/share/passwall/0_default_config
 +++ b/luci-app-passwall/root/usr/share/passwall/0_default_config
+@@ -32,7 +32,7 @@ config global_haproxy
+ 
+ config global_delay
+ 	option start_daemon '1'
+-	option start_delay '60'
++	option start_delay '30'
+ 
+ config global_forwarding
+ 	option tcp_no_redir_ports 'disable'
 @@ -57,13 +57,17 @@ config global_other
  	option show_node_info '0'
  
