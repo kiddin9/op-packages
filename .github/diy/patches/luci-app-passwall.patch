@@ -237,7 +237,7 @@
 
 --- a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
 +++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-@@ -547,6 +547,27 @@ function o.cfgvalue(self, section)
+@@ -547,6 +547,28 @@ function o.cfgvalue(self, section)
  		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
  end
  
@@ -253,13 +253,14 @@
 +o.rawhtml = true
 +o.template = appname .. "/global/adblock_refresh"
 +o.value = rule_count.." "..translate("Records")
-+o.description = string.format(translate("Domain / DNSMASQ rules auto-convert").."<br/><strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
++o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
 +o:depends("adblock",1)
 +
 +o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe"))
 +o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
 +o:value("https://cdn.jsdelivr.net/gh/neodevpro/neodevhost/domain", translate("NEO DEV HOST"))
 +o.default = "https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt"
++o.description = translate("Support Domain and Dnsmasq format list")
 +o:depends("adblock",1)
 +
  s:tab("Proxy", translate("Mode"))
@@ -525,11 +526,11 @@ index 000000000000..a00fff9c79b3
 +msgid "Subscribe Rules Data"
 +msgstr "去广告规则"
 +
-+msgid "AdGuardHome / Host / DNSMASQ / Domain rules auto-convert"
-+msgstr "Domain / DNSMASQ 规则自动识别, 自动去重"
++msgid "Support Domain and Dnsmasq format list"
++msgstr "支持域名和Dnsmasq格式的过滤列表"
 +
 +msgid "Anti-AD Rules Subscribe"
-+msgstr "广告过滤规则订阅 URL"
++msgstr "广告过滤列表URL"
 +
  msgid "Auto"
  msgstr "自动"
