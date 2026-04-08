@@ -5,6 +5,9 @@ LOCK_FILE="/var/lock/ad_download.lock"
 TMP_DIR="/tmp/ad_download"
 RULES_PATH="/usr/share/passwall/rules"
 
+# ========== 白名单：合并后需要排除的域名 ==========
+WHITELIST="ip-api.com"
+
 # ========== 加锁，防止重复运行 ==========
 exec 200>"$LOCK_FILE"
 if ! flock -n 200; then
@@ -94,32 +97,42 @@ INDEX=0
 for url in $AD_URLS; do
     [ -z "$url" ] && continue
     INDEX=$((INDEX + 1))
-    process_url "$INDEX" "$url" &
+    process_url "$INDEX" "$url"
 done
 
-# 等待所有后台任务完成
-wait
-
-# ========== 合并、去重、去空行 ==========
+# ========== 合并、去重、去空行、排除白名单 ==========
+[ -f $RULES_PATH/my_block_host ] || touch $RULES_PATH/my_block_host
 if ls "$TMP_DIR"/parsed_*.txt >/dev/null 2>&1; then
-    awk '!seen[$0]++ && NF' "$TMP_DIR"/parsed_*.txt > $RULES_PATH/ads_host
-    COUNT=$(wc -l < "$RULES_PATH/ads_host")
-    echo "========================================"
-    echo "[DONE] 合并完成: $RULES_PATH/ads_host"
-    echo "[DONE] 总域名数: $COUNT"
-    echo "========================================"
+    NEW_FILE="$TMP_DIR/ad_domains_new.txt"
+	awk -v wl="$WHITELIST" '
+    BEGIN {
+        n = split(wl, a, " ")
+        for (i = 1; i <= n; i++) white[a[i]] = 1
+    }
+    NF && !seen[$0]++ && !($0 in white)
+    ' "$TMP_DIR"/parsed_*.txt $RULES_PATH/my_block_host > "$NEW_FILE"
+
+    # ========== 比较新旧文件 hash ==========
+    if [ -f "$RULES_PATH/block_host" ]; then
+        OLD_HASH=$(md5sum "$RULES_PATH/block_host" | awk '{print $1}')
+    else
+        OLD_HASH=""
+    fi
+    NEW_HASH=$(md5sum "$NEW_FILE" | awk '{print $1}')
+
+    if [ "$OLD_HASH" = "$NEW_HASH" ]; then
+        rm -f "$NEW_FILE"
+    else
+		[ -s $NEW_FILE ] && {
+			rm -f $RULES_PATH/block_host
+			mv -f "$NEW_FILE" "$RULES_PATH/block_host"
+			/etc/init.d/passwall reload > /dev/null 2>&1 &
+		}
+    fi
 else
     echo "[ERROR] 没有成功解析任何文件"
     exit 1
 fi
 
-[ -s $RULES_PATH/ads_host ] && {
-[ -s $RULES_PATH/my_block_host ] && {
-rm -f $RULES_PATH/block_host
-awk '!/^[[:space:]]*(#|$)/ && !seen[$0]++' $RULES_PATH/ads_host $RULES_PATH/my_block_host > $RULES_PATH/block_host
-} || ln -sf $RULES_PATH/ads_host $RULES_PATH/block_host
-}
+[ "$OLD_HASH" != "$NEW_HASH" ] && exit 0 || exit 2
 
-/etc/init.d/passwall reload > /dev/null 2>&1 &
-
-exit 0
