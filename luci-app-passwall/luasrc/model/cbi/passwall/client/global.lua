@@ -563,9 +563,9 @@ o.description = string.format("<strong>"..translate("Last Update Checked")..":</
 o:depends("adblock",1)
 
 o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe"))
+o:value("https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt", translate("AdBlock DNS Filters"))
 o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
-o:value("https://cdn.jsdelivr.net/gh/neodevpro/neodevhost/domain", translate("NEO DEV HOST"))
-o.default = "https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt"
+o.default = "https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt"
 o.description = translate("Support Domain / Dnsmasq / Hosts format list")
 o:depends("adblock",1)
 
