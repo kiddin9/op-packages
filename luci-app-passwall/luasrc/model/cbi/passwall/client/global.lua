@@ -547,6 +547,27 @@ function o.cfgvalue(self, section)
 		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
 end
 
+o = s:taboption("DNS", Flag, "adblock", translate("Enable adblock"))
+o.rmempty = false
+
+local UD="" rule_count="0"
+if nixio.fs.access("/usr/share/passwall/rules/block_host") then
+UD = os.date("%Y-%m-%d %H:%M", nixio.fs.stat("/usr/share/passwall/rules/block_host").ctime)
+rule_count = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_host"))
+end
+o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Data"))
+o.rawhtml = true
+o.template = appname .. "/global/adblock_refresh"
+o.value = rule_count.." "..translate("Records")
+o.description = string.format(translate("Domain / DNSMASQ rules auto-convert").."<br/><strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
+o:depends("adblock",1)
+
+o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe"))
+o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
+o:value("https://cdn.jsdelivr.net/gh/neodevpro/neodevhost/domain", translate("NEO DEV HOST"))
+o.default = "https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt"
+o:depends("adblock",1)
+
 s:tab("Proxy", translate("Mode"))
 
 o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))

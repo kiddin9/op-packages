@@ -28,6 +28,7 @@ function index()
 	entry({"admin", "services", appname, "show"}, call("show_menu")).leaf = true
 	entry({"admin", "services", appname, "hide"}, call("hide_menu")).leaf = true
 	entry({"admin", "services", appname, "ip"}, call('check_ip')).leaf = true
+	entry({"admin", "services", appname, "adblock_refresh"}, call('adblock_refresh')).leaf = true
 	local e
 	if uci:get(appname, "@global[0]", "hide_from_luci") ~= "1" then
 		e = entry({"admin", "services", appname}, alias("admin", "services", appname, "settings"), _("Pass Wall"), -1)
@@ -294,6 +295,26 @@ end
 
 function clear_log()
 	luci.sys.call("echo '' > /tmp/log/passwall.log")
+end
+
+function adblock_refresh()
+	local icount = 0
+
+	local status = luci.sys.call("/usr/share/passwall/adblock.sh >/dev/null 2>&1")
+	if status == 0 then
+		icount = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_host"))
+		if icount>0 then
+			retstring = tostring(math.ceil(icount))
+		else
+			retstring = "-1"
+		end
+	elseif status == 2 then
+		retstring = "0"
+	else
+		retstring = "-1"
+	end
+	luci.http.prepare_content("application/json")
+	luci.http.write_json({ret=retstring})
 end
 
 function check_site(host, port)

@@ -1,6 +1,42 @@
 msgid "Pass Wall"
 msgstr "PassWall"
 
+msgid "Enable adblock"
+msgstr "启用广告屏蔽"
+
+msgid "Records"
+msgstr "条记录"
+
+msgid "Refresh..."
+msgstr "正在更新，请稍候.."
+
+msgid "No new data!"
+msgstr "你已经是最新数据，无需更新！"
+
+msgid "Refresh Error!"
+msgstr "更新失败！"
+
+msgid "Refresh OK!"
+msgstr "更新成功！"
+
+msgid "Total Records:"
+msgstr "新的总规则数："
+
+msgid "Refresh Data"
+msgstr "更新订阅规则"
+
+msgid "Last Update Checked"
+msgstr "上一次规则更新时间"
+
+msgid "Subscribe Rules Data"
+msgstr "去广告规则"
+
+msgid "AdGuardHome / Host / DNSMASQ / Domain rules auto-convert"
+msgstr "Domain / DNSMASQ 规则自动识别, 自动去重"
+
+msgid "Anti-AD Rules Subscribe"
+msgstr "广告过滤规则订阅 URL"
+
 msgid "Auto"
 msgstr "自动"
 

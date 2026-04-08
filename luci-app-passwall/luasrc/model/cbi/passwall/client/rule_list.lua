@@ -152,7 +152,7 @@ o.validate = function(self, value)
 end
 
 ---- Block Hosts
-local block_host = path .. "block_host"
+local block_host = path .. "my_block_host"
 o = s:taboption("block_list", TextValue, "block_host", "", "<font color='red'>" .. translate("These had been joined websites will be block. Please input the domain names of websites, every line can input only one website domain. For example: twitter.com.") .. "</font>")
 o.rows = 15
 o.wrap = "off"
