@@ -559,13 +559,14 @@ o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Da
 o.rawhtml = true
 o.template = appname .. "/global/adblock_refresh"
 o.value = rule_count.." "..translate("Records")
-o.description = string.format(translate("Domain / DNSMASQ rules auto-convert").."<br/><strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
+o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
 o:depends("adblock",1)
 
 o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe"))
 o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
 o:value("https://cdn.jsdelivr.net/gh/neodevpro/neodevhost/domain", translate("NEO DEV HOST"))
 o.default = "https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt"
+o.description = translate("Support Domain and Dnsmasq format list")
 o:depends("adblock",1)
 
 s:tab("Proxy", translate("Mode"))
