@@ -50,13 +50,14 @@ process_url() {
         # 去除首尾空格
         gsub(/^[[:space:]]+|[[:space:]]+$/, "")
         # 跳过注释和空行
-        if ($0 ~ /^#/ || $0 ~ /^!/ || $0 == "") next
+        if ($0 ~ /^[#!]/ || $0 ~ /^\[Adblock/ || $0 == "") next
 
         # 前20行探测格式
         if (sample_count < 20) {
             sample_count++
             if (fmt == "" && $0 ~ /^address=\/[^\/]+\//)      fmt = "dnsmasq"
             if (fmt == "" && $0 ~ /^DOMAIN-SUFFIX,/)          fmt = "clash"
+			if (fmt == "" && $0 ~ /^\|\|[a-zA-Z0-9]/)         fmt = "adguard"
 			if (fmt == "" && $0 ~ /^(0\.0\.0\.0|127\.0\.0\.1)[[:space:]]/)
                 fmt = "hosts"
             if (fmt == "" && $0 ~ /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)+$/)
@@ -77,8 +78,21 @@ process_url() {
                 # 去掉行尾可能的注释
                 gsub(/#.*/, "", domain)
                 gsub(/[[:space:]]/, "", domain)
-                if (domain != "" && domain != "localhost")
+                if (domain ~ /^[a-zA-Z0-9]([a-zA-Z0-9.\-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$/)
                     print domain
+            }
+        } else if (fmt == "adguard") {
+            if ($0 ~ /^\|\|/) {
+                line = $0
+                # 去掉开头 ||
+                sub(/^\|\|/, "", line)
+                # 去掉 ^ 及之后所有内容（^$third-party 等修饰符）
+                sub(/\^.*/, "", line)
+                # 去掉可能残留的 $ 修饰符
+                sub(/\$.*/, "", line)
+                # 校验结果是否为合法域名
+                if (line ~ /^[a-zA-Z0-9]([a-zA-Z0-9.\-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$/)
+                    print line
             }
         } else if (fmt == "plain") {
             if ($0 ~ /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)+$/)
