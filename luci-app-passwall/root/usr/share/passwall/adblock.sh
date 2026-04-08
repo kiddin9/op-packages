@@ -57,6 +57,8 @@ process_url() {
             sample_count++
             if (fmt == "" && $0 ~ /^address=\/[^\/]+\//)      fmt = "dnsmasq"
             if (fmt == "" && $0 ~ /^DOMAIN-SUFFIX,/)          fmt = "clash"
+			if (fmt == "" && $0 ~ /^(0\.0\.0\.0|127\.0\.0\.1)[[:space:]]/)
+                fmt = "hosts"
             if (fmt == "" && $0 ~ /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)+$/)
                 fmt = "plain"
         }
@@ -68,6 +70,16 @@ process_url() {
             if (n >= 3 && a[1] == "address=") print a[2]
         } else if (fmt == "clash") {
             if (sub(/^DOMAIN-SUFFIX,/, "")) print
+        } else if (fmt == "hosts") {
+            # 0.0.0.0  domain.com  或  127.0.0.1  domain.com
+            if ($0 ~ /^(0\.0\.0\.0|127\.0\.0\.1)[[:space:]]/) {
+                domain = $2
+                # 去掉行尾可能的注释
+                gsub(/#.*/, "", domain)
+                gsub(/[[:space:]]/, "", domain)
+                if (domain != "" && domain != "localhost")
+                    print domain
+            }
         } else if (fmt == "plain") {
             if ($0 ~ /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)+$/)
                 print
