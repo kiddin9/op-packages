@@ -260,7 +260,7 @@
 +o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
 +o:value("https://cdn.jsdelivr.net/gh/neodevpro/neodevhost/domain", translate("NEO DEV HOST"))
 +o.default = "https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt"
-+o.description = translate("Support Domain and Dnsmasq format list")
++o.description = translate("Support Domain / Dnsmasq / Hosts format list")
 +o:depends("adblock",1)
 +
  s:tab("Proxy", translate("Mode"))
@@ -526,8 +526,8 @@ index 000000000000..a00fff9c79b3
 +msgid "Subscribe Rules Data"
 +msgstr "去广告规则"
 +
-+msgid "Support Domain and Dnsmasq format list"
-+msgstr "支持域名和Dnsmasq格式的过滤列表"
++msgid "Support Domain / Dnsmasq / Hosts format list"
++msgstr "支持 域名/Dnsmasq/Hosts 格式的过滤列表"
 +
 +msgid "Anti-AD Rules Subscribe"
 +msgstr "广告过滤列表URL"
