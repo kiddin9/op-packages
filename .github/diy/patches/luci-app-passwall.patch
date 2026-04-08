@@ -143,18 +143,39 @@
 
 --- a/luci-app-passwall/luasrc/controller/passwall.lua
 +++ b/luci-app-passwall/luasrc/controller/passwall.lua
-@@ -21,6 +21,7 @@ function index()
+@@ -21,6 +21,8 @@ function index()
  	entry({"admin", "services", appname, "reset_config"}, call("reset_config")).leaf = true
  	entry({"admin", "services", appname, "show"}, call("show_menu")).leaf = true
  	entry({"admin", "services", appname, "hide"}, call("hide_menu")).leaf = true
 +	entry({"admin", "services", appname, "ip"}, call('check_ip')).leaf = true
++	entry({"admin", "services", appname, "adblock_refresh"}, call('adblock_refresh')).leaf = true
  	local e
  	if uci:get(appname, "@global[0]", "hide_from_luci") ~= "1" then
  		e = entry({"admin", "services", appname}, alias("admin", "services", appname, "settings"), _("Pass Wall"), -1)
-@@ -211,6 +212,61 @@ function clear_log()
+@@ -211,6 +213,81 @@ function clear_log()
  	luci.sys.call("echo '' > /tmp/log/passwall.log")
  end
  
++function adblock_refresh()
++	local icount = 0
++
++	local status = luci.sys.call("/usr/share/passwall/adblock.sh >/dev/null 2>&1")
++	if status == 0 then
++		icount = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_host"))
++		if icount>0 then
++			retstring = tostring(math.ceil(icount))
++		else
++			retstring = "-1"
++		end
++	elseif status == 2 then
++		retstring = "0"
++	else
++		retstring = "-1"
++	end
++	luci.http.prepare_content("application/json")
++	luci.http.write_json({ret=retstring})
++end
++
 +function check_site(host, port)
 +    local nixio = require "nixio"
 +    local socket = nixio.socket("inet", "stream")
@@ -213,18 +234,45 @@
  function index_status()
  	local e = {}
  	e.dns_mode_status = luci.sys.call("netstat -apn | grep ':15353 ' >/dev/null") == 0
-diff --git a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-index 0c33ccd90f..258da6a551 100644
+
 --- a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
 +++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-@@ -953,5 +953,6 @@ footer.api = api
+@@ -547,6 +547,27 @@ function o.cfgvalue(self, section)
+ 		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
+ end
+ 
++o = s:taboption("DNS", Flag, "adblock", translate("Enable adblock"))
++o.rmempty = false
++
++local UD="" rule_count="0"
++if nixio.fs.access("/usr/share/passwall/rules/block_host") then
++UD = os.date("%Y-%m-%d %H:%M", nixio.fs.stat("/usr/share/passwall/rules/block_host").ctime)
++rule_count = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_host"))
++end
++o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Data"))
++o.rawhtml = true
++o.template = appname .. "/global/adblock_refresh"
++o.value = rule_count.." "..translate("Records")
++o.description = string.format(translate("Domain / DNSMASQ rules auto-convert").."<br/><strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
++o:depends("adblock",1)
++
++o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe"))
++o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
++o:value("https://cdn.jsdelivr.net/gh/neodevpro/neodevhost/domain", translate("NEO DEV HOST"))
++o.default = "https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt"
++o:depends("adblock",1)
++
+ s:tab("Proxy", translate("Mode"))
+ 
+ o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))
+@@ -834,5 +855,6 @@ footer.api = api
  footer.global_cfgid = global_cfgid
  footer.shunt_list = api.jsonc.stringify(shunt_list)
  m:append(footer)
 +m:append(Template(appname .. "/global/status_bottom"))
  
  return m
-diff --git a/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm b/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm
+
 new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
@@ -402,3 +450,87 @@ index 000000000000..a00fff9c79b3
  
  config global_app
  	option sing_box_file '/usr/bin/sing-box'
+
+--- a/luci-app-passwall/root/usr/share/passwall/app.sh
++++ b/luci-app-passwall/root/usr/share/passwall/app.sh
+@@ -1539,6 +1539,14 @@ start_dns() {
+ 	fi
+ }
+ 
++start_adblock() {
++	[ "$(config_t_get global adblock 0)" != "1" ] && {
++	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host
++	return
++	}
++	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
++}
++
+ start_haproxy() {
+ 	[ "$(config_t_get global_haproxy balancing_enable 0)" != "1" ] && return
+ 	haproxy_path=$TMP_PATH/haproxy
+@@ -1853,6 +1861,7 @@ start() {
+ 	export ENABLE_DEPRECATED_GEOIP=true
+ 	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
+ 	ulimit -n 65535
++	start_adblock
+ 	start_haproxy
+ 	start_socks
+ 	nftflag=0
+
+--- a/luci-app-passwall/luasrc/model/cbi/passwall/client/rule_list.lua
++++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/rule_list.lua
+@@ -152,7 +152,7 @@ o.validate = function(self, value)
+ end
+ 
+ ---- Block Hosts
+-local block_host = path .. "block_host"
++local block_host = path .. "my_block_host"
+ o = s:taboption("block_list", TextValue, "block_host", "", "<font color='red'>" .. translate("These had been joined websites will be block. Please input the domain names of websites, every line can input only one website domain. For example: twitter.com.") .. "</font>")
+ o.rows = 15
+ o.wrap = "off"
+
+--- a/luci-app-passwall/po/zh-cn/passwall.po
++++ b/luci-app-passwall/po/zh-cn/passwall.po
+@@ -1,6 +1,42 @@
+ msgid "Pass Wall"
+ msgstr "PassWall"
+ 
++msgid "Enable adblock"
++msgstr "启用广告屏蔽"
++
++msgid "Records"
++msgstr "条记录"
++
++msgid "Refresh..."
++msgstr "正在更新，请稍候.."
++
++msgid "No new data!"
++msgstr "你已经是最新数据，无需更新！"
++
++msgid "Refresh Error!"
++msgstr "更新失败！"
++
++msgid "Refresh OK!"
++msgstr "更新成功！"
++
++msgid "Total Records:"
++msgstr "新的总规则数："
++
++msgid "Refresh Data"
++msgstr "更新订阅规则"
++
++msgid "Last Update Checked"
++msgstr "上一次规则更新时间"
++
++msgid "Subscribe Rules Data"
++msgstr "去广告规则"
++
++msgid "AdGuardHome / Host / DNSMASQ / Domain rules auto-convert"
++msgstr "Domain / DNSMASQ 规则自动识别, 自动去重"
++
++msgid "Anti-AD Rules Subscribe"
++msgstr "广告过滤规则订阅 URL"
++
+ msgid "Auto"
+ msgstr "自动"
+ 
