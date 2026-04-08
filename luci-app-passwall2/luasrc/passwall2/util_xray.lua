@@ -399,25 +399,39 @@ function gen_outbound(flag, node, tag, proxy_table)
 			end
 		end
 
-		if api.datatypes.hostname(node.address) and (node.domain_resolver == "tcp" or node.domain_resolver == "udp") and node.domain_resolver_dns then
+		if api.datatypes.hostname(node.address) and node.domain_resolver and (node.domain_resolver_dns or node.domain_resolver_dns_https) then
 			local dns_tag = node_id .. "_dns"
 			local dns_proto = node.domain_resolver
-			local server_address = node.domain_resolver_dns
-			local server_port = 53
-			local split = api.split(server_address, ":")
-			if #split > 1 then
-				server_address = split[1]
-				server_port = tonumber(split[#split])
-			end
-			local config_address = server_address
-			if dns_proto == "tcp" then
-				config_address = dns_proto .. "://" .. server_address .. ":" .. server_port
+			local config_address
+			local config_port
+			if dns_proto == "https" then
+				local _a = api.parseURL(node.domain_resolver_dns_https)
+				if _a then
+					config_address = node.domain_resolver_dns_https
+					if _a.port then
+						config_port = _a.port
+					else
+						config_port = 443
+					end
+				end
+			else
+				local server_address = node.domain_resolver_dns
+				local config_port = 53
+				local split = api.split(server_address, ":")
+				if #split > 1 then
+					server_address = split[1]
+					config_port = tonumber(split[#split])
+				end
+				config_address = server_address
+				if dns_proto == "tcp" then
+					config_address = dns_proto .. "://" .. server_address .. ":" .. config_port
+				end
 			end
 			GLOBAL.DNS_SERVER[node_id] = {
 				tag = dns_tag,
 				queryStrategy = node.domain_strategy or "UseIP",
 				address = config_address,
-				port = server_port,
+				port = config_port,
 				domains = {"full:" .. node.address}
 			}
 		end
@@ -1674,7 +1688,6 @@ function gen_config(var)
 							dns_server = nil
 						end
 						if dns_server then
-							dns_server.finalQuery = true
 							dns_server.domains = value.domain
 							if value.shunt_rule_name then
 								dns_server.tag = "dns-in-" .. value.shunt_rule_name

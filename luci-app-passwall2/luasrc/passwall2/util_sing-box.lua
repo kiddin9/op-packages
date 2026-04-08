@@ -163,15 +163,31 @@ function gen_outbound(flag, node, tag, proxy_table)
 			detour = node.detour,
 		}
 
-		if api.datatypes.hostname(node.address) and (node.domain_resolver == "tcp" or node.domain_resolver == "udp") and node.domain_resolver_dns then
+		if api.datatypes.hostname(node.address) and node.domain_resolver and (node.domain_resolver_dns or node.domain_resolver_dns_https) then
 			local dns_tag = node_id .. "_dns"
 			local dns_proto = node.domain_resolver
-			local server_address = node.domain_resolver_dns
-			local server_port = 53
-			local split = api.split(server_address, ":")
-			if #split > 1 then
-				server_address = split[1]
-				server_port = tonumber(split[#split])
+			local server_address
+			local server_port
+			local server_path
+			if dns_proto == "https" then
+				local _a = api.parseURL(node.domain_resolver_dns_https)
+				if _a then
+					server_address = _a.hostname
+					if _a.port then
+						server_port = _a.port
+					else
+						server_port = 443
+					end
+					server_path = _a.pathname
+				end
+			else
+				server_address = node.domain_resolver_dns
+				server_port = 53
+				local split = api.split(server_address, ":")
+				if #split > 1 then
+					server_address = split[1]
+					server_port = tonumber(split[#split])
+				end
 			end
 			GLOBAL.DNS_SERVER[node_id] = {
 				server = {
@@ -179,6 +195,8 @@ function gen_outbound(flag, node, tag, proxy_table)
 					type = dns_proto,
 					server = server_address,
 					server_port = server_port,
+					path = server_path,
+					domain_resolver = "local",
 					detour = "direct"
 				},
 				domain = node.address

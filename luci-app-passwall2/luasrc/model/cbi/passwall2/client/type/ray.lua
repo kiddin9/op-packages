@@ -722,6 +722,7 @@ o = s:option(ListValue, _n("domain_resolver"), translate("Domain DNS Resolve"), 
 o:value("", translate("Auto"))
 o:value("tcp", "TCP")
 o:value("udp", "UDP")
+o:value("https", "HTTPS")
 
 o = s:option(Value, _n("domain_resolver_dns"), "DNS")
 o.datatype = "or(ipaddr,ipaddrport)"
@@ -730,6 +731,12 @@ o:value("223.5.5.5:53")
 o.default = o.keylist[1]
 o:depends({ [_n("domain_resolver")] = "tcp" })
 o:depends({ [_n("domain_resolver")] = "udp" })
+
+o = s:option(Value, _n("domain_resolver_dns_https"), "DNS")
+o:value("https://120.53.53.53/dns-query", "DNSPod")
+o:value("https://223.5.5.5/dns-query", "AliDNS")
+o.default = o.keylist[1]
+o:depends({ [_n("domain_resolver")] = "https" })
 
 o = s:option(ListValue, _n("domain_strategy"), translate("Domain Strategy"), translate("If is domain name, The requested domain name will be resolved to IP before connect."))
 o.default = ""

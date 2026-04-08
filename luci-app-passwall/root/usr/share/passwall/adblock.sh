@@ -60,7 +60,7 @@ process_url() {
 			if (fmt == "" && $0 ~ /^\|\|[a-zA-Z0-9]/)         fmt = "adguard"
 			if (fmt == "" && $0 ~ /^(0\.0\.0\.0|127\.0\.0\.1)[[:space:]]/)
                 fmt = "hosts"
-            if (fmt == "" && $0 ~ /^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)+$/)
+            if (fmt == "" && $0 ~ /^[a-zA-Z0-9]([a-zA-Z0-9.\-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}$/)
                 fmt = "plain"
         }
 

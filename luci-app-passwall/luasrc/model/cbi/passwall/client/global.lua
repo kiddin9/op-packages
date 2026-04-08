@@ -566,7 +566,7 @@ o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe
 o:value("https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt", translate("AdBlock DNS Filters"))
 o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
 o.default = "https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt"
-o.description = translate("Support Domain / Dnsmasq / Hosts format list")
+o.description = translate("Support Domain / Dnsmasq / AdGuardHome / Hosts format list")
 o:depends("adblock",1)
 
 s:tab("Proxy", translate("Mode"))
