@@ -2101,7 +2101,7 @@ function gen_config(var)
 			if not value["_flag_proxy_tag"] and not value.detour and value["_id"] and value.server and value.server_port and not no_run then
 				sys.call(string.format("echo '%s' >> %s", value["_id"], api.TMP_PATH .. "/direct_node_list"))
 			end
-			if not value.detour and value.type ~= "direct" then
+			if not value.detour and value.server then
 				value.detour = "direct"
 			end
 			if value.server and not api.datatypes.hostname(value.server) then
