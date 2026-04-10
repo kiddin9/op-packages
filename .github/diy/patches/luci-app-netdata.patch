@@ -1,0 +1,11 @@
+--- a/luci-app-netdata/root/etc/uci-defaults/luci-app-netdata
++++ b/luci-app-netdata/root/etc/uci-defaults/luci-app-netdata
+@@ -3,6 +3,8 @@
+ [ -f /usr/share/netdata/webcn/netdata.config ] && mv -f /usr/share/netdata/webcn/netdata.config  /etc/config/netdata
+ [ -f /usr/share/netdata/webcn/netdata.init ] && mv -f /usr/share/netdata/webcn/netdata.init /etc/init.d/netdata
+ 
++chmod +x /etc/init.d/netdata
++
+ [ -f "/etc/config/ucitrack" ] && {
+ uci -q batch <<-EOF >/dev/null
+ 	delete ucitrack.@netdata[-1]
