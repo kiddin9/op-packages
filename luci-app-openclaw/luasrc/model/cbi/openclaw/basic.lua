@@ -188,11 +188,27 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '});'
 	html[#html+1] = '}'
 
-	-- 轮询安装日志
+	-- 轮询安装日志 (智能滚动: 用户向上滚动时暂停自动滚动，滚动到底部时恢复)
 	html[#html+1] = 'var _lastLogLen=0;'
+	html[#html+1] = 'var _autoScrollEnabled=true;'  -- 智能滚动状态标志
 	html[#html+1] = 'function ocPollSetupLog(){'
 	html[#html+1] = 'if(_setupTimer)clearInterval(_setupTimer);'
 	html[#html+1] = '_lastLogLen=0;'
+	html[#html+1] = '_autoScrollEnabled=true;'  -- 初始状态: 启用自动滚动
+	html[#html+1] = 'var logEl=document.getElementById("setup-log-content");'
+	-- 绑定滚动事件监听器 (只绑定一次)
+	html[#html+1] = 'if(!logEl._scrollListenerAttached){'
+	html[#html+1] = 'logEl.addEventListener("scroll",function(){'
+	html[#html+1] = 'var el=this;'
+	html[#html+1] = 'var atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<5;'
+	html[#html+1] = 'if(atBottom){'
+	html[#html+1] = '_autoScrollEnabled=true;'  -- 滚动到底部: 恢复自动滚动
+	html[#html+1] = '}else{'
+	html[#html+1] = '_autoScrollEnabled=false;'  -- 用户向上滚动: 暂停自动滚动
+	html[#html+1] = '}'
+	html[#html+1] = '});'
+	html[#html+1] = 'logEl._scrollListenerAttached=true;'
+	html[#html+1] = '}'
 	html[#html+1] = '_setupTimer=setInterval(function(){'
 	html[#html+1] = '(new XHR()).get("' .. log_url .. '",null,function(x){'
 	html[#html+1] = 'try{'
@@ -204,7 +220,10 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'logEl.textContent+=newLog;'
 	html[#html+1] = '_lastLogLen=r.log.length;'
 	html[#html+1] = '}'
+	-- 智能滚动: 仅在自动滚动启用时滚动到底部
+	html[#html+1] = 'if(_autoScrollEnabled){'
 	html[#html+1] = 'logEl.scrollTop=logEl.scrollHeight;'
+	html[#html+1] = '}'
 	html[#html+1] = 'if(r.state==="running"){'
 	html[#html+1] = 'statusEl.innerHTML="<span style=\\"color:#7aa2f7;\\">⏳ 安装进行中...</span>";'
 	html[#html+1] = '}else if(r.state==="success"){'
@@ -295,35 +314,38 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '}catch(e){el.innerHTML="<span style=\\"color:red\\">❌ 错误</span>";}'
 	html[#html+1] = '});}'
 
-	-- 简单的 Markdown 转 HTML 函数 (用于渲染 GitHub Release Notes)
+	-- Markdown 转 HTML 函数 (优化版 - 用于渲染 GitHub Release Notes)
+	-- 特性：中英文字体栈、代码块样式、链接悬停效果、列表美化
 	html[#html+1] = 'function ocMarkdownToHtml(md){'
 	html[#html+1] = 'if(!md)return "";'
 	-- 转义 HTML 特殊字符
 	html[#html+1] = 'var html=md.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");'
-	-- 代码块 (```code```)
-	html[#html+1] = 'html=html.replace(/```(\\w*)\\n([\\s\\S]*?)```/g,function(m,lang,code){return"<pre style=\\"background:#f6f8fa;padding:10px 14px;border-radius:6px;overflow-x:auto;font-size:13px;line-height:1.5;\\"><code>"+code.trim()+"</code></pre>";});'
+	-- 代码块 (```code```) - 圆角边框 + 等宽字体栈
+	html[#html+1] = 'html=html.replace(/```(\\w*)\\n([\\s\\S]*?)```/g,function(m,lang,code){return"<pre style=\\"background:#f6f8fa;padding:12px 16px;border-radius:8px;overflow-x:auto;font-size:13px;line-height:1.6;font-family:SF Mono,Consolas,Menlo,monospace;border:1px solid #d0d7de;\\"><code>"+code.trim()+"</code></pre>";});'
 	-- 行内代码 (`code`)
-	html[#html+1] = 'html=html.replace(/`([^`]+)`/g,"<code style=\\"background:#f6f8fa;padding:2px 6px;border-radius:3px;font-size:13px;\\">$1</code>");'
-	-- 标题 (### ## #)
-	html[#html+1] = 'html=html.replace(/^### (.+)$/gm,"<h4 style=\\"margin:14px 0 8px;font-size:15px;font-weight:600;color:#24292f;\\">$1</h4>");'
-	html[#html+1] = 'html=html.replace(/^## (.+)$/gm,"<h3 style=\\"margin:16px 0 10px;font-size:16px;font-weight:600;color:#24292f;\\">$1</h3>");'
-	html[#html+1] = 'html=html.replace(/^# (.+)$/gm,"<h2 style=\\"margin:18px 0 12px;font-size:17px;font-weight:600;color:#24292f;border-bottom:1px solid #d0d7de;padding-bottom:6px;\\">$1</h2>");'
+	html[#html+1] = 'html=html.replace(/`([^`]+)`/g,"<code style=\\"background:#f6f8fa;padding:2px 6px;border-radius:4px;font-size:13px;font-family:SF Mono,Consolas,Menlo,monospace;border:1px solid #e1e4e8;\\">$1</code>");'
+	-- 标题层级 (优化比例: h1=20px, h2=17px, h3=15px, h4=14px)
+	html[#html+1] = 'html=html.replace(/^#### (.+)$/gm,"<h5 style=\\"margin:12px 0 6px;font-size:14px;font-weight:600;color:#1f2328;letter-spacing:-0.02em;\\">$1</h5>");'
+	html[#html+1] = 'html=html.replace(/^### (.+)$/gm,"<h4 style=\\"margin:14px 0 8px;font-size:15px;font-weight:600;color:#1f2328;letter-spacing:-0.02em;\\">$1</h4>");'
+	html[#html+1] = 'html=html.replace(/^## (.+)$/gm,"<h3 style=\\"margin:16px 0 10px;font-size:17px;font-weight:600;color:#1f2328;letter-spacing:-0.02em;\\">$1</h3>");'
+	html[#html+1] = 'html=html.replace(/^# (.+)$/gm,"<h2 style=\\"margin:18px 0 12px;font-size:20px;font-weight:600;color:#1f2328;border-bottom:1px solid #d0d7de;padding-bottom:8px;letter-spacing:-0.02em;\\">$1</h2>");'
 	-- 粗体和斜体
-	html[#html+1] = 'html=html.replace(/\\*\\*([^*]+)\\*\\*/g,"<strong>$1</strong>");'
+	html[#html+1] = 'html=html.replace(/\\*\\*([^*]+)\\*\\*/g,"<strong style=\\"font-weight:600;\\">$1</strong>");'
 	html[#html+1] = 'html=html.replace(/\\*([^*]+)\\*/g,"<em>$1</em>");'
-	-- 链接 [text](url)
-	html[#html+1] = 'html=html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g,"<a href=\\"$2\\" target=\\"_blank\\" rel=\\"noopener\\" style=\\"color:#0969da;text-decoration:none;\\">$1</a>");'
+	-- 链接 [text](url) - 悬停效果
+	html[#html+1] = 'html=html.replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g,"<a href=\\"$2\\" target=\\"_blank\\" rel=\\"noopener\\" style=\\"color:#0969da;text-decoration:none;border-bottom:1px solid transparent;transition:border-color 0.2s;\\">$1</a>");'
 	-- 无序列表 (- 或 *)
-	html[#html+1] = 'html=html.replace(/^[*-] (.+)$/gm,"<li style=\\"margin:6px 0 6px 20px;line-height:1.7;\\">$1</li>");'
+	html[#html+1] = 'html=html.replace(/^[*-] (.+)$/gm,"<li style=\\"margin:4px 0 4px 0;padding-left:4px;line-height:1.75;list-style-position:inside;color:#32383f;\\">$1</li>");'
 	-- 有序列表 (1. 2. 等)
-	html[#html+1] = 'html=html.replace(/^\\d+\\. (.+)$/gm,"<li style=\\"margin:6px 0 6px 20px;list-style-type:decimal;line-height:1.7;\\">$1</li>");'
+	html[#html+1] = 'html=html.replace(/^(\\d+)\\. (.+)$/gm,"<li style=\\"margin:4px 0 4px 0;padding-left:4px;line-height:1.75;list-style-position:inside;color:#32383f;\\"><span style=\\"color:#656d76;margin-right:4px;\\">$1.</span>$2</li>");'
 	-- 水平线 (--- 或 ***)
-	html[#html+1] = 'html=html.replace(/^(---|\\*\\*\\*)$/gm,"<hr style=\\"border:none;border-top:1px solid #d0d7de;margin:14px 0;\\"/>");'
-	-- 段落 (连续的非空行合并)
-	html[#html+1] = 'html=html.replace(/\\n\\n/g,"</p><p style=\\"margin:10px 0;line-height:1.7;\\">");'
+	html[#html+1] = 'html=html.replace(/^(---|\\*\\*\\*)$/gm,"<hr style=\\"border:none;border-top:1px solid #d0d7de;margin:16px 0;\\"/>");'
+	-- 段落: 连续空行合并为段落分隔 (简化处理，避免生成未闭合标签)
+	html[#html+1] = 'html=html.replace(/\\n\\n+/g,"<br/><br/>");'
 	-- 换行
 	html[#html+1] = 'html=html.replace(/\\n/g,"<br/>");'
-	html[#html+1] = 'return"<div style=\\"font-size:14px;color:#24292f;line-height:1.7;\\">"+html+"</div>";'
+	-- 外层容器 - 中英文字体栈
+	html[#html+1] = 'return"<div style=\\"font-size:14px;line-height:1.75;color:#32383f;font-family:PingFang SC,Microsoft YaHei,Noto Sans SC,sans-serif;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;\\">"+html+"</div>";'
 	html[#html+1] = '}'
 
 	-- 检测升级 (只检查插件版本，有新版本时显示更新内容)
@@ -337,29 +359,31 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'var dot=document.getElementById("update-dot");if(dot)dot.style.display="none";'
 	html[#html+1] = 'try{var r=JSON.parse(x.responseText);'
 	html[#html+1] = 'var msgs=[];'
-	-- 插件版本检查
+	-- 版本状态徽章样式
+	html[#html+1] = 'var badgeNew="display:inline-flex;align-items:center;padding:3px 10px;border-radius:16px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#fff7e6 0%,#ffe7ba 100%);color:#9a6700;border:1px solid #f5a623;";'
+	html[#html+1] = 'var badgeLatest="display:inline-flex;align-items:center;padding:3px 10px;border-radius:16px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#e6f7e6 0%,#c8f7c8 100%);color:#1a7f1a;border:1px solid #28a745;";'
+	html[#html+1] = 'var badgeUnknown="display:inline-flex;align-items:center;padding:3px 10px;border-radius:16px;font-size:12px;font-weight:600;background:#f6f8fa;color:#656d76;border:1px solid #d0d7de;";'
+	html[#html+1] = 'var verBadge="display:inline-block;padding:2px 8px;border-radius:4px;font-size:12px;font-family:SF Mono,Consolas,Menlo,monospace;background:#e1e4e8;color:#24292f;margin-left:4px;";'
+	-- 插件版本检查 (带渐变徽章)
 	html[#html+1] = 'if(r.plugin_current){'
-	html[#html+1] = 'if(r.plugin_has_update){msgs.push("<span style=\\"color:#e36209\\">🔌 插件: v"+r.plugin_current+" → v"+r.plugin_latest+" (有新版本)</span>");}'
-	html[#html+1] = 'else if(r.plugin_latest){msgs.push("<span style=\\"color:green\\">✅ 插件: v"+r.plugin_current+" (已是最新)</span>");}'
-	html[#html+1] = 'else{msgs.push("<span style=\\"color:#999\\">🔌 插件: v"+r.plugin_current+" (无法检查最新版本)</span>");}'
+	html[#html+1] = 'if(r.plugin_has_update){msgs.push("<span style=\\""+badgeNew+"\\">🔌 有新版本</span> v"+r.plugin_current+" → <span style=\\""+verBadge+"\\">v"+r.plugin_latest+"</span>");}'
+	html[#html+1] = 'else if(r.plugin_latest){msgs.push("<span style=\\""+badgeLatest+"\\">✅ 已是最新</span> v"+r.plugin_current);}'
+	html[#html+1] = 'else{msgs.push("<span style=\\""+badgeUnknown+"\\">🔌 无法检查</span> v"+r.plugin_current);}'
 	html[#html+1] = '}'
-	html[#html+1] = 'if(msgs.length===0)msgs.push("<span style=\\"color:#999\\">无法获取版本信息</span>");'
+	html[#html+1] = 'if(msgs.length===0)msgs.push("<span style=\\""+badgeUnknown+"\\">无法获取版本信息</span>");'
 	html[#html+1] = 'el.innerHTML=msgs.join("<br/>");'
-	-- 插件有更新时: release notes + 一键升级按钮 + GitHub 下载链接
+	-- 插件有更新时: 卡片式更新日志 + 操作按钮
 	html[#html+1] = 'if(r.plugin_has_update){'
 	html[#html+1] = 'act.style.display="block";'
 	html[#html+1] = 'window._pluginLatestVer=r.plugin_latest;'
 	html[#html+1] = 'var notesHtml="";'
 	html[#html+1] = 'if(r.release_notes){'
 	html[#html+1] = 'var rendered=ocMarkdownToHtml(r.release_notes);'
-	html[#html+1] = 'notesHtml=\'<div style="margin:10px 0 8px;padding:12px 16px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:8px;max-height:400px;overflow-y:auto;">\''
-	html[#html+1] = '+\'<div style="font-size:13px;font-weight:600;color:#24292f;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #d0d7de;">📋 v\'+r.plugin_latest+\' 更新内容</div>\''
-	html[#html+1] = '+rendered'
-	html[#html+1] = '+\'</div>\';'
+	-- 卡片式容器: 圆角边框 + 微阴影 + 版本标题栏
+	html[#html+1] = 'notesHtml="<div style=\\"margin:12px 0;border:1px solid #d0d7de;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);\\"><div style=\\"background:linear-gradient(135deg,#f6f8fa 0%,#ffffff 100%);padding:12px 16px;border-bottom:1px solid #d0d7de;display:flex;align-items:center;justify-content:space-between;\\"><span style=\\"font-size:14px;font-weight:600;color:#24292f;\\">📋 更新日志</span><span style=\\"display:inline-flex;align-items:center;padding:2px 10px;border-radius:12px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%);color:#1565c0;border:1px solid #64b5f6;\\">v"+r.plugin_latest+"</span></div><div style=\\"padding:16px;max-height:450px;overflow-y:auto;background:#fff;\\">"+rendered+"</div></div>";'
 	html[#html+1] = '}'
-	html[#html+1] = 'act.innerHTML=notesHtml'
-	html[#html+1] = '+\'<button class="btn cbi-button cbi-button-apply" type="button" onclick="ocPluginUpgrade()" id="btn-plugin-upgrade">⬆️ 升级插件 v\'+r.plugin_latest+\'</button>\''
-	html[#html+1] = '+\' <a href="https://github.com/10000ge10000/luci-app-openclaw/releases/latest" target="_blank" rel="noopener" class="btn cbi-button cbi-button-action" style="text-decoration:none;">📥 手动下载</a>\';'
+	-- 操作按钮区: 分组设计
+	html[#html+1] = 'act.innerHTML=notesHtml+"<div style=\\"margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;\\"><button class=\\"btn cbi-button cbi-button-apply\\" type=\\"button\\" onclick=\\"ocPluginUpgrade()\\" id=\\"btn-plugin-upgrade\\" style=\\"box-shadow:0 2px 4px rgba(0,0,0,0.1);\\">⬆️ 一键升级 v"+r.plugin_latest+"</button><a href=\\"https://github.com/10000ge10000/luci-app-openclaw/releases/latest\\" target=\\"_blank\\" rel=\\"noopener\\" class=\\"btn cbi-button cbi-button-action\\" style=\\"text-decoration:none;\\">📥 GitHub 下载</a></div>";'
 	html[#html+1] = '}'
 	html[#html+1] = '}catch(e){el.innerHTML="<span style=\\"color:red\\">❌ 检测失败</span>";}'
 	html[#html+1] = '});}'
@@ -390,10 +414,12 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = '}'
 
 	-- 轮询插件升级日志 (带容错: 安装时文件被替换可能导致API暂时不可用)
+	-- 复用安装日志的智能滚动机制
 	html[#html+1] = 'var _pluginPollErrors=0;'
 	html[#html+1] = 'function ocPollPluginUpgradeLog(){'
 	html[#html+1] = 'if(_pluginUpgradeTimer)clearInterval(_pluginUpgradeTimer);'
 	html[#html+1] = '_pluginPollErrors=0;'
+	html[#html+1] = '_autoScrollEnabled=true;'  -- 重置: 启用自动滚动
 	html[#html+1] = '_pluginUpgradeTimer=setInterval(function(){'
 	html[#html+1] = '(new XHR()).get("' .. plugin_upgrade_log_url .. '",null,function(x){'
 	html[#html+1] = 'try{'
@@ -402,7 +428,10 @@ act.cfgvalue = function(self, section)
 	html[#html+1] = 'var logEl=document.getElementById("setup-log-content");'
 	html[#html+1] = 'var statusEl=document.getElementById("setup-log-status");'
 	html[#html+1] = 'if(r.log)logEl.textContent=r.log;'
+	-- 智能滚动: 仅在自动滚动启用时滚动到底部
+	html[#html+1] = 'if(_autoScrollEnabled){'
 	html[#html+1] = 'logEl.scrollTop=logEl.scrollHeight;'
+	html[#html+1] = '}'
 	html[#html+1] = 'if(r.state==="running"){'
 	html[#html+1] = 'statusEl.innerHTML="<span style=\\"color:#7aa2f7;\\">⏳ 插件升级中...</span>";'
 	html[#html+1] = '}else if(r.state==="success"){'

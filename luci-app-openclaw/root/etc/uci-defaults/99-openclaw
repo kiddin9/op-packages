@@ -90,4 +90,16 @@ if [ -z "$CURRENT_PTY_TOKEN" ]; then
 	uci commit openclaw
 fi
 
+# 启用服务自启动 (创建 /etc/rc.d/S99openclaw 符号链接)
+# 这一步确保安装/升级后服务能随系统启动
+# 注意: 仅当 UCI 中 enabled='1' 或尚未设置 enabled 时才启用
+# 如果用户明确设置 enabled='0' (禁用)，则尊重用户选择
+if [ -x /etc/init.d/openclaw ]; then
+	OC_ENABLED=$(uci -q get openclaw.main.enabled)
+	# enabled='1' 或未设置时启用自启动；enabled='0' 时不操作
+	if [ "$OC_ENABLED" != "0" ]; then
+		/etc/init.d/openclaw enable 2>/dev/null
+	fi
+fi
+
 exit 0

@@ -30,15 +30,19 @@
 无需 SDK，适用于已安装好的系统。
 
 ```bash
-wget https://github.com/10000ge10000/luci-app-openclaw/releases/latest/download/luci-app-openclaw.run
-sh luci-app-openclaw.run
+# 下载最新版本（自动获取版本号）
+VER=$(curl -sI "https://github.com/10000ge10000/luci-app-openclaw/releases/latest" 2>/dev/null | grep -i "location:" | sed 's/.*tag\/v\{0,1\}//' | tr -d '\r\n')
+wget "https://github.com/10000ge10000/luci-app-openclaw/releases/download/v${VER}/luci-app-openclaw_${VER}.run"
+sh "luci-app-openclaw_${VER}.run"
 ```
 
 ### 方式二：.ipk 安装
 
 ```bash
-wget https://github.com/10000ge10000/luci-app-openclaw/releases/latest/download/luci-app-openclaw.ipk
-opkg install luci-app-openclaw.ipk
+# 下载最新版本（自动获取版本号）
+VER=$(curl -sI "https://github.com/10000ge10000/luci-app-openclaw/releases/latest" 2>/dev/null | grep -i "location:" | sed 's/.*tag\/v\{0,1\}//' | tr -d '\r\n')
+wget "https://github.com/10000ge10000/luci-app-openclaw/releases/download/v${VER}/luci-app-openclaw_${VER}-1_all.ipk"
+opkg install "luci-app-openclaw_${VER}-1_all.ipk"
 ```
 
 ### 方式三：集成到固件编译
@@ -70,23 +74,6 @@ git clone https://github.com/10000ge10000/luci-app-openclaw.git package/luci-app
 make defconfig
 make package/luci-app-openclaw/compile V=s
 find bin/ -name "luci-app-openclaw*.ipk"
-```
-
-### 方式四：手动安装
-
-```bash
-git clone https://github.com/10000ge10000/luci-app-openclaw.git
-cd luci-app-openclaw
-
-cp -r root/* /
-mkdir -p /usr/lib/lua/luci/controller /usr/lib/lua/luci/model/cbi/openclaw /usr/lib/lua/luci/view/openclaw
-cp luasrc/controller/openclaw.lua /usr/lib/lua/luci/controller/
-cp luasrc/model/cbi/openclaw/*.lua /usr/lib/lua/luci/model/cbi/openclaw/
-cp luasrc/view/openclaw/*.htm /usr/lib/lua/luci/view/openclaw/
-
-chmod +x /etc/init.d/openclaw /usr/bin/openclaw-env /usr/share/openclaw/oc-config.sh
-sh /etc/uci-defaults/99-openclaw
-rm -f /tmp/luci-indexcache /tmp/luci-modulecache/*
 ```
 
 
