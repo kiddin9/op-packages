@@ -462,7 +462,7 @@ _ensure_port_free() {
 		else
 			netstat -tulnp 2>/dev/null | grep -q ":${p} " || return 0
 		fi
-		usleep 200000 2>/dev/null || sleep 0.2
+		usleep 200000 2>/dev/null || sleep 1
 		i=$((i + 1))
 	done
 	
@@ -573,7 +573,7 @@ while [ $wait_count -lt $max_wait ]; do
 	else
 		netstat -tulnp 2>/dev/null | grep -q ":${port} " || break
 	fi
-	usleep 200000 2>/dev/null || sleep 0.2
+	usleep 200000 2>/dev/null || sleep 1
 	wait_count=$((wait_count + 1))
 done
 
@@ -588,7 +588,7 @@ if [ $wait_count -ge $max_wait ]; then
         if [ -n "$port_pid" ]; then
                 kill -9 "$port_pid" 2>/dev/null
                 # 等待内核回收 (缩短到 0.5 秒)
-                usleep 500000 2>/dev/null || sleep 0.5
+                usleep 500000 2>/dev/null || sleep 1
         fi
 fi
 
@@ -620,7 +620,7 @@ procd_add_reload_trigger "openclaw"
 reload_service() {
 stop
 # v2026.3.14: stop_service 已优化等待逻辑，缩短额外等待时间
-usleep 300000 2>/dev/null || sleep 0.3
+usleep 300000 2>/dev/null || sleep 1
 start
 }
 
@@ -664,14 +664,14 @@ while [ $wait_count -lt 10 ]; do
 	else
 		netstat -tulnp 2>/dev/null | grep -q ":${port} " || break
 	fi
-	usleep 200000 2>/dev/null || sleep 0.2
+	usleep 200000 2>/dev/null || sleep 1
 	wait_count=$((wait_count + 1))
 done
 
 # 5) 如果端口仍被占用，强制 SIGKILL
 if [ $wait_count -ge 10 ]; then
 	[ -n "$port_pid" ] && kill -9 "$port_pid" 2>/dev/null
-	usleep 300000 2>/dev/null || sleep 0.3
+	usleep 300000 2>/dev/null || sleep 1
 fi
 
 # 6) 如果 procd 中没有 gateway 服务注册，调用 start
