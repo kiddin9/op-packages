@@ -216,7 +216,7 @@ if(d.plugins.installs){
 			const match=inst.installPath.match(/\/([^\/]+)\/?$/);
 			if(match&&match[1]&&!d.plugins.allow.includes(match[1])){
 				d.plugins.allow.push(match[1]);
-			}
+		}
 		}
 	});
 }
@@ -284,27 +284,27 @@ fi
 						if(!d.plugins.allow.includes(newName)){
 							d.plugins.allow[idx]=newName;
 							modified=true;
-						}else{
+					}else{
 							d.plugins.allow.splice(idx,1);
 							modified=true;
-						}
 					}
 				}
+			}
 				
 				// 同时修复 plugins.entries 中的键名
 				if(d.plugins.entries && d.plugins.entries['openclaw-qqbot']){
 					if(!d.plugins.entries['@tencent-connect/openclaw-qqbot']){
 						d.plugins.entries['@tencent-connect/openclaw-qqbot']=d.plugins.entries['openclaw-qqbot'];
-					}
+				}
 					delete d.plugins.entries['openclaw-qqbot'];
 					modified=true;
-				}
+			}
 				
 				if(modified){
 					fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
 					console.log('FIXED');
-				}
-			}catch(e){}
+			}
+		}catch(e){}
 		" 2>/dev/null && chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null
 	}
 	fix_plugin_config
@@ -388,20 +388,42 @@ fs.writeFileSync(f, JSON.stringify(d, null, 2));
 	}
 	_ensure_critical_config
 
+		# v2026.4.10: doctor --fix 后再次同步 token (关键!)
+		# doctor --fix 可能修改了 JSON 中的 token，必须同步回 UCI
+		# 否则 LuCI 显示的 token 与 Gateway 实际使用的 token 不一致
+		_sync_token_after_doctor() {
+			[ ! -f "$CONFIG_FILE" ] && return
+			[ ! -x "$NODE_BIN" ] && return
+			local json_token uci_token
+			json_token=$("$NODE_BIN" -e "
+try{const d=JSON.parse(require('fs').readFileSync('${CONFIG_FILE}','utf8'));
+if(d.gateway&&d.gateway.auth&&d.gateway.auth.token)process.stdout.write(d.gateway.auth.token);}catch(e){}
+			" 2>/dev/null)
+			uci_token=$(uci -q get openclaw.main.token || echo "")
+
+			# JSON 有 token 且与 UCI 不同时，以 JSON 为准更新 UCI
+			if [ -n "$json_token" ] && [ "$json_token" != "$uci_token" ]; then
+				uci set openclaw.main.token="$json_token"
+				uci commit openclaw 2>/dev/null
+				logger -t openclaw "Token 同步 (doctor 后): JSON -> UCI"
+			fi
+		}
+		_sync_token_after_doctor
+
 		# v2026.4.10: 最终权限修复 - 确保 Gateway 启动前所有数据目录权限正确
 		# doctor --fix 或 _ensure_critical_config 可能创建新的目录/文件
 		# 关键: agents 目录下的 agent 子目录必须可被 openclaw 用户写入
-		find "${OC_STATE_DIR}" -user root -type d -exec chown openclaw:openclaw {} \; 2>/dev/null || true
-		find "${OC_STATE_DIR}" -user root -type f -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+		find "${OC_DATA}/.openclaw" -user root -type d -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+		find "${OC_DATA}/.openclaw" -user root -type f -exec chown openclaw:openclaw {} \; 2>/dev/null || true
 		# 特别确保 agents/main/agent 目录权限 (模型配置写入目录)
-		local agent_dir="${OC_STATE_DIR}/agents/main/agent"
+		local agent_dir="${OC_DATA}/.openclaw/agents/main/agent"
 		if [ -d "$agent_dir" ]; then
 			chown openclaw:openclaw "$agent_dir" 2>/dev/null || true
 			chmod 755 "$agent_dir" 2>/dev/null || true
 		fi
 		# extensions 目录除外 - 必须保持 root 权限 (OpenClaw 安全要求)
-		if [ -d "${OC_STATE_DIR}/extensions" ]; then
-			chown -R root:root "${OC_STATE_DIR}/extensions" 2>/dev/null || true
+		if [ -d "${OC_DATA}/.openclaw/extensions" ]; then
+			chown -R root:root "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
 		fi
 
 	# Patch iframe 安全头，允许 LuCI 嵌入

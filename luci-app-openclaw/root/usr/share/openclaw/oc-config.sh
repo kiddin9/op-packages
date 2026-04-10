@@ -74,6 +74,7 @@ oc_cmd() {
 		"$NODE_BIN" "$OC_ENTRY" "$@" 2>&1
 		local rc=$?
 		# 修复权限: oc_cmd 以 root 运行但配置文件应属于 openclaw 用户
+                find "$OC_STATE_DIR" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
 		chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 		chown openclaw:openclaw "${CONFIG_FILE}.bak" 2>/dev/null || true
 		return $rc
@@ -2495,6 +2496,7 @@ launch_interactive_menu() {
 	"$NODE_BIN" "$OC_INTERACTIVE" 2>&1
 	local rc=$?
 
+        find "$OC_STATE_DIR" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
 	# 返回后刷新配置权限
 	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 	return $rc
@@ -2512,6 +2514,7 @@ launch_interactive_model_config() {
 	"$NODE_BIN" "$OC_INTERACTIVE" model 2>&1
 	local rc=$?
 
+        find "$OC_STATE_DIR" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
 	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 	return $rc
 }

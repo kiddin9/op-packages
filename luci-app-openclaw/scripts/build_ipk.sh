@@ -68,7 +68,7 @@ mkdir -p "$DATA_DIR/usr/share/openclaw"
 cp "$PKG_DIR/VERSION" "$DATA_DIR/usr/share/openclaw/VERSION"
 cp "$PKG_DIR/root/usr/share/openclaw/oc-config.sh" "$DATA_DIR/usr/share/openclaw/"
 chmod +x "$DATA_DIR/usr/share/openclaw/oc-config.sh"
-cp "$PKG_DIR/root/usr/share/openclaw/web-pty.js" "$DATA_DIR/usr/share/openclaw/"
+cp "$PKG_DIR/root/usr/share/openclaw/"*.js "$DATA_DIR/usr/share/openclaw/"
 
 # Web PTY UI
 cp -r "$PKG_DIR/root/usr/share/openclaw/ui" "$DATA_DIR/usr/share/openclaw/"
