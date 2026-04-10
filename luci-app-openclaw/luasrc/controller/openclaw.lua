@@ -1196,23 +1196,31 @@ function action_wechat_install()
 	-- 在启动安装前，确保网关端口可用（自动清理残留 gateway 进程）
 	local port = uci:get("openclaw", "main", "port") or "18789"
 	ensure_port_free(port)
-        local install_cmd = string.format(
-                "( " ..
-                "echo '开始安装微信插件...' > /tmp/openclaw-wechat-install.log; " ..
-                "echo '安装路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
-                "echo 'npx 路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
-                -- 修复 npm 缓存目录权限 (避免 root 创建的缓存导致 openclaw 用户写入失败)
-                "chown -R openclaw:openclaw %s/.npm 2>/dev/null; " ..
-                "cd %s && " ..
-                "su -s /bin/sh openclaw -c 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw " ..
-                "PATH=%s/node/bin:%s/global/bin:$PATH " ..
-                "%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
-                "RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
-                "if [ $RC -eq 0 ]; then echo '✅ 微信插件安装成功！' >> /tmp/openclaw-wechat-install.log; " ..
-                "else echo '❌ 安装失败 (exit: '$RC')' >> /tmp/openclaw-wechat-install.log; fi " ..
-                ") & echo $! > /tmp/openclaw-wechat-install.pid",
-                install_path, npx_bin, oc_data, install_path, oc_data, oc_data, oc_data, install_path, install_path, npx_bin
-        )	sys.exec(install_cmd)
+	-- 微信插件安装目录路径 (用于安装后权限修复)
+	local wechat_ext_dir = install_path .. "/data/.openclaw/extensions/openclaw-weixin"
+	local install_cmd = string.format(
+		"( " ..
+		"echo '开始安装微信插件...' > /tmp/openclaw-wechat-install.log; " ..
+		"echo '安装路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
+		"echo 'npx 路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
+		-- 修复 npm 缓存目录权限 (避免 root 创建的缓存导致 openclaw 用户写入失败)
+		"chown -R openclaw:openclaw %s/.npm 2>/dev/null; " ..
+		"cd %s && " ..
+		"su -s /bin/sh openclaw -c 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw " ..
+		"PATH=%s/node/bin:%s/global/bin:$PATH " ..
+		"%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
+		"RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
+		-- 关键修复: 安装完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
+		-- 原因: npx/npm 以 root 身份创建目录，默认权限 700 导致其他用户无法读取
+		-- 注意: 保持 root:root 属主 (OpenClaw v2026.4.9+ 安全要求)，仅修复权限模式
+		"chown -R root:root %s 2>/dev/null; chmod -R 755 %s 2>/dev/null; " ..
+		"if [ $RC -eq 0 ]; then echo '✅ 微信插件安装成功！' >> /tmp/openclaw-wechat-install.log; " ..
+		"else echo '❌ 安装失败 (exit: '$RC')' >> /tmp/openclaw-wechat-install.log; fi " ..
+		") & echo $! > /tmp/openclaw-wechat-install.pid",
+		install_path, npx_bin, oc_data, install_path, oc_data, oc_data, oc_data, install_path, install_path, npx_bin,
+		wechat_ext_dir, wechat_ext_dir
+	)
+	sys.exec(install_cmd)
 
 	http.prepare_content("application/json")
 	http.write_json({ status = "ok", message = "微信插件安装已在后台启动..." })
@@ -1529,28 +1537,34 @@ function action_wechat_upgrade_plugin()
 		return
 	end
 
-        -- 后台执行升级 (其实就是重新安装最新版)
+	-- 后台执行升级 (其实就是重新安装最新版)
 	-- 在启动升级前，确保网关端口可用（自动清理残留 gateway 进程）
 	local port = uci:get("openclaw", "main", "port") or "18789"
 	ensure_port_free(port)
-
+	-- 微信插件安装目录路径 (用于升级后权限修复)
+	local wechat_ext_dir = install_path .. "/data/.openclaw/extensions/openclaw-weixin"
 	local upgrade_cmd = string.format(
-                "( " ..
-                "echo '正在升级微信插件...' > /tmp/openclaw-wechat-install.log; " ..
-                "echo '安装路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
-                "echo 'npx 路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
-                -- 修复 npm 缓存目录权限 (避免 root 创建的缓存导致 openclaw 用户写入失败)
-                "chown -R openclaw:openclaw %s/.npm 2>/dev/null; " ..
-                "cd %s && " ..
-                "su -s /bin/sh openclaw -c 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw " ..
-                "PATH=%s/node/bin:%s/global/bin:$PATH " ..
-                "%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
-                "RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
-                "if [ $RC -eq 0 ]; then echo '✅ 微信插件升级成功！' >> /tmp/openclaw-wechat-install.log; " ..
-                "else echo '❌ 升级失败 (exit: '$RC')' >> /tmp/openclaw-wechat-install.log; fi " ..
-                ") & echo $! > /tmp/openclaw-wechat-install.pid",
-                install_path, npx_bin, oc_data, install_path, oc_data, oc_data, oc_data, install_path, install_path, npx_bin
-        )	sys.exec(upgrade_cmd)
+		"( " ..
+		"echo '正在升级微信插件...' > /tmp/openclaw-wechat-install.log; " ..
+		"echo '安装路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
+		"echo 'npx 路径: %s' >> /tmp/openclaw-wechat-install.log; " ..
+		-- 修复 npm 缓存目录权限 (避免 root 创建的缓存导致 openclaw 用户写入失败)
+		"chown -R openclaw:openclaw %s/.npm 2>/dev/null; " ..
+		"cd %s && " ..
+		"su -s /bin/sh openclaw -c 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw " ..
+		"PATH=%s/node/bin:%s/global/bin:$PATH " ..
+		"%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
+		"RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
+		-- 关键修复: 升级完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
+		-- 注意: 保持 root:root 属主 (OpenClaw v2026.4.9+ 安全要求)，仅修复权限模式
+		"chown -R root:root %s 2>/dev/null; chmod -R 755 %s 2>/dev/null; " ..
+		"if [ $RC -eq 0 ]; then echo '✅ 微信插件升级成功！' >> /tmp/openclaw-wechat-install.log; " ..
+		"else echo '❌ 升级失败 (exit: '$RC')' >> /tmp/openclaw-wechat-install.log; fi " ..
+		") & echo $! > /tmp/openclaw-wechat-install.pid",
+		install_path, npx_bin, oc_data, install_path, oc_data, oc_data, oc_data, install_path, install_path, npx_bin,
+		wechat_ext_dir, wechat_ext_dir
+	)
+	sys.exec(upgrade_cmd)
 
 	http.prepare_content("application/json")
 	http.write_json({ status = "ok", message = "微信插件升级已在后台启动..." })

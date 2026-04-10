@@ -1474,6 +1474,7 @@ configure_qq() {
 				echo -e "  ${YELLOW}⚠️  qqbot 插件已安装但未能正常加载${NC}"
 				echo -e "  ${CYAN}正在修复插件目录权限...${NC}"
 				chown -R root:root "$qqbot_ext_dir" 2>/dev/null
+				chmod -R 755 "$qqbot_ext_dir" 2>/dev/null
 				echo -e "  ${GREEN}✅ 权限已修复，重启 Gateway 后生效${NC}"
 				plugin_installed=1
 			fi
@@ -1482,6 +1483,7 @@ configure_qq() {
 			echo -e "  ${YELLOW}⚠️  qqbot 插件目录存在但未能加载${NC}"
 			echo -e "  ${CYAN}正在修复插件目录权限...${NC}"
 			chown -R root:root "$qqbot_ext_dir" 2>/dev/null
+			chmod -R 755 "$qqbot_ext_dir" 2>/dev/null
 			echo -e "  ${GREEN}✅ 权限已修复${NC}"
 			plugin_installed=1
 		fi
@@ -1500,8 +1502,10 @@ configure_qq() {
 			local install_rc=$?
 
 			# 关键: 安装后立即修复插件目录权限为 root (OpenClaw 安全策略要求)
+			# 同时修复权限模式为 755，确保 Gateway 可读取插件
 			if [ -d "$qqbot_ext_dir" ]; then
 				chown -R root:root "$qqbot_ext_dir" 2>/dev/null
+				chmod -R 755 "$qqbot_ext_dir" 2>/dev/null
 			fi
 
 			if [ $install_rc -eq 0 ]; then

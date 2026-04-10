@@ -314,25 +314,50 @@ fi
 
 	# v2026.4.9: 修复插件目录权限 (OpenClaw 要求插件目录属主为 root)
 	# 详见: https://github.com/nicepkg/openclaw/releases/tag/v2026.4.9
+	# v2026.4.10 补充: 同时修复权限模式为 755，确保 Gateway 可读取插件
+	# 原因: npm/npx 以 root 创建目录时默认权限 700，其他用户无法读取
 	local ext_dir="${OC_DATA}/.openclaw/extensions"
 	if [ -d "$ext_dir" ]; then
 		chown -R root:root "$ext_dir" 2>/dev/null || true
+		chmod -R 755 "$ext_dir" 2>/dev/null || true
 	fi
 
 	# v2026.4.x: 清理 jiti 缓存目录 (修复微信插件加载权限问题)
 	# jiti 编译 TypeScript 时会在 /tmp/jiti 创建缓存，如果由 root 创建则 openclaw 用户无法写入
 	rm -rf /tmp/jiti 2>/dev/null || true
 
-	# v2026.4.5: 执行 OpenClaw 官方配置迁移工具
-	# 自动迁移遗留配置到新版本格式
+	# v2026.4.10: 优化配置迁移 - 只在版本变更时运行 doctor --fix
+	# 原因: doctor --fix 耗时 ~50 秒，每次重启都运行严重影响启动速度
+	# 策略: 使用标记文件记录已运行的版本，只在版本变化时才执行迁移
 	_run_config_migration() {
 		local oc_entry="$1"
 		[ -z "$oc_entry" ] && return
-		logger -t openclaw "执行配置迁移 (doctor --fix)..."
-		OPENCLAW_HOME="$OC_DATA" OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
-			"$NODE_BIN" "$oc_entry" doctor --fix 2>/dev/null && \
-			logger -t openclaw "配置迁移完成" || \
-			logger -t openclaw "配置迁移失败，请手动检查"
+
+		# 获取当前 OpenClaw 版本号 (只取数字版本，如 2026.4.9)
+		local current_ver=""
+		current_ver=$("$NODE_BIN" "$oc_entry" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+		[ -z "$current_ver" ] && current_ver="unknown"
+
+		# 检查标记文件
+		local version_marker="${OC_DATA}/.openclaw/.doctor_ran_version"
+		local last_ver=""
+		if [ -f "$version_marker" ]; then
+			last_ver=$(cat "$version_marker" 2>/dev/null | tr -d '[:space:]')
+		fi
+
+		# 只在版本变化时才运行 doctor --fix
+		if [ "$current_ver" != "$last_ver" ]; then
+			logger -t openclaw "检测到版本变更 ($last_ver -> $current_ver)，执行配置迁移 (doctor --fix)..."
+			OPENCLAW_HOME="$OC_DATA" OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
+				"$NODE_BIN" "$oc_entry" doctor --fix 2>/dev/null && \
+				logger -t openclaw "配置迁移完成" || \
+				logger -t openclaw "配置迁移失败，请手动检查"
+			# 更新标记文件
+			echo "$current_ver" > "$version_marker" 2>/dev/null
+			chown openclaw:openclaw "$version_marker" 2>/dev/null || true
+		else
+			logger -t openclaw "版本未变化 ($current_ver)，跳过 doctor --fix"
+		fi
 	}
 	_run_config_migration "$oc_entry"
 
@@ -422,8 +447,10 @@ if(d.gateway&&d.gateway.auth&&d.gateway.auth.token)process.stdout.write(d.gatewa
 			chmod 755 "$agent_dir" 2>/dev/null || true
 		fi
 		# extensions 目录除外 - 必须保持 root 权限 (OpenClaw 安全要求)
+		# 同时修复权限模式为 755，确保 Gateway 可读取插件
 		if [ -d "${OC_DATA}/.openclaw/extensions" ]; then
 			chown -R root:root "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
+			chmod -R 755 "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
 		fi
 
 	# Patch iframe 安全头，允许 LuCI 嵌入
