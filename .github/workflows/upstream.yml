@@ -135,7 +135,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-kucat-config
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
         git_clone https://github.com/sirpdboy/luci-app-eqosplus
-        # git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
+        git_clone https://github.com/sirpdboy/luci-app-netdata lucinetdata && mv lucinetdata/luci-app-netdata ./;rm -rf lucinetdata
         ) &
         (
         git_clone https://github.com/destan19/OpenAppFilter && mvdir OpenAppFilter
@@ -249,7 +249,6 @@ jobs:
         git_clone https://github.com/muink/luci-app-tinyfilemanager
         git_clone https://github.com/muink/openwrt-Toolkit
         git_clone https://github.com/muink/openwrt-fastfetch
-        git_clone https://github.com/muink/luci-app-netdata
         ) &
         (
         git_clone https://github.com/gSpotx2f/luci-app-temp-status
