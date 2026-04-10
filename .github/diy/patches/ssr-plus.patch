@@ -91,7 +91,7 @@
 
 --- a/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
 +++ b/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
-@@ -168,5 +168,6 @@ if is_finded("chinadns-ng") then
+@@ -293,4 +293,5 @@ if is_finded("chinadns-ng") then
  	end
  end
  
