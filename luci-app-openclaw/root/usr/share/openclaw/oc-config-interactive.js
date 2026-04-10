@@ -95,6 +95,7 @@ function writeConfig(config) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
   try {
     execSync(`chown openclaw:openclaw "${CONFIG_FILE}"`, { stdio: 'ignore' });
+    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true`, { stdio: 'ignore' });
   } catch {}
 }
 
@@ -221,6 +222,7 @@ function authSetApikey(provider, apiKey, profileId) {
   fs.writeFileSync(authFile, JSON.stringify(authData, null, 2));
   try {
     execSync(`chown openclaw:openclaw "${authFile}"`, { stdio: 'ignore' });
+    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true`, { stdio: 'ignore' });
   } catch {}
 }
 

@@ -71,7 +71,7 @@ install_files() {
 	cp "$PKG_DIR/VERSION" "$dest/usr/share/openclaw/VERSION"
 	cp "$PKG_DIR/root/usr/share/openclaw/oc-config.sh" "$dest/usr/share/openclaw/"
 	chmod +x "$dest/usr/share/openclaw/oc-config.sh"
-	cp "$PKG_DIR/root/usr/share/openclaw/web-pty.js" "$dest/usr/share/openclaw/"
+	cp "$PKG_DIR/root/usr/share/openclaw/"*.js "$dest/usr/share/openclaw/"
 
 	# Web PTY UI (recursive copy)
 	cp -r "$PKG_DIR/root/usr/share/openclaw/ui" "$dest/usr/share/openclaw/"

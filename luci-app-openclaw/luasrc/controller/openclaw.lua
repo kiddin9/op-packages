@@ -513,7 +513,15 @@ function action_uninstall()
 	-- 设置 UCI enabled=0
 	sys.exec("uci set openclaw.main.enabled=0; uci commit openclaw 2>/dev/null")
 	-- 删除 Node.js + OpenClaw 运行环境 (包含所有插件: qqbot, 飞书等)
-	sys.exec("rm -rf " .. install_path)
+        -- 尝试先解绑可能挂载的目录
+        sys.exec("umount " .. install_path .. " 2>/dev/null")
+        -- 强制赋予最大权限避免 EACCES 阻挡
+        sys.exec("chmod -R 777 " .. install_path .. " /root/.openclaw 2>/dev/null")
+        -- 删除 Node.js + OpenClaw 运行环境
+        sys.exec("rm -rf " .. install_path)
+        -- OverlayFS 兼容: 确保 upper 层的残留也被暴力清空
+        sys.exec("[ -d /overlay/upper" .. install_path .. " ] && rm -rf /overlay/upper" .. install_path .. " 2>/dev/null")
+
 	-- 清理旧数据迁移后可能残留的目录
 	sys.exec("rm -rf /root/.openclaw 2>/dev/null")
 	-- 清理临时文件
