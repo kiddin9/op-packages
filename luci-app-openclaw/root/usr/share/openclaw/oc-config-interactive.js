@@ -90,12 +90,12 @@ function readConfig() {
 function writeConfig(config) {
   const dir = path.dirname(CONFIG_FILE);
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true }); try { execSync(`chown openclaw:openclaw "${dir}"`, { stdio: "ignore" }); } catch {}
   }
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
   try {
     execSync(`chown openclaw:openclaw "${CONFIG_FILE}"`, { stdio: 'ignore' });
-    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true`, { stdio: 'ignore' });
+    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} + 2>/dev/null || true`, { stdio: 'ignore' });
   } catch {}
 }
 
@@ -202,7 +202,7 @@ function authSetApikey(provider, apiKey, profileId) {
   const authDir = `${OC_STATE_DIR}/agents/main/agent`;
   const authFile = `${authDir}/auth-profiles.json`;
   try {
-    fs.mkdirSync(authDir, { recursive: true });
+    fs.mkdirSync(authDir, { recursive: true }); try { execSync(`chown openclaw:openclaw "${authDir}"`, { stdio: "ignore" }); } catch {}
   } catch {}
 
   let authData = { version: 1, profiles: {}, usageStats: {} };
@@ -222,7 +222,7 @@ function authSetApikey(provider, apiKey, profileId) {
   fs.writeFileSync(authFile, JSON.stringify(authData, null, 2));
   try {
     execSync(`chown openclaw:openclaw "${authFile}"`, { stdio: 'ignore' });
-    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true`, { stdio: 'ignore' });
+    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} + 2>/dev/null || true`, { stdio: 'ignore' });
   } catch {}
 }
 
@@ -344,14 +344,14 @@ async function restartGateway() {
       // 兼容 OpenWrt: 优先 ss，回退 netstat
       let stdout = '';
       try {
-        const result = await runCommand('ss', ['-tulnp']);
-        stdout = result.stdout;
+        stdout = execSync('ss -tulnp 2>/dev/null', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
       } catch {
         // ss 不存在，使用 netstat
-        const result = await runCommand('netstat', ['-tulnp']);
-        stdout = result.stdout;
+        try {
+          stdout = execSync('netstat -tulnp 2>/dev/null', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+        } catch {}
       }
-      if (stdout.includes(`:${gwPort} `)) {
+      if (stdout && stdout.includes(`:${gwPort} `)) {
         spin.succeed(`Gateway 已重启成功 (${waited}秒)`);
         return;
       }
@@ -1103,8 +1103,8 @@ async function configureOllama() {
   console.log(`\n${C.cyan}检测 Ollama 连通性...${C.reset}`);
   let modelList = [];
   try {
-    const result = await runCommand('curl', ['-sf', '--connect-timeout', '3', '--max-time', '5', `${ollamaUrl}/api/tags`]);
-    const data = JSON.parse(result.stdout);
+    const stdout = execSync(`curl -sf --connect-timeout 3 --max-time 5 ${ollamaUrl}/api/tags`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const data = JSON.parse(stdout);
     modelList = data.models || [];
     console.log(`${C.green}✅ Ollama 已连接${C.reset}`);
   } catch {
@@ -1815,7 +1815,7 @@ async function handleReset() {
         const backupDir = `${OC_STATE_DIR}/backups`;
         const backupTs = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
         try {
-          if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+          if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true }); try { execSync(`chown openclaw:openclaw "${backupDir}"`, { stdio: "ignore" }); } catch {}
           fs.copyFileSync(CONFIG_FILE, `${backupDir}/openclaw_${backupTs}.json`);
           console.log(`${C.green}   备份已保存: backups/openclaw_${backupTs}.json${C.reset}`);
         } catch {}
@@ -1864,7 +1864,7 @@ async function handleBackup() {
 
     resetRenderCount();
     const backupDir = `${OC_STATE_DIR}/backups`;
-    try { if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true }); } catch {}
+    try { if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true }); try { execSync(`chown openclaw:openclaw "${backupDir}"`, { stdio: "ignore" }); } catch {} } catch {}
 
     switch (choice.value) {
       case 'create-config': {

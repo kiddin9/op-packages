@@ -1,16 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=hickory-dns
-PKG_VERSION:=2026.04.09~34a4cca
-PKG_RELEASE:=11
-
-HICKORY_COMMIT:=34a4cca1a707b642052b427938b7d1e8aaa71e3a
+PKG_VERSION:=
+PKG_RELEASE:=12
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/hickory-dns/hickory-dns/tar.gz/34a4cca1a707b642052b427938b7d1e8aaa71e3a?
+PKG_SOURCE_URL:=https://codeload.github.com/hickory-dns/hickory-dns/tar.gz/v$(PKG_VERSION)?
 PKG_HASH:=skip
-
-PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-34a4cca1a707b642052b427938b7d1e8aaa71e3a
 
 PKG_BUILD_DEPENDS:=rust/host
 PKG_BUILD_PARALLEL:=1
@@ -51,7 +47,6 @@ define Package/hickory-dns/install
 	$(INSTALL_DIR) $(1)/etc/hickory-dns/
 	$(INSTALL_BIN) ./files/etc/init.d/hickory-dns $(1)/etc/init.d/hickory-dns
 	$(INSTALL_BIN) ./files/etc/hickory-dns/forwarder.toml $(1)/etc/hickory-dns/forwarder.toml
-	echo "$(HICKORY_COMMIT)" > $(1)/etc/hickory-dns/commit
 endef
 
 $(eval $(call RustBinPackage,hickory-dns))
