@@ -97,7 +97,6 @@
  
 +m:section(SimpleSection).template = "shadowsocksr/status_bottom"
  return m
-
 diff --git a/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm b/luci-app-passwall/luasrc/view/shadowsocksr/status_bottom.htm
 new file mode 100644
 index 000000000000..a00fff9c79b3
