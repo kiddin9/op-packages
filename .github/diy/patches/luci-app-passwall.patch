@@ -237,7 +237,7 @@
 
 --- a/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
 +++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/global.lua
-@@ -547,6 +547,33 @@ function o.cfgvalue(self, section)
+@@ -547,6 +547,45 @@ function o.cfgvalue(self, section)
  		api.url("flush_set") .. "?redirect=1&reload=1", set_title)
  end
  
@@ -264,9 +264,21 @@
 +o:depends("adblock",1)
 +
 +o = s:taboption("DNS", DynamicList, "white_list", translate("Adblock white list"))
-+o.datatype = "host"
 +o.rmempty = true
 +o:depends("adblock",1)
++function o.validate(self, value)
++    local vlist = (type(value) == "table") and value or { value }
++    
++    for _, v in ipairs(vlist) do
++        if v and v ~= "" and not (
++            #v < 254 and v:match("^[a-zA-Z0-9][a-zA-Z0-9%-%.]*[a-zA-Z0-9]$") and v:match("%.")
++        ) then
++            return nil, translate("Invalid domain name") .. ": " .. v
++        end
++    end
++    
++    return value
++end
 +
  s:tab("Proxy", translate("Mode"))
  
@@ -497,7 +509,7 @@ index 000000000000..a00fff9c79b3
 
 --- a/luci-app-passwall/po/zh-cn/passwall.po
 +++ b/luci-app-passwall/po/zh-cn/passwall.po
-@@ -1,6 +1,45 @@
+@@ -1,6 +1,48 @@
  msgid "Pass Wall"
  msgstr "PassWall"
  
@@ -539,6 +551,9 @@ index 000000000000..a00fff9c79b3
 +
 +msgid "Adblock white list"
 +msgstr "广告过滤白名单"
++
++msgid "Invalid domain name"
++msgstr "无效域名"
 +
  msgid "Auto"
  msgstr "自动"
