@@ -72,6 +72,7 @@ index 00000000..b89d7328
  rm -f /tmp/luci-indexcache
  exit 0
 
+
 --- a/luci-app-coredns/Makefile
 +++ b/luci-app-coredns/Makefile
 @@ -22,10 +22,8 @@ endef
