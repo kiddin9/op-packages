@@ -47,8 +47,8 @@ endef
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
-    chmod a+x ${IPKG_INSTROOT}/etc/init.d/timedreboot >/dev/null 2>&1
-    chmod a+x ${IPKG_INSTROOT}/usr/bin/dorboot >/dev/null 2>&1
+    chmod a+x $${IPKG_INSTROOT}/etc/init.d/timedreboot >/dev/null 2>&1
+    chmod a+x $${IPKG_INSTROOT}/usr/bin/dorboot >/dev/null 2>&1
     exit 0
 endef
 
