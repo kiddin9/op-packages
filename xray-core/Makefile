@@ -52,6 +52,13 @@ define Package/xray-core/conffiles
 /etc/config/xray
 endef
 
+define Build/Compile
+	$(call GoPackage/Build/Compile)
+ifneq ($(filter arm mipsel mips,$(ARCH)),)
+	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/xray
+endif
+endef
+
 define Package/xray-core/install
 	$(call GoPackage/Package/Install/Bin,$(PKG_INSTALL_DIR))
 	$(INSTALL_DIR) $(1)/usr/bin/
