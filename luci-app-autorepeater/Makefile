@@ -10,7 +10,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-autorepeater
 PKG_VERSION:=0.2.3
-PKG_RELEASE:=1
+PKG_RELEASE:=4
 
 PKG_LICENSE:=GPLv3
 PKG_LICENSE_FILES:=LICENSE
@@ -66,6 +66,26 @@ define Build/Configure
 endef
 
 define Build/Compile
+endef
+
+define Package/$(PKG_NAME)/postinst
+#!/bin/sh
+
+if [ -z "$${IPKG_INSTROOT}" ]; then
+	( . /etc/uci-defaults/luci-autorepeater ) && rm -f /etc/uci-defaults/luci-autorepeater
+	chmod 755 /etc/init.d/autorepeater >/dev/null 2>&1
+	/etc/init.d/autorepeater enable >/dev/null 2>&1
+
+	uci -q batch <<-EOF >/dev/null
+		delete firewall.autorepeater
+		set firewall.autorepeater=include
+		set firewall.autorepeater.type=script
+		set firewall.autorepeater.path=/var/etc/autorepeater.include
+		set firewall.autorepeater.reload=0
+		commit firewall
+EOF
+fi
+exit 0
 endef
 
 define Package/$(PKG_NAME)/install
