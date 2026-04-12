@@ -1,0 +1,89 @@
+diff --git a/luci-app-dynv6/root/etc/uci-defaults/luci-dynv6 b/luci-app-dynv6/root/etc/uci-defaults/luci-dynv6
+new file mode 100644
+index 00000000..b89d7328
+--- /dev/null
++++ b/luci-app-dynv6/root/etc/uci-defaults/luci-dynv6
+@@ -0,0 +1,9 @@
++ #!/bin/sh
++
++uci -q get ucitrack.@dynv6[0] || uci add ucitrack dynv6
++uci set ucitrack.@dynv6[0]=dynv6
++uci set ucitrack.@dynv6[0].exec="/bin/sh /etc/rc.common /etc/init.d/dynv6 restart"
++uci commit ucitrack
++/etc/init.d/ucitrack restart
++
++exit 0
+
+--- a/luci-app-synology/Makefile
++++ b/luci-app-synology/Makefile
+@@ -15,7 +15,7 @@ include $(TOPDIR)/feeds/luci/luci.mk
+ 
+ define Package/luci-app-synology/postinst
+ #!/bin.sh
+-chmod 755 /etc/init.d/synology
++chmod +x $${IPKG_INSTROOT}/etc/init.d/synology >/dev/null 2>&1
+ exit 0
+ endef
+
+
+--- a/luci-app-chongyoung2.0/Makefile
++++ b/luci-app-chongyoung2.0/Makefile
+@@ -14,7 +14,7 @@ PKG_RELEASE:=1
+ 
+ define Package/luci-app-chongyoung-lua/postinst
+ #!/bin/sh
+-chmod +x $(1)/etc/init.d/*
++chmod +x $${IPKG_INSTROOT}/etc/init.d/*
+ exit 0
+ endef
+
+
+--- a/luci-app-timedreboot/Makefile
++++ b/luci-app-timedreboot/Makefile
+@@ -47,8 +47,8 @@ endef
+ 
+ define Package/$(PKG_NAME)/postinst
+ #!/bin/sh
+-    chmod a+x ${IPKG_INSTROOT}/etc/init.d/timedreboot >/dev/null 2>&1
+-    chmod a+x ${IPKG_INSTROOT}/usr/bin/dorboot >/dev/null 2>&1
++    chmod a+x $${IPKG_INSTROOT}/etc/init.d/timedreboot >/dev/null 2>&1
++    chmod a+x $${IPKG_INSTROOT}/usr/bin/dorboot >/dev/null 2>&1
+     exit 0
+ endef
+
+
+--- a/luci-app-autorepeater/files/root/etc/uci-defaults/luci-autorepeater
++++ b/luci-app-autorepeater/files/root/etc/uci-defaults/luci-autorepeater
+@@ -13,7 +13,16 @@ uci -q batch <<-EOF >/dev/null
+ 	add ucitrack autorepeater
+ 	set ucitrack.@autorepeater[-1].init=autorepeater
+ 	commit ucitrack
++	delete firewall.autorepeater
++	set firewall.autorepeater=include
++	set firewall.autorepeater.type=script
++	set firewall.autorepeater.path=/var/etc/autorepeater.include
++	set firewall.autorepeater.reload=0
++	commit firewall
+ EOF
+ 
++chmod 755 /etc/init.d/autorepeater >/dev/null 2>&1
++/etc/init.d/autorepeater enable >/dev/null 2>&1
++
+ rm -f /tmp/luci-indexcache
+ exit 0
+
+--- a/luci-app-coredns/Makefile
++++ b/luci-app-coredns/Makefile
+@@ -22,10 +22,8 @@ endef
+ 
+ define Package/$(PKG_NAME)/postinst
+ 	#!/bin/sh
+-	chmod +x /etc/init.d/coredns
+-	chmod +x /usr/share/coredns/*.sh
+-	rm -rf /usr/lib/lua/luci/i18n/coredns.zh-cn.lmo
+-	cp /usr/share/coredns/coredns.zh-cn.lmo /usr/lib/lua/luci/i18n/
++	chmod +x $${IPKG_INSTROOT}/etc/init.d/coredns
++	chmod +x $${IPKG_INSTROOT}/usr/share/coredns/*.sh
+ endef
+ 
+ define Package/$(PKG_NAME)/prerm
