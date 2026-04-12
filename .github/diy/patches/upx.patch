@@ -42,7 +42,7 @@
 +define Build/Compile
 +	$(call GoPackage/Build/Compile)
 +ifneq ($(filter arm mipsel mips,$(ARCH)),)
-+	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/xray
++	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/main
 +endif
 +endef
 +
