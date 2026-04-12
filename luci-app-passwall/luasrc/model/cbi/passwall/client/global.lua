@@ -570,9 +570,21 @@ o.description = translate("Support Domain / Dnsmasq / AdGuardHome / Hosts format
 o:depends("adblock",1)
 
 o = s:taboption("DNS", DynamicList, "white_list", translate("Adblock white list"))
-o.datatype = "host"
 o.rmempty = true
 o:depends("adblock",1)
+function o.validate(self, value)
+    local vlist = (type(value) == "table") and value or { value }
+    
+    for _, v in ipairs(vlist) do
+        if v and v ~= "" and not (
+            #v < 254 and v:match("^[a-zA-Z0-9][a-zA-Z0-9%-%.]*[a-zA-Z0-9]$") and v:match("%.")
+        ) then
+            return nil, translate("Invalid domain name") .. ": " .. v
+        end
+    end
+    
+    return value
+end
 
 s:tab("Proxy", translate("Mode"))
 
