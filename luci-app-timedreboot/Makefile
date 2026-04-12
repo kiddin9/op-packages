@@ -5,7 +5,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-timedreboot
 PKG_VERSION:=1.0
-PKG_RELEASE:=1
+PKG_RELEASE:=3
 PKG_DATE:=20220920
 
 PKG_MAINTAINER:=kongfl888 <kongfl888@outlook.com>
@@ -47,8 +47,8 @@ endef
 
 define Package/$(PKG_NAME)/postinst
 #!/bin/sh
-    chmod a+x $${IPKG_INSTROOT}/etc/init.d/timedreboot >/dev/null 2>&1
-    chmod a+x $${IPKG_INSTROOT}/usr/bin/dorboot >/dev/null 2>&1
+    chmod a+x ${IPKG_INSTROOT}/etc/init.d/timedreboot >/dev/null 2>&1
+    chmod a+x ${IPKG_INSTROOT}/usr/bin/dorboot >/dev/null 2>&1
     exit 0
 endef
 
