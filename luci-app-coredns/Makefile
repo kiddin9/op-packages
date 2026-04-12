@@ -22,10 +22,8 @@ endef
 
 define Package/$(PKG_NAME)/postinst
 	#!/bin/sh
-	chmod +x /etc/init.d/coredns
-	chmod +x /usr/share/coredns/*.sh
-	rm -rf /usr/lib/lua/luci/i18n/coredns.zh-cn.lmo
-	cp /usr/share/coredns/coredns.zh-cn.lmo /usr/lib/lua/luci/i18n/
+	chmod +x $${IPKG_INSTROOT}/etc/init.d/coredns
+	chmod +x $${IPKG_INSTROOT}/usr/share/coredns/*.sh
 endef
 
 define Package/$(PKG_NAME)/prerm
