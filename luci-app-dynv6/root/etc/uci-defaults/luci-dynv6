@@ -1,3 +1,4 @@
+#!/bin/sh
 [ ! -f "/usr/share/ucitrack/luci-app-get.json" ] && {
     cat > /usr/share/ucitrack/luci-app-get.json << EEOF
 {
@@ -6,7 +7,6 @@
 }
 EEOF
 }
- #!/bin/sh
 
 uci -q get ucitrack.@dynv6[0] || uci add ucitrack dynv6
 uci set ucitrack.@dynv6[0]=dynv6
