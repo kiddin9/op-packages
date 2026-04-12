@@ -13,7 +13,16 @@ uci -q batch <<-EOF >/dev/null
 	add ucitrack autorepeater
 	set ucitrack.@autorepeater[-1].init=autorepeater
 	commit ucitrack
+	delete firewall.autorepeater
+	set firewall.autorepeater=include
+	set firewall.autorepeater.type=script
+	set firewall.autorepeater.path=/var/etc/autorepeater.include
+	set firewall.autorepeater.reload=0
+	commit firewall
 EOF
+
+chmod 755 /etc/init.d/autorepeater >/dev/null 2>&1
+/etc/init.d/autorepeater enable >/dev/null 2>&1
 
 rm -f /tmp/luci-indexcache
 exit 0
