@@ -10,11 +10,11 @@ LUCI_TITLE:=chongyoung
 LUCI_DEPENDS:=
 LUCI_PKGARCH:=all
 PKG_VERSION:=4.2.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 define Package/luci-app-chongyoung-lua/postinst
 #!/bin/sh
-chmod +x $(1)/etc/init.d/*
+chmod +x $${IPKG_INSTROOT}/etc/init.d/*
 exit 0
 endef
 
