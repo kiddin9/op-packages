@@ -298,7 +298,7 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-lite-watchdog lite-watchdog && mv lite-watchdog/luci-app-lite-watchdog ./;rm -rf lite-watchdog
         git_clone https://github.com/Mitsuhaxy/luci-app-miniproxy
         git_clone https://github.com/tkmsst/luci-app-cellularstatus cellularstatus && mv cellularstatus/luci/applications/* ./;rm -rf cellularstatus
-        git_clone https://github.com/tracemouse/luci-app-coredns coredns && mv coredns/luci-app-coredns ./;rm -rf coredns
+        # git_clone https://github.com/tracemouse/luci-app-coredns coredns && mv coredns/luci-app-coredns ./;rm -rf coredns
         git_clone https://github.com/arenekosreal/luci-app-nginx
         git_clone https://github.com/zfdx123/luci-app-school
         git_clone https://github.com/tano-systems/luci-app-tn-lldpd
