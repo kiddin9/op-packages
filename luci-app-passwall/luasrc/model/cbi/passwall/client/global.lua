@@ -562,11 +562,16 @@ o.value = rule_count.." "..translate("Records")
 o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
 o:depends("adblock",1)
 
-o = s:taboption("DNS", DynamicList, "ad_url", translate("Anti-AD Rules Subscribe"))
+o = s:taboption("DNS", DynamicList, "ad_url", translate("Adblock Rules Subscribe"))
 o:value("https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt", translate("AdBlock DNS Filters"))
 o:value("https://cdn.jsdelivr.net/gh/privacy-protection-tools/anti-AD/anti-ad-domains.txt", translate("anti-AD"))
 o.default = "https://cdn.jsdelivr.net/gh/217heidai/adblockfilters@main/rules/adblockdomainlite.txt"
 o.description = translate("Support Domain / Dnsmasq / AdGuardHome / Hosts format list")
+o:depends("adblock",1)
+
+o = s:taboption("DNS", DynamicList, "white_list", translate("Adblock white list"))
+o.datatype = "host"
+o.rmempty = true
 o:depends("adblock",1)
 
 s:tab("Proxy", translate("Mode"))
