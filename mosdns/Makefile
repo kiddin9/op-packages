@@ -35,6 +35,13 @@ define Package/mosdns
   DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle
 endef
 
+define Build/Compile
+	$(call GoPackage/Build/Compile)
+ifneq ($(filter arm mipsel mips,$(ARCH)),)
+	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/mosdns
+endif
+endef
+
 define Package/mosdns/install
 	$(call GoPackage/Package/Install/Bin,$(1))
 endef
