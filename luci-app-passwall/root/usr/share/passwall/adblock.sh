@@ -5,9 +5,6 @@ LOCK_FILE="/var/lock/ad_download.lock"
 TMP_DIR="/tmp/ad_download"
 RULES_PATH="/usr/share/passwall/rules"
 
-# ========== 白名单：合并后需要排除的域名 ==========
-WHITELIST="ip-api.com"
-
 # ========== 加锁，防止重复运行 ==========
 exec 200>"$LOCK_FILE"
 if ! flock -n 200; then
@@ -111,8 +108,9 @@ process_url() {
     [ ! -s "$parsed" ] && rm -f "$parsed"
 }
 
-# ========== 读取所有 ad_url 并发下载 ==========
+# ========== 读取 UCI 配置 ==========
 AD_URLS=$(uci -q get passwall.@global[0].ad_url 2>/dev/null)
+WHITELIST="$(uci -q get passwall.@global[0].white_list 2>/dev/null) ip-api.com"
 
 if [ -z "$AD_URLS" ]; then
     echo "[ERROR] 未找到任何 ad_url 配置"
