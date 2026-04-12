@@ -14,7 +14,7 @@ PKG_RELEASE:=1
 
 define Package/luci-app-chongyoung-lua/postinst
 #!/bin/sh
-chmod +x $(1)/etc/init.d/*
+chmod +x $${IPKG_INSTROOT}/etc/init.d/*
 exit 0
 endef
 
