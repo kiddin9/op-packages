@@ -126,6 +126,13 @@ GO_PKG_TAGS:=$(subst $(space),$(comma),$(strip \
 define Package/sing-box/conffiles
 endef
 
+define Build/Compile
+	$(call GoPackage/Build/Compile)
+ifneq ($(filter arm mipsel mips,$(ARCH)),)
+	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/sing-box
+endif
+endef
+
 define Package/sing-box/install
 	$(call GoPackage/Package/Install/Bin,$(1))
 endef
