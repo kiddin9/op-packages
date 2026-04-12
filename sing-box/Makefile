@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sing-box
 PKG_VERSION:=1.13.7
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/SagerNet/sing-box/tar.gz/v$(PKG_VERSION)?
@@ -29,7 +29,7 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_SING_BOX_BUILD_V2RAY_API \
 	CONFIG_SING_BOX_BUILD_WIREGUARD
 
-PKG_BUILD_DEPENDS:=golang/host upx/host
+PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
@@ -124,13 +124,6 @@ GO_PKG_TAGS:=$(subst $(space),$(comma),$(strip \
 ))
 
 define Package/sing-box/conffiles
-endef
-
-define Build/Compile
-	$(call GoPackage/Build/Compile)
-ifneq ($(filter arm mipsel mips,$(ARCH)),)
-	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(GO_PKG_BUILD_BIN_DIR)/sing-box
-endif
 endef
 
 define Package/sing-box/install
