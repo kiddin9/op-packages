@@ -1,0 +1,19 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-qiyougamebooster.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-qiyougamebooster.json << EEOF
+{
+    "config": "qiyougamebooster",
+    "init": "qiyougamebooster"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@qiyougamebooster[-1]
+	add ucitrack qiyougamebooster
+	set ucitrack.@qiyougamebooster[-1].init=qiyougamebooster
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

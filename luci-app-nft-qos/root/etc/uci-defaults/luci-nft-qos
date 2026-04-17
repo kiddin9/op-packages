@@ -1,0 +1,19 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-nft-qos.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-nft-qos.json << EEOF
+{
+    "config": "nft-qos",
+    "init": "nft-qos"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@nft-qos[-1]
+	add ucitrack nft-qos
+	set ucitrack.@nft-qos[-1].init=nft-qos
+	commit ucitrack
+EOF
+
+rm -rf /tmp/luci-*cache
+exit 0
