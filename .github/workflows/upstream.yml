@@ -11,7 +11,7 @@ on:
       - '.gitignore'
       - '.github/diy/**'
   schedule:
-    - cron: 0 */12 * * *f
+    - cron: 0 */12 * * *
   workflow_dispatch:
     inputs:
       ssh:
@@ -378,9 +378,9 @@ jobs:
         sound/spotifyd devel/go-rice devel/rust-bindgen admin/gotop \
         lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./; rm -rf modemfeed
-        git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications libs/luci-lib-fs
+        git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications
         mv -f applications luciapp;rm -rf luciapp/{luci-app-turboacc,luci-app-frp*}
-        git_sparse_clone master "https://github.com/coolsnowwolf/luci" applications collections/luci-lib-docker
+        git_sparse_clone master "https://github.com/coolsnowwolf/luci" libs/luci-lib-fs applications collections/luci-lib-docker
         mv -n applications/* luciapp/; rm -rf applications
         rm -rf luciapp/{luci-app-qbittorrent,luci-app-zerotier,luci-app-cpufreq,luci-app-e2guardian,luci-app-aliyundrive-fuse,luci-app-syncdial,luci-app-firewall}
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
