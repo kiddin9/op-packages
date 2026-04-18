@@ -115,6 +115,11 @@
   src: url('../fonts/Cocon-Regular-Font.otf') format('opentype');
 }
 
+@font-face {
+  font-family: 'genjyuugothic-medium';
+  src: url('../fonts/GenJyuuGothic-Medium.otf') format('opentype');
+}
+
 div{
     font-family: 'HYk2gj';
 }
@@ -289,22 +294,19 @@ input:focus {
     -moz-box-shadow:0 0 6px #948FE1;
 }
 
-select,
-.cbi-dropdown {
+select {
 	width: inherit;
 	cursor: default;
 }
 
 select:not([multiple="multiple"]):focus,
-input:not(.cbi-button):focus,
-.cbi-dropdown:focus {
+input:not(.cbi-button):focus {
     border-color: #948FE1;
     box-shadow:0 0 6px #948FE1;
     -webkit-box-shadow:0 0 6px #948FE1;
     -moz-box-shadow:0 0 6px #948FE1;
 }
 
-.cbi-dropdown,
 select[multiple="multiple"] {
 	height: auto;
 }
@@ -401,7 +403,10 @@ small {
     width: 100%;
     height: 100%;
     z-index: 1000;
-    display: block;
+    display: none;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
     background-color: var(--bgwhite);
     top: 0;
 }
@@ -502,7 +507,7 @@ header > .fill > .container > #logo > img {
 
 header > .fill > .container > .brand {
     font-size: 25px;
-    font-family: "cocon_regular_font";
+    font-family: 'genjyuugothic-medium', -apple-system, 'Microsoft Yahei', sans-serif, Helvetica, Arial, sans-serif;
     /*font-weight:bold;*/
     line-height:60px;
     /*color: white;*/
@@ -515,15 +520,15 @@ header > .fill > .container > .brand {
     height:60px;
     text-align:center;
     float:left;
-    font-weight:900;
-    letter-spacing:1px;
+    font-weight:700;
+    letter-spacing:.04em;
     margin-left: 10px;
 }
 
 header > .fill > .container > a[class="brand"]:after {
     content:"";
     font-size:14px;
-    font-family:Tahoma;
+    font-family: inherit;
     position: absolute;
     top:-10px;
     font-weight:normal !important;
@@ -547,20 +552,90 @@ header > .fill > .container > .brand-hostname {
 
 header > .fill > .container > .status {
 	position: absolute;
-	top: 25%;
+	top: 50%;
 	right: 1em;
+	display: flex;
+	align-items: center;
+	gap: 0.2rem;
 	float: right;
 	font-size: 1.5rem;
     font-family: 'design';
-	line-height: unset !important;
+	line-height: 1 !important;
+	transform: translateY(-50%);
 }
 
 header > .fill > .container > .status > * {
 	position: relative;
-	top: .2rem;
-	float: left;
-	margin-left: .3rem;
+	top: auto;
+	float: none;
+	margin-left: 0.3rem;
 	cursor: pointer;
+}
+
+#indicators > [data-indicator] {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.6rem;
+	min-height: 1.6rem;
+	padding: 0;
+	border-radius: 999px;
+	background: transparent;
+	box-shadow: none;
+	text-transform: none;
+	text-shadow: none;
+}
+
+#indicators > [data-indicator="poll-status"],
+#indicators > [data-indicator="uci-changes"] {
+	font-size: 0;
+}
+
+#indicators > [data-indicator="poll-status"]::before,
+#indicators > [data-indicator="uci-changes"]::before {
+	font-family: "design" !important;
+	font-style: normal;
+	font-weight: normal;
+	line-height: 1;
+	text-transform: none;
+	-webkit-font-smoothing: antialiased;
+}
+
+#indicators > [data-indicator="poll-status"]::before {
+	content: "\e6b9";
+	font-size: 1.5rem;
+}
+
+#indicators > [data-indicator="poll-status"][data-style="inactive"]::before {
+	color: var(--progressbar_color);
+}
+
+#indicators > [data-indicator="poll-status"]:not([data-style="inactive"])::before {
+	color: var(--active_color);
+}
+
+#indicators > [data-indicator="uci-changes"]::before {
+	content: "\e739";
+	font-size: 1.45rem;
+	color: var(--active_color);
+}
+
+#indicators > [data-indicator="uci-changes"][data-count]:not([data-count=""])::after {
+	content: attr(data-count);
+	position: absolute;
+	top: -0.18rem;
+	right: -0.08rem;
+	min-width: 0.95rem;
+	height: 0.95rem;
+	padding: 0 0.14rem;
+	border-radius: 999px;
+	background: var(--active_color);
+	color: var(--bgwhite);
+	font-family: Tahoma, sans-serif;
+	font-size: 0.62rem;
+	font-weight: normal;
+	line-height: 0.95rem;
+	text-align: center;
 }
 
 /* .modemenu-buttons {
@@ -781,6 +856,21 @@ span[data-indicator="uci-changes"] {
     content: "\72";
 }
 
+.main > .main-left > .nav > .slide > a[data-title="Modem"]:before,
+.main > .main-left > .nav > li > a[data-title="Modem"]:before,
+.main > .main-left > .nav > .slide > a[data-title="Mobile"]:before,
+.main > .main-left > .nav > li > a[data-title="Mobile"]:before,
+.main > .main-left > .nav > .slide > a[data-title="Mobile_Service"]:before,
+.main > .main-left > .nav > li > a[data-title="Mobile_Service"]:before,
+.main > .main-left > .nav > .slide > a[data-title="Cellular"]:before,
+.main > .main-left > .nav > li > a[data-title="Cellular"]:before,
+.main > .main-left > .nav > .slide > a[data-title="WWAN"]:before,
+.main > .main-left > .nav > li > a[data-title="WWAN"]:before,
+.main > .main-left > .nav > .slide > a[data-title="ModemManager"]:before,
+.main > .main-left > .nav > li > a[data-title="ModemManager"]:before {
+    content: "\e67e";
+}
+
 .main > .main-left > .nav > .slide > a[data-title="Bandwidth Monitor"]:before {
     content: "\e764";
 }
@@ -797,23 +887,26 @@ span[data-indicator="uci-changes"] {
 	content: "\e7dd";
 }
 
-.main > .main-left > .nav > li > a[data-title="Inital Setup"]:before {
-    content: "\e67e";
-}
-
-.main > .main-left > .nav > li > a[href="/cgi-bin/luci//admin/wizard"]:before {
-    content: "\e67e";
+.main > .main-left > .nav > li > a[data-title="Inital Setup"]:before,
+.main > .main-left > .nav > li > a[data-title="Setup_Wizard"]:before,
+.main > .main-left > .nav > li > a[href="/cgi-bin/luci//admin/wizard"]:before,
+.main > .main-left > .nav > li > a[href="/cgi-bin/luci/admin/wizard"]:before {
+    content: "\e719";
+    width: 1.2rem;
+    text-align: center;
 }
 
 .main > .main-left > .nav > li > a[data-title="iStore"]:before {
     content: "\e676";
 }
 
-.main > .main-left > .nav > li > a[data-title="Logout"] {
+.main > .main-left > .nav > li > a[data-title="Logout"],
+.main > .main-left > .nav > li > a[data-title="Log_out"] {
     padding: 0.675rem 0 0.675rem 2.5rem;
 }
 
-.main > .main-left > .nav > li > a[data-title="Logout"]:before {
+.main > .main-left > .nav > li > a[data-title="Logout"]:before,
+.main > .main-left > .nav > li > a[data-title="Log_out"]:before {
     content: "\e641";
 }
 
@@ -898,7 +991,11 @@ body[class*="node-"] > .main > .main-left > .nav > .slide > .menu.active::before
 
 /* ripple effect */
 .main > .main-left > .nav > .slide > .menu,
-.main > .main-left > .nav > li:last-child a
+.main > .main-left > .nav > li:last-child a,
+.main > .main-left > .nav > li > a[data-title="Inital Setup"],
+.main > .main-left > .nav > li > a[data-title="Setup_Wizard"],
+.main > .main-left > .nav > li > a[href="/cgi-bin/luci//admin/wizard"],
+.main > .main-left > .nav > li > a[href="/cgi-bin/luci/admin/wizard"]
 {
     display: block;
     padding: 0.675rem 0 0.675rem 2.5rem;
@@ -1059,13 +1156,23 @@ fieldset > fieldset,
 	box-shadow: none;
 }
 
+/* Avoid clipping LuCI dropdown popups inside nested form sections. */
+fieldset,
+fieldset.cbi-section {
+	overflow-y: visible;
+}
+
 .cbi-section > h3:first-child,
 .panel-title {
     width: 100%;
     display: block;
     padding: 10px;
-    font-weight: bold;
+    font-weight: 700;
     font-size: 1rem;
+}
+
+[data-tab-title] > h3:first-child {
+	font-weight: 700;
 }
 
 .cbi-section > h4:first-child,
@@ -1144,7 +1251,6 @@ table > tr:last-child {
 	margin-bottom: 0;
 }
 
-.cbi-section-table-row > .cbi-value-field .cbi-dropdown,
 .cbi-section-table-row > .cbi-value-field .cbi-input-select,
 .cbi-section-table-row > .cbi-value-field .cbi-input-text,
 .cbi-section-table-row > .cbi-value-field .cbi-input-password {
@@ -1281,6 +1387,7 @@ form.inline + form.inline,
 .cbi-button-edit {
     color: #fff !important;
     background-color: var(--active_color);
+    border-color: var(--active_color);
 }
 
 [data-page="admin-status-iptables"] .right {
@@ -1358,6 +1465,7 @@ form.inline + form.inline,
     height: 2.5rem;
     line-height: 2.5rem;
     font-size: 0.92rem;
+    font-weight: 700;
     margin: 0 10px;
 }
 
@@ -1410,6 +1518,7 @@ form.inline + form.inline,
 	overflow: hidden;
 	height: 0;
 	opacity: 0;
+	pointer-events: none;
 	margin: 0;
 	padding: 0rem 1rem !important;
 }
@@ -1418,6 +1527,7 @@ form.inline + form.inline,
     overflow: auto;
     height: auto;
     opacity: 1;
+    pointer-events: auto;
     transition: opacity .25s ease-in;
     margin: inherit !important;
     display: block;
@@ -1491,7 +1601,6 @@ form.inline + form.inline,
     font-weight: normal;
 }
 
-.cbi-value-field .cbi-dropdown,
 .cbi-value-field .cbi-input-select,
 .cbi-value input[type="text"],
 .cbi-value input[type="password"] {
@@ -1651,90 +1760,106 @@ form.inline + form.inline,
 	min-width: 13rem;
 }
 
-.cbi-dynlist,
-.cbi-dropdown {
+.cbi-dynlist {
 	position: relative;
 	display: inline-flex;
 	padding: 0;
 }
 
-.cbi-dropdown[placeholder*="select"] {
-	max-width: 25rem;
-	height: auto;
-	margin-top: -3px;
+.cbi-dropdown {
+	position: relative;
+	display: inline-flex;
+	align-items: stretch;
+	width: 100%;
+	max-width: 550px;
+	min-height: 2.8rem;
+	color: var(--inputtext_color);
+	background: var(--inputbg_color);
+	border: var(--input_border);
+	border-radius: 8px;
+	transition: color 150ms ease, border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
 .cbi-dropdown > ul {
 	display: flex;
-	overflow-x: hidden;
-	overflow-y: auto;
+	flex: 1 1 auto;
+	overflow: hidden;
 	width: 100%;
 	margin: 0 !important;
 	padding: 0;
 	list-style: none;
-	outline: 0;
+}
+
+.cbi-dropdown.btn,
+.cbi-dropdown.cbi-button {
+	width: auto;
+	max-width: none;
+	min-width: 105px;
+	min-height: 35px;
+	height: 35px;
+	line-height: 35px;
+	color: #fff;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+}
+
+.cbi-dropdown.btn > ul:not(.dropdown),
+.cbi-dropdown.cbi-button > ul:not(.dropdown) {
+	width: auto;
+	padding-left: 0.5em;
+}
+
+.cbi-dropdown.btn.spinning > ul:not(.dropdown),
+.cbi-dropdown.cbi-button.spinning > ul:not(.dropdown) {
+	padding-left: 0;
 }
 
 .cbi-dropdown > ul.preview {
 	display: none;
 }
 
-.cbi-dropdown > .open {
-	flex-basis: 15px;
-}
-
 .cbi-dropdown > .open,
 .cbi-dropdown > .more {
-	font-size: 1rem;
-	font-weight: 900;
-	line-height: 2;
-	display: flex;
-	flex-direction: column;
-	flex-grow: 0;
-	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
 	justify-content: center;
-	padding: 0 .25em;
-	cursor: default;
-	text-align: center;
-	outline: 0;
+	flex: 0 0 auto;
+	min-width: 2.25rem;
+	padding: 0 0.6rem;
+	color: var(--inputtext_color);
+	border-left: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-.cbi-dropdown.btn {
-	min-height: 1.8rem;
-	padding-top: 0px;
-	padding-bottom: 0px;
-	padding-right: 0px;
+.cbi-dropdown.btn > .open,
+.cbi-dropdown.btn > .more,
+.cbi-dropdown.cbi-button > .open,
+.cbi-dropdown.cbi-button > .more {
+	color: inherit;
+	border-left: 1px solid rgba(255, 255, 255, 0.28);
 }
 
-.cbi-dropdown.btn > .open {
-	font-size: 0.8rem;
-	padding: 0px;
-	margin: 0 5px;
-}
-
-.cbi-dropdown.btn > div {
-	margin: 0px;
+.cbi-dropdown > .open {
+	font-size: 0.85rem;
 }
 
 .cbi-dropdown > .more,
 .cbi-dropdown > ul > li[placeholder] {
-	font-weight: bold;
+	color: rgba(118, 131, 143, 0.85);
 	display: none;
-	color: #777;
-	text-shadow: 1px 1px 0 #fff;
 }
 
 .cbi-dropdown > ul > li {
 	display: none;
-	overflow: hidden;
 	align-items: center;
-	align-self: center;
-	flex-grow: 1;
-	flex-shrink: 1;
-	min-height: 20px;
-	padding: .25em;
+	flex: 1 1 auto;
+	min-height: 2.8rem;
+	padding: 0 0.75rem;
+	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
+	color: var(--inputtext_color);
+	background: transparent;
 }
 
 .cbi-dropdown > ul > li .hide-open {
@@ -1743,52 +1868,6 @@ form.inline + form.inline,
 
 .cbi-dropdown > ul > li .hide-close {
 	display: none;
-}
-
-.cbi-dropdown > ul > li[display]:not([display="0"]) {
-	border-left: thin solid #ccc;
-}
-
-.cbi-dropdown > ul > li[data-value*="1"] {
-	padding-left: 15px !important;
-}
-
-.cbi-dropdown[empty] > ul {
-	max-width: 1px;
-}
-
-.cbi-dropdown > ul > li > form {
-	display: none;
-	margin: 0;
-	padding: 0;
-	pointer-events: none;
-}
-
-.cbi-dropdown > ul > li img {
-	margin-right: .25em;
-	vertical-align: middle;
-}
-
-.cbi-dropdown > ul > li > form > input[type="checkbox"] {
-	height: auto;
-	margin: 0;
-}
-
-.cbi-dropdown > ul > li input[type="text"] {
-	height: 20px;
-}
-
-.cbi-dropdown[open] > ul.dropdown {
-	position: absolute;
-	z-index: 1100;
-	display: block;
-	width: auto;
-	max-height: 200px !important;
-	/* border: thin solid #918e8c; */
-	background: var(--active_color);
-	/* box-shadow: 0 0 4px #918e8c; */
-	/* color: var(--main-menu-color); */
-	text-align: center;
 }
 
 .cbi-dropdown > ul > li[display],
@@ -1800,13 +1879,100 @@ form.inline + form.inline,
 .cbi-dropdown[multiple][empty] > .more {
 	display: flex;
 	align-items: center;
-	flex-grow: 1;
 }
 
 .cbi-dropdown[empty] > ul > li,
 .cbi-dropdown[optional][open] > ul.dropdown > li[placeholder],
 .cbi-dropdown[multiple][open] > ul.dropdown > li > form {
 	display: block;
+}
+
+.cbi-dropdown > ul > li > form {
+	display: none;
+	margin: 0;
+	padding: 0;
+	pointer-events: none;
+}
+
+.cbi-dropdown > ul > li img {
+	margin-right: 0.35rem;
+	vertical-align: middle;
+}
+
+.cbi-dropdown > ul > li input[type="text"] {
+	height: 2.2rem;
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: transparent;
+	box-shadow: none;
+}
+
+.cbi-dropdown[open],
+.cbi-dropdown:focus-within {
+	border-color: #948FE1;
+	box-shadow: 0 0 6px rgba(148, 143, 225, 0.35);
+}
+
+.cbi-dropdown.btn[open],
+.cbi-dropdown.btn:focus-within,
+.cbi-dropdown.cbi-button[open],
+.cbi-dropdown.cbi-button:focus-within {
+	box-shadow: 0 1px 1px rgba(0, 0, 0, .05);
+}
+
+/* Keep LuCI dropdowns functional by only fixing layering/clipping. */
+.cbi-dropdown[open] {
+	position: relative;
+}
+
+.cbi-dropdown[open] > ul.dropdown {
+	position: absolute;
+	top: auto;
+	bottom: auto;
+	left: 0;
+	z-index: 1200;
+	display: block;
+	min-width: 100%;
+	padding: 0.25rem 0;
+	max-height: 200px;
+	overflow-x: hidden;
+	overflow-y: auto;
+	background: var(--sectionbg_color);
+	border: var(--input_border);
+	border-radius: 10px;
+	box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+}
+
+.cbi-dropdown.btn[open] > ul.dropdown,
+.cbi-dropdown.cbi-button[open] > ul.dropdown {
+	color: var(--text_color);
+	background: var(--sectionbg_color);
+	border: var(--input_border);
+}
+
+.cbi-dropdown.btn[open] > ul.dropdown > li[selected],
+.cbi-dropdown.cbi-button[open] > ul.dropdown > li[selected] {
+	color: #2f6f9f;
+	background: #d9eefb;
+}
+
+.cbi-dropdown.btn[open] > ul.dropdown > li.focus:not([selected]),
+.cbi-dropdown.btn[open] > ul.dropdown > li:hover:not([selected]),
+.cbi-dropdown.cbi-button[open] > ul.dropdown > li.focus:not([selected]),
+.cbi-dropdown.cbi-button[open] > ul.dropdown > li:hover:not([selected]) {
+	color: #2f6f9f;
+	background: #eef7ff;
+}
+
+.cbi-dropdown[open] > ul.dropdown > li {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	width: 100%;
+	background: var(--sectionbg_color);
+	min-height: 2.5rem;
+	padding: 0 0.85rem;
 }
 
 .cbi-dropdown[open] > ul.dropdown > li .hide-open {
@@ -1817,26 +1983,23 @@ form.inline + form.inline,
 	display: initial;
 }
 
-/* .cbi-dropdown[open] > ul.dropdown > li {
-	border-bottom: thin solid #ccc;
-} */
+.cbi-dropdown[open] > ul.dropdown > li[unselectable] {
+	opacity: 0.7;
+}
 
 .cbi-dropdown[open] > ul.dropdown > li[selected] {
+	color: #fff;
 	background: var(--active_color);
 }
 
-.cbi-dropdown[open] > ul.dropdown > li.focus {
-	background: linear-gradient(90deg, #a3c2e8 0%, #84aad9 100%);
+.cbi-dropdown[open] > ul.dropdown > li.focus:not([selected]),
+.cbi-dropdown[open] > ul.dropdown > li:hover:not([selected]) {
+	background: rgba(94, 166, 155, 0.16);
 }
 
-.cbi-dropdown[open] > ul.dropdown > li:last-child {
-	margin-bottom: 0;
-	border-bottom: 0;
-    background: #627486;
-}
-
-.cbi-dropdown[open] > ul.dropdown > li[unselectable] {
-	opacity: .7;
+.cbi-dropdown.btn[open] > ul.dropdown > li,
+.cbi-dropdown.cbi-button[open] > ul.dropdown > li {
+	color: var(--text_color);
 }
 
 .cbi-dropdown[open] > ul.dropdown > li > input.create-item-input:first-child:last-child {
@@ -1845,15 +2008,37 @@ form.inline + form.inline,
 
 .cbi-dropdown[disabled] {
 	pointer-events: none;
-	opacity: .6;
+	opacity: 0.6;
 }
 
-.cbi-dropdown .zonebadge {
-	width: 100%;
+.td.cbi-value-field.cbi-dropdown-open,
+td.cbi-value-field.cbi-dropdown-open,
+.cbi-section-table-row > .cbi-value-field.cbi-dropdown-open {
+	position: relative;
+	overflow: visible !important;
+	z-index: 100;
 }
 
-.cbi-dropdown[open] .zonebadge {
-	width: auto;
+/* Keep opened dropdowns inside modal flow so menus don't get clipped or spill
+ * outside the dialog frame. */
+body.modal-overlay-active #modal_overlay .modal.cbi-modal .cbi-value-field.cbi-dropdown-open {
+	position: relative;
+	overflow: visible !important;
+	margin-bottom: min(18rem, 50vh);
+	z-index: 120;
+}
+
+body.modal-overlay-active #modal_overlay .modal.cbi-modal [data-tab-active="true"],
+body.modal-overlay-active #modal_overlay .modal.cbi-modal .cbi-section-node,
+body.modal-overlay-active #modal_overlay .modal.cbi-modal .cbi-section-node-tabbed {
+	overflow: visible !important;
+}
+
+.cbi-section,
+.cbi-section-create,
+.cbi-section-table,
+.cbi-section-table-row {
+	overflow: visible;
 }
 
 /* progressbar */
@@ -1880,7 +2065,7 @@ form.inline + form.inline,
 .cbi-progressbar::after {
     /* font-weight: bold; */
     /* font-family: monospace; */
-    font-size: 0.75rem !important;
+    font-size: 1.0rem !important;
     font-size-adjust: .38 !important;
     line-height: 1.5rem !important;
     position: absolute !important;
@@ -1952,15 +2137,35 @@ form.inline + form.inline,
 	color: var(--model_text_color);
 }
 
-.modal ul {
+.modal > ul,
+.modal > ol {
 	margin-left: 2.2em;
 	word-break: break-word;
 	color: var(--model_text_color);
 }
 
-.modal li {
+.modal > ul > li,
+.modal > ol > li {
 	list-style-type: square;
 	color: var(--model_text_color);
+}
+
+/* Keep LuCI widget lists in modals under JS control instead of generic modal list styling. */
+.modal .cbi-tabmenu,
+.modal .cbi-dropdown > ul,
+.modal .cbi-dropdown > ul.preview,
+.modal .cbi-dropdown[open] > ul.dropdown {
+	margin-left: 0 !important;
+	padding-left: 0 !important;
+	list-style: none !important;
+	color: inherit;
+}
+
+.modal .cbi-tabmenu > li,
+.modal .cbi-dropdown > ul > li,
+.modal .cbi-dropdown[open] > ul.dropdown > li {
+	list-style: none !important;
+	color: inherit;
 }
 
 .modal p {
@@ -1986,6 +2191,16 @@ form.inline + form.inline,
 .modal.cbi-modal {
 	max-width: 90%;
 	max-height: none;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay > .modal.cbi-modal {
+	width: calc(100vw - 2.5rem);
+	max-width: 860px;
+	max-height: calc(100vh - 6.5rem);
+	margin: 2rem auto;
+	padding: .85rem 1rem;
+	align-items: flex-start;
+	overflow-y: auto;
 }
 
 body.modal-overlay-active {
@@ -2032,6 +2247,82 @@ body.modal-overlay-active #modal_overlay {
     margin: 0;
 }
 
+/* Keep LuCI split action buttons readable and vertically centered. */
+.cbi-dropdown.btn > ul > li[display],
+.cbi-dropdown.cbi-button > ul > li[display] {
+	display: flex;
+	align-items: center;
+	min-height: 35px;
+	height: 35px;
+	padding-top: 0;
+	padding-bottom: 0;
+	line-height: 35px;
+	color: #fff;
+}
+
+.cbi-dropdown.btn > .open,
+.cbi-dropdown.cbi-button > .open {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.25rem;
+	min-height: 35px;
+	height: 35px;
+	line-height: 35px;
+	color: transparent;
+	opacity: 1;
+	font-size: 0;
+	position: relative;
+}
+
+.cbi-dropdown.btn > .open::before,
+.cbi-dropdown.cbi-button > .open::before {
+	content: "▾";
+	display: block;
+	font-size: 1rem;
+	font-weight: 700;
+	line-height: 1;
+	color: #fff;
+	text-indent: 0;
+}
+
+.cbi-dropdown.btn > .more,
+.cbi-dropdown.cbi-button > .more {
+	display: none;
+}
+
+.right .cbi-dropdown.btn,
+.right .cbi-dropdown.cbi-button,
+.right .cbi-dropdown.btn > ul > li[display],
+.right .cbi-dropdown.cbi-button > ul > li[display],
+.right .cbi-dropdown.btn > .open,
+.right .cbi-dropdown.cbi-button > .open {
+	line-height: 35px;
+	vertical-align: middle;
+}
+
+/* Override generic .btn/.cbi-button rules so split dropdown buttons keep the
+   arrow inside the same row instead of wrapping below the main label. */
+.cbi-dropdown.btn,
+.cbi-dropdown.cbi-button,
+.btn.cbi-button.cbi-dropdown,
+div.cbi-dropdown.btn,
+div.cbi-dropdown.cbi-button {
+	display: inline-flex !important;
+	align-items: stretch;
+	flex-wrap: nowrap;
+	padding: 0 !important;
+	white-space: nowrap;
+	vertical-align: middle;
+}
+
+.cbi-dropdown.btn > ul,
+.cbi-dropdown.cbi-button > ul {
+	width: auto;
+	flex: 0 1 auto;
+	overflow: hidden;
+}
+
 .right,
 .right::before {
 	text-align: right !important;
@@ -2059,8 +2350,51 @@ body.modal-overlay-active #modal_overlay {
 .cbi-page-actions {
     text-align: center;
 }
+
 .cbi-page-actions > form[method="post"] {
 	display: inline-block;
+}
+
+[data-page="admin-network-network"] .cbi-button.cbi-button-neutral.reconnect {
+	color: #fff !important;
+	background-color: #337ab7 !important;
+	border-color: #337ab7 !important;
+}
+
+[data-page="admin-network-network"] .cbi-button.cbi-button-neutral.reconnect:hover {
+	background-color: #286090 !important;
+	border-color: #286090 !important;
+}
+
+[data-page="admin-network-network"] .cbi-button.cbi-button-edit {
+	color: #fff !important;
+	background-color: #5ea69b !important;
+	border-color: #5ea69b !important;
+}
+
+[data-page="admin-network-network"] .cbi-button.cbi-button-edit:hover {
+	background-color: #4a8a80 !important;
+	border-color: #4a8a80 !important;
+}
+
+[data-page="admin-network-network"] .cbi-button.cbi-button-add {
+	color: #fff !important;
+	background-color: #337ab7 !important;
+	border-color: #337ab7 !important;
+}
+
+[data-page="admin-network-network"] .cbi-button.cbi-button-add:hover {
+	background-color: #286090 !important;
+	border-color: #286090 !important;
+}
+
+[data-page="admin-network-network"] td > .ifacebadge,
+[data-page="admin-network-network"] .td > .ifacebadge,
+[data-page="admin-network-network"] .cbi-section-table .ifacebadge {
+	background-color: #eef2f3 !important;
+	color: #5f6b72 !important;
+	border: 1px solid #d8e0e3 !important;
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%), 0 1px 2px rgb(0 0 0 / 4%) !important;
 }
 
 .th[data-type="button"],
@@ -2081,15 +2415,34 @@ body.modal-overlay-active #modal_overlay {
 td > .ifacebadge,
 .td > .ifacebadge {
 	font-size: .8rem;
-	background-color: var(--active_color);
-	color: white;
-	border-radius: 8px;
+	background-color: #eef2f3;
+	color: #5f6b72;
+	border: 1px solid #d8e0e3;
+	border-radius: 10px;
+	box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%), 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .ifacebadge > em,
 .ifacebadge > img {
 	display: inline-block;
 	align-self: flex-start;
+}
+
+[data-page="admin-network-network"] .theme-network-icon,
+[data-page="admin-network-network"] .ifacebadge > img,
+[data-page="admin-network-network"] .cbi-tooltip-container > img.middle {
+	width: 1.65rem;
+	height: 1.65rem;
+	min-width: 1.65rem;
+	object-fit: contain;
+	vertical-align: middle;
+	flex-shrink: 0;
+}
+
+[data-page="admin-network-network"] .cbi-tooltip.ifacebadge.large > img {
+	width: 1.95rem;
+	height: 1.95rem;
+	min-width: 1.95rem;
 }
 
 .network-status-table {
@@ -2125,6 +2478,99 @@ td > .ifacebadge,
 	margin: .5em .25em 0 .25em;
 	padding: .5em;
 }
+
+/* wireless overview */
+[data-page="admin-network-wireless"] #maincontent h3:first-of-type,
+.node-admin-network-wireless #maincontent h3:first-of-type {
+	font-size: 1.5em !important;
+	font-weight: 800;
+	padding: 0 12px 12px 12px;
+	line-height: 1.2;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .cbi-section-table-row > .td[data-name="_stat"],
+.node-admin-network-wireless #cbi-wireless .cbi-section-table-row > .td[data-name="_stat"] {
+	text-align: left !important;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless > .table,
+.node-admin-network-wireless #cbi-wireless > .table {
+	table-layout: fixed;
+	width: 100%;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .cbi-section-table-row > .td[data-name="_badge"],
+.node-admin-network-wireless #cbi-wireless .cbi-section-table-row > .td[data-name="_badge"] {
+	width: 17rem !important;
+	min-width: 17rem;
+	max-width: 17rem;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-radio-badge,
+.node-admin-network-wireless #cbi-wireless .wireless-radio-badge {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-radio-badge > img,
+.node-admin-network-wireless #cbi-wireless .wireless-radio-badge > img {
+	width: 88px !important;
+	height: 88px !important;
+	min-width: 88px !important;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-radio-status,
+.node-admin-network-wireless #cbi-wireless .wireless-radio-status,
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-network-status,
+.node-admin-network-wireless #cbi-wireless .wireless-network-status {
+	text-align: left;
+	max-width: 100%;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-radio-title,
+.node-admin-network-wireless #cbi-wireless .wireless-radio-title {
+	font-size: 1.08rem;
+	font-weight: 700;
+	line-height: 1.4;
+	color: var(--text_color);
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-radio-meta,
+.node-admin-network-wireless #cbi-wireless .wireless-radio-meta,
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-network-status-row,
+.node-admin-network-wireless #cbi-wireless .wireless-network-status-row {
+	margin-top: .3rem;
+	line-height: 1.7;
+	color: var(--text_color);
+	text-align: left;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-network-status-note,
+.node-admin-network-wireless #cbi-wireless .wireless-network-status-note {
+	margin-top: .4rem;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .wireless-status-sep,
+.node-admin-network-wireless #cbi-wireless .wireless-status-sep {
+	display: inline-block;
+	padding: 0 .35rem;
+	color: var(--text_color);
+	opacity: .7;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .cbi-section-table-row > .td.cbi-section-actions,
+.node-admin-network-wireless #cbi-wireless .cbi-section-table-row > .td.cbi-section-actions {
+	width: 18.5rem !important;
+	min-width: 18.5rem;
+	max-width: 18.5rem;
+}
+
+[data-page="admin-network-wireless"] #cbi-wireless .cbi-section-table-row > .td[data-name="_stat"],
+.node-admin-network-wireless #cbi-wireless .cbi-section-table-row > .td[data-name="_stat"] {
+	width: auto !important;
+}
+
 
 /* textarea */
 #content_syslog {
@@ -2162,11 +2608,14 @@ td > .ifacebadge,
 #syslog {
     width: 100%;
     min-height: 15rem;
-    padding: 10px;
+    padding: 12px 14px;
     margin-bottom: 20px;
     border-radius: 0;
     background-color: var(--sectionbg_color);
     border: none;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 13px !important;
+    line-height: 1.55 !important;
 }
 
 #syslog:focus {
@@ -2293,6 +2742,122 @@ td > .ifacebadge,
 	padding: .25em;
 }
 
+[data-page="admin-status-overview"] .port-status-grid,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] {
+	display: grid !important;
+	align-items: stretch;
+	justify-items: stretch;
+	width: 100%;
+	max-width: 100%;
+	padding: 0.2rem 0.6rem 0.35rem;
+	margin: 0 auto 1rem !important;
+}
+
+[data-page="admin-status-overview"] .port-status-slot {
+	display: flex;
+	justify-content: center;
+	align-items: stretch;
+	min-width: 0;
+	padding: 0.15rem 0.65rem 0.75rem;
+}
+
+[data-page="admin-status-overview"] .port-status-card,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox {
+	margin: 0 !important;
+	width: fit-content;
+	min-width: 76px !important;
+	max-width: 108px !important;
+	border-radius: 10px;
+	overflow: hidden;
+	background: var(--sectionbg_color);
+	box-shadow: 3px 3px 3px rgb(0 0 0 / 5%);
+	text-align: center;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-head,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.24rem 0.45rem 0.22rem;
+	background: #eef2f3;
+	border-radius: 4px 4px 0 0;
+	box-shadow: inset 0 -1px 0 rgb(0 0 0 / 6%);
+	font-size: 0.76rem;
+	font-weight: 700;
+	line-height: 1.2;
+	text-align: center;
+	color: #68757b;
+	letter-spacing: 0.01em;
+	text-transform: none;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-head strong,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-head strong {
+	display: block;
+	width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: inherit;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-body,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-body {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 0.4rem 0.45rem;
+	gap: 0.14rem;
+	text-align: center;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-body img,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-body img {
+	background-size: 24px 24px !important;
+	width: 24px !important;
+	height: 24px !important;
+	padding: 0 0 0 24px !important;
+	margin: 0.05rem auto;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-body img + br,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-body img + br {
+	display: none;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-body > span,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-body > span {
+	display: block;
+	width: 100%;
+	text-align: center;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-head.cbi-tooltip-container,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-head.cbi-tooltip-container {
+	display: flex;
+	gap: 0.18rem;
+	padding: 0 0.45rem 0.2rem;
+	background: transparent;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-head.cbi-tooltip-container .zonebadge,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-head.cbi-tooltip-container .zonebadge {
+	flex: 1;
+	height: 4px !important;
+	padding: 0 !important;
+	border-radius: 999px;
+}
+
+[data-page="admin-status-overview"] .port-status-card .ifacebox-body .cbi-tooltip-container,
+[data-page="admin-status-overview"] .cbi-section > div[style*="grid-template-columns:repeat(auto-fit, minmax(70px, 1fr))"] > .ifacebox > .ifacebox-body .cbi-tooltip-container {
+	width: 100%;
+	text-align: center !important;
+	font-size: 0.76rem !important;
+	line-height: 1.35;
+}
+
 .cbi-image-button {
 	margin-left: .5rem;
 }
@@ -2355,10 +2920,6 @@ input[type="radio"]:focus {
 	background-color: #eee;
 }
 
-.cbi-section-table-row > .cbi-value-field .cbi-dropdown {
-	min-width: 7rem;
-}
-
 .cbi-section-create {
 	display: inline-flex;
 	align-items: center;
@@ -2383,10 +2944,6 @@ td.cbi-value-field var,
 .cbi-optionals {
 	padding: 1rem 1rem 0 1rem;
 	border-top: thin solid #ccc;
-}
-
-.cbi-dropdown-container {
-	position: relative;
 }
 
 .cbi-tooltip-container,
@@ -2505,6 +3062,45 @@ label[data-index][data-depends] {
 
 [data-page="admin-network-diagnostics"] .table {
 	box-shadow: none;
+}
+
+[data-page="admin-network-diagnostics"] .td.left {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.65rem;
+}
+
+[data-page="admin-network-diagnostics"] .td.left > input[type="text"],
+[data-page="admin-network-diagnostics"] .td.left > select {
+	margin: 0 !important;
+	align-self: center;
+}
+
+[data-page="admin-network-diagnostics"] .td.left > .diag-action {
+	display: inline-flex;
+	align-items: center;
+	align-self: center;
+	margin: 0;
+}
+
+[data-page="admin-network-diagnostics"] .td.left > .diag-action > .cbi-button {
+	margin: 0 !important;
+	align-self: center;
+}
+
+.cbi-section > .table[width="100%"] {
+	border-collapse: separate;
+	border-spacing: 0 0.55rem;
+}
+
+.cbi-section > .table[width="100%"] tr > td {
+	padding-top: 0.45rem;
+	padding-bottom: 0.45rem;
+	line-height: 1.5;
+}
+
+.cbi-section > .table[width="100%"] tr > td:first-child {
+	padding-left: 0.9rem;
 }
 
 input[name="ping"],
@@ -2786,6 +3382,38 @@ input[name="nslookup"] {
 
 #wifi_assoclist_table > .tr > .td[data-title="RX Rate / TX Rate"] {
 	width: 23rem;
+}
+
+[data-page="admin-network-wireless"] #wifi_assoclist_table .ifacebadge,
+.node-admin-network-wireless #wifi_assoclist_table .ifacebadge {
+	padding: .22rem .5rem;
+	gap: .18rem;
+	border-radius: 8px;
+	align-items: center;
+	line-height: 1.25;
+}
+
+[data-page="admin-network-wireless"] #wifi_assoclist_table .ifacebadge > img,
+.node-admin-network-wireless #wifi_assoclist_table .ifacebadge > img {
+	width: 16px !important;
+	height: 16px !important;
+	min-width: 16px !important;
+	margin-right: .2rem !important;
+	align-self: center;
+}
+
+[data-page="admin-network-wireless"] #wifi_assoclist_table .ifacebadge > span,
+.node-admin-network-wireless #wifi_assoclist_table .ifacebadge > span {
+	display: inline-flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: .15rem;
+}
+
+[data-page="admin-network-wireless"] #wifi_assoclist_table > .tr > .td,
+.node-admin-network-wireless #wifi_assoclist_table > .tr > .td {
+	padding-top: .45rem;
+	padding-bottom: .45rem;
 }
 
 /* firewall */
@@ -3074,6 +3702,10 @@ input[name="nslookup"] {
         width: 100% !important;
     }
 
+    [data-page="admin-network-diagnostics"] .td.left {
+        display: block;
+    }
+
     .node-network-diagnostics > .main .cbi-map div.cbi-section > div input[type="text"] {
     }
 
@@ -3208,12 +3840,31 @@ input[name="nslookup"] {
         display: block;
         overflow: auto;
     }
-    .node-admin-status-routes #view table,
+.node-admin-status-routes #view table,
 	.node-admin-status-processes #view table,
 	.node-admin-status-realtime-connections #view table[id*=connections] {
 	    display: block;
         white-space: nowrap;
 	}
+
+    #view [data-table] > h3 {
+        margin-top: 1.75rem;
+        margin-bottom: 1.15rem;
+        padding: 12px 12px 12px 12px;
+        line-height: 1.35;
+    }
+
+    #view [data-chain] > h4 {
+        margin-top: 1.15rem;
+        margin-bottom: 0.85rem;
+        padding-top: 0.3rem;
+        padding-bottom: 0.2rem;
+        line-height: 1.35;
+    }
+
+    #view [data-chain] > table {
+        margin-bottom: 1.25rem;
+    }
 
 }
 
@@ -3580,19 +4231,6 @@ td.cbi-button, .cbi-button-apply,
     background: none !important;
 }
 
-/* fix  */
-.cbi-dropdown.btn.cbi-button.cbi-button-apply.important,
-.cbi-dropdown.btn.cbi-button.cbi-button-negative.important {
-    line-height: unset;
-    min-width: 105px;
-    padding-left: 5px;
-}
-.cbi-dropdown.btn.cbi-button.cbi-button-action {
-	line-height: unset;
-    min-width: 110px;
-    padding-left: 5px;
-}
-
 .node-admin-system-ttyd-ttyd iframe {
     border-radius: 5px !important;
 }
@@ -3623,4 +4261,549 @@ td.cbi-button, .cbi-button-apply,
 /* fix node-admin-status-overview */
 .node-admin-status-overview > .main #view td:nth-child(2) {
     white-space: normal;
+}
+
+/* Merged overrides formerly kept in compat-openwrt23.css. */
+
+#view {
+    padding: 0;
+}
+
+#view > * {
+    margin-bottom: 1rem;
+}
+
+.cbi-map {
+    margin-top: 10px;
+}
+
+.cbi-input-text,
+.cbi-input-password,
+.cbi-input-select {
+    color: var(--inputtext_color);
+    padding: 5px 10px;
+    font-size: 0.92rem;
+    border: var(--input_border);
+    background-color: var(--inputbg_color);
+    border-radius: 8px;
+    height: 2.8rem;
+    line-height: 2.8rem;
+    max-width: 550px;
+}
+
+.cbi-input-checkbox,
+.cbi-input-radio {
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    accent-color: var(--active_color);
+}
+
+.btn.cbi-button,
+button.cbi-button {
+    -webkit-appearance: none;
+    appearance: none;
+    text-transform: uppercase;
+    color: #fff;
+    background-color: #337ab7;
+    transition: all 0.2s ease-in-out;
+    display: inline-block;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    white-space: nowrap;
+    min-width: 80px;
+    padding: 0 8px;
+    height: 35px;
+    line-height: 35px;
+    border-radius: 8px;
+}
+
+.cbi-button-positive,
+.cbi-button-action {
+    color: var(--bttext_color) !important;
+    background-color: var(--active_color) !important;
+}
+
+.cbi-button-positive:hover,
+.cbi-button-action:hover {
+    background-color: #4a8a80 !important;
+}
+
+.cbi-button-negative {
+    color: #fff !important;
+    background-color: #d9534f !important;
+}
+
+.cbi-button-negative:hover {
+    background-color: #c9302c !important;
+}
+
+.cbi-button-neutral {
+    color: #fff !important;
+    background-color: #617486 !important;
+}
+
+.table.cbi-section-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table.cbi-section-table .tr {
+    display: table-row;
+}
+
+.table.cbi-section-table .th,
+.table.cbi-section-table .td {
+    display: table-cell;
+    padding: 12px;
+    vertical-align: middle;
+}
+
+.tr.cbi-section-table-titles {
+    background-color: var(--inputbg_color);
+    font-weight: bold;
+}
+
+.cbi-dropdown {
+    position: relative;
+    display: inline-flex;
+    min-height: 2.8rem;
+    border: var(--input_border);
+    background-color: var(--inputbg_color);
+    border-radius: 8px;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) {
+    cursor: pointer;
+    color: var(--inputtext_color);
+}
+
+.cbi-dropdown > ul {
+    display: flex;
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0;
+    list-style: none;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) > ul > li {
+    display: none;
+    overflow: hidden;
+    align-items: center;
+    align-self: center;
+    flex-grow: 1;
+    flex-shrink: 1;
+    min-height: 2.8rem;
+    padding: 0.5em 0.75em;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--inputtext_color);
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) > ul > li[display],
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.preview,
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li,
+.cbi-dropdown[multiple] > ul > li > label,
+.cbi-dropdown[multiple][open] > ul.dropdown > li,
+.cbi-dropdown[multiple][more] > .more,
+.cbi-dropdown[multiple][empty] > .more {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.cbi-dropdown[empty] > ul > li,
+.cbi-dropdown[optional][open] > ul.dropdown > li[placeholder],
+.cbi-dropdown[multiple][open] > ul.dropdown > li > form {
+    display: block;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) > ul > li[display]:not([display="0"]) {
+    border-left: 1px solid #d9e3e6;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) > ul > li[data-value] {
+    padding-left: 0.75em !important;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) > .open,
+.cbi-dropdown:not(.btn):not(.cbi-button) > .more {
+    color: var(--inputtext_color);
+    line-height: 1;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button) > .more,
+.cbi-dropdown:not(.btn):not(.cbi-button) > ul > li[placeholder] {
+    color: #87929a;
+    text-shadow: none;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown {
+    position: absolute;
+    z-index: 1100;
+    top: auto;
+    bottom: auto;
+    left: 0;
+    right: auto;
+    display: block;
+    min-width: 100%;
+    width: auto;
+    max-width: none;
+    max-height: 260px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background: var(--sectionbg_color);
+    border: var(--input_border);
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 8px 18px rgb(0 0 0 / 10%);
+    text-align: left;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li {
+    width: 100%;
+    padding: 0.55em 0.85em;
+    cursor: pointer;
+    color: var(--inputtext_color);
+    border-bottom: 1px solid #e9eef0;
+    background: transparent;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li[selected] {
+    background: rgb(94 166 155 / 16%);
+    color: var(--active_color);
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li.focus,
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li:hover {
+    background: rgb(94 166 155 / 10%);
+    color: var(--inputtext_color);
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li:last-child {
+    margin-bottom: 0;
+    border-bottom: 0;
+    background: transparent;
+}
+
+.cbi-dropdown:not(.btn):not(.cbi-button)[open] > ul.dropdown > li > input.create-item-input:first-child:last-child {
+    width: 100%;
+    height: 2.1rem;
+    padding: 0 0.6em;
+    border: var(--input_border);
+    border-radius: 6px;
+    background: var(--inputbg_color);
+}
+
+.cbi-tabmenu {
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: var(--tabmenu_bottom);
+    margin-bottom: 1rem;
+}
+
+.cbi-tabmenu > li {
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.cbi-tabmenu > li > a {
+    display: block;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    color: var(--text_color);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.cbi-tabmenu > li.cbi-tab > a,
+.cbi-tabmenu > li > a:hover {
+    color: var(--active_color);
+    border-bottom-color: var(--active_color);
+}
+
+.modal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 90%;
+    max-width: 600px;
+    min-height: 32px;
+    margin: 5em auto;
+    padding: 1em;
+    border-radius: 8px;
+    background: var(--model_background);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal > * {
+    flex-basis: 100%;
+    margin-bottom: 0.5em;
+}
+
+.modal > h4 {
+    color: var(--text_color);
+    margin-bottom: 1em;
+}
+
+.modal > .btn,
+.modal > .cbi-button {
+    flex-basis: auto;
+    margin: 0.25em;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay > .modal.cbi-modal {
+    width: calc(100vw - 2.5rem);
+    max-width: 860px;
+    max-height: calc(100vh - 6.5rem);
+    margin: 2rem auto;
+    padding: 0.85rem 1rem;
+    align-items: flex-start;
+    overflow-y: auto;
+}
+
+body.modal-overlay-active #modal_overlay .modal.cbi-modal [data-tab-active="true"],
+body.modal-overlay-active #modal_overlay .modal.cbi-modal .cbi-section-node,
+body.modal-overlay-active #modal_overlay .modal.cbi-modal .cbi-section-node-tabbed,
+body.modal-overlay-active #modal_overlay .modal.cbi-modal .cbi-value-field.cbi-dropdown-open {
+    overflow: visible !important;
+}
+
+/* Undo generic modal list styling for LuCI dropdown widgets inside wireless edit dialogs. */
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown > ul,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown > ul.preview,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    list-style: none !important;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown > ul > li,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li {
+    list-style: none !important;
+    margin-left: 0 !important;
+}
+
+/* Keep NetworkSelect choices readable in wireless modal dropdowns. */
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li {
+    display: flex !important;
+    align-items: center;
+    color: var(--inputtext_color);
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple] > ul > li > form,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple][open] > ul.dropdown > li > form {
+    display: block !important;
+    flex: 0 0 auto;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple] > ul > li > label,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple][open] > ul.dropdown > li > label {
+    display: flex !important;
+    align-items: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 !important;
+    overflow: visible;
+    color: inherit !important;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple][open] > ul.dropdown > li {
+    gap: 0.55rem;
+}
+
+/* Fallback text rendering for NetworkSelect choices when badge markup is hidden by theme rules. */
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown > ul > li[data-value]:not([data-value=""])::before {
+    content: attr(data-value);
+    display: inline-block;
+    color: inherit;
+    font-size: 0.92rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    margin-right: 0.5rem;
+    flex: 0 0 auto;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li[selected]::before {
+    color: #fff;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple] > ul > li[data-value]::before,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[multiple][open] > ul.dropdown > li[data-value]::before {
+    content: none;
+    display: none !important;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li .ifacebadge,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li .zonebadge {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.2rem;
+    max-width: 100%;
+    padding: 0.3rem 0.6rem;
+    color: #5f6b72 !important;
+    background-color: #eef2f3 !important;
+    border: 1px solid #d8e0e3 !important;
+    border-radius: 10px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%), 0 1px 2px rgb(0 0 0 / 4%);
+    font-size: 0.85rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    visibility: visible !important;
+    opacity: 1 !important;
+    margin: 0 !important;
+}
+
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li .ifacebadge > em,
+[data-page="admin-network-wireless"] #modal_overlay .modal.cbi-modal .cbi-dropdown[open] > ul.dropdown > li .ifacebadge > img {
+    align-self: center;
+}
+
+.cbi-progressbar {
+    position: relative;
+    min-width: 11rem;
+    height: 1.5rem;
+    background-color: var(--progressbar_color);
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.cbi-progressbar > div {
+    height: 100%;
+    background: var(--progressbar);
+    transition: width 0.25s ease-in;
+}
+
+.cbi-progressbar::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    content: attr(title);
+    text-align: center;
+    line-height: 1.5rem;
+    font-size: 0.75rem;
+    color: var(--progressbartxt_color);
+}
+
+.ifacebadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.3rem 0.6rem;
+    background-color: #eef2f3;
+    color: #5f6b72;
+    border: 1px solid #d8e0e3;
+    border-radius: 10px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%), 0 1px 2px rgb(0 0 0 / 4%);
+    font-size: 0.85rem;
+}
+
+.ifacebadge > img,
+.ifacebadge > em {
+    width: 16px;
+    height: 16px;
+}
+
+.zonebadge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
+@media screen and (max-width: 992px) {
+
+    .main-left {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .main-left.active,
+    .main-left[style*="width: 17rem"],
+    .main-left:not([style*="width: 0"]) {
+        transform: translateX(0);
+    }
+}
+
+[data-page="admin-status-overview"] .cbi-section {
+    margin-bottom: 1rem;
+}
+
+[data-page="admin-network-network"] .ifacebox {
+    margin: 0.5rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+[data-page="admin-network-wireless"] .cbi-section-table {
+    overflow-x: auto;
+}
+
+[data-page="admin-system-opkg"] .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+[data-page="admin-system-opkg"] .controls input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    code, pre {
+        background-color: #2d2d2d;
+        color: #f8f8f2;
+    }
+
+
+    .table.cbi-section-table .tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+
+    .cbi-input-text:focus,
+    .cbi-input-password:focus,
+    .cbi-input-select:focus {
+        border-color: var(--active_color);
+        box-shadow: 0 0 6px var(--active_color);
+    }
+}
+
+@media print {
+    .main-left,
+    .navbar,
+    header,
+    .showSide,
+    .darkMask {
+        display: none !important;
+    }
+
+    .main-right {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+}
+
+:focus-visible {
+    outline: 2px solid var(--active_color);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

@@ -1,17 +1,73 @@
 'use strict';
 'require baseclass';
+'require request';
 'require ui';
-
-// 兼容新旧版本 LuCI
-var LuciCompat = {
-	isNewVersion: function() {
-		return L.env.luci_version && parseFloat(L.env.luci_version.split('.')[0]) >= 23;
-	}
-};
 
 return baseclass.extend({
 	__init__: function() {
-		ui.menu.load().then(L.bind(this.render, this));
+		var params = new URLSearchParams(window.location.search);
+
+		if (params.get('menu') === 'flush') {
+			ui.menu.flushCache();
+			params.delete('menu');
+			window.history.replaceState(null, '', window.location.pathname +
+				(params.toString() ? '?' + params.toString() : '') +
+				window.location.hash);
+		}
+
+		this.syncConditionalMenuCache()
+			.then(L.bind(function(reloading) {
+				if (reloading)
+					return;
+
+				return ui.menu.load().then(L.bind(this.render, this));
+			}, this));
+	},
+
+	reloadPageWithMenuFlush: function() {
+		var url = new URL(window.location.href);
+
+		url.searchParams.set('menu', 'flush');
+		window.location.replace(url.toString());
+	},
+
+	getConditionalMenuStamp: function() {
+		var googleFuMode = !!document.querySelector('.navbar a[href*="/admin/services/openclash"]');
+
+		return Promise.resolve(JSON.stringify({
+			google_fu_mode: googleFuMode
+		}));
+	},
+
+	flushBackendMenuCache: function() {
+		ui.menu.flushCache();
+
+		return L.resolveDefault(request.get(L.url('admin/services/theme_menu_flush')), null).then(function() {
+			ui.menu.flushCache();
+		}).then(function() {
+			ui.menu.flushCache();
+		});
+	},
+
+	syncConditionalMenuCache: function() {
+		var storageKey = 'design.menu.condition-stamp';
+
+		if (!document.body.classList.contains('logged-in'))
+			return Promise.resolve();
+
+		return this.getConditionalMenuStamp().then(L.bind(function(stamp) {
+			var previousStamp = window.localStorage.getItem(storageKey);
+
+			if (previousStamp === stamp)
+				return false;
+
+			window.localStorage.setItem(storageKey, stamp);
+
+			return this.flushBackendMenuCache().then(L.bind(function() {
+				this.reloadPageWithMenuFlush();
+				return true;
+			}, this));
+		}, this));
 	},
 
 	render: function(tree) {
@@ -243,4 +299,3 @@ return baseclass.extend({
 		}
 	},
 });
-
