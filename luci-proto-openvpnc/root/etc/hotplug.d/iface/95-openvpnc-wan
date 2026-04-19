@@ -1,0 +1,86 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$INTERFACE" = "wan" ] || exit 0
+[ -x /sbin/ifup ] || exit 0
+[ -x /sbin/ifdown ] || exit 0
+
+. /lib/functions.sh
+
+openvpnc_find_stale_pids() {
+	local section="$1"
+	local runtime_profile="/var/etc/openvpnc-$section.ovpn"
+	local status_file="/var/run/openvpnc-$section.status"
+	local proc pid cmdline
+
+	for proc in /proc/[0-9]*; do
+		[ -r "$proc/cmdline" ] || continue
+
+		pid="${proc##*/}"
+		cmdline="$(tr '\000' ' ' < "$proc/cmdline" 2>/dev/null)"
+
+		case "$cmdline" in
+			*"/usr/sbin/openvpn "*"$runtime_profile"*|*"/usr/sbin/openvpn "*"$status_file"*)
+				echo "$pid"
+			;;
+		esac
+	done
+}
+
+openvpnc_kill_stale_processes() {
+	local section="$1"
+	local pid pids=""
+
+	for pid in $(openvpnc_find_stale_pids "$section"); do
+		pids="$pids $pid"
+	done
+
+	pids="${pids# }"
+	[ -n "$pids" ] || return 0
+
+	logger -t openvpnc-hotplug "terminating stale openvpnc process(es) for $section: $pids"
+	kill $pids >/dev/null 2>&1
+	sleep 2
+
+	for pid in $pids; do
+		[ -d "/proc/$pid" ] || continue
+		kill -9 "$pid" >/dev/null 2>&1
+	done
+}
+
+openvpnc_restart_interface() {
+	local section="$1"
+	local proto auto
+
+	config_get proto "$section" proto
+	[ "$proto" = "openvpnc" ] || return 0
+
+	config_get auto "$section" auto 1
+	[ "$auto" = "0" ] && return 0
+
+	logger -t openvpnc-hotplug "restarting interface $section after wan ifup"
+	/sbin/ifdown "$section" >/dev/null 2>&1
+	openvpnc_kill_stale_processes "$section"
+	/sbin/ifup "$section" >/dev/null 2>&1
+}
+
+LOCK_FILE="/var/lock/openvpnc-wan-ifup.lock"
+mkdir -p "${LOCK_FILE%/*}"
+
+if [ -s "$LOCK_FILE" ]; then
+	read -r pid < "$LOCK_FILE"
+	if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+		exit 0
+	fi
+
+	rm -f "$LOCK_FILE"
+fi
+
+(
+	trap 'rm -f "$LOCK_FILE"' EXIT
+	echo $$ > "$LOCK_FILE"
+	logger -t openvpnc-hotplug "scheduled openvpnc restart 10 seconds after wan ifup"
+	sleep 10
+	config_load network
+	config_foreach openvpnc_restart_interface interface
+) >/dev/null 2>&1 &
