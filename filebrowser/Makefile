@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=filebrowser
-PKG_VERSION:=1.2.4-stable
+PKG_VERSION:=1.3.0-stable
 PKG_RELEASE=1
 
 ifeq ($(ARCH),aarch64)
