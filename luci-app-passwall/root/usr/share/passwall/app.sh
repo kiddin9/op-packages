@@ -1558,7 +1558,7 @@ start_dns() {
 
 start_adblock() {
 	[ "$(config_t_get global adblock 0)" != "1" ] && {
-	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || echo "" >$RULES_PATH/block_host
+	[ -s $RULES_PATH/my_block_host ] && ln -sf $RULES_PATH/my_block_host $RULES_PATH/block_host || > $RULES_PATH/block_host
 	return
 	}
 	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
