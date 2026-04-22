@@ -7,7 +7,7 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=Bootstrap Teleofis Theme
-LUCI_DEPENDS:= +luci-lua-runtime
+LUCI_DEPENDS:=
 
 PKG_LICENSE:=Apache-2.0
 
