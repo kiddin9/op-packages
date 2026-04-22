@@ -1,11 +1,12 @@
 <%#
  Copyright 2016 Chen RuiWei <crwbak@gmail.com>
+ Copyright (C) 2025 LWB1978
  Licensed to the public under the Apache License 2.0.
 -%>
 
 <% include("cbi/map") %>
 <script type="text/javascript">//<![CDATA[
-	XHR.poll(2, '<%=luci.dispatcher.build_url("admin", "control", "timewol", "status")%>', null,
+	XHR.poll(5, '<%=luci.dispatcher.build_url("admin", "control", "timewol", "status")%>', null,
 		function(x, result)
 		{
 			var status = document.getElementsByClassName('timewol_status')[0];
@@ -14,23 +15,36 @@
 			status.innerHTML = result.status?'<%=translate("RUNNING")%>':'<%=translate("NOT RUNNING")%>';
 		}
 	)
-	function _id2section(id) {
-		var x = id.split(".");
-		return x[2];
-	}
-	function onclick_awake(id) {
-		var section = _id2section(id);
-		var btnXHR = new XHR();
-		btnXHR.post('<%=url([[admin]], [[control]], [[timewol]], [[awake]])%>/' + section, { token: '<%=token%>' },
-			function(x, data) {
-				if (x.responseText == "_uncommitted_") {
-					txt="<%:Please [Save & Apply] your changes first%>";
-					alert( txt.replace(new RegExp("<%:&%>", "g"), "&") );
-				} else {
-					alert( JSON.parse(x.response).data );
-				}
+
+	function WakeUP(section) {
+		var input = document.querySelector("input[name='cbid.timewol." + section + ".remark']");
+		var remark = input ? input.value.trim() : "";
+		if (!confirm("<%:Are you sure you want to wake%> " + remark + " ?")) {
+			return;
+		}
+		fetch('<%=luci.dispatcher.build_url("admin", "control", "timewol", "wakeup")%>?section='
+			+ encodeURIComponent(section))
+		.then(response => response.json())
+		.then(data => {
+			if (!data.success) {
+				alert(data.msg || "Operation failed");
 			}
-		);
+		});
 	}
 //]]>
 </script>
+
+<style>
+
+input[id*=".timewol."][id$=".minute"],
+input[id*=".timewol."][id$=".hour"],
+input[id*=".timewol."][id$=".day"],
+input[id*=".timewol."][id$=".month"],
+input[id*=".timewol."][id$=".weeks"] {
+	width: 45px !important;
+	min-width: unset !important;
+	max-width: unset !important;
+	text-align: center !important;
+}
+
+</style>

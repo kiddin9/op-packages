@@ -52,5 +52,11 @@ msgstr "星期"
 msgid "Invalid value for %s: %s. Must be between %d and %d or '*'"
 msgstr "%s: %s 的值无效. 必须在 %d 和 %d 之间，或为 '*'"
 
-msgid "Awake"
-msgstr "立即唤醒"
+msgid "Remarks"
+msgstr "备注"
+
+msgid "Wake"
+msgstr "唤醒"
+
+msgid "Are you sure you want to wake"
+msgstr "你是否要唤醒"
