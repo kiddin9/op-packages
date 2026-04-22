@@ -1,0 +1,11 @@
+{
+	"luci-app-zabbix": {
+		"description": "Grant UCI access for luci-app-zabbix",
+		"read": {
+			"uci": [ "zabbix" ]
+		},
+		"write": {
+			"uci": [ "zabbix" ]
+		}
+	}
+}

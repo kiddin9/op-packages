@@ -1,0 +1,95 @@
+msgid "Zabbix Agent configuration"
+msgstr "Zabbix Agent configuration"
+
+msgid "General Settings"
+msgstr "General Settings"
+
+msgid "Passive Checks"
+msgstr "Passive Checks"
+
+msgid "Active Checks"
+msgstr "Active Checks"
+
+msgid "TLS Configuration"
+msgstr "TLS Configuration"
+
+msgid "Enabled"
+msgstr "Enabled"
+
+msgid "Hostname"
+msgstr "Hostname"
+
+msgid "Unique hostname used by the agent to register with the Zabbix server. Required for active checks and must match the node name specified on the server."
+msgstr "Unique hostname used by the agent to register with the Zabbix server. Required for active checks and must match the node name specified on the server."
+
+msgid "Server"
+msgstr "Server"
+
+msgid "List of IP addresses (or hostnames) of Zabbix servers allowed to connect to this agent. If 0.0.0.0/0 is specified, the agent will accept connections from any IP address."
+msgstr "List of IP addresses (or hostnames) of Zabbix servers allowed to connect to this agent. If 0.0.0.0/0 is specified, the agent will accept connections from any IP address."
+
+msgid "IP address of the local network interfaces on which the Zabbix agent will listen for incoming connections from the server."
+msgstr "IP address of the local network interfaces on which the Zabbix agent will listen for incoming connections from the server."
+
+msgid "ListenPort"
+msgstr "ListenPort"
+
+msgid "The agent will listen on this port for connections from the server."
+msgstr "The agent will listen on this port for connections from the server."
+
+msgid "TLSAccept"
+msgstr "TLSAccept"
+
+msgid "The parameter defines which types of TLS connections the agent will accept."
+msgstr "The parameter defines which types of TLS connections the agent will accept."
+
+msgid "without encryption"
+msgstr "without encryption"
+
+msgid "pre-shared key"
+msgstr "pre-shared key"
+
+msgid "certificate"
+msgstr "certificate"
+
+msgid "ServerActive"
+msgstr "ServerActive"
+
+msgid "IP address or hostname of the Zabbix server for active checks. If the parameter is not specified, active checks are disabled."
+msgstr "IP address or hostname of the Zabbix server for active checks. If the parameter is not specified, active checks are disabled."
+
+msgid "TLSConnect"
+msgstr "TLSConnect"
+
+msgid "The parameter defines how the agent should establish a secure connection with the Zabbix server or proxy."
+msgstr "The parameter defines how the agent should establish a secure connection with the Zabbix server or proxy."
+
+msgid "TLSPSKIdentity"
+msgstr "TLSPSKIdentity"
+
+msgid "Pre-shared key identifier string. Used for unique identification and management of the pre-shared key, ensuring the security of the connection between the agent and the server."
+msgstr "Pre-shared key identifier string. Used for unique identification and management of the pre-shared key, ensuring the security of the connection between the agent and the server."
+
+msgid "TLSPSKFile"
+msgstr "TLSPSKFile"
+
+msgid "Agent pre-shared key."
+msgstr "Agent pre-shared key."
+
+msgid "TLSCAFile"
+msgstr "TLSCAFile"
+
+msgid "Root CA certificate. Used for encrypted connections between Zabbix components."
+msgstr "Root CA certificate. Used for encrypted connections between Zabbix components."
+
+msgid "TLSCertFile"
+msgstr "TLSCertFile"
+
+msgid "Agent certificate or certificate chain used to establish secure (TLS/SSL) connections between Zabbix components."
+msgstr "Agent certificate or certificate chain used to establish secure (TLS/SSL) connections between Zabbix components."
+
+msgid "TLSKeyFile"
+msgstr "TLSKeyFile"
+
+msgid "Agent private key."
+msgstr "Agent private key."

@@ -1,0 +1,11 @@
+{
+	"luci-app-snmpd-ssl": {
+		"description": "Grant UCI access for luci-app-snmpd-ssl",
+		"read": {
+			"uci": [ "snmpd" ]
+		},
+		"write": {
+			"uci": [ "snmpd" ]
+		}
+	}
+}

@@ -1,0 +1,29 @@
+msgid "Hotplug Rules"
+msgstr "Hotplug Rules"
+
+msgid "Interface Rules"
+msgstr "Interface Rules"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Activate"
+msgstr "Activate"
+
+msgid "Variable $ACTION"
+msgstr "Variable $ACTION"
+
+msgid "The type of event that will trigger the command"
+msgstr "The type of event that will trigger the command"
+
+msgid "Variable $INTERFACE"
+msgstr "Variable $INTERFACE"
+
+msgid "The name of the logical interface to which the command will be applied"
+msgstr "The name of the logical interface to which the command will be applied"
+
+msgid "Command to execute"
+msgstr "Command to execute"
+
+msgid "Running commands when the hotplug trigger occurs. <br/><br/>ACTION - ifdown, ifup, ifup-failed, ifupdate, free, reload, iflink, create <br/>INTERFACE - Name of the logical interface which went up or down (e.g. wan or lan) <br/>DEVICE - Name of the physical device which went up or down (e.g. eth0 or br-lan or pppoe-wan), when applicable <br/><br/>More information about iface events and variables here: <a href=\"https://openwrt.org/docs/guide-user/base-system/hotplug#iface\">hotplug#iface</a>"
+msgstr "Running commands when the hotplug trigger occurs. <br/><br/>ACTION - ifdown, ifup, ifup-failed, ifupdate, free, reload, iflink, create <br/>INTERFACE - Name of the logical interface which went up or down (e.g. wan or lan) <br/>DEVICE - Name of the physical device which went up or down (e.g. eth0 or br-lan or pppoe-wan), when applicable <br/><br/>More information about iface events and variables here: <a href=\"https://openwrt.org/docs/guide-user/base-system/hotplug#iface\">hotplug#iface</a>"

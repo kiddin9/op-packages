@@ -1,0 +1,110 @@
+msgid "SNMP Settings"
+msgstr "SNMP Settings"
+
+msgid "General Settings"
+msgstr "General Settings"
+
+msgid "SNMPv1/SNMPv2c"
+msgstr "SNMPv1/SNMPv2c"
+
+msgid "SNMPv3"
+msgstr "SNMPv3"
+
+msgid "System"
+msgstr "System"
+
+msgid "Enabled"
+msgstr "Enabled"
+
+msgid "IP family"
+msgstr "IP family"
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Port for SNMP connections"
+msgstr "Port for SNMP connections"
+
+msgid "SNMP mode"
+msgstr "SNMP mode"
+
+msgid "Community"
+msgstr "Community"
+
+msgid "Community string, sent to the monitoring system along with the request"
+msgstr "Community string, sent to the monitoring system along with the request"
+
+msgid "Acces mode"
+msgstr "Acces mode"
+
+msgid "Read-only parameters (monitoring)"
+msgstr "Read-only parameters (monitoring)"
+
+msgid "Security name"
+msgstr "Security name"
+
+msgid "Username for authentication when working via SNMP"
+msgstr "Username for authentication when working via SNMP"
+
+msgid "Security level"
+msgstr "Security level"
+
+msgid "Security level selection when working via SNMP"
+msgstr "Security level selection when working via SNMP"
+
+msgid "No authentication and encryption settings"
+msgstr "No authentication and encryption settings"
+
+msgid "With authentication"
+msgstr "With authentication"
+
+msgid "With authentication and encryption"
+msgstr "With authentication and encryption"
+
+msgid "Authentication protocol"
+msgstr "Authentication protocol"
+
+msgid "Type of authentication protocol"
+msgstr "Type of authentication protocol"
+
+msgid "Authentication passphrase"
+msgstr "Authentication passphrase"
+
+msgid "Passphrase for authentication when working via SNMP"
+msgstr "Passphrase for authentication when working via SNMP"
+
+msgid "Privacy protocol"
+msgstr "Privacy protocol"
+
+msgid "Type of encryption protocol"
+msgstr "Type of encryption protocol"
+
+msgid "Privacy passphrase"
+msgstr "Privacy passphrase"
+
+msgid "Passphrase for encrypting the data transmission channel when working via SNMP"
+msgstr "Passphrase for encrypting the data transmission channel when working via SNMP"
+
+msgid "sysName"
+msgstr "sysName"
+
+msgid "Device name in the monitoring system. This field is optional"
+msgstr "Device name in the monitoring system. This field is optional"
+
+msgid "sysContact"
+msgstr "sysContact"
+
+msgid "Contact information. This field is optional"
+msgstr "Contact information. This field is optional"
+
+msgid "sysLocation"
+msgstr "sysLocation"
+
+msgid "Device location description. This field is optional"
+msgstr "Device location description. This field is optional"
+
+msgid "sysDescr"
+msgstr "sysDescr"
+
+msgid "Device description. This field is optional"
+msgstr "Device description. This field is optional"

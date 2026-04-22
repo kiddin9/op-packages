@@ -1,0 +1,110 @@
+msgid "SNMP Settings"
+msgstr "Настройки SNMP"
+
+msgid "General Settings"
+msgstr "General Settings"
+
+msgid "SNMPv1/SNMPv2c"
+msgstr "SNMPv1/SNMPv2c"
+
+msgid "SNMPv3"
+msgstr "SNMPv3"
+
+msgid "System"
+msgstr "Описание системы"
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "IP family"
+msgstr "IP family"
+
+msgid "Port"
+msgstr "Port"
+
+msgid "Port for SNMP connections"
+msgstr "Порт для подключений по SNMP"
+
+msgid "SNMP mode"
+msgstr "SNMP mode"
+
+msgid "Community"
+msgstr "Community"
+
+msgid "Community string, sent to the monitoring system along with the request"
+msgstr "Строка сообщества, отправляется в систему мониторинга вместе с запросом"
+
+msgid "Acces mode"
+msgstr "Acces mode"
+
+msgid "Read-only parameters (monitoring)"
+msgstr "Только чтение параметров (мониторинг)"
+
+msgid "Security name"
+msgstr "Security name"
+
+msgid "Username for authentication when working via SNMP"
+msgstr "Имя пользователя для авторизации при работе по SNMP"
+
+msgid "Security level"
+msgstr "Security level"
+
+msgid "Security level selection when working via SNMP"
+msgstr "Выбор уровня защиты при работе по SNMP"
+
+msgid "No authentication and encryption settings"
+msgstr "Без настроек авторизации и шифрования"
+
+msgid "With authentication"
+msgstr "С авторизацией"
+
+msgid "With authentication and encryption"
+msgstr "С авторизацией и шифрованием"
+
+msgid "Authentication protocol"
+msgstr "Authentication protocol"
+
+msgid "Type of authentication protocol"
+msgstr "Протокол авторизации"
+
+msgid "Authentication passphrase"
+msgstr "Authentication passphrase"
+
+msgid "Passphrase for authentication when working via SNMP"
+msgstr "Ключевая фраза для авторизации при работе по SNMP"
+
+msgid "Privacy protocol"
+msgstr "Privacy protocol"
+
+msgid "Type of encryption protocol"
+msgstr "Протокол шифрования"
+
+msgid "Privacy passphrase"
+msgstr "Privacy passphrase"
+
+msgid "Passphrase for encrypting the data transmission channel when working via SNMP"
+msgstr "Ключевая фраза для шифрования канала передачи данных при работе по SNMP"
+
+msgid "sysName"
+msgstr "sysName"
+
+msgid "Device name in the monitoring system. This field is optional"
+msgstr "Имя устройства в системе мониторинга. Поле не обязательно для заполнения"
+
+msgid "sysContact"
+msgstr "sysContact"
+
+msgid "Contact information. This field is optional"
+msgstr "Контактные данные. Поле не обязательно для заполнения"
+
+msgid "sysLocation"
+msgstr "sysLocation"
+
+msgid "Device location description. This field is optional"
+msgstr "Описание местоположения устройства. Поле не обязательно для заполнения"
+
+msgid "sysDescr"
+msgstr "sysDescr"
+
+msgid "Device description. This field is optional"
+msgstr "Описание устройства. Поле не обязательно для заполнения"
