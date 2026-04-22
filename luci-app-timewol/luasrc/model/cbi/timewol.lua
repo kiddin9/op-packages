@@ -1,3 +1,5 @@
+-- Copyright (C) 2025 LWB1978
+
 local sys = require "luci.sys"
 local m, s, o
 
@@ -31,6 +33,10 @@ o = s:option(Flag, "enable", translate("Enable"))
 o.default = 1
 o.rmempty = false
 
+o = s:option(Value, "remark", translate("Remarks"))
+o.width = "auto"
+o.rmempty = false
+
 -- Client MAC Address
 o = s:option(Value, "macaddr", translate("Client MAC"))
 o.rmempty = false
@@ -47,13 +53,6 @@ for _, device in ipairs(sys.net.devices()) do
 		o:value(device)
 	end
 end
-
--- wake device
-local btn = s:option(Button, "_awake",translate("Wake Up Host"))
-btn.inputtitle	= translate("Awake")
-btn.inputstyle	= "apply"
-btn.disabled	= false
-btn.template = "timewol/awake"
 
 -- Function to validate cron field values
 local function validate_cron_field(option_name, value, min, max, default)
@@ -86,6 +85,14 @@ for _, opt in ipairs(schedule_options) do
 	o.validate = function(self, value)
 		return validate_cron_field(opt[2], value, opt[3], opt[4], o.default)
 	end
+end
+
+o = s:option(DummyValue, "_Wake")
+o.rawhtml = true
+o.cfgvalue = function(self, section)
+    return string.format([[
+        <input type="button" class="btn cbi-button cbi-button-apply" onclick="WakeUP('%s')" value="%s" />]],
+	section, translate("Wake"))
 end
 
 -- Apply the configuration changes

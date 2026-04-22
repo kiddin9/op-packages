@@ -1,4 +1,12 @@
+-- Copyright (C) 2025 LWB1978
+
 module("luci.controller.timewol", package.seeall)
+
+local http = require "luci.http"
+local uci = require "luci.model.uci".cursor()
+local sys = require "luci.sys"
+local json = require "luci.jsonc"
+local util = require "luci.util"
 
 function index()
 	if not nixio.fs.access("/etc/config/timewol") then return end
@@ -11,36 +19,42 @@ function index()
 	page.acl_depends = { "luci-app-timewol" }
 
 	entry({"admin", "control", "timewol", "status"}, call("status")).leaf = true
-	entry({"admin", "control", "timewol", "awake"}, call("awake")).leaf = true
+
+	entry({"admin", "control", "timewol", "wakeup"}, call("wakeup")).leaf = true
+end
+
+local function http_write_json(content)
+	http.prepare_content("application/json")
+	http.write(json.stringify(content or {code = 1}))
 end
 
 function status()
 	local e = {}
-	e.status = luci.sys.call("cat /etc/crontabs/root | grep -v '^[ \t]*#' | grep etherwake >/dev/null") == 0
-	luci.http.prepare_content("application/json")
-	luci.http.write_json(e)
+	e.status = sys.call("grep -v '^[ \t]*#' /etc/crontabs/root | grep etherwake >/dev/null") == 0
+	http_write_json(e)
 end
 
-function awake(sections)
-	lan = x:get("timewol",sections,"maceth")
-	mac = x:get("timewol",sections,"macaddr")
-    local e = {}
-    cmd = "/usr/bin/etherwake -D -i " .. lan .. " -b " .. mac .. " 2>&1"
-	local p = io.popen(cmd)
-	local msg = ""
-	if p then
-		while true do
-			local l = p:read("*l")
-			if l then
-				if #l > 100 then l = l:sub(1, 100) .. "..." end
-				msg = msg .. l
-			else
-				break
-			end
-		end
-		p:close()
+function wakeup()
+	uci:revert("timewol")
+	local section = http.formvalue("section") or ""
+	if section == "" then
+		http_write_json({ success = false, msg = "Missing section" })
+		return
 	end
-	e["data"] = msg
-    luci.http.prepare_content("application/json")
-    luci.http.write_json(e)
+	local maceth = uci:get("timewol", section, "maceth") or ""
+	local macaddr = uci:get("timewol", section, "macaddr") or ""
+	if maceth == "" or macaddr == "" then
+		http_write_json({ success = false, msg = "Missing MAC or interface" })
+		return
+	end
+	local cmd = string.format(
+		"/usr/bin/etherwake -D -i %s %s",
+		util.shellquote(maceth),
+		util.shellquote(macaddr)
+	)
+	if sys.call(cmd) ~= 0 then
+		http_write_json({ success = false, msg = "Wake failed" })
+		return
+	end
+	http_write_json({ success = true })
 end
