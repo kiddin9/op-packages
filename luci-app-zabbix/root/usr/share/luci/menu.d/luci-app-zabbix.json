@@ -1,0 +1,12 @@
+{
+        "admin/services/zabbix": {
+                "title": "Zabbix Agent",
+                "action": {
+                        "type": "view",
+                        "path": "zabbix/zabbix"
+                },
+                "depends": {
+                        "acl": [ "luci-app-zabbix" ]
+                }
+        }
+}

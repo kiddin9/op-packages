@@ -1,0 +1,19 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-simman.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-simman.json << EEOF
+{
+    "config": "simman",
+    "init": "simman"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@simman[-1]
+	add ucitrack simman
+	set ucitrack.@simman[-1].init=simman
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

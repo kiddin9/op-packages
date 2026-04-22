@@ -1,0 +1,29 @@
+msgid "Hotplug Rules"
+msgstr "Автоматизация (Hotplug)"
+
+msgid "Interface Rules"
+msgstr "Правила для интерфейсов"
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "Activate"
+msgstr "Активировать"
+
+msgid "Variable $ACTION"
+msgstr "Переменная $ACTION"
+
+msgid "The type of event that will trigger the command"
+msgstr "Тип события, при котором будет выполнена команда"
+
+msgid "Variable $INTERFACE"
+msgstr "Переменная $INTERFACE"
+
+msgid "The name of the logical interface to which the command will be applied"
+msgstr "Имя логического интерфейса, к которому будет применимо правило"
+
+msgid "Command to execute"
+msgstr "Команда для выполнения"
+
+msgid "Running commands when the hotplug trigger occurs. <br/><br/>ACTION - ifdown, ifup, ifup-failed, ifupdate, free, reload, iflink, create <br/>INTERFACE - Name of the logical interface which went up or down (e.g. wan or lan) <br/>DEVICE - Name of the physical device which went up or down (e.g. eth0 or br-lan or pppoe-wan), when applicable <br/><br/>More information about iface events and variables here: <a href=\"https://openwrt.org/docs/guide-user/base-system/hotplug#iface\">hotplug#iface</a>"
+msgstr "Выполнение команд при срабатывании триггера hotplug. <br/><br/>ACTION - ifdown, ifup, ifup-failed, ifupdate, free, reload, iflink, create <br/>INTERFACE - имя логического интерфейса, который был активирован или деактивирован (например, wan или lan) <br/>DEVICE - имя физического устройства, которое было активировано или деактивировано (например, eth0, br-lan или pppoe-wan), если применимо <br/><br/>Подробнее о событиях интерфейсов и переменных: <a href=\"https://openwrt.org/docs/guide-user/base-system/hotplug#iface\">hotplug#iface</a>"

@@ -1,0 +1,95 @@
+msgid "Zabbix Agent configuration"
+msgstr "Настройки Zabbix Agent"
+
+msgid "General Settings"
+msgstr "Основные настройки"
+
+msgid "Passive Checks"
+msgstr "Пассивные проверки"
+
+msgid "Active Checks"
+msgstr "Активные проверки"
+
+msgid "TLS Configuration"
+msgstr "TLS шифрование"
+
+msgid "Enabled"
+msgstr "Включить"
+
+msgid "Hostname"
+msgstr "Hostname"
+
+msgid "Unique hostname used by the agent to register with the Zabbix server. Required for active checks and must match the node name specified on the server."
+msgstr "Уникальное имя хоста, используемое агентом для регистрации на сервере Zabbix. Необходимо для активных проверок и должно соответствовать имени узла, указанному на сервере."
+
+msgid "Server"
+msgstr "Server"
+
+msgid "List of IP addresses (or hostnames) of Zabbix servers allowed to connect to this agent. If 0.0.0.0/0 is specified, the agent will accept connections from any IP address."
+msgstr "Список IP-адресов (или имён хостов) серверов Zabbix, которым разрешено подключаться к этому агенту. Если указать 0.0.0.0/0, агент будет принимать подключения с любого IP-адреса."
+
+msgid "IP address of the local network interfaces on which the Zabbix agent will listen for incoming connections from the server."
+msgstr "IP-адрес локальных сетевых интерфейсов, на которых Zabbix-агент будет ожидать входящие соединения от сервера."
+
+msgid "ListenPort"
+msgstr "ListenPort"
+
+msgid "The agent will listen on this port for connections from the server."
+msgstr "Агент будет слушать этот порт для подключений с сервера."
+
+msgid "TLSAccept"
+msgstr "TLSAccept"
+
+msgid "The parameter defines which types of TLS connections the agent will accept."
+msgstr "Параметр определяет, какие типы TLS-соединений агент будет принимать."
+
+msgid "without encryption"
+msgstr "без шифрования"
+
+msgid "pre-shared key"
+msgstr "pre-shared ключ"
+
+msgid "certificate"
+msgstr "сертификат"
+
+msgid "ServerActive"
+msgstr "ServerActive"
+
+msgid "IP address or hostname of the Zabbix server for active checks. If the parameter is not specified, active checks are disabled."
+msgstr "IP адрес или имя хоста Zabbix-сервера для активных проверок. Если параметр не указан, активные проверки отключены."
+
+msgid "TLSConnect"
+msgstr "TLSConnect"
+
+msgid "The parameter defines how the agent should establish a secure connection with the Zabbix server or proxy."
+msgstr "Параметр определяет, как агент должен устанавливать защищенное соединение с Zabbix-сервером или прокси."
+
+msgid "TLSPSKIdentity"
+msgstr "TLSPSKIdentity"
+
+msgid "Pre-shared key identifier string. Used for unique identification and management of the pre-shared key, ensuring the security of the connection between the agent and the server."
+msgstr "Строка идентификатор pre-shared ключа. Используется для уникальной идентификации и управления предустановленным ключом, обеспечивая безопасность соединения между агентом и сервером."
+
+msgid "TLSPSKFile"
+msgstr "TLSPSKFile"
+
+msgid "Agent pre-shared key."
+msgstr "Pre-shared ключ агента."
+
+msgid "TLSCAFile"
+msgstr "TLSCAFile"
+
+msgid "Root CA certificate. Used for encrypted connections between Zabbix components."
+msgstr "Сертификат верхнего уровня CA. Используется для зашифрованных соединений между Zabbix компонентами."
+
+msgid "TLSCertFile"
+msgstr "TLSCertFile"
+
+msgid "Agent certificate or certificate chain used to establish secure (TLS/SSL) connections between Zabbix components."
+msgstr "Сертификат агента или цепочка сертификатов, используемых для установления защищенных (TLS/SSL) соединений между компонентами Zabbix."
+
+msgid "TLSKeyFile"
+msgstr "TLSKeyFile"
+
+msgid "Agent private key."
+msgstr "Приватный ключ агента."

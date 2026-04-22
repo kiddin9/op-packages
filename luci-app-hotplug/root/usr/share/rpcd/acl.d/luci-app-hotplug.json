@@ -1,0 +1,11 @@
+{
+	"luci-app-hotplug": {
+		"description": "Grant UCI access for luci-app-hotplug",
+		"read": {
+			"uci": [ "hotplug" ]
+		},
+		"write": {
+			"uci": [ "hotplug" ]
+		}
+	}
+}

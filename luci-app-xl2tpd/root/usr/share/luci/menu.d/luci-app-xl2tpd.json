@@ -1,0 +1,40 @@
+{
+	"admin/vpn/xl2tpd": {
+		"title": "L2TP Server",
+		"order": 60,
+		"action": {
+			"type": "alias",
+			"path": "admin/vpn/xl2tpd/general"
+		},
+		"depends": {
+			"acl": [ "luci-app-xl2tpd" ]
+		}
+	},
+
+	"admin/vpn/xl2tpd/general": {
+		"title": "General Settings",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "xl2tpd/general"
+		}
+	},
+
+	"admin/vpn/xl2tpd/user": {
+		"title": "Users Manager",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "xl2tpd/user"
+		}
+	},
+
+	"admin/vpn/xl2tpd/online": {
+		"title": "Online Users",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "xl2tpd/online"
+		}
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"luci-app-xl2tpd": {
+		"description": "Grant UCI access for luci-app-xl2tpd",
+		"read": {
+			"uci": [ "xl2tpd" ],
+			"file": {
+				"/tmp/xl2tpd/clients": [ "read" ]
+			},
+		},
+		"write": {
+			"uci": [ "xl2tpd" ]
+		}
+	}
+}
