@@ -355,6 +355,7 @@ jobs:
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
         git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan 3ginfo modemband
         git_sparse_clone istoreos-24.10 "https://github.com/jjm2473/packages" utils/dockerd
+        git_sparse_clone istoreos-24.10 "github.com/teleofis/teleofis-feed" luci && mvdir luci
         ) &
         (
         git_sparse_clone develop "https://github.com/Ysurac/openmptcprouter-feeds" \
