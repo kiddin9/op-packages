@@ -1,0 +1,62 @@
+#!/bin/sh /etc/rc.common
+
+START=11
+STOP=10
+USE_PROCD=1
+
+start_service() {
+	poe_out_power_enabled="$(uci -q get powersupply.system.poe_out_power)"
+	poe_out_power_gpio="$(uci -q get powersupply.system.poe_out_power_gpio)"
+	voltage_threshold="$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/voltage_threshold)"
+	input_voltage="$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/input_voltage)"
+	if [[ "$input_voltage" -lt "$voltage_threshold" ]]; then
+		echo 0 > /sys/class/gpio/gpio$poe_out_power_gpio/value
+	else
+		echo $poe_out_power_enabled > /sys/class/gpio/gpio$poe_out_power_gpio/value
+	fi
+	poe_out_power_control="$(uci -q get powersupply.system.poe_out_control)"
+	echo $poe_out_power_control > /sys/class/i2c-dev/i2c-0/device/0-0011/poeout_control
+	
+	ext_power_enabled="$(uci -q get powersupply.system.ext_power)"
+	ext_power_gpio="$(uci -q get powersupply.system.ext_power_gpio)"
+	echo $ext_power_enabled > /sys/class/gpio/gpio$ext_power_gpio/value
+
+	usb_power_enabled="$(uci -q get powersupply.system.usb_power)"
+	usb_power_gpio="$(uci -q get powersupply.system.usb_power_gpio)"
+	echo $usb_power_enabled > /sys/class/gpio/gpio$usb_power_gpio/value
+	usb_power_control="$(uci -q get powersupply.system.usb_control)"
+	echo $usb_power_control > /sys/class/i2c-dev/i2c-0/device/0-0011/usb_control
+}
+
+stop_service() {
+	poe_out_power_gpio="$(uci -q get powersupply.system.poe_out_power_gpio)"
+	echo 0 > /sys/class/gpio/gpio$poe_out_power_gpio/value
+	
+	ext_power_gpio="$(uci -q get powersupply.system.ext_power_gpio)"
+	echo 0 > /sys/class/gpio/gpio$ext_power_gpio/value
+
+	usb_power_gpio="$(uci -q get powersupply.system.usb_power_gpio)"
+	echo 0 > /sys/class/gpio/gpio$usb_power_gpio/value
+}
+
+boot() {
+	poe_gpio="$(uci -q get powersupply.system.poe_out_power_gpio)"
+	echo $poe_gpio > /sys/class/gpio/export
+	usb_gpio="$(uci -q get powersupply.system.usb_power_gpio)"
+	echo $usb_gpio > /sys/class/gpio/export
+	ext_gpio="$(uci -q get powersupply.system.ext_power_gpio)"
+	echo $ext_gpio > /sys/class/gpio/export
+	start
+}
+
+shutdown() {
+	stop_service
+}
+
+service_triggers() {
+	procd_add_reload_trigger "powersupply"
+}
+
+reload_service() {
+	restart
+}

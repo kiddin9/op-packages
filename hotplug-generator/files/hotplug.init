@@ -1,0 +1,50 @@
+#!/bin/sh /etc/rc.common
+
+START=10
+USE_PROCD=1
+IFACE_PATH="/etc/hotplug.d/iface/90-hp-generator"
+
+add_iface_rule() {
+	local enabled action command description interface
+
+	config_get enabled "$1" enabled
+	[ "$enabled" = "0" ] && continue
+
+	config_get action "$1" action
+	config_get description "$1" description
+	config_get interface "$1" interface
+
+	echo "#!/bin/sh" >> "$IFACE_PATH-$1"
+	echo "# Generated automatically, to change it use /etc/config/hotplug" >> "$IFACE_PATH-$1"
+	description=$(echo $description | tr '\n' ' ')
+	echo "# Description: $description" >> "$IFACE_PATH-$1"
+	echo "" >> "$IFACE_PATH-$1"
+
+	echo "if [ \"\$ACTION\" = \"$action\" ]; then" >> "$IFACE_PATH-$1"
+	echo "	if [ \"\$INTERFACE\" = \"$interface\" ]; then" >> "$IFACE_PATH-$1"
+
+	command_list=$(uci -q get hotplug."$1".command)
+	[ "${command_list:0:1}" = "'" ] && command_list=$(echo ${command_list:1})
+	[ "${command_list: -1}" = "'" ] && command_list=$(echo ${command_list:0:-1})
+	i=0
+	while true ; do
+		i=$((i+1))
+		command=$(echo $command_list | awk -v i=$i -F "' '" '{print $i}')
+		[ -z "$command" ] && break
+		echo "		$command" >> "$IFACE_PATH-$1"
+	done
+
+	echo "	fi" >> "$IFACE_PATH-$1"
+	echo "fi" >> "$IFACE_PATH-$1"
+	echo "exit 0" >> "$IFACE_PATH-$1"
+}
+
+start_service() {
+	rm "$IFACE_PATH-"* 2>/dev/null
+	config_load hotplug
+	config_foreach add_iface_rule iface
+}
+
+service_triggers() {
+	procd_add_reload_trigger "hotplug"
+}

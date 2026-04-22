@@ -1,0 +1,37 @@
+#!/bin/sh /etc/rc.common
+
+START=50
+STOP=10
+
+boot() {
+	if [[ -e "/lib/firmware/gd3x/gd3x.bin" ]]; then
+		/etc/init.d/svcontrol stop
+		/etc/init.d/event-handler stop
+		echo 1 > /sys/bus/i2c/devices/0-0011/fw_upgrade
+		echo 0 > /sys/bus/i2c/devices/0-0011/heat_end_temp
+		count=0
+		while [[ "$count" -le "5" ]]; do
+			sleep 2
+			stm32flash -a 0x22 /dev/i2c-0
+			if [[ "$?" -eq 0 ]]; then
+				break
+			fi
+		done
+		if [[ "$count" -eq "5" ]]; then
+			/etc/init.d/svcontrol start
+			exit 1
+		fi
+		sleep 1
+		stm32flash -a 0x22 -o -S 0x8024000 /dev/i2c-0
+		sleep 1
+		stm32flash -a 0x22 -w /lib/firmware/gd3x/gd3x.bin -g 0x8024000 -S 0x8024000 /dev/i2c-0
+		if [[ "$?" -eq 0 ]]; then
+			sleep 60
+			rm /lib/firmware/gd3x/gd3x.bin
+		fi
+		echo 5 > /sys/bus/i2c/devices/0-0011/heat_end_temp
+		sync
+		/etc/init.d/svcontrol start
+		/etc/init.d/event-handler start
+	fi
+}

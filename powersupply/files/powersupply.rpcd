@@ -1,0 +1,34 @@
+#!/bin/sh
+
+case "$1" in
+	list)
+		echo '{ "info": { } }'
+	;;
+	call)
+		case "$2" in
+			info)
+				input_voltage=$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/input_voltage)
+				voltage_threshold=$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/voltage_threshold)
+				poe_out_control=$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/poeout_control)
+				usb_power_control=$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/usb_control)
+
+				poe_out_power_gpio=$(uci -q get powersupply.system.poe_out_power_gpio)
+				poe_out_power=$(cat /sys/class/gpio/gpio$poe_out_power_gpio/value)
+				ext_power_gpio="$(uci -q get powersupply.system.ext_power_gpio)"
+				ext_power=$(cat /sys/class/gpio/gpio$ext_power_gpio/value)
+				usb_power_gpio="$(uci -q get powersupply.system.usb_power_gpio)"
+				usb_power=$(cat /sys/class/gpio/gpio$usb_power_gpio/value)
+
+				echo '{'
+				echo "\"input_voltage\": \"$input_voltage\", "
+				echo "\"voltage_threshold\": \"$voltage_threshold\", "
+				echo "\"poe_out_power\": \"$poe_out_power\", "
+				echo "\"poe_out_control\": \"$poe_out_control\", "
+				echo "\"usb_power\": \"$usb_power\", "
+				echo "\"usb_power_control\": \"$usb_power_control\", "
+				echo "\"7v5_power\": \"$ext_power\""
+				echo '}'
+			;;
+		esac
+	;;
+esac

@@ -1,0 +1,19 @@
+#!/bin/sh
+
+echo 506 > /sys/class/gpio/export
+
+while sleep 5; do
+	temp=$(cat /sys/bus/i2c/devices/0-0011/temp)
+	if [[ "$?" -ne "0" ]]; then
+		sleep 5
+		temp=$(cat /sys/bus/i2c/devices/0-0011/temp)
+		if [[ "$?" -ne "0" ]]; then
+			echo "gd3x: svcontrol: i2c communication lost, sv will reboot" > /dev/kmsg
+			echo high > /sys/class/gpio/gpio506/direction
+			sleep 1
+			echo low > /sys/class/gpio/gpio506/direction
+		fi
+	fi
+done
+
+exit 0

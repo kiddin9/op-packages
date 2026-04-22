@@ -1,0 +1,71 @@
+#!/bin/sh
+POE="$(uci -q get event-handler.@event-handler[0].poe_gpio)"
+USB="$(uci -q get event-handler.@event-handler[0].usb_gpio)"
+HEAT="$(uci -q get event-handler.@event-handler[0].heat_gpio)"
+WD="$(uci -q get event-handler.@event-handler[0].wd_gpio)"
+LOG=/etc/event_log
+int=$1
+
+while true; do
+	touch $LOG
+	DATE=$(date)
+	INTS_MASK=$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/int_sum)
+
+	# poe out power error int
+	if [[ "$(echo $((INTS_MASK & 1)))" == "1" ]]; then
+		VALUE=$(cat /sys/class/gpio/gpio$POE/value)
+		if [[ "$VALUE" == "1" ]]; then
+			echo "$DATE: ${int:+$int: }poe: Warning! The maximum current limit on the PoE-OUT output has been exceeded." >> $LOG
+		else
+			echo "$DATE: ${int:+$int: }poe: The PoE-OUT output current has been restored to normal values after exceeding the maximum thresholds." >> $LOG
+		fi
+	fi
+
+	# usb power error int
+	if [[ "$(echo $((INTS_MASK & 2)))" == "2" ]]; then
+		VALUE=$(cat /sys/class/gpio/gpio$USB/value)
+		if [[ "$VALUE" == "1" ]]; then
+			echo "$DATE: ${int:+$int: }usb: Warning! The maximum current limit for the USB has been exceeded." >> $LOG
+		else
+			echo "$DATE: ${int:+$int: }usb: The USB current has been restored to normal values after exceeding the maximum threshold." >> $LOG
+		fi
+	fi
+
+	# heat int
+	if [[ "$(echo $((INTS_MASK & 4)))" == "4" ]]; then
+		VALUE=$(cat /sys/class/gpio/gpio$HEAT/value)
+		if [[ "$VALUE" == "1" ]]; then
+			echo "$DATE: ${int:+$int: }heat: The device heating circuit is enabled." >> $LOG
+		else
+			echo "$DATE: ${int:+$int: }heat: The device heating circuit is disabled." >> $LOG
+		fi
+	fi
+
+	# wd toggle int
+	if [[ "$(echo $((INTS_MASK & 8)))" == "8" ]]; then
+		VALUE=$(cat /sys/class/gpio/gpio$WD/value)
+	fi
+
+	# voltage threshold int
+	if [[ "$(echo $((INTS_MASK & 16)))" == "16" ]]; then
+		input_voltage="$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/input_voltage)"
+		voltage_threshold="$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/voltage_threshold)"
+		poe_out_power_gpio="$(uci -q get powersupply.system.poe_out_power_gpio)"
+		if [[ "$input_voltage" -lt "$voltage_threshold" ]]; then
+			echo 0 > /sys/class/gpio/gpio$poe_out_power_gpio/value
+			echo "$DATE: ${int:+$int: }voltage: PoE-OUT power supply is disabled. The input voltage is below the required threshold of $voltage_threshold mV DC. Current voltage: $input_voltage mV." >> $LOG
+		fi
+	fi
+
+	if [[ "$(wc -l < $LOG)" -ge "100" ]]; then
+		mv $LOG $LOG.old
+	fi
+
+	if [[ -n "$int" ]]; then
+		break
+	fi
+
+	sleep 1
+done
+
+exit 0

@@ -1,0 +1,72 @@
+交叉编译方法
+以使用buildroot-gcc463交叉编译工具链为例：
+gcc bin文件路径为：
+/home/toolchain/buildroot-gcc463/usr/bin/mipsel-linux-gcc
+export CROSS=/home/toolchain/buildroot-gcc463/usr/bin/mipsel-linux-
+cd 源码目录
+make -f FBFDownloader_makefile_cross
+对于一些toolchain，需要：
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/toolchain/buildroot-gcc463/usr/lib
+
+生成的fbfdownloader_cross即为下载工具。
+
+程序入口为：FBFDownloader.c:728 main(int argc, char *argv[])
+
+FBFDownloader.c:732 ParseCommandLine为解析参数函数，包括 -b BinFile.bin(必选)
+-p logFilePath(可选，指定下载过程中log和临时文件生成的目录)
+
+FBFDownloader.c:780 PInstanceParams lpInstanceParam. 该结构体存放下载相关的参数
+
+FBFDownloader.c:790-800 该过程为从BinFile.bin文件中提取下载相关参数。
+
+FBFDownloader.c:813 执行下载过程函数InitializeBL(lpInstanceParam)
+WtptpDownLoad.c:6 InitializeBL(PInstanceParams pInstParam)
+WtptpDownloader.c:2762 BOOL WtptpDownLoad_InitializeBL(struct CWtptpDownLoad *me,PInstanceParams pInstParam)
+WtptpDownloader.c:2867-2892 下载前参数解析准备过程。
+WtptpDownloader.c:2901 创建设备检测线程，检测下载口枚举
+WtptpDownloader.c:535 PVOID   WtptpDownLoad_WtptpDeviceDetectThread(PVOID Arg)
+WtptpDownloader.c:541 WtptpDownLoad_init_hotplug_sock 创建socket，用来检测下载设备hotplug
+WtptpDownloader.c:542 BulkDevNonDrv_FindAllSupportedDevices 检测已经接入的下载设备，根据设备的PID和VID判断是否为下载设备
+WtptpDownloader.c:554 下载设备已经存在，打开设备WtptpDownLoad_WtptpOpenDevice
+WtptpDownloader.c:581 BulkDevNonDrv_CheckDevForNetLink 检测到下载设备插拔事件
+    WtptpDownloader.c:590 设备插入 打开设备 WtptpDownLoad_WtptpOpenDevice
+    WtptpDownloader.c:610 设备移除 停止下载流程 WtptpDownLoad_SetAndWaitForThreadExit
+
+打开设备
+WtptpDownloader.c:482 void WtptpDownLoad_WtptpOpenDevice(struct CWtptpDownLoad *me,struct CWtptpDownLoad *pWtptpDownLoad, USB_HANDLE *pLinuxUsb)
+    WtptpDownloader.c:492-507准备工作，根据设备路径创建Log文件
+    WtptpDownloader.c:509 打开设备函数WtptpDownLoad_OpenDevice
+WtptpDownloader.c:916 BOOL WtptpDownLoad_OpenDevice(struct CWtptpDownLoad *me,PDEVICE pDev)
+    WtptpDownloader.c:954 WtptpDownLoad_GetDeviceBootType 获取设备型号和类型,(BootRom,BootLoader)
+        该过程主要流程为：
+        1、打开USB口 WtptpDownloader.c:725 OpenUsbPort
+        2、与芯片进行握手，发送Preamble消息 WtptpDownloader.c:736 SendPreamble
+        3、获取芯片当前状态 WtptpDownloader.c:747 GetTargetMessage
+        4、发送GetVersion消息，获取芯片型号和类型，WtptpDownloader.c:764 GetVersion
+        5、处理GetVersion返回的内容，WtptpDownloader.c:769-912
+    如果设备类型为BootRom，即模块为空板，则创建BootRom下载线程。WtptpDownloader.c:971-988
+        BootRom下载（空板下载、ForceDownload）是将OBM下载至模块DDR中，下载完成后，当前BootROM设备会自动移除，随后模块以BootLoader类型接入大板（Host），工具会再次检测到设备接入，且其类型为BootLoader。
+    如果设备类型为BootLoader，即非空板，则创建BootLoader下载线程。WtptpDownloader.c:989-1010
+BootRom和BootLoader下载过程类似，都是通过调用WtptpDownLoad_WTPTPDownLoad函数来进行下载。主要区别是BootLoader下载完成后，会将下载状态设置为kProcCompleted（成功WtptpDownloader.c:251）或kProcAborting（失败WtptpDownloader.c:258），此后工具会退出；BootRom下载完成后工具不会退出，设备检测线程会继续运行。
+
+下面将描述下载的核心函数的流程WtptpDownloader.c:2044 BOOL    WtptpDownLoad_WTPTPDownLoad(struct CWtptpDownLoad *me,PDEVICE pDev)
+WtptpDownloader.c:2049-2141 设置下载相关参数和下载的Image List，计算下载总大小。
+WtptpDownloader.c:2143-2561 对每个image进行下载和烧写
+    WtptpDownloader.c:2153 WtptpDownLoad_DownloadImage
+    WtptpDownloader.c:1019 BOOL WtptpDownLoad_DownloadImage(struct CWtptpDownLoad *me,PDEVICE pdev, int iFile,const t_ImageFileList* plImgFileList, UINT64 uiAllimgsize,UINT64 *uidownloadsize,int nImages,char* strDownloadImgName)
+    该函数将image下载至模块DDR中，大致流程为：
+    1、SendPreamble
+    2、GetVersion
+    以上两步在下载第一个image时省略，因为WtptpDownLoad_GetDeviceBootType中已经执行上两个步骤
+    3、SelectImage WtptpDownloader.c:1103
+    4、VerifyImage WtptpDownloader.c:1117
+    5、GetBadBlockInfo WtptpDownloader.c:1188
+    6、DataHeader
+    7、Data（将image所有数据通过Data传输完）
+    8、Done WtptpDownloader.c:1447
+    WtptpDownloader.c:2160-2552 Image下载到DDR后，模块开始将image烧写到flash，该段代码主要通过GetWtpMessage获取模块烧写过程中的状态：
+    WtptpDownloader.c:2512 当工具收到模块处于PlatformReady状态消息后，表明image烧写完毕。
+
+所有image下载烧写完毕后，如果在blf中使能CRC校验（部分平台支持），模块会计算烧写完的image CRC，并上报给工具。WtptpDownloader.c:2565-2596
+
+其他说明：上述下载过程中提及的image并非指BinFile.bin文件。BinFile.bin是包括下载参数、下载image等内容的包文件，下载过程中通过BinFileWtp.h中的类（c++移植到c形式的类）来解析。

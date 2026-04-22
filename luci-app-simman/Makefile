@@ -10,7 +10,7 @@ LUCI_DEPENDS:=+simman
 # Version: <major>.<minor>.<patch>
 PKG_VERSION:=0.2.6
 
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Sklyarec Konstantin <atskyua@gmail.com> Vladimir Ovseychuk <vgovseychuk@gmail.com>
 

@@ -1,7 +1,6 @@
 {
         "admin/vpn/strongswan": {
                 "title": "IPsec",
-                "order": 85,
                 "action": {
                         "type": "view",
                         "path": "strongswan/strongswan"

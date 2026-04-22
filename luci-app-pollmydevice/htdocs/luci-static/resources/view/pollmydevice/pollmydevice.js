@@ -61,8 +61,8 @@ return view.extend({
 					uci.set('pollmydevice', section_id, 'baudrate','9600');
 					uci.set('pollmydevice', section_id, 'bytesize','8');
 					uci.set('pollmydevice', section_id, 'mode','disabled');
-					uci.set('pollmydevice', section_id, 'open_in_firewall','1')
-					uci.set('pollmydevice', section_id, 'server_port',String(30000+i))
+					uci.set('pollmydevice', section_id, 'open_in_firewall','1');
+					uci.set('pollmydevice', section_id, 'server_port',String(30000+i));
 					this.addedSection = section_id;
 					return this.renderMoreOptionsModal(section_id);
 				};
@@ -130,7 +130,7 @@ return view.extend({
 		o.modalonly = true;
 		o.default = 0;
 		o.datatype = 'and(uinteger, min(0), max(255))';
-		for(i=1;i<256;i++){
+		for (var i = 1; i < 256; i++){
 			o.depends({pack_size: i.toString()});
 		}
 
