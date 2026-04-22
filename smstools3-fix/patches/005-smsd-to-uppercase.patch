@@ -1,0 +1,15 @@
+diff --git a/src/smsd.c b/src/smsd.c
+index fdfa193..c9c8471 100755
+--- a/src/smsd.c
++++ b/src/smsd.c
+@@ -3959,6 +3959,10 @@ int receivesms(int* quick, int only1st)
+           foundsomething=1;
+           *quick=1;
+ 
++          // 10/2023: allow lowcase letters from modem:
++          for (i = 0; line2[i]; i++)
++            line2[i] = toupper((int)line2[i]);
++
+           //Create a temp file for received message
+           //3.1beta3: Moved to the received2file function, filename is now a return value:
+           //sprintf(filename,"%s/%s.XXXXXX",d_incoming,DEVICE.name);

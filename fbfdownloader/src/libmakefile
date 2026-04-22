@@ -1,0 +1,49 @@
+###############################################################
+#	Makefile for the Marvell download for MMP2/wukong/NEVO. 
+# 
+# 
+############################################################## 
+
+CC = gcc
+AR    =      ar
+RM    =      rm
+CP    =      cp
+ECHO  =      echo
+TARGET     = libfbfdown.a
+include    tool.mak    #°üº¬×Ómakefile
+BASE:=$(shell pwd)
+LIBS = -lpthread
+INCLUDES = -I./ 
+CCFLAGS     += -O2 $(INCLUDES) -D LINUX=1 -D _FILE_OFFSET_BITS=64 -D WINDOWS=0 -D DEBUG_MODE=0 -D TRUSTED_BOOT=1 -D IFLSWD_STATIC -D STATICLIB_FBFDOWNLOAD -D PRINTLOG=1 -g -std=c99
+
+
+TBBOBJS =CommonFun.o\
+	ParaDefine.o\
+	WTPCOMMCLASS.o \
+	BinFileWtp.o\
+	WtptpDownloader.o \
+	WtptpDownLoad.o\
+	ConvetEdian.o\
+	BulkDevNonDrv_Linux.o\
+			kstring.o\
+	FBFDownloader.o\
+	
+	
+OBJS = $(TBBOBJS)
+
+all:$(TARGET)
+$(TARGET):$(OBJS) $(LIBS) -ldl
+	$(BUILD_LIBRARY)
+
+
+$(TBBOBJS): %.o: ./%.c
+	$(CC) -c $(CCFLAGS) -I./ -c "./$*.c" -o "$(BASE)/$*.o"
+.PHONY: clean
+clean:
+	-rm *.o
+
+
+
+
+
+

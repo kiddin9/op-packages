@@ -1,0 +1,24 @@
+#
+noauth
+#debug
+dump
+logfd 2
+logfile /var/log/xl2tpd.log
+noccp
+novj
+novjccomp
+nopcomp
+noaccomp
+mtu 1400
+mru 1400
+require-mschap-v2
+lcp-echo-interval 20
+lcp-echo-failure 5
+connect-delay 5000
+nodefaultroute
+noipdefault
+proxyarp
+ip-up-script /etc/xl2tpd/l2tp-up
+#ipv6-up-script /etc/xl2tpd/l2tp-up
+ip-down-script /etc/xl2tpd/l2tp-down
+#ipv6-down-script /etc/xl2tpd/l2tp-down

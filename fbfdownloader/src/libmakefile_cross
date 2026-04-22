@@ -1,0 +1,56 @@
+###############################################################
+#	Makefile for the Marvell download for MMP2/wukong/NEVO. 
+# 
+# 
+############################################################## 
+
+#CC = arm_1103_le-g++
+#CC = mipsel-linux-uclibc-g++ 
+#CC = mipsel-openwrt-linux-g++
+#CC = arm-hisiv200-linux-gnueabi-g++
+CC    = ${CROSS}gcc
+AR    =      ar
+RM    =      rm
+CP    =      cp
+ECHO  =      echo
+TARGET     = libfbfdown_cross.a
+include    tool.mak    #包含子makefile
+BASE:=$(shell pwd)
+LIBS = -lpthread
+INCLUDES = -I./ 
+CCFLAGS     += -O2 $(INCLUDES) -D LINUX=1 -D WINDOWS=0 -D DEBUG_MODE=0 -D TRUSTED_BOOT=1 -D IFLSWD_STATIC -D STATICLIB_FBFDOWNLOAD -D PRINTLOG=1 -std=c99
+
+ifneq ($(ANDROIDBLD),1)
+CCFLAGS	    += -D _FILE_OFFSET_BITS=64
+endif
+
+TBBOBJS =CommonFun.o\
+	ParaDefine.o\
+	WTPCOMMCLASS.o \
+	BinFileWtp.o\
+    kstring.o\
+	WtptpDownloader.o \
+	WtptpDownLoad.o\
+	ConvetEdian.o\
+	BulkDevNonDrv_Linux.o\
+	FBFDownloader.o\
+	
+	
+OBJS = $(TBBOBJS)
+
+all:$(TARGET)
+$(TARGET):$(OBJS) $(LIBS) -ldl
+	$(BUILD_LIBRARY)
+
+
+$(TBBOBJS): %.o: ./%.c
+	$(CC) -c $(CCFLAGS) -I./ -c "./$*.c" -o "$(BASE)/$*.o"
+.PHONY: clean
+clean:
+	-rm *.o
+
+
+
+
+
+

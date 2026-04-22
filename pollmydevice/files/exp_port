@@ -1,0 +1,12 @@
+#!/bin/sh
+
+uci set pollmydevice.2='interface'
+uci set pollmydevice.2.mode='disabled'
+uci set pollmydevice.2.desc='A2B2'
+uci set pollmydevice.2.devicename='/dev/com2'
+uci set pollmydevice.2.baudrate='9600'
+uci set pollmydevice.2.bytesize='8'
+uci set pollmydevice.2.open_in_firewall='1'
+uci commit pollmydevice
+
+exit 0

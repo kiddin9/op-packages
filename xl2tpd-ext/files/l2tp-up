@@ -1,0 +1,17 @@
+#!/bin/sh
+
+mkdir /tmp/xl2tpd
+echo "ifname:$1;server:$4;client:$5"  >> /tmp/xl2tpd/clients
+
+section=$(uci show xl2tpd | grep $5 | awk -F '.' '{print $2}')
+route=$(uci get xl2tpd.$section.route)
+[ -n "$route" ] && {
+	ip route add $route via $4 dev $1
+}
+
+[ -d /etc/ppp/ip-up.d ] && {
+	for SCRIPT in /etc/ppp/ip-up.d/*
+	do
+		[ -x "$SCRIPT" ] && "$SCRIPT" "$@"
+	done
+}

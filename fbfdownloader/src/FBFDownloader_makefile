@@ -1,0 +1,47 @@
+###############################################################
+#   Makefile for the Marvell download for MMP2/wukong/NEVO on linux platform. 
+# 
+# 
+############################################################## 
+
+
+CC = gcc -static
+BASE:=$(shell pwd)
+IFL_PATH = ./
+IFL_INCLUDE_DIR = $(IFL_PATH)/
+IFL_LIBRARY_DIR = $(IFL_PATH)
+
+TBBOBJS =	CommonFun.o\
+		ParaDefine.o\
+			WTPCOMMCLASS.o\
+			BinFileWtp.o\
+			WtptpDownloader.o\
+			WtptpDownLoad.o\
+			ConvetEdian.o\
+			BulkDevNonDrv_Linux.o\
+			kstring.o\
+			FBFDownloader.o\
+
+CCFLAGS += -O2 -D LINUX=1 -D WINDOWS=0 -D DEBUG_MODE=0 -D PRINTLOG=1 -std=c99
+
+LIBS = -lpthread
+
+
+
+CCFLAGS += -D TRUSTED_BOOT=1 -I $(IFL_INCLUDE_DIR)
+OUTPUT = fbfdownloader
+
+
+OBJS = $(TBBOBJS)
+
+all: $(OBJS)
+	$(CC) -g -o $(OUTPUT) $(OBJS) $(LIBS) -ldl 
+	-rm *.o
+
+$(TBBOBJS): %.o: $(BASE)/%.c
+	$(CC) -g $(CCFLAGS) -c $(BASE)/$*.c -o $(BASE)/$*.o 
+    
+.PHONY: clean tar tar-%
+clean:
+	-rm *.o $(OUTPUT)
+
