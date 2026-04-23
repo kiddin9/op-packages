@@ -34,7 +34,7 @@ ensure_state() {
 		uci batch <<-EOF >/dev/null
 			set ${STATE_CONFIG}.${STATE_SECTION}=settings
 			set ${STATE_CONFIG}.${STATE_SECTION}.mode='router'
-			set ${STATE_CONFIG}.${STATE_SECTION}.fallback_ip='192.168.0.1'
+			set ${STATE_CONFIG}.${STATE_SECTION}.fallback_ip='10.0.0.1'
 			set ${STATE_CONFIG}.${STATE_SECTION}.fallback_mask='255.255.255.0'
 			set ${STATE_CONFIG}.${STATE_SECTION}.fallback_cidr='24'
 EOF
@@ -323,7 +323,7 @@ status() {
 
 	fallback_ip="$(state_get fallback_ip)"
 	fallback_cidr="$(state_get fallback_cidr)"
-	[ -n "${fallback_ip}" ] || fallback_ip="192.168.0.1"
+	[ -n "${fallback_ip}" ] || fallback_ip="10.0.0.1"
 	[ -n "${fallback_cidr}" ] || fallback_cidr="24"
 
 	current_lan_ports="$(get_lan_ports)"
@@ -432,7 +432,7 @@ enable_ap() {
 
 	schedule_reload ap
 
-	reply_json 0 "ap" "AP 模式切换请求已提交，WAN 口会并入 LAN，并保留 192.168.0.1/24 作为保底地址。"
+	reply_json 0 "ap" "AP 模式切换请求已提交，WAN 口会并入 LAN，并保留 10.0.0.1/24 作为保底地址。"
 }
 
 enable_router() {
