@@ -91,8 +91,8 @@
  
  include ../../luci.mk
 
---- a/luci/luci-app-snmpd-ssl/Makefile
-+++ b/luci/luci-app-snmpd-ssl/Makefile
+--- a/luci-app-snmpd-ssl/Makefile
++++ b/luci-app-snmpd-ssl/Makefile
 @@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
  PKG_NAME:=luci-app-snmpd-ssl
  
@@ -103,8 +103,8 @@
  
  include $(TOPDIR)/feeds/luci/luci.mk
 
---- a/luci/luci-app-smscontrol/Makefile
-+++ b/luci/luci-app-smscontrol/Makefile
+--- a/luci-app-smscontrol/Makefile
++++ b/luci-app-smscontrol/Makefile
 @@ -5,7 +5,7 @@
  include $(TOPDIR)/rules.mk
  
@@ -115,8 +115,8 @@
  # Version: <major>.<minor>.<patch>
  PKG_VERSION:=0.2.0
 
---- a/luci/luci-app-report/Makefile
-+++ b/luci/luci-app-report/Makefile
+--- a/luci-app-report/Makefile
++++ b/luci-app-report/Makefile
 @@ -4,7 +4,7 @@ PKG_NAME:=luci-app-report
  PKG_LICENSE:=Apache-2.0
  
@@ -127,8 +127,8 @@
  
  include $(TOPDIR)/feeds/luci/luci.mk
 
---- a/luci/luci-app-iolines/Makefile
-+++ b/luci/luci-app-iolines/Makefile
+--- a/luci-app-iolines/Makefile
++++ b/luci-app-iolines/Makefile
 @@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
  PKG_NAME:=luci-app-iolines
  
@@ -139,8 +139,8 @@
  PKG_VERSION:=0.2.3
 
 
---- a/luci/luci-app-hotplug/Makefile
-+++ b/luci/luci-app-hotplug/Makefile
+--- a/luci-app-hotplug/Makefile
++++ b/luci-app-hotplug/Makefile
 @@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
  PKG_NAME:=luci-app-hotplug
  
@@ -150,8 +150,8 @@
  LUCI_PKGARCH:=all
  PKG_VERSION:=1.0
 
---- a/luci/luci-app-xl2tpd/Makefile
-+++ b/luci/luci-app-xl2tpd/Makefile
+--- a/luci-app-xl2tpd/Makefile
++++ b/luci-app-xl2tpd/Makefile
 @@ -3,9 +3,9 @@ include $(TOPDIR)/rules.mk
  PKG_NAME:=luci-app-xl2tpd
  
