@@ -355,7 +355,7 @@ jobs:
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
         git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan 3ginfo modemband
         git_sparse_clone istoreos-24.10 "https://github.com/jjm2473/packages" utils/dockerd
-        git_sparse_clone v24.10 "https://github.com/teleofis/teleofis-feed" luci packages && rm -rf luci/luci-app-{pollmydevice,simman*} && mvdir luci; \
+        git_sparse_clone v24.10 "https://github.com/teleofis/teleofis-feed" luci packages && rm -rf luci/luci-app-{pollmydevice,simman*|strongswan} && mvdir luci; \
         rm -rf packages/{base-files*,*lt70*,cp210x-cfg,fbfdownloader,pollmydevice,simman*} && mvdir packages
         ) &
         (
