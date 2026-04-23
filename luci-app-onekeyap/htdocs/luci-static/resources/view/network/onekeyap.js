@@ -40,7 +40,7 @@ return view.extend({
 				throw new Error(res.message || _('Switching failed'));
 
 			ui.addNotification(null, E('p', [
-				res.message || _('The switch request has been submitted. The page will refresh in a few seconds. If the address changes, you can still use 192.168.0.1.')
+				res.message || _('The switch request has been submitted. The page will refresh in a few seconds. If the address changes, you can still use 10.0.0.1.')
 			]));
 
 			window.setTimeout(function() {
@@ -63,12 +63,12 @@ return view.extend({
 		var savedLanPorts = (this.status.saved_lan_ports || []).join(', ');
 		var savedWanPorts = (this.status.saved_wan_ports || []).join(', ');
 		var currentIps = (this.status.current_lan_ipv4 || []).join(', ');
-		var fallbackIp = this.status.fallback_ip || '192.168.0.1/24';
+		var fallbackIp = this.status.fallback_ip || '10.0.0.1/24';
 
 		return E('div', { 'class': 'cbi-map' }, [
 			E('h2', [ _('One-Key AP Mode') ]),
 			E('div', { 'class': 'cbi-map-descr' }, [
-				_('Merge current WAN ports into LAN with one click. In AP mode, LAN becomes a DHCP client while keeping 192.168.0.1/24 as a fallback management address.')
+				_('Merge current WAN ports into LAN with one click. In AP mode, LAN becomes a DHCP client while keeping 10.0.0.1/24 as a fallback management address.')
 			]),
 			E('div', { 'class': 'cbi-section' }, [
 				this.renderValue(_('Current Mode'), modeText),
