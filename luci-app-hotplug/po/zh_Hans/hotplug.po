@@ -1,0 +1,29 @@
+msgid "Hotplug Rules"
+msgstr "热插拔规则"
+
+msgid "Interface Rules"
+msgstr "接口规则"
+
+msgid "Description"
+msgstr "描述"
+
+msgid "Activate"
+msgstr "激活"
+
+msgid "Variable $ACTION"
+msgstr "变量 $ACTION"
+
+msgid "The type of event that will trigger the command"
+msgstr "触发该命令的事件类型"
+
+msgid "Variable $INTERFACE"
+msgstr "变量 $INTERFACE"
+
+msgid "The name of the logical interface to which the command will be applied"
+msgstr "将应用该命令的逻辑接口名称"
+
+msgid "Command to execute"
+msgstr "要执行的命令"
+
+msgid "Running commands when the hotplug trigger occurs. <br/><br/>ACTION - ifdown, ifup, ifup-failed, ifupdate, free, reload, iflink, create <br/>INTERFACE - Name of the logical interface which went up or down (e.g. wan or lan) <br/>DEVICE - Name of the physical device which went up or down (e.g. eth0 or br-lan or pppoe-wan), when applicable <br/><br/>More information about iface events and variables here: <a href=\"https://openwrt.org/docs/guide-user/base-system/hotplug#iface\">hotplug#iface</a>"
+msgstr "当热插拔触发时运行的命令。<br/><br/>ACTION - ifdown, ifup, ifup-failed, ifupdate, free, reload, iflink, create <br/>INTERFACE - 启动或关闭的逻辑接口名称（例如 wan 或 lan）<br/>DEVICE - 启动或关闭的物理设备名称（例如 eth0、br-lan 或 pppoe-wan），如果适用<br/><br/>有关 iface 事件和变量的更多信息，请参阅：<a href=\"https://openwrt.org/docs/guide-user/base-system/hotplug#iface\">hotplug#iface</a>"
