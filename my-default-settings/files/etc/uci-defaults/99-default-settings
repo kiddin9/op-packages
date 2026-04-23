@@ -47,9 +47,6 @@ if [[ ! "$version" || "$version" -lt 1 ]]; then
 	uci -q set luci.main.mediaurlbase=/luci-static/argon
 	uci commit luci
 	
-	uci -q set dropbear.@dropbear[0].Interface='lan'
-	uci commit dropbear
-	
 	if uci -q get system.@system[0] >/dev/null; then
 		uci -q set system.@system[0].zonename='Asia/Shanghai'
 		uci -q set system.@system[0].timezone='CST-8'
