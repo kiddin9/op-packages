@@ -484,6 +484,7 @@ jobs:
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
           */Makefile
         sed -i 's/+docker\( \|$\)/+docker +dockerd /' luci-app-!(docker*)/Makefile
+        sed -i "s/192.168.0.1/10.0.0.1/g" luci-app-onekeyap/{htdocs/luci-static/resources/view/network/onekeyap.js,root/usr/libexec/onekeyap,root/etc/config/onekeyap}
 
         chmod +x github/diy/*.sh
         bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
