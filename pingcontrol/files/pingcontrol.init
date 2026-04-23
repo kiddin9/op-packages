@@ -42,3 +42,8 @@ service_triggers() {
         procd_add_reload_trigger 'pingcontrol'
         procd_add_validation validate_pingcontrol_section
 }
+
+reload_service() {
+        stop
+        start
+}
