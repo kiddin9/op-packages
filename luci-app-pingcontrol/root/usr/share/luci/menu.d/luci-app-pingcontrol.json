@@ -1,6 +1,7 @@
 {
         "admin/services/pingcontrol": {
                 "title": "Pingcontrol",
+                "order": 30,
                 "action": {
                         "type": "view",
                         "path": "pingcontrol/pingcontrol"
