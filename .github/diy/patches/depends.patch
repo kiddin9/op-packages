@@ -90,3 +90,75 @@
  endef
  
  include ../../luci.mk
+
+--- a/luci/luci-app-snmpd-ssl/Makefile
++++ b/luci/luci-app-snmpd-ssl/Makefile
+@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
+ PKG_NAME:=luci-app-snmpd-ssl
+ 
+ LUCI_TITLE:=Net-SNMP LuCI interface with v3 support
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +snmpd-ssl
+ LUCI_PKGARCH:=all
+ 
+ include $(TOPDIR)/feeds/luci/luci.mk
+
+--- a/luci/luci-app-smscontrol/Makefile
++++ b/luci/luci-app-smscontrol/Makefile
+@@ -5,7 +5,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=luci-app-smscontrol
+-LUCI_DEPENDS:=
++LUCI_DEPENDS:=+smscontrol
+ 
+ # Version: <major>.<minor>.<patch>
+ PKG_VERSION:=0.2.0
+
+--- a/luci/luci-app-report/Makefile
++++ b/luci/luci-app-report/Makefile
+@@ -4,7 +4,7 @@ PKG_NAME:=luci-app-report
+ PKG_LICENSE:=Apache-2.0
+ 
+ LUCI_TITLE:=LuCI report module
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +report
+ LUCI_PKGARCH:=all
+ 
+ include $(TOPDIR)/feeds/luci/luci.mk
+
+--- a/luci/luci-app-iolines/Makefile
++++ b/luci/luci-app-iolines/Makefile
+@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
+ PKG_NAME:=luci-app-iolines
+ 
+ LUCI_TITLE:=LuCI I/O switcher
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +iolines
+ LUCI_PKGARCH:=all
+ PKG_VERSION:=0.2.3
+
+
+--- a/luci/luci-app-hotplug/Makefile
++++ b/luci/luci-app-hotplug/Makefile
+@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
+ PKG_NAME:=luci-app-hotplug
+ 
+ LUCI_TITLE:=LuCI interface for hotplug configuration
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +hotplug
+ LUCI_PKGARCH:=all
+ PKG_VERSION:=1.0
+
+--- a/luci/luci-app-xl2tpd/Makefile
++++ b/luci/luci-app-xl2tpd/Makefile
+@@ -3,9 +3,9 @@ include $(TOPDIR)/rules.mk
+ PKG_NAME:=luci-app-xl2tpd
+ 
+ LUCI_TITLE:=xl2tpd server configuration
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +xl2tpd-ext +ppp-mod-pppol2tp
+ LUCI_PKGARCH:=all
+ 
+ include $(TOPDIR)/feeds/luci/luci.mk
+ 
