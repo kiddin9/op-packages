@@ -1,0 +1,107 @@
+--- a/luci-mod-status/htdocs/luci-static/resources/view/status/include/20_memory.js
++++ b/luci-mod-status/htdocs/luci-static/resources/view/status/include/20_memory.js
+@@ -32,8 +32,7 @@ return baseclass.extend({
+ 		    swap = L.isObject(systeminfo.swap) ? systeminfo.swap : {};
+ 
+ 		var fields = [
+-			_('Total Available'), (mem.available) ? mem.available : (mem.total && mem.free && mem.buffered) ? mem.free + mem.buffered : null, mem.total,
+-			_('Used'),            (mem.total && mem.free) ? (mem.total - mem.free) : null, mem.total,
++			_('Used'),            (mem.total && mem.available) ? (mem.total - mem.free - mem.buffered - mem.cached) : null, mem.total,
+ 		];
+ 
+ 		if (mem.buffered)
+@@ -43,7 +42,7 @@ return baseclass.extend({
+ 			fields.push(_('Cached'), mem.cached, mem.total);
+ 
+ 		if (swap.total > 0)
+-			fields.push(_('Swap free'), swap.free, swap.total);
++			fields.push(_('Swap used'), swap.total - swap.free, swap.total);
+ 
+ 		var table = E('table', { 'class': 'table' });
+ 
+
+--- a/luci-mod-status/htdocs/luci-static/resources/view/status/index.js
++++ b/luci-mod-status/htdocs/luci-static/resources/view/status/index.js
+@@ -280,6 +280,7 @@ return view.extend({
+ 	load: function() {
+ 		var includeModules = [
+ 			{ name: 'view.status.include.10_system' },
++			{ name: 'view.status.include.19_cpu' },
+ 			{ name: 'view.status.include.15_ports', title: _('Port status'), deferFirstLoad: true },
+ 			{ name: 'view.status.include.20_memory' },
+ 			{ name: 'view.status.include.25_storage' },
+
+--- a/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
++++ b/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
+@@ -33,9 +33,9 @@ var callCPUInfo = rpc.declare({
+ 	method: 'getCPUInfo'
+ });
+ 
+-var callCPUUsage = rpc.declare({
++var callTempInfo = rpc.declare({
+ 	object: 'luci',
+-	method: 'getCPUUsage'
++	method: 'getTempInfo'
+ });
+ 
+ return baseclass.extend({
+@@ -48,7 +48,7 @@ return baseclass.extend({
+ 			L.resolveDefault(callSystemInfo(), {}),
+ 			L.resolveDefault(callCPUBench(), {}),
+ 			L.resolveDefault(callCPUInfo(), {}),
+-			L.resolveDefault(callCPUUsage(), {}),
++			L.resolveDefault(callTempInfo(), {}),
+ 			L.resolveDefault(callLuciVersion(), { revision: _('unknown version'), branch: 'LuCI' }),
+ 			L.resolveDefault(callGetUnixtime(), 0)
+ 		]);
+@@ -59,7 +59,7 @@ return baseclass.extend({
+ 		    systeminfo  = data[1],
+ 		    cpubench    = data[2],
+ 		    cpuinfo     = data[3],
+-		    cpuusage    = data[4],
++			tempinfo    = data[4],
+ 		    luciversion = data[5],
+ 		    unixtime    = data[6];
+ 
+@@ -78,8 +78,7 @@ return baseclass.extend({
+ 
+ 		var fields = [
+ 			_('Hostname'),         boardinfo.hostname,
+-			_('Model'),            boardinfo.model + cpubench.cpubench,
+-			_('Architecture'),     cpuinfo.cpuinfo || boardinfo.system,
++			_('Architecture'),     (cpuinfo.cpuinfo || boardinfo.system) + ' ' + cpubench.cpubench,
+ 			_('Target Platform'),  (L.isObject(boardinfo.release) ? boardinfo.release.target : ''),
+ 			_('Firmware Version'), (L.isObject(boardinfo.release)
+ 				? '%s%s / '.format(
+@@ -94,10 +93,18 @@ return baseclass.extend({
+ 				systeminfo.load[0] / 65535.0,
+ 				systeminfo.load[1] / 65535.0,
+ 				systeminfo.load[2] / 65535.0
+-			) : null,
+-			_('CPU usage (%)'),    cpuusage.cpuusage
++			) : null
+ 		];
+ 
++		if (tempinfo.tempinfo) {
++			fields.splice(6, 0, _('Temperature'));
++			fields.splice(7, 0, tempinfo.tempinfo);
++		}
++		if (boardinfo.model != "Default string Default string") {
++			fields.splice(2, 0, _('Model'));
++			fields.splice(3, 0, boardinfo.model);
++		}
++
+ 		var table = E('table', { 'class': 'table' });
+ 
+ 		for (var i = 0; i < fields.length; i += 2) {
+
+--- a/luci-mod-status/htdocs/luci-static/resources/view/status/nftables.js
++++ b/luci-mod-status/htdocs/luci-static/resources/view/status/nftables.js
+@@ -675,7 +675,6 @@ return view.extend({
+ 	checkLegacyRules: function(ipt4save, ipt6save) {
+ 		if (ipt4save.match(/\n-A /) || ipt6save.match(/\n-A /)) {
+ 			ui.addNotification(_('Legacy rules detected'), [
+-				E('p', _('There are legacy iptables rules present on the system. Mixing iptables and nftables rules is discouraged and may lead to incomplete traffic filtering.')),
+ 				E('button', {
+ 					'class': 'btn cbi-button',
+ 					'click': function() { location.href = 'nftables/iptables' }

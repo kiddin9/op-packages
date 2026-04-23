@@ -1,0 +1,208 @@
+--- a/luci-base/root/usr/share/rpcd/ucode/luci
++++ b/luci-base/root/usr/share/rpcd/ucode/luci
+@@ -223,6 +223,7 @@ const methods = {
+ 
+ 	getFeatures: {
+ 		call: function() {
++			let kernel_version = popen('echo -n `uname -r`').read('all');
+ 			let result = {
+ 				firewall:   access('/sbin/fw3') == true,
+ 				firewall4:  access('/sbin/fw4') == true,
+@@ -230,7 +231,7 @@ const methods = {
+ 				bonding:    access('/sys/module/bonding'),
+ 				mii_tool:   access('/usr/sbin/mii-tool'),
+ 				offloading: access('/sys/module/xt_FLOWOFFLOAD/refcnt') == true || access('/sys/module/nft_flow_offload/refcnt') == true,
+-				fullcone:   access('/sys/module/xt_FULLCONENAT/refcnt') == true || access('/sys/module/nft_fullcone/refcnt') == true,
++				fullcone:   access(`/lib/modules/${kernel_version}/xt_FULLCONENAT.ko`) == true || access(`/lib/modules/${kernel_version}/nft_fullcone.ko`) == true,
+ 				br2684ctl:  access('/usr/sbin/br2684ctl') == true,
+ 				swconfig:   access('/sbin/swconfig') == true,
+ 				zram:       access('/sys/class/zram-control') == true,
+
+--- a/luci-base/htdocs/luci-static/resources/network.js
++++ b/luci-base/htdocs/luci-static/resources/network.js
+@@ -4376,4 +4376,10 @@ WifiNetwork = baseclass.extend(/** @lends LuCI.network.WifiNetwork.prototype */
+ 	}
+ });
+ 
++setTimeout(function(){
++try{
++  document.getElementsByClassName('cbi-button-apply')[0].children[3].children[0].value='1'
++}catch(err) {
++}},1000)
++
+ return Network;
+
+--- a/luci-base/ucode/dispatcher.uc
++++ b/luci-base/ucode/dispatcher.uc
+@@ -939,7 +939,12 @@ dispatch = function(_http, path) {
+ 				let cookie_name = (http.getenv('HTTPS') == 'on') ? 'sysauth_https' : 'sysauth_http',
+ 				    cookie_secure = (http.getenv('HTTPS') == 'on') ? '; secure' : '';
+ 
+-				http.header('Set-Cookie', `${cookie_name}=${session.sid}; path=${build_url()}; SameSite=strict; HttpOnly${cookie_secure}`);
++				let cookie_p = uci.get('wizard', 'default', 'cookie_p');
++				if (cookie_p == '0') {
++					http.header('Set-Cookie', `${cookie_name}=${session.sid}; path=${build_url()}; SameSite=strict; HttpOnly${cookie_secure}`);
++				} else {
++					http.header('Set-Cookie', `${cookie_name}=${session.sid}; Max-Age=2147483647; path=${build_url()}; SameSite=strict; HttpOnly${cookie_secure}`);
++				}
+ 				http.redirect(build_url(...resolved.ctx.request_path));
+ 
+ 				return;
+
+--- a/luci-base/root/www/index.html
++++ b/luci-base/root/www/index.html
+@@ -15,6 +15,5 @@
+ 		</style>
+ 	</head>
+ 	<body>
+-		<a href="cgi-bin/luci/">LuCI - Lua Configuration Interface</a>
+ 	</body>
+ </html>
+
+--- a/luci-base/root/etc/init.d/ucitrack
++++ b/luci-base/root/etc/init.d/ucitrack
+@@ -8,7 +8,7 @@ register_init() {
+ 	local init="$2"
+ 	shift; shift
+ 
+-	if [ -x "$init" ] && "$init" enabled && ! grep -sqE 'USE_PROCD=.' "$init"; then
++	if [ -x "$init" ] && ! grep -sqE 'USE_PROCD=.' "$init"; then
+ 		logger -t "ucitrack" "Setting up /etc/config/$config reload trigger for non-procd $init"
+ 		procd_add_config_trigger "config.change" "$config" "$init" "$@"
+ 	fi
+
+--- a/luci-base/htdocs/luci-static/resources/tools/widgets.js
++++ b/luci-base/htdocs/luci-static/resources/tools/widgets.js
+@@ -4,6 +4,7 @@
+ 'require network';
+ 'require firewall';
+ 'require fs';
++'require uci';
+ 
+ 
+ /**
+@@ -752,6 +752,81 @@ var CBIGroupSelect = form.ListValue.extend({
+ 	},
+ });
+ 
++var CBIWifidogxGroupSelect = form.ListValue.extend({
++	__name__: 'CBI.WifidogxGroupSelect',
++
++	// group_type: 1: Domain Group, 2: MAC Group
++	// add a new property to store the group type
++	group_type: '1',
++
++	load: function(section_id) {
++		this.sappList = [];
++		var sections = uci.sections('wifidogx', 'group');
++		
++		for (var i = 0; i < sections.length; i++) {
++			if (sections[i]['g_type'] == this.group_type)
++				this.sappList.push(sections[i]['.name']);
++		}
++		
++		return this.super('load', section_id);
++	},
++
++	setGroupType: function(group_type) {
++		if (group_type == 'mac') {
++			this.group_type = '2';
++		} else if (group_type == 'wildcard') {
++			this.group_type = '3';
++		}
++	},
++
++	filter: function(section_id, value) {
++		return true;
++	},
++
++	renderWidget: function(section_id, option_index, cfgvalue) {
++		var values = L.toArray((cfgvalue != null) ? cfgvalue : this.default),
++		    choices = {},
++		    checked = {};
++
++		for (var i = 0; i < values.length; i++)
++			checked[values[i]] = true;
++
++		values = [];
++
++		if (!this.multiple && (this.rmempty || this.optional))
++			choices[''] = E('em', _('unspecified'));
++
++		for (var i = 0; i < this.sappList.length; i++) {
++			var name = this.sappList[i];
++
++			if (checked[name])
++				values.push(name);
++
++			choices[name] =  E('span', { 'class': 'ifacebadge' }, name);
++		}
++
++		var widget = new ui.Dropdown(this.multiple ? values : values[0], choices, {
++			id: this.cbid(section_id),
++			sort: true,
++			multiple: this.multiple,
++			optional: this.optional || this.rmempty,
++			disabled: (this.readonly != null) ? this.readonly : this.map.readonly,
++			select_placeholder: E('em', _('unspecified')),
++			display_items: this.display_size || this.size || 3,
++			dropdown_items: this.dropdown_size || this.size || 5,
++			validate: L.bind(this.validate, this, section_id),
++			create: !this.nocreate,
++			create_markup: '' +
++				'<li data-value="{{value}}">' +
++					'<span class="ifacebadge" style="background:repeating-linear-gradient(45deg,rgba(204,204,204,0.5),rgba(204,204,204,0.5) 5px,rgba(255,255,255,0.5) 5px,rgba(255,255,255,0.5) 10px)">' +
++						'{{value}}: <em>('+_('create')+')</em>' +
++					'</span>' +
++				'</li>'
++		});
++
++		return widget.render();
++	}
++});
+ 
+ return L.Class.extend({
+ 	ZoneSelect: CBIZoneSelect,
+@@ -761,4 +836,5 @@ return L.Class.extend({
+ 	DeviceSelect: CBIDeviceSelect,
+ 	UserSelect: CBIUserSelect,
+ 	GroupSelect: CBIGroupSelect,
++	WifidogxGroupSelect: CBIWifidogxGroupSelect,
+ });
+
+--- a/luci-base/htdocs/luci-static/resources/validation.js
++++ b/luci-base/htdocs/luci-static/resources/validation.js
+@@ -403,6 +403,14 @@ const ValidatorFactory = baseclass.extend({
+ 			return this.assert(false, _('valid hostname'));
+ 		},
+ 
++		wildcard() {
++			// must start with '.', then remove it and check if it's a valid hostname
++			if (this.value[0] != '.')
++				return this.assert(false, _('valid wildcard hostname'));
++			const hostname = this.value.substr(1);
++			return this.apply('hostname', hostname);
++		},
++
+ 		/**
+ 		 * Assert a valid UCI identifier, hostname or IP address range.
+ 		 * @function LuCI.validation.ValidatorFactory.types#network
+
+--- a/luci-base/root/usr/share/luci/menu.d/luci-base.json
++++ b/luci-base/root/usr/share/luci/menu.d/luci-base.json
+@@ -59,6 +59,15 @@
+ 		}
+ 	},
+ 
++	"admin/control": {
++		"title": "Control",
++		"order": 51,
++		"action": {
++			"type": "firstchild",
++			"recurse": true
++		}
++	},
++
+ 	"admin/network": {
+ 		"title": "Network",
+ 		"order": 60,
