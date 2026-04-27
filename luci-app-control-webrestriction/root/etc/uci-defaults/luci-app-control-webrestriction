@@ -1,19 +1,19 @@
 #!/bin/sh
-[ ! -f "/usr/share/ucitrack/luci-app-webrestriction.json" ] && {
-    cat > /usr/share/ucitrack/luci-app-webrestriction.json << EEOF
+[ ! -f "/usr/share/ucitrack/luci-app-luci_app_control_webrestriction.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-luci_app_control_webrestriction.json << EEOF
 {
-    "config": "webrestriction",
-    "init": "webrestriction"
+    "config": "luci_app_control_webrestriction",
+    "init": "luci_app_control_webrestriction"
 }
 EEOF
 }
 
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@webrestriction[-1]
-	add ucitrack webrestriction
-	set ucitrack.@webrestriction[-1].init=webrestriction
+	delete ucitrack.@luci_app_control_webrestriction[-1]
+	add ucitrack luci_app_control_webrestriction
+	set ucitrack.@luci_app_control_webrestriction[-1].init=luci-app-control-webrestriction
 	commit ucitrack
 EOF
 
-rm -f /tmp/luci-indexcache
+rm -rf /tmp/luci-*cache
 exit 0

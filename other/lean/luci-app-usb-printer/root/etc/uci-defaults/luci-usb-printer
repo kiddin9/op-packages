@@ -1,0 +1,20 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-usb_printer.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-usb_printer.json << EEOF
+{
+    "config": "usb_printer",
+    "init": "usb_printer"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@usb_printer[-1]
+	add ucitrack usb_printer
+	set ucitrack.@usb_printer[-1].init=usb_printer
+	commit ucitrack
+EOF
+
+[ -f /etc/init.d/p910nd ] && /etc/init.d/p910nd disable
+
+exit 0

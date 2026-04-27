@@ -1,19 +1,19 @@
 #!/bin/sh
-[ ! -f "/usr/share/ucitrack/luci-app-weburl.json" ] && {
-    cat > /usr/share/ucitrack/luci-app-weburl.json << EEOF
+[ ! -f "/usr/share/ucitrack/luci-app-luci_app_control_weburl.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-luci_app_control_weburl.json << EEOF
 {
-    "config": "weburl",
-    "init": "weburl"
+    "config": "luci_app_control_weburl",
+    "init": "luci_app_control_weburl"
 }
 EEOF
 }
 
 uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@weburl[-1]
-	add ucitrack weburl
-	set ucitrack.@weburl[-1].init=weburl
+	delete ucitrack.@luci_app_control_weburl[-1]
+	add ucitrack luci_app_control_weburl
+	set ucitrack.@luci_app_control_weburl[-1].init=luci-app-control-weburl
 	commit ucitrack
 EOF
 
-rm -f /tmp/luci-indexcache
+rm -rf /tmp/luci-*cache
 exit 0
