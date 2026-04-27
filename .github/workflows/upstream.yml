@@ -111,7 +111,7 @@ jobs:
         git_clone https://github.com/Openwrt-Passwall/openwrt-passwall-packages && mvdir openwrt-passwall-packages
         git_clone https://github.com/sbwml/luci-app-mosdns openwrt-mos && mv -n openwrt-mos/{*mosdns,v2dat} ./; rm -rf openwrt-mos
         git clone https://github.com/fw876/helloworld && mvdir helloworld
-        git_clone https://github.com/Lienol/openwrt-package liep
+        git_clone https://github.com/Lienol/openwrt-package liep && rm -rf liep/other
         git_clone https://github.com/rufengsuixing/luci-app-autoipsetadder
         git_clone https://github.com/NateLol/luci-app-beardropper
         git_clone https://github.com/riverscn/openwrt-iptvhelper && mvdir openwrt-iptvhelper
@@ -353,7 +353,7 @@ jobs:
         ) &
         (
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
-        git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan 3ginfo modemband
+        git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan 3ginfo
         git_sparse_clone istoreos-24.10 "https://github.com/jjm2473/packages" utils/dockerd
         git_sparse_clone v24.10 "https://github.com/teleofis/teleofis-feed" luci packages && rm -rf luci/luci-app-{pollmydevice,simman*,strongswan,pingcontrol} luci/luci-theme-teleofis && mvdir luci; \
         rm -rf packages/{base-files*,*lt70*,cp210x-cfg,fbfdownloader,pollmydevice,simman*,pingcontrol} && mvdir packages
@@ -402,8 +402,8 @@ jobs:
         mv -n luciapp/!(luci-app-noddos|luci-app-filebrowser-go|luci-app-openvpn-server|luci-app-chrony|luci-app-kodexplorer|luci-app-cshark|luci-app-dnscrypt-proxy|luci-app-https-dns-proxy|luci-app-ssr-mudb-server|luci-app-ledtrig-*|luci-app-antiblock) ./ ; rm -Rf luciapp
         mv -n lean/!(r8101|r8125|r8126|r8168) ./ ; rm -Rf lean
         mv -n liep/!(luci-app-filebrowser) ./ ; rm -Rf liep
-        mv -n openwrt-app-actions/applications/* ./;rm -rf openwrt-app-actions
         mv -n istore-packages/!(qBittorrent*|luci-app-qbittorrent-ee|baidupcs-web|luci-app-LingTiGameAcc|inter_i40e) ./;rm -rf istore-packages
+        mv -n openwrt-app-actions/applications/* ./;rm -rf openwrt-app-actions
         rm -Rf */.git
         for pkg in $(ls -d .github/diy/packages/*); do
           mv -f $pkg/Makefile.k $pkg/Makefile >/dev/null 2>&1 || true
