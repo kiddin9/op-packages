@@ -1,0 +1,19 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-nps.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-nps.json << EEOF
+{
+    "config": "nps",
+    "init": "nps"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@nps[-1]
+	add ucitrack nps
+	set ucitrack.@nps[-1].init=nps
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0
