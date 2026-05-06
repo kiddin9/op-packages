@@ -15,7 +15,7 @@
 --- a/luci-app-passwall2/Makefile
 +++ b/luci-app-passwall2/Makefile
 @@ -34,6 +34,21 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
- 	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +resolveip +tcping \
+ 	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
  	+xray-core +geoview +v2ray-geoip +v2ray-geosite \
  	+unzip \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
