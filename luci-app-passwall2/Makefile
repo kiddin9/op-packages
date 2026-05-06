@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-passwall2
 PKG_VERSION:=26.5.1
-PKG_RELEASE:=41
+PKG_RELEASE:=42
 PKG_PO_VERSION:=$(PKG_VERSION)
 
 PKG_CONFIG_DEPENDS:= \
@@ -15,7 +15,6 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Nftables_Transparent_Proxy \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria \
-	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Client \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server \
@@ -24,16 +23,19 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs \
-	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_SingBox \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client \
 	CONFIG_PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
 
 LUCI_TITLE:=LuCI support for PassWall 2
 LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
-	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +resolveip +tcping \
-	+xray-core +geoview +v2ray-geoip +v2ray-geosite \
-	+unzip \
+	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
+	+geoview +v2ray-geoip +v2ray-geosite \
+	+unzip
+	+PACKAGE_$(PKG_NAME)_Basic_Core_Xray:xray-core \
+	+PACKAGE_$(PKG_NAME)_Basic_Core_SingBox:sing-box \
+	+PACKAGE_$(PKG_NAME)_Basic_Core_All:xray-core \
+	+PACKAGE_$(PKG_NAME)_Basic_Core_All:sing-box \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria:hysteria \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
@@ -49,17 +51,29 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client:tuic-client \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin:v2ray-plugin \
-	+PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat:ip6tables-mod-nat
 
 define Package/$(PKG_NAME)/config
 menu "Configuration"
+	depends on PACKAGE_$(PKG_NAME)
 
-config PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat
-	depends on PACKAGE_ip6tables
-	bool "Include IPv6 Nat"
-	default n
+choice
+	prompt "Basic Core"
+	default PACKAGE_$(PKG_NAME)_Basic_Core_All if aarch64||i386||x86_64
+	default PACKAGE_$(PKG_NAME)_Basic_Core_Xray
 
-if PACKAGE_$(PKG_NAME)
+	config PACKAGE_$(PKG_NAME)_Basic_Core_Xray
+		bool "Xray"
+		select PACKAGE_xray-core
+
+	config PACKAGE_$(PKG_NAME)_Basic_Core_SingBox
+		bool "SingBox"
+		select PACKAGE_sing-box
+
+	config PACKAGE_$(PKG_NAME)_Basic_Core_All
+		bool "All"
+		select PACKAGE_xray-core
+		select PACKAGE_sing-box
+endchoice
 
 config PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy
 	bool "Iptables Transparent Proxy"
@@ -74,6 +88,7 @@ config PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy
 	select PACKAGE_iptables-mod-iprange
 	select PACKAGE_iptables-mod-socket
 	select PACKAGE_iptables-mod-tproxy
+	select PACKAGE_ip6tables-mod-nat
 	select PACKAGE_kmod-ipt-nat
 	default y if ! PACKAGE_firewall4
 
@@ -143,10 +158,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
 	select PACKAGE_simple-obfs-client
 	default y
 
-config PACKAGE_$(PKG_NAME)_INCLUDE_SingBox
-	bool "Include Sing-Box"
-	default y
-
 config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
 	bool "Include tuic-client"
 	depends on aarch64||arm||i386||x86_64
@@ -158,7 +169,6 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin
 	select PACKAGE_v2ray-plugin
 	default y if aarch64||arm||i386||x86_64
 
-endif
 endmenu
 endef
 

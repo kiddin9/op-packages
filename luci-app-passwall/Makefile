@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-passwall
 PKG_VERSION:=26.5.3
-PKG_RELEASE:=112
+PKG_RELEASE:=113
 PKG_PO_VERSION:=$(PKG_VERSION)
 
 PKG_CONFIG_DEPENDS:= \
@@ -39,7 +39,7 @@ LUCI_PKGARCH:=all
 LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
 	+chinadns-ng +dns2socks +dnsmasq-full +ip-full \
 	+libuci-lua +lua +luci-compat +luci-lib-jsonc \
-	+microsocks +resolveip +tcping \
+	+microsocks +resolveip +tcping +lyaml \
 	+ipt2socks \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Geoview:geoview \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
