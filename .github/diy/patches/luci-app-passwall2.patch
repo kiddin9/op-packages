@@ -14,10 +14,14 @@
 
 --- a/luci-app-passwall2/Makefile
 +++ b/luci-app-passwall2/Makefile
-@@ -34,6 +34,21 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
+@@ -32,6 +32,25 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
- 	+xray-core +geoview +v2ray-geoip +v2ray-geosite \
- 	+unzip \
+ 	+geoview +v2ray-geoip +v2ray-geosite \
+ 	+unzip
++	+PACKAGE_$(PKG_NAME)_Basic_Core_Xray:xray-core \
++	+PACKAGE_$(PKG_NAME)_Basic_Core_SingBox:sing-box \
++	+PACKAGE_$(PKG_NAME)_Basic_Core_All:xray-core \
++	+PACKAGE_$(PKG_NAME)_Basic_Core_All:sing-box \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Haproxy:haproxy \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Hysteria:hysteria \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
@@ -33,19 +37,18 @@
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client:tuic-client \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Plugin:v2ray-plugin \
- 	+PACKAGE_$(PKG_NAME)_INCLUDE_IPv6_Nat:ip6tables-mod-nat
  
  define Package/$(PKG_NAME)/config
-@@ -130,8 +145,7 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs
+ menu "Configuration"
+@@ -39,7 +58,7 @@ menu "Configuration"
  
- config PACKAGE_$(PKG_NAME)_INCLUDE_SingBox
- 	bool "Include Sing-Box"
--	select PACKAGE_sing-box
--	default y if aarch64||arm||i386||x86_64
-+	default y
+ choice
+ 	prompt "Basic Core"
+-	default PACKAGE_$(PKG_NAME)_Basic_Core_All if aarch64||arm||i386||x86_64
++	default PACKAGE_$(PKG_NAME)_Basic_Core_All if aarch64||i386||x86_64
+ 	default PACKAGE_$(PKG_NAME)_Basic_Core_Xray
  
- config PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client
- 	bool "Include tuic-client"
+ 	config PACKAGE_$(PKG_NAME)_Basic_Core_Xray
 
 --- a/luci-app-passwall2/luasrc/controller/passwall2.lua
 +++ b/luci-app-passwall2/luasrc/controller/passwall2.lua
