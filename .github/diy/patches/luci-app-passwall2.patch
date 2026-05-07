@@ -14,10 +14,21 @@
 
 --- a/luci-app-passwall2/Makefile
 +++ b/luci-app-passwall2/Makefile
-@@ -32,6 +32,25 @@ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
+@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
+ 
+ PKG_NAME:=luci-app-passwall2
+ PKG_VERSION:=26.5.1
+-PKG_RELEASE:=1
++PKG_RELEASE:=42
+ PKG_PO_VERSION:=$(PKG_VERSION)
+ 
+ PKG_CONFIG_DEPENDS:= \
+@@ -31,7 +31,26 @@ LUCI_PKGARCH:=all
+ LUCI_DEPENDS:=+coreutils +coreutils-base64 +coreutils-nohup +curl \
  	+ip-full +libuci-lua +lua +luci-compat +luci-lib-jsonc +lyaml +resolveip +tcping \
  	+geoview +v2ray-geoip +v2ray-geosite \
- 	+unzip
+-	+unzip
++	+unzip \
 +	+PACKAGE_$(PKG_NAME)_Basic_Core_Xray:xray-core \
 +	+PACKAGE_$(PKG_NAME)_Basic_Core_SingBox:sing-box \
 +	+PACKAGE_$(PKG_NAME)_Basic_Core_All:xray-core \
