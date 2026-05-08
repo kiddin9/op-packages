@@ -77,12 +77,32 @@ return baseclass.extend({
 		window.location.replace(url.toString());
 	},
 
+	getFileListStamp: function(path, suffix) {
+		return L.resolveDefault(fs.list(path), []).then(function(entries) {
+			return entries.filter(function(entry) {
+				return entry && entry.type === 'file' &&
+					(suffix == null || entry.name.endsWith(suffix));
+			}).map(function(entry) {
+				return [ entry.name, entry.mtime || 0, entry.size || 0 ].join(':');
+			}).sort().join('|');
+		});
+	},
+
 	getConditionalMenuStamp: function() {
 		var googleFuMode = !!document.querySelector('.navbar a[href*="/admin/services/openclash"]');
 
-		return Promise.resolve(JSON.stringify({
-			google_fu_mode: googleFuMode
-		}));
+		return Promise.all([
+			this.getFileListStamp('/usr/share/luci/menu.d', '.json'),
+			this.getFileListStamp('/usr/share/rpcd/acl.d', '.json'),
+			L.resolveDefault(fs.stat('/etc/config/wireless'), null)
+		]).then(function(stamps) {
+			return JSON.stringify({
+				google_fu_mode: googleFuMode,
+				menu_definitions: stamps[0],
+				acl_definitions: stamps[1],
+				wireless_config: stamps[2] ? [ stamps[2].mtime || 0, stamps[2].size || 0 ].join(':') : 'absent'
+			});
+		});
 	},
 
 	flushBackendMenuCache: function() {

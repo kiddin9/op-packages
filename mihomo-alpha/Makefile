@@ -1,14 +1,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo-alpha
-PKG_VERSION:=2026.04.20
-PKG_RELEASE:=5
+PKG_VERSION:=2026.05.08
+PKG_RELEASE:=6
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
-PKG_SOURCE_VERSION:=c59c99a051c5c4fb3c2a7454d7c00fea9a8ee4bb
+PKG_SOURCE_VERSION:=35d5d4e44d7a7b8352617b1fec7faf0ba26efc8a
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL3.0+
@@ -18,7 +18,7 @@ PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-PKG_BUILD_VERSION:=alpha-c59c99a0
+PKG_BUILD_VERSION:=alpha-35d5d4e4
 PKG_BUILD_TIME:=$(shell date -u -Iseconds)
 
 GO_PKG:=github.com/metacubex/mihomo

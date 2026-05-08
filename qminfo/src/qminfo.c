@@ -348,17 +348,17 @@ static void emit_results(void)
         printf("  CID        : %llu\n",(unsigned long long)info.cid);
         printf("  eNB ID     : %u\n",  info.enb_id);
         printf("  Sector     : %u\n",  info.cell_sector);
-        if (info.has_arfcn) printf("  ARFCN      : %u\n",  info.arfcn);
+        if (info.has_arfcn) printf("  RF Chan.   : %u\n",  info.arfcn);
         if (info.has_pci)   printf("  PCI        : %u\n",  info.pci);
         if (dist_km >= 0)   printf("  Distance   : ~%.2f km (TA=%u)\n", dist_km, info.ta);
 		if (info.has_bw_dl && strcmp(info.mode, "LTE") == 0) 
 			printf("  BW DL      : %.1f MHz\n", bw_index_to_khz(info.bw_dl) / 1000.0f);
         printf("-------------------------------------------------\n");
+	if (info.has_csq)  printf("  Strength   : %d%% (CSQ %d)\n", csq_pct, info.csq);
         printf("  RSSI       : %d dBm\n", info.rssi);
         if (info.has_rsrp) printf("  RSRP       : %d dBm\n", (int)roundf(info.rsrp));
         if (info.has_rsrq) printf("  RSRQ       : %d dB\n",  (int)roundf(info.rsrq));
         if (info.has_sinr) printf("  %s       : %d dB\n", siname, (int)roundf(info.sinr / 10.0f));
-        if (info.has_csq)  printf("  CSQ        : %d (%d%%)\n", info.csq, csq_pct);
         if (info.has_ca) {
             printf("  LTE-A SCC  : %d — %s\n", info.lte_ca, info.scc_bands);
             printf("  BW CA      : %.1f MHz\n",   info.bw_ca_total / 1000.0f);
@@ -380,7 +380,7 @@ static void emit_results(void)
 
     const char *csq_col = "";
     if (info.has_csq && csq_pct >= 0)
-        csq_col = (info.csq > 20) ? "green" : (info.csq > 10) ? "yellow" : "red";
+        csq_col = (info.csq > 20) ? "green" : (info.csq > 10) ? "orange" : "red";
 
     char csq_per_str[16] = "";
     if (csq_pct >= 0) snprintf(csq_per_str, sizeof(csq_per_str), "%d", csq_pct);
@@ -967,10 +967,10 @@ static void on_model(QmiClientDms *client, GAsyncResult *res, gpointer ud)
         }
         info.has_model = TRUE;
     } else if (usb_product[0]) {
-        strncpy(info.model, usb_product, sizeof(info.model) - 1);
+        g_strlcpy(info.model, usb_product, sizeof(info.model));
         info.has_model = TRUE;
     } else if (usb_manufacturer[0]) {
-        strncpy(info.model, usb_manufacturer, sizeof(info.model) - 1);
+        g_strlcpy(info.model, usb_manufacturer, sizeof(info.model));
         info.has_model = TRUE;
     }
 
