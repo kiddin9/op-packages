@@ -18,6 +18,11 @@ function shellquote(s) {
 	return `'${replace(s, "'", "'\\''")}'`;
 }
 
+function has_supported_hw_offloading_target(target) {
+	return type(target) == 'string' &&
+		match(target, /^(ramips\/mt7621|mediatek\/mt76..|mediatek\/filogic)$/) != null;
+}
+
 function callPackageVersionCheck(pkg) {
 	let version = "";
 
@@ -223,14 +228,27 @@ const methods = {
 
 	getFeatures: {
 		call: function() {
-			let kernel_version = popen('echo -n `uname -r`').read('all');
+			const kernel_version = popen('echo -n `uname -r`').read('all');
+			const has_fw3 = access('/sbin/fw3') == true;
+			const has_fw4 = access('/sbin/fw4') == true;
+			const has_ipt_flowoffload = access('/sys/module/xt_FLOWOFFLOAD/refcnt') == true;
+			const has_nft_flowoffload = access('/sys/module/nft_flow_offload/refcnt') == true;
+			const ubus = connect();
+			const sysboard = ubus ? ubus.call('system', 'board') : null;
+			const has_hw_offloading = has_supported_hw_offloading_target(sysboard?.release?.target) &&
+				((has_fw3 && has_ipt_flowoffload) || (has_fw4 && has_nft_flowoffload));
+
+			if (ubus)
+				ubus.disconnect();
+
 			let result = {
-				firewall:   access('/sbin/fw3') == true,
-				firewall4:  access('/sbin/fw4') == true,
+				firewall:   has_fw3,
+				firewall4:  has_fw4,
 				opkg:       access('/bin/opkg') == true,
 				bonding:    access('/sys/module/bonding'),
 				mii_tool:   access('/usr/sbin/mii-tool'),
-				offloading: access('/sys/module/xt_FLOWOFFLOAD/refcnt') == true || access('/sys/module/nft_flow_offload/refcnt') == true,
+				offloading: (has_fw3 && has_ipt_flowoffload) || (has_fw4 && has_nft_flowoffload),
+				offloading_hw: has_hw_offloading,
 				fullcone:   access(`/lib/modules/${kernel_version}/xt_FULLCONENAT.ko`) == true || access(`/lib/modules/${kernel_version}/nft_fullcone.ko`) == true,
 				br2684ctl:  access('/usr/sbin/br2684ctl') == true,
 				swconfig:   access('/sbin/swconfig') == true,
