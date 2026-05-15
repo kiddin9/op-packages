@@ -1,0 +1,17 @@
+{
+	"luci-app-qbittorrent-enhanced": {
+		"description": "Grant UCI access for luci-app-qbittorrent-enhanced",
+		"read": {
+			"file": {
+				"/var/log/qbittorrent/qbittorrent.log": [ "read" ]
+			},
+			"ubus": {
+				"service": [ "list" ]
+			},
+			"uci": [ "qbittorrent" ]
+		},
+		"write": {
+			"uci": [ "qbittorrent" ]
+		}
+	}
+}
