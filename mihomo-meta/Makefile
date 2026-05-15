@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo-meta
 PKG_VERSION:=1.19.24
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
@@ -22,6 +22,7 @@ PKG_BUILD_VERSION:=v1.19.24
 PKG_BUILD_TIME:=$(shell date -u -Iseconds)
 
 GO_PKG:=github.com/metacubex/mihomo
+GO_PKG_BUILD_PKG:=github.com/metacubex/mihomo
 GO_PKG_LDFLAGS_X:=$(GO_PKG)/constant.Version=$(PKG_BUILD_VERSION) $(GO_PKG)/constant.BuildTime=$(PKG_BUILD_TIME)
 GO_PKG_TAGS:=with_gvisor
 GO_PKG_INSTALL_BIN_PATH:=/usr/libexec
