@@ -19,19 +19,37 @@ NODE_VERSION_V1="22.15.1"
 # 默认使用 V2 版本 (可通过 NODE_VERSION 环境变量覆盖)
 NODE_VERSION="${NODE_VERSION:-${NODE_VERSION_V2}}"
 # 经过验证的 OpenClaw 稳定版本 (更新此值需同步测试)
-OC_TESTED_VERSION="2026.4.9"
+OC_TESTED_VERSION="2026.5.12"
+# OpenClaw 2026.5.x package.json engines.node 的最低要求。
+# 如果未来上游提高要求，安装成功后还会从 package.json 再做一次强校验。
+OC_NODE_MIN_VERSION="${OC_NODE_MIN_VERSION:-22.14.0}"
 # 用户可通过 OC_VERSION 环境变量覆盖安装版本
 OC_VERSION="${OC_VERSION:-}"
 
+[ -r /usr/libexec/openclaw-paths.sh ] && . /usr/libexec/openclaw-paths.sh
+[ -r /usr/libexec/openclaw-node.sh ] && . /usr/libexec/openclaw-node.sh
+
 # ── 安装路径 (支持自定义) ──
-# 从 UCI 配置读取自定义路径，默认为 /opt
-# 用户可在 LuCI 界面或通过 uci set openclaw.main.install_path=/mnt/data 设置
-# 程序会在此路径下自动创建 openclaw 目录
-OC_BASE_PATH="${OC_INSTALL_PATH:-$(uci -q get openclaw.main.install_path || echo '/opt')}"
-OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
-NODE_BASE="${OC_INSTALL_PATH}/node"
-OC_GLOBAL="${OC_INSTALL_PATH}/global"
-OC_DATA="${OC_INSTALL_PATH}/data"
+# UCI 公开字段继续使用 openclaw.main.install_path，语义为“基础目录”。
+# 兼容用户误填 /mnt/data/openclaw：统一剥离末尾 openclaw，避免得到
+# /mnt/data/openclaw/openclaw 这种双拼路径。
+OC_CONFIGURED_PATH="${OC_INSTALL_PATH:-$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')}"
+if command -v oc_load_paths >/dev/null 2>&1; then
+	if ! oc_load_paths "$OC_CONFIGURED_PATH"; then
+		echo "  [✗] 安装路径无效: $OC_CONFIGURED_PATH"
+		echo "  [!] 请使用绝对路径，例如 /opt、/mnt/data；不要使用相对路径、空格或 shell 特殊字符。"
+		exit 1
+	fi
+	OC_BASE_PATH="$OPENCLAW_INSTALL_PATH"
+	OC_INSTALL_PATH="$OC_ROOT"
+else
+	OC_BASE_PATH="${OC_CONFIGURED_PATH%/}"
+	OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+	NODE_BASE="${OC_INSTALL_PATH}/node"
+	OC_GLOBAL="${OC_INSTALL_PATH}/global"
+	OC_DATA="${OC_INSTALL_PATH}/data"
+	CONFIG_FILE="${OC_DATA}/.openclaw/openclaw.json"
+fi
 
 # ── OverlayFS 兼容性修复 ──
 # iStoreOS/OpenWrt 上 Docker 的 bind mount (/overlay/upper/opt/docker)
@@ -82,8 +100,55 @@ ensure_mkdir() {
 	[ -d "$target" ] && return 0
 	if ! mkdir -p "$target" 2>/dev/null; then
 		log_error "无法创建目录: $target"
-		log_error "如果安装了 Docker，可能需要手动执行: mount --bind /overlay/upper/opt /opt"
+		local probe_parent="/"
+		command -v oc_find_existing_path >/dev/null 2>&1 && probe_parent=$(oc_find_existing_path "$target")
+		log_error "请检查挂载点是否只读、overlay 是否已满，以及 ${probe_parent} 是否可写。"
+		[ "$OC_BASE_PATH" = "/opt" ] && log_error "如果安装了 Docker，可能需要手动执行: mount --bind /overlay/upper/opt /opt"
 		return 1
+	fi
+}
+
+ensure_openclaw_user() {
+	# OpenWrt 默认没有 useradd/adduser 的完整实现，所以沿用 uci-defaults 的轻量写法。
+	# 这里在安装链路再兜底一次，避免用户删除账号后微信插件安装或 Gateway 启动失败。
+	if id openclaw >/dev/null 2>&1 || grep -q '^openclaw:' /etc/passwd 2>/dev/null; then
+		return 0
+	fi
+
+	local oc_uid=1000
+	while grep -q "^[^:]*:x:${oc_uid}:" /etc/passwd 2>/dev/null; do
+		oc_uid=$((oc_uid + 1))
+	done
+	local oc_gid="$oc_uid"
+	while grep -q "^[^:]*:x:${oc_gid}:" /etc/group 2>/dev/null; do
+		oc_gid=$((oc_gid + 1))
+	done
+
+	echo "openclaw:x:${oc_uid}:${oc_gid}:openclaw:${OC_DATA}:/bin/false" >> /etc/passwd
+	echo 'openclaw:x:0:0:99999:7:::' >> /etc/shadow
+	echo "openclaw:x:${oc_gid}:" >> /etc/group
+	log_info "已创建 openclaw 系统用户 (uid=${oc_uid}, gid=${oc_gid})"
+}
+
+probe_install_root() {
+	if command -v oc_probe_writable_root >/dev/null 2>&1; then
+		if ! oc_probe_writable_root "$OC_BASE_PATH"; then
+			log_error "安装路径不可写: $OC_BASE_PATH"
+			log_error "常见原因: overlay 已满、文件系统只读、挂载点未挂载或权限不正确。"
+			local check_path="/"
+			command -v oc_find_existing_path >/dev/null 2>&1 && check_path=$(oc_find_existing_path "$OC_BASE_PATH")
+			df -h "$check_path" 2>/dev/null | tail -1 || true
+			exit 1
+		fi
+	fi
+}
+
+cleanup_partial_install() {
+	# 只在确认目标是规范化后的 openclaw 运行根目录时清理，避免误删用户目录。
+	if command -v oc_safe_openclaw_root >/dev/null 2>&1 && oc_safe_openclaw_root "$OC_INSTALL_PATH"; then
+		log_warn "安装失败，清理未完成的运行目录: $OC_INSTALL_PATH"
+		rm -rf "$OC_INSTALL_PATH" 2>/dev/null || true
+		[ -d /overlay/upper ] && rm -rf "/overlay/upper${OC_INSTALL_PATH}" 2>/dev/null || true
 	fi
 }
 
@@ -126,6 +191,38 @@ $ver_dir"
 	done
 }
 
+detect_oc_node_requirement() {
+	local oc_entry pkg_json required
+	oc_entry=$(find_oc_entry)
+	[ -n "$oc_entry" ] || return 1
+	pkg_json="$(dirname "$oc_entry")/package.json"
+	[ -f "$pkg_json" ] || return 1
+	[ -x "$NODE_BIN" ] || return 1
+
+	required=$(OC_PKG_JSON="$pkg_json" "$NODE_BIN" -e "
+const fs=require('fs');
+try{
+  const pkg=JSON.parse(fs.readFileSync(process.env.OC_PKG_JSON,'utf8'));
+  const spec=(pkg.engines&&pkg.engines.node)||'';
+  const m=String(spec).match(/([0-9]+\\.[0-9]+\\.[0-9]+)/);
+  if(m) process.stdout.write(m[1]);
+}catch(e){}
+" 2>/dev/null)
+	[ -n "$required" ] || return 1
+	printf '%s\n' "$required"
+}
+
+assert_node_runtime() {
+	local required="$OC_NODE_MIN_VERSION"
+	local from_pkg
+	from_pkg=$(detect_oc_node_requirement 2>/dev/null || true)
+	[ -n "$from_pkg" ] && required="$from_pkg"
+
+	if command -v oc_assert_node_min_version >/dev/null 2>&1; then
+		oc_assert_node_min_version "$NODE_BIN" "$required" || exit 1
+	fi
+}
+
 detect_arch() {
 	local arch
 	arch=$(uname -m)
@@ -158,6 +255,7 @@ download_node() {
 		current_ver=$("$NODE_BIN" --version 2>/dev/null | sed 's/^v//')
 		if [ "$current_ver" = "$node_ver" ]; then
 			log_info "Node.js v${node_ver} 已安装, 跳过下载"
+			assert_node_runtime
 			return 0
 		fi
 		# ARM64 musl 使用 Alpine 打包，版本号可能不完全匹配
@@ -166,6 +264,7 @@ download_node() {
 		local want_major=$(echo "$node_ver" | cut -d. -f1)
 		if [ "$cur_major" = "$want_major" ]; then
 			log_info "Node.js v${current_ver} 已安装 (兼容 v${node_ver}), 跳过下载"
+			assert_node_runtime
 			return 0
 		fi
 		log_warn "当前 Node.js v${current_ver}, 将更新到 v${node_ver}"
@@ -273,6 +372,7 @@ download_node() {
 		local installed_ver
 		installed_ver=$("$NODE_BIN" --version 2>/dev/null || echo "unknown")
 		log_info "Node.js ${installed_ver} 安装成功"
+		assert_node_runtime
 	else
 		log_error "Node.js 安装验证失败"
 		exit 1
@@ -309,12 +409,15 @@ install_openclaw() {
 
 	# 确定安装版本
 	local oc_pkg="openclaw"
-	if [ -n "$OC_VERSION" ]; then
+	if [ -z "$OC_VERSION" ] || [ "$OC_VERSION" = "stable" ]; then
+		oc_pkg="openclaw@${OC_TESTED_VERSION}"
+		log_info "默认稳定版: v${OC_TESTED_VERSION}"
+	elif [ "$OC_VERSION" = "latest" ]; then
+		oc_pkg="openclaw@latest"
+		log_info "安装 npm latest 稳定标签版本"
+	else
 		oc_pkg="openclaw@${OC_VERSION}"
 		log_info "指定版本: v${OC_VERSION}"
-	else
-		oc_pkg="openclaw@latest"
-		log_info "安装最新版本"
 	fi
 
 	local libc_type
@@ -371,6 +474,7 @@ install_openclaw() {
 
 	if [ -n "$oc_ver" ]; then
 		log_info "OpenClaw v${oc_ver} 安装成功"
+		assert_node_runtime
 	else
 		log_error "OpenClaw 安装验证失败"
 		exit 1
@@ -435,16 +539,23 @@ do_setup() {
 	if [ -n "$OC_VERSION" ]; then
 		echo "  OpenClaw:   v${OC_VERSION} (稳定版)"
 	else
-		echo "  OpenClaw:   最新版"
+		echo "  OpenClaw:   v${OC_TESTED_VERSION} (默认稳定版)"
 	fi
 	echo "  安装路径:   ${OC_INSTALL_PATH}"
 	echo "  数据路径:   ${OC_DATA}"
 	echo ""
 
+	ensure_openclaw_user
+	probe_install_root
+	OC_SETUP_CLEANUP=1
+	trap 'rc=$?; if [ $rc -ne 0 ] && [ "${OC_SETUP_CLEANUP:-0}" = "1" ]; then cleanup_partial_install; fi; exit $rc' EXIT
+
 	download_node "$node_ver"
 	install_pnpm
 	install_openclaw
 	init_openclaw
+	OC_SETUP_CLEANUP=0
+	trap - EXIT
 
 	echo ""
 	echo "╔══════════════════════════════════════════════════════════════╗"
@@ -533,7 +644,11 @@ do_upgrade() {
 
 	echo "=== 正在升级 OpenClaw ==="
 	echo ""
-	"$NPM_BIN" install -g openclaw@latest --prefix="$OC_GLOBAL" $install_flags 2>&1
+	local target_pkg="openclaw@${OC_TESTED_VERSION}"
+	[ "$OC_VERSION" = "latest" ] && target_pkg="openclaw@latest"
+	[ -n "$OC_VERSION" ] && [ "$OC_VERSION" != "latest" ] && [ "$OC_VERSION" != "stable" ] && target_pkg="openclaw@${OC_VERSION}"
+	echo "目标版本: ${target_pkg#openclaw@}"
+	"$NPM_BIN" install -g "$target_pkg" --prefix="$OC_GLOBAL" $install_flags 2>&1
 
 	# 验证升级结果
 	local new_ver=""
@@ -547,6 +662,7 @@ do_upgrade() {
 
 	echo ""
 	if [ -n "$new_ver" ]; then
+		assert_node_runtime
 		if [ "$current_ver" = "$new_ver" ]; then
 			log_info "当前已是最新版本 v${new_ver}"
 		else
@@ -658,6 +774,9 @@ do_setup_offline() {
 	echo "  离线包:     ${offline_dir}"
 	echo ""
 
+	ensure_openclaw_user
+	probe_install_root
+
 	# [1] 安装 Node.js
 	local node_tarball="$offline_dir/node.tar.xz"
 	if [ -f "$node_tarball" ]; then
@@ -681,6 +800,7 @@ do_setup_offline() {
 
 		if [ -x "$NODE_BIN" ]; then
 			log_info "Node.js $($NODE_BIN --version 2>/dev/null) 安装成功"
+			assert_node_runtime
 		else
 			log_error "Node.js 安装失败"
 			exit 1
@@ -705,6 +825,7 @@ do_setup_offline() {
 		if [ -n "$oc_entry" ]; then
 			local oc_ver=$("$NODE_BIN" "$oc_entry" --version 2>/dev/null | tr -d '[:space:]')
 			log_info "OpenClaw v${oc_ver} 安装成功"
+			assert_node_runtime
 		else
 			log_error "OpenClaw 安装验证失败"
 			exit 1

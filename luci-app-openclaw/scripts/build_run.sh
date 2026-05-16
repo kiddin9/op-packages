@@ -54,9 +54,18 @@ install_files() {
 	cp "$PKG_DIR/root/usr/bin/openclaw-env" "$dest/usr/bin/"
 	chmod +x "$dest/usr/bin/openclaw-env"
 
+	# shared shell helpers
+	mkdir -p "$dest/usr/libexec"
+	cp "$PKG_DIR/root/usr/libexec/"*.sh "$dest/usr/libexec/"
+	chmod +x "$dest/usr/libexec/"*.sh
+
 	# LuCI controller
 	mkdir -p "$dest/usr/lib/lua/luci/controller"
 	cp "$PKG_DIR/luasrc/controller/openclaw.lua" "$dest/usr/lib/lua/luci/controller/"
+
+	# shared Lua helpers
+	mkdir -p "$dest/usr/lib/lua/openclaw"
+	cp "$PKG_DIR/luasrc/openclaw/"*.lua "$dest/usr/lib/lua/openclaw/"
 
 	# LuCI CBI
 	mkdir -p "$dest/usr/lib/lua/luci/model/cbi/openclaw"
@@ -65,6 +74,10 @@ install_files() {
 	# LuCI views
 	mkdir -p "$dest/usr/lib/lua/luci/view/openclaw"
 	cp "$PKG_DIR/luasrc/view/openclaw/"*.htm "$dest/usr/lib/lua/luci/view/openclaw/"
+
+	# rpcd ACL
+	mkdir -p "$dest/usr/share/rpcd/acl.d"
+	cp "$PKG_DIR/root/usr/share/rpcd/acl.d/"*.json "$dest/usr/share/rpcd/acl.d/"
 
 	# oc-config assets
 	mkdir -p "$dest/usr/share/openclaw"

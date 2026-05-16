@@ -33,10 +33,20 @@ get_pid_by_port() {
 }
 
 # ── 路径 (OpenWrt 适配，支持自定义安装路径) ──
-# 从 UCI 配置读取自定义路径，环境变量可覆盖
-# 用户配置的是基础路径，程序会在此路径下创建 openclaw 目录
-OC_BASE_PATH="${OC_INSTALL_PATH:-$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')}"
-OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+# 从 UCI 配置读取自定义路径，环境变量可覆盖。
+# 注意 OC_INSTALL_PATH 历史上被当作“基础路径”传入，统一解析后再展开到 openclaw 根目录。
+[ -r /usr/libexec/openclaw-paths.sh ] && . /usr/libexec/openclaw-paths.sh
+OC_CONFIGURED_PATH="${OC_INSTALL_PATH:-$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')}"
+if command -v oc_load_paths >/dev/null 2>&1 && oc_load_paths "$OC_CONFIGURED_PATH"; then
+	OC_INSTALL_PATH="$OC_ROOT"
+else
+	OC_BASE_PATH="${OC_CONFIGURED_PATH%/}"
+	OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+	NODE_BASE="${NODE_BASE:-${OC_INSTALL_PATH}/node}"
+	OC_GLOBAL="${OC_GLOBAL:-${OC_INSTALL_PATH}/global}"
+	OC_DATA="${OC_DATA:-${OC_INSTALL_PATH}/data}"
+	CONFIG_FILE="${OC_DATA}/.openclaw/openclaw.json"
+fi
 NODE_BASE="${NODE_BASE:-${OC_INSTALL_PATH}/node}"
 OC_GLOBAL="${OC_GLOBAL:-${OC_INSTALL_PATH}/global}"
 OC_DATA="${OC_DATA:-${OC_INSTALL_PATH}/data}"

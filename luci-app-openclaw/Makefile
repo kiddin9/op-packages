@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openclaw
 PKG_VERSION:=$(strip $(shell cat $(CURDIR)/VERSION 2>/dev/null || echo "1.0.0"))
-PKG_RELEASE:=14
+PKG_RELEASE:=15
 
 PKG_MAINTAINER:=10000ge10000 <10000ge10000@users.noreply.github.com>
 PKG_LICENSE:=GPL-3.0
@@ -56,24 +56,28 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./root/etc/profile.d/openclaw.sh $(1)/etc/profile.d/openclaw.sh
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) ./root/usr/bin/openclaw-env $(1)/usr/bin/openclaw-env
+	$(INSTALL_DIR) $(1)/usr/libexec
+	$(INSTALL_BIN) ./root/usr/libexec/openclaw-paths.sh $(1)/usr/libexec/openclaw-paths.sh
+	$(INSTALL_BIN) ./root/usr/libexec/openclaw-node.sh $(1)/usr/libexec/openclaw-node.sh
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/controller
 	$(INSTALL_DATA) ./luasrc/controller/openclaw.lua $(1)/usr/lib/lua/luci/controller/openclaw.lua
+	$(INSTALL_DIR) $(1)/usr/lib/lua/openclaw
+	$(INSTALL_DATA) ./luasrc/openclaw/paths.lua $(1)/usr/lib/lua/openclaw/paths.lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/openclaw
 	$(INSTALL_DATA) ./luasrc/model/cbi/openclaw/basic.lua $(1)/usr/lib/lua/luci/model/cbi/openclaw/basic.lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/openclaw
 	$(INSTALL_DATA) ./luasrc/view/openclaw/status.htm $(1)/usr/lib/lua/luci/view/openclaw/status.htm
 	$(INSTALL_DATA) ./luasrc/view/openclaw/advanced.htm $(1)/usr/lib/lua/luci/view/openclaw/advanced.htm
 	$(INSTALL_DATA) ./luasrc/view/openclaw/console.htm $(1)/usr/lib/lua/luci/view/openclaw/console.htm
+	$(INSTALL_DATA) ./luasrc/view/openclaw/wechat.htm $(1)/usr/lib/lua/luci/view/openclaw/wechat.htm
+	$(INSTALL_DIR) $(1)/usr/share/rpcd/acl.d
+	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-openclaw.json $(1)/usr/share/rpcd/acl.d/luci-app-openclaw.json
 	$(INSTALL_DIR) $(1)/usr/share/openclaw
 	$(INSTALL_DATA) ./VERSION $(1)/usr/share/openclaw/VERSION
 	$(INSTALL_BIN) ./root/usr/share/openclaw/oc-config.sh $(1)/usr/share/openclaw/oc-config.sh
 	$(INSTALL_DATA) ./root/usr/share/openclaw/web-pty.js $(1)/usr/share/openclaw/web-pty.js
 	$(INSTALL_DIR) $(1)/usr/share/openclaw/ui
 	$(CP) ./root/usr/share/openclaw/ui/* $(1)/usr/share/openclaw/ui/
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
-	if [ -f ./po/zh-cn/openclaw.po ]; then \
-		po2lmo ./po/zh-cn/openclaw.po $(1)/usr/lib/lua/luci/i18n/openclaw.zh-cn.lmo 2>/dev/null || true; \
-	fi
 endef
 
 define Package/$(PKG_NAME)/postinst

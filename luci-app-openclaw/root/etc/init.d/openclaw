@@ -11,13 +11,33 @@ EXTRA_HELP="    setup            下载 Node.js 并安装 OpenClaw
         restart_gateway  仅重启 Gateway 实例 (不影响 Web PTY)"
 
 # ── 安装路径 (支持自定义) ──
-# 从 UCI 配置读取自定义路径，默认为 /opt
-# 程序会在此路径下自动创建 openclaw 目录
-OC_BASE_PATH="$(uci -q get openclaw.main.install_path || echo '/opt')"
-OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
-NODE_BASE="${OC_INSTALL_PATH}/node"
-OC_GLOBAL="${OC_INSTALL_PATH}/global"
-OC_DATA="${OC_INSTALL_PATH}/data"
+# 从 UCI 配置读取自定义路径，公开字段仍为 install_path。
+# 统一路径解析可以兼容 /mnt/data/openclaw 输入，避免双拼路径。
+[ -r /usr/libexec/openclaw-paths.sh ] && . /usr/libexec/openclaw-paths.sh
+[ -r /usr/libexec/openclaw-node.sh ] && . /usr/libexec/openclaw-node.sh
+OC_NODE_MIN_VERSION="${OC_NODE_MIN_VERSION:-22.14.0}"
+OC_CONFIGURED_PATH="$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')"
+if command -v oc_load_paths >/dev/null 2>&1; then
+	if ! oc_load_paths "$OC_CONFIGURED_PATH"; then
+		logger -t openclaw "安装路径无效: $OC_CONFIGURED_PATH"
+		OC_BASE_PATH="/opt"
+		OC_INSTALL_PATH="/opt/openclaw"
+		NODE_BASE="${OC_INSTALL_PATH}/node"
+		OC_GLOBAL="${OC_INSTALL_PATH}/global"
+		OC_DATA="${OC_INSTALL_PATH}/data"
+		CONFIG_FILE="${OC_DATA}/.openclaw/openclaw.json"
+	else
+		OC_BASE_PATH="$OPENCLAW_INSTALL_PATH"
+		OC_INSTALL_PATH="$OC_ROOT"
+	fi
+else
+	OC_BASE_PATH="${OC_CONFIGURED_PATH%/}"
+	OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+	NODE_BASE="${OC_INSTALL_PATH}/node"
+	OC_GLOBAL="${OC_INSTALL_PATH}/global"
+	OC_DATA="${OC_INSTALL_PATH}/data"
+	CONFIG_FILE="${OC_DATA}/.openclaw/openclaw.json"
+fi
 
 # ── OverlayFS 兼容性修复 ──
 # Docker bind mount (/overlay/upper/opt/docker) 会导致 /opt 不可写
@@ -220,6 +240,27 @@ if(d.plugins.installs){
 		}
 	});
 }
+// v2026.5.x: 微信插件渠道名统一为 openclaw-weixin
+// 旧配置里可能残留 weixin，启动前迁移，避免渠道加载失败。
+if(Array.isArray(d.plugins.allow)){
+	d.plugins.allow=d.plugins.allow.map(x=>x==='weixin'?'openclaw-weixin':x)
+		.filter((x,i,a)=>x&&a.indexOf(x)===i);
+}
+['entries','installs'].forEach(ns=>{
+	if(d.plugins&&d.plugins[ns]&&d.plugins[ns].weixin){
+		if(!d.plugins[ns]['openclaw-weixin'])d.plugins[ns]['openclaw-weixin']=d.plugins[ns].weixin;
+		delete d.plugins[ns].weixin;
+	}
+});
+['channel','channels'].forEach(ns=>{
+	if(d[ns]&&d[ns].weixin){
+		if(!d[ns]['openclaw-weixin'])d[ns]['openclaw-weixin']=d[ns].weixin;
+		delete d[ns].weixin;
+	}
+});
+if(!d.plugins.allow.includes('openclaw-weixin') && d.plugins.installs && d.plugins.installs['openclaw-weixin']){
+	d.plugins.allow.push('openclaw-weixin');
+}
 // 始终信任 copilot-proxy (内置插件)
 if(!d.plugins.allow.includes('copilot-proxy'))d.plugins.allow.push('copilot-proxy');
 fs.writeFileSync(f,JSON.stringify(d,null,2));
@@ -247,6 +288,13 @@ if [ ! -x "$NODE_BIN" ]; then
 echo "未找到 Node.js: $NODE_BIN"
 echo "请运行: openclaw-env setup"
 return 1
+fi
+if command -v oc_assert_node_min_version >/dev/null 2>&1; then
+	oc_assert_node_min_version "$NODE_BIN" "$OC_NODE_MIN_VERSION" >/dev/null || {
+		echo "Node.js 版本过低，OpenClaw 需要 >= v${OC_NODE_MIN_VERSION}"
+		echo "请运行: openclaw-env node"
+		return 1
+	}
 fi
 
 # 检查 openclaw 入口

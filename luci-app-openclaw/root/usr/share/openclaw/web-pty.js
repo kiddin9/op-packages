@@ -19,10 +19,19 @@ const PORT = parseInt(process.env.OC_CONFIG_PORT || '18793', 10);
 const HOST = process.env.OC_CONFIG_HOST || '0.0.0.0'; // token 认证保护，可安全绑定所有接口
 // 从 UCI 读取安装路径，默认为 /opt/openclaw
 const { execSync } = require('child_process');
+function normalizeInstallPath(raw) {
+  let value = String(raw || '').trim().replace(/\/+$/, '');
+  if (!value) value = '/opt';
+  if (!value.startsWith('/')) return '/opt';
+  if (/[\s'"`$;&|<>()]/.test(value)) return '/opt';
+  if (/^\/(proc|sys|dev|tmp|var|etc|usr|bin|sbin|lib|rom|overlay)(\/|$)/.test(value) || value === '/') return '/opt';
+  if (value.endsWith('/openclaw')) value = value.slice(0, -'/openclaw'.length) || '/opt';
+  return value;
+}
 let installPath = '/opt/openclaw';
 try {
   const uciPath = execSync('uci -q get openclaw.main.install_path 2>/dev/null', { encoding: 'utf8', timeout: 3000 }).trim();
-  if (uciPath) installPath = uciPath + '/openclaw';
+  if (uciPath) installPath = normalizeInstallPath(uciPath) + '/openclaw';
 } catch {}
 const NODE_BASE = process.env.NODE_BASE || installPath + '/node';
 const OC_GLOBAL = process.env.OC_GLOBAL || installPath + '/global';

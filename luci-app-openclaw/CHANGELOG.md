@@ -4,6 +4,53 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.5] - 2026-05-15
+
+### 适配 OpenClaw v2026.5.12
+
+- `OC_TESTED_VERSION` 更新为 `2026.5.12`，默认稳定版固定到 npm `latest` 稳定标签。
+- 保持 Node.js 默认运行时 `22.16.0`，安装后按 OpenClaw `engines.node` 最低要求执行强校验；版本过低会直接失败并输出明确日志。
+- 文档补充 `2026.5.14-beta.2` 不作为默认稳定版的说明。
+
+### 修复权限与路径问题
+
+- 保留公开 UCI 字段 `openclaw.main.install_path`，新增统一路径规范化逻辑。
+- 兼容用户误填 `/mnt/data/openclaw`，避免实际路径变成 `/mnt/data/openclaw/openclaw`。
+- 拒绝相对路径、空白字符、shell 特殊字符和 `/tmp`、`/usr`、`/overlay` 等危险根目录。
+- `profile.d/openclaw.sh` 不再全局 `export HOME="$OC_DATA"`，仅在 `openclaw` 命令包装器内注入 HOME，避免影响 SSH/zsh/oh-my-zsh。
+- 卸载逻辑移除 `chmod -R 777`，并将 `rm -rf` 限定到规范化后的 OpenClaw 运行根目录。
+- 安装前新增写入探针，提前识别 overlay 已满、只读挂载或目标挂载点不可写。
+
+### 修复微信插件链路
+
+- 微信插件安装和升级前检查 `python3`、`openclaw` 系统用户、npm cache/tmp/data 写权限。
+- 统一以 `openclaw` 用户运行微信插件 CLI，并显式传入 `OPENCLAW_CONFIG_PATH`、`NPM_CONFIG_CACHE`、`TMPDIR`。
+- 自动迁移旧渠道名 `weixin` 到 `openclaw-weixin`。
+- 保留 Web PTY `cmd=wechat` 初始化能力，微信向导入口不被破坏。
+
+### 修复 LuCI 与打包
+
+- 状态页区分“启动中”和“启动失败”，并显示 procd gateway 退出码。
+- Web 控制台每次加载前重新读取 token，强制使用正确的 HTTP Gateway URL，避免旧 token 或 HTTPS 混用。
+- `Makefile`、`.run`、`.ipk` 打包清单补齐 `wechat.htm`、rpcd ACL、共享 shell/Lua helper。
+- 主包不再直接生成 `openclaw.zh-cn.lmo`，避免与 `luci-i18n-openclaw-zh-cn` 文件冲突。
+
+### 测试
+
+- 新增路径规范化、卸载保护、profile HOME、Node 版本比较、打包清单、微信安装预检和控制台 token URL 的契约测试入口。
+
+### 致谢
+
+感谢以下用户通过 Issue 或 PR 提供问题反馈、复现信息和修复思路：
+
+- @svgr110 (#89)、@Cuscito (#88)、@ayysama (#87)、@Jameslau-tech (#86, #66)
+- @hotwa (#85, #83, #63)、@hwliu11 (#84)、@alan9771 (#82, #65)、@zhuxf8 (#81)
+- @yiyibuguai (#80, #75)、@nbagui (#79)、@sam528300-lab (#78)、@392377870 (#77)
+- @ouyangmland (#76, #68, #67)、@lucian521 (#74)、@jiangxiaoqiang-cloud (#73)、@LuckyMai (#72, #62)
+- @xuguoliang189 (#71, #64)、@ampcwin (#70)、@natserver (#69)、@jh620026 (#61)、@okareyouok (#60)
+
+---
+
 ## [2.0.4] - 2026-04-10
 
 ### 适配 OpenClaw v2026.4.9
