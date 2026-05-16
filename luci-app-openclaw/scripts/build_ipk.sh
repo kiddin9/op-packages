@@ -51,9 +51,18 @@ mkdir -p "$DATA_DIR/usr/bin"
 cp "$PKG_DIR/root/usr/bin/openclaw-env" "$DATA_DIR/usr/bin/"
 chmod +x "$DATA_DIR/usr/bin/openclaw-env"
 
+# shared shell helpers
+mkdir -p "$DATA_DIR/usr/libexec"
+cp "$PKG_DIR/root/usr/libexec/"*.sh "$DATA_DIR/usr/libexec/"
+chmod +x "$DATA_DIR/usr/libexec/"*.sh
+
 # LuCI controller
 mkdir -p "$DATA_DIR/usr/lib/lua/luci/controller"
 cp "$PKG_DIR/luasrc/controller/openclaw.lua" "$DATA_DIR/usr/lib/lua/luci/controller/"
+
+# shared Lua helpers
+mkdir -p "$DATA_DIR/usr/lib/lua/openclaw"
+cp "$PKG_DIR/luasrc/openclaw/"*.lua "$DATA_DIR/usr/lib/lua/openclaw/"
 
 # LuCI CBI
 mkdir -p "$DATA_DIR/usr/lib/lua/luci/model/cbi/openclaw"
@@ -62,6 +71,10 @@ cp "$PKG_DIR/luasrc/model/cbi/openclaw/"*.lua "$DATA_DIR/usr/lib/lua/luci/model/
 # LuCI views
 mkdir -p "$DATA_DIR/usr/lib/lua/luci/view/openclaw"
 cp "$PKG_DIR/luasrc/view/openclaw/"*.htm "$DATA_DIR/usr/lib/lua/luci/view/openclaw/"
+
+# rpcd ACL
+mkdir -p "$DATA_DIR/usr/share/rpcd/acl.d"
+cp "$PKG_DIR/root/usr/share/rpcd/acl.d/"*.json "$DATA_DIR/usr/share/rpcd/acl.d/"
 
 # oc-config assets
 mkdir -p "$DATA_DIR/usr/share/openclaw"
@@ -77,12 +90,6 @@ cp -r "$PKG_DIR/root/usr/share/openclaw/ui" "$DATA_DIR/usr/share/openclaw/"
 mkdir -p "$DATA_DIR/etc/profile.d"
 cp "$PKG_DIR/root/etc/profile.d/openclaw.sh" "$DATA_DIR/etc/profile.d/"
 chmod +x "$DATA_DIR/etc/profile.d/openclaw.sh"
-
-# i18n (po2lmo 可选)
-mkdir -p "$DATA_DIR/usr/lib/lua/luci/i18n"
-if command -v po2lmo >/dev/null 2>&1 && [ -f "$PKG_DIR/po/zh-cn/openclaw.po" ]; then
-	po2lmo "$PKG_DIR/po/zh-cn/openclaw.po" "$DATA_DIR/usr/lib/lua/luci/i18n/openclaw.zh-cn.lmo" 2>/dev/null || true
-fi
 
 # 计算安装大小
 INSTALLED_SIZE=$(du -sk "$DATA_DIR" | awk '{print $1}')
@@ -132,6 +139,7 @@ cat > "$CTRL_DIR/postinst" << 'EOF'
 		USER_BIND=$(sed -n "s/^\s*option\s\+bind\s\+['\"]\\?\\([^'\"]*\\)['\"]\\?.*/\\1/p" "$OLD_CONFIG" 2>/dev/null | tail -1)
 		USER_TOKEN=$(sed -n "s/^\s*option\s\+token\s\+['\"]\\?\\([^'\"]*\\)['\"]\\?.*/\\1/p" "$OLD_CONFIG" 2>/dev/null | tail -1)
 		USER_PTY_PORT=$(sed -n "s/^\s*option\s\+pty_port\s\+['\"]\\?\\([^'\"]*\\)['\"]\\?.*/\\1/p" "$OLD_CONFIG" 2>/dev/null | tail -1)
+		USER_INSTALL_PATH=$(sed -n "s/^\s*option\s\+install_path\s\+['\"]\\?\\([^'\"]*\\)['\"]\\?.*/\\1/p" "$OLD_CONFIG" 2>/dev/null | tail -1)
 		
 		# 步骤2: 备份旧配置 (带时间戳)
 		BAK_FILE="/etc/config/openclaw.$(date +%Y%m%d%H%M%S).bak"
@@ -149,6 +157,7 @@ cat > "$CTRL_DIR/postinst" << 'EOF'
 		[ -n "$USER_BIND" ] && sed -i "s/^\(\s*option\s\+bind\s\+\).*/\\1'$USER_BIND'/" "$OLD_CONFIG" 2>/dev/null || true
 		[ -n "$USER_TOKEN" ] && sed -i "s/^\(\s*option\s\+token\s\+\).*/\\1'$USER_TOKEN'/" "$OLD_CONFIG" 2>/dev/null || true
 		[ -n "$USER_PTY_PORT" ] && sed -i "s/^\(\s*option\s\+pty_port\s\+\).*/\\1'$USER_PTY_PORT'/" "$OLD_CONFIG" 2>/dev/null || true
+		[ -n "$USER_INSTALL_PATH" ] && sed -i "s/^\(\s*option\s\+install_path\s\+\).*/\\1'$USER_INSTALL_PATH'/" "$OLD_CONFIG" 2>/dev/null || true
 		
 		echo "配置合并完成，用户设置已保留"
 	fi

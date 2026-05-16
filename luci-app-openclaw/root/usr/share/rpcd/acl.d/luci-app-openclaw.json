@@ -1,11 +1,17 @@
 {
 	"luci-app-openclaw": {
-		"description": "Grant UCI access for luci-app-openclaw",
+		"description": "Grant access to the OpenClaw LuCI application",
 		"read": {
-			"uci": [ "openclaw" ]
+			"uci": [ "openclaw" ],
+			"ubus": {
+				"service": [ "list" ]
+			}
 		},
 		"write": {
-			"uci": [ "openclaw" ]
+			"uci": [ "openclaw" ],
+			"ubus": {
+				"service": [ "list", "set", "delete" ]
+			}
 		}
 	}
 }

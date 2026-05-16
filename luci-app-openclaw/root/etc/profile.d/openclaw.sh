@@ -6,13 +6,23 @@
 # 支持自定义安装路径
 # ============================================================================
 
-# 从 UCI 配置读取自定义安装路径
-# 用户配置的是基础路径，程序会在此路径下创建 openclaw 目录
-OC_BASE_PATH="$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')"
-OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
-NODE_BASE="${OC_INSTALL_PATH}/node"
-OC_GLOBAL="${OC_INSTALL_PATH}/global"
-OC_DATA="${OC_INSTALL_PATH}/data"
+# 从 UCI 配置读取自定义安装路径。
+# 注意：这里不能修改全局 HOME。profile 会被 SSH shell、zsh/oh-my-zsh 等加载，
+# 全局改 HOME 会让 cd ~、插件缓存、历史文件全部跑到 OpenClaw 数据目录。
+# OpenClaw CLI 需要的 HOME 只在 openclaw 命令包装器里单独注入。
+[ -r /usr/libexec/openclaw-paths.sh ] && . /usr/libexec/openclaw-paths.sh
+OC_CONFIGURED_PATH="$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')"
+if command -v oc_load_paths >/dev/null 2>&1; then
+	oc_load_paths "$OC_CONFIGURED_PATH" || return 0
+	OC_INSTALL_PATH="$OC_ROOT"
+else
+	OC_BASE_PATH="${OC_CONFIGURED_PATH%/}"
+	OC_INSTALL_PATH="${OC_BASE_PATH}/openclaw"
+	NODE_BASE="${OC_INSTALL_PATH}/node"
+	OC_GLOBAL="${OC_INSTALL_PATH}/global"
+	OC_DATA="${OC_INSTALL_PATH}/data"
+	CONFIG_FILE="${OC_DATA}/.openclaw/openclaw.json"
+fi
 
 # 检查 Node.js 是否已安装
 [ -x "${NODE_BASE}/bin/node" ] || return 0
@@ -30,26 +40,32 @@ export NODE_ICU_DATA="${NODE_BASE}/share/icu"
 # 这些变量确保 openclaw 命令使用正确的配置路径
 export OPENCLAW_HOME="$OC_DATA"
 export OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw"
-export OPENCLAW_CONFIG_PATH="${OC_DATA}/.openclaw/openclaw.json"
+export OPENCLAW_CONFIG_PATH="$CONFIG_FILE"
 
-# 设置 HOME 为 OpenClaw 数据目录
-# 这是解决 Issue #42 的关键：确保 OpenClaw CLI 使用正确的配置路径
-# 注意：这会影响 cd ~ 等行为，但为了配置一致性是必要的
-export HOME="$OC_DATA"
-
-# 创建便捷别名：用户可直接运行 openclaw 命令
-if [ -x "${OC_GLOBAL}/bin/openclaw" ] || [ -x "${NODE_BASE}/bin/openclaw" ]; then
-  # openclaw 已在 PATH 中，无需别名
-  :
+# 创建便捷包装器：只给 openclaw 命令单独注入 HOME，避免污染用户 shell。
+_oc_cli=""
+if [ -x "${OC_GLOBAL}/bin/openclaw" ]; then
+	_oc_cli="${OC_GLOBAL}/bin/openclaw"
+elif [ -x "${NODE_BASE}/bin/openclaw" ]; then
+	_oc_cli="${NODE_BASE}/bin/openclaw"
 else
-  # 尝试查找 openclaw 入口并创建别名
-  for _oc_dir in "${OC_GLOBAL}/lib/node_modules/openclaw" "${OC_GLOBAL}/node_modules/openclaw" "${NODE_BASE}/lib/node_modules/openclaw"; do
-    if [ -f "${_oc_dir}/openclaw.mjs" ]; then
-      alias openclaw="${NODE_BASE}/bin/node ${_oc_dir}/openclaw.mjs"
-      break
-    elif [ -f "${_oc_dir}/dist/cli.js" ]; then
-      alias openclaw="${NODE_BASE}/bin/node ${_oc_dir}/dist/cli.js"
-      break
-    fi
-  done
+	for _oc_dir in "${OC_GLOBAL}/lib/node_modules/openclaw" "${OC_GLOBAL}/node_modules/openclaw" "${NODE_BASE}/lib/node_modules/openclaw"; do
+		if [ -f "${_oc_dir}/openclaw.mjs" ]; then
+			_oc_cli="${NODE_BASE}/bin/node ${_oc_dir}/openclaw.mjs"
+			break
+		elif [ -f "${_oc_dir}/dist/cli.js" ]; then
+			_oc_cli="${NODE_BASE}/bin/node ${_oc_dir}/dist/cli.js"
+			break
+		fi
+	done
+fi
+
+if [ -n "$_oc_cli" ]; then
+	openclaw() {
+		HOME="$OC_DATA" \
+		OPENCLAW_HOME="$OC_DATA" \
+		OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw" \
+		OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
+		sh -c 'exec "$@"' openclaw $_oc_cli "$@"
+	}
 fi
