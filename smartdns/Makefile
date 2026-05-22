@@ -5,8 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=smartdns
-PKG_VERSION:=47.1
-PKG_RELEASE:=1
+PKG_VERSION:=48
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/pymumu/smartdns/tar.gz/Release$(PKG_VERSION)?
@@ -53,7 +53,7 @@ endef
 define Package/smartdns-ui
   $(call Package/smartdns/Default)
   TITLE+= dashboard
-  DEPENDS:=+smartdns $(RUST_ARCH_DEPENDS) @!(TARGET_x86_geode||TARGET_x86_legacy)
+  DEPENDS:=+smartdns $(RUST_ARCH_DEPENDS) @!i386
 endef
 
 define Package/smartdns-ui/description
@@ -72,9 +72,9 @@ endef
 define Download/smartdns-webui
   PROTO:=git
   URL:=https://github.com/pymumu/smartdns-webui.git
-  SOURCE_DATE:=2025-10-25
-  SOURCE_VERSION:=a673732fd541bbd33e3677e6315cf8a9ce3bf248
-  MIRROR_HASH:=2dc08e54f36ba9427d628979494b44fc6963a51cbf3fb62b197f65c3e33a6095
+  SOURCE_DATE:=2026-03-31
+  SOURCE_VERSION:=c0d2411d20bf8b172a045adbe07166df6691e58b
+  MIRROR_HASH:=fa9463e912169e8907f9454c186c7bcb0b3a36c86a522e065c98a7ea38fcecd8
   SUBDIR:=smartdns-webui-$$$$(subst -,.,$$$$(SOURCE_DATE))~$$$$(call version_abbrev,$$$$(SOURCE_VERSION))
   FILE:=$$(SUBDIR).tar.zst
 endef

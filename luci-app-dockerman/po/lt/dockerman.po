@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-03-13 14:10+0000\n"
+"PO-Revision-Date: 2026-04-24 04:42+0000\n"
 "Last-Translator: Džiugas Januševičius <dziugas1959@hotmail.com>\n"
 "Language-Team: Lithuanian <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationsdockerman/lt/>\n"
@@ -9,13 +9,13 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
 "(n%100<10 || n%100>=20) ? 1 : 2);\n"
-"X-Generator: Weblate 5.17-dev\n"
+"X-Generator: Weblate 5.17.1-dev\n"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:487
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:488
 msgid "/mnt/path"
 msgstr "/mnt/path"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:439
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:440
 msgid "/path/in/image"
 msgstr "/path/in/image"
 
@@ -27,7 +27,7 @@ msgstr "0-is"
 msgid "A Token is preferred over a Password."
 msgstr "Žetonas yra pageidaujamas nei slaptažodis."
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:655
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:656
 msgid "A list of kernel capabilities to add to the container"
 msgstr "Sąrašas „kernel“ galimybių pridėti į konteinerį"
 
@@ -41,18 +41,18 @@ msgstr "Veiksmas nepasiekiamas:"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:249
 msgid "Actor"
-msgstr ""
+msgstr "Subjektas"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:564
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:565
 msgid "Add"
 msgstr "Pridėti"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:297
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:602
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:298
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:603
 msgid "Add Mount"
 msgstr "Pridėti įrengimą"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:637
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:638
 msgid "Add host device to the container"
 msgstr "Pridėti skleidėjo/vedėjo įrenginį į konteinerį"
 
@@ -60,7 +60,7 @@ msgstr "Pridėti skleidėjo/vedėjo įrenginį į konteinerį"
 msgid "Added Capabilities"
 msgstr "Pridėtos galimybes"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:616
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:617
 msgid "Advanced"
 msgstr "Pažangūs"
 
@@ -72,7 +72,7 @@ msgstr "Visi potipiai"
 msgid "All Types"
 msgstr "Visi tipai"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:629
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:630
 msgid "Allocates an ephemeral host port for all of a container's exposed ports"
 msgstr ""
 "Priskiria „ephemeralų“ skleidėjo/vedėjo prievadą visiems konteinerio "
@@ -98,7 +98,7 @@ msgstr ""
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:33
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:168
 msgid "Api Version"
-msgstr "API Versija"
+msgstr "„API“ Versija"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:70
 msgid "Attachable"
@@ -116,11 +116,11 @@ msgstr "Atgal į konteinerius"
 msgid "Base device"
 msgstr "Pagrindo įrenginys"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:355
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:356
 msgid "Bind (host directory)"
 msgstr "Pririšti (skleidėjo/vedėjo katalogas/vietovė)"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:288
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:289
 msgid "Bind mount a volume"
 msgstr "Pririšti (veiksmą) – Tomo įrengimas"
 
@@ -129,11 +129,11 @@ msgid "BlkIO Stats"
 msgstr "„BlkIO“ statistika"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:667
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:720
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:721
 msgid "Block IO Weight"
 msgstr "Blokuoti Į/I svorį"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:721
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:722
 msgid ""
 "Block IO weight (relative weight) accepts a weight value between 10 and 1000."
 msgstr ""
@@ -165,7 +165,7 @@ msgstr ""
 "Įvedantys priimtiną „image“ pavadinimą su sutampama versiją, „Docker image“ "
 "galima atsisiųsti iš konfiguriuoto registro."
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:654
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:655
 msgid "CAP-ADD(--cap-add)"
 msgstr "CAP-ADD(--cap-add)"
 
@@ -173,7 +173,7 @@ msgstr "CAP-ADD(--cap-add)"
 msgid "COMMAND"
 msgstr "KOMANDA"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:672
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:673
 msgid "CPU Period"
 msgstr "„CPU“ periodas"
 
@@ -181,7 +181,7 @@ msgstr "„CPU“ periodas"
 msgid "CPU Period (microseconds)"
 msgstr "„CPU“ periodas (mikrosekundės)"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:678
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:679
 msgid "CPU Quota"
 msgstr "„CPU“ norma/kvota"
 
@@ -190,7 +190,7 @@ msgid "CPU Quota (microseconds)"
 msgstr "„CPU“ norma/kvota (mikrosekundės)"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:623
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:684
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:685
 msgid "CPU Shares Weight"
 msgstr "„CPU“ bendriną svorį"
 
@@ -203,7 +203,7 @@ msgstr "„CPU“ statistika"
 msgid "CPU Usage"
 msgstr "„CPU“ Naudojimas"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:685
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:686
 msgid ""
 "CPU shares relative weight, if 0 is set, the system will ignore the value "
 "and use the default of 1024"
@@ -217,13 +217,13 @@ msgid "CPU usage data unavailable"
 msgstr "„CPU“ naudojimo duomenys nepasiekiami"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:607
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:660
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:661
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:169
 msgid "CPUs"
 msgstr "„CPUs“ – Procesoriai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1914
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:499
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:500
 msgid "Cancel"
 msgstr "Atšaukti"
 
@@ -313,7 +313,7 @@ msgstr "Prisijungti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1908
 msgid "Connect Network"
-msgstr "Prisijungti prie Tinklo"
+msgstr "Prijungti tinklą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1936
 msgid "Connect network"
@@ -369,17 +369,17 @@ msgstr "Konteinerio tyrinėjimas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1193
 msgid "Container Logs"
-msgstr "Konteinerio Žurnalas"
+msgstr "Konteinerio žurnalai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:200
 msgid "Container Name"
-msgstr "Konteinerio Pavadinimas"
+msgstr "Konteinerio pavadinimas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:818
 msgid "Container Statistics"
 msgstr "Konteinerio statistika"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:927
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:928
 msgid "Container created"
 msgstr "Konteineris sukurtas"
 
@@ -387,7 +387,7 @@ msgstr "Konteineris sukurtas"
 msgid "Container detail"
 msgstr "Konteinerio „detail“"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:927
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:928
 msgid "Container duplicated"
 msgstr "Konteineris duplikuotas/dubliuotas"
 
@@ -437,21 +437,21 @@ msgstr "Konteinerių apžiūra"
 msgid "Create"
 msgstr "Sukurti"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:921
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:922
 msgid "Create container"
 msgstr "Sukurti konteinerį"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:942
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:943
 msgid "Create container failed"
-msgstr ""
+msgstr "Nepavyko sukurti konteinerio"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:234
 msgid "Create network"
-msgstr ""
+msgstr "Sukurti tinklą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:249
 msgid "Create network failed"
-msgstr ""
+msgstr "Nepavyko sukurti tinklo"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:63
 msgid "Create new docker container"
@@ -475,7 +475,7 @@ msgstr "„DNS“"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:582
 msgid "DNS Names"
-msgstr ""
+msgstr "„DNS“ pavadinimai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:73
 msgid "Debug"
@@ -487,27 +487,30 @@ msgstr "Numatytas „tinklo tiltas“ – Jungimas/-iamasis"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:26
 msgid "Default ps flags"
-msgstr ""
+msgstr "Numatytosios „ps“ vėliavos"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:588
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:589
 msgid "Delete this volume mount"
-msgstr ""
+msgstr "Ištrinti šio tomo įrengimą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:104
 msgid ""
 "Destinations prefixed with a Registry host matching an entry in this table "
 "invoke its corresponding credentials."
 msgstr ""
+"Paskirties/Kelionės tikslo vietos, prasidedančios su registro skleidėju/"
+"vedėju, atitinkančios įvesties šioje lentelėje iškviečia su juo atitinkamais "
+"kredencialais."
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1580
 msgid "Detach signal sent (Ctrl+D)"
-msgstr ""
+msgstr "Atjungti išsiųstą signalą („CTRL+D“)"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:96
 msgid "Detail"
-msgstr ""
+msgstr "Išsami informacija"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:636
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:637
 msgid "Device(--device)"
 msgstr "Įrenginys(--device)"
 
@@ -523,11 +526,11 @@ msgstr "Atsijungti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1854
 msgid "Disconnect network"
-msgstr ""
+msgstr "Atjungti tinklą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1844
 msgid "Disconnect network \"%s\" from container?"
-msgstr ""
+msgstr "Atjungti tinklą „%s“ nuo konteinerio?"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1117
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1500
@@ -538,7 +541,7 @@ msgstr "Atjungtas/-a"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:536
 msgid "Do you want to remove the tag \"%s\"?"
-msgstr ""
+msgstr "Ar Jūs norite pašalinti šią žymą „%s“?"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:16
 msgid "Docker - Configuration"
@@ -546,7 +549,7 @@ msgstr "„Docker“ – Konfigūravimas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:330
 msgid "Docker - Container"
-msgstr ""
+msgstr "„Docker“ – konteineris"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:189
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:49
@@ -555,7 +558,7 @@ msgstr "„Docker“ – Konteineriai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:54
 msgid "Docker - Events"
-msgstr ""
+msgstr "„Docker“ – įvykiai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:36
 msgid "Docker - Images"
@@ -568,7 +571,7 @@ msgstr "„Docker“ – Tinklai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:26
 msgid "Docker - New Network"
-msgstr ""
+msgstr "„Docker“ – Naujas tinklas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:144
 msgid "Docker - Overview"
@@ -589,7 +592,7 @@ msgstr "„Docker Root Dir“"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:167
 msgid "Docker Version"
-msgstr "„Docker“ Versija"
+msgstr "„Docker“ versija"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:17
 msgid "DockerMan is a simple docker manager client for LuCI"
@@ -597,7 +600,7 @@ msgstr "„DockerMan“ yra paprastas „Docker“ valdiklis – „LuCI“"
 
 #: applications/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json:3
 msgid "Dockerman JS"
-msgstr ""
+msgstr "„Dockerman JS“"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:945
 msgid "Download"
@@ -605,7 +608,7 @@ msgstr "Atsisiųsti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:276
 msgid "Download a valid remote image tar."
-msgstr ""
+msgstr "Atsisiųskite tinkamą nuotolinę „tar.“ laikmeną."
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:63
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:41
@@ -616,7 +619,7 @@ msgstr "Tvarkyklė"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:679
 msgid "Dropped Capabilities"
-msgstr ""
+msgstr "Atmestos galimybės"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:401
 msgid "Duplicate/Edit"
@@ -624,19 +627,19 @@ msgstr "Dublikuoti/Redaguoti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:66
 msgid "Duplicate/Edit Container: %s"
-msgstr ""
+msgstr "Duplikuoti/Dubliuoti┃Redaguoti konteinerį: %s"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js:422
 msgid "Edit"
-msgstr ""
+msgstr "Redaguoti"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:297
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:298
 msgid "Edit Mount"
-msgstr ""
+msgstr "Redaguoti įrengimą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:195
 msgid "Edit this container"
-msgstr ""
+msgstr "Redaguoti šį konteinerį"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:122
 msgid "Enable IPv6"
@@ -644,19 +647,19 @@ msgstr "Įjungti/Įgalinti IPv6"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:623
 msgid "Enter a new tag for image %s:"
-msgstr ""
+msgstr "Įveskite naują žymą laikmenai %s:"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/volumes.js:119
 msgid "Enter an optional name and labels for the new volume"
-msgstr ""
+msgstr "Įveskite pasirinktinį pavadinimą ir etiketes naujam tomui"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:379
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:380
 msgid "Enter volume name or pick existing"
-msgstr ""
+msgstr "Įveskite tomo pavadinimą arba pasirinkite esamą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:250
 msgid "Entry"
-msgstr ""
+msgstr "Įvestis"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:494
 msgid "Env"
@@ -664,9 +667,9 @@ msgstr "„Env“"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:246
 msgid "Environment"
-msgstr ""
+msgstr "Aplinkybe"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:282
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:283
 msgid "Environmental Variable(-e)"
 msgstr "Aplinkiniai netikslumai"
 
@@ -695,7 +698,7 @@ msgstr "Klaida"
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1673
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1687
 msgid "Error loading logs:"
-msgstr ""
+msgstr "Klaida įkeliant žurnalus:"
 
 #: applications/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json:311
 msgid "Events"
@@ -703,7 +706,7 @@ msgstr "Įvykiai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:65
 msgid "Example:"
-msgstr ""
+msgstr "Pavyzdys:"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:84
 msgid "Example: tcp://0.0.0.0:2375"
@@ -716,48 +719,48 @@ msgstr "Išskirti IP(dgs.)"
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:411
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:386
 msgid "Export"
-msgstr ""
+msgstr "Eksportuoti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:272
 msgid "Export this container"
-msgstr ""
+msgstr "Eksportuoti šitą konteinerį"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:628
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:629
 msgid "Exposed All Ports(-P)"
 msgstr "Atviri visi prievadai"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:607
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:608
 msgid "Exposed Ports(-p)"
 msgstr "Atviri prievadai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1770
 msgid "Failed to connect to console"
-msgstr ""
+msgstr "Nepavyko prisijungti prie konsoles"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:90
 msgid "Failed to execute \"/etc/init.d/%s %s\" action: %s"
-msgstr ""
+msgstr "Nepavyko vykdyti – „/etc/init.d/%s %s\" veiksmo: %s"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:321
 msgid "Failed to load events: %s"
-msgstr ""
+msgstr "Nepavyko įkelti įvykių: %s"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1675
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1686
 msgid "Failed to load logs"
-msgstr ""
+msgstr "Nepavyko įkelti žurnalų"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1568
 msgid "Failed to send data"
-msgstr ""
+msgstr "Nepavyko išsiųsti duomenų"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1583
 msgid "Failed to send detach signal"
-msgstr ""
+msgstr "Nepavyko išsiųsti atjungimo signalo"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1722
 msgid "Failed to start console"
-msgstr ""
+msgstr "Nepavyko pradėti konsoles"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:77
 msgid "Fatal"
@@ -769,11 +772,11 @@ msgstr "Failas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1602
 msgid "File uploaded to"
-msgstr ""
+msgstr "Failas įkeltas į"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:885
 msgid "Filesystem Changes"
-msgstr ""
+msgstr "Failų sistemos pakeitimai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:463
 msgid "Finish Time"
@@ -783,10 +786,12 @@ msgstr "Pabaigimo laikas"
 msgid ""
 "Flags passed to docker top (ps). Leave empty to use the built-in default."
 msgstr ""
+"Vėliavėlės perduotos – „docker top“ („ps“). Palikite tuščią, norint naudoti "
+"integruotą numatytąją."
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:50
 msgid "For local dockerd socket instances only."
-msgstr ""
+msgstr "Tik vietiniams „dockerd“ lizdo egzemplioriams."
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:300
 msgid "Force Remove"
@@ -794,17 +799,17 @@ msgstr "Priverstinai pašalinti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js:423
 msgid "Force remove"
-msgstr ""
+msgstr "Priverstinai pašalinti"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1306
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:745
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:746
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:153
 msgid "Form is not ready yet."
-msgstr ""
+msgstr "Forma dar nėra paruošta."
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:96
 msgid "From"
-msgstr ""
+msgstr "Iš"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:578
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:105
@@ -815,7 +820,7 @@ msgstr "Tinklo tarpuvartė"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:574
 msgid "Global IPv6 Address"
-msgstr ""
+msgstr "Išorinis/Visuotinis IPv6 adresas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:21
 msgid "Global settings"
@@ -823,7 +828,7 @@ msgstr "Pagrindiniai/Visuotiniai nustatymai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/configuration.js:23
 msgid "Globals"
-msgstr ""
+msgstr "Išoriniai/Visuotiniai"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:262
 msgid "Go to relevant configuration page"
@@ -835,18 +840,18 @@ msgstr "Suteikti „UCI“ prieigą – „luci-app-dockerman“"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:470
 msgid "Health Status"
-msgstr ""
+msgstr "Sveikatos būklė/būsena"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js:424
 msgid "History"
-msgstr ""
+msgstr "Istorija"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:430
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:431
 msgid "Host Directory"
-msgstr ""
+msgstr "Skleidėjo/Vedėjo katalogas/vietovė"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:483
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:622
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:623
 msgid "Host Name"
 msgstr "Skleidėjo/Vedėjo pavadinimas"
 
@@ -860,7 +865,7 @@ msgstr "ID – Identifikatorius"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1903
 msgid "IP Address (optional):"
-msgstr ""
+msgstr "IP adresas (pasirinktinis):"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:45
 msgid "IP VLAN"
@@ -872,32 +877,32 @@ msgstr "IP diapazonas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:98
 msgid "IPAM Driver"
-msgstr ""
+msgstr "„IPAM“ tvarkyklė"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:570
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:254
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:255
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:123
 msgid "IPv4 Address"
 msgstr "IPv4 adresas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:64
 msgid "IPv6"
-msgstr ""
+msgstr "IPv6"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:572
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:259
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:260
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:129
 msgid "IPv6 Address"
-msgstr ""
+msgstr "IPv6 adresas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:580
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:134
 msgid "IPv6 Gateway"
 msgstr "IPv6 šliuzas"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:264
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:265
 msgid "IPv6 Link-Local Address"
-msgstr ""
+msgstr "IPv6 sujungimo-vietinis adresas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:128
 msgid "IPv6 Subnet"
@@ -907,26 +912,26 @@ msgstr "IPv6 potinklis"
 msgid "Image"
 msgstr "Laikmena"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:357
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:358
 msgid "Image (from image)"
-msgstr ""
+msgstr "Laikmena (iš laikmenos)"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:456
 msgid "Image ID"
-msgstr ""
+msgstr "Laikmenos ID"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:113
 msgid "Image create completed"
-msgstr ""
+msgstr "Laikmenos sukūrimas užbaigtas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:231
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:699
 msgid "Image loaded successfully"
-msgstr ""
+msgstr "Laikmena sėkmingai įkelta"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:188
 msgid "Image push completed"
-msgstr ""
+msgstr "Laikmenos išstūmimas sėkmingas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:199
 #: applications/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json:189
@@ -1046,7 +1051,7 @@ msgstr ""
 msgid "Links"
 msgstr "Sujungimai/Nuorodos"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:269
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:270
 msgid "Links with other containers"
 msgstr "Nuorodos su kitais konteineriais"
 
@@ -1082,7 +1087,7 @@ msgstr "Žurnalo lygis"
 msgid "Log Options"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:727
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:728
 msgid "Log driver options"
 msgstr "Žurnalų tvarkyklių parinktys"
 
@@ -1110,7 +1115,7 @@ msgstr ""
 msgid "Mem Stats"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:691
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:692
 msgid "Memory"
 msgstr "Atmintis"
 
@@ -1123,7 +1128,7 @@ msgid "Memory Limit"
 msgstr ""
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:654
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:707
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:708
 msgid "Memory Reservation"
 msgstr ""
 
@@ -1132,7 +1137,7 @@ msgstr ""
 msgid "Memory Usage"
 msgstr "Atminties naudojimas"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:692
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:693
 msgid ""
 "Memory limit (format: <number>[<unit>]). Number is a positive integer. Unit "
 "can be one of b, k, m, or g. Minimum is 4M"
@@ -1149,7 +1154,7 @@ msgstr ""
 msgid "Metric"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:679
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:680
 msgid "Microseconds of CPU time that the container can get in a CPU period"
 msgstr ""
 
@@ -1157,12 +1162,12 @@ msgstr ""
 msgid "Missing header or CORS interfering"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:412
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:413
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:55
 msgid "Mode"
 msgstr "Veiksena"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:483
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:484
 msgid "Mount Path"
 msgstr ""
 
@@ -1170,11 +1175,11 @@ msgstr ""
 msgid "Mount Point"
 msgstr "Įrengimo taškas"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:643
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:644
 msgid "Mount tmpfs directory"
 msgstr "Įrengiama „tmpfs“ vietovė"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:287
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:288
 msgid "Mount(--mount)"
 msgstr ""
 
@@ -1233,7 +1238,7 @@ msgstr ""
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js:1143
 msgid "Network error"
-msgstr ""
+msgstr "Tinklo klaida"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:551
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:242
@@ -1248,11 +1253,11 @@ msgstr "Tinklai"
 msgid "Networks overview"
 msgstr "Tinklų apžiūra"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:929
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:930
 msgid "New container duplicated from"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:930
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:931
 msgid "New container has been created."
 msgstr ""
 
@@ -1278,7 +1283,7 @@ msgstr ""
 msgid "No changes needed"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:330
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:331
 msgid "No copy (nocopy)"
 msgstr ""
 
@@ -1302,7 +1307,7 @@ msgstr ""
 msgid "No logs available"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:914
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:915
 msgid "No name specified."
 msgstr ""
 
@@ -1319,7 +1324,7 @@ msgstr ""
 msgid "No statistics available"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:596
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:597
 msgid "No volumes available"
 msgstr ""
 
@@ -1337,7 +1342,7 @@ msgstr ""
 msgid "Now"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:661
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:662
 msgid "Number of CPUs. Number is a fractional number. 0.000 means no limit"
 msgstr ""
 "„CPU“ skaičius. Skaičius yra trupmeninis. 0.000 reiškia, kad nėra limito"
@@ -1378,8 +1383,8 @@ msgstr ""
 msgid "Operational Output"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:448
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:477
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:449
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:478
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:89
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network_new.js:80
 msgid "Options"
@@ -1446,16 +1451,16 @@ msgstr ""
 msgid "Per CPU Stats"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:532
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:533
 msgid "Please choose a directory or enter a volume name"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:537
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:545
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:538
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:546
 msgid "Please enter a mount path"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:541
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:542
 msgid "Please enter a subpath"
 msgstr ""
 
@@ -1505,27 +1510,27 @@ msgstr ""
 msgid "Processes"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:319
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:320
 msgid "Propagation: private"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:320
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:321
 msgid "Propagation: rprivate"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:322
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:323
 msgid "Propagation: rshared"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:324
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:325
 msgid "Propagation: rslave"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:321
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:322
 msgid "Propagation: shared"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:323
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:324
 msgid "Propagation: slave"
 msgstr ""
 
@@ -1533,7 +1538,7 @@ msgstr ""
 msgid "Prune"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:608
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:609
 msgid "Publish container's port(s) to the host"
 msgstr "Paskelbti konteinerio prievadą/-us skleidėjui/vedėjui"
 
@@ -1557,11 +1562,11 @@ msgstr ""
 msgid "Raw JSON"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:317
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:318
 msgid "Read-only (ro)"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:318
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:319
 msgid "Read-write (rw)"
 msgstr ""
 
@@ -1633,14 +1638,14 @@ msgstr ""
 msgid "Restrict external access to the network"
 msgstr "Uždrausti išorinę prieigą prie tinklo"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:612
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:613
 msgid "Run command"
 msgstr "Paleisti – „Run“ komandą"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:84
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:141
 msgid "Running"
-msgstr ""
+msgstr "Veikia"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:825
 msgid "Running Processes"
@@ -1661,7 +1666,7 @@ msgstr ""
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:249
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/network.js:62
 msgid "Scope"
-msgstr ""
+msgstr "Sritis"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:91
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:336
@@ -1676,8 +1681,8 @@ msgstr ""
 msgid "Select network to connect:"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:343
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:456
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:344
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:457
 msgid "Select options..."
 msgstr ""
 
@@ -1685,11 +1690,11 @@ msgstr ""
 msgid "Send"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:273
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:274
 msgid "Set custom DNS servers"
 msgstr "Nustatyti savuosius „DNS“ serverius"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:283
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:284
 msgid "Set environment variables inside the container"
 msgstr ""
 
@@ -1703,7 +1708,7 @@ msgid ""
 "or ::."
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:405
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:406
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/images.js:599
 msgid "Size"
 msgstr "Dydis"
@@ -1725,7 +1730,7 @@ msgstr ""
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:161
 msgid "State"
-msgstr ""
+msgstr "Būklė/Būsena"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:695
 msgid "Stats"
@@ -1767,7 +1772,7 @@ msgstr ""
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:88
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/containers.js:145
 msgid "Stopped"
-msgstr ""
+msgstr "Sustabdyta/-s/-i"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1090
 msgid "Streams:"
@@ -1779,7 +1784,7 @@ msgstr ""
 msgid "Subnet"
 msgstr "Potinklis"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:442
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:443
 msgid "Subpath"
 msgstr ""
 
@@ -1800,11 +1805,11 @@ msgstr ""
 msgid "Sysctl Settings"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:648
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:649
 msgid "Sysctl(--sysctl)"
 msgstr "„Sysctl(--sysctl)“"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:649
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:650
 msgid "Sysctls (kernel parameters) options"
 msgstr "„Sysctls“ („kernel“ parametrų) nustatymai"
 
@@ -1832,20 +1837,20 @@ msgstr ""
 msgid "The first match is used."
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:623
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:624
 msgid "The hostname to use for the container"
 msgstr ""
 "Įrenginio (t.y skleidėjo/vedėjo) pavadinimas naudojamas šiam konteineriui"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:673
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:674
 msgid "The length of a CPU period in microseconds"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:728
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:729
 msgid "The logging configuration for this container"
 msgstr "Žurnalimo konfigūravimas šiam konteineriui"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:278
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:279
 msgid ""
 "The user that commands are run as inside the container. (format: name|"
 "uid[:group|gid])"
@@ -1874,9 +1879,9 @@ msgstr ""
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:249
 msgid "Time"
-msgstr ""
+msgstr "Laikas"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:358
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:359
 msgid "Tmpfs"
 msgstr "„Tmpfs“"
 
@@ -1884,7 +1889,7 @@ msgstr "„Tmpfs“"
 msgid "Tmpfs Directories"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:642
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:643
 msgid "Tmpfs(--tmpfs)"
 msgstr "„Tmpfs(--tmpfs)“"
 
@@ -1922,7 +1927,7 @@ msgstr "Iš viso atminties:"
 msgid "Total:"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:480
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:481
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:63
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/events.js:249
 msgid "Type"
@@ -1960,7 +1965,7 @@ msgstr ""
 msgid "Unpause this container"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:564
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:565
 msgid "Update"
 msgstr "Atnaujinti"
 
@@ -1996,7 +2001,7 @@ msgid "User"
 msgstr "Naudotojas/Vartotojas"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1019
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:277
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:278
 msgid "User(-u)"
 msgstr "Naudotojas/-ai"
 
@@ -2012,17 +2017,17 @@ msgstr ""
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:244
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:251
 msgid "Value"
-msgstr ""
+msgstr "Reikšmė"
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/overview.js:240
 msgid "Version"
-msgstr ""
+msgstr "Versija"
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:356
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:357
 msgid "Volume (named)"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:383
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:384
 msgid "Volume Name"
 msgstr ""
 
@@ -2243,7 +2248,7 @@ msgstr ""
 msgid "tag"
 msgstr ""
 
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:419
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:420
 msgid "tmpfs Options"
 msgstr ""
 
@@ -2278,6 +2283,6 @@ msgid "volume name"
 msgstr ""
 
 #: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js:1352
-#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:933
+#: applications/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container_new.js:934
 msgid "with warnings"
 msgstr ""
