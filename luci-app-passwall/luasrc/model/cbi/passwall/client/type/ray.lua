@@ -371,10 +371,12 @@ o:depends({ [_n("protocol")] = "hysteria2"})
 o = s:option(ListValue, _n("hysteria2_obfs_type"), translate("Obfs Type"))
 o:value("", translate("Disable"))
 o:value("salamander")
+o:value("gecko")
 o:depends({ [_n("protocol")] = "hysteria2" })
 
 o = s:option(Value, _n("hysteria2_obfs_password"), translate("Obfs Password"))
 o:depends({ [_n("hysteria2_obfs_type")] = "salamander" })
+o:depends({ [_n("hysteria2_obfs_type")] = "gecko" })
 
 o = s:option(Value, _n("hysteria2_up_mbps"), translate("Max upload Mbps"))
 o:depends({ [_n("protocol")] = "hysteria2" })

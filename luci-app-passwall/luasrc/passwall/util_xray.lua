@@ -277,9 +277,10 @@ function gen_outbound(flag, node, tag, proxy_table)
 						local udp = {}
 						if node.hysteria2_obfs_type and node.hysteria2_obfs_type ~= "" then
 							local o = {
-								type = node.hysteria2_obfs_type,
+								type = "salamander",
 								settings = node.hysteria2_obfs_password and {
-									password = node.hysteria2_obfs_password
+									password = node.hysteria2_obfs_password,
+									packetSize = node.hysteria2_obfs_type == "gecko" and "512-1200" or nil
 								} or nil
 							}
 							udp[#udp+1] = o
@@ -728,9 +729,10 @@ function gen_config_server(node)
 							local udp = {}
 							if node.hysteria2_obfs_type and node.hysteria2_obfs_type ~= "" then
 								local o = {
-									type = node.hysteria2_obfs_type,
+									type = "salamander",
 									settings = node.hysteria2_obfs_password and {
-										password = node.hysteria2_obfs_password
+										password = node.hysteria2_obfs_password,
+										packetSize = node.hysteria2_obfs_type == "gecko" and "512-1200" or nil
 									} or nil
 								}
 								udp[#udp+1] = o
