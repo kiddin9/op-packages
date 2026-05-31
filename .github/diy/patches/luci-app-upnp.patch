@@ -1,0 +1,555 @@
+From 439f5437a57303ca4220910cc5a9f9f367c270fb Mon Sep 17 00:00:00 2001
+From: Self-Hosting-Group <selfhostinggroup-git+openwrt@shost.ing>
+Date: Fri, 29 May 2026 00:00:00 +0000
+Subject: [PATCH] luci-app-upnp: improve existing UI
+
+- Workaround daemon bug to fix listing of active port maps with iptables
+  >= 1.8.8, and relax nftables parsing for the new release
+- Change `Active Service Port Maps` to `Active Port Maps`, use the same
+  wording for the table headings and ACL as on the overview status page
+- Change description field header to `Added via / description`, always
+  include the protocol and clearer/less redundant protocol labels
+- Disable IPv6 mapping (`ipv6_disable`): UI option added, UCI exists
+- Don't clear dependent options if UPnP IGD/STUN temporarily disabled
+- Set `notify_interval` minimum to 900 s (default), as recommended by
+  [UDA 1.1] (2x=1800 in the standard), because daemon/OpenWrt wrongly
+  suggested 30x less in the past, and to reduce multicast traffic and
+  power consumption in wireless networks, clearer help
+- Report system instead of service uptime, UUID and service lease file:
+  UI options removed (disabled, to keep translations) as rarely used
+- Slightly improve some text strings
+- Show hint if no suitable configuration found (missing related update),
+  link to package manager, and show form as read-only to prevent changes
+- Configure service lease file by default in rpcd ucode for full UI
+  functionality without option set, but retrieve it only on rpcd start
+- Refactoring by moving ubus connection as jow-/ucode@a58fe47 was merged
+- Adapt to JavaScript ES6 and remove some line breaks and format files
+- A commit has been prepared that manually adjusts the translations,
+  without losing them
+
+[UDA 1.1]: https://upnp.org/specs/arch/UPnP-arch-DeviceArchitecture-v1.1.pdf#page=30
+
+Signed-off-by: Self-Hosting-Group <selfhostinggroup-git+openwrt@shost.ing>
+---
+ .../resources/view/status/include/80_upnp.js  |  29 ++---
+ .../luci-static/resources/view/upnp/upnp.js   | 109 +++++++++++-------
+ .../usr/share/rpcd/acl.d/luci-app-upnp.json   |   2 +-
+ .../root/usr/share/rpcd/ucode/luci.upnp       |  78 +++++--------
+ 4 files changed, 117 insertions(+), 101 deletions(-)
+
+diff --git a/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js b/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
+index 67e255caea7a..45f03c68a457 100644
+--- a/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
++++ b/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
+@@ -7,14 +7,14 @@
+ const callUpnpGetStatus = rpc.declare({
+ 	object: 'luci.upnp',
+ 	method: 'get_status',
+-	expect: {  }
++	expect: {}
+ });
+ 
+ const callUpnpDeleteRule = rpc.declare({
+ 	object: 'luci.upnp',
+ 	method: 'delete_rule',
+-	params: [ 'token' ],
+-	expect: { result : "OK" },
++	params: ['token'],
++	expect: { result: 'OK' },
+ });
+ 
+ function handleDelRule(num, ev) {
+@@ -35,23 +35,23 @@ return baseclass.extend({
+ 	},
+ 
+ 	render: function(data) {
+-		var table = E('table', { 'class': 'table', 'id': 'upnp_status_table' }, [
++		const table = E('table', { 'class': 'table', 'id': 'upnp_status_table' }, [
+ 			E('tr', { 'class': 'tr table-titles' }, [
+-				E('th', { 'class': 'th' }, _('Client Name')),
+-				E('th', { 'class': 'th' }, _('Client Address')),
+-				E('th', { 'class': 'th' }, _('Client Port')),
+-				E('th', { 'class': 'th' }, _('External Port')),
++				E('th', { 'class': 'th' }, _('Hostname')),
++				E('th', { 'class': 'th' }, _('IP address')),
++				E('th', { 'class': 'th' }, _('Port')),
++				E('th', { 'class': 'th' }, _('External port')),
+ 				E('th', { 'class': 'th' }, _('Protocol')),
+ 				E('th', { 'class': 'th right' }, _('Expires')),
+-				E('th', { 'class': 'th' }, _('Description')),
++				E('th', { 'class': 'th' }, _('Added via / description')),
+ 				E('th', { 'class': 'th cbi-section-actions' }, '')
+ 			])
+ 		]);
+ 
+-		var rules = Array.isArray(data[0].rules) ? data[0].rules : [];
++		const rules = Array.isArray(data[0].rules) ? data[0].rules : [];
+ 
+-		var rows = rules.map(function(rule) {
+-			const padnum = (num, length) => num.toString().padStart(length, "0");
++		const rows = rules.map(function(rule) {
++			const padnum = (num, length) => num.toString().padStart(length, '0');
+ 			const expires_sec = rule?.expires || 0;
+ 			const hour = Math.floor(expires_sec / 3600);
+ 			const minute = Math.floor((expires_sec % 3600) / 60);
+@@ -72,8 +72,9 @@ return baseclass.extend({
+ 				rule.descr,
+ 				E('button', {
+ 					'class': 'btn cbi-button-remove',
+-					'click': L.bind(handleDelRule, this, rule.num)
+-				}, [ _('Delete') ])
++					'click': L.bind(handleDelRule, this, rule.num),
++					'title': _('Delete')
++				}, [_('Delete')])
+ 			];
+ 		});
+ 
+diff --git a/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js b/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+index 955e1c45f5f8..494172864e35 100644
+--- a/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
++++ b/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+@@ -3,27 +3,28 @@
+ 'require dom';
+ 'require poll';
+ 'require uci';
++'require ui';
+ 'require rpc';
+ 'require form';
+ 
+ const callInitAction = rpc.declare({
+ 	object: 'luci',
+ 	method: 'setInitAction',
+-	params: [ 'name', 'action' ],
++	params: ['name', 'action'],
+ 	expect: { result: false }
+ });
+ 
+ const callUpnpGetStatus = rpc.declare({
+ 	object: 'luci.upnp',
+ 	method: 'get_status',
+-	expect: {  }
++	expect: {}
+ });
+ 
+ const callUpnpDeleteRule = rpc.declare({
+ 	object: 'luci.upnp',
+ 	method: 'delete_rule',
+-	params: [ 'token' ],
+-	expect: { result : "OK" },
++	params: ['token'],
++	expect: { result: 'OK' },
+ });
+ 
+ function handleDelRule(num, ev) {
+@@ -44,10 +45,10 @@ return view.extend({
+ 
+ 	poll_status: function(nodes, data) {
+ 
+-		var rules = Array.isArray(data[0].rules) ? data[0].rules : [];
++		const rules = Array.isArray(data[0].rules) ? data[0].rules : [];
+ 
+-		var rows = rules.map(function(rule) {
+-			const padnum = (num, length) => num.toString().padStart(length, "0");
++		const rows = rules.map(function(rule) {
++			const padnum = (num, length) => num.toString().padStart(length, '0');
+ 			const expires_sec = rule?.expires || 0;
+ 			const hour = Math.floor(expires_sec / 3600);
+ 			const minute = Math.floor((expires_sec % 3600) / 60);
+@@ -68,8 +69,9 @@ return view.extend({
+ 				rule.descr,
+ 				E('button', {
+ 					'class': 'btn cbi-button-remove',
+-					'click': L.bind(handleDelRule, this, rule.num)
+-				}, [ _('Delete') ])
++					'click': L.bind(handleDelRule, this, rule.num),
++					'title': _('Delete')
++				}, [_('Delete')])
+ 			];
+ 		});
+ 
+@@ -80,35 +82,42 @@ return view.extend({
+ 
+ 		let m, s, o;
+ 
+-		var protocols = '%s & %s/%s'.format(
++		const protocols = _('%s & %s/%s', '%s & %s/%s (%s = UPnP IGD, %s = PCP, %s = NAT-PMP)').format(
+ 			'<a href="https://en.wikipedia.org/wiki/Internet_Gateway_Device_Protocol" target="_blank" rel="noreferrer"><abbr title="UPnP Internet Gateway Device (Control Protocol)">UPnP IGD</abbr></a>',
+ 			'<a href="https://en.wikipedia.org/wiki/Port_Control_Protocol" target="_blank" rel="noreferrer"><abbr title="Port Control Protocol">PCP</abbr></a>',
+ 			'<a href="https://en.wikipedia.org/wiki/NAT_Port_Mapping_Protocol" target="_blank" rel="noreferrer"><abbr title="NAT Port Mapping Protocol">NAT-PMP</abbr></a>');
+-		m = new form.Map('upnpd', [_('UPnP IGD & PCP/NAT-PMP Service')],
++		m = new form.Map('upnpd', _('UPnP IGD & PCP/NAT-PMP Service'),
+ 			_('The %s protocols allow clients on the local network to configure port maps/forwards on the router autonomously.',
+ 				'The %s (%s = UPnP IGD & PCP/NAT-PMP) protocols allow clients on the local network to configure port maps/forwards on the router autonomously.')
+-				.format(protocols)
++			.format(protocols)
+ 		);
++		if (!uci.get('upnpd', 'config')) {
++			ui.addNotification(null, E('div', '<h4>' + _('No suitable configuration was found!') + '</h4><p>' +
++				_('No suitable config (LuCI app %s) found in %s. A related package update (daemon or LuCI app) may be missing.').format('v1.0', '<code>/etc/config/upnpd</code>') + '<br />' +
++				_('Use the software package manager, update lists, and install the related update. Config is migrated with the daemon package update.') + '</p>' +
++				'<a class="btn" href="/cgi-bin/luci/admin/system/package-manager?query=UPnP%20IGD%20&amp;%20PCP/NAT-PMP">' + _('Go to package manager…') + '</a>'), 'warning');
++			m.readonly = true;
++		}
+ 
+ 		s = m.section(form.GridSection, '_active_rules');
+ 
+ 		s.render = L.bind(function(view, section_id) {
+-			var table = E('table', { 'class': 'table cbi-section-table', 'id': 'upnp_status_table' }, [
++			const table = E('table', { 'class': 'table cbi-section-table', 'id': 'upnp_status_table' }, [
+ 				E('tr', { 'class': 'tr table-titles' }, [
+-					E('th', { 'class': 'th' }, _('Client Name')),
+-					E('th', { 'class': 'th' }, _('Client Address')),
+-					E('th', { 'class': 'th' }, _('Client Port')),
+-					E('th', { 'class': 'th' }, _('External Port')),
++					E('th', { 'class': 'th' }, _('Hostname')),
++					E('th', { 'class': 'th' }, _('IP address')),
++					E('th', { 'class': 'th' }, _('Port')),
++					E('th', { 'class': 'th' }, _('External port')),
+ 					E('th', { 'class': 'th' }, _('Protocol')),
+ 					E('th', { 'class': 'th right' }, _('Expires')),
+-					E('th', { 'class': 'th' }, _('Description')),
++					E('th', { 'class': 'th' }, _('Added via / description')),
+ 					E('th', { 'class': 'th cbi-section-actions' }, '')
+ 				])
+ 			]);
+ 
+-			var rules = Array.isArray(data[0].rules) ? data[0].rules : [];
++			const rules = Array.isArray(data[0].rules) ? data[0].rules : [];
+ 
+-			var rows = rules.map(function(rule) {
++			const rows = rules.map(function(rule) {
+ 				return [
+ 					rule.host_hint || _('Unknown'),
+ 					rule.intaddr,
+@@ -118,15 +127,17 @@ return view.extend({
+ 					rule.descr,
+ 					E('button', {
+ 						'class': 'btn cbi-button-remove',
+-						'click': L.bind(handleDelRule, this, rule.num)
+-					}, [ _('Delete') ])
++						'click': L.bind(handleDelRule, this, rule.num),
++						'title': _('Delete')
++					}, [_('Delete')])
+ 				];
+ 			});
+ 
+ 			cbi_update_table(table, rows, E('em', _('There are no active port maps.')));
+ 
+ 			return E('div', { 'class': 'cbi-section cbi-tblsection' }, [
+-					E('h3', _('Active Service Port Maps')), table ]);
++				E('h3', _('Active Port Maps')), table
++			]);
+ 		}, o, this);
+ 
+ 		s = m.section(form.NamedSection, 'config', 'upnpd', _('Service Settings'));
+@@ -134,8 +145,8 @@ return view.extend({
+ 		s.tab('setup', _('Service Setup'));
+ 		s.tab('advanced', _('Advanced Settings'));
+ 
+-		o = s.taboption('setup', form.Flag, 'enabled', _('Start service'),
+-			_('Start autonomous port mapping service'));
++		o = s.taboption('setup', form.Flag, 'enabled', _('Enable service'),
++			_('Enable the autonomous port mapping service'));
+ 		o.rmempty = false;
+ 
+ 		o = s.taboption('setup', form.Flag, 'enable_upnp', _('Enable UPnP IGD protocol'));
+@@ -152,86 +163,104 @@ return view.extend({
+ 		o.default = '1';
+ 		o.rmempty = false;
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('setup', form.Value, 'download', _('Download speed'),
+ 			_('Report maximum download speed in kByte/s'));
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('setup', form.Value, 'upload', _('Upload speed'),
+ 			_('Report maximum upload speed in kByte/s'));
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		s.taboption('advanced', form.Flag, 'use_stun', _('Use %s', 'Use %s (%s = STUN)')
+-				.format('<a href="https://en.wikipedia.org/wiki/STUN" target="_blank" rel="noreferrer"><abbr title="Session Traversal Utilities for NAT">STUN</abbr></a>'),
++			.format('<a href="https://en.wikipedia.org/wiki/STUN" target="_blank" rel="noreferrer"><abbr title="Session Traversal Utilities for NAT">STUN</abbr></a>'),
+ 			_('To detect the public IPv4 address for unrestricted full-cone/one-to-one NATs'));
+ 
+ 		o = s.taboption('advanced', form.Value, 'stun_host', _('STUN host'));
+-		o.depends('use_stun', '1');
+ 		o.datatype = 'host';
++		o.depends('use_stun', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Value, 'stun_port', _('STUN port'));
+-		o.depends('use_stun', '1');
+ 		o.datatype = 'port';
+ 		o.placeholder = '3478';
++		o.depends('use_stun', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Flag, 'secure_mode', _('Enable secure mode'),
+ 			_('Allow adding port maps for requesting IP addresses only'));
+ 		o.default = '1';
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
++
++		s.taboption('advanced', form.Flag, 'ipv6_disable', _('Disable IPv6 mapping'));
+ 
+ 		o = s.taboption('advanced', form.Value, 'notify_interval', _('Notify interval'),
+-			_('A 900s interval will result in %s notifications with the minimum max-age of 1800s', 'A 900s interval will result in %s (%s = SSDP) notifications with the minimum max-age of 1800s')
+-				.format('<abbr title="Simple Service Discovery Protocol">SSDP</abbr>'));
+-		o.datatype = 'uinteger';
++			_('A 900 s interval sends %s announcements with the minimum %s header',
++				'A 900 s interval sends %s (%s = SSDP) announcements with the minimum %s (%s = Cache-Control: max-age=1800) header')
++			.format('<abbr title="Simple Service Discovery Protocol">SSDP</abbr>', '<code>Cache-Control: max-age=1800</code>'));
++		o.datatype = 'min(900)';
+ 		o.placeholder = '900';
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Value, 'port', _('SOAP/HTTP port'));
+ 		o.datatype = 'port';
+ 		o.placeholder = '5000';
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+-		o = s.taboption('advanced', form.Value, 'presentation_url', _('Presentation URL'),
+-			_('Report custom router web interface (presentation) URL'));
++		o = s.taboption('advanced', form.Value, 'presentation_url', _('Router/presentation URL'),
++			_('Report custom router web interface URL'));
+ 		o.placeholder = 'http://192.168.1.1/';
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Value, 'uuid', _('Device UUID'));
+-		o.depends('enable_upnp', '1');
++		// o.depends('enable_upnp', '1');
++		o.depends('keep-translation', 'to-disable-as-rare-use');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Value, 'model_number', _('Announced model number'));
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Value, 'serial_number', _('Announced serial number'));
+ 		o.depends('enable_upnp', '1');
++		o.retain = true;
+ 
+ 		o = s.taboption('advanced', form.Flag, 'system_uptime', _('Report system instead of service uptime'));
+ 		o.default = '1';
+-		o.depends('enable_upnp', '1');
++		o.depends('keep-translation', 'to-disable-as-rare-use');
++		o.retain = true;
+ 
+ 		s.taboption('advanced', form.Flag, 'log_output', _('Enable additional logging'),
+ 			_('Puts extra debugging information into the system log'));
+ 
+ 		o = s.taboption('advanced', form.Value, 'upnp_lease_file', _('Service lease file'));
+-		o.placeholder = '/var/run/miniupnpd.leases';
++		o.depends('keep-translation', 'to-disable-as-rare-use');
++		o.retain = true;
+ 
+ 		s = m.section(form.GridSection, 'perm_rule', _('Service Access Control List'),
+ 			_('ACL specify which client addresses and ports can be mapped, IPv6 always allowed.'));
+-		s.sortable = true;
+ 		s.anonymous = true;
+ 		s.addremove = true;
++		s.sortable = true;
+ 
+ 		s.option(form.Value, 'comment', _('Comment'));
+ 
+-		o = s.option(form.Value, 'int_addr', _('Client Address'));
++		o = s.option(form.Value, 'int_addr', _('IP address'));
+ 		o.datatype = 'ip4addr';
+ 		o.placeholder = '0.0.0.0/0';
+ 
+-		o = s.option(form.Value, 'int_ports', _('Client Port'));
++		o = s.option(form.Value, 'int_ports', _('Port'));
+ 		o.datatype = 'portrange';
+ 		o.placeholder = '1-65535';
+ 
+-		o = s.option(form.Value, 'ext_ports', _('External Port'));
++		o = s.option(form.Value, 'ext_ports', _('External port'));
+ 		o.datatype = 'portrange';
+ 		o.placeholder = '1-65535';
+ 
+diff --git a/luci-app-upnp/root/usr/share/rpcd/acl.d/luci-app-upnp.json b/luci-app-upnp/root/usr/share/rpcd/acl.d/luci-app-upnp.json
+index 4611f501692a..6e1fa8fcd52c 100644
+--- a/luci-app-upnp/root/usr/share/rpcd/acl.d/luci-app-upnp.json
++++ b/luci-app-upnp/root/usr/share/rpcd/acl.d/luci-app-upnp.json
+@@ -1,6 +1,6 @@
+ {
+ 	"luci-app-upnp": {
+-		"description": "Grant access to UPnP IGD & PCP/NAT-PMP",
++		"description": "Grant access to UPnP IGD & PCP/NAT-PMP service configuration",
+ 		"read": {
+ 			"ubus": {
+ 				"luci.upnp": [ "get_status" ],
+diff --git a/luci-app-upnp/root/usr/share/rpcd/ucode/luci.upnp b/luci-app-upnp/root/usr/share/rpcd/ucode/luci.upnp
+index f72b57b7ba84..f777f165beab 100644
+--- a/luci-app-upnp/root/usr/share/rpcd/ucode/luci.upnp
++++ b/luci-app-upnp/root/usr/share/rpcd/ucode/luci.upnp
+@@ -1,3 +1,5 @@
++#!/usr/bin/env ucode
++
+ // Copyright 2022 Jo-Philipp Wich <jo@mein.io>
+ // Licensed to the public under the Apache License 2.0.
+ 
+@@ -7,82 +9,75 @@ import { access, open, popen } from 'fs';
+ import { connect } from 'ubus';
+ import { cursor } from 'uci';
+ 
+-// Establish ubus connection persistently outside of the call handler scope to
+-// prevent premature GC'ing. Can be moved into `get_status` callback once
+-// https://github.com/jow-/ucode/commit/a58fe4709f661b5f28e26701ea8638efccf5aeb6
+-// is merged.
+-const ubus = connect();
++const uci = cursor();
++const leasefilepath = uci.get('upnpd', 'config', 'upnp_lease_file') || '/var/run/miniupnpd.leases';
+ 
+ const methods = {
+ 	get_status: {
+ 		call: function(req) {
+-			const uci = cursor();
+-
++			const ubus = connect();
+ 			const rules = [];
+ 			const leases = [];
+-
+-			const leasefile = open(uci.get('upnpd', 'config', 'upnp_lease_file'), 'r');
+-
++			const leasefile = open(leasefilepath, 'r');
+ 			if (leasefile) {
+ 				for (let line = leasefile.read('line'); length(line); line = leasefile.read('line')) {
+ 					const record = split(line, ':', 6);
+-
+ 					if (length(record) == 6) {
++						let descr = trim(record[5]);
++						let m = match(descr, /^PCP [A-Z]+ ([0-9a-f]{24})$/);
++						if (m) descr = 'PCP (nonce ' + m[1] + ')';
++						else if (match(descr, /^NAT-PMP \d+ \w+$/)) descr = 'NAT-PMP';
++						else if (match(descr, /^IGD2 pinhole$/)) descr = 'UPnP IGDv2 IPv6';
++						else if (!match(descr, /^UPnP IGD/)) descr = 'UPnP IGD / ' + descr;
+ 						push(leases, {
+ 							proto: uc(record[0]),
+ 							extport: +record[1],
+ 							intaddr: arrtoip(iptoarr(record[2])),
+ 							intport: +record[3],
+ 							expires: record[4] - timelocal(localtime()),
+-							description: trim(record[5])
++							descr: descr
+ 						});
+ 					}
+ 				}
+-
+ 				leasefile.close();
+ 			}
+ 
+-			const ipt = popen('iptables --line-numbers -t nat -xnvL MINIUPNPD 2>/dev/null');
+-
++			// Workaround daemon bug with iptables >= 1.8.8 by parsing MINIUPNPD-POSTROUTING
++			// See https://github.com/miniupnp/miniupnp/issues/837
++			//const ipt = popen('iptables --line-numbers -t nat -xnvL MINIUPNPD 2>/dev/null');
++			const ipt = popen('iptables --line-numbers -t nat -xnvL MINIUPNPD-POSTROUTING 2>/dev/null');
+ 			if (ipt) {
+ 				for (let line = ipt.read('line'); length(line); line = ipt.read('line')) {
+-					let m = match(line, /^([0-9]+)\s+([a-z]+).+dpt:([0-9]+) to:(\S+):([0-9]+)/);
+-
++					//let m = match(line, /^([0-9]+) .+ ([ut].p) dpt:([0-9]+) to:(\S+):([0-9]+)/);
++					let m = match(line, /^([0-9]+) .+ \* +([0-9.]+) .+ ([ut].p) spt:([0-9]+) .+ ports: ([0-9]+)/);
+ 					if (m) {
+ 						push(rules, {
+ 							num: m[1],
+-							proto: uc(m[2]),
+-							extport: +m[3],
+-							intaddr: arrtoip(iptoarr(m[4])),
+-							intport: +m[5],
+-							descr: ''
++							intaddr: arrtoip(iptoarr(m[2])),
++							intport: +m[4],
++							extport: +m[5],
++							proto: uc(m[3])
+ 						});
+ 					}
+ 				}
+-
+ 				ipt.close();
+ 			}
+ 
+ 			const nft = popen('nft --handle list chain inet fw4 upnp_prerouting 2>/dev/null');
+-
+ 			if (nft) {
+ 				for (let line = nft.read('line'), num = 1; length(line); line = nft.read('line')) {
+-					let m = match(line, /^\t\tiif ".+" @nh,72,8 (0x6|0x11) th dport ([0-9]+) dnat ip to ([0-9.]+):([0-9]+)/);
+-
++					let m = match(line, /^\t\tiif ".+" @nh,72,8 (0x6|0x11) th dport ([0-9]+).* dnat ip to ([0-9.]+):([0-9]+)/);
+ 					if (m) {
+ 						push(rules, {
+ 							num: `${num}`,
+-							proto: (m[1] == '0x6') ? 'TCP' : 'UDP',
+-							extport: +m[2],
+ 							intaddr: arrtoip(iptoarr(m[3])),
+ 							intport: +m[4],
+-							descr: ''
++							extport: +m[2],
++							proto: (m[1] == '0x6') ? 'TCP' : 'UDP'
+ 						});
+-
+ 						num++;
+ 					}
+ 				}
+-
+ 				nft.close();
+ 			}
+ 
+@@ -90,16 +85,14 @@ const methods = {
+ 				for (let rule in rules) {
+ 					for (let lease in leases) {
+ 						if (lease.proto == rule.proto &&
+-						    lease.intaddr == rule.intaddr &&
+-						    lease.intport == rule.intport &&
+-						    lease.extport == rule.extport)
+-						{
+-							rule.descr = lease.description;
++							lease.intaddr == rule.intaddr &&
++							lease.intport == rule.intport &&
++							lease.extport == rule.extport) {
+ 							rule.expires = lease.expires;
++							rule.descr = lease.descr;
+ 							break;
+ 						}
+ 					}
+-
+ 					for (let mac, hint in host_hints) {
+ 						if (rule.intaddr in hint.ipaddrs) {
+ 							rule.host_hint = hint.name;
+@@ -107,7 +100,6 @@ const methods = {
+ 						}
+ 					}
+ 				}
+-
+ 				req.reply({ rules });
+ 			});
+ 		}
+@@ -117,19 +109,13 @@ const methods = {
+ 		args: { token: 'token' },
+ 		call: function(req) {
+ 			const idx = +req.args?.token;
+-
+ 			if (idx > 0) {
+-				const uci = cursor();
+-				const leasefile = uci.get('upnpd', 'config', 'upnp_lease_file');
+-
+-				if (access(leasefile)) {
+-					system(['sed', '-i', '-e', `${idx}d`, leasefile]);
++				if (access(leasefilepath)) {
++					system(['sed', '-i', '-e', `${idx}d`, leasefilepath]);
+ 					system(['/etc/init.d/miniupnpd', 'restart']);
+ 				}
+-
+ 				return { result: 'OK' };
+ 			}
+-
+ 			return { result: 'Bad request' };
+ 		}
+ 	}
