@@ -35,7 +35,7 @@ return baseclass.extend(/** @lends LuCI.rpc.prototype */ {
 		}
 
 		return request.post(rpcBaseURL + q, req, {
-			timeout: (L.env.rpctimeout ?? 20) * 1000,
+			timeout: (L.env.rpctimeout ?? 60) * 1000,
 			nobatch,
 			credentials: true
 		}).then(cb, cb);
