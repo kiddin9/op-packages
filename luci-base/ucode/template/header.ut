@@ -23,12 +23,6 @@
 	include(`themes/${theme}/header`);
 -%}
 
-{% if (wizard_pending): %}
-<script>
-	window.location.replace({{ sprintf('%J', dispatcher.build_url('admin/wizard')) }});
-</script>
-{% endif %}
-
 <script src="{{ resource }}/luci.js?v={# PKG_VERSION #}-{{ pkgs_update_time }}"></script>
 <script>
 	L = new LuCI({{ replace(`${ {
