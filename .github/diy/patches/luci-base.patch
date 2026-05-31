@@ -1,3 +1,17 @@
+--- a/luci-base/Makefile
++++ b/luci-base/Makefile
+@@ -55,8 +55,8 @@ exit 0
+ endef
+ 
+ define Build/Prepare/luci-base
+-	$(CP) ../../NOTICE $(PKG_BUILD_DIR)
+-	$(CP) ../../LICENSE $(PKG_BUILD_DIR)
++	$(CP) $(TOPDIR)/feeds/luci/NOTICE $(PKG_BUILD_DIR)
++	$(CP) $(TOPDIR)/feeds/luci/LICENSE $(PKG_BUILD_DIR)
+ endef
+ 
+ include $(TOPDIR)/feeds/luci/luci.mk
+
 --- a/luci-base/root/usr/share/rpcd/ucode/luci
 +++ b/luci-base/root/usr/share/rpcd/ucode/luci
 @@ -228,6 +228,7 @@ const methods = {
