@@ -382,10 +382,9 @@ jobs:
         lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/* ./; rm -rf modemfeed
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
-        mv -f applications luciapp
+        mv -f applications luciapp && rm -rf luciapp/luci-app-firewall
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications \
         modules/luci-base modules/luci-mod-network modules/luci-mod-status modules/luci-mod-system protocols/luci-proto-openvpnc themes/luci-theme-design
-        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
         mv -n applications/* luciapp/; rm -rf applications
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" libs/luci-lib-fs applications collections/luci-lib-docker
         mv -n applications/* luciapp/; rm -rf applications
