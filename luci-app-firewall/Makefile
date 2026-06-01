@@ -1,14 +1,16 @@
+#
+# Copyright (C) 2008-2014 The LuCI Team <luci@lists.subsignal.org>
+#
 # This is free software, licensed under the Apache License, Version 2.0 .
+#
 
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=LuCI File Manager module
-LUCI_DEPENDS:=+luci-nginx +quickfile
+LUCI_TITLE:=Firewall and port forwarding application
+LUCI_DEPENDS:=+luci-base +uci-firewall
 
 PKG_LICENSE:=Apache-2.0
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=4
-PKG_MAINTAINER:=sbwml <admin@cooluc.com>
+PKG_MAINTAINER:=Jo-Philipp Wich <jo@mein.io>
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
