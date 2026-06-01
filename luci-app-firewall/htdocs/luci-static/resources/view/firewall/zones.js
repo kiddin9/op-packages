@@ -73,6 +73,7 @@ return view.extend({
 			addTCPCCAOption();
 			if (fw4)
 				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
+				o.depends('fullcone', '1');
 		}
 		else {
 			addTCPCCAOption();
