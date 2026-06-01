@@ -59,7 +59,45 @@ return view.extend({
 			o = s.option(form.Flag, 'fullcone', _('Enable FullCone NAT'));
 			if (fw4)
 				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
+				o.depends('fullcone', '1');
 		}
+
+		o = s.option(form.Flag, 'expose_wan', _('Expose WAN'), _('Danger! Proceed at your own risk.'));
+
+		o = s.option(form.Value, 'export', _('Ports to Expose'), _('Multiple ports can be, separated by spaces, format: 80 81 82'));
+		o.depends('expose_wan', '1');
+		o.validate = function(section_id, value) {
+		if (value.match(/^(\d+\s*)+$/)) {
+			return true;
+		}
+		 return _('Please enter valid format.');
+		};
+
+		o = s.option(form.ListValue, 'family', _('Restrict to address family'));
+		o.modalonly = true;
+		o.rmempty = true;
+		o.depends('expose_wan', '1');
+		o.value('', _('IPv4 and IPv6'));
+		o.value('ipv4', _('IPv4 only'));
+		o.value('ipv6', _('IPv6 only'));
+
+		o = s.option(form.ListValue, 'proto', _('Protocol'));
+		o.modalonly = true;
+		o.rmempty = true;
+		o.default = 'tcp';
+		o.depends('expose_wan', '1');
+		o.value('tcp', _('TCP'));
+		o.value('udp', _('UDP'));
+		o.value('tudp', _('TCP+UDP'));
+
+		o = s.option(form.Flag, 'ex_ssh', _('Expose SSH'));
+		o.depends('expose_wan', '1');
+		o = s.option(form.Flag, 'ex_backend', _('Expose Backend'));
+		o.depends('expose_wan', '1');
+		o = s.option(form.Value, 'backend_port', _('Backend Port'), _('国内请使用除80,443外的端口'));
+		o.depends('ex_backend', '1');
+		o.rmempty = false;
+		o.datatype = 'integer';
 
 		let p = [
 			s.option(form.ListValue, 'input', _('Input')),
