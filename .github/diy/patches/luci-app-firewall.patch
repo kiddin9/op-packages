@@ -12,7 +12,13 @@
 
 --- a/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
 +++ b/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
-@@ -78,6 +78,43 @@ return view.extend({
+@@ -73,11 +73,49 @@ return view.extend({
+ 			addTCPCCAOption();
+ 			if (fw4)
+ 				o = s.option(form.Flag, 'fullcone6', _('Enable FullCone NAT6'));
++				o.depends('fullcone', '1');
+ 		}
+ 		else {
  			addTCPCCAOption();
  		}
  
