@@ -7,7 +7,7 @@ LUCI_DEPENDS:=+luci-nginx +quickfile
 
 PKG_LICENSE:=Apache-2.0
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 PKG_MAINTAINER:=sbwml <admin@cooluc.com>
 
 include $(TOPDIR)/feeds/luci/luci.mk
