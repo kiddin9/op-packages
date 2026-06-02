@@ -79,7 +79,7 @@
  	bool "Include Sing-Box"
  	select PACKAGE_sing-box
 -	default y if aarch64||arm||i386||x86_64
-+	default y if aarch64||i386||x86_64
++	default y
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_V2ray_Geodata
  	bool "Include V2ray_Geodata"
@@ -96,7 +96,7 @@
 -	select PACKAGE_xray-core
 -	select PACKAGE_unzip
 -	default y if aarch64||arm||i386||x86_64
-+	default y
++	default y if aarch64||i386||x86_64
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_Xray_Plugin
  	bool "Include Xray-Plugin (Shadowsocks Plugin)"
