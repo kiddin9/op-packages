@@ -274,7 +274,7 @@ jobs:
         git_clone https://github.com/animegasan/luci-app-ipinfo
         git_clone https://github.com/animegasan/luci-app-dnsleaktest
         git_clone https://github.com/animegasan/luci-app-gpioled
-        git_clone https://github.com/hingbong/hickory-dns-openwrt && mvdir hickory-dns-openwrt
+        # git_clone https://github.com/hingbong/hickory-dns-openwrt && mvdir hickory-dns-openwrt
         git_clone https://github.com/kenzok78/luci-app-guest-wifi
         git_clone https://github.com/EkkoG/openwrt-natmap
         git_clone https://github.com/EkkoG/luci-app-natmap
