@@ -1,6 +1,14 @@
 --- a/infra/conf/transport_internet.go
 +++ b/infra/conf/transport_internet.go
-@@ -699,12 +699,7 @@ func (c *TLSConfig) Build() (proto.Message, error) {
+@@ -14,7 +14,6 @@ import (
+ 	"strconv"
+ 	"strings"
+ 	"syscall"
+-	"time"
+ 
+ 	"github.com/xtls/xray-core/common"
+ 	"github.com/xtls/xray-core/common/errors"
+@@ -699,12 +698,7 @@ func (c *TLSConfig) Build() (proto.Message, error) {
  	config.MasterKeyLog = c.MasterKeyLog
  
  	if c.AllowInsecure {
