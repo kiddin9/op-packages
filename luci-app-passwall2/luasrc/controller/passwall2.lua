@@ -22,7 +22,6 @@ function index()
 	local appname = api.appname		-- global definitions not available
 	local uci = api.uci				-- in function index()
 	entry({"admin", "services", appname}).dependent = true
-	entry({"admin", "services", appname, "reset_config"}, call("reset_config")).leaf = true
 	entry({"admin", "services", appname, "show"}, call("show_menu")).leaf = true
 	entry({"admin", "services", appname, "hide"}, call("hide_menu")).leaf = true
 	local e
@@ -110,24 +109,10 @@ function index()
 	--[[Backup]]
 	entry({"admin", "services", appname, "create_backup"}, call("create_backup")).leaf = true
 	entry({"admin", "services", appname, "restore_backup"}, call("restore_backup")).leaf = true
+	entry({"admin", "services", appname, "reset_config"}, call("reset_config")).leaf = true
 
 	--[[geoview]]
 	entry({"admin", "services", appname, "geo_view"}, call("geo_view")).leaf = true
-end
-
-local function http_write_json(content)
-	http.prepare_content("application/json")
-	http.write(jsonStringify(content or {code = 1}))
-end
-
-local function http_write_json_ok(data)
-	http.prepare_content("application/json")
-	http.write(jsonStringify({code = 1, data = data}))
-end
-
-local function http_write_json_error(data)
-	http.prepare_content("application/json")
-	http.write(jsonStringify({code = 0, data = data}))
 end
 
 function check_site(host, port)
@@ -185,7 +170,24 @@ function check_ip()
     luci.http.write_json(e)
 end
 
+local function http_write_json(content)
+	http.prepare_content("application/json")
+	http.write(jsonStringify(content or {code = 1}))
+end
+
+local function http_write_json_ok(data)
+	http.prepare_content("application/json")
+	http.write(jsonStringify({code = 1, data = data}))
+end
+
+local function http_write_json_error(data)
+	http.prepare_content("application/json")
+	http.write(jsonStringify({code = 0, data = data}))
+end
+
 function reset_config()
+	uci:revert(appname)
+	luci.sys.call("echo '' > /tmp/log/passwall2.log")
 	luci.sys.call('/etc/init.d/passwall2 stop')
 	luci.sys.call('[ -f "/usr/share/passwall2/0_default_config" ] && cp -f /usr/share/passwall2/0_default_config /etc/config/passwall2')
 	http.redirect(api.url())
@@ -801,6 +803,7 @@ function restore_backup()
 		fp:write(decoded)
 		fp:close()
 		if chunk_index + 1 == total_chunks then
+			uci:revert(appname)
 			api.sys.call("echo '' > /tmp/log/passwall2.log")
 			api.log(0, string.format(" * PassWall2 %s", i18n.translate("Configuration file uploaded successfully…")))
 			local temp_dir = '/tmp/passwall2_bak'
