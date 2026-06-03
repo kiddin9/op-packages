@@ -414,7 +414,7 @@ o = s:option(Value, _n("tls_serverName"), "SNI " .. translate("Domain"))
 o:depends({ [_n("tls")] = true })
 o:depends({ [_n("protocol")] = "hysteria2" })
 
-if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") then
+if api.compare_versions(os.date("%Y.%m.%d"), "<", "3026.6.1") then
 	o = s:option(Flag, _n("tls_allowInsecure"), translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."))
 	o.default = "0"
 	o:depends({ [_n("tls")] = true, [_n("reality")] = false })
