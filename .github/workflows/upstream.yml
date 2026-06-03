@@ -110,7 +110,7 @@ jobs:
         git_clone https://github.com/Openwrt-Passwall/openwrt-passwall && mvdir openwrt-passwall
         git_clone https://github.com/Openwrt-Passwall/openwrt-passwall-packages && mvdir openwrt-passwall-packages
         git_clone https://github.com/sbwml/luci-app-mosdns openwrt-mos && mv -n openwrt-mos/{*mosdns,v2dat} ./; rm -rf openwrt-mos
-        git clone https://github.com/fw876/helloworld -b dev && master helloworld
+        git clone https://github.com/fw876/helloworld -b master && mvdir helloworld
         git_clone https://github.com/Lienol/openwrt-package liep && rm -rf liep/other
         git_clone https://github.com/rufengsuixing/luci-app-autoipsetadder
         git_clone https://github.com/NateLol/luci-app-beardropper
