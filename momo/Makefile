@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=momo
-PKG_VERSION:=2026.04.09
-PKG_RELEASE:=8
+PKG_VERSION:=2026.06.03
+PKG_RELEASE:=9
 
 PKG_LICENSE:=GPL-3.0+
 PKG_MAINTAINER:=Joseph Mory <morytyann@gmail.com>
