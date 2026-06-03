@@ -530,3 +530,35 @@ index 000000000000..a00fff9c79b3
  msgid "Auto"
  msgstr "自动"
  
+
+--- a/luci-app-passwall/luasrc/passwall/util_xray.lua
++++ b/luci-app-passwall/luasrc/passwall/util_xray.lua
+@@ -152,7 +152,7 @@ function gen_outbound(flag, node, tag, proxy_table)
+ 					serverName = node.tls_serverName,
+ 					allowInsecure = (function()
+ 								if node.tls_pinSHA256 and node.tls_pinSHA256 ~= "" then return nil end
+-								if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") and node.tls_allowInsecure == "1" then return true end
++								if node.tls_allowInsecure == "1" then return true end
+ 							end)(),
+ 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
+ 					pinnedPeerCertSha256 = (function()
+
+--- a/luci-app-passwall/luasrc/model/cbi/passwall/client/type/ray.lua
++++ b/luci-app-passwall/luasrc/model/cbi/passwall/client/type/ray.lua
+@@ -431,12 +431,10 @@ o = s:option(Value, _n("tls_serverName"), "SNI " .. translate("Domain"))
+ o:depends({ [_n("tls")] = true })
+ o:depends({ [_n("protocol")] = "hysteria2" })
+ 
+-if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") then
+-	o = s:option(Flag, _n("tls_allowInsecure"), translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."))
+-	o.default = "0"
+-	o:depends({ [_n("tls")] = true, [_n("reality")] = false })
+-	o:depends({ [_n("protocol")] = "hysteria2" })
+-end
++o = s:option(Flag, _n("tls_allowInsecure"), translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."))
++o.default = "0"
++o:depends({ [_n("tls")] = true, [_n("reality")] = false })
++o:depends({ [_n("protocol")] = "hysteria2" })
+ 
+ if api.compare_versions(xray_version, ">=", "26.1.31") then
+ 	o = s:option(Value, _n("tls_pinSHA256"), translate("TLS Chain Fingerprint (SHA256)"))
