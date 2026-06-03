@@ -176,7 +176,7 @@ function gen_outbound(flag, node, tag, proxy_table)
 					serverName = node.tls_serverName,
 					allowInsecure = (function()
 								if node.tls_pinSHA256 and node.tls_pinSHA256 ~= "" then return nil end
-								if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") and node.tls_allowInsecure == "1" then return true end
+								if node.tls_allowInsecure == "1" then return true end
 							end)(),
 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
 					pinnedPeerCertSha256 = (function()
