@@ -54,7 +54,7 @@
 
 --- a/luci-app-passwall2/luasrc/controller/passwall2.lua
 +++ b/luci-app-passwall2/luasrc/controller/passwall2.lua
-@@ -82,6 +82,7 @@ function index()
+@@ -95,6 +95,7 @@ function index()
  	entry({"admin", "services", appname, "subscribe_manual"}, call("subscribe_manual")).leaf = true
  	entry({"admin", "services", appname, "subscribe_manual_all"}, call("subscribe_manual_all")).leaf = true
  	entry({"admin", "services", appname, "flush_set"}, call("flush_set")).leaf = true
@@ -62,8 +62,8 @@
  
  	--[[Components update]]
  	entry({"admin", "services", appname, "check_passwall2"}, call("app_check")).leaf = true
-@@ -89,6 +90,61 @@ local function http_write_json(content)
- 	http.write_json(content or {code = 1})
+@@ -114,6 +115,61 @@ function index()
+ 	entry({"admin", "services", appname, "geo_view"}, call("geo_view")).leaf = true
  end
  
 +function check_site(host, port)
@@ -121,9 +121,9 @@
 +    luci.http.write_json(e)
 +end
 +
- function reset_config()
- 	luci.sys.call('/etc/init.d/passwall2 stop')
- 	luci.sys.call('[ -f "/usr/share/passwall2/0_default_config" ] && cp -f /usr/share/passwall2/0_default_config /etc/config/passwall2')
+ local function http_write_json(content)
+ 	http.prepare_content("application/json")
+ 	http.write(jsonStringify(content or {code = 1}))
 
 --- a/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
 +++ b/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
