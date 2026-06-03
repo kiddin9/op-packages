@@ -1,7 +1,7 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8\n"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:231
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:361
 msgid ""
 "\"1-3\" is for segmentation at TCP layer, applying to the beginning 1 to 3 "
 "data writes by the client. \"tlshello\" is for TLS client hello packet "
@@ -10,262 +10,249 @@ msgstr ""
 "\"1-3\" 是 TCP 的流切片，应用于客户端第 1 至第 3 次写数据。\"tlshello\" 是 "
 "TLS 握手包切片。"
 
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:279
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:310
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:170
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:198
+msgid "%s Node Use Type"
+msgstr "%s 节点使用类型"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:409
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:227
+msgid "%s Node Use Version"
+msgstr "%s 节点使用版本"
+
 #: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:103
 msgid "0"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:94
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:100
 msgid "1 Thread"
 msgstr "单线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:101
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:107
 msgid "128 Threads"
 msgstr "128 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1570
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1523
 msgid "16"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:98
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:104
 msgid "16 Threads"
 msgstr "16 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:95
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:101
 msgid "2 Threads"
 msgstr "2 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:99
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:105
 msgid "32 Threads"
 msgstr "32 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1390
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1354
 msgid "360"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:207
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:270
 msgid "360 Security DNS (China Telecom) (101.226.4.6)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:208
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:271
 msgid "360 Security DNS (China Unicom) (123.125.81.6)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:96
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:102
 msgid "4 Threads"
 msgstr "4 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:100
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:106
 msgid "64 Threads"
 msgstr "64 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1557
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1510
 msgid "8"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:97
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:103
 msgid "8 Threads"
 msgstr "8 线程"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:260
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:390
 msgid "<font style='color:red'>"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1061
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1416
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1443
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1031
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1369
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1396
 msgid "<font><b>"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:51
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:38
 msgid ""
-"<h3>Support SS/SSR/V2RAY/XRAY/TROJAN/TUIC/HYSTERIA2/NAIVEPROXY/SOCKS5/CLASH "
+"<h3>Support SS/SSR/V2RAY/XRAY/TROJAN/TUIC/HYSTERIA2/NAIVEPROXY/SOCKS5/TUN "
 "etc.</h3>"
 msgstr ""
-"<h3>支持 SS/SSR/V2RAY/XRAY/TROJAN/TUIC/HYSTERIA2/NAIVEPROXY/SOCKS5/CLASH 等协"
+"<h3>支持 SS/SSR/V2RAY/XRAY/TROJAN/TUIC/HYSTERIA2/NAIVEPROXY/SOCKS5/TUN 等协"
 "议。</h3>"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1233
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1550
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1563
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1576
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:186
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:160
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:186
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:220
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1203
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1503
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1516
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1529
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1655
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1682
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:188
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:214
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:249
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:240
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:267
 msgid "<ul><li>"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:354
-msgid "A legal file path. This file must not exist before running."
-msgstr "一个合法的文件路径。在运行之前，此文件必须不存在。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:387
-msgid "Accept LAN Access"
-msgstr "接受局域网访问"
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:627
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:58
 msgid "Access Control"
 msgstr "访问控制"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1035
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:235
-msgid "Actions"
-msgstr "操作"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:178
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:206
+msgid "AdGuard DNSCrypt SDNS"
+msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1015
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:290
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:298
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:189
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:284
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:749
 msgid "Add"
 msgstr "添加"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:215
-msgid "Add failed:"
-msgstr "添加失败："
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:182
-msgid "Adding..."
-msgstr "添加中..."
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:221
-msgid "Additional Version"
-msgstr "附加版本"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:378
-msgid "Address"
-msgstr "地址"
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:628
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:59
 msgid "Advanced Settings"
 msgstr "高级设置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:274
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:222
 msgid "Advertising Data"
 msgstr "【广告屏蔽】数据库"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:205
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1676
+msgid "AliDNS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:268
 msgid "AliYun Public DNS (223.5.5.5)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:568
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:680
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:367
 msgid "Alias"
 msgstr "别名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:373
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:397
 msgid "Alias(optional)"
 msgstr "别名（可选）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:157
-msgid "All"
-msgstr "全部"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:112
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:119
 msgid "All Ports"
 msgstr "所有端口（默认）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:965
-msgid "All client proxy rules cleared and applied."
-msgstr "所有客户端代理规则已清空并生效。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:965
-msgid "All client proxy rules cleared."
-msgstr "所有客户端代理规则已清空。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:101
-msgid "All settings saved successfully."
-msgstr "所有设置保存成功。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:35
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:39
 msgid "Allow all except listed"
 msgstr "除列表外主机皆允许"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:34
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:38
 msgid "Allow listed only"
 msgstr "仅允许列表内主机"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:471
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:297
 msgid "Allow subscribe Insecure nodes By default"
 msgstr "订阅节点允许不验证 TLS 证书"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:34
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:120
-msgid "Already up to date"
-msgstr "已是最新版本"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:186
-msgid "Alter ID"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:907
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:877
 msgid "AlterId"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1307
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1271
 msgid "An FinalMaskObject in JSON format, used for sharing."
 msgstr "JSON 格式的 FinalMaskObject，用来实现分享。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:134
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:152
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:171
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:142
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:173
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:149
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:170
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:201
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:235
 msgid "Anti-pollution DNS Server"
 msgstr "访问国外域名 DNS 服务器"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:128
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:125
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:206
+msgid "Anti-pollution DNS Server For Shunt Mode"
+msgstr "分流模式下的访问国外域名 DNS 服务器"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:243
 msgid "Apple Domains DNS"
 msgstr "Apple 域名 DNS"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:267
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:208
 msgid "Apple Domains Data"
 msgstr "【Apple 域名】数据库"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:123
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:238
 msgid "Apple Domains Update url"
 msgstr "Apple 域名更新 URL"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:119
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:234
 msgid "Apple domains optimization"
 msgstr "Apple 域名解析优化"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:740
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:746
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:399
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:405
 msgid "Apply"
 msgstr "应用"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:412
-msgid "Appointment Mode"
-msgstr "定时模式"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:112
-msgid "Are you sure you want to delete subscribe link: %s ?"
-msgstr "确定要删除此订阅链接：%s 吗？"
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:391
+msgid "Are you sure to delete this node?"
+msgstr "是否真的要删除该节点？"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/backup_restore.htm:133
 msgid "Are you sure you want to restore the client to default settings?"
 msgstr "是否真的要恢复客户端默认配置？"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:757
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:282
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:313
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1660
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1688
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:172
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:200
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:229
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:246
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:274
+msgid "Auto"
+msgstr "自动"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:417
 msgid "Auto Switch"
 msgstr "自动切换"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:93
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:99
 msgid "Auto Threads"
 msgstr "自动（CPU 线程数）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:407
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:117
 msgid "Auto Update"
 msgstr "自动更新"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:409
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:119
 msgid "Auto Update Server subscription, GFW list and CHN route"
 msgstr "自动更新服务器订阅、GFW 列表和中国大陆 IP 段"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:841
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1616
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1632
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:811
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1569
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1585
 msgid "BBR"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1617
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1633
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1570
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1586
 msgid "BRUTAL"
 msgstr ""
 
@@ -277,72 +264,59 @@ msgstr "备份还原"
 msgid "Backup or Restore Client and Server Configurations."
 msgstr "备份或还原客户端及服务端配置。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:252
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:193
 msgid "Baidu Connectivity"
 msgstr "【百度】连通性检查"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:206
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:269
 msgid "Baidu Public DNS (180.76.76.76)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:297
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:320
 msgid "Base64 sstr failed."
 msgstr "Base64 解码失败。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:378
-msgid "Bind Local Only"
-msgstr "仅绑定本地端口"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1184
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1194
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1154
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1164
 msgid "BitTorrent (uTP)"
 msgstr "BT 下载（uTP）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:96
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:100
 msgid "Black Domain List"
 msgstr "强制走代理的域名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:530
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:536
 msgid "Bloom Filter"
 msgstr "布隆过滤器"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:80
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:84
 msgid "Bypass Domain List"
 msgstr "不走代理的域名"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:261
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:439
-msgid "CHECK AND UPDATE"
-msgstr "检查并更新"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/backup_restore.htm:31
 msgid "CLOSE WIN"
 msgstr "关闭窗口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:209
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:272
 msgid "CNNIC SDNS (1.2.4.8)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:842
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1618
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1636
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:812
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1571
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1589
 msgid "CUBIC"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1201
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1171
 msgid "Camouflage Domain"
 msgstr "伪装域名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:969
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1190
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:939
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1160
 msgid "Camouflage Type"
 msgstr "伪装类型"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:227
-msgid "Certificate File Path"
-msgstr "证书文件路径"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1526
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1479
 msgid "Certificate fingerprint"
 msgstr "证书指纹"
 
@@ -356,26 +330,15 @@ msgstr "检查连通性"
 msgid "Check Server"
 msgstr "检查服务器"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:280
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:228
 msgid "Check Server Port"
 msgstr "【服务器端口】检查"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:94
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:77
 msgid "Check Try Count"
 msgstr "切换检查重试次数"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:157
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:405
-msgid "Check Update"
-msgstr "检查更新"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/component.lua:6
-msgid ""
-"Check installed component versions and upgrade them online from the upstream "
-"release page."
-msgstr "检测已安装组件版本，并从上游发布页在线升级。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:89
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:72
 msgid "Check timout(second)"
 msgstr "切换检查超时时间（秒）"
 
@@ -384,127 +347,72 @@ msgstr "切换检查超时时间（秒）"
 msgid "Check..."
 msgstr "正在检查..."
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:146
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:250
-msgid "Checking..."
-msgstr "检查中..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:261
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:202
 msgid "China IP Data"
 msgstr "【中国大陆 IP 段】数据库"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:192
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:255
 msgid "ChinaDNS-NG query protocol"
 msgstr "ChinaDNS-NG 查询协议"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:113
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:226
+msgid "ChinaDNS-NG shunt query protocol"
+msgstr "ChinaDNS-NG 分流查询协议"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:89
 msgid "Chnroute Update url"
 msgstr "中国大陆 IP 段更新 URL"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:114
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:90
 msgid "Clang.CN"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:115
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:91
 msgid "Clang.CN.CIDR"
 msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:376
-msgid "Clash"
-msgstr "Clash"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:88
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:817
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1013
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:3
-msgid "Clash Panel"
-msgstr "Clash 面板"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:392
-msgid "Clash Subscription URL"
-msgstr "Clash 订阅链接"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:404
-msgid "Clash User-Agent"
-msgstr "Clash User-Agent"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:398
-msgid "Clash YAML Path"
-msgstr "Clash YAML 路径"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:352
-msgid "Clash/Mihomo"
-msgstr "Clash/Mihomo"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1018
-msgid "Clear All Rules"
-msgstr "清空所有规则"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:954
-msgid "Clear all custom client proxy rules and restore empty state?"
-msgstr "清空所有自定义客户端代理规则，并恢复为空白状态吗？"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/log.htm:35
 msgid "Clear logs"
 msgstr "清空日志"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:264
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1063
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1418
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1445
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:164
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:192
+msgid "Click here to view or manage the DNS list file"
+msgstr "点击此处查看或管理 DNS 列表文件"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:394
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1033
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1371
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1398
 msgid "Click to the page"
 msgstr "点击前往"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1032
-msgid "Client"
-msgstr "客户端"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:920
-msgid "Client rules exported to CSV file."
-msgstr "客户端规则已导出为 CSV 文件。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:944
-msgid "Client rules imported from CSV file. Click Save to apply."
-msgstr "客户端规则已从 CSV 文件导入，请点击保存生效。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1027
-msgid "Client supports manual IP or IP/CIDR input."
-msgstr "客户端支持手动输入 IP 或 IP/CIDR。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1024
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:251
-msgid "Close"
-msgstr "关闭"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:158
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:148
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:176
 msgid "Cloudflare DNS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:145
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:182
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:136
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:217
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:160
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:246
 msgid "Cloudflare DNS (1.1.1.1)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:402
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:436
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/status.htm:21
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:179
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:207
+msgid "Cloudflare DNSCrypt SDNS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/status.htm:20
 msgid "Collecting data..."
 msgstr "正在收集数据中..."
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:390
-msgid "Component"
-msgstr "组件"
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:630
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/component.lua:5
-msgid "Component Update"
-msgstr "组件升级"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1061
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1031
 msgid "Configure XHTTP Extra Settings (JSON format), see:"
 msgstr "配置 XHTTP 额外设置（JSON 格式），具体请参见："
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:839
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:809
 msgid "Congestion control algorithm"
 msgstr "拥塞控制算法"
 
@@ -516,158 +424,142 @@ msgstr "连接错误"
 msgid "Connect OK"
 msgstr "连接正常"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:82
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:103
 msgid "Connection Timeout"
 msgstr "连接超时"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1429
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1382
 msgid ""
 "Controls the policy used when performing DNS queries for ECH configuration."
 msgstr "控制使用 DNS 查询 ECH 配置时的策略。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:90
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:93
 msgid "Copy SSR to clipboard successfully."
 msgstr "成功复制 SSR 网址到剪贴板。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:369
-msgid "Core Components"
-msgstr "核心组件"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:20
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:428
-msgid "Country MMDB"
-msgstr "Country MMDB"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/backup_restore.htm:2
 msgid "Create Backup File"
 msgstr "创建备份文件"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1664
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1617
 msgid "Create upload file error."
 msgstr "创建上传文件错误。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:110
-msgid "Current ARCH"
-msgstr "当前架构"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1684
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1637
 msgid "Current Certificate Path"
 msgstr "当前证书路径"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:219
-msgid "Current Version"
-msgstr "当前版本"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:564
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:562
 msgid "Custom"
 msgstr "自定义"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:991
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:992
-msgid "Custom Client Proxies Rules"
-msgstr "自定义客户端代理规则"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:182
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:210
+msgid ""
+"Custom DNS Server (support: IP:Port or tls://IP:Port or https://IP/dns-query "
+"and other format)."
+msgstr ""
+"自定义 DNS 服务器（支持格式：IP:端口、tls://IP:端口、https://IP/dns-query 及"
+"其他格式）。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:148
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:187
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:139
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:221
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:166
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:250
 msgid "Custom DNS Server format as IP:PORT (default: 8.8.4.4:53)"
 msgstr "格式为 IP:Port（默认：8.8.4.4:53）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:212
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:278
 msgid "Custom DNS Server format as IP:PORT (default: disabled)"
 msgstr "格式为 IP:PORT（默认：禁用）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:160
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:150
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:178
 msgid ""
 "Custom DNS Server format as tcp://IP:PORT or tls://DOMAIN:PORT "
 "(tcp://8.8.8.8 or tls://dns.google:853)"
 msgstr ""
 "格式为tcp://IP:Port或tls://域名:Port (tcp://8.8.8.8或tls://dns.google:853)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:568
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:566
 msgid "Custom Plugin Path"
 msgstr "自定义插件路径"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:114
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:121
 msgid "Custom Ports"
 msgstr "自定义端口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:269
-msgid "Custom YAML imported successfully: %s"
-msgstr "自定义 YAML 导入成功：%s"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:708
-msgid "Custom client proxy rules saved and applied."
-msgstr "自定义客户端代理规则已保存并生效。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:708
-msgid "Custom client proxy rules saved."
-msgstr "自定义客户端代理规则已保存。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1308
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1272
 msgid ""
 "Custom finalmask overrides mkcp, hysteria2, fragment, noise, and related "
 "settings."
 msgstr "自定义 finalmask 将覆盖 mkcp、hysteria2、fragment、noise 等相关配置。"
 
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:103
+msgid "Customize Netflix IP Url"
+msgstr ""
+"自定义 Netflix IP 段更新 URL（默认项目地址：https://github.com/QiuSimons/"
+"Netflix_IP）"
+
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/backup_restore.htm:4
 msgid "DL Backup"
 msgstr "下载备份"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1198
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1168
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1666
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1674
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:251
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:259
 msgid "DNS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:192
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:143
 msgid "DNS Anti-pollution"
 msgstr "DNS 防污染服务"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:204
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:106
+msgid "DNS Query Mode For Shunt Mode"
+msgstr "分流模式下的 DNS 查询模式"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1675
+msgid "DNSPod"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:267
 msgid "DNSPod Public DNS (119.29.29.29)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1186
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1196
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1156
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1166
 msgid "DTLS 1.2"
 msgstr "DTLS 1.2 数据包"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:424
-msgid "Database"
-msgstr "数据库"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1218
+msgid "Decimal numbers separated by \",\" or Base64-encoded strings."
+msgstr "用“,”隔开的十进制数字或 Base64 编码字符串。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_schedule_compact.htm:87
-msgid "Day/Week"
-msgstr "日/周"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:193
-msgid "Decryption"
-msgstr "解密"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1276
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1466
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1478
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1492
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1246
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1419
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1431
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1445
 msgid "Default"
 msgstr "默认"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:101
-msgid "Default Node Local Port"
-msgstr "节点默认本地端口"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1577
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1530
 msgid "Default reject rejects traffic."
 msgstr "默认 reject 拒绝流量。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:737
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:707
 msgid "Default value 0 indicatesno heartbeat."
 msgstr "默认为 0 表示无心跳。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1551
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1504
 msgid ""
 "Default: disable. When entering a negative number, such as -1, The Mux "
 "module will not be used to carry TCP traffic."
 msgstr "默认：禁用。填负数时，如 -1，不使用 Mux 模块承载 TCP 流量。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1564
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1517
 msgid ""
 "Default:16. When entering a negative number, such as -1, The Mux module will "
 "not be used to carry UDP traffic, Use original UDP transmission method of "
@@ -676,71 +568,75 @@ msgstr ""
 "默认值：16。填负数时，如 -1，不使用 Mux 模块承载 UDP 流量。将使用代理协议原本"
 "的 UDP 传输方式。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:297
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:41
-msgid "Defaults Cleared!"
-msgstr "已清空默认状态！"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:184
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:212
+msgid "Defines the upstreams logic mode"
+msgstr "定义上游逻辑模式"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:297
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:41
-msgid "Defaults Restored!"
-msgstr "默认值已恢复！"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1027
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:187
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:215
 msgid ""
-"Define per-client Mihomo proxy targets. Rules are injected as SRC-IP-CIDR "
-"entries before the original Clash rules."
+"Defines the upstreams logic mode, possible values: load_balance, parallel, "
+"fastest_addr (default: load_balance)."
 msgstr ""
-"为每个客户端指定 Mihomo 代理目标。规则会以 SRC-IP-CIDR 形式注入到原始 Clash "
-"规则之前。"
+"定义上游逻辑模式，可选择值：负载均衡、并行查询、最快响应（默认值：负载均"
+"衡）。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:302
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:432
 msgid "Delay (ms)"
 msgstr "延迟（ms）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:589
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:248
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:261
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:738
 msgid "Delete"
 msgstr "删除"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:504
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:315
 msgid "Delete All Subscribe Servers"
-msgstr "删除所有订阅节点"
+msgstr "删除所有订阅服务器节点"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:130
-msgid "Delete failed:"
-msgstr "删除失败："
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:112
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:116
 msgid "Deny Domain List"
 msgstr "禁止连接的域名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:663
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:81
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:33
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:62
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:70
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:78
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:37
 msgid "Disable"
 msgstr "停用"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:200
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:263
 msgid "Disable ChinaDNS-NG"
 msgstr "直通模式（禁用 ChinaDNS-NG）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:163
-msgid "Disable IPv6 for Overseas FQDN"
-msgstr "禁止海外域名返回 IPv6 记录"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:152
+msgid "Disable IPv6 In MosDNS Query Mode (Shunt Mode)"
+msgstr "禁止 MosDNS 返回 IPv6 记录 (分流模式)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:694
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:180
+msgid "Disable IPv6 in MOSDNS query mode"
+msgstr "禁止 MOSDNS 返回 IPv6 记录"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:197
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:226
+msgid "Disable IPv6 query mode"
+msgstr "禁止返回 IPv6 记录"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:664
 msgid "Disable QUIC path MTU discovery"
 msgstr "禁用 QUIC 启用 MTU 探测"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:883
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:853
 msgid "Disable SNI"
 msgstr "关闭 SNI 服务器名称指示"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:764
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:734
 msgid "Disable TCP No_delay"
 msgstr "禁用 TCP 无延迟"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:149
+msgid "Dnsproxy Parse List"
+msgstr "DNSPROXY 解析列表"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/backup_restore.htm:18
 msgid "Do Reset"
@@ -750,114 +646,119 @@ msgstr "执行重置"
 msgid "Do you want to restore the client to default settings?"
 msgstr "是否要恢复客户端默认配置？"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:196
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1663
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:249
+msgid "DoH"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:230
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:259
 msgid "DoT upstream (Need use wolfssl version)"
 msgstr "DoT 上游（需使用 wolfssl 版本）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:289
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1653
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:238
+msgid "Domain DNS Resolve"
+msgstr "域名 DNS 解析"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:419
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1680
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:265
 msgid "Domain Strategy"
 msgstr "域名解析策略"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:353
-msgid "DomainSocket Path"
-msgstr "域 Socket 路径"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:199
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:262
 msgid "Domestic DNS Server"
 msgstr "国内 DNS 服务器"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1219
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1189
 msgid "Downlink Capacity(Default:Mbps)"
 msgstr "下行链路容量（默认：Mbps）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:377
-msgid "Download Source"
-msgstr "下载源"
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:739
+msgid "Drag to reorder"
+msgstr "拖动以重排"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:43
-msgid "Download failed"
-msgstr "下载失败"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:894
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:864
 msgid "Dual-stack Listening Socket"
 msgstr "双栈 Socket 监听"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1414
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1367
 msgid "ECH Config"
 msgstr "ECH 配置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1428
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1381
 msgid "ECH Query Policy"
 msgstr "ECH 查询策略"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1011
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:981
 msgid "Early Data Header Name"
 msgstr "前置数据标头"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:240
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:246
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:737
 msgid "Edit"
 msgstr "编辑"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:307
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:40
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:259
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:69
 msgid "Edit ShadowSocksR Server"
 msgstr "编辑服务器配置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:157
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:198
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:278
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:54
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:271
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:408
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:82
 #: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:101
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:560
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1031
 msgid "Enable"
 msgstr "启用"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:888
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:858
 msgid "Enable 0-RTT QUIC handshake"
 msgstr "客户端启用 0-RTT QUIC 连接握手"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:474
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:482
 msgid "Enable Authentication"
 msgstr "启用用户名/密码认证"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:80
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1701
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:63
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1712
 msgid "Enable Auto Switch"
 msgstr "启用自动切换"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1398
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1362
 msgid "Enable ECH(optional)"
 msgstr "启用 ECH (可选)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:657
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:640
 msgid "Enable Lazy Mode"
 msgstr "启用懒狗模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1436
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1389
 msgid "Enable ML-DSA-65(optional)"
 msgstr "启用 ML-DSA-65 (可选)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1595
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1548
 msgid ""
 "Enable Multipath TCP, need to be enabled in both server and client "
 "configuration."
 msgstr "启用 Multipath TCP，需在服务端和客户端配置中同时启用。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1531
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1484
 msgid "Enable Mux.Cool"
 msgstr "启用 Mux.Cool"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:651
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:95
+msgid "Enable Netflix Mode"
+msgstr "启用 Netflix 分流模式"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:634
 msgid "Enable Obfuscation"
 msgstr "启用混淆功能"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:536
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:542
 msgid "Enable Plugin"
 msgstr "启用插件"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:619
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:602
 msgid "Enable Port Hopping"
 msgstr "启用端口跳跃"
 
@@ -865,258 +766,200 @@ msgstr "启用端口跳跃"
 msgid "Enable Server"
 msgstr "启动服务端"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:632
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:615
 msgid "Enable Transport Protocol Settings"
 msgstr "启用传输协议设置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:750
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:720
 msgid "Enable V2 protocol."
 msgstr "开启 V2 协议。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:749
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:719
 msgid "Enable V3 protocol."
 msgstr "开启 V3 协议。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:134
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:249
 msgid "Enable adblock"
 msgstr "启用广告屏蔽"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:525
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:531
 msgid "Enable the SUoT protocol, requires server support."
 msgstr "启用 SUoT 协议，需要服务端支持。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1054
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1024
 msgid "Enable this option to configure XHTTP Extra (JSON format)."
 msgstr "启用此选项配置 XHTTP 附加项（JSON 格式）。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1231
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1201
 msgid "Enabled Kernel virtual NIC TUN(optional)"
 msgstr "启用内核的虚拟网卡 TUN（可选）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:181
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:335
 msgid "Enabled Mixed"
 msgstr "启用 Mixed"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:759
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1690
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:729
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1643
 msgid "Enabling TCP Fast Open Requires Server Support."
 msgstr "启用 TCP 快速打开需要服务端支持。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:503
 #: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:510
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:791
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:802
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:933
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:103
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:108
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:171
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:127
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:517
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:761
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:772
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:903
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:118
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:125
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:122
 msgid "Encrypt Method"
 msgstr "加密方式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:115
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:122
 msgid "Enter Custom Ports"
 msgstr "输入自定义端口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:419
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:122
 msgid "Every Day"
 msgstr "每天"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:424
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:127
 msgid "Every Friday"
 msgstr "每周五"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:420
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:123
 msgid "Every Monday"
 msgstr "每周一"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:425
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:128
 msgid "Every Saturday"
 msgstr "每周六"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:426
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:129
 msgid "Every Sunday"
 msgstr "每周日"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:423
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:126
 msgid "Every Thursday"
 msgstr "每周四"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:421
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:124
 msgid "Every Tuesday"
 msgstr "每周二"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:422
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:125
 msgid "Every Wednesday"
 msgstr "每周三"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:606
-msgid "Example:"
-msgstr "示例："
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:223
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:289
 msgid "Expecting: %s"
 msgstr "应为：%s"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1019
-msgid "Export Client Rules"
-msgstr "批量导出客户端规则"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:86
+msgid "External Proxy Mode"
+msgstr "分流服务器（前置）代理"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:44
-msgid "Extract failed"
-msgstr "解压失败"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1634
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1587
 msgid "FORCE BRUTAL"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:967
-msgid "Failed to clear all client proxy rules."
-msgstr "清空所有客户端代理规则失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:42
-msgid "Failed to create temp directory"
-msgstr "创建临时目录失败"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:230
-msgid "Failed to create temporary YAML upload file."
-msgstr "创建临时 YAML 上传文件失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:37
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:77
-msgid "Failed to fetch release metadata"
-msgstr "获取发布信息失败"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:99
-msgid "Failed to query component information."
-msgstr "获取组件信息失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:210
-msgid "Failed to query geo database information."
-msgstr "获取 Geo 数据库信息失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:710
-msgid "Failed to save custom client proxy rules."
-msgstr "保存自定义客户端代理规则失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:219
-msgid "File Not Exist"
-msgstr "文件不存在"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:461
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:282
 msgid "Filter Words splited by /"
 msgstr "命中关键字的节点将被丢弃。多个关键字用 / 分隔"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1290
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1260
 msgid "FinalMask"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1382
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1346
 msgid "Finger Print"
 msgstr "指纹伪造"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1369
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:212
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1333
 msgid "Flow"
 msgstr "流控（Flow）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:119
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:234
 msgid ""
 "For Apple domains equipped with Chinese mainland CDN, always responsive to "
 "Chinese CDN IP addresses"
 msgstr "配备中国大陆 CDN 的 Apple 域名，始终应答中国大陆 CDN 地址"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:262
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:392
 msgid "For specific usage, see:"
 msgstr "具体使用方法，具体请参见："
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:626
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:609
 msgid ""
 "Format as 10000:20000 or 10000-20000 Multiple groups are separated by commas "
 "(,)."
 msgstr "格式为：10000:20000 或 10000-20000 多组时用逗号（,）隔开。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:228
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:88
+msgid "Forward Netflix Proxy through Main Proxy"
+msgstr "分流服务器流量通过主服务节点中转代理转发"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:358
 msgid "Fragment"
 msgstr "分片"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:245
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:375
 msgid "Fragment Delay"
 msgstr "分片延迟"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:240
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:370
 msgid "Fragment Length"
 msgstr "分片包长"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:231
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:361
 msgid "Fragment Packets"
 msgstr "分片方式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:245
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:375
 msgid "Fragmentation interval (ms)"
 msgstr "分片间隔（ms）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:240
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:370
 msgid "Fragmented packet length (byte)"
 msgstr "分片包长 (byte)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:256
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:197
 msgid "GFW List Data"
 msgstr "【GFW 列表】数据库"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:106
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:112
 msgid "GFW List Mode"
 msgstr "GFW 列表模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:64
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:68
 msgid "Game Mode Host List"
 msgstr "增强游戏模式客户端 LAN IP"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:183
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:134
 msgid "Game Mode UDP Relay"
 msgstr "游戏模式 UDP 中继"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:859
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:69
+msgid "Game Mode UDP Server"
+msgstr "游戏模式 UDP 中继服务器"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:829
 msgid "Garbage collection interval(second)"
 msgstr "UDP 数据包片残片清理间隔（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:865
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:835
 msgid "Garbage collection lifetime(second)"
 msgstr "UDP 数据包残片在服务器的保留时间（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:416
-msgid "Geo Database Update"
-msgstr "Geo 数据库更新"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:425
-msgid "Geo Resource"
-msgstr "Geo 资源"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:24
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:429
-msgid "GeoSite Database"
-msgstr "GeoSite 数据库"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/component.lua:14
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:381
-msgid "GitHub Direct"
-msgstr "GitHub 直连"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:175
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:126
 msgid "Global Client"
 msgstr "TCP 透明代理"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:194
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:210
-msgid "Global HTTP/HTTPS Proxy Server"
-msgstr "HTTP/HTTPS 代理服务端（全局）"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:108
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:114
 msgid "Global Mode"
 msgstr "全局模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:152
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:201
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:267
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:152
 msgid "Global SOCKS5 Proxy Server"
 msgstr "SOCKS5 代理服务端（全局）"
 
@@ -1124,25 +967,31 @@ msgstr "SOCKS5 代理服务端（全局）"
 msgid "Global Setting"
 msgstr "全局设置"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:76
-msgid "Go to relevant configuration page"
-msgstr "前往相关配置页面"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:248
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:189
 msgid "Google Connectivity"
 msgstr "【谷歌】连通性检查"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:153
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:174
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:202
+msgid "Google DNSCrypt SDNS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:143
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:171
 msgid "Google Public DNS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:135
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:172
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:126
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:207
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:150
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:236
 msgid "Google Public DNS (8.8.4.4)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:136
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:173
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:127
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:208
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:151
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:237
 msgid "Google Public DNS (8.8.8.8)"
 msgstr ""
 
@@ -1150,414 +999,330 @@ msgstr ""
 msgid "Grant UCI access for luci-app-ssr-plus"
 msgstr "授予访问 luci-app-ssr-plus 配置的权限"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1125
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1095
 msgid "Gun"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1144
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1114
 msgid "H2 Read Idle Timeout"
 msgstr "H2 读取空闲超时"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1139
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1109
 msgid "H2/gRPC Health Check"
 msgstr "H2/gRPC 健康检查"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:421
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:972
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:453
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:942
 msgid "HTTP"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:202
-msgid "HTTP Auth Mode"
-msgstr "HTTP 认证模式"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:976
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:291
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:946
 msgid "HTTP Host"
 msgstr "HTTP 主机名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:212
-msgid "HTTP Password"
-msgstr "HTTP 密码"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:981
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:295
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:951
 msgid "HTTP Path"
 msgstr "HTTP 路径"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:208
-msgid "HTTP User"
-msgstr "HTTP 用户名"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:202
-msgid "HTTP proxy auth method, default:none."
-msgstr "HTTP 代理认证方式，默认：none。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1107
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:268
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1077
 msgid "HTTP/2 Host"
 msgstr "HTTP/2 主机名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1112
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:274
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1082
 msgid "HTTP/2 Path"
 msgstr "HTTP/2 路径"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1179
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1149
 msgid "Header"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1156
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1126
 msgid "Health Check Timeout"
 msgstr "健康检查超时"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:847
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:817
 msgid "Heartbeat interval(second)"
 msgstr "保活心跳包发送间隔（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:998
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:968
 msgid "HeartbeatPeriod(second)"
 msgstr "心跳周期（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_schedule_compact.htm:88
-msgid "Hour"
-msgstr "时"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1020
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:990
 msgid "Httpupgrade Host"
 msgstr "HTTPUpgrade 主机名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1025
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:995
 msgid "Httpupgrade Path"
 msgstr "HTTPUpgrade 路径"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:407
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:418
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:284
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:357
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:450
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:84
 msgid "Hysteria2"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:598
-msgid "Hysteria2 Realms"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:688
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:658
 msgid "Hysterir QUIC parameters"
 msgstr "QUIC 参数"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:107
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:113
 msgid "IP Route Mode"
 msgstr "绕过中国大陆 IP 模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1490
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1443
 msgid "IP Stack Preference"
 msgstr "IP 栈优先级"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:128
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1691
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:277
+msgid "IPv4 Only"
+msgstr "仅 IPv4"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1692
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:278
+msgid "IPv6 Only"
+msgstr "仅 IPv6"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:243
 msgid "If empty, Not change Apple domains parsing DNS (Default is empty)"
 msgstr "如果为空，则不更改 Apple 域名解析 DNS（默认为空）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1416
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1683
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:268
+msgid ""
+"If is domain name, The requested domain name will be resolved to IP before "
+"connect."
+msgstr "如果是域名，域名将在请求发出之前解析为 IP。"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1369
 msgid ""
 "If it is not empty, it indicates that the Client has enabled Encrypted "
 "Client, see:"
 msgstr "如果不为空，表示客户端已启用加密客户端，具体请参见："
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:895
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1656
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:241
+msgid ""
+"If the node address is a domain name, this DNS will be used for resolution."
+msgstr "如果节点地址是域名，则将使用此 DNS 进行解析。"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:865
 msgid "If this option is not set, the socket behavior is platform dependent."
 msgstr "如果未设置此选项，则 Socket 行为依赖于平台。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1503
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1456
 msgid ""
 "If true, allowss insecure connection at TLS client, e.g., TLS server uses "
 "unverifiable certificates."
 msgstr ""
 "是否允许不安全连接。当选择时，将不会检查远端主机所提供的 TLS 证书的有效性。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1648
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1601
 msgid "If you have a self-signed certificate,please check the box"
 msgstr "如果你使用自签证书，请选择"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1088
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1193
 msgid "Import"
 msgstr "导入配置信息"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1020
-msgid "Import Client Rules"
-msgstr "批量导入客户端规则"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:195
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:376
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:520
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:590
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:624
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:731
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:847
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:999
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1079
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:249
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:425
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:597
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:672
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:706
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:813
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:952
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1104
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1184
 msgid "Import configuration information successfully."
 msgstr "导入配置信息成功。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1132
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1102
 msgid "Initial Windows Size"
 msgstr "初始窗口大小"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:48
-msgid "Install failed"
-msgstr "安装失败"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:108
-msgid "Installed Version"
-msgstr "已安装版本"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:49
-msgid "Installed binary failed to run"
-msgstr "新安装的二进制无法运行"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:13
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:17
 msgid "Interface"
 msgstr "接口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:12
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:16
 msgid "Interface control"
 msgstr "接口控制"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:293
-msgid "Invalid"
-msgstr "无效的"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1082
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1187
 msgid "Invalid format."
 msgstr "无效的格式。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:330
-msgid "KCP Congestion Control"
-msgstr "KCP 拥塞控制"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:324
-msgid "KCP Downlink Capacity"
-msgstr "KCP 下行带宽容量"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:306
-msgid "KCP MTU"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:335
-msgid "KCP Read Buffer Size"
-msgstr "KCP 读缓冲区大小"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:347
-msgid "KCP Seed"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:312
-msgid "KCP TTI"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:318
-msgid "KCP Uplink Capacity"
-msgstr "KCP 上行链路容量"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:341
-msgid "KCP Write Buffer Size"
-msgstr "KCP 写缓冲区大小"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:231
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:172
 msgid "KcpTun"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1706
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1722
 msgid "KcpTun Enable"
 msgstr "KcpTun 启用"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1726
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1739
 msgid "KcpTun Param"
 msgstr "KcpTun 参数"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1720
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1734
 msgid "KcpTun Password"
 msgstr "KcpTun 密码"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1713
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1728
 msgid "KcpTun Port"
 msgstr "KcpTun 端口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:228
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:169
 msgid "KcpTun Version"
 msgstr "KcpTun 版本号"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:32
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:36
 msgid "LAN Access Control"
 msgstr "内网客户端分流代理控制"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:48
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:52
 msgid "LAN Bypassed Host List"
 msgstr "不走代理的局域网 LAN IP"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:56
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:60
 msgid "LAN Force Proxy Host List"
 msgstr "全局代理的 LAN IP"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:38
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:42
 msgid "LAN Host List"
 msgstr "内网主机列表"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:30
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:34
 msgid "LAN IP AC"
 msgstr "LAN IP 访问控制"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:109
-msgid "Latest Version"
-msgstr "最新版本"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:139
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:176
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:130
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:211
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:154
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:240
 msgid "Level 3 Public DNS (209.244.0.3)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:140
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:177
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:131
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:212
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:155
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:241
 msgid "Level 3 Public DNS (209.244.0.4)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:141
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:178
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:132
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:213
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:156
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:242
 msgid "Level 3 Public DNS (4.2.2.1)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:142
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:179
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:133
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:214
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:157
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:243
 msgid "Level 3 Public DNS (4.2.2.2)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:143
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:180
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:134
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:215
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:158
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:244
 msgid "Level 3 Public DNS (4.2.2.3)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:144
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:181
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:135
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:216
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:159
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:245
 msgid "Level 3 Public DNS (4.2.2.4)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:155
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:145
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:173
 msgid "Level 3 Public DNS-1 (209.244.0.3-4)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:156
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:146
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:174
 msgid "Level 3 Public DNS-2 (4.2.2.1-2)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:157
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:147
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:175
 msgid "Level 3 Public DNS-3 (4.2.2.3-4)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:250
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:380
 msgid "Limit the maximum number of splits."
 msgstr "限制分片的最大数量。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1234
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1204
 msgid ""
 "Linux kernel TUN virtual NIC requires system support and root privileges."
 msgstr "Linux 内核 TUN 虚拟网卡需要系统支持和 root 权限。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:18
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:22
 msgid "Listen only on the given interface or, if unspecified, on all"
 msgstr "仅监听指定的接口，未指定则监听全部。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:718
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:771
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:84
-msgid "Loading..."
-msgstr "加载中..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:187
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:217
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:348
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1716
 msgid "Local Port"
 msgstr "本地端口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:219
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:160
 msgid "Local Servers"
 msgstr "本机服务端"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1242
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1212
 msgid "Local addresses"
 msgstr "本地地址"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:643
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:66
 msgid "Log"
 msgstr "日志"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:413
-msgid "Loop Mode"
-msgstr "循环模式"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:109
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:85
 msgid "Loukky/gfwlist-by-loukky"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:108
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:84
 msgid "Loyalsoldier/v2ray-rules-dat"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1441
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1394
 msgid "ML-DSA-65 Public key"
 msgstr "ML-DSA-65 公钥"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1595
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1548
 msgid "MPTCP"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1205
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1175
 msgid "MTU"
 msgstr "最大传输单元"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:80
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:61
 msgid "Main Server"
 msgstr "主服务器"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:558
-msgid ""
-"Manage multiple subscribe URLs, including Clash subscriptions. Only enabled "
-"entries are included when updating all subscriptions."
-msgstr ""
-"管理多条订阅 URL，包括 Clash 订阅。只有启用的订阅项才会参与“更新所有订阅节"
-"点”。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:38
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:78
-msgid "Matching release asset not found"
-msgstr "未找到匹配的发布资产"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1004
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:974
 msgid "Max Early Data"
 msgstr "最大前置数据"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:250
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:380
 msgid "Max Split"
 msgstr "最大分片数"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:900
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:870
 msgid "Maximum packet size the socks5 server can receive from external"
 msgstr "socks5 服务器可以从外部接收的最大数据包大小（单位：字节）"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:372
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:375
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:378
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:9
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:395
-msgid "Mihomo"
-msgstr "Mihomo"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1005
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1006
-msgid "Mihomo Pannel"
-msgstr "Mihomo 面板"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_schedule_compact.htm:89
-msgid "Min"
-msgstr "分"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1565
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1518
 msgid ""
 "Min value is 1, Max value is 1024. When omitted or set to 0, Will same path "
 "as TCP traffic."
@@ -1565,174 +1330,154 @@ msgstr ""
 "最小值 1，最大值 1024。 省略或者填 0 时，将与 TCP 流量走同一条路，也就是传统"
 "的行为。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1552
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1505
 msgid ""
 "Min value is 1, Max value is 128. When omitted or set to 0, it equals 8."
 msgstr "最小值 1，最大值 128。省略或者填 0 时都等于 8。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/component.lua:13
-msgid "Mirror URL"
-msgstr "镜像地址"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:40
-msgid "Missing gzip support"
-msgstr "缺少 gzip 支持"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:39
-msgid "Missing unzip support"
-msgstr "缺少 unzip 支持"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:41
-msgid "Missing xz support"
-msgstr "缺少 xz 支持"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:181
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:335
 msgid "Mixed as an alias of socks, default:Enabled."
 msgstr "Mixed 作为 SOCKS 的别名，默认：启用。"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/optimize_cbi_ui.htm:10
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:735
 msgid "Move down"
 msgstr "下移"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/optimize_cbi_ui.htm:7
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:734
 msgid "Move up"
 msgstr "上移"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:188
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:222
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:251
 msgid "Muitiple DNS server can saperate with ','"
 msgstr "多个上游 DNS 服务器请用 ',' 分隔（注意用英文逗号)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1126
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1096
 msgid "Multi"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:92
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:98
 msgid "Multi Threads Option"
 msgstr "多线程并发转发"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1096
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1326
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1066
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1290
 msgid "Must be JSON text!"
 msgstr "必须是 JSON 文本内容！"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1531
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1484
 msgid "Mux"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:138
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:253
 msgid "NEO DEV HOST"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/status.htm:11
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/status.htm:10
 msgid "NOT RUNNING"
 msgstr "未运行"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:401
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:349
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:13
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:396
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:354
 msgid "NaiveProxy"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:27
-msgid "Name"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:203
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:266
 msgid "Nanjing Xinfeng 114DNS (114.114.114.114)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:843
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:132
+msgid "Netflix Domain List"
+msgstr "Netflix 分流域名列表"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:215
+msgid "Netflix IP Data"
+msgstr "【Netflix IP 段】数据库"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:100
+msgid "Netflix IP Only"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:77
+msgid "Netflix Node"
+msgstr "Netflix 分流服务器"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:101
+msgid "Netflix and AWS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:369
+msgid "Network Tunnel"
+msgstr "网络隧道"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:399
+msgid "Network interface to use"
+msgstr "使用的网络接口"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:813
 msgid "New Reno"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:149
-msgid "Next"
-msgstr "下一页"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:249
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:253
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:282
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:116
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:190
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:194
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:230
 msgid "No Check"
 msgstr "未检查"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:156
-msgid "No available Xray core to import this Hysteria2 node."
-msgstr "没有可用的 Xray 核心可以导入此 Hysteria2 节点。"
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:209
+msgid "No available core (Hysteria2 or Xray) to import this node."
+msgstr "没有可用的核心（Hysteria2 或 Xray）可以导入此节点。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:546
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:632
 msgid "No available core (Shadowsocks or Xray) to import this node."
 msgstr "没有可用的核心（Shadowsocks 或 Xray）可以导入此节点。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:738
-msgid "No available core (Xray) to import this node."
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:249
-msgid "No custom YAML file was selected."
-msgstr "没有选择自定义 YAML 文件。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:474
-msgid "No custom client proxy rules yet."
-msgstr "暂无自定义客户端代理规则。"
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:842
+msgid "No available core (Trojan or Xray) to import this node."
+msgstr "没有可用的核心（Trojan 或 Xray）可以导入此节点。"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/refresh.htm:21
 msgid "No new data!"
 msgstr "你已经是最新数据，无需更新！"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1680
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1633
 msgid "No specify upload file."
 msgstr "没有上传证书。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:94
-msgid "No subscription items found"
-msgstr "没有找到任何订阅项"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:615
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:32
-msgid "No switchable proxy groups found."
-msgstr "未找到可切换的代理组。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:582
-msgid ""
-"Node order can be dragged with the mouse and takes effect immediately. The "
-"automatic switch order of server nodes is consistent with the node order in "
-"the table."
-msgstr ""
-"节点顺序可用鼠标拖拉后立即生效，服务器节点自动切换顺序和表中节点顺序一致。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:255
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:385
 msgid "Noise"
 msgstr "噪声"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:544
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:971
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1170
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1182
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1192
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:677
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:682
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:549
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:941
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1140
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1152
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1162
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:364
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:369
 msgid "None"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:180
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:188
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:197
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:206
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:215
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:224
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:236
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:131
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:139
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:148
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:157
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:165
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:177
 msgid "Not Running"
 msgstr "未运行"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:35
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:28
 msgid "Not exist"
 msgstr "未安装可执行文件"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:108
-msgid "Not installed"
-msgstr "未安装"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1657
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1684
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:243
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:270
+msgid "Note: For node-specific DNS only. Keep Auto to avoid extra overhead."
+msgstr "注意：仅用于节点专用 DNS，通常请保持自动，以免增加开销。"
 
 #: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/log.lua:27
 msgid ""
@@ -1740,120 +1485,116 @@ msgid ""
 "compatibility issues."
 msgstr "注意：不同版本间的配置恢复可能会导致兼容性问题。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1606
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1559
 msgid "Number of early established connections to reduce latency."
 msgstr "预连接的数量，用于降低延迟。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:543
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:586
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:118
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:138
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:548
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:584
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:139
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:133
 msgid "Obfs"
 msgstr "混淆插件"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:593
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:123
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:591
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:146
 msgid "Obfs param (optional)"
 msgstr "混淆参数（可选）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1226
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1196
 msgid "Obfuscate password (optional)"
 msgstr "混淆密码（可选）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:670
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:651
 msgid "Obfuscation Password"
 msgstr "混淆密码"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:662
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:645
 msgid "Obfuscation Type"
 msgstr "混淆类型"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1515
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1468
 msgid "Once set, connects only when the server’s chain fingerprint matches."
 msgstr "设置后，仅在服务器证书链指纹匹配时连接。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:113
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:120
 msgid "Only Common Ports"
 msgstr "仅常用端口（不走 P2P 流量到代理）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:208
-msgid "Only when HTTP Auth Mode is password valid, Mandatory."
-msgstr "仅当 HTTP 认证模式为 password 时有效，必填。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:212
-msgid "Only when HTTP Auth Mode is password valid, Not mandatory."
-msgstr "仅当 HTTP 认证模式为 password 时有效，非必填。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:170
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:324
 msgid "Only when Socks5 Auth Mode is password valid, Mandatory."
 msgstr "仅当 Socks5 认证方式为 Password 时有效，必填。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:175
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:329
 msgid "Only when Socks5 Auth Mode is password valid, Not mandatory."
 msgstr "仅当 Socks5 认证方式为 Password 时有效，非必填。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:154
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:144
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:172
 msgid "OpenDNS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:138
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:175
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:129
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:210
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:153
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:239
 msgid "OpenDNS (208.67.220.220)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:137
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:174
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:128
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:209
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:152
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:238
 msgid "OpenDNS (208.67.222.222)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:391
-msgid "Package Name"
-msgstr "组件包名称"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:115
+msgid "Oversea Mode"
+msgstr "海外用户回国模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:261
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:161
+msgid "Oversea Mode DNS-1 (114.114.114.114)"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:162
+msgid "Oversea Mode DNS-2 (114.114.115.115)"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:391
 msgid "Packet or Rand length as a string, e.g., 10-20."
 msgstr "数据包或 Rand 长度以字符串形式输入，例如：10-20。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:298
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:428
 msgid "Packet | Rand Length"
 msgstr "数据包 | Rand 长度"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:68
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:69
-msgid "Panel"
-msgstr "面板"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:488
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:93
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:496
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:114
 msgid "Password"
 msgstr "密码"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:102
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:105
 msgid "Paste sharing link here"
 msgstr "在此处粘贴分享链接"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1257
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1227
 msgid "Peer public key"
 msgstr "节点公钥"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:154
-msgid "Per page"
-msgstr "每页"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/reset.htm:14
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/reset.htm:23
 msgid "Perform reset"
 msgstr "执行重置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1162
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1132
 msgid "Permit Without Stream"
 msgstr "允许无数据流"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:725
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:393
 msgid "Ping Latency"
 msgstr "Ping 延迟"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1687
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1640
 msgid "Please confirm the current certificate path"
 msgstr "请选择确认所传证书，证书不正确将无法运行"
 
@@ -1861,108 +1602,96 @@ msgstr "请选择确认所传证书，证书不正确将无法运行"
 msgid "Please fill in reset"
 msgstr "请填写 reset"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:387
-msgid "Please specify either a Clash subscription URL or a local YAML path."
-msgstr "请填写 Clash 订阅 URL 或本地 YAML 路径中的至少一项。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:572
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:570
 msgid "Plugin Opts"
 msgstr "插件参数"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1033
-msgid "Policy"
-msgstr "策略"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:643
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:626
 msgid "Port Hopping Interval(Unit:Second)"
 msgstr "端口跳跃间隔（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:625
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:608
 msgid "Port hopping range"
 msgstr "端口跳跃范围"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1606
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1559
 msgid "Pre-connections"
 msgstr "预连接"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1261
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1231
 msgid "Pre-shared key"
 msgstr "预共享密钥"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:130
-msgid "Prefer module built-in DNS"
-msgstr "优先使用模块内置 DNS"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1689
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:275
+msgid "Prefer IPv4"
+msgstr "IPv4 优先"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:139
-msgid "Prev"
-msgstr "上一页"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1690
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:276
+msgid "Prefer IPv6"
+msgstr "IPv6 优先"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:232
-msgid "Private Key File Path"
-msgstr "私钥文件路径"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:93
+msgid "Prefer firewall tools"
+msgstr "首选防火墙工具"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1252
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1222
 msgid "Private key"
 msgstr "私钥"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:150
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:254
-msgid "Processing..."
-msgstr "处理中..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:576
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:113
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:133
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:574
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:132
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:128
 msgid "Protocol"
 msgstr "传输协议"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:583
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:581
 msgid "Protocol param (optional)"
 msgstr "传输协议参数（可选）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:111
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:118
 msgid "Proxy Ports"
 msgstr "需要代理的端口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1356
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1320
 msgid "Public key"
 msgstr "公钥"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:371
-msgid "QUIC Camouflage Type"
-msgstr "QUIC 伪装（混淆）类型"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1175
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:367
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1145
 msgid "QUIC Key"
 msgstr "QUIC 密钥"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1168
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:359
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1138
 msgid "QUIC Security"
 msgstr "QUIC 加密方式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:715
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:685
 msgid "QUIC initConnReceiveWindow"
 msgstr "QUIC 初始的连接接收窗口大小"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:701
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:671
 msgid "QUIC initStreamReceiveWindow"
 msgstr "QUIC 初始流接收窗口大小。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:722
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:692
 msgid "QUIC maxConnReceiveWindow"
 msgstr "QUIC 最大的连接接收窗口大小"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:729
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:699
 msgid "QUIC maxIdleTimeout(Unit:second)"
 msgstr "QUIC 最长空闲超时时间（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:708
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:678
 msgid "QUIC maxStreamReceiveWindow"
 msgstr "QUIC 最大的流接收窗口大小"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1351
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:177
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:205
+msgid "Quad9 DNSCrypt SDNS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1315
 msgid "REALITY"
 msgstr ""
 
@@ -1970,59 +1699,33 @@ msgstr ""
 msgid "RST Backup"
 msgstr "恢复备份"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:429
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/status.htm:7
 msgid "RUNNING"
 msgstr "运行中"
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:422
-msgid "RUNNING in %s (%s) Mode"
-msgstr "运行中，当前为 %s（%s）模式"
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:426
-msgid "RUNNING in %s Mode"
-msgstr "运行中，当前为 %s 模式"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:604
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:752
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:802
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:93
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:228
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:253
-msgid "Ready."
-msgstr "就绪。"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/reset.htm:5
 msgid "Really reset all changes?"
 msgstr "真的重置所有更改吗？"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:609
-msgid "Realm STUN"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:606
-msgid "Realm URL"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:744
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:272
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:17
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:403
 msgid "Reapply"
 msgstr "重新应用"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:259
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:264
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:270
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:277
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:200
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:205
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:211
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:218
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:225
 msgid "Records"
 msgstr "条记录"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:10
-msgid "Refresh"
-msgstr "更新"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:406
+msgid "Redirect traffic to this network interface"
+msgstr "分流到这个网络接口"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/refresh.htm:29
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/refresh.htm:35
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:11
 msgid "Refresh Data"
 msgstr "更新数据库"
 
@@ -2035,90 +1738,45 @@ msgid "Refresh OK!"
 msgstr "更新成功！"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/refresh.htm:6
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:5
 msgid "Refresh..."
 msgstr "正在更新，请稍候..."
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:431
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:134
 msgid "Regular update (Hour)"
 msgstr "定时更新（小时）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:439
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:142
 msgid "Regular update (Min)"
 msgstr "定时更新（分钟）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:111
-msgid "Release Asset"
-msgstr "发布包名"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:56
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:57
-msgid "Reload YAML"
-msgstr "重载 YAML"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:265
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:10
-msgid "Reloading YAML..."
-msgstr "正在重载 YAML..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:133
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:134
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1034
-msgid "Remarks"
-msgstr "备注"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1619
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1635
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1572
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1588
 msgid "Reno"
-msgstr "Reno"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:154
-msgid "Required for VMess/VLESS. Generate with: uuidgen"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1247
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1217
 msgid "Reserved bytes(optional)"
 msgstr "保留字节（可选）"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:998
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:999
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:62
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:63
-msgid "Reset Default Proxies Rules"
-msgstr "重置代理分组规则"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:300
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:44
-msgid "Reset Defaults Failed!"
-msgstr "重置默认值失败！"
 
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/reset.htm:17
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/reset.htm:18
 msgid "Reset complete"
 msgstr "重置完成"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:286
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:30
-msgid "Reset saved Mihomo proxy-group selections and restore YAML defaults?"
-msgstr "要清空已保存的 Mihomo 分组选择，并恢复为 YAML 默认值吗？"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:144
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:259
 msgid "Reset to defaults"
 msgstr "恢复出厂设置"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:290
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:34
-msgid "Resetting Defaults..."
-msgstr "正在重置默认值..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:120
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:127
 msgid "Resolve Dns Mode"
 msgstr "DNS 解析方式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:241
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:182
 msgid "Restart Service"
 msgstr "重启服务"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:240
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:181
 msgid "Restart ShadowSocksR Plus+"
 msgstr "重启 ShadowSocksR Plus+"
 
@@ -2131,93 +1789,92 @@ msgstr "恢复备份文件"
 msgid "Restore to default configuration"
 msgstr "恢复默认配置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:178
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:186
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:195
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:204
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:213
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:222
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:234
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:129
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:137
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:146
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:155
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:163
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:175
 msgid "Running"
 msgstr "运行中"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:105
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:111
 msgid "Running Mode"
 msgstr "运行模式"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:403
-msgid "SOCKS5"
-msgstr "SOCKS5"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:301
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:342
 msgid "SS URL base64 sstr format not recognized."
 msgstr "无法识别 SS URL 的 Base64 格式。"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:625
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:56
 msgid "SSR Client"
 msgstr "客户端"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:629
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:60
 msgid "SSR Server"
 msgstr "服务端"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:1023
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:260
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:285
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:286
-msgid "Save"
-msgstr "保存"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:277
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:71
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:79
+msgid "Same as Global Server"
+msgstr "与全局服务器相同"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:492
-msgid "Save Subscribe Settings"
-msgstr "保存订阅设置"
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:750
+msgid "Save Order"
+msgstr "保存当前顺序"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:467
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:286
 msgid "Save Words splited by /"
 msgstr ""
 "命中关键字的节点将被保留。多个关键字用 / 分隔。此项为空则不启用保留匹配"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:494
-msgid "Save current subscribe settings"
-msgstr "保存当前订阅设置"
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:484
+msgid "Save failed!"
+msgstr "保存失败！"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:82
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:105
-msgid "Save failed:"
-msgstr "保存失败："
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:482
+msgid "Saved current page order successfully."
+msgstr "保存当前页面顺序成功。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:687
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:51
-msgid "Saving..."
-msgstr "保存中..."
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:747
+msgid "Saving the new order..."
+msgstr "正在保存新的顺序…"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/advanced_switch_compact.htm:77
-msgid "Second"
-msgstr "周期"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:158
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:186
+msgid "Select DNS parse Mode"
+msgstr "选择 DNS 解析方式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1640
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:410
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:228
+msgid "Selection ShadowSocks Node Use Version."
+msgstr "选择 ShadowSocks 节点使用版本。"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1593
 msgid "Self-signed Certificate"
 msgstr "自签证书"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:424
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:276
+msgid "Server"
+msgstr "服务器"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:456
 msgid "Server Address"
 msgstr "服务器地址"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:506
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:317
 msgid "Server Count"
 msgstr "服务器节点数量"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:223
-msgid "Server Name (SNI)"
-msgstr "服务器名称（SNI）"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:335
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:340
 msgid "Server Node Type"
 msgstr "服务器节点类型"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:449
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:75
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:117
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:469
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:96
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:112
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:372
 msgid "Server Port"
 msgstr "端口"
 
@@ -2225,293 +1882,258 @@ msgstr "端口"
 msgid "Server Setting"
 msgstr "服务端配置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:58
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:86
 #: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:107
 msgid "Server Type"
 msgstr "服务端类型"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:73
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:56
 msgid "Server failsafe auto swith and custom update settings"
 msgstr "服务器节点故障自动切换/广告屏蔽/中国大陆 IP 段数据库更新设置"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:626
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:57
 msgid "Servers Nodes"
 msgstr "服务器节点"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:393
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:111
 msgid "Servers subscription and manage"
 msgstr "服务器节点订阅与管理"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1345
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1309
 msgid "Session Ticket"
 msgstr "会话凭据"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:358
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:558
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:167
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:195
+msgid "Set Single DNS"
+msgstr "设置单个 DNS"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:363
 msgid "Shadow-TLS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:776
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:746
 msgid "Shadow-TLS ChainPoxy type"
 msgstr "代理链类型"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:343
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:346
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:413
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:61
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:348
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:445
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:89
 msgid "ShadowSocks"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:779
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:415
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:101
+msgid "ShadowSocks-libev Version"
+msgstr "ShadowSocks-libev 版本"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:412
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:749
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:98
 msgid "ShadowSocks-rust Version"
 msgstr "ShadowSocks-rust 版本"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:622
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:53
 msgid "ShadowSocksR Plus+"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:51
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:38
 msgid "ShadowSocksR Plus+ Settings"
 msgstr "ShadowSocksR Plus+ 设置"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:405
-msgid "ShadowTLS"
-msgstr "ShadowTLS"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:757
+msgid "Shadowsocks password"
+msgstr "shadowsocks密码"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:373
-msgid "Shadowsocks"
-msgstr "Shadowsocks"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:787
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:166
-msgid "Shadowsocks Password"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:345
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:92
+msgid "ShadowsocksR"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:383
-msgid "Shadowsocks-rust"
-msgstr "Shadowsocks-rust"
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:381
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:340
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:64
-msgid "ShadowsocksR"
-msgstr "ShadowsocksR"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1360
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1324
 msgid "Short ID"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:134
-msgid "Showing %d-%d of %d nodes"
-msgstr "当前显示第 %d-%d 个节点，共 %d 个"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:685
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:377
 msgid "Socket Connected"
 msgstr "连接测试"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:420
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:452
 msgid "Socks"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:941
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:911
 msgid "Socks Version"
 msgstr "Socks 版本"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:163
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:310
 msgid "Socks protocol auth methods, default:noauth."
 msgstr "Socks 协议的认证方式，默认值：noauth。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:361
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:59
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:366
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:87
 msgid "Socks5"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:163
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:310
 msgid "Socks5 Auth Mode"
 msgstr "Socks5 认证方式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:175
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:329
 msgid "Socks5 Password"
 msgstr "Socks5 密码"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:170
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:324
 msgid "Socks5 User"
 msgstr "Socks5 用户名"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:73
-msgid "Start Detection"
-msgstr "开始探测"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:151
+msgid "Specifically for edit dnsproxy DNS parse files."
+msgstr "专门用于编辑 DNSPROXY 的 DNS 解析文件。"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:205
-msgid "Starting subscription update..."
-msgstr "正在开始更新订阅..."
-
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:631
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:114
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:116
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:118
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:120
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:224
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:226
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:228
+#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:61
 msgid "Status"
 msgstr "状态"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:74
-msgid "Stop Detection"
-msgstr "停止探测"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:453
-msgid "Subscribe Advanced Settings"
-msgstr "订阅高级设置"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:478
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:302
 msgid "Subscribe Default Auto-Switch"
 msgstr "订阅新节点自动切换设置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:459
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:280
 msgid "Subscribe Filter Words"
 msgstr "订阅节点关键字过滤"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:250
-msgid "Subscribe Log"
-msgstr "订阅日志"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:465
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:284
 msgid "Subscribe Save Words"
 msgstr "订阅节点关键字保留检查"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:551
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:575
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:235
 msgid "Subscribe URL"
-msgstr "订阅 URL (支持SS/SSR/V2/TROJAN/HY2/TUIC/CLASH等)"
+msgstr "SS/SSR/V2/TROJAN/HY2/TUIC 订阅 URL"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:194
-msgid "Subscribe failed, refreshing page..."
-msgstr "订阅失败，正在刷新页面..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:480
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:304
 msgid "Subscribe new add server default Auto-Switch on"
 msgstr "订阅加入的新节点默认开启自动切换"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:473
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:299
 msgid "Subscribe nodes allows insecure connection as TLS client (insecure)"
 msgstr "订阅节点强制开启 不验证TLS客户端证书 (insecure)"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:142
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:257
 msgid "Support AdGuardHome and DNSMASQ format list"
 msgstr "同时支持 AdGuard Home 和 DNSMASQ 格式的过滤列表"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:644
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:627
 msgid "Supports a fixed value or a random range (e.g., 30, 5-30), minimum 5."
 msgstr "支持固定值或随机范围（如 30 或 5-30），最小 5 秒。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1248
-msgid ""
-"Supports decimal numbers separated by \",\" or Base64-encoded strings, with "
-"a maximum length of 3 bytes."
-msgstr ""
-"支持以“，”分隔的十进制数字，或者经过 Base64 编码的字符串，其最大长度为 3 个字"
-"节。"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:242
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:269
+msgid "Supports only Xray node types."
+msgstr "仅支持 Xray 类型节点。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:84
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:67
 msgid "Switch check cycly(second)"
 msgstr "自动切换检查周期（秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:654
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:71
-msgid "Switch failed."
-msgstr "切换失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:651
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:68
-msgid "Switched successfully."
-msgstr "切换成功。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:644
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:61
-msgid "Switching..."
-msgstr "正在切换..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:282
-msgid "TCP Camouflage Type"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1661
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:247
+msgid "TCP"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:759
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1690
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:126
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:729
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1643
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:149
 msgid "TCP Fast Open"
 msgstr "TCP 快速打开"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:228
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:358
 msgid ""
 "TCP fragments, which can deceive the censorship system in some cases, such "
 "as bypassing SNI blacklists."
 msgstr "TCP 分片，在某些情况下可以欺骗审查系统，比如绕过 SNI 黑名单。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:194
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:228
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:257
 msgid "TCP upstream"
 msgstr "TCP 上游"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1331
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:199
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1295
 msgid "TLS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:754
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:724
 msgid "TLS 1.3 Strict mode"
 msgstr "TLS 1.3 限定模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1464
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1417
 msgid "TLS ALPN"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1520
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1473
 msgid "TLS Certificate Name (CertName)"
 msgstr "TLS 证书名称（CertName）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1515
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1468
 msgid "TLS Chain Fingerprint (SHA256)"
 msgstr "TLS 证书链指纹（SHA256）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1456
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1409
 msgid "TLS Host"
 msgstr "TLS 主机名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1520
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:539
+msgid "TLS handshake test, latency for reference only"
+msgstr "TLS握手测试，延时仅供参考"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1473
 msgid "TLS is used to verify the leaf certificate name."
 msgstr "TLS 用于验证 leaf 证书的 name。"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:379
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:355
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:360
 msgid "TUIC"
-msgstr "TUIC"
+msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1476
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1429
 msgid "TUIC ALPN"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:819
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:789
 msgid "TUIC Server IP Address"
 msgstr "TUIC 服务器 IP 地址"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:826
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:796
 msgid "TUIC User Password"
 msgstr "TUIC 用户密钥"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:812
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:782
 msgid "TUIC User UUID"
 msgstr "TUIC 用户 uuid"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:877
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:847
 msgid "TUIC receive window"
 msgstr "接收窗口（无需确认即可接收的最大字节数：默认8Mb）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:871
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:841
 msgid "TUIC send window"
 msgstr "发送窗口（无需确认即可发送的最大字节数：默认8Mb*2）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1443
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:175
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:203
+msgid "TWNIC-101 DNSCrypt SDNS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:539
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:604
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:628
+msgid "Test"
+msgstr "测试"
+
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:581
+msgid "Testing..."
+msgstr "检测中…"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1396
 msgid ""
 "The client has not configured mldsa65Verify, but it will not perform the "
 "\"additional verification\" step and can still connect normally, see:"
@@ -2519,74 +2141,49 @@ msgstr ""
 "客户端若未配置 mldsa65Verify，但它不会执行 \"附加验证\" 步骤，仍可以正常连"
 "接，具体请参见："
 
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:280
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:311
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:171
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:199
+msgid ""
+"The configured type also applies to the core specified when manually "
+"importing nodes."
+msgstr "配置的类型同样适用于手动导入节点时所指定的核心程序。"
+
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/reset.htm:10
 msgid "The content entered is incorrect!"
 msgstr "输入的内容不正确！"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:736
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:706
 msgid "The keep-alive period.(Unit:second)"
 msgstr "心跳包发送间隔（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:6
-msgid ""
-"The online upgrade downloads the matching Xray-core linux archive for the "
-"current ARCH from the official GitHub release page."
-msgstr ""
-"在线升级会根据当前架构，从 Xray-core 官方 GitHub 发布页下载匹配的 Linux 压缩"
-"包。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:10
-msgid ""
-"The online upgrade only tracks the latest stable Mihomo release and "
-"downloads the matching linux archive for the current ARCH from the official "
-"GitHub release page."
-msgstr ""
-"在线升级只跟踪 Mihomo 最新稳定版，并根据当前架构从官方 GitHub 发布页下载匹配"
-"的 Linux 压缩包。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:14
-msgid ""
-"The online upgrade tracks the latest NaiveProxy release and prefers OpenWrt "
-"static archives matching the current ARCH before falling back to other "
-"release assets."
-msgstr ""
-"在线升级会跟踪最新 NaiveProxy 发布版，并优先选择与当前架构匹配的 OpenWrt "
-"static 压缩包，找不到时再回退到其他发布资产。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:740
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:795
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:89
-msgid "This Clash total node is not active. Apply this node first."
-msgstr "该 Clash 总节点当前未启用，请先应用该节点。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel.htm:6
-msgid ""
-"This panel is available only when the current Clash total node is active."
-msgstr "该面板仅在当前 Clash 总节点已启用时可用。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_table.htm:272
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:126
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:277
-msgid "This section contains no values yet"
-msgstr "该部分目前无任何内容。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:485
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:307
 msgid "Through proxy update"
 msgstr "通过代理更新"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:487
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:309
 msgid "Through proxy update list, Not Recommended"
 msgstr "通过路由器自身代理更新订阅"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/advanced_switch_compact.htm:78
-msgid "Timeout"
-msgstr "超时"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:853
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:823
 msgid "Timeout for establishing a connection to server(second)"
 msgstr "连接超时时间（单位：秒）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:260
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:162
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:190
+msgid "Tips: Dnsproxy DNS Parse List Path:"
+msgstr "提示：Dnsproxy 的 DNS 解析列表路径："
+
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:736
+msgid "To Bottom"
+msgstr "置底"
+
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:733
+msgid "To Top"
+msgstr "置顶"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:390
 msgid "To send noise packets, select \"Noise\" in Xray Settings."
 msgstr "在 Xray 设置中勾选 “噪声” 以发送噪声包。"
 
@@ -2594,57 +2191,53 @@ msgstr "在 Xray 设置中勾选 “噪声” 以发送噪声包。"
 msgid "Total Records:"
 msgstr "新的总记录数："
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:950
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:177
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:920
 msgid "Transport"
 msgstr "传输协议"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:637
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:238
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:620
 msgid "Transport Protocol"
 msgstr "传输协议"
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:399
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:412
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:315
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:351
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:444
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:91
 msgid "Trojan"
-msgstr "Trojan"
+msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:160
-msgid "Trojan Password"
-msgstr "Trojan 密码"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/advanced_switch_compact.htm:79
-msgid "Try Count"
-msgstr "重试次数"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:282
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:674
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:412
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:362
 msgid "Type"
 msgstr "类型"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:639
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:622
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1662
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:248
 msgid "UDP"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:255
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:385
 msgid ""
 "UDP noise, Under some circumstances it can bypass some UDP based protocol "
 "restrictions."
 msgstr "UDP 噪声，在某些情况下可以绕过一些针对 UDP 协议的限制。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:524
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:530
 msgid "UDP over TCP"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:832
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:802
 msgid "UDP relay mode"
 msgstr "UDP 中继模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:195
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:229
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:258
 msgid "UDP upstream"
 msgstr "UDP 上游"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:193
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:227
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:256
 msgid "UDP/TCP upstream"
 msgstr "UDP/TCP 上游"
 
@@ -2652,758 +2245,498 @@ msgstr "UDP/TCP 上游"
 msgid "UL Restore"
 msgstr "上传恢复"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:524
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:322
 msgid "URL Test Address"
 msgstr "URL 测试地址"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:153
-msgid "UUID"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:92
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:95
 msgid "Unable to copy SSR to clipboard."
 msgstr "无法复制 SSR 网址到剪贴板。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:32
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:42
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:109
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:110
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:111
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:226
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:25
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/status.lua:35
 msgid "Unknown"
 msgstr "未知"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:80
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:82
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:130
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:215
-msgid "Unknown error"
-msgstr "未知错误"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:36
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:76
-msgid "Unsupported ARCH"
-msgstr "不支持当前架构"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:79
-msgid "Unsupported component"
-msgstr "不支持的组件"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:265
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:266
-msgid "Update"
-msgstr "更新"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:497
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:311
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe.htm:16
 msgid "Update All Subscribe Servers"
-msgstr "更新所有订阅节点"
+msgstr "更新所有订阅服务器节点"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:447
-msgid "Update Interval(min)"
-msgstr "更新间隔（分钟）"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:288
+msgid "Update Subscribe List"
+msgstr "更新订阅 URL 列表"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:411
-msgid "Update Mode"
-msgstr "更新模式"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:418
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:121
 msgid "Update cycle (Day/Week)"
 msgstr "更新周期（天/周）"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:29
-msgid ""
-"Update geoip.dat and geosite.dat used by Xray/V2Ray runtime when available."
-msgstr "更新 Xray/V2Ray 运行时可用的 geoip.dat 和 geosite.dat 数据库。"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:290
+msgid "Update subscribe url list first"
+msgstr "修改订阅 URL 和节点关键字后，请先点击更新"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:21
-msgid ""
-"Update the Country.mmdb database used by Mihomo/Clash runtime when available."
-msgstr "更新 Mihomo/Clash 运行时可用的 Country.mmdb 数据库。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:25
-msgid ""
-"Update the GeoSite.dat database used by Mihomo/Clash runtime when available."
-msgstr "更新 Mihomo/Clash 运行时可用的 GeoSite.dat 数据库。"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/subscribe_actions_footer.htm:31
-msgid "Updating..."
-msgstr "更新中..."
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:157
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:406
-msgid "Upgrade"
-msgstr "升级"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:118
-msgid "Upgrade available"
-msgstr "发现可升级版本"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:35
-msgid "Upgrade completed"
-msgstr "升级完成"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:146
-msgid "Upgrading..."
-msgstr "升级中..."
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1212
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1182
 msgid "Uplink Capacity(Default:Mbps)"
 msgstr "上行链路容量（默认：Mbps）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1650
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1603
 #: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/certupload.htm:3
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_yaml_upload.htm:3
 msgid "Upload"
 msgstr "上传"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:544
-msgid "Upload Custom YAML File"
-msgstr "上传自定义 YAML 文件"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:546
-msgid ""
-"Upload a custom Clash/Mihomo YAML file. The file will be preprocessed and "
-"saved as a local Clash node."
-msgstr ""
-"上传自定义 Clash/Mihomo YAML 文件。文件会先做预处理，再保存为本地 Clash 节"
-"点。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:263
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:271
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:276
-msgid "Uploaded YAML validation or preprocessing failed."
-msgstr "上传的 YAML 校验或预处理失败。"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:128
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:120
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:144
 msgid "Use ChinaDNS-NG query and cache"
 msgstr "使用 ChinaDNS-NG 查询并缓存"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:201
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:168
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:196
+msgid "Use DNS List File"
+msgstr "使用 DNS 列表文件"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:264
 msgid "Use DNS from WAN"
 msgstr "使用 WAN 下发的 DNS"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:202
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:265
 msgid "Use DNS from WAN and 114DNS"
 msgstr "使用 WAN 下发的 DNS 和 114DNS"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:122
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:108
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:132
+msgid "Use DNS2SOCKS query and cache"
+msgstr "使用 DNS2SOCKS 查询并缓存"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:111
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:135
+msgid "Use DNS2SOCKS-RUST query and cache"
+msgstr "使用 DNS2SOCKS-RUST 查询并缓存"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:129
 msgid "Use DNS2TCP query"
 msgstr "使用 DNS2TCP 查询"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:131
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:117
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:141
+msgid "Use DNSPROXY query and cache"
+msgstr "使用 DNSPROXY 查询并缓存"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:146
 msgid "Use Local DNS Service listen port 5335"
 msgstr "使用本机端口为 5335 的 DNS 服务"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:125
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:138
+msgid "Use MOSDNS query (Not Support Oversea Mode)"
+msgstr "使用 MOSDNS 查询 (不支持海外用户回国模式)"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:114
 msgid "Use MosDNS query"
 msgstr "使用 MosDNS 查询"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1202
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1172
 msgid ""
 "Use it together with the DNS disguised type. You can fill in any domain."
 msgstr "配合伪装类型 DNS 使用，可随便填一个域名。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:142
-msgid "User Level"
-msgstr "用户等级"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:104
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:107
 msgid "User cancelled."
 msgstr "用户已取消。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1274
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:534
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1244
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:332
 msgid "User-Agent"
 msgstr "用户代理(User-Agent)"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:313
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1028
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:295
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/ssrurl.htm:1133
 msgid "Userinfo format error."
 msgstr "用户信息格式错误。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:481
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:89
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:122
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:489
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:110
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server.lua:117
 msgid "Username"
 msgstr "用户名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:613
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:596
 msgid "Users Authentication"
 msgstr "用户验证"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:371
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:395
 msgid "Using incorrect encryption mothod may causes service fail to start"
 msgstr "输入不正确的参数组合可能会导致服务无法启动"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:28
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:430
-msgid "V2Ray GEO Databases"
-msgstr "V2Ray GEO 数据库"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:337
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:342
 msgid "V2Ray/XRay"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:409
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:441
 msgid "V2Ray/XRay protocol"
 msgstr "V2Ray/XRay 协议"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:410
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:442
 msgid "VLESS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:922
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:892
 msgid "VLESS Encryption"
 msgstr "VLESS 加密"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:411
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:443
 msgid "VMess"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1183
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1193
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1153
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1163
 msgid "VideoCall (SRTP)"
 msgstr "视频通话（SRTP）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:782
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:752
 msgid "Vmess Protocol"
 msgstr "VMESS 协议"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:797
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:767
 msgid "Vmess UUID"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:914
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:884
 msgid "Vmess/VLESS ID (UUID)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:26
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:30
 msgid "WAN Force Proxy IP"
 msgstr "强制走代理的 WAN IP"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:21
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:25
 msgid "WAN IP AC"
 msgstr "WAN IP 访问控制"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:23
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/control.lua:27
 msgid "WAN White List IP"
 msgstr "不走代理的 WAN IP"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:987
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:252
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:957
 msgid "WebSocket Host"
 msgstr "WebSocket 主机名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:993
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:259
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:963
 msgid "WebSocket Path"
 msgstr "WebSocket 路径"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1185
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1195
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1155
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1165
 msgid "WechatVideo"
 msgstr "微信视频通话"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1235
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:96
+msgid "When disabled shunt mode, will same time stopped shunt service."
+msgstr "当停用分流模式时，将同时停止分流服务。"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:198
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:227
+msgid "When disabled, all AAAA requests are not resolved."
+msgstr "当禁用时，不解析所有 AAAA 请求。"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1205
 msgid "When enabled, it occupies IPv6 routing table 1023."
 msgstr "启用后，将占用 IPv6 路由表 1023。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:388
-msgid "When selected, it can be accessed from LAN. This may not be safe!"
-msgstr "一旦选定，即可通过局域网进行访问。但这样做可能存在安全隐患！"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:187
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:216
+msgid "When two or more DNS servers are deployed, enable this function."
+msgstr "当部署两台或两台以上 DNS 服务器时，需要启用该功能。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:379
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:161
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:189
 msgid ""
-"When selected, it can only be accessed locally. Recommended when using "
-"reverse proxies."
-msgstr "一旦启用，它只能在本地进行访问。在使用“反向代理”时建议使用此功能。"
+"When use DNS list file, please ensure list file exists and is formatted "
+"correctly."
+msgstr "当使用 DNS 列表文件时，请确保列表文件存在并且格式正确。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:415
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1187
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1197
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:447
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1157
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1167
 msgid "WireGuard"
 msgstr "WireGuard 数据包"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1267
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1237
 msgid "Wireguard allows only traffic from specific source IP."
 msgstr "Wireguard 仅允许特定源 IP 的流量。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1053
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1023
 msgid "XHTTP Extra"
 msgstr "XHTTP 附加项"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1041
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1011
 msgid "XHTTP Host"
 msgstr "XHTTP 主机名"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1032
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1002
 msgid "XHTTP Mode"
 msgstr "XHTTP 模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1047
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1017
 msgid "XHTTP Path"
 msgstr "XHTTP 路径"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:207
-msgid "XTLS"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:287
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:87
+msgid "Xray (Hysteria2)"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua:394
-msgid "Xray"
-msgstr "Xray"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:104
+msgid "Xray (ShadowSocks)"
+msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:225
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:318
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/servers.lua:94
+msgid "Xray (Trojan)"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:355
 msgid "Xray Fragment Settings"
 msgstr "Xray 分片设置"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:258
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:388
 msgid "Xray Noise Packets"
 msgstr "Xray 噪声数据包"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:5
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:394
-msgid "Xray-core"
-msgstr "Xray-core"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:275
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:20
-msgid "YAML Reload Failed!"
-msgstr "YAML 重载失败！"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_main_panel.htm:272
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/clash_panel_button.htm:17
-msgid "YAML Reloaded!"
-msgstr "YAML 已重载！"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:137
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:252
 msgid "adblock_url"
 msgstr "广告屏蔽更新 URL"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1171
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1141
 msgid "aes-128-gcm"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1584
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1537
 msgid "allow"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1578
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1531
 msgid "allow: Allows use Mux connection."
 msgstr "allow：允许走 Mux 连接。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1498
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1451
 msgid "allowInsecure"
 msgstr "允许不安全连接"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1266
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1236
 msgid "allowedIPs(optional)"
 msgstr "allowedIPs（可选）"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1388
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1352
 msgid "android"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:139
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:254
 msgid "anti-AD"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1172
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1142
 msgid "chacha20-poly1305"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:116
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:92
 msgid "china-operator-ip"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1277
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1384
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1247
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1348
 msgid "chrome"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1615
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1631
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:180
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:208
+msgid "cloudflare-dns.com DNSCrypt SDNS"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1568
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1584
 msgid "comment_tcpcongestion_disable"
 msgstr "系统默认值"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1548
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1501
 msgid "concurrency"
 msgstr "TCP 最大并发连接数"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1282
+#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/server_list.htm:678
+msgid "connect"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1252
 msgid "curl"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1612
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1628
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1565
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1581
 msgid "custom_tcpcongestion"
 msgstr "连接服务器节点的 TCP 拥塞控制算法"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1394
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1556
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1569
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1358
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1509
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1522
 msgid "disable"
 msgstr "禁用"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:228
-msgid "e.g.: /etc/ssl/fullchain.pem"
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:176
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:204
+msgid "dns.sb DNSCrypt SDNS"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:233
-msgid "e.g.: /etc/ssl/private.key"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1280
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1389
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1250
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1353
 msgid "edge"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:124
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:192
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:221
+msgid "fastest_addr"
+msgstr "最快响应"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:239
 msgid "felixonmars/dnsmasq-china-list"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1278
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1385
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1248
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1349
 msgid "firefox"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1150
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1120
 msgid "gRPC Idle Timeout"
 msgstr "gPRC 空闲超时"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1123
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1093
 msgid "gRPC Mode"
 msgstr "gRPC 模式"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1117
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1087
 msgid "gRPC Service Name"
 msgstr "gRPC 服务名称"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:106
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:82
 msgid "gfwlist Update url"
 msgstr "GFW 列表更新 URL"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:110
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:86
 msgid "gfwlist/gfwlist"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1281
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1251
 msgid "golang"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:552
-msgid "gost-plugin"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1387
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1351
 msgid "ios"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:562
-msgid "kcptun"
-msgstr ""
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:190
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:219
+msgid "load_balance"
+msgstr "负载均衡"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:835
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:805
 msgid "lossless UDP relay using QUIC streams"
 msgstr "使用 QUIC 流的无损 UDP 中继"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:300
-msgid "mKCP Camouflage Type"
-msgstr "mKCP 伪装（混淆）类型"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:46
-msgid "mihomo binary not found in archive"
-msgstr "压缩包中未找到 mihomo 二进制文件"
-
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:47
-msgid "naive binary not found in archive"
-msgstr "压缩包中未找到 naive 二进制文件"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:834
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:804
 msgid "native UDP characteristics"
 msgstr "原生 UDP 特性"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:514
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1373
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:99
+msgid "nfip_url"
+msgstr "Netflix IP 段更新 URL"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:521
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1337
 msgid "none"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:546
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:551
 msgid "obfs-local"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1391
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:191
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:220
+msgid "parallel"
+msgstr "并行查询"
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1355
 msgid "qq"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1392
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1356
 msgid "random"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1393
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1357
 msgid "randomized"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1583
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1536
 msgid "reject"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:561
-msgid "restls"
-msgstr ""
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1279
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1386
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1249
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1350
 msgid "safari"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:769
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:739
 msgid "shadow-TLS SNI"
 msgstr "服务器名称指示"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:747
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:560
+msgid "shadow-tls"
+msgstr ""
+
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:717
 msgid "shadowTLS protocol Version"
 msgstr "ShadowTLS 协议版本"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1585
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1538
 msgid "skip"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1579
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1532
 msgid ""
 "skip: Not use Mux module to carry UDP 443 traffic, Use original UDP "
 "transmission method of proxy protocol."
 msgstr ""
 "skip：不使用 Mux 模块承载 UDP 443 流量，将使用代理协议原本的 UDP 传输方式。"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1364
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1328
 msgid "spiderX"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:107
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/advanced.lua:83
 msgid "v2fly/domain-list-community"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:549
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:554
 msgid "v2ray-plugin"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:223
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua:289
 msgid "valid address:port"
 msgstr "有效的地址:端口"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:80
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/server-config.lua:101
 msgid "warning! Please do not reuse the port!"
 msgstr "警告！请不要重复使用端口！"
 
-#: applications/luci-app-ssr-plus/luasrc/view/shadowsocksr/component.htm:45
-msgid "xray binary not found in archive"
-msgstr "压缩包中未找到 xray 二进制文件"
-
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:555
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:557
 msgid "xray-plugin"
 msgstr ""
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1561
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1514
 msgid "xudpConcurrency"
 msgstr "UDP 最大并发连接数"
 
-#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1574
+#: applications/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua:1527
 msgid "xudpProxyUDP443"
 msgstr "对被代理的 UDP/443 流量处理方式"
-
-#~ msgid "Shadowsocks password"
-#~ msgstr "shadowsocks密码"
-
-#~ msgid "Are you sure you want to delete subscribe link: %s ? "
-#~ msgstr "确定删除此订阅链接：%s 吗？"
-
-#~ msgid "%s Node Use Type"
-#~ msgstr "%s 节点使用类型"
-
-#~ msgid "Drag reorder applies within the current page only."
-#~ msgstr "拖拽排序仅在当前分页内生效。"
-
-#~ msgid "Anti-pollution DNS Server For Shunt Mode"
-#~ msgstr "分流模式下的访问国外域名 DNS 服务器"
-
-#~ msgid "Are you sure to delete this node?"
-#~ msgstr "是否真的要删除该节点？"
-
-#~ msgid "Auto"
-#~ msgstr "自动"
-
-#~ msgid "ChinaDNS-NG shunt query protocol"
-#~ msgstr "ChinaDNS-NG 分流查询协议"
-
-#~ msgid "Click here to view or manage the DNS list file"
-#~ msgstr "点击此处查看或管理 DNS 列表文件"
-
-#~ msgid ""
-#~ "Custom DNS Server (support: IP:Port or tls://IP:Port or https://IP/dns-"
-#~ "query and other format)."
-#~ msgstr ""
-#~ "自定义 DNS 服务器（支持格式：IP:端口、tls://IP:端口、https://IP/dns-query "
-#~ "及其他格式）。"
-
-#~ msgid "Customize Netflix IP Url"
-#~ msgstr ""
-#~ "自定义 Netflix IP 段更新 URL（默认项目地址：https://github.com/QiuSimons/"
-#~ "Netflix_IP）"
-
-#~ msgid "DNS Query Mode For Shunt Mode"
-#~ msgstr "分流模式下的 DNS 查询模式"
-
-#~ msgid "Defines the upstreams logic mode"
-#~ msgstr "定义上游逻辑模式"
-
-#~ msgid ""
-#~ "Defines the upstreams logic mode, possible values: load_balance, "
-#~ "parallel, fastest_addr (default: load_balance)."
-#~ msgstr ""
-#~ "定义上游逻辑模式，可选择值：负载均衡、并行查询、最快响应（默认值：负载均"
-#~ "衡）。"
-
-#~ msgid "Disable IPv6 In MosDNS Query Mode (Shunt Mode)"
-#~ msgstr "禁止 MosDNS 返回 IPv6 记录 (分流模式)"
-
-#~ msgid "Disable IPv6 in MOSDNS query mode"
-#~ msgstr "禁止 MOSDNS 返回 IPv6 记录"
-
-#~ msgid "Disable IPv6 query mode"
-#~ msgstr "禁止返回 IPv6 记录"
-
-#~ msgid "Drag to reorder"
-#~ msgstr "拖动以重排"
-
-#~ msgid "Enable Netflix Mode"
-#~ msgstr "启用 Netflix 分流模式"
-
-#~ msgid "External Proxy Mode"
-#~ msgstr "分流服务器（前置）代理"
-
-#~ msgid "Forward Netflix Proxy through Main Proxy"
-#~ msgstr "分流服务器流量通过主服务节点中转代理转发"
-
-#~ msgid "Game Mode UDP Server"
-#~ msgstr "游戏模式 UDP 中继服务器"
-
-#~ msgid "Netflix Domain List"
-#~ msgstr "Netflix 分流域名列表"
-
-#~ msgid "Netflix IP Data"
-#~ msgstr "【Netflix IP 段】数据库"
-
-#~ msgid "Netflix Node"
-#~ msgstr "Netflix 分流服务器"
-
-#~ msgid "Network Tunnel"
-#~ msgstr "网络隧道"
-
-#~ msgid "Network interface to use"
-#~ msgstr "使用的网络接口"
-
-#~ msgid "No available core (Trojan or Xray) to import this node."
-#~ msgstr "没有可用的核心（Trojan 或 Xray）可以导入此节点。"
-
-#~ msgid "Oversea Mode"
-#~ msgstr "海外用户回国模式"
-
-#~ msgid "Redirect traffic to this network interface"
-#~ msgstr "分流到这个网络接口"
-
-#~ msgid "Client rules exported to CSV text."
-#~ msgstr "客户端规则已导出为 CSV 文本。"
-
-#~ msgid "Client rules imported from CSV text. Click Save to apply."
-#~ msgstr "客户端规则已从 CSV 文本导入，请点击保存生效。"
-
-#~ msgid "Same as Global Server"
-#~ msgstr "与全局服务器相同"
-
-#~ msgid "Save Order"
-#~ msgstr "保存当前顺序"
-
-#~ msgid "Save failed!"
-#~ msgstr "保存失败！"
-
-#~ msgid "Saved current page order successfully."
-#~ msgstr "保存当前页面顺序成功。"
-
-#~ msgid "Saving the new order..."
-#~ msgstr "正在保存新的顺序…"
-
-#~ msgid "Select DNS parse Mode"
-#~ msgstr "选择 DNS 解析方式"
-
-#~ msgid "Server"
-#~ msgstr "服务器"
-
-#~ msgid "Set Single DNS"
-#~ msgstr "设置单个 DNS"
-
-#~ msgid "Supports only Xray node types."
-#~ msgstr "仅支持 Xray 类型节点。"
-
-#~ msgid "TLS handshake test, latency for reference only"
-#~ msgstr "TLS握手测试，延时仅供参考"
-
-#~ msgid "Test"
-#~ msgstr "测试"
-
-#~ msgid "Testing..."
-#~ msgstr "检测中…"
-
-#~ msgid ""
-#~ "The configured type also applies to the core specified when manually "
-#~ "importing nodes."
-#~ msgstr "配置的类型同样适用于手动导入节点时所指定的核心程序。"
-
-#~ msgid "Tips: Dnsproxy DNS Parse List Path:"
-#~ msgstr "提示：Dnsproxy 的 DNS 解析列表路径："
-
-#~ msgid "To Bottom"
-#~ msgstr "置底"
-
-#~ msgid "To Top"
-#~ msgstr "置顶"
-
-#~ msgid "Use DNS List File"
-#~ msgstr "使用 DNS 列表文件"
-
-#~ msgid "Use DNS2SOCKS query and cache"
-#~ msgstr "使用 DNS2SOCKS 查询并缓存"
-
-#~ msgid "Use DNS2SOCKS-RUST query and cache"
-#~ msgstr "使用 DNS2SOCKS-RUST 查询并缓存"
-
-#~ msgid "Use MOSDNS query (Not Support Oversea Mode)"
-#~ msgstr "使用 MOSDNS 查询 (不支持海外用户回国模式)"
-
-#~ msgid "When disabled shunt mode, will same time stopped shunt service."
-#~ msgstr "当停用分流模式时，将同时停止分流服务。"
-
-#~ msgid "When disabled, all AAAA requests are not resolved."
-#~ msgstr "当禁用时，不解析所有 AAAA 请求。"
-
-#~ msgid "When two or more DNS servers are deployed, enable this function."
-#~ msgstr "当部署两台或两台以上 DNS 服务器时，需要启用该功能。"
-
-#~ msgid ""
-#~ "When use DNS list file, please ensure list file exists and is formatted "
-#~ "correctly."
-#~ msgstr "当使用 DNS 列表文件时，请确保列表文件存在并且格式正确。"
-
-#~ msgid "fastest_addr"
-#~ msgstr "最快响应"
-
-#~ msgid "load_balance"
-#~ msgstr "负载均衡"
-
-#~ msgid "nfip_url"
-#~ msgstr "Netflix IP 段更新 URL"
-
-#~ msgid "parallel"
-#~ msgstr "并行查询"
 
 #~ msgid "Congestion"
 #~ msgstr "拥塞控制"
@@ -3594,6 +2927,9 @@ msgstr "对被代理的 UDP/443 流量处理方式"
 #~ msgid "DNS Server IP:Port"
 #~ msgstr "DNS 服务器 IP:Port"
 
+#~ msgid "Update"
+#~ msgstr "更新"
+
 #~ msgid "Router Self AC"
 #~ msgstr "路由器自身代理设置"
 
@@ -3632,36 +2968,3 @@ msgstr "对被代理的 UDP/443 流量处理方式"
 
 #~ msgid "Reset Error"
 #~ msgstr "重置错误"
-
-#~ msgid "Selector"
-#~ msgstr "选择器"
-
-#~ msgid "DIRECT"
-#~ msgstr "直连"
-
-#~ msgid "REJECT"
-#~ msgstr "拒绝"
-
-#~ msgid "Proxy"
-#~ msgstr "代理"
-
-#~ msgid "Domestic"
-#~ msgstr "国内"
-
-#~ msgid "GlobalTV"
-#~ msgstr "国际流媒体"
-
-#~ msgid "AsianTV"
-#~ msgstr "亚洲流媒体"
-
-#~ msgid "Others"
-#~ msgstr "其他"
-
-#~ msgid "GLOBAL"
-#~ msgstr "全局"
-
-#~ msgid "Subscribe complete, refreshing page..."
-#~ msgstr "订阅完成，正在刷新页面..."
-
-#~ msgid "Include Mihomo (Clash Support)"
-#~ msgstr "包含 Mihomo（Clash 支持）"
