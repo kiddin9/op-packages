@@ -487,7 +487,7 @@ jobs:
         sed -i 's/+docker\( \|$\)/+docker +dockerd /' luci-app-!(docker*)/Makefile
         sed -i "s/192.168.0.1/10.0.0.1/g" luci-app-onekeyap/{htdocs/luci-static/resources/view/network/onekeyap.js,root/usr/libexec/onekeyap,root/etc/config/onekeyap}
         sed -i "s/2026.06.01"/3026.06.01"/g" luci-app-passwall/luasrc/model/cbi/passwall/client/type/ray.lua
-        sed -i "s/2026.06.01"/3026.06.01"/g" luci-app-passwall2/luasrc/model/cbi/passwall/client/type/ray.lua
+        sed -i "s/2026.06.01"/3026.06.01"/g" luci-app-passwall2/luasrc/model/cbi/passwall2/client/type/ray.lua
         chmod +x github/diy/*.sh
         bash .github/diy/create_acl_for_luci.sh -a >/dev/null 2>&1 || true
         bash .github/diy/convert_translation.sh -a >/dev/null 2>&1 || true
