@@ -3,14 +3,14 @@
 'require form';
 'require network';
 
-const callFileList = rpc.declare({
+var callFileList = rpc.declare({
 	object: 'file',
 	method: 'list',
 	params: [ 'path' ],
 	expect: { entries: [] },
 	filter: function(list, params) {
-		let rv = [];
-		for (let i = 0; i < list.length; i++)
+		var rv = [];
+		for (var i = 0; i < list.length; i++)
 			if (list[i].name.match(/^cdc-wdm/))
 				rv.push(params.path + list[i].name);
 		return rv.sort();
@@ -31,7 +31,7 @@ return network.registerProtocol('quectel', {
 		return this._ubus('l3_device') || 'quectel-%s'.format(this.sid);
 	},
 
-	getPackageName: function() {
+	getOpkgPackage: function() {
 		return 'quectel-cm';
 	},
 
@@ -52,14 +52,14 @@ return network.registerProtocol('quectel', {
 	},
 
 	renderFormOptions: function(s) {
-		let dev = this.getL3Device() || this.getDevice(), o;
+		var dev = this.getL3Device() || this.getDevice(), o;
 
 		o = s.taboption('general', form.Value, '_modem_device', _('Modem device'));
 		o.ucioption = 'device';
 		o.rmempty = false;
 		o.load = function(section_id) {
 			return callFileList('/dev/').then(L.bind(function(devices) {
-				for (let i = 0; i < devices.length; i++)
+				for (var i = 0; i < devices.length; i++)
 					this.value(devices[i]);
 				return form.Value.prototype.load.apply(this, [section_id]);
 			}, this));
@@ -99,7 +99,7 @@ return network.registerProtocol('quectel', {
 
 		o = s.taboption('advanced', form.Value, 'delay', _('Modem init timeout'),
 			_('Maximum amount of seconds to wait for the modem to become ready'));
-		o.placeholder = '10';
+		o.placeholder = '20';
 		o.datatype    = 'min(1)';
 
 		o = s.taboption('advanced', form.Value, 'mtu', _('Override MTU'));

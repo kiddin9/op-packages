@@ -8,7 +8,7 @@
 
 /*
 	Copyright 2022-2024 Rafał Wabik - IceG - From eko.one.pl forum
-	
+
 	MIT License
 */
 

@@ -1,0 +1,15 @@
+--- a/device.c
++++ b/device.c
+@@ -342,10 +342,12 @@ BOOL qmidevice_detect(char *qmichannel,
+                 switch (profile->usb_dev.idProduct) { //EC200U
+                 case 0x0901: //EC200U
+                 case 0x0902: //EC200D
++                case 0x0904: //EC200G
+                 case 0x8101: //RG801H
+                     atIntf = 2;
+                 break;
+                 case 0x0900: //RG500U
++                case 0x0903: //EC600
+                     atIntf = 4;
+                 break;
+                 case 0x6026: //EC200T

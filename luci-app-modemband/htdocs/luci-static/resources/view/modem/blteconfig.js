@@ -33,7 +33,7 @@ return view.extend({
 		o.noaliases  = false;
 		o.default = 'wan';
 */
-	
+
 		o = s.option(widgets.NetworkSelect, 'iface', _('Interface'),
 		_('Network interface for Internet access.')
 		);
@@ -42,11 +42,11 @@ return view.extend({
 		o.rmempty = false;
 		o.default = 'wan';
 
-		o = s.option(form.Value, 'set_port', _('Port for communication with the modem'), 
+		o = s.option(form.Value, 'set_port', _('Port for communication with the modem'),
 			_("Select one of the available ttyUSBX ports."));
 		devs.sort((a, b) => a.name > b.name);
 		devs.forEach(dev => o.value('/dev/' + dev.name));
-		
+
 		o.placeholder = _('Please select a port');
 		o.rmempty = false;
 
