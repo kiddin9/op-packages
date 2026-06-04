@@ -233,19 +233,6 @@ index 000000000000..a00fff9c79b3
 
 --- a/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
 +++ b/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
-@@ -29,6 +29,12 @@ touch /etc/ssrplus/ad.conf
- touch /etc/config/shadowsocksr
- 
- if [ -s "/etc/config/shadowsocksr" ]; then
-+    if ! uci -q get shadowsocksr.@server_subscribe_item[0] > /dev/null; then
-+        sid_output="$(uci add shadowsocksr server_subscribe_item)"
-+        uci -q set shadowsocksr.$sid_output.enabled=1
-+        uci -q set shadowsocksr.$sid_output.alias="Subscribe default"
-+    fi
-+
-     if uci -q get shadowsocksr.@server_subscribe[0].auto_update_time > /dev/null; then
-         uci -q delete shadowsocksr.@server_subscribe[0].auto_update_time
-     fi
 @@ -43,5 +43,8 @@ if [ -s "/etc/uwsgi/vassals/luci-webui.ini" ];then
  	/etc/init.d/uwsgi restart
  fi
@@ -285,3 +272,14 @@ index 000000000000..a00fff9c79b3
  
  if xray_version_val >= 260131 then
  	-- Xray 版本大于等于 26.1.31
+
+--- a/luci-app-ssr-plus/root/usr/share/shadowsocksr/shadowsocksr.config
++++ b/luci-app-ssr-plus/root/usr/share/shadowsocksr/shadowsocksr.config
+@@ -65,3 +65,7 @@ config clash_client_group
+ 	option ip_addr ''
+ 	option client_mac ''
+ 	option policy_group ''
++
++config server_subscribe_item
++	option enabled '1'
++	option alias 'Subscribe default'
