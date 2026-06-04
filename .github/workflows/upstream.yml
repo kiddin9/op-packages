@@ -233,7 +233,6 @@ jobs:
         git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
         git_clone https://github.com/linkease/istore-packages
         git clone https://github.com/laipeng668/luci-app-gecoosac gecoosac1 && mvdir gecoosac1
-        git_clone https://github.com/immortalwrt/wwan-packages && mv -f wwan-packages/*/* ./ && rm -rf wwan-packages
         ) &
         (
         git_clone https://github.com/muink/luci-app-dnsproxy
@@ -324,14 +323,14 @@ jobs:
         git_clone https://github.com/eamonxg/luci-theme-aurora
         ) &
         (
-        #git_clone https://github.com/bobbyunknown/luci-app-insomclash
+        git_clone https://github.com/bobbyunknown/FusionTunX && mv -f FusionTunX/openwrt/* && rm -rf FusionTunX
         git_clone https://github.com/muink/luci-app-ssrust
         git_clone https://github.com/hudra0/qosmate
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
-        # git_clone https://github.com/vison-v/luci-app-nginx-proxy
+        git_clone https://github.com/immortalwrt/wwan-packages && mv -f wwan-packages/*/* ./ ; rm -rf wwan-packages
         git_clone https://github.com/tty228/luci-app-wechatpush
         git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
         git_clone https://github.com/vernette/beszel-agent-openwrt && mvdir beszel-agent-openwrt
