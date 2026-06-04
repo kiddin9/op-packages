@@ -1,30 +1,32 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2024-2026 Anya Lin <hukk1996@gmail.com>
+
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo
 PKG_VERSION:=1.19.26
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
-PKG_SOURCE_VERSION:=v$(PKG_VERSION)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
-PKG_MIRROR_HASH:=skip
+PKG_SOURCE_URL:=https://codeload.github.com/metacubex/mihomo/tar.gz/v$(PKG_VERSION)?
+PKG_HASH:=skip
 
-PKG_LICENSE:=GPL3.0+
-PKG_MAINTAINER:=Joseph Mory <morytyann@gmail.com>
+PKG_MAINTAINER:=Anya Lin <hukk1996@gmail.com>
+PKG_LICENSE:=GPL-2.0
+PKG_LICENSE_FILES:=LICENSE
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-PKG_BUILD_VERSION:=v$(PKG_VERSION)
-PKG_BUILD_TIME:=$(shell date -u -Iseconds)
-
 GO_PKG:=github.com/metacubex/mihomo
-GO_PKG_LDFLAGS_X:=$(GO_PKG)/constant.Version=$(PKG_BUILD_VERSION) $(GO_PKG)/constant.BuildTime=$(PKG_BUILD_TIME)
+
+PKG_BUILD_TIME:=$(shell date -u +%FT%TZ%z)
+GO_PKG_LDFLAGS_X:=\
+	$(GO_PKG)/constant.Version=v$(PKG_VERSION) \
+	$(GO_PKG)/constant.BuildTime=$(PKG_BUILD_TIME)
 GO_PKG_TAGS:=with_gvisor
-GO_PKG_INSTALL_BIN_PATH:=/usr/libexec
 
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
@@ -32,24 +34,27 @@ include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 define Package/mihomo
   SECTION:=net
   CATEGORY:=Network
-  TITLE:=A rule based proxy in Go.
+  TITLE:=Another Mihomo Kernel.
   URL:=https://wiki.metacubex.one
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle
+  DEPENDS:=$(GO_ARCH_DEPENDS)
+  PROVIDES:=mihomo
   ALTERNATIVES:=\
-    300:/usr/bin/mihomo:/usr/libexec/mihomo
-endef
-
-define Package/mihomo/description
-  Mihomo is a rule based proxy in Go.
-endef
-
-define Package/mihomo/install
-	$(call GoPackage/Package/Install/Bin,$(1))
+    100:/usr/bin/mihomo:/usr/libexec/mihomo-core
+  USERID:=mihomo=7890:mihomo=7890
 endef
 
 define Build/Prepare
 	$(Build/Prepare/Default)
-	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test
+	# rm unit test
+	rm -f $(PKG_BUILD_DIR)/rules/logic_test/logic_test.go
+endef
+
+define Package/mihomo/install
+	$(call GoPackage/Package/Install/Bin,$(PKG_INSTALL_DIR))
+	$(CURDIR)/.prepare.sh $(VERSION) $(CURDIR) $(PKG_INSTALL_DIR)/usr/bin/$(PKG_NAME)
+
+	$(INSTALL_DIR) $(1)/usr/libexec/
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/$(PKG_NAME) $(1)/usr/libexec/mihomo-core
 endef
 
 $(eval $(call GoBinPackage,mihomo))

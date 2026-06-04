@@ -37,12 +37,6 @@ touch /etc/ssrplus/ad.conf
 touch /etc/config/shadowsocksr
 
 if [ -s "/etc/config/shadowsocksr" ]; then
-    if ! uci -q get shadowsocksr.@server_subscribe_item[0] > /dev/null; then
-        sid_output="$(uci add shadowsocksr server_subscribe_item)"
-        uci -q set shadowsocksr.$sid_output.enabled=1
-        uci -q set shadowsocksr.$sid_output.alias="Subscribe default"
-    fi
-
     if uci -q get shadowsocksr.@server_subscribe[0].auto_update_time > /dev/null; then
         uci -q delete shadowsocksr.@server_subscribe[0].auto_update_time
     fi
