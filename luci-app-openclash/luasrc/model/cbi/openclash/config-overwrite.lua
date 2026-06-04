@@ -11,7 +11,7 @@ local datatype = require "luci.cbi.datatypes"
 
 -- 优化 CBI UI（新版 LuCI 专用）
 local function optimize_cbi_ui()
-	luci.http.write([[
+	HTTP.write([[
 		<script type="text/javascript">
 			// 修正上移、下移按钮名称
 			document.querySelectorAll("input.btn.cbi-button.cbi-button-up").forEach(function(btn) {
@@ -328,6 +328,13 @@ o = s:taboption("meta", Flag, "enable_unified_delay", font_red..bold_on..transla
 o.description = font_red..bold_on..translate("Change The Delay Calculation Method To Remove Extra Delays Such as Handshaking")..bold_off..font_off
 o.default = "0"
 
+o = s:taboption("meta", Value, "global_ua", translate("Global User-Agent"))
+o:value("0", translate("Disable"))
+o:value("clash-verge/v2.4.5")
+o:value("clash.meta/1.19.20")
+o:value("Clash")
+o.default = "0"
+
 o = s:taboption("meta", ListValue, "find_process_mode", translate("Enable Process Rule"))
 o.description = translate("Whether to Enable Process Rules, Only Works on Routerself, If You Are Not Sure, Please Choose off Which Useful in Router Environment, Depend on kmod-inet-diag")
 o:value("0", translate("Disable"))
@@ -497,15 +504,15 @@ ds.anonymous = true
 ds.addremove = true
 ds.sortable = true
 ds.template = "openclash/tblsection"
-ds.extedit = luci.dispatcher.build_url("admin/services/openclash/custom-dns-edit/%s")
+ds.extedit = DISP.build_url("admin/services/openclash/custom-dns-edit/%s")
 function ds.create(self, section)
 	local sid = TypedSection.create(self, section)
 	if sid then
-		local name = luci.http.formvalue("cbi.cts.tagname.".. self.config .. "." .. self.sectiontype)
+		local name = HTTP.formvalue("cbi.cts.tagname.".. self.config .. "." .. self.sectiontype)
 		if name and #name > 0 then
 			self.map.uci:set("openclash", sid, "group", name)
 		end
-		luci.http.redirect(ds.extedit % sid)
+		HTTP.redirect(ds.extedit % sid)
 		return
 	end
 end

@@ -86,17 +86,6 @@ DOWNLOAD_RESULT=$?
 
 config_cus_up()
 {
-	if [ -z "$CONFIG_PATH" ]; then
-      for file_name in /etc/openclash/config/*
-      do
-         if [ -f "$file_name" ]; then
-            CONFIG_PATH=$file_name
-            break
-         fi
-      done
-      uci -q set openclash.config.config_path="$CONFIG_PATH"
-      uci commit openclash
-	fi
 	if [ -z "$subscribe_url_param" ]; then
 	   if [ -n "$key_match_param" ] || [ -n "$key_ex_match_param" ]; then
 	      LOG_OUT "Config File【$name】Start Picking Nodes..."	      
@@ -192,6 +181,10 @@ config_su_check()
       mv "$CFG_FILE" "$CONFIG_FILE" 2>/dev/null
       LOG_OUT "Config File【$name】Update Successful!"
    fi
+   if [ -z "$CONFIG_PATH" ]; then
+      uci -q set openclash.config.config_path="$CONFIG_FILE"
+      uci commit openclash
+	fi
    if [ "$CONFIG_FILE" == "$CONFIG_PATH" ]; then
       restart=1
    fi
@@ -335,13 +328,13 @@ sub_info_get()
    config_get "udp" "$section" "udp" ""
    config_get "skip_cert_verify" "$section" "skip_cert_verify" ""
    config_get "sort" "$section" "sort" ""
-   config_get "convert_address" "$section" "convert_address" ""
+   config_get "convert_address" "$section" "convert_address" "https://api.asailor.org/sub"
    config_get "template" "$section" "template" ""
    config_get "node_type" "$section" "node_type" ""
    config_get "rule_provider" "$section" "rule_provider" ""
    config_get "custom_template_url" "$section" "custom_template_url" ""
    config_get "de_ex_keyword" "$section" "de_ex_keyword" ""
-   config_get "sub_ua" "$section" "sub_ua" "clash.meta"
+   config_get "sub_ua" "$section" "sub_ua" "clash-verge/v2.4.5"
 
    CONFIG_FILE="/etc/openclash/config/$name.yaml"
    CFG_FILE="/tmp/$name.yaml"

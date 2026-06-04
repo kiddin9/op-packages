@@ -5,20 +5,10 @@
 . /usr/share/openclash/uci.sh
 
 LOG_FILE="/tmp/openclash.log"
-CONFIG_FILE="/etc/openclash/$(uci_get_config "config_path" |awk -F '/' '{print $5}' 2>/dev/null)"
-ipv6_enable=$(uci_get_config "ipv6_enable" || echo 0)
-enable_redirect_dns=$(uci_get_config "enable_redirect_dns")
-dns_port=$(uci_get_config "dns_port")
-disable_masq_cache=$(uci_get_config "disable_masq_cache")
-cfg_update_interval=$(uci_get_config "config_update_interval" || echo 60)
-log_size=$(uci_get_config "log_size" || echo 1024)
-router_self_proxy=$(uci_get_config "router_self_proxy" || echo 1)
-stream_auto_select_interval=$(uci_get_config "stream_auto_select_interval" || echo 30)
-skip_proxy_address=$(uci_get_config "skip_proxy_address" || echo 0)
-CFG_UPDATE_INT=1
+CFG_UPDATE_INT=0
 SKIP_PROXY_ADDRESS=1
 SKIP_PROXY_ADDRESS_INTERVAL=30
-STREAM_AUTO_SELECT=1
+STREAM_AUTO_SELECT=0
 FIREWALL_RELOAD=0
 MAX_FIREWALL_RELOAD=3
 FW4=$(command -v fw4)
@@ -155,11 +145,20 @@ end" 2>/dev/null >> $LOG_FILE
 
 while :;
 do
+   CONFIG_FILE="/etc/openclash/$(uci_get_config "config_path" |awk -F '/' '{print $5}' 2>/dev/null)"
+   ipv6_enable=$(uci_get_config "ipv6_enable" || echo 0)
+   enable_redirect_dns=$(uci_get_config "enable_redirect_dns")
+   dns_port=$(uci_get_config "dns_port")
+   disable_masq_cache=$(uci_get_config "disable_masq_cache")
+   log_size=$(uci_get_config "log_size" || echo 1024)
+   router_self_proxy=$(uci_get_config "router_self_proxy" || echo 1)
+   skip_proxy_address=$(uci_get_config "skip_proxy_address" || echo 0)
+
    cfg_update=$(uci_get_config "auto_update")
    cfg_update_mode=$(uci_get_config "config_auto_update_mode")
-   cfg_update_interval_now=$(uci_get_config "config_update_interval" || echo 60)
+   cfg_update_interval=$(uci_get_config "config_update_interval" || echo 60)
    stream_auto_select=$(uci_get_config "stream_auto_select" || echo 0)
-   stream_auto_select_interval_now=$(uci_get_config "stream_auto_select_interval" || echo 30)
+   stream_auto_select_interval=$(uci_get_config "stream_auto_select_interval" || echo 30)
    stream_auto_select_netflix=$(uci_get_config "stream_auto_select_netflix" || echo 0)
    stream_auto_select_disney=$(uci_get_config "stream_auto_select_disney" || echo 0)
    stream_auto_select_hbo_max=$(uci_get_config "stream_auto_select_hbo_max" || echo 0)
@@ -172,6 +171,8 @@ do
    stream_auto_select_bilibili=$(uci_get_config "stream_auto_select_bilibili" || echo 0)
    stream_auto_select_google_not_cn=$(uci_get_config "stream_auto_select_google_not_cn" || echo 0)
    stream_auto_select_openai=$(uci_get_config "stream_auto_select_openai" || echo 0)
+   stream_auto_select_claude=$(uci_get_config "stream_auto_select_claude" || echo 0)
+   stream_auto_select_gemini=$(uci_get_config "stream_auto_select_gemini" || echo 0)
    upnp_lease_file=$(uci -q get upnpd.config.upnp_lease_file)
 
 #wait for core start complete
@@ -362,65 +363,71 @@ fi
 
 ## 配置文件循环更新
    if [ "$cfg_update" -eq 1 ] && [ "$cfg_update_mode" -eq 1 ]; then
-      [ "$cfg_update_interval" -ne "$cfg_update_interval_now" ] && CFG_UPDATE_INT=0 && cfg_update_interval="$cfg_update_interval_now"
       if [ "$CFG_UPDATE_INT" -ne 0 ]; then
-         [ "$(expr "$CFG_UPDATE_INT" % "$cfg_update_interval_now")" -eq 0 ] && /usr/share/openclash/openclash.sh
+         [ "$(expr "$CFG_UPDATE_INT" % "$cfg_update_interval")" -eq 0 ] && /usr/share/openclash/openclash.sh
       fi
       CFG_UPDATE_INT=$(expr "$CFG_UPDATE_INT" + 1)
    fi
 
 ##STREAMING_UNLOCK_CHECK
    if [ "$stream_auto_select" -eq 1 ] && [ "$router_self_proxy" -eq 1 ]; then
-      [ "$stream_auto_select_interval" -ne "$stream_auto_select_interval_now" ] && STREAM_AUTO_SELECT=1 && stream_auto_select_interval="$stream_auto_select_interval_now"
       if [ "$STREAM_AUTO_SELECT" -ne 0 ]; then
-         if [ "$(expr "$STREAM_AUTO_SELECT" % "$stream_auto_select_interval_now")" -eq 0 ] || [ "$STREAM_AUTO_SELECT" -eq 1 ]; then
+         if [ "$(expr "$STREAM_AUTO_SELECT" % "$stream_auto_select_interval")" -eq 0 ] || [ "$STREAM_AUTO_SELECT" -eq 1 ]; then
             if [ "$stream_auto_select_netflix" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Netflix Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Netflix】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Netflix" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_disney" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Disney Plus Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Disney Plus】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Disney Plus" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_google_not_cn" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Google Not CN Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Google Not CN】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Google" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_ytb" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For YouTube Premium Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【YouTube Premium】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "YouTube Premium" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_prime_video" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Amazon Prime Video Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Amazon Prime Video】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Amazon Prime Video" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_hbo_max" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For HBO Max Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【HBO Max】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "HBO Max" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_tvb_anywhere" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For TVB Anywhere+ Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【TVB Anywhere+】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "TVB Anywhere+" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_dazn" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For DAZN Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【DAZN】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "DAZN" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_paramount_plus" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Paramount Plus Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Paramount Plus】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Paramount Plus" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_discovery_plus" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Discovery Plus Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Discovery Plus】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Discovery Plus" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_bilibili" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For Bilibili Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【Bilibili】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "Bilibili" >> $LOG_FILE
             fi
             if [ "$stream_auto_select_openai" -eq 1 ]; then
-               LOG_TIP "Start Auto Select Proxy For OpenAI Unlock..."
+               LOG_TIP "Start Auto Select Unlock Proxy For【OpenAI】..."
                /usr/share/openclash/openclash_streaming_unlock.lua "OpenAI" >> $LOG_FILE
+            fi
+            if [ "$stream_auto_select_claude" -eq 1 ]; then
+               LOG_TIP "Start Auto Select Unlock Proxy For【Claude】..."
+               /usr/share/openclash/openclash_streaming_unlock.lua "Claude" >> $LOG_FILE
+            fi
+            if [ "$stream_auto_select_gemini" -eq 1 ]; then
+               LOG_TIP "Start Auto Select Unlock Proxy For【Gemini】..."
+               /usr/share/openclash/openclash_streaming_unlock.lua "Gemini" >> $LOG_FILE
             fi
          fi
       fi

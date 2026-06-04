@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=beszel-agent
 PKG_VERSION:=0.18.7
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 ifeq ($(ARCH),aarch64)
   PKG_ARCH:=arm64
@@ -45,7 +45,11 @@ endef
 
 define Build/Compile
 	if command -v upx >/dev/null 2>&1; then \
-		upx --best --lzma $(PKG_BUILD_DIR)/beszel-agent || true; \
+		if [ "$(BESZEL_GOARCH)" = "mips" ] || [ "$(BESZEL_GOARCH)" = "mipsle" ]; then \
+			echo "Skipping UPX compression for MIPS architectures (prevents execution hang)..."; \
+		else \
+			upx --best --lzma $(PKG_BUILD_DIR)/beszel-agent || true; \
+		fi; \
 	fi
 endef
 
