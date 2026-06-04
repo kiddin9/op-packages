@@ -44,10 +44,6 @@
 /accel-ppp
 /luci-app-apinger
 /luci-app-keepalived
-/quectel_SRPD_PCIE
-/fibocom_MHI
-/meig_QMI_WWAN
-/quectel_Gobinet
 /vsftpd-alt
 /luci-app-nginx-pingos
 /configs
@@ -61,4 +57,10 @@
 /speedtestc
 /srelay
 /fibocom-dial
-luci-app-tailscale*
+/*_QMI_WWAN
+/quectel_MHI
+/quectel_SRPD_PCIE
+/fibocom_MHI
+/meig_QMI_WWAN
+/quectel_Gobinet
+/luci-app-tailscale*
