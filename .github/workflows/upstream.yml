@@ -323,7 +323,7 @@ jobs:
         git_clone https://github.com/eamonxg/luci-theme-aurora
         ) &
         (
-        git_clone https://github.com/bobbyunknown/FusionTunX && mv -f FusionTunX/openwrt/* && rm -rf FusionTunX
+        git_clone https://github.com/bobbyunknown/FusionTunX && mv -f FusionTunX/openwrt/* ./ && rm -rf FusionTunX
         git_clone https://github.com/muink/luci-app-ssrust
         git_clone https://github.com/hudra0/qosmate
         git_clone https://github.com/xptsp/luci-app-ympd
