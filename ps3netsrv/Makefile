@@ -1,24 +1,20 @@
+# SPDX-License-Identifier: GPL-3.0-only
 #
-# Copyright (C) 2021 ImmortalWrt
-# <https://immortalwrt.org>
-#
-# This is free software, licensed under the GNU General Public License v3.
-# See /LICENSE for more information.
-#
+# Copyright (C) 2021-2026 ImmortalWrt.org
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ps3netsrv
-PKG_VERSION:=20240210a
-PKG_RELEASE:=1
+PKG_VERSION:=20250803
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/jhonathanc/ps3netsrv/tar.gz/$(PKG_VERSION)?
 PKG_HASH:=skip
 
-PKG_LICENSE:=GPLv3
-PKG_LICENSE_FILES:=COPYING
-PKG_MAINTAINER:=JCorrea
+PKG_LICENSE:=GPL-3.0-or-later
+PKG_LICENSE_FILES:=LICENSE.TXT
+PKG_MAINTAINER:=Tianling Shen <cnsztl@immortalwrt.org>
 
 PKG_BUILD_PARALLEL:=1
 
@@ -29,13 +25,15 @@ define Package/ps3netsrv
   CATEGORY:=Network
   SUBMENU:=File Transfer
   TITLE:=PS3 Game Server
-  URL:=https://github.com/jhonathanc/ps3netsrv-openwrt
+  URL:=https://github.com/jhonathanc/ps3netsrv
   DEPENDS:=+libpthread +libstdcpp
 endef
 
 define Package/ps3netsrv/description
-  ps3netsrv allows you to stream games and ISOs over the network to your CFW PlayStation(R) 3 system.
-  This may be useful if you have a modified PS3, and your router has storage options.
+  ps3netsrv allows you to stream games and ISOs over the network to
+  your CFW PlayStation(R) 3 system.
+  This may be useful if you have a modified PS3, and your router
+  has storage options.
 endef
 
 define Package/ps3netsrv/install
