@@ -18,7 +18,7 @@ LUCI_DEPENDS:=+bc +nftables +bash +conntrack
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=3.2.4
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 PKG_MAINTAINER:=sirpdboy <herboy2008@gmail.com>
 
 define Build/Compile
