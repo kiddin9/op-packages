@@ -23,7 +23,7 @@ init_conf() {
 	config_get "upload_dir" "config" "upload_dir" "$DEFAULT_UPLOAD_DIR"
 	config_get "enabled" "config" "enabled" "0"
 	config_get "port" "config" "port" "60650"
-	config_get "isonlyoneprot" "config" "isonlyoneprot" "0"
+	config_get "isonlyoneprot" "config" "isonlyoneprot" "1"
 	config_get "m_port" "config" "m_port" "8080"
 	config_get "https" "config" "https" "0"
 	config_get "crt_file" "config" "crt_file" "$DEFAULT_CRT_FILE"
@@ -60,7 +60,7 @@ normalize_conf() {
 	is_port "$m_port" || m_port="8080"
 
 	[ "$enabled" = "1" ] || enabled="0"
-	[ "$isonlyoneprot" = "1" ] || isonlyoneprot="0"
+	[ "$isonlyoneprot" = "0" ] || isonlyoneprot="1"
 	[ "$https" = "1" ] || https="0"
 	case "$lang" in
 		zh|en) ;;

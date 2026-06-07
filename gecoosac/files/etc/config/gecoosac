@@ -1,7 +1,7 @@
 config gecoosac 'config'
 	option enabled '0'
 	option port '60650'
-	option isonlyoneprot '0'
+	option isonlyoneprot '1'
 	option m_port '8080'
 	option https '0'
 	option crt_file '/etc/gecoosac/tls/gecoosac.crt'

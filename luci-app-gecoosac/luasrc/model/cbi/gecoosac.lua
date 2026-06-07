@@ -104,30 +104,30 @@ o.datatype    = "port"
 o.rmempty     = false
 
 o = s:option(Flag, "isonlyoneprot", translate("Single Port Mode"), translate("Do not enable the independent management port, only use one port for management."))
-o.default = 0
+o.default = 1
 o.rmempty = false
 
 o = s:option(Value, "m_port", translate("Set management port"))
 o.placeholder = 8080
 o.default     = 8080
 o.datatype    = "port"
-o:depends("isonlyoneprot", "0")
+o:depends("isonlyoneprot", false)
 
 o = s:option(Flag, "https", translate("Enable HTTPS service"), translate("A certificate file must be specified, otherwise it will fail to start."))
 o.default = 0
-o:depends("isonlyoneprot", "0")
+o:depends("isonlyoneprot", false)
 
 o = s:option(Value, "crt_file", translate("Specify crt certificate file"))
 o.placeholder = DEFAULT_CRT_FILE
 o.default     = DEFAULT_CRT_FILE
 o.validate    = validate_abs_path
-o:depends({isonlyoneprot = "0", https = "1"})
+o:depends("https", true)
 
 o = s:option(Value, "key_file", translate("Specify key certificate file"))
 o.placeholder = DEFAULT_KEY_FILE
 o.default     = DEFAULT_KEY_FILE
 o.validate    = validate_abs_path
-o:depends({isonlyoneprot = "0", https = "1"})
+o:depends("https", true)
 
 upload_dir = s:option(Value, "upload_dir", translate("Upload dir path"), translate("The path to upload AP upgrade firmware"))
 upload_dir.placeholder = DEFAULT_UPLOAD_DIR

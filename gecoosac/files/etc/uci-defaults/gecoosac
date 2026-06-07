@@ -20,7 +20,7 @@ set_default() {
 ensure_section
 set_default enabled 0
 set_default port 60650
-set_default isonlyoneprot 0
+set_default isonlyoneprot 1
 set_default m_port 8080
 set_default https 0
 set_default crt_file /etc/gecoosac/tls/gecoosac.crt
