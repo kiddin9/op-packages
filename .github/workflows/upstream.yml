@@ -332,7 +332,7 @@ jobs:
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
-        git_clone https://github.com/immortalwrt/wwan-packages && mv -f wwan-packages/*/* ./ && rm -rf wwan-packages
+        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/wwan package/lean package/network/services/shellsync package/qca/shortcut-fe && cp -rf wwan/*/* ./ ; rm -Rf wwan
         git_clone https://github.com/tty228/luci-app-wechatpush
         git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
         git_clone https://github.com/vernette/beszel-agent-openwrt && mvdir beszel-agent-openwrt
