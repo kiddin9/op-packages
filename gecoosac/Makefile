@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
 PKG_VERSION:=2.2.20251015
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 ifeq ($(ARCH),aarch64)
   PKG_ARCH:=ac_linux_arm64
@@ -41,7 +41,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=Network
   TITLE:=gecoosac server (version $(PKG_VERSION))
   URL:=http://www.cnrouter.com/
-  DEPENDS:=@(aarch64||arm||i386||mips||mipsel||x86_64) +px5g-mbedtls
+  DEPENDS:=@(aarch64||arm||i386||mips||mipsel||x86_64) +openssl-util
 endef
 
 define Package/$(PKG_NAME)/conffiles

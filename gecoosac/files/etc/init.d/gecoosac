@@ -16,6 +16,7 @@ DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
 DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
 DEFAULT_PID_DIR=/var/run/
 DEFAULT_LANG=zh
+CERT_TIMEOUT=60
 
 init_conf() {
 	config_load "gecoosac"
@@ -50,6 +51,122 @@ is_port() {
 	[ "$1" -ge 1 ] 2>/dev/null && [ "$1" -le 65535 ]
 }
 
+run_with_timeout() {
+	local timeout pid i
+
+	timeout="$1"
+	shift
+
+	"$@" >/dev/null 2>&1 &
+	pid="$!"
+	i=0
+
+	while kill -0 "$pid" >/dev/null 2>&1; do
+		if [ "$i" -ge "$timeout" ]; then
+			kill "$pid" >/dev/null 2>&1
+			sleep 1
+			kill -9 "$pid" >/dev/null 2>&1
+			wait "$pid" 2>/dev/null
+			return 1
+		fi
+		sleep 1
+		i=$((i + 1))
+	done
+
+	wait "$pid"
+}
+
+is_ipv4() {
+	local old_ifs part
+
+	old_ifs="$IFS"
+	IFS=.
+	set -- $1
+	IFS="$old_ifs"
+
+	[ "$#" -eq 4 ] || return 1
+	for part in "$@"; do
+		case "$part" in
+			""|*[!0-9]*) return 1 ;;
+		esac
+		[ "$part" -le 255 ] 2>/dev/null || return 1
+	done
+
+	return 0
+}
+
+cert_matches_san() {
+	local cert_file="$1"
+	local cert_host="$2"
+	local cert_ip="$3"
+	local san
+
+	[ -s "$cert_file" ] || return 1
+	san="$(openssl x509 -in "$cert_file" -noout -ext subjectAltName 2>/dev/null)" || return 1
+	echo "$san" | grep -F -q "DNS:${cert_host}" || return 1
+	[ -z "$cert_ip" ] || echo "$san" | grep -F -q "IP Address:${cert_ip}" || return 1
+
+	return 0
+}
+
+generate_default_cert() {
+	local cert_host cert_ip cert_cn cert_san tmp_crt tmp_key
+
+	if ! command -v openssl >/dev/null 2>&1; then
+		logger -t gecoosac "openssl is required to generate the default HTTPS certificate"
+		return 1
+	fi
+
+	cert_host="$(uci -q get system.@system[0].hostname)"
+	case "$cert_host" in
+		""|*[!A-Za-z0-9.-]*) cert_host="GecoosAC" ;;
+	esac
+
+	cert_ip="$(uci -q get network.lan.ipaddr)"
+	is_ipv4 "$cert_ip" || cert_ip=""
+
+	if [ -s "$DEFAULT_KEY_FILE" ] && cert_matches_san "$DEFAULT_CRT_FILE" "$cert_host" "$cert_ip"; then
+		return 0
+	fi
+
+	mkdir -p /etc/gecoosac/tls
+
+	cert_cn="${cert_ip:-$cert_host}"
+	cert_san="DNS:$cert_host"
+	[ -n "$cert_ip" ] && cert_san="${cert_san},IP:${cert_ip}"
+	tmp_crt="${DEFAULT_CRT_FILE}.tmp"
+	tmp_key="${DEFAULT_KEY_FILE}.tmp"
+
+	rm -f "$tmp_crt" "$tmp_key"
+	run_with_timeout "$CERT_TIMEOUT" openssl req \
+		-x509 \
+		-nodes \
+		-newkey ec \
+		-pkeyopt ec_paramgen_curve:prime256v1 \
+		-pkeyopt ec_param_enc:named_curve \
+		-sha256 \
+		-days 3650 \
+		-keyout "$tmp_key" \
+		-out "$tmp_crt" \
+		-subj "/CN=$cert_cn" \
+		-addext "basicConstraints=critical,CA:FALSE" \
+		-addext "keyUsage=digitalSignature" \
+		-addext "extendedKeyUsage=serverAuth" \
+		-addext "subjectAltName=$cert_san"
+
+	if [ -s "$tmp_crt" ] && [ -s "$tmp_key" ] && cert_matches_san "$tmp_crt" "$cert_host" "$cert_ip"; then
+		mv "$tmp_key" "$DEFAULT_KEY_FILE"
+		mv "$tmp_crt" "$DEFAULT_CRT_FILE"
+		chmod 600 "$DEFAULT_KEY_FILE"
+		chmod 644 "$DEFAULT_CRT_FILE"
+		return 0
+	fi
+
+	rm -f "$tmp_crt" "$tmp_key"
+	logger -t gecoosac "failed to generate default HTTPS certificate"
+	return 1
+}
+
 normalize_conf() {
 	is_abs_path "$upload_dir" || upload_dir="$DEFAULT_UPLOAD_DIR"
 	is_abs_path "$db_dir" || db_dir="$DEFAULT_DB_DIR"
@@ -75,81 +192,6 @@ ensure_dirs() {
 	mkdir -p "$upload_dir" "$db_dir" "$piddir" /etc/gecoosac/tls
 }
 
-generate_default_cert() {
-	local cert_host cert_ip cert_cn cert_san tmp_crt tmp_key
-
-	[ "$crt_file" = "$DEFAULT_CRT_FILE" ] || return 1
-	[ "$key_file" = "$DEFAULT_KEY_FILE" ] || return 1
-
-	if ! command -v px5g >/dev/null 2>&1; then
-		logger -t gecoosac "px5g is required to generate the default HTTPS certificate"
-		return 1
-	fi
-
-	cert_host="$(uci -q get system.@system[0].hostname)"
-	case "$cert_host" in
-		""|*[!A-Za-z0-9._-]*) cert_host="GecoosAC" ;;
-	esac
-
-	cert_ip="$(uci -q get network.lan.ipaddr)"
-	case "$cert_ip" in
-		""|*[!0-9.]*) cert_ip="" ;;
-	esac
-
-	cert_cn="${cert_ip:-$cert_host}"
-	cert_san="DNS:$cert_host"
-	[ -n "$cert_ip" ] && cert_san="${cert_san},IP:${cert_ip}"
-	tmp_crt="${crt_file}.tmp"
-	tmp_key="${key_file}.tmp"
-
-	rm -f "$tmp_crt" "$tmp_key"
-	px5g selfsigned \
-		-days 3650 \
-		-newkey rsa:2048 \
-		-keyout "$tmp_key" \
-		-out "$tmp_crt" \
-		-subj "/CN=$cert_cn" \
-		-addext "subjectAltName=$cert_san" \
-		-addext "extendedKeyUsage=serverAuth" >/dev/null 2>&1
-
-	if [ ! -r "$tmp_crt" ] || [ ! -r "$tmp_key" ]; then
-		rm -f "$tmp_crt" "$tmp_key"
-		px5g selfsigned \
-			-days 3650 \
-			-newkey rsa:2048 \
-			-keyout "$tmp_key" \
-			-out "$tmp_crt" \
-			-subj "/CN=$cert_cn" >/dev/null 2>&1
-	fi
-
-	if [ -r "$tmp_crt" ] && [ -r "$tmp_key" ]; then
-		mv "$tmp_key" "$key_file"
-		mv "$tmp_crt" "$crt_file"
-	else
-		rm -f "$tmp_crt" "$tmp_key"
-	fi
-
-	if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
-		# Some older px5g builds only support writing directly to final paths.
-		rm -f "$crt_file" "$key_file"
-		px5g selfsigned \
-			-days 3650 \
-			-newkey rsa:2048 \
-			-keyout "$key_file" \
-			-out "$crt_file" \
-			-subj "/CN=$cert_cn" >/dev/null 2>&1
-
-		if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
-			logger -t gecoosac "failed to generate default HTTPS certificate"
-			return 1
-		fi
-	fi
-
-	chmod 600 "$key_file"
-	chmod 644 "$crt_file"
-	return 0
-}
-
 start_service() {
 	init_conf
 	normalize_conf
@@ -163,11 +205,13 @@ start_service() {
 	ensure_dirs
 
 	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
+		if [ "$crt_file" = "$DEFAULT_CRT_FILE" ] && [ "$key_file" = "$DEFAULT_KEY_FILE" ]; then
+			generate_default_cert || return 1
+		fi
+
 		if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
-			generate_default_cert || {
-				logger -t gecoosac "HTTPS is enabled but certificate or key file is missing"
-				return 1
-			}
+			logger -t gecoosac "HTTPS is enabled but certificate or key file is missing"
+			return 1
 		fi
 	fi
 

@@ -113,7 +113,7 @@ o.default     = 8080
 o.datatype    = "port"
 o:depends("isonlyoneprot", false)
 
-o = s:option(Flag, "https", translate("Enable HTTPS service"), translate("A certificate file must be specified, otherwise it will fail to start."))
+o = s:option(Flag, "https", translate("Enable HTTPS service"), translate("Default certificate files are generated when HTTPS starts; custom paths must point to readable files."))
 o.default = 0
 o:depends("isonlyoneprot", false)
 

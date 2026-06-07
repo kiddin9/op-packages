@@ -1,6 +1,10 @@
 #!/bin/sh
 
 changed=0
+DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
+DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
+OLD_CRT_FILE=/etc/gecoosac/tls/1.crt
+OLD_KEY_FILE=/etc/gecoosac/tls/1.key
 
 ensure_section() {
 	uci -q get gecoosac.config >/dev/null && return 0
@@ -17,14 +21,32 @@ set_default() {
 	changed=1
 }
 
+migrate_legacy_cert_paths() {
+	local crt_file key_file
+
+	crt_file="$(uci -q get gecoosac.config.crt_file)"
+	key_file="$(uci -q get gecoosac.config.key_file)"
+
+	if [ "$crt_file" = "$OLD_CRT_FILE" ]; then
+		uci -q set "gecoosac.config.crt_file=${DEFAULT_CRT_FILE}"
+		changed=1
+	fi
+
+	if [ "$key_file" = "$OLD_KEY_FILE" ]; then
+		uci -q set "gecoosac.config.key_file=${DEFAULT_KEY_FILE}"
+		changed=1
+	fi
+}
+
 ensure_section
+migrate_legacy_cert_paths
 set_default enabled 0
 set_default port 60650
 set_default isonlyoneprot 1
 set_default m_port 8080
 set_default https 0
-set_default crt_file /etc/gecoosac/tls/gecoosac.crt
-set_default key_file /etc/gecoosac/tls/gecoosac.key
+set_default crt_file "$DEFAULT_CRT_FILE"
+set_default key_file "$DEFAULT_KEY_FILE"
 set_default upload_dir /tmp/gecoosac/upload/
 set_default db_dir /etc/gecoosac/
 set_default piddir /var/run/
