@@ -1,0 +1,39 @@
+#!/bin/sh
+
+changed=0
+
+ensure_section() {
+	uci -q get gecoosac.config >/dev/null && return 0
+	uci -q set gecoosac.config=gecoosac
+	changed=1
+}
+
+set_default() {
+	local option="$1"
+	local value="$2"
+
+	uci -q get "gecoosac.config.${option}" >/dev/null && return 0
+	uci -q set "gecoosac.config.${option}=${value}"
+	changed=1
+}
+
+ensure_section
+set_default enabled 0
+set_default port 60650
+set_default isonlyoneprot 0
+set_default m_port 8080
+set_default https 0
+set_default crt_file /etc/gecoosac/tls/gecoosac.crt
+set_default key_file /etc/gecoosac/tls/gecoosac.key
+set_default upload_dir /tmp/gecoosac/upload/
+set_default db_dir /etc/gecoosac/
+set_default piddir /var/run/
+set_default lang zh
+set_default debug 0
+# Preserve the previous package behavior for upgraded configs that never had showtip.
+set_default showtip 0
+set_default log 0
+
+[ "$changed" = "1" ] && uci -q commit gecoosac
+
+exit 0

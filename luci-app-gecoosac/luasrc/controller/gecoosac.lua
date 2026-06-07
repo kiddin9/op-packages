@@ -1,8 +1,11 @@
 
 module("luci.controller.gecoosac", package.seeall)
 
+local fs = require "nixio.fs"
+local sys = require "luci.sys"
+
 function index()
-	if not nixio.fs.access("/etc/config/gecoosac") then
+	if not fs.access("/etc/config/gecoosac") then
 		return
 	end
 	local page
@@ -13,17 +16,9 @@ function index()
 end
 
 function act_status()
-	local e = {}
-	local binpath = "/usr/bin/gecoosac"
-	e = {
-		running = luci.sys.call("pgrep " .. binpath .. " >/dev/null") == 0
+	local e = {
+		running = sys.call("/etc/init.d/gecoosac status >/dev/null 2>&1") == 0
 	}
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
-end
-
-function clear_upload()
-    local path = "/tmp/gecoosac/upload/"
-    luci.sys.call("rm -rf " .. path .. "/*")
-    luci.http.status(200, "OK")
 end

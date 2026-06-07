@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
 PKG_VERSION:=2.2.20251015
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 ifeq ($(ARCH),aarch64)
   PKG_ARCH:=ac_linux_arm64
@@ -44,12 +44,24 @@ define Package/$(PKG_NAME)
   DEPENDS:=@(aarch64||arm||i386||mips||mipsel||x86_64)
 endef
 
+define Package/$(PKG_NAME)/conffiles
+/etc/config/gecoosac
+/etc/gecoosac/
+endef
+
 define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/bin
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/etc/init.d/gecoosac $(1)/etc/init.d/gecoosac
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./files/etc/config/gecoosac $(1)/etc/config/gecoosac
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/etc/uci-defaults/gecoosac $(1)/etc/uci-defaults/gecoosac
+	$(INSTALL_DIR) $(1)/etc/gecoosac/tls
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))

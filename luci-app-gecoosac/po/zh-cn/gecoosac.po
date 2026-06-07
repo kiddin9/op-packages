@@ -55,6 +55,30 @@ msgstr "数据库目录"
 msgid "The path to store the config database"
 msgstr "存放配置数据库的路径"
 
+msgid "PID dir path"
+msgstr "PID 目录"
+
+msgid "The path to store the AC program pid file"
+msgstr "存放 AC 程序 PID 文件的路径"
+
+msgid "Language"
+msgstr "语言"
+
+msgid "Chinese"
+msgstr "中文"
+
+msgid "English"
+msgstr "英文"
+
+msgid "Debug Mode"
+msgstr "调试模式"
+
+msgid "Show IP Tip"
+msgstr "显示 IP 提示"
+
+msgid "Show the IP 6.7.8.9 setup tip when it is not configured."
+msgstr "未配置 6.7.8.9 时显示相关提示信息。"
+
 msgid "Enable Log"
 msgstr "启用日志"
 
@@ -72,3 +96,12 @@ msgstr "收集数据..."
 
 msgid "Clear Upload Directory"
 msgstr "清理上传目录"
+
+msgid "Expecting an absolute path"
+msgstr "请输入绝对路径"
+
+msgid "Only Gecoos upload directories can be cleared"
+msgstr "只能清理集客 AC 上传目录"
+
+msgid "Upload directory was not cleared"
+msgstr "上传目录未清理"

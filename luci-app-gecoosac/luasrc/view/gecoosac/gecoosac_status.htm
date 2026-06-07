@@ -1,7 +1,8 @@
 <%
 local uci=require"luci.model.uci".cursor()
+local json=require"luci.jsonc"
 
-local isonlyoneprot = uci:get("gecoosac", "config", "isonlyoneprot") or "1"
+local isonlyoneprot = uci:get("gecoosac", "config", "isonlyoneprot") or "0"
 local https = uci:get("gecoosac", "config", "https") or "0"
 local port = uci:get("gecoosac", "config", "port") or "60650"
 local m_port = uci:get("gecoosac", "config", "m_port") or "8080"
@@ -14,8 +15,8 @@ if isonlyoneprot == "0" then
 end
 -%>
 <script type="text/javascript">//<![CDATA[
-var Port = "<%=port%>"
-var Http = "<%=http%>"
+var Port = <%=json.stringify(port)%>;
+var Http = <%=json.stringify(http)%>;
 XHR.poll(3, '<%=url([[admin]], [[services]], [[gecoosac]], [[status]])%>', null,
 	function(x, data) {
 		var tb = document.getElementById('gecoosac_status');
@@ -30,8 +31,16 @@ XHR.poll(3, '<%=url([[admin]], [[services]], [[gecoosac]], [[status]])%>', null,
 	}
 );
 
+function clientHost() {
+	var host = window.location.hostname;
+	if (host.indexOf(':') !== -1 && host.charAt(0) !== '[') {
+		host = '[' + host + ']';
+	}
+	return host;
+}
+
 function openClient() {
-	var url = Http + window.location.hostname + ":" + Port;
+	var url = Http + clientHost() + ":" + Port;
 	window.open(url);
 }
 //]]>

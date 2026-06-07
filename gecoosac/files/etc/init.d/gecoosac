@@ -1,0 +1,136 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2024 ImmortalWrt
+
+. /lib/functions.sh
+. /lib/functions/procd.sh
+
+USE_PROCD=1
+
+START=90
+STOP=10
+
+PROG=/usr/bin/gecoosac
+DEFAULT_DB_DIR=/etc/gecoosac/
+DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload/
+DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
+DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
+DEFAULT_PID_DIR=/var/run/
+DEFAULT_LANG=zh
+
+init_conf() {
+	config_load "gecoosac"
+	config_get "db_dir" "config" "db_dir" "$DEFAULT_DB_DIR"
+	config_get "upload_dir" "config" "upload_dir" "$DEFAULT_UPLOAD_DIR"
+	config_get "enabled" "config" "enabled" "0"
+	config_get "port" "config" "port" "60650"
+	config_get "isonlyoneprot" "config" "isonlyoneprot" "0"
+	config_get "m_port" "config" "m_port" "8080"
+	config_get "https" "config" "https" "0"
+	config_get "crt_file" "config" "crt_file" "$DEFAULT_CRT_FILE"
+	config_get "key_file" "config" "key_file" "$DEFAULT_KEY_FILE"
+	config_get "piddir" "config" "piddir" "$DEFAULT_PID_DIR"
+	config_get "lang" "config" "lang" "$DEFAULT_LANG"
+	config_get "debug" "config" "debug" "0"
+	config_get "showtip" "config" "showtip" "1"
+	config_get "log" "config" "log" "0"
+}
+
+is_abs_path() {
+	case "$1" in
+		/*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+is_port() {
+	case "$1" in
+		""|*[!0-9]*) return 1 ;;
+	esac
+
+	[ "$1" -ge 1 ] 2>/dev/null && [ "$1" -le 65535 ]
+}
+
+normalize_conf() {
+	is_abs_path "$upload_dir" || upload_dir="$DEFAULT_UPLOAD_DIR"
+	is_abs_path "$db_dir" || db_dir="$DEFAULT_DB_DIR"
+	is_abs_path "$crt_file" || crt_file="$DEFAULT_CRT_FILE"
+	is_abs_path "$key_file" || key_file="$DEFAULT_KEY_FILE"
+	is_abs_path "$piddir" && [ "$piddir" != "/" ] || piddir="$DEFAULT_PID_DIR"
+	is_port "$port" || port="60650"
+	is_port "$m_port" || m_port="8080"
+
+	[ "$enabled" = "1" ] || enabled="0"
+	[ "$isonlyoneprot" = "1" ] || isonlyoneprot="0"
+	[ "$https" = "1" ] || https="0"
+	case "$lang" in
+		zh|en) ;;
+		*) lang="$DEFAULT_LANG" ;;
+	esac
+	[ "$debug" = "1" ] || debug="0"
+	[ "$showtip" = "0" ] || showtip="1"
+	[ "$log" = "1" ] || log="0"
+}
+
+ensure_dirs() {
+	mkdir -p "$upload_dir" "$db_dir" "$piddir" /etc/gecoosac/tls
+}
+
+start_service() {
+	init_conf
+	normalize_conf
+
+	[ "$enabled" = "1" ] || return 0
+	if [ ! -x "$PROG" ]; then
+		logger -t gecoosac "program not found: $PROG"
+		return 1
+	fi
+
+	ensure_dirs
+
+	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
+		if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
+			logger -t gecoosac "HTTPS is enabled but certificate or key file is missing"
+			return 1
+		fi
+	fi
+
+	procd_open_instance gecoosac
+	procd_set_param command "$PROG"
+	procd_append_param command -f "$upload_dir"
+	procd_append_param command -p "$port"
+	procd_append_param command -debug "$debug"
+	procd_append_param command -dbpath "$db_dir"
+	procd_append_param command -token "1"
+	procd_append_param command -lang "$lang"
+	procd_append_param command -piddir "$piddir"
+	if [ "$isonlyoneprot" = "0" ]; then
+		procd_append_param command -isonlyoneprot "0"
+		procd_append_param command -mp "$m_port"
+		if [ "$https" = "1" ]; then
+			procd_append_param command -https "1"
+			procd_append_param command -crt "$crt_file"
+			procd_append_param command -key "$key_file"
+		else
+			procd_append_param command -https "0"
+		fi
+	else
+		procd_append_param command -isonlyoneprot "1"
+	fi
+	procd_append_param command -showtip "$showtip"
+	procd_set_param env GIN_MODE=release
+	procd_set_param file /etc/config/gecoosac
+	procd_set_param pidfile "${piddir%/}/gecoosac.pid"
+	procd_set_param stdout "$log"
+	procd_set_param stderr "$log"
+	procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+	procd_close_instance
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger "gecoosac"
+}
