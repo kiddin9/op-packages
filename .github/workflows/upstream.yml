@@ -341,7 +341,7 @@ jobs:
         (
         git_sparse_clone master "https://github.com/coolsnowwolf/packages" multimedia/UnblockNeteaseMusic-Go \
         multimedia/UnblockNeteaseMusic multimedia/aliyundrive-webdav net/gowebdav net/kismet net/mstpd \
-        net/phtunnel net/headscale net/clouddrive2 net/baidupcs-go net/daemonlogger net/geth net/gnurl \
+        net/phtunnel net/headscale net/clouddrive2 net/baidupcs-go net/modemband net/daemonlogger net/geth net/gnurl \
         net/uugamebooster net/pgyvpn net/ooniprobe net/polipo net/rosy-file-server net/qiyougamebooster \
         net/sqm-scripts-extra net/tor-fw-helper net/vncrepeater net/verysync \
         net/vpnbypass net/vpn-policy-routing utils/qfirehose
