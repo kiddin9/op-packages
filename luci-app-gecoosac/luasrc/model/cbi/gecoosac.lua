@@ -158,7 +158,7 @@ debug.default = 0
 debug.rmempty = false
 
 showtip = s:option(Flag, "showtip", translate("Show IP Tip"), translate("Show the IP 6.7.8.9 setup tip when it is not configured."))
-showtip.default = 1
+showtip.default = 0
 showtip.rmempty = false
 
 log = s:option(Flag, "log", translate("Enable Log"))

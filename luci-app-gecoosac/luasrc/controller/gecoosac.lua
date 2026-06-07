@@ -20,7 +20,7 @@ function act_status()
 	local cur = uci.cursor()
 	local enabled = cur:get("gecoosac", "config", "enabled") == "1"
 	local e = {
-		running = enabled and sys.call("/etc/init.d/gecoosac status >/dev/null 2>&1") == 0
+		running = enabled and sys.call("pidof gecoosac >/dev/null 2>&1") == 0
 	}
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)

@@ -31,7 +31,7 @@ init_conf() {
 	config_get "piddir" "config" "piddir" "$DEFAULT_PID_DIR"
 	config_get "lang" "config" "lang" "$DEFAULT_LANG"
 	config_get "debug" "config" "debug" "0"
-	config_get "showtip" "config" "showtip" "1"
+	config_get "showtip" "config" "showtip" "0"
 	config_get "log" "config" "log" "0"
 }
 
@@ -67,12 +67,87 @@ normalize_conf() {
 		*) lang="$DEFAULT_LANG" ;;
 	esac
 	[ "$debug" = "1" ] || debug="0"
-	[ "$showtip" = "0" ] || showtip="1"
+	[ "$showtip" = "1" ] || showtip="0"
 	[ "$log" = "1" ] || log="0"
 }
 
 ensure_dirs() {
 	mkdir -p "$upload_dir" "$db_dir" "$piddir" /etc/gecoosac/tls
+}
+
+generate_default_cert() {
+	local cert_host cert_ip cert_cn cert_san tmp_crt tmp_key
+
+	[ "$crt_file" = "$DEFAULT_CRT_FILE" ] || return 1
+	[ "$key_file" = "$DEFAULT_KEY_FILE" ] || return 1
+
+	if ! command -v px5g >/dev/null 2>&1; then
+		logger -t gecoosac "px5g is required to generate the default HTTPS certificate"
+		return 1
+	fi
+
+	cert_host="$(uci -q get system.@system[0].hostname)"
+	case "$cert_host" in
+		""|*[!A-Za-z0-9._-]*) cert_host="GecoosAC" ;;
+	esac
+
+	cert_ip="$(uci -q get network.lan.ipaddr)"
+	case "$cert_ip" in
+		""|*[!0-9.]*) cert_ip="" ;;
+	esac
+
+	cert_cn="${cert_ip:-$cert_host}"
+	cert_san="DNS:$cert_host"
+	[ -n "$cert_ip" ] && cert_san="${cert_san},IP:${cert_ip}"
+	tmp_crt="${crt_file}.tmp"
+	tmp_key="${key_file}.tmp"
+
+	rm -f "$tmp_crt" "$tmp_key"
+	px5g selfsigned \
+		-days 3650 \
+		-newkey rsa:2048 \
+		-keyout "$tmp_key" \
+		-out "$tmp_crt" \
+		-subj "/CN=$cert_cn" \
+		-addext "subjectAltName=$cert_san" \
+		-addext "extendedKeyUsage=serverAuth" >/dev/null 2>&1
+
+	if [ ! -r "$tmp_crt" ] || [ ! -r "$tmp_key" ]; then
+		rm -f "$tmp_crt" "$tmp_key"
+		px5g selfsigned \
+			-days 3650 \
+			-newkey rsa:2048 \
+			-keyout "$tmp_key" \
+			-out "$tmp_crt" \
+			-subj "/CN=$cert_cn" >/dev/null 2>&1
+	fi
+
+	if [ -r "$tmp_crt" ] && [ -r "$tmp_key" ]; then
+		mv "$tmp_key" "$key_file"
+		mv "$tmp_crt" "$crt_file"
+	else
+		rm -f "$tmp_crt" "$tmp_key"
+	fi
+
+	if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
+		# Some older px5g builds only support writing directly to final paths.
+		rm -f "$crt_file" "$key_file"
+		px5g selfsigned \
+			-days 3650 \
+			-newkey rsa:2048 \
+			-keyout "$key_file" \
+			-out "$crt_file" \
+			-subj "/CN=$cert_cn" >/dev/null 2>&1
+
+		if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
+			logger -t gecoosac "failed to generate default HTTPS certificate"
+			return 1
+		fi
+	fi
+
+	chmod 600 "$key_file"
+	chmod 644 "$crt_file"
+	return 0
 }
 
 start_service() {
@@ -89,8 +164,10 @@ start_service() {
 
 	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
 		if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
-			logger -t gecoosac "HTTPS is enabled but certificate or key file is missing"
-			return 1
+			generate_default_cert || {
+				logger -t gecoosac "HTTPS is enabled but certificate or key file is missing"
+				return 1
+			}
 		fi
 	fi
 
