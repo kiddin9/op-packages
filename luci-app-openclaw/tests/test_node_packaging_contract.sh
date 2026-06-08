@@ -20,8 +20,9 @@ fi
 
 grep -Fq 'verify_prefix /opt/openclaw/node' "$BUILD_SCRIPT" || fail "build script should verify default install path"
 grep -Fq 'verify_prefix /tmp/custom-openclaw-root/openclaw/node' "$BUILD_SCRIPT" || fail "build script should verify custom install path"
-grep -Fq 'NODE_VER="24.15.0"' "$WORKFLOW" || fail "workflow should build current Node.js"
-grep -Fq 'BUILD_MODE=cross' "$WORKFLOW" || fail "workflow should use cross mode for current ARM64 musl package"
+grep -Fq 'NODE_VER="22.22.2"' "$WORKFLOW" || fail "workflow should build current musl-compatible Node.js"
+grep -Fq 'BUILD_MODE=apk' "$WORKFLOW" || fail "workflow should use apk mode for ARM64 musl package"
+grep -Fq 'PKG_TYPE=lts' "$WORKFLOW" || fail "workflow should use Alpine LTS Node.js package"
 
 grep -Fq 'oc_node_version_ge "$current_ver" "$node_ver"' "$ENV_SCRIPT" || fail "installer should require installed Node.js to satisfy target version"
 if grep -Fq 'v1_tarball' "$ENV_SCRIPT"; then

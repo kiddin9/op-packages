@@ -7,7 +7,7 @@ fail() {
 }
 
 grep -q "OC_TESTED_VERSION=\"2026.6.1\"" root/usr/bin/openclaw-env || fail "tested OpenClaw version not pinned"
-grep -q "NODE_VERSION_V2=\"24.15.0\"" root/usr/bin/openclaw-env || fail "default Node.js version not pinned"
+grep -q "NODE_VERSION_V2=\"22.22.2\"" root/usr/bin/openclaw-env || fail "default Node.js version not pinned"
 grep -q "OC_NODE_MIN_VERSION=\"\${OC_NODE_MIN_VERSION:-22.19.0}\"" root/usr/bin/openclaw-env || fail "minimum Node.js version not pinned"
 grep -q "oc_assert_node_min_version" root/usr/bin/openclaw-env || fail "Node.js minimum version check missing"
 grep -q 'oc_node_version_ge "$from_pkg" "$required"' root/usr/bin/openclaw-env || fail "package Node.js requirement must not lower static minimum"

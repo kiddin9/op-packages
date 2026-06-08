@@ -9,9 +9,9 @@
 ### 适配 OpenClaw v2026.6.1
 
 - `OC_TESTED_VERSION` 更新为 `2026.6.1`，默认稳定版跟随 npm `latest` 稳定标签。
-- 默认 Node.js 运行时更新为 `24.15.0`，最低要求同步提升到 `22.19.0`，匹配 OpenClaw 2026.6.x 的 `engines.node`。
+- 默认 Node.js 运行时更新为 Alpine musl LTS `22.22.2`，最低要求同步提升到 `22.19.0`，匹配 OpenClaw 2026.6.x 的 `engines.node`。
 - 安装脚本不再从当前 Node 版本静默回退到旧版 V1 tarball，避免下载失败后装入过低 Node.js 并在 OpenClaw 安装后失败。
-- ARM64 musl 预编译 Node.js 构建流程更新为 `24.15.0`，并校验默认路径和自定义安装路径均可运行。
+- ARM64 musl 预编译 Node.js 构建流程改用 Alpine 原生 LTS 包，避免 glibc 二进制转换为 musl 后运行失败，并校验默认路径和自定义安装路径均可运行。
 
 ### 修复安装、控制台与状态体验
 
