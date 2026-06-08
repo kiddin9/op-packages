@@ -15,7 +15,7 @@ EXTRA_HELP="    setup            下载 Node.js 并安装 OpenClaw
 # 统一路径解析可以兼容 /mnt/data/openclaw 输入，避免双拼路径。
 [ -r /usr/libexec/openclaw-paths.sh ] && . /usr/libexec/openclaw-paths.sh
 [ -r /usr/libexec/openclaw-node.sh ] && . /usr/libexec/openclaw-node.sh
-OC_NODE_MIN_VERSION="${OC_NODE_MIN_VERSION:-22.14.0}"
+OC_NODE_MIN_VERSION="${OC_NODE_MIN_VERSION:-22.19.0}"
 OC_CONFIGURED_PATH="$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')"
 if command -v oc_load_paths >/dev/null 2>&1; then
 	if ! oc_load_paths "$OC_CONFIGURED_PATH"; then
@@ -252,6 +252,9 @@ if(Array.isArray(d.plugins.allow)){
 		delete d.plugins[ns].weixin;
 	}
 });
+if(d.plugins.entries&&d.plugins.entries['openclaw-weixin']){
+	delete d.plugins.entries['openclaw-weixin'];
+}
 ['channel','channels'].forEach(ns=>{
 	if(d[ns]&&d[ns].weixin){
 		if(!d[ns]['openclaw-weixin'])d[ns]['openclaw-weixin']=d[ns].weixin;
@@ -365,9 +368,34 @@ fi
 	# v2026.4.10 补充: 同时修复权限模式为 755，确保 Gateway 可读取插件
 	# 原因: npm/npx 以 root 创建目录时默认权限 700，其他用户无法读取
 	local ext_dir="${OC_DATA}/.openclaw/extensions"
+	local npm_projects_dir="${OC_DATA}/.openclaw/npm/projects"
+	local wechat_legacy_dir="${ext_dir}/openclaw-weixin"
+	local wechat_npm_plugin=""
+	if [ -d "$npm_projects_dir" ]; then
+		wechat_npm_plugin=$(find "$npm_projects_dir" -path "*/node_modules/@tencent-weixin/openclaw-weixin/openclaw.plugin.json" -type f 2>/dev/null | head -n 1)
+	fi
+	if [ -n "$wechat_npm_plugin" ] && [ -d "$wechat_legacy_dir" ]; then
+		local archive_root="${OC_DATA}/.openclaw/archived-extensions"
+		mkdir -p "$archive_root" 2>/dev/null || true
+		local archived_dir="${archive_root}/openclaw-weixin.legacy.$(date +%Y%m%d%H%M%S)"
+		mv "$wechat_legacy_dir" "$archived_dir" 2>/dev/null && logger -t openclaw "已归档旧微信扩展目录: $archived_dir"
+	fi
+	if [ -n "$wechat_npm_plugin" ] && [ -d "$ext_dir" ]; then
+		local archive_root="${OC_DATA}/.openclaw/archived-extensions"
+		mkdir -p "$archive_root" 2>/dev/null || true
+		for stale_dir in "$ext_dir"/openclaw-weixin.legacy.*; do
+			[ -d "$stale_dir" ] || continue
+			local stale_name="${stale_dir##*/}"
+			mv "$stale_dir" "${archive_root}/${stale_name}" 2>/dev/null || true
+		done
+	fi
 	if [ -d "$ext_dir" ]; then
 		chown -R root:root "$ext_dir" 2>/dev/null || true
 		chmod -R 755 "$ext_dir" 2>/dev/null || true
+	fi
+	if [ -d "$npm_projects_dir" ]; then
+		chown -R root:root "$npm_projects_dir" 2>/dev/null || true
+		chmod -R 755 "$npm_projects_dir" 2>/dev/null || true
 	fi
 
 	# v2026.4.x: 清理 jiti 缓存目录 (修复微信插件加载权限问题)
@@ -486,8 +514,16 @@ if(d.gateway&&d.gateway.auth&&d.gateway.auth.token)process.stdout.write(d.gatewa
 		# v2026.4.10: 最终权限修复 - 确保 Gateway 启动前所有数据目录权限正确
 		# doctor --fix 或 _ensure_critical_config 可能创建新的目录/文件
 		# 关键: agents 目录下的 agent 子目录必须可被 openclaw 用户写入
-		find "${OC_DATA}/.openclaw" -user root -type d -exec chown openclaw:openclaw {} \; 2>/dev/null || true
-		find "${OC_DATA}/.openclaw" -user root -type f -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+		find "${OC_DATA}/.openclaw" -user root \
+			! -path "${OC_DATA}/.openclaw/extensions*" \
+			! -path "${OC_DATA}/.openclaw/archived-extensions*" \
+			! -path "${OC_DATA}/.openclaw/npm/projects*" \
+			-type d -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+		find "${OC_DATA}/.openclaw" -user root \
+			! -path "${OC_DATA}/.openclaw/extensions*" \
+			! -path "${OC_DATA}/.openclaw/archived-extensions*" \
+			! -path "${OC_DATA}/.openclaw/npm/projects*" \
+			-type f -exec chown openclaw:openclaw {} \; 2>/dev/null || true
 		# 特别确保 agents/main/agent 目录权限 (模型配置写入目录)
 		local agent_dir="${OC_DATA}/.openclaw/agents/main/agent"
 		if [ -d "$agent_dir" ]; then
@@ -499,6 +535,14 @@ if(d.gateway&&d.gateway.auth&&d.gateway.auth.token)process.stdout.write(d.gatewa
 		if [ -d "${OC_DATA}/.openclaw/extensions" ]; then
 			chown -R root:root "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
 			chmod -R 755 "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
+		fi
+		if [ -d "${OC_DATA}/.openclaw/archived-extensions" ]; then
+			chown -R root:root "${OC_DATA}/.openclaw/archived-extensions" 2>/dev/null || true
+			chmod -R 700 "${OC_DATA}/.openclaw/archived-extensions" 2>/dev/null || true
+		fi
+		if [ -d "${OC_DATA}/.openclaw/npm/projects" ]; then
+			chown -R root:root "${OC_DATA}/.openclaw/npm/projects" 2>/dev/null || true
+			chmod -R 755 "${OC_DATA}/.openclaw/npm/projects" 2>/dev/null || true
 		fi
 
 	# Patch iframe 安全头，允许 LuCI 嵌入

@@ -606,7 +606,11 @@ show_current_config() {
 
 	# 检测微信渠道
 	local wechat_ext_dir="${OC_STATE_DIR}/extensions/openclaw-weixin"
-	if [ -d "$wechat_ext_dir" ] && [ -f "${wechat_ext_dir}/openclaw.plugin.json" ]; then
+	local wechat_npm_plugin=""
+	if [ -d "${OC_STATE_DIR}/npm/projects" ]; then
+		wechat_npm_plugin=$(find "${OC_STATE_DIR}/npm/projects" -path "*/node_modules/@tencent-weixin/openclaw-weixin/openclaw.plugin.json" -type f 2>/dev/null | head -n 1)
+	fi
+	if { [ -d "$wechat_ext_dir" ] && [ -f "${wechat_ext_dir}/openclaw.plugin.json" ]; } || [ -n "$wechat_npm_plugin" ]; then
 		echo -e "${GREEN}│${NC}  微信 .............. ${GREEN}✅ 已配置${NC}"
 	else
 		echo -e "${GREEN}│${NC}  微信 .............. ${YELLOW}❌ 未配置${NC}"

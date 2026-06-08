@@ -71,6 +71,21 @@ grep -q '^openclaw:' /etc/group 2>/dev/null || echo "openclaw:x:${OC_GID}:" >> /
 	return uid ~= ""
 end
 
+local function find_wechat_plugin_dir(install_path)
+	local sys = require "luci.sys"
+	local ext_dir = install_path .. "/data/.openclaw/extensions/openclaw-weixin"
+	if nixio.fs.stat(ext_dir .. "/openclaw.plugin.json", "type") then
+		return ext_dir
+	end
+	local npm_projects = install_path .. "/data/.openclaw/npm/projects"
+	local cmd = "find " .. shellquote(npm_projects) .. " -path '*/node_modules/@tencent-weixin/openclaw-weixin/openclaw.plugin.json' -type f 2>/dev/null | head -n 1"
+	local plugin_json = sys.exec(cmd):match("[^\r\n]+")
+	if plugin_json and plugin_json ~= "" then
+		return plugin_json:gsub("/openclaw%.plugin%.json$", "")
+	end
+	return nil
+end
+
 local function write_wechat_log_and_exit(log_file, exit_file, content, exit_code)
 	local f = io.open(log_file, "w")
 	if f then
@@ -1206,9 +1221,9 @@ function action_wechat_status()
 	}
 
 	-- 检测微信插件是否已安装
-	local wechat_ext_dir = install_path .. "/data/.openclaw/extensions/openclaw-weixin"
-        local wechat_plugin_json = wechat_ext_dir .. "/openclaw.plugin.json"
-        local wechat_package_json = wechat_ext_dir .. "/package.json"
+	local wechat_ext_dir = find_wechat_plugin_dir(install_path)
+        local wechat_plugin_json = wechat_ext_dir and (wechat_ext_dir .. "/openclaw.plugin.json") or ""
+        local wechat_package_json = wechat_ext_dir and (wechat_ext_dir .. "/package.json") or ""
 
         if nixio.fs.stat(wechat_plugin_json, "type") then
                 result.plugin_installed = true
@@ -1629,7 +1644,7 @@ function action_wechat_check_upgrade()
 
 	-- 获取当前已安装版本
 	local current_version = ""
-	local wechat_ext_dir = install_path .. "/data/.openclaw/extensions/openclaw-weixin"
+	local wechat_ext_dir = find_wechat_plugin_dir(install_path) or (install_path .. "/data/.openclaw/extensions/openclaw-weixin")
 	local plugin_json = wechat_ext_dir .. "/openclaw.plugin.json"
 	local pf = io.open(plugin_json, "r")
 	if pf then

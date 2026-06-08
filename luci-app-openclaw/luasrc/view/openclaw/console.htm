@@ -1,6 +1,6 @@
 <%#
  luci-app-openclaw — Web 控制台页面
- 嵌入 OpenClaw 官方 Web UI，用户可在此配置模型/渠道并直接对话
+ 打开 OpenClaw 官方 Web UI，用户可在此配置模型/渠道并直接对话
 -%>
 <%+header%>
 
@@ -50,8 +50,6 @@ local port = uci:get("openclaw", "main", "port") or "18789"
 	background: #fff;
 	box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
-
-#oc-console-iframe { width: 100%; height: 700px; border: none; display: block; }
 
 .oc-console-loading {
 	display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -135,7 +133,7 @@ local port = uci:get("openclaw", "main", "port") or "18789"
 						statusTextEl.innerHTML = '<span style="color:#1a7f37;">● 网关运行中</span>';
 						openBtn.href = url;
 						openBtn.style.display = '';
-						showIframe(url);
+						showLaunch(url);
 					} else if (d.gateway_failed) {
 						statusTextEl.innerHTML = '<span style="color:#cf222e;">● 网关启动失败</span>';
 						openBtn.style.display = 'none';
@@ -169,22 +167,13 @@ local port = uci:get("openclaw", "main", "port") or "18789"
 		});
 	}
 
-	function showIframe(url) {
+	function showLaunch(url) {
 		loading.style.display = 'none';
-		var existing = document.getElementById('oc-console-iframe');
-		if (existing) {
-			if (existing.src !== url) existing.src = url;
-			return;
-		}
-
-		var iframe = document.createElement('iframe');
-		iframe.id = 'oc-console-iframe';
-		iframe.src = url;
-		iframe.style.width = '100%';
-		iframe.style.height = '700px';
-		iframe.style.border = 'none';
-		iframe.setAttribute('allowfullscreen', 'true');
-		container.appendChild(iframe);
+		container.innerHTML = '<div class="oc-console-loading" style="height:220px;">' +
+			'<div style="font-size:40px;margin-bottom:12px;">↗</div>' +
+			'<div style="font-size:15px;margin-bottom:6px;">OpenClaw 控制台已就绪</div>' +
+			'<div style="font-size:12px;color:#999;">请点击上方「新窗口打开」访问控制台。</div>' +
+			'</div>';
 	}
 
 	checkAndLoad();

@@ -23,16 +23,22 @@ set_default() {
 
 migrate_legacy_cert_paths() {
 	local crt_file key_file
+	local migrate
 
 	crt_file="$(uci -q get gecoosac.config.crt_file)"
 	key_file="$(uci -q get gecoosac.config.key_file)"
+	migrate=0
 
 	if [ "$crt_file" = "$OLD_CRT_FILE" ]; then
-		uci -q set "gecoosac.config.crt_file=${DEFAULT_CRT_FILE}"
-		changed=1
+		if [ -z "$key_file" ] || [ "$key_file" = "$OLD_KEY_FILE" ]; then
+			migrate=1
+		fi
+	elif [ -z "$crt_file" ] && [ "$key_file" = "$OLD_KEY_FILE" ]; then
+		migrate=1
 	fi
 
-	if [ "$key_file" = "$OLD_KEY_FILE" ]; then
+	if [ "$migrate" = "1" ]; then
+		uci -q set "gecoosac.config.crt_file=${DEFAULT_CRT_FILE}"
 		uci -q set "gecoosac.config.key_file=${DEFAULT_KEY_FILE}"
 		changed=1
 	fi

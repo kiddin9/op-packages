@@ -4,6 +4,37 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.6] - 2026-06-08
+
+### 适配 OpenClaw v2026.6.1
+
+- `OC_TESTED_VERSION` 更新为 `2026.6.1`，默认稳定版跟随 npm `latest` 稳定标签。
+- 默认 Node.js 运行时更新为 `24.15.0`，最低要求同步提升到 `22.19.0`，匹配 OpenClaw 2026.6.x 的 `engines.node`。
+- 安装脚本不再从当前 Node 版本静默回退到旧版 V1 tarball，避免下载失败后装入过低 Node.js 并在 OpenClaw 安装后失败。
+- ARM64 musl 预编译 Node.js 构建流程更新为 `24.15.0`，并校验默认路径和自定义安装路径均可运行。
+
+### 修复安装、控制台与状态体验
+
+- Node.js 下载失败时保留明确失败路径，避免 ARM64 musl 缺少当前版本资产时误判为可继续安装。
+- Web 控制台改为新窗口打开，继续强制使用 HTTP Gateway URL 和最新 token，规避 LuCI HTTPS、iframe 安全头和旧 token 混用问题。
+- 状态接口和页面继续区分“运行中 / 启动中 / 启动失败”，并保留 procd Gateway 退出码，便于定位升级后的启动失败。
+- 保留微信插件安装预检和权限修复链路，覆盖 `python3`、`openclaw` 用户、npm cache、tmp 和数据目录权限。
+
+### 测试
+
+- 更新 OpenClaw/Node.js 版本契约测试。
+- 新增控制台新窗口、状态失败展示、ARM64 musl Node 打包与路径兼容契约测试。
+
+### 致谢
+
+感谢以下用户通过 Issue 或 PR 提供问题反馈、复现信息和修复思路：
+
+- @djbadboyvip (#94)、@alan9771 (#93, #82)、@luckymai3688 (#92, #91)、@lucian521 (#90)
+- @svgr110 (#89)、@Cuscito (#88)、@ayysama (#87)、@jameslau-tech (#86)、@hwliu11 (#84)
+- @zhuxf8 (#81)、@yiyibuguai (#80)、@nbagui (#79)、@sam528300-lab (#78)、@hotwa (#85)
+
+---
+
 ## [2.0.5] - 2026-05-15
 
 ### 适配 OpenClaw v2026.5.12

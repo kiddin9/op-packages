@@ -27,8 +27,8 @@
 
 | 组件 | 默认版本 | 说明 |
 |------|----------|------|
-| OpenClaw | `2026.5.12` | npm `latest` 稳定标签；不默认追 `2026.5.14-beta.2` |
-| Node.js | `22.16.0` | 安装后会按 OpenClaw `engines.node` 做强校验，低于要求会直接失败 |
+| OpenClaw | `2026.6.1` | npm `latest` 稳定标签；不默认追 `2026.6.5-beta.2` |
+| Node.js | `24.15.0` | OpenClaw 2026.6.x 要求 `>=22.19.0`；安装后会按 `engines.node` 做强校验，低于要求会直接失败 |
 | 微信插件 | `@tencent-weixin/openclaw-weixin@2.4.3` | CLI 使用 `@tencent-weixin/openclaw-weixin-cli@2.1.4` |
 
 ## 📦 安装

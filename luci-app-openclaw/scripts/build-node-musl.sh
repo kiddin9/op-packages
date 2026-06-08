@@ -18,7 +18,6 @@
 # ============================================================================
 set -e
 
-INSTALL_PREFIX="/opt/openclaw/node"
 BUILD_MODE="${BUILD_MODE:-apk}"
 
 echo "=== Node.js ARM64 musl Build ==="
@@ -198,10 +197,10 @@ finalize_package() {
 
 	# 用 patchelf 修改 node 二进制
 	echo "=== Patching ELF binary ==="
-	patchelf --set-interpreter "${INSTALL_PREFIX}/lib/ld-musl-aarch64.so.1" "${PKG_DIR}/bin/node"
-	patchelf --set-rpath "${INSTALL_PREFIX}/lib" "${PKG_DIR}/bin/node"
-	echo "  interpreter: ${INSTALL_PREFIX}/lib/ld-musl-aarch64.so.1"
-	echo "  rpath: ${INSTALL_PREFIX}/lib"
+	patchelf --set-interpreter "/lib/ld-musl-aarch64.so.1" "${PKG_DIR}/bin/node"
+	patchelf --set-rpath '$ORIGIN/../lib' "${PKG_DIR}/bin/node"
+	echo "  interpreter: /lib/ld-musl-aarch64.so.1"
+	echo "  rpath: \$ORIGIN/../lib"
 
 	# 创建 node wrapper 脚本
 	cat > "${PKG_DIR}/bin/node-wrapper" << 'NODEWRAPPER'
@@ -229,20 +228,21 @@ exec "${SELF_DIR}/node" "${SELF_DIR}/../lib/node_modules/npm/bin/npx-cli.js" "$@
 NPXWRAPPER
 	chmod +x "${PKG_DIR}/bin/npm" "${PKG_DIR}/bin/npx"
 
-	# 验证
-	echo "=== Verification ==="
-	mkdir -p "${INSTALL_PREFIX}"
-	cp -a "${PKG_DIR}"/* "${INSTALL_PREFIX}/"
-	
-	# 设置库路径并测试
-	export LD_LIBRARY_PATH="${INSTALL_PREFIX}/lib"
-	
-	"${INSTALL_PREFIX}/bin/node" --version
-	"${INSTALL_PREFIX}/bin/node" -e "console.log('execPath:', process.execPath)"
-	"${INSTALL_PREFIX}/bin/node" -e "console.log(process.arch, process.platform, process.versions.modules)"
-	NODE_ICU_DATA="${INSTALL_PREFIX}/share/icu" "${INSTALL_PREFIX}/bin/npm" --version 2>/dev/null || echo "npm needs ICU data"
-	
-	rm -rf "${INSTALL_PREFIX}"
+	verify_prefix() {
+		local prefix="$1"
+		echo "=== Verifying prefix: ${prefix} ==="
+		rm -rf "$prefix"
+		mkdir -p "$prefix"
+		cp -a "${PKG_DIR}"/* "$prefix/"
+		"${prefix}/bin/node" --version
+		"${prefix}/bin/node" -e "console.log('execPath:', process.execPath)"
+		"${prefix}/bin/node" -e "console.log(process.arch, process.platform, process.versions.modules)"
+		NODE_ICU_DATA="${prefix}/share/icu" "${prefix}/bin/npm" --version 2>/dev/null || echo "npm needs ICU data"
+		rm -rf "$prefix"
+	}
+
+	verify_prefix /opt/openclaw/node
+	verify_prefix /tmp/custom-openclaw-root/openclaw/node
 
 	# 打包
 	echo "=== Creating tarball ==="

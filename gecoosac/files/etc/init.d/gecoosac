@@ -95,6 +95,13 @@ is_ipv4() {
 	return 0
 }
 
+san_has_entry() {
+	local san="$1"
+	local entry="$2"
+
+	echo "$san" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -F -x -q "$entry"
+}
+
 cert_matches_san() {
 	local cert_file="$1"
 	local cert_host="$2"
@@ -103,8 +110,8 @@ cert_matches_san() {
 
 	[ -s "$cert_file" ] || return 1
 	san="$(openssl x509 -in "$cert_file" -noout -ext subjectAltName 2>/dev/null)" || return 1
-	echo "$san" | grep -F -q "DNS:${cert_host}" || return 1
-	[ -z "$cert_ip" ] || echo "$san" | grep -F -q "IP Address:${cert_ip}" || return 1
+	san_has_entry "$san" "DNS:${cert_host}" || return 1
+	[ -z "$cert_ip" ] || san_has_entry "$san" "IP Address:${cert_ip}" || return 1
 
 	return 0
 }
