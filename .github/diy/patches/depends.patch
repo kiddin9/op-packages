@@ -79,18 +79,6 @@
  
  define KernelPackage/pcie_mhi/description
 
---- a/fibocom_MHI/Makefile
-+++ b/fibocom_MHI/Makefile
-@@ -17,7 +17,7 @@ include $(INCLUDE_DIR)/package.mk
- define KernelPackage/pcie_mhi_fb
-   SUBMENU:=WWAN Support
-   TITLE:=Kernel pcie driver for MHI device
--  DEPENDS:=+pciids +pciutils +fibocom-dial
-+  DEPENDS:=@PCIE_SUPPORT +pciids +pciutils +fibocom-dial
-   FILES:=$(PKG_BUILD_DIR)/pcie_mhi_fb.ko
-   AUTOLOAD:=$(call AutoLoad,90,pcie_mhi_fb)
- endef
-
 --- a/luci-app-packet-capture/Makefile
 +++ b/luci-app-packet-capture/Makefile
 @@ -4,7 +4,7 @@
