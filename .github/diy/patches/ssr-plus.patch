@@ -17,6 +17,14 @@
  	default PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY
  
  	config PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY
+@@ -107,7 +108,6 @@ choice
+ 
+ 	config PACKAGE_$(PKG_NAME)_INCLUDE_Xray
+ 	bool "Xray-core"
+-	select PACKAGE_xray-core
+ endchoice
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG
 
 --- a/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 +++ b/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
