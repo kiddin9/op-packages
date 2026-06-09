@@ -4,7 +4,7 @@ LUCI_TITLE:=luci-app-ssr-plus
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=193
-PKG_RELEASE:=23
+PKG_RELEASE:=24
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -39,6 +39,10 @@ LUCI_DEPENDS:= \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS:shadow-tls \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Kcptun:kcptun-client \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy:3proxy \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo:mihomo \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geoip \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geosite \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client:shadowsocks-rust-sslocal \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server:shadowsocks-rust-ssserver \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Simple_Obfs:simple-obfs-client \
@@ -120,19 +124,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy
 	bool "Include HTTP(S) Proxy Server"
-	select PACKAGE_3proxy
-	default y if (aarch64||arm||i386||loongarch64||riscv64||x86_64)
+	default y if (aarch64||i386||loongarch64||riscv64||x86_64)
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo
 	bool "Include Mihomo (Clash Support)"
-	select PACKAGE_mihomo
 	depends on aarch64||arm||i386||loongarch64||riscv64||x86_64
-	default y if aarch64||arm||i386||loongarch64||riscv64||x86_64
+	default y if aarch64||i386||loongarch64||riscv64||x86_64
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_GeoData
 	bool "Include GeoData (GeoIP and GeoSite)"
-	select PACKAGE_v2ray-geoip
-	select PACKAGE_v2ray-geosite
 	default y if i386||x86_64
 
 config PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS
