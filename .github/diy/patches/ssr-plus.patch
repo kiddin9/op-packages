@@ -1,6 +1,6 @@
 --- a/luci-app-ssr-plus/Makefile
 +++ b/luci-app-ssr-plus/Makefile
-@@ -33,6 +33,7 @@ LUCI_DEPENDS:= \
+@@ -33,11 +33,16 @@ LUCI_DEPENDS:= \
  	+libuci-lua +lua +luci-compat +coreutils +coreutils-base64 +dns2tcp +dnsmasq-full \
  	+jq +ip-full +lua-neturl +libuci-lua +microsocks +ipt2socks +lyaml \
  	+resolveip +curl +nping +unzip +xz-utils \
@@ -8,7 +8,16 @@
  	+PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG:chinadns-ng \
  	+PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS:mosdns \
  	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS:shadow-tls \
-@@ -99,7 +100,7 @@ endchoice
+ 	+PACKAGE_$(PKG_NAME)_INCLUDE_Kcptun:kcptun-client \
+ 	+PACKAGE_$(PKG_NAME)_INCLUDE_NaiveProxy:naiveproxy \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy:3proxy \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo:mihomo \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geoip \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geosite \
+ 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client:shadowsocks-rust-sslocal \
+ 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server:shadowsocks-rust-ssserver \
+ 	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Simple_Obfs:simple-obfs-client \
+@@ -99,7 +104,7 @@ endchoice
  
  choice
  	prompt "V2ray-core Selection"
@@ -17,7 +26,7 @@
  	default PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY
  
  	config PACKAGE_$(PKG_NAME)_INCLUDE_NONE_V2RAY
-@@ -107,7 +108,6 @@ choice
+@@ -107,7 +112,6 @@ choice
  
  	config PACKAGE_$(PKG_NAME)_INCLUDE_Xray
  	bool "Xray-core"
@@ -25,6 +34,28 @@
  endchoice
  
  config PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG
+@@ -120,19 +124,15 @@ config PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy
+ 	bool "Include HTTP(S) Proxy Server"
+-	select PACKAGE_3proxy
+-	default y if (aarch64||arm||i386||loongarch64||riscv64||x86_64)
++	default y if (aarch64||i386||loongarch64||riscv64||x86_64)
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo
+ 	bool "Include Mihomo (Clash Support)"
+-	select PACKAGE_mihomo
+ 	depends on aarch64||arm||i386||loongarch64||riscv64||x86_64
+-	default y if aarch64||arm||i386||loongarch64||riscv64||x86_64
++	default y if aarch64||i386||loongarch64||riscv64||x86_64
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_GeoData
+ 	bool "Include GeoData (GeoIP and GeoSite)"
+-	select PACKAGE_v2ray-geoip
+-	select PACKAGE_v2ray-geosite
+ 	default y if i386||x86_64
+ 
+ config PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS
 
 --- a/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 +++ b/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
