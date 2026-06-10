@@ -9,14 +9,15 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=vsftpd
 PKG_VERSION:=3.0.5
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://security.appspot.com/downloads/
 PKG_HASH:=skip
 
 PKG_MAINTAINER:=Cezary Jackiewicz <cezary@eko.one.pl>
-PKG_LICENSE:=GPLv2
+PKG_LICENSE:=GPL-2.0-only
+PKG_LICENSE_FILES:=COPYING COPYRIGHT LICENSE
 PKG_CPE_ID:=cpe:/a:vsftpd_project:vsftpd
 
 PKG_BUILD_FLAGS:=gc-sections lto
