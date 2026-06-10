@@ -1,3 +1,15 @@
+--- a/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js
+@@ -437,7 +437,7 @@ const dv = view.extend({
+ 	outputText: '', // Initialize output text
+ 
+ 	get dockerman_url() {
+-		return L.url('admin/services/dockerman');
++		return L.url('admin/dockerman');
+ 	},
+ 
+ 	parseHeaders(headers, array) {
+
 --- a/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json
 +++ b/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json
 @@ -1,7 +1,7 @@
