@@ -63,7 +63,7 @@
  		    luciversion = data[5],
  		    unixtime    = data[6];
  
-@@ -78,8 +78,7 @@ return baseclass.extend({
+@@ -78,15 +78,9 @@ return baseclass.extend({
  
  		var fields = [
  			_('Hostname'),         boardinfo.hostname,
@@ -71,9 +71,17 @@
 -			_('Architecture'),     cpuinfo.cpuinfo || boardinfo.system,
 +			_('Architecture'),     (cpuinfo.cpuinfo || boardinfo.system) + ' ' + cpubench.cpubench,
  			_('Target Platform'),  (L.isObject(boardinfo.release) ? boardinfo.release.target : ''),
- 			_('Firmware Version'), (L.isObject(boardinfo.release)
- 				? '%s%s / '.format(
-@@ -94,10 +93,18 @@ return baseclass.extend({
+-			_('Firmware Version'), (L.isObject(boardinfo.release)
+-				? '%s%s / '.format(
+-					boardinfo.release.description || '',
+-					boardinfo.release.revision ? boardinfo.release.revision : ''
+-				)
+-				: '') + (luciversion || ''),
++			_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),
+ 			_('Kernel Version'),   boardinfo.kernel,
+ 			_('Local Time'),       datestr,
+ 			_('Uptime'),           systeminfo.uptime ? '%t'.format(systeminfo.uptime) : null,
+@@ -94,10 +88,18 @@ return baseclass.extend({
  				systeminfo.load[0] / 65535.0,
  				systeminfo.load[1] / 65535.0,
  				systeminfo.load[2] / 65535.0
