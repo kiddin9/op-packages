@@ -80,12 +80,7 @@ return baseclass.extend({
 			_('Hostname'),         boardinfo.hostname,
 			_('Architecture'),     (cpuinfo.cpuinfo || boardinfo.system) + ' ' + cpubench.cpubench,
 			_('Target Platform'),  (L.isObject(boardinfo.release) ? boardinfo.release.target : ''),
-			_('Firmware Version'), (L.isObject(boardinfo.release)
-				? '%s%s / '.format(
-					boardinfo.release.description || '',
-					boardinfo.release.revision ? boardinfo.release.revision : ''
-				)
-				: '') + (luciversion || ''),
+			_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),
 			_('Kernel Version'),   boardinfo.kernel,
 			_('Local Time'),       datestr,
 			_('Uptime'),           systeminfo.uptime ? '%t'.format(systeminfo.uptime) : null,
