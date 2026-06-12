@@ -1,5 +1,13 @@
 msgid ""
-msgstr "Content-Type: text/plain; charset=UTF-8"
+msgstr ""
+"Project-Id-Version: luci-app-gecoosac\n"
+"PO-Revision-Date: 2026-06-12 00:00+0800\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: Chinese\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
 
 msgid "Default certificate files are generated when HTTPS starts; custom paths must point to readable files."
 msgstr "默认证书文件会在 HTTPS 启动时生成；自定义路径必须指向可读取的文件。"
@@ -36,9 +44,6 @@ msgstr "设置管理端口"
 
 msgid "Enable HTTPS service"
 msgstr "开启 HTTPS 服务"
-
-msgid "A certificate file must be specified, otherwise it will fail to start."
-msgstr "需要指定证书文件，否则开启失败。"
 
 msgid "Specify crt certificate file"
 msgstr "指定 crt 证书文件"
@@ -100,6 +105,9 @@ msgstr "收集数据..."
 msgid "Clear Upload Directory"
 msgstr "清理上传目录"
 
+msgid "Only files under the configured Gecoos upload directory will be removed."
+msgstr "只会删除已配置的集客 AC 上传目录中的文件。"
+
 msgid "Expecting an absolute path"
 msgstr "请输入绝对路径"
 
@@ -108,3 +116,12 @@ msgstr "只能清理集客 AC 上传目录"
 
 msgid "Upload directory was not cleared"
 msgstr "上传目录未清理"
+
+msgid "Upload directory cleared"
+msgstr "上传目录已清理"
+
+msgid "Unable to read %s"
+msgstr "无法读取 %s"
+
+msgid "Unable to remove %s"
+msgstr "无法删除 %s"

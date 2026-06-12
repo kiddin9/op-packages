@@ -31,22 +31,34 @@ end
 local function remove_tree(path)
 	local stat = fs.lstat and fs.lstat(path) or fs.stat(path)
 	if not stat then
-		return
+		return true
 	end
 
 	if stat.type == "dir" then
 		local iter = fs.dir(path)
-		if iter then
-			for entry in iter do
-				if entry ~= "." and entry ~= ".." then
-					remove_tree(path .. "/" .. entry)
+		if not iter then
+			return nil, translatef("Unable to read %s", path)
+		end
+
+		for entry in iter do
+			if entry ~= "." and entry ~= ".." then
+				local ok, err = remove_tree(path .. "/" .. entry)
+				if not ok then
+					return nil, err
 				end
 			end
 		end
-		fs.rmdir(path)
+
+		if not fs.rmdir(path) and fs.stat(path, "type") == "dir" then
+			return nil, translatef("Unable to remove %s", path)
+		end
 	else
-		fs.unlink(path)
+		if not fs.unlink(path) and (fs.lstat and fs.lstat(path) or fs.stat(path)) then
+			return nil, translatef("Unable to remove %s", path)
+		end
 	end
+
+	return true
 end
 
 local function clear_upload_dir(path)
@@ -71,10 +83,15 @@ local function clear_upload_dir(path)
 	end
 
 	local iter = fs.dir(real)
-	if iter then
-		for entry in iter do
-			if entry ~= "." and entry ~= ".." then
-				remove_tree(real .. "/" .. entry)
+	if not iter then
+		return nil, translatef("Unable to read %s", real)
+	end
+
+	for entry in iter do
+		if entry ~= "." and entry ~= ".." then
+			local ok, err = remove_tree(real .. "/" .. entry)
+			if not ok then
+				return nil, err
 			end
 		end
 	end
@@ -165,13 +182,15 @@ log = s:option(Flag, "log", translate("Enable Log"))
 log.default = 0
 log.rmempty = false
 
-clear_upload = s:option(Button, "clear_upload", translate("Clear Upload Directory"))
+clear_upload = s:option(Button, "clear_upload", translate("Clear Upload Directory"), translate("Only files under the configured Gecoos upload directory will be removed."))
 clear_upload.inputstyle = "remove"
 clear_upload.write = function(self, section)
 	local path = upload_dir:formvalue(section) or upload_dir:cfgvalue(section) or DEFAULT_UPLOAD_DIR
 	local ok, err = clear_upload_dir(path)
 	if not ok then
 		self.map.message = err or translate("Upload directory was not cleared")
+	else
+		self.map.message = translate("Upload directory cleared")
 	end
 end
 
