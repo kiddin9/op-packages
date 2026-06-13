@@ -1,0 +1,21 @@
+{
+	"luci-app-run": {
+		"description": "Grant access to upload and execute .run installers",
+		"read": {
+			"ubus": {
+				"luci-app-run": [ "status", "read_log" ]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci-app-run": [
+					"upload_start",
+					"upload_chunk",
+					"upload_finish",
+					"run",
+					"cleanup"
+				]
+			}
+		}
+	}
+}

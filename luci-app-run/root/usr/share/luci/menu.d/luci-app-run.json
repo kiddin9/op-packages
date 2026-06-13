@@ -1,0 +1,13 @@
+{
+	"admin/system/run": {
+		"title": "Run安装器",
+		"order": 32,
+		"action": {
+			"type": "view",
+			"path": "run/index"
+		},
+		"depends": {
+			"acl": [ "luci-app-run" ]
+		}
+	}
+}
