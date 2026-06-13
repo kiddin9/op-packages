@@ -32,7 +32,7 @@ function act_status()
 	local enabled = cur:get("gecoosac", "config", "enabled") == "1"
 	local e = {
 		enabled = enabled,
-		running = service_running()
+		running = enabled and service_running()
 	}
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)

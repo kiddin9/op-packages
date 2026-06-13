@@ -302,12 +302,15 @@ return baseclass.extend({
 		actionButtons        : [],
 
 		htmlEntities(str) {
+			/*
 			return String(str).replace(
 				/&/g, '&#38;').replace(
 				/</g, '&#60;').replace(
 				/>/g, '&#62;').replace(
 				/"/g, '&#34;').replace(
 				/'/g, '&#39;');
+			*/
+			return str;
 		},
 
 		checkZeroValue(value) {
@@ -721,6 +724,7 @@ return baseclass.extend({
 			if(!fPattern) {
 				return entriesArray;
 			};
+			fPattern = this.htmlEntities(fPattern);
 			return (this.msgFilterReValue) ?
 				this.setRegexpFilter(entriesArray, 5, fPattern) :
 					this.setStringFilter(entriesArray, 5, fPattern);
