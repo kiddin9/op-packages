@@ -229,8 +229,8 @@ jobs:
         git_clone https://github.com/hzyitc/mnh-openwrt && mvdir mnh-openwrt
         ) &
         (
+        git_clone https://github.com/kenzok8/luci-app-daede daede && mv -f daede/*dae* ./;rm -rf daede
         git_clone https://github.com/QiuSimons/luci-app-daed-next daed1 && mvdir daed1
-        git_clone https://github.com/kenzok8/luci-app-daede daede && mv -f daede/luci-app-daede ./;rm -rf daede
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/qca/shortcut-fe
         git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
