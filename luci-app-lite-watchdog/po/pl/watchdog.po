@@ -37,8 +37,14 @@ msgstr "Restart modemu za pomocą polecenia AT"
 msgid "AT command to restart the modem."
 msgstr "Polecenie AT restartujące modem."
 
-msgid "Configuration of the connection monitor, which is a conversion of the monitor known from the easyconfig package. More information on the %seko.one.pl forum%s."
-msgstr "Konfiguracja monitora połączenia, który jest konwersją monitora znanego z pakietu easyconfig. Więcej informacji na %sforum eko.one.pl%s."
+msgid "AT command"
+msgstr "Polecenie AT"
+
+msgid "total checks"
+msgstr "łącznie sprawdzeń"
+
+msgid "Configuration of the connection monitor known from the easyconfig package. More information on the %seko.one.pl forum%s."
+msgstr "Konfiguracja monitora połączenia znanego z pakietu easyconfig. Więcej informacji na %sforum eko.one.pl%s."
 
 msgid "eko.one.pl forum"
 msgstr "forum eko.one.pl"
@@ -68,7 +74,7 @@ msgid "Action"
 msgstr "Akcja"
 
 msgid "Connection restart"
-msgstr "Restart połączenia z internetem"
+msgstr "Ponowne uruchomienie połączenia z internetem"
 
 msgid "Modem restart"
 msgstr "Restart modemu"
@@ -139,8 +145,8 @@ msgstr "Odśwież"
 msgid "Connection monitor activity log"
 msgstr "Dziennik aktywności monitora połączenia"
 
-msgid "Connection monitor activity log, which is a conversion of the monitor known from the easyconfig package. More information on the %seko.one.pl forum%s."
-msgstr "Dziennik aktywności monitora połączenia, który jest konwersją monitora znanego z pakietu easyconfig. Więcej informacji na %sforum eko.one.pl%s."
+msgid "Connection monitor activity log known from the easyconfig package. More information on the %seko.one.pl forum%s."
+msgstr "Dziennik aktywności monitora połączenia znanego z pakietu easyconfig. Więcej informacji na %sforum eko.one.pl%s."
 
 msgid "Show only the last entries"
 msgstr "Pokaż tylko ostatnie wpisy"
@@ -156,6 +162,9 @@ msgstr "Wyczyść dziennik"
 
 msgid "Download log"
 msgstr "Pobierz dziennik"
+
+msgid "Upload log file"
+msgstr "Załaduj plik dziennika"
 
 msgid "Type of messages"
 msgstr "Rodzaj komunikatów"
@@ -218,7 +227,7 @@ msgid "Reboot"
 msgstr "Ponowne uruchomienie urządzenia"
 
 msgid "At command was sent to modem"
-msgstr "Polecenie at zostało wysłane do modemu"
+msgstr "Wysłano polecenie at do modemu"
 
 msgid "January"
 msgstr "Styczeń"
@@ -276,3 +285,111 @@ msgstr "Sobota"
 
 msgid "Sunday"
 msgstr "Niedziela"
+
+msgid "User Script Wizard"
+msgstr "Kreator skryptów użytkownika"
+
+msgid "Hint: You do not need to save anything in the settings. Select the actions and click the Generate button."
+msgstr "Wskazówka: Nie musisz niczego zapisywać w ustawieniach. Wybierz akcje i kliknij przycisk Generuj."
+
+msgid "modem restart"
+msgstr "restart modemu"
+
+msgid "reboot"
+msgstr "ponowne uruchomienie urządzenia"
+
+msgid "Restart modem if restarting the interfaces did not restore internet access."
+msgstr "Uruchom ponownie modem, jeśli restart interfejsu nie przywrócił dostępu do internetu."
+
+msgid "Router reboot if restarting the interfaces did not restore internet access."
+msgstr "Jeśli restart interfejsu nie przywrócił dostępu do internetu, uruchom ponownie router."
+
+msgid "Actions in script"
+msgstr "Akcje w skrypcie"
+
+msgid "Modem actions"
+msgstr "Obsługa modemu"
+
+msgid "Restart modem using at commands"
+msgstr "Uruchom ponownie modem za pomocą poleceń at."
+
+msgid "effect depends on modem"
+msgstr "efekt zależy od modemu"
+
+msgid "Some at commands can also restart the router."
+msgstr "Niektóre polecenia at mogą również obsługiwać ponowne uruchomienie routera."
+
+msgid "soft restart"
+msgstr "miękki restart"
+
+msgid "hard restart"
+msgstr "twardy restart"
+
+msgid "Restart modem via GPIO."
+msgstr "Restart modemu za pomocą interfejsu GPIO."
+
+msgid "Restart modem using GPIO"
+msgstr "Uruchom ponownie modem za pomocą GPIO"
+
+msgid "Select the GPIO related to 4G/5G modem."
+msgstr "Wybierz GPIO przypisane do modemu 4G/5G."
+
+msgid "Generate a script"
+msgstr "Wygeneruj skrypt"
+
+msgid "Generate user script"
+msgstr "Wygeneruj skrypt użytkownika"
+
+msgid "Generate and save the prepared script."
+msgstr "Wygeneruj i zapisz przygotowany skrypt."
+
+msgid "User can add his script or generate a new one from the selection options."
+msgstr "Użytkownik może dodać swój skrypt lub wygenerować nowy z opcji wyboru."
+
+msgid "Set test address (only one recommended)."
+msgstr "Ustaw adres do odpytywania (zalecany tylko jeden)."
+
+msgid "The available options depend on the previously defined main action (interface or router restart)."
+msgstr "Dostępne opcje zależą od zdefiniowanej wcześniej akcji głównej (restartu interfejsu lub routera)."
+
+msgid "user code"
+msgstr "kod użytkownika"
+
+msgid "Add custom commands before restarting the device."
+msgstr "Przed ponownym uruchomieniem urządzenia dodaj polecenia niestandardowe."
+
+msgid "from script:"
+msgstr "ze skryptu:"
+
+msgid "USER-SCRIPT:"
+msgstr "Skrypt użytkownika:"
+
+msgid "Soft modem restart"
+msgstr "Miękki restart modemu"
+
+msgid "Hard modem restart"
+msgstr "Twardy restart modemu"
+
+msgid "Space for user actions"
+msgstr "Miejsce na akcje użytkownika"
+
+msgid "Commands before main action"
+msgstr "Polecenia przed główną akcją"
+
+msgid "Commands after main action"
+msgstr "Polecenia po akcji głównej"
+
+msgid "Loading..."
+msgstr "Wczytywanie..."
+
+msgid "Waiting for ping command execution..."
+msgstr "Oczekiwanie na wykonanie polecenia ping..."
+
+msgid "Watchdog initialized"
+msgstr "Watchdog zainicjowany"
+
+msgid "uptime"
+msgstr "czas działania"
+
+msgid "hosts"
+msgstr "host(-y)"
