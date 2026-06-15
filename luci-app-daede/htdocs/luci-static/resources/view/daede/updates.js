@@ -139,9 +139,9 @@ return view.extend({
 			]);
 		};
 
-		// run a backgrounded script, stream its log, then toast the result.
-		// Scripts end their log with "done (rc=N)"; poll until that appears.
-		const runJob = function(script, arg, btn, logPath, label) {
+		// run a backgrounded script and stream its log into the log pane until it
+		// logs "done (rc=N)"; then refresh the badges. Result shows inline (no popup).
+		const runJob = function(script, arg, btn, logPath) {
 			const orig = btn.textContent;
 			btn.disabled = true;
 			btn.textContent = '...';
@@ -149,20 +149,13 @@ return view.extend({
 			const poll = function() {
 				return L.resolveDefault(fs.read_direct(logPath, 'text'), '').then(function(c) {
 					if (c) { logPane.textContent = c; logPane.classList.add('show'); }
-					const m = c.match(/done \(rc=(\d+)\)/);
-					if (m) {
-						const ok = m[1] === '0';
-						ui.addNotification(null, E('p', label + ' · ' + (ok ? _('done') : _('failed'))), ok ? null : 'danger');
-						refresh();
-						return;
-					}
+					if (/done \(rc=\d+\)/.test(c)) { refresh(); return; }
 					if (tries++ > 90) return;
 					return new Promise(function(r) { setTimeout(r, 2000); }).then(poll);
 				});
 			};
 			return fs.exec('/usr/share/luci-app-daede/' + script, [arg]).then(function(res) {
-				if (res.code !== 0) { ui.addNotification(null, E('p', label + ' · ' + _('failed to start')), 'danger'); return; }
-				return poll();
+				if (res.code === 0) return poll();
 			}).catch(function() {}).finally(function() {
 				btn.disabled = false;
 				btn.textContent = orig;
@@ -171,16 +164,12 @@ return view.extend({
 
 		// === Data updates (GeoIP / GeoSite) ===
 		const updateGeo = function(kind, btn) {
-			return runJob('update-geo.sh', kind, btn,
-				'/tmp/luci-app-daede.' + kind + '.log', kind === 'geoip' ? 'GeoIP' : 'GeoSite');
+			return runJob('update-geo.sh', kind, btn, '/tmp/luci-app-daede.' + kind + '.log');
 		};
 
 		// === Package updates (dae|daed / luci-app-daede) ===
 		const upgradePkg = function(pkg, btn) {
-			if (!confirm(_('Upgrade %s now? This may restart the active backend.').format(pkg)))
-				return;
-			return runJob('update-pkg.sh', pkg, btn,
-				'/tmp/luci-app-daede.pkg-' + pkg + '.log', pkg);
+			return runJob('update-pkg.sh', pkg, btn, '/tmp/luci-app-daede.pkg-' + pkg + '.log');
 		};
 
 		const refresh = function() {

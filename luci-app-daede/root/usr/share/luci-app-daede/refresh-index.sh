@@ -10,8 +10,9 @@ fi
 : > "$LOCK"
 
 (
+	# -n: skip if a package op holds the shared apk lock (no need to refresh then)
 	if command -v apk >/dev/null 2>&1; then
-		apk update
+		flock -n /tmp/luci-app-daede.apk.lock apk update
 	elif command -v opkg >/dev/null 2>&1; then
 		opkg update
 	fi
