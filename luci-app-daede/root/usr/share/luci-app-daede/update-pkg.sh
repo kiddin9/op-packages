@@ -40,10 +40,23 @@ fi
 	if command -v apk >/dev/null 2>&1; then
 		echo "--- apk update ---"
 		apk update 2>&1
-		echo "--- apk upgrade $PKG ---"
-		# --no-self-upgrade so apk itself does not jump versions mid-op
-		apk upgrade --no-self-upgrade "$PKG" 2>&1
-		rc=$?
+		echo "--- apk add $PKG ---"
+		# Target only $PKG (not `apk upgrade`, which re-solves the whole world).
+		apk add "$PKG" 2>&1
+		# Don't trust apk's exit code: apk-tools 3 returns non-zero whenever ANY
+		# unrelated installed package has an unavailable .apk in the configured
+		# feeds, even when $PKG itself upgraded fine. Judge success by state —
+		# $PKG must be installed and have no pending upgrade left.
+		if ! apk list --installed 2>/dev/null | grep -q "^${PKG}-"; then
+			echo "result: $PKG is not installed"
+			rc=1
+		elif apk list -u 2>/dev/null | grep -q "^${PKG}-"; then
+			echo "result: $PKG still has a pending upgrade"
+			rc=1
+		else
+			echo "result: $PKG is at the latest available version"
+			rc=0
+		fi
 	elif command -v opkg >/dev/null 2>&1; then
 		echo "--- opkg update ---"
 		opkg update 2>&1
