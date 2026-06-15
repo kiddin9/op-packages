@@ -62,13 +62,12 @@
 
 --- a/luci-theme-spectra/root/etc/uci-defaults/30_luci-theme-spectra
 +++ b/luci-theme-spectra/root/etc/uci-defaults/30_luci-theme-spectra
-@@ -8,6 +8,34 @@ commit luci
+@@ -8,6 +8,32 @@ commit luci
  EOF
  
      rm -rf /tmp/luci-*
 -    /etc/init.d/uhttpd restart
 +    if [ -n "$(command -v nginx)" ];then
-+        if [ ! -f /etc/nginx/conf.d/spectra.locations ]; then
 +cat << 'EOF' > /etc/nginx/conf.d/spectra.locations
 +location /spectra/ {
 +    index index.php index.html index.htm;
@@ -84,7 +83,6 @@
 +}
 +EOF
 +            /etc/init.d/nginx restart
-+        fi
 +    elif [ -n "$(command -v lighttpd)" ];then
 +cat << 'EOF' > /etc/lighttpd/conf.d/81-php.conf
 +cgi.assign += ( ".php" => "/usr/bin/php-cgi" )
