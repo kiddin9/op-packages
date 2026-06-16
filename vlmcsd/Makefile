@@ -1,17 +1,12 @@
-# SPDX-License-Identifier: GPL-3.0-only
-#
-# Copyright (C) 2022 ImmortalWrt.org
-
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=vlmcsd
-PKG_RELEASE:=1
+PKG_VERSION:=svn1113
+PKG_RELEASE:=2
 
-PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL:=https://github.com/Wind4/vlmcsd.git
-PKG_SOURCE_DATE:=2020-03-30
-PKG_SOURCE_VERSION:=70e03572b254688b8c3557f898e7ebd765d29ae1
-PKG_MIRROR_HASH:=skip
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/Wind4/vlmcsd/tar.gz/$(PKG_VERSION)?
+PKG_HASH:=skip
 
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
@@ -22,17 +17,33 @@ PKG_BUILD_PARALLEL:=1
 include $(INCLUDE_DIR)/package.mk
 
 define Package/vlmcsd
-  SECTION:=net
-  CATEGORY:=Network
-  TITLE:=A KMS Emulator in C
-  URL:=https://github.com/Wind4/vlmcsd
-  DEPENDS:=+libpthread
-  USERID:=vlmcsd:vlmcsd
+	SECTION:=net
+	CATEGORY:=Network
+	TITLE:=vlmcsd for OpenWRT
+	URL:=http://forums.mydigitallife.info/threads/50234
+	DEPENDS:=+libpthread
 endef
 
 define Package/vlmcsd/description
-  KMS Emulator in C (currently runs on Linux including Android, FreeBSD,
-  Solaris, Minix, Mac OS, iOS, Windows with or without Cygwin)
+	vlmcsd is a KMS Emulator in C.
+endef
+
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	rm $(PKG_BUILD_DIR)/GNUmakefile
+endef
+
+define Package/vlmcsd/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bin/vlmcsd $(1)/usr/bin/vlmcsd
+	$(INSTALL_DIR) $(1)/etc
+	$(INSTALL_BIN) ./files/vlmcsd.ini $(1)/etc/vlmcsd.ini
+	$(INSTALL_DIR) $(1)/etc/config
+	$(INSTALL_CONF) ./files/vlmcsd.config $(1)/etc/config/vlmcsd
+	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_BIN) ./files/vlmcsd.init $(1)/etc/init.d/vlmcsd
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/40-vlmcsd $(1)/etc/uci-defaults/40-vlmcsd
 endef
 
 define Package/vlmcsd/conffiles
@@ -40,20 +51,16 @@ define Package/vlmcsd/conffiles
 /etc/vlmcsd.ini
 endef
 
-MAKE_FLAGS += \
-	CC="$(TARGET_CC_NOCACHE)" \
-	VLMCSD_VERSION="$(PKG_VERSION)"
+define Package/vlmcsd/postinst-pkg
+#!/bin/sh
+[ -n "$${IPKG_INSTROOT}" ] && exit 0
 
-define Package/vlmcsd/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bin/vlmcsd $(1)/usr/bin/vlmcsd
+enabled="$$(uci -q get vlmcsd.config.enabled 2>/dev/null)"
+if [ "$$enabled" = "1" ] && [ -x /etc/init.d/vlmcsd ]; then
+	/etc/init.d/vlmcsd enable >/dev/null 2>&1 || true
+fi
 
-	$(INSTALL_DIR) $(1)/etc
-	$(INSTALL_BIN) ./files/vlmcsd.ini $(1)/etc/vlmcsd.ini
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_BIN) ./files/vlmcsd.conf $(1)/etc/config/vlmcsd
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./files/vlmcsd.init $(1)/etc/init.d/vlmcsd
+exit 0
 endef
 
 $(eval $(call BuildPackage,vlmcsd))
