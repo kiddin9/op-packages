@@ -343,7 +343,7 @@ jobs:
         git_sparse_clone master "https://github.com/coolsnowwolf/packages" multimedia/UnblockNeteaseMusic-Go \
         multimedia/UnblockNeteaseMusic multimedia/aliyundrive-webdav net/gowebdav net/kismet net/mstpd \
         net/phtunnel net/headscale net/clouddrive2 net/baidupcs-go net/modemband net/daemonlogger net/geth net/gnurl \
-        net/uugamebooster net/pgyvpn net/ooniprobe net/polipo net/rosy-file-server net/qiyougamebooster \
+        net/uugamebooster net/pgyvpn net/vlmcsd net/ooniprobe net/polipo net/rosy-file-server net/qiyougamebooster \
         net/sqm-scripts-extra net/tor-fw-helper net/vncrepeater net/verysync \
         net/vpnbypass net/vpn-policy-routing utils/qfirehose
         git_sparse_clone master "https://github.com/lunatickochiya/Matrix-Action-Openwrt" package/kochiya/brlaser package/kochiya/luci-app-banmac-ipt package/kochiya/luci-app-banmac-nft package/kochiya/luci-app-nvr package/kochiya/luci-app-openvpn-server package/kochiya/luci-app-openvpn-server-client
@@ -374,7 +374,7 @@ jobs:
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/udp2raw net/msd_lite \
         net/subconverter net/ngrokc net/scutclient net/gost net/ua2f net/dufs net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/nexttrace net/rustdesk-server net/tuic-server \
-        net/ipset-lists net/ShadowVPN net/nps net/vlmcsd net/dnsforwarder \
+        net/ipset-lists net/ShadowVPN net/nps net/dnsforwarder \
         net/ps3netsrv net/brook net/q \
         net/vsftpd net/smartdns net/miniupnpd net/p910nd \
         net/ariang libs/wxbase libs/rapidjson libs/libcron libs/quickjspp libs/toml11 libs/libdvbcsa \
