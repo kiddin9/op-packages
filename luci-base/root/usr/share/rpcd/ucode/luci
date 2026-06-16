@@ -725,20 +725,24 @@ const methods = {
 
 	getCPUInfo: {
 		call: function() {
-			if (!access('/sbin/cpuinfo'))
-				return {};
+			if (access('/sbin/cpuinfo')) {
+				const fd = popen('/sbin/cpuinfo');
+				if (fd) {
+					let cpuinfo = fd.read('all');
+					if (!cpuinfo)
+						cpuinfo = '?';
+					fd.close();
 
-			const fd = popen('/sbin/cpuinfo');
-			if (fd) {
-				let cpuinfo = fd.read('all');
-				if (!cpuinfo)
-					cpuinfo = '?';
-				fd.close();
-
-				return { cpuinfo: cpuinfo };
-			} else {
-				return { cpuinfo: error() };
+					return { cpuinfo: cpuinfo };
+				} else {
+					return { cpuinfo: error() };
+				}
 			}
+
+			const cpuinfo = readfile('/proc/cpuinfo');
+			const m = cpuinfo ? match(cpuinfo, /(^|\n)(Model Name|model name|Hardware|Processor)[ \t]*:[ \t]*([^\n]+)/) : null;
+
+			return m?.[3] ? { cpuinfo: trim(m[3]) } : {};
 		}
 	},
 
