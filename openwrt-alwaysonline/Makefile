@@ -8,7 +8,7 @@ PKG_NAME:=alwaysonline
 PKG_UPSTREAM_VERSION:=1.2.1
 PKG_UPSTREAM_GITHASH:=206292ca68e4d6c81b215163a7bbd0cd2eb36860
 PKG_VERSION:=$(PKG_UPSTREAM_VERSION)~$(call version_abbrev,$(PKG_UPSTREAM_GITHASH))
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 UCI_VERSION:=0.2025.01.25
 
 PKG_SOURCE_PROTO:=git
@@ -41,7 +41,7 @@ GO_PKG_LDFLAGS_X:=\
 	main.versionGitStatus=clean
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
 
 define Package/$(PKG_NAME)
   SECTION:=net

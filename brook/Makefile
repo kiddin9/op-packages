@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brook
 PKG_VERSION:=20260101.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/txthinking/brook/tar.gz/v$(PKG_VERSION)?
@@ -24,7 +24,7 @@ GO_PKG:=github.com/txthinking/brook
 GO_PKG_BUILD_PKG:=$(GO_PKG)/cli/brook
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
 
 define Package/brook
   SECTION:=net

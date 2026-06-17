@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tor-fw-helper
 PKG_VERSION:=0.3
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://git.torproject.org/tor-fw-helper.git
@@ -28,7 +28,7 @@ PKG_USE_MIPS16:=0
 GO_PKG:=git.torproject.org/tor-fw-helper.git
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
 
 define Package/tor-fw-helper/Default
   TITLE:=Firewall helper for tor

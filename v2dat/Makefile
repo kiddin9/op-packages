@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=v2dat
 PKG_SOURCE_DATE:=2022-12-15
 PKG_SOURCE_VERSION:=47b8ee51fb528e11e1a83453b7e767a18d20d1f7
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_DATE).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/urlesistiana/v2dat/tar.gz/$(PKG_SOURCE_VERSION)?
@@ -28,7 +28,7 @@ PKG_BUILD_FLAGS:=no-mips16
 GO_PKG:=github.com/urlesistiana/v2dat
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
 
 define Package/v2dat
   SECTION:=utils
