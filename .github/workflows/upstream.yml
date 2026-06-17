@@ -165,7 +165,6 @@ jobs:
         git_clone https://github.com/linkease/nas-packages-luci && mv -n nas-packages-luci/luci/* ./; rm -rf nas-packages-luci
         git_clone https://github.com/linkease/istore && mv -n istore/luci/* ./; rm -rf istore
         #git_clone https://github.com/linkease/lcdsimple lcdsimple1 && mvdir lcdsimple1
-        git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
         ) &
         (
         # git_clone https://github.com/frainzy1477/luci-app-clash
@@ -175,6 +174,7 @@ jobs:
         git_clone https://github.com/jjm2473/openwrt-apps && rm -rf openwrt-apps/{luci-app-cpufreq,luci-app-ota,homebox,luci-alias.mk} && sed -i "s/luci-alias.mk/..\/luci.mk/" openwrt-apps/*/Makefile && mvdir openwrt-apps
         git_clone https://github.com/nikkinikki-org/OpenWrt-nikki && mv -f OpenWrt-nikki/{luci-app-nikki,nikki,mihomo*} ./;rm -rf OpenWrt-nikki
         git_clone https://github.com/nikkinikki-org/OpenWrt-momo && mv -f OpenWrt-momo/{luci-app-momo,momo} ./;rm -rf OpenWrt-momo
+        git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
         git clone https://github.com/fw876/helloworld -b dev && mvdir helloworld
         ) &
         (
