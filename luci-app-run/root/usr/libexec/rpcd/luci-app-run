@@ -131,8 +131,8 @@ upload_start() {
 	local clean id token dir file
 	clean="$(sanitize_name "$filename")"
 	case "$clean" in
-		*.run) ;;
-		*) json_error "Only .run files are accepted"; return ;;
+		*.run|*.sh) ;;
+		*) json_error "Only .run and .sh files are accepted"; return ;;
 	esac
 
 	id="$(date +%s)_$$"
