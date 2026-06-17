@@ -72,8 +72,13 @@ saved_token="$(cat "$dir/token" 2>/dev/null)"
 
 name="$(cat "$dir/name" 2>/dev/null)"
 case "$name" in
-	*.run) ;;
-	*) fail "Invalid filename" ;;
+	*.run)
+		;;
+	*.sh)
+		;;
+	*)
+		fail "Invalid filename"
+		;;
 esac
 
 length="${CONTENT_LENGTH:-0}"

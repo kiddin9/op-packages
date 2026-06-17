@@ -1,10 +1,16 @@
 {
 	"luci-app-gecoosac": {
-		"description": "Grant UCI access for luci-app-gecoosac",
+		"description": "Grant access for luci-app-gecoosac",
 		"read": {
+			"ubus": {
+				"service": [ "list" ]
+			},
 			"uci": [ "gecoosac" ]
 		},
 		"write": {
+			"ubus": {
+				"luci.gecoosac": [ "clear_upload" ]
+			},
 			"uci": [ "gecoosac" ]
 		}
 	}

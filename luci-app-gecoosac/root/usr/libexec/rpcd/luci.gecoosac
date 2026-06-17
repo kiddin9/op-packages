@@ -1,0 +1,91 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+
+DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload/
+
+json_result() {
+	local ok="$1"
+	local message="$2"
+	local path="$3"
+
+	json_init
+	json_add_boolean result "$ok"
+	[ -n "$message" ] && json_add_string error "$message"
+	[ -n "$path" ] && json_add_string path "$path"
+	json_dump
+	json_cleanup
+}
+
+strip_trailing_slashes() {
+	local path="$1"
+
+	while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do
+		path="${path%/}"
+	done
+
+	printf '%s\n' "$path"
+}
+
+safe_upload_path() {
+	local path
+
+	path="$(strip_trailing_slashes "$1")"
+	[ "$path" = "/tmp/gecoosac/upload" ] && return 0
+
+	case "$path" in
+		*/gecoosac/upload) return 0 ;;
+	esac
+
+	return 1
+}
+
+clear_upload() {
+	local path real entry
+
+	path="$(uci -q get gecoosac.config.upload_dir)"
+	[ -n "$path" ] || path="$DEFAULT_UPLOAD_DIR"
+
+	case "$path" in
+		/*) ;;
+		*) json_result 0 "Expecting an absolute path"; return ;;
+	esac
+
+	path="$(strip_trailing_slashes "$path")"
+	real="$(readlink -f "$path" 2>/dev/null)"
+	[ -n "$real" ] || real="$path"
+	real="$(strip_trailing_slashes "$real")"
+
+	if ! safe_upload_path "$real"; then
+		json_result 0 "Only Gecoos upload directories can be cleared" "$real"
+		return
+	fi
+
+	[ -d "$real" ] || { json_result 1 "" "$real"; return; }
+
+	for entry in "$real"/* "$real"/.[!.]* "$real"/..?*; do
+		[ -e "$entry" ] || [ -L "$entry" ] || continue
+
+		if ! rm -rf "$entry"; then
+			json_result 0 "Unable to remove upload directory contents" "$real"
+			return
+		fi
+	done
+
+	json_result 1 "" "$real"
+}
+
+case "$1" in
+	list)
+		printf '{ "clear_upload": {} }'
+	;;
+	call)
+		case "$2" in
+			clear_upload) clear_upload ;;
+			*) json_result 0 "Unknown method" ;;
+		esac
+	;;
+	*)
+		json_result 0 "Usage: luci.gecoosac list|call <method>"
+	;;
+esac

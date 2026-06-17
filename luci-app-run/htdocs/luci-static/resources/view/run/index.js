@@ -5,14 +5,11 @@
 'require poll';
 
 // ====================== 纯JSON国际化 · 中英双语 ======================
-// 25.12 兼容版：唯一变量名 + 可靠语言检测
 const RUN_LANG = (function () {
 	try {
-		// 优先从 cookie 获取（LuCI 最常用方式）
 		const m = document.cookie.match(/luci_lang=([a-zA-Z-]+)/);
 		if (m) return m[1].substring(0, 2).toLowerCase();
 
-		// 备选：LuCI 环境变量
 		if (window.L && L.env && L.env.lang)
 			return L.env.lang.substring(0, 2).toLowerCase();
 
@@ -25,15 +22,15 @@ const RUN_LANG = (function () {
 const I18N = {
 	zh: {
 		title: "Run安装器",
-		desc: "在路由器上上传并执行 makeself 生成的 .run 安装包。",
-		drop_tip: "拖入一个 makeself .run 文件，或从电脑选择。",
-		choose_file: "选择 .run 文件",
+		desc: "在路由器上上传并执行 .run 安装包或 .sh 脚本，注意架构务必匹配。",
+		drop_tip: "拖入一个 .run 或 .sh 文件，或从电脑选择。",
+		choose_file: "选择 .run 或 .sh 文件",
 		execute: "执行",
 		clean_up: "清理",
-		upload_title: "上传 .run 安装包",
+		upload_title: "上传安装脚本 (.run / .sh)",
 		log_title: "执行日志",
 		clean_done: "临时文件与日志已清理。",
-		only_run: "仅支持 .run 文件。",
+		only_run: "仅支持 .run 和 .sh 文件。",
 		prepare_upload: "准备上传：%s (%s)",
 		upload_failed: "上传失败。",
 		uploading: "正在上传 %s：%d%%",
@@ -47,15 +44,15 @@ const I18N = {
 	},
 	en: {
 		title: "Run Installer",
-		desc: "Upload and execute a makeself-generated .run package on this router.",
-		drop_tip: "Drop a makeself .run file here, or choose one from your computer.",
-		choose_file: "Choose .run file",
+		desc: "Upload and execute .run packages or .sh scripts on this router, ensuring architecture compatibility.",
+		drop_tip: "Drop a .run or .sh file here, or choose one from your computer.",
+		choose_file: "Choose .run or .sh file",
 		execute: "Execute",
 		clean_up: "Clean up",
-		upload_title: "Upload .run installer",
+		upload_title: "Upload installer script (.run / .sh)",
 		log_title: "Execution log",
 		clean_done: "Temporary files and logs were removed.",
-		only_run: "Only .run files are accepted.",
+		only_run: "Only .run and .sh files are accepted.",
 		prepare_upload: "Preparing upload: %s (%s)",
 		upload_failed: "Upload failed.",
 		uploading: "Uploading %s: %d%%",
@@ -137,7 +134,6 @@ function bufferToBase64(buffer) {
 }
 
 return view.extend({
-	// ====================== 底部按钮正确隐藏 ======================
 	handleSave: null,
 	handleReset: null,
 	handleSaveApply: null,
@@ -156,7 +152,7 @@ return view.extend({
 
 		var fileInput = E('input', {
 			'type': 'file',
-			accept: '.run,application/x-sh,application/octet-stream',
+			accept: '.run,.sh,application/x-shellscript,application/octet-stream',
 			style: 'display:none'
 		});
 
@@ -259,8 +255,7 @@ return view.extend({
 	},
 
 	applyStatus: function (status, state) {
-		if (!status)
-			return;
+		if (!status) return;
 
 		if (status.running)
 			state.textContent = _('running');
@@ -271,7 +266,8 @@ return view.extend({
 	uploadFile: function (file, progress, state, runButton) {
 		var self = this;
 
-		if (!file.name.match(/\.run$/i)) {
+		// 支持 .run 和 .sh 文件
+		if (!file.name.match(/\.(run|sh)$/i)) {
 			ui.addNotification(null, E('p', [_('only_run')]), 'danger');
 			return Promise.reject();
 		}
@@ -305,30 +301,20 @@ return view.extend({
 			xhr.setRequestHeader('Content-Type', 'application/octet-stream');
 
 			xhr.upload.onprogress = function (ev) {
-				if (!ev.lengthComputable)
-					return;
-
+				if (!ev.lengthComputable) return;
 				progress.value = Math.floor(ev.loaded * 100 / ev.total);
 				state.textContent = _('uploading', file.name, progress.value);
 			};
 
 			xhr.onerror = function () {
-				// 强制启用按钮
 				document.querySelector('.cbi-button-action').disabled = false;
 				reject(new Error(_('upload_err')));
 			};
 
 			xhr.onload = function () {
-				// ==========================================
-				// 【直接强制解锁按钮：永远生效】
-				// ==========================================
 				document.querySelector('.cbi-button-action').disabled = false;
 				progress.value = 100;
 
-				// 忽略所有返回解析
-				try { JSON.parse(xhr.responseText); } catch (e) { }
-
-				// 直接完成流程
 				uploadFinish(session.id).then(function () {
 					state.textContent = _('upload_done', file.name, formatBytes(file.size));
 				}).catch(function () {
@@ -345,8 +331,7 @@ return view.extend({
 	startRun: function (runButton, state) {
 		var self = this;
 
-		if (!this.currentUploadId)
-			return;
+		if (!this.currentUploadId) return;
 
 		runButton.disabled = true;
 		state.textContent = _('starting');
@@ -367,8 +352,7 @@ return view.extend({
 		var self = this;
 
 		return readLog(this.logOffset).then(function (res) {
-			if (!res || res.error)
-				return;
+			if (!res || res.error) return;
 
 			if (res.data) {
 				log.textContent += res.data;

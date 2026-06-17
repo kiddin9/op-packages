@@ -1,0 +1,14 @@
+{
+	"admin/services/gecoosac": {
+		"title": "Gecoos AC",
+		"order": 100,
+		"action": {
+			"type": "view",
+			"path": "gecoosac"
+		},
+		"depends": {
+			"acl": [ "luci-app-gecoosac" ],
+			"uci": { "gecoosac": true }
+		}
+	}
+}

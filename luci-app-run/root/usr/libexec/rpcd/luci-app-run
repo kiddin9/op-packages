@@ -223,7 +223,14 @@ run_installer() {
 	[ -d "$dir" ] || { json_error "Unknown upload id"; return; }
 	name="$(cat "$dir/name" 2>/dev/null)"
 	file="$dir/$name"
-	[ -x "$file" ] || { json_error "Uploaded file is not executable"; return; }
+	
+	# 确保文件可执行（.run 和 .sh 都需要）
+	chmod 700 "$file" 2>/dev/null || true
+	
+	[ -x "$file" ] || { 
+		json_error "Uploaded file is not executable. Please check file permissions." 
+		return 
+	}
 
 	read_state
 	if is_running "$PID"; then
