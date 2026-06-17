@@ -486,6 +486,7 @@ jobs:
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
           -e 's?include .*/luci.mk?include $(TOPDIR)/feeds/luci/luci.mk?' \
+          -e 's?feeds/packages/lang/golang?feeds/packages/kiddin9/golang?' \
           */Makefile
         sed -i 's/+docker\( \|$\)/+docker +dockerd /' luci-app-!(docker*)/Makefile
         sed -i "s/192.168.0.1/10.0.0.1/g" luci-app-onekeyap/{htdocs/luci-static/resources/view/network/onekeyap.js,root/usr/libexec/onekeyap,root/etc/config/onekeyap}
@@ -507,7 +508,7 @@ jobs:
         cp -rf luci-app-bypass/root/www/luci-static/bypass/* luci-app-ssr-plus/root/www/luci-static/shadowsocksr/
         echo ".page-container>div>div>a:first-child{display:none}" >>luci-app-quickstart/htdocs/luci-static/quickstart/style.css
         sed -i 's/icon!=="baby"/icon!==""/' luci-app-quickstart/htdocs/luci-static/quickstart/index.js
-        sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile
+        sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile 
 
         while [[ ! -f /tmp/ok || ! -f /tmp/ok2 || ! -f /tmp/ok3 ]]; do
             echo "wait"
