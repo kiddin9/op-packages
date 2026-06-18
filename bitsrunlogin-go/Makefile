@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=BitSrunLoginGo
 PKG_VERSION:=1.6.6
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/Mmx233/BitSrunLoginGo/tar.gz/v$(PKG_VERSION)?
@@ -23,7 +23,7 @@ GO_PKG:=github.com/Mmx233/BitSrunLoginGo
 GO_PKG_BUILD_PKG:=github.com/Mmx233/BitSrunLoginGo/cmd/bitsrun/
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/bitsrunlogin-go
   SECTION:=net

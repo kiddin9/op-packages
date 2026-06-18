@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=go-nats
 PKG_VERSION:=0.0.1
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/enobufs/go-nats.git
@@ -25,7 +25,7 @@ PKG_BUILD_FLAGS:=no-mips16
 GO_PKG:=github.com/enobufs/go-nats
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/go-nats
   SECTION:=net

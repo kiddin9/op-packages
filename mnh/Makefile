@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mnh
 PKG_VERSION:=0.7.3
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/hzyitc/mnh/tar.gz/v${PKG_VERSION}?
@@ -19,7 +19,7 @@ PKG_USE_MIPS16:=0
 GO_PKG:=github.com/hzyitc/mnh
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/mnh
   SECTION:=net

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fusiontunx
 PKG_VERSION:=1.0.3-4
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_MAINTAINER:=BobbyUnknown
 PKG_LICENSE:=MIT
@@ -20,7 +20,7 @@ PKG_BUILD_DEPENDS:=node/host golang/host
 MIHOMO_VERSION:=v1.19.18
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 GO_PKG:=github.com/bobbyunknown/FusionTunX
 

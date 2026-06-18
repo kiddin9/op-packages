@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=dockerd
 PKG_FLAGS:=hold
 PKG_VERSION:=27.3.1
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 
@@ -23,7 +23,7 @@ PKG_BUILD_FLAGS:=no-mips16
 GO_PKG:=github.com/docker/docker
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/dockerd/config
   source "$(SOURCE)/Config.in"

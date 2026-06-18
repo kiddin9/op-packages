@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=boltbrowser
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/br0xen/boltbrowser.git
@@ -20,7 +20,7 @@ PKG_BUILD_FLAGS:=no-mips16
 GO_PKG:=github.com/br0xen/boltbrowser
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 
 define Package/boltbrowser
   SECTION:=utils

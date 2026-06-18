@@ -12535,6 +12535,10 @@ msgstr "隧道介面使用的 TTL"
 msgid "Use as external overlay (/overlay)"
 msgstr "作為外部 overlay 使用 (/overlay)"
 
+#: modules/luci-mod-system/htdocs/luci-static/resources/view/system/mounts.js:275
+msgid "Use as Docker OPT (/opt)"
+msgstr "作為 Docker OPT 使用 (/opt)"
+
 #: modules/luci-mod-system/htdocs/luci-static/resources/view/system/mounts.js:273
 msgid "Use as root filesystem (/)"
 msgstr "作為根檔案系統使用 (/)"
