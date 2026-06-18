@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=UnblockNeteaseMusic-Go
 PKG_VERSION:=0.2.13
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/cnsilvan/UnblockNeteaseMusic/tar.gz/$(PKG_VERSION)?
@@ -35,7 +35,7 @@ GO_PKG_LDFLAGS+= \
 	-X '$(GO_PKG)/version.ExGoVersionInfo=$(GO_ARM) $(GO_MIPS)$(GO_MIPS64)'
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
 
 define Package/UnblockNeteaseMusic-Go/config
 config UNBLOCKNETEASEMUSIC_GO_COMPRESS_GOPROXY

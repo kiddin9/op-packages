@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=transfer
 PKG_VERSION:=0.4.17
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/Mikubill/transfer/tar.gz/v$(PKG_VERSION)?
@@ -23,7 +23,7 @@ PKG_BUILD_FLAGS:=no-mips16
 GO_PKG:=github.com/Mikubill/transfer
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
 
 define Package/transfer
   SECTION:=net

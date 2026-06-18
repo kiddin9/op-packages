@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ooniprobe
 PKG_VERSION:=3.29.1
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=probe-cli-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/ooni/probe-cli/tar.gz/v$(PKG_VERSION)?
@@ -27,7 +27,7 @@ PKG_USE_MIPS16:=0
 GO_PKG:=github.com/ooni/probe-cli
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
 
 define Package/ooniprobe
   SECTION:=net

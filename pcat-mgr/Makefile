@@ -5,7 +5,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=pcat-mgr
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://gitlab.com/CoiaPrant/pcat-mgr.git
@@ -25,7 +25,7 @@ PKG_BUILD_FLAGS:=no-mips16
 GO_PKG:=pcat-mgr
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
 
 define Package/pcat-mgr
   SECTION:=utils

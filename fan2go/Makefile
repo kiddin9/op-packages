@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fan2go
 PKG_VERSION:=0.14.0
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/markusressel/fan2go/tar.gz/$(PKG_VERSION)?
@@ -21,7 +21,7 @@ GO_PKG_LDFLAGS_X:=$(GO_PKG)/cmd/global.Version=$(PKG_VERSION)
 GO_PKG_TAGS:=netgo,disable_nvml
 
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
 
 define Package/fan2go
   SECTION:=utils

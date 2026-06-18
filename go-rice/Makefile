@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=go.rice
 PKG_VERSION:=1.0.2
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/GeertJohan/go.rice/tar.gz/v$(PKG_VERSION)?
@@ -28,8 +28,8 @@ GO_PKG_BUILD_PKG:=$(GO_PKG)/rice
 
 include $(INCLUDE_DIR)/host-build.mk
 include $(INCLUDE_DIR)/package.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-host-build.mk
-include $(TOPDIR)/feeds/packages/kiddin9/golang/golang-package.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-host-build.mk
+include $(TOPDIR)/feeds/kiddin9/golang/golang-package.mk
 
 define Package/go-rice
   SECTION:=devel
