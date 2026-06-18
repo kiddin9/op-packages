@@ -393,7 +393,7 @@ jobs:
         mv -n applications/* luciapp/; rm -rf applications
 
         for ipk in $(ls -d luciapp/!(luci-app-rclone|luci-app-upnp|luci-app-dockerman|luci-app-firewall|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-ddns|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-transmission)/); do
-        	if [[ $(ls $ipk/po | wc -l) -gt 4 || $(ls $ipk/po | wc -l) -eq 1 ]]; then
+        	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
             rm -rf $ipk
         	fi
         done
