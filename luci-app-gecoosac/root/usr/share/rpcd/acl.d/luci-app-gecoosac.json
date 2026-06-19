@@ -3,7 +3,7 @@
 		"description": "Grant access for luci-app-gecoosac",
 		"read": {
 			"ubus": {
-				"service": [ "list" ]
+				"luci.gecoosac": [ "status" ]
 			},
 			"uci": [ "gecoosac" ]
 		},

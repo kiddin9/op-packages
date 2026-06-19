@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: luci-app-gecoosac\n"
-"PO-Revision-Date: 2026-06-12 00:00+0800\n"
+"PO-Revision-Date: 2026-06-19 00:00+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: Chinese\n"
 "Language: zh_CN\n"
@@ -9,17 +9,17 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-msgid "Default certificate files are generated when HTTPS starts; custom paths must point to readable files."
-msgstr "默认证书文件会在 HTTPS 启动时生成；自定义路径必须指向可读取的文件。"
+msgid "Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key."
+msgstr "默认证书文件会在 HTTPS 启动时生成；自定义路径必须指向可读取且相互匹配的证书和私钥。"
 
 msgid "Gecoos AC"
 msgstr "集客AC控制器"
 
-msgid "Batch management Gecoos AP, Default password: admin"
-msgstr "批量集中管理集客 AP，默认密码：admin"
+msgid "Supports Gecoos AP firmware 7.6 and above."
+msgstr "支持集客 AP 7.6 及以上版本固件。"
 
-msgid "The current AC version %s, only supports AP 7.6 and above."
-msgstr "当前 AC 版本 %s ，仅支持 AP 7.6 及以上版本。"
+msgid "The initial password is admin; change it immediately after first login."
+msgstr "初始密码为 admin；首次登录后请立即修改。"
 
 msgid "Global Settings"
 msgstr "全局设置"
@@ -51,23 +51,35 @@ msgstr "指定 key 证书文件"
 msgid "Upload dir path"
 msgstr "上传目录"
 
-msgid "Upload AP upgrade firmware here. For safe cleanup, use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/."
-msgstr "AP 升级固件会上传到此目录。为确保安全清理，请使用以 /gecoosac/upload 结尾的绝对路径，例如 /tmp/gecoosac/upload/。"
+msgid "Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/. Do not place it under /etc/gecoosac because that directory is backed up during sysupgrade."
+msgstr "AP 升级固件会上传到此目录。请使用以 /gecoosac/upload 结尾的绝对路径，例如 /tmp/gecoosac/upload/。不要放在 /etc/gecoosac 下，因为该目录会在 sysupgrade 时被备份。"
 
-msgid "Upload directory must be an absolute path ending with /gecoosac/upload."
-msgstr "上传目录必须是以 /gecoosac/upload 结尾的绝对路径。"
+msgid "Upload directory must be an absolute path ending with /gecoosac/upload and must not be under /etc/gecoosac."
+msgstr "上传目录必须是以 /gecoosac/upload 结尾的绝对路径，且不能位于 /etc/gecoosac 下。"
 
 msgid "Database dir path"
 msgstr "数据库目录"
 
-msgid "The path to store the config database"
-msgstr "存放配置数据库的路径"
+msgid "Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Do not place it inside the upload directory."
+msgstr "将配置数据库存放在 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。不要放在上传目录内。"
+
+msgid "Database directory must be under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac."
+msgstr "数据库目录必须位于 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。"
+
+msgid "Database directory must not be the upload directory or inside it."
+msgstr "数据库目录不能是上传目录，也不能位于上传目录内。"
 
 msgid "PID dir path"
 msgstr "PID 目录"
 
-msgid "The path to store the AC program pid file"
-msgstr "存放 AC 程序 PID 文件的路径"
+msgid "Store the AC program pid file under /var/run or /tmp/gecoosac. Do not place it inside the upload directory."
+msgstr "将 AC 程序 PID 文件存放在 /var/run 或 /tmp/gecoosac 下。不要放在上传目录内。"
+
+msgid "PID directory must be under /var/run or /tmp/gecoosac."
+msgstr "PID 目录必须位于 /var/run 或 /tmp/gecoosac 下。"
+
+msgid "PID directory must not be the upload directory or inside it."
+msgstr "PID 目录不能是上传目录，也不能位于上传目录内。"
 
 msgid "Language"
 msgstr "语言"
@@ -105,11 +117,11 @@ msgstr "清理上传目录"
 msgid "Clear"
 msgstr "清理"
 
-msgid "Only files under the configured Gecoos upload directory will be removed."
-msgstr "只会删除已配置的集客 AC 上传目录中的文件。"
+msgid "Only files under the saved Gecoos upload directory will be removed. Save and Apply before clearing a newly edited path."
+msgstr "只会删除已保存的集客 AC 上传目录中的文件。若刚修改路径，请先保存并应用后再清理。"
 
-msgid "Really clear the configured upload directory?"
-msgstr "确定要清理已配置的上传目录吗？"
+msgid "Really clear the saved upload directory?"
+msgstr "确定要清理已保存的上传目录吗？"
 
 msgid "Expecting an absolute path"
 msgstr "请输入绝对路径"
@@ -120,8 +132,11 @@ msgstr "只能清理集客 AC 上传目录"
 msgid "Upload directory was not cleared"
 msgstr "上传目录未清理"
 
-msgid "Upload directory cleared"
-msgstr "上传目录已清理"
+msgid "Saved upload directory cleared"
+msgstr "已保存的上传目录已清理"
 
 msgid "Unable to remove upload directory contents"
 msgstr "无法删除上传目录内容"
+
+msgid "Upload directory contains configured runtime paths"
+msgstr "上传目录包含已配置的运行目录"
