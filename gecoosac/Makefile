@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
 PKG_VERSION:=2.2.20251015
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 ifeq ($(ARCH),aarch64)
   PKG_ARCH:=ac_linux_arm64
@@ -47,6 +47,11 @@ endef
 define Package/$(PKG_NAME)/conffiles
 /etc/config/gecoosac
 /etc/gecoosac/
+endef
+
+define Build/Prepare
+	$(call Build/Prepare/Default)
+	$(CP) ../LICENSE $(PKG_BUILD_DIR)/LICENSE
 endef
 
 define Build/Compile

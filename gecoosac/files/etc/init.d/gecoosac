@@ -43,6 +43,29 @@ is_abs_path() {
 	esac
 }
 
+strip_trailing_slashes() {
+	local path="$1"
+
+	while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do
+		path="${path%/}"
+	done
+
+	printf '%s\n' "$path"
+}
+
+is_safe_upload_dir() {
+	local path
+
+	is_abs_path "$1" || return 1
+	path="$(strip_trailing_slashes "$1")"
+
+	case "$path" in
+		*/gecoosac/upload) return 0 ;;
+	esac
+
+	return 1
+}
+
 is_port() {
 	case "$1" in
 		""|*[!0-9]*) return 1 ;;
@@ -175,7 +198,11 @@ generate_default_cert() {
 }
 
 normalize_conf() {
-	is_abs_path "$upload_dir" || upload_dir="$DEFAULT_UPLOAD_DIR"
+	if is_safe_upload_dir "$upload_dir"; then
+		upload_dir="$(strip_trailing_slashes "$upload_dir")/"
+	else
+		upload_dir="$DEFAULT_UPLOAD_DIR"
+	fi
 	is_abs_path "$db_dir" || db_dir="$DEFAULT_DB_DIR"
 	is_abs_path "$crt_file" || crt_file="$DEFAULT_CRT_FILE"
 	is_abs_path "$key_file" || key_file="$DEFAULT_KEY_FILE"
@@ -250,7 +277,7 @@ start_service() {
 	procd_set_param pidfile "${piddir%/}/gecoosac.pid"
 	procd_set_param stdout "$log"
 	procd_set_param stderr "$log"
-	procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+	procd_set_param respawn "${respawn_threshold:-3600}" "${respawn_timeout:-5}" "${respawn_retry:-5}"
 	procd_close_instance
 }
 

@@ -30,6 +30,21 @@ function validPort(value, defaultValue) {
 	return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : defaultValue;
 }
 
+function stripTrailingSlashes(value) {
+	let path = String(value || '');
+
+	while (path.length > 1 && path.endsWith('/'))
+		path = path.slice(0, -1);
+
+	return path;
+}
+
+function validUploadDir(value) {
+	const path = stripTrailingSlashes(value);
+
+	return path.charAt(0) === '/' && path.endsWith('/gecoosac/upload');
+}
+
 function serviceRunning(status) {
 	const service = status && status.gecoosac;
 	const instances = service && service.instances;
@@ -167,19 +182,25 @@ return view.extend({
 		o.placeholder = DEFAULT_CRT_FILE;
 		o.default = DEFAULT_CRT_FILE;
 		o.datatype = 'file';
-		o.depends('https', '1');
+		o.depends({ isonlyoneprot: '0', https: '1' });
 
 		o = s.option(form.Value, 'key_file', _('Specify key certificate file'));
 		o.placeholder = DEFAULT_KEY_FILE;
 		o.default = DEFAULT_KEY_FILE;
 		o.datatype = 'file';
-		o.depends('https', '1');
+		o.depends({ isonlyoneprot: '0', https: '1' });
 
-		o = s.option(form.Value, 'upload_dir', _('Upload dir path'), _('The path to upload AP upgrade firmware'));
+		o = s.option(form.Value, 'upload_dir', _('Upload dir path'),
+			_('Upload AP upgrade firmware here. For safe cleanup, use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/.'));
 		o.placeholder = DEFAULT_UPLOAD_DIR;
 		o.default = DEFAULT_UPLOAD_DIR;
 		o.datatype = 'directory';
 		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			return validUploadDir(value)
+				? true
+				: _('Upload directory must be an absolute path ending with /gecoosac/upload.');
+		};
 
 		o = s.option(form.Value, 'db_dir', _('Database dir path'), _('The path to store the config database'));
 		o.placeholder = DEFAULT_DB_DIR;

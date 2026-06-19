@@ -1,6 +1,7 @@
 #!/bin/sh
 
 changed=0
+DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload/
 DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
 DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
 OLD_CRT_FILE=/etc/gecoosac/tls/1.crt
@@ -18,6 +19,53 @@ set_default() {
 
 	uci -q get "gecoosac.config.${option}" >/dev/null && return 0
 	uci -q set "gecoosac.config.${option}=${value}"
+	changed=1
+}
+
+strip_trailing_slashes() {
+	local path="$1"
+
+	while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do
+		path="${path%/}"
+	done
+
+	printf '%s\n' "$path"
+}
+
+is_abs_path() {
+	case "$1" in
+		/*) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+is_safe_upload_dir() {
+	local path
+
+	is_abs_path "$1" || return 1
+	path="$(strip_trailing_slashes "$1")"
+
+	case "$path" in
+		*/gecoosac/upload) return 0 ;;
+	esac
+
+	return 1
+}
+
+normalize_upload_dir() {
+	local upload_dir normalized
+
+	upload_dir="$(uci -q get gecoosac.config.upload_dir)"
+	[ -n "$upload_dir" ] || return 0
+
+	if is_safe_upload_dir "$upload_dir"; then
+		normalized="$(strip_trailing_slashes "$upload_dir")/"
+	else
+		normalized="$DEFAULT_UPLOAD_DIR"
+	fi
+
+	[ "$upload_dir" = "$normalized" ] && return 0
+	uci -q set "gecoosac.config.upload_dir=${normalized}"
 	changed=1
 }
 
@@ -46,6 +94,7 @@ migrate_legacy_cert_paths() {
 
 ensure_section
 migrate_legacy_cert_paths
+normalize_upload_dir
 set_default enabled 0
 set_default port 60650
 set_default isonlyoneprot 1
@@ -53,7 +102,7 @@ set_default m_port 8080
 set_default https 0
 set_default crt_file "$DEFAULT_CRT_FILE"
 set_default key_file "$DEFAULT_KEY_FILE"
-set_default upload_dir /tmp/gecoosac/upload/
+set_default upload_dir "$DEFAULT_UPLOAD_DIR"
 set_default db_dir /etc/gecoosac/
 set_default piddir /var/run/
 set_default lang zh
