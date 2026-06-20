@@ -47,7 +47,7 @@ function getConnStat(o, site) {
                                         let ele = o.default.firstElementChild.nextElementSibling;
 					if (ret.result) {
 						ele.style.setProperty('color', 'green');
-                                                ele.innerHTML = _('passed');
+						ele.innerHTML = ret.elapsed ? _('passed (%dms)').format(ret.elapsed) : _('passed');
 					} else {
 						ele.style.setProperty('color', 'red');
                                                 ele.innerHTML = _('failed');
@@ -237,6 +237,24 @@ return view.extend({
 
 		o = s.option(form.DummyValue, '_check_google', _('Google'));
 		o.cfgvalue = L.bind(getConnStat, this, o, 'google');
+
+		if (uci.get('homeproxy', 'config', 'dashboard_enabled') === '1') {
+			s = m.section(form.NamedSection, 'config', 'homeproxy', _('Dashboard'));
+			s.anonymous = true;
+
+			o = s.option(form.DummyValue, '_dashboard_btn', _('Zashboard'));
+			o.rawhtml = true;
+			o.cfgvalue = function(section_id) {
+				let port = uci.get('homeproxy', 'config', 'dashboard_port') || '9090';
+				return E('button', {
+					'class': 'btn cbi-button cbi-button-action',
+					'click': function() {
+						let url = window.location.protocol + '//' + window.location.hostname + ':' + port + '/ui/';
+						window.open(url, '_blank');
+					}
+				}, [ _('Open Dashboard') ]);
+			};
+		}
 
 		s = m.section(form.NamedSection, 'config', 'homeproxy', _('Resources management'));
 		s.anonymous = true;

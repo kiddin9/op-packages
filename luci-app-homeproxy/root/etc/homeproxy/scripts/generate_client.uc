@@ -52,6 +52,12 @@ const dns_port = uci.get(uciconfig, uciinfra, 'dns_port') || '5333';
 
 const ntp_server = uci.get(uciconfig, uciinfra, 'ntp_server') || 'time.apple.com';
 
+const dashboard_enabled = uci.get(uciconfig, ucimain, 'dashboard_enabled') || '0';
+const dashboard_port = uci.get(uciconfig, ucimain, 'dashboard_port') || '9090';
+const dashboard_secret = uci.get(uciconfig, ucimain, 'dashboard_secret');
+const dashboard_url = uci.get(uciconfig, ucimain, 'dashboard_url');
+const dashboard_detour = uci.get(uciconfig, ucimain, 'dashboard_detour');
+
 const ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0';
 
 let main_node, main_udp_node, dedicated_udp_node, default_outbound, default_outbound_dns,
@@ -327,8 +333,8 @@ function generate_outbound(node) {
 			max_early_data: strToInt(node.websocket_early_data),
 			early_data_header_name: node.websocket_early_data_header,
 			service_name: node.grpc_servicename,
-			idle_timeout: (node.http_idle_timeout),
-			ping_timeout: (node.http_ping_timeout),
+			idle_timeout: strToTime(node.http_idle_timeout),
+			ping_timeout: strToTime(node.http_ping_timeout),
 			permit_without_stream: strToBool(node.grpc_permit_without_stream)
 		} : null,
 		udp_over_tcp: (node.udp_over_tcp === '1') ? {
@@ -565,6 +571,7 @@ if (!isEmpty(main_node)) {
 			user: cfg.user,
 			rule_set: get_ruleset(cfg.rule_set),
 			rule_set_ip_cidr_match_source: strToBool(cfg.rule_set_ip_cidr_match_source),
+			rule_set_ip_cidr_accept_empty: strToBool(cfg.rule_set_ip_cidr_accept_empty),
 			invert: strToBool(cfg.invert),
 			outbound: get_outbound(cfg.outbound),
 			action: cfg.action,
@@ -967,6 +974,28 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 			store_rdrc: strToBool(cache_file_store_rdrc),
 			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
 		}
+	};
+}
+
+if (dashboard_enabled === '1') {
+	if (!config.experimental)
+		config.experimental = {};
+
+	let download_detour = 'direct-out';
+	if (!isEmpty(dashboard_detour)) {
+		if (dashboard_detour in ['direct-out', 'main-out'])
+			download_detour = dashboard_detour;
+		else
+			download_detour = get_outbound(dashboard_detour);
+	}
+
+	config.experimental.clash_api = {
+		external_controller: '0.0.0.0:' + dashboard_port,
+		secret: !isEmpty(dashboard_secret) ? dashboard_secret : null,
+		external_ui: RUN_DIR + '/ui',
+		external_ui_download_url: !isEmpty(dashboard_url) ? dashboard_url :
+			'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn.zip',
+		external_ui_download_detour: download_detour,
 	};
 }
 /* Experimental end */
