@@ -2,7 +2,7 @@
 
 . /usr/share/libubox/jshn.sh
 
-DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload/
+DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload
 
 json_result() {
 	local ok="$1"

@@ -10,11 +10,11 @@ START=90
 STOP=10
 
 PROG=/usr/bin/gecoosac
-DEFAULT_DB_DIR=/etc/gecoosac/
-DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload/
+DEFAULT_DB_DIR=/etc/gecoosac
+DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload
 DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
 DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
-DEFAULT_PID_DIR=/var/run/
+DEFAULT_PID_DIR=/var/run
 DEFAULT_LANG=zh
 CERT_TIMEOUT=60
 
@@ -282,19 +282,19 @@ generate_default_cert() {
 
 normalize_conf() {
 	if is_safe_upload_dir "$upload_dir"; then
-		upload_dir="$(normalize_path "$upload_dir")/"
+		upload_dir="$(normalize_path "$upload_dir")"
 	else
 		upload_dir="$DEFAULT_UPLOAD_DIR"
 	fi
 	if is_safe_db_dir "$db_dir" "$upload_dir"; then
-		db_dir="$(normalize_path "$db_dir")/"
+		db_dir="$(normalize_path "$db_dir")"
 	else
 		db_dir="$DEFAULT_DB_DIR"
 	fi
 	is_abs_path "$crt_file" || crt_file="$DEFAULT_CRT_FILE"
 	is_abs_path "$key_file" || key_file="$DEFAULT_KEY_FILE"
 	if is_safe_pid_dir "$piddir" "$upload_dir"; then
-		piddir="$(normalize_path "$piddir")/"
+		piddir="$(normalize_path "$piddir")"
 	else
 		piddir="$DEFAULT_PID_DIR"
 	fi

@@ -1,11 +1,11 @@
 #!/bin/sh
 
 changed=0
-DEFAULT_DB_DIR=/etc/gecoosac/
-DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload/
+DEFAULT_DB_DIR=/etc/gecoosac
+DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload
 DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
 DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
-DEFAULT_PID_DIR=/var/run/
+DEFAULT_PID_DIR=/var/run
 OLD_CRT_FILE=/etc/gecoosac/tls/1.crt
 OLD_KEY_FILE=/etc/gecoosac/tls/1.key
 
@@ -132,7 +132,7 @@ normalize_upload_dir() {
 	[ -n "$upload_dir" ] || return 0
 
 	if is_safe_upload_dir "$upload_dir"; then
-		normalized="$(normalize_path "$upload_dir")/"
+		normalized="$(normalize_path "$upload_dir")"
 	else
 		normalized="$DEFAULT_UPLOAD_DIR"
 	fi
@@ -154,7 +154,7 @@ normalize_dir_option() {
 	[ -n "$upload_dir" ] || upload_dir="$DEFAULT_UPLOAD_DIR"
 
 	if "$validator" "$value" "$upload_dir"; then
-		normalized="$(normalize_path "$value")/"
+		normalized="$(normalize_path "$value")"
 	else
 		normalized="$default"
 	fi
