@@ -1,0 +1,142 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-gecoosac\n"
+"PO-Revision-Date: 2026-06-20 00:00+0800\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: Chinese (Traditional Han script)\n"
+"Language: zh_Hant\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key."
+msgstr "預設憑證檔案會在 HTTPS 啟動時產生；自訂路徑必須指向可讀取且相互匹配的憑證與私鑰。"
+
+msgid "Gecoos AC"
+msgstr "集客 AC 控制器"
+
+msgid "Supports Gecoos AP firmware 7.6 and above."
+msgstr "支援集客 AP 7.6 及以上版本韌體。"
+
+msgid "Default login password: \"admin\". Change it immediately after first login."
+msgstr "初始登入密碼為「admin」，首次登入後請立即修改。"
+
+msgid "Global Settings"
+msgstr "全域設定"
+
+msgid "Enabled AC"
+msgstr "啟用集客 AC"
+
+msgid "Set interface port"
+msgstr "設定介面連接埠"
+
+msgid "Single Port Mode"
+msgstr "單一連接埠模式"
+
+msgid "Do not enable the independent management port, only use one port for management."
+msgstr "不啟用獨立管理連接埠，僅使用一個連接埠進行管理。"
+
+msgid "Set management port"
+msgstr "設定管理連接埠"
+
+msgid "Enable HTTPS service"
+msgstr "啟用 HTTPS 服務"
+
+msgid "Specify crt certificate file"
+msgstr "指定 crt 憑證檔案"
+
+msgid "Specify key certificate file"
+msgstr "指定 key 私鑰檔案"
+
+msgid "Upload dir path"
+msgstr "上傳目錄"
+
+msgid "Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload/. Do not place it under /etc/gecoosac because that directory is backed up during sysupgrade."
+msgstr "AP 升級韌體會上傳到此目錄。請使用以 /gecoosac/upload 結尾的絕對路徑，例如 /tmp/gecoosac/upload/。不要放在 /etc/gecoosac 下，因為該目錄會在 sysupgrade 時被備份。"
+
+msgid "Upload directory must be an absolute path ending with /gecoosac/upload and must not be under /etc/gecoosac."
+msgstr "上傳目錄必須是以 /gecoosac/upload 結尾的絕對路徑，且不能位於 /etc/gecoosac 下。"
+
+msgid "Database dir path"
+msgstr "資料庫目錄"
+
+msgid "Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Do not place it inside the upload directory."
+msgstr "將設定資料庫存放在 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。不要放在上傳目錄內。"
+
+msgid "Database directory must be under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac."
+msgstr "資料庫目錄必須位於 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。"
+
+msgid "Database directory must not be the upload directory or inside it."
+msgstr "資料庫目錄不能是上傳目錄，也不能位於上傳目錄內。"
+
+msgid "PID dir path"
+msgstr "PID 目錄"
+
+msgid "Store the AC program pid file under /var/run or /tmp/gecoosac. Do not place it inside the upload directory."
+msgstr "將 AC 程式 PID 檔案存放在 /var/run 或 /tmp/gecoosac 下。不要放在上傳目錄內。"
+
+msgid "PID directory must be under /var/run or /tmp/gecoosac."
+msgstr "PID 目錄必須位於 /var/run 或 /tmp/gecoosac 下。"
+
+msgid "PID directory must not be the upload directory or inside it."
+msgstr "PID 目錄不能是上傳目錄，也不能位於上傳目錄內。"
+
+msgid "Language"
+msgstr "語言"
+
+msgid "Chinese"
+msgstr "中文"
+
+msgid "English"
+msgstr "英文"
+
+msgid "Debug Mode"
+msgstr "偵錯模式"
+
+msgid "Show IP Tip"
+msgstr "顯示 IP 提示"
+
+msgid "Show the IP 6.7.8.9 setup tip when it is not configured."
+msgstr "未設定 6.7.8.9 時顯示相關提示資訊。"
+
+msgid "Enable Log"
+msgstr "啟用日誌"
+
+msgid "The GecoosAC service is running."
+msgstr "集客 AC 控制器執行中"
+
+msgid "The GecoosAC service is not running."
+msgstr "集客 AC 控制器未執行"
+
+msgid "Open the mgmt page"
+msgstr "開啟管理頁面"
+
+msgid "Clear Upload Directory"
+msgstr "清除上傳目錄"
+
+msgid "Clear"
+msgstr "清除"
+
+msgid "Only files under the saved Gecoos upload directory will be removed. Save and Apply before clearing a newly edited path."
+msgstr "只會移除已儲存的集客 AC 上傳目錄中的檔案。若剛修改路徑，請先儲存並套用後再清除。"
+
+msgid "Really clear the saved upload directory?"
+msgstr "確定要清除已儲存的上傳目錄嗎？"
+
+msgid "Expecting an absolute path"
+msgstr "請輸入絕對路徑"
+
+msgid "Only Gecoos upload directories can be cleared"
+msgstr "只能清除集客 AC 上傳目錄"
+
+msgid "Upload directory was not cleared"
+msgstr "上傳目錄未清除"
+
+msgid "Saved upload directory cleared"
+msgstr "已儲存的上傳目錄已清除"
+
+msgid "Unable to remove upload directory contents"
+msgstr "無法移除上傳目錄內容"
+
+msgid "Upload directory contains configured runtime paths"
+msgstr "上傳目錄包含已設定的執行時路徑"
