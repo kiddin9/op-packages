@@ -24,28 +24,22 @@ set_default() {
 	changed=1
 }
 
-strip_trailing_slashes() {
-	local path="$1"
-
-	while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do
-		path="${path%/}"
-	done
-
-	printf '%s\n' "$path"
-}
-
 normalize_path() {
 	local path="$1"
-	local old_ifs part normalized parent
+	local part normalized parent
 
 	is_abs_path "$path" || return 1
 	normalized="/"
-	old_ifs="$IFS"
-	IFS=/
-	set -- $path
-	IFS="$old_ifs"
+	path="${path#/}"
 
-	for part in "$@"; do
+	while [ -n "$path" ]; do
+		part="${path%%/*}"
+		if [ "$part" = "$path" ]; then
+			path=""
+		else
+			path="${path#*/}"
+		fi
+
 		case "$part" in
 			""|.) ;;
 			..)

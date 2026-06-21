@@ -43,28 +43,22 @@ is_abs_path() {
 	esac
 }
 
-strip_trailing_slashes() {
-	local path="$1"
-
-	while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do
-		path="${path%/}"
-	done
-
-	printf '%s\n' "$path"
-}
-
 normalize_path() {
 	local path="$1"
-	local old_ifs part normalized parent
+	local part normalized parent
 
 	is_abs_path "$path" || return 1
 	normalized="/"
-	old_ifs="$IFS"
-	IFS=/
-	set -- $path
-	IFS="$old_ifs"
+	path="${path#/}"
 
-	for part in "$@"; do
+	while [ -n "$path" ]; do
+		part="${path%%/*}"
+		if [ "$part" = "$path" ]; then
+			path=""
+		else
+			path="${path#*/}"
+		fi
+
 		case "$part" in
 			""|.) ;;
 			..)
@@ -171,22 +165,25 @@ run_with_timeout() {
 }
 
 is_ipv4() {
-	local old_ifs part
+	local value="$1"
+	local part count
 
-	old_ifs="$IFS"
-	IFS=.
-	set -- $1
-	IFS="$old_ifs"
+	count=0
 
-	[ "$#" -eq 4 ] || return 1
-	for part in "$@"; do
+	while :; do
+		part="${value%%.*}"
+		count=$((count + 1))
+
 		case "$part" in
 			""|*[!0-9]*) return 1 ;;
 		esac
 		[ "$part" -le 255 ] 2>/dev/null || return 1
+
+		[ "$part" != "$value" ] || break
+		value="${value#*.}"
 	done
 
-	return 0
+	[ "$count" -eq 4 ]
 }
 
 san_has_entry() {

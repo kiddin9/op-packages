@@ -34,15 +34,6 @@ function validPort(value, defaultValue) {
 	return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : defaultValue;
 }
 
-function stripTrailingSlashes(value) {
-	let path = String(value || '');
-
-	while (path.length > 1 && path.endsWith('/'))
-		path = path.slice(0, -1);
-
-	return path;
-}
-
 function normalizePath(value) {
 	const path = String(value || '');
 
@@ -256,7 +247,7 @@ return view.extend({
 		o.depends({ isonlyoneprot: '0', https: '1' });
 
 		o = s.option(form.Value, 'upload_dir', _('Upload dir path'),
-			_('Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload.\nDo not place it under /etc/gecoosac because that directory is backed up during sysupgrade.'));
+			_('Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload.<br />Do not place it under /etc/gecoosac because that directory is backed up during sysupgrade.'));
 		uploadDirOption = o;
 		o.placeholder = DEFAULT_UPLOAD_DIR;
 		o.default = DEFAULT_UPLOAD_DIR;

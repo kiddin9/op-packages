@@ -17,19 +17,9 @@ json_result() {
 	json_cleanup
 }
 
-strip_trailing_slashes() {
-	local path="$1"
-
-	while [ "$path" != "/" ] && [ "${path%/}" != "$path" ]; do
-		path="${path%/}"
-	done
-
-	printf '%s\n' "$path"
-}
-
 normalize_path() {
 	local path="$1"
-	local old_ifs part normalized parent
+	local part normalized parent
 
 	case "$path" in
 		/*) ;;
@@ -37,12 +27,16 @@ normalize_path() {
 	esac
 
 	normalized="/"
-	old_ifs="$IFS"
-	IFS=/
-	set -- $path
-	IFS="$old_ifs"
+	path="${path#/}"
 
-	for part in "$@"; do
+	while [ -n "$path" ]; do
+		part="${path%%/*}"
+		if [ "$part" = "$path" ]; then
+			path=""
+		else
+			path="${path#*/}"
+		fi
+
 		case "$part" in
 			""|.) ;;
 			..)
