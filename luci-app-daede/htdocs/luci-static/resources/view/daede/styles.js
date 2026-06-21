@@ -72,7 +72,7 @@ const CSS = [
 	'.dd-settings-card .cbi-section-remove .cbi-button{border-color:#d96d6d !important;color:#d96d6d !important}',
 	/* themes (esp. Argon) restyle checkboxes into faint, near-invisible boxes;
 	   force native rendering + brand accent so the checkmark is always clear */
-	'.dd-settings-card input[type="checkbox"]{-webkit-appearance:checkbox !important;appearance:checkbox !important;accent-color:#4aa065;width:16px;height:16px;background:none !important;border:0 !important;box-shadow:none !important;background-image:none !important}',
+	'.dd-settings-card input[type="checkbox"]{-webkit-appearance:checkbox !important;appearance:checkbox !important;width:16px;height:16px;background:none !important;border:0 !important;box-shadow:none !important;background-image:none !important}',
 	'.dd-settings-card input[type="checkbox"]:before,.dd-settings-card input[type="checkbox"]:after{content:none !important;display:none !important}',
 	/* line the Subscriptions and Nodes grid tables up column-for-column. fixed
 	   layout + explicit per-column percentages make the widths authoritative
@@ -210,6 +210,7 @@ const CSS = [
 	'.dd-conv-import,.dd-conv-toolbar,.dd-conv-heading{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
 	'.dd-converter input,.dd-converter select,.dd-converter .cbi-button{box-sizing:border-box!important;height:32px!important;min-height:32px!important;margin:0!important;font-size:12px!important;line-height:22px!important}',
 	'.dd-converter input,.dd-converter select{padding:4px 8px!important;border:1px solid rgba(128,128,128,.28)!important;border-radius:6px!important;background-color:transparent;color:inherit;box-shadow:none!important}',
+		'.dd-converter input::placeholder,.dd-conv-yaml::placeholder,.dd-conv-filter::placeholder,.dd-conv-airport-name::placeholder{color:inherit;opacity:.55}',
 	'.dd-converter select{padding-right:28px!important}',
 	'.dd-converter .cbi-button{padding:4px 12px!important}',
 	'.dd-conv-url-row input,.dd-conv-filter,.dd-conv-target,.dd-conv-ua,.dd-conv-yaml{box-sizing:border-box;border:1px solid rgba(128,128,128,.28);border-radius:6px;background:transparent;color:inherit;font-size:12px;padding:7px 9px}',

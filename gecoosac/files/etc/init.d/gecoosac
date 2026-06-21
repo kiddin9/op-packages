@@ -318,6 +318,8 @@ ensure_dirs() {
 }
 
 start_service() {
+	local runtime_upload_dir runtime_db_dir runtime_piddir
+
 	init_conf
 	normalize_conf
 
@@ -333,6 +335,9 @@ start_service() {
 	fi
 
 	ensure_dirs || return 1
+	runtime_upload_dir="${upload_dir%/}/"
+	runtime_db_dir="${db_dir%/}/"
+	runtime_piddir="${piddir%/}/"
 
 	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
 		if [ "$crt_file" = "$DEFAULT_CRT_FILE" ] && [ "$key_file" = "$DEFAULT_KEY_FILE" ]; then
@@ -352,13 +357,13 @@ start_service() {
 
 	procd_open_instance gecoosac
 	procd_set_param command "$PROG"
-	procd_append_param command -f "$upload_dir"
+	procd_append_param command -f "$runtime_upload_dir"
 	procd_append_param command -p "$port"
 	procd_append_param command -debug "$debug"
-	procd_append_param command -dbpath "$db_dir"
+	procd_append_param command -dbpath "$runtime_db_dir"
 	procd_append_param command -token "1"
 	procd_append_param command -lang "$lang"
-	procd_append_param command -piddir "$piddir"
+	procd_append_param command -piddir "$runtime_piddir"
 	if [ "$isonlyoneprot" = "0" ]; then
 		procd_append_param command -isonlyoneprot "0"
 		procd_append_param command -mp "$m_port"

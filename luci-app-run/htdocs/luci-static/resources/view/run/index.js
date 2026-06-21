@@ -101,6 +101,11 @@ var getStatus = rpc.declare({
 	method: 'status'
 });
 
+var getVersion = rpc.declare({
+	object: 'luci-app-run',
+	method: 'version'
+});
+
 var readLog = rpc.declare({
 	object: 'luci-app-run',
 	method: 'read_log',
@@ -140,10 +145,29 @@ return view.extend({
 
 	logOffset: 0,
 	currentUploadId: null,
+	appVersion: 'unknown',
 
 	load: function () {
-		return getStatus().catch(function () {
-			return {};
+		var self = this;
+		return getVersion().then(function (res) {
+			if (res && res.version) {
+				self.appVersion = res.version;
+				// 检查版本是否变化，如果变化则强制刷新页面
+				var storedVersion = localStorage.getItem('luci-app-run-version');
+				if (storedVersion && storedVersion !== self.appVersion) {
+					localStorage.setItem('luci-app-run-version', self.appVersion);
+					window.location.reload(true);
+				} else {
+					localStorage.setItem('luci-app-run-version', self.appVersion);
+				}
+			}
+			return getStatus().catch(function () {
+				return {};
+			});
+		}).catch(function () {
+			return getStatus().catch(function () {
+				return {};
+			});
 		});
 	},
 
@@ -180,7 +204,7 @@ return view.extend({
 		var runButton = E('button', {
 			class: 'btn cbi-button cbi-button-action',
 			disabled: true,
-			style: 'min-width:140px;padding:8px 32px;',
+			style: 'min-width:140px;margin-left:15px;',
 			click: function (ev) {
 				ev.preventDefault();
 				self.startRun(runButton, state);
@@ -227,7 +251,7 @@ return view.extend({
 		}, [
 			E('h3', [_('upload_title')]),
 			E('p', [state]),
-			E('p', [pickButton, ' ', runButton, cleanButton]),
+			E('p', [pickButton, runButton, cleanButton]),
 			progress,
 			fileInput
 		]);

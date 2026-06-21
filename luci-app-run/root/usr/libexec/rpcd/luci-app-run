@@ -13,83 +13,83 @@ umask 077
 mkdir -p "$UPLOAD_DIR" "$RUN_DIR"
 
 reply() {
-	printf '%s\n' "$1"
+    printf '%s\n' "$1"
 }
 
 json_error() {
-	local msg="$1"
-	json_init
-	json_add_int code 1
-	json_add_string error "$msg"
-	json_dump
+    local msg="$1"
+    json_init
+    json_add_int code 1
+    json_add_string error "$msg"
+    json_dump
 }
 
 json_ok() {
-	json_init
-	json_add_int code 0
-	[ -n "$1" ] && json_add_string message "$1"
-	json_dump
+    json_init
+    json_add_int code 0
+    [ -n "$1" ] && json_add_string message "$1"
+    json_dump
 }
 
 sanitize_name() {
-	local name="$1"
-	name="${name##*/}"
-	name="${name##*\\}"
-	printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_'
+    local name="$1"
+    name="${name##*/}"
+    name="${name##*\\}"
+    printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_'
 }
 
 valid_id() {
-	case "$1" in
-		""|*[!A-Za-z0-9_-]*) return 1 ;;
-	esac
-	return 0
+    case "$1" in
+        ""|*[!A-Za-z0-9_-]*) return 1 ;;
+    esac
+    return 0
 }
 
 load_input() {
-	local input
-	input="$(cat)"
-	json_load "$input" >/dev/null 2>&1
+    local input
+    input="$(cat)"
+    json_load "$input" >/dev/null 2>&1
 }
 
 get_string() {
-	json_get_var "$1" "$1"
+    json_get_var "$1" "$1"
 }
 
 get_int() {
-	json_get_var "$1" "$1"
+    json_get_var "$1" "$1"
 }
 
 new_token() {
-	local token
-	token="$(hexdump -n 16 -e '16/1 "%02x"' /dev/urandom 2>/dev/null)"
-	[ -n "$token" ] || token="$(date +%s)_$$_$(awk 'BEGIN{srand();print int(rand()*1000000)}')"
-	printf '%s' "$token" | tr -c 'A-Za-z0-9_' '_'
+    local token
+    token="$(hexdump -n 16 -e '16/1 "%02x"' /dev/urandom 2>/dev/null)"
+    [ -n "$token" ] || token="$(date +%s)_$$_$(awk 'BEGIN{srand();print int(rand()*1000000)}')"
+    printf '%s' "$token" | tr -c 'A-Za-z0-9_' '_'
 }
 
 session_dir() {
-	printf '%s/%s' "$UPLOAD_DIR" "$1"
+    printf '%s/%s' "$UPLOAD_DIR" "$1"
 }
 
 write_state() {
-	local pid="$1"
-	local file="$2"
-	local log="$3"
-	local started="$4"
-	{
-		printf 'PID=%s\n' "$pid"
-		printf 'FILE=%s\n' "$file"
-		printf 'LOG=%s\n' "$log"
-		printf 'STARTED=%s\n' "$started"
-	} > "$STATE_FILE"
+    local pid="$1"
+    local file="$2"
+    local log="$3"
+    local started="$4"
+    {
+        printf 'PID=%s\n' "$pid"
+        printf 'FILE=%s\n' "$file"
+        printf 'LOG=%s\n' "$log"
+        printf 'STARTED=%s\n' "$started"
+    } > "$STATE_FILE"
 }
 
 read_state() {
-	[ -f "$STATE_FILE" ] && . "$STATE_FILE"
+    [ -f "$STATE_FILE" ] && . "$STATE_FILE"
 }
 
 is_running() {
-	local pid="$1"
-	[ -n "$pid" ] && [ -d "/proc/$pid" ]
+    local pid="$1"
+    [ -n "$pid" ] && [ -d "/proc/$pid" ]
 }
 
 method_list() {
@@ -114,235 +114,246 @@ method_list() {
 	"read_log": {
 		"offset": "Integer"
 	},
-	"cleanup": {}
+	"cleanup": {},
+	"version": {}
 }
 JSON
 }
 
 upload_start() {
-	load_input
-	get_string filename
-	get_int size
-
-	[ -n "$filename" ] || { json_error "Missing filename"; return; }
-	[ -n "$size" ] || size=0
-	[ "$size" -le "$MAX_SIZE" ] 2>/dev/null || { json_error "File is larger than 256 MiB"; return; }
-
-	local clean id token dir file
-	clean="$(sanitize_name "$filename")"
-	case "$clean" in
-		*.run|*.sh) ;;
-		*) json_error "Only .run and .sh files are accepted"; return ;;
-	esac
-
-	id="$(date +%s)_$$"
-	token="$(new_token)"
-	dir="$(session_dir "$id")"
-	file="$dir/$clean"
-	mkdir -p "$dir" || { json_error "Unable to create upload directory"; return; }
-	: > "$file" || { json_error "Unable to create upload file"; return; }
-	printf '%s\n' "$clean" > "$dir/name"
-	printf '%s\n' "$size" > "$dir/size"
-	printf '%s\n' "$token" > "$dir/token"
-
-	json_init
-	json_add_int code 0
-	json_add_string id "$id"
-	json_add_string token "$token"
-	json_add_string filename "$clean"
-	json_dump
+    load_input
+    get_string filename
+    get_int size
+    
+    [ -n "$filename" ] || { json_error "Missing filename"; return; }
+    [ -n "$size" ] || size=0
+    [ "$size" -le "$MAX_SIZE" ] 2>/dev/null || { json_error "File is larger than 256 MiB"; return; }
+    
+    local clean id token dir file
+    clean="$(sanitize_name "$filename")"
+    case "$clean" in
+        *.run|*.sh) ;;
+        *) json_error "Only .run and .sh files are accepted"; return ;;
+    esac
+    
+    id="$(date +%s)_$$"
+    token="$(new_token)"
+    dir="$(session_dir "$id")"
+    file="$dir/$clean"
+    mkdir -p "$dir" || { json_error "Unable to create upload directory"; return; }
+    : > "$file" || { json_error "Unable to create upload file"; return; }
+    printf '%s\n' "$clean" > "$dir/name"
+    printf '%s\n' "$size" > "$dir/size"
+    printf '%s\n' "$token" > "$dir/token"
+    
+    json_init
+    json_add_int code 0
+    json_add_string id "$id"
+    json_add_string token "$token"
+    json_add_string filename "$clean"
+    json_dump
 }
 
 upload_chunk() {
-	load_input
-	get_string id
-	get_string data
-	get_int index
-
-	valid_id "$id" || { json_error "Invalid upload id"; return; }
-	[ -n "$data" ] || { json_error "Missing chunk data"; return; }
-
-	local dir name file
-	dir="$(session_dir "$id")"
-	[ -d "$dir" ] || { json_error "Unknown upload id"; return; }
-	name="$(cat "$dir/name" 2>/dev/null)"
-	file="$dir/$name"
-
-	printf '%s' "$data" | base64 -d >> "$file" 2>/dev/null || {
-		json_error "Unable to decode upload chunk"
-		return
-	}
-
-	json_init
-	json_add_int code 0
-	json_add_int index "$index"
-	json_add_int received "$(wc -c < "$file" 2>/dev/null)"
-	json_dump
+    load_input
+    get_string id
+    get_string data
+    get_int index
+    
+    valid_id "$id" || { json_error "Invalid upload id"; return; }
+    [ -n "$data" ] || { json_error "Missing chunk data"; return; }
+    
+    local dir name file
+    dir="$(session_dir "$id")"
+    [ -d "$dir" ] || { json_error "Unknown upload id"; return; }
+    name="$(cat "$dir/name" 2>/dev/null)"
+    file="$dir/$name"
+    
+    printf '%s' "$data" | base64 -d >> "$file" 2>/dev/null || {
+        json_error "Unable to decode upload chunk"
+        return
+    }
+    
+    json_init
+    json_add_int code 0
+    json_add_int index "$index"
+    json_add_int received "$(wc -c < "$file" 2>/dev/null)"
+    json_dump
 }
 
 upload_finish() {
-	load_input
-	get_string id
-
-	valid_id "$id" || { json_error "Invalid upload id"; return; }
-
-	local dir name file expected actual
-	dir="$(session_dir "$id")"
-	[ -d "$dir" ] || { json_error "Unknown upload id"; return; }
-	name="$(cat "$dir/name" 2>/dev/null)"
-	expected="$(cat "$dir/size" 2>/dev/null)"
-	file="$dir/$name"
-	actual="$(wc -c < "$file" 2>/dev/null)"
-
-	[ -s "$file" ] || { json_error "Uploaded file is empty"; return; }
-	if [ -n "$expected" ] && [ "$expected" -gt 0 ] 2>/dev/null; then
-		[ "$actual" -eq "$expected" ] 2>/dev/null || {
-			json_error "Upload size mismatch"
-			return
-		}
-	fi
-
-	chmod 700 "$file" || { json_error "Unable to chmod uploaded file"; return; }
-
-	json_init
-	json_add_int code 0
-	json_add_string id "$id"
-	json_add_string filename "$name"
-	json_add_int size "$actual"
-	json_dump
+    load_input
+    get_string id
+    
+    valid_id "$id" || { json_error "Invalid upload id"; return; }
+    
+    local dir name file expected actual
+    dir="$(session_dir "$id")"
+    [ -d "$dir" ] || { json_error "Unknown upload id"; return; }
+    name="$(cat "$dir/name" 2>/dev/null)"
+    expected="$(cat "$dir/size" 2>/dev/null)"
+    file="$dir/$name"
+    actual="$(wc -c < "$file" 2>/dev/null)"
+    
+    [ -s "$file" ] || { json_error "Uploaded file is empty"; return; }
+    if [ -n "$expected" ] && [ "$expected" -gt 0 ] 2>/dev/null; then
+        [ "$actual" -eq "$expected" ] 2>/dev/null || {
+            json_error "Upload size mismatch"
+            return
+        }
+    fi
+    
+    chmod 700 "$file" || { json_error "Unable to chmod uploaded file"; return; }
+    
+    json_init
+    json_add_int code 0
+    json_add_string id "$id"
+    json_add_string filename "$name"
+    json_add_int size "$actual"
+    json_dump
 }
 
 run_installer() {
-	load_input
-	get_string id
-
-	valid_id "$id" || { json_error "Invalid upload id"; return; }
-
-	local dir name file log work pid now
-	dir="$(session_dir "$id")"
-	[ -d "$dir" ] || { json_error "Unknown upload id"; return; }
-	name="$(cat "$dir/name" 2>/dev/null)"
-	file="$dir/$name"
-	
-	# 确保文件可执行（.run 和 .sh 都需要）
-	chmod 700 "$file" 2>/dev/null || true
-	
-	[ -x "$file" ] || { 
-		json_error "Uploaded file is not executable. Please check file permissions." 
-		return 
-	}
-
-	read_state
-	if is_running "$PID"; then
-		json_error "Another installer is already running"
-		return
-	fi
-
-	now="$(date '+%Y-%m-%d %H:%M:%S')"
-	work="$RUN_DIR/$id"
-	log="$work/output.log"
-	mkdir -p "$work" || { json_error "Unable to create run directory"; return; }
-
-	(
-		cd "$work" || exit 1
-		printf 'luci-app-run: started %s\n' "$now"
-		printf 'luci-app-run: executing %s\n\n' "$file"
-		"$file"
-		rc=$?
-		printf '\nluci-app-run: exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
-		exit "$rc"
-	) > "$log" 2>&1 &
-
-	pid="$!"
-	write_state "$pid" "$file" "$log" "$now"
-
-	json_init
-	json_add_int code 0
-	json_add_int pid "$pid"
-	json_add_string log "$log"
-	json_dump
+    load_input
+    get_string id
+    
+    valid_id "$id" || { json_error "Invalid upload id"; return; }
+    
+    local dir name file log work pid now
+    dir="$(session_dir "$id")"
+    [ -d "$dir" ] || { json_error "Unknown upload id"; return; }
+    name="$(cat "$dir/name" 2>/dev/null)"
+    file="$dir/$name"
+    
+    # 确保文件可执行（.run 和 .sh 都需要）
+    chmod 700 "$file" 2>/dev/null || true
+    
+    [ -x "$file" ] || {
+        json_error "Uploaded file is not executable. Please check file permissions."
+        return
+    }
+    
+    read_state
+    if is_running "$PID"; then
+        json_error "Another installer is already running"
+        return
+    fi
+    
+    now="$(date '+%Y-%m-%d %H:%M:%S')"
+    work="$RUN_DIR/$id"
+    log="$work/output.log"
+    mkdir -p "$work" || { json_error "Unable to create run directory"; return; }
+    
+    (
+        cd "$work" || exit 1
+        printf 'luci-app-run: started %s\n' "$now"
+        printf 'luci-app-run: executing %s\n\n' "$file"
+        "$file"
+        rc=$?
+        printf '\nluci-app-run: exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
+        exit "$rc"
+    ) > "$log" 2>&1 &
+    
+    pid="$!"
+    write_state "$pid" "$file" "$log" "$now"
+    
+    json_init
+    json_add_int code 0
+    json_add_int pid "$pid"
+    json_add_string log "$log"
+    json_dump
 }
 
 status() {
-	read_state
-
-	json_init
-	json_add_int code 0
-	if is_running "$PID"; then
-		json_add_boolean running 1
-	else
-		json_add_boolean running 0
-	fi
-	[ -n "$PID" ] && json_add_int pid "$PID"
-	[ -n "$FILE" ] && json_add_string file "$FILE"
-	[ -n "$LOG" ] && json_add_string log "$LOG"
-	[ -n "$STARTED" ] && json_add_string started "$STARTED"
-	json_dump
+    read_state
+    
+    json_init
+    json_add_int code 0
+    if is_running "$PID"; then
+        json_add_boolean running 1
+    else
+        json_add_boolean running 0
+    fi
+    [ -n "$PID" ] && json_add_int pid "$PID"
+    [ -n "$FILE" ] && json_add_string file "$FILE"
+    [ -n "$LOG" ] && json_add_string log "$LOG"
+    [ -n "$STARTED" ] && json_add_string started "$STARTED"
+    json_dump
 }
 
 read_log() {
-	load_input
-	get_int offset
-	[ -n "$offset" ] || offset=0
-
-	read_state
-	[ -n "$LOG" ] && [ -f "$LOG" ] || {
-		json_init
-		json_add_int code 0
-		json_add_string data ""
-		json_add_int offset 0
-		json_add_boolean running 0
-		json_dump
-		return
-	}
-
-	local size data start
-	size="$(wc -c < "$LOG" 2>/dev/null)"
-	[ "$offset" -le "$size" ] 2>/dev/null || offset=0
-	start=$((offset + 1))
-	data="$(tail -c +"$start" "$LOG" 2>/dev/null)"
-
-	json_init
-	json_add_int code 0
-	json_add_string data "$data"
-	json_add_int offset "$size"
-	if is_running "$PID"; then
-		json_add_boolean running 1
-	else
-		json_add_boolean running 0
-	fi
-	json_dump
+    load_input
+    get_int offset
+    [ -n "$offset" ] || offset=0
+    
+    read_state
+    [ -n "$LOG" ] && [ -f "$LOG" ] || {
+        json_init
+        json_add_int code 0
+        json_add_string data ""
+        json_add_int offset 0
+        json_add_boolean running 0
+        json_dump
+        return
+    }
+    
+    local size data start
+    size="$(wc -c < "$LOG" 2>/dev/null)"
+    [ "$offset" -le "$size" ] 2>/dev/null || offset=0
+    start=$((offset + 1))
+    data="$(tail -c +"$start" "$LOG" 2>/dev/null)"
+    
+    json_init
+    json_add_int code 0
+    json_add_string data "$data"
+    json_add_int offset "$size"
+    if is_running "$PID"; then
+        json_add_boolean running 1
+    else
+        json_add_boolean running 0
+    fi
+    json_dump
 }
 
 cleanup() {
-	read_state
-	if is_running "$PID"; then
-		json_error "Cannot clean up while installer is running"
-		return
-	fi
+    read_state
+    if is_running "$PID"; then
+        json_error "Cannot clean up while installer is running"
+        return
+    fi
+    
+    rm -rf "$UPLOAD_DIR" "$RUN_DIR" "$STATE_FILE"
+    mkdir -p "$UPLOAD_DIR" "$RUN_DIR"
+    json_ok "Cleaned"
+}
 
-	rm -rf "$UPLOAD_DIR" "$RUN_DIR" "$STATE_FILE"
-	mkdir -p "$UPLOAD_DIR" "$RUN_DIR"
-	json_ok "Cleaned"
+version() {
+    local ver="unknown"
+    [ -f "/tmp/luci-app-run.version" ] && ver="$(cat /tmp/luci-app-run.version)"
+    json_init
+    json_add_int code 0
+    json_add_string version "$ver"
+    json_dump
 }
 
 case "$1" in
-	list)
-		method_list
-	;;
-	call)
-		case "$2" in
-			upload_start) upload_start ;;
-			upload_chunk) upload_chunk ;;
-			upload_finish) upload_finish ;;
-			run) run_installer ;;
-			status) status ;;
-			read_log) read_log ;;
-			cleanup) cleanup ;;
-			*) json_error "Unknown method" ;;
-		esac
-	;;
-	*)
-		reply '{}'
-	;;
+    list)
+        method_list
+    ;;
+    call)
+        case "$2" in
+            upload_start) upload_start ;;
+            upload_chunk) upload_chunk ;;
+            upload_finish) upload_finish ;;
+            run) run_installer ;;
+            status) status ;;
+            read_log) read_log ;;
+            cleanup) cleanup ;;
+            version) version ;;
+            *) json_error "Unknown method" ;;
+        esac
+    ;;
+    *)
+        reply '{}'
+    ;;
 esac
