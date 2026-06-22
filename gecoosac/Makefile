@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
 PKG_VERSION:=2.2.20251015
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 
 PKG_MAINTAINER:=lwb1978 <lwb1978@gmail.com>
 PKG_LICENSE:=AGPL-3.0-only
@@ -16,13 +16,13 @@ ifneq (,$(filter x86_64,$(ARCH_ID)))
 else ifneq (,$(filter aarch64%,$(ARCH_ID)))
   PKG_ARCH:=ac_linux_arm64
   PKG_HASH:=skip
-else ifneq (,$(filter arm%,$(ARCH_ID)))
+else ifneq (,$(filter arm arm_%,$(ARCH_ID)))
   PKG_ARCH:=ac_linux_arm
   PKG_HASH:=skip
-else ifneq (,$(filter mipsel%,$(ARCH_ID)))
+else ifneq (,$(filter mipsel mipsel_%,$(ARCH_ID)))
   PKG_ARCH:=ac_linux_mipsle
   PKG_HASH:=skip
-else ifneq (,$(filter mips%,$(ARCH_ID)))
+else ifneq (,$(filter mips mips_%,$(ARCH_ID)))
   PKG_ARCH:=ac_linux_mips
   PKG_HASH:=skip
 else ifneq (,$(filter i386%,$(ARCH_ID)))
@@ -32,7 +32,7 @@ else
   PKG_HASH:=skip
 endif
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(ARCH_ID)
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_ARCH)
 PKG_SOURCE_URL:=https://github.com/laipeng668/luci-app-gecoosac/releases/download/V$(PKG_VERSION)/$(PKG_ARCH)?
 UNPACK_CMD=$(CP) $(DL_DIR)/$(PKG_SOURCE) $(PKG_BUILD_DIR)/$(PKG_NAME)
 
