@@ -7,54 +7,54 @@ MAX_SIZE=$((256 * 1024 * 1024))
 umask 077
 
 header() {
-	printf 'Status: %s\r\n' "$1"
-	printf 'Content-Type: application/json\r\n'
-	printf 'Cache-Control: no-store\r\n'
-	printf '\r\n'
+    printf 'Status: %s\r\n' "$1"
+    printf 'Content-Type: application/json\r\n'
+    printf 'Cache-Control: no-store\r\n'
+    printf '\r\n'
 }
 
 json_escape() {
-	printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+    printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
 fail() {
-	header "${2:-400 Bad Request}"
-	printf '{"code":1,"error":"%s"}\n' "$(json_escape "$1")"
-	exit 0
+    header "${2:-400 Bad Request}"
+    printf '{"code":1,"error":"%s"}\n' "$(json_escape "$1")"
+    exit 0
 }
 
 ok() {
-	header '200 OK'
-	printf '{"code":0,"size":%s}\n' "$1"
-	exit 0
+    header '200 OK'
+    printf '{"code":0,"size":%s}\n' "$1"
+    exit 0
 }
 
 urldecode() {
-	local value="${1//+/ }"
-	printf '%b' "${value//%/\\x}"
+    local value="${1//+/ }"
+    printf '%b' "${value//%/\\x}"
 }
 
 query_value() {
-	local key="$1" pair name value oldifs
-	oldifs="$IFS"
-	IFS='&'
-	for pair in $QUERY_STRING; do
-		name="${pair%%=*}"
-		value="${pair#*=}"
-		if [ "$name" = "$key" ]; then
-			IFS="$oldifs"
-			urldecode "$value"
-			return
-		fi
-	done
-	IFS="$oldifs"
+    local key="$1" pair name value oldifs
+    oldifs="$IFS"
+    IFS='&'
+    for pair in $QUERY_STRING; do
+        name="${pair%%=*}"
+        value="${pair#*=}"
+        if [ "$name" = "$key" ]; then
+            IFS="$oldifs"
+            urldecode "$value"
+            return
+        fi
+    done
+    IFS="$oldifs"
 }
 
 valid_id() {
-	case "$1" in
-		""|*[!A-Za-z0-9_-]*) return 1 ;;
-	esac
-	return 0
+    case "$1" in
+        ""|*[!A-Za-z0-9_-]*) return 1 ;;
+    esac
+    return 0
 }
 
 [ "$REQUEST_METHOD" = "POST" ] || fail "POST required" "405 Method Not Allowed"
@@ -72,13 +72,17 @@ saved_token="$(cat "$dir/token" 2>/dev/null)"
 
 name="$(cat "$dir/name" 2>/dev/null)"
 case "$name" in
-	*.run)
-		;;
-	*.sh)
-		;;
-	*)
-		fail "Invalid filename"
-		;;
+    *.run)
+    ;;
+    *.sh)
+    ;;
+    *.ipk)
+    ;;
+    *.apk)
+    ;;
+    *)
+        fail "Invalid filename"
+    ;;
 esac
 
 length="${CONTENT_LENGTH:-0}"
@@ -91,8 +95,8 @@ tmp="$file.upload"
 cat > "$tmp" || fail "Unable to receive upload"
 actual="$(wc -c < "$tmp" 2>/dev/null)"
 [ "$actual" -eq "$length" ] 2>/dev/null || {
-	rm -f "$tmp"
-	fail "Upload size mismatch"
+    rm -f "$tmp"
+    fail "Upload size mismatch"
 }
 
 mv "$tmp" "$file" || fail "Unable to save upload"

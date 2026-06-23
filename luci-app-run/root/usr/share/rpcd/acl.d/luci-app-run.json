@@ -1,6 +1,6 @@
 {
 	"luci-app-run": {
-		"description": "Grant access to upload and execute .run installers",
+		"description": "Grant access to upload and execute .run, .sh, .ipk and .apk files",
 		"read": {
 			"ubus": {
 				"luci-app-run": [ "status", "read_log" ]

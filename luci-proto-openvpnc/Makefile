@@ -8,10 +8,10 @@ include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=Support for OpenVPN Client
 LUCI_DESCRIPTION:=This package provides support for OpenVPN client configuration in LuCI.
-LUCI_DEPENDS:=+openvpn +kmod-tun +firewall
+LUCI_DEPENDS:=+openvpn +kmod-tun +PACKAGE_firewall4:firewall4 +!PACKAGE_firewall4:firewall
 LUCI_PKGARCH:=all
 PKG_VERSION:=1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

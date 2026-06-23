@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=beszel-agent
 PKG_VERSION:=0.18.7
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 ifeq ($(ARCH),aarch64)
   PKG_ARCH:=arm64

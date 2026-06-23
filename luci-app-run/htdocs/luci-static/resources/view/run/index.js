@@ -4,10 +4,37 @@
 'require ui';
 'require poll';
 
-// ====================== 纯JSON国际化 · 中英双语 ======================
-const RUN_LANG = (function () {
+var I18N = null;
+
+function loadI18N() {
+	if (I18N)
+		return Promise.resolve();
+
+	return new Promise(function (resolve, reject) {
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', '/luci-static/resources/view/run/i18n.json', true);
+		xhr.onload = function () {
+			if (xhr.status >= 200 && xhr.status < 300) {
+				try {
+					I18N = JSON.parse(xhr.responseText);
+					resolve();
+				} catch (e) {
+					reject(e);
+				}
+			} else {
+				reject(new Error('Failed to load i18n.json'));
+			}
+		};
+		xhr.onerror = function () {
+			reject(new Error('Network error loading i18n.json'));
+		};
+		xhr.send();
+	});
+}
+
+function getLang() {
 	try {
-		const m = document.cookie.match(/luci_lang=([a-zA-Z-]+)/);
+		var m = document.cookie.match(/luci_lang=([a-zA-Z-]+)/);
 		if (m) return m[1].substring(0, 2).toLowerCase();
 
 		if (window.L && L.env && L.env.lang)
@@ -17,60 +44,17 @@ const RUN_LANG = (function () {
 	} catch (e) {
 		return 'zh';
 	}
-})();
-
-const I18N = {
-	zh: {
-		title: "Run安装器",
-		desc: "在路由器上上传并执行 .run 安装包或 .sh 脚本，注意架构务必匹配。",
-		drop_tip: "拖入一个 .run 或 .sh 文件，或从电脑选择。",
-		choose_file: "选择 .run 或 .sh 文件",
-		execute: "执行",
-		clean_up: "清理",
-		upload_title: "上传安装脚本 (.run / .sh)",
-		log_title: "执行日志",
-		clean_done: "临时文件与日志已清理。",
-		only_run: "仅支持 .run 和 .sh 文件。",
-		prepare_upload: "准备上传：%s (%s)",
-		upload_failed: "上传失败。",
-		uploading: "正在上传 %s：%d%%",
-		upload_err: "上传请求失败。",
-		upload_invalid: "上传返回格式无效。",
-		upload_done: "上传完成：%s (%s)",
-		starting: "正在启动安装器...",
-		started: "安装器已启动，PID %d。",
-		running: "安装器正在运行。",
-		last_file: "上一次安装包：%s"
-	},
-	en: {
-		title: "Run Installer",
-		desc: "Upload and execute .run packages or .sh scripts on this router, ensuring architecture compatibility.",
-		drop_tip: "Drop a .run or .sh file here, or choose one from your computer.",
-		choose_file: "Choose .run or .sh file",
-		execute: "Execute",
-		clean_up: "Clean up",
-		upload_title: "Upload installer script (.run / .sh)",
-		log_title: "Execution log",
-		clean_done: "Temporary files and logs were removed.",
-		only_run: "Only .run and .sh files are accepted.",
-		prepare_upload: "Preparing upload: %s (%s)",
-		upload_failed: "Upload failed.",
-		uploading: "Uploading %s: %d%%",
-		upload_err: "Upload request failed.",
-		upload_invalid: "Invalid upload response.",
-		upload_done: "Upload complete: %s (%s)",
-		starting: "Starting installer...",
-		started: "Installer started, PID %d.",
-		running: "Installer is running.",
-		last_file: "Last installer: %s"
-	}
-};
+}
 
 function _(key) {
-	const str = I18N[RUN_LANG]?.[key] || I18N.zh[key] || key;
-	return str.format.apply(str, Array.prototype.slice.call(arguments, 1));
+	if (!I18N)
+		return key;
+
+	var lang = getLang();
+	var str = I18N[lang]?.[key] || I18N.zh[key] || key;
+	var args = Array.prototype.slice.call(arguments, 1);
+	return str.format.apply(str, args);
 }
-// ====================================================================
 
 var uploadStart = rpc.declare({
 	object: 'luci-app-run',
@@ -104,6 +88,11 @@ var getStatus = rpc.declare({
 var getVersion = rpc.declare({
 	object: 'luci-app-run',
 	method: 'version'
+});
+
+var getCapabilities = rpc.declare({
+	object: 'luci-app-run',
+	method: 'capabilities'
 });
 
 var readLog = rpc.declare({
@@ -146,23 +135,53 @@ return view.extend({
 	logOffset: 0,
 	currentUploadId: null,
 	appVersion: 'unknown',
+	capabilities: { opkg: 1, apk: 1 },
 
 	load: function () {
 		var self = this;
-		return getVersion().then(function (res) {
-			if (res && res.version) {
-				self.appVersion = res.version;
-				// 检查版本是否变化，如果变化则强制刷新页面
-				var storedVersion = localStorage.getItem('luci-app-run-version');
-				if (storedVersion && storedVersion !== self.appVersion) {
-					localStorage.setItem('luci-app-run-version', self.appVersion);
-					window.location.reload(true);
-				} else {
-					localStorage.setItem('luci-app-run-version', self.appVersion);
+		return loadI18N().then(function () {
+			return getVersion().then(function (res) {
+				if (res && res.version) {
+					self.appVersion = res.version;
+					var storedVersion = localStorage.getItem('luci-app-run-version');
+					if (storedVersion && storedVersion !== self.appVersion) {
+						localStorage.setItem('luci-app-run-version', self.appVersion);
+						window.location.reload(true);
+					} else {
+						localStorage.setItem('luci-app-run-version', self.appVersion);
+					}
 				}
-			}
-			return getStatus().catch(function () {
-				return {};
+				return getCapabilities().then(function (cap) {
+					if (cap) {
+						self.capabilities = {
+							opkg: cap.opkg || 0,
+							apk: cap.apk || 0
+						};
+					}
+					return getStatus().catch(function () {
+						return {};
+					});
+				}).catch(function () {
+					return getStatus().catch(function () {
+						return {};
+					});
+				});
+			}).catch(function () {
+				return getCapabilities().then(function (cap) {
+					if (cap) {
+						self.capabilities = {
+							opkg: cap.opkg || 0,
+							apk: cap.apk || 0
+						};
+					}
+					return getStatus().catch(function () {
+						return {};
+					});
+				}).catch(function () {
+					return getStatus().catch(function () {
+						return {};
+					});
+				});
 			});
 		}).catch(function () {
 			return getStatus().catch(function () {
@@ -176,7 +195,19 @@ return view.extend({
 
 		var fileInput = E('input', {
 			'type': 'file',
-			accept: '.run,.sh,application/x-shellscript,application/octet-stream',
+			accept: '.run,.sh,.ipk,.apk,application/x-shellscript,application/octet-stream',
+			style: 'display:none'
+		});
+
+		var ipkInput = E('input', {
+			'type': 'file',
+			accept: '.ipk',
+			style: 'display:none'
+		});
+
+		var apkInput = E('input', {
+			'type': 'file',
+			accept: '.apk',
 			style: 'display:none'
 		});
 
@@ -194,17 +225,36 @@ return view.extend({
 		}, ['']);
 
 		var pickButton = E('button', {
-			class: 'btn cbi-button cbi-button-apply',
+			class: 'cbi-button cbi-button-apply run-btn',
+			style: 'background:#333!important;background-color:#333!important;background-image:none!important;color:#fff!important;border-color:#333!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
 				fileInput.click();
 			}
 		}, [_('choose_file')]);
 
+		var ipkButton = E('button', {
+			class: 'cbi-button cbi-button-add run-btn',
+			style: 'margin-left:10px;background:#2E7D32!important;background-color:#2E7D32!important;background-image:none!important;color:#fff!important;border-color:#2E7D32!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
+			click: function (ev) {
+				ev.preventDefault();
+				ipkInput.click();
+			}
+		}, [_('choose_ipk')]);
+
+		var apkButton = E('button', {
+			class: 'cbi-button cbi-button-add run-btn',
+			style: 'margin-left:10px;background:#1565C0!important;background-color:#1565C0!important;background-image:none!important;color:#fff!important;border-color:#1565C0!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
+			click: function (ev) {
+				ev.preventDefault();
+				apkInput.click();
+			}
+		}, [_('choose_apk')]);
+
 		var runButton = E('button', {
-			class: 'btn cbi-button cbi-button-action',
+			class: 'cbi-button cbi-button-action run-btn',
 			disabled: true,
-			style: 'min-width:140px;margin-left:15px;',
+			style: 'min-width:140px;margin-left:15px;background:#7B1FA2!important;background-color:#7B1FA2!important;background-image:none!important;color:#fff!important;border-color:#7B1FA2!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
 				self.startRun(runButton, state);
@@ -212,8 +262,8 @@ return view.extend({
 		}, [_('execute')]);
 
 		var cleanButton = E('button', {
-			class: 'btn cbi-button cbi-button-reset',
-			style: 'margin-left:35px;',
+			class: 'cbi-button cbi-button-reset run-btn',
+			style: 'margin-left:35px;background:#C62828!important;background-color:#C62828!important;background-image:none!important;color:#fff!important;border-color:#C62828!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
 				cleanup().then(function (res) {
@@ -251,14 +301,27 @@ return view.extend({
 		}, [
 			E('h3', [_('upload_title')]),
 			E('p', [state]),
-			E('p', [pickButton, runButton, cleanButton]),
+			E('p', [pickButton, ipkButton, apkButton]),
+			E('p', { style: 'margin-top:10px' }, [runButton, cleanButton]),
 			progress,
-			fileInput
+			fileInput,
+			ipkInput,
+			apkInput
 		]);
 
 		fileInput.addEventListener('change', function () {
 			if (fileInput.files && fileInput.files.length)
 				self.uploadFile(fileInput.files[0], progress, state, runButton);
+		});
+
+		ipkInput.addEventListener('change', function () {
+			if (ipkInput.files && ipkInput.files.length)
+				self.uploadFile(ipkInput.files[0], progress, state, runButton);
+		});
+
+		apkInput.addEventListener('change', function () {
+			if (apkInput.files && apkInput.files.length)
+				self.uploadFile(apkInput.files[0], progress, state, runButton);
 		});
 
 		poll.add(function () {
@@ -290,9 +353,8 @@ return view.extend({
 	uploadFile: function (file, progress, state, runButton) {
 		var self = this;
 
-		// 支持 .run 和 .sh 文件
-		if (!file.name.match(/\.(run|sh)$/i)) {
-			ui.addNotification(null, E('p', [_('only_run')]), 'danger');
+		if (!file.name.match(/\.(run|sh|ipk|apk)$/i)) {
+			ui.addNotification(null, E('p', [_('only_supported')]), 'danger');
 			return Promise.reject();
 		}
 
@@ -361,8 +423,15 @@ return view.extend({
 		state.textContent = _('starting');
 
 		return runInstaller(this.currentUploadId).then(function (res) {
-			if (res && res.error)
-				throw new Error(res.error);
+			if (res && res.error) {
+				var errorMsg = res.error;
+				if (res.error === 'ERR_NO_OPKG') {
+					errorMsg = _('err_no_opkg');
+				} else if (res.error === 'ERR_NO_APK') {
+					errorMsg = _('err_no_apk');
+				}
+				throw new Error(errorMsg);
+			}
 
 			self.logOffset = 0;
 			state.textContent = _('started', res.pid);

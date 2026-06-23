@@ -115,7 +115,8 @@ method_list() {
 		"offset": "Integer"
 	},
 	"cleanup": {},
-	"version": {}
+	"version": {},
+	"capabilities": {}
 }
 JSON
 }
@@ -132,8 +133,8 @@ upload_start() {
     local clean id token dir file
     clean="$(sanitize_name "$filename")"
     case "$clean" in
-        *.run|*.sh) ;;
-        *) json_error "Only .run and .sh files are accepted"; return ;;
+        *.run|*.sh|*.ipk|*.apk) ;;
+        *) json_error "Only .run, .sh, .ipk and .apk files are accepted"; return ;;
     esac
     
     id="$(date +%s)_$$"
@@ -225,14 +226,6 @@ run_installer() {
     name="$(cat "$dir/name" 2>/dev/null)"
     file="$dir/$name"
     
-    # 确保文件可执行（.run 和 .sh 都需要）
-    chmod 700 "$file" 2>/dev/null || true
-    
-    [ -x "$file" ] || {
-        json_error "Uploaded file is not executable. Please check file permissions."
-        return
-    }
-    
     read_state
     if is_running "$PID"; then
         json_error "Another installer is already running"
@@ -244,15 +237,56 @@ run_installer() {
     log="$work/output.log"
     mkdir -p "$work" || { json_error "Unable to create run directory"; return; }
     
-    (
-        cd "$work" || exit 1
-        printf 'luci-app-run: started %s\n' "$now"
-        printf 'luci-app-run: executing %s\n\n' "$file"
-        "$file"
-        rc=$?
-        printf '\nluci-app-run: exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
-        exit "$rc"
-    ) > "$log" 2>&1 &
+    case "$name" in
+        *.ipk)
+            if ! command -v opkg >/dev/null 2>&1; then
+                json_error "ERR_NO_OPKG"
+                return
+            fi
+            (
+                cd "$work" || exit 1
+                printf 'luci-app-run: started %s\n' "$now"
+                printf 'luci-app-run: installing ipk package %s\n\n' "$file"
+                opkg install "$file"
+                rc=$?
+                printf '\nluci-app-run: opkg exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
+                exit "$rc"
+            ) > "$log" 2>&1 &
+            ;;
+        *.apk)
+            if ! command -v apk >/dev/null 2>&1; then
+                json_error "ERR_NO_APK"
+                return
+            fi
+            (
+                cd "$work" || exit 1
+                printf 'luci-app-run: started %s\n' "$now"
+                printf 'luci-app-run: installing apk package %s\n\n' "$file"
+                apk add --allow-untrusted "$file"
+                rc=$?
+                printf '\nluci-app-run: apk exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
+                exit "$rc"
+            ) > "$log" 2>&1 &
+            ;;
+        *)
+            chmod 700 "$file" 2>/dev/null || true
+            
+            [ -x "$file" ] || {
+                json_error "Uploaded file is not executable. Please check file permissions."
+                return
+            }
+            
+            (
+                cd "$work" || exit 1
+                printf 'luci-app-run: started %s\n' "$now"
+                printf 'luci-app-run: executing %s\n\n' "$file"
+                "$file"
+                rc=$?
+                printf '\nluci-app-run: exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
+                exit "$rc"
+            ) > "$log" 2>&1 &
+            ;;
+    esac
     
     pid="$!"
     write_state "$pid" "$file" "$log" "$now"
@@ -336,6 +370,20 @@ version() {
     json_dump
 }
 
+capabilities() {
+    local has_opkg=0
+    local has_apk=0
+    
+    command -v opkg >/dev/null 2>&1 && has_opkg=1
+    command -v apk >/dev/null 2>&1 && has_apk=1
+    
+    json_init
+    json_add_int code 0
+    json_add_int opkg "$has_opkg"
+    json_add_int apk "$has_apk"
+    json_dump
+}
+
 case "$1" in
     list)
         method_list
@@ -350,6 +398,7 @@ case "$1" in
             read_log) read_log ;;
             cleanup) cleanup ;;
             version) version ;;
+            capabilities) capabilities ;;
             *) json_error "Unknown method" ;;
         esac
     ;;
