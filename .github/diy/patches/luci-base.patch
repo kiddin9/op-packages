@@ -12,26 +12,6 @@
  
  include $(TOPDIR)/feeds/luci/luci.mk
 
---- a/luci-base/root/usr/share/rpcd/ucode/luci
-+++ b/luci-base/root/usr/share/rpcd/ucode/luci
-@@ -228,6 +228,7 @@ const methods = {
- 
- 	getFeatures: {
- 		call: function() {
-+			const kernel_version = popen('echo -n `uname -r`').read('all');
- 			const has_fw3 = access('/sbin/fw3') == true;
- 			const has_fw4 = access('/sbin/fw4') == true;
- 			const has_ipt_flowoffload = access('/sys/module/xt_FLOWOFFLOAD/refcnt') == true;
-@@ -248,7 +249,7 @@ const methods = {
- 				mii_tool:   access('/usr/sbin/mii-tool'),
- 				offloading: (has_fw3 && has_ipt_flowoffload) || (has_fw4 && has_nft_flowoffload),
- 				offloading_hw: has_hw_offloading,
--				fullcone:   access('/sys/module/xt_FULLCONENAT/refcnt') == true || access('/sys/module/nft_fullcone/refcnt') == true,
-+				fullcone:   access(`/lib/modules/${kernel_version}/xt_FULLCONENAT.ko`) == true || access(`/lib/modules/${kernel_version}/nft_fullcone.ko`) == true,
- 				br2684ctl:  access('/usr/sbin/br2684ctl') == true,
- 				swconfig:   access('/sbin/swconfig') == true,
- 				zram:       access('/sys/class/zram-control') == true,
-
 --- a/luci-base/htdocs/luci-static/resources/network.js
 +++ b/luci-base/htdocs/luci-static/resources/network.js
 @@ -4376,4 +4376,10 @@ WifiNetwork = baseclass.extend(/** @lends LuCI.network.WifiNetwork.prototype */
