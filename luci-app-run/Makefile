@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-run
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 LUCI_TITLE:=LuCI support for running installers and packages
 LUCI_DESCRIPTION:=Upload and execute .run, .sh, .ipk and .apk files from LuCI.
@@ -16,6 +16,8 @@ define Package/luci-app-run/postinst
 #!/bin/sh
 # 设置版本号到临时文件，用于前端资源缓存刷新
 echo "$(PKG_VERSION)-$(PKG_RELEASE)" > /tmp/luci-app-run.version
+# 重启 rpcd 服务以加载新插件
+/etc/init.d/rpcd restart >/dev/null 2>&1 || true
 exit 0
 endef
 

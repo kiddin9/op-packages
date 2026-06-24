@@ -89,7 +89,28 @@ read_state() {
 
 is_running() {
     local pid="$1"
-    [ -n "$pid" ] && [ -d "/proc/$pid" ]
+    [ -n "$pid" ] || return 1
+    
+    [ -d "/proc/$pid" ] || return 1
+    
+    local cmdline
+    cmdline="$(cat "/proc/$pid/cmdline" 2>/dev/null | tr '\0' ' ')"
+    
+    echo "$cmdline" | grep -q "luci-app-run" && return 0
+    
+    # Check for .run files (must be followed by space or end of string)
+    case "$cmdline" in
+        *".run "*) return 0 ;;
+        *".run") return 0 ;;
+    esac
+    
+    # Check for .sh files (must be followed by space or end of string)
+    case "$cmdline" in
+        *".sh "*) return 0 ;;
+        *".sh") return 0 ;;
+    esac
+    
+    return 1
 }
 
 method_list() {
@@ -108,7 +129,8 @@ method_list() {
 		"id": "String"
 	},
 	"run": {
-		"id": "String"
+		"id": "String",
+		"args": "String"
 	},
 	"status": {},
 	"read_log": {
@@ -217,6 +239,7 @@ upload_finish() {
 run_installer() {
     load_input
     get_string id
+    get_string args
     
     valid_id "$id" || { json_error "Invalid upload id"; return; }
     
@@ -227,6 +250,11 @@ run_installer() {
     file="$dir/$name"
     
     read_state
+    if [ -n "$PID" ] && ! is_running "$PID"; then
+        rm -f "$STATE_FILE"
+        unset PID
+    fi
+    
     if is_running "$PID"; then
         json_error "Another installer is already running"
         return
@@ -279,8 +307,8 @@ run_installer() {
             (
                 cd "$work" || exit 1
                 printf 'luci-app-run: started %s\n' "$now"
-                printf 'luci-app-run: executing %s\n\n' "$file"
-                "$file"
+                printf 'luci-app-run: executing %s %s\n\n' "$file" "$args"
+                "$file" $args
                 rc=$?
                 printf '\nluci-app-run: exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
                 exit "$rc"
@@ -356,8 +384,19 @@ cleanup() {
         return
     fi
     
-    rm -rf "$UPLOAD_DIR" "$RUN_DIR" "$STATE_FILE"
-    mkdir -p "$UPLOAD_DIR" "$RUN_DIR"
+    rm -rf "$UPLOAD_DIR"
+    mkdir -p "$UPLOAD_DIR"
+    
+    # Keep state file but clear PID and FILE, preserve LOG path
+    if [ -n "$LOG" ]; then
+        echo "PID=" > "$STATE_FILE"
+        echo "FILE=" >> "$STATE_FILE"
+        echo "LOG=$LOG" >> "$STATE_FILE"
+        echo "STARTED=" >> "$STATE_FILE"
+    else
+        > "$STATE_FILE"
+    fi
+    
     json_ok "Cleaned"
 }
 

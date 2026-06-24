@@ -1,0 +1,6 @@
+{
+	"luci-app-run": {
+		"description": "LuCI app run service",
+		"script": "/usr/libexec/rpcd/luci-app-run"
+	}
+}

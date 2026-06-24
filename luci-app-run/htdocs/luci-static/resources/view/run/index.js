@@ -48,12 +48,50 @@ function getLang() {
 
 function _(key) {
 	if (!I18N)
-		return key;
+		return getDefaultText(key);
 
 	var lang = getLang();
-	var str = I18N[lang]?.[key] || I18N.zh[key] || key;
+	var str = (I18N[lang] && I18N[lang][key]) || (I18N.zh && I18N.zh[key]) || getDefaultText(key) || key;
 	var args = Array.prototype.slice.call(arguments, 1);
-	return str.format.apply(str, args);
+	if (args.length > 0) {
+		return str.format.apply(str, args);
+	}
+	return str;
+}
+
+function getDefaultText(key) {
+	var defaults = {
+		'title': 'Run安装器',
+		'desc': '在路由器上上传并执行脚本或安装包，注意架构务必匹配。',
+		'drop_tip': '拖入文件，或从电脑选择。',
+		'choose_file': '选择 .run 或 .sh 文件',
+		'choose_ipk': '选择 .ipk 包',
+		'choose_apk': '选择 .apk 包',
+		'execute': '执行',
+		'clean_up': '清理',
+		'upload_title': '上传文件',
+		'log_title': '执行日志',
+		'clean_done': '临时文件与日志已清理。',
+		'only_supported': '仅支持 .run、.sh、.ipk 和 .apk 文件。',
+		'prepare_upload': '准备上传：%s (%s)',
+		'upload_failed': '上传失败。',
+		'uploading': '正在上传 %s：%d%%',
+		'upload_err': '上传请求失败。',
+		'upload_invalid': '上传返回格式无效。',
+		'upload_done': '上传完成：%s (%s)',
+		'starting': '正在启动安装器...',
+		'started': '安装器已启动，PID %d。',
+		'running': '安装器正在运行。',
+		'last_file': '上一次安装包：%s',
+		'err_no_opkg': '您的系统不支持 ipk 包安装，请选择 apk 包。',
+		'err_no_apk': '您的系统不支持 apk 包安装，请选择 ipk 包。',
+		'script_args': '脚本参数（如 -q -h）',
+		'args_hint': '您可以输入脚本参数或留空',
+		'cancel': '取消',
+		'confirm': '确定',
+		'auto_cleaned': '执行完毕，已自动清理临时文件。'
+	};
+	return defaults[key] || null;
 }
 
 var uploadStart = rpc.declare({
@@ -77,7 +115,7 @@ var uploadFinish = rpc.declare({
 var runInstaller = rpc.declare({
 	object: 'luci-app-run',
 	method: 'run',
-	params: ['id']
+	params: ['id', 'args']
 });
 
 var getStatus = rpc.declare({
@@ -134,6 +172,7 @@ return view.extend({
 
 	logOffset: 0,
 	currentUploadId: null,
+	currentFileType: null,
 	appVersion: 'unknown',
 	capabilities: { opkg: 1, apk: 1 },
 
@@ -257,7 +296,18 @@ return view.extend({
 			style: 'min-width:140px;margin-left:15px;background:#7B1FA2!important;background-color:#7B1FA2!important;background-image:none!important;color:#fff!important;border-color:#7B1FA2!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
-				self.startRun(runButton, state);
+
+				if (self.currentFileType === '.sh') {
+					self.showArgsDialog(function (args) {
+						if (args !== null) {
+							log.textContent = '';
+							self.startRun(runButton, state, args.trim());
+						}
+					});
+				} else {
+					log.textContent = '';
+					self.startRun(runButton, state, '');
+				}
 			}
 		}, [_('execute')]);
 
@@ -272,6 +322,8 @@ return view.extend({
 
 					self.currentUploadId = null;
 					self.logOffset = 0;
+					self.prevRunning = false;
+					self.autoCleanType = null;
 					runButton.disabled = true;
 					log.textContent = '';
 					progress.style.display = 'none';
@@ -358,6 +410,10 @@ return view.extend({
 			return Promise.reject();
 		}
 
+		// 记录文件类型
+		var ext = file.name.match(/\.(run|sh|ipk|apk)$/i);
+		self.currentFileType = ext ? ext[0].toLowerCase() : null;
+
 		progress.style.display = '';
 		progress.value = 0;
 		runButton.disabled = true;
@@ -414,15 +470,16 @@ return view.extend({
 		});
 	},
 
-	startRun: function (runButton, state) {
+	startRun: function (runButton, state, args) {
 		var self = this;
 
 		if (!this.currentUploadId) return;
 
 		runButton.disabled = true;
 		state.textContent = _('starting');
+		self.autoCleanType = null;
 
-		return runInstaller(this.currentUploadId).then(function (res) {
+		return runInstaller(this.currentUploadId, args || '').then(function (res) {
 			if (res && res.error) {
 				var errorMsg = res.error;
 				if (res.error === 'ERR_NO_OPKG') {
@@ -434,11 +491,56 @@ return view.extend({
 			}
 
 			self.logOffset = 0;
+			self.prevRunning = true;
+			if (self.currentFileType === '.sh' || self.currentFileType === '.run') {
+				self.autoCleanType = self.currentFileType;
+			}
 			state.textContent = _('started', res.pid);
 		}).catch(function (err) {
 			runButton.disabled = false;
 			ui.addNotification(null, E('p', [err.message || err]), 'danger');
 		});
+	},
+
+	showArgsDialog: function (callback) {
+		var dialog = E('div', {
+			style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999'
+		}, [
+			E('div', {
+				style: 'background:#fff;border-radius:8px;padding:20px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3)'
+			}, [
+				E('input', {
+					type: 'text',
+					placeholder: _('args_hint'),
+					style: 'width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:14px',
+					id: 'run-args-dialog-input'
+				}),
+				E('div', {
+					style: 'display:flex;justify-content:flex-end;gap:10px'
+				}, [
+					E('button', {
+						class: 'cbi-button cbi-button-reset',
+						style: 'padding:8px 20px;text-transform:none',
+						click: function () {
+							document.body.removeChild(dialog);
+							callback(null);
+						}
+					}, [_('cancel')]),
+					E('button', {
+						class: 'cbi-button cbi-button-action',
+						style: 'padding:8px 20px;text-transform:none',
+						click: function () {
+							var args = document.getElementById('run-args-dialog-input').value;
+							document.body.removeChild(dialog);
+							callback(args);
+						}
+					}, [_('confirm')])
+				])
+			])
+		]);
+
+		document.body.appendChild(dialog);
+		document.getElementById('run-args-dialog-input').focus();
 	},
 
 	refreshLog: function (log, state) {
@@ -454,8 +556,24 @@ return view.extend({
 
 			self.logOffset = res.offset || self.logOffset;
 
-			if (res.running)
+			if (res.running) {
 				state.textContent = _('running');
+				self.prevRunning = true;
+			} else if (self.prevRunning) {
+				// Installer just finished
+				self.prevRunning = false;
+
+				// Auto-cleanup for .sh and .run files
+				if (self.autoCleanType) {
+					self.autoCleanType = null;
+					cleanup().then(function () {
+						self.currentUploadId = null;
+						state.textContent = _('auto_cleaned');
+					}).catch(function () {
+						state.textContent = _('clean_done');
+					});
+				}
+			}
 		}).catch(function () { });
 	}
 });
