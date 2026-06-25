@@ -28,7 +28,11 @@
 		"args_hint": "您可以输入脚本参数或留空",
 		"cancel": "取消",
 		"confirm": "确定",
-		"auto_cleaned": "执行完毕，已自动清理临时文件。"
+		"auto_cleaned": "执行完毕，已自动清理临时文件。",
+		"download_run": "下载并执行 .run",
+		"download_url": "请输入 .run 文件的下载地址",
+		"downloading": "正在下载...",
+		"only_run": "仅支持 .run 文件下载"
 	},
 	"en": {
 		"title": "Run Installer",
@@ -59,6 +63,10 @@
 		"args_hint": "You can enter script arguments or leave it blank",
 		"cancel": "Cancel",
 		"confirm": "OK",
-		"auto_cleaned": "Execution complete, temporary files cleaned automatically."
+		"auto_cleaned": "Execution complete, temporary files cleaned automatically.",
+		"download_run": "Download and execute .run",
+		"download_url": "Enter .run file download URL",
+		"downloading": "Downloading...",
+		"only_run": "Only .run files are supported"
 	}
 }

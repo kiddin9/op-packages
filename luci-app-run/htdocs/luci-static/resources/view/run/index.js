@@ -89,7 +89,11 @@ function getDefaultText(key) {
 		'args_hint': '您可以输入脚本参数或留空',
 		'cancel': '取消',
 		'confirm': '确定',
-		'auto_cleaned': '执行完毕，已自动清理临时文件。'
+		'auto_cleaned': '执行完毕，已自动清理临时文件。',
+		'download_run': '下载并执行 .run',
+		'download_url': '请输入 .run 文件的下载地址',
+		'downloading': '正在下载...',
+		'only_run': '仅支持 .run 文件下载'
 	};
 	return defaults[key] || null;
 }
@@ -142,6 +146,12 @@ var readLog = rpc.declare({
 var cleanup = rpc.declare({
 	object: 'luci-app-run',
 	method: 'cleanup'
+});
+
+var downloadRun = rpc.declare({
+	object: 'luci-app-run',
+	method: 'download_run',
+	params: ['url']
 });
 
 function formatBytes(size) {
@@ -290,6 +300,20 @@ return view.extend({
 			}
 		}, [_('choose_apk')]);
 
+		var downloadButton = E('button', {
+			class: 'cbi-button cbi-button-action run-btn',
+			style: 'margin-left:10px;background:#E65100!important;background-color:#E65100!important;background-image:none!important;color:#fff!important;border-color:#E65100!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
+			click: function (ev) {
+				ev.preventDefault();
+				self.showDownloadDialog(function (url) {
+					if (url !== null) {
+						log.textContent = '';
+						self.startDownload(runButton, state, url.trim());
+					}
+				});
+			}
+		}, [_('download_run')]);
+
 		var runButton = E('button', {
 			class: 'cbi-button cbi-button-action run-btn',
 			disabled: true,
@@ -354,7 +378,7 @@ return view.extend({
 			E('h3', [_('upload_title')]),
 			E('p', [state]),
 			E('p', [pickButton, ipkButton, apkButton]),
-			E('p', { style: 'margin-top:10px' }, [runButton, cleanButton]),
+			E('p', { style: 'margin-top:10px' }, [downloadButton, runButton, cleanButton]),
 			progress,
 			fileInput,
 			ipkInput,
@@ -541,6 +565,81 @@ return view.extend({
 
 		document.body.appendChild(dialog);
 		document.getElementById('run-args-dialog-input').focus();
+	},
+
+	showDownloadDialog: function (callback) {
+		var dialog = E('div', {
+			style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999'
+		}, [
+			E('div', {
+				style: 'background:#fff;border-radius:8px;padding:20px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3)'
+			}, [
+				E('input', {
+					type: 'text',
+					placeholder: _('download_url'),
+					style: 'width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:14px',
+					id: 'run-download-url-input'
+				}),
+				E('div', {
+					style: 'display:flex;justify-content:flex-end;gap:10px'
+				}, [
+					E('button', {
+						class: 'cbi-button cbi-button-reset',
+						style: 'padding:8px 20px;text-transform:none',
+						click: function () {
+							document.body.removeChild(dialog);
+							callback(null);
+						}
+					}, [_('cancel')]),
+					E('button', {
+						class: 'cbi-button cbi-button-action',
+						style: 'padding:8px 20px;text-transform:none',
+						click: function () {
+							var url = document.getElementById('run-download-url-input').value.trim();
+							if (!url) {
+								document.body.removeChild(dialog);
+								callback(null);
+								return;
+							}
+
+							var filename = url.split('/').pop().split('?')[0];
+							if (!filename.match(/\.run$/i)) {
+								ui.addNotification(null, E('p', [_('only_run')]), 'danger');
+								return;
+							}
+
+							document.body.removeChild(dialog);
+							callback(url);
+						}
+					}, [_('confirm')])
+				])
+			])
+		]);
+
+		document.body.appendChild(dialog);
+		document.getElementById('run-download-url-input').focus();
+	},
+
+	startDownload: function (runButton, state, url) {
+		var self = this;
+
+		runButton.disabled = true;
+		state.textContent = _('downloading');
+		self.prevRunning = false;
+		self.autoCleanType = null;
+
+		return downloadRun(url).then(function (res) {
+			if (res && res.error) {
+				throw new Error(res.error);
+			}
+
+			self.logOffset = 0;
+			self.prevRunning = true;
+			state.textContent = _('started', res.pid);
+		}).catch(function (err) {
+			runButton.disabled = false;
+			ui.addNotification(null, E('p', [err.message || err]), 'danger');
+		});
 	},
 
 	refreshLog: function (log, state) {

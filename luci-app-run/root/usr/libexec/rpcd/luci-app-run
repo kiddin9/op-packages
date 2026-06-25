@@ -75,11 +75,13 @@ write_state() {
     local file="$2"
     local log="$3"
     local started="$4"
+    local type="$5"
     {
         printf 'PID=%s\n' "$pid"
         printf 'FILE=%s\n' "$file"
         printf 'LOG=%s\n' "$log"
         printf 'STARTED=%s\n' "$started"
+        printf 'TYPE=%s\n' "$type"
     } > "$STATE_FILE"
 }
 
@@ -135,6 +137,9 @@ method_list() {
 	"status": {},
 	"read_log": {
 		"offset": "Integer"
+	},
+	"download_run": {
+		"url": "String"
 	},
 	"cleanup": {},
 	"version": {},
@@ -236,6 +241,86 @@ upload_finish() {
     json_dump
 }
 
+download_run() {
+    load_input
+    get_string url
+    
+    [ -n "$url" ] || { json_error "Missing URL"; return; }
+    
+    local filename id dir file log work pid now
+    
+    # Extract filename from URL - get everything after the last /
+    filename="${url##*/}"
+    # Remove query parameters if any
+    filename="${filename%%\?*}"
+    
+    case "$filename" in
+        *.run) ;;
+        *) json_error "Only .run files are supported for download"; return ;;
+    esac
+    
+    read_state
+    if [ -n "$PID" ] && ! is_running "$PID"; then
+        rm -f "$STATE_FILE"
+        unset PID
+    fi
+    
+    if is_running "$PID"; then
+        json_error "Another installer is already running"
+        return
+    fi
+    
+    id="download_$(date +%s)"
+    dir="$RUN_DIR/$id"
+    file="$dir/$filename"
+    log="$dir/output.log"
+    
+    mkdir -p "$dir" || { json_error "Unable to create download directory"; return; }
+    
+    now="$(date '+%Y-%m-%d %H:%M:%S')"
+    
+    (
+        cd "$dir" || exit 1
+        printf 'luci-app-run: started %s\n' "$now"
+        printf 'luci-app-run: downloading %s\n\n' "$url"
+        
+        if command -v curl >/dev/null 2>&1; then
+            curl -L -o "$filename" "$url"
+        elif command -v wget >/dev/null 2>&1; then
+            wget -O "$filename" "$url"
+        else
+            printf 'luci-app-run: error: neither curl nor wget is available\n'
+            exit 1
+        fi
+        
+        rc=$?
+        if [ "$rc" -ne 0 ]; then
+            printf '\nluci-app-run: download failed with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
+            exit "$rc"
+        fi
+        
+        printf '\nluci-app-run: download completed at %s\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+        printf '\nluci-app-run: executing %s\n\n' "$file"
+        
+        chmod 700 "$file" 2>/dev/null || true
+        
+        "$file"
+        rc=$?
+        printf '\nluci-app-run: exited with status %s at %s\n' "$rc" "$(date '+%Y-%m-%d %H:%M:%S')"
+        exit "$rc"
+    ) > "$log" 2>&1 &
+    
+    pid="$!"
+    write_state "$pid" "$file" "$log" "$now" "download"
+    
+    json_init
+    json_add_int code 0
+    json_add_int pid "$pid"
+    json_add_string log "$log"
+    json_add_string filename "$filename"
+    json_dump
+}
+
 run_installer() {
     load_input
     get_string id
@@ -317,7 +402,7 @@ run_installer() {
     esac
     
     pid="$!"
-    write_state "$pid" "$file" "$log" "$now"
+    write_state "$pid" "$file" "$log" "$now" "upload"
     
     json_init
     json_add_int code 0
@@ -433,6 +518,7 @@ case "$1" in
             upload_chunk) upload_chunk ;;
             upload_finish) upload_finish ;;
             run) run_installer ;;
+            download_run) download_run ;;
             status) status ;;
             read_log) read_log ;;
             cleanup) cleanup ;;
