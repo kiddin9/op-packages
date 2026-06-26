@@ -93,9 +93,25 @@ function getDefaultText(key) {
 		'download_run': '下载并执行 .run',
 		'download_url': '请输入 .run 文件的下载地址',
 		'downloading': '正在下载...',
-		'only_run': '仅支持 .run 文件下载'
+		'only_run': '仅支持 .run 文件下载',
+		'no_file': '请先选择sh文件'
 	};
 	return defaults[key] || null;
+}
+
+function cleanupStaleDialogs() {
+	var allDivs = document.getElementsByTagName('div');
+	for (var i = allDivs.length - 1; i >= 0; i--) {
+		var div = allDivs[i];
+		if (!div || !div.parentNode) continue;
+		var style = window.getComputedStyle ? window.getComputedStyle(div) : div.style;
+		var isFixed = style.position === 'fixed' || (div.style && div.style.position === 'fixed');
+		var hasHighZ = (style.zIndex && parseInt(style.zIndex) >= 9000) || (div.style.zIndex && parseInt(div.style.zIndex) >= 9000);
+		var isOurDialog = div.style && (div.style.zIndex === '9999' || div.style.background && div.style.background.indexOf('rgba(0,0,0,0.5)') !== -1);
+		if (isFixed && (hasHighZ || isOurDialog)) {
+			div.parentNode.removeChild(div);
+		}
+	}
 }
 
 var uploadStart = rpc.declare({
@@ -242,6 +258,8 @@ return view.extend({
 	render: function (status) {
 		var self = this;
 
+		cleanupStaleDialogs();
+
 		var fileInput = E('input', {
 			'type': 'file',
 			accept: '.run,.sh,.ipk,.apk,application/x-shellscript,application/octet-stream',
@@ -278,6 +296,8 @@ return view.extend({
 			style: 'background:#333!important;background-color:#333!important;background-image:none!important;color:#fff!important;border-color:#333!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
+				cleanupStaleDialogs();
+				fileInput.value = '';
 				fileInput.click();
 			}
 		}, [_('choose_file')]);
@@ -287,6 +307,8 @@ return view.extend({
 			style: 'margin-left:10px;background:#2E7D32!important;background-color:#2E7D32!important;background-image:none!important;color:#fff!important;border-color:#2E7D32!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
+				cleanupStaleDialogs();
+				ipkInput.value = '';
 				ipkInput.click();
 			}
 		}, [_('choose_ipk')]);
@@ -296,6 +318,8 @@ return view.extend({
 			style: 'margin-left:10px;background:#1565C0!important;background-color:#1565C0!important;background-image:none!important;color:#fff!important;border-color:#1565C0!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
+				cleanupStaleDialogs();
+				apkInput.value = '';
 				apkInput.click();
 			}
 		}, [_('choose_apk')]);
@@ -305,6 +329,7 @@ return view.extend({
 			style: 'margin-left:10px;background:#E65100!important;background-color:#E65100!important;background-image:none!important;color:#fff!important;border-color:#E65100!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
+				cleanupStaleDialogs();
 				self.showDownloadDialog(function (url) {
 					if (url !== null) {
 						log.textContent = '';
@@ -316,22 +341,26 @@ return view.extend({
 
 		var runButton = E('button', {
 			class: 'cbi-button cbi-button-action run-btn',
-			disabled: true,
-			style: 'min-width:140px;margin-left:15px;background:#7B1FA2!important;background-color:#7B1FA2!important;background-image:none!important;color:#fff!important;border-color:#7B1FA2!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
+			disabled: false,
+			style: 'min-width:140px;margin-left:15px;background:#7B1FA2!important;background-color:#7B1FA2!important;background-image:none!important;color:#fff!important;border-color:#7B1FA2!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important;pointer-events:auto!important;cursor:pointer!important',
 			click: function (ev) {
 				ev.preventDefault();
+				ev.stopPropagation();
+
+				cleanupStaleDialogs();
+
+				log.textContent = '';
 
 				if (self.currentFileType === '.sh') {
 					self.showArgsDialog(function (args) {
 						if (args !== null) {
-							log.textContent = '';
 							self.startRun(runButton, state, args.trim());
 						}
 					});
 				} else {
-					log.textContent = '';
 					self.startRun(runButton, state, '');
 				}
+				return false;
 			}
 		}, [_('execute')]);
 
@@ -340,17 +369,21 @@ return view.extend({
 			style: 'margin-left:35px;background:#C62828!important;background-color:#C62828!important;background-image:none!important;color:#fff!important;border-color:#C62828!important;box-shadow:none!important;text-shadow:none!important;opacity:1!important',
 			click: function (ev) {
 				ev.preventDefault();
+				cleanupStaleDialogs();
 				cleanup().then(function (res) {
 					if (res && res.error)
 						throw new Error(res.error);
 
 					self.currentUploadId = null;
+					self.currentFileType = null;
 					self.logOffset = 0;
 					self.prevRunning = false;
 					self.autoCleanType = null;
-					runButton.disabled = true;
 					log.textContent = '';
 					progress.style.display = 'none';
+					fileInput.value = '';
+					ipkInput.value = '';
+					apkInput.value = '';
 					state.textContent = _('clean_done');
 				}).catch(function (err) {
 					ui.addNotification(null, E('p', [err.message || err]), 'danger');
@@ -370,6 +403,7 @@ return view.extend({
 			},
 			drop: function (ev) {
 				ev.preventDefault();
+				cleanupStaleDialogs();
 				drop.style.borderStyle = 'dashed';
 				if (ev.dataTransfer.files && ev.dataTransfer.files.length)
 					self.uploadFile(ev.dataTransfer.files[0], progress, state, runButton);
@@ -386,19 +420,36 @@ return view.extend({
 		]);
 
 		fileInput.addEventListener('change', function () {
-			if (fileInput.files && fileInput.files.length)
-				self.uploadFile(fileInput.files[0], progress, state, runButton);
+			if (fileInput.files && fileInput.files.length) {
+				var selectedFile = fileInput.files[0];
+				fileInput.value = '';
+				self.uploadFile(selectedFile, progress, state, runButton);
+			}
 		});
 
 		ipkInput.addEventListener('change', function () {
-			if (ipkInput.files && ipkInput.files.length)
-				self.uploadFile(ipkInput.files[0], progress, state, runButton);
+			if (ipkInput.files && ipkInput.files.length) {
+				var selectedFile = ipkInput.files[0];
+				ipkInput.value = '';
+				self.uploadFile(selectedFile, progress, state, runButton);
+			}
 		});
 
 		apkInput.addEventListener('change', function () {
-			if (apkInput.files && apkInput.files.length)
-				self.uploadFile(apkInput.files[0], progress, state, runButton);
+			if (apkInput.files && apkInput.files.length) {
+				var selectedFile = apkInput.files[0];
+				apkInput.value = '';
+				self.uploadFile(selectedFile, progress, state, runButton);
+			}
 		});
+
+		setTimeout(function () {
+			cleanupStaleDialogs();
+			runButton.disabled = false;
+			runButton.removeAttribute('disabled');
+			runButton.style.pointerEvents = 'auto';
+			runButton.style.cursor = 'pointer';
+		}, 100);
 
 		poll.add(function () {
 			return self.refreshLog(log, state);
@@ -434,13 +485,16 @@ return view.extend({
 			return Promise.reject();
 		}
 
-		// 记录文件类型
+		self.currentUploadId = null;
+		self.logOffset = 0;
+		self.prevRunning = false;
+		self.autoCleanType = null;
+
 		var ext = file.name.match(/\.(run|sh|ipk|apk)$/i);
 		self.currentFileType = ext ? ext[0].toLowerCase() : null;
 
 		progress.style.display = '';
 		progress.value = 0;
-		runButton.disabled = true;
 		state.textContent = _('prepare_upload', file.name, formatBytes(file.size));
 
 		return uploadStart(file.name, file.size).then(function (res) {
@@ -473,12 +527,10 @@ return view.extend({
 			};
 
 			xhr.onerror = function () {
-				document.querySelector('.cbi-button-action').disabled = false;
 				reject(new Error(_('upload_err')));
 			};
 
 			xhr.onload = function () {
-				document.querySelector('.cbi-button-action').disabled = false;
 				progress.value = 100;
 
 				uploadFinish(session.id).then(function () {
@@ -497,9 +549,11 @@ return view.extend({
 	startRun: function (runButton, state, args) {
 		var self = this;
 
-		if (!this.currentUploadId) return;
+		if (!this.currentUploadId) {
+			ui.addNotification(null, E('p', [_('no_file')]), 'danger');
+			return;
+		}
 
-		runButton.disabled = true;
 		state.textContent = _('starting');
 		self.autoCleanType = null;
 
@@ -521,23 +575,52 @@ return view.extend({
 			}
 			state.textContent = _('started', res.pid);
 		}).catch(function (err) {
-			runButton.disabled = false;
 			ui.addNotification(null, E('p', [err.message || err]), 'danger');
 		});
 	},
 
 	showArgsDialog: function (callback) {
+		var closed = false;
+		function closeDialog(result) {
+			if (closed) return;
+			closed = true;
+			document.removeEventListener('keydown', escHandler);
+			if (dialog.parentNode) {
+				document.body.removeChild(dialog);
+			}
+			callback(result);
+		}
+
+		function escHandler(ev) {
+			if (ev.key === 'Escape' || ev.keyCode === 27) {
+				closeDialog(null);
+			}
+		}
+
 		var dialog = E('div', {
-			style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999'
+			style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999',
+			click: function (ev) {
+				if (ev.target === dialog) {
+					closeDialog(null);
+				}
+			}
 		}, [
 			E('div', {
-				style: 'background:#fff;border-radius:8px;padding:20px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3)'
+				style: 'background:#fff;border-radius:8px;padding:20px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3)',
+				click: function (ev) { ev.stopPropagation(); }
 			}, [
 				E('input', {
 					type: 'text',
 					placeholder: _('args_hint'),
 					style: 'width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:14px',
-					id: 'run-args-dialog-input'
+					id: 'run-args-dialog-input',
+					keydown: function (ev) {
+						if (ev.key === 'Enter' || ev.keyCode === 13) {
+							ev.preventDefault();
+							var args = this.value;
+							closeDialog(args);
+						}
+					}
 				}),
 				E('div', {
 					style: 'display:flex;justify-content:flex-end;gap:10px'
@@ -546,8 +629,7 @@ return view.extend({
 						class: 'cbi-button cbi-button-reset',
 						style: 'padding:8px 20px;text-transform:none',
 						click: function () {
-							document.body.removeChild(dialog);
-							callback(null);
+							closeDialog(null);
 						}
 					}, [_('cancel')]),
 					E('button', {
@@ -555,30 +637,62 @@ return view.extend({
 						style: 'padding:8px 20px;text-transform:none',
 						click: function () {
 							var args = document.getElementById('run-args-dialog-input').value;
-							document.body.removeChild(dialog);
-							callback(args);
+							closeDialog(args);
 						}
 					}, [_('confirm')])
 				])
 			])
 		]);
 
+		document.addEventListener('keydown', escHandler);
 		document.body.appendChild(dialog);
-		document.getElementById('run-args-dialog-input').focus();
+		setTimeout(function () {
+			var input = document.getElementById('run-args-dialog-input');
+			if (input) input.focus();
+		}, 50);
 	},
 
 	showDownloadDialog: function (callback) {
+		var closed = false;
+		function closeDialog(result) {
+			if (closed) return;
+			closed = true;
+			document.removeEventListener('keydown', escHandler);
+			if (dialog.parentNode) {
+				document.body.removeChild(dialog);
+			}
+			callback(result);
+		}
+
+		function escHandler(ev) {
+			if (ev.key === 'Escape' || ev.keyCode === 27) {
+				closeDialog(null);
+			}
+		}
+
 		var dialog = E('div', {
-			style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999'
+			style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999',
+			click: function (ev) {
+				if (ev.target === dialog) {
+					closeDialog(null);
+				}
+			}
 		}, [
 			E('div', {
-				style: 'background:#fff;border-radius:8px;padding:20px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3)'
+				style: 'background:#fff;border-radius:8px;padding:20px;width:400px;box-shadow:0 4px 20px rgba(0,0,0,0.3)',
+				click: function (ev) { ev.stopPropagation(); }
 			}, [
 				E('input', {
 					type: 'text',
 					placeholder: _('download_url'),
 					style: 'width:100%;padding:10px;margin-bottom:15px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box;font-size:14px',
-					id: 'run-download-url-input'
+					id: 'run-download-url-input',
+					keydown: function (ev) {
+						if (ev.key === 'Enter' || ev.keyCode === 13) {
+							ev.preventDefault();
+							confirmBtn.click();
+						}
+					}
 				}),
 				E('div', {
 					style: 'display:flex;justify-content:flex-end;gap:10px'
@@ -587,18 +701,16 @@ return view.extend({
 						class: 'cbi-button cbi-button-reset',
 						style: 'padding:8px 20px;text-transform:none',
 						click: function () {
-							document.body.removeChild(dialog);
-							callback(null);
+							closeDialog(null);
 						}
 					}, [_('cancel')]),
 					E('button', {
-						class: 'cbi-button cbi-button-action',
+						class: 'cbi-button cbi-button-action confirm-btn',
 						style: 'padding:8px 20px;text-transform:none',
 						click: function () {
 							var url = document.getElementById('run-download-url-input').value.trim();
 							if (!url) {
-								document.body.removeChild(dialog);
-								callback(null);
+								closeDialog(null);
 								return;
 							}
 
@@ -608,22 +720,26 @@ return view.extend({
 								return;
 							}
 
-							document.body.removeChild(dialog);
-							callback(url);
+							closeDialog(url);
 						}
 					}, [_('confirm')])
 				])
 			])
 		]);
 
+		var confirmBtn = dialog.querySelector('.confirm-btn');
+
+		document.addEventListener('keydown', escHandler);
 		document.body.appendChild(dialog);
-		document.getElementById('run-download-url-input').focus();
+		setTimeout(function () {
+			var input = document.getElementById('run-download-url-input');
+			if (input) input.focus();
+		}, 50);
 	},
 
 	startDownload: function (runButton, state, url) {
 		var self = this;
 
-		runButton.disabled = true;
 		state.textContent = _('downloading');
 		self.prevRunning = false;
 		self.autoCleanType = null;
@@ -637,7 +753,6 @@ return view.extend({
 			self.prevRunning = true;
 			state.textContent = _('started', res.pid);
 		}).catch(function (err) {
-			runButton.disabled = false;
 			ui.addNotification(null, E('p', [err.message || err]), 'danger');
 		});
 	},
@@ -665,9 +780,19 @@ return view.extend({
 				// Auto-cleanup for .sh and .run files
 				if (self.autoCleanType) {
 					self.autoCleanType = null;
+					var oldUploadId = self.currentUploadId;
+					var oldFileType = self.currentFileType;
 					cleanup().then(function () {
-						self.currentUploadId = null;
-						state.textContent = _('auto_cleaned');
+						// Only clear state if user hasn't uploaded a new file in the meantime
+						if (self.currentUploadId === oldUploadId) {
+							self.currentUploadId = null;
+							self.currentFileType = null;
+						}
+						if (oldFileType) {
+							state.textContent = _('auto_cleaned');
+						} else {
+							state.textContent = _('clean_done');
+						}
 					}).catch(function () {
 						state.textContent = _('clean_done');
 					});
