@@ -4,7 +4,7 @@ LUCI_TITLE:=luci-app-ssr-plus
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=195
-PKG_RELEASE:=32
+PKG_RELEASE:=33
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -37,6 +37,7 @@ LUCI_DEPENDS:= \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:coreutils-timeout \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy:3proxy \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo:mihomo \
+	+PACKAGE_$(PKG_NAME)_INCLUDE_Mihomo:v2ray-geoip \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geoip \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_GeoData:v2ray-geosite \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG:chinadns-ng \
