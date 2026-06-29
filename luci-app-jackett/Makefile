@@ -2,8 +2,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=1.1.1-20240822
-PKG_RELEASE:=3
+PKG_VERSION:=1.1.1-r20240822
+PKG_RELEASE:=4
 
 LUCI_TITLE:=LuCI support for jackett
 LUCI_PKGARCH:=all
