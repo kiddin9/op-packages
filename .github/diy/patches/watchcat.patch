@@ -12,13 +12,15 @@
 
 --- a/watchcat/files/watchcat.config
 +++ b/watchcat/files/watchcat.config
-@@ -1,5 +1,5 @@
+@@ -1,7 +1,7 @@
  config watchcat
  	option period '6h'
  	option mode 'ping_reboot'
 -	option pinghosts '8.8.8.8'
-+	option pinghosts '223.5.5.5'
++	option pinghosts '23.5.5.5''
  	option forcedelay '30'
+ 	# For restart_iface and run_script, start a fresh failure window after
+ 	# each recovery action finishes before allowing another restart.
 
 --- a/luci-app-watchcat/htdocs/luci-static/resources/view/watchcat.js
 +++ b/luci-app-watchcat/htdocs/luci-static/resources/view/watchcat.js
