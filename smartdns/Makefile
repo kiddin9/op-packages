@@ -5,8 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=smartdns
-PKG_VERSION:=48
-PKG_RELEASE:=3
+PKG_VERSION:=48.2
+PKG_RELEASE:=4
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/pymumu/smartdns/tar.gz/Release$(PKG_VERSION)?
@@ -29,7 +29,7 @@ include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/rust/rust-package.mk
 
 MAKE_PATH:=src
-MAKE_VARS+= VER=$(PKG_VERSION)
+MAKE_VARS+= VER=$(PKG_VERSION) WITH_ZLIB=0
 
 define Package/smartdns/Default
   SECTION:=net
@@ -104,6 +104,7 @@ ifneq ($(CONFIG_PACKAGE_smartdns-ui),)
 		pushd plugin/smartdns-ui ; \
 		$(CARGO_PKG_CONFIG_VARS) \
 		MAKEFLAGS="$(PKG_JOBS)" \
+		WITH_ZLIB=0 \
 		TARGET_CFLAGS="$(filter-out -O%,$(TARGET_CFLAGS)) $(RUSTC_CFLAGS)" \
 		BINDGEN_EXTRA_CLANG_ARGS="--sysroot=$(TOOLCHAIN_ROOT_DIR)" \
 		cargo build -v --profile $(CARGO_PKG_PROFILE) \
