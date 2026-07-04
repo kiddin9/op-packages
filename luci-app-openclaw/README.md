@@ -27,9 +27,9 @@
 
 | 组件 | 默认版本 | 说明 |
 |------|----------|------|
-| OpenClaw | `2026.6.1` | npm `latest` 稳定标签；不默认追 `2026.6.5-beta.2` |
-| Node.js | `22.22.2` | Alpine musl LTS 包；OpenClaw 2026.6.x 要求 `>=22.19.0`，安装后会按 `engines.node` 做强校验 |
-| 微信插件 | `@tencent-weixin/openclaw-weixin@2.4.3` | CLI 使用 `@tencent-weixin/openclaw-weixin-cli@2.1.4` |
+| OpenClaw | `2026.6.11` | npm `latest` 稳定标签 |
+| Node.js | `22.23.0` | Alpine musl LTS 包；OpenClaw 2026.6.x 要求 `>=22.19.0`，安装后会按 `engines.node` 做强校验 |
+| 微信插件 | `@tencent-weixin/openclaw-weixin@2.4.6` | CLI 使用 `@tencent-weixin/openclaw-weixin-cli@2.1.4` |
 
 ## 📦 安装
 
@@ -111,15 +111,15 @@ openclaw-env setup
 微信渠道安装前会检查：
 
 - `openclaw` 系统用户是否存在，不存在时自动创建
-- `python3` 是否已安装
+- `python3` 是否已安装；缺失时会自动执行 `opkg update && opkg install python3-light`
 - npm cache、tmp、OpenClaw 数据目录是否可由 `openclaw` 用户写入
 - 旧渠道名 `weixin` 会迁移为 `openclaw-weixin`
 
-如缺少 Python3：
+如自动安装失败，可手动安装：
 
 ```bash
 opkg update
-opkg install python3
+opkg install python3-light
 ```
 
 ## 已知说明

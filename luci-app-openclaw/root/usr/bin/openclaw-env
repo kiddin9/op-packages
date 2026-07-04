@@ -7,19 +7,19 @@
 #   openclaw-env upgrade   — 升级 OpenClaw 到最新版
 #   openclaw-env node      — 仅下载/更新 Node.js
 # 环境变量:
-#   OC_VERSION  — 指定 OpenClaw 版本 (如 2026.6.1)，不设置则安装已测试稳定版
+#   OC_VERSION  — 指定 OpenClaw 版本 (如 2026.6.11)，不设置则安装已测试稳定版
 # ============================================================================
 set -e
 
 # ── Node.js 版本策略 (双版本兼容) ──
-# V2: 当前推荐版本，用于 OpenClaw v2026.6.1+ (要求 >= 22.19.0，使用 Alpine musl LTS 包确保可运行)
+# V2: 当前推荐版本，用于 OpenClaw v2026.6.11+ (要求 >= 22.19.0，使用 Alpine musl LTS 包确保可运行)
 # V1: 旧版兼容，用于 OpenClaw v2026.3.8 及更早版本
-NODE_VERSION_V2="22.22.2"
+NODE_VERSION_V2="22.23.0"
 NODE_VERSION_V1="22.15.1"
 # 默认使用 V2 版本 (可通过 NODE_VERSION 环境变量覆盖)
 NODE_VERSION="${NODE_VERSION:-${NODE_VERSION_V2}}"
 # 经过验证的 OpenClaw 稳定版本 (更新此值需同步测试)
-OC_TESTED_VERSION="2026.6.1"
+OC_TESTED_VERSION="2026.6.11"
 # OpenClaw 2026.6.x package.json engines.node 的最低要求。
 # 如果未来上游提高要求，安装成功后还会从 package.json 再做一次强校验。
 OC_NODE_MIN_VERSION="${OC_NODE_MIN_VERSION:-22.19.0}"

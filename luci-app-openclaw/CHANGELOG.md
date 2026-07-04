@@ -4,6 +4,52 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.8] - 2026-07-04
+
+### 修复 ARM64 Node.js 下载资产不一致
+
+- 默认 Node.js 更新为 `22.23.0`，与 GitHub Release 和长期 `node-bins` 中的 ARM64 musl 资产保持一致。
+- 同步更新 `build-node-musl.yml` 手动构建参数，避免后续手动构建继续产出旧版本 Node.js。
+- `node-bins` release 已补齐 `node-v22.23.0-linux-arm64-musl.tar.xz`，用于 ARM64 OpenWrt/iStoreOS 在线安装。
+
+### 测试
+
+- 更新 Node.js 默认版本、Node 版本比较和 ARM64 musl 打包契约测试。
+
+---
+
+## [2.0.7] - 2026-07-04
+
+### 适配 OpenClaw v2026.6.11
+
+- `OC_TESTED_VERSION` 更新为 `2026.6.11`，继续默认安装 npm `latest` 稳定标签。
+- 保持默认 Node.js `22.22.2` 和最低要求 `22.19.0`，满足 OpenClaw `2026.6.11` 的 `engines.node`。
+- README 同步当前适配版本：OpenClaw `2026.6.11`、微信插件 `@tencent-weixin/openclaw-weixin@2.4.6`、微信 CLI `2.1.4`。
+
+### 修复微信插件安装、登录和卸载
+
+- 微信插件安装和升级时，如缺少 `python3`，后台自动尝试 `opkg update && opkg install python3-light`，失败后在安装日志给出手动命令。
+- 微信登录前只修复 npm cache、tmp、微信账号状态目录和配置文件权限，避免递归改写插件代码目录属主。
+- 微信登录增加 `openclaw` 用户写权限预检，目录不可写时直接在二维码日志返回明确错误。
+- 微信卸载会清理 legacy extensions、npm projects 中的微信插件包、微信账号状态目录，并用 Node.js 结构化删除 `plugins.allow`、`plugins.installs`、`plugins.entries`、`channels`、`channel` 中的 `openclaw-weixin/weixin` 配置。
+- 备份 API 改用统一安装路径 helper，兼容用户把 `install_path` 误填成 `/mnt/data/openclaw` 的场景。
+
+### 测试
+
+- 更新 OpenClaw 默认版本契约到 `2026.6.11`。
+- 增加微信插件自动安装 `python3-light`、登录权限预检和卸载清理 npm projects/config 的契约断言。
+
+### 致谢
+
+感谢以下用户通过 Issue 或 PR 提供问题反馈、复现信息和修复思路：
+
+- @hotwa (#85)
+- @djbadboyvip (#94)、@alan9771 (#93, #82)、@luckymai3688 (#92, #91)、@lucian521 (#90)
+- @svgr110 (#89)、@Cuscito (#88)、@hwliu11 (#84)、@sam528300-lab (#78)
+- @yiyibuguai (#75)、@xuguoliang189 (#64)、@ampcwin (#70)、@okareyouok (#60)
+
+---
+
 ## [2.0.6] - 2026-06-08
 
 ### 适配 OpenClaw v2026.6.1
