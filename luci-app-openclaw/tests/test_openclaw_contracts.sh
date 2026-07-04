@@ -45,6 +45,11 @@ grep -q "npm/projects" root/etc/init.d/openclaw || fail "npm plugin project owne
 grep -q "! -path.*npm/projects" root/etc/init.d/openclaw || fail "npm plugin projects should be excluded from openclaw ownership reset"
 grep -q "archived-extensions" root/etc/init.d/openclaw || fail "legacy weixin extension archive missing"
 grep -q "find_wechat_plugin_dir" luasrc/controller/openclaw.lua || fail "wechat npm plugin detection missing"
+grep -q "wechat_register_plugin_cmd" luasrc/controller/openclaw.lua || fail "wechat install must register npm plugin config"
+grep -q "plugins.installs\\['openclaw-weixin'\\]" luasrc/controller/openclaw.lua || fail "wechat plugin installPath registration missing"
+grep -q "packageName: '@tencent-weixin/openclaw-weixin'" luasrc/controller/openclaw.lua || fail "wechat plugin packageName registration missing"
+grep -q "channels\\['openclaw-weixin'\\].enabled = true" luasrc/controller/openclaw.lua || fail "wechat channel enable registration missing"
+grep -q "Registered openclaw-weixin npm plugin" luasrc/controller/openclaw.lua || fail "wechat install log must confirm config registration"
 grep -q "@tencent-weixin/openclaw-weixin/openclaw.plugin.json" root/usr/share/openclaw/oc-config.sh || fail "oc-config wechat npm detection missing"
 
 grep -q "var url = 'http://'" luasrc/view/openclaw/console.htm || fail "console must force HTTP gateway URL"

@@ -86,6 +86,88 @@ local function find_wechat_plugin_dir(install_path)
 	return nil
 end
 
+local function wechat_register_plugin_cmd(install_path, node_bin, log_file)
+	local oc_data = install_path .. "/data"
+	local config_file = oc_data .. "/.openclaw/openclaw.json"
+	local npm_projects = oc_data .. "/.openclaw/npm/projects"
+	local legacy_ext_dir = oc_data .. "/.openclaw/extensions/openclaw-weixin"
+	local register_js = [[
+const fs = require('fs');
+const path = require('path');
+const configPath = process.env.OC_CONFIG;
+const npmProjects = process.env.OC_NPM_PROJECTS;
+const legacyDir = process.env.OC_LEGACY_WECHAT_DIR;
+const candidates = [];
+function addPluginDir(dir) {
+  if (!dir) return;
+  const pluginJson = path.join(dir, 'openclaw.plugin.json');
+  try {
+    const st = fs.statSync(pluginJson);
+    if (st.isFile()) candidates.push({ dir, mtime: st.mtimeMs });
+  } catch (e) {}
+}
+function walk(dir) {
+  let entries = [];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (e) {
+    return;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const full = path.join(dir, entry.name);
+    if (full.endsWith(path.join('node_modules', '@tencent-weixin', 'openclaw-weixin'))) {
+      addPluginDir(full);
+      continue;
+    }
+    walk(full);
+  }
+}
+addPluginDir(legacyDir);
+walk(npmProjects);
+candidates.sort((a, b) => b.mtime - a.mtime);
+if (!candidates.length) {
+  console.error('openclaw-weixin plugin directory not found');
+  process.exit(2);
+}
+let d = {};
+try {
+  d = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+} catch (e) {
+  d = {};
+}
+if (!d.plugins || typeof d.plugins !== 'object') d.plugins = {};
+if (!d.plugins.installs || typeof d.plugins.installs !== 'object') d.plugins.installs = {};
+if (!Array.isArray(d.plugins.allow)) d.plugins.allow = [];
+d.plugins.installs['openclaw-weixin'] = {
+  kind: 'npm',
+  installPath: candidates[0].dir,
+  packageName: '@tencent-weixin/openclaw-weixin'
+};
+if (!d.plugins.allow.includes('openclaw-weixin')) d.plugins.allow.push('openclaw-weixin');
+if (!d.channels || typeof d.channels !== 'object') d.channels = {};
+if (!d.channels['openclaw-weixin'] || typeof d.channels['openclaw-weixin'] !== 'object') {
+  d.channels['openclaw-weixin'] = {};
+}
+d.channels['openclaw-weixin'].enabled = true;
+fs.mkdirSync(path.dirname(configPath), { recursive: true });
+fs.writeFileSync(configPath, JSON.stringify(d, null, 2) + '\n');
+]]
+	return "if [ $RC -eq 0 ]; then " ..
+		"if [ -x " .. shellquote(node_bin) .. " ]; then " ..
+		"OC_CONFIG=" .. shellquote(config_file) .. " " ..
+		"OC_NPM_PROJECTS=" .. shellquote(npm_projects) .. " " ..
+		"OC_LEGACY_WECHAT_DIR=" .. shellquote(legacy_ext_dir) .. " " ..
+		shellquote(node_bin) .. " -e " .. shellquote(register_js) .. " >> " .. shellquote(log_file) .. " 2>&1; " ..
+		"REG_RC=$?; " ..
+		"if [ $REG_RC -eq 0 ]; then " ..
+		"chown openclaw:openclaw " .. shellquote(config_file) .. " 2>/dev/null; " ..
+		"echo 'Registered openclaw-weixin npm plugin in OpenClaw config.' >> " .. shellquote(log_file) .. "; " ..
+		"else RC=$REG_RC; echo $RC > /tmp/openclaw-wechat-install.exit; echo 'Failed to register openclaw-weixin npm plugin in OpenClaw config.' >> " .. shellquote(log_file) .. "; fi; " ..
+		"else RC=127; echo $RC > /tmp/openclaw-wechat-install.exit; echo 'Node.js not found, cannot register openclaw-weixin plugin.' >> " .. shellquote(log_file) .. "; fi; " ..
+		"fi; "
+end
+
 local function write_wechat_log_and_exit(log_file, exit_file, content, exit_code)
 	local f = io.open(log_file, "w")
 	if f then
@@ -1370,6 +1452,7 @@ function action_wechat_install()
 		"PATH=%s/node/bin:%s/global/bin:$PATH " ..
 		"%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
 		"RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
+		wechat_register_plugin_cmd(install_path, node_bin, "/tmp/openclaw-wechat-install.log") ..
 		-- 关键修复: 安装完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
 		-- 原因: npx/npm 以 root 身份创建目录，默认权限 700 导致其他用户无法读取
 		-- 注意: 保持 root:root 属主 (OpenClaw v2026.4.9+ 安全要求)，仅修复权限模式
@@ -1781,6 +1864,7 @@ function action_wechat_upgrade_plugin()
 		"PATH=%s/node/bin:%s/global/bin:$PATH " ..
 		"%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
 		"RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
+		wechat_register_plugin_cmd(install_path, node_bin, "/tmp/openclaw-wechat-install.log") ..
 		-- 关键修复: 升级完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
 		-- 注意: 保持 root:root 属主 (OpenClaw v2026.4.9+ 安全要求)，仅修复权限模式
 		"chown -R root:root %s 2>/dev/null; chmod -R 755 %s 2>/dev/null; " ..

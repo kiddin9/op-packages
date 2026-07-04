@@ -4,6 +4,19 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.9] - 2026-07-04
+
+### 修复微信 npm 插件注册
+
+- 微信插件安装和升级成功后，自动把 npm 安装目录注册到 OpenClaw 配置的 `plugins.installs.openclaw-weixin`。
+- 同步确保 `plugins.allow` 包含 `openclaw-weixin`，并启用 `channels.openclaw-weixin.enabled`，避免登录时再次提示安装插件。
+
+### 测试
+
+- 增加微信 npm 插件安装后配置注册的契约断言。
+
+---
+
 ## [2.0.8] - 2026-07-04
 
 ### 修复 ARM64 Node.js 下载资产不一致

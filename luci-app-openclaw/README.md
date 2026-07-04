@@ -154,7 +154,6 @@ luci-app-openclaw/
 │   ├── build_ipk.sh                  # 本地 IPK 构建
 │   ├── build_run.sh                  # .run 安装包构建
 │   ├── download_deps.sh              # 下载离线依赖 (Node.js + OpenClaw)
-│   ├── upload_openlist.sh            # 上传到网盘 (OpenList)
 │   └── build-node-musl.sh            # 编译 Node.js musl 静态链接版本
 └── .github/workflows/
     ├── build.yml                     # 在线构建 + 发布
