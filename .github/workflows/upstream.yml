@@ -235,7 +235,6 @@ jobs:
         # git_clone https://github.com/QiuSimons/luci-app-daed-next daed1 && mvdir daed1
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/qca/shortcut-fe
-        git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
         git_clone https://github.com/linkease/istore-packages
         git clone https://github.com/laipeng668/luci-app-gecoosac gecoosac1 && mvdir gecoosac1
         ) &
@@ -335,6 +334,7 @@ jobs:
         git_clone https://github.com/xptsp/openwrt-peanut
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/wwan package/lean package/network/services/shellsync package/qca/shortcut-fe && cp -rf wwan/*/* ./ ; rm -Rf wwan
+        git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
         git_clone https://github.com/tty228/luci-app-wechatpush
         git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
         git_clone https://github.com/vernette/beszel-agent-openwrt && mvdir beszel-agent-openwrt
