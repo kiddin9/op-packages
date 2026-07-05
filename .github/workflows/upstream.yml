@@ -333,12 +333,14 @@ jobs:
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
-        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/wwan package/lean package/network/services/shellsync package/qca/shortcut-fe && cp -rf wwan/*/* ./ ; rm -Rf wwan
-        git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
         git_clone https://github.com/tty228/luci-app-wechatpush
         git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
         git_clone https://github.com/vernette/beszel-agent-openwrt && mvdir beszel-agent-openwrt
         # git_clone https://github.com/natpierce/luci-app-natpierce natpierce && mv natpierce/luci-app-natpierce ./;rm -rf natpierce
+        ) &
+        (
+        git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/wwan package/lean package/network/services/shellsync package/qca/shortcut-fe && cp -rf wwan/*/* ./ ; rm -Rf wwan
+        git_clone https://github.com/Siriling/5G-Modem-Support && rm -rf 5G-Modem-Support/rooter && mvdir 5G-Modem-Support
         ) &
         (
         git_sparse_clone master "https://github.com/coolsnowwolf/packages" multimedia/UnblockNeteaseMusic-Go \
