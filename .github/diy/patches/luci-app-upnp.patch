@@ -93,7 +93,7 @@ index 67e255caea7a..45f03c68a457 100644
  			const hour = Math.floor(expires_sec / 3600);
  			const minute = Math.floor((expires_sec % 3600) / 60);
 @@ -72,8 +72,9 @@ return baseclass.extend({
- 				rule.descr,
+ 				'%h'.format(rule.descr),
  				E('button', {
  					'class': 'btn cbi-button-remove',
 -					'click': L.bind(handleDelRule, this, rule.num)
