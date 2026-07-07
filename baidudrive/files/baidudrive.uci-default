@@ -1,5 +1,19 @@
 #!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-baidudrive.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-baidudrive.json << EEOF
+{
+    "config": "baidudrive",
+    "init": "baidudrive"
+}
+EEOF
+}
 
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@baidudrive[-1]
+	add ucitrack baidudrive
+	set ucitrack.@baidudrive[-1].init=baidudrive
+	commit ucitrack
+EOF
 
 /etc/init.d/baidudrive enable
 /etc/init.d/baidudrive start

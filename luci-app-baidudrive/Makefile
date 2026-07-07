@@ -7,8 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=baidudrive
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_VERSION:=1.0.1
+PKG_RELEASE:=2
 LUCI_DEPENDS:=+baidudrive +luci-compat
 LUCI_MINIFY_CSS:=0
 LUCI_MINIFY_JS:=0
