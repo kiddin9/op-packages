@@ -9,7 +9,7 @@
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const { spawn, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -36,12 +36,21 @@ try {
 const NODE_BASE = process.env.NODE_BASE || installPath + '/node';
 const OC_GLOBAL = process.env.OC_GLOBAL || installPath + '/global';
 const OC_DATA = process.env.OC_DATA || installPath + '/data';
+const OC_STATE_DIR = `${OC_DATA}/.openclaw`;
+const PERMISSIONS_HELPER = '/usr/libexec/openclaw-permissions.sh';
 const SCRIPT_PATH = process.env.OC_CONFIG_SCRIPT || '/usr/share/openclaw/oc-config.sh';
 const SSL_CERT = '/etc/uhttpd.crt';
 const SSL_KEY = '/etc/uhttpd.key';
 const MAX_SESSIONS = parseInt(process.env.OC_MAX_SESSIONS || '5', 10);
 
 // ── 认证令牌 (从 UCI 或环境变量读取) ──
+
+function fixStatePermissions() {
+  try {
+    execFileSync(PERMISSIONS_HELPER, ['fix-state', OC_STATE_DIR], { stdio: 'pipe', timeout: 10000 });
+  } catch {}
+}
+
 function loadAuthToken() {
   try {
     const { execSync } = require('child_process');
@@ -220,7 +229,7 @@ class PtySession {
       if (!this.alive) return;
       // PTY 以 root 运行，子脚本可能创建了 root-owned 的目录
       // 修复权限，防止以 openclaw 用户运行的 Gateway 遇到 EACCES
-      try { require('child_process').execFileSync('chown', ['-R', 'openclaw:openclaw', OC_DATA], { stdio: 'pipe', timeout: 5000 }); } catch(e) {}
+      try { fixStatePermissions(); } catch(e) {}
       this._spawnFailCount++;
       if (this._spawnFailCount > this._MAX_SPAWN_RETRIES) {
         console.log(`[oc-config] Script failed ${this._spawnFailCount} times, stopping retries`);

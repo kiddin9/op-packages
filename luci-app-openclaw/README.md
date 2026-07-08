@@ -113,6 +113,8 @@ openclaw-env setup
 - `openclaw` 系统用户是否存在，不存在时自动创建
 - `python3` 是否已安装；缺失时会自动执行 `opkg update && opkg install python3-light`
 - npm cache、tmp、OpenClaw 数据目录是否可由 `openclaw` 用户写入
+- 路由器到 `https://ilinkai.weixin.qq.com` 的 TLS/超时状态
+- npm 插件是否已写入 `plugins.installs.openclaw-weixin`、`plugins.allow` 和 `channels.openclaw-weixin.enabled`
 - 旧渠道名 `weixin` 会迁移为 `openclaw-weixin`
 
 如自动安装失败，可手动安装：
@@ -121,6 +123,22 @@ openclaw-env setup
 opkg update
 opkg install python3-light
 ```
+
+微信配对推荐流程：
+
+1. 在 LuCI「微信配置」页点击「安装/重新安装插件」。
+2. 插件安装成功后点击「登录账号」。
+3. 页面出现链接后，先点击打开链接，再用微信「扫一扫」扫码。
+4. 等待页面提示登录成功，网关会重新加载微信账号。
+5. 用微信给网关发一条测试消息，确认能触发 AI 回复。
+
+常见失败原因：
+
+- 二维码过期：重新点击「登录账号」生成新链接。
+- 微信账号触发安全风控：更换常用设备/常用网络后再扫码，或换账号测试。
+- 路由器网络异常：检查日志中的 `微信接口连通性检查`，重点看 TLS、timeout、DNS。
+- 插件注册缺失：重新安装插件，启动时也会自动补齐 `openclaw-weixin` 配置。
+- 目录权限错误：按页面日志提示修复 OpenClaw 数据目录权限。
 
 ## 已知说明
 

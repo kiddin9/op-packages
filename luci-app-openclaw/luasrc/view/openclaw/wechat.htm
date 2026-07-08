@@ -309,11 +309,12 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 <div class="oc-prereq-box">
 	<h3>📋 前置条件</h3>
 	<ol>
-		<li><strong>微信客户端版本 >= 8.0.70</strong> — 旧版本可能不支持插件功能</li>
-		<li><strong>启用 ClawBot 插件</strong> — 安装插件后→ 打开微信客户端「扫一扫」扫描屏幕中的二维码</li>
+		<li><strong>先安装/重新安装微信插件</strong> — 页面会自动检查 Node、python3、目录权限和微信接口连通性</li>
+		<li><strong>点击“登录账号”</strong> — 出现链接后先点击打开，再使用微信客户端「扫一扫」扫码</li>
+		<li><strong>等待成功提示</strong> — 成功后网关会重新加载微信账号，再用微信发一条消息验证</li>
 	</ol>
 	<div class="warning">
-		⚠️ 注意：微信登录有可能会验证账号安全环境，为了防止微信风控封号，尽量使用常用账号且确保账号状态正常。通过上方扫码即可直接连接，无需在手机端手动启用额外功能。
+		⚠️ 常见失败原因：二维码过期、账号风控、路由器到 ilinkai.weixin.qq.com TLS/timeout、插件注册缺失、数据目录权限错误。失败时页面会显示最近日志。
 	</div>
 </div>
 
@@ -553,13 +554,12 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 					// 2. 清理指定的特定前缀
 					cleanLog = cleanLog.replace(/\[openclaw-weixin\] /g, '');
 					
-					// 3. 提取其中的二维码链接
-					var linkMatch = cleanLog.match(/(https:\/\/liteapp\.weixin\.qq\.com\/q\/[^\s]+)/);
-					if (linkMatch && linkMatch[1]) {
-						var linkUrl = linkMatch[1];
+					// 3. 提取其中的微信登录链接
+					var linkUrl = extractWechatLoginUrl(cleanLog);
+					if (linkUrl) {
 						var linkContainer = document.getElementById('oc-install-qrcode-link');
 						linkContainer.style.display = 'block';
-						linkContainer.innerHTML = '<a href="' + escapeHtml(linkUrl) + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="padding: 10px 20px; font-size: 14px; margin: 0;">🔗 点击此处前往浏览器扫码登录</a>';
+						linkContainer.innerHTML = '<a href="' + escapeHtml(linkUrl) + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="padding: 10px 20px; font-size: 14px; margin: 0;">🔗 点击打开链接，然后用微信扫码</a>';
 					}
 
 					logEl.textContent = cleanLog;
@@ -608,7 +608,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 		document.getElementById('oc-install-progress').style.display = 'none';
 		var resultEl = document.getElementById('oc-install-result');
 		resultEl.style.display = 'block';
-		resultEl.innerHTML = '<div class="oc-result-error">❌ ' + message + '</div>';
+		resultEl.innerHTML = '<div class="oc-result-error">❌ ' + escapeHtml(message) + '</div>';
 
 		var btn = document.getElementById('btn-install-plugin');
 		btn.disabled = false;
@@ -669,6 +669,22 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 		return div.innerHTML;
 	}
 
+
+	function extractWechatLoginUrl(text) {
+		if (!text) return '';
+		var matches = text.match(/https?:\/\/[^\s\]})"'<>]+/g) || [];
+		var fallback = '';
+		for (var i = 0; i < matches.length; i++) {
+			var url = matches[i];
+			if (/liteapp\.weixin\.qq\.com\/q\//.test(url) || /weixin\.qq\.com\/q\//.test(url)) {
+				fallback = url;
+			} else if (!/ilinkai\.weixin\.qq\.com/.test(url)) {
+				fallback = url;
+			}
+		}
+		return fallback;
+	}
+
 	// 复制到剪贴板
 	window.ocCopyToClipboard = function(text, btn) {
 		if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -720,34 +736,33 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 				// 是否出现二维码过期文本提示
 				var isExpired = d.qrcode && d.qrcode.indexOf('已被扫描') > -1 || d.qrcode.indexOf('二维码已过期') > -1;
 				var statusMessage = isExpired ? '<p style="color:#cf222e;font-size:13px;margin:8px 0;text-align:center;">⌛ 二维码已刷新，请点击最新链接扫码登录</p>' 
-											  : '<p style="font-size:14px;color:#333;margin-bottom:8px;text-align:center;">📱 请点击下方按钮打开微信扫码登录</p>';
+											  : '<p style="font-size:14px;color:#333;margin-bottom:8px;text-align:center;">📱 请点击下方链接打开二维码，再用微信扫码</p>';
 
 				if (d.state === 'success' || d.logged_in) {
 					showLoginSuccess();
 				} else if (d.state === 'failed') {
-					showLoginError('登录失败');
+					showLoginError(d.message || '登录失败', d.error_detail || d.qrcode || '');
 				} else if (d.state === 'qrcode' && d.qrcode_url) {
 					document.getElementById('oc-login-progress').style.display = 'none';
 					qrcodeEl.style.display = 'block';
 					var safeUrl = escapeHtml(d.qrcode_url);
 					qrcodeEl.innerHTML = '<div class="oc-qrcode-box">' +
 						statusMessage +
-						'<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="font-size:16px;">🔗 点击获取微信登录二维码</a>' +
+						'<a href="' + safeUrl + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="font-size:16px;">🔗 点击打开链接，然后用微信扫码</a>' +
 						'<p class="oc-qrcode-copy-link">或复制链接: <code>' + safeUrl + '</code>' +
 						'<button class="oc-copy-btn" onclick="ocCopyToClipboard(\'' + safeUrl.replace(/'/g, "\\'") + '\', this)">复制</button></p>' +
 						'</div>';
 					loginPollTimer = setTimeout(pollLoginStatus, 2000);
 				} else if (d.running) {
 					if (d.qrcode && d.qrcode.length > 50) {
-						var urlMatches = d.qrcode.match(/https?:\/\/[^\s\n]+/g);
-						if (urlMatches && urlMatches.length > 0) {
+						var extractedUrl = extractWechatLoginUrl(d.qrcode);
+						if (extractedUrl) {
 							document.getElementById('oc-login-progress').style.display = 'none';
 							qrcodeEl.style.display = 'block';
-							var extractedUrl = urlMatches[urlMatches.length - 1]; // 取最后一个
 							var safeUrl2 = escapeHtml(extractedUrl);
 							qrcodeEl.innerHTML = '<div class="oc-qrcode-box">' +
 								statusMessage +
-								'<a href="' + safeUrl2 + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="font-size:16px;">🔗 点击获取微信登录二维码</a>' +
+								'<a href="' + safeUrl2 + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="font-size:16px;">🔗 点击打开链接，然后用微信扫码</a>' +
 								'<p class="oc-qrcode-copy-link">或复制链接: <code>' + safeUrl2 + '</code>' +
 								'<button class="oc-copy-btn" onclick="ocCopyToClipboard(\'' + safeUrl2.replace(/'/g, "\\'") + '\', this)">复制</button></p>' +
 								'</div>';
@@ -770,17 +785,22 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 		document.getElementById('oc-login-qrcode').style.display = 'none';
 		var resultEl = document.getElementById('oc-login-result');
 		resultEl.style.display = 'block';
-		resultEl.innerHTML = '<div class="oc-result-success">✅ 微信登录成功！<br><br>现在可以开始与 AI 助手对话了。</div>';
+		resultEl.innerHTML = '<div class="oc-result-success">✅ 微信登录成功！<br><br>网关正在重新加载微信账号，请等待 10-20 秒后，用微信给网关发一条测试消息验证。</div>';
 
 		ocRefreshWechatStatus();
 	}
 
 	// 显示登录失败
-	function showLoginError(message) {
+	function showLoginError(message, detail) {
 		document.getElementById('oc-login-progress').style.display = 'none';
 		var resultEl = document.getElementById('oc-login-result');
 		resultEl.style.display = 'block';
-		resultEl.innerHTML = '<div class="oc-result-error">❌ ' + message + '</div>';
+		var html = '<div class="oc-result-error">❌ ' + escapeHtml(message || '登录失败');
+		if (detail) {
+			html += '<pre class="oc-error-detail">' + escapeHtml(detail) + '</pre>';
+		}
+		html += '</div>';
+		resultEl.innerHTML = html;
 	}
 
 	// 关闭登录对话框
@@ -867,7 +887,7 @@ local pty_port = uci:get("openclaw", "main", "pty_port") or "18793"
 							var linkContainer = document.getElementById('oc-upgrade-qrcode-link');
 							if (linkContainer) {
 								linkContainer.style.display = 'block';
-								linkContainer.innerHTML = '<a href="' + escapeHtml(linkUrl) + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="padding: 10px 20px; font-size: 14px; margin: 0;">🔗 点击此处前往浏览器扫码登录</a>';
+								linkContainer.innerHTML = '<a href="' + escapeHtml(linkUrl) + '" target="_blank" rel="noopener noreferrer" class="oc-qrcode-link-btn" style="padding: 10px 20px; font-size: 14px; margin: 0;">🔗 点击打开链接，然后用微信扫码</a>';
 							}
 						}
 						logEl.textContent = cleanLog;

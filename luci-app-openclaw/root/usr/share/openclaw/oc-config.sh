@@ -61,6 +61,14 @@ export OPENCLAW_CONFIG_PATH="$CONFIG_FILE"
 export NODE_ICU_DATA="${NODE_BASE}/share/icu"
 export PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
+fix_openclaw_state_permissions() {
+	[ -x /usr/libexec/openclaw-permissions.sh ] && /usr/libexec/openclaw-permissions.sh fix-state "$OC_STATE_DIR"
+}
+
+prepare_openclaw_workdirs() {
+	[ -x /usr/libexec/openclaw-permissions.sh ] && /usr/libexec/openclaw-permissions.sh prepare-workdirs "$OC_DATA"
+}
+
 # ── 查找 openclaw 入口 ──
 OC_PKG_DIR=""
 for d in "${OC_GLOBAL}/lib/node_modules/openclaw" "${OC_GLOBAL}/node_modules/openclaw" "${NODE_BASE}/lib/node_modules/openclaw"; do
@@ -84,7 +92,7 @@ oc_cmd() {
 		"$NODE_BIN" "$OC_ENTRY" "$@" 2>&1
 		local rc=$?
 		# 修复权限: oc_cmd 以 root 运行但配置文件应属于 openclaw 用户
-                find "$OC_STATE_DIR" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+		fix_openclaw_state_permissions 2>/dev/null || true
 		chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 		chown openclaw:openclaw "${CONFIG_FILE}.bak" 2>/dev/null || true
 		return $rc
@@ -130,7 +138,7 @@ json_set() {
 		fi
 		
 		# 尝试修复所有权
-		chown -R openclaw:openclaw "$OC_STATE_DIR" 2>/dev/null || true
+		fix_openclaw_state_permissions 2>/dev/null || true
 		
 		# 创建空配置文件
 		if ! echo '{}' > "$CONFIG_FILE" 2>/dev/null; then
@@ -548,7 +556,7 @@ restart_gateway() {
 	echo -e "  ${YELLOW}正在重启 Gateway...${NC}"
 
 	# 修复数据目录权限 (root 用户操作可能改变了文件属主)
-	chown -R openclaw:openclaw "$OC_DATA" 2>/dev/null || true
+	fix_openclaw_state_permissions 2>/dev/null || true
 
 	local port
 	port=$(json_get gateway.port)
@@ -694,6 +702,8 @@ configure_model() {
 	echo -e "  ${BOLD}🏠 ── 本地模型 / 自定义 API ──${NC}"
 	echo -e "  ${CYAN}l)${NC} Ollama (本地模型，无需 API Key)"
 	echo -e "  ${CYAN}m)${NC} 自定义 OpenAI 兼容 API"
+	echo -e "  ${CYAN}n)${NC} 自定义 Anthropic 兼容 API"
+	echo -e "  ${CYAN}o)${NC} 一万AI分享 粉丝专享 API"
 	echo ""
 	echo -e "  ${CYAN}q)${NC} 返回"
 	echo ""
@@ -1378,6 +1388,70 @@ configure_model() {
 				register_custom_provider openai-compatible "$base_url" "$api_key" "$model_name" "$model_name"
 				register_and_set_model "openai-compatible/${model_name}"
 				echo -e "  ${GREEN}✅ 自定义模型已配置，活跃模型: openai-compatible/${model_name}${NC}"
+			fi
+			;;
+		n)
+			echo ""
+			echo -e "  ${BOLD}自定义 Anthropic 兼容 API${NC}"
+			echo -e "  ${YELLOW}支持任何兼容 Anthropic Messages API 格式的服务商${NC}"
+			echo ""
+			prompt_with_default "API Base URL (如 https://api.anthropic.com)" "" base_url
+			prompt_with_default "API Key" "" api_key
+			prompt_with_default "模型名称" "claude-sonnet-4-20250514" model_name
+			if [ -n "$base_url" ] && [ -n "$api_key" ] && [ -n "$model_name" ]; then
+				_ACP_URL="${base_url%/}" _ACP_KEY="$api_key" _ACP_MID="$model_name" "$NODE_BIN" -e "
+					const fs=require('fs');
+					let d={};
+					try{d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));}catch(e){}
+					if(!d.models)d.models={};
+					if(!d.models.providers)d.models.providers={};
+					d.models.mode='merge';
+					d.models.providers['anthropic-compatible']={
+						baseUrl:process.env._ACP_URL,
+						apiKey:process.env._ACP_KEY,
+						api:'anthropic-messages',
+						models:[{
+							id:process.env._ACP_MID,
+							name:process.env._ACP_MID,
+							reasoning:false,
+							input:['text','image'],
+							cost:{input:0,output:0,cacheRead:0,cacheWrite:0},
+							contextWindow:200000,
+							maxTokens:16000
+						}]
+					};
+					fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+				" 2>/dev/null
+				chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+				auth_set_apikey anthropic-compatible "$api_key" "anthropic-compatible:manual"
+				register_and_set_model "anthropic-compatible/${model_name}"
+				echo -e "  ${GREEN}✅ 自定义 Anthropic API 已配置，活跃模型: anthropic-compatible/${model_name}${NC}"
+			fi
+			;;
+		o)
+			echo ""
+			echo -e "  ${BOLD}一万AI分享 粉丝专享 API${NC}"
+			echo -e "  ${YELLOW}OpenAI 兼容模式；Base URL 和模型已内置，只需要填写 API Key。${NC}"
+			echo -e "  ${DIM}Base URL: https://api.910501.xyz/v1${NC}"
+			echo -e "  ${DIM}Model: gpt-5.5${NC}"
+			echo ""
+			prompt_with_default "API Key" "" api_key
+			if [ -n "$api_key" ]; then
+				auth_set_apikey yiwanai "$api_key" "yiwanai:fan"
+				register_custom_provider yiwanai "https://api.910501.xyz/v1" "$api_key" "gpt-5.5" "gpt-5.5"
+				_YW_PROV="yiwanai" "$NODE_BIN" -e "
+					const fs=require('fs');
+					let d={};
+					try{d=JSON.parse(fs.readFileSync('${CONFIG_FILE}','utf8'));}catch(e){}
+					const p=d.models&&d.models.providers&&d.models.providers[process.env._YW_PROV];
+					if(p&&p.models&&p.models[0]){
+						p.models[0].reasoning=true;
+						fs.writeFileSync('${CONFIG_FILE}',JSON.stringify(d,null,2));
+					}
+				" 2>/dev/null
+				chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+				register_and_set_model "yiwanai/gpt-5.5"
+				echo -e "  ${GREEN}✅ 一万AI分享粉丝专享 API 已配置，活跃模型: yiwanai/gpt-5.5${NC}"
 			fi
 			;;
 		q) return ;;
@@ -2470,7 +2544,7 @@ backup_restore_menu() {
 							# 提取 payload 到根目录 (还原到原始绝对路径)
 							tar -xzf "$latest" --strip-components=3 -C / "${backup_name}/payload/posix/" 2>&1
 							# 修复权限
-							chown -R openclaw:openclaw "$OC_STATE_DIR" 2>/dev/null
+							fix_openclaw_state_permissions 2>/dev/null || true
 							echo -e "  ${GREEN}✅ 配置和数据已完整恢复！原配置已保存为 openclaw.json.pre-restore${NC}"
 							echo ""
 							prompt_with_default "是否重启服务使配置生效? (Y/n)" "Y" do_restart
@@ -2514,7 +2588,7 @@ launch_interactive_menu() {
 	"$NODE_BIN" "$OC_INTERACTIVE" 2>&1
 	local rc=$?
 
-        find "$OC_STATE_DIR" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+	fix_openclaw_state_permissions 2>/dev/null || true
 	# 返回后刷新配置权限
 	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 	return $rc
@@ -2532,7 +2606,7 @@ launch_interactive_model_config() {
 	"$NODE_BIN" "$OC_INTERACTIVE" model 2>&1
 	local rc=$?
 
-        find "$OC_STATE_DIR" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+	fix_openclaw_state_permissions 2>/dev/null || true
 	chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
 	return $rc
 }

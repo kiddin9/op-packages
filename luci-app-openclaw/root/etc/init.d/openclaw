@@ -16,6 +16,10 @@ EXTRA_HELP="    setup            下载 Node.js 并安装 OpenClaw
 [ -r /usr/libexec/openclaw-paths.sh ] && . /usr/libexec/openclaw-paths.sh
 [ -r /usr/libexec/openclaw-node.sh ] && . /usr/libexec/openclaw-node.sh
 OC_NODE_MIN_VERSION="${OC_NODE_MIN_VERSION:-22.19.0}"
+
+fix_openclaw_state_permissions() {
+	[ -x /usr/libexec/openclaw-permissions.sh ] && /usr/libexec/openclaw-permissions.sh fix-state "${OC_DATA}/.openclaw"
+}
 OC_CONFIGURED_PATH="$(uci -q get openclaw.main.install_path 2>/dev/null || echo '/opt')"
 if command -v oc_load_paths >/dev/null 2>&1; then
 	if ! oc_load_paths "$OC_CONFIGURED_PATH"; then
@@ -311,6 +315,59 @@ fi
 	# 同步 UCI 到 JSON
 	sync_uci_to_json
 
+	# 微信 npm 插件自愈注册：
+	# 有些环境里 npm projects 已安装 @tencent-weixin/openclaw-weixin，
+	# 但 openclaw.json 缺少 plugins.installs / plugins.allow / channels 配置，
+	# 会导致页面显示“已安装”而 Gateway 或登录流程无法稳定加载插件。
+	self_heal_wechat_npm_plugin_config() {
+		[ -x "$NODE_BIN" ] || return 0
+		[ -f "$CONFIG_FILE" ] || return 0
+		local npm_projects_dir="${OC_DATA}/.openclaw/npm/projects"
+		[ -d "$npm_projects_dir" ] || return 0
+		local wechat_plugin_json wechat_plugin_dir heal_out
+		wechat_plugin_json=$(find "$npm_projects_dir" -path "*/node_modules/@tencent-weixin/openclaw-weixin/openclaw.plugin.json" -type f 2>/dev/null | head -n 1)
+		[ -n "$wechat_plugin_json" ] || return 0
+		wechat_plugin_dir="${wechat_plugin_json%/openclaw.plugin.json}"
+		heal_out=$(OC_CONFIG="$CONFIG_FILE" OC_WECHAT_PLUGIN_DIR="$wechat_plugin_dir" "$NODE_BIN" -e "
+const fs=require('fs');
+const p=process.env.OC_CONFIG;
+const pluginDir=process.env.OC_WECHAT_PLUGIN_DIR;
+let d={};
+try{d=JSON.parse(fs.readFileSync(p,'utf8'));}catch(e){}
+if(!d.plugins||typeof d.plugins!=='object')d.plugins={};
+if(!d.plugins.installs||typeof d.plugins.installs!=='object')d.plugins.installs={};
+if(!Array.isArray(d.plugins.allow))d.plugins.allow=[];
+if(!d.channels||typeof d.channels!=='object')d.channels={};
+let changed=false;
+const want={kind:'npm',installPath:pluginDir,packageName:'@tencent-weixin/openclaw-weixin'};
+const cur=d.plugins.installs['openclaw-weixin'];
+if(!cur||cur.kind!==want.kind||cur.installPath!==want.installPath||cur.packageName!==want.packageName){
+	d.plugins.installs['openclaw-weixin']=want; changed=true;
+}
+if(!d.plugins.allow.includes('openclaw-weixin')){
+	d.plugins.allow.push('openclaw-weixin'); changed=true;
+}
+if(!d.channels['openclaw-weixin']||typeof d.channels['openclaw-weixin']!=='object'){
+	d.channels['openclaw-weixin']={}; changed=true;
+}
+if(d.channels['openclaw-weixin'].enabled!==true){
+	d.channels['openclaw-weixin'].enabled=true; changed=true;
+}
+if(d.plugins.entries&&d.plugins.entries['openclaw-weixin']){
+	delete d.plugins.entries['openclaw-weixin']; changed=true;
+}
+if(changed){
+	fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
+	console.log('FIXED');
+}
+" 2>/dev/null)
+		if echo "$heal_out" | grep -q "FIXED"; then
+			chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+			logger -t openclaw "已自愈注册 openclaw-weixin npm plugin: $wechat_plugin_dir"
+		fi
+	}
+	self_heal_wechat_npm_plugin_config
+
 	# v2026.3.13: 修复插件配置中的插件名称不匹配问题
 	# OpenClaw 加强了配置验证，plugins.allow 中的名称必须与实际插件名完全匹配
 	# 问题: 旧版本写入的是 "openclaw-qqbot"，但实际插件名是 "@tencent-connect/openclaw-qqbot"
@@ -361,7 +418,7 @@ fi
 	fix_plugin_config
 
 	# 修复数据目录权限 (防止 root 用户操作后留下无法读取的文件)
-	chown -R openclaw:openclaw "$OC_DATA" 2>/dev/null || true
+	fix_openclaw_state_permissions 2>/dev/null || true
 
 	# v2026.4.9: 修复插件目录权限 (OpenClaw 要求插件目录属主为 root)
 	# 详见: https://github.com/nicepkg/openclaw/releases/tag/v2026.4.9
@@ -389,17 +446,8 @@ fi
 			mv "$stale_dir" "${archive_root}/${stale_name}" 2>/dev/null || true
 		done
 	fi
-	if [ -d "$ext_dir" ]; then
-		chown -R root:root "$ext_dir" 2>/dev/null || true
-		chmod -R 755 "$ext_dir" 2>/dev/null || true
-	fi
-	if [ -d "$npm_projects_dir" ]; then
-		chown -R root:root "$npm_projects_dir" 2>/dev/null || true
-		chmod -R 755 "$npm_projects_dir" 2>/dev/null || true
-	fi
+	fix_openclaw_state_permissions 2>/dev/null || true
 
-	# v2026.4.x: 清理 jiti 缓存目录 (修复微信插件加载权限问题)
-	# jiti 编译 TypeScript 时会在 /tmp/jiti 创建缓存，如果由 root 创建则 openclaw 用户无法写入
 	rm -rf /tmp/jiti 2>/dev/null || true
 
 	# v2026.4.10: 优化配置迁移 - 只在版本变更时运行 doctor --fix
@@ -425,6 +473,7 @@ fi
 		if [ "$current_ver" != "$last_ver" ]; then
 			logger -t openclaw "检测到版本变更 ($last_ver -> $current_ver)，执行配置迁移 (doctor --fix)..."
 			OPENCLAW_HOME="$OC_DATA" OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
+				NODE_ICU_DATA="${NODE_BASE}/share/icu" PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:$PATH" \
 				"$NODE_BIN" "$oc_entry" doctor --fix 2>/dev/null && \
 				logger -t openclaw "配置迁移完成" || \
 				logger -t openclaw "配置迁移失败，请手动检查"
@@ -439,14 +488,16 @@ fi
 
 	# doctor --fix 后再次修复权限 (防止 root 创建的文件导致 EACCES)
 	# 注意: extensions 目录保持 root 权限 (OpenClaw 安全要求)
-	find "$OC_DATA" -user root ! -path "${OC_DATA}/.openclaw/extensions*" -exec chown openclaw:openclaw {} \; 2>/dev/null || true
+	fix_openclaw_state_permissions 2>/dev/null || true
 
 	# v2026.4.10: doctor --fix 后确保关键配置字段存在
 	# doctor --fix 可能会删除或遗漏某些必要字段，需要补充
 	_ensure_critical_config() {
 		[ ! -f "$CONFIG_FILE" ] && return
 		[ ! -x "$NODE_BIN" ] && return
-		"$NODE_BIN" -e "
+		local critical_token
+		critical_token=$(uci -q get openclaw.main.token || echo "")
+		OC_SYNC_TOKEN="$critical_token" "$NODE_BIN" -e "
 const fs = require('fs');
 const f = '${CONFIG_FILE}';
 let d = {};
@@ -469,6 +520,9 @@ if (d.gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback !== true) d.gat
 // 确保认证配置
 if (!d.gateway.auth) d.gateway.auth = {};
 if (!d.gateway.auth.mode) d.gateway.auth.mode = 'token';
+if (!d.gateway.auth.token && process.env.OC_SYNC_TOKEN) {
+  d.gateway.auth.token = process.env.OC_SYNC_TOKEN;
+}
 
 // 禁用 ACP dispatch (路由器内存有限)
 if (!d.acp) d.acp = {};
@@ -507,43 +561,26 @@ if(d.gateway&&d.gateway.auth&&d.gateway.auth.token)process.stdout.write(d.gatewa
 				uci set openclaw.main.token="$json_token"
 				uci commit openclaw 2>/dev/null
 				logger -t openclaw "Token 同步 (doctor 后): JSON -> UCI"
+			elif [ -z "$json_token" ] && [ -n "$uci_token" ]; then
+				OC_SYNC_TOKEN="$uci_token" OC_SYNC_FILE="$CONFIG_FILE" "$NODE_BIN" -e "
+const fs=require('fs');
+const f=process.env.OC_SYNC_FILE;
+let d={};
+try{d=JSON.parse(fs.readFileSync(f,'utf8'));}catch(e){}
+if(!d.gateway)d.gateway={};
+if(!d.gateway.auth)d.gateway.auth={};
+d.gateway.auth.mode=d.gateway.auth.mode||'token';
+d.gateway.auth.token=process.env.OC_SYNC_TOKEN;
+fs.writeFileSync(f, JSON.stringify(d, null, 2));
+				" 2>/dev/null
+				chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
+				logger -t openclaw "Token 同步 (doctor 后): UCI -> JSON"
 			fi
 		}
 		_sync_token_after_doctor
 
-		# v2026.4.10: 最终权限修复 - 确保 Gateway 启动前所有数据目录权限正确
-		# doctor --fix 或 _ensure_critical_config 可能创建新的目录/文件
-		# 关键: agents 目录下的 agent 子目录必须可被 openclaw 用户写入
-		find "${OC_DATA}/.openclaw" -user root \
-			! -path "${OC_DATA}/.openclaw/extensions*" \
-			! -path "${OC_DATA}/.openclaw/archived-extensions*" \
-			! -path "${OC_DATA}/.openclaw/npm/projects*" \
-			-type d -exec chown openclaw:openclaw {} \; 2>/dev/null || true
-		find "${OC_DATA}/.openclaw" -user root \
-			! -path "${OC_DATA}/.openclaw/extensions*" \
-			! -path "${OC_DATA}/.openclaw/archived-extensions*" \
-			! -path "${OC_DATA}/.openclaw/npm/projects*" \
-			-type f -exec chown openclaw:openclaw {} \; 2>/dev/null || true
-		# 特别确保 agents/main/agent 目录权限 (模型配置写入目录)
-		local agent_dir="${OC_DATA}/.openclaw/agents/main/agent"
-		if [ -d "$agent_dir" ]; then
-			chown openclaw:openclaw "$agent_dir" 2>/dev/null || true
-			chmod 755 "$agent_dir" 2>/dev/null || true
-		fi
-		# extensions 目录除外 - 必须保持 root 权限 (OpenClaw 安全要求)
-		# 同时修复权限模式为 755，确保 Gateway 可读取插件
-		if [ -d "${OC_DATA}/.openclaw/extensions" ]; then
-			chown -R root:root "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
-			chmod -R 755 "${OC_DATA}/.openclaw/extensions" 2>/dev/null || true
-		fi
-		if [ -d "${OC_DATA}/.openclaw/archived-extensions" ]; then
-			chown -R root:root "${OC_DATA}/.openclaw/archived-extensions" 2>/dev/null || true
-			chmod -R 700 "${OC_DATA}/.openclaw/archived-extensions" 2>/dev/null || true
-		fi
-		if [ -d "${OC_DATA}/.openclaw/npm/projects" ]; then
-			chown -R root:root "${OC_DATA}/.openclaw/npm/projects" 2>/dev/null || true
-			chmod -R 755 "${OC_DATA}/.openclaw/npm/projects" 2>/dev/null || true
-		fi
+		# v2026.4.10: final permission fix before Gateway start
+		fix_openclaw_state_permissions 2>/dev/null || true
 
 	# Patch iframe 安全头，允许 LuCI 嵌入
 	patch_iframe_headers
@@ -556,6 +593,9 @@ loopback) gw_bind="loopback" ;;
 all)      gw_bind="custom" ;;  # custom = 0.0.0.0
 *)        gw_bind="$bind" ;;
 esac
+
+local gw_token
+gw_token=$(uci -q get openclaw.main.token || echo "")
 
 # 确保网关端口未被残留进程占用 (防止 restart 时 crash loop)
 # v2026.3.14 优化: 快速轮询 + 批量 kill
@@ -619,6 +659,7 @@ _ensure_port_free "$port"
 	OPENCLAW_HOME="$OC_DATA" \
 	OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw" \
 	OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
+	OPENCLAW_GATEWAY_TOKEN="$gw_token" \
 	NODE_ICU_DATA="${NODE_BASE}/share/icu" \
 	NODE_BASE="$NODE_BASE" \
 	OC_GLOBAL="$OC_GLOBAL" \

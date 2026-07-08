@@ -15,7 +15,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, execFileSync } = require('child_process');
 const menu = require('./oc-menu-engine');
 const { C, select, input, confirm, spinner, resetRenderCount } = menu;
 
@@ -31,6 +31,7 @@ const OC_DATA = process.env.OC_DATA || `${OC_INSTALL_PATH}/data`;
 const OC_STATE_DIR = process.env.OPENCLAW_STATE_DIR || `${OC_DATA}/.openclaw`;
 const CONFIG_FILE = process.env.OPENCLAW_CONFIG_PATH || `${OC_STATE_DIR}/openclaw.json`;
 const NODE_BIN = `${NODE_BASE}/bin/node`;
+const PERMISSIONS_HELPER = '/usr/libexec/openclaw-permissions.sh';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 辅助函数 (与 oc-config.sh 逻辑对应)
@@ -73,6 +74,16 @@ function runCommand(cmd, args = [], options = {}) {
 /**
  * 读取 JSON 配置文件
  */
+function fixStatePermissions() {
+  try {
+    execFileSync(PERMISSIONS_HELPER, ['fix-state', OC_STATE_DIR], { stdio: 'ignore', timeout: 10000 });
+  } catch {
+    try {
+      execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" ! -path "*/archived-extensions*" ! -path "*/npm/projects*" -exec chown openclaw:openclaw {} + 2>/dev/null || true`, { stdio: 'ignore' });
+    } catch {}
+  }
+}
+
 function readConfig() {
   try {
     if (fs.existsSync(CONFIG_FILE)) {
@@ -95,7 +106,7 @@ function writeConfig(config) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
   try {
     execSync(`chown openclaw:openclaw "${CONFIG_FILE}"`, { stdio: 'ignore' });
-    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} + 2>/dev/null || true`, { stdio: 'ignore' });
+    fixStatePermissions();
   } catch {}
 }
 
@@ -222,7 +233,7 @@ function authSetApikey(provider, apiKey, profileId) {
   fs.writeFileSync(authFile, JSON.stringify(authData, null, 2));
   try {
     execSync(`chown openclaw:openclaw "${authFile}"`, { stdio: 'ignore' });
-    execSync(`find "${OC_STATE_DIR}" -user root ! -path "*/extensions*" -exec chown openclaw:openclaw {} + 2>/dev/null || true`, { stdio: 'ignore' });
+    fixStatePermissions();
   } catch {}
 }
 
@@ -444,6 +455,7 @@ async function showModelMenu() {
       { key: 'l', label: 'Ollama', desc: '本地模型，无需 API Key', value: 'ollama' },
       { key: 'm', label: '自定义 OpenAI 兼容 API', desc: '', value: 'custom' },
       { key: 'n', label: '自定义 Anthropic 兼容 API', desc: '', value: 'custom-anthropic' },
+      { key: 'o', label: '一万AI分享 粉丝专享 API', desc: '', value: 'yiwanai-fan' },
 
       { label: '', disabled: true },
       { key: '0', label: '返回', desc: '', value: 'back' },
@@ -1242,6 +1254,33 @@ async function configureCustomAnthropic() {
   return true;
 }
 
+async function configureYiwanAIFanAPI() {
+  resetRenderCount();
+  const providerName = 'yiwanai';
+  const baseUrl = 'https://api.910501.xyz/v1';
+  const modelName = 'gpt-5.5';
+
+  console.log(`\n${C.bold}一万AI分享 粉丝专享 API 配置${C.reset}`);
+  console.log(`${C.yellow}OpenAI 兼容模式；Base URL 和模型已内置，只需要填写 API Key。${C.reset}`);
+  console.log(`${C.dim}Base URL: ${baseUrl}${C.reset}`);
+  console.log(`${C.dim}Model: ${modelName}${C.reset}\n`);
+
+  const apiKey = await input({ prompt: 'API Key', placeholder: 'sk-...' });
+  if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
+
+  authSetApikey(providerName, apiKey, `${providerName}:fan`);
+  registerCustomProvider(providerName, baseUrl, apiKey, modelName, modelName);
+  const config = readConfig();
+  const provider = config.models?.providers?.[providerName];
+  if (provider?.models?.[0]) {
+    provider.models[0].reasoning = true;
+  }
+  writeConfig(config);
+  registerAndSetModel(`${providerName}/${modelName}`);
+  console.log(`\n${C.green}✅ 一万AI分享粉丝专享 API 已配置，活跃模型: ${providerName}/${modelName}${C.reset}\n`);
+  return true;
+}
+
 async function launchWizard() {
   resetRenderCount();
   console.log(`\n${C.cyan}启动官方完整模型配置向导...${C.reset}\n`);
@@ -1281,6 +1320,7 @@ async function handleModelConfig() {
       case 'ollama': configured = await configureOllama(); break;
       case 'custom': configured = await configureCustomAPI(); break;
       case 'custom-anthropic': configured = await configureCustomAnthropic(); break;
+      case 'yiwanai-fan': configured = await configureYiwanAIFanAPI(); break;
     }
 
     if (configured) await askRestart();

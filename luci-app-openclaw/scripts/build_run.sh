@@ -116,7 +116,9 @@ case "$ARCH" in
 esac
 
 # 检查依赖
-for dep in luci-compat luci-base; do
+# .run 不经过 opkg 依赖解析，需要主动补齐运行时依赖。
+# 特别是精简固件常见 /bin/tar 为 BusyBox 版本，无法解压 Node.js 的 .tar.xz。
+for dep in luci-compat luci-base curl openssl-util script-utils tar libstdcpp6; do
 	if ! opkg list-installed 2>/dev/null | grep -q "^${dep} "; then
 		echo "警告: 缺少依赖 $dep，尝试安装..."
 		opkg update >/dev/null 2>&1 || true

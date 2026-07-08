@@ -4,6 +4,49 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.10] - 2026-07-08
+
+### 修复微信渠道配对
+
+- 启动 OpenClaw 时自动自愈微信 npm 插件注册，补齐 `plugins.installs.openclaw-weixin`、`plugins.allow` 和 `channels.openclaw-weixin.enabled`。
+- 微信安装、升级和登录流程增加 `https://ilinkai.weixin.qq.com` 连通性检查，日志直接显示 HTTP、TLS 或 timeout 结果。
+- 兼容没有 `su` / `runuser` 的 OpenWrt 固件，微信安装、升级、登录和下线改用 `start-stop-daemon` 兜底以 `openclaw` 用户执行。
+- 微信安装网络探测优先使用 `curl`，避免低内存/精简 musl 固件上 Node `fetch` 触发 undici Wasm OOM。
+- 微信官方 CLI 安装触发 undici Wasm OOM 时，自动改用 npm 直装到 OpenClaw `npm/projects` 并继续注册插件配置。
+- 微信登录前补充 Node、python3、插件目录、账号状态目录和配置写权限检查，并清理残留登录进程与旧二维码状态。
+- 登录失败时在 LuCI 页面展示真实日志详情，不再只显示“登录失败”。
+- 二维码链接提取更稳，页面明确提示“点击链接后用微信扫码”。
+- README 补充微信插件正确配对流程和常见失败原因。
+
+### 修复权限混乱
+
+- 新增统一权限修复工具 `openclaw-permissions.sh`。
+- 避免把整个 `OC_DATA` 或 `OC_STATE_DIR` 递归改成 `openclaw`。
+- `npm/projects` 保持 `openclaw` 可写，插件源码目录保持 `root:root 755`，避免 `EACCES` 和 `suspicious ownership` 互相打架。
+- retained npm generation 目录保持可清理，修复 Gateway 清理旧 generation 的权限报错。
+- legacy `extensions` / `archived-extensions` 保持 root-owned，降低 OpenClaw 插件安全检查误报风险。
+
+### 修复检测升级
+
+- “快捷操作 → 检测升级”改为语义版本比较，只在远端版本真正高于当前版本时提示升级。
+- 本地版本高于 GitHub latest 时不再误判为可升级。
+- 已实测旧版 `2.0.8` 可通过 LuCI 检测并一键升级到 `2.0.9`，升级日志返回成功且服务保持正常。
+
+### 修复干净安装启动失败
+
+- 修复首次安装后 `doctor --fix` 可能移除 `gateway.auth.token`，导致 Gateway 绑定 LAN 时因缺少认证直接退出，页面显示“启动失败，退出码 78”。
+- `doctor --fix` 执行环境补齐 `NODE_ICU_DATA` 和 Node/OpenClaw PATH，避免部分 musl 固件上配置迁移阶段触发 ICU/Unicode 正则错误。
+- Gateway 启动时增加 `OPENCLAW_GATEWAY_TOKEN` 环境变量兜底，确保 JSON 配置被迁移工具改写后仍能使用 UCI token 启动。
+- `.run` 安装器补齐运行依赖安装，避免精简固件缺少 GNU tar 时 Node.js `.tar.xz` 解压失败。
+- `openclaw-env setup` 改为先完整解压验证 Node.js，再替换正式目录；安装失败时保留已有运行目录，避免重装失败清空 `/opt/openclaw`。
+
+### 验证
+
+- 通过 shell / Node / Lua 语法检查。
+- 通过契约测试 `tests/test_openclaw_contracts.sh`。
+
+---
+
 ## [2.0.9] - 2026-07-04
 
 ### 修复微信 npm 插件注册

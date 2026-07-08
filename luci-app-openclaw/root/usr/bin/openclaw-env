@@ -146,9 +146,13 @@ probe_install_root() {
 cleanup_partial_install() {
 	# 只在确认目标是规范化后的 openclaw 运行根目录时清理，避免误删用户目录。
 	if command -v oc_safe_openclaw_root >/dev/null 2>&1 && oc_safe_openclaw_root "$OC_INSTALL_PATH"; then
-		log_warn "安装失败，清理未完成的运行目录: $OC_INSTALL_PATH"
-		rm -rf "$OC_INSTALL_PATH" 2>/dev/null || true
-		[ -d /overlay/upper ] && rm -rf "/overlay/upper${OC_INSTALL_PATH}" 2>/dev/null || true
+		if [ "${OC_SETUP_FRESH_ROOT:-0}" = "1" ]; then
+			log_warn "安装失败，清理本次新建的运行目录: $OC_INSTALL_PATH"
+			rm -rf "$OC_INSTALL_PATH" 2>/dev/null || true
+			[ -d /overlay/upper ] && rm -rf "/overlay/upper${OC_INSTALL_PATH}" 2>/dev/null || true
+		else
+			log_warn "安装失败，检测到已有运行目录，已保留: $OC_INSTALL_PATH"
+		fi
 	fi
 }
 
@@ -332,34 +336,33 @@ download_node() {
 
 	# 解压
 	echo "  正在解压到 ${NODE_BASE}..."
+	# 先解压到临时目录并确认完整，再替换 NODE_BASE。
+	# 这样即使 tar/xz 缺失或压缩包损坏，也不会删除已有 Node.js。
+	local tmp_extract="/tmp/node-extract-$$"
+	rm -rf "$tmp_extract" 2>/dev/null
+	ensure_mkdir "$tmp_extract"
+	if ! tar xf "$tmp_file" -C "$tmp_extract" 2>/dev/null; then
+		log_error "Node.js 解压失败，请确认已安装 GNU tar（opkg install tar）且下载文件完整"
+		rm -rf "$tmp_extract"
+		exit 1
+	fi
+	# 找顶层目录 (node-vX.X.X-linux-xxx)
+	local top_dir
+	top_dir=$(ls "$tmp_extract" 2>/dev/null | head -1)
+	if [ -z "$top_dir" ] || [ ! -d "$tmp_extract/$top_dir" ]; then
+		log_error "解压后未找到顶层目录，安装失败"
+		rm -rf "$tmp_extract"
+		exit 1
+	fi
 	# OverlayFS 兼容: rm -rf 后可能因 whiteout 导致 mkdir 失败
-	# 先尝试常规方式，失败则通过 overlay upper 层操作
+	# 只有在临时目录已解压成功后才替换正式 Node 目录。
 	rm -rf "$NODE_BASE" 2>/dev/null
 	if [ -d /overlay/upper ]; then
 		rm -rf "/overlay/upper${NODE_BASE}" 2>/dev/null
 	fi
 	ensure_mkdir "$NODE_BASE"
-	# 兼容 BusyBox tar (不支持 --strip-components) 和 GNU tar
-	# 方法: 先解压到临时目录，再移动顶层子目录内容到目标目录
-	if tar --strip-components=1 -xf "$tmp_file" -C "$NODE_BASE" 2>/dev/null; then
-		: # GNU tar 成功
-	else
-		# BusyBox tar 回退: 解压到临时目录后手动移动
-		local tmp_extract="/tmp/node-extract-$$"
-		ensure_mkdir "$tmp_extract"
-		tar xf "$tmp_file" -C "$tmp_extract"
-		# 找顶层目录 (node-vX.X.X-linux-xxx)
-		local top_dir
-		top_dir=$(ls "$tmp_extract" 2>/dev/null | head -1)
-		if [ -n "$top_dir" ] && [ -d "$tmp_extract/$top_dir" ]; then
-			cp -a "$tmp_extract/$top_dir/." "$NODE_BASE/"
-		else
-			log_error "解压后未找到顶层目录，安装失败"
-			rm -rf "$tmp_extract"
-			exit 1
-		fi
-		rm -rf "$tmp_extract"
-	fi
+	cp -a "$tmp_extract/$top_dir/." "$NODE_BASE/"
+	rm -rf "$tmp_extract"
 	rm -f "$tmp_file"
 
 	# 验证
@@ -542,6 +545,11 @@ do_setup() {
 
 	ensure_openclaw_user
 	probe_install_root
+	if [ -e "$OC_INSTALL_PATH" ]; then
+		OC_SETUP_FRESH_ROOT=0
+	else
+		OC_SETUP_FRESH_ROOT=1
+	fi
 	OC_SETUP_CLEANUP=1
 	trap 'rc=$?; if [ $rc -ne 0 ] && [ "${OC_SETUP_CLEANUP:-0}" = "1" ]; then cleanup_partial_install; fi; exit $rc' EXIT
 
