@@ -229,6 +229,35 @@ assert_node_runtime() {
 	if command -v oc_assert_node_min_version >/dev/null 2>&1; then
 		oc_assert_node_min_version "$NODE_BIN" "$required" || exit 1
 	fi
+
+	# OpenClaw CLI 依赖 Unicode property escapes（例如 \p{Extended_Pictographic}）。
+	# ARM64 musl 自托管 Node 包必须带上 NODE_ICU_DATA，否则用户直接执行
+	# `openclaw status` 等子命令会在 CLI 入口阶段抛 SyntaxError。
+	if ! NODE_ICU_DATA="${NODE_BASE}/share/icu" "$NODE_BIN" -e "new RegExp('\\\\p{Extended_Pictographic}','u')" >/dev/null 2>&1; then
+		log_error "Node.js ICU/Unicode 正则能力异常，请重新安装 Node.js 运行时"
+		exit 1
+	fi
+}
+
+install_openclaw_cli_wrapper() {
+	local oc_entry
+	oc_entry=$(find_oc_entry)
+	[ -n "$oc_entry" ] || return 1
+	ensure_mkdir "$OC_GLOBAL/bin"
+	# npm 默认生成的 openclaw 可能是指向 openclaw.mjs 的 symlink。
+	# 写 wrapper 前必须先 unlink，否则重定向会顺着 symlink 覆盖真实 CLI 入口。
+	rm -f "$OC_GLOBAL/bin/openclaw" 2>/dev/null || true
+	cat > "$OC_GLOBAL/bin/openclaw" << EOF
+#!/bin/sh
+export HOME="${OC_DATA}"
+export OPENCLAW_HOME="${OC_DATA}"
+export OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw"
+export OPENCLAW_CONFIG_PATH="${OC_DATA}/.openclaw/openclaw.json"
+export NODE_ICU_DATA="${NODE_BASE}/share/icu"
+export PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:\$PATH"
+exec "${NODE_BIN}" "${oc_entry}" "\$@"
+EOF
+	chmod +x "$OC_GLOBAL/bin/openclaw" 2>/dev/null || true
 }
 
 detect_arch() {
@@ -471,6 +500,7 @@ install_openclaw() {
 	fi
 
 	if [ -n "$oc_ver" ]; then
+		install_openclaw_cli_wrapper || true
 		log_info "OpenClaw v${oc_ver} 安装成功"
 		assert_node_runtime
 	else
@@ -510,6 +540,7 @@ do_setup() {
 
 	# 检查是否已安装
 	if [ -x "$NODE_BIN" ] && [ -n "$(find_oc_entry)" ]; then
+		install_openclaw_cli_wrapper || true
 		local oc_ver=""
 		local oc_entry="$(find_oc_entry)"
 		local oc_pkg_dir="$(dirname "$oc_entry")"
@@ -665,6 +696,7 @@ do_upgrade() {
 
 	echo ""
 	if [ -n "$new_ver" ]; then
+		install_openclaw_cli_wrapper || true
 		assert_node_runtime
 		if [ "$current_ver" = "$new_ver" ]; then
 			log_info "当前已是最新版本 v${new_ver}"
@@ -827,6 +859,7 @@ do_setup_offline() {
 		local oc_entry=$(find_oc_entry)
 		if [ -n "$oc_entry" ]; then
 			local oc_ver=$("$NODE_BIN" "$oc_entry" --version 2>/dev/null | tr -d '[:space:]')
+			install_openclaw_cli_wrapper || true
 			log_info "OpenClaw v${oc_ver} 安装成功"
 			assert_node_runtime
 		else

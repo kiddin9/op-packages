@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openclaw
 PKG_VERSION:=$(strip $(shell cat $(CURDIR)/VERSION 2>/dev/null || echo "1.0.0"))
-PKG_RELEASE:=20
+PKG_RELEASE:=21
 
 PKG_MAINTAINER:=10000ge10000 <10000ge10000@users.noreply.github.com>
 PKG_LICENSE:=GPL-3.0
@@ -85,6 +85,21 @@ define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	( . /etc/uci-defaults/99-openclaw ) && rm -f /etc/uci-defaults/99-openclaw
+	OPENCLAW_INSTALL_BASE="$$(uci -q get openclaw.main.install_path 2>/dev/null || echo /opt)"
+	if [ -r /usr/libexec/openclaw-paths.sh ]; then
+		. /usr/libexec/openclaw-paths.sh
+		oc_load_paths "$${OPENCLAW_INSTALL_BASE}" 2>/dev/null || true
+	else
+		OPENCLAW_INSTALL_BASE="$${OPENCLAW_INSTALL_BASE%/}"
+		OC_DATA="$${OPENCLAW_INSTALL_BASE}/openclaw/data"
+	fi
+	if [ -n "$${OC_DATA:-}" ] && [ -d "$${OC_DATA}/.openclaw" ] && [ -x /usr/libexec/openclaw-permissions.sh ]; then
+		/usr/libexec/openclaw-permissions.sh fix-state "$${OC_DATA}/.openclaw" >/dev/null 2>&1 || true
+	fi
+	if [ "$$(uci -q get openclaw.main.enabled 2>/dev/null || echo 0)" = "1" ] && [ -x /etc/init.d/openclaw ]; then
+		/etc/init.d/openclaw enable >/dev/null 2>&1 || true
+		/etc/init.d/openclaw start >/dev/null 2>&1 || true
+	fi
 	rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null
 	exit 0
 }

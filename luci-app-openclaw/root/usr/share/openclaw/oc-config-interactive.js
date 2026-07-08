@@ -338,7 +338,15 @@ async function restartGateway() {
   console.log(`\n${C.yellow}正在重启 Gateway...${C.reset}`);
 
   try {
-    await runCommand('/etc/init.d/openclaw', ['restart_gateway']);
+    await runCommand('/bin/sh', ['-c', [
+      "if [ \"$(uci -q get openclaw.main.enabled 2>/dev/null || echo 0)\" != \"1\" ]; then",
+      "  uci -q set openclaw.main.enabled='1';",
+      "  uci -q commit openclaw;",
+      "  /etc/init.d/openclaw enable >/dev/null 2>&1 || true;",
+      'fi;',
+      '/etc/init.d/openclaw restart_gateway >/dev/null 2>&1 || true;',
+      '/etc/init.d/openclaw start >/dev/null 2>&1 || true'
+    ].join(' ')]);
   } catch {}
 
   const spin = spinner({ text: 'Gateway 启动中，请稍候 (约 15-30 秒)...' });

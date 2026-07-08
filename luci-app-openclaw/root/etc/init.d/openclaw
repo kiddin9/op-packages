@@ -448,7 +448,13 @@ if(changed){
 	fi
 	fix_openclaw_state_permissions 2>/dev/null || true
 
-	rm -rf /tmp/jiti 2>/dev/null || true
+	# 不再每次启动都清理 /tmp/jiti。
+	# OpenClaw 在低性能 OpenWrt 设备上依赖 JITI/模块缓存降低冷启动成本；
+	# 每次 rm -rf 会让 gateway 在第一条 "starting..." 日志前重新编译/装载模块，
+	# 实测会额外拉长 20 秒以上。需要强制清理时再显式打开 UCI 开关。
+	if [ "$(uci -q get openclaw.main.clear_jiti_cache_on_start 2>/dev/null || echo 0)" = "1" ]; then
+		rm -rf /tmp/jiti 2>/dev/null || true
+	fi
 
 	# v2026.4.10: 优化配置迁移 - 只在版本变更时运行 doctor --fix
 	# 原因: doctor --fix 耗时 ~50 秒，每次重启都运行严重影响启动速度
@@ -637,6 +643,13 @@ _ensure_port_free() {
 }
 _ensure_port_free "$port"
 
+# Node 22 原生编译缓存。OpenClaw 主入口在路由器上首次 import/compile 较慢；
+# 保留该缓存可以显著缩短后续重启时 gateway 第一条日志前的等待时间。
+local node_compile_cache="/tmp/openclaw-node-compile-cache"
+mkdir -p "$node_compile_cache" 2>/dev/null || true
+chown openclaw:openclaw "$node_compile_cache" 2>/dev/null || true
+chmod 700 "$node_compile_cache" 2>/dev/null || true
+
 # 启动 OpenClaw Gateway (主服务, 前台运行)
 	# v2026.4.7/4.9: 环境变量安全验证 (阻止危险变量注入)
 	_validate_path() {
@@ -660,13 +673,15 @@ _ensure_port_free "$port"
 	OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw" \
 	OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
 	OPENCLAW_GATEWAY_TOKEN="$gw_token" \
+	NODE_COMPILE_CACHE="$node_compile_cache" \
 	NODE_ICU_DATA="${NODE_BASE}/share/icu" \
 	NODE_BASE="$NODE_BASE" \
 	OC_GLOBAL="$OC_GLOBAL" \
 	OC_DATA="$OC_DATA" \
 	PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 procd_set_param user openclaw
-procd_set_param respawn 3600 10 5
+procd_set_param term_timeout 2
+procd_set_param respawn 3600 1 5
 procd_set_param stdout 1
 procd_set_param stderr 1
 procd_set_param pidfile /var/run/openclaw.pid
@@ -689,6 +704,7 @@ procd_set_param env \
 OC_CONFIG_PORT="$pty_port" \
 OC_PTY_TOKEN="$pty_token" \
 OC_CONFIG_SCRIPT="/usr/share/openclaw/oc-config.sh" \
+NODE_COMPILE_CACHE="$node_compile_cache" \
 NODE_ICU_DATA="${NODE_BASE}/share/icu" \
 NODE_BASE="$NODE_BASE" \
 OC_GLOBAL="$OC_GLOBAL" \
@@ -699,6 +715,7 @@ OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw" \
 OPENCLAW_CONFIG_PATH="$CONFIG_FILE" \
 PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 procd_set_param respawn 3600 5 5
+procd_set_param term_timeout 2
 procd_set_param stdout 1
 procd_set_param stderr 1
 procd_set_param pidfile /var/run/openclaw-pty.pid
@@ -842,9 +859,10 @@ fi
 }
 
 status_service() {
-local port pty_port
+local port pty_port enabled
 port=$(uci -q get openclaw.main.port || echo "18789")
 pty_port=$(uci -q get openclaw.main.pty_port || echo "18793")
+enabled=$(uci -q get openclaw.main.enabled || echo "0")
 
 echo "=== OpenClaw 服务状态 ==="
 
@@ -908,10 +926,31 @@ local mins=$(( (uptime % 3600) / 60 ))
 echo "运行时间: ${hours}小时 ${mins}分钟"
 fi
 fi
-elif pgrep -f "openclaw.*gateway" >/dev/null 2>&1; then
-echo "网关:     正在启动 (首次启动可能需要 2~5 分钟)"
 else
-echo "网关:     已停止"
+local procd_running procd_pid procd_exit procd_pid_alive pidfile_pid pidfile_stale crash_loop
+procd_running=$(ubus call service list '{"name":"openclaw"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.running' 2>/dev/null | tr -d '[:space:]')
+procd_pid=$(ubus call service list '{"name":"openclaw"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.pid' 2>/dev/null | tr -d '[:space:]')
+procd_exit=$(ubus call service list '{"name":"openclaw"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.exit_code' 2>/dev/null | tr -d '[:space:]')
+[ "$procd_pid" = "null" ] && procd_pid=""
+[ "$procd_exit" = "null" ] && procd_exit=""
+procd_pid_alive=0
+[ -n "$procd_pid" ] && [ -d "/proc/$procd_pid" ] && procd_pid_alive=1
+pidfile_pid=$(cat /var/run/openclaw.pid 2>/dev/null | tr -d '[:space:]')
+pidfile_stale=0
+[ -n "$pidfile_pid" ] && [ ! -d "/proc/$pidfile_pid" ] && pidfile_stale=1
+crash_loop=$(logread 2>/dev/null | grep -E 'Instance openclaw::gateway.*crash loop' | tail -1)
+if [ "$enabled" != "1" ]; then
+	echo "网关:     已禁用"
+elif [ -n "$procd_exit" ] && [ "$procd_exit" != "0" ] && [ "$procd_running" != "true" ]; then
+	echo "网关:     启动失败 (退出码 $procd_exit)"
+elif [ -n "$crash_loop" ] && [ "$pidfile_stale" = "1" ] && [ "$procd_running" != "true" ] && [ "$procd_pid_alive" != "1" ]; then
+	echo "网关:     启动失败 (procd crash-loop 抑制)"
+elif [ "$procd_running" = "true" ] || [ "$procd_pid_alive" = "1" ]; then
+	echo "网关:     正在启动 (通常 20~40 秒，首次安装或负载较高时会更久)"
+	[ -n "$procd_pid" ] && echo "进程ID:   $procd_pid"
+else
+	echo "网关:     已停止"
+fi
 fi
 
 # PTY port

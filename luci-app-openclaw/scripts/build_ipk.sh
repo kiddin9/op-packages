@@ -94,7 +94,9 @@ chmod +x "$DATA_DIR/etc/profile.d/openclaw.sh"
 # 计算安装大小
 INSTALLED_SIZE=$(du -sk "$DATA_DIR" | awk '{print $1}')
 
-(cd "$DATA_DIR" && tar czf "$STAGING/data.tar.gz" .)
+# 强制 data.tar.gz 内文件归属为 root:root，避免 GitHub runner / 本地构建用户
+# 的 UID/GID 泄漏到用户机器（例如安装后出现 1001:1001）。
+(cd "$DATA_DIR" && tar --owner=0 --group=0 --numeric-owner -czf "$STAGING/data.tar.gz" .)
 
 # ── 构建 control.tar.gz ──
 CTRL_DIR="$STAGING/control"
@@ -169,10 +171,48 @@ cat > "$CTRL_DIR/postinst" << 'EOF'
 	
 	# 清理 LuCI 缓存
 	rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* /tmp/luci-indexcache.*.json 2>/dev/null
+
+	# 双保险：确保系统侧文件保持 root:root，避免非 SDK 打包时构建机 UID/GID
+	# 泄漏到目标机器。不要触碰 /opt/openclaw 运行数据。
+	for p in \
+		/etc/init.d/openclaw \
+		/etc/profile.d/openclaw.sh \
+		/usr/bin/openclaw-env \
+		/usr/libexec/openclaw-permissions.sh \
+		/usr/lib/lua/luci/controller/openclaw.lua \
+		/usr/lib/lua/luci/model/cbi/openclaw \
+		/usr/lib/lua/luci/view/openclaw \
+		/usr/lib/lua/openclaw \
+		/usr/share/openclaw \
+		/usr/share/rpcd/acl.d/luci-app-openclaw.json
+	do
+		[ -e "$p" ] && chown -R root:root "$p" 2>/dev/null || true
+	done
+
+	# 升级/重装后修复已存在的 OpenClaw 运行数据权限。尤其是 npm 外部插件：
+	# npm 安装阶段需要 openclaw 可写，运行阶段插件源码目录必须 root:root，
+	# 否则 OpenClaw 会因为 suspicious ownership 拒绝加载微信插件。
+	OPENCLAW_INSTALL_BASE="$(uci -q get openclaw.main.install_path 2>/dev/null || echo /opt)"
+	if [ -r /usr/libexec/openclaw-paths.sh ]; then
+		. /usr/libexec/openclaw-paths.sh
+		oc_load_paths "$OPENCLAW_INSTALL_BASE" 2>/dev/null || true
+	else
+		OPENCLAW_INSTALL_BASE="${OPENCLAW_INSTALL_BASE%/}"
+		OC_DATA="${OPENCLAW_INSTALL_BASE}/openclaw/data"
+	fi
+	if [ -n "${OC_DATA:-}" ] && [ -d "${OC_DATA}/.openclaw" ] && [ -x /usr/libexec/openclaw-permissions.sh ]; then
+		/usr/libexec/openclaw-permissions.sh fix-state "${OC_DATA}/.openclaw" >/dev/null 2>&1 || true
+	fi
 	
 	# 重启 Web PTY (使其加载新文件和新 token)
 	PTY_PID=$(pgrep -f 'web-pty.js' 2>/dev/null | head -1)
 	[ -n "$PTY_PID" ] && kill "$PTY_PID" 2>/dev/null || true
+
+	# 如果用户原本启用了 OpenClaw，opkg reinstall/upgrade 后恢复服务。
+	if [ "$(uci -q get openclaw.main.enabled 2>/dev/null || echo 0)" = "1" ] && [ -x /etc/init.d/openclaw ]; then
+		/etc/init.d/openclaw enable >/dev/null 2>&1 || true
+		/etc/init.d/openclaw start >/dev/null 2>&1 || true
+	fi
 	
 	exit 0
 }

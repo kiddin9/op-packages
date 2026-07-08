@@ -558,12 +558,22 @@ restart_gateway() {
 	# 修复数据目录权限 (root 用户操作可能改变了文件属主)
 	fix_openclaw_state_permissions 2>/dev/null || true
 
+	# 首次安装后 UCI 默认保持 disabled。用户在配置向导中确认“立即重启”
+	# 即表示希望当前配置生效，这里同步启用服务，避免提示重启但实际仍为“已禁用”。
+	if [ "$(uci -q get openclaw.main.enabled 2>/dev/null || echo 0)" != "1" ]; then
+		echo -e "  ${CYAN}检测到 Gateway 未启用，正在启用服务...${NC}"
+		uci -q set openclaw.main.enabled='1' 2>/dev/null || true
+		uci -q commit openclaw 2>/dev/null || true
+		/etc/init.d/openclaw enable >/dev/null 2>&1 || true
+	fi
+
 	local port
 	port=$(json_get gateway.port)
 	port=${port:-18789}
 
 	# ── kill gateway 进程，让 procd respawn ──
 	/etc/init.d/openclaw restart_gateway >/dev/null 2>&1
+	/etc/init.d/openclaw start >/dev/null 2>&1
 
 	# ── 等待端口恢复 (最多 30 秒，含端口释放 + Node.js 冷启动) ──
 	echo -e "  ${YELLOW}⏳ Gateway 启动中，请稍候 (约 15-30 秒)...${NC}"

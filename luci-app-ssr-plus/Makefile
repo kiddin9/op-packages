@@ -4,7 +4,7 @@ LUCI_TITLE:=luci-app-ssr-plus
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-ssr-plus
 PKG_VERSION:=196
-PKG_RELEASE:=42
+PKG_RELEASE:=43
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_$(PKG_NAME)_Iptables_Transparent_Proxy \
@@ -32,7 +32,7 @@ LUCI_PKGARCH:=all
 LUCI_DEPENDS:= \
 	+libuci-lua +lua +luci-compat +coreutils +coreutils-base64 +dns2tcp +dnsmasq-full \
 	+jq +ip-full +lua-neturl +libuci-lua +microsocks +ipt2socks +lyaml \
-	+resolveip +curl +nping +unzip +xz-utils \
+	+resolveip +curl +nping +unzip +xz-utils +xz \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:xray-core \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Xray:coreutils-timeout \
 	+PACKAGE_$(PKG_NAME)_INCLUDE_Http_Proxy:3proxy \

@@ -112,7 +112,7 @@
 				if (d.gateway_running) {
 					gwEl.innerHTML = '<span class="oc-dot oc-dot-green"></span>监听中 :' + d.port;
 				} else if (d.gateway_starting) {
-					gwEl.innerHTML = '<span class="oc-dot oc-dot-gray"></span>初始化中，首次启动可能需要 2~5 分钟...';
+					gwEl.innerHTML = '<span class="oc-dot oc-dot-gray"></span>初始化中，通常 20~40 秒；首次安装或负载较高时会更久...';
 				} else if (d.gateway_failed) {
 					gwEl.innerHTML = '<span class="oc-dot oc-dot-red"></span>启动失败，退出码 ' + (d.gateway_exit_code || '-');
 				} else {

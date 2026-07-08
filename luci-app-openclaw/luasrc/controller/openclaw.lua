@@ -191,6 +191,7 @@ fs.writeFileSync(configPath, JSON.stringify(d, null, 2) + '\n');
 		"REG_RC=$?; " ..
 		"if [ $REG_RC -eq 0 ]; then " ..
 		"chown openclaw:openclaw " .. shellquote(config_file) .. " 2>/dev/null; " ..
+		"[ -x /usr/libexec/openclaw-permissions.sh ] && /usr/libexec/openclaw-permissions.sh fix-state " .. shellquote(oc_data .. "/.openclaw") .. " >/dev/null 2>&1; " ..
 		"echo 'Registered openclaw-weixin npm plugin in OpenClaw config.' >> " .. shellquote(log_file) .. "; " ..
 		"else RC=$REG_RC; echo $RC > " .. shellquote(exit_file) .. "; echo 'Failed to register openclaw-weixin npm plugin in OpenClaw config.' >> " .. shellquote(log_file) .. "; fi; " ..
 		"else RC=127; echo $RC > " .. shellquote(exit_file) .. "; echo 'Node.js not found, cannot register openclaw-weixin plugin.' >> " .. shellquote(log_file) .. "; fi; " ..
@@ -238,7 +239,13 @@ const timer = setTimeout(() => controller.abort(new Error('timeout')), 10000);
 end
 
 local function openclaw_user_runner_cmd()
-	return "_oc_as_openclaw() { " ..
+	return "_oc_raise_openclaw_limits() { " ..
+		"ulimit -v unlimited 2>/dev/null || true; " ..
+		"ulimit -m unlimited 2>/dev/null || true; " ..
+		"ulimit -d unlimited 2>/dev/null || true; " ..
+		"}; " ..
+		"_oc_as_openclaw() { " ..
+		"_oc_raise_openclaw_limits; " ..
 		"if command -v su >/dev/null 2>&1; then su -s /bin/sh openclaw -c \"$1\"; " ..
 		"elif command -v runuser >/dev/null 2>&1; then runuser -u openclaw -- sh -c \"$1\"; " ..
 		"elif command -v start-stop-daemon >/dev/null 2>&1; then _oc_pid=/tmp/openclaw-user-$$.pid; _oc_cwd=$(pwd); rm -f \"$_oc_pid\"; start-stop-daemon -S -m -p \"$_oc_pid\" -c openclaw:openclaw -d \"$_oc_cwd\" -x /bin/sh -- -c \"$1\"; _oc_rc=$?; rm -f \"$_oc_pid\"; return $_oc_rc; " ..
@@ -265,6 +272,25 @@ local function wechat_npm_fallback_install_cmd(install_path, log_file, exit_file
 		"RC=$?; echo $RC > " .. shellquote(exit_file) .. "; " ..
 		"if [ $RC -eq 0 ]; then echo '✅ npm 直装兜底完成' >> " .. shellquote(log_file) .. "; else echo '❌ npm 直装兜底失败 (exit: '$RC')' >> " .. shellquote(log_file) .. "; fi; " ..
 		"fi; "
+end
+
+local function wechat_npm_direct_install_cmd(install_path, log_file, exit_file)
+	local package_json = "{\n  \"private\": true,\n  \"dependencies\": {\n    \"@tencent-weixin/openclaw-weixin\": \"latest\"\n  }\n}\n"
+	return "echo '使用 npm 直装微信插件，避免官方安装器进入扫码等待...' >> " .. shellquote(log_file) .. "; " ..
+		"OC_WECHAT_NPM_PROJECT=\"$OC_WECHAT_DATA/.openclaw/npm/projects/tencent-weixin-openclaw-weixin-7783ac86ba\"; " ..
+		"mkdir -p \"$OC_WECHAT_NPM_PROJECT\" \"$OC_WECHAT_DATA/.npm\" \"$OC_WECHAT_DATA/.tmp\" \"$OC_WECHAT_DATA/.openclaw/npm/projects\"; " ..
+		"chown -R openclaw:openclaw \"$OC_WECHAT_NPM_PROJECT\" \"$OC_WECHAT_DATA/.npm\" \"$OC_WECHAT_DATA/.tmp\" \"$OC_WECHAT_DATA/.openclaw/npm/projects\" 2>/dev/null; " ..
+		"cat > \"$OC_WECHAT_NPM_PROJECT/package.json\" <<'OC_WECHAT_PACKAGE_JSON'\n" ..
+		package_json ..
+		"OC_WECHAT_PACKAGE_JSON\n" ..
+		"chown openclaw:openclaw \"$OC_WECHAT_NPM_PROJECT/package.json\" 2>/dev/null; " ..
+		"cd \"$OC_WECHAT_NPM_PROJECT\" && " ..
+		"_oc_as_openclaw 'HOME=$OC_WECHAT_DATA OPENCLAW_HOME=$OC_WECHAT_DATA OPENCLAW_STATE_DIR=$OC_WECHAT_DATA/.openclaw OPENCLAW_CONFIG_PATH=$OC_WECHAT_DATA/.openclaw/openclaw.json " ..
+		"NODE_ICU_DATA=" .. install_path .. "/node/share/icu NPM_CONFIG_CACHE=$OC_WECHAT_DATA/.npm npm_config_cache=$OC_WECHAT_DATA/.npm TMPDIR=$OC_WECHAT_DATA/.tmp " ..
+		"PATH=" .. install_path .. "/node/bin:" .. install_path .. "/global/bin:$PATH " ..
+		"npm install --omit=dev --omit=peer --legacy-peer-deps --no-audit --no-fund --loglevel=error' >> " .. shellquote(log_file) .. " 2>&1; " ..
+		"RC=$?; echo $RC > " .. shellquote(exit_file) .. "; " ..
+		"if [ $RC -eq 0 ]; then echo '✅ npm 直装微信插件完成' >> " .. shellquote(log_file) .. "; else echo '❌ npm 直装微信插件失败 (exit: '$RC')' >> " .. shellquote(log_file) .. "; fi; "
 end
 
 local function wechat_tail_detail(text, max_lines)
@@ -524,21 +550,36 @@ function action_status()
 		local gw_check = sys.exec(gw_check_cmd):gsub("%s+", "")
 	result.gateway_running = (tonumber(gw_check) or 0) > 0
 
-	-- 如果端口未监听但 procd 进程存在，说明正在启动中 (gateway 初始化需要数分钟)
+	-- 如果端口未监听，结合 procd 与真实进程判断状态。
+	-- 不能只看 pid 字段或 pidfile：procd crash-loop / stale pidfile 会让 LuCI 误显示“正在启动”。
 	if not result.gateway_running and enabled == "1" then
 		local procd_pid = sys.exec("ubus call service list '{\"name\":\"openclaw\"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.pid' 2>/dev/null"):gsub("%s+", "")
 		local procd_running = sys.exec("ubus call service list '{\"name\":\"openclaw\"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.running' 2>/dev/null"):gsub("%s+", "")
 		local procd_exit = sys.exec("ubus call service list '{\"name\":\"openclaw\"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.exit_code' 2>/dev/null"):gsub("%s+", "")
+		if procd_pid == "null" or not procd_pid:match("^%d+$") then procd_pid = "" end
+		if procd_exit == "null" then procd_exit = "" end
 		result.gateway_exit_code = procd_exit
+
+		local procd_pid_alive = false
+		if procd_pid ~= "" then
+			procd_pid_alive = (sys.exec("[ -d /proc/" .. procd_pid .. " ] && echo 1 || echo 0"):gsub("%s+", "") == "1")
+		end
+		local pidfile_pid = sys.exec("cat /var/run/openclaw.pid 2>/dev/null || true"):gsub("%s+", "")
+		local pidfile_stale = false
+		if pidfile_pid ~= "" and pidfile_pid:match("^%d+$") then
+			pidfile_stale = (sys.exec("[ -d /proc/" .. pidfile_pid .. " ] && echo 0 || echo 1"):gsub("%s+", "") == "1")
+		end
+		local crash_loop = sys.exec("logread 2>/dev/null | grep -E 'Instance openclaw::gateway.*crash loop' | tail -1"):gsub("^%s+", ""):gsub("%s+$", "")
+
 		if procd_exit ~= "" and tonumber(procd_exit) and tonumber(procd_exit) ~= 0 and procd_running ~= "true" then
 			result.gateway_failed = true
-		elseif procd_pid ~= "" or procd_running == "true" then
+		elseif crash_loop ~= "" and pidfile_stale and procd_running ~= "true" and not procd_pid_alive then
+			result.gateway_failed = true
+			result.gateway_crash_loop = true
+			if result.gateway_exit_code == "" then result.gateway_exit_code = "crash-loop" end
+		elseif procd_running == "true" or procd_pid_alive then
 			result.gateway_starting = true
-		else
-			local fallback_pid = sys.exec("pgrep -f 'openclaw.*gateway' 2>/dev/null | head -1"):gsub("%s+", "")
-			if fallback_pid ~= "" then
-				result.gateway_starting = true
-			end
+			result.pid = procd_pid
 		end
 	end
 
@@ -637,10 +678,14 @@ function action_service_ctl()
 		-- stop 后额外等待确保端口释放
 		sys.exec("sleep 2")
 	elseif action == "restart" then
-		-- 先完整 stop (确保端口释放)，再后台 start
-		sys.exec("/etc/init.d/openclaw stop >/dev/null 2>&1")
-		sys.exec("sleep 2")
-		sys.exec("/etc/init.d/openclaw start >/dev/null 2>&1 &")
+		-- 常规“重启”只重启 Gateway，不重启 Web PTY，避免 stop+start 带来的长时间等待。
+		-- 如果 procd 没有 gateway 实例，再回退到 start。
+		local procd_running = sys.exec("ubus call service list '{\"name\":\"openclaw\"}' 2>/dev/null | jsonfilter -e '$.openclaw.instances.gateway.running' 2>/dev/null"):gsub("%s+", "")
+		if procd_running == "true" then
+			sys.exec("/etc/init.d/openclaw restart_gateway >/dev/null 2>&1 &")
+		else
+			sys.exec("/etc/init.d/openclaw start >/dev/null 2>&1 &")
+		end
 	elseif action == "enable" then
 		sys.exec("/etc/init.d/openclaw enable 2>/dev/null")
 	elseif action == "disable" then
@@ -1549,10 +1594,7 @@ function action_wechat_install()
 		return
 	end
 
-	-- 后台执行安装
-	-- 在启动安装前，确保网关端口可用（自动清理残留 gateway 进程）
-	local port = uci:get("openclaw", "main", "port") or "18789"
-	ensure_port_free(port)
+	-- 后台执行安装。注意：插件安装不需要释放 Gateway 端口，避免误停正在运行的 Gateway 触发 procd crash-loop。
 	-- 微信插件安装目录路径 (用于安装后权限修复)
 	local extensions_dir = install_path .. "/data/.openclaw/extensions"
 	local install_cmd = string.format(
@@ -1569,13 +1611,7 @@ function action_wechat_install()
 		"else mkdir -p \"$OC_WECHAT_DATA/.npm\" \"$OC_WECHAT_DATA/.tmp\" \"$OC_WECHAT_DATA/.openclaw/extensions\"; chown -R openclaw:openclaw \"$OC_WECHAT_DATA/.npm\" \"$OC_WECHAT_DATA/.tmp\" 2>/dev/null; chown openclaw:openclaw \"$OC_WECHAT_DATA/.openclaw\" 2>/dev/null; fi; " ..
 		"if [ ! -w %s/.npm ] || [ ! -w %s/.tmp ]; then echo '❌ npm cache/tmp 目录不可写' >> /tmp/openclaw-wechat-install.log; echo 1 > /tmp/openclaw-wechat-install.exit; exit 0; fi; " ..
 		"_oc_as_openclaw 'test -w %s/.npm && test -w %s/.tmp && test -w %s/.openclaw' || { echo '❌ openclaw 用户无法写入 npm cache/tmp/data 目录' >> /tmp/openclaw-wechat-install.log; echo 1 > /tmp/openclaw-wechat-install.exit; exit 0; }; " ..
-		"cd %s && " ..
-		"_oc_as_openclaw 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw " ..
-		"OPENCLAW_CONFIG_PATH=%s/.openclaw/openclaw.json NPM_CONFIG_CACHE=%s/.npm npm_config_cache=%s/.npm TMPDIR=%s/.tmp " ..
-		"PATH=%s/node/bin:%s/global/bin:$PATH " ..
-		"%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
-		"RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
-		wechat_npm_fallback_install_cmd(install_path, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
+		wechat_npm_direct_install_cmd(install_path, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
 		wechat_register_plugin_cmd(install_path, node_bin, "/tmp/openclaw-wechat-install.log") ..
 		-- 关键修复: 安装完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
 		-- 原因: npx/npm 以 root 身份创建目录，默认权限 700 导致其他用户无法读取
@@ -1589,8 +1625,6 @@ function action_wechat_install()
 		oc_data, oc_data,
 		oc_data, oc_data, oc_data,
 		install_path, oc_data, oc_data, oc_data,
-		oc_data, oc_data, oc_data, oc_data,
-		install_path, install_path, npx_bin,
 		oc_data
 	)
 	sys.exec(install_cmd)
@@ -1731,15 +1765,23 @@ function action_wechat_login()
                 "if [ $RC -ne 0 ]; then echo '❌ 微信插件注册失败，无法登录' >> /tmp/openclaw-wechat-qrcode.txt; exit 0; fi; " ..
                 "cd %s && " ..
                 "_oc_as_openclaw 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw OPENCLAW_CONFIG_PATH=%s/.openclaw/openclaw.json " ..
+                "NODE_ICU_DATA=%s/node/share/icu " ..
                 "NPM_CONFIG_CACHE=%s/.npm npm_config_cache=%s/.npm TMPDIR=%s/.tmp PATH=%s/node/bin:%s/global/bin:$PATH " ..
                 "%s %s channels login --channel openclaw-weixin' >> /tmp/openclaw-wechat-qrcode.txt 2>&1; " ..
                 "echo $? > /tmp/openclaw-wechat-login.exit; " ..
                 ") >/dev/null 2>&1 & echo $! > /tmp/openclaw-wechat-login.pid",
                 install_path, oc_entry, wechat_plugin_dir, node_bin,
-                oc_data, oc_data, oc_data, oc_data, oc_data, oc_data, oc_data,
-                oc_data, oc_data, oc_data, oc_data, oc_data, oc_data, oc_data,
-                oc_data, oc_data, oc_data, oc_data, oc_data, oc_data, oc_data, oc_data,
-                install_path, install_path, node_bin, oc_entry
+                oc_data, oc_data, oc_data,
+                oc_data,
+                oc_data, oc_data, oc_data,
+                oc_data, oc_data,
+                oc_data, oc_data, oc_data, oc_data, oc_data,
+                install_path,
+                oc_data, oc_data, oc_data, oc_data,
+                install_path,
+                oc_data, oc_data, oc_data,
+                install_path, install_path,
+                node_bin, oc_entry
         )
         sys.exec(login_cmd)
 
@@ -1798,8 +1840,15 @@ function action_wechat_login_status()
                         end
                 end
         end
-	-- 检查是否登录成功
-	local logged_in = qrcode:find("登录成功") ~= nil or qrcode:find("成功登录") ~= nil or qrcode:find("Login success") ~= nil or qrcode:find("Logged in") ~= nil
+	-- 检查是否登录成功。微信插件在 OpenClaw 2026.6.11 中可能已经保存认证，
+	-- 但随后通过 Gateway 动态启动渠道时报 "invalid channels.start channel" 并返回
+	-- 非 0；这种情况账号已配对成功，LuCI 不应误判为失败。
+	local logged_in = qrcode:find("登录成功") ~= nil
+		or qrcode:find("成功登录") ~= nil
+		or qrcode:find("Login success") ~= nil
+		or qrcode:find("Logged in") ~= nil
+		or qrcode:find("已将此 OpenClaw 连接到微信") ~= nil
+		or qrcode:find("Local login saved auth for openclaw%-weixin") ~= nil
 
         local state = "idle"
         if logged_in then
@@ -1825,10 +1874,11 @@ function action_wechat_login_status()
                 end
         end
 
-        -- 如果刚登录成功，触发一次重启，确保主进程加载微信账号
+        -- 如果刚登录成功，触发一次轻量重启，确保主进程加载微信账号。
+        -- 不使用完整 /etc/init.d/openclaw restart，避免同时重启 Web PTY 和拉长等待时间。
         if state == "success" and not nixio.fs.stat("/tmp/openclaw-wechat-restarted", "type") then
                 sys.exec("touch /tmp/openclaw-wechat-restarted")
-                sys.exec("/etc/init.d/openclaw restart &")
+                sys.exec("/etc/init.d/openclaw restart_gateway >/dev/null 2>&1 &")
                 message = "微信登录成功，正在重新加载微信账号"
         end
 	http.prepare_content("application/json")
@@ -2013,10 +2063,7 @@ function action_wechat_upgrade_plugin()
 		return
 	end
 
-	-- 后台执行升级 (其实就是重新安装最新版)
-	-- 在启动升级前，确保网关端口可用（自动清理残留 gateway 进程）
-	local port = uci:get("openclaw", "main", "port") or "18789"
-	ensure_port_free(port)
+	-- 后台执行升级 (其实就是重新安装最新版)。不要释放 Gateway 端口，避免误停正在运行的 Gateway。
 	-- 微信插件安装目录路径 (用于升级后权限修复)
 	local extensions_dir = install_path .. "/data/.openclaw/extensions"
 	local upgrade_cmd = string.format(
@@ -2033,13 +2080,7 @@ function action_wechat_upgrade_plugin()
 		"else mkdir -p \"$OC_WECHAT_DATA/.npm\" \"$OC_WECHAT_DATA/.tmp\" \"$OC_WECHAT_DATA/.openclaw/extensions\"; chown -R openclaw:openclaw \"$OC_WECHAT_DATA/.npm\" \"$OC_WECHAT_DATA/.tmp\" 2>/dev/null; chown openclaw:openclaw \"$OC_WECHAT_DATA/.openclaw\" 2>/dev/null; fi; " ..
 		"if [ ! -w %s/.npm ] || [ ! -w %s/.tmp ]; then echo '❌ npm cache/tmp 目录不可写' >> /tmp/openclaw-wechat-install.log; echo 1 > /tmp/openclaw-wechat-install.exit; exit 0; fi; " ..
 		"_oc_as_openclaw 'test -w %s/.npm && test -w %s/.tmp && test -w %s/.openclaw' || { echo '❌ openclaw 用户无法写入 npm cache/tmp/data 目录' >> /tmp/openclaw-wechat-install.log; echo 1 > /tmp/openclaw-wechat-install.exit; exit 0; }; " ..
-		"cd %s && " ..
-		"_oc_as_openclaw 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw " ..
-		"OPENCLAW_CONFIG_PATH=%s/.openclaw/openclaw.json NPM_CONFIG_CACHE=%s/.npm npm_config_cache=%s/.npm TMPDIR=%s/.tmp " ..
-		"PATH=%s/node/bin:%s/global/bin:$PATH " ..
-		"%s -y @tencent-weixin/openclaw-weixin-cli install' >> /tmp/openclaw-wechat-install.log 2>&1; " ..
-		"RC=$?; echo $RC > /tmp/openclaw-wechat-install.exit; " ..
-		wechat_npm_fallback_install_cmd(install_path, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
+		wechat_npm_direct_install_cmd(install_path, "/tmp/openclaw-wechat-install.log", "/tmp/openclaw-wechat-install.exit") ..
 		wechat_register_plugin_cmd(install_path, node_bin, "/tmp/openclaw-wechat-install.log") ..
 		-- 关键修复: 升级完成后强制修复插件目录权限 (确保 Gateway 可读取插件)
 		-- 注意: 保持 root:root 属主 (OpenClaw v2026.4.9+ 安全要求)，仅修复权限模式
@@ -2052,8 +2093,6 @@ function action_wechat_upgrade_plugin()
 		oc_data, oc_data,
 		oc_data, oc_data, oc_data,
 		install_path, oc_data, oc_data, oc_data,
-		oc_data, oc_data, oc_data, oc_data,
-		install_path, install_path, npx_bin,
 		oc_data
 	)
 	sys.exec(upgrade_cmd)
@@ -2114,10 +2153,10 @@ function action_wechat_logout()
 
 	        -- 在后台执行 logout
         local logout_cmd = string.format(
-                openclaw_user_runner_cmd() .. "cd %s && _oc_as_openclaw 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw OPENCLAW_CONFIG_PATH=%s/.openclaw/openclaw.json " ..
+                openclaw_user_runner_cmd() .. "cd %s && _oc_as_openclaw 'HOME=%s OPENCLAW_HOME=%s OPENCLAW_STATE_DIR=%s/.openclaw OPENCLAW_CONFIG_PATH=%s/.openclaw/openclaw.json NODE_ICU_DATA=%s/node/share/icu " ..
                 "PATH=%s/node/bin:%s/global/bin:$PATH " ..
                 "%s %s channels logout --channel openclaw-weixin --account \"%s\"'",
-                oc_data, oc_data, oc_data, oc_data, oc_data, install_path, install_path, node_bin, oc_entry, account_id
+                oc_data, oc_data, oc_data, oc_data, oc_data, install_path, install_path, install_path, node_bin, oc_entry, account_id
         )
 
         sys.exec(logout_cmd .. " >/dev/null 2>&1")
