@@ -42,6 +42,12 @@
 - `.run` 安装器补齐运行依赖安装，避免精简固件缺少 GNU tar 时 Node.js `.tar.xz` 解压失败。
 - `openclaw-env setup` 改为先完整解压验证 Node.js，再替换正式目录；安装失败时保留已有运行目录，避免重装失败清空 `/opt/openclaw`。
 
+### 修复 Web 控制台连续对话
+
+- 启动 Gateway 前自动修补 OpenClaw 2026.6.11 的 WebChat 会话初始化冲突，避免 Web 控制台第一条能回答、第二条报 `reply session initialization conflicted`。
+- WebChat 会话不再因上一轮 assistant transcript 写入时间被误判为需要 rollover。
+- 当同一 sessionId 的 WebChat 写入在用户消息追加后发生 revision 变化时，自动合并当前 session entry 后继续提交。
+
 ### 验证
 
 - 通过 shell / Node / Lua 语法检查。
