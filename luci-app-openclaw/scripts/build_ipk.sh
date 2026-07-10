@@ -189,9 +189,9 @@ cat > "$CTRL_DIR/postinst" << 'EOF'
 		[ -e "$p" ] && chown -R root:root "$p" 2>/dev/null || true
 	done
 
-	# 升级/重装后修复已存在的 OpenClaw 运行数据权限。尤其是 npm 外部插件：
-	# npm 安装阶段需要 openclaw 可写，运行阶段插件源码目录必须 root:root，
-	# 否则 OpenClaw 会因为 suspicious ownership 拒绝加载微信插件。
+	# 升级/重装后修复已存在的 OpenClaw 运行数据权限。OpenClaw 2026.6.11
+	# 会以 openclaw 用户安装和清理 managed npm generations，因此 npm/projects
+	# 内的插件源码也必须保持 openclaw 可写。
 	OPENCLAW_INSTALL_BASE="$(uci -q get openclaw.main.install_path 2>/dev/null || echo /opt)"
 	if [ -r /usr/libexec/openclaw-paths.sh ]; then
 		. /usr/libexec/openclaw-paths.sh

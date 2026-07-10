@@ -1448,7 +1448,7 @@ configure_model() {
 			prompt_with_default "API Key" "" api_key
 			if [ -n "$api_key" ]; then
 				auth_set_apikey yiwanai "$api_key" "yiwanai:fan"
-				register_custom_provider yiwanai "https://api.910501.xyz/v1" "$api_key" "gpt-5.5" "gpt-5.5"
+				register_custom_provider yiwanai "https://api.910501.xyz/v1" "$api_key" "gpt-5.5" "gpt-5.5" 1000000 32000
 				_YW_PROV="yiwanai" "$NODE_BIN" -e "
 					const fs=require('fs');
 					let d={};

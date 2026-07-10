@@ -4,15 +4,31 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
 
+## [2.0.11] - 2026-07-10
+
+### 修复微信扫码后 Gateway 丢失插件
+
+- 微信安装、升级和登录前置检查改为使用官方 `plugins enable openclaw-weixin`、`plugins registry --refresh` 和 `plugins inspect` 完成闭环。
+- 只有官方 npm 安装记录、SQLite 注册表和微信 channel capability 全部验证通过后，LuCI 才返回安装成功。
+- 启动自愈不再删除 OpenClaw 官方生成的 `plugins.entries.openclaw-weixin`，并在 Gateway 启动前以 `openclaw` 用户刷新和验证注册表。
+- 修复扫码认证已保存，但 Gateway 重启后只加载 `memory-core` 并报 `invalid channels.start channel` 的问题。
+
+### 验证
+
+- 增加插件启用、SQLite 注册表刷新、加载能力校验和冷启动自愈的契约断言。
+
+---
+
 ## [2.0.10] - 2026-07-08
 
 ### 修复微信渠道配对
 
-- 启动 OpenClaw 时自动自愈微信 npm 插件注册，补齐 `plugins.installs.openclaw-weixin`、`plugins.allow` 和 `channels.openclaw-weixin.enabled`。
+- 适配 OpenClaw 2026.6.11 SQLite `installed_plugin_index`，微信安装与升级改用官方 `openclaw plugins install --pin` 写入插件索引。
+- 启动时检测旧 npm 直装目录并一次性迁移到官方插件索引，同时补齐 `plugins.allow` 和 `channels.openclaw-weixin.enabled`。
 - 微信安装、升级和登录流程增加 `https://ilinkai.weixin.qq.com` 连通性检查，日志直接显示 HTTP、TLS 或 timeout 结果。
 - 兼容没有 `su` / `runuser` 的 OpenWrt 固件，微信安装、升级、登录和下线改用 `start-stop-daemon` 兜底以 `openclaw` 用户执行。
 - 微信安装网络探测优先使用 `curl`，避免低内存/精简 musl 固件上 Node `fetch` 触发 undici Wasm OOM。
-- 微信官方 CLI 安装触发 undici Wasm OOM 时，自动改用 npm 直装到 OpenClaw `npm/projects` 并继续注册插件配置。
+- 不再只用 npm 直装并写入已废弃的 `plugins.installs`，避免扫码成功后配置保存导致插件注册丢失。
 - 微信插件安装/升级不再预先停止 Gateway，避免反复安装触发 procd crash-loop。
 - LuCI 状态页和 `status_service` 增强 procd 状态识别，能区分真实启动中、stale pidfile 和 crash-loop 抑制，不再误显示“正在启动”。
 - 微信登录前补充 Node、python3、插件目录、账号状态目录和配置写权限检查，并清理残留登录进程与旧二维码状态。
@@ -24,9 +40,13 @@
 
 - 新增统一权限修复工具 `openclaw-permissions.sh`。
 - 避免把整个 `OC_DATA` 或 `OC_STATE_DIR` 递归改成 `openclaw`。
-- `npm/projects` 保持 `openclaw` 可写，插件源码目录保持 `root:root 755`，避免 `EACCES` 和 `suspicious ownership` 互相打架。
-- retained npm generation 目录保持可清理，修复 Gateway 清理旧 generation 的权限报错。
+- `npm/projects` 及插件源码保持 `openclaw` 可写，匹配官方 managed npm generation 生命周期。
+- retained npm generation 目录保持可清理，修复 Gateway 清理旧 generation 时的 `EACCES`。
 - legacy `extensions` / `archived-extensions` 保持 root-owned，降低 OpenClaw 插件安全检查误报风险。
+
+### 更新一万AI分享粉丝专享 API
+
+- `gpt-5.5` 默认上下文声明调整为 1,000,000 tokens，单次请求的实际可用上限仍以上游 API 为准。
 
 ### 修复检测升级
 

@@ -61,6 +61,29 @@ _oc_fix_opt
 NODE_BIN="${NODE_BASE}/bin/node"
 CONFIG_FILE="${OC_DATA}/.openclaw/openclaw.json"
 
+run_openclaw_cli_as_user() {
+	local oc_entry="$1"
+	shift
+	local pid_file="/tmp/openclaw-cli-$$.pid"
+	local rc
+
+	[ -x "$NODE_BIN" ] || return 127
+	id -u openclaw >/dev/null 2>&1 || return 127
+	rm -f "$pid_file"
+	ulimit -v unlimited 2>/dev/null || true
+	ulimit -m unlimited 2>/dev/null || true
+	ulimit -d unlimited 2>/dev/null || true
+	HOME="$OC_DATA" OPENCLAW_HOME="$OC_DATA" OPENCLAW_STATE_DIR="${OC_DATA}/.openclaw" \
+		OPENCLAW_CONFIG_PATH="$CONFIG_FILE" NODE_ICU_DATA="${NODE_BASE}/share/icu" \
+		NPM_CONFIG_CACHE="${OC_DATA}/.npm" npm_config_cache="${OC_DATA}/.npm" TMPDIR="${OC_DATA}/.tmp" \
+		PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:$PATH" \
+		start-stop-daemon -S -m -p "$pid_file" -c openclaw:openclaw -d "$OC_INSTALL_PATH" \
+		-x "$NODE_BIN" -- "$oc_entry" "$@"
+	rc=$?
+	rm -f "$pid_file"
+	return "$rc"
+}
+
 get_oc_entry() {
 local search_dirs="${OC_GLOBAL}/lib/node_modules/openclaw
 ${OC_GLOBAL}/node_modules/openclaw
@@ -333,9 +356,6 @@ if(Array.isArray(d.plugins.allow)){
 		delete d.plugins[ns].weixin;
 	}
 });
-if(d.plugins.entries&&d.plugins.entries['openclaw-weixin']){
-	delete d.plugins.entries['openclaw-weixin'];
-}
 ['channel','channels'].forEach(ns=>{
 	if(d[ns]&&d[ns].weixin){
 		if(!d[ns]['openclaw-weixin'])d[ns]['openclaw-weixin']=d[ns].weixin;
@@ -392,34 +412,67 @@ fi
 	# 同步 UCI 到 JSON
 	sync_uci_to_json
 
-	# 微信 npm 插件自愈注册：
-	# 有些环境里 npm projects 已安装 @tencent-weixin/openclaw-weixin，
-	# 但 openclaw.json 缺少 plugins.installs / plugins.allow / channels 配置，
-	# 会导致页面显示“已安装”而 Gateway 或登录流程无法稳定加载插件。
+	# 微信 npm 插件自愈注册：OpenClaw 2026.6.11 已把安装记录从
+	# openclaw.json 的 plugins.installs 迁移到 SQLite installed_plugin_index。
+	# 所有官方 CLI 和 SQLite 注册表操作都以 openclaw 用户执行；完成配置写入后
+	# 强制 refresh 并检查 channel capability，避免重启后只加载 memory-core。
 	self_heal_wechat_npm_plugin_config() {
 		[ -x "$NODE_BIN" ] || return 0
 		[ -f "$CONFIG_FILE" ] || return 0
 		local npm_projects_dir="${OC_DATA}/.openclaw/npm/projects"
 		[ -d "$npm_projects_dir" ] || return 0
-		local wechat_plugin_json wechat_plugin_dir heal_out
+		local wechat_plugin_json heal_out index_ok inspect_ok config_ok inspect_file
 		wechat_plugin_json=$(find "$npm_projects_dir" -path "*/node_modules/@tencent-weixin/openclaw-weixin/openclaw.plugin.json" -type f 2>/dev/null | head -n 1)
 		[ -n "$wechat_plugin_json" ] || return 0
-		wechat_plugin_dir="${wechat_plugin_json%/openclaw.plugin.json}"
-		heal_out=$(OC_CONFIG="$CONFIG_FILE" OC_WECHAT_PLUGIN_DIR="$wechat_plugin_dir" "$NODE_BIN" -e "
+		inspect_file="/tmp/openclaw-wechat-self-heal.inspect"
+		rm -f "$inspect_file"
+		: > /tmp/openclaw-wechat-self-heal.log
+		index_ok=0
+		inspect_ok=0
+		config_ok=0
+		if run_openclaw_cli_as_user "$oc_entry" plugins inspect openclaw-weixin >"$inspect_file" 2>&1; then
+			grep -q '^Install:$' "$inspect_file" && grep -q '^Source: npm$' "$inspect_file" && index_ok=1
+			grep -q '^Status: loaded$' "$inspect_file" && grep -q '^channel: openclaw-weixin$' "$inspect_file" && inspect_ok=1
+		fi
+		OC_CONFIG="$CONFIG_FILE" "$NODE_BIN" -e "
+try {
+	const d=JSON.parse(require('fs').readFileSync(process.env.OC_CONFIG,'utf8'));
+	const ok=d.plugins&&Array.isArray(d.plugins.allow)&&d.plugins.allow.includes('openclaw-weixin')&&
+		d.plugins.entries&&d.plugins.entries['openclaw-weixin']&&d.plugins.entries['openclaw-weixin'].enabled===true&&
+		d.channels&&d.channels['openclaw-weixin']&&d.channels['openclaw-weixin'].enabled===true&&
+		!(d.plugins.installs&&d.plugins.installs['openclaw-weixin']);
+	process.exit(ok?0:1);
+} catch(e) { process.exit(1); }
+" >/dev/null 2>&1 && config_ok=1
+		if [ "$index_ok" = "1" ] && [ "$inspect_ok" = "1" ] && [ "$config_ok" = "1" ]; then
+			cat "$inspect_file" >> /tmp/openclaw-wechat-self-heal.log
+			logger -t openclaw "微信插件注册状态已有效，跳过重复刷新"
+			rm -f "$inspect_file"
+			return 0
+		fi
+		if [ "$index_ok" != "1" ]; then
+			logger -t openclaw "检测到旧微信直装目录，正在迁移到 SQLite 插件索引"
+			mkdir -p "${OC_DATA}/.npm" "${OC_DATA}/.tmp" 2>/dev/null || true
+			if run_openclaw_cli_as_user "$oc_entry" plugins install --force --pin '@tencent-weixin/openclaw-weixin@2.4.6' \
+				>>/tmp/openclaw-wechat-self-heal.log 2>&1; then
+				logger -t openclaw "微信插件已迁移到 SQLite installed_plugin_index"
+			else
+				logger -t openclaw "微信插件 SQLite 索引迁移失败，请查看 /tmp/openclaw-wechat-self-heal.log"
+				rm -f "$inspect_file"
+				return 0
+			fi
+		fi
+		heal_out=$(OC_CONFIG="$CONFIG_FILE" "$NODE_BIN" -e "
 const fs=require('fs');
 const p=process.env.OC_CONFIG;
-const pluginDir=process.env.OC_WECHAT_PLUGIN_DIR;
 let d={};
 try{d=JSON.parse(fs.readFileSync(p,'utf8'));}catch(e){}
 if(!d.plugins||typeof d.plugins!=='object')d.plugins={};
-if(!d.plugins.installs||typeof d.plugins.installs!=='object')d.plugins.installs={};
 if(!Array.isArray(d.plugins.allow))d.plugins.allow=[];
 if(!d.channels||typeof d.channels!=='object')d.channels={};
 let changed=false;
-const want={kind:'npm',installPath:pluginDir,packageName:'@tencent-weixin/openclaw-weixin'};
-const cur=d.plugins.installs['openclaw-weixin'];
-if(!cur||cur.kind!==want.kind||cur.installPath!==want.installPath||cur.packageName!==want.packageName){
-	d.plugins.installs['openclaw-weixin']=want; changed=true;
+if(d.plugins.installs&&d.plugins.installs['openclaw-weixin']){
+	delete d.plugins.installs['openclaw-weixin']; changed=true;
 }
 if(!d.plugins.allow.includes('openclaw-weixin')){
 	d.plugins.allow.push('openclaw-weixin'); changed=true;
@@ -430,9 +483,6 @@ if(!d.channels['openclaw-weixin']||typeof d.channels['openclaw-weixin']!=='objec
 if(d.channels['openclaw-weixin'].enabled!==true){
 	d.channels['openclaw-weixin'].enabled=true; changed=true;
 }
-if(d.plugins.entries&&d.plugins.entries['openclaw-weixin']){
-	delete d.plugins.entries['openclaw-weixin']; changed=true;
-}
 if(changed){
 	fs.writeFileSync(p,JSON.stringify(d,null,2)+'\n');
 	console.log('FIXED');
@@ -440,8 +490,29 @@ if(changed){
 " 2>/dev/null)
 		if echo "$heal_out" | grep -q "FIXED"; then
 			chown openclaw:openclaw "$CONFIG_FILE" 2>/dev/null || true
-			logger -t openclaw "已自愈注册 openclaw-weixin npm plugin: $wechat_plugin_dir"
+			logger -t openclaw "已自愈启用 openclaw-weixin channel"
 		fi
+		if ! run_openclaw_cli_as_user "$oc_entry" plugins enable openclaw-weixin \
+			>>/tmp/openclaw-wechat-self-heal.log 2>&1; then
+			logger -t openclaw "微信插件启用失败，请查看 /tmp/openclaw-wechat-self-heal.log"
+			rm -f "$inspect_file"
+			return 0
+		fi
+		if ! run_openclaw_cli_as_user "$oc_entry" plugins registry --refresh \
+			>>/tmp/openclaw-wechat-self-heal.log 2>&1; then
+			logger -t openclaw "微信插件注册表刷新失败，请查看 /tmp/openclaw-wechat-self-heal.log"
+			rm -f "$inspect_file"
+			return 0
+		fi
+		if run_openclaw_cli_as_user "$oc_entry" plugins inspect openclaw-weixin >"$inspect_file" 2>&1 && \
+			grep -q '^Status: loaded$' "$inspect_file" && grep -q '^channel: openclaw-weixin$' "$inspect_file"; then
+			cat "$inspect_file" >> /tmp/openclaw-wechat-self-heal.log
+			logger -t openclaw "微信插件 SQLite 注册表已刷新并通过加载验证"
+		else
+			cat "$inspect_file" >> /tmp/openclaw-wechat-self-heal.log 2>/dev/null || true
+			logger -t openclaw "微信插件加载验证失败，请查看 /tmp/openclaw-wechat-self-heal.log"
+		fi
+		rm -f "$inspect_file"
 	}
 	self_heal_wechat_npm_plugin_config
 

@@ -1,7 +1,8 @@
 #!/bin/sh
 # OpenClaw state permission helper.
-# Keep runtime state writable by the openclaw user, while keeping plugin source
-# directories root-owned for OpenClaw's official ownership checks.
+# Keep runtime state and managed npm plugin generations writable by the
+# openclaw user. OpenClaw 2026.6.11 installs and retires these generations
+# itself, so root-owned files under npm/projects break later cleanup.
 
 oc_perm_state_dir() {
 	if [ -n "${1:-}" ]; then
@@ -24,33 +25,16 @@ oc_perm_data_dir_from_state() {
 }
 
 oc_fix_npm_projects_permissions() {
-	local state_dir npm_projects plugin_json plugin_dir
+	local state_dir npm_projects
 	state_dir="$(oc_perm_state_dir "${1:-}")"
 	npm_projects="${state_dir}/npm/projects"
 	[ -d "$npm_projects" ] || return 0
 
-	# Gateway must be able to clean npm project generations.
+	# The official plugin installer runs as openclaw and the Gateway removes
+	# retired generations asynchronously. Keep the complete tree writable by
+	# that user, including plugin source files.
 	chown -R openclaw:openclaw "$npm_projects" 2>/dev/null || true
-	chmod u+rwx,go+rx "$npm_projects" 2>/dev/null || true
-
-	# Actual OpenClaw plugin roots must stay root-owned, otherwise OpenClaw refuses
-	# to load them with "suspicious ownership".
-	find "$npm_projects" -name openclaw.plugin.json -type f 2>/dev/null | while IFS= read -r plugin_json; do
-		plugin_dir="${plugin_json%/openclaw.plugin.json}"
-		case "$plugin_dir" in
-			*__openclaw-generation__*)
-				# Retained generation dirs are temporary and must remain removable by openclaw.
-				;;
-			"$npm_projects"/*/node_modules/*)
-				chown -R root:root "$plugin_dir" 2>/dev/null || true
-				chmod -R 755 "$plugin_dir" 2>/dev/null || true
-				;;
-		esac
-	done
-
-	# Compatibility for the WeChat plugin path even if its manifest scan fails.
-	find "$npm_projects" -path '*/node_modules/@tencent-weixin/openclaw-weixin' -type d -prune \
-		-exec chown -R root:root {} \; -exec chmod -R 755 {} \; 2>/dev/null || true
+	chmod -R u+rwX,go+rX "$npm_projects" 2>/dev/null || true
 }
 
 oc_fix_state_permissions() {
@@ -106,8 +90,7 @@ oc_prepare_openclaw_workdirs() {
 	chown openclaw:openclaw "$data_dir" "$state_dir" "${state_dir}/npm" "$npm_dir" 2>/dev/null || true
 	chmod u+rwx,go+rx "${data_dir}/.npm" "${data_dir}/.tmp" "$state_dir" "${state_dir}/npm" "$npm_dir" 2>/dev/null || true
 
-	# During install/upgrade, allow openclaw to update npm generations. Call
-	# fix-state after the install to restore plugin roots to root:root.
+	# During install/upgrade, allow openclaw to update npm generations.
 	[ -d "$npm_dir" ] && chown -R openclaw:openclaw "$npm_dir" 2>/dev/null || true
 }
 

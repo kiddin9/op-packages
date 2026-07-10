@@ -1277,7 +1277,7 @@ async function configureYiwanAIFanAPI() {
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey(providerName, apiKey, `${providerName}:fan`);
-  registerCustomProvider(providerName, baseUrl, apiKey, modelName, modelName);
+  registerCustomProvider(providerName, baseUrl, apiKey, modelName, modelName, 1000000, 32000);
   const config = readConfig();
   const provider = config.models?.providers?.[providerName];
   if (provider?.models?.[0]) {
