@@ -2,11 +2,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tun2socks
 PKG_VERSION:=2.6.0
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/xjasonlyu/tun2socks.git
-PKG_SOURCE_VERSION:=dda1b1058db86dd0ef40d1b007de0ce86cf16a46
+PKG_SOURCE_VERSION:=e8bd4553c483b1284bf30ca65544002f10f1ceeb
 
 PKG_MAINTAINER:=Konstantine Shevlakov <shevlako@132lan.ru>
 PKG_LICENSE:=GPL-3.0
