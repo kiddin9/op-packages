@@ -4456,6 +4456,16 @@ return view.extend({
 
 						uci.set('network', nameval, 'device', staDevice);
 					}
+					else if (hwtype == 'qcawifi' || hwtype == 'qcawificfg80211') {
+						const radioName = radioDev.getName();
+						const radioMatch = radioName.match(/^wifi(\d+)$/);
+						const radioVifs = uci.sections('wireless', 'wifi-iface')
+							.filter(section => section.device == radioName);
+						const vifIndex = radioVifs.findIndex(section => section['.name'] == section_id);
+
+						if (radioMatch && vifIndex >= 0)
+							uci.set('network', nameval, 'device', 'ath%s%s'.format(radioMatch[1], vifIndex || ''));
+					}
 
 					firewall.deleteNetwork(net.getName());
 
@@ -4540,7 +4550,8 @@ return view.extend({
 
 			if (bss.ssid != null) {
 				bssid = s2.option(form.Flag, 'bssid', _('Lock to BSSID'), _('Instead of joining any network with a matching SSID, only connect to the BSSID <code>%h</code>.').format(bss.bssid));
-				bssid.default = (uci.get('wireless', radioDev.getName(), 'type') == 'mt_dbdc') ? '1' : '0';
+				const radioType = uci.get('wireless', radioDev.getName(), 'type');
+				bssid.default = ['mt_dbdc', 'qcawifi', 'qcawificfg80211'].includes(radioType) ? '1' : '0';
 			}
 
 			zone = s2.option(widgets.ZoneSelect, 'zone', _('Create / Assign firewall-zone'), _('Choose the firewall zone you want to assign to this interface. Select <em>unspecified</em> to remove the interface from the associated zone or fill out the <em>custom</em> field to define a new zone and attach the interface to it.'));
