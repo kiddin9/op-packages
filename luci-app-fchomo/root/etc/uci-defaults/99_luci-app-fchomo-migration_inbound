@@ -1,6 +1,6 @@
 #!/bin/sh
-# Migration script for fchomo server
-# Used to migrate LuCI application server option.
+# Migration script for fchomo inbound
+# Used to migrate LuCI application inbound option.
 
 . /lib/functions.sh
 . /usr/share/libubox/jshn.sh
@@ -17,14 +17,6 @@ isDefined() {
 }
 
 migrate() {
-	# tuic_congestion_controller -> congestion_controller
-	if isDefined "$1" tuic_congestion_controller; then
-		local tuic_congestion_controller
-		config_get tuic_congestion_controller "$1" tuic_congestion_controller ""
-		uci_remove "$CONF" "$1" tuic_congestion_controller
-		uci_set "$CONF" "$1" congestion_controller "$tuic_congestion_controller"
-	fi
-
 	# tuic_max_idle_time -> max_idle_time
 	if isDefined "$1" tuic_max_idle_time; then
 		local tuic_max_idle_time
@@ -42,7 +34,7 @@ migrate() {
 	fi
 }
 
-config_foreach migrate server
+config_foreach migrate inbound
 
 uci_commit "$CONF"
 
