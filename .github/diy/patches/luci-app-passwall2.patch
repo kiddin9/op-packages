@@ -127,13 +127,13 @@
 
 --- a/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
 +++ b/luci-app-passwall2/luasrc/model/cbi/passwall2/client/global.lua
-@@ -544,5 +544,6 @@ footer.global_cfgid = global_cfgid
+@@ -387,5 +387,6 @@ footer.global_cfgid = global_cfgid
  footer.shunt_list = api.jsonc.stringify(shunt_list)
  
  m:append(footer)
 +m:append(Template(appname .. "/global/status_bottom"))
  
- return m
+ return api.return_map(m)
 
 diff --git a/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm b/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm
 new file mode 100644
@@ -269,15 +269,3 @@ index 000000000000..a00fff9c79b3
 +
 +window.addEventListener('resize', resize);
 +</script>
-
---- a/luci-app-passwall2/luasrc/passwall2/util_xray.lua
-+++ b/luci-app-passwall2/luasrc/passwall2/util_xray.lua
-@@ -176,7 +176,7 @@ function gen_outbound(flag, node, tag, proxy_table)
- 					serverName = node.tls_serverName,
- 					allowInsecure = (function()
- 								if node.tls_pinSHA256 and node.tls_pinSHA256 ~= "" then return nil end
--								if api.compare_versions(os.date("%Y.%m.%d"), "<", "2026.6.1") and node.tls_allowInsecure == "1" then return true end
-+								if node.tls_allowInsecure == "1" then return true end
- 							end)(),
- 					fingerprint = (node.type == "Xray" and node.utls == "1" and node.fingerprint and node.fingerprint ~= "") and node.fingerprint or nil,
- 					pinnedPeerCertSha256 = (function()
