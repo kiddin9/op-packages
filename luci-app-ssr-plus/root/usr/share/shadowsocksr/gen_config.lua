@@ -499,7 +499,10 @@ Xray.outbounds = {
 				fingerprint = server.fingerprint,
 				allowInsecure = (function()
 					if server.tls_CertSha and server.tls_CertSha ~= "" then return nil end
-					return server.insecure == "1"
+					if os.date("%Y.%m.%d") < "2026.06.01" then
+						return server.insecure == "1"
+					end
+					return nil
 				end)(),
 				serverName = server.tls_host,
 				certificates = server.certificate and {
