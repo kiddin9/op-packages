@@ -271,21 +271,6 @@ index 000000000000..a00fff9c79b3
  rm -f /tmp/luci-indexcache /tmp/luci-indexcache.*
  rm -rf /tmp/luci-modulecache/
 
---- a/luci-app-ssr-plus/root/usr/share/shadowsocksr/gen_config.lua
-+++ b/luci-app-ssr-plus/root/usr/share/shadowsocksr/gen_config.lua
-@@ -389,10 +389,7 @@ Xray.outbounds = {
- 				fingerprint = server.fingerprint,
- 				allowInsecure = (function()
- 					if server.tls_CertSha and server.tls_CertSha ~= "" then return nil end
--					if os.date("%Y.%m.%d") < "2026.06.01" then
--						return server.insecure == "1"
--					end
--					return nil
-+					return server.insecure == "1"
- 				end)(),
- 				serverName = server.tls_host,
- 				certificates = server.certificate and {
-
 --- a/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua
 +++ b/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client-config.lua
 @@ -1456,11 +1456,9 @@ o:depends("type", "tuic")
