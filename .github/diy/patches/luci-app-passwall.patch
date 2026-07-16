@@ -256,7 +256,7 @@
  m:append(footer)
 +m:append(Template(appname .. "/global/status_bottom"))
  
- return m
+ return api.return_map(m)
 
 new file mode 100644
 index 000000000000..a00fff9c79b3
