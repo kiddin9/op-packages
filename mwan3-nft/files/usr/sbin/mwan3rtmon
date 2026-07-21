@@ -1,0 +1,684 @@
+#!/usr/bin/env ucode
+'use strict';
+
+import * as rtnl from "rtnl";
+import * as uloop from "uloop";
+import * as uci from "uci";
+import * as ubus from "ubus";
+import { open, readfile, popen, stat } from "fs";
+
+const RTM_NEWROUTE = rtnl.const.RTM_NEWROUTE;
+const RTM_DELROUTE = rtnl.const.RTM_DELROUTE;
+const RTM_GETROUTE = rtnl.const.RTM_GETROUTE;
+const NLM_F_DUMP = rtnl.const.NLM_F_DUMP;
+const NLM_F_CREATE = rtnl.const.NLM_F_CREATE;
+const NLM_F_REPLACE = rtnl.const.NLM_F_REPLACE;
+const RT_TABLE_MAIN = rtnl.const.RT_TABLE_MAIN;
+const AF_INET = rtnl.const.AF_INET;
+const AF_INET6 = rtnl.const.AF_INET6;
+const RTNLGRP_IPV4_ROUTE = rtnl.const.RTNLGRP_IPV4_ROUTE;
+const RTNLGRP_IPV6_ROUTE = rtnl.const.RTNLGRP_IPV6_ROUTE;
+
+const MWAN3TRACK_STATUS_DIR = "/var/run/mwan3track";
+const ROUTE_FIELDS = ["dst", "gateway", "oif", "prefsrc", "priority", "scope", "type", "tos", "metrics"];
+const DEBOUNCE_MS = 100;
+
+let family_name, family_num, rtnl_group;
+let mmx_mask;
+let source_routing;
+let extra_table_set = {};   // { table_id: true } for O(1) lookup
+let dev_table_map = {};     // { device_name: table_id }
+let iface_list = [];        // [ { name, family, tid, enabled, has_tracking } ]
+let active_chains = {};     // { chain_name: true } cached from nft
+let connected_timer = null;       // debounce timer for connected set rebuilds
+let last_connected_fingerprint = ""; // sorted element list from last populate call
+let ubus_conn;
+
+// ---------------------------------------------------------------------------
+// Logging
+// ---------------------------------------------------------------------------
+
+function log_msg(level, msg) {
+
+	warn(`mwan3rtmon[${family_name}] ${level}: ${msg}\n`);
+}
+
+// ---------------------------------------------------------------------------
+// Config loading
+// ---------------------------------------------------------------------------
+
+function load_config() {
+
+	let cur = uci.cursor();
+	cur.load("mwan3");
+
+	// MMX mask
+
+	mmx_mask = cur.get("mwan3", "globals", "mmx_mask") ?? "0x3F00";
+	mmx_mask = +mmx_mask;
+
+	// Source routing option
+
+	source_routing = +(cur.get("mwan3", "globals", "source_routing") ?? "0");
+
+	// Extra lookup tables
+
+	extra_table_set = {};
+	let rt_tables = cur.get("mwan3", "globals", "rt_table_lookup");
+	if (type(rt_tables) == "array") {
+		for (let t in rt_tables)
+			extra_table_set[+t] = true;
+	} else if (rt_tables != null) {
+		extra_table_set[+rt_tables] = true;
+	}
+
+	// Build interface list with table IDs
+
+	iface_list = [];
+	let tid = 0;
+	cur.foreach("mwan3", "interface", function(s) {
+		tid++;
+		let ifname = s[".name"];
+		let fam = s.family ?? "ipv4";
+		let enabled = +(s.enabled ?? "0");
+		let track_ip = s.track_ip;
+		let track_gateway = +(s.track_gateway ?? "0");
+		let has_tracking = track_gateway ||
+			(track_ip != null &&
+			!(type(track_ip) == "array" && length(track_ip) == 0));
+		push(iface_list, {
+			name: ifname,
+			family: fam,
+			tid: tid,
+			enabled: enabled,
+			has_tracking: has_tracking,
+		});
+	});
+
+	cur.unload("mwan3");
+}
+
+// ---------------------------------------------------------------------------
+// Device -> table ID mapping (via ubus)
+// ---------------------------------------------------------------------------
+
+function build_dev_table_map() {
+
+	dev_table_map = {};
+
+	if (!ubus_conn)
+		return;
+
+	let dump = ubus_conn.call("network.interface", "dump");
+	if (!dump || !dump.interface)
+		return;
+
+	// Build name->tid lookup for enabled interfaces in this family
+
+	let name_tid = {};
+	for (let iface in iface_list) {
+		if (iface.enabled && iface.family == family_name)
+			name_tid[iface.name] = iface.tid;
+	}
+
+	for (let intf in dump.interface) {
+		let tid = name_tid[intf.interface];
+		if (tid != null && intf.l3_device)
+			dev_table_map[intf.l3_device] = tid;
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Cached nft chain existence check
+// ---------------------------------------------------------------------------
+
+function refresh_active_chains() {
+
+	active_chains = {};
+	let p = popen("nft -j list chains inet 2>/dev/null");
+	if (!p)
+		return;
+	let out = p.read("all");
+	p.close();
+	if (!out)
+		return;
+
+	let data;
+	try { data = json(out); } catch(e) { return; }
+	if (!data || !data.nftables)
+		return;
+
+	for (let item in data.nftables) {
+		if (item.chain && item.chain.table == "mwan3")
+			active_chains[item.chain.name] = true;
+	}
+}
+
+function is_iface_nft_active(ifname) {
+
+	return !!active_chains["mwan3_iface_in_" + ifname];
+}
+
+function get_active_tids() {
+
+	let tids = {};
+	for (let iface in iface_list) {
+		if (iface.family != family_name)
+			continue;
+		if (is_iface_nft_active(iface.name))
+			tids[iface.tid] = iface.name;
+	}
+	return tids;
+}
+
+// ---------------------------------------------------------------------------
+// Check mwan3track status for an interface
+// ---------------------------------------------------------------------------
+
+function get_track_status(ifname) {
+
+	let iface = null;
+	for (let i in iface_list) {
+		if (i.name == ifname) { iface = i; break; }
+	}
+	if (!iface || !iface.has_tracking)
+		return "disabled";
+
+	let pid = trim(readfile(MWAN3TRACK_STATUS_DIR + "/" + ifname + "/PID") ?? "");
+	if (pid == "")
+		return "down";
+
+	let cmdline = readfile("/proc/" + pid + "/cmdline");
+	if (cmdline == null)
+		return "down";
+
+	let started = trim(readfile(MWAN3TRACK_STATUS_DIR + "/" + ifname + "/STARTED") ?? "");
+	if (started == "1")
+		return "active";
+	else if (started == "0")
+		return "paused";
+
+	return "down";
+}
+
+// ---------------------------------------------------------------------------
+// nft helpers
+// ---------------------------------------------------------------------------
+
+function nft_exec(cmd) {
+
+	let p = popen("nft " + cmd + " 2>&1");
+	if (!p)
+		return false;
+	let out = p.read("all");
+	let rc = p.close();
+	if (rc != 0) {
+		log_msg("warn", "nft failed: nft " + cmd + " - " + (out ?? ""));
+		return false;
+	}
+	return true;
+}
+
+function nft_batch(cmds) {
+
+	let tmpfile = "/var/run/mwan3/mwan3rtmon_nft_batch";
+	let f = open(tmpfile, "w", 0600);
+	if (!f) {
+		log_msg("warn", "cannot open nft batch file");
+		return false;
+	}
+	for (let cmd in cmds)
+		f.write(cmd + "\n");
+	f.close();
+
+	let p = popen("nft -f " + tmpfile + " 2>&1");
+	if (!p)
+		return false;
+	let out = p.read("all");
+	let rc = p.close();
+	if (rc != 0) {
+		log_msg("warn", "nft batch failed: " + (out ?? ""));
+		return false;
+	}
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Route helpers
+// ---------------------------------------------------------------------------
+
+// Build a route object for adding to a per-interface table.
+// Copies only the relevant fields, sets the target table.
+// Strips src if source_routing is disabled.
+
+function build_route_for_table(route, tid) {
+
+	let r = { family: route.family, table: tid };
+
+	for (let f in ROUTE_FIELDS)
+		if (route[f] != null)
+			r[f] = route[f];
+
+	// tos=0 is default, omit it
+	if (r.tos == 0)
+		delete r.tos;
+
+	// Strip src (source-based routing prefix) unless source_routing is enabled
+	if (source_routing && route.src != null)
+		r.src = route.src;
+
+	return r;
+}
+
+// Apply a route add or delete to a per-interface table
+
+function apply_route_to_table(route, tid, is_new) {
+
+	let r = build_route_for_table(route, tid);
+	if (is_new) {
+		rtnl.request(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_REPLACE, r);
+		let err = rtnl.error();
+		if (err)
+			log_msg("warn", "failed to add route to table " +
+				tid + ": " + err);
+	} else {
+		rtnl.request(RTM_DELROUTE, 0, r);
+	}
+}
+
+// Check if a route is a CIDR (has a prefix length < max for address family)
+
+function is_cidr_route(route) {
+
+	let dst = route.dst;
+	if (dst == null)
+		return false;
+
+	let slash = index(dst, "/");
+	if (slash < 0)
+		return false;
+
+	let prefix_len = +substr(dst, slash + 1);
+	if (family_num == AF_INET)
+		return (prefix_len < 32);
+	else
+		return (prefix_len < 128);
+}
+
+// Check if a route is a default route
+
+function is_default_route(route) {
+
+	return (route.dst == null ||
+	        route.dst == "0.0.0.0/0" ||
+	        route.dst == "::/0");
+}
+
+// Check if route is link-local (fe80::/10 IPv6 or 169.254.0.0/16 IPv4)
+
+function is_linklocal_route(route) {
+
+	return (route.dst != null &&
+	        (match(route.dst, /^fe80::\//) != null ||
+	         match(route.dst, /^169\.254\./) != null));
+}
+
+// Get all routes from main table (and extra lookup tables) via netlink
+
+function get_all_routes() {
+
+	let routes = rtnl.request(RTM_GETROUTE, NLM_F_DUMP,
+		{ family: family_num }) ?? [];
+
+	// Filter to main table + extra lookup tables (O(1) set lookup)
+
+	let result = [];
+	for (let r in routes) {
+		if (r.table == RT_TABLE_MAIN || extra_table_set[r.table])
+			push(result, r);
+	}
+
+	return result;
+}
+
+// Check if a route still exists in the main table (for delete event verification)
+
+function route_still_exists(route) {
+
+	let routes = rtnl.request(RTM_GETROUTE, NLM_F_DUMP,
+		{ family: family_num }) ?? [];
+
+	for (let r in routes) {
+		if (r.table != RT_TABLE_MAIN)
+			continue;
+		if (r.dst == route.dst && r.oif == route.oif &&
+		    r.gateway == route.gateway && r.priority == route.priority)
+			return true;
+	}
+	return false;
+}
+
+// ---------------------------------------------------------------------------
+// Populate connected set (nft)
+// ---------------------------------------------------------------------------
+
+function populate_connected_set() {
+
+	let routes = get_all_routes();
+	let setname = (family_num == AF_INET)
+		? "mwan3_connected_v4" : "mwan3_connected_v6";
+
+	let seen = {};
+	let elements = [];
+	for (let route in routes) {
+		if (is_cidr_route(route) && !is_default_route(route) && !is_linklocal_route(route) && !seen[route.dst]) {
+			push(elements, route.dst);
+			seen[route.dst] = true;
+		}
+	}
+
+	if (family_num == AF_INET)
+		push(elements, "224.0.0.0/3");
+
+	sort(elements);
+	let fingerprint = join(",", elements);
+	if (fingerprint == last_connected_fingerprint)
+		return;
+	last_connected_fingerprint = fingerprint;
+
+	let cmds = [ "flush set inet mwan3 " + setname ];
+
+	if (length(elements) > 0)
+		push(cmds, "add element inet mwan3 " + setname +
+			" { " + join(", ", elements) + " }");
+
+	nft_batch(cmds);
+}
+
+// ---------------------------------------------------------------------------
+// Populate per-interface routing tables
+// ---------------------------------------------------------------------------
+
+function populate_iface_routes() {
+
+	build_dev_table_map();
+	refresh_active_chains();
+
+	let routes = get_all_routes();
+	let active_tids = get_active_tids();
+
+	if (length(keys(active_tids)) == 0)
+		return;
+
+	for (let route in routes) {
+		let dev = route.oif;
+		let target_tid = (dev != null) ? dev_table_map[dev] : null;
+
+		if (target_tid != null) {
+
+			// Route has a device that maps to a specific interface table
+
+			if (active_tids["" + target_tid] != null) {
+				let r = build_route_for_table(route, target_tid);
+				rtnl.request(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_REPLACE, r);
+			}
+
+		} else if (!is_default_route(route) && !is_linklocal_route(route)) {
+
+			// Broadcast to all active interface tables
+
+			for (let tid_str in keys(active_tids)) {
+				let r = build_route_for_table(route, +tid_str);
+				rtnl.request(RTM_NEWROUTE, NLM_F_CREATE | NLM_F_REPLACE, r);
+			}
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Repopulate mwan3_custom set from extra_table_set (used on SIGHUP reload)
+// ---------------------------------------------------------------------------
+
+function repopulate_custom_sets() {
+
+	let setname = (family_num == AF_INET) ? "mwan3_custom_v4" : "mwan3_custom_v6";
+
+	if (length(keys(extra_table_set)) == 0) {
+		nft_exec("flush set inet mwan3 " + setname);
+		return;
+	}
+
+	let routes = rtnl.request(RTM_GETROUTE, NLM_F_DUMP, { family: family_num }) ?? [];
+
+	let cmds = [ "flush set inet mwan3 " + setname ];
+	let seen = {};
+	for (let r in routes) {
+		if (!extra_table_set[r.table])
+			continue;
+		let dst = r.dst;
+		if (dst == null || is_default_route(r) || is_linklocal_route(r))
+			continue;
+		if (!seen[dst]) {
+			push(cmds, "add element inet mwan3 " + setname + " { " + dst + " }");
+			seen[dst] = true;
+		}
+	}
+	nft_batch(cmds);
+}
+
+// ---------------------------------------------------------------------------
+// Handle rt_table_lookup route events -> mwan3_custom set
+// ---------------------------------------------------------------------------
+
+// Called when a route is added to or removed from a table listed in
+// rt_table_lookup.  Mirrors the change into mwan3_custom_v4/v6 so that
+// destinations reachable via those tables receive MMX_DEFAULT and bypass
+// mwan3's WAN policy selection.  Default and link-local routes are skipped.
+
+function handle_custom_set_event(route, is_new) {
+
+	let dst = route.dst;
+	if (dst == null || is_default_route(route) || is_linklocal_route(route))
+		return;
+
+	let setname = (family_num == AF_INET) ? "mwan3_custom_v4" : "mwan3_custom_v6";
+
+	if (is_new) {
+		log_msg("debug", "rt_table_lookup: adding " + dst + " to " + setname);
+		nft_exec("add element inet mwan3 " + setname + " { " + dst + " }");
+	} else {
+		log_msg("debug", "rt_table_lookup: removing " + dst + " from " + setname);
+		nft_exec("delete element inet mwan3 " + setname + " { " + dst + " }");
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Handle route events
+// ---------------------------------------------------------------------------
+
+function handle_route_event(event) {
+
+	let cmd = event.cmd;
+	let route = event.msg;
+
+	// Routes in rt_table_lookup tables are mirrored into mwan3_custom_v4/v6.
+
+	if (extra_table_set[route.table]) {
+		handle_custom_set_event(route, cmd == RTM_NEWROUTE);
+		return;
+	}
+
+	// Only handle main table routes
+
+	if (route.table != RT_TABLE_MAIN)
+		return;
+
+	let is_new = (cmd == RTM_NEWROUTE);
+
+	log_msg("debug", (is_new ? "new" : "del") + " route: dst=" +
+		(route.dst ?? "default") + " dev=" + (route.oif ?? "none") +
+		" gw=" + (route.gateway ?? "none"));
+
+	// -- Update connected set --
+	// Both adds and deletes are debounced through populate_connected_set so
+	// that bursts of RTM_NEWROUTE updates for already-present prefixes (common
+	// with IPv6 PD address renewal) do not spawn a rapid stream of nft calls.
+	// The fingerprint in populate_connected_set makes repeated identical calls
+	// cheap when nothing has actually changed.
+
+	if (is_cidr_route(route)) {
+		if (!connected_timer)
+			connected_timer = uloop.timer(DEBOUNCE_MS, () => {
+				populate_connected_set();
+				connected_timer = null;
+			});
+		else
+			connected_timer.set(DEBOUNCE_MS);
+	}
+
+	// -- Update per-interface routing tables --
+
+	build_dev_table_map();
+	refresh_active_chains();
+
+	// For delete events, verify the route is actually gone
+
+	if (!is_new && route_still_exists(route)) {
+		log_msg("debug", "deleted but route still exists: " +
+			(route.dst ?? "default"));
+		return;
+	}
+
+	let active_tids = get_active_tids();
+
+	let dev = route.oif;
+	let target_tid = (dev != null) ? dev_table_map[dev] : null;
+
+	if (target_tid != null) {
+
+		// Device-matched route: add to specific interface table
+		// (no track status check, matching shell behavior)
+
+		if (active_tids["" + target_tid] == null)
+			return;
+
+		apply_route_to_table(route, target_tid, is_new);
+
+	} else if (!is_default_route(route) &&
+	           !is_linklocal_route(route)) {
+
+		// Broadcast to all active interface tables
+
+		for (let tid_str in keys(active_tids)) {
+			let tid = +tid_str;
+			let ifname = active_tids[tid_str];
+
+			let status = get_track_status(ifname);
+			if (status != "active" && status != "disabled") {
+				log_msg("debug", "interface " + ifname +
+					" is " + status + " - skipping");
+				continue;
+			}
+
+			apply_route_to_table(route, tid, is_new);
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+function main() {
+
+	// Parse args
+
+	family_name = ARGV[0] ?? "ipv4";
+
+	if (family_name == "ipv6") {
+		if (stat("/proc/sys/net/ipv6") == null) {
+			log_msg("warn",
+				"started for ipv6, but ipv6 not enabled on system");
+			exit(1);
+		}
+		family_num = AF_INET6;
+		rtnl_group = RTNLGRP_IPV6_ROUTE;
+	} else {
+		family_name = "ipv4";
+		family_num = AF_INET;
+		rtnl_group = RTNLGRP_IPV4_ROUTE;
+	}
+
+	load_config();
+
+	// Connect to ubus
+
+	ubus_conn = ubus.connect();
+	if (!ubus_conn) {
+		log_msg("warn", "failed to connect to ubus");
+		exit(1);
+	}
+
+	uloop.init();
+
+	// Bind the route listener first so its multicast socket is bound
+	// to the route group before any initial dumps run. Route changes
+	// emitted during the dump phase are then queued on the listener
+	// socket and processed when uloop.run() begins, rather than being
+	// lost to a subscribe-vs-dump race.
+
+	log_msg("debug", "creating route listener for " + family_name);
+	let route_listener = rtnl.listener(
+		handle_route_event,
+		[ RTM_NEWROUTE, RTM_DELROUTE ],
+		[ rtnl_group ]
+	);
+
+	if (!route_listener) {
+		log_msg("warn", "failed to create route listener: " +
+			rtnl.error());
+		exit(1);
+	}
+
+	// Initial population, dump-driven. With the listener already
+	// bound, any concurrent route changes will be delivered as deltas
+	// once uloop.run() begins.
+
+	log_msg("debug", "populating initial custom sets");
+	repopulate_custom_sets();
+
+	log_msg("debug", "populating initial connected set");
+	populate_connected_set();
+
+	log_msg("debug", "populating initial per-interface routes");
+	populate_iface_routes();
+
+	// Signal handlers for clean shutdown
+
+	uloop.signal("SIGTERM", () => {
+		log_msg("debug", "received SIGTERM, exiting");
+		uloop.end();
+	});
+
+	uloop.signal("SIGINT", () => {
+		log_msg("debug", "received SIGINT, exiting");
+		uloop.end();
+	});
+
+	uloop.signal("SIGHUP", () => {
+		log_msg("debug", "received SIGHUP, reloading config");
+		load_config();
+		repopulate_custom_sets();
+	});
+
+	log_msg("debug", "entering event loop");
+	uloop.run();
+
+	// Do not call route_listener.close() — ucode-mod-rtnl bug: explicit close
+	// zeroes the resource data pointer while the variable still holds a
+	// reference; the destructor is then called again with NULL on scope exit,
+	// causing a segfault. Let the GC collect the listener naturally instead.
+	log_msg("debug", "exiting cleanly");
+}
+
+main();

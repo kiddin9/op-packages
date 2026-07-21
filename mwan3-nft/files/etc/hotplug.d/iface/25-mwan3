@@ -1,0 +1,92 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /lib/functions/network.sh
+. /lib/mwan3/mwan3.sh
+
+initscript=/etc/init.d/mwan3
+. /lib/functions/procd.sh
+
+
+SCRIPTNAME="mwan3-hotplug"
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || [ "$ACTION" = "connected" ] || [ "$ACTION" = "disconnected" ] || exit 1
+[ -n "$INTERFACE" ] || exit 2
+[ "$FIRSTCONNECT" = "1" ] || [ "$MWAN3_SHUTDOWN" = "1" ] && exit 0
+
+if { [ "$ACTION" = "ifup" ] || [ "$ACTION" = "connected" ] ; } && [ -z "$DEVICE" ]; then
+	LOG notice "$ACTION called on $INTERFACE with no device set"
+	exit 3
+fi
+
+[ "$MWAN3_STARTUP" = "init" ] || procd_lock
+
+# Exit silently if the nft table is not yet set up. This covers the boot
+# race where an external ifup hotplug fires before start_service completes,
+# and the case where mwan3 has been manually stopped. Checked before
+# mwan3_init to avoid recreating /var/run/mwan3 as a side effect, which
+# would corrupt the stopped-service indicator. start_service handles all
+# interface setup itself via its own mwan3_ifup calls.
+$NFT list chain inet mwan3 mwan3_prerouting &>/dev/null || exit 0
+
+mwan3_init
+
+if [ "$MWAN3_STARTUP" != "init" ] && [ "$ACTION" = "ifup" ]; then
+	mwan3_set_user_iface_rules $INTERFACE $DEVICE
+fi
+
+config_get_bool enabled $INTERFACE 'enabled' '0'
+[ "${enabled}" -eq 1 ] || {
+	LOG notice "mwan3 hotplug on $INTERFACE not called because interface disabled"
+	exit 0
+}
+
+config_get initial_state $INTERFACE initial_state "online"
+if [ "$initial_state" = "offline" ]; then
+	readfile status $MWAN3TRACK_STATUS_DIR/$INTERFACE/STATUS 2>/dev/null || status="unknown"
+	[ "$status" = "online" ] || status=offline
+else
+	status=online
+fi
+
+LOG notice "Execute $ACTION event on interface $INTERFACE (${DEVICE:-unknown})"
+
+case "$ACTION" in
+	connected)
+		mwan3_set_iface_hotplug_state $INTERFACE "online"
+		mwan3_create_iface_nft $INTERFACE $DEVICE
+		mwan3_set_policies_nft
+		mwan3_flush_unreplied_conntrack
+		;;
+	ifup)
+		mwan3_update_peer_track_ip $INTERFACE
+		mwan3_create_iface_nft $INTERFACE $DEVICE
+		mwan3_create_iface_rules $INTERFACE $DEVICE
+		mwan3_create_iface_route $INTERFACE $DEVICE
+		mwan3_set_iface_hotplug_state $INTERFACE "$status"
+		if [ "$MWAN3_STARTUP" != "init" ]; then
+			mwan3_set_general_rules
+			if [ "$status" = "online" ]; then
+				mwan3_set_policies_nft
+				mwan3_flush_unreplied_conntrack
+			fi
+		fi
+		[ "$ACTION" = ifup ] && procd_running mwan3 "track_$INTERFACE" && procd_send_signal mwan3 "track_$INTERFACE" USR2
+		;;
+	disconnected)
+		mwan3_set_iface_hotplug_state $INTERFACE "offline"
+		mwan3_set_policies_nft
+		;;
+	ifdown)
+		mwan3_set_iface_hotplug_state $INTERFACE "offline"
+		mwan3_delete_iface_map_entries $INTERFACE
+		mwan3_delete_iface_rules $INTERFACE
+		mwan3_delete_iface_route $INTERFACE
+		mwan3_delete_iface_nft $INTERFACE
+		procd_running mwan3 "track_$INTERFACE" && procd_send_signal mwan3 "track_$INTERFACE" USR1
+		mwan3_set_policies_nft
+	;;
+esac
+
+mwan3_flush_conntrack "$INTERFACE" "$ACTION"
+
+exit 0

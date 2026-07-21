@@ -1,0 +1,316 @@
+#!/bin/sh /etc/rc.common
+
+. "${IPKG_INSTROOT}/lib/functions/network.sh"
+. "${IPKG_INSTROOT}/lib/mwan3/mwan3.sh"
+
+START=20
+USE_PROCD=1
+SCRIPTNAME="mwan3-init"
+
+service_running() {
+	[ -d "$MWAN3_STATUS_DIR" ]
+}
+
+start_tracker() {
+	local enabled interface track_gateway
+	interface=$1
+	config_get_bool enabled $interface 'enabled' '0'
+	[ $enabled -eq 0 ] && return
+
+	# Write gateway IP to state file for point-to-point interfaces
+	mwan3_update_peer_track_ip "$interface"
+
+	# Start tracker if there are tracking IPs or track_gateway may provide one
+	if [ -z "$(config_get $interface track_ip)" ]; then
+		config_get_bool track_gateway "$interface" track_gateway 0
+		[ "$track_gateway" -eq 1 ] || return
+	fi
+
+	procd_open_instance "track_${1}"
+	procd_set_param command /usr/sbin/mwan3track $interface
+	procd_set_param respawn
+	procd_close_instance
+}
+
+start_service() {
+	local enabled hotplug_pids
+
+	mwan3_init
+
+	local _any_enabled=0
+	_check_iface_enabled() {
+		local _e
+		config_get_bool _e "$1" enabled 0
+		[ "$_e" -eq 1 ] && _any_enabled=1
+	}
+	config_foreach _check_iface_enabled interface
+	[ "$_any_enabled" -eq 0 ] && return 0
+
+	# Load the standalone mwan3 nftables table skeleton. This creates
+	# (or atomically re-creates) `table inet mwan3` with its base chains
+	# and sets. Must succeed before any `nft add ... inet mwan3 ...`
+	# call, since those would otherwise silently paper over a missing
+	# table. Abort start if the skeleton cannot load.
+	if ! nft -f /lib/mwan3/mwan3-skeleton.nft; then
+		LOG error "failed to load /lib/mwan3/mwan3-skeleton.nft; aborting start"
+		return 1
+	fi
+
+	mwan3_ensure_nft_framework
+	mwan3_render_config_ipsets
+	mwan3_write_dnsmasq_fragments
+	config_foreach start_tracker interface
+
+	mwan3_update_iface_to_table
+	mwan3_set_dynamic_sets
+	mwan3_set_connected_sets
+	mwan3_set_custom_sets
+	mwan3_set_general_rules
+	config_foreach mwan3_ifup interface "init"
+	wait $hotplug_pids
+	mwan3_set_general_nft
+	mwan3_set_policies_nft
+	mwan3_set_user_rules
+	mwan3_flush_stale_conntrack
+	mwan3_dnsmasq_hup
+
+	# If software flow offloading is active, flush all conntrack entries so
+	# existing flows re-establish under the new policy rules immediately rather
+	# than continuing to use stale flowtable-cached routing decisions.
+	if [ "$(uci -q get firewall.@defaults[0].flow_offloading)" = "1" ] && \
+	   [ -e "$CONNTRACK_FILE" ]; then
+		echo f > "$CONNTRACK_FILE"
+		LOG info "Connection tracking flushed on start (software flow offloading active)"
+	fi
+
+	procd_open_instance rtmon_ipv4
+	procd_set_param command /usr/sbin/mwan3rtmon ipv4
+	procd_set_param respawn
+	procd_close_instance
+
+	if [ $NO_IPV6 -eq 0 ]; then
+		procd_open_instance rtmon_ipv6
+		procd_set_param command /usr/sbin/mwan3rtmon ipv6
+		procd_set_param respawn
+		procd_close_instance
+	fi
+}
+
+stop_service() {
+	service_running || exit 0
+
+	# Stop mwan3track instances before tearing down routing
+	# infrastructure. procd sends TERM only after stop_service returns,
+	# so without this the trackers keep pinging while ip rules and nft
+	# chains are deleted underneath them, producing spurious failure logs.
+	# Uses procd_kill (not direct kill) so procd marks the instances as
+	# stopped and does not trigger respawn.
+	local _f _iface _killed=""
+	for _f in "$MWAN3TRACK_STATUS_DIR"/*/PID; do
+		[ -f "$_f" ] || continue
+		_iface="${_f%/PID}"
+		_iface="${_iface##*/}"
+		procd_kill mwan3 "track_$_iface" && _killed=1
+	done
+	[ -n "$_killed" ] && sleep 1
+
+	local chain_name IP family table tid
+
+	mwan3_init
+	config_foreach mwan3_interface_shutdown interface
+
+	for family in ipv4 ipv6; do
+		if [ "$family" = "ipv4" ]; then
+			IP="$IP4"
+		elif [ "$family" = "ipv6" ]; then
+			[ $NO_IPV6 -ne 0 ] && continue
+			IP="$IP6"
+		fi
+
+		for tid in $($IP route list table all | sed -ne 's/.*table \([0-9]\+\).*/\1/p' | sort -u); do
+			[ $tid -gt $MWAN3_INTERFACE_MAX ] && continue
+			$IP route flush table $tid &> /dev/null
+		done
+
+		# Delete ip rules created by this mwan3 instance. A rule must pass
+		# both gates before it is deleted:
+		#   priority gate -- the priority lies in one of mwan3's three
+		#     configured rule-base ranges (iif, fwmark, unreachable). The
+		#     fwmark range extends to fwmark_base + MM_UNREACHABLE to cover
+		#     the global blackhole and unreachable rules at fwmark_base +
+		#     MM_BLACKHOLE / MM_UNREACHABLE.
+		#   content gate -- the line either references a mwan3-owned routing
+		#     table (lookup <N> with N in 1..MWAN3_INTERFACE_MAX) or carries
+		#     an fwmark masked by mwan3's MMX_MASK. The priority gate alone
+		#     was the original bug: it deleted any rule in the band, which
+		#     is also why an admin override or another package's rule placed
+		#     in the same band could be wiped.
+		# Both gates are derived from values mwan3_init reads back from
+		# /var/run/mwan3/mmx_mask and /var/state/mwan3 (set at start_service
+		# time), so they reflect what the running instance created, not
+		# whatever is currently in /etc/config/mwan3.
+		local line pref tbl iif_min iif_max fw_min fw_max ur_min ur_max mask
+		iif_min=$((MWAN3_IIF_RULE_BASE + 1))
+		iif_max=$((MWAN3_IIF_RULE_BASE + MWAN3_INTERFACE_MAX))
+		fw_min=$((MWAN3_FWMARK_RULE_BASE + 1))
+		fw_max=$((MWAN3_FWMARK_RULE_BASE + MM_UNREACHABLE))
+		ur_min=$((MWAN3_UNREACHABLE_RULE_BASE + 1))
+		ur_max=$((MWAN3_UNREACHABLE_RULE_BASE + MWAN3_INTERFACE_MAX))
+		# ip rule list prints fwmark masks lowercase; normalise for matching
+		mask=$(echo "$MMX_MASK" | tr 'A-Z' 'a-z')
+		$IP rule list | while read -r line; do
+			pref="${line%%:*}"
+			case "$pref" in
+				''|*[!0-9]*) continue ;;
+			esac
+			# Priority gate
+			if ! { { [ "$pref" -ge "$iif_min" ] && [ "$pref" -le "$iif_max" ]; } || \
+			       { [ "$pref" -ge "$fw_min" ] && [ "$pref" -le "$fw_max" ]; } || \
+			       { [ "$pref" -ge "$ur_min" ] && [ "$pref" -le "$ur_max" ]; }; }; then
+				continue
+			fi
+			# Content gate (a): carries an fwmark masked by mwan3's MMX_MASK
+			case "$line" in
+				*" fwmark "*"/${mask} "*|*" fwmark "*"/${mask}")
+					$IP rule del pref "$pref" &> /dev/null
+					continue ;;
+			esac
+			# Content gate (b): looks up a mwan3-owned table id
+			case "$line" in
+				*" lookup "*)
+					tbl="${line#* lookup }"
+					tbl="${tbl%% *}"
+					case "$tbl" in
+						''|*[!0-9]*) continue ;;
+					esac
+					[ "$tbl" -ge 1 ] && [ "$tbl" -le "$MWAN3_INTERFACE_MAX" ] && \
+						$IP rule del pref "$pref" &> /dev/null
+					;;
+			esac
+		done
+	done
+
+	# Flush all mwan3 chains (rules removed, chains stay as skeletons)
+	for chain_name in $($NFT list chains inet 2>/dev/null | grep "chain mwan3_" | awk '{print $2}'); do
+		$NFT flush chain inet mwan3 "$chain_name" >/dev/null 2>&1
+	done
+
+	# Delete dynamic per-interface and per-policy chains (not the skeleton ones from 10-mwan3.nft)
+	for chain_name in $($NFT list chains inet 2>/dev/null | grep "chain mwan3_" | awk '{print $2}'); do
+		case "$chain_name" in
+			mwan3_prerouting|mwan3_output|mwan3_postrouting|mwan3_ifaces_in|mwan3_rules|mwan3_connected|mwan3_custom|mwan3_dynamic)
+				# These are skeleton chains from the static .nft file; keep them
+				;;
+			*)
+				$NFT delete chain inet mwan3 "$chain_name" >/dev/null 2>&1
+				;;
+		esac
+	done
+
+	# Final safety flush of skeleton chains (handles any transient failures above)
+	for chain_name in mwan3_prerouting mwan3_output mwan3_postrouting mwan3_ifaces_in mwan3_rules mwan3_connected mwan3_custom mwan3_dynamic; do
+		$NFT flush chain inet mwan3 "$chain_name" >/dev/null 2>&1
+	done
+
+	# Flush all mwan3 sets
+	for setname in $($NFT list sets inet mwan3 2>/dev/null | grep "set mwan3_" | awk '{print $2}'); do
+		$NFT flush set inet mwan3 "$setname" >/dev/null 2>&1
+	done
+
+	# Delete dynamic maps (sticky maps)
+	for mapname in $($NFT list maps inet mwan3 2>/dev/null | grep "map mwan3_" | awk '{print $2}'); do
+		$NFT flush map inet mwan3 "$mapname" >/dev/null 2>&1
+		$NFT delete map inet mwan3 "$mapname" >/dev/null 2>&1
+	done
+
+	# Remove the table entirely so a stopped mwan3 leaves no nft residue
+	$NFT delete table inet mwan3 >/dev/null 2>&1
+
+	rm -rf $MWAN3_STATUS_DIR $MWAN3TRACK_STATUS_DIR
+
+}
+
+reload_service() {
+	mwan3_init
+
+	# Atomically rebuild the entire mwan3 nft ruleset in a single kernel
+	# transaction. mwan3_nft_reload_start opens the outermost batch level
+	# (MWAN3_BATCH_DEPTH 0->1) so all subsequent batch_start/commit calls
+	# from build functions nest inside it rather than committing immediately.
+	# The preamble tears down all dynamic chains and internal sets; user-defined
+	# sets and sticky sets are untouched throughout.
+	mwan3_nft_reload_start
+	mwan3_ensure_nft_framework
+	mwan3_render_config_ipsets
+	mwan3_cleanup_orphaned_ipsets
+	mwan3_set_dynamic_sets
+	mwan3_set_connected_sets
+	mwan3_set_custom_sets
+	config_foreach mwan3_rebuild_iface_nft interface
+	mwan3_set_general_nft
+	mwan3_set_policies_nft
+	mwan3_set_user_rules
+	mwan3_nft_reload_commit || return 1
+
+	# ip rules and routing tables are kernel state outside nftables —
+	# update them after the nft commit so the table is already consistent.
+	mwan3_update_iface_to_table
+	mwan3_set_general_rules
+	config_foreach mwan3_rebuild_iface_rules interface
+
+	# Signal mwan3rtmon to reload UCI config and re-sync the custom sets.
+	# This is needed when rt_table_lookup changes: the running mwan3rtmon
+	# holds a stale extra_table_set in memory until it reloads. Sent after
+	# the nft commit so the sets exist when rtmon re-dumps them.
+	procd_send_signal mwan3 rtmon_ipv4 HUP
+	[ $NO_IPV6 -eq 0 ] && procd_send_signal mwan3 rtmon_ipv6 HUP
+
+	# Signal trackers to reload UCI tracking parameters.
+	_signal_tracker() {
+		procd_running mwan3 "track_$1" && \
+			procd_send_signal mwan3 "track_$1" HUP
+	}
+	config_foreach _signal_tracker interface
+
+	# mwan3_write_dnsmasq_fragments restarts dnsmasq internally if fragment
+	# content changed. User-defined nft sets survive the atomic reload intact
+	# so no HUP is needed here when fragments are unchanged.
+	mwan3_write_dnsmasq_fragments
+
+	# If a set was deleted and recreated (flags changed) and had dnsmasq-populated
+	# domain entries, those entries were lost. HUP dnsmasq to repopulate them.
+	[ "$MWAN3_NEED_DNSMASQ_HUP" -eq 1 ] && mwan3_dnsmasq_hup
+
+	# Detect tracker count mismatch. reload_service cannot add or remove
+	# procd service instances -- only start_service can do that. If the
+	# number of running mwan3track processes does not match the number the
+	# current config requires, fall through to a full restart. The restart
+	# starts the correct tracker set; start_service calls mwan3_dnsmasq_hup
+	# so nftset-populated sets are repopulated on name resolution.
+	local _expected_trackers=0 _running_trackers=0
+	_count_tracker_needed() {
+		local enabled track_ip track_gateway
+		config_get_bool enabled "$1" enabled 0
+		[ "$enabled" -eq 1 ] || return
+		if [ -n "$(config_get "$1" track_ip)" ]; then
+			_expected_trackers=$((_expected_trackers + 1))
+			return
+		fi
+		config_get_bool track_gateway "$1" track_gateway 0
+		[ "$track_gateway" -eq 1 ] && _expected_trackers=$((_expected_trackers + 1))
+	}
+	config_foreach _count_tracker_needed interface
+	_count_running_tracker() {
+		procd_running mwan3 "track_$1" && _running_trackers=$((_running_trackers + 1))
+	}
+	config_foreach _count_running_tracker interface
+	if [ "$_running_trackers" -ne "$_expected_trackers" ]; then
+		LOG notice "reload: tracker mismatch (need $_expected_trackers, have $_running_trackers) -- restarting"
+		stop
+		start
+	fi
+}
+
+service_triggers() {
+	procd_add_reload_trigger 'mwan3'
+}
