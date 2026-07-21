@@ -324,6 +324,7 @@ jobs:
         git_clone https://github.com/sbwml/luci-app-openlist2 oplist && mvdir oplist
         git_clone https://github.com/AngelaCooljx/luci-theme-material3
         git_clone https://github.com/eamonxg/luci-theme-aurora
+        git_clone https://github.com/koshev-msk/mwan3-nft
         ) &
         (
         git_clone https://github.com/bobbyunknown/FusionTunX && mv -f FusionTunX/openwrt/* ./ && rm -rf FusionTunX
