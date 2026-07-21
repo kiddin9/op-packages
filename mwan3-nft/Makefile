@@ -7,9 +7,9 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=mwan3
+PKG_NAME:=mwan3-nft
 PKG_VERSION:=3.6.9
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Florian Eckert <fe@dev.tdt.de>
 PKG_LICENSE:=GPL-2.0
@@ -18,7 +18,7 @@ PKG_BUILD_DEPENDS:=libnetfilter_conntrack libmnl
 
 include $(INCLUDE_DIR)/package.mk
 
-define Package/mwan3
+define Package/$(PKG_NAME)
    SECTION:=net
    CATEGORY:=Network
    SUBMENU:=Routing and Redirection
@@ -36,11 +36,12 @@ define Package/mwan3
      +ucode-mod-ubus \
      +ucode-mod-fs \
      +ucode-mod-socket
+   CONFLICTS:=mwan3
    TITLE:=Multiwan hotplug script with connection tracking support (ucode rtmon)
    MAINTAINER:=Florian Eckert <fe@dev.tdt.de>
 endef
 
-define Package/mwan3/description
+define Package/$(PKG_NAME)/description
 Hotplug script which makes configuration of multiple WAN interfaces simple
 and manageable. With loadbalancing/failover support for up to 250 wan
 interfaces, connection tracking and an easy to manage traffic ruleset.
@@ -48,12 +49,12 @@ mwan3rtmon now uses a ucode implementation leveraging ucode-mod-rtnl
 for direct netlink access instead of forking ip commands.
 endef
 
-define Package/mwan3/conffiles
+define Package/$(PKG_NAME)/conffiles
 /etc/config/mwan3
 /etc/mwan3.user
 endef
 
-define Package/mwan3/preinst
+define Package/$(PKG_NAME)/preinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	# Stop mwan3evtd if present (older installs included this daemon). The
@@ -77,7 +78,7 @@ fi
 exit 0
 endef
 
-define Package/mwan3/postinst
+define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	# Safety-net stop in case preinst did not run or procd restarted the
@@ -154,7 +155,7 @@ fi
 exit 0
 endef
 
-define Package/mwan3/postrm
+define Package/$(PKG_NAME)/postrm
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	/etc/init.d/rpcd restart
@@ -182,7 +183,7 @@ define Build/Compile
 		$(PKG_BUILD_DIR)/mwan3ipcheck.c
 endef
 
-define Package/mwan3/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/mwan3 \
 		$(1)/etc/config/
@@ -249,4 +250,4 @@ define Package/mwan3/install
 		$(1)/etc/uci-defaults/
 endef
 
-$(eval $(call BuildPackage,mwan3))
+$(eval $(call BuildPackage,$(PKG_NAME)))
