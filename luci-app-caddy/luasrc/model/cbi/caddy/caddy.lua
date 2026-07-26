@@ -69,7 +69,7 @@ o:depends("log", "1")
 o = s:option(Value, "bin_dir", translate("程序路径"),
 	translate("caddy二进制的存放路径,填写完整的路径及caddy名称<br>例如:/usr/bin/caddy  &nbsp;&nbsp;&nbsp; 例如:/tmp/caddy<br>可自行编译对应架构的二进制程序：<a href='https://www.right.com.cn/forum/forum.php?mod=viewthread&tid=6006472&highlight=caddy' target='_blank'>编译教程</a>"))
 o.datatype = "string"
-o.placeholder = "/usr/bin/caddy"
+o.default = "/usr/bin/caddy"
 
 o = s:option(Value, "data_dir", translate("指向路径"),
 	translate("指向一个路径，可在web界面访问你的文件，默认为 /mnt"))

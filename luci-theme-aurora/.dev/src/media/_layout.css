@@ -134,7 +134,7 @@ header {
             @apply m-0 list-none;
 
             & > a {
-              @apply text-text hover:bg-hover-faint block w-fit rounded-lg px-3 py-2 text-sm whitespace-nowrap no-underline transition-colors duration-150;
+              @apply text-text hover:bg-hover-faint block w-fit rounded-xl px-3 py-2 text-sm whitespace-nowrap no-underline transition-colors duration-150;
 
               &.is-active-page {
                 @apply bg-brand-subtle text-brand font-medium;

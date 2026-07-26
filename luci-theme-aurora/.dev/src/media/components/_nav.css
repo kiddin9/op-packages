@@ -66,7 +66,7 @@
 }
 
 .navigation-sublink {
-  @apply text-text-muted hover:bg-hover-faint hover:text-text relative flex rounded-lg font-medium no-underline transition-colors duration-150;
+  @apply text-text-muted hover:bg-hover-faint hover:text-text relative flex rounded-xl font-medium no-underline transition-colors duration-150;
 }
 
 /* Active page: a filled brand pill, shared by the sidebar and the drawer. */
