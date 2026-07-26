@@ -40,6 +40,8 @@ let cachedIwinfoInfoMap = null;
 let cachedIwinfoInfoPromise = null;
 let cachedIwinfoResolver = null;
 let cachedIwinfoResolverPromise = null;
+let cachedAssocLists = Object.create(null);
+let pendingAssocLists = Object.create(null);
 
 function pushUnique(list, value) {
 	if (value && list.indexOf(value) < 0)
@@ -189,14 +191,11 @@ function buildIwinfoResolver(devices) {
 }
 
 function loadIwinfoResolver(force) {
-	if (force)
-		cachedIwinfoResolverPromise = null;
+	if (cachedIwinfoResolverPromise != null)
+		return cachedIwinfoResolverPromise;
 
 	if (!force && cachedIwinfoResolver != null)
 		return Promise.resolve(cachedIwinfoResolver);
-
-	if (cachedIwinfoResolverPromise != null)
-		return cachedIwinfoResolverPromise;
 
 	cachedIwinfoResolverPromise = L.resolveDefault(callIwinfoDevices(), {}).then((res) => {
 		cachedIwinfoResolver = buildIwinfoResolver(res?.devices);
@@ -221,14 +220,11 @@ function loadIwinfoResolver(force) {
 }
 
 function loadIwinfoInfoMap(force) {
-	if (force)
-		cachedIwinfoInfoPromise = null;
+	if (cachedIwinfoInfoPromise != null)
+		return cachedIwinfoInfoPromise;
 
 	if (!force && cachedIwinfoInfoMap != null)
 		return Promise.resolve(cachedIwinfoInfoMap);
-
-	if (cachedIwinfoInfoPromise != null)
-		return cachedIwinfoInfoPromise;
 
 	cachedIwinfoInfoPromise = loadIwinfoResolver(force).then((resolver) => {
 		const queryTargets = resolver.queryTargets.length ? resolver.queryTargets : getLegacyIwinfoProbeTargets();
@@ -287,6 +283,10 @@ function loadIwinfoInfoMap(force) {
 
 function refreshIwinfoInfoMap() {
 	return loadIwinfoInfoMap(true);
+}
+
+function startIwinfoInfoRefresh() {
+	refreshIwinfoInfoMap().catch(() => {});
 }
 
 function count_changes(section_id) {
@@ -570,6 +570,8 @@ function getDisplayChannel(radioNet) {
 
 	if (channel != null && channel !== '' && channel !== 'auto')
 		return +channel;
+	if (channel == 'auto')
+		return channel;
 
 	return null;
 }
@@ -1178,6 +1180,20 @@ function getAssocListForNetwork(radioNet) {
 	}));
 }
 
+function getCachedAssocListForNetwork(radioNet) {
+	const key = radioNet.getName();
+
+	if (pendingAssocLists[key] == null) {
+		pendingAssocLists[key] = getAssocListForNetwork(radioNet).then((entries) => {
+			cachedAssocLists[key] = Array.isArray(entries) ? entries : [];
+		}).catch(() => {}).then(() => {
+			delete pendingAssocLists[key];
+		});
+	}
+
+	return Promise.resolve(cachedAssocLists[key] || []);
+}
+
 function isDisplayAssociated(radioNet, hwtype, mode, bssid, channel, disabled) {
 	if (bssid && bssid != '00:00:00:00:00:00' && channel && mode != 'Unknown' && !disabled)
 		return true;
@@ -1202,7 +1218,7 @@ function getDisplaySignalPercent(radioNet, hwtype, is_assoc, disabled) {
 
 function getDisplaySignalValue(radioNet, hwtype, is_assoc) {
 	if ((hwtype == 'mt_dbdc' || (isQcaWifiHwtype(hwtype) && radioNet.getMode() == 'ap')) && is_assoc)
-		return getDisplayTxPower(radioNet);
+		return getDisplayTxPower(radioNet) ?? 30;
 
 	return radioNet.getSignal();
 }
@@ -2424,7 +2440,7 @@ return view.extend({
 			callSystemBoard()
 		]).then((data) => {
 			this.boardinfo = data[4] || {};
-			return refreshIwinfoInfoMap().then(() => data);
+			return data;
 		});
 	},
 
@@ -2488,25 +2504,12 @@ return view.extend({
 		s.addremove = false;
 
 		s.load = function() {
-			return network.getWifiDevices().then(L.bind(function(radios) {
-				this.radios = radios.sort(function(a, b) {
-					return a.getName() > b.getName();
-				});
+			this.radios = network.getWifiDevicesFromConfig().sort(function(a, b) {
+				return a.getName() > b.getName();
+			});
+			this.wifis = network.getWifiNetworksFromConfig();
 
-				const tasks = [];
-
-				radios.forEach(radio => {
-					tasks.push(radio.getWifiNetworks());
-				});
-
-				return Promise.all(tasks);
-			}, this)).then(L.bind(function(data) {
-				this.wifis = [];
-
-				data.forEach(d => {
-					this.wifis.push.apply(this.wifis, d);
-				});
-			}, this));
+			return Promise.resolve();
 		};
 
 		s.cfgsections = function() {
@@ -4644,7 +4647,9 @@ return view.extend({
 
 		return m.render().then(L.bind(function(m, nodes) {
 			poll.add(L.bind(function() {
-				const tasks = [ network.getHostHints(), network.getWifiDevices(), refreshIwinfoInfoMap() ];
+				const tasks = [ network.getHostHints(), network.getWifiDevices() ];
+
+				startIwinfoInfoRefresh();
 
 				m?.children[0]?.cfgsections?.().forEach(s => {
 					const row = nodes.querySelector('.cbi-section-table-row[data-sid="%s"]'.format(s));
@@ -4681,8 +4686,14 @@ return view.extend({
 					}, network))
 					.then(L.bind(function(hosts_radios_wifis) {
 						const tasks = [];
+						const section = m?.children?.[0];
 
-						hosts_radios_wifis[2].forEach(hrw => tasks.push(getAssocListForNetwork(hrw)) );
+						if (section != null) {
+							section.radios = hosts_radios_wifis[1];
+							section.wifis = hosts_radios_wifis[2];
+						}
+
+						hosts_radios_wifis[2].forEach(hrw => tasks.push(getCachedAssocListForNetwork(hrw)) );
 
 						return Promise.all(tasks).then(function(data) {
 							hosts_radios_wifis[3] = [];

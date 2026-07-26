@@ -458,7 +458,7 @@ function buildInterfaceMapping(zones, networks, board) {
 }
 
 function formatSpeed(carrier, speed, duplex) {
-	if ((speed > 0) && duplex) {
+	if (carrier && (speed > 0) && duplex) {
 		const d = (duplex == 'half') ? '\u202f(H)' : '';
 		const e = E('span', { 'title': _('Speed: %d Mbit/s, Duplex: %s').format(speed, duplex) });
 

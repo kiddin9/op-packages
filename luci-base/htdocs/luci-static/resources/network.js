@@ -1399,6 +1399,21 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	},
 
 	/**
+	 * Obtain configured radio devices without querying runtime state.
+	 *
+	 * @returns {Array<LuCI.network.WifiDevice>}
+	 * Returns radio instances populated from UCI only.
+	 */
+	getWifiDevicesFromConfig() {
+		const rv = [];
+
+		for (const wfd of uci.sections('wireless', 'wifi-device'))
+			rv.push(this.instantiateWifiDevice(wfd['.name'], {}));
+
+		return rv;
+	},
+
+	/**
 	 * Get a {@link LuCI.network.WifiNetwork WifiNetwork} instance describing
 	 * the given wireless network.
 	 *
@@ -1441,6 +1456,30 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 
 			return rv;
 		}, this));
+	},
+
+	/**
+	 * Obtain configured wireless networks without querying runtime state.
+	 *
+	 * @returns {Array<LuCI.network.WifiNetwork>}
+	 * Returns wireless network instances populated from UCI only.
+	 */
+	getWifiNetworksFromConfig() {
+		const rv = [];
+
+		for (const wifiIface of uci.sections('wireless', 'wifi-iface')) {
+			const sid = wifiIface['.name'];
+			const netid = getWifiNetidBySid(sid);
+
+			rv.push(this.instantiateWifiNetwork(sid, wifiIface.device, {},
+				L.toArray(netid)[0], null));
+		}
+
+		rv.sort(function(a, b) {
+			return L.naturalCompare(a.getID(), b.getID());
+		});
+
+		return rv;
 	},
 
 	/**
@@ -3579,7 +3618,7 @@ WifiDevice = baseclass.extend(/** @lends LuCI.network.WifiDevice.prototype */ {
 	 * Returns `true` when the radio device is up, else `false`.
 	 */
 	isUp() {
-		if (L.isObject(_state.radios[this.sid]))
+		if (_state != null && L.isObject(_state.radios[this.sid]))
 			return (_state.radios[this.sid].up == true);
 
 		return false;
@@ -3930,6 +3969,9 @@ WifiNetwork = baseclass.extend(/** @lends LuCI.network.WifiNetwork.prototype */ 
 	 * Returns `true` when the network is up, else `false`.
 	 */
 	isUp() {
+		if (_state == null)
+			return false;
+
 		const device = this.getDevice();
 
 		if (device == null)
