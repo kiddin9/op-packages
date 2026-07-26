@@ -47,7 +47,7 @@
 }
 
 .cmdk-panel {
-  @apply border-hairline bg-surface/85 fixed top-24 left-1/2 z-120 w-[min(36rem,calc(100vw-2.5rem))] -translate-x-1/2 overflow-hidden rounded-3xl border shadow-xl backdrop-blur-xl backdrop-saturate-150 transition-[opacity,translate] duration-150 ease-out starting:-translate-y-2 starting:opacity-0;
+  @apply border-hairline bg-surface/85 fixed top-24 left-1/2 z-120 w-[min(36rem,calc(100vw-2.5rem))] -translate-x-1/2 overflow-hidden rounded-2xl border shadow-xl backdrop-blur-xl backdrop-saturate-150 transition-[opacity,translate] duration-150 ease-out starting:-translate-y-2 starting:opacity-0;
 
   /* <md: the same panel becomes a full-screen takeover (Algolia DocSearch
      manner) — opaque page background (no full-screen blur cost on phones),

@@ -57,6 +57,7 @@ const callLuciNetworkDevices = rpc.declare({
 const callLuciWirelessDevices = rpc.declare({
 	object: 'luci-rpc',
 	method: 'getWirelessDevices',
+	nobatch: true,
 	expect: { '': {} }
 });
 
@@ -100,6 +101,9 @@ const callNetworkProtoHandlers = rpc.declare({
 
 let _init = null;
 let _state = null;
+let _wirelessInit = null;
+let _wirelessRadios = {};
+let _wirelessHostapd = {};
 const _protocols = {};
 const _protospecs = {};
 
@@ -352,6 +356,55 @@ function maskToPrefix(mask, v6) {
 	return bits;
 }
 
+function refreshWirelessState() {
+	if (_wirelessInit != null)
+		return _wirelessInit;
+
+	const wifiDevices = uci.sections('wireless', 'wifi-device');
+	const qcaOnly = wifiDevices.length > 0 && wifiDevices.every(function(device) {
+		return (device.type == 'qcawifi' || device.type == 'qcawificfg80211');
+	});
+
+	if (qcaOnly)
+		return Promise.resolve();
+
+	_wirelessInit = L.resolveDefault(callLuciWirelessDevices(), {}).then(function(radios) {
+		const objects = [];
+
+		_wirelessRadios = L.isObject(radios) ? radios : {};
+
+		for (let radio in _wirelessRadios)
+			if (L.isObject(_wirelessRadios[radio]) && Array.isArray(_wirelessRadios[radio].interfaces))
+				for (let ri of _wirelessRadios[radio].interfaces)
+					if (L.isObject(ri) && ri.ifname)
+						objects.push('hostapd.%s'.format(ri.ifname));
+
+		return (objects.length ? L.resolveDefault(rpc.list.apply(rpc, objects), {}) : Promise.resolve({}));
+	}).then(function(res) {
+		const hostapd = {};
+
+		for (let k in res) {
+			const m = k.match(/^hostapd\.(.+)$/);
+
+			if (m)
+				hostapd[m[1]] = res[k];
+		}
+
+		_wirelessHostapd = hostapd;
+
+		if (_state != null) {
+			_state.radios = _wirelessRadios;
+			_state.hostapd = _wirelessHostapd;
+		}
+
+		_wirelessInit = null;
+	}).catch(function() {
+		_wirelessInit = null;
+	});
+
+	return _wirelessInit;
+}
+
 function initNetworkState(refresh) {
 	if (_state == null || refresh) {
 		const hasWifi = L.hasSystemFeature('wifi');
@@ -361,18 +414,17 @@ function initNetworkState(refresh) {
 			L.resolveDefault(callNetworkInterfaceDump(), []),
 			L.resolveDefault(callLuciBoardJSON(), {}),
 			L.resolveDefault(callLuciNetworkDevices(), {}),
-			L.resolveDefault(callLuciWirelessDevices(), {}),
 			L.resolveDefault(callLuciHostHints(), {}),
 			getProtocolHandlers(),
 			L.resolveDefault(uci.load('network')),
 			hasWifi ? L.resolveDefault(uci.load('wireless')) : L.resolveDefault(),
 			L.resolveDefault(uci.load('luci'))
-		]).then(function([netifd_ifaces, board_json, luci_devs, radios, hosts]) {
+		]).then(function([netifd_ifaces, board_json, luci_devs, hosts]) {
 
 			const s = {
 				isTunnel: {}, isBridge: {}, isSwitch: {}, isWifi: {},
-				ifaces: netifd_ifaces, radios: radios, hosts: hosts,
-				netdevs: {}, bridges: {}, switches: {}, hostapd: {}
+				ifaces: netifd_ifaces, radios: _wirelessRadios, hosts: hosts,
+				netdevs: {}, bridges: {}, switches: {}, hostapd: _wirelessHostapd
 			};
 
 			for (let name in luci_devs) {
@@ -515,25 +567,9 @@ function initNetworkState(refresh) {
 			}
 
 			_init = null;
+			_state = s;
 
-			const objects = [];
-
-			if (L.isObject(s.radios))
-				for (let radio in s.radios)
-					if (L.isObject(s.radios[radio]) && Array.isArray(s.radios[radio].interfaces))
-						for (let ri of s.radios[radio].interfaces)
-							if (L.isObject(ri) && ri.ifname)
-								objects.push('hostapd.%s'.format(ri.ifname));
-
-			return (objects.length ? L.resolveDefault(rpc.list.apply(rpc, objects), {}) : Promise.resolve({})).then(function(res) {
-				for (let k in res) {
-					const m = k.match(/^hostapd\.(.+)$/);
-					if (m)
-						s.hostapd[m[1]] = res[k];
-				}
-
-				return (_state = s);
-			});
+			return s;
 		});
 		} // end if (refresh || !_init)
 
@@ -1366,6 +1402,8 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 */
 	getWifiDevice(devname) {
 		return initNetworkState().then(L.bind(function() {
+			refreshWirelessState();
+
 			const existingDevice = uci.get('wireless', devname);
 
 			if (existingDevice == null || existingDevice['.type'] != 'wifi-device')
@@ -1386,6 +1424,8 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 */
 	getWifiDevices() {
 		return initNetworkState().then(L.bind(function() {
+			refreshWirelessState();
+
 			const uciWifiDevices = uci.sections('wireless', 'wifi-device');
 			const rv = [];
 
@@ -1429,8 +1469,11 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 * be found.
 	 */
 	getWifiNetwork(netname) {
-		return initNetworkState()
-			.then(L.bind(this.lookupWifiNetwork, this, netname));
+		return initNetworkState().then(L.bind(function() {
+			refreshWirelessState();
+
+			return this.lookupWifiNetwork(netname);
+		}, this));
 	},
 
 	/**
@@ -1444,6 +1487,8 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 */
 	getWifiNetworks() {
 		return initNetworkState().then(L.bind(function() {
+			refreshWirelessState();
+
 			const wifiIfaces = uci.sections('wireless', 'wifi-iface');
 			const rv = [];
 
