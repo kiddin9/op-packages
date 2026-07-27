@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=e2guardian
 PKG_VERSION:=5.5.9r
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_LICENSE:=GPL-2.0
 PKG_MAINTAINER:=Douglas Orend <doug.orend2@gmail.com>
@@ -17,7 +17,7 @@ include $(INCLUDE_DIR)/package.mk
 
 define Package/e2guardian
 	SECTION:=net
-	DEPENDS:=+libpthread $(CXX_DEPENDS) +zlib +libpcre +libopenssl
+	DEPENDS:=+libpthread $(CXX_DEPENDS) +zlib +libpcre2 +libopenssl
 	CATEGORY:=Network
 	SUBMENU:=Web Servers/Proxies
 	TITLE:=E2Guardian

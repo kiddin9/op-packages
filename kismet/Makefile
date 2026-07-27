@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=kismet
 PKG_VERSION:=2016-07-R1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_LICENSE:=LGPLv2.1
 PKG_CPE_ID:=cpe:/a:kismet:kismet
@@ -62,7 +62,7 @@ endef
 
 define Package/kismet-drone
 $(call Package/kismet/Default)
-  DEPENDS+= +libpcap +libpcre +libcap +wireless-tools 
+  DEPENDS+= +libpcap +libpcre2 +libcap +wireless-tools 
   TITLE+= drone
 endef
 
@@ -73,7 +73,7 @@ endef
 
 define Package/kismet-server
 $(call Package/kismet/Default)
-  DEPENDS+= +libpcap +libpcre +libcap +wireless-tools
+  DEPENDS+= +libpcap +libpcre2 +libcap +wireless-tools
   TITLE+= server
 endef
 
