@@ -205,6 +205,7 @@ jobs:
         git_clone https://github.com/xptsp/luci-app-nodogsplash
         git_clone https://github.com/xptsp/luci-mod-listening-ports
         git_clone https://github.com/xptsp/luci-app-squid-adv
+        git_clone https://github.com/xptsp/openwrt-e2guardian
         git_clone https://github.com/10000ge10000/luci-app-openclaw
         ) &
         (
@@ -332,6 +333,7 @@ jobs:
         git_clone https://github.com/xptsp/luci-app-ympd
         git_clone https://github.com/xptsp/openwrt-ympd
         git_clone https://github.com/xptsp/openwrt-peanut
+        git_clone https://github.com/xptsp/openwrt-mwgp
         git_clone https://github.com/calfeche13/luci-app-public-ip-monitor
         git_clone https://github.com/tty228/luci-app-wechatpush
         git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
