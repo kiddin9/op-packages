@@ -1,0 +1,93 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+
+USE_PROCD=1
+
+# Change paths if you installed mwgp elsewhere
+PROG=/usr/bin/mwgp
+CONFIG_DIR=/etc/mwgp
+CONFIG_FILE=${CONFIG_DIR}/config.json
+CACHE_FILE=/tmp/etc/mwgp_cache.json
+NAME=mwgp
+
+extra_command "import" "Import wireguard configuration from OpenWrt"
+extra_command "config" "Show MWGP configuration file output"
+
+import() {
+	# Make sure the config file exists.  Otherwise, commands will error:
+	touch /etc/config/mwgp	
+
+	# Delete old records of Wireguard connections first:
+	grep openwrt mwgp | while read A B C; do uci del mwgp.${C//\'/}; done
+
+	# Read network configuration and write specific keys to "/etc/config/mwgp":
+	uci show network | grep proto | grep wireguard | sed "s|\.| |g" | while read A B C; do
+		SECTION=mwgp.${B}
+		uci -q delete $SECTION
+		KEY=$(uci get network.${B}.private_key)
+		uci set $SECTION=openwrt
+		uci set ${SECTION}.private_key="$KEY"
+		uci show network | grep ${B}_ | grep public_key | sed "s|[=\']| |" | while read D E; do 
+			uci add_list ${SECTION}.public_keys="${E//\'/}" 
+		done
+		uci set ${SECTION}.forward_to="127.0.0.1:$(uci get network.${B}.listen_port)"
+	done
+	uci commit
+}
+
+function config() {
+	echo "{"
+	echo "  \"listen\": \":1000\","
+	echo "  \"timeout\": 60,"
+	echo "  \"servers\": ["
+	OUTER=true
+	grep config /etc/config/mwgp | while read A B C; do
+		[[ ${OUTER} == false ]] && echo ","
+		SECTION=${C//\'/}
+		echo "    {"
+		echo "      \"privkey\": \"$(uci get mwgp.${SECTION}.private_key)\","
+		echo "      \"peers\": ["
+		ADDR=$(uci get mwgp.${SECTION}.forward_to)
+		INNER=true
+    	for KEY in $(uci get mwgp.${SECTION}.public_keys); do
+    		[[ ${INNER} == false ]] && echo ","
+			echo "        {"
+			echo "          \"pubkey\": \"${KEY}\","
+			echo "          \"forward_to\": \"${ADDR}\""
+			echo -e "        }"
+			INNER=false
+		done
+		echo "      ]"
+		echo "    }"
+		OUTER=false
+	done
+	echo "  ]"
+	echo "}"
+}
+    		
+start_service() {
+	test -f /etc/config/mwgp || import
+	test -d ${CONFIG_DIR} || mkdir -p ${CONFIG_DIR}
+	test -f ${CONFIG_FILE} || config > ${CONFIG_FILE}
+				
+    procd_open_instance
+    procd_set_param command $PROG server $CONFIG_FILE --cache-file $CACHE_FILE
+
+    # Respawn if the process crashes
+    procd_set_param respawn
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+
+    procd_close_instance
+}
+
+stop_service() {
+    # Send a kill signal to stop the instance safely
+    procd_send_signal $NAME
+}
+
+reload_service() {
+	restart
+}
