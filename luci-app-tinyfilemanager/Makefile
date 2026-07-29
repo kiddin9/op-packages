@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 LUCI_NAME:=luci-app-tinyfilemanager
 PKG_VERSION:=2.6
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 LUCI_TITLE:=LuCI Tiny File Manager
 LUCI_DEPENDS:=+php8 +php8-cgi +php8-fastcgi +php8-fpm +php8-mod-session +php8-mod-ctype +php8-mod-fileinfo +php8-mod-zip +php8-mod-iconv +php8-mod-mbstring +coreutils-stat +zoneinfo-asia +bash +curl +tar +inotifywait
@@ -22,7 +22,7 @@ define Package/$(LUCI_NAME)/conffiles
 /etc/config/tinyfilemanager
 endef
 
-define Package/$(LUCI_NAME)/postinst
+define Package/$(LUCI_NAME)/preinst
 #!/bin/sh
 mkdir -p "$${IPKG_INSTROOT}/www/tinyfilemanager" 2>/dev/null
 [ ! -d "$${IPKG_INSTROOT}/www/tinyfilemanager/rootfs" ] && ln -s / "$${IPKG_INSTROOT}/www/tinyfilemanager/rootfs"
@@ -35,9 +35,6 @@ sed -Ei "s|^(memory_limit) *=.*$$|\1 = $$memory_limit|; \
          s|^(upload_max_filesize) *=.*$$|\1 = $$single_size_limit|; \
          s|^(max_file_uploads) *=.*$$|\1 = $$otime_uploads_limit|" \
 "$${IPKG_INSTROOT}/etc/php.ini"
-# unpack
-tar -C "$${IPKG_INSTROOT}/www/tinyfilemanager" -xzf "$${IPKG_INSTROOT}/www/tinyfilemanager/index.tgz"
-rm -f "$${IPKG_INSTROOT}/www/tinyfilemanager/index.tgz"
 endef
 
 define Package/$(LUCI_NAME)/prerm

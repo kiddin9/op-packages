@@ -116,6 +116,10 @@ msgstr ""
 msgid "SFTP"
 msgstr ""
 
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:218
+msgid "MCP"
+msgstr ""
+
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:220
 msgid "Enabled"
 msgstr ""
@@ -606,6 +610,14 @@ msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:644
 msgid "SFTP Port"
+msgstr ""
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:651
+msgid "Enabled MCP"
+msgstr ""
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:652
+msgid "Enable MCP (Model Context Protocol) server."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:20

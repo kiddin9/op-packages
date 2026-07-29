@@ -215,6 +215,7 @@ return view.extend({
 		s.tab('s3', _('Object Storage'));
 		s.tab('ftp', _('FTP'));
 		s.tab('sftp', _('SFTP'));
+		s.tab('mcp', _('MCP'));
 
 		// init
 		o = s.taboption('basic', form.Flag, 'enabled', _('Enabled'));
@@ -644,6 +645,11 @@ return view.extend({
 		o = s.taboption('sftp', form.Value, 'sftp_port', _('SFTP Port'));
 		o.datatype = 'and(port,min(1))';
 		o.default = 5222;
+		o.rmempty = false;
+
+		// mcp
+		o = s.taboption('mcp', form.Flag, 'mcp', _('Enabled MCP'),
+			_('Enable MCP (Model Context Protocol) server.'));
 		o.rmempty = false;
 
 		return m.render();

@@ -184,6 +184,9 @@ get_config() {
 	config_get sftp "$1" sftp 0
 	config_get sftp_port "$1" sftp_port 5222
 
+	# mcp
+	config_get mcp "$1" mcp 0
+
 	# init jwt_secret
 	if [ -z "$jwt_secret" ]; then
 		jwt_secret=$(tr -cd "a-zA-Z0-9" < "/dev/urandom" | head -c16)
@@ -417,6 +420,11 @@ start_service() {
 	json_add_object "sftp"
 		json_add_boolean "enable" "$sftp"
 		json_add_string "listen" ":$sftp_port"
+	json_close_object
+
+	# mcp
+	json_add_object "mcp"
+		json_add_boolean "enable" "$mcp"
 	json_close_object
 
 	json_add_string "last_launched_version" "$last_launched_version"

@@ -70,61 +70,56 @@
     return m ? { tag: m[1], msg: m[2] } : { tag: "", msg: rest };
   }
 
-  // Compress "Jul 24, 2026, 10:59:50 PM UTC"-style stamps (master's RPC path
-  // formats with the *browser* locale). Only en-style patterns are recognized;
-  // anything else is shown untouched rather than guessed at.
-  function shortenTime(datestr) {
-    const m = datestr.match(
-      /^(\w{3}) (\d{1,2}), \d{4}, (\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)?/,
-    );
-    if (!m) return datestr;
-    let h = parseInt(m[3], 10);
-    if (m[6] === "PM" && h < 12) h += 12;
-    if (m[6] === "AM" && h === 12) h = 0;
-    const hh = (h < 10 ? "0" : "") + h;
-    return `${m[1]} ${m[2].padStart(2, "0")} ${hh}:${m[4]}:${m[5]}`;
-  }
-
   /* System log line, two shapes:
      A (master RPC):      [<locale datestr>] fac.sev: tag[pid]: msg
      B (classic logread,  Www Mmm dd hh:mm:ss yyyy fac.sev tag[pid]: msg
-        23.05 + 24.10 syslog-wrapper + master's RPC-failure fallback) */
+        23.05 + 24.10 syslog-wrapper + master's RPC-failure fallback)
+     Every captured token is kept verbatim — year, timezone, 12-hour clock,
+     ctime's padded day, the colons — so rejoining the rendered fields with
+     single spaces reproduces the source line byte for byte. The enhancement
+     aligns and colors; it never rewrites. */
   function parseSyslogLine(line) {
     let m = line.match(/^\[(.+?)\]\s+(\w+)\.(\w+):\s+([\s\S]*)$/);
     if (m && FACILITIES.has(m[2]) && SEVERITIES.has(m[3]))
       return {
-        time: shortenTime(m[1]),
-        fullTime: m[1],
+        time: `[${m[1]}]`,
         fac: m[2],
         sev: m[3],
+        sevTok: `${m[2]}.${m[3]}:`,
         ...splitTag(m[4]),
       };
     m = line.match(
-      /^\w{3} (\w{3}) +(\d{1,2}) (\d{2}:\d{2}:\d{2}) (\d{4}) (\w+)\.(\w+) ([\s\S]*)$/,
+      /^(\w{3} \w{3} +\d{1,2} \d{2}:\d{2}:\d{2} \d{4}) (\w+)\.(\w+) ([\s\S]*)$/,
     );
-    if (m && FACILITIES.has(m[5]) && SEVERITIES.has(m[6]))
+    if (m && FACILITIES.has(m[2]) && SEVERITIES.has(m[3]))
       return {
-        time: `${m[1]} ${m[2].padStart(2, "0")} ${m[3]}`,
-        fullTime: line.slice(0, line.indexOf(` ${m[5]}.${m[6]} `)),
-        fac: m[5],
-        sev: m[6],
-        ...splitTag(m[7]),
+        time: m[1],
+        fac: m[2],
+        sev: m[3],
+        sevTok: `${m[2]}.${m[3]}`,
+        ...splitTag(m[4]),
       };
     return null;
   }
 
   /* Kernel log line: `[   73412.882110] msg`. No severity survives into the
-     text on any LuCI version (both eras strip/drop the <N> prefix), so dmesg
-     gets time/tag/typography only — no level colors, no keyword guessing. */
+     text on any LuCI version (master runs `dmesg -r` and strips the <N>
+     prefix after filtering on it; the classic pages never had it), and kernel
+     messages have no uniform tag grammar — drivers print "name addr.dev
+     port:", bare text, indented continuations — which is why upstream renders
+     dmesg as plain unstyled text. A partial tag split styled only some lines
+     and ate only their colons, so the message stays verbatim: time dimming
+     and typography only. */
   function parseDmesgLine(line) {
-    const m = line.match(/^\[\s*(\d+\.\d+)\]\s?([\s\S]*)$/);
+    const m = line.match(/^(\[\s*\d+\.\d+\])\s?([\s\S]*)$/);
     if (!m) return null;
     return {
-      time: `[${m[1]}]`,
-      fullTime: "",
+      time: m[1],
       fac: "",
       sev: "",
-      ...splitTag(m[2]),
+      sevTok: "",
+      tag: "",
+      msg: m[2],
     };
   }
 
@@ -140,7 +135,6 @@
       parseSyslogLine,
       parseDmesgLine,
       splitTag,
-      shortenTime,
       evaluate,
       PARSE_GATE,
     };
@@ -175,18 +169,16 @@
     const p = entry.parsed;
     row.className = "log-row" + (p.sev ? ` lv-${SEV_CLASS[p.sev]}` : "");
     // Real space text nodes between plain inline spans: the row wraps like
-    // terminal output and selection copies clean text. The level is the short
-    // severity word (CSS uppercases and colors it; facility lives in its
-    // tooltip); the source keeps its full name in a tooltip for when the
-    // aligned column truncates it.
-    row.appendChild(span("log-time", p.time, p.fullTime));
-    if (p.sev) {
+    // terminal output, and because every field renders verbatim (punctuation
+    // included) a copied row is byte-identical to the source line.
+    row.appendChild(span("log-time", p.time));
+    if (p.sevTok) {
       row.appendChild(document.createTextNode(" "));
-      row.appendChild(span("log-sev", p.sev, `${p.fac}.${p.sev}`));
+      row.appendChild(span("log-sev", p.sevTok));
     }
     if (p.tag) {
       row.appendChild(document.createTextNode(" "));
-      row.appendChild(span("log-tag", p.tag, p.tag));
+      row.appendChild(span("log-tag", p.tag + ":"));
     }
     row.appendChild(document.createTextNode(" "));
     row.appendChild(span("log-msg", p.msg));
@@ -209,6 +201,21 @@
     if (!viewer) {
       viewer = document.createElement("div");
       viewer.className = "syslog-view";
+      // The stock textarea contained Ctrl+A for free — a focused form control
+      // is its own selection context. A plain div is not (the standard switch,
+      // user-select:contain, ships in no browser), so reproduce it: clicking
+      // the log focuses the viewer, and select-all inside it stays inside it.
+      viewer.tabIndex = 0;
+      viewer.addEventListener("keydown", function (e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+          e.preventDefault();
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          const range = document.createRange();
+          range.selectNodeContents(viewer);
+          sel.addRange(range);
+        }
+      });
       textarea.insertAdjacentElement("afterend", viewer);
       container.classList.add("log-enhanced");
     }
@@ -227,8 +234,18 @@
     if (viewer && selectionInside(viewer)) return;
     lastValue = value;
     const { rows, ratio } = evaluate(value, parseLine);
-    if (ratio >= PARSE_GATE) render(textarea, container, rows);
-    else teardown(container);
+    if (ratio >= PARSE_GATE) {
+      // Tail-follow: a reader already pinned to the bottom stays pinned as new
+      // lines arrive; any other scroll position is never touched. The content
+      // area scrolls the window (main uses min-h, no inner scroller), and the
+      // `viewer &&` guard keeps the first paint from jumping — same as stock.
+      const follow =
+        viewer &&
+        window.innerHeight + window.scrollY >=
+          document.documentElement.scrollHeight - 40;
+      render(textarea, container, rows);
+      if (follow) window.scrollTo(0, document.documentElement.scrollHeight);
+    } else teardown(container);
   }
 
   // Content updates: LuCI's poll rewrites .value, which fires nothing — a
