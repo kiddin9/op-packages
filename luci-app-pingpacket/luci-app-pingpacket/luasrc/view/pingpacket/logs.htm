@@ -1,0 +1,477 @@
+<%+header%>
+
+<style>
+.pp-log-page {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 8px 10px 20px;
+}
+
+.pp-log-hero {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 24px 26px;
+	margin: 12px 0 18px;
+	border-radius: 18px;
+	color: #fff;
+	background:
+		radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 34%),
+		linear-gradient(135deg, #10615b, #0f766e 60%, #164e63);
+	box-shadow: 0 18px 38px rgba(15, 118, 110, 0.18);
+}
+
+.pp-log-copy {
+	max-width: 720px;
+}
+
+.pp-log-kicker {
+	margin: 0 0 8px;
+	font-size: 12px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	opacity: 0.78;
+}
+
+.pp-log-title {
+	margin: 0;
+	font-size: 30px;
+	line-height: 1.15;
+	font-weight: 700;
+}
+
+.pp-log-subtitle {
+	margin: 10px 0 0;
+	font-size: 14px;
+	line-height: 1.65;
+	color: rgba(255, 255, 255, 0.88);
+}
+
+.pp-log-summary {
+	min-width: 250px;
+	padding: 16px 18px;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(6px);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.pp-log-summary-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.75);
+}
+
+.pp-log-summary-value {
+	font-size: 15px;
+	font-weight: 600;
+	line-height: 1.5;
+	font-variant-numeric: tabular-nums;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+	word-break: break-word;
+}
+
+.pp-log-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 14px;
+	margin-bottom: 18px;
+}
+
+.pp-log-meta,
+.pp-log-panel {
+	background: linear-gradient(180deg, #ffffff, #fbfdff);
+	border: 1px solid #dde8f6;
+	box-shadow: 0 10px 28px rgba(27, 73, 124, 0.08);
+}
+
+.pp-log-meta {
+	padding: 14px 16px;
+	border-radius: 14px;
+}
+
+.pp-log-meta-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	color: #6d7d92;
+}
+
+.pp-log-meta-value {
+	font-size: 15px;
+	font-weight: 600;
+	color: #24364d;
+	font-variant-numeric: tabular-nums;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+	word-break: break-word;
+}
+
+.pp-log-panel {
+	padding: 22px;
+	border-radius: 18px;
+}
+
+.pp-log-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	flex-wrap: wrap;
+	margin-bottom: 18px;
+}
+
+.pp-log-tools {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.pp-log-refresh {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #344a63;
+}
+
+.pp-log-refresh input {
+	width: 16px;
+	height: 16px;
+	margin: 0;
+}
+
+.pp-log-note {
+	font-size: 13px;
+	color: #6f8198;
+}
+
+.pp-log-button {
+	height: 40px;
+	padding: 0 16px;
+	border: none;
+	border-radius: 12px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #a34717;
+	background: linear-gradient(135deg, #ffe0c7, #ffd2b0);
+	cursor: pointer;
+	box-shadow: 0 10px 24px rgba(240, 123, 45, 0.14);
+	transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.pp-log-button:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 12px 28px rgba(240, 123, 45, 0.18);
+}
+
+.pp-log-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.7;
+	transform: none;
+	box-shadow: none;
+}
+
+.pp-log-message {
+	min-height: 20px;
+	font-size: 13px;
+}
+
+.pp-log-message.success {
+	color: #1f8f52;
+}
+
+.pp-log-message.error {
+	color: #d13d38;
+}
+
+.pp-log-output {
+	min-height: 420px;
+	max-height: 620px;
+	margin: 0;
+	padding: 18px;
+	border-radius: 16px;
+	border: 1px solid #dce7f5;
+	background:
+		linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
+		#102132;
+	color: #d5e5f6;
+	font-size: 13px;
+	line-height: 1.7;
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow: auto;
+	box-sizing: border-box;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+}
+
+@media (max-width: 860px) {
+	.pp-log-hero,
+	.pp-log-toolbar {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.pp-log-summary {
+		width: 100%;
+		min-width: 0;
+	}
+}
+
+@media (max-width: 760px) {
+	.pp-log-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.pp-log-page {
+		padding-left: 4px;
+		padding-right: 4px;
+	}
+
+	.pp-log-hero,
+	.pp-log-panel {
+		padding-left: 18px;
+		padding-right: 18px;
+	}
+}
+</style>
+
+<div class="pp-log-page">
+	<div class="pp-log-hero">
+		<div class="pp-log-copy">
+			<div class="pp-log-kicker">OpenWrt Status</div>
+			<h2 class="pp-log-title">运行日志</h2>
+			<p class="pp-log-subtitle">这里会持续记录监控服务的启动、停止、单次丢包、恢复事件，以及国外代理 curl 探测失败时的原因，便于快速排查最近一次异常发生的时间和内容。</p>
+		</div>
+
+		<div class="pp-log-summary">
+			<span class="pp-log-summary-label">日志说明</span>
+			<div class="pp-log-summary-value">默认保留最近 500 行事件记录，适合排查服务重启、连续失败、单次丢包、代理配置问题和恢复过程。</div>
+		</div>
+	</div>
+
+	<div class="pp-log-grid">
+		<div class="pp-log-meta">
+			<span class="pp-log-meta-label">最后更新时间</span>
+			<div class="pp-log-meta-value" id="logUpdatedAt">--</div>
+		</div>
+		<div class="pp-log-meta">
+			<span class="pp-log-meta-label">日志行数</span>
+			<div class="pp-log-meta-value" id="logLineCount">0</div>
+		</div>
+		<div class="pp-log-meta">
+			<span class="pp-log-meta-label">日志大小</span>
+			<div class="pp-log-meta-value" id="logSize">0 B</div>
+		</div>
+	</div>
+
+	<div class="pp-log-panel">
+		<div class="pp-log-toolbar">
+			<div class="pp-log-tools">
+				<label class="pp-log-refresh">
+					<input type="checkbox" id="autoRefresh" checked>
+					<span>自动刷新</span>
+				</label>
+				<button class="pp-log-button" id="clearLogsButton" type="button">清除日志</button>
+				<span class="pp-log-message" id="logMessage"></span>
+			</div>
+			<div class="pp-log-note">取消勾选后会停止自动轮询，当前页面内容会保持不变。</div>
+		</div>
+
+		<pre class="pp-log-output" id="logContent">正在加载日志...</pre>
+	</div>
+</div>
+
+<script>
+(function() {
+	var apiBase = '<%=luci.dispatcher.build_url("admin", "status", "pingpacket")%>';
+	var token = (window.L && L.env && L.env.token) ? L.env.token : '<%=token%>';
+	var logsUrl = apiBase + '/get_logs';
+	var clearUrl = apiBase + '/clear_logs';
+	var refreshTimer = null;
+	var fetchInFlight = false;
+	var clearInFlight = false;
+	var refreshInterval = 2000;
+
+	function $(id) {
+		return document.getElementById(id);
+	}
+
+	function setMessage(text, type) {
+		var node = $('logMessage');
+		node.textContent = text || '';
+		node.className = type ? 'pp-log-message ' + type : 'pp-log-message';
+	}
+
+	function scheduleRefresh(delay) {
+		if (refreshTimer) {
+			clearTimeout(refreshTimer);
+		}
+
+		if (!$('autoRefresh').checked) {
+			refreshTimer = null;
+			return;
+		}
+
+		refreshTimer = setTimeout(fetchLogs, typeof delay === 'number' ? delay : refreshInterval);
+	}
+
+	function formatBytes(size) {
+		var value = Number(size) || 0;
+		if (value < 1024) {
+			return value + ' B';
+		}
+		if (value < 1024 * 1024) {
+			return (value / 1024).toFixed(1) + ' KB';
+		}
+		return (value / (1024 * 1024)).toFixed(1) + ' MB';
+	}
+
+	function countLines(content) {
+		var normalized;
+
+		if (!content) {
+			return 0;
+		}
+
+		normalized = content.replace(/\n+$/, '');
+		if (!normalized) {
+			return 0;
+		}
+
+		return normalized.split('\n').length;
+	}
+
+	function updateView(payload) {
+		var content = payload.content || '';
+		var output = $('logContent');
+
+		output.textContent = content || '当前暂无日志记录。';
+		$('logUpdatedAt').textContent = payload.updated_at || '--';
+		$('logLineCount').textContent = String(countLines(content));
+		$('logSize').textContent = formatBytes(payload.size || 0);
+		if ($('autoRefresh').checked) {
+			output.scrollTop = output.scrollHeight;
+		}
+	}
+
+	function fetchLogs() {
+		var xhr;
+
+		if (fetchInFlight || clearInFlight) {
+			scheduleRefresh(refreshInterval);
+			return;
+		}
+
+		fetchInFlight = true;
+		xhr = new XMLHttpRequest();
+		xhr.open('GET', logsUrl, true);
+		xhr.onload = function() {
+			var response = null;
+
+			if (xhr.status === 200) {
+				try {
+					response = JSON.parse(xhr.responseText);
+				} catch (e) {}
+			}
+
+			if (response) {
+				updateView(response);
+			} else {
+				setMessage('日志读取失败，请稍后重试。', 'error');
+			}
+		};
+		xhr.onerror = function() {
+			setMessage('日志读取失败，请稍后重试。', 'error');
+		};
+		xhr.onloadend = function() {
+			fetchInFlight = false;
+			scheduleRefresh(refreshInterval);
+		};
+		xhr.send();
+	}
+
+	function clearLogs() {
+		var xhr;
+
+		if (fetchInFlight || clearInFlight) {
+			return;
+		}
+
+		clearInFlight = true;
+		$('clearLogsButton').disabled = true;
+		setMessage('正在清除日志...', '');
+
+		xhr = new XMLHttpRequest();
+		xhr.open('POST', clearUrl, true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onload = function() {
+			var response = null;
+
+			if (xhr.status === 200) {
+				try {
+					response = JSON.parse(xhr.responseText);
+				} catch (e) {}
+			}
+
+			if (response && response.success) {
+				updateView({
+					content: '',
+					updated_at: '',
+					size: 0
+				});
+				setMessage('日志已清除。', 'success');
+			} else {
+				setMessage('清除日志失败，请稍后重试。', 'error');
+			}
+		};
+		xhr.onerror = function() {
+			setMessage('清除日志失败，请稍后重试。', 'error');
+		};
+		xhr.onloadend = function() {
+			clearInFlight = false;
+			$('clearLogsButton').disabled = false;
+			if ($('autoRefresh').checked) {
+				scheduleRefresh(refreshInterval);
+			}
+		};
+		xhr.send('token=' + encodeURIComponent(token));
+	}
+
+	$('autoRefresh').addEventListener('change', function() {
+		if (this.checked) {
+			setMessage('已恢复自动刷新。', 'success');
+			fetchLogs();
+			return;
+		}
+
+		if (refreshTimer) {
+			clearTimeout(refreshTimer);
+			refreshTimer = null;
+		}
+
+		setMessage('已暂停自动刷新。', '');
+	});
+
+	$('clearLogsButton').addEventListener('click', clearLogs);
+
+	document.addEventListener('visibilitychange', function() {
+		if (!document.hidden && $('autoRefresh').checked) {
+			fetchLogs();
+		}
+	});
+
+	window.addEventListener('focus', function() {
+		if ($('autoRefresh').checked) {
+			fetchLogs();
+		}
+	});
+
+	fetchLogs();
+})();
+</script>
+
+<%+footer%>

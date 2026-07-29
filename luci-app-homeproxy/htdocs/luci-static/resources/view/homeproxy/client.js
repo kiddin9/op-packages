@@ -10,6 +10,7 @@
 'require poll';
 'require rpc';
 'require uci';
+'require ui';
 'require validation';
 'require view';
 
@@ -21,6 +22,13 @@ const callServiceList = rpc.declare({
 	object: 'service',
 	method: 'list',
 	params: ['name'],
+	expect: { '': {} }
+});
+
+const callRCInit = rpc.declare({
+	object: 'rc',
+	method: 'init',
+	params: ['name', 'action'],
 	expect: { '': {} }
 });
 
@@ -38,6 +46,89 @@ const callWriteDomainList = rpc.declare({
 	expect: { '': {} }
 });
 
+const callCurrentNode = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'current_node_get',
+	expect: { '': {} }
+});
+
+const callPackageVersion = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'package_get_version',
+	expect: { '': {} }
+});
+
+const callUpdatePanel = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'clash_api_update_panel',
+	expect: { '': {} }
+});
+
+const statusCss = `
+#homeproxy_status_panel {
+	margin-bottom: 1rem;
+}
+#homeproxy_status_panel .homeproxy-status-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+	gap: 10px;
+	align-items: center;
+}
+#homeproxy_status_panel .homeproxy-status-field {
+	min-width: 0;
+}
+#homeproxy_status_panel .homeproxy-status-label {
+	font-weight: 600;
+	text-align: center;
+	margin-bottom: 6px;
+}
+#homeproxy_status_panel input {
+	width: 100%;
+	min-width: 0;
+}
+#homeproxy_status_panel .homeproxy-version-field input {
+	width: 100%;
+}
+#homeproxy_status_panel .homeproxy-core-version-field input {
+	width: 100%;
+}
+#homeproxy_status_panel .homeproxy-core-status-field input {
+	width: 100%;
+	text-align: center;
+}
+#homeproxy_status_panel .homeproxy-core-status {
+	border: unset;
+	font-style: italic;
+	font-weight: 700;
+}
+#homeproxy_status_panel .homeproxy-status-actions {
+	display: flex;
+	flex-wrap: nowrap;
+	gap: 6px;
+	align-items: center;
+	justify-content: flex-end;
+	min-width: 0;
+}
+#homeproxy_status_panel .homeproxy-status-actions .btn {
+	width: auto;
+	min-width: 0;
+	padding-left: 6px;
+	padding-right: 6px;
+	white-space: nowrap;
+}
+@media (max-width: 700px) {
+	#homeproxy_status_panel .homeproxy-status-grid {
+		grid-template-columns: 1fr;
+	}
+	#homeproxy_status_panel .homeproxy-status-actions {
+		flex-wrap: wrap;
+		justify-content: flex-start;
+	}
+	#homeproxy_status_panel .homeproxy-status-actions .btn {
+		flex: 1 1 auto;
+	}
+}`;
+
 function getServiceStatus() {
 	return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
 		let isRunning = false;
@@ -48,15 +139,253 @@ function getServiceStatus() {
 	});
 }
 
-function renderStatus(isRunning, version) {
-	let spanTemp = '<em><span style="color:%s"><strong>%s (sing-box v%s) %s</strong></span></em>';
-	let renderHTML;
-	if (isRunning)
-		renderHTML = spanTemp.format('green', _('HomeProxy'), version, _('RUNNING'));
-	else
-		renderHTML = spanTemp.format('red', _('HomeProxy'), version, _('NOT RUNNING'));
+function updateCoreStatus(isRunning, currentNode) {
+	let status = document.getElementById('homeproxy_core_status');
+	if (!status)
+		return;
 
-	return renderHTML;
+	status.style.color = isRunning ? 'green' : 'red';
+	status.value = currentNode ? _('Running: %s').format(currentNode) : (isRunning ? _('Running') : _('Not Running'));
+}
+
+function parseControllerPort(externalController) {
+	let value = externalController || '127.0.0.1:9090';
+	let idx = value.lastIndexOf(':');
+	return (idx >= 0) ? value.substring(idx + 1) : '9090';
+}
+
+function getClashApiInfo() {
+	let port = parseControllerPort(uci.get('homeproxy', 'clash_api', 'external_controller')),
+	    secret = uci.get('homeproxy', 'clash_api', 'secret') || '';
+
+	return {
+		port,
+		secret,
+		baseUrl: 'http://' + window.location.hostname + ':' + port
+	};
+}
+
+function updateDashboard() {
+	return callUpdatePanel().then((res) => {
+		if (!res?.result) {
+			let message = res?.error;
+			if (message === 'update_panel_failed')
+				message = _('Update panel failed.');
+			else if (message === 'clash_api_unavailable')
+				message = _('Clash API unavailable.');
+			else if (message === 'panel_backup_failed')
+				message = _('Backup panel failed.');
+			else if (message === 'panel_restore_failed')
+				message = _('Restore panel failed.');
+
+			throw new Error(message || _('Update failed.'));
+		}
+		ui.addNotification(null, E('p', _('Successfully updated.')), 'info');
+	}).catch((err) => {
+		ui.addNotification(null, E('p', err.message || err), 'danger');
+	});
+}
+
+function openDashboard() {
+	let api = getClashApiInfo();
+	let query = new URLSearchParams({
+		host: window.location.hostname,
+		hostname: window.location.hostname,
+		port: api.port,
+		secret: api.secret
+	}).toString();
+
+	window.open(api.baseUrl + '/ui/?' + query, '_blank');
+	return Promise.resolve();
+}
+
+function normalizeRuleSetSectionId(tag) {
+	return 'ruleset_' + tag.replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+|_+$/g, '');
+}
+
+function getDnsServerDefaultPort(type) {
+	switch (type) {
+	case 'udp':
+	case 'tcp':
+		return '53';
+	case 'tls':
+	case 'quic':
+		return '853';
+	case 'https':
+	case 'h3':
+		return '443';
+	default:
+		return 'auto';
+	}
+}
+
+function getDnsServerAddressPlaceholder(type) {
+	switch (type) {
+	case 'https':
+	case 'h3':
+		return '';
+	case 'tls':
+	case 'quic':
+		return 'dns.alidns.com';
+	default:
+		return '';
+	}
+}
+
+function validateDnsServerAddress(type, value) {
+	if (!value)
+		return false;
+
+	if (value.includes('://')) {
+		if (!['https', 'h3'].includes(type))
+			return false;
+
+		try {
+			let url = new URL(value);
+			if (url.protocol !== 'https:')
+				return false;
+
+			value = url.hostname;
+		} catch (e) {
+			return false;
+		}
+	}
+
+	return stubValidator.apply('hostname', value) ||
+		stubValidator.apply('ip4addr', value) ||
+		stubValidator.apply('ip6addr', value.match(/^\[(.+)\]$/)?.[1] || value);
+}
+
+function validateDuration(value) {
+	return !value || /^[1-9]\d*(ms|s|m|h|d)$/.test(value);
+}
+
+function validateUpdateCron(value) {
+	if (!value)
+		return true;
+
+	const matched = String(value).trim().match(/^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+([0-7*])$/);
+	if (!matched)
+		return false;
+
+	return +matched[1] <= 59 && +matched[2] <= 23;
+}
+
+function translateKnownError(error) {
+	let name = error?.name || '',
+	    message = error?.message || error || '';
+
+	if (name === 'TypeError' && String(message).match(/can't convert null to object|Cannot convert undefined or null to object/i))
+		return _('Type error') + '\n' + _('Cannot convert null to object.');
+
+	return null;
+}
+
+function installKnownErrorTranslator() {
+	if (window.__homeproxyKnownErrorTranslator)
+		return;
+
+	window.__homeproxyKnownErrorTranslator = true;
+
+	window.addEventListener('error', (ev) => {
+		let message = translateKnownError(ev.error || ev.message);
+		if (message) {
+			ev.preventDefault();
+			ui.addNotification(null, E('p', message), 'danger');
+		}
+	}, true);
+
+	window.addEventListener('unhandledrejection', (ev) => {
+		let message = translateKnownError(ev.reason);
+		if (message) {
+			ev.preventDefault();
+			ui.addNotification(null, E('p', message), 'danger');
+		}
+	}, true);
+}
+
+function renderRuleSetAdd(section, extra_class) {
+	let el = form.GridSection.prototype.renderSectionAdd.apply(section, [ extra_class ]),
+	    nameEl = el.querySelector('.cbi-section-create-name'),
+	    button = el.querySelector('.cbi-section-create > .cbi-button-add'),
+	    uciconfig = section.uciconfig || section.map.config;
+
+	let tagEl = E('input', {
+		'type': 'text',
+		'class': nameEl.className
+	});
+	let hintEl = E('div', { 'class': 'cbi-value-description' });
+
+	nameEl.style.display = 'none';
+	nameEl.parentNode.insertBefore(tagEl, nameEl);
+	nameEl.parentNode.appendChild(hintEl);
+	button.disabled = true;
+
+	let syncSectionName = () => {
+		let tag = (tagEl.value || '').trim();
+		hintEl.textContent = '';
+
+		if (!tag) {
+			nameEl.value = '';
+			button.disabled = true;
+			return;
+		}
+
+		if (!tag.match(/^[A-Za-z0-9_.-]+$/)) {
+			nameEl.value = '';
+			button.disabled = true;
+			hintEl.textContent = _('Expecting: %s').format(_('valid tag'));
+			return;
+		}
+
+		let duplicate = false;
+		uci.sections(uciconfig, 'ruleset', (res) => {
+			if ((res.tag || ('cfg-' + res['.name'] + '-rule')) === tag)
+				duplicate = true;
+		});
+
+		if (duplicate) {
+			nameEl.value = '';
+			button.disabled = true;
+			hintEl.textContent = _('Expecting: %s').format(_('unique value'));
+			return;
+		}
+
+		let section_id = normalizeRuleSetSectionId(tag),
+		    suffix = 1;
+		while (uci.get(uciconfig, section_id))
+			section_id = normalizeRuleSetSectionId(tag) + '_' + suffix++;
+
+		nameEl.value = section_id;
+		nameEl.dataset.sectionId = section_id;
+		nameEl.dataset.ruleSetTag = tag;
+		button.disabled = null;
+	};
+
+	tagEl.addEventListener('input', syncSectionName);
+	tagEl.addEventListener('blur', syncSectionName);
+
+	button.addEventListener('click', () => {
+		syncSectionName();
+
+		let tag = nameEl.dataset.ruleSetTag,
+		    section_id = nameEl.dataset.sectionId;
+
+		window.setTimeout(() => {
+			if (tag && section_id && uci.get(uciconfig, section_id)) {
+				uci.set(uciconfig, section_id, 'tag', tag);
+				uci.set(uciconfig, section_id, 'label', tag);
+				uci.set(uciconfig, section_id, 'enabled', '1');
+				uci.set(uciconfig, section_id, 'type', 'remote');
+				uci.set(uciconfig, section_id, 'format', 'binary');
+				uci.set(uciconfig, section_id, 'remote_path', '/etc/homeproxy/ruleset/');
+				uci.set(uciconfig, section_id, 'auto_update', '1');
+				uci.set(uciconfig, section_id, 'update_interval', '0 0 * * *');
+			}
+		}, 0);
+	});
+
+	return el;
 }
 
 let stubValidator = {
@@ -77,18 +406,29 @@ return view.extend({
 		return Promise.all([
 			uci.load('homeproxy'),
 			hp.getBuiltinFeatures(),
-			network.getHostHints()
+			network.getHostHints(),
+			L.resolveDefault(callPackageVersion(), {})
 		]);
 	},
 
 	render(data) {
 		let m, s, o, ss, so;
 
+		installKnownErrorTranslator();
+		hp.installCloseButtonText();
+
 		let features = data[1],
-		    hosts = data[2]?.hosts;
+		    hosts = data[2]?.hosts,
+		    packageVersion = data[3]?.version || '-',
+		    routingMode = uci.get(data[0], 'config', 'routing_mode');
 
 		/* Cache all configured proxy nodes, they will be called multiple times */
 		let proxy_nodes = {};
+		let subscription_groups = {};
+		let routing_groups = {};
+		let normalizeFormList = function(value) {
+			return Array.isArray(value) ? value : (value ? [value] : []);
+		};
 		uci.sections(data[0], 'node', (res) => {
 			let nodeaddr = ((res.type === 'direct') ? res.override_address : res.address) || '',
 			    nodeport = ((res.type === 'direct') ? res.override_port : res.port) || '';
@@ -97,21 +437,118 @@ return view.extend({
 				String.format('[%s] %s', res.type, res.label || ((stubValidator.apply('ip6addr', nodeaddr) ?
 					String.format('[%s]', nodeaddr) : nodeaddr) + ':' + nodeport));
 		});
+		let subscriptionUrls = normalizeFormList(uci.get(data[0], 'subscription', 'subscription_url')),
+		    subscriptionNames = normalizeFormList(uci.get(data[0], 'subscription', 'subscription_name'));
+		for (let i = 0; i < subscriptionUrls.length; i++) {
+			let url = subscriptionUrls[i],
+			    title = String(subscriptionNames[i] || '').trim();
+
+			if (title)
+				subscription_groups[hp.calcStringMD5(url.replace(/#.*$/, ''))] = title;
+		}
+		uci.sections(data[0], 'routing_node', (res) => {
+			routing_groups[res['.name']] = res.label || res['.name'];
+		});
+		let collectSelectedRoutingNodes = function(groups, subscription_nodes, selected_nodes, policy_nodes, section_id) {
+			let nodes = [];
+			groups = normalizeFormList(groups);
+			subscription_nodes = normalizeFormList(subscription_nodes);
+			selected_nodes = normalizeFormList(selected_nodes);
+			policy_nodes = normalizeFormList(policy_nodes);
+
+			uci.sections(data[0], 'node', (res) => {
+				if (res.grouphash && groups.includes(res.grouphash) && !nodes.includes(res['.name']))
+					nodes.push(res['.name']);
+			});
+			for (let node of subscription_nodes)
+				if (proxy_nodes[node] && !nodes.includes(node))
+					nodes.push(node);
+			for (let node of selected_nodes)
+				if (proxy_nodes[node] && !nodes.includes(node))
+					nodes.push(node);
+			for (let node of policy_nodes)
+				if (node !== section_id && routing_groups[node] && !nodes.includes(node))
+					nodes.push(node);
+
+			return nodes;
+		};
 
 		m = new form.Map('homeproxy', _('HomeProxy'),
-			_('The modern ImmortalWrt proxy platform for ARM64/AMD64.'));
+			_('OpenWrt-designed Sing-box proxy management platform. It is recommended to disable Dnsmasq DNS redirection.'));
 
 		s = m.section(form.TypedSection);
 		s.render = function () {
 			poll.add(function () {
-				return L.resolveDefault(getServiceStatus()).then((res) => {
-					let view = document.getElementById('service_status');
-					view.innerHTML = renderStatus(res, features.version);
-				});
-			});
+				return Promise.all([
+					L.resolveDefault(getServiceStatus(), false),
+					L.resolveDefault(callCurrentNode(), null)
+				]).then((res) => {
+					let isRunning = res[0],
+					    current = res[1],
+					    current_label = null;
 
-			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
-					E('p', { id: 'service_status' }, _('Collecting data...'))
+					if (current?.mode === 'urltest') {
+						let active = current.active || {};
+						let nodeName = (active?.id && active.id !== 'urltest') ? (proxy_nodes[active.id] || active.label || active.id) : _('Invalid node');
+
+						current_label = _('URLTest: %s').format(nodeName);
+					}
+
+					updateCoreStatus(isRunning, current_label);
+					});
+				});
+
+			let actions = [
+				E('button', {
+					'class': 'btn cbi-button cbi-button-action',
+					'click': ui.createHandlerFn(this, () => callRCInit('homeproxy', 'reload'))
+				}, [ _('Reload Service') ]),
+				E('button', {
+					'class': 'btn cbi-button cbi-button-negative',
+					'click': ui.createHandlerFn(this, () => callRCInit('homeproxy', 'restart'))
+				}, [ _('Restart Service') ])
+			];
+
+			if (routingMode === 'custom') {
+				actions.push(
+					E('button', {
+						'class': 'btn cbi-button cbi-button-positive',
+						'click': ui.createHandlerFn(this, updateDashboard)
+					}, [ _('Update Panel') ]),
+					E('button', {
+						'class': 'btn cbi-button cbi-button-action',
+						'click': ui.createHandlerFn(this, (ev) => hp.uploadPanel(null, ev))
+					}, [ _('Upload Panel ZIP') ]),
+					E('button', {
+						'class': 'btn cbi-button cbi-button-action',
+						'click': ui.createHandlerFn(this, openDashboard)
+					}, [ _('Open Panel') ])
+				);
+			}
+
+			return E('div', { class: 'cbi-section', id: 'homeproxy_status_panel' }, [
+				E('style', [ statusCss ]),
+				E('h3', _('Status')),
+				E('div', { class: 'homeproxy-status-grid' }, [
+					E('div', { class: 'homeproxy-status-field homeproxy-version-field' }, [
+						E('div', { class: 'homeproxy-status-label' }, _('Plugin Version')),
+						E('input', { class: 'cbi-input-text', readonly: '', value: packageVersion })
+					]),
+					E('div', { class: 'homeproxy-status-field homeproxy-core-version-field' }, [
+						E('div', { class: 'homeproxy-status-label' }, _('Core Version')),
+						E('input', { class: 'cbi-input-text', readonly: '', value: features.version || '-' })
+					]),
+					E('div', { class: 'homeproxy-status-field homeproxy-core-status-field' }, [
+						E('div', { class: 'homeproxy-status-label' }, _('Core Status')),
+						E('input', {
+							id: 'homeproxy_core_status',
+							class: 'cbi-input-text homeproxy-core-status',
+							readonly: '',
+							value: _('Collecting data...')
+						})
+					]),
+					E('div', { class: 'homeproxy-status-actions' }, actions)
+				])
 			]);
 		}
 
@@ -153,7 +590,7 @@ return view.extend({
 		o.value('urltest', _('URLTest'));
 		for (let i in proxy_nodes)
 			o.value(i, proxy_nodes[i]);
-		o.default = 'nil';
+		o.default = 'same';
 		o.depends({'routing_mode': /^((?!custom).)+$/, 'proxy_mode': /^((?!redirect$).)+$/});
 		o.rmempty = false;
 
@@ -179,14 +616,13 @@ return view.extend({
 		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
 			_('Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
 		o.value('wan', _('WAN DNS (read from interface)'));
-		o.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
-		o.value('208.67.222.222', _('Cisco Public DNS (208.67.222.222)'));
-		o.value('8.8.8.8', _('Google Public DNS (8.8.8.8)'));
-		o.value('', '---');
-		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
-		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
-		o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
-		o.default = '8.8.8.8';
+		o.value('https://dns.cloudflare.com/dns-query', _('CloudFlare Public DNS (DoH)'));
+		o.value('https://dns.google/dns-query', _('Google Public DNS (DoH)'));
+		o.value('https://dns.quad9.net/dns-query', _('Quad9 Public DNS (DoH)'));
+		o.value('https://dns.adguard-dns.com/dns-query', _('AdGuard Public DNS (DoH)'));
+		o.value('https://dns.sb/dns-query', _('DNS.SB Public DNS (DoH)'));
+		o.value('https://dns.opendns.com/dns-query', _('Cisco Public DNS (DoH)'));
+		o.default = 'https://dns.quad9.net/dns-query';
 		o.rmempty = false;
 		o.depends({'routing_mode': 'custom', '!reverse': true});
 		o.validate = function(section_id, value) {
@@ -217,12 +653,11 @@ return view.extend({
 		o = s.taboption('routing', form.Value, 'china_dns_server', _('China DNS server'),
 			_('The dns server for resolving China domains. Support UDP, TCP, DoH, DoQ, DoT.'));
 		o.value('wan', _('WAN DNS (read from interface)'));
-		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
-		o.value('210.2.4.8', _('CNNIC Public DNS (210.2.4.8)'));
-		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
-		o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
+		o.value('https://doh-pure.onedns.net/dns-query', _('ThreatBook Public DNS (DoH)'));
+		o.value('https://doh.pub/dns-query', _('Tencent Public DNS (DoH)'));
+		o.value('https://dns.alidns.com/dns-query', _('AliYun Public DNS (DoH)'));
 		o.depends('routing_mode', 'bypass_mainland_china');
-		o.default = '223.5.5.5';
+		o.default = 'https://dns.alidns.com/dns-query';
 		o.rmempty = false;
 		o.validate = function(section_id, value) {
 			if (section_id && !['wan'].includes(value)) {
@@ -325,13 +760,6 @@ return view.extend({
 				desc.innerHTML = _('Less compatibility and sometimes better performance.');
 		}
 
-		so = ss.option(form.Flag, 'endpoint_independent_nat', _('Enable endpoint-independent NAT'),
-			_('Performance may degrade slightly, so it is not recommended to enable on when it is not needed.'));
-		so.default = so.enabled;
-		so.depends('tcpip_stack', 'mixed');
-		so.depends('tcpip_stack', 'gvisor');
-		so.rmempty = false;
-
 		so = ss.option(form.Value, 'udp_timeout', _('UDP NAT expiration time'),
 			_('In seconds.'));
 		so.datatype = 'uinteger';
@@ -354,7 +782,7 @@ return view.extend({
 		so.default = so.enabled;
 		so.rmempty = false;
 
-		so = ss.option(form.ListValue, 'default_outbound', _('Default outbound'),
+		so = ss.option(form.ListValue, 'default_outbound', _('Default outbound (fallback)'),
 			_('Default outbound for connections not matched by any routing rules.'));
 		so.load = function(section_id) {
 			delete this.keylist;
@@ -418,11 +846,50 @@ return view.extend({
 
 		so = ss.option(form.ListValue, 'node', _('Node'),
 			_('Outbound node'));
-		so.value('urltest', _('URLTest'));
+		so.value('urltest', _('Auto select'));
+		so.value('selector', _('Manual select'));
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
-		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_node', 'node');
-		so.editable = true;
+		so.default = 'selector';
+		so.rmempty = false;
+		so.formvalue = function(section_id) {
+			let widget = this.getUIElement(section_id),
+			    cbid = this.cbid(section_id),
+			    overlay = document.getElementById('modal_overlay'),
+			    input = null;
+
+			if (overlay)
+				for (let el of overlay.querySelectorAll('input, select'))
+					if (el.id === cbid || el.name === cbid) {
+						input = el;
+						break;
+					}
+
+			return widget?.getValue() ||
+				input?.value ||
+				uci.get(data[0], section_id, 'node') ||
+				this.default ||
+				'selector';
+		}
+		so.validate = function(section_id, value) {
+			value = value || this.formvalue(section_id);
+
+			let result = hp.validateUniqueValue(data[0], 'routing_node', 'node', section_id, value);
+			if (result !== true)
+				return result;
+
+			if (section_id && (value === 'urltest' || value === 'selector')) {
+				let groups = normalizeFormList(this.section.formvalue(section_id, 'subscription_groups')),
+				    subscription_nodes = normalizeFormList(this.section.formvalue(section_id, 'subscription_nodes')),
+				    selected = normalizeFormList(this.section.formvalue(section_id, 'selected_nodes')),
+				    policy_nodes = normalizeFormList(this.section.formvalue(section_id, 'policy_nodes'));
+
+				if (!groups.length && !subscription_nodes.length && !selected.length && !policy_nodes.length)
+					return _('Expecting: %s').format(_('non-empty value'));
+			}
+
+			return true;
+		}
 
 		so = ss.option(form.ListValue, 'domain_resolver', _('Domain resolver'),
 			_('For resolving domain name in the server address.'));
@@ -440,21 +907,21 @@ return view.extend({
 
 			return this.super('load', section_id);
 		}
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends('node', /^((?!(urltest|selector)$).)+$/);
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'domain_strategy', _('Domain strategy'),
 			_('The domain strategy for resolving the domain name in the address.'));
 		for (let i in hp.dns_strategy)
 			so.value(i, hp.dns_strategy[i]);
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends('node', /^((?!(urltest|selector)$).)+$/);
 		so.modalonly = true;
 
 		so = ss.option(widgets.DeviceSelect, 'bind_interface', _('Bind interface'),
 			_('The network interface to bind to.'));
 		so.multiple = false;
 		so.noaliases = true;
-		so.depends({'outbound': '', 'node': /^((?!urltest$).)+$/});
+		so.depends({'outbound': '', 'node': /^((?!(urltest|selector)$).)+$/});
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
@@ -480,7 +947,15 @@ return view.extend({
 					if (res['.name'] !== section_id) {
 						if (res.outbound === section_id && res['.name'] == value)
 							conflict = true;
-						else if (res.node === 'urltest' && res.urltest_nodes?.includes(node) && res['.name'] == value)
+						else if (res.node === 'urltest' && normalizeFormList(res.urltest_nodes).includes(node) && res['.name'] == value)
+							conflict = true;
+						else if (res.node === 'urltest' && normalizeFormList(res.subscription_nodes).includes(node) && res['.name'] == value)
+							conflict = true;
+						else if (res.node === 'urltest' && normalizeFormList(res.selected_nodes).includes(node) && res['.name'] == value)
+							conflict = true;
+						else if (res.node === 'selector' && normalizeFormList(res.selected_nodes).includes(node) && res['.name'] == value)
+							conflict = true;
+						else if (res.node === 'selector' && normalizeFormList(res.subscription_nodes).includes(node) && res['.name'] == value)
 							conflict = true;
 					}
 				});
@@ -490,21 +965,97 @@ return view.extend({
 
 			return true;
 		}
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends('node', /^((?!(urltest|selector)$).)+$/);
 		so.editable = true;
 
-		so = ss.option(hp.CBIStaticList, 'urltest_nodes', _('URLTest nodes'),
-			_('List of nodes to test.'));
-		for (let i in proxy_nodes)
-			so.value(i, proxy_nodes[i]);
+		so = ss.option(hp.CBIMultiValue, 'subscription_groups', _('Subscriptions'));
+		for (let hash in subscription_groups)
+			so.value(hash, subscription_groups[hash]);
 		so.depends('node', 'urltest');
-		so.validate = function(section_id) {
-			let value = this.section.formvalue(section_id, 'urltest_nodes');
-			if (section_id && !value.length)
-				return _('Expecting: %s').format(_('non-empty value'));
+		so.depends('node', 'selector');
+		so.rmempty = true;
+		so.modalonly = true;
+
+		so = ss.option(hp.CBIMultiValue, 'subscription_nodes', _('Subscription nodes'),
+			_('List of nodes from subscriptions.'));
+		uci.sections(data[0], 'node', (res) => {
+			if (res.grouphash)
+				so.value(res['.name'], proxy_nodes[res['.name']]);
+		});
+		so.depends('node', 'urltest');
+		so.depends('node', 'selector');
+		so.rmempty = true;
+		so.modalonly = true;
+
+		so = ss.option(hp.CBIMultiValue, 'selected_nodes', _('Custom nodes'));
+		uci.sections(data[0], 'node', (res) => {
+			if (!res.grouphash)
+				so.value(res['.name'], proxy_nodes[res['.name']]);
+		});
+		so.depends('node', 'urltest');
+		so.depends('node', 'selector');
+		so.rmempty = true;
+		so.modalonly = true;
+
+		so = ss.option(hp.CBIMultiValue, 'policy_nodes', _('Policy nodes'),
+			_('List of policy groups.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res['.name'] !== section_id && res.enabled === '1' && ['urltest', 'selector'].includes(res.node))
+					this.value(res['.name'], res.label || res['.name']);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.validate = function(section_id, value) {
+			if (normalizeFormList(value).includes(section_id))
+				return _('Recursive outbound detected!');
 
 			return true;
 		}
+		so.depends('node', 'selector');
+		so.rmempty = true;
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'selector_default', _('Default node'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			let groups = normalizeFormList(this.section.formvalue(section_id, 'subscription_groups')),
+			    subscription_nodes = normalizeFormList(this.section.formvalue(section_id, 'subscription_nodes')),
+			    selected = normalizeFormList(this.section.formvalue(section_id, 'selected_nodes')),
+			    policy_nodes = normalizeFormList(this.section.formvalue(section_id, 'policy_nodes'));
+
+			this.value('', _('Default'));
+			for (let node of collectSelectedRoutingNodes(groups, subscription_nodes, selected, policy_nodes, section_id))
+				this.value(node, proxy_nodes[node] || routing_groups[node]);
+
+			return this.super('load', section_id);
+		}
+		so.validate = function(section_id, value) {
+			if (!value)
+				return true;
+
+			let groups = normalizeFormList(this.section.formvalue(section_id, 'subscription_groups')),
+			    subscription_nodes = normalizeFormList(this.section.formvalue(section_id, 'subscription_nodes')),
+			    selected = normalizeFormList(this.section.formvalue(section_id, 'selected_nodes')),
+			    policy_nodes = normalizeFormList(this.section.formvalue(section_id, 'policy_nodes'));
+
+			if (!collectSelectedRoutingNodes(groups, subscription_nodes, selected, policy_nodes, section_id).includes(value))
+				return _('Invalid node');
+
+			return true;
+		}
+		so.depends('node', 'selector');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'selector_interrupt_exist_connections', _('Interrupt existing connections'),
+			_('Interrupt existing connections when the selected outbound has changed.'));
+		so.depends('node', 'selector');
 		so.modalonly = true;
 
 		so = ss.option(form.Value, 'urltest_url', _('Test URL'),
@@ -593,13 +1144,7 @@ return view.extend({
 		so.editable = true;
 
 		so = ss.taboption('field_other', form.ListValue, 'mode', _('Mode'),
-			_('The default rule uses the following matching logic:<br/>' +
-			'<code>(domain || domain_suffix || domain_keyword || domain_regex || ip_cidr || ip_is_private)</code> &&<br/>' +
-			'<code>(port || port_range)</code> &&<br/>' +
-			'<code>(source_ip_cidr || source_ip_is_private)</code> &&<br/>' +
-			'<code>(source_port || source_port_range)</code> &&<br/>' +
-			'<code>other fields</code>.<br/>' +
-			'Additionally, included rule sets can be considered merged rather than as a single rule sub-item.'));
+			_('In default mode, rule fields are matched by category. Any condition in the same category can match, while different categories must match at the same time. Rule sets are merged into the rule for matching and are not treated as separate sub-rules.'));
 		so.value('default', _('Default'));
 		so.default = 'default';
 		so.rmempty = false;
@@ -651,7 +1196,7 @@ return view.extend({
 
 			uci.sections(data[0], 'ruleset', (res) => {
 				if (res.enabled === '1')
-					this.value(res['.name'], res.label);
+					this.value(res['.name'], res.tag || res.label);
 			});
 
 			return this.super('load', section_id);
@@ -784,8 +1329,8 @@ return view.extend({
 		so.depends('action', 'resolve');
 		so.modalonly = true;
 
-		so = ss.taboption('field_other', form.Flag, 'resolve_disable_cache', _('Disable DNS cache'),
-			_('Disable DNS cache in this query.'));
+		so = ss.taboption('field_other', form.Flag, 'resolve_disable_cache', _('Disable DNS memory cache'),
+			_('Disable DNS memory cache in this query.'));
 		so.depends('action', 'resolve');
 		so.modalonly = true;
 
@@ -879,7 +1424,8 @@ return view.extend({
 		for (let i in hp.dns_strategy)
 			so.value(i, hp.dns_strategy[i]);
 
-		so = ss.option(form.ListValue, 'default_server', _('Default DNS server'));
+		so = ss.option(form.ListValue, 'default_server', _('Default DNS server'),
+			_('Daily domain name resolution for clients. Choose an overseas DNS if DNS leak protection is required.'));
 		so.load = function(section_id) {
 			delete this.keylist;
 			delete this.vallist;
@@ -896,13 +1442,13 @@ return view.extend({
 		so.default = 'default-dns';
 		so.rmempty = false;
 
-		so = ss.option(form.Flag, 'disable_cache', _('Disable DNS cache'));
+		so = ss.option(form.Flag, 'disable_cache', _('Disable DNS memory cache'));
 
-		so = ss.option(form.Flag, 'disable_cache_expire', _('Disable cache expire'));
+		so = ss.option(form.Flag, 'disable_cache_expire', _('Disable DNS memory cache expiration'));
 		so.depends('disable_cache', '0');
 
-		so = ss.option(form.Flag, 'independent_cache', _('Independent cache per server'),
-			_('Make each DNS server\'s cache independent for special purposes. If enabled, will slightly degrade performance.'));
+		so = ss.option(form.Flag, 'independent_cache', _('Independent DNS memory cache per server'),
+			_('Make each DNS server\'s memory cache independent for special purposes. If enabled, will slightly degrade performance.'));
 		so.depends('disable_cache', '0');
 
 		so = ss.option(form.Value, 'client_subnet', _('EDNS Client subnet'),
@@ -910,14 +1456,6 @@ return view.extend({
 			'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
 		so.datatype = 'or(cidr, ipaddr)';
 
-		so = ss.option(form.Flag, 'cache_file_store_rdrc', _('Store RDRC'),
-			_('Store rejected DNS response cache.<br/>' +
-			'The check results of <code>Address filter DNS rule items</code> will be cached until expiration.'));
-
-		so = ss.option(form.Value, 'cache_file_rdrc_timeout', _('RDRC timeout'),
-			_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
-		so.datatype = 'uinteger';
-		so.depends('cache_file_store_rdrc', '1');
 		/* DNS settings end */
 
 		/* DNS servers start */
@@ -955,21 +1493,72 @@ return view.extend({
 		so.rmempty = false;
 
 		so = ss.option(form.Value, 'server', _('Address'),
-			_('The address of the dns server.'));
-		so.datatype = 'or(hostname, ipaddr)';
+			_('Full URL, e.g. https://dns.alidns.com/dns-query'));
+		so.placeholder = '';
+		so.validate = function(section_id, value) {
+			let type = this.section.formvalue(section_id, 'type') ||
+				uci.get(data[0], section_id, 'type') ||
+				'udp';
+
+			if (!validateDnsServerAddress(type, value))
+				return _('Expecting: %s').format(_('valid DNS server address'));
+
+			return true;
+		}
+		so.renderWidget = function(section_id, option_index, cfgvalue) {
+			let node = form.Value.prototype.renderWidget.apply(this, arguments),
+			    input = node.querySelector('input'),
+			    update = () => {
+				let type = this.section.formvalue(section_id, 'type') ||
+					uci.get(data[0], section_id, 'type') ||
+					'udp';
+				if (input)
+					input.placeholder = getDnsServerAddressPlaceholder(type);
+			};
+
+			update();
+			requestAnimationFrame(() => {
+				let type_input = document.getElementById(this.cbid(section_id).replace(/\.server$/, '.type'));
+				if (type_input) {
+					type_input.addEventListener('change', update);
+					update();
+				}
+			});
+
+			return node;
+		}
 		so.rmempty = false;
 
 		so = ss.option(form.Value, 'server_port', _('Port'),
-			_('The port of the DNS server.'));
-		so.placeholder = 'auto';
+			_('Leave empty to use the default port.'));
+		so.placeholder = '53';
 		so.datatype = 'port';
+		so.renderWidget = function(section_id, option_index, cfgvalue) {
+			let node = form.Value.prototype.renderWidget.apply(this, arguments),
+			    input = node.querySelector('input'),
+			    update = () => {
+				let type = this.section.formvalue(section_id, 'type') ||
+					uci.get(data[0], section_id, 'type') ||
+					'udp';
+				if (input)
+					input.placeholder = getDnsServerDefaultPort(type);
+			};
 
-		so = ss.option(form.Value, 'path', _('Path'),
-			_('The path of the DNS server.'));
-		so.placeholder = '/dns-query';
-		so.depends('type', 'https');
-		so.depends('type', 'h3');
-		so.modalonly = true;
+			update();
+			requestAnimationFrame(() => {
+				let type_input = document.getElementById(this.cbid(section_id).replace(/\.server_port$/, '.type'));
+				if (type_input) {
+					type_input.addEventListener('change', update);
+					update();
+				}
+			});
+
+			return node;
+		}
+		so.depends('type', 'udp');
+		so.depends('type', 'tcp');
+		so.depends('type', 'tls');
+		so.depends('type', 'quic');
 
 		so = ss.option(form.DynamicList, 'headers', _('Headers'),
 			_('Additional headers to be sent to the DNS server.'));
@@ -986,7 +1575,7 @@ return view.extend({
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'address_resolver', _('Address resolver'),
-			_('Tag of a another server to resolve the domain name in the address. Required if address contains domain.'));
+			_('Used to resolve DNS server addresses in domain form. IP addresses do not require it.'));
 		so.load = function(section_id) {
 			delete this.keylist;
 			delete this.vallist;
@@ -1073,13 +1662,7 @@ return view.extend({
 		so.editable = true;
 
 		so = ss.taboption('field_other', form.ListValue, 'mode', _('Mode'),
-			_('The default rule uses the following matching logic:<br/>' +
-			'<code>(domain || domain_suffix || domain_keyword || domain_regex)</code> &&<br/>' +
-			'<code>(port || port_range)</code> &&<br/>' +
-			'<code>(source_ip_cidr || source_ip_is_private)</code> &&<br/>' +
-			'<code>(source_port || source_port_range)</code> &&<br/>' +
-			'<code>other fields</code>.<br/>' +
-			'Additionally, included rule sets can be considered merged rather than as a single rule sub-item.'));
+			_('In default mode, rule fields are matched by category. Any condition in the same category can match, while different categories must match at the same time. Rule sets are merged into the rule for matching and are not treated as separate sub-rules.'));
 		so.value('default', _('Default'));
 		so.default = 'default';
 		so.rmempty = false;
@@ -1124,7 +1707,7 @@ return view.extend({
 
 			uci.sections(data[0], 'ruleset', (res) => {
 				if (res.enabled === '1')
-					this.value(res['.name'], res.label);
+					this.value(res['.name'], res.tag || res.label);
 			});
 
 			return this.super('load', section_id);
@@ -1178,8 +1761,8 @@ return view.extend({
 		so.depends('action', 'route');
 		so.modalonly = true;
 
-		so = ss.taboption('field_other', form.Flag, 'dns_disable_cache', _('Disable dns cache'),
-			_('Disable cache and save cache in this query.'));
+		so = ss.taboption('field_other', form.Flag, 'dns_disable_cache', _('Disable DNS memory cache'),
+			_('Disable DNS memory cache and persistent cache in this query.'));
 		so.depends('action', 'route');
 		so.depends('action', 'route-options');
 		so.modalonly = true;
@@ -1319,11 +1902,35 @@ return view.extend({
 		ss.nodescriptions = true;
 		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Rule set'), _('Add a rule set'), data[0]);
 		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
-		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+		ss.renderSectionAdd = L.bind(renderRuleSetAdd, this, ss);
 
 		so = ss.option(form.Value, 'label', _('Label'));
 		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
 		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'ruleset', 'label');
+		so.modalonly = true;
+
+	so = ss.option(form.Value, 'tag', _('Tag'),
+		_('Used by sing-box rule sets. Please fill it in yourself.'));
+	so.rmempty = false;
+		so.validate = function(section_id, value) {
+			if (section_id) {
+				if (!value)
+					return _('Expecting: %s').format(_('non-empty value'));
+				if (!value.match(/^[A-Za-z0-9_.-]+$/))
+					return _('Expecting: %s').format(_('valid tag'));
+
+				let duplicate = false;
+				uci.sections(data[0], 'ruleset', (res) => {
+					if (res['.name'] !== section_id)
+						if ((res.tag || ('cfg-' + res['.name'] + '-rule')) === value)
+							duplicate = true;
+				});
+				if (duplicate)
+					return _('Expecting: %s').format(_('unique value'));
+			}
+
+			return true;
+		}
 		so.modalonly = true;
 
 		so = ss.option(form.Flag, 'enabled', _('Enable'));
@@ -1343,9 +1950,9 @@ return view.extend({
 		so.default = 'binary';
 		so.rmempty = false;
 
-		so = ss.option(form.Value, 'path', _('Path'));
+		so = ss.option(form.Value, 'path', _('Path'),
+			_('The default rule set directory is /etc/homeproxy/ruleset/.'));
 		so.datatype = 'file';
-		so.placeholder = '/etc/homeproxy/ruleset/example.json';
 		so.rmempty = false;
 		so.depends('type', 'local');
 		so.modalonly = true;
@@ -1389,15 +1996,129 @@ return view.extend({
 		}
 		so.depends('type', 'remote');
 
-		so = ss.option(form.Value, 'update_interval', _('Update interval'),
-			_('Update interval of rule set.'));
-		so.placeholder = '1d';
+		so = ss.option(form.Value, 'remote_path', _('Path'));
+		so.default = '/etc/homeproxy/ruleset/';
+		so.placeholder = '/etc/homeproxy/ruleset/';
+		so.validate = function(section_id, value) {
+			if (!value)
+				return _('Expecting: %s').format(_('non-empty value'));
+			if (!value.match(/^\//))
+				return _('Expecting: %s').format(_('absolute path'));
+
+			return true;
+		}
+		so.rmempty = false;
+		so.depends('type', 'remote');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'auto_update', _('Auto update'));
+		so.default = '1';
+		so.rmempty = false;
+		so.depends('type', 'remote');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'update_interval', _('Update time (weekly)'));
+		so.renderWidget = function() {
+			return hp.renderCronSelector.apply(this, arguments);
+		};
+		so.default = '0 0 * * *';
+		so.rmempty = false;
+		so.validate = function(section_id, value) {
+			value = value || this.formvalue(section_id);
+			if (!validateUpdateCron(value))
+				return _('Expecting: %s').format(_('valid cron expression'));
+
+			return true;
+		};
 		so.depends('type', 'remote');
 		/* Rule set settings end */
 
-		/* ACL settings start */
 		s.tab('control', _('Access Control'));
 
+		/* NTP settings start */
+		s.tab('ntp', _('NTP Settings'));
+		o = s.taboption('ntp', form.SectionValue, '_ntp', form.NamedSection, 'ntp', 'homeproxy');
+		o.depends('routing_mode', 'custom');
+		ss = o.subsection;
+
+		so = ss.option(form.Flag, 'enabled', _('Enable NTP'));
+		so.default = so.enabled;
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'server', _('NTP server address'));
+		so.default = 'ntp.aliyun.com';
+		so.placeholder = 'ntp.aliyun.com';
+		so.rmempty = false;
+		so.validate = function(_section_id, value) {
+			if (!value)
+				return _('Expecting: %s').format(_('non-empty value'));
+
+			return stubValidator.apply('hostname', value) ||
+				stubValidator.apply('ip4addr', value) ||
+				stubValidator.apply('ip6addr', value);
+		};
+		so.depends('enabled', '1');
+
+		so = ss.option(form.Value, 'server_port', _('NTP server port'));
+		so.default = '123';
+		so.placeholder = '123';
+		so.datatype = 'port';
+		so.rmempty = false;
+		so.validate = function(_section_id, value) {
+			if (!value)
+				return _('Expecting: %s').format(_('non-empty value'));
+
+			return stubValidator.apply('port', value);
+		};
+		so.depends('enabled', '1');
+
+		so = ss.option(form.Value, 'interval', _('NTP time synchronization interval'),
+			_('NTP service always uses direct connection and mainly provides accurate time for sing-box features that depend on it, such as TLS certificate verification, VMess, Reality/uTLS and other time-sensitive connection scenarios.') + '<br />' +
+			_('Time format examples: 1m = 1 minute, 1h = 1 hour, 1d = 1 day.'));
+		so.default = '30m';
+		so.placeholder = '30m';
+		so.rmempty = false;
+		so.validate = function(_section_id, value) {
+			if (!value)
+				return _('Expecting: %s').format(_('non-empty value'));
+			if (!validateDuration(value))
+				return _('Expecting: %s').format(_('valid duration'));
+
+			return true;
+		};
+		so.depends('enabled', '1');
+		/* NTP settings end */
+
+		/* Cache settings start */
+		s.tab('cache', _('Persistent Cache Settings'));
+		o = s.taboption('cache', form.SectionValue, '_cache', form.NamedSection, 'cache', 'homeproxy');
+		o.depends('routing_mode', 'custom');
+		ss = o.subsection;
+
+		so = ss.option(form.ListValue, 'enabled', _('Enable cache file'));
+		so.value('1', _('Enable'));
+		so.value('0', _('Disable'));
+		so.default = '1';
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'path', _('Persistent cache file path'));
+		so.placeholder = '/etc/homeproxy/cache.db';
+		so.depends('enabled', '1');
+
+		so = ss.option(form.ListValue, 'store_rdrc', _('Persist RDRC cache'));
+		so.value('1', _('Enable'));
+		so.value('0', _('Disable'));
+		so.default = '1';
+		so.rmempty = false;
+		so.depends('enabled', '1');
+
+		so = ss.option(form.Value, 'rdrc_timeout', _('RDRC timeout'),
+			_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
+		so.datatype = 'uinteger';
+		so.depends({'enabled': '1', 'store_rdrc': '1'});
+		/* Cache settings end */
+
+		/* ACL settings start */
 		o = s.taboption('control', form.SectionValue, '_control', form.NamedSection, 'control', 'homeproxy');
 		ss = o.subsection;
 
@@ -1542,6 +2263,101 @@ return view.extend({
 		}
 		/* Direct domain list end */
 		/* ACL settings end */
+
+		/* Panel settings start */
+		s.tab('panel', _('Panel Settings'));
+		o = s.taboption('panel', form.SectionValue, '_clash_api', form.NamedSection, 'clash_api', 'homeproxy');
+		o.depends('routing_mode', 'custom');
+		ss = o.subsection;
+
+		so = ss.option(form.Value, 'external_ui', _('UI path'));
+		so.placeholder = '/etc/homeproxy/run/ui';
+		so.default = '/etc/homeproxy/run/ui';
+
+		const panelPresetUrls = {
+			'https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip': 'Zashboard CDN Fonts (gh-proxy)',
+			'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip': 'Zashboard CDN Fonts',
+			'https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip': 'Zashboard 完整版 (gh-proxy)',
+			'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip': 'Zashboard 完整版',
+			'https://gh-proxy.com/https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip': 'MetaCubeXD (gh-proxy)',
+			'https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip': 'MetaCubeXD',
+			'https://gh-proxy.com/https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip': 'YACD (gh-proxy)',
+			'https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip': 'YACD',
+			'https://gh-proxy.com/https://github.com/MetaCubeX/Razord-meta/archive/refs/heads/gh-pages.zip': 'Razord (gh-proxy)',
+			'https://github.com/MetaCubeX/Razord-meta/archive/refs/heads/gh-pages.zip': 'Razord'
+		};
+
+		so = ss.option(form.ListValue, 'external_ui_download_url', _('UI download URL'));
+		so.value('https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip', 'Zashboard CDN Fonts (gh-proxy)');
+		so.value('https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip', 'Zashboard CDN Fonts');
+		so.value('https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip', 'Zashboard 完整版 (gh-proxy)');
+		so.value('https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip', 'Zashboard 完整版');
+		so.value('https://gh-proxy.com/https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip', 'MetaCubeXD (gh-proxy)');
+		so.value('https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip', 'MetaCubeXD');
+		so.value('https://gh-proxy.com/https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip', 'YACD (gh-proxy)');
+		so.value('https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip', 'YACD');
+		so.value('https://gh-proxy.com/https://github.com/MetaCubeX/Razord-meta/archive/refs/heads/gh-pages.zip', 'Razord (gh-proxy)');
+		so.value('https://github.com/MetaCubeX/Razord-meta/archive/refs/heads/gh-pages.zip', 'Razord');
+		so.value('https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip', 'MetaCubeXD');
+		so.value('https://gh-proxy.com/https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip', 'YACD (gh-proxy)');
+		so.value('https://github.com/MetaCubeX/Yacd-meta/archive/refs/heads/gh-pages.zip', 'YACD');
+		so.value('https://gh-proxy.com/https://github.com/MetaCubeX/Razord-meta/archive/refs/heads/gh-pages.zip', 'Razord (gh-proxy)');
+		so.value('https://github.com/MetaCubeX/Razord-meta/archive/refs/heads/gh-pages.zip', 'Razord');
+		so.value('__custom__', _('Custom'));
+		so.default = 'https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip';
+		so.load = function(section_id) {
+			const value = uci.get(data[0], section_id, 'external_ui_download_url') ?? this.default;
+			return (value in panelPresetUrls) ? value : '__custom__';
+		};
+		so.write = function(section_id, value) {
+			if (value === '__custom__') {
+				const customValue = (this.section?.formvalue(section_id, 'external_ui_download_url_custom') || '').trim();
+				uci.set(data[0], section_id, 'external_ui_download_url', customValue);
+			} else {
+				uci.set(data[0], section_id, 'external_ui_download_url', value);
+			}
+		};
+
+		so = ss.option(form.Value, 'external_ui_download_url_custom', _('Custom URL'));
+		so.placeholder = 'https://example.com/dist.zip';
+		so.depends('external_ui_download_url', '__custom__');
+		so.load = function(section_id) {
+			const value = (uci.get(data[0], section_id, 'external_ui_download_url') || '').trim();
+			return (value in panelPresetUrls) ? '' : value;
+		};
+		so.write = function(section_id, value) {
+			uci.set(data[0], section_id, 'external_ui_download_url_custom', (value || '').trim());
+		};
+		so.remove = function(section_id) {
+			uci.unset(data[0], section_id, 'external_ui_download_url_custom');
+		};
+
+		so = ss.option(form.ListValue, 'external_ui_download_detour', _('UI download detour'));
+		so.value('', _('Default'));
+		so.value('direct-out', _('Direct'));
+		uci.sections(data[0], 'routing_node', (res) => {
+			if (res.enabled === '1')
+				so.value(res['.name'], res.label);
+		});
+		so.default = 'direct-out';
+
+		so = ss.option(form.Value, 'external_controller', _('API listen'),
+			_('Use 0.0.0.0:port to open the panel from your browser.'));
+		so.placeholder = '0.0.0.0:9095';
+		so.default = '0.0.0.0:9095';
+		so.datatype = 'ipaddrport(1)';
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'secret', _('API password'));
+		so.password = true;
+
+		so = ss.option(form.ListValue, 'default_mode', _('Default mode'));
+		so.value('rule', _('Rule'));
+		so.value('global', _('Global'));
+		so.value('direct', _('Direct'));
+		so.default = 'rule';
+		so.rmempty = false;
+		/* Panel settings end */
 
 		return m.render();
 	}

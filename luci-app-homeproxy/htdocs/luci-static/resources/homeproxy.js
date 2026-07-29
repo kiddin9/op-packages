@@ -12,6 +12,158 @@
 'require uci';
 'require ui';
 
+function pad2(value) {
+	value = (value == null) ? '' : String(value).trim();
+	return value.length === 1 ? '0' + value : value;
+}
+
+function normalizeTimePart(value, min, max) {
+	value = parseInt(String(value || '').trim(), 10);
+	if (isNaN(value))
+		value = min;
+	value = Math.max(min, Math.min(max, value));
+	return pad2(value);
+}
+
+function parseCron(value) {
+	const matched = String(value || '').trim().match(/^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+([0-7*])$/);
+	if (!matched)
+		return null;
+
+	const minute = +matched[1],
+	      hour = +matched[2];
+	if (minute < 0 || minute > 59 || hour < 0 || hour > 23)
+		return null;
+
+	return {
+		minute: normalizeTimePart(matched[1], 0, 59),
+		hour: normalizeTimePart(matched[2], 0, 23),
+		day: matched[3] === '*' ? '*' : (matched[3] === '7' ? '0' : matched[3])
+	};
+}
+
+function buildCron(day, hour, minute) {
+	return [
+		normalizeTimePart(minute, 0, 59),
+		normalizeTimePart(hour, 0, 23),
+		'*',
+		'*',
+		String(day || '*')
+	].join(' ');
+}
+
+function alignCronEditorRow(wrap) {
+	let field = wrap?.parentNode;
+
+	while (field && !field.classList?.contains('cbi-value-field'))
+		field = field.parentNode;
+
+	let row = field?.parentNode;
+	while (row && !row.classList?.contains('cbi-value'))
+		row = row.parentNode;
+
+	if (!row || !field)
+		return false;
+
+	if (wrap._dailyRow) {
+		wrap._dailyRow.style.display = row.style.display;
+		return true;
+	}
+
+	let dailyRow = E('div', { 'class': 'cbi-value homeproxy-cron-daily-row' }, [
+		E('div', { 'class': 'cbi-value-title' }, _('Update time (daily)')),
+		E('div', { 'class': 'cbi-value-field' }, [ wrap._dailyField ])
+	]);
+
+	wrap._dailyRow = dailyRow;
+	row.parentNode.insertBefore(dailyRow, row.nextSibling);
+
+	return true;
+}
+
+function watchCronEditorRow(wrap) {
+	const align = () => alignCronEditorRow(wrap);
+	[ 0, 50, 200, 500, 1000, 2000 ].forEach(delay => window.setTimeout(align, delay));
+
+	if (typeof MutationObserver !== 'undefined' && document?.body) {
+		const observer = new MutationObserver(() => {
+			if (align())
+				observer.disconnect();
+		});
+
+		observer.observe(document.body, { childList: true, subtree: true });
+		window.setTimeout(() => observer.disconnect(), 3000);
+	}
+}
+
+function renderCronEditor(input) {
+	if (!input)
+		return null;
+
+	const parsed = parseCron(input.value);
+	input.type = 'text';
+	input.readOnly = true;
+	input.tabIndex = -1;
+	input.style.position = 'absolute';
+	input.style.opacity = '0';
+	input.style.pointerEvents = 'none';
+	input.style.width = '1px';
+	input.style.height = '1px';
+	input.style.minWidth = '1px';
+	input.style.maxWidth = '1px';
+	input.style.padding = '0';
+	input.style.border = '0';
+
+	let day = E('select', { 'class': 'cbi-input-select', 'style': 'width: 12em !important; min-width: 12em !important; max-width: 12em !important; box-sizing: border-box;' }),
+	    hour = E('select', { 'class': 'cbi-input-select', 'style': 'width: 4.25em !important; min-width: 4.25em !important; max-width: 4.25em !important; box-sizing: border-box;' }),
+	    minute = E('select', { 'class': 'cbi-input-select', 'style': 'width: 4.25em !important; min-width: 4.25em !important; max-width: 4.25em !important; box-sizing: border-box;' }),
+	    dailyField = E('div', { 'style': 'display: flex; align-items: center; gap: .25em; width: 9.5em;' }, [
+		hour,
+		E('span', ':'),
+		minute
+	    ]),
+	    wrap = E('div', { 'class': 'homeproxy-cron-editor' }, [ day ]);
+
+	wrap._dailyField = dailyField;
+
+	for (let i = 0; i < 24; i++)
+		hour.appendChild(E('option', { value: pad2(i) }, pad2(i)));
+
+	for (let i = 0; i < 60; i++)
+		minute.appendChild(E('option', { value: pad2(i) }, pad2(i)));
+
+	[
+		['*', _('Every day')],
+		['1', _('Every Monday')],
+		['2', _('Every Tuesday')],
+		['3', _('Every Wednesday')],
+		['4', _('Every Thursday')],
+		['5', _('Every Friday')],
+		['6', _('Every Saturday')],
+		['0', _('Every Sunday')]
+	].forEach(([value, label]) => day.appendChild(E('option', { value }, label)));
+
+	day.value = parsed ? parsed.day : '*';
+	hour.value = parsed ? parsed.hour : '00';
+	minute.value = parsed ? parsed.minute : '00';
+	input.value = buildCron(day.value, hour.value, minute.value);
+	input.setAttribute('value', input.value);
+
+	const sync = () => {
+		input.value = buildCron(day.value, hour.value, minute.value);
+		input.setAttribute('value', input.value);
+		input.dispatchEvent(new Event('input', { bubbles: true }));
+		input.dispatchEvent(new Event('change', { bubbles: true }));
+	};
+
+	day.addEventListener('change', sync);
+	hour.addEventListener('change', sync);
+	minute.addEventListener('change', sync);
+	wrap.appendChild(input);
+	window.setTimeout(() => watchCronEditorRow(wrap), 0);
+	return wrap;
+}
+
 return baseclass.extend({
 	dns_strategy: {
 		'': _('Default'),
@@ -83,6 +235,29 @@ return baseclass.extend({
 			let dl = form.DynamicList.prototype.renderWidget.apply(this, arguments);
 			dl.querySelector('.add-item ul > li[data-value="-"]')?.remove();
 			return dl;
+		}
+	}),
+
+	CBIMultiValue: form.MultiValue.extend({
+		__name__: 'CBI.HomeProxyMultiValue',
+
+		renderWidget(section_id, _option_index, cfgvalue) {
+			let value = (cfgvalue != null) ? cfgvalue : this.default,
+			    choices = this.transformChoices() || {},
+			    widget = new ui.Dropdown(L.toArray(value), choices, {
+				id: this.cbid(section_id),
+				sort: this.keylist,
+				multiple: true,
+				optional: this.optional || this.rmempty,
+				select_placeholder: this.placeholder,
+				create: this.create,
+				display_items: this.display_size ?? this.size ?? 3,
+				dropdown_items: this.dropdown_size ?? this.size ?? -1,
+				validate: this.getValidator(section_id),
+				disabled: (this.readonly != null) ? this.readonly : this.map.readonly
+			});
+
+			return widget.render();
 		}
 	}),
 
@@ -185,6 +360,49 @@ return baseclass.extend({
 		return L.resolveDefault(callGetSingBoxFeatures(), {});
 	},
 
+	renderCronSelector(/* ... */) {
+		if (!this._homeproxyCronOriginalFormvalue) {
+			this._homeproxyCronOriginalFormvalue = this.formvalue;
+			this.formvalue = function(section_id) {
+				let cbid = this.cbid(section_id),
+				    ids = [ cbid, 'widget.' + cbid ],
+				    roots = [ document.getElementById('modal_overlay'), document ],
+				    input = null;
+
+				for (let root of roots) {
+					if (!root)
+						continue;
+
+					for (let el of root.querySelectorAll('input')) {
+						if (ids.includes(el.id) || ids.includes(el.name)) {
+							input = el;
+							break;
+						}
+					}
+
+					if (input)
+						break;
+				}
+
+				let value = input?.value ||
+					this._homeproxyCronOriginalFormvalue?.call(this, section_id) ||
+					this.default ||
+					'0 0 * * *';
+
+				return parseCron(value) ? value : (this.default || '0 0 * * *');
+			};
+		}
+
+		let node = form.Value.prototype.renderWidget.apply(this, arguments),
+		    editor = renderCronEditor(node.querySelector('input'));
+
+		return editor || node;
+	},
+
+	renderCronSelectorRow(/* ... */) {
+		return form.Value.prototype.render.apply(this, arguments);
+	},
+
 	generateRand(type, length) {
 		let byteArr;
 		if (['base64', 'hex'].includes(type))
@@ -208,6 +426,9 @@ return baseclass.extend({
 	},
 
 	loadDefaultLabel(uciconfig, ucisection) {
+		if (!ucisection)
+			return '';
+
 		let label = uci.get(uciconfig, ucisection, 'label');
 		if (label) {
 			return label;
@@ -218,30 +439,125 @@ return baseclass.extend({
 	},
 
 	loadModalTitle(title, addtitle, uciconfig, ucisection) {
+		if (!ucisection)
+			return addtitle;
+
 		let label = uci.get(uciconfig, ucisection, 'label');
 		return label ? title + ' » ' + label : addtitle;
 	},
 
+	normalizeSectionId(label, prefix) {
+		let section_id = (label || '').trim().replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+|_+$/g, '');
+		return (prefix || 'cfg') + '_' + (section_id || 'section');
+	},
+
 	renderSectionAdd(section, extra_class) {
 		let el = form.GridSection.prototype.renderSectionAdd.apply(section, [ extra_class ]),
-			nameEl = el.querySelector('.cbi-section-create-name');
-		ui.addValidator(nameEl, 'uciname', true, (v) => {
-			let button = el.querySelector('.cbi-section-create > .cbi-button-add');
-			let uciconfig = section.uciconfig || section.map.config;
+			nameEl = el.querySelector('.cbi-section-create-name'),
+			button = el.querySelector('.cbi-section-create > .cbi-button-add'),
+			uciconfig = section.uciconfig || section.map.config,
+			sectiontype = section.sectiontype,
+			labelEl = E('input', {
+				'type': 'text',
+				'class': nameEl.className
+			}),
+			hintEl = E('div', { 'class': 'cbi-value-description' });
 
-			if (!v) {
+		nameEl.style.display = 'none';
+		nameEl.parentNode.insertBefore(labelEl, nameEl);
+		nameEl.parentNode.appendChild(hintEl);
+		button.disabled = true;
+
+		const syncSectionName = () => {
+			let label = (labelEl.value || '').trim();
+			hintEl.textContent = '';
+
+			if (!label) {
+				nameEl.value = '';
 				button.disabled = true;
-				return true;
-			} else if (uci.get(uciconfig, v)) {
-				button.disabled = true;
-				return _('Expecting: %s').format(_('unique UCI identifier'));
-			} else {
-				button.disabled = null;
-				return true;
+				return;
 			}
-		}, 'blur', 'keyup');
+
+			let duplicate = false;
+			uci.sections(uciconfig, sectiontype, (res) => {
+				if ((res.label || res['.name']) === label)
+					duplicate = true;
+			});
+
+			if (duplicate) {
+				nameEl.value = '';
+				button.disabled = true;
+				hintEl.textContent = _('Expecting: %s').format(_('unique value'));
+				return;
+			}
+
+			let normalized = (label || '').trim().replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+|_+$/g, '') || 'section',
+			    section_id = (sectiontype || 'cfg') + '_' + normalized,
+			    suffix = 1;
+			while (uci.get(uciconfig, section_id))
+				section_id = (sectiontype || 'cfg') + '_' + normalized + '_' + suffix++;
+
+			nameEl.value = section_id;
+			nameEl.dataset.sectionId = section_id;
+			nameEl.dataset.sectionLabel = label;
+			button.disabled = null;
+		};
+
+		labelEl.addEventListener('input', syncSectionName);
+		labelEl.addEventListener('blur', syncSectionName);
+
+		button.addEventListener('click', () => {
+			syncSectionName();
+
+			let label = nameEl.dataset.sectionLabel,
+			    section_id = nameEl.dataset.sectionId;
+
+			window.setTimeout(() => {
+				if (label && section_id && uci.get(uciconfig, section_id))
+					uci.set(uciconfig, section_id, 'label', label);
+			}, 0);
+		});
 
 		return el;
+	},
+
+	installCloseButtonText() {
+		if (window.__homeproxyCloseButtonText)
+			return;
+
+		window.__homeproxyCloseButtonText = true;
+
+		let fix = (root) => {
+			for (let el of (root || document).querySelectorAll('button, .btn, input[type="button"], input[type="submit"]')) {
+				let text = (el.textContent || el.value || '').trim();
+				if (text !== 'Dismiss' && text !== '\u5ffd\u7565')
+					continue;
+
+				if ('value' in el && !el.textContent.trim())
+					el.value = _('Close');
+				else
+					el.textContent = _('Close');
+			}
+		};
+
+		let observe = () => {
+			if (!document.body)
+				return;
+
+			fix(document);
+			new MutationObserver((mutations) => {
+				for (let mutation of mutations)
+					for (let node of mutation.addedNodes)
+						if (node.nodeType === 1)
+							fix(node);
+				fix(document);
+			}).observe(document.body, { childList: true, subtree: true });
+		};
+
+		if (document.body)
+			observe();
+		else
+			document.addEventListener('DOMContentLoaded', observe, { once: true });
 	},
 
 	uploadCertificate(_option, type, filename, ev) {
@@ -262,6 +578,44 @@ return baseclass.extend({
 			});
 		}, this, ev.target))
 		.catch((e) => { ui.addNotification(null, E('p', e.message)) });
+	},
+
+	uploadPanel(_option, ev) {
+		const callInstallPanel = rpc.declare({
+			object: 'luci.homeproxy',
+			method: 'clash_api_install_panel',
+			expect: { '': {} }
+		});
+
+		const normalizeMessage = (message) => {
+			switch (message) {
+			case 'panel_backup_failed':
+				return _('Backup panel failed.');
+			case 'panel_restore_failed':
+				return _('Restore panel failed.');
+			case 'empty_panel_zip':
+				return _('Panel ZIP file is empty.');
+			case 'unzip_unavailable':
+				return _('The unzip command is unavailable.');
+			case 'invalid_panel_zip':
+				return _('Invalid panel ZIP file.');
+			case 'panel_install_failed':
+				return _('Install panel failed.');
+			default:
+				return message || _('unknown error');
+			}
+		};
+
+		return ui.uploadFile('/tmp/homeproxy_panel.tmp', ev.target)
+		.then(L.bind((_btn, res) => {
+			return L.resolveDefault(callInstallPanel(), {}).then((ret) => {
+				if (ret.result === true)
+					ui.addNotification(null, E('p', _('Your %s was successfully uploaded. Size: %sB.').format(_('panel ZIP package'), res.size)), 'info');
+				else
+					ui.addNotification(null, E('p', _('Failed to upload %s, error: %s.').format(_('panel ZIP package'), normalizeMessage(ret.error))), 'danger');
+			});
+		}, this, ev.target))
+		.catch((e) => { ui.addNotification(null, E('p', e.message || e), 'danger') });
 	},
 
 	validateBase64Key(length, section_id, value) {
@@ -304,7 +658,7 @@ return baseclass.extend({
 		if (section_id) {
 			if (!value)
 				return _('Expecting: %s').format(_('non-empty value'));
-			if (ucioption === 'node' && value === 'urltest')
+			if (ucioption === 'node' && (value === 'urltest' || value === 'selector'))
 				return true;
 
 			let duplicate = false;

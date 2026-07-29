@@ -67,7 +67,7 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 			password: cfg.hysteria_obfs_password
 		} : cfg.hysteria_obfs_password,
 		recv_window_conn: strToInt(cfg.hysteria_recv_window_conn),
-		recv_window_client: strToInt(cfg.hysteria_revc_window_client),
+		recv_window_client: strToInt(cfg.hysteria_recv_window_client),
 		max_conn_client: strToInt(cfg.hysteria_max_conn_client),
 		disable_mtu_discovery: strToBool(cfg.hysteria_disable_mtu_discovery),
 		ignore_client_bandwidth: strToBool(cfg.hysteria_ignore_client_bandwidth),

@@ -9,6 +9,7 @@
 				"/var/run/homeproxy/sing-box-s.log": [ "read" ]
 			},
 			"ubus": {
+				"rc": [ "*" ],
 				"service": [ "list" ],
 				"luci.homeproxy": [ "*" ]
 			},
@@ -16,7 +17,11 @@
 		},
 		"write": {
 			"file": {
-				"/tmp/homeproxy_certificate.tmp": [ "write" ]
+				"/tmp/homeproxy_certificate.tmp": [ "write" ],
+				"/tmp/homeproxy_panel.tmp": [ "write" ]
+			},
+			"ubus": {
+				"rc": [ "*" ]
 			},
 			"uci": [ "homeproxy" ]
 		}

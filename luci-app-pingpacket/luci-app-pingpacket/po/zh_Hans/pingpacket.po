@@ -1,0 +1,81 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Ping Packet Loss Monitor"
+msgstr "Ping丢包监控"
+
+msgid "Disabled"
+msgstr "已关闭"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Start Time"
+msgstr "开始时间"
+
+msgid "Duration"
+msgstr "运行时长"
+
+msgid "Domestic"
+msgstr "国内"
+
+msgid "Foreign"
+msgstr "国外"
+
+msgid "Average"
+msgstr "平均延迟"
+
+msgid "Minimum"
+msgstr "最低延迟"
+
+msgid "Maximum"
+msgstr "最高延迟"
+
+msgid "Packet Loss"
+msgstr "丢包率"
+
+msgid "Not configured"
+msgstr "未配置"
+
+msgid "Monitoring Settings"
+msgstr "监控设置"
+
+msgid "Ping Domestic IP or Domain"
+msgstr "Ping 国内 IP 或域名"
+
+msgid "e.g. 114.114.114.114 or baidu.com"
+msgstr "例如：114.114.114.114 或 baidu.com"
+
+msgid "Leave empty to disable domestic monitoring."
+msgstr "留空则不启用国内监控。"
+
+msgid "Ping Foreign IP or Domain"
+msgstr "Ping 国外 IP 或域名"
+
+msgid "e.g. 8.8.8.8 or google.com"
+msgstr "例如：8.8.8.8 或 google.com"
+
+msgid "Leave empty to disable foreign monitoring."
+msgstr "留空则不启用国外监控。"
+
+msgid "Save & Apply"
+msgstr "保存并应用"
+
+msgid "Saved successfully."
+msgstr "保存成功。"
+
+msgid "Save failed."
+msgstr "保存失败。"
+
+msgid "Ping Packet Loss"
+msgstr "Ping丢包监控"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Please configure at least one target."
+msgstr "请至少配置一个目标。"
+
+msgid "Failed to update service state."
+msgstr "服务状态更新失败。"

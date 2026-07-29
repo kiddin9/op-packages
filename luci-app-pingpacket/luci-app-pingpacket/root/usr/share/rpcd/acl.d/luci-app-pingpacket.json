@@ -1,0 +1,15 @@
+{
+	"luci-app-pingpacket": {
+		"description": "Grant access to luci-app-pingpacket",
+		"read": {
+			"uci": [
+				"pingpacket"
+			]
+		},
+		"write": {
+			"uci": [
+				"pingpacket"
+			]
+		}
+	}
+}

@@ -1,0 +1,1375 @@
+<%+header%>
+
+<style>
+.pp-page {
+	max-width: 1080px;
+	margin: 0 auto;
+	padding: 8px 10px 20px;
+}
+
+.pp-hero {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 24px 26px;
+	margin: 12px 0 18px;
+	border-radius: 18px;
+	color: #fff;
+	background:
+		radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 34%),
+		linear-gradient(135deg, #0f6ad8, #0d47a1 62%, #123469);
+	box-shadow: 0 18px 38px rgba(13, 71, 161, 0.18);
+}
+
+.pp-title-wrap {
+	max-width: 700px;
+}
+
+.pp-kicker {
+	margin: 0 0 8px;
+	font-size: 12px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	opacity: 0.78;
+}
+
+.pp-title {
+	margin: 0;
+	font-size: 30px;
+	line-height: 1.15;
+	font-weight: 700;
+}
+
+.pp-subtitle {
+	margin: 10px 0 0;
+	font-size: 14px;
+	line-height: 1.65;
+	color: rgba(255, 255, 255, 0.88);
+}
+
+.pp-toggle-panel {
+	min-width: 240px;
+	padding: 16px 18px;
+	border-radius: 16px;
+	background: rgba(255, 255, 255, 0.12);
+	backdrop-filter: blur(6px);
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.pp-toggle-top {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+}
+
+.pp-toggle-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.pp-badge {
+	display: inline-flex;
+	align-items: center;
+	width: fit-content;
+	padding: 4px 10px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 600;
+	background: rgba(255, 255, 255, 0.18);
+}
+
+.pp-badge.running {
+	background: rgba(46, 204, 113, 0.18);
+	color: #dfffe9;
+}
+
+.pp-badge.pending {
+	background: rgba(255, 193, 7, 0.18);
+	color: #fff3cd;
+}
+
+.pp-badge.stopped {
+	background: rgba(255, 255, 255, 0.16);
+	color: rgba(255, 255, 255, 0.92);
+}
+
+.pp-badge.stale {
+	background: rgba(255, 138, 101, 0.2);
+	color: #ffe2d8;
+}
+
+.pp-toggle-label {
+	font-size: 14px;
+	color: rgba(255, 255, 255, 0.92);
+}
+
+.pp-switch {
+	position: relative;
+	display: inline-block;
+	width: 56px;
+	height: 30px;
+	flex: 0 0 auto;
+}
+
+.pp-switch input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.pp-slider {
+	position: absolute;
+	inset: 0;
+	cursor: pointer;
+	background: rgba(255, 255, 255, 0.28);
+	border-radius: 999px;
+	transition: 0.25s ease;
+}
+
+.pp-slider:before {
+	position: absolute;
+	content: "";
+	height: 22px;
+	width: 22px;
+	left: 4px;
+	bottom: 4px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+	transition: 0.25s ease;
+}
+
+.pp-switch input:checked + .pp-slider {
+	background: rgba(72, 214, 128, 0.88);
+}
+
+.pp-switch input:checked + .pp-slider:before {
+	transform: translateX(26px);
+}
+
+.pp-switch input:disabled + .pp-slider {
+	cursor: not-allowed;
+	opacity: 0.65;
+}
+
+.pp-meta-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+	gap: 14px;
+	margin-bottom: 18px;
+}
+
+.pp-meta-card,
+.pp-panel,
+.pp-card {
+	background: linear-gradient(180deg, #ffffff, #fbfdff);
+	border: 1px solid #dde8f6;
+	box-shadow: 0 10px 28px rgba(27, 73, 124, 0.08);
+}
+
+.pp-meta-card {
+	padding: 14px 16px;
+	border-radius: 14px;
+}
+
+.pp-meta-card.stale {
+	border-color: #f2b8a7;
+	background: linear-gradient(180deg, #fff8f6, #fff2ee);
+}
+
+.pp-meta-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	color: #6d7d92;
+}
+
+.pp-meta-value {
+	font-size: 15px;
+	font-weight: 600;
+	color: #24364d;
+	font-variant-numeric: tabular-nums;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pp-cards {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 18px;
+	margin-bottom: 18px;
+}
+
+.pp-card {
+	position: relative;
+	padding: 20px 20px 18px;
+	border-radius: 18px;
+	overflow: hidden;
+}
+
+.pp-card:before {
+	content: "";
+	position: absolute;
+	inset: 0 auto 0 0;
+	width: 5px;
+	border-radius: 18px 0 0 18px;
+	background: linear-gradient(180deg, #2b7de9, #1450ba);
+}
+
+.pp-card.foreign:before {
+	background: linear-gradient(180deg, #f59e0b, #ea580c);
+}
+
+.pp-card-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.pp-card-head > div:first-child {
+	flex: 1 1 220px;
+	min-width: 0;
+}
+
+.pp-card-title {
+	margin: 0;
+	font-size: 18px;
+	font-weight: 700;
+	color: #1b3350;
+}
+
+.pp-target {
+	margin-top: 6px;
+	font-size: 13px;
+	color: #64748b;
+	word-break: break-all;
+}
+
+.pp-target.inactive {
+	color: #9aa7b7;
+	font-style: italic;
+}
+
+.pp-target-meta {
+	margin-top: 4px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #7a8ba2;
+	word-break: break-word;
+}
+
+.pp-samples {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: flex-end;
+	justify-content: center;
+	gap: 3px;
+	flex: 0 0 auto;
+	min-width: 126px;
+	max-width: 100%;
+	padding: 8px 12px;
+	border-radius: 14px;
+	color: #51657d;
+	background: #eef5fd;
+	font-variant-numeric: tabular-nums;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+}
+
+.pp-samples-label {
+	display: block;
+	font-size: 11px;
+	color: #6d7d92;
+	white-space: nowrap;
+}
+
+.pp-samples-value {
+	display: block;
+	min-width: 0;
+	max-width: 100%;
+	text-align: right;
+	font-size: 15px;
+	font-weight: 700;
+	line-height: 1.15;
+	color: #1f3147;
+	overflow-wrap: anywhere;
+	word-break: break-all;
+}
+
+.pp-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: 12px;
+}
+
+.pp-stat {
+	padding: 13px 14px;
+	border-radius: 14px;
+	background: #f5f9ff;
+	border: 1px solid #e5eef8;
+}
+
+.pp-stat.loss {
+	background: #f8fbff;
+}
+
+.pp-stat-label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 12px;
+	color: #70839b;
+}
+
+.pp-stat-number {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	color: #1f3147;
+}
+
+.pp-stat-number span:first-child {
+	font-size: 19px;
+	line-height: 1.1;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	font-variant-numeric: tabular-nums;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+	overflow-wrap: anywhere;
+	word-break: break-all;
+}
+
+.pp-stat-number .pp-unit {
+	font-size: 12px;
+	color: #7b8fa6;
+}
+
+.pp-stat.loss.good .pp-stat-number span:first-child {
+	color: #1f8f52;
+}
+
+.pp-stat.loss.warn .pp-stat-number span:first-child {
+	color: #d97706;
+}
+
+.pp-stat.loss.bad .pp-stat-number span:first-child {
+	color: #d13d38;
+}
+
+.pp-panel {
+	padding: 22px;
+	border-radius: 18px;
+}
+
+.pp-panel-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	margin-bottom: 18px;
+}
+
+.pp-panel-title {
+	margin: 0;
+	font-size: 19px;
+	color: #1b3350;
+}
+
+.pp-panel-note {
+	font-size: 13px;
+	line-height: 1.7;
+	color: #70839b;
+}
+
+.pp-form-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.pp-proxy-grid {
+	display: grid;
+	grid-template-columns: 160px minmax(0, 1fr);
+	gap: 16px;
+	margin-bottom: 16px;
+}
+
+.pp-field label {
+	display: block;
+	margin-bottom: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #344a63;
+}
+
+.pp-input,
+.pp-select {
+	width: 100%;
+	height: 44px;
+	padding: 0 14px;
+	border: 1px solid #cedbeb;
+	border-radius: 12px;
+	background: #fcfdff;
+	box-sizing: border-box;
+	font-size: 14px;
+	color: #24364d;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.pp-select {
+	padding-right: 40px;
+}
+
+.pp-input:focus,
+.pp-select:focus {
+	outline: none;
+	border-color: #1d71e8;
+	box-shadow: 0 0 0 4px rgba(29, 113, 232, 0.12);
+	background: #fff;
+}
+
+.pp-input:disabled,
+.pp-select:disabled {
+	background: #f4f7fb;
+	cursor: not-allowed;
+}
+
+.pp-hint {
+	margin-top: 7px;
+	font-size: 12px;
+	line-height: 1.6;
+	color: #7f90a6;
+}
+
+.pp-actions {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.pp-action-copy {
+	font-size: 13px;
+	line-height: 1.7;
+	color: #6f8198;
+}
+
+.pp-action-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.pp-button {
+	min-width: 142px;
+	height: 42px;
+	padding: 0 18px;
+	border: none;
+	border-radius: 12px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #fff;
+	background: linear-gradient(135deg, #1d71e8, #1256b4);
+	cursor: pointer;
+	box-shadow: 0 10px 24px rgba(18, 86, 180, 0.18);
+	transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
+}
+
+.pp-button:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 12px 28px rgba(18, 86, 180, 0.22);
+}
+
+.pp-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.7;
+	transform: none;
+	box-shadow: none;
+}
+
+.pp-button-secondary {
+	color: #a34717;
+	background: linear-gradient(135deg, #ffe0c7, #ffd2b0);
+	box-shadow: 0 10px 24px rgba(240, 123, 45, 0.14);
+}
+
+.pp-button-secondary:hover {
+	box-shadow: 0 12px 28px rgba(240, 123, 45, 0.18);
+}
+
+.pp-button-secondary.hidden {
+	display: none;
+}
+
+.pp-message {
+	min-height: 20px;
+	font-size: 13px;
+}
+
+.pp-message.success {
+	color: #1f8f52;
+}
+
+.pp-message.error {
+	color: #d13d38;
+}
+
+@media (max-width: 860px) {
+	.pp-hero,
+	.pp-panel-head,
+	.pp-actions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.pp-toggle-panel {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.pp-toggle-top {
+		align-items: center;
+	}
+
+	.pp-action-right {
+		justify-content: flex-start;
+	}
+
+	.pp-samples {
+		min-width: 108px;
+	}
+
+	.pp-proxy-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 760px) {
+	.pp-meta-grid,
+	.pp-cards,
+	.pp-form-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.pp-page {
+		padding-left: 4px;
+		padding-right: 4px;
+	}
+
+	.pp-hero,
+	.pp-panel,
+	.pp-card {
+		padding-left: 18px;
+		padding-right: 18px;
+	}
+
+	.pp-stats {
+		grid-template-columns: 1fr;
+	}
+}
+</style>
+
+<div class="pp-page">
+	<div class="pp-hero">
+		<div class="pp-title-wrap">
+			<div class="pp-kicker">OpenWrt Status</div>
+			<h2 class="pp-title">Ping丢包监控</h2>
+			<p class="pp-subtitle">国内目标继续使用 ICMP Ping，国外目标改为通过代理发起 `curl` 请求探测。保存并应用后，如果监控已启用，服务会自动重启并按最新配置重新开始累计统计。</p>
+		</div>
+
+		<div class="pp-toggle-panel">
+			<div class="pp-toggle-top">
+				<div class="pp-toggle-copy">
+					<span class="pp-badge stopped" id="serviceBadge">已关闭</span>
+					<span class="pp-toggle-label" id="toggleLabel">监控未启用</span>
+				</div>
+
+				<label class="pp-switch">
+					<input type="checkbox" id="enableSwitch" onchange="toggleService()">
+					<span class="pp-slider"></span>
+				</label>
+			</div>
+		</div>
+	</div>
+
+	<div class="pp-meta-grid">
+		<div class="pp-meta-card">
+			<span class="pp-meta-label">开始时间</span>
+			<div class="pp-meta-value" id="startTime">--</div>
+		</div>
+		<div class="pp-meta-card">
+			<span class="pp-meta-label">运行时长</span>
+			<div class="pp-meta-value" id="duration">--</div>
+		</div>
+		<div class="pp-meta-card" id="updatedCard">
+			<span class="pp-meta-label">最近更新</span>
+			<div class="pp-meta-value" id="updatedAt">--</div>
+		</div>
+		<div class="pp-meta-card">
+			<span class="pp-meta-label">CPU 占用</span>
+			<div class="pp-meta-value" id="cpuUsage">--</div>
+		</div>
+		<div class="pp-meta-card">
+			<span class="pp-meta-label">内存占用</span>
+			<div class="pp-meta-value" id="memoryUsage">--</div>
+		</div>
+	</div>
+
+	<div class="pp-cards">
+		<div class="pp-card domestic">
+			<div class="pp-card-head">
+				<div>
+					<h3 class="pp-card-title">国内目标</h3>
+					<div class="pp-target inactive" id="domesticTarget">未配置</div>
+					<div class="pp-target-meta">探测方式：ICMP Ping</div>
+				</div>
+				<div class="pp-samples">
+					<span class="pp-samples-label">样本数</span>
+					<span class="pp-samples-value" id="domesticSamples">0</span>
+				</div>
+			</div>
+
+			<div class="pp-stats">
+				<div class="pp-stat">
+					<span class="pp-stat-label">平均延迟</span>
+					<div class="pp-stat-number">
+						<span id="domesticAvg">--</span>
+						<span class="pp-unit">ms</span>
+					</div>
+				</div>
+				<div class="pp-stat">
+					<span class="pp-stat-label">最低延迟</span>
+					<div class="pp-stat-number">
+						<span id="domesticMin">--</span>
+						<span class="pp-unit">ms</span>
+					</div>
+				</div>
+				<div class="pp-stat">
+					<span class="pp-stat-label">最高延迟</span>
+					<div class="pp-stat-number">
+						<span id="domesticMax">--</span>
+						<span class="pp-unit">ms</span>
+					</div>
+				</div>
+				<div class="pp-stat loss" id="domesticLossCard">
+					<span class="pp-stat-label">丢包率</span>
+					<div class="pp-stat-number">
+						<span id="domesticLoss">--</span>
+						<span class="pp-unit">%</span>
+					</div>
+				</div>
+				<div class="pp-stat">
+					<span class="pp-stat-label">丢包数</span>
+					<div class="pp-stat-number">
+						<span id="domesticLossCount">0</span>
+						<span class="pp-unit">次</span>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="pp-card foreign">
+			<div class="pp-card-head">
+				<div>
+					<h3 class="pp-card-title">国外目标</h3>
+					<div class="pp-target inactive" id="foreignTarget">未配置</div>
+					<div class="pp-target-meta" id="foreignProxySummary">探测方式：代理 curl</div>
+				</div>
+				<div class="pp-samples">
+					<span class="pp-samples-label">样本数</span>
+					<span class="pp-samples-value" id="foreignSamples">0</span>
+				</div>
+			</div>
+
+			<div class="pp-stats">
+				<div class="pp-stat">
+					<span class="pp-stat-label">平均延迟</span>
+					<div class="pp-stat-number">
+						<span id="foreignAvg">--</span>
+						<span class="pp-unit">ms</span>
+					</div>
+				</div>
+				<div class="pp-stat">
+					<span class="pp-stat-label">最低延迟</span>
+					<div class="pp-stat-number">
+						<span id="foreignMin">--</span>
+						<span class="pp-unit">ms</span>
+					</div>
+				</div>
+				<div class="pp-stat">
+					<span class="pp-stat-label">最高延迟</span>
+					<div class="pp-stat-number">
+						<span id="foreignMax">--</span>
+						<span class="pp-unit">ms</span>
+					</div>
+				</div>
+				<div class="pp-stat loss" id="foreignLossCard">
+					<span class="pp-stat-label">丢包率</span>
+					<div class="pp-stat-number">
+						<span id="foreignLoss">--</span>
+						<span class="pp-unit">%</span>
+					</div>
+				</div>
+				<div class="pp-stat">
+					<span class="pp-stat-label">丢包数</span>
+					<div class="pp-stat-number">
+						<span id="foreignLossCount">0</span>
+						<span class="pp-unit">次</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="pp-panel">
+		<div class="pp-panel-head">
+			<div>
+			<h3 class="pp-panel-title">监控设置</h3>
+			<div class="pp-panel-note">国外测速 URL 会通过本机代理发起 `curl` 请求统计延迟和丢包。代理主机固定为当前 OpenWrt 本机 `127.0.0.1`，探测方式固定按 `SOCKS5H`，你只需要设置代理端口。未写协议的国外目标会自动按 `https://` 处理。</div>
+			</div>
+		</div>
+
+		<div class="pp-form-grid">
+			<div class="pp-field">
+				<label for="domesticInput">国内 IP 或域名</label>
+				<input class="pp-input" type="text" id="domesticInput" placeholder="例如：www.baidu.com">
+				<div class="pp-hint">国内目标继续使用本机 ICMP Ping。可留空，但国内和国外不能同时留空。</div>
+			</div>
+
+			<div class="pp-field">
+				<label for="foreignInput">国外测速 URL</label>
+				<input class="pp-input" type="text" id="foreignInput" placeholder="例如：www.google.com 或 https://www.google.com/generate_204">
+				<div class="pp-hint">国外测速固定通过 `SOCKS5H` 代理执行 `curl` 探测。未填写协议时，系统会自动补成 `https://`。</div>
+			</div>
+			<div class="pp-field">
+				<label for="domesticIntervalInput">Ping间隔</label>
+				<input class="pp-input" type="text" id="domesticIntervalInput" inputmode="numeric" placeholder="1">
+				<div class="pp-hint">国内目标的探测间隔，单位为秒，默认 1 秒。</div>
+			</div>
+
+			<div class="pp-field">
+				<label for="foreignIntervalInput">测速间隔</label>
+				<input class="pp-input" type="text" id="foreignIntervalInput" inputmode="numeric" placeholder="5">
+				<div class="pp-hint">国外目标的探测间隔，单位为秒，默认 5 秒。</div>
+			</div>
+		</div>
+
+		<div class="pp-proxy-grid">
+			<div class="pp-field">
+				<label for="proxyTypeInput">代理类型</label>
+				<select class="pp-select" id="proxyTypeInput">
+					<option value="socks5h">SOCKS5H（固定）</option>
+				</select>
+				<div class="pp-hint">当前固定按 `SOCKS5H` 代理探测，域名解析也交给代理处理。</div>
+			</div>
+
+			<div class="pp-field">
+				<label for="proxyPortInput">代理端口</label>
+				<input class="pp-input" type="text" id="proxyPortInput" inputmode="numeric" placeholder="例如：7890">
+				<div class="pp-hint">OpenClash SOCKS5 端口常见为 7891，Sing-box SOCKS5 端口常见为 1080，具体端口自行查询代理插件，必须是 1 到 65535 的数字。</div>
+			</div>
+		</div>
+
+		<div class="pp-actions">
+			<div class="pp-action-copy">平均延迟、最低延迟、最高延迟、丢包率、丢包数和样本数均为本次服务启用后的累计统计值。停止或重启服务后，统计会重新开始；长期运行时样本数会持续增长并完整显示。</div>
+			<div class="pp-action-right">
+				<button class="pp-button pp-button-secondary hidden" id="restartButton" onclick="restartService()">重新启动服务</button>
+				<button class="pp-button" id="saveButton" onclick="saveConfig()">保存并应用</button>
+				<span class="pp-message" id="saveMsg"></span>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+(function() {
+	var apiBase = '<%=url("admin/status/pingpacket")%>';
+	var formToken = (window.L && L.env && L.env.token) ? L.env.token : '<%=token%>';
+	var dataUrl = apiBase + '/get_data';
+	var saveUrl = apiBase + '/save_config';
+	var restartUrl = apiBase + '/restart_service';
+	var pollTimer = null;
+	var pollInFlight = false;
+	var saveInFlight = false;
+	var restartInFlight = false;
+	var durationTimer = null;
+	var startTimeRef = null;
+	var pollInterval = 1500;
+	var staleThresholdMs = 10000;
+	var inputDirty = {
+		domestic: false,
+		foreign: false,
+		proxyType: false,
+		proxyPort: false,
+		domesticInterval: false,
+		foreignInterval: false
+	};
+	var lastServerValues = {
+		domestic: '',
+		foreign: '',
+		proxyType: 'socks5h',
+		proxyPort: '',
+		domesticInterval: '1',
+		foreignInterval: '5'
+	};
+
+	function $(id) {
+		return document.getElementById(id);
+	}
+
+	function schedulePoll(delay) {
+		if (pollTimer) {
+			clearTimeout(pollTimer);
+		}
+		pollTimer = setTimeout(fetchData, typeof delay === 'number' ? delay : pollInterval);
+	}
+
+	function parseDateTime(value) {
+		var match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(value || '');
+		if (!match) {
+			return null;
+		}
+
+		return new Date(
+			Number(match[1]),
+			Number(match[2]) - 1,
+			Number(match[3]),
+			Number(match[4]),
+			Number(match[5]),
+			Number(match[6])
+		);
+	}
+
+	function formatDuration(seconds) {
+		var h = Math.floor(seconds / 3600);
+		var m = Math.floor((seconds % 3600) / 60);
+		var s = Math.floor(seconds % 60);
+
+		return String(h).padStart(2, '0') + ':' +
+			String(m).padStart(2, '0') + ':' +
+			String(s).padStart(2, '0');
+	}
+
+	function updateDuration() {
+		if (!startTimeRef) {
+			return;
+		}
+
+		var elapsed = Math.max(0, Math.floor((Date.now() - startTimeRef.getTime()) / 1000));
+		$('duration').textContent = formatDuration(elapsed);
+	}
+
+	function setControlsDisabled(disabled) {
+		$('enableSwitch').disabled = disabled;
+		$('saveButton').disabled = disabled;
+		$('restartButton').disabled = disabled;
+		$('domesticInput').disabled = disabled;
+		$('foreignInput').disabled = disabled;
+		$('proxyTypeInput').disabled = disabled;
+		$('proxyPortInput').disabled = disabled;
+		$('domesticIntervalInput').disabled = disabled;
+		$('foreignIntervalInput').disabled = disabled;
+	}
+
+	function setMessage(text, type) {
+		var node = $('saveMsg');
+		node.textContent = text || '';
+		node.className = 'pp-message' + (type ? ' ' + type : '');
+	}
+
+	function hasAnyTarget() {
+		return $('domesticInput').value.trim() !== '' || $('foreignInput').value.trim() !== '';
+	}
+
+	function validateInputs() {
+		var foreign = $('foreignInput').value.trim();
+		var proxyPort = $('proxyPortInput').value.trim();
+		var domesticInterval = $('domesticIntervalInput').value.trim();
+		var foreignInterval = $('foreignIntervalInput').value.trim();
+
+		if (!hasAnyTarget()) {
+			return '请至少填写一个监控目标。';
+		}
+
+		if (foreign !== '' && proxyPort === '') {
+			return '已填写国外目标时，请同时填写代理端口。';
+		}
+
+		if (proxyPort !== '' && !/^\d+$/.test(proxyPort)) {
+			return '代理端口必须是 1 到 65535 之间的数字。';
+		}
+
+		if (proxyPort !== '') {
+			var numericPort = Number(proxyPort);
+			if (numericPort < 1 || numericPort > 65535) {
+				return '代理端口必须是 1 到 65535 之间的数字。';
+			}
+		}
+
+		if (domesticInterval !== '' && !/^\d+$/.test(domesticInterval)) {
+			return '国内 Ping间隔必须是大于 0 的整数秒。';
+		}
+
+		if (domesticInterval !== '' && Number(domesticInterval) < 1) {
+			return '国内 Ping间隔必须是大于 0 的整数秒。';
+		}
+
+		if (foreignInterval !== '' && !/^\d+$/.test(foreignInterval)) {
+			return '国外 Ping间隔必须是大于 0 的整数秒。';
+		}
+
+		if (foreignInterval !== '' && Number(foreignInterval) < 1) {
+			return '国外 Ping间隔必须是大于 0 的整数秒。';
+		}
+
+		return '';
+	}
+
+	function clearDirtyState() {
+		inputDirty.domestic = false;
+		inputDirty.foreign = false;
+		inputDirty.proxyType = false;
+		inputDirty.proxyPort = false;
+		inputDirty.domesticInterval = false;
+		inputDirty.foreignInterval = false;
+	}
+
+	function refreshDirtyState(key, id) {
+		var input = $(id);
+		var currentValue = input.value.trim();
+		if (currentValue === (lastServerValues[key] || '')) {
+			inputDirty[key] = false;
+		}
+	}
+
+	function refreshAllDirtyStates() {
+		refreshDirtyState('domestic', 'domesticInput');
+		refreshDirtyState('foreign', 'foreignInput');
+		refreshDirtyState('proxyType', 'proxyTypeInput');
+		refreshDirtyState('proxyPort', 'proxyPortInput');
+		refreshDirtyState('domesticInterval', 'domesticIntervalInput');
+		refreshDirtyState('foreignInterval', 'foreignIntervalInput');
+	}
+
+	function syncFieldValue(id, value, key) {
+		var input = $(id);
+		if (inputDirty[key] || document.activeElement === input) {
+			return;
+		}
+
+		input.value = value || '';
+	}
+
+	function setTarget(targetId, value) {
+		var target = $(targetId);
+		if (value) {
+			target.textContent = value;
+			target.className = 'pp-target';
+		} else {
+			target.textContent = '未配置';
+			target.className = 'pp-target inactive';
+		}
+	}
+
+	function setServiceState(enabled, running, stale) {
+		var badge = $('serviceBadge');
+		var label = $('toggleLabel');
+		var restartButton = $('restartButton');
+
+		restartButton.className = stale ? 'pp-button pp-button-secondary' : 'pp-button pp-button-secondary hidden';
+
+		if (enabled && running && stale) {
+			badge.textContent = '数据停滞';
+			badge.className = 'pp-badge stale';
+			label.textContent = '最近更新超过 10 秒，建议检查网络或直接重启服务。';
+			return;
+		}
+
+		if (enabled && running) {
+			badge.textContent = '运行中';
+			badge.className = 'pp-badge running';
+			label.textContent = '监控已启用，数据正在持续刷新。';
+			return;
+		}
+
+		if (enabled && !running) {
+			badge.textContent = '启动中';
+			badge.className = 'pp-badge pending';
+			label.textContent = '正在等待新的监控结果写入。';
+			return;
+		}
+
+		badge.textContent = '已关闭';
+		badge.className = 'pp-badge stopped';
+		label.textContent = '监控未启用';
+	}
+
+	function setStat(prefix, stats) {
+		var successCount = Number(stats && stats.count || 0);
+		var sampleCount = Number(stats && stats.samples || 0);
+		var lossCount = Number(stats && stats.loss_count || 0);
+		var avg = successCount > 0 ? stats.avg : '--';
+		var min = successCount > 0 ? stats.min : '--';
+		var max = successCount > 0 ? stats.max : '--';
+		var loss = sampleCount > 0 ? stats.loss_rate : '--';
+		var lossCard = $(prefix + 'LossCard');
+		var lossRate = parseFloat(stats && stats.loss_rate || '0');
+
+		$(prefix + 'Avg').textContent = avg;
+		$(prefix + 'Min').textContent = min;
+		$(prefix + 'Max').textContent = max;
+		$(prefix + 'Loss').textContent = loss;
+		$(prefix + 'LossCount').textContent = String(lossCount);
+		$(prefix + 'Samples').textContent = String(sampleCount);
+
+		lossCard.className = 'pp-stat loss';
+		if (sampleCount > 0) {
+			if (lossRate < 1) {
+				lossCard.className += ' good';
+			} else if (lossRate < 5) {
+				lossCard.className += ' warn';
+			} else {
+				lossCard.className += ' bad';
+			}
+		}
+	}
+
+	function formatPercent(value) {
+		var numeric = Number(value);
+
+		if (!isFinite(numeric)) {
+			return '--';
+		}
+
+		return numeric.toFixed(1) + '%';
+	}
+
+	function buildProxySummary(type, port) {
+		if (!port) {
+			return '探测方式：代理 curl（固定 SOCKS5H，本机代理端口未配置）';
+		}
+
+		return '探测方式：代理 curl，固定经由本机 SOCKS5H 端口 ' + port;
+	}
+
+	function buildPayload(enabled, requestSource) {
+		return 'token=' + encodeURIComponent(formToken) +
+			'&enabled=' + encodeURIComponent(enabled) +
+			'&request_source=' + encodeURIComponent(requestSource || '') +
+			'&domestic_target=' + encodeURIComponent($('domesticInput').value.trim()) +
+			'&foreign_target=' + encodeURIComponent($('foreignInput').value.trim()) +
+			'&foreign_proxy_type=' + encodeURIComponent($('proxyTypeInput').value.trim()) +
+			'&foreign_proxy_port=' + encodeURIComponent($('proxyPortInput').value.trim()) +
+			'&domestic_interval=' + encodeURIComponent($('domesticIntervalInput').value.trim()) +
+			'&foreign_interval=' + encodeURIComponent($('foreignIntervalInput').value.trim());
+	}
+
+	function updateUI(data) {
+		var enabled = data.enabled === '1';
+		var serverTime = parseDateTime(data.server_time || '');
+		var updatedTime = parseDateTime(data.updated_at || '');
+		var stale = false;
+		var proxyType = (data.foreign_proxy_type || 'socks5h').trim() || 'socks5h';
+		var proxyPort = (data.foreign_proxy_port || '').trim();
+		var domesticInterval = (data.domestic_interval || '1').trim() || '1';
+		var foreignInterval = (data.foreign_interval || '5').trim() || '5';
+
+		if (enabled && data.service_running && serverTime && updatedTime) {
+			stale = (serverTime.getTime() - updatedTime.getTime()) > staleThresholdMs;
+		}
+
+		$('enableSwitch').checked = enabled;
+		setServiceState(enabled, !!data.service_running, stale);
+
+		lastServerValues.domestic = (data.domestic_target || '').trim();
+		lastServerValues.foreign = (data.foreign_target || '').trim();
+		lastServerValues.proxyType = proxyType;
+		lastServerValues.proxyPort = proxyPort;
+		lastServerValues.domesticInterval = domesticInterval;
+		lastServerValues.foreignInterval = foreignInterval;
+
+		syncFieldValue('domesticInput', data.domestic_target || '', 'domestic');
+		syncFieldValue('foreignInput', data.foreign_target || '', 'foreign');
+		syncFieldValue('proxyTypeInput', proxyType, 'proxyType');
+		syncFieldValue('proxyPortInput', proxyPort, 'proxyPort');
+		syncFieldValue('domesticIntervalInput', domesticInterval, 'domesticInterval');
+		syncFieldValue('foreignIntervalInput', foreignInterval, 'foreignInterval');
+
+		setTarget('domesticTarget', data.domestic_target || '');
+		setTarget('foreignTarget', data.foreign_target || '');
+		$('foreignProxySummary').textContent = buildProxySummary(proxyType, proxyPort);
+
+		setStat('domestic', data.domestic || {});
+		setStat('foreign', data.foreign || {});
+		$('cpuUsage').textContent = formatPercent(data.system && data.system.cpu_usage);
+		$('memoryUsage').textContent = formatPercent(data.system && data.system.memory_usage);
+
+		$('updatedAt').textContent = data.updated_at || '--';
+		$('updatedCard').className = stale ? 'pp-meta-card stale' : 'pp-meta-card';
+
+		if (data.start_time) {
+			$('startTime').textContent = data.start_time;
+			startTimeRef = parseDateTime(data.start_time);
+			if (startTimeRef) {
+				updateDuration();
+				if (!durationTimer) {
+					durationTimer = setInterval(updateDuration, 1000);
+				}
+			}
+		} else {
+			$('startTime').textContent = '--';
+			$('duration').textContent = '--';
+			startTimeRef = null;
+			if (durationTimer) {
+				clearInterval(durationTimer);
+				durationTimer = null;
+			}
+		}
+	}
+
+	function fetchData() {
+		if (pollInFlight || saveInFlight || restartInFlight) {
+			schedulePoll(pollInterval);
+			return;
+		}
+
+		pollInFlight = true;
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', dataUrl + '?_=' + Date.now(), true);
+		xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+		xhr.onload = function() {
+			if (xhr.status === 200) {
+				try {
+					updateUI(JSON.parse(xhr.responseText));
+				} catch (e) {}
+			}
+		};
+		xhr.onloadend = function() {
+			pollInFlight = false;
+			schedulePoll(pollInterval);
+		};
+		xhr.onerror = function() {};
+		xhr.send();
+	}
+
+	function requestResync() {
+		refreshAllDirtyStates();
+		fetchData();
+	}
+
+	function submitConfig(requestSource, onSuccess, onFailure) {
+		if (saveInFlight || restartInFlight) {
+			return;
+		}
+
+		var enabled = $('enableSwitch').checked ? '1' : '0';
+		var xhr = new XMLHttpRequest();
+
+		saveInFlight = true;
+		setControlsDisabled(true);
+		setMessage(requestSource === 'save' ? '正在保存并应用配置...' : '正在更新监控状态...', '');
+
+		xhr.open('POST', saveUrl, true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onload = function() {
+			var response = null;
+
+			if (xhr.status === 200) {
+				try {
+					response = JSON.parse(xhr.responseText);
+				} catch (e) {}
+			}
+
+			if (response && response.success) {
+				clearDirtyState();
+				if (onSuccess) {
+					onSuccess(enabled === '1');
+				}
+			} else if (onFailure) {
+				onFailure(response && response.message ? response.message : '');
+			}
+		};
+		xhr.onerror = function() {
+			if (onFailure) {
+				onFailure('');
+			}
+		};
+		xhr.onloadend = function() {
+			saveInFlight = false;
+			setControlsDisabled(false);
+			fetchData();
+		};
+		xhr.send(buildPayload(enabled, requestSource));
+	}
+
+	function submitRestart(onSuccess, onFailure) {
+		if (saveInFlight || restartInFlight) {
+			return;
+		}
+
+		var xhr = new XMLHttpRequest();
+
+		restartInFlight = true;
+		setControlsDisabled(true);
+		setMessage('正在重新启动监控服务...', '');
+
+		xhr.open('POST', restartUrl, true);
+		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		xhr.onload = function() {
+			var response = null;
+
+			if (xhr.status === 200) {
+				try {
+					response = JSON.parse(xhr.responseText);
+				} catch (e) {}
+			}
+
+			if (response && response.success) {
+				if (onSuccess) {
+					onSuccess();
+				}
+			} else if (onFailure) {
+				onFailure(response && response.message ? response.message : '');
+			}
+		};
+		xhr.onerror = function() {
+			if (onFailure) {
+				onFailure('');
+			}
+		};
+		xhr.onloadend = function() {
+			restartInFlight = false;
+			setControlsDisabled(false);
+			fetchData();
+		};
+		xhr.send('token=' + encodeURIComponent(formToken));
+	}
+
+	window.toggleService = function() {
+		var enableSwitch = $('enableSwitch');
+		var previousChecked = !enableSwitch.checked;
+		var validationMessage = '';
+
+		if (enableSwitch.checked) {
+			validationMessage = validateInputs();
+			if (validationMessage) {
+				enableSwitch.checked = previousChecked;
+				alert(validationMessage);
+				return;
+			}
+		}
+
+		submitConfig(
+			'toggle',
+			function(enabled) {
+				setMessage(enabled ? '监控已启用。' : '监控已关闭。', 'success');
+			},
+			function(message) {
+				enableSwitch.checked = previousChecked;
+				setMessage(message || '状态更新失败，请稍后重试。', 'error');
+			}
+		);
+	};
+
+	window.saveConfig = function() {
+		var validationMessage = validateInputs();
+		if (validationMessage) {
+			setMessage(validationMessage, 'error');
+			return;
+		}
+
+		submitConfig(
+			'save',
+			function(enabled) {
+				setMessage(enabled ? '已保存配置并重启监控服务。' : '保存成功。', 'success');
+			},
+			function(message) {
+				setMessage(message || '保存失败，请稍后重试。', 'error');
+			}
+		);
+	};
+
+	window.restartService = function() {
+		submitRestart(
+			function() {
+				setMessage('已触发服务重启，正在等待新的监控结果。', 'success');
+			},
+			function(message) {
+				setMessage(message || '重启服务失败，请稍后重试。', 'error');
+			}
+		);
+	};
+
+	$('domesticInput').addEventListener('input', function() {
+		inputDirty.domestic = true;
+	});
+
+	$('domesticInput').addEventListener('blur', function() {
+		refreshDirtyState('domestic', 'domesticInput');
+	});
+
+	$('foreignInput').addEventListener('input', function() {
+		inputDirty.foreign = true;
+	});
+
+	$('foreignInput').addEventListener('blur', function() {
+		refreshDirtyState('foreign', 'foreignInput');
+	});
+
+	$('proxyTypeInput').addEventListener('change', function() {
+		inputDirty.proxyType = true;
+	});
+
+	$('proxyTypeInput').addEventListener('blur', function() {
+		refreshDirtyState('proxyType', 'proxyTypeInput');
+	});
+
+	$('proxyPortInput').addEventListener('input', function() {
+		inputDirty.proxyPort = true;
+	});
+
+	$('proxyPortInput').addEventListener('blur', function() {
+		refreshDirtyState('proxyPort', 'proxyPortInput');
+	});
+
+	$('domesticIntervalInput').addEventListener('input', function() {
+		inputDirty.domesticInterval = true;
+	});
+
+	$('domesticIntervalInput').addEventListener('blur', function() {
+		refreshDirtyState('domesticInterval', 'domesticIntervalInput');
+	});
+
+	$('foreignIntervalInput').addEventListener('input', function() {
+		inputDirty.foreignInterval = true;
+	});
+
+	$('foreignIntervalInput').addEventListener('blur', function() {
+		refreshDirtyState('foreignInterval', 'foreignIntervalInput');
+	});
+
+	document.addEventListener('visibilitychange', function() {
+		if (!document.hidden) {
+			requestResync();
+		}
+	});
+
+	window.addEventListener('focus', function() {
+		requestResync();
+	});
+
+	fetchData();
+})();
+</script>
+
+<%+footer%>

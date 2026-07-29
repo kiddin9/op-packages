@@ -1,0 +1,103 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+STOP=10
+USE_PROCD=1
+
+PROG=/usr/bin/pingpacket.sh
+RUN_DIR=/var/run/pingpacket
+STATUS_FILE=/tmp/pingpacket_status.json
+CONFIG_FILE=$RUN_DIR/config
+LOG_FILE=/tmp/pingpacket.log
+LOG_MAX_LINES=500
+
+log_rotate() {
+	[ -f "$LOG_FILE" ] || return 0
+	tail -n "$LOG_MAX_LINES" "$LOG_FILE" > "${LOG_FILE}.tmp" 2>/dev/null && \
+		mv -f "${LOG_FILE}.tmp" "$LOG_FILE"
+}
+
+log_event() {
+	local event_type="$1"
+	local message="$2"
+	local timestamp
+
+	timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+	printf '[%s] [%s] %s\n' "$timestamp" "$event_type" "$message" >> "$LOG_FILE"
+	log_rotate
+}
+
+format_foreign_summary() {
+	local target="$1"
+	local proxy_type="$2"
+	local proxy_host="$3"
+	local proxy_port="$4"
+
+	[ -n "$target" ] || {
+		echo "未配置"
+		return
+	}
+
+	if [ -n "$proxy_port" ]; then
+		echo "${target}（代理 ${proxy_type} 本机端口 ${proxy_port}）"
+	else
+		echo "${target}（代理端口未配置）"
+	fi
+}
+
+start_service() {
+	local enabled domestic foreign proxy_type proxy_host proxy_port domestic_interval foreign_interval foreign_summary
+
+	config_load pingpacket
+	config_get enabled config enabled "0"
+	config_get domestic config domestic_target ""
+	config_get foreign config foreign_target ""
+	config_get proxy_type config foreign_proxy_type "socks5h"
+	config_get proxy_host config foreign_proxy_host "127.0.0.1"
+	config_get proxy_port config foreign_proxy_port "7891"
+	config_get domestic_interval config domestic_interval "1"
+	config_get foreign_interval config foreign_interval "5"
+	proxy_type="socks5h"
+
+	[ "$enabled" = "1" ] || return 0
+	[ -n "$domestic" ] || [ -n "$foreign" ] || return 0
+
+	rm -rf "$RUN_DIR"
+	rm -f "$STATUS_FILE"
+	mkdir -p "$RUN_DIR"
+	printf '%s\n' "$domestic" > "$CONFIG_FILE"
+	printf '%s\n' "$foreign" >> "$CONFIG_FILE"
+	printf '%s\n' "$proxy_type" >> "$CONFIG_FILE"
+	printf '%s\n' "${proxy_host:-127.0.0.1}" >> "$CONFIG_FILE"
+	printf '%s\n' "$proxy_port" >> "$CONFIG_FILE"
+	printf '%s\n' "$domestic_interval" >> "$CONFIG_FILE"
+	printf '%s\n' "$foreign_interval" >> "$CONFIG_FILE"
+
+	foreign_summary="$(format_foreign_summary "$foreign" "$proxy_type" "$proxy_host" "$proxy_port")"
+	log_event "启动" "监控服务已启动，国内目标：${domestic:-未配置}，国外目标：${foreign_summary}"
+
+	procd_open_instance
+	procd_set_param command /bin/sh "$PROG"
+	procd_set_param respawn 3600 10 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+stop_service() {
+	if [ -d "$RUN_DIR" ] || [ -f "$STATUS_FILE" ]; then
+		log_event "停止" "监控服务已停止。"
+	fi
+
+	rm -rf "$RUN_DIR"
+	rm -f "$STATUS_FILE"
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger "pingpacket"
+}

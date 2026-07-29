@@ -66,15 +66,34 @@ export function getTime(epoch) {
 
 };
 
-export function wGET(url, ua) {
+export function wGETResponse(url, ua) {
 	if (!url || type(url) !== 'string')
 		return null;
 
 	if (!ua)
 		ua = 'Wget/1.21 (HomeProxy, like v2rayN)';
 
-	const output = executeCommand(`/usr/bin/wget -qO- --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
-	return trim(output.stdout);
+	const output = executeCommand(`/usr/bin/wget -O- -S --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
+	return {
+		body: trim(output.stdout),
+		headers: output.stderr || '',
+		exitcode: output.exitcode
+	};
+};
+
+export function wGET(url, ua) {
+	return wGETResponse(url, ua)?.body;
+};
+
+export function wGETHeaders(url, ua) {
+	if (!url || type(url) !== 'string')
+		return null;
+
+	if (!ua)
+		ua = 'clash.meta';
+
+	const output = executeCommand(`/usr/bin/wget -O /dev/null -S --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
+	return output.stderr || '';
 };
 /* Utilities end */
 
