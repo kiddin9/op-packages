@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 -include $(dir $(lastword $(MAKEFILE_LIST)))../version.mk
 
 PKG_VERSION:=$(or $(EASYTIER_VERSION),2.6.4)
-PKG_RELEASE:=11
+PKG_RELEASE:=12
 
 LUCI_TITLE:=LuCI support for EasyTier
 LUCI_DEPENDS:=+kmod-tun +easytier +luci-compat
