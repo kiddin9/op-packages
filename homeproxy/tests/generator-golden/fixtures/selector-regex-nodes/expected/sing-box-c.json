@@ -1,0 +1,114 @@
+{
+	"log": {
+		"disabled": false,
+		"level": "warn",
+		"output": "__TEST_ROOT__/var/run/homeproxy/sing-box-c.log",
+		"timestamp": true
+	},
+	"ntp": {
+		"enabled": true,
+		"server": "time.apple.com",
+		"detour": "direct-out",
+		"domain_resolver": "default-dns"
+	},
+	"dns": {
+		"servers": [
+			{
+				"tag": "default-dns",
+				"type": "udp",
+				"server": "223.5.5.5",
+				"detour": "direct-out"
+			},
+			{
+				"tag": "system-dns",
+				"type": "local",
+				"detour": "direct-out"
+			}
+		],
+		"strategy": "ipv4_only",
+		"final": "default-dns"
+	},
+	"inbounds": [
+		{
+			"type": "direct",
+			"tag": "dns-in",
+			"listen": "::",
+			"listen_port": 5333
+		},
+		{
+			"type": "mixed",
+			"tag": "mixed-in",
+			"listen": "::",
+			"listen_port": 5330,
+			"sniff": true,
+			"sniff_override_destination": true,
+			"set_system_proxy": false
+		},
+		{
+			"type": "redirect",
+			"tag": "redirect-in",
+			"listen": "::",
+			"listen_port": 5331,
+			"sniff": true,
+			"sniff_override_destination": true
+		},
+		{
+			"type": "tproxy",
+			"tag": "tproxy-in",
+			"listen": "::",
+			"listen_port": 5332,
+			"network": "udp",
+			"sniff": true,
+			"sniff_override_destination": true
+		}
+	],
+	"outbounds": [
+		{
+			"type": "direct",
+			"tag": "direct-out",
+			"routing_mark": 100
+		},
+		{
+			"type": "block",
+			"tag": "block-out"
+		},
+		{
+			"type": "selector",
+			"tag": "Regex Selector",
+			"outbounds": [
+				"香港 01"
+			]
+		},
+		{
+			"type": "shadowsocks",
+			"tag": "香港 01",
+			"routing_mark": 100,
+			"server": "hk.example",
+			"server_port": 8388,
+			"password": "hk-password",
+			"method": "2022-blake3-aes-128-gcm"
+		}
+	],
+	"route": {
+		"rules": [
+			{
+				"inbound": "dns-in",
+				"action": "hijack-dns"
+			}
+		],
+		"rule_set": [
+		],
+		"auto_detect_interface": true,
+		"default_domain_resolver": {
+			"action": "resolve",
+			"server": "default-dns"
+		},
+		"final": "Regex Selector"
+	},
+	"experimental": {
+		"cache_file": {
+			"enabled": true,
+			"path": "__TEST_ROOT__/var/run/homeproxy/cache.db"
+		}
+	}
+}

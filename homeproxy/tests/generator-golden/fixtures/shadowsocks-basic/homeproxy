@@ -1,0 +1,23 @@
+config homeproxy 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'redirect'
+	option ipv6_support '0'
+	option main_node 'n1'
+	option main_udp_node 'same'
+	option log_level 'warn'
+	option clash_api_enabled '0'
+
+config homeproxy 'infra'
+	option mixed_port '5330'
+	option redirect_port '5331'
+	option self_mark '100'
+
+config homeproxy 'control'
+
+config node 'n1'
+	option type 'shadowsocks'
+	option label 'SS Basic'
+	option address 'ss-basic.example'
+	option port '8388'
+	option shadowsocks_encrypt_method '2022-blake3-aes-128-gcm'
+	option password 'basic-password'

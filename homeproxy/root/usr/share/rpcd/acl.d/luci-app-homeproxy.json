@@ -1,0 +1,62 @@
+{
+	"luci-app-homeproxy": {
+		"description": "Grant access to homeproxy configuration",
+		"read": {
+			"file": {
+				"/var/run/homeproxy/homeproxy.log": [ "read" ],
+				"/var/run/homeproxy/sing-box-c.log": [ "read" ],
+				"/var/run/homeproxy/sing-box-s.log": [ "read" ]
+			},
+			"ubus": {
+				"service": [ "list" ],
+				"luci.homeproxy": [
+					"acllist_read",
+					"connection_check",
+					"resources_get_version",
+					"singbox_get_features"
+				],
+				"luci.homeproxy_node_tools": [
+					"config_diagnostics",
+					"node_references",
+					"preview_node_filter",
+					"update_subscriptions_status",
+					"validate_regex"
+				]
+			},
+			"uci": [ "homeproxy" ]
+		},
+		"write": {
+			"file": {
+				"/tmp/homeproxy_certificate.tmp": [ "write" ],
+				"/tmp/homeproxy-backup-*.tar.gz": [ "read" ],
+				"/tmp/homeproxy-restore-*.tar.gz": [ "write" ]
+			},
+			"ubus": {
+				"luci.homeproxy": [
+					"acllist_read",
+					"acllist_write",
+					"certificate_write",
+					"log_clean",
+					"resources_update",
+					"singbox_generator"
+				],
+				"luci.homeproxy_backup": [
+					"backup_cleanup",
+					"backup_create",
+					"backup_get_upload_path",
+					"backup_restore",
+					"backup_validate"
+				],
+				"luci.homeproxy_node_tools": [
+					"remove_subscription_nodes",
+					"update_subscriptions"
+				],
+				"luci.homeproxy_tcping": [
+					"node_tcping",
+					"nodes_tcping"
+				]
+			},
+			"uci": [ "homeproxy" ]
+		}
+	}
+}

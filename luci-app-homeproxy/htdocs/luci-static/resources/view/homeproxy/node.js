@@ -7,7 +7,6 @@
 'use strict';
 'require form';
 'require fs';
-'require rpc';
 'require uci';
 'require ui';
 'require view';
@@ -15,205 +14,9 @@
 'require homeproxy as hp';
 'require tools.widgets as widgets';
 
-const callNodeLatencyTest = rpc.declare({
-	object: 'luci.homeproxy',
-	method: 'node_latency_test',
-	params: ['node', 'mode'],
-	expect: { '': {} }
-});
-
-const callRCInit = rpc.declare({
-	object: 'rc',
-	method: 'init',
-	params: ['name', 'action'],
-	expect: { '': {} }
-});
-
-function normalizeList(value) {
-	return Array.isArray(value) ? value : (value ? [value] : []);
-}
-
-function getSubscriptionInfo(config) {
-	const urls = normalizeList(uci.get(config, 'subscription', 'subscription_url')),
-	      names = normalizeList(uci.get(config, 'subscription', 'subscription_name')),
-	      info = [];
-
-	for (let i = 0; i < urls.length; i++) {
-		const url = urls[i],
-		      cleanUrl = String(url || '').replace(/#.*$/, ''),
-		      title = String(names[i] || '').trim();
-
-		if (!url)
-			continue;
-
-		info.push({
-			hash: hp.calcStringMD5(cleanUrl),
-			title,
-			url
-		});
-	}
-
-	return info;
-}
-
-const SubscriptionList = form.Value.extend({
-	__name__: 'CBI.HomeProxySubscriptionList',
-
-	cfgvalue(section_id) {
-		return {
-			urls: normalizeList(uci.get('homeproxy', section_id, 'subscription_url')),
-			names: normalizeList(uci.get('homeproxy', section_id, 'subscription_name'))
-		};
-	},
-
-	renderWidget(section_id, _option_index, cfgvalue) {
-		const value = cfgvalue || { urls: [], names: [] },
-		      rows = E('div', {
-			id: this.cbid(section_id),
-			'class': 'homeproxy-subscription-list',
-			'style': 'display: flex; flex-direction: column; gap: .45em; width: min(100%, 42em);'
-		});
-
-		rows.appendChild(E('div', {
-			'class': 'homeproxy-subscription-header',
-			'style': 'display: grid; grid-template-columns: minmax(8em, 13em) minmax(16em, 1fr) auto; gap: .35em; color: var(--text-muted, #6b7280); font-size: 90%;'
-		}, [
-			E('span', {}, [ _('\u8ba2\u9605\u540d\u79f0') ]),
-			E('span', {}, [ _('\u8ba2\u9605\u5730\u5740') ]),
-			E('span')
-		]));
-
-		const addRow = (name, url) => {
-			const row = E('div', {
-				'class': 'homeproxy-subscription-row',
-				'style': 'display: grid; grid-template-columns: minmax(8em, 13em) minmax(16em, 1fr) auto; gap: .35em; align-items: stretch;'
-			}, [
-				E('input', {
-					'type': 'text',
-					'class': 'cbi-input-text subscription-name',
-					'placeholder': _('\u8ba2\u9605\u540d\u79f0'),
-					'value': name || '',
-					'style': 'width: 100%; box-sizing: border-box;'
-				}),
-				E('input', {
-					'type': 'text',
-					'class': 'cbi-input-text subscription-url',
-					'placeholder': _('\u8ba2\u9605\u5730\u5740'),
-					'value': url || '',
-					'style': 'width: 100%; box-sizing: border-box;'
-				}),
-				E('button', {
-					'type': 'button',
-					'class': 'cbi-button cbi-button-remove',
-					'click': () => {
-						row.remove();
-						if (!rows.querySelector('.homeproxy-subscription-row'))
-							addRow('', '');
-					}
-				}, [ '-' ])
-			]);
-
-			if (rows._addButton)
-				rows.insertBefore(row, rows._addButton);
-			else
-				rows.appendChild(row);
-		};
-
-		for (let i = 0; i < Math.max(value.urls.length, 1); i++)
-			addRow(value.names[i], value.urls[i]);
-
-		rows._addButton = E('button', {
-			'type': 'button',
-			'class': 'cbi-button cbi-button-add',
-			'style': 'width: 3em;',
-			'click': () => addRow('', '')
-		}, [ '+' ]);
-		rows.appendChild(rows._addButton);
-
-		return rows;
-	},
-
-	formvalue(section_id) {
-		const node = document.getElementById(this.cbid(section_id)),
-		      names = [],
-		      urls = [];
-
-		node?.querySelectorAll('.homeproxy-subscription-row').forEach((row) => {
-			const name = row.querySelector('.subscription-name')?.value.trim() || '',
-			      url = row.querySelector('.subscription-url')?.value.trim() || '';
-
-			if (!name && !url)
-				return;
-
-			names.push(name);
-			urls.push(url);
-		});
-
-		return { names, urls };
-	},
-
-	validate(_section_id, value) {
-		const names = value?.names || [],
-		      urls = value?.urls || [],
-		      usedNames = {},
-		      usedUrls = {};
-
-		if (!names.length || !urls.length)
-			return _('\u8ba2\u9605\u540d\u79f0\u548c\u8ba2\u9605\u5730\u5740\u4e3a\u5fc5\u586b\u9879');
-
-		for (let i = 0; i < Math.max(names.length, urls.length); i++) {
-			const name = String(names[i] || '').trim(),
-			      url = String(urls[i] || '').trim(),
-			      normalizedUrl = url.replace(/#.*$/, '');
-
-			if (!name || !url)
-				return _('\u8ba2\u9605\u540d\u79f0\u548c\u8ba2\u9605\u5730\u5740\u5fc5\u987b\u6210\u5bf9\u586b\u5199');
-
-			if (usedNames[name])
-				return _('\u8ba2\u9605\u540d\u79f0\u4e0d\u80fd\u91cd\u590d');
-			usedNames[name] = true;
-
-			if (usedUrls[normalizedUrl])
-				return _('\u8ba2\u9605\u5730\u5740\u4e0d\u80fd\u91cd\u590d');
-			usedUrls[normalizedUrl] = true;
-
-			try {
-				let parsed = new URL(url);
-				if (!parsed.hostname)
-					return _('Expecting: %s').format(_('valid URL'));
-			} catch(e) {
-				return _('Expecting: %s').format(_('valid URL'));
-			}
-		}
-
-		return true;
-	},
-
-	write(section_id, value) {
-		if (value?.urls?.length) {
-			uci.set('homeproxy', section_id, 'subscription_url', value.urls);
-			uci.set('homeproxy', section_id, 'subscription_name', value.names);
-		} else {
-			uci.unset('homeproxy', section_id, 'subscription_url');
-			uci.unset('homeproxy', section_id, 'subscription_name');
-		}
-	}
-});
-
 function allowInsecureConfirm(ev, _section_id, value) {
 	if (value === '1' && !confirm(_('Are you sure to allow insecure?')))
 		ev.target.firstElementChild.checked = null;
-}
-
-function normalizeHysteriaHoppingPort(mport) {
-	if (!mport)
-		return null;
-
-	const ports = mport.split(',')
-		.map((p) => p.trim())
-		.filter((p) => p.length)
-		.map((p) => (/^\d+$/.test(p) ? `${p}:${p}` : p.replace('-', ':')));
-	return ports.length ? ports : null;
 }
 
 function parseShareLink(uri, features) {
@@ -226,11 +29,6 @@ function parseShareLink(uri, features) {
 			/* https://github.com/anytls/anytls-go/blob/v0.0.8/docs/uri_scheme.md */
 			url = new URL('http://' + uri[1]);
 			params = url.searchParams;
-			let anytls_fp = params.get('fp');
-			if (['none', 'disable', 'disabled'].includes(anytls_fp))
-				anytls_fp = null;
-			else if (!anytls_fp)
-				anytls_fp = 'chrome';
 
 			/* Check if password exists */
 			if (!url.username)
@@ -244,8 +42,7 @@ function parseShareLink(uri, features) {
 				password: url.username ? decodeURIComponent(url.username) : null,
 				tls: '1',
 				tls_sni: params.get('sni'),
-				tls_insecure: (params.get('insecure') === '1' || params.get('allowInsecure') === '1') ? '1' : '0',
-				tls_utls: features.with_utls ? anytls_fp : null
+				tls_insecure: (params.get('insecure') === '1') ? '1' : '0'
 			};
 
 			break;
@@ -278,7 +75,6 @@ function parseShareLink(uri, features) {
 				type: 'hysteria',
 				address: url.hostname,
 				port: url.port || '80',
-				hysteria_hopping_port: normalizeHysteriaHoppingPort(params.get('mport')),
 				hysteria_protocol: params.get('protocol') || 'udp',
 				hysteria_auth_type: params.get('auth') ? 'string' : null,
 				hysteria_auth_payload: params.get('auth'),
@@ -286,9 +82,9 @@ function parseShareLink(uri, features) {
 				hysteria_down_mbps: params.get('downmbps'),
 				hysteria_up_mbps: params.get('upmbps'),
 				tls: '1',
-				tls_insecure: (params.get('insecure') === '1' || params.get('allowInsecure') === '1') ? '1' : '0',
 				tls_sni: params.get('peer'),
-				tls_alpn: params.get('alpn')
+				tls_alpn: params.get('alpn'),
+				tls_insecure: (params.get('insecure') === '1') ? '1' : '0'
 			};
 
 			break;
@@ -309,12 +105,11 @@ function parseShareLink(uri, features) {
 				password: url.username ? (
 					decodeURIComponent(url.username + (url.password ? (':' + url.password) : ''))
 				) : null,
-				hysteria_hopping_port: normalizeHysteriaHoppingPort(params.get('mport')),
 				hysteria_obfs_type: params.get('obfs'),
 				hysteria_obfs_password: params.get('obfs-password'),
 				tls: '1',
-				tls_insecure: (params.get('insecure') === '1' || params.get('allowInsecure') === '1') ? '1' : '0',
-				tls_sni: params.get('sni')
+				tls_sni: params.get('sni'),
+				tls_insecure: params.get('insecure') ? '1' : '0'
 			};
 
 			break;
@@ -417,7 +212,6 @@ function parseShareLink(uri, features) {
 				password: decodeURIComponent(url.username),
 				transport: params.get('type') !== 'tcp' ? params.get('type') : null,
 				tls: '1',
-				tls_insecure: (params.get('insecure') === '1' || params.get('allowInsecure') === '1') ? '1' : '0',
 				tls_sni: params.get('sni')
 			};
 			switch (params.get('type')) {
@@ -455,7 +249,6 @@ function parseShareLink(uri, features) {
 				tuic_congestion_control: params.get('congestion_control'),
 				tuic_udp_relay_mode: params.get('udp_relay_mode'),
 				tls: '1',
-				tls_insecure: (params.get('insecure') === '1' || params.get('allowInsecure') === '1') ? '1' : '0',
 				tls_sni: params.get('sni'),
 				tls_alpn: params.get('alpn') ? decodeURIComponent(params.get('alpn')).split(',') : null
 			};
@@ -483,7 +276,6 @@ function parseShareLink(uri, features) {
 				uuid: url.username,
 				transport: params.get('type') !== 'tcp' ? params.get('type') : null,
 				tls: ['tls', 'xtls', 'reality'].includes(params.get('security')) ? '1' : '0',
-				tls_insecure: (params.get('insecure') === '1' || params.get('allowInsecure') === '1') ? '1' : '0',
 				tls_sni: params.get('sni'),
 				tls_alpn: params.get('alpn') ? decodeURIComponent(params.get('alpn')).split(',') : null,
 				tls_reality: (params.get('security') === 'reality') ? '1' : '0',
@@ -596,378 +388,13 @@ function parseShareLink(uri, features) {
 	return config;
 }
 
-const NODE_LATENCY_ROW_STATES = Object.freeze({
-	UNTESTED: 'untested',
-	TESTING: 'testing',
-	SUCCESS: 'success',
-	TIMEOUT: 'timeout',
-	ERROR: 'error'
-});
-
-const NODE_LATENCY_ROW_STATE_VALUES = Object.freeze(Object.values(NODE_LATENCY_ROW_STATES));
-const NODE_LATENCY_TEST_MODES = Object.freeze([ 'icmp', 'rp' ]);
-
-function remapLegacyNodeLatencyTestMode(mode) {
-	return mode === 'tcp' ? 'icmp' : mode;
-}
-
-function normalizeNodeLatencyTestMode(mode) {
-	mode = remapLegacyNodeLatencyTestMode(mode);
-	return NODE_LATENCY_TEST_MODES.includes(mode) ? mode : 'icmp';
-}
-
-function resolveNodeLatencyResultByMode(result, mode) {
-	let active_mode = normalizeNodeLatencyTestMode(mode || result?.mode);
-	let active_latency_ms = (result && result.latency_ms != null) ? result.latency_ms : null;
-	let active_error = (result && result.error) ? result.error : null;
-	let active_state = result?.state;
-
-	if (active_mode === 'icmp') {
-		if (result && result.icmp_latency_ms != null)
-			active_latency_ms = result.icmp_latency_ms;
-		if (result && result.icmp_error)
-			active_error = result.icmp_error;
-	}
-
-	if (active_error?.code?.endsWith('_timeout'))
-		active_state = NODE_LATENCY_ROW_STATES.TIMEOUT;
-	else if (active_error)
-		active_state = NODE_LATENCY_ROW_STATES.ERROR;
-	else if (active_latency_ms != null)
-		active_state = NODE_LATENCY_ROW_STATES.SUCCESS;
-
-	return {
-		mode: active_mode,
-		state: active_state,
-		latency_ms: active_latency_ms,
-		error: active_error
-	};
-}
-
-function getNodeLatencyErrorText(error_code) {
-	switch (error_code) {
-	case 'backend_execution failed':
-		return _('Backend execution failed');
-	case 'icmp_failed':
-		return _('ICMP Failed');
-	case 'icmp_probe_unavailable':
-		return _('ICMP Probe unavailable');
-	case 'icmp_timeout':
-		return _('ICMP Timeout');
-	case 'invalid_node':
-		return _('Invalid node');
-	case 'invalid_response':
-		return _('Invalid response');
-	case 'probe_failed':
-		return _('Probe failed');
-	case 'rpc_failed':
-		return _('RPC failed');
-	default:
-		return _('Error');
-	}
-}
-
-function getNodeLatencyStatusText(row_state) {
-	if (!row_state)
-		return _('Not Tested');
-
-	switch (row_state.state) {
-	case NODE_LATENCY_ROW_STATES.TESTING:
-		return _('Testing');
-	case NODE_LATENCY_ROW_STATES.SUCCESS:
-		return (row_state.latency_ms != null) ? _('%s ms').format(row_state.latency_ms) : _('Success');
-	case NODE_LATENCY_ROW_STATES.TIMEOUT:
-		return _('Timeout');
-	case NODE_LATENCY_ROW_STATES.ERROR:
-		return getNodeLatencyErrorText(row_state.error?.code);
-	case NODE_LATENCY_ROW_STATES.UNTESTED:
-	default:
-		return _('Not Tested');
-	}
-}
-
-function getNodeLatencyStatusStyle(row_state) {
-	if (!row_state)
-		return 'color:gray';
-
-	switch (row_state.state) {
-	case NODE_LATENCY_ROW_STATES.TESTING:
-		return 'color:#0a84ff';
-	case NODE_LATENCY_ROW_STATES.SUCCESS:
-		return 'color:green';
-	case NODE_LATENCY_ROW_STATES.TIMEOUT:
-		return 'color:#ff8c00';
-	case NODE_LATENCY_ROW_STATES.ERROR:
-		return 'color:red';
-	case NODE_LATENCY_ROW_STATES.UNTESTED:
-	default:
-		return 'color:gray';
-	}
-}
-
-function renderNodeLatencyStatus(row_state) {
-	return '<strong style="%s">%s</strong>'.format(getNodeLatencyStatusStyle(row_state), getNodeLatencyStatusText(row_state));
-}
-
-function renderNodeLatencyStatusNode(row_state, attrs) {
-	return E('strong', Object.assign({
-		'style': getNodeLatencyStatusStyle(row_state)
-	}, attrs || {}), [ getNodeLatencyStatusText(row_state) ]);
-}
-
-function getNodeLatencyActionTitle(row_state) {
-	return (row_state?.state === NODE_LATENCY_ROW_STATES.TESTING) ? _('Testing') : _('Test');
-}
-
-function parseNodeLatencySectionId(widget_id) {
-	let matched = String(widget_id || '').match(/^cbi-homeproxy-(.*)-_test_latency$/);
-	return matched ? matched[1] : null;
-}
-
-function parseActiveSubscriptionTabId(value) {
-	let matched = String(value || '').match(/(?:^|[^\w])(sub_[0-9a-f]+)(?:$|[^\w])/i);
-	return matched ? matched[1] : null;
-}
-
-function parseActiveNodeListTabId(value) {
-	let matched = String(value || '').match(/(?:^|[^\w])(node|subscription|sub_[0-9a-f]+)(?:$|[^\w])/i);
-	return matched ? matched[1].toLowerCase() : null;
-}
-
-function getActiveNodeListTabId(root_el) {
-	let active_tab = null;
-	let active_tab_nodes = root_el.querySelectorAll('.cbi-tabmenu li.cbi-tab-active, .cbi-tabmenu li.active, .cbi-tabmenu [aria-selected="true"]');
-
-	for (let node of active_tab_nodes) {
-		let tab_id = parseActiveNodeListTabId(node?.getAttribute('data-tab'))
-			|| parseActiveNodeListTabId(node?.dataset?.tab)
-			|| parseActiveNodeListTabId(node?.getAttribute('id'));
-		if (!tab_id && node?.querySelector)
-			tab_id = parseActiveNodeListTabId(node.querySelector('a')?.getAttribute('href'))
-				|| parseActiveNodeListTabId(node.querySelector('a')?.getAttribute('data-tab'));
-
-		if (tab_id) {
-			active_tab = tab_id;
-			break;
-		}
-	}
-
-	if (!active_tab) {
-		let fallback_tab_nodes = root_el.querySelectorAll('.cbi-tabmenu li.cbi-tab[data-tab], .cbi-tabmenu li[data-tab]:not(.cbi-tab-disabled)');
-
-		for (let node of fallback_tab_nodes) {
-			let tab_id = parseActiveNodeListTabId(node?.getAttribute('data-tab')) || parseActiveNodeListTabId(node?.dataset?.tab);
-			if (tab_id) {
-				active_tab = tab_id;
-				break;
-			}
-		}
-	}
-
-	return active_tab;
-}
-
-function shouldShowBulkLatencyButton(root_el) {
-	let active_tab = getActiveNodeListTabId(root_el);
-
-	if (!active_tab)
-		return false;
-
-	return !!parseActiveSubscriptionTabId(active_tab);
-}
-
-function getActiveSubscriptionTabId(root_el) {
-	let active_tab = getActiveNodeListTabId(root_el);
-	return parseActiveSubscriptionTabId(active_tab);
-}
-
-function getActiveSubscriptionTabContainer(root_el, active_tab) {
-	if (!active_tab)
-		return null;
-
-	let candidates = [];
-	for (let selector of [
-		'.cbi-tabcontainer[data-tab="%s"]'.format(active_tab),
-		'[data-tab="%s"]'.format(active_tab),
-		'[id="tab.%s"]'.format(active_tab),
-		'[id="tab-%s"]'.format(active_tab),
-		'[id="%s"]'.format(active_tab)
-	]) {
-		candidates = candidates.concat(Array.from(root_el.querySelectorAll(selector)));
-	}
-
-	return candidates.find((node) => !node.closest('.cbi-tabmenu') && node.querySelector('div[id$="-_test_latency"]')) || null;
-}
-
-function getActiveSubscriptionLatencySectionIds(root_el) {
-	let active_tab = getActiveSubscriptionTabId(root_el);
-	let active_container = getActiveSubscriptionTabContainer(root_el, active_tab);
-	if (!active_container)
-		return [];
-
-	let widgets = Array.from(active_container.querySelectorAll('div[id$="-_test_latency"]'));
-	return widgets.map((node) => parseNodeLatencySectionId(node.id)).filter((sid) => !!sid);
-}
-
-function createNodeLatencyRowStateModel() {
-	let rows = Object.create(null);
-
-	const buildRowState = (state, result, mode) => {
-		let resolved_result = resolveNodeLatencyResultByMode(result, mode);
-
-		return {
-		state: state,
-		mode: resolved_result.mode,
-		latency_ms: resolved_result.latency_ms,
-		icmp_latency_ms: (result && result.icmp_latency_ms != null) ? result.icmp_latency_ms : null,
-		measured_at: (result && result.measured_at) ? result.measured_at : null,
-		error: resolved_result.error,
-		icmp_error: (result && result.icmp_error) ? result.icmp_error : null
-		};
-	};
-
-	const normalizeState = (state) => {
-		if (NODE_LATENCY_ROW_STATE_VALUES.includes(state))
-			return state;
-
-		return NODE_LATENCY_ROW_STATES.ERROR;
-	};
-
-	const ensure = (section_id) => {
-		if (!section_id)
-			return buildRowState(NODE_LATENCY_ROW_STATES.UNTESTED, null, 'icmp');
-
-		if (!rows[section_id])
-			rows[section_id] = buildRowState(NODE_LATENCY_ROW_STATES.UNTESTED, null, 'icmp');
-
-		return rows[section_id];
-	};
-
-	return {
-		states: NODE_LATENCY_ROW_STATES,
-
-		get: (section_id) => ensure(section_id),
-
-		set: (section_id, state, result, mode) => {
-			if (!section_id)
-				return null;
-
-			rows[section_id] = buildRowState(normalizeState(state), result, mode);
-			return rows[section_id];
-		},
-
-		setFromProbeResult: (section_id, result, mode) => {
-			if (!section_id)
-				return null;
-
-			let resolved_result = resolveNodeLatencyResultByMode(result, mode);
-			let state = resolved_result.state ? normalizeState(resolved_result.state) : NODE_LATENCY_ROW_STATES.ERROR;
-			rows[section_id] = buildRowState(state, result, mode);
-			return rows[section_id];
-		},
-
-		clear: (section_id) => {
-			if (!section_id)
-				return;
-
-			delete rows[section_id];
-		},
-
-		reset: () => {
-			rows = Object.create(null);
-		},
-
-		snapshot: () => rows
-	};
-}
-
-function renderNodeSettings(section, data, features, main_node, routing_mode, node_latency_row_state) {
+function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	let s = section, o;
-	if (typeof globalThis !== 'undefined') {
-		globalThis.__hpNodeLatencySections = globalThis.__hpNodeLatencySections || {};
-		globalThis.__hpNodeLatencyTrigger = function(section_id) {
-			let target = globalThis.__hpNodeLatencySections?.[section_id];
-			return target ? target.handleNodeLatencyTest(section_id) : false;
-		};
-	}
 	s.rowcolors = true;
 	s.sortable = true;
 	s.nodescriptions = true;
-	s.max_cols = 7;
 	s.modaltitle = L.bind(hp.loadModalTitle, this, _('Node'), _('Add a node'), data[0]);
 	s.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
-	s.node_latency_row_state = node_latency_row_state;
-	s.getNodeLatencyRowState = function(section_id) {
-		return node_latency_row_state.get(section_id);
-	}
-	s.getNodeLatencyTestMode = function() {
-		let mode_option = this.map.lookupOption('latency_test_mode', 'subscription')?.[0];
-		let mode_value = mode_option ? mode_option.formvalue('subscription') : uci.get(data[0], 'subscription', 'latency_test_mode');
-
-		return normalizeNodeLatencyTestMode(mode_value);
-	}
-	s.syncNodeLatencyTestMode = function(mode) {
-		let normalized_mode = normalizeNodeLatencyTestMode(mode);
-		let saved_mode_value = uci.get(data[0], 'subscription', 'latency_test_mode');
-		let saved_mode = normalizeNodeLatencyTestMode(saved_mode_value);
-
-		if (saved_mode === normalized_mode && saved_mode_value !== 'tcp')
-			return Promise.resolve(normalized_mode);
-
-		uci.set(data[0], 'subscription', 'latency_test_mode', normalized_mode);
-		return uci.save().then(() => normalized_mode);
-	}
-	s.setNodeLatencyRowState = function(section_id, state, result, mode) {
-		return node_latency_row_state.set(section_id, state, result, mode);
-	}
-	s.setNodeLatencyRowStateFromProbeResult = function(section_id, result, mode) {
-		return node_latency_row_state.setFromProbeResult(section_id, result, mode);
-	}
-	s.refreshNodeLatencyRow = function(section_id) {
-		let row_state = this.getNodeLatencyRowState(section_id);
-		let latency_id = 'cbi-%s-%s-_latency'.format(data[0], section_id);
-		let test_id = 'cbi-%s-%s-_test_latency'.format(data[0], section_id);
-
-		let status_widget = this.map.findElement('id', latency_id);
-		if (status_widget)
-			status_widget.innerHTML = renderNodeLatencyStatus(row_state);
-
-		let test_widget = this.map.findElement('id', test_id);
-		let test_button = test_widget ? test_widget.querySelector('button') : null;
-		if (test_button) {
-			test_button.textContent = getNodeLatencyActionTitle(row_state);
-			test_button.disabled = (row_state.state === NODE_LATENCY_ROW_STATES.TESTING) ? true : null;
-		}
-	}
-
-	s.handleNodeLatencyTest = function(section_id) {
-		let mode = this.getNodeLatencyTestMode();
-		this.setNodeLatencyRowState(section_id, NODE_LATENCY_ROW_STATES.TESTING, null, mode);
-		this.refreshNodeLatencyRow(section_id);
-
-		return this.syncNodeLatencyTestMode(mode).then((mode) => L.resolveDefault(callNodeLatencyTest(section_id, mode), null).then((result) => {
-			if (result?.node === section_id)
-				this.setNodeLatencyRowStateFromProbeResult(section_id, result, mode);
-			else
-				this.setNodeLatencyRowState(section_id, NODE_LATENCY_ROW_STATES.ERROR, {
-					mode: mode,
-					error: {
-						code: 'invalid_response',
-						message: 'unexpected node latency response'
-					}
-				}, mode);
-		})).catch((err) => {
-			this.setNodeLatencyRowState(section_id, NODE_LATENCY_ROW_STATES.ERROR, {
-				mode: mode,
-				error: {
-					code: 'rpc_failed',
-					message: String(err)
-				}
-			}, mode);
-		}).then(() => {
-			this.refreshNodeLatencyRow(section_id);
-		});
-	}
 
 	if (routing_mode !== 'custom') {
 		o = s.option(form.Button, '_apply', _('Apply'));
@@ -990,41 +417,6 @@ function renderNodeSettings(section, data, features, main_node, routing_mode, no
 				ui.changes.apply(true);
 			});
 		}
-	}
-
-	o = s.option(form.DummyValue, '_latency', _('Latency'));
-	o.rawhtml = true;
-	o.modalonly = false;
-	o.textvalue = function(section_id) {
-		return E('span', { 'id': 'cbi-%s-%s-_latency'.format(data[0], section_id) }, [
-			renderNodeLatencyStatusNode(this.section.getNodeLatencyRowState(section_id))
-		]);
-	}
-
-	o = s.option(form.Button, '_test_latency', _('Test'));
-	o.editable = true;
-	o.modalonly = false;
-	o.inputstyle = 'action';
-	o.inputtitle = function(section_id) {
-		return getNodeLatencyActionTitle(this.section.getNodeLatencyRowState(section_id));
-	}
-	o.renderWidget = function(section_id, _option_index, cfgvalue) {
-		let hiddenEl = new ui.Hiddenfield((cfgvalue != null) ? cfgvalue : '', {
-			id: this.cbid(section_id)
-		});
-		let outputEl = E('output', { 'for': this.cbid(section_id) });
-		let row_state = s.getNodeLatencyRowState(section_id);
-
-		if (typeof globalThis !== 'undefined' && globalThis.__hpNodeLatencySections)
-			globalThis.__hpNodeLatencySections[section_id] = s;
-
-		outputEl.appendChild(E('button', {
-			'class': 'cbi-button cbi-button-action',
-			'onclick': 'return globalThis.__hpNodeLatencyTrigger(%s);'.format(JSON.stringify(section_id)),
-			'disabled': (row_state.state === NODE_LATENCY_ROW_STATES.TESTING) ? true : null
-		}, [ getNodeLatencyActionTitle(row_state) ]));
-
-		return E([ outputEl, hiddenEl.render() ]);
 	}
 
 	o = s.option(form.Value, 'label', _('Label'));
@@ -1051,7 +443,6 @@ function renderNodeSettings(section, data, features, main_node, routing_mode, no
 		o.value('wireguard', _('WireGuard'));
 	o.value('vless', _('VLESS'));
 	o.value('vmess', _('VMess'));
-	o.default = 'direct';
 	o.rmempty = false;
 
 	o = s.option(form.Value, 'address', _('Address'));
@@ -1100,6 +491,15 @@ function renderNodeSettings(section, data, features, main_node, routing_mode, no
 
 		return true;
 	}
+	o.modalonly = true;
+
+	/* Direct config */
+	o = s.option(form.ListValue, 'proxy_protocol', _('Proxy protocol'),
+		_('Write proxy protocol in the connection header.'));
+	o.value('', _('Disable'));
+	o.value('1', _('v1'));
+	o.value('2', _('v2'));
+	o.depends('type', 'direct');
 	o.modalonly = true;
 
 	/* AnyTLS config start */
@@ -1346,7 +746,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode, no
 	o.modalonly = true;
 
 	o = s.option(form.ListValue, 'vmess_encrypt', _('Encrypt method'));
-	o.value('auto', _('Default'));
+	o.value('auto');
 	o.value('none');
 	o.value('zero');
 	o.value('aes-128-gcm');
@@ -1794,18 +1194,19 @@ return view.extend({
 	},
 
 	render(data) {
-		let m, s, o, ss, so, subscription_list_option;
+		let m, s, o, ss, so;
 		let main_node = uci.get(data[0], 'config', 'main_node');
 		let routing_mode = uci.get(data[0], 'config', 'routing_mode');
 		let features = data[1];
-		let node_latency_row_state = createNodeLatencyRowStateModel();
-
-		hp.installCloseButtonText();
-
-		this.node_latency_row_state = node_latency_row_state;
 
 		/* Cache subscription information, it will be called multiple times */
-		let subinfo = getSubscriptionInfo(data[0]);
+		let subinfo = [];
+		for (let suburl of (uci.get(data[0], 'subscription', 'subscription_url') || [])) {
+			const url = new URL(suburl);
+			const urlhash = hp.calcStringMD5(suburl.replace(/#.*$/, ''));
+			const title = url.hash ? decodeURIComponent(url.hash.slice(1)) : url.hostname;
+			subinfo.push({ 'hash': urlhash, 'title': title });
+		}
 
 		m = new form.Map('homeproxy', _('Edit nodes'));
 
@@ -1815,7 +1216,7 @@ return view.extend({
 		/* User nodes start */
 		s.tab('node', _('Nodes'));
 		o = s.taboption('node', form.SectionValue, '_node', form.GridSection, 'node');
-		ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode, node_latency_row_state);
+		ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode);
 		ss.addremove = true;
 		ss.filter = function(section_id) {
 			for (let info of subinfo)
@@ -1886,7 +1287,24 @@ return view.extend({
 			])
 		}
 		ss.renderSectionAdd = function(/* ... */) {
-			let el = hp.renderSectionAdd(this, arguments[0]);
+			let el = form.GridSection.prototype.renderSectionAdd.apply(this, arguments),
+				nameEl = el.querySelector('.cbi-section-create-name');
+
+			ui.addValidator(nameEl, 'uciname', true, (v) => {
+				let button = el.querySelector('.cbi-section-create > .cbi-button-add');
+				let uciconfig = this.uciconfig || this.map.config;
+
+				if (!v) {
+					button.disabled = true;
+					return true;
+				} else if (uci.get(uciconfig, v)) {
+					button.disabled = true;
+					return _('Expecting: %s').format(_('unique UCI identifier'));
+				} else {
+					button.disabled = null;
+					return true;
+				}
+			}, 'blur', 'keyup');
 
 			el.appendChild(E('button', {
 				'class': 'cbi-button cbi-button-add',
@@ -1901,9 +1319,9 @@ return view.extend({
 
 		/* Subscription nodes start */
 		for (const info of subinfo) {
-			s.tab('sub_' + info.hash, info.title ? _('Sub (%s)').format(info.title) : _('Sub'));
+			s.tab('sub_' + info.hash, _('Sub (%s)').format(info.title));
 			o = s.taboption('sub_' + info.hash, form.SectionValue, '_sub_' + info.hash, form.GridSection, 'node');
-			ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode, node_latency_row_state);
+			ss = renderNodeSettings(o.subsection, data, features, main_node, routing_mode);
 			ss.filter = function(section_id) {
 				return (uci.get(data[0], section_id, 'grouphash') === info.hash);
 			}
@@ -1918,35 +1336,32 @@ return view.extend({
 			_('Auto update subscriptions and geodata.'));
 		o.rmempty = false;
 
-		o = s.taboption('subscription', form.Value, 'auto_update_time', _('Update time (weekly)'));
-		o.renderWidget = function() {
-			return hp.renderCronSelector.apply(this, arguments);
-		};
-		o.default = '0 0 * * *';
-		o.rmempty = false;
-		o.validate = function(section_id, value) {
-			value = value || this.formvalue(section_id);
-			const matched = String(value || '').trim().match(/^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+([0-7*])$/);
-			if (!matched || +matched[1] > 59 || +matched[2] > 23)
-				return _('Expecting: %s').format(_('valid cron expression'));
-
-			return true;
-		};
+		o = s.taboption('subscription', form.ListValue, 'auto_update_time', _('Update time'));
+		for (let i = 0; i < 24; i++)
+			o.value(i, i + ':00');
+		o.default = '2';
+		o.depends('auto_update', '1');
 
 		o = s.taboption('subscription', form.Flag, 'update_via_proxy', _('Update via proxy'),
 			_('Update subscriptions via proxy.'));
 		o.rmempty = false;
 
-		o = s.taboption('subscription', form.ListValue, 'latency_test_mode', _('Latency test mode'),
-			_('Choose which method node latency tests use.'));
-		o.value('icmp', _('ICMP'));
-		o.value('rp', _('RP'));
-		o.default = 'icmp';
-		o.rmempty = false;
-
-		o = s.taboption('subscription', SubscriptionList, 'subscription_url', _('Subscriptions'),
+		o = s.taboption('subscription', form.DynamicList, 'subscription_url', _('Subscription URL-s'),
 			_('Support Hysteria, Shadowsocks, Trojan, v2rayN (VMess), and XTLS (VLESS) online configuration delivery standard.'));
-		subscription_list_option = o;
+		o.validate = function(section_id, value) {
+			if (section_id && value) {
+				try {
+					let url = new URL(value);
+					if (!url.hostname)
+						return _('Expecting: %s').format(_('valid URL'));
+				}
+				catch(e) {
+					return _('Expecting: %s').format(_('valid URL'));
+				}
+			}
+
+			return true;
+		}
 
 		o = s.taboption('subscription', form.ListValue, 'filter_nodes', _('Filter nodes'),
 			_('Drop/keep specific nodes from subscriptions.'));
@@ -1981,16 +1396,8 @@ return view.extend({
 		o.inputstyle = 'apply';
 		o.inputtitle = _('Save current settings');
 		o.onclick = function() {
-			const validation = subscription_list_option.validate('subscription', subscription_list_option.formvalue('subscription'));
-			if (validation !== true) {
-				ui.addNotification(null, E('p', validation));
-				return Promise.resolve();
-			}
-
 			return this.map.save(null, true).then(() => {
-				return ui.changes.apply(true);
-			}).then(() => {
-				return callRCInit('homeproxy', 'reload');
+				ui.changes.apply(true);
 			});
 		}
 
@@ -2053,68 +1460,6 @@ return view.extend({
 		}
 		/* Subscriptions settings end */
 
-		return m.render().then((el) => {
-			let bulk_testing = false;
-			let tabmenu_observer = null;
-			let bulk_button = E('button', {
-				'class': 'cbi-button cbi-button-action hp-bulk-latency-test',
-				'click': ui.createHandlerFn(this, async () => {
-					if (bulk_testing || typeof globalThis === 'undefined' || !globalThis.__hpNodeLatencyTrigger)
-						return false;
-
-					let section_ids = getActiveSubscriptionLatencySectionIds(el);
-					if (!section_ids.length)
-						return false;
-
-					bulk_testing = true;
-					bulk_button.textContent = _('Testing Current List...');
-					bulk_button.disabled = true;
-
-					for (let sid of section_ids)
-						await globalThis.__hpNodeLatencyTrigger(sid);
-
-					bulk_testing = false;
-					bulk_button.textContent = _('Test Current List');
-					bulk_button.disabled = false;
-					return true;
-				})
-			}, [ _('Test Current List') ]);
-
-			let updateBulkButtonVisibility = () => {
-				bulk_button.style.display = shouldShowBulkLatencyButton(el) ? '' : 'none';
-			};
-
-			let attachBulkButton = () => {
-				let actions = (el.parentElement ? el.parentElement.querySelector('.cbi-page-actions') : null) || document.querySelector('.cbi-page-actions');
-				if (!actions)
-					return false;
-
-				if (!actions.querySelector('.hp-bulk-latency-test'))
-					actions.insertBefore(bulk_button, actions.firstChild);
-
-				updateBulkButtonVisibility();
-
-				if (!tabmenu_observer) {
-					let tabmenu = el.querySelector('.cbi-tabmenu');
-					if (tabmenu) {
-						tabmenu_observer = new MutationObserver(() => updateBulkButtonVisibility());
-						tabmenu_observer.observe(tabmenu, {
-							subtree: true,
-							attributes: true,
-							attributeFilter: [ 'class', 'aria-selected' ]
-						});
-					}
-				}
-
-				return true;
-			};
-
-			if (!attachBulkButton()) {
-				window.setTimeout(attachBulkButton, 0);
-				window.setTimeout(attachBulkButton, 300);
-			}
-
-			return el;
-		});
+		return m.render();
 	}
 });

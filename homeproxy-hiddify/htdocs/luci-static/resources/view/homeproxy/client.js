@@ -1,0 +1,2121 @@
+/*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Copyright (C) 2022-2025 ImmortalWrt.org
+ */
+
+'use strict';
+'require form';
+'require fs';
+'require network';
+'require poll';
+'require rpc';
+'require ui';
+'require uci';
+'require validation';
+'require view';
+
+'require homeproxy as hp';
+'require tools.firewall as fwtool';
+'require tools.widgets as widgets';
+
+const callServiceList = rpc.declare({
+	object: 'service',
+	method: 'list',
+	params: ['name'],
+	expect: { '': {} }
+});
+
+const callActiveNode = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'clash_active_node',
+	expect: { '': {} }
+});
+
+const callReadDomainList = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'acllist_read',
+	params: ['type'],
+	expect: { '': {} }
+});
+
+const callWriteDomainList = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'acllist_write',
+	params: ['type', 'content'],
+	expect: { '': {} }
+});
+
+const CORE_MGMT = '/usr/share/homeproxy/scripts/core_mgmt.uc';
+
+const callByeDPIStatus = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'byedpi_status',
+	expect: { '': {} }
+});
+
+const callByeDPIPrepareInstall = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'byedpi_prepare_install',
+	expect: { '': {} }
+});
+
+const callByeDPIInstallPkg = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'byedpi_install_pkg',
+	params: ['tmp_path', 'pkg_manager'],
+	expect: { '': {} }
+});
+
+const callZapretStatus = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'zapret_status',
+	expect: { '': {} }
+});
+
+const callZapretPrepareInstall = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'zapret_prepare_install',
+	expect: { '': {} }
+});
+
+const callZapretInstallPkg = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'zapret_install_pkg',
+	params: ['tmp_path', 'pkg_manager'],
+	expect: { '': {} }
+});
+
+function callCoreDownload(url, tmpPath) {
+	return fs.exec_direct('/usr/bin/ucode', [CORE_MGMT, 'download_pkg', url, tmpPath], 'json');
+}
+
+function getServiceStatus() {
+	return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
+		let isRunning = false;
+		try {
+			isRunning = res['homeproxy']['instances']['hiddify-c']['running'];
+		} catch (e) { }
+		return isRunning;
+	});
+}
+
+function renderStatus(isRunning, features) {
+	let coreName = features.core_type === 'singbox' ? 'sing-box' :
+	               features.core_type === 'hiddify' ? 'hiddify-core' : null;
+	let verStr = features.version ? 'v' + features.version : _('unknown');
+	let coreStr = coreName ? ('%s %s').format(coreName, verStr) : _('no core installed');
+	let spanTemp = '<em><span style="color:%s"><strong>%s (%s) %s</strong></span></em>';
+	let renderHTML;
+	if (isRunning)
+		renderHTML = spanTemp.format('green', _('Re:HomeProxy'), coreStr, _('RUNNING'));
+	else
+		renderHTML = spanTemp.format('red', _('Re:HomeProxy'), coreStr, _('NOT RUNNING'));
+
+	return renderHTML;
+}
+
+let stubValidator = {
+	factory: validation,
+	apply(type, value, args) {
+		if (value != null)
+			this.value = value;
+
+		return validation.types[type].apply(this, args);
+	},
+	assert(condition) {
+		return !!condition;
+	}
+};
+
+return view.extend({
+	load() {
+		return Promise.all([
+			uci.load('homeproxy'),
+			uci.load('luci'),
+			hp.getBuiltinFeatures(),
+			network.getHostHints()
+		]);
+	},
+
+	render(data) {
+		let m, s, o, ss, so;
+
+		let features = data[2],
+		    hosts = data[3]?.hosts;
+
+		/* Cache all configured proxy nodes, they will be called multiple times */
+		let proxy_nodes = {};
+		uci.sections(data[0], 'node', (res) => {
+			let nodeaddr = ((res.type === 'direct') ? res.override_address : res.address) || '',
+			    nodeport = ((res.type === 'direct') ? res.override_port : res.port) || '';
+
+			proxy_nodes[res['.name']] =
+				String.format('[%s] %s', res.type, res.label || ((stubValidator.apply('ip6addr', nodeaddr) ?
+					String.format('[%s]', nodeaddr) : nodeaddr) + ':' + nodeport));
+		});
+
+		m = new form.Map('homeproxy', _('Re:HomeProxy'),
+			_('The modern multi-core proxy platform. Fork of ImmortalWrt.'));
+
+		s = m.section(form.TypedSection);
+		s.render = function () {
+			poll.add(function () {
+				return L.resolveDefault(getServiceStatus()).then((res) => {
+					let view = document.getElementById('service_status');
+					view.innerHTML = renderStatus(res, features);
+				});
+			});
+
+			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
+					E('p', { id: 'service_status' }, _('Collecting data...'))
+			]);
+		}
+
+		s = m.section(form.NamedSection, 'config', 'homeproxy');
+
+		s.tab('routing', _('Routing Settings'));
+
+		if (features.available_cores && features.available_cores.length > 1) {
+			o = s.taboption('routing', form.ListValue, 'preferred_core', _('Preferred core'));
+			o.value('auto', _('Auto'));
+			if (features.available_cores.indexOf('hiddify') >= 0)
+				o.value('hiddify', 'hiddify-core');
+			if (features.available_cores.indexOf('singbox') >= 0)
+				o.value('singbox', 'sing-box');
+			o.default = 'auto';
+			o.rmempty = false;
+		}
+
+		o = s.taboption('routing', form.ListValue, 'main_node', _('Main node') + ' 🔗',
+			_('In this mode: only blocked domains are routed through this node — all other traffic goes direct.'));
+		o.value('nil', _('Disable'));
+		o.value('urltest', _('URLTest'));
+		for (let i in proxy_nodes)
+			o.value(i, proxy_nodes[i]);
+		o.value('byedpi-out', _('ByeDPI'));
+		o.value('zapret-out', _('Zapret'));
+		o.default = 'nil';
+		o.depends({'routing_mode': /^((?!custom).)+$/});
+		o.rmempty = false;
+
+		/* Live: which node URLTest currently has selected. Only shown in URLTest mode
+		 * (depends on main_node='urltest'); hidden when a specific node is the main node. */
+		o = s.taboption('routing', form.DummyValue, '_active_urltest_node', _('Active URLTest node'));
+		o.depends('main_node', 'urltest');
+		o.cfgvalue = function() {
+			const el = E('span', { 'style': 'color:gray' }, '—');
+			poll.add(L.bind(function() {
+				return L.resolveDefault(callActiveNode(), {}).then(function(ret) {
+					if (ret && !ret.error && ret.node) {
+						const m = ret.node.match(/^cfg-(.+)-out$/);
+						const name = (m && proxy_nodes[m[1]]) ? proxy_nodes[m[1]] : ret.node;
+						const type = ret.type ? ' (' + ret.type + ')' : '';
+						/* Same 4-colour scheme as the status page: 65535 ms is the
+						   URLTest timeout sentinel (confirmed dead → red); >=3000 ms is
+						   working-but-slow (orange); a real low latency is green; no
+						   delay at all is unmeasured (gray, no number). */
+						let dColor, dStr = '';
+						if (ret.delay === 65535) { dColor = 'red'; dStr = ' — ' + _('timeout'); }
+						else if (ret.delay >= 3000) { dColor = 'orange'; dStr = ' — ' + ret.delay + ' ms'; }
+						else if (ret.delay) { dColor = 'green'; dStr = ' — ' + ret.delay + ' ms'; }
+						else dColor = 'gray';
+						el.textContent = name + type + dStr;
+						el.style.color = dColor;
+					} else {
+						el.textContent = _('No active node');
+						el.style.color = 'gray';
+					}
+				});
+			}));
+			return el;
+		};
+
+		o = s.taboption('routing', form.DummyValue, '_urltest_info', _('URLTest'),
+			_('Automatically picks the fastest node by periodically measuring latency. Traffic is always sent through the lowest-latency node in the pool.<br>If you have connection problems and a node stays orange/grey for a long time, try removing it from the URLTest pool.'));
+		o.depends('main_node', 'urltest');
+		o.rawhtml = true;
+		o.cfgvalue = function() { return ''; };
+
+		o = s.taboption('routing', hp.CBIStaticList, 'main_urltest_nodes', _('URLTest nodes'),
+			_('List of nodes to test.'));
+		for (let i in proxy_nodes)
+			o.value(i, proxy_nodes[i]);
+		o.depends('main_node', 'urltest');
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.Value, 'main_urltest_interval', _('Test interval'),
+			_('How often each node is tested (seconds). Lower = faster failover, higher = less overhead.'));
+		o.datatype = 'uinteger';
+		o.placeholder = '180';
+		o.depends('main_node', 'urltest');
+
+		o = s.taboption('routing', form.Value, 'main_urltest_tolerance', _('Test tolerance'),
+			_('Minimum latency gap (ms) required to switch to a faster node — prevents flapping between nodes with close latency values.'));
+		o.datatype = 'uinteger';
+		o.placeholder = '150';
+		o.depends('main_node', 'urltest');
+
+		o = s.taboption('routing', form.ListValue, 'main_udp_node', _('Main UDP node'));
+		o.value('nil', _('Disable'));
+		o.value('same', _('Same as main node'));
+		o.value('urltest', _('URLTest'));
+		for (let i in proxy_nodes)
+			o.value(i, proxy_nodes[i]);
+		o.value('byedpi-out', _('ByeDPI'));
+		o.value('zapret-out', _('Zapret'));
+		o.default = 'nil';
+		o.depends({'routing_mode': /^((?!custom|proxy_banned_ru).)+$/, 'proxy_mode': /^((?!redirect$).)+$/});
+		o.rmempty = false;
+
+		o = s.taboption('routing', hp.CBIStaticList, 'main_udp_urltest_nodes', _('URLTest nodes'),
+			_('List of nodes to test.'));
+		for (let i in proxy_nodes)
+			o.value(i, proxy_nodes[i]);
+		o.depends('main_udp_node', 'urltest');
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.Value, 'main_udp_urltest_interval', _('Test interval'),
+			_('The test interval in seconds.'));
+		o.datatype = 'uinteger';
+		o.placeholder = '180';
+		o.depends('main_udp_node', 'urltest');
+
+		o = s.taboption('routing', form.Value, 'main_udp_urltest_tolerance', _('Test tolerance'),
+			_('The test tolerance in milliseconds.'));
+		o.datatype = 'uinteger';
+		o.placeholder = '150';
+		o.depends('main_udp_node', 'urltest');
+
+		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
+			_('Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
+		o.value('wan', _('WAN DNS (read from interface)'));
+		o.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
+		o.value('208.67.222.222', _('Cisco Public DNS (208.67.222.222)'));
+		o.value('8.8.8.8', _('Google Public DNS (8.8.8.8)'));
+		o.value('', '---');
+		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
+		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
+		o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
+		o.default = '8.8.8.8';
+		o.rmempty = false;
+		o.depends('routing_mode', 'global');
+		o.validate = function(section_id, value) {
+			if (section_id && !['wan'].includes(value)) {
+				if (!value)
+					return _('Expecting: %s').format(_('non-empty value'));
+
+				let ipv6_support = this.section.formvalue(section_id, 'ipv6_support');
+				try {
+					let url = new URL(value.replace(/^.*:\/\//, 'http://'));
+					if (stubValidator.apply('hostname', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip4addr', url.hostname))
+						return true;
+					else if ((ipv6_support === '1') && stubValidator.apply('ip6addr', url.hostname.match(/^\[(.+)\]$/)?.[1]))
+						return true;
+					else
+						return _('Expecting: %s').format(_('valid DNS server address'));
+				} catch(e) {}
+
+				if (!stubValidator.apply((ipv6_support === '1') ? 'ipaddr' : 'ip4addr', value))
+					return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+
+			return true;
+		}
+
+		o = s.taboption('routing', form.Value, 'china_dns_server', _('China DNS server'),
+			_('The dns server for resolving China domains. Support UDP, TCP, DoH, DoQ, DoT.'));
+		o.value('wan', _('WAN DNS (read from interface)'));
+		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
+		o.value('210.2.4.8', _('CNNIC Public DNS (210.2.4.8)'));
+		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
+		o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
+		o.depends('routing_mode', 'bypass_cn');
+		o.default = '223.5.5.5';
+		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			if (section_id && !['wan'].includes(value)) {
+				if (!value)
+					return _('Expecting: %s').format(_('non-empty value'));
+
+				try {
+					let url = new URL(value.replace(/^.*:\/\//, 'http://'));
+					if (stubValidator.apply('hostname', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip4addr', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip6addr', url.hostname.match(/^\[(.+)\]$/)?.[1]))
+						return true;
+					else
+						return _('Expecting: %s').format(_('valid DNS server address'));
+				} catch(e) {}
+
+				if (!stubValidator.apply('ipaddr', value))
+					return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+
+			return true;
+		}
+
+		o = s.taboption('routing', form.Value, 'iran_dns_server', _('Iran DNS server'),
+			_('The Domain Name Server for resolving Iran Domestic domains only. Your Internet Provider sees these queries in plain text.'));
+		o.value('wan', _('WAN DNS (read from interface)'));
+		o.value('178.22.122.100', _('Shecan (178.22.122.100)'));
+		o.value('185.51.200.2', _('Shecan secondary (185.51.200.2)'));
+		o.value('78.157.42.100', _('Electro/Begzar (78.157.42.100)'));
+		o.value('78.157.42.101', _('Electro/Begzar secondary (78.157.42.101)'));
+		o.value('10.202.10.202', _('403.online (10.202.10.202)'));
+		o.value('10.202.10.102', _('403.online secondary (10.202.10.102)'));
+		o.value('10.202.10.10', _('Radar (10.202.10.10)'));
+		o.value('10.202.10.11', _('Radar secondary (10.202.10.11)'));
+		o.depends('routing_mode', 'bypass_ir');
+		o.default = '178.22.122.100';
+		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			if (section_id && !['wan'].includes(value)) {
+				if (!value)
+					return _('Expecting: %s').format(_('non-empty value'));
+
+				try {
+					let url = new URL(value.replace(/^.*:\/\//, 'http://'));
+					if (stubValidator.apply('hostname', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip4addr', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip6addr', url.hostname.match(/^\[(.+)\]$/)?.[1]))
+						return true;
+					else
+						return _('Expecting: %s').format(_('valid DNS server address'));
+				} catch(e) {}
+
+				if (!stubValidator.apply('ipaddr', value))
+					return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+
+			return true;
+		}
+
+		o = s.taboption('routing', form.Value, 'russia_dns_server', _('Russia DNS server') + ' 🔓',
+			_('Resolves Russian domains directly, without going through the proxy.'));
+		o.value('77.88.8.8', _('Yandex DNS (77.88.8.8)'));
+		o.value('193.58.251.251', _('SkyDNS (193.58.251.251)'));
+		o.value('83.220.169.155', _('Comss.one (83.220.169.155)'));
+		o.value('1.1.1.1', _('Cloudflare DNS UDP (1.1.1.1)'));
+		o.value('8.8.8.8', _('Google DNS UDP (8.8.8.8)'));
+		o.depends('routing_mode', 'proxy_banned_ru');
+		o.default = '77.88.8.8';
+		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			if (section_id && value) {
+				if (!stubValidator.apply('ip4addr', value) && !stubValidator.apply('ip6addr', value))
+					return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+			return true;
+		}
+
+		o = s.taboption('routing', form.Value, 'secure_dns_server', _('Secure DNS server') + ' 🔒',
+			_('Resolves blocked domains via proxy — your ISP cannot see which sites you look up. Uses encrypted DNS (DoH/DoT = DNS over HTTPS/TLS).'));
+		o.value('https://cloudflare-dns.com/dns-query', _('Cloudflare DoH'));
+		o.value('https://dns.quad9.net/dns-query', _('Quad9 DoH'));
+		o.value('https://dns.adguard-dns.com/dns-query', _('AdGuard DoH'));
+		o.value('https://dns.google/dns-query', _('Google DoH'));
+		o.value('tls://cloudflare-dns.com', _('Cloudflare DoT'));
+		o.value('tls://dns.quad9.net', _('Quad9 DoT'));
+		o.value('tls://dns.google', _('Google DoT'));
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/});
+		o.default = 'https://cloudflare-dns.com/dns-query';
+		o.rmempty = false;
+		o.validate = function(section_id, value) {
+			if (section_id && value) {
+				try {
+					let url = new URL(value.replace(/^.*:\/\//, 'http://'));
+					if (stubValidator.apply('hostname', url.hostname) || stubValidator.apply('ipaddr', url.hostname))
+						return true;
+				} catch(e) {}
+				return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+			return true;
+		}
+
+		o = s.taboption('routing', form.Flag, 'proxy_calls',
+			_('Proxy calls') + ' 📞',
+			_('Route VoIP call ports (WhatsApp, Telegram, FaceTime, etc.) through the proxy.'));
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/});
+		o.default = o.enabled;
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.Flag, 'no_proxy_torrents',
+			_('Do not proxify torrents') + ' 🧲',
+			_('Force torrent traffic (BitTorrent protocol + common ports) to bypass the proxy.'));
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/});
+		o.default = o.enabled;
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.Flag, 'show_advanced_rules',
+			_('Advanced custom rules') + ' 👨‍💻',
+			_('Show Routing Nodes and Routing Rules tabs for additional custom rules.'));
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/});
+		o.default = o.disabled;
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.ListValue, 'routing_mode', _('Routing mode'));
+		o.value('proxy_banned_ru', _('Russia (Proxy Banned)'));
+		o.value('bypass_cn', _('China (bypass mainland)'));
+		o.value('bypass_ir', _('Iran (bypass domestic)'));
+		o.value('global', _('Global'));
+		o.value('custom', _('Custom routing'));
+		o.value('custom_json', _('Custom JSON'));
+		const _lang_section = (uci.sections('luci', 'internal') || []).find(s => s['.name'] === 'languages');
+		const _lang_codes = _lang_section ? Object.keys(_lang_section).filter(k => /^[a-z]/.test(k)) : [];
+		o.default = _lang_codes.includes('ru') ? 'proxy_banned_ru' :
+		            _lang_codes.some(k => k.startsWith('zh')) ? 'bypass_cn' :
+		            _lang_codes.some(k => k.startsWith('fa')) ? 'bypass_ir' :
+		            'proxy_banned_ru';
+		o.rmempty = false;
+		o.onchange = function(ev, section_id, value) {
+			if (section_id && (value === 'custom' || value === 'custom_json'))
+				this.map.save(null, true);
+		}
+
+		o = s.taboption('routing', form.Value, 'routing_port', _('Routing ports'),
+			_('Specify target ports to be proxied. Multiple ports must be separated by commas.'));
+		o.value('', _('All ports'));
+		o.value('common', _('Common ports only (bypass P2P traffic)'));
+		o.validate = function(section_id, value) {
+			if (section_id && value && value !== 'common') {
+
+				let ports = [];
+				for (let i of value.split(',')) {
+					if (!stubValidator.apply('port', i) && !stubValidator.apply('portrange', i))
+						return _('Expecting: %s').format(_('valid port value'));
+					if (ports.includes(i))
+						return _('Port %s alrealy exists!').format(i);
+					ports = ports.concat(i);
+				}
+			}
+
+			return true;
+		}
+		o.depends({'routing_mode': 'custom_json', '!reverse': true});
+
+		o = s.taboption('routing', form.ListValue, 'proxy_mode', _('Proxy mode'));
+		o.value('redirect', _('Redirect TCP'));
+		if (features.hp_has_tproxy)
+			o.value('redirect_tproxy', _('Redirect TCP + TProxy UDP'));
+		if (features.hp_has_tun) {
+			o.value('redirect_tun', _('Redirect TCP + Tun UDP'));
+			o.value('tun', _('Tun TCP/UDP'));
+		} else {
+			o.description = _('To enable Tun support, you need to install <code>kmod-tun</code>');
+		}
+		o.default = 'redirect_tproxy';
+		o.rmempty = false;
+		o.depends({'routing_mode': 'custom_json', '!reverse': true});
+
+		o = s.taboption('routing', form.Flag, 'ipv6_support', _('IPv6 support'));
+		o.default = o.enabled;
+		o.rmempty = false;
+		o.depends({'routing_mode': 'custom_json', '!reverse': true});
+		o.cfgvalue = function(section_id) {
+			const stored = uci.get('homeproxy', section_id, 'ipv6_support');
+			if (stored != null) return stored;
+			return (uci.get('homeproxy', section_id, 'routing_mode') === 'proxy_banned_ru')
+				? this.disabled : this.enabled;
+		};
+
+		/* Custom routing settings start */
+		/* Routing settings start */
+		o = s.taboption('routing', form.SectionValue, '_routing', form.NamedSection, 'routing', 'homeproxy');
+		o.depends('routing_mode', 'custom');
+
+		ss = o.subsection;
+		so = ss.option(form.ListValue, 'tcpip_stack', _('TCP/IP stack'),
+			_('TCP/IP stack.'));
+		if (features.with_gvisor) {
+			so.value('mixed', _('Mixed'));
+			so.value('gvisor', _('gVisor'));
+		}
+		so.value('system', _('System'));
+		so.default = 'system';
+		so.depends('homeproxy.config.proxy_mode', 'redirect_tun');
+		so.depends('homeproxy.config.proxy_mode', 'tun');
+		so.rmempty = false;
+		so.onchange = function(ev, section_id, value) {
+			let desc = ev.target.nextElementSibling;
+			if (value === 'mixed')
+				desc.innerHTML = _('Mixed <code>system</code> TCP stack and <code>gVisor</code> UDP stack.')
+			else if (value === 'gvisor')
+				desc.innerHTML = _('Based on google/gvisor.');
+			else if (value === 'system')
+				desc.innerHTML = _('Less compatibility and sometimes better performance.');
+		}
+
+		so = ss.option(form.Flag, 'endpoint_independent_nat', _('Enable endpoint-independent NAT'),
+			_('Performance may degrade slightly, so it is not recommended to enable on when it is not needed.'));
+		so.default = so.enabled;
+		so.depends('tcpip_stack', 'mixed');
+		so.depends('tcpip_stack', 'gvisor');
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'udp_timeout', _('UDP NAT expiration time'),
+			_('In seconds.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '300';
+		so.depends('homeproxy.config.proxy_mode', 'redirect_tproxy');
+		so.depends('homeproxy.config.proxy_mode', 'redirect_tun');
+		so.depends('homeproxy.config.proxy_mode', 'tun');
+
+		so = ss.option(form.Flag, 'bypass_cn_traffic', _('Bypass CN traffic'),
+			_('Bypass mainland China traffic via firewall rules by default.'));
+		so.rmempty = false;
+
+		so = ss.option(form.ListValue, 'domain_strategy', _('Domain strategy'),
+			_('If set, the requested domain name will be resolved to IP before routing.'));
+		for (let i in hp.dns_strategy)
+			so.value(i, hp.dns_strategy[i]);
+
+		so = ss.option(form.Flag, 'sniff_override', _('Override destination'),
+			_('Override the connection destination address with the sniffed domain.'));
+		so.default = so.enabled;
+		so.rmempty = false;
+
+		so = ss.option(form.ListValue, 'default_outbound', _('Default outbound'),
+			_('Default outbound for connections not matched by any routing rules.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('nil', _('Disable (the service)'));
+			this.value('direct-out', _('Direct'));
+			this.value('block-out', _('Block'));
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.default = 'nil';
+		so.rmempty = false;
+
+		so = ss.option(form.ListValue, 'default_outbound_dns', _('Default outbound DNS'),
+			_('Default DNS server for resolving domain name in the server address.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('default-dns', _('Default DNS (issued by WAN)'));
+			this.value('system-dns', _('System DNS'));
+			const _rm = uci.get(data[0], 'config', 'routing_mode');
+			if (_rm === 'proxy_banned_ru') {
+				this.value('russia-dns', _('Russia DNS server') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			} else if (/^bypass_(cn|ir)$/.test(_rm)) {
+				this.value('region-dns', _('Region DNS') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			}
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.default = 'default-dns';
+		so.rmempty = false;
+		/* Routing settings end */
+
+		o = s.taboption('routing', form.Flag, 'byedpi_enabled', _('Enable ByeDPI'),
+			_('A free way to unblock throttled sites (e.g. YouTube) without a VPN subscription. ' +
+			  'Works by confusing your ISP\'s traffic analysis — your traffic is NOT encrypted or hidden, your ISP can still see which sites you visit. ' +
+			  'Results depend on your ISP and may require trying different strategies in the ByeDPI tab. ' +
+			  'ByeDPI will be installed automatically on first enable.'));
+		o.default = o.disabled;
+		o.rmempty = false;
+		(function(opt) {
+			const _super = opt.renderWidget.bind(opt);
+			opt.renderWidget = function(section_id, option_index, cfgvalue) {
+				return Promise.resolve(_super(section_id, option_index, cfgvalue)).then(function(node) {
+					node.querySelector('input').addEventListener('change', async function(ev) {
+						if (!ev.target.checked) return;
+						const status = await L.resolveDefault(callByeDPIStatus(), {});
+						if (status.installed) return;
+
+						if (!status.pkg_manager) {
+							ui.addNotification(null, E('p', _('No package manager found. Install ciadpi manually from the Status page.')), 'error');
+							ev.target.checked = false;
+							return;
+						}
+
+						const progressEl = E('p', { style: 'margin:8px 0' }, _('Checking requirements...'));
+						const cancelBtn  = E('button', { class: 'btn cbi-button' }, _('Cancel'));
+						const installBtn = E('button', { class: 'btn cbi-button-action', style: 'margin-left:4px' }, _('Install'));
+						const input = ev.target;
+
+						cancelBtn.addEventListener('click', function() {
+							input.checked = false;
+							ui.hideModal();
+						});
+
+						installBtn.addEventListener('click', async function() {
+							cancelBtn.disabled = true;
+							installBtn.disabled = true;
+
+							progressEl.style.color = '';
+							progressEl.textContent = _('Checking requirements...');
+							const prep = await L.resolveDefault(callByeDPIPrepareInstall(), {});
+							if (prep.error) {
+								progressEl.style.color = 'red';
+								progressEl.textContent = prep.error;
+								cancelBtn.disabled = false;
+								input.checked = false;
+								return;
+							}
+
+							progressEl.textContent = _('Downloading...');
+							const dl = await L.resolveDefault(callCoreDownload(prep.dl_url, prep.tmp_path), {});
+							if (!dl.result) {
+								progressEl.style.color = 'red';
+								progressEl.textContent = dl.error || _('Download failed');
+								cancelBtn.disabled = false;
+								input.checked = false;
+								return;
+							}
+
+							progressEl.textContent = _('Installing...');
+							const inst = await L.resolveDefault(callByeDPIInstallPkg(prep.tmp_path, prep.pkg_manager), {});
+							if (!inst.result) {
+								progressEl.style.color = 'red';
+								progressEl.textContent = inst.error || _('Installation failed');
+								cancelBtn.disabled = false;
+								input.checked = false;
+								return;
+							}
+
+							progressEl.style.color = 'green';
+							progressEl.textContent = _('Installed successfully');
+							setTimeout(() => ui.hideModal(), 1500);
+						});
+
+						ui.showModal(_('Install ByeDPI'), [
+							E('p', _('ByeDPI (ciadpi) is not installed. Install it now?')),
+							progressEl,
+							E('div', { class: 'right' }, [cancelBtn, installBtn])
+						]);
+					});
+					return node;
+				});
+			};
+		})(o);
+
+		o = s.taboption('routing', form.Flag, 'zapret_enabled', _('Enable Zapret'),
+			_('An alternative to ByeDPI: another free way to unblock throttled or blocked sites (YouTube, Discord…) without a VPN subscription. ' +
+			  'Practical difference from ByeDPI: Zapret can work with the QUIC protocol. ' +
+			  'Finding a working strategy is individual and depends on your ISP\'s restrictions. ' +
+			  'Installed automatically on first enable.'));
+		o.default = o.disabled;
+		o.rmempty = false;
+		(function(opt) {
+			const _super = opt.renderWidget.bind(opt);
+			opt.renderWidget = function(section_id, option_index, cfgvalue) {
+				return Promise.resolve(_super(section_id, option_index, cfgvalue)).then(function(node) {
+					node.querySelector('input').addEventListener('change', async function(ev) {
+						if (!ev.target.checked) return;
+						const status = await L.resolveDefault(callZapretStatus(), {});
+						if (status.installed) {
+							/* Installed but the NFQUEUE kmod is missing → enabling would emit
+							 * `queue num` and nft would reject the whole fw4 set. Block it.
+							 * (kmod_ok === false only; undefined = old backend = don't block.) */
+							if (status.kmod_ok === false) {
+								ui.addNotification(null, E('p', _('Zapret is installed, but the NFQUEUE kernel module (kmod-nft-queue) is missing. Enabling it now could break the firewall. Reinstall Zapret or install kmod-nft-queue first.')), 'error');
+								ev.target.checked = false;
+							}
+							return;
+						}
+
+						if (!status.pkg_manager) {
+							ui.addNotification(null, E('p', _('No package manager found. Install zapret2 manually from the Status page.')), 'error');
+							ev.target.checked = false;
+							return;
+						}
+
+						const progressEl = E('p', { style: 'margin:8px 0' }, _('Checking requirements...'));
+						const cancelBtn  = E('button', { class: 'btn cbi-button' }, _('Cancel'));
+						const installBtn = E('button', { class: 'btn cbi-button-action', style: 'margin-left:4px' }, _('Install'));
+						const input = ev.target;
+
+						cancelBtn.addEventListener('click', function() {
+							input.checked = false;
+							ui.hideModal();
+						});
+
+						installBtn.addEventListener('click', async function() {
+							cancelBtn.disabled = true;
+							installBtn.disabled = true;
+
+							progressEl.style.color = '';
+							progressEl.textContent = _('Checking requirements...');
+							const prep = await L.resolveDefault(callZapretPrepareInstall(), {});
+							if (prep.error) {
+								progressEl.style.color = 'red';
+								progressEl.textContent = prep.error;
+								cancelBtn.disabled = false;
+								input.checked = false;
+								return;
+							}
+
+							progressEl.textContent = _('Downloading...');
+							const dl = await L.resolveDefault(callCoreDownload(prep.dl_url, prep.tmp_path), {});
+							if (!dl.result) {
+								progressEl.style.color = 'red';
+								progressEl.textContent = dl.error || _('Download failed');
+								cancelBtn.disabled = false;
+								input.checked = false;
+								return;
+							}
+
+							progressEl.textContent = _('Installing...');
+							const inst = await L.resolveDefault(callZapretInstallPkg(prep.tmp_path, prep.pkg_manager), {});
+							if (!inst.result) {
+								progressEl.style.color = 'red';
+								progressEl.textContent = inst.error || _('Installation failed');
+								cancelBtn.disabled = false;
+								input.checked = false;
+								return;
+							}
+
+							progressEl.style.color = 'green';
+							progressEl.textContent = _('Installed successfully');
+							setTimeout(() => ui.hideModal(), 1500);
+						});
+
+						ui.showModal(_('Install Zapret'), [
+							E('p', _('Zapret (zapret2/nfqws2) is not installed. Install it now?')),
+							progressEl,
+							E('div', { class: 'right' }, [cancelBtn, installBtn])
+						]);
+					});
+					return node;
+				});
+			};
+		})(o);
+
+		/* Proxy Rules start (per-service overrides — RU forward + CN/IR reverse) */
+		s.tab('ru_rules', _('Proxy Rules'));
+		o = s.taboption('ru_rules', form.SectionValue, '_ru_rules', form.TypedSection, 'proxy_ru_rule');
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/});
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.anonymous = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		/* Forward (RU) vs reverse (CN/IR) invert the meaning of these rules, so the
+		 * description must follow the current mode. */
+		const _rmode_rules = uci.get('homeproxy', 'config', 'routing_mode');
+		if (_rmode_rules === 'bypass_cn' || _rmode_rules === 'bypass_ir') {
+			const _region_name = (_rmode_rules === 'bypass_cn') ? _('China') : _('Iran');
+			ss.description = _('Default route is through the proxy. %s domains and IPs (geosite + geoip) automatically go Direct. Rules added here are per-service overrides applied before that baseline — e.g. force a specific service Direct, or send it through a separate node.').format(_region_name);
+		} else {
+			ss.description = _('Default route is Direct. Added rules are proxied, with automatic priority:<br>1. Smaller lists (YouTube, Discord etc.)<br>2. <b>Russia Inside</b> (1000+ domains, itdoginfo) — the in-Russia must-have set (YouTube, Discord, Telegram, Meta…) routed through the proxy<br>3. <b>Re-filter</b> (60000+ domains + 25000+ IPs) — community blocklist of domains and IPs banned in Russia (Roskomnadzor)');
+		}
+
+		so = ss.option(form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.option(form.ListValue, 'source', _('Source') + ' ⤵️');
+		/* Russia bulk lists are RU-forward only; CN/IR get geosite/geoip baked into the
+		 * engine baseline, so here they only need per-service overrides. */
+		if (_rmode_rules === 'proxy_banned_ru') {
+			so.value('refilter', _('Re-filter (Russia blocklist: 60000+ banned domains + 25000+ IPs)'));
+			so.value('russia-inside', _('itdoginfo/allow-domains - Russia Inside (1000+ entries)'));
+		}
+		so.value('youtube', _('YouTube'));
+		so.value('twitter', _('Twitter/X'));
+		so.value('tiktok', _('TikTok'));
+		so.value('telegram', _('Telegram'));
+		so.value('roblox', _('Roblox'));
+		so.value('porn', _('Adult content'));
+		so.value('ovh', _('OVH (France cloud hosting)'));
+		so.value('news', _('International news sites'));
+		so.value('meta', _('Meta (Facebook, Instagram)'));
+		so.value('hodca', _('HODCA'));
+		so.value('hetzner', _('Hetzner (Germany cloud hosting)'));
+		so.value('hdrezka', _('HDRezka'));
+		so.value('google_ai', _('Google AI services'));
+		so.value('google_play', _('Google Play'));
+		so.value('geoblock', _('GeoBlock services'));
+		so.value('anime', _('Anime streaming'));
+		so.value('cloudflare', _('Cloudflare CDN'));
+		so.value('cloudfront', _('CloudFront CDN'));
+		so.value('discord', _('Discord'));
+		so.value('digitalocean', _('DigitalOcean cloud hosting'));
+		so.rmempty = false;
+		so.editable = true;
+		so.validate = function(section_id, value) {
+			for (const sid of this.section.cfgsections()) {
+				if (sid !== section_id && this.cfgvalue(sid) === value)
+					return _('Duplicate source — only the first rule will take effect');
+			}
+			return true;
+		};
+
+		so = ss.option(form.ListValue, 'node', _('Node') + ' 🔗');
+		so.value('main-out', _('Same as main node'));
+		so.value('urltest', _('Separate URLTest'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.value('byedpi-out', _('ByeDPI'));
+		so.value('zapret-out', _('Zapret'));
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.option(hp.CBIStaticList, 'urltest_nodes', _('URLTest nodes'),
+			_('List of nodes to test.'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.depends('node', 'urltest');
+		so.rmempty = false;
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'urltest_interval', _('Test interval'),
+			_('The test interval in seconds.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '180';
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'urltest_tolerance', _('Test tolerance'),
+			_('The test tolerance in milliseconds.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '150';
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+		/* RU Proxy Rules end */
+
+		/* Routing nodes start */
+		s.tab('routing_node', _('Routing Nodes'));
+		o = s.taboption('routing_node', form.SectionValue, '_routing_node', form.GridSection, 'routing_node');
+		o.depends('routing_mode', 'custom');
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/, 'show_advanced_rules': '1'});
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Routing node'), _('Add a routing node'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+
+		so = ss.option(form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_node', 'label');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.option(form.ListValue, 'node', _('Node'),
+			_('Outbound node'));
+		/* "Same as main node" exists in every mode EXCEPT custom routing and custom JSON */
+		const _rmode = uci.get('homeproxy', 'config', 'routing_mode');
+		if (_rmode !== 'custom' && _rmode !== 'custom_json')
+			so.value('main-out', _('Same as main node') + ' 🔗');
+		so.value('urltest', _('URLTest'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_node', 'node');
+		so.editable = true;
+
+		so = ss.option(form.ListValue, 'domain_resolver', _('Domain resolver'),
+			_('For resolving domain name in the server address.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			this.value('default-dns', _('Default DNS (issued by WAN)'));
+			this.value('system-dns', _('System DNS'));
+			const _rm = uci.get(data[0], 'config', 'routing_mode');
+			if (_rm === 'proxy_banned_ru') {
+				this.value('russia-dns', _('Russia DNS server') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			} else if (/^bypass_(cn|ir)$/.test(_rm)) {
+				this.value('region-dns', _('Region DNS') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			}
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.depends({'node': 'urltest', '!reverse': true});
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'domain_strategy', _('Domain strategy'),
+			_('The domain strategy for resolving the domain name in the address.'));
+		for (let i in hp.dns_strategy)
+			so.value(i, hp.dns_strategy[i]);
+		so.depends({'node': 'urltest', '!reverse': true});
+		so.modalonly = true;
+
+		so = ss.option(widgets.DeviceSelect, 'bind_interface', _('Bind interface'),
+			_('The network interface to bind to.'));
+		so.multiple = false;
+		so.noaliases = true;
+		so.depends({'outbound': '', 'node': /^((?!urltest$).)+$/});
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
+			_('The tag of the upstream outbound.<br/>Other dial fields will be ignored when enabled.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Direct'));
+			if (/^(proxy_banned_ru|bypass_cn|bypass_ir)$/.test(uci.get(data[0], 'config', 'routing_mode')))
+				this.value('main-out', _('Same as main node') + ' 🔗');
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res['.name'] !== section_id && res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				let node = this.section.formvalue(section_id, 'node');
+
+				let conflict = false;
+				uci.sections(data[0], 'routing_node', (res) => {
+					if (res['.name'] !== section_id) {
+						if (res.outbound === section_id && res['.name'] == value)
+							conflict = true;
+						else if (res.node === 'urltest' && res.urltest_nodes?.includes(node) && res['.name'] == value)
+							conflict = true;
+					}
+				});
+				if (conflict)
+					return _('Recursive outbound detected!');
+			}
+
+			return true;
+		}
+		so.depends({'node': 'urltest', '!reverse': true});
+		so.editable = true;
+
+		so = ss.option(hp.CBIStaticList, 'urltest_nodes', _('URLTest nodes'),
+			_('List of nodes to test.'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.depends('node', 'urltest');
+		so.validate = function(section_id) {
+			let value = this.section.formvalue(section_id, 'urltest_nodes');
+			if (section_id && !value.length)
+				return _('Expecting: %s').format(_('non-empty value'));
+
+			return true;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'urltest_url', _('Test URL'),
+			_('The URL to test.'));
+		so.placeholder = 'https://www.gstatic.com/generate_204';
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				try {
+					let url = new URL(value);
+					if (!url.hostname)
+						return _('Expecting: %s').format(_('valid URL'));
+				}
+				catch(e) {
+					return _('Expecting: %s').format(_('valid URL'));
+				}
+			}
+
+			return true;
+		}
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'urltest_interval', _('Test interval'),
+			_('The test interval in seconds.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '180';
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				let idle_timeout = this.section.formvalue(section_id, 'idle_timeout') || '1800';
+				if (parseInt(value) > parseInt(idle_timeout))
+					return _('Test interval must be less or equal than idle timeout.');
+			}
+
+			return true;
+		}
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'urltest_tolerance', _('Test tolerance'),
+			_('The test tolerance in milliseconds.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '50';
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'urltest_idle_timeout', _('Idle timeout'),
+			_('The idle timeout in seconds.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '1800';
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'urltest_interrupt_exist_connections', _('Interrupt existing connections'),
+			_('Interrupt existing connections when the selected outbound has changed.'));
+		so.depends('node', 'urltest');
+		so.modalonly = true;
+		/* Routing nodes end */
+
+		/* Routing rules start */
+		s.tab('routing_rule', _('Routing Rules'));
+		o = s.taboption('routing_rule', form.SectionValue, '_routing_rule', form.GridSection, 'routing_rule');
+		o.depends('routing_mode', 'custom');
+		o.depends({'routing_mode': /^(proxy_banned_ru|bypass_cn|bypass_ir)$/, 'show_advanced_rules': '1'});
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Routing rule'), _('Add a routing rule'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+
+		ss.tab('field_other', _('Other fields'));
+		ss.tab('field_host', _('Host/IP fields'));
+		ss.tab('field_port', _('Port fields'));
+		ss.tab('fields_process', _('Process fields'));
+
+		so = ss.taboption('field_other', form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_rule', 'label');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'mode', _('Mode'),
+			_('The default rule uses the following matching logic:<br/>' +
+			'<code>(domain || domain_suffix || domain_keyword || domain_regex || ip_cidr || ip_is_private)</code> &&<br/>' +
+			'<code>(port || port_range)</code> &&<br/>' +
+			'<code>(source_ip_cidr || source_ip_is_private)</code> &&<br/>' +
+			'<code>(source_port || source_port_range)</code> &&<br/>' +
+			'<code>other fields</code>.<br/>' +
+			'Additionally, included rule sets can be considered merged rather than as a single rule sub-item.'));
+		so.value('default', _('Default'));
+		so.default = 'default';
+		so.rmempty = false;
+		so.readonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'ip_version', _('IP version'),
+			_('4 or 6. Not limited if empty.'));
+		so.value('4', _('IPv4'));
+		so.value('6', _('IPv6'));
+		so.value('', _('Both'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.MultiValue, 'protocol', _('Protocol'),
+			_('Sniffed protocol, see <a target="_blank" href="https://sing-box.sagernet.org/configuration/route/sniff/">Sniff</a> for details.'));
+		so.value('bittorrent', _('BitTorrent'));
+		so.value('dns', _('DNS'));
+		so.value('dtls', _('DTLS'));
+		so.value('http', _('HTTP'));
+		so.value('quic', _('QUIC'));
+		so.value('rdp', _('RDP'));
+		so.value('ssh', _('SSH'));
+		so.value('stun', _('STUN'));
+		so.value('tls', _('TLS'));
+
+		so = ss.taboption('field_other', form.Value, 'client', _('Client'),
+			_('Sniffed client type (QUIC client type or SSH client name).'));
+		so.value('chromium', _('Chromium / Cronet'));
+		so.value('firefox', _('Firefox / uquic firefox'));
+		so.value('quic-go', _('quic-go / uquic chrome'));
+		so.value('safari', _('Safari / Apple Network API'));
+		so.depends('protocol', 'quic');
+		so.depends('protocol', 'ssh');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'network', _('Network'));
+		so.value('tcp', _('TCP'));
+		so.value('udp', _('UDP'));
+		so.value('', _('Both'));
+
+		so = ss.taboption('field_other', hp.CBIStaticList, 'inbound', _('Inbound'),
+			_('Match inbound tag.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('dns-in', _('DNS inbound'));
+			this.value('mixed-in', _('Mixed (SOCKS/HTTP) inbound'));
+			this.value('redirect-in', _('Redirect inbound'));
+			this.value('tproxy-in', _('TProxy inbound'));
+			this.value('tun-in', _('TUN inbound'));
+
+			uci.sections(data[0], 'server', (res) => {
+				if (res.enabled === '1')
+					this.value('cfg-' + res['.name'] + '-in', res.label || res['.name']);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'user', _('User'),
+			_('Match user name.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', hp.CBIStaticList, 'rule_set', _('Rule set'),
+			_('Match rule set.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			uci.sections(data[0], 'ruleset', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'rule_set_ip_cidr_match_source', _('Rule set IP CIDR as source IP'),
+			_('Make IP CIDR in rule set used to match the source IP.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'invert', _('Invert'),
+			_('Invert match result.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'action', _('Action'));
+		so.value('route', _('Route'));
+		so.value('route-options', _('Route options'));
+		so.value('reject', _('Reject'));
+		so.value('resolve', _('Resolve'));
+		so.default = 'route';
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'outbound', _('Outbound'),
+			_('Tag of the target outbound.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('direct-out', _('Direct'));
+			/* "Same as main node" (main-out) exists only OUTSIDE custom mode: custom mode
+			 * hides the main-node selector and the generator never emits a main-out there
+			 * (its default/final is default_outbound). So gate it on the mode, not on a
+			 * possibly-stale main_node value, to avoid offering a tag that won't exist. */
+			if (uci.get(data[0], 'config', 'routing_mode') !== 'custom' &&
+			    uci.get(data[0], 'config', 'main_node'))
+				this.value('main-out', _('Same as main node') + ' 🔗');
+			/* byedpi-out, by contrast, IS emitted in every routing mode whenever ByeDPI is
+			 * enabled — so a custom-mode rule can target it directly, no routing node needed. */
+			if (uci.get(data[0], 'config', 'byedpi_enabled') === '1')
+				this.value('byedpi-out', _('ByeDPI'));
+			if (uci.get(data[0], 'config', 'zapret_enabled') === '1')
+				this.value('zapret-out', _('Zapret'));
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.rmempty = false;
+		so.depends('action', 'route');
+		so.editable = true;
+
+		so = ss.taboption('field_other', form.Value, 'override_address', _('Override address'),
+			_('Override the connection destination address.'));
+		so.datatype = 'ipaddr';
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'override_port', _('Override port'),
+			_('Override the connection destination port.'));
+		so.datatype = 'port';
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'udp_disable_domain_unmapping', _('Disable UDP domain unmapping'),
+			_('If enabled, for UDP proxy requests addressed to a domain, the original packet address will be sent in the response instead of the mapped domain.'));
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'udp_connect', _('connect UDP connections'),
+			_('If enabled, attempts to connect UDP connection to the destination instead of listen.'));
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'udp_timeout', _('UDP timeout'),
+			_('Timeout for UDP connections.<br/>Setting a larger value than the UDP timeout in inbounds will have no effect.'));
+		so.datatype = 'uinteger';
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'tls_record_fragment', _('TLS record fragment'),
+			_('Fragment TLS handshake into multiple TLS records.'));
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'tls_fragment', _('TLS fragment'),
+			_('Fragment TLS handshakes. Due to poor performance, try <code>%s</code> first.').format(
+				_('TLS record fragment')));
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'tls_fragment_fallback_delay', _('Fragment fallback delay'),
+			_('The fallback value in milliseconds used when TLS segmentation cannot automatically determine the wait time.'));
+		so.datatype = 'uinteger';
+		so.placeholder = '500';
+		so.depends('tls_fragment', '1');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'resolve_server', _('DNS server'),
+			_('Specifies DNS server tag to use instead of selecting through DNS routing.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			this.value('default-dns', _('Default DNS (issued by WAN)'));
+			this.value('system-dns', _('System DNS'));
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.depends('action', 'resolve');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'reject_method', _('Method'));
+		so.value('default', _('Reply with TCP RST / ICMP port unreachable'));
+		so.value('drop', _('Drop packets'));
+		so.depends('action', 'reject');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'reject_no_drop', _('Don\'t drop packets'),
+			_('<code>%s</code> will be temporarily overwritten to <code>%s</code> after 50 triggers in 30s if not enabled.').format(
+			_('Method'), _('Drop packets')));
+		so.depends('reject_method', 'default');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'resolve_strategy', _('Resolve strategy'),
+			_('Domain strategy for resolving the domain names.'));
+		for (let i in hp.dns_strategy)
+			so.value(i, hp.dns_strategy[i]);
+		so.depends('action', 'resolve');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'resolve_disable_cache', _('Disable DNS cache'),
+			_('Disable DNS cache in this query.'));
+		so.depends('action', 'resolve');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'resolve_rewrite_ttl', _('Rewrite TTL'),
+			_('Rewrite TTL in DNS responses.'));
+		so.datatype = 'uinteger';
+		so.depends('action', 'resolve');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'resolve_client_subnet', _('EDNS Client subnet'),
+			_('Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>' +
+			'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.depends('action', 'resolve');
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain', _('Domain name'),
+			_('Match full domain.'));
+		so.datatype = 'hostname';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain_suffix', _('Domain suffix'),
+			_('Match domain suffix.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain_keyword', _('Domain keyword'),
+			_('Match domain using keyword.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain_regex', _('Domain regex'),
+			_('Match domain using regular expression.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'source_ip_cidr', _('Source IP CIDR'),
+			_('Match source IP CIDR.'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.Flag, 'source_ip_is_private', _('Match private source IP'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'ip_cidr', _('IP CIDR'),
+			_('Match IP CIDR.'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.Flag, 'ip_is_private', _('Match private IP'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'source_port', _('Source port'),
+			_('Match source port.'));
+		so.datatype = 'port';
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'source_port_range', _('Source port range'),
+			_('Match source port range. Format as START:/:END/START:END.'));
+		so.validate = hp.validatePortRange;
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'port', _('Port'),
+			_('Match port.'));
+		so.datatype = 'port';
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'port_range', _('Port range'),
+			_('Match port range. Format as START:/:END/START:END.'));
+		so.validate = hp.validatePortRange;
+		so.modalonly = true;
+
+		so = ss.taboption('fields_process', form.DynamicList, 'process_name', _('Process name'),
+			_('Match process name.'));
+		so.modalonly = true;
+
+		so = ss.taboption('fields_process', form.DynamicList, 'process_path', _('Process path'),
+			_('Match process path.'));
+		so.modalonly = true;
+
+		so = ss.taboption('fields_process', form.DynamicList, 'process_path_regex', _('Process path (regex)'),
+			_('Match process path using regular expression.'));
+		so.modalonly = true;
+		/* Routing rules end */
+
+		/* DNS settings start */
+		s.tab('dns', _('DNS Settings'));
+		o = s.taboption('dns', form.SectionValue, '_dns', form.NamedSection, 'dns', 'homeproxy');
+		o.depends('routing_mode', 'custom');
+
+		ss = o.subsection;
+		so = ss.option(form.ListValue, 'default_strategy', _('Default DNS strategy'),
+			_('The DNS strategy for resolving the domain name in the address.'));
+		for (let i in hp.dns_strategy)
+			so.value(i, hp.dns_strategy[i]);
+
+		so = ss.option(form.ListValue, 'default_server', _('Default DNS server'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('default-dns', _('Default DNS (issued by WAN)'));
+			this.value('system-dns', _('System DNS'));
+			const _rm = uci.get(data[0], 'config', 'routing_mode');
+			if (_rm === 'proxy_banned_ru') {
+				this.value('russia-dns', _('Russia DNS server') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			} else if (/^bypass_(cn|ir)$/.test(_rm)) {
+				this.value('region-dns', _('Region DNS') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			}
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.default = 'default-dns';
+		so.rmempty = false;
+
+		so = ss.option(form.Flag, 'disable_cache', _('Disable DNS cache'));
+
+		so = ss.option(form.Flag, 'disable_cache_expire', _('Disable cache expire'));
+		so.depends('disable_cache', '0');
+
+		so = ss.option(form.Flag, 'independent_cache', _('Independent cache per server'),
+			_('Make each DNS server\'s cache independent for special purposes. If enabled, will slightly degrade performance.'));
+		so.depends('disable_cache', '0');
+
+		so = ss.option(form.Value, 'client_subnet', _('EDNS Client subnet'),
+			_('Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>' +
+			'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
+		so.datatype = 'or(cidr, ipaddr)';
+
+		so = ss.option(form.Flag, 'cache_file_store_rdrc', _('Store RDRC'),
+			_('Store rejected DNS response cache.<br/>' +
+			'The check results of <code>Address filter DNS rule items</code> will be cached until expiration.'));
+
+		so = ss.option(form.Value, 'cache_file_rdrc_timeout', _('RDRC timeout'),
+			_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
+		so.datatype = 'uinteger';
+		so.depends('cache_file_store_rdrc', '1');
+		/* DNS settings end */
+
+		/* DNS servers start */
+		s.tab('dns_server', _('DNS Servers'));
+		o = s.taboption('dns_server', form.SectionValue, '_dns_server', form.GridSection, 'dns_server');
+		o.depends('routing_mode', 'custom');
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('DNS server'), _('Add a DNS server'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+
+		so = ss.option(form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'dns_server', 'label');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.option(form.ListValue, 'type', _('Type'));
+		so.value('udp', _('UDP'));
+		so.value('tcp', _('TCP'));
+		so.value('tls', _('TLS'));
+		so.value('https', _('HTTPS'));
+		so.value('h3', _('HTTP/3'));
+		so.value('quic', _('QUIC'));
+		so.default = 'udp';
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'server', _('Address'),
+			_('The address of the dns server.'));
+		so.datatype = 'or(hostname, ipaddr)';
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'server_port', _('Port'),
+			_('The port of the DNS server.'));
+		so.placeholder = 'auto';
+		so.datatype = 'port';
+
+		so = ss.option(form.Value, 'path', _('Path'),
+			_('The path of the DNS server.'));
+		so.placeholder = '/dns-query';
+		so.depends('type', 'https');
+		so.depends('type', 'h3');
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'headers', _('Headers'),
+			_('Additional headers to be sent to the DNS server.'));
+		so.depends('type', 'https');
+		so.depends('type', 'h3');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'tls_sni', _('TLS SNI'),
+			_('Used to verify the hostname on the returned certificates.'));
+		so.depends('type', 'tls');
+		so.depends('type', 'https');
+		so.depends('type', 'h3');
+		so.depends('type', 'quic');
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'address_resolver', _('Address resolver'),
+			_('Tag of a another server to resolve the domain name in the address. Required if address contains domain.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('None'));
+			this.value('default-dns', _('Default DNS (issued by WAN)'));
+			this.value('system-dns', _('System DNS'));
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res['.name'] !== section_id && res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				let conflict = false;
+				uci.sections(data[0], 'dns_server', (res) => {
+					if (res['.name'] !== section_id)
+						if (res.address_resolver === section_id && res['.name'] == value)
+							conflict = true;
+				});
+				if (conflict)
+					return _('Recursive resolver detected!');
+			}
+
+			return true;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'address_strategy', _('Address strategy'),
+			_('The domain strategy for resolving the domain name in the address.'));
+		for (let i in hp.dns_strategy)
+			so.value(i, hp.dns_strategy[i]);
+		so.depends({'address_resolver': '', '!reverse': true});
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
+			_('Tag of an outbound for connecting to the dns server.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('direct-out', _('Direct'));
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.default = 'direct-out';
+		so.rmempty = false;
+		so.editable = true;
+		/* DNS servers end */
+
+		/* DNS rules start */
+		s.tab('dns_rule', _('DNS Rules'));
+		o = s.taboption('dns_rule', form.SectionValue, '_dns_rule', form.GridSection, 'dns_rule');
+		o.depends('routing_mode', 'custom');
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('DNS rule'), _('Add a DNS rule'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+
+		ss.tab('field_other', _('Other fields'));
+		ss.tab('field_host', _('Host/IP fields'));
+		ss.tab('field_port', _('Port fields'));
+		ss.tab('fields_process', _('Process fields'));
+
+		so = ss.taboption('field_other', form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'dns_rule', 'label');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'mode', _('Mode'),
+			_('The default rule uses the following matching logic:<br/>' +
+			'<code>(domain || domain_suffix || domain_keyword || domain_regex)</code> &&<br/>' +
+			'<code>(port || port_range)</code> &&<br/>' +
+			'<code>(source_ip_cidr || source_ip_is_private)</code> &&<br/>' +
+			'<code>(source_port || source_port_range)</code> &&<br/>' +
+			'<code>other fields</code>.<br/>' +
+			'Additionally, included rule sets can be considered merged rather than as a single rule sub-item.'));
+		so.value('default', _('Default'));
+		so.default = 'default';
+		so.rmempty = false;
+		so.readonly = true;
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'ip_version', _('IP version'));
+		so.value('4', _('IPv4'));
+		so.value('6', _('IPv6'));
+		so.value('', _('Both'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'query_type', _('Query type'),
+			_('Match query type.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'network', _('Network'));
+		so.value('tcp', _('TCP'));
+		so.value('udp', _('UDP'));
+		so.value('', _('Both'));
+
+		so = ss.taboption('field_other', form.MultiValue, 'protocol', _('Protocol'),
+			_('Sniffed protocol, see <a target="_blank" href="https://sing-box.sagernet.org/configuration/route/sniff/">Sniff</a> for details.'));
+		so.value('bittorrent', _('BitTorrent'));
+		so.value('dtls', _('DTLS'));
+		so.value('http', _('HTTP'));
+		so.value('quic', _('QUIC'));
+		so.value('rdp', _('RDP'));
+		so.value('ssh', _('SSH'));
+		so.value('stun', _('STUN'));
+		so.value('tls', _('TLS'));
+
+		so = ss.taboption('field_other', form.DynamicList, 'user', _('User'),
+			_('Match user name.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', hp.CBIStaticList, 'rule_set', _('Rule set'),
+			_('Match rule set.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			uci.sections(data[0], 'ruleset', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'rule_set_ip_cidr_match_source', _('Rule set IP CIDR as source IP'),
+			_('Make IP CIDR in rule sets match the source IP.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'rule_set_ip_cidr_accept_empty', _('Accept empty query response'),
+			_('Make IP CIDR in rule-sets accept empty query response.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'invert', _('Invert'),
+			_('Invert match result.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'action', _('Action'));
+		so.value('route', _('Route'));
+		so.value('route-options', _('Route options'));
+		so.value('reject', _('Reject'));
+		so.value('predefined', _('Predefined'));
+		so.default = 'route';
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'server', _('Server'),
+			_('Tag of the target dns server.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('default-dns', _('Default DNS (issued by WAN)'));
+			this.value('system-dns', _('System DNS'));
+			const _rm = uci.get(data[0], 'config', 'routing_mode');
+			if (_rm === 'proxy_banned_ru') {
+				this.value('russia-dns', _('Russia DNS server') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			} else if (/^bypass_(cn|ir)$/.test(_rm)) {
+				this.value('region-dns', _('Region DNS') + ' 🔓');
+				this.value('secure-dns', _('Secure DNS server') + ' 🔒');
+			}
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.rmempty = false;
+		so.editable = true;
+		so.depends('action', 'route');
+
+		so = ss.taboption('field_other', form.ListValue, 'domain_strategy', _('Domain strategy'),
+			_('Set domain strategy for this query.'));
+		for (let i in hp.dns_strategy)
+			so.value(i, hp.dns_strategy[i]);
+		so.depends('action', 'route');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'dns_disable_cache', _('Disable dns cache'),
+			_('Disable cache and save cache in this query.'));
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'rewrite_ttl', _('Rewrite TTL'),
+			_('Rewrite TTL in DNS responses.'));
+		so.datatype = 'uinteger';
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'client_subnet', _('EDNS Client subnet'),
+			_('Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>' +
+			'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.depends('action', 'route');
+		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'reject_method', _('Method'));
+		so.value('default', _('Reply with REFUSED'));
+		so.value('drop', _('Drop requests'));
+		so.default = 'default';
+		so.depends('action', 'reject');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'reject_no_drop', _('Don\'t drop requests'),
+			_('<code>%s</code> will be temporarily overwritten to <code>%s</code> after 50 triggers in 30s if not enabled.').format(
+				_('Method'), _('Drop requests')));
+		so.depends('reject_method', 'default');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'predefined_rcode', _('RCode'),
+			_('The response code.'));
+		so.value('NOERROR');
+		so.value('FORMERR');
+		so.value('SERVFAIL');
+		so.value('NXDOMAIN');
+		so.value('NOTIMP');
+		so.value('REFUSED');
+		so.default = 'NOERROR';
+		so.depends('action', 'predefined');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'predefined_answer', _('Answer'),
+			_('List of text DNS record to respond as answers.'));
+		so.depends('action', 'predefined');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'predefined_ns', _('NS'),
+			_('List of text DNS record to respond as name servers.'));
+		so.depends('action', 'predefined');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'predefined_extra', _('Extra records'),
+			_('List of text DNS record to respond as extra records.'));
+		so.depends('action', 'predefined');
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain', _('Domain name'),
+			_('Match full domain.'));
+		so.datatype = 'hostname';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain_suffix', _('Domain suffix'),
+			_('Match domain suffix.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain_keyword', _('Domain keyword'),
+			_('Match domain using keyword.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'domain_regex', _('Domain regex'),
+			_('Match domain using regular expression.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'source_ip_cidr', _('Source IP CIDR'),
+			_('Match source IP CIDR.'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.Flag, 'source_ip_is_private', _('Match private source IP'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'ip_cidr', _('IP CIDR'),
+			_('Match IP CIDR with query response. Current rule will be skipped if not match.'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.Flag, 'ip_is_private', _('Match private IP'),
+			_('Match private IP with query response.'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'source_port', _('Source port'),
+			_('Match source port.'));
+		so.datatype = 'port';
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'source_port_range', _('Source port range'),
+			_('Match source port range. Format as START:/:END/START:END.'));
+		so.validate = hp.validatePortRange;
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'port', _('Port'),
+			_('Match port.'));
+		so.datatype = 'port';
+		so.modalonly = true;
+
+		so = ss.taboption('field_port', form.DynamicList, 'port_range', _('Port range'),
+			_('Match port range. Format as START:/:END/START:END.'));
+		so.validate = hp.validatePortRange;
+		so.modalonly = true;
+
+		so = ss.taboption('fields_process', form.DynamicList, 'process_name', _('Process name'),
+			_('Match process name.'));
+		so.modalonly = true;
+
+		so = ss.taboption('fields_process', form.DynamicList, 'process_path', _('Process path'),
+			_('Match process path.'));
+		so.modalonly = true;
+
+		so = ss.taboption('fields_process', form.DynamicList, 'process_path_regex', _('Process path (regex)'),
+			_('Match process path using regular expression.'));
+		so.modalonly = true;
+		/* DNS rules end */
+		/* Custom routing settings end */
+
+		/* Rule set settings start */
+		s.tab('ruleset', _('Rule Set'));
+		o = s.taboption('ruleset', form.SectionValue, '_ruleset', form.GridSection, 'ruleset');
+		o.depends('routing_mode', 'custom');
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Rule set'), _('Add a rule set'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+
+		so = ss.option(form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'ruleset', 'label');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		so = ss.option(form.ListValue, 'type', _('Type'));
+		so.value('local', _('Local'));
+		so.value('remote', _('Remote'));
+		so.default = 'remote';
+		so.rmempty = false;
+
+		so = ss.option(form.ListValue, 'format', _('Format'));
+		so.value('binary', _('Binary file'));
+		so.value('source', _('Source file'));
+		so.default = 'binary';
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'path', _('Path'));
+		so.datatype = 'file';
+		so.placeholder = '/etc/homeproxy/ruleset/example.json';
+		so.rmempty = false;
+		so.depends('type', 'local');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'url', _('Rule set URL'));
+		so.validate = function(section_id, value) {
+			if (section_id) {
+				if (!value)
+					return _('Expecting: %s').format(_('non-empty value'));
+
+				try {
+					let url = new URL(value);
+					if (!url.hostname)
+						return _('Expecting: %s').format(_('valid URL'));
+				}
+				catch(e) {
+					return _('Expecting: %s').format(_('valid URL'));
+				}
+			}
+
+			return true;
+		}
+		so.rmempty = false;
+		so.depends('type', 'remote');
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
+			_('Tag of the outbound to download rule set.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			this.value('direct-out', _('Direct'));
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.depends('type', 'remote');
+
+		so = ss.option(form.Value, 'update_interval', _('Update interval'),
+			_('Update interval of rule set.'));
+		so.placeholder = '1d';
+		so.depends('type', 'remote');
+		/* Rule set settings end */
+
+		/* ACL settings start */
+		s.tab('control', _('Access Control'));
+
+		o = s.taboption('control', form.SectionValue, '_control', form.NamedSection, 'control', 'homeproxy');
+		ss = o.subsection;
+
+		/* LAN IP policy start */
+		ss.tab('lan_ip_policy', _('LAN IP Policy'));
+
+		so = ss.taboption('lan_ip_policy', form.ListValue, 'lan_proxy_mode', _('Proxy mode for devices'));
+		so.value('disabled', _('Disable'));
+		so.value('listed_only', _('Proxy listed only'));
+		so.value('except_listed', _('Proxy all except listed'));
+		so.default = 'disabled';
+		so.rmempty = false;
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_direct_ipv4_ips', _('Direct IPv4 IP-s'), null, 'ipv4', hosts, true);
+		so.depends('lan_proxy_mode', 'except_listed');
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_direct_ipv6_ips', _('Direct IPv6 IP-s'), null, 'ipv6', hosts, true);
+		so.depends({'lan_proxy_mode': 'except_listed', 'homeproxy.config.ipv6_support': '1'});
+
+		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_direct_mac_addrs', _('Direct MAC-s'), null, hosts);
+		so.depends('lan_proxy_mode', 'except_listed');
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_proxy_ipv4_ips', _('Proxy IPv4 IP-s'), null, 'ipv4', hosts, true);
+		so.depends('lan_proxy_mode', 'listed_only');
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_proxy_ipv6_ips', _('Proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
+		so.depends({'lan_proxy_mode': 'listed_only', 'homeproxy.config.ipv6_support': '1'});
+
+		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_proxy_mac_addrs', _('Proxy MAC-s'), null, hosts);
+		so.depends('lan_proxy_mode', 'listed_only');
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_gaming_mode_ipv4_ips', _('Gaming mode IPv4 IP-s'), _('In gaming mode, only TCP traffic from the selected device is proxied.'), 'ipv4', hosts, true);
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_gaming_mode_ipv6_ips', _('Gaming mode IPv6 IP-s'), null, 'ipv6', hosts, true);
+		so.depends('homeproxy.config.ipv6_support', '1');
+
+		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_gaming_mode_mac_addrs', _('Gaming mode MAC-s'), null, hosts);
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv4_ips', _('Global proxy IPv4 IP-s'), _('In global proxy mode, all traffic from the selected device goes through the proxy.'), 'ipv4', hosts, true);
+		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+
+		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv6_ips', _('Global proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
+		so.depends({'homeproxy.config.routing_mode': /^((?!custom).)+$/, 'homeproxy.config.ipv6_support': '1'});
+
+		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_global_proxy_mac_addrs', _('Global proxy MAC-s'), null, hosts);
+		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		/* LAN IP policy end */
+
+		/* WAN IP policy start */
+		ss.tab('wan_ip_policy', _('WAN IP Policy'));
+
+		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_proxy_ipv4_ips', _('Proxy IPv4 IP-s'));
+		so.datatype = 'or(ip4addr, cidr4)';
+
+		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_proxy_ipv6_ips', _('Proxy IPv6 IP-s'));
+		so.datatype = 'or(ip6addr, cidr6)';
+		so.depends('homeproxy.config.ipv6_support', '1');
+
+		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv4_ips', _('Direct IPv4 IP-s'));
+		so.datatype = 'or(ip4addr, cidr4)';
+
+		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv6_ips', _('Direct IPv6 IP-s'));
+		so.datatype = 'or(ip6addr, cidr6)';
+		so.depends('homeproxy.config.ipv6_support', '1');
+		/* WAN IP policy end */
+
+		/* Proxy domain list start */
+		ss.tab('proxy_domain_list', _('Proxy Domain List'));
+
+		so = ss.taboption('proxy_domain_list', form.TextValue, '_proxy_domain_list');
+		so.rows = 10;
+		so.monospace = true;
+		so.datatype = 'hostname';
+		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		so.load = function(/* ... */) {
+			return L.resolveDefault(callReadDomainList('proxy_list'), {}).then((res) => {
+				return res.content ?? null;
+			});
+		}
+		so.write = function(_section_id, value) {
+			return callWriteDomainList('proxy_list', value);
+		}
+		so.remove = function(/* ... */) {
+			let routing_mode = this.section.formvalue('config', 'routing_mode');
+			if (routing_mode !== 'custom')
+				return callWriteDomainList('proxy_list', '');
+			return true;
+		}
+		so.validate = function(section_id, value) {
+			if (section_id && value)
+				for (let i of value.split('\n'))
+					if (i && !stubValidator.apply('hostname', i))
+						return _('Expecting: %s').format(_('valid hostname'));
+
+			return true;
+		}
+		/* Proxy domain list end */
+
+		/* Direct domain list start */
+		ss.tab('direct_domain_list', _('Direct Domain List'));
+
+		so = ss.taboption('direct_domain_list', form.TextValue, '_direct_domain_list');
+		so.rows = 10;
+		so.monospace = true;
+		so.datatype = 'hostname';
+		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
+		so.load = function(/* ... */) {
+			return L.resolveDefault(callReadDomainList('direct_list'), {}).then((res) => {
+				return res.content ?? null;
+			});
+		}
+		so.write = function(_section_id, value) {
+			return callWriteDomainList('direct_list', value);
+		}
+		so.remove = function(/* ... */) {
+			let routing_mode = this.section.formvalue('config', 'routing_mode');
+			if (routing_mode !== 'custom')
+				return callWriteDomainList('direct_list', '');
+			return true;
+		}
+		so.validate = function(section_id, value) {
+			if (section_id && value)
+				for (let i of value.split('\n'))
+					if (i && !stubValidator.apply('hostname', i))
+						return _('Expecting: %s').format(_('valid hostname'));
+
+			return true;
+		}
+		/* Direct domain list end */
+
+		/* Interface control start (placed last so it's the last Access Control tab) */
+		ss.tab('interface', _('Interface Control'));
+
+		so = ss.taboption('interface', widgets.DeviceSelect, 'listen_interfaces', _('Listen interfaces'),
+			_('Only process traffic from specific interfaces. Leave empty for all.'));
+		so.multiple = true;
+		so.noaliases = true;
+
+		so = ss.taboption('interface', widgets.DeviceSelect, 'bind_interface', _('Bind interface'),
+			_('Bind outbound traffic to specific interface. Leave empty to auto detect.'));
+		so.multiple = false;
+		so.noaliases = true;
+		/* Interface control end */
+		/* ACL settings end */
+
+		/* ByeDPI settings are on the Node Settings page */
+
+		return m.render();
+	}
+});

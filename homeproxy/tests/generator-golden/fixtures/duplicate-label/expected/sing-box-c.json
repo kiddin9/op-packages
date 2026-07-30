@@ -1,0 +1,183 @@
+{
+	"log": {
+		"disabled": false,
+		"level": "warn",
+		"output": "__TEST_ROOT__/var/run/homeproxy/sing-box-c.log",
+		"timestamp": true
+	},
+	"ntp": {
+		"enabled": true,
+		"server": "time.apple.com",
+		"detour": "direct-out",
+		"domain_resolver": "default-dns"
+	},
+	"dns": {
+		"servers": [
+			{
+				"tag": "default-dns",
+				"type": "udp",
+				"server": "223.5.5.5",
+				"detour": "direct-out"
+			},
+			{
+				"tag": "system-dns",
+				"type": "local",
+				"detour": "direct-out"
+			},
+			{
+				"tag": "main-dns",
+				"domain_resolver": {
+					"server": "default-dns",
+					"strategy": "ipv4_only"
+				},
+				"detour": "main-out",
+				"type": "tcp",
+				"server": "223.5.5.5"
+			},
+			{
+				"tag": "china-dns",
+				"domain_resolver": {
+					"server": "default-dns",
+					"strategy": "prefer_ipv6"
+				},
+				"detour": "direct-out",
+				"type": "udp",
+				"server": "223.5.5.5"
+			}
+		],
+		"rules": [
+			{
+				"rule_set": "geosite-cn",
+				"action": "route",
+				"server": "china-dns",
+				"strategy": "prefer_ipv6"
+			},
+			{
+				"type": "logical",
+				"mode": "and",
+				"rules": [
+					{
+						"rule_set": "geosite-noncn",
+						"invert": true
+					},
+					{
+						"rule_set": "geoip-cn"
+					}
+				],
+				"action": "route",
+				"server": "china-dns",
+				"strategy": "prefer_ipv6"
+			}
+		],
+		"strategy": "ipv4_only",
+		"final": "main-dns"
+	},
+	"inbounds": [
+		{
+			"type": "direct",
+			"tag": "dns-in",
+			"listen": "::",
+			"listen_port": 5333
+		},
+		{
+			"type": "mixed",
+			"tag": "mixed-in",
+			"listen": "::",
+			"listen_port": 5330,
+			"sniff": true,
+			"sniff_override_destination": true,
+			"set_system_proxy": false
+		},
+		{
+			"type": "redirect",
+			"tag": "redirect-in",
+			"listen": "::",
+			"listen_port": 5331,
+			"sniff": true,
+			"sniff_override_destination": true
+		}
+	],
+	"outbounds": [
+		{
+			"type": "direct",
+			"tag": "direct-out",
+			"routing_mark": 100
+		},
+		{
+			"type": "block",
+			"tag": "block-out"
+		},
+		{
+			"type": "urltest",
+			"tag": "main-out",
+			"outbounds": [
+				"Duplicate Label",
+				"Duplicate Label #n2"
+			],
+			"interval": "300s",
+			"tolerance": 50
+		},
+		{
+			"type": "shadowsocks",
+			"tag": "Duplicate Label",
+			"routing_mark": 100,
+			"server": "duplicate-a.example",
+			"server_port": 8388,
+			"password": "duplicate-a-password",
+			"method": "2022-blake3-aes-128-gcm"
+		},
+		{
+			"type": "shadowsocks",
+			"tag": "Duplicate Label #n2",
+			"routing_mark": 100,
+			"server": "duplicate-b.example",
+			"server_port": 8389,
+			"password": "duplicate-b-password",
+			"method": "2022-blake3-aes-128-gcm"
+		}
+	],
+	"route": {
+		"rules": [
+			{
+				"inbound": "dns-in",
+				"action": "hijack-dns"
+			}
+		],
+		"rule_set": [
+			{
+				"type": "remote",
+				"tag": "geoip-cn",
+				"format": "binary",
+				"url": "https://fastly.jsdelivr.net/gh/1715173329/IPCIDR-CHINA@rule-set/cn.srs",
+				"download_detour": "main-out"
+			},
+			{
+				"type": "remote",
+				"tag": "geosite-cn",
+				"format": "binary",
+				"url": "https://fastly.jsdelivr.net/gh/1715173329/sing-geosite@rule-set-unstable/geosite-geolocation-cn.srs",
+				"download_detour": "main-out"
+			},
+			{
+				"type": "remote",
+				"tag": "geosite-noncn",
+				"format": "binary",
+				"url": "https://fastly.jsdelivr.net/gh/1715173329/sing-geosite@rule-set-unstable/geosite-geolocation-!cn.srs",
+				"download_detour": "main-out"
+			}
+		],
+		"auto_detect_interface": true,
+		"default_domain_resolver": {
+			"action": "route",
+			"server": "china-dns",
+			"strategy": "prefer_ipv4"
+		},
+		"final": "main-out"
+	},
+	"experimental": {
+		"cache_file": {
+			"enabled": true,
+			"path": "__TEST_ROOT__/var/run/homeproxy/cache.db"
+		}
+	}
+}

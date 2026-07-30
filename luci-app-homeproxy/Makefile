@@ -1,31 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Copyright (C) 2022-2023 ImmortalWrt.org
+# Copyright (C) 2022-2024 ImmortalWrt.org
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-homeproxy
-PKG_VERSION:=2.0.0
-PKG_RELEASE:=8
-
-LUCI_TITLE:=Sing-box proxy management platform for OpenWrt
-LUCI_PKGARCH:=all
+LUCI_TITLE:=The modern ImmortalWrt proxy platform for ARM64/AMD64
 LUCI_DEPENDS:= \
 	+sing-box \
 	+firewall4 \
-	+dnsmasq-full \
-	+ip-full \
-	+kmod-tun \
 	+kmod-nft-tproxy \
-	+ca-bundle \
-	+curl \
-	+jsonfilter \
-	+unzip \
-	+ucode-mod-digest \
-	+ucode-mod-fs \
-	+ucode-mod-math \
-	+ucode-mod-ubus \
-	+ucode-mod-uci
+	+ucode-mod-digest
 
 define Package/luci-app-homeproxy/conffiles
 /etc/config/homeproxy

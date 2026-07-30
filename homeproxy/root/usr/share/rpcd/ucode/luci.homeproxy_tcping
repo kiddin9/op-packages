@@ -1,0 +1,416 @@
+#!/usr/bin/ucode
+'use strict';
+
+import { popen, readfile } from 'fs';
+import { cursor } from 'uci';
+import { urlencode } from 'luci.http';
+
+import { build_outbound_tag_map, get_outbound_tag } from '/etc/homeproxy/scripts/outbound_tag.uc';
+import { parse_controller } from '/etc/homeproxy/scripts/clash_api.uc';
+
+const TCPING_MAX_NODES = 300;
+const SECTION_MAX_LEN = 128;
+const BATCH_SIZE = 50;
+const TCPING_COOLDOWN = 3;
+const DELAY_TIMEOUT = 5000;
+const FETCH_TIMEOUT = 30000;
+const DELAY_TEST_URL = 'https://www.gstatic.com/generate_204';
+
+let last_tcping_at = 0;
+
+// urlencode() 只负责 URL/path 编码，不能作为 shell 注入防护；所有进入 shell 命令的动态值都必须继续经过 shellquote()。
+function shellquote(s) {
+	return `'${replace(s, "'", "'\\''")}'`;
+}
+
+function pathSegment(value) {
+	return replace(urlencode(value), /\+/g, '%20');
+}
+
+function controllerBase(hpuci) {
+	let controller = parse_controller(
+		hpuci.get('homeproxy', 'config', 'clash_api_external_controller') || '127.0.0.1:9090',
+		9090
+	);
+	let port_num = controller.port || 9090;
+
+	if (port_num < 1 || port_num > 65535)
+		return null;
+
+	return 'http://127.0.0.1:' + port_num;
+}
+
+function clashApiGet(hpuci, path, timeout) {
+	let timeout_sec = int(((timeout || FETCH_TIMEOUT) + 999) / 1000),
+	    controller = controllerBase(hpuci),
+	    secret = hpuci.get('homeproxy', 'config', 'clash_api_secret') || '';
+
+	if (!controller)
+		return {};
+
+	let command = sprintf('/usr/bin/wget -qO- -T %d --no-proxy %s %s',
+			timeout_sec,
+			secret ? sprintf('--header %s', shellquote('Authorization: Bearer ' + secret)) : '',
+			shellquote(controller + path)),
+	    fd = popen(command + ' 2>/dev/null'),
+	    out = '';
+
+	if (fd) {
+		for (let line = fd.read('line'); length(line); line = fd.read('line'))
+			out += line;
+
+		fd.close();
+	}
+
+	try {
+		return json(trim(out) || '{}');
+	} catch (e) {
+		return {};
+	}
+}
+
+function delayQuery() {
+	return sprintf('?timeout=%d&url=%s',
+		DELAY_TIMEOUT,
+		urlencode(DELAY_TEST_URL));
+}
+
+function proxyDelayPath(name) {
+	return sprintf('/proxies/%s/delay%s',
+		pathSegment(name),
+		delayQuery());
+}
+
+function delayRequestTimeout() {
+	let timeout = DELAY_TIMEOUT * 2 + 10000;
+
+	return (timeout > FETCH_TIMEOUT) ? timeout : FETCH_TIMEOUT;
+}
+
+function parseProxyDelayResult(result) {
+	let error = '';
+
+	if (type(result) !== 'object')
+		return { status: 'failed', error: '连通性测试无结果' };
+
+	error = result.message || result.error || '';
+
+	if (type(result.delay) === 'int' || type(result.delay) === 'double')
+		return { status: 'ok', delay: int(result.delay) };
+
+	return { status: 'timeout', error: error || '连通性测试超时或失败' };
+}
+
+function stampResult(result) {
+	let now = time();
+	result.tested_at = now;
+	return result;
+}
+
+function reserveTcpingSlot() {
+	let now = time(),
+	    wait = TCPING_COOLDOWN - (now - last_tcping_at);
+
+	if (last_tcping_at > 0 && wait > 0)
+		return {
+			result: false,
+			error: sprintf('测速请求过于频繁，请 %d 秒后重试。', wait)
+		};
+
+	last_tcping_at = now;
+	return null;
+}
+
+function loadedProxies(hpuci) {
+	return clashApiGet(hpuci, '/proxies', FETCH_TIMEOUT);
+}
+
+function loadedProxyTags(payload) {
+	let tags = {};
+
+	if (type(payload) === 'object' && type(payload.proxies) === 'object')
+		for (let name in payload.proxies)
+			tags[name] = true;
+	else
+		return null;
+
+	return tags;
+}
+
+function nodeTag(tag_map, section) {
+	return get_outbound_tag(tag_map, section);
+}
+
+function runtimeNodeTag(hpuci, tag_map, section) {
+	let routing_mode = hpuci.get('homeproxy', 'config', 'routing_mode') || 'bypass_mainland_china',
+	    main_node = hpuci.get('homeproxy', 'config', 'main_node') || 'nil',
+	    main_udp_node = hpuci.get('homeproxy', 'config', 'main_udp_node') || 'nil';
+
+	if (routing_mode !== 'custom') {
+		if (section === main_node)
+			return 'main-out';
+
+		if (main_udp_node !== 'nil' &&
+		    main_udp_node !== 'same' &&
+		    main_udp_node !== main_node &&
+		    section === main_udp_node)
+			return 'main-udp-out';
+	}
+
+	return nodeTag(tag_map, section);
+}
+
+function validSectionName(section) {
+	return type(section) === 'string' &&
+	       section !== '' &&
+	       length(section) <= SECTION_MAX_LEN &&
+	       match(section, /^[A-Za-z0-9_]+$/);
+}
+
+function resolveNode(hpuci, tag_map, section) {
+	if (!validSectionName(section))
+		return { result: false, error: 'illegal section' };
+
+	let cfg = hpuci.get_all('homeproxy', section),
+	    tag = runtimeNodeTag(hpuci, tag_map, section);
+
+	if (!cfg || cfg['.type'] !== 'node')
+		return { result: true, node: stampResult({ status: 'missing', target: tag, error: '节点不存在' }) };
+
+	if (cfg.type in ['direct', 'block'])
+		return {
+			result: true,
+			node: stampResult({
+				status: 'unsupported',
+				target: tag,
+				error: '直连或阻断节点不测速'
+			})
+		};
+
+	return { result: true, node: null, tag };
+}
+
+function testNodeByProxyDelay(hpuci, payload, tag) {
+	let loaded = loadedProxyTags(payload);
+
+	if (loaded === null)
+		return stampResult({ status: 'failed', target: tag, error: 'Clash API 未响应，请确认 HomeProxy 客户端正在运行。' });
+
+	if (!(tag in loaded))
+		return stampResult({ status: 'unloaded', target: tag, error: '节点未加入当前运行配置' });
+
+	let result = stampResult(parseProxyDelayResult(clashApiGet(hpuci, proxyDelayPath(tag), delayRequestTimeout())));
+
+	result.target = tag;
+	return result;
+}
+
+function testNodesByProxyDelayBatch(hpuci, payload, tags) {
+	let results = {},
+	    loaded = loadedProxyTags(payload);
+
+	if (loaded === null) {
+		for (let tag in tags)
+			results[tag] = stampResult({
+				status: 'failed',
+				target: tag,
+				error: 'Clash API 未响应，请确认 HomeProxy 客户端正在运行。'
+			});
+
+		return results;
+	}
+
+	let pending = [];
+
+	for (let tag in tags) {
+		if (!(tag in loaded)) {
+			results[tag] = stampResult({
+				status: 'unloaded',
+				target: tag,
+				error: '节点未加入当前运行配置'
+			});
+		} else {
+			push(pending, tag);
+		}
+	}
+
+	if (!length(pending))
+		return results;
+
+	let timeout_sec = int((delayRequestTimeout() + 999) / 1000),
+	    controller = controllerBase(hpuci),
+	    secret = hpuci.get('homeproxy', 'config', 'clash_api_secret') || '',
+	    header = secret ? sprintf('--header %s', shellquote('Authorization: Bearer ' + secret)) : '',
+	    temp_dir_cmd = 'mktemp -d /tmp/homeproxy-delay.XXXXXX',
+	    fd = popen(temp_dir_cmd + ' 2>/dev/null'),
+	    temp_dir = '';
+
+	if (fd) {
+		temp_dir = trim(fd.read('line') || '');
+		fd.close();
+	}
+
+	if (!temp_dir) {
+		for (let tag in pending)
+			results[tag] = stampResult({ status: 'failed', target: tag, error: '无法创建测速临时目录' });
+
+		return results;
+	}
+
+	for (let offset = 0; offset < length(pending); offset += BATCH_SIZE) {
+		let commands = [];
+
+		for (let i = offset; i < length(pending) && i < offset + BATCH_SIZE; i++) {
+			let tag = pending[i],
+			    url = controller + proxyDelayPath(tag),
+			    out = temp_dir + '/' + i + '.json';
+
+			// url 与输出路径来自动态值，即使 URL 已编码，拼接 shell 命令前仍必须 shellquote()。
+			push(commands, sprintf('( /usr/bin/wget -qO- -T %d --no-proxy %s %s > %s 2>/dev/null ) &',
+				timeout_sec,
+				header,
+				shellquote(url),
+				shellquote(out)));
+		}
+
+		push(commands, 'wait');
+		system(join(' ', commands));
+	}
+
+	for (let i = 0; i < length(pending); i++) {
+		let tag = pending[i],
+		    body = trim(readfile(temp_dir + '/' + i + '.json') || ''),
+		    parsed = {};
+
+		try {
+			parsed = json(body || '{}');
+		} catch (e) {
+			parsed = {};
+		}
+
+		results[tag] = stampResult(parseProxyDelayResult(parsed));
+		results[tag].target = tag;
+	}
+
+	system('rm -rf ' + shellquote(temp_dir));
+	return results;
+}
+
+const methods = {
+	node_tcping: {
+		args: { section: '' },
+		call: function(req) {
+			let section = req.args ? req.args.section : null;
+
+			const hpuci = cursor();
+			hpuci.load('homeproxy');
+
+			let tag_map = build_outbound_tag_map(hpuci),
+			    resolved = resolveNode(hpuci, tag_map, section);
+
+			if (!resolved.result || resolved.node)
+				return resolved;
+
+			if (hpuci.get('homeproxy', 'config', 'clash_api_enabled') !== '1')
+				return { result: false, error: '请先开启 Clash API 后再进行连通性测试。' };
+
+			if (!controllerBase(hpuci))
+				return { result: false, error: 'Clash API 端口无效，请设置为 1-65535。' };
+
+			let cooldown = reserveTcpingSlot();
+			if (cooldown)
+				return cooldown;
+
+			let payload = loadedProxies(hpuci);
+
+			return {
+				result: true,
+				node: testNodeByProxyDelay(hpuci, payload, resolved.tag)
+			};
+		}
+	},
+	nodes_tcping: {
+		args: { sections: [] },
+		call: function(req) {
+			let sections = req.args ? req.args.sections : null;
+			if (type(sections) !== 'array')
+				return { result: false, error: 'illegal sections' };
+
+			const hpuci = cursor();
+			let nodes = {},
+			    tested = 0,
+			    tags = [],
+			    seen_sections = {},
+			    warning = '';
+
+			hpuci.load('homeproxy');
+			let tag_map = build_outbound_tag_map(hpuci);
+
+			for (let i = 0; i < length(sections); i++) {
+				let section = sections[i];
+				if (seen_sections[section])
+					continue;
+				seen_sections[section] = true;
+
+				if (++tested > TCPING_MAX_NODES)
+					nodes[section] = { status: 'skipped', error: sprintf('一次最多测试 %d 个节点', TCPING_MAX_NODES) };
+				else {
+					let resolved = resolveNode(hpuci, tag_map, section);
+
+					if (!resolved.result)
+						return { result: false, error: resolved.error };
+
+					if (resolved.node)
+						nodes[section] = resolved.node;
+					else
+						push(tags, resolved.tag);
+				}
+			}
+
+			if (length(tags)) {
+				if (hpuci.get('homeproxy', 'config', 'clash_api_enabled') !== '1')
+					return { result: false, error: '请先开启 Clash API 后再进行连通性测试。' };
+
+				if (!controllerBase(hpuci))
+					return { result: false, error: 'Clash API 端口无效，请设置为 1-65535。' };
+
+				let cooldown = reserveTcpingSlot();
+				if (cooldown)
+					return cooldown;
+
+				let payload = loadedProxies(hpuci),
+				    tag_results = testNodesByProxyDelayBatch(hpuci, payload, tags);
+
+				if (loadedProxyTags(payload) === null)
+					warning = 'Clash API 未响应，请确认 HomeProxy 客户端正在运行。';
+
+				for (let i = 0; i < length(sections); i++) {
+					let section = sections[i],
+					    tag = runtimeNodeTag(hpuci, tag_map, section);
+
+					if (nodes[section])
+						continue;
+
+					if (tag in tag_results)
+						nodes[section] = tag_results[tag];
+				}
+			}
+
+				for (let i = 0; i < length(sections); i++) {
+					let section = sections[i];
+					if (seen_sections[section] !== true)
+						continue;
+					if (!nodes[section])
+						nodes[section] = stampResult({
+							status: 'failed',
+							target: nodeTag(tag_map, section),
+							error: '本次未返回结果'
+						});
+				}
+
+			return { result: true, nodes, warning };
+		}
+	}
+};
+
+return { 'luci.homeproxy_tcping': methods };

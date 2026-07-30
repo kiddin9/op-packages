@@ -1,0 +1,553 @@
+#!/usr/bin/ucode
+/*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * HomeProxy 备份和恢复 RPC。
+ */
+
+'use strict';
+
+import { lstat, popen, readfile, stat, writefile } from 'fs';
+import { cursor } from 'uci';
+import {
+	local_ipv4_addresses,
+	normalize_local_controller_option
+} from '/etc/homeproxy/scripts/clash_api.uc';
+
+function shellquote(s) {
+	return `'${replace(s, "'", "'\\''")}'`;
+}
+
+const HP_DIR = '/etc/homeproxy';
+const RUN_DIR = '/var/run/homeproxy';
+
+function commandOutput(command) {
+	const fd = popen(`${command} 2>&1`);
+	let out = '';
+
+	if (fd) {
+		for (let line = fd.read('line'); length(line); line = fd.read('line'))
+			out += line;
+
+		fd.close();
+	}
+
+	return out;
+}
+
+function generateTempSuffix() {
+	let suffix = trim(commandOutput("hexdump -n 8 -e '1/1 \"%02x\"' /dev/urandom 2>/dev/null"));
+
+	if (!match(suffix, /^[a-f0-9]{16}$/))
+		suffix = replace(trim(commandOutput('date +%s 2>/dev/null')), /[^a-f0-9]/g, '');
+
+	return suffix;
+}
+
+function createWorkDir() {
+	const work_dir = '/tmp/homeproxy-work-' + generateTempSuffix();
+	system(`mkdir -p ${shellquote(work_dir)} && chmod 700 ${shellquote(work_dir)}`);
+	return work_dir;
+}
+
+let BACKUP_ARCHIVE = '/tmp/homeproxy-backup-' + generateTempSuffix() + '.tar.gz';
+
+function isEmpty(value) {
+	return !value || value === 'nil' || (type(value) in ['array', 'object'] && length(value) === 0);
+}
+
+function normalizeRestoredLocalControllers() {
+	let local_addresses = local_ipv4_addresses(commandOutput);
+	let fallback_host = local_addresses[0];
+
+	if (isEmpty(fallback_host))
+		return {};
+
+	const hpuci = cursor();
+	let adjustments = {};
+
+	hpuci.load('homeproxy');
+
+	for (let item in [
+		[ 'clash_api_proxy_external_controller', 9091, false ]
+	]) {
+		let next = normalize_local_controller_option(hpuci, 'homeproxy', 'config',
+			local_addresses, fallback_host, item[0], item[1], item[2]);
+
+		if (next)
+			adjustments[item[0]] = next;
+	}
+
+	if (length(keys(adjustments)))
+		hpuci.commit('homeproxy');
+
+	return adjustments;
+}
+
+function restoredServiceExpectations() {
+	const hpuci = cursor();
+	hpuci.load('homeproxy');
+
+	const main_node = hpuci.get('homeproxy', 'config', 'main_node') || 'nil',
+	      default_outbound = hpuci.get('homeproxy', 'routing', 'default_outbound') || 'nil',
+	      outbound_node = isEmpty(main_node) ? default_outbound : main_node,
+	      server_enabled = hpuci.get('homeproxy', 'server', 'enabled') || '0';
+
+	return {
+		client: !isEmpty(outbound_node),
+		server: server_enabled === '1'
+	};
+}
+
+function checkSingBoxRuntimeConfig(path, label) {
+	const config = stat(path);
+
+	if (!config || config.type !== 'file' || config.size <= 0)
+		return `${label}运行配置未生成`;
+
+	if (system(`/usr/bin/sing-box check --config ${shellquote(path)} >/dev/null 2>&1`) !== 0)
+		return `${label}运行配置校验失败`;
+
+	return null;
+}
+
+function validateRestoredService() {
+	const expected = restoredServiceExpectations();
+
+	if (expected.client) {
+		let error = checkSingBoxRuntimeConfig(`${RUN_DIR}/sing-box-c.json`, '客户端');
+		if (error)
+			return { result: false, error };
+	}
+
+	if (expected.server) {
+		let error = checkSingBoxRuntimeConfig(`${RUN_DIR}/sing-box-s.json`, '服务端');
+		if (error)
+			return { result: false, error };
+	}
+
+	if (expected.client || expected.server) {
+		const status = commandOutput('/etc/init.d/homeproxy status');
+
+		if (match(status, /active with no instances/))
+			return { result: false, error: 'HomeProxy 服务未启动任何实例' };
+
+		if (system('/etc/init.d/homeproxy status >/dev/null 2>&1') !== 0)
+			return { result: false, error: 'HomeProxy 服务状态异常' };
+	}
+
+	return { result: true };
+}
+
+function archiveMemberPath(line) {
+	line = trim(line || '');
+	if (!line)
+		return null;
+
+	let matchPath = match(line, /^[^ \t]+[ \t]+[^ \t]+[ \t]+[^ \t]+[ \t]+[^ \t]+[ \t]+[^ \t]+[ \t]+(.+)$/);
+	let path = matchPath ? matchPath[1] : line;
+
+	path = replace(path, /^\.\//, '');
+	path = replace(path, /^\/+/, '');
+
+	return path;
+}
+
+function allowedBackupPath(path) {
+	if (!path || match(path, /(^|\/)\.\.(\/|$)/) || match(path, /^etc\/homeproxy\/certs\/.*\//))
+		return false;
+
+	return (
+		path === 'etc/config/homeproxy' ||
+		path === 'etc/homeproxy/resources/direct_list.txt' ||
+		path === 'etc/homeproxy/resources/proxy_list.txt' ||
+		match(path, /^etc\/homeproxy\/certs\/[^\/]+$/)
+	);
+}
+
+function validateBackupArchive(path) {
+	const filestat = lstat(path);
+
+	if (!filestat || filestat.type !== 'file' || filestat.size <= 0)
+		return { valid: false, error: '备份文件不存在或内容为空' };
+
+	const fd = popen(`/bin/tar -tvzf ${shellquote(path)} 2>&1`);
+	let files = [], errors = [];
+
+	if (!fd)
+		return { valid: false, error: '无法运行 tar 检查备份文件' };
+
+	for (let line = fd.read('line'); length(line); line = fd.read('line')) {
+		let path = archiveMemberPath(line);
+		if (!path)
+			continue;
+
+		let mode = match(line, /^([^ \t]+)/);
+		if (mode && substr(mode[1], 0, 1) !== '-') {
+			errors = [ ...errors, `备份文件内包含不支持的条目类型: ${path}` ];
+			continue;
+		}
+
+		if (path === 'homeproxy-backup-manifest.json')
+			continue;
+
+		if (!allowedBackupPath(path))
+			errors = [ ...errors, `备份文件内包含不支持的路径: ${path}` ];
+		else
+			files = [ ...files, path ];
+	}
+
+	fd.close();
+
+	if (length(errors))
+		return { valid: false, error: join('\n', errors), files };
+
+	if (index(files, 'etc/config/homeproxy') === -1)
+		return { valid: false, error: '备份文件缺少 etc/config/homeproxy', files };
+
+	return { valid: true, files };
+}
+
+function createBackupArchive(path) {
+	let files = [];
+
+	if (stat('/etc/config/homeproxy')?.type === 'file')
+		files = [ ...files, 'etc/config/homeproxy' ];
+
+	if (stat(`${HP_DIR}/resources/direct_list.txt`)?.type === 'file')
+		files = [ ...files, 'etc/homeproxy/resources/direct_list.txt' ];
+
+	if (stat(`${HP_DIR}/resources/proxy_list.txt`)?.type === 'file')
+		files = [ ...files, 'etc/homeproxy/resources/proxy_list.txt' ];
+
+	const certs = commandOutput(`[ -d /etc/homeproxy/certs ] && find /etc/homeproxy/certs -maxdepth 1 -type f -print || true`);
+	for (let file in split(trim(certs), /\n/)) {
+		file = archiveMemberPath(file);
+		if (allowedBackupPath(file))
+			files = [ ...files, file ];
+	}
+
+	if (!length(files))
+		return { result: false, error: '没有可备份的 HomeProxy 文件' };
+
+	const work_dir = createWorkDir();
+	const staging_root = `${work_dir}/staging`;
+	system(`mkdir -p ${shellquote(staging_root)}`);
+
+	for (let file in files) {
+		let src = '/' + file;
+		let dst = `${staging_root}/${file}`;
+		let dst_dir = match(dst, /^(.*)\/[^\/]+$/);
+
+		if (dst_dir && dst_dir[1])
+			system(`mkdir -p ${shellquote(dst_dir[1])}`);
+
+		let exit_code = system(`cp ${shellquote(src)} ${shellquote(dst)}`);
+		if (exit_code !== 0) {
+			system(`rm -rf ${shellquote(work_dir)}`);
+			return { result: false, error: `复制文件失败: ${file}` };
+		}
+	}
+
+	let manifest = {};
+	for (let file in files) {
+		let fullpath = `${staging_root}/${file}`;
+		let filestat = stat(fullpath);
+		if (filestat?.type === 'file') {
+			let hash = trim(commandOutput(`sha256sum ${shellquote(fullpath)} 2>/dev/null | awk '{print $1}'`));
+			manifest[file] = {
+				size: filestat.size,
+				sha256: hash
+			};
+		}
+	}
+
+	const manifest_file = `${staging_root}/homeproxy-backup-manifest.json`;
+	writefile(manifest_file, sprintf('%J', manifest));
+
+	const backup_list = `${work_dir}/backup.list`;
+	let all_files = [ ...files, 'homeproxy-backup-manifest.json' ];
+	writefile(backup_list, join('\n', all_files) + '\n');
+
+	const temp_tar = `${work_dir}/archive.tar`;
+	const temp_gz = `${work_dir}/archive.tar.gz`;
+	let exit_code = system(`cd ${shellquote(staging_root)} && umask 077 && /bin/tar -cf ${shellquote(temp_tar)} -T ${shellquote(backup_list)}`);
+
+	if (exit_code !== 0) {
+		system(`rm -rf ${shellquote(work_dir)}`);
+		return { result: false, error: `tar 打包失败，退出码 ${exit_code}` };
+	}
+
+	exit_code = system(`umask 077 && gzip -c ${shellquote(temp_tar)} > ${shellquote(temp_gz)}`);
+	if (exit_code !== 0) {
+		system(`rm -rf ${shellquote(work_dir)}`);
+		return { result: false, error: `压缩失败，退出码 ${exit_code}` };
+	}
+
+	system(`rm -f ${shellquote(path)}`);
+	exit_code = system(`umask 077 && mv ${shellquote(temp_gz)} ${shellquote(path)} && chmod 600 ${shellquote(path)}`);
+	system(`rm -rf ${shellquote(work_dir)}`);
+
+	if (exit_code !== 0) {
+		system(`rm -f ${shellquote(path)}`);
+		return { result: false, error: `生成备份文件失败，退出码 ${exit_code}` };
+	}
+
+	const archive = lstat(path);
+	if (!archive || archive.type !== 'file' || archive.size <= 0)
+		return { result: false, error: '备份文件未成功生成' };
+
+	return {
+		result: true,
+		path,
+		size: archive.size,
+		files
+	};
+}
+
+function testExtractBackupArchive(path) {
+	const restore_test_dir = createWorkDir();
+	let exit_code = system(`cd ${shellquote(restore_test_dir)} && /bin/tar -xzf ${shellquote(path)} 2>/dev/null`);
+
+	if (exit_code !== 0) {
+		system(`rm -rf ${shellquote(restore_test_dir)}`);
+		return { result: false, error: `备份文件损坏，无法完整解压，退出码 ${exit_code}` };
+	}
+
+	const manifest_path = `${restore_test_dir}/homeproxy-backup-manifest.json`;
+	const manifest_content = readfile(manifest_path);
+
+	if (!manifest_content) {
+		system(`rm -rf ${shellquote(restore_test_dir)}`);
+		return { result: false, error: '备份文件缺少完整性清单（homeproxy-backup-manifest.json）' };
+	}
+
+	let manifest = {};
+	try {
+		manifest = json(manifest_content);
+	} catch (e) {
+		system(`rm -rf ${shellquote(restore_test_dir)}`);
+		return { result: false, error: '备份清单格式错误' };
+	}
+
+	for (let file in manifest) {
+		if (file === 'homeproxy-backup-manifest.json') {
+			system(`rm -rf ${shellquote(restore_test_dir)}`);
+			return { result: false, error: 'manifest 不能包含自身作为恢复目标' };
+		}
+
+		if (!allowedBackupPath(file)) {
+			system(`rm -rf ${shellquote(restore_test_dir)}`);
+			return { result: false, error: `manifest 包含不允许的路径: ${file}` };
+		}
+
+		let fullpath = `${restore_test_dir}/${file}`;
+		let filestat = stat(fullpath);
+
+		if (!filestat || filestat.type !== 'file') {
+			system(`rm -rf ${shellquote(restore_test_dir)}`);
+			return { result: false, error: `备份文件缺失: ${file}` };
+		}
+
+		if (filestat.size !== manifest[file].size) {
+			system(`rm -rf ${shellquote(restore_test_dir)}`);
+			return { result: false, error: `备份文件大小不匹配: ${file}` };
+		}
+
+		let hash = trim(commandOutput(`sha256sum ${shellquote(fullpath)} 2>/dev/null | awk '{print $1}'`));
+		if (hash !== manifest[file].sha256) {
+			system(`rm -rf ${shellquote(restore_test_dir)}`);
+			return { result: false, error: `备份文件校验和不匹配: ${file}` };
+		}
+	}
+
+	const fd = popen(`/bin/tar -tzf ${shellquote(path)} 2>&1`);
+	if (fd) {
+		for (let line = fd.read('line'); length(line); line = fd.read('line')) {
+			let archive_path = archiveMemberPath(line);
+
+			if (!archive_path || archive_path === 'homeproxy-backup-manifest.json')
+				continue;
+
+			if (allowedBackupPath(archive_path) && !manifest[archive_path]) {
+				fd.close();
+				system(`rm -rf ${shellquote(restore_test_dir)}`);
+				return { result: false, error: `归档中存在未记录的可恢复文件: ${archive_path}` };
+			}
+		}
+		fd.close();
+	}
+
+	return { result: true, manifest: manifest, work_dir: restore_test_dir };
+}
+
+function resetBackupTargetPaths() {
+	system('rm -f /etc/config/homeproxy /etc/homeproxy/resources/direct_list.txt /etc/homeproxy/resources/proxy_list.txt');
+	system('rm -rf /etc/homeproxy/certs && mkdir -p /etc/homeproxy/resources /etc/homeproxy/certs');
+}
+
+function extractBackupArchive(work_dir, manifest) {
+	resetBackupTargetPaths();
+
+	for (let file in manifest) {
+		let src = `${work_dir}/${file}`;
+		let dst = `/${file}`;
+		let dst_dir = match(dst, /^(.*)\/[^\/]+$/);
+
+		if (dst_dir && dst_dir[1])
+			system(`mkdir -p ${shellquote(dst_dir[1])}`);
+
+		let exit_code = system(`cp ${shellquote(src)} ${shellquote(dst)}`);
+		if (exit_code !== 0)
+			return exit_code;
+
+		if (match(file, /^etc\/homeproxy\/certs\/[^\/]+$/))
+			system(`chmod 600 ${shellquote(dst)}`);
+		else if (file === 'etc/config/homeproxy')
+			system(`chmod 600 ${shellquote(dst)}`);
+		else
+			system(`chmod 644 ${shellquote(dst)}`);
+	}
+
+	return 0;
+}
+
+const methods = {
+	backup_create: {
+		call: function() {
+			BACKUP_ARCHIVE = '/tmp/homeproxy-backup-' + generateTempSuffix() + '.tar.gz';
+			let result = createBackupArchive(BACKUP_ARCHIVE);
+			if (result.result)
+				result.download_path = BACKUP_ARCHIVE;
+			return result;
+		}
+	},
+	backup_get_upload_path: {
+		call: function() {
+			const upload_path = '/tmp/homeproxy-restore-' + generateTempSuffix() + '.tar.gz';
+			return { upload_path: upload_path };
+		}
+	},
+	backup_cleanup: {
+		args: { path: 'path' },
+		call: function(req) {
+			const path = req.args?.path;
+
+			if (!path || !match(path, /^\/tmp\/homeproxy-(backup|restore)-[a-f0-9]+\.tar\.gz$/))
+				return { result: false, error: '无效的临时文件路径' };
+
+			system(`rm -f ${shellquote(path)}`);
+			return { result: true };
+		}
+	},
+	backup_validate: {
+		args: { path: 'path' },
+		call: function(req) {
+			const path = req.args?.path;
+
+			if (!path || !match(path, /^\/tmp\/homeproxy-restore-[a-f0-9]+\.tar\.gz$/))
+				return { valid: false, error: '无效的备份文件路径' };
+
+				const check = validateBackupArchive(path);
+				if (!check.valid)
+					return check;
+
+				const integrity = testExtractBackupArchive(path);
+			if (integrity.work_dir)
+				system(`rm -rf ${shellquote(integrity.work_dir)}`);
+			if (!integrity.result)
+				return { valid: false, error: integrity.error, files: check.files };
+
+			return check;
+		}
+	},
+	backup_restore: {
+		args: { path: 'path' },
+		call: function(req) {
+				const restore_path = req.args?.path;
+
+				if (!restore_path)
+					return { result: false, error: '缺少备份文件路径，请重新上传并验证备份文件' };
+
+			if (!match(restore_path, /^\/tmp\/homeproxy-restore-[a-f0-9]+\.tar\.gz$/))
+				return { result: false, error: '无效的备份文件路径' };
+
+			const check = validateBackupArchive(restore_path);
+
+			if (!check.valid)
+				return { result: false, error: check.error, files: check.files };
+
+			const extract_check = testExtractBackupArchive(restore_path);
+			if (!extract_check.result)
+				return { result: false, error: extract_check.error, files: check.files };
+
+			const manifest = extract_check.manifest;
+			const work_dir = extract_check.work_dir;
+
+				const rollback_archive = '/tmp/homeproxy-rollback-' + generateTempSuffix() + '.tar.gz';
+				const rollback = createBackupArchive(rollback_archive);
+			if (!rollback.result) {
+				system(`rm -rf ${shellquote(work_dir)}`);
+				return { result: false, error: `创建回滚包失败: ${rollback.error}` };
+			}
+
+				const rollback_extract_check = testExtractBackupArchive(rollback_archive);
+			if (!rollback_extract_check.result) {
+				system(`rm -rf ${shellquote(work_dir)}`);
+				return { result: false, error: `回滚包校验失败: ${rollback_extract_check.error}` };
+			}
+
+			const rollback_manifest = rollback_extract_check.manifest;
+			const rollback_work_dir = rollback_extract_check.work_dir;
+
+			let exit_code = extractBackupArchive(work_dir, manifest);
+
+			if (exit_code !== 0) {
+				system(`rm -rf ${shellquote(work_dir)}`);
+				let rollback_code = extractBackupArchive(rollback_work_dir, rollback_manifest);
+				system(`rm -rf ${shellquote(rollback_work_dir)}`);
+				system('/sbin/uci commit homeproxy');
+					system('/etc/init.d/homeproxy restart >/dev/null 2>&1');
+
+					if (rollback_code === 0)
+						return { result: false, error: `恢复失败，已自动回滚，退出码 ${exit_code}`, rollback: rollback_archive };
+
+					return { result: false, error: `恢复失败且自动回滚失败，恢复退出码 ${exit_code}，回滚退出码 ${rollback_code}`, rollback: rollback_archive };
+			}
+
+			system(`ucode ${HP_DIR}/scripts/migrate_config.uc >/dev/null 2>&1`);
+
+			let adjustments = normalizeRestoredLocalControllers();
+			system('/sbin/uci commit homeproxy');
+			system(`rm -f ${shellquote(restore_path)} /tmp/luci-indexcache.*`);
+			system('rm -rf /tmp/luci-modulecache/ 2>/dev/null');
+			system('/etc/init.d/homeproxy restart >/dev/null 2>&1');
+
+			sleep(2000);
+			let service_check = validateRestoredService();
+
+			if (!service_check.result) {
+				let rollback_code = extractBackupArchive(rollback_work_dir, rollback_manifest);
+				system(`rm -rf ${shellquote(work_dir)} ${shellquote(rollback_work_dir)}`);
+				system('/sbin/uci commit homeproxy');
+					system('/etc/init.d/homeproxy restart >/dev/null 2>&1');
+
+					if (rollback_code === 0)
+						return { result: false, error: `${service_check.error}，已自动回滚`, rollback: rollback_archive };
+
+					return { result: false, error: `${service_check.error}，且自动回滚失败`, rollback: rollback_archive };
+				}
+
+			system(`rm -rf ${shellquote(work_dir)} ${shellquote(rollback_work_dir)}`);
+
+			return {
+					result: true,
+					files: check.files,
+					rollback: rollback_archive,
+					adjustments
+				};
+		}
+	}
+};
+
+return { 'luci.homeproxy_backup': methods };
