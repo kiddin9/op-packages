@@ -216,7 +216,7 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-easyconfig-transfer easyconfig && mvdir easyconfig
         git_clone https://github.com/4IceG/luci-app-atcommands atcommands && mvdir atcommands
         git_clone https://github.com/wukongdaily/luci-app-run run1 && mvdir run1
-        git_clone https://github.com/itv3/homeproxy
+        git_clone https://github.com/itv3/homeproxy && mv -f homeproxy luci-app-homeproxy
         git_clone https://github.com/1andrevich/homeproxy-hiddify
         git_clone https://github.com/weicaixian86/luci-app-pingpacket
         ) &
