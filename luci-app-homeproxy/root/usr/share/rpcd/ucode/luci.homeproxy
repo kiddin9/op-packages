@@ -163,7 +163,7 @@ const methods = {
 			const type = req.args?.type;
 			let result = {};
 
-			const fd = popen(`/usr/bin/sing-box generate ${type} ${shellquote(req.args?.params || '')}`);
+			const fd = popen('/usr/bin/sing-box generate ' + type + ' ' + shellquote(req.args?.params || ''));
 			if (fd) {
 				let ech_cfg_set = false;
 				let ech_key_set = false;
@@ -234,8 +234,13 @@ const methods = {
 	resources_get_version: {
 		args: { type: 'type' },
 		call: function(req) {
-			const version = trim(readfile(`${HP_DIR}/resources/${req.args?.type}.ver`));
-			return { version: version, error: error() };
+			const allowed_types = [ 'china_ip4', 'china_ip6', 'china_list', 'gfw_list' ];
+
+			if (index(allowed_types, req.args?.type) === -1)
+				return { version: null, error: 'invalid resource type' };
+
+			const version = trim(readfile(`${HP_DIR}/resources/${req.args?.type}.ver`) || '');
+			return { version, error: error() };
 		}
 	},
 	resources_update: {

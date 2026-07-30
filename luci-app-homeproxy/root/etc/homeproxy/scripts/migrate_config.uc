@@ -8,7 +8,14 @@
 'use strict';
 
 import { cursor } from 'uci';
-import { isEmpty, parseURL, validation } from 'homeproxy';
+import { executeCommand, isEmpty, parseURL, validation } from 'homeproxy';
+import {
+	format_controller,
+	is_portable_bind_host,
+	local_ipv4_addresses,
+	normalize_local_controller_option,
+	parse_controller
+} from '/etc/homeproxy/scripts/clash_api.uc';
 
 const uci = cursor();
 
@@ -25,7 +32,36 @@ const uciinfra = 'infra',
       ucirouting = 'routing',
       uciroutingnode = 'routing_node',
       uciroutingrule = 'routing_rule',
+      ucisubscription = 'subscription',
       uciserver = 'server';
+
+/* Generate a random 256-bit hex secret for the Clash API. Returns null when no
+ * usable randomness source is available, in which case the caller leaves the
+ * secret unset rather than installing a predictable value. */
+function generateClashSecret() {
+	let secret = trim(executeCommand("head -c 32 /dev/urandom | hexdump -v -e '1/1 \"%02x\"'")?.stdout || '');
+	if (!match(secret, /^[a-f0-9]{64}$/))
+		secret = trim(executeCommand('tr -dc a-f0-9 < /dev/urandom | head -c 64')?.stdout || '');
+
+	return match(secret, /^[a-f0-9]{32,}$/) ? secret : null;
+}
+
+function normalizeLocalControllerOptions() {
+	let local_addresses = local_ipv4_addresses((command) => executeCommand(command)?.stdout || ''),
+	    fallback_host = local_addresses[0];
+
+	if (isEmpty(fallback_host))
+		return;
+
+	/* clash_api_external_controller is intentionally pinned to loopback (see
+	 * below) and must NOT be rewritten to the LAN address. Only the LAN-facing
+	 * display proxy is bound to a reachable local address here. */
+	for (let item in [
+		[ 'clash_api_proxy_external_controller', 9091, true ]
+	])
+		normalize_local_controller_option(uci, uciconfig, ucimain,
+			local_addresses, fallback_host, item[0], item[1], item[2]);
+}
 
 /* chinadns-ng has been removed */
 if (uci.get(uciconfig, uciinfra, 'china_dns_port'))
@@ -74,6 +110,56 @@ if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 
 if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
+
+if (isEmpty(uci.get(uciconfig, ucisubscription, 'allow_unsupported_tls_pin_fallback')))
+	uci.set(uciconfig, ucisubscription, 'allow_unsupported_tls_pin_fallback', '0');
+
+/* Clash API dashboard integration */
+if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_enabled')))
+	uci.set(uciconfig, ucimain, 'clash_api_enabled', '1');
+
+/* Bind sing-box's own Clash API controller to loopback so it is never
+ * reachable directly from the LAN; dashboards reach it only through the
+ * filtering display proxy. Existing LAN-bound controllers are migrated to
+ * 127.0.0.1 once (port preserved); a later deliberate change is left alone. */
+const clash_external = uci.get(uciconfig, ucimain, 'clash_api_external_controller');
+if (isEmpty(clash_external)) {
+	uci.set(uciconfig, ucimain, 'clash_api_external_controller', '127.0.0.1:9090');
+} else if (isEmpty(uci.get(uciconfig, ucimigration, 'clash_api_localhost'))) {
+	const clash_controller = parse_controller(clash_external, 9090);
+	if (!is_portable_bind_host(clash_controller.host))
+		uci.set(uciconfig, ucimain, 'clash_api_external_controller',
+			format_controller('127.0.0.1', clash_controller.port || 9090));
+}
+uci.set(uciconfig, ucimigration, 'clash_api_localhost', '1');
+
+/* sing-box's Clash API performs NO authentication when the secret is empty,
+ * and the LAN-facing display proxy forwards to it, so anyone able to reach the
+ * proxy could otherwise control the proxy without credentials. Generate a
+ * random secret when none is configured. */
+if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_secret'))) {
+	const clash_secret = generateClashSecret();
+	if (!isEmpty(clash_secret))
+		uci.set(uciconfig, ucimain, 'clash_api_secret', clash_secret);
+}
+
+normalizeLocalControllerOptions();
+
+if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_default_mode')))
+	uci.set(uciconfig, ucimain, 'clash_api_default_mode', 'Rule');
+
+if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_allow_origin'))) {
+	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'https://metacubex.github.io');
+	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'https://metacubexd.pages.dev');
+	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'http://d.metacubex.one');
+	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'https://yacd.metacubex.one');
+}
+
+if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_allow_private_network')))
+	uci.set(uciconfig, ucimain, 'clash_api_allow_private_network', '1');
+
+if (isEmpty(uci.get(uciconfig, ucimain, 'metacubexd_url')))
+	uci.set(uciconfig, ucimain, 'metacubexd_url', 'https://metacubexd.pages.dev/#/overview');
 
 /* empty value defaults to all ports now */
 if (uci.get(uciconfig, ucimain, 'routing_port') === 'all')

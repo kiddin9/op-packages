@@ -222,6 +222,47 @@ return baseclass.extend({
 		return label ? title + ' » ' + label : addtitle;
 	},
 
+	toArray(value) {
+		if (Array.isArray(value))
+			return value;
+		else if (value == null || value === '')
+			return [];
+
+		return [ value ];
+	},
+
+	showConfigDiagnostics(diagnostics) {
+		let items = diagnostics?.items || [],
+		    generatedAt = null,
+		    noticeColor = '#1f232b',
+		    noticeAccentColor = '#8b1e1e';
+
+		document.querySelectorAll('.homeproxy-config-diagnostics').forEach((node) => node.remove());
+
+		if (!items.length)
+			return;
+
+		if (diagnostics?.time) {
+			let date = new Date(Number(diagnostics.time) * 1000);
+			if (!isNaN(date.getTime()))
+				generatedAt = date.toLocaleString();
+		}
+
+		ui.addNotification(null, E('div', { 'style': 'color:%s;'.format(noticeColor) }, [
+			E('p', { 'style': 'color:%s;font-weight:600;'.format(noticeColor) }, _('HomeProxy found the following issues. Check and fix them manually:')),
+			E('p', { 'style': 'color:%s;font-weight:600;'.format(noticeAccentColor) },
+				generatedAt
+					? _('These diagnostics are from the last configuration generation or subscription update (%s). Re-apply, restart the service, or update subscriptions again after fixing them to refresh diagnostics.').format(generatedAt)
+					: _('These diagnostics are from the last configuration generation or subscription update. Re-apply, restart the service, or update subscriptions again after fixing them to refresh diagnostics.')),
+			E('ul', { 'style': 'color:%s;'.format(noticeColor) }, items.map((item) => E('li', { 'style': 'color:%s;'.format(noticeColor) }, [
+				E('strong', { 'style': 'color:%s;'.format(noticeColor) }, '[' + (item.type || 'warning') + '] '),
+				item.message || '',
+				item.suggestion ? E('div', { 'style': 'margin-top:.2em;color:%s;font-weight:600;'.format(noticeAccentColor) },
+					_('Suggestion:') + item.suggestion) : ''
+			])))
+		]), 'warning', 'homeproxy-config-diagnostics');
+	},
+
 	renderSectionAdd(section, extra_class) {
 		let el = form.GridSection.prototype.renderSectionAdd.apply(section, [ extra_class ]),
 			nameEl = el.querySelector('.cbi-section-create-name');
@@ -304,7 +345,7 @@ return baseclass.extend({
 		if (section_id) {
 			if (!value)
 				return _('Expecting: %s').format(_('non-empty value'));
-			if (ucioption === 'node' && value === 'urltest')
+			if (ucioption === 'node' && ['urltest', 'selector'].includes(value))
 				return true;
 
 			let duplicate = false;

@@ -5,6 +5,7 @@
  */
 
 'use strict';
+'require dom';
 'require form';
 'require network';
 'require poll';
@@ -14,6 +15,10 @@
 'require view';
 
 'require homeproxy as hp';
+'require homeproxy.dashboard as hpDashboard';
+'require homeproxy.diagnostics as hpDiagnostics';
+'require homeproxy.node-filter as hpNodeFilter';
+'require homeproxy.routing-node as hpRoutingNode';
 'require tools.firewall as fwtool';
 'require tools.widgets as widgets';
 
@@ -77,7 +82,8 @@ return view.extend({
 		return Promise.all([
 			uci.load('homeproxy'),
 			hp.getBuiltinFeatures(),
-			network.getHostHints()
+			network.getHostHints(),
+			hpDiagnostics.load()
 		]);
 	},
 
@@ -86,6 +92,8 @@ return view.extend({
 
 		let features = data[1],
 		    hosts = data[2]?.hosts;
+
+		hpDiagnostics.show(data[3]);
 
 		/* Cache all configured proxy nodes, they will be called multiple times */
 		let proxy_nodes = {};
@@ -97,6 +105,37 @@ return view.extend({
 				String.format('[%s] %s', res.type, res.label || ((stubValidator.apply('ip6addr', nodeaddr) ?
 					String.format('[%s]', nodeaddr) : nodeaddr) + ':' + nodeport));
 		});
+
+		let renderDashboardButton = function() {
+			return hpDashboard.renderButton(uci, data[0]);
+		};
+
+		let addSelectableOutbounds = function(option, section_id, include_routing_nodes) {
+			hpRoutingNode.addSelectableOutbounds(option, data[0], proxy_nodes, section_id, include_routing_nodes);
+		};
+
+		let routing_node_names = hpRoutingNode.buildRoutingNodeNames(data[0]);
+
+		let nodeFilterPreviewName = function(node_id) {
+			return hpRoutingNode.nodeDisplayName(node_id, proxy_nodes, routing_node_names);
+		};
+
+		let currentOptionValue = function(section, section_id, option, fallback) {
+			let opt = section.map.lookupOption(option, section_id)?.[0];
+			if (opt) {
+				let value = opt.formvalue(section_id);
+				if (value != null)
+					return value;
+			}
+
+			let value = section.formvalue(section_id, option);
+			return (value != null) ? value : fallback;
+		};
+
+		let pathCache = {};
+		let selectorHasPath = function(start, target, seen) {
+			return hpRoutingNode.selectorHasPath(data[0], start, target, pathCache, seen || {});
+		};
 
 		m = new form.Map('homeproxy', _('HomeProxy'),
 			_('The modern ImmortalWrt proxy platform for ARM64/AMD64.'));
@@ -111,7 +150,8 @@ return view.extend({
 			});
 
 			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
-					E('p', { id: 'service_status' }, _('Collecting data...'))
+					E('p', { id: 'service_status' }, _('Collecting data...')),
+					renderDashboardButton() || ''
 			]);
 		}
 
@@ -419,6 +459,7 @@ return view.extend({
 		so = ss.option(form.ListValue, 'node', _('Node'),
 			_('Outbound node'));
 		so.value('urltest', _('URLTest'));
+		so.value('selector', _('Selector'));
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_node', 'node');
@@ -440,21 +481,21 @@ return view.extend({
 
 			return this.super('load', section_id);
 		}
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': /^((?!(urltest|selector)$).)+$/});
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'domain_strategy', _('Domain strategy'),
 			_('The domain strategy for resolving the domain name in the address.'));
 		for (let i in hp.dns_strategy)
 			so.value(i, hp.dns_strategy[i]);
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': /^((?!(urltest|selector)$).)+$/});
 		so.modalonly = true;
 
 		so = ss.option(widgets.DeviceSelect, 'bind_interface', _('Bind interface'),
 			_('The network interface to bind to.'));
 		so.multiple = false;
 		so.noaliases = true;
-		so.depends({'outbound': '', 'node': /^((?!urltest$).)+$/});
+		so.depends({'outbound': '', 'node': /^((?!(urltest|selector)$).)+$/});
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
@@ -472,25 +513,12 @@ return view.extend({
 			return this.super('load', section_id);
 		}
 		so.validate = function(section_id, value) {
-			if (section_id && value) {
-				let node = this.section.formvalue(section_id, 'node');
-
-				let conflict = false;
-				uci.sections(data[0], 'routing_node', (res) => {
-					if (res['.name'] !== section_id) {
-						if (res.outbound === section_id && res['.name'] == value)
-							conflict = true;
-						else if (res.node === 'urltest' && res.urltest_nodes?.includes(node) && res['.name'] == value)
-							conflict = true;
-					}
-				});
-				if (conflict)
-					return _('Recursive outbound detected!');
-			}
+			if (section_id && value && selectorHasPath(value, section_id, {}))
+				return _('Recursive outbound detected!');
 
 			return true;
 		}
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': /^((?!(urltest|selector)$).)+$/});
 		so.editable = true;
 
 		so = ss.option(hp.CBIStaticList, 'urltest_nodes', _('URLTest nodes'),
@@ -499,12 +527,187 @@ return view.extend({
 			so.value(i, proxy_nodes[i]);
 		so.depends('node', 'urltest');
 		so.validate = function(section_id) {
-			let value = this.section.formvalue(section_id, 'urltest_nodes');
-			if (section_id && !value.length)
+			let value = hpNodeFilter.normalizeNodeList(currentOptionValue(this.section, section_id, 'urltest_nodes', []));
+			let node_filter = currentOptionValue(this.section, section_id, 'node_filter', '');
+			if (section_id && !value.length && !node_filter)
 				return _('Expecting: %s').format(_('non-empty value'));
 
 			return true;
 		}
+		so.modalonly = true;
+
+		so = ss.option(hp.CBIStaticList, 'selector_nodes', _('Selector nodes'),
+			_('List of manually selectable nodes.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			addSelectableOutbounds(this, section_id, true);
+
+			return this.super('load', section_id);
+		}
+		so.depends('node', 'selector');
+		so.validate = function(section_id) {
+			let value = hpNodeFilter.normalizeNodeList(currentOptionValue(this.section, section_id, 'selector_nodes', []));
+			let node_filter = currentOptionValue(this.section, section_id, 'node_filter', '');
+			if (section_id && !value.length && !node_filter)
+				return _('Expecting: %s').format(_('non-empty value'));
+			for (let i in value)
+				if (selectorHasPath(value[i], section_id, {}))
+					return _('Recursive outbound detected!');
+
+			return true;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'node_filter', _('Node regex'),
+			_('Use POSIX ERE syntax. Lookahead/lookbehind such as (?!) and (?<=) are unsupported.') +
+			'<br/>' +
+			_('Maximum regex length is 512 characters; preview and generation cap regex-expanded nodes to prevent oversized groups.') +
+			'<br/>' +
+			_('Effective nodes are recalculated automatically after saving and applying manual node changes, or after manual/scheduled subscription updates finish.'));
+		so.depends('node', 'urltest');
+		so.depends('node', 'selector');
+		so.forcewrite = true;
+		so.write = function(section_id, value) {
+			// LuCI 的字段校验是同步的，RPC 校验放在 write() 里让保存流程等待结果。
+			return hpNodeFilter.validate(value).then((res) => {
+				if (!res.result) {
+					let message = _('Expecting: %s').format(_('valid regular expression'));
+					if (res.error)
+						message += ': ' + res.error;
+
+					return Promise.reject(new TypeError(message));
+				}
+
+				return this.map.data.set(
+					this.uciconfig ?? this.section.uciconfig ?? this.map.config,
+					this.ucisection ?? section_id,
+					this.ucioption ?? this.option,
+					value);
+			});
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'node_filter_exclude', _('Node exclude regex'),
+			_('Exclude proxy nodes whose labels match this regex from the final effective node set, including manually selected nodes. Leave empty to exclude nothing. To exclude from all nodes, set the Node regex above to .*'));
+		so.depends('node', 'urltest');
+		so.depends('node', 'selector');
+		so.forcewrite = true;
+		so.write = function(section_id, value) {
+			// 同 node_filter：RPC 校验放在 write() 里让保存流程等待结果。
+			return hpNodeFilter.validate(value).then((res) => {
+				if (!res.result) {
+					let message = _('Expecting: %s').format(_('valid regular expression'));
+					if (res.error)
+						message += ': ' + res.error;
+
+					return Promise.reject(new TypeError(message));
+				}
+
+				return this.map.data.set(
+					this.uciconfig ?? this.section.uciconfig ?? this.map.config,
+					this.ucisection ?? section_id,
+					this.ucioption ?? this.option,
+					value);
+			});
+		};
+		so.modalonly = true;
+
+		so = ss.option(form.DummyValue, '_node_filter_preview', _('Effective nodes'));
+		so.depends('node', 'urltest');
+		so.depends('node', 'selector');
+		so.renderWidget = function(section_id) {
+			let container = E('div', { 'class': 'homeproxy-node-filter-preview' });
+			let request_id = 0,
+			    timer = null;
+
+			let refresh = () => {
+				if (!document.body.contains(container))
+					return;
+
+				let current_id = ++request_id,
+				    node = currentOptionValue(this.section, section_id, 'node', ''),
+				    node_filter = currentOptionValue(this.section, section_id, 'node_filter', '') || '',
+				    node_filter_exclude = currentOptionValue(this.section, section_id, 'node_filter_exclude', '') || '',
+				    manual_nodes = [];
+
+				if (!String(node_filter).trim() && !String(node_filter_exclude).trim()) {
+					hpNodeFilter.setPreviewVisible(container, false);
+					dom.content(container, '');
+					return;
+				}
+
+				hpNodeFilter.setPreviewVisible(container, true);
+				dom.content(container, _('Loading...'));
+
+				if (node === 'urltest')
+					manual_nodes = hpNodeFilter.normalizeNodeList(currentOptionValue(this.section, section_id, 'urltest_nodes', []));
+				else if (node === 'selector')
+					manual_nodes = hpNodeFilter.normalizeNodeList(currentOptionValue(this.section, section_id, 'selector_nodes', []));
+
+				hpNodeFilter.preview(
+					manual_nodes,
+					node_filter,
+					node_filter_exclude,
+					node
+				).then((res) => {
+					if (current_id === request_id)
+						hpNodeFilter.renderPreview(container, res, nodeFilterPreviewName);
+				});
+			};
+
+			let schedule = () => {
+				if (!document.body.contains(container))
+					return;
+
+				if (timer)
+					window.clearTimeout(timer);
+
+				timer = window.setTimeout(refresh, 150);
+			};
+
+			window.setTimeout(() => {
+				let scope = container.closest('.cbi-modal') ||
+					container.closest('.modal') ||
+					container.closest('.cbi-section') ||
+					container.parentNode;
+
+				if (scope) {
+					scope.addEventListener('input', schedule, true);
+					scope.addEventListener('change', schedule, true);
+					scope.addEventListener('click', schedule, true);
+				}
+
+				schedule();
+			});
+
+			return container;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'selector_default', _('Default selector node'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			addSelectableOutbounds(this, section_id, true);
+
+			return this.super('load', section_id);
+		}
+		so.validate = function(section_id, value) {
+			if (section_id && value && selectorHasPath(value, section_id, {}))
+				return _('Recursive outbound detected!');
+
+			return true;
+		}
+		so.depends('node', 'selector');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'selector_interrupt_exist_connections', _('Interrupt existing connections'),
+			_('Interrupt existing connections when the selected outbound has changed.'));
+		so.depends('node', 'selector');
 		so.modalonly = true;
 
 		so = ss.option(form.Value, 'urltest_url', _('Test URL'),
@@ -682,10 +885,8 @@ return view.extend({
 			delete this.vallist;
 
 			this.value('direct-out', _('Direct'));
-			uci.sections(data[0], 'routing_node', (res) => {
-				if (res.enabled === '1')
-					this.value(res['.name'], res.label);
-			});
+			this.value('block-out', _('Block'));
+			addSelectableOutbounds(this, section_id, true);
 
 			return this.super('load', section_id);
 		}
@@ -1031,6 +1232,7 @@ return view.extend({
 			delete this.vallist;
 
 			this.value('direct-out', _('Direct'));
+			this.value('block-out', _('Block'));
 			uci.sections(data[0], 'routing_node', (res) => {
 				if (res.enabled === '1')
 					this.value(res['.name'], res.label);
@@ -1380,6 +1582,7 @@ return view.extend({
 
 			this.value('', _('Default'));
 			this.value('direct-out', _('Direct'));
+			this.value('block-out', _('Block'));
 			uci.sections(data[0], 'routing_node', (res) => {
 				if (res.enabled === '1')
 					this.value(res['.name'], res.label);
