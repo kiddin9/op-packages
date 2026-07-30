@@ -20,7 +20,8 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			callListNetDrivers(),
-			uci.load('qemu-vms')
+			uci.load('qemu-vms'),
+			uci.load('network')
 		]);
 	},
 
@@ -63,8 +64,21 @@ return view.extend({
 			return true;
 		};
 
+		// В render:
+		var bridgeList = [];
+		uci.sections('network', 'device').forEach(function(s) {
+			if (s.type === 'bridge') {
+				bridgeList.push(s.name);
+			}
+		});
+
 		var bridge = s.option(form.Value, 'bridge', _('Bridge (optional)'));
-		bridge.placeholder = _('leave empty to keep the interface standalone');
+		bridge.value('', _('leave empty'));
+		bridgeList.forEach(function(name) {
+			bridge.value(name, name);
+		});
+		bridge.rmempty = true;
+		//bridge.nocreate = false;   
 
 		var driver = s.option(form.ListValue, 'driver', _('Network driver'));
 
