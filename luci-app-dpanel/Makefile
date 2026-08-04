@@ -2,9 +2,8 @@
 
 include $(TOPDIR)/rules.mk
 
-# Updated: 2025-10-09
-PKG_VERSION:=1.0.0-r20251009
-PKG_RELEASE:=4
+PKG_VERSION:=1.0.0-r20260804
+PKG_RELEASE:=5
 
 LUCI_TITLE:=LuCI support for DPanel
 LUCI_PKGARCH:=all

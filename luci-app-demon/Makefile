@@ -2,8 +2,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_VERSION:=1.2.0-r20250625
-PKG_RELEASE:=4
+PKG_VERSION:=1.2.0-r20260804
+PKG_RELEASE:=5
 
 LUCI_TITLE:=LuCI support for demon
 LUCI_PKGARCH:=all
