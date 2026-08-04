@@ -1,0 +1,266 @@
+@layer base {
+	/* Forms: input types, the .cbi-value row layout, and the focus/disabled/
+	 * readonly/invalid states shared by every CBI widget. */
+	fieldset {
+		margin-bottom: var(--fs-space-2);
+		padding-top: var(--fs-space-2);
+	}
+
+	/* size: theme/30-tables.css (`legend`) — absorbed */
+	fieldset legend {
+		display: block;
+		line-height: 1;
+		color: var(--fs-text);
+		padding-top: var(--fs-space-5);
+	}
+
+	/* Control typography STAYS IN BASE, deliberately — the one absorption that was tried and
+	 * reverted (measured): as a bare-element rule in the theme layer it out-ranked every CLASSED
+	 * base refinement regardless of specificity — `.zonebadge-empty { font-size: smaller }` lost
+	 * to it and the firewall's zone badges grew from 10.8 to 13px. In base, classed rules beat it
+	 * on specificity, which is the contract they were written against. `select` is not a member:
+	 * its face/size/leading live in its own theme rule (60-inputs.css). */
+	label,
+	input,
+	button {
+		font-family: var(--fs-font-sans);
+		font-size: var(--fs-type);
+		font-weight: var(--fs-weight-normal);
+		line-height: normal;
+	}
+
+	.cbi-value {
+		display: flex;
+		flex-wrap: wrap;
+		margin-bottom: var(--fs-space-4);
+		align-items: baseline;
+	}
+
+	.cbi-value-field {
+		/* logical, not margin-left: this is the gap AFTER the label column, and LuCI ships four
+		 * RTL languages (ar/fa/he/ur). Identical to margin-left while :root carries no dir=rtl —
+		 * which nothing in openwrt/luci sets today — so this buys nothing yet and costs nothing;
+		 * it is here so the geometry is already correct if dir is ever stamped. */
+		margin-inline-start: var(--fs-space-5);
+		flex: 1;
+		/* a flex item won't shrink below min-content by default, so a nested table or one
+		 * long unbreakable value pushed the whole row out of the card */
+		min-width: 0;
+	}
+
+	/* size + ink: theme/60-inputs.css (`.cbi-value-title`) — absorbed. Left: the label
+	 * column's geometry, which theme does not touch. */
+	.cbi-value label.cbi-value-title {
+		/* the nudge that lands the label's first baseline on the field's. Retuned for the 1.5
+		 * leading in 20-typography.css — it was 6px against a hard 18px line box.
+		 * line-height: theme/60-inputs.css (.cbi-value-title) — absorbed with the control rule
+		 * that made it necessary. */
+		padding-top: var(--fs-space-1);
+		/* 180px is a column WIDTH, not a rhythm: it is what fits LuCI's longest option labels
+		 * beside a field, so it is not on the 4px step scale and does not want to be. */
+		flex: 0 0 180px;
+		/* `end`, not `right`: the label is aligned TOWARDS its field, which is a logical intent.
+		 * NOT the same as base/95-luci.css's `.left/.right/.center` — those are LuCI's forcing
+		 * utilities, emitted 59 times by form.js, and a class named `right` means right in any
+		 * direction. Never sweep those onto start/end. */
+		text-align: end;
+	}
+
+	.cbi-value > .cbi-section,
+	.cbi-value > .cbi-tblsection {
+		width: 100%;
+	}
+
+	label > input[type="checkbox"],
+	label > input[type="radio"] {
+		vertical-align: text-top;
+		margin: 0;
+	}
+
+	label[for] {
+		cursor: pointer;
+	}
+
+	/* The shared field box (the 210px x control-height default, #localtime's widening, and the
+	 * per-widget escapes: file, button types, checkbox/radio, .cbi-select, readonly, the
+	 * cell-filling widths): theme/60-inputs.css — absorbed WHOLE. The escapes had to move with
+	 * the box: each beat it here in-layer, and left behind they would lose to a theme rule by
+	 * layer no matter their specificity. */
+
+	.cbi-dynlist {
+		height: auto;
+		/* min-height: theme/60-inputs.css — absorbed */
+		display: inline-flex;
+		flex-direction: column;
+	}
+
+	/* item paint: theme/60-inputs.css — absorbed. Left: the drag-and-drop machinery
+	 * UIDynamicList needs. */
+	.cbi-dynlist > .item {
+		margin-bottom: var(--fs-space-1);
+		padding: var(--fs-space-1) 2em var(--fs-space-1) var(--fs-space-2);
+		position: relative;
+		pointer-events: auto; /* needed for drag-and-drop in UIDynamicList */
+		overflow: hidden;
+		word-break: break-all;
+		cursor: move; /* drag-and-drop */
+		user-select: text; /* text selection in drag-and-drop */
+	}
+
+	/* display/padding/border + radius + × ink: theme/60-inputs.css (the bare `.item::after`
+	 * plate + its dynlist refinement) — absorbed. Left: what pins the plate to the chip. */
+	.cbi-dynlist > .item::after {
+		content: "×";
+		position: absolute;
+		align-items: center;
+		top: -1px;
+		inset-inline-end: -1px;
+		bottom: -1px;
+		font-weight: var(--fs-weight-bold);
+		pointer-events: auto;
+	}
+
+	/* indication line for drag-and-drop in UIDynamicList*/
+	.cbi-dynlist > .item.drag-over { 
+		border-top: 1px solid var(--fs-text);
+	}
+
+	/* Make item being dragged in UIDynamicList partially transparent*/
+	.cbi-dynlist > .item.dragging {
+		opacity: .5;
+	}
+
+	/* prevent pointer changing when over the span element in UIDynamicList */
+	.cbi-dynlist > .item > span {
+		pointer-events: none;
+	}
+
+	.cbi-dynlist > .add-item {
+		display: flex;
+	}
+
+	/* indication line for drag-and-drop in UIDynamicList*/
+	.cbi-dynlist > .add-item > .cbi-input-text.drag-over {
+		border-top: 1px solid var(--fs-text);
+	}
+
+	/* indication line for drag-and-drop in UIDynamicList*/
+	.cbi-dynlist > .add-item > .cbi-button-add.drag-over {
+		border-top: 1px solid var(--fs-text);
+	}
+
+	.cbi-dynlist > .add-item > input,
+	.cbi-dynlist > .add-item > button {
+		/* flex: theme/60-inputs.css — absorbed */
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* the same one-line control height, so a toggle lines up with the field above it */
+	.cbi-value-field > .cbi-checkbox,
+	.cbi-value-field > div > .cbi-radio {
+		height: var(--fs-control-h);
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.cbi-radio {
+		cursor: pointer;
+		gap: var(--fs-space-1);
+	}
+
+	/* .cbi-select (the shell, its inner <select>, the ▾ plate): theme/60-inputs.css — absorbed
+	 * whole. Do not re-add an option rule here either: layer beats specificity, so theme's bare
+	 * `option` outranks even `.cbi-select select option:checked`. */
+
+	/* Checkbox/radio drawing: theme/60-inputs.css — absorbed whole (it undoes the generic input
+	 * box, which lives there now). */
+
+	::placeholder {
+		color: var(--fs-dim);
+	}
+
+	/* Transitions and the focus/hover ring: absorbed onto the theme's one ring token
+	 * (--fs-focus-ring / --fs-focus-ring-invalid) in theme/55-buttons.css, 60-inputs.css and
+	 * 65-dropdown.css. The old generic glow here rang every clicked button and every hovered
+	 * widget in a second, unnamed focus style — the absorption was a redesign, not a move. */
+
+	input[disabled],
+	button[disabled],
+	select[disabled],
+	textarea[disabled],
+	.cbi-select[disabled]::before,
+	.cbi-dropdown[disabled]:not(.btn):not(.cbi-button),
+	input[type="checkbox"][disabled]::before,
+	input[type="checkbox"][disabled]::after,
+	input[type="radio"][disabled]::before,
+	input[type="radio"][disabled]::after {
+		opacity: var(--fs-disabled-opacity);
+		pointer-events: none;
+		cursor: default;
+	}
+
+	/* readonly border fade: theme/60-inputs.css — absorbed with the generic box */
+
+	.cbi-optionals,
+	.cbi-section-create {
+		padding: 0 0 var(--fs-space-3) var(--fs-space-3);
+	}
+
+	/* `gap`, not the -3px/+3px negative-margin pair this carried: that trick predates flex gap and
+	 * it leaks — the outer -3px pulls the row 3px into whatever sits beside it, which is why the
+	 * children had to pay it back. One gap says the same thing and stays inside the box. */
+	.cbi-section-create {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--fs-space-2);
+	}
+
+	.cbi-section-create > * {
+		flex: 1 1 auto;
+	}
+
+	/* the input's cell-filling width: theme/60-inputs.css — absorbed with the generic box */
+
+	/* .cbi-page-actions paint: theme/55-buttons.css — absorbed. The legacy `.actions`
+	 * plate has no theme override, so it stays (coverage: some luci-app-* still emits it). */
+	.actions {
+		background: var(--fs-panel2);
+		margin-bottom: var(--fs-space-4);
+		/* was 17px 20px 18px 17px — an asymmetric inset nobody chose; it is a plate, so it takes
+		 * the card's own gutter on every side. */
+		padding: var(--fs-card-pad);
+		border-top: 1px solid var(--fs-border);
+		border-radius: 0 0 var(--fs-radius-lg) var(--fs-radius-lg);
+		text-align: end;
+	}
+
+	/* PHYSICAL, mirrored by hand — see the note on `.close` in base/90-widgets.css for why `float`
+	 * does not take a logical keyword here. This one contradicted its OWN container: `.actions`
+	 * above sets `text-align: end`, which follows the writing direction, while the float did not,
+	 * so in RTL the plate aligned its content to the left while the secondary action stayed on the
+	 * right — the two halves of one row pulling opposite ways. Measured in a live document at
+	 * 1400px: 582px from the reading edge in LTR, 10px in RTL. */
+	.actions .secondary-action,
+	.cbi-page-actions .secondary-action{
+		float: right;
+	}
+	:root[dir="rtl"] .actions .secondary-action,
+	:root[dir="rtl"] .cbi-page-actions .secondary-action { float: left; }
+
+	.actions .secondary-action a,
+	.cbi-page-actions .secondary-action a {
+		line-height: var(--fs-control-h);
+	}
+
+	.actions .secondary-action a:hover,
+	.cbi-page-actions .secondary-action a:hover {
+		text-decoration: underline;
+	}
+
+	.cbi-page-actions > form {
+		display: inline;
+		margin: 0;
+	}
+}

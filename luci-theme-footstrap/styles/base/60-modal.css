@@ -1,0 +1,81 @@
+@layer base {
+	/* The modal overlay ui.js shows for config diffs, uploads and login, plus the
+	 * colour variants shared by .btn / .alert-message / .cbi-tooltip. */
+	#modal_overlay {
+		position: fixed;
+		top: 0;
+		bottom: 0;
+		background: var(--fs-scrim);
+		z-index: var(--fs-z-overlay);
+		overflow: auto;
+		transition: opacity var(--fs-dur);
+		opacity: 0;
+		visibility: hidden;
+	}
+
+	.modal {
+		width: 90%;
+		/* clear of the sticky bar, and centred. Was `5em auto` — a rhythm in the dialog's own font. */
+		margin: var(--fs-space-6) auto;
+		min-height: var(--fs-control-h);
+		max-width: 600px;
+		/* a modal is a CARD — the large radius, like every other panel */
+		border-radius: var(--fs-radius-lg);
+		background: var(--fs-panel);
+		border: 1px solid var(--fs-border);
+		/* box-shadow: theme/70-modal.css — absorbed. It was `0 0 3px var(--fs-panel2)`, a shadow in
+		 * the colour of the page (in footstrap light panel2 and bg are the same hex), so the theme
+		 * gives every .modal --fs-shadow-pop instead and this one was dead. */
+		/* was `1em 1em .5em 1em` — a bottom half the top because the button row below carries its
+		 * own margin. The card's own gutter on every side; the button row's spacing is its business. */
+		padding: var(--fs-card-pad);
+		min-width: 270px;
+	}
+
+	/* .modal > * (normal leading, the .5em rhythm, max-width): theme/70-modal.css — absorbed
+	 * with the heading ramp, which would out-layer the leading here */
+
+	/* .modal > pre/textarea (pre-wrap, fill the dialog): theme/70-modal.css — absorbed with
+	 * the generic field box (its 210px would out-layer the width here) */
+
+	.modal > .button-row {
+		display: flex;
+		justify-content: space-between;
+		flex-wrap: wrap;
+	}
+
+	.modal > .button-row > button:not(:last-of-type) {
+		margin-inline-end: var(--fs-space-2);
+	}
+
+	.modal > .button-row > button:first-of-type {
+		margin-inline-end: auto;
+	}
+
+	body.modal-overlay-active {
+		overflow: hidden;
+		height: 100dvh;	/* dvh: 100vh counts the mobile URL bar and cropped the modal */
+	}
+
+	body.modal-overlay-active #modal_overlay {
+		inset-inline: 0;
+		opacity: 1;
+		visibility: visible;
+	}
+
+	/* the cross inside a button/alert: `line-height: 1` centres the glyph in its own box, where
+	 * this said 18px — upstream's leading, which stopped matching the moment the scale moved. */
+	.btn .close, .alert-message .close {
+		font-family: var(--fs-font-sans);
+		line-height: 1;
+	}
+
+	/* THE WHOLE COLOUR-WORD BLOCK IS ABSORBED — do not re-add any of it.
+	 *
+	 * `.btn.<word>` -> theme/55-buttons.css. `.alert-message.<word>` -> theme/35-alerts.css, which
+	 * paints plain `.alert-message`: a later layer beats this one whatever the specificity, so
+	 * every variant here was already dead for the alert. `.cbi-tooltip.<word>` -> theme/35-alerts.css
+	 * as well; those were genuinely alive and genuinely un-themed, and the note that used to sit
+	 * here said so ("theme does not claim those") for as long as nothing rendered them. The gallery
+	 * renders all four now, which is what turned the claim into a measurement. */
+}

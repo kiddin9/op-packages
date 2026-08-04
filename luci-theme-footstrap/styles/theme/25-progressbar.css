@@ -1,0 +1,43 @@
+@layer theme {
+	/* One thin meter for every .cbi-progressbar (overview Memory/Storage/Network, Software
+	 * disk space, package manager …): slim rounded track, accent fill, and the LuCI title
+	 * value floated just above the bar's right edge (mono/dim) instead of stuffed inside a fat
+	 * pill. No per-page overrides. */
+	.cbi-progressbar {
+		position: relative;
+		height: 10px;
+		background: var(--fs-track);
+		border: 0;
+		border-radius: var(--fs-radius-pill);
+		overflow: visible;
+		min-width: 120px;
+		margin: 0;
+	}
+	.cbi-progressbar > div {
+		height: 100%;
+		background: var(--fs-accent);
+		border-radius: var(--fs-radius-pill);
+		transition: width var(--fs-dur-fill);
+	}
+	.cbi-progressbar::after {
+		content: attr(title);
+		position: absolute; inset-inline: auto 0; bottom: calc(100% + 4px); top: auto;
+		font-family: var(--fs-font-mono); font-size: var(--fs-type-xs); font-weight: var(--fs-weight-normal);
+		color: var(--fs-dim); white-space: nowrap; text-shadow: none;
+	}
+
+	/* Progressbar rows in a section table (luci-app-cpu-status): keep the native label | bar
+	 * row, just centre the cells vertically. */
+	.cbi-section .table:not([id]):not(.cbi-section-table) .tr:has(.cbi-progressbar) .td { vertical-align: middle; }
+
+	/* Multi-column DATA tables with a progressbar column (cpu-status per-CPU load): the
+	 * generic meter floats its value ABOVE the bar, which here lands on the row divider.
+	 * Shrink the bar and put the value INLINE to its right, clear of the border. */
+	.cbi-section .table:has(.tr.table-titles) .td .cbi-progressbar {
+		min-width: 60px; margin-inline-end: var(--fs-space-10);
+	}
+	.cbi-section .table:has(.tr.table-titles) .td .cbi-progressbar::after {
+		inset-inline: calc(100% + 8px) auto; bottom: auto; top: 50%;
+		transform: translateY(-50%);
+	}
+}

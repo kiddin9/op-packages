@@ -1,0 +1,74 @@
+@layer page {
+	/* LOGIN — the SERVER-rendered form of themes/footstrap/sysauth.ut, as a centred card.
+	 *
+	 * Scoped by `.fs-login`, a class that template puts on the form. It used to be found by
+	 * `form:has(> .cbi-map input[name="luci_username"])`, on the assumption that the markup was
+	 * stock LuCI's and unnameable — 49 characters × 17 rules, ~0.8 KB of the stylesheet. The
+	 * form is ours; naming it is free. (ui.js builds no login form of its own — it has no
+	 * `luci_username` anywhere — so nothing else ever matched those selectors.)
+	 *
+	 * The theme ships its own sysauth.ut so the page carries NO chrome: without one, LuCI
+	 * falls back to the generic template, which includes the header WITHOUT blank_page and
+	 * draws the whole sidebar around a page whose only control is a password field.
+	 *
+	 * Do NOT turn this into a modal (form in a <section hidden>, revealed by a view module).
+	 * Tried: BLANK PAGE, NO WAY TO LOG IN — the view runs before a session exists, its RPCs
+	 * answer "Access denied", the promise rejects, render() never runs. Server-rendered, the
+	 * form works with JS off. */
+	.fs-login {
+		/* A DEFINITE width, never `max-width`: the card is a direct flex item of <body>
+		 * (base/20-typography.css makes body a flex column so the footer can margin-top:auto),
+		 * and on the cross axis an `auto` side margin overrides the stretch and sizes the item
+		 * to FIT-CONTENT. `max-width: 400px` capped nothing — the card collapsed to its
+		 * min-content, ~131px, and the description wrapped one word per line. */
+		width: min(400px, calc(100% - 32px));
+		margin: 7vh auto var(--fs-space-10);
+		background: var(--fs-panel); border: 1px solid var(--fs-border); border-radius: var(--fs-radius-lg);
+		/* the token, not a literal 45%-black 60px halo: that ignored the palette and drew
+		 * a heavy grey cloud under a white card in light mode. */
+		padding: var(--fs-space-6) var(--fs-space-6) var(--fs-space-6); box-shadow: var(--fs-shadow-pop);
+	}
+	.fs-login .cbi-map,
+	.fs-login .cbi-section,
+	.fs-login .cbi-section-node {
+		background: none; border: 0; padding: 0; margin: 0; box-shadow: none;
+	}
+	/* the login card IS the panel — the generic "heading gets its own card" rule would
+	 * draw a second frame inside it */
+	.fs-login .cbi-map > h2,
+	.fs-login .cbi-map-descr {
+		background: none; border: 0; border-radius: 0; box-shadow: none; padding: 0;
+	}
+	.fs-login .cbi-map > h2 {
+		font-size: var(--fs-type-xl); font-weight: var(--fs-weight-bold); letter-spacing: -.01em; margin: 0 0 var(--fs-space-1-5);
+	}
+	.fs-login .cbi-map-descr { color: var(--fs-dim); font-size: var(--fs-type); margin: 0 0 var(--fs-space-5); }
+	.fs-login .cbi-value {
+		display: block; border: 0; padding: 0 0 var(--fs-space-4); margin: 0;
+	}
+	.fs-login .cbi-value-title {
+		display: block; text-align: start; width: auto; max-width: none; padding: 0 0 var(--fs-space-1-5);
+		font-size: var(--fs-type-xs); font-weight: var(--fs-eyebrow-weight); letter-spacing: var(--fs-eyebrow-tracking); text-transform: uppercase; color: var(--fs-eyebrow-color);
+	}
+	.fs-login .cbi-value-field {
+		width: 100%; margin: 0; padding: 0;
+	}
+	.fs-login .cbi-value-field input {
+		width: 100%; margin: 0; box-sizing: border-box;
+	}
+	.fs-login .alert-message { margin: 0 0 var(--fs-space-3-5); border-radius: var(--fs-radius); }
+	/* a column, not a block: some auth plugins add a second action (Reset), and the
+	 * full-width buttons below carry margin:0 — they ended up glued together */
+	.fs-login .cbi-page-actions {
+		display: flex; flex-direction: column; gap: var(--fs-space-2-5);
+		background: none; border: 0;
+		padding: 0; margin: var(--fs-space-1-5) 0 0; text-align: start;
+	}
+	.fs-login .cbi-page-actions .btn,
+	.fs-login .cbi-page-actions input[type="submit"] {
+		width: 100%; box-sizing: border-box; min-height: var(--fs-ctl-h-lg); margin: 0; border-radius: var(--fs-radius-lg);
+		background: var(--fs-accent); color: var(--fs-on-accent);
+		border: 0; font-weight: var(--fs-weight-bold); font-size: var(--fs-type-lg);
+	}
+	.fs-login .cbi-page-actions .btn:hover { filter: var(--fs-hover-lift); }
+}

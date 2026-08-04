@@ -1,0 +1,144 @@
+@layer base {
+	/* Small widgets a view or a third-party luci-app-* can drop anywhere: tooltip,
+	 * progress bar, zone badge, button states, close cross, alert box, .label pill. */
+	/* .cbi-title-ref colour: theme/45-misc.css — absorbed. The arrow stays: content,
+	 * not paint. */
+	.cbi-title-ref::after {
+		content: "➙";
+	}
+
+	.cbi-tooltip-container {
+		cursor: help;
+	}
+
+	.cbi-tooltip {
+		position: absolute;
+		z-index: var(--fs-z-tooltip);
+		/* logical: `left: -10000px` in an RTL document parks the tooltip 10 000px past the
+		 * INLINE-END edge, which is scrollable overflow — every page grew a 10 000px horizontal
+		 * scrollbar in ar/fa/he (measured). Past the inline-START edge is unreachable in both
+		 * directions, which is what parking means. */
+		inset-inline-start: -10000px;
+		/* box-shadow: theme/35-alerts.css — absorbed (was `0 0 2px var(--fs-border)`, a hairline
+		 * halo on a surface that floats over arbitrary content) */
+		border-radius: var(--fs-radius-sm);
+		background: var(--fs-panel);
+		white-space: pre;
+		padding: var(--fs-space-0-5) var(--fs-space-1);
+		opacity: 0;
+		transition: opacity var(--fs-dur-fade);
+	}
+
+	.cbi-tooltip-container:hover .cbi-tooltip:not(:empty) {
+		inset-inline-start: auto;
+		opacity: 1;
+		transition: opacity var(--fs-dur-fade);
+	}
+
+	/* .cbi-progressbar paint: theme/25-progressbar.css — absorbed. The fill's starting
+	 * width stays: the poll JS animates the inline width up from it. */
+	.cbi-progressbar > div {
+		width: 0%;
+	}
+
+	.zonebadge .cbi-tooltip {
+		padding: 1px;
+		background: inherit;
+		margin: -1.6em 0 0 -5px;
+		border-radius: var(--fs-radius-sm);
+		pointer-events: none;
+		/* box-shadow: theme/35-alerts.css now states ONE elevation for every .cbi-tooltip, so this
+		 * specialisation no longer needs one of its own */
+	}
+
+	.zonebadge .cbi-tooltip > * {
+		margin: 1px;
+		z-index: var(--fs-z-raise);
+		position: relative;
+	}
+
+	.zone-forwards {
+		display: flex;
+		flex-wrap: nowrap;
+	}
+
+	.zone-forwards > * {
+		flex: 1 1 40%;
+		padding: 1px;
+		text-wrap: auto;
+	}
+
+	.zone-forwards > span {
+		flex-basis: 10%;
+		text-align: center;
+	}
+
+	.zone-forwards .zone-src,
+	.zone-forwards .zone-dest {
+		display: flex;
+		flex-direction: column;
+	}
+
+	/* pressed-state shadow (.btn.active/:active): theme/55-buttons.css — absorbed */
+	.btn.disabled,
+	.btn[disabled] {
+		cursor: default;
+		opacity: var(--fs-disabled-opacity);
+	}
+
+	/* `.btn.large` / `.btn.small`: theme/55-buttons.css, in full — absorbed. */
+
+	/* close cross — colour, shadow, opacities: theme/70-modal.css — absorbed. Left:
+	 * geometry. */
+	/* `line-height: 1` centres the glyph in its own box; it was 13.5px under a 20px face — a
+	 * hand-nudge that only lands for one font size, and a half-pixel baseline besides. */
+	/* PHYSICAL, and mirrored by hand below — the same shape as `::-webkit-resizer`
+	 * (theme/60-inputs.css) and the two chevrons (theme/20-shell.css). `float` takes no logical
+	 * keyword this theme can rely on: `inline-end` is newer than the `oklch(from …)` and `:has()`
+	 * this stylesheet already requires only in Chromium, and it is the one property here where a
+	 * browser that does not know the keyword drops the declaration and leaves the cross floating
+	 * nowhere. Measured in a live document at 1400px: the cross sat 549px from the reading edge in
+	 * LTR and 41px in RTL, i.e. it jumped from the end of the heading to its start — in front of
+	 * the title, where a dismissal control is not. It appears in every modal and in every
+	 * `.alert-message`, so this is the RTL bug with the widest reach. */
+	.close {
+		float: right;
+		font-size: var(--fs-type-xl);
+		font-weight: var(--fs-weight-bold);
+		line-height: 1;
+	}
+	:root[dir="rtl"] .close { float: left; }
+
+	.close:hover {
+		text-decoration: none;
+	}
+
+	/* alert paint (surface, ink, border, radius, shadow, padding): theme/35-alerts.css —
+	 * absorbed. Left: geometry + the white-space reset, which theme does not set. */
+	.alert-message {
+		position: relative;
+		margin-bottom: var(--fs-space-2);
+		white-space: unset;
+	}
+
+	.alert-message .close {
+		margin-top: 1px;
+	}
+
+	/* color + margin + the content reset (border/leading/background/padding):
+	 * theme/35-alerts.css — absorbed; the reset had to move with the heading ramp. */
+
+	.alert-message button {
+		margin: var(--fs-space-1) 0;
+	}
+
+	/* `.label` pill + variants: theme/35-alerts.css — absorbed. So is the indicator pill:
+	 * ui.js's showIndicator() only ever emits into #indicators, which theme/20-shell.css
+	 * paints, so every `header [data-indicator]` is one of those. Left: the three
+	 * properties theme does not touch. */
+	header [data-indicator] {
+		white-space: nowrap;
+		text-shadow: none;
+		margin: var(--fs-space-1) 0 var(--fs-space-1) var(--fs-space-1);
+	}
+}

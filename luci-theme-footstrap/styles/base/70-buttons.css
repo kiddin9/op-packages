@@ -1,0 +1,107 @@
+@layer base {
+	/* `.btn` and `.cbi-button` are interchangeable in LuCI markup; a row action carries
+	 * both plus a `-<variant>` class (edit, remove, apply, save). The paint (box, fill,
+	 * radius) is theme/55-buttons.css's — absorbed, along with the `.item::after` member,
+	 * whose plate now lives with the dynlist in theme/60-inputs.css. Left here: --on-color
+	 * (NOT paint — base/95-luci.css masks the spinner glyph with it, so it must track the
+	 * variant), and what theme does not restate. */
+	.btn,
+	.cbi-button {
+		--on-color: var(--fs-text);
+
+		cursor: pointer;
+		font-size: var(--fs-type);
+		white-space: pre;
+	}
+
+	/* border-color: theme/60-inputs.css — absorbed. The ink stays: theme paints no colour here. */
+	.cbi-input-invalid,
+	.cbi-input-invalid.cbi-dropdown:not(.btn):not(.cbi-button),
+	.cbi-input-invalid.cbi-dropdown:not([open]) > ul > li,
+	.cbi-value-error input {
+		color: var(--fs-danger);
+	}
+
+	/* `--on-color` ONLY. The `border-color: var(--on-color)` that used to sit in each of these was
+	 * dead on arrival and had been for as long as the theme has painted buttons: theme/55-buttons.css
+	 * sets `border` on `.cbi-button, .btn`, and a later layer beats this one whatever the
+	 * specificity — so a `.cbi-button-edit` never wore the accent border declared here, it wore
+	 * `--fs-border` from the theme. (Proven, not reasoned: stripping them changes no computed style
+	 * over docs/gallery.html, which renders every one of these variants.)
+	 *
+	 * `--on-color` stays because it is NOT paint: base/95-luci.css masks the spinner glyph
+	 * (`.spinning::before`) with it, so it has to track the button's variant. The colour a variant
+	 * WEARS is theme/55-buttons.css's business, in one place. */
+	.cbi-button-positive,
+	.cbi-button-fieldadd,
+	.cbi-button-add,
+	.cbi-button-save {
+		--on-color: var(--fs-good);
+	}
+
+	.btn.primary,
+	.cbi-button-action,
+	.cbi-button-apply,
+	.cbi-button-reload,
+	.cbi-button-edit {
+		--on-color: var(--fs-accent);
+	}
+
+	.cbi-button-negative,
+	.cbi-section-remove .cbi-button,
+	.cbi-button-reset,
+	.cbi-button-remove {
+		--on-color: var(--fs-danger);
+	}
+
+	.cbi-page-actions::after {
+		display: table;
+		content: "";
+		clear: both;
+	}
+
+	.cbi-page-actions > * {
+		vertical-align: middle;
+	}
+
+	/* No `float` here, and its absence is measured rather than assumed: theme/55-buttons.css makes
+	 * `.cbi-page-actions` a flex container, and float does not apply to a flex item — so the
+	 * `float: left` that used to sit beside this margin computed to `none` and moved nothing. It
+	 * was not merely inert, it was misleading: it read as the one declaration in this file that had
+	 * been missed by the move to logical properties, so the next person to sweep for physical sides
+	 * would have "fixed" a rule that does nothing. There is no context that revives it — print
+	 * hides the whole container (theme/97-print.css). Verified in a live document in both writing
+	 * directions: the button sits 569px from the reading edge with the float and 569px without it,
+	 * and the same before and after removal. */
+	.cbi-page-actions > :not([method="post"]):not(.cbi-button-apply):not(.cbi-button-negative):not(.cbi-button-save):not(.cbi-button-reset) {
+		margin-inline-end: var(--fs-space-1);
+	}
+
+	/* Fills and borders: theme/55-buttons.css — absorbed. --on-color stays (the spinner mask, see
+	 * above). The `border-color` that used to be here carried a stale note claiming theme did not
+	 * set it on `.cbi-page-actions .cbi-button-apply` — theme/55-buttons.css sets `border: 1px solid
+	 * transparent` on exactly that selector, and has for a while. */
+	.btn.primary,
+	.cbi-button-action.important,
+	.cbi-page-actions .cbi-button-apply,
+	.cbi-section-actions .cbi-button-edit {
+		--on-color: var(--fs-on-accent);
+	}
+
+	.cbi-button-positive.important,
+	.cbi-page-actions .cbi-button-save {
+		--on-color: var(--fs-on-good);
+	}
+
+	.cbi-button-negative.important {
+		--on-color: var(--fs-on-danger);
+		/* fill + border: theme/55-buttons.css — absorbed */
+	}
+
+	.cbi-page-actions .cbi-button-apply + .cbi-button-save,
+	.cbi-page-actions .cbi-button-negative + .cbi-button-save {
+		--on-color: var(--fs-good);
+		border-color: var(--on-color);
+		/* neutral fill: theme/55-buttons.css — absorbed */
+	}
+}

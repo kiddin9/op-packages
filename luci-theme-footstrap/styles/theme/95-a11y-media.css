@@ -1,0 +1,124 @@
+@layer theme {
+	/* ==================================================================
+	 * prefers-reduced-motion — a medical accommodation: vestibular disorders make sliding,
+	 * fading and spinning UI genuinely nauseating. Honoured globally rather than per-component;
+	 * every transition and keyframe in this theme is decoration, none carries information.
+	 *
+	 * WHY !important HERE — the documented exception, and NOT the same kind as the 14 in theme/
+	 * and pages/ that fight an inline `style=` or an unlayered \3c style>. A cascade layer cannot
+	 * help: styles/base sets transitions and animations too, and !important INVERTS the layer
+	 * order (an important declaration in base would beat a normal one here). Only an important
+	 * declaration reaches all of them at once. This is the canonical form of the rule as
+	 * published by the WCAG working group. DO NOT COPY THE FLAG OUT OF THIS BLOCK.
+	 *
+	 * .01ms rather than 0s: a zero duration means `transitionend`/`animationend` never fire at
+	 * all, and JS that waits for one (LuCI's modal teardown does) would hang.
+	 * scroll-behavior: smooth scrolling is motion too — a jump is what this user asked for.
+	 * ================================================================== */
+	@media (prefers-reduced-motion: reduce) {
+		*, *::before, *::after {
+			animation-duration: .01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: .01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+
+	/* ==================================================================
+	 * prefers-reduced-transparency — the user asked the OS for opaque surfaces (visual clutter,
+	 * low vision, or plain preference). Every frosted surface in this theme is a translucent
+	 * fill + backdrop-filter blur; both go: the fill becomes the opaque panel, and the blur —
+	 * the single most expensive paint on a phone GPU (the sticky bar's backdrop is
+	 * resampled on every scrolled frame) — has nothing left to show through anyway. This also
+	 * gives a measured escape hatch on devices where the bar blur is too costly, without
+	 * taking the frosted design away from everyone else.
+	 * ================================================================== */
+	@media (prefers-reduced-transparency: reduce) {
+		:root {
+			--fs-bar-bg: var(--fs-panel);
+			--fs-glass: var(--fs-panel);
+			--fs-blur: none;
+			/* the uploaded background is a translucent wash over a photo — exactly the effect this
+			 * user asked the OS to drop. Make the scrim opaque so the canvas is flat, not a photo
+			 * ghosting through (16-login-bg.css lays it over the image as one background layer). */
+			--fs-photo-scrim: var(--fs-bg);
+		}
+	}
+
+	/* ==================================================================
+	 * prefers-contrast — the user asked the OS for MORE contrast, but (unlike forced-colors)
+	 * left the palette to us. Same mechanism as reduced-transparency above: re-state the tokens,
+	 * and every rule that reads them follows. What moves and why:
+	 *   - the hairlines: --fs-border is the most-read line in the theme and sits at ~20% of the
+	 *     text's contrast; pull it toward --fs-text. The role hairlines (-line/-line-hi, a 40/55%
+	 *     tint of their role) go to the FULL role colour — a tint exists to be quiet, which is
+	 *     the opposite of what this user asked for.
+	 *   - secondary text: --fs-dim toward --fs-text, and --fs-faint (10-11px eyebrow labels)
+	 *     up to dim's level — small + faint is where AA erodes first.
+	 *   - the focus ring: --fs-focus-ring is a tint of the accent (--fs-accent-soft: 10% light,
+	 *     15% dark — the one ladder member whose strength is per MODE, so not the ladder's 12%);
+	 *     at "more contrast" it carries the accent at 60%. Its sibling --fs-focus-ring-solo is
+	 *     already the SOLID accent and needs no restatement here.
+	 * ================================================================== */
+	@media (prefers-contrast: more) {
+		:root {
+			--fs-border: color-mix(in srgb, var(--fs-text) 45%, var(--fs-bg));
+			--fs-dim: color-mix(in srgb, var(--fs-text) 85%, var(--fs-bg));
+			--fs-faint: var(--fs-dim);
+			--fs-focus-ring: 0 0 0 3px color-mix(in srgb, var(--fs-accent) 60%, transparent);
+			--fs-accent-line: var(--fs-accent);	--fs-accent-line-hi: var(--fs-accent);
+			--fs-good-line: var(--fs-good);		--fs-good-line-hi: var(--fs-good);
+			--fs-warn-line: var(--fs-warn);		--fs-warn-line-hi: var(--fs-warn);
+			--fs-danger-line: var(--fs-danger);	--fs-danger-line-hi: var(--fs-danger);
+		}
+	}
+
+	/* ==================================================================
+	 * forced-colors (Windows High Contrast) — the OS replaces every colour the theme picked, and
+	 * background-color on most elements is forced to the system canvas. Any state carried by
+	 * BACKGROUND ALONE therefore vanishes: the active tab pill, the checked toggle and the
+	 * selected dropdown row all looked exactly like their inactive siblings — a correctness bug,
+	 * not a cosmetic one. Re-state those states with a BORDER/OUTLINE, which forced-colors keeps,
+	 * in system colour keywords so they follow the user's scheme.
+	 * ================================================================== */
+	@media (forced-colors: active) {
+		/* active tab / selected dropdown row / checked toggle: outline the state.
+		 *
+		 * `.ifacebox-head.active` and Apply joined the list rather than getting a rule of their own:
+		 * they are the same KIND of state — carried by a background, with no word to fall back on —
+		 * and it is the same repair. "This port is up" was indistinguishable from a dead port, and
+		 * Save & Apply did not read as a BUTTON at all: it is a .cbi-dropdown wrapper, so with its
+		 * fill forced to Canvas only the label inside the <li> kept a highlight, leaving what looks
+		 * like selected text beside a bare chevron (see tmp/decisions/4-forcedcolors-actionbar).
+		 * NOT extended to the alert and .label variants: the audit's proposal there was to encode
+		 * severity in border-style (dashed/dotted/double), and a border style is not a scale anyone
+		 * can learn — the honest repair is a word or an icon in the markup, which is ui.js's. */
+		#tabmenu ul.tabs > li.active > a,
+		ul.cbi-tabmenu.mode > li.cbi-tab > a,
+		.tabs > li.active > a,
+		.cbi-tabmenu > li.cbi-tab > a,
+		.cbi-dropdown > ul > li[selected],
+		.ifacebox .ifacebox-head.active,
+		.cbi-page-actions .cbi-button-apply {
+			outline: 2px solid Highlight;
+			outline-offset: -2px;
+			color: HighlightText;
+			background: Highlight;
+			forced-color-adjust: none;	/* keep the fill: it IS the state */
+		}
+		/* the toggle switch is a bare rounded box in forced colors — give the knob and
+		 * the track an edge so on/off is distinguishable at all */
+		.cbi-checkbox > label { border: 1px solid ButtonBorder; }
+		.cbi-checkbox > input[type="checkbox"]:checked + label {
+			background: Highlight;
+			forced-color-adjust: none;
+		}
+		.cbi-checkbox > label::after { background: ButtonBorder; }
+		.cbi-checkbox > input[type="checkbox"]:checked + label::after { background: HighlightText; }
+		/* icon-only buttons (rail toggle, search/appearance, logout) lose their hover fill */
+		.fs-railtoggle, .fs-themerow { border-color: ButtonBorder; }
+		/* the focus ring is a box-shadow everywhere in this theme, and box-shadow is
+		 * dropped entirely in forced-colors — so keyboard focus would be invisible */
+		:focus-visible { outline: 2px solid Highlight; outline-offset: 1px; }
+	}
+}

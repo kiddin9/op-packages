@@ -1,0 +1,100 @@
+@layer page {
+	/* Software disk-space bar -> the overview Memory/Storage meter: label + value on one
+	 * line, bar below (the value is the .cbi-progressbar title, lifted out by ::after).
+	 * Scoped by body[data-page], NOT by :has(#disk-space-label) — 24.10 ships no such id. */
+	body[data-page="admin-system-package-manager"] #view .controls > div:first-child { position: relative; display: block; flex: 1 1 100%; width: 100%; margin: 0 0 var(--fs-space-1-5); }
+
+	/* The package list's row SHAPE. #packages is a DATA table (`<table class="table"
+	 * id="packages">`, no .cbi-section-table class; fs-select.js tags it .fs-dt off its
+	 * .tr.cbi-section-table-titles header), so it takes the shared card from
+	 * theme/30-tables.css when measured too narrow. This only changes how a row READS: a
+	 * package is a name plus a few short facts, so label-left / value-right on one line
+	 * beats the half-width label-above-value pairs a config row wants.
+	 *
+	 * No @container guard, and do not re-add one — the old 800px was a guess at "the row no
+	 * longer fits". Overflow is the trigger now, and fs-select.js measures it (.fs-stacked). */
+	/* `:not(...)` on the header rows, and it is load-bearing: this selector carries an ID, so it
+	 * is (1,1,0) in the PAGE layer — it beat theme/30-tables.css's
+	 * `.table.fs-stacked .tr.cbi-section-table-titles { display: none }` and put the column
+	 * header back on screen in card mode, where every cell already prints its own label. */
+	/* ---- the package NAME is an identifier: do not let the column collapse under it ----
+	 *
+	 * theme/30-tables.css gives every data cell `overflow-wrap: anywhere`, which — unlike
+	 * `break-word` — also lowers the column's MIN-CONTENT width to a single character. Version and
+	 * Size are `white-space: nowrap` and cannot shrink, so auto table layout took the whole
+	 * shortfall out of column 1: measured with the filter on "app", the name column came out
+	 * 81-101px — NARROWER than Size (88px) — and 6 of the first 8 names rendered broken mid-word
+	 * (`apparmor-` / `profiles`), while a hyphen made it worse by offering a legal break point.
+	 * It shows up when a filter is applied because that is when long names reach the top of the
+	 * list; the squeeze itself is always there.
+	 *
+	 * nowrap here does NOT mean "never wrap": it makes the overflow HONEST, which is what
+	 * fs-select.js's measurement needs — where the row genuinely does not fit, the table cards
+	 * (.fs-stacked) and this rule stops applying, so the name wraps freely in card mode. That is
+	 * the same trap idTower() works around in fs-select.js: `anywhere` hides the overflow by
+	 * shredding a cell, so nothing is left for fit.overflows() to read. Verified 560-1440px: 0
+	 * broken names, no table overflow, and the card threshold unchanged. */
+	#packages:not(.fs-stacked) .tr > .td:first-child { white-space: nowrap; }
+
+	#packages.fs-stacked .tr:not(.cbi-section-table-titles):not(.cbi-section-table-descr) {
+		display: block; padding: var(--fs-space-3) var(--fs-space-4);
+	}
+	/* ---- the value is not ONE flex item, and space-between tore it apart ----
+	 *
+	 * A card row is label-left / value-right, which was `justify-content: space-between` over the
+	 * ::before and the cell's content. But flex makes every ELEMENT its own item, and the filter
+	 * on this page wraps each match in `<ins>`: `<ins>luc</ins>i-app-acl` is TWO items, so
+	 * space-between pushed them to opposite edges and the package name read as `luc` … 85px …
+	 * `i-app-acl` (measured at 390px, filter "luc": gaps of 110/85/77/69px mid-word). The `gap`
+	 * added 14px between them on top.
+	 *
+	 * So do not distribute the free space BETWEEN the items — hand it all to the label: everything
+	 * else then packs flush right in DOM order, however many elements the value happens to be. */
+	#packages.fs-stacked .td {
+		display: flex; align-items: baseline; justify-content: flex-end;
+		gap: 0; padding: var(--fs-space-1) 0; border: 0; text-align: end;
+		/* `min-width: 0` and `width: auto` are not restated: theme/30-tables.css sets both on
+		 * `.table.fs-stacked .td`, which this table is one of, and switching them off here moved
+		 * nothing across 500 matching cells. `text-align: end` above IS this file's own — it
+		 * overrides that rule's `start`. */
+		flex: none;
+	}
+	/* An auto inline-end margin is what replaces space-between: it eats the whole free line, so the
+	 * value packs flush against the far edge as one unbroken run. The inline-end padding keeps a gutter when the row is
+	 * full and the auto margin collapses to nothing (the `gap` used to do that, but a gap applies
+	 * between EVERY pair of items — including the two halves of a highlighted name). */
+	#packages.fs-stacked .td[data-title]::before {
+		content: attr(data-title); flex: 0 0 auto; text-align: start; margin-bottom: 0;
+		margin-inline-end: auto; padding-inline-end: var(--fs-space-3-5);
+		font-size: var(--fs-type-xs); font-weight: var(--fs-eyebrow-weight); letter-spacing: var(--fs-eyebrow-tracking);
+		text-transform: uppercase; color: var(--fs-eyebrow-color); white-space: nowrap;
+	}
+	/* Column 4 = Description. NOT `[data-title="Description"]`: LuCI builds this table's cells from
+	 * the heading's innerText, and theme/30-tables.css uppercases `.th` — so the attribute really
+	 * says "DESCRIPTION" and the old literal matched ZERO elements on every router, in every
+	 * language (measured). The theme's own CSS was rewriting the string the theme's own CSS keyed
+	 * off. Columns: 1 Package name | 2 Version | 3 Size | 4 Description | 5 actions. */
+	/* `overflow-wrap` dropped: base/40-tables.css breaks every cell now and this copy moved nothing
+	 * against 100 matching cells. `word-break` stays — switching IT off moved all 100. */
+	#packages.fs-stacked .td:nth-child(4) { display: block; text-align: start; word-break: break-word; }
+	#packages.fs-stacked .td:nth-child(4)::before { display: block; margin-bottom: var(--fs-space-1); }
+	#packages.fs-stacked .td.cbi-section-actions { justify-content: flex-end; margin-top: var(--fs-space-1-5); }
+	#packages.fs-stacked .td.cbi-section-actions::before,
+	#packages.fs-stacked .td:not([data-title])::before { content: none; }
+	/* The "Disk space:" caption. Keyed on WHAT IT SITS BESIDE, not on `#disk-space-label` — that id
+	 * is 25.12+ only (`E('label',{'id':'disk-space-label'}, …)`; 24.10's package-manager.js emits a
+	 * bare `E('label',{}, …)`), so the id rule was dead on 24.10 and the caption kept base's
+	 * 250px-wide label instead of this line. Exactly the trap the note at the top of this file and
+	 * theme/90-responsive.css both warn about — and it was still here, in the rule the note is
+	 * about. The disk section is the only `label` immediately followed by a `.cbi-progressbar`,
+	 * which is the discriminator 90-responsive.css already uses for the same element.
+	 *
+	 * NOT `:has(:where(+ .cbi-progressbar))`: a leading combinator makes it a RELATIVE selector, and
+	 * only `:has()` itself accepts one — `:where()` takes a plain complex-selector list, so wrapping
+	 * it there makes the whole rule invalid and the browser drops it. stylelint parsed that happily
+	 * and `css-metrics` measured it happily; what caught it was reading the computed `display` back
+	 * off the router (still `inline`, on both releases). */
+	body[data-page="admin-system-package-manager"] #view label:has(+ .cbi-progressbar) {
+		display: block; margin: 0; font-size: var(--fs-type); font-weight: var(--fs-weight); color: var(--fs-dim);
+	}
+}

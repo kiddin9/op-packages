@@ -1,0 +1,137 @@
+@layer theme {
+	/* ==================================================================
+	 * Tab strips — one component, four entry points. LuCI emits a strip under four selectors
+	 * with no markup difference worth honouring:
+	 *   #tabmenu ul.tabs      page tabs, rendered into the server shell
+	 *   ul.cbi-tabmenu.mode   mode switcher (Available / Installed / Updates)
+	 *   .tabs                 view tabs (Routing -> IPv4 / IPv6)
+	 *   .cbi-tabmenu          CBI form tabs (System -> General / Logging / …)
+	 * They agree on everything except the active marker: `.active` for `ul.tabs`, `.cbi-tab`
+	 * for every `.cbi-tabmenu` flavour. All four render as pills in a card.
+	 * ================================================================== */
+	#tabmenu { margin-bottom: 0; }
+
+	/* the card */
+	#tabmenu ul.tabs,
+	ul.cbi-tabmenu.mode,
+	.tabs,
+	.cbi-tabmenu {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--fs-space-1);
+		list-style: none;
+		margin: 0 0 var(--fs-card-gap);
+		padding: var(--fs-space-2);
+		background: var(--fs-panel);
+		border: 1px solid var(--fs-border);
+		border-radius: var(--fs-radius-lg);
+		box-shadow: var(--fs-shadow);
+		/* kills a folder-tab baseline gradient (the 1px x 29px background image the strip
+		 * conventionally carries) by zeroing its size rather than restating it — base's copy is
+		 * absorbed, but any gradient a view or third-party app sets is sized away too */
+		background-size: 0 0;
+	}
+
+	/* a strip nested inside a .cbi-section card -> soft inset row, no frame (a card inside a
+	 * card reads as a bug) */
+	.cbi-section .tabs,
+	.cbi-section .cbi-tabmenu:not(.mode):not(.map) {
+		background: var(--fs-panel2);
+		padding: var(--fs-space-1-5);
+		box-shadow: none;
+	}
+
+	#tabmenu ul.tabs > li,
+	ul.cbi-tabmenu.mode > li,
+	.tabs > li,
+	.cbi-tabmenu > li {
+		height: auto; max-width: none;
+		margin: 0; padding: 0;
+		border: 0; background: none;
+		border-radius: var(--fs-radius);
+		color: var(--fs-dim);
+	}
+
+	#tabmenu ul.tabs > li > a,
+	ul.cbi-tabmenu.mode > li > a,
+	.tabs > li > a,
+	.cbi-tabmenu > li > a {
+		display: block;
+		margin: 0;
+		padding: var(--fs-space-2) var(--fs-space-3-5);
+		border: 0;
+		border-radius: var(--fs-radius);
+		line-height: 1.3;
+		font-size: var(--fs-type);
+		font-weight: var(--fs-weight);
+		color: var(--fs-dim);
+		transition: background var(--fs-dur), color var(--fs-dur);
+	}
+
+	#tabmenu ul.tabs > li > a:hover,
+	ul.cbi-tabmenu.mode > li > a:hover,
+	.tabs > li > a:hover,
+	.cbi-tabmenu > li > a:hover {
+		background: var(--fs-accent-soft);
+		color: var(--fs-text);
+	}
+
+	/* active pill */
+	#tabmenu ul.tabs > li.active,
+	ul.cbi-tabmenu.mode > li.cbi-tab,
+	.tabs > li.active,
+	.cbi-tabmenu > li.cbi-tab {
+		color: var(--fs-on-accent);
+	}
+	#tabmenu ul.tabs > li.active > a,
+	ul.cbi-tabmenu.mode > li.cbi-tab > a,
+	.tabs > li.active > a,
+	.cbi-tabmenu > li.cbi-tab > a {
+		background: var(--fs-accent);
+		color: var(--fs-on-accent);
+		font-weight: var(--fs-weight-bold);
+	}
+
+	/* ---- keyboard focus: a ring that survives the ACTIVE pill ----
+	 *
+	 * base/50-chrome.css drew it as `outline: 2px solid var(--fs-accent)` inset by -2px, which is
+	 * invisible on exactly the tab most likely to be focused: the active pill's own background IS
+	 * --fs-accent (rule above; measured on the router, both are rgb(86,157,245)). Tabbing across a
+	 * strip, the ring vanished the moment it reached the current page's tab.
+	 *
+	 * ONE rule now, and the token is --fs-focus-ring-solo for both states: a tab flips nothing else
+	 * on focus, so the ring IS the indicator, and the tinted --fs-focus-ring measures 1.15-1.29:1
+	 * against the strip — the first version of this fix took it for the inactive pill and swapped
+	 * one invisible indicator for another. -solo's 2px surface gap is also what lets the same
+	 * value serve the ACTIVE pill, whose background is the accent the ring is drawn in.
+	 * box-shadow, not outline, because the strip clips (which is why the outline was inset in the
+	 * first place) and a shadow is not clipped by the scroll container. */
+	#tabmenu ul.tabs > li > a:focus-visible,
+	ul.cbi-tabmenu.mode > li > a:focus-visible,
+	.tabs > li > a:focus-visible,
+	.cbi-tabmenu > li > a:focus-visible {
+		outline: none;
+		box-shadow: var(--fs-focus-ring-solo);
+	}
+
+	/* Density steps for a crowded strip: fs-chrome.js (fitTabStrips) MEASURES whether the tabs
+	 * wrap to a second row and, if so, adds .fs-dense1 then .fs-dense2. Padding is trimmed
+	 * hard first (9/14 -> 5/9 -> 3/7), the font only at the d2 floor (13 -> 12) and the gap
+	 * only there (4 -> 3), so a pill never gets tighter than its label; past the floor the
+	 * strip may wrap. The id in the first selector matches the #tabmenu rule's specificity. */
+	#tabmenu ul.tabs.fs-dense1 > li > a,
+	.tabs.fs-dense1 > li > a,
+	.cbi-tabmenu.fs-dense1 > li > a { padding: var(--fs-space-1) var(--fs-space-2); }
+
+	#tabmenu ul.tabs.fs-dense2,
+	.tabs.fs-dense2,
+	.cbi-tabmenu.fs-dense2 { gap: var(--fs-space-1); }
+	#tabmenu ul.tabs.fs-dense2 > li > a,
+	.tabs.fs-dense2 > li > a,
+	.cbi-tabmenu.fs-dense2 > li > a { padding: var(--fs-space-1) var(--fs-space-2); font-size: var(--fs-type); }
+
+	/* map-level tabs keep the body font size instead of base's 16.5px/bold */
+	.cbi-tabmenu.map > li { font-size: var(--fs-type); font-weight: var(--fs-weight); }
+	/* the little "n errors" badge on a tab */
+	.cbi-tab-disabled[data-errors]::after { background: var(--fs-danger); }
+}

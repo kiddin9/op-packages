@@ -1,0 +1,436 @@
+@layer tokens {
+	/* ============================================================
+	 * COLOURWAYS (palettes)
+	 *
+	 * Every colour is a variable; every palette is one self-contained block per mode. Three ship
+	 * — footstrap (GitHub Primer, the default), hicontrast and bootstrap (the stock LuCI theme's
+	 * colours) — but the structure is the point: a new colourway is copy-one-pair-and-recolour.
+	 *
+	 * TO ADD A COLOURWAY "sunset":
+	 *   1. Copy the two hicontrast blocks below, rename data-palette to "sunset".
+	 *   2. Set every colour. FIVE are declared as -base with the live token derived from them,
+	 *      so the colour axes can recolour them with no second copy to keep in sync: the canvas
+	 *      --fs-bg-base → --fs-bg (TINT block), the accent --fs-accent-base → --fs-accent and
+	 *      the three status colours --fs-good-base / --fs-warn-base / --fs-danger-base (COLOUR
+	 *      AXES block). A palette never declares --fs-good itself.
+	 *   3. Set the four INKS (--fs-on-accent/-good/-warn/-danger) — see below.
+	 *   4. Register the name in all four places, because each one fails DIFFERENTLY and quietly:
+	 *      the PALETTE axis in fs-prefs.js (live switching), the `_sd_pal` whitelist AND the
+	 *      pre-paint switch in partials/head.ut (a router default outside the whitelist becomes
+	 *      '' and the page paints in the default palette), the label map in fs-appearance.js (an
+	 *      unnamed palette is missing from the picker, not broken), and matrix() in
+	 *      tools/lib/gallery.mjs — a palette absent there is one export-tier.mjs and
+	 *      a11y-gallery.mjs never measure, so it ships ungated.
+	 * Nothing else — layout, components and the --*-color-* export bridge (02-tokens) key off
+	 * these tokens, and every tint/shadow/hairline is a color-mix() OVER them.
+	 *
+	 * THE INKS ARE PER PALETTE AND PER MODE, and that is not a style choice. A single global
+	 * `--fs-on-accent: #fff` used to sit on every accent/good/warn/danger fill (solid buttons,
+	 * the active tab pill, the toggle knob, .fs-seg, the login submit). White holds up on the
+	 * DARK fills of a LIGHT palette and nowhere else: on footstrap dark it measured 2.83–3.70:1
+	 * and on hicontrast dark --fs-good 1.69:1, where WCAG AA wants 4.5:1 for text and 3:1 for a
+	 * UI shape like the toggle knob. A dark palette has LIGHT fills, so its ink must be DARK.
+	 * Check a new colourway's inks against all four of its own fills: every pair below clears
+	 * 4.5:1.
+	 *
+	 * A tint of X is mixed FROM X — do not reintroduce a component copy of a colour in any
+	 * notation (both bridges, --*-hsl then --*-rgb, are gone; foot of 02-tokens.css).
+	 *
+	 * Default: footstrap fills bare :root (no data-palette), so a no-JS load still has
+	 * colours; every other colourway is opt-in via its own data-palette value. Specificity:
+	 * :root[data-palette=…][data-darkmode=…] (0,3,0) beats the bare/default blocks, and each
+	 * block sets a COMPLETE token set so the winner fully applies.
+	 * ============================================================ */
+
+	/* Native <select> closed-control chevron (theme/60-inputs.css). A data-URI cannot
+	 * reference var() or currentColor, so each palette block bakes its own --fs-dim into
+	 * the stroke — the only way the glyph can follow palette and mode. */
+
+	/* ============================================================
+	 * BACKGROUND TINT — "which router am I on?"
+	 *
+	 * One hue (Appearance → Tint, 0–360°, localStorage `fs-tint`, pre-painted by
+	 * partials/head.ut) washed into the CANVAS — --fs-bg, the surface the cards float on — so
+	 * a whole LuCI install reads as green / violet / amber at a glance. localStorage is keyed
+	 * by ORIGIN, so the cue is per router with nothing server-side: the same browser shows the
+	 * main router green and the AP violet, and a screenshot pasted into a ticket says which
+	 * box it came from. Off (no data-tint) = the palette exactly as it was.
+	 *
+	 * NOTHING ELSE MOVES: the cards, the chrome and the semantic colours keep the palette's
+	 * own values. An identity cue has no business restating itself on every table row, and
+	 * re-hueing the status colours would make it lie about status.
+	 *
+	 * WHY --fs-bg-base EXISTS: a custom property cannot be defined from itself — `--fs-bg:
+	 * color-mix(…, var(--fs-bg), …)` is a cycle, invalid at computed-value time, and would
+	 * drop the colour silently. So a palette names the RAW canvas, this block owns the one
+	 * derivation, and every rule goes on reading --fs-bg.
+	 *
+	 * WHY IT SETS CHROMA + HUE INSTEAD OF MIXING A COLOUR IN. The obvious `color-mix(in oklch,
+	 * var(--fs-bg-base) 96%, <tint>)` is a trap: in a POLAR space the result's HUE lands on
+	 * the tint's almost immediately, so the percentage never controlled the strength. Measured
+	 * on the dark canvas (28,33,40), a "2%" mix at hue 165 gave 25,36,31 — fully green — and
+	 * "6%" gave 23,36,31, the same colour: turning the knob down changed nothing, exactly as
+	 * users reported. Light mode failed the other way — the mix left sRGB and clipped, so the
+	 * tint was invisible on blue hues and obvious on green ones, i.e. the cue's strength
+	 * depended on WHICH colour you picked. So instead: give the canvas the user's hue at a
+	 * chroma we choose, leave its LIGHTNESS alone (one relative-colour declaration).
+	 *   ONE HONEST KNOB   --fs-tint-c is the strength, in chroma, and behaves the same on
+	 *                     every hue — no gamut clipping at these values, no hue surprise.
+	 *   CONTRAST IS FREE  `l` is copied through, so AA margins barely move. The mix dragged
+	 *                     lightness toward the anchor: an early attempt cost
+	 *                     --primary-color-high on --fs-bg its whole margin in hicontrast
+	 *                     light, 4.61:1 down to 4.40:1 — under AA.
+	 *
+	 * Proven, not assumed: tools/export-tier.mjs runs the AA matrix over six hues × both modes
+	 * × every palette (it caught that 4.40:1) and tools/a11y-gallery.mjs runs axe over the
+	 * tinted gallery at two extreme hues. Change --fs-tint-c and re-run both.
+	 *
+	 * The shipped chroma is deliberately tiny — the dark floor (.011) is below the chroma the
+	 * dark canvas already carries (.0153). This is an IDENTITY cue, not a colourway: a large
+	 * flat field is where the eye is most sensitive to a cast, so a tint this faint still
+	 * tells two routers apart while the page still looks like the theme you chose. Loud is a
+	 * different feature and belongs in a palette, where the cards and chrome can move too.
+	 * ============================================================ */
+	:root {
+		--fs-bg: var(--fs-bg-base);
+		/* The UI accent, derived from the palette's own -base hex — so the accent-hue axis
+		 * (below) can rotate it without a second copy to keep in sync. Absent an accent hue,
+		 * --fs-accent IS the palette's -base value.
+		 *
+		 * There used to be a second pair here, --fs-accent-lt / --fs-accent-lt-base, described
+		 * as "the logo gradient's light end" and rotated beside the accent. The brand mark has
+		 * no gradient: partials/brand.ut draws the OpenWrt arcs with a baked #00b5e2 and one
+		 * mode-flipped ring, so nothing read either token — the pair was defined in both
+		 * palettes, rotated through an oklch(from …) on every accent hue, and listed as a step
+		 * in "TO ADD A COLOURWAY" above, all to paint nothing. Removed rather than left as a
+		 * reserved name, because a comment promising that the accent hue moves the logo is
+		 * worse than no comment: it describes behaviour a reader can verify is absent. */
+		--fs-accent: var(--fs-accent-base);
+		/* The three STATUS colours, derived from the palette's -base hex for exactly the reason
+		 * the accent is: Appearance → Colours gives each one its own axis, and an axis that
+		 * rotated a token the palettes declared directly would need a second copy of every value
+		 * to rotate FROM. Absent an axis, each --fs-good IS the palette's -base value, so a
+		 * palette that sets only the -base half paints identically to before the axes existed. */
+		/* The SURFACES, split the same way and for the same reason as the accent: Appearance →
+		 * Surfaces rewrites the -base half, and a custom property defined through itself is a cycle
+		 * that drops the colour silently. A palette declares the raw value; every rule reads the
+		 * derived one.
+		 *
+		 * A Transparency slider lived here briefly, mixing each of these with `transparent` so the
+		 * wallpaper showed through the cards. It is gone: thinning the surface thins the TEXT's
+		 * background out from under it, so every card became a legibility problem at exactly the
+		 * setting that looked interesting, and the contrast readouts on the page could not even
+		 * report it — a ratio against a semi-transparent backdrop is a ratio against whatever
+		 * happens to be behind that pixel. The wallpaper axis is the honest way to have a picture. */
+		--fs-panel: var(--fs-panel-base);
+		--fs-panel2: var(--fs-panel2-base);
+		--fs-border: var(--fs-border-base);
+		--fs-good: var(--fs-good-base);
+		--fs-warn: var(--fs-warn-base);
+		--fs-danger: var(--fs-danger-base);
+		/* The hues the user picked, in degrees (Appearance → Colours). Declared here, not only
+		 * inline by head.ut/fs-prefs.js, so the stylesheet stands on its own: a var() with no
+		 * definition anywhere is invalid at computed-value time and takes the whole declaration
+		 * down SILENTLY. Their values are irrelevant while the matching data-* is absent. */
+		--fs-accent-h: 0;
+		--fs-tint-h: 0;
+		--fs-good-h: 0;
+		--fs-warn-h: 0;
+		--fs-danger-h: 0;
+		/* Tint DENSITY (Appearance → Density), a multiplier on the tint chroma below: 1 = the designed
+		 * strength, 0 = none, up to 2. fs-prefs.js/head.ut set it inline (value/100) when the user
+		 * drags the slider; paired with the hue, it is the second half of the router-identity Tint. */
+		--fs-tint-strength: 1;
+		/* The uploaded login/page background (Appearance → Background image). --fs-login-bg-url is
+		 * the url() head.ut/fs-prefs.js stamp inline; `none` here is the same stand-on-its-own
+		 * default the hues carry above (a var() with no definition is invalid at computed-value
+		 * time). --fs-photo-scrim is the wash laid OVER the photo so on-canvas text stays legible on
+		 * an arbitrary image: derived from --fs-bg, so it follows the palette, the mode AND the tint,
+		 * and its opacity bounds the effective canvas contrast regardless of what the photo is. Both
+		 * are inert until data-login-bg is present (16-login-bg.css). */
+		--fs-login-bg-url: none;
+		/* --fs-photo-dim is the scrim OPACITY over a File photo (Wallpaper → File → Dim), a
+		 * per-browser axis like the rest; head.ut/fs-prefs.js override it inline. The scrim is mixed from --fs-bg-BASE,
+		 * NOT --fs-bg, so it is always NEUTRAL — the router-identity Tint colours --fs-bg and must
+		 * never leak onto a photo; the Tint's Density is a separate control. */
+		--fs-photo-dim: 74%;
+		--fs-photo-scrim: color-mix(in srgb, var(--fs-bg-base) var(--fs-photo-dim), transparent);
+		/* The uploaded PATTERN (Appearance → Wallpaper → Pattern), tiled behind the content by
+		 * 15-wallpaper.css. --fs-pattern-url is the url() head.ut/fs-prefs.js stamp inline and is
+		 * `none` here for the same reason --fs-login-bg-url is: nothing is uploaded yet, and a var()
+		 * with no definition at all is invalid at computed-value time. The other two are ordinary
+		 * per-browser axes the same two places override inline — the tile's edge length and the
+		 * layer's opacity. .2 is where a neutral line reads as a drawing rather than as texture:
+		 * measured on a tinted canvas, .15 was swallowed by the hue. */
+		--fs-pattern-url: none;
+		--fs-pattern-size: 440px;
+		--fs-pattern-strength: .2;
+		/* HOW STRONG THE CUE IS — a chroma, and a function of the HUE, because the canvas is
+		 * not neutral: every palette's canvas is a blue-grey (measured: oklch hue 248–264)
+		 * and the dark one carries chroma .0153 of it. A flat chroma made the blue/violet end
+		 * of the wheel INVISIBLE — asking for blue at .011 painted the canvas *less* blue
+		 * than the palette already was. The cue is read against the untinted page, not against
+		 * grey, so it must out-chroma the canvas's own cast where the two agree. Hence a floor
+		 * plus two cos() terms, each peaking on one hue and gone 90° away:
+		 *
+		 *   +BOOST at 258°  the canvas's own hue; without it blue and violet did nothing.
+		 *   -DAMP  at 55°   red-through-yellow, which the eye picks up first: at a shared
+		 *                   floor the warm half shouted while the cold half whispered, and a
+		 *                   cue is only usable if every hue lands with about the same weight.
+		 *                   (Dark only — on a near-white canvas warm is the quietest hue there
+		 *                   is.)
+		 *
+		 * One expression per mode, no per-hue table to keep in sync with the palettes. LIGHT
+		 * runs the HIGHER floor, which sounds backwards until you look at the surface:
+		 * near-white has almost no chroma of its own (.0034), so the tint is the only colour
+		 * there and 8 thousandths of it simply did not read. */
+		--fs-tint-c: calc((.016 + .012 * max(0, cos((var(--fs-tint-h) - 258) * 1deg))) * var(--fs-tint-strength));
+	}
+	:root[data-darkmode="true"] {
+		--fs-tint-c: calc((.011 + .016 * max(0, cos((var(--fs-tint-h) - 258) * 1deg))
+			- .004 * max(0, cos((var(--fs-tint-h) - 55) * 1deg))) * var(--fs-tint-strength));
+	}
+	:root[data-tint="hue"] { --fs-bg: oklch(from var(--fs-bg-base) l var(--fs-tint-c) var(--fs-tint-h)); }
+
+	/* ============================================================
+	 * THE COLOUR AXES — five colours, two ways to set each
+	 *
+	 * Accent, Tint, Good, Warn and Danger are one axis pointed at five tokens (fs-prefs.js's
+	 * colorAxis). Each is OFF (no attribute = the palette exactly as it shipped) or set one of
+	 * two ways, which is what the attribute's VALUE says:
+	 *
+	 *   data-x="hue"   the slider — oklch(from <the palette's own> l c H). Lightness and chroma
+	 *                  are the palette's, so every contrast margin the palette was measured at
+	 *                  survives the rotation and the ink does NOT need recomputing.
+	 *   data-x="hex"   the colour field — the user's colour EXACTLY, stamped inline on :root by
+	 *                  head.ut/fs-prefs.js. An inline custom property outranks every layer, so
+	 *                  the declaration is not repeated here; what IS here is the consequence.
+	 *
+	 * WHY THE INK IS DERIVED, AND ONLY IN HEX MODE. --fs-on-accent is the ink ON the accent
+	 * fill — a solid button's label, the toggle knob, the active tab pill. The palettes pick it
+	 * per mode against fills they were measured against (white over footstrap light's #0969da is
+	 * 5.19:1; over the dark palette's light fills white collapses to 2.85:1, hence #10151c
+	 * there). A user-entered colour is measured against nothing, so keeping the palette's ink
+	 * would put white on #ffd400 — 1.2:1, an unreadable button, on the one control whose whole
+	 * job is to be pressed.
+	 *
+	 * So in hex mode the ink follows the LIGHTNESS of whatever was entered:
+	 * `oklch(from <fill> clamp(0, (l - .62) * -100, 1) 0 0)` is black above L .62 and white
+	 * below it, chroma zeroed so it is a neutral either way. The multiplier only has to be big
+	 * enough to saturate the clamp — there is deliberately no ramp between the two, because a
+	 * mid-grey ink is the one answer that fails against both.
+	 *
+	 * L .62 is where black and white cross over in sRGB (a mid grey is ~4.6:1 against each), so
+	 * the worse of the two is never much under AA and the better is far over it. It is derived
+	 * from the fill rather than picked per palette on purpose: an axis is set per BROWSER and
+	 * composes with either palette and either mode, so there is no block a per-palette answer
+	 * could live in.
+	 *
+	 * Tint has no ink row: it colours the CANVAS, whose text is --fs-text, a palette token this
+	 * axis must not move. That is also why the Appearance page reports the contrast a custom
+	 * canvas lands at instead of quietly correcting it.
+	 * ============================================================ */
+	:root[data-accent="hue"] { --fs-accent: oklch(from var(--fs-accent-base) l c var(--fs-accent-h)); }
+	:root[data-good="hue"]   { --fs-good:   oklch(from var(--fs-good-base)   l c var(--fs-good-h)); }
+	:root[data-warn="hue"]   { --fs-warn:   oklch(from var(--fs-warn-base)   l c var(--fs-warn-h)); }
+	:root[data-danger="hue"] { --fs-danger: oklch(from var(--fs-danger-base) l c var(--fs-danger-h)); }
+
+	/* The attribute is REPEATED to win on specificity, and that is load-bearing rather than a tic.
+	 * A palette's dark block is `:root[data-darkmode="true"]` — also (0,2,0) — and it declares the
+	 * ink too; at equal specificity the later rule wins, and the palettes are later in this file. So
+	 * the single-attribute form silently lost in DARK MODE ONLY: measured on the router, a grey
+	 * #4b5563 accent kept the dark palette's near-black ink (rgb(16,21,28) on rgb(75,85,99), 1.9:1)
+	 * while light mode correctly derived white. Repeating the attribute makes it (0,3,0) and the
+	 * rule wins on specificity in both modes — never on source order, which is the house rule
+	 * precisely because moving a block down the file is a fix that the next edit undoes. */
+	:root[data-accent="hex"][data-accent] { --fs-on-accent: oklch(from var(--fs-accent) clamp(0, (l - .62) * -100, 1) 0 0); }
+	:root[data-good="hex"][data-good]     { --fs-on-good:   oklch(from var(--fs-good)   clamp(0, (l - .62) * -100, 1) 0 0); }
+	:root[data-warn="hex"][data-warn]     { --fs-on-warn:   oklch(from var(--fs-warn)   clamp(0, (l - .62) * -100, 1) 0 0); }
+	:root[data-danger="hex"][data-danger] { --fs-on-danger: oklch(from var(--fs-danger) clamp(0, (l - .62) * -100, 1) 0 0); }
+
+	/* ---- footstrap — GitHub Primer (DEFAULT, also fills bare :root) ---- */
+	:root,
+	:root[data-palette="footstrap"] {
+		/* LIGHT */
+		--fs-bg-base: #f6f8fa;
+		--fs-panel-base: #ffffff;
+		--fs-panel2-base: #f6f8fa;
+		--fs-border-base: #d0d7de;
+		--fs-text: #1f2328;
+		--fs-dim: #656d76;
+		--fs-faint: #68727e;
+		--fs-select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%23656d76" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
+		--fs-accent-base: #0969da;
+		/* a tint OF --fs-accent, so mixed FROM it. It used to restate the accent's RGB as a
+		 * literal, which goes stale silently the moment the accent is recoloured (or the
+		 * accent-hue axis rotates it) — the failure that killed the *-rgb bridge. */
+		--fs-accent-soft: color-mix(in srgb, var(--fs-accent) 10%, transparent);
+		--fs-track: #eaeef2;
+		--fs-good-base: #197c36;
+		--fs-warn-base: #946300;
+		--fs-danger-base: #cf222e;
+		/* ink ON the fills above — white clears AA on all four: 5.19/5.08/4.87/5.36 */
+		--fs-on-accent: #fff;
+		--fs-on-good: #fff;
+		--fs-on-warn: #fff;
+		--fs-on-danger: #fff;
+	}
+	:root[data-darkmode="true"],
+	:root[data-palette="footstrap"][data-darkmode="true"] {
+		/* DARK (dimmed) */
+		--fs-bg-base: #1c2128;
+		--fs-panel-base: #22272e;
+		--fs-panel2-base: #2d333b;
+		--fs-border-base: #444c56;
+		--fs-text: #adbac7;
+		--fs-dim: #8f9cab;
+		--fs-faint: #959ca5;
+		--fs-select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%238c99a8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
+		--fs-accent-base: #569df5;
+		--fs-accent-soft: color-mix(in srgb, var(--fs-accent) 15%, transparent);
+		--fs-track: #373e47;
+		--fs-good-base: #5aad5d;
+		--fs-warn-base: #c79128;
+		--fs-danger-base: #ea7a74;
+		/* dark ink: these fills are LIGHT. White measured 2.85/2.85/2.83/3.70 — a fail on
+		 * all four. #10151c (a shade of --fs-bg) gives 6.43/6.44/6.47/4.95. */
+		--fs-on-accent: #10151c;
+		--fs-on-good: #10151c;
+		--fs-on-warn: #10151c;
+		--fs-on-danger: #10151c;
+	}
+
+	/* ---- hicontrast — deeper, more saturated (opt-in) ---- */
+	:root[data-palette="hicontrast"] {
+		/* LIGHT
+		 * The accent/good/warn/danger below used to be BRIGHTER than the default palette's,
+		 * which made the palette named "hicontrast" the lower-contrast one: --fs-good
+		 * #17b978 as a label on --fs-panel measured 2.55:1 against the default's 5.08:1.
+		 * These four serve both as text on --fs-panel (status labels, outline buttons, port
+		 * speeds) and as fills under white ink, and both uses want the same thing — ≥4.5:1
+		 * against white — so darkening fixes both at once. Now 5.22/5.35/5.93/5.80, i.e.
+		 * genuinely above the default palette, which is what the name promises. */
+		--fs-bg-base: #eef1f6;
+		--fs-panel-base: #ffffff;
+		--fs-panel2-base: #f6f8fb;
+		--fs-border-base: #e4e9f1;
+		--fs-text: #101725;
+		--fs-dim: #5b6675;
+		--fs-faint: #69727f;
+		--fs-select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%235b6675" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
+		--fs-accent-base: #0b6fbd;
+		--fs-accent-soft: color-mix(in srgb, var(--fs-accent) 10%, transparent);
+		--fs-track: #eaeef4;
+		--fs-good-base: #0f7a52;
+		--fs-warn-base: #8a5a00;
+		--fs-danger-base: #c02b2b;
+		/* white on the fills above: 5.22/5.35/5.93/5.80 */
+		--fs-on-accent: #fff;
+		--fs-on-good: #fff;
+		--fs-on-warn: #fff;
+		--fs-on-danger: #fff;
+	}
+	:root[data-palette="hicontrast"][data-darkmode="true"] {
+		/* DARK */
+		--fs-bg-base: #0a0d13;
+		--fs-panel-base: #111620;
+		--fs-panel2-base: #161c28;
+		--fs-border-base: #232b3a;
+		--fs-text: #e8edf5;
+		--fs-dim: #9ba6b8;
+		--fs-faint: #8f9aad;
+		--fs-select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%239ba6b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
+		--fs-accent-base: #3ba7ff;
+		--fs-accent-soft: color-mix(in srgb, var(--fs-accent) 14%, transparent);
+		--fs-track: #1b2230;
+		--fs-good-base: #43e0a0;
+		--fs-warn-base: #ffb454;
+		--fs-danger-base: #ff6b6b;
+		/* dark ink: white on these neons was 2.57/1.69/1.76/2.78 — a white label on --fs-good
+		 * was unreadable. #0a0d13 (= --fs-bg-base) gives 7.55/11.49/11.03/7.01. */
+		--fs-on-accent: #0a0d13;
+		--fs-on-good: #0a0d13;
+		--fs-on-warn: #0a0d13;
+		--fs-on-danger: #0a0d13;
+	}
+
+	/* ---- classic — the colours of luci-theme-bootstrap, the LuCI default (opt-in) ----
+	 *
+	 * The one palette named after another PACKAGE, because that is what it is: the surfaces,
+	 * greys and semantic colours of the stock theme, so an admin who wants the look they already
+	 * know keeps it and still gets the chrome, the client navigation and the Appearance axes.
+	 *
+	 * Bootstrap computes everything from HSL axes; these are those axes evaluated:
+	 *   --background-color high/medium/low  #ffffff / #f9f9f9 / #f5f5f5   (dark #222 / #282828 / #2c2c2c)
+	 *   --text-color high/medium            #404040 / #808080            (dark #bfbfbf / #7f7f7f)
+	 *   --border-color high/medium          #cccccc / #dddddd            (dark #555555 / #444444)
+	 * The canvas and the card are BOTH --background-color-high: bootstrap is flat and lets the
+	 * border carry the structure, so copying its surfaces means copying that too. panel2 is its
+	 * --background-color-low, the surface it stripes tables and hovers rows with.
+	 *
+	 * WHERE THIS DEVIATES, AND WHY IT HAS TO. Bootstrap's semantic colours do not clear AA on
+	 * bootstrap's own surfaces, and tools/export-tier.mjs holds every palette to 4.5:1 on all
+	 * three — the export tier is what other people's apps print text in. Measured on --fs-panel2:
+	 * success #00ac59 2.73:1, warn #efbd0b 1.61:1, error #f62b12 3.65:1, primary #1976d2 4.22:1;
+	 * dark error #d15653 3.44:1, success #00a66c 4.44:1. So each one is taken from the STEP OF
+	 * BOOTSTRAP'S OWN RAMP that clears it where such a step exists — primary/success/error light
+	 * are its -medium/-low values verbatim — and where none does, the hue and saturation are kept
+	 * and only the value is moved until the colour clears 4.95:1. Warn is the only large move:
+	 * no yellow readable as text on white is still that yellow, which is the same trade the
+	 * default palette made (#946300).
+	 *
+	 * Bootstrap's dark HEADER GRADIENT (#333 → #222, in both modes) is not here: the chrome reads
+	 * --fs-panel, so a palette cannot give the bar its own colour. That would need a chrome token
+	 * pair, which is a change to the chrome, not a colourway. */
+	:root[data-palette="bootstrap"] {
+		/* LIGHT */
+		--fs-bg-base: #ffffff;
+		--fs-panel-base: #ffffff;
+		--fs-panel2-base: #f5f5f5;
+		--fs-border-base: #cccccc;
+		--fs-text: #404040;
+		--fs-dim: #6a6a6a;
+		--fs-faint: #6e6e6e;
+		--fs-select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%236a6a6a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
+		/* --primary-color-medium; -high (#1976d2) measured 4.22:1 on --fs-panel2 */
+		--fs-accent-base: #1564c0;
+		--fs-accent-soft: color-mix(in srgb, var(--fs-accent) 10%, transparent);
+		--fs-track: #eeeeee;
+		--fs-good-base: #007936;   /* --success-color-low */
+		--fs-warn-base: #826706;   /* #efbd0b darkened; 1.61:1 as text is not a rounding error */
+		--fs-danger-base: #d00000; /* --error-color-low */
+		/* ink ON the fills above — white clears AA on all four: 5.81/5.54/5.40/5.70 */
+		--fs-on-accent: #fff;
+		--fs-on-good: #fff;
+		--fs-on-warn: #fff;
+		--fs-on-danger: #fff;
+	}
+	:root[data-palette="bootstrap"][data-darkmode="true"] {
+		/* DARK */
+		--fs-bg-base: #222222;
+		--fs-panel-base: #282828;
+		/* bootstrap's --background-color-low in dark is #2c2c2c, and that is the one surface value
+		 * copied rather than reproduced: 0.016 from --fs-panel, under the 0.02 export-tier.mjs
+		 * wants, so an app asking --background-color-high/-low for a gradation got one colour
+		 * twice. Bootstrap's LIGHT pair is 0.039 apart and its dark pair is not — the same ramp
+		 * check catches it in the theme this palette is named after. #303030 is 0.031. */
+		--fs-panel2-base: #303030;
+		--fs-border-base: #444444;
+		--fs-text: #bfbfbf;
+		--fs-dim: #9a9a9a;
+		--fs-faint: #969696;
+		--fs-select-chevron: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="%239a9a9a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>');
+		--fs-accent-base: #53a4c2;
+		--fs-accent-soft: color-mix(in srgb, var(--fs-accent) 15%, transparent);
+		--fs-track: #333333;
+		--fs-good-base: #1aaf7b;
+		--fs-warn-base: #aa9968;
+		--fs-danger-base: #dd807e;
+		/* dark ink: these fills are LIGHT, and bootstrap's own --on-*-color in dark is likewise
+		 * its --background-color-high. #222222 gives 5.65/5.65/5.66/5.65. */
+		--fs-on-accent: #222222;
+		--fs-on-good: #222222;
+		--fs-on-warn: #222222;
+		--fs-on-danger: #222222;
+	}
+}
