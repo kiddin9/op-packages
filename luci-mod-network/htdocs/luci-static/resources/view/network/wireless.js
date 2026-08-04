@@ -1214,7 +1214,7 @@ function getAssocListForNetwork(radioNet) {
 	}));
 }
 
-function getCachedAssocListForNetwork(radioNet) {
+function getCachedAssocListForNetwork(radioNet, waitForRefresh) {
 	const key = radioNet.getName();
 
 	if (pendingAssocLists[key] == null) {
@@ -1224,6 +1224,9 @@ function getCachedAssocListForNetwork(radioNet) {
 			delete pendingAssocLists[key];
 		});
 	}
+
+	if (waitForRefresh)
+		return pendingAssocLists[key].then(() => cachedAssocLists[key] || []);
 
 	return Promise.resolve(cachedAssocLists[key] || []);
 }
@@ -4695,8 +4698,14 @@ return view.extend({
 		};
 
 		return m.render().then(L.bind(function(m, nodes) {
+			let initialAssocRefresh = true;
+
 			poll.add(L.bind(function() {
 				const tasks = [ network.getHostHints(), network.getWifiDevices() ];
+				const waitForAssocRefresh = initialAssocRefresh;
+				const iwinfoResolverTask = areQcaRuntimeProbesSuspended()
+					? Promise.resolve()
+					: loadIwinfoResolver(false);
 
 				startIwinfoInfoRefresh();
 
@@ -4734,28 +4743,31 @@ return view.extend({
 						});
 					}, network))
 					.then(L.bind(function(hosts_radios_wifis) {
-						const tasks = [];
-						const section = m?.children?.[0];
+						return iwinfoResolverTask.then(() => {
+							const tasks = [];
+							const section = m?.children?.[0];
 
-						if (section != null) {
-							section.radios = hosts_radios_wifis[1];
-							section.wifis = hosts_radios_wifis[2];
-						}
-
-						hosts_radios_wifis[2].forEach(hrw => tasks.push(getCachedAssocListForNetwork(hrw)) );
-
-						return Promise.all(tasks).then(function(data) {
-							hosts_radios_wifis[3] = [];
-
-							for (let i = 0; i < data.length; i++) {
-								const wifiNetwork = hosts_radios_wifis[2][i];
-								const radioDev = hosts_radios_wifis[1].filter(function(d) { return d.getName() == wifiNetwork.getWifiDeviceName(); })[0];
-
-								for (let dy of data[i])
-									hosts_radios_wifis[3].push(Object.assign({ radio: radioDev, network: wifiNetwork }, dy));
+							if (section != null) {
+								section.radios = hosts_radios_wifis[1];
+								section.wifis = hosts_radios_wifis[2];
 							}
 
-							return hosts_radios_wifis;
+							hosts_radios_wifis[2].forEach(hrw => tasks.push(getCachedAssocListForNetwork(hrw, waitForAssocRefresh)) );
+
+							return Promise.all(tasks).then(function(data) {
+								initialAssocRefresh = false;
+								hosts_radios_wifis[3] = [];
+
+								for (let i = 0; i < data.length; i++) {
+									const wifiNetwork = hosts_radios_wifis[2][i];
+									const radioDev = hosts_radios_wifis[1].filter(function(d) { return d.getName() == wifiNetwork.getWifiDeviceName(); })[0];
+
+									for (let dy of data[i])
+										hosts_radios_wifis[3].push(Object.assign({ radio: radioDev, network: wifiNetwork }, dy));
+								}
+
+								return hosts_radios_wifis;
+							});
 						});
 					}, network))
 					.then(L.bind(function(zones, data) {
