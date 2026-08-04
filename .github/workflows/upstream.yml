@@ -231,7 +231,7 @@ jobs:
         git_clone https://github.com/animegasan/luci-app-alpha-config
         git_clone https://github.com/gofly/openwrt-luci-proto-tinc
         git_clone https://github.com/hzyitc/mnh-openwrt && mvdir mnh-openwrt
-        git_clone https://github.com/eamonxg/luci-theme-aurora
+        git_clone https://github.com/VizzleTF/luci-theme-footstrap footstrap && mv footstrap/luci-theme-footstrap ./ && rm -rf footstrap
         ) &
         (
         git_clone https://github.com/kenzok8/openwrt-daede && mv -f openwrt-daede/*dae* ./;rm -rf openwrt-daede
