@@ -21,11 +21,11 @@
  		/* Palette COLOURS are in 03-palettes.css (one swappable block per colourway × mode);
  		 * everything here is palette-INDEPENDENT or var()-derived, so it follows the active
  		 * palette. The INKS (--fs-on-accent &c.) are in the palette blocks too, beside the
-diff --git a/luci-theme-footstrap/root/etc/footstrap/cats.svg b/luci-theme-footstrap/root/etc/footstrap/cats.svg
+diff --git a/luci-theme-footstrap/root/etc/footstrap/pattern.svg b/luci-theme-footstrap/root/etc/footstrap/pattern.svg
 new file mode 100644
 index 000000000..72eb03cdc
 --- /dev/null
-+++ b/luci-theme-footstrap/root/etc/footstrap/cats.svg
++++ b/luci-theme-footstrap/root/etc/footstrap/pattern.svg
 @@ -0,0 +1,550 @@
 +<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 +<svg
