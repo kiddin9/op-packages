@@ -17,6 +17,11 @@
 	 * docs/design-system.md. Light = :root; dark = :root[data-darkmode="true"].
 	 * ============================================================ */
 	:root {
+		--card-bg-color: var(--fs-panel) !important;
+		--border-color: var(--fs-border) !important;
+		--app-container_title-color: var(--fs-text) !important;
+		--item-label_key-span-color: var(--app-container_title-color) !important;
+		--app-container_status-label_block: var(--app-container_title-color) !important;
 		/* Palette COLOURS are in 03-palettes.css (one swappable block per colourway × mode);
 		 * everything here is palette-INDEPENDENT or var()-derived, so it follows the active
 		 * palette. The INKS (--fs-on-accent &c.) are in the palette blocks too, beside the
