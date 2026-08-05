@@ -1,8 +1,14 @@
 msgid "Internet Access Schedule Control Plus"
-msgstr "上网时间控制Plus"
+msgstr "上网时间控制增强版"
 
 msgid "Access Schedule Control Description"
 msgstr "设置客户端访问互联网的时间"
+
+msgid "Base Setting"
+msgstr "基础设置"
+
+msgid "Advance Setting"
+msgstr "高级设置"
 
 msgid "General switch"
 msgstr "开启/关闭"
@@ -18,6 +24,9 @@ msgstr "严格模式"
 
 msgid "Strict Mode will degrade CPU performance, but it can achieve better results"
 msgstr "严格模式会损耗部分CPU资源，但可以按照时间规则立即拦截数据包，效果更好"
+
+msgid "IPV6 Enabled"
+msgstr "启用 IPV6"
 
 msgid "Client Rules"
 msgstr "客户端规则"

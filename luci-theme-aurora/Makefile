@@ -9,7 +9,7 @@ LUCI_TITLE:=Aurora Theme (A modern browser theme built with Vite and Tailwind CS
 LUCI_DEPENDS:=+luci-base
 
 PKG_VERSION:=1.1.13
-PKG_RELEASE:=64
+PKG_RELEASE:=65
 PKG_LICENSE:=Apache-2.0
 
 LUCI_MINIFY_CSS:=

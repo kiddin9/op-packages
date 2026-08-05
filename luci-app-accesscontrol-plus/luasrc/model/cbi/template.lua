@@ -1,4 +1,8 @@
 a = Map("miaplus")
+a.apply_on_parse = true
+function a.on_apply(self)
+	luci.sys.call("/etc/init.d/miaplus restart >/dev/null 2>&1 &")
+end
 
 local section = arg[1]
 

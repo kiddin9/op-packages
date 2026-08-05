@@ -3,6 +3,10 @@ local uci = luci.model.uci.cursor()
 a = Map("miaplus")
 a.title = translate("Internet Access Schedule Control Plus")
 a.description = translate("Access Schedule Control Description")
+a.apply_on_parse = true
+function a.on_apply(self)
+	luci.sys.call("/etc/init.d/miaplus restart >/dev/null 2>&1 &")
+end
 
 a:section(SimpleSection).template = "miaplus/miaplus_status"
 

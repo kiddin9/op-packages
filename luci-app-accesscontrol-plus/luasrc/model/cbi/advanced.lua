@@ -1,6 +1,10 @@
 local ds = require "luci.dispatcher"
 
 a = Map("miaplus")
+a.apply_on_parse = true
+function a.on_apply(self)
+	luci.sys.call("/etc/init.d/miaplus restart >/dev/null 2>&1 &")
+end
 
 t = a:section(TypedSection, "templates")
 t.template = "cbi/tblsection"

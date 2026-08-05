@@ -10,6 +10,8 @@ START=30
 
 CONFIG=miaplus
 
+. /lib/functions.sh
+
 uci_export_section_name() {
   local ret=$(uci -n export $CONFIG | grep "config $1" | awk '{print $3}' | awk -F\' '{print $2}')
   echo ${ret:=$2}
@@ -50,23 +52,18 @@ uci_get_mac_by_template(){
 }
 
 add_rules(){
-  local sections=$(uci_export_section_name templates '')
-  if [ -n "$sections" ]; then
-    for s in $sections
-    do
-      local enable=$(uci_get_by_name $s enable '' $i)
-      local title=$(uci_get_by_name $s title '' $i)
-      if [ -z $enable ]; then
-        break
-      fi
-      if [ "$enable" == "1" ]; then
-        add_rule $s
-      fi
-    done
-  fi
+  config_load "$CONFIG"
+  config_foreach add_template_rule templates
+}
+add_template_rule(){
+  local section="$1"
+  local enable
+
+  config_get enable "$section" enable 0
+  [ "$enable" = "1" ] && add_rule "$section"
 }
 add_rule(){
-  ipv6enable=$(uci get miaplus.@basic[0].ipv6enable)
+  ipv6enable=$(uci -q get miaplus.@basic[0].ipv6enable)
   local macaddrs=$(uci_get_mac_by_template $1 '')
   if [ -z "$macaddrs" ]; then
     exit 0
@@ -74,7 +71,7 @@ add_rule(){
   for macaddr in $macaddrs
   do
     iptables -t filter -A MIAPLUS  -m mac --mac-source $macaddr -j DROP
-    [ $ipv6enable -eq 1 ] && ip6tables -t filter -A MIAPLUS  -m mac --mac-source $macaddr -j DROP
+    [ "${ipv6enable:-0}" -eq 1 ] && ip6tables -t filter -A MIAPLUS  -m mac --mac-source $macaddr -j DROP
   done
   for i in $(seq 0 100)
   do
@@ -103,7 +100,7 @@ add_rule(){
       for macaddr in $macaddrs
       do
         iptables -t filter -I MIAPLUS  -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -j ACCEPT
-        [ $ipv6enable -eq 1 ] && ip6tables -t filter -I MIAPLUS  -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -j ACCEPT
+        [ "${ipv6enable:-0}" -eq 1 ] && ip6tables -t filter -I MIAPLUS  -m mac --mac-source $macaddr -m time --kerneltz --timestart $timeon --timestop $timeoff --weekdays $Z1$Z2$Z3$Z4$Z5$Z6$Z7 -j ACCEPT
       done
     fi
     for n in $(seq 1 7)
@@ -126,26 +123,35 @@ del_rule(){
 
 start(){
   stop
-	enable=$(uci get miaplus.@basic[0].enable)
-	[ $enable -eq 0 ] && exit 0
+	enable=$(uci -q get miaplus.@basic[0].enable)
+	[ "${enable:-0}" -eq 0 ] && exit 0
   iptables -t filter -N MIAPLUS
   iptables -I INPUT -p udp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS
   iptables -I INPUT -p tcp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS
   iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control"
   iptables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control"
-  strict=$(uci get miaplus.@basic[0].strict)
-  [ $strict -eq 1 ] && iptables -t filter -I FORWARD -m comment --comment "Rule For Control" -j MIAPLUS
+  strict=$(uci -q get miaplus.@basic[0].strict)
+  [ "${strict:-0}" -eq 1 ] && iptables -t filter -I FORWARD -m comment --comment "Rule For Control" -j MIAPLUS
 
-  ipv6enable=$(uci get miaplus.@basic[0].ipv6enable)
-  if [ "$ipv6enable" -eq 1 ]; then
+  ipv6enable=$(uci -q get miaplus.@basic[0].ipv6enable)
+  if [ "${ipv6enable:-0}" -eq 1 ]; then
     ip6tables -t filter -N MIAPLUS
     ip6tables -I INPUT -p udp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS
     ip6tables -I INPUT -p tcp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS
     ip6tables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control"
     ip6tables -t nat -A PREROUTING -p tcp --dport 53 -j REDIRECT --to-ports 53 -m comment --comment "Rule For Control"
-    [ $strict -eq 1 ] && ip6tables -t filter -I FORWARD -m comment --comment "Rule For Control" -j MIAPLUS
+    [ "${strict:-0}" -eq 1 ] && ip6tables -t filter -I FORWARD -m comment --comment "Rule For Control" -j MIAPLUS
   fi
   add_rules
+}
+status(){
+  if iptables -t filter -S MIAPLUS >/dev/null 2>&1; then
+    echo "running"
+    return 0
+  fi
+
+  echo "not running"
+  return 1
 }
 stop(){
   iptables -t filter -D FORWARD -m comment --comment "Rule For Control" -j MIAPLUS 2>/dev/null

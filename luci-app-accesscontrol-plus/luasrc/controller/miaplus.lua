@@ -15,7 +15,7 @@ end
 
 function act_status()
 	local e = {}
-	e.running = luci.sys.call("iptables -L INPUT |grep MIAPLUS >/dev/null") == 0
+	e.running = luci.sys.call("iptables -t filter -S MIAPLUS >/dev/null 2>&1") == 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
