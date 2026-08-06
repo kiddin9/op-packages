@@ -20,7 +20,8 @@ let statusPollRegistered = false;
 const callServiceStatus = rpc.declare({
 	object: 'luci.gecoosac',
 	method: 'status',
-	expect: { '': {} }
+	expect: { '': {} },
+	reject: true
 });
 
 const callClearUpload = rpc.declare({
@@ -32,6 +33,26 @@ const callClearUpload = rpc.declare({
 function validPort(value, defaultValue) {
 	const port = Number(value || defaultValue);
 	return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : defaultValue;
+}
+
+function validPortValue(value) {
+	const text = String(value || '');
+	const port = Number(text);
+
+	return /^[0-9]+$/.test(text) && Number.isSafeInteger(port) && port >= 1 && port <= 65535;
+}
+
+function validatePortValue(section_id, value, otherOption, singlePortOption) {
+	if (!validPortValue(value))
+		return _('Port must be an integer between 1 and 65535.');
+
+	const singlePort = singlePortOption.formvalue(section_id);
+	const otherValue = otherOption.formvalue(section_id);
+
+	if (singlePort === '0' && validPortValue(otherValue) && Number(value) === Number(otherValue))
+		return _('Interface port and management port must be different.');
+
+	return true;
 }
 
 function normalizePath(value) {
@@ -99,6 +120,9 @@ function serviceRunning(status) {
 	const service = status && status.gecoosac;
 	const instances = service && service.instances;
 
+	if (status && status.ok === false)
+		return false;
+
 	if (status && status.running === true)
 		return true;
 
@@ -110,6 +134,13 @@ function serviceRunning(status) {
 			return true;
 
 	return false;
+}
+
+function statusFailure() {
+	return {
+		ok: false,
+		error: _('Unable to query service status')
+	};
 }
 
 function clientHost() {
@@ -132,6 +163,9 @@ function clientUrl() {
 }
 
 function renderStatusContent(status) {
+	if (status && status.error)
+		return E('p', { 'class': 'gecoosac-stopped' }, _('Service status unavailable') + ': ' + _(status.error));
+
 	const running = serviceRunning(status);
 	const text = running
 		? _('The GecoosAC service is running.')
@@ -174,12 +208,15 @@ return view.extend({
 	load() {
 		return Promise.all([
 			uci.load('gecoosac'),
-			L.resolveDefault(callServiceStatus(), {})
+			callServiceStatus().catch(function() {
+				return statusFailure();
+			})
 		]);
 	},
 
 	render(data) {
 		let m, s, o, uploadDirOption;
+		let portOption, managementPortOption, singlePortOption;
 
 		m = new form.Map('gecoosac', _('Gecoos AC'),
 			_('Only supports Gecoos AP firmware 7.6 and above.') + '<br />' +
@@ -190,7 +227,9 @@ return view.extend({
 		s.render = function() {
 			if (!statusPollRegistered) {
 				poll.add(function() {
-					return L.resolveDefault(callServiceStatus(), {}).then(updateStatus);
+					return callServiceStatus().then(updateStatus).catch(function() {
+						updateStatus(statusFailure());
+					});
 				}, 3);
 				statusPollRegistered = true;
 			}
@@ -212,22 +251,54 @@ return view.extend({
 		o = s.option(form.Flag, 'enabled', _('Enabled AC'));
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'port', _('Set interface port'));
+		portOption = s.option(form.Value, 'port', _('Set interface port'));
+		o = portOption;
 		o.placeholder = '60650';
 		o.default = '60650';
 		o.datatype = 'port';
 		o.rmempty = false;
 
-		o = s.option(form.Flag, 'isonlyoneprot', _('Single Port Mode'),
+		singlePortOption = s.option(form.Flag, 'isonlyoneprot', _('Single Port Mode'),
 			_('Do not enable the independent management port, only use one port for management.'));
+		o = singlePortOption;
 		o.default = '1';
 		o.rmempty = false;
 
-		o = s.option(form.Value, 'm_port', _('Set management port'));
+		managementPortOption = s.option(form.Value, 'm_port', _('Set management port'));
+		o = managementPortOption;
 		o.placeholder = '8080';
 		o.default = '8080';
 		o.datatype = 'port';
 		o.depends('isonlyoneprot', '0');
+
+		portOption.validate = function(section_id, value) {
+			return validatePortValue(section_id, value, managementPortOption, singlePortOption);
+		};
+		managementPortOption.validate = function(section_id, value) {
+			return validatePortValue(section_id, value, portOption, singlePortOption);
+		};
+		singlePortOption.validate = function(section_id, value) {
+			if (value === '0') {
+				const port = portOption.formvalue(section_id);
+				const managementPort = managementPortOption.formvalue(section_id);
+
+				if (validPortValue(port) && validPortValue(managementPort) && Number(port) === Number(managementPort))
+					return _('Interface port and management port must be different.');
+			}
+
+			return true;
+		};
+		const revalidatePorts = function(_event, section_id) {
+			for (const option of [ portOption, managementPortOption, singlePortOption ]) {
+				const element = option.getUIElement(section_id);
+
+				if (element)
+					element.triggerValidation();
+			}
+		};
+		portOption.onchange = revalidatePorts;
+		managementPortOption.onchange = revalidatePorts;
+		singlePortOption.onchange = revalidatePorts;
 
 		o = s.option(form.Flag, 'https', _('Enable HTTPS service'),
 			_('Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key.'));
@@ -320,11 +391,11 @@ return view.extend({
 			if (!confirm(_('Really clear the saved upload directory?')))
 				return Promise.resolve();
 
-			return callClearUpload().then(function(res) {
-				if (res && res.result === true)
+			return callClearUpload().then(function() {
+				if (arguments[0] && arguments[0].result === true)
 					ui.addNotification(null, E('p', {}, _('Saved upload directory cleared')));
 				else
-					ui.addNotification(null, E('p', {}, clearUploadError(res)), 'danger');
+					ui.addNotification(null, E('p', {}, clearUploadError(arguments[0])), 'danger');
 			});
 		};
 

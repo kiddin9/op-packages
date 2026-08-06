@@ -147,3 +147,36 @@ msgstr "無法移除上傳目錄內容"
 
 msgid "Upload directory contains configured runtime paths"
 msgstr "上傳目錄包含已設定的執行時路徑"
+
+msgid "Port must be an integer between 1 and 65535."
+msgstr "連接埠必須是 1 到 65535 之間的整數。"
+
+msgid "Interface port and management port must be different."
+msgstr "介面連接埠和管理連接埠必須不同。"
+
+msgid "Unable to query service status"
+msgstr "無法查詢服務狀態"
+
+msgid "Service status unavailable"
+msgstr "服務狀態無法使用"
+
+msgid "Invalid service status response"
+msgstr "服務狀態回應無效"
+
+msgid "Unable to resolve upload directory"
+msgstr "無法解析上傳目錄"
+
+msgid "Upload directory contains a configured protected path"
+msgstr "上傳目錄包含已設定的受保護路徑"
+
+msgid "Unable to validate configured paths"
+msgstr "無法驗證已設定的路徑"
+
+msgid "Upload directory or its parent is not root-owned and private"
+msgstr "上傳目錄或其父目錄不是 root 所有且為私有目錄"
+
+msgid "Unable to prepare upload directory cleanup"
+msgstr "無法準備上傳目錄清理"
+
+msgid "Unable to recreate upload directory"
+msgstr "無法重新建立上傳目錄"

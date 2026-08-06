@@ -8,6 +8,7 @@ DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
 DEFAULT_PID_DIR=/var/run
 OLD_CRT_FILE=/etc/gecoosac/tls/1.crt
 OLD_KEY_FILE=/etc/gecoosac/tls/1.key
+CONFIG_COMPAT=2
 
 ensure_section() {
 	uci -q get gecoosac.config >/dev/null && return 0
@@ -128,7 +129,7 @@ normalize_upload_dir() {
 	if is_safe_upload_dir "$upload_dir"; then
 		normalized="$(normalize_path "$upload_dir")"
 	else
-		normalized="$DEFAULT_UPLOAD_DIR"
+		return 0
 	fi
 
 	[ "$upload_dir" = "$normalized" ] && return 0
@@ -138,7 +139,6 @@ normalize_upload_dir() {
 
 normalize_dir_option() {
 	local option="$1"
-	local default="$2"
 	local validator="$3"
 	local value normalized upload_dir
 
@@ -150,7 +150,7 @@ normalize_dir_option() {
 	if "$validator" "$value" "$upload_dir"; then
 		normalized="$(normalize_path "$value")"
 	else
-		normalized="$default"
+		return 0
 	fi
 
 	[ "$value" = "$normalized" ] && return 0
@@ -159,30 +159,71 @@ normalize_dir_option() {
 }
 
 migrate_legacy_cert_paths() {
-	local crt_file key_file
-	local migrate
+	local crt_file key_file migrate
 
 	crt_file="$(uci -q get gecoosac.config.crt_file)"
 	key_file="$(uci -q get gecoosac.config.key_file)"
 	migrate=0
 
-	if [ "$crt_file" = "$OLD_CRT_FILE" ]; then
-		if [ -z "$key_file" ] || [ "$key_file" = "$OLD_KEY_FILE" ]; then
-			migrate=1
-		fi
+	if [ "$crt_file" = "$OLD_CRT_FILE" ] && [ -z "$key_file" ]; then
+		uci -q set "gecoosac.config.key_file=${OLD_KEY_FILE}" || return 1
+		key_file="$OLD_KEY_FILE"
+		changed=1
 	elif [ -z "$crt_file" ] && [ "$key_file" = "$OLD_KEY_FILE" ]; then
+		uci -q set "gecoosac.config.crt_file=${OLD_CRT_FILE}" || return 1
+		crt_file="$OLD_CRT_FILE"
+		changed=1
+	fi
+
+	if [ "$crt_file" = "$OLD_CRT_FILE" ] && [ "$key_file" = "$OLD_KEY_FILE" ]; then
+		migrate=1
+	elif [ -z "$crt_file" ] && [ -z "$key_file" ]; then
+		[ -f "$OLD_CRT_FILE" ] && [ -f "$OLD_KEY_FILE" ] || return 0
 		migrate=1
 	fi
 
-	if [ "$migrate" = "1" ]; then
-		uci -q set "gecoosac.config.crt_file=${DEFAULT_CRT_FILE}"
-		uci -q set "gecoosac.config.key_file=${DEFAULT_KEY_FILE}"
-		changed=1
+	[ "$migrate" = "1" ] || return 0
+	[ -f "$OLD_CRT_FILE" ] && [ ! -L "$OLD_CRT_FILE" ] || return 0
+	[ -f "$OLD_KEY_FILE" ] && [ ! -L "$OLD_KEY_FILE" ] || return 0
+	[ ! -e "$DEFAULT_CRT_FILE" ] && [ ! -L "$DEFAULT_CRT_FILE" ] || return 0
+	[ ! -e "$DEFAULT_KEY_FILE" ] && [ ! -L "$DEFAULT_KEY_FILE" ] || return 0
+
+	mkdir -p /etc/gecoosac/tls || {
+		logger -t gecoosac "unable to prepare TLS directory for legacy certificate migration"
+		return 1
+	}
+	if ! mv "$OLD_CRT_FILE" "$DEFAULT_CRT_FILE"; then
+		logger -t gecoosac "unable to migrate legacy certificate"
+		return 1
 	fi
+	if ! mv "$OLD_KEY_FILE" "$DEFAULT_KEY_FILE"; then
+		mv "$DEFAULT_CRT_FILE" "$OLD_CRT_FILE" 2>/dev/null
+		logger -t gecoosac "unable to migrate legacy private key"
+		return 1
+	fi
+	if ! chmod 644 "$DEFAULT_CRT_FILE" || ! chmod 600 "$DEFAULT_KEY_FILE" || \
+		! uci -q set "gecoosac.config.crt_file=${DEFAULT_CRT_FILE}" || \
+		! uci -q set "gecoosac.config.key_file=${DEFAULT_KEY_FILE}"; then
+		mv "$DEFAULT_KEY_FILE" "$OLD_KEY_FILE" 2>/dev/null
+		mv "$DEFAULT_CRT_FILE" "$OLD_CRT_FILE" 2>/dev/null
+		logger -t gecoosac "unable to complete legacy certificate migration"
+		return 1
+	fi
+	changed=1
+}
+
+migrate_config() {
+	local compat
+
+	compat="$(uci -q get gecoosac.config.config_compat)"
+	[ "$compat" = "$CONFIG_COMPAT" ] && return 0
+	migrate_legacy_cert_paths || return 1
+	uci -q set "gecoosac.config.config_compat=${CONFIG_COMPAT}" || return 1
+	changed=1
 }
 
 ensure_section
-migrate_legacy_cert_paths
+migrate_config || exit 1
 normalize_upload_dir
 normalize_dir_option db_dir "$DEFAULT_DB_DIR" is_safe_db_dir
 normalize_dir_option piddir "$DEFAULT_PID_DIR" is_safe_pid_dir

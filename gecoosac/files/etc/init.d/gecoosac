@@ -101,6 +101,49 @@ is_path_in_dir() {
 	[ "${path#"$root"/}" != "$path" ]
 }
 
+is_secure_dir() {
+	local allow_sticky="$2" owner permissions metadata
+
+	[ -d "$1" ] && [ ! -L "$1" ] || return 1
+	metadata="$(ls -ldn "$1" 2>/dev/null)" || return 1
+	set -- $metadata
+	permissions="$1"
+	owner="$3"
+	[ "$owner" = "0" ] || return 1
+	case "$permissions" in
+		d?????????) ;;
+		*) return 1 ;;
+	esac
+
+	if [ "$(printf '%s' "$permissions" | cut -c6)" = "w" ] || \
+		[ "$(printf '%s' "$permissions" | cut -c9)" = "w" ]; then
+		[ "$allow_sticky" = "1" ] && [ "$(printf '%s' "$permissions" | cut -c10)" = "t" ] || return 1
+	fi
+}
+
+is_secure_upload_dir() {
+	local path current part rest
+
+	path="$(normalize_path "$1")" || return 1
+	[ -d "$path" ] && [ ! -L "$path" ] || return 1
+	current="/"
+	rest="${path#/}"
+
+	while [ -n "$rest" ]; do
+		part="${rest%%/*}"
+		if [ "$part" = "$rest" ]; then
+			rest=""
+		else
+			rest="${rest#*/}"
+		fi
+		current="${current%/}/$part"
+		case "$current" in
+			/tmp) is_secure_dir "$current" 1 || return 1 ;;
+			*) is_secure_dir "$current" || return 1 ;;
+		esac
+	done
+}
+
 is_safe_db_dir() {
 	local path upload_root
 
@@ -154,7 +197,6 @@ run_with_timeout() {
 			kill "$pid" >/dev/null 2>&1
 			sleep 1
 			kill -9 "$pid" >/dev/null 2>&1
-			wait "$pid" 2>/dev/null
 			return 1
 		fi
 		sleep 1
@@ -162,6 +204,42 @@ run_with_timeout() {
 	done
 
 	wait "$pid"
+}
+
+run_with_timeout_output() {
+	local timeout output pid i
+
+	timeout="$1"
+	output="$2"
+	shift 2
+
+	"$@" >"$output" 2>/dev/null &
+	pid="$!"
+	i=0
+
+	while kill -0 "$pid" >/dev/null 2>&1; do
+		if [ "$i" -ge "$timeout" ]; then
+			kill "$pid" >/dev/null 2>&1
+			kill -9 "$pid" >/dev/null 2>&1
+			return 1
+		fi
+		sleep 1
+		i=$((i + 1))
+	done
+
+	wait "$pid"
+}
+
+is_readable_regular_file() {
+	local path="$1" tmp_dir status
+
+	tmp_dir="$(mktemp -d /tmp/gecoosac-file.XXXXXX)" || return 1
+	run_with_timeout_output "$CERT_TIMEOUT" "$tmp_dir/check" \
+		/bin/sh -c '[ -f "$1" ] && [ -r "$1" ] && [ -s "$1" ]' \
+		gecoosac-file-check "$path" </dev/null
+	status="$?"
+	rm -rf "$tmp_dir"
+	return "$status"
 }
 
 is_ipv4() {
@@ -194,13 +272,19 @@ san_has_entry() {
 }
 
 cert_matches_san() {
-	local cert_file="$1"
-	local cert_host="$2"
-	local cert_ip="$3"
-	local san
+	local cert_file="$1" cert_host="$2" cert_ip="$3"
+	local san tmp_dir
 
-	[ -s "$cert_file" ] || return 1
-	san="$(openssl x509 -in "$cert_file" -noout -ext subjectAltName 2>/dev/null)" || return 1
+	is_readable_regular_file "$cert_file" || return 1
+	tmp_dir="$(mktemp -d /tmp/gecoosac-cert.XXXXXX)" || return 1
+	if ! run_with_timeout_output "$CERT_TIMEOUT" "$tmp_dir/san" \
+		openssl x509 -in "$cert_file" -noout -ext subjectAltName </dev/null; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+	san="$(cat "$tmp_dir/san" 2>/dev/null)"
+	rm -rf "$tmp_dir"
+	[ -n "$san" ] || return 1
 	san_has_entry "$san" "DNS:${cert_host}" || return 1
 	[ -z "$cert_ip" ] || san_has_entry "$san" "IP Address:${cert_ip}" || return 1
 
@@ -208,13 +292,22 @@ cert_matches_san() {
 }
 
 cert_matches_key() {
-	local cert_file="$1"
-	local key_file="$2"
-	local cert_pub key_pub
+	local cert_file="$1" key_file="$2"
+	local cert_pub key_pub tmp_dir
 
-	[ -s "$cert_file" ] && [ -s "$key_file" ] || return 1
-	cert_pub="$(openssl x509 -in "$cert_file" -noout -pubkey 2>/dev/null)" || return 1
-	key_pub="$(openssl pkey -in "$key_file" -pubout 2>/dev/null)" || return 1
+	is_readable_regular_file "$cert_file" || return 1
+	is_readable_regular_file "$key_file" || return 1
+	tmp_dir="$(mktemp -d /tmp/gecoosac-cert.XXXXXX)" || return 1
+	if ! run_with_timeout_output "$CERT_TIMEOUT" "$tmp_dir/cert.pub" \
+		openssl x509 -in "$cert_file" -noout -pubkey </dev/null || \
+		! run_with_timeout_output "$CERT_TIMEOUT" "$tmp_dir/key.pub" \
+		openssl pkey -in "$key_file" -pubout </dev/null; then
+		rm -rf "$tmp_dir"
+		return 1
+	fi
+	cert_pub="$(cat "$tmp_dir/cert.pub" 2>/dev/null)"
+	key_pub="$(cat "$tmp_dir/key.pub" 2>/dev/null)"
+	rm -rf "$tmp_dir"
 
 	[ -n "$cert_pub" ] && [ "$cert_pub" = "$key_pub" ]
 }
@@ -235,7 +328,7 @@ generate_default_cert() {
 	cert_ip="$(uci -q get network.lan.ipaddr)"
 	is_ipv4 "$cert_ip" || cert_ip=""
 
-	if [ -s "$DEFAULT_KEY_FILE" ] && cert_matches_san "$DEFAULT_CRT_FILE" "$cert_host" "$cert_ip" && cert_matches_key "$DEFAULT_CRT_FILE" "$DEFAULT_KEY_FILE"; then
+	if is_readable_regular_file "$DEFAULT_KEY_FILE" && cert_matches_san "$DEFAULT_CRT_FILE" "$cert_host" "$cert_ip" && cert_matches_key "$DEFAULT_CRT_FILE" "$DEFAULT_KEY_FILE"; then
 		return 0
 	fi
 
@@ -262,7 +355,7 @@ generate_default_cert() {
 		-addext "basicConstraints=critical,CA:FALSE" \
 		-addext "keyUsage=digitalSignature" \
 		-addext "extendedKeyUsage=serverAuth" \
-		-addext "subjectAltName=$cert_san"
+		-addext "subjectAltName=$cert_san" </dev/null
 
 	if [ -s "$tmp_crt" ] && [ -s "$tmp_key" ] && cert_matches_san "$tmp_crt" "$cert_host" "$cert_ip" && cert_matches_key "$tmp_crt" "$tmp_key"; then
 		mv "$tmp_key" "$DEFAULT_KEY_FILE"
@@ -281,22 +374,37 @@ normalize_conf() {
 	if is_safe_upload_dir "$upload_dir"; then
 		upload_dir="$(normalize_path "$upload_dir")"
 	else
-		upload_dir="$DEFAULT_UPLOAD_DIR"
+		logger -t gecoosac "refusing unsupported upload directory: $upload_dir"
+		return 1
 	fi
 	if is_safe_db_dir "$db_dir" "$upload_dir"; then
 		db_dir="$(normalize_path "$db_dir")"
 	else
-		db_dir="$DEFAULT_DB_DIR"
+		logger -t gecoosac "refusing unsupported database directory: $db_dir"
+		return 1
 	fi
-	is_abs_path "$crt_file" || crt_file="$DEFAULT_CRT_FILE"
-	is_abs_path "$key_file" || key_file="$DEFAULT_KEY_FILE"
+	is_abs_path "$crt_file" || {
+		logger -t gecoosac "refusing non-absolute certificate path: $crt_file"
+		return 1
+	}
+	is_abs_path "$key_file" || {
+		logger -t gecoosac "refusing non-absolute key path: $key_file"
+		return 1
+	}
 	if is_safe_pid_dir "$piddir" "$upload_dir"; then
 		piddir="$(normalize_path "$piddir")"
 	else
-		piddir="$DEFAULT_PID_DIR"
+		logger -t gecoosac "refusing unsupported PID directory: $piddir"
+		return 1
 	fi
-	is_port "$port" || port="60650"
-	is_port "$m_port" || m_port="8080"
+	is_port "$port" || {
+		logger -t gecoosac "refusing invalid interface port: $port"
+		return 1
+	}
+	is_port "$m_port" || {
+		logger -t gecoosac "refusing invalid management port: $m_port"
+		return 1
+	}
 
 	[ "$enabled" = "1" ] || enabled="0"
 	[ "$isonlyoneprot" = "0" ] || isonlyoneprot="1"
@@ -311,49 +419,78 @@ normalize_conf() {
 }
 
 ensure_dirs() {
-	if ! mkdir -p "$upload_dir" "$db_dir" "$piddir" /etc/gecoosac/tls; then
+	local path
+
+	path="$(normalize_path "$upload_dir")" || return 1
+	if ! ensure_dir_tree "$path" || ! mkdir -p "$db_dir" "$piddir" /etc/gecoosac/tls; then
 		logger -t gecoosac "failed to create runtime directories"
 		return 1
+	fi
+	chmod go-w "$path" || return 1
+	is_secure_upload_dir "$path" || {
+		logger -t gecoosac "upload directory or its parent is not root-owned and private: $path"
+		return 1
+	}
+}
+
+ensure_dir_tree() {
+	local path current part rest
+
+	path="$(normalize_path "$1")" || return 1
+	current="/"
+	rest="${path#/}"
+	while [ -n "$rest" ]; do
+		part="${rest%%/*}"
+		if [ "$part" = "$rest" ]; then
+			rest=""
+		else
+			rest="${rest#*/}"
+		fi
+		current="${current%/}/$part"
+		[ ! -L "$current" ] || return 1
+		if [ -e "$current" ]; then
+			[ -d "$current" ] || return 1
+		else
+			mkdir "$current" || return 1
+		fi
+	done
+}
+
+prepare_service() {
+	init_conf
+	[ "$enabled" = "1" ] || return 0
+	normalize_conf || return 1
+	if [ ! -x "$PROG" ]; then
+		logger -t gecoosac "program not found: $PROG"
+		return 1
+	fi
+
+	if [ "$isonlyoneprot" = "0" ] && [ "$port" -eq "$m_port" ] 2>/dev/null; then
+		logger -t gecoosac "interface port and management port must be different"
+		return 1
+	fi
+
+	ensure_dirs || return 1
+	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
+		if [ "$crt_file" = "$DEFAULT_CRT_FILE" ] && [ "$key_file" = "$DEFAULT_KEY_FILE" ]; then
+			generate_default_cert || return 1
+		fi
+
+		if ! cert_matches_key "$crt_file" "$key_file"; then
+			logger -t gecoosac "HTTPS certificate and key do not match or cannot be read"
+			return 1
+		fi
 	fi
 }
 
 start_service() {
 	local runtime_upload_dir runtime_db_dir runtime_piddir
 
-	init_conf
-	normalize_conf
-
+	prepare_service || return 1
 	[ "$enabled" = "1" ] || return 0
-	if [ ! -x "$PROG" ]; then
-		logger -t gecoosac "program not found: $PROG"
-		return 1
-	fi
-
-	if [ "$isonlyoneprot" = "0" ] && [ "$port" = "$m_port" ]; then
-		logger -t gecoosac "interface port and management port must be different"
-		return 1
-	fi
-
-	ensure_dirs || return 1
 	runtime_upload_dir="${upload_dir%/}/"
 	runtime_db_dir="${db_dir%/}/"
 	runtime_piddir="${piddir%/}/"
-
-	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
-		if [ "$crt_file" = "$DEFAULT_CRT_FILE" ] && [ "$key_file" = "$DEFAULT_KEY_FILE" ]; then
-			generate_default_cert || return 1
-		fi
-
-		if [ ! -r "$crt_file" ] || [ ! -r "$key_file" ]; then
-			logger -t gecoosac "HTTPS is enabled but certificate or key file is missing"
-			return 1
-		fi
-
-		if ! cert_matches_key "$crt_file" "$key_file"; then
-			logger -t gecoosac "HTTPS certificate and key do not match"
-			return 1
-		fi
-	fi
 
 	procd_open_instance gecoosac
 	procd_set_param command "$PROG"
@@ -387,8 +524,28 @@ start_service() {
 	procd_close_instance
 }
 
+wait_service_stopped() {
+	local i
+
+	if ! type service_running >/dev/null 2>&1; then
+		return 0
+	fi
+
+	i=0
+	while [ "$i" -lt 5 ]; do
+		service_running gecoosac || return 0
+		sleep 1
+		i=$((i + 1))
+	done
+	return 1
+}
+
 reload_service() {
-	stop
+	prepare_service || return 1
+	if ! stop || ! wait_service_stopped; then
+		logger -t gecoosac "unable to stop the existing service for reload"
+		return 1
+	fi
 	start
 }
 

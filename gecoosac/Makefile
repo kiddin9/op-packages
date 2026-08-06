@@ -2,9 +2,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
 PKG_VERSION:=2.2.20251015
-PKG_RELEASE:=14
+PKG_RELEASE:=15
 
-PKG_MAINTAINER:=lwb1978 <lwb1978@gmail.com>
+PKG_MAINTAINER:=Roc Lai <laipeng668@qq.com>
 PKG_LICENSE:=AGPL-3.0-only
 PKG_LICENSE_FILES:=LICENSE
 

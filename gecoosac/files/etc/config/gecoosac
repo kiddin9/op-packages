@@ -1,4 +1,5 @@
 config gecoosac 'config'
+	option config_compat '2'
 	option enabled '0'
 	option port '60650'
 	option isonlyoneprot '1'

@@ -147,3 +147,36 @@ msgstr "无法删除上传目录内容"
 
 msgid "Upload directory contains configured runtime paths"
 msgstr "上传目录包含已配置的运行目录"
+
+msgid "Port must be an integer between 1 and 65535."
+msgstr "端口必须是 1 到 65535 之间的整数。"
+
+msgid "Interface port and management port must be different."
+msgstr "接口端口和管理端口必须不同。"
+
+msgid "Unable to query service status"
+msgstr "无法查询服务状态"
+
+msgid "Service status unavailable"
+msgstr "服务状态不可用"
+
+msgid "Invalid service status response"
+msgstr "服务状态响应无效"
+
+msgid "Unable to resolve upload directory"
+msgstr "无法解析上传目录"
+
+msgid "Upload directory contains a configured protected path"
+msgstr "上传目录包含已配置的受保护路径"
+
+msgid "Unable to validate configured paths"
+msgstr "无法验证已配置的路径"
+
+msgid "Upload directory or its parent is not root-owned and private"
+msgstr "上传目录或其父目录不是 root 所有且为私有目录"
+
+msgid "Unable to prepare upload directory cleanup"
+msgstr "无法准备上传目录清理"
+
+msgid "Unable to recreate upload directory"
+msgstr "无法重新创建上传目录"
