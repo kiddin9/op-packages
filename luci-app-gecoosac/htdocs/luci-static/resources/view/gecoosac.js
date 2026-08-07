@@ -42,17 +42,41 @@ function validPortValue(value) {
 	return /^[0-9]+$/.test(text) && Number.isSafeInteger(port) && port >= 1 && port <= 65535;
 }
 
-function validatePortValue(section_id, value, otherOption, singlePortOption) {
+
+function validatePortValue(section_id, value, otherOption, singlePortOption, activeInSinglePort) {
+	const singlePort = singlePortOption.formvalue(section_id);
+
+	if (!activeInSinglePort && singlePort !== '0')
+		return true;
+
 	if (!validPortValue(value))
 		return _('Port must be an integer between 1 and 65535.');
 
-	const singlePort = singlePortOption.formvalue(section_id);
 	const otherValue = otherOption.formvalue(section_id);
 
 	if (singlePort === '0' && validPortValue(otherValue) && Number(value) === Number(otherValue))
 		return _('Interface port and management port must be different.');
 
 	return true;
+}
+
+function validateCertificatePath(section_id, value, singlePortOption, httpsOption) {
+	if (singlePortOption.formvalue(section_id) !== '0' || httpsOption.formvalue(section_id) !== '1' || !value)
+		return true;
+
+	return String(value).charAt(0) === '/' ? true : _('Expecting an absolute path');
+}
+
+function triggerActiveValidation(section_id, options) {
+	for (const option of options) {
+		if (!option.isActive(section_id))
+			continue;
+
+		const element = option.getUIElement(section_id);
+
+		if (element)
+			element.triggerValidation();
+	}
 }
 
 function normalizePath(value) {
@@ -217,6 +241,7 @@ return view.extend({
 	render(data) {
 		let m, s, o, uploadDirOption;
 		let portOption, managementPortOption, singlePortOption;
+		let httpsOption, certificateOption, keyOption;
 
 		m = new form.Map('gecoosac', _('Gecoos AC'),
 			_('Only supports Gecoos AP firmware 7.6 and above.') + '<br />' +
@@ -272,10 +297,10 @@ return view.extend({
 		o.depends('isonlyoneprot', '0');
 
 		portOption.validate = function(section_id, value) {
-			return validatePortValue(section_id, value, managementPortOption, singlePortOption);
+			return validatePortValue(section_id, value, managementPortOption, singlePortOption, true);
 		};
 		managementPortOption.validate = function(section_id, value) {
-			return validatePortValue(section_id, value, portOption, singlePortOption);
+			return validatePortValue(section_id, value, portOption, singlePortOption, false);
 		};
 		singlePortOption.validate = function(section_id, value) {
 			if (value === '0') {
@@ -288,34 +313,46 @@ return view.extend({
 
 			return true;
 		};
-		const revalidatePorts = function(_event, section_id) {
-			for (const option of [ portOption, managementPortOption, singlePortOption ]) {
-				const element = option.getUIElement(section_id);
-
-				if (element)
-					element.triggerValidation();
-			}
-		};
-		portOption.onchange = revalidatePorts;
-		managementPortOption.onchange = revalidatePorts;
-		singlePortOption.onchange = revalidatePorts;
-
-		o = s.option(form.Flag, 'https', _('Enable HTTPS service'),
+		httpsOption = s.option(form.Flag, 'https', _('Enable HTTPS service'),
 			_('Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key.'));
+		o = httpsOption;
 		o.default = '0';
 		o.depends('isonlyoneprot', '0');
 
-		o = s.option(form.Value, 'crt_file', _('Specify crt certificate file'));
+		certificateOption = s.option(form.Value, 'crt_file', _('Specify crt certificate file'));
+		o = certificateOption;
 		o.placeholder = DEFAULT_CRT_FILE;
 		o.default = DEFAULT_CRT_FILE;
 		o.datatype = 'file';
 		o.depends({ isonlyoneprot: '0', https: '1' });
+		o.validate = function(section_id, value) {
+			return validateCertificatePath(section_id, value, singlePortOption, httpsOption);
+		};
 
-		o = s.option(form.Value, 'key_file', _('Specify key certificate file'));
+		keyOption = s.option(form.Value, 'key_file', _('Specify key certificate file'));
+		o = keyOption;
 		o.placeholder = DEFAULT_KEY_FILE;
 		o.default = DEFAULT_KEY_FILE;
 		o.datatype = 'file';
 		o.depends({ isonlyoneprot: '0', https: '1' });
+		o.validate = function(section_id, value) {
+			return validateCertificatePath(section_id, value, singlePortOption, httpsOption);
+		};
+
+		const revalidateProtocolOptions = function(_event, section_id) {
+			triggerActiveValidation(section_id, [
+				portOption,
+				managementPortOption,
+				singlePortOption,
+				httpsOption,
+				certificateOption,
+				keyOption
+			]);
+		};
+		portOption.onchange = revalidateProtocolOptions;
+		managementPortOption.onchange = revalidateProtocolOptions;
+		singlePortOption.onchange = revalidateProtocolOptions;
+		httpsOption.onchange = revalidateProtocolOptions;
 
 		o = s.option(form.Value, 'upload_dir', _('Upload dir path'),
 			_('Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload.<br />Do not place it under /etc/gecoosac because that directory is backed up during sysupgrade.'));

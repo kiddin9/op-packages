@@ -16,6 +16,13 @@ stop_default_httpd_services() {
 	done
 }
 
+start_default_httpd_services() {
+	for service in uhttpd nginx; do
+		[ -x "/etc/init.d/$service" ] || continue
+		"/etc/init.d/$service" enabled && "/etc/init.d/$service" start
+	done
+}
+
 start_service() { 
 	config_load ghttpd
 	config_foreach get_config ghttpd
@@ -31,6 +38,17 @@ start_service() {
 	procd_close_instance
 }
 
+stop_service() {
+	procd_kill "$NAME"
+	config_load ghttpd
+	config_foreach get_config ghttpd
+	start_default_httpd_services
+}
+
 service_triggers() {
 	procd_add_reload_trigger "ghttpd"
+}
+
+reload_service() {
+	restart
 }

@@ -332,8 +332,6 @@ generate_default_cert() {
 		return 0
 	fi
 
-	mkdir -p /etc/gecoosac/tls
-
 	cert_cn="${cert_ip:-$cert_host}"
 	cert_san="DNS:$cert_host"
 	[ -n "$cert_ip" ] && cert_san="${cert_san},IP:${cert_ip}"
@@ -371,6 +369,8 @@ generate_default_cert() {
 }
 
 normalize_conf() {
+	[ "$isonlyoneprot" = "0" ] || isonlyoneprot="1"
+	[ "$https" = "1" ] || https="0"
 	if is_safe_upload_dir "$upload_dir"; then
 		upload_dir="$(normalize_path "$upload_dir")"
 	else
@@ -383,14 +383,16 @@ normalize_conf() {
 		logger -t gecoosac "refusing unsupported database directory: $db_dir"
 		return 1
 	fi
-	is_abs_path "$crt_file" || {
-		logger -t gecoosac "refusing non-absolute certificate path: $crt_file"
-		return 1
-	}
-	is_abs_path "$key_file" || {
-		logger -t gecoosac "refusing non-absolute key path: $key_file"
-		return 1
-	}
+	if [ "$isonlyoneprot" = "0" ] && [ "$https" = "1" ]; then
+		is_abs_path "$crt_file" || {
+			logger -t gecoosac "refusing non-absolute certificate path: $crt_file"
+			return 1
+		}
+		is_abs_path "$key_file" || {
+			logger -t gecoosac "refusing non-absolute key path: $key_file"
+			return 1
+		}
+	fi
 	if is_safe_pid_dir "$piddir" "$upload_dir"; then
 		piddir="$(normalize_path "$piddir")"
 	else
@@ -401,14 +403,14 @@ normalize_conf() {
 		logger -t gecoosac "refusing invalid interface port: $port"
 		return 1
 	}
-	is_port "$m_port" || {
-		logger -t gecoosac "refusing invalid management port: $m_port"
-		return 1
-	}
+	if [ "$isonlyoneprot" = "0" ]; then
+		is_port "$m_port" || {
+			logger -t gecoosac "refusing invalid management port: $m_port"
+			return 1
+		}
+	fi
 
 	[ "$enabled" = "1" ] || enabled="0"
-	[ "$isonlyoneprot" = "0" ] || isonlyoneprot="1"
-	[ "$https" = "1" ] || https="0"
 	case "$lang" in
 		zh|en) ;;
 		*) lang="$DEFAULT_LANG" ;;
@@ -419,22 +421,17 @@ normalize_conf() {
 }
 
 ensure_dirs() {
-	local path
-
-	path="$(normalize_path "$upload_dir")" || return 1
-	if ! ensure_dir_tree "$path" || ! mkdir -p "$db_dir" "$piddir" /etc/gecoosac/tls; then
+	if ! ensure_managed_dir upload "$upload_dir" || \
+		! ensure_managed_dir db "$db_dir" || \
+		! ensure_managed_dir pid "$piddir" || \
+		! ensure_managed_dir tls /etc/gecoosac/tls; then
 		logger -t gecoosac "failed to create runtime directories"
 		return 1
 	fi
-	chmod go-w "$path" || return 1
-	is_secure_upload_dir "$path" || {
-		logger -t gecoosac "upload directory or its parent is not root-owned and private: $path"
-		return 1
-	}
 }
 
-ensure_dir_tree() {
-	local path current part rest
+ensure_secure_dir_tree() {
+	local path current part rest mode
 
 	path="$(normalize_path "$1")" || return 1
 	current="/"
@@ -451,9 +448,51 @@ ensure_dir_tree() {
 		if [ -e "$current" ]; then
 			[ -d "$current" ] || return 1
 		else
-			mkdir "$current" || return 1
+			mode=0755
+			[ -n "$rest" ] || mode=0750
+			mkdir -m "$mode" "$current" || return 1
 		fi
+		case "$current" in
+			/tmp) is_secure_dir "$current" 1 || return 1 ;;
+			*) is_secure_dir "$current" || return 1 ;;
+		esac
 	done
+}
+
+managed_dir_path() {
+	local role="$1" path="$2" anchor
+
+	case "$role:$path" in
+		db:/var/lib/gecoosac|db:/var/lib/gecoosac/*)
+			anchor="$(readlink -f /var 2>/dev/null)" || return 1
+			case "$anchor" in
+				/var|/tmp) printf '%s%s\n' "$anchor" "${path#/var}" ;;
+				*) return 1 ;;
+			esac
+		;;
+		pid:/var/run|pid:/var/run/*)
+			anchor="$(readlink -f /var/run 2>/dev/null)" || return 1
+			[ "$anchor" = "/tmp/run" ] || return 1
+			printf '%s%s\n' "$anchor" "${path#/var/run}"
+		;;
+		*) printf '%s\n' "$path" ;;
+	esac
+}
+
+ensure_managed_dir() {
+	local role="$1" path physical
+
+	path="$(normalize_path "$2")" || return 1
+	case "$role" in
+		upload) is_safe_upload_dir "$path" || return 1 ;;
+		db) is_safe_db_dir "$path" "$upload_dir" || return 1 ;;
+		pid) is_safe_pid_dir "$path" "$upload_dir" || return 1 ;;
+		tls) [ "$path" = "/etc/gecoosac/tls" ] || return 1 ;;
+		*) return 1 ;;
+	esac
+	physical="$(managed_dir_path "$role" "$path")" || return 1
+	ensure_secure_dir_tree "$physical" || return 1
+	[ -d "$path" ]
 }
 
 prepare_service() {
@@ -528,16 +567,16 @@ wait_service_stopped() {
 	local i
 
 	if ! type service_running >/dev/null 2>&1; then
-		return 0
+		return 1
 	fi
 
 	i=0
-	while [ "$i" -lt 5 ]; do
-		service_running gecoosac || return 0
+	while service_running gecoosac; do
+		[ "$i" -ge 5 ] && return 1
 		sleep 1
 		i=$((i + 1))
 	done
-	return 1
+	return 0
 }
 
 reload_service() {
