@@ -12,7 +12,7 @@ CONFIG_COMPAT=2
 
 ensure_section() {
 	uci -q get gecoosac.config >/dev/null && return 0
-	uci -q set gecoosac.config=gecoosac
+	uci -q set gecoosac.config=gecoosac || return 1
 	changed=1
 }
 
@@ -21,7 +21,7 @@ set_default() {
 	local value="$2"
 
 	uci -q get "gecoosac.config.${option}" >/dev/null && return 0
-	uci -q set "gecoosac.config.${option}=${value}"
+	uci -q set "gecoosac.config.${option}=${value}" || return 1
 	changed=1
 }
 
@@ -64,15 +64,48 @@ is_abs_path() {
 	esac
 }
 
+managed_dir_path() {
+	local role="$1" path anchor
+
+	case "$role" in
+		upload|db|pid|file) ;;
+		*) return 1 ;;
+	esac
+	path="$(normalize_path "$2")" || return 1
+	case "$path" in
+		/var/run|/var/run/*)
+			anchor="$(readlink -f /var/run 2>/dev/null)" || return 1
+			[ "$anchor" = "/tmp/run" ] || return 1
+			printf '%s%s\n' "$anchor" "${path#/var/run}"
+		;;
+		/var|/var/*)
+			anchor="$(readlink -f /var 2>/dev/null)" || return 1
+			case "$anchor" in
+				/var|/tmp) printf '%s%s\n' "$anchor" "${path#/var}" ;;
+				*) return 1 ;;
+			esac
+		;;
+		*) printf '%s\n' "$path" ;;
+	esac
+}
+
 is_safe_upload_dir() {
-	local path
+	local path physical
 
 	path="$(normalize_path "$1")" || return 1
+	physical="$(managed_dir_path upload "$path")" || return 1
 	case "$path" in
+		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
+	esac
+	case "$physical" in
 		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
 	esac
 
 	case "$path" in
+		*/gecoosac/upload) ;;
+		*) return 1 ;;
+	esac
+	case "$physical" in
 		*/gecoosac/upload) return 0 ;;
 	esac
 
@@ -91,7 +124,7 @@ is_path_in_dir() {
 }
 
 is_safe_db_dir() {
-	local path upload_root
+	local path upload_root physical physical_upload_root
 
 	path="$(normalize_path "$1")" || return 1
 	upload_root="$(normalize_path "${2:-$DEFAULT_UPLOAD_DIR}")" || return 1
@@ -101,12 +134,15 @@ is_safe_db_dir() {
 		*) return 1 ;;
 	esac
 	is_path_in_dir "$path" "$upload_root" && return 1
+	physical="$(managed_dir_path db "$path")" || return 1
+	physical_upload_root="$(managed_dir_path upload "$upload_root")" || return 1
+	is_path_in_dir "$physical" "$physical_upload_root" && return 1
 
 	return 0
 }
 
 is_safe_pid_dir() {
-	local path upload_root
+	local path upload_root physical physical_upload_root
 
 	path="$(normalize_path "$1")" || return 1
 	upload_root="$(normalize_path "${2:-$DEFAULT_UPLOAD_DIR}")" || return 1
@@ -116,6 +152,9 @@ is_safe_pid_dir() {
 		*) return 1 ;;
 	esac
 	is_path_in_dir "$path" "$upload_root" && return 1
+	physical="$(managed_dir_path pid "$path")" || return 1
+	physical_upload_root="$(managed_dir_path upload "$upload_root")" || return 1
+	is_path_in_dir "$physical" "$physical_upload_root" && return 1
 
 	return 0
 }
@@ -153,7 +192,7 @@ normalize_dir_option() {
 	fi
 
 	[ "$value" = "$normalized" ] && return 0
-	uci -q set "gecoosac.config.${option}=${normalized}"
+	uci -q set "gecoosac.config.${option}=${normalized}" || return 1
 	changed=1
 }
 
@@ -238,26 +277,26 @@ migrate_config() {
 	changed=1
 }
 
-ensure_section
+ensure_section || exit 1
 migrate_config || exit 1
 normalize_upload_dir || exit 1
-normalize_dir_option db_dir "$DEFAULT_DB_DIR" is_safe_db_dir
-normalize_dir_option piddir "$DEFAULT_PID_DIR" is_safe_pid_dir
-set_default enabled 0
-set_default port 60650
-set_default isonlyoneprot 1
-set_default m_port 8080
-set_default https 0
-set_default crt_file "$DEFAULT_CRT_FILE"
-set_default key_file "$DEFAULT_KEY_FILE"
-set_default upload_dir "$DEFAULT_UPLOAD_DIR"
-set_default db_dir "$DEFAULT_DB_DIR"
-set_default piddir "$DEFAULT_PID_DIR"
-set_default lang zh
-set_default debug 0
+normalize_dir_option db_dir "$DEFAULT_DB_DIR" is_safe_db_dir || exit 1
+normalize_dir_option piddir "$DEFAULT_PID_DIR" is_safe_pid_dir || exit 1
+set_default enabled 0 || exit 1
+set_default port 60650 || exit 1
+set_default isonlyoneprot 1 || exit 1
+set_default m_port 8080 || exit 1
+set_default https 0 || exit 1
+set_default crt_file "$DEFAULT_CRT_FILE" || exit 1
+set_default key_file "$DEFAULT_KEY_FILE" || exit 1
+set_default upload_dir "$DEFAULT_UPLOAD_DIR" || exit 1
+set_default db_dir "$DEFAULT_DB_DIR" || exit 1
+set_default piddir "$DEFAULT_PID_DIR" || exit 1
+set_default lang zh || exit 1
+set_default debug 0 || exit 1
 # Preserve the previous package behavior for upgraded configs that never had showtip.
-set_default showtip 0
-set_default log 0
+set_default showtip 0 || exit 1
+set_default log 0 || exit 1
 
 if [ "$changed" = "1" ]; then
 	uci -q commit gecoosac || exit 1

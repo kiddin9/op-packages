@@ -19,7 +19,18 @@ DEFAULT_LANG=zh
 CERT_TIMEOUT=60
 
 init_conf() {
-	config_load "gecoosac"
+	local section_type
+
+	unset CONFIG_config_TYPE
+	config_load "gecoosac" || {
+		logger -t gecoosac "unable to read Gecoos configuration"
+		return 1
+	}
+	config_get section_type config TYPE
+	[ "$section_type" = "gecoosac" ] || {
+		logger -t gecoosac "missing Gecoos configuration section"
+		return 1
+	}
 	config_get "db_dir" "config" "db_dir" "$DEFAULT_DB_DIR"
 	config_get "upload_dir" "config" "upload_dir" "$DEFAULT_UPLOAD_DIR"
 	config_get "enabled" "config" "enabled" "0"
@@ -76,14 +87,22 @@ normalize_path() {
 }
 
 is_safe_upload_dir() {
-	local path
+	local path physical
 
 	path="$(normalize_path "$1")" || return 1
+	physical="$(managed_dir_path upload "$path")" || return 1
 	case "$path" in
+		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
+	esac
+	case "$physical" in
 		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
 	esac
 
 	case "$path" in
+		*/gecoosac/upload) ;;
+		*) return 1 ;;
+	esac
+	case "$physical" in
 		*/gecoosac/upload) return 0 ;;
 	esac
 
@@ -145,7 +164,7 @@ is_secure_upload_dir() {
 }
 
 is_safe_db_dir() {
-	local path upload_root
+	local path upload_root physical physical_upload_root
 
 	path="$(normalize_path "$1")" || return 1
 	upload_root="$(normalize_path "${2:-$DEFAULT_UPLOAD_DIR}")" || return 1
@@ -155,12 +174,15 @@ is_safe_db_dir() {
 		*) return 1 ;;
 	esac
 	is_path_in_dir "$path" "$upload_root" && return 1
+	physical="$(managed_dir_path db "$path")" || return 1
+	physical_upload_root="$(managed_dir_path upload "$upload_root")" || return 1
+	is_path_in_dir "$physical" "$physical_upload_root" && return 1
 
 	return 0
 }
 
 is_safe_pid_dir() {
-	local path upload_root
+	local path upload_root physical physical_upload_root
 
 	path="$(normalize_path "$1")" || return 1
 	upload_root="$(normalize_path "${2:-$DEFAULT_UPLOAD_DIR}")" || return 1
@@ -170,6 +192,9 @@ is_safe_pid_dir() {
 		*) return 1 ;;
 	esac
 	is_path_in_dir "$path" "$upload_root" && return 1
+	physical="$(managed_dir_path pid "$path")" || return 1
+	physical_upload_root="$(managed_dir_path upload "$upload_root")" || return 1
+	is_path_in_dir "$physical" "$physical_upload_root" && return 1
 
 	return 0
 }
@@ -314,6 +339,7 @@ cert_matches_key() {
 
 generate_default_cert() {
 	local cert_host cert_ip cert_cn cert_san tmp_crt tmp_key
+	local backup_dir old_crt old_key restore_ok path
 
 	if ! command -v openssl >/dev/null 2>&1; then
 		logger -t gecoosac "openssl is required to generate the default HTTPS certificate"
@@ -338,8 +364,11 @@ generate_default_cert() {
 	tmp_crt="${DEFAULT_CRT_FILE}.tmp"
 	tmp_key="${DEFAULT_KEY_FILE}.tmp"
 
-	rm -f "$tmp_crt" "$tmp_key"
-	run_with_timeout "$CERT_TIMEOUT" openssl req \
+	if ! rm -f "$tmp_crt" "$tmp_key"; then
+		logger -t gecoosac "unable to prepare default HTTPS certificate files"
+		return 1
+	fi
+	if ! run_with_timeout "$CERT_TIMEOUT" openssl req \
 		-x509 \
 		-nodes \
 		-newkey ec \
@@ -353,17 +382,79 @@ generate_default_cert() {
 		-addext "basicConstraints=critical,CA:FALSE" \
 		-addext "keyUsage=digitalSignature" \
 		-addext "extendedKeyUsage=serverAuth" \
-		-addext "subjectAltName=$cert_san" </dev/null
+		-addext "subjectAltName=$cert_san" </dev/null; then
+		rm -f "$tmp_crt" "$tmp_key"
+		logger -t gecoosac "failed to generate default HTTPS certificate"
+		return 1
+	fi
 
-	if [ -s "$tmp_crt" ] && [ -s "$tmp_key" ] && cert_matches_san "$tmp_crt" "$cert_host" "$cert_ip" && cert_matches_key "$tmp_crt" "$tmp_key"; then
-		mv "$tmp_key" "$DEFAULT_KEY_FILE"
-		mv "$tmp_crt" "$DEFAULT_CRT_FILE"
-		chmod 600 "$DEFAULT_KEY_FILE"
-		chmod 644 "$DEFAULT_CRT_FILE"
+	if [ ! -s "$tmp_crt" ] || [ ! -s "$tmp_key" ] || \
+		! cert_matches_san "$tmp_crt" "$cert_host" "$cert_ip" || \
+		! cert_matches_key "$tmp_crt" "$tmp_key" || \
+		! chmod 600 "$tmp_key" || ! chmod 644 "$tmp_crt"; then
+		rm -f "$tmp_crt" "$tmp_key"
+		logger -t gecoosac "failed to validate default HTTPS certificate"
+		return 1
+	fi
+
+	for path in "$DEFAULT_CRT_FILE" "$DEFAULT_KEY_FILE"; do
+		if [ -e "$path" ] || [ -L "$path" ]; then
+			[ -f "$path" ] && [ ! -L "$path" ] || {
+				rm -f "$tmp_crt" "$tmp_key"
+				logger -t gecoosac "refusing unsafe default HTTPS certificate path: $path"
+				return 1
+			}
+		fi
+	done
+
+	backup_dir="$(mktemp -d /tmp/gecoosac-cert-backup.XXXXXX)" || {
+		rm -f "$tmp_crt" "$tmp_key"
+		logger -t gecoosac "unable to back up default HTTPS certificate"
+		return 1
+	}
+	old_crt=0
+	old_key=0
+	if [ -f "$DEFAULT_CRT_FILE" ]; then
+		cp -p "$DEFAULT_CRT_FILE" "$backup_dir/cert" || {
+			rm -f "$tmp_crt" "$tmp_key"
+			rm -rf "$backup_dir"
+			logger -t gecoosac "unable to back up default HTTPS certificate"
+			return 1
+		}
+		old_crt=1
+	fi
+	if [ -f "$DEFAULT_KEY_FILE" ]; then
+		cp -p "$DEFAULT_KEY_FILE" "$backup_dir/key" || {
+			rm -f "$tmp_crt" "$tmp_key"
+			rm -rf "$backup_dir"
+			logger -t gecoosac "unable to back up default HTTPS private key"
+			return 1
+		}
+		old_key=1
+	fi
+
+	if mv "$tmp_key" "$DEFAULT_KEY_FILE" && \
+		mv "$tmp_crt" "$DEFAULT_CRT_FILE" && \
+		cert_matches_san "$DEFAULT_CRT_FILE" "$cert_host" "$cert_ip" && \
+		cert_matches_key "$DEFAULT_CRT_FILE" "$DEFAULT_KEY_FILE"; then
+		rm -rf "$backup_dir"
 		return 0
 	fi
 
 	rm -f "$tmp_crt" "$tmp_key"
+	restore_ok=1
+	rm -f "$DEFAULT_CRT_FILE" "$DEFAULT_KEY_FILE" || restore_ok=0
+	if [ "$old_crt" = "1" ]; then
+		cp -p "$backup_dir/cert" "$DEFAULT_CRT_FILE" || restore_ok=0
+	fi
+	if [ "$old_key" = "1" ]; then
+		cp -p "$backup_dir/key" "$DEFAULT_KEY_FILE" || restore_ok=0
+	fi
+	if [ "$restore_ok" = "1" ]; then
+		rm -rf "$backup_dir"
+	else
+		logger -t gecoosac "unable to restore default HTTPS certificate; backup retained at $backup_dir"
+	fi
 	logger -t gecoosac "failed to generate default HTTPS certificate"
 	return 1
 }
@@ -460,20 +551,25 @@ ensure_secure_dir_tree() {
 }
 
 managed_dir_path() {
-	local role="$1" path="$2" anchor
+	local role="$1" path anchor
 
-	case "$role:$path" in
-		db:/var/lib/gecoosac|db:/var/lib/gecoosac/*)
+	case "$role" in
+		upload|db|pid|file|tls) ;;
+		*) return 1 ;;
+	esac
+	path="$(normalize_path "$2")" || return 1
+	case "$path" in
+		/var/run|/var/run/*)
+			anchor="$(readlink -f /var/run 2>/dev/null)" || return 1
+			[ "$anchor" = "/tmp/run" ] || return 1
+			printf '%s%s\n' "$anchor" "${path#/var/run}"
+		;;
+		/var|/var/*)
 			anchor="$(readlink -f /var 2>/dev/null)" || return 1
 			case "$anchor" in
 				/var|/tmp) printf '%s%s\n' "$anchor" "${path#/var}" ;;
 				*) return 1 ;;
 			esac
-		;;
-		pid:/var/run|pid:/var/run/*)
-			anchor="$(readlink -f /var/run 2>/dev/null)" || return 1
-			[ "$anchor" = "/tmp/run" ] || return 1
-			printf '%s%s\n' "$anchor" "${path#/var/run}"
 		;;
 		*) printf '%s\n' "$path" ;;
 	esac
@@ -496,7 +592,7 @@ ensure_managed_dir() {
 }
 
 prepare_service() {
-	init_conf
+	init_conf || return 1
 	[ "$enabled" = "1" ] || return 0
 	normalize_conf || return 1
 	if [ ! -x "$PROG" ]; then
@@ -522,10 +618,9 @@ prepare_service() {
 	fi
 }
 
-start_service() {
+start_prepared_service() {
 	local runtime_upload_dir runtime_db_dir runtime_piddir
 
-	prepare_service || return 1
 	[ "$enabled" = "1" ] || return 0
 	runtime_upload_dir="${upload_dir%/}/"
 	runtime_db_dir="${db_dir%/}/"
@@ -563,20 +658,65 @@ start_service() {
 	procd_close_instance
 }
 
-wait_service_stopped() {
-	local i
+start_service() {
+	prepare_service || exit 1
+	start_prepared_service
+}
 
-	if ! type service_running >/dev/null 2>&1; then
-		return 1
+service_running_state() {
+	local data instances instance state
+
+	data="$(ubus call service list '{"name":"gecoosac"}' 2>/dev/null)" || return 2
+	json_load "$data" 2>/dev/null || return 2
+	if ! json_select gecoosac 2>/dev/null; then
+		json_cleanup
+		return 0
 	fi
+	if ! json_select instances 2>/dev/null; then
+		json_cleanup
+		return 0
+	fi
+	json_get_keys instances
+	for instance in $instances; do
+		if ! json_select "$instance" 2>/dev/null; then
+			json_cleanup
+			return 2
+		fi
+		json_get_var state running
+		json_select ..
+		case "$state" in
+			1|true)
+				json_cleanup
+				return 1
+			;;
+			0|false) ;;
+			*)
+				json_cleanup
+				return 2
+			;;
+		esac
+	done
+	json_cleanup
+	return 0
+}
+
+wait_service_stopped() {
+	local i state
 
 	i=0
-	while service_running gecoosac; do
-		[ "$i" -ge 5 ] && return 1
-		sleep 1
-		i=$((i + 1))
+	while :; do
+		service_running_state
+		state="$?"
+		case "$state" in
+			0) return 0 ;;
+			1)
+				[ "$i" -ge 5 ] && return 1
+				sleep 1
+				i=$((i + 1))
+			;;
+			*) return 1 ;;
+		esac
 	done
-	return 0
 }
 
 reload_service() {
@@ -585,7 +725,7 @@ reload_service() {
 		logger -t gecoosac "unable to stop the existing service for reload"
 		return 1
 	fi
-	start
+	rc_procd start_prepared_service
 }
 
 service_triggers() {

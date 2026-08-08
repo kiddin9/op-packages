@@ -15,6 +15,9 @@ msgstr "預設憑證檔案會在 HTTPS 啟動時產生；自訂路徑必須指�
 msgid "Gecoos AC"
 msgstr "集客 AC 控制器"
 
+msgid "Grant access for luci-app-gecoosac"
+msgstr "授予 luci-app-gecoosac 存取權限"
+
 msgid "Only supports Gecoos AP firmware 7.6 and above."
 msgstr "僅支援集客 AP 7.6 及以上版本韌體。"
 
@@ -145,9 +148,6 @@ msgstr "已儲存的上傳目錄已清除"
 msgid "Unable to remove upload directory contents"
 msgstr "無法移除上傳目錄內容"
 
-msgid "Upload directory contains configured runtime paths"
-msgstr "上傳目錄包含已設定的執行時路徑"
-
 msgid "Port must be an integer between 1 and 65535."
 msgstr "連接埠必須是 1 到 65535 之間的整數。"
 
@@ -172,11 +172,32 @@ msgstr "上傳目錄包含已設定的受保護路徑"
 msgid "Unable to validate configured paths"
 msgstr "無法驗證已設定的路徑"
 
+msgid "Unable to read Gecoos configuration"
+msgstr "無法讀取 Gecoos 設定"
+
+msgid "Gecoos configuration changed during cleanup"
+msgstr "清理期間 Gecoos 設定發生變更"
+
 msgid "Upload directory or its parent is not root-owned and private"
 msgstr "上傳目錄或其父目錄不是 root 所有且為私有目錄"
 
 msgid "Unable to prepare upload directory cleanup"
 msgstr "無法準備上傳目錄清理"
 
+msgid "Unable to validate upload cleanup stage"
+msgstr "無法驗證上傳目錄清理暫存區"
+
+msgid "Upload cleanup stage contains a configured protected path"
+msgstr "上傳目錄清理暫存區包含已設定的受保護路徑"
+
 msgid "Unable to recreate upload directory"
 msgstr "無法重新建立上傳目錄"
+
+msgid "Unable to remove upload cleanup stage"
+msgstr "無法移除上傳目錄清理暫存區"
+
+msgid "Unable to resolve managed path policy"
+msgstr "無法解析受管理路徑策略"
+
+msgid "Unable to validate /var paths on this system."
+msgstr "無法驗證此系統上的 /var 路徑。"

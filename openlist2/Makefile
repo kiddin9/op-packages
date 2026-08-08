@@ -7,9 +7,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=openlist2
-PKG_VERSION:=4.2.4
-PKG_WEB_VERSION:=4.2.4
-PKG_RELEASE:=12
+PKG_VERSION:=4.2.5
+PKG_WEB_VERSION:=4.2.5
+PKG_RELEASE:=13
 
 PKG_SOURCE:=openlist-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/OpenListTeam/OpenList/tar.gz/v$(PKG_VERSION)?
@@ -42,11 +42,6 @@ GO_PKG_LDFLAGS:= \
 	-X '$(GO_PKG)/internal/conf.GitCommit=tarball/$(shell echo $(PKG_HASH) | cut -c 1-7)' \
 	-X '$(GO_PKG)/internal/conf.Version=v$(PKG_VERSION) (OpenWrt $(ARCH_PACKAGES))' \
 	-X '$(GO_PKG)/internal/conf.WebVersion=v$(PKG_WEB_VERSION)'
-GO_PKG_EXCLUDES:=internal/fuse
-ifneq ($(CONFIG_ARCH_64BIT),y)
-  GO_PKG_EXCLUDES+=drivers/lark
-endif
-
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
 

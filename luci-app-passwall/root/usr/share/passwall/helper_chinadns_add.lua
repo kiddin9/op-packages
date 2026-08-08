@@ -227,7 +227,7 @@ if USE_DIRECT_LIST == "1" and not fs.access(file_direct_host) then
 				geosite_arg = geosite_arg .. (geosite_arg ~= "" and "," or "") .. line
 			else
 				line = api.get_std_domain(line)
-				if line ~= "" and not line:find("#") then
+				if line ~= "" and not line:find("#") and not line:find(":") then
 					insert_unique(direct_domain, line, lookup_direct_domain)
 				end
 			end
@@ -277,7 +277,7 @@ if USE_PROXY_LIST == "1" and not fs.access(file_proxy_host) then
 				geosite_arg = geosite_arg .. (geosite_arg ~= "" and "," or "") .. line
 			else
 				line = api.get_std_domain(line)
-				if line ~= "" and not line:find("#") then
+				if line ~= "" and not line:find("#") and not line:find(":") then
 					insert_unique(proxy_domain, line, lookup_proxy_domain)
 				end
 			end
@@ -391,14 +391,14 @@ if IS_SHUNT_NODE then
 	local default_node_id = t["default_node"] or "_direct"
 	uci:foreach(appname, "shunt_rules", function(s)
 		local _node_id = t[s[".name"]]
-		if _node_id and _node_id ~= "_blackhole" then
+		if _node_id and _node_id ~= "_blackhole" and t["shunt_group"] == s.group then
 			if _node_id == "_default" then
 				_node_id = default_node_id
 			end
 
 			local domain_list = s.domain_list or ""
 			for line in string.gmatch(domain_list, "[^\r\n]+") do
-				if line ~= "" and not line:find("#") and not line:find("regexp:") and not line:find("ext:") then
+				if line ~= "" and not line:find("#") and not line:find("regexp:") and not line:find("ext:") and not line:find("rule-set:") and not line:find("rs:") then
 					if line:find("geosite:") then
 						line = string.match(line, ":([^:]+)$")
 						if _node_id == "_direct" then

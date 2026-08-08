@@ -6,9 +6,9 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=daed
 PKG_VERSION:=2026.08.05
-PKG_RELEASE:=43
+PKG_RELEASE:=44
 
-PKG_SOURCE:=daed-src-2026.08.05-4cab0ccb366a.tar.gz
+PKG_SOURCE:=daed-src-2026.08.05-c389546b8c1f.tar.gz
 PKG_SOURCE_URL:=https://github.com/kenzok8/openwrt-daede/releases/download/daed-src
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_HASH:=skip
@@ -142,6 +142,9 @@ define Package/daed/install
 
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) $(CURDIR)/files/daed.init $(1)/etc/init.d/daed
+
+	$(INSTALL_DIR) $(1)/lib/upgrade/keep.d
+	$(INSTALL_DATA) $(CURDIR)/files/daed.keep $(1)/lib/upgrade/keep.d/daed
 endef
 
 $(eval $(call GoBinPackage,daed))

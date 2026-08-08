@@ -1,19 +1,21 @@
 #!/bin/sh
-[ ! -f "/usr/share/ucitrack/luci-app-gecoosac.json" ] && {
-    cat > /usr/share/ucitrack/luci-app-gecoosac.json << EEOF
+[ ! -f "/usr/share/ucitrack/luci-app-add.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-add.json << EEOF
 {
-    "config": "gecoosac",
-    "init": "gecoosac"
+    "config": "add",
+    "init": "add"
 }
 EEOF
 }
 
-uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@gecoosac[-1]
-	add ucitrack gecoosac
-	set ucitrack.@gecoosac[-1].init=gecoosac
-	commit ucitrack
-EOF
+while uci -q get 'ucitrack.@gecoosac[-1]' >/dev/null; do
+	uci -q delete 'ucitrack.@gecoosac[-1]' || exit 1
+done
+
+section="$(uci -q add ucitrack gecoosac)" || exit 1
+[ -n "$section" ] || exit 1
+uci -q set "ucitrack.${section}.init=gecoosac" || exit 1
+uci -q commit ucitrack || exit 1
 
 rm -f /tmp/luci-indexcache
 rm -rf /tmp/luci-modulecache

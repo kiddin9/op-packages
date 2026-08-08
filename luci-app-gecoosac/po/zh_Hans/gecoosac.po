@@ -15,6 +15,9 @@ msgstr "默认证书文件会在 HTTPS 启动时生成；自定义路径必须�
 msgid "Gecoos AC"
 msgstr "集客AC控制器"
 
+msgid "Grant access for luci-app-gecoosac"
+msgstr "授予 luci-app-gecoosac 访问权限"
+
 msgid "Only supports Gecoos AP firmware 7.6 and above."
 msgstr "仅支持集客 AP 7.6 及以上版本固件。"
 
@@ -145,9 +148,6 @@ msgstr "已保存的上传目录已清理"
 msgid "Unable to remove upload directory contents"
 msgstr "无法删除上传目录内容"
 
-msgid "Upload directory contains configured runtime paths"
-msgstr "上传目录包含已配置的运行目录"
-
 msgid "Port must be an integer between 1 and 65535."
 msgstr "端口必须是 1 到 65535 之间的整数。"
 
@@ -172,11 +172,32 @@ msgstr "上传目录包含已配置的受保护路径"
 msgid "Unable to validate configured paths"
 msgstr "无法验证已配置的路径"
 
+msgid "Unable to read Gecoos configuration"
+msgstr "无法读取 Gecoos 配置"
+
+msgid "Gecoos configuration changed during cleanup"
+msgstr "清理期间 Gecoos 配置发生变化"
+
 msgid "Upload directory or its parent is not root-owned and private"
 msgstr "上传目录或其父目录不是 root 所有且为私有目录"
 
 msgid "Unable to prepare upload directory cleanup"
 msgstr "无法准备上传目录清理"
 
+msgid "Unable to validate upload cleanup stage"
+msgstr "无法验证上传目录清理暂存区"
+
+msgid "Upload cleanup stage contains a configured protected path"
+msgstr "上传目录清理暂存区包含已配置的受保护路径"
+
 msgid "Unable to recreate upload directory"
 msgstr "无法重新创建上传目录"
+
+msgid "Unable to remove upload cleanup stage"
+msgstr "无法删除上传目录清理暂存区"
+
+msgid "Unable to resolve managed path policy"
+msgstr "无法解析受管路径策略"
+
+msgid "Unable to validate /var paths on this system."
+msgstr "无法验证此系统上的 /var 路径。"

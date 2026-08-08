@@ -32,6 +32,7 @@ function index()
 	end
 	e.dependent = true
 	e.acl_depends = { "luci-app-passwall2" }
+	entry({"admin", "services", appname, "ip"}, call('check_ip')).leaf = true
 	--[[ Client ]]
 	entry({"admin", "services", appname, "settings"}, cbi(appname .. "/client/global"), _("Basic Settings"), 1).dependent = true
 	entry({"admin", "services", appname, "node_list"}, cbi(appname .. "/client/node_list"), _("Node List"), 2).dependent = true
@@ -51,14 +52,14 @@ function index()
 	entry({"admin", "services", appname, "socks_config"}, cbi(appname .. "/client/socks_config")).leaf = true
 	entry({"admin", "services", appname, "acl"}, cbi(appname .. "/client/acl"), _("Access control"), 98).leaf = true
 	entry({"admin", "services", appname, "acl_config"}, cbi(appname .. "/client/acl_config")).leaf = true
-	entry({"admin", "services", appname, "log"}, form(appname .. "/client/log"), _("Runtime Logs"), 999).leaf = true
+	entry({"admin", "services", appname, "log"}, template(appname .. "/log/log"), _("Runtime Logs"), 999).leaf = true
 
 	--[[ Server ]]
 	entry({"admin", "services", appname, "server"}, cbi(appname .. "/server/index"), _("Server-Side"), 99).leaf = true
 	entry({"admin", "services", appname, "server_user"}, cbi(appname .. "/server/user")).leaf = true
 
 	--[[ API ]]
-	entry({"admin", "services", appname, "server_user_update"}, call("server_user_update")).leaf = true
+	entry({"admin", "services", appname, "server_update_config"}, call("server_update_config")).leaf = true
 	entry({"admin", "services", appname, "server_user_status"}, call("server_user_status")).leaf = true
 	entry({"admin", "services", appname, "server_user_log"}, call("server_user_log")).leaf = true
 	entry({"admin", "services", appname, "server_get_log"}, call("server_get_log")).leaf = true
@@ -79,8 +80,8 @@ function index()
 	entry({"admin", "services", appname, "connect_status"}, call("connect_status")).leaf = true
 	entry({"admin", "services", appname, "ping_node"}, call("ping_node")).leaf = true
 	entry({"admin", "services", appname, "urltest_node"}, call("urltest_node")).leaf = true
+	entry({"admin", "services", appname, "update_config"}, call("update_config")).leaf = true
 	entry({"admin", "services", appname, "add_node"}, call("add_node")).leaf = true
-	entry({"admin", "services", appname, "update_node"}, call("update_node")).leaf = true
 	entry({"admin", "services", appname, "set_node"}, call("set_node")).leaf = true
 	entry({"admin", "services", appname, "copy_node"}, call("copy_node")).leaf = true
 	entry({"admin", "services", appname, "clear_all_nodes"}, call("clear_all_nodes")).leaf = true
@@ -96,7 +97,10 @@ function index()
 	entry({"admin", "services", appname, "subscribe_manual"}, call("subscribe_manual")).leaf = true
 	entry({"admin", "services", appname, "subscribe_manual_all"}, call("subscribe_manual_all")).leaf = true
 	entry({"admin", "services", appname, "flush_set"}, call("flush_set")).leaf = true
-	entry({"admin", "services", appname, "ip"}, call('check_ip')).leaf = true
+	entry({"admin", "services", appname, "get_shunt_rules"}, call("get_shunt_rules")).leaf = true
+	entry({"admin", "services", appname, "add_shunt_rule"}, call("add_shunt_rule")).leaf = true
+	entry({"admin", "services", appname, "delete_select_shunt_rules"}, call("delete_select_shunt_rules")).leaf = true
+	entry({"admin", "services", appname, "save_shunt_rule_order"}, call("save_shunt_rule_order")).leaf = true
 
 	--[[Components update]]
 	entry({"admin", "services", appname, "check_passwall2"}, call("app_check")).leaf = true
@@ -117,6 +121,21 @@ function index()
 	entry({"admin", "services", appname, "geo_view"}, call("geo_view")).leaf = true
 
 	entry({"admin", "services", appname, "fetch_certsha256"}, call("fetch_certsha256")).leaf = true
+end
+
+local function http_write_json(content)
+	http.prepare_content("application/json")
+	http.write(jsonStringify(content or {code = 1}))
+end
+
+local function http_write_json_ok(data)
+	http.prepare_content("application/json")
+	http.write(jsonStringify({code = 1, data = data}))
+end
+
+local function http_write_json_error(data)
+	http.prepare_content("application/json")
+	http.write(jsonStringify({code = 0, data = data}))
 end
 
 function check_site(host, port)
@@ -172,21 +191,6 @@ function check_ip()
     e.youtube = check_site('www.youtube.com', port)
     luci.http.prepare_content('application/json')
     luci.http.write_json(e)
-end
-
-local function http_write_json(content)
-	http.prepare_content("application/json")
-	http.write(jsonStringify(content or {code = 1}))
-end
-
-local function http_write_json_ok(data)
-	http.prepare_content("application/json")
-	http.write(jsonStringify({code = 1, data = data}))
-end
-
-local function http_write_json_error(data)
-	http.prepare_content("application/json")
-	http.write(jsonStringify({code = 0, data = data}))
 end
 
 function reset_config()
@@ -313,7 +317,7 @@ end
 
 function get_socks_log()
 	local name = http.formvalue("name")
-	local path = "/tmp/etc/passwall2/SOCKS_" .. name .. ".log"
+	local path = "/tmp/etc/passwall2/" .. name .. ".log"
 	if nixio.fs.access(path) then
 		local content = luci.sys.exec("tail -n 5000 ".. path)
 		content = content:gsub("\n", "<br />")
@@ -361,7 +365,7 @@ function socks_status()
 	local index = http.formvalue("index")
 	local id = http.formvalue("id")
 	e.index = index
-	e.socks_status = luci.sys.call(string.format("/bin/busybox top -bn1 | grep -v -E 'grep|acl/|acl_' | grep '%s/bin/' | grep '%s' | grep 'SOCKS_' > /dev/null", appname, id)) == 0
+	e.socks_status = luci.sys.call(string.format("/bin/busybox top -bn1 | grep -v -E 'grep|acl/|acl_' | grep '%s/bin/' | grep '%s' > /dev/null", appname, id)) == 0
 	local use_http = uci:get(appname, id, "http_port") or 0
 	e.use_http = 0
 	if tonumber(use_http) > 0 then
@@ -425,6 +429,23 @@ function urltest_node()
 	http_write_json(e)
 end
 
+function update_config()
+	local id = http.formvalue("id") -- Node id
+	local data = http.formvalue("data") -- json new Data
+	if id and data then
+		local data_t = jsonParse(data) or {}
+		if next(data_t) then
+			for k, v in pairs(data_t) do
+				uci:set(appname, id, k, v)
+			end
+			api.uci_save(uci, appname)
+			http_write_json_ok()
+			return
+		end
+	end
+	http_write_json_error()
+end
+
 function add_node()
 	local redirect = http.formvalue("redirect")
 
@@ -445,23 +466,6 @@ function add_node()
 		api.uci_save(uci, appname, true, true)
 		http_write_json({result = uuid})
 	end
-end
-
-function update_node()
-	local id = http.formvalue("id") -- Node id
-	local data = http.formvalue("data") -- json new Data
-	if id and data then
-		local data_t = jsonParse(data) or {}
-		if next(data_t) then
-			for k, v in pairs(data_t) do
-				uci:set(appname, id, k, v)
-			end
-			api.uci_save(uci, appname)
-			http_write_json_ok()
-			return
-		end
-	end
-	http_write_json_error()
 end
 
 function set_node()
@@ -491,7 +495,7 @@ end
 function clear_all_nodes()
 	uci:set(appname, '@global[0]', "enabled", "0")
 	uci:set(appname, '@global[0]', "socks_enabled", "0")
-	uci:set(appname, '@haproxy_config[0]', "balancing_enable", "0")
+	uci:set(appname, '@global_haproxy[0]', "balancing_enable", "0")
 	uci:delete(appname, '@global[0]', "node")
 	uci:foreach(appname, "socks", function(t)
 		uci:delete(appname, t[".name"])
@@ -704,7 +708,7 @@ function rollback_rules()
 	http_write_json_ok()
 end
 
-function server_user_update()
+function server_update_config()
 	local id = http.formvalue("id") -- Node id
 	local data = http.formvalue("data") -- json new Data
 	if id and data then
@@ -1023,4 +1027,88 @@ function fetch_certsha256()
 	end
 	local data = api.fetch_cert_sha256(address, port, sni, 5)
 	http_write_json(data ~= "" and { code = 1, data = data } or { code = 0 })
+end
+
+function get_shunt_rules()
+	local id = http.formvalue("id")
+	local result = {}
+
+	if id then
+		result = uci:get_all(appname, id)
+	else
+		local default_items = {}
+		local other_items = {}
+		uci:foreach(appname, "shunt_rules", function(t)
+			if not t.group or t.group == "" then
+				default_items[#default_items + 1] = t
+			else
+				other_items[#other_items + 1] = t
+			end
+		end)
+		for i = 1, #default_items do result[#result + 1] = default_items[i] end
+		for i = 1, #other_items do result[#result + 1] = other_items[i] end
+	end
+	http_write_json(result)
+end
+
+function add_shunt_rule()
+	local add_name = http.formvalue("add_name")
+	local redirect = http.formvalue("redirect")
+
+	local uuid = add_name
+	if add_name then
+		local has = uci:get(appname, uuid)
+		if has then
+			http_write_json_error({ message = "This ID already exists." })
+			return
+		end
+	else
+		uuid = api.gen_short_uuid()
+	end
+	uci:section(appname, "shunt_rules", uuid)
+
+	local group = http.formvalue("group")
+	if group and group ~= "default" then
+		uci:set(appname, uuid, "group", group)
+	end
+
+	if redirect == "1" then
+		api.uci_save(uci, appname)
+		http.redirect(api.url("shunt_rules", uuid))
+	else
+		api.uci_save(uci, appname)
+		http_write_json_ok({uuid = uuid, redirect_url = api.url("shunt_rules", uuid)})
+	end
+end
+
+function delete_select_shunt_rules()
+	local ids = http.formvalue("ids")
+	local redirect = http.formvalue("redirect")
+	string.gsub(ids, '[^' .. "," .. ']+', function(w)
+		uci:foreach(appname, "nodes", function(s)
+			if s["protocol"] and s["protocol"] == "_shunt" then
+				uci:delete(appname, s[".name"], w)
+			end
+		end)
+		uci:delete(appname, w)
+	end)
+	if redirect == "1" then
+		api.uci_save(uci, appname)
+		http.redirect(api.url("rule"))
+	else
+		api.uci_save(uci, appname, true, true)
+	end
+end
+
+function save_shunt_rule_order()
+	local ids = http.formvalue("ids") or ""
+	local new_order = {}
+	for id in ids:gmatch("([^,]+)") do
+		new_order[#new_order + 1] = id
+	end
+	for idx, name in ipairs(new_order) do
+		luci.sys.call(string.format("uci -q reorder %s.%s=%d", appname, name, idx - 1))
+	end
+	api.sh_uci_commit(appname)
+	http_write_json({ status = "ok" })
 end
