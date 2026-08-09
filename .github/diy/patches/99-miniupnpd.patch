@@ -1,11 +1,12 @@
 --- a/miniupnpd/files/upnpd.config
 +++ b/miniupnpd/files/upnpd.config
-@@ -1,7 +1,7 @@
+@@ -1,7 +1,8 @@
  # UPnP IGD & PCP/NAT-PMP Service Settings (v2.0)
  
  config upnpd 'settings'
 -	option enabled                    '0'
 +	option enabled                    '1'
++	option allow_cgnat 'report-private-ipv4'
  	# Can be set to all/upnp-igd/pcp+nat-pmp
  	option enable_protocols           'all'
  	# Enable networks, multiple can be specified, separated by a space
