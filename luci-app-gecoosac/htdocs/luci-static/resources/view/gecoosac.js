@@ -42,6 +42,7 @@ const RPC_ERROR_MESSAGES = {
 	'Invalid service status response': _('Invalid service status response'),
 	'Expecting an absolute path': _('Expecting an absolute path'),
 	'Only Gecoos upload directories can be cleared': _('Only Gecoos upload directories can be cleared'),
+	'Upload directory contains a mount point': _('Upload directory contains a mount point'),
 	'Upload directory or its parent is not root-owned and private': _('Upload directory or its parent is not root-owned and private'),
 	'Unable to resolve upload directory': _('Unable to resolve upload directory'),
 	'Unable to read Gecoos configuration': _('Unable to read Gecoos configuration'),

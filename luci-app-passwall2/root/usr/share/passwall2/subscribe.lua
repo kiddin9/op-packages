@@ -2274,7 +2274,7 @@ local function update_node(manual)
 			chain_node_type = (outbound_iface_group ~= "") and "iface" or chain_node_type
 		end
 		for _, vv in ipairs(list) do
-			local cfgid = uci:section(appname, "nodes", api.gen_short_uuid())
+			local cfgid = uci:section(appname, "nodes", api.gen_random_char())
 			for kkk, vvv in pairs(vv) do
 				if type(vvv) == "table" and next(vvv) ~= nil then
 					uci:set_list(appname, cfgid, kkk, vvv)

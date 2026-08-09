@@ -3,6 +3,7 @@
 changed=0
 DEFAULT_DB_DIR=/etc/gecoosac
 DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload
+LEGACY_UPLOAD_DIR=/etc/gecoosac/upload
 DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
 DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
 DEFAULT_PID_DIR=/var/run
@@ -123,6 +124,23 @@ is_path_in_dir() {
 	[ "${path#"$root"/}" != "$path" ]
 }
 
+path_has_mount() {
+	local root line mount_path
+
+	root="$(normalize_path "$1")" || return 2
+	[ -r /proc/self/mountinfo ] || return 2
+
+	while IFS= read -r line; do
+		mount_path="$(printf '%s\n' "$line" | cut -d ' ' -f 5)" || return 2
+		[ -n "$mount_path" ] || return 2
+		mount_path="$(printf '%b\n' "$mount_path" 2>/dev/null)" || return 2
+		mount_path="$(normalize_path "$mount_path")" || return 2
+		is_path_in_dir "$mount_path" "$root" && return 0
+	done < /proc/self/mountinfo
+
+	return 1
+}
+
 is_safe_db_dir() {
 	local path upload_root physical physical_upload_root
 
@@ -175,6 +193,58 @@ normalize_upload_dir() {
 	changed=1
 }
 
+configured_path_in_legacy_upload() {
+	local option path resolved
+
+	for option in db_dir piddir crt_file key_file; do
+		path="$(uci -q get "gecoosac.config.${option}")"
+		[ -n "$path" ] || continue
+		path="$(normalize_path "$path")" || return 0
+		is_path_in_dir "$path" "$LEGACY_UPLOAD_DIR" && return 0
+
+		if [ -e "$path" ] || [ -L "$path" ]; then
+			resolved="$(readlink -f "$path" 2>/dev/null)" || return 0
+			resolved="$(normalize_path "$resolved")" || return 0
+			is_path_in_dir "$resolved" "$LEGACY_UPLOAD_DIR" && return 0
+		fi
+	done
+
+	return 1
+}
+
+cleanup_legacy_upload_dir() {
+	local mount_state
+
+	[ -e "$LEGACY_UPLOAD_DIR" ] || [ -L "$LEGACY_UPLOAD_DIR" ] || return 0
+	if [ ! -d "$LEGACY_UPLOAD_DIR" ] || [ -L "$LEGACY_UPLOAD_DIR" ]; then
+		logger -t gecoosac "refusing to remove unsafe legacy upload path: $LEGACY_UPLOAD_DIR"
+		return 0
+	fi
+	if configured_path_in_legacy_upload; then
+		logger -t gecoosac "preserving legacy upload path referenced by configuration: $LEGACY_UPLOAD_DIR"
+		return 0
+	fi
+
+	path_has_mount "$LEGACY_UPLOAD_DIR"
+	mount_state="$?"
+	case "$mount_state" in
+		0)
+			logger -t gecoosac "preserving legacy upload path containing a mount: $LEGACY_UPLOAD_DIR"
+			return 0
+		;;
+		2)
+			logger -t gecoosac "unable to validate legacy upload mounts: $LEGACY_UPLOAD_DIR"
+			return 0
+		;;
+	esac
+
+	rm -rf "$LEGACY_UPLOAD_DIR" || {
+		logger -t gecoosac "failed to remove legacy upload path: $LEGACY_UPLOAD_DIR"
+		return 1
+	}
+	[ ! -e "$LEGACY_UPLOAD_DIR" ] && [ ! -L "$LEGACY_UPLOAD_DIR" ]
+}
+
 normalize_dir_option() {
 	local option="$1"
 	local validator="$3"
@@ -208,8 +278,8 @@ is_regular_file_or_absent() {
 	[ -f "$1" ] && [ ! -L "$1" ]
 }
 
-migrate_legacy_cert_paths() {
-	local crt_file key_file old_crt old_key new_crt new_key path
+migrate_default_certificates() {
+	local crt_file key_file path
 
 	crt_file="$(uci -q get gecoosac.config.crt_file)"
 	key_file="$(uci -q get gecoosac.config.key_file)"
@@ -223,39 +293,8 @@ migrate_legacy_cert_paths() {
 		}
 	done
 
-	old_crt=0
-	old_key=0
-	new_crt=0
-	new_key=0
-	[ -f "$OLD_CRT_FILE" ] && old_crt=1
-	[ -f "$OLD_KEY_FILE" ] && old_key=1
-	[ -f "$DEFAULT_CRT_FILE" ] && new_crt=1
-	[ -f "$DEFAULT_KEY_FILE" ] && new_key=1
-
-	if { [ "$old_crt" = "1" ] && [ "$new_crt" = "1" ]; } || \
-		{ [ "$old_key" = "1" ] && [ "$new_key" = "1" ]; }; then
-		logger -t gecoosac "refusing conflicting legacy and current certificate files"
-		return 1
-	fi
-	if [ "$old_crt" = "1" ] && [ "$new_key" = "1" ]; then
-		logger -t gecoosac "refusing reverse-split certificate migration state"
-		return 1
-	fi
-	if [ $((old_crt + new_crt)) -ne $((old_key + new_key)) ]; then
-		logger -t gecoosac "refusing incomplete certificate migration state"
-		return 1
-	fi
-
-	if [ "$old_crt" = "1" ]; then
-		mv "$OLD_CRT_FILE" "$DEFAULT_CRT_FILE" || return 1
-	fi
-	if [ "$old_key" = "1" ]; then
-		mv "$OLD_KEY_FILE" "$DEFAULT_KEY_FILE" || return 1
-	fi
-	if [ -f "$DEFAULT_CRT_FILE" ]; then
-		chmod 644 "$DEFAULT_CRT_FILE" || return 1
-		chmod 600 "$DEFAULT_KEY_FILE" || return 1
-	fi
+	# Managed certificates are regenerated when HTTPS next starts.
+	rm -f "$OLD_CRT_FILE" "$OLD_KEY_FILE" "$DEFAULT_CRT_FILE" "$DEFAULT_KEY_FILE" || return 1
 
 	if [ "$crt_file" != "$DEFAULT_CRT_FILE" ]; then
 		uci -q set "gecoosac.config.crt_file=${DEFAULT_CRT_FILE}" || return 1
@@ -270,9 +309,10 @@ migrate_legacy_cert_paths() {
 migrate_config() {
 	local compat
 
-	migrate_legacy_cert_paths || return 1
 	compat="$(uci -q get gecoosac.config.config_compat)"
 	[ "$compat" = "$CONFIG_COMPAT" ] && return 0
+	migrate_default_certificates || return 1
+	cleanup_legacy_upload_dir || return 1
 	uci -q set "gecoosac.config.config_compat=${CONFIG_COMPAT}" || return 1
 	changed=1
 }

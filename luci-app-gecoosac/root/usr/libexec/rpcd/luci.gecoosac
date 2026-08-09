@@ -129,6 +129,23 @@ path_in_dir() {
 	[ "${path#"$root"/}" != "$path" ]
 }
 
+path_has_mount() {
+	local root line mount_path
+
+	root="$(normalize_path "$1")" || return 2
+	[ -r /proc/self/mountinfo ] || return 2
+
+	while IFS= read -r line; do
+		mount_path="$(printf '%s\n' "$line" | cut -d ' ' -f 5)" || return 2
+		[ -n "$mount_path" ] || return 2
+		mount_path="$(printf '%b\n' "$mount_path" 2>/dev/null)" || return 2
+		mount_path="$(normalize_path "$mount_path")" || return 2
+		path_in_dir "$mount_path" "$root" && return 0
+	done < /proc/self/mountinfo
+
+	return 1
+}
+
 is_secure_dir() {
 	local allow_sticky="$2" owner permissions metadata
 
@@ -339,6 +356,49 @@ restore_staged_upload() {
 	rmdir "$stage" 2>/dev/null
 }
 
+clear_upload_rollback_result() {
+	local stage="$1" live="$2" message="$3" path="$4"
+
+	if [ -n "$stage" ] && ! restore_staged_upload "$stage" "$live"; then
+		logger -t gecoosac "upload cleanup retained staged data at $stage"
+		path="$stage"
+	fi
+	clear_upload_locked_result 0 "$message" "$path"
+}
+
+clear_upload_error_result() {
+	local message="$1" path="$2"
+
+	if [ -n "$stage" ]; then
+		clear_upload_rollback_result "$stage" "$physical" "$message" "$path"
+	else
+		clear_upload_locked_result 0 "$message" "$path"
+	fi
+}
+
+remove_clear_stage() {
+	local candidate="$1" mount_state
+
+	clear_stage_error=
+	if [ -e "$candidate/upload" ] || [ -L "$candidate/upload" ]; then
+		path_has_mount "$candidate/upload"
+		mount_state="$?"
+		case "$mount_state" in
+			0) clear_stage_error="Upload directory contains a mount point"; return 1 ;;
+			2) clear_stage_error="Unable to validate upload cleanup stage"; return 1 ;;
+		esac
+		rm -rf "$candidate/upload" || {
+			logger -t gecoosac "upload cleanup retained staged data at $candidate"
+			clear_stage_error="Unable to remove upload directory contents"
+			return 1
+		}
+	fi
+	rmdir "$candidate" || {
+		clear_stage_error="Unable to remove upload cleanup stage"
+		return 1
+	}
+}
+
 validate_clear_protected_paths() {
 	local root="$1" live_logical="${2:-$1}" live_physical="${3:-$1}" option
 
@@ -354,7 +414,7 @@ validate_clear_protected_paths() {
 }
 
 clear_upload() {
-	local logical physical resolved parent stage candidate stages live_exists current
+	local logical physical resolved parent stage candidate stages live_exists current clear_stage_error
 	local clear_upload_dir clear_db_dir clear_piddir clear_crt_file clear_key_file
 	local initial_upload initial_db initial_pid initial_crt initial_key
 
@@ -459,6 +519,11 @@ clear_upload() {
 			return
 		}
 		if [ -e "$candidate/upload" ] || [ -L "$candidate/upload" ]; then
+			path_has_mount "$candidate/upload"
+			case "$?" in
+				0) clear_upload_locked_result 0 "Upload directory contains a mount point" "$candidate"; return ;;
+				2) clear_upload_locked_result 0 "Unable to validate upload cleanup stage" "$candidate"; return ;;
+			esac
 			validate_clear_protected_paths "$candidate/upload" "$logical" "$physical"
 			case "$?" in
 				0) clear_upload_locked_result 0 "Upload cleanup stage contains a configured protected path" "$candidate"; return ;;
@@ -473,6 +538,13 @@ clear_upload() {
 	if [ "$live_exists" = "1" ] && ! is_secure_upload_dir "$physical"; then
 		clear_upload_locked_result 0 "Upload directory or its parent is not root-owned and private" "$logical"
 		return
+	fi
+	if [ "$live_exists" = "1" ]; then
+		path_has_mount "$physical"
+		case "$?" in
+			0) clear_upload_locked_result 0 "Upload directory contains a mount point" "$logical"; return ;;
+			2) clear_upload_locked_result 0 "Unable to validate upload cleanup stage" "$logical"; return ;;
+		esac
 	fi
 	if [ "$live_exists" = "0" ] && [ "$stages" = "0" ]; then
 		clear_upload_locked_result 1 "" "$logical"
@@ -520,7 +592,7 @@ clear_upload() {
 	fi
 
 	load_clear_config || {
-		clear_upload_locked_result 0 "Unable to read Gecoos configuration" "$logical"
+		clear_upload_rollback_result "$stage" "$physical" "Unable to read Gecoos configuration" "$logical"
 		return
 	}
 	if [ "$clear_upload_dir" != "$initial_upload" ] || \
@@ -528,38 +600,42 @@ clear_upload() {
 		[ "$clear_piddir" != "$initial_pid" ] || \
 		[ "$clear_crt_file" != "$initial_crt" ] || \
 		[ "$clear_key_file" != "$initial_key" ]; then
-		clear_upload_locked_result 0 "Gecoos configuration changed during cleanup" "$logical"
+		clear_upload_rollback_result "$stage" "$physical" "Gecoos configuration changed during cleanup" "$logical"
 		return
 	fi
 	for candidate in "$parent"/.gecoosac-clear.??????; do
 		[ "$candidate" != "$parent/.gecoosac-clear.??????" ] || continue
 		is_safe_clear_stage "$candidate" || {
-			clear_upload_locked_result 0 "Unable to validate upload cleanup stage" "$candidate"
+			clear_upload_error_result "Unable to validate upload cleanup stage" "$candidate"
 			return
 		}
 		if [ -e "$candidate/upload" ] || [ -L "$candidate/upload" ]; then
+			path_has_mount "$candidate/upload"
+			case "$?" in
+				0) clear_upload_error_result "Upload directory contains a mount point" "$candidate"; return ;;
+				2) clear_upload_error_result "Unable to validate upload cleanup stage" "$candidate"; return ;;
+			esac
 			validate_clear_protected_paths "$candidate/upload" "$logical" "$physical"
 			case "$?" in
-				0) clear_upload_locked_result 0 "Upload cleanup stage contains a configured protected path" "$candidate"; return ;;
+				0) clear_upload_error_result "Upload cleanup stage contains a configured protected path" "$candidate"; return ;;
 				1) ;;
-				*) clear_upload_locked_result 0 "Unable to validate configured paths" "$candidate"; return ;;
+				*) clear_upload_error_result "Unable to validate configured paths" "$candidate"; return ;;
 			esac
 		fi
 	done
 	for candidate in "$parent"/.gecoosac-clear.??????; do
 		[ "$candidate" != "$parent/.gecoosac-clear.??????" ] || continue
-		if [ -e "$candidate/upload" ] || [ -L "$candidate/upload" ]; then
-			rm -rf "$candidate/upload" || {
-				logger -t gecoosac "upload cleanup retained staged data at $candidate"
-				clear_upload_locked_result 0 "Unable to remove upload directory contents" "$logical"
-				return
-			}
-		fi
-		rmdir "$candidate" || {
-			clear_upload_locked_result 0 "Unable to remove upload cleanup stage" "$candidate"
+		[ "$candidate" = "$stage" ] && continue
+		if ! remove_clear_stage "$candidate"; then
+			clear_upload_error_result "$clear_stage_error" "$candidate"
 			return
-		}
+		fi
 	done
+	if [ -n "$stage" ] && ! remove_clear_stage "$stage"; then
+		clear_upload_error_result "$clear_stage_error" "$stage"
+		return
+	fi
+	stage=
 
 	clear_upload_locked_result 1 "" "$logical"
 }
