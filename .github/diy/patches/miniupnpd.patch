@@ -1,12 +1,14 @@
 --- a/miniupnpd/files/upnpd.config
 +++ b/miniupnpd/files/upnpd.config
-@@ -1,5 +1,5 @@
- config upnpd config
--	option enabled		0
-+	option enabled		1
- 	option enable_natpmp	1
- 	option enable_upnp	1
- 	option secure_mode	1
+@@ -1,7 +1,7 @@
+ # UPnP IGD & PCP/NAT-PMP Service Settings (v2.0)
+ 
+ config upnpd 'settings'
+-	option enabled                    '0'
++	option enabled                    '1'
+ 	# Can be set to all/upnp-igd/pcp+nat-pmp
+ 	option enable_protocols           'all'
+ 	# Enable networks, multiple can be specified, separated by a space
 
 --- a/miniupnpd/Makefile
 +++ b/miniupnpd/Makefile
