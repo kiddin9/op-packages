@@ -243,20 +243,78 @@ configured_path_in_upload() {
 }
 
 status_result() {
-	local ok="$1" running="$2" message="$3"
+	local ok="$1" running="$2" message="$3" protocol="$4" port="$5"
 
 	json_init
 	json_add_boolean ok "$ok"
 	json_add_boolean running "$running"
 	[ -n "$message" ] && json_add_string error "$message"
+	[ -n "$protocol" ] && json_add_string protocol "$protocol"
+	[ -n "$port" ] && json_add_string port "$port"
 	json_dump
 	json_cleanup
 }
 
+runtime_endpoint() {
+	local keys key argument pending interface_port management_port
+	local single_port https_enabled
+
+	status_protocol=http
+	status_port=
+	pending=
+	interface_port=
+	management_port=
+	single_port=1
+	https_enabled=0
+
+	json_select command 2>/dev/null || return 1
+	json_get_keys keys
+	for key in $keys; do
+		json_get_var argument "$key"
+		if [ -n "$pending" ]; then
+			case "$pending" in
+				interface) interface_port="$argument" ;;
+				management) management_port="$argument" ;;
+				single) single_port="$argument" ;;
+				https) https_enabled="$argument" ;;
+			esac
+			pending=
+			continue
+		fi
+
+		case "$argument" in
+			-p) pending=interface ;;
+			-mp) pending=management ;;
+			-isonlyoneprot) pending=single ;;
+			-https) pending=https ;;
+			esac
+	done
+	json_select ..
+
+	case "$single_port" in
+	0)
+		[ -n "$management_port" ] || return 1
+		status_port="$management_port"
+		[ "$https_enabled" = "1" ] && status_protocol=https
+	;;
+	1)
+		status_port="$interface_port"
+	;;
+	*) return 1 ;;
+	esac
+
+	case "$status_port" in
+		""|*[!0-9]*) return 1 ;;
+	esac
+	[ "$status_port" -ge 1 ] 2>/dev/null && [ "$status_port" -le 65535 ]
+}
+
 service_status() {
-	local data instances instance running state
+	local data instances instance running state status_protocol status_port
 
 	running=0
+	status_protocol=
+	status_port=
 	data="$(ubus call service list '{"name":"gecoosac"}' 2>/dev/null)" || {
 		status_result 0 0 "Unable to query service status"
 		return
@@ -272,17 +330,18 @@ service_status() {
 			for instance in $instances; do
 				json_select "$instance" 2>/dev/null || continue
 				json_get_var state running
-				json_select ..
 				if [ "$state" = "1" ]; then
 					running=1
+					runtime_endpoint
 					break
 				fi
+				json_select ..
 			done
 		fi
 	fi
 
 	json_cleanup
-	status_result 1 "$running"
+	status_result 1 "$running" "" "$status_protocol" "$status_port"
 }
 
 path_policy() {

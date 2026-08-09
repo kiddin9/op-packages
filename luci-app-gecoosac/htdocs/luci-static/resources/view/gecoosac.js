@@ -14,6 +14,7 @@ const DEFAULT_PID_DIR = '/var/run';
 const CONFIG_BACKUP_DIR = '/etc/gecoosac';
 const DB_DIR_PREFIXES = [ '/etc/gecoosac', '/tmp/gecoosac', '/var/lib/gecoosac' ];
 const PID_DIR_PREFIXES = [ '/var/run', '/tmp/gecoosac' ];
+const CLEAR_STAGE_PATH_ERROR = _('Paths under .gecoosac-clear.* are reserved for upload cleanup.');
 
 let statusPollRegistered = false;
 
@@ -92,7 +93,12 @@ function validateCertificatePath(section_id, value, singlePortOption, httpsOptio
 	if (singlePortOption.formvalue(section_id) !== '0' || httpsOption.formvalue(section_id) !== '1' || !value)
 		return true;
 
-	return String(value).charAt(0) === '/' ? true : _('Expecting an absolute path');
+	if (String(value).charAt(0) !== '/')
+		return _('Expecting an absolute path');
+
+	return usesClearStagePath(value)
+		? CLEAR_STAGE_PATH_ERROR
+		: true;
 }
 
 function triggerActiveValidation(section_id, options) {
@@ -132,6 +138,17 @@ function normalizePath(value) {
 	}
 
 	return '/' + parts.join('/');
+}
+
+function usesClearStagePath(value) {
+	const path = normalizePath(value);
+	const segments = path === null ? [] : path.split('/');
+
+	for (const segment of segments)
+		if (segment.indexOf('.gecoosac-clear.') === 0)
+			return true;
+
+	return false;
 }
 
 function managedPath(value, policy) {
@@ -247,14 +264,14 @@ function clientHost() {
 	return host;
 }
 
-function clientUrl() {
-	const singlePort = uci.get('gecoosac', 'config', 'isonlyoneprot') !== '0';
-	const https = uci.get('gecoosac', 'config', 'https') === '1';
-	const port = singlePort
-		? validPort(uci.get('gecoosac', 'config', 'port'), '60650')
-		: validPort(uci.get('gecoosac', 'config', 'm_port'), '8080');
+function clientUrl(status) {
+	const protocol = status && status.protocol;
+	const port = validPort(status && status.port, null);
 
-	return (singlePort || !https ? 'http://' : 'https://') + clientHost() + ':' + port;
+	if ((protocol === 'http' || protocol === 'https') && port !== null)
+		return protocol + '://' + clientHost() + ':' + port;
+
+	return null;
 }
 
 function renderStatusContent(status) {
@@ -263,12 +280,13 @@ function renderStatusContent(status) {
 			(RPC_ERROR_MESSAGES[status.error] || _('Unable to query service status')));
 
 	const running = serviceRunning(status);
+	const url = running ? clientUrl(status) : null;
 	const text = running
 		? _('The GecoosAC service is running.')
 		: _('The GecoosAC service is not running.');
 	const state = E('span', { 'class': running ? 'gecoosac-running' : 'gecoosac-stopped' }, text);
 
-	if (!running)
+	if (!running || !url)
 		return E('p', {}, state);
 
 	return E('p', {}, [
@@ -276,7 +294,7 @@ function renderStatusContent(status) {
 		E('button', {
 			'class': 'cbi-button cbi-button-reload',
 			'click': function() {
-				const client = window.open(clientUrl(), '_blank', 'noopener');
+				const client = window.open(url, '_blank', 'noopener');
 				if (client)
 					client.opener = null;
 			}
@@ -442,6 +460,8 @@ return view.extend({
 		o.validate = function(section_id, value) {
 			if (usesManagedPath(value) && !pathPolicy)
 				return _('Unable to validate /var paths on this system.');
+			if (usesClearStagePath(value))
+				return CLEAR_STAGE_PATH_ERROR;
 
 			return validUploadDir(value, pathPolicy)
 				? true
@@ -458,6 +478,8 @@ return view.extend({
 			const uploadDir = uploadDirOption.formvalue(section_id) || DEFAULT_UPLOAD_DIR;
 			if ((usesManagedPath(value) || usesManagedPath(uploadDir)) && !pathPolicy)
 				return _('Unable to validate /var paths on this system.');
+			if (usesClearStagePath(value))
+				return CLEAR_STAGE_PATH_ERROR;
 
 			if (!validPathPrefix(value, DB_DIR_PREFIXES))
 				return _('Database directory must be under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac.');
@@ -477,6 +499,8 @@ return view.extend({
 			const uploadDir = uploadDirOption.formvalue(section_id) || DEFAULT_UPLOAD_DIR;
 			if ((usesManagedPath(value) || usesManagedPath(uploadDir)) && !pathPolicy)
 				return _('Unable to validate /var paths on this system.');
+			if (usesClearStagePath(value))
+				return CLEAR_STAGE_PATH_ERROR;
 
 			if (!validPathPrefix(value, PID_DIR_PREFIXES))
 				return _('PID directory must be under /var/run or /tmp/gecoosac.');

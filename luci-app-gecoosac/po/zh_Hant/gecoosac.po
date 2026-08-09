@@ -193,6 +193,9 @@ msgstr "無法驗證上傳目錄清理暫存區"
 msgid "Upload cleanup stage contains a configured protected path"
 msgstr "上傳目錄清理暫存區包含已設定的受保護路徑"
 
+msgid "Paths under .gecoosac-clear.* are reserved for upload cleanup."
+msgstr ".gecoosac-clear.* 下的路徑保留供上傳目錄清理使用。"
+
 msgid "Unable to recreate upload directory"
 msgstr "無法重新建立上傳目錄"
 
