@@ -1,21 +1,26 @@
-From a5fa10bbe0dbb69bbfc47f5865238f352fa71675 Mon Sep 17 00:00:00 2001
+From 38e01919d585b0fd663d2b3249963b336061cbd3 Mon Sep 17 00:00:00 2001
 From: Self-Hosting-Group
  <155233284+Self-Hosting-Group@users.noreply.github.com>
-Date: Thu, 27 Nov 2025 00:00:00 +0000
+Date: Wed, 25 Mar 2026 00:00:00 +0000
 Subject: [PATCH] miniupnpd: UPnP IGDv2 Microsoft/Apple compatibility
 
-- Add workaround to list port maps with the Windows IGDv2-incompatible
+* Add workaround to list port maps with the Windows IGDv2-incompatible
   client by returning an infinite (0) lease duration. To fix listing and
   editing via GUI (Explorer/Network), if daemon was compiled with IGDv2
-- Extend detection to older versions of Windows and add Xbox
-- Detect Apple IGDv2-incompatible clients and apply existing workaround,
+* Extend detection to older versions of Windows and add Xbox
+* Detect Apple IGDv2-incompatible clients and apply existing workaround,
   that only caused problems if PCP/NAT-PMP (prioritised) was disabled
 
 Link: https://github.com/Self-Hosting-Group/miniupnp/tree/upnp-igdv2-compat
+Link: https://github.com/Self-Hosting-Group/wiki/wiki/Port-Mapping-Protocols-Overview#compatibility-issues
+---
+ upnphttp.c | 19 ++++++++++++++++---
+ upnpsoap.c | 16 ++++++++++++++++
+ 2 files changed, 32 insertions(+), 3 deletions(-)
 
 --- a/upnphttp.c
 +++ b/upnphttp.c
-@@ -303,9 +303,22 @@ ParseHttpHeaders(struct upnphttp * h)
+@@ -304,9 +304,22 @@ ParseHttpHeaders(struct upnphttp * h)
  			}
  			else if(strncasecmp(line, "user-agent:", 11) == 0)
  			{

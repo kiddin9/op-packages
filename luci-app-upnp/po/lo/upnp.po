@@ -10,7 +10,7 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 5.17.1\n"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:180
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:183
 msgctxt ""
 "A 900s interval will result in %s (%s = SSDP) notifications with the minimum "
 "max-age of 1800s"
@@ -20,14 +20,14 @@ msgid ""
 msgstr ""
 "ໄລຍະຫ່າງ 900 ວິນາທີ ຈະສົ່ງຜົນໃຫ້ມີການແຈ້ງເຕືອນ %s ດ້ວຍຄ່າ max-age ຕ່ຳສຸດແມ່ນ 1800 ວິນາທີ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:216
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:219
 msgid ""
 "ACL specify which client addresses and ports can be mapped, IPv6 always "
 "allowed."
 msgstr ""
 "ACL ກຳນົດວ່າທີ່ຢູ່ ແລະ ພອດຂອງໄຄເອັນໃດແດ່ທີ່ສາມາດຈັບຄູ່ພອດໄດ້, ສ່ວນ IPv6 ແມ່ນໄດ້ຮັບອະນຸຍາດສະເໝີ."
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:235
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:238
 msgid "Action"
 msgstr "ການກະທຳ"
 
@@ -43,29 +43,33 @@ msgstr "ລາຍການຈັບຄູ່ພອດ UPnP IGD & PCP/NAT-PMP ທ
 msgid "Advanced Settings"
 msgstr "ການຕັ້ງຄ່າຂັ້ນສູງ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:148
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:151
 msgid "Advertise as IGDv1 (IPv4 only) device instead of IGDv2"
 msgstr "ປະກາດເປັນອຸປະກອນ IGDv1 (IPv4 ເທົ່ານັ້ນ) ແທນທີ່ຈະເປັນ IGDv2"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:236
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:239
 msgid "Allow"
 msgstr "ອະນຸຍາດ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:175
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:178
 msgid "Allow adding port maps for requesting IP addresses only"
 msgstr "ອະນຸຍາດໃຫ້ເພີ່ມການຈັບຄູ່ພອດສຳລັບທີ່ຢູ່ IP ທີ່ຮ້ອງຂໍເທົ່ານັ້ນ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:199
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
+msgid "Allow private IPv4"
+msgstr "ອະນຸຍາດ IPv4 ສ່ວນຕົວ"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:202
 msgid "Announced model number"
 msgstr "ເລກລຸ້ນທີ່ປະກາດ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:202
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
 msgid "Announced serial number"
 msgstr "ເລກຊີຣຽນທີ່ປະກາດ"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:41
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:99
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:223
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:226
 msgid "Client Address"
 msgstr "ທີ່ຢູ່ໄຄເອັນ"
 
@@ -76,11 +80,11 @@ msgstr "ຊື່ໄຄເອັນ"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:42
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:100
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:227
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:230
 msgid "Client Port"
 msgstr "ພອດໄຄເອັນ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:221
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:224
 msgid "Comment"
 msgstr "ຄຳອະທິບາຍ"
 
@@ -90,7 +94,7 @@ msgstr "ຄຳອະທິບາຍ"
 msgid "Delete"
 msgstr "ລຶບ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:237
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:240
 msgid "Deny"
 msgstr "ປະຕິເສດ"
 
@@ -99,11 +103,11 @@ msgstr "ປະຕິເສດ"
 msgid "Description"
 msgstr "ຄຳອະທິບາຍ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:196
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:199
 msgid "Device UUID"
 msgstr "UUID ຂອງອຸປະກອນ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:153
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:156
 msgid "Download speed"
 msgstr "ຄວາມໄວດາວໂຫຼດ"
 
@@ -115,11 +119,15 @@ msgstr "ເປີດໃຊ້ງານໂປຣໂຕຄອນ PCP/NAT-PMP"
 msgid "Enable UPnP IGD protocol"
 msgstr "ເປີດໃຊ້ງານໂປຣໂຕຄອນ UPnP IGD"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:209
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
 msgid "Enable additional logging"
 msgstr "ເປີດໃຊ້ງານການບັນທຶກລັອກເພີ່ມເຕີມ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:174
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:148
+msgid "Enable forwarding for private/reserved IPv4 address"
+msgstr "ເປີດໃຊ້ງານການສົ່ງຕໍ່ສຳລັບທີ່ຢູ່ IPv4 ສ່ວນຕົວ ຫຼື ທີ່ຖືກສຳຮອງໄວ້"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:177
 msgid "Enable secure mode"
 msgstr "ເປີດໃຊ້ງານໂໝດປອດໄພ"
 
@@ -130,7 +138,7 @@ msgstr "ໝົດອາຍຸ"
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:43
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:101
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:231
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:234
 msgid "External Port"
 msgstr "ພອດພາຍນອກ"
 
@@ -138,11 +146,11 @@ msgstr "ພອດພາຍນອກ"
 msgid "Grant access to UPnP IGD & PCP/NAT-PMP"
 msgstr "ອະນຸຍາດການເຂົ້າເຖິງ UPnP IGD & PCP/NAT-PMP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:179
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:182
 msgid "Notify interval"
 msgstr "ໄລຍະຫ່າງການແຈ້ງເຕືອນ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:191
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:194
 msgid "Presentation URL"
 msgstr "URL ການນຳສະເໜີ"
 
@@ -151,39 +159,39 @@ msgstr "URL ການນຳສະເໜີ"
 msgid "Protocol"
 msgstr "ໂປຣໂຕຄອນ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:210
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:213
 msgid "Puts extra debugging information into the system log"
 msgstr "ເພີ່ມຂໍ້ມູນການດີບັກ (debugging) ລົງໃນລັອກຂອງລະບົບ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:192
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:195
 msgid "Report custom router web interface (presentation) URL"
 msgstr "ລາຍງານ URL ຂອງເວັບອິນເຕີເຟສເລົາເຕີ (ການນຳສະເໜີ) ແບບກຳນົດເອງ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:154
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
 msgid "Report maximum download speed in kByte/s"
 msgstr "ລາຍງານຄວາມໄວດາວໂຫຼດສູງສຸດເປັນ kByte/s"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:158
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
 msgid "Report maximum upload speed in kByte/s"
 msgstr "ລາຍງານຄວາມໄວອັບໂຫຼດສູງສຸດເປັນ kByte/s"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:208
 msgid "Report system instead of service uptime"
 msgstr "ລາຍງານໄລຍະເວລາເຮັດວຽກຂອງລະບົບ ແທນທີ່ໄລຍະເວລາຂອງບໍລິການ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:186
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:189
 msgid "SOAP/HTTP port"
 msgstr "ພອດ SOAP/HTTP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:165
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:168
 msgid "STUN host"
 msgstr "ໂຮສ STUN"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:169
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:172
 msgid "STUN port"
 msgstr "ພອດ STUN"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:215
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:218
 msgid "Service Access Control List"
 msgstr "ລາຍການຄວບຄຸມການເຂົ້າເຖິງບໍລິການ"
 
@@ -195,7 +203,7 @@ msgstr "ການຕັ້ງຄ່າບໍລິການ"
 msgid "Service Setup"
 msgstr "ການຕິດຕັ້ງບໍລິການ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:215
 msgid "Service lease file"
 msgstr "ໄຟລ໌ສັນຍາເຊົ່າບໍລິການ"
 
@@ -215,8 +223,8 @@ msgid ""
 "The %s protocols allow clients on the local network to configure port maps/"
 "forwards on the router autonomously."
 msgstr ""
-"ໂປຣໂຕຄອນ %s ອະນຸຍາດໃຫ້ໄຄເອັນໃນເຄືອຂ່າຍທ້ອງຖິ່ນສາມາດກຳນົດຄ່າການຈັບຄູ່ ຫຼື "
-"ການສົ່ງຕໍ່ພອດເທິງເລົາເຕີໄດ້ດ້ວຍຕົນເອງ."
+"ໂປຣໂຕຄອນ %s ອະນຸຍາດໃຫ້ໄຄເອັນໃນເຄືອຂ່າຍທ້ອງຖິ່ນສາມາດກຳນົດຄ່າການຈັບຄູ່ ຫຼື ການສົ່ງຕໍ່ພອດເທິງເລົາເຕີໄດ້"
+"ດ້ວຍຕົນເອງ."
 
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:80
 #: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:76
@@ -224,10 +232,11 @@ msgstr ""
 msgid "There are no active port maps."
 msgstr "ບໍ່ມີລາຍການຈັບຄູ່ພອດທີ່ກຳລັງເຮັດວຽກ."
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:163
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:166
 msgid ""
 "To detect the public IPv4 address for unrestricted full-cone/one-to-one NATs"
-msgstr "ເພື່ອຄົ້ນຫາທີ່ຢູ່ IPv4 ສາທາລະນະ ສຳລັບ full-cone/one-to-one NATs ທີ່ບໍ່ຖືກຈຳກັດ"
+msgstr ""
+"ເພື່ອຄົ້ນຫາທີ່ຢູ່ IPv4 ສາທາລະນະ ສຳລັບ full-cone/one-to-one NATs ທີ່ບໍ່ຖືກຈຳກັດ"
 
 #: applications/luci-app-upnp/root/usr/share/luci/menu.d/luci-app-upnp.json:3
 msgid "UPnP IGD & PCP"
@@ -237,7 +246,7 @@ msgstr "UPnP IGD & PCP"
 msgid "UPnP IGD & PCP/NAT-PMP Service"
 msgstr "ບໍລິການ UPnP IGD & PCP/NAT-PMP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:150
 msgid "UPnP IGDv1 compatibility mode"
 msgstr "ໂໝດຄວາມເຂົ້າກັນໄດ້ຂອງ UPnP IGDv1"
 
@@ -247,11 +256,11 @@ msgstr "ໂໝດຄວາມເຂົ້າກັນໄດ້ຂອງ UPnP IGD
 msgid "Unknown"
 msgstr "ບໍ່ຮູ້ຈັກ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:160
 msgid "Upload speed"
 msgstr "ຄວາມໄວອັບໂຫຼດ"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:164
 msgctxt "Use %s (%s = STUN)"
 msgid "Use %s"
 msgstr "ໃຊ້ %s"
