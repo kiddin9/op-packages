@@ -102,6 +102,18 @@
  
  include ../../luci.mk
 
+--- a/luci-app-snmpd-ssl/Makefile
++++ b/luci-app-snmpd-ssl/Makefile
+@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
+ PKG_NAME:=luci-app-snmpd-ssl
+ 
+ LUCI_TITLE:=Net-SNMP LuCI interface with v3 support
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +snmpd-ssl
+ LUCI_PKGARCH:=all
+ 
+ include $(TOPDIR)/feeds/luci/luci.mk
+
 --- a/luci-app-smscontrol/Makefile
 +++ b/luci-app-smscontrol/Makefile
 @@ -5,7 +5,7 @@
