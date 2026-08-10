@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=modeminfo
-PKG_VERSION:=0.4.7
-PKG_RELEASE:=9
+PKG_VERSION:=0.4.8
+PKG_RELEASE:=10
 PKG_MAINTAINER:=Konstantine Shevlakov <shevlakov@132lan.ru>
 
 include $(INCLUDE_DIR)/package.mk
