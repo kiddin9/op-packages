@@ -11,7 +11,6 @@ const DEFAULT_DB_DIR = '/etc/gecoosac';
 const DEFAULT_CRT_FILE = '/etc/gecoosac/tls/gecoosac.crt';
 const DEFAULT_KEY_FILE = '/etc/gecoosac/tls/gecoosac.key';
 const DEFAULT_PID_DIR = '/var/run';
-const CONFIG_BACKUP_DIR = '/etc/gecoosac';
 const DB_DIR_PREFIXES = [ '/etc/gecoosac', '/tmp/gecoosac', '/var/lib/gecoosac' ];
 const PID_DIR_PREFIXES = [ '/var/run', '/tmp/gecoosac' ];
 const CLEAR_STAGE_PATH_ERROR = _('Paths under .gecoosac-clear.* are reserved for upload cleanup.');
@@ -181,13 +180,26 @@ function usesManagedPath(value) {
 		(path !== null && (path.indexOf('/var/') === 0 || path.indexOf('/var/run/') === 0));
 }
 
+function uploadStorageRoot(path) {
+	if (path === DEFAULT_UPLOAD_DIR)
+		return '/tmp';
+
+	const segments = path === null ? [] : path.split('/');
+
+	if (segments.length === 5 && segments[1] === 'mnt' && segments[2] &&
+		segments[3] === 'gecoosac' && segments[4] === 'upload')
+		return '/mnt/' + segments[2];
+
+	return null;
+}
+
 function validUploadDir(value, policy) {
 	const path = normalizePath(value);
 	const physical = managedPath(value, policy);
+	const storageRoot = uploadStorageRoot(path);
+	const physicalStorageRoot = uploadStorageRoot(physical);
 
-	return path !== null && physical !== null && path.endsWith('/gecoosac/upload') &&
-		physical.endsWith('/gecoosac/upload') && !pathInDir(path, CONFIG_BACKUP_DIR) &&
-		!pathInDir(physical, CONFIG_BACKUP_DIR);
+	return !usesClearStagePath(value) && storageRoot !== null && storageRoot === physicalStorageRoot;
 }
 
 function validPathPrefix(value, prefixes) {
@@ -451,7 +463,7 @@ return view.extend({
 		httpsOption.onchange = revalidateProtocolOptions;
 
 		o = s.option(form.Value, 'upload_dir', _('Upload dir path'),
-			_('Upload AP upgrade firmware here. Use an absolute path ending with /gecoosac/upload, for example /tmp/gecoosac/upload.<br />Do not place it under /etc/gecoosac because that directory is backed up during sysupgrade.'));
+			_('Upload AP upgrade firmware here. Use /tmp/gecoosac/upload or /mnt/storage-name/gecoosac/upload. The /mnt/storage-name directory must already exist and be root-owned and private.'));
 		uploadDirOption = o;
 		o.placeholder = DEFAULT_UPLOAD_DIR;
 		o.default = DEFAULT_UPLOAD_DIR;
@@ -465,7 +477,7 @@ return view.extend({
 
 			return validUploadDir(value, pathPolicy)
 				? true
-				: _('Upload directory must be an absolute path ending with /gecoosac/upload and must not be under /etc/gecoosac.');
+				: _('Upload directory must be /tmp/gecoosac/upload or /mnt/storage-name/gecoosac/upload.');
 		};
 
 		o = s.option(form.Value, 'db_dir', _('Database dir path'),

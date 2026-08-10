@@ -86,27 +86,53 @@ normalize_path() {
 	printf '%s\n' "$normalized"
 }
 
+path_has_clear_stage_component() {
+	local path="$1" part rest
+
+	path="$(normalize_path "$path")" || return 1
+	rest="${path#/}"
+	while [ -n "$rest" ]; do
+		part="${rest%%/*}"
+		if [ "$part" = "$rest" ]; then
+			rest=""
+		else
+			rest="${rest#*/}"
+		fi
+		case "$part" in
+			.gecoosac-clear.*) return 0 ;;
+		esac
+	done
+
+	return 1
+}
+
 path_uses_clear_stage() {
 	local path="$1" resolved
 
-	path="$(normalize_path "$path")" || return 1
-	case "$path" in
-		/.gecoosac-clear.*|/.gecoosac-clear.*/*|*/.gecoosac-clear.*|*/.gecoosac-clear.*/*)
-			return 0
-		;;
-	esac
-
-	if [ -e "$1" ] || [ -L "$1" ]; then
-		resolved="$(readlink -f "$1" 2>/dev/null)" || return 1
-		resolved="$(normalize_path "$resolved")" || return 1
-		case "$resolved" in
-			/.gecoosac-clear.*|/.gecoosac-clear.*/*|*/.gecoosac-clear.*|*/.gecoosac-clear.*/*)
-				return 0
-			;;
-		esac
+	path_has_clear_stage_component "$path" && return 0
+	if [ -e "$path" ] || [ -L "$path" ]; then
+		resolved="$(readlink -f "$path" 2>/dev/null)" || return 1
+		path_has_clear_stage_component "$resolved" && return 0
 	fi
 
 	return 1
+}
+
+is_supported_upload_path() {
+	local path="$1" storage
+
+	path="$(normalize_path "$path")" || return 1
+	path_uses_clear_stage "$path" && return 1
+	[ "$path" = "$DEFAULT_UPLOAD_DIR" ] && return 0
+
+	case "$path" in
+		/mnt/*/gecoosac/upload)
+			storage="${path#/mnt/}"
+			storage="${storage%/gecoosac/upload}"
+			[ -n "$storage" ] && [ "${storage#*/}" = "$storage" ]
+		;;
+		*) return 1 ;;
+	esac
 }
 
 is_safe_upload_dir() {
@@ -114,22 +140,8 @@ is_safe_upload_dir() {
 
 	path="$(normalize_path "$1")" || return 1
 	physical="$(managed_dir_path upload "$path")" || return 1
-	case "$path" in
-		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
-	esac
-	case "$physical" in
-		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
-	esac
-
-	case "$path" in
-		*/gecoosac/upload) ;;
-		*) return 1 ;;
-	esac
-	case "$physical" in
-		*/gecoosac/upload) return 0 ;;
-	esac
-
-	return 1
+	is_supported_upload_path "$path" || return 1
+	is_supported_upload_path "$physical"
 }
 
 is_path_in_dir() {
@@ -614,18 +626,35 @@ managed_dir_path() {
 	esac
 }
 
+ensure_upload_storage_root() {
+	local path="$1" root
+
+	is_supported_upload_path "$path" || return 1
+	case "$path" in
+		"$DEFAULT_UPLOAD_DIR") root=/tmp ;;
+		/mnt/*/gecoosac/upload) root="${path%/gecoosac/upload}" ;;
+		*) return 1 ;;
+	esac
+
+	[ -d "$root" ] && [ ! -L "$root" ] || return 1
+	is_secure_upload_dir "$root"
+}
+
 ensure_managed_dir() {
 	local role="$1" path physical
 
 	path="$(normalize_path "$2")" || return 1
+	physical="$(managed_dir_path "$role" "$path")" || return 1
 	case "$role" in
-		upload) is_safe_upload_dir "$path" || return 1 ;;
+		upload)
+		is_safe_upload_dir "$path" || return 1
+		ensure_upload_storage_root "$physical" || return 1
+	;;
 		db) is_safe_db_dir "$path" "$upload_dir" || return 1 ;;
 		pid) is_safe_pid_dir "$path" "$upload_dir" || return 1 ;;
 		tls) [ "$path" = "/etc/gecoosac/tls" ] || return 1 ;;
 		*) return 1 ;;
 	esac
-	physical="$(managed_dir_path "$role" "$path")" || return 1
 	ensure_secure_dir_tree "$physical" || return 1
 	[ -d "$path" ]
 }

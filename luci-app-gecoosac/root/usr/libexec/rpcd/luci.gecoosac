@@ -58,6 +58,55 @@ normalize_path() {
 	printf '%s\n' "$normalized"
 }
 
+path_has_clear_stage_component() {
+	local path="$1" part rest
+
+	path="$(normalize_path "$path")" || return 1
+	rest="${path#/}"
+	while [ -n "$rest" ]; do
+		part="${rest%%/*}"
+		if [ "$part" = "$rest" ]; then
+			rest=""
+		else
+			rest="${rest#*/}"
+		fi
+		case "$part" in
+			.gecoosac-clear.*) return 0 ;;
+		esac
+	done
+
+	return 1
+}
+
+path_uses_clear_stage() {
+	local path="$1" resolved
+
+	path_has_clear_stage_component "$path" && return 0
+	if [ -e "$path" ] || [ -L "$path" ]; then
+		resolved="$(readlink -f "$path" 2>/dev/null)" || return 1
+		path_has_clear_stage_component "$resolved" && return 0
+	fi
+
+	return 1
+}
+
+is_supported_upload_path() {
+	local path="$1" storage
+
+	path="$(normalize_path "$path")" || return 1
+	path_uses_clear_stage "$path" && return 1
+	[ "$path" = "$DEFAULT_UPLOAD_DIR" ] && return 0
+
+	case "$path" in
+		/mnt/*/gecoosac/upload)
+			storage="${path#/mnt/}"
+			storage="${storage%/gecoosac/upload}"
+			[ -n "$storage" ] && [ "${storage#*/}" = "$storage" ]
+		;;
+		*) return 1 ;;
+	esac
+}
+
 managed_dir_path() {
 	local role="$1" path anchor
 
@@ -106,16 +155,7 @@ safe_upload_path() {
 	local path
 
 	path="$(normalize_path "$1")" || return 1
-	case "$path" in
-		/etc/gecoosac|/etc/gecoosac/*) return 1 ;;
-	esac
-	[ "$path" = "/tmp/gecoosac/upload" ] && return 0
-
-	case "$path" in
-		*/gecoosac/upload) return 0 ;;
-	esac
-
-	return 1
+	is_supported_upload_path "$path"
 }
 
 path_in_dir() {
