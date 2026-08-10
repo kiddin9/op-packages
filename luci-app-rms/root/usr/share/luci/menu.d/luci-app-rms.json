@@ -1,0 +1,14 @@
+{
+	"admin/services/rms": {
+		"title": "TELEOFIS: Remote Monitoring System",
+		"order": 1,
+		"action": {
+			"type": "view",
+			"path": "rms/overview"
+		},
+		"depends": {
+			"acl": [ "luci-app-rms" ],
+			"uci": { "rms": true }
+		}
+	}
+}

@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=net-snmp
-PKG_VERSION:=5.9.4
-PKG_RELEASE:=1
+PKG_VERSION:=5.9.1
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=@SF/net-snmp
@@ -130,10 +130,7 @@ SNMP_MIB_MODULES_INCLUDED = \
 	host/hr_system \
 	ieee802dot11 \
 	if-mib/ifXTable \
-	ip-mib/ipAddressTable \
 	ip-mib/inetNetToMediaTable \
-	ip-forward-mib/inetCidrRouteTable \
-	ip-forward-mib/ipCidrRouteTable \
 	mibII/at \
 	mibII/icmp \
 	mibII/ifTable \
@@ -151,7 +148,7 @@ SNMP_MIB_MODULES_INCLUDED = \
 	snmpv3/usmStats \
 	snmpv3/usmUser \
 	tunnel \
-	ucd-snmp/disk_hw \
+	ucd-snmp/disk \
 	ucd-snmp/dlmod \
 	ucd-snmp/extensible \
 	ucd-snmp/loadave \
@@ -206,12 +203,11 @@ CONFIGURE_ARGS += \
 	--with-mib-modules="$(SNMP_MIB_MODULES_INCLUDED)" \
 	--with-out-transports="$(SNMP_TRANSPORTS_EXCLUDED)" \
 	--with-transports="$(SNMP_TRANSPORTS_INCLUDED)" \
-	--without-openssl \
+	--with-openssl=$(STAGING_DIR)/usr \
 	--without-libwrap \
 	--without-mysql \
 	--without-rpm \
 	--without-zlib \
-	--with-pcre2-8 \
 	--with-nl \
 	 $(call autoconf_bool,CONFIG_IPV6,ipv6) \
 	--disable-perl-cc-checks \
@@ -220,11 +216,14 @@ CONFIGURE_ARGS += \
 
 CONFIGURE_VARS += \
 	ac_cv_header_netlink_netlink_h=yes \
+	ac_cv_header_pcre_h=no \
 	netsnmp_cv_func_nl_connect_LIBS=-lnl-tiny \
 
 ifeq ($(CONFIG_IPV6),y)
 SNMP_TRANSPORTS_INCLUDED+= UDPIPv6
 endif
+
+TARGET_LDFLAGS += -L$(TOOLCHAIN_DIR)/usr/lib
 
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \

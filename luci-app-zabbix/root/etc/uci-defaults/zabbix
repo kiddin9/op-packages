@@ -1,0 +1,19 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-zabbix.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-zabbix.json << EEOF
+{
+    "config": "zabbix",
+    "init": "zabbix"
+}
+EEOF
+}
+
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@zabbix[-1]
+	add ucitrack zabbix
+	set ucitrack.@zabbix[-1].init=zabbix_agentd
+	commit ucitrack
+EOF
+
+rm -f /tmp/luci-indexcache
+exit 0

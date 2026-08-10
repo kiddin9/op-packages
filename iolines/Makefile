@@ -3,7 +3,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=iolines
 PKG_VERSION:=1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_BUILD_DIR:=$(BUILD_DIR)/iolines
 
 include $(INCLUDE_DIR)/package.mk
@@ -33,6 +33,8 @@ define Package/iolines/install
 	$(CP) ./files/iolines.config $(1)/etc/config/iolines
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/iolines.init $(1)/etc/init.d/iolines
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_BIN) ./files/iolines.defaults $(1)/etc/uci-defaults/20_iolines
 endef
 
 $(eval $(call BuildPackage,iolines))

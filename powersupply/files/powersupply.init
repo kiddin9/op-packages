@@ -2,9 +2,8 @@
 
 START=11
 STOP=10
-USE_PROCD=1
 
-start_service() {
+start() {
 	poe_out_power_enabled="$(uci -q get powersupply.system.poe_out_power)"
 	poe_out_power_gpio="$(uci -q get powersupply.system.poe_out_power_gpio)"
 	voltage_threshold="$(cat /sys/class/i2c-dev/i2c-0/device/0-0011/voltage_threshold)"
@@ -28,7 +27,7 @@ start_service() {
 	echo $usb_power_control > /sys/class/i2c-dev/i2c-0/device/0-0011/usb_control
 }
 
-stop_service() {
+stop() {
 	poe_out_power_gpio="$(uci -q get powersupply.system.poe_out_power_gpio)"
 	echo 0 > /sys/class/gpio/gpio$poe_out_power_gpio/value
 	
@@ -50,13 +49,9 @@ boot() {
 }
 
 shutdown() {
-	stop_service
+	stop
 }
 
-service_triggers() {
-	procd_add_reload_trigger "powersupply"
-}
-
-reload_service() {
-	restart
+restart() {
+	start
 }

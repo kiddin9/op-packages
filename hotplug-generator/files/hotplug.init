@@ -1,7 +1,6 @@
 #!/bin/sh /etc/rc.common
 
-START=10
-USE_PROCD=1
+START=90
 IFACE_PATH="/etc/hotplug.d/iface/90-hp-generator"
 
 add_iface_rule() {
@@ -39,12 +38,12 @@ add_iface_rule() {
 	echo "exit 0" >> "$IFACE_PATH-$1"
 }
 
-start_service() {
+start() {
 	rm "$IFACE_PATH-"* 2>/dev/null
 	config_load hotplug
 	config_foreach add_iface_rule iface
 }
 
-service_triggers() {
-	procd_add_reload_trigger "hotplug"
+restart() {
+	start
 }

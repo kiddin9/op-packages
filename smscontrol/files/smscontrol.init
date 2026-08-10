@@ -1,8 +1,6 @@
 #!/bin/sh /etc/rc.common
 
 START=90
-USE_PROCD=1
-
 DIR="/var/spool/smscontrol"
 COMMANDS="/var/spool/smscontrol/commands"
 CALLS="/var/spool/smscontrol/calls"
@@ -101,14 +99,14 @@ add_cli() {
 	fi
 }
 
-stop_service() {
+stop() {
 	rm "$COMMANDS" 2>/dev/null
 	rm "$CALLS" 2>/dev/null
 	rm "$CLI" 2>/dev/null
 	/etc/init.d/smstools3 stop
 }
 
-start_service() {
+start() {
 	config_load smscontrol
 	generate_pass
 	enabled=$(uci get smscontrol.common.enabled)
@@ -130,11 +128,7 @@ start_service() {
 	fi
 }
 
-service_triggers() {
-	procd_add_reload_trigger "smscontrol"
-}
-
-reload_service() {
-	stop_service
-	start_service
+restart() {
+	stop
+	start
 }

@@ -1,0 +1,21 @@
+{
+	"luci-app-rms": {
+		"description": "Grant UCI, file-upload and service-restart access for RMS configuration",
+		"read": {
+			"uci": [ "rms" ],
+			"file": {
+				"/etc/rms/certs/selfhosted": [ "list" ],
+				"/etc/rms/certs/selfhosted/*": [ "read" ],
+				"/tmp/rms/device_id": [ "read" ]
+			}
+		},
+		"write": {
+			"uci": [ "rms" ],
+			"file": {
+				"/etc/rms/certs/selfhosted/*": [ "write", "remove" ],
+				"/etc/init.d/rms-agent restart": [ "exec" ],
+				"/etc/init.d/rms-telemetry restart": [ "exec" ]
+			}
+		}
+	}
+}
