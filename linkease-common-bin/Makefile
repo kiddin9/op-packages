@@ -12,7 +12,7 @@ PKG_ARCH_LINKEASE:=$(ARCH)
 PKG_NAME:=linkease-common-bin
 # use PKG_SOURCE_DATE instead of PKG_VERSION for compitable
 PKG_SOURCE_DATE:=1.7.5
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 ARCH_HEXCODE:=
 ifeq ($(ARCH),x86_64)
@@ -28,7 +28,7 @@ else ifeq ($(ARCH),mipsel)
 ARCH_HEXCODE=1b0c
 endif
 
-PKG_SOURCE_VERSION:=9f351503d4320bb3767c300bc677a85c5685c9ba
+PKG_SOURCE_VERSION:=78c1b63d4be857054a8e6e37bc22eb235e3f151e
 PKG_SOURCE:=linkease-common-bin-$(PKG_SOURCE_DATE)-linux-$(PKG_ARCH_LINKEASE).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/linkease-runtime-v$(PKG_SOURCE_DATE)/
 PKG_BUILD_DIR:=$(BUILD_DIR)/linkease-common-bin-$(PKG_SOURCE_DATE)-linux-$(PKG_ARCH_LINKEASE)
