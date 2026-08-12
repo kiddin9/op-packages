@@ -47,9 +47,34 @@ const _viewIntervals = (window.__fsViewIntervals || (window.__fsViewIntervals = 
 	};
 })();
 function clearViewIntervals() {
-	const keep = (L.Poll && L.Poll.timer) || null;
+	/* `L.Poll.timer` is the id of LuCI's OWN 1 s tick, and it is private state — `add`/`remove`/
+	 * `start`/`stop`/`active` are the documented surface, and upstream has already marked the whole
+	 * `L.Poll` alias deprecated (`'require poll'` is its replacement, and neither 24.10 nor 25.12
+	 * ships poll.js yet, so the alias is still the only way in). If that field ever goes, `keep`
+	 * becomes null and this sweep would clear LuCI's tick along with the view's timers — every poll
+	 * on every later page silently dead, from a rename we did not notice. So the missing field is
+	 * not a null: it is a reason to do NOTHING, once, loudly. A view's leftover interval outliving
+	 * its page costs a wasted RPC; killing the global tick costs the router's live data. */
+	/* Asked through the DOCUMENTED half first: active() says whether LuCI's tick is running at all,
+	 * and `timer` is deleted by stop() — so an absent field is the ordinary "nothing to protect"
+	 * case on a page with no pollers, not a sign that upstream moved it. The anomaly worth reporting
+	 * is the pair disagreeing: a tick that is running while the id it runs on has no name we know.
+	 * Then do NOTHING, once, loudly: a view's leftover interval outliving its page costs a wasted
+	 * RPC, whereas clearing LuCI's own tick costs every live value on every later page. */
+	const running = (typeof L.Poll.active === 'function') ? L.Poll.active() : (L.Poll.timer != null);
+	if (running && L.Poll.timer == null) {
+		if (!_pollTimerWarned) {
+			_pollTimerWarned = true;
+			console.error('footstrap: LuCI is polling but L.Poll.timer is not readable — leaving view '
+				+ 'intervals alone rather than risking its tick. fs-router.js needs updating for this '
+				+ 'luci-base.');
+		}
+		return;
+	}
+	const keep = running ? L.Poll.timer : null;
 	_viewIntervals.forEach((id) => { if (id !== keep) window.clearInterval(id); });
 }
+let _pollTimerWarned = false;
 
 let _wired = false;
 /* The pathname whose view is CURRENTLY rendered — popstate compares against it to tell a real
@@ -64,7 +89,7 @@ let _navGen = 0;
  * The two layouts scroll different elements: the sidebar layout pins .fs-shell to 100dvh and gives
  * overflow-y to .fs-main (#maincontent), the top layout lets the document scroll. A browser restores
  * an INNER scrollable region only across full loads, never on a same-document traversal — measured
- * (docs/spa-router.md §2): Back opened the incoming page at 0, because the swap empties #view,
+ * (docs/spa-router.md, "Scroll"): Back opened the incoming page at 0, because the swap empties #view,
  * scrollHeight collapses and the browser clamps scrollTop.
  *
  * The DOCUMENT scroller was left to the browser's own scrollRestoration ('auto') on the grounds that
@@ -116,28 +141,75 @@ function saveScroll() {
 }
 
 /* Put the scrollers back where the entry left them — but only once the incoming view has grown that
- * much height (docs/spa-router.md §5: restoring before the content exists is clamped to 0 and reads as
+ * much height (docs/spa-router.md, "Scroll": restoring before the content exists is clamped to 0 and reads as
  * "worked"). The view renders behind an RPC, so poll by frame; a newer navigation cancels via the
  * generation, and a page that never reaches the old height again is simply left at the top. Each
  * offset is waited for on its OWN scroller, so a layout switched between the two entries restores
  * whichever half it can rather than blocking on the half that no longer scrolls. */
 function restoreScroll(pos, gen) {
 	if (!pos || (!pos.win && !pos.main)) return;
-	let tries = 300; /* ~5 s at 60 fps — outlasts a slow RPC without polling forever */
+	/* A DEADLINE, not a frame count: this was 300 frames called "~5 s", which holds only at 60 Hz —
+	 * the same budget is 10 s on a 30 Hz panel. Frames stay the tick (they are when a paint could
+	 * have changed the height); time decides when to stop waiting for an RPC that is not coming. */
+	const until = Date.now() + 5000;
+
+	/* THE USER OUTRANKS THE SAVED POSITION. Waiting up to five seconds for a slow view to grow means
+	 * the reader may have started using the page in the meantime — and jumping them somewhere else
+	 * two seconds after they began reading is worse than opening at the top, which is what a full
+	 * load does anyway. So any sign that the scroll is THEIRS cancels the restore for good.
+	 *
+	 * Two kinds of sign, because neither covers the other. The three input events are intent even
+	 * when nothing moves yet (a wheel tick on a page too short to scroll, a touch that becomes a
+	 * drag); `scroll` is the catch-all for everything they cannot see — a scrollbar drag, a
+	 * trackpad fling, Find-in-page, an anchor jump, assistive tech. `scroll` also fires for OUR
+	 * OWN writes, asynchronously, so a flag around the write would still be false by the time it
+	 * arrives: the position we last wrote is remembered instead, and a scroll that lands exactly
+	 * there is ours. Landing there by hand is indistinguishable and costs nothing — it is the
+	 * position we were restoring to.
+	 *
+	 * Passive listeners: this must never sit in front of the scroll it is watching for. */
+	let cancelled = false, wroteWin = -1, wroteMain = -1;
+	const stop = () => { cancelled = true; off(); };
+	const onScroll = (ev) => {
+		const t = ev.target;
+		const now = (t === document || t === document.documentElement || t === document.body)
+			? Math.round(window.scrollY) : (t && t.scrollTop);
+		if (now === wroteWin || now === wroteMain) return;	/* our own write coming back */
+		stop();
+	};
+	/* the keys that scroll, and only those: typing in a field must not cancel anything */
+	const SCROLL_KEYS = new Set([ 'PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', ' ', 'Spacebar' ]);
+	const onKey = (ev) => { if (SCROLL_KEYS.has(ev.key)) stop(); };
+	const opts = { passive: true, capture: true };
+	function off() {
+		window.removeEventListener('wheel', stop, opts);
+		window.removeEventListener('touchstart', stop, opts);
+		window.removeEventListener('keydown', onKey, opts);
+		window.removeEventListener('scroll', onScroll, opts);
+	}
+	window.addEventListener('wheel', stop, opts);
+	window.addEventListener('touchstart', stop, opts);
+	window.addEventListener('keydown', onKey, opts);
+	/* capture, so the inner scroller (#maincontent in the sidebar layout) is seen too: `scroll`
+	 * does not bubble from an element, but it does travel down the capture phase. */
+	window.addEventListener('scroll', onScroll, opts);
+
 	(function tick() {
-		if (gen !== _navGen || --tries < 0) return;
+		if (cancelled) return;
+		if (gen !== _navGen || Date.now() > until) { off(); return; }
 		const de = document.documentElement;
 		const sc = document.getElementById('maincontent');
 		let pending = false;
 		if (pos.main) {
-			if (sc && sc.scrollHeight - sc.clientHeight >= pos.main) sc.scrollTop = pos.main;
+			if (sc && sc.scrollHeight - sc.clientHeight >= pos.main) { wroteMain = pos.main; sc.scrollTop = pos.main; }
 			else pending = true;
 		}
 		if (pos.win) {
-			if (de.scrollHeight - de.clientHeight >= pos.win) window.scrollTo(0, pos.win);
+			if (de.scrollHeight - de.clientHeight >= pos.win) { wroteWin = pos.win; window.scrollTo(0, pos.win); }
 			else pending = true;
 		}
 		if (pending) requestAnimationFrame(tick);
+		else off();
 	})();
 }
 
@@ -276,38 +348,43 @@ function pragmaDeps(src) {
 	return out;
 }
 
-/* SIX CLASS NAMES HAVE NO FILE, and fetching one is a guaranteed 404 in the user's console. luci.js
- * seeds its class registry with them at load — `const classes = { baseclass: Class, dom: DOM,
- * poll: Poll, request: Request, session: Session, view: View }` — so require() answers them from
- * memory and never asks the network, while `ls /www/luci-static/resources` has no baseclass.js,
- * dom.js, poll.js, request.js or session.js at all. Every view file's pragmas name `view` and
- * `baseclass`, so a dependency walk hits this on its very first step: measured, warming the recents
- * at idle put 404s for view.js and poll.js in the console of every page load, and the first hover
- * added baseclass.js. A require() that 404s is noise this theme refuses to make, and the same
- * standard applies here.
+/* WHICH CLASS NAMES ARE WORTH A PREFETCH, and the answer is the DOTTED ones — that is the whole
+ * rule now, and it used to be a hardcoded list of the six names luci.js seeds its registry with
+ * (`baseclass`, `dom`, `poll`, `request`, `session`, `view`). Those have no file, so fetching one is
+ * a guaranteed 404 in the user's console — measured before the list existed: warming the recents at
+ * idle put 404s for view.js and poll.js into every page load, and the first hover added baseclass.js.
+ * The list worked, and it was a literal copied out of luci.js rather than a guess about it, but it
+ * was still a copy: a seventh built-in would cost one 404 per name per session until this file
+ * caught up with a release of somebody else's software.
  *
- * A future LuCI adding a seventh built-in would cost one 404 per session — `_prefetched` makes it
- * at most one — and the list is a literal from luci.js, not a guess about it. */
-const BUILTIN_CLASSES = new Set([ 'baseclass', 'dom', 'poll', 'request', 'session', 'view' ]);
-
-/* Is this class already instantiated? require() attaches its singleton to the LuCI prototype
- * (`ptr[parts[idx]] = instance`), so a SINGLE-segment name reads back as L[name] — which covers the
- * libs a loaded page has already pulled in (ui, form, uci, rpc, fs, validation, and network/firewall
- * once some network page has been open). Skipping them spends no request on a cache hit nobody needs.
- * `instanceof L.Class` rather than a truthiness test: L.env, L.url and L.get are members too, and a
- * dep whose name collided with one of those would otherwise be skipped without ever being loaded —
- * which is why this cannot be the guard for the six above either: they are seeded as CONSTRUCTORS
- * (and under other names — L.Poll, L.Request, L.Class), so no `instanceof` probe sees them. A DOTTED
- * name (tools.network) is not attached unless its parent already exists, so it is simply fetched —
- * and those are the ones the win comes from. */
+ * The shape of the names answers it without the copy. A LuCI class name is a path — `tools.widgets`
+ * is tools/widgets.js — so a name with no dot is either one of those six virtual classes or one of
+ * the flat libraries (`ui`, `form`, `network`, `uci`, `rpc`, `fs`, `validation`), and those are
+ * already loaded by the time any prefetch runs: this theme's own chrome requires `network` for the
+ * overview grid, which drags in firewall/uci/rpc/validation, and `ui` comes with the widgets.
+ * Measured on the stand from three different landing pages, including the lightest one there is
+ * (System -> Reboot): all eight flat libraries were already instances on arrival, and driving the
+ * prefetch walk over seven pages fetched 10 files, every one of them nested. So the flat half of the
+ * namespace is worth nothing to prefetch and can never be worth a 404 — declining it outright costs
+ * nothing measurable, needs no list, and a future built-in is covered before it ships.
+ *
+ * The dotted half is still asked properly: require() attaches a class at its path (`ptr[parts[i]] =
+ * instance`), so `tools.widgets` reads back as L.tools.widgets once some form page has pulled it,
+ * and a second navigation there spends no request at all. `instanceof L.Class` rather than a
+ * truthiness test: L.env, L.url and L.get are members too. */
 function classLoaded(name) {
-	if (BUILTIN_CLASSES.has(name)) return true;
-	try { return name.indexOf('.') < 0 && window.L[name] instanceof window.L.Class; }
+	if (name.indexOf('.') < 0) return true;
+	try {
+		let ptr = window.L;
+		for (const part of name.split('.')) {
+			ptr = ptr[part];
+			if (ptr == null) return false;
+		}
+		return ptr instanceof window.L.Class;
+	}
 	catch (e) { return false; }
 }
 
-/* view classes already required, i.e. the ones LuCI has an instance cached for. A class NOT in
- * here is rendered by the require() itself (see navigate). */
 const _seen = new Set();
 const _prefetched = new Set();
 /* className -> the promise of ITS OWN body being in the HTTP cache; navigate() waits on that.
@@ -490,7 +567,7 @@ function navigate(pathname, push, kbd) {
 	 * when View.__init__ replaces it there is nothing to see, and the string arrives already
 	 * translated in the ~40 languages this theme ships no catalogue for (the chrome rule — a
 	 * context-free msgid is how we inherit luci-base's translation). */
-	if (!_seen.has(tree.viewClassFor(node))) {
+	if (!_seen.has(className)) {
 		const vp = document.getElementById('view');
 		if (vp) {
 			const s = document.createElement('div');
@@ -541,7 +618,11 @@ function navigate(pathname, push, kbd) {
 		try { fn(rsegs); }
 		catch (e) { console.error('footstrap: a navigation callback threw', e); }
 	}
-	try { if (typeof ui.hideModal === 'function') ui.hideModal(); } catch (e) {}
+	/* ui hard-requires into this module and ui.js defines hideModal unconditionally, so there is no
+	 * feature to test; what is caught is a modal's own teardown throwing, which must not take the
+	 * navigation with it. Reported, not swallowed — the same rule as the loop above. */
+	try { ui.hideModal(); }
+	catch (e) { console.error('footstrap: hideModal threw during a navigation', e); }
 
 	/* point the runtime env at the new node so views, tabs and highlighting read the right
 	 * path. For a fully-matched leaf, request == dispatch path. */
@@ -579,8 +660,8 @@ function navigate(pathname, push, kbd) {
 	 * correctly returns — one dead Back press per stray click. A full load has no such trap. */
 	if (push) {
 		const same = pathname === window.location.pathname;
-		if (_curId == null) _curId = newEntryId();
-		/* a NEW entry gets a new id; re-navigating in place keeps the entry and therefore its id */
+		/* a NEW entry gets a new id; re-navigating in place keeps the entry and therefore its id
+		 * (seed() adopted one before wire() made this function reachable, so there is always one) */
 		if (!same) _curId = newEntryId();
 		history[same ? 'replaceState' : 'pushState']({ fsnav: true, fsid: _curId }, '', pathname);
 	}
@@ -601,7 +682,7 @@ function navigate(pathname, push, kbd) {
 	 *
 	 * A popstate replay resets nothing on purpose: BOTH scrollers are restored there from _scrollMem —
 	 * see restoreScroll(). scrollRestoration is left at 'auto': the UA's own attempt lands before the
-	 * swap and is undone by it (§2), so it neither helps nor hurts, and 'manual' would only take away
+	 * swap and is undone by it (see restoreScroll above), so it neither helps nor hurts, and 'manual' would only take away
 	 * the case that does work — a genuine full load. */
 	if (push) {
 		window.scrollTo(0, 0);
@@ -613,7 +694,8 @@ function navigate(pathname, push, kbd) {
 	 * renderChrome() has just done `#topmenu.innerHTML = ''`, so the very <a> the user activated with
 	 * Enter no longer exists: focus falls back to <body>, the next Tab restarts at the skip link, and
 	 * nothing says the page changed — URL, title and #view all moved in silence. So do what a real
-	 * navigation would, and where matters (Sutton's five-prototype study, docs/spa-router.md §3): a KEYBOARD
+	 * navigation would, and where matters (Sutton's five-prototype study, docs/spa-router.md,
+	 * "Accessibility of a route change"): a KEYBOARD
 	 * activation (ev.detail === 0) moves focus to the skip link — a small target whose :focus overlay
 	 * tells a sighted keyboard user where they are, with Enter jumping straight to the content; its
 	 * text differs from the live region's announcement below, so the double announcement complements
@@ -664,7 +746,15 @@ function navigate(pathname, push, kbd) {
 		 * repairStaleRender() a mess that only exists because a require in flight cannot be stopped. */
 		if (gen !== _navGen) return null;
 		_seen.add(className);
-		return RT.require(className);
+		/* NAME THE OWNER for the length of this require. On a first visit the require IS the render,
+		 * so any <style> the module injects belongs to THIS page — even if a newer navigation has
+		 * stamped data-page by the time it lands, which is exactly the case repairStaleRender() below
+		 * exists for. Without it fs-sheets credited such a sheet to the page that superseded this one
+		 * and bound it there for the life of the document (measured: luci-app-filemanager's
+		 * `.cbi-button-save { display: none !important }` disabled on its own page and live on
+		 * System -> System, across return visits). */
+		sheets.attributeTo(rsegs);
+		return RT.require(className).finally(() => sheets.attributeTo(null));
 	}).then((view) => {
 		if (view == null) return;
 		if (!(view instanceof RT.view))
@@ -818,7 +908,8 @@ function wireRouter() {
  * take back what that one just painted. */
 document.addEventListener('poll-stop', () => {
 	if (L.Poll && L.Poll.queue && L.Poll.queue.length === 0) {
-		try { ui.hideIndicator('poll-status'); } catch (e) {}
+		try { ui.hideIndicator('poll-status'); }
+		catch (e) { console.error('footstrap: hideIndicator threw on poll-stop', e); }
 	}
 });
 
@@ -844,7 +935,7 @@ function wireVisibility() {
 			else if (wasActive) {
 				L.Poll.start();
 			}
-		} catch (e) {}
+		} catch (e) { console.error('footstrap: the poll pause/resume threw', e); }
 	});
 }
 

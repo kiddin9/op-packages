@@ -19,15 +19,13 @@
  * silenced it, but only after it had already been downloaded and run — a theme package reaching
  * into another module's namespace, which is exactly what this project refuses to do to third-party
  * apps (docs/conventions.md, the three zones). It is a chrome module now, loaded by the chrome, so a router on
- * another theme never sees it at all.
+ * another theme never sees it at all — which is why nothing below re-checks `L.env.media`: the file
+ * cannot be reached except through this theme's own footer partial, and a gate for that is a gate
+ * for a state that cannot occur.
  *
  * WHAT THAT COST, and why the code below looks the way it does: the old location bought two timing
  * guarantees for free, because LuCI evaluated the file INSIDE index.load(). Both had to be paid for
  * explicitly — see ensureOverviewHelpers() and patchOverview() at the bottom. */
-function isFootstrapTheme() {
-	return String(L.env.media || '').indexOf('footstrap') >= 0;
-}
-
 /* section title -> grid role. _() with NO msgctxt on purpose: these must resolve to exactly what
  * luci-mod-status resolves to, or the titles stop matching. Built once — it used to cost an
  * allocation plus three _() lookups per poll tick. */
@@ -39,7 +37,17 @@ function sectionTitle(sec) {
 	 * grid never applied on 24.10 at all — measured on the dev container: every section tagged
 	 * `none`, `.fs-ovl` never built, silently. */
 	const h = sec.querySelector('.cbi-title h3, :scope > h3');
-	return (h && h.firstChild) ? String(h.firstChild.nodeValue || '').trim() : '';
+	if (!h) return '';
+	/* The first non-empty TEXT node, not `firstChild`. That heading is not text-only any more: 25.12
+	 * appends a hide/show <span> inside the same <h3>, and `firstChild` lands on the title today only
+	 * because upstream happened to put the words first. One reordering there and every section reads
+	 * as an empty title — the grid silently stops being built, with the page still rendering fine. */
+	for (const n of h.childNodes) {
+		if (n.nodeType !== 3) continue;
+		const t = String(n.nodeValue || '').trim();
+		if (t) return t;
+	}
+	return '';
 }
 
 /* the wrapper we built, so the poll-tick fast path costs one property read */
@@ -126,7 +134,7 @@ function watch() {
  * The empty `.cbi-section` wrapper stock used to build around this include is gone with it, and so
  * is the `.fs-ovl-marker` element that existed only to let CSS hide that wrapper. */
 function wire() {
-	if (_routeObserver || !isFootstrapTheme() || !document.body)
+	if (_routeObserver || !document.body)
 		return;
 	_routeObserver = new MutationObserver(() => {
 		if ((document.body.getAttribute('data-page') || '') === 'admin-status-overview')
@@ -188,11 +196,21 @@ function fillSection(inc, container, res) {
 }
 
 let _inflight = null;
+/* WHICH containers the in-flight run is filling. The guard below is module-level because the
+ * duplicate load it kills is module-level, but the frames are per RENDER — so joining a run blindly
+ * joined one that fills SOMEBODY ELSE'S frames. Reproduced: double-click Status → Overview 100 ms
+ * apart, or leave and return inside the first-load window, and the second arrival's sections stayed
+ * at their birth `display:none` for a full poll interval (measured 5.9 s against 0.4 s on a single
+ * arrival) — it had "joined" a run that was filling the frames the content swap had just detached.
+ * Stock LuCI has no such guard and each render fetches its own data, so the blank page is ours. */
+let _inflightFor = null;
 
 function pollProgressive(includes, containers, first_load) {
-	/* A run is already fetching exactly this data — join it instead of starting a second
-	 * stampede of the same RPCs. This is what kills the duplicate load. */
-	if (_inflight)
+	/* A run is already fetching exactly this data, FOR THESE FRAMES — join it instead of starting a
+	 * second stampede of the same RPCs. This is what kills the duplicate load. A run for older
+	 * frames is left to finish into the detached nodes it owns, which costs nothing and is simpler
+	 * than cancelling RPCs that are already in flight. */
+	if (_inflight && _inflightFor === containers)
 		return first_load ? Promise.resolve() : _inflight;
 
 	const run = network.flushCache().then(() => Promise.all(
@@ -214,7 +232,11 @@ function pollProgressive(includes, containers, first_load) {
 		if (ssi) { ssi.style.display = ''; ssi.classList.add('fade-in'); }
 	});
 
-	_inflight = run.finally(() => { _inflight = null; });
+	_inflight = run.finally(() => {
+		/* only if it is still OURS: a newer render may have replaced it while this one was running */
+		if (_inflightFor === containers) { _inflight = null; _inflightFor = null; }
+	});
+	_inflightFor = containers;
 	/* NOBODY AWAITS THIS ON THE FIRST LOAD — the line below hands the caller a fresh
 	 * Promise.resolve() so index.render() can return at once — so a rejection here has no handler
 	 * and surfaces as an unhandled rejection in the console. `run` rejects for one ordinary reason:
