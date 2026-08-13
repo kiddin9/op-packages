@@ -13,7 +13,6 @@ import { connect } from 'ubus';
 import { cursor } from 'uci';
 
 import { urldecode, urlencode } from 'luci.http';
-import { init_action } from 'luci.sys';
 import { remove_subscription_nodes } from '/etc/homeproxy/scripts/node_references.uc';
 import { parse_surge_subscription } from '/etc/homeproxy/scripts/subscription_parsers.uc';
 
@@ -214,6 +213,10 @@ function apply_tls_cert_pin_policy(config, label, pin) {
 	log(sprintf('Skipping node %s: server certificate fingerprint is unsupported by sing-box %s.',
 		node_label,
 		version));
+}
+
+function service_action(action) {
+	return system([ '/etc/init.d/homeproxy', action ]);
 }
 
 function parse_uri(uri) {
@@ -857,8 +860,8 @@ function main() {
 
 	if (need_restart) {
 		log('Restarting service...');
-		init_action('homeproxy', 'stop');
-		init_action('homeproxy', 'start');
+		service_action('stop');
+		service_action('start');
 	}
 
 	log(sprintf('%s nodes added, %s updated, %s removed.', added, updated, removed));
@@ -885,8 +888,8 @@ if (!isEmpty(subscription_urls)) {
 			'请查看 HomeProxy 日志中的 [SUBSCRIBE] 记录并修复订阅配置');
 
 		log('Restarting service...');
-		init_action('homeproxy', 'stop');
-		init_action('homeproxy', 'start');
+		service_action('stop');
+		service_action('start');
 		writeSubscriptionUpdateStatus(false, true, false, status_error);
 	}
 } else {
