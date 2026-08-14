@@ -8,19 +8,11 @@
 EEOF
 }
 
-[ "`which nft`" ] && uci -q set passwall.@global_forwarding[0].use_nft=1
-
-grep -q ip-api.com /usr/share/passwall/rules/proxy_host ||
-	sed -i '$a ip-api.com' /usr/share/passwall/rules/proxy_host
-
 if [ -e "/etc/config/ucitrack" ]; then
     uci -q batch <<-EOF
  		delete ucitrack.@passwall[-1]
 		add ucitrack passwall
 		set ucitrack.@passwall[-1].init=passwall
-		delete ucitrack.@passwall_server[-1]
-		add ucitrack passwall_server
-		set ucitrack.@passwall_server[-1].init=passwall_server
 		commit ucitrack
 EOF
 fi
@@ -31,11 +23,6 @@ uci -q batch <<-EOF
 	set firewall.passwall.type='script'
 	set firewall.passwall.path='/var/etc/passwall.include'
 
-	delete firewall.passwall_server
-	set firewall.passwall_server=include
-	set firewall.passwall_server.type='script'
-	set firewall.passwall_server.path='/var/etc/passwall_server.include'
-
 	set dhcp.@dnsmasq[0].localuse=1
 	commit dhcp
 	set uhttpd.main.max_requests=50
@@ -44,12 +31,9 @@ EOF
 
 if [ -x "/sbin/fw3" ]; then
 	uci -q set firewall.passwall.reload='1'
-	uci -q set firewall.passwall_server.reload='1'
 else
 	uci -q delete firewall.passwall.reload
 	uci -q delete firewall.passwall.fw4_compatible
-	uci -q delete firewall.passwall_server.reload
-	uci -q delete firewall.passwall_server.fw4_compatible
 fi
 uci commit firewall
 
