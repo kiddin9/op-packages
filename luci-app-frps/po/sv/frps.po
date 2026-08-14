@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-03-22 17:09+0000\n"
-"Last-Translator: Kristoffer Grundström <swedishsailfishosuser@tutanota.com>\n"
+"PO-Revision-Date: 2026-08-13 09:16+0000\n"
+"Last-Translator: Jonatan Nyberg <nickwick@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationsfrps/sv/>\n"
 "Language: sv\n"
@@ -24,7 +24,7 @@ msgstr ""
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:144
 msgid "Additional configs"
-msgstr "Extra konfigurationer"
+msgstr "Ytterligare konfigurationer"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:257
 msgid "Additional scopes to include authentication information."
@@ -72,7 +72,7 @@ msgstr "Bindningsadress"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:157
 msgid "Bind port"
-msgstr "Bind port"
+msgstr "Bindningsport"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:969
 msgid "Collecting data ..."
@@ -81,12 +81,16 @@ msgstr "Samlar in data ..."
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:323
 msgid "Command arguments passed to token source exec."
 msgstr ""
+"BindAddr anger adressen som servern binds till.<br />Som standard är värdet ”"
+"0.0.0.0”."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:300
 msgid ""
 "Command used to obtain the token. The init script adds --allow-"
 "unsafe=TokenSourceExec when this source type is used."
 msgstr ""
+"BindKcpPort anger KCP-porten som servern lyssnar på. Om värdet är 0 lyssnar "
+"servern inte efter KCP-anslutningar.<br />Som standard är värdet 0."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:977
 msgid "Common Settings"
@@ -95,18 +99,25 @@ msgstr "Vanliga inställningar"
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:368
 msgid "Configuration key: log.level."
 msgstr ""
+"BindPort anger porten som servern lyssnar på.<br />Som standard är värdet "
+"7000."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:538
 msgid "Configuration key: transport.quic.keepalivePeriod."
 msgstr ""
+"BindQuicPort anger QUIC-porten som servern lyssnar på. Om värdet är 0 "
+"lyssnar servern inte efter QUIC-anslutningar.<br />Som standard är värdet 0."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:542
 msgid "Configuration key: transport.quic.maxIdleTimeout."
 msgstr ""
+"BindUdpPort anger UDP-porten som servern lyssnar på. Om värdet är 0 lyssnar "
+"servern inte efter UDP-anslutningar.<br />Som standard är värdet 0."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:546
 msgid "Configuration key: transport.quic.maxIncomingStreams."
 msgstr ""
+"Konfigurationsfiler som inkluderas i den tillfälliga konfigurationsfilen"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:227
 msgid "Custom 404 page"
@@ -131,6 +142,8 @@ msgstr "Inaktiverad"
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:220
 msgid "Do not update traffic when TCPMUX passthrough is enabled."
 msgstr ""
+"Dashboard TLS Key File anger sökvägen till filen med den privata TLS-nyckeln "
+"för att aktivera HTTPS-åtkomst.<br />Krävs om HTTPS är aktiverat."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:224
 msgid "Domain suffix for subdomain-based HTTP/HTTPS proxies."
@@ -171,22 +184,30 @@ msgstr "Miljövariabel"
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:755
 msgid "Environment variable must use KEY=value format."
 msgstr ""
+"DashboardPort anger porten som instrumentpanelen lyssnar på. Om värdet är 0 "
+"startas inte instrumentpanelen.<br />Som standard är värdet 0."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:333
 msgid "Environment variables passed to token source exec. Use KEY=value."
 msgstr ""
+"DashboardPwd anger lösenordet som instrumentpanelen använder för "
+"inloggning.<br />Som standard är värdet ”admin”."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:464
 msgid ""
 "Export Prometheus metrics on webServer /metrics API. It only takes effect "
 "when web server port is set."
 msgstr ""
+"DashboardUser anger användarnamnet som instrumentpanelen använder för "
+"inloggning.<br />Som standard är värdet ”admin”."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:145
 msgid ""
 "Extra root-level configuration fragments included before generated HTTP "
 "plugin sections. Use raw settings for table-specific extra options."
 msgstr ""
+"DisableLogColor inaktiverar loggfärger när LogWay == ”console” om värdet är "
+"true.<br />Som standard är värdet false."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:521
 msgid "Force TLS"
@@ -236,7 +257,7 @@ msgstr ""
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:161
 msgid "KCP bind port"
-msgstr ""
+msgstr "KCP-bindningsport"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:174
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:193
@@ -260,7 +281,7 @@ msgstr ""
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:367
 msgid "Log level"
-msgstr "Logg-nivå"
+msgstr "Loggnivå"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:371
 msgid "Log max days"
@@ -301,6 +322,9 @@ msgstr ""
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:561
 msgid "Maximum ports each client can use. 0 means no limit."
 msgstr ""
+"LogMaxDays anger det högsta antalet dagar som logginformation lagras innan "
+"den tas bort. Detta används endast om LogWay == ”file”.<br />Som standard är "
+"värdet 0."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:504
 msgid "Maximum time to wait for a work connection."
@@ -309,6 +333,9 @@ msgstr ""
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:564
 msgid "NAT hole analysis reserve hours"
 msgstr ""
+"MaxPortsPerClient anger det högsta antalet portar som en enskild klient får "
+"proxyansluta till. Om värdet är 0 tillämpas ingen gräns.<br />Som standard "
+"är värdet 0."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:942
 msgid "NOT RUNNING"
@@ -470,11 +497,11 @@ msgstr ""
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:123
 msgid "Run daemon as group"
-msgstr "Kör daemon som grupp"
+msgstr "Kör demonen som grupp"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:122
 msgid "Run daemon as user"
-msgstr "Kör daemon som användare"
+msgstr "Kör demonen som användare"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:983
 msgid "SSH Tunnel"

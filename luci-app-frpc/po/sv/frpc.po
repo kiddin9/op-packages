@@ -1,14 +1,14 @@
 msgid ""
 msgstr ""
-"PO-Revision-Date: 2026-03-02 22:45+0000\n"
-"Last-Translator: Kristoffer Grundström <swedishsailfishosuser@tutanota.com>\n"
+"PO-Revision-Date: 2026-08-13 09:16+0000\n"
+"Last-Translator: Jonatan Nyberg <nickwick@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Swedish <https://hosted.weblate.org/projects/openwrt/"
 "luciapplicationsfrpc/sv/>\n"
 "Language: sv\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 5.17-dev\n"
+"X-Generator: Weblate 2026.9.dev0\n"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1454
 msgid "Add new proxy or visitor..."
@@ -32,7 +32,7 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:174
 msgid "Additional configs"
-msgstr "Extra konfigurationer"
+msgstr "Ytterligare konfigurationer"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1060
 msgid "Additional proxy metadata. Use key=value."
@@ -45,6 +45,8 @@ msgstr ""
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:187
 msgid "Address of the frps server."
 msgstr ""
+"AdminAddr anger adressen som administrationsservern binds till.<br />Som "
+"standard är värdet ”0.0.0.0”."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1430
 msgid "Advanced"
@@ -53,14 +55,20 @@ msgstr "Avancerat"
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:839
 msgid "Allow users"
 msgstr ""
+"AdminPort anger porten som administrationsservern ska lyssna på. Om värdet "
+"är 0 startas inte administrationsservern.<br />Som standard är värdet 0."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1069
 msgid "Annotations"
 msgstr ""
+"AdminPwd anger lösenordet som administrationsservern använder för "
+"inloggning.<br />Som standard är värdet ”admin”."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1070
 msgid "Annotations displayed on frps dashboard. Use key=value."
 msgstr ""
+"AdminUser anger användarnamnet som administrationsservern använder för "
+"inloggning.<br />Som standard är värdet ”admin”."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:464
 msgid "Assets dir"
@@ -409,7 +417,7 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1460
 msgid "General Settings"
-msgstr "Generella inställningar"
+msgstr "Allmänna inställningar"
 
 #: applications/luci-app-frpc/root/usr/share/rpcd/acl.d/luci-app-frpc.json:3
 msgid "Grant access to LuCI app frpc"
@@ -495,7 +503,7 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:530
 msgid "Heartbeat interval"
-msgstr "Hjärtslagsintervall"
+msgstr "Heartbeat-intervall"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:531
 msgid "Heartbeat interval in seconds."
@@ -554,7 +562,7 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:659
 msgid "Local IP"
-msgstr "Lokal IP"
+msgstr "Lokal IP-adress"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:523
 msgid ""
@@ -583,6 +591,8 @@ msgstr "Lokal port"
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:660
 msgid "Local service IP or host."
 msgstr ""
+"LocalIp anger IP-adressen eller värdnamnet som proxyn ska vidarebefordra "
+"till."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:664
 msgid "Local service port."
@@ -598,7 +608,7 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:387
 msgid "Log level"
-msgstr "Logg-nivå"
+msgstr "Loggnivå"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:391
 msgid "Log max days"
@@ -647,6 +657,9 @@ msgstr ""
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:197
 msgid "NAT hole STUN server"
 msgstr ""
+"LoginFailExit styr om klienten ska avslutas efter ett misslyckat "
+"inloggningsförsök. Om värdet är false försöker klienten igen tills en "
+"inloggning lyckas.<br />Som standard är värdet true."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1390
 msgid "NOT RUNNING"
@@ -749,7 +762,7 @@ msgstr ""
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:909
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1463
 msgid "Plugin"
-msgstr "Insticksprogram"
+msgstr "Insticksmodul"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:1015
 msgid "Plugin HTTP/2"
@@ -901,11 +914,11 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:153
 msgid "Run daemon as group"
-msgstr "Kör daemon som grupp"
+msgstr "Kör demonen som grupp"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:152
 msgid "Run daemon as user"
-msgstr "Kör daemon som användare"
+msgstr "Kör demonen som användare"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:943
 msgid "SOCKS5 password"
@@ -933,7 +946,7 @@ msgstr ""
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:186
 msgid "Server address"
-msgstr "Server-adress"
+msgstr "Serveradress"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:847
 msgid "Server name"
@@ -1054,14 +1067,20 @@ msgstr ""
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:560
 msgid "TLS trusted CA path"
 msgstr ""
+"TcpMux aktiverar eller inaktiverar multiplexering av TCP-strömmar. Det gör "
+"att flera begäranden från en klient kan dela en enda TCP-anslutning. Om "
+"värdet är true måste även servern ha TCP-multiplexering aktiverad.<br />Som "
+"standard är värdet true."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:483
 msgid "Timeout in seconds for connecting to frps."
 msgstr ""
+"Den här listan kan användas för att ange ytterligare parametrar som inte har "
+"tagits med i LuCI."
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:235
 msgid "Token"
-msgstr "Tecken"
+msgstr "Token"
 
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:244
 #: applications/luci-app-frpc/htdocs/luci-static/resources/view/frpc.js:264
