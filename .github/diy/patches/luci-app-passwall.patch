@@ -237,9 +237,9 @@
  s:tab("Proxy", translate("Mode"))
  
  o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))
-@@ -834,5 +855,6 @@ footer.api = api
- footer.global_cfgid = global_cfgid
- footer.shunt_list = api.jsonc.stringify(shunt_list)
+@@ -834,5 +855,6 @@
+ end
+ 
  m:appendTemplate("/global/footer", {shunt_list = api.jsonc.stringify(shunt_list)})
 +m:appendTemplate("/global/status_bottom")
  
