@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-passwall2
 PKG_VERSION:=26.8.14
-PKG_RELEASE:=80
+PKG_RELEASE:=81
 PKG_PO_VERSION:=$(PKG_VERSION)
 
 PKG_CONFIG_DEPENDS:= \
@@ -59,11 +59,11 @@ choice
 	default PACKAGE_$(PKG_NAME)_Basic_Core_Xray
 
 	config PACKAGE_$(PKG_NAME)_Basic_Core_Xray
-		bool "Xray"
+		tristate "Xray"
 		select PACKAGE_xray-core
 
 	config PACKAGE_$(PKG_NAME)_Basic_Core_SingBox
-		bool "SingBox"
+		tristate "SingBox"
 		select PACKAGE_sing-box
 
 	config PACKAGE_$(PKG_NAME)_Basic_Core_All
