@@ -551,7 +551,7 @@ rule_count = tonumber(luci.sys.exec("wc -l < /usr/share/passwall/rules/block_hos
 end
 o = s:taboption("DNS", DummyValue, "refresh_data", translate("Subscribe Rules Data"))
 o.rawhtml = true
-o.template = appname .. "/global/adblock_refresh"
+o.template = m:template_path("/global/adblock_refresh")
 o.value = rule_count.." "..translate("Records")
 o.description = string.format("<strong>"..translate("Last Update Checked")..":</strong> %s<br/>",UD)
 o:depends("adblock",1)
