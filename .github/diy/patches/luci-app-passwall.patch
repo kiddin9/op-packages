@@ -278,7 +278,7 @@ index 000000000000..a00fff9c79b3
 +    height: 2.6em;
 +    display: block;
 +    float: left;
-+    margin-right: 1em;
++    margin: 0 1em;
 +}
 +
 +.status-bar .inner .status-info {
