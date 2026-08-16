@@ -129,7 +129,7 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm
-@@ -0,0 +1,125 @@
+@@ -0,0 +1,131 @@
 +<style>
 +.pure-img {
 +    max-height: 100%;
@@ -170,11 +170,17 @@ index 000000000000..a00fff9c79b3
 +    text-align: right;
 +}
 +
-+.pure-u-1-2, .pure-u-12-24 {
++.pure-u-1-2 {
 +    width: 49%;
 +    display: inline-block;
 +}
-+    
++
++@media screen and (max-width: 720px) {
++		.pure-u-1-2 {
++			width: 100%;
++		}
++	}
++
 +@media screen and (max-width: 700px) {
 +.status-bar .icon-con {
 +    height: 2.5em;
