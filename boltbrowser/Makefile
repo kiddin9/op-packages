@@ -1,12 +1,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=boltbrowser
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/br0xen/boltbrowser.git
 PKG_SOURCE_DATE:=2023-05-31
-PKG_SOURCE_VERSION:=6ad3511ddb3c271fbaed2f22e409aa453ed89042
+PKG_SOURCE_VERSION:=null
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-3.0-or-later
