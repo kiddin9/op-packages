@@ -8,13 +8,6 @@
 'require form';
 'require tools.widgets as widgets';
 
-const callInitAction = rpc.declare({
-	object: 'luci',
-	method: 'setInitAction',
-	params: ['name', 'action'],
-	expect: { result: false }
-});
-
 const callUpnpGetStatus = rpc.declare({
 	object: 'luci.upnp',
 	method: 'get_status',
@@ -350,7 +343,7 @@ return view.extend({
 		o.modalonly = false;
 
 		o = s.option(form.Value, 'int_addr', _('IP address'),
-			_('Enter device\'s IPv4 address, or an address with netmask'));
+			_('Enter device\'s IPv4 address, or an address and netmask'));
 		o.datatype = 'ip4addr';
 		o.rmempty = false;
 		o.retain = true;

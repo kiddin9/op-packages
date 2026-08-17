@@ -51,7 +51,7 @@ stop_service() {
 	else
 		nft flush chain inet fw4 upnp_forward 2>/dev/null
 		nft flush chain inet fw4 upnp_prerouting 2>/dev/null
-		#nft flush chain inet fw4 upnp_postrouting 2>/dev/null
+		#nft flush chain inet fw4 upnp_postrouting 2>/dev/null # Not used with nftables
 	fi
 }
 
@@ -185,7 +185,7 @@ upnpd_generate_config() {
 			echo "upnp_nat_table_name=fw4"
 			echo "upnp_forward_chain=upnp_forward"
 			echo "upnp_nat_chain=upnp_prerouting"
-			#echo "upnp_nat_postrouting_chain=upnp_postrouting"
+			#echo "upnp_nat_postrouting_chain=upnp_postrouting" # Not used with nftables
 		fi
 
 		echo "# External network interface"
@@ -197,7 +197,8 @@ upnpd_generate_config() {
 		[ "$ipv6_disable" = "0" ] && echo "ipv6_disable=no" || echo "ipv6_disable=yes"
 		local rejectport
 		for rejectport in $reject_ports; do
-			is_port_or_range "$rejectport" allowport0 && echo "deny $rejectport 0.0.0.0/0 $rejectport # Reject port $rejectport" ||
+			is_port_or_range "$rejectport" allowport0 && echo "deny 1-65535 0.0.0.0/0 $rejectport # Reject port $rejectport" &&
+				echo "deny $rejectport 0.0.0.0/0 1-65535 # Reject external port $rejectport" ||
 				log "Invalid port or port range ($rejectport) in reject_ports ignored" daemon.warn
 		done
 		[ "$check_acl" = "1" ] && echo "# Access control list" && config_foreach upnpd_add_acl_entry acl_entry
@@ -252,9 +253,9 @@ upnpd_add_acl_entry() {
 	local cfg="$1"
 	local comment int_addr int_port ext_port descr_filter action
 	config_get comment "$cfg" comment "unspecified" # comment
-	config_get int_addr "$cfg" int_addr "0.0.0.0/0" # IPv4 or network and subnet mask (internal)
-	config_get int_port "$cfg" int_port "1-65535"   # internal port/range: x or x-y
-	config_get ext_port "$cfg" ext_port "1-65535"   # external port/range: x or x-y
+	config_get int_addr "$cfg" int_addr "0.0.0.0/0" # IPv4 address or address and netmask (internal)
+	config_get int_port "$cfg" int_port "1-65535"   # internal port or range: x or x-y
+	config_get ext_port "$cfg" ext_port "1-65535"   # external port or range: x or x-y
 	config_get descr_filter "$cfg" descr_filter     # description regex filter (must be built in)
 	config_get action "$cfg" action                 # accept/reject/disabled
 	! is_port_or_range "$int_port" allowport0 &&

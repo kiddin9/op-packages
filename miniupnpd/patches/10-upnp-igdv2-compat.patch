@@ -1,7 +1,7 @@
-From 38e01919d585b0fd663d2b3249963b336061cbd3 Mon Sep 17 00:00:00 2001
+From f94e5bf7a60a41911af8d7e23cdb4ebe166257e2 Mon Sep 17 00:00:00 2001
 From: Self-Hosting-Group
  <155233284+Self-Hosting-Group@users.noreply.github.com>
-Date: Wed, 25 Mar 2026 00:00:00 +0000
+Date: Fri, 14 Aug 2026 00:00:00 +0000
 Subject: [PATCH] miniupnpd: UPnP IGDv2 Microsoft/Apple compatibility
 
 * Add workaround to list port maps with the Windows IGDv2-incompatible
@@ -20,7 +20,7 @@ Link: https://github.com/Self-Hosting-Group/wiki/wiki/Port-Mapping-Protocols-Ove
 
 --- a/upnphttp.c
 +++ b/upnphttp.c
-@@ -304,9 +304,22 @@ ParseHttpHeaders(struct upnphttp * h)
+@@ -307,9 +307,22 @@ ParseHttpHeaders(struct upnphttp * h)
  			}
  			else if(strncasecmp(line, "user-agent:", 11) == 0)
  			{
@@ -48,7 +48,7 @@ Link: https://github.com/Self-Hosting-Group/wiki/wiki/Port-Mapping-Protocols-Ove
  			}
 --- a/upnpsoap.c
 +++ b/upnpsoap.c
-@@ -854,6 +854,14 @@ GetSpecificPortMappingEntry(struct upnph
+@@ -920,6 +920,14 @@ GetSpecificPortMappingEntry(struct upnph
  #ifdef ENABLE_PCP
  		hide_pcp_nonce(desc);
  #endif
@@ -63,7 +63,7 @@ Link: https://github.com/Self-Hosting-Group/wiki/wiki/Port-Mapping-Protocols-Ove
  		bodylen = snprintf(body, sizeof(body), resp,
  				action, ns/*SERVICE_TYPE_WANIPC*/,
  				(unsigned int)iport, int_ip, desc, leaseduration,
-@@ -1124,6 +1132,14 @@ GetGenericPortMappingEntry(struct upnpht
+@@ -1208,6 +1216,14 @@ GetGenericPortMappingEntry(struct upnpht
  #ifdef ENABLE_PCP
  		hide_pcp_nonce(desc);
  #endif

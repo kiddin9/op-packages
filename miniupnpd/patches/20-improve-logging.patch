@@ -1,40 +1,42 @@
-From 38e01919d585b0fd663d2b3249963b336061cbd3 Mon Sep 17 00:00:00 2001
+From a7cebfc522306295cc1745c637f64d0e7d659795 Mon Sep 17 00:00:00 2001
 From: Self-Hosting-Group
  <155233284+Self-Hosting-Group@users.noreply.github.com>
-Date: Tue, 12 May 2026 00:00:00 +0000
+Date: Fri, 14 Aug 2026 00:00:00 +0000
 Subject: [PATCH] miniupnpd: Improve logging
 
 * Clearer logging of enabled protocols/ports, IPv6 mapping, and UPnP IGD
   compatibility mode… in start banner
 * Log warnings with an enabled allow third-party mapping option
-* Less verbose logging by changing the log level of many normally
-  occurring or internal messages, or those not relevant to users, to
-  debug or info
-* Comment out log-filling messages when internal interfaces lose link,
-  and for e.g. `rule with label '%s' is not a IGD pinhole`, as normally
-  occurring
+* Change the log level (less verbose) of many internal or normally
+  occurring messages, and some error messages, without functional
+  restrictions, to DEBUG, client requests/actions and their errors to
+  INFO, and only daemon-wide messages to NOTICE/WARNING/ERR…
+* Comment out some log-filling messages when internal interfaces lose
+  link, and for e.g. `rule with label '%s' is not a IGD pinhole`, as
+  normally occurring
 
 Fixes: https://redirect.github.com/openwrt/packages/issues/17601
 Fixes: https://redirect.github.com/openwrt/packages/issues/26483
 Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
 ---
- asyncsendto.c                 |  4 +--
- getifaddr.c                   |  4 +--
- minissdp.c                    | 24 ++++++-------
- miniupnpd.c                   | 20 +++++------
- natpmp.c                      | 16 ++++-----
- netfilter/iptcrdr.c           | 10 +++---
- netfilter/iptpinhole.c        |  4 +--
+ asyncsendto.c                 |  4 ++--
+ getifaddr.c                   |  4 ++--
+ minissdp.c                    | 24 ++++++++++++------------
+ miniupnpd.c                   | 92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------
+ natpmp.c                      | 16 ++++++++--------
+ netfilter/iptcrdr.c           | 10 +++++-----
+ netfilter/iptpinhole.c        |  4 ++--
  netfilter_nft/nftnlrdr.c      |  2 +-
- netfilter_nft/nftnlrdr_misc.c |  8 ++---
- netfilter_nft/nftpinhole.c    | 10 +++---
- pcpserver.c                   | 18 +++++-----
- pf/pfpinhole.c                |  8 ++---
- upnphttp.c                    |  6 ++--
- upnppinhole.c                 | 48 ++++++++++++-------------
- upnpredirect.c                | 20 +++++------
- upnpsoap.c                    | 28 +++++++--------
- 16 files changed, 115 insertions(+), 115 deletions(-)
+ netfilter_nft/nftnlrdr_misc.c |  8 ++++----
+ netfilter_nft/nftpinhole.c    | 10 +++++-----
+ pcpserver.c                   | 18 +++++++++---------
+ pf/obsdrdr.c                  |  6 +++---
+ pf/pfpinhole.c                | 12 ++++++------
+ upnphttp.c                    |  6 +++---
+ upnppinhole.c                 | 48 ++++++++++++++++++++++++------------------------
+ upnpredirect.c                | 20 ++++++++++----------
+ upnpsoap.c                    | 30 +++++++++++++++---------------
+ 17 files changed, 171 insertions(+), 143 deletions(-)
 
 --- a/asyncsendto.c
 +++ b/asyncsendto.c
@@ -72,7 +74,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	}
 --- a/minissdp.c
 +++ b/minissdp.c
-@@ -741,8 +741,8 @@ SendSSDPNotify(int s, const struct socka
+@@ -743,8 +743,8 @@ SendSSDPNotify(int s, const struct socka
  	}
  	n = sendto_or_schedule(s, bufr, l, 0, dest, dest_len);
  	if(n < 0) {
@@ -83,7 +85,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	} else if(n != l) {
  		syslog(LOG_NOTICE, "sendto() sent %d out of %d bytes", n, l);
  	}
-@@ -752,8 +752,8 @@ SendSSDPNotify(int s, const struct socka
+@@ -754,8 +754,8 @@ SendSSDPNotify(int s, const struct socka
  	 * discovery messages SHOULD NOT be sent more than three times. */
  	n = sendto_schedule(s, bufr, l, 0, dest, dest_len, 250);
  	if(n < 0) {
@@ -94,7 +96,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	}
  }
  
-@@ -1058,7 +1058,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1060,7 +1060,7 @@ ProcessSSDPData(int s, const char *bufr,
  	}
  	if(lan_addr == NULL)
  	{
@@ -103,7 +105,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		       sender_str, source_if);
  		return;
  	}
-@@ -1161,7 +1161,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1163,7 +1163,7 @@ ProcessSSDPData(int s, const char *bufr,
  	           sender_str );*/
  		if(st && (st_len > 0))
  		{
@@ -112,7 +114,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       sender_str, st_len, st);
  			/* find in which sub network the client is */
  #ifdef ENABLE_IPV6
-@@ -1274,7 +1274,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1276,7 +1276,7 @@ ProcessSSDPData(int s, const char *bufr,
  					else
  						snprintf(ver_str, sizeof(ver_str), "%d", known_service_types[i].version);
  #endif
@@ -121,7 +123,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef DELAY_MSEARCH_RESPONSE
  					delay = random() / (1 + RAND_MAX / (1000 * mx_value));
  #ifdef DEBUG
-@@ -1303,7 +1303,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1305,7 +1305,7 @@ ProcessSSDPData(int s, const char *bufr,
  #ifdef DELAY_MSEARCH_RESPONSE
  				unsigned int delay_increment = (mx_value * 1000) / 15;
  #endif
@@ -130,7 +132,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				for(i=0; known_service_types[i].s; i++)
  				{
  #ifdef DELAY_MSEARCH_RESPONSE
-@@ -1361,7 +1361,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1363,7 +1363,7 @@ ProcessSSDPData(int s, const char *bufr,
  #endif
  				if(0 == memcmp(st, uuidvalue_igd, l))
  				{
@@ -139,7 +141,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					SendSSDPResponse(s, sender, st, st_len, "",
  					                 announced_host, http_port,
  #ifdef ENABLE_HTTPS
-@@ -1371,7 +1371,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1373,7 +1373,7 @@ ProcessSSDPData(int s, const char *bufr,
  				}
  				else if(0 == memcmp(st, uuidvalue_wan, l))
  				{
@@ -148,7 +150,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					SendSSDPResponse(s, sender, st, st_len, "",
  					                 announced_host, http_port,
  #ifdef ENABLE_HTTPS
-@@ -1381,7 +1381,7 @@ ProcessSSDPData(int s, const char *bufr,
+@@ -1383,7 +1383,7 @@ ProcessSSDPData(int s, const char *bufr,
  				}
  				else if(0 == memcmp(st, uuidvalue_wcd, l))
  				{
@@ -157,7 +159,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					SendSSDPResponse(s, sender, st, st_len, "",
  					                 announced_host, http_port,
  #ifdef ENABLE_HTTPS
-@@ -1442,7 +1442,7 @@ SendSSDPbyebye(int s, const struct socka
+@@ -1444,7 +1444,7 @@ SendSSDPbyebye(int s, const struct socka
  	n = sendto_or_schedule(s, bufr, l, 0, dest, destlen);
  	if(n < 0)
  	{
@@ -168,7 +170,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	else if(n != l)
 --- a/miniupnpd.c
 +++ b/miniupnpd.c
-@@ -489,7 +489,7 @@ ProcessIncomingHTTP(int shttpl, const ch
+@@ -496,7 +496,7 @@ ProcessIncomingHTTP(int shttpl, const ch
  		if(get_lan_for_peer((struct sockaddr *)&clientname) == NULL)
  		{
  			/* The peer is not a LAN ! */
@@ -177,7 +179,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       "%s peer %s is not from a LAN, closing the connection",
  			       protocol, addr_str);
  			close(shttp);
-@@ -859,7 +859,7 @@ set_startup_time(void)
+@@ -867,7 +867,7 @@ set_startup_time(void)
  			}
  			else
  			{
@@ -186,7 +188,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			}
  			fclose(f);
  			startup_time -= uptime;
-@@ -2109,6 +2109,22 @@ init(int argc, char * * argv, struct run
+@@ -2228,6 +2228,22 @@ init(int argc, char * * argv, struct run
  		pidfilename = NULL;
  #endif
  
@@ -209,7 +211,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef USE_SYSTEMD
  	if (systemd_flag) {
  		int r = sd_notify(0,
-@@ -2121,7 +2137,7 @@ init(int argc, char * * argv, struct run
+@@ -2240,7 +2256,7 @@ init(int argc, char * * argv, struct run
  
  #ifdef ENABLE_LEASEFILE
  	/*remove(lease_file);*/
@@ -218,8 +220,8 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	reload_from_lease_file();
  #ifdef ENABLE_UPNPPINHOLE
  	reload_from_lease_file6();
-@@ -2409,21 +2425,9 @@ main(int argc, char * * argv)
- 		return 0;
+@@ -2431,21 +2447,9 @@ main(int argc, char * * argv)
+ 		goto shutdown;
  	}
  
 -	syslog(LOG_INFO, "version " MINIUPNPD_VERSION " starting%s%sext if %s BOOTID=%u",
@@ -241,25 +243,25 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	}
  #endif
  
-@@ -2467,7 +2471,7 @@ main(int argc, char * * argv)
- 			return 1;
- 		}
- 		v.port = listen_port;
+@@ -2494,7 +2498,7 @@ main(int argc, char * * argv)
+ #ifdef ENABLE_NFQUEUE
+ 		nfqueue_data.http_port = listen_port;
+ #endif /* ENABLE_NFQUEUE */
 -		syslog(LOG_NOTICE, "HTTP listening on port %d", v.port);
 +		syslog(LOG_NOTICE, "Listening for UPnP IGD (SOAP/HTTP) traffic on port %d/TCP, SSDP 1900/UDP", v.port);
  #if defined(V6SOCKETS_ARE_V6ONLY) && defined(ENABLE_IPV6)
  		if(!GETFLAG(IPV6DISABLEDMASK))
  		{
-@@ -2493,7 +2497,7 @@ main(int argc, char * * argv)
- 			return 1;
- 		}
- 		v.https_port = listen_port;
+@@ -2525,7 +2529,7 @@ main(int argc, char * * argv)
+ #ifdef ENABLE_NFQUEUE
+ 		nfqueue_data.https_port = listen_port;
+ #endif /* ENABLE_NFQUEUE */
 -		syslog(LOG_NOTICE, "HTTPS listening on port %d", v.https_port);
 +		syslog(LOG_NOTICE, "Listening for UPnP IGD (SOAP/HTTPS) traffic on port %d/TCP", v.https_port);
  #if defined(V6SOCKETS_ARE_V6ONLY) && defined(ENABLE_IPV6)
  		shttpsl_v4 =  OpenAndConfHTTPSocket(&listen_port, 0);
  		if(shttpsl_v4 < 0)
-@@ -2507,11 +2511,11 @@ main(int argc, char * * argv)
+@@ -2540,11 +2544,11 @@ main(int argc, char * * argv)
  		if(!GETFLAG(IPV6DISABLEDMASK)) {
  			if(find_ipv6_addr(lan_addrs.lh_first ? lan_addrs.lh_first->ifname : NULL,
  			                  ipv6_addr_for_http_with_brackets, sizeof(ipv6_addr_for_http_with_brackets)) > 0) {
@@ -273,7 +275,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				SETFLAG(IPV6DISABLEDMASK);
  			}
  		}
-@@ -2563,7 +2567,7 @@ main(int argc, char * * argv)
+@@ -2601,7 +2605,7 @@ main(int argc, char * * argv)
  			if(SendSSDPGoodbye(snotify, addr_count * 2) < 0)
  #endif
  			{
@@ -282,7 +284,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			}
  		}
  #endif /* UPNP_STRICT */
-@@ -2588,16 +2592,16 @@ main(int argc, char * * argv)
+@@ -2626,16 +2630,16 @@ main(int argc, char * * argv)
  		if(OpenAndConfNATPMPSockets(snatpmp) < 0)
  #ifdef ENABLE_PCP
  		{
@@ -303,7 +305,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       NATPMP_PORT);
  		}
  #endif
-@@ -2706,6 +2710,30 @@ main(int argc, char * * argv)
+@@ -2746,6 +2750,30 @@ main(int argc, char * * argv)
  	}
  #endif /* HAS_LIBCAP_NG */
  
@@ -334,7 +336,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef USE_SYSTEMD
  	if (v.systemd_notify) {
  		upnp_update_status();
-@@ -3016,7 +3044,7 @@ main(int argc, char * * argv)
+@@ -3056,7 +3084,7 @@ main(int argc, char * * argv)
  		}
  		i = try_sendto(&writeset);
  		if(i < 0) {
@@ -343,7 +345,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		}
  #ifdef USE_MINIUPNPDCTL
  		for(ectl = ctllisthead.lh_first; ectl;)
-@@ -3116,7 +3144,7 @@ main(int argc, char * * argv)
+@@ -3156,7 +3184,7 @@ main(int argc, char * * argv)
  					if(lan_addr == NULL) {
  						char sender_str[64];
  						sockaddr_to_string((struct sockaddr *)&senderaddr, sender_str, sizeof(sender_str));
@@ -352,7 +354,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  						       sender_str);
  						continue;
  					}
-@@ -3139,7 +3167,7 @@ main(int argc, char * * argv)
+@@ -3179,7 +3207,7 @@ main(int argc, char * * argv)
  				if(lan_addr == NULL) {
  					char sender_str[64];
  					sockaddr_to_string((struct sockaddr *)&senderaddr, sender_str, sizeof(sender_str));
@@ -361,7 +363,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					       sender_str);
  					continue;
  				}
-@@ -3173,7 +3201,7 @@ main(int argc, char * * argv)
+@@ -3213,7 +3241,7 @@ main(int argc, char * * argv)
  		/* process SSDP packets */
  		if(sudp >= 0 && FD_ISSET(sudp, &readset))
  		{
@@ -370,7 +372,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef ENABLE_HTTPS
  			ProcessSSDPRequest(sudp, (unsigned short)v.port, (unsigned short)v.https_port);
  #else
-@@ -3183,7 +3211,7 @@ main(int argc, char * * argv)
+@@ -3223,7 +3251,7 @@ main(int argc, char * * argv)
  #ifdef ENABLE_IPV6
  		if(sudpv6 >= 0 && FD_ISSET(sudpv6, &readset))
  		{
@@ -379,7 +381,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef ENABLE_HTTPS
  			ProcessSSDPRequest(sudpv6, (unsigned short)v.port, (unsigned short)v.https_port);
  #else
-@@ -3285,7 +3313,7 @@ main(int argc, char * * argv)
+@@ -3325,7 +3353,7 @@ main(int argc, char * * argv)
  
  shutdown:
  
@@ -388,7 +390,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef USE_SYSTEMD
  	if (v.systemd_notify) {
  		sd_notify(0,
-@@ -3304,7 +3332,7 @@ shutdown:
+@@ -3344,7 +3372,7 @@ shutdown:
  		if(SendSSDPGoodbye(snotify, addr_count * 2) < 0)
  #endif
  		{
@@ -473,7 +475,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		}
 --- a/netfilter/iptcrdr.c
 +++ b/netfilter/iptcrdr.c
-@@ -711,7 +711,7 @@ delete_filter_rule(const char * ifname,
+@@ -715,7 +715,7 @@ delete_filter_rule(const char * ifname,
  						continue;
  				}
  				index = i;
@@ -482,7 +484,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				r = delete_rule_and_commit(index, h, miniupnpd_forward_chain, "delete_filter_rule");
  				h = NULL;
  				break;
-@@ -804,7 +804,7 @@ delete_redirect_and_filter_rules(unsigne
+@@ -808,7 +808,7 @@ delete_redirect_and_filter_rules(unsigne
  #endif
  	if(r == 0)
  	{
@@ -491,7 +493,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		/* Now delete both rules */
  		/* first delete the nat rule */
  		h = iptc_init("nat");
-@@ -848,7 +848,7 @@ delete_redirect_and_filter_rules(unsigne
+@@ -852,7 +852,7 @@ delete_redirect_and_filter_rules(unsigne
  					if(iaddr != e->ip.dst.s_addr)
  						continue;
  					index = i;
@@ -500,7 +502,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					r = delete_rule_and_commit(index, h, miniupnpd_forward_chain, "delete_filter_rule");
  					h = NULL;
  					break;
-@@ -906,7 +906,7 @@ delete_redirect_and_filter_rules(unsigne
+@@ -910,7 +910,7 @@ delete_redirect_and_filter_rules(unsigne
  				}
  
  				index = i;
@@ -509,7 +511,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				r2 = delete_rule_and_commit(index, h, miniupnpd_nat_postrouting_chain, "delete_peer_rule");
  				h = NULL;
  				break;
-@@ -958,7 +958,7 @@ delete_redirect_and_filter_rules(unsigne
+@@ -962,7 +962,7 @@ delete_redirect_and_filter_rules(unsigne
  				if(iaddr != e->ip.src.s_addr)
  					continue;
  				index = i;
@@ -550,7 +552,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  
 --- a/netfilter_nft/nftnlrdr_misc.c
 +++ b/netfilter_nft/nftnlrdr_misc.c
-@@ -104,7 +104,7 @@ nft_mnl_connect(void)
+@@ -110,7 +110,7 @@ nft_mnl_connect(void)
  		return -1;
  	}
  	mnl_portid = mnl_socket_get_portid(mnl_sock);
@@ -559,7 +561,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	return 0;
  }
  
-@@ -745,7 +745,7 @@ refresh_nft_cache(struct rule_list *head
+@@ -751,7 +751,7 @@ refresh_nft_cache(struct rule_list *head
  		errno = 0;
  		ret = mnl_cb_run(buf, n, mnl_seq, mnl_portid, table_cb, &data);
  		if (ret <= -1 /*== MNL_CB_ERROR*/) {
@@ -568,7 +570,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       "refresh_nft_cache", ret);
  			return -1;
  		}
-@@ -1279,7 +1279,7 @@ nft_send_rule(struct nftnl_rule * rule,
+@@ -1288,7 +1288,7 @@ nft_send_rule(struct nftnl_rule * rule,
  
  		result = send_batch(batch);
  		if (result < 0) {
@@ -577,7 +579,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       "nft_send_rule", rule, (int)cmd, (int)chain_type, result);
  		}
  	}
-@@ -1462,7 +1462,7 @@ send_batch(struct mnl_nlmsg_batch *batch
+@@ -1474,7 +1474,7 @@ send_batch(struct mnl_nlmsg_batch *batch
  		errno = 0;
  		ret = mnl_cb_run(buf, n, 0, mnl_portid, NULL, NULL);
  		if (ret <= -1 /*== MNL_CB_ERROR*/) {
@@ -635,7 +637,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  
 --- a/pcpserver.c
 +++ b/pcpserver.c
-@@ -1086,7 +1086,7 @@ static void CreatePCPMap(pcp_info_t *pcp
+@@ -1094,7 +1094,7 @@ static void CreatePCPMap(pcp_info_t *pcp
  	else
  		r = CreatePCPMap_NAT(pcp_msg_info);
  	pcp_msg_info->result_code = r;
@@ -644,7 +646,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	      "PCP MAP: %s mapping %s %hu->%s:%hu '%s'",
  	       r == PCP_SUCCESS ? "added" : "failed to add",
  	       proto_itoa(pcp_msg_info->protocol),
-@@ -1128,7 +1128,7 @@ static void DeletePCPMap(pcp_info_t *pcp
+@@ -1136,7 +1136,7 @@ static void DeletePCPMap(pcp_info_t *pcp
  				if(0 != strcmp(desc, pcp_msg_info->desc)) {
  					/* nonce does not match */
  					pcp_msg_info->result_code = PCP_ERR_NOT_AUTHORIZED;
@@ -653,7 +655,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					       iport, proto_itoa(pcp_msg_info->protocol));
  					return;
  				} else {
-@@ -1146,14 +1146,14 @@ static void DeletePCPMap(pcp_info_t *pcp
+@@ -1154,14 +1154,14 @@ static void DeletePCPMap(pcp_info_t *pcp
  						desc, sizeof(desc),
  						NULL /* lifetime */);
  		if (uid < 0) {
@@ -670,7 +672,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				       iport, proto_itoa(pcp_msg_info->protocol));
  				return;
  			} else {
-@@ -1168,7 +1168,7 @@ static void DeletePCPMap(pcp_info_t *pcp
+@@ -1176,7 +1176,7 @@ static void DeletePCPMap(pcp_info_t *pcp
  		syslog(LOG_INFO, "PCP: %s port %hu mapping removed",
  		       proto==IPPROTO_TCP?"TCP":"UDP", (pcp_msg_info->is_fw ? iport : eport2));
  	} else {
@@ -679,7 +681,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		       pcp_msg_info->mapped_str, iport, proto_itoa(proto));
  		pcp_msg_info->result_code = PCP_ERR_NO_RESOURCES;
  	}
-@@ -1391,7 +1391,7 @@ static int processPCPRequest(void * req,
+@@ -1399,7 +1399,7 @@ static int processPCPRequest(void * req,
  					CreatePCPMap(pcp_msg_info);
  				}
  			} else {
@@ -688,7 +690,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				return pcp_msg_info->result_code;
  			}
  
-@@ -1601,7 +1601,7 @@ int ProcessIncomingPCPPacket(int s, unsi
+@@ -1609,7 +1609,7 @@ int ProcessIncomingPCPPacket(int s, unsi
  	if (!GETFLAG(PCP_ALLOWTHIRDPARTYMASK)) {
  		lan_addr = get_lan_for_peer(senderaddr);
  		if(lan_addr == NULL) {
@@ -697,7 +699,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       addr_str);
  			return 0;
  		}
-@@ -1722,7 +1722,7 @@ void PCPSendUnsolicitedAnnounce(int * so
+@@ -1730,7 +1730,7 @@ void PCPSendUnsolicitedAnnounce(int * so
  		}
  		len = sendto_or_schedule(sockets[i], buff, PCP_MIN_LEN, 0, (struct sockaddr *)&addr, sizeof(struct sockaddr_in));
  		if( len < 0 ) {
@@ -706,7 +708,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		}
  	}
  #ifdef ENABLE_IPV6
-@@ -1733,7 +1733,7 @@ void PCPSendUnsolicitedAnnounce(int * so
+@@ -1741,7 +1741,7 @@ void PCPSendUnsolicitedAnnounce(int * so
  		addr6.sin6_port = htons(5350);
  		len = sendto_or_schedule(socket6, buff, PCP_MIN_LEN, 0, (struct sockaddr *)&addr6, sizeof(struct sockaddr_in6));
  		if( len < 0 ) {
@@ -715,6 +717,35 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		}
  	}
  #endif /* ENABLE_IPV6 */
+--- a/pf/obsdrdr.c
++++ b/pf/obsdrdr.c
+@@ -601,7 +601,7 @@ delete_nat_rule(const char * ifname, uns
+ 			pr.nr = i;
+ 			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0)
+ 			{
+-				syslog(LOG_ERR, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
++				syslog(LOG_DEBUG, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
+ 				r = -1;
+ 			}
+ 			else
+@@ -1290,7 +1290,7 @@ priv_delete_redirect_rule_check_desc(con
+ 			pr.nr = i;
+ 			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0)
+ 			{
+-				syslog(LOG_ERR, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
++				syslog(LOG_DEBUG, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
+ 				r = -1;
+ 				break;
+ 			}
+@@ -1375,7 +1375,7 @@ syslog(LOG_DEBUG, "%2d port=%hu proto=%d
+ 			pr.nr = i;
+ 			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0)
+ 			{
+-				syslog(LOG_ERR, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
++				syslog(LOG_DEBUG, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
+ 				r = -1;
+ 			}
+ 			else
 --- a/pf/pfpinhole.c
 +++ b/pf/pfpinhole.c
 @@ -246,12 +246,12 @@ int find_pinhole(const char * ifname,
@@ -732,6 +763,15 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				continue;
  			}
  #endif /* USE_LIBPFCTL */
+@@ -360,7 +360,7 @@ int delete_pinhole(unsigned short uid)
+ 			pr.action = PF_CHANGE_REMOVE;
+ 			pr.nr = i;
+ 			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0) {
+-				syslog(LOG_ERR, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
++				syslog(LOG_DEBUG, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
+ 				release_ticket(dev, tnum);
+ 				return -1;
+ 			}
 @@ -565,7 +565,7 @@ int clean_pinhole_list(unsigned int * ne
  			return -1;
  		}
@@ -750,9 +790,18 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			continue;
  		}
  #endif /* USE_LIBPFCTL */
+@@ -602,7 +602,7 @@ int clean_pinhole_list(unsigned int * ne
+ 			pr.action = PF_CHANGE_REMOVE;
+ 			pr.nr = i;
+ 			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0) {
+-				syslog(LOG_ERR, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
++				syslog(LOG_DEBUG, "ioctl(dev, DIOCCHANGERULE, ...) PF_CHANGE_REMOVE: %m");
+ 				release_ticket(dev, tnum);
+ 				return -1;
+ 			}
 --- a/upnphttp.c
 +++ b/upnphttp.c
-@@ -514,7 +514,7 @@ ProcessHTTPPOST_upnphttp(struct upnphttp
+@@ -517,7 +517,7 @@ ProcessHTTPPOST_upnphttp(struct upnphttp
  		if(h->req_soapActionOff > 0)
  		{
  			/* we can process the request */
@@ -761,7 +810,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       h->req_soapActionLen, h->req_buf + h->req_soapActionOff);
  			ExecuteSoapAction(h,
  				h->req_buf + h->req_soapActionOff,
-@@ -819,7 +819,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
+@@ -822,7 +822,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
  	for(i = 0; i<15 && *p != '\r'; i++)
  		HttpVer[i] = *(p++);
  	HttpVer[i] = '\0';
@@ -770,7 +819,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	       h->clientaddr_str, HttpCommand, HttpUrl, HttpVer);
  	ParseHttpHeaders(h);
  	if(h->req_HostOff > 0 && h->req_HostLen > 0) {
-@@ -899,7 +899,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
+@@ -902,7 +902,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
  			return;
  		}
  #endif
@@ -988,7 +1037,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		return -1;
  	}
  
-@@ -168,7 +168,7 @@ int reload_from_lease_file(void)
+@@ -175,7 +175,7 @@ int reload_from_lease_file(void)
  	if(!lease_file) return -1;
  	fd = fopen( lease_file, "r");
  	if (fd==NULL) {
@@ -997,7 +1046,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		return -1;
  	}
  	if(unlink(lease_file) < 0) {
-@@ -184,33 +184,33 @@ int reload_from_lease_file(void)
+@@ -191,33 +191,33 @@ int reload_from_lease_file(void)
  		proto = line;
  		p = strchr(line, ':');
  		if(!p) {
@@ -1036,7 +1085,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			continue;
  		}
  		*(desc++) = '\0';
-@@ -231,7 +231,7 @@ int reload_from_lease_file(void)
+@@ -238,7 +238,7 @@ int reload_from_lease_file(void)
  			timestamp += current_time;	/* convert to our time */
  #else
  			if(timestamp <= (unsigned int)current_unix_time) {
@@ -1045,7 +1094,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				       eport, iaddr, iport, proto);
  				continue;
  			} else {
-@@ -391,7 +391,7 @@ upnp_redirect(const char * rhost, unsign
+@@ -398,7 +398,7 @@ upnp_redirect(const char * rhost, unsign
  #endif /* CHECK_PORTINUSE */
  	} else {
  		timestamp = (leaseduration > 0) ? upnp_time() + leaseduration : 0;
@@ -1054,7 +1103,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			eport, iaddr, iport, protocol, desc);
  		return upnp_redirect_internal(rhost, eport, iaddr, iport, proto,
  		                              desc, timestamp);
-@@ -641,7 +641,7 @@ get_upnp_rules_state_list(int max_rules_
+@@ -648,7 +648,7 @@ get_upnp_rules_state_list(int max_rules_
  	{
  		if(tmp->to_remove)
  		{
@@ -1065,7 +1114,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			*p = tmp->next;
 --- a/upnpsoap.c
 +++ b/upnpsoap.c
-@@ -491,7 +491,7 @@ AddPortMapping(struct upnphttp * h, cons
+@@ -545,7 +545,7 @@ AddPortMapping(struct upnphttp * h, cons
  		}
  		else
  		{
@@ -1074,7 +1123,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			ClearNameValueList(&data);
  			SoapError(h, 402, "Invalid Args");
  			return;
-@@ -690,7 +690,7 @@ AddAnyPortMapping(struct upnphttp * h, c
+@@ -750,7 +750,7 @@ AddAnyPortMapping(struct upnphttp * h, c
  		}
  		else
  		{
@@ -1083,7 +1132,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			ClearNameValueList(&data);
  			SoapError(h, 402, "Invalid Args");
  			return;
-@@ -847,7 +847,7 @@ GetSpecificPortMappingEntry(struct upnph
+@@ -913,7 +913,7 @@ GetSpecificPortMappingEntry(struct upnph
  	}
  	else
  	{
@@ -1092,7 +1141,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		       action,
  		       r_host ? r_host : "NULL", ext_port, protocol, int_ip,
  		       (unsigned int)iport, desc, leaseduration);
-@@ -931,7 +931,7 @@ DeletePortMapping(struct upnphttp * h, c
+@@ -1003,7 +1003,7 @@ DeletePortMapping(struct upnphttp * h, c
  		return;
  	}
  
@@ -1101,7 +1150,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		action, eport, protocol);
  
  	/* if in secure mode, check the IP
-@@ -1047,7 +1047,7 @@ DeletePortMappingRange(struct upnphttp *
+@@ -1125,7 +1125,7 @@ DeletePortMappingRange(struct upnphttp *
  	for(i = 0; i < number; i++)
  	{
  		r = upnp_delete_redirection(port_list[i], protocol);
@@ -1110,7 +1159,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		       action, port_list[i], protocol, r < 0 ? "failed" : "ok");
  	}
  	free(port_list);
-@@ -1112,7 +1112,7 @@ GetGenericPortMappingEntry(struct upnpht
+@@ -1196,7 +1196,7 @@ GetGenericPortMappingEntry(struct upnpht
  		return;
  	}
  
@@ -1119,27 +1168,39 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  
  	rhost[0] = '\0';
  	r = upnp_get_redirection_infos_by_index((int)index, &eport, protocol, &iport,
-@@ -1635,7 +1635,7 @@ PinholeVerification(struct upnphttp * h,
- 		int r;
- 		struct addrinfo hints, *ai, *p;
+@@ -1777,7 +1777,7 @@ PinholeVerification(struct upnphttp * h,
+ 			struct addrinfo hints, *ai, *p;
+ 			int found = 0;
  
--		syslog(LOG_INFO, "%s: InternalClient %s is not an IPv6, assume hostname and convert",
-+		syslog(LOG_DEBUG, "%s: InternalClient %s is not an IPv6, assume hostname and convert",
- 		       "PinholeVerification", int_ip);
+-			syslog(LOG_INFO, "%s: InternalClient %s is not an IPv6, assume hostname and convert",
++			syslog(LOG_DEBUG, "%s: InternalClient %s is not an IPv6, assume hostname and convert",
+ 			       "PinholeVerification", int_ip);
  
- 		memset(&hints, 0, sizeof(hints));
-@@ -1655,8 +1655,8 @@ PinholeVerification(struct upnphttp * h,
- 					{
- 						result_ip = ((struct sockaddr_in6 *)p->ai_addr)->sin6_addr;
- 						if (inet_ntop(AF_INET6, &result_ip, int_ip, sizeof(struct in6_addr)) == NULL)
+ 			memset(&hints, 0, sizeof(hints));
+@@ -1788,7 +1788,7 @@ PinholeVerification(struct upnphttp * h,
+ 			r = getaddrinfo(int_ip, NULL, &hints, &ai);
+ 			if (r != 0)
+ 			{
+-				syslog(LOG_WARNING, "%s: Failed to convert hostname '%s' to IP address : %s",
++				syslog(LOG_INFO, "%s: Failed to convert hostname '%s' to IP address : %s",
+ 				       "PinholeVerification", int_ip, gai_strerror(r));
+ 				SoapError(h, 402, "Invalid Args");
+ 				return -1;
+@@ -1803,11 +1803,11 @@ PinholeVerification(struct upnphttp * h,
+ 
+ 						if (inet_ntop(AF_INET6, &result_ip, int_ip_resolved, INET6_ADDRSTRLEN) == NULL)
+ 						{
 -							syslog(LOG_WARNING, "%s: inet_ntop(): %m", "PinholeVerification");
--						syslog(LOG_INFO, "%s: InternalClient resolved as %s",
-+							syslog(LOG_DEBUG, "%s: inet_ntop(): %m", "PinholeVerification");
-+						syslog(LOG_DEBUG, "%s: InternalClient resolved as %s",
- 						       "PinholeVerification", int_ip);
++							syslog(LOG_INFO, "%s: inet_ntop(): %m", "PinholeVerification");
+ 							SoapError(h, 501, "Action Failed");
+ 							return -1;
+ 						}
+-						syslog(LOG_INFO, "%s: InternalClient \"%s\" resolved as %s",
++						syslog(LOG_DEBUG, "%s: InternalClient \"%s\" resolved as %s",
+ 						       "PinholeVerification", int_ip, int_ip_resolved);
  						found = 1;
  					}
-@@ -1672,7 +1672,7 @@ PinholeVerification(struct upnphttp * h,
+@@ -1823,7 +1823,7 @@ PinholeVerification(struct upnphttp * h,
  			freeaddrinfo(ai);
  			if (!found)
  			{
@@ -1148,16 +1209,16 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				       "PinholeVerification", int_ip);
  				SoapError(h, 402, "Invalid Args");
  				return -1;
-@@ -1680,7 +1680,7 @@ PinholeVerification(struct upnphttp * h,
- 		}
- 		else
+@@ -1841,7 +1841,7 @@ PinholeVerification(struct upnphttp * h,
+ 		/* no need to copy to int_ip_resolved, but we still need to fill result_ip up */
+ 		if (inet_pton(AF_INET6, int_ip, &result_ip) <= 0)
  		{
--			syslog(LOG_WARNING, "%s: Failed to convert hostname '%s' to IP address : %s",
-+			syslog(LOG_INFO, "%s: Failed to convert hostname '%s' to IP address : %s",
- 			       "PinholeVerification", int_ip, gai_strerror(r));
- 			SoapError(h, 402, "Invalid Args");
+-			syslog(LOG_ERR, "inet_pton(%s)", int_ip);
++			syslog(LOG_DEBUG, "inet_pton(%s)", int_ip);
+ 			SoapError(h, 501, "Action Failed");
  			return -1;
-@@ -1813,7 +1813,7 @@ AddPinhole(struct upnphttp * h, const ch
+ 		}
+@@ -1974,7 +1974,7 @@ AddPinhole(struct upnphttp * h, const ch
  					inet_ntop(AF_INET6,
  					          &(((struct sockaddr_in6 *)p->ai_addr)->sin6_addr),
  					          rem_ip, sizeof(rem_ip));
@@ -1166,7 +1227,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					rem_host = rem_ip;
  					break;
  				}
-@@ -1822,7 +1822,7 @@ AddPinhole(struct upnphttp * h, const ch
+@@ -1983,7 +1983,7 @@ AddPinhole(struct upnphttp * h, const ch
  		}
  		else
  		{
@@ -1175,12 +1236,12 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       rem_host, gai_strerror(err));
  #if 0
  			SoapError(h, 402, "Invalid Args");
-@@ -2481,7 +2481,7 @@ SoapError(struct upnphttp * h, int errCo
+@@ -2696,7 +2696,7 @@ SoapError(struct upnphttp * h, int errCo
  	char body[2048];
  	int bodylen;
  
 -	syslog(LOG_INFO, "Returning UPnPError %d: %s", errCode, errDesc);
 +	syslog(LOG_DEBUG, "Returning UPnPError %d: %s", errCode, errDesc);
  	bodylen = snprintf(body, sizeof(body), resp, errCode, errDesc);
- 	BuildResp2_upnphttp(h, 500, "Internal Server Error", body, bodylen);
- 	SendRespAndClose_upnphttp(h);
+ 	if(bodylen < 0) {
+ 		syslog(LOG_ERR, "snprintf() returned %d", bodylen);
