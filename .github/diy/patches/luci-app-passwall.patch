@@ -237,11 +237,13 @@
  s:tab("Proxy", translate("Mode"))
  
  o = s:taboption("Proxy", Flag, "use_direct_list", translatef("Use %s", translate("Direct List")))
-@@ -834,5 +855,6 @@
+@@ -825,7 +825,7 @@ for k, v in pairs(nodes_table) do
  end
  
  m:appendTemplate("/global/footer", {shunt_list = api.jsonc.stringify(shunt_list)})
+-
 +m:appendTemplate("/global/status_bottom")
+ m:appendTemplate("/cbi/sortable", {sectiontype = s2.sectiontype})
  
  return api.return_map(m)
 
