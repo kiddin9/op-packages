@@ -1,0 +1,11 @@
+{
+	"luci-app-authshield": {
+		"description": "Grant UCI access for luci-app-authshield",
+		"read": {
+			"uci": [ "authshield" ]
+		},
+		"write": {
+			"uci": [ "authshield" ]
+		}
+	}
+}

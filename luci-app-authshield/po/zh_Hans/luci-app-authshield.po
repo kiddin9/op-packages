@@ -1,0 +1,200 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-authshield\n"
+"PO-Revision-Date: 2025-11-08 12:30+0800\n"
+"Last-Translator: AuthShield Translator <noreply@authshield>\n"
+"Language-Team: Simplified Chinese\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# From latest authshield.lua
+msgid "AuthShield"
+msgstr "AuthShield 登录防护"
+
+msgid "Lightweight intrusion prevention that delays or blocks repeated failed login attempts for both LuCI and Dropbear SSH."
+msgstr "轻量级入侵防护系统，用于延迟或阻止针对 LuCI 与 Dropbear SSH 的重复登录失败尝试。"
+
+msgid "General Settings"
+msgstr "常规设置"
+
+msgid "General"
+msgstr "常规"
+
+msgid "Advanced / Global"
+msgstr "高级 / 全局"
+
+msgid "Circuit Breaker"
+msgstr "断路器防护"
+
+msgid "%s must be %d–%d."
+msgstr "%s 必须在 %d–%d 之间。"
+
+msgid "Enable AuthShield"
+msgstr "启用 AuthShield"
+
+msgid "Failure Threshold"
+msgstr "失败阈值"
+
+msgid "Number of failed attempts within the time window before an IP is banned."
+msgstr "在设定的时间窗口内，IP 在被封禁前允许的最大失败尝试次数。"
+
+msgid "Allowed range:"
+msgstr "允许范围："
+
+msgid "1–30"
+msgstr "1–30"
+
+msgid "Time Window (s)"
+msgstr "时间窗口（秒）"
+
+msgid "Period in seconds during which failed attempts are counted."
+msgstr "统计失败登录次数的时间周期（以秒为单位）。"
+
+msgid "10–60"
+msgstr "10–60"
+
+msgid "Ban Duration (s)"
+msgstr "封禁时长（秒）"
+
+msgid "How long (in seconds) a client is banned after exceeding the threshold."
+msgstr "当失败次数超过阈值后，客户端将被封禁的时长（秒）。"
+
+msgid "60–600"
+msgstr "60–600"
+
+msgid "Protected Ports"
+msgstr "受保护端口"
+
+msgid "Space-separated ports (max 10). Each must be numeric, 1–65535."
+msgstr "以空格分隔的端口号（最多 10 个），每个必须为 1–65535 之间的数字。"
+
+msgid "Invalid port number: %s (must be between 1 and 65535)"
+msgstr "无效的端口号：%s（必须在 1–65535 之间）"
+
+msgid "You can specify at most 10 ports."
+msgstr "最多可指定 10 个端口。"
+
+msgid "Monitor Dropbear SSH"
+msgstr "监控 Dropbear SSH"
+
+msgid "Also monitor bad password attempts on Dropbear SSH service."
+msgstr "同时监控 Dropbear SSH 服务的密码错误尝试。"
+
+msgid "Ignore Private IPs"
+msgstr "忽略私有 IP"
+
+msgid "Skip banning LAN, loopback, and link-local addresses."
+msgstr "跳过对局域网、回环和链路本地地址的封禁。"
+
+msgid "Currently Banned IPs"
+msgstr "当前被封禁的 IP"
+
+msgid "None"
+msgstr "无"
+
+msgid "IP"
+msgstr "IP"
+
+msgid "Expires"
+msgstr "到期"
+
+msgid "Escalate frequent offenders"
+msgstr "升级处罚频繁违规者"
+
+msgid "When enabled, if an IP receives more than the threshold number of bans within the window, the next ban lasts the escalation penalty (24h by default). Counts bans (not failures). Private/loopback/ULA are still skipped when 'Ignore private IPs' is on."
+msgstr "启用后，如果某 IP 在时间窗口内被封禁次数超过阈值，则下次封禁持续时间将升级为延长惩罚（默认 24 小时）。统计封禁次数（而非失败次数）。启用“忽略私有 IP”时，本地/回环/ULA 地址将被跳过。"
+
+msgid "Escalate Threshold"
+msgstr "升级阈值"
+
+msgid "Number of bans within the window that triggers escalation (the current ban is included in the check)."
+msgstr "在时间窗口内触发升级惩罚的封禁次数（当前封禁包含在统计中）。"
+
+msgid "Escalate Window (seconds)"
+msgstr "升级窗口（秒）"
+
+msgid "Rolling time window for counting bans (e.g. 3600 for 1 hour)."
+msgstr "用于统计封禁次数的滚动时间窗口（例如 3600 表示 1 小时）。"
+
+msgid "Escalate Penalty (seconds)"
+msgstr "升级惩罚时长（秒）"
+
+msgid "Ban duration applied upon escalation (e.g. 86400 for 24 hours)."
+msgstr "当触发升级惩罚时的封禁时长（例如 86400 表示 24 小时）。"
+
+msgid "Enable Global Rule"
+msgstr "启用全局规则"
+
+msgid "If enabled, an IP with more than the global threshold of failed logins within the global window is banned for the global penalty (24h by default). Private/loopback/ULA are still skipped when 'Ignore private IPs' is on."
+msgstr "启用后，如果某 IP 在全局窗口内失败登录次数超过阈值，将被全局封禁（默认 24 小时）。启用“忽略私有 IP”时，本地/回环/ULA 地址仍被跳过。"
+
+msgid "Global Threshold"
+msgstr "全局阈值"
+
+msgid "Failed logins within the global window that trigger the 24h ban (strictly greater-than this number). Example: set 60 for 'more than 60'."
+msgstr "在全局窗口内触发 24 小时封禁的失败登录次数（严格大于此值）。例如：设置为 60 表示“超过 60 次”。"
+
+msgid "Global Window (seconds)"
+msgstr "全局窗口（秒）"
+
+msgid "Rolling time window to count failed logins (e.g. 43200 for 12 hours)."
+msgstr "统计失败登录次数的滚动时间窗口（例如 43200 表示 12 小时）。"
+
+msgid "Global Penalty (seconds)"
+msgstr "全局封禁时长（秒）"
+
+msgid "Ban duration when the global threshold is exceeded (e.g. 86400 for 24 hours)."
+msgstr "当超过全局阈值时的封禁时长（例如 86400 表示 24 小时）。"
+
+msgid "Enable Circuit Breaker"
+msgstr "启用断路器防护"
+
+msgid "When total failed logins across all IPs exceed the threshold within the window, block management ports on WAN interface for the specified duration. Private/loopback/ULA are still skipped when 'Ignore private IPs' is on."
+msgstr "当所有 IP 的总失败登录次数在时间窗口内超过阈值时，阻断 WAN 接口上的管理端口访问，持续指定时长。启用“忽略私有 IP”时，本地/回环/ULA 地址仍被跳过。"
+
+msgid "Circuit Threshold"
+msgstr "断路器阈值"
+
+msgid "Total failed login attempts (from all IPs combined) that trigger the circuit breaker. Example: 120 total failures."
+msgstr "触发断路器的总失败登录次数（汇总所有 IP）。例如：120 次失败。"
+
+msgid "Circuit Window (seconds)"
+msgstr "断路器窗口（秒）"
+
+msgid "Rolling time window to count total failed logins (e.g. 43200 for 12 hours)."
+msgstr "统计总失败登录次数的滚动时间窗口（例如 43200 表示 12 小时）。"
+
+msgid "Circuit Block Duration (seconds)"
+msgstr "断路器阻断时长（秒）"
+
+msgid "How long to block WAN access to management ports when circuit breaker triggers. WAN access automatically restores after this duration via nftables timeout. Note: The failure counter has a 12-hour memory by default, so repeated login attempts after unlock may cause immediate re-locking until the memory window expires."
+msgstr "当断路器触发时，阻断 WAN 管理端口访问的持续时间。超过此时长后，通过 nftables 超时机制自动恢复 WAN 访问。注意：失败计数器默认具有 12 小时记忆，因此解锁后如果有重复登录尝试，可能会立即重新锁定，直到记忆窗口过期。"
+
+msgid "Circuit Breaker Status"
+msgstr "断路器状态"
+
+msgid "Circuit breaker not active"
+msgstr "断路器未激活"
+
+msgid "Invalid status"
+msgstr "状态无效"
+
+msgid "Monitoring..."
+msgstr "监控中..."
+
+msgid "LOCKED"
+msgstr "已锁定"
+
+msgid "UNLOCKED"
+msgstr "已解锁"
+
+msgid "WAN ports blocked for"
+msgstr "WAN 管理端口已阻断"
+
+msgid "Total failures"
+msgstr "总失败次数"
+
+msgid "Total failures in window"
+msgstr "时间窗口内的总失败次数"

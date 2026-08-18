@@ -1,0 +1,46 @@
+# AuthShield Configuration File
+# Location: /etc/config/authshield
+#
+# This file configures AuthShield's intrusion prevention system for OpenWrt.
+# AuthShield monitors failed login attempts for LuCI/rpcd and optionally Dropbear SSH,
+# temporarily banning offending IPs and implementing circuit breaker protection.
+#
+# After modifying this file, reload the service:
+#   /etc/init.d/authshield reload
+#
+# Or configure via LuCI web interface at: System > AuthShield
+
+config settings
+	# Main switch - disables all AuthShield functionality when set to '0'
+	option enabled '0'
+	
+	# Basic ban settings
+	option threshold '5'           # Failed attempts before IP ban
+	option window '10'             # Time window in seconds for counting failures
+	option penalty '60'            # Ban duration in seconds
+	option ports '80 443'          # Protected ports (space-separated)
+	option watch_dropbear '0'      # Monitor Dropbear SSH (0=no, 1=yes)
+	option ignore_private_ip '1'   # Skip banning private/LAN IPs (0=no, 1=yes)
+	
+	# Escalation settings (frequent offenders get longer bans)
+	option escalate_enable '1'
+	option escalate_threshold '5'   # Number of bans within window to trigger escalation
+	option escalate_window '3600'   # Escalation window (1 hour)
+	option escalate_penalty '86400' # Escalation ban duration (24 hours)
+	
+	# Global rule settings (long-term tracking across all attempts)
+	option global_enable '1'
+	option global_threshold '60'    # Failures within window that trigger global ban
+	option global_window '43200'    # Global window (12 hours)
+	option global_penalty '86400'   # Global ban duration (24 hours)
+	
+	# Circuit breaker settings (blocks WAN access during mass attacks)
+	option circuit_enable '1'
+	option circuit_threshold '120'         # Total failures across all IPs to trigger lockdown
+	option circuit_window '43200'          # Circuit window (12 hours) - also acts as "memory"
+	option circuit_penalty '3600'          # WAN block duration (1 hour) - unlocks automatically via nftables timeout
+	
+	# Note: Circuit breaker automatically unlocks after circuit_penalty seconds.
+	# The circuit_window acts as a "memory" - if attackers resume attempts after unlock,
+	# and total failures still exceed circuit_threshold, the circuit will immediately re-lock.
+	# This provides extended protection without requiring manual intervention.

@@ -1,0 +1,30 @@
+#!/bin/ash
+# =====================================================================
+#  /etc/uci-defaults/99-authshield-setup
+#
+#  One-time setup script for AuthShield
+#  Adds a clean "include" section to firewall4 for /var/run/authshield.nft
+#  Enables and starts the service, then removes itself.
+# =====================================================================
+
+set -e
+
+# Only add include section if not already defined
+if ! uci show firewall | grep -q "path='/var/run/authshield.nft'"; then
+    uci batch <<'EOF'
+set firewall.authshield=include
+set firewall.authshield.type='script'
+set firewall.authshield.path='/var/run/authshield.nft'
+set firewall.authshield.reload='1'
+commit firewall
+EOF
+fi
+
+# Reload firewall and enable AuthShield service
+/etc/init.d/firewall reload  || true
+/etc/init.d/authshield enable || true
+/etc/init.d/authshield restart || true
+
+# Remove self after successful execution
+rm -f /etc/uci-defaults/99-authshield-setup
+exit 0
