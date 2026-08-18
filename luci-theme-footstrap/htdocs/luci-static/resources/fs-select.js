@@ -3,6 +3,8 @@
 'require ui';
 'require dom';
 'require fs-fit as fit';
+/* for the content column's width without a layout read — see the mid-scroll branch in fitTables */
+'require fs-chrome as chrome';
 
 /* Theme plain LuCI <select> fields (ui.Select, widget:'select') by rendering a styled
  * cbi-dropdown beside them — a native <select> popup cannot be CSS-styled.
@@ -503,10 +505,180 @@ function breakWidestColumn(t) {
 	return false;
 }
 
+/* ---- A TABLE THAT REPLACES A TABLE INHERITS ITS ANSWER ----
+ *
+ * The measurement below has to strip a table's marks first (fs-fit rule 1: a stacked table is a pile
+ * of flex rows and always "fits"), and that lays the page out with a full-width table for the length
+ * of the pass — at 390px, several screens taller than the card stack it is about to be. Standing
+ * still nobody sees it. The poll REPLACES these tables rather than updating them, so every tick used
+ * to hand the fitter a fresh element with no marks and that intermediate happened again; on a remote
+ * router at iPhone width it threw the reader 612px out and back, twice per tick.
+ *
+ * Compensating for it was tried four ways and each was wrong somewhere; the changelog entry for this
+ * release records all four, because each looked right. This attacks the cause instead: the
+ * intermediate exists only because the answer was thrown away with the element, so the answer is
+ * kept on the SLOT. The slot is the section frame — `slotHome()` below says why it cannot be the
+ * table's own parent — and inside it a table is named by its id, or by its position among the
+ * tables of that frame when it has none.
+ *
+ * WHEN THE INHERITED ANSWER IS TRUSTED, and it is not "always". The tier depends on how many columns
+ * share the room and on how wide the room is, so both are remembered with it. Room is `roomFor()`,
+ * which reads the container rather than the table, so it is unaffected by the marks. The shape is
+ * the column count, read from the DOM — `shapeOf()` says why rows are deliberately not in it.
+ *
+ * A change in either one re-measures. So does the arrival of a table in a slot nobody has measured
+ * yet, and so does every full pass, which happens whenever the reader is not scrolling — that last
+ * one is what catches the case a column count cannot see, a value that grew long enough to change
+ * the tier, within a second of it happening and never during a scroll.
+ *
+ * WHAT IT COSTS. A tick on a table whose columns and room did not change writes its class names and
+ * reads one width, against stripping every mark, forcing a layout, reading `scrollWidth` and
+ * possibly walking the columns. Mid-scroll it does not even read the width: only tables with no
+ * answer at all are visited, and each is given one without measuring anything. */
+const _slots = new WeakMap();
+
+/* THE SLOT IS THE FRAME, NOT THE PARENT, and the difference is the whole cache. A poll tick hands
+ * the container a freshly rendered subtree, so the table's immediate parent is usually new as well —
+ * keyed on that, every lookup missed and every tick measured from scratch, which is exactly the
+ * behaviour this was written to end (measured: the ±612px kept coming). What survives a tick is the
+ * frame the theme and luci-mod-status build once, `.cbi-section`; inside it a table is named by its
+ * id where it has one, and by its position among the tables of that frame where it does not. */
+function slotHome(t) {
+	return (t.closest && t.closest('.cbi-section, .cbi-section-node, #view')) || t.parentElement;
+}
+
+function slotKey(t, home) {
+	if (t.id) return '#' + t.id;
+	const kin = home ? Array.from(home.querySelectorAll('.table')) : [];
+	const at = kin.indexOf(t);
+	return at >= 0 ? 'at' + at : 'lone';
+}
+
+/* WHAT CAN CHANGE THE ANSWER, AND WHAT CANNOT. The tier depends on how many columns have to share
+ * the room and on how wide the room is — not on how many rows there are. Rows were in this
+ * signature first and that was the bug behind a whole afternoon: a lease list gains and loses a row
+ * on almost every poll tick, so the signature changed every tick, the cache never hit, and every
+ * tick measured from scratch — which is the tall intermediate this exists to avoid.
+ *
+ * Read from the tree, never from layout: `children.length` is a DOM question, so asking it cannot
+ * force the layout the whole design is arranging not to force. */
+function shapeOf(t) {
+	const head = t.querySelector('.tr.table-titles, .cbi-section-table-titles') || t.firstElementChild;
+	return String(head ? head.children.length : 0);
+}
+
+function applyDecision(t, d) {
+	/* the mark that lets the table into the layout at all — see theme/30-tables.css */
+	t.classList.add('fs-fitted');
+	t.classList.toggle('fs-stacked', !!d.stack);
+	t.classList.toggle('fs-drop-xs', !!d.drop);
+	if (d.breakCol !== undefined && d.breakCol !== -1)
+		markBreakColumn(t, t.querySelectorAll('.tr'), d.breakCol);
+}
+
 function fitTables() {
-	document.querySelectorAll(stackables()).forEach((t) => {
+	/* MID-SCROLL, ONLY THE TABLES THAT HAVE NO ANSWER YET. A table that already carries its answer
+	 * needs nothing; one that does not is being held out of the layout by the stylesheet and cannot
+	 * wait. Neither branch of this function reads layout while `scrolling()` is true. */
+	const sel = fit.scrolling() ? inRoots('.table.fs-dt:not(.fs-fitted)', liveRoots()) : stackables();
+	document.querySelectorAll(sel).forEach((t) => {
+		/* ---- WHILE THE READER SCROLLS, THIS PASS READS NOTHING ----
+		 *
+		 * Every layout read here — `roomFor()` is one per table — forces the engine to lay the page
+		 * out synchronously, and a poll tick lands once a second, so on a phone that is ten forced
+		 * layouts in the middle of a flick. iOS runs the main thread sparingly during momentum
+		 * scrolling exactly to keep the frame rate; work like this is what it is protecting against,
+		 * and the reporter's word for the result was "shakes". A stock theme has no JS in this path
+		 * at all, which is why the same page under luci-theme-bootstrap scrolls smoothly.
+		 *
+		 * So a pass that happens mid-scroll only WRITES: the answer this slot already has goes on the
+		 * fresh table, and nothing is measured until the scrolling stops. A slot nobody has measured
+		 * yet is judged from the window width instead of the container's — the one number available
+		 * without touching layout, and at phone width it gives the same answer. */
+		const home = slotHome(t);
+		const slots = home ? (_slots.get(home) || new Map()) : null;
+		const key = slots ? slotKey(t, home) : null;
+		const known = slots ? slots.get(key) : null;
+
+		/* the answer without a measurement: the slot's, or — for a slot nobody has measured yet —
+		 * the window's width, which is the one number available without touching layout. At the
+		 * width where this matters the cheap judgement and the measured one agree. */
+		/* MID-SCROLL THE ANSWER STILL GOES ON, and it must. Letting a freshly polled table wait for
+		 * the scrolling to stop was tried on the device that has the fault: the reader then WATCHES
+		 * the tables fold into cards under their thumb, and that fold is the hardest jerk of all. The
+		 * answer is a write, it forces nothing, and it keeps the fresh table the same shape as the one
+		 * it replaced. */
+		if (fit.scrolling()) {
+			/* the column's width, not the window's: in the sidebar layout they differ by the sidebar,
+			 * and an 800px window whose column is 520px used to clear CRAMPED and leave the table
+			 * unstacked at full width, clipped by `.fs-main { overflow-x: clip }` until the reader
+			 * held still. `chrome.contentWidth()` answers from memoised tokens and attributes — no
+			 * layout is read here either. */
+			applyDecision(t, known || { stack: chrome.contentWidth() < CRAMPED, drop: false, breakCol: -1 });
+			fit.deferMeasurement();
+			return;
+		}
+
+		/* the column count, read from the tree: no layout is forced by asking */
+		const shape = shapeOf(t);
+
+		/* ---- THE ANSWER GOES ON BEFORE ANYTHING IS MEASURED, AND THAT ORDER IS THE FIX ----
+		 *
+		 * `roomFor()` reads a clientWidth, which forces layout — and a fresh table from a poll tick
+		 * is UNMARKED when it lands, so a pass that measured first laid the page out with a
+		 * full-width table before it had said a word. That is the tall intermediate the engine
+		 * re-anchors on: measured on a remote router at iPhone width, ±612px twice per tick, and it
+		 * survived every attempt to compensate for it because the compensation ran after the layout
+		 * that caused it.
+		 *
+		 * With the slot's answer applied first, the only layout this pass forces is one where the
+		 * table already wears the answer it had a second ago. */
+		if (known) applyDecision(t, known);
+
 		const was = t.classList.contains('fs-stacked');
-		const wasDrop = t.classList.contains('fs-drop-xs');
+		/* rounded, because `roomFor()` subtracts parsed padding and answers in fractions: comparing
+		 * those exactly made the cache miss on a width that had not moved at all */
+		const room = Math.round(fit.roomFor(t));
+		if (!(room > 0)) {
+			/* Detached, hidden, or a dialog that is closed: keep what it had rather than decide
+			 * against a width it does not have — but LET IT INTO THE LAYOUT anyway. The stylesheet
+			 * keeps an unanswered table out of the flow (theme/30-tables.css), and a table whose
+			 * section is collapsed when it arrives would otherwise stay hidden after the section is
+			 * opened: nothing measures it again, because opening a section changes no width this
+			 * file watches. A table with no room cannot move anything either way, so admitting it
+			 * costs nothing and the next pass with room decides properly. */
+			t.classList.add('fs-fitted');
+			return;
+		}
+
+		/* the answer this slot already has, for a table of the same shape in the same room — UNLESS the
+		 * table has since outgrown it. Room and column count are not the whole input: a poll tick can
+		 * put longer values into the same columns, and then a table that fitted a second ago does not.
+		 * Measured on a live router at 900px, where the cache held: status_leases6 stood 1000px wide in
+		 * an 810px column and wifi_assoclist_table 896px, neither carded, both quietly clipped by
+		 * `.fs-main { overflow-x: clip }` — columns cut off with nothing to say so. The extra question
+		 * is one the pass already has the layout for. */
+		/* AND THE OTHER DIRECTION, WHICH THAT QUESTION CANNOT ASK. `overflows()` is put to a table
+		 * that is already wearing its remedy, and every remedy makes a table fit by construction: a
+		 * card is a pile of flex rows, `.fs-drop-xs` has hidden the expendable columns, a broken
+		 * column shreds. So the answer is always "it fits", and a remedy applied once could never be
+		 * lifted while the room and the column count held still — a one-way ratchet. The case is
+		 * real: one station with a long hostname makes Associated Stations drop its `hide-xs`
+		 * columns, and those columns stayed hidden after that station left, on a screen with room to
+		 * spare and nothing to say a column existed.
+		 *
+		 * The only honest measurement is of a table with no remedy on it, and taking that on every
+		 * tick would mean stripping the marks on every tick — the strip-measure-restore that lands as
+		 * a visible relayout, which is what the deferral above exists to keep out of a scroll. So the
+		 * re-decision is asked for by the CONTENT instead: a remedied table whose row count has gone
+		 * DOWN has lost something, and losing something is the only way it can stop needing the
+		 * remedy. Rows are counted from the tree, not the layout. A table that keeps its rows keeps
+		 * its answer, which is what makes the poll cheap. */
+		const rows = t.querySelectorAll('.tr').length;
+		const remedied = !!(known && (known.stack || known.drop || known.breakCol !== -1));
+		const shrank = remedied && known.rows !== undefined && rows < known.rows;
+		if (known && known.room === room && known.shape === shape && !shrank && !fit.overflows(t))
+			return;
 
 		/* fs-fit rule 1: a stacked table is a pile of flex rows and always "fits", so reading
 		 * it as it stands un-stacks it and the next frame stacks it again — oscillation. Every
@@ -514,15 +686,6 @@ function fitTables() {
 		t.classList.remove('fs-stacked', 'fs-drop-xs');
 		if (t._fsBreakCol !== undefined && t._fsBreakCol !== -1)
 			markBreakColumn(t, t.querySelectorAll('.tr'), -1);
-
-		const room = fit.roomFor(t);
-		if (!(room > 0)) {
-			/* detached, hidden, or a dialog that is closed: keep what it had rather than decide
-			 * against a width it does not have */
-			if (was) t.classList.add('fs-stacked');
-			if (wasDrop) t.classList.add('fs-drop-xs');
-			return;
-		}
 
 		/* the one judgement a measurement cannot make, and the only number in this file */
 		let stack = room < CRAMPED;
@@ -533,6 +696,7 @@ function fitTables() {
 			if (fit.overflows(t) && !breakWidestColumn(t)) stack = true;
 		}
 
+		t.classList.add('fs-fitted');
 		/* write only on a real change: the poll re-renders these tables once a second, and
 		 * toggling the class off and on each tick would invalidate style for every row of
 		 * Processes/Leases for nothing */
@@ -544,6 +708,20 @@ function fitTables() {
 				markBreakColumn(t, t.querySelectorAll('.tr'), -1);
 		}
 		else if (was) t.classList.remove('fs-stacked');
+
+		if (slots) {
+			slots.set(key, {
+				stack,
+				drop: t.classList.contains('fs-drop-xs'),
+				breakCol: (t._fsBreakCol === undefined) ? -1 : t._fsBreakCol,
+				room,
+				shape,
+				/* what the answer was decided over — a drop below this is the one signal that a
+				 * remedy may no longer be needed (see the fast path above) */
+				rows,
+			});
+			_slots.set(home, slots);
+		}
 	});
 }
 
@@ -616,6 +794,11 @@ function unreach(t) {
 }
 
 function fitScrollables() {
+	/* A layout read here lands in the middle of a flick once per poll tick, and that is the work iOS
+	 * holds the main thread back to prevent — the same argument fitTables() makes above, and the
+	 * reason the theme shook on a phone while a stock one did not. Put off until the page is still;
+	 * fs-fit's sampler runs what was deferred the moment the scroll offset stops changing. */
+	if (fit.scrolling()) { fit.deferMeasurement(); return; }
 	document.querySelectorAll(scrollables()).forEach((t) => {
 		const was = t.classList.contains('fs-xscroll');
 		const wasStack = t.classList.contains('fs-rowstack');
@@ -687,6 +870,11 @@ function fitScrollables() {
  * into — so wiping the pin cannot change the key and set this oscillating. It fires once per CHANGE,
  * never per tick, so it does not fight upstream for the pin on a polled page. */
 function unpinActionColumn() {
+	/* A layout read here lands in the middle of a flick once per poll tick, and that is the work iOS
+	 * holds the main thread back to prevent — the same argument fitTables() makes above, and the
+	 * reason the theme shook on a phone while a stock one did not. Put off until the page is still;
+	 * fs-fit's sampler runs what was deferred the moment the scroll offset stops changing. */
+	if (fit.scrolling()) { fit.deferMeasurement(); return; }
 	for (const t of document.querySelectorAll(inRoots('.table.cbi-section-table', liveRoots()))) {
 		if (!t.querySelector('.cbi-section-actions')) continue;
 		/* ---- and CLAIM upstream's resize hook, because under SPA navigation it is a leak ----
@@ -851,10 +1039,26 @@ return baseclass.extend({
 		};
 		scan();
 
+		/* ARM THE STYLESHEET'S GATE FROM HERE, because this is the file that clears it. The rule in
+		 * theme/30-tables.css holds an unanswered data table out of the layout, and `.fs-fitted` —
+		 * the answer — is written nowhere but in this module. Arming it in fs-fit.js meant a document
+		 * that loaded fs-fit and not this file (the footer requires them separately) hid every table
+		 * forever. Raised here, one line before the pass that clears it is registered. */
+		fit.armGate();
+
 		/* A table must be TAGGED .fs-dt before it can be fitted, and re-tagged whenever the poll
-		 * brings a fresh one back — so the two travel as one fitter, which fs-fit runs now, on
-		 * every content mutation (synchronously, pre-paint) and on every resize of #view. */
-		fit.add(() => { tagDataTables(); fitTables(); fitScrollables(); unpinActionColumn(); resyncValues(); });
+		 * brings a fresh one back — so tagging leads, and the passes that depend on it follow.
+		 *
+		 * FIVE REGISTRATIONS, NOT ONE CALLBACK. fs-fit catches per registered fitter, so a throw in
+		 * one of these used to take the other four with it — and the first of them walks third-party
+		 * markup, which is the shape most likely to surprise it. Bundled, a single throw in
+		 * `tagDataTables()` left no table tagged, no table answered, and — with the gate above raised
+		 * — a page with no tables on it at all. Registered separately, each pass fails alone. */
+		fit.add(tagDataTables);
+		fit.add(fitTables);
+		fit.add(fitScrollables);
+		fit.add(unpinActionColumn);
+		fit.add(resyncValues);
 
 		/* one scan per frame, however many mutations arrive (fit.frame — the theme's shared
 		 * coalescer) */
