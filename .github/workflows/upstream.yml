@@ -316,6 +316,7 @@ jobs:
         # git_clone https://github.com/wintbiit/luci-app-sakurafrp
         git_clone https://github.com/ykxVK8yL5L/luci-app-taskschedule taskschedule && mvdir taskschedule
         #git_clone https://github.com/douo/luci-app-tinyfecvpn
+        git_clone https://github.com/iv7777/luci-app-authshield
         ) &
         (
         git_clone https://github.com/ttimasdf/luci-app-jederproxy
