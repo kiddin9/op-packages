@@ -1,0 +1,593 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:272
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:223
+msgid "%d measurements"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:430
+msgid "%s elapsed"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:124
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:136
+msgid "1 year"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:30
+msgid "1y"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:137
+msgid "2 years"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:27
+msgid "24h"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:122
+msgid "30 days"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:29
+msgid "30d"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:121
+msgid "7 days"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:28
+msgid "7d"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:123
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:135
+msgid "90 days"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:157
+msgid ""
+"A daily measurement runs at a time drawn when the schedule is applied; "
+"saving draws it anew."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:31
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:82
+msgid "All"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:95
+msgid ""
+"An hour window on the 24-hour clock, such as 2-5 for 02:00–05:59. A daily "
+"measurement runs at a random time inside it, drawn when the schedule is "
+"applied; shorter intervals only run within it. Leave empty for any time. A "
+"window across midnight is not supported."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:128
+msgid "Archive path"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:134
+msgid "Archive retention"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:521
+msgid "Completed"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:129
+msgid ""
+"Completed days are reduced to daily minimum, average and maximum and "
+"appended here once a day, so measurements since the last flush may be lost "
+"after an unexpected power loss. Leave empty to keep no persistent history."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:405
+msgid "Connecting to the test server…"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:327
+msgid "Could not start the measurement: %s"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:67
+msgid "Daily"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:221
+msgid "Daily minimum, average and maximum."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:71
+msgid "Days"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:251
+msgid "Declining — the last measurement is %d%% below the 24-hour average."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:11
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:92
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:491
+msgid "Download"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:312
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:563
+msgid "Download [Mbps]"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:58
+msgid "Enable"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:628
+msgid "Enabled"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:652
+msgid ""
+"Encrypted transfers, which on hardware without AES acceleration may bound "
+"the result."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:66
+msgid "Every 12 hours"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:62
+msgid "Every 15 minutes"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:63
+msgid "Every 30 minutes"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:65
+msgid "Every 6 hours"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:381
+msgid "Export CSV"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:384
+msgid "Export JSON"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:77
+msgid "Friday"
+msgstr ""
+
+#: applications/luci-app-librespeed/root/usr/share/rpcd/acl.d/luci-app-librespeed.json:3
+msgid "Grant access to LibreSpeed measurements"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:647
+msgid "HTTP (forced)"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:646
+msgid "HTTPS (forced)"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:147
+msgid "Hide this series"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:110
+#: applications/luci-app-librespeed/root/usr/share/luci/menu.d/luci-app-librespeed.json:25
+msgid "History"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:116
+msgid "History stored in /tmp is lost when the router reboots."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:64
+msgid "Hourly"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:94
+msgid "Hours"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:311
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:348
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:25
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:509
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:642
+msgid "Interface"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:61
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:631
+msgid "Interval"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:14
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:499
+msgid "Jitter"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:312
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:563
+msgid "Jitter [ms]"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:112
+msgid "Keep history"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:449
+msgid "Last measurement failed"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:375
+msgid "Last successful measurement"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:318
+msgid "Latency"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:72
+msgid "Leave empty to run every day."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:684
+#: applications/luci-app-librespeed/root/usr/share/luci/menu.d/luci-app-librespeed.json:3
+msgid "LibreSpeed"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:393
+msgid "LibreSpeed – History"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:21
+msgid "LibreSpeed – Settings"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:26
+msgid "Logical interface the measurement is bound to."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:23
+msgid "Measurement"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:376
+msgid "Measurements"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:687
+msgid "Measures the internet connection from this router."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:73
+msgid "Monday"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:36
+msgid "Must be a server id or 'auto'"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:46
+msgid "Must be an http(s) URL"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:286
+msgid "Next"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:633
+msgid "Next run"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:628
+msgid "No"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:218
+msgid "No data for the selected metric."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:278
+msgid "No data in the last 24 hours."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:466
+msgid "No measurement yet."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:194
+msgid "No measurements match the current filters."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:368
+msgid "No measurements yet"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:162
+msgid ""
+"No schedule is active. Enable it above and apply to draw the measurement "
+"time."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:31
+msgid ""
+"Numeric server id from the LibreSpeed server list, or 'auto' to pick the "
+"closest."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:50
+msgid ""
+"On routers without AES acceleration, TLS itself can bound the result — "
+"forcing plain HTTP then measures the line rather than the cipher."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:281
+msgid "Page %d of %d"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:115
+msgid "Path"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:13
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:91
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:498
+msgid "Ping"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:312
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:563
+msgid "Ping [ms]"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:279
+msgid "Previous"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:311
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:49
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:518
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:645
+msgid "Protocol"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:673
+msgid "Recent history"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:120
+msgid "Retention"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:685
+msgid "Router speed test"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:193
+msgid "Run a speed test to start building your connection history."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:59
+msgid ""
+"Runs a measurement from cron at the chosen interval. Note that a measurement "
+"saturates the connection while it runs."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:78
+msgid "Saturday"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:657
+msgid "Schedule status"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:56
+msgid "Scheduled measurements"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:311
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:346
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:30
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:507
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:562
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:643
+msgid "Server"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:39
+msgid "Server list URL"
+msgstr ""
+
+#: applications/luci-app-librespeed/root/usr/share/luci/menu.d/luci-app-librespeed.json:34
+msgid "Settings"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:147
+msgid "Show this series"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:318
+msgid "Speed"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:175
+msgid "Stable over the selected period."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:257
+msgid "Stable — averaged %d Mbps, ranging from %d to %d Mbps."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:362
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:349
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:580
+msgid "Start test"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:349
+msgid "Stop test"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:79
+msgid "Sunday"
+msgstr ""
+
+#: applications/luci-app-librespeed/root/usr/share/luci/menu.d/luci-app-librespeed.json:16
+msgid "Test"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:640
+msgid "Test configuration"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:106
+msgid "The window must not cross midnight"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:76
+msgid "Thursday"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:311
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:562
+msgid "Time"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:74
+msgid "Tuesday"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:40
+msgid ""
+"URL of a LibreSpeed server list in JSON, from a self-hosted deployment: "
+"either a static file such as https://example.org/servers.json or a generator "
+"such as https://example.org/backend/servers.php. Leave empty for the "
+"official list."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:650
+msgid "Unencrypted transfers, so the line is measured rather than the cipher."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:150
+msgid "Upcoming measurements"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:12
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:93
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:492
+msgid "Upload"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:312
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:563
+msgid "Upload [Mbps]"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:104
+msgid "Use an hour (0-23) or a range like 2-5"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:254
+msgid "Variable — ranged from %d to %d Mbps."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:319
+msgid "View full history »"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:540
+msgid "View result"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:75
+msgid "Wednesday"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:653
+msgid "Whichever scheme the server list provides."
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:628
+msgid "Yes"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:644
+msgid "automatic (nearest)"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:293
+msgid "average"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/librespeed/common.js:328
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:154
+msgid "avg"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:294
+msgid "best"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:292
+msgid "current"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:165
+msgid "declining"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:516
+msgid "encrypted (HTTPS)"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:53
+msgid "force HTTP"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:52
+msgid "force HTTPS"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:165
+msgid "highly variable"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:558
+msgid "last 24 hours"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:516
+msgid "plain HTTP"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:360
+msgid "server %s"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/settings.js:51
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:648
+msgid "server default"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:165
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:172
+msgid "stable"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/history.js:122
+msgid "vs previous period"
+msgstr ""
+
+#: applications/luci-app-librespeed/htdocs/luci-static/resources/view/librespeed/test.js:295
+msgid "worst"
+msgstr ""
