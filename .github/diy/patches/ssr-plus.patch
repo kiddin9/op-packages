@@ -129,7 +129,7 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,129 @@
 +<style>
 +.pure-img {
 +    max-height: 100%;
@@ -146,7 +146,7 @@ index 000000000000..a00fff9c79b3
 +    box-shadow: 0 0 2rem 0 rgba(136, 152, 170, .3);
 +    color: #525f7f;
 +    background: #fff;
-+    z-index: 5;
++    z-index: 999;
 +    box-sizing: border-box;
 +}
 +
@@ -210,13 +210,10 @@ index 000000000000..a00fff9c79b3
 +const _ASSETS = '/luci-static/shadowsocksr/';
 +const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[shadowsocksr]], [[ip]])%>';
 +
-+let wW = window.innerWidth;
++let statusBar = document.querySelector(".status-bar");
 +
 +function resize() {
-+    wW = window.innerWidth;
-+    let lw = document.querySelector(".main-left")?.offsetWidth ?? 5;
-+    let statusBar = document.querySelector(".status-bar");
-+    statusBar.style.width = (wW - lw) + 'px';
++    statusBar.style.width = document.getElementById("maincontent").offsetWidth + 'px';
 +    let flagElement = statusBar.querySelector(".flag");
 +    flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
 +
@@ -260,6 +257,7 @@ index 000000000000..a00fff9c79b3
 +});
 +
 +window.addEventListener('resize', resize);
++document.body.appendChild(statusBar);
 +</script>
 
 --- a/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
