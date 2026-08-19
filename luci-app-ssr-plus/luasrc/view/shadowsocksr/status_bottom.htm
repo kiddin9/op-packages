@@ -14,7 +14,7 @@
     box-shadow: 0 0 2rem 0 rgba(136, 152, 170, .3);
     color: #525f7f;
     background: #fff;
-    z-index: 5;
+    z-index: 999;
     box-sizing: border-box;
 }
 
@@ -78,13 +78,10 @@
 const _ASSETS = '/luci-static/shadowsocksr/';
 const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[shadowsocksr]], [[ip]])%>';
 
-let wW = window.innerWidth;
+let statusBar = document.querySelector(".status-bar");
 
 function resize() {
-    wW = window.innerWidth;
-    let lw = document.querySelector(".main-left")?.offsetWidth ?? 5;
-    let statusBar = document.querySelector(".status-bar");
-    statusBar.style.width = (wW - lw) + 'px';
+    statusBar.style.width = document.getElementById("maincontent").offsetWidth + 'px';
     let flagElement = statusBar.querySelector(".flag");
     flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
 
@@ -128,4 +125,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener('resize', resize);
+document.body.appendChild(statusBar);
 </script>
