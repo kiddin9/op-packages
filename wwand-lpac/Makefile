@@ -12,7 +12,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-lpac
 PKG_VERSION:=2.3.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_LICENSE:=AGPL-3.0-only GPL-3.0-or-later curl
 PKG_MAINTAINER:=
@@ -26,7 +26,7 @@ PKG_HASH:=skip
 PKG_BUILD_DIR:=$(BUILD_DIR)/wwand-lpac-$(PKG_VERSION)
 
 # bundled, statically-linked dependencies
-WOLFSSL_VERSION:=5.9.1-stable
+WOLFSSL_VERSION:=5.9.2-stable
 CURL_VERSION:=8.21.0
 
 PKG_BUILD_PARALLEL:=1
