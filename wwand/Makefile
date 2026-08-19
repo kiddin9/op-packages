@@ -24,7 +24,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
@@ -58,7 +58,7 @@ CMAKE_OPTIONS += \
 
 # every install section takes the ucode tree from here: the bytecode output of
 # the cmake build, or the plain sources when CONFIG_WWAND_UCODE_SOURCE is set.
-WWAND_UCODE=$(if $(CONFIG_WWAND_UCODE_SOURCE),$(PKG_BUILD_DIR)/src-ucode,$(PKG_BUILD_DIR)/$(CMAKE_BINARY_SUBDIR)/ucode/wwand)
+WWAND_UCODE=$(if $(CONFIG_WWAND_UCODE_SOURCE),$(PKG_BUILD_DIR)/src-ucode,$(CMAKE_BINARY_DIR)/ucode/wwand)
 
 UCDIR:=/usr/share/ucode/wwand
 
@@ -188,7 +188,8 @@ endef
 define Package/wwand-qmi/description
   QMI control backend for wwand: talks QMI natively over /dev/cdc-wdmX (qmi_wwan
   driver) with QMAP multiplexing (rmnet), without spawning uqmi/qmicli. This is
-  the common case for most cellular routers.
+  the common case for most cellular routers. Pair with wwand-mhi for modems
+  attached over PCIe/MHI.
 endef
 
 define Package/wwand-qmi/install
@@ -220,7 +221,8 @@ define Package/wwand-mbim/description
   MBIM control backend for wwand (cdc_mbim driver): native MS Basic Connect (+
   Extensions v2/v3) plus a QMI-over-MBIM passthrough that tunnels the whole QMI
   stack over the open MBIM channel for full CDC-level telemetry/config. The
-  passthrough reuses qmi_backend, hence the dependency on wwand-qmi.
+  passthrough reuses qmi_backend, hence the dependency on wwand-qmi. Pair
+  with wwand-mhi for modems attached over PCIe/MHI.
 endef
 
 define Package/wwand-mbim/install
@@ -243,7 +245,9 @@ define Package/wwand-ncm
   CATEGORY:=Network
   SUBMENU:=WWAN
   TITLE:=NCM/ECM backend for wwand
-  DEPENDS:=+wwand +kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-ether
+  # +kmod-usb-net-rndis: the RNDIS datapath (rndis_host) used by e.g. the
+  # Fibocom FM350-GL (MediaTek T700) — same AT-driven backend, RNDIS netdev.
+  DEPENDS:=+wwand +kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-ether +kmod-usb-net-rndis
   # coexists with the stock OpenWrt NCM stack (netifd `ncm` proto, package
   # comgt-ncm): wwand drives an AT/NCM modem only once its interface has been
   # migrated to `proto wwand` (LuCI modem list / migrate CLI), so both stacks can
