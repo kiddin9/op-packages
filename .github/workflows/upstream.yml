@@ -377,6 +377,8 @@ jobs:
         package/utils/mhz package/utils/pcat-manager
         ) &
         (
+        npx --yes degit 'BKPepe/luci/applications/luci-app-librespeed#luci-app-librespeed' luci-app-librespeed
+        npx --yes degit 'BKPepe/packages/utils/librespeed-common#librespeed-common' librespeed-common
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
         git_sparse_clone master "https://github.com/obsy/packages" oscam luci-proto-wwan 3ginfo
         git_sparse_clone istoreos-24.10 "https://github.com/jjm2473/packages" utils/dockerd
