@@ -12,7 +12,7 @@
 
 'use strict';
 
-import { open, readfile, writefile, rename, mkdir } from 'fs';
+import { open, readfile, writefile, rename, mkdir, error } from 'fs';
 
 // Packaging checks probe every executable for these.
 if (length(ARGV) > 0) {
@@ -177,8 +177,11 @@ if (dir != '' && dir != archive_path)
 	mkdir(dir, 0o755);
 
 // Atomic: a reader never sees a half-written archive. A failed write goes to
-// syslog: this runs from cron, where stderr has nowhere to go.
+// syslog: this runs from cron, where stderr has nowhere to go. The reason
+// comes along, since a missing mount, a read-only filesystem and a full disk
+// each want something different from whoever reads that log.
 if (writefile(tmp, out) != null)
 	rename(tmp, archive_path);
 else
-	system(['logger', '-t', 'librespeed', `aggregate: cannot write ${tmp}`]);
+	system(['logger', '-t', 'librespeed',
+		`aggregate: cannot write ${tmp}: ${error()}`]);

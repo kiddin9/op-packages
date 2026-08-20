@@ -566,16 +566,9 @@ return view.extend({
 		this.recentMetric = 'download_mbps';
 		/* Two directions, one chart at a time: the page answers "how am I
 		 * doing" at a glance, and mixing both series would make that a
-		 * comparison instead. History is where series get combined. */
-		this.recentSwitch = lscommon.switcher(this,
-			lscommon.GROUPS.speed.map(k => {
-				const m = lscommon.METRICS.find(x => x[0] == k);
-				return [ k, m[1] ];
-			}), this.recentMetric,
-			function(v) {
-				this.recentMetric = v;
-				this.renderRecent(this.recentData);
-			});
+		 * comparison instead. History is where series get combined. The
+		 * buttons themselves are filled by renderRecent, first call included. */
+		this.recentSwitch = E('div', {});
 		this.button = E('button', { 'class': 'cbi-button cbi-button-action' },
 			[ _('Start test') ]);
 
@@ -617,7 +610,13 @@ return view.extend({
 			rows.map(r => E('tr', { 'class': 'tr' }, [
 				E('td', { 'class': 'td librespeed-muted', 'style': 'width:45%' }, [ r[0] ]),
 				E('td', { 'class': 'td' }, [
-					r[2] ? E('span', { 'class': 'librespeed-hint', 'data-tooltip': r[2] }, [ r[1] ]) : r[1]
+					r[2] ? E('span', {
+						/* tabindex, or the focus half of "hover or focus"
+						 * never fires: a bare span is not in the tab order. */
+						'class': 'librespeed-hint',
+						'tabindex': '0',
+						'data-tooltip': r[2]
+					}, [ r[1] ]) : r[1]
 				])
 			])));
 

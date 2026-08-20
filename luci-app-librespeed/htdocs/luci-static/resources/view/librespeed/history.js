@@ -240,7 +240,23 @@ return view.extend({
 			return [ fam, pr ].filter(x => x).join(' · ') || '–';
 		};
 
-		const rows = entries.slice().reverse();
+		/* Sort the whole range here, not just the page: ui.Table only ever
+		 * orders the rows it was handed, so paging first would turn the
+		 * headers into a per-page sort while the count below still speaks
+		 * for every measurement. */
+		let rows = entries.slice().reverse();
+		const sorting = this.table.getActiveSortState();
+
+		if (sorting)
+			rows = rows
+				.map(L.bind(function(r) {
+					return [ this.table.deriveSortKey(r[sorting[0]], sorting[0]), r ];
+				}, this))
+				.sort((a, b) => sorting[1]
+					? -L.naturalCompare(a[0], b[0])
+					: L.naturalCompare(a[0], b[0]))
+				.map(x => x[1]);
+
 		const pages = Math.max(1, Math.ceil(rows.length / pageSize));
 
 		if (this.page >= pages)
@@ -312,6 +328,14 @@ return view.extend({
 			_('Download [Mbps]'), _('Upload [Mbps]'), _('Ping [ms]'), _('Jitter [ms]')
 		], { id: 'librespeed-history' });
 		this.tableNode = this.table.render();
+		/* The table's own handler re-sorts the page it holds; this runs
+		 * after it and re-sorts the range, from the first page. */
+		this.tableNode.addEventListener('click', L.bind(function(ev) {
+			if (ev.target.closest('th[data-sortable-row], .th[data-sortable-row]')) {
+				this.page = 0;
+				this.redraw();
+			}
+		}, this));
 
 		const renderControls = L.bind(function() {
 			const groups = lscommon.switcher(this,
