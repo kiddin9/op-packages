@@ -240,11 +240,21 @@ return view.extend({
 			return [ fam, pr ].filter(x => x).join(' · ') || '–';
 		};
 
-		/* Sort the whole range here, not just the page: ui.Table only ever
-		 * orders the rows it was handed, so paging first would turn the
-		 * headers into a per-page sort while the count below still speaks
-		 * for every measurement. */
-		let rows = entries.slice().reverse();
+		/* Build the cells first, then sort them: the sort key comes out of a
+		 * cell, and ui.Table only ever orders the rows it was handed, so
+		 * paging first would turn the headers into a per-page sort while the
+		 * count below still speaks for every measurement. */
+		let rows = entries.slice().reverse().map(e => [
+			[ e.epoch ?? 0, when(e) ],
+			(e.server && e.server.name) || '–',
+			e.interface || '–',
+			protoCell(e),
+			[ num(e.download_mbps), fmtNum(e.download_mbps, 2) ],
+			[ num(e.upload_mbps), fmtNum(e.upload_mbps, 2) ],
+			[ num(e.ping_ms), fmtNum(e.ping_ms, 1) ],
+			[ num(e.jitter_ms), fmtNum(e.jitter_ms, 1) ]
+		]);
+
 		const sorting = this.table.getActiveSortState();
 
 		if (sorting)
@@ -263,17 +273,8 @@ return view.extend({
 			this.page = pages - 1;
 
 		this.renderPager(rows.length, pages);
+		this.table.update(rows.slice(this.page * pageSize, (this.page + 1) * pageSize));
 
-		this.table.update(rows.slice(this.page * pageSize, (this.page + 1) * pageSize).map(e => [
-			[ e.epoch ?? 0, when(e) ],
-			(e.server && e.server.name) || '–',
-			e.interface || '–',
-			protoCell(e),
-			[ num(e.download_mbps), fmtNum(e.download_mbps, 2) ],
-			[ num(e.upload_mbps), fmtNum(e.upload_mbps, 2) ],
-			[ num(e.ping_ms), fmtNum(e.ping_ms, 1) ],
-			[ num(e.jitter_ms), fmtNum(e.jitter_ms, 1) ]
-		]));
 	},
 
 	/* Shown only when there is more than one page; the count is always
