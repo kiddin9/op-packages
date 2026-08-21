@@ -2556,12 +2556,33 @@ return view.extend({
 		s.addremove = false;
 
 		s.load = function() {
-			this.radios = network.getWifiDevicesFromConfig().sort(function(a, b) {
+			const configuredRadios = network.getWifiDevicesFromConfig().sort(function(a, b) {
 				return a.getName() > b.getName();
 			});
-			this.wifis = network.getWifiNetworksFromConfig();
+			const hasQcaWifi = configuredRadios.some(function(radio) {
+				return isQcaWifiHwtype(uci.get('wireless', radio.getName(), 'type'));
+			});
 
-			return Promise.resolve();
+			if (hasQcaWifi) {
+				this.radios = configuredRadios;
+				this.wifis = network.getWifiNetworksFromConfig();
+				return Promise.resolve();
+			}
+
+			return network.getWifiDevices().then(L.bind(function(radios) {
+				this.radios = radios.sort(function(a, b) {
+					return a.getName() > b.getName();
+				});
+
+				return Promise.all(radios.map(function(radio) {
+					return radio.getWifiNetworks();
+				}));
+			}, this)).then(L.bind(function(networks) {
+				this.wifis = [];
+
+				for (const radioNetworks of networks)
+					this.wifis.push.apply(this.wifis, radioNetworks);
+			}, this));
 		};
 
 		s.cfgsections = function() {

@@ -405,6 +405,16 @@ function refreshWirelessState() {
 	return _wirelessInit;
 }
 
+function waitForWirelessState() {
+	const wifiDevices = uci.sections('wireless', 'wifi-device');
+	const hasQcaWifi = wifiDevices.some(function(device) {
+		return (device.type == 'qcawifi' || device.type == 'qcawificfg80211');
+	});
+	const refresh = refreshWirelessState();
+
+	return hasQcaWifi ? Promise.resolve() : refresh;
+}
+
 function initNetworkState(refresh) {
 	if (_state == null || refresh) {
 		const hasWifi = L.hasSystemFeature('wifi');
@@ -1401,9 +1411,7 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 * be found.
 	 */
 	getWifiDevice(devname) {
-		return initNetworkState().then(L.bind(function() {
-			refreshWirelessState();
-
+		return initNetworkState().then(waitForWirelessState).then(L.bind(function() {
 			const existingDevice = uci.get('wireless', devname);
 
 			if (existingDevice == null || existingDevice['.type'] != 'wifi-device')
@@ -1423,9 +1431,7 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 * the configuration.
 	 */
 	getWifiDevices() {
-		return initNetworkState().then(L.bind(function() {
-			refreshWirelessState();
-
+		return initNetworkState().then(waitForWirelessState).then(L.bind(function() {
 			const uciWifiDevices = uci.sections('wireless', 'wifi-device');
 			const rv = [];
 
@@ -1469,9 +1475,7 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 * be found.
 	 */
 	getWifiNetwork(netname) {
-		return initNetworkState().then(L.bind(function() {
-			refreshWirelessState();
-
+		return initNetworkState().then(waitForWirelessState).then(L.bind(function() {
 			return this.lookupWifiNetwork(netname);
 		}, this));
 	},
@@ -1486,9 +1490,7 @@ Network = baseclass.extend(/** @lends LuCI.network.prototype */ {
 	 * are found.
 	 */
 	getWifiNetworks() {
-		return initNetworkState().then(L.bind(function() {
-			refreshWirelessState();
-
+		return initNetworkState().then(waitForWirelessState).then(L.bind(function() {
 			const wifiIfaces = uci.sections('wireless', 'wifi-iface');
 			const rv = [];
 
