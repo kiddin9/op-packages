@@ -75,10 +75,13 @@ display:block !important;
 const _ASSETS = '/luci-static/passwall/';
 const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[passwall]], [[ip]])%>';
 
-let statusBar = document.querySelector(".status-bar");
+let mainContent = document.getElementById("maincontent");
 
 function resize() {
-    statusBar.style.width = document.getElementById("maincontent").offsetWidth + 'px';
+    wW = window.innerWidth;
+    let lw = document.querySelector(".main-left, .fs-sidebar")?.offsetWidth ?? 5;
+    let statusBar = document.querySelector(".status-bar");
+    statusBar.style.width = (wW - lw) + 'px';
     let flagElement = statusBar.querySelector(".flag");
     flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
 
@@ -122,5 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener('resize', resize);
+if (mainContent && window.getComputedStyle(mainContent).getPropertyValue("contain")=== "paint") {
 document.body.appendChild(statusBar);
+}
 </script>
