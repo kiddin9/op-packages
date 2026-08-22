@@ -1,12 +1,13 @@
 --- a/luci-theme-footstrap/root/etc/config/footstrap
 +++ b/luci-theme-footstrap/root/etc/config/footstrap
-@@ -1,2 +1,6 @@
+@@ -1,2 +1,7 @@
  
  config footstrap 'settings'
 +	option pattern 'a583df0ec986a6b8454f7be514e8cb32'
 +	option darkmode 'dark'
 +	option wallpaper 'pattern'
 +	option layout 'sidebar'
++	option palette 'bootstrap'
 
 --- a/luci-theme-footstrap/styles/02-tokens.css
 +++ b/luci-theme-footstrap/styles/02-tokens.css
