@@ -6,9 +6,9 @@ fail() {
 	exit 1
 }
 
-grep -q "OC_TESTED_VERSION=\"2026.6.11\"" root/usr/bin/openclaw-env || fail "tested OpenClaw version not pinned"
+grep -q "OC_TESTED_VERSION=\"2026.7.1-2\"" root/usr/bin/openclaw-env || fail "tested OpenClaw version not pinned"
 grep -q "NODE_VERSION_V2=\"22.23.0\"" root/usr/bin/openclaw-env || fail "default Node.js version not pinned"
-grep -q "OC_NODE_MIN_VERSION=\"\${OC_NODE_MIN_VERSION:-22.19.0}\"" root/usr/bin/openclaw-env || fail "minimum Node.js version not pinned"
+grep -q "OC_NODE_MIN_VERSION=\"\${OC_NODE_MIN_VERSION:-22.22.3}\"" root/usr/bin/openclaw-env || fail "minimum Node.js version not pinned"
 grep -q "oc_assert_node_min_version" root/usr/bin/openclaw-env || fail "Node.js minimum version check missing"
 grep -q 'oc_node_version_ge "$from_pkg" "$required"' root/usr/bin/openclaw-env || fail "package Node.js requirement must not lower static minimum"
 grep -q "install_openclaw_cli_wrapper" root/usr/bin/openclaw-env || fail "OpenClaw CLI wrapper must set runtime env"
@@ -56,6 +56,10 @@ if grep -q "delete d.plugins.entries\\['openclaw-weixin'\\]" root/etc/init.d/ope
 fi
 grep -q "npm/projects" root/etc/init.d/openclaw || fail "npm plugin project ownership fix missing"
 grep -q "! -path.*npm/projects" root/usr/libexec/openclaw-permissions.sh || fail "npm plugin projects should be excluded from generic ownership reset"
+grep -q "_run_doctor_fix" root/etc/init.d/openclaw || fail "doctor --fix must run through the service-user wrapper"
+grep -q "su -s /bin/sh openclaw -c" root/etc/init.d/openclaw || fail "doctor --fix must run as the openclaw service user (2026.7.x plugin ownership check)"
+grep -q "oc_doctor_as_openclaw" root/usr/share/openclaw/oc-config.sh || fail "oc-config doctor must run as the openclaw service user"
+grep -q "(-\[0-9]+)?" root/etc/init.d/openclaw || fail "doctor version marker must keep the patch suffix (e.g. 2026.7.1-2)"
 grep -q "archived-extensions" root/etc/init.d/openclaw || fail "legacy weixin extension archive missing"
 grep -q "find_wechat_plugin_dir" luasrc/controller/openclaw.lua || fail "wechat npm plugin detection missing"
 grep -q "wechat_openclaw_plugin_install_cmd" luasrc/controller/openclaw.lua || fail "wechat install must use OpenClaw plugin installer"
@@ -105,7 +109,7 @@ grep -q "微信插件注册状态已有效，跳过重复刷新" root/etc/init.d
 grep -q "d.plugins.entries\['openclaw-weixin'\].enabled===true" root/etc/init.d/openclaw || fail "init.d fast path must require the official enable entry"
 grep -q "openclaw-permissions.sh" root/etc/init.d/openclaw || fail "init.d must use permission helper"
 grep -q "fix_openclaw_state_permissions" root/etc/init.d/openclaw || fail "init.d final permission helper call missing"
-grep -q 'NODE_ICU_DATA="${NODE_BASE}/share/icu" PATH="${NODE_BASE}/bin:${OC_GLOBAL}/bin:$PATH"' root/etc/init.d/openclaw || fail "doctor migration must run with Node ICU data"
+grep -q 'NODE_ICU_DATA=\\"${NODE_BASE}/share/icu\\"' root/etc/init.d/openclaw || fail "doctor migration must run with Node ICU data"
 grep -q "Token 同步 (doctor 后): UCI -> JSON" root/etc/init.d/openclaw || fail "doctor must restore missing JSON token from UCI"
 grep -q 'OPENCLAW_GATEWAY_TOKEN="$gw_token"' root/etc/init.d/openclaw || fail "gateway must receive token env fallback"
 grep -q "clear_jiti_cache_on_start" root/etc/init.d/openclaw || fail "JITI cache cleanup must be opt-in to avoid slow startup"
