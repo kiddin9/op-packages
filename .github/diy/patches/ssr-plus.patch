@@ -129,7 +129,7 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-ssr-plus/luasrc/view/shadowsocksr/status_bottom.htm
-@@ -0,0 +1,129 @@
+@@ -0,0 +1,128 @@
 +<style>
 +.pure-img {
 +    max-height: 100%;
@@ -210,10 +210,13 @@ index 000000000000..a00fff9c79b3
 +const _ASSETS = '/luci-static/shadowsocksr/';
 +const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[shadowsocksr]], [[ip]])%>';
 +
-+let statusBar = document.querySelector(".status-bar");
++let mainContent = document.getElementById("maincontent");
 +
 +function resize() {
-+    statusBar.style.width = document.getElementById("maincontent").offsetWidth + 'px';
++    wW = window.innerWidth;
++    let lw = document.querySelector(".main-left, .fs-sidebar")?.offsetWidth ?? 5;
++    let statusBar = document.querySelector(".status-bar");
++    statusBar.style.width = (wW - lw) + 'px';
 +    let flagElement = statusBar.querySelector(".flag");
 +    flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
 +
@@ -257,7 +260,9 @@ index 000000000000..a00fff9c79b3
 +});
 +
 +window.addEventListener('resize', resize);
++if (mainContent && window.getComputedStyle(mainContent).getPropertyValue("contain")=== "paint") {
 +document.body.appendChild(statusBar);
++}
 +</script>
 
 --- a/luci-app-ssr-plus/root/etc/uci-defaults/luci-ssr-plus
