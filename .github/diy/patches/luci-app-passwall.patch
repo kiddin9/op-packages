@@ -398,8 +398,8 @@ index 000000000000..a00fff9c79b3
 
 --- a/luci-app-passwall/root/usr/share/passwall/app.sh
 +++ b/luci-app-passwall/root/usr/share/passwall/app.sh
-@@ -1539,6 +1539,14 @@ start_dns() {
- 	fi
+@@ -1037,6 +1037,14 @@ stop_crontab() {
+ 	#echolog "清除定时执行命令。"
  }
  
 +start_adblock() {
@@ -410,10 +410,10 @@ index 000000000000..a00fff9c79b3
 +	"$APP_PATH/adblock.sh" > /dev/null 2>&1 &
 +}
 +
- start_haproxy() {
- 	[ "$(config_t_get global_haproxy balancing_enable 0)" != "1" ] && return
- 	haproxy_path=$TMP_PATH/haproxy
-@@ -1853,6 +1861,7 @@ start() {
+ start_dns() {
+ 	echolog "DNS域名解析："
+ 
+@@ -1636,6 +1644,7 @@ start() {
  	export ENABLE_DEPRECATED_GEOIP=true
  	export SS_SYSTEM_DNS_RESOLVER_FORCE_BUILTIN=1
  	ulimit -n 65535
