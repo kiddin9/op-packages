@@ -296,6 +296,22 @@
  	},
  
  	parseHeaders(headers, array) {
+@@ -1280,13 +1280,14 @@ const ansiToHtml = function(text) {
+ 	// Escape HTML special characters
+ 	const escapeHtml = (str) => {
+ 		const map = {
++			' ': '&nbsp;',
+ 			'&': '&amp;',
+ 			'<': '&lt;',
+ 			'>': '&gt;',
+ 			'"': '&quot;',
+ 			"'": '&#039;'
+ 		};
+-		return str.replace(/[&<>"']/g, m => map[m]);
++		return str.replace(/[&<>"' ]/g, m => map[m]);
+ 	};
+ 
+ 	// Split by ANSI escape sequences and process
 
 --- /dev/null
 +++ b/luci-app-dockerman/root/etc/uci-defaults/luci-app-dockerman
@@ -319,3 +335,119 @@
  
  		o = s.taboption('globals', form.ListValue, 'log_level',
  			_('Log Level'),
+
+--- a/luci-app-dockerman/htdocs/luci-static/resources/dockerman/api.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/dockerman/api.js
+@@ -116,6 +116,22 @@ function processLines(buffer, onChunk) {
+ 	return buffer;
+ }
+ 
++// Parse the docker multiplexed stream format, https://docs.docker.com/reference/api/engine/version/v1.43/#stream-format
++function parse_multiplexed_stream(buffer) {
++	const output = [];
++
++	while (buffer.length > 0) {
++		if (buffer.length < 8) break; // Not enough data for header
++		let stream_type = buffer.charCodeAt(0);
++		let payload_length = (buffer.charCodeAt(4) << 24) | (buffer.charCodeAt(5) << 16) | (buffer.charCodeAt(6) << 8) | buffer.charCodeAt(7);
++		if (buffer.length < 8 + payload_length) break; // Not enough data for payload
++		let payload = buffer.slice(8, 8 + payload_length);
++		output.push({ type: stream_type, payload: payload });
++		buffer = buffer.slice(8 + payload_length);
++	}
++
++	return output;
++}
+ 
+ function call_docker(method, path, options = {}) {
+ 	return loadPromise.then(() => {
+@@ -228,20 +244,24 @@ function call_docker(method, path, options = {}) {
+ 					let parsed = safeText || text;
+ 					const contentType = response.headers.get('content-type') || '';
+ 
+-					// Try normal JSON parse first
+-					try {
+-						parsed = JSON.parse(text);
+-					} catch (err) {
+-						// If the payload is newline-delimited JSON (Docker events), split and parse each line
+-						if (['application/json',
+-							'application/x-ndjson',
+-							'application/json-seq'].includes(contentType) || safeText.includes('\n')) {
+-							const lines = safeText.split(/\r?\n/).filter(Boolean);
+-							try {
+-								parsed = lines.map(l => JSON.parse(l));
+-							} catch (err2) {
+-								// Fall back to raw text if parsing fails
+-								parsed = text;
++					if ("application/vnd.docker.multiplexed-stream" == contentType) {
++						parsed = parse_multiplexed_stream(safeText);
++					} else {
++						// Try normal JSON parse first
++						try {
++							parsed = JSON.parse(text);
++						} catch (err) {
++							// If the payload is newline-delimited JSON (Docker events), split and parse each line
++							if (['application/json',
++								'application/x-ndjson',
++								'application/json-seq'].includes(contentType) || safeText.includes('\n')) {
++								const lines = safeText.split(/\r?\n/).filter(Boolean);
++								try {
++									parsed = lines.map(l => JSON.parse(l));
++								} catch (err2) {
++									// Fall back to raw text if parsing fails
++									parsed = text;
++								}
+ 							}
+ 						}
+ 					}
+
+--- a/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js
++++ b/luci-app-dockerman/htdocs/luci-static/resources/view/dockerman/container.js
+@@ -1685,7 +1685,10 @@ return dm2.dv.extend({
+ 					return false;
+ 				}
+ 
+-				const logText = response?.body || _('No logs available');
++				let logText = response?.body || _('No logs available');
++				if ("application/vnd.docker.multiplexed-stream" == response?.headers['content-type']) {
++					logText = (response?.body || []).map((frame)=>frame.payload).join('');
++				}
+ 				// Convert ANSI codes to HTML and set innerHTML
+ 				logsDiv.innerHTML = dm2.ansiToHtml(logText);
+ 				logsDiv.scrollTop = logsDiv.scrollHeight;
+
+--- a/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc
++++ b/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc
+@@ -100,6 +100,23 @@ function coerce_values_to_string(obj) {
+ 	return obj;
+ };
+ 
++// Parse the docker multiplexed stream format, https://docs.docker.com/reference/api/engine/version/v1.43/#stream-format
++function parse_multiplexed_stream(buffer) {
++	let output = [];
++
++	while (length(buffer) > 0) {
++		if (length(buffer) < 8) break; // Not enough data for header
++		let stream_type = ord(buffer, 0);
++		let payload_length = ord(buffer, 4) << 24 | ord(buffer, 5) << 16 | ord(buffer, 6) << 8 | ord(buffer, 7);
++		if (length(buffer) < 8 + payload_length) break; // Not enough data for payload
++		let payload = substr(buffer, 8, payload_length);
++		push(output, { type: stream_type, payload: payload });
++		buffer = substr(buffer, 8 + payload_length);
++	}
++
++	return output;
++};
++
+ function call_docker(method, path, options) {
+ 	options = options || {};
+ 	const headers = options.headers || {};
+@@ -277,6 +294,8 @@ function call_docker(method, path, options) {
+ 		} else {
+ 			response_body = data;
+ 		}
++	} else if (response_headers['content-type'] === 'application/vnd.docker.multiplexed-stream' && response_body) {
++		response_body = parse_multiplexed_stream(response_body);
+ 	}
+ 
+ 	return {
