@@ -18,12 +18,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-proto-wwand
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/luci-proto-wwand.git
-PKG_SOURCE_VERSION:=7d9ac0fe15257ac6469d9e2c0228506789200229
-PKG_SOURCE_DATE:=2026-08-11
+PKG_SOURCE_VERSION:=680692f5cc74862b874fe34108b7574a3b05a49b
+PKG_SOURCE_DATE:=2026-08-24
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -36,9 +36,9 @@ define Package/luci-proto-wwand
   CATEGORY:=LuCI
   SUBMENU:=4. Protocols
   TITLE:=Support for QMI/5G cellular modems (wwand)
-  # This handler requires six resource modules that luci-app-wwand ships —
-  # wwand.bands, .format, .modemopts, .modemsid, .rpc and .simlist — so it
-  # depends on the app rather than carrying a second copy of them.
+  # This handler uses five resource modules that luci-app-wwand ships —
+  # wwand.bands, .format, .modemopts, .modemsid and .rpc — so it depends on
+  # the app rather than carrying a second copy of them.
   DEPENDS:=+luci-base +wwand +luci-app-wwand
   PKGARCH:=all
 endef
