@@ -1,6 +1,6 @@
 --- a/luci-theme-footstrap/root/etc/config/footstrap
 +++ b/luci-theme-footstrap/root/etc/config/footstrap
-@@ -1,2 +1,7 @@
+@@ -1,2 +1,6 @@
  
  config footstrap 'settings'
 +	option pattern 'a583df0ec986a6b8454f7be514e8cb32'
