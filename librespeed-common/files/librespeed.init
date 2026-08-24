@@ -15,6 +15,26 @@ AGG=/usr/libexec/librespeed-aggregate
 # random time is drawn from, drawn here at sync time. That keeps the herd
 # apart -- every router lands on its own minute -- without any process
 # sleeping through the night, at the cost of re-drawing on every reload.
+# Every comma-separated part must be a number or an ascending range within
+# [0, max]; the caller already reduced the alphabet to digits, commas and
+# dashes.
+valid_field() {
+	local val="$1" max="$2" part a b oifs="$IFS"
+	IFS=','
+	for part in $val; do
+		IFS="$oifs"
+		a=${part%-*}; b=${part#*-}
+		# Each half on its own: concatenated, '5-' and '-5' hide their empty
+		# side and the arithmetic below would print a shell error where the
+		# caller promises a silent fallback.
+		case "$a" in ''|*[!0-9]*) return 1 ;; esac
+		case "$b" in ''|*[!0-9]*) return 1 ;; esac
+		[ "$a" -le "$max" ] && [ "$b" -le "$max" ] && [ "$a" -le "$b" ] || return 1
+	done
+	IFS="$oifs"
+	return 0
+}
+
 cron_expr() {
 	local interval="$1" days="$2" hours="$3"
 	local start end m h v
@@ -77,8 +97,16 @@ sync_cron() {
 
 	# These end up verbatim in root's crontab, so anything unexpected becomes
 	# the harmless default rather than a cron field it was not meant to be.
-	case "$days" in *[!0-9,-]*) days='*' ;; '') days='*' ;; esac
+	# Values are checked as well as characters: '99' is made of digits, but
+	# as an hour it would turn a daily schedule into an hourly one.
+	case "$days" in *[!0-9,-]*|'') days='*' ;; esac
+	if [ "$days" != '*' ] && ! valid_field "$days" 6; then
+		days='*'
+	fi
 	case "$hours" in *[!0-9-]*) hours='' ;; esac
+	if [ -n "$hours" ] && ! valid_field "$hours" 23; then
+		hours=''
+	fi
 
 	mkdir -p "${CRONTAB%/*}"
 	touch "$CRONTAB"

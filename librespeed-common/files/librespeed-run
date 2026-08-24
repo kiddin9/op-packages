@@ -78,9 +78,16 @@ sampler() {
 			else                            printf "- -"
 		}')
 		prx=$rx; ptx=$tx
+		# The runner may die without reaching its kill (SIGKILL, a trap that
+		# never ran); without this check the sampler would rewrite state.json
+		# forever and mask every later run's result.
+		kill -0 $$ 2>/dev/null || return 0
+		# An idle second keeps the last phase: the frontend reads an empty
+		# phase as "not started yet" and would collapse mid-run.
 		if [ "$1" = "-" ]; then
-			write_state 1 $$ "$started" "" "" "" ""
+			write_state 1 $$ "$started" "" "" "$phase" ""
 		else
+			phase=$1
 			write_state 1 $$ "$started" "" "" "$1" "$2"
 		fi
 	done
@@ -184,7 +191,9 @@ write_state 1 $$ "$started"
 # stop kills our whole process group, so librespeed-cli dies with us; ash runs
 # this trap once the foreground child has exited, and it records that the run
 # was stopped rather than pretending the measurement failed.
-trap 'write_state 0 "" "" "$(date +%s)" "stopped"; exit 1' TERM
+trap '[ -n "$sampler_pid" ] && kill "$sampler_pid" 2>/dev/null
+	write_state 0 "" "" "$(date +%s)" "stopped"; exit 1' TERM
+sampler_pid=
 
 if [ "$stream" = 1 ]; then
 	# The while runs in a subshell, so the reports cannot come back in a
@@ -213,18 +222,23 @@ if [ "$stream" = 1 ]; then
 	# stream delivered: a client that failed never emitted a result event.
 	out=$(cat "$STATE_DIR/reports.json" 2>/dev/null)
 	rm -f "$STATE_DIR/reports.json"
-	[ -n "$out" ] || \
-		fail "$(tail -n 1 "$STATE_DIR/stderr.log" 2>/dev/null || echo 'measurement failed')"
+	if [ -z "$out" ]; then
+		# tail succeeds on an empty file, so the substitution guards the
+		# value, not the command: an empty log still reports a failure.
+		err=$(tail -n 1 "$STATE_DIR/stderr.log" 2>/dev/null)
+		fail "${err:-measurement failed}"
+	fi
 else
-	sampler_pid=""
 	if [ -n "$dev" ]; then
 		sampler "$dev" &
 		sampler_pid=$!
 	fi
 	out=$("$@" 2>"$STATE_DIR/stderr.log" < /dev/null); rc=$?
 	[ -n "$sampler_pid" ] && kill "$sampler_pid" 2>/dev/null
-	[ "$rc" = 0 ] || \
-		fail "$(tail -n 1 "$STATE_DIR/stderr.log" 2>/dev/null || echo 'measurement failed')"
+	if [ "$rc" != 0 ]; then
+		err=$(tail -n 1 "$STATE_DIR/stderr.log" 2>/dev/null)
+		fail "${err:-measurement failed (exit $rc)}"
+	fi
 fi
 
 finished=$(date +%s)
@@ -346,9 +360,12 @@ if [ "$hist_enabled" = "1" ]; then
 		# a gigabyte a year through the flash instead of a few megabytes. The
 		# file therefore holds somewhat more than the window, and is trimmed
 		# once enough has accumulated to be worth the write.
+		# jshn writes '"epoch": 175...' with a space, so the match is
+		# tolerant and the digits are extracted rather than offset-counted.
 		expired=$(awk -v c="$cutoff" '
-			match($0, /"epoch":[0-9]+/) {
-				if (substr($0, RSTART + 8, RLENGTH - 8) + 0 < c) n++
+			match($0, /"epoch":[[:space:]]*[0-9]+/) {
+				v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v)
+				if (v + 0 < c) n++
 			}
 			END { print n + 0 }
 		' "$hist_path")
@@ -357,8 +374,9 @@ if [ "$hist_enabled" = "1" ]; then
 		if [ "$expired" -ge 50 ] || [ "$expired" -ge $(( total / 2 )) ] && [ "$expired" -gt 0 ]; then
 			tmp="$hist_path.$$"
 			awk -v c="$cutoff" '
-				match($0, /"epoch":[0-9]+/) {
-					if (substr($0, RSTART + 8, RLENGTH - 8) + 0 < c) next
+				match($0, /"epoch":[[:space:]]*[0-9]+/) {
+					v = substr($0, RSTART, RLENGTH); gsub(/[^0-9]/, "", v)
+					if (v + 0 < c) next
 				}
 				{ print }
 			' "$hist_path" > "$tmp" && mv "$tmp" "$hist_path"

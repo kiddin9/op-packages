@@ -46,10 +46,6 @@ function download(name, mime, text) {
 	window.URL.revokeObjectURL(url);
 }
 
-/* Bumped whenever librespeed.css changes, so a routine page load picks the
- * new stylesheet up instead of pairing new views with a cached old one. */
-const CSS_VERSION = '18';
-
 function metricOf(key) {
 	return METRICS.find(m => m[0] == key);
 }
@@ -142,46 +138,79 @@ return baseclass.extend({
 	GROUPS: GROUPS,
 	RANGES: RANGES,
 
-	/* The app stylesheet, cache-busted by its own version: LuCI's resource
-	 * version only changes when luci-base does, which is not when we do. */
+	/* Linked plainly, the way the other applications do: uhttpd serves
+	 * static resources with ETag revalidation, so an upgraded stylesheet
+	 * reaches the browser without a cache-busting version to maintain. */
 	cssLink() {
 		return E('link', {
 			'rel': 'stylesheet',
-			'href': L.resource('librespeed/librespeed.css') + '?v=' + CSS_VERSION
+			'href': L.resource('librespeed/librespeed.css')
 		});
 	},
 
+	/* One token->label table for the schedule intervals: Settings builds
+	 * its choices from it and the Test page looks the status label up, so
+	 * the two cannot drift. The init script accepts more shapes than these
+	 * six, so readers must fall back to the raw token. */
+	INTERVALS: {
+		'15m': _('Every 15 minutes'),
+		'30m': _('Every 30 minutes'),
+		'1h': _('Hourly'),
+		'6h': _('Every 6 hours'),
+		'12h': _('Every 12 hours'),
+		'1d': _('Daily')
+	},
+
+	/* Exported alongside the chart: every timestamp a page prints should
+	 * come through here, or the date-only guard gets lost in a copy. */
+	chartStampFull: chartStampFull,
+
 	/* Plain figures of one series: what is normal, how much it wobbles, and
-	 * where it stands now. The story sentences are built from these. */
-	seriesStats(entries, metric) {
+	 * where it stands now. The story sentences are built from these. On
+	 * daily aggregates the extremes come from the _min/_max columns the
+	 * chart also draws -- min/max of the daily means would understate the
+	 * spread and contradict the band directly above the sentence. */
+	seriesStats(entries, metric, resolution) {
 		const vals = (entries || []).map(e => e[metric]).filter(v => typeof v == 'number');
 
 		if (!vals.length)
 			return null;
 
 		const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+		const lows = (resolution == '1d')
+			? (entries || []).map(e => typeof e[metric + '_min'] == 'number'
+				? e[metric + '_min'] : e[metric]).filter(v => typeof v == 'number')
+			: vals;
+		const highs = (resolution == '1d')
+			? (entries || []).map(e => typeof e[metric + '_max'] == 'number'
+				? e[metric + '_max'] : e[metric]).filter(v => typeof v == 'number')
+			: vals;
 
 		return {
 			count: vals.length,
 			avg: avg,
-			min: Math.min.apply(null, vals),
-			max: Math.max.apply(null, vals),
+			min: Math.min.apply(null, lows),
+			max: Math.max.apply(null, highs),
 			current: vals[vals.length - 1]
 		};
 	},
 
-	/* A row of toggle buttons; the active one is highlighted. */
-	switcher(view, items, current, onpick) {
-		return E('div', {}, items.map(it =>
-			E('button', {
-				'class': it[0] == current ? 'cbi-button cbi-button-action' : 'cbi-button',
-				'style': 'margin-right:.3em',
-				'click': ui.createHandlerFn(view, function() {
-					return onpick.call(view, it[0]);
-				})
-			/* Callers hand in display-ready labels: a runtime _() here
-			 * would both miss the extractor and translate twice. */
-			}, [ it[1] != null ? it[1] : it[0] ])));
+	/* A row of toggle buttons; the active one is highlighted. The state is
+	 * also spoken: colour alone says nothing to a screen reader, so each
+	 * button carries aria-pressed and the group a name for what it picks. */
+	switcher(view, items, current, onpick, label) {
+		return E('div', { 'role': 'group', 'aria-label': label || null },
+			items.map(it =>
+				E('button', {
+					'class': it[0] == current ? 'cbi-button cbi-button-action' : 'cbi-button',
+					'style': 'margin-right:.3em',
+					'aria-pressed': it[0] == current ? 'true' : 'false',
+					'click': ui.createHandlerFn(view, function() {
+						return onpick.call(view, it[0]);
+					})
+				/* Callers hand in display-ready labels: a runtime _() here
+				 * would both miss the extractor and translate twice. */
+				}, [ it[1] != null ? it[1] : it[0] ])));
 	},
 
 	/* The one chart component: hand-built SVG, the way the realtime status
@@ -254,8 +283,9 @@ return baseclass.extend({
 			const avg = valid.reduce((a, p) => a + p[2], 0) / valid.length;
 			body += '<line class="librespeed-avgline librespeed-stroke-%d" x1="%d" y1="%f" x2="%d" y2="%f"/>'
 				.format(ci, L, sc.ys(avg), W - R, sc.ys(avg));
-			body += '<text x="%d" y="%f" font-size="9" fill="currentColor" fill-opacity=".55" text-anchor="end">avg %s</text>'
-				.format(W - R, sc.ys(avg) - 4, avg.toFixed(avg >= 100 ? 0 : 1));
+			body += '<text x="%d" y="%f" font-size="9" fill="currentColor" fill-opacity=".55" text-anchor="end">%h %s</text>'
+				.format(W - R, sc.ys(avg) - 4, _('avg'),
+					avg.toFixed(avg >= 100 ? 0 : 1));
 
 			body += (valid.length > 1)
 				? '<polyline class="librespeed-line librespeed-stroke-%d" points="%s"/>'.format(ci, pts)
@@ -314,7 +344,7 @@ return baseclass.extend({
 
 		opts.legend.all.forEach(k => {
 			const m = metricOf(k);
-			const st = this.seriesStats(entries, k);
+			const st = this.seriesStats(entries, k, opts.resolution);
 			const cb = E('input', { 'type': 'checkbox' });
 
 			cb.checked = opts.series.indexOf(k) >= 0;
@@ -426,7 +456,8 @@ return baseclass.extend({
 					if (typeof e[k] != 'number')
 						return;
 					let txt = fmtVal(e[k], m[2]);
-					if (typeof e[k + '_min'] == 'number')
+					if (typeof e[k + '_min'] == 'number' &&
+					    typeof e[k + '_max'] == 'number')
 						txt += ' (%s – %s)'.format(
 							e[k + '_min'].toFixed(m[2] == 'Mbps' ? 0 : 1),
 							e[k + '_max'].toFixed(m[2] == 'Mbps' ? 0 : 1));

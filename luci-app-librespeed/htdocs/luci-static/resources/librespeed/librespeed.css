@@ -1,3 +1,19 @@
+/* The theme's accent where the theme publishes one: --primary-color-medium
+ * exists only in luci-theme-bootstrap. Every other in-tree theme sees the
+ * fallback, which must clear 3:1 against a light page -- the arc and the
+ * history line are the only graphical encoding of the data. */
+:root {
+	--librespeed-accent: var(--primary-color-medium, #3c8dbc);
+}
+
+/* Dark is an attribute in LuCI, not a media preference: bootstrap stamps
+ * data-darkmode on the root and pins it for its light/dark variants, while
+ * the themes that actually reach the fallback have no dark mode at all --
+ * an OS-level preference must not darken their light pages. */
+:root[data-darkmode="true"] {
+	--librespeed-accent: var(--primary-color-medium, #6ab0de);
+}
+
 /* The one piece of CSS this application owns: layout and type scale. Colors,
  * borders, buttons and spacing inside sections stay with the theme. */
 
@@ -55,31 +71,31 @@
 	max-width: 20em;
 	display: inline-block;
 	vertical-align: middle;
-	accent-color: var(--primary-color-medium, #5bc0de);
+	accent-color: var(--librespeed-accent);
 }
 
 /* The chart takes its color from the theme where one is exposed, and falls
  * back to a neutral accent where none is. */
 .librespeed-chart-line {
-	stroke: var(--primary-color-medium, #5bc0de);
+	stroke: var(--librespeed-accent);
 	fill: none;
 	stroke-width: 1.5;
 }
 
 .librespeed-chart-fill {
-	fill: var(--primary-color-medium, #5bc0de);
+	fill: var(--librespeed-accent);
 	fill-opacity: .1;
 	stroke: none;
 }
 
 .librespeed-chart-band {
-	fill: var(--primary-color-medium, #5bc0de);
+	fill: var(--librespeed-accent);
 	fill-opacity: .18;
 	stroke: none;
 }
 
 .librespeed-chart-dot {
-	fill: var(--primary-color-medium, #5bc0de);
+	fill: var(--librespeed-accent);
 }
 
 .librespeed-toolbar {
@@ -138,7 +154,7 @@
 
 .librespeed-gauge-fill {
 	fill: none;
-	stroke: var(--primary-color-medium, #5bc0de);
+	stroke: var(--librespeed-accent);
 	stroke-width: 12;
 	stroke-linecap: round;
 }
@@ -219,17 +235,17 @@
 /* One theme color for every series: the second one differs by pattern, not
  * by a hardcoded hue -- a dashed line and a striped swatch survive any theme
  * and read for color-blind users too. */
-.librespeed-stroke-0 { stroke: var(--primary-color-medium, #5bc0de); }
-.librespeed-stroke-1 { stroke: var(--primary-color-medium, #5bc0de); }
+.librespeed-stroke-0 { stroke: var(--librespeed-accent); }
+.librespeed-stroke-1 { stroke: var(--librespeed-accent); }
 polyline.librespeed-stroke-1 { stroke-dasharray: 6 3; }
 .librespeed-avgline.librespeed-stroke-1 { stroke-dasharray: 2 4; }
-.librespeed-fill-0 { fill: var(--primary-color-medium, #5bc0de); }
-.librespeed-fill-1 { fill: var(--primary-color-medium, #5bc0de); }
+.librespeed-fill-0 { fill: var(--librespeed-accent); }
+.librespeed-fill-1 { fill: var(--librespeed-accent); }
 circle.librespeed-fill-1 { fill-opacity: .55; }
-.librespeed-bg-0 { background: var(--primary-color-medium, #5bc0de); }
+.librespeed-bg-0 { background: var(--librespeed-accent); }
 .librespeed-bg-1 {
 	background: repeating-linear-gradient(90deg,
-		var(--primary-color-medium, #5bc0de) 0 4px, transparent 4px 7px);
+		var(--librespeed-accent) 0 4px, transparent 4px 7px);
 }
 
 .librespeed-legend {
@@ -266,8 +282,8 @@ circle.librespeed-fill-1 { fill-opacity: .55; }
 	margin: 0 auto;
 }
 
-.librespeed-fg-0 { color: var(--primary-color-medium, #5bc0de); }
-.librespeed-fg-1 { color: var(--primary-color-medium, #5bc0de); }
+.librespeed-fg-0 { color: var(--librespeed-accent); }
+.librespeed-fg-1 { color: var(--librespeed-accent); }
 
 .librespeed-cards {
 	display: flex;
@@ -283,15 +299,17 @@ circle.librespeed-fill-1 { fill-opacity: .55; }
 	padding: .45em .9em;
 	min-width: 11em;
 	cursor: pointer;
-	opacity: .5;
+	/* Dim, still legible: .5 with the muted name inside multiplied down to
+	 * an unreadable third. */
+	opacity: .78;
 	user-select: none;
 }
 
 .librespeed-metric-card-on { opacity: 1; }
 .librespeed-metric-card:hover { border-color: rgba(128, 128, 128, .45); }
 
-.librespeed-accent-0 { border-top-color: var(--primary-color-medium, #5bc0de); }
-.librespeed-accent-1 { border-top-color: var(--primary-color-medium, #5bc0de); border-top-style: dashed; }
+.librespeed-accent-0 { border-top-color: var(--librespeed-accent); }
+.librespeed-accent-1 { border-top-color: var(--librespeed-accent); border-top-style: dashed; }
 
 .librespeed-card-value {
 	font-size: 1.3em;
@@ -312,4 +330,15 @@ circle.librespeed-fill-1 { fill-opacity: .55; }
 	margin: 1em auto 0;
 	text-align: left;
 	font-size: .95em;
+}
+
+/* Off-screen but reachable: the live region announcing the running phase,
+ * and the gauge figures repeated as plain text for browse mode. */
+.librespeed-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
 }

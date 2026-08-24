@@ -220,7 +220,8 @@ return view.extend({
 
 		this.recentNode.innerHTML = '';
 		this.recentCount.textContent = entries.length
-			? _('%d measurements').format(entries.length) : '';
+			? N_(entries.length, '%d measurement', '%d measurements')
+				.format(entries.length) : '';
 
 		/* The active button names the metric, so the subtitle only carries
 		 * the window. */
@@ -232,12 +233,12 @@ return view.extend({
 			function(v) {
 				this.recentMetric = v;
 				this.renderRecent(this.recentData);
-			}).childNodes);
+			}, _('Metric')).childNodes);
 
 		/* The stability story of the last day, told in one sentence and four
 		 * figures: what is normal, how much it wobbles, where it is now. */
 		const metric = this.recentMetric || 'download_mbps';
-		const st = lscommon.seriesStats(entries, metric);
+		const st = lscommon.seriesStats(entries, metric, data && data.resolution);
 
 		if (st && st.count > 1) {
 			const varPct = (st.max - st.min) / st.avg * 100,
@@ -297,20 +298,26 @@ return view.extend({
 		}
 
 		const fmtNum = (v, d) => (typeof v == 'number') ? v.toFixed(d) : '–';
-		const when = e => {
-			const d = new Date(e.timestamp);
-			return isNaN(d.getTime()) ? String(e.timestamp || '?') : d.toLocaleString();
-		};
+		/* The shared formatter carries the date-only guard: a daily
+		 * aggregate's bare date fed to new Date() is read as UTC midnight
+		 * and shifts a calendar day in negative offsets. */
+		const when = e => lscommon.chartStampFull(e, data && data.resolution);
 
-		const num = v => (typeof v == 'number') ? v : -1;
+		/* The sort key carries the same decimal count as the display half:
+		 * ui.Table stringifies the whole cell and compares digit runs one by
+		 * one, so ragged fractions would put 94.4 above 94.35. */
+		const num = (v, d) => (typeof v == 'number') ? v.toFixed(d) : '';
 
+		/* Nodes, not strings: ui.Table writes bare strings into innerHTML
+		 * and the server name comes from a downloaded list. */
+		const cell = t => E('span', {}, [ t ]);
 		this.recentTable.update(entries.slice(-recentRows).reverse().map(e => [
-			[ e.epoch ?? 0, when(e) ],
-			(e.server && e.server.name) || '–',
-			[ num(e.download_mbps), fmtNum(e.download_mbps, 2) ],
-			[ num(e.upload_mbps), fmtNum(e.upload_mbps, 2) ],
-			[ num(e.ping_ms), fmtNum(e.ping_ms, 1) ],
-			[ num(e.jitter_ms), fmtNum(e.jitter_ms, 1) ]
+			[ e.epoch ?? 0, cell(when(e)) ],
+			cell((e.server && e.server.name) || '–'),
+			[ num(e.download_mbps, 2), cell(fmtNum(e.download_mbps, 2)) ],
+			[ num(e.upload_mbps, 2), cell(fmtNum(e.upload_mbps, 2)) ],
+			[ num(e.ping_ms, 1), cell(fmtNum(e.ping_ms, 1)) ],
+			[ num(e.jitter_ms, 1), cell(fmtNum(e.jitter_ms, 1)) ]
 		]));
 		this.recentNode.appendChild(this.recentTableNode);
 
@@ -374,6 +381,17 @@ return view.extend({
 		this.resultHeading.textContent = (!status.running && status.last_error)
 			? _('Last successful measurement') : '';
 
+		/* One quiet live region, outside the tree that is rebuilt every
+		 * poll: announcing the rebuilt gauge SVG would read the whole dial
+		 * out several times a run. Set only on change, so it speaks once
+		 * per phase step. */
+		const announce = status.running
+			? (PHASES.find(p => p[0] == status.phase) || [])[3] || _('Connecting to the test server…')
+			: '';
+
+		if (this.liveNode.textContent != announce)
+			this.liveNode.textContent = announce;
+
 		if (status.running) {
 			const rows = [];
 
@@ -385,7 +403,10 @@ return view.extend({
 				PHASES.map((p, i) => E('span', {
 					'class': 'librespeed-step' +
 						(i == phaseIdx ? ' librespeed-step-active' :
-							(phaseIdx >= 0 && i < phaseIdx ? ' librespeed-step-done' : ''))
+							(phaseIdx >= 0 && i < phaseIdx ? ' librespeed-step-done' : '')),
+					/* Spoken as well as dimmed: opacity is invisible to a
+					 * screen reader. */
+					'aria-current': i == phaseIdx ? 'step' : null
 				}, [ p[3] ]))));
 
 			/* The dial range is frozen at the start of the run -- a familiar
@@ -404,13 +425,20 @@ return view.extend({
 				rows.push(E('p', { 'class': 'spinning', 'style': 'margin-top:.75em' },
 					[ _('Connecting to the test server…') ]));
 			else {
-				const holder = E('div', {});
+				/* The dial is hidden from assistive tech -- its ten tick
+				 * labels are noise there -- so the one figure it carries,
+				 * the running rate, is repeated as plain hidden text that
+				 * browse mode can still reach. */
+				const holder = E('div', { 'aria-hidden': 'true' });
 				holder.innerHTML = gauge(
 					(typeof status.mbps == 'number' && status.mbps > 0)
 						? status.mbps : null,
 					this.runTop,
 					status.phase == 'upload' ? 1 : 0);
 				rows.push(holder);
+				if (typeof status.mbps == 'number' && status.mbps > 0)
+					rows.push(E('span', { 'class': 'librespeed-visually-hidden' },
+						[ '%.2f Mbps'.format(status.mbps) ]));
 			}
 
 			/* Completion is a different number than the rate on the arc, so
@@ -422,8 +450,13 @@ return view.extend({
 				rows.push(E('div', { 'class': 'librespeed-muted' },
 					[ overall + ' %' ]));
 
-			const elapsed = status.started
-				? fmtElapsed(Date.now() / 1000 - status.started) : '';
+			/* The backend counts on the clock that stamped the start; the
+			 * difference of two unrelated clocks can be negative. The old
+			 * subtraction stays as a fallback for an updating router. */
+			const elapsed = typeof status.elapsed == 'number'
+				? fmtElapsed(status.elapsed)
+				: (status.started
+					? fmtElapsed(Date.now() / 1000 - status.started) : '');
 
 			if (elapsed)
 				rows.push(E('div', { 'class': 'librespeed-muted' },
@@ -439,7 +472,15 @@ return view.extend({
 		else
 			this.wasRunning = false;
 
-		if (!status.running && status.last_error) {
+		if (!status.running && status.last_error == 'stopped') {
+			/* Stopping is something the user did, not something that went
+			 * wrong; a red banner would turn their own click into an error. */
+			this.alertNode.appendChild(E('p', { 'class': 'librespeed-muted' }, [
+				_('The last measurement was stopped.'),
+				status.last_finished ? ' · ' + fmtTime(status.last_finished) : ''
+			]));
+		}
+		else if (!status.running && status.last_error) {
 			/* Compact, and above the figures: the failure is news, the last
 			 * good result is still the substance of the page. */
 			this.alertNode.appendChild(E('div', {
@@ -553,6 +594,11 @@ return view.extend({
 		this.resultHeading = E('div', { 'class': 'librespeed-muted', 'style': 'margin-top:.35em' });
 		this.resultNode = E('div', {});
 		this.recentNode = E('div', {});
+		this.liveNode = E('div', {
+			'role': 'status',
+			'aria-live': 'polite',
+			'class': 'librespeed-visually-hidden'
+		});
 		this.recentCount = E('span', { 'class': 'librespeed-muted' });
 		this.recentSubtitle = E('div', { 'class': 'librespeed-muted' },
 			[ _('last 24 hours') ]);
@@ -624,10 +670,15 @@ return view.extend({
 		 * well sit in another one, so it only formats the epoch. */
 		const sched = config.schedule || {};
 		const next = sched.next_runs || [];
-		const schedRows = [ [ _('Enabled'), sched.enabled ? _('Yes') : _('No') ] ];
+		/* Strict, matching history.js: the backend derives this from the
+		 * crontab and emits a real boolean, never UCI's '0'/'1'. */
+		const schedRows = [ [ _('Enabled'), sched.enabled === true ? _('Yes') : _('No') ] ];
 
-		if (sched.enabled) {
-			schedRows.push([ _('Interval'), sched.interval || '1d' ]);
+		if (sched.enabled === true) {
+			/* The shared table translates the six tokens the UI offers; the
+			 * init script accepts more, so the raw token is the fallback. */
+			schedRows.push([ _('Interval'),
+				lscommon.INTERVALS[sched.interval || '1d'] || sched.interval ]);
 			if (next.length)
 				schedRows.push([ _('Next run'), new Date(next[0] * 1000).toLocaleString() ]);
 		}
@@ -660,6 +711,7 @@ return view.extend({
 
 		const main = E('div', { 'class': 'cbi-section librespeed-center', 'style': 'margin:0' }, [
 			this.alertNode,
+			this.liveNode,
 			this.statusNode,
 			this.resultHeading,
 			this.resultNode,

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=teleproxy
 PKG_VERSION:=4.16.1
-PKG_RELEASE:=24
+PKG_RELEASE:=25
 
 PKG_MAINTAINER:=Kosntantine Shevlakov <shevlakov@132lan.ru>
 PKG_LICENSE:=GPLv2
@@ -10,7 +10,7 @@ PKG_LICENSE_FILES:=LICENSE
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/teleproxy/teleproxy.git
-PKG_SOURCE_VERSION:=01a3e01f5f1aa0bacb20b4f8c7f10449ed12a1da
+PKG_SOURCE_VERSION:=064e893a5cc8fbd9b99609c09bd000a1f3fbc09b
 
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz

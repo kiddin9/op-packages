@@ -78,6 +78,11 @@ function config_get(uci, section, option, fallback) {
 // browser: the schedule fires in the router's timezone, and the browser may
 // well sit in another one. Understands only the shapes librespeed.init
 // emits: numbers, ranges, ranges with a step, star, and comma lists.
+// Hoisted: ucode recompiles a regex literal on every evaluation, and these
+// two dominate cron_next's cost inside rpcd, which must never stall.
+const CRON_STEP = /^(.+)\/([0-9]+)$/;
+const CRON_RANGE = /^([0-9]+)-([0-9]+)$/;
+
 function cron_next(line, count) {
 	const f = split(trim(line ?? ''), /\s+/);
 
@@ -87,7 +92,7 @@ function cron_next(line, count) {
 	const match_field = function(pat, val) {
 		for (let part in split(pat, ',')) {
 			let step = 1;
-			let m = match(part, /^(.+)\/([0-9]+)$/);
+			let m = match(part, CRON_STEP);
 
 			if (m) {
 				part = m[1];
@@ -101,7 +106,7 @@ function cron_next(line, count) {
 				b = 59;
 			}
 			else {
-				m = match(part, /^([0-9]+)-([0-9]+)$/);
+				m = match(part, CRON_RANGE);
 				if (m) {
 					a = int(m[1]);
 					b = int(m[2]);
@@ -123,14 +128,36 @@ function cron_next(line, count) {
 	let t = time();
 	t -= t % 60;
 
-	for (let i = 0; i < 8 * 24 * 60 && length(out) < count; i++) {
+	// A miss skips the rest of the day or hour instead of walking its
+	// minutes; that keeps this cheap inside rpcd's event loop, and cheap
+	// enough for a five-week horizon, which a weekly schedule needs to
+	// fill three rows where eight days could not. The day jump aims at
+	// 23:00, not midnight: it is computed in local minutes but applied as
+	// real ones, and across a spring-forward that lands an hour long --
+	// from 23:00 the hour branch walks the last hour and cannot overshoot
+	// into minutes that were never examined.
+	for (let i = 0; i < 35 * 24 * 60 && length(out) < count; ) {
 		t += 60;
 		const lt = localtime(t);
+		let skip;
 
 		// % 7 folds both weekday conventions onto cron's 0-6 with Sunday 0.
-		if (match_field(f[0], lt.min) && match_field(f[1], lt.hour) &&
-		    match_field(f[4], lt.wday % 7))
-			push(out, t);
+		if (!match_field(f[4], lt.wday % 7)) {
+			skip = (24 - lt.hour) * 60 - lt.min - 60;
+			if (skip <= 0)
+				skip = 60 - lt.min;
+		}
+		else if (!match_field(f[1], lt.hour))
+			skip = 60 - lt.min;
+		else {
+			if (match_field(f[0], lt.min))
+				push(out, t);
+			i++;
+			continue;
+		}
+
+		t += (skip - 1) * 60;
+		i += skip;
 	}
 
 	return out;
@@ -182,8 +209,12 @@ const methods = {
 
 				if (st.pid)
 					out.pid = int(st.pid);
-				if (st.started)
+				if (st.started) {
 					out.started = int(st.started);
+					// Elapsed is computed here, on the clock that stamped
+					// started: the browser's clock may sit anywhere.
+					out.elapsed = time() - int(st.started);
+				}
 				if (st.mbps != null)
 					out.mbps = st.mbps + 0.0;
 				if (st.progress != null)
@@ -297,7 +328,11 @@ const methods = {
 				scheme: config_get(uci, 'main', 'scheme', 'auto'),
 				server_list: config_get(uci, 'main', 'server_list', ''),
 				schedule: {
-					enabled: config_get(uci, 'schedule', 'enabled', '0') == '1',
+					// What the crontab holds, not what UCI intends: a
+					// hand-set 'true' satisfies the init script's bool but
+					// not a string compare, and the page would say No while
+					// cron fires. The line is the one source of truth.
+					enabled: cron != '',
 					interval: config_get(uci, 'schedule', 'interval', '1d'),
 					days: config_get(uci, 'schedule', 'days', '*'),
 					hours: config_get(uci, 'schedule', 'hours', ''),

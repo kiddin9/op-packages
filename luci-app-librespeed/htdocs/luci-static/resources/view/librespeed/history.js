@@ -14,6 +14,12 @@
  * second fetch, since the entries are in memory anyway. */
 const pageSize = 50;
 
+const callConfig = rpc.declare({
+	object: 'librespeed',
+	method: 'config',
+	expect: { '': {} }
+});
+
 const callHistory = rpc.declare({
 	object: 'librespeed',
 	method: 'history',
@@ -61,7 +67,13 @@ return view.extend({
 			speed: lscommon.GROUPS.speed.slice(),
 			latency: lscommon.GROUPS.latency.slice()
 		};
-		return this.fetch();
+		/* The config rides along for one purpose: with history keeping off,
+		 * the empty state must not send the user to run a test that will
+		 * never produce an entry. */
+		return Promise.all([
+			this.fetch(),
+			callConfig().then(c => { this.config = c; }, () => {})
+		]);
 	},
 
 	/* The server/interface filters narrow the fetched range on the client;
@@ -107,8 +119,8 @@ return view.extend({
 
 		lscommon.GROUPS[this.group].forEach(L.bind(function(k, ki) {
 			const m = lscommon.METRICS.find(x => x[0] == k),
-			      st = lscommon.seriesStats(entries, k),
-			      ps = lscommon.seriesStats(prev, k),
+			      st = lscommon.seriesStats(entries, k, this.resolution),
+			      ps = lscommon.seriesStats(prev, k, this.prevResolution),
 			      on = act.indexOf(k) >= 0;
 
 			let diff = ' ';
@@ -146,7 +158,9 @@ return view.extend({
 					(on ? ' librespeed-metric-card-on' : ''),
 				'title': on ? _('Hide this series') : _('Show this series')
 			}, [
-				E('div', { 'class': 'librespeed-muted librespeed-caps' },
+				/* Not muted: the card's own off-state opacity already dims
+				 * it, and two factors multiply into illegibility. */
+				E('div', { 'class': 'librespeed-caps' },
 					[ cb, ' ', m[1] ]),
 				E('div', { 'class': 'librespeed-card-value' }, [
 					st ? '%.1f'.format(st.avg) + ' ' + m[2] : '–',
@@ -189,10 +203,24 @@ return view.extend({
 		const noneAtAll = !this.entries.length;
 
 		if (!entries.length) {
-			this.emptyText.textContent = noneAtAll
-				? _('Run a speed test to start building your connection history.')
-				: _('No measurements match the current filters.');
+			/* Strict, matching test.js: the backend emits a real boolean
+			 * (derived from UCI, never its raw '0'/'1'), and an absent or
+			 * failed config must read as "history on", not off. */
+			const histOff = noneAtAll && this.config &&
+				this.config.history && this.config.history.enabled === false;
+
+			/* With history keeping off, a test would never write an entry:
+			 * the way out is Settings, not the Start button. */
+			this.emptyText.textContent = histOff
+				? _('History keeping is switched off, so measurements are not recorded.')
+				: (noneAtAll
+					? _('Run a speed test to start building your connection history.')
+					: _('No measurements match the current filters.'));
 			this.emptyStart.style.display = noneAtAll ? '' : 'none';
+			this.emptyStart.href = histOff
+				? L.url('admin', 'network', 'librespeed', 'settings')
+				: L.url('admin', 'network', 'librespeed', 'test');
+			this.emptyStart.textContent = histOff ? _('Open settings') : _('Start test');
 			this.emptyNode.style.display = '';
 			this.dataNode.style.display = 'none';
 			return;
@@ -220,17 +248,12 @@ return view.extend({
 			this.chartNode.appendChild(E('p', { 'class': 'librespeed-muted' },
 				[ _('Daily minimum, average and maximum.') ]));
 
-		const num = v => (typeof v == 'number') ? v : -1;
+		/* The sort key carries the same decimal count as the display half:
+		 * ui.Table stringifies the whole cell and compares digit runs one by
+		 * one, so ragged fractions would put 94.4 above 94.35. */
+		const num = (v, d) => (typeof v == 'number') ? v.toFixed(d) : '';
 		const fmtNum = (v, d) => (typeof v == 'number') ? v.toFixed(d) : '–';
-		const when = e => {
-			if (!e.timestamp)
-				return '?';
-			if (this.resolution == '1d' || e.timestamp.indexOf('T') < 0)
-				return e.timestamp;
-			const d = new Date(e.timestamp);
-			/* A garbled timestamp shows as itself, never as "Invalid Date". */
-			return isNaN(d.getTime()) ? e.timestamp : d.toLocaleString();
-		};
+		const when = e => lscommon.chartStampFull(e, this.resolution);
 
 		/* One column carries both what the packets were (IPv4/IPv6) and how
 		 * they travelled (HTTPS/HTTP); either half may be unknown. */
@@ -244,15 +267,19 @@ return view.extend({
 		 * cell, and ui.Table only ever orders the rows it was handed, so
 		 * paging first would turn the headers into a per-page sort while the
 		 * count below still speaks for every measurement. */
+		/* Every display half is a node: ui.Table writes bare strings into
+		 * innerHTML, and the server name comes from a downloaded list --
+		 * text must stay text. The sort key stays the first element. */
+		const cell = t => E('span', {}, [ t ]);
 		let rows = entries.slice().reverse().map(e => [
-			[ e.epoch ?? 0, when(e) ],
-			(e.server && e.server.name) || '–',
-			e.interface || '–',
-			protoCell(e),
-			[ num(e.download_mbps), fmtNum(e.download_mbps, 2) ],
-			[ num(e.upload_mbps), fmtNum(e.upload_mbps, 2) ],
-			[ num(e.ping_ms), fmtNum(e.ping_ms, 1) ],
-			[ num(e.jitter_ms), fmtNum(e.jitter_ms, 1) ]
+			[ e.epoch ?? 0, cell(when(e)) ],
+			cell((e.server && e.server.name) || '–'),
+			cell(e.interface || '–'),
+			cell(protoCell(e)),
+			[ num(e.download_mbps, 2), cell(fmtNum(e.download_mbps, 2)) ],
+			[ num(e.upload_mbps, 2), cell(fmtNum(e.upload_mbps, 2)) ],
+			[ num(e.ping_ms, 1), cell(fmtNum(e.ping_ms, 1)) ],
+			[ num(e.jitter_ms, 1), cell(fmtNum(e.jitter_ms, 1)) ]
 		]);
 
 		const sorting = this.table.getActiveSortState();
@@ -274,7 +301,6 @@ return view.extend({
 
 		this.renderPager(rows.length, pages);
 		this.table.update(rows.slice(this.page * pageSize, (this.page + 1) * pageSize));
-
 	},
 
 	/* Shown only when there is more than one page; the count is always
@@ -286,7 +312,7 @@ return view.extend({
 		}, this);
 
 		const nav = [ E('span', { 'class': 'librespeed-muted' },
-			[ _('%d measurements').format(total) ]) ];
+			[ N_(total, '%d measurement', '%d measurements').format(total) ]) ];
 
 		if (pages > 1) {
 			nav.push(E('button', {
@@ -341,7 +367,7 @@ return view.extend({
 		const renderControls = L.bind(function() {
 			const groups = lscommon.switcher(this,
 				[ [ 'speed', _('Speed') ], [ 'latency', _('Latency') ] ], this.group,
-				function(v) { this.group = v; renderControls(); this.redraw(); });
+				function(v) { this.group = v; renderControls(); this.redraw(); }, _('Series'));
 			const ranges = lscommon.switcher(this,
 				lscommon.RANGES.map(r => [ String(r[1]), r[0] ]), String(this.range),
 				function(v) {
@@ -352,7 +378,7 @@ return view.extend({
 						renderControls();
 						this.redraw();
 					}, this));
-				});
+				}, _('Range'));
 
 			ranges.classList.add('librespeed-push');
 
@@ -366,6 +392,17 @@ return view.extend({
 				if (e.interface && ifaces.indexOf(e.interface) < 0)
 					ifaces.push(e.interface);
 			});
+
+			/* The freshly fetched window may no longer contain the chosen
+			 * server or interface -- daily aggregates carry neither field at
+			 * all. The widget would then quietly repaint as "All" while the
+			 * model kept filtering everything out, with no control on screen
+			 * able to clear it; reconcile the model here, where the choice
+			 * lists are built. */
+			if (this.server && servers.indexOf(this.server) < 0)
+				this.server = '';
+			if (this.iface && ifaces.indexOf(this.iface) < 0)
+				this.iface = '';
 
 			const filters = E('div', { 'class': 'librespeed-toolbar' }, [
 				this.filterSelect(_('Server'), servers.sort(), this.server,

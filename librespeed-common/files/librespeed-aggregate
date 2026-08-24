@@ -12,7 +12,7 @@
 
 'use strict';
 
-import { open, readfile, writefile, rename, mkdir, error } from 'fs';
+import { open, readfile, rename, mkdir, unlink, error } from 'fs';
 
 // Packaging checks probe every executable for these.
 if (length(ARGV) > 0) {
@@ -176,12 +176,25 @@ const dir = replace(archive_path, /\/[^\/]+$/, '');
 if (dir != '' && dir != archive_path)
 	mkdir(dir, 0o755);
 
-// Atomic: a reader never sees a half-written archive. A failed write goes to
-// syslog: this runs from cron, where stderr has nowhere to go. The reason
-// comes along, since a missing mount, a read-only filesystem and a full disk
-// each want something different from whoever reads that log.
-if (writefile(tmp, out) != null)
+// Atomic: a reader never sees a half-written archive. Written by hand
+// rather than writefile(), which drops fclose()'s status and would let a
+// full disk truncate the archive in silence -- flush() is where a short
+// write surfaces. A failed write goes to syslog: this runs from cron,
+// where stderr has nowhere to go. The reason comes along, since a missing
+// mount, a read-only filesystem and a full disk each want something
+// different from whoever reads that log.
+const af = open(tmp, 'w');
+let wrote = af != null && af.write(out) == length(out);
+
+if (af) {
+	wrote = af.flush() != null && wrote;
+	af.close();
+}
+
+if (wrote)
 	rename(tmp, archive_path);
-else
+else {
 	system(['logger', '-t', 'librespeed',
 		`aggregate: cannot write ${tmp}: ${error()}`]);
+	unlink(tmp);
+}

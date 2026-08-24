@@ -23,4 +23,13 @@ sh -n /etc/init.d/librespeed || fail "init script does not parse"
 ucode /usr/share/rpcd/ucode/librespeed.uc >/dev/null \
 	|| fail "rpcd plugin does not load"
 
+# Retention must recognise epoch as jshn actually writes it -- with a space
+# after the colon. The fixture comes from json_dump itself, so the check
+# breaks if either side changes shape.
+line=$(. /usr/share/libubox/jshn.sh; json_init; json_add_int epoch 1; json_dump) \
+	|| fail "jshn not usable"
+echo "$line" | awk 'match($0, /"epoch":[[:space:]]*[0-9]+/) { ok = 1 }
+	{ print }
+	END { exit !ok }' || fail "retention regex does not match jshn output"
+
 echo "librespeed-common: installed files OK"

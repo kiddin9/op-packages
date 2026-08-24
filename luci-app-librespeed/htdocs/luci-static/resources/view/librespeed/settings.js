@@ -3,6 +3,7 @@
 'require form';
 'require rpc';
 'require tools.widgets as widgets';
+'require librespeed.common as lscommon';
 
 const callConfig = rpc.declare({
 	object: 'librespeed',
@@ -59,12 +60,10 @@ return view.extend({
 			_('Runs a measurement from cron at the chosen interval. Note that a measurement saturates the connection while it runs.'));
 
 		o = s.option(form.ListValue, 'interval', _('Interval'));
-		o.value('15m', _('Every 15 minutes'));
-		o.value('30m', _('Every 30 minutes'));
-		o.value('1h', _('Hourly'));
-		o.value('6h', _('Every 6 hours'));
-		o.value('12h', _('Every 12 hours'));
-		o.value('1d', _('Daily'));
+		/* From the shared table, so the Test page's status label and these
+		 * choices cannot drift apart. */
+		Object.keys(lscommon.INTERVALS).forEach(k =>
+			o.value(k, lscommon.INTERVALS[k]));
 		o.default = '1d';
 		o.depends('enabled', '1');
 
@@ -163,8 +162,11 @@ return view.extend({
 				]));
 			}
 
-			node.appendChild(box);
-			return node;
+			/* A sibling of the form, not a child: Map.render() replaces its
+			 * own root on every Save and Reset, and would take the schedule
+			 * preview with it. The preview reads the applied crontab, so it
+			 * is correct to keep it as it is until Apply. */
+			return E([], [ node, box ]);
 		});
 	}
 });
