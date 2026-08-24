@@ -9,7 +9,7 @@ EEOF
 }
 
 if [ -e "/etc/config/ucitrack" ]; then
-    uci -q batch <<-EOF
+	uci -q batch <<-EOF
  		delete ucitrack.@passwall2[-1]
 		add ucitrack passwall2
 		set ucitrack.@passwall2[-1].init=passwall2

@@ -1280,13 +1280,14 @@ const ansiToHtml = function(text) {
 	// Escape HTML special characters
 	const escapeHtml = (str) => {
 		const map = {
+			' ': '&nbsp;',
 			'&': '&amp;',
 			'<': '&lt;',
 			'>': '&gt;',
 			'"': '&quot;',
 			"'": '&#039;'
 		};
-		return str.replace(/[&<>"']/g, m => map[m]);
+		return str.replace(/[&<>"' ]/g, m => map[m]);
 	};
 
 	// Split by ANSI escape sequences and process
