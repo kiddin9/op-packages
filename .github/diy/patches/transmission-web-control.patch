@@ -1,0 +1,17 @@
+--- a/transmission-web-control/Makefile
++++ b/transmission-web-control/Makefile
+@@ -4,10 +4,10 @@ PKG_NAME:=transmission-web-control
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE_PROTO:=git
+-PKG_SOURCE_URL:=https://github.com/ronggang/transmission-web-control
+-PKG_SOURCE_DATE:=2024-04-08
+-PKG_SOURCE_VERSION:=f02a47aff2680de10c2269e22a3d0b37a318dbcd
+-PKG_MIRROR_HASH:=05e7422744dd3a23af58a3be6774b06ce7f2539b090aa0bb0dd1732e72267721
++PKG_SOURCE_URL:=https://github.com/Youngv/transmission-web-control
++PKG_SOURCE_DATE:=2026-04-10
++PKG_SOURCE_VERSION:=ea23f2fdbb554bd65f25921b15b250f42d7e72ee
++PKG_MIRROR_HASH:=skip
+ 
+ PKG_LICENSE:=MIT
+ PKG_LICENSE_FILES:=LICENSE
