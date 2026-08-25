@@ -236,7 +236,7 @@ jobs:
         (
         git_clone https://github.com/kenzok8/openwrt-daede && mv -f openwrt-daede/*dae* ./;rm -rf openwrt-daede
         git_clone https://github.com/kenzok8/vmlinux-btf vmlinuxb && mvdir vmlinuxb
-        # git_clone https://github.com/QiuSimons/luci-app-daed-next daed1 && mvdir daed1
+        git_clone https://github.com/QiuSimons/luci-app-daed daed1 && mv -f daed1/luci-app* ./;rm -rf daed1
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/qca/shortcut-fe
         git_clone https://github.com/linkease/istore-packages
