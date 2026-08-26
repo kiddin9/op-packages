@@ -10,18 +10,18 @@
 
 --- a/luci-theme-footstrap/styles/02-tokens.css
 +++ b/luci-theme-footstrap/styles/02-tokens.css
-@@ -17,6 +17,11 @@
- 	 * docs/design-system.md. Light = :root; dark = :root[data-darkmode="true"].
- 	 * ============================================================ */
- 	:root {
+@@ -19,6 +19,11 @@
+ 		 * friends) live in those blocks too, beside the fills they must be legible against: a
+ 		 * dark palette has light fills and needs a dark ink, and one global `#fff` failed WCAG AA
+ 		 * on seven of the eight dark-palette fills (down to 1.69:1). */
 +		--card-bg-color: var(--fs-panel) !important;
 +		--border-color: var(--fs-border) !important;
 +		--app-container_title-color: var(--fs-text) !important;
 +		--item-label_key-span-color: var(--app-container_title-color) !important;
 +		--app-container_status-label_block: var(--app-container_title-color) !important;
- 		/* Palette COLOURS are in 03-palettes.css (one swappable block per colourway × mode);
- 		 * everything here is palette-INDEPENDENT or var()-derived, so it follows the active
- 		 * palette. The INKS (--fs-on-accent &c.) are in the palette blocks too, beside the
+ 		--fs-shadow: 0 1px 3px rgba(15,23,37,.08);
+ 		/* pop surfaces (menus, dropdown lists, the select picker): one value rather than a
+ 		 * literal per site */
 diff --git a/luci-theme-footstrap/root/etc/footstrap/pattern.svg b/luci-theme-footstrap/root/etc/footstrap/pattern.svg
 new file mode 100644
 index 000000000..72eb03cdc
