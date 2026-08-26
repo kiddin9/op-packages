@@ -7,11 +7,11 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for linkeasefull
-LUCI_DEPENDS:=+linkeasefull +luci-lib-linkeasefile
+LUCI_DEPENDS:=+linkeasefull +luci-lib-linkeaseauth +luci-lib-linkeasefile
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

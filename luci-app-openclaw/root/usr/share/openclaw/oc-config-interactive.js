@@ -33,6 +33,18 @@ const CONFIG_FILE = process.env.OPENCLAW_CONFIG_PATH || `${OC_STATE_DIR}/opencla
 const NODE_BIN = `${NODE_BASE}/bin/node`;
 const PERMISSIONS_HELPER = '/usr/libexec/openclaw-permissions.sh';
 
+// 写前备份的后缀。特意不用 .bak: OpenClaw 自身维护 openclaw.json.bak
+// 及 .bak.1~.bak.4 轮转，占用同名文件会破坏上游备份链。
+const CONFIG_BACKUP_SUFFIX = '.luci-pre-write';
+
+// 精选模型预设 (shell 与 JS 共读的唯一数据源)
+const MODEL_PRESETS_FILE = process.env.OC_MODEL_PRESETS
+  || '/usr/share/openclaw/model-presets.json';
+
+// 动态发现模型列表的超时。OpenWrt 上要避免菜单长时间卡住，
+// 超时或失败时回落到本地精选预设。
+const MODEL_DISCOVERY_TIMEOUT_MS = 6000;
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 辅助函数 (与 oc-config.sh 逻辑对应)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,26 +96,135 @@ function fixStatePermissions() {
   }
 }
 
-function readConfig() {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-    }
-  } catch (e) {
-    console.error(`${C.red}读取配置失败:${C.reset} ${e.message}`);
+/**
+ * 配置文件损坏时抛出的专用错误。
+ * 用于把“文件存在但内容不是合法 JSON 对象”与“文件不存在”区分开。
+ */
+class ConfigParseError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ConfigParseError';
   }
-  return {};
 }
 
 /**
- * 写入 JSON 配置文件
+ * 配置损坏时给用户的恢复指引。
+ * 不直接自动改文件，避免在用户不知情的情况下丢配置。
+ */
+function configRecoveryHint() {
+  const lines = [
+    `${C.yellow}配置文件可能已损坏，为避免覆盖后丢失全部配置，本次操作已中止。${C.reset}`,
+    `${C.yellow}文件:${C.reset} ${CONFIG_FILE}`,
+    '',
+    `${C.cyan}可尝试的恢复方式:${C.reset}`,
+    `  1. 让 OpenClaw 自行修复:  openclaw doctor --fix`,
+    `  2. 查看具体语法错误:      openclaw config validate`,
+  ];
+  const lastGood = `${CONFIG_FILE}.last-good`;
+  if (fs.existsSync(lastGood)) {
+    lines.push(`  3. 从上次正常配置恢复:    cp ${lastGood} ${CONFIG_FILE}`);
+  }
+  const preWrite = `${CONFIG_FILE}${CONFIG_BACKUP_SUFFIX}`;
+  if (fs.existsSync(preWrite)) {
+    lines.push(`  4. 从上次修改前的副本恢复: cp ${preWrite} ${CONFIG_FILE}`);
+  }
+  return lines.join('\n');
+}
+
+/**
+ * 读取 JSON 配置文件。
+ *
+ * 语义 (与旧实现的关键差异):
+ * - 文件不存在 / 内容为空  → 返回 {} (首次安装属正常情况)
+ * - 文件存在但解析失败     → 抛出 ConfigParseError，绝不返回 {}
+ *
+ * 旧实现在解析失败时返回 {}，调用方随后 writeConfig() 会把这个空对象
+ * 写回磁盘，导致 models.providers / apiKey / channels 等全部配置被静默清空。
+ * 因此这里必须 fail closed，让写入路径中止。
+ */
+function readConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) return {};
+
+  let raw;
+  try {
+    raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+  } catch (e) {
+    throw new ConfigParseError(`无法读取配置文件: ${e.message}`);
+  }
+
+  if (raw.trim() === '') return {};
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    throw new ConfigParseError(`配置文件不是合法 JSON: ${e.message}`);
+  }
+
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new ConfigParseError('配置根节点必须是 JSON 对象');
+  }
+  return parsed;
+}
+
+/**
+ * 只读场景下的安全读取: 配置损坏时返回 {} 而不抛错。
+ * 仅供“显示当前值”这类不会回写磁盘的路径使用 (如菜单标题里的当前配置)。
+ * 任何会写回磁盘的逻辑都必须用 readConfig()。
+ */
+function readConfigForDisplay() {
+  try {
+    return readConfig();
+  } catch (e) {
+    if (e instanceof ConfigParseError) return {};
+    throw e;
+  }
+}
+
+/**
+ * 写入 JSON 配置文件 (原子写 + 写前备份 + 写后校验)。
+ *
+ * 旧实现直接 fs.writeFileSync 覆盖目标文件，写入中断会留下截断的 JSON，
+ * 且没有任何备份可回退。这里改为:
+ *   1. 先把现有配置复制为 .luci-pre-write 备份
+ *   2. 写入同目录临时文件
+ *   3. 回读校验临时文件可被 JSON.parse
+ *   4. rename 原子替换目标文件
+ *
+ * 备份后缀特意不用 .bak: OpenClaw 自身维护 openclaw.json.bak 及 .bak.1~.bak.4
+ * 轮转，占用同名文件会破坏上游的备份链。
  */
 function writeConfig(config) {
+  if (config === null || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error('拒绝写入非对象配置');
+  }
+
   const dir = path.dirname(CONFIG_FILE);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true }); try { execSync(`chown openclaw:openclaw "${dir}"`, { stdio: "ignore" }); } catch {}
   }
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+
+  // 保留原文件权限位，避免 rename 后权限被临时文件的 0600 覆盖
+  let mode = 0o644;
+  if (fs.existsSync(CONFIG_FILE)) {
+    try { mode = fs.statSync(CONFIG_FILE).mode & 0o777; } catch {}
+    // 写前备份 (best effort: 备份失败不应阻止用户修改配置)
+    try { fs.copyFileSync(CONFIG_FILE, `${CONFIG_FILE}${CONFIG_BACKUP_SUFFIX}`); } catch {}
+  }
+
+  const payload = `${JSON.stringify(config, null, 2)}\n`;
+  const tmpFile = `${CONFIG_FILE}.tmp-${process.pid}`;
+  try {
+    fs.writeFileSync(tmpFile, payload, { mode: 0o600 });
+    // 回读校验: 确认落盘内容可解析，避免把坏内容 rename 成正式配置
+    JSON.parse(fs.readFileSync(tmpFile, 'utf8'));
+    try { fs.chmodSync(tmpFile, mode); } catch {}
+    fs.renameSync(tmpFile, CONFIG_FILE);
+  } catch (e) {
+    try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile); } catch {}
+    throw new Error(`写入配置失败，原配置未被修改: ${e.message}`);
+  }
+
   try {
     execSync(`chown openclaw:openclaw "${CONFIG_FILE}"`, { stdio: 'ignore' });
     fixStatePermissions();
@@ -112,9 +233,12 @@ function writeConfig(config) {
 
 /**
  * 获取 JSON 配置值 (对应 json_get)
+ *
+ * 只读路径: 配置损坏时返回 null 而不抛错，保证菜单仍能打开并显示恢复提示。
+ * 需要回写磁盘的逻辑必须直接用 readConfig()，以便在损坏时中止写入。
  */
 function jsonGet(keyPath) {
-  const config = readConfig();
+  const config = readConfigForDisplay();
   const keys = keyPath.split('.');
   let value = config;
   for (const key of keys) {
@@ -148,7 +272,8 @@ function jsonSet(keyPath, value) {
 function getCurrentModel() {
   const primary = jsonGet('agents.defaults.model.primary');
   if (primary) return primary;
-  const config = readConfig();
+  // 只读路径: 与 jsonGet 保持一致，配置损坏时不抛错
+  const config = readConfigForDisplay();
   if (config.models?.defaultModel) return config.models.defaultModel;
   return null;
 }
@@ -190,6 +315,207 @@ async function ocCmd(...args) {
       HOME: OC_DATA,
     }
   });
+}
+
+/**
+ * 静默执行 OpenClaw CLI 并返回输出。
+ *
+ * ocCmd() 会把子进程输出直接透传到终端，适合交互式命令；
+ * 但解析 `pairing list --json` 这类结果时需要拿到纯输出且不污染界面，
+ * 因此单独提供同步捕获版本。
+ *
+ * 返回 { ok, stdout }: 命令不存在或非零退出时 ok=false，不抛异常。
+ */
+function ocCmdCapture(...args) {
+  const ocEntry = findOpenClawEntry();
+  if (!ocEntry) return { ok: false, stdout: '' };
+  try {
+    const stdout = execFileSync(NODE_BIN, [ocEntry, ...args], {
+      encoding: 'utf8',
+      timeout: 20000,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        OPENCLAW_HOME: OC_DATA,
+        OPENCLAW_CONFIG_PATH: CONFIG_FILE,
+        OPENCLAW_STATE_DIR: OC_STATE_DIR,
+        HOME: OC_DATA,
+      },
+    });
+    return { ok: true, stdout: stdout || '' };
+  } catch (e) {
+    // 保留 stdout: 部分命令失败时仍会输出有用信息
+    return { ok: false, stdout: (e && (e.stdout || '')) ? String(e.stdout) : '' };
+  }
+}
+
+/**
+ * 从 `openclaw pairing list <channel> --json` 的输出中提取配对码。
+ * 优先按 JSON 解析；输出夹带非 JSON 前后缀时回退到正则扫描。
+ */
+function parsePairingCodes(raw) {
+  if (!raw || !raw.trim()) return [];
+  const codes = [];
+  const pushFrom = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) { node.forEach(pushFrom); return; }
+    if (typeof node.code === 'string' && node.code.trim()) codes.push(node.code.trim());
+    Object.keys(node).forEach((k) => pushFrom(node[k]));
+  };
+  try {
+    pushFrom(JSON.parse(raw));
+  } catch {
+    const re = /"code"\s*:\s*"([^"]+)"/g;
+    let m;
+    while ((m = re.exec(raw)) !== null) codes.push(m[1]);
+  }
+  return [...new Set(codes)];
+}
+
+/**
+ * 读取精选模型预设 (shell 与 JS 共读的唯一数据源)。
+ * 文件缺失或损坏时返回空结构，调用方回落到"手动输入"。
+ */
+function loadModelPresets() {
+  try {
+    const raw = fs.readFileSync(MODEL_PRESETS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && parsed.providers) return parsed;
+  } catch {}
+  return { providers: {} };
+}
+
+/**
+ * 动态发现某个 provider 当前实际可用的模型。
+ *
+ * 调 `openclaw models list --provider <id> --plain`，输出形如
+ * "openai/gpt-5.5" 每行一个，这里剥掉 provider 前缀只留裸模型 ID。
+ *
+ * 注意上游行为 (已实测): `models list --all` 不是各 provider 的超集，
+ * 必须按 provider 查询才能拿到完整列表；未安装对应插件的 provider
+ * 会返回 "No models found."。因此失败/空结果都属正常，调用方回落预设。
+ */
+function discoverProviderModels(providerId) {
+  const ocEntry = findOpenClawEntry();
+  if (!ocEntry) return [];
+  try {
+    const stdout = execFileSync(
+      NODE_BIN,
+      [ocEntry, 'models', 'list', '--provider', providerId, '--plain'],
+      {
+        encoding: 'utf8',
+        timeout: MODEL_DISCOVERY_TIMEOUT_MS,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        env: {
+          ...process.env,
+          OPENCLAW_HOME: OC_DATA,
+          OPENCLAW_CONFIG_PATH: CONFIG_FILE,
+          OPENCLAW_STATE_DIR: OC_STATE_DIR,
+          HOME: OC_DATA,
+        },
+      }
+    );
+    const prefix = `${providerId}/`;
+    return [...new Set(
+      String(stdout || '')
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.startsWith(prefix))
+        .map((l) => l.slice(prefix.length))
+        .filter(Boolean)
+    )];
+  } catch {
+    // 超时 / 命令不可用 / provider 无模型: 均回落到精选预设
+    return [];
+  }
+}
+
+/**
+ * 构建模型选择菜单项: 精选预设 + 动态发现 + 手动输入。
+ *
+ * 三层设计的取舍 (架构决定):
+ *   - 完全硬编码: 上游更新后必然过期。本项目此前正因如此积累了
+ *     openai/gpt-5.2、claude-sonnet-4、grok-4 等一批上游已不存在的 ID。
+ *   - 完全动态: 依赖 CLI 可用且已配置 Key，未装插件时返回 0 条，
+ *     且逐 provider 调用在路由器上较慢，不能作为唯一来源。
+ *   - 精选 + 动态 + 手动: 首屏快、能自动跟进、离线仍可用。
+ */
+function buildModelMenuItems(providerId, opts = {}) {
+  const presets = loadModelPresets();
+  const entry = presets.providers[providerId] || {};
+  const presetModels = Array.isArray(entry.models) ? entry.models : [];
+  const keys = 'abcdefghijkmnpqrstuvwxyz'.split('');
+  const items = [];
+  let ki = 0;
+
+  if (presetModels.length) {
+    items.push({ label: `${C.bold}── 精选模型 ──${C.reset}`, disabled: true });
+    for (const m of presetModels) {
+      items.push({
+        key: keys[ki++] || undefined,
+        label: m.model,
+        desc: m.desc || '',
+        value: m.model,
+      });
+    }
+  }
+
+  // 动态发现: 只展示不在精选列表里的，避免重复
+  if (opts.discovered && opts.discovered.length) {
+    const known = new Set(presetModels.map((m) => m.model));
+    const extra = opts.discovered.filter((m) => !known.has(m));
+    if (extra.length) {
+      items.push({ label: `${C.bold}── OpenClaw 当前可用 ──${C.reset}`, disabled: true });
+      for (const m of extra) {
+        items.push({ key: keys[ki++] || undefined, label: m, desc: '', value: m });
+      }
+    }
+  }
+
+  items.push({ label: '', disabled: true });
+  if (!opts.discovered) {
+    items.push({ key: 'r', label: '从 OpenClaw 获取完整模型列表', desc: '动态发现当前可用模型', value: '__discover__' });
+  }
+  // 手动输入是永久保留的兼容出口: 上游新增模型时无需等插件更新
+  items.push({ key: 'z', label: '手动输入模型 ID', desc: '', value: '__custom__' });
+  return items;
+}
+
+/**
+ * 统一的模型选择流程: 处理动态发现与手动输入两个特殊分支。
+ * 返回裸模型 ID (不含 provider 前缀)，取消时返回 null。
+ */
+async function selectProviderModel(providerId, title, fallbackDefault) {
+  let discovered = null;
+  for (let round = 0; round < 2; round++) {
+    const choice = await select({
+      title,
+      showSearch: true,
+      items: buildModelMenuItems(providerId, discovered ? { discovered } : {}),
+    });
+    if (!choice) return null;
+
+    if (choice.value === '__discover__') {
+      console.log(`\n${C.cyan}正在从 OpenClaw 获取模型列表...${C.reset}`);
+      discovered = discoverProviderModels(providerId);
+      if (!discovered.length) {
+        console.log(`${C.yellow}未获取到模型列表 (该 Provider 可能需要先安装插件或配置 API Key)，`
+          + `已显示内置精选列表。${C.reset}\n`);
+        discovered = [];
+      } else {
+        console.log(`${C.green}获取到 ${discovered.length} 个模型${C.reset}\n`);
+      }
+      continue;
+    }
+
+    if (choice.value === '__custom__') {
+      const manual = await input({ prompt: '请输入模型 ID', defaultValue: fallbackDefault || '' });
+      const trimmed = manual ? String(manual).trim() : '';
+      return trimmed || null;
+    }
+    return choice.value;
+  }
+  return null;
 }
 
 /**
@@ -485,12 +811,12 @@ async function showChannelsMenu() {
       { label: `${C.dim}提示: 微信配置请使用 LuCI 界面「微信配置」菜单${C.reset}`, disabled: true },
       { label: '', disabled: true },
       { key: '1', label: 'QQ 机器人', desc: '腾讯QQ', value: 'qq' },
-      { key: '2', label: 'Telegram', desc: `${C.green}最常用${C.reset}`, value: 'telegram' },
+      { key: '2', label: 'Telegram', desc: `${C.green}最常用${C.reset} — 配置 Bot Token`, value: 'telegram' },
       { key: '3', label: 'Discord', desc: '', value: 'discord' },
       { key: '4', label: '飞书 (Feishu)', desc: '', value: 'feishu' },
       { key: '5', label: 'Slack', desc: '', value: 'slack' },
       { key: '6', label: 'WhatsApp', desc: '需通过 Web 控制台扫码', value: 'whatsapp' },
-      { key: '7', label: 'Telegram 配对助手', desc: '', value: 'telegram-pairing' },
+      { key: '7', label: 'Telegram 配对助手', desc: '审批用户配对请求 (需先配置 Token)', value: 'telegram-pairing' },
       { key: '8', label: '官方完整渠道配置向导', desc: '', value: 'wizard' },
       { label: '', disabled: true },
       { key: '0', label: '返回', desc: '', value: 'back' },
@@ -508,7 +834,9 @@ async function showAdvancedMenu() {
   const gwPort = jsonGet('gateway.port') || '18789';
   const gwBind = jsonGet('gateway.bind') || 'lan';
   const gwMode = jsonGet('gateway.mode') || 'local';
-  const logLevel = jsonGet('gateway.logLevel') || '未设置';
+  // 正确键是顶层 logging.level；gateway.logLevel 不在 OpenClaw schema 中
+  // (gateway.additionalProperties=false)，仅为显示旧配置残留值做兼容读取。
+  const logLevel = jsonGet('logging.level') || jsonGet('gateway.logLevel') || '未设置';
   const acpDispatch = jsonGet('acp.dispatch.enabled') || 'false';
 
   const result = await select({
@@ -590,26 +918,8 @@ async function configureOpenAI() {
   const apiKey = await input({ prompt: '请输入 OpenAI API Key (sk-...)', placeholder: 'sk-...' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: 'OpenAI 模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'gpt-5.2', desc: '最强编程与代理旗舰 (推荐)', value: 'gpt-5.2' },
-      { key: 'b', label: 'gpt-5-mini', desc: '高性价比推理', value: 'gpt-5-mini' },
-      { key: 'c', label: 'gpt-5-nano', desc: '极速低成本', value: 'gpt-5-nano' },
-      { key: 'd', label: 'gpt-4.1', desc: '最强非推理模型', value: 'gpt-4.1' },
-      { key: 'e', label: 'o3', desc: '推理模型', value: 'o3' },
-      { key: 'f', label: 'o4-mini', desc: '推理轻量', value: 'o4-mini' },
-      { key: 'g', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'gpt-5.2' });
-    if (!modelName) return false;
-  }
+  const modelName = await selectProviderModel('openai', 'OpenAI 模型选择', 'gpt-5.6-sol');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('openai', apiKey);
   registerAndSetModel(`openai/${modelName}`);
@@ -625,25 +935,8 @@ async function configureAnthropic() {
   const apiKey = await input({ prompt: '请输入 Anthropic API Key (sk-ant-...)', placeholder: 'sk-ant-...' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: 'Anthropic 模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'claude-sonnet-4-20250514', desc: 'Claude Sonnet 4 (推荐)', value: 'claude-sonnet-4-20250514' },
-      { key: 'b', label: 'claude-opus-4-20250514', desc: 'Claude Opus 4 顶级推理', value: 'claude-opus-4-20250514' },
-      { key: 'c', label: 'claude-haiku-4-5', desc: 'Claude Haiku 4.5 轻量快速', value: 'claude-haiku-4-5' },
-      { key: 'd', label: 'claude-sonnet-4.5', desc: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5' },
-      { key: 'e', label: 'claude-sonnet-4.6', desc: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6' },
-      { key: 'f', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'claude-sonnet-4-20250514' });
-    if (!modelName) return false;
-  }
+  const modelName = await selectProviderModel('anthropic', 'Anthropic 模型选择', 'claude-sonnet-5');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('anthropic', apiKey);
   registerAndSetModel(`anthropic/${modelName}`);
@@ -659,25 +952,8 @@ async function configureGoogle() {
   const apiKey = await input({ prompt: '请输入 Google AI API Key', placeholder: 'AIza...' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: 'Google Gemini 模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'gemini-2.5-pro', desc: '旗舰推理 (推荐)', value: 'gemini-2.5-pro' },
-      { key: 'b', label: 'gemini-2.5-flash', desc: '快速均衡', value: 'gemini-2.5-flash' },
-      { key: 'c', label: 'gemini-2.5-flash-lite', desc: '极速低成本', value: 'gemini-2.5-flash-lite' },
-      { key: 'd', label: 'gemini-3-flash-preview', desc: 'Gemini 3 Flash 预览', value: 'gemini-3-flash-preview' },
-      { key: 'e', label: 'gemini-3-pro-preview', desc: 'Gemini 3 Pro 预览', value: 'gemini-3-pro-preview' },
-      { key: 'f', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'gemini-2.5-pro' });
-    if (!modelName) return false;
-  }
+  const modelName = await selectProviderModel('google', 'Google Gemini 模型选择', 'gemini-2.5-pro');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('google', apiKey);
   registerAndSetModel(`google/${modelName}`);
@@ -694,26 +970,9 @@ async function configureOpenRouter() {
   const apiKey = await input({ prompt: '请输入 OpenRouter API Key', placeholder: 'sk-or-...' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: 'OpenRouter 常用模型',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'anthropic/claude-sonnet-4', desc: 'Claude Sonnet 4 (推荐)', value: 'anthropic/claude-sonnet-4' },
-      { key: 'b', label: 'anthropic/claude-opus-4', desc: 'Claude Opus 4', value: 'anthropic/claude-opus-4' },
-      { key: 'c', label: 'openai/gpt-5.2', desc: 'GPT-5.2', value: 'openai/gpt-5.2' },
-      { key: 'd', label: 'google/gemini-2.5-pro', desc: 'Gemini 2.5 Pro', value: 'google/gemini-2.5-pro' },
-      { key: 'e', label: 'deepseek/deepseek-r1', desc: 'DeepSeek R1', value: 'deepseek/deepseek-r1' },
-      { key: 'f', label: 'meta-llama/llama-4-maverick', desc: 'Meta Llama 4', value: 'meta-llama/llama-4-maverick' },
-      { key: 'g', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称 (格式: provider/model)', defaultValue: 'anthropic/claude-sonnet-4' });
-    if (!modelName) return false;
-  }
+  // OpenRouter 的模型 ID 本身带上游 provider 前缀 (如 moonshotai/kimi-k2.6)
+  const modelName = await selectProviderModel('openrouter', 'OpenRouter 模型选择', 'auto');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('openrouter', apiKey);
   registerCustomProvider('openrouter', 'https://openrouter.ai/api/v1', apiKey, modelName, modelName);
@@ -734,31 +993,9 @@ async function configureCopilot() {
     await ocCmd('models', 'auth', 'login-github-copilot', '--yes');
     console.log(`\n${C.green}✅ GitHub Copilot OAuth 认证成功${C.reset}\n`);
 
-    const modelChoice = await select({
-      title: 'GitHub Copilot 模型选择',
-      showSearch: false,
-      items: [
-        { key: 'a', label: 'gpt-4.1', desc: 'GPT-4.1 (推荐)', value: 'gpt-4.1' },
-        { key: 'b', label: 'gpt-4o', desc: 'GPT-4o', value: 'gpt-4o' },
-        { key: 'c', label: 'gpt-5', desc: 'GPT-5', value: 'gpt-5' },
-        { key: 'd', label: 'gpt-5-mini', desc: 'GPT-5 mini', value: 'gpt-5-mini' },
-        { key: 'e', label: 'gpt-5.1', desc: 'GPT-5.1', value: 'gpt-5.1' },
-        { key: 'f', label: 'gpt-5.2', desc: 'GPT-5.2', value: 'gpt-5.2' },
-        { key: 'g', label: 'gpt-5.2-codex', desc: 'GPT-5.2 Codex', value: 'gpt-5.2-codex' },
-        { key: 'h', label: 'claude-sonnet-4', desc: 'Claude Sonnet 4', value: 'claude-sonnet-4' },
-        { key: 'i', label: 'claude-sonnet-4.5', desc: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5' },
-        { key: 'j', label: 'claude-sonnet-4.6', desc: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6' },
-        { key: 'k', label: 'gemini-2.5-pro', desc: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-        { key: 'm', label: '手动输入模型名', desc: '', value: 'custom' },
-      ],
-    });
-
-    if (modelChoice) {
-      let modelName = modelChoice.value;
-      if (modelChoice.value === 'custom') {
-        modelName = await input({ prompt: '请输入模型名称', defaultValue: 'gpt-4.1' });
-        if (!modelName) return false;
-      }
+    // 登录成功后动态发现通常可用，因此这里默认就尝试拉取一次
+    const modelName = await selectProviderModel('github-copilot', 'GitHub Copilot 模型选择', 'gpt-5.5');
+    if (modelName) {
       registerAndSetModel(`github-copilot/${modelName}`);
       console.log(`\n${C.green}✅ 活跃模型已设置: github-copilot/${modelName}${C.reset}\n`);
     }
@@ -777,26 +1014,8 @@ async function configureXAI() {
   const apiKey = await input({ prompt: '请输入 xAI API Key', placeholder: '' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: 'xAI Grok 模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'grok-4', desc: 'Grok 4 旗舰 (推荐)', value: 'grok-4' },
-      { key: 'b', label: 'grok-4-fast', desc: 'Grok 4 Fast', value: 'grok-4-fast' },
-      { key: 'c', label: 'grok-3', desc: 'Grok 3', value: 'grok-3' },
-      { key: 'd', label: 'grok-3-fast', desc: 'Grok 3 Fast', value: 'grok-3-fast' },
-      { key: 'e', label: 'grok-3-mini', desc: 'Grok 3 Mini', value: 'grok-3-mini' },
-      { key: 'f', label: 'grok-3-mini-fast', desc: 'Grok 3 Mini Fast', value: 'grok-3-mini-fast' },
-      { key: 'g', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'grok-4' });
-    if (!modelName) return false;
-  }
+  const modelName = await selectProviderModel('xai', 'xAI Grok 模型选择', 'grok-4.3');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('xai', apiKey);
   registerAndSetModel(`xai/${modelName}`);
@@ -916,34 +1135,19 @@ async function configureSiliconFlow() {
   const apiKey = await input({ prompt: '请输入 SiliconFlow API Key', placeholder: '' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  console.log(`\n${C.cyan}可用模型分类说明:${C.reset}`);
-  console.log(`${C.yellow}* Pro模型: 仅支持充值余额支付${C.reset}`);
-  console.log(`${C.yellow}* 非Pro模型: 支持代金券/免费额度${C.reset}\n`);
+  // SiliconFlow 不是 OpenClaw 内置/官方插件 provider，走 OpenAI 兼容接入，
+  // 因此 `openclaw models list --provider siliconflow` 拿不到列表，
+  // 也无法用上游 catalog 核实模型 ID。
+  //
+  // 此处不再维护硬编码清单: 原列表里的 Qwen2.5-7B/72B、Yi-1.5-34B-Chat-16K、
+  // glm-4-9b-chat 均已明显过期，而我们无法自动判断哪些仍然有效。
+  // 让用户从官方模型广场复制当前 ID 更可靠，也不会随时间腐坏。
+  console.log(`\n${C.cyan}请从官方模型广场复制模型 ID:${C.reset}`);
+  console.log(`  ${C.cyan}https://cloud.siliconflow.cn/models${C.reset}`);
+  console.log(`${C.dim}格式形如 deepseek-ai/DeepSeek-V3.2；Pro/ 前缀的模型仅支持充值余额支付${C.reset}\n`);
 
-  const modelChoice = await select({
-    title: 'SiliconFlow 模型选择',
-    showSearch: false,
-    items: [
-      { label: `${C.cyan}── 非Pro模型 (支持代金券) ──${C.reset}`, disabled: true },
-      { key: '1', label: 'deepseek-ai/DeepSeek-V3', desc: 'DeepSeek-V3 (推荐)', value: 'deepseek-ai/DeepSeek-V3' },
-      { key: '2', label: 'deepseek-ai/DeepSeek-R1', desc: 'DeepSeek-R1 推理模型', value: 'deepseek-ai/DeepSeek-R1' },
-      { key: '3', label: 'Qwen/Qwen2.5-72B-Instruct', desc: '通义千问 2.5 72B', value: 'Qwen/Qwen2.5-72B-Instruct' },
-      { key: '4', label: 'Qwen/Qwen2.5-7B-Instruct', desc: '通义千问 2.5 7B', value: 'Qwen/Qwen2.5-7B-Instruct' },
-      { key: '5', label: 'THUDM/glm-4-9b-chat', desc: '智谱 GLM-4 9B', value: 'THUDM/glm-4-9b-chat' },
-      { key: '6', label: '01-ai/Yi-1.5-34B-Chat-16K', desc: '零一万物 Yi-1.5', value: '01-ai/Yi-1.5-34B-Chat-16K' },
-      { label: `${C.cyan}── Pro模型 (仅支持充值余额) ──${C.reset}`, disabled: true },
-      { key: '7', label: 'Pro/deepseek-ai/DeepSeek-V3', desc: 'DeepSeek-V3 (Pro)', value: 'Pro/deepseek-ai/DeepSeek-V3' },
-      { key: '8', label: 'Pro/zai-org/GLM-5', desc: '智谱 GLM-5', value: 'Pro/zai-org/GLM-5' },
-      { key: '0', label: '手动输入其他模型名称', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型详细名称', defaultValue: 'deepseek-ai/DeepSeek-V3' });
-    if (!modelName) return false;
-  }
+  const modelName = await input({ prompt: '请输入模型 ID', placeholder: 'deepseek-ai/DeepSeek-V3.2' });
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('siliconflow', apiKey);
   registerCustomProvider('siliconflow', 'https://api.siliconflow.cn/v1', apiKey, modelName, modelName);
@@ -1001,24 +1205,8 @@ async function configureBaidu() {
   const apiKey = await input({ prompt: '请输入百度千帆 API Key (Access Token)', placeholder: '' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: '百度千帆模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'ernie-4.0-8k', desc: '文心一言 4.0 (推荐)', value: 'ernie-4.0-8k' },
-      { key: 'b', label: 'ernie-3.5-8k', desc: '文心一言 3.5', value: 'ernie-3.5-8k' },
-      { key: 'c', label: 'ernie-4.0-turbo-8k', desc: '文心一言 4.0 Turbo', value: 'ernie-4.0-turbo-8k' },
-      { key: 'd', label: 'ernie-speed-8k', desc: '文心一言 Speed 极速', value: 'ernie-speed-8k' },
-      { key: 'e', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'ernie-4.0-8k' });
-    if (!modelName) return false;
-  }
+  const modelName = await selectProviderModel('qianfan', '百度千帆模型选择', 'ernie-5.0-thinking-preview');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   authSetApikey('qianfan', apiKey);
   registerCustomProvider('qianfan', 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop', apiKey, modelName, modelName);
@@ -1065,26 +1253,8 @@ async function configureZhipu() {
   const apiKey = await input({ prompt: '请输入智谱 API Key', placeholder: '' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: '智谱 GLM 模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'glm-5.1', desc: 'GLM-5.1 (推荐)', value: 'glm-5.1' },
-      { key: 'b', label: 'glm-5', desc: 'GLM-5', value: 'glm-5' },
-      { key: 'c', label: 'glm-4.7', desc: 'GLM-4.7', value: 'glm-4.7' },
-      { key: 'd', label: 'glm-4.7-flash', desc: 'GLM-4.7 Flash', value: 'glm-4.7-flash' },
-      { key: 'e', label: 'glm-4.5', desc: 'GLM-4.5', value: 'glm-4.5' },
-      { key: 'f', label: 'glm-4.5-flash', desc: 'GLM-4.5 Flash (免费)', value: 'glm-4.5-flash' },
-      { key: 'g', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'glm-5.1' });
-    if (!modelName) return false;
-  }
+  const modelName = await selectProviderModel('zai', '智谱 GLM 模型选择', 'glm-5.2');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   // 智谱 GLM 使用原生 zai provider (OpenClaw 内置支持)
   registerCustomProvider('zai', baseUrl, apiKey, modelName, modelName, 128000, 4096);
@@ -1219,22 +1389,10 @@ async function configureCustomAnthropic() {
   const apiKey = await input({ prompt: 'API Key', placeholder: 'sk-ant-...' });
   if (!apiKey) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
-  const modelChoice = await select({
-    title: 'Anthropic 模型选择',
-    showSearch: false,
-    items: [
-      { key: 'a', label: 'claude-sonnet-4-20250514', desc: 'Claude Sonnet 4 (推荐)', value: 'claude-sonnet-4-20250514' },
-      { key: 'b', label: 'claude-opus-4-20250514', desc: 'Claude Opus 4', value: 'claude-opus-4-20250514' },
-      { key: 'c', label: '手动输入模型名', desc: '', value: 'custom' },
-    ],
-  });
-  if (!modelChoice) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
-
-  let modelName = modelChoice.value;
-  if (modelChoice.value === 'custom') {
-    modelName = await input({ prompt: '请输入模型名称', defaultValue: 'claude-sonnet-4-20250514' });
-    if (!modelName) return false;
-  }
+  // 复用 anthropic 的精选预设作为候选 (第三方兼容服务通常沿用同名模型 ID)，
+  // 但保留手动输入出口: 自建/代理服务的模型名可能完全不同。
+  const modelName = await selectProviderModel('anthropic', '模型选择 (可手动输入)', 'claude-sonnet-5');
+  if (!modelName) { console.log(`${C.yellow}已取消${C.reset}`); return false; }
 
   const config = readConfig();
   if (!config.models) config.models = {};
@@ -1375,7 +1533,7 @@ async function handleSetActiveModel() {
       if (choice.value === 'manual') {
         const manualModel = await input({
           prompt: '请输入模型 ID',
-          placeholder: 'openai/gpt-4o',
+          placeholder: 'openai/gpt-5.6-sol',
           defaultValue: currentModel || '',
         });
         if (manualModel) {
@@ -1531,10 +1689,100 @@ async function handleChannels() {
         break;
       }
       case 'telegram-pairing': {
-        console.log(`\n${C.cyan}启动 Telegram 配对助手...${C.reset}\n`);
+        // 配对 (pairing) 与 Bot Token 配置是两件不同的事:
+        //   - Token 配置 -> 上面的 'telegram' 分支 / channels add --bot-token
+        //   - 用户配对   -> openclaw pairing list / pairing approve
+        // 旧实现调用的 `models auth login-telegram-bot` 在 2026.6+ 已不存在
+        // (实测报 Too many arguments for this command)，这里改为对齐上游
+        // pairing 命令，与 oc-config.sh 的 telegram_pairing() 行为保持一致。
+        console.log(`\n${C.bold}🤝 Telegram 配对助手${C.reset}\n`);
+
+        const tgToken = jsonGet('channels.telegram.botToken');
+        if (!tgToken) {
+          console.log(`${C.yellow}未检测到 Telegram Bot Token，请先在「Telegram」中配置 Token。${C.reset}\n`);
+          await input({ prompt: '按回车返回', defaultValue: '' });
+          break;
+        }
+
+        // 先确认 Token 与网络可用，避免用户在配对环节盲等
+        console.log(`${C.cyan}诊断 Telegram API 连通性...${C.reset}`);
+        let botName = '';
         try {
-          await ocCmd('models', 'auth', 'login-telegram-bot');
-        } catch (e) {}
+          const probe = execSync(
+            `curl -s --connect-timeout 5 --max-time 10 "https://api.telegram.org/bot${tgToken}/getMe"`,
+            { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+          );
+          if (/"ok"\s*:\s*true/.test(probe)) {
+            const m = probe.match(/"username"\s*:\s*"([^"]+)"/);
+            botName = m ? m[1] : '';
+            console.log(`${C.green}✅ Telegram API 连通正常${botName ? ` — @${botName}` : ''}${C.reset}`);
+          } else {
+            console.log(`${C.red}❌ Telegram API 连通检测未通过${C.reset}`);
+            console.log(`${C.yellow}   可能原因: Token 不正确、网络不通 或 Telegram 被屏蔽${C.reset}`);
+            console.log(`${C.cyan}   建议: 重新配置 Token 或检查代理/网络设置${C.reset}\n`);
+            await input({ prompt: '按回车返回', defaultValue: '' });
+            break;
+          }
+        } catch {
+          console.log(`${C.yellow}⚠️  无法完成连通性检测，继续尝试配对${C.reset}`);
+        }
+
+        console.log('');
+        console.log(`${C.green}请在 Telegram 中向 Bot 发送 /start，然后回到这里继续${C.reset}`);
+        console.log('');
+        const go = await input({ prompt: '发送 /start 后按回车继续 (输入 q 退出)', defaultValue: '' });
+        if (String(go).toLowerCase() === 'q') break;
+
+        const approveCode = (code) => {
+          const res = ocCmdCapture('pairing', 'approve', 'telegram', code);
+          return res.ok || /approved|success|ok/i.test(res.stdout);
+        };
+
+        let paired = false;
+        for (let attempt = 1; attempt <= 3 && !paired; attempt++) {
+          console.log(`${C.cyan}检测配对请求... (第 ${attempt}/3 轮)${C.reset}`);
+          const listed = ocCmdCapture('pairing', 'list', 'telegram', '--json');
+          const codes = parsePairingCodes(listed.stdout);
+
+          for (const code of codes) {
+            console.log(`${C.cyan}发现配对请求: ${code}${C.reset}`);
+            if (approveCode(code)) {
+              console.log(`\n${C.green}${C.bold}🎉 Telegram 配对成功！${C.reset}`);
+              paired = true;
+            } else {
+              console.log(`${C.yellow}配对码 ${code} 处理失败${C.reset}`);
+            }
+          }
+
+          if (!paired && attempt < 3) {
+            console.log(`${C.yellow}未检测到，等待 8 秒后重试...${C.reset}`);
+            await new Promise((r) => setTimeout(r, 8000));
+          }
+        }
+
+        if (!paired) {
+          console.log('');
+          console.log(`${C.yellow}未自动检测到配对请求。${C.reset}`);
+          console.log(`${C.cyan}如果 Bot 已回复配对码，可手动输入 (回车跳过):${C.reset}`);
+          const manual = await input({ prompt: '配对码', defaultValue: '' });
+          if (manual) {
+            if (approveCode(String(manual).trim())) {
+              console.log(`${C.green}${C.bold}🎉 Telegram 配对成功！${C.reset}`);
+              paired = true;
+            } else {
+              console.log(`${C.yellow}配对失败，请确认配对码是否正确或重新发送 /start${C.reset}`);
+            }
+          }
+        }
+
+        if (paired) {
+          console.log(`\n${C.cyan}正在重启 Gateway 使配对生效...${C.reset}`);
+          await restartGateway();
+          console.log(`${C.green}✅ 现在可以在 Telegram 中与 Bot 对话了！${C.reset}\n`);
+        } else {
+          console.log('');
+          await input({ prompt: '按回车返回', defaultValue: '' });
+        }
         break;
       }
       case 'wizard': {
@@ -1673,12 +1921,21 @@ async function handleAdvancedConfig() {
           title: '绑定地址选项',
           showSearch: false,
           items: [
+            // 取值必须与 schema 的 gateway.bind 枚举一致:
+            // auto/lan/loopback/custom/tailnet。旧选项 all 不被上游接受
+            // (实测: gateway.bind: Invalid input)，监听所有接口用 custom。
             { key: '1', label: 'lan', desc: '仅 LAN 接口 (推荐)', value: 'lan' },
             { key: '2', label: 'loopback', desc: '仅本机访问', value: 'loopback' },
-            { key: '3', label: 'all', desc: '所有接口 (0.0.0.0)', value: 'all' },
+            { key: '3', label: 'auto', desc: '自动选择', value: 'auto' },
+            { key: '4', label: 'custom', desc: '自定义地址 (0.0.0.0 = 所有接口)', value: 'custom' },
+            { key: '5', label: 'tailnet', desc: 'Tailscale 网络', value: 'tailnet' },
           ],
         });
         if (bindChoice) {
+          if (bindChoice.value === 'custom') {
+            const host = await input({ prompt: '监听地址', defaultValue: jsonGet('gateway.customBindHost') || '0.0.0.0' });
+            if (host) jsonSet('gateway.customBindHost', host);
+          }
           jsonSet('gateway.bind', bindChoice.value);
           try { execSync(`uci set openclaw.main.bind="${bindChoice.value}" && uci commit openclaw`, { stdio: 'ignore' }); } catch {}
           console.log(`\n${C.green}✅ 绑定地址已设置为 ${bindChoice.value}${C.reset}\n`);
@@ -1707,14 +1964,28 @@ async function handleAdvancedConfig() {
           title: '日志级别选项',
           showSearch: false,
           items: [
-            { key: '1', label: 'debug', desc: '详细调试', value: 'debug' },
-            { key: '2', label: 'info', desc: '常规信息', value: 'info' },
-            { key: '3', label: 'warn', desc: '警告及以上', value: 'warn' },
-            { key: '4', label: 'error', desc: '仅错误', value: 'error' },
+            // 取值与 schema 的 logging.level 枚举一致 (7 档)
+            { key: '1', label: 'info', desc: '常规信息 (默认)', value: 'info' },
+            { key: '2', label: 'warn', desc: '警告及以上', value: 'warn' },
+            { key: '3', label: 'error', desc: '仅错误', value: 'error' },
+            { key: '4', label: 'debug', desc: '详细调试', value: 'debug' },
+            { key: '5', label: 'trace', desc: '最详细 (排障用)', value: 'trace' },
+            { key: '6', label: 'fatal', desc: '仅致命错误', value: 'fatal' },
+            { key: '7', label: 'silent', desc: '完全静默', value: 'silent' },
           ],
         });
         if (levelChoice) {
-          jsonSet('gateway.logLevel', levelChoice.value);
+          // 正确键是顶层 logging.level；gateway.logLevel 不在 schema 中，
+          // 写入会被上游忽略，表现为"显示已设置但从未生效"。
+          jsonSet('logging.level', levelChoice.value);
+          // 清理旧配置里可能残留的错误键，避免界面回显到失效值
+          try {
+            const cfg = readConfig();
+            if (cfg.gateway && Object.prototype.hasOwnProperty.call(cfg.gateway, 'logLevel')) {
+              delete cfg.gateway.logLevel;
+              writeConfig(cfg);
+            }
+          } catch {}
           console.log(`\n${C.green}✅ 日志级别已设置为 ${levelChoice.value}${C.reset}\n`);
           await askRestart();
         }
@@ -2076,6 +2347,13 @@ async function main() {
 }
 
 main().catch(e => {
+  if (e instanceof ConfigParseError) {
+    // 配置损坏: 给出可直接执行的恢复步骤，而不是丢一句解析错误了事
+    console.error(`\n${C.red}配置读取失败:${C.reset} ${e.message}\n`);
+    console.error(configRecoveryHint());
+    console.error('');
+    process.exit(2);
+  }
   console.error(`${C.red}错误:${C.reset}`, e.message);
   process.exit(1);
 });

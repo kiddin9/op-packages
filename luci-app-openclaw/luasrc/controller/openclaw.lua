@@ -325,7 +325,10 @@ function index()
 	entry({"admin", "services", "openclaw", "status_api"}, call("action_status"), nil).leaf = true
 
 	-- 服务控制 API
-	entry({"admin", "services", "openclaw", "service_ctl"}, call("action_service_ctl"), nil).leaf = true
+	-- 会改状态的端点必须用 post(): LuCI 的 test_post_security() 同时要求
+	-- POST 方法与匹配的 CSRF token，call() 允许 GET 触发，
+	-- 诱导已登录管理员访问一个链接即可启停服务。
+	entry({"admin", "services", "openclaw", "service_ctl"}, post("action_service_ctl"), nil).leaf = true
 
 	-- 安装/升级日志 API (轮询)
 	entry({"admin", "services", "openclaw", "setup_log"}, call("action_setup_log"), nil).leaf = true
@@ -333,20 +336,22 @@ function index()
 	-- 版本检查 API (仅检查插件版本)
 	entry({"admin", "services", "openclaw", "check_update"}, call("action_check_update"), nil).leaf = true
 
-	-- 卸载运行环境 API
-	entry({"admin", "services", "openclaw", "uninstall"}, call("action_uninstall"), nil).leaf = true
+	-- 卸载运行环境 API (破坏性操作，必须 POST + CSRF)
+	entry({"admin", "services", "openclaw", "uninstall"}, post("action_uninstall"), nil).leaf = true
 
-	-- 获取网关 Token API (仅认证用户可访问)
-	entry({"admin", "services", "openclaw", "get_token"}, call("action_get_token"), nil).leaf = true
+	-- 获取网关 Token API (返回凭据，必须 POST + CSRF 防止被第三方页面读取)
+	entry({"admin", "services", "openclaw", "get_token"}, post("action_get_token"), nil).leaf = true
 
-	-- 插件升级 API
-	entry({"admin", "services", "openclaw", "plugin_upgrade"}, call("action_plugin_upgrade"), nil).leaf = true
+	-- 插件升级 API (会下载并执行 .run，必须 POST + CSRF)
+	entry({"admin", "services", "openclaw", "plugin_upgrade"}, post("action_plugin_upgrade"), nil).leaf = true
 
 	-- 插件升级日志 API (轮询)
 	entry({"admin", "services", "openclaw", "plugin_upgrade_log"}, call("action_plugin_upgrade_log"), nil).leaf = true
 
 	-- 配置备份 API (v2026.3.8+: openclaw backup create/verify)
-	entry({"admin", "services", "openclaw", "backup"}, call("action_backup"), nil).leaf = true
+	-- 含 create/restore/delete 等破坏性动作，必须 POST + CSRF。
+	-- 只读的 list 也走同一入口，一并要求 POST 以保持调用方式统一。
+	entry({"admin", "services", "openclaw", "backup"}, post("action_backup"), nil).leaf = true
 
 	-- 系统配置检测 API (安装前检测)
 	entry({"admin", "services", "openclaw", "check_system"}, call("action_check_system"), nil).leaf = true
@@ -1949,8 +1954,22 @@ fs.writeFileSync(p, JSON.stringify(d, null, 2));
 	-- 清理临时文件
 	sys.exec("rm -f /tmp/openclaw-wechat-*.log /tmp/openclaw-wechat-*.pid /tmp/openclaw-wechat-*.exit /tmp/openclaw-wechat-qrcode.txt")
 
+	-- 重启网关让卸载真正生效。
+	--
+	-- 不重启会留下登录态残留: 网关进程仍在内存中持有已加载的微信渠道，
+	-- 会把会话游标(get_updates_buf, 内含账号标识)写回刚被删除的
+	-- .openclaw/openclaw-weixin/accounts/ 目录，于是目录被重新创建。
+	-- 实测卸载后该文件 mtime 与卸载时刻相同 —— 是删除后被重建，而非漏删。
+	--
+	-- action_wechat_login / action_wechat_logout 本来就会重启网关，
+	-- 只有卸载遗漏了这一步，属实现不一致。
+	sys.exec("/etc/init.d/openclaw restart &")
+
+	-- 重启是异步的，等待一小段时间让网关放开插件文件句柄后再清理残留状态目录。
+	sys.exec("(sleep 6; rm -rf " .. shellquote(wechat_state_dir) .. " 2>/dev/null) &")
+
 	http.prepare_content("application/json")
-	http.write_json({ status = "ok", message = "微信插件已卸载" })
+	http.write_json({ status = "ok", message = "微信插件已卸载，网关正在重启" })
 end
 
 -- ═══════════════════════════════════════════
@@ -1961,7 +1980,12 @@ function action_wechat_check_upgrade()
 	local sys = require "luci.sys"
 
 	local install_path = get_install_path()
-	local npx_bin = install_path .. "/node/bin/npx"
+	-- view 是 npm 的子命令, 不是 npx 的。
+	-- 历史实现用 npx view，npx 会把 view 当成待执行的包去解析并失败:
+	--   npm error could not determine executable to run
+	-- 该错误被 2>/dev/null 吞掉后 latest_version 恒为空，
+	-- is_newer_version("" , x) 恒为 false —— 升级检测从未真正工作过。
+	local npm_bin = install_path .. "/node/bin/npm"
 	local oc_data = install_path .. "/data"
 
 	-- 获取当前已安装版本
@@ -1975,17 +1999,24 @@ function action_wechat_check_upgrade()
 		current_version = content:match('"version"%s*:%s*"([^"]+)"') or ""
 	end
 
-	-- 检测最新版本 (通过 npm view)
+	-- 检测最新版本 (npm view)
 	local latest_version = ""
+	local check_err = ""
 	local env_prefix = string.format(
 		"HOME=%s PATH=%s/node/bin:%s/global/bin:$PATH",
 		oc_data, install_path, install_path
 	)
+	-- 保留 stderr 以便查询失败时能给出可诊断的提示，而不是静默显示"已是最新"
 	local check_cmd = string.format(
-		"%s %s view @tencent-weixin/openclaw-weixin version 2>/dev/null",
-		env_prefix, npx_bin
+		"%s %s view @tencent-weixin/openclaw-weixin version 2>&1",
+		env_prefix, npm_bin
 	)
-	latest_version = sys.exec(check_cmd):gsub("%s+", "")
+	local raw = sys.exec(check_cmd) or ""
+	-- npm 输出可能夹带告警行，取最后一个形如 x.y.z 的 token
+	latest_version = raw:match("(%d+%.%d+%.%d+[%w%.%-]*)%s*$") or ""
+	if latest_version == "" then
+		check_err = raw:gsub("%s+$", ""):sub(1, 200)
+	end
 
 	local has_upgrade = false
 	if is_newer_version(latest_version, current_version) then
@@ -1993,11 +2024,15 @@ function action_wechat_check_upgrade()
 	end
 
 	http.prepare_content("application/json")
+	-- 查询失败时必须显式区分"已是最新"与"查不到"，
+	-- 否则用户永远看到"已是最新版"而不知道检测其实没跑通。
 	http.write_json({
-		status = "ok",
+		status = (latest_version ~= "") and "ok" or "error",
 		current_version = current_version,
 		latest_version = latest_version,
-		has_upgrade = has_upgrade
+		has_upgrade = has_upgrade,
+		message = (latest_version ~= "") and "" or
+			("无法查询最新版本 (请检查网络或 npm 源): " .. check_err)
 	})
 end
 
