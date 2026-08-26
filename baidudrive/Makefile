@@ -10,8 +10,8 @@ include $(TOPDIR)/rules.mk
 PKG_ARCH_BAIDUDRIVE:=$(ARCH)
 
 PKG_NAME:=baidudrive
-PKG_VERSION:=kaiplus-runtime-v1.0.5
-PKG_RELEASE:=15
+PKG_VERSION:=dockermanager-runtime-v0.1.1
+PKG_RELEASE:=16
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/baidudrive-runtime-v$(PKG_VERSION)/
 PKG_HASH:=skip

@@ -15,7 +15,8 @@ end
 
 function act_status()
 	local e = {}
-	e.running = luci.sys.call("iptables -t filter -S MIAPLUS >/dev/null 2>&1") == 0
+	-- 交给 init 脚本的 status 方法判断：它会按 fw3(iptables)/fw4(nft) 自动分发
+	e.running = luci.sys.call("/etc/init.d/miaplus status >/dev/null 2>&1") == 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end

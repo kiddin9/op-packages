@@ -10,7 +10,18 @@ START=30
 
 CONFIG=miaplus
 
+# 非 procd 脚本：status 命令不在 rc.common 默认命令表里，需显式注册
+EXTRA_COMMANDS="status"
+EXTRA_HELP="    status          Show service status (auto fw3/fw4)"
+
 . /lib/functions.sh
+
+# 检测当前使用的防火墙框架：fw4 (nftables) 还是 fw3 (iptables)
+# 注意：fw4 与 fw3 共用 /etc/config/firewall，不存在 /etc/config/fw4，
+#       只能靠 fw4 / nft 命令是否存在来判定。
+have_fw4() {
+	command -v fw4 >/dev/null 2>&1 && command -v nft >/dev/null 2>&1
+}
 
 uci_export_section_name() {
   local ret=$(uci -n export $CONFIG | grep "config $1" | awk '{print $3}' | awk -F\' '{print $2}')
@@ -62,11 +73,23 @@ add_template_rule(){
   config_get enable "$section" enable 0
   [ "$enable" = "1" ] && add_rule "$section"
 }
+# 分发到具体实现
 add_rule(){
+  if have_fw4; then
+    add_rule_nft "$1"
+  else
+    add_rule_ipt "$1"
+  fi
+}
+
+# =====================================================================
+# fw3 (iptables / ip6tables)
+# =====================================================================
+add_rule_ipt(){
   ipv6enable=$(uci -q get miaplus.@basic[0].ipv6enable)
   local macaddrs=$(uci_get_mac_by_template $1 '')
   if [ -z "$macaddrs" ]; then
-    exit 0
+    return 0
   fi
   for macaddr in $macaddrs
   do
@@ -110,21 +133,9 @@ add_rule(){
   done
 }
 
-del_rule(){
-	type=$1
-	blackMacAdd=$(iptables -t nat -L $type | grep -w RETURN | grep -w "MAC" | awk '{print $7}')
-	[ -n "$blackMacAdd" ] && {
-		for macaddrb in $blackMacAdd
-		do
-			iptables -t nat -D $type -m mac --mac-source $macaddrb -j RETURN
-		done
-	}
-}
-
-start(){
-  stop
+start_ipt(){
 	enable=$(uci -q get miaplus.@basic[0].enable)
-	[ "${enable:-0}" -eq 0 ] && exit 0
+	[ "${enable:-0}" -eq 0 ] && return 0
   iptables -t filter -N MIAPLUS
   iptables -I INPUT -p udp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS
   iptables -I INPUT -p tcp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS
@@ -144,7 +155,7 @@ start(){
   fi
   add_rules
 }
-status(){
+status_ipt(){
   if iptables -t filter -S MIAPLUS >/dev/null 2>&1; then
     echo "running"
     return 0
@@ -153,7 +164,7 @@ status(){
   echo "not running"
   return 1
 }
-stop(){
+stop_ipt(){
   iptables -t filter -D FORWARD -m comment --comment "Rule For Control" -j MIAPLUS 2>/dev/null
   iptables -D INPUT -p udp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS 2>/dev/null
   iptables -D INPUT -p tcp --dport 53 -m comment --comment "Rule For Control" -j MIAPLUS 2>/dev/null
@@ -172,4 +183,261 @@ stop(){
     ip6tables -t filter -F MIAPLUS 2>/dev/null
     ip6tables -t filter -X MIAPLUS 2>/dev/null
   fi
+}
+
+# =====================================================================
+# fw4 (nftables)
+# 使用独立表 inet miaplus，避免与 fw4 自身的 nftables 规则冲突。
+#
+#   table inet miaplus {
+#     chain input     { type filter hook input priority 0;  }  # 仅匹配 53 端口
+#     chain prerouting{ type nat hook prerouting priority dstnat; }  # DNS 重定向到本机
+#   }
+#
+# DNS 语义与 fw3 一致：只对发往 53 端口的流量做上网控制。
+#
+# NAT 竞争说明：本表 prerouting 链与 fw4 主表(inet fw4)的 PREROUTING/dstnat 同为
+# priority -100(dstnat)。nf_tables 允许多表同优先级共存，但同一数据包的同一 hook
+# 优先级内按表加载顺序处理，conntrack binding(redirect/redirect)先到先得。若 fw4
+# 自身对 DNS(53) 也做了重定向/端口转发，两者可能互抢，现象以先加载者为准。
+# 一般情况下 DNS 默认直通本机，二者不冲突；如遇规则不生效，优先排查此项。
+# =====================================================================
+
+# 构造 nft 的星期集合片段，如 "{ 1, 2 }" / "5" / 空(不限制)
+# z1..z7 => 周一..周日；nft meta day: 0=Sun,1=Mon,...6=Sat => z1->1 ...
+nft_dayterm() {
+	local days="" n=1 day
+	for z in "$1" "$2" "$3" "$4" "$5" "$6" "$7"; do
+		[ "$z" = "1" ] || { n=$((n+1)); continue; }
+		day=$(( n % 7 ))   # z1..z7 -> 1,2,3,4,5,6,0
+		days="${days:+$days, }$day"
+		n=$((n+1))
+	done
+	if [ -z "$days" ]; then
+		echo ""
+	elif echo "$days" | grep -q ,; then
+		echo "{ $days }"
+	else
+		echo "$days"
+	fi
+}
+
+# 去掉前导零（防空串转成 "0"），规避 08/09 被当八进制的算术陷阱
+_digits() {
+	echo "$1" | sed -e 's/^0*//' -e 's/^$/0/'
+}
+# HH:MM -> 分钟数（输入可为 H:M 或 HH:MM，非零填充）
+_mins() {
+	local h m
+	h=$(_digits "${1%%:*}")
+	m=$(_digits "${1#*:}")
+	echo $(( ${h:-0} * 60 + ${m:-0} ))
+}
+# 任意 "H:M"/"HH:MM" -> 规范 "HH:MM"
+_pad() {
+	local h m
+	h=$(_digits "${1%%:*}")
+	m=$(_digits "${1#*:}")
+	printf '%02d:%02d' "${h:-0}" "${m:-0}"
+}
+
+# 把一个 [t_on, t_off] 窗口（H:M/HH:MM）转成 nft 时间匹配表达式（行），
+# 输出到全局变量 NFT_FRAGS。nft 的 meta hour 原生支持 "HH:MM"-"HH:MM"。
+# 统一语义：结束分钟视为完整包含（闭区间含其末秒），故上界一律补 :59 —
+# 非跨午夜 [t_on, t_off] -> "HH:MM"-"t_off:59"；跨午夜拆 [t_on,23:59:59]+[00:00,t_off:59]。
+nft_split_window() {
+	local t_on t_off
+	NFT_FRAGS=""
+	[ -n "$1" ] && [ -n "$2" ] || return 0
+	t_on=$(_pad "$1"); t_off=$(_pad "$2")
+
+	if [ "$(_mins "$t_on")" -le "$(_mins "$t_off")" ]; then
+		NFT_FRAGS="meta hour \"$t_on\"-\"$t_off:59\""
+	else
+		# 跨午夜：拆成 [on,23:59:59] + [00:00,off:59]
+		NFT_FRAGS="meta hour \"$t_on\"-\"23:59:59\"
+meta hour \"00:00\"-\"$t_off:59\""
+	fi
+}
+
+# 统一执行 nft 规则命令并检查返回码。
+# 失败时记日志、立即回滚删表并置全局 NFT_FAIL=1（供调用方中止后续写入），
+# 使最终状态收敛为"完整规则表"或"空表"，避免留下只 DROP 无 ACCEPT 的断网中间态。
+nft_rule() {
+	# 已失败则短路，避免对已回滚删除的表继续逐条报错刷屏
+	[ -n "$NFT_FAIL" ] && return 1
+	"$@" 2>/dev/null || {
+		logger -t miaplus "nft rule failed: $*"
+		stop_nft
+		NFT_FAIL=1
+	}
+}
+
+# 组合规则前缀：链决定是否只限 53 端口；ipv6enable=0 时限定 ipv4
+nft_prefix() {
+	local chain=$1
+	local pref=""
+	[ "$chain" = "forward" ] || pref="meta l4proto { tcp, udp } th dport 53 "
+	if [ "$ipv6enable" != "1" ]; then
+		pref="meta nfproto ipv4 $pref"
+	fi
+	NFT_PREFIX="$pref"
+}
+
+# 插入一条白名单 ACCEPT 规则（insert 到链首，兜底 DROP 在尾）
+# 参数：MAC  day_term  [链名=当前]
+nft_insert_accept() {
+	local mac=$1 day=$2 chain=${3:-input}
+	nft_prefix "$chain"
+	local cond
+	while IFS= read -r frag; do
+		[ -n "$frag" ] || continue
+		cond="$NFT_PREFIX ether saddr $mac $frag"
+		[ -n "$day" ] && cond="$cond meta day $day"
+		nft_rule nft insert rule inet miaplus $chain $cond accept
+		[ -n "$NFT_FAIL" ] && return 1
+	done <<EOF
+$NFT_FRAGS
+EOF
+}
+
+# 插入一条兜底 DROP 规则（append 到链尾）
+# 参数：MAC  [链名=当前]
+nft_add_drop() {
+	local mac=$1 chain=${2:-input}
+	nft_prefix "$chain"
+	nft_rule nft add rule inet miaplus $chain $NFT_PREFIX ether saddr $mac drop
+}
+
+# 需要写入的链列表：非严格=仅 input；严格=input+forward
+nft_target_chains() {
+	if [ "${strict:-0}" -eq 1 ]; then
+		echo "input forward"
+	else
+		echo "input"
+	fi
+}
+
+add_rule_nft(){
+	local ipv6enable=$(uci -q get miaplus.@basic[0].ipv6enable)
+	local macaddrs=$(uci_get_mac_by_template $1 '')
+	if [ -z "$macaddrs" ]; then
+		return 0
+	fi
+
+	local chains="$(nft_target_chains)"
+	local macaddr i enable timeon timeoff z1 z2 z3 z4 z5 z6 z7
+
+	# 先为每个绑定 MAC 加兜底 DROP（每条链一次，不重复）
+	for macaddr in $macaddrs; do
+		[ -n "$NFT_FAIL" ] && return 1
+		local ch
+		for ch in $chains; do
+			nft_add_drop "$macaddr" "$ch"
+		done
+	done
+
+	# 再按时间段插入 ACCEPT 白名单
+	for i in $(seq 0 100); do
+		[ -n "$NFT_FAIL" ] && return 1
+		enable=$(uci_get_by_type $1 enable '' $i)
+		timeon=$(uci_get_by_type $1 timeon '' $i)
+		timeoff=$(uci_get_by_type $1 timeoff '' $i)
+		z1=$(uci_get_by_type $1 z1 '' $i)
+		z2=$(uci_get_by_type $1 z2 '' $i)
+		z3=$(uci_get_by_type $1 z3 '' $i)
+		z4=$(uci_get_by_type $1 z4 '' $i)
+		z5=$(uci_get_by_type $1 z5 '' $i)
+		z6=$(uci_get_by_type $1 z6 '' $i)
+		z7=$(uci_get_by_type $1 z7 '' $i)
+
+		[ -n "$enable" ] || break
+		[ -n "$timeon" ] || break
+		[ -n "$timeoff" ] || break
+		[ "$enable" = "1" ] || continue
+
+		local dayspec=$(nft_dayterm "$z1" "$z2" "$z3" "$z4" "$z5" "$z6" "$z7")
+
+		nft_split_window "$timeon" "$timeoff"
+		for macaddr in $macaddrs; do
+			local ch
+			for ch in $chains; do
+				nft_insert_accept "$macaddr" "$dayspec" "$ch"
+			done
+		done
+	done
+}
+
+start_nft(){
+	enable=$(uci -q get miaplus.@basic[0].enable)
+	[ "${enable:-0}" -eq 0 ] && return 0
+	strict=$(uci -q get miaplus.@basic[0].strict)
+	local ipv6enable=$(uci -q get miaplus.@basic[0].ipv6enable)
+
+	NFT_FAIL=""
+
+	# 建表/建链也走 nft_rule，使最根本的"建表/建链失败"同样记日志并可回滚
+	nft_rule nft add table inet miaplus
+	nft_rule nft add chain inet miaplus input '{ type filter hook input priority 0; policy accept; }'
+	nft_rule nft add chain inet miaplus prerouting '{ type nat hook prerouting priority dstnat; policy accept; }'
+	# DNS 劫持遵循 ipv6enable：关闭时仅重定向 IPv4 的 53，与 filter 链/DROP 语义对齐
+	if [ "${ipv6enable:-0}" -eq 1 ]; then
+		nft_rule nft add rule inet miaplus prerouting meta l4proto { tcp, udp } th dport 53 redirect to :53
+	else
+		nft_rule nft add rule inet miaplus prerouting meta nfproto ipv4 meta l4proto { tcp, udp } th dport 53 redirect to :53
+	fi
+	[ -n "$NFT_FAIL" ] && return 1
+
+	# 严格模式：额外对 FORWARD 全流量做同样控制
+	if [ "${strict:-0}" -eq 1 ]; then
+		nft_rule nft add chain inet miaplus forward '{ type filter hook forward priority 0; policy accept; }'
+		[ -n "$NFT_FAIL" ] && return 1
+	fi
+
+	add_rules
+
+	# 任一规则写入失败：回滚整个表，避免留下只有 DROP、无 ACCEPT 白名单的断网状态
+	if [ -n "$NFT_FAIL" ]; then
+		logger -t miaplus "fw4 rules incomplete, rolling back"
+		stop_nft
+		return 1
+	fi
+}
+status_nft(){
+	if nft list table inet miaplus >/dev/null 2>&1; then
+		echo "running"
+		return 0
+	fi
+	echo "not running"
+	return 1
+}
+stop_nft(){
+	nft delete table inet miaplus 2>/dev/null
+	return 0
+}
+
+# =====================================================================
+# 统一入口
+# =====================================================================
+start(){
+	stop
+	if have_fw4; then
+		start_nft
+	else
+		start_ipt
+	fi
+}
+status(){
+	if have_fw4; then
+		status_nft
+	else
+		status_ipt
+	fi
+}
+stop(){
+	if have_fw4; then
+		stop_nft
+	else
+		stop_ipt
+	fi
 }
