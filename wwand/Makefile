@@ -13,15 +13,28 @@
 #   wwand-esim       - eSIM management        (DEPENDS wwand-qmi + wwand-lpac)
 # A typical QMI router installs `wwand-qmi` (which pulls in `wwand`); add
 # `wwand-mbim` / `wwand-ncm` for those modems, `wwand-mhi` for a PCIe/MHI modem.
-# The ucode tree ships as SOURCE by default. It can be precompiled to bytecode
-# (repo-root CMakeLists.txt, alongside wwand_io.so) via CONFIG_WWAND_UCODE_
-# PRECOMPILE, but that is opt-in and only sound when ucode and wwand are built
-# in the SAME tree: bytecode carries a format version (UCODE_BYTECODE_VERSION,
-# ucode's include/ucode/vm.h) that an interpreter upgraded past it refuses to
-# load, and no package relation can express that coupling — it is independent
-# of libucode's PKG_ABI_VERSION/SONAME, so an ABI-versioned dependency does not
-# capture it either. In a feed, where ucode is upgraded on its own, that is a
-# coupling we must not create.
+# The ucode tree ships PRECOMPILED to bytecode (repo-root CMakeLists.txt,
+# alongside wwand_io.so). `CONFIG_WWAND_UCODE_SOURCE` opts out and ships the
+# readable sources instead — the same polarity the wwand repo's CMakeLists.txt
+# and files/wwand.init already assume.
+#
+# The polarity matters beyond taste. It used to be an opt-in
+# (WWAND_UCODE_PRECOMPILE, default n), which meant the desired outcome depended
+# on a symbol SURVIVING defconfig — and in a per-package SDK build it does not:
+# defconfig dropped it together with the CONFIG_PACKAGE_wwand it depends on, and
+# the build then shipped source while reporting success. As an opt-out, a
+# dropped symbol lands on the default we want, so the failure mode is gone.
+#
+# KNOWN COUPLING, accepted deliberately: bytecode carries a format version
+# (UCODE_BYTECODE_VERSION, ucode's include/ucode/vm.h) that an interpreter
+# upgraded past it refuses to load, and no package relation can express that —
+# it is independent of libucode's PKG_ABI_VERSION/SONAME, so an ABI-versioned
+# dependency does not capture it either. Upgrading ucode alone can therefore
+# leave the daemon unable to start. That is not silent: files/wwand.init
+# recognises "Bytecode version mismatch" / "Invalid file magic" and refuses with
+# an explanatory line instead of respawning forever. The remedy is to reinstall
+# wwand built against the running ucode, or to build with
+# CONFIG_WWAND_UCODE_SOURCE.
 #
 # NOTE: the split needs the ucode source that lazy-loads every backend
 # (qmi_lazy.uc + the backend-neutral daemon). Bump PKG_SOURCE_VERSION (and
@@ -30,26 +43,24 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=648283c23470d602459ce2c54a60adf9109370da
-PKG_SOURCE_DATE:=2026-08-26
+PKG_SOURCE_VERSION:=fc013f140d423867b993c6026fd435ec750cbb91
+PKG_SOURCE_DATE:=2026-08-27
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=
 
-# host ucode is the bytecode compiler, needed ONLY on the opt-in precompile
-# path — so a default build does not pay for a host ucode nothing consumes.
-#
-# SYMBOL:pkg, not $(if $(CONFIG_...),...): Build-Depends is emitted by the
-# metadata scan, which runs with DUMP=1, and rules.mk skips $(TOPDIR)/.config in
-# that case — a $(if ...) wrapper is always empty there and would drop the
-# dependency unconditionally, leaving the opt-in to silently fall back to
-# source. package-metadata.pl builds the conditional from the prefix instead.
-PKG_BUILD_DEPENDS:=WWAND_UCODE_PRECOMPILE:ucode/host
+# host ucode is the bytecode compiler, and it is now needed on the DEFAULT path,
+# so the dependency is unconditional. It was `WWAND_UCODE_PRECOMPILE:ucode/host`
+# — a conditional that could only ever be as reliable as the symbol behind it,
+# and when the symbol went missing the compiler went with it and cmake fell back
+# to shipping source. A build that opts out with CONFIG_WWAND_UCODE_SOURCE pays
+# for a host ucode it does not use; that is the cheaper mistake by far.
+PKG_BUILD_DEPENDS:=ucode/host
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -65,12 +76,11 @@ CMAKE_BINARY_SUBDIR:=build
 
 CMAKE_OPTIONS += \
 	-DUCODE_COMPILER=$(STAGING_DIR_HOSTPKG)/bin/ucode \
-	-DUCODE_PRECOMPILE=$(if $(CONFIG_WWAND_UCODE_PRECOMPILE),ON,OFF)
+	-DUCODE_PRECOMPILE=$(if $(CONFIG_WWAND_UCODE_SOURCE),OFF,ON)
 
-# every install section takes the ucode tree from here: the bytecode output of
-# the plain sources, or the cmake bytecode output when CONFIG_WWAND_UCODE_
-# PRECOMPILE is set.
-WWAND_UCODE=$(if $(CONFIG_WWAND_UCODE_PRECOMPILE),$(CMAKE_BINARY_DIR)/ucode/wwand,$(PKG_BUILD_DIR)/src-ucode)
+# every install section takes the ucode tree from here: the cmake bytecode
+# output, or the plain sources when CONFIG_WWAND_UCODE_SOURCE opts out.
+WWAND_UCODE=$(if $(CONFIG_WWAND_UCODE_SOURCE),$(PKG_BUILD_DIR)/src-ucode,$(CMAKE_BINARY_DIR)/ucode/wwand)
 
 UCDIR:=/usr/share/ucode/wwand
 
@@ -89,30 +99,34 @@ WWAND_BASE_CODEC:=arfcn_bands.uc hex.uc qmux.uc tlv.uc
 WWAND_BASE_SCHEMA:=ctl.uc dms.uc dsd.uc loc.uc loc_lazy.uc merge.uc nas.uc rat.uc \
 	uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
 
-# DEVELOPERS: leave CONFIG_WWAND_UCODE_PRECOMPILE off (the default)
-# to ship readable .uc source instead of bytecode — for editing modules live
-# under /usr/share/ucode/wwand and for source-line tracebacks; bytecode
-# tracebacks report offsets only.
-PKG_CONFIG_DEPENDS:=CONFIG_WWAND_UCODE_PRECOMPILE
+# DEVELOPERS: set CONFIG_WWAND_UCODE_SOURCE to ship readable .uc source
+# instead of bytecode — for editing modules live under /usr/share/ucode/wwand
+# and for source-line tracebacks; bytecode tracebacks report offsets only.
+PKG_CONFIG_DEPENDS:=CONFIG_WWAND_UCODE_SOURCE
 
 define Package/wwand/config
-config WWAND_UCODE_PRECOMPILE
-	bool "Precompile the ucode tree to bytecode"
+config WWAND_UCODE_SOURCE
+	bool "Ship the ucode tree as source instead of bytecode"
 	depends on PACKAGE_wwand
 	default n
 	help
-	  Compile the ucode tree to bytecode instead of shipping the
-	  readable sources. The daemon then starts without a parse step
-	  (measured 41 ms -> 5 ms for the core imports on x86; more on a
-	  router CPU).
+	  By default the ucode tree is compiled to bytecode, so the daemon
+	  starts without a parse step (measured 41 ms -> 5 ms for the core
+	  imports on x86; more on a router CPU). Enable this to ship the
+	  readable sources instead: modules can then be edited in place
+	  under /usr/share/ucode/wwand and tracebacks name source lines
+	  rather than bytecode offsets.
 
-	  Only enable this when ucode and wwand come from the SAME build
-	  tree, e.g. a self-built image. Bytecode carries a format version
-	  that an interpreter upgraded past it refuses to load, and nothing
-	  in the package metadata can express that dependency, so a plain
-	  package upgrade of ucode would leave the daemon unable to start.
-	  The init script detects exactly that case and refuses with an
-	  explanatory log line rather than respawning forever.
+	  Note that bytecode carries a format version that an interpreter
+	  upgraded past it refuses to load, and nothing in the package
+	  metadata can express that dependency — so upgrading ucode alone
+	  can leave the daemon unable to start. The init script detects
+	  exactly that case and refuses with an explanatory log line rather
+	  than respawning forever; the remedy is to reinstall wwand built
+	  against the running ucode, or to enable this option.
+
+	  A build whose host ucode cannot emit bytecode does not fail: the
+	  cmake capability probe falls back to shipping source on its own.
 endef
 
 # ---------------------------------------------------------------------------
@@ -255,6 +269,8 @@ define Package/wwand-mbim/install
 	$(INSTALL_DATA) $(WWAND_UCODE)/mbim_client.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/qmi_over_mbim.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/mbim_lazy.uc $(1)$(UCDIR)/
+	$(INSTALL_DATA) $(WWAND_UCODE)/atcmd_mbim.uc $(1)$(UCDIR)/
+	$(INSTALL_DATA) $(WWAND_UCODE)/atcmd_mbim_lazy.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim.uc $(1)$(UCDIR)/codec/
 	$(INSTALL_DATA) $(WWAND_UCODE)/codec/mbim_schema/*.uc $(1)$(UCDIR)/codec/mbim_schema/
 endef
