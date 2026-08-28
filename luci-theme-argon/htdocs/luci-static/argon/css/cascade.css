@@ -117,6 +117,7 @@ body::before {
     pointer-events: none;
     opacity: .3;
 }
+:root[data-darkmode="false"] body::before {opacity: .8}
 .main .main-right{background-color: transparent !important}
 main {
   display: block;
