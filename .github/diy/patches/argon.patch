@@ -1,11 +1,15 @@
 --- a/luci-app-argon-config/root/etc/config/argon
 +++ b/luci-app-argon-config/root/etc/config/argon
-@@ -5,6 +5,6 @@ config global
+@@ -3,8 +3,8 @@ config global
+ 	option dark_primary '#483d8b'
+ 	option blur '10'
  	option blur_dark '10'
- 	option transparency '0.5'
- 	option transparency_dark '0.5'
+-	option transparency '0.5'
+-	option transparency_dark '0.5'
 -	option mode 'normal'
 -	option online_wallpaper 'bing'
++	option transparency '0.3'
++	option transparency_dark '0.3'
 +	option mode 'dark'
 +	option online_wallpaper 'default'
  
@@ -29,6 +33,15 @@
 
 --- a/luci-theme-argon/ucode/template/themes/argon/header_login.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/header_login.ut
+@@ -46,7 +46,7 @@
+ 
+ -%}
+ <!DOCTYPE html>
+-<html lang="{{ dispatcher.lang }}">
++<html lang="{{ dispatcher.lang }}"{% if (mode == 'light'): %} data-darkmode="false"{% else %} data-darkmode="true"{% endif %}>
+ 
+ <head>
+ 	{% include("themes/" + theme + "/head_meta", { hostname: hostname, node: node, bar_color: bar_color, media: media }) %}
 @@ -54,9 +54,7 @@
  	<link rel="stylesheet" href="{{ media }}/css/cascade.css{# ?v=PKG_VERSION #}">
  	<style title="text/css">
@@ -79,7 +92,7 @@
 
 --- a/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
 +++ b/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
-@@ -103,6 +103,21 @@ body {
+@@ -103,6 +103,22 @@ body {
    -webkit-tap-highlight-color: transparent;
    font-size: 0.875rem;
  }
@@ -97,11 +110,12 @@
 +    pointer-events: none;
 +    opacity: .3;
 +}
++:root[data-darkmode="false"] body::before {opacity: .8}
 +.main .main-right{background-color: transparent !important}
  main {
    display: block;
  }
-@@ -718,7 +733,7 @@ select[multiple="multiple"] {
+@@ -718,7 +734,7 @@ select[multiple="multiple"] {
  }
  .login-page .login-container {
    z-index: 10;
