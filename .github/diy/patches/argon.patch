@@ -1,3 +1,32 @@
+--- a/luci-app-argon-config/root/etc/config/argon
++++ b/luci-app-argon-config/root/etc/config/argon
+@@ -5,6 +5,6 @@ config global
+ 	option blur_dark '10'
+ 	option transparency '0.5'
+ 	option transparency_dark '0.5'
+-	option mode 'normal'
+-	option online_wallpaper 'bing'
++	option mode 'dark'
++	option online_wallpaper 'default'
+ 
+
+--- a/luci-app-argon-config/htdocs/luci-static/resources/view/argon-config.js
++++ b/luci-app-argon-config/htdocs/luci-static/resources/view/argon-config.js
+@@ -50,11 +50,12 @@ return view.extend({
+ 		s.anonymous = true;
+ 
+ 		o = s.option(form.ListValue, 'online_wallpaper', _('Wallpaper source'));
++		o.value('default', _('Default'));
+ 		o.value('none', _('Built-in'));
+ 		o.value('bing', _('Bing'));
+ 		o.value('unsplash', _('Unsplash'));
+ 		o.value('wallhaven', _('Wallhaven'));
+-		o.default = 'bing';
++		o.default = 'default';
+ 		o.rmempty = false;
+ 
+ 		o = s.option(form.ListValue, 'mode', _('Theme mode'));
+
 --- a/luci-theme-argon/ucode/template/themes/argon/header.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/header.ut
 @@ -47,7 +47,7 @@
@@ -10,15 +39,65 @@
  <head>
  	{% include("themes/" + theme + "/head_meta", { hostname: hostname, node: node, bar_color: bar_color, media: media }) %}
 
---- a/luci-app-argon-config/root/etc/config/argon
-+++ b/luci-app-argon-config/root/etc/config/argon
-@@ -5,6 +5,6 @@ config global
- 	option blur_dark '10'
- 	option transparency '0.5'
- 	option transparency_dark '0.5'
--	option mode 'normal'
-+	option mode 'dark'
- 	option online_wallpaper 'bing'
+--- a/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
++++ b/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
+@@ -115,7 +115,7 @@
+ 	<!-- Video Player End -->
+ 	{% else %}
+ 	<!-- Image Background Start -->
+-	<div class="main-bg" id="main-bg" style="background-image:url({{ bgArry.bgUrl }})"></div>
++	<div class="main-bg" id="main-bg" {% if (cfg.get_first('argon', 'global', 'online_wallpaper') == "default"): %}style="background-image:url({{ bgArry.bgUrl }})"{% endif %}></div>
+ 	<!-- Image Background End -->
+ 	{% endif %}
+ 	<!-- Login Container Start -->
+
+--- a/luci-theme-argon/less/sysauth.less
++++ b/luci-theme-argon/less/sysauth.less
+@@ -75,7 +75,7 @@
+     // Login container
+     .login-container {
+         z-index: 10;
+-        margin-left: 5%;
++        margin: 0 auto;
+         display: flex;
+         height: 100vh;
+         width: 26rem;
+
+--- a/luci-theme-argon/less/dark.less
++++ b/luci-theme-argon/less/dark.less
+@@ -93,7 +93,6 @@ header::after {
+ .main {
+     .main-left {
+ 
+-        background-color: #333333 !important;
+         box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, .15);
+ 
+         .sidenav-header .brand {
+
+--- a/luci-theme-argon/less/layout.less
++++ b/luci-theme-argon/less/layout.less
+@@ -8,6 +8,21 @@
+ // 1. Main Container Layout
+ // ==========================================================================
+ 
++body::before {
++    content: "";
++    background-image: url("/luci-static/argon/img/pattern.svg");
++    background-repeat: repeat;
++    background-size: 440px auto;
++    position: fixed;
++    top: 0;
++    left: 0;
++    right: 0;
++    bottom: 0;
++    z-index: -1;
++    pointer-events: none;
++    opacity: .3;
++}
++
+ .main {
+     position: relative;
+     width: 100%;
 
 --- a/luci-theme-argon/ucode/template/themes/argon/footer.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/footer.ut
@@ -36,3 +115,14 @@
  
  				<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
  
+--- a/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
++++ b/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
+@@ -20,8 +20,6 @@
+ <!-- added style="text-wrap: auto" but on this page it is still not the best solution. I will take it to consideration next time :) -->
+ <footer style="text-wrap: auto">
+ 	<div>
+-		<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>
+-		<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme {# vPKG_VERSION #}</a>
+ 		<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
+ 	</div>
+ </footer>
