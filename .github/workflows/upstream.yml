@@ -288,7 +288,7 @@ jobs:
         git_clone https://github.com/EkkoG/luci-app-natmap
         git_clone https://github.com/yichya/openwrt-hv-tools
         git_clone https://github.com/ddimension/openwrt-repo && mv -f openwrt-repo/*wwand* ./;rm -rf openwrt-repo
-        # git_clone https://github.com/papagaye744/luci-theme-design
+        git_clone https://github.com/jerrykuku/luci-theme-argon
         ) &
         (
         git_clone https://github.com/EasyTier/luci-app-easytier luci-app-easytier1 && mvdir luci-app-easytier1
@@ -406,7 +406,7 @@ jobs:
         sound/spotifyd devel/go-rice devel/rust-bindgen admin/gotop \
         lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb lang/golang devel/gn
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/!(ookla-speedtest) ./; rm -rf modemfeed
-        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel themes/luci-theme-argon
+        git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel
         mv -f applications luciapp && rm -rf luciapp/luci-app-firewall
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications \
         modules/luci-base modules/luci-mod-network modules/luci-mod-status modules/luci-mod-system protocols/luci-proto-openvpnc themes/luci-theme-design
