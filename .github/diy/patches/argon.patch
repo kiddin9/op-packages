@@ -27,6 +27,32 @@
  
  		o = s.option(form.ListValue, 'mode', _('Theme mode'));
 
+--- a/luci-theme-argon/ucode/template/themes/argon/header_login.ut
++++ b/luci-theme-argon/ucode/template/themes/argon/header_login.ut
+@@ -54,9 +54,7 @@
+ 	<link rel="stylesheet" href="{{ media }}/css/cascade.css{# ?v=PKG_VERSION #}">
+ 	<style title="text/css">
+ 		{% if (mode == 'normal'): %}
+-			@media (prefers-color-scheme: dark) {
+ 				{{ dark_css }}
+-			}
+ 		{% endif %}
+ 		{% if (mode == 'dark'): %}
+ 			{{ dark_css }}
+
+--- a/luci-theme-argon/ucode/template/themes/argon/header.ut
++++ b/luci-theme-argon/ucode/template/themes/argon/header.ut
+@@ -55,9 +55,7 @@
+ 	<link rel="stylesheet" href="{{ media }}/css/cascade.css{# ?v=PKG_VERSION #}">
+ 	<style title="text/css">
+ 		{% if (mode == 'normal'): %}
+-			@media (prefers-color-scheme: dark) {
+ 				{{ dark_css }}
+-			}
+ 		{% endif %}
+ 		{% if (mode == 'dark'): %}
+ 			{{ dark_css }}
+
 --- a/luci-theme-argon/ucode/template/themes/argon/header.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/header.ut
 @@ -47,7 +47,7 @@
