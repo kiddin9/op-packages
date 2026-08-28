@@ -8,21 +8,6 @@
 +	option wallpaper 'pattern'
 +	option layout 'sidebar'
 +	option autocollapse 'on'
-
---- a/luci-theme-footstrap/styles/02-tokens.css
-+++ b/luci-theme-footstrap/styles/02-tokens.css
-@@ -19,6 +19,11 @@
- 		 * friends) live in those blocks too, beside the fills they must be legible against: a
- 		 * dark palette has light fills and needs a dark ink, and one global `#fff` failed WCAG AA
- 		 * on seven of the eight dark-palette fills (down to 1.69:1). */
-+		--card-bg-color: var(--fs-panel) !important;
-+		--border-color: var(--fs-border) !important;
-+		--app-container_title-color: var(--fs-text) !important;
-+		--item-label_key-span-color: var(--app-container_title-color) !important;
-+		--app-container_status-label_block: var(--app-container_title-color) !important;
- 		--fs-shadow: 0 1px 3px rgba(15,23,37,.08);
- 		/* pop surfaces (menus, dropdown lists, the select picker): one value rather than a
- 		 * literal per site */
 diff --git a/luci-theme-footstrap/root/etc/footstrap/pattern.svg b/luci-theme-footstrap/root/etc/footstrap/pattern.svg
 new file mode 100644
 index 000000000..72eb03cdc
