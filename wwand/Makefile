@@ -43,11 +43,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=11
+PKG_RELEASE:=12
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=fc013f140d423867b993c6026fd435ec750cbb91
+PKG_SOURCE_VERSION:=2311728191b2b325de54946b0767000baa245366
 PKG_SOURCE_DATE:=2026-08-27
 PKG_MIRROR_HASH:=skip
 
@@ -328,6 +328,13 @@ define Package/wwand-mhi/description
   MHI bus/PCI/control/data drivers and installs the wwan-subsystem hotplug so
   wwand binds these modems on boot. Install together with a control backend
   (wwand-qmi or wwand-mbim).
+
+  Adding wwand-mbim is worthwhile even on a QMI-driven MHI modem: many of them
+  expose no DUN channel and therefore no AT port at all, and wwand can then
+  carry AT over the modem's MBIM channel instead (Quectel QDU). Without that
+  package the capability is simply absent — vendor AT commands, the protocol
+  switch and AT telemetry are unavailable, which is a limitation rather than a
+  failure.
 endef
 
 define Package/wwand-mhi/install
