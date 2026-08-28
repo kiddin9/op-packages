@@ -10,6 +10,16 @@
  <head>
  	{% include("themes/" + theme + "/head_meta", { hostname: hostname, node: node, bar_color: bar_color, media: media }) %}
 
+--- a/luci-theme-argon/root/etc/config/argon
++++ b/luci-theme-argon/root/etc/config/argon
+@@ -5,6 +5,6 @@ config global
+ 	option blur_dark '10'
+ 	option transparency '0.5'
+ 	option transparency_dark '0.5'
+-	option mode 'normal'
++	option mode 'dark'
+ 	option online_wallpaper 'bing'
+
 --- a/luci-theme-argon/ucode/template/themes/argon/footer.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/footer.ut
 @@ -19,13 +19,6 @@
