@@ -51,24 +51,12 @@
  	{% endif %}
  	<!-- Login Container Start -->
 
---- a/luci-theme-argon/less/sysauth.less
-+++ b/luci-theme-argon/less/sysauth.less
-@@ -75,7 +75,7 @@
-     // Login container
-     .login-container {
-         z-index: 10;
--        margin-left: 5%;
-+        margin: 0 auto;
-         display: flex;
-         height: 100vh;
-         width: 26rem;
-
---- a/luci-theme-argon/less/layout.less
-+++ b/luci-theme-argon/less/layout.less
-@@ -7,6 +7,20 @@
- 
- // 1. Main Container Layout
- // ==========================================================================
+--- a/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
++++ b/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
+@@ -103,6 +103,21 @@ body {
+   -webkit-tap-highlight-color: transparent;
+   font-size: 0.875rem;
+ }
 +body::before {
 +    content: "";
 +    background-image: url("/luci-static/argon/img/pattern.svg");
@@ -83,19 +71,19 @@
 +    pointer-events: none;
 +    opacity: .3;
 +}
- 
- .main {
-     position: relative;
-@@ -15,6 +29,9 @@
-     overflow-y: auto;
-     display: flex;
-     flex-direction: row;
-+    .main-right {
-+        background-color: transparent !important;
-+    }
++.main .main-right{background-color: transparent !important}
+ main {
+   display: block;
  }
- 
- // 2. Left Sidebar Layout
+@@ -718,7 +733,7 @@ select[multiple="multiple"] {
+ }
+ .login-page .login-container {
+   z-index: 10;
+-  margin-left: 5%;
++  margin: 0 auto;
+   display: flex;
+   height: 100vh;
+   width: 26rem;
 
 --- a/luci-theme-argon/ucode/template/themes/argon/footer.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/footer.ut
