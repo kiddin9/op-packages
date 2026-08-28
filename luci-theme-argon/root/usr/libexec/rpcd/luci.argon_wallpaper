@@ -26,9 +26,6 @@ fetch_pic_url() {
 			sed 's/1920x1080/UHD/g')"
 		[ -n "${picpath}" ] && echo "//www.bing.com${picpath}"
 		;;
-	ghser)
-		echo "https://api.vvhan.com/api/wallpaper/acg"
-		;;
 	unsplash)
 		if [ -z "$API_KEY" ]; then
 			local pic_id="$(wget -T3 --spider \
@@ -77,13 +74,14 @@ try_update() {
 	if flock -n 200 >"/dev/null" 2>&1; then
 		local picurl="$(fetch_pic_url)"
 		if [ -n "$picurl" ]; then
+
 			# below is quirk fix for all browsers
 			# for some weird reason on first load, wallhaven images needs to be
 			# download or browsed first before it can be shown as a background image
 			# if not, browser only displays a blank image
 			# NOTE: only happens to Wallhaven.cc source images
 			if [[ "$WEB_PIC_SRC" == wallhave* ]] ; then
-				wget -T3 -q "${picurl}" -O /dev/null
+				wget -T3 -qO- "${picurl}" > /dev/null
 			fi
 
 			echo "$picurl" | tee "$CACHE"
