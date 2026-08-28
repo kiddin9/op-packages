@@ -50,11 +50,12 @@ return view.extend({
 		s.anonymous = true;
 
 		o = s.option(form.ListValue, 'online_wallpaper', _('Wallpaper source'));
+		o.value('default', _('Default'));
 		o.value('none', _('Built-in'));
 		o.value('bing', _('Bing'));
 		o.value('unsplash', _('Unsplash'));
 		o.value('wallhaven', _('Wallhaven'));
-		o.default = 'bing';
+		o.default = 'default';
 		o.rmempty = false;
 
 		o = s.option(form.ListValue, 'mode', _('Theme mode'));
