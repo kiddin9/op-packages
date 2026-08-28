@@ -10,8 +10,8 @@
  <head>
  	{% include("themes/" + theme + "/head_meta", { hostname: hostname, node: node, bar_color: bar_color, media: media }) %}
 
---- a/luci-theme-argon/root/etc/config/argon
-+++ b/luci-theme-argon/root/etc/config/argon
+--- a/luci-app-argon-config/root/etc/config/argon
++++ b/luci-app-argon-config/root/etc/config/argon
 @@ -5,6 +5,6 @@ config global
  	option blur_dark '10'
  	option transparency '0.5'
