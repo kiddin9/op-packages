@@ -1,5 +1,5 @@
---- a/ucode/template/themes/argon/header.ut
-+++ b/ucode/template/themes/argon/header.ut
+--- a/luci-theme-argon/ucode/template/themes/argon/header.ut
++++ b/luci-theme-argon/ucode/template/themes/argon/header.ut
 @@ -47,7 +47,7 @@
  
  -%}
