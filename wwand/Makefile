@@ -43,12 +43,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=12
+PKG_RELEASE:=13
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=2311728191b2b325de54946b0767000baa245366
-PKG_SOURCE_DATE:=2026-08-27
+PKG_SOURCE_VERSION:=810b851ea2657dca1049e6a8f8395dba35f10141
+PKG_SOURCE_DATE:=2026-08-30
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -172,9 +172,10 @@ define Package/wwand/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(WWAND_UCODE)/wwandctl.uc $(1)/usr/bin/wwandctl
 	$(INSTALL_DIR) $(1)/lib/netifd/proto
-	# the shim registers `wwand`; the legacy `qmi` alias only when the global
-	# `option takeover` is set (default off, so uqmi keeps `proto qmi`). Install
-	# under the current name — the historical qmi.sh belonged to uqmi
+	# the shim registers `wwand` and nothing else — netifd sources every handler
+	# in this directory, so two of them claiming `qmi` would be settled by load
+	# order. `proto qmi` therefore stays uqmi's qmi.sh; migrating an interface is
+	# the user's explicit act.
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/wwand-proto.sh $(1)/lib/netifd/proto/wwand.sh
 	$(INSTALL_DIR) $(1)/usr/libexec/wwand
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/wwand-migrate $(1)/usr/libexec/wwand/migrate
@@ -214,11 +215,15 @@ define Package/wwand-qmi
   CATEGORY:=Network
   SUBMENU:=WWAN
   TITLE:=QMI backend for wwand
-  DEPENDS:=+wwand +kmod-usb-net-qmi-wwan +kmod-rmnet
-  # coexists with the stock OpenWrt QMI stack (uqmi):
-  # by default wwand claims only `proto wwand` interfaces, so both can be
-  # installed. Set the global `option takeover '1'` (or migrate interfaces from
-  # the LuCI modem list) to hand `proto qmi` interfaces to wwand.
+  # kmod-rmnet is the QMAP demuxer and is needed on BOTH transports (an MHI
+  # modem multiplexes through it too); only the USB glue is conditional, so a
+  # target built without USB support can still select this backend and drive a
+  # PCIe/MHI modem. On a USB target nothing changes.
+  DEPENDS:=+wwand +USB_SUPPORT:kmod-usb-net-qmi-wwan +kmod-rmnet
+  # coexists with the stock OpenWrt QMI stack (uqmi): wwand claims only
+  # `proto wwand` interfaces, so both can be installed. To hand an existing
+  # `proto qmi` interface to wwand, migrate it — from the LuCI modem list or
+  # with `/usr/libexec/wwand/migrate --apply` — which rewrites it in place.
 endef
 
 define Package/wwand-qmi/description
@@ -246,7 +251,10 @@ define Package/wwand-mbim
   CATEGORY:=Network
   SUBMENU:=WWAN
   TITLE:=MBIM backend for wwand
-  DEPENDS:=+wwand-qmi +kmod-usb-net-cdc-mbim
+  # conditional for the same reason as wwand-qmi: the ucode side is
+  # transport-neutral, and on MHI the transport is kmod-mhi-wwan-mbim, which
+  # wwand-mhi already pulls
+  DEPENDS:=+wwand-qmi +USB_SUPPORT:kmod-usb-net-cdc-mbim
   # coexists with the stock OpenWrt MBIM stack (netifd `mbim` proto, package
   # umbim): wwand manages a cdc_mbim modem only once its interface has been
   # migrated to `proto wwand` (LuCI modem list / migrate CLI), so both stacks can
@@ -285,7 +293,8 @@ define Package/wwand-ncm
   TITLE:=NCM/ECM backend for wwand
   # +kmod-usb-net-rndis: the RNDIS datapath (rndis_host) used by e.g. the
   # Fibocom FM350-GL (MediaTek T700) — same AT-driven backend, RNDIS netdev.
-  DEPENDS:=+wwand +kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-ether +kmod-usb-net-rndis
+  DEPENDS:=+wwand +USB_SUPPORT:kmod-usb-net-cdc-ncm \
+	+USB_SUPPORT:kmod-usb-net-cdc-ether +USB_SUPPORT:kmod-usb-net-rndis
   # coexists with the stock OpenWrt NCM stack (netifd `ncm` proto, package
   # comgt-ncm): wwand drives an AT/NCM modem only once its interface has been
   # migrated to `proto wwand` (LuCI modem list / migrate CLI), so both stacks can
@@ -329,12 +338,14 @@ define Package/wwand-mhi/description
   wwand binds these modems on boot. Install together with a control backend
   (wwand-qmi or wwand-mbim).
 
-  Adding wwand-mbim is worthwhile even on a QMI-driven MHI modem: many of them
+  Adding wwand-mbim is worth weighing on a QMI-driven MHI modem: many of them
   expose no DUN channel and therefore no AT port at all, and wwand can then
-  carry AT over the modem's MBIM channel instead (Quectel QDU). Without that
-  package the capability is simply absent — vendor AT commands, the protocol
-  switch and AT telemetry are unavailable, which is a limitation rather than a
-  failure.
+  carry AT over the modem's MBIM channel instead (Quectel QDU). The cost is
+  that wwand-mbim currently pulls the USB MBIM transport with it, which this
+  path does not use — and on a target built without USB support it cannot be
+  selected at all. Without it the capability is simply absent: vendor AT
+  commands, the protocol switch and AT telemetry are unavailable, which is a
+  limitation rather than a failure.
 endef
 
 define Package/wwand-mhi/install
@@ -387,9 +398,93 @@ define Package/wwand-esim/install
 	$(INSTALL_DATA) $(WWAND_UCODE)/esim_bridge.uc $(1)$(UCDIR)/
 endef
 
+# ---------------------------------------------------------------------------
+# wwand-datapath-rmnet_nss: Qualcomm NSS offload behind the VENDOR qmi_wwan_q.
+# A datapath add-on, not a control backend — it plugs into wwand's datapath
+# interface (`option mux 'rmnet_nss'`, or picked up on its own under 'auto').
+# Underscore in the name on purpose: the datapath name doubles as the ucode
+# module name (wwand.datapath_rmnet_nss), and the daemon's "package not
+# installed" note is built from it, so the two must read alike.
+# ---------------------------------------------------------------------------
+define Package/wwand-datapath-rmnet_nss
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=NSS-offloaded QMAP datapath (vendor qmi_wwan_q) for wwand
+  # +wwand-qmi: it is a QMI datapath. The vendor driver and the NSS shim are
+  # NOT dependencies — they come from the board's own kernel tree (QSDK/NSS
+  # builds), and this package must stay installable next to them rather than
+  # try to name them.
+  DEPENDS:=+wwand-qmi
+endef
+
+define Package/wwand-datapath-rmnet_nss/description
+  Datapath add-on for Qualcomm NSS builds (ipq807x and friends), where the modem
+  datapath is offloaded to the NSS cores. The attach point is a global callback
+  contract: rmnet_nss publishes rmnet_nss_callbacks and the vendor qmi_wwan_q
+  driver calls nss_create() on each QMAP netdev it registers. Mainline rmnet
+  makes no such call, so wwand's built-in rmnet/qmimux datapaths produce children
+  that never reach the NSS shim — traffic forwards, but on the CPU.
+
+  This datapath therefore creates nothing: qmi_wwan_q registers the children in
+  its USB probe, one per its qmap_mode module parameter, and wwand adopts them,
+  drives the per-channel link_state gate and binds each WDS session to the QMAP
+  id the driver expects (0x81 upwards, not the config channel number).
+
+  It claims any parent carrying those vendor children, with or without the NSS
+  shim: they need adopting either way, and leaving a non-NSS vendor box to
+  mainline rmnet makes it build a second set of children on a parent that
+  already demuxes QMAP itself. For the offload, rmnet_nss must be LOADED BEFORE
+  the modem's driver binds — qmi_wwan_q captures whether NSS is available at the
+  moment it creates each child, so a module loaded afterwards leaves them
+  without an NSS context; that case is logged and shown on the status page.
+
+  Install it on a box with the vendor qmi_wwan_q driver; anywhere else it probes
+  false and changes nothing.
+endef
+
+define Package/wwand-datapath-rmnet_nss/install
+	$(INSTALL_DIR) $(1)$(UCDIR)
+	$(INSTALL_DATA) $(WWAND_UCODE)/datapath_rmnet_nss.uc $(1)$(UCDIR)/
+endef
+
 $(eval $(call BuildPackage,wwand))
 $(eval $(call BuildPackage,wwand-qmi))
 $(eval $(call BuildPackage,wwand-mbim))
 $(eval $(call BuildPackage,wwand-ncm))
 $(eval $(call BuildPackage,wwand-mhi))
 $(eval $(call BuildPackage,wwand-esim))
+define Package/wwand-datapath-rmnet_nss_mhi
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=NSS-offloaded QMAP datapath (vendor PCIe/MHI) for wwand
+  # +wwand: it serves both control protocols, so it names neither backend
+  # package. The vendor pcie_mhi driver and the NSS shim come from the board's
+  # own kernel tree and are deliberately not named here.
+  DEPENDS:=+wwand
+endef
+
+define Package/wwand-datapath-rmnet_nss_mhi/description
+  The PCIe/MHI sibling of wwand-datapath-rmnet_nss, for Quectel's vendor
+  pcie_mhi driver (mhi_netdev_quectel). That driver registers the QMAP children
+  itself and calls the rmnet_nss callbacks on each, so wwand adopts them rather
+  than creating any -- mainline rmnet would build a second set on a parent that
+  already demuxes.
+
+  It serves QMI and MBIM alike, because the driver does. The wire id differs:
+  QMAP framing uses 0x81 upwards, MBIM framing uses the MBIM session id, which
+  equals wwand's channel number on ordinary hardware and is offset by 112 on an
+  SDX7x (PCI 17cb:0309).
+
+  NOT hardware-verified: written from the driver sources. On any board without
+  that driver it probes false and changes nothing.
+endef
+
+define Package/wwand-datapath-rmnet_nss_mhi/install
+	$(INSTALL_DIR) $(1)$(UCDIR)
+	$(INSTALL_DATA) $(WWAND_UCODE)/datapath_rmnet_nss_mhi.uc $(1)$(UCDIR)/
+endef
+
+$(eval $(call BuildPackage,wwand-datapath-rmnet_nss))
+$(eval $(call BuildPackage,wwand-datapath-rmnet_nss_mhi))
