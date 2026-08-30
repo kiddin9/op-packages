@@ -15,7 +15,7 @@ AGENTFLOW_HASH_aarch64:=938b5feca2fc942eca13b0e8c9df9ea6e7d45c0b0adba0b61f6a3da5
 
 PKG_NAME:=agentflow
 PKG_VERSION:=0.3.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 AGENTFLOW_DOWNLOAD:=agentflow-linux-$(AGENTFLOW_ARCH)
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
@@ -62,8 +62,8 @@ define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)/usr/bin $(1)/etc/init.d $(1)/etc/uci-defaults $(1)/etc/config
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/agentflow $(1)/usr/bin/agentflow
+	$(INSTALL_DIR) $(1)/usr/sbin $(1)/etc/init.d $(1)/etc/uci-defaults $(1)/etc/config
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/agentflow $(1)/usr/sbin/agentflow
 	$(INSTALL_BIN) ./files/agentflow.init $(1)/etc/init.d/agentflow
 	$(INSTALL_BIN) ./files/agentflow.uci-default $(1)/etc/uci-defaults/09-agentflow
 	$(INSTALL_CONF) ./files/agentflow.config $(1)/etc/config/agentflow
