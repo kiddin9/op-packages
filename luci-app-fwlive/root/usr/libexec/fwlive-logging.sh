@@ -62,18 +62,20 @@ json_escape() {
 	}'
 }
 
-# Production lock dir must be root-owned with no group/other write (#204).
+# Production lock dir must be owned by euid with no group/other write (#204).
+# Avoid GNU/BusyBox `stat -c` — stock OpenWrt omits FEATURE_STAT_FORMAT (#232).
 wan_log_lock_dir_safe() {
 	dir="$1"
 	[ -n "$dir" ] || return 1
 	[ -L "$dir" ] && return 1
 	[ -d "$dir" ] || return 1
-	u=$(stat -c '%u' "$dir" 2>/dev/null) || return 1
-	[ "$u" = "0" ] || return 1
-	m=$(stat -c '%a' "$dir" 2>/dev/null) || return 1
-	o=$((m % 10))
-	g=$(( (m / 10) % 10 ))
-	[ $((o & 2)) -eq 0 ] && [ $((g & 2)) -eq 0 ]
+	# POSIX -O: true when the effective uid owns the directory (rpcd → root).
+	# shellcheck disable=SC3067 # BusyBox/dash implement -O; SC3067 is overly strict
+	[ -O "$dir" ] || return 1
+	# Fail closed if group or other write is set. find -perm is on BusyBox;
+	# -prune limits the walk to this directory only.
+	_writable=$(find "$dir" -prune \( -perm -020 -o -perm -002 \) -print 2>/dev/null) || return 1
+	[ -z "$_writable" ]
 }
 
 # Acquire the exclusive logging lock on fd 9. Blocks until free; fails closed
@@ -97,7 +99,12 @@ acquire_wan_log_lock() {
 	chmod 0600 "$WAN_LOG_LOCK_FILE" 2>/dev/null || true
 	chown 0:0 "$WAN_LOG_LOCK_FILE" 2>/dev/null || true
 	[ -L "$WAN_LOG_LOCK_FILE" ] && return 1
-	exec 9>"$WAN_LOG_LOCK_FILE" 2>/dev/null || return 1
+	# Probe in a subshell first: a failed `exec` redirection aborts a POSIX
+	# non-interactive shell outright, so `|| return 1` on the real exec would
+	# never run — and `2>/dev/null` on the same exec would permanently
+	# silence this process's stderr on the success path (#244).
+	( exec 9>>"$WAN_LOG_LOCK_FILE" ) 2>/dev/null || return 1
+	exec 9>>"$WAN_LOG_LOCK_FILE"
 	flock 9 2>/dev/null || {
 		exec 9>&-
 		return 1

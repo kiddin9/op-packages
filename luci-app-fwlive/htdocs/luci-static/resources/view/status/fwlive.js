@@ -21,8 +21,8 @@
 const callFwlivePoll = rpc.declare({
 	object: 'fwlive',
 	method: 'poll',
-	params: [ 'addresses' ],
-	expect: { log: [] }
+	params: [ 'addresses' ]
+	/* Full reply object kept so reply.error reaches fetchEntries (#233). */
 });
 
 const callFwliveRules = rpc.declare({
@@ -113,6 +113,7 @@ return view.extend({
 	resolveInFlight: false,
 	resolveGeneration: 0,
 	lastPollError: false,
+	lastRulesError: null,
 	lastRenderedRowCount: 0,
 	lastRenderedHeadId: '',
 	followLive: true,
@@ -492,11 +493,17 @@ return view.extend({
 			const res = await callFwliveRules();
 			this.rulesMap = (res && res.rules) || {};
 			this.firewallBackend = (res && res.backend) || 'nft';
+			/* Bounds / mktemp failures are reply.error — same idea as poll (#245). */
+			this.lastRulesError = (res && res.error) || null;
+			if (this.lastRulesError)
+				console.warn('fwlive rules map error:', this.lastRulesError);
 		} catch (e) {
 			this.rulesMap = {};
 			this.firewallBackend = 'nft';
+			this.lastRulesError = 'rules_unavailable';
 		}
 		this.updateBackendUi();
+		this.updateStatus();
 	},
 
 	backendDisplayLabel() {
@@ -729,7 +736,7 @@ return view.extend({
 		if (!this.sessionSeen)
 			this.sessionSeen = new Set();
 
-		let raw;
+		let reply;
 		try {
 			/* Raw logd lines, not post-filter rows. Fetch a multiple of the
 			 * display limit so mixed syslog still fills the table; pause
@@ -737,13 +744,23 @@ return view.extend({
 			const fetchLines = this.paused
 				? constants.FETCH_LINES_MAX
 				: Math.min(Math.max(this.rowLimit * 4, 100), constants.FETCH_LINES_MAX);
-			raw = await callFwlivePoll({
+			reply = await callFwlivePoll({
 				addresses: [ String(fetchLines) ]
 			});
 		} catch (e) {
 			this.lastPollError = true;
 			return;
 		}
+		/* Full poll object (no rpc expect strip). error → banner; log → rows. */
+		if (!reply || typeof reply !== 'object' || Array.isArray(reply)) {
+			this.lastPollError = true;
+			return;
+		}
+		if (reply.error) {
+			this.lastPollError = true;
+			return;
+		}
+		const raw = reply.log;
 		if (!Array.isArray(raw)) {
 			this.lastPollError = true;
 			return;
@@ -908,6 +925,17 @@ return view.extend({
 		if (this.lastPollError) {
 			status.className = 'fwlive-status fwlive-status-error';
 			status.textContent = _('Connection lost — retrying…') + suffix;
+			return;
+		}
+
+		if (this.lastRulesError) {
+			status.className = 'fwlive-status fwlive-status-error';
+			if (this.lastRulesError === 'rules_truncated')
+				status.textContent = _('Rule labels incomplete — map truncated') + suffix;
+			else if (this.lastRulesError === 'mktemp_failed')
+				status.textContent = _('Rule labels unavailable — temp file failed') + suffix;
+			else
+				status.textContent = _('Rule labels unavailable') + suffix;
 			return;
 		}
 
@@ -1135,7 +1163,8 @@ return view.extend({
 			if (gen !== this.resolveGeneration)
 				return;
 
-			const names = (res && res.names) || {};
+			/* rpc.declare expect: { names: {} } already unwraps — res IS the map (#243). */
+			const names = res || {};
 			let updated = false;
 
 			for (let i = 0; i < need.length; i++) {
