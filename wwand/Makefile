@@ -43,11 +43,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=15
+PKG_RELEASE:=16
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=95acd0064d8307cde67a05c5a93bf9e62254ab8d
+PKG_SOURCE_VERSION:=68a3f844a310fe9d7216d8febc496856ee5e0054
 PKG_SOURCE_DATE:=2026-08-31
 PKG_MIRROR_HASH:=skip
 
@@ -94,7 +94,7 @@ WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
 	modem_common.uc modem_init_qmi.uc modem_quirks.uc modeswitch.uc ncm_vendors.uc \
 	netlink.uc netsel_ops.uc protocol_switch.uc reconnect.uc recovery.uc regdetail.uc \
 	sim.uc sim_plmn.uc simops.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \
-	telemetry_qmi.uc transport.uc ubus.uc
+	telemetry_qmi.uc transport.uc ubus.uc version.uc
 WWAND_BASE_CODEC:=arfcn_bands.uc hex.uc qmux.uc tlv.uc
 WWAND_BASE_SCHEMA:=cat.uc ctl.uc dms.uc dsd.uc loc.uc loc_lazy.uc merge.uc nas.uc pdc.uc rat.uc \
 	tmd.uc uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
