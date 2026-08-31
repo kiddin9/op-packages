@@ -43,12 +43,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=14
+PKG_RELEASE:=15
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=199a2f8a2f242376adb6e3781443750f3d71c502
-PKG_SOURCE_DATE:=2026-08-30
+PKG_SOURCE_VERSION:=95acd0064d8307cde67a05c5a93bf9e62254ab8d
+PKG_SOURCE_DATE:=2026-08-31
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -89,15 +89,15 @@ UCDIR:=/usr/share/ucode/wwand
 # silently ship in the base too. The per-backend install lists below carry the
 # QMI/MBIM/NCM/eSIM modules; main.uc/wwandctl.uc install as executables.
 WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
-	client.uc config.uc config_check.uc context_common.uc context_monitor_qmi.uc \
+	carrier_config.uc client.uc config.uc config_check.uc context_common.uc context_monitor_qmi.uc \
 	ctx_settings.uc daemon.uc discovery.uc hwops.uc log.uc modem_datapath_qmi.uc \
 	modem_common.uc modem_init_qmi.uc modem_quirks.uc modeswitch.uc ncm_vendors.uc \
 	netlink.uc netsel_ops.uc protocol_switch.uc reconnect.uc recovery.uc regdetail.uc \
 	sim.uc sim_plmn.uc simops.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \
 	telemetry_qmi.uc transport.uc ubus.uc
 WWAND_BASE_CODEC:=arfcn_bands.uc hex.uc qmux.uc tlv.uc
-WWAND_BASE_SCHEMA:=ctl.uc dms.uc dsd.uc loc.uc loc_lazy.uc merge.uc nas.uc rat.uc \
-	uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
+WWAND_BASE_SCHEMA:=cat.uc ctl.uc dms.uc dsd.uc loc.uc loc_lazy.uc merge.uc nas.uc pdc.uc rat.uc \
+	tmd.uc uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
 
 # DEVELOPERS: set CONFIG_WWAND_UCODE_SOURCE to ship readable .uc source
 # instead of bytecode — for editing modules live under /usr/share/ucode/wwand
@@ -201,6 +201,13 @@ define Package/wwand/install
 	# new_id bind / late kmodloader) re-kick a modem parked in no_at_port backoff
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/tty
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/wwand.hotplug.tty $(1)/etc/hotplug.d/tty/20-wwand
+	# usb hotplug: bind qmi_wwan to the Huawei E1820's ethernet function. The
+	# kernel hands the device to qmi_wwan (cdc_ether blacklists it) but its
+	# table entry wants a vendor-specific class this old 802.3 layout does not
+	# carry, so a scoped dynamic new_id is what makes the control channel appear
+	# at all — and it is volatile, so it has to be re-created on every replug.
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/usb
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/wwand.hotplug.e1820 $(1)/etc/hotplug.d/usb/21-wwand-e1820
 	# NOTE: the kernel-wwan-subsystem hotplug (/etc/hotplug.d/wwan/20-wwand) is
 	# NOT installed here — it belongs to wwand-mhi, which also pulls the MHI
 	# drivers that create /sys/class/wwan in the first place (procd only arms a
