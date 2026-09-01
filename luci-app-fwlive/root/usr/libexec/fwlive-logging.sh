@@ -382,6 +382,8 @@ collect_logging_blockers() {
 	[ -n "$zone" ] || logging_blockers_append 'no_wan_zone'
 	check_nf_log_ipv4 || logging_blockers_append 'nf_log_ipv4_missing'
 	check_nf_log_ipv6 || logging_blockers_append 'nf_log_ipv6_missing'
+	# rpcd/fwlive run_with_timeout fail-closes to 127 without timeout (#229): surface as blocker.
+	command -v timeout >/dev/null 2>&1 || logging_blockers_append 'timeout_missing'
 
 	[ -n "$LOGGING_BLOCKERS" ] || return 0
 	return 1

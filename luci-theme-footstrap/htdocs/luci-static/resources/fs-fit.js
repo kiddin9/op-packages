@@ -110,6 +110,13 @@ function run() {
  * question from which box can carry a floor. */
 const SHRINKS = '.cbi-section > div, .table';
 
+/* A box qualifies for a floor through its CHILDREN, so emptying it takes it out of `SHRINKS` — and
+ * a floor nothing sweeps any more is a floor nothing can take off: measured on Network ->
+ * Interfaces, a section emptied of its table kept 1299px of `min-height` for the life of the page.
+ * Every floor this writes is marked, so the sweep finds its own work again whatever became of the
+ * markup underneath. The attribute is in the theme's own namespace and says nothing to CSS. */
+const FLOORED = '[data-fs-floor]';
+
 /* What the container would stand at with no floor under it, asked of the CONTENT rather than by
  * taking the floor off and re-measuring.
  *
@@ -144,22 +151,27 @@ function naturalHeight(el) {
 	if (!box.height) return 0;
 	const end = last.getBoundingClientRect();
 	if (!end.height && !end.width) return 0;		/* a last child out of the flow says nothing */
+	let bottom = end.bottom;
+	/* AND THE TEXT AFTER IT. A box whose content ends in text ends below its last ELEMENT, and
+	 * measuring to that element writes a floor shorter than the box: `.cbi-section-descr` on
+	 * /admin/network/dhcp measured 115px against the 156px it stands at, and a floor 41px short lets
+	 * the document shrink under the reader during the very tick the floor is there to hold.
+	 *
+	 * Only the tail, not `selectNodeContents(el)`: a Range over the whole box takes in whatever is
+	 * out of the flow inside it and writes a floor TALLER than the box instead — 205px against 107
+	 * on the Overview, which is the same blank page seen from the other side. */
+	if (last.nextSibling) {
+		const tail = document.createRange();
+		tail.setStartAfter(last);
+		tail.setEnd(el, el.childNodes.length);
+		const box2 = tail.getBoundingClientRect();
+		if (box2.height || box2.width) bottom = Math.max(bottom, box2.bottom);
+	}
 	const cs = window.getComputedStyle(el);
 	const below = parseFloat(cs.paddingBottom) + parseFloat(cs.borderBottomWidth);
-	return Math.round(end.bottom - box.top + (below || 0));
+	return Math.round(bottom - box.top + (below || 0));
 }
 
-/* The floor is the height the next tick may not go below, one per container. Read in one pass and
- * written in another, so the sweep costs a single forced layout rather than one per element.
- *
- * WRITTEN ONLY WHERE THE VALUE CHANGES, which is the difference between a floor and a page the
- * engine refuses to anchor: see naturalHeight() above. Measured over 25 s of real polling on the
- * Overview at 390px, the clear-and-rewrite shape wrote style 1550 times on 25.12 and 170 times on
- * ImmortalWrt 24.10, of which 75 and 62 carried a value that had actually moved — the rest were
- * suppression bought for nothing.
- *
- * Not while the reader scrolls: a rect read is a forced layout, and a floor staying where it was is
- * still a floor. */
 /* The floor is the height the next tick may not go below, one per box. Read in one pass and written
  * in another, so the sweep costs a single forced layout rather than one per element.
  *
@@ -179,26 +191,85 @@ function naturalHeight(el) {
  *
  * Not while the reader scrolls: a rect read is a forced layout, and a floor staying where it was is
  * still a floor. */
+/* Boxes that measured empty on the LAST pass, so a floor that is holding nothing up can be told
+ * from one that is holding the page still while `dom.content()` refills. WeakSet: a box the router
+ * has replaced is garbage, and this must not be what keeps it alive. */
+const emptied = new WeakSet();
+
+/* Off in one place, so the mark and the style can never disagree about who wears a floor. */
+function dropFloor(box) {
+	if (box.style.minHeight) box.style.minHeight = '';
+	box.removeAttribute('data-fs-floor');
+}
+
+/* THE SECOND LOOK HAS TO BE SCHEDULED, not waited for. Every other pass here is driven by the
+ * MutationObserver on `#view`, and a container that empties and stays empty produces no further
+ * mutation — so "clear it if it is still empty next pass" never gets a next pass, and the floor
+ * stands for the life of the page (measured: 1299px on Network -> Interfaces).
+ *
+ * One poll interval, because that is how long a container that is genuinely refilling may take: the
+ * router's own `pollinterval` when the page will say it, and its shipped default of 5 s otherwise.
+ * Shorter risks taking the floor away from a tick still in flight, which is the 568px clamp this
+ * whole mechanism exists to stop. */
+let _emptyCheck = null;
+
+function checkEmptyLater() {
+	if (_emptyCheck) return;
+	let secs = 5;
+	try { secs = (window.L && L.env && L.env.pollinterval) || 5; } catch (e) { /* not on a LuCI page */ }
+	_emptyCheck = setTimeout(() => { _emptyCheck = null; run(); }, secs * 1000);
+}
+
 function holdFloor() {
 	if (scrolling()) return;
 	const host = document.getElementById('view');
 	if (!host) return;			/* the login page has no view */
-	const boxes = [], hs = [];
-	host.querySelectorAll(SHRINKS).forEach((el) => {
-		let box = el;
-		while (box && box !== host && window.getComputedStyle(box).display.startsWith('table'))
+	const boxes = [], hs = [], gone = [];
+	host.querySelectorAll(SHRINKS + ', ' + FLOORED).forEach((el) => {
+		let box = el, cs = window.getComputedStyle(el);
+		while (box && box !== host && cs.display.startsWith('table')) {
 			box = box.parentElement;
+			if (box) cs = window.getComputedStyle(box);
+		}
 		/* several tables in one section climb to the same box; it needs one floor, not one each */
 		if (!box || box === host || boxes.indexOf(box) !== -1) return;
 		boxes.push(box);
-		hs.push(naturalHeight(box));
+		/* `visibility` inherits, so this is equally true of every box inside a collapsed pane */
+		const hidden = cs.visibility === 'hidden';
+		gone.push(hidden);
+		hs.push(hidden ? 0 : naturalHeight(box));
 	});
 	boxes.forEach((box, i) => {
-		/* zero is an empty box, and the floor it already wears is what holds it up — the moment this
-		 * whole mechanism exists for */
-		if (hs[i] <= 0) return;
+		/* A BOX THE READER CANNOT SEE GIVES ITS FLOOR BACK. `min-height` beats the `height: 0` an
+		 * inactive tab pane is collapsed with (theme/30-tables.css), so a floor written while the pane
+		 * was open pins the collapse open once it closes: on Network -> Interfaces the `interface`
+		 * pane held its 1265px after the reader left it, and the tab they were looking at started
+		 * that far down the page (issue #41). The clear-and-remeasure shape this replaced in 0.14.4
+		 * cleared every floor each tick, so a pane going inactive lost its own on the next one; only
+		 * a box that cannot hold anything up is cleared here, and it is re-measured the tick after it
+		 * comes back. A collapsed pane whose floor is still standing also measures a height of its
+		 * own, which is why refusing to write is not enough. */
+		if (gone[i]) { dropFloor(box); return; }
+		/* ZERO IS AN EMPTY BOX, and the floor it already wears is what holds it up — the moment this
+		 * whole mechanism exists for, since `dom.content()` empties before it refills.
+		 *
+		 * But only for the one pass. A box that is still empty on the next one is not refilling, and
+		 * its floor is then blank page that nothing takes back: measured on Network -> Interfaces,
+		 * a section emptied and left alone keeps 1299px of `min-height` for the life of the page,
+		 * with the document standing at 1720px around no content at all. That is what 0.14.4 changed
+		 * by replacing clear-and-remeasure, which read the collapsed height and wrote nothing. */
+		if (hs[i] <= 0) {
+			if (!box.style.minHeight) return;
+			if (emptied.has(box)) { dropFloor(box); emptied.delete(box); }
+			else { emptied.add(box); checkEmptyLater(); }
+			return;
+		}
+		emptied.delete(box);
 		const px = hs[i] + 'px';
-		if (box.style.minHeight !== px) box.style.minHeight = px;
+		if (box.style.minHeight !== px) {
+			box.style.minHeight = px;
+			box.setAttribute('data-fs-floor', '');
+		}
 	});
 }
 
@@ -932,6 +1003,21 @@ return baseclass.extend({
 		const room = this.roomFor(el);
 		const grown = el.getBoundingClientRect().width;
 		return Math.max(el.scrollWidth, grown) > room + 1;	/* +1: sub-pixel rounding */
+	},
+
+	/* IS SOMEBODY ELSE ALREADY SCROLLING THIS? An app that puts its table in a box of its own with
+	 * `overflow-x: auto` has answered the overflow question itself, and the theme re-laying that
+	 * table overrules a decision that was not its to take: luci-app-filemanager parks its listing in
+	 * a 598px `div.resizeable` and the whole table came out as cards on a 1280px screen, where the
+	 * page had 1224px of room and the reader had asked for none of it.
+	 *
+	 * The walk stops at the content root, so the theme's own scrollers are not this test's business:
+	 * `#modal_overlay` is the dialog's scroller (base/60-modal.css) and the scroll fallback the theme
+	 * gives a foreign table is on the TABLE itself (theme/30-tables.css), not on an ancestor. */
+	inScroller(el) {
+		for (let p = el.parentElement; p && p.id !== 'view' && p.id !== 'modal_overlay'; p = p.parentElement)
+			if ((/(auto|scroll)/).test(window.getComputedStyle(p).overflowX)) return true;
+		return false;
 	}
 
 });
