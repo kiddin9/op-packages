@@ -15,7 +15,7 @@ AGENTFLOW_HASH_aarch64:=6d733ebc49b095bf8670a1b655a13bb8ad98c90ced19701b67d5cdd4
 
 PKG_NAME:=agentflow
 PKG_VERSION:=0.3.0
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 
 AGENTFLOW_URL_FILE:=agentflow-linux-$(AGENTFLOW_ARCH)
 AGENTFLOW_DOWNLOAD:=$(AGENTFLOW_URL_FILE)-$(AGENTFLOW_HASH_$(ARCH))
@@ -40,7 +40,7 @@ define Package/$(PKG_NAME)
 	CATEGORY:=Network
 	SUBMENU:=Web Servers/Proxies
 	TITLE:=AgentFlow
-	DEPENDS:=@(x86_64||aarch64) +git +mise
+	DEPENDS:=@(x86_64||aarch64) +git +git-http +mise
 	URL:=https://agentflow.geili.ai/
 endef
 
