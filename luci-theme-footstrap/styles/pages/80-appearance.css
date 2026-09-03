@@ -100,6 +100,10 @@
 	 * an item that cannot fit moves to the next line instead of hanging past the edge, which on a
 	 * flex row is silent. */
 	.fs-ap-actrow { display: flex; flex-wrap: wrap; gap: var(--fs-space-2); }
+	/* Save and the two resets differ by one word and sit in one row, which is the shape a
+	 * destructive click lands on by accident. The gap says they are two groups; both resets also
+	 * ask for a second click. Zero-width, so it costs no height when the row wraps on a phone. */
+	.fs-ap-actgap { flex: 0 0 var(--fs-space-4); }
 	.fs-ap-actrow .btn { font-size: var(--fs-type); padding: var(--fs-space-2) var(--fs-space-2-5); cursor: pointer; }
 	.fs-ap-actrow .btn:disabled { cursor: default; }
 	/* the primed Reset (second click confirms) reads as the destructive action it is */

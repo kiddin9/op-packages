@@ -221,7 +221,7 @@ function colorControl(current, onPick, label, opts) {
 /* Build the whole form. Returns a promise for one element wire() appends to the stock page.
  *
  * Everything applies immediately and there is nothing to save: every axis is this browser's, in
- * localStorage, and the page repaints under the control as it moves. Only "Save as default" writes
+ * localStorage, and the page repaints under the control as it moves. Only "Save to router" writes
  * anything, pushing the current look to the ROUTER for other browsers. That distinction is the
  * model (docs/design-system.md), and why this page has no Save/Reset footer of LuCI's own. */
 function render() {
@@ -575,17 +575,21 @@ function build() {
 	 * the scoped uci ACL). It does not change this browser — localStorage keeps overriding — so the
 	 * saved default only shows on a fresh browser. The two Reset buttons below are the escape
 	 * hatches, and they do not land in the same place. */
-	const saveBtn = E('button', { 'class': 'btn cbi-button-action', 'type': 'button' }, [ _('Save as default', 'footstrap') ]);
+	const saveBtn = E('button', { 'class': 'btn cbi-button-action', 'type': 'button' }, [ _('Save to router', 'footstrap') ]);
 	/* Two resets, because two things sit underneath a browser's tweaks (fs-prefs.js): "Reset to
-	 * saved" clears them and lets every axis fall back to whatever the router holds, while "Reset
-	 * to default" writes the theme's built-ins explicitly — the only way to say "as the theme
-	 * ships" on a router with a saved default of its own. Neither touches
-	 * /etc/config/footstrap. */
-	const resetSavedBtn = E('button', { 'class': 'btn', 'type': 'button' }, [ _('Reset to saved', 'footstrap') ]);
+	 * router" clears them and lets every axis fall back to whatever the router holds, while "Reset
+	 * to built-in" writes the theme's built-ins explicitly — the only way to say "as the theme
+	 * ships" on a router that has a look of its own. Neither touches /etc/config/footstrap.
+	 *
+	 * ONE word per state, and "default" is not one of them: it used to name the router's look in
+	 * "Save as default" and the theme's in "Reset to default", while the router's look also
+	 * answered to "saved" — three names for two states, asked about on the forum (topic 251930,
+	 * post 92). The row now reads as one save and two resets, over `router` and `built-in`. */
+	const resetSavedBtn = E('button', { 'class': 'btn', 'type': 'button' }, [ _('Reset to router', 'footstrap') ]);
 	/* the stock destructive class, so the button discarding every local tweak is the red one
-	 * (theme/55-buttons.css). "Reset to saved" stays neutral: it steps back to the shared state
+	 * (theme/55-buttons.css). "Reset to router" stays neutral: it steps back to the shared state
 	 * rather than discarding. */
-	const resetBtn = E('button', { 'class': 'btn cbi-button-negative', 'type': 'button' }, [ _('Reset to default', 'footstrap') ]);
+	const resetBtn = E('button', { 'class': 'btn cbi-button-negative', 'type': 'button' }, [ _('Reset to built-in', 'footstrap') ]);
 	/* Save's only visible failure surface. The realistic failure is the rpc rejecting — an expired
 	 * session (403), a missing ACL, ubus down. A DELETED config is not caught: rpcd stages the set
 	 * in the session and commit then no-ops without writing the file, returning success (measured
@@ -603,14 +607,14 @@ function build() {
 	function refreshSave() {
 		if (prefs.storageBroken()) {
 			saveBtn.disabled = false;
-			saveBtn.textContent = _('Save as default', 'footstrap');
+			saveBtn.textContent = _('Save to router', 'footstrap');
 			saveErr.textContent = _('This browser is not storing preferences (site data is blocked), so a change here lasts until you reload. Saving as default still works and applies to every browser.', 'footstrap');
 			saveErr.hidden = false;
 			return;
 		}
 		const saved = axes.matchesSavedDefault();
 		saveBtn.disabled = saved;
-		saveBtn.textContent = saved ? _('Saved as default', 'footstrap') : _('Save as default', 'footstrap');
+		saveBtn.textContent = saved ? _('Saved to router', 'footstrap') : _('Save to router', 'footstrap');
 	}
 	saveBtn.addEventListener('click', () => {
 		saveBtn.disabled = true;
@@ -651,8 +655,8 @@ function build() {
 			location.reload();
 		});
 	}
-	twoClick(resetSavedBtn, _('Reset to saved', 'footstrap'), axes.resetToSaved);
-	twoClick(resetBtn, _('Reset to default', 'footstrap'), axes.resetToBuiltin);
+	twoClick(resetSavedBtn, _('Reset to router', 'footstrap'), axes.resetToSaved);
+	twoClick(resetBtn, _('Reset to built-in', 'footstrap'), axes.resetToBuiltin);
 	refreshSave();	/* correct label and enabled state before the first paint */
 
 	const versionLink = E('a', {
@@ -664,12 +668,31 @@ function build() {
 		'rel': 'noreferrer'
 	}, [ ver.label() ]);
 
+	/* One clause per button, in LuCI's own help-sentence idiom and under the buttons themselves,
+	 * because that is where the question is asked: with all three named "save"/"reset" and two of
+	 * them resets, the row does not say which state each lands in (forum topic 251930, post 90 —
+	 * "what is the difference on 'reset to saved' and 'reset to default'?"). Three lines rather
+	 * than a paragraph: three parts want a list, and each is read on its own.
+	 *
+	 * Text nodes separated by <br>, NOT a child per line: `.cbi-value-field *` in
+	 * theme/60-inputs.css hands mono to every descendant and excludes `.cbi-value-description`
+	 * itself, so a wrapped line becomes a descendant that the exclusion does not reach — measured,
+	 * all three lines came out monospace. Text nodes inherit the sans face from the container, and
+	 * one container also means one `?` glyph with every line aligned under it. */
+	const buttonHelp = E('div', { 'class': 'cbi-value-description' }, [
+		_('Save to router — store this look on the router. Browsers with a look of their own keep it.', 'footstrap'),
+		E('br'),
+		_('Reset to router — drop this browser\'s changes and follow the router.', 'footstrap'),
+		E('br'),
+		_('Reset to built-in — go back to the look the theme ships with.', 'footstrap')
+	]);
+
 	const defaults = [
 		/* the one row whose control is a pair of buttons, each named by its own text, so `make`
 		 * ignores the caption rather than re-using it as an aria-label */
-		group(_('Router default', 'footstrap'),
-			() => E('div', { 'class': 'fs-ap-actrow' }, [ saveBtn, resetSavedBtn, resetBtn ]),
-			{ extra: saveErr })
+		group(_('Saved look', 'footstrap'),
+			() => E('div', { 'class': 'fs-ap-actrow' }, [ saveBtn, E('span', { 'class': 'fs-ap-actgap', 'aria-hidden': 'true' }), resetSavedBtn, resetBtn ]),
+			{ extra: [ buttonHelp, saveErr ] })
 	];
 
 
@@ -768,8 +791,8 @@ function build() {
 	 * the misreading happens before anyone scrolls to Defaults. A bare `.alert-message`:
 	 * theme/35-alerts.css keeps the tinted variants for a STATUS and a flat panel for a note. */
 	const note = E('div', { 'class': 'alert-message fs-ap-note' }, [
-		E('p', {}, [ _('Changes apply at once and live in this browser.', 'footstrap') ]),
-		E('p', {}, [ _('To keep them on the router, use Save as default under Defaults — not Save & Apply at the foot of the page.', 'footstrap') ])
+		E('p', {}, [ _('Footstrap theme settings apply at once and are stored permanently in this browser.', 'footstrap') ]),
+		E('p', {}, [ _('Save & Apply at the foot of the page belongs to the System form and does not store them.', 'footstrap') ])
 	]);
 
 	/* Colours and Surfaces are one fold: the same job, split into two headings only because a
@@ -781,7 +804,7 @@ function build() {
 			colours.concat([ E('div', { 'class': 'fs-ap-head fs-ap-sub' }, [ E('h4', {}, [ _('Surfaces', 'footstrap') ]) ]) ], surfaces),
 			'fs-ui-colours'),
 		foldable(_('Background', 'footstrap'), wallpaper, 'fs-ui-background'),
-		section(_('Defaults', 'footstrap'), defaults)
+		section(_('Saving', 'footstrap'), defaults)
 	]);
 
 	/* The first fill, deferred one microtask so the tree above is finished. It does not wait for

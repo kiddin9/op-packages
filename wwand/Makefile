@@ -43,11 +43,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=19
+PKG_RELEASE:=20
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=fb4a8ff34967a5ae1d6e882dcd78b8339f5f99d1
+PKG_SOURCE_VERSION:=6ed882e3b53544c9e42f2cc681780d99205141eb
 PKG_SOURCE_DATE:=2026-09-02
 PKG_MIRROR_HASH:=skip
 
@@ -300,8 +300,18 @@ define Package/wwand-ncm
   TITLE:=NCM/ECM backend for wwand
   # +kmod-usb-net-rndis: the RNDIS datapath (rndis_host) used by e.g. the
   # Fibocom FM350-GL (MediaTek T700) — same AT-driven backend, RNDIS netdev.
-  DEPENDS:=+wwand +USB_SUPPORT:kmod-usb-net-cdc-ncm \
-	+USB_SUPPORT:kmod-usb-net-cdc-ether +USB_SUPPORT:kmod-usb-net-rndis
+  # These three stay UNCONDITIONAL, unlike the USB kmods of wwand-qmi and
+  # wwand-mbim. Those two have a non-USB transport behind them — QMI keeps
+  # +kmod-rmnet unconditional and reaches a modem over MHI, MBIM gets
+  # kmod-mhi-wwan-mbim through wwand-mhi — so gating their USB kmod still
+  # leaves a package that works on a PCIe-only target. NCM has no such path:
+  # it drives a single cdc_ncm/cdc_ether netdev and the only variant it
+  # recognises is rndis_host, all USB. Gating these on USB_SUPPORT would leave
+  # the package selectable on a !USB_SUPPORT target while pulling no datapath
+  # driver at all — installable and inert. The hard dependency is what keeps it
+  # unselectable there. (Raised in review on openwrt/packages#30185.)
+  DEPENDS:=+wwand +kmod-usb-net-cdc-ncm +kmod-usb-net-cdc-ether \
+	+kmod-usb-net-rndis
   # coexists with the stock OpenWrt NCM stack (netifd `ncm` proto, package
   # comgt-ncm): wwand drives an AT/NCM modem only once its interface has been
   # migrated to `proto wwand` (LuCI modem list / migrate CLI), so both stacks can
@@ -445,6 +455,15 @@ define Package/wwand-datapath-rmnet_nss/description
   the modem's driver binds — qmi_wwan_q captures whether NSS is available at the
   moment it creates each child, so a module loaded afterwards leaves them
   without an NSS context; that case is logged and shown on the status page.
+
+  That constraint belongs to the STOCK driver, not to NSS itself: the single
+  nss_create() attempt can be turned into a bounded delayed-work retry, and the
+  child then attaches whenever the NSS data plane comes up, in any order. If you
+  build the vendor driver yourself, kuncy7/aw1000-nss-builder carries such a
+  patch (package-patches/quectel-qmi-wwan/950-rmnet-nss-deferred-attach.patch).
+  It is a change to the quectel-qmi-wwan kernel module, not to wwand, so nothing
+  here can apply it for you — but it removes the ordering requirement at its
+  source rather than working around it.
 
   Install it on a box with the vendor qmi_wwan_q driver; anywhere else it probes
   false and changes nothing.
