@@ -717,6 +717,10 @@
 	margin-left: 8px;
 	vertical-align: middle;
 }
+.fwlive-backend.fwlive-backend-warn {
+	color: var(--warn-color-high);
+	font-weight: 600;
+}
 .fwlive-filter-panel { margin-bottom: 12px; }
 .fwlive-map[data-view="simple"] .fwlive-grid-core {
 	display: grid;
