@@ -1,13 +1,3 @@
---- a/oscam/files/oscam.init
-+++ b/oscam/files/oscam.init
-@@ -8,5 +8,5 @@ start() {
- }
- 
- stop() {
--	killall oscam
-+	kill `pidof oscam | sed "s/$$//g"`
- }
-
 --- a/totd/root/etc/init.d/totd
 +++ b/totd/root/etc/init.d/totd
 @@ -55,5 +55,5 @@ start_service(){
