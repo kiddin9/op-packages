@@ -143,17 +143,27 @@ wan_zone_log_value() {
 	uci -q get "firewall.${zone}.log" 2>/dev/null
 }
 
+# Resolve a firewall section id to its canonical cfgXXXX form (issue B-1 /
+# multi-model audit). `uci -X show` disables @type[N] aliases so @zone[0] and
+# cfgXXXX for the same anonymous section compare equal. Empty on failure.
+uci_canonical_firewall_section() {
+	_sid="$1"
+	[ -n "$_sid" ] || return 1
+	uci -q -X show "firewall.${_sid}" 2>/dev/null \
+		| sed -n '1s/^firewall\.\([^=.]*\)=.*/\1/p'
+}
+
 # True when two firewall section ids refer to the same WAN zone (issue #239).
+# Compare canonical cfg ids — do NOT treat every name=wan zone as identical
+# (duplicate wan sections would under-match foreign .log deltas as ours).
 wan_firewall_zone_same() {
 	_a="$1"
 	_b="$2"
 	[ -n "$_a" ] && [ -n "$_b" ] || return 1
 	[ "$_a" = "$_b" ] && return 0
-	_na=$(uci -q get "firewall.${_a}.name" 2>/dev/null) || return 1
-	_nb=$(uci -q get "firewall.${_b}.name" 2>/dev/null) || return 1
-	_ta=$(uci -q get "firewall.${_a}" 2>/dev/null) || return 1
-	_tb=$(uci -q get "firewall.${_b}" 2>/dev/null) || return 1
-	[ "$_na" = "wan" ] && [ "$_nb" = "wan" ] && [ "$_ta" = "zone" ] && [ "$_tb" = "zone" ]
+	_ca=$(uci_canonical_firewall_section "$_a") || return 1
+	_cb=$(uci_canonical_firewall_section "$_b") || return 1
+	[ -n "$_ca" ] && [ -n "$_cb" ] && [ "$_ca" = "$_cb" ]
 }
 
 wan_log_staged_line_section() {
