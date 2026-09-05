@@ -1,4 +1,4 @@
-local fs = require "luci.fs"
+local fs = require "nixio.fs"
 local http = luci.http
 
 ful = SimpleForm("upload", translate("Upload"), nil)
@@ -28,8 +28,8 @@ dm.template = "filetransfer/other_dvalue"
 function Download()
 	local sPath, sFile, fd, block
 	sPath = http.formvalue("dlfile")
-	sFile = nixio.fs.basename(sPath)
-	if luci.fs.isdirectory(sPath) then
+	sFile = fs.basename(sPath)
+	if fs.stat(sPath, "type") == "dir" then
 		fd = io.popen('tar -C "%s" -cz .' % {sPath}, "r")
 		sFile = sFile .. ".tar.gz"
 	else
@@ -121,7 +121,7 @@ btnrm.render = function(self, section, scope)
 end
 
 btnrm.write = function(self, section)
-	local v = luci.fs.unlink("/tmp/upload/" .. luci.fs.basename(inits[section].name))
+	local v = fs.unlink("/tmp/upload/" .. fs.basename(inits[section].name))
 	if v then table.remove(inits, section) end
 	return v
 end

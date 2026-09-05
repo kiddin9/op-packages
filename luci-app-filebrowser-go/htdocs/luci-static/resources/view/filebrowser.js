@@ -4,11 +4,22 @@
 'require rpc';
 'require uci';
 'require view';
-'require fs';
+
+const callServiceList = rpc.declare({
+	object: 'service',
+	method: 'list',
+	params: ['name'],
+	expect: { '': {} }
+});
 
 function getServiceStatus() {
+	return L.resolveDefault(callServiceList('filebrowser'), {}).then(function(res) {
 		let isRunning = false;
+		try {
+			isRunning = res['filebrowser']['instances']['instance1']['running'];
+		} catch (e) { }
 		return isRunning;
+	});
 }
 
 function renderStatus(isRunning, port) {
@@ -26,21 +37,13 @@ function renderStatus(isRunning, port) {
 }
 
 return view.extend({
-	load: async function () {
-		const promises = await Promise.all([
-			L.resolveDefault(fs.stat('/var/run/filebrowser.pid'), null),
-			uci.load('filebrowser')
-		]);
-	const data = {
-			isRunning: promises[0],
-			conf: promises[1]
-		};
-	return data;
+	load() {
+		return uci.load('filebrowser');
 	},
 
 	render(data) {
 		let m, s, o;
-		let webport = (uci.get(data.conf, 'config', 'listen_port') || '8989');
+		let webport = (uci.get(data, 'config', 'listen_port') || '8989');
 
 		m = new form.Map('filebrowser', _('FileBrowser'),
 			_('FileBrowser provides a file managing interface within a specified directory and it can be used to upload, delete, preview, rename and edit your files..') + '<br />'+
@@ -49,24 +52,17 @@ return view.extend({
 		s = m.section(form.TypedSection);
 		s.anonymous = true;
 		s.render = function() {
-    		poll.add(function() {
-        		return fs.stat('/var/run/filebrowser.pid').then(function(stat) {
-            		let view = document.getElementById('service_status');
-            		if (view) {
-                		view.innerHTML = renderStatus(stat, webport);
-            		}
-        		}).catch(function() {
-            		let view = document.getElementById('service_status');
-            		if (view) {
-                		view.innerHTML = renderStatus(null, webport);
-            		}
-        		});
-    		});
+			poll.add(function() {
+				return L.resolveDefault(getServiceStatus()).then(function(res) {
+					let view = document.getElementById('service_status');
+					view.innerHTML = renderStatus(res, webport);
+				});
+			});
 
-    return E('div', { class: 'cbi-section', id: 'status_bar' }, [
-        E('p', { id: 'service_status' }, _('Collecting data...'))
-    ]);
-};
+			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
+				E('p', { id: 'service_status' }, _('Collecting data...'))
+			]);
+		}
 
 		s = m.section(form.NamedSection, 'config', 'filebrowser');
 
@@ -80,7 +76,11 @@ return view.extend({
 		o.rmempty = false;
 
 		o = s.option(form.Value, 'root_path', _('Root directory'));
-		o.default = '/';
+		o.default = '/mnt';
+		o.rmempty = false;
+
+		o = s.option(form.Flag, 'disable_exec', _('Disable Command Runner feature'));
+		o.default = o.enabled;
 		o.rmempty = false;
 
 		return m.render();
