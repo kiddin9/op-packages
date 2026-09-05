@@ -45,7 +45,7 @@ EOF
         grep -q " name:" "$CONF_PATH" || sed -i "s,.*- path:.*,&\n      name: \"\"," "$CONF_PATH"
         sed -e "s/ port:.*/ port: $listen_port/" \
             -e "s, - path:.*, - path: \"$root_path\"," \
-            -e "s/ name: \"root\"/ name: \"$root_name\"/" \
+            -e "s/      name: \".*\"/      name: \"$root_name\"/" \
             -i "$CONF_PATH"
     fi
 
