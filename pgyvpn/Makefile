@@ -67,7 +67,6 @@ ifeq ($(ARCH),x86_64)
 	OPENSSL_COMPAT_TARGET:=linux-x86_64
 endif
 
-PKG_FLAGS:=nonshared
 PKG_MAINTAINER:=Oray <developer@oray.com>
 
 include $(INCLUDE_DIR)/package.mk
