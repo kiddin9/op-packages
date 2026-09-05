@@ -33,17 +33,6 @@
  
  include $(INCLUDE_DIR)/package.mk
 
---- a/pgyvpn/Makefile
-+++ b/pgyvpn/Makefile
-@@ -36,7 +36,6 @@ PKG_SOURCE:=pgyvpnsvr
- PKG_SOURCE_URL:=https://mirrors.oray.com/orayos/packages/$(PKG_NAME)/$(PKG_ARCH_PGYYPN)/$(PKG_VERSION)/bin
- PKG_HASH:=skip
- 
--PKG_FLAGS:=nonshared
- PKG_MAINTAINER:=Oray <developer@oray.com>
- 
- include $(INCLUDE_DIR)/package.mk
-
 --- a/luci-app-rclone/Makefile
 +++ b/luci-app-rclone/Makefile
 @@ -9,7 +9,7 @@ PKG_VERSION:=1.4.1
