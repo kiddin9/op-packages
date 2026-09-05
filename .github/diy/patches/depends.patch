@@ -1,3 +1,14 @@
+--- a/pgyvpn/Makefile
++++ b/pgyvpn/Makefile
+@@ -67,7 +67,6 @@ ifeq ($(ARCH),x86_64)
+ 	OPENSSL_COMPAT_TARGET:=linux-x86_64
+ endif
+ 
+-PKG_FLAGS:=nonshared
+ PKG_MAINTAINER:=Oray <developer@oray.com>
+ 
+ include $(INCLUDE_DIR)/package.mk
+
 --- a/luci-app-easytier/Makefile
 +++ b/luci-app-easytier/Makefile
 @@ -10,7 +10,7 @@ PKG_VERSION:=2.3.0
