@@ -18,9 +18,11 @@ start() {
 	local listen_port root_path base_url
 	config_get listen_port "config" "listen_port" "8989"
 	config_get root_path "config" "root_path" "/"
-	config_get base_url "config" "base_url" "/"
 	
 	echo "Starting filebrowser..."
+	sed -e "s/  port:.*/  port:$listen_port/" \
+		-e "s,  - path:.*,  - path:\"$root_path\"," \
+		-i "$CONF_PATH"
 	start-stop-daemon -S -q -b -m -p "$PID_FILE" -x "$PROG" -- -c "$CONF_PATH"
 }
 

@@ -9,5 +9,7 @@ module("luci.controller.filetransfer", package.seeall)
 
 function index()
 
-	entry({"admin", "system", "filetransfer"}, form("filetransfer"), _("FileTransfer"), 89).dependent = true
+	local page = entry({"admin", "system", "filetransfer"}, form("filetransfer"), _("FileTransfer"), 89)
+	page.dependent = true
+	page.acl_depends = { "luci-app-filetransfer" }
 end
