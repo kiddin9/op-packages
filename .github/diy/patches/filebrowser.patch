@@ -1,0 +1,26 @@
+--- a/filebrowser/Makefile
++++ b/filebrowser/Makefile
+@@ -48,17 +48,20 @@ define Package/filebrowser/conffiles
+ /etc/config/filebrowser
+ endef
+ 
+-define Build/Compile
++define Build/Prepare
++	$(call Build/Prepare/Default)
+ 	( \
+ 		export PNPM_HOME="$(PKG_BUILD_DIR)/frontend" ; \
+ 		pushd "$(PKG_BUILD_DIR)/frontend" ; \
+ 		pnpm install --frozen-lockfile ; \
+ 		pnpm run build ; \
+-		popd ; \
+-		$(call GoPackage/Build/Compile) ; \
+ 	)
+ endef
+ 
++define Build/Compile
++	$(call GoPackage/Build/Compile)
++endef
++
+ define Package/filebrowser/install
+ 	$(call GoPackage/Package/Install/Bin,$(1))
+
