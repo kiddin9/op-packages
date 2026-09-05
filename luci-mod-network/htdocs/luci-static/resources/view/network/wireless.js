@@ -82,6 +82,24 @@ function buildIwinfoDeviceLookup(devices) {
 	return lookup;
 }
 
+function getQcaIwinfoDevicesFromConfig() {
+	const radios = uci.sections('wireless', 'wifi-device');
+	const devices = [];
+
+	if (!radios.length || !radios.every((radio) => isQcaWifiHwtype(radio.type)))
+		return null;
+
+	for (const iface of uci.sections('wireless', 'wifi-iface')) {
+		if (isConfigWifiIfaceDisabled(iface) ||
+		    !isQcaWifiHwtype(uci.get('wireless', iface.device, 'type')))
+			continue;
+
+		pushUnique(devices, iface.ifname || getQcaFallbackIfname(iface.device, iface['.name']));
+	}
+
+	return devices;
+}
+
 function getWifiNetIdBySection(section) {
 	let index = 0;
 
@@ -130,7 +148,7 @@ function parseIwDevInfoTxPower(stdout) {
 	return (!isNaN(value) && value > 0) ? value : null;
 }
 
-function buildIwinfoResolver(devices) {
+function buildIwinfoResolver(devices, configOnly) {
 	const deviceLookup = buildIwinfoDeviceLookup(devices);
 	const aliasMap = Object.create(null);
 	const queryTargets = [];
@@ -190,7 +208,8 @@ function buildIwinfoResolver(devices) {
 	return {
 		deviceLookup,
 		aliasMap,
-		queryTargets
+		queryTargets,
+		configOnly
 	};
 }
 
@@ -201,8 +220,13 @@ function loadIwinfoResolver(force) {
 	if (!force && cachedIwinfoResolver != null)
 		return Promise.resolve(cachedIwinfoResolver);
 
-	cachedIwinfoResolverPromise = L.resolveDefault(callIwinfoDevices(), {}).then((res) => {
-		cachedIwinfoResolver = buildIwinfoResolver(res?.devices);
+	const qcaDevices = getQcaIwinfoDevicesFromConfig();
+	const deviceRequest = qcaDevices != null
+		? Promise.resolve({ devices: qcaDevices })
+		: L.resolveDefault(callIwinfoDevices(), {});
+
+	cachedIwinfoResolverPromise = deviceRequest.then((res) => {
+		cachedIwinfoResolver = buildIwinfoResolver(res?.devices, qcaDevices != null);
 		cachedIwinfoResolverPromise = null;
 		return cachedIwinfoResolver;
 	}).catch(() => {
@@ -214,7 +238,8 @@ function loadIwinfoResolver(force) {
 		cachedIwinfoResolver = {
 			deviceLookup: Object.create(null),
 			aliasMap: Object.create(null),
-			queryTargets: []
+			queryTargets: [],
+			configOnly: false
 		};
 
 		return cachedIwinfoResolver;
@@ -231,7 +256,9 @@ function loadIwinfoInfoMap(force) {
 		return Promise.resolve(cachedIwinfoInfoMap);
 
 	cachedIwinfoInfoPromise = loadIwinfoResolver(force).then((resolver) => {
-		const queryTargets = resolver.queryTargets.length ? resolver.queryTargets : getLegacyIwinfoProbeTargets();
+		const queryTargets = (resolver.configOnly || resolver.queryTargets.length)
+			? resolver.queryTargets
+			: getLegacyIwinfoProbeTargets();
 
 		return Promise.all(queryTargets.map((name) =>
 			L.resolveDefault(callIwinfoInfoCompat(name), null).then((info) => [ name, info ])
