@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=filebrowser
 PKG_VERSION:=2.63.23
-PKG_RELEASE:=21
+PKG_RELEASE:=22
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/filebrowser/filebrowser/tar.gz/v$(PKG_VERSION)?
@@ -48,15 +48,18 @@ define Package/filebrowser/conffiles
 /etc/config/filebrowser
 endef
 
-define Build/Compile
+define Build/Prepare
+	$(call Build/Prepare/Default)
 	( \
 		export PNPM_HOME="$(PKG_BUILD_DIR)/frontend" ; \
 		pushd "$(PKG_BUILD_DIR)/frontend" ; \
 		pnpm install --frozen-lockfile ; \
 		pnpm run build ; \
-		popd ; \
-		$(call GoPackage/Build/Compile) ; \
 	)
+endef
+
+define Build/Compile
+	$(call GoPackage/Build/Compile)
 endef
 
 define Package/filebrowser/install
