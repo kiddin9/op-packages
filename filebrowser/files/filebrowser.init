@@ -20,8 +20,8 @@ start() {
 	config_get root_path "config" "root_path" "/"
 	
 	echo "Starting filebrowser..."
-	sed -e "s/  port:.*/  port:$listen_port/" \
-		-e "s,  - path:.*,  - path:\"$root_path\"," \
+	sed -e "s/  port:.*/  port: $listen_port/" \
+		-e "s,  - path:.*,  - path: \"$root_path\"," \
 		-i "$CONF_PATH"
 	start-stop-daemon -S -q -b -m -p "$PID_FILE" -x "$PROG" -- -c "$CONF_PATH"
 }

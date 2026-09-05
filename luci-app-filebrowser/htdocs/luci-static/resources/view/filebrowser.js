@@ -82,10 +82,6 @@ return view.extend({
 		o = s.option(form.Value, 'root_path', _('Root directory'));
 		o.default = '/';
 		o.rmempty = false;
-		
-		o = s.option(form.Value, 'base_url', _('Base url'));
-		o.default = '/';
-		o.rmempty = false;
 
 		return m.render();
 	}
