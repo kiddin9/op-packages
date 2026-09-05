@@ -93,7 +93,7 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-wizard
         git_clone https://github.com/kiddin9/luci-app-adguardhome
         git_clone https://github.com/kiddin9/luci-app-cloudreve
-        git_clone https://github.com/kiddin9/openwrt-filebrowser && mvdir openwrt-filebrowser
+        # git_clone https://github.com/kiddin9/openwrt-filebrowser && mvdir openwrt-filebrowser
         # git_clone https://github.com/kiddin9/nginx-ui-openwrt && mvdir nginx-ui-openwrt
         ) &
         (
@@ -391,7 +391,7 @@ jobs:
         git_sparse_clone chawrt/24.10 "https://github.com/liudf0716/packages" net/ss-redir
         ) &
         git_sparse_clone master "https://github.com/immortalwrt/packages" net/n2n net/qbittorrent \
-        net/amule net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c net/3proxy net/cloudreve \
+        net/amule net/cdnspeedtest net/minieap net/ddns-go net/sysuh3c net/3proxy utils/filebrowser net/cloudreve \
         net/go-nats net/go-wol net/bitsrunlogin-go net/transfer net/udp2raw net/msd_lite \
         net/subconverter net/ngrokc net/scutclient net/gost net/ua2f net/dufs net/frp net/qBittorrent-Enhanced-Edition \
         net/tinyportmapper net/nexttrace net/rustdesk-server net/tuic-server net/transmission-web-control \
@@ -424,7 +424,7 @@ jobs:
       run: |
         shopt -s extglob
         set +e
-        mv -n luciapp/!(luci-app-noddos|luci-app-filebrowser-go|luci-app-openvpn-server|luci-app-chrony|luci-app-kodexplorer|luci-app-cshark|luci-app-dnscrypt-proxy|luci-app-https-dns-proxy|luci-app-ssr-mudb-server|luci-app-ledtrig-*|luci-app-antiblock) ./ ; rm -Rf luciapp
+        mv -n luciapp/!(luci-app-noddos|luci-app-openvpn-server|luci-app-chrony|luci-app-kodexplorer|luci-app-cshark|luci-app-dnscrypt-proxy|luci-app-https-dns-proxy|luci-app-ssr-mudb-server|luci-app-ledtrig-*|luci-app-antiblock) ./ ; rm -Rf luciapp
         mv -n lean/!(r8101|r8125|r8126|r8168) ./ ; rm -Rf lean
         mv -n liep/!(luci-app-filebrowser) ./ ; rm -Rf liep
         mv -n istore-packages/!(qBittorrent*|luci-app-qbittorrent-ee|baidupcs-web|luci-app-LingTiGameAcc|inter_i40e) ./;rm -rf istore-packages
