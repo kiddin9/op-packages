@@ -7,7 +7,7 @@
  */
 return baseclass.extend({
 	/* Keep in sync with openwrt-feed/luci-app-fwlive/Makefile PKG_VERSION. */
-	APP_VERSION: '0.1.37',
+	APP_VERSION: '0.1.38',
 	ROW_LIMIT_OPTIONS: [ 25, 50, 100, 250, 500, 1000, 2000 ],
 	DEFAULT_ROW_LIMIT: 100,
 	/* Row pass/deny tint (#40): classic green/red default; accessible teal/orange */

@@ -11,8 +11,8 @@ LUCI_DESCRIPTION:=Live firewall log table (nftables/fw4 and iptables LOG) with f
 LUCI_DEPENDS:=+luci-base +logd +jsonfilter
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=0.1.37
-PKG_RELEASE:=7
+PKG_VERSION:=0.1.38
+PKG_RELEASE:=8
 
 # Reproducible build: honor SOURCE_DATE_EPOCH from the build environment (set by docker-sdk.sh / CI).
 ifdef SOURCE_DATE_EPOCH

@@ -92,16 +92,17 @@ elseif luci.http.formvalue("download") then
 end
 
 local inits, attr = {}
-for i, f in ipairs(fs.glob("/tmp/upload/*")) do
+for f in fs.glob("/tmp/upload/*") do
 	attr = fs.stat(f)
 	if attr then
-		inits[i] = {}
-		inits[i].name = fs.basename(f)
-		inits[i].mtime = os.date("%Y-%m-%d %H:%M:%S", attr.mtime)
-		inits[i].modestr = attr.modestr
-		inits[i].size = tostring(attr.size)
-		inits[i].remove = 0
-		inits[i].install = false
+		inits[#inits + 1] = {
+			name = fs.basename(f),
+			mtime = os.date("%Y-%m-%d %H:%M:%S", attr.mtime),
+			modestr = attr.modestr,
+			size = tostring(attr.size),
+			remove = 0,
+			install = false
+		}
 	end
 end
 
