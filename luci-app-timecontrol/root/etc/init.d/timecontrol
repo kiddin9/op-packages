@@ -1,51 +1,230 @@
 #!/bin/sh /etc/rc.common
 
-#
-# Copyright (C) 2022-2026 sirpdboy herboy2008@gmail.com
-#
-
 START=99
-USE_PROCD=1
+STOP=10
 
-NAME=timecontrol
-LOCK="/var/lock/$NAME.lock"
+EXTRA_COMMANDS="status"
+EXTRA_HELP="        status   Check if timecontrol rules are active\n"
 
-start_instance() {
-	 procd_open_instance
-	 procd_set_param command /usr/bin/timecontrolctrl
-	 procd_set_param respawn
-	 procd_set_param stderr 1
-	 procd_close_instance
+. /lib/functions.sh
+
+TABLE="timecontrol"
+CHAIN="TIMECONTROL"
+
+firewall_backend() {
+	if command -v fw4 >/dev/null 2>&1 && command -v nft >/dev/null 2>&1; then
+		echo nft
+	else
+		echo iptables
+	fi
 }
 
-_timecontrol_start() {
-	 if [ "$(grep -c 'option enable .1.' /etc/config/$NAME 2>/dev/null)" -gt "0" ]; then
-	    touch $LOCK
-	    timecontrol start
-	    sleep 2
-	    start_instance
-	 else
-	    stop_service
-	 fi
+have_ip6tables() {
+	command -v ip6tables >/dev/null 2>&1
 }
 
-start_service(){
-	[ -f $LOCK ] && exit
-	_timecontrol_start
-	rm -f $LOCK
+valid_mac() {
+	printf '%s\n' "$1" | grep -Eq '^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$'
 }
 
-service_triggers() {
- 	 procd_add_reload_trigger 'timecontrol'
+valid_time() {
+	printf '%s\n' "$1" | grep -Eq '^([01][0-9]|2[0-3]):[0-5][0-9]$'
 }
 
-stop_service(){
-	kill -9 $(busybox ps -w | grep 'timecontrolctrl' | grep -v 'grep' | awk '{print $1}') >/dev/null 2>&1
-	killall timecontrolctrl 2>/dev/null
-	rm -f $LOCK 2>/dev/null
-	timecontrol stop
+add_nft_range() {
+	local macaddr="$1"
+	local timeon="$2"
+	local timeoff="$3"
+	local weekdays="$4"
+
+	nft -f - <<-EOF
+		add rule inet $TABLE forward ether saddr $macaddr meta day { $weekdays } meta hour "$timeon"-"$timeoff" counter drop
+	EOF
 }
 
-reload_service() {
-	restart
+add_nft_rule() {
+	local macaddr="$1"
+	local timeon="$2"
+	local timeoff="$3"
+	local weekdays="$4"
+	local weekdays_next="$5"
+
+	if [ "$timeon" \< "$timeoff" ] || [ "$timeon" = "$timeoff" ]; then
+		add_nft_range "$macaddr" "$timeon" "$timeoff" "$weekdays"
+	else
+		# Range spans midnight: block until 23:59:59 on the selected
+		# days, then from 00:00 until timeoff on the following days.
+		add_nft_range "$macaddr" "$timeon" "23:59:59" "$weekdays"
+		add_nft_range "$macaddr" "00:00" "$timeoff" "$weekdays_next"
+	fi
+}
+
+add_ipt_range() {
+	local cmd="$1"
+	local macaddr="$2"
+	local timeon="$3"
+	local timeoff="$4"
+	local weekdays="$5"
+
+	"$cmd" -w -t filter -A "$CHAIN" -m mac --mac-source "$macaddr" \
+		-m time --kerneltz --timestart "$timeon" --timestop "$timeoff" \
+		--weekdays "$weekdays" -j DROP
+}
+
+add_ipt_rule() {
+	local macaddr="$1"
+	local timeon="$2"
+	local timeoff="$3"
+	local weekdays="$4"
+	local weekdays_next="$5"
+	local cmd
+
+	# Mirror every rule into ip6tables as well, otherwise IPv6 traffic
+	# would bypass the time control completely.
+	for cmd in iptables ip6tables; do
+		command -v "$cmd" >/dev/null 2>&1 || continue
+		if [ "$timeon" \< "$timeoff" ] || [ "$timeon" = "$timeoff" ]; then
+			add_ipt_range "$cmd" "$macaddr" "$timeon" "$timeoff" "$weekdays"
+		else
+			# Range spans midnight: block until 23:59:59 on the
+			# selected days, then from 00:00 until timeoff on the
+			# following days.
+			add_ipt_range "$cmd" "$macaddr" "$timeon" "23:59:59" "$weekdays"
+			add_ipt_range "$cmd" "$macaddr" "00:00" "$timeoff" "$weekdays_next"
+		fi
+	done
+}
+
+load_rule() {
+	local section="$1"
+	local enabled macaddr timeon timeoff
+	local z1 z2 z3 z4 z5 z6 z7
+	local ipt_days nft_days ipt_days_next nft_days_next
+
+	config_get_bool enabled "$section" enable 0
+	[ "$enabled" -eq 1 ] || return 0
+
+	config_get macaddr "$section" macaddr
+	config_get timeon "$section" timeon
+	config_get timeoff "$section" timeoff
+	valid_mac "$macaddr" && valid_time "$timeon" && valid_time "$timeoff" || {
+		logger -t timecontrol "Ignoring invalid rule in section $section"
+		return 0
+	}
+
+	config_get_bool z1 "$section" z1 0
+	config_get_bool z2 "$section" z2 0
+	config_get_bool z3 "$section" z3 0
+	config_get_bool z4 "$section" z4 0
+	config_get_bool z5 "$section" z5 0
+	config_get_bool z6 "$section" z6 0
+	config_get_bool z7 "$section" z7 0
+
+	# The *_next lists hold each selected weekday shifted by one day;
+	# they apply to the after-midnight part of ranges spanning midnight.
+	[ "$z1" -eq 1 ] && { append ipt_days Mon ,; append ipt_days_next Tue ,; append nft_days monday ,; append nft_days_next tuesday ,; }
+	[ "$z2" -eq 1 ] && { append ipt_days Tue ,; append ipt_days_next Wed ,; append nft_days tuesday ,; append nft_days_next wednesday ,; }
+	[ "$z3" -eq 1 ] && { append ipt_days Wed ,; append ipt_days_next Thu ,; append nft_days wednesday ,; append nft_days_next thursday ,; }
+	[ "$z4" -eq 1 ] && { append ipt_days Thu ,; append ipt_days_next Fri ,; append nft_days thursday ,; append nft_days_next friday ,; }
+	[ "$z5" -eq 1 ] && { append ipt_days Fri ,; append ipt_days_next Sat ,; append nft_days friday ,; append nft_days_next saturday ,; }
+	[ "$z6" -eq 1 ] && { append ipt_days Sat ,; append ipt_days_next Sun ,; append nft_days saturday ,; append nft_days_next sunday ,; }
+	[ "$z7" -eq 1 ] && { append ipt_days Sun ,; append ipt_days_next Mon ,; append nft_days sunday ,; append nft_days_next monday ,; }
+	[ -n "$ipt_days" ] || return 0
+
+	if [ "$BACKEND" = nft ]; then
+		add_nft_rule "$macaddr" "$timeon" "$timeoff" "$nft_days" "$nft_days_next"
+	else
+		add_ipt_rule "$macaddr" "$timeon" "$timeoff" "$ipt_days" "$ipt_days_next"
+	fi
+}
+
+load_basic() {
+	config_get_bool ENABLED "$1" enable 0
+}
+
+start_nft() {
+	nft -f - <<-EOF
+		table inet $TABLE {
+			chain forward {
+				type filter hook forward priority -1; policy accept;
+			}
+		}
+	EOF
+
+	# Flush fw4's flowtable so that connections already on the fast path
+	# (which bypasses this forward hook) are forced back to the slow path
+	# where our DROP rules can reach them.  Non-blocked devices will
+	# re-offload within seconds; the disruption is minimal.
+	nft flush flowtable inet fw4 flowtable_ft 2>/dev/null
+}
+
+start_iptables() {
+	iptables -w -t filter -N "$CHAIN" || return 1
+	iptables -w -t filter -I FORWARD 1 -j "$CHAIN"
+	if have_ip6tables; then
+		ip6tables -w -t filter -N "$CHAIN" || return 1
+		ip6tables -w -t filter -I FORWARD 1 -j "$CHAIN"
+	else
+		logger -t timecontrol "ip6tables not found; IPv6 traffic will not be controlled"
+	fi
+}
+
+stop_nft() {
+	command -v nft >/dev/null 2>&1 && nft delete table inet "$TABLE" 2>/dev/null
+	return 0
+}
+
+stop_ipt_family() {
+	local cmd="$1"
+
+	command -v "$cmd" >/dev/null 2>&1 || return 0
+	while "$cmd" -w -t filter -C FORWARD -j "$CHAIN" 2>/dev/null; do
+		"$cmd" -w -t filter -D FORWARD -j "$CHAIN" 2>/dev/null || break
+	done
+	"$cmd" -w -t filter -F "$CHAIN" 2>/dev/null
+	"$cmd" -w -t filter -X "$CHAIN" 2>/dev/null
+}
+
+stop_iptables() {
+	stop_ipt_family iptables
+	stop_ipt_family ip6tables
+}
+
+start() {
+	config_load timecontrol
+	ENABLED=0
+	config_foreach load_basic basic
+	[ "$ENABLED" -eq 1 ] || return 0
+
+	stop_nft
+	stop_iptables
+	BACKEND="$(firewall_backend)"
+	mkdir -p /var/etc
+	printf '%s\n' "/etc/init.d/timecontrol reload" > /var/etc/timecontrol.include
+
+	if [ "$BACKEND" = nft ]; then
+		start_nft || return 1
+	else
+		start_iptables || return 1
+	fi
+
+	config_foreach load_rule macbind
+}
+
+stop() {
+	stop_nft
+	stop_iptables
+}
+
+reload() {
+	stop
+	start
+}
+
+status() {
+	if [ "$(firewall_backend)" = nft ]; then
+		nft list table inet "$TABLE" >/dev/null 2>&1
+	else
+		iptables -w -t filter -S "$CHAIN" >/dev/null 2>&1
+	fi
 }
