@@ -130,7 +130,7 @@ jobs:
         git_clone https://github.com/sirpdboy/luci-app-poweroffdevice poweroffdevice && mvdir poweroffdevice
         git_clone https://github.com/sirpdboy/luci-app-watchdog watchdog1 && mvdir watchdog1
         git_clone https://github.com/sirpdboy/luci-app-cupsd cupsd1 && mv -n cupsd1/{luci-app-cupsd,cups} ./ ; rm -rf cupsd1
-        git_clone https://github.com/sirpdboy/luci-app-timecontrol timecontrol && mvdir timecontrol
+        # git_clone https://github.com/sirpdboy/luci-app-timecontrol timecontrol && mvdir timecontrol
         git_clone https://github.com/sirpdboy/luci-theme-kucat
         git_clone https://github.com/sirpdboy/luci-app-kucat-config
         git_clone https://github.com/sirpdboy/luci-app-chatgpt-web
