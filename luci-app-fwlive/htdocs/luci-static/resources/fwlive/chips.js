@@ -1,4 +1,6 @@
 'use strict';
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass'; /* LuCI require() needs Class.isSubclass — plain return {} fails */
 'require fwlive.log as log';
 
@@ -16,16 +18,13 @@
 
 function chipValueNodes(field, val) {
 	const p = log.parseFilterValue(val);
-	if (!p.value)
-		return [ '' ];
+	if (!p.value) return [''];
 
-	const valueNode = p.negate
-		? E('span', { 'class': 'fwlive-chip-strike' }, [ p.value ])
-		: p.value;
+	const valueNode = p.negate ? E('span', { 'class': 'fwlive-chip-strike' }, [p.value]) : p.value;
 
 	if (!p.negate) {
 		return [
-			E('span', { 'class': 'fwlive-chip-polarity' }, [ _('is') ]),
+			E('span', { 'class': 'fwlive-chip-polarity' }, [_('is')]),
 			' ',
 			log.formatFilterChipLabel(field, val)
 		];
@@ -34,26 +33,24 @@ function chipValueNodes(field, val) {
 	if (field === 'q' || field === 'src' || field === 'dst')
 		return [
 			field + ': ',
-			E('strong', { 'class': 'fwlive-chip-not' }, [ _('not') ]),
+			E('strong', { 'class': 'fwlive-chip-not' }, [_('not')]),
 			' contains ',
 			valueNode
 		];
 
-	return [
-		field + ': ',
-		E('strong', { 'class': 'fwlive-chip-not' }, [ _('not') ]),
-		' ',
-		valueNode
-	];
+	return [field + ': ', E('strong', { 'class': 'fwlive-chip-not' }, [_('not')]), ' ', valueNode];
 }
 
 function chipLeadingSym(negated) {
-	if (!negated)
-		return null;
-	return E('span', {
-		'class': 'fwlive-chip-sym fwlive-chip-sym-light',
-		'aria-hidden': 'true'
-	}, [ '≠' ]);
+	if (!negated) return null;
+	return E(
+		'span',
+		{
+			'class': 'fwlive-chip-sym fwlive-chip-sym-light',
+			'aria-hidden': 'true'
+		},
+		['≠']
+	);
 }
 
 function renderFilterChips(host, state, callbacks) {
@@ -64,38 +61,62 @@ function renderFilterChips(host, state, callbacks) {
 	for (let i = 0; i < chipFields.length; i++) {
 		const spec = chipFields[i];
 		const val = filters[spec.key];
-		if (!val)
-			continue;
+		if (!val) continue;
 
 		const parsed = log.parseFilterValue(val);
 		const negated = parsed.negate;
 		const kids = [];
 		const lead = chipLeadingSym(negated);
-		if (lead)
-			kids.push(lead);
+		if (lead) kids.push(lead);
 
 		kids.push(E('span', { 'class': 'fwlive-chip-label' }, chipValueNodes(spec.label, val)));
-		kids.push(E('span', {
-			'class': 'fwlive-chip-invert-wrap',
-			'data-tip': negated ? _('Include instead') : _('Exclude instead')
-		}, [
-			E('button', {
-				'type': 'button',
-				'class': 'fwlive-chip-invert',
-				'click': function(ev) { callbacks.onInvert(spec.key, ev); }
-			}, [ '≠' ])
-		]));
-		kids.push(E('a', {
-			'href': '#',
-			'class': 'fwlive-chip-remove',
-			'title': _('Remove filter'),
-			'click': function(ev) { callbacks.onClear(spec.key, ev); }
-		}, [ '×' ]));
+		kids.push(
+			E(
+				'span',
+				{
+					'class': 'fwlive-chip-invert-wrap',
+					'data-tip': negated ? _('Include instead') : _('Exclude instead')
+				},
+				[
+					E(
+						'button',
+						{
+							'type': 'button',
+							'class': 'fwlive-chip-invert',
+							'click': function (ev) {
+								callbacks.onInvert(spec.key, ev);
+							}
+						},
+						['≠']
+					)
+				]
+			)
+		);
+		kids.push(
+			E(
+				'a',
+				{
+					'href': '#',
+					'class': 'fwlive-chip-remove',
+					'title': _('Remove filter'),
+					'click': function (ev) {
+						callbacks.onClear(spec.key, ev);
+					}
+				},
+				['×']
+			)
+		);
 
-		chips.push(E('span', {
-			'class': 'fwlive-chip'
-				+ (negated ? ' fwlive-chip-negated' : ' fwlive-chip-include')
-		}, kids));
+		chips.push(
+			E(
+				'span',
+				{
+					'class':
+						'fwlive-chip' + (negated ? ' fwlive-chip-negated' : ' fwlive-chip-include')
+				},
+				kids
+			)
+		);
 	}
 
 	host.className = 'fwlive-chips fwlive-chips-labels';
@@ -106,14 +127,21 @@ function renderFilterChips(host, state, callbacks) {
 	}
 
 	host.style.display = 'flex';
-	for (let i = 0; i < chips.length; i++)
-		host.appendChild(chips[i]);
+	for (let i = 0; i < chips.length; i++) host.appendChild(chips[i]);
 
-	host.appendChild(E('a', {
-		'href': '#',
-		'class': 'fwlive-chip-clear',
-		'click': function(ev) { callbacks.onClearAll(ev); }
-	}, [ _('Clear all') ]));
+	host.appendChild(
+		E(
+			'a',
+			{
+				'href': '#',
+				'class': 'fwlive-chip-clear',
+				'click': function (ev) {
+					callbacks.onClearAll(ev);
+				}
+			},
+			[_('Clear all')]
+		)
+	);
 }
 
 return baseclass.extend({

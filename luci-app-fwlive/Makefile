@@ -12,7 +12,7 @@ LUCI_DEPENDS:=+luci-base +logd +jsonfilter
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=0.1.38
-PKG_RELEASE:=8
+PKG_RELEASE:=9
 
 # Reproducible build: honor SOURCE_DATE_EPOCH from the build environment (set by docker-sdk.sh / CI).
 ifdef SOURCE_DATE_EPOCH

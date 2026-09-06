@@ -4,6 +4,7 @@
 # GENERATED FILE — do not edit. Run: ./scripts/gen-all.sh
 # source: core/fwlive-log.js CLASSIFY_SPEC
 # Shared isFirewallEvent parity logic (shell). Sourced by fwlive-log-filter.sh and tests.
+# Sourced library: do not add set -euo here (callers own strict mode, #291 C3).
 # One awk process classifies a batch (MODE=json) or one message (default).
 
 _fwlive_run_classify() {

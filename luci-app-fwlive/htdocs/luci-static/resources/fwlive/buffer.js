@@ -1,4 +1,6 @@
 'use strict';
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass';
 
 /**
@@ -16,26 +18,24 @@ function ingestCap(paused, rowLimit, fetchLinesMax) {
 
 function mergeById(entries, normalized, cap) {
 	if (!normalized || !normalized.length) {
-		if (!entries || !entries.length)
-			return [];
+		if (!entries || !entries.length) return [];
 		return entries.slice(-cap);
 	}
 
 	const byId = {};
 	let i;
 	if (entries) {
-		for (i = 0; i < entries.length; i++)
-			byId[entries[i].id] = entries[i];
+		for (i = 0; i < entries.length; i++) byId[entries[i].id] = entries[i];
 	}
-	for (i = 0; i < normalized.length; i++)
-		byId[normalized[i].id] = normalized[i];
+	for (i = 0; i < normalized.length; i++) byId[normalized[i].id] = normalized[i];
 
-	const merged = Object.keys(byId).map(function(id) { return byId[id]; });
-	merged.sort(function(a, b) {
+	const merged = Object.keys(byId).map(function (id) {
+		return byId[id];
+	});
+	merged.sort(function (a, b) {
 		const ta = a.timestamp || 0;
 		const tb = b.timestamp || 0;
-		if (ta !== tb)
-			return ta - tb;
+		if (ta !== tb) return ta - tb;
 		return (a.log_id || 0) - (b.log_id || 0);
 	});
 	return merged.slice(-cap);
@@ -58,13 +58,10 @@ function applyFetchedEntries(entries, normalized, opts) {
 	const merge = paused || resumeMerge;
 
 	let next;
-	if (merge)
-		next = mergeById(entries, normalized, cap);
-	else
-		next = (normalized || []).slice(-cap);
+	if (merge) next = mergeById(entries, normalized, cap);
+	else next = (normalized || []).slice(-cap);
 
-	if (!paused && next.length > rowLimit)
-		next = next.slice(-rowLimit);
+	if (!paused && next.length > rowLimit) next = next.slice(-rowLimit);
 
 	return next;
 }

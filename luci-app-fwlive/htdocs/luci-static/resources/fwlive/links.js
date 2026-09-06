@@ -1,4 +1,6 @@
 'use strict';
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass'; /* LuCI require() needs Class.isSubclass — plain return {} fails */
 'require fwlive.log as log';
 
@@ -16,8 +18,7 @@
  */
 
 function luciUrl(path) {
-	if (typeof L !== 'undefined' && L.url)
-		return L.url(path);
+	if (typeof L !== 'undefined' && L.url) return L.url(path);
 
 	return '/cgi-bin/luci/' + path;
 }
@@ -31,10 +32,14 @@ function firewallZonesUrl() {
 }
 
 function firewallZonesLink(label) {
-	return E('a', {
-		'href': firewallZonesUrl(),
-		'class': 'fwlive-filter-link'
-	}, [ label || _('Network → Firewall') ]);
+	return E(
+		'a',
+		{
+			'href': firewallZonesUrl(),
+			'class': 'fwlive-filter-link'
+		},
+		[label || _('Network → Firewall')]
+	);
 }
 
 /**
@@ -44,15 +49,20 @@ function firewallZonesLink(label) {
  * @param {function} onFilterClick - callback(field, value, ev)
  */
 function filterLink(field, value, label, onFilterClick) {
-	if (!value)
-		return log.formatCell(value);
+	if (!value) return log.formatCell(value);
 
-	return E('a', {
-		'href': '#',
-		'class': 'fwlive-filter-link',
-		'title': _('Filter by %s').format(field),
-		'click': function(ev) { onFilterClick(field, value, ev); }
-	}, [ label || value ]);
+	return E(
+		'a',
+		{
+			'href': '#',
+			'class': 'fwlive-filter-link',
+			'title': _('Filter by %s').format(field),
+			'click': function (ev) {
+				onFilterClick(field, value, ev);
+			}
+		},
+		[label || value]
+	);
 }
 
 /**
@@ -63,19 +73,24 @@ function filterLink(field, value, label, onFilterClick) {
  * @param {function} onFilterClick - callback(field, value, ev)
  */
 function addrFilterLink(field, ip, showHostnames, hostnameCache, onFilterClick) {
-	if (!ip)
-		return log.formatCell(ip);
+	if (!ip) return log.formatCell(ip);
 
 	const name = showHostnames && hostnameCache ? hostnameCache.get(ip) : null;
 	const display = name || ip;
 	const title = name ? ip : _('Filter by %s').format(field);
 
-	return E('a', {
-		'href': '#',
-		'class': 'fwlive-filter-link',
-		'title': title,
-		'click': function(ev) { onFilterClick(field, ip, ev); }
-	}, [ display ]);
+	return E(
+		'a',
+		{
+			'href': '#',
+			'class': 'fwlive-filter-link',
+			'title': title,
+			'click': function (ev) {
+				onFilterClick(field, ip, ev);
+			}
+		},
+		[display]
+	);
 }
 
 /**
@@ -83,11 +98,9 @@ function addrFilterLink(field, ip, showHostnames, hostnameCache, onFilterClick) 
  * @param {string} firewallBackend - 'nft' or 'iptables'
  */
 function ruleAdminPath(hint, firewallBackend) {
-	if (hint === 'fw4')
-		return 'admin/network/firewall/rules';
+	if (hint === 'fw4') return 'admin/network/firewall/rules';
 
-	if (firewallBackend === 'iptables')
-		return 'admin/status/iptables';
+	if (firewallBackend === 'iptables') return 'admin/status/iptables';
 
 	return 'admin/status/nftables';
 }
@@ -99,27 +112,31 @@ function ruleAdminPath(hint, firewallBackend) {
  * @param {function} onFilterClick - callback(field, value, ev)
  */
 function ruleAdminLink(hint, label, firewallBackend, onFilterClick) {
-	if (!hint)
-		return log.formatCell(hint);
+	if (!hint) return log.formatCell(hint);
 
 	const path = ruleAdminPath(hint, firewallBackend);
 	const url = '%s#%s'.format(luciUrl(path), encodeURIComponent(hint));
 	const text = label || hint;
 
-	return E('a', {
-		'href': '#',
-		'class': 'fwlive-filter-link fwlive-rule-link',
-		'title': _('Filter logs by rule (hint: %s). Ctrl+click to open firewall settings.').format(hint),
-		'click': function(ev) {
-			if (ev && (ev.ctrlKey || ev.metaKey)) {
-				if (ev.preventDefault)
-					ev.preventDefault();
-				window.location = url;
-				return;
+	return E(
+		'a',
+		{
+			'href': '#',
+			'class': 'fwlive-filter-link fwlive-rule-link',
+			'title': _(
+				'Filter logs by rule (hint: %s). Ctrl+click to open firewall settings.'
+			).format(hint),
+			'click': function (ev) {
+				if (ev && (ev.ctrlKey || ev.metaKey)) {
+					if (ev.preventDefault) ev.preventDefault();
+					window.location = url;
+					return;
+				}
+				onFilterClick('q', hint, ev);
 			}
-			onFilterClick('q', hint, ev);
-		}
-	}, [ text ]);
+		},
+		[text]
+	);
 }
 
 /**
@@ -127,15 +144,20 @@ function ruleAdminLink(hint, label, firewallBackend, onFilterClick) {
  * @param {function} onFilterClick - callback(field, value, ev)
  */
 function ifaceLink(value, onFilterClick) {
-	if (!value)
-		return log.formatCell(value);
+	if (!value) return log.formatCell(value);
 
-	return E('a', {
-		'href': '#',
-		'class': 'fwlive-filter-link fwlive-iface-badge',
-		'title': _('Filter by interface'),
-		'click': function(ev) { onFilterClick('interface', value, ev); }
-	}, [ value ]);
+	return E(
+		'a',
+		{
+			'href': '#',
+			'class': 'fwlive-filter-link fwlive-iface-badge',
+			'title': _('Filter by interface'),
+			'click': function (ev) {
+				onFilterClick('interface', value, ev);
+			}
+		},
+		[value]
+	);
 }
 
 return baseclass.extend({

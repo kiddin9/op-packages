@@ -8,6 +8,17 @@
 #   resolve — reverse DNS for IP addresses (BusyBox nslookup)
 #   logging_status — WAN zone logging readiness (no args)
 #   enable_wan_logging / disable_wan_logging — opt-in WAN zone log=1 (no args)
+#
+# Entry point (rpcd plugin). Sourced helpers inherit these options. Do not
+# copy set -euo into fwlive-logging.sh — prerm sources that file alone (#222)
+# and keeps soft-fail / || return 1 contracts (#244, #291 C3).
+set -eu
+# pipefail: BusyBox ash (device) supports it; Debian dash (host `sh` in
+# CI) rejects `set -o pipefail` as a startup abort. Probe in a subshell —
+# a failed `set` in-process is fatal even under `if` (same class as #244
+# failed exec).
+# shellcheck disable=SC3040 # pipefail is ash/bash; dash probe is a subshell
+(set -o pipefail) 2>/dev/null && set -o pipefail
 
 FW4_TAG='!fw4: '
 LIBEXEC_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -83,7 +94,9 @@ map_add() {
 }
 
 uci_rule_names() {
-	uci -q show firewall 2>/dev/null | sed -n "s/^firewall\.@rule\[[0-9]*\]\.name='\(.*\)'$/\1/p"
+	# uci missing / empty firewall config is "no names", not fatal.
+	# pipefail + set -e cannot apply to this pipeline (#291 C3).
+	uci -q show firewall 2>/dev/null | sed -n "s/^firewall\.@rule\[[0-9]*\]\.name='\(.*\)'$/\1/p" || true
 }
 
 is_uci_style_name() {
@@ -396,7 +409,8 @@ poll_lines_from_input() {
 		json_get_var first 1
 		json_select ..
 		# shellcheck disable=SC2154 # set by json_get_var above
-		case "$first" in
+		# Missing addresses[1] leaves first unset; set -u (#291 C3).
+		case "${first:-}" in
 			''|*[!0-9]*) ;;
 			*) lines="$first" ;;
 		esac
@@ -462,9 +476,10 @@ resolve_hostname() {
 	[ -n "$ip" ] || return 1
 	is_resolvable_address "$ip" || return 1
 	command -v nslookup >/dev/null 2>&1 || return 1
-	out=$(run_with_timeout "$RESOLVE_TIMEOUT" nslookup "$ip")
+	# timeout/nslookup miss is "no PTR", not a plugin abort (#291 C3).
+	out=$(run_with_timeout "$RESOLVE_TIMEOUT" nslookup "$ip") || return 1
 	[ -n "$out" ] || return 1
-	name=$(parse_nslookup_name "$out")
+	name=$(parse_nslookup_name "$out") || return 1
 	[ -n "$name" ] || return 1
 	printf '%s' "$name"
 }
@@ -598,11 +613,14 @@ resolve_addresses() {
 			now=$(date +%s)
 			[ $((now - start)) -ge "$RESOLVE_BUDGET" ] && break
 			json_get_var ip "$idx"
-			if ! is_resolvable_address "$ip"; then
+			# Missing/empty element: set -u cannot read bare $ip (#291 C3).
+			if ! is_resolvable_address "${ip:-}"; then
 				idx=$((idx + 1))
 				continue
 			fi
-			name=$(resolve_hostname "$ip")
+			# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
+			# cannot apply to this assignment (#291 C3).
+			name=$(resolve_hostname "$ip") || name=
 			if [ -n "$name" ]; then
 				map_add "$ip" "$name"
 				count=$((count + 1))
@@ -789,6 +807,17 @@ Address: 127.0.0.1:53")
 
 	run_logging_selftest || return 1
 
+	# Strict-mode smoke (#291 C3): status JSON uses soft-fail helpers
+	# (uci miss, empty WAN zone). Must not abort under dash/ash set -e.
+	_status=$(build_logging_status_json) || {
+		echo "build_logging_status_json: aborted under set -e" >&2
+		return 1
+	}
+	case "$_status" in
+		*'"blockers":'*) ;;
+		*) echo "build_logging_status_json: missing blockers: $_status" >&2; return 1 ;;
+	esac
+
 	if ! command -v jshn >/dev/null 2>&1; then
 		echo "skip: jshn not available (poll cap via jshn not tested)" >&2
 		return 0
@@ -834,7 +863,7 @@ Address: 127.0.0.1:53")
 	return 0
 }
 
-case "$1" in
+case "${1:-}" in
 	__selftest)
 		run_selftest
 		exit $?
@@ -845,22 +874,22 @@ case "$1" in
 		exit $?
 		;;
 	__poll_clamp)
-		poll_clamp_lines "$2"
+		poll_clamp_lines "${2:-}"
 		exit $?
 		;;
 	__tmp_dir_ok)
-		_fwlive_tmp_dir_ok "$2"
+		_fwlive_tmp_dir_ok "${2:-}"
 		exit $?
 		;;
 	__resolve_one)
-		if name=$(resolve_hostname "$2"); then
+		if name=$(resolve_hostname "${2:-}"); then
 			printf '%s\n' "$name"
 			exit 0
 		fi
 		exit 1
 		;;
 	__parse_nslookup)
-		name=$(parse_nslookup_name "$2")
+		name=$(parse_nslookup_name "${2:-}")
 		if [ -n "$name" ]; then
 			printf '%s\n' "$name"
 			exit 0
@@ -874,15 +903,16 @@ case "$1" in
 		echo '{"rules":{},"poll":{"addresses":[]},"resolve":{"addresses":[]},"logging_status":{},"enable_wan_logging":{},"disable_wan_logging":{}}'
 		;;
 	call)
-		case "$2" in
+		case "${2:-}" in
 			rules)
 				build_rules_map
 				;;
 			poll)
-				poll_logs "$3"
+				# rpcd may omit argv $3 and pass JSON on stdin (#291 C3).
+				poll_logs "${3:-}"
 				;;
 			resolve)
-				resolve_addresses "$3"
+				resolve_addresses "${3:-}"
 				;;
 			logging_status)
 				build_logging_status_json

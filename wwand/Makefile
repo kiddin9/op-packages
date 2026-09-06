@@ -43,11 +43,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=23
+PKG_RELEASE:=24
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=b9708dfd3fab8b180d3f66a66f1ea8dbce63adbf
+PKG_SOURCE_VERSION:=6ddec23e3ea9c6c6bbe1cd5feef207972137d840
 PKG_SOURCE_DATE:=2026-09-06
 PKG_MIRROR_HASH:=skip
 

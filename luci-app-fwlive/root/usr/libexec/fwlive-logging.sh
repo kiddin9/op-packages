@@ -3,6 +3,11 @@
 # Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com>
 #
 # WAN zone logging helpers for ubus fwlive (logging_status / enable / disable).
+#
+# Sourced library (rpcd plugin, package prerm). Do not `set -euo pipefail`
+# here: prerm is best-effort (`restore ... || logger`; exit 0) and callers
+# expect soft failures. The rpcd entry point enables strict mode; critical
+# paths use explicit `|| return 1` / `|| true` (#244, #291 C3).
 
 NF_LOG_IPV4='/proc/sys/net/netfilter/nf_log/2'
 NF_LOG_IPV6='/proc/sys/net/netfilter/nf_log/10'
@@ -121,11 +126,16 @@ find_wan_zone_section() {
 	# Match anonymous (@zone[N]) and named (e.g. wan) sections whose name option
 	# is 'wan'. Prefer the first section whose type is zone (issue #168); skip
 	# non-zone sections that happen to share name='wan'.
+	# uci missing / no wan zone is empty, not fatal. pipefail + set -e
+	# cannot apply to this pipeline (#291 C3).
 	_zones=$(uci -q show firewall 2>/dev/null \
-		| sed -n "s/^firewall\.\([^.]*\)\.name='wan'$/\1/p")
+		| sed -n "s/^firewall\.\([^.]*\)\.name='wan'$/\1/p") || true
 	for zone in $_zones; do
 		[ -n "$zone" ] || continue
-		[ "$(uci -q get "firewall.${zone}" 2>/dev/null)" = "zone" ] || continue
+		# uci -q get exits 1 on a missing section. Capture with || true so
+		# set -e cannot abort inside "$(…)" before || continue (#291 C3).
+		_type=$(uci -q get "firewall.${zone}" 2>/dev/null || true)
+		[ "$_type" = "zone" ] || continue
 		printf '%s' "$zone"
 		return 0
 	done
@@ -133,14 +143,16 @@ find_wan_zone_section() {
 }
 
 firewall_changes_pending() {
-	pending="$(uci -q changes firewall 2>/dev/null)"
+	# uci miss is "no pending changes". set -e cannot apply (#291 C3).
+	pending="$(uci -q changes firewall 2>/dev/null || true)"
 	[ -n "$pending" ]
 }
 
 wan_zone_log_value() {
 	zone="$1"
 	[ -n "$zone" ] || return 1
-	uci -q get "firewall.${zone}.log" 2>/dev/null
+	# Unset option is a valid empty value; uci -q get exits 1 (#291 C3).
+	uci -q get "firewall.${zone}.log" 2>/dev/null || true
 }
 
 # Resolve a firewall section id to its canonical cfgXXXX form (issue B-1 /
@@ -284,7 +296,8 @@ maybe_snapshot_wan_log_baseline() {
 restore_wan_log_baseline() {
 	path="$(wan_log_baseline_path)"
 	[ -f "$path" ] || return 0
-	baseline=$(cat "$path" 2>/dev/null)
+	# Empty file is a valid "option was unset" baseline (#291 C3).
+	baseline=$(cat "$path" 2>/dev/null || true)
 	zone=$(find_wan_zone_section)
 	if [ -z "$zone" ]; then
 		logger -t fwlive "WAN log baseline restore skipped: no WAN zone" 2>/dev/null || true
@@ -363,7 +376,7 @@ wan_filter_log_clear_value() {
 read_nf_log_backend() {
 	path="$1"
 	[ -f "$path" ] || return 1
-	val=$(cat "$path" 2>/dev/null)
+	val=$(cat "$path" 2>/dev/null) || return 1
 	[ -n "$val" ] && [ "$val" != 'none' ]
 }
 
@@ -403,8 +416,9 @@ collect_logging_blockers() {
 	check_nf_log_ipv4 || logging_blockers_append 'nf_log_ipv4_missing'
 	check_nf_log_ipv6 || logging_blockers_append 'nf_log_ipv6_missing'
 
-	[ -n "$LOGGING_BLOCKERS" ] || return 0
-	return 1
+	# Report via LOGGING_BLOCKERS, not exit status: return 1 would abort
+	# build_logging_status_json under set -e (#291 C3).
+	return 0
 }
 
 collect_logging_warnings() {
@@ -414,8 +428,8 @@ collect_logging_warnings() {
 	# Warnings are diagnostics only — do not gate the enable-logging CTA.
 	command -v timeout >/dev/null 2>&1 || logging_warnings_append 'timeout_missing'
 
-	[ -n "$LOGGING_WARNINGS" ] || return 0
-	return 1
+	# Report via LOGGING_WARNINGS, not exit status (#291 C3).
+	return 0
 }
 
 json_null_or_string() {
@@ -430,8 +444,13 @@ json_null_or_string() {
 
 build_logging_status_json() {
 	zone=$(find_wan_zone_section)
-	log_val=$(wan_zone_log_value "$zone")
-	limit_val=$( [ -n "$zone" ] && uci -q get "firewall.${zone}.log_limit" 2>/dev/null )
+	# Empty zone / unset log bit are valid; set -e cannot apply (#291 C3).
+	log_val=$(wan_zone_log_value "$zone") || log_val=
+	# Unset log_limit is a valid empty value; uci -q get exits 1 (#291 C3).
+	limit_val=
+	if [ -n "$zone" ]; then
+		limit_val=$(uci -q get "firewall.${zone}.log_limit" 2>/dev/null || true)
+	fi
 	wan_log=false
 	if wan_filter_log_enabled "$log_val"; then
 		wan_log=true

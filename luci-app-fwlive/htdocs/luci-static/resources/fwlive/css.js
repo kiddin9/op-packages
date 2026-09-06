@@ -1,4 +1,6 @@
 'use strict';
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass';
 
 /**

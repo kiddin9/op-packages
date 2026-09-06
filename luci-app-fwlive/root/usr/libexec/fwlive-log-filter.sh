@@ -8,6 +8,14 @@
 #
 # Perf (#219): one jsonfilter for @.log[*] plus one awk classify. Process
 # count is constant per poll, not O(entries).
+#
+# Entry point (pipeline). The classifier sibling is sourced and must not
+# set -euo itself (#291 C3).
+set -eu
+# pipefail: BusyBox ash supports it; Debian dash (host `sh`) rejects a
+# bare `set -o pipefail`. Probe in a subshell (same class as #244).
+# shellcheck disable=SC3040 # pipefail is ash/bash; dash probe is a subshell
+(set -o pipefail) 2>/dev/null && set -o pipefail
 
 if ! command -v jsonfilter >/dev/null 2>&1; then
 	command -v logger >/dev/null 2>&1 && logger -t fwlive "jsonfilter not found; cannot filter firewall logs"
@@ -26,5 +34,7 @@ printf '%s' '{"log":['
 # Prefer stdin over -s: Linux MAX_ARG_STRLEN is 128KiB; a raised logd ring
 # (or paused FETCH_LINES_MAX poll) can exceed that and make jsonfilter fail
 # while this script still printed {"log":[]} and exited 0 (#234).
-printf '%s' "$input" | jsonfilter -e '@.log[*]' 2>/dev/null | _fwlive_filter_json_entries
+# jsonfilter miss / empty @.log is not fatal; must still close JSON (#220).
+# set -e + pipefail cannot apply to this pipeline (#291 C3).
+printf '%s' "$input" | jsonfilter -e '@.log[*]' 2>/dev/null | _fwlive_filter_json_entries || true
 printf '%s' ']}'

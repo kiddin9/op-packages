@@ -1,4 +1,6 @@
 'use strict';
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass'; /* LuCI require() needs Class.isSubclass — plain return {} fails */
 
 /**
@@ -7,25 +9,23 @@
  */
 
 return baseclass.extend({
-	readProtoFilter: function() {
+	readProtoFilter: function () {
 		const custom = document.getElementById('fwlive-proto-custom');
 		if (custom) {
 			const typed = (custom.value || '').trim();
-			if (typed)
-				return typed;
+			if (typed) return typed;
 		}
 		const sel = document.getElementById('fwlive-proto');
-		return sel ? (sel.value || '') : '';
+		return sel ? sel.value || '' : '';
 	},
 
-	setProtoFilterValue: function(value) {
+	setProtoFilterValue: function (value) {
 		const sel = document.getElementById('fwlive-proto');
 		const custom = document.getElementById('fwlive-proto-custom');
-		if (!sel)
-			return false;
+		if (!sel) return false;
 
 		value = value || '';
-		let inMenu = (value === '');
+		let inMenu = value === '';
 		if (!inMenu) {
 			for (let i = 0; i < sel.options.length; i++) {
 				if (sel.options[i].value === value) {
@@ -37,12 +37,10 @@ return baseclass.extend({
 
 		if (inMenu) {
 			sel.value = value;
-			if (custom)
-				custom.value = '';
+			if (custom) custom.value = '';
 		} else {
 			sel.value = '';
-			if (custom)
-				custom.value = value;
+			if (custom) custom.value = value;
 		}
 
 		return true;

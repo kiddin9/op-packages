@@ -1,4 +1,6 @@
 'use strict';
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass';
 
 /**
@@ -21,8 +23,7 @@ var PASS_HEX = CLASSIC_PASS_HEX;
 var DENY_HEX = CLASSIC_DENY_HEX;
 
 function normalizeRowTint(mode) {
-	if (mode === 'off' || mode === 'accessible' || mode === 'classic')
-		return mode;
+	if (mode === 'off' || mode === 'accessible' || mode === 'classic') return mode;
 	return 'classic';
 }
 
@@ -33,16 +34,13 @@ function hexPairForMode(mode) {
 }
 
 function parseCssRgbChannels(value) {
-	if (!value)
-		return null;
+	if (!value) return null;
 
 	const s = String(value).trim().toLowerCase();
-	if (s === 'transparent' || s === 'rgba(0, 0, 0, 0)' || s === 'rgba(0,0,0,0)')
-		return null;
+	if (s === 'transparent' || s === 'rgba(0, 0, 0, 0)' || s === 'rgba(0,0,0,0)') return null;
 
 	const rgb = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
-	if (rgb)
-		return [ parseFloat(rgb[1]), parseFloat(rgb[2]), parseFloat(rgb[3]) ];
+	if (rgb) return [parseFloat(rgb[1]), parseFloat(rgb[2]), parseFloat(rgb[3])];
 
 	/* color-mix() often serializes as color(srgb r g b[/a]) with 0..1 channels. */
 	const modern = s.match(/color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/i);
@@ -60,27 +58,22 @@ function cssColorPaintDelta(a, b) {
 	const ca = parseCssRgbChannels(a);
 	const cb = parseCssRgbChannels(b);
 	/* Transparent vs opaque color is a real paint change (common off-state). */
-	if (!ca && !cb)
-		return 0;
-	if (!ca && cb)
-		return Math.abs(cb[0]) + Math.abs(cb[1]) + Math.abs(cb[2]);
-	if (ca && !cb)
-		return Math.abs(ca[0]) + Math.abs(ca[1]) + Math.abs(ca[2]);
+	if (!ca && !cb) return 0;
+	if (!ca && cb) return Math.abs(cb[0]) + Math.abs(cb[1]) + Math.abs(cb[2]);
+	if (ca && !cb) return Math.abs(ca[0]) + Math.abs(ca[1]) + Math.abs(ca[2]);
 
 	return Math.abs(ca[0] - cb[0]) + Math.abs(ca[1] - cb[1]) + Math.abs(ca[2] - cb[2]);
 }
 
 function tintShouldEngageFallback(opts) {
 	const o = opts || {};
-	const minDelta = (typeof o.minDelta === 'number') ? o.minDelta : PAINT_DELTA_MIN;
+	const minDelta = typeof o.minDelta === 'number' ? o.minDelta : PAINT_DELTA_MIN;
 
 	/* Visible paint is the success criterion; token/CSS.supports are only used when
 	   paint cannot be measured (no delta sample yet). */
-	if (typeof o.paintDelta === 'number')
-		return o.paintDelta < minDelta;
+	if (typeof o.paintDelta === 'number') return o.paintDelta < minDelta;
 
-	if (o.tokenResolved === false)
-		return true;
+	if (o.tokenResolved === false) return true;
 
 	return false;
 }
