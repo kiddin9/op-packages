@@ -72,6 +72,27 @@ function getQcaFallbackIfname(device, section) {
 	return null;
 }
 
+function getMtDbdcMainIfname(device) {
+	const match = String(device || '').match(/^(ra[xiyez]?)(?:0)?$/);
+
+	return match ? match[1] + '0' : null;
+}
+
+function getMtDbdcStaIfname(device) {
+	const ifname = getMtDbdcMainIfname(device);
+
+	if (ifname == 'rax0')
+		return 'apclix0';
+	if (ifname == 'rai0')
+		return 'apclii0';
+
+	return ifname ? 'apcli0' : null;
+}
+
+function isConfigOnlyWifiHwtype(hwtype) {
+	return (hwtype == 'mt_dbdc' || isQcaWifiHwtype(hwtype));
+}
+
 function buildIwinfoDeviceLookup(devices) {
 	const lookup = Object.create(null);
 
@@ -82,19 +103,24 @@ function buildIwinfoDeviceLookup(devices) {
 	return lookup;
 }
 
-function getQcaIwinfoDevicesFromConfig() {
+function getIwinfoDevicesFromConfig() {
 	const radios = uci.sections('wireless', 'wifi-device');
 	const devices = [];
 
-	if (!radios.length || !radios.every((radio) => isQcaWifiHwtype(radio.type)))
+	if (!radios.length || !radios.every((radio) => isConfigOnlyWifiHwtype(radio.type)))
 		return null;
 
 	for (const iface of uci.sections('wireless', 'wifi-iface')) {
-		if (isConfigWifiIfaceDisabled(iface) ||
-		    !isQcaWifiHwtype(uci.get('wireless', iface.device, 'type')))
+		const hwtype = uci.get('wireless', iface.device, 'type');
+
+		if (isConfigWifiIfaceDisabled(iface) || !isConfigOnlyWifiHwtype(hwtype))
 			continue;
 
-		pushUnique(devices, iface.ifname || getQcaFallbackIfname(iface.device, iface['.name']));
+		const fallback = isQcaWifiHwtype(hwtype)
+			? getQcaFallbackIfname(iface.device, iface['.name'])
+			: getMtDbdcMainIfname(iface.device);
+
+		pushUnique(devices, iface.ifname || fallback);
 	}
 
 	return devices;
@@ -130,7 +156,10 @@ function getLegacyIwinfoProbeTargets() {
 		const device = iface.device;
 		const section = iface['.name'];
 		const configuredIfname = iface.ifname;
-		const fallback = getQcaFallbackIfname(device, section);
+		const hwtype = uci.get('wireless', device, 'type');
+		const fallback = isQcaWifiHwtype(hwtype)
+			? getQcaFallbackIfname(device, section)
+			: getMtDbdcMainIfname(device);
 
 		pushUnique(targets, configuredIfname);
 		pushUnique(targets, section);
@@ -220,13 +249,13 @@ function loadIwinfoResolver(force) {
 	if (!force && cachedIwinfoResolver != null)
 		return Promise.resolve(cachedIwinfoResolver);
 
-	const qcaDevices = getQcaIwinfoDevicesFromConfig();
-	const deviceRequest = qcaDevices != null
-		? Promise.resolve({ devices: qcaDevices })
+	const configuredDevices = getIwinfoDevicesFromConfig();
+	const deviceRequest = configuredDevices != null
+		? Promise.resolve({ devices: configuredDevices })
 		: L.resolveDefault(callIwinfoDevices(), {});
 
 	cachedIwinfoResolverPromise = deviceRequest.then((res) => {
-		cachedIwinfoResolver = buildIwinfoResolver(res?.devices, qcaDevices != null);
+		cachedIwinfoResolver = buildIwinfoResolver(res?.devices, configuredDevices != null);
 		cachedIwinfoResolverPromise = null;
 		return cachedIwinfoResolver;
 	}).catch(() => {
@@ -2586,11 +2615,11 @@ return view.extend({
 			const configuredRadios = network.getWifiDevicesFromConfig().sort(function(a, b) {
 				return a.getName() > b.getName();
 			});
-			const hasQcaWifi = configuredRadios.some(function(radio) {
-				return isQcaWifiHwtype(uci.get('wireless', radio.getName(), 'type'));
+			const hasConfigOnlyWifi = configuredRadios.some(function(radio) {
+				return isConfigOnlyWifiHwtype(uci.get('wireless', radio.getName(), 'type'));
 			});
 
-			if (hasQcaWifi) {
+			if (hasConfigOnlyWifi) {
 				this.radios = configuredRadios;
 				this.wifis = network.getWifiNetworksFromConfig();
 				return Promise.resolve();
@@ -4553,11 +4582,10 @@ return view.extend({
 
 				return network.addNetwork(nameval, { proto: 'dhcp' }).then(function(net) {
 					if (hwtype == 'mt_dbdc') {
-						const radioName = radioDev.getName();
-						const staDevice = (radioName == 'rax') ? 'apclix0' :
-							(radioName == 'rai') ? 'apclii0' : 'apcli0';
+						const staDevice = getMtDbdcStaIfname(radioDev.getName());
 
-						uci.set('network', nameval, 'device', staDevice);
+						if (staDevice)
+							uci.set('network', nameval, 'device', staDevice);
 					}
 					else if (hwtype == 'qcawifi' || hwtype == 'qcawificfg80211') {
 						const radioName = radioDev.getName();

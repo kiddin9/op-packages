@@ -361,11 +361,11 @@ function refreshWirelessState() {
 		return _wirelessInit;
 
 	const wifiDevices = uci.sections('wireless', 'wifi-device');
-	const qcaOnly = wifiDevices.length > 0 && wifiDevices.every(function(device) {
-		return (device.type == 'qcawifi' || device.type == 'qcawificfg80211');
+	const configOnly = wifiDevices.length > 0 && wifiDevices.every(function(device) {
+		return (device.type == 'mt_dbdc' || device.type == 'qcawifi' || device.type == 'qcawificfg80211');
 	});
 
-	if (qcaOnly)
+	if (configOnly)
 		return Promise.resolve();
 
 	_wirelessInit = L.resolveDefault(callLuciWirelessDevices(), {}).then(function(radios) {
@@ -407,12 +407,12 @@ function refreshWirelessState() {
 
 function waitForWirelessState() {
 	const wifiDevices = uci.sections('wireless', 'wifi-device');
-	const hasQcaWifi = wifiDevices.some(function(device) {
-		return (device.type == 'qcawifi' || device.type == 'qcawificfg80211');
+	const hasConfigOnlyWifi = wifiDevices.some(function(device) {
+		return (device.type == 'mt_dbdc' || device.type == 'qcawifi' || device.type == 'qcawificfg80211');
 	});
 	const refresh = refreshWirelessState();
 
-	return hasQcaWifi ? Promise.resolve() : refresh;
+	return hasConfigOnlyWifi ? Promise.resolve() : refresh;
 }
 
 function initNetworkState(refresh) {
