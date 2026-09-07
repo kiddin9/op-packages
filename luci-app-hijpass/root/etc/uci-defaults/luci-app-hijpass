@@ -1,0 +1,116 @@
+#!/bin/sh
+
+if ! grep -q "^hijpass:" /etc/group; then
+    echo "hijpass:x:4396:hijpass" >>/etc/group
+fi
+# UID 0 用于保留代理核心所需权限；独立 GID 供 nftables 识别代理流量。
+if ! grep -q "^hijpass:" /etc/passwd; then
+    echo "hijpass:x:0:4396:hijpass:/var/run/hijpass:/bin/false" >>/etc/passwd
+fi
+if ! grep -q "^hijpass:" /etc/shadow; then
+    echo "hijpass:x:0:0:99999:7:::" >>/etc/shadow
+fi
+
+uci -q batch <<-EOF >/dev/null
+	delete firewall.hijpass
+	set firewall.hijpass=include
+	set firewall.hijpass.type=script
+	set firewall.hijpass.path=/usr/lib/hijpass/fw4.sh
+	commit firewall
+EOF
+
+shunt_type="$(uci -q get hijpass.@shunt[0].type || :)"
+[ -z "$shunt_type" ] && uci -q set hijpass.@shunt[0].type='sing-box'
+[ "$shunt_type" = "singbox" ] && uci -q set hijpass.@shunt[0].type='sing-box'
+direct_dns="$(uci -q get hijpass.@dns[0].direct_dns || :)"
+[ "$direct_dns" = "system" ] && uci -q set hijpass.@dns[0].direct_dns='dnsmasq'
+proxy_dns="$(uci -q get hijpass.@dns[0].proxy_dns || :)"
+[ "$proxy_dns" = "system" ] && uci -q set hijpass.@dns[0].proxy_dns='dnsmasq'
+proxy_local="$(uci -q get hijpass.@firewall[0].proxy_local || :)"
+[ -z "$proxy_local" ] && uci -q set hijpass.@firewall[0].proxy_local='0'
+uci -q show hijpass | sed -n "s/^\(hijpass\.[^.]*\)\.core='singbox'$/\1/p" | while read -r section; do
+	uci -q set "$section.core=sing-box"
+done
+
+port_in_use() {
+	{
+		uci -q show hijpass
+		uci -q show hijserver
+	} | grep -Eq "\.(listen_port|socks_port|shunt_listen_port|dns_listen_port|cdg_port)='$1'$"
+}
+
+find_available_port() {
+	local port="$1"
+	while port_in_use "$port"; do
+		port=$((port + 1))
+	done
+	echo "$port"
+}
+
+migrate_shunt_load_balance() {
+	local members core node_name suffix section listen_port socks_port option value route_section field
+	members="$(uci -q get hijpass.@shunt[0].lb_node_list || :)"
+	[ -z "$members" ] && return
+
+	core="$(uci -q get hijpass.@shunt[0].type || :)"
+	[ "$core" = "singbox" ] && core='sing-box'
+	[ "$core" != "xray" ] && [ "$core" != "sing-box" ] && core='sing-box'
+
+	node_name='load-balance'
+	suffix=2
+	while uci -q show hijpass | grep -Fq ".name='$node_name'"; do
+		node_name="load-balance-$suffix"
+		suffix=$((suffix + 1))
+	done
+
+	listen_port="$(find_available_port 7890)"
+	socks_port="$(find_available_port $((listen_port + 1)))"
+	section="$(uci -q add hijpass proxy_node)"
+	uci -q set "hijpass.$section.name=$node_name"
+	uci -q set "hijpass.$section.type=load_balance"
+	uci -q set "hijpass.$section.core=$core"
+	uci -q set "hijpass.$section.enabled=1"
+	uci -q set "hijpass.$section.listen_port=$listen_port"
+	uci -q set "hijpass.$section.socks_port=$socks_port"
+	uci -q set "hijpass.$section.log_level=info"
+	uci -q set "hijpass.$section.log_path=/tmp/hijpass/log/$node_name-$section.log"
+	for value in $members; do
+		uci -q add_list "hijpass.$section.member_node=$value"
+	done
+
+	for option in url interval tolerance idle_timeout interrupt_exist_connections \
+		strategy strategy_expected strategy_max_rtt strategy_tolerance fallback_tag \
+		probe_url probe_connectivity probe_interval probe_timeout probe_sampling probe_http_method; do
+		value="$(uci -q get "hijpass.@shunt[0].$option" || :)"
+		[ -n "$value" ] && uci -q set "hijpass.$section.$option=$value"
+	done
+
+	for field in default_proxy_node ruleset_out_node; do
+		value="$(uci -q get "hijpass.@shunt[0].$field" || :)"
+		[ "$value" = 'hijpass-slb' ] && uci -q set "hijpass.@shunt[0].$field=$node_name"
+	done
+
+	uci -q show hijpass | sed -n "s/^\(hijpass\.[^.]*\)=shunt_route_rule$/\1/p" | while read -r route_section; do
+		for field in proxy_node proxy_node_v4 proxy_node_v6 dns_proxy_node; do
+			value="$(uci -q get "$route_section.$field" || :)"
+			[ "$value" = 'hijpass-slb' ] && uci -q set "$route_section.$field=$node_name"
+		done
+	done
+
+	for option in lb_node_list url interval tolerance idle_timeout interrupt_exist_connections \
+		strategy strategy_expected strategy_max_rtt strategy_tolerance fallback_tag \
+		probe_url probe_connectivity probe_interval probe_timeout probe_sampling probe_http_method; do
+		uci -q delete "hijpass.@shunt[0].$option"
+	done
+}
+
+migrate_shunt_load_balance
+uci -q commit hijpass
+
+mkdir -p /etc/hijpass/client /etc/hijpass/server /tmp/hijpass/log /tmp/hijserver/log
+
+chmod +x /usr/lib/hijpass/*
+chmod +x /etc/hijpass/hook/*
+
+rm -rf /tmp/luci-*cache
+exit 0

@@ -1,0 +1,3095 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-hijpass\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-13 00:00+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ts-src/views/shunt.ts:222
+msgid "-"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:66
+msgid "# Local Rule Files\n"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:73
+msgid "# Shunt Rules\n"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:169
+msgid "%s \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:173
+msgid "%s \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:20
+msgid "%s already exists, use another %s"
+msgstr ""
+
+#: ts-src/views/proxy.ts:575
+msgid "0-RTT Handshake"
+msgstr ""
+
+#: ts-src/views/rule.ts:71
+msgid "1st Day of Month 5 AM"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:70
+msgid "2022-blake3-aes-128-gcm"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:71
+msgid "2022-blake3-aes-256-gcm"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:72
+msgid "2022-blake3-chacha20-poly1305"
+msgstr ""
+
+#: ts-src/views/proxy.ts:381
+msgid "Accept Any Certificate"
+msgstr ""
+
+#: ts-src/views/firewall.ts:113
+msgid "Access Control List"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:330
+msgid "Actions"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:73
+msgid "aes-128-gcm"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:74
+msgid "aes-192-gcm"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:75
+msgid "aes-256-gcm"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:250
+msgid "All"
+msgstr ""
+
+#: ts-src/views/server.ts:66
+msgid "Allow Public Access"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:251
+msgid "An empty result means no matching entry was found."
+msgstr ""
+
+#: ts-src/views/proxy.ts:431
+msgid "Authentication Password"
+msgstr ""
+
+#: ts-src/views/proxy.ts:637
+msgid "Auto"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:328 ts-src/utils/feature/proxy/form.ts:372
+msgid "Auto Generate"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:284 ts-src/utils/feature/log/panel.ts:309
+msgid "Auto Refresh"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:306
+msgid "Auto Refresh Disabled"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:303
+msgid "Auto Refresh Enabled"
+msgstr ""
+
+#: ts-src/views/rule.ts:64
+msgid "Auto Update Time"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:210
+msgid "Backend Core"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:15
+msgid "Baidu"
+msgstr ""
+
+#: ts-src/views/shunt.ts:587
+msgid "Basic Configuration"
+msgstr ""
+
+#: ts-src/views/dns.ts:30 ts-src/views/firewall.ts:112
+msgid "Basic Settings"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:87
+msgid "bbr"
+msgstr ""
+
+#: ts-src/views/shunt.ts:523
+msgid "Best Nodes"
+msgstr ""
+
+#: ts-src/views/shunt.ts:524
+msgid "Best Nodes Count"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:33
+msgid "Bilibili"
+msgstr ""
+
+#: ts-src/utils/base/luci/form.ts:137 ts-src/utils/base/luci/form.ts:164
+msgid "Block"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:168 ts-src/views/shunt.ts:175 ts-src/views/shunt.ts:177
+msgid "Bulk Replace Nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:298 ts-src/utils/feature/shunt/form.ts:176
+msgid "Cancel"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:277
+msgid "Cannot use itself as upstream proxy"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:76
+msgid "chacha20-ietf-poly1305"
+msgstr ""
+
+#: ts-src/views/dns.ts:46
+msgid "ChinaDNS-NG Listen Port"
+msgstr ""
+
+#: ts-src/views/rule.ts:34
+msgid "CHN Domain List Download URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:35
+msgid "CHN Domain List URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:39
+msgid "CHN IPv4 Route Download URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:40
+msgid "CHN IPv4 Route URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:44
+msgid "CHN IPv6 Route Download URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:45
+msgid "CHN IPv6 Route URL"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:360
+msgid "Clear"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:231
+msgid "Clear Failed"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:356
+msgid "Clear Log Confirmation"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:225
+msgid "Clearing Logs"
+msgstr ""
+
+#: ts-src/views/shunt.ts:115
+msgid "Click to Preview"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:79
+msgid "Click to Test"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts:59
+msgid "Click to View Firewall Rules"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:136 ts-src/utils/feature/proxy/form.ts:157 ts-src/utils/feature/shunt/form.ts:136
+msgid "Close"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:133
+msgid "Config Preview"
+msgstr ""
+
+#: ts-src/views/rule.ts:24
+msgid "Configuration"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/index.ts:59
+msgid "Configuration Apply Failed"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:232
+msgid "Configuration conflict"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:194
+msgid "Configuration contains disabled DNS nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:101
+msgid "Configuration contains disabled nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:216
+msgid "Configuration contains invalid DNS exit nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:142
+msgid "Configuration contains invalid upstream proxy nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:190
+msgid "Configuration contains missing DNS nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "DNS node \"%s\" uses TLS, which is only supported by sing-box"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:53
+msgid "Configuration contains missing proxy nodes"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:144
+msgid "Configuration copied to clipboard"
+msgstr ""
+
+#: ts-src/views/proxy.ts:118 ts-src/views/server.ts:129
+msgid "Configuration File Content"
+msgstr ""
+
+#: ts-src/utils/base/files/paths.ts:41
+msgid "Configuration file directory is empty"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:152
+msgid "Configuration Generation Failed"
+msgstr ""
+
+#: ts-src/views/proxy.ts:79
+msgid "Configuration Info"
+msgstr ""
+
+#: ts-src/views/shunt.ts:26
+msgid "Configuration Save Failed"
+msgstr ""
+
+#: ts-src/views/shunt.ts:69
+msgid "Configuration Type"
+msgstr ""
+
+#: ts-src/views/dns.ts
+msgid "Configure an independently running DNS service. Select upstreams by domain, populate firewall sets, or extend it with custom configuration and hooks."
+msgstr ""
+
+#: ts-src/views/firewall.ts:22
+msgid "Configure Firewall"
+msgstr ""
+
+#: ts-src/views/shunt.ts:161
+msgid "Configure Global Exit First"
+msgstr ""
+
+#: ts-src/views/proxy.ts:27
+msgid "Configure Proxy Settings"
+msgstr ""
+
+#: ts-src/views/shunt.ts:34
+msgid "Configure Shunt Rules"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:195
+msgid "Confirm Replace"
+msgstr ""
+
+#: ts-src/views/shunt.ts:84
+msgid "Conflicts with DNS Port"
+msgstr ""
+
+#: ts-src/views/shunt.ts:98
+msgid "Conflicts with Shunt Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:296
+msgid "Conflicts with SOCKS Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:340
+msgid "Conflicts with Transparent Proxy Port"
+msgstr ""
+
+#: ts-src/views/proxy.ts:548
+msgid "Congestion Control"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:138
+msgid "Connection Abnormal"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:306
+msgid "Continue Apply"
+msgstr ""
+
+#: ts-src/views/shunt.ts:172
+msgid "Convert Geo Rules"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:147
+msgid "Copy Configuration"
+msgstr ""
+
+#: ts-src/views/proxy.ts:133
+msgid "Core Log Level"
+msgstr ""
+
+#: ts-src/views/shunt.ts:123
+msgid "Core Version"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:85
+msgid "cubic"
+msgstr ""
+
+#: ts-src/views/shunt.ts:270
+msgid "Current Xray only supports http, tls, quic, and bittorrent"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:124 ts-src/utils/feature/proxy/form.ts:56 ts-src/views/dns.ts:41
+msgid "Custom"
+msgstr ""
+
+#: ts-src/views/dns.ts:60
+msgid "Custom Direct DNS"
+msgstr ""
+
+#: ts-src/views/dns.ts:56 ts-src/views/dns.ts:70
+msgid "Custom DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:72
+msgid "Custom Edit"
+msgstr ""
+
+#: ts-src/views/firewall.ts:106
+msgid "Custom Hook Script"
+msgstr ""
+
+#: ts-src/views/dns.ts:90
+msgid "Custom Proxy DNS"
+msgstr ""
+
+#: ts-src/views/firewall.ts:117
+msgid "Custom Script"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:251 ts-src/views/overview.ts:42
+msgid "Debug"
+msgstr ""
+
+#: ts-src/views/proxy.ts:422
+msgid "Default"
+msgstr ""
+
+#: ts-src/views/shunt.ts:578
+msgid "Default (HEAD)"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:179
+msgid "Default global DNS"
+msgstr ""
+
+#: ts-src/core/xray/builder.ts
+msgid "Default global DNS \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/views/shunt.ts:382
+msgid "Default Global DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:157
+msgid "Default Global Exit"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:40
+msgid "Default global exit \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:76
+msgid "Default global exit \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/views/firewall.ts:125
+msgid "Default Proxy All"
+msgstr ""
+
+#: ts-src/views/firewall.ts:68
+msgid "Default Shunt Port"
+msgstr ""
+
+#: ts-src/views/overview.ts:33
+msgid "Delay Time"
+msgstr ""
+
+#: ts-src/utils/base/luci/form.ts:135 ts-src/utils/base/luci/form.ts:163 ts-src/views/shunt.ts:229 ts-src/views/shunt.ts:244
+msgid "Direct"
+msgstr ""
+
+#: ts-src/views/dns.ts:53
+msgid "Direct Domain DNS"
+msgstr ""
+
+#: ts-src/views/dns.ts:61
+msgid "Direct Domain DNS Server"
+msgstr ""
+
+#: ts-src/views/rule.ts:66
+msgid "Disable Auto Update"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:103 ts-src/enum/hijpass.ts:117 ts-src/utils/feature/proxy/form.ts:265 ts-src/views/firewall.ts:64
+#: ts-src/views/firewall.ts:75
+msgid "Disabled"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:326
+msgid "Display Lines"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json
+#: ts-src/utils/base/luci/service.ts ts-src/views/firewall.ts
+msgid "Independent DNS"
+msgstr ""
+
+#: ts-src/views/dns.ts
+msgid "Independent DNS Service"
+msgstr ""
+
+#: ts-src/views/shunt.ts:403
+msgid "DNS Cache"
+msgstr ""
+
+#: ts-src/views/shunt.ts:195
+msgid "DNS Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:242
+msgid "DNS Exit Node"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts
+msgid "DNS exit cannot use Block or Load Balancing"
+msgstr ""
+
+#: ts-src/views/shunt.ts:90 ts-src/views/shunt.ts:91
+msgid "DNS Listen Port"
+msgstr ""
+
+#: ts-src/views/shunt.ts:407
+msgid "DNS Node Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:235
+msgid "DNS Resolution Strategy"
+msgstr ""
+
+#: ts-src/views/shunt.ts:216 ts-src/views/shunt.ts:441
+msgid "DNS Server"
+msgstr ""
+
+#: ts-src/views/shunt.ts:442
+msgid "DNS Server Address"
+msgstr ""
+
+#: ts-src/views/dns.ts ts-src/views/firewall.ts ts-src/views/shunt.ts
+#: ts-src/utils/actions/save-apply/precheck.ts
+#: ts-src/utils/feature/firewall/dns-forward.ts
+msgid "Core DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:449
+msgid "DNS Server Port"
+msgstr ""
+
+#: ts-src/views/shunt.ts:434
+msgid "DNS Server Tag"
+msgstr ""
+
+#: ts-src/views/shunt.ts:423
+msgid "DNS Server Type"
+msgstr ""
+
+#: ts-src/views/dns.ts:31
+msgid "Domain Direct List"
+msgstr ""
+
+#: ts-src/views/dns.ts:32
+msgid "Domain Proxy List"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:168
+msgid "Domain: Enter a domain (for example, www.example.com) to query GeoSite tags and local domain rule files."
+msgstr ""
+
+#: ts-src/views/shunt.ts:159
+msgid "Domain → GeoSite tags"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:192
+msgid "Domain Query"
+msgstr ""
+
+#: ts-src/views/shunt.ts:342
+msgid "Domain Rule Count"
+msgstr ""
+
+#: ts-src/views/shunt.ts:331
+msgid "Domain Rule List"
+msgstr ""
+
+#: ts-src/views/proxy.ts:492 ts-src/views/proxy.ts:493
+msgid "Downlink Bandwidth"
+msgstr ""
+
+#: ts-src/views/proxy.ts:188
+msgid "Downlink Speed"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:350
+msgid "Download"
+msgstr ""
+
+#: ts-src/views/rule.ts:28
+msgid "Download All Rules Now"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:212
+msgid "Download Failed"
+msgstr ""
+
+#: ts-src/views/rule.ts:75
+msgid "Download Timeout"
+msgstr ""
+
+#: ts-src/views/proxy.ts:320 ts-src/views/proxy.ts:321
+msgid "Early Data Header Name"
+msgstr ""
+
+#: ts-src/views/proxy.ts:119 ts-src/views/server.ts:130
+msgid "Edit Configuration File"
+msgstr ""
+
+#: ts-src/views/dns.ts:109
+msgid "Edit DNS Hook Script"
+msgstr ""
+
+#: ts-src/views/shunt.ts:416
+msgid "Edit DNS Server"
+msgstr ""
+
+#: ts-src/views/dns.ts:121
+msgid "Edit Domain Direct List"
+msgstr ""
+
+#: ts-src/views/dns.ts:133
+msgid "Edit Domain Proxy List"
+msgstr ""
+
+#: ts-src/views/firewall.ts:100
+msgid "Edit Firewall Rules"
+msgstr ""
+
+#: ts-src/views/firewall.ts:92
+msgid "Edit IP Direct List"
+msgstr ""
+
+#: ts-src/views/firewall.ts:97
+msgid "Edit IP Proxy List"
+msgstr ""
+
+#: ts-src/views/shunt.ts:189
+msgid "Edit Routing Rule"
+msgstr ""
+
+#: ts-src/views/shunt.ts:143
+msgid "Edit Shunt Configuration File"
+msgstr ""
+
+#: ts-src/views/overview.ts:28 ts-src/views/proxy.ts:50 ts-src/views/server.ts:33 ts-src/views/server.ts:58
+#: ts-src/views/shunt.ts:204
+msgid "Enable"
+msgstr ""
+
+#: ts-src/views/proxy.ts:576
+msgid "Enable 0-RTT QUIC Handshake"
+msgstr ""
+
+#: ts-src/views/proxy.ts:411
+msgid "Enable Brutal CC Debug"
+msgstr ""
+
+#: ts-src/views/dns.ts:103
+msgid "Enable CHN Domain List"
+msgstr ""
+
+#: ts-src/views/firewall.ts:83
+msgid "Enable CHN IP Route"
+msgstr ""
+
+#: ts-src/views/dns.ts:97
+msgid "Enable GFW Domain List"
+msgstr ""
+
+#: ts-src/views/proxy.ts:412
+msgid "Enable Hysteria Brutal CC Debug"
+msgstr ""
+
+#: ts-src/views/proxy.ts:451
+msgid "Enable Multiplexing"
+msgstr ""
+
+#: ts-src/views/proxy.ts:452
+msgid "Enable Multiplexing for Better Efficiency"
+msgstr ""
+
+#: ts-src/views/overview.ts:29
+msgid "Enable or Disable HiJpass"
+msgstr ""
+
+#: ts-src/views/shunt.ts:56
+msgid "Enable Shunt"
+msgstr ""
+
+#: ts-src/views/proxy.ts:481
+msgid "Enable TCP Brutal"
+msgstr ""
+
+#: ts-src/views/proxy.ts:482
+msgid "Enable TCP Brutal Congestion Control"
+msgstr ""
+
+#: ts-src/views/proxy.ts:391
+msgid "Enable TLS Reality"
+msgstr ""
+
+#: ts-src/views/proxy.ts:392
+msgid "Enable TLS Reality Obfuscation"
+msgstr ""
+
+#: ts-src/views/proxy.ts:539
+msgid "Enable UDP over TCP"
+msgstr ""
+
+#: ts-src/views/proxy.ts:419
+msgid "Enabled Network Protocols"
+msgstr ""
+
+#: ts-src/views/proxy.ts:503
+msgid "Encryption Method"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:173
+msgid "Enter a GeoSite tag"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:175
+msgid "Enter a GeoSite tag (for example, cn or google) to list the domain rules included in that tag."
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:166 ts-src/utils/feature/rule/panel.ts:179
+msgid "Enter a domain or IP address"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:181
+msgid "Enter a domain or IP address to show the first matching enabled shunt rule."
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:36
+msgid "Enter Query Keyword"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:254 ts-src/views/overview.ts:45
+msgid "Error"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:16
+msgid "Error occurred while updating: %s"
+msgstr ""
+
+#: ts-src/views/rule.ts:67
+msgid "Every Day 5 AM"
+msgstr ""
+
+#: ts-src/views/rule.ts:68
+msgid "Every Day Midnight"
+msgstr ""
+
+#: ts-src/views/rule.ts:70
+msgid "Every Monday 5 AM"
+msgstr ""
+
+#: ts-src/views/rule.ts:69
+msgid "Every Sunday 5 AM"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:189
+msgid "Failed"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:75
+msgid "Failed to Load Log"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:76
+msgid "Failed to Load Log File"
+msgstr ""
+
+#: ts-src/views/shunt.ts:534 ts-src/views/shunt.ts:535
+msgid "Failure Rate Tolerance"
+msgstr ""
+
+#: ts-src/views/shunt.ts:539
+msgid "Fallback Node"
+msgstr ""
+
+#: ts-src/views/shunt.ts:540
+msgid "Fallback Outbound"
+msgstr ""
+
+#: ts-src/utils/base/luci/service.ts:127
+msgid "Fetching Status..."
+msgstr ""
+
+#: ts-src/views/firewall.ts:21
+msgid "Firewall Configuration"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:63 ts-src/utils/feature/overview/panel.ts:66
+msgid "Firewall Refresh Failed"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:61
+msgid "Firewall Refreshed"
+msgstr ""
+
+#: ts-src/views/firewall.ts:116
+msgid "Firewall Rules"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:171
+msgid "From Node"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:123
+msgid "Generated %s JSON Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:143
+msgid "Geo Database Query"
+msgstr ""
+
+#: ts-src/views/rule.ts:59
+msgid "GeoIP Database Download URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:60
+msgid "GeoIP Database URL"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:193
+msgid "GeoSite"
+msgstr ""
+
+#: ts-src/views/rule.ts:54
+msgid "GeoSite Database Download URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:55
+msgid "GeoSite Database URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:49
+msgid "GFW List Download URL"
+msgstr ""
+
+#: ts-src/views/rule.ts:50
+msgid "GFW List URL"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:27
+msgid "GitHub"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:21
+msgid "Google"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:112
+msgid "gRPC"
+msgstr ""
+
+#: ts-src/views/proxy.ts:330 ts-src/views/proxy.ts:331
+msgid "gRPC Service Name"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:82
+msgid "h2mux"
+msgstr ""
+
+#: ts-src/views/shunt.ts:492
+msgid "Health Check Interval"
+msgstr ""
+
+#: ts-src/views/shunt.ts:547
+msgid "Health Check Probe URL"
+msgstr ""
+
+#: ts-src/views/shunt.ts:488
+msgid "Health Check URL"
+msgstr ""
+
+#: ts-src/views/proxy.ts:580 ts-src/views/proxy.ts:581
+msgid "Heartbeat Interval"
+msgstr ""
+
+#: ts-src/views/overview.ts:20
+msgid "HiJpass"
+msgstr ""
+
+#: ts-src/views/dns.ts:33
+msgid "Hook Script"
+msgstr ""
+
+#: ts-src/views/proxy.ts:359
+msgid "Host Domain"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:110
+msgid "HTTP"
+msgstr ""
+
+#: ts-src/views/proxy.ts:277
+msgid "HTTP Host"
+msgstr ""
+
+#: ts-src/views/proxy.ts:278
+msgid "HTTP Host List"
+msgstr ""
+
+#: ts-src/views/proxy.ts:287
+msgid "HTTP Method"
+msgstr ""
+
+#: ts-src/views/proxy.ts:282
+msgid "HTTP Path"
+msgstr ""
+
+#: ts-src/views/proxy.ts:288
+msgid "HTTP Request Method"
+msgstr ""
+
+#: ts-src/views/proxy.ts:283 ts-src/views/proxy.ts:310 ts-src/views/proxy.ts:364
+msgid "HTTP Request Path"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:113
+msgid "HTTPUpgrade"
+msgstr ""
+
+#: ts-src/views/proxy.ts:358
+msgid "HTTPUpgrade Host"
+msgstr ""
+
+#: ts-src/views/proxy.ts:363
+msgid "HTTPUpgrade Path"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:64
+msgid "Hysteria2"
+msgstr ""
+
+#: ts-src/views/proxy.ts:292 ts-src/views/proxy.ts:293 ts-src/views/proxy.ts:336 ts-src/views/proxy.ts:337
+#: ts-src/views/shunt.ts:500
+msgid "Idle Timeout"
+msgstr ""
+
+#: ts-src/views/proxy.ts:380
+msgid "Ignore Certificate Verification"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:252 ts-src/views/overview.ts:43
+msgid "Info"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts:44
+msgid "Interface \"%s\" Not Found"
+msgstr ""
+
+#: ts-src/views/shunt.ts:396
+msgid "Internal DNS Resolution Strategy"
+msgstr ""
+
+#: ts-src/views/shunt.ts:504
+msgid "Interrupt Existing Connections"
+msgstr ""
+
+#: ts-src/views/shunt.ts:505
+msgid "Interrupt on Outbound Change"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:125
+msgid "Invalid proxy config"
+msgstr ""
+
+#: ts-src/views/firewall.ts:114
+msgid "IP Direct List"
+msgstr ""
+
+#: ts-src/views/firewall.ts:115
+msgid "IP Proxy List"
+msgstr ""
+
+#: ts-src/views/shunt.ts:361
+msgid "IP Rule Count"
+msgstr ""
+
+#: ts-src/views/shunt.ts:352
+msgid "IP Rule List"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:169
+msgid "IP address: Enter an IP address (for example, 8.8.8.8) to query GeoIP tags and local IP rule files."
+msgstr ""
+
+#: ts-src/views/shunt.ts:162
+msgid "IP address → GeoIP tags"
+msgstr ""
+
+#: ts-src/views/shunt.ts:352
+msgid "IP: e.g. '127.0.0.1'.<br>CIDR: e.g. '10.0.0.0/8'.<br>geoip: e.g. 'geoip:cn'.<br>rule-set: e.g. 'rule-set:local:/path/rulefile' or 'rule-set:remote:https://file'.<br>Comment: starts with #"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:57
+msgid "IPv4 only"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:56
+msgid "IPv6 only"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:293
+msgid "Item Not Found"
+msgstr ""
+
+#: ts-src/views/dns.ts:45 ts-src/views/server.ts:139 ts-src/views/server.ts:86
+msgid "Listen Port"
+msgstr ""
+
+#: ts-src/utils/base/luci/form.ts:151 ts-src/utils/base/luci/form.ts:178 ts-src/views/shunt.ts:591
+msgid "Load Balancing"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:46
+msgid "Load balancing node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:96
+msgid "Load balancing node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/config-file.ts:25
+msgid "Load balancing node list is empty, but some rules still use the load balancing outbound. Remove those rules or add nodes first"
+msgstr ""
+
+#: ts-src/views/shunt.ts:475 ts-src/views/shunt.ts:476
+msgid "Load Balancing Nodes"
+msgstr ""
+
+#: ts-src/views/shunt.ts:516
+msgid "Load Balancing Strategy"
+msgstr ""
+
+#: ts-src/views/shunt.ts:515
+msgid "Load Strategy"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts:65
+msgid "Loading"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:50
+msgid "Loading Logs"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:12 ts-src/utils/feature/shunt/form.ts:64
+msgid "Loading..."
+msgstr ""
+
+#: ts-src/views/shunt.ts:552 ts-src/views/shunt.ts:553
+msgid "Local Connectivity Check URL"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:288
+msgid "Local Listen Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:333
+msgid "Local SOCKS Listen Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:332
+msgid "Local SOCKS Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:289
+msgid "Local Transparent Proxy Listen Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:154 ts-src/utils/feature/proxy/form.ts:162
+msgid "Log"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:228
+msgid "Log Cleared"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:272
+msgid "Log Content"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:210
+msgid "Log Downloaded"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:318
+msgid "Log File"
+msgstr ""
+
+#: ts-src/views/overview.ts:39 ts-src/views/proxy.ts:133 ts-src/views/shunt.ts:107
+msgid "Log Level"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:322
+msgid "Log Level Filter"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:73
+msgid "Log Updated"
+msgstr ""
+
+#: ts-src/views/shunt.ts:107
+msgid "Logging Level"
+msgstr ""
+
+#: ts-src/views/shunt.ts:520
+msgid "Lowest Load"
+msgstr ""
+
+#: ts-src/views/shunt.ts:519
+msgid "Lowest Ping"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:9
+msgid "Main Log"
+msgstr ""
+
+#: ts-src/views/shunt.ts:529 ts-src/views/shunt.ts:530
+msgid "Max Acceptable RTT"
+msgstr ""
+
+#: ts-src/views/proxy.ts:476
+msgid "Max Concurrent Streams"
+msgstr ""
+
+#: ts-src/views/proxy.ts:463 ts-src/views/proxy.ts:464
+msgid "Max Connections"
+msgstr ""
+
+#: ts-src/views/proxy.ts:314
+msgid "Max Early Data"
+msgstr ""
+
+#: ts-src/views/proxy.ts:475
+msgid "Max Streams"
+msgstr ""
+
+#: ts-src/views/proxy.ts:315
+msgid "Maximum allowed payload size in requests"
+msgstr ""
+
+#: ts-src/views/proxy.ts:189
+msgid "Maximum Downlink Bandwidth"
+msgstr ""
+
+#: ts-src/views/proxy.ts:182
+msgid "Maximum Uplink Bandwidth"
+msgstr ""
+
+#: ts-src/views/proxy.ts:470
+msgid "Min Concurrent Streams"
+msgstr ""
+
+#: ts-src/views/proxy.ts:469
+msgid "Min Streams"
+msgstr ""
+
+#: ts-src/views/proxy.ts:62
+msgid "Modify Proxy Node Name"
+msgstr ""
+
+#: ts-src/views/server.ts:111
+msgid "Modify Server Node Name"
+msgstr ""
+
+#: ts-src/views/proxy.ts:456 ts-src/views/proxy.ts:457
+msgid "Multiplexing Protocol"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:20
+msgid "Name"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:90
+msgid "Native UDP"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:72
+msgid "Nested Proxy"
+msgstr ""
+
+#: ts-src/views/shunt.ts:257
+msgid "Network"
+msgstr ""
+
+#: ts-src/views/proxy.ts:418
+msgid "Network Protocol"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:86
+msgid "new_reno"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:17
+msgid "No Logs"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:99
+msgid "No Matching Results"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts:68
+msgid "No Rules"
+msgstr ""
+
+#: ts-src/views/shunt.ts:501
+msgid "Node Idle Timeout"
+msgstr ""
+
+#: ts-src/views/proxy.ts:61 ts-src/views/server.ts:110
+msgid "Node Name"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:114
+msgid "Node name can only contain letters, numbers, underscores, and hyphens"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:110
+msgid "Node name cannot be empty"
+msgstr ""
+
+#: ts-src/views/firewall.ts:150 ts-src/views/firewall.ts:151
+msgid "Non-Proxy Device"
+msgstr ""
+
+#: ts-src/views/firewall.ts:158 ts-src/views/firewall.ts:159
+msgid "Non-Proxy Interface"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:109 ts-src/enum/hijpass.ts:99 ts-src/utils/feature/proxy/form.ts:256 ts-src/views/proxy.ts:522
+#: ts-src/views/proxy.ts:565 ts-src/views/shunt.ts:541
+msgid "None"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:81 ts-src/utils/feature/proxy/form.ts:84 ts-src/utils/feature/proxy/form.ts:88 ts-src/utils/feature/proxy/form.ts:92
+#: ts-src/utils/feature/proxy/form.ts:96
+msgid "Not Configured"
+msgstr ""
+
+#: ts-src/utils/base/luci/service.ts:78 ts-src/utils/feature/proxy/form.ts:107 ts-src/views/server.ts:100
+msgid "Not Running"
+msgstr ""
+
+#: ts-src/views/proxy.ts:221
+msgid "OBFS Password"
+msgstr ""
+
+#: ts-src/views/proxy.ts:212
+msgid "OBFS Type"
+msgstr ""
+
+#: ts-src/views/firewall.ts:126
+msgid "Off: Default no proxy; On: Default proxy all"
+msgstr ""
+
+#: ts-src/views/shunt.ts:216
+msgid "Only Effective with Domain/GeoSite/Rule-set"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:104
+msgid "packetaddr"
+msgstr ""
+
+#: ts-src/views/proxy.ts:430
+msgid "Password"
+msgstr ""
+
+#: ts-src/views/proxy.ts:348
+msgid "Permit Without Stream"
+msgstr ""
+
+#: ts-src/views/proxy.ts:299 ts-src/views/proxy.ts:343
+msgid "PING Response Timeout"
+msgstr ""
+
+#: ts-src/views/proxy.ts:298 ts-src/views/proxy.ts:342
+msgid "PING Timeout"
+msgstr ""
+
+#: ts-src/views/shunt.ts:331
+msgid "Plain string: When this string matches any part of the target domain, the rule takes effect.<br>Regular expression: Starts with 'regexp:', followed by a regular expression.<br>Subdomain (recommended): Starts with 'domain:', followed by a domain. The rule takes effect when this domain is the target domain or one of its subdomains.<br>Full match: Starts with 'full:', followed by a domain. The rule takes effect when the target domain exactly matches this domain.<br>geosite: e.g. 'geosite:cn'.<br>rule-set: e.g. 'rule-set:local:/path/rulefile' or 'rule-set:remote:https://file'.<br>Comment: starts with #"
+msgstr ""
+
+#: ts-src/views/shunt.ts:386
+msgid "Please configure the global DNS server first"
+msgstr ""
+
+#: ts-src/views/proxy.ts:519
+msgid "Plugin"
+msgstr ""
+
+#: ts-src/views/proxy.ts:527
+msgid "Plugin Options"
+msgstr ""
+
+#: ts-src/views/shunt.ts:304 ts-src/views/shunt.ts:448
+msgid "Port"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:80
+msgid "Port %s is used by DNS configuration"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:90
+msgid "Port %s is used by proxy node \"%s\""
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:102
+msgid "Port %s is used by server node \"%s\""
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:75
+msgid "Port %s is used by shunt configuration"
+msgstr ""
+
+#: ts-src/views/proxy.ts:175 ts-src/views/proxy.ts:176
+msgid "Port Hop Interval"
+msgstr ""
+
+#: ts-src/views/proxy.ts:169
+msgid "Port Hopping"
+msgstr ""
+
+#: ts-src/views/proxy.ts:170
+msgid "Port Hopping Range"
+msgstr ""
+
+#: ts-src/views/shunt.ts:310 ts-src/views/shunt.ts:315
+msgid "Port Range"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:55
+msgid "Prefer IPv4 (sing-box only, xray uses dual stack by default)"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:54
+msgid "Prefer IPv6 (sing-box only, xray uses dual stack by default)"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:197
+msgid "Preparing Download"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:140
+msgid "Preview"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:120 ts-src/views/shunt.ts:114 ts-src/views/shunt.ts:117
+msgid "Preview Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:576 ts-src/views/shunt.ts:577
+msgid "Probe HTTP Method"
+msgstr ""
+
+#: ts-src/views/shunt.ts:557 ts-src/views/shunt.ts:558
+msgid "Probe Interval"
+msgstr ""
+
+#: ts-src/views/shunt.ts:563 ts-src/views/shunt.ts:564
+msgid "Probe Timeout"
+msgstr ""
+
+#: ts-src/views/shunt.ts:546
+msgid "Probe URL"
+msgstr ""
+
+#: ts-src/views/proxy.ts:129 ts-src/views/proxy.ts:130 ts-src/views/server.ts:149 ts-src/views/server.ts:150
+msgid "Procd Environment Variables"
+msgstr ""
+
+#: ts-src/views/shunt.ts:270
+msgid "Protocol"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:182
+msgid "Protocol and port conditions are not evaluated."
+msgstr ""
+
+#: ts-src/views/proxy.ts:591
+msgid "Protocol Version"
+msgstr ""
+
+#: ts-src/views/firewall.ts:134 ts-src/views/firewall.ts:135
+msgid "Proxy Device"
+msgstr ""
+
+#: ts-src/views/dns.ts:66
+msgid "Proxy Domain DNS"
+msgstr ""
+
+#: ts-src/views/dns.ts:91
+msgid "Proxy Domain DNS Server"
+msgstr ""
+
+#: ts-src/views/firewall.ts:142 ts-src/views/firewall.ts:143
+msgid "Proxy Interface"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:22
+msgid "Proxy Log"
+msgstr ""
+
+#: ts-src/utils/base/luci/service.ts:93 ts-src/utils/base/luci/service.ts:96 ts-src/views/shunt.ts:210
+msgid "Proxy Node"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:136
+msgid "Proxy node \"%s\" nesting chain exceeds %d nodes: %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:122
+msgid "Proxy node \"%s\" upstream proxy node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:129
+msgid "Proxy node \"%s\" upstream proxy node \"%s\" has no valid SOCKS port configured"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:126
+msgid "Proxy node \"%s\" upstream proxy node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/utils/base/luci/form.ts:124
+msgid "Proxy node %s: %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:134
+msgid "Proxy node nesting chain has a cycle: %s"
+msgstr ""
+
+#: ts-src/views/firewall.ts:61
+msgid "Proxy Port"
+msgstr ""
+
+#: ts-src/views/proxy.ts:111
+msgid "Proxy Run Command"
+msgstr ""
+
+#: ts-src/views/proxy.ts:150
+msgid "Proxy Server Address"
+msgstr ""
+
+#: ts-src/views/proxy.ts:157
+msgid "Proxy Server Port"
+msgstr ""
+
+#: ts-src/views/proxy.ts:26
+msgid "Proxy Settings"
+msgstr ""
+
+#: ts-src/views/proxy.ts:251
+msgid "Proxy Transport Protocol"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:217 ts-src/views/proxy.ts:72
+msgid "Proxy Type"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:238 ts-src/views/rule.ts:24
+msgid "Query"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:110 ts-src/utils/feature/rule/panel.ts:87
+msgid "Query Complete"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:113 ts-src/utils/feature/rule/panel.ts:121 ts-src/utils/feature/rule/panel.ts:90
+msgid "Query Failed"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:227
+msgid "Query Keyword"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:243
+msgid "Query Results"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:205
+msgid "Query results will appear here"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:220
+msgid "Query saved rule data without changing configuration. Unsaved form changes are not included."
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:223
+msgid "Query Type"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:41
+msgid "Querying"
+msgstr ""
+
+#: ts-src/views/proxy.ts:549
+msgid "QUIC Congestion Control"
+msgstr ""
+
+#: ts-src/views/proxy.ts:222
+msgid "QUIC Obfuscation Password"
+msgstr ""
+
+#: ts-src/views/proxy.ts:213
+msgid "QUIC Obfuscation Type"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:91
+msgid "QUIC Stream"
+msgstr ""
+
+#: ts-src/views/shunt.ts:517
+msgid "Random"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts:70 ts-src/utils/feature/proxy/form.ts:20
+msgid "Read Failed"
+msgstr ""
+
+#: ts-src/views/proxy.ts:396
+msgid "Reality Public Key"
+msgstr ""
+
+#: ts-src/views/proxy.ts:401
+msgid "Reality Short ID"
+msgstr ""
+
+#: ts-src/utils/base/luci/form.ts:96 ts-src/utils/base/luci/form.ts:97
+msgid "Record Logs"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:340 ts-src/utils/feature/proxy/form.ts:158
+msgid "Refresh"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:176
+msgid "Refresh Firewall"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:57
+msgid "Refreshing Firewall"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:172
+msgid "Replace With"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/config-file.ts:47
+msgid "Resolve proxy server failed: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:167
+msgid "Restart Service"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:40
+msgid "Restarting Service"
+msgstr ""
+
+#: ts-src/views/shunt.ts:569
+msgid "Results to Retain"
+msgstr ""
+
+#: ts-src/views/shunt.ts:570
+msgid "Retain Recent Probe Results"
+msgstr ""
+
+#: ts-src/views/shunt.ts:518
+msgid "Round Robin"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:254
+msgid "Route rule \"%s\" contains protocols unsupported by Xray: %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:211
+msgid "Route rule \"%s\" DNS exit node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:89
+msgid "Route rule \"%s\" DNS exit node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:186
+msgid "Route rule \"%s\" DNS node"
+msgstr ""
+
+#: ts-src/core/xray/builder.ts
+msgid "Route rule \"%s\" DNS node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:334
+msgid "Route rule \"%s\" has no target conditions for sing-box after removing unconverted geosite/geoip"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:338
+msgid "Route rule \"%s\" has no valid match conditions for sing-box"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:318
+msgid "Route rule \"%s\" has no valid match conditions for Xray"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:324
+msgid "Route rule \"%s\" only contains rule-set target conditions unsupported by Xray"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:49
+msgid "Route rule \"%s\" proxy node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:86
+msgid "Route rule \"%s\" proxy node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/views/rule.ts:18
+msgid "Route Rule Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:589
+msgid "Routing Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:183
+msgid "Routing Rule Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:194
+msgid "Rule"
+msgstr ""
+
+#: ts-src/views/rule.ts:18
+msgid "Rule Configuration"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:12
+msgid "Rule File Update Failed: %s"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:10
+msgid "Rule Files Updated"
+msgstr ""
+
+#: ts-src/views/shunt.ts:198
+msgid "Rule Name"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:135
+msgid "Rule Update"
+msgstr ""
+
+#: ts-src/views/shunt.ts:592
+msgid "Rule-set"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:183 ts-src/views/shunt.ts:393
+msgid "Rule-set DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:168
+msgid "Rule-set Download Exit"
+msgstr ""
+
+#: ts-src/views/shunt.ts:167
+msgid "Rule-set Exit"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:43
+msgid "Rule-set exit \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:81
+msgid "Rule-set exit \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/views/server.ts:28
+msgid "Run as Local Server"
+msgstr ""
+
+#: ts-src/views/proxy.ts:110 ts-src/views/server.ts:119
+msgid "Run Command"
+msgstr ""
+
+#: ts-src/utils/base/luci/service.ts:76 ts-src/utils/feature/proxy/form.ts:107 ts-src/views/server.ts:100
+msgid "Running"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:118
+msgid "Salamander"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:211
+msgid "Select backend core for this proxy node"
+msgstr ""
+
+#: ts-src/views/shunt.ts:70
+msgid "Select Configuration Type"
+msgstr ""
+
+#: ts-src/views/shunt.ts:383
+msgid "Select Default DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:158
+msgid "Select Default Exit Node"
+msgstr ""
+
+#: ts-src/views/dns.ts:54
+msgid "Select Direct Domain DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:397
+msgid "Select DNS Resolution Strategy"
+msgstr ""
+
+#: ts-src/views/dns.ts:39
+msgid "Select DNS Service Type"
+msgstr ""
+
+#: ts-src/views/dns.ts:67
+msgid "Select Proxy Domain DNS"
+msgstr ""
+
+#: ts-src/views/firewall.ts:62
+msgid "Select Proxy Port"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:218
+msgid "Select Proxy Type"
+msgstr ""
+
+#: ts-src/views/shunt.ts:393
+msgid "Select Rule-set DNS"
+msgstr ""
+
+#: ts-src/views/firewall.ts:69
+msgid "Select Shunt Port"
+msgstr ""
+
+#: ts-src/views/shunt.ts:62
+msgid "Select Shunt Type"
+msgstr ""
+
+#: ts-src/views/proxy.ts:349
+msgid "Send Keepalive Ping"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json ts-src/utils/base/luci/service.ts:90
+#: ts-src/utils/base/luci/service.ts:99 ts-src/views/server.ts:27
+msgid "Local Server"
+msgstr ""
+
+#: ts-src/views/proxy.ts:149
+msgid "Server Address"
+msgstr ""
+
+#: ts-src/views/server.ts:140 ts-src/views/server.ts:87
+msgid "Server Listen Port"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:32
+msgid "Server Log"
+msgstr ""
+
+#: ts-src/views/proxy.ts:156
+msgid "Server Port"
+msgstr ""
+
+#: ts-src/views/proxy.ts:397
+msgid "Server Reality Public Key"
+msgstr ""
+
+#: ts-src/views/proxy.ts:402
+msgid "Server Reality Short ID"
+msgstr ""
+
+#: ts-src/views/server.ts:120
+msgid "Server Run Command. Executed with root privileges."
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:157
+msgid "Service Control"
+msgstr ""
+
+#: ts-src/views/overview.ts:40
+msgid "Service Log Level"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:49 ts-src/utils/feature/overview/panel.ts:52
+msgid "Service Restart Failed"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:44
+msgid "Service Restarted"
+msgstr ""
+
+#: ts-src/views/rule.ts:65
+msgid "Set Auto Update Time"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:63
+msgid "Shadowsocks"
+msgstr ""
+
+#: ts-src/views/proxy.ts:504
+msgid "Shadowsocks Encryption Method"
+msgstr ""
+
+#: ts-src/views/proxy.ts:520
+msgid "Shadowsocks SIP003 Plugin"
+msgstr ""
+
+#: ts-src/views/proxy.ts:528
+msgid "Shadowsocks SIP003 Plugin Options"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:67
+msgid "ShadowTLS"
+msgstr ""
+
+#: ts-src/views/proxy.ts:592
+msgid "ShadowTLS Protocol Version"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json:27
+msgid "Shunt"
+msgstr ""
+
+#: ts-src/views/shunt.ts:33
+msgid "Shunt Configuration"
+msgstr ""
+
+#: ts-src/views/shunt.ts:588
+msgid "Shunt Configuration Editor"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:232
+msgid "Shunt is disabled. Set the firewall default shunt port to disabled first"
+msgstr ""
+
+#: ts-src/views/shunt.ts:76 ts-src/views/shunt.ts:77
+msgid "Shunt Listen Port"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:13
+msgid "Shunt Log"
+msgstr ""
+
+#: ts-src/views/firewall.ts:72
+msgid "Shunt Port: %s"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:160
+msgid "Shunt Query"
+msgstr ""
+
+#: ts-src/views/dns.ts
+msgid "DNS Service Type"
+msgstr ""
+
+#: ts-src/views/shunt.ts:61
+msgid "Shunt Type"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:122 ts-src/utils/feature/shunt/form.ts:56
+msgid "sing-box"
+msgstr ""
+
+#: ts-src/views/shunt.ts:481
+msgid "sing-box URLTest"
+msgstr ""
+
+#: ts-src/views/rule.ts:76
+msgid "Single Download Timeout"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:80
+msgid "smux"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:361
+msgid "Some route rules will be skipped"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:195
+msgid "Speed Test"
+msgstr ""
+
+#: ts-src/views/overview.ts:34
+msgid "Startup Delay"
+msgstr ""
+
+#: ts-src/views/proxy.ts:86 ts-src/views/server.ts:94
+msgid "Status"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:294
+msgid "Stop Auto Refresh"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:144
+msgid "Success"
+msgstr ""
+
+#: ts-src/utils/base/luci/validation.ts:20 ts-src/views/shunt.ts:433
+msgid "Tag"
+msgstr ""
+
+#: ts-src/views/shunt.ts:160
+msgid "geosite:tag → domains in tag"
+msgstr ""
+
+#: ts-src/views/shunt.ts:163
+msgid "geoip:tag → networks in tag"
+msgstr ""
+
+#: ts-src/views/shunt.ts:71
+msgid "Template Configuration"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:145
+msgid "Test Failed"
+msgstr ""
+
+#: ts-src/views/shunt.ts:491
+msgid "Test Interval"
+msgstr ""
+
+#: ts-src/views/shunt.ts:487
+msgid "Test URL"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:117
+msgid "Testing"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:362
+msgid "The following rules have no valid configuration for the current core and options, so they will not be written to the final configuration. Continue applying the configuration?"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:183
+msgid "Timeout"
+msgstr ""
+
+#: ts-src/views/shunt.ts:426
+msgid "TLS (sing-box only)"
+msgstr ""
+
+#: ts-src/views/proxy.ts:373 ts-src/views/proxy.ts:374
+msgid "TLS Server Name"
+msgstr ""
+
+#: ts-src/views/shunt.ts:496
+msgid "Tolerance"
+msgstr ""
+
+#: ts-src/views/shunt.ts:495
+msgid "Tolerance (ms)"
+msgstr ""
+
+#: ts-src/views/firewall.ts:44
+msgid "TPROXY Protocol"
+msgstr ""
+
+#: ts-src/views/firewall.ts:45
+msgid "TPROXY Protocol Type"
+msgstr ""
+
+#: ts-src/views/proxy.ts:250
+msgid "Transport Protocol"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:66
+msgid "TUIC"
+msgstr ""
+
+#: ts-src/views/proxy.ts:72 ts-src/views/shunt.ts:422
+msgid "Type"
+msgstr ""
+
+#: ts-src/views/proxy.ts:201
+msgid "UDP connection idle timeout in seconds"
+msgstr ""
+
+#: ts-src/views/proxy.ts:200
+msgid "UDP Idle Timeout"
+msgstr ""
+
+#: ts-src/views/proxy.ts:570
+msgid "UDP over Stream"
+msgstr ""
+
+#: ts-src/views/proxy.ts:538
+msgid "UDP over TCP"
+msgstr ""
+
+#: ts-src/views/proxy.ts:232
+msgid "UDP Packet Encoding"
+msgstr ""
+
+#: ts-src/views/proxy.ts:233
+msgid "UDP Packet Encoding Method"
+msgstr ""
+
+#: ts-src/views/proxy.ts:559
+msgid "UDP Packet Relay Mode"
+msgstr ""
+
+#: ts-src/views/proxy.ts:558
+msgid "UDP Relay Mode"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:14 ts-src/utils/feature/shunt/form.ts:17
+msgid "Unknown"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:55
+msgid "Unknown Query Type"
+msgstr ""
+
+#: ts-src/views/shunt.ts:418
+msgid "Unnamed"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:314 ts-src/views/shunt.ts:191
+msgid "Unnamed Rule"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/config-file.ts:50
+msgid "Unsupported proxy config server field: %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:261
+msgid "Unsupported Xray protocol configuration"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Unsupported Xray DNS configuration"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Proxy node \"%s\" enables insecure TLS, which is not supported by current Xray"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Unsupported Xray TLS configuration"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:38 ts-src/utils/feature/shunt/form.ts:71 ts-src/views/rule.ts:29
+msgid "Update"
+msgstr ""
+
+#: ts-src/views/rule.ts:27
+msgid "Update All Rules"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:34
+msgid "Update failed"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:30
+msgid "Update failed: %s"
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:145
+msgid "Update Rule Files"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:27
+msgid "Updated"
+msgstr ""
+
+#: ts-src/utils/feature/rule/runtime.ts:41
+msgid "Updated to %s. Restart affected services to use the new version."
+msgstr ""
+
+#: ts-src/utils/feature/rule/panel.ts:6
+msgid "Updating Rule Files"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:23
+msgid "Updating..."
+msgstr ""
+
+#: ts-src/views/proxy.ts:486 ts-src/views/proxy.ts:487
+msgid "Uplink Bandwidth"
+msgstr ""
+
+#: ts-src/views/proxy.ts:181
+msgid "Uplink Speed"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:247
+msgid "Upstream Proxy Node"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:280
+msgid "Upstream proxy node not found"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts:248
+msgid "Use another proxy node as the upstream through its local SOCKS port"
+msgstr ""
+
+#: ts-src/views/dns.ts:102
+msgid "Use CHN List"
+msgstr ""
+
+#: ts-src/views/firewall.ts:82
+msgid "Use CHN Route"
+msgstr ""
+
+#: ts-src/views/shunt.ts:172
+msgid "Use GeoSite Rule-set"
+msgstr ""
+
+#: ts-src/views/dns.ts:96
+msgid "Use GFW List"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:210
+msgid "Use Global Default DNS"
+msgstr ""
+
+#: ts-src/views/shunt.ts:236
+msgid "Use Global Default Resolution Strategy"
+msgstr ""
+
+#: ts-src/views/shunt.ts:243
+msgid "Use Routing Proxy Node"
+msgstr ""
+
+#: ts-src/views/proxy.ts:571
+msgid "Use UDP Stream Relay"
+msgstr ""
+
+#: ts-src/views/proxy.ts:442
+msgid "User UUID"
+msgstr ""
+
+#: ts-src/views/proxy.ts:442
+msgid "UUID"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:94
+msgid "v1"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:95
+msgid "v2"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:96
+msgid "v3"
+msgstr ""
+
+#: ts-src/views/log.ts:21
+msgid "View and Manage Logs"
+msgstr ""
+
+#: ts-src/views/log.ts:20
+msgid "View Logs"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:65
+msgid "VLESS"
+msgstr ""
+
+#: ts-src/views/proxy.ts:607 ts-src/views/proxy.ts:608
+msgid "VLESS Flow Control"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts:253 ts-src/views/overview.ts:44
+msgid "Warning"
+msgstr ""
+
+#: ts-src/utils/feature/overview/panel.ts:187
+msgid "Website Connectivity Test"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:111
+msgid "WebSocket"
+msgstr ""
+
+#: ts-src/views/proxy.ts:315
+msgid "WebSocket Host"
+msgstr ""
+
+#: ts-src/views/proxy.ts:316
+msgid "WebSocket Host Domain"
+msgstr ""
+
+#: ts-src/views/proxy.ts:309
+msgid "WebSocket Path"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:77
+msgid "xchacha20-ietf-poly1305"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:114
+msgid "XHTTP"
+msgstr ""
+
+#: ts-src/views/proxy.ts:622
+msgid "XHTTP Host"
+msgstr ""
+
+#: ts-src/views/proxy.ts:623
+msgid "XHTTP Host Domain"
+msgstr ""
+
+#: ts-src/views/proxy.ts:633
+msgid "XHTTP Mode"
+msgstr ""
+
+#: ts-src/views/proxy.ts:627
+msgid "XHTTP Path"
+msgstr ""
+
+#: ts-src/views/proxy.ts:628
+msgid "XHTTP Request Path"
+msgstr ""
+
+#: ts-src/views/proxy.ts:266
+msgid "XHTTP transport is only supported by Xray core"
+msgstr ""
+
+#: ts-src/views/proxy.ts:634
+msgid "XHTTP Transport Mode"
+msgstr ""
+
+#: ts-src/views/proxy.ts:273
+msgid "Xray REALITY only supports RAW, XHTTP and gRPC transports"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:123
+msgid "xray"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts:57
+msgid "Xray"
+msgstr ""
+
+#: ts-src/views/shunt.ts:509
+msgid "Xray Balancer"
+msgstr ""
+
+#: ts-src/views/shunt.ts:291
+msgid "Xray only supports route protocol filters: %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts:262
+msgid "Xray route protocol only supports: %s"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:100
+msgid "xtls-rprx-vision"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:105
+msgid "xudp"
+msgstr ""
+
+#: ts-src/enum/hijpass.ts:81
+msgid "yamux"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Clipboard is unavailable"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Share Link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Import a proxy node from a supported share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Import Share Link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Paste one supported proxy share link. Select the backend core manually; local ports and runtime options will be generated automatically."
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Import Failed"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Share link is empty"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Import Successful"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Imported proxy node \"%s\". Click Save & Apply to apply it."
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Import"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "This link contains protocol connection settings only. Local ports, logs, and nested proxy settings are not exported."
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Share link copied to clipboard"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Copy Failed"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Copy Share Link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Export Failed"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "Share"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid core selection"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Selected core \"%s\" does not support %s"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid server address"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid Shadowsocks share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Proxy node is incomplete"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid Hysteria2 share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid VLESS share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid TUIC share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Invalid ShadowTLS share link"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Unsupported share link protocol: %s"
+msgstr ""
+
+#: ts-src/utils/feature/proxy/share-link.ts
+msgid "Unsupported proxy type"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Configure Proxy Node First"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Split IPv4/IPv6 Exit"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Use separate proxy nodes for IPv4 and IPv6 while sharing the same rule conditions"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "IPv4: %s / IPv6: %s"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "IPv4 Proxy Node"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "IPv4 traffic exit node"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Configure IPv4 Proxy Node First"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "IPv6 Proxy Node"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "IPv6 traffic exit node"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Configure IPv6 Proxy Node First"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Configure DNS Exit Node when splitting IPv4/IPv6 exit"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" IPv4 proxy node is not configured"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" IPv4 proxy node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" IPv6 proxy node is not configured"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" IPv6 proxy node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" IPv4 proxy node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" IPv6 proxy node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/core/singbox/builder.ts
+#: ts-src/core/xray/builder.ts
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" uses IPv4/IPv6 split and must specify a DNS exit node"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Please enter a valid HTTP or HTTPS URL"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Timeout must be an integer between 1 and 120"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Please enter a valid client IP address"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Please enter a valid tcpdump interface"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Running Trace Diagnostics"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "No Output"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Trace Completed"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Trace Failed"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Exit Code"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Router Local"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Client Transparent Proxy"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Trace output will be shown here"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Run Trace"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Enable tcpdump"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Show raw trace/log tail"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Trace Diagnostics"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "URL"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Mode"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Client IP"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Required only for client transparent proxy mode"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Request Method"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Packet Capture"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Optional. tcpdump must be installed on the router"
+msgstr ""
+
+#: ts-src/views/log.ts
+msgid "tcpdump Interface"
+msgstr ""
+
+#: ts-src/utils/feature/log/panel.ts
+msgid "Verbose Output"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Default global exit is not configured"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Route rule \"%s\" proxy node is not configured"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Default global DNS is not configured"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Firewall proxy port %s does not reference an enabled proxy node"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Firewall shunt port %s does not reference an enabled proxy node or shunt service"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "%s references an unavailable Core DNS port"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Independent DNS is using this Core DNS port. Change it in the Independent DNS module before disabling proxy routing."
+msgstr ""
+
+#: ts-src/utils/feature/proxy/form.ts
+msgid "%s member nodes · %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Configuration contains invalid load balancing nodes"
+msgstr ""
+
+#: ts-src/utils/feature/shunt/form.ts
+msgid "DNS exit cannot use Block"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Fallback node must be a load balancing member"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "First member node"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Load balancing member node has no valid SOCKS port configured"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Load balancing member node is not enabled"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Load balancing member node not found"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" cannot contain load balancing member \"%s\""
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" cannot include itself"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" contains duplicate member nodes: %s"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" fallback node \"%s\" is not a member"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" has an unsupported backend core"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" has no member nodes"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" member node \"%s\" does not exist"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" member node \"%s\" is not enabled"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Load balancing node \"%s\" member node \"%s\" has no valid SOCKS port configured"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Load balancing node cannot include itself"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Nested load balancing nodes are not supported"
+msgstr ""
+
+#: ts-src/utils/actions/save-apply/precheck.ts
+msgid "Proxy node dependency chain has a cycle: %s"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Select proxy nodes to connect through their local SOCKS ports"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json
+#: ts-src/views/log.ts
+msgid "Diagnostics"
+msgstr ""
+
+#: ts-src/views/log.ts
+msgid "Inspect logs, trace routing behavior, and query rule resources"
+msgstr ""
+
+#: ts-src/views/log.ts
+msgid "Logs"
+msgstr ""
+
+#: ts-src/views/log.ts
+msgid "Routing Diagnostics"
+msgstr ""
+
+#: ts-src/views/log.ts
+msgid "Rule Diagnostics"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json
+#: ts-src/views/rule.ts
+msgid "Resource Management"
+msgstr ""
+
+#: ts-src/views/rule.ts
+msgid "Manage downloadable rule resources and runtime components"
+msgstr ""
+
+#: ts-src/views/rule.ts
+msgid "Rule Resources"
+msgstr ""
+
+#: ts-src/views/rule.ts
+msgid "Runtime"
+msgstr ""
+
+#: ts-src/utils/feature/rule/runtime.ts
+msgid "View installed core versions and update runtime components."
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Routing Rules"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json
+#: ts-src/utils/base/luci/service.ts ts-src/views/shunt.ts
+msgid "Proxy Routing"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Configure proxy core routing, DNS, and rule-set settings"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Shunt Troubleshooting"
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Trace router or client traffic and inspect routing failures in Diagnostics."
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Open Diagnostics"
+msgstr ""
+
+#: ts-src/utils/feature/rule/runtime.ts
+msgid "Current Version"
+msgstr ""
+
+#: ts-src/utils/feature/rule/runtime.ts
+msgid "Latest Version"
+msgstr ""
+
+#: ts-src/utils/feature/rule/runtime.ts
+msgid "Unavailable"
+msgstr ""
+
+#: root/usr/share/luci/menu.d/luci-app-hijpass.json
+#: ts-src/views/proxy.ts
+msgid "Proxy Nodes"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Configure Proxy Nodes"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Cannot Delete Proxy Node"
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Proxy node \"%s\" is referenced by proxy nodes: %s. Remove the references first."
+msgstr ""
+
+#: ts-src/views/proxy.ts
+msgid "Proxy node \"%s\" listen port %s is referenced by firewall settings: %s. Remove the references first."
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "DNS Forwarding"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Redirect DNS queries from clients selected by the firewall ACL and, when enabled, router system DNS queries to the selected local DNS service"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Proxy Router Traffic"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Transparently proxy eligible router-originated TCP and UDP traffic"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts
+msgid "Networks: %s"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/form.ts
+msgid "Firewall zones: %s"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Proxy client traffic entering through the selected logical network interfaces; WAN interfaces cannot be selected"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Exclude client traffic entering through the selected logical network interfaces; WAN interfaces are always excluded"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Do not forward"
+msgstr ""
+
+#: ts-src/views/firewall.ts
+msgid "Not available"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/dns-forward.ts
+msgid "Independent DNS is unavailable or has no valid listen port"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/dns-forward.ts
+msgid "Core DNS is disabled or has no valid listen port"
+msgstr ""
+
+#: ts-src/utils/feature/firewall/dns-forward.ts
+msgid "Unknown DNS forwarding source: %s"
+msgstr ""
+
+#: ts-src/views/dns.ts
+msgid "Firewall DNS forwarding is using Independent DNS. Select another forwarding source in Firewall before changing the DNS service."
+msgstr ""
+
+#: ts-src/views/shunt.ts
+msgid "Firewall DNS forwarding is using Core DNS. Select another forwarding source in Firewall before disabling proxy routing."
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "%s enabled rules, default DNS: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "%s enabled rules, default exit: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Address rules are evaluated from top to bottom"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Bypass mode"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "CHN domain list"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "CHN domain set"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "CHN route set"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Client DNS query"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Client traffic"
+msgstr ""
+
+#: ts-src/views/overview.ts
+msgid "Flow preview"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Custom core configuration"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Custom direct domain list"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Custom proxy domain list"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "DNS flow"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "DNS routing rules"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "DNS upstream"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Default shunt"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Default shunt port"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Default shunt port is disabled"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Direct domain branch"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Disabled or invalid listen port"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Excluded: %s devices, %s interfaces"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Firewall ACL"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Firewall classification"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Forced direct address"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Forced proxy address"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "GFW domain list"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "GFW domain set"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-preview.ts
+msgid "Generated from saved settings. Branches show configured decisions, not a live packet trace."
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Independent DNS unavailable"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Independent DNS: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Internal path cannot be expanded"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Keep the original destination"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Load balancing: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Local port %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Members: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No DNS redirect"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No address rule matched"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No enabled node uses this port"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No member nodes"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No protocol selected"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No proxy target"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "No valid listen port"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Node unavailable"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Not configured"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Other marked non-DNS UDP"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Port filter"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Protocol conditions may bypass or reject traffic"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Proxy dependency cycle"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Proxy domain branch"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Proxy node unavailable"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Proxy mode"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Proxy node: %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Proxy port"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Reject"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Router traffic excluded"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Router traffic included"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Routing rules"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Routing service"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "SOCKS port %s"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Selected: %s devices, %s interfaces"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "TCP/UDP port 53"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Traffic flow"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Marked UDP port 443"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Unknown DNS forwarding source"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Unmatched non-standard TCP port"
+msgstr ""
+
+#: ts-src/utils/feature/overview/flow-model.ts
+msgid "Upstream proxy: %s"
+msgstr ""

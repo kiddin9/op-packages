@@ -1,0 +1,162 @@
+{
+  "luci-app-hijpass": {
+    "description": "Grant access to hijpass configurations",
+    "read": {
+      "cgi-io": [
+        "exec"
+      ],
+      "uci": [
+        "hijpass",
+        "hijserver",
+        "dhcp"
+      ],
+      "file": {
+        "/etc/hijpass/*": [
+          "read"
+        ],
+        "/tmp/hijpass/log/*.log": [
+          "read"
+        ],
+        "/tmp/hijserver/log/*.log": [
+          "read"
+        ]
+      },
+      "ubus": {
+        "service": [
+          "list"
+        ]
+      }
+    },
+    "write": {
+      "uci": [
+        "hijpass",
+        "hijserver"
+      ],
+      "file": {
+        "/etc/hijpass/*": [
+          "write"
+        ],
+        "/tmp/hijpass/log/*.log": [
+          "write"
+        ],
+        "/tmp/hijserver/log/*.log": [
+          "write"
+        ],
+        "/etc/init.d/hijpass restart": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/nft.sh reset": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/nft.sh show": [
+          "exec"
+        ],
+        "/usr/bin/tail -n [0-9]* /tmp/hijpass/log/*.log": [
+          "exec"
+        ],
+        "/usr/bin/tail -n [0-9]* /tmp/hijserver/log/*.log": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/rules.sh update": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/rules.sh query [A-Za-z0-9._:/-]*": [
+          "exec"
+        ],
+        "/usr/bin/lua /usr/lib/hijpass/luci-utils.lua iptype [A-Za-z0-9._:/-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/connect.sh https://www.baidu.com [0-9]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/connect.sh https://www.google.com/ncr [0-9]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/connect.sh https://github.com [0-9]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/connect.sh https://www.bilibili.com [0-9]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/net.sh port [0-9]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/net.sh ping [0-9]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/geoview.sh -e geosite [A-Za-z0-9_.:,/!-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/geoview.sh -e geoip [A-Za-z0-9_.:,/!-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/geoview.sh -l geosite [A-Za-z0-9._:/-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/geoview.sh -l geoip [A-Za-z0-9._:/-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/route-match.sh [A-Za-z0-9._:/-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -v [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -c [A-Fa-f0-9:.]* [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -c [A-Fa-f0-9:.]* -v [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -p -i [A-Za-z0-9_.:@-]* [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -p -i [A-Za-z0-9_.:@-]* -v [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -c [A-Fa-f0-9:.]* -p -i [A-Za-z0-9_.:@-]* [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/trace-url.sh -t [0-9]* -X [A-Z]* -c [A-Fa-f0-9:.]* -p -i [A-Za-z0-9_.:@-]* -v [A-Za-z0-9._:/?&=%#~+-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/rm.sh proxy [A-Za-z0-9_-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/rm.sh proxy [A-Za-z0-9_-]* /etc/hijpass/client/*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/rm.sh server [A-Za-z0-9_-]*": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/rm.sh server [A-Za-z0-9_-]* /etc/hijpass/server/*": [
+          "exec"
+        ],
+        "/bin/cat /proc/net/arp": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/core-update.sh version sing-box": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/core-update.sh version xray": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/core-update.sh latest sing-box": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/core-update.sh latest xray": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/core-update.sh update sing-box": [
+          "exec"
+        ],
+        "/usr/lib/hijpass/core-update.sh update xray": [
+          "exec"
+        ]
+      }
+    }
+  }
+}

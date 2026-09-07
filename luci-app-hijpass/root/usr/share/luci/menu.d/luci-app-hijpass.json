@@ -1,0 +1,82 @@
+{
+  "admin/services/hijpass": {
+    "title": "HiJpass",
+    "order": 1,
+    "action": {
+      "type": "firstchild"
+    },
+    "depends": {
+      "acl": [
+        "luci-app-hijpass"
+      ],
+      "uci": {
+        "hijpass": true,
+        "hijserver": true
+      }
+    }
+  },
+  "admin/services/hijpass/overview": {
+    "title": "HiJpass",
+    "order": 1,
+    "action": {
+      "type": "view",
+      "path": "hijpass/overview"
+    }
+  },
+  "admin/services/hijpass/shunt": {
+    "title": "Proxy Routing",
+    "order": 3,
+    "action": {
+      "type": "view",
+      "path": "hijpass/shunt"
+    }
+  },
+  "admin/services/hijpass/proxy": {
+    "title": "Proxy Nodes",
+    "order": 2,
+    "action": {
+      "type": "view",
+      "path": "hijpass/proxy"
+    }
+  },
+  "admin/services/hijpass/server": {
+    "title": "Local Server",
+    "order": 4,
+    "action": {
+      "type": "view",
+      "path": "hijpass/server"
+    }
+  },
+  "admin/services/hijpass/dns": {
+    "title": "Independent DNS",
+    "order": 5,
+    "action": {
+      "type": "view",
+      "path": "hijpass/dns"
+    }
+  },
+  "admin/services/hijpass/firewall": {
+    "title": "Firewall",
+    "order": 6,
+    "action": {
+      "type": "view",
+      "path": "hijpass/firewall"
+    }
+  },
+  "admin/services/hijpass/rule": {
+    "title": "Resource Management",
+    "order": 7,
+    "action": {
+      "type": "view",
+      "path": "hijpass/rule"
+    }
+  },
+  "admin/services/hijpass/log": {
+    "title": "Diagnostics",
+    "order": 8,
+    "action": {
+      "type": "view",
+      "path": "hijpass/log"
+    }
+  }
+}

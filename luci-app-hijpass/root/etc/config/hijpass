@@ -1,0 +1,88 @@
+
+config hijpass
+	option enabled '0'
+	option startup_delay '1'
+	option delay_time '10'
+	option ip_direct '/etc/hijpass/rules/ip-direct.txt'
+	option ip_proxy '/etc/hijpass/rules/ip-proxy.txt'
+	option domain_direct '/etc/hijpass/rules/domain-direct.txt'
+	option domain_proxy '/etc/hijpass/rules/domain-proxy.txt'
+	option gfw_list '/etc/hijpass/rules/gfw-list.txt'
+	option chn_route '/etc/hijpass/rules/chn-route.txt'
+	option chn_route6 '/etc/hijpass/rules/chn-route6.txt'
+	option chn_list '/etc/hijpass/rules/chn-list.txt'
+	option nft '/etc/hijpass/fw4-template.nft'
+	option nft_hook '/etc/hijpass/hook/nft-hook.sh'
+	option dns_hook '/etc/hijpass/hook/dns-hook.sh'
+	option shunt_conf '/etc/hijpass/shunt.json'
+	option client_dir '/etc/hijpass/client'
+	option log_level 'INFO'
+	option log_path '/tmp/hijpass/log/hijpass.log'
+	option log_dir '/tmp/hijpass/log'
+
+config firewall
+	option tproxy_proto 'tcp,udp'
+	option shunt_port '18081'
+	option dns_forward 'none'
+	option proxy_local '1'
+	option use_chnroute '0'
+
+config shunt
+	option type 'sing-box'
+	option shunt_listen_port '18081'
+	option dns_listen_port '10153'
+	option config_type 'tmpl'
+	option log_path '/tmp/hijpass/log/shunt.log'
+	option log_level 'warn'
+	option ruleset_convert '1'
+	option use_cache '1'
+	option shunt_hash '2927059463'
+	option default_proxy_node 'hijpass-direct'
+	option ruleset_out_node 'hijpass-direct'
+	option default_dns_node 'Ali'
+	option ruleset_dns_node 'Ali'
+	option default_strategy '64'
+
+config dns
+	option dns_service 'chinadns-ng'
+	option direct_dns 'dnsmasq'
+	option proxy_dns '127.0.0.1#10153'
+	option cdg_port '53653'
+	option domain_proxy_hash ''
+	option domain_direct_hash ''
+
+config rule
+	list chn_domain_list 'https://fastly.jsdelivr.net/gh/felixonmars/dnsmasq-china-list/accelerated-domains.china.conf'
+	option gfw_list 'https://fastly.jsdelivr.net/gh/Loyalsoldier/v2ray-rules-dat@release/gfw.txt'
+	option geosite 'https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat'
+	option geoip 'https://github.com/Loyalsoldier/geoip/releases/latest/download/geoip.dat'
+	option update_schedule '0 5 * * 1'
+	option download_timeout '3'
+	list chn_v4_route 'https://fastly.jsdelivr.net/gh/gaoyifan/china-operator-ip@ip-lists/china.txt'
+	list chn_v4_route 'https://ispip.clang.cn/all_cn.txt'
+	list chn_v6_route 'https://fastly.jsdelivr.net/gh/gaoyifan/china-operator-ip@ip-lists/china6.txt'
+	list chn_v6_route 'https://ispip.clang.cn/all_cn_ipv6.txt'
+
+config shunt_dns_node
+	option enabled '1'
+	option type 'https'
+	option tag 'Ali'
+	option server '223.5.5.5'
+
+config shunt_dns_node
+	option type 'https'
+	option tag 'Google'
+	option server '8.8.8.8'
+	option enabled '1'
+
+config shunt_dns_node
+	option enabled '1'
+	option type 'https'
+	option tag 'Cloudflare'
+	option server '1.1.1.1'
+
+config shunt_dns_node
+	option enabled '1'
+	option type 'https'
+	option tag 'Quad9'
+	option server '9.9.9.9'

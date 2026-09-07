@@ -1,0 +1,279 @@
+table inet hijpass {
+    # 防火墙配置不建议轻度用户修改，否则容易引发网络故障
+    chain pre-filter {
+        type filter hook prerouting priority filter - 50; policy accept;
+
+        # 过滤来源非本地内网的请求
+        # fib saddr type != local iif != br-lan counter return
+
+        # 过滤访问本地的请求
+        fib daddr type local counter return
+
+        # WAN 入站流量不参与透明代理
+        iifname $WAN_DEV counter return
+
+        iif != @proxy_interface_list ether saddr != @proxy_mac_list counter return
+        iif @proxy_interface_exclude_list counter return
+        ether saddr @proxy_mac_exclude_list counter return
+
+        # 过滤回包
+        ct direction reply counter return
+
+        # 不满足代理协议，返回原链
+        meta l4proto != $TPROXY_PROTO counter return
+
+        # 新连接设置代理、分流标记
+        ct state new,related counter jump tproxy-shunt
+
+        # 未标记连接，返回原链
+        ct mark != { $TPROXY_MARK, $TPROXY_SHUNT_MARK } counter return
+
+        # 仅代理常用端口
+        counter jump proxy-port-filter
+
+        # 代理标记，通过代理节点进行透明代理
+        meta l4proto $TPROXY_PROTO ct mark $TPROXY_MARK tproxy to :$TPROXY_PORT meta mark set $TPROXY_MARK counter accept
+
+        # 分流、代理标记，通过分流节点进行透明代理
+        meta l4proto $TPROXY_PROTO ct mark { $TPROXY_MARK, $TPROXY_SHUNT_MARK } tproxy to :$TPROXY_SHUNT_PORT meta mark set $TPROXY_MARK counter
+    }
+
+    chain out-route {
+        type route hook output priority filter - 50; policy accept;
+
+        fib daddr type local counter return
+        ct direction reply counter return
+        meta l4proto != $TPROXY_PROTO counter return
+        meta skgid $HIJPASS_USER counter return
+
+        ct state new,related counter jump tproxy-shunt
+
+        counter jump proxy-port-filter
+        counter jump tproxy-mark
+    }
+
+    chain tproxy-shunt {
+        ct mark { $TPROXY_MARK, $TPROXY_SHUNT_MARK } return
+
+        ip daddr @proxy4list ct mark set $TPROXY_MARK counter return
+        ip6 daddr @proxy6list ct mark set $TPROXY_MARK counter return
+        ip daddr @dnsproxy4list ct mark set $TPROXY_MARK counter return
+        ip6 daddr @dnsproxy6list ct mark set $TPROXY_MARK counter return
+
+        ip daddr @bypass4list counter return
+        ip6 daddr @bypass6list counter return
+        ip daddr @dnsbypass4list counter return
+        ip6 daddr @dnsbypass6list counter return
+
+        ip daddr @gfw4list counter ct mark set $TPROXY_MARK counter return
+        ip6 daddr @gfw6list counter ct mark set $TPROXY_MARK counter return
+
+        ip daddr @chn4list counter return
+        ip6 daddr @chn6list counter return
+
+        ip daddr @chnroute4list counter return
+        ip6 daddr @chnroute6list counter return
+
+        ct mark set $TPROXY_SHUNT_MARK counter comment "shunt mark"
+    }
+
+    chain tproxy-mark {
+        # 根据 ct mark 设置 meta mark
+        ct mark { $TPROXY_MARK, $TPROXY_SHUNT_MARK } meta mark set $TPROXY_MARK
+    }
+
+    chain proxy-port-filter {
+        # 禁止quic代理
+        meta l4proto udp udp dport 443 counter reject
+
+        # 不代理非DNS的UDP请求
+        meta l4proto udp udp dport != 53 ct mark set 0 counter return
+
+        # 非指定代理请求，仅代理常用TCP端口
+        meta l4proto tcp ct mark != $TPROXY_MARK tcp dport != { 22, 25, 53, 143, 465, 587, 853, 993, 995, 80, 443} ct mark set 0 counter return
+    }
+
+    chain dns-forward {
+        type nat hook prerouting priority dstnat - 1; policy accept;
+
+        # WAN 入站流量不参与 DNS 转发
+        iifname $WAN_DEV counter return
+
+        # 仅转发透明代理 ACL 选中的客户端 DNS 查询
+        iif != @proxy_interface_list ether saddr != @proxy_mac_list counter return
+        iif @proxy_interface_exclude_list counter return
+        ether saddr @proxy_mac_exclude_list counter return
+        meta l4proto { tcp, udp } th dport 53 counter redirect to :$DNS_FORWARD_PORT
+    }
+
+    chain dns-forward-output {
+        type nat hook output priority dstnat - 1; policy accept;
+
+        # DNS 服务和代理核心的上游查询不参与转发，避免递归
+        meta skgid $HIJPASS_USER counter return
+
+        # 仅转发路由器发往本机 53 端口的系统 DNS 查询
+        fib daddr type local meta l4proto { tcp, udp } th dport 53 counter redirect to :$DNS_FORWARD_PORT
+    }
+
+    ######################
+    # 以下配置请勿随意修改 #
+    ######################
+
+    # chnroute
+    set chnroute4list {
+        type ipv4_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+        elements = {
+            $IP4_CHNROUTE_LIST
+        }
+    }
+
+    set chnroute6list {
+        type ipv6_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+        elements = {
+            $IP6_CHNROUTE_LIST
+        }
+    }
+
+    # gfwlist
+    set gfw4list {
+        type ipv4_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    set gfw6list {
+        type ipv6_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    # chnlist
+    set chn4list {
+        type ipv4_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    set chn6list {
+        type ipv6_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    # user custom proxy domain list
+    set dnsproxy4list {
+        type ipv4_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    set dnsproxy6list {
+        type ipv6_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    # user custom direct domain list
+    set dnsbypass4list {
+        type ipv4_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    set dnsbypass6list {
+        type ipv6_addr
+        flags interval,timeout
+        auto-merge
+        timeout 3d
+        gc-interval 3d
+    }
+
+    # user custom proxy ip list
+    set bypass4list {
+        type ipv4_addr
+        flags interval
+        auto-merge
+        elements = {
+            $IP4_DIRECT_NFT_LIST
+        }
+    }
+
+    set proxy4list {
+        type ipv4_addr
+        flags interval
+        auto-merge
+        elements = {
+            $IP4_PROXY_NFT_LIST
+        }
+    }
+
+    # user custom direct ip list
+    set bypass6list {
+        type ipv6_addr
+        flags interval
+        auto-merge
+        elements = {
+            $IP6_DIRECT_NFT_LIST
+        }
+    }
+
+    set proxy6list {
+        type ipv6_addr
+        flags interval
+        auto-merge
+        elements = {
+            $IP6_PROXY_NFT_LIST
+        }
+    }
+
+    set proxy_mac_list {
+        type ether_addr
+        elements = {
+            $PROXY_MAC
+        }
+    }
+
+    set proxy_mac_exclude_list {
+        type ether_addr
+        elements = {
+            $PROXY_MAC_EXCLUDE
+        }
+    }
+
+    set proxy_interface_list {
+        type iface_index
+        elements = {
+            $PROXY_INTERFACE
+        }
+    }
+
+    set proxy_interface_exclude_list {
+        type iface_index
+        elements = {
+            $PROXY_INTERFACE_EXCLUDE
+        }
+    }
+}

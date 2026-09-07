@@ -1,0 +1,243 @@
+#!/bin/sh /etc/rc.common
+
+. /usr/lib/hijpass/app-logger.sh
+
+USE_PROCD=1
+START=99
+STOP=15
+
+NAME=hijpass
+
+LIB_PATH="/usr/lib/$NAME"
+NFT_SCRIPT="$LIB_PATH/nft.sh"
+ROUTE_SCRIPT="$LIB_PATH/route.sh"
+RULE_UPDATE_SCRIPT="$LIB_PATH/rules.sh"
+CHINANDS_NG_SCRIPT="$LIB_PATH/chinadns-ng.sh"
+GEOVIEW_SCRIPT="$LIB_PATH/geoview.sh"
+
+CONF_PATH="/etc/$NAME"
+SHUNT_CONF="$CONF_PATH/shunt.json"
+
+# Global
+ENABLED=$(uci -q get hijpass.@hijpass[0].enabled || :)
+DELAY_TIME=$(uci -q get hijpass.@hijpass[0].delay_time || :)
+CLIENT_DIR=$(uci -q get hijpass.@hijpass[0].client_dir || :)
+
+# RuleDTO
+CRON_CONF=$(uci -q get hijpass.@rule[0].update_schedule || :)
+
+# Log
+REDIRECT_LOG=
+
+# DNS
+DNS_SERVICE=$(uci -q get hijpass.@dns[0].dns_service || :)
+DNS_HOOK=$(uci -q get hijpass.@hijpass[0].dns_hook || :)
+CHINADNS_NG_CONF="$CONF_PATH/chinadns-ng.conf"
+
+start_service() {
+  [ "$ENABLED" != "1" ] && return
+  # 启动进程
+  config_load $NAME
+  log_info "===================== Starting service ======================="
+  log_info "Running proxy nodes..."
+  config_foreach run_regular_proxy proxy_node
+  sleep 2
+  log_info "Running load balancing proxy nodes..."
+  config_foreach run_load_balance_proxy proxy_node
+  sleep 1
+  log_info "Running shunt..."
+  config_foreach run_shunt shunt
+  sleep 1
+  # 配置防火墙
+  log_info "Configuring firewall rules..."
+  reset_fw_tproxy
+  # 启动定时任务
+  log_info "Resetting geo cron jobs..."
+  reset_geo_cron
+  # 启动DNS劫持
+  log_info "DNS hijacking..."
+  start_dns_service
+  log_info "================ Service started successfully ================"
+}
+
+stop_service() {
+  log_info "===================== Stopping service ======================="
+  reset_geo_cron
+  remove_fw_tproxy
+  stop_dns_service
+  log_info "================ Service stopped successfully ================"
+}
+
+service_triggers() {
+  procd_add_reload_trigger "$NAME"
+  procd_add_interface_trigger "interface.*.up" "*" /etc/init.d/$NAME restart
+}
+
+reload_service() {
+  /etc/init.d/$NAME restart
+}
+
+boot() {
+  [ "$DELAY_TIME" -gt 0 ] && sleep "$DELAY_TIME"
+  restart
+}
+
+run_regular_proxy() {
+  local type
+  config_get type "$1" type
+  [ "$type" = "load_balance" ] && return
+  run_proxy "$1"
+}
+
+run_load_balance_proxy() {
+  local type
+  config_get type "$1" type
+  [ "$type" != "load_balance" ] && return
+  run_proxy "$1"
+}
+
+run_proxy() {
+  local command log_path name enabled nest_proxy core
+  local enable_std_log="1"
+  config_get enabled "$1" enabled
+  [ "$enabled" != "1" ] && return
+  config_get command "$1" command
+  config_get log_path "$1" log_path
+  config_get name "$1" name
+  config_get nest_proxy "$1" nest_proxy
+  config_get core "$1" core
+
+  local conf_path="$CLIENT_DIR/$name-$1.json"
+
+  case "$core" in
+    xray)    command="xray -c $conf_path" ;;
+    sing-box) command="sing-box -c $conf_path run" ;;
+    custom)  command=$(echo "$command" | sed "s|{conf_path}|$conf_path|g") ;;
+    *)       log_warn "Node '$name' has unknown core='$core', skipping"; return ;;
+  esac
+
+  if [ -n "$log_path" ]; then
+    : > "$log_path"
+    command="$command >> $log_path 2>&1"
+    enable_std_log="0"
+    REDIRECT_LOG="1"
+  else
+    command="$command > /dev/null 2>&1"
+  fi
+  open_instance "$1" "$name" "$command" "$enable_std_log" "$nest_proxy"
+}
+
+run_shunt() {
+  local type log_path enabled ruleset_convert
+  config_get enabled "$1" enabled
+  [ "$enabled" = "0" ] && log_info "Shunt disabled, skipping" && return
+  config_get type "$1" type
+  [ -z "$type" ] && log_error "Shunt type not set" && return
+  config_get log_path "$1" log_path
+  config_get ruleset_convert "$1" ruleset_convert
+
+  local shunt_command="$type -c $SHUNT_CONF"
+  [ "$type" = "sing-box" ] && shunt_command="$type run -c $SHUNT_CONF"
+  [ "$type" = "sing-box" ] && [ "$ruleset_convert" = "1" ] && $GEOVIEW_SCRIPT -t
+
+  local enable_std_log="0"
+  if [ -n "$log_path" ]; then
+    : > "$log_path"
+    shunt_command="$shunt_command >> $log_path 2>&1"
+    REDIRECT_LOG="1"
+  else
+    shunt_command="$shunt_command > /dev/null 2>&1"
+  fi
+  open_instance "$1" "shunt" "$shunt_command" "$enable_std_log"
+}
+
+open_instance() {
+  log_debug "id: $1, name: $2, cmd: $3"
+  local instance_name="$1-$2"
+  local cmd="$3"
+  local enable_std_log="$4"
+  local nest_proxy="$5"
+  procd_open_instance "$instance_name"
+  procd_set_param command /bin/sh -c "$cmd"
+  if [ "$2" = "shunt" ]; then
+    procd_set_param limits core="unlimited"
+    procd_set_param limits nofile="1000000 1000000"
+    procd_set_param env "XRAY_LOCATION_ASSET=/usr/share/v2ray"
+  fi
+  config_list_foreach "$1" procd_env procd_set_env "$instance_name"
+  if [ "$enable_std_log" = "1" ]; then
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+  fi
+  procd_set_param pidfile "/var/run/$instance_name.pid"
+  if [ "$nest_proxy" = "1" ]; then
+    procd_set_param user "root"
+  else
+    procd_set_param user "hijpass"
+  fi
+  procd_set_param respawn 10 5 2
+  procd_close_instance
+}
+
+procd_set_env() {
+  [ -z "$1" ] && return
+  log_debug "Setting $2 env: $1"
+  procd_set_param env "$1"
+}
+
+reset_fw_tproxy() {
+  if ! $NFT_SCRIPT reset > /dev/null 2>&1; then
+    stop
+    exit 1
+  fi
+  $ROUTE_SCRIPT reset_hijpass_route
+}
+
+remove_fw_tproxy() {
+  $ROUTE_SCRIPT remove_hijpass_route
+  $NFT_SCRIPT remove > /dev/null 2>&1
+}
+
+start_dns_service() {
+  if [ "$DNS_SERVICE" = "chinadns-ng" ]; then
+    log_info "Starting chinadns-ng service"
+    $CHINANDS_NG_SCRIPT
+    local cid
+    cid="$(uci show hijpass.@dns[0] | grep 'dns$' | awk -F '[.=]' '{print $2}')"
+    open_instance "$cid" "chinadns-ng" "$DNS_SERVICE -C $CHINADNS_NG_CONF"
+  fi
+  if [ -n "$DNS_HOOK" ]; then
+    [ ! -f "$DNS_HOOK" ] && log_warn "Custom DNS hook script $DNS_HOOK not found" && return 1
+    log_info "Executing custom DNS hook script (start)"
+    $DNS_HOOK start || log_error "Custom DNS hook script execute failed"
+  fi
+}
+
+stop_dns_service() {
+  if [ "$DNS_SERVICE" = "chinadns-ng" ]; then
+    rm -f "$CHINADNS_NG_CONF" && log_info "Deleted chinadns-ng conf"
+  fi
+  if [ -n "$DNS_HOOK" ]; then
+    [ ! -f "$DNS_HOOK" ] && log_warn "Custom DNS hook script $DNS_HOOK not found" && return 1
+    log_info "Executing custom DNS hook script (stop)"
+    $DNS_HOOK stop || log_warn "Custom DNS hook script execute failed"
+  fi
+}
+
+reset_geo_cron() {
+  sed -i '/hijpass\/rules\.sh/d' /etc/crontabs/root 2>/dev/null
+  sed -i '/hijpass\/clean-service-log\.sh hijpass/d' /etc/crontabs/root 2>/dev/null
+  if [ "$REDIRECT_LOG" = "1" ]; then
+    echo "*/10 * * * * /usr/lib/hijpass/clean-service-log.sh hijpass" >> /etc/crontabs/root
+    log_info "Added log split service cron job: */10 * * * * /usr/lib/hijpass/clean-service-log.sh hijpass"
+  fi
+  if [ -z "$CRON_CONF" ] || [ "$ENABLED" != "1" ]; then
+    /etc/init.d/cron restart > /dev/null 2>&1
+    return 0
+  fi
+
+  echo "$CRON_CONF $RULE_UPDATE_SCRIPT update" >> /etc/crontabs/root
+  log_info "Added rule update cron job: $CRON_CONF $RULE_UPDATE_SCRIPT update"
+
+  /etc/init.d/cron restart > /dev/null 2>&1
+}

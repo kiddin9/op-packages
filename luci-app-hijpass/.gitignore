@@ -1,0 +1,12 @@
+.DS_Store
+*.log
+
+.claude/
+.idea/
+.vscode/
+
+graphify-out/
+/scripts/sync-openwrt.sh
+/scripts/po2lmo.py
+ts-src/package-lock.json
+ts-src/node_modules/

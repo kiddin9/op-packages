@@ -1,0 +1,2317 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-hijpass\n"
+"PO-Revision-Date: 2026-06-13 00:00+0000\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: Simplified Chinese\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "-"
+msgstr "-"
+
+msgid "# Local Rule Files\n"
+msgstr "# 本地规则文件\n"
+
+msgid "# Shunt Rules\n"
+msgstr "# 分流规则\n"
+
+msgid "%s \"%s\" does not exist"
+msgstr "%s \"%s\" 不存在"
+
+msgid "%s \"%s\" is not enabled"
+msgstr "%s \"%s\" 未启用"
+
+msgid "%s already exists, use another %s"
+msgstr "%s已存在，请使用其他%s"
+
+msgid "0-RTT Handshake"
+msgstr "0-RTT握手"
+
+msgid "1st Day of Month 5 AM"
+msgstr "每月1日凌晨5点"
+
+msgid "2022-blake3-aes-128-gcm"
+msgstr "2022-blake3-aes-128-gcm"
+
+msgid "2022-blake3-aes-256-gcm"
+msgstr "2022-blake3-aes-256-gcm"
+
+msgid "2022-blake3-chacha20-poly1305"
+msgstr "2022-blake3-chacha20-poly1305"
+
+msgid "Accept Any Certificate"
+msgstr "接受任何服务器证书（不安全）"
+
+msgid "Access Control List"
+msgstr "访问控制列表"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "aes-128-gcm"
+msgstr "aes-128-gcm"
+
+msgid "aes-192-gcm"
+msgstr "aes-192-gcm"
+
+msgid "aes-256-gcm"
+msgstr "aes-256-gcm"
+
+msgid "All"
+msgstr "全部"
+
+msgid "Allow Public Access"
+msgstr "允许公网访问"
+
+msgid "An empty result means no matching entry was found."
+msgstr "空结果表示未找到匹配项。"
+
+msgid "Authentication Password"
+msgstr "认证密码"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "Auto Generate"
+msgstr "自动生成"
+
+msgid "Auto Refresh"
+msgstr "自动刷新"
+
+msgid "Auto Refresh Disabled"
+msgstr "自动刷新已停用"
+
+msgid "Auto Refresh Enabled"
+msgstr "自动刷新已启用"
+
+msgid "Auto Update Time"
+msgstr "自动更新时间"
+
+msgid "Backend Core"
+msgstr "后端核心"
+
+msgid "Baidu"
+msgstr "百度"
+
+msgid "Basic Configuration"
+msgstr "基础配置"
+
+msgid "Basic Settings"
+msgstr "基本设置"
+
+msgid "bbr"
+msgstr "bbr"
+
+msgid "Best Nodes"
+msgstr "最优节点数"
+
+msgid "Best Nodes Count"
+msgstr "选出的最优节点个数，流量在这几个节点中随机分配"
+
+msgid "Bilibili"
+msgstr "哔哩哔哩"
+
+msgid "Block"
+msgstr "阻止"
+
+msgid "Bulk Replace Nodes"
+msgstr "批量替换节点"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Cannot use itself as upstream proxy"
+msgstr "不能将自身作为前置代理"
+
+msgid "chacha20-ietf-poly1305"
+msgstr "chacha20-ietf-poly1305"
+
+msgid "ChinaDNS-NG Listen Port"
+msgstr "指定ChinaDNS-NG的监听端口"
+
+msgid "CHN Domain List Download URL"
+msgstr "CHN Domain List 下载地址"
+
+msgid "CHN Domain List URL"
+msgstr "配置中国域名列表的下载地址"
+
+msgid "CHN IPv4 Route Download URL"
+msgstr "CHN IPv4 Route 下载地址"
+
+msgid "CHN IPv4 Route URL"
+msgstr "配置中国IPv4路由的下载地址"
+
+msgid "CHN IPv6 Route Download URL"
+msgstr "CHN IPv6 Route 下载地址"
+
+msgid "CHN IPv6 Route URL"
+msgstr "配置中国IPv6路由的下载地址"
+
+msgid "Clear"
+msgstr "清空"
+
+msgid "Clear Failed"
+msgstr "清空失败: "
+
+msgid "Clear Log Confirmation"
+msgstr "确定要清空日志文件吗？此操作不可恢复。"
+
+msgid "Clearing Logs"
+msgstr "正在清空日志..."
+
+msgid "Click to Preview"
+msgstr "点击预览配置"
+
+msgid "Click to Test"
+msgstr "点击测试"
+
+msgid "Click to View Firewall Rules"
+msgstr "点击此区域加载当前 hijpass 防火墙信息"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Config Preview"
+msgstr "配置预览"
+
+msgid "Configuration"
+msgstr "配置"
+
+msgid "Configuration Apply Failed"
+msgstr "配置应用失败"
+
+msgid "Configuration conflict"
+msgstr "配置冲突"
+
+msgid "Configuration contains disabled DNS nodes"
+msgstr "配置包含未启用的DNS节点"
+
+msgid "Configuration contains disabled nodes"
+msgstr "配置包含未启用的节点"
+
+msgid "Configuration contains invalid DNS exit nodes"
+msgstr "配置包含无效的DNS出口节点"
+
+msgid "Configuration contains invalid upstream proxy nodes"
+msgstr "配置包含无效的前置代理节点"
+
+msgid "Configuration contains missing DNS nodes"
+msgstr "配置包含不存在的DNS节点"
+
+msgid "DNS node \"%s\" uses TLS, which is only supported by sing-box"
+msgstr "DNS 节点 \"%s\" 使用了 TLS，该类型仅 sing-box 支持"
+
+msgid "Configuration contains missing proxy nodes"
+msgstr "配置包含不存在的代理节点"
+
+msgid "Configuration copied to clipboard"
+msgstr "配置已复制到剪贴板"
+
+msgid "Configuration File Content"
+msgstr "配置文件内容"
+
+msgid "Configuration file directory is empty"
+msgstr "配置文件目录为空"
+
+msgid "Configuration Generation Failed"
+msgstr "配置生成失败"
+
+msgid "Configuration Info"
+msgstr "配置信息"
+
+msgid "Configuration Save Failed"
+msgstr "配置保存失败"
+
+msgid "Configuration Type"
+msgstr "配置类型"
+
+msgid "Configure an independently running DNS service. Select upstreams by domain, populate firewall sets, or extend it with custom configuration and hooks."
+msgstr "配置独立运行的 DNS 服务，可按域名选择上游、写入防火墙集合，或使用自定义配置和 Hook 扩展。"
+
+msgid "Configure Firewall"
+msgstr "配置nftables相关功能"
+
+msgid "Configure Global Exit First"
+msgstr "请先配置全局出口"
+
+msgid "Configure Proxy Settings"
+msgstr "配置代理程序设置"
+
+msgid "Configure Shunt Rules"
+msgstr "配置分流规则和设置"
+
+msgid "Confirm Replace"
+msgstr "确认替换"
+
+msgid "Conflicts with DNS Port"
+msgstr "与DNS端口冲突"
+
+msgid "Conflicts with Shunt Port"
+msgstr "与分流端口冲突"
+
+msgid "Conflicts with SOCKS Port"
+msgstr "与socks端口冲突"
+
+msgid "Conflicts with Transparent Proxy Port"
+msgstr "与透明代理端口冲突"
+
+msgid "Congestion Control"
+msgstr "拥塞控制"
+
+msgid "Connection Abnormal"
+msgstr "连接异常，code "
+
+msgid "Continue Apply"
+msgstr "继续应用"
+
+msgid "Convert Geo Rules"
+msgstr "通过geoview将geo规则转换为规则集（sing-box配置）"
+
+msgid "Copy Configuration"
+msgstr "复制配置"
+
+msgid "Core Log Level"
+msgstr "核心日志等级"
+
+msgid "Core Version"
+msgstr "核心版本"
+
+msgid "cubic"
+msgstr "cubic"
+
+msgid "Current Xray only supports http, tls, quic, and bittorrent"
+msgstr "当前xray仅支持http、tls、quic和bittorrent"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Custom Direct DNS"
+msgstr "自定义直连DNS"
+
+msgid "Custom DNS"
+msgstr "自定义DNS"
+
+msgid "Custom Edit"
+msgstr "自定义编辑"
+
+msgid "Custom Hook Script"
+msgstr "用户自定义脚本"
+
+msgid "Custom Proxy DNS"
+msgstr "自定义代理DNS"
+
+msgid "Custom Script"
+msgstr "自定义脚本"
+
+msgid "Debug"
+msgstr "调试"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Default (HEAD)"
+msgstr "默认 (HEAD)"
+
+msgid "Default global DNS"
+msgstr "默认全局DNS"
+
+msgid "Default global DNS \"%s\" does not exist"
+msgstr "默认全局 DNS \"%s\" 不存在"
+
+msgid "Default Global DNS"
+msgstr "默认全局 DNS"
+
+msgid "Default Global Exit"
+msgstr "默认全局出口"
+
+msgid "Default global exit \"%s\" does not exist"
+msgstr "默认全局出口 \"%s\" 不存在"
+
+msgid "Default global exit \"%s\" is not enabled"
+msgstr "默认全局出口 \"%s\" 未启用"
+
+msgid "Default Proxy All"
+msgstr "默认全走代理"
+
+msgid "Default Shunt Port"
+msgstr "默认分流端口"
+
+msgid "Delay Time"
+msgstr "延迟时间"
+
+msgid "Direct"
+msgstr "直连"
+
+msgid "Direct Domain DNS"
+msgstr "直连域名DNS"
+
+msgid "Direct Domain DNS Server"
+msgstr "指定直连域名使用的DNS服务器"
+
+msgid "Disable Auto Update"
+msgstr "禁用自动更新"
+
+msgid "Disabled"
+msgstr "不使用"
+
+msgid "Display Lines"
+msgstr "显示行数"
+
+msgid "Independent DNS"
+msgstr "独立 DNS"
+
+msgid "Independent DNS Service"
+msgstr "独立 DNS 服务"
+
+msgid "DNS Cache"
+msgstr "DNS缓存"
+
+msgid "DNS Configuration"
+msgstr "DNS配置"
+
+msgid "DNS Exit Node"
+msgstr "DNS出口节点"
+
+msgid "DNS exit cannot use Block or Load Balancing"
+msgstr "DNS 出口不能使用“阻止”或“负载均衡”"
+
+msgid "DNS Listen Port"
+msgstr "DNS监听端口"
+
+msgid "DNS Node Configuration"
+msgstr "DNS节点配置"
+
+msgid "DNS Resolution Strategy"
+msgstr "DNS解析策略"
+
+msgid "DNS Server"
+msgstr "DNS服务器"
+
+msgid "DNS Server Address"
+msgstr "DNS服务器地址"
+
+msgid "Core DNS"
+msgstr "核心 DNS"
+
+msgid "DNS Service Type"
+msgstr "DNS 服务类型"
+
+msgid "DNS Server Port"
+msgstr "DNS服务器端口"
+
+msgid "DNS Server Tag"
+msgstr "DNS服务器的唯一标识"
+
+msgid "DNS Server Type"
+msgstr "DNS服务器类型"
+
+msgid "Domain Direct List"
+msgstr "域名直连列表"
+
+msgid "Domain Proxy List"
+msgstr "域名代理列表"
+
+msgid "Domain: Enter a domain (for example, www.example.com) to query GeoSite tags and local domain rule files."
+msgstr "域名：输入域名（例如 www.example.com），查询其所属的 GeoSite 标签和本地域名规则文件。"
+
+msgid "Domain → GeoSite tags"
+msgstr "域名 → GeoSite 标签"
+
+msgid "Domain Query"
+msgstr "域名查询"
+
+msgid "Domain Rule Count"
+msgstr "域名规则数"
+
+msgid "Domain Rule List"
+msgstr "域名规则列表"
+
+msgid "Downlink Bandwidth"
+msgstr "下行带宽（Mbps）"
+
+msgid "Downlink Speed"
+msgstr "下行速率"
+
+msgid "Download"
+msgstr "下载"
+
+msgid "Download All Rules Now"
+msgstr "立即下载更新所有规则文件和数据库文件"
+
+msgid "Download Failed"
+msgstr "下载失败: "
+
+msgid "Download Timeout"
+msgstr "下载超时时间"
+
+msgid "Early Data Header Name"
+msgstr "早期数据头名称"
+
+msgid "Edit Configuration File"
+msgstr "编辑配置文件内容，保存时自动写入对应路径"
+
+msgid "Edit DNS Hook Script"
+msgstr "编辑 DNS Hook 脚本"
+
+msgid "Edit DNS Server"
+msgstr "编辑DNS服务器"
+
+msgid "Edit Domain Direct List"
+msgstr "编辑域名直连列表配置，配合chinadns-ng使用"
+
+msgid "Edit Domain Proxy List"
+msgstr "编辑域名代理列表配置，配合chinadns-ng使用"
+
+msgid "Edit Firewall Rules"
+msgstr "编辑防火墙 nftables 规则"
+
+msgid "Edit the nftables rule template. Intended for users familiar with nftables and HiJpass rule generation. Arbitrary changes may break compatibility with LuCI configuration features and affect network connectivity."
+msgstr "编辑 nftables 规则模板。仅适合熟悉 nftables 及 HiJpass 规则生成机制的用户使用；随意修改可能导致与 LuCI 配置功能不兼容，并影响网络连接。"
+
+msgid "Executed after HiJpass attempts to load its generated nftables rules during firewall start or reload. Runs only when the generated rules file and this script exist; it may also run if loading the rules fails."
+msgstr "防火墙启动或重载时，在 HiJpass 尝试加载生成的 nftables 规则之后调用。仅当生成的规则文件和此脚本均存在时执行；规则加载失败时也可能执行此脚本。"
+
+msgid "Edit IP Direct List"
+msgstr "编辑 IP CIDR 直连列表配置（支持 IPv4 和 IPv6）"
+
+msgid "Edit IP Proxy List"
+msgstr "编辑 IP CIDR 代理列表配置（支持 IPv4 和 IPv6）"
+
+msgid "Edit Routing Rule"
+msgstr "编辑路由规则"
+
+msgid "Edit Shunt Configuration File"
+msgstr "修改分流配置文件"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Enable 0-RTT QUIC Handshake"
+msgstr "启用0-RTT QUIC连接握手"
+
+msgid "Enable Brutal CC Debug"
+msgstr "启用Brutal CC调试"
+
+msgid "Enable CHN Domain List"
+msgstr "启用中国域名列表进行分流"
+
+msgid "Enable CHN IP Route"
+msgstr "启用中国 IP 路由列表进行分流"
+
+msgid "Enable GFW Domain List"
+msgstr "启用 GFW 域名列表进行分流"
+
+msgid "Enable Hysteria Brutal CC Debug"
+msgstr "启用Hysteria Brutal CC的调试日志"
+
+msgid "Enable Multiplexing"
+msgstr "启用多路复用"
+
+msgid "Enable Multiplexing for Better Efficiency"
+msgstr "启用多路复用以提高连接效率"
+
+msgid "Enable or Disable HiJpass"
+msgstr "启用或禁用 HiJpass"
+
+msgid "Enable Shunt"
+msgstr "启用分流"
+
+msgid "Enable TCP Brutal"
+msgstr "启用TCP Brutal"
+
+msgid "Enable TCP Brutal Congestion Control"
+msgstr "启用TCP Brutal拥塞控制算法"
+
+msgid "Enable TLS Reality"
+msgstr "启用TLS Reality"
+
+msgid "Enable TLS Reality Obfuscation"
+msgstr "启用TLS Reality分流伪装"
+
+msgid "Enable UDP over TCP"
+msgstr "启用UDP over TCP"
+
+msgid "Enabled Network Protocols"
+msgstr "启用的网络协议，默认所有"
+
+msgid "Encryption Method"
+msgstr "加密方法"
+
+msgid "Enter a GeoSite tag"
+msgstr "输入 GeoSite 标签"
+
+msgid "Enter a GeoSite tag (for example, cn or google) to list the domain rules included in that tag."
+msgstr "输入 GeoSite 标签（例如 cn 或 google），列出该标签包含的域名规则。"
+
+msgid "Enter a domain or IP address"
+msgstr "输入域名或 IP 地址"
+
+msgid "Enter a domain or IP address to show the first matching enabled shunt rule."
+msgstr "输入域名或 IP 地址，显示首条命中的已启用分流规则。"
+
+msgid "Enter Query Keyword"
+msgstr "请输入查询关键字"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Error occurred while updating: %s"
+msgstr "更新过程中发生错误：%s"
+
+msgid "Every Day 5 AM"
+msgstr "每天凌晨5点"
+
+msgid "Every Day Midnight"
+msgstr "每天午夜12点"
+
+msgid "Every Monday 5 AM"
+msgstr "每周一凌晨5点"
+
+msgid "Every Sunday 5 AM"
+msgstr "每周日凌晨5点"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Failed to Load Log"
+msgstr "加载日志失败: "
+
+msgid "Failed to Load Log File"
+msgstr "无法加载日志文件: "
+
+msgid "Failure Rate Tolerance"
+msgstr "失败率容忍"
+
+msgid "Fallback Node"
+msgstr "备用节点"
+
+msgid "Fallback Outbound"
+msgstr "所有节点不可用时的备用出站"
+
+msgid "Fetching Status..."
+msgstr "正在获取状态..."
+
+msgid "Firewall Configuration"
+msgstr "防火墙配置"
+
+msgid "Firewall Refresh Failed"
+msgstr "防火墙刷新失败: "
+
+msgid "Firewall Refreshed"
+msgstr "防火墙刷新成功"
+
+msgid "Firewall Rules"
+msgstr "防火墙规则"
+
+msgid "From Node"
+msgstr "从节点"
+
+msgid "Generated %s JSON Configuration"
+msgstr "已生成 %s JSON 配置"
+
+msgid "Geo Database Query"
+msgstr "Geo 数据库查询"
+
+msgid "GeoIP Database Download URL"
+msgstr "Geo IP 下载地址"
+
+msgid "GeoIP Database URL"
+msgstr "配置 GeoIP 数据库文件的下载地址"
+
+msgid "GeoSite"
+msgstr "GeoSite"
+
+msgid "GeoSite Database Download URL"
+msgstr "Geo Site 下载地址"
+
+msgid "GeoSite Database URL"
+msgstr "配置 GeoSite 数据库文件的下载地址"
+
+msgid "GFW List Download URL"
+msgstr "GFW List 下载地址"
+
+msgid "GFW List URL"
+msgstr "配置GFW域名列表的下载地址"
+
+msgid "GitHub"
+msgstr "GitHub"
+
+msgid "Google"
+msgstr "Google"
+
+msgid "gRPC"
+msgstr "gRPC"
+
+msgid "gRPC Service Name"
+msgstr "gRPC服务名称"
+
+msgid "h2mux"
+msgstr "h2mux"
+
+msgid "Health Check Interval"
+msgstr "健康检查间隔，如 3m、30s，默认 3m"
+
+msgid "Health Check Probe URL"
+msgstr "健康检查探测目标 URL，应返回 HTTP 204"
+
+msgid "Health Check URL"
+msgstr "健康检查请求的目标 URL"
+
+msgid "Heartbeat Interval"
+msgstr "心跳间隔"
+
+msgid "HiJpass"
+msgstr "HiJpass"
+
+msgid "Hook Script"
+msgstr "Hook 脚本"
+
+msgid "Host Domain"
+msgstr "主机域名"
+
+msgid "HTTP"
+msgstr "HTTP"
+
+msgid "HTTP Host"
+msgstr "HTTP主机"
+
+msgid "HTTP Host List"
+msgstr "HTTP请求的主机域名列表"
+
+msgid "HTTP Method"
+msgstr "HTTP 方法"
+
+msgid "HTTP Path"
+msgstr "HTTP路径"
+
+msgid "HTTP Request Method"
+msgstr "HTTP请求方法"
+
+msgid "HTTP Request Path"
+msgstr "HTTP请求路径"
+
+msgid "HTTPUpgrade"
+msgstr "HTTPUpgrade"
+
+msgid "HTTPUpgrade Host"
+msgstr "HTTPUpgrade主机"
+
+msgid "HTTPUpgrade Path"
+msgstr "HTTPUpgrade路径"
+
+msgid "Hysteria2"
+msgstr "Hysteria2"
+
+msgid "Idle Timeout"
+msgstr "空闲超时"
+
+msgid "Ignore Certificate Verification"
+msgstr "忽略证书验证"
+
+msgid "Info"
+msgstr "信息"
+
+msgid "Interface \"%s\" Not Found"
+msgstr "接口 \"%s\" 不存在"
+
+msgid "Internal DNS Resolution Strategy"
+msgstr "内部DNS解析策略"
+
+msgid "Interrupt Existing Connections"
+msgstr "切换时中断现有连接"
+
+msgid "Interrupt on Outbound Change"
+msgstr "当选中出站变更时是否中断现有连接"
+
+msgid "Invalid proxy config"
+msgstr "无效的代理配置"
+
+msgid "IP Direct List"
+msgstr "IP 直连列表"
+
+msgid "IP Proxy List"
+msgstr "IP 代理列表"
+
+msgid "IP Rule Count"
+msgstr "IP规则数"
+
+msgid "IP Rule List"
+msgstr "IP规则列表"
+
+msgid "IP address: Enter an IP address (for example, 8.8.8.8) to query GeoIP tags and local IP rule files."
+msgstr "IP 地址：输入 IP 地址（例如 8.8.8.8），查询其命中的 GeoIP 标签和本地 IP 规则文件。"
+
+msgid "IP address → GeoIP tags"
+msgstr "IP 地址 → GeoIP 标签"
+
+msgid "IP: e.g. '127.0.0.1'.<br>CIDR: e.g. '10.0.0.0/8'.<br>geoip: e.g. 'geoip:cn'.<br>rule-set: e.g. 'rule-set:local:/path/rulefile' or 'rule-set:remote:https://file'.<br>Comment: starts with #"
+msgstr "IP: 形如'127.0.0.1'。<br>CIDR: 形如'10.0.0.0/8'.<br>geoip: 形如'geoip:cn'。<br>rule-set: 形如'rule-set:local:/path/rulefile'或'rule-set:remote:https://file'。<br>注释: 由 # 开头"
+
+msgid "IPv4 only"
+msgstr "只使用 IPv4"
+
+msgid "IPv6 only"
+msgstr "只使用 IPv6"
+
+msgid "Item Not Found"
+msgstr "%s \"%s\" 不存在，请从下拉列表中选择或先在配置中添加"
+
+msgid "Listen Port"
+msgstr "监听端口"
+
+msgid "Load Balancing"
+msgstr "负载均衡"
+
+msgid "Load balancing node \"%s\" does not exist"
+msgstr "负载均衡节点 \"%s\" 不存在"
+
+msgid "Load balancing node \"%s\" is not enabled"
+msgstr "负载均衡节点 \"%s\" 未启用"
+
+msgid "Load balancing node list is empty, but some rules still use the load balancing outbound. Remove those rules or add nodes first"
+msgstr "负载均衡节点列表为空，但仍有规则使用负载均衡出口，请先移除相关规则或添加节点"
+
+msgid "Load Balancing Nodes"
+msgstr "负载均衡节点"
+
+msgid "Load Balancing Strategy"
+msgstr "负载均衡选择策略"
+
+msgid "Load Strategy"
+msgstr "负载策略"
+
+msgid "Loading"
+msgstr "加载中..."
+
+msgid "Loading Logs"
+msgstr "正在加载日志..."
+
+msgid "Loading..."
+msgstr "加载中..."
+
+msgid "Local Connectivity Check URL"
+msgstr "本地连通性检测 URL"
+
+msgid "Local Listen Port"
+msgstr "本地监听端口"
+
+msgid "Local SOCKS Listen Port"
+msgstr "指定本地SOCKS监听端口号"
+
+msgid "Local SOCKS Port"
+msgstr "本地SOCKS监听端口"
+
+msgid "Local Transparent Proxy Listen Port"
+msgstr "指定本地透明代理监听端口号"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Log Cleared"
+msgstr "日志已清空"
+
+msgid "Log Content"
+msgstr "日志内容将在这里显示..."
+
+msgid "Log Downloaded"
+msgstr "日志下载完成"
+
+msgid "Log File"
+msgstr "日志文件"
+
+msgid "Log Level"
+msgstr "日志等级"
+
+msgid "Log Level Filter"
+msgstr "日志级别过滤"
+
+msgid "Log Updated"
+msgstr "日志已更新"
+
+msgid "Logging Level"
+msgstr "日志记录等级"
+
+msgid "Lowest Load"
+msgstr "最低负载"
+
+msgid "Lowest Ping"
+msgstr "最低 Ping"
+
+msgid "Main Log"
+msgstr "主日志"
+
+msgid "Max Acceptable RTT"
+msgstr "最高可接受 RTT"
+
+msgid "Max Concurrent Streams"
+msgstr "在打开新连接前的最大流数量"
+
+msgid "Max Connections"
+msgstr "最大连接数"
+
+msgid "Max Early Data"
+msgstr "最大早期数据"
+
+msgid "Max Streams"
+msgstr "最大流数"
+
+msgid "Maximum allowed payload size in requests"
+msgstr "请求中允许的最大有效负载大小"
+
+msgid "Maximum Downlink Bandwidth"
+msgstr "下行最大带宽（Mbps）"
+
+msgid "Maximum Uplink Bandwidth"
+msgstr "上行最大带宽（Mbps）"
+
+msgid "Min Concurrent Streams"
+msgstr "在打开新连接前的最小流数量"
+
+msgid "Min Streams"
+msgstr "最小流数"
+
+msgid "Modify Proxy Node Name"
+msgstr "修改节点的名称，用于标识不同的代理节点"
+
+msgid "Modify Server Node Name"
+msgstr "修改节点的名称，用于标识不同服务节点"
+
+msgid "Multiplexing Protocol"
+msgstr "多路复用协议"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Native UDP"
+msgstr "原生 UDP"
+
+msgid "Nested Proxy"
+msgstr "嵌套代理"
+
+msgid "Network"
+msgstr "网络"
+
+msgid "Network Protocol"
+msgstr "网络协议"
+
+msgid "new_reno"
+msgstr "new_reno"
+
+msgid "No Logs"
+msgstr "暂无日志"
+
+msgid "No Matching Results"
+msgstr "未找到匹配结果"
+
+msgid "No Rules"
+msgstr "暂无规则（服务未运行）"
+
+msgid "Node Idle Timeout"
+msgstr "节点空闲超时时间，如 30m，默认 30m"
+
+msgid "Node Name"
+msgstr "节点名称"
+
+msgid "Node name can only contain letters, numbers, underscores, and hyphens"
+msgstr "节点名称只能包含英文字母、数字、下划线和连字符"
+
+msgid "Node name cannot be empty"
+msgstr "节点名称不能为空"
+
+msgid "Non-Proxy Device"
+msgstr "不走代理设备（MAC）"
+
+msgid "Non-Proxy Interface"
+msgstr "不走代理接口"
+
+msgid "None"
+msgstr "无"
+
+msgid "Not Configured"
+msgstr "未配置"
+
+msgid "Not Running"
+msgstr "未运行"
+
+msgid "OBFS Password"
+msgstr "OBFS密码"
+
+msgid "OBFS Type"
+msgstr "OBFS类型"
+
+msgid "Off: Default no proxy; On: Default proxy all"
+msgstr "关闭：默认不代理；开启：默认全代理"
+
+msgid "Only Effective with Domain/GeoSite/Rule-set"
+msgstr "仅在规则中存在域名、geosite、rule_set时生效"
+
+msgid "packetaddr"
+msgstr "packetaddr"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Permit Without Stream"
+msgstr "无流允许"
+
+msgid "PING Response Timeout"
+msgstr "PING响应超时"
+
+msgid "PING Timeout"
+msgstr "PING超时"
+
+msgid "Plain string: When this string matches any part of the target domain, the rule takes effect.<br>Regular expression: Starts with 'regexp:', followed by a regular expression.<br>Subdomain (recommended): Starts with 'domain:', followed by a domain. The rule takes effect when this domain is the target domain or one of its subdomains.<br>Full match: Starts with 'full:', followed by a domain. The rule takes effect when the target domain exactly matches this domain.<br>geosite: e.g. 'geosite:cn'.<br>rule-set: e.g. 'rule-set:local:/path/rulefile' or 'rule-set:remote:https://file'.<br>Comment: starts with #"
+msgstr "纯字符串: 当此字符串匹配目标域名中任意部分，该规则生效。<br>正则表达式: 由'regexp:'开始，余下部分是一个正则表达式。<br>子域名 (推荐): 由'domain:'开始，余下部分是一个域名。当此域名是目标域名或其子域名时，该规则生效。<br>完整匹配: 由'full:'开始，余下部分是一个域名。当此域名完整匹配目标域名时，该规则生效。<br>geosite: 形如'geosite:cn'。<br>rule-set: 形如'rule-set:local:/path/rulefile'或'rule-set:remote:https://file'。<br>注释: 由 # 开头"
+
+msgid "Please configure the global DNS server first"
+msgstr "请先配置全局DNS服务器"
+
+msgid "Plugin"
+msgstr "插件"
+
+msgid "Plugin Options"
+msgstr "插件选项"
+
+msgid "Port"
+msgstr "端口"
+
+msgid "Port %s is used by DNS configuration"
+msgstr "端口 %s 已被DNS配置占用"
+
+msgid "Port %s is used by proxy node \"%s\""
+msgstr "端口 %s 已被代理节点 \"%s\" 使用"
+
+msgid "Port %s is used by server node \"%s\""
+msgstr "端口 %s 已被服务端节点 \"%s\" 使用"
+
+msgid "Port %s is used by shunt configuration"
+msgstr "端口 %s 已被分流配置占用"
+
+msgid "Port Hop Interval"
+msgstr "端口跳跃间隔"
+
+msgid "Port Hopping"
+msgstr "端口跳跃"
+
+msgid "Port Hopping Range"
+msgstr "端口跳跃范围列表，如 2080-3000"
+
+msgid "Port Range"
+msgstr "端口范围"
+
+msgid "Prefer IPv4 (sing-box only, xray uses dual stack by default)"
+msgstr "优先 IPv4（仅 sing-box，xray 默认双栈）"
+
+msgid "Prefer IPv6 (sing-box only, xray uses dual stack by default)"
+msgstr "优先 IPv6（仅 sing-box，xray 默认双栈）"
+
+msgid "Preparing Download"
+msgstr "正在准备下载..."
+
+msgid "Preview"
+msgstr "预览"
+
+msgid "Preview Configuration"
+msgstr "预览配置"
+
+msgid "Probe HTTP Method"
+msgstr "探测 HTTP 方法"
+
+msgid "Probe Interval"
+msgstr "探测间隔"
+
+msgid "Probe Timeout"
+msgstr "探测超时"
+
+msgid "Probe URL"
+msgstr "探测 URL"
+
+msgid "Procd Environment Variables"
+msgstr "procd环境变量"
+
+msgid "Protocol"
+msgstr "协议"
+
+msgid "Protocol and port conditions are not evaluated."
+msgstr "协议和端口条件不参与此次查询。"
+
+msgid "Protocol Version"
+msgstr "协议版本"
+
+msgid "Proxy Device"
+msgstr "走代理设备（MAC）"
+
+msgid "Proxy Domain DNS"
+msgstr "代理域名DNS"
+
+msgid "Proxy Domain DNS Server"
+msgstr "指定代理域名使用的DNS服务器"
+
+msgid "Proxy Interface"
+msgstr "走代理接口"
+
+msgid "Proxy Log"
+msgstr "代理日志"
+
+msgid "Proxy Node"
+msgstr "代理节点"
+
+msgid "Proxy node \"%s\" nesting chain exceeds %d nodes: %s"
+msgstr "代理节点 \"%s\" 的嵌套链路超过 %d 个节点: %s"
+
+msgid "Proxy node \"%s\" upstream proxy node \"%s\" does not exist"
+msgstr "代理节点 \"%s\" 的前置代理节点 \"%s\" 不存在"
+
+msgid "Proxy node \"%s\" upstream proxy node \"%s\" has no valid SOCKS port configured"
+msgstr "代理节点 \"%s\" 的前置代理节点 \"%s\" 未配置有效 SOCKS 端口"
+
+msgid "Proxy node \"%s\" upstream proxy node \"%s\" is not enabled"
+msgstr "代理节点 \"%s\" 的前置代理节点 \"%s\" 未启用"
+
+msgid "Proxy node %s: %s"
+msgstr "代理节点 %s: %s"
+
+msgid "Proxy node nesting chain has a cycle: %s"
+msgstr "代理节点嵌套链路存在循环: %s"
+
+msgid "Proxy Port"
+msgstr "代理端口"
+
+msgid "Proxy Run Command"
+msgstr "指定代理程序运行命令"
+
+msgid "Proxy Server Address"
+msgstr "代理服务器地址"
+
+msgid "Proxy Server Port"
+msgstr "代理服务器端口"
+
+msgid "Proxy Settings"
+msgstr "代理设置"
+
+msgid "Proxy Transport Protocol"
+msgstr "代理传输层协议"
+
+msgid "Proxy Type"
+msgstr "代理类型"
+
+msgid "Query"
+msgstr "查询"
+
+msgid "Query Complete"
+msgstr "查询完成"
+
+msgid "Query Failed"
+msgstr "查询失败"
+
+msgid "Query Keyword"
+msgstr "查询关键词"
+
+msgid "Query Results"
+msgstr "查询结果"
+
+msgid "Query results will appear here"
+msgstr "查询结果将在此显示"
+
+msgid "Query saved rule data without changing configuration. Unsaved form changes are not included."
+msgstr "查询设备上已保存的规则数据，不会更改配置；表单中尚未保存的修改不会包含在查询结果中。"
+
+msgid "Query Type"
+msgstr "查询类型"
+
+msgid "Querying"
+msgstr "正在查询..."
+
+msgid "QUIC Congestion Control"
+msgstr "QUIC拥塞控制算法"
+
+msgid "QUIC Obfuscation Password"
+msgstr "QUIC流量混淆器密码"
+
+msgid "QUIC Obfuscation Type"
+msgstr "QUIC流量混淆器类型"
+
+msgid "QUIC Stream"
+msgstr "QUIC 流"
+
+msgid "Random"
+msgstr "随机"
+
+msgid "Read Failed"
+msgstr "读取失败"
+
+msgid "Reality Public Key"
+msgstr "Reality公钥"
+
+msgid "Reality Short ID"
+msgstr "Reality短ID"
+
+msgid "Record Logs"
+msgstr "记录日志"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Refresh Firewall"
+msgstr "刷新防火墙"
+
+msgid "Refreshing Firewall"
+msgstr "正在刷新防火墙..."
+
+msgid "Replace With"
+msgstr "替换为"
+
+msgid "Resolve proxy server failed: %s"
+msgstr "解析代理服务器失败：%s"
+
+msgid "Restart Service"
+msgstr "重启服务"
+
+msgid "Restarting Service"
+msgstr "正在重启服务..."
+
+msgid "Results to Retain"
+msgstr "保留结果数"
+
+msgid "Retain Recent Probe Results"
+msgstr "保留最近探测结果的数量，默认 10"
+
+msgid "Round Robin"
+msgstr "轮询"
+
+msgid "Route rule \"%s\" contains protocols unsupported by Xray: %s"
+msgstr "路由规则 \"%s\" 包含 Xray 不支持的协议: %s"
+
+msgid "Route rule \"%s\" DNS exit node \"%s\" does not exist"
+msgstr "路由规则 \"%s\" 的DNS出口节点 \"%s\" 不存在"
+
+msgid "Route rule \"%s\" DNS exit node \"%s\" is not enabled"
+msgstr "路由规则 \"%s\" 的DNS出口节点 \"%s\" 未启用"
+
+msgid "Route rule \"%s\" DNS node"
+msgstr "路由规则 \"%s\" 的DNS节点"
+
+msgid "Route rule \"%s\" DNS node \"%s\" does not exist"
+msgstr "路由规则 \"%s\" 的 DNS 节点 \"%s\" 不存在"
+
+msgid "Route rule \"%s\" has no target conditions for sing-box after removing unconverted geosite/geoip"
+msgstr "路由规则 \"%s\" 去除未转换的 geosite/geoip 后没有可写入 sing-box 的目标条件"
+
+msgid "Route rule \"%s\" has no valid match conditions for sing-box"
+msgstr "路由规则 \"%s\" 没有可写入 sing-box 的有效匹配条件"
+
+msgid "Route rule \"%s\" has no valid match conditions for Xray"
+msgstr "路由规则 \"%s\" 没有可写入 Xray 的有效匹配条件"
+
+msgid "Route rule \"%s\" only contains rule-set target conditions unsupported by Xray"
+msgstr "路由规则 \"%s\" 只包含 Xray 不支持的 rule-set 目标条件"
+
+msgid "Route rule \"%s\" proxy node \"%s\" does not exist"
+msgstr "路由规则 \"%s\" 的代理节点 \"%s\" 不存在"
+
+msgid "Route rule \"%s\" proxy node \"%s\" is not enabled"
+msgstr "路由规则 \"%s\" 的代理节点 \"%s\" 未启用"
+
+msgid "Route Rule Configuration"
+msgstr "路由相关文件规则配置"
+
+msgid "Routing Configuration"
+msgstr "路由配置"
+
+msgid "Routing Rule Configuration"
+msgstr "路由规则配置"
+
+msgid "Rule"
+msgstr "规则"
+
+msgid "Rule Configuration"
+msgstr "规则配置"
+
+msgid "Rule File Update Failed: %s"
+msgstr "规则文件更新失败：%s"
+
+msgid "Rule Files Updated"
+msgstr "规则文件更新成功"
+
+msgid "Rule Name"
+msgstr "规则名称"
+
+msgid "Rule Update"
+msgstr "规则更新"
+
+msgid "Rule-set"
+msgstr "Rule-set"
+
+msgid "Rule-set DNS"
+msgstr "规则集DNS"
+
+msgid "Rule-set Download Exit"
+msgstr "rule-set下载使用出口（sing-box配置）"
+
+msgid "Rule-set Exit"
+msgstr "规则集出口"
+
+msgid "Rule-set exit \"%s\" does not exist"
+msgstr "规则集出口 \"%s\" 不存在"
+
+msgid "Rule-set exit \"%s\" is not enabled"
+msgstr "规则集出口 \"%s\" 未启用"
+
+msgid "Run as Local Server"
+msgstr "以本机作为本地服务器，允许程序在本机监听端口并对外提供服务"
+
+msgid "Run Command"
+msgstr "运行命令"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Salamander"
+msgstr "Salamander"
+
+msgid "Select backend core for this proxy node"
+msgstr "选择该代理节点使用的后端核心程序"
+
+msgid "Select Configuration Type"
+msgstr "选择配置类型"
+
+msgid "Select Default DNS"
+msgstr "选择默认使用的DNS服务器，未命中路由将使用此DNS"
+
+msgid "Select Default Exit Node"
+msgstr "选择默认使用的出口节点，未命中的路由会使用该出口"
+
+msgid "Select Direct Domain DNS"
+msgstr "选择直连域名使用的DNS服务器"
+
+msgid "Select DNS Resolution Strategy"
+msgstr "选择 sing-box or xray 的域名解析策略"
+
+msgid "Select DNS Service Type"
+msgstr "选择DNS分流服务类型"
+
+msgid "Select Proxy Domain DNS"
+msgstr "选择代理域名使用的DNS服务器"
+
+msgid "Select Proxy Port"
+msgstr "选择代理应用端口号，可从代理节点端口中选择"
+
+msgid "Select Proxy Type"
+msgstr "选择代理程序类型"
+
+msgid "Select Rule-set DNS"
+msgstr "选择用于解析rule-set链接域名的DNS服务器（sing-box配置）"
+
+msgid "Select Shunt Port"
+msgstr "选择分流应用端口号，可从分流端口或代理节点端口中选择"
+
+msgid "Select Shunt Type"
+msgstr "选择分流程序类型"
+
+msgid "Send Keepalive Ping"
+msgstr "在没有活动连接时是否发送keepalive ping"
+
+msgid "Local Server"
+msgstr "本地服务器"
+
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgid "Server Listen Port"
+msgstr "指定服务端监听端口号"
+
+msgid "Server Log"
+msgstr "服务器日志"
+
+msgid "Server Port"
+msgstr "服务器端口"
+
+msgid "Server Reality Public Key"
+msgstr "服务器的Reality公钥"
+
+msgid "Server Reality Short ID"
+msgstr "服务器的Reality短ID"
+
+msgid "Server Run Command. Executed with root privileges."
+msgstr "指定服务端程序运行命令。该命令以 root 权限执行。"
+
+msgid "Service Control"
+msgstr "服务控制"
+
+msgid "Service Log Level"
+msgstr "服务日志等级"
+
+msgid "Service Restart Failed"
+msgstr "服务重启失败: "
+
+msgid "Service Restarted"
+msgstr "服务重启成功"
+
+msgid "Set Auto Update Time"
+msgstr "设置规则文件的自动更新时间"
+
+msgid "Shadowsocks"
+msgstr "Shadowsocks"
+
+msgid "Shadowsocks Encryption Method"
+msgstr "Shadowsocks加密方法"
+
+msgid "Shadowsocks SIP003 Plugin"
+msgstr "Shadowsocks SIP003插件"
+
+msgid "Shadowsocks SIP003 Plugin Options"
+msgstr "Shadowsocks SIP003插件参数"
+
+msgid "ShadowTLS"
+msgstr "ShadowTLS"
+
+msgid "ShadowTLS Protocol Version"
+msgstr "ShadowTLS协议版本"
+
+msgid "Shunt"
+msgstr "分流"
+
+msgid "Shunt Configuration"
+msgstr "分流设置"
+
+msgid "Shunt Configuration Editor"
+msgstr "分流配置编辑器"
+
+msgid "Shunt is disabled. Set the firewall default shunt port to disabled first"
+msgstr "分流已禁用，请先将防火墙默认分流端口切换为不使用"
+
+msgid "Shunt Listen Port"
+msgstr "分流监听端口"
+
+msgid "Shunt Log"
+msgstr "分流日志"
+
+msgid "Shunt Port: %s"
+msgstr "分流端口: %s"
+
+msgid "Shunt Query"
+msgstr "分流查询"
+
+msgid "Shunt Type"
+msgstr "分流类型"
+
+msgid "sing-box"
+msgstr "sing-box"
+
+msgid "sing-box URLTest"
+msgstr "sing-box URLTest"
+
+msgid "Single Download Timeout"
+msgstr "单次下载的超时时间（秒）"
+
+msgid "smux"
+msgstr "smux"
+
+msgid "Some route rules will be skipped"
+msgstr "部分路由规则将被跳过"
+
+msgid "Speed Test"
+msgstr "测速"
+
+msgid "Startup Delay"
+msgstr "服务启动前的延迟时间（秒）"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Stop Auto Refresh"
+msgstr "停止自动刷新"
+
+msgid "Success"
+msgstr "成功"
+
+msgid "Tag"
+msgstr "标签"
+
+msgid "geosite:tag → domains in tag"
+msgstr "geosite:标签 → 标签内域名"
+
+msgid "geoip:tag → networks in tag"
+msgstr "geoip:标签 → 标签内网段"
+
+msgid "Template Configuration"
+msgstr "模板配置"
+
+msgid "Test Failed"
+msgstr "测试失败，请结合日志排查"
+
+msgid "Test Interval"
+msgstr "测试间隔"
+
+msgid "Test URL"
+msgstr "测试 URL"
+
+msgid "Testing"
+msgstr "测试中..."
+
+msgid "The following rules have no valid configuration for the current core and options, so they will not be written to the final configuration. Continue applying the configuration?"
+msgstr "下列规则在当前核心和选项下没有可生成的有效配置，因此不会写入最终配置。是否继续应用配置？"
+
+msgid "Timeout"
+msgstr "超时"
+
+msgid "TLS (sing-box only)"
+msgstr "TLS（仅 sing-box 支持）"
+
+msgid "TLS Server Name"
+msgstr "TLS服务器名称"
+
+msgid "Tolerance"
+msgstr "容差"
+
+msgid "Tolerance (ms)"
+msgstr "容错值 (ms)"
+
+msgid "TPROXY Protocol"
+msgstr "TPROXY 协议"
+
+msgid "TPROXY Protocol Type"
+msgstr "指定 TPROXY 协议类型"
+
+msgid "Transport Protocol"
+msgstr "传输协议"
+
+msgid "TUIC"
+msgstr "TUIC"
+
+msgid "Type"
+msgstr "类型"
+
+msgid "UDP connection idle timeout in seconds"
+msgstr "UDP 连接空闲超时时间（秒）"
+
+msgid "UDP Idle Timeout"
+msgstr "UDP 空闲超时"
+
+msgid "UDP over Stream"
+msgstr "UDP over Stream"
+
+msgid "UDP over TCP"
+msgstr "UDP over TCP"
+
+msgid "UDP Packet Encoding"
+msgstr "UDP包编码"
+
+msgid "UDP Packet Encoding Method"
+msgstr "UDP包编码方式"
+
+msgid "UDP Packet Relay Mode"
+msgstr "UDP包中继模式"
+
+msgid "UDP Relay Mode"
+msgstr "UDP中继模式"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Unknown Query Type"
+msgstr "未知的查询类型"
+
+msgid "Unnamed"
+msgstr "未命名"
+
+msgid "Unnamed Rule"
+msgstr "未命名规则"
+
+msgid "Unsupported proxy config server field: %s"
+msgstr "不支持的代理配置服务器字段：%s"
+
+msgid "Unsupported Xray protocol configuration"
+msgstr "Xray 协议配置不支持"
+
+msgid "Unsupported Xray DNS configuration"
+msgstr "Xray DNS 配置不支持"
+
+msgid "Proxy node \"%s\" enables insecure TLS, which is not supported by current Xray"
+msgstr "代理节点 \"%s\" 启用了不安全 TLS，当前 Xray 不支持该选项"
+
+msgid "Unsupported Xray TLS configuration"
+msgstr "Xray TLS 配置不支持"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Update All Rules"
+msgstr "更新所有规则"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+msgid "Update failed: %s"
+msgstr "更新失败：%s"
+
+msgid "Update Rule Files"
+msgstr "更新规则文件"
+
+msgid "Updated"
+msgstr "已更新"
+
+msgid "Updated to %s. Restart affected services to use the new version."
+msgstr "已更新到 %s。重启受影响的服务后新版本才会生效。"
+
+msgid "Updating Rule Files"
+msgstr "正在更新规则文件..."
+
+msgid "Updating..."
+msgstr "正在更新..."
+
+msgid "Uplink Bandwidth"
+msgstr "上行带宽（Mbps）"
+
+msgid "Uplink Speed"
+msgstr "上行速率"
+
+msgid "Upstream Proxy Node"
+msgstr "前置代理节点"
+
+msgid "Upstream proxy node not found"
+msgstr "前置代理节点不存在"
+
+msgid "Use another proxy node as the upstream through its local SOCKS port"
+msgstr "通过本地 SOCKS 端口使用另一个代理节点作为前置代理"
+
+msgid "Use CHN List"
+msgstr "使用 CHN 列表"
+
+msgid "Use CHN Route"
+msgstr "使用 CHN 路由"
+
+msgid "Use GeoSite Rule-set"
+msgstr "使用geosite规则集"
+
+msgid "Use GFW List"
+msgstr "使用 GFW 列表"
+
+msgid "Use Global Default DNS"
+msgstr "使用全局默认DNS"
+
+msgid "Use Global Default Resolution Strategy"
+msgstr "使用全局默认解析策略"
+
+msgid "Use Routing Proxy Node"
+msgstr "使用路由代理节点"
+
+msgid "Use UDP Stream Relay"
+msgstr "使用流式UDP中继"
+
+msgid "User UUID"
+msgstr "用户 UUID"
+
+msgid "UUID"
+msgstr "UUID"
+
+msgid "v1"
+msgstr "v1"
+
+msgid "v2"
+msgstr "v2"
+
+msgid "v3"
+msgstr "v3"
+
+msgid "View and Manage Logs"
+msgstr "查看和管理 HiJpass 相关日志"
+
+msgid "View Logs"
+msgstr "日志查看"
+
+msgid "VLESS"
+msgstr "VLESS"
+
+msgid "VLESS Flow Control"
+msgstr "VLESS流控"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Website Connectivity Test"
+msgstr "网站连通性测试"
+
+msgid "WebSocket"
+msgstr "WebSocket"
+
+msgid "WebSocket Host"
+msgstr "WebSocket主机"
+
+msgid "WebSocket Host Domain"
+msgstr "WebSocket请求的主机域名"
+
+msgid "WebSocket Path"
+msgstr "WebSocket路径"
+
+msgid "xchacha20-ietf-poly1305"
+msgstr "xchacha20-ietf-poly1305"
+
+msgid "XHTTP"
+msgstr "XHTTP"
+
+msgid "XHTTP Host"
+msgstr "XHTTP主机"
+
+msgid "XHTTP Host Domain"
+msgstr "XHTTP请求的主机域名"
+
+msgid "XHTTP Mode"
+msgstr "XHTTP模式"
+
+msgid "XHTTP Path"
+msgstr "XHTTP路径"
+
+msgid "XHTTP Request Path"
+msgstr "XHTTP请求路径"
+
+msgid "XHTTP transport is only supported by Xray core"
+msgstr "XHTTP 传输协议仅 Xray 核心支持"
+
+msgid "XHTTP Transport Mode"
+msgstr "XHTTP传输模式"
+
+msgid "xray"
+msgstr "xray"
+
+msgid "Xray"
+msgstr "Xray"
+
+msgid "Xray Balancer"
+msgstr "Xray Balancer"
+
+msgid "Xray REALITY only supports RAW, XHTTP and gRPC transports"
+msgstr "Xray REALITY 仅支持 RAW、XHTTP 和 gRPC 传输"
+
+msgid "Xray only supports route protocol filters: %s"
+msgstr "Xray 仅支持以下路由协议过滤器：%s"
+
+msgid "Xray route protocol only supports: %s"
+msgstr "Xray route protocol 仅支持: %s"
+
+msgid "xtls-rprx-vision"
+msgstr "xtls-rprx-vision"
+
+msgid "xudp"
+msgstr "xudp"
+
+msgid "yamux"
+msgstr "yamux"
+
+msgid "Clipboard is unavailable"
+msgstr "剪贴板不可用"
+
+msgid "Share Link"
+msgstr "分享链接"
+
+msgid "Import a proxy node from a supported share link"
+msgstr "从支持的分享链接导入代理节点"
+
+msgid "Import Share Link"
+msgstr "导入分享链接"
+
+msgid "Paste one supported proxy share link. Select the backend core manually; local ports and runtime options will be generated automatically."
+msgstr "粘贴一条支持的代理分享链接。请手动选择后端核心；本地端口和运行选项会自动生成。"
+
+msgid "Import Failed"
+msgstr "导入失败"
+
+msgid "Share link is empty"
+msgstr "分享链接为空"
+
+msgid "Import Successful"
+msgstr "导入成功"
+
+msgid "Imported proxy node \"%s\". Click Save & Apply to apply it."
+msgstr "已导入代理节点“%s”。点击保存并应用后生效。"
+
+msgid "Import"
+msgstr "导入"
+
+msgid "This link contains protocol connection settings only. Local ports, logs, and nested proxy settings are not exported."
+msgstr "此链接仅包含协议连接配置。本地端口、日志和嵌套代理设置不会导出。"
+
+msgid "Share link copied to clipboard"
+msgstr "分享链接已复制到剪贴板"
+
+msgid "Copy Failed"
+msgstr "复制失败"
+
+msgid "Copy Share Link"
+msgstr "复制分享链接"
+
+msgid "Export Failed"
+msgstr "导出失败"
+
+msgid "Share"
+msgstr "分享"
+
+msgid "Invalid core selection"
+msgstr "无效的核心选择"
+
+msgid "Selected core \"%s\" does not support %s"
+msgstr "选择的核心“%s”不支持 %s"
+
+msgid "Invalid share link"
+msgstr "无效的分享链接"
+
+msgid "Invalid server address"
+msgstr "无效的服务器地址"
+
+msgid "Invalid Shadowsocks share link"
+msgstr "无效的 Shadowsocks 分享链接"
+
+msgid "Proxy node is incomplete"
+msgstr "代理节点配置不完整"
+
+msgid "Invalid Hysteria2 share link"
+msgstr "无效的 Hysteria2 分享链接"
+
+msgid "Invalid VLESS share link"
+msgstr "无效的 VLESS 分享链接"
+
+msgid "Invalid TUIC share link"
+msgstr "无效的 TUIC 分享链接"
+
+msgid "Invalid ShadowTLS share link"
+msgstr "无效的 ShadowTLS 分享链接"
+
+msgid "Unsupported share link protocol: %s"
+msgstr "不支持的分享链接协议：%s"
+
+msgid "Unsupported proxy type"
+msgstr "不支持的代理类型"
+
+msgid "Configure Proxy Node First"
+msgstr "请先配置代理节点"
+
+msgid "Split IPv4/IPv6 Exit"
+msgstr "按 IPv4/IPv6 分流出口"
+
+msgid "Use separate proxy nodes for IPv4 and IPv6 while sharing the same rule conditions"
+msgstr "共用当前规则条件，但 IPv4 和 IPv6 使用不同代理节点"
+
+msgid "IPv4: %s / IPv6: %s"
+msgstr "IPv4: %s / IPv6: %s"
+
+msgid "IPv4 Proxy Node"
+msgstr "IPv4 代理节点"
+
+msgid "IPv4 traffic exit node"
+msgstr "IPv4 流量出口节点"
+
+msgid "Configure IPv4 Proxy Node First"
+msgstr "请先配置 IPv4 代理节点"
+
+msgid "IPv6 Proxy Node"
+msgstr "IPv6 代理节点"
+
+msgid "IPv6 traffic exit node"
+msgstr "IPv6 流量出口节点"
+
+msgid "Configure IPv6 Proxy Node First"
+msgstr "请先配置 IPv6 代理节点"
+
+msgid "Configure DNS Exit Node when splitting IPv4/IPv6 exit"
+msgstr "按 IPv4/IPv6 分流出口时请配置 DNS 出口节点"
+
+msgid "Route rule \"%s\" IPv4 proxy node is not configured"
+msgstr "路由规则“%s”未配置 IPv4 代理节点"
+
+msgid "Route rule \"%s\" IPv4 proxy node \"%s\" does not exist"
+msgstr "路由规则“%s”的 IPv4 代理节点“%s”不存在"
+
+msgid "Route rule \"%s\" IPv6 proxy node is not configured"
+msgstr "路由规则“%s”未配置 IPv6 代理节点"
+
+msgid "Route rule \"%s\" IPv6 proxy node \"%s\" does not exist"
+msgstr "路由规则“%s”的 IPv6 代理节点“%s”不存在"
+
+msgid "Route rule \"%s\" IPv4 proxy node \"%s\" is not enabled"
+msgstr "路由规则“%s”的 IPv4 代理节点“%s”未启用"
+
+msgid "Route rule \"%s\" IPv6 proxy node \"%s\" is not enabled"
+msgstr "路由规则“%s”的 IPv6 代理节点“%s”未启用"
+
+msgid "Route rule \"%s\" uses IPv4/IPv6 split and must specify a DNS exit node"
+msgstr "路由规则“%s”启用了 IPv4/IPv6 分流出口，必须指定 DNS 出口节点"
+
+msgid "Please enter a valid HTTP or HTTPS URL"
+msgstr "请输入有效的 HTTP 或 HTTPS URL"
+
+msgid "Timeout must be an integer between 1 and 120"
+msgstr "超时时间必须是 1 到 120 之间的整数"
+
+msgid "Please enter a valid client IP address"
+msgstr "请输入有效的客户端 IP 地址"
+
+msgid "Please enter a valid tcpdump interface"
+msgstr "请输入有效的 tcpdump 接口"
+
+msgid "Running Trace Diagnostics"
+msgstr "链路诊断运行中"
+
+msgid "No Output"
+msgstr "无输出"
+
+msgid "Trace Completed"
+msgstr "链路诊断完成"
+
+msgid "Trace Failed"
+msgstr "链路诊断失败"
+
+msgid "Exit Code"
+msgstr "退出码"
+
+msgid "Router Local"
+msgstr "路由器本机"
+
+msgid "Client Transparent Proxy"
+msgstr "客户端透明代理"
+
+msgid "Trace output will be shown here"
+msgstr "链路诊断输出将显示在这里"
+
+msgid "Run Trace"
+msgstr "运行诊断"
+
+msgid "Enable tcpdump"
+msgstr "启用 tcpdump"
+
+msgid "Show raw trace/log tail"
+msgstr "显示原始 trace/日志尾部"
+
+msgid "Trace Diagnostics"
+msgstr "链路诊断"
+
+msgid "URL"
+msgstr "URL"
+
+msgid "Mode"
+msgstr "模式"
+
+msgid "Client IP"
+msgstr "客户端 IP"
+
+msgid "Required only for client transparent proxy mode"
+msgstr "仅客户端透明代理模式需要"
+
+msgid "Request Method"
+msgstr "请求方法"
+
+msgid "Packet Capture"
+msgstr "抓包"
+
+msgid "Optional. tcpdump must be installed on the router"
+msgstr "可选。路由器上必须安装 tcpdump"
+
+msgid "tcpdump Interface"
+msgstr "tcpdump 接口"
+
+msgid "Verbose Output"
+msgstr "详细输出"
+
+msgid "Default global exit is not configured"
+msgstr "未配置默认全局出口"
+
+msgid "Route rule \"%s\" proxy node is not configured"
+msgstr "路由规则“%s”未配置代理节点"
+
+msgid "Default global DNS is not configured"
+msgstr "未配置默认全局 DNS"
+
+msgid "Firewall proxy port %s does not reference an enabled proxy node"
+msgstr "防火墙代理端口 %s 未指向已启用的代理节点"
+
+msgid "Firewall shunt port %s does not reference an enabled proxy node or shunt service"
+msgstr "防火墙分流端口 %s 未指向已启用的代理节点或分流服务"
+
+msgid "%s references an unavailable Core DNS port"
+msgstr "%s 引用了不可用的核心 DNS 端口"
+
+msgid "Independent DNS is using this Core DNS port. Change it in the Independent DNS module before disabling proxy routing."
+msgstr "独立 DNS 正在使用此核心 DNS 端口，请先在独立 DNS 模块中修改，再关闭分流路由。"
+
+msgid "%s member nodes · %s"
+msgstr "%s 个成员节点 · %s"
+
+msgid "Configuration contains invalid load balancing nodes"
+msgstr "配置包含无效的负载均衡节点"
+
+msgid "DNS exit cannot use Block"
+msgstr "DNS 出口不能使用阻止节点"
+
+msgid "Fallback node must be a load balancing member"
+msgstr "回退节点必须是负载均衡成员"
+
+msgid "First member node"
+msgstr "第一个成员节点"
+
+msgid "Load balancing member node has no valid SOCKS port configured"
+msgstr "负载均衡成员节点未配置有效的 SOCKS 端口"
+
+msgid "Load balancing member node is not enabled"
+msgstr "负载均衡成员节点未启用"
+
+msgid "Load balancing member node not found"
+msgstr "找不到负载均衡成员节点"
+
+msgid "Load balancing node \"%s\" cannot contain load balancing member \"%s\""
+msgstr "负载均衡节点“%s”不能包含另一个负载均衡节点“%s”"
+
+msgid "Load balancing node \"%s\" cannot include itself"
+msgstr "负载均衡节点“%s”不能包含自身"
+
+msgid "Load balancing node \"%s\" contains duplicate member nodes: %s"
+msgstr "负载均衡节点“%s”包含重复成员：%s"
+
+msgid "Load balancing node \"%s\" fallback node \"%s\" is not a member"
+msgstr "负载均衡节点“%s”的回退节点“%s”不在成员列表中"
+
+msgid "Load balancing node \"%s\" has an unsupported backend core"
+msgstr "负载均衡节点“%s”使用了不支持的后端核心"
+
+msgid "Load balancing node \"%s\" has no member nodes"
+msgstr "负载均衡节点“%s”没有成员节点"
+
+msgid "Load balancing node \"%s\" member node \"%s\" does not exist"
+msgstr "负载均衡节点“%s”的成员节点“%s”不存在"
+
+msgid "Load balancing node \"%s\" member node \"%s\" is not enabled"
+msgstr "负载均衡节点“%s”的成员节点“%s”未启用"
+
+msgid "Load balancing node \"%s\" member node \"%s\" has no valid SOCKS port configured"
+msgstr "负载均衡节点“%s”的成员节点“%s”未配置有效的 SOCKS 端口"
+
+msgid "Load balancing node cannot include itself"
+msgstr "负载均衡节点不能包含自身"
+
+msgid "Nested load balancing nodes are not supported"
+msgstr "暂不支持嵌套负载均衡节点"
+
+msgid "Proxy node dependency chain has a cycle: %s"
+msgstr "代理节点依赖链存在循环：%s"
+
+msgid "Select proxy nodes to connect through their local SOCKS ports"
+msgstr "选择成员节点，并通过其本地 SOCKS 端口连接"
+
+msgid "Diagnostics"
+msgstr "诊断"
+
+msgid "Inspect logs, trace routing behavior, and query rule resources"
+msgstr "查看日志、追踪路由行为并查询规则资源"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Routing Diagnostics"
+msgstr "路由诊断"
+
+msgid "Rule Diagnostics"
+msgstr "规则诊断"
+
+msgid "Resource Management"
+msgstr "资源管理"
+
+msgid "Manage downloadable rule resources and runtime components"
+msgstr "管理可下载的规则资源和运行时组件"
+
+msgid "Rule Resources"
+msgstr "规则资源"
+
+msgid "Runtime"
+msgstr "运行时"
+
+msgid "View installed core versions and update runtime components."
+msgstr "查看已安装的核心版本并更新运行时组件。"
+
+msgid "Routing Rules"
+msgstr "路由规则"
+
+msgid "Proxy Routing"
+msgstr "分流路由"
+
+msgid "Configure proxy core routing, DNS, and rule-set settings"
+msgstr "配置代理核心的路由、DNS 和规则集"
+
+msgid "Shunt Troubleshooting"
+msgstr "分流排查"
+
+msgid "Trace router or client traffic and inspect routing failures in Diagnostics."
+msgstr "在诊断中追踪路由器或客户端流量并排查路由故障。"
+
+msgid "Open Diagnostics"
+msgstr "打开诊断"
+
+msgid "Current Version"
+msgstr "当前版本"
+
+msgid "Latest Version"
+msgstr "官方最新版本"
+
+msgid "Unavailable"
+msgstr "获取失败"
+
+msgid "Proxy Nodes"
+msgstr "代理节点"
+
+msgid "Configure Proxy Nodes"
+msgstr "配置代理节点"
+
+msgid "Cannot Delete Proxy Node"
+msgstr "无法删除代理节点"
+
+msgid "Proxy node \"%s\" is referenced by proxy nodes: %s. Remove the references first."
+msgstr "代理节点“%s”正被以下代理节点引用：%s。请先移除引用。"
+
+msgid "Proxy node \"%s\" listen port %s is referenced by firewall settings: %s. Remove the references first."
+msgstr "代理节点“%s”的监听端口 %s 正被以下防火墙设置引用：%s。请先移除引用。"
+
+msgid "DNS Forwarding"
+msgstr "DNS转发"
+
+msgid "Redirect DNS queries from clients selected by the firewall ACL and, when enabled, router system DNS queries to the selected local DNS service"
+msgstr "将防火墙 ACL 选中客户端的 DNS 查询，以及启用代理本机流量时路由器的系统 DNS 查询，重定向到所选本地 DNS 服务"
+
+msgid "Proxy Router Traffic"
+msgstr "代理本机流量"
+
+msgid "Transparently proxy eligible router-originated TCP and UDP traffic"
+msgstr "将符合条件的路由器本机 TCP/UDP 流量纳入透明代理"
+
+msgid "Networks: %s"
+msgstr "网络：%s"
+
+msgid "Firewall zones: %s"
+msgstr "防火墙区域：%s"
+
+msgid "Proxy client traffic entering through the selected logical network interfaces; WAN interfaces cannot be selected"
+msgstr "代理从所选逻辑网络接口进入的客户端流量；不能选择 WAN 接口"
+
+msgid "Exclude client traffic entering through the selected logical network interfaces; WAN interfaces are always excluded"
+msgstr "排除从所选逻辑网络接口进入的客户端流量；WAN 接口始终排除"
+
+msgid "Do not forward"
+msgstr "不转发"
+
+msgid "Not available"
+msgstr "不可用"
+
+msgid "Independent DNS is unavailable or has no valid listen port"
+msgstr "独立 DNS 不可用或未配置有效的监听端口"
+
+msgid "Core DNS is disabled or has no valid listen port"
+msgstr "核心 DNS 已关闭或未配置有效的监听端口"
+
+msgid "Unknown DNS forwarding source: %s"
+msgstr "未知的 DNS 转发来源：%s"
+
+msgid "Firewall DNS forwarding is using Independent DNS. Select another forwarding source in Firewall before changing the DNS service."
+msgstr "防火墙 DNS 转发正在使用独立 DNS，请先在防火墙中选择其他转发来源，再更改 DNS 服务。"
+
+msgid "Firewall DNS forwarding is using Core DNS. Select another forwarding source in Firewall before disabling proxy routing."
+msgstr "防火墙 DNS 转发正在使用核心 DNS，请先在防火墙中选择其他转发来源，再关闭分流路由。"
+
+msgid "%s enabled rules, default DNS: %s"
+msgstr "已启用 %s 条规则，默认 DNS：%s"
+
+msgid "%s enabled rules, default exit: %s"
+msgstr "已启用 %s 条规则，默认出口：%s"
+
+msgid "Address rules are evaluated from top to bottom"
+msgstr "地址规则按从上到下顺序判断"
+
+msgid "Bypass mode"
+msgstr "绕过模式"
+
+msgid "CHN domain list"
+msgstr "国内域名列表"
+
+msgid "CHN domain set"
+msgstr "国内域名集合"
+
+msgid "CHN route set"
+msgstr "国内路由集合"
+
+msgid "Client DNS query"
+msgstr "客户端 DNS 查询"
+
+msgid "Client traffic"
+msgstr "客户端流量"
+
+msgid "Flow preview"
+msgstr "链路预览"
+
+msgid "Custom core configuration"
+msgstr "自定义核心配置"
+
+msgid "Custom direct domain list"
+msgstr "自定义直连域名列表"
+
+msgid "Custom proxy domain list"
+msgstr "自定义代理域名列表"
+
+msgid "DNS flow"
+msgstr "DNS 链路"
+
+msgid "DNS routing rules"
+msgstr "DNS 路由规则"
+
+msgid "DNS upstream"
+msgstr "DNS 上游"
+
+msgid "Default shunt"
+msgstr "默认分流"
+
+msgid "Default shunt port"
+msgstr "默认分流端口"
+
+msgid "Default shunt port is disabled"
+msgstr "默认分流端口已关闭"
+
+msgid "Direct domain branch"
+msgstr "直连域名分支"
+
+msgid "Disabled or invalid listen port"
+msgstr "已关闭或监听端口无效"
+
+msgid "Excluded: %s devices, %s interfaces"
+msgstr "已排除 %s 台设备、%s 个接口"
+
+msgid "Firewall ACL"
+msgstr "防火墙 ACL"
+
+msgid "Firewall classification"
+msgstr "防火墙分流判断"
+
+msgid "Forced direct address"
+msgstr "强制直连地址"
+
+msgid "Forced proxy address"
+msgstr "强制代理地址"
+
+msgid "GFW domain list"
+msgstr "GFW 域名列表"
+
+msgid "GFW domain set"
+msgstr "GFW 域名集合"
+
+msgid "Generated from saved settings. Branches show configured decisions, not a live packet trace."
+msgstr "根据已保存配置生成。分支表示配置判断，并非实时数据包追踪。"
+
+msgid "Independent DNS unavailable"
+msgstr "独立 DNS 不可用"
+
+msgid "Independent DNS: %s"
+msgstr "独立 DNS：%s"
+
+msgid "Internal path cannot be expanded"
+msgstr "无法展开内部链路"
+
+msgid "Keep the original destination"
+msgstr "保持原目标地址"
+
+msgid "Load balancing: %s"
+msgstr "负载均衡：%s"
+
+msgid "Local port %s"
+msgstr "本地端口 %s"
+
+msgid "Members: %s"
+msgstr "成员：%s"
+
+msgid "No DNS redirect"
+msgstr "不重定向 DNS"
+
+msgid "No address rule matched"
+msgstr "未命中地址规则"
+
+msgid "No enabled node uses this port"
+msgstr "没有启用的节点使用此端口"
+
+msgid "No member nodes"
+msgstr "未配置成员节点"
+
+msgid "No protocol selected"
+msgstr "未选择协议"
+
+msgid "No proxy target"
+msgstr "未配置代理目标"
+
+msgid "No valid listen port"
+msgstr "未配置有效监听端口"
+
+msgid "Node unavailable"
+msgstr "节点不可用"
+
+msgid "Not configured"
+msgstr "未配置"
+
+msgid "Other marked non-DNS UDP"
+msgstr "其他已标记的非 DNS UDP"
+
+msgid "Port filter"
+msgstr "端口过滤"
+
+msgid "Protocol conditions may bypass or reject traffic"
+msgstr "协议条件可能直连或拒绝流量"
+
+msgid "Proxy dependency cycle"
+msgstr "代理节点循环依赖"
+
+msgid "Proxy domain branch"
+msgstr "代理域名分支"
+
+msgid "Proxy node unavailable"
+msgstr "代理节点不可用"
+
+msgid "Proxy mode"
+msgstr "代理模式"
+
+msgid "Proxy node: %s"
+msgstr "代理节点：%s"
+
+msgid "Proxy port"
+msgstr "代理端口"
+
+msgid "Reject"
+msgstr "拒绝"
+
+msgid "Router traffic excluded"
+msgstr "不包含路由器本机流量"
+
+msgid "Router traffic included"
+msgstr "包含路由器本机流量"
+
+msgid "Routing rules"
+msgstr "路由规则"
+
+msgid "Routing service"
+msgstr "路由服务"
+
+msgid "SOCKS port %s"
+msgstr "SOCKS 端口 %s"
+
+msgid "Selected: %s devices, %s interfaces"
+msgstr "已选择 %s 台设备、%s 个接口"
+
+msgid "TCP/UDP port 53"
+msgstr "TCP/UDP 端口 53"
+
+msgid "Traffic flow"
+msgstr "请求链路"
+
+msgid "Marked UDP port 443"
+msgstr "已标记的 UDP 端口 443"
+
+msgid "Unknown DNS forwarding source"
+msgstr "未知 DNS 转发来源"
+
+msgid "Unmatched non-standard TCP port"
+msgstr "未匹配的非常用 TCP 端口"
+
+msgid "Upstream proxy: %s"
+msgstr "前置代理：%s"

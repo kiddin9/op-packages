@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "useDefineForClassFields": true
+  },
+  "include": [
+    "views/**/*.ts",
+    "types/**/*.d.ts",
+    "enum/**/*.ts",
+    "module/**/*.ts",
+    "utils/**/*.ts",
+    "core/**/*.ts"
+  ]
+}

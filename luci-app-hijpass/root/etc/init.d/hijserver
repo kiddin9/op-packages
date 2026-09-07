@@ -1,0 +1,149 @@
+#!/bin/sh /etc/rc.common
+
+. /usr/lib/hijpass/app-logger.sh
+
+USE_PROCD=1
+START=99
+STOP=15
+
+NAME=hijserver
+
+DELAY_TIME=10
+NFT_TABLE_POST=/usr/share/nftables.d/table-post/hijserver.nft
+NFT_CHAIN_PRE=/usr/share/nftables.d/chain-pre/input_wan/hijserver.nft
+ENABLED=$(uci -q get hijserver.@hijserver[0].enabled || :)
+LOG_DIR=$(uci -q get hijserver.@hijserver[0].log_dir || :)
+
+SERVER_PORTS=
+REDIRECT_LOG=
+
+start_service() {
+  [ "$ENABLED" != "1" ] && return
+  [ -d "$LOG_DIR" ] || mkdir -p "$LOG_DIR"
+  # 启动进程
+  config_load $NAME
+  log_info "Starting hijserver..."
+  config_foreach run_server server_node
+  sleep 2
+  # 配置防火墙
+  log_info "Configuring server firewall rules..."
+  reset_fw_tproxy
+  reset_geo_cron
+  log_info "Hijserver started successfully"
+}
+
+stop_service() {
+  log_info "Stopping server..."
+  remove_fw_tproxy
+  reset_geo_cron
+  log_info "Server stopped successfully"
+}
+
+service_triggers() {
+  procd_add_reload_trigger "$NAME"
+  procd_add_interface_trigger "interface.*.up" "*" /etc/init.d/$NAME restart
+}
+
+reload_service() {
+  /etc/init.d/$NAME restart
+}
+
+boot() {
+  [ "$DELAY_TIME" -gt 0 ] && sleep "$DELAY_TIME"
+  restart
+}
+
+run_server() {
+  local command log_path name enabled listen_port allow_firewall
+  local enable_std_log="1"
+  config_get enabled "$1" enabled
+  [ "$enabled" != "1" ] && return
+  config_get command "$1" command
+  config_get log_path "$1" log_path
+  config_get name "$1" name
+  config_get listen_port "$1" listen_port
+  config_get allow_firewall "$1" allow_firewall
+
+  local server_dir
+  server_dir=$(uci -q get hijserver.@hijserver[0].server_dir || echo '/etc/hijpass/server')
+  local conf_path="$server_dir/$name-$1.json"
+  command=$(echo "$command" | sed "s|{conf_path}|$conf_path|g")
+
+  if [ -n "$log_path" ]; then
+    : > "$log_path"
+    command="$command >> $log_path 2>&1"
+    enable_std_log="0"
+    REDIRECT_LOG=1
+  else
+    command="$command > /dev/null 2>&1"
+  fi
+
+  if open_instance "$1" "$name" "$command" "$enable_std_log"; then
+    log_info "Server $name started successfully"
+    [ "$allow_firewall" = "1" ] && SERVER_PORTS="$SERVER_PORTS,$listen_port"
+  else
+    log_warn "Server $name start failed"
+  fi
+}
+
+open_instance() {
+  log_debug "id: $1, name: $2, cmd: $3"
+  local instance_name="$1-$2"
+  local cmd="$3"
+  local enable_std_log="$4"
+  procd_open_instance "$instance_name"
+  procd_set_param command /bin/sh -c "$cmd"
+  config_list_foreach "$1" procd_env procd_set_env "$instance_name"
+  if [ "$enable_std_log" = "1" ]; then
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+  fi
+  procd_set_param pidfile "/var/run/$instance_name.pid"
+  procd_close_instance
+}
+
+procd_set_env() {
+  [ -z "$1" ] && return
+  log_debug "Setting $2 env: $1"
+  procd_set_param env "$1"
+}
+
+reset_fw_tproxy() {
+  SERVER_PORTS=$(echo "$SERVER_PORTS" | sed 's/^,//;s/,$//')
+  [ -z "$SERVER_PORTS" ] && return 0
+  log_info "Configuring firewall allow port $SERVER_PORTS"
+  cat <<- EOF > $NFT_TABLE_POST
+		chain $NAME {
+		        tcp dport { $SERVER_PORTS } counter accept
+		        udp dport { $SERVER_PORTS } counter accept
+		        return
+		}
+	EOF
+  cat <<- EOF > $NFT_CHAIN_PRE
+		jump $NAME comment "hijserver rule"
+	EOF
+  if ! fw4 reload > /dev/null 2>&1; then
+    log_error "Failed to reload hijserver firewall rules"
+    exit 1
+  fi
+}
+
+remove_fw_tproxy() {
+  : > $NFT_TABLE_POST
+  : > $NFT_CHAIN_PRE
+  if ! fw4 reload > /dev/null 2>&1; then
+    log_error "Failed to reload hijserver firewall rules"
+    exit 1
+  fi
+  nft delete chain inet fw4 $NAME 2> /dev/null
+}
+
+reset_geo_cron() {
+  sed -i '/hijpass\/clean-service-log\.sh hijserver/d' /etc/crontabs/root 2>/dev/null
+  if [ "$REDIRECT_LOG" = "1" ]; then
+    echo "*/10 * * * * /usr/lib/hijpass/clean-service-log.sh hijserver" >> /etc/crontabs/root
+    log_info "Added log split service cron job: */10 * * * * /usr/lib/hijpass/clean-service-log.sh hijserver"
+  fi
+
+  /etc/init.d/cron restart > /dev/null 2>&1
+}
