@@ -303,6 +303,8 @@ build_rules_map() {
 				if nft_list_ruleset >"$_rules_dump" 2>/dev/null; then
 					map_from_nft_stream labeled <"$_rules_dump"
 					map_from_nft_stream unlabeled <"$_rules_dump"
+				elif [ -z "$_enrich_error" ]; then
+					_enrich_error='nft_failed'
 				fi
 				rm -f "$_rules_dump"
 			else
@@ -315,6 +317,8 @@ build_rules_map() {
 				if run_with_timeout "$IPTABLES_TIMEOUT" iptables-save >"$_rules_dump" 2>/dev/null; then
 					map_from_iptables_save_stream labeled <"$_rules_dump"
 					map_from_iptables_save_stream unlabeled <"$_rules_dump"
+				elif [ -z "$_enrich_error" ]; then
+					_enrich_error='iptables_failed'
 				fi
 				rm -f "$_rules_dump"
 			else
@@ -326,6 +330,8 @@ build_rules_map() {
 					if run_with_timeout "$IPTABLES_TIMEOUT" ip6tables-save >"$_rules_dump" 2>/dev/null; then
 						map_from_iptables_save_stream labeled <"$_rules_dump"
 						map_from_iptables_save_stream unlabeled <"$_rules_dump"
+					elif [ -z "$_enrich_error" ]; then
+						_enrich_error='ip6tables_failed'
 					fi
 					rm -f "$_rules_dump"
 				elif [ -z "$_enrich_error" ]; then
@@ -335,6 +341,9 @@ build_rules_map() {
 			;;
 	esac
 
+	if [ "$backend" = unknown ] && [ -z "$_enrich_error" ]; then
+		_enrich_error='no_backend'
+	fi
 	_rules_json="{\"backend\":\"$backend\",\"rules\":{$OUT}"
 	if [ -n "$_enrich_error" ]; then
 		_rules_json="${_rules_json},\"error\":\"${_enrich_error}\""
@@ -425,8 +434,12 @@ fetch_firewall_logs() {
 	input="$1"
 	lines=$(poll_lines_from_input "$input")
 	# lines is numeric-clamped; stream/oneshot are fixed (not caller-controlled).
-	raw=$(ubus call log read "{\"lines\":$lines,\"stream\":false,\"oneshot\":true}" 2>/dev/null) \
-		|| raw='{"log":[]}'
+	# A dead logd must not look like an empty firewall table (#303): return a
+	# structured error instead of filtering an empty fallback into {"log":[]}.
+	if ! raw=$(ubus call log read "{\"lines\":$lines,\"stream\":false,\"oneshot\":true}" 2>/dev/null); then
+		printf '%s' '{"log":[],"error":"log_read_failed"}'
+		return 0
+	fi
 
 	# Do not swallow a filter failure into a silent empty table (#220).
 	# If the filter exits non-zero but still printed JSON, keep it.
@@ -437,7 +450,7 @@ fetch_firewall_logs() {
 			out='{"log":[],"error":"filter_failed"}'
 		fi
 	fi
-	[ -n "$out" ] || out='{"log":[]}'
+	[ -n "$out" ] || out='{"log":[],"error":"filter_empty"}'
 	printf '%s' "$out"
 }
 
@@ -591,14 +604,14 @@ resolve_addresses() {
 	OUT=''
 
 	if ! command -v jshn >/dev/null 2>&1; then
-		printf '{"names":{}}'
+		printf '{"names":{},"error":"jshn_missing"}'
 		return 0
 	fi
 
 	# shellcheck disable=SC1091
 	. /usr/share/libubox/jshn.sh
 	json_load "$input" 2>/dev/null || {
-		printf '{"names":{}}'
+		printf '{"names":{},"error":"invalid_input"}'
 		return 0
 	}
 
