@@ -25,8 +25,11 @@ from __future__ import absolute_import, division, print_function, \
     with_statement
 
 import os
+import re
 import sys
 import argparse
+
+_VALID_IP_RE = re.compile(r'^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='See README')
@@ -45,7 +48,7 @@ if __name__ == '__main__':
                 sys.stdout.flush()
             else:
                 ips[ip] += 1
-            if ip not in banned and ips[ip] >= config.count:
+            if ip not in banned and ips[ip] >= config.count and _VALID_IP_RE.match(ip):
                 banned.add(ip)
                 cmd = 'iptables -A INPUT -s %s -j DROP' % ip
                 print(cmd, file=sys.stderr)
