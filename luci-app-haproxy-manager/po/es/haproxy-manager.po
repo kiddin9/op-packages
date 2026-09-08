@@ -1,0 +1,499 @@
+msgid ""
+msgstr ""
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Command failed with code %d."
+msgstr "El comando terminó con el código %d."
+
+msgid "%d configuration files"
+msgstr "%d archivos de configuración"
+
+msgid "%d conflicts"
+msgstr "%d conflictos"
+
+msgid "%d services"
+msgstr "%d servicios"
+
+msgid "A restorable snapshot is created before migration and every apply."
+msgstr "Se crea un punto de restauración antes de la migración y de cada aplicación."
+
+msgid "Active listeners"
+msgstr "Escuchas activas"
+
+msgid "Add service"
+msgstr "Añadir servicio"
+
+msgid "Address"
+msgstr "Dirección"
+
+msgid "Applied"
+msgstr "Aplicado"
+
+msgid "Apply"
+msgstr "Aplicar"
+
+msgid "Apply changes"
+msgstr "Aplicar cambios"
+
+msgid "Apply raw config"
+msgstr "Aplicar configuración"
+
+msgid "Apply raw configuration?"
+msgstr "¿Aplicar la configuración manual?"
+
+msgid "Automatic"
+msgstr "Automático"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Check configuration"
+msgstr "Comprobar configuración"
+
+msgid "Config is valid"
+msgstr "La configuración es válida"
+
+msgid "Configuration and firewall are ready."
+msgstr "La configuración y el cortafuegos están listos."
+
+msgid "Configuration is valid. Firewall conflicts: %d"
+msgstr "La configuración es válida. Conflictos del cortafuegos: %d"
+
+msgid "Configure shared Web entry ports, router access, and firewall automation."
+msgstr "Configure los puertos Web compartidos, el acceso al router y la automatización del cortafuegos."
+
+msgid "Conflict"
+msgstr "Conflicto"
+
+msgid "Contents"
+msgstr "Contenido"
+
+msgid "Create recovery point"
+msgstr "Crear punto de restauración"
+
+msgid "Created"
+msgstr "Creado"
+
+msgid "Creates and updates only firewall rules owned by HAProxy Manager."
+msgstr "Crea y actualiza únicamente las reglas del cortafuegos gestionadas por HAProxy Manager."
+
+msgid "Custom TCP"
+msgstr "TCP personalizado"
+
+msgid "Destination"
+msgstr "Destino"
+
+msgid "Destination host"
+msgstr "Host de destino"
+
+msgid "Destination HTTP port"
+msgstr "Puerto HTTP de destino"
+
+msgid "Destination HTTPS port"
+msgstr "Puerto HTTPS de destino"
+
+msgid "Destination RDP port"
+msgstr "Puerto RDP de destino"
+
+msgid "Destination SSH port"
+msgstr "Puerto SSH de destino"
+
+msgid "Disable conflicting forwards during apply"
+msgstr "Desactivar redirecciones conflictivas al aplicar"
+
+msgid "Domain"
+msgstr "Dominio"
+
+msgid "Enable managed configuration"
+msgstr "Activar configuración administrada"
+
+msgid "Enabled"
+msgstr "Activado"
+
+msgid "Every Web service shares these public ports. SSH, Remote Desktop, and Custom TCP services use the ports configured on each service."
+msgstr "Todos los servicios Web comparten estos puertos públicos. SSH, Escritorio remoto y TCP personalizado usan los puertos configurados en cada servicio."
+
+msgid "Existing port-forward conflicts"
+msgstr "Conflictos con redirecciones existentes"
+
+msgid "Expert editor for /etc/haproxy.cfg."
+msgstr "Editor avanzado de /etc/haproxy.cfg."
+
+msgid "Filter services"
+msgstr "Filtrar servicios"
+
+msgid "Firewall"
+msgstr "Cortafuegos"
+
+msgid "Firewall automation"
+msgstr "Automatización del cortafuegos"
+
+msgid "Firewall conflict detected."
+msgstr "Se detectó un conflicto del cortafuegos."
+
+msgid "Generated routes can overwrite manual changes to this file."
+msgstr "Las rutas generadas pueden sobrescribir los cambios manuales de este archivo."
+
+msgid "Grant access to LuCI HAProxy Manager"
+msgstr "Conceder acceso a LuCI HAProxy Manager"
+
+msgid "HAProxy"
+msgstr "HAProxy"
+
+msgid "HAProxy service"
+msgstr "Servicio HAProxy"
+
+msgid "HAProxy Services"
+msgstr "Servicios HAProxy"
+
+msgid "HAProxy Settings"
+msgstr "Ajustes de HAProxy"
+
+msgid "HAProxy Status"
+msgstr "Estado de HAProxy"
+
+msgid "HAProxy version"
+msgstr "Versión de HAProxy"
+
+msgid "HAProxy, firewall, and LuCI settings will be restored from %s."
+msgstr "La configuración de HAProxy, del cortafuegos y de LuCI se restaurará desde %s."
+
+msgid "HTTP"
+msgstr "HTTP"
+
+msgid "HTTP only"
+msgstr "Solo HTTP"
+
+msgid "HTTPS"
+msgstr "HTTPS"
+
+msgid "HTTPS only"
+msgstr "Solo HTTPS"
+
+msgid "Keep LuCI on the LAN address"
+msgstr "Mantener LuCI en la dirección LAN"
+
+msgid "Latest"
+msgstr "Más reciente"
+
+msgid "Legacy Web"
+msgstr "Web heredado"
+
+msgid "LuCI LAN address"
+msgstr "Dirección LAN de LuCI"
+
+msgid "Managed"
+msgstr "Gestionado"
+
+msgid "Manual"
+msgstr "Manual"
+
+msgid "My service"
+msgstr "Mi servicio"
+
+msgid "No HAProxy or LuCI listeners detected."
+msgstr "No se detectaron escuchas de HAProxy o LuCI."
+
+msgid "No matching services"
+msgstr "No hay servicios coincidentes"
+
+msgid "No recovery points yet."
+msgstr "Aún no hay puntos de restauración."
+
+msgid "Not available"
+msgstr "No disponible"
+
+msgid "Not set"
+msgstr "Sin definir"
+
+msgid "Off"
+msgstr "Desactivado"
+
+msgid "On"
+msgstr "Activado"
+
+msgid "Open HAProxy ports on WAN automatically"
+msgstr "Abrir automáticamente los puertos de HAProxy en WAN"
+
+msgid "Open recovery"
+msgstr "Abrir recuperación"
+
+msgid "Pending"
+msgstr "Pendiente"
+
+msgid "Process"
+msgstr "Proceso"
+
+msgid "Protocol"
+msgstr "Protocolo"
+
+msgid "Public endpoint"
+msgstr "Punto de entrada público"
+
+msgid "Public HTTP port"
+msgstr "Puerto HTTP público"
+
+msgid "Public HTTPS port"
+msgstr "Puerto HTTPS público"
+
+msgid "Public RDP port"
+msgstr "Puerto RDP público"
+
+msgid "Public SSH port"
+msgstr "Puerto SSH público"
+
+msgid "Publish HTTP"
+msgstr "Publicar HTTP"
+
+msgid "Publish HTTPS"
+msgstr "Publicar HTTPS"
+
+msgid "Publish Web, SSH, Remote Desktop, and custom TCP services from one place."
+msgstr "Publique servicios Web, SSH, Escritorio remoto y TCP personalizado desde un solo lugar."
+
+msgid "Raw Config"
+msgstr "Configuración"
+
+msgid "Raw HAProxy Config"
+msgstr "Configuración de HAProxy"
+
+msgid "Raw HAProxy configuration"
+msgstr "Configuración de HAProxy"
+
+msgid "Ready"
+msgstr "Listo"
+
+msgid "Recommended when HAProxy uses public ports 80 or 443. LuCI remains available from the local network."
+msgstr "Recomendado cuando HAProxy usa los puertos públicos 80 o 443. LuCI seguirá disponible desde la red local."
+
+msgid "Recovery"
+msgstr "Recuperación"
+
+msgid "Recovery points"
+msgstr "Puntos de restauración"
+
+msgid "Refresh"
+msgstr "Actualizar"
+
+msgid "Remote Desktop"
+msgstr "Escritorio remoto"
+
+msgid "Restore"
+msgstr "Restaurar"
+
+msgid "Restore configuration?"
+msgstr "¿Restaurar la configuración?"
+
+msgid "Restore HAProxy, firewall, and LuCI settings from a previous snapshot."
+msgstr "Restaure la configuración de HAProxy, del cortafuegos y de LuCI desde una instantánea anterior."
+
+msgid "Restored"
+msgstr "Restaurado"
+
+msgid "Review firewall settings"
+msgstr "Revisar ajustes del cortafuegos"
+
+msgid "Router access"
+msgstr "Acceso al router"
+
+msgid "Running"
+msgstr "En ejecución"
+
+msgid "Save and apply"
+msgstr "Guardar y aplicar"
+
+msgid "Save settings"
+msgstr "Guardar ajustes"
+
+msgid "Service"
+msgstr "Servicio"
+
+msgid "Service health, active listeners, and recovery points."
+msgstr "Estado del servicio, listeners activos y puntos de restauración."
+
+msgid "Service name"
+msgstr "Nombre del servicio"
+
+msgid "Service type"
+msgstr "Tipo de servicio"
+
+msgid "Services"
+msgstr "Servicios"
+
+msgid "Settings"
+msgstr "Ajustes"
+
+msgid "Settings saved"
+msgstr "Ajustes guardados"
+
+msgid "SSH"
+msgstr "SSH"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Stop and show conflicts"
+msgstr "Detener y mostrar conflictos"
+
+msgid "Stopped"
+msgstr "Detenido"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "TCP port mappings"
+msgstr "Asignaciones de puertos TCP"
+
+msgid "The file will be validated and backed up before HAProxy restarts."
+msgstr "El archivo se validará y guardará antes de reiniciar HAProxy."
+
+msgid "Use the public:destination format, for example 8443:443."
+msgstr "Use el formato público:destino, por ejemplo 8443:443."
+
+msgid "Validate"
+msgstr "Validar"
+
+msgid "WAN address"
+msgstr "Dirección WAN"
+
+msgid "WAN bind address"
+msgstr "Dirección de enlace WAN"
+
+msgid "WAN firewall zone"
+msgstr "Zona WAN del cortafuegos"
+
+msgid "Web"
+msgstr "Web"
+
+msgid "Web (HTTP + HTTPS)"
+msgstr "Web (HTTP + HTTPS)"
+
+msgid "Web entry ports"
+msgstr "Puertos de entrada Web"
+msgid "Changes saved and applied."
+msgstr "Cambios guardados y aplicados."
+
+msgid "Delete and apply"
+msgstr "Eliminar y aplicar"
+
+msgid "Delete service?"
+msgstr "¿Eliminar el servicio?"
+
+msgid "Synchronize now"
+msgstr "Sincronizar ahora"
+
+msgid "The service will be removed from HAProxy and the firewall immediately."
+msgstr "El servicio se eliminará inmediatamente de HAProxy y del cortafuegos."
+
+msgid "Unable to create a recovery point."
+msgstr "No se pudo crear un punto de recuperación."
+
+msgid "Automatic recovery"
+msgstr "Recuperación automática"
+
+msgid "Disabled"
+msgstr "Desactivada"
+
+msgid "Failed"
+msgstr "Falló"
+
+msgid "If HAProxy stops before a listener address exists, retry it after a network interface comes up and retain diagnostics for the seven latest incidents."
+msgstr "Si HAProxy se detiene antes de que exista una dirección de escucha, reintentar tras activarse una interfaz de red y conservar el diagnóstico de los siete incidentes más recientes."
+
+msgid "In progress"
+msgstr "En curso"
+
+msgid "Invalid configuration"
+msgstr "Configuración no válida"
+
+msgid "Last recovery"
+msgstr "Última recuperación"
+
+msgid "No incidents recorded"
+msgstr "No se registraron incidentes"
+
+msgid "Recover HAProxy after networking becomes ready"
+msgstr "Recuperar HAProxy cuando la red esté lista"
+
+msgid "Recovered"
+msgstr "Recuperado"
+
+msgid "Recovery point failed"
+msgstr "Error al crear el punto de recuperación"
+
+msgid "WAN network interface"
+msgstr "Interfaz de red WAN"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Configuration mode"
+msgstr "Modo de configuración"
+
+msgid "Diagnostic report for %s."
+msgstr "Informe de diagnóstico de %s."
+
+msgid "Enter an HTTP or HTTPS URL without spaces."
+msgstr "Introduzca una URL HTTP o HTTPS sin espacios."
+
+msgid "Failed, configuration restored"
+msgstr "Error; se restauró la configuración"
+
+msgid "Failed, restore also failed"
+msgstr "Error; la restauración también falló"
+
+msgid "Generated routes"
+msgstr "Rutas generadas"
+
+msgid "Incident diagnostics"
+msgstr "Diagnóstico del incidente"
+
+msgid "Not managed"
+msgstr "No gestionado"
+
+msgid "Raw configuration"
+msgstr "Configuración manual"
+
+msgid "Reconciles generated listeners after WAN address changes, retries a stopped service, and retains diagnostics for the seven latest incidents. Raw configurations are never overwritten."
+msgstr "Sincroniza los listeners generados tras cambios de la dirección WAN, vuelve a iniciar un servicio detenido y conserva el diagnóstico de los siete incidentes más recientes. Las configuraciones manuales nunca se sobrescriben."
+
+msgid "Recovery incidents"
+msgstr "Incidentes de recuperación"
+
+msgid "Result"
+msgstr "Resultado"
+
+msgid "Send recovery webhook notifications"
+msgstr "Enviar notificaciones webhook de recuperación"
+
+msgid "Sends only the incident identifier, result, action, interface, and reason. Configuration, addresses, and diagnostic logs are never included."
+msgstr "Solo envía el identificador del incidente, el resultado, la acción, la interfaz y el motivo. Nunca incluye la configuración, las direcciones ni los registros de diagnóstico."
+
+msgid "The selected logical interface is monitored for address changes. In multi-WAN setups, select the interface that receives public connections."
+msgstr "Se supervisan los cambios de dirección de la interfaz lógica seleccionada. En configuraciones multi-WAN, seleccione la interfaz que recibe conexiones públicas."
+
+msgid "The seven latest automatic recovery reports are retained on the router."
+msgstr "El router conserva los siete informes de recuperación automática más recientes."
+
+msgid "Trigger"
+msgstr "Desencadenante"
+
+msgid "View"
+msgstr "Ver"
+
+msgid "WAN address reconciled"
+msgstr "Dirección WAN sincronizada"
+
+msgid "WAN address unavailable"
+msgstr "Dirección WAN no disponible"
+
+msgid "Webhook URL"
+msgstr "URL del webhook"
+msgid "Generated configuration is invalid"
+msgstr "La configuración generada no es válida"
+
+msgid "Configuration installation failed"
+msgstr "No se pudo instalar la configuración"

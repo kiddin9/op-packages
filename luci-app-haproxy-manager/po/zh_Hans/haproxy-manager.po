@@ -1,0 +1,499 @@
+msgid ""
+msgstr ""
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Command failed with code %d."
+msgstr "命令以代码 %d 退出。"
+
+msgid "%d configuration files"
+msgstr "%d 个配置文件"
+
+msgid "%d conflicts"
+msgstr "%d 个冲突"
+
+msgid "%d services"
+msgstr "%d 个服务"
+
+msgid "A restorable snapshot is created before migration and every apply."
+msgstr "迁移前和每次应用更改时都会创建可恢复的快照。"
+
+msgid "Active listeners"
+msgstr "活动监听器"
+
+msgid "Add service"
+msgstr "添加服务"
+
+msgid "Address"
+msgstr "地址"
+
+msgid "Applied"
+msgstr "已应用"
+
+msgid "Apply"
+msgstr "应用"
+
+msgid "Apply changes"
+msgstr "应用更改"
+
+msgid "Apply raw config"
+msgstr "应用配置"
+
+msgid "Apply raw configuration?"
+msgstr "应用手动配置？"
+
+msgid "Automatic"
+msgstr "自动"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Check configuration"
+msgstr "检查配置"
+
+msgid "Config is valid"
+msgstr "配置有效"
+
+msgid "Configuration and firewall are ready."
+msgstr "配置和防火墙已就绪。"
+
+msgid "Configuration is valid. Firewall conflicts: %d"
+msgstr "配置有效。防火墙冲突：%d"
+
+msgid "Configure shared Web entry ports, router access, and firewall automation."
+msgstr "配置共享 Web 入口端口、路由器访问和防火墙自动化。"
+
+msgid "Conflict"
+msgstr "冲突"
+
+msgid "Contents"
+msgstr "内容"
+
+msgid "Create recovery point"
+msgstr "创建恢复点"
+
+msgid "Created"
+msgstr "创建时间"
+
+msgid "Creates and updates only firewall rules owned by HAProxy Manager."
+msgstr "仅创建和更新由 HAProxy Manager 管理的防火墙规则。"
+
+msgid "Custom TCP"
+msgstr "自定义 TCP"
+
+msgid "Destination"
+msgstr "目标"
+
+msgid "Destination host"
+msgstr "目标主机"
+
+msgid "Destination HTTP port"
+msgstr "目标 HTTP 端口"
+
+msgid "Destination HTTPS port"
+msgstr "目标 HTTPS 端口"
+
+msgid "Destination RDP port"
+msgstr "目标 RDP 端口"
+
+msgid "Destination SSH port"
+msgstr "目标 SSH 端口"
+
+msgid "Disable conflicting forwards during apply"
+msgstr "应用时禁用冲突的端口转发"
+
+msgid "Domain"
+msgstr "域名"
+
+msgid "Enable managed configuration"
+msgstr "启用托管配置"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Every Web service shares these public ports. SSH, Remote Desktop, and Custom TCP services use the ports configured on each service."
+msgstr "所有 Web 服务共享这些公网端口。SSH、远程桌面和自定义 TCP 服务使用各自配置的端口。"
+
+msgid "Existing port-forward conflicts"
+msgstr "现有端口转发冲突"
+
+msgid "Expert editor for /etc/haproxy.cfg."
+msgstr "/etc/haproxy.cfg 高级编辑器。"
+
+msgid "Filter services"
+msgstr "筛选服务"
+
+msgid "Firewall"
+msgstr "防火墙"
+
+msgid "Firewall automation"
+msgstr "防火墙自动化"
+
+msgid "Firewall conflict detected."
+msgstr "检测到防火墙冲突。"
+
+msgid "Generated routes can overwrite manual changes to this file."
+msgstr "生成路由可能会覆盖对此文件的手动修改。"
+
+msgid "Grant access to LuCI HAProxy Manager"
+msgstr "授予访问 LuCI HAProxy Manager 的权限"
+
+msgid "HAProxy"
+msgstr "HAProxy"
+
+msgid "HAProxy service"
+msgstr "HAProxy 服务"
+
+msgid "HAProxy Services"
+msgstr "HAProxy 服务"
+
+msgid "HAProxy Settings"
+msgstr "HAProxy 设置"
+
+msgid "HAProxy Status"
+msgstr "HAProxy 状态"
+
+msgid "HAProxy version"
+msgstr "HAProxy 版本"
+
+msgid "HAProxy, firewall, and LuCI settings will be restored from %s."
+msgstr "将从 %s 恢复 HAProxy、防火墙和 LuCI 设置。"
+
+msgid "HTTP"
+msgstr "HTTP"
+
+msgid "HTTP only"
+msgstr "仅 HTTP"
+
+msgid "HTTPS"
+msgstr "HTTPS"
+
+msgid "HTTPS only"
+msgstr "仅 HTTPS"
+
+msgid "Keep LuCI on the LAN address"
+msgstr "让 LuCI 仅使用 LAN 地址"
+
+msgid "Latest"
+msgstr "最新"
+
+msgid "Legacy Web"
+msgstr "旧版 Web"
+
+msgid "LuCI LAN address"
+msgstr "LuCI LAN 地址"
+
+msgid "Managed"
+msgstr "已管理"
+
+msgid "Manual"
+msgstr "手动"
+
+msgid "My service"
+msgstr "我的服务"
+
+msgid "No HAProxy or LuCI listeners detected."
+msgstr "未检测到 HAProxy 或 LuCI 监听器。"
+
+msgid "No matching services"
+msgstr "没有匹配的服务"
+
+msgid "No recovery points yet."
+msgstr "还没有恢复点。"
+
+msgid "Not available"
+msgstr "不可用"
+
+msgid "Not set"
+msgstr "未设置"
+
+msgid "Off"
+msgstr "关闭"
+
+msgid "On"
+msgstr "开启"
+
+msgid "Open HAProxy ports on WAN automatically"
+msgstr "自动在 WAN 上开放 HAProxy 端口"
+
+msgid "Open recovery"
+msgstr "打开恢复"
+
+msgid "Pending"
+msgstr "等待应用"
+
+msgid "Process"
+msgstr "进程"
+
+msgid "Protocol"
+msgstr "协议"
+
+msgid "Public endpoint"
+msgstr "公共入口"
+
+msgid "Public HTTP port"
+msgstr "公网 HTTP 端口"
+
+msgid "Public HTTPS port"
+msgstr "公网 HTTPS 端口"
+
+msgid "Public RDP port"
+msgstr "公网 RDP 端口"
+
+msgid "Public SSH port"
+msgstr "公网 SSH 端口"
+
+msgid "Publish HTTP"
+msgstr "发布 HTTP"
+
+msgid "Publish HTTPS"
+msgstr "发布 HTTPS"
+
+msgid "Publish Web, SSH, Remote Desktop, and custom TCP services from one place."
+msgstr "在一个界面中发布 Web、SSH、远程桌面和自定义 TCP 服务。"
+
+msgid "Raw Config"
+msgstr "原始配置"
+
+msgid "Raw HAProxy Config"
+msgstr "HAProxy 原始配置"
+
+msgid "Raw HAProxy configuration"
+msgstr "HAProxy 原始配置"
+
+msgid "Ready"
+msgstr "就绪"
+
+msgid "Recommended when HAProxy uses public ports 80 or 443. LuCI remains available from the local network."
+msgstr "当 HAProxy 使用公网端口 80 或 443 时建议启用。LuCI 仍可从本地网络访问。"
+
+msgid "Recovery"
+msgstr "恢复"
+
+msgid "Recovery points"
+msgstr "恢复点"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Remote Desktop"
+msgstr "远程桌面"
+
+msgid "Restore"
+msgstr "恢复"
+
+msgid "Restore configuration?"
+msgstr "恢复配置？"
+
+msgid "Restore HAProxy, firewall, and LuCI settings from a previous snapshot."
+msgstr "从以前的快照恢复 HAProxy、防火墙和 LuCI 设置。"
+
+msgid "Restored"
+msgstr "已恢复"
+
+msgid "Review firewall settings"
+msgstr "检查防火墙设置"
+
+msgid "Router access"
+msgstr "路由器访问"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Save and apply"
+msgstr "保存并应用"
+
+msgid "Save settings"
+msgstr "保存设置"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Service health, active listeners, and recovery points."
+msgstr "服务状态、活动监听器和恢复点。"
+
+msgid "Service name"
+msgstr "服务名称"
+
+msgid "Service type"
+msgstr "服务类型"
+
+msgid "Services"
+msgstr "服务"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Settings saved"
+msgstr "设置已保存"
+
+msgid "SSH"
+msgstr "SSH"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Stop and show conflicts"
+msgstr "停止并显示冲突"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "TCP port mappings"
+msgstr "TCP 端口映射"
+
+msgid "The file will be validated and backed up before HAProxy restarts."
+msgstr "HAProxy 重启前将验证并备份该文件。"
+
+msgid "Use the public:destination format, for example 8443:443."
+msgstr "请使用 公网:目标 格式，例如 8443:443。"
+
+msgid "Validate"
+msgstr "验证"
+
+msgid "WAN address"
+msgstr "WAN 地址"
+
+msgid "WAN bind address"
+msgstr "WAN 绑定地址"
+
+msgid "WAN firewall zone"
+msgstr "WAN 防火墙区域"
+
+msgid "Web"
+msgstr "Web"
+
+msgid "Web (HTTP + HTTPS)"
+msgstr "Web（HTTP + HTTPS）"
+
+msgid "Web entry ports"
+msgstr "Web 入口端口"
+msgid "Changes saved and applied."
+msgstr "更改已保存并应用。"
+
+msgid "Delete and apply"
+msgstr "删除并应用"
+
+msgid "Delete service?"
+msgstr "删除服务？"
+
+msgid "Synchronize now"
+msgstr "立即同步"
+
+msgid "The service will be removed from HAProxy and the firewall immediately."
+msgstr "该服务将立即从 HAProxy 和防火墙中移除。"
+
+msgid "Unable to create a recovery point."
+msgstr "无法创建恢复点。"
+
+msgid "Automatic recovery"
+msgstr "自动恢复"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "If HAProxy stops before a listener address exists, retry it after a network interface comes up and retain diagnostics for the seven latest incidents."
+msgstr "如果 HAProxy 在监听地址可用前停止，则在网络接口启动后重试，并保留最近七次事件的诊断信息。"
+
+msgid "In progress"
+msgstr "进行中"
+
+msgid "Invalid configuration"
+msgstr "配置无效"
+
+msgid "Last recovery"
+msgstr "最近一次恢复"
+
+msgid "No incidents recorded"
+msgstr "尚无事件记录"
+
+msgid "Recover HAProxy after networking becomes ready"
+msgstr "网络就绪后恢复 HAProxy"
+
+msgid "Recovered"
+msgstr "已恢复"
+
+msgid "Recovery point failed"
+msgstr "恢复点创建失败"
+
+msgid "WAN network interface"
+msgstr "WAN 网络接口"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Configuration mode"
+msgstr "配置模式"
+
+msgid "Diagnostic report for %s."
+msgstr "%s 的诊断报告。"
+
+msgid "Enter an HTTP or HTTPS URL without spaces."
+msgstr "请输入不含空格的 HTTP 或 HTTPS URL。"
+
+msgid "Failed, configuration restored"
+msgstr "失败，已恢复配置"
+
+msgid "Failed, restore also failed"
+msgstr "失败，恢复操作也失败"
+
+msgid "Generated routes"
+msgstr "生成的路由"
+
+msgid "Incident diagnostics"
+msgstr "事件诊断"
+
+msgid "Not managed"
+msgstr "未管理"
+
+msgid "Raw configuration"
+msgstr "手动配置"
+
+msgid "Reconciles generated listeners after WAN address changes, retries a stopped service, and retains diagnostics for the seven latest incidents. Raw configurations are never overwritten."
+msgstr "WAN 地址变化后同步生成的监听器，重试已停止的服务，并保留最近七次事件的诊断信息。手动配置绝不会被覆盖。"
+
+msgid "Recovery incidents"
+msgstr "恢复事件"
+
+msgid "Result"
+msgstr "结果"
+
+msgid "Send recovery webhook notifications"
+msgstr "发送恢复 Webhook 通知"
+
+msgid "Sends only the incident identifier, result, action, interface, and reason. Configuration, addresses, and diagnostic logs are never included."
+msgstr "仅发送事件标识符、结果、操作、接口和原因。绝不会包含配置、地址和诊断日志。"
+
+msgid "The selected logical interface is monitored for address changes. In multi-WAN setups, select the interface that receives public connections."
+msgstr "监控所选逻辑接口的地址变化。在多 WAN 配置中，请选择接收公网连接的接口。"
+
+msgid "The seven latest automatic recovery reports are retained on the router."
+msgstr "路由器会保留最近七份自动恢复报告。"
+
+msgid "Trigger"
+msgstr "触发条件"
+
+msgid "View"
+msgstr "查看"
+
+msgid "WAN address reconciled"
+msgstr "WAN 地址已同步"
+
+msgid "WAN address unavailable"
+msgstr "WAN 地址不可用"
+
+msgid "Webhook URL"
+msgstr "Webhook URL"
+msgid "Generated configuration is invalid"
+msgstr "生成的配置无效"
+
+msgid "Configuration installation failed"
+msgstr "配置安装失败"

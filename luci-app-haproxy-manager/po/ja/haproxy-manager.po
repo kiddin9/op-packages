@@ -1,0 +1,499 @@
+msgid ""
+msgstr ""
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Command failed with code %d."
+msgstr "コマンドはコード %d で終了しました。"
+
+msgid "%d configuration files"
+msgstr "%d 個の設定ファイル"
+
+msgid "%d conflicts"
+msgstr "%d 件の競合"
+
+msgid "%d services"
+msgstr "%d 個のサービス"
+
+msgid "A restorable snapshot is created before migration and every apply."
+msgstr "移行前および変更を適用するたびに復元ポイントを作成します。"
+
+msgid "Active listeners"
+msgstr "有効なリスナー"
+
+msgid "Add service"
+msgstr "サービスを追加"
+
+msgid "Address"
+msgstr "アドレス"
+
+msgid "Applied"
+msgstr "適用しました"
+
+msgid "Apply"
+msgstr "適用"
+
+msgid "Apply changes"
+msgstr "変更を適用"
+
+msgid "Apply raw config"
+msgstr "設定を適用"
+
+msgid "Apply raw configuration?"
+msgstr "手動設定を適用しますか？"
+
+msgid "Automatic"
+msgstr "自動"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Check configuration"
+msgstr "設定を確認"
+
+msgid "Config is valid"
+msgstr "設定は有効です"
+
+msgid "Configuration and firewall are ready."
+msgstr "設定とファイアウォールの準備が完了しました。"
+
+msgid "Configuration is valid. Firewall conflicts: %d"
+msgstr "設定は有効です。ファイアウォールの競合: %d"
+
+msgid "Configure shared Web entry ports, router access, and firewall automation."
+msgstr "共有 Web ポート、ルーターへのアクセス、ファイアウォールの自動化を設定します。"
+
+msgid "Conflict"
+msgstr "競合"
+
+msgid "Contents"
+msgstr "内容"
+
+msgid "Create recovery point"
+msgstr "復元ポイントを作成"
+
+msgid "Created"
+msgstr "作成日時"
+
+msgid "Creates and updates only firewall rules owned by HAProxy Manager."
+msgstr "HAProxy Manager が所有するファイアウォールルールのみを作成、更新します。"
+
+msgid "Custom TCP"
+msgstr "カスタム TCP"
+
+msgid "Destination"
+msgstr "転送先"
+
+msgid "Destination host"
+msgstr "転送先ホスト"
+
+msgid "Destination HTTP port"
+msgstr "転送先 HTTP ポート"
+
+msgid "Destination HTTPS port"
+msgstr "転送先 HTTPS ポート"
+
+msgid "Destination RDP port"
+msgstr "転送先 RDP ポート"
+
+msgid "Destination SSH port"
+msgstr "転送先 SSH ポート"
+
+msgid "Disable conflicting forwards during apply"
+msgstr "適用時に競合する転送を無効化"
+
+msgid "Domain"
+msgstr "ドメイン"
+
+msgid "Enable managed configuration"
+msgstr "管理対象の設定を有効化"
+
+msgid "Enabled"
+msgstr "有効"
+
+msgid "Every Web service shares these public ports. SSH, Remote Desktop, and Custom TCP services use the ports configured on each service."
+msgstr "すべての Web サービスはこれらの公開ポートを共有します。SSH、リモートデスクトップ、カスタム TCP は各サービスに設定したポートを使用します。"
+
+msgid "Existing port-forward conflicts"
+msgstr "既存のポート転送との競合"
+
+msgid "Expert editor for /etc/haproxy.cfg."
+msgstr "/etc/haproxy.cfg の上級者向けエディターです。"
+
+msgid "Filter services"
+msgstr "サービスを絞り込み"
+
+msgid "Firewall"
+msgstr "ファイアウォール"
+
+msgid "Firewall automation"
+msgstr "ファイアウォールの自動化"
+
+msgid "Firewall conflict detected."
+msgstr "ファイアウォールの競合を検出しました。"
+
+msgid "Generated routes can overwrite manual changes to this file."
+msgstr "生成されたルートにより、このファイルの手動変更が上書きされる場合があります。"
+
+msgid "Grant access to LuCI HAProxy Manager"
+msgstr "LuCI HAProxy Manager へのアクセスを許可"
+
+msgid "HAProxy"
+msgstr "HAProxy"
+
+msgid "HAProxy service"
+msgstr "HAProxy サービス"
+
+msgid "HAProxy Services"
+msgstr "HAProxy サービス"
+
+msgid "HAProxy Settings"
+msgstr "HAProxy 設定"
+
+msgid "HAProxy Status"
+msgstr "HAProxy ステータス"
+
+msgid "HAProxy version"
+msgstr "HAProxy バージョン"
+
+msgid "HAProxy, firewall, and LuCI settings will be restored from %s."
+msgstr "HAProxy、ファイアウォール、LuCI の設定を %s から復元します。"
+
+msgid "HTTP"
+msgstr "HTTP"
+
+msgid "HTTP only"
+msgstr "HTTP のみ"
+
+msgid "HTTPS"
+msgstr "HTTPS"
+
+msgid "HTTPS only"
+msgstr "HTTPS のみ"
+
+msgid "Keep LuCI on the LAN address"
+msgstr "LuCI を LAN アドレスに限定"
+
+msgid "Latest"
+msgstr "最新"
+
+msgid "Legacy Web"
+msgstr "旧形式 Web"
+
+msgid "LuCI LAN address"
+msgstr "LuCI LAN アドレス"
+
+msgid "Managed"
+msgstr "管理中"
+
+msgid "Manual"
+msgstr "手動"
+
+msgid "My service"
+msgstr "マイサービス"
+
+msgid "No HAProxy or LuCI listeners detected."
+msgstr "HAProxy または LuCI のリスナーが見つかりません。"
+
+msgid "No matching services"
+msgstr "一致するサービスはありません"
+
+msgid "No recovery points yet."
+msgstr "復元ポイントはまだありません。"
+
+msgid "Not available"
+msgstr "利用不可"
+
+msgid "Not set"
+msgstr "未設定"
+
+msgid "Off"
+msgstr "オフ"
+
+msgid "On"
+msgstr "オン"
+
+msgid "Open HAProxy ports on WAN automatically"
+msgstr "WAN の HAProxy ポートを自動的に開く"
+
+msgid "Open recovery"
+msgstr "復元を開く"
+
+msgid "Pending"
+msgstr "適用待ち"
+
+msgid "Process"
+msgstr "プロセス"
+
+msgid "Protocol"
+msgstr "プロトコル"
+
+msgid "Public endpoint"
+msgstr "公開エンドポイント"
+
+msgid "Public HTTP port"
+msgstr "公開 HTTP ポート"
+
+msgid "Public HTTPS port"
+msgstr "公開 HTTPS ポート"
+
+msgid "Public RDP port"
+msgstr "公開 RDP ポート"
+
+msgid "Public SSH port"
+msgstr "公開 SSH ポート"
+
+msgid "Publish HTTP"
+msgstr "HTTP を公開"
+
+msgid "Publish HTTPS"
+msgstr "HTTPS を公開"
+
+msgid "Publish Web, SSH, Remote Desktop, and custom TCP services from one place."
+msgstr "Web、SSH、リモートデスクトップ、カスタム TCP サービスを一か所から公開します。"
+
+msgid "Raw Config"
+msgstr "生設定"
+
+msgid "Raw HAProxy Config"
+msgstr "HAProxy 生設定"
+
+msgid "Raw HAProxy configuration"
+msgstr "HAProxy 生設定"
+
+msgid "Ready"
+msgstr "準備完了"
+
+msgid "Recommended when HAProxy uses public ports 80 or 443. LuCI remains available from the local network."
+msgstr "HAProxy が公開ポート 80 または 443 を使用する場合に推奨します。LuCI はローカルネットワークから利用できます。"
+
+msgid "Recovery"
+msgstr "復元"
+
+msgid "Recovery points"
+msgstr "復元ポイント"
+
+msgid "Refresh"
+msgstr "更新"
+
+msgid "Remote Desktop"
+msgstr "リモートデスクトップ"
+
+msgid "Restore"
+msgstr "復元"
+
+msgid "Restore configuration?"
+msgstr "設定を復元しますか？"
+
+msgid "Restore HAProxy, firewall, and LuCI settings from a previous snapshot."
+msgstr "以前のスナップショットから HAProxy、ファイアウォール、LuCI の設定を復元します。"
+
+msgid "Restored"
+msgstr "復元しました"
+
+msgid "Review firewall settings"
+msgstr "ファイアウォール設定を確認"
+
+msgid "Router access"
+msgstr "ルーターへのアクセス"
+
+msgid "Running"
+msgstr "実行中"
+
+msgid "Save and apply"
+msgstr "保存して適用"
+
+msgid "Save settings"
+msgstr "設定を保存"
+
+msgid "Service"
+msgstr "サービス"
+
+msgid "Service health, active listeners, and recovery points."
+msgstr "サービス状態、待受ポート、復元ポイントを表示します。"
+
+msgid "Service name"
+msgstr "サービス名"
+
+msgid "Service type"
+msgstr "サービス種別"
+
+msgid "Services"
+msgstr "サービス"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "Settings saved"
+msgstr "設定を保存しました"
+
+msgid "SSH"
+msgstr "SSH"
+
+msgid "Status"
+msgstr "ステータス"
+
+msgid "Stop and show conflicts"
+msgstr "停止して競合を表示"
+
+msgid "Stopped"
+msgstr "停止中"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "TCP port mappings"
+msgstr "TCP ポートマッピング"
+
+msgid "The file will be validated and backed up before HAProxy restarts."
+msgstr "HAProxy の再起動前にファイルを検証し、バックアップします。"
+
+msgid "Use the public:destination format, for example 8443:443."
+msgstr "公開:転送先 の形式を使用してください。例: 8443:443"
+
+msgid "Validate"
+msgstr "検証"
+
+msgid "WAN address"
+msgstr "WAN アドレス"
+
+msgid "WAN bind address"
+msgstr "WAN バインドアドレス"
+
+msgid "WAN firewall zone"
+msgstr "WAN ファイアウォールゾーン"
+
+msgid "Web"
+msgstr "Web"
+
+msgid "Web (HTTP + HTTPS)"
+msgstr "Web (HTTP + HTTPS)"
+
+msgid "Web entry ports"
+msgstr "Web 公開ポート"
+msgid "Changes saved and applied."
+msgstr "変更を保存して適用しました。"
+
+msgid "Delete and apply"
+msgstr "削除して適用"
+
+msgid "Delete service?"
+msgstr "サービスを削除しますか？"
+
+msgid "Synchronize now"
+msgstr "今すぐ同期"
+
+msgid "The service will be removed from HAProxy and the firewall immediately."
+msgstr "サービスは HAProxy とファイアウォールから直ちに削除されます。"
+
+msgid "Unable to create a recovery point."
+msgstr "復元ポイントを作成できません。"
+
+msgid "Automatic recovery"
+msgstr "自動復旧"
+
+msgid "Disabled"
+msgstr "無効"
+
+msgid "Failed"
+msgstr "失敗"
+
+msgid "If HAProxy stops before a listener address exists, retry it after a network interface comes up and retain diagnostics for the seven latest incidents."
+msgstr "リスナーアドレスが利用可能になる前に HAProxy が停止した場合、ネットワークインターフェースの起動後に再試行し、最新 7 件の診断を保存します。"
+
+msgid "In progress"
+msgstr "進行中"
+
+msgid "Invalid configuration"
+msgstr "無効な設定"
+
+msgid "Last recovery"
+msgstr "最終復旧"
+
+msgid "No incidents recorded"
+msgstr "インシデントは記録されていません"
+
+msgid "Recover HAProxy after networking becomes ready"
+msgstr "ネットワーク準備完了後に HAProxy を復旧"
+
+msgid "Recovered"
+msgstr "復旧済み"
+
+msgid "Recovery point failed"
+msgstr "復旧ポイントの作成に失敗"
+
+msgid "WAN network interface"
+msgstr "WAN ネットワークインターフェース"
+
+msgid "Close"
+msgstr "閉じる"
+
+msgid "Configuration mode"
+msgstr "設定モード"
+
+msgid "Diagnostic report for %s."
+msgstr "%s の診断レポートです。"
+
+msgid "Enter an HTTP or HTTPS URL without spaces."
+msgstr "空白を含まない HTTP または HTTPS URL を入力してください。"
+
+msgid "Failed, configuration restored"
+msgstr "失敗したため設定を復元しました"
+
+msgid "Failed, restore also failed"
+msgstr "失敗し、復元にも失敗しました"
+
+msgid "Generated routes"
+msgstr "生成されたルート"
+
+msgid "Incident diagnostics"
+msgstr "インシデント診断"
+
+msgid "Not managed"
+msgstr "管理対象外"
+
+msgid "Raw configuration"
+msgstr "手動設定"
+
+msgid "Reconciles generated listeners after WAN address changes, retries a stopped service, and retains diagnostics for the seven latest incidents. Raw configurations are never overwritten."
+msgstr "WAN アドレスの変更後に生成済みリスナーを同期し、停止したサービスを再試行して、直近 7 件のインシデント診断を保持します。手動設定は上書きされません。"
+
+msgid "Recovery incidents"
+msgstr "復旧インシデント"
+
+msgid "Result"
+msgstr "結果"
+
+msgid "Send recovery webhook notifications"
+msgstr "復旧 Webhook 通知を送信"
+
+msgid "Sends only the incident identifier, result, action, interface, and reason. Configuration, addresses, and diagnostic logs are never included."
+msgstr "インシデント ID、結果、アクション、インターフェース、理由のみを送信します。設定、アドレス、診断ログは含まれません。"
+
+msgid "The selected logical interface is monitored for address changes. In multi-WAN setups, select the interface that receives public connections."
+msgstr "選択した論理インターフェースのアドレス変更を監視します。マルチ WAN 構成では、外部接続を受信するインターフェースを選択してください。"
+
+msgid "The seven latest automatic recovery reports are retained on the router."
+msgstr "直近 7 件の自動復旧レポートがルーターに保持されます。"
+
+msgid "Trigger"
+msgstr "トリガー"
+
+msgid "View"
+msgstr "表示"
+
+msgid "WAN address reconciled"
+msgstr "WAN アドレスを同期しました"
+
+msgid "WAN address unavailable"
+msgstr "WAN アドレスを利用できません"
+
+msgid "Webhook URL"
+msgstr "Webhook URL"
+msgid "Generated configuration is invalid"
+msgstr "生成された設定が無効です"
+
+msgid "Configuration installation failed"
+msgstr "設定のインストールに失敗しました"

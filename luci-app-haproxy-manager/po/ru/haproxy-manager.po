@@ -1,0 +1,499 @@
+msgid ""
+msgstr ""
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Command failed with code %d."
+msgstr "Команда завершилась с кодом %d."
+
+msgid "%d configuration files"
+msgstr "%d файлов конфигурации"
+
+msgid "%d conflicts"
+msgstr "%d конфликтов"
+
+msgid "%d services"
+msgstr "%d сервисов"
+
+msgid "A restorable snapshot is created before migration and every apply."
+msgstr "Перед миграцией и каждым применением создаётся точка восстановления."
+
+msgid "Active listeners"
+msgstr "Активные слушатели"
+
+msgid "Add service"
+msgstr "Добавить сервис"
+
+msgid "Address"
+msgstr "Адрес"
+
+msgid "Applied"
+msgstr "Применено"
+
+msgid "Apply"
+msgstr "Применить"
+
+msgid "Apply changes"
+msgstr "Применить изменения"
+
+msgid "Apply raw config"
+msgstr "Применить конфиг"
+
+msgid "Apply raw configuration?"
+msgstr "Применить конфигурацию вручную?"
+
+msgid "Automatic"
+msgstr "Автоматически"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Check configuration"
+msgstr "Проверить конфигурацию"
+
+msgid "Config is valid"
+msgstr "Конфиг корректен"
+
+msgid "Configuration and firewall are ready."
+msgstr "Конфигурация и межсетевой экран готовы."
+
+msgid "Configuration is valid. Firewall conflicts: %d"
+msgstr "Конфигурация корректна. Конфликтов межсетевого экрана: %d"
+
+msgid "Configure shared Web entry ports, router access, and firewall automation."
+msgstr "Настройка общих Web-портов, доступа к роутеру и автоматизации межсетевого экрана."
+
+msgid "Conflict"
+msgstr "Конфликт"
+
+msgid "Contents"
+msgstr "Содержимое"
+
+msgid "Create recovery point"
+msgstr "Создать точку восстановления"
+
+msgid "Created"
+msgstr "Создана"
+
+msgid "Creates and updates only firewall rules owned by HAProxy Manager."
+msgstr "Создаёт и обновляет только правила межсетевого экрана, принадлежащие HAProxy Manager."
+
+msgid "Custom TCP"
+msgstr "Пользовательский TCP"
+
+msgid "Destination"
+msgstr "Назначение"
+
+msgid "Destination host"
+msgstr "Внутренний хост"
+
+msgid "Destination HTTP port"
+msgstr "Внутренний HTTP-порт"
+
+msgid "Destination HTTPS port"
+msgstr "Внутренний HTTPS-порт"
+
+msgid "Destination RDP port"
+msgstr "Внутренний RDP-порт"
+
+msgid "Destination SSH port"
+msgstr "Внутренний SSH-порт"
+
+msgid "Disable conflicting forwards during apply"
+msgstr "Отключать конфликтующие пробросы при применении"
+
+msgid "Domain"
+msgstr "Домен"
+
+msgid "Enable managed configuration"
+msgstr "Включить управляемую конфигурацию"
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "Every Web service shares these public ports. SSH, Remote Desktop, and Custom TCP services use the ports configured on each service."
+msgstr "Все Web-сервисы используют эти общие внешние порты. SSH, удалённый рабочий стол и пользовательские TCP-сервисы используют порты из своих настроек."
+
+msgid "Existing port-forward conflicts"
+msgstr "Конфликты с существующими пробросами"
+
+msgid "Expert editor for /etc/haproxy.cfg."
+msgstr "Экспертный редактор /etc/haproxy.cfg."
+
+msgid "Filter services"
+msgstr "Фильтр сервисов"
+
+msgid "Firewall"
+msgstr "Межсетевой экран"
+
+msgid "Firewall automation"
+msgstr "Автоматизация межсетевого экрана"
+
+msgid "Firewall conflict detected."
+msgstr "Обнаружен конфликт межсетевого экрана."
+
+msgid "Generated routes can overwrite manual changes to this file."
+msgstr "Сгенерированные маршруты могут перезаписать ручные изменения этого файла."
+
+msgid "Grant access to LuCI HAProxy Manager"
+msgstr "Предоставить доступ к LuCI HAProxy Manager"
+
+msgid "HAProxy"
+msgstr "HAProxy"
+
+msgid "HAProxy service"
+msgstr "Служба HAProxy"
+
+msgid "HAProxy Services"
+msgstr "Сервисы HAProxy"
+
+msgid "HAProxy Settings"
+msgstr "Настройки HAProxy"
+
+msgid "HAProxy Status"
+msgstr "Статус HAProxy"
+
+msgid "HAProxy version"
+msgstr "Версия HAProxy"
+
+msgid "HAProxy, firewall, and LuCI settings will be restored from %s."
+msgstr "Настройки HAProxy, межсетевого экрана и LuCI будут восстановлены из точки %s."
+
+msgid "HTTP"
+msgstr "HTTP"
+
+msgid "HTTP only"
+msgstr "Только HTTP"
+
+msgid "HTTPS"
+msgstr "HTTPS"
+
+msgid "HTTPS only"
+msgstr "Только HTTPS"
+
+msgid "Keep LuCI on the LAN address"
+msgstr "Оставить LuCI на LAN-адресе"
+
+msgid "Latest"
+msgstr "Последняя"
+
+msgid "Legacy Web"
+msgstr "Устаревший Web"
+
+msgid "LuCI LAN address"
+msgstr "LAN-адрес LuCI"
+
+msgid "Managed"
+msgstr "Управляется"
+
+msgid "Manual"
+msgstr "Вручную"
+
+msgid "My service"
+msgstr "Мой сервис"
+
+msgid "No HAProxy or LuCI listeners detected."
+msgstr "Слушатели HAProxy или LuCI не обнаружены."
+
+msgid "No matching services"
+msgstr "Подходящих сервисов нет"
+
+msgid "No recovery points yet."
+msgstr "Точек восстановления пока нет."
+
+msgid "Not available"
+msgstr "Недоступно"
+
+msgid "Not set"
+msgstr "Не задано"
+
+msgid "Off"
+msgstr "Выкл"
+
+msgid "On"
+msgstr "Вкл"
+
+msgid "Open HAProxy ports on WAN automatically"
+msgstr "Автоматически открывать порты HAProxy на WAN"
+
+msgid "Open recovery"
+msgstr "Открыть восстановление"
+
+msgid "Pending"
+msgstr "Ожидает применения"
+
+msgid "Process"
+msgstr "Процесс"
+
+msgid "Protocol"
+msgstr "Протокол"
+
+msgid "Public endpoint"
+msgstr "Внешний адрес"
+
+msgid "Public HTTP port"
+msgstr "Внешний HTTP-порт"
+
+msgid "Public HTTPS port"
+msgstr "Внешний HTTPS-порт"
+
+msgid "Public RDP port"
+msgstr "Внешний RDP-порт"
+
+msgid "Public SSH port"
+msgstr "Внешний SSH-порт"
+
+msgid "Publish HTTP"
+msgstr "Публиковать HTTP"
+
+msgid "Publish HTTPS"
+msgstr "Публиковать HTTPS"
+
+msgid "Publish Web, SSH, Remote Desktop, and custom TCP services from one place."
+msgstr "Публикация Web, SSH, удалённого рабочего стола и пользовательских TCP-сервисов в одном месте."
+
+msgid "Raw Config"
+msgstr "Конфиг"
+
+msgid "Raw HAProxy Config"
+msgstr "Конфиг HAProxy"
+
+msgid "Raw HAProxy configuration"
+msgstr "Конфигурация HAProxy"
+
+msgid "Ready"
+msgstr "Готово"
+
+msgid "Recommended when HAProxy uses public ports 80 or 443. LuCI remains available from the local network."
+msgstr "Рекомендуется, когда HAProxy использует внешние порты 80 или 443. LuCI останется доступен из локальной сети."
+
+msgid "Recovery"
+msgstr "Восстановление"
+
+msgid "Recovery points"
+msgstr "Точки восстановления"
+
+msgid "Refresh"
+msgstr "Обновить"
+
+msgid "Remote Desktop"
+msgstr "Удалённый рабочий стол"
+
+msgid "Restore"
+msgstr "Восстановить"
+
+msgid "Restore configuration?"
+msgstr "Восстановить конфигурацию?"
+
+msgid "Restore HAProxy, firewall, and LuCI settings from a previous snapshot."
+msgstr "Восстановление настроек HAProxy, межсетевого экрана и LuCI из предыдущего снимка."
+
+msgid "Restored"
+msgstr "Восстановлено"
+
+msgid "Review firewall settings"
+msgstr "Проверить настройки межсетевого экрана"
+
+msgid "Router access"
+msgstr "Доступ к роутеру"
+
+msgid "Running"
+msgstr "Работает"
+
+msgid "Save and apply"
+msgstr "Сохранить и применить"
+
+msgid "Save settings"
+msgstr "Сохранить настройки"
+
+msgid "Service"
+msgstr "Сервис"
+
+msgid "Service health, active listeners, and recovery points."
+msgstr "Состояние службы, активные слушатели и точки восстановления."
+
+msgid "Service name"
+msgstr "Название сервиса"
+
+msgid "Service type"
+msgstr "Тип сервиса"
+
+msgid "Services"
+msgstr "Сервисы"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Settings saved"
+msgstr "Настройки сохранены"
+
+msgid "SSH"
+msgstr "SSH"
+
+msgid "Status"
+msgstr "Статус"
+
+msgid "Stop and show conflicts"
+msgstr "Остановиться и показать конфликты"
+
+msgid "Stopped"
+msgstr "Остановлен"
+
+msgid "TCP"
+msgstr "TCP"
+
+msgid "TCP port mappings"
+msgstr "Соответствия TCP-портов"
+
+msgid "The file will be validated and backed up before HAProxy restarts."
+msgstr "Перед перезапуском HAProxy файл будет проверен и сохранён в бэкап."
+
+msgid "Use the public:destination format, for example 8443:443."
+msgstr "Используйте формат внешний:внутренний, например 8443:443."
+
+msgid "Validate"
+msgstr "Проверить"
+
+msgid "WAN address"
+msgstr "WAN-адрес"
+
+msgid "WAN bind address"
+msgstr "Адрес привязки WAN"
+
+msgid "WAN firewall zone"
+msgstr "WAN-зона межсетевого экрана"
+
+msgid "Web"
+msgstr "Web"
+
+msgid "Web (HTTP + HTTPS)"
+msgstr "Web (HTTP + HTTPS)"
+
+msgid "Web entry ports"
+msgstr "Внешние Web-порты"
+msgid "Changes saved and applied."
+msgstr "Изменения сохранены и применены."
+
+msgid "Delete and apply"
+msgstr "Удалить и применить"
+
+msgid "Delete service?"
+msgstr "Удалить сервис?"
+
+msgid "Synchronize now"
+msgstr "Синхронизировать"
+
+msgid "The service will be removed from HAProxy and the firewall immediately."
+msgstr "Сервис будет немедленно удалён из HAProxy и межсетевого экрана."
+
+msgid "Unable to create a recovery point."
+msgstr "Не удалось создать точку восстановления."
+
+msgid "Automatic recovery"
+msgstr "Автоматическое восстановление"
+
+msgid "Disabled"
+msgstr "Отключено"
+
+msgid "Failed"
+msgstr "Не удалось"
+
+msgid "If HAProxy stops before a listener address exists, retry it after a network interface comes up and retain diagnostics for the seven latest incidents."
+msgstr "Если HAProxy остановился до появления адреса слушателя, повторить запуск после поднятия сетевого интерфейса и сохранить диагностику семи последних инцидентов."
+
+msgid "In progress"
+msgstr "Выполняется"
+
+msgid "Invalid configuration"
+msgstr "Некорректная конфигурация"
+
+msgid "Last recovery"
+msgstr "Последнее восстановление"
+
+msgid "No incidents recorded"
+msgstr "Срабатываний не зафиксировано"
+
+msgid "Recover HAProxy after networking becomes ready"
+msgstr "Автоматически запускать HAProxy после готовности сети"
+
+msgid "Recovered"
+msgstr "Восстановлено"
+
+msgid "Recovery point failed"
+msgstr "Не удалось создать точку восстановления"
+
+msgid "WAN network interface"
+msgstr "Сетевой интерфейс WAN"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Configuration mode"
+msgstr "Режим конфигурации"
+
+msgid "Diagnostic report for %s."
+msgstr "Диагностический отчёт для %s."
+
+msgid "Enter an HTTP or HTTPS URL without spaces."
+msgstr "Введите HTTP- или HTTPS-адрес без пробелов."
+
+msgid "Failed, configuration restored"
+msgstr "Ошибка, конфигурация восстановлена"
+
+msgid "Failed, restore also failed"
+msgstr "Ошибка, восстановление также не удалось"
+
+msgid "Generated routes"
+msgstr "Сгенерированные маршруты"
+
+msgid "Incident diagnostics"
+msgstr "Диагностика инцидента"
+
+msgid "Not managed"
+msgstr "Не управляется"
+
+msgid "Raw configuration"
+msgstr "Пользовательская конфигурация"
+
+msgid "Reconciles generated listeners after WAN address changes, retries a stopped service, and retains diagnostics for the seven latest incidents. Raw configurations are never overwritten."
+msgstr "Синхронизирует сгенерированные слушатели после смены WAN-адреса, повторно запускает остановленную службу и хранит диагностику семи последних инцидентов. Пользовательские конфигурации никогда не перезаписываются."
+
+msgid "Recovery incidents"
+msgstr "Инциденты восстановления"
+
+msgid "Result"
+msgstr "Результат"
+
+msgid "Send recovery webhook notifications"
+msgstr "Отправлять webhook-уведомления о восстановлении"
+
+msgid "Sends only the incident identifier, result, action, interface, and reason. Configuration, addresses, and diagnostic logs are never included."
+msgstr "Отправляются только идентификатор инцидента, результат, действие, интерфейс и причина. Конфигурация, адреса и диагностические журналы никогда не передаются."
+
+msgid "The selected logical interface is monitored for address changes. In multi-WAN setups, select the interface that receives public connections."
+msgstr "Выбранный логический интерфейс отслеживается на предмет смены адреса. В конфигурациях с несколькими WAN выберите интерфейс, принимающий публичные подключения."
+
+msgid "The seven latest automatic recovery reports are retained on the router."
+msgstr "На маршрутизаторе хранятся семь последних отчётов автоматического восстановления."
+
+msgid "Trigger"
+msgstr "Событие"
+
+msgid "View"
+msgstr "Просмотреть"
+
+msgid "WAN address reconciled"
+msgstr "WAN-адрес синхронизирован"
+
+msgid "WAN address unavailable"
+msgstr "WAN-адрес недоступен"
+
+msgid "Webhook URL"
+msgstr "URL webhook"
+msgid "Generated configuration is invalid"
+msgstr "Сгенерированная конфигурация недействительна"
+
+msgid "Configuration installation failed"
+msgstr "Не удалось установить конфигурацию"
