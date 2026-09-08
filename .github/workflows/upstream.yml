@@ -176,6 +176,7 @@ jobs:
         git_clone https://github.com/nikkinikki-org/OpenWrt-momo && mv -f OpenWrt-momo/{luci-app-momo,momo} ./;rm -rf OpenWrt-momo
         git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
         git clone https://github.com/fw876/helloworld -b dev && mvdir helloworld
+        git_clone https://github.com/umk0/openwrt-luci-haproxy-manager && mv -f openwrt-luci-haproxy-manager/luci-app-haproxy-manager ./;rm -rf openwrt-luci-haproxy-manager
         ) &
         (
         git_clone https://github.com/ZeaKyX/speedtest-web
