@@ -152,6 +152,7 @@ jobs:
         git_clone https://github.com/Tencent-Cloud-Plugins/tencentcloud-openwrt-plugin-cos && mv -n tencentcloud-openwrt-plugin-cos/tencentcloud_cos ./luci-app-tencentcloud-cos; rm -rf tencentcloud-openwrt-plugin-cos
         git_clone https://github.com/doushang/luci-app-shortcutmenu luci-shortcutmenu && mv -n luci-shortcutmenu/luci-app-shortcutmenu ./ ; rm -rf luci-shortcutmenu
         git_clone https://github.com/aa65535/openwrt-dist-luci
+        git_clone https://github.com/minicom365/openwrt-smart-reboot && mv -f openwrt-smart-reboot/*smart-reboot ./;rm -rf openwrt-smart-reboot
         # git_clone https://github.com/morytyann/OpenWrt-msd && mvdir OpenWrt-msd
         # git_clone https://github.com/messense/aliyundrive-webdav aliyundrive && mv -n aliyundrive/openwrt/* ./ ; rm -rf aliyundrive
         # git_clone https://github.com/sbilly/netmaker-openwrt && mv -n netmaker-openwrt/netmaker ./; rm -rf netmaker-openwrt
