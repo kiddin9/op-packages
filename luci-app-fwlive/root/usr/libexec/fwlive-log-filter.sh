@@ -9,12 +9,10 @@
 # Perf (#219): one jsonfilter for @.log[*] plus one awk classify. Process
 # count is constant per poll, not O(entries).
 #
-# Entry point (pipeline). The classifier sibling is sourced and must not
-# set -euo itself (#291 C3).
+# Entry point (pipeline). The classifier sibling is sourced and must not set
+# strict mode itself (#291 C3).
 set -eu
-# pipefail: BusyBox ash supports it; Debian dash (host `sh`) rejects a
-# bare `set -o pipefail`. Probe in a subshell (same class as #244).
-# shellcheck disable=SC3040 # pipefail is ash/bash; dash probe is a subshell
+# shellcheck disable=SC3040
 (set -o pipefail) 2>/dev/null && set -o pipefail
 
 if ! command -v jsonfilter >/dev/null 2>&1; then

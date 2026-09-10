@@ -20,7 +20,7 @@ Link: https://github.com/Self-Hosting-Group/wiki/wiki/Port-Mapping-Protocols-Ove
 
 --- a/upnphttp.c
 +++ b/upnphttp.c
-@@ -307,9 +307,22 @@ ParseHttpHeaders(struct upnphttp * h)
+@@ -319,9 +319,22 @@ ParseHttpHeaders(struct upnphttp * h)
  			}
  			else if(strncasecmp(line, "user-agent:", 11) == 0)
  			{

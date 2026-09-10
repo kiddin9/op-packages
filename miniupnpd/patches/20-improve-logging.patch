@@ -1,8 +1,8 @@
-From a7cebfc522306295cc1745c637f64d0e7d659795 Mon Sep 17 00:00:00 2001
+From 22a056e0c4b7c117bd2e0c06e93771c3961dcb15 Mon Sep 17 00:00:00 2001
 From: Self-Hosting-Group
  <155233284+Self-Hosting-Group@users.noreply.github.com>
-Date: Fri, 14 Aug 2026 00:00:00 +0000
-Subject: [PATCH] miniupnpd: Improve logging
+Date: Wed, 9 Sep 2026 00:00:00 +0000
+Subject: [PATCH] miniupnpd: Improve logging and CGNAT use
 
 * Clearer logging of enabled protocols/ports, IPv6 mapping, and UPnP IGD
   compatibility mode… in start banner
@@ -14,29 +14,37 @@ Subject: [PATCH] miniupnpd: Improve logging
 * Comment out some log-filling messages when internal interfaces lose
   link, and for e.g. `rule with label '%s' is not a IGD pinhole`, as
   normally occurring
+* Log IPv4 mapping disabled/enabled messages by default
+* Fix IPv4 mapping re-enable after external interface down/up with a
+  CGNAT option set; handling was previously not entirely implemented for
+  both options, incl. miniupnp/miniupnp@bbdd738, miniupnp/miniupnp#905
+* No IPv4 mapping disabled logging on requests, but more cases
+* Clearer IPv4 mapping disabled/enabled logging
 
-Fixes: https://redirect.github.com/openwrt/packages/issues/17601
-Fixes: https://redirect.github.com/openwrt/packages/issues/26483
-Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
+Fixes: https://github.com/openwrt/packages/issues/11971
+Fixes: https://github.com/openwrt/packages/issues/17601
+Fixes: https://github.com/openwrt/packages/issues/26483
+Link: https://github.com/miniupnp/miniupnp/pull/764
 ---
- asyncsendto.c                 |  4 ++--
- getifaddr.c                   |  4 ++--
- minissdp.c                    | 24 ++++++++++++------------
- miniupnpd.c                   | 92 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--------------------------------
- natpmp.c                      | 16 ++++++++--------
- netfilter/iptcrdr.c           | 10 +++++-----
- netfilter/iptpinhole.c        |  4 ++--
- netfilter_nft/nftnlrdr.c      |  2 +-
- netfilter_nft/nftnlrdr_misc.c |  8 ++++----
- netfilter_nft/nftpinhole.c    | 10 +++++-----
- pcpserver.c                   | 18 +++++++++---------
- pf/obsdrdr.c                  |  6 +++---
- pf/pfpinhole.c                | 12 ++++++------
- upnphttp.c                    |  6 +++---
- upnppinhole.c                 | 48 ++++++++++++++++++++++++------------------------
- upnpredirect.c                | 20 ++++++++++----------
- upnpsoap.c                    | 30 +++++++++++++++---------------
- 17 files changed, 171 insertions(+), 143 deletions(-)
+ asyncsendto.c                 |   4 +-
+ getifaddr.c                   |   4 +-
+ minissdp.c                    |  24 ++--
+ miniupnpd.c                   | 208 +++++++++++++++++++-------------
+ natpmp.c                      |  16 +--
+ netfilter/iptcrdr.c           |  10 +-
+ netfilter/iptpinhole.c        |   4 +-
+ netfilter_nft/nftnlrdr.c      |   2 +-
+ netfilter_nft/nftnlrdr_misc.c |   8 +-
+ netfilter_nft/nftpinhole.c    |  10 +-
+ pcpserver.c                   |  18 +--
+ pf/obsdrdr.c                  |   6 +-
+ pf/pfpinhole.c                |  12 +-
+ upnphttp.c                    |   6 +-
+ upnppinhole.c                 |   8 +-
+ upnpredirect.c                |  10 +-
+ upnpsoap.c                    |  43 +++----
+ upnpstun.c                    |  37 +++---
+ 18 files changed, 229 insertions(+), 201 deletions(-)
 
 --- a/asyncsendto.c
 +++ b/asyncsendto.c
@@ -188,30 +196,193 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			}
  			fclose(f);
  			startup_time -= uptime;
-@@ -2228,6 +2228,22 @@ init(int argc, char * * argv, struct run
+@@ -1061,10 +1061,10 @@ parselanaddr(struct lan_addr_s * lan_add
+ 			}
+ 			if(addr_is_reserved(&lan_addr->ext_ip_addr)) {
+ 				if (GETFLAG(ALLOWPRIVATEIPV4MASK)) {
+-					syslog(LOG_WARNING, "IGNORED : option ext_ip address contains reserved / private address : %s", lan_addr->ext_ip_str);
++					syslog(LOG_WARNING, "WARNING: IPv4 mapping enabled forcibly, as ext_allow_private_ipv4=yes set; check security note if not set");
+ 				} else {
+ 					/* error */
+-					INIT_PRINT_ERR("Error: option ext_ip address contains reserved / private address : %s\n", lan_addr->ext_ip_str);
++					INIT_PRINT_ERR("Option ext_ip set to private/CGNAT-reserved (%s) IPv4, exiting\n", lan_addr->ext_ip_str);
+ 					return -1;
+ 				}
+ 			}
+@@ -1118,20 +1118,19 @@ parselan_error:
+ 
+ static char ext_addr_str[INET_ADDRSTRLEN];
+ 
+-int update_ext_ip_addr_from_stun(int init)
++int update_ext_ip_addr_from_stun(void)
+ {
+ 	struct in_addr if_addr, ext_addr;
+-	int restrictive_nat;
++	int restrictive_nat, reserved;
+ 	char if_addr_str[INET_ADDRSTRLEN];
+ 
+-	syslog(LOG_INFO, "STUN: Performing with host=%s and port=%u ...", ext_stun_host, (unsigned)ext_stun_port);
+-
+ 	if (getifaddr(ext_if_name, if_addr_str, INET_ADDRSTRLEN, &if_addr, NULL) < 0) {
+-		syslog(LOG_ERR, "STUN: Cannot get IP address for ext interface %s", ext_if_name);
++		syslog(LOG_ERR, "Detected no IPv4 address on external network interface %s", ext_if_name);
+ 		return 1;
+ 	}
++	syslog(LOG_INFO, "STUN: Detecting public IPv4 and testing for unrestricted endpoint-independent (1:1) CGNAT via %s:%u...", ext_stun_host, ext_stun_port ? ext_stun_port : 3478);
+ 	if (perform_stun(ext_if_name, if_addr_str, ext_stun_host, ext_stun_port, &ext_addr, &restrictive_nat) != 0) {
+-		syslog(LOG_ERR, "STUN: Performing STUN failed: %s", strerror(errno));
++		syslog(LOG_ERR, "STUN: Performing test failed");
+ 		return 1;
+ 	}
+ 	if (!inet_ntop(AF_INET, &ext_addr, ext_addr_str, sizeof(ext_addr_str))) {
+@@ -1139,32 +1138,29 @@ int update_ext_ip_addr_from_stun(int ini
+ 		return 1;
+ 	}
+ 
+-	if ((init || disable_port_forwarding) && !restrictive_nat) {
+-		if (addr_is_reserved(&if_addr))
+-			syslog(LOG_INFO, "STUN: ext interface %s with IP address %s is now behind unrestricted full-cone NAT 1:1 with public IP address %s and firewall does not block incoming connections set by miniupnpd", ext_if_name, if_addr_str, ext_addr_str);
+-		else
+-			syslog(LOG_INFO, "STUN: ext interface %s has now public IP address %s and firewall does not block incoming connections set by miniupnpd", ext_if_name, if_addr_str);
+-		syslog(LOG_INFO, "Port forwarding is now enabled");
+-	} else if ((init || !disable_port_forwarding) && restrictive_nat) {
+-		if (addr_is_reserved(&if_addr)) {
+-			syslog(LOG_WARNING, "STUN: ext interface %s with private IP address %s is now possibly behind restrictive or symmetric NAT with public IP address %s which does not support port forwarding", ext_if_name, if_addr_str, ext_addr_str);
+-			syslog(LOG_WARNING, "NAT on upstream router blocks incoming connections set by miniupnpd");
+-			syslog(LOG_WARNING, "Turn off NAT on upstream router or change it to full-cone NAT 1:1 type");
++	reserved = addr_is_reserved(&if_addr);
++	if (!restrictive_nat && !reserved) {
++		syslog(LOG_INFO, "STUN: Detected unrestricted public external IPv4 %s on %s", if_addr_str, ext_if_name);
++	} else if (!restrictive_nat && reserved) {
++		syslog(LOG_INFO, "STUN: Detected unrestricted endpoint-independent (1:1) CGNAT with public IPv4 %s and %s as external on %s", ext_addr_str, if_addr_str, ext_if_name);
++	} else if (restrictive_nat && !reserved) {
++		syslog(LOG_INFO, "STUN: Detected restricted public external IPv4 %s on %s, IPv4 mapping may not work", if_addr_str, ext_if_name);
++	} else if (restrictive_nat && reserved) {
++		syslog(LOG_INFO, "STUN: Detected restricted or address- and port-dependent (symmetric) CGNAT with public IPv4 %s and %s as external on %s, IPv4 mapping may not work", ext_addr_str, if_addr_str, ext_if_name);
++	}
++
++	use_ext_ip_addr = ext_addr_str;
++	if (!restrictive_nat || GETFLAG(ALLOWFILTEREDSTUNMASK)) {
++		if (!restrictive_nat) {
++			syslog(LOG_NOTICE, "IPv4 mapping enabled, and reachability/non-filtering tested via STUN");
+ 		} else {
+-			syslog(LOG_WARNING, "STUN: ext interface %s has now public IP address %s but firewall filters incoming connections set by miniunnpd", ext_if_name, if_addr_str);
+-			syslog(LOG_WARNING, "Check configuration of firewall on local machine and also on upstream router");
+-		}
+-		if (!GETFLAG(ALLOWFILTEREDSTUNMASK)) {
+-			syslog(LOG_WARNING, "Port forwarding is now disabled");
+-			syslog(LOG_WARNING, "Set ext_perform_stun=allow-filtered if you still want to use port forwarding in current situation");
++			syslog(LOG_WARNING, "WARNING: IPv4 mapping enabled forcibly, as ext_perform_stun=allow-filtered set; check security note if not set");
+ 		}
++		disable_port_forwarding = 0;
+ 	} else {
+-		syslog(LOG_INFO, "STUN: ... done");
++		syslog(LOG_WARNING, "IPv4 mapping disabled, as own/upstream router filters incoming, or there is an address- and port-dependent (symmetric) CGNAT; to workaround current daemon limitation, or enable it anyway, set ext_perform_stun=allow-filtered; check security note if not set");
++		disable_port_forwarding = 1;
+ 	}
+-
+-	use_ext_ip_addr = ext_addr_str;
+-	if (!GETFLAG(ALLOWFILTEREDSTUNMASK))
+-		disable_port_forwarding = restrictive_nat;
+ 	return 0;
+ }
+ 
+@@ -1184,32 +1180,41 @@ static void update_disable_port_forwardi
+ 			syslog(LOG_WARNING, "ext interface %s is down", ext_if_name);
+ 			break;
+ 		case GETIFADDR_NO_ADDRESS:
+-			syslog(LOG_WARNING, "ext interface %s has no IPv4 address. Network is down", ext_if_name);
++			syslog(LOG_ERR, "Detected no IPv4 address on external network interface %s", ext_if_name);
+ 			break;
+ 		default:
+-			syslog(LOG_ERR, "Error getting IPv4 address for ext interface %s. Network is down", ext_if_name);
++			syslog(LOG_ERR, "Detected no IPv4 address on external network interface %s", ext_if_name);
+ 		}
++		syslog(LOG_WARNING, "IPv4 mapping disabled");
+ 		disable_port_forwarding = 1;
++
+ 	} else {
+ 		int reserved = addr_is_reserved(&addr);
+-		if (!disable_port_forwarding && reserved) {
+-			if (GETFLAG(ALLOWPRIVATEIPV4MASK)) {
+-				syslog(LOG_WARNING, "IGNORED : Reserved / private IP address %s on ext interface %s", if_addr, ext_if_name);
++		if (!reserved) {
++			syslog(LOG_INFO, "Detected public external IPv4 %s on %s", if_addr, ext_if_name);
++		} else {
++			syslog(LOG_INFO, "Detected private/CGNAT-reserved external IPv4 %s on %s, IPv4 mapping may not work", if_addr, ext_if_name);
++		}
++
++		if (!reserved || GETFLAG(ALLOWPRIVATEIPV4MASK)) {
++			if (!reserved) {
++				syslog(LOG_NOTICE, "IPv4 mapping enabled");
+ 			} else {
+-				syslog(LOG_WARNING, "Reserved / private IP address %s on ext interface %s: Port forwarding is impossible", if_addr, ext_if_name);
+-				syslog(LOG_INFO, "You are probably behind NAT, enable option ext_perform_stun=yes to detect public IP address");
+-				syslog(LOG_INFO, "Or use ext_ip= / -o option to declare public IP address");
+-				syslog(LOG_INFO, "In case that miniupnpd is thinking that it's behind symmetric NAT while it actually is full-cone");
+-				syslog(LOG_INFO, "You can set option ext_allow_private_ipv4=yes to enable port forwarding");
+-				syslog(LOG_INFO, "But you may still need to configure stun server or ext_ip to make it work correctly");
+-				syslog(LOG_INFO, "Public IP address is required by UPnP/PCP/PMP protocols and clients do not work without it");
+-				disable_port_forwarding = 1;
+-			}
+-		} else if (disable_port_forwarding &&
+-		           (!reserved || GETFLAG(ALLOWPRIVATEIPV4MASK))) {
+-			syslog(LOG_INFO, "%s IP address %s on ext interface %s: Port forwarding is enabled",
+-			       reserved ? "Reserved / private" : "Public", if_addr, ext_if_name);
++				syslog(LOG_WARNING, "WARNING: IPv4 mapping enabled forcibly, as ext_allow_private_ipv4=yes set; check compatibility/security notes if not set");
++			}
+ 			disable_port_forwarding = 0;
++		} else {
++			syslog(LOG_WARNING, "IPv4 mapping disabled by default, as private/CGNAT-reserved external IPv4 detected. Prevented for:");
++			syslog(LOG_WARNING, "- Info, as port maps not reachable via internet without an unrestricted endpoint-independent (1:1) IPv4 CGNAT; possibly from within");
++			syslog(LOG_WARNING, "- Compatibility, as many UPnP IGD & PCP/NAT-PMP clients require a returned public external IPv4");
++			syslog(LOG_WARNING, "- Security, to prevent access via internet if the external/internal network interface has been configured swapped");
++			syslog(LOG_WARNING, "To enable IPv4 mapping anyway, select one of the following options, listed by priority:");
++			syslog(LOG_WARNING, "A) Detect public external IPv4 and test for unrestricted endpoint-independent (1:1) CGNAT via STUN server, set ext_perform_stun=yes");
++			syslog(LOG_WARNING, "B) As A, but workaround filtered CGNAT result daemon limitation (without an extra firewall rule), set ext_perform_stun=allow-filtered; check security note");
++			syslog(LOG_WARNING, "C) Manually override reported external IPv4 with public, set ext_ip; check security note");
++			syslog(LOG_WARNING, "D) Report private/CGNAT-reserved external IPv4 to clients, set ext_allow_private_ipv4=yes; check compatibility/security notes");
++			syslog(LOG_WARNING, "IPv4 mapping disabled");
++			disable_port_forwarding = 1;
+ 		}
+ 	}
+ }
+@@ -2095,9 +2100,9 @@ init(int argc, char * * argv, struct run
+ 		}
+ 		if (addr_is_reserved(&addr)) {
+ 			if (GETFLAG(ALLOWPRIVATEIPV4MASK)) {
+-				syslog(LOG_WARNING, "IGNORED : option ext_ip contains reserved / private address %s, not public routable", use_ext_ip_addr);
++				syslog(LOG_WARNING, "WARNING: IPv4 mapping enabled forcibly, as ext_allow_private_ipv4=yes set; check compatibility/security notes if not set");
+ 			} else {
+-				INIT_PRINT_ERR("Error: option ext_ip contains reserved / private address %s, not public routable\n", use_ext_ip_addr);
++				INIT_PRINT_ERR("Option ext_ip set to private/CGNAT-reserved (%s) IPv4, exiting\n", use_ext_ip_addr);
+ 				return 1;
+ 			}
+ 		}
+@@ -2230,6 +2235,22 @@ init(int argc, char * * argv, struct run
  		pidfilename = NULL;
  #endif
  
-+syslog(LOG_NOTICE, "MiniUPnP daemon " MINIUPNPD_VERSION " starting, enable protocols %s%s%s, ext_ifname=%s BOOTID=%u",
-+	GETFLAG(ENABLEUPNPMASK) ? "UPnP IGD" : "",
++	syslog(LOG_NOTICE, "MiniUPnP daemon " MINIUPNPD_VERSION " starting, enabled protocols %s%s%s, ext_ifname=%s BOOTID=%u",
++		GETFLAG(ENABLEUPNPMASK) ? "UPnP IGD" : "",
 +#ifdef ENABLE_NATPMP
-+	GETFLAG(ENABLEUPNPMASK) && GETFLAG(ENABLENATPMPMASK) ? " & " : "",
++		GETFLAG(ENABLEUPNPMASK) && GETFLAG(ENABLENATPMPMASK) ? " & " : "",
 +#ifdef ENABLE_PCP
-+	GETFLAG(ENABLENATPMPMASK) ? "PCP/NAT-PMP" : "",
++		GETFLAG(ENABLENATPMPMASK) ? "PCP/NAT-PMP" : "",
 +#else
-+	GETFLAG(ENABLENATPMPMASK) ? "NAT-PMP" : "",
++		GETFLAG(ENABLENATPMPMASK) ? "NAT-PMP" : "",
 +#endif
 +#else
-+	"", "",
++		"", "",
 +#endif
-+	ext_if_name, upnp_bootid);
-+syslog(LOG_INFO, "More information at https://miniupnp.tuxfamily.org/ or http://miniupnp.free.fr/");
-+syslog(LOG_NOTICE, "Extra logging with log level info (-v) or debug (-v -v)");
++		ext_if_name, upnp_bootid);
++	syslog(LOG_INFO, "More information at https://miniupnp.tuxfamily.org/ or http://miniupnp.free.fr/");
++	syslog(LOG_NOTICE, "Extra logging with log level info (-v) or debug (-v -v)");
 +
  #ifdef USE_SYSTEMD
  	if (systemd_flag) {
  		int r = sd_notify(0,
-@@ -2240,7 +2256,7 @@ init(int argc, char * * argv, struct run
+@@ -2242,7 +2263,7 @@ init(int argc, char * * argv, struct run
  
  #ifdef ENABLE_LEASEFILE
  	/*remove(lease_file);*/
@@ -220,7 +391,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	reload_from_lease_file();
  #ifdef ENABLE_UPNPPINHOLE
  	reload_from_lease_file6();
-@@ -2431,21 +2447,9 @@ main(int argc, char * * argv)
+@@ -2433,28 +2454,16 @@ main(int argc, char * * argv)
  		goto shutdown;
  	}
  
@@ -243,7 +414,25 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	}
  #endif
  
-@@ -2494,7 +2498,7 @@ main(int argc, char * * argv)
+ 	if(GETFLAG(PERFORMSTUNMASK))
+ 	{
+-		if (update_ext_ip_addr_from_stun(1) != 0) {
+-			syslog(LOG_ERR, "Performing STUN failed. EXITING");
++		if (update_ext_ip_addr_from_stun() != 0) {
++			syslog(LOG_ERR, "STUN: Performing test failed, exiting");
+ 			return_code = 1;
+ 			goto shutdown;
+ 		}
+@@ -2462,6 +2471,8 @@ main(int argc, char * * argv)
+ 	else if (!use_ext_ip_addr)
+ 	{
+ 		update_disable_port_forwarding();
++	} else {
++		syslog(LOG_NOTICE, "IPv4 mapping enabled");
+ 	}
+ 
+ #ifdef DYNAMIC_OS_VERSION
+@@ -2496,7 +2507,7 @@ main(int argc, char * * argv)
  #ifdef ENABLE_NFQUEUE
  		nfqueue_data.http_port = listen_port;
  #endif /* ENABLE_NFQUEUE */
@@ -252,7 +441,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #if defined(V6SOCKETS_ARE_V6ONLY) && defined(ENABLE_IPV6)
  		if(!GETFLAG(IPV6DISABLEDMASK))
  		{
-@@ -2525,7 +2529,7 @@ main(int argc, char * * argv)
+@@ -2527,7 +2538,7 @@ main(int argc, char * * argv)
  #ifdef ENABLE_NFQUEUE
  		nfqueue_data.https_port = listen_port;
  #endif /* ENABLE_NFQUEUE */
@@ -261,12 +450,12 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #if defined(V6SOCKETS_ARE_V6ONLY) && defined(ENABLE_IPV6)
  		shttpsl_v4 =  OpenAndConfHTTPSocket(&listen_port, 0);
  		if(shttpsl_v4 < 0)
-@@ -2540,11 +2544,11 @@ main(int argc, char * * argv)
+@@ -2542,11 +2553,11 @@ main(int argc, char * * argv)
  		if(!GETFLAG(IPV6DISABLEDMASK)) {
  			if(find_ipv6_addr(lan_addrs.lh_first ? lan_addrs.lh_first->ifname : NULL,
  			                  ipv6_addr_for_http_with_brackets, sizeof(ipv6_addr_for_http_with_brackets)) > 0) {
 -				syslog(LOG_NOTICE, "HTTP IPv6 address given to control points : %s",
-+				syslog(LOG_NOTICE, "IPv6 address given to UPnP IGD clients: %s",
++				syslog(LOG_INFO, "IPv6 address given to UPnP IGD clients: %s",
  				       ipv6_addr_for_http_with_brackets);
  			} else {
  				memcpy(ipv6_addr_for_http_with_brackets, "[::1]", 6);
@@ -275,7 +464,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				SETFLAG(IPV6DISABLEDMASK);
  			}
  		}
-@@ -2601,7 +2605,7 @@ main(int argc, char * * argv)
+@@ -2603,7 +2614,7 @@ main(int argc, char * * argv)
  			if(SendSSDPGoodbye(snotify, addr_count * 2) < 0)
  #endif
  			{
@@ -284,7 +473,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			}
  		}
  #endif /* UPNP_STRICT */
-@@ -2626,16 +2630,16 @@ main(int argc, char * * argv)
+@@ -2628,16 +2639,16 @@ main(int argc, char * * argv)
  		if(OpenAndConfNATPMPSockets(snatpmp) < 0)
  #ifdef ENABLE_PCP
  		{
@@ -305,7 +494,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       NATPMP_PORT);
  		}
  #endif
-@@ -2746,6 +2750,30 @@ main(int argc, char * * argv)
+@@ -2748,6 +2759,30 @@ main(int argc, char * * argv)
  	}
  #endif /* HAS_LIBCAP_NG */
  
@@ -326,7 +515,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
 +	if (GETFLAG(FORCEIGDDESCV1MASK)) {
 +		syslog(LOG_NOTICE, "UPnP IGD compatibility mode set to IGDv1 (IPv4 only)");
 +	} else {
-+		syslog(LOG_NOTICE, "UPnP IGD compatibility mode set to IGDv2 (with workarounds)");
++		syslog(LOG_NOTICE, "UPnP IGD compatibility mode set to IGDv2");
 +	}
 +#else
 +	syslog(LOG_NOTICE, "UPnP IGD compatibility mode set to IGDv1 (IPv4 only)");
@@ -336,7 +525,23 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef USE_SYSTEMD
  	if (v.systemd_notify) {
  		upnp_update_status();
-@@ -3056,7 +3084,7 @@ main(int argc, char * * argv)
+@@ -2777,12 +2812,13 @@ main(int argc, char * * argv)
+ 		/* send public address change notifications if needed */
+ 		if(should_send_public_address_change_notif)
+ 		{
+-			syslog(LOG_INFO, "should send external iface address change notification(s)");
++			syslog(LOG_NOTICE, "External network interface link/address change detected");
+ 			if(GETFLAG(PERFORMSTUNMASK))
+ 			{
+-				if (update_ext_ip_addr_from_stun(0) != 0) {
++				if (update_ext_ip_addr_from_stun() != 0) {
+ 					/* if stun succeed it updates disable_port_forwarding;
+ 					 * if stun failed (non-zero return value) then port forwarding would not work, so disable it */
++					syslog(LOG_WARNING, "IPv4 mapping disabled");
+ 					disable_port_forwarding = 1;
+ 				}
+ 			}
+@@ -3058,7 +3094,7 @@ main(int argc, char * * argv)
  		}
  		i = try_sendto(&writeset);
  		if(i < 0) {
@@ -345,7 +550,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		}
  #ifdef USE_MINIUPNPDCTL
  		for(ectl = ctllisthead.lh_first; ectl;)
-@@ -3156,7 +3184,7 @@ main(int argc, char * * argv)
+@@ -3158,7 +3194,7 @@ main(int argc, char * * argv)
  					if(lan_addr == NULL) {
  						char sender_str[64];
  						sockaddr_to_string((struct sockaddr *)&senderaddr, sender_str, sizeof(sender_str));
@@ -354,7 +559,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  						       sender_str);
  						continue;
  					}
-@@ -3179,7 +3207,7 @@ main(int argc, char * * argv)
+@@ -3181,7 +3217,7 @@ main(int argc, char * * argv)
  				if(lan_addr == NULL) {
  					char sender_str[64];
  					sockaddr_to_string((struct sockaddr *)&senderaddr, sender_str, sizeof(sender_str));
@@ -363,7 +568,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					       sender_str);
  					continue;
  				}
-@@ -3213,7 +3241,7 @@ main(int argc, char * * argv)
+@@ -3215,7 +3251,7 @@ main(int argc, char * * argv)
  		/* process SSDP packets */
  		if(sudp >= 0 && FD_ISSET(sudp, &readset))
  		{
@@ -372,7 +577,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef ENABLE_HTTPS
  			ProcessSSDPRequest(sudp, (unsigned short)v.port, (unsigned short)v.https_port);
  #else
-@@ -3223,7 +3251,7 @@ main(int argc, char * * argv)
+@@ -3225,7 +3261,7 @@ main(int argc, char * * argv)
  #ifdef ENABLE_IPV6
  		if(sudpv6 >= 0 && FD_ISSET(sudpv6, &readset))
  		{
@@ -381,7 +586,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef ENABLE_HTTPS
  			ProcessSSDPRequest(sudpv6, (unsigned short)v.port, (unsigned short)v.https_port);
  #else
-@@ -3325,7 +3353,7 @@ main(int argc, char * * argv)
+@@ -3327,7 +3363,7 @@ main(int argc, char * * argv)
  
  shutdown:
  
@@ -390,7 +595,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #ifdef USE_SYSTEMD
  	if (v.systemd_notify) {
  		sd_notify(0,
-@@ -3344,7 +3372,7 @@ shutdown:
+@@ -3346,7 +3382,7 @@ shutdown:
  		if(SendSSDPGoodbye(snotify, addr_count * 2) < 0)
  #endif
  		{
@@ -590,7 +795,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		}
 --- a/netfilter_nft/nftpinhole.c
 +++ b/netfilter_nft/nftpinhole.c
-@@ -129,7 +129,7 @@ find_pinhole(const char * ifname,
+@@ -133,7 +133,7 @@ find_pinhole(const char * ifname,
  
  	if (rem_host && rem_host[0] != '\0' && rem_host[0] != '*') {
  		if (inet_pton(AF_INET6, rem_host, &saddr) < 1) {
@@ -599,7 +804,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			memset(&saddr, 0, sizeof(struct in6_addr));
  		}
  	} else {
-@@ -137,7 +137,7 @@ find_pinhole(const char * ifname,
+@@ -141,7 +141,7 @@ find_pinhole(const char * ifname,
  	}
  
  	if (inet_pton(AF_INET6, int_client, &daddr) < 1) {
@@ -608,7 +813,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		memset(&daddr, 0, sizeof(struct in6_addr));
  	}
  
-@@ -159,7 +159,7 @@ find_pinhole(const char * ifname,
+@@ -163,7 +163,7 @@ find_pinhole(const char * ifname,
  		   (0 == memcmp(&daddr, &p->daddr6, sizeof(struct in6_addr)))) {
  
  			if (sscanf(p->desc, PINEHOLE_LABEL_FORMAT_SKIPDESC, &uid, &ts) != 2) {
@@ -617,7 +822,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				continue;
  			}
  
-@@ -396,7 +396,7 @@ get_pinhole_info(unsigned short uid,
+@@ -400,7 +400,7 @@ get_pinhole_info(unsigned short uid,
  			if (timestamp) {
  				int uid_temp;
  				if (sscanf(p->desc, PINEHOLE_LABEL_FORMAT_SKIPDESC, &uid_temp, &ts) != 2) {
@@ -626,7 +831,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					continue;
  				}
  
-@@ -460,7 +460,7 @@ clean_pinhole_list(unsigned int * next_t
+@@ -464,7 +464,7 @@ clean_pinhole_list(unsigned int * next_t
  			continue;
  
  		if (sscanf(p->desc, PINEHOLE_LABEL_FORMAT_SKIPDESC, &uid, &ts) != 2) {
@@ -719,7 +924,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  #endif /* ENABLE_IPV6 */
 --- a/pf/obsdrdr.c
 +++ b/pf/obsdrdr.c
-@@ -601,7 +601,7 @@ delete_nat_rule(const char * ifname, uns
+@@ -602,7 +602,7 @@ delete_nat_rule(const char * ifname, uns
  			pr.nr = i;
  			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0)
  			{
@@ -728,7 +933,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				r = -1;
  			}
  			else
-@@ -1290,7 +1290,7 @@ priv_delete_redirect_rule_check_desc(con
+@@ -1292,7 +1292,7 @@ priv_delete_redirect_rule_check_desc(con
  			pr.nr = i;
  			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0)
  			{
@@ -737,7 +942,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				r = -1;
  				break;
  			}
-@@ -1375,7 +1375,7 @@ syslog(LOG_DEBUG, "%2d port=%hu proto=%d
+@@ -1377,7 +1377,7 @@ syslog(LOG_DEBUG, "%2d port=%hu proto=%d
  			pr.nr = i;
  			if(ioctl(dev, DIOCCHANGERULE, &pr) < 0)
  			{
@@ -801,7 +1006,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			}
 --- a/upnphttp.c
 +++ b/upnphttp.c
-@@ -517,7 +517,7 @@ ProcessHTTPPOST_upnphttp(struct upnphttp
+@@ -545,7 +545,7 @@ ProcessHTTPPOST_upnphttp(struct upnphttp
  		if(h->req_soapActionOff > 0)
  		{
  			/* we can process the request */
@@ -810,7 +1015,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       h->req_soapActionLen, h->req_buf + h->req_soapActionOff);
  			ExecuteSoapAction(h,
  				h->req_buf + h->req_soapActionOff,
-@@ -822,7 +822,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
+@@ -845,7 +845,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
  	for(i = 0; i<15 && *p != '\r'; i++)
  		HttpVer[i] = *(p++);
  	HttpVer[i] = '\0';
@@ -818,8 +1023,8 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
 +	syslog(LOG_DEBUG, "HTTP REQUEST from %s : %s %s (%s)",
  	       h->clientaddr_str, HttpCommand, HttpUrl, HttpVer);
  	ParseHttpHeaders(h);
- 	if(h->req_HostOff > 0 && h->req_HostLen > 0) {
-@@ -902,7 +902,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
+ 	if(h->req_contentlen > CONTENT_LENGTH_LIMIT) {
+@@ -931,7 +931,7 @@ ProcessHttpQuery_upnphttp(struct upnphtt
  			return;
  		}
  #endif
@@ -839,120 +1044,16 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		return -1;
  	}
  
-@@ -189,13 +189,13 @@ lease_file6_update(int uid, unsigned int
- 		proto = line;
- 		p = strchr(line, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
-@@ -203,13 +203,13 @@ lease_file6_update(int uid, unsigned int
- 		int_client = p;
- 		p = strchr(p2, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
-@@ -217,20 +217,20 @@ lease_file6_update(int uid, unsigned int
- 		rem_client = p;
- 		p = strchr(p2, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
- 		desc = strchr(p2, ';');
- 		uid_rule = atoi(p);
- 		if(!desc) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(desc++) = '\0';
-@@ -385,49 +385,49 @@ int lease_file6_expire(void)
+@@ -398,7 +398,7 @@ int lease_file6_expire(void)
  		// Internal Host
  		p = strchr(line, ';');
  		if(!p) {
 -			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
++			syslog(LOG_DEBUG, "unrecognized data in lease file (bug)");
  			continue;
  		}
  		*(p++) = '\0';
- 		// Internal Port
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
- 		// External Host
- 		p = strchr(p2, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		// External Port
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
- 		// uid
- 		p = strchr(p2, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		// Timestamp
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
- 		// descr
- 		desc = strchr(p2, ';');
- 		if(!desc) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(desc++) = '\0';
-@@ -476,7 +476,7 @@ int reload_from_lease_file6(void)
+@@ -489,7 +489,7 @@ int reload_from_lease_file6(void)
  	if(!lease_file6) return -1;
  	fd = fopen( lease_file6, "r");
  	if (fd==NULL) {
@@ -961,63 +1062,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		return -1;
  	}
  	if(unlink(lease_file6) < 0) {
-@@ -491,13 +491,13 @@ int reload_from_lease_file6(void)
- 		proto = line;
- 		p = strchr(line, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
-@@ -505,13 +505,13 @@ int reload_from_lease_file6(void)
- 		int_client = p;
- 		p = strchr(p2, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
-@@ -519,20 +519,20 @@ int reload_from_lease_file6(void)
- 		rem_client = p;
- 		p = strchr(p2, ';');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		p2 = strchr(p, ';');
- 		if(!p2) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p2++) = '\0';
- 		desc = strchr(p2, ';');
- 		uid = atoi(p);
- 		if(!desc) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(desc++) = '\0';
-@@ -549,7 +549,7 @@ int reload_from_lease_file6(void)
+@@ -575,7 +575,7 @@ int reload_from_lease_file6(void)
  
  		if(timestamp > 0) {
  			if(timestamp <= (unsigned int)current_unix_time) {
@@ -1028,7 +1073,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				leaseduration = timestamp - current_unix_time;
 --- a/upnpredirect.c
 +++ b/upnpredirect.c
-@@ -66,7 +66,7 @@ lease_file_add(unsigned short eport,
+@@ -67,7 +67,7 @@ lease_file_add(const char * rhost,
  
  	fd = fopen( lease_file, "a");
  	if (fd==NULL) {
@@ -1037,7 +1082,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		return -1;
  	}
  
-@@ -175,7 +175,7 @@ int reload_from_lease_file(void)
+@@ -196,7 +196,7 @@ int reload_from_lease_file(void)
  	if(!lease_file) return -1;
  	fd = fopen( lease_file, "r");
  	if (fd==NULL) {
@@ -1046,46 +1091,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		return -1;
  	}
  	if(unlink(lease_file) < 0) {
-@@ -191,33 +191,33 @@ int reload_from_lease_file(void)
- 		proto = line;
- 		p = strchr(line, ':');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		iaddr = strchr(p, ':');
- 		if(!iaddr) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(iaddr++) = '\0';
- 		eport = (unsigned short)atoi(p);
- 		p = strchr(iaddr, ':');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		iport = (unsigned short)atoi(p);
- 		p = strchr(p, ':');
- 		if(!p) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(p++) = '\0';
- 		desc = strchr(p, ':');
- 		if(!desc) {
--			syslog(LOG_ERR, "unrecognized data in lease file");
-+			syslog(LOG_DEBUG, "unrecognized data in lease file");
- 			continue;
- 		}
- 		*(desc++) = '\0';
-@@ -238,7 +238,7 @@ int reload_from_lease_file(void)
+@@ -266,7 +266,7 @@ int reload_from_lease_file(void)
  			timestamp += current_time;	/* convert to our time */
  #else
  			if(timestamp <= (unsigned int)current_unix_time) {
@@ -1094,7 +1100,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				       eport, iaddr, iport, proto);
  				continue;
  			} else {
-@@ -398,7 +398,7 @@ upnp_redirect(const char * rhost, unsign
+@@ -425,7 +425,7 @@ upnp_redirect(const char * rhost, unsign
  #endif /* CHECK_PORTINUSE */
  	} else {
  		timestamp = (leaseduration > 0) ? upnp_time() + leaseduration : 0;
@@ -1103,7 +1109,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			eport, iaddr, iport, protocol, desc);
  		return upnp_redirect_internal(rhost, eport, iaddr, iport, proto,
  		                              desc, timestamp);
-@@ -648,7 +648,7 @@ get_upnp_rules_state_list(int max_rules_
+@@ -675,7 +675,7 @@ get_upnp_rules_state_list(int max_rules_
  	{
  		if(tmp->to_remove)
  		{
@@ -1114,7 +1120,28 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			*p = tmp->next;
 --- a/upnpsoap.c
 +++ b/upnpsoap.c
-@@ -545,7 +545,7 @@ AddPortMapping(struct upnphttp * h, cons
+@@ -412,18 +412,9 @@ GetExternalIPAddress(struct upnphttp * h
+ 	else
+ 	{
+ 		struct in_addr addr;
+-		if(getifaddr(ext_if_name, ext_ip_addr, INET_ADDRSTRLEN, &addr, NULL) < 0)
+-		{
+-			syslog(LOG_ERR, "Failed to get ip address for interface %s",
+-				ext_if_name);
+-			ext_ip_addr[0] = '\0';
+-		} else if (addr_is_reserved(&addr)) {
+-			if (GETFLAG(ALLOWPRIVATEIPV4MASK)) {
+-				syslog(LOG_WARNING, "IGNORED : private/reserved address %s is not suitable for external IP", ext_ip_addr);
+-			} else {
+-				syslog(LOG_NOTICE, "private/reserved address %s is not suitable for external IP", ext_ip_addr);
++		if (getifaddr(ext_if_name, ext_ip_addr, INET_ADDRSTRLEN, &addr, NULL) < 0 ||
++			(addr_is_reserved(&addr) && !GETFLAG(ALLOWPRIVATEIPV4MASK))) {
+ 				ext_ip_addr[0] = '\0';
+-			}
+ 		}
+ 	}
+ #else
+@@ -545,7 +536,7 @@ AddPortMapping(struct upnphttp * h, cons
  		}
  		else
  		{
@@ -1123,7 +1150,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			ClearNameValueList(&data);
  			SoapError(h, 402, "Invalid Args");
  			return;
-@@ -750,7 +750,7 @@ AddAnyPortMapping(struct upnphttp * h, c
+@@ -750,7 +741,7 @@ AddAnyPortMapping(struct upnphttp * h, c
  		}
  		else
  		{
@@ -1132,7 +1159,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			ClearNameValueList(&data);
  			SoapError(h, 402, "Invalid Args");
  			return;
-@@ -913,7 +913,7 @@ GetSpecificPortMappingEntry(struct upnph
+@@ -913,7 +904,7 @@ GetSpecificPortMappingEntry(struct upnph
  	}
  	else
  	{
@@ -1141,7 +1168,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		       action,
  		       r_host ? r_host : "NULL", ext_port, protocol, int_ip,
  		       (unsigned int)iport, desc, leaseduration);
-@@ -1003,7 +1003,7 @@ DeletePortMapping(struct upnphttp * h, c
+@@ -1003,7 +994,7 @@ DeletePortMapping(struct upnphttp * h, c
  		return;
  	}
  
@@ -1150,7 +1177,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		action, eport, protocol);
  
  	/* if in secure mode, check the IP
-@@ -1125,7 +1125,7 @@ DeletePortMappingRange(struct upnphttp *
+@@ -1125,7 +1116,7 @@ DeletePortMappingRange(struct upnphttp *
  	for(i = 0; i < number; i++)
  	{
  		r = upnp_delete_redirection(port_list[i], protocol);
@@ -1159,7 +1186,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  		       action, port_list[i], protocol, r < 0 ? "failed" : "ok");
  	}
  	free(port_list);
-@@ -1196,7 +1196,7 @@ GetGenericPortMappingEntry(struct upnpht
+@@ -1196,7 +1187,7 @@ GetGenericPortMappingEntry(struct upnpht
  		return;
  	}
  
@@ -1168,7 +1195,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  
  	rhost[0] = '\0';
  	r = upnp_get_redirection_infos_by_index((int)index, &eport, protocol, &iport,
-@@ -1777,7 +1777,7 @@ PinholeVerification(struct upnphttp * h,
+@@ -1777,7 +1768,7 @@ PinholeVerification(struct upnphttp * h,
  			struct addrinfo hints, *ai, *p;
  			int found = 0;
  
@@ -1177,7 +1204,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       "PinholeVerification", int_ip);
  
  			memset(&hints, 0, sizeof(hints));
-@@ -1788,7 +1788,7 @@ PinholeVerification(struct upnphttp * h,
+@@ -1788,7 +1779,7 @@ PinholeVerification(struct upnphttp * h,
  			r = getaddrinfo(int_ip, NULL, &hints, &ai);
  			if (r != 0)
  			{
@@ -1186,7 +1213,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				       "PinholeVerification", int_ip, gai_strerror(r));
  				SoapError(h, 402, "Invalid Args");
  				return -1;
-@@ -1803,11 +1803,11 @@ PinholeVerification(struct upnphttp * h,
+@@ -1803,11 +1794,11 @@ PinholeVerification(struct upnphttp * h,
  
  						if (inet_ntop(AF_INET6, &result_ip, int_ip_resolved, INET6_ADDRSTRLEN) == NULL)
  						{
@@ -1200,7 +1227,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  						       "PinholeVerification", int_ip, int_ip_resolved);
  						found = 1;
  					}
-@@ -1823,7 +1823,7 @@ PinholeVerification(struct upnphttp * h,
+@@ -1823,7 +1814,7 @@ PinholeVerification(struct upnphttp * h,
  			freeaddrinfo(ai);
  			if (!found)
  			{
@@ -1209,7 +1236,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  				       "PinholeVerification", int_ip);
  				SoapError(h, 402, "Invalid Args");
  				return -1;
-@@ -1841,7 +1841,7 @@ PinholeVerification(struct upnphttp * h,
+@@ -1841,7 +1832,7 @@ PinholeVerification(struct upnphttp * h,
  		/* no need to copy to int_ip_resolved, but we still need to fill result_ip up */
  		if (inet_pton(AF_INET6, int_ip, &result_ip) <= 0)
  		{
@@ -1218,7 +1245,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			SoapError(h, 501, "Action Failed");
  			return -1;
  		}
-@@ -1974,7 +1974,7 @@ AddPinhole(struct upnphttp * h, const ch
+@@ -1974,7 +1965,7 @@ AddPinhole(struct upnphttp * h, const ch
  					inet_ntop(AF_INET6,
  					          &(((struct sockaddr_in6 *)p->ai_addr)->sin6_addr),
  					          rem_ip, sizeof(rem_ip));
@@ -1227,7 +1254,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  					rem_host = rem_ip;
  					break;
  				}
-@@ -1983,7 +1983,7 @@ AddPinhole(struct upnphttp * h, const ch
+@@ -1983,7 +1974,7 @@ AddPinhole(struct upnphttp * h, const ch
  		}
  		else
  		{
@@ -1236,7 +1263,7 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  			       rem_host, gai_strerror(err));
  #if 0
  			SoapError(h, 402, "Invalid Args");
-@@ -2696,7 +2696,7 @@ SoapError(struct upnphttp * h, int errCo
+@@ -2696,7 +2687,7 @@ SoapError(struct upnphttp * h, int errCo
  	char body[2048];
  	int bodylen;
  
@@ -1245,3 +1272,108 @@ Link: https://github.com/Self-Hosting-Group/miniupnp/tree/improve-logging
  	bodylen = snprintf(body, sizeof(body), resp, errCode, errDesc);
  	if(bodylen < 0) {
  		syslog(LOG_ERR, "snprintf() returned %d", bodylen);
+--- a/upnpstun.c
++++ b/upnpstun.c
+@@ -10,9 +10,10 @@
+ /*! \file upnpstun.c
+  * \brief STUN client implementation
+  *
+- * - https://datatracker.ietf.org/doc/html/rfc3489 (obsolete)
+- * - https://datatracker.ietf.org/doc/html/rfc5389
+- * - https://datatracker.ietf.org/doc/html/rfc5780 (experimental)
++ * - https://www.rfc-editor.org/info/rfc3489/ (classic STUN, obsoleted)
++ * - https://www.rfc-editor.org/info/rfc5389/ (STUN obsoleted)
++ * - https://www.rfc-editor.org/info/rfc5780/ (STUN NAT behavior, experimental)
++ * - https://www.rfc-editor.org/info/rfc8489/ (STUN current, not implemented)
+  */
+ #include <sys/select.h>
+ #include <sys/time.h>
+@@ -124,8 +125,8 @@ static int resolve_stun_host(const char
+ 
+ 	r = getaddrinfo(stun_host, service, &hints, &result);
+ 	if (r != 0) {
+-		syslog(LOG_ERR, "%s: getaddrinfo(%s, %s, ...) failed : %s",
+-		       "resolve_stun_host", stun_host, service, gai_strerror(r));
++		syslog(LOG_ERR, "STUN: Failed to resolve hostname (%s) to IPv4 address (%s)",
++		       stun_host, gai_strerror(r));
+ 		errno = EHOSTUNREACH;
+ 		return -1;
+ 	}
+@@ -149,8 +150,8 @@ static int resolve_stun_host(const char
+ 	} else {
+ 		char addr_str[48];
+ 		if (sockaddr_to_string((struct sockaddr *)sock_addr, addr_str, sizeof(addr_str)) > 0) {
+-			syslog(LOG_DEBUG, "%s: %s:%s => %s",
+-			       "resolve_stun_host", stun_host, service, addr_str);
++			syslog(LOG_DEBUG, "%s: Resolve hostname (%s) and connect to %s",
++				"resolve_stun_host", stun_host, addr_str);
+ 		}
+ 	}
+ 
+@@ -274,7 +275,7 @@ static int wait_for_stun_responses(int f
+ 			FD_SET(fds[i], &fdset);
+ 		}
+ 
+-		syslog(LOG_DEBUG, "%s: waiting %ld secs and %ld usecs", "wait_for_stun_responses", (long)timeout.tv_sec, (long)timeout.tv_usec);
++		syslog(LOG_DEBUG, "%s: waiting %ld.%ld s", "wait_for_stun_responses", (long)timeout.tv_sec, (long)timeout.tv_usec);
+ 		ret = select(max_fd+1, &fdset, NULL, NULL, &timeout);
+ 		if (ret < 0) {
+ 			if (errno == EINTR)
+@@ -484,7 +485,8 @@ static int parse_stun_response(unsigned
+ 	if (!have_other_address && have_address) {
+ 		syslog(LOG_ERR, "STUN server not supported, not returning "
+ 			"OTHER-ADDRESS / support CHANGE-REQUEST's required for "
+-			"endpoint-independent (1:1) CGNAT filtering tests per RFC 5780.");
++			"endpoint-independent (1:1) CGNAT filtering tests per RFC 5780, "
++			"see compatible servers in sample config");
+ 		return -1;
+ 	}
+ 	return (have_address && have_other_address) ? 0 : -1;
+@@ -529,13 +531,13 @@ int perform_stun(const char *if_name, co
+ 
+ 		/* Determine unrestricted endpoint-independent (1:1) CGNAT in two STUN requests per RFC 5780 4.4 test I/II */
+ 		/* 1. Connectivity (binding, detect public IPv4), 2. CHANGE-REQUEST with change-IP and change-port set */
+-		/* https://datatracker.ietf.org/doc/html/rfc5780#section-4.4 */
++		/* https://www.rfc-editor.org/info/rfc5780/#section-4.4 */
+ 		fill_request(requests[i], i, i);
+ 		transaction_ids[i] = requests[i]+8;
+ 	}
+ 
+-	syslog(LOG_INFO, "%s: local ports %hu %hu %hu %hu",
+-	       "perform_stun", local_ports[0], local_ports[1],
++	syslog(LOG_INFO, "STUN: Testing with local UDP ports %hu %hu %hu %hu",
++		local_ports[0], local_ports[1],
+ 	       local_ports[2], local_ports[3]);
+ 
+ 	/* Unblock local ports */
+@@ -600,16 +602,15 @@ int perform_stun(const char *if_name, co
+ 	if (mapped_addrs_count < 4) {
+ 		/* We have not received all four responses,
+ 		 * therefore NAT or firewall is doing some filtering */
+-		syslog(LOG_NOTICE, "%s: %d response out of 4 received",
+-		       "perform_stun", mapped_addrs_count);
++		syslog(LOG_NOTICE, "STUN: Filtering detected as %d/4 responses received (1: IPv4 detection, 2-4: filtering tests)",
++			mapped_addrs_count);
+ 		*restrictive_nat = 1;
+ 	}
+ 
+ 	if (memcmp(&remote_addr, &peer_addrs[0], sizeof(peer_addrs[0])) != 0) {
+ 		/* We received STUN response from different address
+ 		 * even we did not asked for it, so some strange NAT is active */
+-		syslog(LOG_NOTICE, "%s: address changed",
+-		       "perform_stun");
++		syslog(LOG_NOTICE, "STUN: Public IPv4 change detected in responses");
+ 		*restrictive_nat = 1;
+ 	}
+ 
+@@ -621,8 +622,8 @@ int perform_stun(const char *if_name, co
+ 			sockaddr_to_string((struct sockaddr *)&mapped_addrs[i], mapped_addr_str, sizeof(mapped_addr_str));
+ 			/* External IP address or port was changed,
+ 			 * therefore symmetric NAT is active */
+-			syslog(LOG_NOTICE, "%s: #%d external address or port changed : %s:%hu => %s",
+-			       "perform_stun", i, inet_ntoa(*ext_addr), local_ports[i], mapped_addr_str);
++			syslog(LOG_NOTICE, "STUN: Public IPv4/port change detected in response #%d (%s:%hu => %s)",
++				i+1, inet_ntoa(*ext_addr), local_ports[i], mapped_addr_str);
+ 			*restrictive_nat = 1;
+ 		}
+ 	}

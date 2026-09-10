@@ -197,7 +197,6 @@ return view.extend({
 			_('Reject unsafe/insecure/risky FTP/Telnet/DCE/NetBIOS/SMB/RDP ports by default; overrides other settings; use %s for none').format('<code>0</code>'));
 		o.datatype = 'list(portrange)';
 		o.placeholder = '21 23 135 137-139 445 3389';
-		o.modalonly = true;
 
 		o = s.taboption('access_control', form.Flag, 'check_acl', _('Check ACL'),
 			_('Extend or override access defaults by device-specific permissions using the access control list (ACL)') + '<br />' +
@@ -322,7 +321,7 @@ return view.extend({
 		o.retain = true;
 
 		s = m.section(form.GridSection, 'acl_entry', '<h5>' + _('Access Control List') + '</h5>',
-			_('The access control list (ACL) specifies which IP addresses and ports can be mapped.') + ' ' +
+			_('The access control list (ACL) specifies which IPv4 addresses and ports can be mapped.') + ' ' +
 			_('ACL entries are checked in order, then rejected if not matched and not accepted by access defaults. (To do: should be part of access control tab)'));
 		s.anonymous = true;
 		s.addremove = true;

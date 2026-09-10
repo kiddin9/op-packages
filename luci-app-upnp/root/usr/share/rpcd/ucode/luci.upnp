@@ -19,9 +19,12 @@ const methods = {
 			const leasefile = open(uci.get('upnpd', 'settings', 'lease_file') || '/var/run/miniupnpd.leases', 'r');
 			if (leasefile) {
 				for (let line = leasefile.read('line'); length(line); line = leasefile.read('line')) {
-					const record = split(line, ':', 6);
-					if (length(record) == 6) {
-						let descr = trim(record[5]);
+					const record = split(line, ':', 7);
+					if (length(record) == 6 || length(record) == 7) {
+						// Daemon version >2.3.11 changes lease file format
+						let recshift = 0;
+						if (length(record) == 7) recshift = 1;
+						let descr = trim(record[5 + recshift]);
 						let m = match(descr, /^PCP [A-Z]+ ([0-9a-f]{24})$/);
 						if (m) descr = 'PCP (nonce ' + m[1] + ')';
 						else if (match(descr, /^NAT-PMP \d+ \w+$/)) descr = 'NAT-PMP';
@@ -30,9 +33,9 @@ const methods = {
 						push(leases, {
 							proto: uc(record[0]),
 							extport: +record[1],
-							intaddr: arrtoip(iptoarr(record[2])),
-							intport: +record[3],
-							expires: record[4] - timelocal(localtime()),
+							intaddr: arrtoip(iptoarr(record[2 + recshift])),
+							intport: +record[3 + recshift],
+							expires: record[4 + recshift] - timelocal(localtime()),
 							descr: descr
 						});
 					}

@@ -53,7 +53,7 @@ if uci -q get upnpd.config.stun_host | grep -q -E "stun[0-9]?.l.google.com|stun.
 	uci delete upnpd.config.stun_host
 	uci -q delete upnpd.config.stun_port
 	# To keep behaviour with daemon <2.3.10 as previously, a false-negative filter result was returned for unsupported servers
-	uci set upnpd.config.allow_cgnat="allow-filtered"
+	[ "$(uci -q get upnpd.config.allow_cgnat)" = "1" ] && uci set upnpd.config.allow_cgnat="allow-filtered"
 elif uci -q get upnpd.config.stun_port >/dev/null; then
 	uci -q get upnpd.config.stun_host >/dev/null && [ "$(uci -q get upnpd.config.stun_port)" != "3478" ] &&
 		log "stun_port: Include stun_port in stun_host, and remove option" &&

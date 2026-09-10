@@ -9,15 +9,9 @@
 #   logging_status — WAN zone logging readiness (no args)
 #   enable_wan_logging / disable_wan_logging — opt-in WAN zone log=1 (no args)
 #
-# Entry point (rpcd plugin). Sourced helpers inherit these options. Do not
-# copy set -euo into fwlive-logging.sh — prerm sources that file alone (#222)
-# and keeps soft-fail / || return 1 contracts (#244, #291 C3).
+# Entry point (rpcd plugin). Sourced helpers inherit these options.
 set -eu
-# pipefail: BusyBox ash (device) supports it; Debian dash (host `sh` in
-# CI) rejects `set -o pipefail` as a startup abort. Probe in a subshell —
-# a failed `set` in-process is fatal even under `if` (same class as #244
-# failed exec).
-# shellcheck disable=SC3040 # pipefail is ash/bash; dash probe is a subshell
+# shellcheck disable=SC3040
 (set -o pipefail) 2>/dev/null && set -o pipefail
 
 FW4_TAG='!fw4: '
@@ -405,25 +399,24 @@ poll_lines_from_input() {
 		return 0
 	fi
 
-	# Device-only helper; not present on host CI runners.
-	# shellcheck disable=SC1091
-	. /usr/share/libubox/jshn.sh
-	json_load "$input" 2>/dev/null || {
-		printf '%s' "$lines"
-		return 0
-	}
-
-	if json_select addresses 2>/dev/null; then
-		# json_get_var assigns into the named shell variable (jshn).
-		json_get_var first 1
-		json_select ..
-		# shellcheck disable=SC2154 # set by json_get_var above
-		# Missing addresses[1] leaves first unset; set -u (#291 C3).
-		case "${first:-}" in
-			''|*[!0-9]*) ;;
-			*) lines="$first" ;;
-		esac
-	fi
+	# jshn uses intentionally unset state variables. Keep nounset disabled in
+	# this subshell so strict mode is restored automatically on every exit.
+	_first=$( (
+		set +u
+		. /usr/share/libubox/jshn.sh
+		# json_load masks a failing jshn exit through eval. Check the real
+		# parser once, then evaluate only its generated shell assignments.
+		_json_no_warning=1
+		_json_code=$(jshn -r "$input" 2>/dev/null) || exit 1
+		eval "$_json_code" || exit 1
+		if ! json_select addresses 2>/dev/null; then exit 1; fi
+		json_get_var first 1 || exit 1
+		printf '%s' "${first:-}"
+	) ) || _first=
+	case "${_first:-}" in
+		''|*[!0-9]*) ;;
+		*) lines="$_first" ;;
+	esac
 
 	lines=$(poll_clamp_lines "$lines")
 
@@ -608,27 +601,38 @@ resolve_addresses() {
 		return 0
 	fi
 
-	# shellcheck disable=SC1091
-	. /usr/share/libubox/jshn.sh
-	json_load "$input" 2>/dev/null || {
+	_addresses=$( (
+		set +u
+		. /usr/share/libubox/jshn.sh
+		# json_load masks a failing jshn exit through eval. Check the real
+		# parser once, then evaluate only its generated shell assignments.
+		_json_no_warning=1
+		_json_code=$(jshn -r "$input" 2>/dev/null) || exit 1
+		eval "$_json_code" || exit 1
+		if ! json_select addresses 2>/dev/null; then exit 0; fi
+		idx=1
+		# shellcheck disable=SC2154
+		while json_get_type atype "$idx" && [ "$atype" = string ]; do
+			json_get_var ip "$idx" || exit 1
+			# Preserve JSON element boundaries in the newline transport.
+			# Invalid addresses (including embedded newlines) never leave it.
+			if is_resolvable_address "${ip:-}"; then
+				printf '%s\n' "$ip"
+			fi
+			idx=$((idx + 1))
+		done
+	) ) || {
 		printf '{"names":{},"error":"invalid_input"}'
 		return 0
 	}
-
-	if json_select addresses 2>/dev/null; then
-		idx=1
-		# json_get_type / json_get_var assign into named shell variables (jshn).
-		# shellcheck disable=SC2154
-		while json_get_type atype "$idx" && [ "$atype" = string ]; do
+	while IFS= read -r ip; do
 			[ "$count" -ge "$RESOLVE_MAX" ] && break
 			# Abort cleanly once the whole-call wall-clock budget is spent;
 			# never START a lookup past the budget.
 			now=$(date +%s)
 			[ $((now - start)) -ge "$RESOLVE_BUDGET" ] && break
-			json_get_var ip "$idx"
 			# Missing/empty element: set -u cannot read bare $ip (#291 C3).
 			if ! is_resolvable_address "${ip:-}"; then
-				idx=$((idx + 1))
 				continue
 			fi
 			# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
@@ -638,10 +642,9 @@ resolve_addresses() {
 				map_add "$ip" "$name"
 				count=$((count + 1))
 			fi
-			idx=$((idx + 1))
-		done
-		json_select ..
-	fi
+		done <<EOF
+$_addresses
+EOF
 
 	printf '{"names":{%s}}' "$OUT"
 }

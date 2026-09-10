@@ -115,7 +115,7 @@ upnpd_generate_config() {
 		network_find_wan6 external_iface6 && network_get_device ifname6 "$external_iface6"
 	fi
 	if [ "$ifname" = "" ]; then
-		log "No external network interface found, not starting" daemon.err
+		log "No external network interface detected yet, not starting" daemon.err
 		return 1
 	fi
 	# Workaround for daemon bug with UPnP IGDv2 if IPv6 is not ready at start
@@ -136,7 +136,7 @@ upnpd_generate_config() {
 	10.* | 100.6[4-9].* | 100.[7-9][0-9].* | 100.1[0-1][0-9].* | 100.12[0-7].* | 172.1[6-9].* | \
 		172.2[0-9].* | 172.3[0-1].* | 192.0.0.[1-6] | 192.168.* | 198.1[89].*) extipv4private=1 ;;
 	esac
-	[ "$extipv4private" = "1" ] && log "Private/CGNAT-reserved external IPv4 detected ($extipv4)"
+	[ "$extipv4private" = "1" ] && log "Private/CGNAT-reserved external IPv4 detected"
 
 	{
 		echo "# Daemon"
@@ -197,7 +197,8 @@ upnpd_generate_config() {
 		[ "$ipv6_disable" = "0" ] && echo "ipv6_disable=no" || echo "ipv6_disable=yes"
 		local rejectport
 		for rejectport in $reject_ports; do
-			is_port_or_range "$rejectport" allowport0 && echo "deny 1-65535 0.0.0.0/0 $rejectport # Reject port $rejectport" &&
+			[ "$rejectport" = "0" ] && continue
+			is_port_or_range "$rejectport" allowport0 && echo "deny 1-65535 0.0.0.0/0 $rejectport # Reject internal port $rejectport" &&
 				echo "deny $rejectport 0.0.0.0/0 1-65535 # Reject external port $rejectport" ||
 				log "Invalid port or port range ($rejectport) in reject_ports ignored" daemon.warn
 		done
