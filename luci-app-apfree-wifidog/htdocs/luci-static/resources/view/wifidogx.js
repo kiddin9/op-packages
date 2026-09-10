@@ -30,219 +30,6 @@ var callGetWanMac = rpc.declare({
 	expect: { result: {} }
 });
 
-// Generate Device ID: AW + 7 random digits + 12-char MAC (total 21 chars)
-function generateDeviceId(macAddress) {
-	var macPart = macAddress.replace(/-/g, ''); // Remove hyphens from MAC
-	var randomPart = '';
-	for (var i = 0; i < 7; i++) {
-		randomPart += Math.floor(Math.random() * 10);
-	}
-	return 'AW' + randomPart + macPart;
-}
-
-// Generate Location ID: 14 digits (AAAAAABBBCCCCC)
-// AAAAAA: Administrative division code (GB/T 2260) - using Beijing as default (110101)
-// BBB: Service type (100 for commercial internet service locations, positions 7-9)
-// CCCCC: 5-digit random sequence number (positions 10-14)
-function generateLocationId() {
-	var adminCode = '110101'; // Default to Beijing Dongcheng District (positions 1-6)
-	var serviceType = '100'; // Commercial internet service location (positions 7-9)
-	var sequenceNum = '';
-
-	// Generate 5-digit random sequence number (positions 10-14)
-	for (var i = 0; i < 5; i++) {
-		sequenceNum += Math.floor(Math.random() * 10);
-	}
-
-	return adminCode + serviceType + sequenceNum; // 6 + 3 + 5 = 14 digits
-}
-
-// Auto-fill helper functions
-function showAutoFillModal() {
-	ui.showModal(_('Auto Fill'), [
-		E('div', { 'class': 'cbi-section' }, [
-			E('div', { 'class': 'cbi-section-descr' }, _('Getting device information and location data, please wait...')),
-			E('div', { 'id': 'auto-fill-progress' }, [
-				E('ul', { 'style': 'margin: 10px 0;' }, [
-					E('li', { 'id': 'mac-status' }, _('Getting WAN MAC address...')),
-					E('li', { 'id': 'device-id-status' }, _('Generating Device ID...')),
-					E('li', { 'id': 'location-id-status' }, _('Generating Location ID...')),
-					E('li', { 'id': 'location-status' }, _('Getting location coordinates...'))
-				])
-			])
-		])
-	]);
-}
-
-function updateMacStatus(macAddr, isSuccess, errorMsg, isFallback) {
-	var statusElement = document.getElementById('mac-status');
-	if (isSuccess) {
-		var prefix = isFallback ? _('✓ WAN MAC address obtained (fallback): ') : _('✓ WAN MAC address obtained: ');
-		var suffix = isFallback ? '' : _(' (interface: ') + arguments[4] + _(')');
-		statusElement.innerHTML = prefix + macAddr + suffix;
-	} else {
-		statusElement.innerHTML = _('✗ Failed to get WAN MAC address: ') + (errorMsg || _('Unknown error'));
-	}
-}
-
-function generateAndUpdateIds(macAddr) {
-	var deviceId = generateDeviceId(macAddr);
-	var locationId = generateLocationId();
-
-	document.getElementById('device-id-status').innerHTML = _('✓ Device ID generated: ') + deviceId;
-	document.getElementById('location-id-status').innerHTML = _('✓ Location ID generated: ') + locationId;
-
-	return { deviceId: deviceId, locationId: locationId };
-}
-
-function getMacAddressPromise(results) {
-	return callGetWanMac().then(function (response) {
-		if (response && response.status === 'success') {
-			var macAddr = response.mac.toUpperCase().replace(/:/g, '-');
-			results.macAddress = macAddr;
-			updateMacStatus(macAddr, true, null, false, response.interface);
-
-			var ids = generateAndUpdateIds(macAddr);
-			results.deviceId = ids.deviceId;
-			results.locationId = ids.locationId;
-		} else {
-			return getMacAddressFallback(results);
-		}
-	}).catch(function (error) {
-		return getMacAddressFallback(results);
-	});
-}
-
-function getMacAddressFallback(results) {
-	document.getElementById('mac-status').innerHTML = _('RPC failed, trying fallback...');
-
-	return fs.exec('/bin/sh', ['-c', 'ip route | grep default | awk \'{print $5}\' | head -n1 | xargs -I {} cat /sys/class/net/{}/address 2>/dev/null || echo "failed"']).then(function (response) {
-		if (response.code === 0 && response.stdout && response.stdout.trim() !== 'failed') {
-			var macAddr = response.stdout.trim().toUpperCase().replace(/:/g, '-');
-			results.macAddress = macAddr;
-			updateMacStatus(macAddr, true, null, true);
-
-			var ids = generateAndUpdateIds(macAddr);
-			results.deviceId = ids.deviceId;
-			results.locationId = ids.locationId;
-		} else {
-			updateMacStatus(null, false, _('Unknown error'));
-			document.getElementById('device-id-status').innerHTML = _('✗ Cannot generate Device ID without MAC address');
-		}
-	}).catch(function (error) {
-		updateMacStatus(null, false, error.message);
-		document.getElementById('device-id-status').innerHTML = _('✗ Cannot generate Device ID due to MAC error');
-	});
-}
-
-function formatCoordinate(coord) {
-	var num = parseFloat(coord).toFixed(6);
-	if (num >= 0) {
-		return num.padStart(10, '0');
-	} else {
-		return '-' + Math.abs(num).toFixed(6).padStart(9, '0');
-	}
-}
-
-function getLocationPromise(results) {
-	return callGetLocation().then(function (response) {
-		if (response && response.status === 'success') {
-			var lat = formatCoordinate(response.lat);
-			var lon = formatCoordinate(response.lon);
-
-			results.longitude = lon;
-			results.latitude = lat;
-			document.getElementById('location-status').innerHTML = _('✓ Location obtained: ') + lat + ', ' + lon;
-		} else {
-			var errorMsg = (response && response.message) ? response.message : _('Unknown error');
-			document.getElementById('location-status').innerHTML = _('✗ Failed to get location: ') + errorMsg;
-		}
-	}).catch(function (error) {
-		return getLocationFallback(results);
-	});
-}
-
-function getLocationFallback(results) {
-	document.getElementById('location-status').innerHTML = _('RPC failed, trying direct method...');
-
-	return fs.exec('/bin/sh', ['-c', 'curl -s --connect-timeout 10 --max-time 30 "https://ipapi.co/json" 2>/dev/null || curl -s --connect-timeout 10 --max-time 30 "http://ipinfo.io/json" 2>/dev/null || echo "failed"']).then(function (response) {
-		if (response.code === 0 && response.stdout && response.stdout.trim() !== 'failed') {
-			try {
-				var data = JSON.parse(response.stdout);
-				var lat, lon;
-
-				if (data.latitude && data.longitude) {
-					lat = formatCoordinate(data.latitude);
-					lon = formatCoordinate(data.longitude);
-				} else if (data.loc) {
-					var coords = data.loc.split(',');
-					lat = formatCoordinate(coords[0]);
-					lon = formatCoordinate(coords[1]);
-				}
-
-				if (lat && lon) {
-					results.longitude = lon;
-					results.latitude = lat;
-					document.getElementById('location-status').innerHTML = _('✓ Location obtained (fallback): ') + lat + ', ' + lon;
-				} else {
-					document.getElementById('location-status').innerHTML = _('✗ No valid coordinates found');
-				}
-			} catch (e) {
-				document.getElementById('location-status').innerHTML = _('✗ Failed to parse location data');
-			}
-		} else {
-			document.getElementById('location-status').innerHTML = _('✗ Failed to get location data');
-		}
-	}).catch(function (fallbackError) {
-		document.getElementById('location-status').innerHTML = _('✗ Error getting location: ') + fallbackError.message;
-	});
-}
-
-function fillFormFields(results) {
-	var successCount = 0;
-	var totalFields = 0;
-	var messages = [];
-	var fieldMappings = [
-		{ result: 'macAddress', selector: 'ap_mac_address', label: _('MAC Address: ') },
-		{ result: 'deviceId', selector: 'ap_device_id', label: _('Device ID: ') },
-		{ result: 'locationId', selector: 'location_id', label: _('Location ID: ') },
-		{ result: 'longitude', selector: 'ap_longitude', label: _('Longitude: ') },
-		{ result: 'latitude', selector: 'ap_latitude', label: _('Latitude: ') }
-	];
-
-	fieldMappings.forEach(function (mapping) {
-		if (results[mapping.result]) {
-			var field = document.querySelector('input[data-name="' + mapping.selector + '"]') ||
-				document.querySelector('input[name*="' + mapping.selector + '"]') ||
-				document.querySelector('input[id*="' + mapping.selector + '"]') ||
-				document.querySelector('#cbid\\.wifidogx\\.default\\.' + mapping.selector);
-
-			if (field) {
-				field.value = results[mapping.result];
-				field.dispatchEvent(new Event('input', { bubbles: true }));
-				field.dispatchEvent(new Event('change', { bubbles: true }));
-				successCount++;
-				messages.push(mapping.label + results[mapping.result]);
-			}
-			totalFields++;
-		}
-	});
-
-	return { successCount: successCount, totalFields: totalFields, messages: messages };
-}
-
-function showAutoFillResult(stats) {
-	ui.hideModal();
-
-	if (stats.successCount === stats.totalFields && stats.totalFields > 0) {
-		ui.addNotification(null, E('p', _('Auto fill completed successfully! All fields have been filled.') + '<br>' + stats.messages.join('<br>')), 'info');
-	} else if (stats.successCount > 0) {
-		ui.addNotification(null, E('p', _('Auto fill partially completed.') + ' ' + stats.successCount + '/' + stats.totalFields + ' ' + _('fields filled successfully.') + '<br>' + stats.messages.join('<br>')), 'warning');
-	} else {
-		ui.addNotification(null, E('p', _('Auto fill failed. No fields could be filled. Please check your network connection and try again.')), 'error');
-	}
-}
-
 function getServiceStatus() {
 	return L.resolveDefault(callServiceList('wifidogx'), {}).then(function (res) {
 		var isRunning = false;
@@ -251,6 +38,25 @@ function getServiceStatus() {
 		} catch (e) { }
 		return isRunning;
 	});
+}
+
+function generateDeviceId(macAddress) {
+	var macPart = macAddress.replace(/-/g, '');
+	var randomPart = '';
+	for (var i = 0; i < 7; i++) {
+		randomPart += Math.floor(Math.random() * 10);
+	}
+	return 'AW' + randomPart + macPart;
+}
+
+function generateLocationId() {
+	var adminCode = '110101';
+	var serviceType = '100';
+	var sequenceNum = '';
+	for (var i = 0; i < 5; i++) {
+		sequenceNum += Math.floor(Math.random() * 10);
+	}
+	return adminCode + serviceType + sequenceNum;
 }
 
 function renderStatus(isRunning) {
@@ -284,7 +90,6 @@ return view.extend({
 		s.tab('gateway', _('Gateway Settings'));
 		s.tab('advanced', _('Advanced Settings'));
 		s.tab('rule', _('Rule Settings'));
-		s.tab('qos', _('QoS Settings'));
 		s.tab('location', _('Authentication Location Settings'));
 
 		// basic settings
@@ -368,7 +173,7 @@ return view.extend({
 		o = s.taboption('basic', form.Flag, 'disable_portal_auth', _('Disable Portal Authentication'),
 			_('When enabled, users can access the internet without portal authentication. Firewall redirect rules will not be created. Use this mode for pure traffic statistics without captive portal.'));
 		o.rmempty = false;
-		o.default = '1';
+		o.default = '0';
 
 		o = s.taboption('basic', form.ListValue, 'log_level', _('Log Level'),
 			_('The log level of the apfree-wifidog.'));
@@ -380,7 +185,7 @@ return view.extend({
 		o.value(2, _('Critical'));
 		o.value(1, _('Alert'));
 		o.value(0, _('Emergency'));
-		o.defaulValue = 0;
+		o.default = 0;
 		o.optional = false;
 
 		// gateway settings
@@ -392,7 +197,7 @@ return view.extend({
 		o = ss.option(form.Flag, 'gateway_auth_enabled', _('Auth Enabled'),
 			_('Enable the authentication of the gateway.'));
 		o.rmempty = false;
-		o.defaulValue = true;
+		o.default = true;
 
 		o = ss.option(widgets.DeviceSelect, 'gateway_name', _('Gateway Name'));
 		o.rmempty = false;
@@ -425,14 +230,14 @@ return view.extend({
 		o.datatype = 'uinteger';
 		o.rmempty = false;
 		o.optional = false;
-		o.defaulValue = 60;
+		o.default = 60;
 
 		o = s.taboption('advanced', form.Value, 'client_timeout', _('Client Timeout'),
 			_('The timeout of the client.'));
 		o.datatype = 'uinteger';
 		o.rmempty = false;
 		o.optional = false;
-		o.defaulValue = 5;
+		o.default = 5;
 
 		o = s.taboption('advanced', form.Flag, 'wired_passed', _('Wired Passed'),
 			_('Wired users do not need to authenticate to access the internet.'));
@@ -441,23 +246,30 @@ return view.extend({
 		o = s.taboption('advanced', form.Flag, 'apple_cna', _('Apple CNA'),
 			_('Enable Apple Captive Network Assistant.'));
 		o.rmempty = false;
-		o.defaulValue = false;
+		o.default = false;
 
 		o = s.taboption('advanced', form.Flag, 'js_filter', _('JS Filter'),
 			_('Enable JS redirect.'));
 		o.rmempty = false;
-		o.defaulValue = true;
+		o.default = true;
 
 		o = s.taboption('advanced', form.Flag, 'enable_anti_nat', _('Enable Anti NAT'),
 			_('Enable Anti NAT devices.'));
 		o.rmempty = false;
-		o.defaulValue = false;
+		o.default = false;
+
+		o = s.taboption('advanced', form.Value, 'privileged_ops_secret', _('Privileged Ops Secret'),
+			_('Local secret required for AWAS cloud platform to dynamically authorize remote OTA, reboot and system changes. Change this from the default on production devices.'));
+		o.password = true;
+		o.rmempty = false;
+		o.optional = false;
+		o.default = 'chawrt@2026';
 
 		o = s.taboption('advanced', form.Value, 'ttl_value', _('TTL Value'),
 			_('The TTL value of the gateway support.'));
 		o.datatype = 'string';
 		o.rmempty = false;
-		o.defaulValue = '64,128';
+		o.default = '64,128';
 		o.depends('enable_anti_nat', '1');
 
 		o = s.taboption('advanced', form.Value, 'anti_nat_permit_macs', _('Anti NAT Permit MAC'),
@@ -466,16 +278,86 @@ return view.extend({
 		o.rmempty = true;
 		o.depends('enable_anti_nat', '1');
 
-		o = s.taboption('advanced', form.Flag, 'enable_event_log', _('Enable Internet Access Log'),
-			_('Enable logging of internet access events and user activities.'));
-		o.rmempty = false;
-		o.defaulValue = false;
-
 		// Auth Server Settings
 		o = s.taboption('auth', form.SectionValue, '_auth', form.GridSection, 'auth');
 		ss = o.subsection;
 		ss.addremove = true;
 		ss.nodescriptions = true;
+
+		ss.handleAdd = function (ev, name) {
+			var self = this;
+			if (name) {
+				var longconnSections = uci.sections('wifidogx', 'longconn');
+				for (var i = 0; i < longconnSections.length; i++) {
+					if (longconnSections[i]['.name'] === name) {
+						ui.addNotification(null, E('p', _('The name "%s" already exists in Long Connection profiles. Please choose a different name.').format(name)), 'error');
+						return Promise.resolve();
+					}
+				}
+				var authSections = uci.sections('wifidogx', 'auth');
+				for (var i = 0; i < authSections.length; i++) {
+					if (authSections[i]['.name'] === name) {
+						ui.addNotification(null, E('p', _('The name "%s" already exists in Auth Server profiles. Please choose a different name.').format(name)), 'error');
+						return Promise.resolve();
+					}
+				}
+			}
+			return this.super('handleAdd', [ev, name]);
+		};
+
+		ss.handleRename = function (section_id, ev) {
+			var self = this;
+			var oldName = section_id;
+			var nameEl = E('input', {
+				'type': 'text',
+				'class': 'cbi-input-text',
+				'id': 'auth-rename-input',
+				'value': oldName,
+				'style': 'width: 100%;'
+			});
+			ui.showModal(_('Rename Authentication Server'), [
+				E('div', { 'class': 'cbi-section' }, [
+					E('div', { 'class': 'cbi-section-descr' }, _('Enter a new unique name for this authentication server profile.')),
+					E('div', { 'class': 'cbi-section-table' }, [
+						E('div', { 'class': 'tr' }, [
+							E('div', { 'class': 'td' }, _('Name')),
+							E('div', { 'class': 'td' }, [nameEl])
+						])
+					])
+				]),
+				E('div', { 'class': 'right' }, [
+					E('button', { 'class': 'btn', 'click': function () { ui.hideModal(); } }, _('Cancel')),
+					E('button', { 'class': 'btn cbi-button cbi-button-positive', 'click': function () {
+						var newName = nameEl.value.trim();
+						if (!newName) {
+							ui.addNotification(null, E('p', _('Please enter a name.')), 'error');
+							return;
+						}
+						if (newName === oldName) {
+							ui.hideModal();
+							return;
+						}
+						var longconnSections = uci.sections('wifidogx', 'longconn');
+						for (var i = 0; i < longconnSections.length; i++) {
+							if (longconnSections[i]['.name'] === newName) {
+								ui.addNotification(null, E('p', _('The name "%s" already exists in Long Connection profiles. Please choose a different name.').format(newName)), 'error');
+								return;
+							}
+						}
+						var authSections = uci.sections('wifidogx', 'auth');
+						for (var i = 0; i < authSections.length; i++) {
+							if (authSections[i]['.name'] === newName && authSections[i]['.name'] !== oldName) {
+								ui.addNotification(null, E('p', _('The name "%s" already exists in Auth Server profiles. Please choose a different name.').format(newName)), 'error');
+								return;
+							}
+						}
+						ui.hideModal();
+						uci.rename('wifidogx', section_id, newName);
+						self.map.save(null, true);
+					}}, _('Rename'))
+				])
+			]);
+		};
 
 		o = ss.option(form.Value, 'auth_server_hostname', _('Auth Server Hostname'),
 			_('The domain or IP address of the authentication server.'));
@@ -499,29 +381,6 @@ return view.extend({
 		o.optional = false;
 		o.default = '/wifidog/';
 
-
-		// QoS settings
-		o = s.taboption('qos', form.Flag, 'enable_qos', _('Enable Global QoS'),
-			_('Enable Global QoS.'));
-		o.rmempty = false;
-		o.defaulValue = false;
-
-		o = s.taboption('qos', form.Value, 'qos_up', _('Global QoS Up'),
-			_('The global QoS up value(Mbps).'));
-		o.datatype = 'uinteger';
-		o.rmempty = true;
-		o.optional = true;
-		o.defaulValue = 0;
-		o.depends('enable_qos', '1');
-
-		o = s.taboption('qos', form.Value, 'qos_down', _('Global QoS Down'),
-			_('The global QoS down value(Mbps).'));
-		o.datatype = 'uinteger';
-		o.rmempty = true;
-		o.optional = true;
-		o.defaulValue = 0;
-		o.depends('enable_qos', '1');
-
 		// Authentication Location Settings
 		// Add auto-fill button
 		o = s.taboption('location', form.Button, '_auto_fill', _('Auto Fill All Fields'),
@@ -544,11 +403,8 @@ return view.extend({
 				getLocationPromise(results)
 			];
 
-			// Wait for all promises to complete and fill form fields
 			Promise.all(promises).then(function () {
-				setTimeout(function () {
-					fillFormFields(results);
-				}, 2000);
+				fillFormFields(results);
 			});
 		};
 
@@ -583,10 +439,11 @@ return view.extend({
 					results.locationId = generateLocationId();
 					document.getElementById('location-id-status').innerHTML = _('✓ Location ID generated: ') + results.locationId;
 				} else {
+					document.getElementById('mac-status').innerHTML = _('RPC returned error, trying fallback...');
 					return getMacAddressFallback(results);
 				}
 			}).catch(function (error) {
-				document.getElementById('mac-status').innerHTML = _('✗ RPC call failed, trying fallback...');
+				document.getElementById('mac-status').innerHTML = _('RPC call failed, trying fallback...');
 				return getMacAddressFallback(results);
 			});
 		}
@@ -625,8 +482,8 @@ return view.extend({
 					formatAndSetCoordinates(results, lat, lon);
 					document.getElementById('location-status').innerHTML = _('✓ Location obtained: ') + results.latitude + ', ' + results.longitude;
 				} else {
-					var errorMsg = (response && response.message) ? response.message : 'Unknown error';
-					document.getElementById('location-status').innerHTML = _('✗ Failed to get location: ') + errorMsg;
+					document.getElementById('location-status').innerHTML = _('RPC returned error, trying fallback...');
+					return getLocationFallback(results);
 				}
 			}).catch(function (error) {
 				document.getElementById('location-status').innerHTML = _('RPC failed, trying direct method...');
@@ -741,8 +598,6 @@ return view.extend({
 		o.rmempty = false;
 		o.datatype = 'string';
 		o.optional = false;
-		o.depends('auth_server_mode', 'cloud');
-		o.depends('auth_server_mode', 'bypass');
 		o.placeholder = '110101100123456';
 		o.validate = function (section_id, value) {
 			if (!value || value === '')
@@ -766,7 +621,8 @@ return view.extend({
 
 			// Validate service type code (7-9 digits)
 			var serviceType = value.substring(6, 9);
-			if (serviceType !== '100' && serviceType !== '2' + value.charAt(7) + value.charAt(8) && serviceType !== '3' + value.charAt(7) + value.charAt(8)) {
+			var firstDigit = serviceType.charAt(0);
+			if (serviceType !== '100' && firstDigit !== '2' && firstDigit !== '3') {
 				return _('Service type code (7-9 digits) must be "100" for commercial internet service locations, "2XX" for non-commercial locations, or "3XX" for WiFi wireless collection terminals');
 			}
 
@@ -936,6 +792,81 @@ return view.extend({
 		ss.addremove = true;
 		ss.nodescriptions = true;
 
+		ss.handleAdd = function (ev, name) {
+			var self = this;
+			if (name) {
+				var authSections = uci.sections('wifidogx', 'auth');
+				for (var i = 0; i < authSections.length; i++) {
+					if (authSections[i]['.name'] === name) {
+						ui.addNotification(null, E('p', _('The name "%s" already exists in Auth Server profiles. Please choose a different name.').format(name)), 'error');
+						return Promise.resolve();
+					}
+				}
+				var longconnSections = uci.sections('wifidogx', 'longconn');
+				for (var i = 0; i < longconnSections.length; i++) {
+					if (longconnSections[i]['.name'] === name) {
+						ui.addNotification(null, E('p', _('The name "%s" already exists in Long Connection profiles. Please choose a different name.').format(name)), 'error');
+						return Promise.resolve();
+					}
+				}
+			}
+			return this.super('handleAdd', [ev, name]);
+		};
+
+		ss.handleRename = function (section_id, ev) {
+			var self = this;
+			var oldName = section_id;
+			var nameEl = E('input', {
+				'type': 'text',
+				'class': 'cbi-input-text',
+				'id': 'longconn-rename-input',
+				'value': oldName,
+				'style': 'width: 100%;'
+			});
+			ui.showModal(_('Rename Long Connection Profile'), [
+				E('div', { 'class': 'cbi-section' }, [
+					E('div', { 'class': 'cbi-section-descr' }, _('Enter a new unique name for this long connection profile.')),
+					E('div', { 'class': 'cbi-section-table' }, [
+						E('div', { 'class': 'tr' }, [
+							E('div', { 'class': 'td' }, _('Name')),
+							E('div', { 'class': 'td' }, [nameEl])
+						])
+					])
+				]),
+				E('div', { 'class': 'right' }, [
+					E('button', { 'class': 'btn', 'click': function () { ui.hideModal(); } }, _('Cancel')),
+					E('button', { 'class': 'btn cbi-button cbi-button-positive', 'click': function () {
+						var newName = nameEl.value.trim();
+						if (!newName) {
+							ui.addNotification(null, E('p', _('Please enter a name.')), 'error');
+							return;
+						}
+						if (newName === oldName) {
+							ui.hideModal();
+							return;
+						}
+						var authSections = uci.sections('wifidogx', 'auth');
+						for (var i = 0; i < authSections.length; i++) {
+							if (authSections[i]['.name'] === newName) {
+								ui.addNotification(null, E('p', _('The name "%s" already exists in Auth Server profiles. Please choose a different name.').format(newName)), 'error');
+								return;
+							}
+						}
+						var longconnSections = uci.sections('wifidogx', 'longconn');
+						for (var i = 0; i < longconnSections.length; i++) {
+							if (longconnSections[i]['.name'] === newName && longconnSections[i]['.name'] !== oldName) {
+								ui.addNotification(null, E('p', _('The name "%s" already exists in Long Connection profiles. Please choose a different name.').format(newName)), 'error');
+								return;
+							}
+						}
+						ui.hideModal();
+						uci.rename('wifidogx', section_id, newName);
+						self.map.save(null, true);
+					}}, _('Rename'))
+				])
+			]);
+		};
+
 		o = ss.option(form.ListValue, 'long_conn_mode', _('Connection Mode'),
 			_('The type of persistent connection to the remote management server.'));
 		o.value('ws', _('WebSocket (ws://)'));
@@ -1011,7 +942,7 @@ return view.extend({
 
 		// rule settings
 		o = s.taboption('rule', form.DynamicList, 'trusted_wildcard_domains', _('Trusted Wildcard Domains'),
-			_('The trusted wildcard domains of the gateway'));
+			_('Requires aw-bpf DNS XDP (dns_ringbuf_portal). Patterns like .example.com; resolved IPs are added to the captive portal firewall (inet wifidogx), not inet awbpf.'));
 		o.rmempty = true;
 		o.optional = true;
 		o.datatype = 'wildcard';
@@ -1025,7 +956,7 @@ return view.extend({
 		o.placeholder = 'www.example.com';
 
 		o = s.taboption('rule', form.DynamicList, 'trusted_macs', _('Trusted MACs'),
-			_('The trusted wildcard domains of the gateway.'));
+			_('The trusted MAC addresses of the gateway.'));
 		o.rmempty = true;
 		o.optional = true;
 		o.datatype = 'macaddr';

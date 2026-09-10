@@ -8,14 +8,12 @@
 			},
 			"file": {
 				"/etc/init.d/wifidogx": [ "exec" ],
-				"/usr/bin/wdctlx": [ "exec" ],
-				"/usr/bin/aw-bpfctl": [ "exec" ],
-				"/usr/bin/awk": [ "exec" ]
+				"/usr/bin/wdctlx": [ "exec" ]
 			},
-			"uci": ["wifidogx", "hostnames", "network"]
+			"uci": ["wifidogx", "network"]
 		},
 		"write": {
-			"uci": ["wifidogx", "hostnames"],
+			"uci": ["wifidogx"],
 			"file": {
 				"/etc/wifidogx/*": [ "write" ]
 			}

@@ -266,13 +266,13 @@ return view.extend({
             }
         }
 
+        // Initial update
+        updateStatus();
+
         // Poll status every 5 seconds
         L.Poll.add(function() {
             return updateStatus();
         }, 5);
-
-        // Initial update
-        updateStatus();
 
         return container;
     },

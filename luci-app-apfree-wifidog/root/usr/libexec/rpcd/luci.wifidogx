@@ -70,7 +70,7 @@ case "$1" in
 					json_init
 					json_add_object "result"
 					json_add_string "status" "fail"
-					json_add_string "message" "WAN interface not found. Available interfaces: $(ls /sys/class/net/ | tr '\n' ' ')"
+					json_add_string "message" "WAN interface not found"
 					json_close_object
 					json_dump
 				fi

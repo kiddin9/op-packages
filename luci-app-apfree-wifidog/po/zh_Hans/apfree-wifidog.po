@@ -15,6 +15,9 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+msgid "Settings"
+msgstr "设置"
+
 msgid "apfree-wifidog"
 msgstr "门户认证"
 
@@ -165,6 +168,9 @@ msgstr "信任的通配符域名"
 msgid "The trusted wildcard domains of the gateway."
 msgstr "网关的信任通配符域名"
 
+msgid "Requires aw-bpf DNS XDP (dns_ringbuf_portal). Patterns like .example.com; resolved IPs are added to the captive portal firewall (inet wifidogx), not inet awbpf."
+msgstr "依赖 aw-bpf 的 DNS XDP（dns_ringbuf_portal）。格式如 .example.com；解析到的 IP 写入门户防火墙 inet wifidogx，不会写入 inet awbpf。"
+
 msgid "App White List"
 msgstr "应用白名单"
 
@@ -227,6 +233,12 @@ msgstr "启用防NAT"
 
 msgid "Enable Anti NAT devices."
 msgstr "启用防NAT设备"
+
+msgid "Privileged Ops Secret"
+msgstr "特权管控秘钥"
+
+msgid "Local secret required for AWAS cloud platform to dynamically authorize remote OTA, reboot and system changes. Change this from the default on production devices."
+msgstr "AWAS云端管理平台动态授权远程OTA升级、重启及系统配置变更所需的本地安全秘钥。生产环境请修改默认值。"
 
 msgid "TTL Value"
 msgstr "TTL值"
@@ -1092,4 +1104,49 @@ msgstr "MQTT认证的用户名。"
 
 msgid "The password for MQTT authentication."
 msgstr "MQTT认证的密码。"
+
+msgid "Add Authentication Server"
+msgstr "添加认证服务器"
+
+msgid "Enter a unique name for this authentication server profile."
+msgstr "请输入认证服务器配置文件的唯一名称。"
+
+msgid "Add Long Connection Profile"
+msgstr "添加长连接配置"
+
+msgid "Enter a unique name for this long connection profile."
+msgstr "请输入长连接配置文件的唯一名称。"
+
+msgid "Rename Authentication Server"
+msgstr "重命名认证服务器"
+
+msgid "Enter a new unique name for this authentication server profile."
+msgstr "请输入认证服务器配置文件的新名称。"
+
+msgid "Rename Long Connection Profile"
+msgstr "重命名长连接配置"
+
+msgid "Enter a new unique name for this long connection profile."
+msgstr "请输入长连接配置文件的新名称。"
+
+msgid "Please enter a name."
+msgstr "请输入名称。"
+
+msgid "The name \"%s\" already exists in Auth Server profiles. Please choose a different name."
+msgstr "名称\"%s\"已存在于认证服务器配置中，请选择其他名称。"
+
+msgid "The name \"%s\" already exists in Long Connection profiles. Please choose a different name."
+msgstr "名称\"%s\"已存在于长连接配置中，请选择其他名称。"
+
+msgid "Created new authentication server profile \"%s\"."
+msgstr "已创建新的认证服务器配置\"%s\"。"
+
+msgid "Created new long connection profile \"%s\"."
+msgstr "已创建新的长连接配置\"%s\"。"
+
+msgid "Renamed authentication server profile from \"%s\" to \"%s\"."
+msgstr "已将认证服务器配置从\"%s\"重命名为\"%s\"。"
+
+msgid "Renamed long connection profile from \"%s\" to \"%s\"."
+msgstr "已将长连接配置从\"%s\"重命名为\"%s\"。"
 
