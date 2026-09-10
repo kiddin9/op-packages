@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_ARCH_kaiplus:=$(ARCH)
 
 PKG_NAME:=kaiplus
-PKG_VERSION:=1.0.7
-PKG_RELEASE:=11
+PKG_VERSION:=1.0.8
+PKG_RELEASE:=12
 PKG_SOURCE:=$(PKG_NAME)-binary-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://github.com/istoreos/istoreos-app-hub/releases/download/kaiplus-runtime-v$(PKG_VERSION)/
 PKG_HASH:=skip
