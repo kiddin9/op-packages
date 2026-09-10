@@ -1,0 +1,365 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-xkcptun\n"
+"PO-Revision-Date: 2026-08-31 10:00+0800\n"
+"Last-Translator: Dengfeng Liu <liudf0716@gmail.com>\n"
+"Language-Team: Chinese (Simplified) <zh_Hans>\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "xkcptun"
+msgstr "xkcptun"
+
+msgid "xkcptun is a high-performance C implementation of kcptun with dynamic destination multi-tunnel unified daemon architecture."
+msgstr "xkcptun 是采用动态目标多隧道统一守护进程架构的高性能 C 语言版 kcptun 实现。"
+
+msgid "xkcptun is a high-performance C implementation of kcptun with multi-tunnel unified daemon architecture."
+msgstr "xkcptun 是采用多隧道统一守护进程架构的高性能 C 语言版 kcptun 实现。"
+
+msgid "RUNNING"
+msgstr "运行中"
+
+msgid "NOT RUNNING"
+msgstr "未运行"
+
+msgid "Collecting status ..."
+msgstr "正在收集状态…"
+
+msgid "Client Daemon"
+msgstr "客户端守护进程"
+
+msgid "Server Daemon"
+msgstr "服务端守护进程"
+
+msgid "Client Global Settings"
+msgstr "客户端全局默认设置"
+
+msgid "Common connection parameters and KCP profile inherited by all client tunnels."
+msgstr "所有客户端隧道共享继承的公共连接参数及 KCP 性能配置。"
+
+msgid "Default Server Address"
+msgstr "默认服务器地址"
+
+msgid "Default Server Port"
+msgstr "默认服务器端口"
+
+msgid "Client Tunnels"
+msgstr "客户端隧道"
+
+msgid "Configure local client listening ports and dynamic backend target ports. All tunnels share the single unified client daemon."
+msgstr "配置客户端本地监听端口与远端动态后端目标端口。所有隧道共享单一统一守护进程。"
+
+msgid "Configure xkcptun client tunnels. All enabled tunnels are managed concurrently by a single unified client daemon."
+msgstr "配置 xkcptun 客户端隧道。所有启用的隧道将由单一客户端守护进程统一并发管理。"
+
+msgid "Add Client Tunnel"
+msgstr "添加客户端隧道"
+
+msgid "Server Tunnels"
+msgstr "服务端隧道"
+
+msgid "Configure xkcptun server listener. A single server tunnel can dynamically serve multiple client tunnels."
+msgstr "配置 xkcptun 服务端监听。单一服务端监听端口即可动态服务多个不同目标的客户端隧道。"
+
+msgid "Configure xkcptun server tunnels. All enabled tunnels are managed concurrently by a single unified server daemon."
+msgstr "配置 xkcptun 服务端隧道。所有启用的隧道将由单一服务端守护进程统一并发管理。"
+
+msgid "Add Server Tunnel"
+msgstr "添加服务端隧道"
+
+msgid "General Settings"
+msgstr "常规设置"
+
+msgid "Advanced Settings"
+msgstr "高级设置"
+
+msgid "Advanced Overrides"
+msgstr "高级覆盖选项"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Enable Tunnel"
+msgstr "启用隧道"
+
+msgid "Tunnel Name"
+msgstr "隧道名称"
+
+msgid "Tunnel Name / Alias"
+msgstr "隧道名称 / 别名"
+
+msgid "(Auto)"
+msgstr "(自动)"
+
+msgid "Optional descriptive name for this tunnel (e.g. ssh_tunnel, web_proxy)."
+msgstr "此隧道的可选描述名称（例如 ssh_tunnel、web_proxy）。"
+
+msgid "Optional descriptive name for this tunnel (e.g. k_bwg, ssh_tunnel)."
+msgstr "此隧道的可选描述名称（例如 k_bwg、ssh_tunnel）。"
+
+msgid "Optional descriptive name for this tunnel (e.g. main_srv)."
+msgstr "此隧道的可选描述名称（例如 main_srv）。"
+
+msgid "Optional descriptive name for this tunnel (e.g. srv_ssh, srv_https)."
+msgstr "此隧道的可选描述名称（例如 srv_ssh、srv_https）。"
+
+msgid "Interface"
+msgstr "接口"
+
+msgid "Local Interface"
+msgstr "本地接口"
+
+msgid "Network interface to bind (default: br-lan)."
+msgstr "要绑定的网络接口（默认：br-lan）。"
+
+msgid "Network interface to bind (e.g. br-lan, eth0)."
+msgstr "要绑定的网络接口（例如 br-lan、eth0）。"
+
+msgid "Network interface to bind (e.g. eth0, br-lan, wan)."
+msgstr "要绑定的网络接口（例如 eth0、br-lan、wan）。"
+
+msgid "Local Port"
+msgstr "本地端口"
+
+msgid "Local Listen Port"
+msgstr "本地监听端口"
+
+msgid "Local TCP port to listen for incoming application traffic (e.g. 9088)."
+msgstr "监听传入应用程序流量的本地 TCP 端口（例如 9088）。"
+
+msgid "Local TCP port to listen for incoming application traffic."
+msgstr "监听传入应用程序流量的本地 TCP 端口。"
+
+msgid "Local Listen Port (UDP)"
+msgstr "本地监听端口 (UDP)"
+
+msgid "UDP port to listen for incoming KCP connections from clients."
+msgstr "监听客户端传入 KCP 连接的 UDP 端口。"
+
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgid "Remote Server Address"
+msgstr "远程服务器地址"
+
+msgid "Remote xkcptun server IP address or domain name."
+msgstr "远程 xkcptun 服务器 IP 地址或域名。"
+
+msgid "Server Port"
+msgstr "服务器端口"
+
+msgid "Remote Server Port"
+msgstr "远程服务器端口"
+
+msgid "Remote xkcptun server UDP listen port."
+msgstr "远程 xkcptun 服务器 UDP 监听端口。"
+
+msgid "Target Host"
+msgstr "目标主机"
+
+msgid "Target Address"
+msgstr "目标地址"
+
+msgid "Target TCP Host"
+msgstr "目标 TCP 主机"
+
+msgid "Target application host/IP to forward traffic to (e.g. 127.0.0.1)."
+msgstr "要转发流量的目标应用程序主机/IP（例如 127.0.0.1）。"
+
+msgid "Dynamic Target Host"
+msgstr "动态目标主机"
+
+msgid "Target TCP host on the server to connect to (default: 127.0.0.1)."
+msgstr "服务端上要连接的目标 TCP 主机（默认：127.0.0.1）。"
+
+msgid "Target Port"
+msgstr "目标端口"
+
+msgid "Target TCP Port"
+msgstr "目标 TCP 端口"
+
+msgid "Dynamic Target Port"
+msgstr "动态目标端口"
+
+msgid "Target TCP port on the server to forward traffic to (e.g. 22, 80, 443)."
+msgstr "服务端上要转发的目标 TCP 端口（例如 22、80、443）。"
+
+msgid "Target application port to forward traffic to (e.g. 443, 22)."
+msgstr "要转发流量的目标应用程序端口（例如 443、22）。"
+
+msgid "Fallback Target Host"
+msgstr "缺省回退目标主机"
+
+msgid "Default target host if client did not specify a dynamic destination (default: 127.0.0.1)."
+msgstr "当客户端未指定动态目标时使用的默认目标主机（默认：127.0.0.1）。"
+
+msgid "Fallback Target Port"
+msgstr "缺省回退目标端口"
+
+msgid "Default target port if client did not specify a dynamic destination (e.g. 443, 22)."
+msgstr "当客户端未指定动态目标时使用的默认目标端口（例如 443、22）。"
+
+msgid "Override Server Address"
+msgstr "覆盖服务器地址"
+
+msgid "Override remote server address for this specific tunnel (defaults to global)."
+msgstr "为该特定隧道覆盖远程服务器地址（默认继承全局配置）。"
+
+msgid "Override Server Port"
+msgstr "覆盖服务器端口"
+
+msgid "Override remote server port for this specific tunnel (defaults to global)."
+msgstr "为该特定隧道覆盖远程服务器端口（默认继承全局配置）。"
+
+msgid "(Inherit from Global)"
+msgstr "(继承全局配置)"
+
+msgid "Mode"
+msgstr "模式"
+
+msgid "Mode Profile"
+msgstr "模式预设"
+
+msgid "KCP performance tuning profile."
+msgstr "KCP 性能调优预设模式。"
+
+msgid "manual (custom parameters)"
+msgstr "手动调优 (自定义参数)"
+
+msgid "MTU"
+msgstr "MTU"
+
+msgid "Maximum Transmission Unit for UDP packets. Default is 1350."
+msgstr "UDP 数据包的最大传输单元 (MTU)。默认为 1350。"
+
+msgid "Send Window (sndwnd)"
+msgstr "发送窗口 (sndwnd)"
+
+msgid "Send window size (number of packets)."
+msgstr "发送窗口大小（数据包数量）。"
+
+msgid "Receive Window (rcvwnd)"
+msgstr "接收窗口 (rcvwnd)"
+
+msgid "Receive window size (number of packets)."
+msgstr "接收窗口大小（数据包数量）。"
+
+msgid "Enable FEC (fec)"
+msgstr "启用 FEC (fec)"
+
+msgid "FEC"
+msgstr "FEC"
+
+msgid "Frame all UDP datagrams with Reed-Solomon FEC header. Default is disabled."
+msgstr "使用 Reed-Solomon FEC 头封装所有 UDP 数据报。默认禁用。"
+
+msgid "Data Shards (FEC)"
+msgstr "数据分片 (FEC)"
+
+msgid "Reed-Solomon erasure coding data shards. Default is 10."
+msgstr "Reed-Solomon 纠错编码数据分片数 (datashard)。默认为 10。"
+
+msgid "Parity Shards (FEC)"
+msgstr "校验分片 (FEC)"
+
+msgid "Reed-Solomon erasure coding parity shards. Default is 3."
+msgstr "Reed-Solomon 纠错编码校验分片数 (parityshard)。默认为 3。"
+
+msgid "DSCP"
+msgstr "DSCP"
+
+msgid "DSCP IP TOS value (0-63). Default is 0."
+msgstr "DSCP IP TOS 差分服务值 (0-63)。默认为 0。"
+
+msgid "Loss-Driven AIMD (lossctrl)"
+msgstr "丢包驱动 AIMD 拥塞窗口 (lossctrl)"
+
+msgid "Enable loss-driven AIMD send window adaptation. Default is enabled."
+msgstr "启用基于丢包反馈的 AIMD 发送窗口自适应调整。默认启用。"
+
+msgid "Send Pacing (pacing)"
+msgstr "发送速率整形 (pacing)"
+
+msgid "Max KCP segments per flush tick to smooth send bursts (0 = off)."
+msgstr "每次 flush 周期允许发送的最大 KCP 分片数，平滑突发流量 (0 = 禁用)。"
+
+msgid "No Delay (nodelay)"
+msgstr "无延迟模式 (nodelay)"
+
+msgid "Enable KCP nodelay mode."
+msgstr "启用 KCP nodelay 快速模式。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Disable"
+msgstr "禁用"
+
+msgid "Internal Interval"
+msgstr "内部时钟周期 (interval)"
+
+msgid "Internal clock interval in milliseconds (10-5000). Default is 20ms."
+msgstr "内部协议循环时钟间隔，单位毫秒 (10-5000)。默认为 20ms。"
+
+msgid "Fast Resend"
+msgstr "快速重传 (resend)"
+
+msgid "Fast resend count. 0 = off, 2 = fast resend. Default is 2."
+msgstr "快速重传跳过确认包次数。0 = 关闭，2 = 快速重传。默认为 2。"
+
+msgid "No Congestion Control (nc)"
+msgstr "关闭常规拥塞控制 (nc)"
+
+msgid "Disable congestion window flow control. Default is 1 (disabled)."
+msgstr "关闭拥塞窗口流量控制。默认为 1（关闭控制）。"
+
+msgid "Socket Buffer Size"
+msgstr "套接字缓冲区大小 (sockbuf)"
+
+msgid "UDP socket receive/send buffer size in bytes. Default is 4194304 (4MB)."
+msgstr "UDP 套接字接收与发送缓冲区大小，单位字节。默认为 4194304 (4MB)。"
+
+msgid "Keepalive Interval"
+msgstr "保活心跳间隔 (keepalive)"
+
+msgid "KCP keepalive ping interval in seconds. Default is 10s."
+msgstr "KCP 保活心跳 ping 间隔，单位秒。默认为 10s。"
+
+msgid "Connection Timeout"
+msgstr "连接超时时间 (conntimeout)"
+
+msgid "Idle connection timeout in seconds (0 = disable timeout sweep). Default is 60s."
+msgstr "空闲会话超时释放时间，单位秒 (0 = 禁用超时回收)。默认为 60s。"
+
+msgid "Pre-Shared Key"
+msgstr "预共享密钥 (key)"
+
+msgid "Pre-shared key for HMAC-SHA256 dynamic target authentication. Must match the server."
+msgstr "用于动态目标 HMAC-SHA256 鉴权的预共享密钥，必须与服务端保持一致。"
+
+msgid "Override Pre-Shared Key"
+msgstr "覆盖预共享密钥"
+
+msgid "Override pre-shared authentication key for this specific tunnel (defaults to global)."
+msgstr "为此特定隧道覆盖预共享鉴权密钥（默认继承全局配置）。"
+
+msgid "Pre-shared key for dynamic gateway authentication. Clients must present a valid HMAC token generated with this key."
+msgstr "用于动态网关鉴权的预共享密钥。客户端必须出示基于该密钥生成的有效 HMAC 令牌。"
+
+msgid "Protocol"
+msgstr "协议"
+
+msgid "Tunnel Protocol"
+msgstr "隧道协议"
+
+msgid "Protocol to tunnel: TCP (standard KCP stream) or UDP (direct low-latency datagram forwarding, e.g. for DNS)."
+msgstr "隧道转发协议：TCP（标准 KCP 可靠流）或 UDP（原生极低延迟报文直传，适用于 DNS 查询等场景）。"
+
+msgid "TCP (TCP-over-KCP)"
+msgstr "TCP (基于 KCP 可靠流)"
+
+msgid "UDP (Direct UDP Datagram)"
+msgstr "UDP (原生报文直传，适用于 DNS)"

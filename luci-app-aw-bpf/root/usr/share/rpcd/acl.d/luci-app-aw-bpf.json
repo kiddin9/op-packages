@@ -1,0 +1,19 @@
+{
+	"luci-app-aw-bpf": {
+		"description": "Grant access to LuCI app aw-bpf",
+		"read": {
+			"file": {
+				"/usr/bin/aw-bpfctl": [ "exec" ],
+				"/usr/bin/xdns-ctl": [ "exec" ],
+				"/usr/bin/awk": [ "exec" ],
+				"/tmp/dhcp.leases": [ "read" ],
+				"/proc/net/arp": [ "read" ],
+				"/etc/xdns/whitelist.txt": [ "read" ]
+			},
+			"uci": [ "hostnames", "network", "aw-bpf" ]
+		},
+		"write": {
+			"uci": [ "hostnames", "aw-bpf" ]
+		}
+	}
+}

@@ -1,0 +1,14 @@
+{
+	"luci-app-xkcptun": {
+		"description": "Grant access to LuCI app xkcptun",
+		"read": {
+			"ubus": {
+				"service": [ "list" ]
+			},
+			"uci": [ "xkcptun" ]
+		},
+		"write": {
+			"uci": [ "xkcptun" ]
+		}
+	}
+}

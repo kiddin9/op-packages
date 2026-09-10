@@ -1,0 +1,325 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2025-2026 Dengfeng Liu
+# aw-bpf service - manages aw-bpf lifecycle: aw-eventd, xdpi module, BPF maps
+
+START=90
+STOP=10
+USE_PROCD=1
+NAME=aw-bpf
+PROG="/usr/bin/aw-eventd"
+CONF_FILE="/var/etc/eventd.conf"
+BPF_FS_ROOT="/sys/fs/bpf"
+AW_BPF_PIN_DIR="$BPF_FS_ROOT/tc/globals"
+AW_BPF_LEGACY_PIN_DIR="$BPF_FS_ROOT/xdp/globals"
+AW_BPF_MAPS="ipv4_map ipv6_map mac_map tcp_conn_map udp_conn_map xdpi_l7_map session_events_map prog_array_map dns_ringbuf dns_ringbuf_portal dns_stats_map"
+AW_BPF_PROGS="tc_ingress tc_egress"
+AW_BPF_LAN_IFACES=""
+AW_BPF_WAN_IFACES=""
+
+resolve_lan_ifaces() {
+	local lan_device lan_ifname
+
+	AW_BPF_LAN_IFACES=""
+
+	config_load network
+	config_get lan_device lan device
+	config_get lan_ifname lan ifname
+
+	if [ -n "$lan_device" ] && [ -e "/sys/class/net/$lan_device" ]; then
+		AW_BPF_LAN_IFACES="$lan_device"
+		return 0
+	fi
+
+	for iface in $lan_ifname; do
+		if [ -n "$iface" ] && [ -e "/sys/class/net/$iface" ]; then
+			AW_BPF_LAN_IFACES="$iface"
+			return 0
+		fi
+	done
+}
+
+resolve_wan_ifaces() {
+	local wan_device wan_ifname
+
+	AW_BPF_WAN_IFACES=""
+
+	config_load network
+	config_get wan_device wan device
+	config_get wan_ifname wan ifname
+
+	if [ -n "$wan_device" ] && [ -e "/sys/class/net/$wan_device" ]; then
+		AW_BPF_WAN_IFACES="$wan_device"
+		return 0
+	fi
+
+	for iface in $wan_ifname; do
+		if [ -n "$iface" ] && [ -e "/sys/class/net/$iface" ]; then
+			AW_BPF_WAN_IFACES="$iface"
+			return 0
+		fi
+	done
+}
+
+detach_tc_programs() {
+	local iface="$1"
+
+	[ -z "$iface" ] && return 0
+	[ ! -e "/sys/class/net/$iface" ] && return 0
+
+	tc filter del dev "$iface" ingress 2>/dev/null || true
+	tc filter del dev "$iface" egress 2>/dev/null || true
+	tc qdisc del dev "$iface" clsact 2>/dev/null || true
+}
+
+attach_tc_programs() {
+	local iface="$1"
+	local aw_bpf_file="/lib/bpf/aw-bpf.o"
+
+	[ -z "$iface" ] && return 0
+	[ ! -e "/sys/class/net/$iface" ] && return 0
+	[ ! -f "$aw_bpf_file" ] && {
+		echo "aw-bpf.o not found at $aw_bpf_file" >&2
+		return 1
+	}
+
+	tc qdisc del dev "$iface" clsact 2>/dev/null || true
+	tc qdisc add dev "$iface" clsact 2>/dev/null || true
+
+	if ! tc filter add dev "$iface" ingress prio 1 bpf da obj "$aw_bpf_file" sec tc/ingress 2>/tmp/aw-bpf.ingress.err; then
+		echo "Failed to attach aw-bpf ingress to $iface: $(cat /tmp/aw-bpf.ingress.err 2>/dev/null)" >&2
+		rm -f /tmp/aw-bpf.ingress.err
+		return 1
+	fi
+	rm -f /tmp/aw-bpf.ingress.err
+
+	if ! tc filter add dev "$iface" egress prio 1 bpf da obj "$aw_bpf_file" sec tc/egress 2>/tmp/aw-bpf.egress.err; then
+		echo "Failed to attach aw-bpf egress to $iface: $(cat /tmp/aw-bpf.egress.err 2>/dev/null)" >&2
+		rm -f /tmp/aw-bpf.egress.err
+		tc filter del dev "$iface" ingress 2>/dev/null || true
+		tc qdisc del dev "$iface" clsact 2>/dev/null || true
+		return 1
+	fi
+	rm -f /tmp/aw-bpf.egress.err
+
+	echo "aw-bpf attached on $iface" >&2
+	return 0
+}
+
+cleanup_aw_bpf_pins() {
+	local entry
+
+	for entry in $AW_BPF_PROGS $AW_BPF_MAPS; do
+		[ -e "$BPF_FS_ROOT/$entry" ] && rm -f "$BPF_FS_ROOT/$entry"
+		[ -e "$AW_BPF_PIN_DIR/$entry" ] && rm -f "$AW_BPF_PIN_DIR/$entry"
+		[ -e "$AW_BPF_LEGACY_PIN_DIR/$entry" ] && rm -f "$AW_BPF_LEGACY_PIN_DIR/$entry"
+	done
+}
+
+load_bpf_resources() {
+	echo "Loading BPF resources..." >&2
+	mkdir -p "$AW_BPF_PIN_DIR" 2>/dev/null || true
+
+	cleanup_aw_bpf_pins
+	resolve_lan_ifaces
+
+	if [ -z "$AW_BPF_LAN_IFACES" ]; then
+		echo "No valid interfaces found from network.lan" >&2
+		return 1
+	fi
+
+	for iface in $AW_BPF_LAN_IFACES; do
+		attach_tc_programs "$iface" || return 1
+	done
+
+	load_dns_bpf_program
+
+	return 0
+}
+
+load_xdpi() {
+	if lsmod | grep -q xdpi; then
+		echo "xdpi module already loaded" >&2
+		return 0
+	fi
+
+	if command -v modprobe >/dev/null 2>&1; then
+		if modprobe xdpi_bpf 2>/dev/null || modprobe xdpi-bpf 2>/dev/null; then
+			echo "xdpi module loaded via modprobe" >&2
+			return 0
+		fi
+	fi
+
+	for modfile in /lib/modules/$(uname -r)/xdpi_bpf.ko /lib/modules/$(uname -r)/xdpi-bpf.ko /lib/modules/$(uname -r)/extra/xdpi_bpf.ko /lib/modules/$(uname -r)/extra/xdpi-bpf.ko /lib/xdpi_bpf.ko /lib/xdpi-bpf.ko; do
+		if [ -f "$modfile" ]; then
+			insmod "$modfile" 2>/dev/null && echo "xdpi module loaded via insmod $modfile" >&2 && return 0 || true
+		fi
+	done
+
+	echo "Warning: xdpi module not found or failed to load" >&2
+	return 1
+}
+
+load_dns_bpf_program() {
+	local dns_bpf_file="/lib/bpf/dns-bpf.o"
+	local xdp_pin_base="/sys/fs/bpf/aw"
+
+	if [ ! -f "$dns_bpf_file" ]; then
+		echo "dns-bpf.o not found at $dns_bpf_file" >&2
+		return 0
+	fi
+
+	mkdir -p "$xdp_pin_base" 2>/dev/null || true
+
+	resolve_wan_ifaces
+	if [ -z "$AW_BPF_WAN_IFACES" ]; then
+		echo "No valid WAN interfaces found. Skip loading DNS XDP." >&2
+		return 1
+	fi
+
+	for iface in $AW_BPF_WAN_IFACES; do
+		echo "Attaching DNS XDP program to $iface..." >&2
+		ip link set dev "$iface" xdp off 2>/dev/null || true
+		if ! ip link set dev "$iface" xdp obj "$dns_bpf_file" sec xdp 2>/tmp/aw-bpf.xdp.err; then
+			echo "Failed to attach dns xdp to $iface: $(cat /tmp/aw-bpf.xdp.err 2>/dev/null)" >&2
+			rm -f /tmp/aw-bpf.xdp.err
+			return 1
+		fi
+		rm -f /tmp/aw-bpf.xdp.err
+	done
+
+	sleep 1
+
+	local xdp_prog_id=$(bpftool prog show name xdp_dns_monitor 2>/dev/null | head -n1 | cut -d':' -f1)
+		[ ! -e "$xdp_pin_base/dns_ringbuf" ] && bpftool map pin name dns_ringbuf "$xdp_pin_base/dns_ringbuf" 2>/dev/null
+		if [ ! -e "$xdp_pin_base/dns_ringbuf_portal" ]; then
+			bpftool map pin name dns_ringbuf_por "$xdp_pin_base/dns_ringbuf_portal" 2>/dev/null || \
+			bpftool map pin name dns_ringbuf_portal "$xdp_pin_base/dns_ringbuf_portal" 2>/dev/null
+		fi
+		[ ! -e "$xdp_pin_base/dns_stats_map" ] && bpftool map pin name dns_stats_map "$xdp_pin_base/dns_stats_map" 2>/dev/null
+
+	return 0
+}
+
+cleanup_bpf_resources() {
+	echo "Cleaning up global BPF resources..." >&2
+
+	resolve_lan_ifaces
+	for iface in $AW_BPF_LAN_IFACES; do
+		detach_tc_programs "$iface"
+	done
+	
+	resolve_wan_ifaces
+	for iface in $AW_BPF_WAN_IFACES; do
+		ip link set dev "$iface" xdp off 2>/dev/null || true
+	done
+
+	rm -rf /sys/fs/bpf/aw/dns_* 2>/dev/null
+	cleanup_aw_bpf_pins
+
+	return 0
+}
+
+unload_xdpi() {
+	if ! lsmod | grep -q xdpi; then
+		echo "xdpi module not loaded" >&2
+		return 0
+	fi
+
+	local rmmod_output
+	rmmod_output=$(rmmod xdpi_bpf 2>&1 || rmmod xdpi-bpf 2>&1)
+	local rmmod_status=$?
+
+	if [ $rmmod_status -ne 0 ]; then
+		echo "Note: Failed to unload xdpi module (may still be in use). Error: $rmmod_output" >&2
+		return 0
+	fi
+
+	if lsmod | grep -q xdpi; then
+		echo "Note: Module still loaded after rmmod attempt" >&2
+		return 0
+	fi
+
+	echo "xdpi module unloaded successfully" >&2
+	return 0
+}
+
+generate_conf() {
+	local enable_event_log
+	local location_id ap_device_id ap_mac_address ap_longitude ap_latitude
+
+	config_load "aw-bpf"
+	config_get enable_event_log "common" enable_event_log "0"
+	config_get location_id "common" location_id ""
+	config_get ap_device_id "common" ap_device_id ""
+	config_get ap_mac_address "common" ap_mac_address ""
+	config_get ap_longitude "common" ap_longitude ""
+	config_get ap_latitude "common" ap_latitude ""
+
+	# Inherit location/device audit info from wifidogx if not explicitly set in aw-bpf
+	if [ -f "/etc/config/wifidogx" ]; then
+		local w_loc w_dev w_mac w_long w_lat
+		config_load "wifidogx"
+		config_get w_loc "common" location_id ""
+		config_get w_dev "common" ap_device_id ""
+		config_get w_mac "common" ap_mac_address ""
+		config_get w_long "common" ap_longitude ""
+		config_get w_lat "common" ap_latitude ""
+
+		[ -z "$location_id" ] && location_id="$w_loc"
+		[ -z "$ap_device_id" ] && ap_device_id="$w_dev"
+		[ -z "$ap_mac_address" ] && ap_mac_address="$w_mac"
+		[ -z "$ap_longitude" ] && ap_longitude="$w_long"
+		[ -z "$ap_latitude" ] && ap_latitude="$w_lat"
+	fi
+
+	[ -z "$location_id" ] && location_id="UNKNOWN"
+	[ -z "$ap_device_id" ] && ap_device_id="UNKNOWN"
+	[ -z "$ap_mac_address" ] && ap_mac_address="UNKNOWN"
+	[ -z "$ap_longitude" ] && ap_longitude="0.000000"
+	[ -z "$ap_latitude" ] && ap_latitude="0.000000"
+
+	mkdir -p /var/etc
+	cat > "$CONF_FILE" <<EOF
+# Generated automatically by /etc/init.d/aw-bpf from UCI
+enable_event_log=${enable_event_log}
+location_id=${location_id}
+ap_device_id=${ap_device_id}
+ap_mac_address=${ap_mac_address}
+ap_longitude=${ap_longitude}
+ap_latitude=${ap_latitude}
+EOF
+}
+
+start_service() {
+	load_xdpi
+	load_bpf_resources
+
+	if ! command -v "$PROG" >/dev/null 2>&1; then
+		echo "aw-eventd binary not found" >&2
+		return 1
+	fi
+
+	generate_conf
+
+	echo "Starting aw-bpf service (aw-eventd)..." >&2
+	procd_open_instance
+	procd_set_param command "$PROG" -c "$CONF_FILE"
+	procd_set_param respawn 3600 5 0
+	procd_set_param file "$CONF_FILE"
+	procd_close_instance
+}
+
+stop_service() {
+	echo "Stopping aw-bpf service..." >&2
+	cleanup_bpf_resources
+	unload_xdpi
+	echo "aw-bpf cleanup completed" >&2
+}
+
+service_triggers() {
+	procd_add_reload_trigger "aw-bpf"
+}
+
+reload_service() {
+	restart
+}
