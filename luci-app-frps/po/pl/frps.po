@@ -11,11 +11,11 @@ msgstr ""
 "|| n%100>=20) ? 1 : 2);\n"
 "X-Generator: Weblate 2026.9.1.dev0\n"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:999
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1000
 msgid "Access Control"
 msgstr "Kontrola dostępu"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1025
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1026
 msgid "Add new HTTP plugin..."
 msgstr "Dodaj nową wtyczkę HTTP..."
 
@@ -39,7 +39,7 @@ msgstr "Adres, do którego wiąże się frps."
 msgid "Address that proxy listeners bind to."
 msgstr "Adres, do którego wiążą się nasłuchy proxy."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:568
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:569
 msgid "Allow ports"
 msgstr "Zezwalaj na porty"
 
@@ -51,7 +51,7 @@ msgstr "Katalog zasobów"
 msgid "Audience OIDC tokens should contain."
 msgstr "Audience, który powinny zawierać tokeny OIDC."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:995
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:996
 msgid "Authentication"
 msgstr "Uwierzytelnienie"
 
@@ -63,7 +63,7 @@ msgstr "Metoda uwierzytelnienia"
 msgid "Authentication method used to authenticate frpc."
 msgstr "Metoda uwierzytelniania używana do uwierzytelniania frpc."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:600
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:601
 msgid "Authorized keys file for SSH tunnel gateway."
 msgstr "Plik kluczy uwierzytelniania dla bramy tunelu SSH."
 
@@ -75,7 +75,7 @@ msgstr "Adres wiązania"
 msgid "Bind port"
 msgstr "Port wiązania"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:986
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:987
 msgid "Collecting data ..."
 msgstr "Zbieranie danych..."
 
@@ -91,7 +91,7 @@ msgstr ""
 "Polecenie używane do uzyskania tokena. Skrypt init dodaje --allow-"
 "unsafe=TokenSourceExec, gdy używany jest ten typ źródła."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:994
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:995
 msgid "Common Settings"
 msgstr "Wspólne ustawienia"
 
@@ -99,15 +99,15 @@ msgstr "Wspólne ustawienia"
 msgid "Configuration key: log.level."
 msgstr "Klucz konfiguracji: log.level."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:555
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:556
 msgid "Configuration key: transport.quic.keepalivePeriod."
 msgstr "Klucz konfiguracji: transport.quic.keepalivePeriod."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:559
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:560
 msgid "Configuration key: transport.quic.maxIdleTimeout."
 msgstr "Klucz konfiguracji: transport.quic.maxIdleTimeout."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:563
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:564
 msgid "Configuration key: transport.quic.maxIncomingStreams."
 msgstr "Klucz konfiguracji: transport.quic.maxIncomingStreams."
 
@@ -180,7 +180,7 @@ msgstr "Włącz protokół HTTPS"
 msgid "Environment variable"
 msgstr "Zmienna środowiskowa"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:772
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:773
 msgid "Environment variable must use KEY=value format."
 msgstr "Zmienna środowiskowa musi używać formatu KLUCZ=wartość."
 
@@ -215,27 +215,27 @@ msgstr "Wymuś TLS"
 msgid "Grant access to LuCI app frps"
 msgstr "Udziel dostępu do aplikacji LuCI frps"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1020
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1021
 msgid "HTTP Plugin Settings"
 msgstr "Ustawienia wtyczki HTTP"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:798
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:799
 msgid "HTTP plugin URL must include a host."
 msgstr "Adres URL wtyczki HTTP musi zawierać hosta."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:794
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:795
 msgid "HTTP plugin address must be a single address."
 msgstr "Adres wtyczki HTTP musi być pojedynczym adresem."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:806
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:807
 msgid "HTTP plugin address must be host:port or an http:// or https:// URL."
 msgstr ""
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:610
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:611
 msgid "HTTP plugin backend address."
 msgstr "Adres backendu wtyczki HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:814
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:815
 msgid ""
 "HTTP plugin operation must be a frps operation name, for example Login or "
 "NewProxy."
@@ -243,11 +243,11 @@ msgstr ""
 "Operacja wtyczki HTTP musi być nazwą operacji frps, na przykład Login lub "
 "NewProxy."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:782
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:783
 msgid "HTTP plugin path must start with /."
 msgstr "Ścieżka wtyczki HTTP musi zaczynać się od /."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:621
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:622
 msgid "HTTP plugin request path."
 msgstr "Ścieżka żądania wtyczki HTTP."
 
@@ -282,7 +282,7 @@ msgstr ""
 "lokalnego; wykonanie uruchamia polecenie i wymaga uprawnienia frp unsafe. "
 "Wyklucza się wzajemnie z auth.token."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1001
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1002
 msgid "Log Settings"
 msgstr "Ustawienia dziennika"
 
@@ -314,7 +314,7 @@ msgstr "Dziennik stdout"
 msgid "Max pool count"
 msgstr "Maksymalna liczba puli"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:577
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:578
 msgid "Max ports per client"
 msgstr "Maksymalna liczba portów na klienta"
 
@@ -326,7 +326,7 @@ msgstr "Maksymalna liczba dni przechowywania dzienników."
 msgid "Maximum pool count for each proxy."
 msgstr "Maksymalna liczba puli dla każdego serwera proxy."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:578
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:579
 msgid "Maximum ports each client can use. 0 means no limit."
 msgstr ""
 "Maksymalna liczba portów, z których może korzystać każdy klient. 0 oznacza "
@@ -336,11 +336,11 @@ msgstr ""
 msgid "Maximum time to wait for a work connection."
 msgstr "Maksymalny czas oczekiwania na działające połączenie."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:581
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:582
 msgid "NAT hole analysis reserve hours"
 msgstr "Rezerwa godzin analizy dziurawienia NAT"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:959
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:960
 msgid "NOT RUNNING"
 msgstr "NIEURUCHOMIONE"
 
@@ -374,7 +374,7 @@ msgstr ""
 msgid "Only accept TLS-encrypted frpc connections."
 msgstr "Akceptuj tylko połączenia frpc szyfrowane protokołem TLS."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:596
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:597
 msgid "Path for auto-generated private key."
 msgstr "Ścieżka do automatycznie wygenerowanego klucza prywatnego."
 
@@ -386,11 +386,11 @@ msgstr "Ścieżka do pliku tokena."
 msgid "Path to custom 404 page for HTTP requests."
 msgstr "Ścieżka do niestandardowej strony 404 dla żądań HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:543
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:544
 msgid "Path to the TLS certificate file."
 msgstr "Ścieżka do pliku certyfikatu TLS."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:547
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:548
 msgid "Path to the TLS private key file."
 msgstr "Ścieżka do pliku prywatnego klucza TLS."
 
@@ -402,23 +402,23 @@ msgstr "Ścieżka do pliku certyfikatu używanego przez serwer WWW HTTPS."
 msgid "Path to the private key file used by the HTTPS web server."
 msgstr "Ścieżka do pliku klucza prywatnego używanego przez serwer WWW HTTPS."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:551
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:552
 msgid "Path to the trusted CA certificate file."
 msgstr "Ścieżka do pliku zaufanego certyfikatu CA."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:609
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:610
 msgid "Plugin address"
 msgstr "Adres wtyczki"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:605
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:606
 msgid "Plugin name"
 msgstr "Nazwa wtyczki"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:631
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:632
 msgid "Plugin operations"
 msgstr "Operacje wtyczki"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:620
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:621
 msgid "Plugin path"
 msgstr "Ścieżka wtyczki"
 
@@ -434,19 +434,19 @@ msgstr "Port dla żądań wirtualnego hosta HTTPS. Pusty lub 0 wyłącza go."
 msgid "Port for TCPMUX HTTP CONNECT requests. Empty or 0 disables it."
 msgstr "Port dla żądań TCPMUX HTTP CONNECT. Pusty lub 0 wyłącza go."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:736
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:737
 msgid "Port must be a number between 0 and 65535."
 msgstr "Port musi być liczbą z przedziału od 0 do 65535."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:740
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:741
 msgid "Port must be between 0 and 65535."
 msgstr "Port musi mieścić się w zakresie od 0 do 65535."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:759
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:760
 msgid "Port must be between 1 and 65535."
 msgstr "Port musi mieścić się w przedziale od 1 do 65535."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:762
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:763
 msgid "Port range start must not be greater than end."
 msgstr "Początek zakresu portów nie może być większy od końca."
 
@@ -454,7 +454,7 @@ msgstr "Początek zakresu portów nie może być większy od końca."
 msgid "Port that frps listens on."
 msgstr "Port, na którym nasłuchuje frps."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:569
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:570
 msgid ""
 "Ports clients are allowed to bind. Use single port like 3001 or range like "
 "2000-3000."
@@ -462,7 +462,7 @@ msgstr ""
 "Porty, które klienty mogą wiązać. Użyj pojedynczego portu, np. 3001, lub "
 "zakresu, np. 2000-3000."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:593
 msgid "Private key file for SSH tunnel gateway."
 msgstr "Plik klucza prywatnego dla bramy tunelu SSH."
 
@@ -474,19 +474,19 @@ msgstr "Adres powiązania proxy"
 msgid "QUIC bind port"
 msgstr "Port wiązania QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:554
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:555
 msgid "QUIC keepalive period"
 msgstr "Okres podtrzymania QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:558
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:559
 msgid "QUIC max idle timeout"
 msgstr "Maksymalny limit czasu bezczynności QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:562
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:563
 msgid "QUIC max incoming streams"
 msgstr "Maksymalna liczba strumieni przychodzących QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:959
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:960
 msgid "RUNNING"
 msgstr "URUCHOMIONE"
 
@@ -498,7 +498,7 @@ msgstr "Odradzaj się po awarii"
 msgid "Response header timeout for vhost HTTP server, in seconds."
 msgstr "Limit czasu nagłówka odpowiedzi dla serwera HTTP vhost, w sekundach."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:582
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:583
 msgid "Retention time for NAT hole punching strategy data."
 msgstr "Czas retencji danych strategii dziurawienia NAT."
 
@@ -510,27 +510,27 @@ msgstr "Uruchom demona jako grupę"
 msgid "Run daemon as user"
 msgstr "Uruchom demona jako użytkownik"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1000
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1001
 msgid "SSH Tunnel"
 msgstr "Tunel SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:599
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:600
 msgid "SSH tunnel authorized keys file"
 msgstr "Plik kluczy uwierzytelnionych tunelu SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:595
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:596
 msgid "SSH tunnel auto-generated private key path"
 msgstr "Ścieżka klucza prywatnego wygenerowana automatycznie dla tunelu SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:587
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:588
 msgid "SSH tunnel bind port"
 msgstr "Port wiązania tunelu SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:588
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:589
 msgid "SSH tunnel gateway bind port. Empty disables this feature."
 msgstr "Port wiązania bramy tunelu SSH. Puste pole wyłącza tę funkcję."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:591
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
 msgid "SSH tunnel private key file"
 msgstr "Plik klucza prywatnego tunelu SSH"
 
@@ -552,8 +552,8 @@ msgstr ""
 msgid "Skip checking whether the OIDC token is expired."
 msgstr "Pomiń sprawdzanie, czy token OIDC nie wygasł."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1002
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1013
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1003
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1014
 msgid "Startup Settings"
 msgstr "Ustawienia uruchamiania"
 
@@ -587,12 +587,12 @@ msgstr "Port TCPMUX HTTP CONNECT"
 msgid "TCPMUX passthrough"
 msgstr "Przejście TCPMUX"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:997
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:998
 msgid "TLS / QUIC"
 msgstr "TLS / QUIC"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:423
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:542
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:543
 msgid "TLS certificate path"
 msgstr "Ścieżka certyfikatu TLS"
 
@@ -602,7 +602,7 @@ msgstr ""
 "Ścieżka do certyfikatu TLS jest wymagana, gdy włączony jest protokół HTTPS."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:441
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:546
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:547
 msgid "TLS private key path"
 msgstr "Ścieżka klucza prywatnego TLS"
 
@@ -612,7 +612,7 @@ msgstr ""
 "Ścieżka do prywatnego klucza TLS jest wymagana, gdy włączony jest protokół "
 "HTTPS."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:550
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:551
 msgid "TLS trusted CA path"
 msgstr "Zaufana ścieżka CA TLS"
 
@@ -661,7 +661,7 @@ msgstr "Typ źródła tokena"
 msgid "Token used for authentication."
 msgstr "Token używany do uwierzytelniania."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:996
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:997
 msgid "Transport Settings"
 msgstr "Ustawienia transportu"
 
@@ -689,11 +689,11 @@ msgstr ""
 "Port UDP używany dla QUIC. Pusty wyłącza QUIC. Nie używaj ponownie tego "
 "samego portu UDP co KCP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:606
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:607
 msgid "Unique HTTP plugin name."
 msgstr "Unikalna nazwa wtyczki HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:753
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:754
 msgid "Use a single port like 3001 or a range like 2000-3000."
 msgstr "Użyj pojedynczego portu, np. 3001 lub zakresu, np. 2000–3000."
 
@@ -701,11 +701,11 @@ msgstr "Użyj pojedynczego portu, np. 3001 lub zakresu, np. 2000–3000."
 msgid "User connection timeout"
 msgstr "Limit czasu połączenia użytkownika"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:643
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:644
 msgid "Verify plugin TLS"
 msgstr "Weryfikuj wtyczkę TLS"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:644
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:645
 msgid ""
 "Verify the HTTP plugin TLS certificate when the plugin address uses HTTPS."
 msgstr ""
@@ -724,7 +724,7 @@ msgstr "Limit czasu Vhost HTTP"
 msgid "Vhost HTTPS port"
 msgstr "Port Vhost HTTPS"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:998
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:999
 msgid "Web Server"
 msgstr "Serwer WWW"
 
@@ -769,12 +769,12 @@ msgstr "Nazwa użytkownika serwera WWW."
 msgid "frp"
 msgstr "frp"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:962
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:969
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:963
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:970
 msgid "frp Server"
 msgstr "Serwer frp"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:632
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:633
 msgid "frps operations handled by this HTTP plugin."
 msgstr "Operacje frps obsługiwane przez tę wtyczkę HTTP."
 

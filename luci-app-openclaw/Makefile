@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-openclaw
 PKG_VERSION:=$(strip $(shell cat $(CURDIR)/VERSION 2>/dev/null || echo "1.0.0"))
-PKG_RELEASE:=28
+PKG_RELEASE:=29
 
 PKG_MAINTAINER:=10000ge10000 <10000ge10000@users.noreply.github.com>
 PKG_LICENSE:=GPL-3.0
@@ -72,6 +72,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./luasrc/controller/openclaw.lua $(1)/usr/lib/lua/luci/controller/openclaw.lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/openclaw
 	$(INSTALL_DATA) ./luasrc/openclaw/paths.lua $(1)/usr/lib/lua/openclaw/paths.lua
+	$(INSTALL_DATA) ./luasrc/openclaw/devices.lua $(1)/usr/lib/lua/openclaw/devices.lua
+	$(INSTALL_DATA) ./luasrc/openclaw/console.lua $(1)/usr/lib/lua/openclaw/console.lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/model/cbi/openclaw
 	$(INSTALL_DATA) ./luasrc/model/cbi/openclaw/basic.lua $(1)/usr/lib/lua/luci/model/cbi/openclaw/basic.lua
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/view/openclaw

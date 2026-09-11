@@ -11,11 +11,11 @@ msgstr ""
 "6 && n<11) ? 3 : 4;\n"
 "X-Generator: Weblate 2026.9.dev0\n"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:999
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1000
 msgid "Access Control"
 msgstr "Rialú Rochtana"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1025
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1026
 msgid "Add new HTTP plugin..."
 msgstr "Cuir breiseán HTTP nua leis..."
 
@@ -39,7 +39,7 @@ msgstr "Seoladh a cheanglaíonn frps leis."
 msgid "Address that proxy listeners bind to."
 msgstr "Seoladh a cheanglaíonn éisteoirí seachfhreastalaí leis."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:568
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:569
 msgid "Allow ports"
 msgstr "Ceadaigh calafoirt"
 
@@ -51,7 +51,7 @@ msgstr "Sócmhainní dir"
 msgid "Audience OIDC tokens should contain."
 msgstr "Ba chóir go mbeadh comharthaí OIDC an lucht féachana ann."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:995
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:996
 msgid "Authentication"
 msgstr "Fíordheimhniú"
 
@@ -63,7 +63,7 @@ msgstr "Modh fíordheimhnithe"
 msgid "Authentication method used to authenticate frpc."
 msgstr "Modh fíordheimhnithe a úsáidtear chun frpc a fhíordheimhniú."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:600
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:601
 msgid "Authorized keys file for SSH tunnel gateway."
 msgstr "Comhad eochracha údaraithe do gheata tolláin SSH."
 
@@ -75,7 +75,7 @@ msgstr "Seoladh ceangail"
 msgid "Bind port"
 msgstr "Port ceangail"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:986
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:987
 msgid "Collecting data ..."
 msgstr "Ag bailiú sonraí ..."
 
@@ -91,7 +91,7 @@ msgstr ""
 "An t-ordú a úsáideadh chun an comhartha a fháil. Cuireann an script init --"
 "allow-unsafe=TokenSourceExec leis nuair a úsáidtear an cineál foinse seo."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:994
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:995
 msgid "Common Settings"
 msgstr "Socruithe Coitianta"
 
@@ -99,15 +99,15 @@ msgstr "Socruithe Coitianta"
 msgid "Configuration key: log.level."
 msgstr "Eochair chumraíochta: log.level."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:555
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:556
 msgid "Configuration key: transport.quic.keepalivePeriod."
 msgstr "Eochair chumraíochta: transport.quic.keepalivePeriod."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:559
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:560
 msgid "Configuration key: transport.quic.maxIdleTimeout."
 msgstr "Eochair chumraíochta: transport.quic.maxIdleTimeout."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:563
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:564
 msgid "Configuration key: transport.quic.maxIncomingStreams."
 msgstr "Eochair chumraíochta: transport.quic.maxIncomingStreams."
 
@@ -184,7 +184,7 @@ msgstr "Cumasaigh HTTPS gréasáin"
 msgid "Environment variable"
 msgstr "Athróg timpeallachta"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:772
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:773
 msgid "Environment variable must use KEY=value format."
 msgstr "Ní mór don athróg timpeallachta an fhormáid KEY=value a úsáid."
 
@@ -219,27 +219,27 @@ msgstr "Fórsáil TLS"
 msgid "Grant access to LuCI app frps"
 msgstr "Deonaigh rochtain ar frps app LuCI"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1020
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1021
 msgid "HTTP Plugin Settings"
 msgstr "Socruithe Breiseán HTTP"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:798
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:799
 msgid "HTTP plugin URL must include a host."
 msgstr "Ní mór óstach a bheith san áireamh i URL breiseáin HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:794
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:795
 msgid "HTTP plugin address must be a single address."
 msgstr "Ní mór seoladh breiseáin HTTP a bheith ina sheoladh aonair."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:806
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:807
 msgid "HTTP plugin address must be host:port or an http:// or https:// URL."
 msgstr ""
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:610
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:611
 msgid "HTTP plugin backend address."
 msgstr "Seoladh cúil breiseán HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:814
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:815
 msgid ""
 "HTTP plugin operation must be a frps operation name, for example Login or "
 "NewProxy."
@@ -247,11 +247,11 @@ msgstr ""
 "Ní mór d’oibríocht breiseán HTTP a bheith ina ainm oibríochta frps, mar "
 "shampla Logáil Isteach nó NewProxy."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:782
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:783
 msgid "HTTP plugin path must start with /."
 msgstr "Ní mór do chonair breiseán HTTP tosú le /."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:621
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:622
 msgid "HTTP plugin request path."
 msgstr "Cosán iarrata breiseán HTTP."
 
@@ -286,7 +286,7 @@ msgstr ""
 "chomhad áitiúil; ritheann exec ordú agus éilíonn sé cead neamhshábháilte "
 "frp. Eisiatach go frithpháirteach le auth.token."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1001
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1002
 msgid "Log Settings"
 msgstr "Socruithe Logála"
 
@@ -318,7 +318,7 @@ msgstr "Logáil isteach stdout"
 msgid "Max pool count"
 msgstr "Uaslíon linn"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:577
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:578
 msgid "Max ports per client"
 msgstr "Uaschalafoirt in aghaidh an chliaint"
 
@@ -330,7 +330,7 @@ msgstr "Uasmhéid laethanta chun logaí a choinneáil."
 msgid "Maximum pool count for each proxy."
 msgstr "Uaslíon linn do gach seachfhreastalaí."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:578
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:579
 msgid "Maximum ports each client can use. 0 means no limit."
 msgstr ""
 "Uasmhéid na gcalafort is féidir le gach cliant a úsáid. Ciallaíonn 0 gan aon "
@@ -340,11 +340,11 @@ msgstr ""
 msgid "Maximum time to wait for a work connection."
 msgstr "Uasmhéid ama le fanacht le haghaidh nasc oibre."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:581
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:582
 msgid "NAT hole analysis reserve hours"
 msgstr "Uaireanta cúltaca anailíse poill NAT"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:959
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:960
 msgid "NOT RUNNING"
 msgstr "NÍL AG RITH"
 
@@ -378,7 +378,7 @@ msgstr ""
 msgid "Only accept TLS-encrypted frpc connections."
 msgstr "Glactar le naisc frpc criptithe le TLS amháin."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:596
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:597
 msgid "Path for auto-generated private key."
 msgstr "Cosán don eochair phríobháideach uathghinte."
 
@@ -390,11 +390,11 @@ msgstr "Cosán an chomhaid chomhartha."
 msgid "Path to custom 404 page for HTTP requests."
 msgstr "Cosán chuig leathanach saincheaptha 404 le haghaidh iarratais HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:543
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:544
 msgid "Path to the TLS certificate file."
 msgstr "Cosán chuig an gcomhad deimhnithe TLS."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:547
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:548
 msgid "Path to the TLS private key file."
 msgstr "Cosán chuig an gcomhad eochrach príobháideach TLS."
 
@@ -409,23 +409,23 @@ msgstr ""
 "Cosán chuig an gcomhad eochrach príobháideach a úsáideann an freastalaí "
 "gréasáin HTTPS."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:551
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:552
 msgid "Path to the trusted CA certificate file."
 msgstr "Cosán chuig an gcomhad deimhnithe Údaráis Deimhnithe iontaofa."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:609
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:610
 msgid "Plugin address"
 msgstr "Seoladh breiseáin"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:605
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:606
 msgid "Plugin name"
 msgstr "Ainm an bhreiseáin"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:631
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:632
 msgid "Plugin operations"
 msgstr "Oibríochtaí breiseán"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:620
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:621
 msgid "Plugin path"
 msgstr "Cosán breiseáin"
 
@@ -444,19 +444,19 @@ msgid "Port for TCPMUX HTTP CONNECT requests. Empty or 0 disables it."
 msgstr ""
 "Port le haghaidh iarratais TCPMUX HTTP CONNECT. Díchumasaíonn folamh nó 0 é."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:736
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:737
 msgid "Port must be a number between 0 and 65535."
 msgstr "Ní mór don phort a bheith ina uimhir idir 0 agus 65535."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:740
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:741
 msgid "Port must be between 0 and 65535."
 msgstr "Caithfidh an port a bheith idir 0 agus 65535."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:759
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:760
 msgid "Port must be between 1 and 65535."
 msgstr "Caithfidh an port a bheith idir 1 agus 65535."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:762
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:763
 msgid "Port range start must not be greater than end."
 msgstr "Ní mór tús an raoin calafoirt a bheith níos mó ná deireadh."
 
@@ -464,7 +464,7 @@ msgstr "Ní mór tús an raoin calafoirt a bheith níos mó ná deireadh."
 msgid "Port that frps listens on."
 msgstr "Port a n-éisteann frps leis."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:569
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:570
 msgid ""
 "Ports clients are allowed to bind. Use single port like 3001 or range like "
 "2000-3000."
@@ -472,7 +472,7 @@ msgstr ""
 "Ceadaítear do chliaint calafoirt ceangal. Bain úsáid as calafort aonair "
 "cosúil le 3001 nó raon cosúil le 2000-3000."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:593
 msgid "Private key file for SSH tunnel gateway."
 msgstr "Comhad eochrach príobháideach do gheata tolláin SSH."
 
@@ -484,19 +484,19 @@ msgstr "Seoladh ceangail seachfhreastalaí"
 msgid "QUIC bind port"
 msgstr "Port ceangail QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:554
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:555
 msgid "QUIC keepalive period"
 msgstr "Tréimhse choinneála QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:558
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:559
 msgid "QUIC max idle timeout"
 msgstr "Uasmhéid ama díomhaoin QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:562
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:563
 msgid "QUIC max incoming streams"
 msgstr "Uasmhéid sruthanna isteach QUIC"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:959
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:960
 msgid "RUNNING"
 msgstr "AG RITH"
 
@@ -509,7 +509,7 @@ msgid "Response header timeout for vhost HTTP server, in seconds."
 msgstr ""
 "Am críochnaithe ceanntásc freagartha do fhreastalaí HTTP vhost, i soicindí."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:582
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:583
 msgid "Retention time for NAT hole punching strategy data."
 msgstr "Am coinneála le haghaidh sonraí straitéise pollta NAT."
 
@@ -521,27 +521,27 @@ msgstr "Rith deamhan mar ghrúpa"
 msgid "Run daemon as user"
 msgstr "Rith deamhan mar úsáideoir"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1000
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1001
 msgid "SSH Tunnel"
 msgstr "Tollán SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:599
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:600
 msgid "SSH tunnel authorized keys file"
 msgstr "Comhad eochracha údaraithe tollán SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:595
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:596
 msgid "SSH tunnel auto-generated private key path"
 msgstr "Cosán eochrach príobháideach uathghinte tollán SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:587
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:588
 msgid "SSH tunnel bind port"
 msgstr "Port ceangail tolláin SSH"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:588
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:589
 msgid "SSH tunnel gateway bind port. Empty disables this feature."
 msgstr "Port ceangail geata tolláin SSH. Díchumasaíonn folamh an ghné seo."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:591
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
 msgid "SSH tunnel private key file"
 msgstr "Comhad eochrach príobháideach tollán SSH"
 
@@ -563,8 +563,8 @@ msgstr ""
 msgid "Skip checking whether the OIDC token is expired."
 msgstr "Seachain seiceáil an bhfuil an comhartha OIDC imithe in éag."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1002
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1013
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1003
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1014
 msgid "Startup Settings"
 msgstr "Socruithe Tosaithe"
 
@@ -596,12 +596,12 @@ msgstr "TCPMUX HTTP CONNECT port"
 msgid "TCPMUX passthrough"
 msgstr "TCPMUX Pas tríd"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:997
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:998
 msgid "TLS / QUIC"
 msgstr "TLS / QUIC"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:423
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:542
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:543
 msgid "TLS certificate path"
 msgstr "Cosán deimhnithe TLS"
 
@@ -611,7 +611,7 @@ msgstr ""
 "Tá cosán deimhnithe TLS ag teastáil nuair a bhíonn HTTPS gréasáin cumasaithe."
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:441
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:546
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:547
 msgid "TLS private key path"
 msgstr "Cosán eochrach príobháideach TLS"
 
@@ -621,7 +621,7 @@ msgstr ""
 "Tá cosán eochrach príobháideach TLS ag teastáil nuair a bhíonn HTTPS "
 "gréasáin cumasaithe."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:550
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:551
 msgid "TLS trusted CA path"
 msgstr "Cosán iontaofa TLS CA"
 
@@ -670,7 +670,7 @@ msgstr "Cineál foinse comharthaí"
 msgid "Token used for authentication."
 msgstr "Comhartha a úsáidtear le haghaidh fíordheimhnithe."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:996
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:997
 msgid "Transport Settings"
 msgstr "Socruithe Iompair"
 
@@ -700,11 +700,11 @@ msgstr ""
 "Port UDP a úsáidtear le haghaidh QUIC. Díchumasaíonn folamh QUIC. Ná "
 "hathúsáid an port UDP céanna le KCP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:606
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:607
 msgid "Unique HTTP plugin name."
 msgstr "Ainm uathúil breiseáin HTTP."
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:753
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:754
 msgid "Use a single port like 3001 or a range like 2000-3000."
 msgstr "Bain úsáid as port aonair cosúil le 3001 nó raon cosúil le 2000-3000."
 
@@ -712,11 +712,11 @@ msgstr "Bain úsáid as port aonair cosúil le 3001 nó raon cosúil le 2000-300
 msgid "User connection timeout"
 msgstr "Am críochnaithe nasc úsáideora"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:643
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:644
 msgid "Verify plugin TLS"
 msgstr "Fíoraigh TLS breiseáin"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:644
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:645
 msgid ""
 "Verify the HTTP plugin TLS certificate when the plugin address uses HTTPS."
 msgstr ""
@@ -735,7 +735,7 @@ msgstr "Teorainn ama Vhost HTTP"
 msgid "Vhost HTTPS port"
 msgstr "Vhost calafort HTTPS"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:998
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:999
 msgid "Web Server"
 msgstr "Freastalaí Gréasáin"
 
@@ -781,12 +781,12 @@ msgstr "Ainm úsáideora an fhreastalaí gréasáin."
 msgid "frp"
 msgstr "frp"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:962
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:969
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:963
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:970
 msgid "frp Server"
 msgstr "Freastalaí frp"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:632
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:633
 msgid "frps operations handled by this HTTP plugin."
 msgstr "Oibríochtaí frps a láimhseálann an breiseán HTTP seo."
 

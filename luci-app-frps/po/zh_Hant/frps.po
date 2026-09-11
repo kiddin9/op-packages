@@ -12,11 +12,11 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 "X-Generator: Weblate 2026.9.dev0\n"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:999
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1000
 msgid "Access Control"
 msgstr "存取控制"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1025
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1026
 msgid "Add new HTTP plugin..."
 msgstr "新增新的 HTTP 外掛..."
 
@@ -40,7 +40,7 @@ msgstr "frps 繫結的位址。"
 msgid "Address that proxy listeners bind to."
 msgstr "代理監聽器繫結的位址。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:568
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:569
 msgid "Allow ports"
 msgstr "允許連接埠"
 
@@ -52,7 +52,7 @@ msgstr "資產目錄"
 msgid "Audience OIDC tokens should contain."
 msgstr "OIDC 權杖應包含的受眾。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:995
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:996
 msgid "Authentication"
 msgstr "認證"
 
@@ -64,7 +64,7 @@ msgstr "認證方式"
 msgid "Authentication method used to authenticate frpc."
 msgstr "用於驗證 frpc 的驗證方式。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:600
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:601
 msgid "Authorized keys file for SSH tunnel gateway."
 msgstr "SSH 隧道閘道的 authorized_keys 檔案。"
 
@@ -76,7 +76,7 @@ msgstr "繫結位址"
 msgid "Bind port"
 msgstr "繫結連接埠"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:986
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:987
 msgid "Collecting data ..."
 msgstr "收集資料中 ..."
 
@@ -92,7 +92,7 @@ msgstr ""
 "用於取得權杖的命令。使用此來源類型時，init 指令碼會新增 --allow-"
 "unsafe=TokenSourceExec。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:994
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:995
 msgid "Common Settings"
 msgstr "通用設定"
 
@@ -100,15 +100,15 @@ msgstr "通用設定"
 msgid "Configuration key: log.level."
 msgstr "設定鍵：log.level。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:555
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:556
 msgid "Configuration key: transport.quic.keepalivePeriod."
 msgstr "設定鍵：transport.quic.keepalivePeriod。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:559
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:560
 msgid "Configuration key: transport.quic.maxIdleTimeout."
 msgstr "設定鍵：transport.quic.maxIdleTimeout。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:563
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:564
 msgid "Configuration key: transport.quic.maxIncomingStreams."
 msgstr "設定鍵：transport.quic.maxIncomingStreams。"
 
@@ -180,7 +180,7 @@ msgstr "啟用 Web HTTPS"
 msgid "Environment variable"
 msgstr "環境變數"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:772
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:773
 msgid "Environment variable must use KEY=value format."
 msgstr "環境變數必須使用 KEY=value 格式。"
 
@@ -212,37 +212,37 @@ msgstr "強制 TLS"
 msgid "Grant access to LuCI app frps"
 msgstr "授予存取 luci-app-frps 的權限"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1020
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1021
 msgid "HTTP Plugin Settings"
 msgstr "HTTP 外掛設定"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:798
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:799
 msgid "HTTP plugin URL must include a host."
 msgstr "HTTP 外掛 URL 必須包含主機。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:794
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:795
 msgid "HTTP plugin address must be a single address."
 msgstr "HTTP 外掛位址必須是單一位址。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:806
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:807
 msgid "HTTP plugin address must be host:port or an http:// or https:// URL."
 msgstr ""
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:610
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:611
 msgid "HTTP plugin backend address."
 msgstr "HTTP 外掛後端位址。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:814
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:815
 msgid ""
 "HTTP plugin operation must be a frps operation name, for example Login or "
 "NewProxy."
 msgstr "HTTP 外掛操作必須是 frps 操作名稱，例如 Login 或 NewProxy。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:782
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:783
 msgid "HTTP plugin path must start with /."
 msgstr "HTTP 外掛路徑必須以 / 開頭。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:621
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:622
 msgid "HTTP plugin request path."
 msgstr "HTTP 外掛請求路徑。"
 
@@ -276,7 +276,7 @@ msgstr ""
 "從外部來源載入權杖。file 從本地檔案讀取權杖；exec 執行命令並需要 frp unsafe "
 "權限。與 auth.token 互斥。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1001
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1002
 msgid "Log Settings"
 msgstr "日誌設定"
 
@@ -308,7 +308,7 @@ msgstr "紀錄 stdout"
 msgid "Max pool count"
 msgstr "最大連線池數量"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:577
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:578
 msgid "Max ports per client"
 msgstr "每個用戶端最大連接埠數"
 
@@ -320,7 +320,7 @@ msgstr "保留日誌的最大天數。"
 msgid "Maximum pool count for each proxy."
 msgstr "每個代理的最大連線池數量。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:578
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:579
 msgid "Maximum ports each client can use. 0 means no limit."
 msgstr "每個用戶端可使用的最大連接埠數。0 表示不限制。"
 
@@ -328,11 +328,11 @@ msgstr "每個用戶端可使用的最大連接埠數。0 表示不限制。"
 msgid "Maximum time to wait for a work connection."
 msgstr "等待工作連線的最長時間。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:581
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:582
 msgid "NAT hole analysis reserve hours"
 msgstr "NAT 打洞分析保留小時數"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:959
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:960
 msgid "NOT RUNNING"
 msgstr "未執行"
 
@@ -364,7 +364,7 @@ msgstr "傳遞給 frp 設定檔案模板的 OS 環境變數，請參見 %s。"
 msgid "Only accept TLS-encrypted frpc connections."
 msgstr "僅接受 TLS 加密的 frpc 連線。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:596
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:597
 msgid "Path for auto-generated private key."
 msgstr "自動生成私鑰的路徑。"
 
@@ -376,11 +376,11 @@ msgstr "權杖來源檔案路徑。"
 msgid "Path to custom 404 page for HTTP requests."
 msgstr "HTTP 請求自訂 404 頁面的路徑。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:543
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:544
 msgid "Path to the TLS certificate file."
 msgstr "TLS 憑證檔案路徑。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:547
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:548
 msgid "Path to the TLS private key file."
 msgstr "TLS 私鑰檔案路徑。"
 
@@ -392,23 +392,23 @@ msgstr "HTTPS Web 伺服器使用的憑證檔案路徑。"
 msgid "Path to the private key file used by the HTTPS web server."
 msgstr "HTTPS Web 伺服器使用的私鑰檔案路徑。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:551
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:552
 msgid "Path to the trusted CA certificate file."
 msgstr "受信任 CA 憑證檔案路徑。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:609
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:610
 msgid "Plugin address"
 msgstr "外掛位址"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:605
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:606
 msgid "Plugin name"
 msgstr "外掛名稱"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:631
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:632
 msgid "Plugin operations"
 msgstr "外掛操作"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:620
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:621
 msgid "Plugin path"
 msgstr "外掛路徑"
 
@@ -424,19 +424,19 @@ msgstr "HTTPS 虛擬主機請求連接埠。留空或設為 0 表示停用。"
 msgid "Port for TCPMUX HTTP CONNECT requests. Empty or 0 disables it."
 msgstr "TCPMUX HTTP CONNECT 請求連接埠。留空或設為 0 表示停用。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:736
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:737
 msgid "Port must be a number between 0 and 65535."
 msgstr "連接埠必須是 0 到 65535 之間的數字。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:740
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:741
 msgid "Port must be between 0 and 65535."
 msgstr "連接埠必須介於 0 到 65535 之間。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:759
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:760
 msgid "Port must be between 1 and 65535."
 msgstr "連接埠必須介於 1 到 65535 之間。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:762
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:763
 msgid "Port range start must not be greater than end."
 msgstr "連接埠範圍起始值不能大於結束值。"
 
@@ -444,14 +444,14 @@ msgstr "連接埠範圍起始值不能大於結束值。"
 msgid "Port that frps listens on."
 msgstr "frps 監聽的連接埠。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:569
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:570
 msgid ""
 "Ports clients are allowed to bind. Use single port like 3001 or range like "
 "2000-3000."
 msgstr ""
 "允許用戶端繫結的連接埠。可使用單個連接埠（如 3001）或範圍（如 2000-3000）。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:593
 msgid "Private key file for SSH tunnel gateway."
 msgstr "SSH 隧道閘道的私鑰檔案。"
 
@@ -463,19 +463,19 @@ msgstr "代理繫結位址"
 msgid "QUIC bind port"
 msgstr "QUIC 繫結連接埠"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:554
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:555
 msgid "QUIC keepalive period"
 msgstr "QUIC 保活週期"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:558
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:559
 msgid "QUIC max idle timeout"
 msgstr "QUIC 最大空閒逾時"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:562
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:563
 msgid "QUIC max incoming streams"
 msgstr "QUIC 最大傳入流數"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:959
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:960
 msgid "RUNNING"
 msgstr "執行中"
 
@@ -487,7 +487,7 @@ msgstr "崩潰時重生"
 msgid "Response header timeout for vhost HTTP server, in seconds."
 msgstr "虛擬主機 HTTP 伺服器回應標頭逾時時間，單位為秒。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:582
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:583
 msgid "Retention time for NAT hole punching strategy data."
 msgstr "NAT 打洞策略資料保留時間。"
 
@@ -499,27 +499,27 @@ msgstr "以此群組身分執行常駐程式"
 msgid "Run daemon as user"
 msgstr "以此使用者身分執行常駐程式"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1000
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1001
 msgid "SSH Tunnel"
 msgstr "SSH 隧道"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:599
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:600
 msgid "SSH tunnel authorized keys file"
 msgstr "SSH 隧道 authorized_keys 檔案"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:595
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:596
 msgid "SSH tunnel auto-generated private key path"
 msgstr "SSH 隧道自動產生私鑰路徑"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:587
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:588
 msgid "SSH tunnel bind port"
 msgstr "SSH 隧道繫結連接埠"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:588
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:589
 msgid "SSH tunnel gateway bind port. Empty disables this feature."
 msgstr "SSH 隧道閘道繫結連接埠。留空表示停用此功能。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:591
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:592
 msgid "SSH tunnel private key file"
 msgstr "SSH 隧道私鑰檔案"
 
@@ -539,8 +539,8 @@ msgstr "跳過檢查 OIDC 權杖頒發者是否匹配設定的頒發者。"
 msgid "Skip checking whether the OIDC token is expired."
 msgstr "跳過檢查 OIDC 權杖是否過期。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1002
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1013
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1003
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:1014
 msgid "Startup Settings"
 msgstr "啟動設定"
 
@@ -572,12 +572,12 @@ msgstr "TCPMUX HTTP CONNECT 連接埠"
 msgid "TCPMUX passthrough"
 msgstr "TCPMUX 透傳"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:997
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:998
 msgid "TLS / QUIC"
 msgstr "TLS / QUIC"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:423
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:542
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:543
 msgid "TLS certificate path"
 msgstr "TLS 憑證路徑"
 
@@ -586,7 +586,7 @@ msgid "TLS certificate path is required when web HTTPS is enabled."
 msgstr "啟用 Web HTTPS 時必須填寫 TLS 憑證路徑。"
 
 #: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:441
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:546
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:547
 msgid "TLS private key path"
 msgstr "TLS 私鑰路徑"
 
@@ -594,7 +594,7 @@ msgstr "TLS 私鑰路徑"
 msgid "TLS private key path is required when web HTTPS is enabled."
 msgstr "啟用 Web HTTPS 時必須填寫 TLS 私鑰路徑。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:550
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:551
 msgid "TLS trusted CA path"
 msgstr "TLS 受信任 CA 路徑"
 
@@ -639,7 +639,7 @@ msgstr "權杖來源類型"
 msgid "Token used for authentication."
 msgstr "用於驗證的權杖。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:996
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:997
 msgid "Transport Settings"
 msgstr "傳輸設定"
 
@@ -665,11 +665,11 @@ msgid ""
 msgstr ""
 "QUIC 使用的 UDP 連接埠。留空表示停用 QUIC。請勿與 KCP 複用同一個 UDP 連接埠。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:606
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:607
 msgid "Unique HTTP plugin name."
 msgstr "唯一的 HTTP 外掛名稱。"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:753
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:754
 msgid "Use a single port like 3001 or a range like 2000-3000."
 msgstr "請使用單一連接埠（如 3001）或連接埠範圍（如 2000-3000）。"
 
@@ -677,11 +677,11 @@ msgstr "請使用單一連接埠（如 3001）或連接埠範圍（如 2000-3000
 msgid "User connection timeout"
 msgstr "使用者連線逾時"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:643
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:644
 msgid "Verify plugin TLS"
 msgstr "驗證外掛 TLS"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:644
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:645
 msgid ""
 "Verify the HTTP plugin TLS certificate when the plugin address uses HTTPS."
 msgstr "當外掛位址使用 HTTPS 時驗證 HTTP 外掛的 TLS 憑證。"
@@ -698,7 +698,7 @@ msgstr "虛擬主機 HTTP 逾時"
 msgid "Vhost HTTPS port"
 msgstr "虛擬主機 HTTPS 連接埠"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:998
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:999
 msgid "Web Server"
 msgstr "Web 伺服器"
 
@@ -742,11 +742,11 @@ msgstr "Web 伺服器使用者名稱。"
 msgid "frp"
 msgstr "frp"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:962
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:969
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:963
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:970
 msgid "frp Server"
 msgstr "frp 伺服器"
 
-#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:632
+#: applications/luci-app-frps/htdocs/luci-static/resources/view/frps.js:633
 msgid "frps operations handled by this HTTP plugin."
 msgstr "此 HTTP 外掛處理的 frps 操作。"

@@ -43,12 +43,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=30
+PKG_RELEASE:=31
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=677dea2b2b7ab4049c3fdadacd128156d2048d13
-PKG_SOURCE_DATE:=2026-09-10
+PKG_SOURCE_VERSION:=c27f72e6c35d055d7abbf13eacfbc3bf2e9780a4
+PKG_SOURCE_DATE:=2026-09-11
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -89,13 +89,13 @@ UCDIR:=/usr/share/ucode/wwand
 # silently ship in the base too. The per-backend install lists below carry the
 # QMI/MBIM/NCM/eSIM modules; main.uc/wwandctl.uc install as executables.
 WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
-	carrier_config.uc client.uc config.uc config_check.uc context_common.uc context_monitor_qmi.uc \
-	deps.uc wwandctl_fmt.uc \
-	ctx_settings.uc daemon.uc discovery.uc hwops.uc log.uc modem_datapath_qmi.uc \
-	modem_common.uc modem_init_qmi.uc modem_quirks.uc modeswitch.uc ncm_vendors.uc \
-	netlink.uc netsel_ops.uc protocol_switch.uc reconnect.uc recovery.uc regdetail.uc \
-	sim.uc sim_plmn.uc simops.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \
-	telemetry_qmi.uc transport.uc ubus.uc version.uc
+	carrier_config.uc client.uc config.uc config_check.uc context_common.uc \
+	context_monitor_qmi.uc ctx_settings.uc daemon.uc deps.uc discovery.uc \
+	hwops.uc log.uc modem_common.uc modem_datapath_qmi.uc modem_init_qmi.uc \
+	modem_quirks.uc modeswitch.uc ncm_vendors.uc netlink.uc netsel_ops.uc \
+	protocol_switch.uc reconnect.uc recovery.uc regdetail.uc sim.uc sim_plmn.uc \
+	simops.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \
+	telemetry_qmi.uc transport.uc ubus.uc version.uc wwandctl_fmt.uc
 WWAND_BASE_CODEC:=arfcn_bands.uc hex.uc qmux.uc tlv.uc
 WWAND_BASE_SCHEMA:=cat.uc ctl.uc dms.uc dsd.uc loc.uc loc_lazy.uc merge.uc nas.uc pdc.uc rat.uc \
 	tmd.uc uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
@@ -475,12 +475,38 @@ define Package/wwand-datapath-rmnet_nss/install
 	$(INSTALL_DATA) $(WWAND_UCODE)/datapath_rmnet_nss.uc $(1)$(UCDIR)/
 endef
 
+define Package/wwand-apntest
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=Scheduled end-to-end APN tests for wwand
+  # Test orchestration only: it drives the daemon over ubus and knows nothing
+  # about QMI or MBIM, so it works on every backend. A plan that selects an
+  # eUICC profile additionally needs wwand-esim at RUNTIME — that is reported
+  # as a plan error rather than pulled in here, because most plans only switch
+  # physical slots and should not drag lpac onto the box for nothing.
+  DEPENDS:=+wwand
+endef
+
+define Package/wwand-apntest/description
+Runs the configured APN tests in sequence on a dedicated test box: selects the
+SIM (physical slot or eUICC profile), dials each APN through wwand, runs the
+configured checks and reports one verdict per test. Tests are grouped by SIM so
+each slot switch or profile enable happens once per run.
+endef
+
+define Package/wwand-apntest/install
+	$(INSTALL_DIR) $(1)$(UCDIR)/apntest
+	$(INSTALL_DATA) $(WWAND_UCODE)/apntest/plan.uc $(1)$(UCDIR)/apntest/
+endef
+
 $(eval $(call BuildPackage,wwand))
 $(eval $(call BuildPackage,wwand-qmi))
 $(eval $(call BuildPackage,wwand-mbim))
 $(eval $(call BuildPackage,wwand-ncm))
 $(eval $(call BuildPackage,wwand-mhi))
 $(eval $(call BuildPackage,wwand-esim))
+$(eval $(call BuildPackage,wwand-apntest))
 define Package/wwand-datapath-rmnet_nss_mhi
   SECTION:=net
   CATEGORY:=Network

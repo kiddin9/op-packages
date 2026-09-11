@@ -231,7 +231,23 @@ function holdFloor(records) {
 	const sc = scroller(), page = sc || document.documentElement;
 	const at = scrollTop(), tall = page.scrollHeight;
 	dirty.forEach((box) => { box.style.minHeight = ''; });
-	dirty.forEach((box) => hs.push(box.offsetHeight));
+	/* THE BOX'S OWN HEIGHT, NOT `offsetHeight`'S ROUNDING OF IT — task fourevents. `offsetHeight` is
+	 * an integer, rounded to nearest, so a floor written off it stands up to half a pixel TALLER
+	 * than the content it was measured from — measured on this page's own boxes with the floors
+	 * cleared: 421.875 written back as 422, 40.75 as 41, 292.719 as 293, 475.531 as 476, 1685.656 as
+	 * 1686 (`../tmp/task-fourevents/`, the `dip` build). Twenty-two such boxes make the document 2px
+	 * taller WITH the floors than without, so every clear above shortens it by that much — 7422 to
+	 * 7420 on 57 of 64 sweeps — and a reader parked at the end of the document has their offset
+	 * clamped into the gap. That clamp is a scroll position change, which invalidates the engine's
+	 * own scroll anchor (css-scroll-anchoring-1 §2.1.1), and the growth that arrives next is then
+	 * left uncorrected: 6 of 12 refills on `owrt2410b`/webkit `@390 top normal` against 12 of 12
+	 * with the floor written at the height measured here. The rect is the same forced layout the
+	 * clear above already pays for, so this costs nothing extra. It DIFFERS from `offsetHeight` on
+	 * a transformed box — the rect is the painted size, and a floor wants the layout size — and no
+	 * box this sweep reaches is transformed: the theme's own `transform` rules are a spinner, a
+	 * rail-toggle glyph, a nav progress bar and `fs-fade`'s 4px rise, none of them a floored
+	 * container, and a scale on one would be an app's own doing. */
+	dirty.forEach((box) => hs.push(box.getBoundingClientRect().height));
 	dirty.forEach((box, i) => {
 		if (hs[i] > 0) { box.style.minHeight = hs[i] + 'px'; box.setAttribute('data-fs-floor', ''); }
 		else box.removeAttribute('data-fs-floor');
@@ -1212,6 +1228,11 @@ function applyAnchor(ref) {
  * constructor, and luci-base instantiates a class once, at the first require. */
 function observeContent() {
 	if (_mo) return;
+	/* read before the observer closes over it: the swap test below compares node identity, and the
+	 * `#view` bound here is the one the router keeps between navigations (liveView(), fs-router.js) */
+	const hosts = [ document.getElementById('view') || document.body, document.getElementById('modal_overlay') ]
+		.filter(Boolean);
+	const viewHost = hosts[0];
 	_mo = new MutationObserver((records) => {
 		/* The theme corrects only where the engine will not. Where it anchors, growth above the
 		 * reader is the engine's job and the floor covers the collapse, so there is nothing left for
@@ -1303,11 +1324,32 @@ function observeContent() {
 		run(records);
 		if (!wasScrolling) _deferredFloor = null;
 		const floorShrink = (r && before) ? Math.max(0, before - (parseFloat(r.target.style.minHeight) || 0)) : 0;
+		/* `#view` ITSELF EMPTIED AND REFILLED IS A PAGE SWAP, NOT A REFILL — task latecommit,
+		 * docs/anchoring.md "The commit is not a refill". The router commits a client navigation
+		 * with `dom.content()` on the live `#view` (commitStage(), fs-router.js) and the browser
+		 * delivers it as two batches: `run()`'s own `rememberRest()` fires between them and adopts
+		 * a reference measured mid-swap, which `lateDrift()` reads 431px out 420ms later and writes
+		 * back over a correct `restoreScroll()` (2723 -> 2292.21875, owrt2410b/chromium, Back to
+		 * /admin/status/overview). `lateDrift()`'s own `_restPage` guard cannot see it: every stamp
+		 * in the document already names the incoming page by the time the commit is observable, so
+		 * carrying the same stamp on the reference instead is the same number twice.
+		 *
+		 * BOTH HALVES OF `dom.content()`, not merely a record naming `#view`: a plain insertion
+		 * there is an ordinary growth that must still be corrected, and matching on the target
+		 * alone left scroll-anchor's HOLD case 120px uncorrected on all three twins @1440 side
+		 * normal with the engine ablated off. One pass and no `type` test, unlike the
+		 * `records.find()` above: this observer registers `childList` only, and a record of any
+		 * other type carries two empty node lists anyway. */
+		let gone = 0, came = 0;
+		for (const m of records)
+			if (m.target === viewHost) { gone += m.removedNodes.length; came += m.addedNodes.length; }
+		if (gone && came) {
+			forgetRest();
+			return;
+		}
 		if (trustEngine) lateDrift(settled, grew, floorShrink);
 		else scheduleAnchor(ref);
 	});
-	const hosts = [ document.getElementById('view') || document.body, document.getElementById('modal_overlay') ]
-		.filter(Boolean);
 	for (const host of hosts) {
 		_mo.observe(host, { childList: true, subtree: true });
 		watch(host);
@@ -1355,10 +1397,35 @@ function observeContent() {
 	 * A THIRD observer for the reason the second one exists — observe() replaces the options of a
 	 * registration for the same node; ONE registration per host covers all four attributes since
 	 * none of this needs `subtree: true` on a different scope than `data-tab-active` already has. */
+	/* AND A WRITE THAT CHANGED NOTHING IS NOT A CHANGE — task freeze. Without this half the filter
+	 * above is a feedback loop that pins the main thread: the fitters `run()` calls re-apply their
+	 * classes on EVERY pass by design (fs-select.js's adoptMarkup, "additive only and cheap to
+	 * re-run every pass"), `classList.add()` of a token already present still WRITES the class
+	 * attribute, and a same-value attribute write still queues a mutation record — the trap
+	 * fs-chrome.js's `toggleAttribute` comment names for `setAttribute`. Land one of those on an
+	 * element carrying `data-field` and the guard above says yes, run() sweeps, the sweep writes
+	 * the same classes again, and nothing ever yields. `data-field` on a table cell is markup any
+	 * app may ship: luci-app-filemanager puts it on every `<th>`. Measured on owrt2512b,
+	 * /admin/system/filemanager, with every MutationObserver on the page instrumented
+	 * (`../tmp/task-freeze/mo-probe.mjs`): 391 callbacks in 432ms — 926 a second, capped only by
+	 * the probe's own budget — 3910 records, every one of them `class`, every one written from
+	 * inside the previous callback by `tagDataTables`/`adoptMarkup`/`fitTables`, and 2340 of them
+	 * on the same six `th[data-field]`. The tab never returns and the renderer sits at ~105% CPU
+	 * for as long as it is open (`tools/spa-parity.mjs`, `tools/floor-contract.mjs`). With the
+	 * check: 2 callbacks, 20 records, 0 of them reaching run(), and the same page answers in 4ms.
+	 *
+	 * The VALUE, not a flag and not `takeRecords()` after the sweep. A flag cannot work — delivery
+	 * is a microtask that runs after run() has returned — and draining the queue drops whatever an
+	 * external writer had queued and not yet been delivered for, which on a task that both refills
+	 * a section and re-runs `depends()` is a real hide this observer exists to catch. Comparing
+	 * `oldValue` against what the attribute reads NOW drops only writes that moved nothing, so a
+	 * real tab switch, a real fold and a real `depends()` row all still arrive: their values
+	 * change. `attributeOldValue` costs the engine a string per watched write and no layout. */
 	_moTabs = new MutationObserver((records) =>
-		records.some((r) => r.attributeName !== 'class' || r.target.dataset.field) && run());
+		records.some((r) => r.oldValue !== r.target.getAttribute(r.attributeName)
+			&& (r.attributeName !== 'class' || r.target.dataset.field)) && run());
 	for (const host of hosts)
-		_moTabs.observe(host, { attributes: true,
+		_moTabs.observe(host, { attributes: true, attributeOldValue: true,
 			attributeFilter: [ 'data-tab-active', 'hidden', 'aria-expanded', 'class' ], subtree: true });
 
 }

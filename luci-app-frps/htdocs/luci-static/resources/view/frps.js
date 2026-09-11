@@ -531,7 +531,8 @@ const commonTlsQuicConf = [
 	[form.Flag, 'tls_force', _('Force TLS'),
 	_('Only accept TLS-encrypted frpc connections.'),
 	{
-		datatype: 'bool',
+		enabled: 'true',
+		disabled: 'false',
 		default: 'false',
 		optional: false,
 		rmempty: false,
