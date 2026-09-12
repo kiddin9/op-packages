@@ -1,0 +1,148 @@
+.cbi-section {
+  @apply border-panel-border bg-panel-bg mb-4 overflow-visible rounded-xl border p-4;
+
+  &[data-tab-title] {
+    @apply m-0 p-0;
+  }
+  &[data-tab-active="true"] {
+    @apply mb-4 p-4;
+  }
+
+  > .cbi-title {
+    @apply flex items-start justify-between;
+
+    > h3 {
+      @apply flex-1;
+
+      .label[data-clickable] {
+        @apply bg-label-surface text-foreground hover:bg-muted inline-flex size-6 cursor-pointer items-center justify-center rounded p-0 active:scale-95;
+      }
+
+      span[data-indicator="poll-status"] {
+        @apply relative size-4 cursor-pointer text-[0px];
+        @apply before:absolute before:size-4 before:bg-current before:[mask-size:cover] before:[mask-position:center] before:[mask-repeat:no-repeat];
+
+        &[data-style="active"] {
+          @apply before:[mask-image:url('@assets/icons/chevron-down.svg')];
+        }
+        &[data-style="inactive"] {
+          @apply before:[mask-image:url('@assets/icons/chevron-up.svg')];
+        }
+      }
+    }
+  }
+
+  legend {
+    @apply text-base font-semibold;
+  }
+
+  h3 {
+    @apply border-border text-foreground mb-3 border-b pb-3 text-base font-semibold;
+  }
+
+  .cbi-section-create {
+    @apply mt-4 flex flex-wrap items-center gap-2;
+    > div {
+      @apply flex-none;
+    }
+  }
+
+  .network-status-table {
+    @apply mb-3 flex flex-wrap justify-around gap-4 md:flex-nowrap;
+  }
+
+  div[style*="display:grid"]:has(> .ifacebox) {
+    @apply place-items-center;
+  }
+}
+
+.ifacebox {
+  @apply border-border bg-panel-bg relative inline-flex min-w-32 flex-col items-stretch overflow-visible rounded-lg border text-center text-sm leading-5;
+
+  #cbi-network-interface & {
+    @apply md:min-w-38;
+  }
+
+  .ifacebox-head {
+    @apply border-border bg-label-surface text-foreground w-full rounded-t-lg border-b px-3 py-2 text-center text-sm font-semibold transition-colors duration-200;
+
+    &[style*="--zone-color-rgb"] {
+      @apply bg-[rgb(var(--zone-color-rgb),.65)]!;
+    }
+
+    &.cbi-tooltip-container {
+      @apply static bg-transparent;
+      .cbi-tooltip {
+        @apply bottom-0 left-0;
+      }
+    }
+
+    &.active {
+      @apply border-primary bg-primary text-primary-foreground;
+    }
+  }
+
+  .ifacebox-body {
+    /* Flex column base: items-stretch lets label/value rows span full width
+       (e.g. luci-app-modemdata) while justify-center keeps rows tight together
+       instead of spread. Icon-only cards centre via text-center / mx-auto. The
+       interfaces overview layers its richer layout under .network-status-table. */
+    @apply text-foreground flex w-full flex-1 flex-col items-stretch justify-center gap-1 rounded-b-lg p-3 text-center;
+
+    > img {
+      @apply mx-auto w-5;
+    }
+
+    > span {
+      @apply space-y-1;
+
+      .cbi-tooltip {
+        @apply delay-200;
+      }
+      .nowrap {
+        @apply inline-block;
+      }
+
+      img {
+        @apply w-5 shrink-0;
+      }
+    }
+
+    > div {
+      @apply block w-full space-y-0;
+    }
+
+    .cbi-tooltip-container {
+      @apply text-foreground static inline-flex cursor-help items-center justify-center;
+      .cbi-tooltip {
+        @apply bottom-0;
+        .nowrap {
+          @apply whitespace-nowrap;
+        }
+      }
+    }
+
+    small {
+      @apply block text-xs leading-4;
+    }
+  }
+}
+
+/*
+  Network interfaces overview — the rich equal-height card layout is scoped here
+  (not on the base) so third-party pages keep the plain, tolerant defaults above.
+*/
+.network-status-table .ifacebox-body {
+  @apply flex h-full flex-1 flex-col items-center justify-around gap-2;
+
+  > div {
+    @apply flex flex-wrap gap-2;
+  }
+
+  /* flex-1 alone lets the badges shrink to min-content, so six SSIDs stay
+     crammed on one line instead of wrapping. The floor mirrors
+     luci-theme-bootstrap's min-width: 220px on the same badges. */
+  .ifacebadge {
+    @apply min-w-55 flex-1;
+  }
+}

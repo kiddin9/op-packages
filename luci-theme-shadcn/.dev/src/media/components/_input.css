@@ -1,0 +1,54 @@
+input {
+  @apply disabled:cursor-not-allowed disabled:opacity-40;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+.cbi-input-text,
+.cbi-input {
+  @apply border-input bg-background text-foreground placeholder:text-muted-foreground-a70 focus:border-primary focus:ring-ring relative w-52.5 max-w-full rounded-lg border px-3 py-1.5 text-sm shadow-none transition-colors duration-200 focus:ring-2 focus:outline-none;
+
+  .table.cbi-section-table & {
+    @apply w-full;
+  }
+}
+
+.cbi-input-text {
+  @apply min-w-20;
+}
+
+#localtime {
+  @apply min-w-64;
+}
+
+textarea {
+  @apply border-input bg-background text-foreground placeholder:text-muted-foreground-a70 focus:border-primary focus:ring-ring min-h-24 w-full resize-y rounded-lg border px-3 py-2 text-sm transition-colors duration-200 focus:ring-2 focus:outline-none;
+
+  &[disabled] {
+    @apply cursor-not-allowed opacity-40;
+  }
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  @apply relative mr-3 inline-block h-4 w-4 cursor-pointer appearance-none align-middle disabled:cursor-not-allowed;
+  @apply before:border-input before:bg-background before:absolute before:inset-0 before:rounded before:border before:transition-colors before:duration-200;
+  @apply after:bg-primary-foreground after:absolute after:inset-0 after:[mask-size:cover] after:[mask-position:center] after:[mask-repeat:no-repeat] after:opacity-0 after:transition-opacity after:duration-200;
+  @apply checked:before:border-primary checked:before:bg-primary checked:after:opacity-100;
+  @apply focus:before:ring-ring focus:before:ring-2 focus:before:outline-none;
+}
+
+input[type="radio"] {
+  @apply before:rounded-full;
+  @apply after:[mask-image:url('@assets/icons/radio-dot.svg')];
+}
+
+input[type="checkbox"] {
+  @apply after:[mask-image:url('@assets/icons/check.svg')];
+}
+
+.cbi-checkbox {
+  @apply relative inline-flex items-center align-middle;
+}

@@ -1,0 +1,134 @@
+.cbi-dropdown {
+  @apply relative inline-flex h-fit max-w-full min-w-fit shrink-0 items-center p-0 whitespace-nowrap transition-colors duration-200;
+
+  &[disabled] {
+    @apply pointer-events-none opacity-40;
+  }
+
+  &:not(.btn):not(.cbi-button) {
+    @apply border-input bg-background max-w-full min-w-52.5 rounded-lg border md:max-w-100;
+
+    > ul > li[placeholder] {
+      @apply hidden;
+    }
+  }
+
+  > ul {
+    @apply m-0 flex flex-1 list-none flex-nowrap items-center gap-0.5 overflow-hidden;
+
+    > li {
+      @apply m-0 hidden list-none items-center gap-1 overflow-hidden px-2 py-1.5;
+
+      &[display] {
+        @apply !flex;
+      }
+
+      .hide-open {
+        @apply block;
+      }
+      .hide-close {
+        @apply hidden;
+      }
+
+      > form {
+        @apply pointer-events-none hidden;
+      }
+
+      > label {
+        @apply flex items-center gap-2;
+      }
+
+      img {
+        @apply h-5 w-5 flex-none align-middle;
+      }
+
+      span {
+        @apply truncate;
+      }
+    }
+
+    &.dropdown {
+      @apply border-border bg-panel-bg absolute left-0 z-50 w-fit min-w-full overflow-y-auto rounded-lg border shadow-lg backdrop-blur-sm;
+
+      > li {
+        @apply text-muted-foreground hover:bg-muted min-h-9 w-full cursor-pointer px-3 py-1.5 text-sm font-medium;
+      }
+    }
+
+    &.preview {
+      @apply hidden;
+    }
+  }
+
+  &[empty] {
+    > ul {
+      @apply max-h-px max-w-px;
+      > li {
+        @apply block;
+      }
+    }
+  }
+
+  &[optional][open] > ul.dropdown > li[placeholder] {
+    @apply block;
+  }
+
+  &[open] {
+    @apply border-primary ring-ring ring-2;
+
+    > ul.dropdown {
+      @apply block w-auto max-w-none;
+
+      > li {
+        @apply flex;
+
+        &[selected] {
+          @apply bg-primary-a15 text-primary;
+        }
+        &[unselectable] {
+          @apply opacity-40;
+        }
+
+        .hide-open {
+          @apply hidden;
+        }
+        .hide-close {
+          @apply block;
+        }
+      }
+    }
+
+    > ul.preview {
+      @apply flex;
+    }
+  }
+
+  &[multiple] {
+    &[more],
+    &[empty] {
+      > .more {
+        @apply flex flex-none shrink-0 px-2.5 py-1.5;
+      }
+    }
+
+    &[empty] > .more {
+      @apply flex-1;
+    }
+
+    &[open] > ul.dropdown > li > form {
+      @apply flex items-center;
+    }
+
+    > ul > li > label {
+      @apply flex;
+    }
+  }
+
+  > .open {
+    @apply border-input flex flex-none shrink-0 cursor-pointer items-center justify-center border-l px-2.5 py-0.5 text-sm text-current;
+  }
+
+  > .more {
+    @apply hidden;
+  }
+}

@@ -1,0 +1,23 @@
+/* Cross-document view transitions: same-origin full-page navigations
+   cross-fade instead of hard-flashing. Progressive enhancement — browsers
+   without support (e.g. Firefox) keep plain instant navigation. */
+
+@view-transition {
+  navigation: auto;
+}
+
+/* The sidebar persists across pages, so it gets its own snapshot group and
+   stays visually static while only the rest of the page transitions. The
+   topbar deliberately has no group: its snapshot would render in the top
+   layer, unclipped by .content-card's rounded corners (squaring them for
+   the whole transition), and its pixels are identical across pages anyway
+   so the root cross-fade already keeps it visually static. */
+#sidebar {
+  view-transition-name: shadcn-sidebar;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}

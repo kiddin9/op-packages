@@ -1,0 +1,190 @@
+/**
+ * luci-theme-shadcn: login page stylesheet
+ * Copyright 2025 eamonxg <eamonxiong@gmail.com>
+ * Licensed to the public under the Apache License 2.0.
+ */
+
+@import "tailwindcss";
+
+@import "./inter.css";
+@import "./_tokens.css";
+@import "./_shared.css";
+
+/* See main.css: keep dev-only tooling out of Tailwind's source detection. */
+@source not "../../vite.config.ts";
+@source not "../../scripts/*.client.js";
+
+@custom-variant dark (&:where([data-darkmode=true], [data-darkmode=true] *));
+
+html {
+  @apply bg-background text-foreground font-sans text-sm;
+}
+
+/* ── Entry animations ── */
+
+@keyframes fadeSlideIn {
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+@keyframes slideRightIn {
+  to {
+    opacity: 1;
+    transform: translateX(0px);
+  }
+}
+
+.animate-element {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeSlideIn 0.35s ease-out forwards;
+}
+
+.animate-slide-right {
+  opacity: 0;
+  transform: translateX(24px);
+  animation: slideRightIn 0.4s ease-out forwards;
+}
+
+.animate-delay-100 {
+  animation-delay: 0.1s;
+}
+.animate-delay-200 {
+  animation-delay: 0.2s;
+}
+.animate-delay-300 {
+  animation-delay: 0.3s;
+}
+.animate-delay-400 {
+  animation-delay: 0.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-element,
+  .animate-slide-right {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* ── Layout ── */
+
+.login-layout {
+  @apply flex min-h-screen;
+}
+
+/* ── Form panel (left) ── */
+
+.login-form-panel {
+  @apply bg-background relative flex flex-1 flex-col items-center justify-center px-8 pt-12 pb-16;
+}
+
+.login-form-wrap {
+  @apply w-full max-w-md;
+}
+
+/* ── Brand block ── */
+
+.login-brand {
+  @apply mb-10 flex flex-col gap-2.5;
+}
+
+.login-logo {
+  @apply border-primary-a20 bg-primary-a10 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border;
+
+  img {
+    @apply h-full w-full;
+  }
+}
+
+.login-logo--topleft {
+  @apply absolute top-8 left-8;
+}
+
+.login-hostname {
+  @apply text-foreground text-3xl font-semibold tracking-tight;
+}
+
+.login-subtitle {
+  @apply text-muted-foreground text-sm;
+}
+
+/* ── Form elements ── */
+
+.login-error {
+  @apply border-destructive-a30 bg-destructive-a8 text-destructive mb-4 rounded-2xl border px-4 py-3 text-sm;
+}
+
+.login-field {
+  @apply mb-6;
+}
+
+.login-label {
+  @apply text-muted-foreground mb-2 block text-sm font-medium;
+}
+
+/* Glass input wrapper — matches sign-in.tsx GlassInputWrapper */
+.login-input-glass {
+  @apply border-border bg-foreground-a5 relative rounded-2xl border transition-colors;
+  backdrop-filter: blur(4px);
+
+  &:focus-within {
+    @apply border-primary-a70 bg-primary-a10;
+  }
+
+  input {
+    @apply text-foreground placeholder:text-muted-foreground w-full bg-transparent py-3.5 pr-10 pl-9 text-sm focus:outline-none;
+  }
+}
+
+.login-input-icon {
+  @apply pointer-events-none absolute inset-y-0 left-3 flex items-center;
+
+  img {
+    @apply h-4 w-4 opacity-40;
+  }
+}
+
+.login-pw-toggle {
+  @apply absolute inset-y-0 right-0 flex cursor-pointer items-center border-0 bg-transparent px-3;
+
+  img {
+    @apply h-4 w-4 opacity-40 transition-opacity;
+  }
+
+  &:hover img {
+    @apply opacity-70;
+  }
+}
+
+.login-submit {
+  @apply bg-primary text-primary-foreground hover:bg-primary-hover mt-4 w-full cursor-pointer rounded-2xl border-0 py-3.5 text-sm font-medium transition-colors;
+}
+
+/* ── Footer ── */
+
+.login-footer {
+  @apply text-muted-foreground absolute right-0 bottom-5 left-0 px-6 text-center text-xs;
+
+  a {
+    @apply text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors;
+  }
+}
+
+/* ── Image panel (right) ── */
+
+.login-image-panel {
+  @apply relative hidden p-4 lg:block lg:flex-1;
+}
+
+/* Inner rounded image — matches sign-in.tsx absolute inset-4 rounded-3xl */
+.login-image-inner {
+  @apply absolute inset-4 rounded-3xl bg-cover bg-center;
+  background-image: var(
+    --login-bg-image,
+    linear-gradient(160deg, oklch(18% 0.12 255) 0%, oklch(10% 0.04 270) 100%)
+  );
+}

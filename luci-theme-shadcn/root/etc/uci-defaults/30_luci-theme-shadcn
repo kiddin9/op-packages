@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ "$PKG_UPGRADE" != 1 ]; then
+	uci get luci.themes.Shadcn >/dev/null 2>&1 || \
+	uci batch <<-EOF
+		set luci.themes.Shadcn=/luci-static/shadcn
+		set luci.main.mediaurlbase=/luci-static/shadcn
+		commit luci
+	EOF
+fi
+
+exit 0

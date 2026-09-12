@@ -1,0 +1,22 @@
+# Dependencies
+.dev/node_modules/
+
+# Environment secrets (host, SSH keys)
+.dev/.env
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Agent working files
+.superpowers/
+docs/superpowers/
+.dev/prototypes/
+
+# Local page snapshots for the dev /mocks/ route — see "Mock Pages" in CLAUDE.md
+/.dev/mocks/

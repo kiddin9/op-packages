@@ -1,0 +1,77 @@
+.label {
+  @apply bg-muted text-muted-foreground inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+
+  &.important {
+    @apply bg-info-a15 text-info;
+  }
+  &.warning {
+    @apply bg-warning-a15 text-warning-soft-fg;
+  }
+  &.success {
+    @apply bg-success-a15 text-success;
+  }
+  &.notice {
+    @apply bg-warning-a15 text-warning-soft-fg;
+  }
+}
+
+.zonebadge {
+  @apply border-secondary bg-secondary text-secondary-foreground inline-flex items-center gap-1.5 overflow-visible rounded-md border px-2 py-1 align-middle text-sm leading-normal font-semibold transition-colors duration-200;
+
+  &[style*="--zone-color-rgb"] {
+    @apply border-transparent bg-[rgb(var(--zone-color-rgb),.6)]!;
+  }
+
+  &.zonebadge-empty {
+    @apply border-border text-muted-foreground border-dashed bg-transparent font-normal italic;
+  }
+
+  /* Bare zone-colour swatch: the interface overview / tooltip renders a
+     label-less `.zonebadge` as a colour chip prefixing an `.ifacebadge`. The
+     tag redesign's horizontal padding is meant for text labels, so keep the
+     label-less swatch a compact pill instead of a wide block. */
+  .ifacebadge > & {
+    @apply rounded-full px-1 py-0.5;
+  }
+
+  .cbi-dropdown & {
+    @apply rounded-md px-1.5 py-0.5;
+  }
+}
+
+.ifacebadge {
+  @apply border-border bg-label-surface text-foreground inline-flex cursor-default flex-nowrap items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-normal transition-colors duration-200;
+
+  .zonebadge > & {
+    @apply rounded-md px-1.5 py-0;
+    img {
+      @apply mr-1 w-4;
+    }
+  }
+
+  .cbi-dropdown & {
+    @apply gap-1 rounded-md px-1.5 py-0.5;
+    img {
+      @apply mr-1 w-4;
+    }
+  }
+
+  > img,
+  > .cbi-tooltip-container > img {
+    @apply w-5 shrink-0 self-center;
+  }
+
+  > span {
+    .nowrap {
+      @apply mb-1.5 inline-block text-sm;
+    }
+  }
+
+  &.ifacebadge-active {
+    @apply border-primary font-semibold;
+  }
+
+  &.large {
+    @apply min-w-48 flex-1 px-4 py-3;
+  }
+}

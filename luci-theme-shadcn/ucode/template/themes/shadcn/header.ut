@@ -1,0 +1,241 @@
+{#
+ luci-theme-shadcn: header template
+ Copyright 2025 eamonxg <eamonxiong@gmail.com>
+ Licensed to the public under the Apache License 2.0.
+-#}
+
+{%
+	import { getuid, getspnam } from 'luci.core';
+	import { lsdir } from 'fs';
+
+	const boardinfo = ubus.call('system', 'board') ?? {};
+	const rootsp = getspnam('root');
+	const root_pw_unset = (rootsp && rootsp.pwdp == '');
+
+	const page_segs = length(ctx?.request_path) ? ctx.request_path : (ctx?.path || []);
+	const page = join('-', page_segs);
+	// On-demand patches — see "On-demand patches" in CLAUDE.md.
+	let patch_files = [], patch_scripts = [], patch_all = [];
+	if (!blank_page) {
+		let seg_prefixes = {}, acc = null;
+		for (let seg in page_segs)
+			seg_prefixes[acc = (acc == null ? seg : `${acc}-${seg}`)] = true;
+		for (let f in lsdir(`/www${media}/patches`) ?? []) {
+			if (substr(f, -4) == '.css') {
+				push(patch_all, f);
+				if (exists(seg_prefixes, substr(f, 0, -4)))
+					push(patch_files, substr(f, 0, -4));
+			}
+			else if (substr(f, -3) == '.js') {
+				push(patch_all, f);
+				if (exists(seg_prefixes, substr(f, 0, -3)))
+					push(patch_scripts, substr(f, 0, -3));
+			}
+		}
+		sort(patch_files);
+		sort(patch_scripts);
+		sort(patch_all);
+	}
+
+	http.prepare_content('text/html; charset=UTF-8');
+-%}
+
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}" data-shadcn-media="{{ media }}">
+	<head>
+		<meta charset="utf-8">
+		<meta name="theme-color" content="#f9fafd" media="(prefers-color-scheme: light)">
+		<meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
+		<title>{{ striptags(((boardinfo && boardinfo.hostname) ? boardinfo.hostname : '?') + ((dispatched && dispatched.title) ? (' | ' + _(dispatched.title)) : '')) }}</title>
+		<script>
+			(function () {
+				var theme = localStorage.getItem('shadcn.theme') || 'device';
+				var dark = theme === 'dark' || (theme === 'device' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+				document.documentElement.setAttribute('data-darkmode', dark ? 'true' : 'false');
+				var collapsed = localStorage.getItem('shadcn.sidebar') === 'true';
+				document.documentElement.setAttribute('data-sidebar-collapsed', collapsed ? 'true' : 'false');
+			})();
+		</script>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+		<meta name="color-scheme" content="light dark">
+		{% if (blank_page): %}
+		<link rel="stylesheet" href="{{ media }}/login.css">
+		{% else %}
+		<link rel="stylesheet" href="{{ media }}/main.css" data-luci-shell>
+		{% for (let patch in patch_files): %}
+		<link rel="stylesheet" href="{{ media }}/patches/{{ patch }}.css" data-luci-patch="{{ patch }}">
+		{% endfor %}
+		{% for (let patch in patch_scripts): %}
+		<script defer src="{{ media }}/patches/{{ patch }}.js" data-luci-patch="{{ patch }}"></script>
+		{% endfor %}
+		{% endif %}
+		<link rel="icon" href="{{ media }}/images/favicon.svg" type="image/svg+xml">
+		<link rel="icon" href="{{ media }}/images/favicon.ico" sizes="any">
+		<link rel="apple-touch-icon" href="{{ media }}/images/apple-touch-icon.png">
+		<link rel="manifest" href="{{ media }}/images/site.webmanifest">
+		{% if (dispatched && dispatched.css): %}
+		<link rel="stylesheet" href="{{ resource }}/{{ dispatched.css }}" data-luci-node-css="{{ entityencode(dispatched.css, true) }}">
+		{% endif %}
+		{% if (css): %}
+		<style data-luci-shell>{{ css }}</style>
+		{% endif %}
+		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
+		<script src="{{ resource }}/cbi.js"></script>
+	</head>
+
+	<body class="lang_{{ dispatcher.lang }}" data-page="{{ entityencode(page, true) }}" data-asset-version="{# PKG_VERSION #}"{% if (length(patch_all)): %} data-patches="{{ entityencode(join(' ', patch_all), true) }}"{% endif %}>
+		{% if (!blank_page): %}
+
+		<div
+			id="sidebar"
+			data-media="{{ media }}"
+			data-hostname="{{ entityencode(striptags((boardinfo && boardinfo.hostname) ? boardinfo.hostname : 'Shadcn'), true) }}"
+		></div>
+		<script>
+			/* Pre-paint sidebar restore: menu-shadcn.js caches the rendered sidebar
+			   in sessionStorage; replay it synchronously here so the sidebar is in
+			   the first frame of every navigation instead of popping in after the
+			   menu XHR. menu-shadcn.js re-renders authoritatively once loaded. */
+			(function () {
+				/* Delegated (survives cache-restored links, which lose their JS
+				   handlers to innerHTML serialization): logging out must drop the
+				   cached menu so it isn't replayed into the next session. */
+				document.addEventListener('click', function (e) {
+					var t = e.target && e.target.closest ? e.target.closest('a.sidebar-logout') : null;
+					if (!t) return;
+					window.shadcnSuppressSidebarCache = true;
+					try { sessionStorage.removeItem('shadcn.sidebar.cache'); } catch (err) {}
+				}, true);
+
+				try {
+					var raw = sessionStorage.getItem('shadcn.sidebar.cache');
+					if (!raw) return;
+					var cache = JSON.parse(raw);
+					var sb = document.getElementById('sidebar');
+					if (!sb || !cache || cache.v !== 1 || cache.lang !== document.documentElement.lang) return;
+
+					sb.innerHTML = cache.html;
+					sb.setAttribute('data-shadcn-built', '1');
+					sb.setAttribute('data-shadcn-restored', '1');
+
+					/* The cached HTML carries the previous page's active highlight —
+					   recompute it for the current URL (longest link-path prefix wins,
+					   mirroring menu-shadcn's dispatchpath matching). */
+					var stale = sb.querySelectorAll('.active');
+					for (var i = 0; i < stale.length; i++) stale[i].classList.remove('active');
+
+					var links = sb.querySelectorAll('a.sidebar-sub-link, a.sidebar-nav-parent, a.sidebar-logout');
+					var path = location.pathname;
+					var best = null, bestLen = -1;
+					for (var j = 0; j < links.length; j++) {
+						var p = links[j].pathname;
+						if ((path === p || path.indexOf(p + '/') === 0) && p.length > bestLen) {
+							best = links[j];
+							bestLen = p.length;
+						}
+					}
+					if (best) {
+						var sub = best.closest('.sidebar-sub-item');
+						if (sub) {
+							sub.classList.add('active');
+							var acc = best.closest('.sidebar-accordion-item');
+							if (acc) {
+								acc.classList.add('active');
+								acc.setAttribute('data-open', 'true');
+								var open = sb.querySelectorAll('.sidebar-accordion-item[data-open="true"]');
+								for (var k = 0; k < open.length; k++)
+									if (open[k] !== acc) open[k].setAttribute('data-open', 'false');
+							}
+						} else if (best.classList.contains('sidebar-logout')) {
+							best.classList.add('active');
+						} else {
+							var item = best.closest('.sidebar-nav-item');
+							if (item) item.classList.add('active');
+						}
+					}
+
+					var nav = sb.querySelector('.sidebar-nav');
+					if (nav) nav.scrollTop = cache.scroll || 0;
+				} catch (e) {
+					try { sessionStorage.removeItem('shadcn.sidebar.cache'); } catch (e2) {}
+				}
+			})();
+		</script>
+
+		<div id="sidebar-overlay"></div>
+
+		<div id="main-wrapper">
+			<div class="content-card">
+				<header class="card-header">
+					<div class="card-header-left">
+						<button
+							id="sidebar-hamburger"
+							class="topbar-hamburger"
+							type="button"
+							aria-label="{{ _('Navigation') }}"
+						>
+							<img src="{{ media }}/icons/menu.svg" width="18" height="18" alt="">
+						</button>
+						<nav class="topbar-breadcrumb" id="topbar-breadcrumb" aria-label="{{ _('Navigation') }}"></nav>
+					</div>
+					<div class="card-header-right">
+						{#- Command palette (⌘K): trigger only — the panel is built lazily
+						    by menu-shadcn.js. The button wears the same msgid as the panel's
+						    input placeholder, so the trigger reads as a preview of what it
+						    opens. Not 'Search': that msgid is defined in exactly one LuCI
+						    pot (luci-app-adblock) and would read English wherever adblock is
+						    absent, whereas 'Type to filter…' comes from
+						    luci-app-package-manager, a dependency of the default luci
+						    collection. aria-label repeats the visible text (it hides below
+						    the md breakpoint, and a mismatch would break Label in Name). -#}
+						<button
+							id="cmdk-trigger"
+							class="cmdk-trigger"
+							type="button"
+							aria-label="{{ _('Type to filter…') }}"
+						>
+							<span class="cmdk-trigger-label">{{ _('Type to filter…') }}</span>
+							<kbd class="cmdk-trigger-key" hidden></kbd>
+						</button>
+						<div id="indicators" class="topbar-indicators"></div>
+						<button
+							id="theme-toggle-btn"
+							class="topbar-icon-btn"
+							type="button"
+							aria-label="{{ _('Design') }}"
+						>
+							<img src="{{ media }}/icons/sun.svg" width="16" height="16" alt="">
+						</button>
+					</div>
+				</header>
+
+				<div id="maincontent" tabindex="-1">
+				{% if (getuid() == 0 && root_pw_unset && ctx && ctx.authsession): %}
+					<div class="alert-message warning">
+						<h4>{{ _('No password set!') }}</h4>
+						<p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+						{% if (dispatcher.lookup("admin/system/admin")): %}
+						  <div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+						{% endif %}
+					</div>
+				{% endif %}
+
+				{% if (boardinfo && boardinfo.rootfs_type == "initramfs"): %}
+					<div class="alert-message warning">
+						<h4>{{ _('System running in recovery (initramfs) mode.') }}</h4>
+						<p>{{ _('No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade') }}</p>
+						{% if (dispatcher.lookup("admin/system/flash")): %}
+						  <div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/flash") }}">{{ _('Go to firmware upgrade...') }}</a></div>
+						{% endif %}
+					</div>
+				{% endif %}
+
+				<noscript>
+					<div class="alert-message warning">
+						<h4>{{ _('JavaScript required!') }}</h4>
+						<p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+					</div>
+				</noscript>
+
+				<div id="tabmenu" style="display:none"></div>
+		{% endif %}

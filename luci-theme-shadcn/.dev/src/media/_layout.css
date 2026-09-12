@@ -1,0 +1,417 @@
+/* ── Sidebar ──────────────────────────────────────────────────────── */
+
+#sidebar {
+  /* Width only: `transition-all` would also ease background-color, making the
+     sidebar lag a beat behind the untransitioned content area on theme flips. */
+  @apply bg-sidebar-bg flex h-full w-[220px] shrink-0 flex-col overflow-hidden transition-[width] duration-200;
+  @apply max-md:fixed max-md:top-0 max-md:left-0 max-md:z-40 max-md:w-[240px] max-md:-translate-x-full max-md:shadow-xl max-md:transition-transform;
+  /* Drawer height tracks the dynamic viewport so its bottom edge meets the
+     Safari toolbar smoothly instead of jumping when the toolbar shows/hides. */
+  @apply max-md:h-dvh;
+
+  &[data-drawer-open="true"] {
+    @apply max-md:translate-x-0;
+  }
+
+  .icon-expand {
+    @apply hidden;
+  }
+}
+
+html[data-sidebar-collapsed="true"] #sidebar {
+  @apply md:w-12;
+
+  .sidebar-brand-text,
+  .sidebar-label,
+  .sidebar-chevron,
+  .icon-collapse {
+    @apply md:hidden;
+  }
+
+  .icon-expand {
+    @apply md:block;
+  }
+
+  .sidebar-accordion-sub {
+    @apply md:!hidden;
+  }
+}
+
+.sidebar-header {
+  @apply flex h-14 shrink-0 items-center justify-between px-3;
+}
+
+.sidebar-brand {
+  @apply text-sidebar-fg flex min-w-0 flex-1 items-center gap-2 truncate no-underline;
+}
+
+.sidebar-logo {
+  @apply shrink-0;
+}
+
+.sidebar-brand-text {
+  @apply truncate text-sm font-semibold;
+}
+
+.sidebar-toggle {
+  @apply text-sidebar-muted flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-colors;
+
+  &:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-fg;
+  }
+
+  svg,
+  img {
+    @apply h-4 w-4;
+  }
+}
+
+/* ── Sidebar nav ──────────────────────────────────────────────────── */
+
+.sidebar-nav {
+  @apply flex-1 overflow-x-hidden overflow-y-auto px-2 py-2;
+}
+
+.sidebar-nav-item,
+.sidebar-accordion-item {
+  @apply mb-0.5;
+
+  &.active > .sidebar-nav-parent {
+    @apply text-sidebar-active-fg;
+  }
+}
+
+.sidebar-nav-parent {
+  @apply text-sidebar-muted flex w-full cursor-pointer appearance-none items-center justify-start gap-2.5 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm font-medium transition-colors duration-150;
+
+  &:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-fg;
+  }
+
+  .sidebar-icon {
+    @apply flex shrink-0 items-center justify-center;
+    svg,
+    img {
+      @apply h-4 w-4;
+    }
+  }
+
+  .sidebar-label {
+    @apply flex-1 truncate;
+  }
+
+  .sidebar-chevron {
+    @apply ml-auto shrink-0 transition-transform duration-200;
+    svg,
+    img {
+      @apply h-3.5 w-3.5;
+    }
+  }
+}
+
+.sidebar-accordion-item {
+  &[data-open="true"] {
+    > .sidebar-nav-parent {
+      @apply bg-sidebar-active-bg text-sidebar-active-fg;
+    }
+    .sidebar-chevron {
+      @apply rotate-180;
+    }
+  }
+}
+
+/* Grid 0fr↔1fr accordion with an opacity fade: animates to the content's
+   real height with no JS measurement, and the active section renders open
+   so no transition fires on first paint. The clip sits on the grid
+   container, not the list — an auto-height grid re-resolves a mid-transition
+   Nfr against its own already-shrunk height, so a list clipped at its own
+   box loses rows faster than the space closes. The list keeps its natural
+   height (self-start) so its border-l spans every visible row, and carries
+   no vertical padding: padding would give the 0fr track a floor, and a
+   closing section that stops short while its exclusive sibling is still
+   opening bounces every row below them. visibility transitions too, so the
+   collapsed links leave the tab order only once the close has finished. */
+.sidebar-accordion-sub {
+  @apply invisible grid grid-rows-[0fr] overflow-hidden opacity-0 transition-[grid-template-rows,opacity,visibility] duration-200 ease-out;
+
+  > * {
+    @apply min-h-0 self-start;
+  }
+}
+
+.sidebar-accordion-item[data-open="true"] > .sidebar-accordion-sub {
+  @apply visible grid-rows-[1fr] opacity-100;
+}
+
+.sidebar-sub-list {
+  @apply border-sidebar-border ml-4 list-none border-l pl-2;
+}
+
+.sidebar-sub-item {
+  @apply mb-0.5;
+
+  &.active .sidebar-sub-link {
+    @apply text-sidebar-active-fg font-medium;
+  }
+}
+
+.sidebar-sub-link {
+  @apply text-sidebar-muted block rounded-md px-2 py-1.5 text-sm no-underline transition-colors;
+
+  &:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-fg;
+  }
+}
+
+/* ── Collapsed hover popover ──────────────────────────────────────── */
+
+.sidebar-collapsed-popover {
+  @apply border-border bg-panel-bg fixed z-50 min-w-44 overflow-hidden rounded-lg border py-1 shadow-lg;
+}
+
+.sidebar-collapsed-popover-title {
+  @apply text-foreground px-3 pt-1.5 pb-1 text-xs font-semibold;
+}
+
+.sidebar-collapsed-popover-list {
+  @apply m-0 list-none p-0;
+}
+
+.sidebar-collapsed-popover-link {
+  @apply text-sidebar-muted mx-1 block rounded-sm px-2 py-1.5 text-sm no-underline transition-colors;
+
+  &:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-fg;
+  }
+
+  &.active {
+    @apply text-sidebar-active-fg font-medium;
+  }
+}
+
+/* ── Sidebar footer ───────────────────────────────────────────────── */
+
+.sidebar-footer {
+  @apply border-sidebar-border shrink-0 border-t p-2;
+  @apply pb-[max(0.5rem,env(safe-area-inset-bottom))];
+}
+
+.sidebar-logout {
+  @apply text-sidebar-muted flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm no-underline transition-colors;
+
+  &:hover {
+    @apply bg-sidebar-accent text-sidebar-accent-fg;
+  }
+
+  &.active {
+    @apply text-sidebar-active-fg font-medium;
+  }
+
+  .sidebar-icon {
+    @apply flex shrink-0 items-center justify-center;
+    svg,
+    img {
+      @apply h-4 w-4;
+    }
+  }
+
+  .sidebar-label {
+    @apply flex-1 truncate;
+  }
+}
+
+/* ── Main wrapper ─────────────────────────────────────────────────── */
+
+#main-wrapper {
+  /* h-full (not stretch-derived): body wraps stray third-party children onto
+     a second flex line; the first line must always be exactly viewport-high
+     so those wrapped lines land offscreen. basis-full (not w-full) on mobile:
+     with the sidebar out of flow, a zero flex-basis would leave room for a
+     stray full-width sibling on the same line instead of forcing it to wrap. */
+  @apply bg-background flex h-full flex-1 flex-col overflow-hidden py-2 pr-2 pl-0 max-md:basis-full max-md:p-0;
+}
+
+/* ── Content card ────────────────────────────────────────────────── */
+
+.content-card {
+  @apply border-panel-border bg-panel-bg flex flex-1 flex-col overflow-hidden rounded-xl border shadow-sm max-md:rounded-none max-md:border-none max-md:shadow-none;
+}
+
+/* ── Card header ─────────────────────────────────────────────────── */
+
+.card-header {
+  @apply border-panel-border bg-panel-bg flex h-12 shrink-0 items-center justify-between border-b px-4;
+}
+
+.card-header-left {
+  @apply flex items-center gap-2;
+}
+.card-header-right {
+  @apply flex items-center gap-2;
+}
+
+.topbar-hamburger {
+  @apply text-muted-foreground hidden h-8 w-8 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-colors max-md:flex;
+
+  &:hover {
+    @apply bg-muted;
+  }
+
+  svg,
+  img {
+    @apply h-5 w-5;
+  }
+}
+
+.topbar-breadcrumb {
+  @apply flex items-center gap-1 text-sm;
+
+  .breadcrumb-item {
+    @apply text-muted-foreground;
+    &.active {
+      @apply text-foreground font-medium;
+    }
+  }
+
+  .breadcrumb-sep {
+    @apply text-muted-foreground;
+    svg,
+    img {
+      @apply h-3.5 w-3.5;
+    }
+  }
+}
+
+button.topbar-icon-btn {
+  @apply text-muted-foreground inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-colors;
+
+  &:hover {
+    @apply bg-muted text-foreground;
+  }
+
+  img {
+    @apply h-4 w-4 shrink-0;
+  }
+}
+
+.topbar-indicators {
+  @apply flex items-center gap-2;
+
+  /* LuCI-owned spans: icon via ::before mask only (no JS / no img) */
+  span[data-indicator] {
+    > img {
+      @apply hidden;
+    }
+    @apply text-muted-foreground relative inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[0px] transition-colors;
+    @apply before:relative before:block before:size-4 before:shrink-0 before:bg-current before:[mask-size:cover] before:[mask-position:center] before:[mask-repeat:no-repeat];
+
+    &:hover {
+      @apply bg-muted text-foreground;
+    }
+
+    &[data-indicator="poll-status"] {
+      &[data-style="active"] {
+        @apply before:[mask-image:url('@assets/icons/refresh-cw.svg')];
+      }
+      &[data-style="inactive"] {
+        @apply before:[mask-image:url('@assets/icons/refresh-cw-off.svg')];
+      }
+    }
+
+    &[data-indicator="media_error"] {
+      @apply before:[mask-image:url('@assets/icons/alert-circle.svg')];
+    }
+
+    &[data-indicator="uci-changes"] {
+      @apply before:[mask-image:url('@assets/icons/settings.svg')];
+
+      &[data-count]:not([data-count="0"]) {
+        @apply after:bg-primary after:text-primary-foreground after:absolute after:-top-0.5 after:-right-0.5 after:z-10 after:flex after:min-h-3 after:min-w-3 after:items-center after:justify-center after:rounded-full after:px-0.5 after:text-[8px] after:leading-none after:font-bold after:content-[attr(data-count)];
+      }
+    }
+  }
+}
+
+/* ── Maincontent ──────────────────────────────────────────────────── */
+
+#maincontent {
+  @apply flex-1 overflow-y-auto p-6 max-md:p-4;
+
+  h1 {
+    @apply mb-4 border-0 pl-0 text-2xl font-semibold tracking-tight;
+  }
+  h2 {
+    @apply mb-3 border-0 pl-0 text-xl font-semibold;
+  }
+  h3 {
+    @apply mb-2 text-lg font-semibold;
+  }
+
+  .cbi-map-descr,
+  .cbi-section-descr {
+    @apply text-muted-foreground mb-4 text-sm leading-relaxed;
+  }
+
+  .cbi-page-actions {
+    @apply border-border mt-4 flex flex-wrap items-center justify-end gap-2 border-t pt-4;
+  }
+
+  /* Channel-analysis chart (#channel_graph) hardcodes a white bg + black grid
+     lines inline; recolor for dark mode. */
+  & div[style] {
+    > svg {
+      @apply dark:!bg-surface;
+
+      & line[style] {
+        @apply dark:!stroke-text;
+      }
+    }
+  }
+
+  .zone-forwards {
+    @apply flex flex-nowrap items-stretch gap-2 leading-relaxed;
+    > span {
+      @apply text-muted-foreground flex shrink-0 basis-8 items-center justify-center self-center;
+    }
+    .zone-src,
+    .zone-dest {
+      @apply flex flex-1 flex-col gap-1.5;
+    }
+  }
+
+  .controls {
+    @apply flex flex-wrap items-center gap-3;
+    label {
+      input[type="radio"],
+      input[type="checkbox"] {
+        @apply mr-1 align-middle;
+      }
+    }
+  }
+
+  .cbi-title-section {
+    @apply mb-4 leading-relaxed;
+  }
+
+  .control-group {
+    @apply mt-1;
+  }
+
+  .control-group,
+  .cbi-page-actions > div,
+  .cbi-section-actions > div {
+    @apply flex flex-row flex-nowrap items-center gap-2;
+  }
+}
+
+/* ── Mobile sidebar overlay ───────────────────────────────────────── */
+
+#sidebar-overlay {
+  /* Absolute, not fixed: iOS Safari 26 tints its bars from edge-touching
+     fixed elements' background-color, opacity notwithstanding. */
+  @apply bg-overlay-base-a50 pointer-events-none absolute inset-0 z-30 opacity-0 transition-opacity duration-200 md:hidden;
+
+  &.active {
+    @apply pointer-events-auto opacity-100;
+  }
+}

@@ -1,0 +1,40 @@
+.alert-message {
+  /* Radius matches `.cbi-section`: the alert sits in the content layer, same
+     width and edge alignment as the sections it stacks above. */
+  @apply bg-muted text-foreground mb-4 rounded-xl border p-4 text-sm;
+
+  &.success {
+    @apply border-success-a30 bg-success-a10 text-success;
+  }
+  &.info {
+    @apply border-info-a30 bg-info-a10 text-info;
+  }
+  &.warning,
+  &.notice {
+    @apply border-warning-a30 bg-warning-a10 text-warning-soft-fg;
+  }
+  &.error,
+  &.danger {
+    @apply border-destructive-a30 bg-destructive-a10 text-destructive;
+  }
+
+  h4,
+  h5,
+  pre,
+  ul,
+  li,
+  p {
+    @apply border-0 bg-transparent text-inherit;
+  }
+
+  h4 {
+    @apply mb-2 text-base font-semibold;
+  }
+  p {
+    @apply text-sm leading-relaxed;
+  }
+
+  .right {
+    @apply mt-3;
+  }
+}

@@ -1,0 +1,188 @@
+table.table,
+.table {
+  @apply border-border mb-4 w-full border-separate border-spacing-0 overflow-visible rounded-lg border;
+
+  &[width="100%"] {
+    @apply w-full;
+  }
+  &[width="33%"] {
+    @apply w-1/3;
+  }
+
+  .cbi-section-table-titles {
+    @apply font-semibold;
+  }
+
+  .cbi-section-table-titles.named,
+  .cbi-section-table-descr.named,
+  .cbi-section-table-row[data-title] {
+    @apply before:border-border before:table-cell before:border-b before:px-3 before:py-2.5 before:align-middle before:text-sm before:font-semibold before:content-[attr(data-title)];
+    &:not([data-title]),
+    &:has(td.cbi-section-table-titles) {
+      @apply before:content-none;
+    }
+  }
+
+  .cbi-section-table-titles.named {
+    @apply before:bg-label-surface before:rounded-tl-lg;
+  }
+
+  tr,
+  .tr {
+    @apply hover:bg-label-surface transition-colors duration-200;
+
+    &:first-child {
+      &:not([data-title]) {
+        .th,
+        .td {
+          @apply md:first:rounded-tl-lg;
+        }
+      }
+      .th,
+      .td {
+        @apply md:last:rounded-tr-lg;
+      }
+    }
+
+    &:last-child {
+      &[data-title] {
+        @apply before:border-b-0 md:before:rounded-bl-lg;
+      }
+      .td {
+        @apply border-b-0 md:first:rounded-bl-lg md:last:rounded-br-lg;
+      }
+    }
+
+    &.table-titles,
+    &.cbi-section-table-titles,
+    &.cbi-section-table-descr {
+      @apply max-md:hidden;
+    }
+
+    &.cbi-rowstyle-1 {
+      @apply bg-panel-bg;
+    }
+    &.cbi-rowstyle-2 {
+      @apply bg-label-surface-a50;
+    }
+  }
+
+  th,
+  .th {
+    @apply border-border bg-label-surface border-b px-3 py-2.5 text-left text-sm font-medium backdrop-blur-sm;
+
+    &[width="100%"] {
+      @apply w-full;
+    }
+    &[width="33%"] {
+      @apply w-1/3;
+    }
+
+    &[data-sortable-row="true"] {
+      @apply hover:bg-label-surface cursor-pointer select-none after:ml-0.5 after:text-xs;
+      &[data-sort-direction="asc"] {
+        @apply after:content-['▲'];
+      }
+      &[data-sort-direction="desc"] {
+        @apply after:content-['▼'];
+      }
+    }
+  }
+
+  td,
+  .td {
+    @apply border-border table-cell border-b px-3 py-2.5 align-middle text-sm break-words whitespace-normal;
+    @apply before:hidden before:content-[attr(data-title)];
+
+    > input[type="text"],
+    > input[type="password"],
+    select,
+    .cbi-dropdown:not(.btn):not(.cbi-button) {
+      @apply w-full;
+    }
+
+    /* Widgets are nested (td > div > div > widget), so the fixed/min widths
+       from _select.css/_dropdown.css must yield to the column width here. */
+    select,
+    .cbi-dropdown:not(.btn):not(.cbi-button) {
+      @apply min-w-fit;
+    }
+
+    &.cbi-value-field {
+      @apply break-all;
+    }
+
+    &.cbi-section-actions > div > .cbi-button {
+      @apply flex-1;
+    }
+
+    &[width="100%"] {
+      @apply w-full;
+    }
+    &[width="33%"] {
+      @apply w-1/3;
+    }
+  }
+}
+
+/* Mobile responsive — rows become stacked cards */
+@media (max-width: 768px) {
+  table.table,
+  .table {
+    @apply block w-full overflow-visible rounded-none border-0 shadow-none;
+
+    tbody,
+    .tbody {
+      @apply block;
+    }
+
+    tr,
+    .tr {
+      @apply border-border flex flex-wrap border-b px-2 py-2;
+    }
+
+    th,
+    .th {
+      @apply hidden;
+    }
+
+    td,
+    .td {
+      @apply flex-[1_1_50%] border-0 px-1 py-1 text-sm;
+      @apply before:mb-1 before:block before:text-xs before:font-semibold;
+
+      &.cbi-value-field {
+        /* Mobile cards: value fields stack one per row —
+           the row title and long match-rule cells get the full width — while
+           display-only widgets below pair up two per row. */
+        @apply mb-1 basis-full self-start text-left;
+
+        &[data-widget="CBI.DummyValue"],
+        &[data-widget="CBI.Button"],
+        &[data-widget="CBI.FlagValue"],
+        &[data-widget="dvalue"],
+        &[data-widget="button"],
+        &[data-widget="fvalue"] {
+          @apply basis-1/2;
+        }
+      }
+
+      &.cbi-section-actions {
+        @apply flex-[0_0_100%];
+      }
+      > .cbi-button {
+        @apply w-full;
+      }
+      &[width="100%"] {
+        @apply flex-[0_0_100%];
+      }
+      &[width="33%"] {
+        @apply flex-[0_0_33.333%];
+      }
+    }
+  }
+}
+
+.cbi-section-table .cbi-section-table-titles .cbi-section-table-cell {
+  @apply !w-auto;
+}

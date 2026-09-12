@@ -1,0 +1,37 @@
+.cbi-tooltip {
+  /* Hidden bubbles park off-screen (`left:-10000px`): a
+     visibility-hidden absolute box left at its anchor still counts into the
+     page's scrollable overflow, so the horizontal scrollbar would survive the
+     bubble's disappearance and the page could never snap back. `:hover`
+     returns it via `inset-s-auto`; the transition list must stay explicit —
+     `transition-all` would animate the inset and make the bubble fly in from
+     off-screen. `w-max` sizes the bubble by its content instead of the narrow
+     anchor's containing block (which squeezed it to one word per line). */
+  @apply border-border-a60 bg-panel-bg text-foreground absolute inset-s-[-10000px] z-50 w-max max-w-xs scale-95 rounded-lg border px-3 py-2 text-xs break-normal whitespace-normal opacity-0 shadow-lg backdrop-blur-sm transition-[visibility,opacity,scale] duration-200 ease-out;
+
+  &.error {
+    @apply border-destructive-a40 bg-destructive text-destructive-fg;
+  }
+  &.success {
+    @apply border-success-a40 bg-success text-success-fg;
+  }
+  &.info {
+    @apply border-info-a40 bg-info text-info-fg;
+  }
+  &.notice {
+    @apply border-warning-a40 bg-warning text-warning-fg;
+  }
+}
+
+.cbi-tooltip-container,
+[data-tooltip] {
+  @apply relative inline-block cursor-help whitespace-nowrap underline decoration-current decoration-dotted underline-offset-2 transition-all duration-200;
+
+  .cbi-tooltip {
+    @apply invisible scale-95 opacity-0 transition-[visibility,opacity,scale] duration-200 ease-out;
+  }
+
+  &:hover .cbi-tooltip {
+    @apply visible inset-s-auto scale-100 opacity-100;
+  }
+}

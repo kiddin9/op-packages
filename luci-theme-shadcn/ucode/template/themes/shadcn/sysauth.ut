@@ -1,0 +1,106 @@
+{#
+ luci-theme-shadcn: login page
+ Copyright 2025 eamonxg <eamonxiong@gmail.com>
+ Licensed to the public under the Apache License 2.0.
+-#}
+
+{%const boardinfo = ubus.call('system', 'board') ?? {};-%}
+{% include('header', { blank_page: true }) %}
+<style>:root{--login-bg-image:url('{{ media }}/images/login-bg.jpeg')}</style>
+
+<main class="login-layout">
+
+	<!-- Form panel (left) -->
+	<section class="login-form-panel">
+
+		<span class="login-logo login-logo--topleft animate-element animate-delay-100">
+			<img src="{{ media }}/images/logo.svg" alt="" width="36" height="36">
+		</span>
+
+		<div class="login-form-wrap">
+			<div class="login-brand animate-element animate-delay-100">
+				<span class="login-hostname">{{ striptags(boardinfo?.hostname ?? 'Router') }}</span>
+				<span class="login-subtitle">{{ _('Please enter your username and password.') }}</span>
+			</div>
+
+			<form method="post" class="login-form">
+				{% if (fuser): %}
+				<div class="login-error animate-element animate-delay-200">
+					{{ _('Invalid username and/or password! Please try again.') }}
+				</div>
+				{% endif %}
+
+				<div class="login-field animate-element animate-delay-200">
+					<label class="login-label" for="luci_username">{{ _('Username') }}</label>
+					<div class="login-input-glass">
+						<span class="login-input-icon">
+							<img src="{{ media }}/icons/user.svg" width="16" height="16" alt="">
+						</span>
+						<input
+							type="text"
+							name="luci_username"
+							id="luci_username"
+							placeholder="{{ _('Username') }}"
+							autocomplete="username"
+							{% if (duser): %}value="{{ entityencode(duser, true) }}"{% else %}value=""{% endif %}
+						>
+					</div>
+				</div>
+
+				<div class="login-field animate-element animate-delay-300">
+					<label class="login-label" for="luci_password">{{ _('Password') }}</label>
+					<div class="login-input-glass">
+						<span class="login-input-icon">
+							<img src="{{ media }}/icons/lock.svg" width="16" height="16" alt="">
+						</span>
+						<input
+							type="password"
+							name="luci_password"
+							id="luci_password"
+							placeholder="{{ _('Password') }}"
+							autocomplete="current-password"
+							autofocus
+						>
+						<button type="button" class="login-pw-toggle" id="pw-toggle" aria-label="{{ _('Reveal/hide password') }}">
+							<img src="{{ media }}/icons/eye.svg" id="pw-toggle-icon" width="16" height="16" alt="">
+						</button>
+					</div>
+				</div>
+
+				<input type="hidden" name="luci_magic" value="{{ luci_magic }}">
+
+				<button type="submit" class="login-submit animate-element animate-delay-400">
+					{{ _('Log in') }}
+				</button>
+			</form>
+		</div>
+
+		<footer class="login-footer">
+			<p>© <a href="https://github.com/eamonxg/luci-theme-shadcn/graphs/contributors?all=1" target="_blank" rel="noreferrer">luci-theme-shadcn</a> · Powered by <a href="{{ entityencode(version.disturl ? version.disturl : '#', true) }}" target="_blank" rel="noreferrer">{{ version.distname }}</a> &amp; <a href="https://github.com/openwrt/luci" target="_blank" rel="noreferrer">{{ version.luciname }}</a> &amp; <a href="https://github.com/shadcn-ui/ui" target="_blank" rel="noreferrer">shadcn</a> &amp; <a href="https://github.com/lucide-icons/lucide" target="_blank" rel="noreferrer">Lucide</a></p>
+		</footer>
+	</section>
+
+	<!-- Image panel (right) -->
+	<section class="login-image-panel" aria-hidden="true">
+		<div class="login-image-inner animate-slide-right animate-delay-300"></div>
+
+	</section>
+
+</main>
+
+<script>
+(function () {
+	var btn = document.getElementById('pw-toggle');
+	var inp = document.getElementById('luci_password');
+	var ico = document.getElementById('pw-toggle-icon');
+	if (!btn || !inp || !ico) return;
+	var base = (document.documentElement.getAttribute('data-shadcn-media') || '/luci-static/shadcn').replace(/\/$/, '');
+	btn.addEventListener('click', function () {
+		var show = inp.type === 'password';
+		inp.type = show ? 'text' : 'password';
+		ico.src = base + (show ? '/icons/eye-off.svg' : '/icons/eye.svg');
+	});
+})();
+</script>
+
+{% include('footer', { blank_page: true }) %}

@@ -1,0 +1,1 @@
+[data-page=admin-statistics-graphs] [data-plugin] img:where([data-darkmode=true],[data-darkmode=true] *){filter:hue-rotate(150deg)invert()}
