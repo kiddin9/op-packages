@@ -25,8 +25,12 @@ FILTER_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1091 # classifier is a sibling file next to this script
 . "$FILTER_DIR/fwlive-is-firewall-event.sh"
 
-input="$(cat)"
-[ -n "$input" ] || input='{"log":[]}'
+# The classifier is a package asset, not generated at request time. Fail
+# closed if an incomplete install or a damaged package removed it (#321).
+if [ ! -r "$CLASSIFY_AWK" ]; then
+	printf '%s' '{"log":[],"error":"classifier_missing"}'
+	exit 1
+fi
 
 printf '%s' '{"log":['
 # Prefer stdin over -s: Linux MAX_ARG_STRLEN is 128KiB; a raised logd ring
@@ -34,5 +38,5 @@ printf '%s' '{"log":['
 # while this script still printed {"log":[]} and exited 0 (#234).
 # jsonfilter miss / empty @.log is not fatal; must still close JSON (#220).
 # set -e + pipefail cannot apply to this pipeline (#291 C3).
-printf '%s' "$input" | jsonfilter -e '@.log[*]' 2>/dev/null | _fwlive_filter_json_entries || true
+jsonfilter -e '@.log[*]' 2>/dev/null | _fwlive_filter_json_entries || true
 printf '%s' ']}'

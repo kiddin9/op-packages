@@ -37,18 +37,24 @@
 # CONFIG_WWAND_UCODE_SOURCE.
 #
 # NOTE: the split needs the ucode source that lazy-loads every backend
-# (qmi_lazy.uc + the backend-neutral daemon). Bump PKG_SOURCE_VERSION (and
-# PKG_SOURCE_DATE / PKG_MIRROR_HASH) to a wwand commit that includes them.
+# (qmi_lazy.uc + the backend-neutral daemon), i.e. a wwand commit that
+# includes them.
+#
+# Version: PKG_VERSION is the wwand release the pinned commit belongs to —
+# X.Y.Z for the tag vX.Y.Z (what stable ships), X.Y.Z_pN for N commits after
+# it (main). Do not bump by hand: `scripts/bump-source.sh wwand <tag|commit>`
+# sets PKG_SOURCE_VERSION, PKG_VERSION, PKG_RELEASE and PKG_MIRROR_HASH
+# together.
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_RELEASE:=31
+PKG_VERSION:=1.6.6_p16
+PKG_RELEASE:=32
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=c27f72e6c35d055d7abbf13eacfbc3bf2e9780a4
-PKG_SOURCE_DATE:=2026-09-11
+PKG_SOURCE_VERSION:=78e295b05c360787631f914e389d7394c092ba4a
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
