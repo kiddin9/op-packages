@@ -879,22 +879,28 @@ function anchorEnabled() {
  * reports zero and this does nothing. Same guards as the main correction — not while the reader
  * scrolls, not across a navigation, never more than a viewport. */
 let _lateFrame = 0;
+/* WHY THE LAST LATE CORRECTION DID OR DID NOT WRITE — an unmarked export for the sweep, the same
+ * shape and the same reason as `restAt()` and `engineTrusted()` beside it. `lateDrift()` has eight
+ * ways to return without writing, and from outside they are one symptom: `writes: []`. Three CI
+ * runs were spent guessing between them — whether the theme tried and missed, had no reference to
+ * try from, or read the engine as having already done the job — and each guess cost a push. One
+ * short string, set at every exit, ends that: the finding names the line instead of the silence. */
+let _lateWhy = null;
+function why(w) { _lateWhy = w; }
 
 function lateDrift(ref, grow, floorShrink) {
 	/* the reference from BEFORE this tick, captured by the caller: one taken after the mutation
 	 * describes the page as the mutation left it, so its drift is zero by construction */
-	if (_lateFrame || !ref) return;
+	if (_lateFrame) return why('busy');
+	if (!ref) return why('no-reference');
+	why('armed');
 	_lateFrame = requestAnimationFrame(() => {
 		const seen = scrollTop();
-		/* STILL FOR SCROLL_IDLE, the interval this file already calls a page nobody is scrolling.
-		 * A frame is not long enough to tell a flick from a still page: a flick moves the offset in
-		 * steps of tens of milliseconds and two rAFs (~16 ms) fall inside one step, so the offset
-		 * reads the same twice while the page is plainly moving. 120 ms was still short enough to
-		 * let one 160px correction through on a loaded runner. */
-		_lateFrame = window.setTimeout(() => {
+		const settle = () => {
 			_lateFrame = 0;
-			if (!anchorEnabled() || Date.now() < _userUntil) return;
-			if (_restPage !== pageStamp()) return;
+			if (!anchorEnabled()) return why('anchoring-off');
+			if (Date.now() < _userUntil) return why('reader-intent');
+			if (_restPage !== pageStamp()) return why('page-changed');
 			/* THE OFFSET, NOT THE EVENT STREAM. `scrolling()` cannot answer this one: the engine's
 			 * own compensation moves the offset and starts the motion sampler, so gating on it
 			 * skips every tick this exists for — and in WebKit a programmatic scroll's event
@@ -903,6 +909,11 @@ function lateDrift(ref, grow, floorShrink) {
 			 * with the reference on a still page, so an offset anywhere else means the reader has
 			 * moved since, and whatever this would put back they have already scrolled past. A
 			 * correction landing inside a flick is itself a jump (161px, webkit/Overview).
+			 *
+			 * The wait-length fork at the bottom of this function does consult `scrolling()`, and
+			 * it is not this rule loosened: it decides HOW LONG to wait, never WHETHER to write. A
+			 * tick the engine did move the offset for takes the long road and still arrives here,
+			 * where this same check is what answers.
 			 *
 			 * `ref.at` and not `_restAt`: run() re-remembers between the mutation and this frame,
 			 * and where the sampler has not started yet — WebKit again — that re-take records the
@@ -913,12 +924,12 @@ function lateDrift(ref, grow, floorShrink) {
 			 * against 600px of growth — so an offset that merely differs is the engine working, and
 			 * refusing on that leaves the engine's own residual (58px) uncorrected. What must not be
 			 * touched is a page still in motion, which is asked directly instead. */
-			if (scrollTop() !== seen) return;
+			if (scrollTop() !== seen) return why('offset-moved');
 			/* the tick usually replaces the element this was taken on, so without the section
 			 * fallback the correction does nothing on the tick it exists for */
 			let el = ref.el, was = ref.top;
 			if (!el || !el.isConnected) {
-				if (!ref.sec || !ref.sec.isConnected || ref.secTop == null) return;
+				if (!ref.sec || !ref.sec.isConnected || ref.secTop == null) return why('reference-gone');
 				el = ref.sec; was = ref.secTop;
 			}
 			let drift = el.getBoundingClientRect().top - was;
@@ -984,7 +995,7 @@ function lateDrift(ref, grow, floorShrink) {
 					 * REPEAT's own mark never moved (misses [true,true,false]) — e0b6db4's fault on the
 					 * other side of the same comparison. */
 					rememberRest(true);
-					return;
+					return why('engine-partly-' + Math.round(compensated) + '-of-' + Math.round(grow));
 				}
 				/* else: within table-row rounding — drift is still whatever it was (< 1 per the guard
 				 * above), so the plain `drift < 1` return two lines down is what fires, unwritten and
@@ -1007,12 +1018,13 @@ function lateDrift(ref, grow, floorShrink) {
 				 * second of three back-to-back refills, unchanged — chromium/firefox/webkit alike,
 				 * `_engineTrusted` true throughout. */
 				if (grow > 1 || floorShrink > 1) rememberRest(true);
-				return;						/* the engine put it back */
+				return why('no-drift-grow-' + Math.round(grow));	/* the engine put it back */
 			}
-			if (Math.abs(drift) > (window.innerHeight || 800)) return;
+			if (Math.abs(drift) > (window.innerHeight || 800)) return why('drift-too-big');
 			const sc = scroller();
 			const at = sc ? sc.scrollTop : window.scrollY;
 			writeOffset(sc, at + drift);
+			why('wrote-' + Math.round(drift));
 			/* A FRESH, FORCED rememberRest(), not just `_restAt = scrollTop()` — task refill2. The
 			 * write moves the page by exactly the drift measured, so `_rest.top` still holds FOR THIS
 			 * TICK's own `el`, but `_rest` itself was taken by run() at the top of THIS callback,
@@ -1030,7 +1042,7 @@ function lateDrift(ref, grow, floorShrink) {
 			 * `force`, `moved 0, 0, 0` with it, both `trusted true` throughout). */
 			rememberRest(true);
 			/* A DROP IN THIS SAME BOX'S OWN FLOOR IS NOT EVIDENCE ABOUT THE ENGINE — task refill2. Every
-			 * `run()` clears and rewrites `r.target`'s `min-height`, and a WRITE to that property is a
+			 * `run()` clears and rewrites the floored box's `min-height`, and a WRITE to that property is a
 			 * scroll-anchor invalidation in its own right (`holdFloor()`'s own citation), independent of
 			 * how reliably this engine otherwise keeps a reference: a floored box whose content really
 			 * did shrink pays this cost on every engine, every time, structurally — counting it toward
@@ -1056,7 +1068,50 @@ function lateDrift(ref, grow, floorShrink) {
 			/* This engine did not keep the reference across a container refill, once more on this
 			 * page — see LATE_MISS_LIMIT above for what happens once that has been measured twice. */
 			if (++_lateMisses >= LATE_MISS_LIMIT) { _engineTrusted = false; _lateHits = 0; }
-		}, SCROLL_IDLE);
+		};
+		/* HOW LONG TO WAIT IS A QUESTION ABOUT THE READER, NOT A CONSTANT — task late419.
+		 *
+		 * STILL FOR SCROLL_IDLE is the answer where the page is, or might be, in motion: a frame is
+		 * not long enough to tell a flick from a still page by the offset alone, because a flick
+		 * moves it in steps of tens of milliseconds and two rAFs (~16ms) fall inside one step, so
+		 * the offset reads the same twice while the page is plainly moving. 120ms was still short
+		 * enough to let one 160px correction through on a loaded runner. That is unchanged, and it
+		 * is what every branch below still runs on.
+		 *
+		 * But a page the theme ALREADY KNOWS is still does not need to be asked again. `scrolling()`
+		 * is this file's own answer to "has anything moved the offset in the last SCROLL_IDLE",
+		 * sampled from the POSITION every frame rather than from the event stream, so it sees
+		 * momentum and rubber-banding that dispatch nothing (its own comment) — and `_userUntil` is
+		 * the reader's hand on the page: a `touchstart`, `wheel`, `mousedown` or `keydown` arrives
+		 * BEFORE the offset it is about to move, so a flick about to begin has already said so.
+		 * Where both answer "nobody is driving and nothing has moved", the only thing that can have
+		 * touched the offset since the reference was taken is the engine, whose own correction
+		 * window is measured at 7-36ms — not 400 — so the wait is the next frame and the same
+		 * `scrollTop() !== seen` check decides, exactly as it does on the long path. Two rAFs in
+		 * total, one apart: `settleDeferredFloor()`'s own shape, and for its stated reason — the
+		 * offset read twice a frame apart is the check, and the wait is only there to space the
+		 * two reads. A third frame was measured and is not bought: it costs 11-16ms of the
+		 * headroom under the gate's own `LATE_MS` and changes no reading — webkit 67/71/72ms
+		 * against 51/54/61ms on the same three stands, everything else identical.
+		 *
+		 * NEITHER GUARD ALONE WOULD DO, and that is the whole reason this is a pair. `_userUntil` is
+		 * a 400ms timer off the last EVENT, and iOS momentum carries the page long after the finger
+		 * has gone — the same fault `scrolling()` exists because of. And `scrolling()` alone would
+		 * write into the moment a finger is down on a page that has not moved yet. A synthetic flick
+		 * makes the first half concrete: `tools/scroll-anchor.mjs`'s QUIET drives its 24 steps by
+		 * assigning `scrollTop`, so it carries no intent event at all, and an intent-only gate would
+		 * take the short path straight through the middle of it.
+		 *
+		 * Measured (`tools/scroll-anchor.mjs`, the `engine DECLINES` cell this task added — the
+		 * engine ablated off while the theme still trusts it, which is the state CI caught 2 runs in
+		 * 3 and no local run ever): 404-422ms before, 8-61ms after, on nine cells — three engines
+		 * against three stands, `@1440 side compact overview`, the cell CI reported. The other two
+		 * cells of the same axis are untouched, which is the point: the engine-anchoring-on cell
+		 * corrects at 4-19ms (the engine's own work, which never reaches this path) and the
+		 * engine-OFF cell at 6-44ms (`applyAnchor()`, a different function). `mid-flick surprises`
+		 * reads 0 on all 27. */
+		if (!scrolling() && Date.now() >= _userUntil) _lateFrame = requestAnimationFrame(settle);
+		else _lateFrame = window.setTimeout(settle, SCROLL_IDLE);
 	});
 }
 
@@ -1270,12 +1325,35 @@ function observeContent() {
 		 * nothing on the distrusted path too, in the recovery check right below, so the read can no
 		 * longer be skipped there. One extra `records.find` and an `offsetHeight` per distrusted
 		 * tick — the one path that used to pay nothing here at all. */
-		const r = records.find((m) => m.type === 'childList' && m.target.hasAttribute('data-fs-floor'));
+		/* THE FLOORED BOX THE RECORD SITS IN, not only a record whose target IS one — task blindgrow.
+		 * `dom.content()` empties and refills the node it is handed, and that node is often a level
+		 * or two INSIDE the box `holdFloor()` pinned: measured live on Overview (webkit/owrtsnapb,
+		 * `../tmp/floorprobe.mjs`), of twelve nodes a poll refills on that page one sits inside a
+		 * floored box without wearing the mark itself. For those the old `m.target.hasAttribute`
+		 * matched nothing, `grew` read 0, and a `lateDrift()` whose element-based `drift` was ALSO
+		 * blind — `anchorRef()` having hit-tested something the growth never reached — concluded
+		 * there was nothing to correct and wrote nothing at all. That is the `writes: []`,
+		 * `corrected never` shape CI reported on `webkit owrtsnap @1440 side compact overview` in
+		 * three runs of three while every local run of the same cell passed: locally the fold
+		 * happened to land BELOW the growing block, so `drift` carried the correction on its own and
+		 * the missing `grew` never showed.
+		 *
+		 * `closest()` and not a parent walk: it stops at the first floored ancestor, which is the box
+		 * whose `min-height` holds the pre-tick height this measures against, and it costs one call
+		 * on the handful of records a tick delivers. Strictly wider than what it replaces — a target
+		 * that already wore the mark is its own `closest()` — so no tick that used to find a witness
+		 * can stop finding one. */
+		let r = null, box = null;
+		for (const m of records) {
+			if (m.type !== 'childList' || !m.target.closest) continue;
+			const b = m.target.closest(FLOORED);
+			if (b) { r = m; box = b; break; }
+		}
 		/* a box freshly wearing its FIRST floor has no "before" to measure against — parseFloat
 		 * of an unset `min-height` is NaN, `|| 0` reads as "no growth" rather than false growth
 		 * the size of the whole box */
-		const before = r && (parseFloat(r.target.style.minHeight) || 0);
-		const grew = before ? r.target.offsetHeight - before : 0;
+		const before = box && (parseFloat(box.style.minHeight) || 0);
+		const grew = before ? box.offsetHeight - before : 0;
 		/* RECOVERY EVIDENCE, task trust — read here and nowhere else; see TRUST_RECOVERY_LIMIT's own
 		 * comment for why `applyAnchor()` cannot see it. THE SAME REFERENCE `lateDrift()` trusts on
 		 * the other path (`_rest.el`'s own rect against the top it was remembered at), read before
@@ -1299,7 +1377,7 @@ function observeContent() {
 			_lateMisses = _lateHits = 0;
 		}
 		/* THE SAME BOX'S FLOOR, BEFORE AND AFTER THIS run() — task refill2. `holdFloor()` inside
-		 * run() clears and rewrites `r.target`'s own `min-height` every tick, which is a scroll-
+		 * run() clears and rewrites `box`'s own `min-height` every tick, which is a scroll-
 		 * anchor-invalidating style write on its own account (css-scroll-anchoring-1 §2.2.2,
 		 * `holdFloor()`'s own comment) — so a floored box whose CONTENT genuinely shrinks (a poll's
 		 * data losing rows, or in this callback the mutation record ITSELF being a removal) drops the
@@ -1320,10 +1398,10 @@ function observeContent() {
 		 * own `run()`, or another mutation's) leaves nothing stale behind — cleared below the moment
 		 * any tick's `holdFloor()` actually runs, for the identical reason. */
 		const wasScrolling = scrolling();
-		if (r && before && wasScrolling) _deferredFloor = r.target;
+		if (r && before && wasScrolling) _deferredFloor = box;
 		run(records);
 		if (!wasScrolling) _deferredFloor = null;
-		const floorShrink = (r && before) ? Math.max(0, before - (parseFloat(r.target.style.minHeight) || 0)) : 0;
+		const floorShrink = (r && before) ? Math.max(0, before - (parseFloat(box.style.minHeight) || 0)) : 0;
 		/* `#view` ITSELF EMPTIED AND REFILLED IS A PAGE SWAP, NOT A REFILL — task latecommit,
 		 * docs/anchoring.md "The commit is not a refill". The router commits a client navigation
 		 * with `dom.content()` on the live `#view` (commitStage(), fs-router.js) and the browser
@@ -1448,6 +1526,8 @@ return baseclass.extend({
 	/* "is the reader scrolling" and "I could not measure, wake me when they stop": a pass that reads
 	 * layout asks the first and calls the second, one that only writes does neither */
 	scrolling,
+	/* unmarked, for tools/scroll-anchor.mjs — see `_lateWhy` */
+	lateWhy: () => _lateWhy,
 	deferMeasurement,
 
 	/* -> the offset this file last took a reference at, or null before it has taken one.
