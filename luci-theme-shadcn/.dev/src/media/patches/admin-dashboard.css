@@ -1,0 +1,30 @@
+/*
+  PATCH: admin-dashboard (luci-mod-dashboard)
+  Loaded on-demand by header.ut only when data-page matches this filename.
+  Native declarations keep this standalone patch free of Tailwind helper output.
+*/
+.Dashboard > .section-content .dashboard-bg.tr {
+  border-radius: 0;
+}
+
+.Dashboard > .section-content .dashboard-bg {
+  background-color: var(--panel-bg);
+}
+
+.Dashboard > .section-content .dashboard-bg:not(.tr) {
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.Dashboard
+  > .section-content
+  .title
+  img[src*=".svg"]:where([data-darkmode="true"], [data-darkmode="true"] *) {
+  filter: invert(1);
+}
+
+.Dashboard > .section-content .title h3 {
+  padding-bottom: 0.75rem;
+  color: var(--foreground);
+  border: 0;
+}

@@ -1,0 +1,10 @@
+/*
+  PATCH: admin-services-openclash-settings (luci-app-openclash)
+  Loaded on-demand by header.ut only when data-page matches this filename.
+  Native declarations keep this standalone patch free of Tailwind helper output.
+*/
+[data-page="admin-services-openclash-settings"] {
+  .cbi-value-field .cbi-input-select {
+    width: 100%;
+  }
+}

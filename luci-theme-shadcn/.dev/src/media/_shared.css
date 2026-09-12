@@ -1,0 +1,56 @@
+/**
+ * luci-theme-shadcn: rules shared by both build entries
+ * Copyright 2025 eamonxg <eamonxiong@gmail.com>
+ * Licensed to the public under the Apache License 2.0.
+ *
+ * main.css and login.css are separate build entries; anything they both need
+ * lives here so it is written once and imported by each.
+ */
+
+html {
+  @apply scheme-light;
+}
+
+html[data-darkmode="true"] {
+  @apply scheme-dark;
+}
+
+/* Lucide icons loaded via <img>: <img>-embedded SVGs render with black strokes
+   and ignore the parent's `color`, so flatten them to a single tone and invert
+   for dark mode (per-context opacity stays in each stylesheet). */
+.card-header img,
+.login-input-icon img,
+.login-pw-toggle img,
+img.shadcn-icon {
+  filter: brightness(0) saturate(100%);
+}
+
+html[data-darkmode="true"] .card-header img,
+html[data-darkmode="true"] .login-input-icon img,
+html[data-darkmode="true"] .login-pw-toggle img,
+html[data-darkmode="true"] img.shadcn-icon {
+  filter: brightness(0) saturate(100%) invert(1);
+}
+
+/* Per-context opacity tuning for the flattened <img> icons above. These are
+   theme chrome (sidebar + card header), present on every admin page, so they
+   stay globally loaded here rather than in an on-demand per-page patch. */
+.card-header img,
+img.shadcn-icon {
+  opacity: 0.65;
+}
+
+#sidebar img.shadcn-icon {
+  opacity: 0.65;
+}
+
+html[data-darkmode="true"] #sidebar img.shadcn-icon {
+  opacity: 0.7;
+}
+
+.card-header button:hover img,
+#sidebar .sidebar-nav-item.active img,
+#sidebar .sidebar-accordion-item.active img,
+#sidebar .sidebar-nav-parent:hover img {
+  opacity: 1;
+}

@@ -1,0 +1,43 @@
+/**
+ * luci-theme-shadcn: main stylesheet
+ * Copyright 2025 eamonxg <eamonxiong@gmail.com>
+ * Licensed to the public under the Apache License 2.0.
+ */
+
+@import "tailwindcss";
+@import "./inter.css";
+@import "./_tokens.css";
+@import "tw-animate-css";
+
+/* Dev-only tooling holds prose and plain CSS whose bare words (static,
+   transition, backdrop-filter, …) Tailwind's automatic source detection would
+   otherwise read as utility candidates and emit into this shipped stylesheet.
+   Nothing here renders markup, so none of it belongs in the scan. */
+@source not "../../vite.config.ts";
+@source not "../../scripts/*.client.js";
+@source not "../../tests/*.js";
+@source not "../../docs/*.md";
+
+@custom-variant dark (&:where([data-darkmode=true], [data-darkmode=true] *));
+
+@import "./_base.css";
+@import "./_layout.css";
+@import "./components/_button.css";
+@import "./components/_input.css";
+@import "./components/_select.css";
+@import "./components/_dropdown.css";
+@import "./components/_tooltip.css";
+@import "./components/_message.css";
+@import "./components/_progress.css";
+@import "./components/_badge.css";
+@import "./components/_card.css";
+@import "./components/_modal.css";
+@import "./components/_table.css";
+@import "./components/_syslog.css";
+@import "./components/_form.css";
+@import "./components/_tabs.css";
+@import "./components/_palette.css";
+@import "./components/_view-transitions.css";
+@import "./components/_router.css";
+@import "./_utilities.css";
+@import "./_shared.css";

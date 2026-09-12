@@ -1,0 +1,53 @@
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+.btn,
+.cbi-button {
+  @apply inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors duration-200;
+
+  &[disabled] {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  .td & {
+    @apply whitespace-nowrap;
+  }
+}
+
+.btn,
+.cbi-button,
+.cbi-button-default,
+.cbi-button-download,
+.cbi-button-find,
+.cbi-button-link,
+.cbi-button-up,
+.cbi-button-down {
+  @apply border-secondary bg-secondary text-secondary-foreground hover:bg-secondary-a80;
+}
+
+.drag-handle {
+  @apply border-muted bg-muted text-muted-foreground hover:bg-muted-a80;
+}
+
+.btn.primary,
+.cbi-button-action,
+.cbi-button-apply,
+.cbi-button-reload,
+.cbi-button-add,
+.cbi-button-edit {
+  @apply border-primary bg-primary text-primary-foreground hover:bg-primary-a90;
+}
+
+.cbi-button-positive,
+.cbi-button-fieldadd,
+.cbi-button-save {
+  @apply border-primary-a25 bg-primary-a15 text-primary hover:bg-primary-a25;
+}
+
+.cbi-button-negative,
+.cbi-section-remove .cbi-button,
+.cbi-button-reset,
+.cbi-button-remove {
+  @apply border-destructive bg-destructive text-destructive-fg hover:bg-destructive-a90;
+}

@@ -1,0 +1,647 @@
+# The client-side router
+
+> The router now ships from `@eamonxg/luci-theme-devkit` (`runtime/router.js`,
+> page-scoped patches in `runtime/patches.js`), built into
+> `resources/router-shadcn.js` by its Vite plugin; this theme keeps only the
+> markers, the `luci-navigate` listener in `menu-shadcn.js` and the CSS. The
+> design below is unchanged; the devkit copy is the maintained one.
+
+How the theme turns a menu click into an in-document view swap instead of a
+full page load, where it deliberately does not, and the invariants a router
+inside LuCI has to keep. Source: `.dev/src/resource/router-shadcn.js`,
+loaded from `footer.ut` after `menu-shadcn.js`. **No changes to luci-base
+or to any view** — the router is additive theme JS plus small template hooks
+(a patch manifest, `data-shadcn-*` markers on the stylesheets header.ut
+itself renders, the asset version, a focusable `#maincontent`).
+
+Ported from `luci-theme-aurora`'s `router-aurora.js` and kept in step with it
+(currently its `58d6498`, 2026-08-17 — same-URL reloads handed to the server,
+the Turbo-shaped progress bar, no focus ring on the landmark); the kernel,
+resolver, teardown and gates are the same code, and the
+theme-specific parts — hostname/title format, the sidebar sync in
+`menu-shadcn.js`, `#maincontent` being the scroller — are the only
+divergences, each called out below.
+
+## At a glance
+
+![One LuCI navigation: what the device does, what the browser does, and which of those steps the same-document router deletes](https://raw.githubusercontent.com/eamonxg/assets/master/shared/architecture/same-document-router-architecture.svg)
+
+Two swimlanes over a shared millisecond axis — what the OpenWrt device does,
+what the browser does — then a ledger of which steps the router deletes,
+which stay on the device, and which the browser takes over, including the
+teardown it now owes because the document no longer dies.
+
+**The figures in it were measured with `luci-theme-aurora` deployed**, on the
+shared code path (see "Why it pays" below). Two of them are aurora's alone
+and do not transfer: the `header.ut` cost (1 ubus · 2 uci · 1 lsdir · 2
+readfile — shadcn's header.ut makes 1 ubus and 1 `lsdir`) and the static
+`main.css` row (191,899 B — shadcn's is 146,992 B). Everything else is
+dispatcher and luci-base work, identical under either theme.
+
+## Prior art
+
+[luci-theme-footstrap](https://github.com/VizzleTF/luci-theme-footstrap)
+(credited in the README) solves the same problem, and reading it informed
+two pieces here: pausing `L.Poll` on a hidden tab, and folding a view's
+read-only state along its dispatch path (both below). The rest is
+independent, and one choice diverges deliberately. footstrap drives
+navigation through the **History API** (`pushState`/`popstate`) with its own
+scroll bookkeeping and a `prototype.render` guard to repair stale renders;
+this router is built on the **Navigation API** instead (see "Kernel"), which
+hands scroll, history and supersession to the browser and needs none of
+that — at the cost of running only on newer browsers, where the theme falls
+back to the plain MPA it already is. On top of that shared base this router
+also adds a session-expiry gate, reproduces `template` pages from the
+server's own shell rather than hand-porting them, and cross-fades the swap
+with a view transition — each its own section below.
+
+## Why it pays, measured
+
+Numbers below were taken with the aurora theme's router on the same code
+path (`bench-fullload.mjs` / `bench-dispatch.sh`, 2026-08-18); the shadcn
+port shares the kernel, the resolver and the view render, so the shape holds
+and the ratio is the point. Device: **Cudy TR3000** (mediatek/filogic,
+ARMv8), OpenWrt SNAPSHOT r0-20d94d5, plain HTTP, warm cache, RUNS=10,
+medians over the 8 pages below. Run-to-run spread is ±40 ms on a full load.
+
+Where a full load's time goes:
+
+| stage                                     |      ms | what it is                                             |
+| ----------------------------------------- | ------: | ------------------------------------------------------ |
+| dispatch #1 — the page HTML               |   0→123 | TTFB 118: menu tree, ACL fold, `view.ut` → `header.ut` |
+| dispatch #2 — `admin/translations/<lang>` | 124→209 | a _second_ CGI process, parser-blocking, uncacheable   |
+| DOMContentLoaded                          |     215 | the shell is back, byte-identical to the one discarded |
+| view module + ubus data + render          | 215→321 | static assets are already cache hits                   |
+
+**209 of the 321 ms passes before anything page-specific has happened.** Both
+dispatches re-derive a shell the browser already had on screen; the view's
+own ubus calls do not start until 227 ms. A same-document swap deletes both
+dispatches and keeps the last row — the same 8 pages land at a median of
+**91 ms** warm, with the data calls starting at 2 ms instead of 227 ms.
+
+The dispatch cost is the dispatcher's, not the theme's: measured on the
+device over loopback, a `view` node's HTML is 75.4 ms, `admin/translations/en`
+is 62.7 ms for a **13-byte** body, and a 191,899-byte static file is served
+in 0.8 ms. The cost is the dispatch, not the payload — and a full page load
+pays it twice.
+
+End to end, click → view painted:
+
+| page                    | full load | router (warm) | faster |
+| ----------------------- | --------: | ------------: | -----: |
+| status/routesj          |       326 |            92 |   72 % |
+| status/nftables         |       316 |            90 |   72 % |
+| status/logs             |       281 |           100 |   64 % |
+| status/processes        |       457 |           228 |   50 % |
+| status/channel_analysis |       401 |            54 |   87 % |
+| status/realtime         |       211 |            37 |   82 % |
+| system/system           |       496 |           132 |   73 % |
+| system/admin            |       231 |            40 |   83 % |
+
+Median **73 % faster**, range 50–87 %. `bench-router.mjs timing`, an
+independent harness, was run twice the same day and landed at 72 % and
+74.5 % — all of that is inside the device's own spread, so treat the range,
+not the digit, as the result. Document prefetch cannot reach it: it hides
+the first dispatch at best, and the catalog is a subresource fetched after
+the document arrives.
+
+## Why it is possible
+
+For a `view` node the dispatcher renders `view.ut`: the theme header, then
+`<div id="view">` with an inline `L.require('ui').then(ui =>
+ui.instantiateView('<path>'))`, then the theme footer. The server decides
+_which_ view; the client renders it. The router repeats what `view.ut` does
+without the reload: resolve the path against the menu tree the client
+already holds (`ui.menu.load()` serves it from `sessionStorage`), swap the
+content region, re-instantiate the view, and let the browser own the URL.
+
+## Kernel: the Navigation API, and only that
+
+`navigation.addEventListener('navigate', …)` + `event.intercept()`. One
+event covers link clicks, `location.assign`, back/forward traversals to
+same-document entries, and our own `navigation.navigate()`; the browser
+writes the URL and history entry, exposes `event.signal` for supersession,
+and (with `scroll: 'after-transition'`) restores window scroll on
+traversal / scrolls to top on push, so the router carries no
+`pushState`/`popstate` code and no fragment-vs-navigation heuristics. The
+one piece of scroll bookkeeping it does keep is for `#maincontent`, the
+theme's own scroller (see "The navigation procedure", step 7).
+
+Why this API rather than the History API `luci-theme-footstrap` uses:
+
+- **The browser owns URL, history and scroll.** `pushState` puts the
+  router in charge of all three and of keeping them consistent with what
+  it rendered; here it only ever renders.
+- **Supersession is built in.** A newer navigation aborts the older one's
+  `event.signal`; the generation gate below is a check, not a state
+  machine, and no `render` guard is needed to repair a stale paint.
+- **Every navigation kind arrives at one listener** — link click,
+  `location.assign`, back/forward to a same-document entry, our own
+  `navigation.navigate()` — so there is exactly one path to keep correct.
+- **The fallback is free.** Where the API is missing, the theme is the
+  MPA it already was; nothing has to be polyfilled or feature-forked.
+
+**Browsers without the API stay MPA.** `footer.ut` only requires the module
+when `window.navigation` exists, and `__init__` re-checks the surface it
+actually uses: `navigation.addEventListener`, `NavigateEvent`, and
+`intercept` on its prototype. Chrome/Edge **105+**, Safari 26.2+, Firefox
+147+ get the router — 105, not the 102 that first shipped the Navigation
+API, because the method was called `transitionWhile()` until Chrome 108 and
+`canIntercept` was `canTransition`; gating on `intercept` is what makes the
+floor 105. The theme's declared floor (Chrome 111 / Safari 16.4 /
+Firefox 128) keeps working as it does today. This is a deliberate trade:
+one code path, correct by construction, over a second history-API path that
+would double the surface of everything below.
+
+## Compatibility
+
+### Browsers — per platform feature
+
+| Feature                                                                                                                                             | Used for                                                 | Required?      | Chrome / Edge | Safari          | Firefox        | Without it                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------- | ------------- | --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Navigation API (`navigation.addEventListener('navigate')`, `NavigateEvent.intercept()`, `event.destination/signal`, `navigation.navigate()/back()`) | the whole router                                         | **yes — gate** | 105+ (2022)   | 26.2+ (2026-01) | 147+ (2026-01) | `router-shadcn.js` is not even loaded (`footer.ut` checks `window.navigation`); the theme is the plain MPA it was before |
+| `document.startViewTransition()` (same-document)                                                                                                    | crossfade at the swap                                    | no             | 111+          | 18+             | 144+           | swap without animation; also off under `prefers-reduced-motion`                                                          |
+| `fetch(url, { priority: 'low' })`                                                                                                                   | hover module prewarm                                     | no             | 101+          | 17.2+           | 132+           | the option is ignored, the fetch still runs at default priority                                                          |
+| `MutationObserver`, `DOMParser`, `WeakSet`, `URL`, `Element.replaceWith`, `:scope`, `matchMedia`, optional chaining / `??=`                         | render completion, template shells, poison gate, staging | yes            | ≥ 85          | ≥ 14            | ≥ 79           | all inside the theme's declared floor (Chrome 111 / Safari 16.4 / Firefox 128)                                           |
+
+So the router's effective floor is Chrome/Edge 105, Safari 26.2, Firefox 147;
+everything older keeps the theme's existing floor and behaviour. The
+aurora port was verified live in Chrome 151 (headless CDP); Safari/Firefox
+by feature detection only — the gate is the same API surface, not a UA sniff.
+
+### OpenWrt / LuCI
+
+The theme already requires OpenWrt 23.05+ (ucode templates). Except for the
+two version-scoped items called out below, the router touches only luci-base
+surfaces that are identical in the `openwrt-23.05`, `openwrt-24.10`,
+`openwrt-25.12` and `master` branches of `openwrt/luci` (checked against the
+branch sources, 2026-08): `L.require` with instance caching and
+`prototype.constructor`, `L.view`, `L.dom.content` and the `data-idref`
+registry, `L.env.{scriptname, base_url, resource_version, media,
+requestpath, dispatchpath, pathinfo, nodespec}`, `L.hasSystemFeature`,
+`L.Poll.{queue, start, stop, active, timer}` (and `start()`'s reset of
+`tick`, which is what re-arms an incoming view's first poll), the
+`poll-status` indicator id `setupDOM`'s `poll-start` handler registers,
+`ui.menu.load()`'s session-cached tree with `satisfied` /
+`firstchild_ineligible` / `wildcard` / `action.type` (`view`, `alias`,
+`firstchild`, `template`), `ui.instantiateView`, `ui.hideIndicator`,
+`ui.hideModal`, `uci.state.values` / `uci.unload()` / `uci.load()`,
+`network.js`'s uci-backed state, `Request.addInterceptor` /
+`rpc.addInterceptor` and the `-32002` → `session.access` probe in
+`setupDOM`, `dispatcher.uc`'s `ctx_append` acl folding, `view.ut`'s `#view` +
+inline `instantiateView` shell, and `dispatcher.uc`'s `resolve_firstchild` /
+`node_weight` / alias re-dispatch semantics (ported line for line).
+
+**Two surfaces are not the same across those branches**, and the resolver is
+written against the newer one:
+
+- **`node.css`** entered `build_pagetree`'s schema in master only
+  (7c6d8ff, 2026-08). 23.05, 24.10 and 25.12 carry no `css` on any node, so
+  `nodeCss()` returns `null` and the feature is simply inert there.
+- **Wildcard descent.** `wildcardaction` exists in 25.12 and master, not in
+  23.05 or 24.10 — an absent key just falls back to `node.action`, which is
+  what those releases do anyway, so that part is safe. The _resolution rule_
+  around it is not: 25.12 and master descend into a matching `satisfied`
+  child before treating trailing segments as args, while 23.05 and 24.10
+  capture every remaining segment the moment a `wildcard` node is reached.
+  The router ports the 25.12/master rule. On 23.05 or 24.10 a tree that has
+  both `foo/*` and a real `foo/bar` child would therefore resolve differently
+  in the router than in the dispatcher — the exact "click opens one page, F5
+  opens another" failure this resolver exists to avoid. Both the rule and
+  `wildcardaction` came in as one commit (df90c60a7, 2026-01-17) whose stated
+  purpose is to let `path/*` carry an action distinct from the bare path, so
+  the shape had no defined behaviour before it and a tree written for
+  23.05/24.10 is unlikely to use it — but that is an argument, not a survey
+  of every installed `menu.d`, and the router has not been run on either
+  release. Treat 23.05/24.10 as inspected, not verified.
+
+Live verification so far: the aurora build of this router on OpenWrt
+SNAPSHOT r0-20d94d5 (2026-08, mediatek/filogic) and an earlier SNAPSHOT on
+ipq60xx. 23.05 / 24.10 / 25.12 by branch source only, not on device.
+
+That list is also executable: `contract()` in `router-shadcn.js` looks every
+one of those surfaces up at boot (`L.view`, `L.require`, `L.dom.content`,
+`L.env.{base_url,resource,media}`, `L.Request.addInterceptor`,
+`L.uci.{load,unload,state}`, `rpc.addInterceptor`,
+`poll.{queue,start,stop,active}`, `ui.menu.load`, `ui.hideModal`,
+`ui.hideIndicator`, `E`) and, if any is missing, logs which and does not
+activate — the theme is the MPA it was, not a broken router, on a luci-base
+that moved.
+
+## What is intercepted
+
+A `navigate` event is intercepted only when **all** hold:
+
+- `event.canIntercept` (same-origin, not cross-document-only), not
+  `hashChange`, no `downloadRequest`, no `formData`, `navigationType !== 'reload'`;
+- the destination is **not the document's own URL** (fragment aside). A
+  same-URL navigation arrives as `navigationType: 'replace'`, not
+  `'reload'`, yet it is a reload by another name: luci-base's
+  `ui.changes.apply/revert` end in `window.location =
+window.location.href.split('#')[0]` (and the expiry modal's button in the
+  same) precisely so the server re-renders the shell — a theme switched
+  under System → Language and Style, a new language, a new hostname, a
+  changed menu tree — and intercepting it left the swap showing the old
+  shell until F5. A click on the current page's own link is the same reload
+  it is in the MPA;
+- the destination path (minus `L.env.scriptname`) resolves in the menu tree
+  to a **serviceable node** (below);
+- the document is not **poisoned** (below) and its session is not known to
+  be **expired** (below);
+- the router **activated** in this document: it does so only when the page
+  it booted on is itself serviceable. A `call`/`cbi`/`function` page carries
+  scripts (legacy `XHR.poll`, inline timers) that only a document death
+  retires; the first click away from one is always a full load.
+
+Anything else falls through untouched: the browser performs the ordinary
+full navigation, i.e. exactly what the theme did before. Modifier-clicks and
+`target=_blank` never reach the event.
+
+### Serviceable nodes
+
+Resolved with a port of the dispatcher's own rules, not a paraphrase:
+
+- `alias` → jump to `action.path` from the root and continue;
+- `firstchild` → the same `resolve_firstchild()` / `node_weight()` the
+  dispatcher runs: candidates are `satisfied` children with a `title` and an
+  object `action`; weight `min(order ?? 9999, 9999)` +10000 for
+  `auth.login`; a `firstchild` candidate counts only if it resolves further;
+  `firstchild_ineligible` excluded; ties keep key order. The ACL check is
+  skipped because `/admin/menu` is already filtered for the session;
+- `wildcard` nodes are descended into first — a segment that matches a
+  `satisfied` child wins over arg capture — and only the remainder becomes
+  request args; with args present the node's `wildcardaction` (the `path/*`
+  entry's own action) runs, and `action` for the bare path. This is the
+  25.12/master rule; 23.05 and 24.10 capture at the first `wildcard` node
+  instead — see "OpenWrt / LuCI" above;
+- a hop counter (32) breaks cycles in a foreign `menu.d`;
+- **any segment that does not match a `satisfied` child ends the attempt.**
+  The dispatcher would fall back to the deepest satisfied ancestor and
+  re-resolve from there; the router returns `null` and hands the navigation
+  to the server. Deliberate: the fallback costs one full load, guessing the
+  ancestor wrong costs the wrong page.
+
+Two tracks are kept, as a full load keeps them: **requested** segments →
+`L.env.requestpath`, `L.env.pathinfo`, `body[data-page]`; **resolved**
+segments → `L.env.dispatchpath`, `L.env.nodespec`, the menu highlight, the
+title. Pick a different child than the dispatcher would and a click opens
+one page while F5 opens another — that is why the resolver is a port.
+
+| node                                                      | served                                |
+| --------------------------------------------------------- | ------------------------------------- |
+| `view`                                                    | yes — `view.<path>`                   |
+| `alias`, `firstchild`                                     | yes — resolved to a leaf, recursively |
+| `template` whose page is a view shell (Status → Overview) | yes — shell fetched once, see below   |
+| Lua `template`, `call`, `function`, `cbi`, `rewrite`      | no → full load                        |
+
+`rewrite` is deliberately not resolved: it is not in the tree and a splice
+mistake opens the wrong page, which is worse than the reload it falls back to.
+
+### Template nodes: the server's own shell, never a hand port
+
+`admin/status/overview` is a `template` whose server side defines page
+globals (`progressbar`, `renderBox`, `renderBadge`), emits an `<h2>` and a
+`div.includes` (server-rendered Lua includes), and then instantiates
+`view.status.index`. A first version re-implemented those helpers in the
+router and drifted on the first real page (the network badges lost their
+labels: upstream's `renderBadge` takes extra `L.itemlist` arguments the port
+did not know about). So the router does not port anything: when a link to a
+template node is hovered or focused, its page is **fetched once per
+document** (the in-flight request is shared by every intent event that
+arrives before it resolves), parsed with `DOMParser`, and the content region after `#tabmenu` (to the
+end of `#maincontent` — this theme renders no `<footer>` inside it, and the
+router stops at one if a template ever emits it) is kept as the page's
+_shell_ — every node cloned, `#view`
+replaced by an empty div, the inline `instantiateView('…')` script read for
+the class name, the remaining inline scripts (the helpers) replayed into
+global scope on staging. luci-base's own bootstrap (`luci.js` and
+`L = new LuCI(env)`) also lives in that region and is filtered out. If the
+document _is_ that template (the session started on Overview), the shell is
+taken from the live region and no fetch happens. A template node is only
+intercepted once its shell is known — so a Lua template page (no
+`instantiateView` call) is remembered as unservable after one hover fetch
+and never enters the router's error path, and a template clicked without a
+prior hover is a plain full load that seeds the shell for the rest of the
+document. Its status include modules are singletons carrying
+`oneshot`/`hide` state that a full load would reset — verified against a
+real full load, not against expectation.
+
+## The navigation procedure
+
+`intercept({ handler, focusReset: 'manual', scroll: 'after-transition' })`,
+handler in order:
+
+1. **Generation.** `const gen = ++this.gen`; every later DOM write is gated
+   on it. `event.signal` aborts our own awaits, but it cannot cancel a LuCI
+   XHR (`L.Request` hands back a bare promise; the `XMLHttpRequest` only
+   surfaces on the _resolved_ `Response`, too late to abort) or a
+   `View.__init__` chain already running, so the generation is the
+   correctness mechanism and the signal is hygiene.
+2. **Teardown of the departing document state**, i.e. what a document
+   death would have done for free:
+   - `Poll`: `queue.length = 0; stop(); start()` — three steps. The flush
+     drops the old view's pollers; `stop()` drops the tick; `start()` on an
+     empty queue re-arms `tick = 0` so the incoming view's `poll.add()`
+     auto-starts and fires immediately instead of waiting up to `interval`
+     seconds for the surviving tick to align. Upstream's `initDOM()` does
+     the same `Poll.start()` on an empty queue before the first view.
+   - `uci`: `unload()` every package present in `state.values` **or**
+     `uci.loaded` (documents start with an empty cache; four shipped apps
+     read `load()`'s return as an existence check and draw an error over
+     the page when the cache answers `[]`; and `uci.loaded` keeps a
+     package's request promise — a rejected one included — until
+     `unload()`, so a failed load left there would be handed to every later
+     view). Then, if `L.network` has been loaded,
+     `load(['network','luci'])` — plus `'wireless'` when
+     `L.hasSystemFeature('wifi')` — is re-issued and **awaited** —
+     and a rejection propagates to the hard-load fallback rather than
+     leaving `network.js` on an empty config: `network.js` fills its `_state` once and
+     from then on answers out of the uci cache (`getWifiDevices()` _is_
+     `uci.sections('wireless','wifi-device')`), so dropping those without
+     refilling hands every consumer an empty config for the rest of the
+     document. Unsaved local edits die with the page as they would on a
+     full load; saved changes live on the server and the Unsaved-changes
+     indicator is unaffected.
+   - bare `setInterval`s registered since the router booted are cleared
+     (`setInterval`/`clearInterval` are hooked in `__init__`, i.e. when
+     `L.require('router-shadcn')` instantiates the class; `poll.timer`, the
+     one interval `L.Poll` owns, is skipped). `setTimeout` and rAF are
+     **not** touched: the
+     core keeps tooltips, notification timeouts and a request timeout on
+     `setTimeout`, and there is no self-rescheduling timeout in any
+     shipped view.
+   - `window`/`document` listeners a view registered **while it rendered**
+     are removed. Several shipped views add them per render (statistics
+     graphs: an anonymous `resize` that later throws against detached DOM;
+     nlbwmon: `tooltip-open`/`touchstart`; the core's own dropdown widgets:
+     one `window` click/touchstart per instance), so they accumulate and
+     act on pages that are gone. The hook records registrations inside the
+     render window only. A **warm** render evaluates no module, so its
+     registrations are per-render by construction and go on the next
+     teardown. A **cold** render also runs the module's top level, whose
+     registrations must survive (removing them is one-way — an editor's
+     module-eval listeners never come back), so cold registrations are only
+     credited to the class and released when a later warm render of the
+     same class registers the same target/type, which proves them
+     per-render.
+   - `ui.hideIndicator('poll-status')` — luci-base leaves a
+     _Refreshing_ / _Paused_ indicator behind that a document death would
+     have taken with it.
+   - `ui.hideModal()`, the theme's own surfaces (mega
+     menu, mobile drawer, palette) close.
+   - page-scoped patch CSS is disabled and its JS patch unmounted (below).
+
+   The uci flush is the one part of this that is awaited rather than
+   fire-and-forget, so it is a separate step after `teardown()` returns.
+
+3. **Environment.** `L.env.requestpath/dispatchpath/pathinfo/nodespec`,
+   `body[data-page]`, `document.title`. An alias is re-dispatched
+   server-side, so `requestpath` and `data-page` carry the alias target while
+   `pathinfo` keeps the URL as requested; a `firstchild` keeps the requested
+   path in both. header.ut titles pages `<hostname> | <title>`; the head
+   before the separator is read off the initial document, so it matches
+   whatever the template emitted. `nodespec` drives
+   `L.hasViewPermission()` and therefore the Save/Apply footer's readonly
+   state — and its `readonly` is **folded down the dispatch path** the way
+   `dispatcher.uc` does it: `ctx_append` collects every node's
+   `depends.acl` and one `check_acl_depends()` over the union is writable as
+   soon as _any_ group is writable, so a page is readonly only when every
+   acl-bearing node on its path is. The tree's per-node flag
+   (`apply_tree_acls`) covers that node's own acl alone; handing the leaf
+   node over as-is gave a read-only user a live Save & Apply on every page
+   under a read-only group. The tree object is not mutated (`nodespec` is a
+   copy). `data-page` keys `ui.tabs` session state and the theme's
+   page-scoped CSS.
+4. **Chrome.** `menu-shadcn.js` exposes `syncRoute()`: it re-marks the
+   sidebar's `.active` item/sub-item/logout from `L.env.dispatchpath` with
+   the same longest-link-prefix rule header.ut's pre-paint replay uses on
+   the cached markup, opens the active accordion group and closes the rest
+   (unless the sidebar is collapsed to its icon rail), rebuilds the topbar
+   breadcrumb and re-renders `#tabmenu` for the new section. The sidebar is
+   **not** rebuilt — its DOM, delegated listeners and the sessionStorage
+   cache taken on `pagehide` all keep working — only its state changes.
+   `closeSurfaces()` (teardown) closes the palette, the mobile drawer and
+   the collapsed-rail popover.
+5. **Staging.** A fresh `<div id="view" class="view-staging">` is inserted
+   right after `#tabmenu`, i.e. **first in tree order** —
+   `getElementById('view')` returns the first match, so everything LuCI's
+   view chain writes goes into the staged element while the outgoing page
+   stays on screen (dimmed, `.view-leaving`). The stage is invisible but
+   **laid out** (`visibility:hidden; height:0; overflow:hidden`, never
+   `display:none`): the realtime graphs size themselves from
+   `#view.offsetWidth` inside `render()`, and a `display:none` stage handed
+   them a 0-wide canvas. Nothing is removed yet.
+6. **Patches.** `header.ut` emits the installed on-demand patch stems as
+   `body[data-patches]`; the router applies the same segment-prefix rule the
+   template applies at render time: matching `patches/<stem>.css` links are
+   ensured (`<link data-luci-patch>`, enabled for the page on screen,
+   `disabled` — not removed — for the rest, so a return costs nothing);
+   matching `patches/<stem>.js` files are loaded once and their
+   `window.luciPatches[stem]` `{ mount, unmount }` pair is driven per
+   visit (the list of stems to mount belongs to the navigation that computed
+   it, so a superseded one mounts nothing later); URLs the router adds carry
+   the same `?v=PKG_VERSION` luci.mk stamps on the template's own links,
+   read from `body[data-asset-version]`, so they hit the same cache entry — a JS patch that registers nothing is simply executed once,
+   MPA-style. A patch script mounts itself when it evaluates; if the user
+   has navigated on before it arrives, its `load` handler checks whether
+   the current page still wants that stem and unmounts it otherwise (a
+   same-stem page reached meanwhile keeps it mounted).
+   A menu.d node's own `css` (`header.ut` links `<resource>/<node.css>` for
+   the dispatched node, marked `data-luci-node-css`) is kept the same
+   way: one `<link>` per stylesheet, enabled for the page whose resolved leaf
+   declares it, `disabled` for every other page, never removed. Both
+   attributes are exempt from the poison gate.
+7. **View.**
+   - **cold** (`view.<path>` never required in this document):
+     `window.L.require(className)` — the require _is_ the render (LuCI
+     instantiates on first require) and it must go through `window.L`, the
+     runtime instance, never the prototypal `L` a module factory receives
+     (`ui` hangs `itemlist`/`showModal` on `window.L`; a view required
+     through the wrong `L` dies three modules down on `L.itemlist is not a
+function`, and because `require()` caches by name the binding is fixed
+     by the _first_ requirer);
+   - **warm**: `require()` hands back the cached instance whose `__init__`
+     already ran; LuCI's class system sets `prototype.constructor`, so
+     `new instance.constructor()` runs a fresh `__init__` → `load()` →
+     `render()` → `dom.content('#view')`, exactly what a full load starts
+     from.
+   - **completion** is observed, not assumed: a `MutationObserver` on the
+     staged element resolves when a non-spinner child lands (or the spinner
+     is removed for an empty render). Not completing within 15 s is a
+     **failure**, not a completion: committing the spinner and releasing the
+     serialization would let the still-running chain paint into a later
+     navigation's `#view`, so the timeout rejects and the catch path
+     hard-loads the destination. On completion —
+     and only if this navigation is still the latest — the outgoing region
+     (everything after `#tabmenu` except the staged element) is removed
+     and the staged view is unhidden inside `document.startViewTransition()`
+     when available and reduced motion is off; the navigation's `finished`
+     promise resolves after that swap. In this theme `#maincontent`, not the
+     window, is the scroller, so the browser's `scroll: 'after-transition'`
+     never sees the offset that matters: the departing entry's
+     `#maincontent.scrollTop` is remembered by `navigation.currentEntry.key`
+     when the navigate event is intercepted (it still names the departing
+     entry during dispatch) and put back on a `traverse` (by
+     `event.destination.key`), while a push lands at the top — as a full
+     load would.
+   - **Renders are serialized.** Neither an in-flight LuCI XHR nor a running
+     `View.__init__` chain can be cancelled (`L.Request` never exposes its
+     handle), and every chain paints into _whichever_ `#view` is first at
+     paint time. So a navigation first awaits the previous one's completion
+     (bounded by the same timeout) before it tears anything down or stages
+     anything — the previous chain finishes into its own staged element,
+     which is then discarded. Rapid A→B→C therefore never interleaves:
+     B is skipped when C arrives before B ran (`event.signal` /
+     generation), and C waits for whichever render is actually in flight.
+     The document's initial LuCI-rendered view is tracked the same way, so a
+     click during the first load cannot be painted over by it — and a first
+     render that never completes rejects that wait, so the first navigation
+     takes the hard-load fallback instead of staging next to a chain that
+     may still paint. That first render also runs inside a render window
+     (opened after the router's own listeners are registered), so the
+     listeners it adds are credited to its class like a cold render's; the
+     ones it registered before the router loaded are out of reach. The cost is
+     that a click during a slow load waits for that load; the alternative —
+     wrapping `prototype.render` per class and repairing stale cold renders
+     by re-navigating — leaves a real window open and needs three mechanisms
+     where one suffices.
+8. **Focus and announcement.** `#maincontent` (`tabindex=-1`) with
+   `preventScroll`; the new `document.title` is written into
+   `#luci-nav-status` (`role=status`, `aria-live=polite`), since a
+   same-document swap fires no load a screen reader would announce.
+9. **Progress.** A navigation that outlives 150 ms gets `#luci-nav-progress`
+   inserted — Turbo Drive's bar, in shape: a hairline at the top whose
+   `width` is driven inline and **trickles** in ever-smaller steps
+   (`+ (100 - w) / 30` every 300 ms) until commit, so a slow render keeps
+   visibly moving instead of looking stuck; on commit it fills to 100 %,
+   fades (`data-state="done"`) and is **removed from the DOM**. Shorter
+   navigations stay silent, overlapping ones share the bar. The browser's
+   own progress bar only shows for document loads, which is exactly what a
+   same-document swap is not — hence GitHub, YouTube, Turbo/HEY and every
+   nprogress user draw their own. Reduced motion drops the transitions, not
+   the bar.
+10. Any exception → `console.error` (a silent fallback makes every router
+    regression look like "the page is just slow") → `location.href =
+destination` — a hard full load, never a stuck page.
+
+## The expiry gate
+
+luci-base answers a dead session with `notifySessionExpiry()`: `Poll.stop()`
+plus a modal whose only button is a hard reload. A same-document swap would
+`hideModal()` and `Poll.start()` right through it and browse on, every page
+erroring in turn (measured on the aurora port's expiry bench against a
+router without the gate — `expiredFullLoad: false`). So the router listens
+for the same two
+signals luci-base acts on — a `403` with `X-LuCI-Login-Required: yes` on any
+`L.Request`, and the `session.access` probe luci-base fires after a
+`-32002` coming back denied or errored — and from then on intercepts nothing:
+the next click is a full load, which the dispatcher turns into the login
+page. A denied call on any other object is an ACL matter and is ignored.
+Nothing is reset: the flag dies with the document, as the session did. The
+same flag keeps the visibility gate (below) from restarting a poll the
+expiry stopped.
+
+## Hidden tabs
+
+luci-base keeps polling in a background tab. The router stops `Poll` on
+`visibilitychange` → hidden when it was active and starts it again on
+return — unless the user had paused it, or the session died meanwhile. On
+a weak router that is RPC work nobody is looking at.
+
+## The poison gate
+
+A `<style>`/`<link rel=stylesheet>` a view writes into `<head>` dies with
+the document on a full load and **survives** a same-document swap, painting
+every page after it (a shipped file manager hides Save/Reset on every config
+page with one unlayered `!important` rule). Removing it is not an option: a
+library that imports CSS at module eval never runs again, so deletion is
+one-way (an editor page came back as a black rectangle two million pixels
+tall). Hence a gate, not a sweep: before intercepting, any sheet outside
+`#view` that is not one of the theme's own — header.ut marks everything it
+renders (`data-luci-shell` on `main.css`, the font, custom and token
+`<style>`s; `data-luci-patch` on patches; `data-luci-node-css` on the
+menu.d node css) — marks the document **poisoned** and the navigation is a
+full load — the fresh document carries no view CSS, so the router resumes
+"Own" means _marked_, and the boot snapshot the gate
+compares against is filtered by those markers, so a sheet the boot page's own
+modules inserted before the router loaded still counts as foreign instead of
+being grandfathered in for the rest of the document. Correctness over speed,
+never the other way.
+
+An owner-based refinement (stamp each sheet with the inserting module off
+the call stack, enable it for pages whose dependency closure holds that
+module, `disabled` for the rest) was built, verified on the device and
+**removed again**: on this device one view page inserts its own CSS, the
+saving is one reload when leaving it, and the price was three monkeypatches
+plus an inline template script whose failure mode — a page silently missing
+a shared library's CSS — is worse than the reload it avoids. Revisit only
+with a real corpus of self-styling view pages.
+
+## Module prewarm on hover
+
+Entering (`pointerover`/`focusin`/`pointerdown`) a link to a serviceable
+node `fetch()`es its view module with `priority: 'low'` — not `require()`,
+which would render it. The URL is built byte-for-byte as `LuCI.require()`
+builds it (`<base_url>/<name with . → />.js?v=<resource_version>`) or it
+misses the HTTP cache. The walk is transitive: the fetched body is scanned
+for its leading `'require x'` string literals with a regex that is **not**
+line-anchored (shipped files are minified onto one line), and dotted names
+are warmed the same way; dotless names are either luci-base's file-less
+built-ins (`view`, `baseclass`, `dom`, `poll`, `request`, `session`) or flat
+libraries the chrome has already loaded, so they are declined outright.
+Deduplicated per class name; stops once a navigation to that link has
+committed. Cold navigations are the only place this shows; warm ones are
+already 0-byte cache hits.
+
+## What is deliberately not done
+
+- **No history-API path.** See "Kernel".
+- **No document prefetch.** A hover prefetch of a document the router will
+  never load is pure router CPU; the theme ships no speculation rules.
+- **No `unload`/`beforeunload`**, ever (bfcache).
+- **No cancellation of in-flight XHR** — there is no handle to cancel with
+  (see step 1); the
+  generation gate makes it a waste, not a bug. Upstream-only.
+- **No sweeping of a view's global listeners or timeouts** — one-way
+  deletions of module-eval registrations. If a per-render offender ever
+  appears, the answer is a targeted teardown, not a global hook.
+- **`ui.changes.confirm/revert` and `awaitReconnect`** keep their hard
+  `window.location` writes — a rollback/reboot boundary _should_ be a fresh
+  document.
+
+## Verification matrix
+
+- Unit (`.dev/tests/router.test.js`): resolver against a fixture tree
+  (alias chain, nested firstchild, weights, ineligible, unsatisfied,
+  wildcard args, cycle); URL → segments; patch prefix matching; pragma scan
+  on a minified head; readonly folding; expiry signals; the same-URL reload
+  rule; node css of the resolved leaf; the contract check.
+- Device (the aurora repo's `bench-router.mjs`, CDP — it drives the theme
+  through the browser and needs only its selectors adapted; not yet
+  re-run against this port):
+  1. full walk of every clickable node, each compared
+     against a real full load of the same URL — `data-page`,
+     `dispatchpath`, URL, title, tab count, footer presence, console clean;
+  2. click → view painted, median of N, router vs full load, warm and cold;
+  3. soak: 60 navigations over 12 pages, heap / DOM nodes / listeners /
+     poll queue length flat after the first pass;
+  4. back/forward chain through alias and firstchild URLs — no reload;
+  5. poison gate: a foreign `<style>` in `<head>` makes the next
+     navigation a full load, the one after is a same-document swap again;
+     5b. sheets: the same, on every walked view page that really inserts its
+     own sheets (found on the walk) instead of an injected one — reached
+     same-document and landed on directly (its modules insert before the
+     router boots), leaving is a full load either way;
+     5c. hygiene: no progress bar left in the DOM after a swap, live region
+     present and carrying the title, a hidden tab stops polling and a
+     visible one resumes it;
+  6. nodecss: a page whose menu.d node declares `css` — link enabled on
+     arrival, disabled after leaving, re-enabled without a duplicate on
+     return (skipped when no installed node declares one);
+  7. expiry (last, destroys the session): logout fetched from inside the
+     document, one failing RPC → luci-base's modal and `Poll.stop()`; the
+     next navigation is a full load landing on the login form.
+     The walk also compares `nodespec.readonly`, `L.hasViewPermission()`, the
+     set of enabled node-css links and the live-region text against the full
+     load, and reports which pages carry sheets that are not the theme's.
+- Run the unit tests with `pnpm test` from `.dev/`.

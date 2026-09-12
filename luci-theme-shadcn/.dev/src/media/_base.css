@@ -1,0 +1,135 @@
+/* Only known scroll containers need themed scrollbars. Applying these rules to
+   every descendant makes selector matching scale with the whole LuCI page.
+
+   This list covers the theme's own scroll containers plus LuCI core markup —
+   a third-party app's own scroll container is not styled here. `scrollbar-color`
+   and `scrollbar-width` inherit from `html`, so such a container still picks up
+   the theme's colours wherever those properties are supported; only the 8px
+   `::-webkit-scrollbar` shape is missed. An app that needs the full treatment
+   adds its container to `patches/<page>.css` — see the file-manager patch. */
+:where(
+  html,
+  .sidebar-nav,
+  #maincontent,
+  .cmdk-list,
+  .cbi-dropdown > ul.dropdown,
+  #modal_overlay,
+  #modal_overlay > .modal > ul,
+  #modal_overlay > .modal pre,
+  .cbi-tabmenu,
+  .tabs,
+  textarea
+) {
+  scrollbar-color: var(--foreground-a30) transparent;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track,
+  &::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--foreground-a30);
+    border-radius: 9999px;
+  }
+}
+
+html {
+  @apply bg-background text-foreground font-sans text-sm;
+
+  body {
+    /* flex-wrap: third parties append stray children to <body> (OpenClash
+       portals its dialogs there with oc.css's .oc { width: 100% }, browser
+       extensions inject helper divs). In a nowrap row they'd join the
+       sidebar/#main-wrapper line and shrink #main-wrapper (flex-basis 0) to
+       nothing; wrapping shunts them onto a second line below the viewport-
+       high first line (#sidebar/#main-wrapper are h-full), out of view —
+       the same place strays end up on a normally-flowing page (below the
+       content). */
+    /* h-dvh with no vh fallback: the OKLCH tokens already gate us to
+       browsers (Chrome 111+ / Safari 15.4+ / Firefox 113+) that all ship
+       dvh, so a fallback would only serve browsers the theme can't render
+       colors on anyway. */
+    @apply flex h-dvh flex-wrap;
+
+    /* Scroll lock while a LuCI modal is open — ui.js toggles this class on
+       <body>, the stock LuCI convention. Off-modal the shell needs no clamp:
+       the row exactly fills h-dvh and scrolling lives in #maincontent. */
+    &.modal-overlay-active {
+      @apply overflow-hidden;
+    }
+  }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply text-foreground font-sans leading-tight font-semibold tracking-tight;
+}
+
+h1 {
+  @apply mb-4 text-2xl;
+}
+h2 {
+  @apply mb-3 text-xl;
+}
+h3 {
+  @apply mb-2 text-lg;
+}
+h4 {
+  @apply mb-2 text-base;
+}
+h5 {
+  @apply mb-1 text-sm;
+}
+h6 {
+  @apply mb-1 text-xs;
+}
+
+hr {
+  @apply border-border my-4 border-t;
+}
+
+strong {
+  @apply font-semibold;
+}
+
+abbr {
+  @apply cursor-help;
+}
+
+p {
+  @apply text-foreground text-sm leading-relaxed;
+}
+
+pre {
+  @apply border-border bg-muted text-muted-foreground block rounded-lg border px-3 py-2 font-mono text-sm leading-relaxed break-words whitespace-pre-wrap;
+}
+
+code {
+  @apply bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-sm;
+}
+
+a {
+  @apply text-primary no-underline hover:underline;
+}
+
+var {
+  @apply text-primary font-mono;
+}
+
+small {
+  @apply text-muted-foreground text-xs font-normal;
+}
+
+em {
+  @apply text-muted-foreground font-medium italic;
+}
