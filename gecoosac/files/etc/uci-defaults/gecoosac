@@ -1,12 +1,9 @@
 #!/bin/sh
 
+. /usr/share/gecoosac/common.sh
+
 changed=0
-DEFAULT_DB_DIR=/etc/gecoosac
-DEFAULT_UPLOAD_DIR=/tmp/gecoosac/upload
 LEGACY_UPLOAD_DIR=/etc/gecoosac/upload
-DEFAULT_CRT_FILE=/etc/gecoosac/tls/gecoosac.crt
-DEFAULT_KEY_FILE=/etc/gecoosac/tls/gecoosac.key
-DEFAULT_PID_DIR=/var/run
 OLD_CRT_FILE=/etc/gecoosac/tls/1.crt
 OLD_KEY_FILE=/etc/gecoosac/tls/1.key
 CONFIG_COMPAT=2
@@ -26,192 +23,6 @@ set_default() {
 	changed=1
 }
 
-normalize_path() {
-	local path="$1"
-	local part normalized parent
-
-	is_abs_path "$path" || return 1
-	normalized="/"
-	path="${path#/}"
-
-	while [ -n "$path" ]; do
-		part="${path%%/*}"
-		if [ "$part" = "$path" ]; then
-			path=""
-		else
-			path="${path#*/}"
-		fi
-
-		case "$part" in
-			""|.) ;;
-			..)
-				if [ "$normalized" != "/" ]; then
-					parent="${normalized%/*}"
-					[ -n "$parent" ] || parent="/"
-					normalized="$parent"
-				fi
-			;;
-			*) normalized="${normalized%/}/$part" ;;
-		esac
-	done
-
-	printf '%s\n' "$normalized"
-}
-
-is_abs_path() {
-	case "$1" in
-		/*) return 0 ;;
-		*) return 1 ;;
-	esac
-}
-
-managed_dir_path() {
-	local role="$1" path anchor
-
-	case "$role" in
-		upload|db|pid|file) ;;
-		*) return 1 ;;
-	esac
-	path="$(normalize_path "$2")" || return 1
-	case "$path" in
-		/var/run|/var/run/*)
-			anchor="$(readlink -f /var/run 2>/dev/null)" || return 1
-			[ "$anchor" = "/tmp/run" ] || return 1
-			printf '%s%s\n' "$anchor" "${path#/var/run}"
-		;;
-		/var|/var/*)
-			anchor="$(readlink -f /var 2>/dev/null)" || return 1
-			case "$anchor" in
-				/var|/tmp) printf '%s%s\n' "$anchor" "${path#/var}" ;;
-				*) return 1 ;;
-			esac
-		;;
-		*) printf '%s\n' "$path" ;;
-	esac
-}
-
-path_has_clear_stage_component() {
-	local path="$1" part rest
-
-	path="$(normalize_path "$path")" || return 1
-	rest="${path#/}"
-	while [ -n "$rest" ]; do
-		part="${rest%%/*}"
-		if [ "$part" = "$rest" ]; then
-			rest=""
-		else
-			rest="${rest#*/}"
-		fi
-		case "$part" in
-			.gecoosac-clear.*) return 0 ;;
-		esac
-	done
-
-	return 1
-}
-
-path_uses_clear_stage() {
-	local path="$1" resolved
-
-	path_has_clear_stage_component "$path" && return 0
-	if [ -e "$path" ] || [ -L "$path" ]; then
-		resolved="$(readlink -f "$path" 2>/dev/null)" || return 1
-		path_has_clear_stage_component "$resolved" && return 0
-	fi
-
-	return 1
-}
-
-is_supported_upload_path() {
-	local path="$1" storage
-
-	path="$(normalize_path "$path")" || return 1
-	path_uses_clear_stage "$path" && return 1
-	[ "$path" = "$DEFAULT_UPLOAD_DIR" ] && return 0
-
-	case "$path" in
-		/mnt/*/gecoosac/upload)
-			storage="${path#/mnt/}"
-			storage="${storage%/gecoosac/upload}"
-			[ -n "$storage" ] && [ "${storage#*/}" = "$storage" ]
-		;;
-		*) return 1 ;;
-	esac
-}
-
-is_safe_upload_dir() {
-	local path physical
-
-	path="$(normalize_path "$1")" || return 1
-	physical="$(managed_dir_path upload "$path")" || return 1
-	is_supported_upload_path "$path" || return 1
-	is_supported_upload_path "$physical"
-}
-
-is_path_in_dir() {
-	local path root
-
-	path="$(normalize_path "$1")" || return 1
-	root="$(normalize_path "$2")" || return 1
-
-	[ "$root" != "/" ] || return 1
-	[ "$path" = "$root" ] && return 0
-	[ "${path#"$root"/}" != "$path" ]
-}
-
-path_has_mount() {
-	local root line mount_path
-
-	root="$(normalize_path "$1")" || return 2
-	[ -r /proc/self/mountinfo ] || return 2
-
-	while IFS= read -r line; do
-		mount_path="$(printf '%s\n' "$line" | cut -d ' ' -f 5)" || return 2
-		[ -n "$mount_path" ] || return 2
-		mount_path="$(printf '%b\n' "$mount_path" 2>/dev/null)" || return 2
-		mount_path="$(normalize_path "$mount_path")" || return 2
-		is_path_in_dir "$mount_path" "$root" && return 0
-	done < /proc/self/mountinfo
-
-	return 1
-}
-
-is_safe_db_dir() {
-	local path upload_root physical physical_upload_root
-
-	path="$(normalize_path "$1")" || return 1
-	upload_root="$(normalize_path "${2:-$DEFAULT_UPLOAD_DIR}")" || return 1
-
-	case "$path" in
-		/etc/gecoosac|/etc/gecoosac/*|/tmp/gecoosac|/tmp/gecoosac/*|/var/lib/gecoosac|/var/lib/gecoosac/*) ;;
-		*) return 1 ;;
-	esac
-	is_path_in_dir "$path" "$upload_root" && return 1
-	physical="$(managed_dir_path db "$path")" || return 1
-	physical_upload_root="$(managed_dir_path upload "$upload_root")" || return 1
-	is_path_in_dir "$physical" "$physical_upload_root" && return 1
-
-	return 0
-}
-
-is_safe_pid_dir() {
-	local path upload_root physical physical_upload_root
-
-	path="$(normalize_path "$1")" || return 1
-	upload_root="$(normalize_path "${2:-$DEFAULT_UPLOAD_DIR}")" || return 1
-
-	case "$path" in
-		/var/run|/var/run/*|/tmp/gecoosac|/tmp/gecoosac/*) ;;
-		*) return 1 ;;
-	esac
-	is_path_in_dir "$path" "$upload_root" && return 1
-	physical="$(managed_dir_path pid "$path")" || return 1
-	physical_upload_root="$(managed_dir_path upload "$upload_root")" || return 1
-	is_path_in_dir "$physical" "$physical_upload_root" && return 1
-
-	return 0
-}
-
 normalize_upload_dir() {
 	local upload_dir normalized
 
@@ -229,38 +40,45 @@ normalize_upload_dir() {
 }
 
 configured_path_in_legacy_upload() {
-	local option path resolved
+	local physical="$1" option role path
 
 	for option in db_dir piddir crt_file key_file; do
 		path="$(uci -q get "gecoosac.config.${option}")"
 		[ -n "$path" ] || continue
-		path="$(normalize_path "$path")" || return 0
-		is_path_in_dir "$path" "$LEGACY_UPLOAD_DIR" && return 0
-
-		if [ -e "$path" ] || [ -L "$path" ]; then
-			resolved="$(readlink -f "$path" 2>/dev/null)" || return 0
-			resolved="$(normalize_path "$resolved")" || return 0
-			is_path_in_dir "$resolved" "$LEGACY_UPLOAD_DIR" && return 0
-		fi
+		case "$option" in
+			db_dir) role=db ;;
+			piddir) role=pid ;;
+			*) role="file" ;;
+		esac
+		protected_path_in_dir "$path" "$role" "$physical" "$LEGACY_UPLOAD_DIR" "$physical"
+		case "$?" in
+			1) ;;
+			*) return 0 ;;
+		esac
 	done
 
 	return 1
 }
 
 cleanup_legacy_upload_dir() {
-	local mount_state
+	local physical mount_state
 
 	[ -e "$LEGACY_UPLOAD_DIR" ] || [ -L "$LEGACY_UPLOAD_DIR" ] || return 0
 	if [ ! -d "$LEGACY_UPLOAD_DIR" ] || [ -L "$LEGACY_UPLOAD_DIR" ]; then
 		logger -t gecoosac "refusing to remove unsafe legacy upload path: $LEGACY_UPLOAD_DIR"
 		return 0
 	fi
-	if configured_path_in_legacy_upload; then
+	physical="$(readlink -f "$LEGACY_UPLOAD_DIR" 2>/dev/null)" || {
+		logger -t gecoosac "unable to resolve legacy upload path: $LEGACY_UPLOAD_DIR"
+		return 0
+	}
+	physical="$(normalize_path "$physical")" || return 0
+	if configured_path_in_legacy_upload "$physical"; then
 		logger -t gecoosac "preserving legacy upload path referenced by configuration: $LEGACY_UPLOAD_DIR"
 		return 0
 	fi
 
-	path_has_mount "$LEGACY_UPLOAD_DIR"
+	path_has_mount "$physical"
 	mount_state="$?"
 	case "$mount_state" in
 		0)
@@ -273,7 +91,13 @@ cleanup_legacy_upload_dir() {
 		;;
 	esac
 
-	rm -rf "$LEGACY_UPLOAD_DIR" || {
+	# Apply the same ownership and ancestor-symlink policy as RPC cleanup.
+	# Relocated legacy directories are preserved for manual review.
+	if ! is_secure_upload_dir "$LEGACY_UPLOAD_DIR" || [ "$physical" != "$LEGACY_UPLOAD_DIR" ]; then
+		logger -t gecoosac "refusing to remove unsafe legacy upload path: $LEGACY_UPLOAD_DIR"
+		return 0
+	fi
+	rm -rf "$physical" || {
 		logger -t gecoosac "failed to remove legacy upload path: $LEGACY_UPLOAD_DIR"
 		return 1
 	}
@@ -310,7 +134,7 @@ is_managed_cert_path() {
 
 is_regular_file_or_absent() {
 	[ ! -e "$1" ] && [ ! -L "$1" ] && return 0
-	[ -f "$1" ] && [ ! -L "$1" ]
+	[ -f "$1" ] && [ ! -L "$1" ] && is_secure_upload_dir "${1%/*}"
 }
 
 migrate_default_certificates() {

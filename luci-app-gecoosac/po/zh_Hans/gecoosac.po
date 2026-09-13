@@ -9,8 +9,8 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-msgid "Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key."
-msgstr "默认证书文件会在 HTTPS 启动时生成；自定义路径必须指向可读取且相互匹配的证书和私钥。"
+msgid "When HTTPS starts, default certificates are generated or renewed if fewer than 30 days remain. Custom certificates must be currently valid and match their private keys."
+msgstr "HTTPS 启动时会生成默认证书，或在剩余有效期不足 30 天时更新。自定义证书必须在有效期内且与私钥匹配。"
 
 msgid "Gecoos AC"
 msgstr "集客AC控制器"
@@ -68,8 +68,8 @@ msgstr "上传目录必须是 /tmp/gecoosac/upload 或 /mnt/storage-name/gecoosa
 msgid "Database dir path"
 msgstr "数据库目录"
 
-msgid "Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Do not place it inside the upload directory."
-msgstr "将配置数据库存放在 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。不要放在上传目录内。"
+msgid "Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Only /etc/gecoosac persists across reboots on standard OpenWrt. Do not place it inside the upload directory."
+msgstr "将配置数据库存放在 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。标准 OpenWrt 上只有 /etc/gecoosac 的数据会在重启后保留。不要放在上传目录内。"
 
 msgid "Database directory must be under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac."
 msgstr "数据库目录必须位于 /etc/gecoosac、/tmp/gecoosac 或 /var/lib/gecoosac 下。"

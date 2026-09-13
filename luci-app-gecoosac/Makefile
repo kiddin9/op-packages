@@ -7,10 +7,10 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-gecoosac
 PKG_VERSION:=2.2
-PKG_RELEASE:=20
+PKG_RELEASE:=21
 
 LUCI_TITLE:=LuCI Support for gecoosac
-LUCI_DEPENDS:=+luci-base +gecoosac +gecoosac-files
+LUCI_DEPENDS:=+luci-base +gecoosac +gecoosac-files +gecoosac-common
 LUCI_EXTRA_DEPENDS:=gecoosac (>=2.2.20251015)
 LUCI_PKGARCH:=all
 PKG_LICENSE:=AGPL-3.0-only

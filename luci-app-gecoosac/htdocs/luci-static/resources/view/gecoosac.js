@@ -403,6 +403,7 @@ return view.extend({
 		o.default = '8080';
 		o.datatype = 'port';
 		o.depends('isonlyoneprot', '0');
+		o.retain = true;
 
 		portOption.validate = function(section_id, value) {
 			return validatePortValue(section_id, value, managementPortOption, singlePortOption, true);
@@ -422,10 +423,11 @@ return view.extend({
 			return true;
 		};
 		httpsOption = s.option(form.Flag, 'https', _('Enable HTTPS service'),
-			_('Default certificate files are generated when HTTPS starts; custom paths must point to a readable certificate and matching key.'));
+			_('When HTTPS starts, default certificates are generated or renewed if fewer than 30 days remain. Custom certificates must be currently valid and match their private keys.'));
 		o = httpsOption;
 		o.default = '0';
 		o.depends('isonlyoneprot', '0');
+		o.retain = true;
 
 		certificateOption = s.option(form.Value, 'crt_file', _('Specify crt certificate file'));
 		o = certificateOption;
@@ -433,6 +435,7 @@ return view.extend({
 		o.default = DEFAULT_CRT_FILE;
 		o.datatype = 'file';
 		o.depends({ isonlyoneprot: '0', https: '1' });
+		o.retain = true;
 		o.validate = function(section_id, value) {
 			return validateCertificatePath(section_id, value, singlePortOption, httpsOption);
 		};
@@ -443,6 +446,7 @@ return view.extend({
 		o.default = DEFAULT_KEY_FILE;
 		o.datatype = 'file';
 		o.depends({ isonlyoneprot: '0', https: '1' });
+		o.retain = true;
 		o.validate = function(section_id, value) {
 			return validateCertificatePath(section_id, value, singlePortOption, httpsOption);
 		};
@@ -481,7 +485,7 @@ return view.extend({
 		};
 
 		o = s.option(form.Value, 'db_dir', _('Database dir path'),
-			_('Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Do not place it inside the upload directory.'));
+			_('Store the config database under /etc/gecoosac, /tmp/gecoosac, or /var/lib/gecoosac. Only /etc/gecoosac persists across reboots on standard OpenWrt. Do not place it inside the upload directory.'));
 		o.placeholder = DEFAULT_DB_DIR;
 		o.default = DEFAULT_DB_DIR;
 		o.datatype = 'directory';

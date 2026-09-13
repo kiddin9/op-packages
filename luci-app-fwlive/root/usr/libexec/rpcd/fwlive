@@ -18,6 +18,7 @@ FW4_TAG='!fw4: '
 LIBEXEC_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 FILTER_SH="$LIBEXEC_DIR/fwlive-log-filter.sh"
 LOGGING_SH="$LIBEXEC_DIR/fwlive-logging.sh"
+ADAPTIVE_SH="$LIBEXEC_DIR/fwlive-adaptive-cap.sh"
 # Max reverse-DNS lookups per resolve call (~32 names keeps nslookup load bounded on small routers).
 RESOLVE_MAX=32
 # Per-lookup nslookup timeout (integer seconds — BusyBox `timeout` truncates
@@ -44,6 +45,8 @@ RULESMAP_IPTABLES_FILE='/tmp/rulesmap'
 # json_escape lives in fwlive-logging.sh so prerm can source that file alone (#222).
 # shellcheck disable=SC1090,SC1091 # LOGGING_SH resolves to sibling ../fwlive-logging.sh
 . "$LOGGING_SH"
+# shellcheck disable=SC1090,SC1091
+. "$ADAPTIVE_SH"
 
 slug_key() {
 	echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' _' '--'
@@ -425,12 +428,19 @@ poll_lines_from_input() {
 
 fetch_firewall_logs() {
 	input="$1"
-	lines=$(poll_lines_from_input "$input")
-	# lines is numeric-clamped; stream/oneshot are fixed (not caller-controlled).
-	# A dead logd must not look like an empty firewall table (#303): return a
-	# structured error instead of filtering an empty fallback into {"log":[]}.
-	if ! raw=$(ubus call log read "{\"lines\":$lines,\"stream\":false,\"oneshot\":true}" 2>/dev/null); then
-		printf '%s' '{"log":[],"error":"log_read_failed"}'
+	requested=$(poll_lines_from_input "$input")
+	# shellcheck disable=SC2046
+	set -- $(fwlive_adaptive_plan "$requested")
+	lines=$1
+	shed_flag=${2:-0}
+	# Adaptive plan prints: lines shed bucket
+	start_cs=$(fwlive_adaptive_clock_cs)
+	# Drop dead oneshot flag — only consumed on logd's stream branch (#306).
+	if ! raw=$(ubus call log read "{\"lines\":$lines,\"stream\":false}" 2>/dev/null); then
+		# Do not record ~0 ms as cold: failure is not healthy fast processing
+		# and must not clear an existing hot/shed cap (#329 Hermes Q1).
+		out='{"log":[],"error":"log_read_failed"}'
+		fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" 0 0
 		return 0
 	fi
 
@@ -444,7 +454,17 @@ fetch_firewall_logs() {
 		fi
 	fi
 	[ -n "$out" ] || out='{"log":[],"error":"filter_empty"}'
-	printf '%s' "$out"
+	end_cs=$(fwlive_adaptive_clock_cs)
+	# Uptime wrap / skew: end < start — do not record as cold (Grok #329 P2).
+	if [ "$end_cs" -ge "$start_cs" ]; then
+		_dur=$(((end_cs - start_cs) * 10))
+		fwlive_adaptive_record "$_dur" "$lines"
+	fi
+	# Layer 1: messages_received stays 0 — no post-filter ash count (Grok #329 P1).
+	_trunc=0
+	[ "$shed_flag" = 1 ] && _trunc=1
+	[ "$lines" -lt "$requested" ] && _trunc=1
+	fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" "$_trunc" 0
 }
 
 poll_logs() {
@@ -581,6 +601,12 @@ resolve_addresses() {
 	if ! command -v nslookup >/dev/null 2>&1; then
 		command -v logger >/dev/null 2>&1 && logger -t fwlive "nslookup not found; resolve disabled"
 		printf '{"names":{},"error":"no_resolver"}'
+		return 0
+	fi
+
+	# Load shed: previous poll was hot (#306 Layer 1).
+	if fwlive_adaptive_is_hot; then
+		printf '{"names":{},"disabled":"load"}'
 		return 0
 	fi
 

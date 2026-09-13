@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gecoosac
 PKG_VERSION:=2.2.20251015
-PKG_RELEASE:=20
+PKG_RELEASE:=21
 
 PKG_MAINTAINER:=Roc Lai <laipeng668@qq.com>
 PKG_LICENSE:=AGPL-3.0-only
@@ -43,8 +43,8 @@ define Package/$(PKG_NAME)
   CATEGORY:=Network
   TITLE:=gecoosac server (version $(PKG_VERSION))
   URL:=http://www.cnrouter.com/
-  DEPENDS:=@(aarch64||arm||i386||mips||mipsel||x86_64) +openssl-util
-  PROVIDES:=gecoosac-files
+  DEPENDS:=@(aarch64||arm||i386||mips||mipsel||x86_64) +openssl-util +coreutils-timeout
+  PROVIDES:=gecoosac-files gecoosac-common
 endef
 
 define Package/$(PKG_NAME)/conffiles
@@ -66,11 +66,13 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/gecoosac/tls
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_DIR) $(1)/usr/share/gecoosac
 
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/$(PKG_NAME) $(1)/usr/bin
 	$(INSTALL_BIN) ./files/etc/init.d/gecoosac $(1)/etc/init.d/gecoosac
 	$(INSTALL_BIN) ./files/etc/uci-defaults/gecoosac $(1)/etc/uci-defaults/gecoosac
 	$(INSTALL_CONF) ./files/etc/config/gecoosac $(1)/etc/config/gecoosac
+	$(INSTALL_DATA) ./files/usr/share/gecoosac/common.sh $(1)/usr/share/gecoosac/common.sh
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
