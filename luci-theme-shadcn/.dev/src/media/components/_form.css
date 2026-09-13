@@ -4,7 +4,7 @@
 }
 
 .cbi-value {
-  @apply flex flex-row flex-wrap gap-4 py-1.5;
+  @apply flex flex-row flex-wrap gap-4 py-1.5 max-md:flex-col max-md:gap-1.5 max-md:py-1;
 
   &.hidden {
     @apply hidden;
@@ -15,7 +15,7 @@
   }
 
   > .cbi-value-title {
-    @apply text-foreground pt-1 text-right text-sm font-medium md:flex-[0_0_10rem];
+    @apply text-foreground pt-1 text-right text-sm font-medium max-md:text-left md:flex-[0_0_10rem];
   }
 
   > .cbi-value-field {
@@ -41,7 +41,7 @@
 }
 
 .cbi-dynlist {
-  @apply inline-flex w-max max-w-96 flex-col items-start gap-3;
+  @apply inline-flex w-max max-w-96 flex-col items-start gap-3 max-md:max-w-full;
 
   .item {
     @apply border-border bg-panel-bg pointer-events-auto relative inline-flex cursor-move flex-col items-start gap-2 self-stretch overflow-hidden rounded-lg border py-3 pr-9 pl-4 break-all shadow-sm transition-all duration-200 select-text;
@@ -78,19 +78,5 @@
     > .cbi-button {
       @apply inline-flex min-h-6 min-w-6 shrink-0 cursor-pointer items-center justify-center rounded px-2 py-0 text-sm font-medium shadow-none active:scale-95;
     }
-  }
-}
-
-@media (max-width: 768px) {
-  .cbi-value {
-    @apply flex-col gap-1.5 py-1;
-
-    > .cbi-value-title {
-      @apply text-left;
-    }
-  }
-
-  .cbi-dynlist {
-    @apply max-w-full;
   }
 }

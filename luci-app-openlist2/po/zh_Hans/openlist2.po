@@ -2,8 +2,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: luci-app-openlist2\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-27 09:57+0800\n"
-"PO-Revision-Date: 2026-06-25 00:00+0800\n"
+"POT-Creation-Date: 2026-09-13 09:36+0800\n"
+"PO-Revision-Date: 2026-09-13 09:36+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: zh_Hans\n"
@@ -12,633 +12,765 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:43
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:44
 msgid "RUNNING"
 msgstr "运行中"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:43
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:44
 msgid "NOT RUNNING"
 msgstr "未运行"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:51
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:54
 msgid "Open Web Interface"
 msgstr "打开 Web 界面"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:100
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:95
 msgid "Port must be -1 or a valid port number from 1 to 65535."
 msgstr "端口必须为 -1，或 1 到 65535 之间的有效端口号。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:120
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:115
 msgid "Site URL must start with http:// or https:// and must not end with /."
 msgstr "站点 URL 必须以 http:// 或 https:// 开头，且末尾不能带 /。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:132
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:127
 msgid "CORS origins must be * or include http:// or https://."
 msgstr "CORS 来源必须为 *，或包含 http:// / https://。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:170
-msgid "Username:"
-msgstr "用户名："
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:159
+msgid "Use an absolute path without control characters or dot segments."
+msgstr "使用绝对路径，路径中不能包含控制字符、. 或 .. 路径段。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:170
-msgid "New Password:"
-msgstr "新密码："
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:170
-msgid "New password has been copied to clipboard."
-msgstr "新密码已复制到剪贴板。"
-
-#: luci-app-openlist2/root/usr/share/luci/menu.d/luci-app-openlist2.json:3
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:183
-msgid "OpenList"
-msgstr "OpenList"
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:184
-msgid "A file list program that supports multiple storage."
-msgstr "一款支持多种存储的目录文件列表程序。"
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:185
-#, javascript-format
-msgid ""
-"Initial login username is \"%s\" and password is \"%s\". Change it "
-"immediately after first login."
-msgstr "初始登录用户名为「%s」，密码为「%s」。首次登录后请立即修改。"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:169
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:172
+msgid "Use passive ports or ranges from 1024 to 65535."
+msgstr "请填写 1024 到 65535 之间的被动端口或端口范围。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:201
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:52
 msgid "Collecting data..."
 msgstr "收集数据..."
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:207
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:238
+msgid "The password reset did not return a username and password."
+msgstr "密码重置未返回用户名和密码。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:241
+msgid "Copy the new password before closing this dialog."
+msgstr "关闭此对话框前请复制新密码。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:244
+msgid "New password has been copied to clipboard."
+msgstr "新密码已复制到剪贴板。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:245
+msgid "Automatic copy failed. Select and copy the password manually."
+msgstr "自动复制失败，请手动选中并复制密码。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:247
+msgid "Password reset"
+msgstr "密码已重置"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:248
+msgid "Username:"
+msgstr "用户名："
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:249
+msgid "New Password:"
+msgstr "新密码："
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:253
+msgid "Copy password"
+msgstr "复制密码"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:255
+msgid "Close"
+msgstr "关闭"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:260
+#, javascript-format
+msgid "Unable to reset the password: %s"
+msgstr "无法重置密码：%s"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:268
+msgid "Configuration contains credentials and is available only to users with write access."
+msgstr "配置包含凭据，仅有编辑权限的用户可以查看。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:272
+#: luci-app-openlist2/root/usr/share/luci/menu.d/luci-app-openlist2.json:3
+msgid "OpenList"
+msgstr "OpenList"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:273
+msgid "A file list program that supports multiple storage."
+msgstr "一款支持多种存储的目录文件列表程序。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:274
+#, javascript-format
+msgid "Initial login username is \"%s\" and password is \"%s\". Change it immediately after first login."
+msgstr "初始登录用户名为「%s」，密码为「%s」。首次登录后请立即修改。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:298
+msgid "Configure a web port or Site URL to open the management page."
+msgstr "请配置 Web 端口或站点地址，以打开管理页面。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:303
 msgid "Basic Settings"
 msgstr "基本设置"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:208
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:304
 msgid "Global Settings"
 msgstr "全局设置"
 
-#: luci-app-openlist2/root/usr/share/luci/menu.d/luci-app-openlist2.json:13
-msgid "Setting"
-msgstr "设置"
-
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:305
 #: luci-app-openlist2/root/usr/share/luci/menu.d/luci-app-openlist2.json:21
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:209
 msgid "Logs"
 msgstr "日志"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:210
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:306
 msgid "Database"
 msgstr "数据库"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:211
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:307
 msgid "Search"
 msgstr "搜索"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:212
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:308
 msgid "Web Protocol"
 msgstr "Web 协议"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:213
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:309
 msgid "Task threads"
 msgstr "任务线程"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:214
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:310
+msgid "Worker counts below only initialize missing settings. After the first start, change worker counts and speed limits in OpenList Management > Settings > Traffic. Upload and decompression-upload tasks do not support persistence."
+msgstr "下方线程数仅用于初始化缺失的设置。首次启动后，请在 OpenList 管理后台 → 设置 → 传输中调整线程数和限速。普通上传和解压上传任务不支持持久化。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:311
 msgid "CORS Settings"
 msgstr "跨域设置"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:215
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:312
 msgid "Object Storage"
 msgstr "对象存储"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:216
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:313
 msgid "FTP"
 msgstr "FTP"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:217
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:314
 msgid "SFTP"
 msgstr "SFTP"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:218
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:315
 msgid "MCP"
 msgstr "MCP"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:220
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:318
 msgid "Enabled"
 msgstr "启用"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:224
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:322
 msgid "Debug logging"
 msgstr "调试日志"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:225
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:323
 msgid "Pass --debug to OpenList and send stderr to procd logs."
 msgstr "向 OpenList 传递 --debug，并将 stderr 发送到 procd 日志。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:228
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:326
 msgid "Delayed Start (seconds)"
 msgstr "开机延时启动（秒）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:233
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:331
 msgid "Open firewall port"
 msgstr "打开防火墙端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:236
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:334
 msgid "Data directory"
 msgstr "数据目录"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:239
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:335
+msgid "Changing this path does not move data. Stop OpenList, back up and move the complete data directory, then apply the new path."
+msgstr "修改路径不会搬迁数据。请先停止 OpenList，备份并搬迁完整数据目录，再应用新路径。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:339
 msgid "Cache directory"
 msgstr "缓存目录"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:243
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:245
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:340
+msgid "OpenList clears this directory on startup. Use a dedicated empty subdirectory. Never select a disk mount root or a directory containing files you want to keep."
+msgstr "OpenList 启动时会清空此目录。请使用专用的空子目录，切勿选择磁盘挂载根目录或包含需要保留文件的目录。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:344
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:346
 msgid "Reset Password"
 msgstr "重置密码"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:244
-msgid "Generate a new random password."
-msgstr "随机生成一个新密码。"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:345
+msgid "Generate a new random password using the saved and applied data directory. Start OpenList once before using this action."
+msgstr "按已保存并已应用的数据目录随机生成新密码。请先启动一次 OpenList。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:250
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:351
 msgid "Force read config"
 msgstr "强制读取配置"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:251
-msgid ""
-"Setting this to true will force the program to read the configuration file, "
-"ignoring environment variables."
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:352
+msgid "Setting this to true will force the program to read the configuration file, ignoring environment variables."
 msgstr "将此设置为 true 可以强制程序读取配置文件，而忽略环境变量"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:255
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:356
 msgid "Site URL"
 msgstr "站点地址"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:256
-msgid ""
-"When the web is reverse proxied to a subdirectory, this option must be "
-"filled out to ensure proper functioning of the web. Do not include '/' at "
-"the end of the URL"
-msgstr ""
-"Web 被反向代理到二级目录时，必须填写该选项以确保 Web 正常工作。URL 结尾请勿携"
-"带 '/'"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:357
+msgid "When the web is reverse proxied to a subdirectory, this option must be filled out to ensure proper functioning of the web. Do not include '/' at the end of the URL"
+msgstr "Web 被反向代理到二级目录时，必须填写该选项以确保 Web 正常工作。URL 结尾请勿携带 '/'"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:261
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:362
 msgid "CDN URL"
 msgstr "CDN 地址"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:264
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:365
 msgid "JWT Key"
 msgstr "JWT 密钥"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:267
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:369
 msgid "Login Validity Period (hours)"
 msgstr "登录有效期（小时）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:272
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:374
 msgid "Proxy address"
 msgstr "代理地址"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:273
-msgid ""
-"HTTP, HTTPS, SOCKS4, SOCKS5 or SOCKS5HOSTNAME proxy used by OpenList "
-"outbound requests."
-msgstr ""
-"OpenList 出站请求使用的 HTTP、HTTPS、SOCKS4、SOCKS5 或 SOCKS5HOSTNAME 代理。"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:375
+msgid "HTTP, HTTPS, SOCKS4, SOCKS5 or SOCKS5HOSTNAME proxy used by OpenList outbound requests."
+msgstr "OpenList 出站请求使用的 HTTP、HTTPS、SOCKS4、SOCKS5 或 SOCKS5HOSTNAME 代理。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:276
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:379
 msgid "Auto memory limit (MB)"
 msgstr "自动内存限制（MB）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:277
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:380
 msgid "0 disables the automatic memory limit. The upstream default is 4 MB."
 msgstr "0 表示禁用自动内存限制。上游默认值为 4 MB。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:282
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:385
 msgid "Minimum free memory (MB)"
 msgstr "最小可用内存（MB）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:283
-msgid ""
-"Values below 16 let OpenList calculate a default; negative values disable "
-"memory cache."
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:386
+msgid "Values below 16 let OpenList calculate a default; negative values disable memory cache."
 msgstr "低于 16 时由 OpenList 自动计算默认值；负数表示禁用内存缓存。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:288
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:391
 msgid "Maximum block size (MB)"
 msgstr "最大块大小（MB）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:289
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:392
 msgid "Values below 4 let OpenList calculate a default."
 msgstr "低于 4 时由 OpenList 自动计算默认值。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:294
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:397
 msgid "Max Connections"
 msgstr "最大并发连接数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:295
-msgid ""
-"0 is unlimited, It is recommend to set a low number of concurrency (10-20) "
-"for poor performance device"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:398
+msgid "0 is unlimited, It is recommend to set a low number of concurrency (10-20) for poor performance device"
 msgstr "默认 0 不限制，低性能设备建议设置较低的并发数（10-20）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:300
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:403
 msgid "Max concurrency of local proxies"
 msgstr "本地代理最大并发数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:301
-msgid ""
-"0 is unlimited, Limit the maximum concurrency of local agents. The default "
-"value is 64"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:404
+msgid "0 is unlimited, Limit the maximum concurrency of local agents. The default value is 64"
 msgstr "限制本地代理最大并发数，值为 0 表示不限制，默认值 64"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:306
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:409
 msgid "Disable TLS Verify"
 msgstr "禁用 TLS 验证"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:307
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:410
 msgid "Skip remote TLS certificate verification (not recommended)."
 msgstr "跳过远程 TLS 证书校验（不推荐）。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:312
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:415
 msgid "Enable Logs"
 msgstr "启用日志"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:316
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:419
 msgid "Log path"
 msgstr "日志文件路径"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:324
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:427
 msgid "Log path must be /var/log/openlist2* without subdirectories."
 msgstr "日志路径必须为 /var/log/openlist2*，且不得包含子目录。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:327
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:430
 msgid "Max Size (MB)"
 msgstr "日志文件大小（MB）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:333
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:436
 msgid "Max backups"
 msgstr "日志备份数量"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:339
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:442
 msgid "Max age"
 msgstr "日志保存天数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:345
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:448
 msgid "Log Compress"
 msgstr "日志压缩"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:350
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:453
 msgid "Enable common log filters"
 msgstr "启用常用日志过滤"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:351
-msgid ""
-"Filter noisy access logs such as health checks, HEAD requests and WebDAV "
-"PROPFIND."
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:454
+msgid "Filter noisy access logs such as health checks, HEAD requests and WebDAV PROPFIND."
 msgstr "过滤健康检查、HEAD 请求和 WebDAV PROPFIND 等噪声访问日志。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:355
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:458
 msgid "Custom log filter CIDR"
 msgstr "自定义日志过滤 CIDR"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:358
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:461
 msgid "Custom log filter path"
 msgstr "自定义日志过滤路径"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:361
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:464
 msgid "Custom log filter method"
 msgstr "自定义日志过滤方法"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:365
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:468
 msgid "Database Type"
 msgstr "数据库类型"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:367
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:470
 msgid "SQLite"
 msgstr "SQLite"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:368
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:471
 msgid "MySQL"
 msgstr "MySQL"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:369
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:472
 msgid "PostgreSQL"
 msgstr "PostgreSQL"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:371
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:474
 msgid "Database Host"
 msgstr "主机"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:375
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:478
 msgid "Database Port"
 msgstr "端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:376
-msgid ""
-"Use 0 to apply the usual default for the selected database: 3306 for MySQL, "
-"5432 for PostgreSQL."
-msgstr ""
-"使用 0 时会按所选数据库使用常见默认端口：MySQL 为 3306，PostgreSQL 为 5432。"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:479
+msgid "Use 0 to apply the usual default for the selected database: 3306 for MySQL, 5432 for PostgreSQL."
+msgstr "使用 0 时会按所选数据库使用常见默认端口：MySQL 为 3306，PostgreSQL 为 5432。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:382
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:485
 msgid "Database Username"
 msgstr "用户名"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:386
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:489
 msgid "Database Password"
 msgstr "密码"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:390
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:494
 msgid "Database Name"
 msgstr "数据库名"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:394
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:498
 msgid "Database Table Prefix"
 msgstr "数据库表前缀"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:399
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:503
 msgid "Database SSL Mode"
 msgstr "SSL模式"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:403
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:507
 msgid "Database DSN"
 msgstr "DSN"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:407
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:512
 msgid "Meilisearch Host"
 msgstr "Meilisearch 主机"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:411
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:516
 msgid "Meilisearch API Key"
 msgstr "Meilisearch API 密钥"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:414
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:519
 msgid "Meilisearch Index"
 msgstr "Meilisearch 索引"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:419
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:523
+msgid "Bleve index directory"
+msgstr "Bleve 索引目录"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:524
+msgid "Empty uses the bleve subdirectory of the data directory. Keep the index separate from cache and frontend files."
+msgstr "留空时使用数据目录下的 bleve 子目录。索引应与缓存、前端文件分开。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:527
+msgid "External frontend directory"
+msgstr "外部前端目录"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:528
+msgid "Optional directory containing index.html from a matching OpenList frontend. Empty uses the bundled frontend. Restart OpenList after changing it."
+msgstr "可选，填写包含匹配版本 OpenList 前端 index.html 的目录。留空时使用内置前端，修改后需重启 OpenList。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:532
 msgid "Listen address"
 msgstr "监听地址"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:424
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:537
 msgid "HTTP listen port"
 msgstr "HTTP 监听端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:425
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:538
 msgid "The upstream default is 5244. Set to -1 to disable HTTP."
 msgstr "上游默认值为 5244。设为 -1 可禁用 HTTP。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:434
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:547
 msgid "HTTPS listen port"
 msgstr "HTTPS 监听端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:435
-msgid ""
-"The upstream default is -1 (disabled). Set a valid port number to enable "
-"HTTPS."
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:548
+msgid "The upstream default is -1 (disabled). Set a valid port number to enable HTTPS."
 msgstr "上游默认值为 -1（禁用）。设为有效端口号可启用 HTTPS。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:444
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:557
 msgid "Force HTTPS"
 msgstr "强制 HTTPS"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:447
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:560
 msgid "SSL cert"
 msgstr "SSL 证书"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:448
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:561
 msgid "SSL certificate file path"
 msgstr "SSL 证书文件路径"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:451
-msgid "SSL certificate file path is required when HTTPS is enabled."
-msgstr "启用 HTTPS 时必须填写 SSL 证书文件路径。"
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:454
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:563
 msgid "SSL key"
 msgstr "SSL 密钥"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:455
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:564
 msgid "SSL key file path"
 msgstr "SSL 密钥文件路径"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:458
-msgid "SSL key file path is required when HTTPS is enabled."
-msgstr "启用 HTTPS 时必须填写 SSL 密钥文件路径。"
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:461
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:566
 msgid "Unix socket file"
 msgstr "Unix Socket 文件"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:463
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:568
 msgid "Unix socket permission"
 msgstr "Unix Socket 权限"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:465
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:570
 msgid "Enable H2C"
 msgstr "启用 H2C"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:466
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:571
 msgid "Enable cleartext HTTP/2 for reverse proxies that use grpc_pass."
 msgstr "为使用 grpc_pass 的反向代理启用明文 HTTP/2。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:469
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:574
 msgid "Enable HTTP/3/QUIC"
 msgstr "启用 HTTP/3/QUIC"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:470
-msgid ""
-"Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled and "
-"certificate files must be configured."
-msgstr ""
-"在 HTTPS 监听端口上启用基于 QUIC 的 HTTP/3。必须先启用 HTTPS 并配置证书文件。"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:575
+msgid "Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled and certificate files must be configured."
+msgstr "在 HTTPS 监听端口上启用基于 QUIC 的 HTTP/3。必须先启用 HTTPS 并配置证书文件。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:474
-msgid "Download Workers"
-msgstr "下载任务线程数"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:579
+msgid "Open traffic settings"
+msgstr "打开传输设置"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:479
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:580
+msgid "Use the OpenList backend to change the effective worker counts and transfer speed limits."
+msgstr "在 OpenList 后台调整实际生效的线程数和传输限速。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:581
+msgid "Download Workers (initial)"
+msgstr "下载任务初始线程数"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:586
 msgid "Download Max Retry"
 msgstr "下载任务重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:484
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:591
 msgid "Download Task Persistence"
 msgstr "下载任务持久化"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:487
-msgid "Transfer Workers"
-msgstr "中转任务线程数"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:594
+msgid "Transfer Workers (initial)"
+msgstr "中转任务初始线程数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:492
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:599
 msgid "Transfer Max Retry"
 msgstr "中转任务下载重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:497
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:604
 msgid "Transfer Task Persistence"
 msgstr "中转任务持久化"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:500
-msgid "Upload Workers"
-msgstr "上传任务线程数"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:607
+msgid "Upload Workers (initial)"
+msgstr "上传任务初始线程数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:505
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:612
 msgid "Upload Max Retry"
 msgstr "上传任务重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:510
-msgid "Upload Task Persistence"
-msgstr "上传任务持久化"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:618
+msgid "Copy Workers (initial)"
+msgstr "复制任务初始线程数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:513
-msgid "Copy Workers"
-msgstr "复制任务线程数"
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:518
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:623
 msgid "Copy Max Retry"
 msgstr "复制任务重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:523
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:628
 msgid "Copy Task Persistence"
 msgstr "复制任务持久化"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:526
-msgid "Move Workers"
-msgstr "移动任务线程数"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:631
+msgid "Move Workers (initial)"
+msgstr "移动任务初始线程数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:531
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:636
 msgid "Move Max Retry"
 msgstr "移动任务重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:536
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:641
 msgid "Move Task Persistence"
 msgstr "移动任务持久化"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:539
-msgid "Decompress Workers"
-msgstr "解压任务线程数"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:644
+msgid "Decompress Workers (initial)"
+msgstr "解压任务初始线程数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:544
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:649
 msgid "Decompress Max Retry"
 msgstr "解压任务重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:549
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:654
 msgid "Decompress Task Persistence"
 msgstr "解压任务持久化"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:552
-msgid "Decompress Upload Workers"
-msgstr "解压上传任务线程数"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:657
+msgid "Decompress Upload Workers (initial)"
+msgstr "解压上传任务初始线程数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:557
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:662
 msgid "Decompress Upload Max Retry"
 msgstr "解压上传任务重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:562
-msgid "Decompress Upload Task Persistence"
-msgstr "解压上传任务持久化"
-
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:565
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:668
 msgid "Allow retry canceled tasks"
 msgstr "允许重试已取消的任务"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:569
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:672
 msgid "Allow Origins"
 msgstr "允许来源（Origins）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:570
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:578
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:583
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:673
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:681
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:686
 msgid "Comma-separated list. Use * to allow any value."
 msgstr "使用英文逗号分隔。使用 * 表示允许任意值。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:577
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:680
 msgid "Allow Methods"
 msgstr "允许方法（Methods）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:582
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:685
 msgid "Allow Headers"
 msgstr "允许标头（Headers）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:588
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:691
+msgid "Open S3 management"
+msgstr "打开 S3 管理"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:692
+msgid "Generate the S3 access key and secret in OpenList settings, then configure bucket mappings. Restart OpenList after changing credentials."
+msgstr "先在 OpenList 设置中生成 S3 访问密钥，再配置存储桶映射。更改凭据后需重启 OpenList。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:693
 msgid "Enabled S3"
 msgstr "启用 S3"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:591
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:696
 msgid "Port"
 msgstr "端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:596
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:701
 msgid "Enable SSL"
 msgstr "启用 SSL"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:600
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:705
+msgid "Open FTP settings"
+msgstr "打开 FTP 设置"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:706
+msgid "Configure the public host and passive port mapping in OpenList. Restart the service after changing FTP settings."
+msgstr "在 OpenList 中配置公网地址和被动端口映射，修改 FTP 设置后需重启服务。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:707
+msgid "FTP passive firewall ports"
+msgstr "FTP 被动端口放行"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:708
+msgid "Ports or ranges to allow from WAN, for example 50000-50100. They must match the listening ports in OpenList passive port mapping. Empty means passive ports must be allowed manually."
+msgstr "允许从 WAN 访问的端口或范围，例如 50000-50100，必须与 OpenList 被动端口映射中的监听端口一致。留空表示需要自行放行被动端口。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:711
 msgid "Enabled FTP"
 msgstr "启用 FTP"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:603
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:714
 msgid "FTP Port"
 msgstr "FTP 端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:608
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:719
 msgid "Max retries on port conflict during passive transfer"
 msgstr "被动传输端口冲突时最大重试次数"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:613
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:724
 msgid "Enable non-20 port for active transfer"
 msgstr "启用非 20 端口进行主动传输"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:616
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:727
 msgid "Client idle timeout (seconds)"
 msgstr "客户端空闲超时（秒）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:621
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:732
 msgid "Connection timeout (seconds)"
 msgstr "连接超时（秒）"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:626
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:737
 msgid "Disable active transfer mode"
 msgstr "禁用主动传输模式"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:629
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:740
 msgid "Enable binary transfer mode"
 msgstr "启用二进制传输模式"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:632
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:743
 msgid "Client IP check in active transfer mode"
 msgstr "主动传输模式下对客户端进行 IP 检查"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:636
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:747
 msgid "Client IP check in passive transfer mode"
 msgstr "被动传输模式下对客户端进行 IP 检查"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:641
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:752
 msgid "Enabled SFTP"
 msgstr "启用 SFTP"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:644
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:755
 msgid "SFTP Port"
 msgstr "SFTP 端口"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:651
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:761
 msgid "Enabled MCP"
 msgstr "启用 MCP"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:652
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:762
 msgid "Enable MCP (Model Context Protocol) server."
 msgstr "启用 MCP（模型上下文协议）服务器。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:20
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:29
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:766
+msgid "MCP endpoint"
+msgstr "MCP 端点"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:767
+msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList user login token; retain MCP-Session-Id for subsequent requests."
+msgstr "使用 Streamable HTTP，认证头为 Authorization: TOKEN，不添加 Bearer 前缀。TOKEN 为 OpenList 用户登录令牌，后续请求需保留 MCP-Session-Id。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:770
+msgid "Configure a web port or Site URL."
+msgstr "请配置 Web 端口或站点地址。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:771
+msgid "MCP documentation"
+msgstr "MCP 文档"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:787
+msgid "Use a dedicated subdirectory, not a system directory or disk mount root."
+msgstr "请使用专用子目录，不能使用系统目录或磁盘挂载根目录。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:789
+msgid "Use a cache subdirectory below the disk mount."
+msgstr "请使用磁盘挂载目录下的缓存子目录。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:792
+msgid "Cache and index directories must be separate and must not contain the data directory."
+msgstr "缓存和索引目录必须分开，且不能包含数据目录。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:795
+msgid "Frontend files must be separate from private data, cache and index files."
+msgstr "前端文件必须与私有数据、缓存和索引分开。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:806
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:815
+msgid "Certificate and key paths are required for HTTPS or S3 SSL."
+msgstr "启用 HTTPS 或 S3 SSL 时必须填写证书和私钥路径。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:812
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:855
+msgid "Force HTTPS and HTTP/3 require an enabled HTTPS port."
+msgstr "强制 HTTPS 和 HTTP/3 需要先启用 HTTPS 端口。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:818
+msgid "Use 3 or 4 octal digits, for example 660 or 0660."
+msgstr "请使用 3 或 4 位八进制数字，例如 660 或 0660。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:844
+#, javascript-format
+msgid "Enabled services cannot share TCP port %s."
+msgstr "启用的服务不能共用 TCP 端口 %s。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:850
+#, javascript-format
+msgid "FTP passive ports must not overlap service port %s."
+msgstr "FTP 被动端口不能与服务端口 %s 重叠。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:10
 msgid "No log data."
 msgstr "无日志数据。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:77
-msgid "Clear logs"
-msgstr "清空日志"
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:18
+msgid "Unable to read the log."
+msgstr "无法读取日志。"
 
-#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:86
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:29
+#, javascript-format
+msgid "Unable to read the log: %s"
+msgstr "无法读取日志：%s"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:40
+msgid "Unable to clear the log."
+msgstr "无法清空日志。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:59
+msgid "Clear current log"
+msgstr "清空当前日志"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:64
+msgid "Showing up to the last 200 lines and 16 KiB. Older entries remain in the log files."
+msgstr "最多显示末尾 200 行、16 KiB。更早的记录仍保存在日志文件中。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/logs.js:69
 #, javascript-format
 msgid "Refresh every %s seconds."
 msgstr "每 %s 秒刷新。"
 
-#~ msgid "Grant UCI access for luci-app-openlist2"
-#~ msgstr "授予 luci-app-openlist2 的 UCI 访问权限"
+#: luci-app-openlist2/root/usr/share/luci/menu.d/luci-app-openlist2.json:13
+msgid "Setting"
+msgstr "设置"

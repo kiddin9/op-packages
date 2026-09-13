@@ -1,6 +1,6 @@
 table.table,
 .table {
-  @apply border-border mb-4 w-full border-separate border-spacing-0 overflow-visible rounded-lg border;
+  @apply border-border mb-4 w-full border-separate border-spacing-0 overflow-visible rounded-lg border max-md:block max-md:rounded-none max-md:border-0 max-md:shadow-none;
 
   &[width="100%"] {
     @apply w-full;
@@ -27,9 +27,14 @@ table.table,
     @apply before:bg-label-surface before:rounded-tl-lg;
   }
 
+  tbody,
+  .tbody {
+    @apply max-md:block;
+  }
+
   tr,
   .tr {
-    @apply hover:bg-label-surface transition-colors duration-200;
+    @apply hover:bg-label-surface max-md:border-border transition-colors duration-200 max-md:flex max-md:flex-wrap max-md:border-b max-md:px-2 max-md:py-2;
 
     &:first-child {
       &:not([data-title]) {
@@ -69,7 +74,7 @@ table.table,
 
   th,
   .th {
-    @apply border-border bg-label-surface border-b px-3 py-2.5 text-left text-sm font-medium backdrop-blur-sm;
+    @apply border-border bg-label-surface border-b px-3 py-2.5 text-left text-sm font-medium backdrop-blur-sm max-md:hidden;
 
     &[width="100%"] {
       @apply w-full;
@@ -91,8 +96,8 @@ table.table,
 
   td,
   .td {
-    @apply border-border table-cell border-b px-3 py-2.5 align-middle text-sm break-words whitespace-normal;
-    @apply before:hidden before:content-[attr(data-title)];
+    @apply border-border table-cell border-b px-3 py-2.5 align-middle text-sm break-words whitespace-normal max-md:flex-[1_1_50%] max-md:border-0 max-md:px-1 max-md:py-1;
+    @apply before:hidden before:content-[attr(data-title)] before:max-md:mb-1 before:max-md:block before:max-md:text-xs before:max-md:font-semibold;
 
     > input[type="text"],
     > input[type="password"],
@@ -109,76 +114,38 @@ table.table,
     }
 
     &.cbi-value-field {
-      @apply break-all;
+      /* Mobile cards: value fields stack one per row —
+         the row title and long match-rule cells get the full width — while
+         display-only widgets below pair up two per row. */
+      @apply wrap-anywhere max-md:mb-1 max-md:basis-full max-md:self-start max-md:text-left md:max-w-prose;
+
+      &[data-widget="CBI.DummyValue"],
+      &[data-widget="CBI.Button"],
+      &[data-widget="CBI.FlagValue"],
+      &[data-widget="dvalue"],
+      &[data-widget="button"],
+      &[data-widget="fvalue"] {
+        @apply max-md:basis-1/2;
+      }
+    }
+
+    &.cbi-section-actions {
+      @apply max-md:flex-[0_0_100%];
     }
 
     &.cbi-section-actions > div > .cbi-button {
       @apply flex-1;
     }
 
+    > .cbi-button {
+      @apply max-md:w-full;
+    }
+
     &[width="100%"] {
-      @apply w-full;
+      @apply w-full max-md:flex-[0_0_100%];
     }
     &[width="33%"] {
-      @apply w-1/3;
-    }
-  }
-}
-
-/* Mobile responsive — rows become stacked cards */
-@media (max-width: 768px) {
-  table.table,
-  .table {
-    @apply block w-full overflow-visible rounded-none border-0 shadow-none;
-
-    tbody,
-    .tbody {
-      @apply block;
-    }
-
-    tr,
-    .tr {
-      @apply border-border flex flex-wrap border-b px-2 py-2;
-    }
-
-    th,
-    .th {
-      @apply hidden;
-    }
-
-    td,
-    .td {
-      @apply flex-[1_1_50%] border-0 px-1 py-1 text-sm;
-      @apply before:mb-1 before:block before:text-xs before:font-semibold;
-
-      &.cbi-value-field {
-        /* Mobile cards: value fields stack one per row —
-           the row title and long match-rule cells get the full width — while
-           display-only widgets below pair up two per row. */
-        @apply mb-1 basis-full self-start text-left;
-
-        &[data-widget="CBI.DummyValue"],
-        &[data-widget="CBI.Button"],
-        &[data-widget="CBI.FlagValue"],
-        &[data-widget="dvalue"],
-        &[data-widget="button"],
-        &[data-widget="fvalue"] {
-          @apply basis-1/2;
-        }
-      }
-
-      &.cbi-section-actions {
-        @apply flex-[0_0_100%];
-      }
-      > .cbi-button {
-        @apply w-full;
-      }
-      &[width="100%"] {
-        @apply flex-[0_0_100%];
-      }
-      &[width="33%"] {
-        @apply flex-[0_0_33.333%];
-      }
+      @apply w-1/3 max-md:flex-[0_0_33.333%];
     }
   }
 }

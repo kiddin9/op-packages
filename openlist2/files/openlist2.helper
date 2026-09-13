@@ -1,0 +1,46 @@
+#!/bin/sh
+# The ACL grants individual verb names, never this executable with arbitrary arguments.
+
+. /usr/share/openlist2/functions.sh
+umask 077
+
+[ "$#" -eq 1 ] || { openlist2_error "Exactly one helper action is required."; exit 64; }
+
+case "$1" in
+	log-read|log-clear)
+		openlist2_read_scalar uci -q get 'openlist2.@openlist2[0].log_path'
+		log_path="$OPENLIST2_VALUE"
+		log_path="${log_path:-/var/log/openlist2.log}"
+		openlist2_safe_log_path "$log_path" ||
+			{ openlist2_error "Unsafe log path or non-regular log file."; exit 1; }
+		if [ "$1" = "log-read" ]; then
+			[ -e "$log_path" ] || exit 0
+			[ -r "$log_path" ] || { openlist2_error "Log file is not readable."; exit 1; }
+			# Bound output before line selection, including logs with a very long line.
+			log_data="$(tail -c 16383 "$log_path")" || exit 1
+			printf '%s\n' "$log_data" | tail -n 200
+		else
+			[ -e "$log_path" ] || exit 0
+			chmod 600 "$log_path" && : > "$log_path"
+		fi
+		;;
+	password-reset)
+		openlist2_read_scalar uci -q get 'openlist2.@openlist2[0].data_dir'
+		data_dir="$OPENLIST2_VALUE"
+		data_dir="$(openlist2_normalize_dir "${data_dir:-/etc/openlist2}")" ||
+			{ openlist2_error "Invalid data directory."; exit 1; }
+		if openlist2_broad_dir "$data_dir" || openlist2_mountpoint "$data_dir"; then
+			openlist2_error "Use a dedicated data subdirectory."; exit 1
+		fi
+		[ ! -L "$data_dir/config.json" ] && [ -f "$data_dir/config.json" ] &&
+			[ -s "$data_dir/config.json" ] ||
+			{ openlist2_error "Start OpenList once with the saved settings before resetting the password."; exit 1; }
+		jsonfilter -qi "$data_dir/config.json" -e '@' >/dev/null ||
+			{ openlist2_error "Invalid config.json; password was not reset."; exit 1; }
+		exec /usr/bin/openlist2 admin random --data "$data_dir" --no-prefix
+		;;
+	*)
+		openlist2_error "Unsupported helper action."
+		exit 64
+		;;
+esac

@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=openlist2
 PKG_VERSION:=4.2.6
 PKG_WEB_VERSION:=4.2.6
-PKG_RELEASE:=15
+PKG_RELEASE:=16
 
 PKG_SOURCE:=openlist-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/OpenListTeam/OpenList/tar.gz/v$(PKG_VERSION)?
@@ -51,7 +51,8 @@ define Package/openlist2
   SUBMENU:=Web Servers/Proxies
   TITLE:=A file list program that supports multiple storage
   URL:=https://doc.oplist.org/
-  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle
+  DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +jshn +jsonfilter
+  PROVIDES:=openlist2-helper
 endef
 
 define Package/openlist2/conffiles
@@ -84,10 +85,14 @@ define Package/openlist2/install
 	$(call GoPackage/Package/Install/Bin,$(PKG_INSTALL_DIR))
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/OpenList $(1)/usr/bin/openlist2
-	$(INSTALL_DIR) $(1)/etc/config $(1)/etc/init.d $(1)/etc/openlist2
+	$(INSTALL_DIR) $(1)/etc/config $(1)/etc/init.d $(1)/etc/openlist2 $(1)/etc/uci-defaults
+	$(INSTALL_DIR) $(1)/usr/libexec $(1)/usr/share/openlist2
 	$(INSTALL_CONF) $(CURDIR)/files/openlist2.config $(1)/etc/config/openlist2
 	$(INSTALL_BIN) $(CURDIR)/files/openlist2.init $(1)/etc/init.d/openlist2
-	$(INSTALL_DATA) $(CURDIR)/files/data.db $(1)/etc/openlist2/data.db
+	$(INSTALL_DATA) $(CURDIR)/files/openlist2.common $(1)/usr/share/openlist2/functions.sh
+	$(INSTALL_BIN) $(CURDIR)/files/openlist2.helper $(1)/usr/libexec/openlist2-helper
+	$(INSTALL_BIN) $(CURDIR)/files/openlist2.defaults $(1)/etc/uci-defaults/99-openlist2
+	$(INSTALL_CONF) $(CURDIR)/files/data.db $(1)/etc/openlist2/data.db
 endef
 
 $(eval $(call Download,openlist-frontend))

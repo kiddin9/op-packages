@@ -1,0 +1,252 @@
+#!/bin/sh
+# Shared validation for the service and its limited LuCI helper.
+
+openlist2_error() {
+	printf 'openlist2: %s\n' "$*" >&2
+	logger -t openlist2 "$*" 2>/dev/null
+	return 1
+}
+
+openlist2_read_scalar() {
+	# Preserve the value itself, including any trailing newline. Remove only
+	# the one output terminator emitted by uci/jsonfilter.
+	OPENLIST2_VALUE="$("$@"; printf '.')"
+	OPENLIST2_VALUE="${OPENLIST2_VALUE%.}"
+	OPENLIST2_VALUE="${OPENLIST2_VALUE%'
+'}"
+}
+
+openlist2_port() {
+	local value="$1"
+	[ "$value" = "-1" ] && [ "${2:-0}" = "1" ] && { printf '%s\n' -1; return 0; }
+	case "$value" in ''|*[!0-9]*) return 1 ;; esac
+	value="$(printf '%s' "$value" | sed 's/^0*//')"
+	[ -n "$value" ] && [ "${#value}" -le 5 ] || return 1
+	[ "$value" -ge 1 ] && [ "$value" -le 65535 ] || return 1
+	printf '%s\n' "$value"
+}
+
+openlist2_safe_log_path() {
+	local filename="${1##*/}"
+	[ "$1" = "/var/log/$filename" ] || return 1
+	case "$filename" in ''|*[!A-Za-z0-9._-]*) return 1 ;; esac
+	printf '%s\n' "$1" | grep -Eq '^/var/log/openlist2([._-][A-Za-z0-9._-]+)?$' || return 1
+	# Do not let a root helper follow a user-created log file symlink.
+	[ ! -L "$1" ] && { [ ! -e "$1" ] || [ -f "$1" ]; }
+}
+
+openlist2_normalize_dir() {
+	local path="$1" suffix="" part
+	case "$path" in /*) ;; *) return 1 ;; esac
+	case "$path" in *'
+'*|*'	'*|*"$(printf '\r')"*) return 1 ;; esac
+	if printf '%s' "$path" | LC_ALL=C grep -q '[[:cntrl:]]'; then return 1; fi
+	path="$(printf '%s' "$path" | sed 's://*:/:g; s:/*$::')"
+	[ -n "$path" ] || path="/"
+	case "$path/" in */../*|*/./*) return 1 ;; esac
+	while [ ! -d "$path" ]; do
+		[ ! -e "$path" ] && [ ! -L "$path" ] || return 1
+		part="${path##*/}"
+		suffix="/$part$suffix"
+		path="${path%/*}"
+		[ -n "$path" ] || path="/"
+	done
+	path="$(CDPATH='' cd "$path" 2>/dev/null && pwd -P && printf '.')" || return 1
+	path="${path%.}"
+	path="${path%'
+'}"
+	case "$path" in *'
+'*) return 1 ;; esac
+	if printf '%s' "$path" | LC_ALL=C grep -q '[[:cntrl:]]'; then return 1; fi
+	[ "$path" != "/" ] || [ -n "$suffix" ] || { printf '/\n'; return 0; }
+	printf '%s\n' "${path%/}$suffix"
+}
+
+openlist2_contains_path() {
+	case "$2/" in "$1/"*) return 0 ;; esac
+	return 1
+}
+
+openlist2_broad_dir() {
+	case "$1" in
+		''|/|/bin|/boot|/dev|/etc|/home|/lib|/lib64|/media|/mnt|/opt|/overlay|/proc|/root|/rom|/run|/sbin|/srv|/sys|/tmp|/usr|/var|/www|/tmp/log|/tmp/run|/usr/*|/bin/*|/sbin/*|/lib/*|/lib64/*|/dev/*|/proc/*|/sys/*|/rom/*|/overlay/*|/etc/config|/etc/config/*|/etc/dropbear|/etc/dropbear/*|/etc/ssl|/etc/ssl/*|/tmp/log/*|/www/*)
+			return 0 ;;
+	esac
+	return 1
+}
+
+openlist2_mountpoint() {
+	[ -d "$1" ] || return 1
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$1"
+		return $?
+	fi
+	awk -v target="$1" '
+		{
+			p = $5
+			gsub(/\\040/, " ", p)
+			gsub(/\\134/, "\\", p)
+			if (p == target) found = 1
+		}
+		END { exit !found }
+	' /proc/self/mountinfo
+}
+
+openlist2_validate_dirs() {
+	data_dir="$(openlist2_normalize_dir "$data_dir")" ||
+		{ openlist2_error "Data directory must be an absolute directory path without dot segments."; return 1; }
+	temp_dir="$(openlist2_normalize_dir "$temp_dir")" ||
+		{ openlist2_error "Cache directory must be an absolute directory path without dot segments."; return 1; }
+	bleve_dir="$(openlist2_normalize_dir "${bleve_dir:-$data_dir/bleve}")" ||
+		{ openlist2_error "Invalid Bleve index directory."; return 1; }
+	local path protected
+	for path in "$data_dir" "$temp_dir" "$bleve_dir"; do
+		if openlist2_broad_dir "$path" || openlist2_mountpoint "$path"; then
+			openlist2_error "Use a dedicated subdirectory, not a system directory or mount root: $path"
+			return 1
+		fi
+	done
+	case "$temp_dir" in
+		/mnt/*|/media/*)
+			path="${temp_dir#/}"; path="${path#*/}"
+			case "$path" in */*) ;; *)
+				openlist2_error "Use a cache subdirectory below the disk mount: $temp_dir"; return 1 ;;
+			esac ;;
+	esac
+	if openlist2_contains_path "$temp_dir" "$data_dir" ||
+		openlist2_contains_path "$bleve_dir" "$data_dir" ||
+		openlist2_contains_path "$temp_dir" "$bleve_dir" ||
+		openlist2_contains_path "$bleve_dir" "$temp_dir"; then
+		openlist2_error "Cache and index directories must be separate and must not contain the data directory."
+		return 1
+	fi
+	if [ -n "$dist_dir" ]; then
+		dist_dir="$(openlist2_normalize_dir "$dist_dir")" || return 1
+		if openlist2_broad_dir "$dist_dir" || openlist2_mountpoint "$dist_dir" ||
+			openlist2_contains_path "$dist_dir" "$data_dir" ||
+			openlist2_contains_path "$dist_dir" "$temp_dir" ||
+			openlist2_contains_path "$temp_dir" "$dist_dir" ||
+			openlist2_contains_path "$dist_dir" "$bleve_dir" ||
+			openlist2_contains_path "$bleve_dir" "$dist_dir"; then
+			openlist2_error "Frontend files must be separate from private data, cache and index files."
+			return 1
+		fi
+		[ -f "$dist_dir/index.html" ] && [ -r "$dist_dir/index.html" ] ||
+			{ openlist2_error "The frontend directory must contain a readable index.html."; return 1; }
+	fi
+	# shellcheck disable=SC2154
+	for path in "$ssl_cert" "$ssl_key"; do
+		[ -n "$path" ] || continue
+		protected="$(readlink -f "$path" 2>/dev/null)" || protected="$path"
+		if openlist2_contains_path "$temp_dir" "$protected" ||
+			{ [ -n "$dist_dir" ] && openlist2_contains_path "$dist_dir" "$protected"; }; then
+			openlist2_error "TLS files must not be inside the cache or public frontend directory."
+			return 1
+		fi
+	done
+}
+
+openlist2_prepare_dirs() {
+	local entry identity previous registered marker="$data_dir/.temp-dir"
+	umask 077
+	mkdir -p "$data_dir" "$temp_dir" "$bleve_dir" ||
+		{ openlist2_error "Unable to create data, cache or index directory."; return 1; }
+	[ ! -L "$data_dir/config.json" ] && [ ! -L "$marker" ] ||
+		{ openlist2_error "Config and cache ownership files must not be symlinks."; return 1; }
+	[ ! -e "$data_dir/config.json" ] || [ -f "$data_dir/config.json" ] ||
+		{ openlist2_error "config.json must be a regular file."; return 1; }
+	[ ! -e "$marker" ] || [ -f "$marker" ] ||
+		{ openlist2_error "Cache ownership marker must be a regular file."; return 1; }
+	entry="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -print -quit)" || return 1
+	identity="$(stat -c '%d:%i' "$temp_dir")" || return 1
+	registered="$(cat "$marker" 2>/dev/null)"
+	if [ -n "$entry" ] && [ "$registered" != "$(printf '%s\n%s' "$temp_dir" "$identity")" ]; then
+		# An existing config identifies the old cache on the first upgrade.
+		# Once registered, an inode/device change must never inherit ownership.
+		previous=""
+		if [ ! -e "$marker" ] && [ -s "$data_dir/config.json" ]; then
+			openlist2_read_scalar jsonfilter -qi "$data_dir/config.json" -e '@.temp_dir' 2>/dev/null
+			previous="$OPENLIST2_VALUE"
+			previous="$(openlist2_normalize_dir "$previous")" || previous=""
+		fi
+		[ "$previous" = "$temp_dir" ] ||
+			{ openlist2_error "Refusing to clear a non-empty, unregistered cache directory. Choose a new empty subdirectory: $temp_dir"; return 1; }
+	fi
+	chmod 700 "$data_dir" "$temp_dir" "$bleve_dir" || return 1
+	# Keep the marker outside the cache: OpenList clears cache contents.
+	(
+		local marker_tmp
+		marker_tmp="$(mktemp "$data_dir/.temp-dir.XXXXXX")" || exit 1
+		trap 'rm -f "$marker_tmp"' 0
+		printf '%s\n%s\n' "$temp_dir" "$identity" > "$marker_tmp" &&
+			chmod 600 "$marker_tmp" && mv -f "$marker_tmp" "$marker"
+	) || { openlist2_error "Unable to record cache directory ownership."; return 1; }
+}
+
+openlist2_migrate_config() {
+	local prefix='openlist2.@openlist2[0]' old_port old_ssl http https changed=0 size backups schema legacy
+	uci -q get "$prefix" >/dev/null || return 0
+	old_port="$(uci -q get "$prefix.port")"
+	old_ssl="$(uci -q get "$prefix.ssl")"
+	http="$(uci -q get "$prefix.listen_http_port")"
+	https="$(uci -q get "$prefix.listen_https_port")"
+	if { [ -z "$http" ] || [ -z "$https" ]; } && { [ -n "$old_port" ] || [ -n "$old_ssl" ]; }; then
+		old_port="$(openlist2_port "${old_port:-5244}")" ||
+			{ openlist2_error "Invalid legacy listen port; migration stopped."; return 1; }
+		case "$old_ssl" in 1|on|true|yes|enabled) http="${http:--1}"; https="${https:-$old_port}" ;; *)
+			http="${http:-$old_port}"; https="${https:--1}" ;;
+		esac
+		uci set "$prefix.listen_http_port=$http" &&
+			uci set "$prefix.listen_https_port=$https" || return 1
+		changed=1
+	fi
+	if [ -n "$http" ] || [ -n "$https" ]; then
+		legacy="$(openlist2_port "$old_port" 2>/dev/null)" || legacy=""
+		if [ -n "$legacy" ]; then
+			uci set "$prefix.legacy_firewall_port=$legacy" || return 1
+		fi
+		if [ -n "$old_port" ]; then uci -q delete "$prefix.port" || return 1; changed=1; fi
+		if [ -n "$old_ssl" ]; then uci -q delete "$prefix.ssl" || return 1; changed=1; fi
+	fi
+	schema="$(uci -q get "$prefix.config_version")"
+	if [ "$schema" != "2" ]; then
+		size="$(uci -q get "$prefix.log_max_size")"
+		backups="$(uci -q get "$prefix.log_max_backups")"
+		case "$size:$backups" in
+			50:30|10:5)
+				uci set "$prefix.log_max_size=1" && uci set "$prefix.log_max_backups=3" || return 1 ;;
+		esac
+		# These switches have no implementation in OpenList 4.2.6.
+		uci -q delete "$prefix.upload_task_persistant"
+		uci -q delete "$prefix.decompress_upload_task_persistant"
+		uci set "$prefix.config_version=2" || return 1
+		changed=1
+	fi
+	# Retry a previously staged migration if its commit failed.
+	if [ "$changed" = "1" ] || uci -q changes openlist2 | grep -q '\.config_version='; then
+		uci commit openlist2 || { openlist2_error "Unable to save migrated UCI configuration."; return 1; }
+	fi
+	return 0
+}
+
+openlist2_pasv_ports() {
+	local values="$1" item first last result="" oldifs="$IFS" noglob=0
+	case "$values" in *[!0-9,\ -]*) return 1 ;; esac
+	case "$-" in *f*) noglob=1 ;; *) set -f ;; esac
+	IFS=' ,'
+	for item in $values; do
+		IFS="$oldifs"
+		first="${item%%-*}"; last="${item#*-}"
+		first="$(openlist2_port "$first")" && last="$(openlist2_port "$last")" &&
+			[ "$first" -ge 1024 ] && [ "$first" -le "$last" ] || {
+				[ "$noglob" = "1" ] || set +f
+				return 1
+			}
+		if [ "$first" = "$last" ]; then item="$first"; else item="$first-$last"; fi
+		result="${result:+$result }$item"
+		IFS=' ,'
+	done
+	IFS="$oldifs"
+	[ "$noglob" = "1" ] || set +f
+	printf '%s\n' "$result"
+}

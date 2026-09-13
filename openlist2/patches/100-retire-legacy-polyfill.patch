@@ -1,0 +1,16 @@
+Subject: Retire the obsolete OpenWrt polyfill shim without changing custom HTML
+
+--- a/internal/bootstrap/data/setting.go
++++ b/internal/bootstrap/data/setting.go
+@@ -70,6 +70,11 @@ func initSettings() {
+ 				continue
+ 			}
+ 		}
++		// Retire only the exact polyfill shim shipped by old OpenWrt packages.
++		if item.Key == conf.CustomizeHead && stored != nil &&
++			stored.Value == "<script src=\"/assets/polyfill.min.js?features=String.prototype.replaceAll\"></script>" {
++			migrationValue = stored.Value
++		}
+ 		if item.Key != conf.VERSION && stored != nil &&
+ 			(len(migrationValue) == 0 || stored.Value != migrationValue) {
+ 			item.Value = stored.Value

@@ -1,23 +1,27 @@
 {
 	"luci-app-openlist2": {
-		"description": "Grant UCI access for luci-app-openlist2",
+		"description": "Read OpenList status and bounded logs; grant configuration and reset actions only to editors",
 		"read": {
 			"file": {
-				"/usr/bin/openlist2": [ "exec" ],
-				"/var/log/openlist2.log": [ "read" ],
-				"/var/log/openlist2*": [ "read" ]
+				"/usr/libexec/openlist2-helper log-read": [ "exec" ]
 			},
 			"ubus": {
-				"service": [ "list" ]
-			},
-			"uci": [ "openlist2" ]
+				"service": [ "list" ],
+				"file": [ "exec" ]
+			}
 		},
 		"write": {
 			"file": {
-				"/var/log/openlist2.log": [ "write" ],
-				"/var/log/openlist2*": [ "write" ]
+				"/usr/libexec/openlist2-helper log-clear": [ "exec" ],
+				"/usr/libexec/openlist2-helper password-reset": [ "exec" ]
 			},
-			"uci": [ "openlist2" ]
+			"ubus": {
+				"file": [ "exec" ],
+				"uci": [ "get", "set", "add", "delete", "changes", "apply", "confirm", "revert", "order" ]
+			},
+			"uci": {
+				"openlist2": [ "read", "write" ]
+			}
 		}
 	}
 }

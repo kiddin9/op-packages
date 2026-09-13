@@ -1,0 +1,4 @@
+#!/bin/sh
+
+. /usr/share/openlist2/functions.sh
+openlist2_migrate_config

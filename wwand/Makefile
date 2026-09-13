@@ -10,7 +10,7 @@
 #                                              qmi_backend)
 #   wwand-ncm        - NCM/ECM backend        (DEPENDS wwand)
 #   wwand-mhi        - PCIe/MHI transport + drivers (DEPENDS wwand; add a backend)
-#   wwand-esim       - eSIM management        (DEPENDS wwand-qmi + wwand-lpac)
+#   wwand-esim       - eSIM management        (DEPENDS wwand + lpac; no backend)
 # A typical QMI router installs `wwand-qmi` (which pulls in `wwand`); add
 # `wwand-mbim` / `wwand-ncm` for those modems, `wwand-mhi` for a PCIe/MHI modem.
 # The ucode tree ships PRECOMPILED to bytecode (repo-root CMakeLists.txt,
@@ -49,12 +49,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.6.6_p24
-PKG_RELEASE:=35
+PKG_VERSION:=1.6.6_p28
+PKG_RELEASE:=36
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=74c78019c425c6cbfb3938885046419e4a2ed9ba
+PKG_SOURCE_VERSION:=c1a1b0ca732b09c6114d65f9aaa73d7ece02535c
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -200,6 +200,11 @@ define Package/wwand/install
 	# /etc/config/network now (existing files survive upgrade and are still read).
 	# files/wwand.config is kept in the source tree only as a documented example.
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/usbmisc
+	$(INSTALL_DIR) $(1)/usr/share/acl.d
+	# ubus ACL: lets an unprivileged reader (collectd's exec plugin refuses to
+	# run as root) fetch telemetry. Deliberately NOT `status` — that carries
+	# iccid/imsi/imei/msisdn and a ubus ACL cannot filter a result.
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/wwand-acl.json $(1)/usr/share/acl.d/wwand.json
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/wwand.hotplug $(1)/etc/hotplug.d/usbmisc/20-wwand
 	# net hotplug: NCM modems (no cdc-wdm) + re-enumeration after a mode switch
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
@@ -393,9 +398,18 @@ define Package/wwand-esim
   # lpac, or our self-contained static wwand-lpac (bundled wolfSSL+libcurl, no
   # OpenSSL/mbedtls .so — it PROVIDES lpac, so it satisfies +lpac too). lpac
   # drives the SM-DP+ download/notification (ES9+ HTTPS on the router); the
-  # daemon bridges its stdio APDU protocol inline. APDU access uses the modem
-  # UIM channel, so it also needs the QMI backend.
-  DEPENDS:=+wwand-qmi +lpac
+  # daemon bridges its stdio APDU protocol inline.
+  #
+  # NO BACKEND DEPENDENCY. This carried +wwand-qmi from the days when the QMI
+  # UIM logical channel was the only APDU transport. It is not any more: sim.uc
+  # probes native MBIM UICC -> QMI UIM -> AT (CCHO/CGLA), and all three live in
+  # the base package, so an NCM-only or MBIM-only box can manage profiles with
+  # no QMI backend installed at all. The stale dependency was not free — it made
+  # wwand-esim uninstallable wherever wwand-qmi's kmods do not exist as
+  # packages, e.g. a build whose QMI drivers are compiled in
+  # (ddimension/wwand#26). tools/check-packaging.py now fails on a DEPENDS that
+  # nothing imports, so the next one cannot sit unnoticed.
+  DEPENDS:=+wwand +lpac
 endef
 
 define Package/wwand-esim/description

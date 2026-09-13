@@ -1,24 +1,14 @@
 #!/bin/sh /etc/rc.common
+# UCI config_get assigns variables; rc.common consumes START and USE_PROCD.
+# The && chains deliberately handle failure from every command.
+# shellcheck disable=SC2034,SC2154,SC2015
 
 . /usr/share/libubox/jshn.sh
+. /usr/share/openlist2/functions.sh
 
 START=99
 USE_PROCD=1
 PROG=/usr/bin/openlist2
-
-is_safe_log_path() {
-	local path="$1"
-	local base="${path##*/}"
-
-	case "$path" in
-		/var/log/*) ;;
-		*) return 1 ;;
-	esac
-
-	[ "$path" = "/var/log/$base" ] || return 1
-
-	printf '%s\n' "$base" | grep -Eq '^openlist2([._-][A-Za-z0-9._-]+)?$'
-}
 
 append_dest_port() {
 	local value="$1"
@@ -65,19 +55,24 @@ json_add_csv_array() {
 }
 
 get_config() {
+	# LuCI manages the first section and procd runs one instance.
+	[ -z "$section_id" ] || return 0
+	section_id="$1"
 	uci_changed=0
 
 	config_get_bool enabled "$1" enabled 1
-	config_get debug "$1" debug 0
-	config_get allow_wan "$1" allow_wan 0
+	config_get_bool debug "$1" debug 0
+	config_get_bool allow_wan "$1" allow_wan 0
 	config_get delayed_start "$1" delayed_start 0
 
-	config_get force "$1" force 1
+	config_get_bool force "$1" force 1
 	config_get site_url "$1" site_url ""
 	config_get cdn "$1" cdn ""
 	config_get jwt_secret "$1" jwt_secret ""
 	config_get data_dir "$1" data_dir "/etc/openlist2"
 	config_get temp_dir "$1" temp_dir "/tmp/openlist2"
+	config_get bleve_dir "$1" bleve_dir ""
+	config_get dist_dir "$1" dist_dir ""
 	config_get token_expires_in "$1" token_expires_in 48
 	config_get proxy_address "$1" proxy_address ""
 	config_get auto_memory_limit "$1" auto_memory_limit 4
@@ -85,27 +80,27 @@ get_config() {
 	config_get max_block_limit "$1" max_block_limit 0
 	config_get max_connections "$1" max_connections 0
 	config_get max_concurrency "$1" max_concurrency 64
-	config_get tls_insecure_skip_verify "$1" tls_insecure_skip_verify 0
+	config_get_bool tls_insecure_skip_verify "$1" tls_insecure_skip_verify 0
 
 	# log
-	config_get log "$1" log 1
+	config_get_bool log "$1" log 1
 	config_get log_path "$1" log_path '/var/log/openlist2.log'
-	if ! is_safe_log_path "$log_path"; then
+	if ! openlist2_safe_log_path "$log_path"; then
 		log_path='/var/log/openlist2.log'
-		uci -q set openlist2.@openlist2[0].log_path="$log_path"
+		uci -q set "openlist2.$section_id.log_path=$log_path" || { config_error=1; return 1; }
 		uci_changed=1
 	fi
-	config_get log_max_size "$1" log_max_size 50
-	config_get log_max_backups "$1" log_max_backups 30
+	config_get log_max_size "$1" log_max_size 1
+	config_get log_max_backups "$1" log_max_backups 3
 	config_get log_max_age "$1" log_max_age 28
-	config_get log_compress "$1" log_compress 0
-	config_get log_filter "$1" log_filter 0
+	config_get_bool log_compress "$1" log_compress 0
+	config_get_bool log_filter "$1" log_filter 0
 	config_get log_filter_cidr "$1" log_filter_cidr ""
 	config_get log_filter_path "$1" log_filter_path ""
 	config_get log_filter_method "$1" log_filter_method ""
 
 	# scheme
-	config_get force_https "$1" force_https 0
+	config_get_bool force_https "$1" force_https 0
 	config_get ssl_cert "$1" ssl_cert ""
 	config_get ssl_key "$1" ssl_key ""
 	config_get listen_addr "$1" listen_addr "0.0.0.0"
@@ -113,8 +108,8 @@ get_config() {
 	config_get listen_https_port "$1" listen_https_port "-1"
 	config_get listen_unix_file "$1" listen_unix_file ""
 	config_get listen_unix_file_perm "$1" listen_unix_file_perm ""
-	config_get listen_enable_h2c "$1" listen_enable_h2c 0
-	config_get listen_enable_h3 "$1" listen_enable_h3 0
+	config_get_bool listen_enable_h2c "$1" listen_enable_h2c 0
+	config_get_bool listen_enable_h3 "$1" listen_enable_h3 0
 
 	# database
 	config_get database_type "$1" database_type "sqlite3"
@@ -137,26 +132,24 @@ get_config() {
 	# tasks
 	config_get download_workers "$1" download_workers 5
 	config_get download_max_retry "$1" download_max_retry 1
-	config_get download_task_persistant "$1" download_task_persistant 0
+	config_get_bool download_task_persistant "$1" download_task_persistant 0
 	config_get transfer_workers "$1" transfer_workers 5
 	config_get transfer_max_retry "$1" transfer_max_retry 2
-	config_get transfer_task_persistant "$1" transfer_task_persistant 0
+	config_get_bool transfer_task_persistant "$1" transfer_task_persistant 0
 	config_get upload_workers "$1" upload_workers 5
 	config_get upload_max_retry "$1" upload_max_retry 0
-	config_get upload_task_persistant "$1" upload_task_persistant 0
 	config_get copy_workers "$1" copy_workers 5
 	config_get copy_max_retry "$1" copy_max_retry 2
-	config_get copy_task_persistant "$1" copy_task_persistant 0
+	config_get_bool copy_task_persistant "$1" copy_task_persistant 0
 	config_get move_workers "$1" move_workers 5
 	config_get move_max_retry "$1" move_max_retry 2
-	config_get move_task_persistant "$1" move_task_persistant 0
+	config_get_bool move_task_persistant "$1" move_task_persistant 0
 	config_get decompress_workers "$1" decompress_workers 5
 	config_get decompress_max_retry "$1" decompress_max_retry 2
-	config_get decompress_task_persistant "$1" decompress_task_persistant 0
+	config_get_bool decompress_task_persistant "$1" decompress_task_persistant 0
 	config_get decompress_upload_workers "$1" decompress_upload_workers 5
 	config_get decompress_upload_max_retry "$1" decompress_upload_max_retry 2
-	config_get decompress_upload_task_persistant "$1" decompress_upload_task_persistant 0
-	config_get allow_retry_canceled "$1" allow_retry_canceled 0
+	config_get_bool allow_retry_canceled "$1" allow_retry_canceled 0
 
 	# cors
 	config_get cors_allow_origins "$1" cors_allow_origins '*'
@@ -164,96 +157,205 @@ get_config() {
 	config_get cors_allow_headers "$1" cors_allow_headers '*'
 
 	# s3
-	config_get s3 "$1" s3 0
+	config_get_bool s3 "$1" s3 0
 	config_get s3_port "$1" s3_port 5246
-	config_get s3_ssl "$1" s3_ssl 0
+	config_get_bool s3_ssl "$1" s3_ssl 0
 
 	# ftp
-	config_get ftp "$1" ftp 0
+	config_get_bool ftp "$1" ftp 0
 	config_get ftp_port "$1" ftp_port 5221
+	config_get ftp_pasv_ports "$1" ftp_pasv_ports ""
 	config_get find_pasv_port_attempts "$1" find_pasv_port_attempts 50
-	config_get active_transfer_port_non_20 "$1" active_transfer_port_non_20 0
+	config_get_bool active_transfer_port_non_20 "$1" active_transfer_port_non_20 0
 	config_get idle_timeout "$1" idle_timeout 900
 	config_get connection_timeout "$1" connection_timeout 30
-	config_get disable_active_mode "$1" disable_active_mode 0
-	config_get default_transfer_binary "$1" default_transfer_binary 0
-	config_get enable_active_conn_ip_check "$1" enable_active_conn_ip_check 1
-	config_get enable_pasv_conn_ip_check "$1" enable_pasv_conn_ip_check 1
+	config_get_bool disable_active_mode "$1" disable_active_mode 0
+	config_get_bool default_transfer_binary "$1" default_transfer_binary 0
+	config_get_bool enable_active_conn_ip_check "$1" enable_active_conn_ip_check 1
+	config_get_bool enable_pasv_conn_ip_check "$1" enable_pasv_conn_ip_check 1
 
 	# sftp
-	config_get sftp "$1" sftp 0
+	config_get_bool sftp "$1" sftp 0
 	config_get sftp_port "$1" sftp_port 5222
 
 	# mcp
-	config_get mcp "$1" mcp 0
+	config_get_bool mcp "$1" mcp 0
 
 	# init jwt_secret
 	if [ -z "$jwt_secret" ]; then
 		jwt_secret=$(tr -cd "a-zA-Z0-9" < "/dev/urandom" | head -c16)
-		uci -q set openlist2.@openlist2[0].jwt_secret="$jwt_secret"
+		[ "${#jwt_secret}" -eq 16 ] || { config_error=1; return 1; }
+		uci -q set "openlist2.$section_id.jwt_secret=$jwt_secret" || { config_error=1; return 1; }
 		uci_changed=1
 	fi
-	[ "$uci_changed" = "1" ] && uci commit openlist2
+	if [ "$uci_changed" = "1" ]; then
+		uci commit openlist2 || { config_error=1; return 1; }
+	fi
+	return 0
+}
+
+validate_config() {
+	http_port="$(openlist2_port "${listen_http_port:-5244}" 1)" &&
+		https_port="$(openlist2_port "${listen_https_port:--1}" 1)" &&
+		s3_port="$(openlist2_port "$s3_port")" &&
+		ftp_port="$(openlist2_port "$ftp_port")" &&
+		sftp_port="$(openlist2_port "$sftp_port")" ||
+		{ openlist2_error "Invalid listen port. Use 1-65535, or -1 to disable HTTP/HTTPS."; return 1; }
+	if [ "$ftp" = "1" ] && [ "$allow_wan" = "1" ]; then
+		ftp_pasv_ports="$(openlist2_pasv_ports "$ftp_pasv_ports")" ||
+			{ openlist2_error "FTP passive firewall ports must be ports or ranges within 1024-65535."; return 1; }
+	else
+		ftp_pasv_ports=""
+	fi
+	if [ "$https_port" = "-1" ] && { [ "$listen_enable_h3" = "1" ] || [ "$force_https" = "1" ]; }; then
+		openlist2_error "Force HTTPS and HTTP/3 require an enabled HTTPS port."
+		return 1
+	fi
+	if [ "$https_port" != "-1" ] || { [ "$s3" = "1" ] && [ "$s3_ssl" = "1" ]; }; then
+		local file
+		for file in "$ssl_cert" "$ssl_key"; do
+			case "$file" in /*) ;; *)
+				openlist2_error "HTTPS/S3 TLS requires absolute certificate and key paths."; return 1 ;;
+			esac
+			[ -f "$file" ] && [ -r "$file" ] && [ -s "$file" ] ||
+				{ openlist2_error "TLS certificate/key is missing, empty or unreadable: $file"; return 1; }
+		done
+	fi
+	if [ -n "$listen_unix_file" ]; then
+		case "$listen_unix_file" in /*) ;; *)
+			openlist2_error "Unix socket path must be absolute."; return 1 ;;
+		esac
+		[ ! -e "$listen_unix_file" ] || [ -S "$listen_unix_file" ] ||
+			{ openlist2_error "Unix socket path is occupied by a non-socket file."; return 1; }
+	fi
+	if [ -n "$listen_unix_file_perm" ]; then
+		printf '%s\n' "$listen_unix_file_perm" | grep -Eq '^[0-7]{3,4}$' ||
+			{ openlist2_error "Unix socket permissions must contain 3 or 4 octal digits."; return 1; }
+	fi
+	local ports="" port item first last
+	dest_ports=""
+	append_dest_port "$http_port"
+	append_dest_port "$https_port"
+	[ "$s3" = "1" ] && append_dest_port "$s3_port"
+	[ "$ftp" = "1" ] && append_dest_port "$ftp_port"
+	[ "$sftp" = "1" ] && append_dest_port "$sftp_port"
+	for port in $dest_ports; do
+		case " $ports " in *" $port "*)
+			openlist2_error "Enabled services cannot share TCP port $port."; return 1 ;;
+		esac
+		ports="$ports $port"
+		if [ "$ftp" = "1" ]; then
+			for item in $ftp_pasv_ports; do
+				first="${item%%-*}"; last="${item#*-}"
+				if [ "$port" -ge "$first" ] && [ "$port" -le "$last" ]; then
+					openlist2_error "FTP passive ports must not overlap service port $port."; return 1
+				fi
+			done
+		fi
+	done
+	if [ "$log" = "1" ] && ! [ "$log_max_size" -ge 1 ] 2>/dev/null; then
+		openlist2_error "Log size must be at least 1 MB."
+		return 1
+	fi
+	openlist2_validate_dirs
+}
+
+write_config() (
+	local config_tmp
+	umask 077
+	config_tmp="$(mktemp "$data_dir/.config.json.XXXXXX")" || exit 1
+	trap 'rm -f "$config_tmp"' 0
+	trap 'exit 1' HUP INT TERM
+	json_dump > "$config_tmp" &&
+		jsonfilter -qi "$config_tmp" -e '@' >/dev/null &&
+		chmod 600 "$config_tmp" &&
+		mv -f "$config_tmp" "$data_dir/config.json"
+)
+
+set_firewall_rule() {
+	local section="$1" name="$2" proto="$3" ports="$4"
+	if [ -z "$ports" ]; then
+		if uci -q get "firewall.$section" >/dev/null; then
+			uci -q delete "firewall.$section" || return 1
+			firewall_changed=1
+		fi
+		return 0
+	fi
+	if [ "$(uci -q get "firewall.$section")" = "rule" ] &&
+		[ "$(uci -q get "firewall.$section.name")" = "$name" ] &&
+		[ "$(uci -q get "firewall.$section.src")" = "wan" ] &&
+		[ "$(uci -q get "firewall.$section.target")" = "ACCEPT" ] &&
+		[ "$(uci -q get "firewall.$section.proto")" = "$proto" ] &&
+		[ "$(uci -q get "firewall.$section.dest_port")" = "$ports" ] &&
+		[ "$(uci -q get "firewall.$section.enabled")" = "1" ]; then
+		return 0
+	fi
+	uci -q delete "firewall.$section"
+	uci set "firewall.$section=rule" &&
+		uci set "firewall.$section.name=$name" &&
+		uci set "firewall.$section.target=ACCEPT" &&
+		uci set "firewall.$section.src=wan" &&
+		uci set "firewall.$section.proto=$proto" &&
+		uci set "firewall.$section.dest_port=$ports" &&
+		uci set "firewall.$section.enabled=1" || return 1
+	firewall_changed=1
 }
 
 set_firewall() {
+	local quic_ports="" legacy legacy_ports
+	firewall_changed=0
+	legacy="$(uci -q get 'openlist2.@openlist2[0].legacy_firewall_port')"
+	legacy_ports="$(uci -q get firewall.openlist.dest_port)"
+	# Only retire an old rule when the migrated config and rule fingerprint agree.
+	if [ -n "$legacy" ] &&
+		[ "$(uci -q get firewall.openlist.name)" = "openlist" ] &&
+		[ "$(uci -q get firewall.openlist.src)" = "wan" ] &&
+		[ "$(uci -q get firewall.openlist.target)" = "ACCEPT" ] &&
+		[ "$(uci -q get firewall.openlist.proto)" = "tcp" ]; then
+		case " $legacy_ports " in *" $legacy "*)
+			uci -q delete firewall.openlist || return 1
+			firewall_changed=1 ;;
+		esac
+	fi
+	dest_ports=""
 	if [ "$external_access" = "allow" ]; then
-		dest_ports=""
 		append_dest_port "$http_port"
 		append_dest_port "$https_port"
 		[ "$s3" = "1" ] && append_dest_port "$s3_port"
-		[ "$ftp" = "1" ] && append_dest_port "$ftp_port"
+		if [ "$ftp" = "1" ]; then
+			append_dest_port "$ftp_port"
+			append_dest_port "$ftp_pasv_ports"
+		fi
 		[ "$sftp" = "1" ] && append_dest_port "$sftp_port"
-
-		uci -q delete firewall.openlist
-		uci -q delete firewall.openlist2
-		uci -q delete firewall.openlist2_quic
-		if [ -z "$dest_ports" ]; then
-			uci commit firewall
-			/etc/init.d/firewall reload >/dev/null 2>&1
-			return 0
-		fi
-
-		uci set firewall.openlist2=rule
-		uci set firewall.openlist2.name="openlist2"
-		uci set firewall.openlist2.target="ACCEPT"
-		uci set firewall.openlist2.src="wan"
-		uci set firewall.openlist2.proto="tcp"
-		uci set firewall.openlist2.dest_port="$dest_ports"
-		uci set firewall.openlist2.enabled="1"
-		if [ "$listen_enable_h3" = "1" ] && [ -n "$https_port" ] && [ "$https_port" != "-1" ]; then
-			uci set firewall.openlist2_quic=rule
-			uci set firewall.openlist2_quic.name="openlist2 QUIC"
-			uci set firewall.openlist2_quic.target="ACCEPT"
-			uci set firewall.openlist2_quic.src="wan"
-			uci set firewall.openlist2_quic.proto="udp"
-			uci set firewall.openlist2_quic.dest_port="$https_port"
-			uci set firewall.openlist2_quic.enabled="1"
-		fi
-		uci commit firewall
-		/etc/init.d/firewall reload >/dev/null 2>&1
-	elif [ "$external_access" = "deny" ]; then
-		uci -q delete firewall.openlist
-		uci -q delete firewall.openlist2
-		uci -q delete firewall.openlist2_quic
-		uci commit firewall
-		/etc/init.d/firewall reload >/dev/null 2>&1
+		[ "$listen_enable_h3" = "1" ] && quic_ports="$https_port"
 	fi
+	set_firewall_rule openlist2 openlist2 tcp "$dest_ports" &&
+		set_firewall_rule openlist2_quic "openlist2 QUIC" udp "$quic_ports" || return 1
+	if [ "$firewall_changed" = "1" ] || uci -q changes firewall | grep -Eq '^[-+]?firewall\.openlist'; then
+		uci commit firewall && /etc/init.d/firewall reload || {
+			openlist2_error "Unable to apply OpenList firewall rules."
+			return 1
+		}
+	fi
+	if [ -n "$legacy" ]; then
+		uci -q delete 'openlist2.@openlist2[0].legacy_firewall_port' && uci commit openlist2 || return 1
+	fi
+	return 0
 }
 
 start_service() {
-	config_load openlist2
+	openlist2_migrate_config || return 1
+	config_load openlist2 || return 1
+	section_id=""
+	config_error=0
 	config_foreach get_config openlist2
-
-	# Remove firewall rules when stopping openlist process via uci
-	external_access="deny" set_firewall
-
-	[ "$enabled" -ne 1 ] && return 1
-	mkdir -p "$temp_dir" "$data_dir"
-	[ -n "$listen_http_port" ] || listen_http_port="5244"
-	[ -n "$listen_https_port" ] || listen_https_port="-1"
-	http_port="$listen_http_port"
-	https_port="$listen_https_port"
+	[ -n "$section_id" ] && [ "$config_error" = "0" ] ||
+		{ openlist2_error "Unable to load or save OpenList configuration."; return 1; }
+	if [ "$enabled" != "1" ]; then
+		external_access="deny" set_firewall
+		return $?
+	fi
+	validate_config && openlist2_prepare_dirs || return 1
 	if [ -e /proc/uptime ]; then
 		boot_uptime="$(awk -F. '{print $1}' /proc/uptime)"
 		[ "$boot_uptime" -lt "120" ] || delayed_start=0
@@ -261,11 +363,13 @@ start_service() {
 
 	[ "$allow_wan" -eq "1" ] && external_access="allow" || external_access="deny"
 
-	set_firewall
-
-	log_dir="${log_path%/*}"
-	[ "$log_dir" != "$log_path" ] && mkdir -p "$log_dir"
-	: > "$log_path"
+	if [ "$log" = "1" ]; then
+		openlist2_safe_log_path "$log_path" ||
+			{ openlist2_error "Unsafe log path or non-regular log file."; return 1; }
+		log_dir="${log_path%/*}"
+		mkdir -p "$log_dir" && : >> "$log_path" && chmod 600 "$log_path" ||
+			{ openlist2_error "Unable to open the log file."; return 1; }
+	fi
 
 	last_launched_version=""
 	if command -v jsonfilter >/dev/null 2>&1 && [ -s "$data_dir/config.json" ]; then
@@ -316,8 +420,8 @@ start_service() {
 	json_close_object
 
 	json_add_string "temp_dir" "$temp_dir"
-	json_add_string "bleve_dir" "$data_dir/bleve"
-	json_add_string "dist_dir" ""
+	json_add_string "bleve_dir" "$bleve_dir"
+	json_add_string "dist_dir" "$dist_dir"
 
 	# log
 	json_add_object "log"
@@ -363,7 +467,7 @@ start_service() {
 		json_add_object "upload"
 			json_add_int "workers" "$upload_workers"
 			json_add_int "max_retry" "$upload_max_retry"
-			json_add_boolean "task_persistant" "$upload_task_persistant"
+			json_add_boolean "task_persistant" 0
 		json_close_object
 		json_add_object "copy"
 			json_add_int "workers" "$copy_workers"
@@ -383,7 +487,7 @@ start_service() {
 		json_add_object "decompress_upload"
 			json_add_int "workers" "$decompress_upload_workers"
 			json_add_int "max_retry" "$decompress_upload_max_retry"
-			json_add_boolean "task_persistant" "$decompress_upload_task_persistant"
+			json_add_boolean "task_persistant" 0
 		json_close_object
 		json_add_boolean "allow_retry_canceled" "$allow_retry_canceled"
 	json_close_object
@@ -430,7 +534,8 @@ start_service() {
 	json_add_string "last_launched_version" "$last_launched_version"
 	json_add_string "proxy_address" "$proxy_address"
 
-	json_dump > "$data_dir/config.json"
+	write_config || { openlist2_error "Unable to atomically save config.json; service was not started."; return 1; }
+	set_firewall || return 1
 
 	procd_open_instance openlist2
 	procd_set_param env OPENLIST_ADMIN_PASSWORD=admin
@@ -439,7 +544,8 @@ start_service() {
 	procd_append_param command --data "$data_dir"
 	procd_append_param command --no-prefix
 	[ "$debug" = "1" ] && procd_append_param command --debug
-	[ "$debug" = "1" ] && procd_set_param stderr 1
+	procd_set_param stderr 1
+	[ "$debug" = "1" ] && procd_set_param stdout 1
 	procd_set_param respawn
 	procd_set_param limits core="unlimited"
 	procd_set_param limits nofile="200000 200000"
@@ -453,7 +559,6 @@ service_triggers() {
 reload_service() {
 	stop
 	start
-	return 0
 }
 
 stop_service() {
