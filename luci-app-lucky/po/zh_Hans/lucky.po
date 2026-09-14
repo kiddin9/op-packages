@@ -2,62 +2,252 @@ msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
 msgid "Lucky"
-msgstr "Lucky大吉"
+msgstr "Lucky"
 
-msgid "Lucky Control panel"
-msgstr "Lucky操作台"
+msgid "IPv4/IPv6 port forwarding, DDNS, HTTP/HTTPS reverse proxy, WOL and more."
+msgstr "IPv4/IPv6端口转发, 动态域名服务, HTTP/HTTPS反向代理, 网络唤醒以及更多功能。"
 
-msgid "ipv4/ipv6 portforward,ddns,reverseproxy proxy,wake on lan,IOT and more,Default username and password 666"
-msgstr "IPv4/IPv6端口转发,动态域名服务,http/https反向代理，默认用户名密码666.."
+msgid "Overview"
+msgstr "概览"
 
-msgid "Enable SSL"
-msgstr "开启SSL"
+msgid "Settings"
+msgstr "设置"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Service Control"
+msgstr "服务控制"
+
+msgid "Main Program Information"
+msgstr "主程序信息"
+
+msgid "Admin Panel Information"
+msgstr "管理面板信息"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Basic Settings"
+msgstr "基础设置"
+
+msgid "Running Logs"
+msgstr "运行日志"
+
+msgid "Installation Status"
+msgstr "安装状态"
+
+msgid "Lucky Status"
+msgstr "Lucky 运行状态"
+
+msgid "Lucky Arch"
+msgstr "程序架构"
+
+msgid "Compilation Time"
+msgstr "编译时间"
+
+msgid "Lucky Version"
+msgstr "程序版本"
 
 msgid "Collecting data..."
-msgstr "收集数据..."
+msgstr "正在收集数据..."
 
-msgid "Set the Lucky access port"
-msgstr "设置访问端口"
-
-msgid "Base Setting"
-msgstr "基本设置"
-
-msgid "Safe entrance"
-msgstr "安全入口"
-
-msgid "Port must be between 1 and 65535"
-msgstr "端口范围1-65535之间"
-
-msgid "Open Web Interface"
-msgstr "打开WEB界面"
-
-msgid "RUNNING"
+msgid "Running"
 msgstr "运行中"
 
-msgid "NOT RUNNING"
+msgid "Not running"
 msgstr "未运行"
 
-msgid "Delayed Start (seconds)"
-msgstr "开机延时启动（秒）"
+msgid "Not installed"
+msgstr "未安装"
 
-msgid "Username and password reset successfully to 666"
-msgstr "重置用户名和密码为666"
+msgid "Installed"
+msgstr "已安装"
 
-msgid "SUCCESS:"
-msgstr "执行完成："
+msgid "Start"
+msgstr "启动"
 
-msgid "ResetUser"
-msgstr "重置用户密码"
+msgid "Stop"
+msgstr "停止"
 
-msgid "Reset account and password to initial values"
-msgstr "重置帐号和密码为初始值"
+msgid "Restart"
+msgstr "重启"
 
-msgid "Encrypt access using HTTPS"
-msgstr "使用https加密访问"
+msgid "Processing..."
+msgstr "处理中..."
 
-msgid "Set an installation access path, eg:sirpdboy"
-msgstr "设置一个安装访问路径，如:sirpdboy"
+msgid "Admin Panel"
+msgstr "Lucky 后台管理"
 
-msgid "Lucky Service Not Running"
-msgstr "Lucky服务未启用"
+msgid "Admin Panel Login Info"
+msgstr "管理后台登录信息"
+
+msgid "Lucky Admin Http Port"
+msgstr "Lucky 管理端口"
+
+msgid "Admin Safe URL"
+msgstr "管理安全入口"
+
+msgid "Allow Internet access"
+msgstr "允许外网访问管理界面"
+
+msgid "Service not running, Admin Panel is unavailable"
+msgstr "服务未运行，管理后台不可用"
+
+msgid "DefaultAuth"
+msgstr "默认登录账号密码"
+
+msgid "Reset Account and Password"
+msgstr "重置帐号密码"
+
+msgid "update success"
+msgstr "更新成功"
+
+msgid "update failed"
+msgstr "更新失败"
+
+msgid "Updating configuration..."
+msgstr "正在更新配置..."
+
+msgid "Change"
+msgstr "修改"
+
+msgid "allow"
+msgstr "允许"
+
+msgid "not allow"
+msgstr "禁止"
+
+msgid "Are you sure Enalbe Internetaccess?"
+msgstr "确定要启用外网访问吗？"
+
+msgid "Are you sure Disable Internetaccess?"
+msgstr "确定要禁用外网访问吗？"
+
+msgid "Config dir path"
+msgstr "配置文件夹路径"
+
+msgid "The path to store the config file"
+msgstr "存储 Lucky 配置文件的目录路径"
+
+msgid "get latest version"
+msgstr "获取最新版本"
+
+msgid "portValueError"
+msgstr "端口值无效"
+
+msgid "No log available."
+msgstr "暂无可用日志。"
+
+msgid "Fetching logs..."
+msgstr "正在拉取日志..."
+
+msgid "Executing service action..."
+msgstr "正在执行服务操作..."
+
+msgid "Operation timeout, please refresh the page"
+msgstr "操作超时，请刷新页面"
+
+msgid "Service action executed successfully"
+msgstr "服务操作执行成功"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Service not running"
+msgstr "服务未运行"
+
+msgid "Lucky Overview"
+msgstr "Lucky 概览"
+
+msgid "Monitor and control the Lucky service."
+msgstr "监控并控制 Lucky 服务的运行状态。"
+
+msgid "Loading..."
+msgstr "加载中..."
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Application Information"
+msgstr "应用程序信息"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Architecture"
+msgstr "系统架构"
+
+msgid "Compile Time"
+msgstr "编译时间"
+
+msgid "Updating configuration and restarting service..."
+msgstr "正在更新配置并重启服务..."
+
+msgid "Configuration updated successfully"
+msgstr "配置更新成功"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+msgid "Lucky Settings"
+msgstr "Lucky 设置"
+
+msgid "Configure basic settings for the Lucky service."
+msgstr "配置 Lucky 服务的基础设置。"
+
+msgid "General Settings"
+msgstr "常规设置"
+
+msgid "Config Directory Path"
+msgstr "配置文件路径"
+
+msgid "Admin Panel Settings"
+msgstr "管理面板设置"
+
+msgid "Admin Web Listen Port"
+msgstr "后台管理端口"
+
+msgid "Allow Internet Access"
+msgstr "允许外网访问"
+
+msgid "Reset to Default (666:666)"
+msgstr "恢复默认 (666:666)"
+
+msgid "Are you sure you want to reset the admin account and password to default (666:666)?"
+msgstr "确定要将管理员账号和密码恢复为默认值 (666:666) 吗？"
+
+msgid "Loading logs..."
+msgstr "正在加载日志..."
+
+msgid "Lucky Running Logs"
+msgstr "Lucky 运行日志"
+
+msgid "View the real-time execution logs of the Lucky service."
+msgstr "查看 Lucky 服务的实时执行日志。"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Overview of your Lucky routing service status, real-time statistics, and control settings."
+msgstr "展示 Lucky 服务当前的后台运行状态、系统架构、接口监听端口以及便捷的管理面板快捷登录链接。"
+
+msgid "Configure basic settings for the Lucky high-performance routing service, including master enable switch and administrative ports."
+msgstr "配置 Lucky 高性能分流与网络转发服务的核心基础参数，控制服务总开关、前台管理端口以及底层二进制运行策略。"
+
+msgid "Real-time query of the Lucky running logs to diagnose DDNS updates, port forwarding actions, and routing issues."
+msgstr "实时查看 Lucky 的 system 运行日志，以快速排查动态域名 DDNS 更新状态、端口转发链路以及路由策略异常。"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Running (Unmanaged)"
+msgstr "运行中 (非托管)"
+
 

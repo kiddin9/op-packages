@@ -1,17 +1,14 @@
 # SPDX-License-Identifier: GPL-3.0-only
 #
-# Copyright (C) 2021-2025  sirpdboy  <herboy2008@gmail.com>
-# 
-# This is free software, licensed under the Apache License, Version 2.0 .
-#
-#
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lucky
 PKG_VERSION:=2.27.2
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKGARCH:=all 
+LUCKY_CONF_DIR := /etc/config/lucky.daji
+LUCKY_TMP_BACKUP := /tmp/luckyconfdir
 
 ifeq ($(ARCH),mipsel)
 	LUCKY_ARCH:=mipsle_softfloat
@@ -29,8 +26,8 @@ ifeq ($(ARCH),arm)
 	ifeq ($(BOARD),bcm53xx)
 		LUCKY_ARCH:=armv6
 	else
-	LUCKY_ARCH:=armv7
-endif
+		LUCKY_ARCH:=armv7
+	endif
 endif
 ifeq ($(BOARD),bcm53xx)
 	LUCKY_ARCH:=armv6
@@ -66,15 +63,20 @@ define Package/$(PKG_NAME)/description
   Main functions of Lucky: ipv4/ipv6 portforward,ddns,IOT wake on lan ,reverse proxy and more...
 endef
 
+
+
+
 define Build/Prepare
 	[ ! -f $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz ] && wget https://github.com/gdy666/lucky/releases/download/v$(PKG_VERSION)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -O $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz
-	tar -xzvf $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -C $(PKG_BUILD_DIR) || exit 1
+	tar -xzvf $(PKG_BUILD_DIR)/$(PKG_NAME)_$(PKG_VERSION)_Linux_$(LUCKY_ARCH).tar.gz -C $(PKG_BUILD_DIR)
 endef
+
+
 
 define Package/$(PKG_NAME)/conffiles
 /etc/config/lucky
-/etc/lucky/*
 endef
+
 define Build/Compile
 endef
 
@@ -83,9 +85,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/init.d/
 	$(INSTALL_DIR) $(1)/etc/config/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/lucky $(1)/usr/bin/lucky
-	$(INSTALL_BIN) $(CURDIR)/files/luckyarch.bin $(1)/usr/bin/luckyarch
 	$(INSTALL_BIN) ./files/lucky.init $(1)/etc/init.d/lucky
-	$(INSTALL_CONF) $(CURDIR)/files/lucky.config $(1)/etc/config/lucky
+	$(INSTALL_CONF) $(CURDIR)/files/luckyuci $(1)/etc/config/lucky
 endef
+
+
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
