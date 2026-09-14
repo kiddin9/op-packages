@@ -1,0 +1,37 @@
+{
+	"luci-app-frpc": {
+		"description": "Grant access to frpc RPC methods",
+		"read": {
+			"ubus": {
+				"luci.frpc": [
+					"get_status",
+					"get_runtime_info",
+					"get_log",
+					"get_config"
+				]
+			},
+			"uci": [
+				"frpc"
+			]
+		},
+		"write": {
+			"ubus": {
+				"luci.frpc": [
+					"adopt_process",
+					"validate_config",
+					"set_enabled",
+					"service_action",
+					"save_config"
+				]
+			},
+			"uci": [
+				"frpc"
+			],
+			"file": {
+				"/etc/config/frpc.toml": [ "read", "write" ],
+				"/var/etc/frpc.toml": [ "read" ],
+				"/var/log/frpc.log": [ "read" ]
+			}
+		}
+	}
+}

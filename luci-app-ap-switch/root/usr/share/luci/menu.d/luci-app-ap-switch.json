@@ -1,0 +1,13 @@
+{
+	"admin/services/ap_switch": {
+		"title": "AP Switch",
+		"action": {
+			"type": "view",
+			"path": "ap-switch/ap-switch"
+		},
+		"order": 90,
+		"depends": {
+			"acl": [ "luci-app-ap-switch" ]
+		}
+	}
+}

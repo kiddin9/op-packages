@@ -1,0 +1,11 @@
+
+config ssserver 'main'
+	option enabled '0'
+	option server '0.0.0.0'
+	option server_port '8388'
+	option password 'password'
+	option method 'chacha20-ietf-poly1305'
+	option timeout '300'
+	option mode 'tcp_and_udp'
+	option fast_open '0'
+	option open_firewall '1'

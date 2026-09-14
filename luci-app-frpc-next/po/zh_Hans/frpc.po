@@ -1,0 +1,342 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-frpc\n"
+"PO-Revision-Date: 2026-05-19 12:00+0800\n"
+"Last-Translator: Dante <dante@seckv.com>\n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Transfer-Encoding: 8bit\n"
+
+msgid "Service Status"
+msgstr "服务运行状态"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Adopting process, please wait..."
+msgstr "正在接管进程，请稍候..."
+
+msgid "Kill and Adopt Rogue Process"
+msgstr "杀死并接管孤儿进程"
+
+msgid "Proxy Health"
+msgstr "穿透隧道健康度"
+
+msgid "Configuration View (/var/etc/frpc.toml)"
+msgstr "运行配置查看 (/var/etc/frpc.toml)"
+
+msgid "Overview"
+msgstr "概览"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Running (Unmanaged)"
+msgstr "运行中 (非托管)"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "Type"
+msgstr "类型"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Today Traffic (In/Out)"
+msgstr "今日流量 (入/出)"
+
+msgid "Error Message"
+msgstr "报错信息"
+
+msgid "No data (Service stopped or API not configured)"
+msgstr "暂无数据 (服务未启动或 API 未配置)"
+
+msgid "No proxies configured"
+msgstr "没有配置任何隧道"
+
+msgid "Frp Client"
+msgstr "Frp客户端"
+
+msgid "Open frp Console"
+msgstr "打开 frp 控制台"
+
+msgid "Global Settings"
+msgstr "全局配置"
+
+msgid "Basic Settings"
+msgstr "基本设置"
+
+msgid "Admin API (Required for Hot Reload)"
+msgstr "管理 API (热重载必须)"
+
+msgid "Recommended 0.0.0.0 for LAN access, 127.0.0.1 for local only."
+msgstr "推荐设置 0.0.0.0 以便从 LAN 访问，127.0.0.1 仅限本地访问"
+
+msgid "Log Settings"
+msgstr "日志设置"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgid "Server Port"
+msgstr "服务器端口"
+
+msgid "Default 7000"
+msgstr "默认 7000"
+
+msgid "Token"
+msgstr "令牌"
+
+msgid "Transport Protocol"
+msgstr "传输协议"
+
+msgid "Admin Address"
+msgstr "管理地址"
+
+msgid "Recommended 127.0.0.1"
+msgstr "推荐 127.0.0.1"
+
+msgid "Admin Port"
+msgstr "管理端口"
+
+msgid "Admin User"
+msgstr "管理用户名"
+
+msgid "Admin Password"
+msgstr "管理密码"
+
+msgid "Log File"
+msgstr "日志路径"
+
+msgid "Leave empty to use system log"
+msgstr "留空则输出到系统日志"
+
+msgid "Log Level"
+msgstr "日志级别"
+
+msgid "Max Days"
+msgstr "保留天数"
+
+msgid "Proxies"
+msgstr "穿透列表"
+
+msgid "Local IP"
+msgstr "本地 IP"
+
+msgid "Local Port"
+msgstr "本地端口"
+
+msgid "Remote Port"
+msgstr "远程端口"
+
+msgid "Custom Domains"
+msgstr "自定义域名"
+
+msgid "Use Encryption"
+msgstr "开启加密"
+
+msgid "Use Compression"
+msgstr "开启压缩"
+
+msgid "No logs available..."
+msgstr "暂无日志..."
+
+msgid "Real-time Logs"
+msgstr "实时日志"
+
+msgid "Log Viewer"
+msgstr "日志查看"
+
+msgid "Frp Client Overview"
+msgstr "Frp客户端概览"
+
+msgid "Overview of frpc runtime state, generated config, and proxy count."
+msgstr "展示 frpc 运行状态、生成配置路径与代理数量。"
+
+msgid "Generated Runtime Config"
+msgstr "运行配置"
+
+msgid "Configured Proxies"
+msgstr "代理数量"
+
+msgid "Frp Client Settings"
+msgstr "Frp客户端设置"
+
+msgid "Configuration saved successfully."
+msgstr "配置保存成功。"
+
+msgid "Configuration save failed: "
+msgstr "配置保存失败："
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Verify Configuration"
+msgstr "校验客户端配置"
+
+msgid "Configuration is empty."
+msgstr "配置为空。"
+
+msgid "Configuration is valid."
+msgstr "配置校验通过。"
+
+msgid "Verification failed: "
+msgstr "配置校验失败："
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Frp Client overview of runtime state, generated config, and proxy count."
+msgstr "Frp Client 运行状态概览，包含生成配置路径和代理数量。"
+
+msgid "Single TOML editor with syntax highlight, line numbers and error position hints."
+msgstr "单一 TOML 编辑器，支持语法高亮、行号和错误位置提示。"
+
+msgid "Line"
+msgstr "行"
+
+msgid "Column"
+msgstr "列"
+
+msgid "frpc Version"
+msgstr "frpc 版本"
+
+
+msgid "frpc config verify failed:\n"
+msgstr "frpc 配置校验失败：\n"
+
+msgid "Frp Client Log"
+msgstr "Frp客户端日志"
+
+
+msgid "Service Control"
+msgstr "服务控制"
+
+msgid "Enabled"
+msgstr "启用"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Service enable state updated."
+msgstr "服务启用状态已更新。"
+
+msgid "Failed to update service enable state."
+msgstr "更新服务启用状态失败。"
+
+msgid "Configuration Editor"
+msgstr "配置修改"
+
+msgid "Runtime Details"
+msgstr "运行详情"
+
+msgid "Web API"
+msgstr "Web API"
+
+msgid "Connected Server"
+msgstr "连接服务器"
+
+msgid "Web API Status JSON"
+msgstr "Web API 状态 JSON"
+
+msgid "Proxy Runtime List"
+msgstr "代理运行列表"
+
+msgid "Local"
+msgstr "本地地址"
+
+msgid "Remote"
+msgstr "远程地址"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "No running proxies"
+msgstr "暂无运行中的代理"
+
+msgid "Connect to FRP server"
+msgstr "连接FRP服务端"
+
+msgid "Running proxy list"
+msgstr "运行的代理列表"
+
+msgid "Web Panel"
+msgstr "Web面板"
+
+msgid "Loading logs..."
+msgstr "日志加载中..."
+
+msgid "Showing the last 100 lines of frpc service logs."
+msgstr "显示 frpc 服务最近 100 行日志。"
+
+msgid "Open"
+msgstr "打开"
+
+msgid "Failed to apply service state."
+msgstr "应用服务状态失败。"
+
+msgid "Restarting service, please wait..."
+msgstr "正在重启服务，请稍候..."
+
+msgid "Restart and Take Over"
+msgstr "重启并接管"
+
+msgid "Restart Service"
+msgstr "重启服务"
+
+msgid "Force Restart"
+msgstr "强制重启"
+
+msgid "Force restarting service, please wait..."
+msgstr "正在强制重启服务，请稍候..."
+
+msgid "Hide Preview"
+msgstr "关闭预览"
+
+msgid "Configuration saved and applied successfully."
+msgstr "配置已保存并生效。"
+
+msgid "Configuration saved, but apply failed. Please force restart service."
+msgstr "配置已保存，但生效失败，请强制重启服务。"
+
+msgid "Configuration saved, but service is not running or reload failed. Please force restart service."
+msgstr "配置已保存，但服务未运行或重载失败，请强制重启服务。"
+
+msgid "Overview of the local frpc service state, active process PID, loaded config files, and detailed online proxy information."
+msgstr "展示 frpc 客户端本地服务运行状态、活动进程 PID、当前加载的配置文件以及在线穿透隧道的实时统计与健康度参数。"
+
+msgid "Configure the Frp client parameters. Complete the server link details and local port forwarding rules to build an intranet penetration channel."
+msgstr "配置 Frp 客户端的核心参数。支持一键式服务状态启用控制，并提供具备语法高亮、实时语法校验、行号提示的专业级 TOML 配置文件编辑器。"
+
+msgid "Real-time background system logs of the active frpc process, helping you diagnose server handshake and protocol errors."
+msgstr "实时查询当前活跃 frpc 进程的后台系统日志，方便您快速诊断与 frp 服务端的握手协议及穿透连接异常。"
+
+msgid "Frp Client Title"
+msgstr "Frp 客户端"

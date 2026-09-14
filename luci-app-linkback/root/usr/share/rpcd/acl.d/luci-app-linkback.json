@@ -1,0 +1,19 @@
+{
+	"luci-app-linkback": {
+		"description": "ACL for LinkBack Multi-WAN Failover application",
+		"read": {
+			"uci": [ "linkback", "network" ],
+			"ubus": {
+				"luci.linkback": [ "get_status", "get_log" ],
+				"network.interface": [ "dump" ],
+				"network.device": [ "status" ]
+			}
+		},
+		"write": {
+			"uci": [ "linkback", "network" ],
+			"ubus": {
+				"luci.linkback": [ "manage_service" ]
+			}
+		}
+	}
+}

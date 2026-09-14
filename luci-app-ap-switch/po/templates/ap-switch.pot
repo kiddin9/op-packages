@@ -1,0 +1,116 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "AP Switch"
+msgstr ""
+
+msgid "Switch between Router and Access Point (AP) mode."
+msgstr ""
+
+msgid "Current Status"
+msgstr ""
+
+msgid "Operation Mode"
+msgstr ""
+
+msgid "Access Point (AP)"
+msgstr ""
+
+msgid "Router"
+msgstr ""
+
+msgid "LAN IP Address"
+msgstr ""
+
+msgid "Change Mode"
+msgstr ""
+
+msgid "Switch to %s"
+msgstr ""
+
+msgid "Router Mode"
+msgstr ""
+
+msgid "AP Mode"
+msgstr ""
+
+msgid "Switch to Router Mode"
+msgstr ""
+
+msgid "Switch to AP Mode"
+msgstr ""
+
+msgid "LAN MAC Address"
+msgstr ""
+
+msgid "Switching to AP mode will bridge the WAN port into \"br-lan\". The \"br-lan\" interface will become a DHCP client to your main router."
+msgstr ""
+
+msgid "Pre-fetch AP IP"
+msgstr ""
+
+msgid "Probing for DHCP IP on br-lan..."
+msgstr ""
+
+msgid "Successfully fetched IP: %s"
+msgstr ""
+
+msgid "Failed to fetch IP. Ensure a LAN port is connected to your main router."
+msgstr ""
+
+msgid "Probe IP"
+msgstr ""
+
+msgid "Not probed"
+msgstr ""
+
+msgid "A valid IP was pre-fetched: %s. You can use this address to log in after the switch."
+msgstr ""
+
+msgid "Are you sure you want to proceed?"
+msgstr ""
+
+msgid "WARNING: No IP address was pre-fetched via DHCP probe!"
+msgstr ""
+
+msgid "We strongly recommend connecting your LAN port to the main router and using \"Probe IP\" first."
+msgstr ""
+
+msgid "If you proceed now, you must find the new IP from your main router using MAC: %s"
+msgstr ""
+
+msgid "Do you want to proceed anyway or cancel to plug in the cable and try again?"
+msgstr ""
+
+msgid "Pending..."
+msgstr ""
+
+msgid "Login URL"
+msgstr ""
+
+msgid "N/A"
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Are you sure?"
+msgstr ""
+
+msgid "Switching to Router mode will restore the WAN port and local DHCP server. Your device will use the previous static IP address. Are you sure?"
+msgstr ""
+
+msgid "Applying changes and restarting network..."
+msgstr ""
+
+msgid "The page will redirect or you may need to manually reconnect to the new IP address in a few moments."
+msgstr ""
+
+msgid "Mode switched successfully. Please check your network connection."
+msgstr ""
+
+msgid "Failed to switch mode: %s"
+msgstr ""
+
+msgid "Error calling RPC: %s"
+msgstr ""

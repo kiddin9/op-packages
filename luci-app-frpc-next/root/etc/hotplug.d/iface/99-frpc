@@ -1,0 +1,25 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$INTERFACE" = "loopback" ] && exit 0
+
+# Skip if frpc is not enabled
+[ "$(uci -q get frpc.main.enabled)" = "1" ] || exit 0
+
+# Skip if frpc process is already running
+if pidof /usr/bin/frpc >/dev/null 2>&1 || pidof frpc >/dev/null 2>&1; then
+	exit 0
+fi
+
+LOCK=/tmp/frpc_hotplug.lock
+
+# Debounce: avoid duplicate concurrent starts within 5 seconds
+if [ -f "$LOCK" ]; then
+	ts=$(cat "$LOCK" 2>/dev/null)
+	[ -n "$ts" ] && [ $(( $(date +%s) - ts )) -lt 5 ] && exit 0
+fi
+
+date +%s > "$LOCK"
+
+logger -t frpc-hotplug "${INTERFACE:-$DEVICE} ifup: frpc is enabled but not running, starting service"
+/etc/init.d/frpc start >/dev/null 2>&1 &

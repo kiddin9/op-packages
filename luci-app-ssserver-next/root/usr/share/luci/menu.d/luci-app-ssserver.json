@@ -1,0 +1,33 @@
+{
+	"admin/services/ssserver": {
+		"title": "Shadowsocks Server",
+		"action": {
+			"type": "firstchild"
+		},
+		"order": 50
+	},
+	"admin/services/ssserver/overview": {
+		"title": "Overview",
+		"action": {
+			"type": "view",
+			"path": "ssserver/overview"
+		},
+		"order": 10
+	},
+	"admin/services/ssserver/config": {
+		"title": "Settings",
+		"action": {
+			"type": "view",
+			"path": "ssserver/config"
+		},
+		"order": 20
+	},
+	"admin/services/ssserver/log": {
+		"title": "Log",
+		"action": {
+			"type": "view",
+			"path": "ssserver/log"
+		},
+		"order": 30
+	}
+}

@@ -1,0 +1,104 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=95
+
+CONF_FILE="/var/etc/ssserver.json"
+
+ss_server_generate_json() {
+	local server server_port password method timeout fast_open dns_resolver lan_ip mode
+	config_get server "$1" server "0.0.0.0"
+	config_get server_port "$1" server_port "8388"
+	config_get password "$1" password "password"
+	config_get method "$1" method "chacha20-ietf-poly1305"
+	config_get timeout "$1" timeout "300"
+	config_get mode "$1" mode "tcp_and_udp"
+	config_get_bool fast_open "$1" fast_open 0
+	config_get dns_resolver "$1" dns_resolver
+
+	# If DNS is empty, try to get LAN IP
+	if [ -z "$dns_resolver" ]; then
+		lan_ip=$(ubus call network.interface.lan status | jsonfilter -e '@["ipv4-address"][0].address')
+		dns_resolver="${lan_ip:-8.8.8.8}"
+	fi
+
+	mkdir -p /var/etc
+
+	cat > "$CONF_FILE" <<EOF
+{
+    "server": "$server",
+    "server_port": $server_port,
+    "password": "$password",
+    "method": "$method",
+    "timeout": $timeout,
+    "fast_open": $([ "$fast_open" = "1" ] && echo "true" || echo "false"),
+    "dns": "$dns_resolver",
+    "mode": "$mode"
+}
+EOF
+}
+
+handle_firewall() {
+	local enabled port mode proto
+	config_get_bool enabled "$1" open_firewall 1
+	config_get port "$1" server_port 8388
+	config_get mode "$1" mode "tcp_and_udp"
+
+	case "$mode" in
+		tcp_only) proto="tcp" ;;
+		udp_only) proto="udp" ;;
+		*) proto="tcp udp" ;;
+	esac
+
+	# Remove existing rule if any
+	uci -q delete firewall.ssserver_wan
+	
+	if [ "$enabled" -eq 1 ] && [ "$2" = "start" ]; then
+		uci -q batch <<EOF
+set firewall.ssserver_wan=rule
+set firewall.ssserver_wan.name='Allow-Shadowsocks-WAN'
+set firewall.ssserver_wan.src='wan'
+set firewall.ssserver_wan.dest_port="$port"
+set firewall.ssserver_wan.proto="$proto"
+set firewall.ssserver_wan.target='ACCEPT'
+commit firewall
+EOF
+		/etc/init.d/firewall reload
+	else
+		uci -q commit firewall
+		/etc/init.d/firewall reload
+	fi
+}
+
+start_service() {
+	config_load ssserver
+	local enabled
+	config_get_bool enabled main enabled 0
+
+	[ "$enabled" -eq 0 ] && return
+
+	ss_server_generate_json main
+	handle_firewall main start
+
+	procd_open_instance
+	procd_set_param command /usr/bin/ssserver -c "$CONF_FILE"
+	procd_set_param respawn
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param user root
+	procd_close_instance
+}
+
+stop_service() {
+	config_load ssserver
+	handle_firewall main stop
+}
+
+reload_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger "ssserver"
+}

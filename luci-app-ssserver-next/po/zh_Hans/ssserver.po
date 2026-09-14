@@ -1,0 +1,146 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Shadowsocks Server"
+msgstr "Shadowsocks服务端"
+
+msgid "Overview"
+msgstr "概览"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "A fast and secure tunnel proxy that helps you securely access your local network. This version uses shadowsocks-rust."
+msgstr "一个快速、安全的隧道代理，可以帮助您安全地访问局域网。此版本使用 shadowsocks-rust。"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Server Address"
+msgstr "服务器地址"
+
+msgid "The address the server will bind to. Use 0.0.0.0 for all interfaces."
+msgstr "服务器绑定的地址。使用 0.0.0.0 以监听所有接口。"
+
+msgid "Server Port"
+msgstr "服务器端口"
+
+msgid "The port the server will listen on."
+msgstr "服务器监听的端口。"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Encryption Method"
+msgstr "加密方式"
+
+msgid "ssserver timeout"
+msgstr "超时时间"
+
+msgid "Connection timeout in seconds."
+msgstr "连接超时时间（秒）。"
+
+msgid "Network Mode"
+msgstr "网络模式"
+
+msgid "TCP and UDP"
+msgstr "TCP 和 UDP"
+
+msgid "TCP only"
+msgstr "仅 TCP"
+
+msgid "UDP only"
+msgstr "仅 UDP"
+
+msgid "TCP Fast Open"
+msgstr "TCP 快速打开"
+
+msgid "Enable TCP Fast Open (requires kernel support)."
+msgstr "启用 TCP 快速打开（需要内核支持）。"
+
+msgid "Not supported or disabled in kernel"
+msgstr "内核不支持或已禁用"
+
+msgid "Enabled for client only"
+msgstr "仅对客户端开启"
+
+msgid "Enabled and supported"
+msgstr "已开启并支持"
+
+msgid "DNS Resolver"
+msgstr "DNS 解析服务器"
+
+msgid "DNS server for the shadowsocks server to resolve addresses."
+msgstr "Shadowsocks 服务端用于解析地址的 DNS 服务器。"
+
+msgid "Open Firewall"
+msgstr "自动开放防火墙"
+
+msgid "Automatically open the server port in the firewall (WAN)."
+msgstr "自动在防火墙 (WAN) 中开放服务器端口。"
+
+msgid "Shadowsocks Server Log"
+msgstr "Shadowsocks服务端日志"
+
+msgid "Logs are updated every 5 seconds."
+msgstr "日志每 5 秒更新一次。"
+
+msgid "No log entries found."
+msgstr "未找到日志条目。"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Overview of ssserver running status and actual runtime configurations."
+msgstr "Shadowsocks服务端运行状态及当前运行配置概览。"
+
+msgid "Restarting Shadowsocks Server, please wait..."
+msgstr "正在重启Shadowsocks服务端，请稍候..."
+
+msgid "Service restarted successfully."
+msgstr "服务重启成功。"
+
+msgid "Failed to restart service."
+msgstr "服务重启失败。"
+
+msgid "An error occurred: "
+msgstr "发生错误："
+
+msgid "Runtime Configurations"
+msgstr "运行配置"
+
+msgid "seconds"
+msgstr "秒"
+
+msgid "Loading logs..."
+msgstr "正在加载日志..."
+
+msgid "Shadowsocks Server Title"
+msgstr "Shadowsocks 服务端"

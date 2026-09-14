@@ -1,0 +1,15 @@
+
+config global 'settings'
+	option mode 'router'
+
+config backup 'router_state'
+	option lan_proto 'static'
+	option lan_ipaddr '192.168.1.1'
+	option lan_netmask '255.255.255.0'
+	option lan_gateway ''
+	list lan_dns ''
+	option dhcp_ignore '0'
+	option wan_device ''
+	option wan_disabled '0'
+	option wan6_disabled '0'
+

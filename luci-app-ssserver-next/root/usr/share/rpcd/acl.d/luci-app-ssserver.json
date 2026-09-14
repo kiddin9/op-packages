@@ -1,0 +1,17 @@
+{
+	"luci-app-ssserver": {
+		"description": "Grant access to ssserver configuration and status",
+		"read": {
+			"ubus": {
+				"luci.ssserver": [ "get_log", "get_ciphers", "get_tfo_status", "get_lan_ip", "get_status" ]
+			},
+			"uci": [ "ssserver", "firewall" ]
+		},
+		"write": {
+			"ubus": {
+				"luci.ssserver": [ "service_action" ]
+			},
+			"uci": [ "ssserver", "firewall" ]
+		}
+	}
+}

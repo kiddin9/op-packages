@@ -1,0 +1,169 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "AP Switch"
+msgstr "AP模式切换"
+
+msgid "Switch between Router and Access Point (AP) mode."
+msgstr "在路由器模式和访问点 (AP) 模式之间切换。"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Operation Mode"
+msgstr "运行模式"
+
+msgid "Access Point (AP)"
+msgstr "访问点 (AP)"
+
+msgid "Router"
+msgstr "路由器"
+
+msgid "LAN IP Address"
+msgstr "LAN IP 地址"
+
+msgid "Change Mode"
+msgstr "更改模式"
+
+msgid "Switch to %s"
+msgstr "切换到 %s"
+
+msgid "Router Mode"
+msgstr "路由器模式"
+
+msgid "AP Mode"
+msgstr "AP 模式"
+
+msgid "Switch to Router Mode"
+msgstr "切换到路由器模式"
+
+msgid "Switch to AP Mode"
+msgstr "切换到 AP 模式"
+
+msgid "LAN MAC Address"
+msgstr "LAN MAC 地址"
+
+msgid "Switching to AP mode will bridge the WAN port into \"br-lan\". The \"br-lan\" interface will become a DHCP client to your main router."
+msgstr "切换到 AP 模式会将 WAN 口桥接到 \"br-lan\"。\"br-lan\" 接口将成为主路由器的 DHCP 客户端。"
+
+msgid "Pre-fetch AP IP"
+msgstr "预获取 AP IP"
+
+msgid "Probing for DHCP IP on br-lan..."
+msgstr "正在 br-lan 接口探测 DHCP IP..."
+
+msgid "Successfully fetched IP: %s"
+msgstr "成功获取到 IP：%s"
+
+msgid "Failed to fetch IP. Ensure a LAN port is connected to your main router."
+msgstr "获取 IP 失败。请确保 LAN 口已连接到主路由器。"
+
+msgid "Probe IP"
+msgstr "开始探测"
+
+msgid "Not probed"
+msgstr "未探测"
+
+msgid "A valid IP was pre-fetched: %s. You can use this address to log in after the switch."
+msgstr "已预获取到有效的 IP：%s。切换后，您可以使用此地址登录。"
+
+msgid "Are you sure you want to proceed?"
+msgstr "确定要继续吗？"
+
+msgid "WARNING: No IP address was pre-fetched via DHCP probe!"
+msgstr "警告：未通过 DHCP 探测预获取到 IP 地址！"
+
+msgid "We strongly recommend connecting your LAN port to the main router and using \"Probe IP\" first."
+msgstr "强烈建议先将 LAN 口连接到主路由器，并使用“预获取 AP IP”功能。"
+
+msgid "If you proceed now, you must find the new IP from your main router using MAC: %s"
+msgstr "如果您现在继续，切换后必须通过 MAC 地址在主路由中查找新 IP：%s"
+
+msgid "Do you want to proceed anyway or cancel to plug in the cable and try again?"
+msgstr "您是坚持继续，还是取消操作并在插上网线后重新尝试？"
+
+msgid "Pending..."
+msgstr "等待中..."
+
+msgid "Login URL"
+msgstr "登录地址"
+
+msgid "N/A"
+msgstr "不适用"
+
+msgid "None"
+msgstr "无"
+
+msgid "Are you sure?"
+msgstr "确定要继续吗？"
+
+msgid "Switching to Router mode will restore the WAN port and local DHCP server. Your device will use the previous static IP address. Are you sure?"
+msgstr "切换到路由器模式将恢复 WAN 口和本地 DHCP 服务。您的设备将使用之前的静态 IP 地址。确定要继续吗？"
+
+msgid "Applying changes and restarting network..."
+msgstr "正在应用更改并重启网络..."
+
+msgid "The page will redirect or you may need to manually reconnect to the new IP address in a few moments."
+msgstr "页面将会重定向，或者您可能需要在片刻后手动连接到新的 IP 地址。"
+
+msgid "Mode switched successfully. Please check your network connection."
+msgstr "模式切换成功。请检查您的网络连接。"
+
+msgid "Failed to switch mode: %s"
+msgstr "切换模式失败：%s"
+
+msgid "Error calling RPC: %s"
+msgstr "调用 RPC 错误：%s"
+
+msgid "Switch Mode"
+msgstr "模式切换"
+
+msgid "Switch your system runtime configuration smoothly between standard Router and Access Point (AP) modes. Network interfaces and bridge rules will be adjusted automatically."
+msgstr "在标准路由器模式与 AP 桥接访问点模式之间平滑切换系统运行配置。切换后，网口物理桥接规则以及接口 DHCP 客户端行为将自动智能调整。"
+
+msgid "AP Switch Title"
+msgstr "AP 模式切换"
+
+msgid "Auto-probing for future AP IP via DHCP on br-lan..."
+msgstr "正在通过 br-lan 接口的 DHCP 自动探测未来的 AP 管理 IP 地址..."
+
+msgid "This ensures you can find your way back to the management panel after the switch."
+msgstr "这可以确保您在切换模式后，能够顺利找到并登录新的设备管理后台。"
+
+msgid "Successfully pre-fetched future management IP: "
+msgstr "成功预先获取到未来的管理 IP："
+
+msgid "You can use this URL to access this dashboard after the switch."
+msgstr "您可以使用此 URL 地址在切换后访问本控制台。"
+
+msgid "Are you sure you want to switch to AP mode and restart network?"
+msgstr "您确定要切换到 AP 模式并重启网络吗？"
+
+msgid "WARNING: Failed to pre-fetch IP address via DHCP probe!"
+msgstr "警告：通过 DHCP 探测预获取 IP 地址失败！"
+
+msgid "This may be because your LAN port is not connected to the main router."
+msgstr "这可能是由于您设备的 LAN 物理端口尚未连接到上层主路由器。"
+
+msgid "If you proceed, you must find the new IP from your main router client list using MAC: %s"
+msgstr "如果您继续，切换后必须通过 MAC 地址在上级主路由的客户端列表中查找新 IP：%s"
+
+msgid "Do you still want to force the switch anyway?"
+msgstr "您是否仍要强制执行切换？"
+
+msgid "WARNING: DHCP probe RPC error: %s"
+msgstr "警告：DHCP 探测 RPC 请求发生错误：%s"
+
+msgid "Confirm AP Mode Switch"
+msgstr "确认切换至 AP 模式"
+
+msgid "Confirm Router Mode Switch"
+msgstr "确认切换至路由器模式"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Confirm"
+msgstr "确认"
+
+

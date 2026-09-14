@@ -1,0 +1,19 @@
+{
+	"luci-app-ap-switch": {
+		"description": "ACL for AP Switch",
+		"read": {
+			"uci": [ "ap-switch", "network", "dhcp" ],
+			"ubus": {
+				"luci.ap-switch": [ "get_status", "probe_ip" ],
+				"network.interface": [ "dump" ],
+				"network.device": [ "status" ]
+			}
+		},
+		"write": {
+			"uci": [ "ap-switch", "network", "dhcp" ],
+			"ubus": {
+				"luci.ap-switch": [ "set_mode" ]
+			}
+		}
+	}
+}

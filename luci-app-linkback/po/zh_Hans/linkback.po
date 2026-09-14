@@ -1,0 +1,322 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "LinkBack 链路守护"
+msgstr "网关切换"
+
+msgid "Overview"
+msgstr "概览"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Real-time health state, priority mapping, and service control for Multi-WAN default routing metrics."
+msgstr "用于 Multi-WAN 默认路由 Metric 的实时健康状态、优先级映射及服务控制。"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Service Control"
+msgstr "服务控制"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Link Status"
+msgstr "链路状态"
+
+msgid "Loading real-time link status..."
+msgstr "正在加载实时链路状态..."
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "LinkBack daemon is not running or no links are configured. Please check Settings page."
+msgstr "网关切换守护进程未运行或未配置任何链路。请检查设置页面。"
+
+msgid "主选链路 / Active"
+msgstr "主选网关 / 活跃中"
+
+msgid "次选链路 / Standby"
+msgstr "备选网关 / 待命"
+
+msgid "备选链路 / Faulted"
+msgstr "故障网关 / 已断开"
+
+msgid "Priority"
+msgstr "优先级"
+
+msgid "Metric"
+msgstr "路由跃点 (Metric)"
+
+msgid "Gateway"
+msgstr "网关地址"
+
+msgid "Score"
+msgstr "得分"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Executing service action: %s ..."
+msgstr "正在执行服务操作: %s ..."
+
+msgid "Service action completed successfully."
+msgstr "服务操作执行成功。"
+
+msgid "Failed to execute service action."
+msgstr "服务操作执行失败。"
+
+msgid "RPC error: %s"
+msgstr "RPC 错误: %s"
+
+msgid "Configure Multi-WAN failover service, health check parameters, and monitored link interfaces."
+msgstr "配置多 WAN 故障切换服务、健康度检查参数及被监控的网关接口。"
+
+msgid "Global Settings"
+msgstr "全局设置"
+
+msgid "Enable Service"
+msgstr "启用服务"
+
+msgid "Master switch to enable or disable the LinkBack failover daemon."
+msgstr "启用或禁用网关切换服务的全局总开关。"
+
+msgid "Check Interval (s)"
+msgstr "检测间隔 (秒)"
+
+msgid "Time in seconds between each health check cycle."
+msgstr "每个健康度检测周期之间的时间间隔。"
+
+msgid "Check Timeout (s)"
+msgstr "检测超时 (秒)"
+
+msgid "Maximum wait time in seconds for each individual check probe."
+msgstr "每个检测探针的最大等待超时时间。"
+
+msgid "Recovery Delay"
+msgstr "恢复判定延迟"
+
+msgid "Number of consecutive successful checks required before marking a faulted link as healthy again (failback anti-flap)."
+msgstr "故障网关恢复健康所需连续检测成功的次数 (防抖动回切)。"
+
+msgid "Failover Delay"
+msgstr "故障判定延迟"
+
+msgid "Number of consecutive failed checks required before marking a healthy link as faulted (failover anti-flap)."
+msgstr "健康网关判定为故障所需连续检测失败的次数 (防抖动切换)。"
+
+msgid "Monitored WAN Interfaces"
+msgstr "监控网关接口"
+
+msgid "Add and prioritize your WAN interfaces. Lower priority number means higher preference (e.g., 1 = primary, 2 = backup)."
+msgstr "添加并配置您的广域网网关接口优先级。数值越小代表优先级越高 (例如：1 = 主网关，2 = 备用网关)。"
+
+msgid "Interface"
+msgstr "网络接口"
+
+msgid "Select a logical WAN interface from Network settings."
+msgstr "从系统网络配置中选择一个逻辑 WAN 接口。"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Base Metric"
+msgstr "默认跃点"
+
+msgid "Default route metric when this link is healthy (e.g., wan=10, wan2=20)."
+msgstr "当该接口健康时应用的默认路由 Metric 跃点数值 (例如：wan=10, wan2=20)。"
+
+msgid "Ping Targets"
+msgstr "Ping 检测目标"
+
+msgid "Space-separated list of IPs to ping (e.g., 223.5.5.5 8.8.8.8)."
+msgstr "通过空格分隔的 Ping 目标 IP 地址列表 (例如：223.5.5.5 8.8.8.8)。"
+
+msgid "Ping Weight"
+msgstr "Ping 权重"
+
+msgid "DNS Server"
+msgstr "DNS 服务器"
+
+msgid "DNS server IP for UDP query probe (e.g., 119.29.29.29)."
+msgstr "用于 UDP 解析探测的 DNS 服务器 IP (例如：119.29.29.29)。"
+
+msgid "DNS Domain"
+msgstr "DNS 解析域名"
+
+msgid "Domain name to resolve for DNS probe (e.g., www.baidu.com)."
+msgstr "用于 DNS 探针解析的测试目标域名 (例如：www.baidu.com)。"
+
+msgid "DNS Weight"
+msgstr "DNS 权重"
+
+msgid "TCP Target"
+msgstr "TCP 检测目标"
+
+msgid "Target IP for TCP handshake probe."
+msgstr "用于 TCP 三次握手探测的目标主机 IP 地址。"
+
+msgid "TCP Port"
+msgstr "TCP 检测端口"
+
+msgid "Target port for TCP handshake probe."
+msgstr "用于 TCP 探测的测试目标端口号。"
+
+msgid "TCP Weight"
+msgstr "TCP 权重"
+
+msgid "Health Threshold"
+msgstr "健康门槛"
+
+msgid "Combined weight score required to mark this link healthy (e.g., if threshold is 2, any 2 successful checks suffice)."
+msgstr "判定该接口健康所需的各指标合并通过总分值 (例如：门槛为 2，任意两项检测成功即可)。"
+
+msgid "Loading logs..."
+msgstr "正在加载运行日志..."
+
+msgid "Real-time routing adjustments and health check state transitions from the linkbackd daemon."
+msgstr "来自后台 linkbackd 守护程序的实时路由调整和网关健康状态转换详情。"
+
+msgid "System Logs"
+msgstr "系统日志"
+
+msgid "No logs available."
+msgstr "暂无可用运行日志。"
+
+msgid "Enable Ping Probe"
+msgstr "启用 Ping 检测"
+
+msgid "Enable DNS Probe"
+msgstr "启用 DNS 检测"
+
+msgid "Enable TCP Probe"
+msgstr "启用 TCP 检测"
+
+msgid "Select a logical WAN interface."
+msgstr "选择逻辑 WAN 接口。"
+
+msgid "Routing priority (lower = higher preference)."
+msgstr "路由优先级（数值越小优先级越高）。"
+
+msgid "Default route metric when healthy."
+msgstr "接口健康时的默认路由跃点 (Metric) 数值。"
+
+msgid "Combined weight score required to mark this link healthy."
+msgstr "判定该接口健康所需的各检测指标成功权重分之和。"
+
+msgid "Collecting..."
+msgstr "正在收集数据..."
+
+msgid "Running State"
+msgstr "运行状态"
+
+msgid "Check Type"
+msgstr "检测类型"
+
+msgid "Time in seconds between each health check cycle for this link."
+msgstr "该链路每次健康度检测周期之间的时间间隔 (秒)。"
+
+msgid "Maximum wait time in seconds for each individual check probe for this link."
+msgstr "该链路每个检测探针的最大等待超时时间 (秒)。"
+
+msgid "Number of consecutive successful checks required before marking this link as healthy (failback anti-flap)."
+msgstr "判定该链路恢复健康所需连续检测成功的次数 (防抖动回切)。"
+
+msgid "Number of consecutive failed checks required before marking this link as faulted (failover anti-flap)."
+msgstr "判定该链路发生故障所需连续检测失败的次数 (防抖动切换)。"
+
+msgid "Add Monitored Interface"
+msgstr "添加监控接口"
+
+msgid "Edit Monitored Interface"
+msgstr "编辑监控接口"
+
+msgid "Cannot enable service: No monitored WAN interfaces are configured."
+msgstr "无法启用服务: 未配置任何监控的 WAN 接口。"
+
+msgid "Cannot enable service: At least one interface must have a configured check type (Ping, DNS, or TCP)."
+msgstr "无法启用服务: 至少需要为一个接口配置有效的检测类型 (Ping、DNS 或 TCP)。"
+
+msgid "-- Not Configured --"
+msgstr "-- 未配置 --"
+
+msgid "Cannot enable service: At least 2 monitored WAN interfaces must be configured for failover switcher."
+msgstr "无法启用服务: 链路备份切换至少需要配置 2 个监控的 WAN 接口。"
+
+msgid "Cannot enable service: Interface \"%s\" has no health check configured."
+msgstr "无法启用服务: 接口「%s」未配置健康检测策略。"
+
+msgid "Cannot enable service: Interfaces \"%s\" and \"%s\" have the same priority %s."
+msgstr "无法启用服务: 接口「%s」和「%s」的路由优先级均为 %s，不允许重复。"
+
+msgid "Service has been auto-disabled because the configuration is no longer valid: "
+msgstr "由于配置不再合法，服务已被自动禁用: "
+
+msgid "Ping Probe"
+msgstr "Ping 探测"
+
+msgid "DNS Probe"
+msgstr "DNS 探测"
+
+msgid "TCP Probe"
+msgstr "TCP 探测"
+
+msgid "%s (configured)"
+msgstr "%s (已配置)"
+
+msgid "This interface has already been configured."
+msgstr "该接口已被配置，请选择其他接口。"
+
+msgid "Priority must not be empty."
+msgstr "优先级不能为空。"
+
+msgid "Priority %s conflicts with interface \"%s\". Priorities must be unique."
+msgstr "优先级 %s 与接口 \"%s\" 冲突。优先级必须是唯一的。"
+
+msgid "Metric must not be empty."
+msgstr "默认跃点不能为空。"
+
+msgid "Metric %s conflicts with interface \"%s\". Metrics must be unique."
+msgstr "跃点数 %s 与接口 \"%s\" 冲突。跃点数必须是唯一的。"
+
+msgid "Link Name"
+msgstr "链路名称"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Routing Attributes"
+msgstr "路由属性"
+
+msgid "Latency Details"
+msgstr "时延详情"
+
+msgid "Active"
+msgstr "活跃"
+
+msgid "Standby"
+msgstr "备选"
+
+msgid "Faulted"
+msgstr "故障"
+
+msgid "Comma-separated list of IPs to ping (e.g., 223.5.5.5,8.8.8.8)."
+msgstr "通过逗号分隔的 Ping 目标 IP 地址列表 (例如：223.5.5.5,8.8.8.8)。"
+
+

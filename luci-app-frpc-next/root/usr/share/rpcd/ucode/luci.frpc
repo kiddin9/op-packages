@@ -1,0 +1,283 @@
+'use strict';
+
+import { connect } from 'ubus';
+import * as fs from 'fs';
+
+const PROCD_SERVICE_NAME = 'frpc';
+const CONFIG_FILE = '/etc/config/frpc.toml';
+const RUNTIME_CONFIG_FILE = '/etc/config/frpc.toml';
+
+function get_procd_status() {
+	let u = connect();
+	if (!u)
+		return { running: false };
+
+	let res = u.call('service', 'list', { name: PROCD_SERVICE_NAME });
+	if (res && res[PROCD_SERVICE_NAME] && res[PROCD_SERVICE_NAME].instances) {
+		let inst = res[PROCD_SERVICE_NAME].instances.instance1;
+		if (inst && inst.running)
+			return { running: true, pid: inst.pid };
+	}
+
+	return { running: false };
+}
+
+function get_rogue_pid(managed_pid) {
+	let p = fs.popen('pgrep -x frpc', 'r');
+	if (!p)
+		return null;
+
+	let pid_str = p.read('all');
+	p.close();
+
+	if (!pid_str)
+		return null;
+
+	let pids = pid_str.trim().split('\n');
+	for (let i = 0; i < length(pids); i++) {
+		let pid = pids[i];
+		if (pid != '' && (managed_pid == null || pid != (managed_pid + '')))
+			return pid;
+	}
+
+	return null;
+}
+
+function count_proxies(config) {
+	if (!config)
+		return 0;
+
+	let parts = split(config, '[[proxies]]');
+	return (parts && length(parts) > 0) ? (length(parts) - 1) : 0;
+}
+
+function verify_config(config) {
+	fs.writefile('/tmp/frpc_test.toml', config || '');
+	let p = fs.popen("/usr/bin/frpc verify -c /tmp/frpc_test.toml 2>&1", 'r');
+	if (!p) {
+		fs.unlink('/tmp/frpc_test.toml');
+		return { success: false, error: 'failed to validate config' };
+	}
+
+	let output = p.read('all') || '';
+	let code = p.close();
+	fs.unlink('/tmp/frpc_test.toml');
+
+	if (code !== 0)
+		return { success: false, error: output || 'verify failed' };
+
+	return { success: true };
+}
+
+function get_frpc_version() {
+	system("/bin/sh -c '/usr/bin/frpc --version >/tmp/frpc_version.out 2>&1 || /usr/bin/frpc -v >/tmp/frpc_version.out 2>&1'");
+	let out = fs.readfile('/tmp/frpc_version.out') || '';
+	fs.unlink('/tmp/frpc_version.out');
+
+	if (!out)
+		return '';
+
+	let line = split(out, '\n')[0] || '';
+	if (!line)
+		return '';
+	line = replace(line, /^[ \t\r\n]+/, '');
+	line = replace(line, /[ \t\r\n]+$/, '');
+	return line;
+}
+
+function get_enabled() {
+	let p = fs.popen("/bin/sh -c \"uci -q get frpc.main.enabled 2>/dev/null || echo 0\"", 'r');
+	if (!p)
+		return 0;
+	let out = p.read('all') || '0';
+	p.close();
+	out = replace(out, /^[ \t\r\n]+/, '');
+	out = replace(out, /[ \t\r\n]+$/, '');
+	return (out === '1') ? 1 : 0;
+}
+
+function toml_get(key, defv) {
+	let p = fs.popen("/bin/sh -c \"grep -F '" + key + "' " + CONFIG_FILE + " 2>/dev/null | head -n1 | cut -d= -f2-\"", 'r');
+	if (!p)
+		return defv;
+
+	let out = p.read('all') || '';
+	p.close();
+	out = replace(out, /^[ \t\r\n]+/, '');
+	out = replace(out, /[ \t\r\n]+$/, '');
+	out = replace(out, /^\"/, '');
+	out = replace(out, /\"$/, '');
+	return out ? out : defv;
+}
+
+function get_runtime_info() {
+	let status = get_procd_status();
+	if (!status.running)
+		return { running: false };
+
+	let addr = toml_get('webServer.addr', '127.0.0.1');
+	let port = toml_get('webServer.port', '7400');
+	let user = toml_get('webServer.user', '');
+	let pass = toml_get('webServer.password', '');
+	let auth = (user && pass) ? ("-u '" + user + ":" + pass + "' ") : '';
+
+	system("/bin/sh -c \"curl -s " + auth + "http://" + addr + ":" + port + "/api/status >/tmp/frpc_web_status.json 2>/tmp/frpc_web_err\"");
+	system("/bin/sh -c \"curl -s " + auth + "http://" + addr + ":" + port + "/api/config >/tmp/frpc_web_config.txt 2>>/tmp/frpc_web_err\"");
+
+	let raw_status = fs.readfile('/tmp/frpc_web_status.json') || '';
+	let raw_config = fs.readfile('/tmp/frpc_web_config.txt') || '';
+	let raw_err = fs.readfile('/tmp/frpc_web_err') || '';
+	fs.unlink('/tmp/frpc_web_status.json');
+	fs.unlink('/tmp/frpc_web_config.txt');
+	fs.unlink('/tmp/frpc_web_err');
+
+	let status_obj = {};
+	if (raw_status) {
+		try { status_obj = json(raw_status); } catch (e) {}
+	}
+
+	let server_addr = '';
+	let server_port = '';
+	if (raw_config) {
+		let m1 = match(raw_config, /serverAddr[ \t]*=[ \t]*\"([^\"]+)\"/);
+		let m2 = match(raw_config, /serverPort[ \t]*=[ \t]*([0-9]+)/);
+		if (m1 && length(m1) > 1) server_addr = m1[1];
+		if (m2 && length(m2) > 1) server_port = m2[1];
+	}
+
+	let lan_ip = '';
+	let u = connect();
+	if (u) {
+		let lan_st = u.call('network.interface.lan', 'status', {});
+		if (lan_st && lan_st['ipv4-address'] && length(lan_st['ipv4-address']) > 0)
+			lan_ip = lan_st['ipv4-address'][0].address || '';
+	}
+
+	let web_host = addr;
+	if (addr == '0.0.0.0' || addr == '127.0.0.1' || addr == '::')
+		web_host = lan_ip || '127.0.0.1';
+	let web_url = 'http://' + web_host + ':' + port;
+
+	return {
+		running: true,
+		web_addr: addr,
+		web_port: int(port),
+		web_url: web_url,
+		server_addr: server_addr,
+		server_port: server_port ? int(server_port) : 0,
+		raw_status: raw_status,
+		status: status_obj,
+		error: raw_err
+	};
+}
+
+const methods = {
+	get_status: {
+		call: function() {
+			let procd_st = get_procd_status();
+			let rogue_pid = get_rogue_pid(procd_st.pid);
+
+			let state = 'stopped';
+			if (procd_st.running)
+				state = 'managed';
+			else if (rogue_pid)
+				state = 'unmanaged';
+
+			let config = fs.readfile(CONFIG_FILE) || '';
+
+			return {
+				state: state,
+				pid: procd_st.pid || rogue_pid,
+				config_exists: !!fs.stat(CONFIG_FILE),
+				runtime_config: RUNTIME_CONFIG_FILE,
+				proxy_count: count_proxies(config),
+				version: get_frpc_version(),
+				enabled: get_enabled()
+			};
+		}
+	},
+
+	adopt_process: {
+		call: function() {
+			fs.popen('killall -9 frpc', 'r').close();
+			let rc = system('/etc/init.d/frpc start >/dev/null 2>&1');
+			return { success: (rc === 0) };
+		}
+	},
+
+	get_log: {
+		call: function() {
+			let p = fs.popen('logread -e frpc | tail -n 100', 'r');
+			if (!p)
+				return { log: '' };
+			let log = p.read('all');
+			p.close();
+			return { log: log || '' };
+		}
+	},
+
+	get_runtime_info: {
+		call: function() {
+			return get_runtime_info();
+		}
+	},
+
+	get_config: {
+		call: function() {
+			if (!fs.stat(CONFIG_FILE))
+				return { config: '' };
+			return { config: fs.readfile(CONFIG_FILE) || '' };
+		}
+	},
+
+	validate_config: {
+		args: { config: '' },
+		call: function(req) {
+			let config = req.args?.config ?? '';
+			return verify_config(config);
+		}
+	},
+
+	set_enabled: {
+		args: { enabled: 0 },
+		call: function(req) {
+			let enabled = (int(req.args?.enabled ?? 0) === 1) ? '1' : '0';
+			let cmd = "/bin/sh -c \"uci -q set frpc.main.enabled=" + enabled + " && uci -q commit frpc\"";
+			let rc = system(cmd);
+			return { success: (rc === 0), enabled: int(enabled) };
+		}
+	},
+
+	service_action: {
+		args: { action: '' },
+		call: function(req) {
+			let action = req.args?.action ?? '';
+			if (action != 'start' && action != 'stop' && action != 'restart' && action != 'reload')
+				return { success: false, error: 'invalid action' };
+			let rc = system('/etc/init.d/frpc ' + action + ' >/dev/null 2>&1');
+			return { success: (rc === 0), applied: (rc === 0) };
+		}
+	},
+
+	save_config: {
+		args: { config: '' },
+		call: function(req) {
+			let config = req.args?.config ?? '';
+			let vr = verify_config(config);
+			if (!vr.success)
+				return vr;
+
+			if (!fs.writefile(CONFIG_FILE, config))
+				return { success: false, error: 'unable to write config file (/etc/config/frpc.toml)' };
+
+			let rc = system('/etc/init.d/frpc reload >/dev/null 2>&1');
+			return {
+				success: true,
+				saved: true,
+				applied: (rc === 0)
+			};
+		}
+	}
+};
+
+return { 'luci.frpc': methods };

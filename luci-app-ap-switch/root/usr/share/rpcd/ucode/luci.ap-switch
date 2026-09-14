@@ -1,0 +1,226 @@
+'use strict';
+
+import { cursor } from 'uci';
+import { connect } from 'ubus';
+import { readfile, unlink } from 'fs';
+
+const UCI_CONFIG = 'ap-switch';
+const PROBE_FILE = '/tmp/ap_switch_probed_ip';
+
+const methods = {
+	get_status: {
+		call: function() {
+			let uci_cursor = cursor();
+			let mode = uci_cursor.get(UCI_CONFIG, 'settings', 'mode') || 'router';
+			
+			let lan_proto = uci_cursor.get('network', 'lan', 'proto') || 'static';
+			let lan_ip = ''; // We will get the real-time IP
+
+			let ubus_conn = connect();
+			let lan_mac = '';
+			let wan_mac = '';
+			let wan_ip = '';
+
+			if (ubus_conn) {
+				// 1. Get real-time LAN IP and MAC
+				let lan_status = ubus_conn.call('network.interface.lan', 'status');
+				if (lan_status && type(lan_status['ipv4-address']) === 'array' && length(lan_status['ipv4-address']) > 0) {
+					lan_ip = lan_status['ipv4-address'][0].address;
+				}
+				
+				let lan_dev = ubus_conn.call('network.device', 'status', { name: 'br-lan' });
+				lan_mac = lan_dev?.macaddr || '';
+
+				// 2. Get current WAN interface status and its physical device MAC
+				let wan_status = ubus_conn.call('network.interface.wan', 'status');
+				let wan_device_name = wan_status?.device || '';
+				if (wan_device_name) {
+					let wan_dev = ubus_conn.call('network.device', 'status', { name: wan_device_name });
+					wan_mac = wan_dev?.macaddr || '';
+				}
+
+				// 3. Get current WAN IP
+				if (wan_status && type(wan_status['ipv4-address']) === 'array' && length(wan_status['ipv4-address']) > 0) {
+					wan_ip = wan_status['ipv4-address'][0].address;
+				}
+				ubus_conn.disconnect();
+			}
+			
+			let probed_ip = rtrim(readfile(PROBE_FILE) || '');
+			
+			return {
+				mode: mode,
+				lan_proto: lan_proto,
+				lan_ip: lan_ip,
+				lan_mac: lan_mac,
+				wan_mac: wan_mac,
+				wan_ip: wan_ip,
+				probed_ip: probed_ip
+			};
+		}
+	},
+
+	probe_ip: {
+		call: function() {
+			unlink(PROBE_FILE);
+			// Run udhcpc on br-lan with a short timeout and our probe script
+			// -n: exit if no lease
+			// -q: quit after obtaining lease
+			// -t 3: send 3 discover packets
+			// -T 2: pause 2 seconds between packets
+			let rc = system('udhcpc -i br-lan -n -q -t 3 -T 2 -s /usr/share/luci-app-ap-switch/dhcp-probe.sh >/dev/null 2>&1');
+			
+			let ip = rtrim(readfile(PROBE_FILE) || '');
+			return { success: (rc === 0), ip: ip };
+		}
+	},
+
+	set_mode: {
+		args: { mode: 'string' },
+		call: function(request) {
+			let target_mode = request.args?.mode;
+			if (target_mode !== 'router' && target_mode !== 'ap') {
+				return { error: 'Invalid mode' };
+			}
+
+			let uci_cursor = cursor();
+			let current_mode = uci_cursor.get(UCI_CONFIG, 'settings', 'mode') || 'router';
+
+			if (target_mode === current_mode) {
+				return { result: 'Already in target mode' };
+			}
+
+			if (target_mode === 'ap') {
+				// --- Switch to AP Mode (Full Lossless Snapshot) ---
+				
+				// 1. Identify WAN device
+				let wan_device = uci_cursor.get('network', 'wan', 'device');
+				if (!wan_device) {
+					wan_device = uci_cursor.get('network', 'wan', 'ifname');
+				}
+
+				// 2. Full Snapshot Backup of Router Mode state
+				let lan_proto = uci_cursor.get('network', 'lan', 'proto') || 'static';
+				let lan_ipaddr = uci_cursor.get('network', 'lan', 'ipaddr') || '';
+				let lan_netmask = uci_cursor.get('network', 'lan', 'netmask') || '';
+				let lan_gateway = uci_cursor.get('network', 'lan', 'gateway') || '';
+				let lan_dns = uci_cursor.get('network', 'lan', 'dns') || [];
+				let dhcp_ignore = uci_cursor.get('dhcp', 'lan', 'ignore') || '0';
+				let wan_disabled = uci_cursor.get('network', 'wan', 'disabled') || '0';
+				let wan6_disabled = uci_cursor.get('network', 'wan6', 'disabled') || '0';
+
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_proto', lan_proto);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_ipaddr', lan_ipaddr);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_netmask', lan_netmask);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_gateway', lan_gateway);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'lan_dns', lan_dns);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'dhcp_ignore', dhcp_ignore);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan_device', wan_device || '');
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan_disabled', wan_disabled);
+				uci_cursor.set(UCI_CONFIG, 'router_state', 'wan6_disabled', wan6_disabled);
+				uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'ap');
+
+				// 3. Bridge WAN device to LAN bridge
+				if (wan_device) {
+					uci_cursor.foreach('network', 'device', (s) => {
+						if (s.name === 'br-lan') {
+							let ports = s.ports || [];
+							if (type(ports) === 'string') ports = [ports];
+							let exists = false;
+							for (let p in ports) if (p === wan_device) exists = true;
+							if (!exists) {
+								push(ports, wan_device);
+								uci_cursor.set('network', s['.name'], 'ports', ports);
+							}
+						}
+					});
+				}
+
+				// 4. Set LAN to DHCP client
+				uci_cursor.set('network', 'lan', 'proto', 'dhcp');
+				uci_cursor.delete('network', 'lan', 'ipaddr');
+				uci_cursor.delete('network', 'lan', 'netmask');
+				uci_cursor.delete('network', 'lan', 'gateway');
+				uci_cursor.delete('network', 'lan', 'dns');
+
+				// 5. Disable WAN interface
+				uci_cursor.set('network', 'wan', 'disabled', '1');
+				uci_cursor.set('network', 'wan6', 'disabled', '1');
+
+				// 6. Disable DHCP Server
+				uci_cursor.set('dhcp', 'lan', 'ignore', '1');
+
+			} else {
+				// --- Switch to Router Mode (Lossless State Restoration) ---
+
+				// 1. Read Snapshot
+				let wan_device = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_device');
+				let lan_proto = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_proto') || 'static';
+				let lan_ipaddr = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_ipaddr') || '192.168.1.1';
+				let lan_netmask = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_netmask') || '';
+				let lan_gateway = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_gateway') || '';
+				let lan_dns = uci_cursor.get(UCI_CONFIG, 'router_state', 'lan_dns') || [];
+				let dhcp_ignore = uci_cursor.get(UCI_CONFIG, 'router_state', 'dhcp_ignore') || '0';
+				let wan_disabled = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan_disabled') || '0';
+				let wan6_disabled = uci_cursor.get(UCI_CONFIG, 'router_state', 'wan6_disabled') || '0';
+
+				uci_cursor.set(UCI_CONFIG, 'settings', 'mode', 'router');
+
+				// 2. Remove WAN device from LAN bridge
+				if (wan_device) {
+					uci_cursor.foreach('network', 'device', (s) => {
+						if (s.name === 'br-lan') {
+							let ports = s.ports || [];
+							if (type(ports) === 'string') ports = [ports];
+							let new_ports = [];
+							for (let p in ports) if (p !== wan_device) push(new_ports, p);
+							uci_cursor.set('network', s['.name'], 'ports', new_ports);
+						}
+					});
+				}
+
+				// 3. Restore LAN settings accurately without hardcoding
+				uci_cursor.set('network', 'lan', 'proto', lan_proto);
+				if (lan_ipaddr) uci_cursor.set('network', 'lan', 'ipaddr', lan_ipaddr);
+				if (lan_netmask) uci_cursor.set('network', 'lan', 'netmask', lan_netmask);
+				if (lan_gateway) uci_cursor.set('network', 'lan', 'gateway', lan_gateway);
+				if (type(lan_dns) === 'array' && length(lan_dns) > 0) {
+					uci_cursor.set('network', 'lan', 'dns', lan_dns);
+				} else if (type(lan_dns) === 'string' && lan_dns !== '') {
+					uci_cursor.set('network', 'lan', 'dns', lan_dns);
+				}
+
+				// 4. Restore WAN / WAN6 states
+				if (wan_disabled === '1') {
+					uci_cursor.set('network', 'wan', 'disabled', '1');
+				} else {
+					uci_cursor.delete('network', 'wan', 'disabled');
+				}
+				if (wan6_disabled === '1') {
+					uci_cursor.set('network', 'wan6', 'disabled', '1');
+				} else {
+					uci_cursor.delete('network', 'wan6', 'disabled');
+				}
+
+				// 5. Restore DHCP Server state
+				if (dhcp_ignore === '1') {
+					uci_cursor.set('dhcp', 'lan', 'ignore', '1');
+				} else {
+					uci_cursor.delete('dhcp', 'lan', 'ignore');
+				}
+			}
+
+			uci_cursor.commit('ap-switch');
+			uci_cursor.commit('network');
+			uci_cursor.commit('dhcp');
+
+			// Apply changes in background
+			system('/etc/init.d/network restart &');
+			system('/etc/init.d/dnsmasq restart &');
+
+			return { success: true, result: 'success' };
+		}
+	}
+};
+
+return { 'luci.ap-switch': methods };

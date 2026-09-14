@@ -4,7 +4,7 @@ LUCI_TITLE:=LuCI support for EasyTier Next
 LUCI_URL:=https://github.com/EasyTier/EasyTier
 PKG_DESCRIPTION:=Provides a modern LuCI Web management interface for EasyTier decentralized mesh VPN.
 PKG_MAINTAINER:=Dante <dante@seckv.com>
-LUCI_DEPENDS:=+easytier-next +luci-base
+LUCI_DEPENDS:=+easytier-next +luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus
 LUCI_PKGARCH:=all
 
 define Package/luci-app-easytier-next/conffiles

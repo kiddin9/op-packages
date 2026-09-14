@@ -1,0 +1,64 @@
+'use strict';
+
+import { readfile } from 'fs';
+import { popen } from 'fs';
+
+const STATUS_FILE = '/var/run/linkback.json';
+
+const methods = {
+	get_status: {
+		call: function() {
+			let content = readfile(STATUS_FILE);
+			let status = null;
+
+			if (content) {
+				try {
+					status = json(content);
+				} catch (err) {
+					// Handle JSON parse error gracefully
+				}
+			}
+
+			if (!status) {
+				status = {
+					enabled: false,
+					check_interval: 5,
+					active_link: "none",
+					links: []
+				};
+			}
+
+			return status;
+		}
+	},
+
+	get_log: {
+		call: function() {
+			// Extract last 100 lines of linkbackd logs from syslog
+			let p = popen('logread -e linkbackd | tail -n 100', 'r');
+			let log_content = '';
+			if (p) {
+				log_content = p.read('all');
+				p.close();
+			}
+			return { log: log_content || 'No logs available.' };
+		}
+	},
+
+	manage_service: {
+		args: { action: 'string' },
+		call: function(request) {
+			let action = request.args?.action;
+			if (action !== 'start' && action !== 'stop' && action !== 'restart') {
+				return { success: false, error: 'Invalid action' };
+			}
+
+			let cmd = `/etc/init.d/linkback ${action} >/dev/null 2>&1`;
+			let rc = system(cmd);
+			
+			return { success: (rc === 0) };
+		}
+	}
+};
+
+return { 'luci.linkback': methods };
