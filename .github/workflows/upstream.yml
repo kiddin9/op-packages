@@ -123,7 +123,7 @@ jobs:
         (
         git_clone https://github.com/sirpdboy/luci-app-advancedplus
         git_clone https://github.com/sirpdboy/luci-app-taskplan taskplan && mvdir taskplan
-        git_clone https://github.com/sirpdboy/luci-app-lucky oplucky && mvdir oplucky
+        # git_clone https://github.com/sirpdboy/luci-app-lucky oplucky && mvdir oplucky
         git_clone https://github.com/sirpdboy/luci-app-partexp partexp && mvdir partexp
         git_clone https://github.com/sirpdboy/netspeedtest speedtest && mvdir speedtest
         git_clone https://github.com/sirpdboy/luci-app-parentcontrol
