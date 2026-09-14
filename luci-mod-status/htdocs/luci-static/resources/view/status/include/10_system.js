@@ -36,7 +36,7 @@ var callCPUInfo = rpc.declare({
 
 var callCPUUsage = rpc.declare({
 	object: 'luci',
-	method: 'getCPUUsage'
+	method: 'getTempInfo'
 });
 
 return baseclass.extend({
