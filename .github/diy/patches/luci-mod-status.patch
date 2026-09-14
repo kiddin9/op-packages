@@ -31,6 +31,15 @@
 
 --- a/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
 +++ b/luci-mod-status/htdocs/luci-static/resources/view/status/include/10_system.js
+@@ -36,7 +36,7 @@ var callCPUInfo = rpc.declare({
+ 
+ var callCPUUsage = rpc.declare({
+ 	object: 'luci',
+-	method: 'getCPUUsage'
++	method: 'getTempInfo'
+ });
+ 
+ return baseclass.extend({
 @@ -85,10 +85,9 @@ return baseclass.extend({
  
  		var fields = [
