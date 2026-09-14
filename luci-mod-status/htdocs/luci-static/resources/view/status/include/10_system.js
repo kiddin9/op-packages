@@ -1,6 +1,7 @@
 'use strict';
 'require baseclass';
 'require rpc';
+'require uci';
 
 var callGetUnixtime = rpc.declare({
 	object: 'luci',
@@ -33,9 +34,9 @@ var callCPUInfo = rpc.declare({
 	method: 'getCPUInfo'
 });
 
-var callTempInfo = rpc.declare({
+var callCPUUsage = rpc.declare({
 	object: 'luci',
-	method: 'getTempInfo'
+	method: 'getCPUUsage'
 });
 
 return baseclass.extend({
@@ -48,9 +49,10 @@ return baseclass.extend({
 			L.resolveDefault(callSystemInfo(), {}),
 			L.resolveDefault(callCPUBench(), {}),
 			L.resolveDefault(callCPUInfo(), {}),
-			L.resolveDefault(callTempInfo(), {}),
+			L.resolveDefault(callCPUUsage(), {}),
 			L.resolveDefault(callLuciVersion(), { revision: _('unknown version'), branch: 'LuCI' }),
-			L.resolveDefault(callGetUnixtime(), 0)
+			L.resolveDefault(callGetUnixtime(), 0),
+			uci.load('system')
 		]);
 	},
 
@@ -59,7 +61,7 @@ return baseclass.extend({
 		    systeminfo  = data[1],
 		    cpubench    = data[2],
 		    cpuinfo     = data[3],
-			tempinfo    = data[4],
+		    cpuusage    = data[4],
 		    luciversion = data[5],
 		    unixtime    = data[6];
 
@@ -68,11 +70,16 @@ return baseclass.extend({
 		var datestr = null;
 
 		if (unixtime) {
-			var date = new Date(unixtime * 1000);
+			var date = new Date(unixtime * 1000),
+			    zn = uci.get('system', '@system[0]', 'zonename')?.replaceAll(' ', '_') || 'UTC',
+			    ts = uci.get('system', '@system[0]', 'clock_timestyle') || 0,
+			    hc = uci.get('system', '@system[0]', 'clock_hourcycle') || 0;
 
 			datestr = new Intl.DateTimeFormat(undefined, {
 				dateStyle: 'medium',
-				timeStyle: 'long'
+				timeStyle: (ts == 0) ? 'long' : 'full',
+				hourCycle: (hc == 0) ? undefined : hc,
+				timeZone: zn
 			}).format(date);
 		}
 
@@ -81,6 +88,11 @@ return baseclass.extend({
 			_('Architecture'),     (cpuinfo.cpuinfo || boardinfo.system) + ' ' + cpubench.cpubench,
 			_('Target Platform'),  (L.isObject(boardinfo.release) ? boardinfo.release.target : ''),
 			_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),
+				? '%s%s / '.format(
+					boardinfo.release.description || '',
+					boardinfo.release.revision ? boardinfo.release.revision : ''
+				)
+				: '') + (luciversion || ''),
 			_('Kernel Version'),   boardinfo.kernel,
 			_('Local Time'),       datestr,
 			_('Uptime'),           systeminfo.uptime ? '%t'.format(systeminfo.uptime) : null,
@@ -91,7 +103,7 @@ return baseclass.extend({
 			) : null
 		];
 
-		if (tempinfo.tempinfo) {
+		if (cpuusage.tempinfo) {
 			fields.splice(6, 0, _('Temperature'));
 			fields.splice(7, 0, tempinfo.tempinfo);
 		}

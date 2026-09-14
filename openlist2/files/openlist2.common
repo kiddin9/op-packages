@@ -147,7 +147,7 @@ openlist2_validate_dirs() {
 }
 
 openlist2_prepare_dirs() {
-	local entry identity previous registered marker="$data_dir/.temp-dir"
+	local entry identity previous registered nonempty=0 marker="$data_dir/.temp-dir"
 	umask 077
 	mkdir -p "$data_dir" "$temp_dir" "$bleve_dir" ||
 		{ openlist2_error "Unable to create data, cache or index directory."; return 1; }
@@ -157,10 +157,17 @@ openlist2_prepare_dirs() {
 		{ openlist2_error "config.json must be a regular file."; return 1; }
 	[ ! -e "$marker" ] || [ -f "$marker" ] ||
 		{ openlist2_error "Cache ownership marker must be a regular file."; return 1; }
-	entry="$(find "$temp_dir" -mindepth 1 -maxdepth 1 -print -quit)" || return 1
-	identity="$(stat -c '%d:%i' "$temp_dir")" || return 1
+	# OpenWrt's BusyBox find may omit -quit. Include hidden entries and
+	# dangling symlinks without depending on optional find applets.
+	for entry in "$temp_dir"/* "$temp_dir"/.[!.]* "$temp_dir"/..?*; do
+		[ -e "$entry" ] || [ -L "$entry" ] || continue
+		nonempty=1
+		break
+	done
+	identity="$(stat -c '%d:%i' "$temp_dir")" ||
+		{ openlist2_error "Unable to identify the cache directory; ensure coreutils-stat is installed."; return 1; }
 	registered="$(cat "$marker" 2>/dev/null)"
-	if [ -n "$entry" ] && [ "$registered" != "$(printf '%s\n%s' "$temp_dir" "$identity")" ]; then
+	if [ "$nonempty" = "1" ] && [ "$registered" != "$(printf '%s\n%s' "$temp_dir" "$identity")" ]; then
 		# An existing config identifies the old cache on the first upgrade.
 		# Once registered, an inode/device change must never inherit ownership.
 		previous=""

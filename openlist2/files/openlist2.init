@@ -5,6 +5,7 @@
 
 . /usr/share/libubox/jshn.sh
 . /usr/share/openlist2/functions.sh
+. /usr/share/openlist2/tls.sh
 
 START=99
 USE_PROCD=1
@@ -211,16 +212,6 @@ validate_config() {
 		openlist2_error "Force HTTPS and HTTP/3 require an enabled HTTPS port."
 		return 1
 	fi
-	if [ "$https_port" != "-1" ] || { [ "$s3" = "1" ] && [ "$s3_ssl" = "1" ]; }; then
-		local file
-		for file in "$ssl_cert" "$ssl_key"; do
-			case "$file" in /*) ;; *)
-				openlist2_error "HTTPS/S3 TLS requires absolute certificate and key paths."; return 1 ;;
-			esac
-			[ -f "$file" ] && [ -r "$file" ] && [ -s "$file" ] ||
-				{ openlist2_error "TLS certificate/key is missing, empty or unreadable: $file"; return 1; }
-		done
-	fi
 	if [ -n "$listen_unix_file" ]; then
 		case "$listen_unix_file" in /*) ;; *)
 			openlist2_error "Unix socket path must be absolute."; return 1 ;;
@@ -257,7 +248,7 @@ validate_config() {
 		openlist2_error "Log size must be at least 1 MB."
 		return 1
 	fi
-	openlist2_validate_dirs
+	openlist2_validate_dirs && openlist2_configure_tls
 }
 
 write_config() (
@@ -343,7 +334,7 @@ set_firewall() {
 	return 0
 }
 
-start_service() {
+start_openlist2() {
 	openlist2_migrate_config || return 1
 	config_load openlist2 || return 1
 	section_id=""
@@ -355,7 +346,7 @@ start_service() {
 		external_access="deny" set_firewall
 		return $?
 	fi
-	validate_config && openlist2_prepare_dirs || return 1
+	validate_config && openlist2_prepare_dirs && openlist2_prepare_tls || return 1
 	if [ -e /proc/uptime ]; then
 		boot_uptime="$(awk -F. '{print $1}' /proc/uptime)"
 		[ "$boot_uptime" -lt "120" ] || delayed_start=0
@@ -550,6 +541,18 @@ start_service() {
 	procd_set_param limits core="unlimited"
 	procd_set_param limits nofile="200000 200000"
 	procd_close_instance openlist2
+}
+
+start_service() {
+	# rc.common closes the procd request even if start_service fails.
+	# Preserve our result for its service_started hook instead of losing it.
+	openlist2_start_status=0
+	start_openlist2 "$@" || openlist2_start_status=$?
+	return "$openlist2_start_status"
+}
+
+service_started() {
+	return "${openlist2_start_status:-1}"
 }
 
 service_triggers() {

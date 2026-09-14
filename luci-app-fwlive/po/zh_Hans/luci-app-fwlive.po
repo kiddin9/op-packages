@@ -12,72 +12,72 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:926
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:926
 msgid "%d matching · %d/%d stored"
 msgstr "%d matching · %d/%d stored"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:929
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:929
 msgid "0 matching · %d/%d stored"
 msgstr "0 matching · %d/%d stored"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:251
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:251
 msgid "Accessible (teal/orange)"
 msgstr "å¯è®¿é®ï¼éç»¿/æ©è²ï¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:32
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:32
 msgid "Action"
 msgstr "å¨ä½"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:618
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:618
 msgid "Administrator access is required to disable logging."
 msgstr "éè¦ç®¡çåæéæè½"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:586
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:586
 msgid "Administrator access is required to enable logging."
 msgstr "éè¦ç®¡çåæéæè½å¼å¯æ¥å¿è®°å½ã"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1092
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1092
 msgid "Also seen"
 msgstr "其他常见"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:571
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:607
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:571
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:607
 msgid "Another change is staged for the firewall; apply or revert it first."
 msgstr "防火墙另有未提交的更改；请先应用或还原。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1658
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1658
 msgid "Any action"
 msgstr "ææå¨ä½"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1085
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1085
 msgid "Any protocol"
 msgstr "任意协议"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:113
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:113
 msgid "Before you enable logging"
 msgstr "Before you enable logging"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:569
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:569
 msgid "Cannot enable logging until kernel log modules are installed."
 msgstr "无法启用日志记录，直到内核日志模块已安装。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:116
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:116
 msgid "Changes:"
 msgstr "Changes:"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:250
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:250
 msgid "Classic (green/red)"
 msgstr "ç»"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1642
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1642
 msgid "Classic uses green/red; Accessible uses teal/orange"
 msgstr "ç»"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:116
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:116
 msgid "Clear all"
 msgstr "æ"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1698
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1698
 msgid ""
 "Click a cell to filter · ≠ on a chip to exclude · Ctrl+click a rule for "
 "firewall settings · in Simple view, click a row for the full message"
@@ -85,17 +85,17 @@ msgstr ""
 "点击单元格筛选 · 芯片上的 ≠ 排除 · Ctrl+点击规则打开防火墙设置 · 在简单视图中"
 "点击行查看完整消息"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1719
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1719
 msgid ""
 "Click a row (Time or other non-link cells) to see the full log line (Simple "
 "view)."
 msgstr "点击一行（时间或其他非链接单元格）可查看完整日志行（简单视图）。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:113
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:113
 msgid "Click a row for the full message"
 msgstr "点击行可查看完整消息"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1720
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1720
 msgid ""
 "Click an IP, action, or protocol to filter; use the Protocol menu (or ≠ on a "
 "chip) to exclude."
@@ -103,84 +103,92 @@ msgstr ""
 "Click an IP, action, or protocol to filter; use the Protocol menu (or ≠ on a "
 "chip) to exclude."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1086
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1086
 msgid "Common"
 msgstr "常用"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:944
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:944
 msgid "Connection lost — retrying…"
 msgstr "Connection lost — retrying…"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:609
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:609
 msgid "Could not disable logging."
 msgstr "æ æ³"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:573
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:573
 msgid "Could not enable logging."
 msgstr "æ æ³å¼å¯æ¥å¿è®°å½ã"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1680
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1680
 msgid "Custom protocol (prefix ! to exclude). Overrides the menu when set."
 msgstr "自定义协议（! 排除）。有内容时覆盖菜单。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:42
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:42
 msgid "DPort"
 msgstr "ç®æ ç«¯å£"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:40
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:814
+msgid "Degraded — sampling"
+msgstr "降级 — 抽样"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:977
+msgid "Degraded — sampling (slow poll RTT; cadence reduced)."
+msgstr "降级 — 抽样（轮询 RTT 较慢；已降低频率）。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:40
 msgid "Destination"
 msgstr "ç®æ å°å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1691
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1691
 msgid "Destination IP contains (! to exclude)"
 msgstr "ç®æ  IP å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1692
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1692
 msgid "Destination port (! to exclude)"
 msgstr "ç®æ ç«¯å£ï¼! è¡¨ç¤ºæé¤ï¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1583
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1583
 msgid "Detail"
 msgstr "详细"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:37
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:37
 msgid "Dir"
 msgstr "æ¹å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:85
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:85
 msgid "Disabling…"
 msgstr "Disabling…"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1616
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1616
 msgid "Display options"
 msgstr "æ¾ç¤ºéé¡¹"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1716
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1716
 msgid "Display options on the bar set Limit, row tint, palette, and hostnames."
 msgstr "栏上的显示选项可设置行数限制、行着色、调色板和主机名。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:121
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:121
 msgid "Does not change:"
 msgstr "Does not change:"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:138
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:138
 msgid "Don’t show this again"
 msgstr "Don’t show this again"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:150
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:230
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:150
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:230
 msgid "Enable WAN drop/reject logging"
 msgstr "Enable WAN drop/reject logging"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:104
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:104
 msgid "Enable WAN zone drop/reject logging (same as Network → Firewall)."
 msgstr "Enable WAN zone drop/reject logging (same as Network → Firewall)."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:107
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:107
 msgid "Enable logging"
 msgstr "å¼å¯æ¥å¿"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1715
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1715
 msgid ""
 "Enable logging turns on WAN zone drop/reject logging only (same as Network → "
 "Firewall). It does not add rules or log normal LAN browsing."
@@ -188,55 +196,55 @@ msgstr ""
 "Enable logging turns on WAN zone drop/reject logging only (same as Network → "
 "Firewall). It does not add rules or log normal LAN browsing."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:107
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:150
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:230
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:107
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:150
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:230
 msgid "Enabling…"
 msgstr "Enabling…"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1099
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1099
 msgid "Exclude"
 msgstr "排除"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:80
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:80
 msgid "Exclude instead"
 msgstr "æ¹ä¸ºæé¤"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:53
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:71
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:53
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:71
 msgid "Filter by %s"
 msgstr "æ %s ç­é"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:136
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:136
 msgid "Filter by interface"
 msgstr "ææ¥å£ç­é"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:112
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:112
 msgid "Filter logs by rule (hint: %s). Ctrl+click to open firewall settings."
 msgstr "æè§åç­éæ¥å¿ï¼æç¤ºï¼%sï¼ãCtrl+ç¹å»å¯æå¼é²ç«å¢è®¾ç½®ã"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1540
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/root/usr/share/luci/menu.d/luci-app-fwlive.json:3
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1540
+#: openwrt-feed/luci-app-fwlive/root/usr/share/luci/menu.d/luci-app-fwlive.json:3
 msgid "Firewall Live View"
 msgstr "é²ç«å¢å®æ¶è§å¾"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:43
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:43
 msgid "Flags"
 msgstr "æ å¿"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:45
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:45
 msgid "Flow"
 msgstr "æµ"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/root/usr/share/rpcd/acl.d/luci-app-fwlive.json:3
+#: openwrt-feed/luci-app-fwlive/root/usr/share/rpcd/acl.d/luci-app-fwlive.json:3
 msgid "Grant access to firewall live log view"
 msgstr "授予防火墙实时日志视图的访问权限"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1712
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1712
 msgid "Help"
 msgstr "å¸®å©"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:895
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:895
 msgid ""
 "High event rate — table refresh is throttled to protect the browser. The "
 "buffer still updates; refresh will resume automatically."
@@ -244,15 +252,19 @@ msgstr ""
 "High event rate — table refresh is throttled to protect the browser. The "
 "buffer still updates; refresh will resume automatically."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1090
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:984
+msgid "Hostname resolve paused while the router is under load."
+msgstr "路由器负载较高，已暂停主机名解析。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1090
 msgid "ICMPv6"
 msgstr "ICMPv6"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:35
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:35
 msgid "IN"
 msgstr "IN"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1723
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1723
 msgid ""
 "If Row tint looks missing, the active LuCI theme may omit success/error or "
 "info/warn CSS variables; fwlive falls back to local colors (air-gapped, no "
@@ -261,7 +273,7 @@ msgstr ""
 "å¦æè¡æè²çèµ·æ¥ç¼ºå¤±ï¼å½å LuCI ä¸»é¢å¯è½æªæä¾æå/éè¯¯ CSS åéï¼fwlive "
 "ä¼åéå°æ¬å°é¢è²ï¼éç¦»è¿è¡ï¼æ°æ®ä¸ä¼ç¦»å¼æ¬æºï¼ã"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:205
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:205
 msgid ""
 "If the WAN is quiet, wait for probes or use the optional ping check in "
 "Help / the enabling-logs guide."
@@ -269,99 +281,99 @@ msgstr ""
 "If the WAN is quiet, wait for probes or use the optional ping check in "
 "Help / the enabling-logs guide."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:80
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:80
 msgid "Include instead"
 msgstr "æ¹ä¸ºå"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:34
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:34
 msgid "Interface"
 msgstr "æ¥å£"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1688
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1688
 msgid "Interface (prefix ! to exclude)"
 msgstr "æ¥å£ï¼! åç¼è¡¨ç¤ºæé¤ï¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:165
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:232
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:165
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:232
 msgid "I’ll configure this under Network → Firewall"
 msgstr "I’ll configure this under Network → Firewall"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:194
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:194
 msgid "Kernel log modules missing"
 msgstr "Kernel log modules missing"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:195
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:195
 msgid ""
 "Kernel netfilter log modules are missing. Install kmod-nf-log-ipv4 and kmod-"
 "nf-log-ipv6 (or kmod-nf-log / kmod-nf-log6), then reload the firewall."
 msgstr "ç¼ºå°å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:44
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:44
 msgid "Len"
 msgstr "é¿åº¦"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1619
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1619
 msgid "Limit"
 msgstr "éå¶"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:536
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:536
 msgid "Limited diagnostics — timeout command missing"
 msgstr "诊断功能受限 — 缺少 timeout 命令"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:210
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:210
 msgid "Logging is off on this router"
 msgstr "Logging is off on this router"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:252
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:256
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:252
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:256
 msgid "Manual test (System → Terminal):"
 msgstr "手动测试（系统 → 终端）："
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:46
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:221
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1590
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1595
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:46
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:221
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1590
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1595
 msgid "Message"
 msgstr "æ¶æ¯"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1686
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1686
 msgid "More filters"
 msgstr "æ´å¤ç­é"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:37
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/links.js:37
 msgid "Network → Firewall"
 msgstr "Network → Firewall"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:187
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:187
 msgid ""
 "No WAN firewall zone found in /etc/config/firewall. Configure zones under"
 msgstr "在 /etc/config/firewall 中未找到 WAN 防火墙区域。请在以下位置配置区域"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:185
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:185
 msgid "No WAN zone found"
 msgstr "No WAN zone found"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:163
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:163
 msgid "Not now"
 msgstr "Not now"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:220
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:220
 msgid "Nothing changes until you click Enable."
 msgstr "Nothing changes until you click Enable."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:36
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:36
 msgid "OUT"
 msgstr "åºæ¥å£"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1610
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1610
 msgid "One line"
 msgstr "单行"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:206
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:206
 msgid "Open firewall zone settings"
 msgstr "æå¼é²ç«å¢åºåè®¾ç½®"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:211
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:211
 msgid ""
 "OpenWrt does not write firewall events to the log until you turn logging on. "
 "Live View only shows what the firewall already logs — it does not add allow/"
@@ -371,44 +383,44 @@ msgstr ""
 "Live View only shows what the firewall already logs — it does not add allow/"
 "deny rules."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1638
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1638
 msgid "Palette"
 msgstr "Palette"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:995
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1560
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:995
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1560
 msgid "Pause"
 msgstr "æå"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:993
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:993
 msgid "Paused"
 msgstr "å·²æå"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:38
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:38
 msgid "Proto"
 msgstr "åè®®"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1674
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1674
 msgid "Protocol — common values"
 msgstr "协议 — 常用值"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1656
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1656
 msgid "Quick search"
 msgstr "å¿«éæç´¢"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:91
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:91
 msgid "Remove filter"
 msgstr "ç§»é¤ç­é"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:995
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:995
 msgid "Resume"
 msgstr "ç»§ç»­"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1631
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1631
 msgid "Row tint"
 msgstr "è¡æè²"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1721
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1721
 msgid ""
 "Row tint shows pass/deny row backgrounds when checked. Choose Classic (green/"
 "red, default) or Accessible (teal/orange). Action text stays colored either "
@@ -417,78 +429,86 @@ msgstr ""
 "勾选后行着色显示放行/拒绝行背景。可选经典（绿/红，默认）或无障碍（青绿/橙）。"
 "操作文本在两种模式下均保持着色。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1550
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1550
 msgid ""
 "Row tint used a local color fallback because the active LuCI theme did not "
 "apply pass/deny backgrounds."
 msgstr "è¡æè²ä½¿ç¨äºæ¬å°é¢è²åéï¼å ä¸ºå½å LuCI ä¸»é¢æªåºç¨æ¾è¡/æç»èæ¯è²ã"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:33
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:33
 msgid "Rule"
 msgstr "è§å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:527
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:527
 msgid "Rule labels incomplete — map truncated"
 msgstr "Rule labels incomplete — map truncated"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:531
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:531
 msgid "Rule labels unavailable"
 msgstr "Rule labels unavailable"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:529
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:529
 msgid "Rule labels unavailable — temp file failed"
 msgstr "Rule labels unavailable — temp file failed"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:41
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:980
+msgid "Server shedding — at most %d log lines per poll."
+msgstr "服务器正在削减 — 每次轮询最多 %d 行日志。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:982
+msgid "Server truncated this poll (adaptive cap)."
+msgstr "服务器已截断本次轮询（自适应上限）。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:41
 msgid "SPort"
 msgstr "æºç«¯å£"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1650
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1650
 msgid "Show hostnames"
 msgstr "æ¾ç¤ºä¸»æºå"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1629
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1629
 msgid "Show pass/deny row background colors"
 msgstr "显示放行/拒绝行背景色"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1576
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1576
 msgid "Simple"
 msgstr "简洁"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:39
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:39
 msgid "Source"
 msgstr "æºå°å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1689
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1689
 msgid "Source IP contains (! to exclude)"
 msgstr "æº IP å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1690
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1690
 msgid "Source port (! to exclude)"
 msgstr "æºç«¯å£ï¼! è¡¨ç¤ºæé¤ï¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1717
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1717
 msgid ""
 "The rate shown for WAN logging is the firewall zone log_limit. OpenWrt "
 "defaults to 10/minute when no explicit limit is configured; fwlive does not "
 "impose this cap."
 msgstr "WAN æ¥å¿æ¾ç¤ºçéçæ¯é²ç«å¢åºåç log_limitãæª"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1714
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1714
 msgid ""
 "The table updates automatically when your firewall logs traffic. Use Pause "
 "if it moves too fast."
 msgstr "é²ç«å¢å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1551
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1551
 msgid "Theme tint fallback"
 msgstr "ä¸»é¢çè²åé"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:31
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/table.js:31
 msgid "Time"
 msgstr "æ¶é´"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:219
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:219
 msgid ""
 "Turns on WAN zone drop/reject logging (same as Network → Firewall → wan → "
 "Log). Rate-limited by the zone log_limit (OpenWrt default 10/minute). Normal "
@@ -498,24 +518,24 @@ msgstr ""
 "Log). Rate-limited by the zone log_limit (OpenWrt default 10/minute). Normal "
 "LAN browsing is not logged."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:126
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:126
 msgid "Undo:"
 msgstr "Undo:"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1722
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1722
 msgid "Use Detail for all columns (flags, length, raw message)."
 msgstr "使用「详细」可查看全部列（标志、长度、原始消息）。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1564
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1568
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1564
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1568
 msgid "View"
 msgstr "视图"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:615
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:615
 msgid "WAN drop/reject logging is off."
 msgstr "WAN drop/reject logging is off."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:204
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:204
 msgid ""
 "WAN drop/reject logging is on. Blocked inbound WAN traffic will show up "
 "here. Normal LAN browsing will not."
@@ -523,7 +543,7 @@ msgstr ""
 "WAN drop/reject logging is on. Blocked inbound WAN traffic will show up "
 "here. Normal LAN browsing will not."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:579
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:579
 msgid ""
 "WAN drop/reject logging is on. Blocked inbound traffic should appear here as "
 "it happens — not normal LAN browsing."
@@ -531,157 +551,165 @@ msgstr ""
 "WAN drop/reject logging is on. Blocked inbound traffic should appear here as "
 "it happens — not normal LAN browsing."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:581
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:581
 msgid "WAN logging is already enabled."
 msgstr "WAN æ¥å¿å·²å¤äºå¼å¯ç¶æã"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:88
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:88
 msgid "WAN logging on"
 msgstr "WAN æ¥å¿ï¼å¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:94
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:94
 msgid "WAN logging on (%s). Click to disable."
 msgstr "WAN æ¥å¿ï¼å¼ï¼%sï¼ãç¹å»å¯"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:77
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:77
 msgid "WAN logging unavailable: missing kernel log modules"
 msgstr "WAN æ¥å¿ä¸å¯ç¨ï¼ç¼ºå°å"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:70
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:70
 msgid "WAN logging unavailable: no WAN zone"
 msgstr "WAN æ¥å¿ä¸å¯ç¨ï¼æ  WAN åºå"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:203
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:203
 msgid "Waiting for firewall events"
 msgstr "Waiting for firewall events"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:993
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1545
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:993
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1545
 msgid "Watching"
 msgstr "çè§ä¸­"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1603
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1603
 msgid "Wrap"
 msgstr "自动换行"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:123
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:123
 msgid "allow/deny rules, LAN logging, or anything else."
 msgstr "allow/deny rules, LAN logging, or anything else."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:828
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:828
 msgid "buffer full"
 msgstr "ç¼å²åºå·²æ»¡"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:81
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:81
 msgid "default 10/minute"
 msgstr "é»è®¤ 10 æ¡/åé"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:28
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:28
 msgid "is"
 msgstr "æ¯"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:823
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:823
 msgid "loading buffer"
 msgstr "æ­£å¨å è½½ç¼å²åº"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:923
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:923
 msgid "loading…"
 msgstr "loading…"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:37
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:44
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:37
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:44
 msgid "not"
 msgstr "é"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1107
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1107
 msgid "not AH"
 msgstr "非 AH"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1106
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1106
 msgid "not ESP"
 msgstr "非 ESP"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1105
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1105
 msgid "not GRE"
 msgstr "非 GRE"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1102
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1102
 msgid "not ICMP"
 msgstr "非 ICMP"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1103
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1103
 msgid "not ICMPv6"
 msgstr "非 ICMPv6"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1104
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1104
 msgid "not IGMP"
 msgstr "非 IGMP"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1108
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1108
 msgid "not SCTP"
 msgstr "非 SCTP"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1100
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1100
 msgid "not TCP"
 msgstr "非 TCP"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1101
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1101
 msgid "not UDP"
 msgstr "非 UDP"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1666
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1666
 msgid "not block"
 msgstr "éé»æ­¢"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1665
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1665
 msgid "not drop"
 msgstr "éä¸¢å¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1664
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1664
 msgid "not pass"
 msgstr "éæ¾è¡"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1667
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1667
 msgid "not reject"
 msgstr "éæç»"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1668
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1668
 msgid "not unknown"
 msgstr "éæªç¥"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1679
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1679
 msgid "or type…"
 msgstr "或输入…"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:830
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:830
 msgid "render paused (high rate)"
 msgstr "æ¸²ææåï¼éçè¿é«ï¼"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:832
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:817
+msgid "resolve paused (load)"
+msgstr "解析已暂停（负载）"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:832
 msgid "scroll frozen — scroll to top to follow live"
 msgstr "scroll frozen — scroll to top to follow live"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:118
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:118
 msgid "sets log on the WAN firewall zone and reloads the firewall."
 msgstr "sets log on the WAN firewall zone and reloads the firewall."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:254
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:258
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:254
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:258
 msgid "then ping the router."
 msgstr "然后 ping 路由器。"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:128
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:815
+msgid "truncated"
+msgstr "已截断"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:128
 msgid "turn it back off with the WAN logging on control on the watch strip."
 msgstr "turn it back off with the WAN logging on control on the watch strip."
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:512
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:512
 msgid "using fw4"
 msgstr "ä½¿ç¨ fw4"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:510
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:510
 msgid "using iptables"
 msgstr "ä½¿ç¨ iptables"
 
-#: /home/lalbers/gitroot/fwlive/openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:89
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:89
 msgid "· %s"
 msgstr "· %s"

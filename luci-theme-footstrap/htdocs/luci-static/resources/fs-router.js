@@ -646,11 +646,10 @@ function seed() {
 	/* the served page's entry needs an id too, or the first Back TO it has nothing to look up */
 	adoptEntry();
 
-	/* Page-scoped CSS keys off `#view[data-page]` and `.fs-content[data-page]`, not `body`
-	 * (commitStage) — but the server stamps only `body`, so a document that never took a client
-	 * navigation would otherwise have neither. Copied, not recomputed: the server's value is
-	 * already the resolved dispatch path (header.ut, `ctx.path`), and re-deriving it here from the
-	 * tree could disagree with what the served markup actually carries. */
+	/* Page-scoped CSS keys off `#view[data-page]` and `.fs-content[data-page]` (commitStage). The
+	 * server stamps `body` and `.fs-content` (header.ut); `#view` is luci-base's markup, so it gets
+	 * the same value here. Copied from `body`, not recomputed: the served value is the resolved
+	 * dispatch path, and a re-derivation could disagree with it. */
 	const curPage = document.body ? (document.body.getAttribute('data-page') || '') : '';
 	const contentHost = document.querySelector('.fs-content');
 	if (contentHost) contentHost.setAttribute('data-page', curPage);

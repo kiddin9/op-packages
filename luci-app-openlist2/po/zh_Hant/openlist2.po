@@ -440,28 +440,32 @@ msgid "HTTPS listen port"
 msgstr "HTTPS 監聽埠"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:548
-msgid "The upstream default is -1 (disabled). Set a valid port number to enable HTTPS."
-msgstr "上游預設值為 -1（停用）。設為有效埠號可啟用 HTTPS。"
+msgid "Set to -1 to disable HTTPS, or 1-65535 to enable it. Leave both certificate paths empty to use an automatically generated self-signed certificate."
+msgstr "設為 -1 可停用 HTTPS，設為 1–65535 可啟用 HTTPS。憑證與私密金鑰路徑同時留空時，使用自動產生的自簽憑證。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:557
 msgid "Force HTTPS"
 msgstr "強制 HTTPS"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Redirect HTTP requests to HTTPS. The HTTPS listen port enables HTTPS independently of this option."
+msgstr "將 HTTP 請求重新導向至 HTTPS。是否啟用 HTTPS 由 HTTPS 監聽埠決定，與此選項獨立。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:560
 msgid "SSL cert"
 msgstr "SSL 證書"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:561
-msgid "SSL certificate file path"
-msgstr "SSL 證書檔案路徑"
+msgid "Leave both paths empty to manage a self-signed certificate in the TLS subdirectory of the data directory. It is reused and renewed at startup when fewer than 30 days remain. Browsers do not trust self-signed certificates automatically."
+msgstr "兩項路徑同時留空時，在資料目錄的 tls 子目錄中自動管理自簽憑證。有效憑證會重複使用，剩餘有效期不足 30 天時於啟動時更新。瀏覽器不會自動信任自簽憑證。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:563
 msgid "SSL key"
 msgstr "SSL 金鑰"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:564
-msgid "SSL key file path"
-msgstr "SSL 金鑰檔案路徑"
+msgid "For custom TLS, specify both certificate and private key paths. The certificate must be currently valid and match its private key. Custom files are never overwritten automatically."
+msgstr "使用自訂憑證時，請同時填寫憑證與私密金鑰路徑。憑證必須在有效期內且與私密金鑰相符。自訂檔案不會被自動覆寫。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:566
 msgid "Unix socket file"
@@ -484,8 +488,8 @@ msgid "Enable HTTP/3/QUIC"
 msgstr "啟用 HTTP/3/QUIC"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:575
-msgid "Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled and certificate files must be configured."
-msgstr "在 HTTPS 監聽連接埠上啟用基於 QUIC 的 HTTP/3。必須先啟用 HTTPS 並配置憑證檔案。"
+msgid "Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled. Certificate settings are shared with HTTPS."
+msgstr "在 HTTPS 監聽埠上啟用基於 QUIC 的 HTTP/3。必須先啟用 HTTPS，並與 HTTPS 共用憑證設定。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:579
 msgid "Open traffic settings"
@@ -633,6 +637,10 @@ msgstr "允許從 WAN 存取的連接埠或範圍，例如 50000-50100，必須�
 msgid "Enabled FTP"
 msgstr "啟用 FTP"
 
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Enable FTP/SFTP access for the OpenList account in Management > Users. Also grant FTP/SFTP management permission to allow uploads and changes."
+msgstr "還需在 OpenList 管理後台的「使用者」中為帳號開啟 FTP/SFTP 存取權限；上傳和修改檔案還需要 FTP/SFTP 管理權限。"
+
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:714
 msgid "FTP Port"
 msgstr "FTP 埠"
@@ -690,8 +698,8 @@ msgid "MCP endpoint"
 msgstr "MCP 端點"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:767
-msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList user login token; retain MCP-Session-Id for subsequent requests."
-msgstr "使用 Streamable HTTP，認證標頭為 Authorization: TOKEN，不加 Bearer 前綴。TOKEN 為 OpenList 使用者登入權杖，後續請求須保留 MCP-Session-Id。"
+msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList administrator login token; retain MCP-Session-Id for subsequent requests."
+msgstr "使用 Streamable HTTP，認證標頭為 Authorization: TOKEN，不加 Bearer 前綴。TOKEN 必須為 OpenList 管理員登入權杖，後續請求須保留 MCP-Session-Id。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:770
 msgid "Configure a web port or Site URL."
@@ -719,8 +727,16 @@ msgstr "前端檔案必須與私人資料、快取及索引分開。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:806
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:815
-msgid "Certificate and key paths are required for HTTPS or S3 SSL."
-msgstr "啟用 HTTPS 或 S3 SSL 時必須填寫憑證及私密金鑰路徑。"
+msgid "Leave both certificate paths empty for automatic TLS, or provide both custom certificate and key paths."
+msgstr "請將憑證與私密金鑰路徑同時留空以自動產生憑證，或同時填寫自訂憑證與私密金鑰路徑。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Automatic TLS directory must be separate from cache, index and public frontend directories."
+msgstr "自動 TLS 目錄必須與快取、索引及公開前端目錄分開。"
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Use the same custom or automatically generated certificate as HTTPS. Configure certificate paths on the Web Protocol tab."
+msgstr "與 HTTPS 共用自訂或自動產生的憑證。請在「Web 協定」分頁設定憑證路徑。"
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:812
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:855

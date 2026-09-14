@@ -1,6 +1,6 @@
 table.table,
 .table {
-  @apply border-border mb-4 w-full border-separate border-spacing-0 overflow-visible rounded-lg border max-md:block max-md:rounded-none max-md:border-0 max-md:shadow-none;
+  @apply border-border mb-4 w-full border-separate border-spacing-0 overflow-visible rounded-lg border text-sm max-md:block max-md:rounded-none max-md:border-0 max-md:shadow-none;
 
   &[width="100%"] {
     @apply w-full;
@@ -96,7 +96,7 @@ table.table,
 
   td,
   .td {
-    @apply border-border table-cell border-b px-3 py-2.5 align-middle text-sm break-words whitespace-normal max-md:flex-[1_1_50%] max-md:border-0 max-md:px-1 max-md:py-1;
+    @apply border-border table-cell border-b px-3 py-2.5 align-middle break-words whitespace-normal max-md:flex-[1_1_50%] max-md:border-0 max-md:px-1 max-md:py-1;
     @apply before:hidden before:content-[attr(data-title)] before:max-md:mb-1 before:max-md:block before:max-md:text-xs before:max-md:font-semibold;
 
     > input[type="text"],

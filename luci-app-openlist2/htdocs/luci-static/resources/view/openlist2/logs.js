@@ -54,7 +54,7 @@ return view.extend({
 		const clearButton = E('button', {
 			'class': 'btn cbi-button-action',
 			'type': 'button',
-			'disabled': !L.hasViewPermission(),
+			'disabled': !L.hasViewPermission() || null,
 			'click': ui.createHandlerFn(this, 'handleCleanLogs')
 		}, _('Clear current log'));
 

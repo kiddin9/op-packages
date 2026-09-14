@@ -9484,6 +9484,14 @@ msgctxt "nft redirect"
 msgid "Redirect to local system"
 msgstr "重定向到本地系统"
 
+#: modules/luci-mod-system/htdocs/luci-static/resources/view/system/system.js
+msgid "Redirect LAN NTP requests to this device."
+msgstr "将局域网 NTP 请求重定向到本机。"
+
+#: modules/luci-mod-system/htdocs/luci-static/resources/view/system/system.js
+msgid "Redirect NTP requests"
+msgstr "重定向局域网 NTP 请求"
+
 #: modules/luci-mod-status/htdocs/luci-static/resources/view/status/iptables.js:57
 msgid "References"
 msgstr "引用"
@@ -14138,3 +14146,24 @@ msgstr "移远蜂窝网络"
 
 msgid "Temperature"
 msgstr "温度"
+
+#: modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/30_network.js
+msgid "Total download bandwidth"
+msgstr "下载总带宽"
+
+#: modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/30_network.js
+msgid "Total upload bandwidth"
+msgstr "上传总带宽"
+
+#: modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js
+msgid "Total traffic"
+msgstr "总流量"
+
+msgid "Online"
+msgstr "在线"
+
+msgid "Offline"
+msgstr "离线"
+
+msgid "Online Hosts"
+msgstr "在线主机"

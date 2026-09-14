@@ -1,0 +1,220 @@
+#!/bin/sh
+# Sourced by the init script after functions.sh. Only runtime paths are changed;
+# empty UCI certificate paths continue to select automatic certificates.
+# The && chains deliberately fail if any preparation command fails.
+# shellcheck disable=SC2034,SC2154,SC2015
+
+OPENLIST2_TLS_TIMEOUT=60
+OPENLIST2_TLS_RENEW_BEFORE=2592000
+
+openlist2_tls_run() {
+	timeout -k 1 "$OPENLIST2_TLS_TIMEOUT" "$@" </dev/null
+}
+
+openlist2_tls_managed_paths_safe() {
+	local path
+	[ ! -L "$tls_dir" ] && { [ ! -e "$tls_dir" ] || [ -d "$tls_dir" ]; } &&
+		! openlist2_mountpoint "$tls_dir" ||
+		{ openlist2_error "Automatic TLS requires a dedicated directory without symlinks or mount roots: $tls_dir"; return 1; }
+	for path in "$ssl_cert" "$ssl_key"; do
+		[ ! -L "$path" ] && { [ ! -e "$path" ] || [ -f "$path" ]; } ||
+			{ openlist2_error "Refusing an unsafe automatic TLS certificate/key path: $path"; return 1; }
+	done
+	return 0
+}
+
+openlist2_configure_tls() {
+	local path directory protected
+	tls_mode=off
+	tls_dir=""
+	if [ "$https_port" = "-1" ] && { [ "$s3" != "1" ] || [ "$s3_ssl" != "1" ]; }; then
+		return 0
+	fi
+	if [ -z "$ssl_cert" ] && [ -z "$ssl_key" ]; then
+		tls_mode=auto
+		tls_dir="$data_dir/tls"
+		ssl_cert="$tls_dir/openlist2.crt"
+		ssl_key="$tls_dir/openlist2.key"
+		openlist2_tls_managed_paths_safe || return 1
+		for directory in "$temp_dir" "$bleve_dir" "$dist_dir"; do
+			[ -n "$directory" ] || continue
+			if openlist2_contains_path "$directory" "$tls_dir" ||
+				openlist2_contains_path "$tls_dir" "$directory"; then
+				openlist2_error "Automatic TLS directory must be separate from cache, index and public frontend directories."
+				return 1
+			fi
+		done
+	elif [ -n "$ssl_cert" ] && [ -n "$ssl_key" ]; then
+		tls_mode=custom
+	else
+		openlist2_error "Leave both certificate paths empty for automatic TLS, or provide both custom certificate and key paths."
+		return 1
+	fi
+	for path in "$ssl_cert" "$ssl_key"; do
+		case "$path" in /*) ;; *)
+			openlist2_error "TLS certificate and key paths must be absolute."; return 1 ;;
+		esac
+		protected="$(readlink -f "$path" 2>/dev/null)" || protected="$path"
+		for directory in "$temp_dir" "$bleve_dir" "$dist_dir"; do
+			[ -n "$directory" ] || continue
+			if openlist2_contains_path "$directory" "$protected"; then
+				openlist2_error "TLS files must not be inside cache, index or public frontend directories."
+				return 1
+			fi
+		done
+	done
+	return 0
+}
+
+openlist2_tls_hostname() {
+	local hostname
+	hostname="$(uci -q get 'system.@system[0].hostname')"
+	case "$hostname" in ''|*[!A-Za-z0-9.-]*) hostname=openlist ;; esac
+	if [ "${#hostname}" -gt 253 ] || ! printf '%s\n' "$hostname" |
+		grep -Eq '^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$'; then
+		hostname=openlist
+	fi
+	# Hostnames above are ASCII; minimal BusyBox tr may omit character classes.
+	# shellcheck disable=SC2018,SC2019
+	printf '%s\n' "$hostname" | LC_ALL=C tr 'A-Z' 'a-z'
+}
+
+openlist2_tls_lan_ip() (
+	local address ip
+	set -f
+	# OpenWrt accepts a list of LAN addresses, optionally with CIDR suffixes.
+	# shellcheck disable=SC2046
+	for address in $(uci -q get network.lan.ipaddr); do
+		ip="$(printf '%s\n' "${address%%/*}" | LC_ALL=C awk -F. '
+			NF != 4 { exit 1 }
+			{
+				for (i = 1; i <= 4; i++)
+					if ($i !~ /^[0-9]+$/ || length($i) > 3 || $i + 0 > 255) exit 1
+				printf "%d.%d.%d.%d\n", $1, $2, $3, $4
+			}
+		')" || continue
+		printf '%s\n' "$ip"
+		exit 0
+	done
+	exit 0
+)
+
+openlist2_tls_pair_valid() (
+	local cert="$1" key="$2" min_lifetime="${3:-0}" hostname="${4:-}" ip="${5:-}"
+	local work_dir cert_pub key_pub actual_san expected_san
+	umask 077
+	work_dir="$(mktemp -d "${TMPDIR:-/tmp}/openlist2-tls-check.XXXXXX")" || exit 1
+	trap 'rm -rf "$work_dir"' 0
+	trap 'exit 1' HUP INT TERM
+	# Arguments are expanded by the child shell, inside the timeout.
+	# shellcheck disable=SC2016
+	openlist2_tls_run /bin/sh -c '
+		[ -f "$1" ] && [ -r "$1" ] && [ -s "$1" ] &&
+		[ -f "$2" ] && [ -r "$2" ] && [ -s "$2" ]
+	' openlist2-tls-check "$cert" "$key" 2>/dev/null &&
+		openlist2_tls_run openssl x509 -in "$cert" -noout -pubkey -checkend "$min_lifetime" >"$work_dir/cert" 2>/dev/null &&
+		openlist2_tls_run openssl pkey -in "$key" -pubout >"$work_dir/key.pub" 2>/dev/null &&
+		openlist2_tls_run openssl verify -purpose sslserver -partial_chain -trusted "$cert" "$cert" >/dev/null 2>&1 || exit 1
+	# Trusting the configured leaf here checks its dates and server purpose;
+	# it does not install trust into the router or any browser.
+	cert_pub="$(sed -n '/^-----BEGIN PUBLIC KEY-----$/,/^-----END PUBLIC KEY-----$/p' "$work_dir/cert")"
+	key_pub="$(cat "$work_dir/key.pub")"
+	[ -n "$cert_pub" ] && [ "$cert_pub" = "$key_pub" ] || exit 1
+	if [ -n "$hostname" ]; then
+		openlist2_tls_run openssl x509 -in "$cert" -noout -ext subjectAltName >"$work_dir/san" 2>/dev/null || exit 1
+		actual_san="$(sed '1d' "$work_dir/san" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;/^$/d' | LC_ALL=C sort)"
+		expected_san="$(
+			{ printf 'DNS:%s\n' "$hostname"; [ -z "$ip" ] || printf 'IP Address:%s\n' "$ip"; } | LC_ALL=C sort
+		)"
+		[ "$actual_san" = "$expected_san" ] || exit 1
+	fi
+	exit 0
+)
+
+openlist2_generate_tls() (
+	local hostname ip cn san work_dir="" old_cert=0 old_key=0 replacing=0 committed=0
+	local restore_ok keep_backup=0 status
+	umask 077
+	openlist2_tls_managed_paths_safe || exit 1
+	mkdir -p "$tls_dir" && chmod 700 "$tls_dir" ||
+		{ openlist2_error "Unable to prepare automatic TLS directory: $tls_dir"; exit 1; }
+	hostname="$(openlist2_tls_hostname)"
+	ip="$(openlist2_tls_lan_ip)"
+	if openlist2_tls_pair_valid "$ssl_cert" "$ssl_key" "$OPENLIST2_TLS_RENEW_BEFORE" "$hostname" "$ip"; then
+		chmod 600 "$ssl_key" && chmod 644 "$ssl_cert"
+		exit $?
+	fi
+	work_dir="$(mktemp -d "$tls_dir/.generate.XXXXXX")" ||
+		{ openlist2_error "Unable to stage automatic TLS certificate files."; exit 1; }
+	# Invoked through the EXIT trap, including interrupted replacements.
+	# shellcheck disable=SC2329
+	openlist2_tls_cleanup() {
+		status=$?
+		trap - 0 HUP INT TERM
+		if [ "$replacing" = "1" ] && [ "$committed" != "1" ]; then
+			restore_ok=1
+			if [ "$old_key" = "1" ]; then
+				mv -f "$work_dir/previous.key" "$ssl_key" || restore_ok=0
+			else
+				rm -f "$ssl_key" || restore_ok=0
+			fi
+			if [ "$old_cert" = "1" ]; then
+				mv -f "$work_dir/previous.crt" "$ssl_cert" || restore_ok=0
+			else
+				rm -f "$ssl_cert" || restore_ok=0
+			fi
+			if [ "$restore_ok" != "1" ]; then
+				keep_backup=1
+				status=1
+				openlist2_error "Unable to restore the previous TLS files; recovery files retained at $work_dir"
+			fi
+		fi
+		[ "$keep_backup" = "1" ] || rm -rf "$work_dir"
+		exit "$status"
+	}
+	trap openlist2_tls_cleanup 0
+	trap 'exit 1' HUP INT TERM
+	cn="${ip:-$hostname}"
+	[ "${#cn}" -le 64 ] || cn=OpenList
+	san="DNS:$hostname"
+	[ -z "$ip" ] || san="$san,IP:$ip"
+	openlist2_tls_run openssl req -x509 -nodes -newkey ec \
+		-pkeyopt ec_paramgen_curve:prime256v1 -pkeyopt ec_param_enc:named_curve \
+		-sha256 -days 3650 -keyout "$work_dir/new.key" -out "$work_dir/new.crt" \
+		-subj "/CN=$cn" -addext "basicConstraints=critical,CA:FALSE" \
+		-addext "keyUsage=digitalSignature" -addext "extendedKeyUsage=serverAuth" \
+		-addext "subjectAltName=$san" >/dev/null 2>&1 ||
+		{ openlist2_error "Unable to generate an automatic TLS certificate."; exit 1; }
+	openlist2_tls_pair_valid "$work_dir/new.crt" "$work_dir/new.key" "$OPENLIST2_TLS_RENEW_BEFORE" "$hostname" "$ip" &&
+		chmod 600 "$work_dir/new.key" && chmod 644 "$work_dir/new.crt" ||
+		{ openlist2_error "Unable to validate the generated TLS certificate and key."; exit 1; }
+	openlist2_tls_managed_paths_safe || exit 1
+	if [ -f "$ssl_cert" ]; then
+		cp -p "$ssl_cert" "$work_dir/previous.crt" ||
+			{ openlist2_error "Unable to back up the previous TLS certificate."; exit 1; }
+		old_cert=1
+	fi
+	if [ -f "$ssl_key" ]; then
+		cp -p "$ssl_key" "$work_dir/previous.key" ||
+			{ openlist2_error "Unable to back up the previous TLS key."; exit 1; }
+		old_key=1
+	fi
+	replacing=1
+	mv -f "$work_dir/new.key" "$ssl_key" && mv -f "$work_dir/new.crt" "$ssl_cert" ||
+		{ openlist2_error "Unable to install the generated TLS certificate pair; restoring previous files."; exit 1; }
+	committed=1
+	logger -t openlist2 "Generated automatic TLS certificate in $tls_dir"
+	exit 0
+)
+
+openlist2_prepare_tls() {
+	[ "$tls_mode" != "off" ] || return 0
+	command -v openssl >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1 ||
+		{ openlist2_error "TLS requires openssl-util and coreutils-timeout."; return 1; }
+	if [ "$tls_mode" = "auto" ]; then
+		openlist2_generate_tls
+	else
+		openlist2_tls_pair_valid "$ssl_cert" "$ssl_key" ||
+			{ openlist2_error "Custom TLS certificate/key is missing, unreadable, invalid, expired or mismatched; custom files were not changed."; return 1; }
+	fi
+}

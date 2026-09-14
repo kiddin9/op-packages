@@ -439,11 +439,15 @@ msgid "HTTPS listen port"
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:548
-msgid "The upstream default is -1 (disabled). Set a valid port number to enable HTTPS."
+msgid "Set to -1 to disable HTTPS, or 1-65535 to enable it. Leave both certificate paths empty to use an automatically generated self-signed certificate."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:557
 msgid "Force HTTPS"
+msgstr ""
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Redirect HTTP requests to HTTPS. The HTTPS listen port enables HTTPS independently of this option."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:560
@@ -451,7 +455,7 @@ msgid "SSL cert"
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:561
-msgid "SSL certificate file path"
+msgid "Leave both paths empty to manage a self-signed certificate in the TLS subdirectory of the data directory. It is reused and renewed at startup when fewer than 30 days remain. Browsers do not trust self-signed certificates automatically."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:563
@@ -459,7 +463,7 @@ msgid "SSL key"
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:564
-msgid "SSL key file path"
+msgid "For custom TLS, specify both certificate and private key paths. The certificate must be currently valid and match its private key. Custom files are never overwritten automatically."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:566
@@ -483,7 +487,7 @@ msgid "Enable HTTP/3/QUIC"
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:575
-msgid "Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled and certificate files must be configured."
+msgid "Enable HTTP/3 over QUIC on the HTTPS listen port. HTTPS must be enabled. Certificate settings are shared with HTTPS."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:579
@@ -632,6 +636,10 @@ msgstr ""
 msgid "Enabled FTP"
 msgstr ""
 
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Enable FTP/SFTP access for the OpenList account in Management > Users. Also grant FTP/SFTP management permission to allow uploads and changes."
+msgstr ""
+
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:714
 msgid "FTP Port"
 msgstr ""
@@ -689,7 +697,7 @@ msgid "MCP endpoint"
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:767
-msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList user login token; retain MCP-Session-Id for subsequent requests."
+msgid "Use Streamable HTTP with Authorization: TOKEN, without a Bearer prefix. Use an OpenList administrator login token; retain MCP-Session-Id for subsequent requests."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:770
@@ -718,7 +726,15 @@ msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:806
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:815
-msgid "Certificate and key paths are required for HTTPS or S3 SSL."
+msgid "Leave both certificate paths empty for automatic TLS, or provide both custom certificate and key paths."
+msgstr ""
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Automatic TLS directory must be separate from cache, index and public frontend directories."
+msgstr ""
+
+#: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js
+msgid "Use the same custom or automatically generated certificate as HTTPS. Configure certificate paths on the Web Protocol tab."
 msgstr ""
 
 #: luci-app-openlist2/htdocs/luci-static/resources/view/openlist2/basic.js:812

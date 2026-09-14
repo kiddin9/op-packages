@@ -31,12 +31,13 @@ return baseclass.extend({
 		var mem = L.isObject(systeminfo.memory) ? systeminfo.memory : {},
 		    swap = L.isObject(systeminfo.swap) ? systeminfo.swap : {};
 
-		var fields = [
-			_('Used'),            (mem.total && mem.available) ? (mem.total - mem.free - mem.buffered - mem.cached) : null, mem.total,
-		];
+		var available = (mem.available != null) ? mem.available : mem.free;
+		if (available != null)
+			available = Math.min(mem.total ?? Infinity, Math.max(0, available + (mem.buffered || 0)));
 
-		if (mem.buffered)
-			fields.push(_('Buffered'), mem.buffered, mem.total);
+		var fields = [
+			_('Used'), (mem.total && mem.available) ? (mem.total - available): null, mem.total,
+		];
 
 		if (mem.cached)
 			fields.push(_('Cached'), mem.cached, mem.total);

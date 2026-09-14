@@ -9393,6 +9393,14 @@ msgctxt "nft redirect"
 msgid "Redirect to local system"
 msgstr "重新導向至本地系統"
 
+#: modules/luci-mod-system/htdocs/luci-static/resources/view/system/system.js
+msgid "Redirect LAN NTP requests to this device."
+msgstr "將區域網路 NTP 請求重新導向至本機。"
+
+#: modules/luci-mod-system/htdocs/luci-static/resources/view/system/system.js
+msgid "Redirect NTP requests"
+msgstr "重新導向區域網路 NTP 請求"
+
 #: modules/luci-mod-status/htdocs/luci-static/resources/view/status/iptables.js:57
 msgid "References"
 msgstr "引用"
@@ -13993,3 +14001,24 @@ msgstr "{example_nx} 返回 {nxdomain}。"
 #: modules/luci-compat/luasrc/view/cbi/delegator.htm:20
 msgid "« Back"
 msgstr "« 返回"
+
+#: modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/30_network.js
+msgid "Total download bandwidth"
+msgstr "下載總頻寬"
+
+#: modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/30_network.js
+msgid "Total upload bandwidth"
+msgstr "上傳總頻寬"
+
+#: modules/luci-mod-status/htdocs/luci-static/resources/view/status/include/40_dhcp.js
+msgid "Total traffic"
+msgstr "總流量"
+
+msgid "Online"
+msgstr "在線"
+
+msgid "Offline"
+msgstr "離線"
+
+msgid "Online Hosts"
+msgstr "在線主機"

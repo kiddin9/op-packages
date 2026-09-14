@@ -39,7 +39,7 @@ function config() {
 	done
 	echo "  ]"
 	echo "}"
-	}
+}
 
 start_service() {
 	mkdir -p ${CONFIG_DIR}
