@@ -1,3 +1,15 @@
+--- a/luci-mod-status/Makefile
++++ b/luci-mod-status/Makefile
+@@ -7,7 +7,7 @@
+ include $(TOPDIR)/rules.mk
+ 
+ LUCI_TITLE:=LuCI Status Pages
+-LUCI_DEPENDS:=+luci-base +libiwinfo +rpcd-mod-iwinfo +ucode +ucode-mod-fs +ucode-mod-ubus
++LUCI_DEPENDS:=+luci-base +libiwinfo +rpcd-mod-iwinfo +ucode +ucode-mod-fs +ucode-mod-ubus +luci-app-oui
+ 
+ PKG_RELEASE:=6
+ PKG_BUILD_DEPENDS:=iwinfo
+
 --- a/luci-mod-status/htdocs/luci-static/resources/view/status/include/20_memory.js
 +++ b/luci-mod-status/htdocs/luci-static/resources/view/status/include/20_memory.js
 @@ -36,14 +36,14 @@ return baseclass.extend({
