@@ -166,6 +166,7 @@ jobs:
         git_clone https://github.com/linkease/nas-packages-luci && mv -n nas-packages-luci/luci/* ./; rm -rf nas-packages-luci
         git_clone https://github.com/linkease/istore && mv -n istore/luci/* ./; rm -rf istore
         #git_clone https://github.com/linkease/lcdsimple lcdsimple1 && mvdir lcdsimple1
+        git_clone https://github.com/0x5826/openwrt-packages-extras 0x5826; rm -rf 0x5826/MAINTENANCE.md; mvdir 0x5826
         ) &
         (
         # git_clone https://github.com/frainzy1477/luci-app-clash
