@@ -1,0 +1,2150 @@
+{
+	"sections": [
+		{
+			"id": "TypedSection:#0",
+			"kind": "TypedSection",
+			"tabs": [],
+			"options": [],
+			"subsection": null
+		},
+		{
+			"id": "NamedSection:server#1",
+			"kind": "NamedSection",
+			"name": "server",
+			"tabs": [],
+			"options": [
+				{
+					"kind": "Flag",
+					"name": "enabled",
+					"title": "Enable",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				}
+			],
+			"subsection": null
+		},
+		{
+			"id": "GridSection:server#2",
+			"kind": "GridSection",
+			"name": "server",
+			"tabs": [],
+			"options": [
+				{
+					"kind": "Value",
+					"name": "label",
+					"title": "Label",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "enabled",
+					"title": "Enable",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"editable": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "firewall",
+					"title": "Firewall",
+					"description": "Allow access from the Internet.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"editable": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "type",
+					"title": "Type",
+					"description": null,
+					"depends": [],
+					"values": [
+						[
+							"anytls",
+							"AnyTLS"
+						],
+						[
+							"http",
+							"HTTP"
+						],
+						[
+							"hysteria",
+							"Hysteria"
+						],
+						[
+							"hysteria2",
+							"Hysteria2"
+						],
+						[
+							"naive",
+							"NaïveProxy"
+						],
+						[
+							"mixed",
+							"Mixed"
+						],
+						[
+							"shadowsocks",
+							"Shadowsocks"
+						],
+						[
+							"snell",
+							"Snell (1.14)"
+						],
+						[
+							"socks",
+							"Socks"
+						],
+						[
+							"trojan",
+							"Trojan"
+						],
+						[
+							"tuic",
+							"Tuic"
+						],
+						[
+							"vless",
+							"VLESS"
+						],
+						[
+							"vmess",
+							"VMess"
+						]
+					],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "address",
+					"title": "Listen address",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"datatype": "ipaddr",
+						"modalonly": true,
+						"placeholder": "::"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "port",
+					"title": "Listen port",
+					"description": "The port must be unique.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"datatype": "port"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "username",
+					"title": "Username",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"http"
+						],
+						[
+							"type",
+							"mixed"
+						],
+						[
+							"type",
+							"naive"
+						],
+						[
+							"type",
+							"socks"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "CBI.GenValue",
+					"name": "password",
+					"title": "Password",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"anytls"
+						],
+						{
+							"type": {},
+							"username": {}
+						},
+						[
+							"type",
+							"hysteria2"
+						],
+						[
+							"type",
+							"shadowsocks"
+						],
+						[
+							"type",
+							"snell"
+						],
+						[
+							"type",
+							"trojan"
+						],
+						[
+							"type",
+							"tuic"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "anytls_padding_scheme",
+					"title": "Padding scheme",
+					"description": "AnyTLS padding scheme in array.",
+					"depends": [
+						[
+							"type",
+							"anytls"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "hysteria_protocol",
+					"title": "Protocol",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"hysteria"
+						]
+					],
+					"values": [
+						[
+							"udp",
+							null
+						]
+					],
+					"props": {
+						"default": "udp",
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "hysteria_down_mbps",
+					"title": "Max download speed",
+					"description": "Max download speed in Mbps.",
+					"depends": [
+						[
+							"type",
+							"hysteria"
+						],
+						[
+							"type",
+							"hysteria2"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "hysteria_up_mbps",
+					"title": "Max upload speed",
+					"description": "Max upload speed in Mbps.",
+					"depends": [
+						[
+							"type",
+							"hysteria"
+						],
+						[
+							"type",
+							"hysteria2"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "hysteria_auth_type",
+					"title": "Authentication type",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"hysteria"
+						]
+					],
+					"values": [
+						[
+							"",
+							"Disable"
+						],
+						[
+							"base64",
+							"Base64"
+						],
+						[
+							"string",
+							"String"
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "hysteria_auth_payload",
+					"title": "Authentication payload",
+					"description": null,
+					"depends": [
+						{
+							"type": "hysteria",
+							"hysteria_auth_type": {}
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "hysteria_obfs_type",
+					"title": "Obfuscate type",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"hysteria2"
+						]
+					],
+					"values": [
+						[
+							"",
+							"Disable"
+						],
+						[
+							"salamander",
+							"Salamander"
+						],
+						[
+							"gecko",
+							"Gecko (1.14)"
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "CBI.GenValue",
+					"name": "hysteria_obfs_password",
+					"title": "Obfuscate password",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"hysteria"
+						],
+						{
+							"type": "hysteria2",
+							"hysteria_obfs_type": {}
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "hysteria_obfs_min_packet_size",
+					"title": "Min obfs packet size (1.14)",
+					"description": "Minimum on-wire packet size in bytes. Gecko only.",
+					"depends": [
+						{
+							"type": "hysteria2",
+							"hysteria_obfs_type": "gecko"
+						}
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true,
+						"placeholder": "512"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "hysteria_obfs_max_packet_size",
+					"title": "Max obfs packet size (1.14)",
+					"description": "Maximum on-wire packet size in bytes. Gecko only.",
+					"depends": [
+						{
+							"type": "hysteria2",
+							"hysteria_obfs_type": "gecko"
+						}
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true,
+						"placeholder": "1200"
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "hysteria_ignore_client_bandwidth",
+					"title": "Ignore client bandwidth",
+					"description": "Tell the client to use the BBR flow control algorithm instead of Hysteria CC.",
+					"depends": [
+						{
+							"type": "hysteria2",
+							"hysteria_down_mbps": "",
+							"hysteria_up_mbps": ""
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "hysteria_masquerade",
+					"title": "Masquerade",
+					"description": "HTTP3 server behavior when authentication fails.<br/>A 404 page will be returned if empty.",
+					"depends": [
+						[
+							"type",
+							"hysteria2"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "snell_version",
+					"title": "Snell version",
+					"description": "The pre-shared key (password) above must be 12-255 bytes for v6.",
+					"depends": [
+						[
+							"type",
+							"snell"
+						]
+					],
+					"values": [
+						[
+							"5",
+							"v5"
+						],
+						[
+							"6",
+							"v6"
+						]
+					],
+					"props": {
+						"default": "5",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "snell_obfs_mode",
+					"title": "Obfuscation mode",
+					"description": "HTTP obfuscation. v5 only.",
+					"depends": [
+						{
+							"type": "snell",
+							"snell_version": "5"
+						}
+					],
+					"values": [
+						[
+							"",
+							"none"
+						],
+						[
+							"http",
+							"http"
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "snell_mode",
+					"title": "Traffic shaping mode",
+					"description": "v6 only.",
+					"depends": [
+						{
+							"type": "snell",
+							"snell_version": "6"
+						}
+					],
+					"values": [
+						[
+							"",
+							"default"
+						],
+						[
+							"unshaped",
+							"unshaped"
+						],
+						[
+							"unsafe-raw",
+							"unsafe-raw"
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "shadowsocks_encrypt_method",
+					"title": "Encrypt method",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"shadowsocks"
+						]
+					],
+					"values": [
+						[
+							"none",
+							null
+						],
+						[
+							"aes-128-gcm",
+							null
+						],
+						[
+							"aes-192-gcm",
+							null
+						],
+						[
+							"aes-256-gcm",
+							null
+						],
+						[
+							"chacha20-ietf-poly1305",
+							null
+						],
+						[
+							"xchacha20-ietf-poly1305",
+							null
+						],
+						[
+							"2022-blake3-aes-128-gcm",
+							null
+						],
+						[
+							"2022-blake3-aes-256-gcm",
+							null
+						],
+						[
+							"2022-blake3-chacha20-poly1305",
+							null
+						]
+					],
+					"props": {
+						"default": "aes-128-gcm",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "CBI.GenValue",
+					"name": "uuid",
+					"title": "UUID",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"tuic"
+						],
+						[
+							"type",
+							"vless"
+						],
+						[
+							"type",
+							"vmess"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "tuic_congestion_control",
+					"title": "Congestion control algorithm",
+					"description": "QUIC congestion control algorithm.",
+					"depends": [
+						[
+							"type",
+							"tuic"
+						]
+					],
+					"values": [
+						[
+							"cubic",
+							null
+						],
+						[
+							"new_reno",
+							null
+						],
+						[
+							"bbr",
+							null
+						]
+					],
+					"props": {
+						"default": "cubic",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tuic_auth_timeout",
+					"title": "Auth timeout",
+					"description": "How long the server should wait for the client to send the authentication command (in seconds).",
+					"depends": [
+						[
+							"type",
+							"tuic"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"default": "3",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tuic_enable_zero_rtt",
+					"title": "Enable 0-RTT handshake",
+					"description": "Enable 0-RTT QUIC connection handshake on the client side. This is not impacting much on the performance, as the protocol is fully multiplexed.<br/>Disabling this is highly recommended, as it is vulnerable to replay attacks.",
+					"depends": [
+						[
+							"type",
+							"tuic"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tuic_heartbeat",
+					"title": "Heartbeat interval",
+					"description": "Interval for sending heartbeat packets for keeping the connection alive (in seconds).",
+					"depends": [
+						[
+							"type",
+							"tuic"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"default": "10",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "vless_flow",
+					"title": "Flow",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"vless"
+						]
+					],
+					"values": [
+						[
+							"",
+							"None"
+						],
+						[
+							"xtls-rprx-vision",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "vmess_alterid",
+					"title": "Alter ID",
+					"description": "Legacy protocol support (VMess MD5 Authentication) is provided for compatibility purposes only, use of alterId > 1 is not recommended.",
+					"depends": [
+						[
+							"type",
+							"vmess"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "transport",
+					"title": "Transport",
+					"description": "No TCP transport, plain HTTP is merged into the HTTP transport.",
+					"depends": [
+						[
+							"type",
+							"trojan"
+						],
+						[
+							"type",
+							"vless"
+						],
+						[
+							"type",
+							"vmess"
+						]
+					],
+					"values": [
+						[
+							"",
+							"None"
+						],
+						[
+							"grpc",
+							"gRPC"
+						],
+						[
+							"http",
+							"HTTP"
+						],
+						[
+							"httpupgrade",
+							"HTTPUpgrade"
+						],
+						[
+							"quic",
+							"QUIC"
+						],
+						[
+							"ws",
+							"WebSocket"
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "grpc_servicename",
+					"title": "gRPC service name",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"grpc"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "http_host",
+					"title": "Host",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"http"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "hostname",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "httpupgrade_host",
+					"title": "Host",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"httpupgrade"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "hostname",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "http_path",
+					"title": "Path",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"http"
+						],
+						[
+							"transport",
+							"httpupgrade"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "http_method",
+					"title": "Method",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"http"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "http_idle_timeout",
+					"title": "Idle timeout",
+					"description": "Specifies the time (in seconds) until idle clients should be closed with a GOAWAY frame. PING frames are not considered as activity.",
+					"depends": [
+						[
+							"transport",
+							"grpc"
+						],
+						{
+							"transport": "http",
+							"tls": "1"
+						}
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "http_ping_timeout",
+					"title": "Ping timeout",
+					"description": "The timeout (in seconds) that after performing a keepalive check, the client will wait for activity. If no activity is detected, the connection will be closed.",
+					"depends": [
+						[
+							"transport",
+							"grpc"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "ws_host",
+					"title": "Host",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"ws"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "ws_path",
+					"title": "Path",
+					"description": null,
+					"depends": [
+						[
+							"transport",
+							"ws"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "websocket_early_data",
+					"title": "Early data",
+					"description": "Allowed payload size is in the request.",
+					"depends": [
+						[
+							"transport",
+							"ws"
+						]
+					],
+					"values": [
+						[
+							"2048",
+							null
+						]
+					],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "websocket_early_data_header",
+					"title": "Early data header name",
+					"description": "Early data is sent in path instead of header by default.<br/>To be compatible with Xray-core, set this to <code>Sec-WebSocket-Protocol</code>.",
+					"depends": [
+						[
+							"transport",
+							"ws"
+						]
+					],
+					"values": [
+						[
+							"Sec-WebSocket-Protocol",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "multiplex",
+					"title": "Multiplex",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"shadowsocks"
+						],
+						[
+							"type",
+							"trojan"
+						],
+						[
+							"type",
+							"vless"
+						],
+						[
+							"type",
+							"vmess"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "multiplex_padding",
+					"title": "Enable padding",
+					"description": null,
+					"depends": [
+						[
+							"multiplex",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "multiplex_brutal",
+					"title": "Enable TCP Brutal",
+					"description": "Enable TCP Brutal congestion control algorithm",
+					"depends": [
+						[
+							"multiplex",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "multiplex_brutal_down",
+					"title": "Download bandwidth",
+					"description": "Download bandwidth in Mbps.",
+					"depends": [
+						[
+							"multiplex_brutal",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "multiplex_brutal_up",
+					"title": "Upload bandwidth",
+					"description": "Upload bandwidth in Mbps.",
+					"depends": [
+						[
+							"multiplex_brutal",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls",
+					"title": "TLS",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"anytls"
+						],
+						[
+							"type",
+							"http"
+						],
+						[
+							"type",
+							"hysteria"
+						],
+						[
+							"type",
+							"hysteria2"
+						],
+						[
+							"type",
+							"naive"
+						],
+						[
+							"type",
+							"trojan"
+						],
+						[
+							"type",
+							"tuic"
+						],
+						[
+							"type",
+							"vless"
+						],
+						[
+							"type",
+							"vmess"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_sni",
+					"title": "TLS SNI",
+					"description": "Used to verify the hostname on the returned certificates unless insecure is given.",
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "tls_alpn",
+					"title": "TLS ALPN",
+					"description": "List of supported application level protocols, in order of preference.",
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "tls_min_version",
+					"title": "Minimum TLS version",
+					"description": "The minimum TLS version that is acceptable.",
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [
+						[
+							"",
+							"default"
+						],
+						[
+							"1.0",
+							null
+						],
+						[
+							"1.1",
+							null
+						],
+						[
+							"1.2",
+							null
+						],
+						[
+							"1.3",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "tls_max_version",
+					"title": "Maximum TLS version",
+					"description": "The maximum TLS version that is acceptable.",
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [
+						[
+							"",
+							"default"
+						],
+						[
+							"1.0",
+							null
+						],
+						[
+							"1.1",
+							null
+						],
+						[
+							"1.2",
+							null
+						],
+						[
+							"1.3",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "CBI.StaticList",
+					"name": "tls_cipher_suites",
+					"title": "Cipher suites",
+					"description": "The elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used.",
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [
+						[
+							"TLS_RSA_WITH_AES_128_CBC_SHA",
+							null
+						],
+						[
+							"TLS_RSA_WITH_AES_256_CBC_SHA",
+							null
+						],
+						[
+							"TLS_RSA_WITH_AES_128_GCM_SHA256",
+							null
+						],
+						[
+							"TLS_RSA_WITH_AES_256_GCM_SHA384",
+							null
+						],
+						[
+							"TLS_AES_128_GCM_SHA256",
+							null
+						],
+						[
+							"TLS_AES_256_GCM_SHA384",
+							null
+						],
+						[
+							"TLS_CHACHA20_POLY1305_SHA256",
+							null
+						],
+						[
+							"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
+							null
+						],
+						[
+							"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
+							null
+						],
+						[
+							"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+							null
+						],
+						[
+							"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+							null
+						],
+						[
+							"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+							null
+						],
+						[
+							"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+							null
+						],
+						[
+							"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+							null
+						],
+						[
+							"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+							null
+						],
+						[
+							"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+							null
+						],
+						[
+							"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true,
+						"optional": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls_acme",
+					"title": "Enable ACME",
+					"description": "Use ACME TLS certificate issuer.",
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "tls_acme_domain",
+					"title": "Domains",
+					"description": null,
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "hostname",
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_dsn",
+					"title": "Default server name",
+					"description": "Server name to use when choosing a certificate if the ClientHello's ServerName field is empty.",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_email",
+					"title": "Email",
+					"description": "The email address to use when creating or selecting an existing ACME server account.",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_key_type",
+					"title": "ACME key type",
+					"description": "Private key type for new certificates (1.14). Empty uses the default.",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [
+						[
+							"ed25519",
+							null
+						],
+						[
+							"p256",
+							null
+						],
+						[
+							"p384",
+							null
+						],
+						[
+							"rsa2048",
+							null
+						],
+						[
+							"rsa4096",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_profile",
+					"title": "ACME profile",
+					"description": "ACME profile for certificate issuance (1.14). Example: shortlived.",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"placeholder": "shortlived"
+					}
+				},
+				{
+					"kind": "TextValue",
+					"name": "tls_acme_account_key",
+					"title": "ACME account key",
+					"description": "PEM-encoded private key of an existing ACME account (1.14).",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"monospace": true,
+						"rows": 3
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_provider",
+					"title": "CA provider",
+					"description": "The ACME CA provider to use.",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [
+						[
+							"letsencrypt",
+							"Let's Encrypt"
+						],
+						[
+							"zerossl",
+							"ZeroSSL"
+						]
+					],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls_dns01_challenge",
+					"title": "DNS01 challenge",
+					"description": null,
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "tls_dns01_provider",
+					"title": "DNS provider",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_challenge",
+							"1"
+						]
+					],
+					"values": [
+						[
+							"alidns",
+							"Alibaba Cloud DNS"
+						],
+						[
+							"cloudflare",
+							"Cloudflare"
+						]
+					],
+					"props": {
+						"default": "cloudflare",
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_dns01_ali_akid",
+					"title": "Access key ID",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_provider",
+							"alidns"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_dns01_ali_aksec",
+					"title": "Access key secret",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_provider",
+							"alidns"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_dns01_ali_rid",
+					"title": "Region ID",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_provider",
+							"alidns"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_dns01_cf_api_token",
+					"title": "API token",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_provider",
+							"cloudflare"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls_acme_dhc",
+					"title": "Disable HTTP challenge",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_challenge",
+							"0"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls_acme_dtac",
+					"title": "Disable TLS ALPN challenge",
+					"description": null,
+					"depends": [
+						[
+							"tls_dns01_challenge",
+							"0"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_ahp",
+					"title": "Alternative HTTP port",
+					"description": "The alternate port to use for the ACME HTTP challenge; if non-empty, this port will be used instead of 80 to spin up a listener for the HTTP challenge.",
+					"depends": [
+						[
+							"tls_dns01_challenge",
+							"0"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "port",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_atp",
+					"title": "Alternative TLS port",
+					"description": "The alternate port to use for the ACME TLS-ALPN challenge; the system must forward 443 to this port for challenge to succeed.",
+					"depends": [
+						[
+							"tls_dns01_challenge",
+							"0"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "port",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls_acme_external_account",
+					"title": "External Account Binding",
+					"description": "EAB (External Account Binding) contains information necessary to bind or map an ACME account to some other account known by the CA.<br/>External account bindings are \"used to associate an ACME account with an existing account in a non-ACME system, such as a CA customer database.",
+					"depends": [
+						[
+							"tls_acme",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_ea_keyid",
+					"title": "External account key ID",
+					"description": null,
+					"depends": [
+						[
+							"tls_acme_external_account",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_acme_ea_mackey",
+					"title": "External account MAC key",
+					"description": null,
+					"depends": [
+						[
+							"tls_acme_external_account",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tls_reality",
+					"title": "REALITY",
+					"description": null,
+					"depends": [
+						{
+							"tls": "1",
+							"tls_acme": "0",
+							"type": {}
+						},
+						{
+							"tls": "1",
+							"tls_acme": null,
+							"type": {}
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "CBI.GenValue",
+					"name": "tls_reality_private_key",
+					"title": "REALITY private key",
+					"description": null,
+					"depends": [
+						[
+							"tls_reality",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"hp_options": {
+							"type": "reality-keypair",
+							"params": ""
+						},
+						"modalonly": true,
+						"password": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_reality_public_key",
+					"title": "REALITY public key",
+					"description": null,
+					"depends": [
+						[
+							"tls_reality",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "tls_reality_short_id",
+					"title": "REALITY short ID",
+					"description": null,
+					"depends": [
+						[
+							"tls_reality",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_reality_max_time_difference",
+					"title": "Max time difference",
+					"description": "The maximum time difference between the server and the client.",
+					"depends": [
+						[
+							"tls_reality",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_reality_server_addr",
+					"title": "Handshake server address",
+					"description": null,
+					"depends": [
+						[
+							"tls_reality",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "hostname",
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_reality_server_port",
+					"title": "Handshake server port",
+					"description": null,
+					"depends": [
+						[
+							"tls_reality",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "port",
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_cert_path",
+					"title": "Certificate path",
+					"description": "The server public key, in PEM format.",
+					"depends": [
+						{
+							"tls": "1",
+							"tls_acme": "0",
+							"tls_reality": null
+						},
+						{
+							"tls": "1",
+							"tls_acme": "0",
+							"tls_reality": "0"
+						},
+						{
+							"tls": "1",
+							"tls_acme": null,
+							"tls_reality": "0"
+						},
+						{
+							"tls": "1",
+							"tls_acme": null,
+							"tls_reality": null
+						}
+					],
+					"values": [
+						[
+							"/etc/homeproxy/certs/server_publickey.pem",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Button",
+					"name": "_upload_cert",
+					"title": "Upload certificate",
+					"description": "<strong>Save your configuration before uploading files!</strong>",
+					"depends": [
+						{
+							"tls": "1",
+							"tls_cert_path": "/etc/homeproxy/certs/server_publickey.pem"
+						}
+					],
+					"values": [],
+					"props": {
+						"inputstyle": "action",
+						"inputtitle": "Upload...",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "tls_key_path",
+					"title": "Key path",
+					"description": "The server private key, in PEM format.",
+					"depends": [
+						{
+							"tls": "1",
+							"tls_acme": "0",
+							"tls_reality": "0"
+						},
+						{
+							"tls": "1",
+							"tls_acme": "0",
+							"tls_reality": null
+						},
+						{
+							"tls": "1",
+							"tls_acme": null,
+							"tls_reality": "0"
+						},
+						{
+							"tls": "1",
+							"tls_acme": null,
+							"tls_reality": null
+						}
+					],
+					"values": [
+						[
+							"/etc/homeproxy/certs/server_privatekey.pem",
+							null
+						]
+					],
+					"props": {
+						"modalonly": true,
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Button",
+					"name": "_upload_key",
+					"title": "Upload key",
+					"description": "<strong>Save your configuration before uploading files!</strong>",
+					"depends": [
+						{
+							"tls": "1",
+							"tls_key_path": "/etc/homeproxy/certs/server_privatekey.pem"
+						}
+					],
+					"values": [],
+					"props": {
+						"inputstyle": "action",
+						"inputtitle": "Upload...",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "TextValue",
+					"name": "tls_ech_key",
+					"title": "ECH key",
+					"description": null,
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"cols": 30,
+						"hp_options": {
+							"type": "ech-keypair",
+							"params": ""
+						},
+						"modalonly": true,
+						"monospace": true,
+						"placeholder": "-----BEGIN ECH KEYS-----\nACBE2+piYBLrOywCbRYU+ZpEkk8keeBlUXbKqLRmQ/68FwBL/g0ARwAAIAAgn8HI\n93RfdV/LaDk+LC9H4h+4WhVBFmWKdhiT3vvpGi8ACAABAAEAAQADABRvdXRlci1z\nbmkuYW55LmRvbWFpbgAA\n-----END ECH KEYS-----",
+						"rows": 3
+					}
+				},
+				{
+					"kind": "TextValue",
+					"name": "tls_ech_config",
+					"title": "ECH config",
+					"description": null,
+					"depends": [
+						[
+							"tls",
+							"1"
+						]
+					],
+					"values": [],
+					"props": {
+						"cols": 30,
+						"modalonly": true,
+						"monospace": true,
+						"placeholder": "-----BEGIN ECH CONFIGS-----\nAEv+DQBHAAAgACCfwcj3dF91X8toOT4sL0fiH7haFUEWZYp2GJPe++kaLwAIAAEA\nAQABAAMAFG91dGVyLXNuaS5hbnkuZG9tYWluAAA=\n-----END ECH CONFIGS-----",
+						"rows": 3
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tcp_fast_open",
+					"title": "TCP fast open",
+					"description": "Enable tcp fast open for listener.",
+					"depends": [
+						{
+							"network": "udp",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "tcp_multi_path",
+					"title": "MultiPath TCP",
+					"description": null,
+					"depends": [
+						{
+							"network": "udp",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "udp_fragment",
+					"title": "UDP Fragment",
+					"description": "Enable UDP fragmentation.",
+					"depends": [
+						{
+							"network": "tcp",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "udp_timeout",
+					"title": "UDP NAT expiration time",
+					"description": "In seconds.",
+					"depends": [
+						{
+							"network": "tcp",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"modalonly": true,
+						"placeholder": "300"
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "network",
+					"title": "Network",
+					"description": null,
+					"depends": [
+						[
+							"type",
+							"naive"
+						],
+						[
+							"type",
+							"shadowsocks"
+						]
+					],
+					"values": [
+						[
+							"tcp",
+							"TCP"
+						],
+						[
+							"udp",
+							"UDP"
+						],
+						[
+							"",
+							"Both"
+						]
+					],
+					"props": {
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "class {}",
+					"name": "bind_interface",
+					"title": "Bind interface",
+					"description": "The network interface to bind to.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"modalonly": true,
+						"multiple": false,
+						"noaliases": true
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "reuse_addr",
+					"title": "Reuse address",
+					"description": "Reuse listener address.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"modalonly": true
+					}
+				}
+			],
+			"subsection": null
+		}
+	]
+}

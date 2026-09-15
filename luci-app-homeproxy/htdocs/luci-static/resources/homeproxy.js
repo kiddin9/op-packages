@@ -12,157 +12,21 @@
 'require uci';
 'require ui';
 
-function pad2(value) {
-	value = (value == null) ? '' : String(value).trim();
-	return value.length === 1 ? '0' + value : value;
-}
+/* Shared wording for the TLS / transport form blocks. Keeping the strings here
+   makes node.js and server.js consume a single definition instead of two
+   copies that have to be edited in lockstep. */
+const TRANSPORT_NONE_HINT = _('No TCP transport, plain HTTP is merged into the HTTP transport.');
+const TRANSPORT_HTTP_HINT = _('TLS is not enforced. If TLS is not configured, plain HTTP 1.1 is used.');
+const TRANSPORT_QUIC_HINT = _('No additional encryption support: It\'s basically duplicate encryption.');
 
-function normalizeTimePart(value, min, max) {
-	value = parseInt(String(value || '').trim(), 10);
-	if (isNaN(value))
-		value = min;
-	value = Math.max(min, Math.min(max, value));
-	return pad2(value);
-}
+const HTTP_IDLE_HEALTH_CHECK_HINT = _('Specifies the period of time (in seconds) after which a health check will be performed using a ping frame if no frames have been received on the connection.<br/>' +
+	'Please note that a ping response is considered a received frame, so if there is no other traffic on the connection, the health check will be executed every interval.');
+const HTTP_IDLE_GOAWAY_HINT = _('Specifies the time (in seconds) until idle clients should be closed with a GOAWAY frame. PING frames are not considered as activity.');
+const HTTP_IDLE_KEEPALIVE_HINT = _('If the transport doesn\'t see any activity after a duration of this time (in seconds), it pings the client to check if the connection is still active.');
 
-function parseCron(value) {
-	const matched = String(value || '').trim().match(/^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+([0-7*])$/);
-	if (!matched)
-		return null;
-
-	const minute = +matched[1],
-	      hour = +matched[2];
-	if (minute < 0 || minute > 59 || hour < 0 || hour > 23)
-		return null;
-
-	return {
-		minute: normalizeTimePart(matched[1], 0, 59),
-		hour: normalizeTimePart(matched[2], 0, 23),
-		day: matched[3] === '*' ? '*' : (matched[3] === '7' ? '0' : matched[3])
-	};
-}
-
-function buildCron(day, hour, minute) {
-	return [
-		normalizeTimePart(minute, 0, 59),
-		normalizeTimePart(hour, 0, 23),
-		'*',
-		'*',
-		String(day || '*')
-	].join(' ');
-}
-
-function alignCronEditorRow(wrap) {
-	let field = wrap?.parentNode;
-
-	while (field && !field.classList?.contains('cbi-value-field'))
-		field = field.parentNode;
-
-	let row = field?.parentNode;
-	while (row && !row.classList?.contains('cbi-value'))
-		row = row.parentNode;
-
-	if (!row || !field)
-		return false;
-
-	if (wrap._dailyRow) {
-		wrap._dailyRow.style.display = row.style.display;
-		return true;
-	}
-
-	let dailyRow = E('div', { 'class': 'cbi-value homeproxy-cron-daily-row' }, [
-		E('div', { 'class': 'cbi-value-title' }, _('Update time (daily)')),
-		E('div', { 'class': 'cbi-value-field' }, [ wrap._dailyField ])
-	]);
-
-	wrap._dailyRow = dailyRow;
-	row.parentNode.insertBefore(dailyRow, row.nextSibling);
-
-	return true;
-}
-
-function watchCronEditorRow(wrap) {
-	const align = () => alignCronEditorRow(wrap);
-	[ 0, 50, 200, 500, 1000, 2000 ].forEach(delay => window.setTimeout(align, delay));
-
-	if (typeof MutationObserver !== 'undefined' && document?.body) {
-		const observer = new MutationObserver(() => {
-			if (align())
-				observer.disconnect();
-		});
-
-		observer.observe(document.body, { childList: true, subtree: true });
-		window.setTimeout(() => observer.disconnect(), 3000);
-	}
-}
-
-function renderCronEditor(input) {
-	if (!input)
-		return null;
-
-	const parsed = parseCron(input.value);
-	input.type = 'text';
-	input.readOnly = true;
-	input.tabIndex = -1;
-	input.style.position = 'absolute';
-	input.style.opacity = '0';
-	input.style.pointerEvents = 'none';
-	input.style.width = '1px';
-	input.style.height = '1px';
-	input.style.minWidth = '1px';
-	input.style.maxWidth = '1px';
-	input.style.padding = '0';
-	input.style.border = '0';
-
-	let day = E('select', { 'class': 'cbi-input-select', 'style': 'width: 12em !important; min-width: 12em !important; max-width: 12em !important; box-sizing: border-box;' }),
-	    hour = E('select', { 'class': 'cbi-input-select', 'style': 'width: 4.25em !important; min-width: 4.25em !important; max-width: 4.25em !important; box-sizing: border-box;' }),
-	    minute = E('select', { 'class': 'cbi-input-select', 'style': 'width: 4.25em !important; min-width: 4.25em !important; max-width: 4.25em !important; box-sizing: border-box;' }),
-	    dailyField = E('div', { 'style': 'display: flex; align-items: center; gap: .25em; width: 9.5em;' }, [
-		hour,
-		E('span', ':'),
-		minute
-	    ]),
-	    wrap = E('div', { 'class': 'homeproxy-cron-editor' }, [ day ]);
-
-	wrap._dailyField = dailyField;
-
-	for (let i = 0; i < 24; i++)
-		hour.appendChild(E('option', { value: pad2(i) }, pad2(i)));
-
-	for (let i = 0; i < 60; i++)
-		minute.appendChild(E('option', { value: pad2(i) }, pad2(i)));
-
-	[
-		['*', _('Every day')],
-		['1', _('Every Monday')],
-		['2', _('Every Tuesday')],
-		['3', _('Every Wednesday')],
-		['4', _('Every Thursday')],
-		['5', _('Every Friday')],
-		['6', _('Every Saturday')],
-		['0', _('Every Sunday')]
-	].forEach(([value, label]) => day.appendChild(E('option', { value }, label)));
-
-	day.value = parsed ? parsed.day : '*';
-	hour.value = parsed ? parsed.hour : '00';
-	minute.value = parsed ? parsed.minute : '00';
-	input.value = buildCron(day.value, hour.value, minute.value);
-	input.setAttribute('value', input.value);
-
-	const sync = () => {
-		input.value = buildCron(day.value, hour.value, minute.value);
-		input.setAttribute('value', input.value);
-		input.dispatchEvent(new Event('input', { bubbles: true }));
-		input.dispatchEvent(new Event('change', { bubbles: true }));
-	};
-
-	day.addEventListener('change', sync);
-	hour.addEventListener('change', sync);
-	minute.addEventListener('change', sync);
-	wrap.appendChild(input);
-	window.setTimeout(() => watchCronEditorRow(wrap), 0);
-	return wrap;
-}
+const HTTP_PING_HEALTH_CHECK_HINT = _('Specifies the timeout duration (in seconds) after sending a PING frame, within which a response must be received.<br/>' +
+	'If a response to the PING frame is not received within the specified timeout duration, the connection will be closed.');
+const HTTP_PING_KEEPALIVE_HINT = _('The timeout (in seconds) that after performing a keepalive check, the client will wait for activity. If no activity is detected, the connection will be closed.');
 
 return baseclass.extend({
 	dns_strategy: {
@@ -238,28 +102,225 @@ return baseclass.extend({
 		}
 	}),
 
-	CBIMultiValue: form.MultiValue.extend({
-		__name__: 'CBI.HomeProxyMultiValue',
+	/* Build the transport option group shared by the node (client) and server
+	   forms. `options.side` selects the client/server wording and the handful of
+	   fields that only exist on one side; option names, defaults and dependency
+	   sets are otherwise identical. */
+	renderTransportOptions(section, options) {
+		const features = options.features || {},
+		      side = options.side || 'client';
+		let o;
 
-		renderWidget(section_id, _option_index, cfgvalue) {
-			let value = (cfgvalue != null) ? cfgvalue : this.default,
-			    choices = this.transformChoices() || {},
-			    widget = new ui.Dropdown(L.toArray(value), choices, {
-				id: this.cbid(section_id),
-				sort: this.keylist,
-				multiple: true,
-				optional: this.optional || this.rmempty,
-				select_placeholder: this.placeholder,
-				create: this.create,
-				display_items: this.display_size ?? this.size ?? 3,
-				dropdown_items: this.dropdown_size ?? this.size ?? -1,
-				validate: this.getValidator(section_id),
-				disabled: (this.readonly != null) ? this.readonly : this.map.readonly
-			});
+		o = section.option(form.ListValue, 'transport', _('Transport'), TRANSPORT_NONE_HINT);
+		o.value('', _('None'));
+		o.value('grpc', _('gRPC'));
+		o.value('http', _('HTTP'));
+		o.value('httpupgrade', _('HTTPUpgrade'));
+		o.value('quic', _('QUIC'));
+		o.value('ws', _('WebSocket'));
+		o.depends('type', 'trojan');
+		o.depends('type', 'vless');
+		o.depends('type', 'vmess');
+		o.onchange = function(ev, section_id, value) {
+			let desc = this.map.findElement('id', 'cbid.homeproxy.%s.transport'.format(section_id)).nextElementSibling;
+			if (value === 'http')
+				desc.innerHTML = TRANSPORT_HTTP_HINT;
+			else if (value === 'quic')
+				desc.innerHTML = TRANSPORT_QUIC_HINT;
+			else
+				desc.innerHTML = TRANSPORT_NONE_HINT;
 
-			return widget.render();
+			let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
+			if ((value === 'http' && tls.checked) || (value === 'grpc' && !features.with_grpc)) {
+				this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
+					(side === 'server') ? HTTP_IDLE_GOAWAY_HINT : HTTP_IDLE_HEALTH_CHECK_HINT;
+
+				if (side !== 'server')
+					this.map.findElement('id', 'cbid.homeproxy.%s.http_ping_timeout'.format(section_id)).nextElementSibling.innerHTML =
+						HTTP_PING_HEALTH_CHECK_HINT;
+			} else if (value === 'grpc' && features.with_grpc) {
+				this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
+					HTTP_IDLE_KEEPALIVE_HINT;
+
+				if (side !== 'server')
+					this.map.findElement('id', 'cbid.homeproxy.%s.http_ping_timeout'.format(section_id)).nextElementSibling.innerHTML =
+						HTTP_PING_KEEPALIVE_HINT;
+			}
 		}
-	}),
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'grpc_servicename', _('gRPC service name'));
+		o.depends('transport', 'grpc');
+		o.modalonly = true;
+
+		if (side !== 'server' && features.with_grpc) {
+			o = section.option(form.Flag, 'grpc_permit_without_stream', _('gRPC permit without stream'),
+				_('If enabled, the client transport sends keepalive pings even with no active connections.'));
+			o.depends('transport', 'grpc');
+			o.modalonly = true;
+		}
+
+		o = section.option(form.DynamicList, 'http_host', _('Host'));
+		o.datatype = 'hostname';
+		o.depends('transport', 'http');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'httpupgrade_host', _('Host'));
+		o.datatype = 'hostname';
+		o.depends('transport', 'httpupgrade');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'http_path', _('Path'));
+		o.depends('transport', 'http');
+		o.depends('transport', 'httpupgrade');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'http_method', _('Method'));
+		if (side !== 'server') {
+			o.value('GET', _('GET'));
+			o.value('PUT', _('PUT'));
+		}
+		o.depends('transport', 'http');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'http_idle_timeout', _('Idle timeout'),
+			(side === 'server') ? HTTP_IDLE_GOAWAY_HINT : HTTP_IDLE_HEALTH_CHECK_HINT);
+		o.datatype = 'uinteger';
+		o.depends('transport', 'grpc');
+		o.depends({'transport': 'http', 'tls': '1'});
+		o.modalonly = true;
+
+		if (side !== 'server' || features.with_grpc) {
+			o = section.option(form.Value, 'http_ping_timeout', _('Ping timeout'),
+				(side === 'server') ? HTTP_PING_KEEPALIVE_HINT : HTTP_PING_HEALTH_CHECK_HINT);
+			o.datatype = 'uinteger';
+			o.depends('transport', 'grpc');
+			if (side !== 'server')
+				o.depends({'transport': 'http', 'tls': '1'});
+			o.modalonly = true;
+		}
+
+		o = section.option(form.Value, 'ws_host', _('Host'));
+		o.depends('transport', 'ws');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'ws_path', _('Path'));
+		o.depends('transport', 'ws');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'websocket_early_data', _('Early data'),
+			_('Allowed payload size is in the request.'));
+		o.datatype = 'uinteger';
+		o.value('2048');
+		o.depends('transport', 'ws');
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'websocket_early_data_header', _('Early data header name'),
+			(side === 'server') ? (_('Early data is sent in path instead of header by default.') +
+				'<br/>' +
+				_('To be compatible with Xray-core, set this to <code>Sec-WebSocket-Protocol</code>.')) : undefined);
+		o.value('Sec-WebSocket-Protocol');
+		o.depends('transport', 'ws');
+		o.modalonly = true;
+
+		if (side !== 'server') {
+			o = section.option(form.ListValue, 'packet_encoding', _('Packet encoding'));
+			o.value('', _('none'));
+			o.value('packetaddr', _('packet addr (v2ray-core v5+)'));
+			o.value('xudp', _('Xudp (Xray-core)'));
+			o.depends('type', 'vless');
+			o.depends('type', 'vmess');
+			o.modalonly = true;
+		}
+
+		return o;
+	},
+
+	/* Build the TLS option group shared by the node (client) and server forms.
+	   `options.type_depends` lists the node types the TLS flag applies to,
+	   `options.tls_forced_types` the types that force TLS on, and
+	   `options.oninsecurechange` the client-side confirm handler. */
+	renderTlsOptions(section, options) {
+		const side = options.side || 'client';
+		let o;
+
+		o = section.option(form.Flag, 'tls', _('TLS'));
+		for (let t of (options.type_depends || []))
+			o.depends('type', t);
+		if (side === 'server')
+			o.rmempty = false;
+		o.validate = function(section_id, _value) {
+			if (section_id) {
+				let type = this.map.lookupOption('type', section_id)[0].formvalue(section_id);
+				let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
+
+				if ((options.tls_forced_types || []).includes(type)) {
+					tls.checked = true;
+					tls.disabled = true;
+				} else {
+					tls.disabled = null;
+				}
+			}
+
+			return true;
+		}
+		o.modalonly = true;
+
+		o = section.option(form.Value, 'tls_sni', _('TLS SNI'),
+			_('Used to verify the hostname on the returned certificates unless insecure is given.'));
+		o.depends('tls', '1');
+		o.modalonly = true;
+
+		o = section.option(form.DynamicList, 'tls_alpn', _('TLS ALPN'),
+			_('List of supported application level protocols, in order of preference.'));
+		o.depends('tls', '1');
+		o.modalonly = true;
+
+		if (side !== 'server') {
+			o = section.option(form.Flag, 'tls_insecure', _('Allow insecure'),
+				_('Allow insecure connection at TLS client.') +
+				'<br/>' +
+				_('This is <strong>DANGEROUS</strong>, your traffic is almost like <strong>PLAIN TEXT</strong>! Use at your own risk!'));
+			o.depends('tls', '1');
+			o.onchange = options.oninsecurechange;
+			o.modalonly = true;
+		}
+
+		o = section.option(form.ListValue, 'tls_min_version', _('Minimum TLS version'),
+			_('The minimum TLS version that is acceptable.'));
+		o.value('', _('default'));
+		for (let i of this.tls_versions)
+			o.value(i);
+		o.depends('tls', '1');
+		o.modalonly = true;
+
+		o = section.option(form.ListValue, 'tls_max_version', _('Maximum TLS version'),
+			_('The maximum TLS version that is acceptable.'));
+		o.value('', _('default'));
+		for (let i of this.tls_versions)
+			o.value(i);
+		o.depends('tls', '1');
+		o.modalonly = true;
+
+		o = section.option(this.CBIStaticList, 'tls_cipher_suites', _('Cipher suites'),
+			_('The elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used.'));
+		for (let i of this.tls_cipher_suites)
+			o.value(i);
+		o.depends('tls', '1');
+		o.optional = true;
+		o.modalonly = true;
+
+		if (side !== 'server') {
+			o = section.option(form.Value, 'tls_handshake_timeout', _('Handshake timeout (1.14)'),
+				_('TLS handshake timeout in seconds. 15s is used by default.'));
+			o.datatype = 'uinteger';
+			o.placeholder = '15';
+			o.depends('tls', '1');
+			o.modalonly = true;
+		}
+
+		return o;
+	},
 
 	calcStringMD5(e) {
 		/* Thanks to https://stackoverflow.com/a/41602636 */
@@ -360,49 +421,6 @@ return baseclass.extend({
 		return L.resolveDefault(callGetSingBoxFeatures(), {});
 	},
 
-	renderCronSelector(/* ... */) {
-		if (!this._homeproxyCronOriginalFormvalue) {
-			this._homeproxyCronOriginalFormvalue = this.formvalue;
-			this.formvalue = function(section_id) {
-				let cbid = this.cbid(section_id),
-				    ids = [ cbid, 'widget.' + cbid ],
-				    roots = [ document.getElementById('modal_overlay'), document ],
-				    input = null;
-
-				for (let root of roots) {
-					if (!root)
-						continue;
-
-					for (let el of root.querySelectorAll('input')) {
-						if (ids.includes(el.id) || ids.includes(el.name)) {
-							input = el;
-							break;
-						}
-					}
-
-					if (input)
-						break;
-				}
-
-				let value = input?.value ||
-					this._homeproxyCronOriginalFormvalue?.call(this, section_id) ||
-					this.default ||
-					'0 0 * * *';
-
-				return parseCron(value) ? value : (this.default || '0 0 * * *');
-			};
-		}
-
-		let node = form.Value.prototype.renderWidget.apply(this, arguments),
-		    editor = renderCronEditor(node.querySelector('input'));
-
-		return editor || node;
-	},
-
-	renderCronSelectorRow(/* ... */) {
-		return form.Value.prototype.render.apply(this, arguments);
-	},
-
 	generateRand(type, length) {
 		let byteArr;
 		if (['base64', 'hex'].includes(type))
@@ -426,9 +444,6 @@ return baseclass.extend({
 	},
 
 	loadDefaultLabel(uciconfig, ucisection) {
-		if (!ucisection)
-			return '';
-
 		let label = uci.get(uciconfig, ucisection, 'label');
 		if (label) {
 			return label;
@@ -439,125 +454,30 @@ return baseclass.extend({
 	},
 
 	loadModalTitle(title, addtitle, uciconfig, ucisection) {
-		if (!ucisection)
-			return addtitle;
-
 		let label = uci.get(uciconfig, ucisection, 'label');
 		return label ? title + ' » ' + label : addtitle;
 	},
 
-	normalizeSectionId(label, prefix) {
-		let section_id = (label || '').trim().replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+|_+$/g, '');
-		return (prefix || 'cfg') + '_' + (section_id || 'section');
-	},
-
 	renderSectionAdd(section, extra_class) {
 		let el = form.GridSection.prototype.renderSectionAdd.apply(section, [ extra_class ]),
-			nameEl = el.querySelector('.cbi-section-create-name'),
-			button = el.querySelector('.cbi-section-create > .cbi-button-add'),
-			uciconfig = section.uciconfig || section.map.config,
-			sectiontype = section.sectiontype,
-			labelEl = E('input', {
-				'type': 'text',
-				'class': nameEl.className
-			}),
-			hintEl = E('div', { 'class': 'cbi-value-description' });
+			nameEl = el.querySelector('.cbi-section-create-name');
+		ui.addValidator(nameEl, 'uciname', true, (v) => {
+			let button = el.querySelector('.cbi-section-create > .cbi-button-add');
+			let uciconfig = section.uciconfig || section.map.config;
 
-		nameEl.style.display = 'none';
-		nameEl.parentNode.insertBefore(labelEl, nameEl);
-		nameEl.parentNode.appendChild(hintEl);
-		button.disabled = true;
-
-		const syncSectionName = () => {
-			let label = (labelEl.value || '').trim();
-			hintEl.textContent = '';
-
-			if (!label) {
-				nameEl.value = '';
+			if (!v) {
 				button.disabled = true;
-				return;
-			}
-
-			let duplicate = false;
-			uci.sections(uciconfig, sectiontype, (res) => {
-				if ((res.label || res['.name']) === label)
-					duplicate = true;
-			});
-
-			if (duplicate) {
-				nameEl.value = '';
+				return true;
+			} else if (uci.get(uciconfig, v)) {
 				button.disabled = true;
-				hintEl.textContent = _('Expecting: %s').format(_('unique value'));
-				return;
+				return _('Expecting: %s').format(_('unique UCI identifier'));
+			} else {
+				button.disabled = null;
+				return true;
 			}
-
-			let normalized = (label || '').trim().replace(/[^A-Za-z0-9_]/g, '_').replace(/^_+|_+$/g, '') || 'section',
-			    section_id = (sectiontype || 'cfg') + '_' + normalized,
-			    suffix = 1;
-			while (uci.get(uciconfig, section_id))
-				section_id = (sectiontype || 'cfg') + '_' + normalized + '_' + suffix++;
-
-			nameEl.value = section_id;
-			nameEl.dataset.sectionId = section_id;
-			nameEl.dataset.sectionLabel = label;
-			button.disabled = null;
-		};
-
-		labelEl.addEventListener('input', syncSectionName);
-		labelEl.addEventListener('blur', syncSectionName);
-
-		button.addEventListener('click', () => {
-			syncSectionName();
-
-			let label = nameEl.dataset.sectionLabel,
-			    section_id = nameEl.dataset.sectionId;
-
-			window.setTimeout(() => {
-				if (label && section_id && uci.get(uciconfig, section_id))
-					uci.set(uciconfig, section_id, 'label', label);
-			}, 0);
-		});
+		}, 'blur', 'keyup');
 
 		return el;
-	},
-
-	installCloseButtonText() {
-		if (window.__homeproxyCloseButtonText)
-			return;
-
-		window.__homeproxyCloseButtonText = true;
-
-		let fix = (root) => {
-			for (let el of (root || document).querySelectorAll('button, .btn, input[type="button"], input[type="submit"]')) {
-				let text = (el.textContent || el.value || '').trim();
-				if (text !== 'Dismiss' && text !== '\u5ffd\u7565')
-					continue;
-
-				if ('value' in el && !el.textContent.trim())
-					el.value = _('Close');
-				else
-					el.textContent = _('Close');
-			}
-		};
-
-		let observe = () => {
-			if (!document.body)
-				return;
-
-			fix(document);
-			new MutationObserver((mutations) => {
-				for (let mutation of mutations)
-					for (let node of mutation.addedNodes)
-						if (node.nodeType === 1)
-							fix(node);
-				fix(document);
-			}).observe(document.body, { childList: true, subtree: true });
-		};
-
-		if (document.body)
-			observe();
-		else
-			document.addEventListener('DOMContentLoaded', observe, { once: true });
 	},
 
 	uploadCertificate(_option, type, filename, ev) {
@@ -578,44 +498,6 @@ return baseclass.extend({
 			});
 		}, this, ev.target))
 		.catch((e) => { ui.addNotification(null, E('p', e.message)) });
-	},
-
-	uploadPanel(_option, ev) {
-		const callInstallPanel = rpc.declare({
-			object: 'luci.homeproxy',
-			method: 'clash_api_install_panel',
-			expect: { '': {} }
-		});
-
-		const normalizeMessage = (message) => {
-			switch (message) {
-			case 'panel_backup_failed':
-				return _('Backup panel failed.');
-			case 'panel_restore_failed':
-				return _('Restore panel failed.');
-			case 'empty_panel_zip':
-				return _('Panel ZIP file is empty.');
-			case 'unzip_unavailable':
-				return _('The unzip command is unavailable.');
-			case 'invalid_panel_zip':
-				return _('Invalid panel ZIP file.');
-			case 'panel_install_failed':
-				return _('Install panel failed.');
-			default:
-				return message || _('unknown error');
-			}
-		};
-
-		return ui.uploadFile('/tmp/homeproxy_panel.tmp', ev.target)
-		.then(L.bind((_btn, res) => {
-			return L.resolveDefault(callInstallPanel(), {}).then((ret) => {
-				if (ret.result === true)
-					ui.addNotification(null, E('p', _('Your %s was successfully uploaded. Size: %sB.').format(_('panel ZIP package'), res.size)), 'info');
-				else
-					ui.addNotification(null, E('p', _('Failed to upload %s, error: %s.').format(_('panel ZIP package'), normalizeMessage(ret.error))), 'danger');
-			});
-		}, this, ev.target))
-		.catch((e) => { ui.addNotification(null, E('p', e.message || e), 'danger') });
 	},
 
 	validateBase64Key(length, section_id, value) {
@@ -644,7 +526,8 @@ return baseclass.extend({
 				else if (!value[2])
 					value[2] = 65535;
 
-				if (value[1] < value[2] && value[2] <= 65535)
+				/* numeric comparison: string '<' does lexicographic ordering */
+				if (parseInt(value[1], 10) < parseInt(value[2], 10) && value[2] <= 65535)
 					return true;
 			}
 
@@ -658,7 +541,7 @@ return baseclass.extend({
 		if (section_id) {
 			if (!value)
 				return _('Expecting: %s').format(_('non-empty value'));
-			if (ucioption === 'node' && (value === 'urltest' || value === 'selector'))
+			if (ucioption === 'node' && value === 'urltest')
 				return true;
 
 			let duplicate = false;

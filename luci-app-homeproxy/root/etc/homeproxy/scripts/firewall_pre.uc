@@ -4,7 +4,7 @@
 
 import { writefile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty, RUN_DIR } from 'homeproxy';
+import { isEmpty, RUN_DIR, validation } from 'homeproxy';
 
 const cfgname = 'homeproxy';
 const uci = cursor();
@@ -39,7 +39,17 @@ if (server_enabled === '1') {
 		if (s.enabled !== '1' || s.firewall !== '1')
 			return;
 
+		if (!validation('port', s.port)) {
+			print(`WARN: skipping server ${s['.name']}: invalid port "${s.port}".`);
+			return;
+		}
+
 		let proto = s.network || '{ tcp, udp }';
+		if (!(proto in ['tcp', 'udp', '{ tcp, udp }'])) {
+			print(`WARN: skipping server ${s['.name']}: invalid network "${proto}".`);
+			return;
+		}
+
 		push(input, `meta l4proto ${proto} th dport ${s.port} counter accept comment "!${cfgname}: accept server ${s['.name']}"`);
 	});
 }

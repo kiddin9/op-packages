@@ -126,8 +126,6 @@ return view.extend({
 		let m, s, o;
 		let features = data[1];
 
-		hp.installCloseButtonText();
-
 		m = new form.Map('homeproxy', _('HomeProxy Server'),
 			_('The modern ImmortalWrt proxy platform for ARM64/AMD64.'));
 
@@ -184,13 +182,13 @@ return view.extend({
 		}
 		o.value('mixed', _('Mixed'));
 		o.value('shadowsocks', _('Shadowsocks'));
+		o.value('snell', _('Snell (1.14)'));
 		o.value('socks', _('Socks'));
 		o.value('trojan', _('Trojan'));
 		if (features.with_quic)
 			o.value('tuic', _('Tuic'));
 		o.value('vless', _('VLESS'));
 		o.value('vmess', _('VMess'));
-		o.default = 'mixed';
 		o.rmempty = false;
 
 		o = s.option(form.Value, 'address', _('Listen address'));
@@ -216,12 +214,13 @@ return view.extend({
 		o.depends({'type': /^(http|mixed|naive|socks)$/, 'username': /[\s\S]/});
 		o.depends('type', 'hysteria2');
 		o.depends('type', 'shadowsocks');
+		o.depends('type', 'snell');
 		o.depends('type', 'trojan');
 		o.depends('type', 'tuic');
 		o.validate = function(section_id, value) {
 			if (section_id) {
 				let type = this.section.formvalue(section_id, 'type');
-				let required_type = [ 'anytls', 'http', 'mixed', 'naive', 'socks', 'shadowsocks', 'trojan' ];
+				let required_type = [ 'anytls', 'http', 'mixed', 'naive', 'shadowsocks', 'snell', 'socks', 'trojan' ];
 
 				if (required_type.includes(type)) {
 					if (type === 'shadowsocks') {
@@ -291,6 +290,7 @@ return view.extend({
 		o = s.option(form.ListValue, 'hysteria_obfs_type', _('Obfuscate type'));
 		o.value('', _('Disable'));
 		o.value('salamander', _('Salamander'));
+		o.value('gecko', _('Gecko (1.14)'));
 		o.depends('type', 'hysteria2');
 		o.modalonly = true;
 
@@ -300,30 +300,18 @@ return view.extend({
 		o.depends({'type': 'hysteria2', 'hysteria_obfs_type': /[\s\S]/});
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'hysteria_recv_window_conn', _('QUIC stream receive window'),
-			_('The QUIC stream-level flow control window for receiving data.'));
+		o = s.option(form.Value, 'hysteria_obfs_min_packet_size', _('Min obfs packet size (1.14)'),
+			_('Minimum on-wire packet size in bytes. Gecko only.'));
 		o.datatype = 'uinteger';
-		o.default = '67108864';
-		o.depends('type', 'hysteria');
+		o.placeholder = '512';
+		o.depends({'type': 'hysteria2', 'hysteria_obfs_type': 'gecko'});
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'hysteria_recv_window_client', _('QUIC connection receive window'),
-			_('The QUIC connection-level flow control window for receiving data.'));
+		o = s.option(form.Value, 'hysteria_obfs_max_packet_size', _('Max obfs packet size (1.14)'),
+			_('Maximum on-wire packet size in bytes. Gecko only.'));
 		o.datatype = 'uinteger';
-		o.default = '15728640';
-		o.depends('type', 'hysteria');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'hysteria_max_conn_client', _('QUIC maximum concurrent bidirectional streams'),
-			_('The maximum number of QUIC concurrent bidirectional streams that a peer is allowed to open.'));
-		o.datatype = 'uinteger';
-		o.default = '1024';
-		o.depends('type', 'hysteria');
-		o.modalonly = true;
-
-		o = s.option(form.Flag, 'hysteria_disable_mtu_discovery', _('Disable Path MTU discovery'),
-			_('Disables Path MTU Discovery (RFC 8899). Packets will then be at most 1252 (IPv4) / 1232 (IPv6) bytes in size.'));
-		o.depends('type', 'hysteria');
+		o.placeholder = '1200';
+		o.depends({'type': 'hysteria2', 'hysteria_obfs_type': 'gecko'});
 		o.modalonly = true;
 
 		o = s.option(form.Flag, 'hysteria_ignore_client_bandwidth', _('Ignore client bandwidth'),
@@ -336,6 +324,31 @@ return view.extend({
 		o.depends('type', 'hysteria2');
 		o.modalonly = true;
 		/* Hysteria (2) config end */
+
+		/* Snell config start */
+		o = s.option(form.ListValue, 'snell_version', _('Snell version'),
+			_('The pre-shared key (password) above must be 12-255 bytes for v6.'));
+		o.value('5', _('v5'));
+		o.value('6', _('v6'));
+		o.default = '5';
+		o.depends('type', 'snell');
+		o.modalonly = true;
+
+		o = s.option(form.ListValue, 'snell_obfs_mode', _('Obfuscation mode'),
+			_('HTTP obfuscation. v5 only.'));
+		o.value('', _('none'));
+		o.value('http', _('http'));
+		o.depends({'type': 'snell', 'snell_version': '5'});
+		o.modalonly = true;
+
+		o = s.option(form.ListValue, 'snell_mode', _('Traffic shaping mode'),
+			_('v6 only.'));
+		o.value('', _('default'));
+		o.value('unshaped', _('unshaped'));
+		o.value('unsafe-raw', _('unsafe-raw'));
+		o.depends({'type': 'snell', 'snell_version': '6'});
+		o.modalonly = true;
+		/* Snell config end */
 
 		/* Shadowsocks config */
 		o = s.option(form.ListValue, 'shadowsocks_encrypt_method', _('Encrypt method'));
@@ -399,104 +412,7 @@ return view.extend({
 		/* VMess config end */
 
 		/* Transport config start */
-		o = s.option(form.ListValue, 'transport', _('Transport'),
-			_('No TCP transport, plain HTTP is merged into the HTTP transport.'));
-		o.value('', _('None'));
-		o.value('grpc', _('gRPC'));
-		o.value('http', _('HTTP'));
-		o.value('httpupgrade', _('HTTPUpgrade'));
-		o.value('quic', _('QUIC'));
-		o.value('ws', _('WebSocket'));
-		o.depends('type', 'trojan');
-		o.depends('type', 'vless');
-		o.depends('type', 'vmess');
-		o.onchange = function(ev, section_id, value) {
-			let desc = this.map.findElement('id', 'cbid.homeproxy.%s.transport'.format(section_id)).nextElementSibling;
-			if (value === 'http')
-				desc.innerHTML = _('TLS is not enforced. If TLS is not configured, plain HTTP 1.1 is used.');
-			else if (value === 'quic')
-				desc.innerHTML = _('No additional encryption support: It\'s basically duplicate encryption.');
-			else
-				desc.innerHTML = _('No TCP transport, plain HTTP is merged into the HTTP transport.');
-
-			let tls_element = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
-			if ((value === 'http' && tls_element.checked) || (value === 'grpc' && !features.with_grpc))
-				this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
-					_('Specifies the time (in seconds) until idle clients should be closed with a GOAWAY frame. PING frames are not considered as activity.');
-			else if (value === 'grpc' && features.with_grpc)
-				this.map.findElement('id', 'cbid.homeproxy.%s.http_idle_timeout'.format(section_id)).nextElementSibling.innerHTML =
-					_('If the transport doesn\'t see any activity after a duration of this time (in seconds), it pings the client to check if the connection is still active.');
-		}
-		o.modalonly = true;
-
-		/* gRPC config start */
-		o = s.option(form.Value, 'grpc_servicename', _('gRPC service name'));
-		o.depends('transport', 'grpc');
-		o.modalonly = true;
-
-		/* gRPC config end */
-
-		/* HTTP(Upgrade) config start */
-		o = s.option(form.DynamicList, 'http_host', _('Host'));
-		o.datatype = 'hostname';
-		o.depends('transport', 'http');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'httpupgrade_host', _('Host'));
-		o.datatype = 'hostname';
-		o.depends('transport', 'httpupgrade');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'http_path', _('Path'));
-		o.depends('transport', 'http');
-		o.depends('transport', 'httpupgrade');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'http_method', _('Method'));
-		o.depends('transport', 'http');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'http_idle_timeout', _('Idle timeout'),
-			_('Specifies the time (in seconds) until idle clients should be closed with a GOAWAY frame. PING frames are not considered as activity.'));
-		o.datatype = 'uinteger';
-		o.depends('transport', 'grpc');
-		o.depends({'transport': 'http', 'tls': '1'});
-		o.modalonly = true;
-
-		if (features.with_grpc) {
-			o = s.option(form.Value, 'http_ping_timeout', _('Ping timeout'),
-				_('The timeout (in seconds) that after performing a keepalive check, the client will wait for activity. If no activity is detected, the connection will be closed.'));
-			o.datatype = 'uinteger';
-			o.depends('transport', 'grpc');
-			o.modalonly = true;
-		}
-		/* HTTP config end */
-
-		/* WebSocket config start */
-		o = s.option(form.Value, 'ws_host', _('Host'));
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'ws_path', _('Path'));
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'websocket_early_data', _('Early data'),
-			_('Allowed payload size is in the request.'));
-		o.datatype = 'uinteger';
-		o.value('2048');
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'websocket_early_data_header', _('Early data header name'),
-			_('Early data is sent in path instead of header by default.') +
-			'<br/>' +
-			_('To be compatible with Xray-core, set this to <code>Sec-WebSocket-Protocol</code>.'));
-		o.value('Sec-WebSocket-Protocol');
-		o.depends('transport', 'ws');
-		o.modalonly = true;
-		/* WebSocket config end */
-
+		hp.renderTransportOptions(s, { features: features, side: 'server' });
 		/* Transport config end */
 
 		/* Mux config start */
@@ -532,67 +448,11 @@ return view.extend({
 		/* Mux config end */
 
 		/* TLS config start */
-		o = s.option(form.Flag, 'tls', _('TLS'));
-		o.depends('type', 'anytls');
-		o.depends('type', 'http');
-		o.depends('type', 'hysteria');
-		o.depends('type', 'hysteria2');
-		o.depends('type', 'naive');
-		o.depends('type', 'trojan');
-		o.depends('type', 'tuic');
-		o.depends('type', 'vless');
-		o.depends('type', 'vmess');
-		o.rmempty = false;
-		o.validate = function(section_id, value) {
-			if (section_id) {
-				let type = this.map.lookupOption('type', section_id)[0].formvalue(section_id);
-				let tls = this.map.findElement('id', 'cbid.homeproxy.%s.tls'.format(section_id)).firstElementChild;
-
-				if (['hysteria', 'hysteria2', 'tuic'].includes(type)) {
-					tls.checked = true;
-					tls.disabled = true;
-				} else {
-					tls.disabled = null;
-				}
-			}
-
-			return true;
-		}
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'tls_sni', _('TLS SNI'),
-			_('Used to verify the hostname on the returned certificates unless insecure is given.'));
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = s.option(form.DynamicList, 'tls_alpn', _('TLS ALPN'),
-			_('List of supported application level protocols, in order of preference.'));
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = s.option(form.ListValue, 'tls_min_version', _('Minimum TLS version'),
-			_('The minimum TLS version that is acceptable.'));
-		o.value('', _('default'));
-		for (let i of hp.tls_versions)
-			o.value(i);
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = s.option(form.ListValue, 'tls_max_version', _('Maximum TLS version'),
-			_('The maximum TLS version that is acceptable.'));
-		o.value('', _('default'));
-		for (let i of hp.tls_versions)
-			o.value(i);
-		o.depends('tls', '1');
-		o.modalonly = true;
-
-		o = s.option(hp.CBIStaticList, 'tls_cipher_suites', _('Cipher suites'),
-			_('The elliptic curves that will be used in an ECDHE handshake, in preference order. If empty, the default will be used.'));
-		for (let i of hp.tls_cipher_suites)
-			o.value(i);
-		o.depends('tls', '1');
-		o.optional = true;
-		o.modalonly = true;
+		hp.renderTlsOptions(s, {
+			side: 'server',
+			type_depends: [ 'anytls', 'http', 'hysteria', 'hysteria2', 'naive', 'trojan', 'tuic', 'vless', 'vmess' ],
+			tls_forced_types: [ 'hysteria', 'hysteria2', 'tuic' ]
+		});
 
 		if (features.with_acme) {
 			o = s.option(form.Flag, 'tls_acme', _('Enable ACME'),
@@ -627,6 +487,29 @@ return view.extend({
 			}
 			o.modalonly = true;
 
+			o = s.option(form.Value, 'tls_acme_key_type', _('ACME key type'),
+				_('Private key type for new certificates (1.14). Empty uses the default.'));
+			o.value('ed25519');
+			o.value('p256');
+			o.value('p384');
+			o.value('rsa2048');
+			o.value('rsa4096');
+			o.depends('tls_acme', '1');
+			o.modalonly = true;
+
+			o = s.option(form.Value, 'tls_acme_profile', _('ACME profile'),
+				_('ACME profile for certificate issuance (1.14). Example: shortlived.'));
+			o.placeholder = 'shortlived';
+			o.depends('tls_acme', '1');
+			o.modalonly = true;
+
+			o = s.option(form.TextValue, 'tls_acme_account_key', _('ACME account key'),
+				_('PEM-encoded private key of an existing ACME account (1.14).'));
+			o.monospace = true;
+			o.rows = 3;
+			o.depends('tls_acme', '1');
+			o.modalonly = true;
+
 			o = s.option(form.Value, 'tls_acme_provider', _('CA provider'),
 				_('The ACME CA provider to use.'));
 			o.value('letsencrypt', _('Let\'s Encrypt'));
@@ -640,10 +523,10 @@ return view.extend({
 			o.modalonly = true;
 
 			o = s.option(form.ListValue, 'tls_dns01_provider', _('DNS provider'));
-			o.value('alidns', _('AliYun'));
-			o.value('cfdns', _('CloudFlare'));
+			o.value('alidns', _('Alibaba Cloud DNS'));
+			o.value('cloudflare', _('Cloudflare'));
 			o.depends('tls_dns01_challenge', '1');
-			o.default = 'cfdns';
+			o.default = 'cloudflare';
 			o.rmempty = false;
 			o.modalonly = true;
 
@@ -666,7 +549,7 @@ return view.extend({
 
 			o = s.option(form.Value, 'tls_dns01_cf_api_token', _('API token'));
 			o.password = true;
-			o.depends('tls_dns01_provider', 'cfdns');
+			o.depends('tls_dns01_provider', 'cloudflare');
 			o.rmempty = false;
 			o.modalonly = true;
 

@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Regression fixture for routing_mode='custom'. It reproduces two crashes
+# that only the custom path could hit:
+#
+#   * a direct node with an override forces generate_outbound() to write into
+#     direct_overrides, and the routing rule below forces get_direct_override()
+#     to read it -- so the table has to be declared before both helpers;
+#   * a local rule-set must not carry the legacy download_detour field, which
+#     sing-box 1.14 rejects on anything but a remote rule-set.
+#
+# __RULESET_DIR__ is substituted by tests/ucode/test_generators.sh with a
+# directory holding a real compiled .srs file.
+
+config homeproxy 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '0'
+	option log_level 'error'
+
+config homeproxy 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+# direct node: exercises the direct_overrides write path
+config node 'n_direct'
+	option label 'direct-node'
+	option type 'direct'
+	option override_address '1.2.3.4'
+	option override_port '8443'
+
+# routing node + rule: exercises get_direct_override() reading direct_overrides
+config routing_node 'rn_direct'
+	option enabled '1'
+	option label 'rn-direct'
+	option node 'n_direct'
+
+config routing_rule 'rr_direct'
+	option enabled '1'
+	option label 'rr-direct'
+	option outbound 'rn_direct'
+	option action 'route'
+
+# local rule-set: must never carry download_detour
+config ruleset 'rs_local'
+	option enabled '1'
+	option label 'local-rs'
+	option type 'local'
+	option format 'binary'
+	option path '__RULESET_DIR__/test.srs'

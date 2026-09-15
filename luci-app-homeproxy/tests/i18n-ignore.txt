@@ -1,0 +1,13 @@
+# msgids that are intentionally left untranslated (protocol/technical tokens
+# whose zh_Hans form is the same as the source). One msgid per line, matching
+# the unquoted template string; '#' starts a comment.
+http
+unsafe-raw
+unshaped
+v4
+v5
+v6
+wrong-ack
+wrong-checksum
+wrong-md5
+wrong-timestamp

@@ -1,0 +1,293 @@
+{
+	"sections": [
+		{
+			"id": "NamedSection:subscription#0",
+			"kind": "NamedSection",
+			"name": "subscription",
+			"tabs": [
+				[
+					"node",
+					"Nodes"
+				],
+				[
+					"subscription",
+					"Subscriptions"
+				]
+			],
+			"options": [
+				{
+					"kind": "SectionValue",
+					"name": "_node",
+					"description": "node",
+					"depends": [],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "Flag",
+					"name": "auto_update",
+					"title": "Auto update",
+					"description": "Auto update subscriptions and geodata.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "auto_update_time",
+					"title": "Update time",
+					"description": null,
+					"depends": [
+						[
+							"auto_update",
+							"1"
+						]
+					],
+					"values": [
+						[
+							0,
+							"0:00"
+						],
+						[
+							1,
+							"1:00"
+						],
+						[
+							2,
+							"2:00"
+						],
+						[
+							3,
+							"3:00"
+						],
+						[
+							4,
+							"4:00"
+						],
+						[
+							5,
+							"5:00"
+						],
+						[
+							6,
+							"6:00"
+						],
+						[
+							7,
+							"7:00"
+						],
+						[
+							8,
+							"8:00"
+						],
+						[
+							9,
+							"9:00"
+						],
+						[
+							10,
+							"10:00"
+						],
+						[
+							11,
+							"11:00"
+						],
+						[
+							12,
+							"12:00"
+						],
+						[
+							13,
+							"13:00"
+						],
+						[
+							14,
+							"14:00"
+						],
+						[
+							15,
+							"15:00"
+						],
+						[
+							16,
+							"16:00"
+						],
+						[
+							17,
+							"17:00"
+						],
+						[
+							18,
+							"18:00"
+						],
+						[
+							19,
+							"19:00"
+						],
+						[
+							20,
+							"20:00"
+						],
+						[
+							21,
+							"21:00"
+						],
+						[
+							22,
+							"22:00"
+						],
+						[
+							23,
+							"23:00"
+						]
+					],
+					"props": {
+						"default": "2"
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "update_via_proxy",
+					"title": "Update via proxy",
+					"description": "Update subscriptions via proxy.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "subscription_url",
+					"title": "Subscription URL-s",
+					"description": "Support Hysteria, Shadowsocks, Trojan, v2rayN (VMess), and XTLS (VLESS) online configuration delivery standard.",
+					"depends": [],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "ListValue",
+					"name": "filter_nodes",
+					"title": "Filter nodes",
+					"description": "Drop/keep specific nodes from subscriptions.",
+					"depends": [],
+					"values": [
+						[
+							"disabled",
+							"Disable"
+						],
+						[
+							"blacklist",
+							"Blacklist mode"
+						],
+						[
+							"whitelist",
+							"Whitelist mode"
+						]
+					],
+					"props": {
+						"default": "disabled",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "filter_keywords",
+					"title": "Filter keywords",
+					"description": "Drop/keep nodes that contain the specific keywords. <a target=\"_blank\" href=\"https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions\">Regex</a> is supported.",
+					"depends": [
+						{
+							"filter_nodes": "disabled",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "user_agent",
+					"title": "User-Agent",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"placeholder": "Wget/1.21 (HomeProxy, like v2rayN)"
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "allow_insecure",
+					"title": "Allow insecure",
+					"description": "Allow insecure connection by default when add nodes from subscriptions.<br/>This is <strong>DANGEROUS</strong>, your traffic is almost like <strong>PLAIN TEXT</strong>! Use at your own risk!",
+					"depends": [],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "packet_encoding",
+					"title": "Default packet encoding",
+					"description": null,
+					"depends": [],
+					"values": [
+						[
+							"",
+							"none"
+						],
+						[
+							"packetaddr",
+							"packet addr (v2ray-core v5+)"
+						],
+						[
+							"xudp",
+							"Xudp (Xray-core)"
+						]
+					],
+					"props": {}
+				},
+				{
+					"kind": "Button",
+					"name": "_save_subscriptions",
+					"title": "Save subscriptions settings",
+					"description": "NOTE: Save current settings before updating subscriptions.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"inputstyle": "apply",
+						"inputtitle": "Save current settings"
+					}
+				},
+				{
+					"kind": "Button",
+					"name": "_update_subscriptions",
+					"title": "Update nodes from subscriptions",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"inputstyle": "apply"
+					}
+				},
+				{
+					"kind": "Button",
+					"name": "_remove_subscriptions",
+					"title": "Remove all nodes from subscriptions",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"inputstyle": "reset"
+					}
+				}
+			],
+			"subsection": null
+		}
+	]
+}

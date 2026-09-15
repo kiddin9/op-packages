@@ -21,65 +21,89 @@ to_upper() {
 }
 
 check_list_update() {
-	local LIST_FILE="$1"
-	local REPO_NAME="$2"
-	local REPO_BRANCH="$3"
-	local REPO_FILE="$4"
-	local LOCK_FILE="$RUN_DIR/update_resources-$LIST_FILE.lock"
-	local GITHUB_TOKEN="$(uci -q get homeproxy.config.github_token)"
+	local listtype="$1"
+	local listrepo="$2"
+	local listref="$3"
+	local listname="$4"
+	local lock="$RUN_DIR/update_resources-$listtype.lock"
+	local github_token="$(uci -q get homeproxy.config.github_token)"
+	local wget="wget --timeout=10 -q"
 
-	if ! lock -n "$LOCK_FILE" 2>"/dev/null"; then
-		log "[$(to_upper "$LIST_FILE")] A task is already running."
+	exec 200>"$lock"
+	if ! flock -n 200 &> "/dev/null"; then
+		log "[$(to_upper "$listtype")] A task is already running."
 		return 2
 	fi
 
-	local NEW_VER=$(curl -sL ${GITHUB_TOKEN:+-H "Authorization: Bearer $GITHUB_TOKEN"} "https://api.github.com/repos/$REPO_NAME/releases/latest" | jsonfilter -e "@.tag_name")
-	if [ -z "$NEW_VER" ]; then
-		log "[$(to_upper "$LIST_FILE")] Failed to get the latest version, please retry later."
-
-		return 1
+	local github_header_file=""
+	if [ -n "$github_token" ]; then
+		github_header_file="$RUN_DIR/.gh_header_${listtype}"
+		( umask 077; printf 'Authorization: Bearer %s\n' "$github_token" > "$github_header_file" )
+		trap "[ -n \"$github_header_file\" ] && rm -f \"$github_header_file\"" EXIT INT TERM
 	fi
 
-	local OLD_VER=$(cat "$RESOURCES_DIR/$LIST_FILE.ver" 2>/dev/null || echo "NOT FOUND")
-	if [ "$OLD_VER" = "$NEW_VER" ]; then
-		log "[$(to_upper "$LIST_FILE")] Current version: $NEW_VER."
-		log "[$(to_upper "$LIST_FILE")] You're already at the latest version."
+	local list_info="$($wget ${github_header_file:+--header-file=$github_header_file} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
+	local wget_exit=$?
 
+	[ -n "$github_header_file" ] && rm -f "$github_header_file"
+	trap - EXIT INT TERM
+
+	if [ $wget_exit -ne 0 ]; then
+		log "[$(to_upper "$listtype")] Failed to fetch version info (wget exit $wget_exit)."
+		return 1
+	fi
+	local list_sha="$(echo -e "$list_info" | jsonfilter -qe "@[0].sha")"
+	local list_date="$(echo -e "$list_info" | jsonfilter -qe "@[0].commit.committer.date" | cut -d 'T' -f1)"
+	if [ -z "$list_sha" ]; then
+		log "[$(to_upper "$listtype")] Failed to get the latest version, please retry later."
+		return 1
+	fi
+	local list_ver="${list_date:+$list_date }$list_sha"
+
+	local local_list_ver="$(cat "$RESOURCES_DIR/$listtype.ver" 2>"/dev/null" || echo "NOT_FOUND")"
+	local local_list_sha="${local_list_ver##* }"
+	local local_list_disp="${local_list_ver%% *}"
+	if [ "$local_list_sha" = "$list_sha" ]; then
+		[ "$local_list_ver" = "$local_list_sha" ] && [ -n "$list_date" ] && \
+			echo -e "$list_ver" > "$RESOURCES_DIR/$listtype.ver"
+		log "[$(to_upper "$listtype")] Current version: ${list_ver%% *}."
+		log "[$(to_upper "$listtype")] You're already at the latest version."
 		return 3
 	else
-		log "[$(to_upper "$LIST_FILE")] Local version: $OLD_VER, latest version: $NEW_VER."
+		log "[$(to_upper "$listtype")] Local version: $local_list_disp, latest version: ${list_ver%% *}."
 	fi
 
-	if ! curl -sL -o "$RUN_DIR/$REPO_FILE" "https://cdn.jsdelivr.net/gh/$REPO_NAME@$REPO_BRANCH/$REPO_FILE" || [ ! -s "$RUN_DIR/$REPO_FILE" ]; then
-		rm -f "$RUN_DIR/$REPO_FILE"
-		log "[$(to_upper "$LIST_FILE")] Update failed."
-
+	if ! $wget "https://fastly.jsdelivr.net/gh/$listrepo@$list_sha/$listname" -O "$RUN_DIR/$listname" || [ ! -s "$RUN_DIR/$listname" ]; then
+		rm -f "$RUN_DIR/$listname"
+		log "[$(to_upper "$listtype")] Download failed."
 		return 1
 	fi
 
-	mv -f "$RUN_DIR/$REPO_FILE" "$RESOURCES_DIR/$LIST_FILE.${REPO_FILE##*.}"
-	echo -e "$NEW_VER" > "$RESOURCES_DIR/$LIST_FILE.ver"
-	log "[$(to_upper "$LIST_FILE")] Successfully updated."
+	if mv -f "$RUN_DIR/$listname" "$RESOURCES_DIR/$listtype.${listname##*.}"; then
+		echo -e "$list_ver" > "$RESOURCES_DIR/$listtype.ver"
+		log "[$(to_upper "$listtype")] Successfully updated."
+	else
+		rm -f "$RUN_DIR/$listname"
+		log "[$(to_upper "$listtype")] Failed to install update (mv failed)."
+		return 1
+	fi
 
 	return 0
 }
 
 case "$1" in
 "china_ip4")
-	check_list_update "$1" "Loyalsoldier/surge-rules" "release" "cncidr.txt" && \
-		sed -i "/IP-CIDR6,/d; s/IP-CIDR,//g" "$RESOURCES_DIR/china_ip4.txt"
+	check_list_update "$1" "1715173329/IPCIDR-CHINA" "master" "ipv4.txt"
 	;;
 "china_ip6")
-	check_list_update "$1" "Loyalsoldier/surge-rules" "release" "cncidr.txt" && \
-		sed -i "/IP-CIDR,/d; s/IP-CIDR6,//g" "$RESOURCES_DIR/china_ip6.txt"
+	check_list_update "$1" "1715173329/IPCIDR-CHINA" "master" "ipv6.txt"
 	;;
 "gfw_list")
-	check_list_update "$1" "Loyalsoldier/surge-rules" "release" "gfw.txt" && \
-		sed -i "s/^\.//g" "$RESOURCES_DIR/gfw_list.txt"
+	check_list_update "$1" "Loyalsoldier/v2ray-rules-dat" "release" "gfw.txt"
 	;;
 "china_list")
-	check_list_update "$1" "Loyalsoldier/surge-rules" "release" "direct.txt" && \
-		sed -i "s/^\.//g" "$RESOURCES_DIR/china_list.txt"
+	check_list_update "$1" "Loyalsoldier/v2ray-rules-dat" "release" "direct-list.txt" && \
+		sed -i -e "s/full://g" -e "/:/d" "$RESOURCES_DIR/china_list.txt"
 	;;
 *)
 	echo -e "Usage: $0 <china_ip4 / china_ip6 / gfw_list / china_list>"
