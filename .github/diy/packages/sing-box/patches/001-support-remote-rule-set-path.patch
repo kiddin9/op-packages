@@ -1,0 +1,134 @@
+diff --git a/option/rule_set.go b/option/rule_set.go
+index b063422..1ce631a 100644
+--- a/option/rule_set.go
++++ b/option/rule_set.go
+@@ -122,6 +122,7 @@ type LocalRuleSet struct {
+ 
+ type RemoteRuleSet struct {
+ 	URL            string             `json:"url"`
++	Path           string             `json:"path,omitempty"`
+ 	DownloadDetour string             `json:"download_detour,omitempty"`
+ 	UpdateInterval badoption.Duration `json:"update_interval,omitempty"`
+ }
+diff --git a/route/rule/rule_set_remote.go b/route/rule/rule_set_remote.go
+index bda6e23..8f84796 100644
+--- a/route/rule/rule_set_remote.go
++++ b/route/rule/rule_set_remote.go
+@@ -7,6 +7,8 @@ import (
+ 	"io"
+ 	"net"
+ 	"net/http"
++	"os"
++	"path/filepath"
+ 	"runtime"
+ 	"strings"
+ 	"sync"
+@@ -27,6 +29,7 @@ import (
+ 	"github.com/sagernet/sing/common/ntp"
+ 	"github.com/sagernet/sing/common/x/list"
+ 	"github.com/sagernet/sing/service"
++	"github.com/sagernet/sing/service/filemanager"
+ 	"github.com/sagernet/sing/service/pause"
+ 
+ 	"go4.org/netipx"
+@@ -94,14 +97,36 @@ func (s *RemoteRuleSet) StartContext(ctx context.Context, startContext *adapter.
+ 		dialer = s.outbound.Default()
+ 	}
+ 	s.dialer = dialer
++	loadedFromPath := false
++	pathMissing := false
++	if s.options.RemoteOptions.Path != "" {
++		err := s.loadFromPath()
++		if err == nil {
++			loadedFromPath = true
++		} else if os.IsNotExist(err) {
++			pathMissing = true
++			s.logger.Warn("rule-set file not found: ", s.options.RemoteOptions.Path)
++		} else {
++			s.logger.Warn("restore rule-set file ", s.options.RemoteOptions.Path, ": ", err)
++		}
++	}
+ 	if s.cacheFile != nil {
+ 		if savedSet := s.cacheFile.LoadRuleSet(s.options.Tag); savedSet != nil {
+-			err := s.loadBytes(savedSet.Content)
+-			if err != nil {
+-				return E.Cause(err, "restore cached rule-set")
++			if !loadedFromPath && !pathMissing {
++				err := s.loadBytes(savedSet.Content)
++				if err != nil {
++					return E.Cause(err, "restore cached rule-set")
++				}
++				s.lastUpdated = savedSet.LastUpdated
++			}
++			if !pathMissing {
++				if s.lastUpdated.IsZero() {
++					s.lastUpdated = savedSet.LastUpdated
++				}
++				if s.lastEtag == "" {
++					s.lastEtag = savedSet.LastEtag
++				}
+ 			}
+-			s.lastUpdated = savedSet.LastUpdated
+-			s.lastEtag = savedSet.LastEtag
+ 		}
+ 	}
+ 	if s.lastUpdated.IsZero() {
+@@ -159,6 +184,46 @@ func (s *RemoteRuleSet) UnregisterCallback(element *list.Element[adapter.RuleSet
+ 	s.callbacks.Remove(element)
+ }
+ 
++func (s *RemoteRuleSet) localPath() string {
++	if s.options.RemoteOptions.Path == "" {
++		return ""
++	}
++	return filemanager.BasePath(s.ctx, s.options.RemoteOptions.Path)
++}
++
++func (s *RemoteRuleSet) loadFromPath() error {
++	path := s.localPath()
++	if path == "" {
++		return os.ErrNotExist
++	}
++	content, err := os.ReadFile(path)
++	if err != nil {
++		return err
++	}
++	err = s.loadBytes(content)
++	if err != nil {
++		return err
++	}
++	if info, err := os.Stat(path); err == nil {
++		s.lastUpdated = info.ModTime()
++	}
++	return nil
++}
++
++func (s *RemoteRuleSet) saveToPath(content []byte) error {
++	path := s.localPath()
++	if path == "" {
++		return nil
++	}
++	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
++		return err
++	}
++	if err := os.WriteFile(path, content, 0o644); err != nil {
++		return err
++	}
++	return filemanager.Chown(s.ctx, path)
++}
++
+ func (s *RemoteRuleSet) loadBytes(content []byte) error {
+ 	var (
+ 		ruleSet option.PlainRuleSetCompat
+@@ -308,6 +373,11 @@ func (s *RemoteRuleSet) fetch(ctx context.Context, startContext *adapter.HTTPSta
+ 			s.logger.Error("save rule-set cache: ", err)
+ 		}
+ 	}
++	if s.options.RemoteOptions.Path != "" {
++		if err := s.saveToPath(content); err != nil {
++			s.logger.Error("save rule-set file: ", err)
++		}
++	}
+ 	s.logger.Info("updated rule-set ", s.options.Tag)
+ 	return nil
+ }
