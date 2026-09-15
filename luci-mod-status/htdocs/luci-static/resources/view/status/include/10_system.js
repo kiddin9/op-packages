@@ -100,7 +100,7 @@ return baseclass.extend({
 
 		if (cpuusage.tempinfo) {
 			fields.splice(6, 0, _('Temperature'));
-			fields.splice(7, 0, tempinfo.tempinfo);
+			fields.splice(7, 0, cpuusage.tempinfo);
 		}
 		if (boardinfo.model != "Default string Default string") {
 			fields.splice(2, 0, _('Model'));
