@@ -7,20 +7,33 @@
 
 'use strict';
 
+import { popen } from 'fs';
 import { cursor } from 'uci';
-import { executeCommand, isEmpty, parseURL, validation } from 'homeproxy';
-import {
-	format_controller,
-	is_portable_bind_host,
-	local_ipv4_addresses,
-	normalize_local_controller_option,
-	parse_controller
-} from '/etc/homeproxy/scripts/clash_api.uc';
+import { isEmpty, parseURL } from 'homeproxy';
 
 const uci = cursor();
 
 const uciconfig = 'homeproxy';
 uci.load(uciconfig);
+
+function random_secret() {
+	const fd = popen('tr -dc "A-Za-z0-9" < /dev/urandom 2>/dev/null | head -c 16');
+	let random = '';
+	if (fd) {
+		random = trim(fd.read('all') || '');
+		fd.close();
+	}
+
+	if (isEmpty(random)) {
+		const fallback = popen('awk \'BEGIN{srand(); printf "%06d", int(rand() * 1000000)}\'');
+		if (fallback) {
+			random = trim(fallback.read('all') || '');
+			fallback.close();
+		}
+	}
+
+	return random;
+}
 
 const uciinfra = 'infra',
       ucimigration = 'migration',
@@ -32,35 +45,14 @@ const uciinfra = 'infra',
       ucirouting = 'routing',
       uciroutingnode = 'routing_node',
       uciroutingrule = 'routing_rule',
-      ucisubscription = 'subscription',
+      uciclashapi = 'clash_api',
+      ucintp = 'ntp',
+      ucicache = 'cache',
       uciserver = 'server';
 
-/* Generate a random 256-bit hex secret for the Clash API. Returns null when no
- * usable randomness source is available, in which case the caller leaves the
- * secret unset rather than installing a predictable value. */
-function generateClashSecret() {
-	let secret = trim(executeCommand("head -c 32 /dev/urandom | hexdump -v -e '1/1 \"%02x\"'")?.stdout || '');
-	if (!match(secret, /^[a-f0-9]{64}$/))
-		secret = trim(executeCommand('tr -dc a-f0-9 < /dev/urandom | head -c 64')?.stdout || '');
-
-	return match(secret, /^[a-f0-9]{32,}$/) ? secret : null;
-}
-
-function normalizeLocalControllerOptions() {
-	let local_addresses = local_ipv4_addresses((command) => executeCommand(command)?.stdout || ''),
-	    fallback_host = local_addresses[0];
-
-	if (isEmpty(fallback_host))
-		return;
-
-	/* clash_api_external_controller is intentionally pinned to loopback (see
-	 * below) and must NOT be rewritten to the LAN address. Only the LAN-facing
-	 * display proxy is bound to a reachable local address here. */
-	for (let item in [
-		[ 'clash_api_proxy_external_controller', 9091, true ]
-	])
-		normalize_local_controller_option(uci, uciconfig, ucimain,
-			local_addresses, fallback_host, item[0], item[1], item[2]);
+function is_update_cron(value) {
+	let matched = match(value || '', /^(\d{1,2})\s+(\d{1,2})\s+\*\s+\*\s+([0-7*])$/);
+	return !isEmpty(matched) && int(matched[1]) <= 59 && int(matched[2]) <= 23;
 }
 
 /* chinadns-ng has been removed */
@@ -72,9 +64,7 @@ const china_dns_server = uci.get(uciconfig, ucimain, 'china_dns_server');
 if (type(china_dns_server) === 'array') {
 	uci.set(uciconfig, ucimain, 'china_dns_server', china_dns_server[0]);
 } else {
-	if (china_dns_server === 'wan_114')
-		uci.set(uciconfig, ucimain, 'china_dns_server', '114.114.114.114');
-	else if (match(china_dns_server, /,/))
+	if (match(china_dns_server, /,/))
 		uci.set(uciconfig, ucimain, 'china_dns_server', split(china_dns_server, ',')[0]);
 }
 
@@ -92,6 +82,93 @@ if (!uci.get(uciconfig, uciinfra, 'ntp_server'))
 /* tun_gso was deprecated in sb 1.11 */
 if (!isEmpty(uci.get(uciconfig, uciinfra, 'tun_gso')))
 	uci.delete(uciconfig, uciinfra, 'tun_gso');
+
+/* endpoint_independent_nat was removed in sing-box 1.13 */
+if (!isEmpty(uci.get(uciconfig, ucirouting, 'endpoint_independent_nat')))
+	uci.delete(uciconfig, ucirouting, 'endpoint_independent_nat');
+
+/* direct outbound proxy_protocol was removed in sing-box 1.13 */
+uci.foreach(uciconfig, ucinode, (cfg) => {
+	if (cfg.type === 'direct' && !isEmpty(cfg.proxy_protocol))
+		uci.delete(uciconfig, cfg['.name'], 'proxy_protocol');
+});
+
+const legacy_panel_url = 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip';
+const legacy_panel_proxy_url = 'https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip';
+const old_panel_url = 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip';
+const old_panel_proxy_url = 'https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip';
+const default_panel_url = 'https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip';
+
+/* clash api panel options were introduced */
+if (!uci.get(uciconfig, uciclashapi))
+	uci.set(uciconfig, uciclashapi, uciconfig);
+
+if (isEmpty(uci.get(uciconfig, uciclashapi, 'external_ui')))
+	uci.set(uciconfig, uciclashapi, 'external_ui', '/etc/homeproxy/run/ui');
+
+const panel_url = uci.get(uciconfig, uciclashapi, 'external_ui_download_url');
+if (isEmpty(panel_url) || panel_url === legacy_panel_url || panel_url === legacy_panel_proxy_url || panel_url === old_panel_proxy_url)
+	uci.set(uciconfig, uciclashapi, 'external_ui_download_url', default_panel_url);
+
+if (isEmpty(uci.get(uciconfig, uciclashapi, 'external_ui_download_detour')))
+	uci.set(uciconfig, uciclashapi, 'external_ui_download_detour', 'direct-out');
+
+if (isEmpty(uci.get(uciconfig, uciclashapi, 'external_controller')))
+	uci.set(uciconfig, uciclashapi, 'external_controller', '0.0.0.0:9095');
+
+if (isEmpty(uci.get(uciconfig, uciclashapi, 'secret')) || uci.get(uciconfig, uciclashapi, 'secret') === 'homeproxy') {
+	let random = random_secret();
+	if (!isEmpty(random))
+		uci.set(uciconfig, uciclashapi, 'secret', random);
+}
+
+if (isEmpty(uci.get(uciconfig, uciclashapi, 'default_mode')))
+	uci.set(uciconfig, uciclashapi, 'default_mode', 'rule');
+
+/* ntp options were moved into a dedicated section */
+if (!uci.get(uciconfig, ucintp))
+	uci.set(uciconfig, ucintp, uciconfig);
+
+const legacy_ntp_server = uci.get(uciconfig, uciinfra, 'ntp_server');
+if (isEmpty(uci.get(uciconfig, ucintp, 'enabled')))
+	uci.set(uciconfig, ucintp, 'enabled', '1');
+
+if (isEmpty(uci.get(uciconfig, ucintp, 'server')))
+	uci.set(uciconfig, ucintp, 'server', !isEmpty(legacy_ntp_server) ? legacy_ntp_server : 'ntp.aliyun.com');
+
+if (isEmpty(uci.get(uciconfig, ucintp, 'server_port')))
+	uci.set(uciconfig, ucintp, 'server_port', '123');
+
+if (isEmpty(uci.get(uciconfig, ucintp, 'interval')))
+	uci.set(uciconfig, ucintp, 'interval', '30m');
+
+/* cache file options were moved into a dedicated section */
+if (!uci.get(uciconfig, ucicache))
+	uci.set(uciconfig, ucicache, uciconfig);
+
+if (isEmpty(uci.get(uciconfig, ucicache, 'enabled')))
+	uci.set(uciconfig, ucicache, 'enabled', '1');
+
+const old_cache_path = '/var/run/homeproxy/cache.db';
+const default_cache_path = '/etc/homeproxy/cache.db';
+const cache_path = uci.get(uciconfig, ucicache, 'path');
+if (isEmpty(cache_path) || cache_path === old_cache_path)
+	uci.set(uciconfig, ucicache, 'path', default_cache_path);
+
+if (!isEmpty(uci.get(uciconfig, ucicache, 'store_fakeip')))
+	uci.delete(uciconfig, ucicache, 'store_fakeip');
+
+if (isEmpty(uci.get(uciconfig, ucicache, 'store_rdrc')))
+	uci.set(uciconfig, ucicache, 'store_rdrc', isEmpty(uci.get(uciconfig, ucidns, 'cache_file_store_rdrc')) ? '1' : uci.get(uciconfig, ucidns, 'cache_file_store_rdrc'));
+
+if (isEmpty(uci.get(uciconfig, ucicache, 'rdrc_timeout')) && !isEmpty(uci.get(uciconfig, ucidns, 'cache_file_rdrc_timeout')))
+	uci.set(uciconfig, ucicache, 'rdrc_timeout', uci.get(uciconfig, ucidns, 'cache_file_rdrc_timeout'));
+
+if (!isEmpty(uci.get(uciconfig, ucidns, 'cache_file_store_rdrc')))
+	uci.delete(uciconfig, ucidns, 'cache_file_store_rdrc');
+
+if (!isEmpty(uci.get(uciconfig, ucidns, 'cache_file_rdrc_timeout')))
+	uci.delete(uciconfig, ucidns, 'cache_file_rdrc_timeout');
 
 /* create migration section */
 if (!uci.get(uciconfig, ucimigration))
@@ -111,55 +188,9 @@ if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
 
-if (isEmpty(uci.get(uciconfig, ucisubscription, 'allow_unsupported_tls_pin_fallback')))
-	uci.set(uciconfig, ucisubscription, 'allow_unsupported_tls_pin_fallback', '0');
-
-/* Clash API dashboard integration */
-if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_enabled')))
-	uci.set(uciconfig, ucimain, 'clash_api_enabled', '1');
-
-/* Bind sing-box's own Clash API controller to loopback so it is never
- * reachable directly from the LAN; dashboards reach it only through the
- * filtering display proxy. Existing LAN-bound controllers are migrated to
- * 127.0.0.1 once (port preserved); a later deliberate change is left alone. */
-const clash_external = uci.get(uciconfig, ucimain, 'clash_api_external_controller');
-if (isEmpty(clash_external)) {
-	uci.set(uciconfig, ucimain, 'clash_api_external_controller', '127.0.0.1:9090');
-} else if (isEmpty(uci.get(uciconfig, ucimigration, 'clash_api_localhost'))) {
-	const clash_controller = parse_controller(clash_external, 9090);
-	if (!is_portable_bind_host(clash_controller.host))
-		uci.set(uciconfig, ucimain, 'clash_api_external_controller',
-			format_controller('127.0.0.1', clash_controller.port || 9090));
-}
-uci.set(uciconfig, ucimigration, 'clash_api_localhost', '1');
-
-/* sing-box's Clash API performs NO authentication when the secret is empty,
- * and the LAN-facing display proxy forwards to it, so anyone able to reach the
- * proxy could otherwise control the proxy without credentials. Generate a
- * random secret when none is configured. */
-if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_secret'))) {
-	const clash_secret = generateClashSecret();
-	if (!isEmpty(clash_secret))
-		uci.set(uciconfig, ucimain, 'clash_api_secret', clash_secret);
-}
-
-normalizeLocalControllerOptions();
-
-if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_default_mode')))
-	uci.set(uciconfig, ucimain, 'clash_api_default_mode', 'Rule');
-
-if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_allow_origin'))) {
-	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'https://metacubex.github.io');
-	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'https://metacubexd.pages.dev');
-	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'http://d.metacubex.one');
-	uci.add_list(uciconfig, ucimain, 'clash_api_allow_origin', 'https://yacd.metacubex.one');
-}
-
-if (isEmpty(uci.get(uciconfig, ucimain, 'clash_api_allow_private_network')))
-	uci.set(uciconfig, ucimain, 'clash_api_allow_private_network', '1');
-
-if (isEmpty(uci.get(uciconfig, ucimain, 'metacubexd_url')))
-	uci.set(uciconfig, ucimain, 'metacubexd_url', 'https://metacubexd.pages.dev/#/overview');
+if (!isEmpty(uci.get(uciconfig, 'subscription', 'auto_update_time')) &&
+    !is_update_cron(uci.get(uciconfig, 'subscription', 'auto_update_time')))
+	uci.set(uciconfig, 'subscription', 'auto_update_time', '0 0 * * *');
 
 /* empty value defaults to all ports now */
 if (uci.get(uciconfig, ucimain, 'routing_port') === 'all')
@@ -325,6 +356,47 @@ uci.foreach(uciconfig, uciroutingrule, (cfg) => {
 	}
 });
 
+/* routing node options */
+uci.foreach(uciconfig, uciroutingnode, (cfg) => {
+	if (cfg.node === 'urltest' && !isEmpty(cfg.urltest_nodes)) {
+		let custom_nodes = [],
+		    subscription_nodes = [];
+
+		for (let node in (type(cfg.urltest_nodes) === 'array' ? cfg.urltest_nodes : [ cfg.urltest_nodes ])) {
+			let node_cfg = uci.get_all(uciconfig, node);
+			if (isEmpty(node_cfg))
+				continue;
+
+			if (!isEmpty(node_cfg.grouphash))
+				push(subscription_nodes, node);
+			else
+				push(custom_nodes, node);
+		}
+
+		if (isEmpty(cfg.selected_nodes) && !isEmpty(custom_nodes))
+			uci.set(uciconfig, cfg['.name'], 'selected_nodes', custom_nodes);
+
+		if (isEmpty(cfg.subscription_nodes) && !isEmpty(subscription_nodes))
+			uci.set(uciconfig, cfg['.name'], 'subscription_nodes', subscription_nodes);
+
+		uci.delete(uciconfig, cfg['.name'], 'urltest_nodes');
+	}
+});
+
+/* rule set options */
+uci.foreach(uciconfig, uciruleset, (cfg) => {
+	if (isEmpty(cfg.tag))
+		uci.set(uciconfig, cfg['.name'], 'tag', 'cfg-' + cfg['.name'] + '-rule');
+
+	if (cfg.type === 'remote') {
+		if (isEmpty(cfg.auto_update))
+			uci.set(uciconfig, cfg['.name'], 'auto_update', '1');
+
+		if (!is_update_cron(cfg.update_interval))
+			uci.set(uciconfig, cfg['.name'], 'update_interval', '0 0 * * *');
+	}
+});
+
 /* server options */
 /* auto_firewall was moved into server options */
 const auto_firewall = uci.get(uciconfig, uciserver, 'auto_firewall');
@@ -332,6 +404,13 @@ if (!isEmpty(auto_firewall))
 	uci.delete(uciconfig, uciserver, 'auto_firewall');
 
 uci.foreach(uciconfig, uciserver, (cfg) => {
+	if (!isEmpty(cfg.hysteria_revc_window_client) && isEmpty(cfg.hysteria_recv_window_client)) {
+		uci.set(uciconfig, cfg['.name'], 'hysteria_recv_window_client', cfg.hysteria_revc_window_client);
+	}
+
+	if (!isEmpty(cfg.hysteria_revc_window_client))
+		uci.delete(uciconfig, cfg['.name'], 'hysteria_revc_window_client');
+
 	/* auto_firewall was moved into server options */
 	if (auto_firewall === '1')
 		uci.set(uciconfig, cfg['.name'], 'firewall' , '1');

@@ -126,6 +126,8 @@ return view.extend({
 		let m, s, o;
 		let features = data[1];
 
+		hp.installCloseButtonText();
+
 		m = new form.Map('homeproxy', _('HomeProxy Server'),
 			_('The modern ImmortalWrt proxy platform for ARM64/AMD64.'));
 
@@ -188,6 +190,7 @@ return view.extend({
 			o.value('tuic', _('Tuic'));
 		o.value('vless', _('VLESS'));
 		o.value('vmess', _('VMess'));
+		o.default = 'mixed';
 		o.rmempty = false;
 
 		o = s.option(form.Value, 'address', _('Listen address'));
@@ -637,10 +640,10 @@ return view.extend({
 			o.modalonly = true;
 
 			o = s.option(form.ListValue, 'tls_dns01_provider', _('DNS provider'));
-			o.value('alidns', _('Alibaba Cloud DNS'));
-			o.value('cloudflare', _('Cloudflare'));
+			o.value('alidns', _('AliYun'));
+			o.value('cfdns', _('CloudFlare'));
 			o.depends('tls_dns01_challenge', '1');
-			o.default = 'cloudflare';
+			o.default = 'cfdns';
 			o.rmempty = false;
 			o.modalonly = true;
 
@@ -663,7 +666,7 @@ return view.extend({
 
 			o = s.option(form.Value, 'tls_dns01_cf_api_token', _('API token'));
 			o.password = true;
-			o.depends('tls_dns01_provider', 'cloudflare');
+			o.depends('tls_dns01_provider', 'cfdns');
 			o.rmempty = false;
 			o.modalonly = true;
 

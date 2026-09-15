@@ -3,6 +3,36 @@
 [ -f "/www/luci-static/resources/icons/loading.gif" ] && \
 	sed -i "s,/loading.svg,/loading.gif,g" "/www/luci-static/resources/view/homeproxy/status.js"
 
+uci -q set luci.main.lang='zh_cn'
+uci -q commit luci
+
+api_secret="$(uci -q get homeproxy.clash_api.secret)"
+if [ -z "$api_secret" ] || [ "$api_secret" = "homeproxy" ]; then
+	api_secret="$(tr -dc 'A-Za-z0-9' < /dev/urandom 2>"/dev/null" | head -c 16)"
+	[ -n "$api_secret" ] || api_secret="$(awk 'BEGIN{srand(); printf "%06d", int(rand() * 1000000)}')"
+	uci -q set homeproxy.clash_api.secret="$api_secret"
+	uci -q commit homeproxy
+fi
+
+legacy_panel_url="https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
+legacy_panel_proxy_url="https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"
+old_panel_url="https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+old_panel_proxy_url="https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+default_panel_url="https://gh-proxy.com/https://github.com/Zephyruso/zashboard/releases/latest/download/dist-cdn-fonts.zip"
+panel_url="$(uci -q get homeproxy.clash_api.external_ui_download_url)"
+if [ -z "$panel_url" ] || [ "$panel_url" = "$legacy_panel_url" ] || [ "$panel_url" = "$legacy_panel_proxy_url" ] || [ "$panel_url" = "$old_panel_proxy_url" ]; then
+	uci -q set homeproxy.clash_api.external_ui_download_url="$default_panel_url"
+	uci -q commit homeproxy
+fi
+
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>"/dev/null"
+
+mkdir -p /var/run/homeproxy
+touch /var/run/homeproxy/homeproxy.log \
+	/var/run/homeproxy/sing-box-c.log \
+	/var/run/homeproxy/sing-box-s.log
+chown -R sing-box:sing-box /var/run/homeproxy 2>"/dev/null"
+
 uci -q batch <<-EOF >"/dev/null"
 	delete firewall.homeproxy_pre
 

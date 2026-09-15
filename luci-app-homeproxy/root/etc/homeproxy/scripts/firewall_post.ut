@@ -57,24 +57,16 @@ const uci = cursor();
 uci.load(cfgname);
 
 const routing_mode = uci.get(cfgname, 'config', 'routing_mode') || 'bypass_mainland_china';
-let outbound_node, outbound_udp_node, default_outbound, china_dns_server, bypass_cn_traffic;
-
-default_outbound = uci.get(cfgname, 'routing', 'default_outbound') || 'nil';
-bypass_cn_traffic = uci.get(cfgname, 'routing', 'bypass_cn_traffic') || '0';
+let outbound_node, outbound_udp_node, china_dns_server, bypass_cn_traffic;
 
 if (routing_mode !== 'custom') {
 	outbound_node = uci.get(cfgname, 'config', 'main_node') || 'nil';
 	outbound_udp_node = uci.get(cfgname, 'config', 'main_udp_node') || 'nil';
 	china_dns_server = uci.get(cfgname, 'config', 'china_dns_server');
-	if (isEmpty(outbound_node))
-		outbound_node = default_outbound;
 } else {
-	outbound_node = default_outbound;
+	outbound_node = uci.get(cfgname, 'routing', 'default_outbound') || 'nil';
+	bypass_cn_traffic = uci.get(cfgname, 'routing', 'bypass_cn_traffic') || '0';
 }
-
-const use_default_outbound_routing = (routing_mode !== 'custom') &&
-	isEmpty(uci.get(cfgname, 'config', 'main_node') || 'nil') &&
-	!isEmpty(default_outbound);
 
 let routing_port = uci.get(cfgname, 'config', 'routing_port');
 if (routing_port === 'common')
@@ -92,7 +84,7 @@ if (match(proxy_mode, /redirect/)) {
 	redirect_port = uci.get(cfgname, 'infra', 'redirect_port') || '5331';
 }
 if (match(proxy_mode, /tproxy/))
-	if (outbound_udp_node !== 'nil' || routing_mode === 'custom' || use_default_outbound_routing) {
+	if (outbound_udp_node !== 'nil' || routing_mode === 'custom') {
 		tproxy_port = uci.get(cfgname, 'infra', 'tproxy_port') || '5332';
 		tproxy_mark = resolve_mark(uci.get(cfgname, 'infra', 'tproxy_mark') || '101');
 	}
@@ -384,7 +376,7 @@ chain homeproxy_output_redir {
 {% endif %}
 
 {# UDP tproxy #}
-{% if (match(proxy_mode, /tproxy/) && (outbound_udp_node !== 'nil' || routing_mode === 'custom' || use_default_outbound_routing)): %}
+{% if (match(proxy_mode, /tproxy/) && (outbound_udp_node !== 'nil' || routing_mode === 'custom')): %}
 chain homeproxy_mangle_tproxy {
 	meta l4proto udp meta mark set {{ tproxy_mark }} tproxy ip to 127.0.0.1:{{ tproxy_port }} counter accept
 	{% if (ipv6_support === '1'): %}

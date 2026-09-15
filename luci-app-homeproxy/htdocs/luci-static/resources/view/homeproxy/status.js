@@ -14,6 +14,8 @@
 'require ui';
 'require view';
 
+'require homeproxy as hp';
+
 /* Thanks to luci-app-aria2 */
 const css = '				\
 #log_textarea {				\
@@ -27,6 +29,53 @@ const css = '				\
 }					\
 .description {				\
 	background-color: #33ccff;	\
+}					\
+.homeproxy-connect-grid {		\
+	display: grid;			\
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));\
+	gap: 12px;			\
+}					\
+.homeproxy-connect-card {		\
+	display: grid;			\
+	grid-template-columns: 44px 1fr;	\
+	gap: 10px;			\
+	align-items: center;		\
+	min-height: 64px;		\
+	padding: 8px 10px;		\
+	border-radius: 6px;		\
+	background: #fff;		\
+	box-shadow: 0 1px 4px rgba(0, 0, 0, .08);\
+}					\
+.homeproxy-connect-icon {		\
+	display: flex;			\
+	align-items: center;		\
+	justify-content: center;		\
+	width: 38px;			\
+	height: 38px;			\
+	border-radius: 50%;		\
+	color: #fff;			\
+	font-weight: 700;		\
+	font-size: 15px;		\
+}					\
+.homeproxy-connect-info {		\
+	min-height: 42px;		\
+	padding: 7px 12px;		\
+	border-radius: 8px;		\
+	background: #e9edf2;		\
+}					\
+.homeproxy-connect-title {		\
+	color: #7d8aa0;			\
+	font-weight: 700;		\
+	font-size: 13px;		\
+	line-height: 1.2;		\
+}					\
+.homeproxy-connect-result {		\
+	margin-top: 2px;		\
+	color: #ff4d35;			\
+	font-weight: 700;		\
+	font-size: 13px;		\
+	cursor: pointer;		\
+	line-height: 1.2;		\
 }';
 
 const hp_dir = '/var/run/homeproxy';
@@ -44,13 +93,13 @@ function getConnStat(o, site) {
 			'class': 'btn cbi-button cbi-button-action',
 			'click': ui.createHandlerFn(this, () => {
 				return L.resolveDefault(callConnStat(site), {}).then((ret) => {
-                                        let ele = o.default.firstElementChild.nextElementSibling;
+					let ele = o.default.firstElementChild.nextElementSibling;
 					if (ret.result) {
 						ele.style.setProperty('color', 'green');
-                                                ele.innerHTML = _('passed');
+						ele.innerHTML = _('passed');
 					} else {
 						ele.style.setProperty('color', 'red');
-                                                ele.innerHTML = _('failed');
+						ele.innerHTML = _('failed');
 					}
 				});
 			})
@@ -58,6 +107,53 @@ function getConnStat(o, site) {
 		' ',
 		E('strong', { 'style': 'color:gray' }, _('unchecked')),
 	]);
+}
+
+function renderConnCards() {
+	const callConnStat = rpc.declare({
+		object: 'luci.homeproxy',
+		method: 'connection_check',
+		params: ['site'],
+		expect: { '': {} }
+	});
+
+	const items = [
+		{ site: 'baidu', title: _('Baidu Connection'), icon: 'B', color: '#ff7a00' },
+		{ site: 'google', title: _('Google Connection'), icon: 'G', color: '#4285f4' },
+		{ site: 'github', title: _('GitHub Connection'), icon: 'GH', color: '#7b3bb3' },
+		{ site: 'youtube', title: _('YouTube Connection'), icon: 'YT', color: '#ff0033' }
+	];
+
+	return E('div', { 'class': 'homeproxy-connect-grid' }, items.map((item) => {
+		let result = E('div', {
+			'class': 'homeproxy-connect-result',
+			'click': ui.createHandlerFn(this, () => {
+				result.textContent = _('Checking...');
+				result.style.setProperty('color', '#f0ad4e');
+
+				return L.resolveDefault(callConnStat(item.site), {}).then((ret) => {
+					if (ret.result && ret.latency != null) {
+						result.style.setProperty('color', 'green');
+						result.textContent = _('%s ms').format(ret.latency);
+					} else {
+						result.style.setProperty('color', '#ff4d35');
+						result.textContent = _('failed');
+					}
+				});
+			})
+		}, [ _('Click to check') ]);
+
+		return E('div', { 'class': 'homeproxy-connect-card' }, [
+			E('div', {
+				'class': 'homeproxy-connect-icon',
+				'style': 'background:%s'.format(item.color)
+			}, [ item.icon ]),
+			E('div', { 'class': 'homeproxy-connect-info' }, [
+				E('div', { 'class': 'homeproxy-connect-title' }, [ item.title ]),
+				result
+			])
+		]);
+	}));
 }
 
 function getResVersion(o, type) {
@@ -227,16 +323,16 @@ return view.extend({
 	render() {
 		let m, s, o;
 
+		hp.installCloseButtonText();
+
 		m = new form.Map('homeproxy');
 
 		s = m.section(form.NamedSection, 'config', 'homeproxy', _('Connection check'));
 		s.anonymous = true;
 
-		o = s.option(form.DummyValue, '_check_baidu', _('BaiDu'));
-		o.cfgvalue = L.bind(getConnStat, this, o, 'baidu');
-
-		o = s.option(form.DummyValue, '_check_google', _('Google'));
-		o.cfgvalue = L.bind(getConnStat, this, o, 'google');
+		o = s.option(form.DummyValue, '_connection_check');
+		o.rawhtml = true;
+		o.render = renderConnCards;
 
 		s = m.section(form.NamedSection, 'config', 'homeproxy', _('Resources management'));
 		s.anonymous = true;

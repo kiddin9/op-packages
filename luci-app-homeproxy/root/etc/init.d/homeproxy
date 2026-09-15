@@ -27,35 +27,88 @@ log() {
 	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
 }
 
-delete_ip_rules() {
-	local mark="$1"
-	local table="$2"
-
-	while ip rule del fwmark "$mark" table "$table" 2>"/dev/null"; do
-		:
-	done
+init_logs() {
+	mkdir -p "$RUN_DIR"
+	mkdir -p "$HP_DIR/run/ui"
+	touch "$LOG_PATH" "$RUN_DIR/sing-box-c.log" "$RUN_DIR/sing-box-s.log"
+	chown -R sing-box:sing-box "$RUN_DIR" 2>"/dev/null"
+	chown -R sing-box:sing-box "$HP_DIR/run" 2>"/dev/null"
 }
 
-delete_ip6_rules() {
-	local mark="$1"
-	local table="$2"
+valid_update_cron() {
+	echo "$1" | grep -Eq '^([0-9]|[0-5][0-9]) ([0-9]|[01][0-9]|2[0-3]) \* \* ([0-7]|\*)$'
+}
 
-	while ip -6 rule del fwmark "$mark" table "$table" 2>"/dev/null"; do
-		:
-	done
+has_ruleset_cron() {
+	printf '%s\n' "$ruleset_cron_list" | grep -Fxq -- "$1"
+}
+
+add_ruleset_cron() {
+	local section="$1"
+	local enabled auto_update type update_time
+
+	config_get_bool enabled "$section" "enabled" "0"
+	config_get_bool auto_update "$section" "auto_update" "1"
+	config_get type "$section" "type" "local"
+	config_get update_time "$section" "update_interval" ""
+
+	[ "$enabled" = "1" ] || return
+	[ "$auto_update" = "1" ] || return
+	[ "$type" = "remote" ] || return
+	[ -n "$update_time" ] || return
+	valid_update_cron "$update_time" || return
+	has_ruleset_cron "$update_time" && return
+
+	echo -e "$update_time sh $HP_DIR/scripts/update_rulesets.sh #${CONF}_autosetup" >> "/etc/crontabs/root"
+	ruleset_cron_list="${ruleset_cron_list}
+${update_time}"
+	cron_reload="1"
+}
+
+setup_auto_update_cron() {
+	local cron_reload="0"
+	mkdir -p "/etc/crontabs"
+	touch "/etc/crontabs/root"
+	grep -q "#${CONF}_autosetup" "/etc/crontabs/root" 2>"/dev/null" && cron_reload="1"
+	sed -i "/#${CONF}_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
+
+	local auto_update auto_update_time
+	config_get_bool auto_update "subscription" "auto_update" "0"
+	if [ "$auto_update" = "1" ]; then
+		config_get auto_update_time "subscription" "auto_update_time" "0 0 * * *"
+		if valid_update_cron "$auto_update_time"; then
+			echo -e "$auto_update_time sh $HP_DIR/scripts/update_crond.sh #${CONF}_autosetup" >> "/etc/crontabs/root"
+			cron_reload="1"
+		fi
+	fi
+
+	local ruleset_cron_list=""
+	config_foreach add_ruleset_cron "ruleset"
+	[ "$cron_reload" = "1" ] && /etc/init.d/cron restart
 }
 
 start_service() {
+	init_logs
+
 	config_load "$CONF"
+	setup_auto_update_cron
 
 	local routing_mode proxy_mode
 	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
 	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
 
-	local outbound_node default_outbound
-	config_get outbound_node "config" "main_node" "nil"
-	config_get default_outbound "routing" "default_outbound" "nil"
-	[ "$outbound_node" != "nil" ] || outbound_node="$default_outbound"
+	local cache_path
+	config_get cache_path "cache" "path" "$HP_DIR/cache.db"
+	mkdir -p "$(dirname "$cache_path")"
+	[ -e "$cache_path" ] || touch "$cache_path"
+	chown sing-box:sing-box "$cache_path" 2>"/dev/null"
+
+	local outbound_node
+	if [ "$routing_mode" != "custom" ]; then
+		config_get outbound_node "config" "main_node" "nil"
+	else
+		config_get outbound_node "routing" "default_outbound" "nil"
+	fi
 
 	local server_enabled
 	config_get_bool server_enabled "server" "enabled" "0"
@@ -63,8 +116,6 @@ start_service() {
 	if [ "$outbound_node" = "nil" ] && [ "$server_enabled" = "0" ]; then
 		return 1
 	fi
-
-	mkdir -p "$RUN_DIR"
 
 	if [ "$outbound_node" != "nil" ]; then
 		# Generate/Validate client config
@@ -76,16 +127,6 @@ start_service() {
 		elif ! "$PROG" check --config "$RUN_DIR/sing-box-c.json" 2>>"$LOG_PATH"; then
 			log "Error: wrong client configuration detected."
 			return 1
-		fi
-
-		# Auto update
-		local auto_update auto_update_time
-		config_get_bool auto_update "subscription" "auto_update" "0"
-		if [ "$auto_update" = "1" ]; then
-			config_get auto_update_time "subscription" "auto_update_time" "2"
-			sed -i "/#${CONF}_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
-			echo -e "0 $auto_update_time * * * $HP_DIR/scripts/update_crond.sh #${CONF}_autosetup" >> "/etc/crontabs/root"
-			/etc/init.d/cron restart
 		fi
 
 		# DNSMasq rules
@@ -120,31 +161,23 @@ start_service() {
 			sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
 				"$HP_DIR/resources/proxy_list.txt" > "$DNSMASQ_DIR/proxy_list.conf"
 		fi
-		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
-
 		# Setup routing table
 		local table_mark
 		config_get table_mark "infra" "table_mark" "100"
 		case "$proxy_mode" in
 		"redirect_tproxy")
-			local outbound_udp_node main_node_for_routing default_outbound_for_routing use_default_outbound_routing
+			local outbound_udp_node
 			config_get outbound_udp_node "config" "main_udp_node" "nil"
-			config_get main_node_for_routing "config" "main_node" "nil"
-			config_get default_outbound_for_routing "routing" "default_outbound" "nil"
-			[ "$routing_mode" != "custom" ] && [ "$main_node_for_routing" = "nil" ] && [ "$default_outbound_for_routing" != "nil" ] \
-				&& use_default_outbound_routing="1" || use_default_outbound_routing="0"
-			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ] || [ "$use_default_outbound_routing" = "1" ]; then
+			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ]; then
 				local tproxy_mark
 				config_get tproxy_mark "infra" "tproxy_mark" "101"
 
-				delete_ip_rules "$tproxy_mark" "$table_mark"
 				ip rule add fwmark "$tproxy_mark" table "$table_mark"
-				ip route replace local 0.0.0.0/0 dev lo table "$table_mark"
+				ip route add local 0.0.0.0/0 dev lo table "$table_mark"
 
 				if [ "$ipv6_support" -eq "1" ]; then
-					delete_ip6_rules "$tproxy_mark" "$table_mark"
 					ip -6 rule add fwmark "$tproxy_mark" table "$table_mark"
-					ip -6 route replace local ::/0 dev lo table "$table_mark"
+					ip -6 route add local ::/0 dev lo table "$table_mark"
 				fi
 			fi
 			;;
@@ -153,16 +186,14 @@ start_service() {
 			config_get tun_name "infra" "tun_name" "singtun0"
 			config_get tun_mark "infra" "tun_mark" "102"
 
-			ip link show "$tun_name" >"/dev/null" 2>&1 || ip tuntap add mode tun user root name "$tun_name"
+			ip tuntap add mode tun user root name "$tun_name"
 			sleep 1s
 			ip link set "$tun_name" up
 
 			ip route replace default dev "$tun_name" table "$table_mark"
-			delete_ip_rules "$tun_mark" "$table_mark"
 			ip rule add fwmark "$tun_mark" lookup "$table_mark"
 
 			ip -6 route replace default dev "$tun_name" table "$table_mark"
-			delete_ip6_rules "$tun_mark" "$table_mark"
 			ip -6 rule add fwmark "$tun_mark" lookup "$table_mark"
 			;;
 		esac
@@ -180,7 +211,8 @@ start_service() {
 			procd_add_jail "sing-box-c" log procfs
 			procd_add_jail_mount "$RUN_DIR/sing-box-c.json"
 			procd_add_jail_mount_rw "$RUN_DIR/sing-box-c.log"
-			[ "$routing_mode" != "bypass_mainland_china" ] || procd_add_jail_mount_rw "$RUN_DIR/cache.db"
+			procd_add_jail_mount_rw "$cache_path"
+			procd_add_jail_mount_rw "$HP_DIR/run/"
 			procd_add_jail_mount "$HP_DIR/certs/"
 			procd_add_jail_mount "/etc/ssl/"
 			procd_add_jail_mount "/etc/localtime"
@@ -197,17 +229,6 @@ start_service() {
 		procd_set_param respawn
 
 		procd_close_instance
-
-		# Clash API display proxy for dashboards.
-		local clash_api_enabled
-		config_get_bool clash_api_enabled "config" "clash_api_enabled" "0"
-		if [ "$clash_api_enabled" = "1" ]; then
-			procd_open_instance "clash-api-proxy"
-			procd_set_param command "/usr/bin/ucode" "$HP_DIR/scripts/clash_api_proxy.uc"
-			procd_set_param stderr 1
-			procd_set_param respawn
-			procd_close_instance
-		fi
 	fi
 
 	if [ "$server_enabled" = "1" ]; then
@@ -261,19 +282,15 @@ start_service() {
 	procd_close_instance
 
 	case "$routing_mode" in
-	"bypass_mainland_china")
-		# Prepare cache db
-		[ -e "$RUN_DIR/cache.db" ] || touch "$RUN_DIR/cache.db"
-		;;
 	"custom")
 		# Prepare ruleset directory
 		[ -d "$HP_DIR/ruleset" ] || mkdir -p "$HP_DIR/ruleset"
 		;;
 	esac
 
-	[ "$outbound_node" = "nil" ] || echo > "$RUN_DIR/sing-box-c.log"
+	[ "$outbound_node" = "nil" ] || : > "$RUN_DIR/sing-box-c.log"
 	if [ "$server_enabled" = "1" ]; then
-		echo > "$RUN_DIR/sing-box-s.log"
+		: > "$RUN_DIR/sing-box-s.log"
 		mkdir -p "$HP_DIR/certs"
 	fi
 
@@ -284,6 +301,7 @@ start_service() {
 	ucode "$HP_DIR/scripts/firewall_pre.uc"
 	[ "$outbound_node" = "nil" ] || utpl -S "$HP_DIR/scripts/firewall_post.ut" > "$RUN_DIR/fw4_post.nft"
 	fw4 reload >"/dev/null" 2>&1
+	/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
 
 	log "sing-box $(sing-box version -n) started."
 }
@@ -302,17 +320,17 @@ stop_service() {
 	config_get tun_name "infra" "tun_name" "singtun0"
 
 	# Tproxy
-	delete_ip_rules "$tproxy_mark" "$table_mark"
+	ip rule del fwmark "$tproxy_mark" table "$table_mark" 2>"/dev/null"
 	ip route del local 0.0.0.0/0 dev lo table "$table_mark" 2>"/dev/null"
-	delete_ip6_rules "$tproxy_mark" "$table_mark"
+	ip -6 rule del fwmark "$tproxy_mark" table "$table_mark" 2>"/dev/null"
 	ip -6 route del local ::/0 dev lo table "$table_mark" 2>"/dev/null"
 
 	# TUN
 	ip route del default dev "$tun_name" table "$table_mark" 2>"/dev/null"
-	delete_ip_rules "$tun_mark" "$table_mark"
+	ip rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
 
 	ip -6 route del default dev "$tun_name" table "$table_mark" 2>"/dev/null"
-	delete_ip6_rules "$tun_mark" "$table_mark"
+	ip -6 rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
 
 	# Nftables rules
 	for i in "homeproxy_dstnat_redir" "homeproxy_output_redir" \
@@ -343,8 +361,8 @@ stop_service() {
 	rm -rf "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" "$DNSMASQ_DIR"
 	/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
 
-	rm -f "$RUN_DIR/sing-box-c.json" "$RUN_DIR/sing-box-c.log" \
-		"$RUN_DIR/sing-box-s.json" "$RUN_DIR/sing-box-s.log"
+	rm -f "$RUN_DIR/sing-box-c.json" "$RUN_DIR/sing-box-s.json"
+	init_logs
 
 	log "Service stopped."
 }
