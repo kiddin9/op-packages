@@ -1,0 +1,14 @@
+--- a/luci-mod-dashboard/root/usr/share/luci/menu.d/luci-mod-dashboard.json
++++ b/luci-mod-dashboard/root/usr/share/luci/menu.d/luci-mod-dashboard.json
+@@ -7,7 +7,10 @@
+ 			"path": "dashboard/index"
+ 		},
+ 		"depends": {
+-			"acl": [ "luci-mod-dashboard-index" ]
++			"acl": [ "luci-mod-dashboard-index" ],
++			"uci": {
++				"wireless": true
++			}
+ 		}
+ 	}
+ }
