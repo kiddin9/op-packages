@@ -52,7 +52,6 @@ return baseclass.extend({
 		const active = radios.filter(radio => radio.isactive.value === true).length;
 
 		return charts.kpi({
-			className: 'router-status-wifi',
 			icon: 'wireless',
 			title: _('Wireless clients'),
 			value: [ String(this.params.wifi.devices.length) ],
@@ -68,7 +67,6 @@ return baseclass.extend({
 		}));
 
 		return charts.card({
-			className: 'router-status-wifi',
 			title: _('Client distribution'),
 			desc: _('by SSID'),
 			body: devices.length
@@ -81,7 +79,6 @@ return baseclass.extend({
 		const devices = this.params.wifi.devices.slice().sort((a, b) => rssiOf(b) - rssiOf(a));
 
 		return charts.card({
-			className: 'router-status-wifi',
 			title: _('Signal Strength'),
 			desc: devices.length ? '%s · %s'.format(_('%d clients').format(devices.length), _('dBm')) : '',
 			body: devices.length ? [ charts.barChart({
@@ -145,7 +142,6 @@ return baseclass.extend({
 		const scale = this.byteScale(peak);
 
 		return charts.card({
-			className: 'router-status-wifi',
 			title: _('Client traffic'),
 			desc: devices.length ? _('Transferred') : '',
 			body: devices.length ? [
@@ -199,7 +195,6 @@ return baseclass.extend({
 
 	renderClientTable() {
 		return charts.table({
-			className: 'assoclist devices-info',
 			head: [
 				_('Hostname'),
 				_('SSID'),
@@ -210,7 +205,7 @@ return baseclass.extend({
 			rows: this.params.wifi.devices.map(device => [
 				device.hostname.value,
 				device.ssid.value,
-				E('span', { 'class': 'nowrap' }, [
+				E('span', {}, [
 					charts.badge((device.signal.value.rssi != null) ? '%d %s'.format(device.signal.value.rssi, _('dBm')) : _('No RX signal'), signalGrade(device.signal.value.rssi).kind),
 					' ',
 					(device.signal.value.noise != null)

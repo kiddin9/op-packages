@@ -117,7 +117,6 @@ return baseclass.extend({
 			sub.push(E('code', {}, [ v4.addrsv4.value[0].split('/')[0] ]));
 
 		return charts.kpi({
-			className: 'internet-status-self',
 			icon: connected ? 'internet' : 'not-internet',
 			title: _('Internet'),
 			value: [ connected ? _('Connected') : _('Not connected') ],
@@ -129,7 +128,6 @@ return baseclass.extend({
 		const router = this.params.router;
 
 		return charts.kpi({
-			className: 'router-status-self',
 			icon: 'router',
 			title: router.uptime.title,
 			value: [ router.uptime.value || '-' ],

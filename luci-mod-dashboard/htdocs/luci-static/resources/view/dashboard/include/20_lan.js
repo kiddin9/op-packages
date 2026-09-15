@@ -25,7 +25,6 @@ return baseclass.extend({
 		const count = this.params.lan.devices.length;
 
 		return charts.kpi({
-			className: 'router-status-lan',
 			icon: 'devices',
 			title: this.title,
 			value: [ String(count) ],
@@ -35,7 +34,6 @@ return baseclass.extend({
 
 	renderTable() {
 		return charts.table({
-			className: 'assoclist devices-info',
 			head: [ _('Hostname'), _('IP Address'), _('MAC') ],
 			rows: this.params.lan.devices.map(device => [
 				device.hostname,
