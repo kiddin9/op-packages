@@ -40,7 +40,7 @@
  });
  
  return baseclass.extend({
-@@ -85,10 +85,9 @@ return baseclass.extend({
+@@ -85,15 +85,9 @@ return baseclass.extend({
  
  		var fields = [
  			_('Hostname'),         boardinfo.hostname,
@@ -49,11 +49,16 @@
 +			_('Architecture'),     (cpuinfo.cpuinfo || boardinfo.system) + ' ' + cpubench.cpubench,
  			_('Target Platform'),  (L.isObject(boardinfo.release) ? boardinfo.release.target : ''),
 -			_('Firmware Version'), (L.isObject(boardinfo.release)
+-				? '%s%s / '.format(
+-					boardinfo.release.description || '',
+-					boardinfo.release.revision ? boardinfo.release.revision : ''
+-				)
+-				: '') + (luciversion || ''),
 +			_('Firmware Version'), (L.isObject(boardinfo.release) ? boardinfo.release.description + ' / ' : '') + (luciversion || ''),
- 				? '%s%s / '.format(
- 					boardinfo.release.description || '',
- 					boardinfo.release.revision ? boardinfo.release.revision : ''
-@@ -101,10 +100,18 @@ return baseclass.extend({
+ 			_('Kernel Version'),   boardinfo.kernel,
+ 			_('Local Time'),       datestr,
+ 			_('Uptime'),           systeminfo.uptime ? '%t'.format(systeminfo.uptime) : null,
+@@ -101,10 +95,18 @@ return baseclass.extend({
  				systeminfo.load[0] / 65535.0,
  				systeminfo.load[1] / 65535.0,
  				systeminfo.load[2] / 65535.0
