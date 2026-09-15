@@ -749,3 +749,33 @@ msgstr "Ð¸ÑÐ¿Ð¾Ð»ÑÐ·ÑÐµÑÑÑ iptables"
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:89
 msgid "· %s"
 msgstr "· %s"
+
+msgid "Hide rows"
+msgstr "Скрыть строки"
+
+msgid "none"
+msgstr "нет"
+
+msgid "Show rows"
+msgstr "Показать строки"
+
+msgid "Showing a compact summary of the top of the shown sample."
+msgstr "Показана краткая сводка верхней части отображаемой выборки."
+
+msgid "Summary data is unavailable; show rows to inspect the sample."
+msgstr "Данные сводки недоступны; покажите строки для проверки выборки."
+
+msgid "Summary mode"
+msgstr "Режим сводки"
+
+msgid "Summary was bounded before all categories could be included."
+msgstr "Сводка ограничена до включения всех категорий."
+
+msgid "Top drops"
+msgstr "Частые сбросы"
+
+msgid "Top rules"
+msgstr "Частые правила"
+
+msgid "Top talkers"
+msgstr "Частые источники"

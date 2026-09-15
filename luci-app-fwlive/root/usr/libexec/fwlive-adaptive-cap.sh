@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com>
 #
-# Layer 1 adaptive poll cap. Sourced by rpcd/fwlive.
+# Layer 1 adaptive poll cap (#306). Sourced by rpcd/fwlive.
 # Always on unless test/triage override (no UCI / no product config):
 #   FWLIVE_ADAPTIVE=0|false|off|no
 #   or sentinel ${FWLIVE_ADAPTIVE_OFF_FILE:-<state-dir>/fwlive-adaptive-off}
@@ -18,10 +18,10 @@
 # flock, lock busy, or corrupt state. Lock-busy ⇒ unlocked last-writer-wins is
 # acceptable (state stays one valid JSON line; ordering is not guaranteed).
 # Failed ubus log.read must NOT call record() — a ~0 ms failure is not "cold"
-# health and must not clear an existing hot/shed cap.
+# health and must not clear an existing hot/shed cap (#329 Hermes Q1).
 # Outside the measured duration interval: plan (pre), record/merge (post).
-# messages_received is 0 in Layer 1 — do not ash-scan the filter JSON after
-# end_cs; accurate count belongs in the filter or a later layer.
+# messages_received is supplied by the filter-side jsonfilter enumeration;
+# failed reads still use 0 without scanning the response in ash.
 
 FWLIVE_ADAPTIVE_STATE_FILE="${FWLIVE_ADAPTIVE_STATE_FILE:-/var/run/fwlive-state.json}"
 # Optional overrides; when unset, lock/off paths are siblings of the current state.
@@ -37,6 +37,7 @@ FWLIVE_ADAPTIVE_HOT_FLOOR=250
 FWLIVE_ADAPTIVE_WARM_MIN=50
 FWLIVE_ADAPTIVE_COOLDOWN_WARM_CS=300
 FWLIVE_ADAPTIVE_COOLDOWN_HOT_CS=600
+FWLIVE_ADAPTIVE_COOLDOWN_PROBE_CS=300
 
 fwlive_adaptive_lock_path() {
 	if [ -n "${FWLIVE_ADAPTIVE_LOCK_FILE:-}" ]; then
@@ -273,7 +274,8 @@ fwlive_adaptive_bucket_for_ms() {
 	fi
 }
 
-# Args: requested_limit duration_ms prev_limit prev_bucket prev_warm prev_completed_cs
+# Args: requested_limit duration_ms prev_limit prev_bucket prev_warm
+#       prev_completed_cs planning
 # Prints next limit.
 fwlive_adaptive_compute_limit() {
 	_req=$1
@@ -282,6 +284,7 @@ fwlive_adaptive_compute_limit() {
 	_prev_b=$4
 	_prev_w=$5
 	_prev_c=$6
+	_planning=${7:-0}
 	_max="${POLL_LINES_MAX:-2000}"
 	_now=$(fwlive_adaptive_clock_cs)
 	_bucket=$(fwlive_adaptive_bucket_for_ms "$_ms")
@@ -292,9 +295,10 @@ fwlive_adaptive_compute_limit() {
 		hot) _cd=$FWLIVE_ADAPTIVE_COOLDOWN_HOT_CS ;;
 		warm) _cd=$FWLIVE_ADAPTIVE_COOLDOWN_WARM_CS ;;
 	esac
+	_elapsed=$((_now - _prev_c))
 
 	if [ "$_cd" -gt 0 ] && [ "$_prev_c" -gt 0 ] && \
-		[ "$((_now - _prev_c))" -lt "$_cd" ]; then
+		[ "$_elapsed" -lt "$_cd" ]; then
 		if [ "$_ms" -le "$FWLIVE_ADAPTIVE_HOT_EXIT_MS" ] && \
 			[ "$_bucket" != hot ]; then
 			:
@@ -308,9 +312,50 @@ fwlive_adaptive_compute_limit() {
 		fi
 	fi
 
+	# Once a hot/warm cooldown expires, deliberately test a larger request.
+	# Planning and recording use the same pure helper: planning raises the next
+	# request, while recording raises the retained limit only when that probe
+	# completed below the hot-exit threshold. A still-hot probe therefore falls
+	# through to the hot floor below.
+	if [ "$_cd" -gt 0 ] && [ "$_prev_c" -gt 0 ] && \
+		[ "$_elapsed" -ge "$_cd" ]; then
+		if [ "$_planning" = 1 ]; then
+			_limit=$_prev_l
+			[ "$_limit" -lt 1 ] && _limit=$_max
+			_limit=$((_limit * 2))
+			[ "$_limit" -gt "$_max" ] && _limit=$_max
+			[ "$_limit" -gt "$_req" ] && _limit=$_req
+			[ "$_limit" -lt 1 ] && _limit=1
+			printf '%s\n' "$_limit"
+			return 0
+		fi
+		if [ "$_ms" -le "$FWLIVE_ADAPTIVE_HOT_EXIT_MS" ] && \
+			[ "$_bucket" != hot ]; then
+			_limit=$_prev_l
+			[ "$_limit" -lt 1 ] && _limit=$_max
+			_limit=$((_limit * 2))
+			[ "$_limit" -gt "$_max" ] && _limit=$_max
+			[ "$_limit" -gt "$_req" ] && _limit=$_req
+			[ "$_limit" -lt 1 ] && _limit=1
+			printf '%s\n' "$_limit"
+			return 0
+		fi
+	fi
+
 	case "$_bucket" in
 		cold) _limit=$_max ;;
-		cool) _limit=$FWLIVE_ADAPTIVE_COOL_CAP ;;
+		cool)
+			# A healthy cooldown probe may retain its raised limit for the
+			# short probe window. Ordinary cool samples still use the fixed
+			# 250-line cap.
+			if [ "$_prev_l" -gt "$FWLIVE_ADAPTIVE_COOL_CAP" ] && \
+				[ "$_prev_c" -gt 0 ] && \
+				[ "$((_now - _prev_c))" -lt "$FWLIVE_ADAPTIVE_COOLDOWN_PROBE_CS" ]; then
+				_limit=$_prev_l
+			else
+				_limit=$FWLIVE_ADAPTIVE_COOL_CAP
+			fi
+			;;
 		warm)
 			if [ "$_prev_w" = 1 ] && [ "$_prev_b" = warm ]; then
 				_limit=$_prev_l
@@ -350,7 +395,7 @@ fwlive_adaptive_plan() {
 	_prev_w=$4
 	_s=$5
 	_prev_c=$6
-	_l=$(fwlive_adaptive_compute_limit "$_req" "$_d" "$_prev_l" "$_b" "$_prev_w" "$_prev_c")
+	_l=$(fwlive_adaptive_compute_limit "$_req" "$_d" "$_prev_l" "$_b" "$_prev_w" "$_prev_c" 1)
 	_nb=$(fwlive_adaptive_bucket_for_ms "$_d")
 	_shed=0
 	[ "$_nb" = hot ] && _shed=1
@@ -395,7 +440,9 @@ fwlive_adaptive_is_hot() {
 	return 1
 }
 
-# Merge adaptive siblings into a JSON object ending with }.
+# Merge adaptive siblings into a JSON object ending with }. A successful
+# filter already carries the exact messages_received count; do not append a
+# duplicate key in that case.
 # Args: json_body shed_flag limit truncated messages_received
 fwlive_adaptive_merge_reply() {
 	_body=$1
@@ -410,34 +457,32 @@ fwlive_adaptive_merge_reply() {
 		*) printf '%s' "$_body"; return 0 ;;
 	esac
 	_base=${_body%\}}
+	_has_msgs=0
+	case "$_body" in
+		*',"messages_received":'*) _has_msgs=1 ;;
+	esac
 	if [ "$_adapt" = 0 ]; then
-		printf '%s,"adaptive":0,"messages_received":%s}' "$_base" "$_msgs"
+		if [ "$_has_msgs" = 1 ]; then
+			printf '%s,"adaptive":0}' "$_base"
+		else
+			printf '%s,"adaptive":0,"messages_received":%s}' "$_base" "$_msgs"
+		fi
 		return 0
 	fi
 	if [ "$_shed" = 1 ]; then
-		printf '%s,"adaptive":1,"messages_received":%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-			"$_base" "$_msgs" "$_trunc" "$_limit"
+		if [ "$_has_msgs" = 1 ]; then
+			printf '%s,"adaptive":1,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
+				"$_base" "$_trunc" "$_limit"
+		else
+			printf '%s,"adaptive":1,"messages_received":%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
+				"$_base" "$_msgs" "$_trunc" "$_limit"
+		fi
 	else
-		printf '%s,"adaptive":1,"messages_received":%s,"truncated":%s}' \
-			"$_base" "$_msgs" "$_trunc"
+		if [ "$_has_msgs" = 1 ]; then
+			printf '%s,"adaptive":1,"truncated":%s}' "$_base" "$_trunc"
+		else
+			printf '%s,"adaptive":1,"messages_received":%s,"truncated":%s}' \
+				"$_base" "$_msgs" "$_trunc"
+		fi
 	fi
-}
-
-# Count log[*] via "msg" keys — helper for tests / future filter-side count.
-# NOT called on the poll hot path: ash-scanning a 2000-entry
-# reply after end_cs is unmeasured overhead that cannot shed itself.
-fwlive_adaptive_count_log() {
-	_json=$1
-	_n=0
-	_rest=$_json
-	while :; do
-		case "$_rest" in
-			*'"msg"'*)
-				_n=$((_n + 1))
-				_rest=${_rest#*\"msg\"}
-				;;
-			*) break ;;
-		esac
-	done
-	printf '%s\n' "$_n"
 }

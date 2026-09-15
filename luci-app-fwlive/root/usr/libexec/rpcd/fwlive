@@ -23,7 +23,7 @@ ADAPTIVE_SH="$LIBEXEC_DIR/fwlive-adaptive-cap.sh"
 RESOLVE_MAX=32
 # Per-lookup nslookup timeout (integer seconds — BusyBox `timeout` truncates
 # fractional values to 0 on OpenWrt 23.05/1.36, so 0.5 would silently
-# degrade to no timeout.. The wall-clock budget
+# degrade to no timeout; luna fold 2026-08-10). The wall-clock budget
 # below is the real whole-call bound; this per-lookup cap only prevents a
 # single hung resolver from dominating the budget. LAN/local-resolver
 # lookups are single-digit ms, so 1s is ample. Passed as argv to
@@ -42,7 +42,7 @@ NFT_TIMEOUT=5
 # CLI-only iptables fixture path for __rulesmap_iptables (no arbitrary paths).
 RULESMAP_IPTABLES_FILE='/tmp/rulesmap'
 
-# json_escape lives in fwlive-logging.sh so prerm can source that file alone.
+# json_escape lives in fwlive-logging.sh so prerm can source that file alone (#222).
 # shellcheck disable=SC1090,SC1091 # LOGGING_SH resolves to sibling ../fwlive-logging.sh
 . "$LOGGING_SH"
 # shellcheck disable=SC1090,SC1091
@@ -52,10 +52,10 @@ slug_key() {
 	echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' _' '--'
 }
 
-# Cap rules JSON size so a huge ruleset cannot unbound an rpcd reply.
+# Cap rules JSON size so a huge ruleset cannot unbound an rpcd reply (#229).
 RULES_MAP_MAX_KEYS=512
 RULES_MAP_MAX_BYTES=65536
-# Same wall-clock bound as nft for iptables-save / ip6tables-save.
+# Same wall-clock bound as nft for iptables-save / ip6tables-save (#229).
 # Overridable for host tests (e.g. FWLIVE_IPTABLES_TIMEOUT=1).
 IPTABLES_TIMEOUT="${FWLIVE_IPTABLES_TIMEOUT:-5}"
 
@@ -70,7 +70,7 @@ map_add() {
 	# ("foo" vs "foobar") and value false positives ("see foo").
 	# Quoting "$esc_key" makes the match literal (no glob escaping needed).
 	# Callers apply UCI, then labeled (!fw4:) prefixes, then unlabeled
-	# cosmetics so first-wins prefers authoritative names.
+	# cosmetics so first-wins prefers authoritative names (#230).
 	case "$OUT" in
 		*"\"$esc_key\":"*) return 0 ;;
 	esac
@@ -92,7 +92,7 @@ map_add() {
 
 uci_rule_names() {
 	# uci missing / empty firewall config is "no names", not fatal.
-	# pipefail + set -e cannot apply to this pipeline.
+	# pipefail + set -e cannot apply to this pipeline (#291 C3).
 	uci -q show firewall 2>/dev/null | sed -n "s/^firewall\.@rule\[[0-9]*\]\.name='\(.*\)'$/\1/p" || true
 }
 
@@ -142,7 +142,7 @@ run_with_timeout() {
 	if command -v timeout >/dev/null 2>&1; then
 		timeout "$secs" "$@" 2>/dev/null
 	else
-		# Fail closed: never run unbounded when timeout is absent.
+		# Fail closed (#229): never run unbounded when timeout is absent.
 		return 127
 	fi
 }
@@ -170,7 +170,7 @@ map_uci_rule_names() {
 	# Line-wise (here-doc, not an unquoted for-loop) so a name with
 	# spaces stays one token. Names that fail is_uci_style_name are
 	# skipped: parseRuleHint() cannot match them, and fragments of
-	# "My Rule" must not shadow a real rule named Rule.
+	# "My Rule" must not shadow a real rule named Rule (#226).
 	# The while-read stays in the current shell (here-doc, not a
 	# pipeline) so map_add mutations reach OUT.
 	while IFS= read -r name || [ -n "$name" ]; do
@@ -187,7 +187,7 @@ EOF
 }
 
 # pass=labeled|unlabeled|all — labeled before unlabeled so !fw4: beats
-# an earlier cosmetic for the same prefix under first-wins.
+# an earlier cosmetic for the same prefix under first-wins (#230).
 map_from_nft_stream() {
 	pass="${1:-all}"
 	while IFS= read -r line; do
@@ -288,7 +288,7 @@ build_rules_map() {
 	backend=$(detect_firewall_backend)
 
 	# UCI first, then labeled stream prefixes, then unlabeled cosmetics
-	# First-wins keeps UCI over nft and !fw4: over cosmetic.
+	# (#230). First-wins keeps UCI over nft and !fw4: over cosmetic.
 	map_uci_rule_names
 
 	case "$backend" in
@@ -435,32 +435,54 @@ fetch_firewall_logs() {
 	shed_flag=${2:-0}
 	# Adaptive plan prints: lines shed bucket
 	start_cs=$(fwlive_adaptive_clock_cs)
-	# Drop dead oneshot flag — only consumed on logd's stream branch.
+	# Drop dead oneshot flag — only consumed on logd's stream branch (#306).
 	if ! raw=$(ubus call log read "{\"lines\":$lines,\"stream\":false}" 2>/dev/null); then
 		# Do not record ~0 ms as cold: failure is not healthy fast processing
-		# and must not clear an existing hot/shed cap.
+		# and must not clear an existing hot/shed cap (#329 Hermes Q1).
 		out='{"log":[],"error":"log_read_failed"}'
 		fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" 0 0
 		return 0
 	fi
 
-	# Do not swallow a filter failure into a silent empty table.
+	# Summary aggregation is part of the adaptive contract. Keep it out of
+	# adaptive=0 replies, while the classifier still remains the single pass
+	# over decoded log entries (#306).
+	if fwlive_adaptive_enabled; then
+		FWLIVE_SUMMARY=1
+	else
+		FWLIVE_SUMMARY=0
+	fi
+	export FWLIVE_SUMMARY
+
+	# Do not swallow a filter failure into a silent empty table (#220).
 	# If the filter exits non-zero but still printed JSON, keep it.
 	# Empty success is not valid poll JSON — the shipped filter always
 	# prints {"log":[...]}, but a stub/regression must not emit a blank body.
+	_filter_ok=1
 	if ! out=$(printf '%s' "$raw" | "$FILTER_SH"); then
+		_filter_ok=0
 		if [ -z "$out" ]; then
 			out='{"log":[],"error":"filter_failed"}'
 		fi
 	fi
-	[ -n "$out" ] || out='{"log":[],"error":"filter_empty"}'
+	if [ -z "$out" ]; then
+		_filter_ok=0
+		out='{"log":[],"error":"filter_empty"}'
+	fi
+	# A classifier can return a structured error body while exiting zero (for
+	# example classifier_missing).  Preserve the error for the caller, but do
+	# not let it overwrite a prior hot state as a healthy fast sample.
+	case "$out" in
+		*'"error":'*) _filter_ok=0 ;;
+	esac
 	end_cs=$(fwlive_adaptive_clock_cs)
-	# Uptime wrap / skew: end < start — do not record as cold.
-	if [ "$end_cs" -ge "$start_cs" ]; then
+	# Uptime wrap / skew: end < start — do not record as cold (Grok #329 P2).
+	if [ "$_filter_ok" = 1 ] && [ "$end_cs" -ge "$start_cs" ]; then
 		_dur=$(((end_cs - start_cs) * 10))
 		fwlive_adaptive_record "$_dur" "$lines"
 	fi
-	# Layer 1: messages_received stays 0 — no post-filter ash count.
+	# The filter carries messages_received from its jsonfilter enumeration;
+	# failed/read-invalid paths keep the merge fallback at 0.
 	_trunc=0
 	[ "$shed_flag" = 1 ] && _trunc=1
 	[ "$lines" -lt "$requested" ] && _trunc=1
@@ -502,7 +524,7 @@ resolve_hostname() {
 	[ -n "$ip" ] || return 1
 	is_resolvable_address "$ip" || return 1
 	command -v nslookup >/dev/null 2>&1 || return 1
-	# timeout/nslookup miss is "no PTR", not a plugin abort.
+	# timeout/nslookup miss is "no PTR", not a plugin abort (#291 C3).
 	out=$(run_with_timeout "$RESOLVE_TIMEOUT" nslookup "$ip") || return 1
 	[ -n "$out" ] || return 1
 	name=$(parse_nslookup_name "$out") || return 1
@@ -510,7 +532,7 @@ resolve_hostname() {
 	printf '%s' "$name"
 }
 
-# Strict IPv4/IPv6 validation before nslookup: the old char-class
+# Strict IPv4/IPv6 validation before nslookup (issue #190): the old char-class
 # check admitted hostname-shaped tokens of hex chars + dots/colons
 # (e.g. "dead.beef.cafe.baad"), letting the resolver fall back to upstream DNS
 # queries chosen by an authenticated session. Validate the real address
@@ -523,7 +545,7 @@ is_resolvable_address() {
 	# Reject anything outside the address alphabet BEFORE awk, so embedded
 	# newlines/whitespace (which awk would treat as record separators) can
 	# never let a valid first record mask trailing garbage that still reaches
-	# nslookup: nslookup only ever sees a single
+	# nslookup (#190, CodeRabbit/luna fold): nslookup only ever sees a single
 	# token. Note the check intentionally allows only hex/colon/dot.
 	case "$addr" in
 		*[!0-9a-fA-F:.]*) return 1 ;;
@@ -596,7 +618,7 @@ is_resolvable_address() {
 }
 
 resolve_addresses() {
-	# Missing resolver must not look like "no PTR". Check before
+	# Missing resolver must not look like "no PTR" (#218). Check before
 	# starting the budget clock or reading stdin.
 	if ! command -v nslookup >/dev/null 2>&1; then
 		command -v logger >/dev/null 2>&1 && logger -t fwlive "nslookup not found; resolve disabled"
@@ -604,14 +626,14 @@ resolve_addresses() {
 		return 0
 	fi
 
-	# Load shed: previous poll was hot.
+	# Load shed: previous poll was hot (#306 Layer 1).
 	if fwlive_adaptive_is_hot; then
 		printf '{"names":{},"disabled":"load"}'
 		return 0
 	fi
 
-	# Wall-clock budget clock starts at the TRUE function entry: the
-	# budget must bound the whole call — including
+	# Wall-clock budget clock starts at the TRUE function entry (luna
+	# folds 2026-08-10): the budget must bound the whole call — including
 	# read_rpc_input (stalled stdin must not escape the budget) and json
 	# parsing. `date +%s` can jump under NTP sync — accepted (worst case
 	# the budget over- or under-runs by the jump; worker starvation is
@@ -657,12 +679,12 @@ resolve_addresses() {
 			# never START a lookup past the budget.
 			now=$(date +%s)
 			[ $((now - start)) -ge "$RESOLVE_BUDGET" ] && break
-			# Missing/empty element: set -u cannot read bare $ip.
+			# Missing/empty element: set -u cannot read bare $ip (#291 C3).
 			if ! is_resolvable_address "${ip:-}"; then
 				continue
 			fi
 			# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
-			# cannot apply to this assignment.
+			# cannot apply to this assignment (#291 C3).
 			name=$(resolve_hostname "$ip") || name=
 			if [ -n "$name" ]; then
 				map_add "$ip" "$name"
@@ -729,7 +751,7 @@ run_selftest() {
 		return 1
 	fi
 
-	# hostname-shaped tokens of hex chars + dots/colons passed the
+	# Issue #190: hostname-shaped tokens of hex chars + dots/colons passed the
 	# old char-class check and made the resolver fall back to upstream DNS. Each case
 	# below must REJECT (and would be ACCEPTED by the reverted char-class code).
 	if is_resolvable_address 'ab.cd.ef.01'; then
@@ -757,7 +779,7 @@ run_selftest() {
 		echo 'is_resolvable_address: expected accept IPv6-mapped ::ffff:192.0.2.1' >&2
 		return 1
 	fi
-	# Multi-line input must be rejected wholesale: awk
+	# Multi-line input must be rejected wholesale (CodeRabbit/luna fold): awk
 	# reads newline-separated records, so a valid first record must not mask
 	# trailing garbage that would still reach nslookup.
 	if is_resolvable_address "$(printf '192.0.2.1\nnot-an-address')"; then
@@ -849,7 +871,7 @@ Address: 127.0.0.1:53")
 
 	run_logging_selftest || return 1
 
-	# Strict-mode smoke: status JSON uses soft-fail helpers
+	# Strict-mode smoke (#291 C3): status JSON uses soft-fail helpers
 	# (uci miss, empty WAN zone). Must not abort under dash/ash set -e.
 	_status=$(build_logging_status_json) || {
 		echo "build_logging_status_json: aborted under set -e" >&2
@@ -950,7 +972,7 @@ case "${1:-}" in
 				build_rules_map
 				;;
 			poll)
-				# rpcd may omit argv $3 and pass JSON on stdin.
+				# rpcd may omit argv $3 and pass JSON on stdin (#291 C3).
 				poll_logs "${3:-}"
 				;;
 			resolve)

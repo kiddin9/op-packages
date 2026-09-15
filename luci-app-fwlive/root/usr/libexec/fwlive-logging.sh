@@ -27,6 +27,54 @@ NF_LOG_IPV6='/proc/sys/net/netfilter/nf_log/10'
 WAN_LOG_LOCK_FILE="${FWLIVE_WAN_LOG_LOCK_FILE:-/etc/fwlive/logging.lock}"
 WAN_LOG_BASELINE_FILE="${FWLIVE_WAN_LOG_BASELINE_FILE:-/etc/fwlive/wan-log-baseline}"
 
+weak_device_detected() {
+	# Path overrides are test hooks; production defaults stay in procfs.
+	_meminfo=${FWLIVE_MEMINFO_PATH:-/proc/meminfo}
+	_cpuinfo=${FWLIVE_CPUINFO_PATH:-/proc/cpuinfo}
+	_mem_total=
+	if [ -r "$_meminfo" ]; then
+		while IFS= read -r _line; do
+			case "$_line" in
+				MemTotal:*)
+					_mem_total=${_line#MemTotal:}
+					while :; do
+						case "$_mem_total" in
+							[[:space:]]*) _mem_total=${_mem_total#?} ;;
+							*) break ;;
+						esac
+					done
+					_mem_total=${_mem_total%%[[:space:]]*}
+					break
+					;;
+			esac
+		done <"$_meminfo" || :
+	fi
+
+	_cores=0
+	_cpu_valid=0
+	if [ -r "$_cpuinfo" ]; then
+		while IFS= read -r _line; do
+			case "$_line" in
+				processor[[:space:]]*:*)
+					_cores=$((_cores + 1))
+					_cpu_valid=1
+					;;
+			esac
+		done <"$_cpuinfo" || :
+	fi
+
+	case "$_mem_total" in
+		''|*[!0-9]*) printf 'false\n'; return 0 ;;
+	esac
+	[ "$_cpu_valid" = 1 ] || { printf 'false\n'; return 0; }
+	# MemTotal is reported in KiB; 256 MiB is 262144 KiB.
+	if [ "$_mem_total" -lt 262144 ] || [ "$_cores" -le 1 ]; then
+		printf 'true\n'
+	else
+		printf 'false\n'
+	fi
+}
+
 # RFC 8259 string escape. Lives here so prerm can source this file
 # standalone. rpcd sources us and must not redefine this.
 json_escape() {
@@ -470,12 +518,14 @@ build_logging_status_json() {
 	if [ -n "$zone" ] && [ "$wan_log" = true ] && [ "$nf4" = true ] && [ "$nf6" = true ]; then
 		ready=true
 	fi
+	weak_device=false
+	[ "$(weak_device_detected)" = true ] && weak_device=true
 
 	zone_json=$(json_null_or_string "$zone")
 	limit_json=$(json_null_or_string "$limit_val")
 
-	printf '{"wan_zone":%s,"wan_log":%s,"wan_log_limit":%s,"nf_log_ipv4":%s,"nf_log_ipv6":%s,"ready":%s,"blockers":%s,"warnings":%s}' \
-		"$zone_json" "$wan_log" "$limit_json" "$nf4" "$nf6" "$ready" "$blockers" "$warnings"
+	printf '{"wan_zone":%s,"wan_log":%s,"wan_log_limit":%s,"nf_log_ipv4":%s,"nf_log_ipv6":%s,"ready":%s,"weak_device":%s,"blockers":%s,"warnings":%s}' \
+		"$zone_json" "$wan_log" "$limit_json" "$nf4" "$nf6" "$ready" "$weak_device" "$blockers" "$warnings"
 }
 
 reload_firewall() {

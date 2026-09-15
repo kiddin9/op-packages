@@ -102,6 +102,12 @@ return view.extend({
 	resumeMerge: false,
 	pollFn: null,
 	pollDataInFlight: false,
+	/* Every refresh trigger goes through this coordinator.  A request made
+	 * while one is active is coalesced into one follow-up, never overlapped. */
+	pollRequestPromise: null,
+	pollRequestQueued: false,
+	pollRequestWaiters: [],
+	pollRequestQueuedWaiters: [],
 	/* Layer 2 — visibility / RTT cadence / shed surfacing. */
 	pollEpoch: 0,
 	pollCadenceSec: 1,
@@ -111,6 +117,10 @@ return view.extend({
 	serverTruncated: 0,
 	serverShed: null,
 	degradedSampling: false,
+	/* Layer 2 summary fallback — rows remain available behind an explicit toggle. */
+	summaryMode: false,
+	summaryRowsShown: false,
+	summaryData: null,
 	resolveLoadShed: false,
 	visibilityBound: false,
 	renderRaf: 0,
@@ -769,6 +779,14 @@ return view.extend({
 
 		this.notePollRtt(rtt, errored);
 		this.updateAdaptiveBanner();
+		if (this.clientBackoffEnabled() && rtt > constants.POLL_RTT_SLOW_MS) {
+			if (!this.summaryMode) this.enterSummaryMode(reply.summary);
+			else {
+				this.summaryData =
+					reply.summary && typeof reply.summary === 'object' ? reply.summary : null;
+				this.renderSummary();
+			}
+		}
 
 		const batch = this.normalizePollBatch(raw);
 		this.lastPollNewEvents = batch.pollNew;
@@ -884,6 +902,7 @@ return view.extend({
 
 	notePollRtt(ms, errored) {
 		if (!this.clientBackoffEnabled()) {
+			if (this.summaryMode) this.leaveSummaryMode();
 			this.degradedSampling = false;
 			/* Drop any partial streak so a slow sample from before the
 			 * adaptive:0 window cannot trip degraded on re-enable. */
@@ -905,6 +924,7 @@ return view.extend({
 		const cadence = this.cadenceForKind(kind);
 		this.degradedSampling = cadence === constants.POLL_CADENCE_SLOW_S;
 		if (cadence !== this.pollCadenceSec) this.setPollCadence(cadence);
+		if (kind === 'fast' && this.summaryMode) this.leaveSummaryMode();
 	},
 
 	stopPollingForHidden() {
@@ -919,11 +939,12 @@ return view.extend({
 	resumePollingAfterVisible() {
 		this.bumpPollEpoch();
 		this.resetRttHistory();
-		/* In-flight poll from the hidden epoch must not apply after catch-up. */
-		this.pollDataInFlight = false;
 		if (!this.pollFn) this.pollFn = this.pollData.bind(this);
 		this.setPollCadence(this.pollCadenceSec || constants.POLL_CADENCE_FAST_S);
-		this.pollData();
+		/* An old hidden-epoch request may still be on the wire.  Queue the
+		 * catch-up behind it; stale-reply checks discard its application, while
+		 * the coordinator prevents a second server request from overlapping. */
+		this.requestPoll();
 	},
 
 	onVisibilityChange() {
@@ -990,6 +1011,93 @@ return view.extend({
 			el.style.display = 'none';
 			el.textContent = '';
 		}
+	},
+
+	summaryListText(label, values) {
+		const lines = [label + ':'];
+		if (!Array.isArray(values) || !values.length) {
+			lines.push(_('none'));
+			return lines;
+		}
+		for (let i = 0; i < values.length; i++) {
+			const item = values[i];
+			if (!item || typeof item.value !== 'string') continue;
+			const count = Number.isFinite(Number(item.count)) ? Number(item.count) : 0;
+			lines.push('%s — %d'.format(item.value, count));
+		}
+		if (lines.length === 1) lines.push(_('none'));
+		return lines;
+	},
+
+	renderSummary() {
+		const card = document.getElementById('fwlive-summary');
+		const body = document.getElementById('fwlive-summary-body');
+		if (!card || !body) return;
+		const summary = this.summaryData;
+		const lines = [_('Showing a compact summary of the top of the shown sample.')];
+		if (!summary || typeof summary !== 'object') {
+			lines.push(_('Summary data is unavailable; show rows to inspect the sample.'));
+		} else if (summary.truncated) {
+			lines.push(_('Summary was bounded before all categories could be included.'));
+		} else {
+			this.summaryListText(_('Top talkers'), summary.top_talkers).forEach((line) =>
+				lines.push(line)
+			);
+			this.summaryListText(_('Top drops'), summary.top_drops).forEach((line) =>
+				lines.push(line)
+			);
+			this.summaryListText(_('Top rules'), summary.top_rules).forEach((line) =>
+				lines.push(line)
+			);
+		}
+		body.textContent = lines.join('\n');
+		this.updateSummaryUi();
+	},
+
+	updateSummaryUi() {
+		const card = document.getElementById('fwlive-summary');
+		const scroll = document.getElementById('fwlive-scroll');
+		const empty = document.getElementById('fwlive-empty');
+		const toggle = document.getElementById('fwlive-summary-rows');
+		if (card) {
+			if (!card.style) card.style = { display: '' };
+			card.style.display = this.summaryMode ? 'block' : 'none';
+		}
+		if (scroll) {
+			if (!scroll.style) scroll.style = { display: '' };
+			scroll.style.display = this.summaryMode && !this.summaryRowsShown ? 'none' : '';
+		}
+		if (empty) {
+			if (!empty.style) empty.style = { display: '' };
+			empty.style.display = this.summaryMode && !this.summaryRowsShown ? 'none' : '';
+		}
+		if (toggle) {
+			toggle.textContent = this.summaryRowsShown ? _('Hide rows') : _('Show rows');
+			toggle.setAttribute('aria-pressed', this.summaryRowsShown ? 'true' : 'false');
+		}
+	},
+
+	enterSummaryMode(summary) {
+		this.summaryMode = true;
+		this.summaryRowsShown = false;
+		this.summaryData = summary && typeof summary === 'object' ? summary : null;
+		this.renderSummary();
+	},
+
+	leaveSummaryMode() {
+		if (!this.summaryMode) return;
+		this.summaryMode = false;
+		this.summaryRowsShown = false;
+		this.summaryData = null;
+		this.updateSummaryUi();
+		this.renderRows(true);
+	},
+
+	onSummaryRowsToggle() {
+		if (!this.summaryMode) return;
+		this.summaryRowsShown = !this.summaryRowsShown;
+		this.updateSummaryUi();
+		if (this.summaryRowsShown) this.renderRows(true);
 	},
 
 	scheduleRenderRows(force) {
@@ -1193,7 +1301,7 @@ return view.extend({
 		if (!wasPaused && this.paused) {
 			this.pauseBufferLoading = true;
 			this.updateStatus();
-			this.fetchEntries()
+			this.requestPoll()
 				.catch(function () {})
 				.finally(
 					function () {
@@ -1209,7 +1317,7 @@ return view.extend({
 			/* Merge pause buffer with the first live poll — do not replace. */
 			this.resumeMerge = true;
 			const epoch = this.pollEpoch;
-			this.fetchEntries()
+			this.requestPoll()
 				.then(() => {
 					/* A hide/show bump abandons this epoch; the catch-up poll paints. */
 					if (epoch === this.pollEpoch) this.renderRows(true);
@@ -1232,7 +1340,7 @@ return view.extend({
 		if (!this.paused) this.renderRows(true);
 		else this.updateStatus();
 		const epoch = this.pollEpoch;
-		this.fetchEntries()
+		this.requestPoll()
 			.then(() => {
 				/* A hide/show bump abandons this epoch; the catch-up poll paints. */
 				if (epoch !== this.pollEpoch) return;
@@ -1533,6 +1641,7 @@ return view.extend({
 			{
 				rows: rows.slice(),
 				columns: this.activeColumns().slice(),
+				forceRender: !!force,
 				viewMode: this.viewMode,
 				messageLayout: this.messageLayout,
 				expandedRowId: this.expandedRowId,
@@ -1641,14 +1750,82 @@ return view.extend({
 
 		const tintSel = document.getElementById('fwlive-row-tint');
 		if (tintSel) tintSel.addEventListener('change', this.onRowTintPaletteChange.bind(this));
+
+		const summaryRows = document.getElementById('fwlive-summary-rows');
+		if (summaryRows) summaryRows.addEventListener('click', this.onSummaryRowsToggle.bind(this));
 	},
 
 	async pollData() {
-		if (this.isTabHidden()) return;
-		if (this.pollDataInFlight) return;
+		return this.requestPoll();
+	},
 
+	requestPoll() {
+		if (this.isTabHidden()) return Promise.resolve();
+
+		const waiter = {};
+		const promise = new Promise(function (resolve) {
+			waiter.resolve = resolve;
+		});
+
+		if (this.pollRequestPromise) {
+			/* Keep one pending refresh intent.  The latest view state is read when
+			 * that follow-up begins, so Pause/Resume/Limit changes coalesce safely. */
+			this.pollRequestQueued = true;
+			this.pollRequestQueuedWaiters.push(waiter);
+			return promise;
+		}
+
+		if (this.pollRequestQueued) {
+			this.pollRequestQueuedWaiters.push(waiter);
+			this.startPollRequest(this.pollRequestQueuedWaiters);
+			this.pollRequestQueuedWaiters = [];
+			this.pollRequestQueued = false;
+			return promise;
+		}
+
+		this.startPollRequest([waiter]);
+		return promise;
+	},
+
+	startPollRequest(waiters) {
 		const epoch = this.pollEpoch;
 		this.pollDataInFlight = true;
+		const run = this.runPollRequest(epoch);
+		this.pollRequestPromise = run;
+		this.pollRequestWaiters = waiters;
+		run.then(
+			function (value) {
+				this.finishPollRequest(run, value);
+			}.bind(this),
+			function () {
+				/* runPollRequest normally absorbs local failures so the poll loop
+				 * remains alive; settle waiters even if a future change rejects. */
+				this.finishPollRequest(run);
+			}.bind(this)
+		);
+	},
+
+	finishPollRequest(run, value) {
+		if (this.pollRequestPromise !== run) return;
+		const waiters = this.pollRequestWaiters;
+		this.pollRequestWaiters = [];
+		this.pollRequestPromise = null;
+		this.pollDataInFlight = false;
+		for (let i = 0; i < waiters.length; i++) {
+			waiters[i].resolve(value);
+		}
+
+		/* If visibility changed while the request was active, retain the
+		 * queued intent until the visible catch-up can start it. */
+		if (this.pollRequestQueued && !this.isTabHidden()) {
+			const queued = this.pollRequestQueuedWaiters;
+			this.pollRequestQueuedWaiters = [];
+			this.pollRequestQueued = false;
+			this.startPollRequest(queued);
+		}
+	},
+
+	async runPollRequest(epoch) {
 		try {
 			try {
 				await this.fetchEntries();
@@ -1661,7 +1838,11 @@ return view.extend({
 
 			if (epoch !== this.pollEpoch) return;
 
+			/* Pause freezes row rendering but polling remains active for health and
+			 * cadence state; summary mode can therefore appear while rows are paused
+			 * and stays behind the explicit Show rows control. */
 			if (this.paused) this.updateStatus();
+			else if (this.summaryMode) this.renderSummary();
 			else this.scheduleRenderRows(!!this.pendingForceRender);
 
 			try {
@@ -1669,11 +1850,10 @@ return view.extend({
 			} catch (e) {
 				/* resolve unavailable — show IPs */
 			}
-		} finally {
-			/* Only the owning epoch clears — a stale hidden-era poll must not
-			 * drop the catch-up guard after resume. Resume clears
-			 * explicitly before starting the catch-up poll. */
-			if (epoch === this.pollEpoch) this.pollDataInFlight = false;
+		} catch (e) {
+			/* Keep the coordinator promise settling so a queued refresh cannot
+			 * be stranded by an unexpected local rendering failure. */
+			this.lastPollError = true;
 		}
 	},
 
@@ -1706,7 +1886,7 @@ return view.extend({
 			}
 		}
 		return Promise.all([this.loadRulesMap(), this.loadLoggingStatus()]).then(() =>
-			this.fetchEntries()
+			this.requestPoll()
 		);
 	},
 
@@ -1842,6 +2022,28 @@ return view.extend({
 				]),
 				E('div', { 'id': 'fwlive-flood', 'class': 'fwlive-flood' }, ['']),
 				E('div', { 'id': 'fwlive-adaptive', 'class': 'fwlive-adaptive' }, ['']),
+				E(
+					'div',
+					{ 'id': 'fwlive-summary', 'class': 'fwlive-summary', 'style': 'display:none' },
+					[
+						E('div', { 'class': 'fwlive-summary-head' }, [
+							E('strong', {}, [_('Summary mode')]),
+							E(
+								'button',
+								{
+									'id': 'fwlive-summary-rows',
+									'class': 'cbi-button fwlive-btn-ghost',
+									'type': 'button',
+									'aria-pressed': 'false'
+								},
+								[_('Show rows')]
+							)
+						]),
+						E('pre', { 'id': 'fwlive-summary-body', 'class': 'fwlive-summary-body' }, [
+							''
+						])
+					]
+				),
 				E('div', { 'id': 'fwlive-display-drawer', 'class': 'fwlive-display-bar' }, [
 					E('span', { 'class': 'fwlive-display-bar-label' }, [_('Display options')]),
 					E('div', { 'class': 'fwlive-display-controls' }, [

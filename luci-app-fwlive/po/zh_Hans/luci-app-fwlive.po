@@ -713,3 +713,33 @@ msgstr "ä½¿ç¨ iptables"
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:89
 msgid "· %s"
 msgstr "· %s"
+
+msgid "Hide rows"
+msgstr "隐藏行"
+
+msgid "none"
+msgstr "无"
+
+msgid "Show rows"
+msgstr "显示行"
+
+msgid "Showing a compact summary of the top of the shown sample."
+msgstr "显示当前样本顶部的简要摘要。"
+
+msgid "Summary data is unavailable; show rows to inspect the sample."
+msgstr "摘要数据不可用；显示行以检查样本。"
+
+msgid "Summary mode"
+msgstr "摘要模式"
+
+msgid "Summary was bounded before all categories could be included."
+msgstr "摘要已受限，无法包含所有类别。"
+
+msgid "Top drops"
+msgstr "主要丢弃"
+
+msgid "Top rules"
+msgstr "主要规则"
+
+msgid "Top talkers"
+msgstr "主要通信方"

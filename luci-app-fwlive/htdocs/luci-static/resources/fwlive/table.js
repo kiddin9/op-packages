@@ -14,7 +14,7 @@
  *   callbacks - {} (unused; present for API consistency)
  *
  * renderRows(host, state, callbacks) → void
- *   host      - <tbody> element (cleared and rebuilt; element itself is kept)
+ *   host      - <tbody> element (kept; normal polls reuse keyed rows)
  *   state     - shallow copy: { rows, columns, viewMode, messageLayout,
  *                               expandedRowId, rowTint, showHostnames,
  *                               hostnameCache, firewallBackend }
@@ -24,8 +24,9 @@
  * Internals (not a second public contract): columnLabel, columnCellClass,
  * flowCell, buildColumnCell.
  *
- * Modules must not mutate state. host contents are cleared then rebuilt
- * (idempotent replace). Does not touch #fwlive-scroll or #fwlive-empty.
+ * Modules must not mutate state. Forced renders clear and rebuild the host;
+ * normal polls reuse unchanged keyed rows and only build changed rows. Does
+ * not touch #fwlive-scroll or #fwlive-empty.
  */
 
 function columnLabel(col) {
@@ -255,48 +256,145 @@ function renderThead(host, state, _callbacks) {
 	}
 }
 
+function rowRenderKey(row, state, columns) {
+	return JSON.stringify([
+		row.id,
+		row.timestamp,
+		row.action,
+		row.rule_hint,
+		row.rule_label,
+		row.interface_in,
+		row.interface_out,
+		row.direction,
+		row.proto,
+		row.src,
+		row.sport,
+		row.dst,
+		row.dport,
+		row.flags,
+		row.length,
+		row.message,
+		columns,
+		state.viewMode,
+		state.messageLayout,
+		state.expandedRowId === row.id,
+		!!state.rowTint,
+		!!state.showHostnames,
+		state.firewallBackend
+	]);
+}
+
+function rowClass(index, row, state, callbacks) {
+	return [
+		index % 2 ? 'fwlive-row-alt' : '',
+		state.viewMode === 'simple' ? 'fwlive-row-clickable' : '',
+		state.expandedRowId === row.id ? 'fwlive-row-expanded' : '',
+		state.rowTint ? callbacks.actionRowTintClass(row.action) : ''
+	]
+		.filter(Boolean)
+		.join(' ');
+}
+
+function buildRow(row, index, state, columns, callbacks) {
+	const cells = [];
+	for (let c = 0; c < columns.length; c++)
+		cells.push(buildColumnCell(columns[c], row, state, callbacks));
+
+	const tr = E(
+		'tr',
+		{
+			'class': rowClass(index, row, state, callbacks),
+			'click': state.viewMode === 'simple' ? (ev) => callbacks.onRowClick(row.id, ev) : null
+		},
+		cells
+	);
+	tr._fwliveRowId = String(row.id);
+	tr._fwliveRowKey = rowRenderKey(row, state, columns);
+	return tr;
+}
+
+function buildExpansionRow(row, state, columns) {
+	const expansion = E('tr', { 'class': 'fwlive-msg-expand' }, [
+		E('td', { 'colspan': String(columns.length) }, [
+			E('div', { 'class': 'fwlive-msg-expand-label' }, [_('Message')]),
+			E('pre', { 'class': 'fwlive-msg-expand-body' }, [
+				log.formatMessageDisplay(row.message, 'wrap') || '—'
+			])
+		])
+	]);
+	expansion._fwliveExpansionFor = String(row.id);
+	expansion._fwliveExpansionKey = rowRenderKey(row, state, columns);
+	return expansion;
+}
+
+function renderAllRows(host, rows, state, columns, callbacks) {
+	host.innerHTML = '';
+	for (let i = 0; i < rows.length; i++) {
+		const row = rows[i];
+		host.appendChild(buildRow(row, i, state, columns, callbacks));
+		if (state.viewMode === 'simple' && state.expandedRowId === row.id)
+			host.appendChild(buildExpansionRow(row, state, columns));
+	}
+}
+
+function canReuseRows(host) {
+	return (
+		host &&
+		host.childNodes &&
+		typeof host.childNodes.length === 'number' &&
+		typeof host.insertBefore === 'function' &&
+		typeof host.removeChild === 'function'
+	);
+}
+
 function renderRows(host, state, callbacks) {
 	const rows = state.rows || [];
 	const columns = state.columns || [];
 
-	host.innerHTML = '';
+	if (state.forceRender || !canReuseRows(host)) {
+		renderAllRows(host, rows, state, columns, callbacks);
+		return;
+	}
 
+	const existingRows = new Map();
+	const existingExpansions = new Map();
+	const oldChildren = Array.prototype.slice.call(host.childNodes);
+	for (let i = 0; i < oldChildren.length; i++) {
+		const child = oldChildren[i];
+		if (child._fwliveRowId != null) existingRows.set(child._fwliveRowId, child);
+		else if (child._fwliveExpansionFor != null)
+			existingExpansions.set(child._fwliveExpansionFor, child);
+	}
+
+	const desired = [];
 	for (let i = 0; i < rows.length; i++) {
-		const r = rows[i];
-		const rowClass = [
-			i % 2 ? 'fwlive-row-alt' : '',
-			state.viewMode === 'simple' ? 'fwlive-row-clickable' : '',
-			state.expandedRowId === r.id ? 'fwlive-row-expanded' : '',
-			state.rowTint ? callbacks.actionRowTintClass(r.action) : ''
-		]
-			.filter(Boolean)
-			.join(' ');
-		const cells = [];
-		for (let c = 0; c < columns.length; c++)
-			cells.push(buildColumnCell(columns[c], r, state, callbacks));
+		const row = rows[i];
+		const id = String(row.id);
+		const key = rowRenderKey(row, state, columns);
+		let tr = existingRows.get(id);
+		if (!tr || tr._fwliveRowKey !== key) tr = buildRow(row, i, state, columns, callbacks);
+		else tr.setAttribute('class', rowClass(i, row, state, callbacks));
+		tr._fwliveRowId = id;
+		tr._fwliveRowKey = key;
+		desired.push(tr);
 
-		const tr = E(
-			'tr',
-			{
-				'class': rowClass,
-				'click': state.viewMode === 'simple' ? (ev) => callbacks.onRowClick(r.id, ev) : null
-			},
-			cells
-		);
-		host.appendChild(tr);
-
-		if (state.viewMode === 'simple' && state.expandedRowId === r.id) {
-			host.appendChild(
-				E('tr', { 'class': 'fwlive-msg-expand' }, [
-					E('td', { 'colspan': String(columns.length) }, [
-						E('div', { 'class': 'fwlive-msg-expand-label' }, [_('Message')]),
-						E('pre', { 'class': 'fwlive-msg-expand-body' }, [
-							log.formatMessageDisplay(r.message, 'wrap') || '—'
-						])
-					])
-				])
-			);
+		if (state.viewMode === 'simple' && state.expandedRowId === row.id) {
+			let expansion = existingExpansions.get(id);
+			if (!expansion || expansion._fwliveExpansionKey !== key)
+				expansion = buildExpansionRow(row, state, columns);
+			desired.push(expansion);
 		}
+	}
+
+	for (let i = 0; i < desired.length; i++) {
+		const current = host.childNodes[i] || null;
+		if (current !== desired[i]) host.insertBefore(desired[i], current);
+	}
+
+	const used = new Set(desired);
+	const currentChildren = Array.prototype.slice.call(host.childNodes);
+	for (let i = 0; i < currentChildren.length; i++) {
+		if (!used.has(currentChildren[i])) host.removeChild(currentChildren[i]);
 	}
 }
 
