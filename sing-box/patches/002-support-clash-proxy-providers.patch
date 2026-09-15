@@ -337,66 +337,48 @@ index ef88ff3..1f7d14d 100644
  
  func getProxyDelay(server *Server) func(w http.ResponseWriter, r *http.Request) {
 diff --git a/experimental/clashapi/server.go b/experimental/clashapi/server.go
-index 950dca0..e4c1210 100644
+index b9222ad5440..d4fd9dd3db1 100644
 --- a/experimental/clashapi/server.go
 +++ b/experimental/clashapi/server.go
-@@ -60,6 +60,7 @@ type Server struct {
+@@ -57,6 +57,7 @@ type Server struct {
  	externalUI               string
  	externalUIDownloadURL    string
  	externalUIDownloadDetour string
 +	proxyProviders           []option.ClashProxyProviderOptions
  }
  
- func NewServer(ctx context.Context, logFactory log.ObservableFactory, options option.ClashAPIOptions) (adapter.ClashServer, error) {
-@@ -82,6 +83,7 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
+ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options option.ClashAPIOptions) (adapter.LifecycleService, error) {
+@@ -92,6 +93,7 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
  		externalController:       options.ExternalController != "",
  		externalUIDownloadURL:    options.ExternalUIDownloadURL,
  		externalUIDownloadDetour: options.ExternalUIDownloadDetour,
 +		proxyProviders:           options.ProxyProviders,
  	}
- 	s.urlTestHistory = service.FromContext[adapter.URLTestHistoryStorage](ctx)
- 	if s.urlTestHistory == nil {
-@@ -122,7 +124,7 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
+ 	//goland:noinspection GoDeprecation
+ 	//nolint:staticcheck
+@@ -120,7 +122,7 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
  		r.Mount("/proxies", proxyRouter(s, s.router))
  		r.Mount("/rules", ruleRouter(s.router))
- 		r.Mount("/connections", connectionRouter(s.ctx, s.router, trafficManager))
+ 		r.Mount("/connections", connectionRouter(s.ctx, s.network, trafficManager))
 -		r.Mount("/providers/proxies", proxyProviderRouter())
 +		r.Mount("/providers/proxies", proxyProviderRouter(s))
  		r.Mount("/providers/rules", ruleProviderRouter())
  		r.Mount("/script", scriptRouter())
  		r.Mount("/profile", profileRouter())
 diff --git a/option/experimental.go b/option/experimental.go
-index bf0df9e..50de31d 100644
+index bf144ad4452..89f303a7b26 100644
 --- a/option/experimental.go
 +++ b/option/experimental.go
-@@ -19,15 +19,16 @@ type CacheFileOptions struct {
- }
- 
- type ClashAPIOptions struct {
--	ExternalController               string                     `json:"external_controller,omitempty"`
--	ExternalUI                       string                     `json:"external_ui,omitempty"`
--	ExternalUIDownloadURL            string                     `json:"external_ui_download_url,omitempty"`
--	ExternalUIDownloadDetour         string                     `json:"external_ui_download_detour,omitempty"`
--	Secret                           string                     `json:"secret,omitempty"`
--	DefaultMode                      string                     `json:"default_mode,omitempty"`
--	ModeList                         []string                   `json:"-"`
--	AccessControlAllowOrigin         badoption.Listable[string] `json:"access_control_allow_origin,omitempty"`
--	AccessControlAllowPrivateNetwork bool                       `json:"access_control_allow_private_network,omitempty"`
-+	ExternalController               string                      `json:"external_controller,omitempty"`
-+	ExternalUI                       string                      `json:"external_ui,omitempty"`
-+	ExternalUIDownloadURL            string                      `json:"external_ui_download_url,omitempty"`
-+	ExternalUIDownloadDetour         string                      `json:"external_ui_download_detour,omitempty"`
-+	Secret                           string                      `json:"secret,omitempty"`
-+	DefaultMode                      string                      `json:"default_mode,omitempty"`
+@@ -34,6 +34,7 @@ type ClashAPIOptions struct {
+ 	ExternalUIDownloadDetour         string                     `json:"external_ui_download_detour,omitempty" reference:"outbound"`
+ 	Secret                           string                     `json:"secret,omitempty"`
+ 	DefaultMode                      string                     `json:"default_mode,omitempty"`
 +	ProxyProviders                   []ClashProxyProviderOptions `json:"proxy_providers,omitempty"`
-+	ModeList                         []string                    `json:"-"`
-+	AccessControlAllowOrigin         badoption.Listable[string]  `json:"access_control_allow_origin,omitempty"`
-+	AccessControlAllowPrivateNetwork bool                        `json:"access_control_allow_private_network,omitempty"`
+ 	AccessControlAllowOrigin         badoption.Listable[string] `json:"access_control_allow_origin,omitempty"`
+ 	AccessControlAllowPrivateNetwork bool                       `json:"access_control_allow_private_network,omitempty"`
  
- 	// Deprecated: migrated to global cache file
- 	CacheFile string `json:"cache_file,omitempty"`
-@@ -41,6 +42,23 @@ type ClashAPIOptions struct {
- 	StoreFakeIP bool `json:"store_fakeip,omitempty"`
+@@ -49,6 +50,23 @@ type ClashAPIOptions struct {
+ 	StoreFakeIP bool `json:"store_fakeip,omitempty" schema:"omit"`
  }
  
 +type ClashProxyProviderOptions struct {

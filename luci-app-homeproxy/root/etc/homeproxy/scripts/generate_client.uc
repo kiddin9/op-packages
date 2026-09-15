@@ -1223,7 +1223,7 @@ if (!isEmpty(main_node)) {
 			tag: 'geoip-cn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/1715173329/IPCIDR-CHINA@rule-set/cn.srs',
-			path: ruleset_default_path('geoip-cn', 'binary'),
+			initial_path: ruleset_default_path('geoip-cn', 'binary'),
 			download_detour: 'main-out'
 		});
 		push(config.route.rule_set, {
@@ -1231,7 +1231,7 @@ if (!isEmpty(main_node)) {
 			tag: 'geosite-cn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/1715173329/sing-geosite@rule-set-unstable/geosite-geolocation-cn.srs',
-			path: ruleset_default_path('geosite-cn', 'binary'),
+			initial_path: ruleset_default_path('geosite-cn', 'binary'),
 			download_detour: 'main-out'
 		});
 		push(config.route.rule_set, {
@@ -1239,7 +1239,7 @@ if (!isEmpty(main_node)) {
 			tag: 'geosite-noncn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/1715173329/sing-geosite@rule-set-unstable/geosite-geolocation-!cn.srs',
-			path: ruleset_default_path('geosite-noncn', 'binary'),
+			initial_path: ruleset_default_path('geosite-noncn', 'binary'),
 			download_detour: 'main-out'
 		});
 	}
