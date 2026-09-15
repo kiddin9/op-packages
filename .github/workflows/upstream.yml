@@ -540,7 +540,7 @@ jobs:
         sed -i 's/body.getAttribute("theme");if(o)switch(o){case"dark":case"light":return o}/documentElement.getAttribute("data-darkmode");if(o)switch(o){case"true":return"dark";case"false":return"light"}/g' luci-app-quickstart/htdocs/luci-static/quickstart/index.js
         sed -i 's/icon!=="baby"/icon!==""/' luci-app-quickstart/htdocs/luci-static/quickstart/index.js
         sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile
-        sed -i 's/+luci-base/+luci-base +luci-app-oui/' luci-mod-status/Makefile
+        sed -i 's/+luci-base/+luci-base +luci-app-oui +luci-mod-dashboard/' luci-mod-status/Makefile
 
         while [[ ! -f /tmp/ok || ! -f /tmp/ok2 || ! -f /tmp/ok3 ]]; do
             echo "wait"
