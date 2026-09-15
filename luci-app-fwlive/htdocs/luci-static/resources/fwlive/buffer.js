@@ -9,7 +9,7 @@
  *
  * While paused, ingest grows up to fetchLinesMax. Live mode caps at rowLimit.
  * On resume, merge (do not replace) so pause-accumulated rows survive the first
- * live poll — see issue #43 pause→resume data loss.
+ * live poll.
  */
 
 function ingestCap(paused, rowLimit, fetchLinesMax) {

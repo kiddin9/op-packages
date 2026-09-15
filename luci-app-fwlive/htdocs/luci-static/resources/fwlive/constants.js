@@ -12,13 +12,13 @@ return baseclass.extend({
 	APP_VERSION: '0.1.41',
 	ROW_LIMIT_OPTIONS: [25, 50, 100, 250, 500, 1000, 2000],
 	DEFAULT_ROW_LIMIT: 100,
-	/* Row pass/deny tint (#40): classic green/red default; accessible teal/orange */
+	/* Row pass/deny tint: classic green/red default; accessible teal/orange */
 	ROW_TINT_OPTIONS: ['off', 'classic', 'accessible'],
 	DEFAULT_ROW_TINT: 'classic',
 	FETCH_LINES_MAX: 2000 /* ubus poll / logd ring cap (~2000 lines ≈ typical ring) */,
 	/* DOM budget: ~250 new/updated rows painted per second on typical LuCI routers */
 	RENDER_CAP_PER_SEC: 250,
-	/* #306 Layer 2 — measured client RTT → poll cadence (seconds). */
+	/* Layer 2 — measured client RTT → poll cadence (seconds). */
 	POLL_CADENCE_FAST_S: 1,
 	POLL_CADENCE_MID_S: 2,
 	POLL_CADENCE_SLOW_S: 5,

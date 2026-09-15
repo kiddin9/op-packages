@@ -6,11 +6,11 @@
 # Log messages are treated as data (jsonfilter + awk stdin); never interpolated
 # into shell command strings. Usage: ubus call log read '...' | fwlive-log-filter.sh
 #
-# Perf (#219): one jsonfilter for @.log[*] plus one awk classify. Process
+# Perf: one jsonfilter for @.log[*] plus one awk classify. Process
 # count is constant per poll, not O(entries).
 #
 # Entry point (pipeline). The classifier sibling is sourced and must not set
-# strict mode itself (#291 C3).
+# strict mode itself.
 set -eu
 # shellcheck disable=SC3040
 (set -o pipefail) 2>/dev/null && set -o pipefail
@@ -26,7 +26,7 @@ FILTER_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$FILTER_DIR/fwlive-is-firewall-event.sh"
 
 # The classifier is a package asset, not generated at request time. Fail
-# closed if an incomplete install or a damaged package removed it (#321).
+# closed if an incomplete install or a damaged package removed it.
 if [ ! -r "$CLASSIFY_AWK" ]; then
 	printf '%s' '{"log":[],"error":"classifier_missing"}'
 	exit 1
@@ -35,8 +35,8 @@ fi
 printf '%s' '{"log":['
 # Prefer stdin over -s: Linux MAX_ARG_STRLEN is 128KiB; a raised logd ring
 # (or paused FETCH_LINES_MAX poll) can exceed that and make jsonfilter fail
-# while this script still printed {"log":[]} and exited 0 (#234).
-# jsonfilter miss / empty @.log is not fatal; must still close JSON (#220).
-# set -e + pipefail cannot apply to this pipeline (#291 C3).
+# while this script still printed {"log":[]} and exited 0.
+# jsonfilter miss / empty @.log is not fatal; must still close JSON.
+# set -e + pipefail cannot apply to this pipeline.
 jsonfilter -e '@.log[*]' 2>/dev/null | _fwlive_filter_json_entries || true
 printf '%s' ']}'

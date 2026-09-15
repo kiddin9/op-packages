@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com>
 #
-# Layer 1 adaptive poll cap (#306). Sourced by rpcd/fwlive.
+# Layer 1 adaptive poll cap. Sourced by rpcd/fwlive.
 # Always on unless test/triage override (no UCI / no product config):
 #   FWLIVE_ADAPTIVE=0|false|off|no
 #   or sentinel ${FWLIVE_ADAPTIVE_OFF_FILE:-<state-dir>/fwlive-adaptive-off}
@@ -18,10 +18,10 @@
 # flock, lock busy, or corrupt state. Lock-busy ⇒ unlocked last-writer-wins is
 # acceptable (state stays one valid JSON line; ordering is not guaranteed).
 # Failed ubus log.read must NOT call record() — a ~0 ms failure is not "cold"
-# health and must not clear an existing hot/shed cap (#329 Hermes Q1).
+# health and must not clear an existing hot/shed cap.
 # Outside the measured duration interval: plan (pre), record/merge (post).
 # messages_received is 0 in Layer 1 — do not ash-scan the filter JSON after
-# end_cs (Grok #329 P1); accurate count belongs in the filter or a later layer.
+# end_cs; accurate count belongs in the filter or a later layer.
 
 FWLIVE_ADAPTIVE_STATE_FILE="${FWLIVE_ADAPTIVE_STATE_FILE:-/var/run/fwlive-state.json}"
 # Optional overrides; when unset, lock/off paths are siblings of the current state.
@@ -238,7 +238,7 @@ fwlive_adaptive_with_lock() {
 		"$@"
 		return $?
 	fi
-	# Create lock at 0600 (logging.lock #167 — world-readable fd can take LOCK_EX).
+	# Create lock at 0600 (world-readable fd can take LOCK_EX).
 	if [ ! -e "$_lock" ]; then
 		if ! ( umask 077; : >"$_lock" ) 2>/dev/null; then
 			"$@"
@@ -424,7 +424,7 @@ fwlive_adaptive_merge_reply() {
 }
 
 # Count log[*] via "msg" keys — helper for tests / future filter-side count.
-# NOT called on the poll hot path (Grok #329 P1): ash-scanning a 2000-entry
+# NOT called on the poll hot path: ash-scanning a 2000-entry
 # reply after end_cs is unmeasured overhead that cannot shed itself.
 fwlive_adaptive_count_log() {
 	_json=$1

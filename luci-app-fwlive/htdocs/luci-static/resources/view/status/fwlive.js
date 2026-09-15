@@ -24,7 +24,7 @@ const callFwlivePoll = rpc.declare({
 	object: 'fwlive',
 	method: 'poll',
 	params: ['addresses']
-	/* Full reply object kept so reply.error reaches fetchEntries (#233). */
+	/* Full reply object kept so reply.error reaches fetchEntries. */
 });
 
 const callFwliveRules = rpc.declare({
@@ -36,7 +36,7 @@ const callFwliveResolve = rpc.declare({
 	object: 'fwlive',
 	method: 'resolve',
 	params: ['addresses']
-	/* Full reply kept so disabled:"load" reaches the view (#306 Layer 2). */
+	/* Full reply kept so disabled:"load" reaches the view. */
 });
 
 const callFwliveLoggingStatus = rpc.declare({
@@ -98,11 +98,11 @@ return view.extend({
 	sessionSeen: null,
 	pauseBufferLoading: false,
 	paused: false,
-	/* One-shot: first live poll after unpause merges instead of replacing (#43). */
+	/* One-shot: first live poll after unpause merges instead of replacing. */
 	resumeMerge: false,
 	pollFn: null,
 	pollDataInFlight: false,
-	/* #306 Layer 2 — visibility / RTT cadence / shed surfacing. */
+	/* Layer 2 — visibility / RTT cadence / shed surfacing. */
 	pollEpoch: 0,
 	pollCadenceSec: 1,
 	rttStreakKind: null,
@@ -473,7 +473,7 @@ return view.extend({
 			const res = await callFwliveRules();
 			this.rulesMap = (res && res.rules) || {};
 			this.firewallBackend = (res && res.backend) || 'nft';
-			/* Bounds / mktemp failures are reply.error — same idea as poll (#245). */
+			/* Bounds / mktemp failures are reply.error — same idea as poll. */
 			this.lastRulesError = (res && res.error) || null;
 			if (this.lastRulesError) console.warn('fwlive rules map error:', this.lastRulesError);
 		} catch (e) {
@@ -829,7 +829,7 @@ return view.extend({
 		return typeof document !== 'undefined' && !!document.hidden;
 	},
 
-	/* Classify one RTT sample into hysteresis buckets (#306).
+	/* Classify one RTT sample into hysteresis buckets.
 	 * error and >1.5s share the slow/degraded streak so mixed failures still trip N=3. */
 	rttKindFromMs(ms, errored) {
 		if (errored) return 'slow';
@@ -1099,7 +1099,7 @@ return view.extend({
 		const limit = this.rowLimit;
 		const suffix = this.statusSuffix();
 		/* While paused the buffer can grow past the display limit — count matches
-		 * over the full buffer so "matching" is not capped at visibleRows (#83). */
+		 * over the full buffer so "matching" is not capped at visibleRows. */
 		let shown = matchCount;
 		if (this.paused) {
 			const filters = this.readFilters();
@@ -1206,7 +1206,7 @@ return view.extend({
 
 		if (wasPaused && !this.paused) {
 			this.followLive = true;
-			/* Merge pause buffer with the first live poll — do not replace (#43). */
+			/* Merge pause buffer with the first live poll — do not replace. */
 			this.resumeMerge = true;
 			const epoch = this.pollEpoch;
 			this.fetchEntries()
@@ -1671,7 +1671,7 @@ return view.extend({
 			}
 		} finally {
 			/* Only the owning epoch clears — a stale hidden-era poll must not
-			 * drop the catch-up guard after resume (Grok #331). Resume clears
+			 * drop the catch-up guard after resume. Resume clears
 			 * explicitly before starting the catch-up poll. */
 			if (epoch === this.pollEpoch) this.pollDataInFlight = false;
 		}

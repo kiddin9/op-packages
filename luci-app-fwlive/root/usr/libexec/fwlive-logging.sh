@@ -7,13 +7,13 @@
 # Sourced library (rpcd plugin, package prerm). Do not `set -euo pipefail`
 # here: prerm is best-effort (`restore ... || logger`; exit 0) and callers
 # expect soft failures. The rpcd entry point enables strict mode; critical
-# paths use explicit `|| return 1` / `|| true` (#244, #291 C3).
+# paths use explicit `|| return 1` / `|| true`.
 
 NF_LOG_IPV4='/proc/sys/net/netfilter/nf_log/2'
 NF_LOG_IPV6='/proc/sys/net/netfilter/nf_log/10'
 
 # Serialize the WAN logging read->compute->set->commit window across
-# concurrent ubus write-ACL callers (#151): each toggle re-reads the current
+# concurrent ubus write-ACL callers: each toggle re-reads the current
 # firewall.<zone>.log bit, computes a target, then uci set + uci commit. Two
 # concurrent callers could otherwise interleave and last-commit-wins.
 #
@@ -28,7 +28,7 @@ WAN_LOG_LOCK_FILE="${FWLIVE_WAN_LOG_LOCK_FILE:-/etc/fwlive/logging.lock}"
 WAN_LOG_BASELINE_FILE="${FWLIVE_WAN_LOG_BASELINE_FILE:-/etc/fwlive/wan-log-baseline}"
 
 # RFC 8259 string escape. Lives here so prerm can source this file
-# standalone (#222). rpcd sources us and must not redefine this.
+# standalone. rpcd sources us and must not redefine this.
 json_escape() {
 	# Escape for JSON string content per RFC 8259 (including remaining C0 controls).
 	# Slurp stdin as one string. Default awk RS is newline — RS="" is
@@ -67,8 +67,8 @@ json_escape() {
 	}'
 }
 
-# Production lock dir must be owned by euid with no group/other write (#204).
-# Avoid GNU/BusyBox `stat -c` — stock OpenWrt omits FEATURE_STAT_FORMAT (#232).
+# Production lock dir must be owned by euid with no group/other write.
+# Avoid GNU/BusyBox `stat -c` — stock OpenWrt omits FEATURE_STAT_FORMAT.
 wan_log_lock_dir_safe() {
 	dir="$1"
 	[ -n "$dir" ] || return 1
@@ -86,10 +86,10 @@ wan_log_lock_dir_safe() {
 # Acquire the exclusive logging lock on fd 9. Blocks until free; fails closed
 # (return 1) only if the lock file cannot be opened or flock is unavailable.
 # Create/tighten the lock to 0600 so unprivileged UIDs cannot take LOCK_EX on
-# a world-readable fd (issue #167 / flock(2) allows exclusive locks on O_RDONLY).
+# a world-readable fd (flock(2) allows exclusive locks on O_RDONLY).
 acquire_wan_log_lock() {
 	# Fail closed on symlinks: chmod/chown/exec O_TRUNC follow the target as root
-	# (#204). Default lock lives under /etc/fwlive (root-only), not world-writable
+	# Default lock lives under /etc/fwlive (root-only), not world-writable
 	# /var/lock. Re-check after create/tighten (TOCTOU).
 	lock_dir="$(dirname "$WAN_LOG_LOCK_FILE")"
 	[ -L "$lock_dir" ] && return 1
@@ -107,7 +107,7 @@ acquire_wan_log_lock() {
 	# Probe in a subshell first: a failed `exec` redirection aborts a POSIX
 	# non-interactive shell outright, so `|| return 1` on the real exec would
 	# never run — and `2>/dev/null` on the same exec would permanently
-	# silence this process's stderr on the success path (#244).
+	# silence this process's stderr on the success path.
 	( exec 9>>"$WAN_LOG_LOCK_FILE" ) 2>/dev/null || return 1
 	exec 9>>"$WAN_LOG_LOCK_FILE"
 	flock 9 2>/dev/null || {
@@ -124,16 +124,16 @@ release_wan_log_lock() {
 
 find_wan_zone_section() {
 	# Match anonymous (@zone[N]) and named (e.g. wan) sections whose name option
-	# is 'wan'. Prefer the first section whose type is zone (issue #168); skip
+	# is 'wan'. Prefer the first section whose type is zone; skip
 	# non-zone sections that happen to share name='wan'.
 	# uci missing / no wan zone is empty, not fatal. pipefail + set -e
-	# cannot apply to this pipeline (#291 C3).
+	# cannot apply to this pipeline.
 	_zones=$(uci -q show firewall 2>/dev/null \
 		| sed -n "s/^firewall\.\([^.]*\)\.name='wan'$/\1/p") || true
 	for zone in $_zones; do
 		[ -n "$zone" ] || continue
 		# uci -q get exits 1 on a missing section. Capture with || true so
-		# set -e cannot abort inside "$(…)" before || continue (#291 C3).
+		# set -e cannot abort inside "$(…)" before || continue.
 		_type=$(uci -q get "firewall.${zone}" 2>/dev/null || true)
 		[ "$_type" = "zone" ] || continue
 		printf '%s' "$zone"
@@ -143,7 +143,7 @@ find_wan_zone_section() {
 }
 
 firewall_changes_pending() {
-	# uci miss is "no pending changes". set -e cannot apply (#291 C3).
+	# uci miss is "no pending changes". set -e cannot apply.
 	pending="$(uci -q changes firewall 2>/dev/null || true)"
 	[ -n "$pending" ]
 }
@@ -151,7 +151,7 @@ firewall_changes_pending() {
 wan_zone_log_value() {
 	zone="$1"
 	[ -n "$zone" ] || return 1
-	# Unset option is a valid empty value; uci -q get exits 1 (#291 C3).
+	# Unset option is a valid empty value; uci -q get exits 1.
 	uci -q get "firewall.${zone}.log" 2>/dev/null || true
 }
 
@@ -165,7 +165,7 @@ uci_canonical_firewall_section() {
 		| sed -n '1s/^firewall\.\([^=.]*\)=.*/\1/p'
 }
 
-# True when two firewall section ids refer to the same WAN zone (issue #239).
+# True when two firewall section ids refer to the same WAN zone.
 # Compare canonical cfg ids — do NOT treat every name=wan zone as identical
 # (duplicate wan sections would under-match foreign .log deltas as ours).
 wan_firewall_zone_same() {
@@ -196,7 +196,7 @@ wan_log_staged_line_section() {
 	esac
 }
 
-# Zone ids that may appear in `uci changes` for firewall.<id>.log (issue #239).
+# Zone ids that may appear in `uci changes` for firewall.<id>.log.
 wan_log_staged_zone_ids() {
 	_zone="$1"
 	_staged="$2"
@@ -296,7 +296,7 @@ maybe_snapshot_wan_log_baseline() {
 restore_wan_log_baseline() {
 	path="$(wan_log_baseline_path)"
 	[ -f "$path" ] || return 0
-	# Empty file is a valid "option was unset" baseline (#291 C3).
+	# Empty file is a valid "option was unset" baseline.
 	baseline=$(cat "$path" 2>/dev/null || true)
 	zone=$(find_wan_zone_section)
 	if [ -z "$zone" ]; then
@@ -417,18 +417,18 @@ collect_logging_blockers() {
 	check_nf_log_ipv6 || logging_blockers_append 'nf_log_ipv6_missing'
 
 	# Report via LOGGING_BLOCKERS, not exit status: return 1 would abort
-	# build_logging_status_json under set -e (#291 C3).
+	# build_logging_status_json under set -e.
 	return 0
 }
 
 collect_logging_warnings() {
 	LOGGING_WARNINGS=''
 
-	# rpcd/fwlive run_with_timeout fail-closes to 127 without timeout (#229).
+	# rpcd/fwlive run_with_timeout fail-closes to 127 without timeout.
 	# Warnings are diagnostics only — do not gate the enable-logging CTA.
 	command -v timeout >/dev/null 2>&1 || logging_warnings_append 'timeout_missing'
 
-	# Report via LOGGING_WARNINGS, not exit status (#291 C3).
+	# Report via LOGGING_WARNINGS, not exit status.
 	return 0
 }
 
@@ -444,9 +444,9 @@ json_null_or_string() {
 
 build_logging_status_json() {
 	zone=$(find_wan_zone_section)
-	# Empty zone / unset log bit are valid; set -e cannot apply (#291 C3).
+	# Empty zone / unset log bit are valid; set -e cannot apply.
 	log_val=$(wan_zone_log_value "$zone") || log_val=
-	# Unset log_limit is a valid empty value; uci -q get exits 1 (#291 C3).
+	# Unset log_limit is a valid empty value; uci -q get exits 1.
 	limit_val=
 	if [ -n "$zone" ]; then
 		limit_val=$(uci -q get "firewall.${zone}.log_limit" 2>/dev/null || true)
@@ -491,7 +491,7 @@ restore_wan_zone_log() {
 	zone="$1"
 	previous="$2"
 	[ -n "$zone" ] || return 1
-	# Refuse to publish unrelated staged firewall deltas (issue #168).
+	# Refuse to publish unrelated staged firewall deltas.
 	if firewall_changes_pending; then
 		logger -t fwlive "WAN log rollback skipped: firewall changes pending" 2>/dev/null || true
 		return 1
@@ -508,7 +508,7 @@ restore_wan_zone_log() {
 # closes the read->compute->set->commit window so a concurrent toggle cannot
 # commit between our read and our write (no lost update / no stale overwrite).
 #
-# TOCTOU hardening (#191): UCI staging is global per config file, so a
+# TOCTOU hardening: UCI staging is global per config file, so a
 # non-cooperating writer (another admin's `uci set`, the LuCI firewall page)
 # can stage a delta AFTER the toggle's early firewall_changes_pending check.
 # Staging and committing therefore live INSIDE this function — the only path
@@ -544,7 +544,7 @@ commit_wan_log_change() {
 	zone_json="$2"
 	target="$3"
 
-	# Last-moment guard (#191): runs before OUR delta is staged, so a
+	# Last-moment guard: runs before OUR delta is staged, so a
 	# non-empty changes list here can only be a foreign writer's race.
 	if firewall_changes_pending; then
 		logger -t fwlive "WAN log toggle aborted at commit gate: firewall changes staged by another writer" 2>/dev/null || true
@@ -568,7 +568,7 @@ commit_wan_log_change() {
 		fi
 	fi
 
-	# Post-stage guard (#191): anything besides our log option is foreign.
+	# Post-stage guard: anything besides our log option is foreign.
 	# Undo our staging only (set previous / delete to match committed); leave
 	# foreign deltas untouched and abort without commit.
 	_staged=$(uci -q changes firewall 2>/dev/null || true)
@@ -589,8 +589,8 @@ commit_wan_log_change() {
 		# firewall_changes_pending from this package's own orphaned write —
 		# but ONLY when nothing foreign is staged: `uci revert firewall` is
 		# config-wide (uci has no option-level revert), and reverting would
-		# clobber a concurrent writer's uncommitted delta (CodeRabbit/luna
-		# fold, #191). With foreign staging present, leave it and warn.
+		# clobber a concurrent writer's uncommitted delta. With foreign
+		# staging present, leave it and warn.
 		_staged=$(uci -q changes firewall 2>/dev/null || true)
 		_total=$(printf '%s\n' "$_staged" | grep -c . 2>/dev/null || true)
 		_ours=$(wan_log_count_our_staged_lines "$zone" "$_staged")
@@ -603,7 +603,7 @@ commit_wan_log_change() {
 		return 1
 	fi
 
-	# Post-commit verification (#191): confirm the committed config really
+	# Post-commit verification: confirm the committed config really
 	# carries what we wrote (empty target = option must now be gone/empty).
 	# A mismatch means another writer overtook the commit: warn loudly but do
 	# NOT blind-revert (that would destroy unrelated committed data); the
@@ -619,7 +619,7 @@ commit_wan_log_change() {
 # would block a concurrent toggle until the holder exits — BusyBox flock has
 # no -w timeout).
 #
-# The ROLLBACK re-acquires the lock (luna fold 2026-08-10): read->compare->
+# The ROLLBACK re-acquires the lock: read->compare->
 # restore is only atomic when no other writer can commit between the read and
 # the restore. All writers hold the same flock, so re-acquiring it makes the
 # decision-and-restore a serialized unit. The lock is held only for the few
@@ -686,7 +686,7 @@ enable_wan_logging() {
 	# The log bit is re-read AFTER acquiring the lock so the target is computed
 	# from the latest committed value; a concurrent toggle cannot interleave.
 	# Staging + commit live inside commit_wan_log_change behind its last-moment
-	# firewall_changes_pending re-check (#191): a foreign writer racing between
+	# firewall_changes_pending re-check: a foreign writer racing between
 	# the early check above and the commit aborts the toggle instead of having
 	# its half-finished delta published with our log bit.
 	if ! acquire_wan_log_lock; then
@@ -740,7 +740,7 @@ disable_wan_logging() {
 	# The log bit is re-read AFTER acquiring the lock so the target is computed
 	# from the latest committed value; a concurrent toggle cannot interleave.
 	# Staging + commit live inside commit_wan_log_change behind its last-moment
-	# firewall_changes_pending re-check (#191): a foreign writer racing between
+	# firewall_changes_pending re-check: a foreign writer racing between
 	# the early check above and the commit aborts the toggle instead of having
 	# its half-finished delta published with our log bit.
 	if ! acquire_wan_log_lock; then
