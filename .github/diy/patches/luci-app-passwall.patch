@@ -251,11 +251,12 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,132 @@
 +<style>
 +.pure-img {
 +    max-height: 100%;
 +    width: auto;
++   display: inline-block;
 +}
 +.flag .pure-img {
 +    max-height: none;
