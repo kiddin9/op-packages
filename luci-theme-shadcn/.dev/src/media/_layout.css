@@ -1,10 +1,10 @@
 /* ── Sidebar ──────────────────────────────────────────────────────── */
 
 #sidebar {
-  /* Width only: `transition-all` would also ease background-color, making the
-     sidebar lag a beat behind the untransitioned content area on theme flips. */
-  @apply bg-sidebar-bg flex h-full w-[220px] shrink-0 flex-col overflow-hidden transition-[width] duration-200;
-  @apply max-md:fixed max-md:top-0 max-md:left-0 max-md:z-40 max-md:w-[240px] max-md:-translate-x-full max-md:shadow-xl max-md:transition-transform;
+  /* Mobile drawer: translate only; `transition-all` would also ease
+     background-color and lag the sidebar behind the content on theme flips. */
+  @apply bg-sidebar-bg flex h-full w-[220px] shrink-0 flex-col overflow-hidden;
+  @apply max-md:fixed max-md:top-0 max-md:left-0 max-md:z-40 max-md:w-[240px] max-md:-translate-x-full max-md:shadow-xl max-md:[transition:translate_.2s];
   /* Drawer height tracks the dynamic viewport so its bottom edge meets the
      Safari toolbar smoothly instead of jumping when the toolbar shows/hides. */
   @apply max-md:h-dvh;
@@ -54,7 +54,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 .sidebar-toggle {
-  @apply text-sidebar-muted flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-colors;
+  @apply text-sidebar-muted flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 [transition:color_.15s,background-color_.15s,border-color_.15s];
 
   &:hover {
     @apply bg-sidebar-accent text-sidebar-accent-fg;
@@ -82,7 +82,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 .sidebar-nav-parent {
-  @apply text-sidebar-muted flex w-full cursor-pointer appearance-none items-center justify-start gap-2.5 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm font-medium transition-colors duration-150;
+  @apply text-sidebar-muted flex w-full cursor-pointer appearance-none items-center justify-start gap-2.5 rounded-md border-0 bg-transparent px-2 py-1.5 text-left text-sm font-medium [transition:color_.15s,background-color_.15s,border-color_.15s];
 
   &:hover {
     @apply bg-sidebar-accent text-sidebar-accent-fg;
@@ -101,7 +101,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
   }
 
   .sidebar-chevron {
-    @apply ml-auto shrink-0 transition-transform duration-200;
+    @apply ml-auto shrink-0 [transition:rotate_.2s];
     svg,
     img {
       @apply h-3.5 w-3.5;
@@ -132,7 +132,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
    opening bounces every row below them. visibility transitions too, so the
    collapsed links leave the tab order only once the close has finished. */
 .sidebar-accordion-sub {
-  @apply invisible grid grid-rows-[0fr] overflow-hidden opacity-0 transition-[grid-template-rows,opacity,visibility] duration-200 ease-out;
+  @apply invisible grid grid-rows-[0fr] overflow-hidden opacity-0 [transition:grid-template-rows_.2s_var(--ease-out),opacity_.2s_var(--ease-out),visibility_.2s_var(--ease-out)];
 
   > * {
     @apply min-h-0 self-start;
@@ -156,7 +156,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 .sidebar-sub-link {
-  @apply text-sidebar-muted block rounded-md px-2 py-1.5 text-sm no-underline transition-colors;
+  @apply text-sidebar-muted block rounded-md px-2 py-1.5 text-sm no-underline [transition:color_.15s,background-color_.15s,border-color_.15s];
 
   &:hover {
     @apply bg-sidebar-accent text-sidebar-accent-fg;
@@ -178,7 +178,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 .sidebar-collapsed-popover-link {
-  @apply text-sidebar-muted mx-1 block rounded-sm px-2 py-1.5 text-sm no-underline transition-colors;
+  @apply text-sidebar-muted mx-1 block rounded-sm px-2 py-1.5 text-sm no-underline [transition:color_.15s,background-color_.15s,border-color_.15s];
 
   &:hover {
     @apply bg-sidebar-accent text-sidebar-accent-fg;
@@ -197,7 +197,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 .sidebar-logout {
-  @apply text-sidebar-muted flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm no-underline transition-colors;
+  @apply text-sidebar-muted flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-sm no-underline [transition:color_.15s,background-color_.15s,border-color_.15s];
 
   &:hover {
     @apply bg-sidebar-accent text-sidebar-accent-fg;
@@ -237,6 +237,12 @@ html[data-sidebar-collapsed="true"] #sidebar {
   @apply border-panel-border bg-panel-bg flex flex-1 flex-col overflow-hidden rounded-xl border shadow-sm max-md:rounded-none max-md:border-none max-md:shadow-none;
 }
 
+/* The rail width eases and #main-wrapper (flex-1) follows it frame by frame.
+   data-sidebar-anim is set on the first toggle, so a page load never plays it. */
+html[data-sidebar-anim] #sidebar {
+  @apply md:[transition:width_200ms_var(--ease-out)];
+}
+
 /* ── Card header ─────────────────────────────────────────────────── */
 
 .card-header {
@@ -251,7 +257,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 .topbar-hamburger {
-  @apply text-muted-foreground hidden h-8 w-8 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-colors max-md:flex;
+  @apply text-muted-foreground hidden h-8 w-8 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 [transition:color_.15s,background-color_.15s,border-color_.15s] max-md:flex;
 
   &:hover {
     @apply bg-muted;
@@ -283,7 +289,7 @@ html[data-sidebar-collapsed="true"] #sidebar {
 }
 
 button.topbar-icon-btn {
-  @apply text-muted-foreground inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 transition-colors;
+  @apply text-muted-foreground inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent p-0 [transition:color_.15s,background-color_.15s,border-color_.15s];
 
   &:hover {
     @apply bg-muted text-foreground;
@@ -295,15 +301,19 @@ button.topbar-icon-btn {
 }
 
 .topbar-indicators {
-  @apply flex items-center gap-2;
+  @apply flex items-center;
 
   /* LuCI-owned spans: icon via ::before mask only (no JS / no img) */
   span[data-indicator] {
     > img {
       @apply hidden;
     }
-    @apply text-muted-foreground relative inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[0px] transition-colors;
+    @apply text-muted-foreground relative inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-[0px] [transition:color_.15s,background-color_.15s,border-color_.15s,width_.15s_ease-out,opacity_.15s_ease-out,margin-left_.15s_ease-out] starting:w-0 starting:opacity-0;
     @apply before:relative before:block before:size-4 before:shrink-0 before:bg-current before:[mask-size:cover] before:[mask-position:center] before:[mask-repeat:no-repeat];
+
+    & + span[data-indicator] {
+      @apply ml-2 starting:ml-0;
+    }
 
     &:hover {
       @apply bg-muted text-foreground;
@@ -335,7 +345,7 @@ button.topbar-icon-btn {
 /* ── Maincontent ──────────────────────────────────────────────────── */
 
 #maincontent {
-  @apply flex-1 overflow-y-auto p-6 max-md:p-4;
+  @apply flex-1 [scrollbar-gutter:stable] overflow-y-auto p-6 max-md:p-4;
 
   h1 {
     @apply mb-4 border-0 pl-0 text-2xl font-semibold tracking-tight;
@@ -409,7 +419,7 @@ button.topbar-icon-btn {
 #sidebar-overlay {
   /* Absolute, not fixed: iOS Safari 26 tints its bars from edge-touching
      fixed elements' background-color, opacity notwithstanding. */
-  @apply bg-overlay-base-a50 pointer-events-none absolute inset-0 z-30 opacity-0 transition-opacity duration-200 md:hidden;
+  @apply bg-overlay-base-a50 pointer-events-none absolute inset-0 z-30 opacity-0 [transition:opacity_.2s] md:hidden;
 
   &.active {
     @apply pointer-events-auto opacity-100;

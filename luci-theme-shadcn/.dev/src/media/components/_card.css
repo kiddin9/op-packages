@@ -64,7 +64,7 @@
   }
 
   .ifacebox-head {
-    @apply border-border bg-label-surface text-foreground w-full rounded-t-lg border-b px-3 py-2 text-center text-sm font-semibold transition-colors duration-200;
+    @apply border-border bg-label-surface text-foreground w-full rounded-t-lg border-b px-3 py-2 text-center text-sm font-semibold [transition:color_.2s,background-color_.2s,border-color_.2s];
 
     &[style*="--zone-color-rgb"] {
       @apply bg-[rgb(var(--zone-color-rgb),.65)]!;

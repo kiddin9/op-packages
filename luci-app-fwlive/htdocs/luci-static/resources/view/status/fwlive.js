@@ -2238,6 +2238,21 @@ return view.extend({
 							]),
 							E('li', {}, [
 								_(
+									'For a responsive table on a weak device, keep Limit at 250 rows or below. The weak-device cap affects rendered rows; the buffer can still retain more.'
+								)
+							]),
+							E('li', {}, [
+								_(
+									'Switching tabs pauses polling; returning performs one catch-up poll. Hostnames are off by default because lookups add work.'
+								)
+							]),
+							E('li', {}, [
+								_(
+									'The router log ring may evict older events before fwlive reads them. fwlive cannot recover evicted entries or change forwarding behavior.'
+								)
+							]),
+							E('li', {}, [
+								_(
 									'The rate shown for WAN logging is the firewall zone log_limit. OpenWrt defaults to 10/minute when no explicit limit is configured; fwlive does not impose this cap.'
 								)
 							]),

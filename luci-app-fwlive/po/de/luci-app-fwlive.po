@@ -185,6 +185,18 @@ msgstr ""
 "Anzeigeoptionen in der Leiste setzen Limit, Zeilenfärbung, Palette und "
 "Hostnamen."
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2240
+msgid "For a responsive table on a weak device, keep Limit at 250 rows or below. The weak-device cap affects rendered rows; the buffer can still retain more."
+msgstr "Für eine responsive Tabelle auf einem schwachen Gerät sollte Limit auf höchstens 250 Zeilen stehen. Die Schwachgerätebegrenzung betrifft die angezeigten Zeilen; der Puffer kann weiterhin mehr Zeilen behalten."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2245
+msgid "Switching tabs pauses polling; returning performs one catch-up poll. Hostnames are off by default because lookups add work."
+msgstr "Beim Wechseln des Tabs wird das Polling pausiert; bei der Rückkehr erfolgt eine einmalige Aufholabfrage. Hostnamen sind standardmäßig deaktiviert, da Auflösungen zusätzliche Arbeit verursachen."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2250
+msgid "The router log ring may evict older events before fwlive reads them. fwlive cannot recover evicted entries or change forwarding behavior."
+msgstr "Der Protokollring des Routers kann ältere Ereignisse verdrängen, bevor fwlive sie liest. fwlive kann verdrängte Einträge nicht wiederherstellen und ändert das Weiterleitungsverhalten nicht."
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:121
 msgid "Does not change:"
 msgstr "Does not change:"

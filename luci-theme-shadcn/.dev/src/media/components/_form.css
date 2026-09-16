@@ -44,7 +44,7 @@
   @apply inline-flex w-max max-w-96 flex-col items-start gap-3 max-md:max-w-full;
 
   .item {
-    @apply border-border bg-panel-bg pointer-events-auto relative inline-flex cursor-move flex-col items-start gap-2 self-stretch overflow-hidden rounded-lg border py-3 pr-9 pl-4 break-all shadow-sm transition-all duration-200 select-text;
+    @apply border-border bg-panel-bg pointer-events-auto relative inline-flex cursor-move flex-col items-start gap-2 self-stretch overflow-hidden rounded-lg border py-3 pr-9 pl-4 break-all shadow-sm select-text [transition:scale_.2s,opacity_.2s,box-shadow_.2s,border-color_.2s,background-color_.2s];
 
     &::after {
       content: "×";
@@ -69,7 +69,7 @@
   }
 
   .add-item {
-    @apply border-border hover:border-border-a80 hover:bg-muted-a30 inline-flex items-center gap-1.5 self-stretch rounded-lg border border-dashed bg-transparent px-1 py-1 transition-colors duration-200;
+    @apply border-border hover:border-border-a80 hover:bg-muted-a30 inline-flex items-center gap-1.5 self-stretch rounded-lg border border-dashed bg-transparent px-1 py-1 [transition:color_.2s,background-color_.2s,border-color_.2s];
 
     > input {
       @apply min-w-56 flex-1;

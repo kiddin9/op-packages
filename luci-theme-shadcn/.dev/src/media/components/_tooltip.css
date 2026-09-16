@@ -7,7 +7,7 @@
      `transition-all` would animate the inset and make the bubble fly in from
      off-screen. `w-max` sizes the bubble by its content instead of the narrow
      anchor's containing block (which squeezed it to one word per line). */
-  @apply border-border-a60 bg-panel-bg text-foreground absolute inset-s-[-10000px] z-50 w-max max-w-xs scale-95 rounded-lg border px-3 py-2 text-xs break-normal whitespace-normal opacity-0 shadow-lg backdrop-blur-sm transition-[visibility,opacity,scale] duration-200 ease-out;
+  @apply border-border-a60 bg-panel-bg text-foreground absolute inset-s-[-10000px] z-50 w-max max-w-xs scale-95 rounded-lg border px-3 py-2 text-xs break-normal whitespace-normal opacity-0 shadow-lg [transition:visibility_.2s_var(--ease-out),opacity_.2s_var(--ease-out),scale_.2s_var(--ease-out)];
 
   &.error {
     @apply border-destructive-a40 bg-destructive text-destructive-fg;
@@ -25,10 +25,10 @@
 
 .cbi-tooltip-container,
 [data-tooltip] {
-  @apply relative inline-block cursor-help whitespace-nowrap underline decoration-current decoration-dotted underline-offset-2 transition-all duration-200;
+  @apply relative inline-block cursor-help whitespace-nowrap underline decoration-current decoration-dotted underline-offset-2;
 
   .cbi-tooltip {
-    @apply invisible scale-95 opacity-0 transition-[visibility,opacity,scale] duration-200 ease-out;
+    @apply invisible scale-95 opacity-0 [transition:visibility_.2s_var(--ease-out),opacity_.2s_var(--ease-out),scale_.2s_var(--ease-out)];
   }
 
   &:hover .cbi-tooltip {

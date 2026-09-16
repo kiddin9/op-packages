@@ -14,7 +14,7 @@
     }
 
     > a {
-      @apply text-muted-foreground hover:text-foreground focus-visible:ring-ring-a50 inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1 text-sm font-medium whitespace-nowrap no-underline transition-all focus-visible:ring-[3px] focus-visible:outline-none;
+      @apply text-muted-foreground hover:text-foreground focus-visible:ring-ring-a50 inline-flex items-center justify-center rounded-md border border-transparent px-3 py-1 text-sm font-medium whitespace-nowrap no-underline [transition:color_.15s,background-color_.15s,border-color_.15s,box-shadow_.15s] focus-visible:ring-[3px] focus-visible:outline-none;
     }
 
     &.cbi-tab > a {
@@ -39,7 +39,7 @@
   @apply border-border relative flex items-center gap-0 overflow-x-auto border-b;
 
   a {
-    @apply text-muted-foreground hover:text-foreground block px-6 py-3 text-center text-sm font-medium whitespace-nowrap transition-colors duration-200 hover:no-underline;
+    @apply text-muted-foreground hover:text-foreground block px-6 py-3 text-center text-sm font-medium whitespace-nowrap [transition:color_.2s,background-color_.2s,border-color_.2s] hover:no-underline;
   }
 
   > li.active {

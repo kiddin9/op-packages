@@ -4,17 +4,43 @@
  * Licensed to the public under the Apache License 2.0.
  */
 
-@import "tailwindcss";
+/* Theme variables and @apply'd utilities only: no Preflight, no scanned
+   classes. The reset below covers what sysauth.ut renders. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
 
 @import "./inter.css";
 @import "./_tokens.css";
 @import "./_shared.css";
 
-/* See main.css: keep dev-only tooling out of Tailwind's source detection. */
-@source not "../../vite.config.ts";
-@source not "../../scripts/*.client.js";
-
 @custom-variant dark (&:where([data-darkmode=true], [data-darkmode=true] *));
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    @apply box-border;
+  }
+
+  body,
+  p {
+    @apply m-0;
+  }
+
+  button,
+  input {
+    @apply m-0 border-0 bg-transparent p-0 [color:inherit] [font:inherit];
+  }
+
+  ::placeholder {
+    @apply opacity-100;
+  }
+
+  [hidden] {
+    @apply hidden!;
+  }
+}
 
 html {
   @apply bg-background text-foreground font-sans text-sm;
@@ -128,7 +154,7 @@ html {
 
 /* Glass input wrapper — matches sign-in.tsx GlassInputWrapper */
 .login-input-glass {
-  @apply border-border bg-foreground-a5 relative rounded-2xl border transition-colors;
+  @apply border-border bg-foreground-a5 relative rounded-2xl border [transition:color_.15s,background-color_.15s,border-color_.15s];
   backdrop-filter: blur(4px);
 
   &:focus-within {
@@ -152,7 +178,7 @@ html {
   @apply absolute inset-y-0 right-0 flex cursor-pointer items-center border-0 bg-transparent px-3;
 
   img {
-    @apply h-4 w-4 opacity-40 transition-opacity;
+    @apply h-4 w-4 opacity-40 [transition:opacity_.15s];
   }
 
   &:hover img {
@@ -161,7 +187,7 @@ html {
 }
 
 .login-submit {
-  @apply bg-primary text-primary-foreground hover:bg-primary-hover mt-4 w-full cursor-pointer rounded-2xl border-0 py-3.5 text-sm font-medium transition-colors;
+  @apply bg-primary text-primary-foreground hover:bg-primary-hover mt-4 w-full cursor-pointer rounded-2xl border-0 py-3.5 text-sm font-medium [transition:color_.15s,background-color_.15s,border-color_.15s];
 }
 
 /* ── Footer ── */
@@ -170,7 +196,7 @@ html {
   @apply text-muted-foreground absolute right-0 bottom-5 left-0 px-6 text-center text-xs;
 
   a {
-    @apply text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors;
+    @apply text-muted-foreground hover:text-foreground underline underline-offset-2 [transition:color_.15s,background-color_.15s,border-color_.15s];
   }
 }
 

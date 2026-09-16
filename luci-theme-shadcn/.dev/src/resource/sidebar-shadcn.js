@@ -116,6 +116,7 @@ return baseclass.extend({
       "data-sidebar-collapsed",
       next ? "true" : "false",
     );
+    document.documentElement.setAttribute("data-sidebar-anim", "");
     localStorage.setItem(SIDEBAR_KEY, next);
 
     this._hideCollapsedPopover();

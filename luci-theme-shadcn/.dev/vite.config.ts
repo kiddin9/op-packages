@@ -14,6 +14,7 @@ import { luciDev, injectMockBar } from "@eamonxg/luci-theme-devkit/vite/dev";
 import { existsSync, readdirSync } from "fs";
 import { mkdir, readdir, readFile, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
+import { transform as lightningcssTransform } from "lightningcss";
 import { minify as terserMinify } from "terser";
 import { defineConfig, loadEnv, Plugin, ResolvedConfig } from "vite";
 import config from "./luci-theme.config.js";
@@ -108,6 +109,68 @@ function createPatchAliasPlugin(): Plugin {
   };
 }
 
+/* login.css imports the full token sheet but the login page consumes a
+   fraction of it. Drop every custom property (and --tw-* @property) no var()
+   can reach, following --a: var(--b) chains; consumers are never touched, so
+   sysauth.ut's inline --login-bg-image keeps working. Same as aurora's. */
+function createLoginCssPrunePlugin(): Plugin {
+  return {
+    name: "login-css-prune",
+    apply: "build",
+    enforce: "post",
+    async closeBundle() {
+      const path = resolve(BUILD_OUTPUT, "shadcn/login.css");
+      if (!existsSync(path)) return;
+      const css = await readFile(path, "utf-8");
+
+      const VALUE = `(?:"[^"]*"|'[^']*'|[^;{}"'])*`;
+      const roots = new Set<string>();
+      const edges = new Map<string, Set<string>>();
+      for (const [, name, value] of css.matchAll(
+        new RegExp(`(?<=[{;])(--[\\w-]+|[a-zA-Z-]+):(${VALUE})`, "g"),
+      )) {
+        const refs = [...value.matchAll(/var\(\s*(--[\w-]+)/g)].map(
+          (m) => m[1],
+        );
+        if (!name.startsWith("--")) refs.forEach((r) => roots.add(r));
+        else {
+          const deps = edges.get(name) ?? new Set<string>();
+          refs.forEach((r) => deps.add(r));
+          edges.set(name, deps);
+        }
+      }
+      const keep = new Set(roots);
+      const stack = [...roots];
+      while (stack.length) {
+        for (const dep of edges.get(stack.pop()!) ?? []) {
+          if (!keep.has(dep)) {
+            keep.add(dep);
+            stack.push(dep);
+          }
+        }
+      }
+
+      const pruned = css
+        .replace(
+          new RegExp(`(?<=[{;])(--[\\w-]+):${VALUE};?`, "g"),
+          (decl, name) => (keep.has(name) ? decl : ""),
+        )
+        .replace(/@property\s+(--[\w-]+)\{[^{}]*\}/g, (rule, name) =>
+          keep.has(name) ? rule : "",
+        )
+        .replace(/(?<=[{}])[^{}@]+\{\}/g, "");
+
+      // Parse only: a re-minify without Vite's targets would strip the
+      // -webkit- prefixes older Safari still needs.
+      lightningcssTransform({
+        filename: "login.css",
+        code: Buffer.from(pruned),
+      });
+      await writeFile(path, pruned);
+    },
+  };
+}
+
 export default defineConfig(({ mode, command }) => {
   const env = loadEnv(mode, CURRENT_DIR);
   // VITE_OPENWRT_HOST is just the router address — a bare IP/hostname like
@@ -133,6 +196,7 @@ export default defineConfig(({ mode, command }) => {
       ...luciDev(config, { sshHost: OPENWRT_SSH_HOST }),
       createLuciJsCompressPlugin(),
       createPatchAliasPlugin(),
+      createLoginCssPrunePlugin(),
     ],
     build: {
       outDir: BUILD_OUTPUT,

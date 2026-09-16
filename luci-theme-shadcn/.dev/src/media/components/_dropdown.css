@@ -1,5 +1,5 @@
 .cbi-dropdown {
-  @apply relative inline-flex h-fit max-w-full min-w-fit shrink-0 items-center p-0 whitespace-nowrap transition-colors duration-200;
+  @apply relative inline-flex h-fit max-w-full min-w-fit shrink-0 items-center p-0 whitespace-nowrap [transition:color_.2s,background-color_.2s,border-color_.2s];
 
   &[disabled] {
     @apply pointer-events-none opacity-40;
@@ -13,8 +13,9 @@
     }
   }
 
+  /* luci-base moves focus into the list only on the ul's transitionend. */
   > ul {
-    @apply m-0 flex flex-1 list-none flex-nowrap items-center gap-0.5 overflow-hidden;
+    @apply m-0 flex flex-1 list-none flex-nowrap items-center gap-0.5 overflow-hidden opacity-99 [transition:opacity_120ms_ease-out];
 
     > li {
       @apply m-0 hidden list-none items-center gap-1 overflow-hidden px-2 py-1.5;
@@ -48,7 +49,7 @@
     }
 
     &.dropdown {
-      @apply border-border bg-panel-bg absolute left-0 z-50 w-fit min-w-full overflow-y-auto rounded-lg border shadow-lg backdrop-blur-sm;
+      @apply border-border bg-panel-bg absolute left-0 z-50 w-fit min-w-full overflow-y-auto rounded-lg border opacity-100 shadow-lg;
 
       > li {
         @apply text-muted-foreground hover:bg-muted min-h-9 w-full cursor-pointer px-3 py-1.5 text-sm font-medium;

@@ -195,7 +195,7 @@
 							aria-label="{{ _('Type to filter…') }}"
 						>
 							<span class="cmdk-trigger-label">{{ _('Type to filter…') }}</span>
-							<kbd class="cmdk-trigger-key" hidden></kbd>
+							<kbd class="cmdk-trigger-key">{{ match(http.getenv('HTTP_USER_AGENT') ?? '', /Mac|iP(ad|hone|od)/) ? '⌘K' : 'Ctrl+K' }}</kbd>
 						</button>
 						<div id="indicators" class="topbar-indicators"></div>
 						<button

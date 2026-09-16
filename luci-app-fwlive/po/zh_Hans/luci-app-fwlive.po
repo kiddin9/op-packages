@@ -171,6 +171,18 @@ msgstr "æ¾ç¤ºéé¡¹"
 msgid "Display options on the bar set Limit, row tint, palette, and hostnames."
 msgstr "栏上的显示选项可设置行数限制、行着色、调色板和主机名。"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2240
+msgid "For a responsive table on a weak device, keep Limit at 250 rows or below. The weak-device cap affects rendered rows; the buffer can still retain more."
+msgstr "要让弱设备上的表格保持响应，请将 Limit 保持在 250 行或更少。弱设备限制影响渲染的行数；缓冲区仍可保留更多行。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2245
+msgid "Switching tabs pauses polling; returning performs one catch-up poll. Hostnames are off by default because lookups add work."
+msgstr "切换到其他标签页会暂停轮询；返回时执行一次追赶轮询。主机名默认关闭，因为解析会增加工作量。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2250
+msgid "The router log ring may evict older events before fwlive reads them. fwlive cannot recover evicted entries or change forwarding behavior."
+msgstr "路由器日志环形缓冲区可能在 fwlive 读取前淘汰较旧事件。fwlive 无法恢复已淘汰的条目，也不会改变转发行为。"
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:121
 msgid "Does not change:"
 msgstr "Does not change:"

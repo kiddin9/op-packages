@@ -16,7 +16,7 @@
 }
 
 .zonebadge {
-  @apply border-secondary bg-secondary text-secondary-foreground inline-flex items-center gap-1.5 overflow-visible rounded-md border px-2 py-1 align-middle text-sm leading-normal font-semibold transition-colors duration-200;
+  @apply border-secondary bg-secondary text-secondary-foreground inline-flex items-center gap-1.5 overflow-visible rounded-md border px-2 py-1 align-middle text-sm leading-normal font-semibold [transition:color_.2s,background-color_.2s,border-color_.2s];
 
   &[style*="--zone-color-rgb"] {
     @apply border-transparent bg-[rgb(var(--zone-color-rgb),.6)]!;
@@ -40,7 +40,7 @@
 }
 
 .ifacebadge {
-  @apply border-border bg-label-surface text-foreground inline-flex cursor-default flex-nowrap items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-normal transition-colors duration-200;
+  @apply border-border bg-label-surface text-foreground inline-flex cursor-default flex-nowrap items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm font-normal [transition:color_.2s,background-color_.2s,border-color_.2s];
 
   .zonebadge > & {
     @apply rounded-md px-1.5 py-0;

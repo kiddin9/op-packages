@@ -522,11 +522,6 @@ return baseclass.extend({
     ];
 
     const isMac = /Mac|iP(ad|hone|od)/.test(navigator.platform);
-    const keyEl = trigger.querySelector(".cmdk-trigger-key");
-    if (keyEl) {
-      keyEl.textContent = isMac ? "⌘K" : "Ctrl+K";
-      keyEl.hidden = false;
-    }
     trigger.setAttribute("aria-keyshortcuts", isMac ? "Meta+K" : "Control+K");
     trigger.addEventListener("click", () => this.openPalette());
 
