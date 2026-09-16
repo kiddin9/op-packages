@@ -485,6 +485,7 @@ return baseclass.extend({
     if (!trigger || this.palIndex) return;
 
     this.palIndex = [];
+    this.palAliases = {};
     ui.menu.getChildren(branch).forEach((section) => {
       const subs = ui.menu.getChildren(section);
       if (subs.length === 0) {
@@ -499,14 +500,46 @@ return baseclass.extend({
         return;
       }
       subs.forEach((page) => {
-        this.palIndex.push({
-          title: _(page.title),
-          group: _(section.title),
-          icon: section.name,
-          path: `${branchUrl}/${section.name}/${page.name}`,
-          href: L.url(branchUrl, section.name, page.name),
-          isLogout: false,
-        });
+        const title = _(page.title);
+        const group = _(section.title);
+        const path = `${branchUrl}/${section.name}/${page.name}`;
+        // The raw node: getChildren() hands out alias nodes carrying their
+        // target's children, which would hide an alias parent's tabs.
+        const node = section.children?.[page.name] ?? {};
+        const tabs = ui.menu.getChildren(node);
+        const type = node.action?.type;
+        const target =
+          type === "alias"
+            ? node.action.path.replace(`${path}/`, "")
+            : type === "firstchild" &&
+              tabs.find((tab) => !tab.firstchild_ineligible)?.name;
+
+        // A parent that only redirects to one of its tabs is that tab: its
+        // row gives way to the tabs, and its path (stored by older recents)
+        // resolves to where it redirects.
+        if (tabs.some((tab) => tab.name === target))
+          this.palAliases[path] = `${path}/${target}`;
+        else
+          this.palIndex.push({
+            title,
+            group,
+            icon: section.name,
+            path,
+            href: L.url(branchUrl, section.name, page.name),
+            isLogout: false,
+          });
+
+        tabs.forEach((tab) =>
+          this.palIndex.push({
+            title: _(tab.title),
+            parent: title,
+            group,
+            icon: section.name,
+            path: `${path}/${tab.name}`,
+            href: L.url(branchUrl, section.name, page.name, tab.name),
+            isLogout: false,
+          }),
+        );
       });
     });
 
@@ -698,9 +731,14 @@ return baseclass.extend({
   _palReadRecents() {
     try {
       const list = JSON.parse(localStorage.getItem(RECENTS_KEY));
-      return Array.isArray(list)
-        ? list.filter((path) => typeof path === "string")
-        : [];
+      if (!Array.isArray(list)) return [];
+      return [
+        ...new Set(
+          list
+            .filter((path) => typeof path === "string")
+            .map((path) => this.palAliases?.[path] ?? path),
+        ),
+      ];
     } catch (e) {
       return [];
     }
@@ -755,11 +793,22 @@ return baseclass.extend({
         ? this.palIndex.filter((page) => page.isLogout)
         : this.palIndex;
       pool.forEach((page) => {
-        const m = this._palScore(q, page.title, page.path, page.group);
+        const m = this._palScore(
+          q,
+          page.title,
+          page.path,
+          page.group,
+          page.parent,
+        );
         if (m)
           hits.push({
             score: m.score,
-            node: this._palPageRow(page, m.ranges, m.groupRanges),
+            node: this._palPageRow(
+              page,
+              m.ranges,
+              m.groupRanges,
+              m.parentRanges,
+            ),
           });
       });
       this.palModes.forEach((cmd) => {
@@ -814,7 +863,7 @@ return baseclass.extend({
     else this.palInput.removeAttribute("aria-activedescendant");
   },
 
-  _palPageRow(page, ranges, groupRanges) {
+  _palPageRow(page, ranges, groupRanges, parentRanges) {
     // Title leads, the section label is demoted to small type on the right
     // edge — same row anatomy as luci-theme-aurora's palette, so the two
     // themes stay legible side by side. The dispatch path is matchable but
@@ -833,7 +882,25 @@ return baseclass.extend({
       },
       [
         this._sectionIcon(page.icon, 15),
-        E("span", { class: "cmdk-title" }, this._palMark(page.title, ranges)),
+        E(
+          "span",
+          { class: "cmdk-title" },
+          // A tab named after its parent is the page the parent opens.
+          page.parent && page.parent !== page.title
+            ? [
+                E(
+                  "span",
+                  { class: "cmdk-parent" },
+                  this._palMark(page.parent, parentRanges),
+                ),
+                E(
+                  "span",
+                  { class: "cmdk-label" },
+                  this._palMark(page.title, ranges),
+                ),
+              ]
+            : this._palMark(page.title, ranges),
+        ),
         page.group
           ? E(
               "span",
@@ -897,19 +964,64 @@ return baseclass.extend({
 
   /**
    * Subsequence scorer: every query char must appear in order; consecutive
-   * runs and word/segment starts weigh extra. Title hits rank first, then
-   * the section label, then the language-neutral path. Title and label hits
+   * runs and word/segment starts weigh extra. Title hits rank first, then a
+   * tab's parent — scored alone so its tabs tie and keep menu order, or
+   * paired with the title when the query splits on a space — then the
+   * section label, then the language-neutral path, where each query word
+   * (split on spaces or "/") lands inside one segment, in path order, so a
+   * lone word can't scatter across segments. Title, parent and label hits
    * highlight the field they matched; a path hit ranks without highlighting.
    */
-  _palScore(q, title, path, group) {
+  _palScore(q, title, path, group, parent) {
     const t = this._palSub(q, title.toLowerCase());
     if (t) return { score: t.score + 10, ranges: t.ranges, groupRanges: null };
+    if (parent) {
+      const low = parent.toLowerCase();
+      const pt = this._palSub(q, low);
+      if (pt)
+        return {
+          score: pt.score + 7,
+          ranges: null,
+          groupRanges: null,
+          parentRanges: pt.ranges,
+        };
+      const words = q.split(/\s+/);
+      for (let i = 1; i < words.length; i++) {
+        const head = this._palSub(words.slice(0, i).join(" "), low);
+        const tail =
+          head && this._palSub(words.slice(i).join(" "), title.toLowerCase());
+        if (tail)
+          return {
+            score: head.score + tail.score + 7,
+            ranges: tail.ranges,
+            groupRanges: null,
+            parentRanges: head.ranges,
+          };
+      }
+    }
     // On a localized instance the section label is the only group name the
     // user ever sees: querying the translated 'Network' must reach its rows.
     const g = group ? this._palSub(q, group.toLowerCase()) : null;
     if (g) return { score: g.score + 5, ranges: null, groupRanges: g.ranges };
-    const p = this._palSub(q, String(path || "").toLowerCase());
+    const p = this._palPath(q, String(path || "").toLowerCase());
     return p ? { score: p.score, ranges: null, groupRanges: null } : null;
+  },
+
+  _palPath(q, low) {
+    const words = q.split(/[\s/]+/).filter(Boolean);
+    const segments = low.split("/");
+    let at = 0;
+    let score = 0;
+    for (const word of words) {
+      let hit = null;
+      for (; at < segments.length; at++) {
+        hit = this._palSub(word, segments[at]);
+        if (hit) break;
+      }
+      if (!hit) return null;
+      score += hit.score;
+    }
+    return words.length ? { score } : null;
   },
 
   _palSub(q, low) {

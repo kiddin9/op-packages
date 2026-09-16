@@ -51,12 +51,15 @@ test("production assets stay within raw-transfer budgets", () => {
 
   assert.ok(main <= 130_000, `main.css ${main} B exceeds 130 KB`);
   assert.ok(login <= 11_000, `login.css ${login} B exceeds 11 KB`);
-  assert.ok(menu <= 16_000, `menu-shadcn.js ${menu} B exceeds 16 KB`);
+  // 17.5K: palette tabs (third-level nodes, redirect-parent folding, legacy
+  // recents mapping, parent-aware scoring, per-segment path words) added
+  // ~1.2 KB; the admin total below moved by the same amount.
+  assert.ok(menu <= 17_500, `menu-shadcn.js ${menu} B exceeds 17.5 KB`);
   assert.ok(router <= 16_000, `router-shadcn.js ${router} B exceeds 16 KB`);
   assert.ok(sidebar <= 6_500, `sidebar-shadcn.js ${sidebar} B exceeds 6.5 KB`);
   assert.ok(
-    main + menu + router + sidebar + font <= 216_000,
-    "admin assets exceed 216 KB",
+    main + menu + router + sidebar + font <= 217_500,
+    "admin assets exceed 217.5 KB",
   );
   assert.ok(login + font + logo <= 60_000, "login assets exceed 60 KB");
 });

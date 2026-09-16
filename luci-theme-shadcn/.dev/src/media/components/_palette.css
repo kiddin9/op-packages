@@ -150,6 +150,27 @@ button.cmdk-cancel {
   }
 }
 
+/* A tab row reads "Parent › Title": the parent gives way first (truncate's
+   overflow already lets it shrink below its content), and keeps at least
+   an ellipsis so the "›" never leads the row. Unnested: the classes exist
+   only inside palette rows, and the short selectors keep main.css inside
+   its budget. */
+.cmdk-title:has(> .cmdk-parent) {
+  @apply flex items-baseline;
+}
+
+.cmdk-parent {
+  @apply text-muted-foreground truncate font-normal;
+}
+
+.cmdk-label {
+  @apply max-w-[calc(100%-1.5rem)] shrink-0 truncate;
+
+  &::before {
+    @apply text-muted-foreground px-1.5 font-normal content-['›'];
+  }
+}
+
 .cmdk-empty {
   @apply text-muted-foreground px-3 py-7 text-center text-sm;
 }
