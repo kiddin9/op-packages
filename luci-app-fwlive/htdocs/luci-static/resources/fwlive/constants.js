@@ -18,6 +18,8 @@ return baseclass.extend({
 	FETCH_LINES_MAX: 2000 /* ubus poll / logd ring cap (~2000 lines ≈ typical ring) */,
 	/* DOM budget: ~250 new/updated rows painted per second on typical LuCI routers */
 	RENDER_CAP_PER_SEC: 250,
+	/* Sustained 4x-throttled evidence keeps this cap within the frame/task budget. */
+	WEAK_DEVICE_DISPLAY_ROW_CAP: 250,
 	/* Layer 2 — measured client RTT → poll cadence (seconds). */
 	POLL_CADENCE_FAST_S: 1,
 	POLL_CADENCE_MID_S: 2,

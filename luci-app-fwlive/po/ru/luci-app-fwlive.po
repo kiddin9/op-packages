@@ -145,6 +145,10 @@ msgstr "ÐÐ¾ÑÑ Ð½Ð°Ð·Ð½."
 msgid "Degraded — sampling"
 msgstr "Упрощённый режим — выборка"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:847
+msgid "Display limited to %d rows on this device"
+msgstr "На этом устройстве отображение ограничено %d строками"
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:977
 msgid "Degraded — sampling (slow poll RTT; cadence reduced)."
 msgstr "Упрощённый режим — выборка (медленный RTT опроса; интервал увеличен)."

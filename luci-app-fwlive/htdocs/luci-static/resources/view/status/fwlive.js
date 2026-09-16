@@ -116,6 +116,7 @@ return view.extend({
 	serverAdaptive: 1,
 	serverTruncated: 0,
 	serverShed: null,
+	weakDevice: false,
 	degradedSampling: false,
 	/* Layer 2 summary fallback — rows remain available behind an explicit toggle. */
 	summaryMode: false,
@@ -532,14 +533,18 @@ return view.extend({
 	},
 
 	async loadLoggingStatus() {
+		const wasWeakDevice = this.weakDevice;
 		try {
 			this.loggingStatus = await callFwliveLoggingStatus();
+			this.weakDevice = !!(this.loggingStatus && this.loggingStatus.weak_device === true);
 		} catch (e) {
 			this.loggingStatus = null;
 		}
 		this.updateBackendUi();
 		this.updateLoggingToolbarUi();
 		this.updateEmptyStateUi();
+		if (wasWeakDevice !== this.weakDevice && document.getElementById('fwlive-table'))
+			this.renderRows(true);
 	},
 
 	async handleEnableLogging() {
@@ -820,6 +825,12 @@ return view.extend({
 		return buffer.ingestCap(this.paused, this.rowLimit, constants.FETCH_LINES_MAX);
 	},
 
+	displayRowCap() {
+		return this.weakDevice
+			? Math.min(this.rowLimit, constants.WEAK_DEVICE_DISPLAY_ROW_CAP)
+			: this.rowLimit;
+	},
+
 	statusSuffix() {
 		const bits = [];
 		if (this.paused) {
@@ -829,6 +840,12 @@ return view.extend({
 		const cap = this.ingestCap();
 		if (this.entries.length >= cap && cap > 0) bits.push(_('buffer full'));
 		if (this.floodSuppressed) bits.push(_('render paused (high rate)'));
+		if (this.weakDevice && this.rowLimit > constants.WEAK_DEVICE_DISPLAY_ROW_CAP)
+			bits.push(
+				_('Display limited to %d rows on this device').format(
+					constants.WEAK_DEVICE_DISPLAY_ROW_CAP
+				)
+			);
 		if (this.degradedSampling && this.serverAdaptive !== 0) bits.push(_('Degraded — sampling'));
 		if (this.serverTruncated && this.serverAdaptive !== 0) bits.push(_('truncated'));
 		if (this.resolveLoadShed && this.serverAdaptive !== 0)
@@ -1198,12 +1215,14 @@ return view.extend({
 		const filters = this.readFilters();
 		return this.entries
 			.filter((row) => log.matchesFilter(row, filters))
-			.slice(-this.rowLimit)
+			.slice(-this.displayRowCap())
 			.reverse();
 	},
 
 	compactCountText(matchCount) {
 		const stored = this.entries.length;
+		/* Keep the stored-buffer denominator tied to the user's Limit. A weak
+		 * device's rendered-row cap is called out separately in statusSuffix(). */
 		const limit = this.rowLimit;
 		const suffix = this.statusSuffix();
 		/* While paused the buffer can grow past the display limit — count matches

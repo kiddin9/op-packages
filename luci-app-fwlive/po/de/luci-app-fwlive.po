@@ -141,6 +141,10 @@ msgstr "Ziel-Port"
 msgid "Degraded — sampling"
 msgstr "Eingeschränkt — Stichproben"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:847
+msgid "Display limited to %d rows on this device"
+msgstr "Anzeige auf %d Zeilen auf diesem Gerät begrenzt"
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:977
 msgid "Degraded — sampling (slow poll RTT; cadence reduced)."
 msgstr ""
