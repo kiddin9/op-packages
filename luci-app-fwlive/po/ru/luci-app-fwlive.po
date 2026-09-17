@@ -795,3 +795,41 @@ msgstr "Частые правила"
 
 msgid "Top talkers"
 msgstr "Частые источники"
+
+msgid "Auto"
+msgstr "Auto"
+
+msgid "Fetch budget"
+msgstr "Fetch budget"
+
+msgid "Maximum raw lines"
+msgstr "Maximum raw lines"
+
+msgid "Manual"
+msgstr "Manual"
+
+msgid "Manual still uses server protection and poll cadence"
+msgstr "Manual still uses server protection and poll cadence"
+
+msgid "%s · requested up to %d raw lines · %d firewall messages returned"
+msgstr "%s · requested up to %d raw lines · %d firewall messages returned"
+
+msgid "%s · requested up to %d raw lines · server limited fetch to %d · %d firewall messages returned"
+msgstr "%s · requested up to %d raw lines · server limited fetch to %d · %d firewall messages returned"
+
+msgid "Server adaptive protection is disabled."
+msgstr "Server adaptive protection is disabled."
+
+msgid "Server protection state is unknown."
+msgstr "Server protection state is unknown."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2250
+msgid "Fetch budget controls raw log lines per poll. Auto derives from Limit; Manual selects a bounded maximum."
+msgstr "Fetch budget controls raw log lines per poll. Auto derives from Limit; Manual selects a bounded maximum."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2255
+msgid "Manual still uses server protection and poll cadence; it changes the fetch budget, not the polling interval."
+msgstr "Manual still uses server protection and poll cadence; it changes the fetch budget, not the polling interval."
+
+msgid "buffer filling"
+msgstr "buffer filling"

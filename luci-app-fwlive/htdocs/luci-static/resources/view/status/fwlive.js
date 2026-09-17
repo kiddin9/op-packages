@@ -94,6 +94,10 @@ function optionNodes(pairs) {
 
 return view.extend({
 	rowLimit: constants.DEFAULT_ROW_LIMIT,
+	fetchMode: constants.DEFAULT_FETCH_MODE,
+	manualFetchLines: constants.DEFAULT_MANUAL_FETCH_LINES,
+	manualFetchLinesExplicit: false,
+	rpcPreferencesResolved: false,
 	entries: [],
 	sessionSeen: null,
 	pauseBufferLoading: false,
@@ -108,14 +112,19 @@ return view.extend({
 	pollRequestQueued: false,
 	pollRequestWaiters: [],
 	pollRequestQueuedWaiters: [],
+	coordinatorDisposed: false,
 	/* Layer 2 — visibility / RTT cadence / shed surfacing. */
 	pollEpoch: 0,
 	pollCadenceSec: 1,
 	rttStreakKind: null,
 	rttStreakCount: 0,
-	serverAdaptive: 1,
+	serverAdaptive: undefined,
 	serverTruncated: 0,
 	serverShed: null,
+	lastPollRequestedLines: null,
+	lastPollEffectiveLimit: null,
+	lastPollReturnedMessages: null,
+	fillingBuffer: false,
 	weakDevice: false,
 	degradedSampling: false,
 	/* Layer 2 summary fallback — rows remain available behind an explicit toggle. */
@@ -194,27 +203,163 @@ return view.extend({
 			.map((k) => '%s=%s'.format(encodeURIComponent(k), encodeURIComponent(filters[k])));
 		if (this.rowLimit !== constants.DEFAULT_ROW_LIMIT)
 			parts.push('limit=%s'.format(encodeURIComponent(this.rowLimit)));
+		if (this.fetchMode === 'manual') {
+			parts.push('poll=manual');
+			parts.push('maxraw=%s'.format(encodeURIComponent(this.manualFetchLines)));
+		}
 		if (this.viewMode === 'detailed') parts.push('view=detailed');
 		location.hash = parts.join('&');
 	},
 
-	applyHash() {
-		if (!location.hash || location.hash.length < 2) return;
+	hashEntries() {
+		if (!location.hash || location.hash.length < 2) return [];
 
 		const entries = location.hash.substring(1).split('&');
+		const result = [];
 		for (let i = 0; i < entries.length; i++) {
 			const kv = entries[i].split('=');
 			if (kv.length !== 2) continue;
-			const key = decodeURIComponent(kv[0]);
-			const val = decodeURIComponent(kv[1]);
-			if (key === 'limit') {
-				const n = parseInt(val, 10);
-				if (isFinite(n) && constants.ROW_LIMIT_OPTIONS.indexOf(n) >= 0) {
-					this.applyRowLimit(n);
-					this.saveRowLimit();
-				}
+			let key;
+			let val;
+			try {
+				key = decodeURIComponent(kv[0]);
+				val = decodeURIComponent(kv[1]);
+			} catch (e) {
 				continue;
 			}
+			result.push({ key: key, val: val });
+		}
+		return result;
+	},
+
+	readFetchMode() {
+		const v = storedValue('fwlive-poll-mode', constants.DEFAULT_FETCH_MODE);
+		return constants.FETCH_MODE_OPTIONS.indexOf(v) >= 0 ? v : constants.DEFAULT_FETCH_MODE;
+	},
+
+	saveFetchMode() {
+		storeValue('fwlive-poll-mode', this.fetchMode);
+	},
+
+	readManualFetchLines() {
+		const raw = storedValue('fwlive-manual-lines', '');
+		const n = Number(raw);
+		return String(n) === raw && constants.MANUAL_FETCH_LINES_OPTIONS.indexOf(n) >= 0 ? n : null;
+	},
+
+	saveManualFetchLines() {
+		storeValue('fwlive-manual-lines', String(this.manualFetchLines));
+	},
+
+	autoFetchLines() {
+		return Math.min(Math.max(this.rowLimit * 4, 100), constants.FETCH_LINES_MAX);
+	},
+
+	snapManualFetchLines(lines) {
+		const options = constants.MANUAL_FETCH_LINES_OPTIONS;
+		let snapped = options[0];
+		for (let i = 0; i < options.length; i++) {
+			if (options[i] > lines) break;
+			snapped = options[i];
+		}
+		return snapped;
+	},
+
+	resolveRpcPreferences() {
+		if (this.rpcPreferencesResolved) return;
+
+		this.applyRowLimit(this.readRowLimit());
+		this.fetchMode = this.readFetchMode();
+		const storedManual = this.readManualFetchLines();
+		this.manualFetchLinesExplicit = storedManual !== null;
+		this.manualFetchLines =
+			storedManual === null ? this.snapManualFetchLines(this.autoFetchLines()) : storedManual;
+
+		let hashLimit = null;
+		let hashMode = null;
+		let hashManual = null;
+		const entries = this.hashEntries();
+		for (let i = 0; i < entries.length; i++) {
+			const key = entries[i].key;
+			const val = entries[i].val;
+			if (key === 'limit') {
+				const n = Number(val);
+				if (String(n) === val && constants.ROW_LIMIT_OPTIONS.indexOf(n) >= 0) hashLimit = n;
+				continue;
+			}
+			if (key === 'poll') {
+				if (constants.FETCH_MODE_OPTIONS.indexOf(val) >= 0) hashMode = val;
+				continue;
+			}
+			if (key === 'maxraw') {
+				const n = Number(val);
+				if (String(n) === val && constants.MANUAL_FETCH_LINES_OPTIONS.indexOf(n) >= 0)
+					hashManual = n;
+			}
+		}
+
+		if (hashLimit !== null) {
+			this.applyRowLimit(hashLimit);
+			this.saveRowLimit();
+		}
+		if (hashMode !== null) {
+			this.fetchMode = hashMode;
+			this.saveFetchMode();
+		}
+		if (hashManual !== null && this.fetchMode === 'manual') {
+			this.manualFetchLines = hashManual;
+			this.manualFetchLinesExplicit = true;
+			this.saveManualFetchLines();
+		}
+		if (storedManual === null && !(hashManual !== null && this.fetchMode === 'manual')) {
+			this.manualFetchLines = this.snapManualFetchLines(this.autoFetchLines());
+		}
+
+		this.rpcPreferencesResolved = true;
+	},
+
+	requestedFetchLines() {
+		this.resolveRpcPreferences();
+		if (this.paused)
+			return this.fetchMode === 'manual' ? this.manualFetchLines : constants.FETCH_LINES_MAX;
+		return this.fetchMode === 'manual' ? this.manualFetchLines : this.autoFetchLines();
+	},
+
+	updateFillingState(beforeLength, reply, requestedLines) {
+		if (!this.paused || this.resumeMerge) {
+			this.fillingBuffer = false;
+			return;
+		}
+
+		const cap = this.ingestCap();
+		const grew = this.entries.length > beforeLength;
+		if (this.entries.length >= cap || !grew) {
+			this.fillingBuffer = false;
+			return;
+		}
+
+		const rawCount =
+			reply &&
+			typeof reply.messages_received === 'number' &&
+			isFinite(reply.messages_received) &&
+			Math.floor(reply.messages_received) === reply.messages_received &&
+			reply.messages_received >= 0
+				? reply.messages_received
+				: null;
+		const effective =
+			this.lastPollEffectiveLimit !== null ? this.lastPollEffectiveLimit : requestedLines;
+		const shortRead = rawCount !== null && rawCount < effective;
+		this.fillingBuffer = !shortRead && (rawCount === null || rawCount >= effective || grew);
+	},
+
+	applyHash() {
+		this.resolveRpcPreferences();
+
+		const entries = this.hashEntries();
+		for (let i = 0; i < entries.length; i++) {
+			const key = entries[i].key;
+			const val = entries[i].val;
+			if (key === 'limit' || key === 'poll' || key === 'maxraw') continue;
 			if (key === 'view') {
 				if (val === 'advanced' || val === 'detailed') this.viewMode = 'detailed';
 				else if (val === 'simple') this.viewMode = 'simple';
@@ -732,6 +877,11 @@ return view.extend({
 
 		const epoch = this.pollEpoch;
 		const resumeMerge = !!this.resumeMerge;
+		const fetchLines = this.requestedFetchLines();
+		const beforeLength = this.entries.length;
+		this.lastPollRequestedLines = fetchLines;
+		this.lastPollReturnedMessages = null;
+		this.lastPollEffectiveLimit = null;
 		const t0 = this.nowMs();
 		let reply;
 		let errored = false;
@@ -739,9 +889,6 @@ return view.extend({
 			/* Raw logd lines, not post-filter rows. Fetch a multiple of the
 			 * display limit so mixed syslog still fills the table; pause
 			 * reads the ring cap so the buffer can catch up. */
-			const fetchLines = this.paused
-				? constants.FETCH_LINES_MAX
-				: Math.min(Math.max(this.rowLimit * 4, 100), constants.FETCH_LINES_MAX);
 			reply = await callFwlivePoll({
 				addresses: [String(fetchLines)]
 			});
@@ -756,12 +903,14 @@ return view.extend({
 
 		if (!reply || typeof reply !== 'object' || Array.isArray(reply)) {
 			this.lastPollError = true;
+			this.fillingBuffer = false;
 			this.notePollRtt(rtt, true);
 			this.updateAdaptiveBanner();
 			return;
 		}
 		if (reply.error) {
 			this.lastPollError = true;
+			this.fillingBuffer = false;
 			this.notePollRtt(rtt, true);
 			this.updateAdaptiveBanner();
 			return;
@@ -769,18 +918,32 @@ return view.extend({
 		const raw = reply.log;
 		if (!Array.isArray(raw)) {
 			this.lastPollError = true;
+			this.fillingBuffer = false;
 			this.notePollRtt(rtt, true);
 			this.updateAdaptiveBanner();
 			return;
 		}
 
 		this.lastPollError = false;
-		this.serverAdaptive = reply.adaptive === 0 || reply.adaptive === false ? 0 : 1;
+		if (reply.adaptive === 0 || reply.adaptive === false) this.serverAdaptive = 0;
+		else if (reply.adaptive === 1 || reply.adaptive === true) this.serverAdaptive = 1;
+		else this.serverAdaptive = undefined;
 		this.serverTruncated = reply.truncated ? 1 : 0;
 		this.serverShed =
 			reply.shed && typeof reply.shed === 'object' && !Array.isArray(reply.shed)
 				? reply.shed
 				: null;
+		this.lastPollReturnedMessages = raw.length;
+		if (
+			this.serverAdaptive === 1 &&
+			typeof reply.effective_limit === 'number' &&
+			isFinite(reply.effective_limit) &&
+			Math.floor(reply.effective_limit) === reply.effective_limit &&
+			reply.effective_limit >= 1 &&
+			reply.effective_limit <= constants.FETCH_LINES_MAX
+		) {
+			this.lastPollEffectiveLimit = reply.effective_limit;
+		}
 
 		this.notePollRtt(rtt, errored);
 		this.updateAdaptiveBanner();
@@ -803,6 +966,7 @@ return view.extend({
 			rowLimit: this.rowLimit,
 			fetchLinesMax: constants.FETCH_LINES_MAX
 		});
+		this.updateFillingState(beforeLength, reply, fetchLines);
 		/* A stale request returns above. Keep this obligation until a current
 		 * request has actually applied the merged batch. */
 		if (resumeMerge) this.resumeMerge = false;
@@ -835,6 +999,7 @@ return view.extend({
 		const bits = [];
 		if (this.paused) {
 			if (this.pauseBufferLoading) bits.push(_('loading buffer'));
+			if (this.fillingBuffer) bits.push(_('buffer filling'));
 		}
 
 		const cap = this.ingestCap();
@@ -954,6 +1119,7 @@ return view.extend({
 	},
 
 	resumePollingAfterVisible() {
+		if (this.coordinatorDisposed) return;
 		this.bumpPollEpoch();
 		this.resetRttHistory();
 		if (!this.pollFn) this.pollFn = this.pollData.bind(this);
@@ -999,18 +1165,55 @@ return view.extend({
 		this.visibilityBound = false;
 	},
 
+	disposeCoordinator() {
+		if (this.coordinatorDisposed) return;
+		this.coordinatorDisposed = true;
+		this.bumpPollEpoch();
+		this.stopPollingForHidden();
+		this.unbindVisibility();
+		this.pollFn = null;
+		this.pollRequestQueued = false;
+		const queued = this.pollRequestQueuedWaiters;
+		this.pollRequestQueuedWaiters = [];
+		for (let i = 0; i < queued.length; i++) queued[i].resolve();
+	},
+
 	updateAdaptiveBanner() {
 		const el = document.getElementById('fwlive-adaptive');
 		if (!el) return;
 		if (!el.style) el.style = { display: '' };
 
-		if (!this.clientBackoffEnabled()) {
-			el.style.display = 'none';
-			el.textContent = '';
-			return;
-		}
-
 		const parts = [];
+		const mode = this.fetchMode === 'manual' ? _('Manual') : _('Auto');
+		if (this.lastPollRequestedLines !== null && this.lastPollReturnedMessages !== null) {
+			if (
+				this.serverAdaptive === 1 &&
+				this.lastPollEffectiveLimit !== null &&
+				this.lastPollEffectiveLimit < this.lastPollRequestedLines
+			) {
+				parts.push(
+					_(
+						'%s · requested up to %d raw lines · server limited fetch to %d · %d firewall messages returned'
+					).format(
+						mode,
+						this.lastPollRequestedLines,
+						this.lastPollEffectiveLimit,
+						this.lastPollReturnedMessages
+					)
+				);
+			} else {
+				parts.push(
+					_('%s · requested up to %d raw lines · %d firewall messages returned').format(
+						mode,
+						this.lastPollRequestedLines,
+						this.lastPollReturnedMessages
+					)
+				);
+			}
+		}
+		if (this.serverAdaptive === undefined) parts.push(_('Server protection state is unknown.'));
+		else if (this.serverAdaptive === 0)
+			parts.push(_('Server adaptive protection is disabled.'));
 		if (this.degradedSampling)
 			parts.push(_('Degraded — sampling (slow poll RTT; cadence reduced).'));
 		if (this.serverShed && this.serverShed.limit)
@@ -1028,6 +1231,22 @@ return view.extend({
 			el.style.display = 'none';
 			el.textContent = '';
 		}
+	},
+
+	fetchModeOptions() {
+		return optionNodes([
+			['auto', _('Auto')],
+			['manual', _('Manual')]
+		]);
+	},
+
+	manualFetchLinesOptions() {
+		const pairs = [];
+		for (let i = 0; i < constants.MANUAL_FETCH_LINES_OPTIONS.length; i++) {
+			const n = constants.MANUAL_FETCH_LINES_OPTIONS[i];
+			pairs.push([String(n), String(n)]);
+		}
+		return optionNodes(pairs);
 	},
 
 	summaryListText(label, values) {
@@ -1284,6 +1503,8 @@ return view.extend({
 		const label = document.getElementById('fwlive-watch-label');
 		const pauseBtn = document.getElementById('fwlive-pause');
 		const sel = document.getElementById('fwlive-limit');
+		const modeSel = document.getElementById('fwlive-fetch-mode');
+		const manualSel = document.getElementById('fwlive-manual-lines');
 		const hostCb = document.getElementById('fwlive-show-hostnames');
 
 		if (map) {
@@ -1297,6 +1518,11 @@ return view.extend({
 		if (label) label.textContent = this.paused ? _('Paused') : _('Watching');
 		if (pauseBtn) pauseBtn.textContent = this.paused ? _('Resume') : _('Pause');
 		if (sel) sel.value = String(this.rowLimit);
+		if (modeSel) modeSel.value = this.fetchMode;
+		if (manualSel) {
+			manualSel.value = String(this.manualFetchLines);
+			manualSel.disabled = this.fetchMode !== 'manual';
+		}
 		if (hostCb) hostCb.checked = !!this.showHostnames;
 		this.updateRowTintUi();
 	},
@@ -1310,6 +1536,29 @@ return view.extend({
 
 		if (this.showHostnames) this.resolveHostnamesForEntries(this.filteredRows());
 		else this.renderRows(true);
+	},
+
+	onFetchModeChange(ev) {
+		const mode = ev && ev.target ? ev.target.value : '';
+		if (constants.FETCH_MODE_OPTIONS.indexOf(mode) < 0) return;
+		this.fetchMode = mode;
+		if (mode === 'manual' && !this.manualFetchLinesExplicit) {
+			this.manualFetchLines = this.snapManualFetchLines(this.autoFetchLines());
+			this.manualFetchLinesExplicit = true;
+		}
+		this.saveFetchMode();
+		if (mode === 'manual') this.saveManualFetchLines();
+		this.updateStreamControlsUi();
+		this.updateHash(this.readFilters());
+	},
+
+	onManualFetchLinesChange(ev) {
+		const n = parseInt(ev && ev.target ? ev.target.value : '', 10);
+		if (constants.MANUAL_FETCH_LINES_OPTIONS.indexOf(n) < 0) return;
+		this.manualFetchLines = n;
+		this.manualFetchLinesExplicit = true;
+		this.saveManualFetchLines();
+		this.updateHash(this.readFilters());
 	},
 
 	onPauseClick() {
@@ -1332,6 +1581,7 @@ return view.extend({
 		}
 
 		if (wasPaused && !this.paused) {
+			this.fillingBuffer = false;
 			this.followLive = true;
 			/* Merge pause buffer with the first live poll — do not replace. */
 			this.resumeMerge = true;
@@ -1761,6 +2011,13 @@ return view.extend({
 		const limitSel = document.getElementById('fwlive-limit');
 		if (limitSel) limitSel.addEventListener('change', this.onRowLimitChange.bind(this));
 
+		const modeSel = document.getElementById('fwlive-fetch-mode');
+		if (modeSel) modeSel.addEventListener('change', this.onFetchModeChange.bind(this));
+
+		const manualSel = document.getElementById('fwlive-manual-lines');
+		if (manualSel)
+			manualSel.addEventListener('change', this.onManualFetchLinesChange.bind(this));
+
 		const hostCb = document.getElementById('fwlive-show-hostnames');
 		if (hostCb) hostCb.addEventListener('change', this.onShowHostnamesChange.bind(this));
 
@@ -1779,7 +2036,7 @@ return view.extend({
 	},
 
 	requestPoll() {
-		if (this.isTabHidden()) return Promise.resolve();
+		if (this.coordinatorDisposed || this.isTabHidden()) return Promise.resolve();
 
 		const waiter = {};
 		const promise = new Promise(function (resolve) {
@@ -1836,7 +2093,7 @@ return view.extend({
 
 		/* If visibility changed while the request was active, retain the
 		 * queued intent until the visible catch-up can start it. */
-		if (this.pollRequestQueued && !this.isTabHidden()) {
+		if (this.pollRequestQueued && !this.coordinatorDisposed && !this.isTabHidden()) {
 			const queued = this.pollRequestQueuedWaiters;
 			this.pollRequestQueuedWaiters = [];
 			this.pollRequestQueued = false;
@@ -1877,6 +2134,9 @@ return view.extend({
 	},
 
 	load() {
+		/* RPC-affecting preferences must precede poll registration and the first
+		 * request; filter widgets still restore in addFooter after render. */
+		this.resolveRpcPreferences();
 		this.bindVisibility();
 		if (!this.pollFn) {
 			this.pollFn = this.pollData.bind(this);
@@ -1887,15 +2147,7 @@ return view.extend({
 				window.addEventListener(
 					'pagehide',
 					function () {
-						this.unbindVisibility();
-						if (this.pollFn) {
-							try {
-								poll.remove(this.pollFn);
-							} catch (e) {
-								/* poll gone */
-							}
-							this.pollFn = null;
-						}
+						this.disposeCoordinator();
 						if (this.filterInputTimer) {
 							clearTimeout(this.filterInputTimer);
 							this.filterInputTimer = null;
@@ -2077,6 +2329,36 @@ return view.extend({
 								this.limitSelectOptions()
 							)
 						]),
+						E('label', { 'class': 'fwlive-display-ctl', 'for': 'fwlive-fetch-mode' }, [
+							_('Fetch budget'),
+							E(
+								'select',
+								{
+									'id': 'fwlive-fetch-mode',
+									'class': 'cbi-input-select',
+									'aria-controls': 'fwlive-manual-lines'
+								},
+								this.fetchModeOptions()
+							)
+						]),
+						E(
+							'label',
+							{ 'class': 'fwlive-display-ctl', 'for': 'fwlive-manual-lines' },
+							[
+								_('Maximum raw lines'),
+								E(
+									'select',
+									{
+										'id': 'fwlive-manual-lines',
+										'class': 'cbi-input-select',
+										'title': _(
+											'Manual still uses server protection and poll cadence'
+										)
+									},
+									this.manualFetchLinesOptions()
+								)
+							]
+						),
 						E('label', { 'class': 'fwlive-display-ctl' }, [
 							E('input', {
 								'id': 'fwlive-row-tint-toggle',
@@ -2238,6 +2520,16 @@ return view.extend({
 							]),
 							E('li', {}, [
 								_(
+									'Fetch budget controls raw log lines per poll. Auto derives from Limit; Manual selects a bounded maximum.'
+								)
+							]),
+							E('li', {}, [
+								_(
+									'Manual still uses server protection and poll cadence; it changes the fetch budget, not the polling interval.'
+								)
+							]),
+							E('li', {}, [
+								_(
 									'For a responsive table on a weak device, keep Limit at 250 rows or below. The weak-device cap affects rendered rows; the buffer can still retain more.'
 								)
 							]),
@@ -2306,7 +2598,6 @@ return view.extend({
 		this.hostnameFailed = new Map();
 		this.resolveGeneration = 0;
 		this.lastPollError = false;
-		this.applyRowLimit(this.readRowLimit());
 		this.applyHash();
 		this.attachHandlers();
 		this.applyRowTintMode();

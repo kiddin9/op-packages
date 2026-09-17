@@ -443,13 +443,14 @@ fwlive_adaptive_is_hot() {
 # Merge adaptive siblings into a JSON object ending with }. A successful
 # filter already carries the exact messages_received count; do not append a
 # duplicate key in that case.
-# Args: json_body shed_flag limit truncated messages_received
+# Args: json_body shed_flag limit truncated messages_received success_flag
 fwlive_adaptive_merge_reply() {
 	_body=$1
 	_shed=$2
 	_limit=$3
 	_trunc=$4
 	_msgs=$5
+	_success=${6:-0}
 	_adapt=1
 	fwlive_adaptive_enabled || _adapt=0
 	case "$_body" in
@@ -457,6 +458,8 @@ fwlive_adaptive_merge_reply() {
 		*) printf '%s' "$_body"; return 0 ;;
 	esac
 	_base=${_body%\}}
+	_effective=
+	[ "$_success" = 1 ] && _effective=",\"effective_limit\":$_limit"
 	_has_msgs=0
 	case "$_body" in
 		*',"messages_received":'*) _has_msgs=1 ;;
@@ -471,18 +474,18 @@ fwlive_adaptive_merge_reply() {
 	fi
 	if [ "$_shed" = 1 ]; then
 		if [ "$_has_msgs" = 1 ]; then
-			printf '%s,"adaptive":1,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-				"$_base" "$_trunc" "$_limit"
+			printf '%s,"adaptive":1%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
+				"$_base" "$_effective" "$_trunc" "$_limit"
 		else
-			printf '%s,"adaptive":1,"messages_received":%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-				"$_base" "$_msgs" "$_trunc" "$_limit"
+			printf '%s,"adaptive":1,"messages_received":%s%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
+				"$_base" "$_msgs" "$_effective" "$_trunc" "$_limit"
 		fi
 	else
 		if [ "$_has_msgs" = 1 ]; then
-			printf '%s,"adaptive":1,"truncated":%s}' "$_base" "$_trunc"
+			printf '%s,"adaptive":1%s,"truncated":%s}' "$_base" "$_effective" "$_trunc"
 		else
-			printf '%s,"adaptive":1,"messages_received":%s,"truncated":%s}' \
-				"$_base" "$_msgs" "$_trunc"
+			printf '%s,"adaptive":1,"messages_received":%s%s,"truncated":%s}' \
+				"$_base" "$_msgs" "$_effective" "$_trunc"
 		fi
 	fi
 }

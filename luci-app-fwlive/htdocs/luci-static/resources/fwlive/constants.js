@@ -12,6 +12,10 @@ return baseclass.extend({
 	APP_VERSION: '0.1.41',
 	ROW_LIMIT_OPTIONS: [25, 50, 100, 250, 500, 1000, 2000],
 	DEFAULT_ROW_LIMIT: 100,
+	FETCH_MODE_OPTIONS: ['auto', 'manual'],
+	MANUAL_FETCH_LINES_OPTIONS: [25, 50, 100, 250, 500, 1000, 2000],
+	DEFAULT_FETCH_MODE: 'auto',
+	DEFAULT_MANUAL_FETCH_LINES: 100,
 	/* Row pass/deny tint: classic green/red default; accessible teal/orange */
 	ROW_TINT_OPTIONS: ['off', 'classic', 'accessible'],
 	DEFAULT_ROW_TINT: 'classic',

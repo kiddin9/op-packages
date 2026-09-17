@@ -440,7 +440,7 @@ fetch_firewall_logs() {
 		# Do not record ~0 ms as cold: failure is not healthy fast processing
 		# and must not clear an existing hot/shed cap (#329 Hermes Q1).
 		out='{"log":[],"error":"log_read_failed"}'
-		fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" 0 0
+		fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" 0 0 0
 		return 0
 	fi
 
@@ -486,7 +486,7 @@ fetch_firewall_logs() {
 	_trunc=0
 	[ "$shed_flag" = 1 ] && _trunc=1
 	[ "$lines" -lt "$requested" ] && _trunc=1
-	fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" "$_trunc" 0
+	fwlive_adaptive_merge_reply "$out" "$shed_flag" "$lines" "$_trunc" 0 "$_filter_ok"
 }
 
 poll_logs() {
