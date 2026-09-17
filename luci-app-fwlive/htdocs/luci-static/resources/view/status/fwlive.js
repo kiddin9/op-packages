@@ -19,6 +19,7 @@
 'require fwlive.buffer as buffer';
 'require fwlive.hostname as hostname';
 'require fwlive.proto as proto';
+'require fwlive.poll-coordinator as pollCoordinator';
 
 const callFwlivePoll = rpc.declare({
 	object: 'fwlive',
@@ -101,21 +102,13 @@ return view.extend({
 	entries: [],
 	sessionSeen: null,
 	pauseBufferLoading: false,
-	paused: false,
+	/* Freezes row rendering while polling, health, and cadence updates continue. */
+	tablePaused: false,
 	/* One-shot: first live poll after unpause merges instead of replacing. */
 	resumeMerge: false,
-	pollFn: null,
-	pollDataInFlight: false,
-	/* Every refresh trigger goes through this coordinator.  A request made
-	 * while one is active is coalesced into one follow-up, never overlapped. */
-	pollRequestPromise: null,
-	pollRequestQueued: false,
-	pollRequestWaiters: [],
-	pollRequestQueuedWaiters: [],
-	coordinatorDisposed: false,
+	pollCoordinator: null,
+	pagehideHandler: null,
 	/* Layer 2 — visibility / RTT cadence / shed surfacing. */
-	pollEpoch: 0,
-	pollCadenceSec: 1,
 	rttStreakKind: null,
 	rttStreakCount: 0,
 	serverAdaptive: undefined,
@@ -132,7 +125,6 @@ return view.extend({
 	summaryRowsShown: false,
 	summaryData: null,
 	resolveLoadShed: false,
-	visibilityBound: false,
 	renderRaf: 0,
 	filterInputTimer: null,
 	messageLayout: 'wrap',
@@ -141,7 +133,8 @@ return view.extend({
 	floodSuppressed: false,
 	pendingForceRender: false,
 	pendingRenderEpoch: null,
-	lastPollNewEvents: 0,
+	/* Session-new IDs from the last applied batch; this is not buffer growth. */
+	lastBatchNewIdCount: 0,
 	showHostnames: false,
 	rowTint: constants.DEFAULT_ROW_TINT,
 	/* Last non-off palette so toggling tint back on restores Classic/Accessible. */
@@ -320,13 +313,13 @@ return view.extend({
 
 	requestedFetchLines() {
 		this.resolveRpcPreferences();
-		if (this.paused)
+		if (this.tablePaused)
 			return this.fetchMode === 'manual' ? this.manualFetchLines : constants.FETCH_LINES_MAX;
 		return this.fetchMode === 'manual' ? this.manualFetchLines : this.autoFetchLines();
 	},
 
 	updateFillingState(beforeLength, reply, requestedLines) {
-		if (!this.paused || this.resumeMerge) {
+		if (!this.tablePaused || this.resumeMerge) {
 			this.fillingBuffer = false;
 			return;
 		}
@@ -875,7 +868,7 @@ return view.extend({
 	async fetchEntries() {
 		if (!this.sessionSeen) this.sessionSeen = new Set();
 
-		const epoch = this.pollEpoch;
+		const epoch = this.currentPollEpoch();
 		const resumeMerge = !!this.resumeMerge;
 		const fetchLines = this.requestedFetchLines();
 		const beforeLength = this.entries.length;
@@ -897,7 +890,8 @@ return view.extend({
 			reply = null;
 		}
 
-		if (epoch !== this.pollEpoch) return;
+		/* Visibility changes and disposal invalidate all application of this reply. */
+		if (epoch !== this.currentPollEpoch()) return;
 
 		const rtt = this.nowMs() - t0;
 
@@ -957,11 +951,12 @@ return view.extend({
 		}
 
 		const batch = this.normalizePollBatch(raw);
-		this.lastPollNewEvents = batch.pollNew;
+		this.lastBatchNewIdCount = batch.pollNew;
 
 		/* Oldest-first ring buffer; filteredRows() reverses for newest-first display. */
 		this.entries = buffer.applyFetchedEntries(this.entries, batch.rows, {
-			paused: this.paused,
+			/* buffer.js retains its public paused option; this is the view's table state. */
+			paused: this.tablePaused,
 			resumeMerge: resumeMerge,
 			rowLimit: this.rowLimit,
 			fetchLinesMax: constants.FETCH_LINES_MAX
@@ -986,7 +981,7 @@ return view.extend({
 	},
 
 	ingestCap() {
-		return buffer.ingestCap(this.paused, this.rowLimit, constants.FETCH_LINES_MAX);
+		return buffer.ingestCap(this.tablePaused, this.rowLimit, constants.FETCH_LINES_MAX);
 	},
 
 	displayRowCap() {
@@ -997,7 +992,7 @@ return view.extend({
 
 	statusSuffix() {
 		const bits = [];
-		if (this.paused) {
+		if (this.tablePaused) {
 			if (this.pauseBufferLoading) bits.push(_('loading buffer'));
 			if (this.fillingBuffer) bits.push(_('buffer filling'));
 		}
@@ -1015,7 +1010,7 @@ return view.extend({
 		if (this.serverTruncated && this.serverAdaptive !== 0) bits.push(_('truncated'));
 		if (this.resolveLoadShed && this.serverAdaptive !== 0)
 			bits.push(_('resolve paused (load)'));
-		if (!this.paused && !this.followLive)
+		if (!this.tablePaused && !this.followLive)
 			bits.push(_('scroll frozen — scroll to top to follow live'));
 		return bits.length ? ' — ' + bits.join(', ') : '';
 	},
@@ -1050,9 +1045,32 @@ return view.extend({
 		this.rttStreakCount = 0;
 	},
 
-	bumpPollEpoch() {
-		this.pollEpoch = (this.pollEpoch || 0) + 1;
-		return this.pollEpoch;
+	ensurePollCoordinator() {
+		if (this.pollCoordinator) return this.pollCoordinator;
+
+		const visibility = {
+			add: function (handler) {
+				if (typeof document !== 'undefined' && document.addEventListener)
+					document.addEventListener('visibilitychange', handler);
+			},
+			remove: function (handler) {
+				if (typeof document !== 'undefined' && document.removeEventListener)
+					document.removeEventListener('visibilitychange', handler);
+			}
+		};
+		this.pollCoordinator = pollCoordinator.create({
+			poll: poll,
+			visibility: visibility,
+			isHidden: this.isTabHidden.bind(this),
+			run: this.runPollRequest.bind(this),
+			initialCadence: constants.POLL_CADENCE_FAST_S,
+			onVisible: this.resetRttHistory.bind(this)
+		});
+		return this.pollCoordinator;
+	},
+
+	currentPollEpoch() {
+		return this.ensurePollCoordinator().getState().epoch;
 	},
 
 	clientBackoffEnabled() {
@@ -1060,26 +1078,7 @@ return view.extend({
 	},
 
 	setPollCadence(sec) {
-		const next = sec > 0 ? sec : constants.POLL_CADENCE_FAST_S;
-		if (!this.pollFn) {
-			this.pollCadenceSec = next;
-			return;
-		}
-		if (this.isTabHidden()) {
-			this.pollCadenceSec = next;
-			return;
-		}
-		try {
-			poll.remove(this.pollFn);
-		} catch (e) {
-			/* poll gone */
-		}
-		this.pollCadenceSec = next;
-		try {
-			poll.add(this.pollFn, next);
-		} catch (e) {
-			/* poll gone */
-		}
+		this.ensurePollCoordinator().setCadence(sec);
 	},
 
 	notePollRtt(ms, errored) {
@@ -1089,8 +1088,7 @@ return view.extend({
 			/* Drop any partial streak so a slow sample from before the
 			 * adaptive:0 window cannot trip degraded on re-enable. */
 			this.resetRttHistory();
-			if (this.pollCadenceSec !== constants.POLL_CADENCE_FAST_S)
-				this.setPollCadence(constants.POLL_CADENCE_FAST_S);
+			this.setPollCadence(constants.POLL_CADENCE_FAST_S);
 			return;
 		}
 
@@ -1105,77 +1103,22 @@ return view.extend({
 
 		const cadence = this.cadenceForKind(kind);
 		this.degradedSampling = cadence === constants.POLL_CADENCE_SLOW_S;
-		if (cadence !== this.pollCadenceSec) this.setPollCadence(cadence);
+		this.setPollCadence(cadence);
 		if (kind === 'fast' && this.summaryMode) this.leaveSummaryMode();
 	},
 
-	stopPollingForHidden() {
-		if (!this.pollFn) return;
-		try {
-			poll.remove(this.pollFn);
-		} catch (e) {
-			/* poll gone */
+	disposeView() {
+		if (this.pollCoordinator) this.pollCoordinator.dispose();
+		this.resolveGeneration = (this.resolveGeneration || 0) + 1;
+		this.resolveInFlight = false;
+		if (this.pagehideHandler) {
+			window.removeEventListener('pagehide', this.pagehideHandler);
+			this.pagehideHandler = null;
 		}
-	},
-
-	resumePollingAfterVisible() {
-		if (this.coordinatorDisposed) return;
-		this.bumpPollEpoch();
-		this.resetRttHistory();
-		if (!this.pollFn) this.pollFn = this.pollData.bind(this);
-		this.setPollCadence(this.pollCadenceSec || constants.POLL_CADENCE_FAST_S);
-		/* An old hidden-epoch request may still be on the wire.  Queue the
-		 * catch-up behind it; stale-reply checks discard its application, while
-		 * the coordinator prevents a second server request from overlapping. */
-		this.requestPoll();
-	},
-
-	onVisibilityChange() {
-		if (this.isTabHidden()) {
-			this.stopPollingForHidden();
-			this.bumpPollEpoch();
-			return;
+		if (this.filterInputTimer) {
+			clearTimeout(this.filterInputTimer);
+			this.filterInputTimer = null;
 		}
-		this.resumePollingAfterVisible();
-	},
-
-	bindVisibility() {
-		if (this.visibilityBound) return;
-		if (typeof document === 'undefined' || !document.addEventListener) return;
-		this.visibilityBound = true;
-		this.visibilityHandler = function () {
-			this.onVisibilityChange();
-		}.bind(this);
-		document.addEventListener('visibilitychange', this.visibilityHandler);
-	},
-
-	unbindVisibility() {
-		if (
-			typeof document !== 'undefined' &&
-			document.removeEventListener &&
-			this.visibilityHandler
-		) {
-			try {
-				document.removeEventListener('visibilitychange', this.visibilityHandler);
-			} catch (e) {
-				/* document gone */
-			}
-		}
-		this.visibilityHandler = null;
-		this.visibilityBound = false;
-	},
-
-	disposeCoordinator() {
-		if (this.coordinatorDisposed) return;
-		this.coordinatorDisposed = true;
-		this.bumpPollEpoch();
-		this.stopPollingForHidden();
-		this.unbindVisibility();
-		this.pollFn = null;
-		this.pollRequestQueued = false;
-		const queued = this.pollRequestQueuedWaiters;
-		this.pollRequestQueuedWaiters = [];
-		for (let i = 0; i < queued.length; i++) queued[i].resolve();
 	},
 
 	updateAdaptiveBanner() {
@@ -1338,7 +1281,7 @@ return view.extend({
 
 	scheduleRenderRows(force) {
 		const doForce = !!force;
-		const epoch = this.pollEpoch;
+		const epoch = this.currentPollEpoch();
 		if (typeof requestAnimationFrame !== 'function') {
 			this.renderRows(doForce);
 			return;
@@ -1355,10 +1298,10 @@ return view.extend({
 				const pendingEpoch = this.pendingRenderEpoch;
 				this.pendingForceRender = false;
 				this.pendingRenderEpoch = null;
-				if (epoch !== this.pollEpoch) {
+				if (epoch !== this.currentPollEpoch()) {
 					/* A newer epoch may have requested a render while this frame was
 					 * queued. Drop stale paint and requeue only that current request. */
-					if (pendingEpoch === this.pollEpoch) this.scheduleRenderRows(f);
+					if (pendingEpoch === this.currentPollEpoch()) this.scheduleRenderRows(f);
 					return;
 				}
 				this.renderRows(f);
@@ -1411,7 +1354,7 @@ return view.extend({
 		 */
 		if (count !== this.lastRenderedRowCount) return 1;
 
-		return Math.max(1, this.lastPollNewEvents || 1);
+		return Math.max(1, this.lastBatchNewIdCount || 1);
 	},
 
 	updateFloodBanner() {
@@ -1444,10 +1387,10 @@ return view.extend({
 		 * device's rendered-row cap is called out separately in statusSuffix(). */
 		const limit = this.rowLimit;
 		const suffix = this.statusSuffix();
-		/* While paused the buffer can grow past the display limit — count matches
+		/* While the table is paused the buffer can grow past the display limit — count matches
 		 * over the full buffer so "matching" is not capped at visibleRows. */
 		let shown = matchCount;
-		if (this.paused) {
+		if (this.tablePaused) {
 			const filters = this.readFilters();
 			shown = this.entries.filter((row) => log.matchesFilter(row, filters)).length;
 		}
@@ -1475,7 +1418,9 @@ return view.extend({
 			return;
 		}
 
-		status.className = this.paused ? 'fwlive-status fwlive-status-paused' : 'fwlive-status';
+		status.className = this.tablePaused
+			? 'fwlive-status fwlive-status-paused'
+			: 'fwlive-status';
 		status.textContent = this.compactCountText(matchCount);
 		this.updateAdaptiveBanner();
 	},
@@ -1494,7 +1439,7 @@ return view.extend({
 		const n =
 			constants.ROW_LIMIT_OPTIONS.indexOf(limit) >= 0 ? limit : constants.DEFAULT_ROW_LIMIT;
 		this.rowLimit = n;
-		if (!this.paused && this.entries.length > n) this.entries = this.entries.slice(-n);
+		if (!this.tablePaused && this.entries.length > n) this.entries = this.entries.slice(-n);
 	},
 
 	updateStreamControlsUi() {
@@ -1508,15 +1453,15 @@ return view.extend({
 		const hostCb = document.getElementById('fwlive-show-hostnames');
 
 		if (map) {
-			if (this.paused) map.classList.add('fwlive-watch-paused');
+			if (this.tablePaused) map.classList.add('fwlive-watch-paused');
 			else map.classList.remove('fwlive-watch-paused');
 		}
 		if (dot) {
-			if (this.paused) dot.classList.remove('fwlive-dot-on');
+			if (this.tablePaused) dot.classList.remove('fwlive-dot-on');
 			else dot.classList.add('fwlive-dot-on');
 		}
-		if (label) label.textContent = this.paused ? _('Paused') : _('Watching');
-		if (pauseBtn) pauseBtn.textContent = this.paused ? _('Resume') : _('Pause');
+		if (label) label.textContent = this.tablePaused ? _('Paused') : _('Watching');
+		if (pauseBtn) pauseBtn.textContent = this.tablePaused ? _('Resume') : _('Pause');
 		if (sel) sel.value = String(this.rowLimit);
 		if (modeSel) modeSel.value = this.fetchMode;
 		if (manualSel) {
@@ -1562,11 +1507,11 @@ return view.extend({
 	},
 
 	onPauseClick() {
-		const wasPaused = this.paused;
-		this.paused = !this.paused;
+		const wasPaused = this.tablePaused;
+		this.tablePaused = !this.tablePaused;
 		this.updateStreamControlsUi();
 
-		if (!wasPaused && this.paused) {
+		if (!wasPaused && this.tablePaused) {
 			this.pauseBufferLoading = true;
 			this.updateStatus();
 			this.requestPoll()
@@ -1574,22 +1519,23 @@ return view.extend({
 				.finally(
 					function () {
 						this.pauseBufferLoading = false;
+						if (this.ensurePollCoordinator().getState().disposed) return;
 						this.updateStatus();
 					}.bind(this)
 				);
 			return;
 		}
 
-		if (wasPaused && !this.paused) {
+		if (wasPaused && !this.tablePaused) {
 			this.fillingBuffer = false;
 			this.followLive = true;
 			/* Merge pause buffer with the first live poll — do not replace. */
 			this.resumeMerge = true;
-			const epoch = this.pollEpoch;
+			const epoch = this.currentPollEpoch();
 			this.requestPoll()
 				.then(() => {
 					/* A hide/show bump abandons this epoch; the catch-up poll paints. */
-					if (epoch === this.pollEpoch) this.renderRows(true);
+					if (epoch === this.currentPollEpoch()) this.renderRows(true);
 				})
 				.catch(function () {});
 		}
@@ -1606,14 +1552,14 @@ return view.extend({
 		this.renderBucket = constants.RENDER_CAP_PER_SEC;
 		this.floodSuppressed = false;
 		this.pendingForceRender = true;
-		if (!this.paused) this.renderRows(true);
+		if (!this.tablePaused) this.renderRows(true);
 		else this.updateStatus();
-		const epoch = this.pollEpoch;
+		const epoch = this.currentPollEpoch();
 		this.requestPoll()
 			.then(() => {
 				/* A hide/show bump abandons this epoch; the catch-up poll paints. */
-				if (epoch !== this.pollEpoch) return;
-				if (this.paused) this.updateStatus();
+				if (epoch !== this.currentPollEpoch()) return;
+				if (this.tablePaused) this.updateStatus();
 				else this.renderRows(true);
 			})
 			.finally(() => {
@@ -1867,7 +1813,7 @@ return view.extend({
 		this.messageLayout = next;
 		this.saveMessageLayout();
 		this.updateMessageLayoutUi();
-		if (this.paused) this.updateStatus();
+		if (this.tablePaused) this.updateStatus();
 		else this.renderRows(true);
 	},
 
@@ -1927,7 +1873,7 @@ return view.extend({
 		);
 
 		if (scroll) {
-			if (!this.paused && this.followLive) scroll.scrollTop = 0;
+			if (!this.tablePaused && this.followLive) scroll.scrollTop = 0;
 			else scroll.scrollTop = prevScroll;
 		}
 
@@ -1964,7 +1910,7 @@ return view.extend({
 
 	onScrollArea(ev) {
 		const scroll = ev && ev.target;
-		if (!scroll || this.paused) return;
+		if (!scroll || this.tablePaused) return;
 
 		this.followLive = scroll.scrollTop < 8;
 		this.updateStatus();
@@ -2031,74 +1977,8 @@ return view.extend({
 		if (summaryRows) summaryRows.addEventListener('click', this.onSummaryRowsToggle.bind(this));
 	},
 
-	async pollData() {
-		return this.requestPoll();
-	},
-
 	requestPoll() {
-		if (this.coordinatorDisposed || this.isTabHidden()) return Promise.resolve();
-
-		const waiter = {};
-		const promise = new Promise(function (resolve) {
-			waiter.resolve = resolve;
-		});
-
-		if (this.pollRequestPromise) {
-			/* Keep one pending refresh intent.  The latest view state is read when
-			 * that follow-up begins, so Pause/Resume/Limit changes coalesce safely. */
-			this.pollRequestQueued = true;
-			this.pollRequestQueuedWaiters.push(waiter);
-			return promise;
-		}
-
-		if (this.pollRequestQueued) {
-			this.pollRequestQueuedWaiters.push(waiter);
-			this.startPollRequest(this.pollRequestQueuedWaiters);
-			this.pollRequestQueuedWaiters = [];
-			this.pollRequestQueued = false;
-			return promise;
-		}
-
-		this.startPollRequest([waiter]);
-		return promise;
-	},
-
-	startPollRequest(waiters) {
-		const epoch = this.pollEpoch;
-		this.pollDataInFlight = true;
-		const run = this.runPollRequest(epoch);
-		this.pollRequestPromise = run;
-		this.pollRequestWaiters = waiters;
-		run.then(
-			function (value) {
-				this.finishPollRequest(run, value);
-			}.bind(this),
-			function () {
-				/* runPollRequest normally absorbs local failures so the poll loop
-				 * remains alive; settle waiters even if a future change rejects. */
-				this.finishPollRequest(run);
-			}.bind(this)
-		);
-	},
-
-	finishPollRequest(run, value) {
-		if (this.pollRequestPromise !== run) return;
-		const waiters = this.pollRequestWaiters;
-		this.pollRequestWaiters = [];
-		this.pollRequestPromise = null;
-		this.pollDataInFlight = false;
-		for (let i = 0; i < waiters.length; i++) {
-			waiters[i].resolve(value);
-		}
-
-		/* If visibility changed while the request was active, retain the
-		 * queued intent until the visible catch-up can start it. */
-		if (this.pollRequestQueued && !this.coordinatorDisposed && !this.isTabHidden()) {
-			const queued = this.pollRequestQueuedWaiters;
-			this.pollRequestQueuedWaiters = [];
-			this.pollRequestQueued = false;
-			this.startPollRequest(queued);
-		}
+		return this.ensurePollCoordinator().requestPoll();
 	},
 
 	async runPollRequest(epoch) {
@@ -2109,15 +1989,15 @@ return view.extend({
 				/* fetchEntries already accounts the poll RTT for every rpc
 				 * outcome; a throw here is a local normalize/buffer bug, not
 				 * network slowness, so count nothing further. */
-				this.lastPollError = true;
+				if (epoch === this.currentPollEpoch()) this.lastPollError = true;
 			}
 
-			if (epoch !== this.pollEpoch) return;
+			if (epoch !== this.currentPollEpoch()) return;
 
 			/* Pause freezes row rendering but polling remains active for health and
 			 * cadence state; summary mode can therefore appear while rows are paused
 			 * and stays behind the explicit Show rows control. */
-			if (this.paused) this.updateStatus();
+			if (this.tablePaused) this.updateStatus();
 			else if (this.summaryMode) this.renderSummary();
 			else this.scheduleRenderRows(!!this.pendingForceRender);
 
@@ -2129,7 +2009,7 @@ return view.extend({
 		} catch (e) {
 			/* Keep the coordinator promise settling so a queued refresh cannot
 			 * be stranded by an unexpected local rendering failure. */
-			this.lastPollError = true;
+			if (epoch === this.currentPollEpoch()) this.lastPollError = true;
 		}
 	},
 
@@ -2137,25 +2017,17 @@ return view.extend({
 		/* RPC-affecting preferences must precede poll registration and the first
 		 * request; filter widgets still restore in addFooter after render. */
 		this.resolveRpcPreferences();
-		this.bindVisibility();
-		if (!this.pollFn) {
-			this.pollFn = this.pollData.bind(this);
-			this.pollCadenceSec = constants.POLL_CADENCE_FAST_S;
-			if (!this.isTabHidden()) poll.add(this.pollFn, this.pollCadenceSec);
-			/* Best-effort teardown when leaving the page (LuCI SPA may full-reload). */
-			if (typeof window !== 'undefined' && window.addEventListener) {
-				window.addEventListener(
-					'pagehide',
-					function () {
-						this.disposeCoordinator();
-						if (this.filterInputTimer) {
-							clearTimeout(this.filterInputTimer);
-							this.filterInputTimer = null;
-						}
-					}.bind(this)
-				);
-			}
+		const coordinator = this.ensurePollCoordinator();
+		if (coordinator.getState().disposed) return Promise.resolve();
+		if (!this.pagehideHandler && typeof window !== 'undefined' && window.addEventListener) {
+			this.pagehideHandler = function (ev) {
+				/* A persisted pagehide enters BFCache; keep this view resumable. */
+				if (ev && ev.persisted) return;
+				this.disposeView();
+			}.bind(this);
+			window.addEventListener('pagehide', this.pagehideHandler);
 		}
+		coordinator.startPolling();
 		return Promise.all([this.loadRulesMap(), this.loadLoggingStatus()]).then(() =>
 			this.requestPoll()
 		);

@@ -17,6 +17,7 @@ LuCI **Firewall Live View** — client-side JS view polling `ubus fwlive poll` (
 | `htdocs/luci-static/resources/fwlive/logging.js` | Logging toolbar and empty-state DOM renderers |
 | `htdocs/luci-static/resources/fwlive/table.js` | Table thead/rows DOM renderer (`renderThead`, `renderRows`) |
 | `htdocs/luci-static/resources/fwlive/buffer.js` | Ring-buffer apply/merge helpers (pause ingest + resume merge) |
+| `htdocs/luci-static/resources/fwlive/poll-coordinator.js` | Request coalescing, visibility, cadence, and disposal |
 | `htdocs/luci-static/resources/fwlive/hostname.js` | Hostname cache LRU + failure TTL helpers |
 | `root/usr/share/luci/menu.d/*.json` | Menu entry (`admin/status/fwlive`) |
 | `root/usr/share/rpcd/acl.d/*.json` | ubus ACL (read + write for logging enable/disable) |
