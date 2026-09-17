@@ -1,0 +1,9 @@
+{
+	"admin/dashboard": {
+		"depends": {
+			"uci": {
+				"disabled_by_quickstart": true
+			}
+		}
+	}
+}
