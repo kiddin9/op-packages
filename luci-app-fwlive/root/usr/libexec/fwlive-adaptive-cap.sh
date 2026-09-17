@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com>
 #
-# Layer 1 adaptive poll cap (#306). Sourced by rpcd/fwlive.
+# Layer 1 adaptive poll cap. Sourced by rpcd/fwlive.
 # Always on unless test/triage override (no UCI / no product config):
 #   FWLIVE_ADAPTIVE=0|false|off|no
 #   or sentinel ${FWLIVE_ADAPTIVE_OFF_FILE:-<state-dir>/fwlive-adaptive-off}
@@ -18,7 +18,7 @@
 # flock, lock busy, or corrupt state. Lock-busy ⇒ unlocked last-writer-wins is
 # acceptable (state stays one valid JSON line; ordering is not guaranteed).
 # Failed ubus log.read must NOT call record() — a ~0 ms failure is not "cold"
-# health and must not clear an existing hot/shed cap (#329 Hermes Q1).
+# health and must not clear an existing hot/shed cap.
 # Outside the measured duration interval: plan (pre), record/merge (post).
 # messages_received is supplied by the filter-side jsonfilter enumeration;
 # failed reads still use 0 without scanning the response in ash.
