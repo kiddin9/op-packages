@@ -21,3 +21,35 @@
          entry({"admin", "network_guide"}, call("networkguide_index"), _("NetworkGuide"), 2)
          entry({"admin", "network_guide", "pages"}, call("quickstart_index", {index={"admin", "network_guide", "pages"}})).leaf = true
          if uci:get("quickstart", "main", "wifi_menu") == "1" then
+diff --git a/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json b/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
+deleted file mode 100644
+index d1667bb..0000000
+--- a/luci-app-quickstart/root/usr/share/luci/menu.d/luci-app-quickstart.json
++++ /dev/null
+@@ -1,10 +0,0 @@
+-{
+-	"admin/quickstart/*": {
+-		"title": "QuickStart",
+-		"order": 1,
+-		"action": {
+-			"type": "template",
+-			"path": "quickstart/home"
+-		}
+-	}
+-}
+\ No newline at end of file
+diff --git a/luci-app-quickstart/root/usr/share/luci/menu.d/zz-luci-app-quickstart.json b/luci-app-quickstart/root/usr/share/luci/menu.d/zz-luci-app-quickstart.json
+new file mode 100644
+index 0000000..f97d1f1
+--- /dev/null
++++ b/luci-app-quickstart/root/usr/share/luci/menu.d/zz-luci-app-quickstart.json
+@@ -0,0 +1,9 @@
++{
++	"admin/dashboard": {
++		"depends": {
++			"uci": {
++				"disabled_by_quickstart": true
++			}
++		}
++	}
++}
