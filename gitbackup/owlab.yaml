@@ -1,0 +1,29 @@
+# This file exists only so `owlab build` can find package/gitbackup/Makefile --
+# `owlab build` runs the OpenWrt SDK, which is NOT how gitbackup is actually released
+# (see /owfeed.yml and /tools/stage.sh: `owfeed build` is the primary, fast path for a
+# noarch package with nothing to compile). This one stays because the Makefile is still
+# a valid, if slower, way for anyone to build the package themselves.
+#
+# owlab's build command looks for an OpenWrt package Makefile in its config
+# directory and that directory's IMMEDIATE children only (read from source:
+# owfeed/owlab/cmd/owlab/build.go, findPackage) -- it does not walk two
+# levels down from a repo root the way the real OpenWrt SDK's own feed
+# scanner does. The repository's own top-level owlab.yaml is what
+# `owlab up`/`sync`/`test`/`exec` use for the live router; owlab.yaml
+# discovery walks upward from the working directory and stops at the FIRST
+# file it finds, so this one only has to exist here to be picked up before
+# that search ever reaches the repository root. It repeats the release the
+# top-level file tests against rather than deferring to it, because there is
+# no way to defer: discovery does not chain two config files together.
+#
+#   cd package/gitbackup && owlab build --release 25.12.4
+
+version: 1
+
+project:
+  name: gitbackup
+
+routers:
+  - id: owrt2512
+    release: "25.12.4"
+    ports: { http: 8029, ssh: 2230 }

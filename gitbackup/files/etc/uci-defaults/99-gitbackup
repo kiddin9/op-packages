@@ -1,0 +1,18 @@
+# shellcheck shell=sh
+#
+# gitbackup: create the secrets directory once, at first boot after install.
+#
+# Not done in postinst -- postinst runs while an image is being built, where
+# there may be neither entropy nor a real, writable /etc yet, and the spec is
+# explicit that installing the package must not run a backup or generate keys.
+#
+# /etc/init.d/boot runs every /etc/uci-defaults/* script as
+# `( . "./$(basename $file)" )` and deletes it afterwards only if that exited
+# 0, so this file has no shebang and is not executable -- same convention as
+# base-files' own uci-defaults scripts (verified in the local checkout).
+
+[ -d /etc/gitbackup ] || mkdir -m 0700 /etc/gitbackup
+chown root:root /etc/gitbackup
+chmod 0700 /etc/gitbackup
+
+exit 0

@@ -1,0 +1,48 @@
+{
+	"admin/system/gitbackup": {
+		"title": "Git Backup",
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-gitbackup" ],
+			"uci": { "gitbackup": true }
+		}
+	},
+
+	"admin/system/gitbackup/overview": {
+		"title": "Overview",
+		"order": 1,
+		"action": {
+			"type": "view",
+			"path": "gitbackup/overview"
+		}
+	},
+
+	"admin/system/gitbackup/settings": {
+		"title": "Settings",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "gitbackup/settings"
+		}
+	},
+
+	"admin/system/gitbackup/paths": {
+		"title": "Paths",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "gitbackup/paths"
+		}
+	},
+
+	"admin/system/gitbackup/history": {
+		"title": "History / Restore",
+		"order": 4,
+		"action": {
+			"type": "view",
+			"path": "gitbackup/history"
+		}
+	}
+}

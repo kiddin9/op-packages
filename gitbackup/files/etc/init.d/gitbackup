@@ -1,0 +1,138 @@
+#!/bin/sh /etc/rc.common
+# shellcheck shell=sh
+# shellcheck disable=SC2034  # START/USE_PROCD/EXTRA_COMMANDS are read by rc.common, not this file
+#
+# gitbackup runs from cron, not as a daemon, so there is no process for
+# start_service to supervise. This file's job is: (1) apply
+# gitbackup.main.schedule to /etc/crontabs/root and make crond pick it up
+# (reload_service, ticket 06), and (2) watch the packages actually in the
+# backup set for config.change and turn a burst of edits into one debounced
+# `gitbackup run` (service_triggers/config_change, spec R106/R107).
+#
+# GB_SHARE/GB_STATE_DIR/GB_BIN are overridable only so tests/run.sh can
+# source this file directly (rc.common's own dispatch is not exercised by
+# the unit tests -- see this file's own functions being called straight
+# from a test body) against a tree, state directory and gitbackup binary
+# that are not the router's real ones; the router never sets any of them.
+
+GB_SHARE="${GB_SHARE:-/usr/share/gitbackup}"
+GB_STATE_DIR="${GB_STATE_DIR:-/var/run/gitbackup}"
+GB_BIN="${GB_BIN:-/usr/sbin/gitbackup}"
+
+# shellcheck disable=SC1091  # GB_SHARE is a runtime path, not resolvable statically
+. "$GB_SHARE/lib.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/device.sh"
+# shellcheck disable=SC1091
+. "$GB_SHARE/schedule.sh"
+
+START=60
+USE_PROCD=1
+
+# config_change is not one of rc.common's built-in actions (start/stop/
+# reload/...); EXTRA_COMMANDS is rc.common's own mechanism for adding one
+# (it appends this to ALL_COMMANDS right after sourcing this file -- see
+# /etc/rc.common on the stand), which is what lets procd's run_script
+# target `/etc/init.d/gitbackup config_change` actually dispatch anywhere.
+EXTRA_COMMANDS="config_change"
+EXTRA_HELP="	config_change	Internal: debounced trigger used by service_triggers, not for interactive use"
+
+start_service() {
+	reload_service
+}
+
+stop_service() {
+	:
+}
+
+# reload_service -- (re)applies gitbackup.main.schedule/cron_expr to the
+# crontab and makes crond pick it up. Runs on `/etc/init.d/gitbackup
+# reload|restart|start` and, through procd_add_reload_trigger below,
+# whenever gitbackup's own UCI config changes (e.g. a Settings save in
+# LuCI) -- so flipping schedule from daily to weekly takes effect without a
+# manual reload.
+reload_service() {
+	gb_cron_apply
+}
+
+# _gb_backed_up_packages -- private. The set of UCI packages the config-
+# change trigger below watches: every /etc/config/<pkg> that is actually
+# part of the backup set, per `sysupgrade -l` (spec: "список берётся из
+# sysupgrade -l, фильтруется до /etc/config/*"), minus gitbackup's own
+# config -- that one already gets procd_add_reload_trigger's ordinary
+# `reload` below, which re-applies the schedule, not a debounced backup
+# run; watching it a second time here would just fire both for the same
+# edit.
+_gb_backed_up_packages() {
+	sysupgrade -l 2>/dev/null | sed -n 's#^/etc/config/##p' | sort -u | grep -v '^gitbackup$'
+}
+
+# config_change -- procd's run_script target for a backed-up package's
+# config.change event, registered once per package in service_triggers
+# below. Does not run a backup on the spot: a save in LuCI can touch
+# several packages (e.g. network + firewall together) or the same one
+# repeatedly, and each touch fires this again -- so this only (re)arms a
+# single delayed `gitbackup run` after $debounce seconds, cancelling
+# whatever the previous call armed first. A burst of edits therefore
+# collapses into exactly one run (spec R106/R107), not one per edit.
+#
+# busybox ash's arithmetic (and `sleep`) only does whole seconds --
+# `sleep 0.3` is "invalid number", measured on the stand -- hence the
+# integer-only guard on $debounce below rather than trusting it unchecked.
+#
+# Killing the previous timer's PID only stops that subshell; if it had
+# already progressed past `sleep` (a race that needs the previous debounce
+# window to have fully elapsed a moment before this call, and is why a
+# closer-together burst is exactly what this exists to collapse), the
+# short-lived orphaned `sleep` left behind exits on its own and does
+# nothing further -- rm and run only happen after it, in the same
+# subshell, and that subshell is what got killed.
+config_change() {
+	_gb_debounce=$(gb_uci_get gitbackup.main.debounce 60)
+	case "$_gb_debounce" in ''|*[!0-9]*) _gb_debounce=60 ;; esac
+
+	mkdir -p "$GB_STATE_DIR"
+	_gb_pidfile="$GB_STATE_DIR/debounce.pid"
+
+	# Review finding, ticket 06: killing the PID from the pidfile blind is
+	# fine right after this same router wrote it, but a long-uptime router
+	# can wrap PIDs, and by the time the NEXT config.change fires that same
+	# number may belong to an unrelated process this has no business
+	# signaling. `kill -0` (send no signal, just ask whether the PID
+	# exists) is the cheap half of that check -- it does not prove the PID
+	# is still OUR sleep, only that it is not free for the kernel to have
+	# reused by something else; reused PIDs are strictly the OS's own
+	# concern here. Deliberately `kill -0`, not a `/proc/<pid>` test: this
+	# file's own tests/run.sh unit test runs it on macOS, which has no
+	# /proc at all, while `kill -0` is the one portable primitive both that
+	# host and busybox ash on the router actually implement.
+	if [ -f "$_gb_pidfile" ]; then
+		_gb_prev_pid=$(cat "$_gb_pidfile")
+		kill -0 "$_gb_prev_pid" 2>/dev/null && kill "$_gb_prev_pid" 2>/dev/null
+	fi
+
+	( sleep "$_gb_debounce"; rm -f "$_gb_pidfile"; "$GB_BIN" run --trigger procd >/dev/null 2>&1 ) &
+	echo $! >"$_gb_pidfile"
+}
+
+service_triggers() {
+	procd_add_reload_trigger "gitbackup"
+
+	# R106/R107 both live under one on/off switch: a router that wants
+	# gitbackup to run strictly on its own schedule can turn the
+	# config-change trigger off without touching the watched packages.
+	[ "$(gb_uci_get gitbackup.main.on_config_change 1)" = 1 ] || return 0
+
+	# Same path resolution procd.sh's own _procd_add_reload_trigger uses
+	# (readlink, falling back to $initscript itself when it is not a
+	# symlink) -- $initscript is rc.common's own variable (set to "$1"
+	# before this file is sourced, see /etc/rc.common on the stand), not
+	# invented here; shellcheck cannot see that external assignment.
+	# shellcheck disable=SC2154
+	_gb_script=$(readlink "$initscript")
+	_gb_name=$(basename "${_gb_script:-$initscript}")
+
+	for _gb_pkg in $(_gb_backed_up_packages); do
+		procd_add_config_trigger "config.change" "$_gb_pkg" /etc/init.d/"$_gb_name" config_change
+	done
+}

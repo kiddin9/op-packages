@@ -1,0 +1,100 @@
+# gitbackup scrub list -- UCI options whose value is a secret, redacted by
+# scrub.sh when visibility=public. One pattern per line, "#" starts a
+# trailing comment that MUST name where the option was confirmed to exist --
+# a line without one is not something this ticket allows to exist (spec
+# "Scrub": "собирается обходом реальных источников, не из головы").
+#
+# Pattern shape: "<config>.@<type>[*].<option>"
+#   <config>  the /etc/config/<config> file the option lives in.
+#   <type>    the UCI section TYPE the option is nested under (NOT a section
+#             name -- names are user-chosen and unpredictable, e.g. "wan" or
+#             "myvpn", but every section still declares a type). May end in
+#             a literal "*" to prefix-match a family of dynamically-named
+#             types (WireGuard peers, see below) -- scrub.sh treats a
+#             trailing "*" here as a shell case-glob, everything else as a
+#             literal string.
+#   [*]       every section of that type, addressed the same way `uci show`
+#             itself would print an anonymous one (@type[N]); scrub.sh
+#             resolves this itself by listing every section declaration of
+#             the matching type in the file and checking whether <option> is
+#             actually set on it, so a named section (radio0, wan, myvpn --
+#             uci addresses those by name, not [N]) is still found. Nothing
+#             is fabricated: an option that is not present on a matching
+#             section is left alone, never created.
+#   <option>  the option name to redact.
+#
+# Checked and found to hold NO inline UCI secret (file-based secrets, if
+# any, are exclude.list's job, not this file's):
+#   - dropbear: openwrt/openwrt package/network/services/dropbear/files/
+#     dropbear.config -- enable/PasswordAuth/RootPasswordAuth/Port only.
+#   - mwan3: openwrt/luci applications/luci-app-mwan3, every
+#     view/mwan3/network/*.js -- no password/secret/key option, "keyup" in
+#     the source is an event name, not an option.
+#
+# Deliberately NOT listed even though the subsystem has secrets, because the
+# secret lives in a FILE the option merely points at, not in the option
+# value itself (a file path is not "the value replaced by a placeholder" --
+# scrub.sh only ever rewrites option values, and a leaked path is not the
+# same class of leak as a leaked passphrase):
+#   - openvpn: tls_auth/tls_crypt/secret/askpass/auth_user_pass point at
+#     /etc/openvpn/*, per openwrt/packages net/openvpn/files/openvpn.config.
+#   - wireguard: the private/preshared keys ARE inline UCI values (listed
+#     below); an interface's ca/usercert-equivalent is not applicable here.
+
+# wireless -- WPA/WPA2/WPA3 PSK. Given verbatim in the brief and already the
+# stock gitbackup.security.scrub_option default; confirmed as a wifi-iface
+# option (not wifi-device) in
+# openwrt/luci modules/luci-mod-network/htdocs/luci-static/resources/view/network/wireless.js:2531
+wireless.@wifi-iface[*].key
+# wireless -- WEP keys 1-4 (legacy, still settable). Same file, the
+# uci.unset/taboption block generating 'key1'..'key4', wireless.js:1857-1882
+wireless.@wifi-iface[*].key1
+wireless.@wifi-iface[*].key2
+wireless.@wifi-iface[*].key3
+wireless.@wifi-iface[*].key4
+# wireless -- SAE/WPA3 "password" field (distinct option from 'key' in the
+# same form), wireless.js:2120,2531
+wireless.@wifi-iface[*].password
+# wireless -- 802.1X/WPA-Enterprise RADIUS secrets, wireless.js:1729,1746,1830
+wireless.@wifi-iface[*].auth_secret
+wireless.@wifi-iface[*].acct_secret
+wireless.@wifi-iface[*].dae_secret
+
+# network -- PAP/CHAP login used by every ppp-family proto (pppoe, pptp,
+# l2tp, pppoa) on a generic 'interface' section; confirmed identical across
+# openwrt/luci protocols/luci-proto-ppp/htdocs/luci-static/resources/protocol/{pppoe,pptp,l2tp,pppoa,ppp}.js
+network.@interface[*].username
+network.@interface[*].password
+# network -- OpenVPN client cert passphrase and login password once migrated
+# onto 'network' (config file says "package network", type stays
+# 'interface', proto=openvpn): openwrt/packages
+# net/openvpn/files/openvpn.config:16,19 (password, cert_password) plus the
+# migration confirming the target file/type,
+# net/openvpn/files/etc/uci-defaults/60_openvpn_migrate.sh
+network.@interface[*].cert_password
+# network -- OpenConnect: second factor/OTP password and an inline PEM
+# private key (form.TextValue, not a file path), openwrt/luci
+# protocols/luci-proto-openconnect/htdocs/luci-static/resources/protocol/openconnect.js:148,166
+network.@interface[*].password2
+network.@interface[*].userkey
+# network -- WireGuard interface private key, openwrt/luci
+# protocols/luci-proto-wireguard/htdocs/luci-static/resources/protocol/wireguard.js:128,380
+network.@interface[*].private_key
+# network -- WireGuard peer preshared key. Peer sections use a DYNAMIC
+# section type "wireguard_<ifname>" (one per WireGuard interface), not a
+# fixed type name -- confirmed by wireguard.js:195,344-384,572
+# ("uci.add('network', 'wireguard_' + s.section)"), hence the type prefix
+# wildcard instead of a literal type.
+network.@wireguard_*[*].preshared_key
+
+# ddns -- login credentials substituted into the update URL, on a 'service'
+# section (uci.add('ddns', 'service', section_id)): openwrt/luci
+# applications/luci-app-ddns/htdocs/luci-static/resources/view/ddns/overview.js:751,757-763
+ddns.@service[*].username
+ddns.@service[*].password
+
+# uhttpd -- HTTP Basic-Auth credentials for a URL prefix, on a 'httpauth'
+# section (config_list_foreach "$cfg" httpauth create_httpauth):
+# openwrt/openwrt package/network/services/uhttpd/files/uhttpd.init:68-79
+uhttpd.@httpauth[*].username
+uhttpd.@httpauth[*].password
