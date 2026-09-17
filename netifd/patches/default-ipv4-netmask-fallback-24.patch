@@ -1,0 +1,23 @@
+From a349ea7c5f73513808ea266b823e915344d9bc69 Mon Sep 17 00:00:00 2001
+From: kiddin9 <48883331+kiddin9@users.noreply.github.com>
+Date: Fri, 18 Sep 2026 06:05:11 +0800
+Subject: [PATCH] Update proto.c
+
+Signed-off-by: kiddin9 <48883331+kiddin9@users.noreply.github.com>
+---
+ proto.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/proto.c b/proto.c
+index c338ff27..6c93127c 100644
+--- a/proto.c
++++ b/proto.c
+@@ -413,7 +413,7 @@ proto_apply_static_ip_settings(struct interface *iface, struct blob_attr *attr)
+ 	struct blob_attr *tb[__OPT_MAX];
+ 	struct blob_attr *cur;
+ 	const char *error;
+-	unsigned int netmask = 32;
++	unsigned int netmask = 24;
+ 	bool ip6deprecated;
+ 	int n_v4 = 0, n_v6 = 0;
+ 	struct in_addr bcast = {0,}, ptp = {0,};
