@@ -255,8 +255,8 @@ _fwlive_tmp_dir_ok() {
 	# Fail closed unless the dump dir is a real directory with the sticky
 	# bit. Without sticky, another uid can unlink a just-created mktemp
 	# file and replace it with a symlink before we reopen with `>` as
-	# root (same class as the WAN logging lock). Optional $1 is for CLI tests; production
-	# always uses /tmp.
+	# root (same class as the WAN logging lock). Optional $1 is for
+	# CLI tests; production always uses /tmp.
 	dir="${1:-/tmp}"
 	[ -n "$dir" ] || return 1
 	[ -L "$dir" ] && return 1
@@ -544,9 +544,9 @@ is_resolvable_address() {
 	[ -n "$addr" ] || return 1
 	# Reject anything outside the address alphabet BEFORE awk, so embedded
 	# newlines/whitespace (which awk would treat as record separators) can
-	# never let a valid first record mask trailing garbage that still reaches
-	# nslookup. It must see a single token. Note the check intentionally allows
-	# only hex/colon/dot.
+	# never let a valid first record mask trailing garbage that still
+	# reaches nslookup: nslookup only ever sees a single token. Note
+	# the check intentionally allows only hex/colon/dot.
 	case "$addr" in
 		*[!0-9a-fA-F:.]*) return 1 ;;
 	esac
@@ -632,12 +632,11 @@ resolve_addresses() {
 		return 0
 	fi
 
-	# Wall-clock budget clock starts at the TRUE function entry (luna
-	# folds 2026-08-10): the budget must bound the whole call — including
-	# read_rpc_input (stalled stdin must not escape the budget) and json
-	# parsing. `date +%s` can jump under NTP sync — accepted (worst case
-	# the budget over- or under-runs by the jump; worker starvation is
-	# still prevented).
+	# Wall-clock budget clock starts at the TRUE function entry: the budget
+	# must bound the whole call — including read_rpc_input (stalled stdin
+	# must not escape the budget) and json parsing. `date +%s` can jump
+	# under NTP sync — accepted (worst case the budget over- or under-runs
+	# by the jump; worker starvation is still prevented).
 	start=$(date +%s)
 	# Optional JSON on $1 (rpcd may also pass argv $3 at the call site); else stdin.
 	input=$(read_rpc_input "$1")
@@ -751,9 +750,10 @@ run_selftest() {
 		return 1
 	fi
 
-	# Hostname-shaped tokens of hex chars + dots/colons passed the
-	# old char-class check and made the resolver fall back to upstream DNS. Each case
-	# below must REJECT (and would be ACCEPTED by the reverted char-class code).
+	# hostname-shaped tokens of hex chars + dots/colons passed the old
+	# char-class check and made the resolver fall back to upstream DNS.
+	# Each case below must REJECT (and would be ACCEPTED by the reverted
+	# char-class code).
 	if is_resolvable_address 'ab.cd.ef.01'; then
 		echo 'is_resolvable_address: expected reject for dotted-hex ab.cd.ef.01' >&2
 		return 1
@@ -779,8 +779,8 @@ run_selftest() {
 		echo 'is_resolvable_address: expected accept IPv6-mapped ::ffff:192.0.2.1' >&2
 		return 1
 	fi
-	# Multi-line input must be rejected wholesale (CodeRabbit/luna fold): awk
-	# reads newline-separated records, so a valid first record must not mask
+	# Multi-line input must be rejected wholesale: awk reads
+	# newline-separated records, so a valid first record must not mask
 	# trailing garbage that would still reach nslookup.
 	if is_resolvable_address "$(printf '192.0.2.1\nnot-an-address')"; then
 		echo 'is_resolvable_address: expected reject for multi-line IPv4 token' >&2

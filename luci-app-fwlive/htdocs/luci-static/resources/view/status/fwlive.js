@@ -111,6 +111,8 @@ return view.extend({
 	pollCoordinator: null,
 	renderScheduler: null,
 	pagehideHandler: null,
+	/* Terminal after a non-persisted pagehide; late startup RPCs must not paint. */
+	viewDisposed: false,
 	/* Layer 2 — visibility / RTT cadence / shed surfacing. */
 	rttStreakKind: null,
 	rttStreakCount: 0,
@@ -615,12 +617,14 @@ return view.extend({
 	async loadRulesMap() {
 		try {
 			const res = await callFwliveRules();
+			if (this.viewDisposed) return;
 			this.rulesMap = (res && res.rules) || {};
 			this.firewallBackend = (res && res.backend) || 'nft';
 			/* Bounds / mktemp failures are reply.error — same idea as poll. */
 			this.lastRulesError = (res && res.error) || null;
 			if (this.lastRulesError) console.warn('fwlive rules map error:', this.lastRulesError);
 		} catch (e) {
+			if (this.viewDisposed) return;
 			this.rulesMap = {};
 			this.firewallBackend = 'nft';
 			this.lastRulesError = 'rules_unavailable';
@@ -668,9 +672,12 @@ return view.extend({
 	async loadLoggingStatus() {
 		const wasWeakDevice = this.weakDevice;
 		try {
-			this.loggingStatus = await callFwliveLoggingStatus();
+			const status = await callFwliveLoggingStatus();
+			if (this.viewDisposed) return;
+			this.loggingStatus = status;
 			this.weakDevice = !!(this.loggingStatus && this.loggingStatus.weak_device === true);
 		} catch (e) {
+			if (this.viewDisposed) return;
 			this.loggingStatus = null;
 		}
 		this.updateBackendUi();
@@ -860,19 +867,10 @@ return view.extend({
 		return { rows: normalized, pollNew: pollNew };
 	},
 
-	async fetchEntries() {
-		if (!this.sessionSeen) this.sessionSeen = new Set();
-
-		const epoch = this.currentPollEpoch();
-		const resumeMerge = !!this.resumeMerge;
-		const fetchLines = this.requestedFetchLines();
-		const beforeLength = this.entries.length;
-		this.lastPollRequestedLines = fetchLines;
-		this.lastPollReturnedMessages = null;
-		this.lastPollEffectiveLimit = null;
+	/* Keep RPC timing and reply acquisition separate from view-state mutation. */
+	async fetchPollReply(fetchLines) {
 		const t0 = this.nowMs();
 		let reply;
-		let errored = false;
 		try {
 			/* Raw logd lines, not post-filter rows. Fetch a multiple of the
 			 * display limit so mixed syslog still fills the table; pause
@@ -881,14 +879,24 @@ return view.extend({
 				addresses: [String(fetchLines)]
 			});
 		} catch (e) {
-			errored = true;
 			reply = null;
 		}
+		return {
+			reply: reply,
+			rtt: this.nowMs() - t0
+		};
+	},
 
-		/* Visibility changes and disposal invalidate all application of this reply. */
-		if (epoch !== this.currentPollEpoch()) return;
-
-		const rtt = this.nowMs() - t0;
+	/* Caller must discard stale epochs before this synchronous application.
+	 * This updates transport/adaptive state, summary/banner UI, rows, and buffer. */
+	applyPollReply(poll, context) {
+		const reply = poll.reply;
+		const rtt = poll.rtt;
+		const resumeMerge = context.resumeMerge;
+		const fetchLines = context.fetchLines;
+		const beforeLength = context.beforeLength;
+		this.lastPollReturnedMessages = null;
+		this.lastPollEffectiveLimit = null;
 
 		if (!reply || typeof reply !== 'object' || Array.isArray(reply)) {
 			this.lastPollError = true;
@@ -934,7 +942,7 @@ return view.extend({
 			this.lastPollEffectiveLimit = reply.effective_limit;
 		}
 
-		this.notePollRtt(rtt, errored);
+		this.notePollRtt(rtt, false);
 		this.updateAdaptiveBanner();
 		if (this.clientBackoffEnabled() && rtt > constants.POLL_RTT_SLOW_MS) {
 			if (!this.summaryMode) this.enterSummaryMode(reply.summary);
@@ -952,14 +960,38 @@ return view.extend({
 		this.entries = buffer.applyFetchedEntries(this.entries, batch.rows, {
 			/* buffer.js retains its public paused option; this is the view's table state. */
 			paused: this.tablePaused,
-			resumeMerge: resumeMerge,
+			resumeMerge: resumeMerge || context.pausedAtStart,
 			rowLimit: this.rowLimit,
 			fetchLinesMax: constants.FETCH_LINES_MAX
 		});
 		this.updateFillingState(beforeLength, reply, fetchLines);
-		/* A stale request returns above. Keep this obligation until a current
-		 * request has actually applied the merged batch. */
+		/* Clear the merge obligation only after the current batch is applied. */
 		if (resumeMerge) this.resumeMerge = false;
+	},
+
+	async fetchEntries() {
+		if (!this.sessionSeen) this.sessionSeen = new Set();
+
+		const epoch = this.currentPollEpoch();
+		const pausedAtStart = !!this.tablePaused;
+		const resumeMerge = !!this.resumeMerge;
+		const fetchLines = this.requestedFetchLines();
+		const beforeLength = this.entries.length;
+		this.lastPollRequestedLines = fetchLines;
+		this.lastPollReturnedMessages = null;
+		this.lastPollEffectiveLimit = null;
+
+		const poll = await this.fetchPollReply(fetchLines);
+
+		/* Visibility changes and disposal invalidate all application of this reply. */
+		if (epoch !== this.currentPollEpoch()) return;
+
+		this.applyPollReply(poll, {
+			beforeLength: beforeLength,
+			fetchLines: fetchLines,
+			pausedAtStart: pausedAtStart,
+			resumeMerge: resumeMerge
+		});
 	},
 
 	rememberSessionId(id) {
@@ -1126,6 +1158,7 @@ return view.extend({
 	},
 
 	disposeView() {
+		this.viewDisposed = true;
 		if (this.pollCoordinator) this.pollCoordinator.dispose();
 		if (this.renderScheduler) this.renderScheduler.dispose();
 		this.resolveGeneration = (this.resolveGeneration || 0) + 1;
@@ -1952,6 +1985,9 @@ return view.extend({
 	},
 
 	load() {
+		/* A late LuCI lifecycle callback may re-enter load() after pagehide has
+		 * made disposal terminal; do not restore state or re-register polling. */
+		if (this.viewDisposed) return Promise.resolve();
 		/* RPC-affecting preferences must precede poll registration and the first
 		 * request; filter widgets still restore in addFooter after render. */
 		this.resolveRpcPreferences();
@@ -1966,12 +2002,15 @@ return view.extend({
 			window.addEventListener('pagehide', this.pagehideHandler);
 		}
 		coordinator.startPolling();
-		return Promise.all([this.loadRulesMap(), this.loadLoggingStatus()]).then(() =>
-			this.requestPoll()
-		);
+		return Promise.all([this.loadRulesMap(), this.loadLoggingStatus()]).then(() => {
+			if (this.viewDisposed) return;
+			return this.requestPoll();
+		});
 	},
 
 	render() {
+		/* LuCI may finish the load/render/addFooter sequence after pagehide. */
+		if (this.viewDisposed) return E('div', { 'class': 'cbi-map' });
 		return E(
 			'div',
 			{ 'class': 'cbi-map fwlive-map', 'data-view': 'simple', 'data-row-tint': 'classic' },
@@ -2399,6 +2438,7 @@ return view.extend({
 	},
 
 	addFooter() {
+		if (this.viewDisposed) return;
 		this.viewMode = this.readViewMode();
 		this.messageLayout = this.readMessageLayout();
 		this.showHostnames = this.readShowHostnames();

@@ -171,9 +171,9 @@ release_wan_log_lock() {
 }
 
 find_wan_zone_section() {
-	# Match anonymous (@zone[N]) and named (e.g. wan) sections whose name option
-	# is 'wan'. Prefer the first section whose type is zone; skip
-	# non-zone sections that happen to share name='wan'.
+	# Match anonymous (@zone[N]) and named (e.g. wan) sections whose
+	# name option is 'wan'. Prefer the first section whose type is
+	# zone; skip non-zone sections that happen to share name='wan'.
 	# uci missing / no wan zone is empty, not fatal. pipefail + set -e
 	# cannot apply to this pipeline.
 	_zones=$(uci -q show firewall 2>/dev/null \
@@ -669,9 +669,9 @@ commit_wan_log_change() {
 # would block a concurrent toggle until the holder exits — BusyBox flock has
 # no -w timeout).
 #
-# The ROLLBACK re-acquires the lock: read->compare->
-# restore is only atomic when no other writer can commit between the read and
-# the restore. All writers hold the same flock, so re-acquiring it makes the
+# The ROLLBACK re-acquires the lock: read->compare->restore is only
+# atomic when no other writer can commit between the read and the restore.
+# All writers hold the same flock, so re-acquiring it makes the
 # decision-and-restore a serialized unit. The lock is held only for the few
 # uci commands of the restore (short critical section), never across the
 # reload. If the lock cannot be re-acquired, skip the rollback (report the

@@ -9,7 +9,7 @@
  */
 return baseclass.extend({
 	/* Keep in sync with openwrt-feed/luci-app-fwlive/Makefile PKG_VERSION. */
-	APP_VERSION: '0.1.43',
+	APP_VERSION: '0.1.44',
 	ROW_LIMIT_OPTIONS: [25, 50, 100, 250, 500, 1000, 2000],
 	DEFAULT_ROW_LIMIT: 100,
 	FETCH_MODE_OPTIONS: ['auto', 'manual'],
