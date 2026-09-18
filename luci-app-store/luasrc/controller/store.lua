@@ -14,7 +14,8 @@ function index()
 
     local action
 
-    entry({"admin", "store"}, call("redirect_index"), _("iStore"), 31)
+    entry({"admin", "store"}, call("redirect_index"))
+    entry({"admin", "services", "store"}, call("redirect_index"), _("iStore"), 31).dependent = true
     entry({"admin", "store", "pages"}, call("store_index")).leaf = true
     if nixio.fs.access("/usr/lib/lua/luci/view/store/main_dev.htm") then
         entry({"admin", "store", "dev"}, call("store_dev")).leaf = true
