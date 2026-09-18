@@ -2,17 +2,16 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=webd
 PKG_RELEASE:=1
-
 PKG_VERSION:=20240223
 PKG_VERSION_MEDIATEK_FILO:=20240710
 
 include $(INCLUDE_DIR)/package.mk
 
 define Package/$(PKG_NAME)
-	SECTION:=net
-	CATEGORY:=Network
-	TITLE:=A Lightweight self-hosted netdisk application
-	URL:=https://webd.cf
+  SECTION:=net
+  CATEGORY:=Network
+  TITLE:=A Lightweight self-hosted netdisk application
+  URL:=https://webd90kb.github.io/webd/
 endef
 
 TARGET_LIBC:=musl
@@ -80,14 +79,12 @@ endif
 
 ifeq ($(ARCH),aarch64)
   TARGET_ARCH:=aarch64
-
   ifeq ($(BOARD),rockchip)
     TARGET_BOARD:=musl.rockchip-armv8
   endif
   ifeq ($(BOARD),brcm2708)
     TARGET_BOARD:=musl.brcm2708-bcm2710
   endif
-
   ifeq ($(BOARD),mediatek)
     ifneq (,$(filter filogic,$(SUBTARGET)))
       TARGET_BOARD:=musl.mediatek-filogic
@@ -96,12 +93,16 @@ ifeq ($(ARCH),aarch64)
   endif
 endif
 
-ifeq ($(strip $(TARGET_ARCH)$(TARGET_BOARD)),)
-  $(error Unsupported ARCH/BOARD combo: ARCH=$(ARCH) BOARD=$(BOARD) SUBTARGET=$(SUBTARGET))
+ifneq ($(DUMP),1)
+  ifneq ($(ARCH),)
+    ifeq ($(strip $(TARGET_ARCH)$(TARGET_BOARD)),)
+      $(error Unsupported ARCH/BOARD combo: ARCH=$(ARCH) BOARD=$(BOARD) SUBTARGET=$(SUBTARGET))
+    endif
+  endif
 endif
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(TARGET_ARCH)-openwrt-linux-$(TARGET_BOARD).tar.gz
-PKG_SOURCE_URL:=https://webd.cf/webd/webd_dl/$(PKG_VERSION)/
+PKG_SOURCE_URL:=https://webd90kb.github.io/webd/webd/webd_dl/20240223/
 PKG_HASH:=skip
 
 UNTAR_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
@@ -117,13 +118,10 @@ endef
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(UNTAR_DIR)/webd/webd $(1)/usr/bin/webd
-
 	$(INSTALL_DIR) $(1)/usr/share/$(PKG_NAME)/web
 	$(CP) -r $(UNTAR_DIR)/webd/web/* $(1)/usr/share/$(PKG_NAME)/web/
-
 	$(INSTALL_DIR) $(1)/etc
 	$(INSTALL_DATA) $(UNTAR_DIR)/webd/webd.conf $(1)/etc/webd.conf.example
-
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
