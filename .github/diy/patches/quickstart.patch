@@ -1,3 +1,19 @@
+--- a/luci-app-quickstart/luasrc/view/quickstart/main.htm
++++ b/luci-app-quickstart/luasrc/view/quickstart/main.htm
+@@ -47,6 +47,12 @@
+           location.href = vue_prefix;
+         }
+       }
++    setTimeout(() => {
++  	  const targetDiv = document.querySelector('div[style*="background-color: rgb(251, 245, 250)"]');
++  	  if (targetDiv) {
++  	  targetDiv.style.display = 'none';
++  	  }
++    }, 500);
+     })();
+ </script>
+ <div id="app">
+
 --- a/luci-app-quickstart/Makefile
 +++ b/luci-app-quickstart/Makefile
 @@ -6,7 +6,7 @@
