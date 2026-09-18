@@ -687,40 +687,26 @@ return view.extend({
 			this.renderRows(true);
 	},
 
-	async handleEnableLogging() {
+	async runLoggingToggle(opts) {
 		if (this.loggingBusy) return;
 
 		this.loggingBusy = true;
 		this.loggingNotice = '';
-		this.updateEmptyStateUi();
-		this.updateLoggingToolbarUi();
+		opts.initialUi();
 
 		try {
-			const res = await callFwliveEnableLogging();
+			const res = await opts.call();
 			if (!res || !res.ok) {
-				if (res && res.error === 'nf_log_missing')
-					this.loggingNotice = _(
-						'Cannot enable logging until kernel log modules are installed.'
-					);
-				else if (res && res.error === 'firewall_changes_pending')
-					this.loggingNotice = _(
-						'Another change is staged for the firewall; apply or revert it first.'
-					);
-				else this.loggingNotice = _('Could not enable logging.');
+				this.loggingNotice = opts.failureNotice(res);
 				await this.loadLoggingStatus();
 				return;
 			}
 
-			if (res.changed)
-				this.loggingNotice = _(
-					'WAN drop/reject logging is on. Blocked inbound traffic should appear here as it happens — not normal LAN browsing.'
-				);
-			else this.loggingNotice = _('WAN logging is already enabled.');
-
-			logging.persistConsentDismissed();
+			this.loggingNotice = opts.successNotice(res);
+			if (opts.onSuccess) opts.onSuccess(res);
 			await this.loadLoggingStatus();
 		} catch (e) {
-			this.loggingNotice = _('Administrator access is required to enable logging.');
+			this.loggingNotice = opts.catchNotice();
 			await this.loadLoggingStatus();
 		} finally {
 			this.loggingBusy = false;
@@ -729,35 +715,47 @@ return view.extend({
 		}
 	},
 
-	async handleDisableLogging() {
-		if (this.loggingBusy) return;
-
-		this.loggingBusy = true;
-		this.loggingNotice = '';
-		this.updateLoggingToolbarUi();
-
-		try {
-			const res = await callFwliveDisableLogging();
-			if (!res || !res.ok) {
+	async handleEnableLogging() {
+		return this.runLoggingToggle({
+			call: () => callFwliveEnableLogging(),
+			initialUi: () => {
+				this.updateEmptyStateUi();
+				this.updateLoggingToolbarUi();
+			},
+			failureNotice: (res) => {
+				if (res && res.error === 'nf_log_missing')
+					return _('Cannot enable logging until kernel log modules are installed.');
 				if (res && res.error === 'firewall_changes_pending')
-					this.loggingNotice = _(
+					return _(
 						'Another change is staged for the firewall; apply or revert it first.'
 					);
-				else this.loggingNotice = _('Could not disable logging.');
-				await this.loadLoggingStatus();
-				return;
-			}
+				return _('Could not enable logging.');
+			},
+			successNotice: (res) =>
+				res.changed
+					? _(
+							'WAN drop/reject logging is on. Blocked inbound traffic should appear here as it happens — not normal LAN browsing.'
+						)
+					: _('WAN logging is already enabled.'),
+			onSuccess: () => logging.persistConsentDismissed(),
+			catchNotice: () => _('Administrator access is required to enable logging.')
+		});
+	},
 
-			if (res.changed) this.loggingNotice = _('WAN drop/reject logging is off.');
-			await this.loadLoggingStatus();
-		} catch (e) {
-			this.loggingNotice = _('Administrator access is required to disable logging.');
-			await this.loadLoggingStatus();
-		} finally {
-			this.loggingBusy = false;
-			this.updateEmptyStateUi();
-			this.updateLoggingToolbarUi();
-		}
+	async handleDisableLogging() {
+		return this.runLoggingToggle({
+			call: () => callFwliveDisableLogging(),
+			initialUi: () => this.updateLoggingToolbarUi(),
+			failureNotice: (res) => {
+				if (res && res.error === 'firewall_changes_pending')
+					return _(
+						'Another change is staged for the firewall; apply or revert it first.'
+					);
+				return _('Could not disable logging.');
+			},
+			successNotice: (res) => (res.changed ? _('WAN drop/reject logging is off.') : ''),
+			catchNotice: () => _('Administrator access is required to disable logging.')
+		});
 	},
 
 	shouldShowLoggingConsent() {
@@ -889,6 +887,13 @@ return view.extend({
 
 	/* Caller must discard stale epochs before this synchronous application.
 	 * This updates transport/adaptive state, summary/banner UI, rows, and buffer. */
+	failPollReply(rtt) {
+		this.lastPollError = true;
+		this.fillingBuffer = false;
+		this.notePollRtt(rtt, true);
+		this.updateAdaptiveBanner();
+	},
+
 	applyPollReply(poll, context) {
 		const reply = poll.reply;
 		const rtt = poll.rtt;
@@ -899,25 +904,16 @@ return view.extend({
 		this.lastPollEffectiveLimit = null;
 
 		if (!reply || typeof reply !== 'object' || Array.isArray(reply)) {
-			this.lastPollError = true;
-			this.fillingBuffer = false;
-			this.notePollRtt(rtt, true);
-			this.updateAdaptiveBanner();
+			this.failPollReply(rtt);
 			return;
 		}
 		if (reply.error) {
-			this.lastPollError = true;
-			this.fillingBuffer = false;
-			this.notePollRtt(rtt, true);
-			this.updateAdaptiveBanner();
+			this.failPollReply(rtt);
 			return;
 		}
 		const raw = reply.log;
 		if (!Array.isArray(raw)) {
-			this.lastPollError = true;
-			this.fillingBuffer = false;
-			this.notePollRtt(rtt, true);
-			this.updateAdaptiveBanner();
+			this.failPollReply(rtt);
 			return;
 		}
 
@@ -1173,11 +1169,7 @@ return view.extend({
 		}
 	},
 
-	updateAdaptiveBanner() {
-		const el = document.getElementById('fwlive-adaptive');
-		if (!el) return;
-		if (!el.style) el.style = { display: '' };
-
+	adaptiveBannerParts() {
 		const parts = [];
 		const mode = this.fetchMode === 'manual' ? _('Manual') : _('Auto');
 		if (this.lastPollRequestedLines !== null && this.lastPollReturnedMessages !== null) {
@@ -1218,6 +1210,15 @@ return view.extend({
 		else if (this.serverTruncated) parts.push(_('Server truncated this poll (adaptive cap).'));
 		if (this.resolveLoadShed)
 			parts.push(_('Hostname resolve paused while the router is under load.'));
+		return parts;
+	},
+
+	updateAdaptiveBanner() {
+		const el = document.getElementById('fwlive-adaptive');
+		if (!el) return;
+		if (!el.style) el.style = { display: '' };
+
+		const parts = this.adaptiveBannerParts();
 
 		if (parts.length) {
 			el.style.display = 'block';
@@ -1603,6 +1604,18 @@ return view.extend({
 		return Array.from(ips);
 	},
 
+	isLoadShedReply(res) {
+		return res && typeof res === 'object' && res.disabled === 'load';
+	},
+
+	resolveNamesFromReply(res) {
+		return res && typeof res === 'object' && res.names && typeof res.names === 'object'
+			? res.names
+			: res && typeof res === 'object' && !Array.isArray(res)
+				? res
+				: {};
+	},
+
 	async resolveHostnamesForEntries(entries) {
 		if (!this.showHostnames || this.resolveInFlight) return;
 
@@ -1633,7 +1646,7 @@ return view.extend({
 			const res = await callFwliveResolve({ addresses: need });
 			if (gen !== this.resolveGeneration) return;
 
-			if (res && typeof res === 'object' && res.disabled === 'load') {
+			if (this.isLoadShedReply(res)) {
 				this.resolveLoadShed = true;
 				this.resolveShedUntil = Date.now() + 60000;
 				this.updateAdaptiveBanner();
@@ -1649,12 +1662,7 @@ return view.extend({
 			if (res && typeof res === 'object' && typeof res.error === 'string' && res.error)
 				return;
 			/* Full reply: names map under .names; legacy expect-unwrap was the map. */
-			const names =
-				res && typeof res === 'object' && res.names && typeof res.names === 'object'
-					? res.names
-					: res && typeof res === 'object' && !Array.isArray(res)
-						? res
-						: {};
+			const names = this.resolveNamesFromReply(res);
 			let updated = false;
 
 			for (let i = 0; i < need.length; i++) {
@@ -2008,6 +2016,168 @@ return view.extend({
 		});
 	},
 
+	renderDisplayDrawer() {
+		return E('div', { 'id': 'fwlive-display-drawer', 'class': 'fwlive-display-bar' }, [
+			E('span', { 'class': 'fwlive-display-bar-label' }, [_('Display options')]),
+			E('div', { 'class': 'fwlive-display-controls' }, [
+				E('label', { 'class': 'fwlive-display-ctl', 'for': 'fwlive-limit' }, [
+					_('Limit'),
+					E(
+						'select',
+						{
+							'id': 'fwlive-limit',
+							'class': 'cbi-input-select'
+						},
+						this.limitSelectOptions()
+					)
+				]),
+				E('label', { 'class': 'fwlive-display-ctl', 'for': 'fwlive-fetch-mode' }, [
+					_('Fetch budget'),
+					E(
+						'select',
+						{
+							'id': 'fwlive-fetch-mode',
+							'class': 'cbi-input-select',
+							'aria-controls': 'fwlive-manual-lines'
+						},
+						this.fetchModeOptions()
+					)
+				]),
+				E('label', { 'class': 'fwlive-display-ctl', 'for': 'fwlive-manual-lines' }, [
+					_('Maximum raw lines'),
+					E(
+						'select',
+						{
+							'id': 'fwlive-manual-lines',
+							'class': 'cbi-input-select',
+							'title': _('Manual still uses server protection and poll cadence')
+						},
+						this.manualFetchLinesOptions()
+					)
+				]),
+				E('label', { 'class': 'fwlive-display-ctl' }, [
+					E('input', {
+						'id': 'fwlive-row-tint-toggle',
+						'type': 'checkbox',
+						'title': _('Show pass/deny row background colors')
+					}),
+					_('Row tint')
+				]),
+				E(
+					'label',
+					{
+						'id': 'fwlive-row-tint-palette-wrap',
+						'class': 'fwlive-display-ctl',
+						'for': 'fwlive-row-tint'
+					},
+					[
+						_('Palette'),
+						E(
+							'select',
+							{
+								'id': 'fwlive-row-tint',
+								'class': 'cbi-input-select',
+								'title': _('Classic uses green/red; Accessible uses teal/orange')
+							},
+							this.rowTintPaletteOptions()
+						)
+					]
+				),
+				E('label', { 'class': 'fwlive-display-ctl' }, [
+					E('input', {
+						'id': 'fwlive-show-hostnames',
+						'type': 'checkbox'
+					}),
+					_('Show hostnames')
+				])
+			])
+		]);
+	},
+
+	renderHelpNodes() {
+		return E('div', { 'class': 'fwlive-help-row' }, [
+			E('details', { 'id': 'fwlive-help', 'class': 'fwlive-help' }, [
+				E('summary', {}, [_('Help')]),
+				E('ul', {}, [
+					E('li', {}, [
+						_(
+							'The table updates automatically when your firewall logs traffic. Use Pause if it moves too fast.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'Enable logging turns on WAN zone drop/reject logging only (same as Network → Firewall). It does not add rules or log normal LAN browsing.'
+						)
+					]),
+					E('li', {}, [
+						_('Display options on the bar set Limit, row tint, palette, and hostnames.')
+					]),
+					E('li', {}, [
+						_(
+							'Fetch budget controls raw log lines per poll. Auto derives from Limit; Manual selects a bounded maximum.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'Manual still uses server protection and poll cadence; it changes the fetch budget, not the polling interval.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'For a responsive table on a weak device, keep Limit at 250 rows or below. The weak-device cap affects rendered rows; the buffer can still retain more.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'Switching tabs pauses polling; returning performs one catch-up poll. Hostnames are off by default because lookups add work.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'The router log ring may evict older events before fwlive reads them. fwlive cannot recover evicted entries or change forwarding behavior.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'The rate shown for WAN logging is the firewall zone log_limit. OpenWrt defaults to 10/minute when no explicit limit is configured; fwlive does not impose this cap.'
+						)
+					]),
+					E('li', { 'id': 'fwlive-manual-test' }, []),
+					E('li', {}, [
+						_(
+							'Click a row (Time or other non-link cells) to see the full log line (Simple view).'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'Click an IP, action, or protocol to filter; use the Protocol menu (or ≠ on a chip) to exclude.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'Row tint shows pass/deny row backgrounds when checked. Choose Classic (green/red, default) or Accessible (teal/orange). Action text stays colored either way.'
+						)
+					]),
+					E('li', {}, [_('Use Detail for all columns (flags, length, raw message).')]),
+					E('li', {}, [
+						_(
+							'If Row tint looks missing, the active LuCI theme may omit success/error or info/warn CSS variables; fwlive falls back to local colors (air-gapped, no data leaves the device).'
+						)
+					])
+				])
+			]),
+			E(
+				'span',
+				{
+					'id': 'fwlive-build',
+					'class': 'fwlive-build',
+					'title': 'luci-app-fwlive'
+				},
+				['v' + constants.APP_VERSION]
+			)
+		]);
+	},
+
 	render() {
 		/* LuCI may finish the load/render/addFooter sequence after pagehide. */
 		if (this.viewDisposed) return E('div', { 'class': 'cbi-map' });
@@ -2164,89 +2334,7 @@ return view.extend({
 						])
 					]
 				),
-				E('div', { 'id': 'fwlive-display-drawer', 'class': 'fwlive-display-bar' }, [
-					E('span', { 'class': 'fwlive-display-bar-label' }, [_('Display options')]),
-					E('div', { 'class': 'fwlive-display-controls' }, [
-						E('label', { 'class': 'fwlive-display-ctl', 'for': 'fwlive-limit' }, [
-							_('Limit'),
-							E(
-								'select',
-								{
-									'id': 'fwlive-limit',
-									'class': 'cbi-input-select'
-								},
-								this.limitSelectOptions()
-							)
-						]),
-						E('label', { 'class': 'fwlive-display-ctl', 'for': 'fwlive-fetch-mode' }, [
-							_('Fetch budget'),
-							E(
-								'select',
-								{
-									'id': 'fwlive-fetch-mode',
-									'class': 'cbi-input-select',
-									'aria-controls': 'fwlive-manual-lines'
-								},
-								this.fetchModeOptions()
-							)
-						]),
-						E(
-							'label',
-							{ 'class': 'fwlive-display-ctl', 'for': 'fwlive-manual-lines' },
-							[
-								_('Maximum raw lines'),
-								E(
-									'select',
-									{
-										'id': 'fwlive-manual-lines',
-										'class': 'cbi-input-select',
-										'title': _(
-											'Manual still uses server protection and poll cadence'
-										)
-									},
-									this.manualFetchLinesOptions()
-								)
-							]
-						),
-						E('label', { 'class': 'fwlive-display-ctl' }, [
-							E('input', {
-								'id': 'fwlive-row-tint-toggle',
-								'type': 'checkbox',
-								'title': _('Show pass/deny row background colors')
-							}),
-							_('Row tint')
-						]),
-						E(
-							'label',
-							{
-								'id': 'fwlive-row-tint-palette-wrap',
-								'class': 'fwlive-display-ctl',
-								'for': 'fwlive-row-tint'
-							},
-							[
-								_('Palette'),
-								E(
-									'select',
-									{
-										'id': 'fwlive-row-tint',
-										'class': 'cbi-input-select',
-										'title': _(
-											'Classic uses green/red; Accessible uses teal/orange'
-										)
-									},
-									this.rowTintPaletteOptions()
-								)
-							]
-						),
-						E('label', { 'class': 'fwlive-display-ctl' }, [
-							E('input', {
-								'id': 'fwlive-show-hostnames',
-								'type': 'checkbox'
-							}),
-							_('Show hostnames')
-						])
-					])
-				]),
+				this.renderDisplayDrawer(),
 				E(
 					'div',
 					{ 'id': 'fwlive-filter-panel', 'class': 'fwlive-filter-panel fwlive-find-row' },
@@ -2348,91 +2436,7 @@ return view.extend({
 						E('tbody', {}, [])
 					])
 				]),
-				E('div', { 'class': 'fwlive-help-row' }, [
-					E('details', { 'id': 'fwlive-help', 'class': 'fwlive-help' }, [
-						E('summary', {}, [_('Help')]),
-						E('ul', {}, [
-							E('li', {}, [
-								_(
-									'The table updates automatically when your firewall logs traffic. Use Pause if it moves too fast.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Enable logging turns on WAN zone drop/reject logging only (same as Network → Firewall). It does not add rules or log normal LAN browsing.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Display options on the bar set Limit, row tint, palette, and hostnames.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Fetch budget controls raw log lines per poll. Auto derives from Limit; Manual selects a bounded maximum.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Manual still uses server protection and poll cadence; it changes the fetch budget, not the polling interval.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'For a responsive table on a weak device, keep Limit at 250 rows or below. The weak-device cap affects rendered rows; the buffer can still retain more.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Switching tabs pauses polling; returning performs one catch-up poll. Hostnames are off by default because lookups add work.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'The router log ring may evict older events before fwlive reads them. fwlive cannot recover evicted entries or change forwarding behavior.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'The rate shown for WAN logging is the firewall zone log_limit. OpenWrt defaults to 10/minute when no explicit limit is configured; fwlive does not impose this cap.'
-								)
-							]),
-							E('li', { 'id': 'fwlive-manual-test' }, []),
-							E('li', {}, [
-								_(
-									'Click a row (Time or other non-link cells) to see the full log line (Simple view).'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Click an IP, action, or protocol to filter; use the Protocol menu (or ≠ on a chip) to exclude.'
-								)
-							]),
-							E('li', {}, [
-								_(
-									'Row tint shows pass/deny row backgrounds when checked. Choose Classic (green/red, default) or Accessible (teal/orange). Action text stays colored either way.'
-								)
-							]),
-							E('li', {}, [
-								_('Use Detail for all columns (flags, length, raw message).')
-							]),
-							E('li', {}, [
-								_(
-									'If Row tint looks missing, the active LuCI theme may omit success/error or info/warn CSS variables; fwlive falls back to local colors (air-gapped, no data leaves the device).'
-								)
-							])
-						])
-					]),
-					E(
-						'span',
-						{
-							'id': 'fwlive-build',
-							'class': 'fwlive-build',
-							'title': 'luci-app-fwlive'
-						},
-						['v' + constants.APP_VERSION]
-					)
-				])
+				this.renderHelpNodes()
 			]
 		);
 	},

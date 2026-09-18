@@ -280,6 +280,64 @@ _fwlive_mktemp() {
 	printf '%s' "$_mk_file"
 }
 
+enrich_rules_dump() {
+	_dump_prefix="$1"
+	_dump_kind="$2"
+
+	case "$_dump_kind" in
+		nft)
+			_dump_error='nft_failed'
+			;;
+		iptables)
+			_dump_error='iptables_failed'
+			;;
+		ip6tables)
+			_dump_error='ip6tables_failed'
+			;;
+		*)
+			return 1
+			;;
+	esac
+
+	_rules_dump=$(_fwlive_mktemp "$_dump_prefix") || _rules_dump=''
+	if [ -n "$_rules_dump" ]; then
+		# Keep the dump command and stream parser paired by backend. The
+		# ip6tables caller is availability-gated below; its empty-error
+		# precedence is intentionally preserved in the mktemp branch.
+		if case "$_dump_kind" in
+			nft)
+				nft_list_ruleset >"$_rules_dump" 2>/dev/null
+				;;
+			iptables|ip6tables)
+				run_with_timeout "$IPTABLES_TIMEOUT" "${_dump_kind}-save" >"$_rules_dump" 2>/dev/null
+				;;
+			esac
+		then
+			case "$_dump_kind" in
+				nft)
+					map_from_nft_stream labeled <"$_rules_dump"
+					map_from_nft_stream unlabeled <"$_rules_dump"
+					;;
+				iptables|ip6tables)
+					map_from_iptables_save_stream labeled <"$_rules_dump"
+					map_from_iptables_save_stream unlabeled <"$_rules_dump"
+					;;
+			esac
+		elif [ -z "$_enrich_error" ]; then
+			_enrich_error="$_dump_error"
+		fi
+		rm -f "$_rules_dump"
+	elif [ "$_dump_kind" = ip6tables ]; then
+		# IPv6 enrichment is optional and must not replace an earlier
+		# IPv4/backend error when its temp file cannot be allocated.
+		if [ -z "$_enrich_error" ]; then
+			_enrich_error='mktemp_failed'
+		fi
+	else
+		_enrich_error='mktemp_failed'
+	fi
+}
+
 build_rules_map() {
 	OUT=''
 	_map_keys=0
@@ -293,47 +351,12 @@ build_rules_map() {
 
 	case "$backend" in
 		nft)
-			_rules_dump=$(_fwlive_mktemp fwlive-nft) || _rules_dump=''
-			if [ -n "$_rules_dump" ]; then
-				# Dumps land on /tmp (tmpfs). Duration bounded by
-				# NFT_TIMEOUT / IPTABLES_TIMEOUT; key/byte caps in map_add.
-				if nft_list_ruleset >"$_rules_dump" 2>/dev/null; then
-					map_from_nft_stream labeled <"$_rules_dump"
-					map_from_nft_stream unlabeled <"$_rules_dump"
-				elif [ -z "$_enrich_error" ]; then
-					_enrich_error='nft_failed'
-				fi
-				rm -f "$_rules_dump"
-			else
-				_enrich_error='mktemp_failed'
-			fi
+			enrich_rules_dump fwlive-nft nft
 			;;
 		iptables)
-			_rules_dump=$(_fwlive_mktemp fwlive-ipt) || _rules_dump=''
-			if [ -n "$_rules_dump" ]; then
-				if run_with_timeout "$IPTABLES_TIMEOUT" iptables-save >"$_rules_dump" 2>/dev/null; then
-					map_from_iptables_save_stream labeled <"$_rules_dump"
-					map_from_iptables_save_stream unlabeled <"$_rules_dump"
-				elif [ -z "$_enrich_error" ]; then
-					_enrich_error='iptables_failed'
-				fi
-				rm -f "$_rules_dump"
-			else
-				_enrich_error='mktemp_failed'
-			fi
+			enrich_rules_dump fwlive-ipt iptables
 			if command -v ip6tables-save >/dev/null 2>&1; then
-				_rules_dump=$(_fwlive_mktemp fwlive-ip6t) || _rules_dump=''
-				if [ -n "$_rules_dump" ]; then
-					if run_with_timeout "$IPTABLES_TIMEOUT" ip6tables-save >"$_rules_dump" 2>/dev/null; then
-						map_from_iptables_save_stream labeled <"$_rules_dump"
-						map_from_iptables_save_stream unlabeled <"$_rules_dump"
-					elif [ -z "$_enrich_error" ]; then
-						_enrich_error='ip6tables_failed'
-					fi
-					rm -f "$_rules_dump"
-				elif [ -z "$_enrich_error" ]; then
-					_enrich_error='mktemp_failed'
-				fi
+				enrich_rules_dump fwlive-ip6t ip6tables
 			fi
 			;;
 	esac
@@ -696,32 +719,36 @@ EOF
 	printf '{"names":{%s}}' "$OUT"
 }
 
+check_eq() {
+	_check_name="$1"
+	_check_got="$2"
+	_check_expected="$3"
+	_check_failure="$4"
+	if [ "$_check_got" != "$_check_expected" ]; then
+		# Keep the failure suffix at each call site so stderr stays byte-for-byte
+		# identical to the pre-extraction selftest messages.
+		echo "$_check_name: $_check_failure" >&2
+		return 1
+	fi
+}
+
 run_selftest() {
 	input=$(printf 'a\\b"c\nd\te')
 	escaped=$(printf '%s' "$input" | json_escape)
 	expected=$(printf 'a\\\\b\\"c\\nd\\te')
-	if [ "$escaped" != "$expected" ]; then
-		echo "json_escape: mismatch" >&2
-		return 1
-	fi
+	check_eq json_escape "$escaped" "$expected" mismatch || return 1
 
 	# Remaining C0 controls must become \u00XX (RFC 8259), not raw bytes.
 	input=$(printf 'x\001y\037z')
 	escaped=$(printf '%s' "$input" | json_escape)
 	expected='x\u0001y\u001fz'
-	if [ "$escaped" != "$expected" ]; then
-		echo "json_escape C0: expected $expected got $escaped" >&2
-		return 1
-	fi
+	check_eq 'json_escape C0' "$escaped" "$expected" "expected $expected got $escaped" || return 1
 
 	# Blank lines are data (paragraph-mode RS="" used to drop them).
 	input=$(printf 'a\n\nb')
 	escaped=$(printf '%s' "$input" | json_escape)
 	expected=$(printf 'a\\n\\nb')
-	if [ "$escaped" != "$expected" ]; then
-		echo "json_escape blank line: expected $expected got $escaped" >&2
-		return 1
-	fi
+	check_eq 'json_escape blank line' "$escaped" "$expected" "expected $expected got $escaped" || return 1
 
 	if is_resolvable_address 'not an ip'; then
 		echo 'is_resolvable_address: expected reject for spaces' >&2
@@ -812,25 +839,13 @@ run_selftest() {
 	fi
 
 	got=$(poll_clamp_lines "99999999999999999999")
-	if [ "$got" != "$POLL_LINES_MAX" ]; then
-		echo "poll_clamp_lines: over-long expected $POLL_LINES_MAX got $got" >&2
-		return 1
-	fi
+	check_eq poll_clamp_lines "$got" "$POLL_LINES_MAX" "over-long expected $POLL_LINES_MAX got $got" || return 1
 	got=$(poll_clamp_lines "0")
-	if [ "$got" != "50" ]; then
-		echo "poll_clamp_lines: zero expected 50 got $got" >&2
-		return 1
-	fi
+	check_eq poll_clamp_lines "$got" "50" "zero expected 50 got $got" || return 1
 	got=$(poll_clamp_lines "2001")
-	if [ "$got" != "$POLL_LINES_MAX" ]; then
-		echo "poll_clamp_lines: 2001 expected $POLL_LINES_MAX got $got" >&2
-		return 1
-	fi
+	check_eq poll_clamp_lines "$got" "$POLL_LINES_MAX" "2001 expected $POLL_LINES_MAX got $got" || return 1
 	got=$(poll_clamp_lines "500")
-	if [ "$got" != "500" ]; then
-		echo "poll_clamp_lines: expected 500 got $got" >&2
-		return 1
-	fi
+	check_eq poll_clamp_lines "$got" "500" "expected 500 got $got" || return 1
 
 	if ! _fwlive_tmp_dir_ok; then
 		echo "_fwlive_tmp_dir_ok: /tmp must be a sticky directory" >&2
@@ -841,18 +856,12 @@ run_selftest() {
 Address: 127.0.0.1:53
 
 8.8.8.8.in-addr.arpa	name = dns.google.")
-	if [ "$got" != "dns.google" ]; then
-		echo "parse_nslookup_name: bind-style expected dns.google got '$got'" >&2
-		return 1
-	fi
+	check_eq parse_nslookup_name "$got" "dns.google" "bind-style expected dns.google got '$got'" || return 1
 	got=$(parse_nslookup_name "Server:		127.0.0.1
 Address:	127.0.0.1:53
 
 Address 1: 8.8.8.8 dns.google.")
-	if [ "$got" != "dns.google" ]; then
-		echo "parse_nslookup_name: busybox Address N expected dns.google got '$got'" >&2
-		return 1
-	fi
+	check_eq parse_nslookup_name "$got" "dns.google" "busybox Address N expected dns.google got '$got'" || return 1
 	got=$(parse_nslookup_name "Server: 192.168.1.1
 Address 1: 192.168.1.1 router.lan
 
@@ -864,10 +873,7 @@ Address 1: 8.8.8.8 dns.google")
 	fi
 	got=$(parse_nslookup_name "Server: 127.0.0.1
 Address: 127.0.0.1:53")
-	if [ -n "$got" ]; then
-		echo "parse_nslookup_name: server-only expected empty got '$got'" >&2
-		return 1
-	fi
+	check_eq parse_nslookup_name "$got" '' "server-only expected empty got '$got'" || return 1
 
 	run_logging_selftest || return 1
 
@@ -888,41 +894,20 @@ Address: 127.0.0.1:53")
 	fi
 
 	got=$(poll_lines_from_input '{"addresses":["999999"]}')
-	if [ "$got" != "$POLL_LINES_MAX" ]; then
-		echo "poll_lines_from_input: expected $POLL_LINES_MAX got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "$POLL_LINES_MAX" "expected $POLL_LINES_MAX got $got" || return 1
 
 	got=$(poll_lines_from_input '{"addresses":["99999999999999999999"]}')
-	if [ "$got" != "$POLL_LINES_MAX" ]; then
-		echo "poll_lines_from_input: over-long expected $POLL_LINES_MAX got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "$POLL_LINES_MAX" "over-long expected $POLL_LINES_MAX got $got" || return 1
 	got=$(poll_lines_from_input '{"addresses":["18446744073709551616"]}')
-	if [ "$got" != "$POLL_LINES_MAX" ]; then
-		echo "poll_lines_from_input: 18446744073709551616 expected $POLL_LINES_MAX got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "$POLL_LINES_MAX" "18446744073709551616 expected $POLL_LINES_MAX got $got" || return 1
 	got=$(poll_lines_from_input '{"addresses":["0"]}')
-	if [ "$got" != "50" ]; then
-		echo "poll_lines_from_input: zero expected 50 got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "50" "zero expected 50 got $got" || return 1
 	got=$(poll_lines_from_input '{"addresses":["2001"]}')
-	if [ "$got" != "$POLL_LINES_MAX" ]; then
-		echo "poll_lines_from_input: 2001 expected $POLL_LINES_MAX got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "$POLL_LINES_MAX" "2001 expected $POLL_LINES_MAX got $got" || return 1
 	got=$(poll_lines_from_input '{"addresses":["500"]}')
-	if [ "$got" != "500" ]; then
-		echo "poll_lines_from_input: expected 500 got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "500" "expected 500 got $got" || return 1
 	got=$(poll_lines_from_input '{"addresses":["100"]}')
-	if [ "$got" != "100" ]; then
-		echo "poll_lines_from_input: expected 100 got $got" >&2
-		return 1
-	fi
+	check_eq poll_lines_from_input "$got" "100" "expected 100 got $got" || return 1
 
 	return 0
 }

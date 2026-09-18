@@ -46,6 +46,21 @@ function persistConsentDismissed() {
 	}
 }
 
+function enableLoggingButton(state, callbacks) {
+	return E(
+		'button',
+		{
+			'class': 'cbi-button cbi-button-action',
+			'type': 'button',
+			'disabled': state.loggingBusy ? '' : null,
+			'click': function () {
+				callbacks.onEnable();
+			}
+		},
+		[state.loggingBusy ? _('Enabling…') : _('Enable WAN drop/reject logging')]
+	);
+}
+
 function blockerCode(state) {
 	const blockers = (state.loggingStatus && state.loggingStatus.blockers) || [];
 	if (blockers.indexOf('no_wan_zone') >= 0) return 'no_wan_zone';
@@ -164,19 +179,7 @@ function buildConsentPanel(state, callbacks) {
 			])
 		]),
 		E('p', { 'class': 'fwlive-consent-actions' }, [
-			E(
-				'button',
-				{
-					'class': 'cbi-button cbi-button-action',
-					'type': 'button',
-					'disabled': state.loggingBusy ? '' : null,
-					'click': function () {
-						persistConsentDismissed();
-						callbacks.onEnable();
-					}
-				},
-				[state.loggingBusy ? _('Enabling…') : _('Enable WAN drop/reject logging')]
-			),
+			enableLoggingButton(state, callbacks),
 			' ',
 			E(
 				'button',
@@ -289,19 +292,7 @@ function buildEmptyStateNodes(state, callbacks) {
 	);
 	nodes.push(
 		E('p', {}, [
-			E(
-				'button',
-				{
-					'class': 'cbi-button cbi-button-action',
-					'type': 'button',
-					'disabled': state.loggingBusy ? '' : null,
-					'click': function () {
-						persistConsentDismissed();
-						callbacks.onEnable();
-					}
-				},
-				[state.loggingBusy ? _('Enabling…') : _('Enable WAN drop/reject logging')]
-			),
+			enableLoggingButton(state, callbacks),
 			' ',
 			links.firewallZonesLink(_('I’ll configure this under Network → Firewall'))
 		])
