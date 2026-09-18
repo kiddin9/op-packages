@@ -47,6 +47,12 @@
           location.href = vue_prefix;
         }
       }
+    setTimeout(() => {
+  	  const targetDiv = document.querySelector('div[style*="background-color: rgb(251, 245, 250)"]');
+  	  if (targetDiv) {
+  	  targetDiv.style.display = 'none';
+  	  }
+    }, 500);
     })();
 </script>
 <div id="app">
