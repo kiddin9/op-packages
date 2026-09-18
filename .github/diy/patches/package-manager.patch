@@ -1,3 +1,13 @@
+--- a/luci-app-package-manager/root/usr/share/luci/menu.d/luci-app-package-manager.json
++++ b/luci-app-package-manager/root/usr/share/luci/menu.d/luci-app-package-manager.json
+@@ -1,5 +1,5 @@
+ {
+-	"admin/system/package-manager": {
++	"admin/package-manager": {
+ 		"title": "Software",
+ 		"order": 30,
+ 		"action": {
+
 --- a/luci-app-package-manager/htdocs/luci-static/resources/view/package-manager.js
 +++ b/luci-app-package-manager/htdocs/luci-static/resources/view/package-manager.js
 @@ -186,7 +186,7 @@ function parseList(s, dest)
