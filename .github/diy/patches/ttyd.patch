@@ -1,0 +1,8 @@
+--- a/ttyd/files/ttyd.config
++++ b/ttyd/files/ttyd.config
+@@ -1,5 +1,4 @@
+ 
+ config ttyd
+-	option interface '@lan'
+ 	option command '/bin/login'
+
