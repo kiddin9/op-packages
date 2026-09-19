@@ -4,7 +4,7 @@
  			error = "INVALID_NETMASK";
  			goto error;
  		}
-+	} else if (!strcmp(iface->name, "lan")) {
++	} else if (iface && !strncmp(iface->name, "lan", 3)) {
 +		netmask = 24;
  	}
  
