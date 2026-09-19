@@ -49,12 +49,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.6.7_p13
-PKG_RELEASE:=44
+PKG_VERSION:=1.6.7_p17
+PKG_RELEASE:=45
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=ed7f363b1333cee454db8a1ad5f8c23a0f17524a
+PKG_SOURCE_VERSION:=245058186b1ee22b8e6eb92ca9745d4ea811b116
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -387,7 +387,8 @@ define Package/wwand-mhi/install
 endef
 
 # ---------------------------------------------------------------------------
-# wwand-esim: eSIM (eUICC) profile management. Needs a QMI UIM/APDU channel.
+# wwand-esim: eSIM (eUICC) profile management. Backend-neutral — the APDU
+# ladder (MBIM UICC -> QMI UIM -> AT) lives in the base package's sim.uc.
 # ---------------------------------------------------------------------------
 define Package/wwand-esim
   SECTION:=net
