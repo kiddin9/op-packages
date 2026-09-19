@@ -1,0 +1,15 @@
+--- a/webui-aria2/Makefile
++++ b/webui-aria2/Makefile
+@@ -11,9 +11,9 @@ PKG_NAME:=webui-aria2
+ PKG_RELEASE:=1
+ 
+ PKG_SOURCE_PROTO:=git
+-PKG_SOURCE_DATE:=2021-09-01
+-PKG_SOURCE_URL:=https://github.com/ziahamza/webui-aria2.git
+-PKG_SOURCE_VERSION:=109903f0e2774cf948698cd95a01f77f33d7dd2c
++PKG_SOURCE_DATE:=2026-05-31
++PKG_SOURCE_URL:=https://github.com/Ryahn/webui-aria2
++PKG_SOURCE_VERSION:=5a613d8b049ad07b919884890551e78760c71e22
+ PKG_MIRROR_HASH:=skip
+ 
+ PKG_LICENSE:=MIT
