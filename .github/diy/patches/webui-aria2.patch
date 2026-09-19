@@ -1,15 +1,34 @@
 --- a/webui-aria2/Makefile
 +++ b/webui-aria2/Makefile
-@@ -11,9 +11,9 @@ PKG_NAME:=webui-aria2
+@@ -11,10 +11,10 @@ PKG_NAME:=webui-aria2
  PKG_RELEASE:=1
  
  PKG_SOURCE_PROTO:=git
 -PKG_SOURCE_DATE:=2021-09-01
 -PKG_SOURCE_URL:=https://github.com/ziahamza/webui-aria2.git
 -PKG_SOURCE_VERSION:=109903f0e2774cf948698cd95a01f77f33d7dd2c
+-PKG_MIRROR_HASH:=bfc257fba8c968bbbdb27635281bee7bfa798e227e9f8ad567bf67720fbcede7
 +PKG_SOURCE_DATE:=2026-05-31
-+PKG_SOURCE_URL:=https://github.com/Ryahn/webui-aria2
++PKG_SOURCE_URL:=https://github.com/Ryahn/webui-aria2.git
 +PKG_SOURCE_VERSION:=5a613d8b049ad07b919884890551e78760c71e22
- PKG_MIRROR_HASH:=skip
++PKG_MIRROR_HASH:=skip
  
  PKG_LICENSE:=MIT
+ PKG_LICENSE_FILES:=LICENSE
+
+deleted file mode 100644
+index 2fb174971d..0000000000
+--- a/net/webui-aria2/patches/0001-fix-favicon-path.patch
++++ /dev/null
+@@ -1,11 +0,0 @@
+---- a/docs/index.html
+-+++ b/docs/index.html
+-@@ -3,7 +3,7 @@
+- 
+- <!-- {{{ head -->
+- <head>
+--  <link rel="icon" href="../favicon.ico" />
+-+  <link rel="icon" href="favicon.ico" />
+- 
+-   <meta charset="utf-8">
+-   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
