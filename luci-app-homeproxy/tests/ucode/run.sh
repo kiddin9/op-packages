@@ -81,6 +81,68 @@ else
 	FAILED=1
 fi
 
+echo "== wget flavour selection =="
+# A stub /usr/bin/wget whose --version answer comes from the environment, so
+# both flavours can be exercised on a single host. The empty-answer/non-zero
+# case is uclient-fetch, whose getopt rejects --version just like it rejects
+# -nv before sending anything.
+rm -rf "$WORK/wget_flavor"
+mkdir -p "$WORK/wget_flavor"
+cat > "$WORK/wget_flavor/wget-stub" <<'STUB'
+#!/bin/sh
+if [ "$1" = "--version" ]; then
+	printf '%s\n' "$HP_WGET_STUB_VERSION"
+	exit "${HP_WGET_STUB_VERSION_RC:-0}"
+fi
+for arg in "$@"; do printf '%s\n' "$arg"; done >> "$HP_WGET_STUB_LOG"
+printf 'stub body\n'
+STUB
+chmod +x "$WORK/wget_flavor/wget-stub"
+sed "s|/usr/bin/wget|$WORK/wget_flavor/wget-stub|" \
+	"$ROOT/root/etc/homeproxy/scripts/homeproxy.uc" > "$WORK/wget_flavor/homeproxy.uc"
+cp "$ROOT/tests/ucode/test_wget_flavor.uc" "$WORK/wget_flavor/"
+
+for flavor in gnu compat; do
+	if [ "$flavor" = "gnu" ]; then
+		version="GNU Wget 1.25.0 built on linux-gnu."
+		rc=0
+	else
+		version=""
+		rc=1
+	fi
+	rm -f "$WORK/wget_flavor/args.log"
+	if ( cd "$WORK/wget_flavor" &&
+		HP_WGET_EXPECT_FLAVOR="$flavor" \
+		HP_WGET_STUB_VERSION="$version" \
+		HP_WGET_STUB_VERSION_RC="$rc" \
+		HP_WGET_STUB_LOG="$WORK/wget_flavor/args.log" \
+		ucode test_wget_flavor.uc ); then
+		echo "PASS: wget flavour selection ($flavor)"
+	else
+		echo "FAIL: wget flavour selection ($flavor)"
+		FAILED=1
+	fi
+done
+
+echo "== real uclient-fetch compatibility =="
+# uclient-fetch is the default /usr/bin/wget on OpenWrt/ImmortalWrt, so a
+# GNU-only option anywhere in the generated command line has to fail here.
+if [ -x /bin/uclient-fetch ]; then
+	rm -rf "$WORK/uclient"
+	mkdir -p "$WORK/uclient"
+	sed "s|/usr/bin/wget|/bin/uclient-fetch|" \
+		"$ROOT/root/etc/homeproxy/scripts/homeproxy.uc" > "$WORK/uclient/homeproxy.uc"
+	cp "$ROOT/tests/ucode/test_wget_verbose_uclient.uc" "$WORK/uclient/"
+	if ( cd "$WORK/uclient" && ucode test_wget_verbose_uclient.uc ); then
+		echo "PASS: uclient-fetch accepts the generated command line"
+	else
+		echo "FAIL: uclient-fetch rejects the generated command line"
+		FAILED=1
+	fi
+else
+	echo "SKIP: /bin/uclient-fetch not installed on this host"
+fi
+
 echo "== generator regression tests =="
 sh "$ROOT/tests/ucode/test_generators.sh" "$ROOT" "$WORK/generators" || FAILED=1
 

@@ -92,9 +92,43 @@ export function getTime(epoch) {
 };
 
 /*
+ * GNU wget and OpenWrt's default /usr/bin/wget do not accept the same flags.
+ * On OpenWrt/ImmortalWrt that path comes from the uclient-fetch package
+ * (`ALTERNATIVES:=200:/usr/bin/wget:/bin/uclient-fetch`, `PROVIDES:=wget` in
+ * package/libs/uclient) and busybox ships no wget applet, so the effective
+ * wget is uclient-fetch unless wget-ssl happens to be installed on top of it.
+ * GNU-only flags break the fetch outright: uclient-fetch's getopt rejects
+ * `-nv` with "unrecognized option: n" before a single request is sent.
+ *
+ * The probe below tells the two apart. `-nv` (--no-verbose) is how GNU wget
+ * mutes the progress meter while still printing the failure reason on stderr;
+ * `-q` is the only meter switch uclient-fetch and busybox wget share.
+ */
+export function classifyWgetFlavor(exitcode, stdout) {
+	if (exitcode !== 0 || !stdout)
+		return 'compat';
+
+	return match(stdout, /GNU Wget/) ? 'gnu' : 'compat';
+};
+
+let wget_flavor = null;
+
+export function wgetFlavor() {
+	if (wget_flavor === null) {
+		const probe = executeCommand('/usr/bin/wget --version') || {};
+
+		wget_flavor = classifyWgetFlavor(probe.exitcode, probe.stdout);
+	}
+
+	return wget_flavor;
+};
+
+/*
  * Fetch a URL and report both the body and, on failure, the reason. The
  * reason is wget's own stderr (whitespace collapsed, length-capped) so the
  * caller can tell a DNS failure from a timeout or a TLS handshake error.
+ * Note that uclient-fetch's -q hides most failure messages, so on such a
+ * target the reason is often empty and only the exit code is left.
  */
 export function wGETVerbose(url, ua) {
 	if (!url || type(url) !== 'string')
@@ -103,8 +137,10 @@ export function wGETVerbose(url, ua) {
 	if (!ua)
 		ua = 'Wget/1.21 (HomeProxy, like v2rayN)';
 
-	/* -nv (not -q) so wget still reports *why* a fetch failed on stderr */
-	const output = executeCommand(`/usr/bin/wget -nv -O- --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
+	/* -U/-T are understood by GNU wget, uclient-fetch and busybox wget alike;
+	 * the long forms --user-agent/--timeout are not, busybox wget in
+	 * particular knows neither of them. */
+	const output = executeCommand(`/usr/bin/wget ${wgetFlavor() === 'gnu' ? '-nv' : '-q'} -O- -U ${shellQuote(ua)} -T 10 ${shellQuote(url)}`) || {};
 	if (output.exitcode !== 0) {
 		let reason = trim(output.stderr || '');
 		reason = reason ? replace(reason, /\s+/g, ' ') : 'no error output';

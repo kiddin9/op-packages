@@ -86,6 +86,19 @@
 | --- | --- | --- |
 | 重构和修复错误 | 重构：前端 TLS/传输表单收敛、generator 共享 TLS/transport 构建、`parse_uri` 拆为 13 个协议函数<br>测试：协议单测 153 条、generator 回归、LuCI 表单快照<br>修复：`executeCommand` 清理、dnsmasq 路径告警、fw4 清单单源、启动日志、PEM 校验、`wGET` 失败原因<br>工程：提高中文翻译率 CI、架构核实 | <br>parse_uri 对比零差异、generator JSON 逐字节一致、表单快照逐字段一致<br>顺带修复 3 个既有缺陷：证书上传、fw4 清理回滚、dnsmasq 路径 |
 
+## 稳定性修复（r12）
+
+修掉两个会让功能整体不可用的缺陷，均由 issue 复现确认。
+
+| 领域 | 变更 |
+| --- | --- |
+| **订阅抓取**（#5） | 抓取前先探测 wget 实现：GNU wget 用 `-nv`（静音进度条但保留失败原因），uclient-fetch / busybox wget 用 `-q`；`--user-agent` / `--timeout` 一并换成三家通用的 `-U` / `-T`。r11 引入的 `-nv` 是 GNU 专有选项，而 OpenWrt / ImmortalWrt 的 `/usr/bin/wget` 默认由 uclient-fetch 提供，参数解析阶段即失败，导致所有订阅更新以 `no valid node found` 结束 |
+| **自定义路由**（#3 #4） | 修复 `routing_mode='custom'` 完全无法生成配置：`direct_overrides` 的使用早于声明（ucode 不做变量提升，strict 模式下直接抛未声明变量）；本地规则集残留 legacy `download_detour` 字段，被 sing-box 判为 `unknown field` 而拒绝整个配置 |
+| **预设规则集** | `geoip-cn` / `geosite-cn` / `geosite-noncn` 改用 SagerNet 上游 raw URL，并经 `main-out` 下载：直连受 DNS 污染时会超时并静默沿用缓存；每天约 250 KB 的代理开销可忽略，节点引导不受影响 |
+| **依赖** | Makefile 补上 `+ip-full`、`+kmod-tun` |
+
+> 回归保障：订阅抓取用 stub wget 覆盖 GNU / 非 GNU 两条分支，并在装有 `/bin/uclient-fetch` 的目标上直接执行生成的命令行；自定义路由新增 `custom.uci` fixture（本地规则集 + 直连节点覆盖 + 路由规则）。
+
 ## 运行要求
 
 - ImmortalWrt / OpenWrt ≥ 24.10+（apk 或 opkg 均可安装）
