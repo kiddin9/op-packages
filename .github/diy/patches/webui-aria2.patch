@@ -18,7 +18,7 @@
 
 deleted file mode 100644
 index 2fb174971d..0000000000
---- a/net/webui-aria2/patches/0001-fix-favicon-path.patch
+--- a/webui-aria2/patches/0001-fix-favicon-path.patch
 +++ /dev/null
 @@ -1,11 +0,0 @@
 ---- a/docs/index.html
