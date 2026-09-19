@@ -8,11 +8,11 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=webui-aria2
-PKG_RELEASE:=1
+PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_DATE:=2026-05-31
-PKG_SOURCE_URL:=https://github.com/Ryahn/webui-aria2
+PKG_SOURCE_URL:=https://github.com/Ryahn/webui-aria2.git
 PKG_SOURCE_VERSION:=5a613d8b049ad07b919884890551e78760c71e22
 PKG_MIRROR_HASH:=skip
 
