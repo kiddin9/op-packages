@@ -132,7 +132,7 @@ return view.extend({
 			dhcp: uci.get('dhcp', 'lan', 'ignore') === '1' ? '0' : '1',
 			ipv6: uci.get('network', 'wan6', 'auto') === '0' ? '0' : '1',
 			https: uci.get('wizard', 'default', 'https') || '0',
-			cookie_p: uci.get('wizard', 'default', 'persistent_cookies') '1',
+			cookie_p: uci.get('wizard', 'default', 'persistent_cookies') || '1',
 			landing_page: uci.get('wizard', 'default', 'landing_page') || 'default',
 			autoupgrade_fm: uci.get('wizard', 'default', 'autoupgrade_fm') || '1',
 			coremark: uci.get('wizard', 'default', 'coremark') || '0',
