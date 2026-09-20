@@ -451,3 +451,22 @@
  	}
  
  	return {
+
+--- a/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc
++++ b/luci-app-dockerman/root/usr/share/rpcd/ucode/docker_rpc.uc
+@@ -316,6 +316,15 @@ function run_ttyd(request) {
+ 		return { error: 'Container ID is required' };
+ 	}
+ 
++	// Strictly validate all user-supplied values before they are interpolated
++	// into a shell command string to prevent command injection.
++	if (!match(id, /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/) ||
++	    !match(`${port}`, /^[0-9]{1,5}$/) || int(port) < 1 || int(port) > 65535 ||
++	    (uid && !match(`${uid}`, /^[a-zA-Z0-9_-]+$/)) ||
++	    !match(cmd, /^[a-zA-Z0-9_\/.\- ]+$/)) {
++		return { error: 'Invalid parameter supplied' };
++	}
++
+ 	let ttyd_cmd = `ttyd -q -d 2 --once --writable -p ${port} docker`;
+ 	const sock_addr = ds.get_socket_dest();
+
