@@ -4,8 +4,7 @@ local uci = luci.model.uci.cursor()
 local http = require "luci.http"
 
 function index()
-    -- 1. 注册 admin/index 为纯路由跳板（无 title，不占菜单）
-    entry({"admin", "index"}, call("landing_page")).dependent = false
+    entry({"admin", "index"}, call("landing_page"), _("Home") , 0).dependent = false
 
     -- 2. 核心：直接改写 admin 根节点的调度目标
     -- 这样当用户访问 /admin、登录后跳转或访问根目录时，无需经过 firstchild()，直接执行 landing_page()
