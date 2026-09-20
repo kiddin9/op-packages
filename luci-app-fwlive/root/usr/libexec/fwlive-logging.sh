@@ -599,9 +599,10 @@ collect_logging_warnings() {
 	command -v timeout >/dev/null 2>&1 || logging_warnings_append 'timeout_missing'
 
 	# Diagnostic only: supported releases use nftables, but a registered legacy
-	# iptables table can still exist in the network namespace visible to rpcd.
-	# Keep this ubus-only for now; it must not affect readiness or the enable
-	# gate, and the UI has no remediation flow for legacy tables yet.
+	# iptables table can still exist in the namespace visible to rpcd. LuCI
+	# surfaces this warning in the backend label; it must not affect readiness
+	# or the enable gate. A registered table can come from a loaded module even
+	# when it has no rules, so this is inventory evidence, not proof of traffic.
 	legacy_iptables_active && logging_warnings_append 'legacy_iptables_detected'
 
 	# Report via LOGGING_WARNINGS, not exit status.
