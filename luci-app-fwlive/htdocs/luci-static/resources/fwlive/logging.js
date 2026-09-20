@@ -17,7 +17,7 @@
  *
  * renderManualTestNodes(host, state, callbacks) → void
  *   host      - <ul> element inside #fwlive-help (cleared and rebuilt)
- *   state     - { firewallBackend }
+ *   state     - unused; nft-only instruction
  *
  * Empty-state helpers:
  *   buildEmptyStateNodes(state, callbacks) → Node[]
@@ -330,29 +330,19 @@ function renderEmptyState(host, state, callbacks) {
 }
 
 /**
- * renderManualTestNodes — fills a <li> host element with the backend-specific
- * manual test instruction. Call from addFooter() after render() has inserted
+ * renderManualTestNodes — fills a <li> host element with the nft manual test
+ * instruction. Call from addFooter() after render() has inserted
  * the placeholder <li id="fwlive-manual-test">.
  */
-function renderManualTestNodes(host, state, _callbacks) {
+function renderManualTestNodes(host, _state, _callbacks) {
 	host.innerHTML = '';
-	if (state.firewallBackend === 'iptables') {
-		host.appendChild(document.createTextNode(_('Manual test (System → Terminal): ')));
-		host.appendChild(
-			E('code', {}, [
-				'iptables -I INPUT -p icmp --icmp-type echo-request -j LOG --log-prefix "fwlive-ping: "'
-			])
-		);
-		host.appendChild(document.createTextNode(_(' then ping the router.')));
-	} else {
-		host.appendChild(document.createTextNode(_('Manual test (System → Terminal): ')));
-		host.appendChild(
-			E('code', {}, [
-				'nft insert rule inet fw4 input ip protocol icmp icmp type echo-request log prefix "fwlive-ping " accept'
-			])
-		);
-		host.appendChild(document.createTextNode(_(' then ping the router.')));
-	}
+	host.appendChild(document.createTextNode(_('Manual test (System → Terminal): ')));
+	host.appendChild(
+		E('code', {}, [
+			'nft insert rule inet fw4 input ip protocol icmp icmp type echo-request log prefix "fwlive-ping " accept'
+		])
+	);
+	host.appendChild(document.createTextNode(_(' then ping the router.')));
 }
 
 return baseclass.extend({

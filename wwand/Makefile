@@ -11,6 +11,7 @@
 #   wwand-ncm        - NCM/ECM backend        (DEPENDS wwand)
 #   wwand-mhi        - PCIe/MHI transport + drivers (DEPENDS wwand; add a backend)
 #   wwand-esim       - eSIM management        (DEPENDS wwand + lpac; no backend)
+#   wwand-gps        - GNSS/NMEA glue for ugps (DEPENDS wwand + ugps; no backend)
 # A typical QMI router installs `wwand-qmi` (which pulls in `wwand`); add
 # `wwand-mbim` / `wwand-ncm` for those modems, `wwand-mhi` for a PCIe/MHI modem.
 # The ucode tree ships PRECOMPILED to bytecode (repo-root CMakeLists.txt,
@@ -49,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.6.7_p46
-PKG_RELEASE:=47
+PKG_VERSION:=1.6.7_p55
+PKG_RELEASE:=48
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=6ae4cab239ecd02e570d7cd51584d60101704732
+PKG_SOURCE_VERSION:=aaf2ba064bbf751eaa0237e00f94c1619f05b648
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -438,6 +439,45 @@ define Package/wwand-esim/install
 endef
 
 # ---------------------------------------------------------------------------
+# wwand-gps: point ugps at the modem's NMEA port. Backend-neutral — finding the
+# port and starting the receiver are both in the base package, and neither
+# depends on the control protocol.
+# ---------------------------------------------------------------------------
+define Package/wwand-gps
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=GNSS/NMEA glue for wwand (ugps)
+  # ugps is OpenWrt base: it parses NMEA, can set the clock, and publishes a
+  # `gps` ubus object. It knows nothing about modems, and it reads its tty from
+  # a STATIC /etc/config/gps — which is exactly the gap this package fills,
+  # because wwand's NMEA port is discovered and can move between boots or when
+  # a modem is replaced.
+  DEPENDS:=+wwand +ugps
+endef
+
+define Package/wwand-gps/description
+ Joins three pieces that already existed with nothing between them: wwand finds
+ the modem's NMEA port during enumeration (reported as `gps_port`), `option
+ gnss` starts the receiver with the vendor AT command — QMI's LOC service is
+ broken on Quectel and AT is what works, and only wwand has the port — and ugps
+ reads the NMEA and publishes a position.
+
+ What this adds is the config write that connects them, plus a `modem_gps` ubus
+ method that answers with both halves at once: the port and receiver state wwand
+ knows, merged with whatever ugps reports.
+
+ Good citizen: it manages exactly one `config gps` section and only one it
+ created itself (marked `option wwand '1'`). An operator's own section — a hat
+ GPS on a serial port, a second receiver — is never touched or repointed.
+endef
+
+define Package/wwand-gps/install
+	$(INSTALL_DIR) $(1)$(UCDIR)
+	$(INSTALL_DATA) $(WWAND_UCODE)/gps.uc $(1)$(UCDIR)/
+endef
+
+# ---------------------------------------------------------------------------
 # wwand-datapath-rmnet_nss: Qualcomm NSS offload behind the VENDOR qmi_wwan_q.
 # A datapath add-on, not a control backend — it plugs into wwand's datapath
 # interface (`option mux 'rmnet_nss'`, or picked up on its own under 'auto').
@@ -527,6 +567,7 @@ $(eval $(call BuildPackage,wwand-mbim))
 $(eval $(call BuildPackage,wwand-ncm))
 $(eval $(call BuildPackage,wwand-mhi))
 $(eval $(call BuildPackage,wwand-esim))
+$(eval $(call BuildPackage,wwand-gps))
 $(eval $(call BuildPackage,wwand-apntest))
 define Package/wwand-datapath-rmnet_nss_mhi
   SECTION:=net

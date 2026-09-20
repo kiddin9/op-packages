@@ -38,7 +38,7 @@ No `luasrc/` — modern JS-only app.
 - Optional reverse DNS uses BusyBox `nslookup` (stock image; not a package depend)
 - No hard `firewall4` dependency
 - Menu depends on ACL only (no `fs` AND of `nft`+`iptables` — that hid the entry on stock fw3 and fw4)
-- Runtime backend detection selects **fw4/nft** (22.03+) or **iptables LOG** (21.02 fw3); best-effort iptables when nft absent
+- Runtime backend detection selects **fw4/nft** on supported **23.05+** images; log lines tagged **iptables** still classify. OpenWrt **21.02** / **22.03** are unsupported
 
 ## Maintenance
 

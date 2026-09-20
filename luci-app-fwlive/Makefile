@@ -12,7 +12,7 @@ LUCI_DEPENDS:=+luci-base +logd +jsonfilter
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=0.1.44
-PKG_RELEASE:=26
+PKG_RELEASE:=27
 
 # Reproducible build: honor SOURCE_DATE_EPOCH from the build environment (set by docker-sdk.sh / CI).
 ifdef SOURCE_DATE_EPOCH
@@ -22,12 +22,12 @@ endif
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Lucas Albers <lucas.b.albers@gmail.com>
 
-include $(TOPDIR)/feeds/luci/luci.mk
-
 define Package/luci-app-fwlive/prerm
 #!/bin/sh
-[ -n "$${IPKG_INSTROOT}" ] && exit 0
-[ "$$1" = "remove" ] || exit 0
+case "$${IPKG_INSTROOT}" in
+	''|/) ;;
+	*) exit 0 ;;
+esac
 . /usr/libexec/fwlive-logging.sh
 # Best-effort restore: always exit 0 so a transient lock/pending-staging
 # failure cannot strand the package half-removed. Baseline is kept on
@@ -36,5 +36,7 @@ define Package/luci-app-fwlive/prerm
 restore_wan_log_baseline || logger -t fwlive "WAN log baseline restore failed during uninstall"
 exit 0
 endef
+
+include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature

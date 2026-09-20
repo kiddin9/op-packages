@@ -635,7 +635,6 @@ return view.extend({
 	},
 
 	backendDisplayLabel() {
-		if (this.firewallBackend === 'iptables') return _('using iptables');
 		if (this.firewallBackend === 'nft') return _('using fw4');
 		return '';
 	},
@@ -661,6 +660,13 @@ return view.extend({
 			const warnings = (this.loggingStatus && this.loggingStatus.warnings) || [];
 			if (warnings.indexOf('timeout_missing') >= 0) {
 				const warn = _('Limited diagnostics — timeout command missing');
+				text = text ? text + ' \u00b7 ' + warn : warn;
+				degraded = true;
+			}
+			if (warnings.indexOf('legacy_iptables_detected') >= 0) {
+				const warn = _(
+					'Live view may be incomplete — a legacy iptables table is registered'
+				);
 				text = text ? text + ' \u00b7 ' + warn : warn;
 				degraded = true;
 			}
@@ -1847,8 +1853,7 @@ return view.extend({
 				expandedRowId: this.expandedRowId,
 				rowTint: this.rowTintEnabled(),
 				showHostnames: !!this.showHostnames,
-				hostnameCache: this.hostnameCache,
-				firewallBackend: this.firewallBackend
+				hostnameCache: this.hostnameCache
 			},
 			{
 				onRowClick: (rowId, ev) => this.onRowClick(rowId, ev),
@@ -2471,8 +2476,7 @@ return view.extend({
 		this.updateTintWarnUi();
 		this.renderRows(true);
 		const testLi = document.getElementById('fwlive-manual-test');
-		if (testLi)
-			logging.renderManualTestNodes(testLi, { firewallBackend: this.firewallBackend }, {});
+		if (testLi) logging.renderManualTestNodes(testLi, {}, {});
 		if (this.showHostnames) this.resolveHostnamesForEntries(this.filteredRows());
 	}
 });

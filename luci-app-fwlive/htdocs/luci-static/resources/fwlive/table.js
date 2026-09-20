@@ -17,7 +17,7 @@
  *   host      - <tbody> element (kept; normal polls reuse keyed rows)
  *   state     - shallow copy: { rows, columns, viewMode, messageLayout,
  *                               expandedRowId, rowTint, showHostnames,
- *                               hostnameCache, firewallBackend }
+ *                               hostnameCache }
  *   callbacks - { onRowClick(rowId, ev), onFilterClick(field, value, ev),
  *                 actionRowTintClass(action) }
  *
@@ -147,12 +147,7 @@ function buildColumnCell(col, row, state, callbacks) {
 			return E('td', { 'class': log.actionRowClass(row.action) }, [actionCell]);
 		case 'rule':
 			return E('td', { 'class': columnCellClass(col) }, [
-				links.ruleAdminLink(
-					row.rule_hint,
-					row.rule_label,
-					state.firewallBackend,
-					onFilterClick
-				)
+				links.ruleAdminLink(row.rule_hint, row.rule_label, onFilterClick)
 			]);
 		case 'iface':
 			return E('td', { 'class': columnCellClass(col) }, [
@@ -279,8 +274,7 @@ function rowRenderKey(row, state, columns) {
 		state.messageLayout,
 		state.expandedRowId === row.id,
 		!!state.rowTint,
-		!!state.showHostnames,
-		state.firewallBackend
+		!!state.showHostnames
 	]);
 }
 

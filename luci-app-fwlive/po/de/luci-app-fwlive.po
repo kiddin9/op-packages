@@ -753,9 +753,9 @@ msgstr "turn it back off with the WAN logging on control on the watch strip."
 msgid "using fw4"
 msgstr "mit fw4"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:510
-msgid "using iptables"
-msgstr "mit iptables"
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js
+msgid "Live view may be incomplete — a legacy iptables table is registered"
+msgstr "Live view may be incomplete — a legacy iptables table is registered"
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:89
 msgid "· %s"

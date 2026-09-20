@@ -687,8 +687,8 @@ msgstr ""
 msgid "using fw4"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:510
-msgid "using iptables"
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js
+msgid "Live view may be incomplete — a legacy iptables table is registered"
 msgstr ""
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:89

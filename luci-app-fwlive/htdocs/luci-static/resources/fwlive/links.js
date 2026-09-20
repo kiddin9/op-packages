@@ -93,28 +93,19 @@ function addrFilterLink(field, ip, showHostnames, hostnameCache, onFilterClick) 
 	);
 }
 
-/**
- * @param {string} hint           - rule hint token
- * @param {string} firewallBackend - 'nft' or 'iptables'
- */
-function ruleAdminPath(hint, firewallBackend) {
-	if (hint === 'fw4') return 'admin/network/firewall/rules';
-
-	if (firewallBackend === 'iptables') return 'admin/status/iptables';
-
-	return 'admin/status/nftables';
+function ruleAdminPath() {
+	return 'admin/network/firewall/rules';
 }
 
 /**
  * @param {string} hint            - rule hint token
  * @param {string} label           - display label
- * @param {string} firewallBackend - 'nft' or 'iptables'
  * @param {function} onFilterClick - callback(field, value, ev)
  */
-function ruleAdminLink(hint, label, firewallBackend, onFilterClick) {
+function ruleAdminLink(hint, label, onFilterClick) {
 	if (!hint) return log.formatCell(hint);
 
-	const path = ruleAdminPath(hint, firewallBackend);
+	const path = ruleAdminPath();
 	const url = '%s#%s'.format(luciUrl(path), encodeURIComponent(hint));
 	const text = label || hint;
 
