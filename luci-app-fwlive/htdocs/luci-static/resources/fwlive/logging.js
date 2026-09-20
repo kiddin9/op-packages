@@ -33,7 +33,7 @@ const CONSENT_STORAGE_KEY = 'fwlive-logging-consent-v1';
 function consentDismissedPermanent() {
 	try {
 		return localStorage.getItem(CONSENT_STORAGE_KEY) === '1';
-	} catch (e) {
+	} catch (_e) {
 		return false;
 	}
 }
@@ -41,7 +41,7 @@ function consentDismissedPermanent() {
 function persistConsentDismissed() {
 	try {
 		localStorage.setItem(CONSENT_STORAGE_KEY, '1');
-	} catch (e) {
+	} catch (_e) {
 		/* private mode / no storage */
 	}
 }
@@ -72,6 +72,21 @@ function blockerCode(state) {
 	return '';
 }
 
+function wanZoneCandidateNames(st) {
+	return Array.isArray(st && st.wan_zone_candidates)
+		? st.wan_zone_candidates.filter(function (name) {
+				return typeof name === 'string';
+			})
+		: [];
+}
+
+function labelWithZoneCandidates(label, st) {
+	const children = [label];
+	const candidates = wanZoneCandidateNames(st);
+	if (candidates.length) children.push(': ', E('code', {}, [candidates.join(', ')]));
+	return children;
+}
+
 function renderToolbar(host, state, callbacks) {
 	host.innerHTML = '';
 	const st = state.loggingStatus;
@@ -85,9 +100,11 @@ function renderToolbar(host, state, callbacks) {
 
 	if (blocker === 'no_wan_zone') {
 		host.appendChild(
-			E('span', { 'class': 'fwlive-logging-status' }, [
-				_('WAN logging unavailable: no WAN zone')
-			])
+			E(
+				'span',
+				{ 'class': 'fwlive-logging-status' },
+				labelWithZoneCandidates(_('WAN logging unavailable: no WAN zone'), st)
+			)
 		);
 		host.appendChild(links.firewallZonesLink());
 		return;
@@ -218,7 +235,13 @@ function buildEmptyStateNodes(state, callbacks) {
 	}
 
 	if (blocker === 'no_wan_zone') {
-		nodes.push(E('p', { 'class': 'fwlive-empty-title' }, [_('No WAN zone found')]));
+		nodes.push(
+			E(
+				'p',
+				{ 'class': 'fwlive-empty-title' },
+				labelWithZoneCandidates(_('No WAN zone found'), st)
+			)
+		);
 		nodes.push(
 			E('p', {}, [
 				_('No WAN firewall zone found in /etc/config/firewall. Configure zones under '),

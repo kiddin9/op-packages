@@ -9,8 +9,19 @@
 # expect soft failures. The rpcd entry point enables strict mode; critical
 # paths use explicit `|| return 1` / `|| true`.
 
-NF_LOG_IPV4='/proc/sys/net/netfilter/nf_log/2'
-NF_LOG_IPV6='/proc/sys/net/netfilter/nf_log/10'
+NF_LOG_IPV4="${FWLIVE_NF_LOG_IPV4_PATH:-/proc/sys/net/netfilter/nf_log/2}"
+NF_LOG_IPV6="${FWLIVE_NF_LOG_IPV6_PATH:-/proc/sys/net/netfilter/nf_log/10}"
+# /proc/sys/net/netfilter/nf_log/10 is a backend selector, not an IPv6
+# availability probe.  A missing or empty /proc/net/if_inet6 means the IPv6
+# stack is absent (compiled out or ipv6.disable=1), so an IPv6 backend is
+# not required.  Any content, including loopback ::1, means the IPv6 stack
+# is present and the IPv6 logger is required.  This is not a WAN-address
+# probe: stock OpenWrt with CONFIG_IPV6 still has lo ::1 on an IPv4-only WAN.
+NF_LOG_IPV6_AVAILABLE_PATH="${FWLIVE_IPV6_AVAILABLE_PATH:-/proc/net/if_inet6}"
+
+NF_LOG_STATE_COMPUTED=0
+NF_LOG_IPV4_READY=false
+NF_LOG_IPV6_READY=false
 
 # Serialize the WAN logging read->compute->set->commit window across
 # concurrent ubus write-ACL callers: each toggle re-reads the current
@@ -26,6 +37,8 @@ NF_LOG_IPV6='/proc/sys/net/netfilter/nf_log/10'
 # Overridable for tests/containers (default is root-only /etc/fwlive).
 WAN_LOG_LOCK_FILE="${FWLIVE_WAN_LOG_LOCK_FILE:-/etc/fwlive/logging.lock}"
 WAN_LOG_BASELINE_FILE="${FWLIVE_WAN_LOG_BASELINE_FILE:-/etc/fwlive/wan-log-baseline}"
+WAN_ZONE_DIAGNOSTIC_JSON=''
+WAN_ZONE_FOUND=''
 
 weak_device_detected() {
 	# Path overrides are test hooks; production defaults stay in procfs.
@@ -170,24 +183,76 @@ release_wan_log_lock() {
 	exec 9>&-
 }
 
-find_wan_zone_section() {
-	# Match anonymous (@zone[N]) and named (e.g. wan) sections whose
-	# name option is 'wan'. Prefer the first section whose type is
-	# zone; skip non-zone sections that happen to share name='wan'.
+find_wan_zone_section_state() {
+	# Match the first zone whose name is 'wan' or whose effective network list
+	# contains 'wan'/'wan6'. UCI defaults an omitted network option to the
+	# section name, so a renamed zone such as internet with network=wan is
+	# supported while a fully renamed zone remains an explicit no-WAN result.
+	# The diagnostic list is reset on every lookup and records zone names for
+	# no_wan_zone callers; it is JSON-escaped before it reaches a reply.
 	# uci missing / no wan zone is empty, not fatal. pipefail + set -e
 	# cannot apply to this pipeline.
-	_zones=$(uci -q show firewall 2>/dev/null \
-		| sed -n "s/^firewall\.\([^.]*\)\.name='wan'$/\1/p") || true
+	WAN_ZONE_DIAGNOSTIC_JSON=''
+	WAN_ZONE_FOUND=''
+	_firewall_show=$(uci -q show firewall 2>/dev/null || true)
+	_zones=$(printf '%s\n' "$_firewall_show" \
+		| sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p')
 	for zone in $_zones; do
 		[ -n "$zone" ] || continue
+		_name=$(uci -q get "firewall.${zone}.name" 2>/dev/null || true)
+		if [ -z "$_name" ]; then
+			_name=$(printf '%s\n' "$_firewall_show" \
+				| awk -v key="firewall.${zone}.name=" \
+					'index($0, key) == 1 {
+						value = substr($0, length(key) + 1)
+						sub(/^'\''/, "", value)
+						sub(/'\''$/, "", value)
+						print value
+						exit
+					}')
+		fi
+		# UCI permits a zone section without an explicit name. In that case
+		# the section id is the effective zone name for omitted network lists.
+		[ -n "$_name" ] || _name="$zone"
+		[ -n "$_name" ] && _zone_label="$_name" || _zone_label="$zone"
+		_esc=$(printf '%s' "$_zone_label" | json_escape)
+		if [ -n "$WAN_ZONE_DIAGNOSTIC_JSON" ]; then
+			WAN_ZONE_DIAGNOSTIC_JSON="${WAN_ZONE_DIAGNOSTIC_JSON},"
+		fi
+		WAN_ZONE_DIAGNOSTIC_JSON="${WAN_ZONE_DIAGNOSTIC_JSON}\"${_esc}\""
+
 		# uci -q get exits 1 on a missing section. Capture with || true so
 		# set -e cannot abort inside "$(…)" before || continue.
 		_type=$(uci -q get "firewall.${zone}" 2>/dev/null || true)
 		[ "$_type" = "zone" ] || continue
-		printf '%s' "$zone"
-		return 0
+		_network=$(uci -q get "firewall.${zone}.network" 2>/dev/null || true)
+		[ -n "$_network" ] || _network="$_name"
+		_is_wan=0
+		[ "$_name" = wan ] && _is_wan=1
+		case " ${_network} " in
+			*' wan '*|*' wan6 '*) _is_wan=1 ;;
+		esac
+		if [ "$_is_wan" = 1 ]; then
+			WAN_ZONE_FOUND="$zone"
+			return 0
+		fi
 	done
 	return 0
+}
+
+find_wan_zone_section() {
+	find_wan_zone_section_state
+	printf '%s' "$WAN_ZONE_FOUND"
+}
+
+wan_zone_diagnostic_json() {
+	printf '[%s]' "${WAN_ZONE_DIAGNOSTIC_JSON:-}"
+}
+
+no_wan_zone_error_json() {
+	_candidates=$(wan_zone_diagnostic_json)
+	printf '{"ok":false,"changed":false,"wan_zone":null,"error":"no_wan_zone","wan_zone_candidates":%s}' \
+		"$_candidates"
 }
 
 firewall_changes_pending() {
@@ -346,7 +411,8 @@ restore_wan_log_baseline() {
 	[ -f "$path" ] || return 0
 	# Empty file is a valid "option was unset" baseline.
 	baseline=$(cat "$path" 2>/dev/null || true)
-	zone=$(find_wan_zone_section)
+	find_wan_zone_section_state
+	zone=$WAN_ZONE_FOUND
 	if [ -z "$zone" ]; then
 		logger -t fwlive "WAN log baseline restore skipped: no WAN zone" 2>/dev/null || true
 		return 1
@@ -425,7 +491,40 @@ read_nf_log_backend() {
 	path="$1"
 	[ -f "$path" ] || return 1
 	val=$(cat "$path" 2>/dev/null) || return 1
-	[ -n "$val" ] && [ "$val" != 'none' ]
+	# Sysctl values are single-line, but trim surrounding whitespace before
+	# interpreting the no-backend sentinel. This keeps a malformed `NONE `
+	# value from becoming a fail-open logger.
+	while case "$val" in [[:space:]]*) true ;; *) false ;; esac; do
+		val=${val#?}
+	done
+	while case "$val" in *[[:space:]]) true ;; *) false ;; esac; do
+		val=${val%?}
+	done
+	[ -n "$val" ] || return 1
+	case "$val" in
+		[Nn][Oo][Nn][Ee]) return 1 ;;
+	esac
+	return 0
+}
+
+nf_log_family_available() {
+	family="$1"
+	case "$family" in
+		ipv4)
+			# Supported fwlive deployments require IPv4 for the WAN path.
+			return 0
+			;;
+		ipv6)
+			# Content probe: missing/empty => stack absent; any row
+			# (including lo ::1) => stack present. Not a WAN check.
+			path="${FWLIVE_IPV6_AVAILABLE_PATH:-$NF_LOG_IPV6_AVAILABLE_PATH}"
+			[ -r "$path" ] || return 1
+			grep -q '[^[:space:]]' "$path" 2>/dev/null
+			;;
+		*)
+			return 1
+			;;
+	esac
 }
 
 check_nf_log_ipv4() {
@@ -433,7 +532,18 @@ check_nf_log_ipv4() {
 }
 
 check_nf_log_ipv6() {
+	# Effective readiness: an absent IPv6 stack is not a blocker.  When
+	# if_inet6 has any address, including lo, the IPv6 logger is required.
+	nf_log_family_available ipv6 || return 0
 	read_nf_log_backend "$NF_LOG_IPV6"
+}
+
+compute_nf_log_state() {
+	NF_LOG_IPV4_READY=false
+	check_nf_log_ipv4 && NF_LOG_IPV4_READY=true
+	NF_LOG_IPV6_READY=false
+	check_nf_log_ipv6 && NF_LOG_IPV6_READY=true
+	NF_LOG_STATE_COMPUTED=1
 }
 
 logging_blockers_append() {
@@ -459,14 +569,26 @@ logging_warnings_append() {
 collect_logging_blockers() {
 	zone="$1"
 	LOGGING_BLOCKERS=''
+	[ "$NF_LOG_STATE_COMPUTED" = 1 ] || compute_nf_log_state
 
 	[ -n "$zone" ] || logging_blockers_append 'no_wan_zone'
-	check_nf_log_ipv4 || logging_blockers_append 'nf_log_ipv4_missing'
-	check_nf_log_ipv6 || logging_blockers_append 'nf_log_ipv6_missing'
+	[ "$NF_LOG_IPV4_READY" = true ] || logging_blockers_append 'nf_log_ipv4_missing'
+	[ "$NF_LOG_IPV6_READY" = true ] || logging_blockers_append 'nf_log_ipv6_missing'
 
 	# Report via LOGGING_BLOCKERS, not exit status: return 1 would abort
 	# build_logging_status_json under set -e.
 	return 0
+}
+
+legacy_iptables_active() {
+	for _path in \
+		"${FWLIVE_IP_TABLES_NAMES_PATH:-/proc/net/ip_tables_names}" \
+		"${FWLIVE_IP6_TABLES_NAMES_PATH:-/proc/net/ip6_tables_names}"; do
+		if [ -r "$_path" ] && grep -q '[^[:space:]]' "$_path" 2>/dev/null; then
+			return 0
+		fi
+	done
+	return 1
 }
 
 collect_logging_warnings() {
@@ -475,6 +597,12 @@ collect_logging_warnings() {
 	# rpcd/fwlive run_with_timeout fail-closes to 127 without timeout.
 	# Warnings are diagnostics only — do not gate the enable-logging CTA.
 	command -v timeout >/dev/null 2>&1 || logging_warnings_append 'timeout_missing'
+
+	# Diagnostic only: supported releases use nftables, but a registered legacy
+	# iptables table can still exist in the network namespace visible to rpcd.
+	# Keep this ubus-only for now; it must not affect readiness or the enable
+	# gate, and the UI has no remediation flow for legacy tables yet.
+	legacy_iptables_active && logging_warnings_append 'legacy_iptables_detected'
 
 	# Report via LOGGING_WARNINGS, not exit status.
 	return 0
@@ -491,7 +619,11 @@ json_null_or_string() {
 }
 
 build_logging_status_json() {
-	zone=$(find_wan_zone_section)
+	find_wan_zone_section_state
+	zone=$WAN_ZONE_FOUND
+	candidates=$(wan_zone_diagnostic_json)
+	NF_LOG_STATE_COMPUTED=0
+	compute_nf_log_state
 	# Empty zone / unset log bit are valid; set -e cannot apply.
 	log_val=$(wan_zone_log_value "$zone") || log_val=
 	# Unset log_limit is a valid empty value; uci -q get exits 1.
@@ -504,10 +636,8 @@ build_logging_status_json() {
 		wan_log=true
 	fi
 
-	nf4=false
-	check_nf_log_ipv4 && nf4=true
-	nf6=false
-	check_nf_log_ipv6 && nf6=true
+	nf4=$NF_LOG_IPV4_READY
+	nf6=$NF_LOG_IPV6_READY
 
 	collect_logging_blockers "$zone"
 	blockers="[${LOGGING_BLOCKERS:-}]"
@@ -524,8 +654,8 @@ build_logging_status_json() {
 	zone_json=$(json_null_or_string "$zone")
 	limit_json=$(json_null_or_string "$limit_val")
 
-	printf '{"wan_zone":%s,"wan_log":%s,"wan_log_limit":%s,"nf_log_ipv4":%s,"nf_log_ipv6":%s,"ready":%s,"weak_device":%s,"blockers":%s,"warnings":%s}' \
-		"$zone_json" "$wan_log" "$limit_json" "$nf4" "$nf6" "$ready" "$weak_device" "$blockers" "$warnings"
+	printf '{"wan_zone":%s,"wan_zone_candidates":%s,"wan_log":%s,"wan_log_limit":%s,"nf_log_ipv4":%s,"nf_log_ipv6":%s,"ready":%s,"weak_device":%s,"blockers":%s,"warnings":%s}' \
+		"$zone_json" "$candidates" "$wan_log" "$limit_json" "$nf4" "$nf6" "$ready" "$weak_device" "$blockers" "$warnings"
 }
 
 reload_firewall() {
@@ -719,15 +849,18 @@ reload_and_report_wan_log() {
 }
 
 enable_wan_logging() {
-	zone=$(find_wan_zone_section)
+	find_wan_zone_section_state
+	zone=$WAN_ZONE_FOUND
 	if [ -z "$zone" ]; then
-		printf '{"ok":false,"changed":false,"wan_zone":null,"error":"no_wan_zone"}'
+		no_wan_zone_error_json
 		return 0
 	fi
 
 	zone_json=$(json_null_or_string "$zone")
 
-	if ! check_nf_log_ipv4 || ! check_nf_log_ipv6; then
+	NF_LOG_STATE_COMPUTED=0
+	compute_nf_log_state
+	if [ "$NF_LOG_IPV4_READY" != true ] || [ "$NF_LOG_IPV6_READY" != true ]; then
 		printf '{"ok":false,"changed":false,"wan_zone":%s,"error":"nf_log_missing"}' "$zone_json"
 		return 0
 	fi
@@ -778,9 +911,10 @@ enable_wan_logging() {
 }
 
 disable_wan_logging() {
-	zone=$(find_wan_zone_section)
+	find_wan_zone_section_state
+	zone=$WAN_ZONE_FOUND
 	if [ -z "$zone" ]; then
-		printf '{"ok":false,"changed":false,"wan_zone":null,"error":"no_wan_zone"}'
+		no_wan_zone_error_json
 		return 0
 	fi
 

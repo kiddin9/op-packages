@@ -482,7 +482,7 @@ fetch_firewall_logs() {
 	# Empty success is not valid poll JSON — the shipped filter always
 	# prints {"log":[...]}, but a stub/regression must not emit a blank body.
 	_filter_ok=1
-	if ! out=$(printf '%s' "$raw" | "$FILTER_SH"); then
+	if ! out=$(printf '%s' "$raw" | "$FILTER_SH" /tmp); then
 		_filter_ok=0
 		if [ -z "$out" ]; then
 			out='{"log":[],"error":"filter_failed"}'
@@ -862,6 +862,16 @@ Address:	127.0.0.1:53
 
 Address 1: 8.8.8.8 dns.google.")
 	check_eq parse_nslookup_name "$got" "dns.google" "busybox Address N expected dns.google got '$got'" || return 1
+	got=$(parse_nslookup_name "Server: 2001:db8::53
+Address: 2001:db8::53#53
+
+2001:db8::1.ip6.arpa	name = v6.example.")
+	check_eq parse_nslookup_name "$got" "v6.example" "IPv6 bind-style expected v6.example got '$got'" || return 1
+	got=$(parse_nslookup_name "Server:		2001:db8::53
+Address:	2001:db8::53#53
+
+Address 1: 2001:db8::1 v6.example.")
+	check_eq parse_nslookup_name "$got" "v6.example" "IPv6 busybox Address N expected v6.example got '$got'" || return 1
 	got=$(parse_nslookup_name "Server: 192.168.1.1
 Address 1: 192.168.1.1 router.lan
 

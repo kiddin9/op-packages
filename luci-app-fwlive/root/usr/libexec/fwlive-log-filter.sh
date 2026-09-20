@@ -21,6 +21,8 @@ if ! command -v jsonfilter >/dev/null 2>&1; then
 fi
 
 FILTER_DIR="$(cd "$(dirname "$0")" && pwd)"
+FILTER_TMP_DIR='/tmp'
+[ "$#" -gt 0 ] && FILTER_TMP_DIR="$1"
 # shellcheck disable=SC1091 # classifier is a sibling file next to this script
 . "$FILTER_DIR/fwlive-is-firewall-event.sh"
 
@@ -40,14 +42,15 @@ fi
 # jsonfilter output in a secure temporary file before classification so a
 # partial pipeline cannot produce malformed JSON on failure.
 # This script runs from rpcd as root and reopens the path for classification.
-# Match _fwlive_mktemp: only use the verified, sticky system /tmp; honoring
-# TMPDIR would permit a non-sticky attacker-controlled directory here.
+# Match _fwlive_mktemp: only use a verified, sticky dump directory. The
+# production rpcd caller passes /tmp; the explicit argument lets host tests
+# exercise the directory guard without changing the host's /tmp.
 # shellcheck disable=SC3065 # OpenWrt BusyBox test supports -k; match rpcd helper.
-if [ ! -d /tmp ] || [ -L /tmp ] || ! [ -k /tmp ]; then
+if [ ! -d "$FILTER_TMP_DIR" ] || [ -L "$FILTER_TMP_DIR" ] || ! [ -k "$FILTER_TMP_DIR" ]; then
 	printf '%s' '{"log":[],"error":"filter_tempfile_failed"}'
 	exit 1
 fi
-_filter_tmp=$(mktemp /tmp/fwlive-filter.XXXXXX) || {
+_filter_tmp=$(mktemp "$FILTER_TMP_DIR/fwlive-filter.XXXXXX") || {
 	printf '%s' '{"log":[],"error":"filter_tempfile_failed"}'
 	exit 1
 }
