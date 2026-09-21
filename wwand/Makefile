@@ -11,7 +11,7 @@
 #   wwand-ncm        - NCM/ECM backend        (DEPENDS wwand)
 #   wwand-mhi        - PCIe/MHI transport + drivers (DEPENDS wwand; add a backend)
 #   wwand-esim       - eSIM management        (DEPENDS wwand + lpac; no backend)
-#   wwand-gps        - GNSS/NMEA glue for ugps (DEPENDS wwand + ugps; no backend)
+#   wwand-gps        - GNSS/NMEA reader (DEPENDS wwand; no backend)
 # A typical QMI router installs `wwand-qmi` (which pulls in `wwand`); add
 # `wwand-mbim` / `wwand-ncm` for those modems, `wwand-mhi` for a PCIe/MHI modem.
 # The ucode tree ships PRECOMPILED to bytecode (repo-root CMakeLists.txt,
@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.6.7_p60
-PKG_RELEASE:=51
+PKG_VERSION:=1.6.7_p63
+PKG_RELEASE:=52
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=f5cba40880e0a11c00cf6b9040a6eb74e3d222da
+PKG_SOURCE_VERSION:=2c428ced46e584daae9719f722d2ed7c9aa28fff
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -439,7 +439,7 @@ define Package/wwand-esim/install
 endef
 
 # ---------------------------------------------------------------------------
-# wwand-gps: point ugps at the modem's NMEA port. Backend-neutral — finding the
+# wwand-gps: read NMEA off the modem's NMEA port. Backend-neutral — finding the
 # port and starting the receiver are both in the base package, and neither
 # depends on the control protocol.
 # ---------------------------------------------------------------------------
@@ -447,34 +447,42 @@ define Package/wwand-gps
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=WWAN
-  TITLE:=GNSS/NMEA glue for wwand (ugps)
-  # ugps is OpenWrt base: it parses NMEA, can set the clock, and publishes a
-  # `gps` ubus object. It knows nothing about modems, and it reads its tty from
-  # a STATIC /etc/config/gps — which is exactly the gap this package fills,
-  # because wwand's NMEA port is discovered and can move between boots or when
-  # a modem is replaced.
-  DEPENDS:=+wwand +ugps
+  TITLE:=GNSS/NMEA reader for wwand
+  # Reads NMEA off the modem's own port and reports it through wwand's ubus.
+  # It used to drive ugps (OpenWrt base) instead, and no longer depends on it:
+  # ugps takes ONE static tty out of /etc/config/gps and publishes ONE `gps`
+  # object, so a two-modem box could only ever have one position; it exits on
+  # tty EOF, which on a modem reset means respawning against a device that is
+  # not back; and it parses neither GSV (satellites in view) nor GSA (fix type,
+  # PDOP/VDOP) and drops every talker but $GP/$GN. wwand already finds the
+  # port, starts the receiver and owns the lifecycle, so the reading is the
+  # small part. Installing ugps alongside is harmless — wwand does not touch
+  # /etc/config/gps and does not claim the `gps` ubus name.
+  DEPENDS:=+wwand
 endef
 
 define Package/wwand-gps/description
- Joins three pieces that already existed with nothing between them: wwand finds
- the modem's NMEA port during enumeration (reported as `gps_port`), `option
- gnss` starts the receiver with the vendor AT command — QMI's LOC service is
- broken on Quectel and AT is what works, and only wwand has the port — and ugps
- reads the NMEA and publishes a position.
+ wwand finds the modem's NMEA port during enumeration (reported as `gps_port`)
+ and `option gnss` starts the receiver with the vendor AT command — QMI's LOC
+ service is broken on Quectel and AT is what works, and only wwand has the
+ port. This package reads that port: NMEA 0183 framing, checksums, RMC/GGA/GSA/
+ GSV/GLL/VTG/ZDA from ANY talker, reported through `modem_gps` as numbers, with
+ the satellites in view and their SNR, the fix type and the DOP values.
 
- What this adds is the config write that connects them, plus a `modem_gps` ubus
- method that answers with both halves at once: the port and receiver state wwand
- knows, merged with whatever ugps reports.
+ ONE READER PER MODEM, so a two-modem router has two positions. `option
+ gnss_set_time` hands the receiver's clock to wwand's own set_clock, which only
+ ever steps a clock that is plainly unset and so never fights sysntpd.
 
- Good citizen: it manages exactly one `config gps` section and only one it
- created itself (marked `option wwand '1'`). An operator's own section — a hat
- GPS on a serial port, a second receiver — is never touched or repointed.
+ Good citizen: it writes no config at all and does not claim the `gps` ubus
+ name, so ugps and an operator's own receiver are unaffected by installing it.
+ One port is only ever read once — a second modem naming a tty that is already
+ being read is refused rather than given half a stream.
 endef
 
 define Package/wwand-gps/install
 	$(INSTALL_DIR) $(1)$(UCDIR)
 	$(INSTALL_DATA) $(WWAND_UCODE)/gps.uc $(1)$(UCDIR)/
+	$(INSTALL_DATA) $(WWAND_UCODE)/nmea.uc $(1)$(UCDIR)/
 endef
 
 # ---------------------------------------------------------------------------

@@ -20,8 +20,8 @@ show_help() {
   -h, --help              查看帮助信息
 
 并发与等待机制:
-  - 无参调用时：若已有 mywifi 在执行，直接终止退出；
-  - 带 -f 或传参调用时：若已有 mywifi 在执行，自动排队等待其执行完成后再继续执行。
+  - 无参/热插拔调用时：若已有 mywifi 在执行，直接终止退出；
+  - 带 -f 或用户传参调用时：若已有 mywifi 在执行，自动排队等待其执行完成后再继续执行。
 
 WiFi命名规范:
   2.4 GHz  -> <WiFi名>_2.4G
@@ -29,20 +29,26 @@ WiFi命名规范:
   6 GHz    -> <WiFi名>_6G
 
 使用示例:
-  mywifi                             # 默认执行（若已配置过或正在执行则自动终止）
-  mywifi -f                          # 强制重新按 hostname 恢复默认配置（若有执行中则排队等待）
-  mywifi "HomeWiFi" "12345678"       # 设置指定 WiFi 名及密码（若有执行中则排队等待）
+  mywifi                             # 默认执行（使用 hostname，若已配置或正在执行则自动终止）
+  mywifi -f                          # 强制重新按 hostname 恢复默认配置
+  mywifi "HomeWiFi" "12345678"       # 设置指定 WiFi 名及密码
   mywifi -f "HomeWiFi" "12345678"    # 强制覆盖设置
 EOF_HELP
 }
 
 # -------------------------------------------------------------
-# 1. 优先解析命令行参数（判断是否带有 -f 或自定义参数）
+# 1. 命令行参数解析（过滤 OpenWrt Hotplug 热插拔系统事件传参）
 # -------------------------------------------------------------
 CUSTOM_SSID=""
 CUSTOM_PASSWD=""
 HAS_PASSWD=0
 FORCE=0
+
+# 判断是否是由系统 Hotplug 热插拔机制触发调用
+is_hotplug=0
+if [ -n "$HOTPLUG_TYPE" ] || [ -n "$ACTION" ] || [ -n "$DEVICENAME" ]; then
+    is_hotplug=1
+fi
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -62,27 +68,33 @@ while [ $# -gt 0 ]; do
             CUSTOM_PASSWD="$1"
             HAS_PASSWD=1
             ;;
+        ieee80211|net|button|platform|usb|add|remove|bind|unbind)
+            # 过滤热插拔事件传参，避免将热插拔子系统名称（如 ieee80211）误当作 WiFi SSID
+            is_hotplug=1
+            ;;
         *)
-            if [ -z "$CUSTOM_SSID" ]; then
-                CUSTOM_SSID="$1"
-            elif [ $HAS_PASSWD -eq 0 ]; then
-                CUSTOM_PASSWD="$1"
-                HAS_PASSWD=1
+            # 仅在非系统热插拔事件传参时才接收位置参数
+            if [ $is_hotplug -eq 0 ]; then
+                if [ -z "$CUSTOM_SSID" ]; then
+                    CUSTOM_SSID="$1"
+                elif [ $HAS_PASSWD -eq 0 ]; then
+                    CUSTOM_PASSWD="$1"
+                    HAS_PASSWD=1
+                fi
             fi
             ;;
     esac
     shift
 done
 
-# 判断是否需要等待正在运行的实例完成
-# 只要指定了 -f 或传入了自定义 SSID / 密码，就启用等待锁机制
+# 判断是否需要等待锁（带 -f 或传了有效自定义参数时排队等待，无参/热插拔直接退出）
 WAIT_LOCK=0
 if [ $FORCE -eq 1 ] || [ -n "$CUSTOM_SSID" ] || [ $HAS_PASSWD -eq 1 ]; then
     WAIT_LOCK=1
 fi
 
 # -------------------------------------------------------------
-# 2. 检查 base_config 状态标记（无参且已配置过 wifi=1 时直接退出）
+# 2. 检查 base_config 状态标记（无参且已配置过 wifi=1 时，直接终止）
 # -------------------------------------------------------------
 if [ $FORCE -eq 0 ]; then
     if [ "$(uci -q get base_config.@status[0].wifi 2>/dev/null)" = "1" ]; then
@@ -94,7 +106,7 @@ if [ $FORCE -eq 0 ]; then
 fi
 
 # -------------------------------------------------------------
-# 3. 并发锁处理：带参/-f 模式等待完成，无参模式直接终止
+# 3. 防并发检测与等待处理
 # -------------------------------------------------------------
 LOCK_FILE="/var/run/mywifi.lock"
 
@@ -102,7 +114,7 @@ acquire_lock() {
     local cur_pid=$$
     local cur_ppid=$PPID
 
-    # A. 优先采用 flock 文件描述符锁（内核自动回收，安全可靠）
+    # A. 优先采用 flock 文件描述符锁
     if command -v flock >/dev/null 2>&1; then
         exec 9>"$LOCK_FILE" 2>/dev/null || true
         if [ $WAIT_LOCK -eq 1 ]; then
@@ -277,7 +289,7 @@ if [ -n "$CUSTOM_SSID" ]; then
     SSID="$CUSTOM_SSID"
 else
     SSID="$(uci -q get system.@system[0].hostname 2>/dev/null)"
-    [ -z "$SSID" ] && [ -r /proc/sys/kernel/hostname ] && SSID="$(cat /proc/sys/kernel/hostname)"
+    [ -z "$SSID" ] && [ -r /proc/sys/kernel/hostname ] w&& SSID="$(cat /proc/sys/kernel/hostname)"
     [ -z "$SSID" ] && SSID="$(uci -q get wizard.default.wifi_ssid 2>/dev/null)"
     [ -z "$SSID" ] && SSID="OpenWrt"
 fi
