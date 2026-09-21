@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=xkcptun
 PKG_VERSION:=1.09.561
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/liudf0716/$(PKG_NAME)/tar.gz/$(PKG_VERSION)?
@@ -34,7 +34,8 @@ endef
 
 define Package/xkcptun/description
   xkcptun is a lightweight and high-performance C language implementation of kcptun.
-  This package contains both client and server binaries.
+  This package contains the client and server binaries as well as the
+  xkcp_spy monitoring tool.
 endef
 
 define Package/xkcptun/conffiles

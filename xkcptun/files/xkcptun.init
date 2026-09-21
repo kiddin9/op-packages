@@ -53,7 +53,7 @@ append_toml_tunnel() {
 
 	eval "$("validate_${cfgtype}_section" "$cfg" validate_mklocal)"
 	"validate_${cfgtype}_section" "$cfg" || return 1
-	[ "$disabled" = 0 ] || return 1
+	[ "${enabled:-1}" -eq 1 ] || return 1
 	[ -n "$local_port" ] || return 1
 
 	cat << EOF >> "$outfile"
@@ -128,15 +128,19 @@ EOF
 
 	config_foreach append_section "$cfgtype"
 
-	if [ "$cfgtype" = "client" ] && [ "$count" -eq 0 ]; then
-		rm -f "$conftoml"
-		return
+	if [ "$cfgtype" = "client" ]; then
+		local cli_enabled
+		config_get_bool cli_enabled client enabled 0
+		if [ "$cli_enabled" -ne 1 ] || [ "$count" -eq 0 ]; then
+			rm -f "$conftoml"
+			return
+		fi
 	fi
 
 	if [ "$cfgtype" = "server" ]; then
 		local srv_enabled
 		config_get_bool srv_enabled server enabled 0
-		if [ "$srv_enabled" -ne 1 ] && [ "$count" -eq 0 ]; then
+		if [ "$srv_enabled" -ne 1 ]; then
 			rm -f "$conftoml"
 			return
 		fi
@@ -151,6 +155,9 @@ EOF
 
 start_service() {
 	mkdir -p "$confdir"
+	# generated TOML files contain the pre-shared key: keep them private
+	chmod 0700 "$confdir"
+	umask 077
 	config_load xkcptun
 	start_daemon server
 	start_daemon client
@@ -189,10 +196,11 @@ validate_common_options() {
 	local cfgtype="$1"; shift
 	local cfg="$1"; shift
 	local func="$1"; shift
+	local enabled_def="${1:-1}"; shift
 	local mode_profiles='"fast3", "fast2", "fast", "normal", "manual"'
 
 	"${func:-validate}" "$cfgtype" "$cfg" "$@" \
-		'disabled:bool:0' \
+		"enabled:bool:$enabled_def" \
 		'name:string' \
 		"mode:or($mode_profiles)" \
 		'mtu:uinteger' \
@@ -217,8 +225,7 @@ validate_common_options() {
 }
 
 validate_global_options() {
-	validate_common_options global "$1" "$2" \
-		'enabled:bool:0' \
+	validate_common_options global "$1" "$2" 0 \
 		'remote_addr:host' \
 		'remote_port:port' \
 		'local_interface:string' \
@@ -226,15 +233,15 @@ validate_global_options() {
 }
 
 validate_server_options() {
-	validate_common_options server "$1" "$2" \
+	validate_common_options server "$1" "$2" 1 \
 		'local_interface:string:eth0' \
 		'local_port:port:9089' \
-		'remote_addr:host:127.0.0.1' \
-		'remote_port:port:443'
+		'target_addr:host' \
+		'target_port:port'
 }
 
 validate_client_options() {
-	validate_common_options client "$1" "$2" \
+	validate_common_options client "$1" "$2" 1 \
 		'local_interface:string:br-lan' \
 		'local_port:port:9088' \
 		'proto:or("tcp", "udp")' \

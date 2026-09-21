@@ -205,6 +205,13 @@ return view.extend({
 		s.tab('general', _('General Settings'));
 		s.tab('advanced', _('Advanced Settings'));
 
+		o = s.taboption('general', form.Flag, 'enabled', _('Enable Client Daemon'),
+			_('Enable unified xkcptun client daemon.'));
+		o.enabled = '1';
+		o.disabled = '0';
+		o.default = '0';
+		o.rmempty = false;
+
 		o = s.taboption('general', form.Value, 'remote_addr', _('Default Server Address'),
 			_('Remote xkcptun server IP address or domain name.'));
 		o.datatype = 'host';
@@ -244,10 +251,10 @@ return view.extend({
 		s.tab('advanced', _('Advanced Overrides'));
 
 		// Overview Columns in table
-		o = s.option(form.Flag, 'disabled', _('Enabled'));
-		o.enabled = '0';
-		o.disabled = '1';
-		o.default = '0';
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o.enabled = '1';
+		o.disabled = '0';
+		o.default = '1';
 		o.rmempty = false;
 		o.editable = true;
 
@@ -274,10 +281,10 @@ return view.extend({
 		o.placeholder = '127.0.0.1';
 
 		// Modal / Tab: General Settings
-		o = s.taboption('general', form.Flag, 'disabled', _('Enable Tunnel'));
-		o.enabled = '0';
-		o.disabled = '1';
-		o.default = '0';
+		o = s.taboption('general', form.Flag, 'enabled', _('Enable Tunnel'));
+		o.enabled = '1';
+		o.disabled = '0';
+		o.default = '1';
 		o.rmempty = false;
 		o.modalonly = true;
 
@@ -399,10 +406,10 @@ return view.extend({
 		s.tab('advanced', _('Advanced Settings'));
 
 		// Overview Columns in table
-		o = s.option(form.Flag, 'disabled', _('Enabled'));
-		o.enabled = '0';
-		o.disabled = '1';
-		o.default = '0';
+		o = s.option(form.Flag, 'enabled', _('Enabled'));
+		o.enabled = '1';
+		o.disabled = '0';
+		o.default = '1';
 		o.rmempty = false;
 		o.editable = true;
 
@@ -434,14 +441,14 @@ return view.extend({
 
 		o = s.option(form.Flag, 'fec', _('FEC'));
 		o.modalonly = false;
-		o.default = '0';
+		o.default = '1';
 		o.editable = true;
 
 		// Modal / Tab: General Settings
-		o = s.taboption('general', form.Flag, 'disabled', _('Enable Tunnel'));
-		o.enabled = '0';
-		o.disabled = '1';
-		o.default = '0';
+		o = s.taboption('general', form.Flag, 'enabled', _('Enable Tunnel'));
+		o.enabled = '1';
+		o.disabled = '0';
+		o.default = '1';
 		o.rmempty = false;
 		o.modalonly = true;
 
