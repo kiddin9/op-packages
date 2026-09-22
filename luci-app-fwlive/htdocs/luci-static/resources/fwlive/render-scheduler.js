@@ -77,6 +77,14 @@ function createScheduler(options) {
 		const elapsed = bucketMs === null ? 0 : Math.max(0, timestamp - bucketMs);
 		bucketMs = timestamp;
 		bucket = Math.min(capacity, bucket + (elapsed * capacity) / 1000);
+		/* A single batch can cost more than one second's budget. Once the
+		 * bucket is full, spend that full interval on one paint so a sustained
+		 * flood cannot freeze the table until the user changes a control. */
+		if (cost > bucket && bucket >= capacity) {
+			bucket = 0;
+			floodSuppressed = true;
+			return true;
+		}
 		floodSuppressed = cost > bucket;
 		if (floodSuppressed) return false;
 		bucket -= cost;

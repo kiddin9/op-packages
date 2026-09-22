@@ -3,6 +3,7 @@
 /* Copyright 2025-2026 Lucas Albers <lucas.b.albers@gmail.com> */
 'require baseclass'; /* LuCI require() needs Class.isSubclass — plain return {} fails */
 'require fwlive.log as log';
+'require fwlive.hostname as hostname';
 
 /**
  * Link-builder helpers for luci-app-fwlive.
@@ -14,7 +15,7 @@
  *   filterLink, addrFilterLink, ruleAdminPath, ruleAdminLink, ifaceLink
  *
  * No host element — all functions return DOM nodes or strings.
- * May require fwlive.log for formatCell.
+ * May require fwlive.log for formatCell and fwlive.hostname for cache reads.
  */
 
 function luciUrl(path) {
@@ -75,7 +76,14 @@ function filterLink(field, value, label, onFilterClick) {
 function addrFilterLink(field, ip, showHostnames, hostnameCache, onFilterClick) {
 	if (!ip) return log.formatCell(ip);
 
-	const name = showHostnames && hostnameCache ? hostnameCache.get(ip) : null;
+	let name = null;
+	if (showHostnames && hostnameCache) {
+		/* Display reads refresh recency so visible names remain warm in the LRU. */
+		name =
+			hostname && typeof hostname.lruGet === 'function'
+				? hostname.lruGet(hostnameCache, ip)
+				: hostnameCache.get(ip);
+	}
 	const display = name || ip;
 	const title = name ? ip : _('Filter by %s').format(field);
 

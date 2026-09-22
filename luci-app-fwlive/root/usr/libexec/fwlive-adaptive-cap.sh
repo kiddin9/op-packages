@@ -276,7 +276,8 @@ fwlive_adaptive_bucket_for_ms() {
 
 # Args: requested_limit duration_ms prev_limit prev_bucket prev_warm
 #       prev_completed_cs planning
-# Prints next limit.
+# Prints next limit. A full-sized cold sample may retain one upward probe
+# above the number of lines served; planning then holds that retained probe.
 fwlive_adaptive_compute_limit() {
 	_req=$1
 	_ms=$2
@@ -343,7 +344,21 @@ fwlive_adaptive_compute_limit() {
 	fi
 
 	case "$_bucket" in
-		cold) _limit=$_max ;;
+		cold)
+			_base=$_prev_l
+			[ "$_base" -lt 1 ] && _base=$_max
+			if [ "$_planning" = 1 ]; then
+				# Keep a cold probe at the limit that was actually retained.
+				_limit=$_base
+			elif [ "$_req" -ge "$_base" ]; then
+				# A full-sized cold sample earns one doubling, not a jump
+				# from the 250-line floor straight to the maximum.
+				_limit=$((_base * 2))
+			else
+				# A short cold sample does not prove the larger request is safe.
+				_limit=$_base
+			fi
+			;;
 		cool)
 			# A healthy cooldown probe may retain its raised limit for the
 			# short probe window. Ordinary cool samples still use the fixed
@@ -370,7 +385,10 @@ fwlive_adaptive_compute_limit() {
 		hot) _limit=$FWLIVE_ADAPTIVE_HOT_FLOOR ;;
 	esac
 
-	[ "$_limit" -gt "$_req" ] && _limit=$_req
+	if [ "$_planning" = 1 ] || [ "$_bucket" != cold ] || \
+		[ "$_prev_l" -lt 1 ] || [ "$_req" -lt "$_prev_l" ]; then
+		[ "$_limit" -gt "$_req" ] && _limit=$_req
+	fi
 	[ "$_limit" -gt "$_max" ] && _limit=$_max
 	[ "$_limit" -lt 1 ] && _limit=1
 	printf '%s\n' "$_limit"

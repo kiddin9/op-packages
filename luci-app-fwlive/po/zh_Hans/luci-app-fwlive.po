@@ -115,6 +115,10 @@ msgstr "Connection lost — retrying…"
 msgid "Could not disable logging."
 msgstr "æ æ³"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:690
+msgid "Could not refresh logging status; showing the last known state."
+msgstr "Could not refresh logging status; showing the last known state."
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:573
 msgid "Could not enable logging."
 msgstr "æ æ³å¼å¯æ¥å¿è®°å½ã"
