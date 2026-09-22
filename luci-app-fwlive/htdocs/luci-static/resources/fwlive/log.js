@@ -77,6 +77,7 @@ return baseclass.extend({
 	FIREWALL_HINT: /(^|[^A-Za-z0-9_])(fw4|nft|iptables|kernel|firewall)([^A-Za-z0-9_]|$)/i,
 	ACTION_RE: /(^|[^A-Za-z0-9_])(ACCEPT|ALLOW|PASS|DROP|REJECT|DENY|BLOCK)([^A-Za-z0-9_]|$)/i,
 	DENY_ACTION: /(^|[^A-Za-z0-9_])(DROP|REJECT|DENY|BLOCK)([^A-Za-z0-9_]|$)/i,
+	MAX_DATE_SECONDS: 8640000000000,
 
 	normalizeNetfilterMessage: function (message) {
 		return (message || '').replace(this.NETFILTER_KV_GLUE, '$1 ');
@@ -233,13 +234,17 @@ return baseclass.extend({
 
 		if (typeof entry.time === 'string' && /^\d{4}-\d{2}-\d{2}[T ]/.test(entry.time)) {
 			const ms = new Date(entry.time).getTime();
-			if (isFinite(ms)) return Math.floor(ms / 1000);
+			if (isFinite(ms)) {
+				const unix = Math.floor(ms / 1000);
+				return Math.abs(unix) <= this.MAX_DATE_SECONDS ? unix : null;
+			}
 		}
 
 		const n = Number(entry.time);
 		if (!isFinite(n)) return null;
 
-		return n > 1e12 ? Math.floor(n / 1000) : Math.floor(n);
+		const unix = Math.abs(n) > 1e12 ? Math.floor(n / 1000) : Math.floor(n);
+		return Math.abs(unix) <= this.MAX_DATE_SECONDS ? unix : null;
 	},
 
 	formatTimestampDisplay: function (entry) {

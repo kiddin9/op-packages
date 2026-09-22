@@ -151,7 +151,7 @@ function buildColumnCell(col, row, state, callbacks) {
 			]);
 		case 'iface':
 			return E('td', { 'class': columnCellClass(col) }, [
-				links.ifaceLink(row.interface_in, onFilterClick)
+				links.ifaceLink(row.interface, onFilterClick)
 			]);
 		case 'iface_in':
 		case 'iface_out':

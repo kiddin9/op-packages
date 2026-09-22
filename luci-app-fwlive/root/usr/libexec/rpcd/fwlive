@@ -88,7 +88,15 @@ map_add() {
 uci_rule_names() {
 	# uci missing / empty firewall config is "no names", not fatal.
 	# pipefail + set -e cannot apply to this pipeline.
-	uci -q show firewall 2>/dev/null | sed -n "s/^firewall\.@rule\[[0-9]*\]\.name='\(.*\)'$/\1/p" || true
+	{
+		uci -q show firewall 2>/dev/null |
+			sed -n "s/^firewall\.@rule\[[0-9]*\]\.name='\(.*\)'$/\1/p" || true
+		uci -q show firewall 2>/dev/null |
+			sed -n 's/^firewall\.\([A-Za-z0-9_-]*\)=rule$/\1/p' |
+			while IFS= read -r section; do
+				uci -q get "firewall.${section}.name" 2>/dev/null || true
+			done || true
+	}
 }
 
 is_uci_style_name() {
