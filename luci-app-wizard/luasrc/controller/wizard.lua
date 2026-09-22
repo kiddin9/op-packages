@@ -29,7 +29,7 @@ function landing_page()
 			http.redirect(luci.dispatcher.build_url("admin","quickstart"));
 		end
 	else
-        http.redirect(luci.dispatcher.build_url("admin", "dashboard"))
+        http.redirect(luci.dispatcher.build_url("admin","status","dashboard"))
     end
 		
 end
