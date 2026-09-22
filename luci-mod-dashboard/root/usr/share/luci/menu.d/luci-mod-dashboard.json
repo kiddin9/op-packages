@@ -6,10 +6,7 @@
 			"path": "dashboard/index"
 		},
 		"depends": {
-			"acl": [ "luci-mod-dashboard-index" ],
-			"uci": {
-				"wireless": true
-			}
+			"acl": [ "luci-mod-dashboard-index" ]
 		}
 	}
 }
