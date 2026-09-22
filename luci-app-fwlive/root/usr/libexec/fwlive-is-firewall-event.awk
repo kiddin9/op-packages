@@ -28,7 +28,7 @@ function has_hint(s, lc) {
 }
 function non_fw_prefix(s, lc) {
 	lc = tolower(s)
-	return lc ~ "^(dnsmasq|procd|ubusd|netifd|odhcpd|logd|dropbear|uhttpd|hostapd|wpad)([^a-z0-9_]|$)"
+	return lc ~ "^(dnsmasq|procd|ubusd|netifd|odhcpd|logd|dropbear|uhttpd|hostapd|wpad)([^a-z0-9_-]|$)"
 }
 function detect_action(s, words, n, i, w, wl, lc, start, pos, before, afterc, best, bestpos) {
 	n = split("ACCEPT ALLOW PASS DROP REJECT DENY BLOCK", words, " ")

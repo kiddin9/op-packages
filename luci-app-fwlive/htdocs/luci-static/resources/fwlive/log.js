@@ -39,6 +39,7 @@ return baseclass.extend({
 			'hostapd',
 			'wpad'
 		],
+		nonFirewallPrefixHyphenContinuation: true,
 		firewallHints: ['fw4', 'nft', 'iptables', 'kernel', 'firewall'],
 		actionWords: ['ACCEPT', 'ALLOW', 'PASS', 'DROP', 'REJECT', 'DENY', 'BLOCK'],
 		rules: [
@@ -59,7 +60,8 @@ return baseclass.extend({
 		]
 	},
 
-	TCP_FLAG_TAIL: /\b(SYN|ACK|FIN|RST|PSH|URG)(?:\s+(?:SYN|ACK|FIN|RST|PSH|URG))*\s*$/i,
+	TCP_FLAG_TAIL:
+		/\b((?:SYN|ACK|FIN|RST|PSH|URG)(?:\s+(?:SYN|ACK|FIN|RST|PSH|URG))*)(?:\s+[A-Z][A-Z0-9_]*=[^\s]+)*\s*$/i,
 	NETFILTER_KV_GLUE:
 		/([^\s])(?=(IN|OUT|SRC|DST|PROTO|SPT|DPT|LEN|MAC|TYPE|CODE|TTL|TOS|PREC|DF)=)/g,
 
@@ -73,10 +75,11 @@ return baseclass.extend({
 	},
 
 	NON_FIREWALL_PREFIX:
-		/^(dnsmasq|procd|ubusd|netifd|odhcpd|logd|dropbear|uhttpd|hostapd|wpad)([^A-Za-z0-9_]|$)/i,
+		/^(dnsmasq|procd|ubusd|netifd|odhcpd|logd|dropbear|uhttpd|hostapd|wpad)([^A-Za-z0-9_-]|$)/i,
 	FIREWALL_HINT: /(^|[^A-Za-z0-9_])(fw4|nft|iptables|kernel|firewall)([^A-Za-z0-9_]|$)/i,
 	ACTION_RE: /(^|[^A-Za-z0-9_])(ACCEPT|ALLOW|PASS|DROP|REJECT|DENY|BLOCK)([^A-Za-z0-9_]|$)/i,
 	DENY_ACTION: /(^|[^A-Za-z0-9_])(DROP|REJECT|DENY|BLOCK)([^A-Za-z0-9_]|$)/i,
+	DENY_ACTION_UNDERSCORE: /(?:^|[^A-Za-z0-9])(?:DROP|REJECT|DENY|BLOCK)(?:[^A-Za-z0-9]|$)/i,
 	MAX_DATE_SECONDS: 8640000000000,
 
 	normalizeNetfilterMessage: function (message) {
@@ -201,7 +204,8 @@ return baseclass.extend({
 
 		const msg = this.normalizeNetfilterMessage(message || '');
 		const withoutKv = msg.replace(/\b[A-Z]+=[^\s]*/g, ' ');
-		if (this.DENY_ACTION.test(withoutKv)) return 'UNKNOWN';
+		if (this.DENY_ACTION.test(withoutKv) || this.DENY_ACTION_UNDERSCORE.test(withoutKv))
+			return 'UNKNOWN';
 
 		if (/^kernel:/i.test(msg.trim())) return 'UNKNOWN';
 
@@ -218,7 +222,7 @@ return baseclass.extend({
 		const m = message.match(this.TCP_FLAG_TAIL);
 		if (!m) return '';
 
-		return m[0].trim().toUpperCase().replace(/\s+/g, ',');
+		return m[1].trim().toUpperCase().replace(/\s+/g, ',');
 	},
 
 	parseLength: function (kv) {
@@ -386,21 +390,18 @@ return baseclass.extend({
 	},
 
 	normalizeEntry: function (entry) {
-		const kv = this.parseKeyValueLog(entry.msg || '');
+		const message = this.normalizeNetfilterMessage(entry.msg || '');
+		const kv = this.parseKeyValueLog(message);
 		const tsUnix = this.timestampUnix(entry);
 		const tsDisplay = this.formatTimestampDisplay(entry);
 		const proto = (kv.PROTO || '').toUpperCase();
-		const actionRaw = this.inferActionRaw(
-			entry.msg || '',
-			kv,
-			this.detectAction(entry.msg || '')
-		);
+		const actionRaw = this.inferActionRaw(message, kv, this.detectAction(message));
 		const action = this.normalizeAction(actionRaw);
 		const addrs = this.extractAddrs(kv);
 		const ifs = this.extractIfaces(kv);
-		const flags = this.parseFlags(entry.msg || '', kv);
+		const flags = this.parseFlags(message, kv);
 		const length = this.parseLength(kv);
-		const ruleHint = this.parseRuleHint(entry.msg || '');
+		const ruleHint = this.parseRuleHint(message);
 		const ruleLabel = this.formatRuleLabel(ruleHint);
 
 		return {

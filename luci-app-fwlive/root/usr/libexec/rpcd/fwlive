@@ -564,7 +564,8 @@ resolve_addresses() {
 	start=$(date +%s)
 	# Optional JSON on $1 (rpcd may also pass argv $3 at the call site); else stdin.
 	input=$(read_rpc_input "$1")
-	count=0
+	lookups=0
+	truncated=0
 	OUT=''
 
 	if ! command -v jshn >/dev/null 2>&1; then
@@ -597,27 +598,51 @@ resolve_addresses() {
 		return 0
 	}
 	while IFS= read -r ip; do
-			[ "$count" -ge "$RESOLVE_MAX" ] && break
+			if [ "$lookups" -ge "$RESOLVE_MAX" ]; then
+				truncated=1
+				break
+			fi
 			# Abort cleanly once the whole-call wall-clock budget is spent;
 			# never START a lookup past the budget.
 			now=$(date +%s)
-			[ $((now - start)) -ge "$RESOLVE_BUDGET" ] && break
+			if [ $((now - start)) -ge "$RESOLVE_BUDGET" ]; then
+				truncated=1
+				break
+			fi
 			# Missing/empty element: set -u cannot read bare $ip.
 			if ! is_resolvable_address "${ip:-}"; then
 				continue
 			fi
+			lookups=$((lookups + 1))
 			# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
 			# cannot apply to this assignment.
 			name=$(resolve_hostname "$ip") || name=
 			if [ -n "$name" ]; then
 				map_add "$ip" "$name"
-				count=$((count + 1))
+			else
+				# Record a completed miss so the view can fail-mark NXDOMAIN
+				# without treating the unprocessed truncated tail as tried.
+				# map_add skips empty values (rules-map labels); resolve needs them.
+				esc_key=$(printf '%s' "$ip" | json_escape)
+				case "$OUT" in
+					*"\"$esc_key\":"*) ;;
+					*)
+						if [ -n "$OUT" ]; then
+							OUT="${OUT},"
+						fi
+						OUT="${OUT}\"${esc_key}\":\"\""
+						;;
+				esac
 			fi
 		done <<EOF
 $_addresses
 EOF
 
-	printf '{"names":{%s}}' "$OUT"
+	if [ "$truncated" -eq 1 ]; then
+		printf '{"names":{%s},"truncated":true}' "$OUT"
+	else
+		printf '{"names":{%s}}' "$OUT"
+	fi
 }
 
 check_eq() {

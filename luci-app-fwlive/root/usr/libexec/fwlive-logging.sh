@@ -445,40 +445,41 @@ restore_wan_log_baseline() {
 }
 
 wan_filter_log_enabled() {
-	log_val="$1"
-	[ -n "$log_val" ] || return 1
-	case "$log_val" in
-		*[!0-9]*) return 1 ;;
-	esac
+	log_val=$(wan_filter_log_decimal "$1") || return 1
 	[ $((log_val & 1)) -ne 0 ]
 }
 
+wan_filter_log_decimal() {
+	_log_val="$1"
+	case "$_log_val" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	while [ "${_log_val#0}" != "$_log_val" ]; do
+		_log_val=${_log_val#0}
+	done
+	[ -n "$_log_val" ] || _log_val=0
+	printf '%s' "$_log_val"
+}
+
 wan_filter_log_target_value() {
-	current="$1"
+	current=$(wan_filter_log_decimal "$1") || {
+		printf '1'
+		return 0
+	}
 	if wan_filter_log_enabled "$current"; then
 		printf '%s' "$current"
 		return 0
 	fi
-	case "$current" in
-		''|*[!0-9]*)
-			printf '1'
-			;;
-		*)
-			printf '%d' $((current | 1))
-			;;
-	esac
+	printf '%d' $((current | 1))
 }
 
 # Clear filter-log bit 0 only. Prints remaining value, or empty when the option
 # should be deleted (no bits left / non-numeric / already empty).
 wan_filter_log_clear_value() {
-	current="$1"
-	case "$current" in
-		''|*[!0-9]*)
-			printf ''
-			return 0
-			;;
-	esac
+	current=$(wan_filter_log_decimal "$1") || {
+		printf ''
+		return 0
+	}
 	cleared=$((current & ~1))
 	if [ "$cleared" -eq 0 ]; then
 		printf ''
@@ -677,10 +678,26 @@ restore_wan_zone_log() {
 		logger -t fwlive "WAN log rollback skipped: firewall changes pending" 2>/dev/null || true
 		return 1
 	fi
+	# Capture the committed value before staging our rollback. If another
+	# writer stages a firewall delta after this point, the post-stage guard
+	# below must be able to undo only our rollback staging without reverting
+	# the other writer's change.
+	committed=$(wan_zone_log_value "$zone")
 	if [ -z "$previous" ]; then
 		uci -q delete "firewall.${zone}.log" 2>/dev/null || true
 	else
 		uci -q set "firewall.${zone}.log=${previous}" 2>/dev/null || true
+	fi
+	_staged=$(uci -q changes firewall 2>/dev/null || true)
+	_foreign=$(wan_log_foreign_staged_lines "$zone" "$_staged")
+	if [ -n "$_foreign" ]; then
+		if [ -z "$committed" ]; then
+			uci delete "firewall.${zone}.log" 2>/dev/null || true
+		else
+			uci set "firewall.${zone}.log=${committed}" 2>/dev/null || true
+		fi
+		logger -t fwlive "WAN log rollback skipped after stage: firewall changes staged by another writer" 2>/dev/null || true
+		return 1
 	fi
 	uci commit firewall 2>/dev/null || true
 }
@@ -692,13 +709,14 @@ restore_wan_zone_log() {
 # TOCTOU hardening: UCI staging is global per config file, so a
 # non-cooperating writer (another admin's `uci set`, the LuCI firewall page)
 # can stage a delta AFTER the toggle's early firewall_changes_pending check.
-# Staging and committing therefore live INSIDE this function — the only path
-# to `uci commit firewall` in the toggle flow, so callers cannot bypass it —
-# gated by:
+# Staging and committing therefore live INSIDE this function, gated by:
 #   1. a pending re-check BEFORE our own delta exists in staging (foreign-only);
 #   2. a post-stage re-check AFTER our set/delete: if anything besides our
 #      log option is staged, undo our staging (restore the pre-stage committed
 #      value) and abort without commit — foreign staging stays intact.
+# The reload-failure rollback has its own pre/post-stage guard for the same
+# reason; it must not bypass this invariant merely because it is compensating
+# for a failed reload.
 # Residual window: a writer that stages between the post-stage check and
 # `uci commit` can still ride along; post-commit verification detects a
 # mismatched log bit. Same-option races (another writer also staging
@@ -977,6 +995,20 @@ run_logging_selftest() {
 		echo 'wan_filter_log_enabled 2: expected false' >&2
 		return 1
 	fi
+	for leading_value in 011 010 08 0; do
+		if ! wan_filter_log_decimal "$leading_value" >/dev/null; then
+			echo "wan_filter_log_decimal $leading_value: expected decimal digits" >&2
+			return 1
+		fi
+	done
+	if wan_filter_log_enabled '08' || wan_filter_log_enabled '010'; then
+		echo 'leading-zero even values: expected false' >&2
+		return 1
+	fi
+	if ! wan_filter_log_enabled '011'; then
+		echo 'leading-zero odd value: expected true' >&2
+		return 1
+	fi
 
 	got=$(wan_filter_log_target_value '')
 	if [ "$got" != '1' ]; then
@@ -993,6 +1025,16 @@ run_logging_selftest() {
 	got=$(wan_filter_log_target_value '1')
 	if [ "$got" != '1' ]; then
 		echo "wan_filter_log_target_value 1: expected 1 got $got" >&2
+		return 1
+	fi
+	got=$(wan_filter_log_target_value '08')
+	if [ "$got" != '9' ]; then
+		echo "wan_filter_log_target_value 08: expected 9 got $got" >&2
+		return 1
+	fi
+	got=$(wan_filter_log_target_value '011')
+	if [ "$got" != '11' ]; then
+		echo "wan_filter_log_target_value 011: expected 11 got $got" >&2
 		return 1
 	fi
 
@@ -1012,6 +1054,17 @@ run_logging_selftest() {
 	got=$(wan_filter_log_clear_value '2')
 	if [ "$got" != '2' ]; then
 		echo "wan_filter_log_clear_value 2: expected 2 got $got" >&2
+		return 1
+	fi
+
+	got=$(wan_filter_log_clear_value '010')
+	if [ "$got" != '10' ]; then
+		echo "wan_filter_log_clear_value 010: expected 10 got $got" >&2
+		return 1
+	fi
+	got=$(wan_filter_log_clear_value '0')
+	if [ -n "$got" ]; then
+		echo "wan_filter_log_clear_value 0: expected empty got $got" >&2
 		return 1
 	fi
 

@@ -454,7 +454,8 @@ fwlive_adaptive_merge_reply() {
 	_adapt=1
 	fwlive_adaptive_enabled || _adapt=0
 	case "$_body" in
-		*\}) ;;
+		'{}') _sep= ;;
+		*\}) _sep=, ;;
 		*) printf '%s' "$_body"; return 0 ;;
 	esac
 	_base=${_body%\}}
@@ -466,26 +467,26 @@ fwlive_adaptive_merge_reply() {
 	esac
 	if [ "$_adapt" = 0 ]; then
 		if [ "$_has_msgs" = 1 ]; then
-			printf '%s,"adaptive":0}' "$_base"
+			printf '%s%s"adaptive":0}' "$_base" "$_sep"
 		else
-			printf '%s,"adaptive":0,"messages_received":%s}' "$_base" "$_msgs"
+			printf '%s%s"adaptive":0,"messages_received":%s}' "$_base" "$_sep" "$_msgs"
 		fi
 		return 0
 	fi
 	if [ "$_shed" = 1 ]; then
 		if [ "$_has_msgs" = 1 ]; then
-			printf '%s,"adaptive":1%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-				"$_base" "$_effective" "$_trunc" "$_limit"
+			printf '%s%s"adaptive":1%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
+				"$_base" "$_sep" "$_effective" "$_trunc" "$_limit"
 		else
-			printf '%s,"adaptive":1,"messages_received":%s%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-				"$_base" "$_msgs" "$_effective" "$_trunc" "$_limit"
+			printf '%s%s"adaptive":1,"messages_received":%s%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
+				"$_base" "$_sep" "$_msgs" "$_effective" "$_trunc" "$_limit"
 		fi
 	else
 		if [ "$_has_msgs" = 1 ]; then
-			printf '%s,"adaptive":1%s,"truncated":%s}' "$_base" "$_effective" "$_trunc"
+			printf '%s%s"adaptive":1%s,"truncated":%s}' "$_base" "$_sep" "$_effective" "$_trunc"
 		else
-			printf '%s,"adaptive":1,"messages_received":%s%s,"truncated":%s}' \
-				"$_base" "$_msgs" "$_effective" "$_trunc"
+			printf '%s%s"adaptive":1,"messages_received":%s%s,"truncated":%s}' \
+				"$_base" "$_sep" "$_msgs" "$_effective" "$_trunc"
 		fi
 	fi
 }
