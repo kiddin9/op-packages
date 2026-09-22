@@ -1,20 +1,31 @@
+--- a/luci-mod-dashboard/root/etc/config/dashboard
++++ b/luci-mod-dashboard/root/etc/config/dashboard
+@@ -1 +1,18 @@
+ config dashboard 'layout'
++	list cards 'internet'
++	list cards 'uptime'
++	list cards 'cpu'
++	list cards 'memory'
++	list cards 'dhcp'
++	list cards 'wifi'
++	list cards 'load'
++	list charts 'wan'
++	list charts 'system'
++	list charts 'distribution'
++	list charts 'signal'
++	list charts 'traffic'
++	list tabs 'internet'
++	list tabs 'system'
++	list tabs 'resources'
++	list tabs 'dhcp'
++	list tabs 'wifi'
+
 --- a/luci-mod-dashboard/root/usr/share/luci/menu.d/luci-mod-dashboard.json
 +++ b/luci-mod-dashboard/root/usr/share/luci/menu.d/luci-mod-dashboard.json
-@@ -1,13 +1,15 @@
+@@ -1,6 +1,5 @@
  {
  	"admin/dashboard": {
 -		"title": "Dashboard",
  		"order": 1,
  		"action": {
  			"type": "view",
- 			"path": "dashboard/index"
- 		},
- 		"depends": {
--			"acl": [ "luci-mod-dashboard-index" ]
-+			"acl": [ "luci-mod-dashboard-index" ],
-+			"uci": {
-+				"wireless": true
-+			}
- 		}
- 	}
- }
