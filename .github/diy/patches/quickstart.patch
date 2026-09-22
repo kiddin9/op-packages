@@ -54,18 +54,3 @@ index d1667bb..0000000
 -	}
 -}
 \ No newline at end of file
-diff --git a/luci-app-quickstart/root/usr/share/luci/menu.d/zz-luci-app-quickstart.json b/luci-app-quickstart/root/usr/share/luci/menu.d/zz-luci-app-quickstart.json
-new file mode 100644
-index 0000000..f97d1f1
---- /dev/null
-+++ b/luci-app-quickstart/root/usr/share/luci/menu.d/zz-luci-app-quickstart.json
-@@ -0,0 +1,9 @@
-+{
-+	"admin/dashboard": {
-+		"depends": {
-+			"uci": {
-+				"disabled_by_quickstart": true
-+			}
-+		}
-+	}
-+}
