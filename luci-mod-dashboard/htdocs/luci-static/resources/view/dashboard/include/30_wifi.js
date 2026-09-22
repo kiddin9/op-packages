@@ -212,6 +212,7 @@ return baseclass.extend({
 		return charts.table({
 			head: [
 				_('Hostname'),
+				_('IP Address'),
 				_('SSID'),
 				'%s / %s'.format(_('Signal'), _('Noise floor')),
 				_('Up.'),
@@ -220,6 +221,9 @@ return baseclass.extend({
 			],
 			rows: this.params.wifi.devices.map(device => [
 				device.hostname.value,
+				device.addresses.value.length
+					? E('div', { 'class': 'dashboard-client-addresses' }, device.addresses.value.map(address => E('div', {}, [ address ])))
+					: '-',
 				device.ssid.value,
 				E('span', {}, [
 					charts.badge((device.signal.value.rssi != null) ? '%d %s'.format(device.signal.value.rssi, _('dBm')) : _('No RX signal'), signalGrade(device.signal.value.rssi).kind),
@@ -245,7 +249,16 @@ return baseclass.extend({
 		]);
 	},
 
+	clientAddresses(hint) {
+		const ipv4 = L.toArray(hint?.ipaddrs || hint?.ipv4);
+		const ipv6 = L.toArray(hint?.ip6addrs || hint?.ipv6)
+			.filter(address => !/^fe[89ab][0-9a-f]:/i.test(address));
+
+		return Array.from(new Set(ipv4.concat(ipv6).filter(Boolean)));
+	},
+
 	renderUpdateData(radios, networks, hosthints) {
+		const hosts = Object.fromEntries(Object.entries(hosthints.hosts || {}).map(([ mac, hint ]) => [ mac.toUpperCase(), hint ]));
 
 		for (let i = 0; i < radios.sort((a, b) => a.getName().localeCompare(b.getName())).length; i++) {
 			const network_items = networks.filter(net => { return net.getWifiDeviceName() == radios[i].getName() });
@@ -316,6 +329,12 @@ return baseclass.extend({
 							title: _('Hostname'),
 							visible: true,
 							value: name || '?'
+						},
+
+						addresses: {
+							title: _('IP Address'),
+							visible: true,
+							value: this.clientAddresses(hosts[bss.mac.toUpperCase()])
 						},
 
 						ssid : {

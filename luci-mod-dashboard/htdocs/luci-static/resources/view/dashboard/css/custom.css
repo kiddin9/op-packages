@@ -506,3 +506,7 @@
 		--dashboard-plot-h: 140px;
 	}
 }
+
+.dashboard-client-addresses {
+	overflow-wrap: anywhere;
+}

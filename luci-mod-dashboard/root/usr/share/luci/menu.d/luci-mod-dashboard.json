@@ -1,6 +1,7 @@
 {
-	"admin/dashboard": {
-		"order": 1,
+	"admin/status/dashboard": {
+		"title": "Dashboard",
+		"order": 2,
 		"action": {
 			"type": "view",
 			"path": "dashboard/index"
