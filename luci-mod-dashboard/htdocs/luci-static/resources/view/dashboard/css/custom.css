@@ -152,6 +152,8 @@
 	align-items: center;
 	gap: 20px;
 	margin-block: auto;
+	/* Override Footstrap's negative SVG container margins to preserve card padding. */
+	margin-inline: 0;
 }
 
 .dashboard-donut svg {
@@ -474,6 +476,10 @@
 	color: var(--dashboard-text-muted);
 }
 
+.dashboard-client-addresses {
+	overflow-wrap: anywhere;
+}
+
 
 /* ---- Responsive ---- */
 @media screen and (max-width: 760px) {
@@ -505,8 +511,4 @@
 	.dashboard-bars {
 		--dashboard-plot-h: 140px;
 	}
-}
-
-.dashboard-client-addresses {
-	overflow-wrap: anywhere;
 }

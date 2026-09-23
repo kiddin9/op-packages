@@ -54,7 +54,11 @@ _filter_tmp=$(mktemp "$FILTER_TMP_DIR/fwlive-filter.XXXXXX") || {
 	printf '%s' '{"log":[],"error":"filter_tempfile_failed"}'
 	exit 1
 }
-trap 'rm -f "$_filter_tmp"' 0 1 2 3 15
+trap 'rm -f "$_filter_tmp"' 0
+trap 'rm -f "$_filter_tmp"; exit 129' 1
+trap 'rm -f "$_filter_tmp"; exit 130' 2
+trap 'rm -f "$_filter_tmp"; exit 131' 3
+trap 'rm -f "$_filter_tmp"; exit 143' 15
 if ! jsonfilter -e '@.log[*]' >"$_filter_tmp" 2>/dev/null; then
 	printf '%s' '{"log":[],"error":"filter_failed"}'
 	exit 1

@@ -209,9 +209,11 @@ fwlive_adaptive_write_state() {
 	# Refuse to follow a symlinked state path (same discipline as logging.lock).
 	[ -L "$FWLIVE_ADAPTIVE_STATE_FILE" ] && return 0
 	_tmp="${FWLIVE_ADAPTIVE_STATE_FILE}.tmp.$$"
-	umask 077
-	printf '{"duration_ms":%s,"limit":%s,"bucket":"%s","warm_halved":%s,"shed":%s,"completed_cs":%s}\n' \
-		"$_d" "$_l" "$_b" "$_w" "$_s" "$_c" >"$_tmp" 2>/dev/null || {
+	(
+		umask 077
+		printf '{"duration_ms":%s,"limit":%s,"bucket":"%s","warm_halved":%s,"shed":%s,"completed_cs":%s}\n' \
+			"$_d" "$_l" "$_b" "$_w" "$_s" "$_c" >"$_tmp" 2>/dev/null
+	) || {
 		rm -f "$_tmp"
 		return 0
 	}

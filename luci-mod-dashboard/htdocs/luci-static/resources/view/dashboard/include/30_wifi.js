@@ -250,11 +250,11 @@ return baseclass.extend({
 	},
 
 	clientAddresses(hint) {
-		const ipv4 = L.toArray(hint?.ipaddrs || hint?.ipv4);
+		const ipv4 = L.toArray(hint?.ipaddrs || hint?.ipv4).find(Boolean);
 		const ipv6 = L.toArray(hint?.ip6addrs || hint?.ipv6)
-			.filter(address => !/^fe[89ab][0-9a-f]:/i.test(address));
+			.find(address => address && !/^fe[89ab][0-9a-f]:/i.test(address));
 
-		return Array.from(new Set(ipv4.concat(ipv6).filter(Boolean)));
+		return [ ipv4, ipv6 ].filter(Boolean);
 	},
 
 	renderUpdateData(radios, networks, hosthints) {
