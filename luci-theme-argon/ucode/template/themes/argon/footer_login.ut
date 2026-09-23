@@ -40,6 +40,12 @@
 			}
 		}
 	});
+  	const loginContainer = document.querySelector(
+  	  'div[class="login-container"][style*="backdrop-filter: blur(0px)"]'
+  	);
+  	if (loginContainer) {
+  	  loginContainer.style.margin = '0 auto';
+  	}
 </script>
 </body>
 </html>

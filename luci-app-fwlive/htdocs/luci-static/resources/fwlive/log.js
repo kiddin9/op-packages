@@ -333,8 +333,8 @@ return baseclass.extend({
 	/* @fwlive-codegen:luci-preserve-end */
 
 	isFirewallEvent: function (entry) {
-		const msg = this.normalizeNetfilterMessage((entry && entry.msg) || '');
-		if (!msg.trim()) return false;
+		const msg = this.normalizeNetfilterMessage((entry && entry.msg) || '').trim();
+		if (!msg) return false;
 
 		if (this.NON_FIREWALL_PREFIX.test(msg)) return false;
 

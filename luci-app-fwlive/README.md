@@ -25,7 +25,7 @@ LuCI **Firewall Live View** — client-side JS view polling `ubus fwlive poll` (
 | `root/usr/share/rpcd/acl.d/*.json` | ubus ACL (read + write for logging enable/disable) |
 | `root/usr/libexec/rpcd/fwlive` | rpcd plugin (`rules`, `poll`, `resolve`, `logging_status`, `enable_wan_logging`, `disable_wan_logging`) |
 | `root/usr/libexec/fwlive-logging.sh` | WAN zone logging helpers |
-| `/etc/fwlive/wan-log-baseline` | Written on first **Enable logging**; restored on uninstall (`prerm`) |
+| `/etc/fwlive/wan-log-baseline` | Written on first **Enable logging**; restored on uninstall (`prerm`). Disable of a pre-existing/foreign log bit is not snapshotted, so uninstall will not restore that bit. |
 | `root/usr/libexec/fwlive-log-filter.sh` | Server-side firewall-only filter (`isFirewallEvent` parity) |
 | `root/usr/libexec/fwlive-is-firewall-event.sh` | Shared filter logic (sourced by filter + tests) |
 | `po/templates/luci-app-fwlive.pot` | i18n template (English msgid scaffolding) |
