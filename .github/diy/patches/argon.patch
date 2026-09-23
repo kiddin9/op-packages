@@ -121,15 +121,6 @@
  main {
    display: block;
  }
-@@ -718,7 +734,7 @@ select[multiple="multiple"] {
- }
- .login-page .login-container {
-   z-index: 10;
--  margin-left: 5%;
-+  margin: 0 auto;
-   display: flex;
-   height: 100vh;
-   width: 26rem;
 
 --- a/luci-theme-argon/ucode/template/themes/argon/footer.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/footer.ut
@@ -158,6 +149,19 @@
  		<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
  	</div>
  </footer>
+@@ -42,6 +40,12 @@
+ 			}
+ 		}
+ 	});
++  	const loginContainer = document.querySelector(
++  	  'div[class="login-container"][style*="backdrop-filter: blur(0px)"]'
++  	);
++  	if (loginContainer) {
++  	  loginContainer.style.margin = '0 auto';
++  	}
+ </script>
+ </body>
+ </html>
 diff --git a/luci-theme-argon/htdocs/luci-static/argon/img/pattern.svg b/luci-theme-argon/htdocs/luci-static/argon/img/pattern.svg
 new file mode 100644
 index 000000000..72eb03cdc
