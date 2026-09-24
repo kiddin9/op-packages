@@ -57,12 +57,12 @@
 
 --- a/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
-@@ -136,11 +136,13 @@
+@@ -136,11 +136,12 @@
  	<!-- Video Player End -->
  	{% else %}
  	<!-- Image Background Start -->
+-	<div class="main-bg" id="main-bg"><img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt=""></div>
 +	{% online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? 'default' %}
- 	<div class="main-bg" id="main-bg"><img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt=""></div>
 +	<div class="main-bg" id="main-bg">{% if (online_wallpaper != 'default'): %}<img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt="">{% endif %}</div>
  	<!-- Image Background End -->
  	{% endif %}
