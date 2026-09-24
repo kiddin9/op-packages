@@ -542,7 +542,9 @@ jobs:
         sed -i 's/icon!=="baby"/icon!==""/' luci-app-quickstart/htdocs/luci-static/quickstart/index.js
         sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile
         sed -i 's/+luci-base/+luci-base +luci-app-oui +luci-mod-dashboard/' luci-mod-status/Makefile
-        sed -i "s/data-page=admin-dashboard/data-page=admin-status-dashboard/g" luci-theme-argon/htdocs/luci-static/argon/css/dark.css
+        sed -i -e "s/data-page=admin-dashboard/data-page=admin-status-dashboard/g" \
+        -e '$a\.modal>pre,.modal>textarea{color: #ccc};' \
+        luci-theme-argon/htdocs/luci-static/argon/css/dark.css
 
         while [[ ! -f /tmp/ok || ! -f /tmp/ok2 || ! -f /tmp/ok3 ]]; do
             echo "wait"
