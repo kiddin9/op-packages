@@ -36,7 +36,9 @@ function chipValueNodes(spec, val) {
 		return [
 			label + ': ',
 			E('strong', { 'class': 'fwlive-chip-not' }, [_('not')]),
-			' contains ',
+			' ',
+			_('contains'),
+			' ',
 			valueNode
 		];
 

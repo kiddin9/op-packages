@@ -854,7 +854,6 @@ return view.extend({
 		return {
 			loggingStatus: this.loggingStatus,
 			loggingBusy: this.loggingBusy,
-			entriesLength: this.entries.length,
 			loggingNotice: this.loggingNotice,
 			showConsent: this.shouldShowLoggingConsent()
 		};

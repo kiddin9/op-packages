@@ -11,7 +11,7 @@ LUCI_DEPENDS:=+linkeasefull +luci-lib-linkeaseauth +luci-lib-linkeasefile
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

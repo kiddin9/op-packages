@@ -28,12 +28,15 @@ NF_LOG_IPV6_READY=false
 # firewall.<zone>.log bit, computes a target, then uci set + uci commit. Two
 # concurrent callers could otherwise interleave and last-commit-wins.
 #
-# BusyBox flock constraint: it has NO -w timeout. A stuck lock holder blocks
-# any waiter until the holder exits or the device reboots. The critical
-# section MUST stay SHORT (a few uci commands). Do NOT hold the lock across
-# the /etc/init.d/firewall reload (can take seconds); the lock is released
-# before reload, and reload-failure rollback is a best-effort UCI write
-# outside the lock.
+# BusyBox flock constraint: it has NO -w timeout. The lock is opened with
+# `exec 9>>` + `flock 9`. In ash/dash, `>>` clears close-on-exec, so a live
+# child keeps fd 9 after this holder dies. A stuck lock therefore blocks any
+# waiter until the last fd-9 inheritor exits or the device reboots (killing
+# the holder alone may not release it). The critical section MUST stay SHORT
+# (a few uci commands). Do NOT hold the lock across the /etc/init.d/firewall
+# reload (can take seconds); the lock is released before reload.
+# Reload-failure rollback re-acquires the lock so the read-compare-restore
+# is atomic against concurrent writers; do not drop that re-acquire.
 # Overridable for tests/containers (default is root-only /etc/fwlive).
 WAN_LOG_LOCK_FILE="${FWLIVE_WAN_LOG_LOCK_FILE:-/etc/fwlive/logging.lock}"
 WAN_LOG_BASELINE_FILE="${FWLIVE_WAN_LOG_BASELINE_FILE:-/etc/fwlive/wan-log-baseline}"
@@ -435,7 +438,17 @@ restore_wan_log_baseline() {
 		logger -t fwlive "WAN log baseline restore skipped: firewall changes pending" 2>/dev/null || true
 		return 1
 	fi
-	if ! commit_wan_log_change "$zone" "$zone_json" "$baseline"; then
+	_commit_rc=0
+	commit_wan_log_change "$zone" "$zone_json" "$baseline" || _commit_rc=$?
+	if [ "$_commit_rc" -eq 2 ]; then
+		# Commit landed; live fw4 still needs a reload. Baseline file
+		# stays so a later restore can retry — read-back was not ours.
+		release_wan_log_lock
+		reload_firewall || logger -t fwlive "WAN log baseline restore: firewall reload failed after raced commit" 2>/dev/null || true
+		logger -t fwlive "WAN log baseline restore: post-commit verify raced" 2>/dev/null || true
+		return 1
+	fi
+	if [ "$_commit_rc" -ne 0 ]; then
 		release_wan_log_lock
 		logger -t fwlive "WAN log baseline restore: commit gate failed" 2>/dev/null || true
 		return 1
@@ -701,7 +714,19 @@ restore_wan_zone_log() {
 		logger -t fwlive "WAN log rollback skipped after stage: firewall changes staged by another writer" 2>/dev/null || true
 		return 1
 	fi
-	uci commit firewall 2>/dev/null || true
+	if ! uci commit firewall 2>/dev/null; then
+		# Drop our staged rollback delta so a later toggle is not stuck
+		# on firewall_changes_pending from this package's own orphaned
+		# write. Mirror commit_wan_log_change: revert only when the
+		# remaining staging is entirely our log option.
+		_staged=$(uci -q changes firewall 2>/dev/null || true)
+		_total=$(printf '%s\n' "$_staged" | grep -c . 2>/dev/null || true)
+		_ours=$(wan_log_count_our_staged_lines "$zone" "$_staged")
+		if [ "${_total:-0}" -gt 0 ] && [ "${_total:-0}" -eq "${_ours:-0}" ]; then
+			uci -q revert firewall 2>/dev/null || true
+		fi
+		return 1
+	fi
 }
 
 # Stage + commit the WAN log bit. Caller MUST hold the logging lock; this
@@ -721,10 +746,11 @@ restore_wan_zone_log() {
 # for a failed reload.
 # Residual window: a writer that stages between the post-stage check and
 # `uci commit` can still ride along; post-commit verification detects a
-# mismatched log bit. Same-option races (another writer also staging
-# firewall.<wan>.log) are not distinguishable in the changes list.
-# The caller-reported error is firewall_changes_pending: the LuCI view already
-# maps it to the accurate "another change is staged" notice.
+# mismatched log bit and reports firewall_commit_raced (no blind-revert).
+# Same-option races (another writer also staging firewall.<wan>.log) are
+# not distinguishable in the changes list. Pre-stage races report
+# firewall_changes_pending: the LuCI view already maps it to the accurate
+# "another change is staged" notice.
 #
 # target: value to stage; EMPTY means delete the option (bit fully cleared).
 # Prints the failure JSON and returns 1 on abort or failure.
@@ -807,12 +833,42 @@ commit_wan_log_change() {
 	# Post-commit verification: confirm the committed config really
 	# carries what we wrote (empty target = option must now be gone/empty).
 	# A mismatch means another writer overtook the commit: warn loudly but do
-	# NOT blind-revert (that would destroy unrelated committed data); the
-	# reload-failure rollback path still guards the ordinary failure case.
+	# NOT blind-revert (that would destroy unrelated committed data). Return 2
+	# so the caller still reloads (live fw4 must track committed UCI) and then
+	# reports firewall_commit_raced instead of ok:true. Do not print JSON here:
+	# reload may still fail. Return 1 is reserved for pre-commit aborts that
+	# already printed an error body.
 	if ! verify_wan_log_commit "$zone" "$target"; then
 		logger -t fwlive "WAN log post-commit verify FAILED: wrote '${target:-<deleted>}', read back differs" 2>/dev/null || true
+		return 2
 	fi
 	return 0
+}
+
+# Caller MUST have released the logging lock. rc from commit_wan_log_change:
+# 0 — our target is committed; reload and report success.
+# 1 — abort JSON already printed; no commit, skip reload.
+# 2 — commit succeeded but verify raced; still reload, then report
+#     firewall_commit_raced (or firewall_reload_failed). Do not use
+#     reload_and_report_wan_log: a reload failure must not restore
+#     `previous` over a foreign committed value.
+report_wan_log_after_commit() {
+	_rc="$1"
+	zone_json="$2"
+	if [ "$_rc" -eq 1 ]; then
+		return 0
+	fi
+	if [ "$_rc" -eq 2 ]; then
+		if ! reload_firewall; then
+			logger -t fwlive "Firewall reload failed after raced WAN log commit" 2>/dev/null || true
+			printf '{"ok":false,"changed":false,"wan_zone":%s,"error":"firewall_reload_failed"}' "$zone_json"
+			return 0
+		fi
+		printf '{"ok":false,"changed":false,"wan_zone":%s,"error":"firewall_commit_raced"}' "$zone_json"
+		return 0
+	fi
+	shift 2
+	reload_and_report_wan_log "$@"
 }
 
 # Firewall reload + best-effort UCI rollback on reload failure. The reload
@@ -918,13 +974,11 @@ enable_wan_logging() {
 	fi
 
 	target=$(wan_filter_log_target_value "$current")
-	if ! commit_wan_log_change "$zone" "$zone_json" "$target"; then
-		release_wan_log_lock
-		return 0
-	fi
+	_commit_rc=0
+	commit_wan_log_change "$zone" "$zone_json" "$target" || _commit_rc=$?
 	release_wan_log_lock
-
-	reload_and_report_wan_log "$zone" "$current" "$target" \
+	report_wan_log_after_commit "$_commit_rc" "$zone_json" \
+		"$zone" "$current" "$target" \
 		'Firewall reload failed after enable; reverted UCI WAN log' \
 		'WAN zone logging enabled' \
 		"$zone_json"
@@ -971,13 +1025,11 @@ disable_wan_logging() {
 	# not restore that bit.
 
 	target=$(wan_filter_log_clear_value "$current")
-	if ! commit_wan_log_change "$zone" "$zone_json" "$target"; then
-		release_wan_log_lock
-		return 0
-	fi
+	_commit_rc=0
+	commit_wan_log_change "$zone" "$zone_json" "$target" || _commit_rc=$?
 	release_wan_log_lock
-
-	reload_and_report_wan_log "$zone" "$current" "$target" \
+	report_wan_log_after_commit "$_commit_rc" "$zone_json" \
+		"$zone" "$current" "$target" \
 		'Firewall reload failed after disable; reverted UCI WAN log' \
 		'WAN zone logging disabled' \
 		"$zone_json"

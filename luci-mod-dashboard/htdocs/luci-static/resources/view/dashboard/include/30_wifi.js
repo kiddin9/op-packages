@@ -249,8 +249,7 @@ return baseclass.extend({
 		]);
 	},
 
-	clientAddresses(hint) {
-		const ipv4 = L.toArray(hint?.ipaddrs || hint?.ipv4).find(Boolean);
+	clientAddresses(ipv4, hint) {
 		const ipv6 = L.toArray(hint?.ip6addrs || hint?.ipv6)
 			.find(address => address && !/^fe[89ab][0-9a-f]:/i.test(address));
 
@@ -258,8 +257,6 @@ return baseclass.extend({
 	},
 
 	renderUpdateData(radios, networks, hosthints) {
-		const hosts = Object.fromEntries(Object.entries(hosthints.hosts || {}).map(([ mac, hint ]) => [ mac.toUpperCase(), hint ]));
-
 		for (let i = 0; i < radios.sort((a, b) => a.getName().localeCompare(b.getName())).length; i++) {
 			const network_items = networks.filter(net => { return net.getWifiDeviceName() == radios[i].getName() });
 
@@ -321,7 +318,8 @@ return baseclass.extend({
 		for (let i = 0; i < networks.length; i++) {
 			for (let k = 0; k < networks[i].assoclist.length; k++) {
 				const bss = networks[i].assoclist[k];
-				const name = hosthints.getHostnameByMACAddr(bss.mac);
+				const mac = bss.mac.toUpperCase();
+				const name = hosthints.getHostnameByMACAddr(mac);
 
 				this.params.wifi.devices.push(
 					{
@@ -334,7 +332,7 @@ return baseclass.extend({
 						addresses: {
 							title: _('IP Address'),
 							visible: true,
-							value: this.clientAddresses(hosts[bss.mac.toUpperCase()])
+							value: this.clientAddresses(hosthints.getIPAddrByMACAddr(mac), hosthints.hosts[mac])
 						},
 
 						ssid : {

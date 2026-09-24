@@ -9,7 +9,7 @@
  *
  * renderToolbar(host, state, callbacks) → void
  *   host      - #fwlive-logging-bar strip slot (cleared and rebuilt; element kept)
- *   state     - { loggingStatus, loggingBusy, entriesLength, loggingNotice }
+ *   state     - { loggingStatus, loggingBusy, loggingNotice }
  *   callbacks - { onEnable(), onDisable() }
  *
  * G Hybrid chrome: when WAN logging is on, one merged control carries status +

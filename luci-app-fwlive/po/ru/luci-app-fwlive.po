@@ -17,6 +17,10 @@ msgstr ""
 msgid "%d matching · %d/%d stored"
 msgstr "%d matching · %d/%d stored"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/log.js:466
+msgid "%s: %s"
+msgstr "%s: %s"
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:929
 msgid "0 matching · %d/%d stored"
 msgstr "0 matching · %d/%d stored"
@@ -647,6 +651,10 @@ msgstr "allow/deny rules, LAN logging, or anything else."
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:828
 msgid "buffer full"
 msgstr "Ð±ÑÑÐµÑ Ð·Ð°Ð¿Ð¾Ð»Ð½ÐµÐ½"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:40
+msgid "contains"
+msgstr "содержит"
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:81
 msgid "default 10/minute"
