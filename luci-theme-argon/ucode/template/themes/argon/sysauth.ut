@@ -137,7 +137,6 @@
 	{% else %}
 	<!-- Image Background Start -->
 	{% online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? 'default' %}
-	<div class="main-bg" id="main-bg"><img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt=""></div>
 	<div class="main-bg" id="main-bg">{% if (online_wallpaper != 'default'): %}<img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt="">{% endif %}</div>
 	<!-- Image Background End -->
 	{% endif %}
