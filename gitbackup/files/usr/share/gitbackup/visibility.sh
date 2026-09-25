@@ -1,39 +1,17 @@
 # shellcheck shell=sh
 #
-# gitbackup -- the visibility gate (spec "Гейт видимости").
-#
-# There is no encryption anywhere in this project, so this is the only thing
-# standing between a public repository and the root password hash, private
-# dropbear host keys, WPA PSK and WireGuard keys it would carry. A public
-# repository is exit 4 with no way to override it -- not a warning.
-#
-# Sourced, never executed: nothing here runs at load time. gb_visibility_ok
-# calls gb_uci_get, gb_log, gb_die and gb_json_bool (lib.sh) and gb_parse_url/
-# gb_provider (remoteurl.sh), so a caller must source both first, same
-# convention as device.sh.
-#
-# GB_STATE_DIR overrides the cache directory (default /var/run/gitbackup),
-# the same variable usr/sbin/gitbackup already uses -- tests point it at a
-# tmp directory, the router never sets it.
+# gitbackup -- the visibility gate: gb_visibility_ok. With no encryption, this
+# is all that keeps /etc/shadow, host keys and PSKs out of a public repo:
+# public is exit 4 with no override. Needs lib.sh and remoteurl.sh.
 
-# gb_visibility_ok <url>
-#
-# Anonymously asks the provider's API whether <url>'s repository is visible
-# to a passer-by, and returns:
-#   0  not visible anonymously (404) or the operator explicitly accepted the
-#      risk for a provider that cannot be checked at all -- proceed.
-#   3  inconclusive: the network is down, the API answered 5xx, or answered
-#      with an HTTP status this gate does not recognize. Deliberately NOT 0:
-#      a caller that cannot tell "verified private" from "could not check"
-#      apart would push on a repository nobody actually confirmed is closed
-#      to the world. Reuses the shared network/auth exit code (interfaces.md,
-#      "Коды выхода") rather than inventing a fifth one.
-#   4  visible anonymously (HTTP 200) -- refused, unconditionally.
-# Dies with exit 2 -- invalid configuration, same as every other config
-# check in this package -- when <url> does not parse, or when the remote is
-# provider=generic without gitbackup.origin.acknowledged=1 (nothing there
-# can ever be checked, so silence would mean "assume private" on zero
-# evidence, exactly the failure mode this whole gate exists to prevent).
+# gb_visibility_ok <url> -- anonymous provider API probe:
+#   0  not visible anonymously (404) -- proceed.
+#   3  inconclusive (offline, 5xx, unknown status). Never 0: "could not
+#      check" must not be treated as "private".
+#   4  visible anonymously (200) -- refused.
+# Dies 2 on an unparsable URL, or on provider=generic without
+# gitbackup.origin.acknowledged=1 (nothing to check; silence is not proof).
+# Definite answers are cached for 24h.
 gb_visibility_ok() {
 	_gb_url="$1"
 	_gb_parsed=$(gb_parse_url "$_gb_url") ||
@@ -86,9 +64,7 @@ gb_visibility_ok() {
 			_gb_result=0
 			;;
 		*)
-			# Inconclusive: never cache a guess, so the very next call (this run
-			# or the next) tries the network again instead of trusting a stale
-			# "could not tell" for a whole day.
+			# Inconclusive: never cached, so the next call retries.
 			return 3
 			;;
 	esac
@@ -98,15 +74,8 @@ gb_visibility_ok() {
 	return "$_gb_result"
 }
 
-# _gb_visibility_api_url <provider> <scheme> <host> <port> <owner> <repo>
-#
-# The anonymous, unauthenticated read-only endpoint each provider answers
-# with 200 (visible) or 404 (not visible/does not exist) for -- spec
-# "Гейт видимости" and "Проверенные факты 25.12.4 → Провайдеры", each row
-# measured against the real API, not guessed. Always https: git access may
-# be over ssh, but every one of these platforms serves its API over https on
-# the same host. Returns 1 for a provider with no known API (generic, or
-# anything gitbackup.origin.provider names that this gate does not recognize).
+# Anonymous endpoint answering 200 (visible) / 404 (not); https even for ssh
+# remotes. Returns 1 for a provider with no known API.
 _gb_visibility_api_url() {
 	case "$1" in
 		github)
@@ -127,14 +96,7 @@ _gb_visibility_api_url() {
 	esac
 }
 
-# _gb_hostport_for_api <scheme> <host> <port> -- host[:port] for the same
-# server's HTTPS API.
-#
-# Only a port that was itself already on an https:// remote is trustworthy
-# here. A scp-like or ssh:// remote's port is dropbear/openssh's, which a
-# self-hosted Gitea/Forgejo/GitLab install commonly runs on a different port
-# than its web UI (e.g. ssh on 2222, https on the default 443) -- carrying
-# it over would probe the wrong port.
+# Keeps the port only from an https remote; an ssh port is not the API port.
 _gb_hostport_for_api() {
 	if [ "$1" = https ] && [ "${3:-0}" != 0 ]; then
 		printf '%s:%s\n' "$2" "$3"
@@ -143,18 +105,9 @@ _gb_hostport_for_api() {
 	fi
 }
 
-# _gb_visibility_probe <api-url>
-#
-# Returns 0 when the repository is visible anonymously (HTTP 200), 1 when it
-# is not (HTTP 404 -- private and nonexistent are the same answer here on
-# purpose, spec: "приватный анонимно неотличим от несуществующего"), 2 for
-# anything else: another HTTP status, a timeout, a refused connection, a TLS
-# failure, or offline. -q is deliberately not passed to uclient-fetch: the
-# only place it prints "HTTP error <code>" is to stderr, and only when not
-# quiet -- verified against uclient/uclient-fetch.c (header_done_cb's default
-# case; net/error branches for connection/timeout/TLS return non-8 codes and
-# are folded into the same "inconclusive" outcome here as any other network
-# failure).
+# 0 on 200, 1 on 404 (private and nonexistent look the same), 2 otherwise.
+# No -q: uclient-fetch prints "HTTP error <code>" only when not quiet, and
+# exit 8 alone does not tell 404 from other statuses.
 _gb_visibility_probe() {
 	_gb_probe_msg=$(uclient-fetch --timeout=10 -O /dev/null "$1" 2>&1 >/dev/null)
 	_gb_probe_rc=$?

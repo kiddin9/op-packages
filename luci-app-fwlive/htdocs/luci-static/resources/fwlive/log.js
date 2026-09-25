@@ -90,7 +90,7 @@ return baseclass.extend({
 	CLASSIFY_SPEC: CLASSIFY_SPEC,
 
 	TCP_FLAG_TAIL:
-		/\b((?:SYN|ACK|FIN|RST|PSH|URG)(?:\s+(?:SYN|ACK|FIN|RST|PSH|URG))*)(?:\s+[A-Z][A-Z0-9_]*=[^\s]+)*\s*$/i,
+		/\b((?:SYN|ACK|FIN|RST|PSH|URG|ECE|CWR)(?:\s+(?:SYN|ACK|FIN|RST|PSH|URG|ECE|CWR))*)(?:\s+[A-Z][A-Z0-9_]*=[^\s]+)*\s*$/i,
 	NETFILTER_KV_GLUE: NETFILTER_KV_GLUE,
 
 	kvHas: function (msg, key) {
@@ -105,7 +105,8 @@ return baseclass.extend({
 	MAX_DATE_SECONDS: 8640000000000,
 
 	normalizeNetfilterMessage: function (message) {
-		return (message || '').replace(this.NETFILTER_KV_GLUE, '$1 ');
+		if (typeof message !== 'string') message = '';
+		return message.replace(this.NETFILTER_KV_GLUE, '$1 ');
 	},
 
 	parseKeyValueLog: function (message) {

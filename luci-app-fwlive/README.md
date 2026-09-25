@@ -9,6 +9,7 @@ LuCI **Firewall Live View** — client-side JS view polling `ubus fwlive poll` (
 | `Makefile` | `LUCI_TITLE`, `LUCI_DEPENDS`, includes `luci.mk` |
 | `htdocs/luci-static/resources/view/status/fwlive.js` | LuCI view (`view.extend`) |
 | `htdocs/luci-static/resources/fwlive/log.js` | Parser/filter module (mirror of repo `core/fwlive-log.js`) |
+| `htdocs/luci-static/resources/fwlive/proto.js` | Protocol filter pair (select + custom field; typed custom wins) |
 | `htdocs/luci-static/resources/fwlive/constants.js` | Shared view constants (`baseclass.extend` module) |
 | `htdocs/luci-static/resources/fwlive/css.js` | Inline stylesheet string (`styleText` for `E('style', …)`) |
 | `htdocs/luci-static/resources/fwlive/tint.js` | Row-tint paint helpers (`baseclass.extend` module) |
@@ -24,10 +25,12 @@ LuCI **Firewall Live View** — client-side JS view polling `ubus fwlive poll` (
 | `root/usr/share/luci/menu.d/*.json` | Menu entry (`admin/status/fwlive`) |
 | `root/usr/share/rpcd/acl.d/*.json` | ubus ACL (read + write for logging enable/disable) |
 | `root/usr/libexec/rpcd/fwlive` | rpcd plugin (`rules`, `poll`, `resolve`, `logging_status`, `enable_wan_logging`, `disable_wan_logging`) |
+| `root/usr/libexec/fwlive-adaptive-cap.sh` | Layer 1 adaptive poll cap (sourced by `rpcd/fwlive`) |
 | `root/usr/libexec/fwlive-logging.sh` | WAN zone logging helpers |
 | `/etc/fwlive/wan-log-baseline` | Written on first **Enable logging**; restored on uninstall (`prerm`). Disable of a pre-existing/foreign log bit is not snapshotted, so uninstall will not restore that bit. |
 | `root/usr/libexec/fwlive-log-filter.sh` | Server-side firewall-only filter (`isFirewallEvent` parity) |
 | `root/usr/libexec/fwlive-is-firewall-event.sh` | Shared filter logic (sourced by filter + tests) |
+| `root/usr/libexec/fwlive-is-firewall-event.awk` | **Generated** standalone classifier from `CLASSIFY_SPEC`; loaded by `fwlive-is-firewall-event.sh` |
 | `po/templates/luci-app-fwlive.pot` | i18n template (English msgid scaffolding) |
 
 No `luasrc/` — modern JS-only app.

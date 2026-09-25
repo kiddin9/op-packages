@@ -312,7 +312,8 @@ function buildExpansionRow(row, state, columns) {
 		E('td', { 'colspan': String(columns.length) }, [
 			E('div', { 'class': 'fwlive-msg-expand-label' }, [_('Message')]),
 			E('pre', { 'class': 'fwlive-msg-expand-body' }, [
-				log.formatMessageDisplay(row.message, 'wrap') || '—'
+				/* oneline is uncapped; wrap ellipsizes at 240 */
+				log.formatMessageDisplay(row.message, 'oneline') || '—'
 			])
 		])
 	]);

@@ -406,11 +406,13 @@ maybe_snapshot_wan_log_baseline() {
 
 # Restore WAN zone log from the install-time baseline (package prerm).
 # No-op when baseline is missing. Returns 1 on failure; baseline file is
-# kept until restore commits successfully.
+# kept until restore commits and the post-restore firewall reload succeeds.
 #
-# Hold the logging lock across the current-value read, equality cleanup,
-# commit, and baseline unlink — otherwise a concurrent enable can snapshot
-# the old baseline (or race the unlink) and lose the only restore value.
+# Hold the logging lock across the current-value read, equality check,
+# and commit — otherwise a concurrent enable can snapshot the old baseline
+# (or race the unlink) and lose the only restore value. Reload runs
+# without the lock (BusyBox flock has no -w); unlink after a successful
+# reload.
 restore_wan_log_baseline() {
 	path="$(wan_log_baseline_path)"
 	[ -f "$path" ] || return 0
@@ -428,8 +430,18 @@ restore_wan_log_baseline() {
 	fi
 	current=$(wan_zone_log_value "$zone")
 	if [ "${current:-}" = "${baseline:-}" ]; then
-		rm -f "$path"
+		# UCI already matches; live fw4 may still be stale after a
+		# previous reload failure. Retry reload before dropping the
+		# marker.
+		if firewall_changes_pending; then
+			release_wan_log_lock
+			logger -t fwlive "WAN log baseline restore skipped: firewall changes pending" 2>/dev/null || true
+			return 1
+		fi
 		release_wan_log_lock
+		if ! restore_wan_log_after_reload "$path" "$zone" "$baseline"; then
+			return 1
+		fi
 		return 0
 	fi
 	zone_json=$(json_null_or_string "$zone")
@@ -453,9 +465,36 @@ restore_wan_log_baseline() {
 		logger -t fwlive "WAN log baseline restore: commit gate failed" 2>/dev/null || true
 		return 1
 	fi
+	release_wan_log_lock
+	if ! restore_wan_log_after_reload "$path" "$zone" "$baseline"; then
+		return 1
+	fi
+	return 0
+}
+
+# Reload without the logging lock (BusyBox flock has no -w). Re-acquire
+# before unlinking so a concurrent enable cannot snapshot-skip then leave
+# UCI off the saved baseline while this path still deletes the marker.
+restore_wan_log_after_reload() {
+	path="$1"
+	zone="$2"
+	baseline="$3"
+	if ! reload_firewall; then
+		logger -t fwlive "WAN log baseline restored; firewall reload failed" 2>/dev/null || true
+		return 1
+	fi
+	if ! acquire_wan_log_lock; then
+		logger -t fwlive "WAN log baseline restore: lock unavailable after reload" 2>/dev/null || true
+		return 1
+	fi
+	current=$(wan_zone_log_value "$zone")
+	if [ "${current:-}" != "${baseline:-}" ]; then
+		release_wan_log_lock
+		logger -t fwlive "WAN log baseline restore: post-reload verify raced" 2>/dev/null || true
+		return 1
+	fi
 	rm -f "$path"
 	release_wan_log_lock
-	reload_firewall || logger -t fwlive "WAN log baseline restored; firewall reload failed" 2>/dev/null || true
 	return 0
 }
 
@@ -469,6 +508,11 @@ wan_filter_log_decimal() {
 	case "$_log_val" in
 		''|*[!0-9]*) return 1 ;;
 	esac
+	# Bitmask option. Reject oversized digit runs before $(( )) so a
+	# 20-digit UCI value cannot kill dash or wrap on BusyBox.
+	if [ "${#_log_val}" -gt 10 ]; then
+		return 1
+	fi
 	while [ "${_log_val#0}" != "$_log_val" ]; do
 		_log_val=${_log_val#0}
 	done
@@ -698,10 +742,16 @@ restore_wan_zone_log() {
 	# below must be able to undo only our rollback staging without reverting
 	# the other writer's change.
 	committed=$(wan_zone_log_value "$zone")
+	# Fail closed if set/delete never staged. Swallowed rc plus an empty
+	# changes list would make `uci commit` succeed as a no-op.
 	if [ -z "$previous" ]; then
-		uci -q delete "firewall.${zone}.log" 2>/dev/null || true
+		if ! uci -q delete "firewall.${zone}.log" 2>/dev/null; then
+			return 1
+		fi
 	else
-		uci -q set "firewall.${zone}.log=${previous}" 2>/dev/null || true
+		if ! uci -q set "firewall.${zone}.log=${previous}" 2>/dev/null; then
+			return 1
+		fi
 	fi
 	_staged=$(uci -q changes firewall 2>/dev/null || true)
 	_foreign=$(wan_log_foreign_staged_lines "$zone" "$_staged")
@@ -1123,6 +1173,27 @@ run_logging_selftest() {
 	got=$(wan_filter_log_clear_value '0')
 	if [ -n "$got" ]; then
 		echo "wan_filter_log_clear_value 0: expected empty got $got" >&2
+		return 1
+	fi
+
+	# Oversized/malformed digit runs reject before arithmetic.
+	# Do not assert a host-specific wrap integer.
+	if wan_filter_log_decimal '12345678901234567890' >/dev/null; then
+		echo 'wan_filter_log_decimal 20-digit: expected reject' >&2
+		return 1
+	fi
+	if wan_filter_log_decimal '12a3' >/dev/null; then
+		echo 'wan_filter_log_decimal malformed: expected reject' >&2
+		return 1
+	fi
+	got=$(wan_filter_log_target_value '12345678901234567890')
+	if [ "$got" != '1' ]; then
+		echo "enable oversized log: expected 1 got $got" >&2
+		return 1
+	fi
+	got=$(wan_filter_log_clear_value '12345678901234567890')
+	if [ -n "$got" ]; then
+		echo "disable oversized log: expected empty got $got" >&2
 		return 1
 	fi
 

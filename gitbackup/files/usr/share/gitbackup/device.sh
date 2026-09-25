@@ -1,16 +1,7 @@
 # shellcheck shell=sh
 #
-# gitbackup -- device identity (spec G01).
-#
-# Exposes gb_device_id and gb_expand; every _gb_-prefixed helper below is
-# private and may change without notice to callers, same convention as
-# lib.sh. Sourced, never executed: nothing here runs at load time.
+# gitbackup -- device identity: gb_device_id, gb_expand.
 
-# gb_device_id -- resolves gitbackup.main.device_id to a device name.
-#
-# One of three strategies. Called on every subcommand (through the CLI's
-# config validation), so the strategies and their failure modes live here
-# once instead of being reimplemented at every call site.
 gb_device_id() {
 	_gb_strategy=$(gb_uci_get gitbackup.main.device_id hostname)
 	case "$_gb_strategy" in
@@ -21,42 +12,18 @@ gb_device_id() {
 	esac
 }
 
-# gb_expand <template> -- substitutes every {device} in <template> with
-# gb_device_id's answer.
-#
-# Takes only the template on purpose (see interfaces.md): the device name is
-# always gb_device_id's own resolution, never a caller-supplied override, so
-# there is exactly one place that can disagree with it. gb_device_id is only
-# called when the template actually has a placeholder, so a plain template
-# (e.g. a literal path_prefix) never pays for device resolution it does not
-# need and cannot fail because of it.
+# gb_expand <template> -- substitutes {device}; resolves the device only when
+# the placeholder is present, so a plain template never fails on it.
 gb_expand() {
-	_gb_tpl="$1"
-	case "$_gb_tpl" in
+	_gb_dev=''
+	case "$1" in
 		*'{device}'*) _gb_dev=$(gb_device_id) || exit $? ;;
 	esac
-	_gb_out=''
-	_gb_rest="$_gb_tpl"
-	while true; do
-		case "$_gb_rest" in
-			*'{device}'*)
-				_gb_out="$_gb_out${_gb_rest%%\{device\}*}$_gb_dev"
-				_gb_rest="${_gb_rest#*\{device\}}"
-				;;
-			*)
-				_gb_out="$_gb_out$_gb_rest"
-				break
-				;;
-		esac
-	done
-	printf '%s\n' "$_gb_out"
+	gb_subst_device "$1" "$_gb_dev"
 }
 
-# _gb_device_by_hostname -- gitbackup.main.device_id='hostname'.
-#
-# Refuses the stock 'OpenWrt' hostname: two routers left at the default would
-# resolve to the same device name, push to the same branch, and overwrite
-# each other's backups.
+# Refuses the stock 'OpenWrt' hostname: two routers left at the default
+# would push to the same branch and overwrite each other.
 _gb_device_by_hostname() {
 	_gb_board=$(ubus call system board 2>/dev/null)
 	_gb_h=$(printf '%s' "$_gb_board" | jsonfilter -e '@.hostname')
@@ -67,7 +34,6 @@ _gb_device_by_hostname() {
 	printf '%s\n' "$_gb_h"
 }
 
-# _gb_device_by_custom -- gitbackup.main.device_id='custom'.
 _gb_device_by_custom() {
 	_gb_d=$(gb_uci_get gitbackup.main.device)
 	[ -n "$_gb_d" ] ||
@@ -81,12 +47,8 @@ _gb_device_by_custom() {
 	printf '%s\n' "$_gb_d"
 }
 
-# _gb_device_by_board -- gitbackup.main.device_id='board'.
-#
-# <model-slug>-<last 6 hex digits of the first NIC's MAC>, deterministic
-# because it depends only on hardware, never on config. GB_SYSFS_NET
-# overrides the sysfs root so tests/run.sh can feed a fake set of interfaces;
-# the router never sets it and gets the real /sys/class/net.
+# <model-slug>-<last 6 hex of first NIC MAC>: hardware-only, deterministic.
+# GB_SYSFS_NET is a test seam.
 _gb_device_by_board() {
 	_gb_board=$(ubus call system board 2>/dev/null)
 	_gb_model=$(printf '%s' "$_gb_board" | jsonfilter -e '@.model')
@@ -113,7 +75,6 @@ _gb_device_by_board() {
 	printf '%s-%s\n' "$(_gb_slugify "$_gb_model")" "$_gb_tail"
 }
 
-# _gb_slugify <string> -- lowercase, every byte outside [a-z0-9] becomes '-'.
 _gb_slugify() {
 	# shellcheck disable=SC2018,SC2019  # ASCII on purpose: device names must match [A-Za-z0-9._-]
 	printf '%s' "$1" | tr 'A-Z' 'a-z' | sed 's/[^a-z0-9]/-/g'

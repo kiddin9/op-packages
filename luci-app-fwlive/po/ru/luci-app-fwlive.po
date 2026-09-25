@@ -17,7 +17,7 @@ msgstr ""
 msgid "%d matching · %d/%d stored"
 msgstr "%d matching · %d/%d stored"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/log.js:466
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/log.js:467
 msgid "%s: %s"
 msgstr "%s: %s"
 
@@ -88,7 +88,7 @@ msgstr ""
 "ÐÐ»Ð°ÑÑÐ¸ÑÐµÑÐºÐ¸Ð¹ â Ð·ÐµÐ»ÑÐ½ÑÐ¹/ÐºÑÐ°ÑÐ½ÑÐ¹; Ð´Ð¾ÑÑÑÐ¿Ð½ÑÐ¹ â "
 "Ð±Ð¸ÑÑÐ·Ð¾Ð²ÑÐ¹/Ð¾ÑÐ°Ð½Ð¶ÐµÐ²ÑÐ¹"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:116
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:169
 msgid "Clear all"
 msgstr "ÐÑÐ¸ÑÑÐ¸ÑÑ Ð²ÑÑ"
 
@@ -129,6 +129,11 @@ msgstr "Частые"
 msgid "Connection lost — retrying…"
 msgstr "Connection lost — retrying…"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:818
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:849
+msgid "Could not acquire the logging lock."
+msgstr "Не удалось получить блокировку журналирования."
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:609
 msgid "Could not disable logging."
 msgstr "ÐÐµ ÑÐ´Ð°Ð»Ð¾ÑÑ Ð¾ÑÐºÐ»ÑÑÐ¸ÑÑ Ð¶ÑÑÐ½Ð°Ð»Ð¸ÑÐ¾Ð²Ð°Ð½Ð¸Ðµ."
@@ -136,6 +141,10 @@ msgstr "ÐÐµ ÑÐ´Ð°Ð»Ð¾ÑÑ Ð¾ÑÐºÐ»ÑÑÐ¸ÑÑ
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:690
 msgid "Could not refresh logging status; showing the last known state."
 msgstr "Could not refresh logging status; showing the last known state."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:820
+msgid "Could not snapshot the current logging state."
+msgstr "Не удалось сохранить снимок текущего состояния журналирования."
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:573
 msgid "Could not enable logging."
@@ -168,6 +177,10 @@ msgstr "ÐÐ°Ð·Ð½Ð°ÑÐµÐ½Ð¸Ðµ"
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1691
 msgid "Destination IP contains (! to exclude)"
 msgstr "IP Ð½Ð°Ð·Ð½Ð°ÑÐµÐ½Ð¸Ñ ÑÐ¾Ð´ÐµÑÐ¶Ð¸Ñ (! Ð´Ð»Ñ Ð¸ÑÐºÐ»ÑÑÐµÐ½Ð¸Ñ)"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:36
+msgid "Destination port"
+msgstr "Порт назначения"
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1692
 msgid "Destination port (! to exclude)"
@@ -202,6 +215,11 @@ msgstr "Для отзывчивой таблицы на слабом устро�
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2245
 msgid "Switching tabs pauses polling; returning performs one catch-up poll. Hostnames are off by default because lookups add work."
 msgstr "При переключении вкладки опрос приостанавливается; при возврате выполняется один догоняющий опрос. Имена хостов по умолчанию отключены, поскольку их разрешение создаёт дополнительную нагрузку."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:822
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:851
+msgid "The firewall did not reload; saved and live logging may differ."
+msgstr "Брандмауэр не перезагрузился; сохранённые и активные настройки журналирования могут различаться."
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:2250
 msgid "The router log ring may evict older events before fwlive reads them. fwlive cannot recover evicted entries or change forwarding behavior."
@@ -246,7 +264,7 @@ msgstr "Enabling…"
 msgid "Exclude"
 msgstr "Исключить"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:80
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:105
 msgid "Exclude instead"
 msgstr "ÐÑÐºÐ»ÑÑÐ¸ÑÑ Ð²Ð¼ÐµÑÑÐ¾ ÑÑÐ¾Ð³Ð¾"
 
@@ -324,7 +342,7 @@ msgstr ""
 "If the WAN is quiet, wait for probes or use the optional ping check in "
 "Help / the enabling-logs guide."
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:80
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:105
 msgid "Include instead"
 msgstr "ÐÐºÐ»ÑÑÐ¸ÑÑ Ð²Ð¼ÐµÑÑÐ¾ ÑÑÐ¾Ð³Ð¾"
 
@@ -400,6 +418,11 @@ msgstr ""
 msgid "No WAN zone found"
 msgstr "No WAN zone found"
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:816
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:847
+msgid "No WAN zone found; cannot toggle logging without one."
+msgstr "WAN-зона не найдена; без неё нельзя переключить журналирование."
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:163
 msgid "Not now"
 msgstr "Not now"
@@ -455,7 +478,7 @@ msgstr "Протокол — частые значения"
 msgid "Quick search"
 msgstr "ÐÑÑÑÑÑÐ¹ Ð¿Ð¾Ð¸ÑÐº"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:91
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:128
 msgid "Remove filter"
 msgstr "Ð£Ð´Ð°Ð»Ð¸ÑÑ ÑÐ¸Ð»ÑÑÑ"
 
@@ -514,6 +537,10 @@ msgstr "Сервер сократил этот опрос (адаптивный 
 msgid "SPort"
 msgstr "ÐÐ¾ÑÑ Ð¸ÑÑ."
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:22
+msgid "Search"
+msgstr "Поиск"
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1650
 msgid "Show hostnames"
 msgstr "ÐÐ¾ÐºÐ°Ð·ÑÐ²Ð°ÑÑ Ð¸Ð¼ÐµÐ½Ð° "
@@ -533,6 +560,10 @@ msgstr "ÐÑÑÐ¾ÑÐ½Ð¸Ðº"
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1689
 msgid "Source IP contains (! to exclude)"
 msgstr "IP Ð¸ÑÑÐ¾ÑÐ½Ð¸ÐºÐ° ÑÐ¾Ð´ÐµÑÐ¶Ð¸Ñ (! Ð´Ð»Ñ Ð¸ÑÐºÐ»ÑÑÐµÐ½Ð¸Ñ)"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:34
+msgid "Source port"
+msgstr "Порт источника"
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1690
 msgid "Source port (! to exclude)"
@@ -556,6 +587,10 @@ msgstr ""
 "Ð¢Ð°Ð±Ð»Ð¸ÑÐ° Ð¾Ð±Ð½Ð¾Ð²Ð»ÑÐµÑÑÑ Ð°Ð²ÑÐ¾Ð¼Ð°ÑÐ¸ÑÐµÑÐºÐ¸, ÐºÐ¾Ð³Ð´Ð° "
 "ÑÐ°Ð¹ÑÐ²Ð¾Ð» Ð¿Ð¸ÑÐµÑ Ð² Ð¶ÑÑÐ½Ð°Ð». ÐÑÐ¿Ð¾Ð»ÑÐ·ÑÐ¹ÑÐµ ÐÐ°ÑÐ·Ñ, ÐµÑÐ»Ð¸ "
 "ÑÐ»Ð¸ÑÐºÐ¾Ð¼ Ð±ÑÑÑÑÐ¾."
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:303
+msgid "This router reported a logging blocker that Live View does not recognize yet."
+msgstr "Этот маршрутизатор сообщил о блоке журналирования, который Live View пока не распознаёт."
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1551
 msgid "Theme tint fallback"
@@ -621,6 +656,11 @@ msgstr "WAN-Ð¶ÑÑÐ½Ð°Ð»: ÐÐÐ"
 msgid "WAN logging on (%s). Click to disable."
 msgstr "WAN-Ð¶ÑÑÐ½Ð°Ð»: ÐÐÐ (%s). ÐÐ°Ð¶Ð¼Ð¸ÑÐµ, ÑÑÐ¾Ð±Ñ Ð¾ÑÐºÐ»ÑÑÐ¸ÑÑ."
 
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:120
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:300
+msgid "WAN logging unavailable"
+msgstr "WAN-журналирование недоступно"
+
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:77
 msgid "WAN logging unavailable: missing kernel log modules"
 msgstr ""
@@ -652,7 +692,7 @@ msgstr "allow/deny rules, LAN logging, or anything else."
 msgid "buffer full"
 msgstr "Ð±ÑÑÐµÑ Ð·Ð°Ð¿Ð¾Ð»Ð½ÐµÐ½"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:40
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:63
 msgid "contains"
 msgstr "содержит"
 
@@ -660,7 +700,7 @@ msgstr "содержит"
 msgid "default 10/minute"
 msgstr "Ð¿Ð¾ ÑÐ¼Ð¾Ð»ÑÐ°Ð½Ð¸Ñ 10/Ð¼Ð¸Ð½"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:28
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:52
 msgid "is"
 msgstr "ÐµÑÑÑ"
 
@@ -672,8 +712,8 @@ msgstr "Ð·Ð°Ð³ÑÑÐ·ÐºÐ° Ð±ÑÑÐµÑÐ°"
 msgid "loading…"
 msgstr "loading…"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:37
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:44
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:61
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:68
 msgid "not"
 msgstr "Ð½Ðµ"
 

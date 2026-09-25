@@ -12,7 +12,10 @@
  *   luciUrl, firewallZonesPath, firewallZonesUrl, firewallZonesLink
  *
  * Filter-aware helpers (require an onFilterClick callback):
- *   filterLink, addrFilterLink, ruleAdminPath, ruleAdminLink, ifaceLink
+ *   filterLink, addrFilterLink, ruleAdminLink, ifaceLink
+ *
+ * Constant path helper:
+ *   ruleAdminPath
  *
  * No host element — all functions return DOM nodes or strings.
  * May require fwlive.log for formatCell and fwlive.hostname for cache reads.

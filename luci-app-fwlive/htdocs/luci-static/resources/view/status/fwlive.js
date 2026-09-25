@@ -156,6 +156,8 @@ return view.extend({
 	hostnameFailed: null,
 	resolveInFlight: false,
 	resolveGeneration: 0,
+	/* Coalesce hostname-cache paints deferred while tablePaused. */
+	resolvePaintPending: false,
 	lastPollError: false,
 	lastRulesError: null,
 	followLive: true,
@@ -166,6 +168,7 @@ return view.extend({
 	loggingStatus: null,
 	loggingBusy: false,
 	loggingNotice: '',
+	_loggingNoticeFromToggle: false,
 	/* Session-only dismiss of first-run consent (Not now without checkbox). */
 	consentDismissedSession: false,
 	_loggingToolbarSig: '',
@@ -212,7 +215,7 @@ return view.extend({
 			parts.push('maxraw=%s'.format(encodeURIComponent(this.manualFetchLines)));
 		}
 		if (this.viewMode === 'detailed') parts.push('view=detailed');
-		location.hash = parts.join('&');
+		history.replaceState(history.state, '', '#' + parts.join('&'));
 	},
 
 	hashEntries() {
@@ -739,7 +742,7 @@ return view.extend({
 			const status = await callFwliveLoggingStatus();
 			if (this.viewDisposed) return;
 			this.loggingStatus = status;
-			this.loggingNotice = '';
+			if (!this._loggingNoticeFromToggle) this.loggingNotice = '';
 			this.weakDevice = !!(this.loggingStatus && this.loggingStatus.weak_device === true);
 		} catch (_e) {
 			if (this.viewDisposed) return;
@@ -761,17 +764,20 @@ return view.extend({
 
 		this.loggingBusy = true;
 		this.loggingNotice = '';
+		this._loggingNoticeFromToggle = false;
 		opts.initialUi();
 
 		try {
 			const res = await opts.call();
 			if (!res || !res.ok) {
 				this.loggingNotice = opts.failureNotice(res);
+				this._loggingNoticeFromToggle = true;
 				await this.loadLoggingStatus();
 				return;
 			}
 
 			this.loggingNotice = opts.successNotice(res);
+			this._loggingNoticeFromToggle = !!this.loggingNotice;
 			if (opts.onSuccess) opts.onSuccess(res);
 			if (this.loggingStatus && typeof opts.wanLog === 'boolean')
 				this.loggingStatus = Object.assign({}, this.loggingStatus, {
@@ -780,8 +786,11 @@ return view.extend({
 			await this.loadLoggingStatus();
 		} catch (_e) {
 			this.loggingNotice = opts.catchNotice();
+			this._loggingNoticeFromToggle = true;
 			await this.loadLoggingStatus();
 		} finally {
+			/* Survive only the refresh owned by this toggle. */
+			this._loggingNoticeFromToggle = false;
 			this.loggingBusy = false;
 			this.updateEmptyStateUi();
 			this.updateLoggingToolbarUi();
@@ -803,6 +812,14 @@ return view.extend({
 					return _(
 						'Another change is staged for the firewall; apply or revert it first.'
 					);
+				if (res && res.error === 'no_wan_zone')
+					return _('No WAN zone found; cannot toggle logging without one.');
+				if (res && res.error === 'lock_failed')
+					return _('Could not acquire the logging lock.');
+				if (res && res.error === 'baseline_snapshot_failed')
+					return _('Could not snapshot the current logging state.');
+				if (res && res.error === 'firewall_reload_failed')
+					return _('The firewall did not reload; saved and live logging may differ.');
 				return _('Could not enable logging.');
 			},
 			successNotice: (res) =>
@@ -826,6 +843,12 @@ return view.extend({
 					return _(
 						'Another change is staged for the firewall; apply or revert it first.'
 					);
+				if (res && res.error === 'no_wan_zone')
+					return _('No WAN zone found; cannot toggle logging without one.');
+				if (res && res.error === 'lock_failed')
+					return _('Could not acquire the logging lock.');
+				if (res && res.error === 'firewall_reload_failed')
+					return _('The firewall did not reload; saved and live logging may differ.');
 				return _('Could not disable logging.');
 			},
 			successNotice: (res) => (res.changed ? _('WAN drop/reject logging is off.') : ''),
@@ -1363,23 +1386,28 @@ return view.extend({
 		this.updateSummaryUi();
 	},
 
-	updateSummaryUi() {
-		const card = document.getElementById('fwlive-summary');
+	syncEmptyScrollVisibility(rowCount) {
+		const hideTable = this.summaryMode && !this.summaryRowsShown;
 		const scroll = document.getElementById('fwlive-scroll');
 		const empty = document.getElementById('fwlive-empty');
+		if (scroll) {
+			if (!scroll.style) scroll.style = { display: '' };
+			scroll.style.display = hideTable ? 'none' : '';
+		}
+		if (empty) {
+			if (!empty.style) empty.style = { display: '' };
+			empty.style.display = hideTable ? 'none' : rowCount ? 'none' : 'block';
+		}
+	},
+
+	updateSummaryUi() {
+		const card = document.getElementById('fwlive-summary');
 		const toggle = document.getElementById('fwlive-summary-rows');
 		if (card) {
 			if (!card.style) card.style = { display: '' };
 			card.style.display = this.summaryMode ? 'block' : 'none';
 		}
-		if (scroll) {
-			if (!scroll.style) scroll.style = { display: '' };
-			scroll.style.display = this.summaryMode && !this.summaryRowsShown ? 'none' : '';
-		}
-		if (empty) {
-			if (!empty.style) empty.style = { display: '' };
-			empty.style.display = this.summaryMode && !this.summaryRowsShown ? 'none' : '';
-		}
+		this.syncEmptyScrollVisibility(this.filteredRows().length);
 		if (toggle) {
 			toggle.textContent = this.summaryRowsShown ? _('Hide rows') : _('Show rows');
 			toggle.setAttribute('aria-pressed', this.summaryRowsShown ? 'true' : 'false');
@@ -1400,13 +1428,12 @@ return view.extend({
 		this.summaryData = null;
 		this.updateSummaryUi();
 		if (this.tablePaused) {
-			const empty = document.getElementById('fwlive-empty');
-			if (empty) {
-				const rows = this.filteredRows();
-				empty.style.display = rows.length ? 'none' : 'block';
-			}
+			this.syncEmptyScrollVisibility(this.filteredRows().length);
 			this.updateStatus();
-		} else this.renderRows(true);
+		} else {
+			this.resolvePaintPending = false;
+			this.renderRows(true);
+		}
 	},
 
 	onSummaryRowsToggle() {
@@ -1418,6 +1445,16 @@ return view.extend({
 
 	scheduleRenderRows(force) {
 		this.ensureRenderScheduler().schedule(!!force);
+	},
+
+	scheduleResolvePaint() {
+		if (this.tablePaused) {
+			this.resolvePaintPending = true;
+			this.updateStatus();
+			return;
+		}
+		this.resolvePaintPending = false;
+		this.scheduleRenderRows(true);
 	},
 
 	updateFloodBanner() {
@@ -1601,7 +1638,10 @@ return view.extend({
 			this.requestPoll()
 				.then(() => {
 					/* A hide/show bump abandons this epoch; the catch-up poll paints. */
-					if (epoch === this.currentPollEpoch()) this.renderRows(true);
+					if (epoch === this.currentPollEpoch()) {
+						this.resolvePaintPending = false;
+						this.renderRows(true);
+					}
 				})
 				.catch(function () {});
 		}
@@ -1767,7 +1807,7 @@ return view.extend({
 			}
 
 			this.updateAdaptiveBanner();
-			if (updated) this.scheduleRenderRows(true);
+			if (updated) this.scheduleResolvePaint();
 		} catch (_e) {
 			/* resolve unavailable — show IPs */
 		} finally {
@@ -1894,7 +1934,6 @@ return view.extend({
 		if (!el || typeof el.querySelector !== 'function') return;
 
 		const body = el.querySelector('tbody');
-		const empty = document.getElementById('fwlive-empty');
 		const scroll = document.getElementById('fwlive-scroll');
 		this.updateHash(this.readFilters());
 
@@ -1908,6 +1947,7 @@ return view.extend({
 
 		if (!paint) {
 			this.updateFloodBanner();
+			this.syncEmptyScrollVisibility(rows.length);
 			this.updateStatus(rows);
 			return;
 		}
@@ -1916,7 +1956,7 @@ return view.extend({
 
 		const prevScroll = scroll ? scroll.scrollTop : 0;
 
-		if (empty) empty.style.display = rows.length ? 'none' : 'block';
+		this.syncEmptyScrollVisibility(rows.length);
 		this.updateStatus(rows);
 		this.renderFilterChips();
 
@@ -2068,7 +2108,18 @@ return view.extend({
 			else if (this.summaryMode) {
 				this.renderSummary();
 				this.updateStatus();
-			} else this.scheduleRenderRows();
+				if (this.summaryRowsShown) {
+					const forceHostnamePaint = this.resolvePaintPending;
+					this.resolvePaintPending = false;
+					this.scheduleRenderRows(forceHostnamePaint);
+				}
+			} else {
+				/* Stale resume skips renderRows(true); catch-up polls must still
+				 * flush coalesced hostname paints. */
+				const forceHostnamePaint = this.resolvePaintPending;
+				this.resolvePaintPending = false;
+				this.scheduleRenderRows(forceHostnamePaint);
+			}
 
 			try {
 				await this.resolveHostnamesForEntries(this.filteredRows());

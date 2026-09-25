@@ -1,50 +1,18 @@
-# gitbackup hard-exclude list.
-#
-# One glob pattern per line, matched against an absolute path -- either one
-# `sysupgrade -l` reported or a directory found while looking for empty
-# directories (collect.sh, _gb_collect_is_excluded). "#" starts a comment,
-# blank lines are ignored. A pattern ending in "/**" matches the path
-# itself and everything under it; anything else is matched with plain
-# shell `case` glob rules.
-#
-# This block is unconditional: it is enforced at every visibility setting.
-# The extra secret-file excludes visibility=public adds (/etc/shadow,
-# dropbear host keys, uhttpd.key, /etc/ssl/private/**, WireGuard private
-# keys -- spec "Scrub") are not here: they depend on a UCI setting this
-# file has no way to read, and belong to scrub.sh instead (ticket 05).
+# gitbackup hard-exclude list: one glob per line, matched against absolute
+# paths (collect.sh). "/**" matches the path and everything under it;
+# otherwise plain shell `case` glob rules. Enforced at every visibility.
 
-# The package's own credentials must never end up inside its own backup,
-# no matter how the router is configured (R76).
+# The package's own credentials never go into its own backup.
 /etc/gitbackup/**
 
-# --- public-only hard-exclude (ticket 05, spec "Scrub") ---
-#
-# Every line below starting "#public:" is, to collect.sh, just another
-# comment -- '#'*  is always skipped by _gb_collect_is_excluded, so
-# collect.sh's own unconditional read of this file (used at every
-# visibility, private included) never sees these as patterns and its
-# behavior needs no visibility awareness added to it. scrub.sh is the only
-# reader that treats "#public:" specially: it strips the prefix and applies
-# what remains as a hard-exclude pattern against the already-collected tree,
-# and scrub.sh itself only ever runs when visibility=public -- so the
-# distinction lives in who reads the line, not in a flag either reader has
-# to check. These are files no redaction can make safe to publish, because
-# the secret IS the file, not a value inside it: removed from the tree
-# entirely and dropped from manifest.json's entries[] (never scrubbed[] --
-# that array is for redacted option values, not removed files). Same glob
-# rules as above, applied to the pattern text after "#public:".
-#
-# Named verbatim in the brief and spec "Scrub":
+# --- excluded only while scrubbing ---
+# "#public: <pattern>" lines are DATA: collect.sh excludes them when the run
+# scrubs (forced on by visibility=public). Whole-file secrets; no redaction
+# makes them safe to publish.
 #public: /etc/shadow
 #public: /etc/dropbear/*_host_key*
 #public: /etc/uhttpd.key
 #public: /etc/ssl/private/**
-# VERIFY: no OpenWrt-specific source confirms this path is ever populated --
-# the wireguard package itself keeps keys inline in UCI (network.*.private_key,
-# already in scrub.list) and has no file-based key storage of its own. This
-# is the upstream wg-quick convention (a *.conf/key pair under
-# /etc/wireguard/), kept as defense-in-depth for a router where someone
-# generated keys by hand (`wg genkey`) and left the file there instead of
-# only pasting it into UCI -- not verified against an OpenWrt package that
-# actually writes there.
+# VERIFY: no OpenWrt package is known to write here (UCI wireguard keeps keys
+# inline, see scrub.list); wg-quick convention, kept for hand-made keys.
 #public: /etc/wireguard/**
