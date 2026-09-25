@@ -1,0 +1,21 @@
+# THE SINGLE SOURCE of the openwrt/luci commit this package borrows two BUILD TOOLS from, and of
+# their checksums. Sourced as shell (`. luci-upstream.pin`) by update-po.sh and by tools/t0.sh.
+#
+# Both are downloaded over the network and then EXECUTED as gates, so a moving branch would make
+# the gate whatever upstream pushed last:
+#
+#   jsmin.c        compiled, then run over every module and the OUTPUT re-parsed. jsmin's
+#                  regex-vs-division lookback can eat the rest of a file and still EXIT 0, which
+#                  is why the gate is a round-trip and not a grep for the pattern.
+#   i18n-scan.pl   run by perl; decides whether the translation catalogue is complete.
+#
+# The pin matches luci-theme-footstrap's. That is deliberate rather than incidental: this package
+# is checked with the same two linters as the theme it plugs into, and two companion projects
+# disagreeing about which jsmin decides their JS is safe would be a difference nobody would look
+# for. Bump them together.
+#
+# To bump: change LUCI_PIN, re-fetch both files at the new commit, update their sha256s. The
+# sha256 is what actually holds the content — the commit only says which file to fetch.
+LUCI_PIN=5cf20c5741dc34eea0faaf7324ef3751b05fa1f3
+JSMIN_SHA256=0568b14873f27f339cf66a9c43603d0bc8ca501ff62522ea924c6e8daf1be215
+I18N_SCAN_SHA256=a1823d1fdd942f31a105e1e53b401e146bc10527f231e016930b1a5123ef21d3

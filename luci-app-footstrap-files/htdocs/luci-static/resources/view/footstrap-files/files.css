@@ -1,0 +1,585 @@
+/* The file browser's own styling.
+ *
+ * The listing is an ordinary LuCI `<table class="table">` — the same markup Active DHCP Leases and
+ * Associated Stations use — so the theme in use draws the rows, the hover, the sticky header and the
+ * card stack a narrow column gets. What is left here is what no theme can know: that a mode string
+ * is a monospace column, that the owner is secondary to it, and how a toolbar of eight controls
+ * behaves when the column is narrow.
+ *
+ * COLOUR COMES FROM THE EXPORT TIER — the 26 `--*-color-*` names every LuCI theme publishes — with a
+ * literal fallback on every one. Footstrap's own `--fs-*` properties are its PRIVATE tier: better
+ * named, and not a contract (docs/luci-app-styling-guide.md §3.2). Reading them would tie this
+ * package to one theme and break the day the theme renames one. Spacing, radius and type are not on
+ * the tier at all, so they are plain values here.
+ *
+ * Everything is scoped to `.fsf-*` classes of this package's own. Nothing here is layered, and it
+ * needs no `!important`: an app's sheet is unlayered and already outranks every cascade layer the
+ * theme has inside the app's own subtree. */
+
+/* ---- the toolbar --------------------------------------------------------------------------------
+ *
+ * A path, a Go, and six actions. It wraps rather than scrolls: a scrolling toolbar hides its own
+ * buttons, and on a phone the row that wraps is the one a thumb can still reach. */
+/* Icon-only buttons: the icon is centred in the same box the text buttons had, so the bar keeps one
+ * height whichever theme is under it. */
+.fsf-bar > .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.fsf-bicon { display: block; }
+
+.fsf-bar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+	align-items: center;
+	margin-bottom: .75rem;
+}
+
+/* The path is the widest thing in the bar and the only one worth growing. Monospace, because it is a
+ * path: `/etc/rc.d/S95done` reads wrong in a proportional face. */
+.fsf-bar > input[type="text"] {
+	flex: 1 1 16rem;
+	min-width: 0;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ---- where the reader is ------------------------------------------------------------------------
+ *
+ * The crumbs sit on the recessed surface so the path reads as chrome rather than as content, and
+ * break anywhere: a deep path must not widen the page. */
+.fsf-crumbs {
+	margin-bottom: .5rem;
+	padding: .375rem .625rem;
+	border-radius: 4px;
+	background: var(--background-color-low, #f5f5f5);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: .8125rem;
+	overflow-wrap: anywhere;
+}
+
+.fsf-crumbs a { color: var(--primary-color-medium, #0069d9); text-decoration: none; }
+.fsf-crumbs a:hover { text-decoration: underline; }
+
+/* ---- the count in the toolbar ---------------------------------------------------------------
+ *
+ * Select mode and a full clipboard both take the toolbar over and both say how many, so the count
+ * is one class. It does not shrink: a wrapping toolbar may put it on a line of its own, and a
+ * number that has been squeezed to "3 it…" answers nothing. */
+/* ---- the name cell ------------------------------------------------------------------------------
+ *
+ * The flex box is the inner span and NOT the `<td>`: a table cell told to be a flex container leaves
+ * the table's row layout, and the name then rides a few pixels above every other cell in its row —
+ * measured at 1280 as a name overlapping the header above it. */
+.fsf-name { overflow-wrap: anywhere; }
+
+.fsf-nameline {
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+}
+
+.fsf-nameline input[type="checkbox"] { flex: none; margin: 0; }
+
+/* A directory is where the reader is going next, so it takes the accent and the weight; a file is a
+ * leaf and stays plain text. */
+.fsf-nameline a {
+	color: var(--primary-color-medium, #0069d9);
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.fsf-nameline a:hover { text-decoration: underline; }
+
+/* ---- permissions --------------------------------------------------------------------------------
+ *
+ * Tabular figures in a monospace face, so a column of modes lines up character by character and a
+ * missing bit is visible without reading the string. The owner is one text level quieter: it answers
+ * a second question, and at this table's density it competes with the mode otherwise. Both levels
+ * clear AA on every surface — that is what the tier guarantees. */
+.fsf-mode {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.fsf-owner {
+	color: var(--text-color-medium, #666);
+	font-size: .8125rem;
+	white-space: nowrap;
+}
+
+/* ---- the actions --------------------------------------------------------------------------------
+ *
+ * Four buttons in the narrowest column of the table. They wrap instead of widening it. */
+.fsf-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .25rem;
+}
+
+/* ---- the editor dialog ---------------------------------------------------------------------------
+ *
+ * The editor opens in LuCI's own modal. The dialog is sized for a form by default — around 30rem —
+ * and a config file read at that width is worse than one with no highlighting, so the width is
+ * asked for here and clamped by the viewport rather than fixed: `min()` keeps it inside a phone.
+ *
+ * Scoped by a class of this package's own, so nothing here reaches another app's dialog. */
+.modal.fsf-modal-dialog { width: min(64rem, 94vw); max-width: min(64rem, 94vw); }
+
+/* A FLEX ROW, not `text-align: right` on a line of inline-blocks. The buttons sat on the text
+ * baseline of the status span, so the icon button — the one whose box is set by its own content
+ * rather than by a word — landed a pixel low and looked misaligned next to Save and Close
+ * (measured: 621px against 620px). A flex row aligns the boxes themselves and the pixel goes away.
+ * `wrap` because at the phone's width four controls do not fit on one line. */
+.fsf-modal-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: .5rem;
+	margin-top: .75rem;
+}
+
+/* FIND IS AN ICON IN A ROW OF WORDS, so it needs the box the words get for free: LuCI sizes a button
+ * by its content, and a button whose only child is a 20px <svg> comes out 20px wide next to a 60px
+ * "Save". inline-flex centres the icon inside whatever padding the theme gives the button, and the
+ * minimum is what keeps it a target rather than a glyph — 2.25rem under a mouse, and 2.75rem (44px,
+ * the size Apple's HIG asks for; WCAG 2.5.8 asks 24 CSS px) wherever the pointer is coarse, which is
+ * the case this button exists for.
+ *
+ * `pointer: coarse` and not a width query: a tablet with a keyboard attached is a wide screen with a
+ * finger on it, and a narrow desktop window is not a touch screen. */
+.fsf-modal-actions .btn.fsf-find {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 2.25rem;
+	min-height: 2.25rem;
+}
+
+@media (pointer: coarse) {
+	.fsf-modal-actions .btn.fsf-find { min-width: 2.75rem; min-height: 2.75rem; }
+}
+
+.fsf-editor-status { color: var(--text-color-medium, #666); margin-inline-end: .5rem; }
+
+/* `min(60vh, 32rem)`: tall enough for a config file, never taller than the viewport it is in — an
+ * editor whose bottom needs the page scrolled is worse than a short one. */
+/* `min(65vh, 34rem)`: as tall as the dialog can be without the reader having to scroll the dialog
+ * itself to reach the buttons under it — the overlay is the scroll container, and a box taller than
+ * the viewport puts Save below the fold. */
+.fsf-editor {
+	height: min(65vh, 34rem);
+	border: 1px solid var(--border-color-low, rgba(0, 0, 0, .12));
+	border-radius: 6px;
+	overflow: hidden;			/* the rounding; the scrolling belongs to the editor itself, below */
+}
+
+/* THE HEIGHT GOES TO THE EDITOR, NOT ONLY TO THE BOX AROUND IT. The library's root grows to its
+ * content — measured on a 300-line file: 5487px of editor inside a 542px box — so a wrapper that
+ * merely clips leaves the reader with a file that has no scrollbar and a wheel that does nothing.
+ * Given the height, the editor scrolls itself, which is also what keeps its line numbers and its
+ * search widget where they belong: both are positioned inside that scroller, and scrolling the
+ * WRAPPER instead would carry the search box off the top of the file.
+ *
+ * The face is the page's mono stack rather than the library's default. */
+.fsf-editor .prism-code-editor {
+	height: 100%;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* ---- the editor's search widget ------------------------------------------------------------------
+ *
+ * The widget is prism-code-editor's, and its own sheet (vendor/pce/search.css) styles it for a page
+ * that leaves plain `<input>` and `<button>` alone. LuCI does not: a theme sizes every input on the
+ * page, and inside a widget whose rows are 1.5em tall the result is a field 32px high in a 20px box
+ * — the Replace field spilling over its own border, with the theme's 3px focus ring drawn around the
+ * spill (measured on the stand: height 32px, box-shadow 0 0 0 3px). What is undone here is exactly
+ * that: the widget's fields go back to being the widget's.
+ *
+ * Scoped under `.fsf-editor`, so this reaches only the editor this package opens. Nothing here
+ * restyles the widget — every value is the one vendor/pce/search.css already asks for. */
+.fsf-editor .prism-search input {
+	height: auto;
+	min-height: 0;
+	margin: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	box-shadow: none;
+	line-height: 1.5;
+}
+
+/* The ring belongs to `.pce-input:focus-within`, which the library draws as a box-shadow on the
+ * FIELD's container. A second ring on the input inside it is the theme answering the same question
+ * twice, and it is the one that overflows. */
+.fsf-editor .prism-search input:focus,
+.fsf-editor .prism-search input:focus-visible {
+	outline: none;
+	box-shadow: none;
+}
+
+/* One face for the whole widget. The library asks for Arial on the two fields and lets everything
+ * else inherit — which, inside an editor set in a monospace stack, put "Replace" and "All" in a
+ * different face and a different width from the field beside them. */
+.fsf-editor .prism-search,
+.fsf-editor .prism-search .pce-input,
+.fsf-editor .prism-search .pce-match-count {
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* A theme's minimum sizes are meant for a page's own buttons; here they push a 1.2em icon button
+ * into a row built around 1.5em. The library sets every one of these explicitly, so the reset is
+ * back to its values rather than to nothing. */
+.fsf-editor .prism-search button {
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	line-height: 1.5;
+}
+
+.fsf-editor .prism-search .pce-input button { margin-left: 1px; }
+
+/* ---- the hex editor -------------------------------------------------------------------------
+ *
+ * Three columns of monospace: the offset, sixteen bytes, and what those bytes say if they say
+ * anything. The box scrolls itself — the lines inside it are drawn for the window only, so the
+ * scrollbar belongs to a spacer of the full height rather than to the content.
+ *
+ * `tabular-nums` and a fixed cell width, because a hex dump whose columns do not line up is worth
+ * less than no hex dump: the eye reads the grid, not the digits. */
+.fsf-hex {
+	height: 100%;
+	overflow: auto;
+	outline: none;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: .8125rem;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.5;
+	background: var(--background-color-high, #fff);
+}
+
+.fsf-hex-spacer { position: relative; }
+.fsf-hex-layer { position: absolute; top: 0; left: 0; right: 0; will-change: transform; }
+
+.fsf-hex-line { display: flex; gap: .75rem; padding: 0 .5rem; white-space: pre; }
+
+.fsf-hex-off { flex: none; color: var(--text-color-low, #999); }
+.fsf-hex-bytes { flex: none; }
+.fsf-hex-text { color: var(--text-color-medium, #666); }
+
+/* Each byte is its own box so the caret can sit on one, and so a click knows which. The width is
+ * two characters plus the gap the eye needs between pairs. */
+.fsf-hex-b {
+	display: inline-block;
+	width: 1.6em;
+	text-align: center;
+	border-radius: 2px;
+}
+
+/* An eighth of the width between the two halves of the line, the way od(1) breaks it up. */
+.fsf-hex-b:nth-child(8n) { margin-right: .5em; }
+
+.fsf-hex-at {
+	background: var(--primary-color-medium, #0069d9);
+	color: var(--on-primary-color, #fff);
+}
+
+/* A byte the reader typed, so an unsaved change is visible without diffing anything. */
+.fsf-hex-edited { color: var(--error-color-medium, #c9302c); font-weight: 700; }
+.fsf-hex-at.fsf-hex-edited { color: var(--on-primary-color, #fff); }
+
+/* ---- the card stack -----------------------------------------------------------------------------
+ *
+ * At the width where a theme turns the table into one card per file, the name becomes the card's
+ * heading and the actions its footer. Both are keyed off `.fs-stacked` — the class Footstrap puts on
+ * a carded table — and pinned by a class of this package's own, so under any other theme they are
+ * inert rather than wrong.
+ *
+ * A card is a wrapping flex row whose cells are held to pairs by a flagged rule in the theme. That
+ * flag is not one this sheet fights: the theme exempts `[class*="col-"]` from it on purpose, as the
+ * view author's own say over a carded row, so the two cells that want a full line carry `col-10` in
+ * the markup and take their width from here. */
+.table.fs-stacked .fsf-name,
+.table.fs-stacked .fsf-actions { flex: 0 0 100%; }
+
+/* An EMPTY cell prints its caption and nothing under it. In a table that is a blank in a column the
+ * reader is scanning anyway; in a card it is a labelled void — the `..` row alone produced three
+ * (Permissions, Modified, Actions). Hidden in the card only: a table needs every cell present for
+ * its columns to line up. */
+.table.fs-stacked .fsf-row .td:empty { display: none; }
+
+/* The name is the card's heading, so it drops the eyebrow the theme prints above every other value:
+ * a card captioned "Name" over the file name says nothing the reader did not know, and costs the
+ * heading its first line. */
+.table.fs-stacked .fsf-name::before { content: none; }
+
+.table.fs-stacked .fsf-name {
+	margin-bottom: .25rem;
+	padding-bottom: .5rem;
+	border-bottom: 1px solid var(--border-color-low, rgba(0, 0, 0, .12));
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+.table.fs-stacked .fsf-actions {
+	margin-top: .25rem;
+	padding-top: .5rem;
+	border-top: 1px solid var(--border-color-low, rgba(0, 0, 0, .12));
+}
+
+.table.fs-stacked .fsf-actions .btn { flex: 1 1 auto; }
+
+/* ---- the status line ----------------------------------------------------------------------------
+ *
+ * What the page is doing right now, in the toolbar rather than as a notification: an upload of six
+ * files would otherwise print six banners and push the listing off the screen. */
+.fsf-status {
+	color: var(--text-color-medium, #666);
+	font-size: .8125rem;
+}
+
+/* ---- drag and drop ------------------------------------------------------------------------------
+ *
+ * The target says so before the file is let go. An outline rather than a background: the row keeps
+ * its own striping, and a filled highlight over a table row reads as "selected", which this is not. */
+.fsf-drop {
+	outline: 2px dashed var(--primary-color-medium, #0069d9);
+	outline-offset: -2px;
+	background: var(--background-color-low, #f5f5f5);
+}
+
+/* ---- the tile view ------------------------------------------------------------------------------
+ *
+ * The other way to read a directory: one tile per entry. `auto-fill` with a floor rather than a
+ * fixed column count, so the same rule gives four across a phone and a dozen across a desktop
+ * without a media query — and it measures the CONTAINER, which is what the theme's own guide asks
+ * for (the viewport is not the column). */
+/* 6.5rem is measured, not chosen: the grid gets `clientWidth` 343 / 358 / 361 px on the three
+ * iPhone widths (375, 390, 393) with the theme's own gutters taken off, and with an 8px gap a
+ * minimum of 6.5rem (104px) is the largest that still fits THREE across all of them — 7rem drops
+ * the 375 back to two, 7.5rem (what this was) gave two on every iPhone but the Pro Max. A 320px
+ * screen keeps two, and that is right: a third column there is 90px wide, which is narrower than
+ * the icon plus a name. */
+.fsf-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+	gap: .5rem;
+	padding: .5rem 0;
+}
+
+.fsf-tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: .25rem;
+	padding: .625rem .375rem;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	color: inherit;
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.fsf-tile:hover { background: var(--background-color-low, #f5f5f5); }
+.fsf-tile:focus-visible { outline: 2px solid var(--primary-color-medium, #0069d9); outline-offset: 2px; }
+
+/* Selected is a filled surface plus a border, not a colour on the text: a name is already the
+ * accent when it is a directory, and colour alone would make the two states indistinguishable. */
+.fsf-tile-sel {
+	border-color: var(--primary-color-medium, #0069d9);
+	/* The same tint the selected row carries, so the two views say "selected" the same way. The
+	 * literal is what a browser without color-mix() gets. */
+	background: rgba(9, 105, 218, .12);
+	background: color-mix(in srgb, var(--primary-color-medium, #0969da) 12%, transparent);
+}
+
+/* The ink is set per shape in the markup, from the export tier; what is left here is the box. The
+ * icon never shrinks — a long file name must eat the name's own line, not the glyph. */
+.fsf-icon { flex: none; vertical-align: -.25em; }
+.fsf-tile-name { overflow-wrap: anywhere; line-height: 1.25; }
+.fsf-tile-meta { color: var(--text-color-medium, #666); font-size: .75rem; }
+
+/* THE LISTING KEEPS A FLOOR UNDER ITSELF. A table ends exactly where its last row does — measured,
+ * the listing box and the table box were the same 279px — so a directory with four files left the
+ * reader nowhere to START a rubber band except on a row, where a press means dragging that row
+ * instead. The floor is what every desktop file manager has under its list: empty space that
+ * belongs to the listing.
+ *
+ * `min()` rather than a fixed height: on a phone 26rem of empty space below three files is a page
+ * of nothing to scroll past. */
+.fsf-listing { min-height: min(50vh, 26rem); }
+
+/* THE RUBBER BAND, drawn in viewport coordinates on `document.body` — `position: fixed` so it needs
+ * no arithmetic against the page's scroll, and `pointer-events: none` so the drag underneath it
+ * keeps reaching the rows. It exists only while the button is down. */
+.fsf-band {
+	position: fixed;
+	z-index: 50;
+	pointer-events: none;
+	border: 1px solid var(--primary-color-medium, #0069d9);
+	border-radius: 2px;
+	background: rgba(0, 105, 217, .12);
+	background: color-mix(in srgb, var(--primary-color-medium, #0069d9) 12%, transparent);
+}
+
+/* A row being dragged over. The same class the upload drop already used, so a move and an upload
+ * land on the same affordance — what changes is the cursor, which the drag itself sets. */
+
+/* ---- the context menu ---------------------------------------------------------------------------
+ *
+ * Positioned from the pointer and clamped to the window by the JS. `z-index: 100` and no higher:
+ * a theme's own overlays and dropdowns have to be able to sit above this, and the four-digit
+ * z-indexes in the wild are how an app ends up painting over a modal it did not know about. */
+.fsf-menu {
+	position: fixed;
+	z-index: 100;
+	min-width: 11rem;
+	padding: .25rem;
+	border: 1px solid var(--border-color-medium, #ccc);
+	border-radius: 8px;
+	background: var(--background-color-high, #fff);
+	box-shadow: 0 6px 24px rgba(0, 0, 0, .18);
+}
+
+.fsf-menu-item {
+	display: block;
+	width: 100%;
+	padding: .375rem .625rem;
+	border: 0;
+    border-radius: 5px;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: start;
+	cursor: pointer;
+}
+
+.fsf-menu-item:hover,
+.fsf-menu-item:focus-visible { background: var(--background-color-low, #f5f5f5); }
+
+/* The one destructive entry carries the error ink from the tier, and takes its own ink when filled
+ * — never a hardcoded white, which is the failure the tier exists to prevent. */
+.fsf-menu-danger { color: var(--error-color-medium, #c0392b); }
+.fsf-menu-danger:hover { background: var(--error-color-medium, #c0392b); color: var(--on-error-color, #fff); }
+
+.fsf-menu-sep {
+	height: 1px;
+	margin: .25rem .25rem;
+	background: var(--border-color-low, rgba(0, 0, 0, .12));
+}
+
+/* ---- the path box's completions ---------------------------------------------------------------
+ *
+ * THE CONTEXT MENU'S OWN SURFACE, by carrying `.fsf-menu` as well as this class: a floating list of
+ * choices already has a description in this sheet, and a second copy of it is a second thing to
+ * keep in step with the theme. What this class adds is the two things a completion list needs and
+ * a menu does not — a ceiling on its height, because `/usr/bin` is hundreds of entries, and a width
+ * set from the box it belongs to by the JS.
+ *
+ * It replaced a native <datalist>, which no stylesheet can reach: the browser draws that one in the
+ * system's font and the system's colours, so on a dark page it came up as a white popup under a
+ * dark toolbar. */
+.fsf-suggest {
+	max-height: 15rem;
+	overflow-y: auto;
+	/* The page does not scroll on behind the list once it has hit its own end. */
+	overscroll-behavior: contain;
+}
+
+/* The arrow keys mark an entry rather than writing it into the box, so the mark has to be visible
+ * without the pointer: the same wash `:hover` uses, because it means the same thing. */
+.fsf-suggest .fsf-menu-item[aria-selected="true"] { background: var(--background-color-low, #f5f5f5); }
+
+/* The directory the reader has already typed is context; the name is what they are choosing. */
+.fsf-suggest-dir { color: var(--text-color-medium, #666); }
+
+/* The caption for it, hidden wherever a right button exists. */
+.fsf-hint {
+	display: none;
+	align-self: center;
+	color: var(--text-color-medium, #666);
+	font-size: .8125rem;
+}
+
+/* ---- touch ---------------------------------------------------------------------------------
+ *
+ * The long press that opens the context menu (browser.js `longPress`). Without the callout being
+ * suppressed the system's own Copy / Look Up sheet opens on top of it, and without `user-select`
+ * the press paints a text selection across the row on the way. Coarse pointers only: a mouse
+ * reader keeps text selection and the browser's own menu everywhere else. */
+@media (pointer: coarse) {
+	.fsf-row,
+	.fsf-tile {
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	.fsf-hint { display: inline; }
+}
+
+/* ---- selecting ------------------------------------------------------------------------------
+ *
+ * One tap opens, so a row is a target rather than a form: the pointer says so, and the text under
+ * it is not selectable — Shift+click across ten rows would otherwise paint a text selection over
+ * the range it just made. The NAME stays selectable, because copying a file name is a thing
+ * readers do. */
+.fsf-row,
+.fsf-tile {
+	cursor: pointer;
+	-webkit-user-select: none;
+	user-select: none;
+	/* removes the 300 ms tap delay without disabling the pinch zoom `none` would take away */
+	touch-action: manipulation;
+}
+
+.fsf-row .fsf-nameline a,
+.fsf-row .fsf-nameline span,
+.fsf-tile-name {
+	-webkit-user-select: text;
+	user-select: text;
+}
+
+/* A TINT, not the primary colour itself: `--primary-color-low` is a full-strength surface in some
+ * themes — measured on this stand it painted the row navy and took the text and the action icons
+ * with it. 12% of the primary over whatever the row already is keeps every one of them readable in
+ * both light and dark. */
+/* On the ROW, and the cells stay transparent so it shows through them. Tinting the cells instead
+ * left a 9px white band along the actions column: the theme lays that cell out as a flex box, and a
+ * flex `td` takes its content's height (51px measured) rather than the row's (60px). */
+.table .tr.fsf-row.fsf-sel,
+.table .tr.fsf-row.fsf-sel:hover {
+	background: rgba(9, 105, 218, .12);
+	background: color-mix(in srgb, var(--primary-color-medium, #0969da) 12%, transparent);
+}
+
+/* HOW MANY — for both states that take the toolbar over: select mode, where it sits where the path
+ * box was, and a full clipboard, where it sits beside it. One class, because it answers the same
+ * question. `flex: none` so a wrapping bar never squeezes a number down to an ellipsis. */
+.fsf-selcount,
+.fsf-clipcount {
+	flex: none;
+	margin-right: .25rem;
+	align-self: center;
+	font-weight: 600;
+}
+
+/* The heading a menu opened on a multiple selection carries, so the reader can see what Delete is
+ * about to take. */
+.fsf-menu-head {
+	padding: .35rem .75rem;
+	color: var(--text-color-medium, #666);
+	font-size: .8125rem;
+}
+
+/* The row's actions are icons too: the same box as the toolbar's, one size down. */
+.fsf-actions .btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}

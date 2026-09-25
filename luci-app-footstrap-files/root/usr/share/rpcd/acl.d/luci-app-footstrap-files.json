@@ -1,0 +1,14 @@
+{
+	"luci-app-footstrap-files": {
+		"description": "Browse and change files on the router",
+		"write": {
+			"cgi-io": [ "upload", "download" ],
+			"ubus": {
+				"file": [ "list", "stat", "read", "write", "remove", "exec" ]
+			},
+			"file": {
+				"/*": [ "list", "read", "write", "exec" ]
+			}
+		}
+	}
+}

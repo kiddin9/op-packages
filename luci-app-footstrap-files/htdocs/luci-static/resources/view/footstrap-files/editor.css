@@ -1,0 +1,118 @@
+/* The editor's colours, taken from the theme instead of from GitHub.
+ *
+ * WHAT THIS REPLACES: prism-code-editor ships `themes/github-light.css` and `themes/github-dark.css`,
+ * 6,492 bytes of literals between them, and the page picked one by asking the theme which way it was
+ * and swapping the <link>. That is the minimum docs/luci-app-styling-guide.md §5 asks for — better
+ * than mosdns and ssclash, which pin a dark editor onto a light page — but it is still somebody
+ * else's palette on a Footstrap page, and it is two files where one will do.
+ *
+ * This is one file for both modes. Every colour comes from the 26-name export tier (§3.1), which
+ * every LuCI theme publishes and which the theme itself recomputes when the reader switches to dark
+ * — so the editor follows the page with no `isDark()`, no second stylesheet and no swap. Under a
+ * theme that publishes nothing, the literal fallback on each `var()` is GitHub's own light value, so
+ * the worst case is what shipped before.
+ *
+ * The palette is deliberately small: five accents and four text levels, because a config file is
+ * keywords, strings, numbers and comments, and a router's screen is not the place to prove that
+ * twelve hues fit on one line.
+ *
+ * ONLY THE NAMES THE VENDORED SHEETS ACTUALLY READ are defined. The library also understands
+ * `--pce-ac-*` (autocomplete), `--pce-bg-fold`, `--pce-tabstop`, `--pce-invisibles` and
+ * `--pce-guide-indent`; every one of those belongs to an extension this package does not load, and
+ * a value nobody reads is a byte nobody needs. */
+
+.prism-code-editor {
+	/* the page's own surface, so the editor is part of the dialog rather than a window in it */
+	--pce-bg: var(--background-color-high, #fff);
+	--pce-cursor: var(--text-color-highest, #24292e);
+	--pce-line-number: var(--text-color-low, #1b1f2380);
+	--pce-border-highlight: var(--border-color-low, rgba(0, 0, 0, .12));
+
+	/* Three transient highlights, all tinted from the tier so they hold on either surface. The
+	 * literal is the fallback for a theme with no tier at all, and it is the value GitHub used. */
+	--pce-bg-highlight: rgba(9, 105, 218, .06);
+	--pce-bg-highlight: color-mix(in srgb, var(--primary-color-medium, #0969da) 6%, transparent);
+	--pce-selection: rgba(9, 105, 218, .25);
+	--pce-selection: color-mix(in srgb, var(--primary-color-medium, #0969da) 25%, transparent);
+	--pce-selection-match: rgba(46, 125, 50, .28);
+	--pce-selection-match: color-mix(in srgb, var(--success-color-medium, #2e7d32) 28%, transparent);
+	--pce-search-match: rgba(224, 134, 0, .35);
+	--pce-search-match: color-mix(in srgb, var(--warn-color-medium, #e08600) 35%, transparent);
+
+	/* the find-and-replace widget, which is chrome rather than code */
+	--pce-widget-bg: var(--background-color-high, #f6f8fa);
+	--pce-widget-bg-input: var(--background-color-low, #fafbfc);
+	--pce-widget-border: var(--border-color-medium, #bfbfbf);
+	--pce-widget-color: var(--text-color-high, #434d56);
+	--pce-widget-color-active: var(--text-color-highest, #000);
+	--pce-widget-color-options: var(--text-color-medium, #5a6772);
+	--pce-widget-focus: var(--primary-color-medium, #0969da);
+	--pce-widget-error: var(--error-color-medium, #be1100);
+	--pce-widget-bg-hover: rgba(127, 127, 127, .12);
+	--pce-widget-bg-hover: color-mix(in srgb, var(--text-color-medium, #666) 12%, transparent);
+	--pce-widget-bg-active: rgba(9, 105, 218, .2);
+	--pce-widget-bg-active: color-mix(in srgb, var(--primary-color-medium, #0969da) 20%, transparent);
+	--pce-widget-bg-error: rgba(190, 17, 0, .15);
+	--pce-widget-bg-error: color-mix(in srgb, var(--error-color-medium, #be1100) 15%, transparent);
+
+	color: var(--text-color-highest, #24292e);
+}
+
+/* THE TOKENS THIS ROUTER ACTUALLY PRODUCES. Measured on the stand with /etc/config/*, a .json and a
+ * shell script open: 19 classes, against the 40 the GitHub sheets paint. What is missing here is
+ * missing because no grammar we ship emits it. */
+.prism-code-editor .token.comment,
+.prism-code-editor .token.shebang { color: var(--text-color-low, #6a737d); }
+
+.prism-code-editor .token.string { color: var(--success-color-medium, #032f62); }
+
+.prism-code-editor .token.keyword,
+.prism-code-editor .token.builtin,
+.prism-code-editor .token[class*="keyword-"] { color: var(--primary-color-medium, #d73a49); }
+
+.prism-code-editor .token.number,
+.prism-code-editor .token.boolean { color: var(--warn-color-medium, #005cc5); }
+
+/* `config interface 'lan'` — the name after the keyword is the thing being configured, so it takes
+ * the strongest text level rather than an accent: it is the line's subject, not its syntax. */
+.prism-code-editor .token.property,
+.prism-code-editor .token.class-name { color: var(--text-color-highest, #24292e); }
+
+.prism-code-editor .token.variable { color: var(--warn-color-high, #e36209); }
+
+.prism-code-editor .token.operator,
+.prism-code-editor .token.punctuation { color: var(--text-color-medium, #24292e); }
+
+/* Nesting depth, cycling through the tier's own accents. Six levels because that is what the
+ * library emits before it starts again, and a config file rarely reaches three — but the level is
+ * counted by matchBrackets over whatever the reader opens, not by our grammars, so the tail stays.
+ *
+ * `char`, `assign-left`, `important`, `bold` and `italic` were painted here until the bash grammar
+ * left: nothing this package ships emits them any more, and a rule for a token that cannot appear
+ * is a rule nobody needs. */
+.prism-code-editor .token.bracket-level-0,
+.prism-code-editor .token.bracket-level-6 { color: var(--primary-color-medium, #0366d6); }
+.prism-code-editor .token.bracket-level-1,
+.prism-code-editor .token.bracket-level-7 { color: var(--success-color-medium, #138934); }
+.prism-code-editor .token.bracket-level-2,
+.prism-code-editor .token.bracket-level-8 { color: var(--warn-color-medium, #b37700); }
+.prism-code-editor .token.bracket-level-3,
+.prism-code-editor .token.bracket-level-9 { color: var(--error-color-medium, #cb2431); }
+.prism-code-editor .token.bracket-level-4,
+.prism-code-editor .token.bracket-level-10 { color: var(--text-color-high, #a43276); }
+.prism-code-editor .token.bracket-level-5,
+.prism-code-editor .token.bracket-level-11 { color: var(--primary-color-high, #8a3ddb); }
+
+.prism-code-editor .token.bracket-error { color: var(--error-color-high, #ff1212); }
+
+/* The pair the caret is inside, drawn by extensions/matchBrackets. Inset rather than a background,
+ * so the character keeps its own colour. */
+.prism-code-editor .active-bracket {
+	box-shadow: inset 0 0 0 1px rgba(46, 125, 50, .6), inset 0 0 0 9in rgba(46, 125, 50, .25);
+	box-shadow:
+		inset 0 0 0 1px color-mix(in srgb, var(--success-color-medium, #2e7d32) 60%, transparent),
+		inset 0 0 0 9in color-mix(in srgb, var(--success-color-medium, #2e7d32) 25%, transparent);
+}
+
+/* The line the caret is on gets its number at full strength — the library only swaps the variable. */
+.prism-code-editor .active-line { --pce-line-number: var(--text-color-high, #1f2328); }

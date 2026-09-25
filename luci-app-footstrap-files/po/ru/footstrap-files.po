@@ -1,0 +1,413 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1694
+msgid "%d item(s) to copy"
+msgstr "Скопировать: %d шт."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1694
+msgid "%d item(s) to move"
+msgstr "Переместить: %d шт."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1279
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1706
+msgid "%d selected"
+msgstr "Выбрано: %d"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:987
+msgid "%s could not be removed (%s). Delete it and everything inside?"
+msgstr "%s удалить не удалось (%s). Удалить каталог вместе со всем содержимым?"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:978
+msgid "%s is a directory. Delete it and everything inside?"
+msgstr "%s — каталог. Удалить его вместе со всем содержимым?"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:608
+msgid "%s is not text; opening it as hex."
+msgstr "%s — не текст; открываю как hex."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1168
+msgid "%s was not moved"
+msgstr "%s не перенесён"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:931
+msgid "%s was not pasted"
+msgstr "%s не вставлен"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:947
+msgid "A name may not contain a slash."
+msgstr "Имя не может содержать косую черту."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:449
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:508
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:559
+msgid "Actions"
+msgstr "Действия"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:864
+msgid "Apply"
+msgstr "Применить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:852
+msgid "Apply to everything inside"
+msgstr "Применить ко всему содержимому"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:856
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1696
+msgid "Cancel"
+msgstr "Отмена"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:883
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:884
+msgid "Cannot change %s"
+msgstr "Не удалось изменить %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:874
+msgid "Cannot change permissions"
+msgstr "Не удалось изменить права"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1002
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1003
+msgid "Cannot create directory"
+msgstr "Не удалось создать каталог"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1011
+msgid "Cannot create file"
+msgstr "Не удалось создать файл"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:991
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:992
+msgid "Cannot delete %s"
+msgstr "Не удалось удалить %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:574
+msgid "Cannot download %s"
+msgstr "Не удалось скачать %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:589
+msgid "Cannot edit %s"
+msgstr "Не удалось открыть %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1171
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1172
+msgid "Cannot move %s"
+msgstr "Не удалось перенести %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:747
+msgid "Cannot open %s"
+msgstr "Не удалось открыть %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:695
+msgid "Cannot open the editor"
+msgstr "Не удалось открыть редактор"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:923
+msgid "Cannot paste"
+msgstr "Не удалось вставить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:934
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:935
+msgid "Cannot paste %s"
+msgstr "Не удалось вставить %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:349
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:368
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:696
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:777
+msgid "Cannot read %s"
+msgstr "Не удалось прочитать %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:947
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:951
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:952
+msgid "Cannot rename %s"
+msgstr "Не удалось переименовать %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:807
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:826
+msgid "Cannot save %s"
+msgstr "Не удалось сохранить %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1035
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1038
+msgid "Cannot upload %s"
+msgstr "Не удалось загрузить %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:661
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:769
+msgid "Close"
+msgstr "Закрыть"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1280
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1301
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1708
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1722
+msgid "Copy"
+msgstr "Копировать"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:517
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1283
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1304
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1710
+msgid "Delete"
+msgstr "Удалить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:976
+msgid "Delete %d item(s)? This cannot be undone."
+msgstr "Удалить объектов: %d? Это необратимо."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1724
+msgid "Delete selected"
+msgstr "Удалить выбранное"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:445
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:498
+msgid "Directory"
+msgstr "Каталог"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1711
+msgid "Done"
+msgstr "Готово"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:511
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1292
+msgid "Download"
+msgstr "Скачать"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:509
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1287
+msgid "Edit"
+msgstr "Изменить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:498
+msgid "File"
+msgstr "Файл"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1783
+msgid "Files"
+msgstr "Файлы"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:649
+msgid "Find and replace"
+msgstr "Поиск и замена"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1686
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1717
+msgid "Go"
+msgstr "Перейти"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1770
+msgid "List"
+msgstr "Список"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1740
+msgid "Long press a file for actions"
+msgstr "Долгое нажатие по файлу — действия"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:448
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:504
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:558
+msgid "Modified"
+msgstr "Изменён"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1281
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1302
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1709
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1723
+msgid "Move"
+msgstr "Переместить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1162
+msgid "Move %d item(s) to %s?"
+msgstr "Скопировать: %d шт."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1163
+msgid "Moving %d item(s)…"
+msgstr "Перенос: %d шт…"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:440
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:481
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:554
+msgid "Name"
+msgstr "Имя"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:999
+msgid "New directory name:"
+msgstr "Имя нового каталога:"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1317
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1721
+msgid "New file"
+msgstr "Новый файл"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1007
+msgid "New file name:"
+msgstr "Имя нового файла:"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1316
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1720
+msgid "New folder"
+msgstr "Новый каталог"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:894
+msgid "Nothing selected"
+msgstr "Ничего не выбрано"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1287
+msgid "Open"
+msgstr "Открыть"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1291
+msgid "Open as hex"
+msgstr "Открыть как hex"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:848
+msgid "Owner (user:group)"
+msgstr "Владелец (пользователь:группа)"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1318
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1695
+msgid "Paste here"
+msgstr "Вставить сюда"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1748
+msgid "Path"
+msgstr "Путь"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:447
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:500
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:557
+msgid "Permissions"
+msgstr "Права"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:844
+msgid "Permissions (octal)"
+msgstr "Права (восьмеричные)"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:874
+msgid "Permissions must be three or four octal digits, e.g. 644."
+msgstr "Права задаются тремя или четырьмя восьмеричными цифрами, например 644."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:513
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1294
+msgid "Properties"
+msgstr "Свойства"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:842
+msgid "Properties of %s"
+msgstr "Свойства %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1321
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1719
+msgid "Refresh"
+msgstr "Обновить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:515
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1293
+msgid "Rename"
+msgstr "Переименовать"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:945
+msgid "Rename \"%s\" to:"
+msgstr "Переименовать «%s» в:"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:656
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:764
+msgid "Save"
+msgstr "Сохранить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:805
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:823
+msgid "Saved."
+msgstr "Сохранено."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:788
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:817
+msgid "Saving…"
+msgstr "Сохранение…"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:797
+msgid "Saving… %d%%"
+msgstr "Сохранение… %d%%"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1298
+msgid "Select"
+msgstr "Выбрать"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:487
+msgid "Select %s"
+msgstr "Выбрать %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1299
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1320
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1707
+msgid "Select all"
+msgstr "Выбрать всё"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:446
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:499
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:556
+msgid "Size"
+msgstr "Размер"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:932
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1169
+msgid "Something with that name is already here, and nothing is overwritten."
+msgstr "Здесь уже есть объект с таким именем; ничего не перезаписывается."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:923
+msgid "Source and destination are the same directory."
+msgstr "Источник и назначение — один и тот же каталог."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:590
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:748
+msgid "The file is %.1f MB; this editor opens files up to 1 MB."
+msgstr "Файл весит %.1f МБ; редактор открывает файлы до 1 МБ."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:532
+msgid "This directory is empty."
+msgstr "Каталог пуст."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:894
+msgid "Tick the files you want first."
+msgstr "Сначала отметьте нужные файлы."
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1770
+msgid "Tiles"
+msgstr "Плитка"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:445
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:498
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:555
+msgid "Type"
+msgstr "Тип"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1687
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1718
+msgid "Up"
+msgstr "Вверх"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1728
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1731
+msgid "Upload"
+msgstr "Загрузить"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1037
+msgid "Uploaded %d of %d…"
+msgstr "Загружено %d из %d…"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1026
+msgid "Uploading %d file(s)…"
+msgstr "Загрузка файлов: %d…"
+
+#~ msgid "Forget"
+#~ msgstr "Забыть"
