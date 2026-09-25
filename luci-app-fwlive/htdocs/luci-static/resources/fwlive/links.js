@@ -60,7 +60,7 @@ function filterLink(field, value, label, onFilterClick) {
 		{
 			'href': '#',
 			'class': 'fwlive-filter-link',
-			'title': _('Filter by %s').format(field),
+			'title': _('Filter by %s').format(log.filterFieldLabel(field)),
 			'click': function (ev) {
 				onFilterClick(field, value, ev);
 			}
@@ -88,7 +88,7 @@ function addrFilterLink(field, ip, showHostnames, hostnameCache, onFilterClick) 
 				: hostnameCache.get(ip);
 	}
 	const display = name || ip;
-	const title = name ? ip : _('Filter by %s').format(field);
+	const title = name ? ip : _('Filter by %s').format(log.filterFieldLabel(field));
 
 	return E(
 		'a',
@@ -153,7 +153,7 @@ function ifaceLink(value, onFilterClick) {
 		{
 			'href': '#',
 			'class': 'fwlive-filter-link fwlive-iface-badge',
-			'title': _('Filter by interface'),
+			'title': _('Filter by %s').format(log.filterFieldLabel('interface')),
 			'click': function (ev) {
 				onFilterClick('interface', value, ev);
 			}

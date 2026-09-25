@@ -17,7 +17,7 @@
  *
  * renderManualTestNodes(host, state, callbacks) → void
  *   host      - <ul> element inside #fwlive-help (cleared and rebuilt)
- *   state     - unused; nft-only instruction
+ *   state     - unused; instruction is nft-only (rpcd never emits iptables)
  *
  * Empty-state helpers:
  *   buildEmptyStateNodes(state, callbacks) → Node[]
@@ -200,17 +200,17 @@ function buildConsentPanel(state, callbacks) {
 			E('li', {}, [
 				E('strong', {}, [_('Changes:')]),
 				' ',
-				_('sets log on the WAN firewall zone and reloads the firewall.')
+				_('Turns on logging for the WAN firewall zone and reloads the firewall.')
 			]),
 			E('li', {}, [
 				E('strong', {}, [_('Does not change:')]),
 				' ',
-				_('allow/deny rules, LAN logging, or anything else.')
+				_('Allow/deny rules, LAN logging, or anything else.')
 			]),
 			E('li', {}, [
 				E('strong', {}, [_('Undo:')]),
 				' ',
-				_('turn it back off with the WAN logging on control on the watch strip.')
+				_('Turn it back off with the WAN logging control on the watch strip.')
 			])
 		]),
 		E('p', { 'class': 'fwlive-consent-check' }, [
@@ -272,7 +272,8 @@ function buildEmptyStateNodes(state, callbacks) {
 		);
 		nodes.push(
 			E('p', {}, [
-				_('No WAN firewall zone found in /etc/config/firewall. Configure zones under '),
+				_('No WAN firewall zone found in /etc/config/firewall. Configure zones under:'),
+				' ',
 				links.firewallZonesLink()
 			])
 		);
@@ -368,19 +369,21 @@ function renderEmptyState(host, state, callbacks) {
 }
 
 /**
- * renderManualTestNodes — fills a <li> host element with the nft manual test
+ * renderManualTestNodes — fills a <li> host element with the firewall manual test
  * instruction. Call from addFooter() after render() has inserted
  * the placeholder <li id="fwlive-manual-test">.
  */
 function renderManualTestNodes(host, _state, _callbacks) {
 	host.innerHTML = '';
-	host.appendChild(document.createTextNode(_('Manual test (System → Terminal): ')));
+	host.appendChild(document.createTextNode(_('Manual test (System → Terminal):')));
+	host.appendChild(document.createTextNode(' '));
 	host.appendChild(
 		E('code', {}, [
 			'nft insert rule inet fw4 input ip protocol icmp icmp type echo-request log prefix "fwlive-ping " accept'
 		])
 	);
-	host.appendChild(document.createTextNode(_(' then ping the router.')));
+	host.appendChild(document.createTextNode(' '));
+	host.appendChild(document.createTextNode(_('Then ping the router.')));
 }
 
 return baseclass.extend({

@@ -52,6 +52,28 @@ function columnLabel(col) {
 	return labels[col] || col;
 }
 
+function dirLabel(dir) {
+	const labels = {
+		'in': _('Inbound'),
+		'out': _('Outbound'),
+		'forward': _('Forwarded'),
+		'unknown': _('unknown')
+	};
+
+	return labels[dir] || log.formatCell(dir);
+}
+
+function actionLabel(action) {
+	const labels = {
+		'pass': _('pass'),
+		'block': _('block'),
+		'drop': _('drop'),
+		'reject': _('reject')
+	};
+
+	return labels[action] || log.formatActionLabel(action);
+}
+
 function columnCellClass(col) {
 	switch (col) {
 		case 'time':
@@ -124,12 +146,7 @@ function buildColumnCell(col, row, state, callbacks) {
 	const msgDisplay = log.formatMessageDisplay(row.message, state.messageLayout);
 	const actionCell =
 		row.action && row.action !== 'unknown'
-			? links.filterLink(
-					'action',
-					row.action,
-					log.formatActionLabel(row.action),
-					onFilterClick
-				)
+			? links.filterLink('action', row.action, actionLabel(row.action), onFilterClick)
 			: log.formatActionLabel(row.action);
 
 	switch (col) {
@@ -162,7 +179,7 @@ function buildColumnCell(col, row, state, callbacks) {
 				)
 			]);
 		case 'dir':
-			return E('td', { 'class': columnCellClass(col) }, [log.formatCell(row.direction)]);
+			return E('td', { 'class': columnCellClass(col) }, [dirLabel(row.direction)]);
 		case 'proto':
 			return E('td', { 'class': columnCellClass(col) }, [
 				links.filterLink('proto', row.proto, null, onFilterClick)

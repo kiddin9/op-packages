@@ -2488,11 +2488,11 @@ return view.extend({
 							}),
 							E('select', { 'id': 'fwlive-action', 'class': 'cbi-input-select' }, [
 								E('option', { 'value': '' }, [_('Any action')]),
-								E('option', { 'value': 'pass' }, ['pass']),
-								E('option', { 'value': 'block' }, ['block']),
-								E('option', { 'value': 'drop' }, ['drop']),
-								E('option', { 'value': 'reject' }, ['reject']),
-								E('option', { 'value': 'unknown' }, ['unknown']),
+								E('option', { 'value': 'pass' }, [_('pass')]),
+								E('option', { 'value': 'block' }, [_('block')]),
+								E('option', { 'value': 'drop' }, [_('drop')]),
+								E('option', { 'value': 'reject' }, [_('reject')]),
+								E('option', { 'value': 'unknown' }, [_('unknown')]),
 								E('option', { 'value': '!pass' }, [_('not pass')]),
 								E('option', { 'value': '!drop' }, [_('not drop')]),
 								E('option', { 'value': '!block' }, [_('not block')]),
@@ -2607,7 +2607,8 @@ return view.extend({
 		this.updateTintWarnUi();
 		this.renderRows(true);
 		const testLi = document.getElementById('fwlive-manual-test');
-		if (testLi) logging.renderManualTestNodes(testLi, {}, {});
+		if (testLi)
+			logging.renderManualTestNodes(testLi, { firewallBackend: this.firewallBackend }, {});
 		if (this.showHostnames) this.resolveHostnamesForEntries(this.filteredRows());
 	}
 });
