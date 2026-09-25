@@ -49,8 +49,8 @@
 --- a/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 +++ b/luci-app-ssr-plus/luasrc/controller/shadowsocksr.lua
 @@ -663,6 +663,62 @@ function index()
- 
- 	-- 备份
+ 	entry({"admin", "services", "shadowsocksr", "clash_client_rule_clear"}, call("clash_client_rule_clear")).leaf = true
+ 	--[[Backup]]
  	entry({"admin", "services", "shadowsocksr", "backup"}, call("create_backup")).leaf = true
 +	entry({'admin', 'services', "shadowsocksr", 'ip'}, call('check_ip')) -- 获取ip情况
 +end
@@ -110,7 +110,7 @@
 +    luci.http.write_json(e)
  end
  
- -- ============================================================
+ function subscribe()
 
 --- a/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
 +++ b/luci-app-ssr-plus/luasrc/model/cbi/shadowsocksr/client.lua
