@@ -249,7 +249,7 @@ jobs:
         git_clone https://github.com/linkease/istore-packages
         git clone https://github.com/laipeng668/luci-app-gecoosac gecoosac1 && mvdir gecoosac1
         git_clone https://github.com/eamonxg/luci-theme-shadcn
-        git_sparse_clone dashboard-customize "https://github.com/eamonxg/luci" modules/luci-mod-dashboard
+        git_sparse_clone dashboard-wireless-band "https://github.com/eamonxg/luci" modules/luci-mod-dashboard
         ) &
         (
         git_clone https://github.com/muink/luci-app-dnsproxy
