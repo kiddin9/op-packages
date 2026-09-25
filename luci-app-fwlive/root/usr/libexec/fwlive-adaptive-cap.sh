@@ -15,8 +15,10 @@
 # Hot-path budget: ≤1 flock exec per update (release by closing the fd when the
 # subshell exits — no flock -u). /proc/uptime + state I/O via shell builtins/
 # redirects (no sed/cat/jsonfilter on the adaptive path). Fail-open on missing
-# flock, lock busy, or corrupt state. Lock-busy ⇒ unlocked last-writer-wins is
-# acceptable (state stays one valid JSON line; ordering is not guaranteed).
+# flock, lock busy, or corrupt state. Fail-closed if the lock file cannot be
+# opened (skip the write; do not record unlocked). Lock-busy ⇒ unlocked
+# last-writer-wins is acceptable (state stays one valid JSON line; ordering
+# is not guaranteed).
 # Failed ubus log.read must NOT call record() — a ~0 ms failure is not "cold"
 # health and must not clear an existing hot/shed cap.
 # Outside the measured duration interval: plan (pre), record/merge (post).
@@ -225,7 +227,8 @@ fwlive_adaptive_write_state() {
 # missing/busy. Release by exiting the subshell (closes fd 9) — no flock -u.
 # Busy ⇒ run unlocked: last-writer-wins is acceptable (valid one-line JSON;
 # ordering under contention is not guaranteed).
-# Lock-open failure (redirection) also fail-opens unlocked so record() still runs.
+# Lock-open failure (redirection): fail-closed — skip the write; do not run
+# record() unlocked. Probe fd 9 first so a set -eu caller does not abort.
 fwlive_adaptive_with_lock() {
 	if ! command -v flock >/dev/null 2>&1; then
 		"$@"
@@ -250,6 +253,11 @@ fwlive_adaptive_with_lock() {
 	elif [ ! -w "$_lock" ]; then
 		"$@"
 		return $?
+	fi
+	# Probe in a subshell first: a failed fd-9 redirection aborts a POSIX
+	# non-interactive shell (set -eu) before any fallback can run.
+	if ! ( exec 9>>"$_lock" ) 2>/dev/null; then
+		return 0
 	fi
 	(
 		if flock -n 9; then
