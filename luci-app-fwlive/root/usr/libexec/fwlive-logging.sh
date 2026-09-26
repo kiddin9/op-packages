@@ -200,7 +200,11 @@ find_wan_zone_section_state() {
 	_firewall_show=$(uci -q show firewall 2>/dev/null || true)
 	_zones=$(printf '%s\n' "$_firewall_show" \
 		| sed -n 's/^firewall\.\([^.=]*\)=zone$/\1/p')
-	for zone in $_zones; do
+	# Line-wise here-doc (not an unquoted for-loop): @zone[N] is a glob
+	# character class and would expand when cwd contains @zoneN. The
+	# while-read stays in the current shell (here-doc, not a pipeline)
+	# so WAN_ZONE_* mutations and return reach the caller.
+	while IFS= read -r zone || [ -n "$zone" ]; do
 		[ -n "$zone" ] || continue
 		_name=$(uci -q get "firewall.${zone}.name" 2>/dev/null || true)
 		if [ -z "$_name" ]; then
@@ -239,7 +243,9 @@ find_wan_zone_section_state() {
 			WAN_ZONE_FOUND="$zone"
 			return 0
 		fi
-	done
+	done <<EOF
+$_zones
+EOF
 	return 0
 }
 

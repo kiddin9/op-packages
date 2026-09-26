@@ -746,11 +746,11 @@ return view.extend({
 			this.weakDevice = !!(this.loggingStatus && this.loggingStatus.weak_device === true);
 		} catch (_e) {
 			if (this.viewDisposed) return;
-			/* Keep last toolbar state. Do not clobber a toggle success/failure notice. */
+			/* Keep last-known toolbar; unknown until the first successful fetch. */
 			if (!this.loggingNotice)
-				this.loggingNotice = _(
-					'Could not refresh logging status; showing the last known state.'
-				);
+				this.loggingNotice = this.loggingStatus
+					? _('Could not refresh logging status; showing the last known state.')
+					: _('Could not load logging status.');
 		}
 		this.updateBackendUi();
 		this.updateLoggingToolbarUi();

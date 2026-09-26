@@ -105,9 +105,16 @@ uci_rule_names() {
 }
 
 is_uci_style_name() {
+	# Domain: non-empty UCI-style identifier, every character in
+	# [A-Za-z0-9_-]. That is the map-key set this helper admits
+	# (names parseRuleHint can look up). nft comments can print
+	# anything; skip names outside this set so they do not become
+	# dead map keys. parseRuleHint also allows '.' — not accepted
+	# here. The charset glob is *[!class]* (whole string);
+	# [!class]* only tested the first character.
 	case "$1" in
-		*' '*|*'"'*|*"'"*) return 1 ;;
-		[!A-Za-z0-9_-]*) return 1 ;;
+		''|*' '*|*'"'*|*"'"*) return 1 ;;
+		*[!A-Za-z0-9_-]*) return 1 ;;
 	esac
 	return 0
 }
@@ -177,6 +184,8 @@ EOF
 
 # One awk pass: prefix<TAB>comment. Last quoted log prefix / comment on
 # the line, including \" units (same capture as the former sed).
+# Raw tabs in prefix/comment become the two-character sequence \t so the
+# separator tab is unique. Backslashes are not re-encoded.
 nft_dump_fields() {
 	LC_ALL=C awk '
 	function last_at(s, needle,    p, i, found) {
@@ -219,9 +228,50 @@ nft_dump_fields() {
 		comment = quoted_at($0, "comment \"")
 		if (prefix == "" && comment == "")
 			next
+		gsub(/\\/, "\\\\", prefix)
+		gsub(/\t/, "\\t", prefix)
+		gsub(/\\/, "\\\\", comment)
+		gsub(/\t/, "\\t", comment)
 		print prefix "\t" comment
 	}
 	' || return 1
+}
+
+# Restore nft_dump_fields TSV encoding. Walk left to right: \\ is a
+# literal backslash, \t is a tab. Other backslash pairs stay as written.
+# Do not put backslash sequences in case patterns (they are escapes).
+# Fast-path strings with no backslash: dash ${var#?} walks are O(n^2) and
+# the map byte-cap tests feed ~60k prefixes with none.
+# Result is _tsv_out (no fork).
+_nft_tsv_unescape() {
+	case "$1" in
+		*\\*) ;;
+		*)
+			_tsv_out="$1"
+			return 0
+			;;
+	esac
+	_tab=$(printf '\t')
+	_in="$1"
+	_out=
+	while [ -n "$_in" ]; do
+		_head=${_in%"${_in#?}"}
+		_in=${_in#?}
+		if [ "$_head" = "\\" ]; then
+			_n=${_in%"${_in#?}"}
+			_in=${_in#?}
+			if [ "$_n" = t ]; then
+				_out="${_out}${_tab}"
+			elif [ "$_n" = "\\" ]; then
+				_out="${_out}\\"
+			else
+				_out="${_out}\\${_n}"
+			fi
+		else
+			_out="${_out}${_head}"
+		fi
+	done
+	_tsv_out="$_out"
 }
 
 # pass=labeled|unlabeled|all — labeled before unlabeled so !fw4: beats
@@ -230,6 +280,8 @@ nft_dump_fields() {
 map_from_nft_stream() {
 	pass="${1:-all}"
 	_tab=$(printf '\t')
+	_esc_t=$(printf '\\t')
+	_esc_b=$(printf '\\\\')
 	# IFS= keeps a leading tab (empty prefix + comment-only !fw4: line).
 	while IFS= read -r line || [ -n "$line" ]; do
 		[ -n "$_map_overflow" ] && break
@@ -239,6 +291,10 @@ map_from_nft_stream() {
 			*"$_tab"*) comment="${line#*"$_tab"}" ;;
 			*) comment="" ;;
 		esac
+		_nft_tsv_unescape "$prefix"
+		prefix="$_tsv_out"
+		_nft_tsv_unescape "$comment"
+		comment="$_tsv_out"
 		label=''
 
 		case "$comment" in
@@ -666,14 +722,14 @@ resolve_addresses() {
 		return 0
 	fi
 
-	# Wall-clock budget clock starts at the TRUE function entry: the budget
-	# must bound the whole call — including read_rpc_input (stalled stdin
-	# must not escape the budget) and json parsing. `date +%s` can jump
-	# under NTP sync — accepted (worst case the budget over- or under-runs
-	# by the jump; worker starvation is still prevented).
-	start=$(date +%s)
 	# Optional JSON on $1 (rpcd may also pass argv $3 at the call site); else stdin.
 	input=$(read_rpc_input "$1")
+	# Wall-clock budget starts after the input read and bounds the lookup
+	# loop only. Stalled stdin is not interrupted — production rpcd closes
+	# a finite payload. `date +%s` can jump under NTP sync — accepted
+	# (worst case the budget over- or under-runs by the jump; worker
+	# starvation is still prevented).
+	start=$(date +%s)
 	lookups=0
 	truncated=0
 	OUT=''
@@ -719,7 +775,7 @@ resolve_addresses() {
 				truncated=1
 				break
 			fi
-			# Abort cleanly once the whole-call wall-clock budget is spent;
+			# Abort cleanly once the lookup-loop wall-clock budget is spent;
 			# never START a lookup past the budget.
 			now=$(date +%s)
 			if [ $((now - start)) -ge "$RESOLVE_BUDGET" ]; then
@@ -793,6 +849,42 @@ run_selftest() {
 	expected=$(printf 'a\\n\\nb')
 	check_eq 'json_escape blank line' "$escaped" "$expected" "expected $expected got $escaped" || return 1
 
+	# Charset applies to every character, not only the first.
+	if ! is_uci_style_name 'Rule'; then
+		echo 'is_uci_style_name: expected accept Rule' >&2
+		return 1
+	fi
+	if ! is_uci_style_name 'Allow-SSH'; then
+		echo 'is_uci_style_name: expected accept Allow-SSH' >&2
+		return 1
+	fi
+	if ! is_uci_style_name '-lead'; then
+		echo 'is_uci_style_name: expected accept -lead' >&2
+		return 1
+	fi
+	if is_uci_style_name 'My Rule'; then
+		echo 'is_uci_style_name: expected reject for space' >&2
+		return 1
+	fi
+	# First character is legal; later $ / ; / . must still fail.
+	# shellcheck disable=SC2016
+	if is_uci_style_name 'rule$x'; then
+		echo 'is_uci_style_name: expected reject rule$x (later-char illegal)' >&2
+		return 1
+	fi
+	if is_uci_style_name 'rule;id'; then
+		echo 'is_uci_style_name: expected reject rule;id (later-char illegal)' >&2
+		return 1
+	fi
+	if is_uci_style_name 'rule.x'; then
+		echo 'is_uci_style_name: expected reject rule.x (later-char illegal)' >&2
+		return 1
+	fi
+	if is_uci_style_name ''; then
+		echo 'is_uci_style_name: expected reject empty' >&2
+		return 1
+	fi
+
 	if is_resolvable_address 'not an ip'; then
 		echo 'is_resolvable_address: expected reject for spaces' >&2
 		return 1
@@ -864,10 +956,17 @@ run_selftest() {
 	# Escaped-quote capture: a log prefix containing \" must not be truncated
 	# at the escaped quote (nft dumps strings with backslash escapes).
 	_tab=$(printf '\t')
+	_esc_t=$(printf '\\t')
+	_esc_b=$(printf '\\\\')
 	got=$(printf '%s\n' 'log prefix "My \" Rule"' | nft_dump_fields)
 	got="${got%%${_tab}*}"
-	if [ "$got" != 'My \" Rule' ]; then
-		echo "escaped-quote prefix capture: expected 'My \\\" Rule' got '$got'" >&2
+	if [ "$got" != 'My \\" Rule' ]; then
+		echo "escaped-quote prefix capture: expected encoded 'My \\\\\" Rule' got '$got'" >&2
+		return 1
+	fi
+	_nft_tsv_unescape "$got"
+	if [ "$_tsv_out" != 'My \" Rule' ]; then
+		echo "escaped-quote prefix unescape: expected 'My \\\" Rule' got '$_tsv_out'" >&2
 		return 1
 	fi
 	# Plain prefix still captures unchanged.
@@ -882,6 +981,70 @@ run_selftest() {
 	got="${got%%${_tab}*}"
 	if [ "$got" != '' ]; then
 		echo "empty prefix capture: expected '' got '$got'" >&2
+		return 1
+	fi
+	# Guest nft list emits a raw tab inside the quoted prefix
+	# (log prefix "fwlive<TAB>tabbed"). Encode it in the TSV field.
+	got=$(printf '%s\n' "log prefix \"fwlive${_tab}tabbed\"" | nft_dump_fields)
+	case "$got" in
+		*"${_tab}"*"${_tab}"*)
+			echo "tabbed prefix TSV: expected one separator tab, got extra" >&2
+			return 1
+			;;
+		*"${_tab}"*) ;;
+		*)
+			echo "tabbed prefix TSV: missing separator tab, got '$got'" >&2
+			return 1
+			;;
+	esac
+	got_prefix="${got%%${_tab}*}"
+	if [ "$got_prefix" != "fwlive${_esc_t}tabbed" ]; then
+		echo "tabbed prefix TSV: expected fwlive\\ttabbed got '$got_prefix'" >&2
+		return 1
+	fi
+	_nft_tsv_unescape "$got_prefix"
+	if [ "$_tsv_out" != "fwlive${_tab}tabbed" ]; then
+		echo "tabbed prefix unescape: expected fwlive<TAB>tabbed" >&2
+		return 1
+	fi
+	# Literal backslash-t must round-trip and not become a tab.
+	got=$(printf '%s\n' "log prefix \"fwlive${_esc_t}lit\"" | nft_dump_fields)
+	got_prefix="${got%%${_tab}*}"
+	if [ "$got_prefix" != "fwlive${_esc_b}tlit" ]; then
+		echo "literal \\\\t TSV: expected fwlive\\\\\\\\tlit got '$got_prefix'" >&2
+		return 1
+	fi
+	_nft_tsv_unescape "$got_prefix"
+	if [ "$_tsv_out" != "fwlive${_esc_t}lit" ]; then
+		echo "literal \\\\t unescape: expected fwlive\\\\tlit got '$_tsv_out'" >&2
+		return 1
+	fi
+	# Tabbed prefix plus !fw4: label: map key is the full prefix.
+	got=$(printf '%s\n' "log prefix \"fwlive${_tab}tabbed\" comment \"!fw4: TabRule\"" | nft_dump_fields)
+	OUT=''
+	_map_keys=0
+	_map_overflow=''
+	map_from_nft_stream all <<EOF
+$got
+EOF
+	if [ "$OUT" != '"fwlive'"${_esc_t}"'tabbed":"TabRule"' ]; then
+		echo "tabbed prefix map: expected full prefix -> TabRule, got $OUT" >&2
+		return 1
+	fi
+	# Comment-only / !fw4: label path is unchanged when there is no tab.
+	got=$(printf '%s\n' 'comment "!fw4: GoodName"' | nft_dump_fields)
+	if [ "$got" != "${_tab}!fw4: GoodName" ]; then
+		echo "comment-only TSV: expected leading tab + !fw4: GoodName got '$got'" >&2
+		return 1
+	fi
+	OUT=''
+	_map_keys=0
+	_map_overflow=''
+	map_from_nft_stream all <<EOF
+$got
+EOF
+	if [ "$OUT" != '"GoodName":"GoodName","goodname":"GoodName"' ]; then
+		echo "comment-only map: expected GoodName mapping, got $OUT" >&2
 		return 1
 	fi
 

@@ -360,6 +360,7 @@ return baseclass.extend({
 							visible: true,
 							value: band
 						},
+
 						hostname : {
 							title: _('Hostname'),
 							visible: true,

@@ -148,7 +148,11 @@ msgstr "无法禁用日志记录。"
 msgid "Could not enable logging."
 msgstr "无法启用日志记录。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:751
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:753
+msgid "Could not load logging status."
+msgstr "无法加载日志状态。"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:752
 msgid "Could not refresh logging status; showing the last known state."
 msgstr "无法刷新日志状态；显示上次已知状态。"
 
@@ -341,7 +345,7 @@ msgstr ""
 "如果行着色看起来缺失，当前 LuCI 主题可能未提供成功/错误或信息/警告 CSS 变量；"
 "fwlive 会回退到本地颜色（隔离运行，数据不会离开本设备）。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:321
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:323
 msgid ""
 "If the WAN is quiet, wait for probes or use the optional ping check in "
 "Help / the enabling-logs guide."
@@ -367,15 +371,15 @@ msgid "Interface (prefix ! to exclude)"
 msgstr "接口（前缀 ! 表示排除）"
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:244
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:359
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:361
 msgid "I’ll configure this under Network → Firewall"
 msgstr "稍后我会在 网络 → 防火墙 中配置"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:284
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:286
 msgid "Kernel log modules missing"
 msgstr "缺少内核日志模块"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:287
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:289
 msgid ""
 "Kernel netfilter log modules are missing. Install kmod-nf-log-ipv4 and kmod-"
 "nf-log-ipv6 (or kmod-nf-log / kmod-nf-log6), then reload the firewall."
@@ -399,7 +403,7 @@ msgstr "诊断功能受限 — 缺少 timeout 命令"
 msgid "Live view may be incomplete — a legacy iptables table is registered"
 msgstr "实时视图可能不完整 — 已注册旧版 iptables 表"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:330
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:332
 msgid "Logging is off on this router"
 msgstr "此路由器的日志记录已关闭"
 
@@ -419,7 +423,7 @@ msgid ""
 msgstr ""
 "手动模式仍受服务器保护和轮询节奏约束；它改变的是抓取配额，而不是轮询间隔。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:378
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:380
 msgid "Manual test (System → Terminal):"
 msgstr "手动测试（系统 → 终端）："
 
@@ -442,13 +446,13 @@ msgstr "更多筛选"
 msgid "Network → Firewall"
 msgstr "网络 → 防火墙"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:275
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:277
 msgid ""
 "No WAN firewall zone found in /etc/config/firewall. Configure zones under:"
 msgstr ""
 "在 /etc/config/firewall 中未找到 WAN 防火墙区域。请在以下位置配置区域："
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:270
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:272
 msgid "No WAN zone found"
 msgstr "未找到 WAN 区域"
 
@@ -461,7 +465,7 @@ msgstr "未找到 WAN 区域；没有它无法切换日志记录。"
 msgid "Not now"
 msgstr "暂不"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:353
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:355
 msgid "Nothing changes until you click Enable."
 msgstr "点击「启用」之前不会有任何更改。"
 
@@ -473,11 +477,11 @@ msgstr "出接口"
 msgid "One line"
 msgstr "单行"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:326
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:328
 msgid "Open firewall zone settings"
 msgstr "打开防火墙区域设置"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:333
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:335
 msgid ""
 "OpenWrt does not write firewall events to the log until you turn logging on. "
 "Live View only shows what the firewall already logs — it does not add allow/"
@@ -673,11 +677,11 @@ msgstr "防火墙记录流量时表格会自动更新。如果滚动太快，请
 msgid "Theme tint fallback"
 msgstr "主题着色回退"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:386
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:388
 msgid "Then ping the router."
 msgstr "然后 ping 路由器。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:304
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:306
 msgid ""
 "This router reported a logging blocker that Live View does not recognize yet."
 msgstr "此路由器报告了 Live View 尚无法识别的日志阻止项。"
@@ -702,7 +706,7 @@ msgstr "主要通信方"
 msgid "Turn it back off with the WAN logging control on the watch strip."
 msgstr "通过监视栏上的 WAN 日志控件将其重新关闭。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:347
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:349
 msgid ""
 "Turns on WAN zone drop/reject logging (same as Network → Firewall → wan → "
 "Log). Rate-limited by the zone log_limit (OpenWrt default 10/minute). Normal "
@@ -732,7 +736,7 @@ msgstr "视图"
 msgid "WAN drop/reject logging is off."
 msgstr "WAN 丢弃/拒绝日志记录已关闭。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:314
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:316
 msgid ""
 "WAN drop/reject logging is on. Blocked inbound WAN traffic will show up "
 "here. Normal LAN browsing will not."
@@ -761,7 +765,7 @@ msgid "WAN logging on (%s). Click to disable."
 msgstr "WAN 日志：开（%s）。点击可禁用。"
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:120
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:301
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:303
 msgid "WAN logging unavailable"
 msgstr "WAN 日志不可用"
 
@@ -773,7 +777,7 @@ msgstr "WAN 日志不可用：缺少内核日志模块"
 msgid "WAN logging unavailable: no WAN zone"
 msgstr "WAN 日志不可用：无 WAN 区域"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:311
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:313
 msgid "Waiting for firewall events"
 msgstr "正在等待防火墙事件"
 

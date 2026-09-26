@@ -133,7 +133,11 @@ msgstr ""
 msgid "Could not enable logging."
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:751
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:753
+msgid "Could not load logging status."
+msgstr ""
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:752
 msgid "Could not refresh logging status; showing the last known state."
 msgstr ""
 
@@ -317,7 +321,7 @@ msgid ""
 "data leaves the device)."
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:321
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:323
 msgid ""
 "If the WAN is quiet, wait for probes or use the optional ping check in "
 "Help / the enabling-logs guide."
@@ -341,15 +345,15 @@ msgid "Interface (prefix ! to exclude)"
 msgstr ""
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:244
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:359
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:361
 msgid "I’ll configure this under Network → Firewall"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:284
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:286
 msgid "Kernel log modules missing"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:287
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:289
 msgid ""
 "Kernel netfilter log modules are missing. Install kmod-nf-log-ipv4 and kmod-"
 "nf-log-ipv6 (or kmod-nf-log / kmod-nf-log6), then reload the firewall."
@@ -371,7 +375,7 @@ msgstr ""
 msgid "Live view may be incomplete — a legacy iptables table is registered"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:330
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:332
 msgid "Logging is off on this router"
 msgstr ""
 
@@ -390,7 +394,7 @@ msgid ""
 "budget, not the polling interval."
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:378
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:380
 msgid "Manual test (System → Terminal):"
 msgstr ""
 
@@ -413,12 +417,12 @@ msgstr ""
 msgid "Network → Firewall"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:275
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:277
 msgid ""
 "No WAN firewall zone found in /etc/config/firewall. Configure zones under:"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:270
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:272
 msgid "No WAN zone found"
 msgstr ""
 
@@ -431,7 +435,7 @@ msgstr ""
 msgid "Not now"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:353
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:355
 msgid "Nothing changes until you click Enable."
 msgstr ""
 
@@ -443,11 +447,11 @@ msgstr ""
 msgid "One line"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:326
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:328
 msgid "Open firewall zone settings"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:333
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:335
 msgid ""
 "OpenWrt does not write firewall events to the log until you turn logging on. "
 "Live View only shows what the firewall already logs — it does not add allow/"
@@ -633,11 +637,11 @@ msgstr ""
 msgid "Theme tint fallback"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:386
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:388
 msgid "Then ping the router."
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:304
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:306
 msgid ""
 "This router reported a logging blocker that Live View does not recognize yet."
 msgstr ""
@@ -662,7 +666,7 @@ msgstr ""
 msgid "Turn it back off with the WAN logging control on the watch strip."
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:347
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:349
 msgid ""
 "Turns on WAN zone drop/reject logging (same as Network → Firewall → wan → "
 "Log). Rate-limited by the zone log_limit (OpenWrt default 10/minute). Normal "
@@ -690,7 +694,7 @@ msgstr ""
 msgid "WAN drop/reject logging is off."
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:314
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:316
 msgid ""
 "WAN drop/reject logging is on. Blocked inbound WAN traffic will show up "
 "here. Normal LAN browsing will not."
@@ -715,7 +719,7 @@ msgid "WAN logging on (%s). Click to disable."
 msgstr ""
 
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:120
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:301
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:303
 msgid "WAN logging unavailable"
 msgstr ""
 
@@ -727,7 +731,7 @@ msgstr ""
 msgid "WAN logging unavailable: no WAN zone"
 msgstr ""
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:311
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/logging.js:313
 msgid "Waiting for firewall events"
 msgstr ""
 

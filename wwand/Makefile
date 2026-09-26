@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.6.8_p6
-PKG_RELEASE:=56
+PKG_VERSION:=1.6.8_p23
+PKG_RELEASE:=57
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=2d7803e46b95f60a8a890ccd961f5154ba672424
+PKG_SOURCE_VERSION:=cf8d5cf1cc5767d58824a02c61de4d9d2ff58cf6
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -98,7 +98,7 @@ UCDIR:=/usr/share/ucode/wwand
 WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
 	carrier_config.uc client.uc config.uc config_check.uc context_common.uc \
 	context_monitor_qmi.uc ctx_settings.uc daemon.uc deps.uc discovery.uc \
-	hwops.uc log.uc modem_common.uc modem_datapath_qmi.uc modem_init_qmi.uc \
+	hwops.uc log.uc modem_common.uc modem_datapath_qmi.uc modem_init_qmi.uc plugins.uc \
 	modem_quirks.uc modeswitch.uc ncm_vendors.uc netlink.uc netsel_ops.uc \
 	protocol_switch.uc reconnect.uc recovery.uc regdetail.uc sim.uc sim_plmn.uc \
 	simops.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \

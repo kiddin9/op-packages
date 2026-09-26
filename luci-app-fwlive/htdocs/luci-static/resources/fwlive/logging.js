@@ -262,6 +262,8 @@ function buildEmptyStateNodes(state, callbacks) {
 		);
 	}
 
+	if (!st) return nodes;
+
 	if (blocker === 'no_wan_zone') {
 		nodes.push(
 			E(
