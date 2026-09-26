@@ -13,12 +13,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ipa
-PKG_VERSION:=0.1.0
-PKG_RELEASE:=1
+PKG_VERSION:=0.1.0_p1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ipa.git
-PKG_SOURCE_VERSION:=fc0fad051213f23d10864f26ebc7205ae5c0a451
+PKG_SOURCE_VERSION:=f84625427503041472ba10f32df4969091a86f17
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -34,21 +34,24 @@ define Package/wwand-ipa
   CATEGORY:=Network
   SUBMENU:=WWAN
   TITLE:=eSIM fleet management (SGP.32 eIM) for wwand
-  # wwand-esim: its bridge carries the assistant's APDUs; wwand-ipad: the
-  # assistant itself (onomondo-ipa with the stdio card backend)
+  # wwand-esim: its bridge carries the assistant's APDUs and runs direct
+  # downloads; wwand-ipad: the assistant itself (ipad, SGP.32 v1.3)
   DEPENDS:=+wwand-esim +wwand-ipad
   PKGARCH:=all
 endef
 
 define Package/wwand-ipa/description
- Lets an eIM manage the modem's eSIM: wwand polls it (after the connection
- comes up, then every ipa_interval seconds) with the onomondo-ipa assistant,
- relays the assistant's card traffic over the modem's APDU channel, and after
- a profile change resets the SIM (or the modem) and waits for the session on
- the new profile before the result is reported. Runs against an SGP.22
- consumer eUICC (the assistant's IoT eUICC emulation); the eIM must accept
- that mode. Enable per modem with `wwandctl ipa [modem] eim <file>`. While
- enabled, manual profile changes on that card are refused unless forced.
+ Lets an eIM manage the modem's eSIM (GSMA SGP.32): wwand polls it (after
+ the connection comes up, then every ipa_interval seconds) with the ipad
+ assistant, relays the assistant's card traffic over the modem's APDU
+ channel, resets the SIM (or the modem) after a profile change and waits for
+ the session on the new profile, runs direct downloads through lpac, and
+ writes the enabled profile's APN into a wwand_sim section for its ICCID.
+ Drives an IoT eUICC, or an SGP.22 consumer eUICC through ipad's emulation,
+ whose results are signed with a device key the eIM imports
+ (`wwandctl ipa export`). Enable per modem with `wwandctl ipa [modem] eim
+ <file>`. While enabled, manual profile changes on that card are refused
+ unless forced.
 endef
 
 define Package/luci-app-wwand-ipa

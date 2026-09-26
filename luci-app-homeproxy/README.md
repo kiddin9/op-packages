@@ -1,5 +1,8 @@
 <div align="center">
 
+## 新增本仓库“架构重构”试验性产品luci-app-homeproxy-pro
+(https://github.com/szwjp/luci-app-homeproxy-pro)
+
 # luci-app-homeproxy
 
 **The modern ImmortalWrt proxy platform for ARM64 / AMD64**
