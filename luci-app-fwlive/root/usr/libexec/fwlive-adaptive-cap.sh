@@ -116,7 +116,11 @@ fwlive_adaptive_state_dir_ok() {
 	[ -d "$_dir" ] || return 1
 	# shellcheck disable=SC3067
 	[ -O "$_dir" ] || return 1
-	return 0
+	# Same group/other-write refuse as wan_log_lock_dir_safe: the
+	# PID-predictable ${STATE}.tmp.$$ + mv is a symlink-write if the
+	# dir is world-writable.
+	_writable=$(find "$_dir" -prune \( -perm -020 -o -perm -002 \) -print 2>/dev/null) || return 1
+	[ -z "$_writable" ]
 }
 
 # Extract a decimal integer field from a one-line JSON object (builtin only).

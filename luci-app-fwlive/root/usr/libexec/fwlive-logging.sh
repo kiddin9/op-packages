@@ -411,8 +411,18 @@ maybe_snapshot_wan_log_baseline() {
 	zone="$1"
 	path="$(wan_log_baseline_path)"
 	[ -n "$zone" ] || return 1
+	[ -L "$path" ] && return 1
 	[ -f "$path" ] && return 0
-	mkdir -p "$(dirname "$path")" 2>/dev/null || return 1
+	_dir=$(dirname "$path")
+	[ -n "$_dir" ] || return 1
+	[ -L "$_dir" ] && return 1
+	mkdir -p "$_dir" 2>/dev/null || return 1
+	[ -L "$_dir" ] && return 1
+	[ -L "$path" ] && return 1
+	# Production path only: tests relocate WAN_LOG_BASELINE_FILE.
+	if [ -z "${FWLIVE_WAN_LOG_BASELINE_FILE:-}" ] && [ "$path" = /etc/fwlive/wan-log-baseline ]; then
+		wan_log_lock_dir_safe "$_dir" || return 1
+	fi
 	current=$(wan_zone_log_value "$zone")
 	printf '%s' "$current" >"$path" 2>/dev/null || return 1
 	return 0

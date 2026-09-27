@@ -21,12 +21,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-rsim
-PKG_VERSION:=0.0.1_p27
-PKG_RELEASE:=1
+PKG_VERSION:=0.0.1_p37
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-rsim.git
-PKG_SOURCE_VERSION:=a0cc81ccb480c19bcf5808cc148b17a2f5d26ca4
+PKG_SOURCE_VERSION:=8bb57e354b74eeac891e70e3fe8b9bc309737c23
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -150,7 +150,10 @@ define Package/rsim-card/description
  (Phoenix/Smartmouse serial readers, the WB Electronics Smartmouse USB over
  libusb) or the SIM of a modem it reaches over its AT port (at:<tty>,
  AT+CSIM; that modem's radio is switched off while its card is lent), and
- speaks JSON lines on stdin/stdout. Install it on a router that only holds
+ speaks JSON lines on stdin/stdout; a paired phone's SIM over the
+ Bluetooth SIM Access Profile (bt:<address>, kernel sockets only).
+ `rsim-card --list` shows what the machine offers; `rsim-card --serve` is
+ the forced command for the router's SSH key. Install it on a router that only holds
  the reader or the modem (a SIM host); the router with the using modem
  reaches it over SSH (rsim_reader ssh:<user>@<host>:<reader>). Needs
  nothing of wwand.
@@ -169,15 +172,38 @@ define Package/wwand-rsim
 endef
 
 define Package/wwand-rsim/description
- Lets a Qualcomm modem use a SIM card that sits in a reader on the router,
- or on another machine reached over SSH, as if it were in the modem's own
- slot (QMI UIM Remote). Readers: Phoenix/Smartmouse serial readers, and the
- WB Electronics Smartmouse USB driven over libusb (clock and mode set by
- software). Configure per modem with `option rsim_reader` (phoenix:<tty>,
- wbsm:, or ssh:<user>@<host>:<reader>). The modem firmware must have the
- service enabled: `wwandctl rsim [modem] enable --reset` (Quectel).
- Another wwand modem can lend its card instead (`modem:<donor>`), over the
- SIM Access Profile or APDU by APDU (QMI UIM or AT+CSIM).
+ Lets a Qualcomm modem use a SIM card that is not in its own slot, as if
+ it were (QMI UIM Remote): in a reader on the router or on another machine
+ reached over SSH (Phoenix/Smartmouse serial readers, the WB Electronics
+ Smartmouse USB over libusb), in a phone paired over Bluetooth (SIM Access
+ Profile), in a modem wwand does not manage (AT+CSIM), in another modem of
+ this router, in a modem of another wwand router (over SSH, restricted with
+ rsim-card --serve; that router needs wwand-rsim-provider), or in an
+ osmo-remsim SIM bank (RSPRO). A lending modem detaches
+ first and keeps its radio off; the lender's APN settings come along as a
+ wwand_sim for the card. Configure per modem with `option rsim` (a
+ wwand_simreader) or in LuCI. The modem firmware must have the service
+ enabled: `wwandctl rsim [modem] enable --reset` (Quectel).
+endef
+
+define Package/wwand-rsim-provider
+  SECTION:=net
+  CATEGORY:=Network
+  SUBMENU:=WWAN
+  TITLE:=Lend this router's modem SIMs to other wwand routers
+  # the lending itself is the rsim plugin's, in the daemon; this is the
+  # relay another router runs here over SSH (wwandctl rsim proxy)
+  DEPENDS:=+wwand-rsim
+  VARIANT:=nopcsc
+endef
+
+define Package/wwand-rsim-provider/description
+ The provider side of wwand-rsim: `wwandctl rsim proxy`, which another
+ router's wwand-rsim runs here over SSH to borrow the card of one of this
+ router's modems (SIM Access or APDU by APDU, the modem's radio parked
+ meanwhile), and `wwandctl rsim proxy --list`, which a scan from there
+ shows. Without it this router lends its cards only to its own modems (SIM
+ sponsor), and another router reaches them only over an AT port.
 endef
 
 define Package/luci-app-wwand-rsim
@@ -209,6 +235,11 @@ define Package/wwand-rsim/install
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ctl/rsim.uc $(1)$(UCDIR)/ctl/
 endef
 
+define Package/wwand-rsim-provider/install
+	$(INSTALL_DIR) $(1)$(UCDIR)/ctl
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/ctl/rsim_provider.uc $(1)$(UCDIR)/ctl/
+endef
+
 # named, not globbed (the rule luci-app-wwand follows)
 define Package/luci-app-wwand-rsim/install
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/view/wwand
@@ -224,4 +255,5 @@ endef
 $(eval $(call BuildPackage,rsim-card))
 $(eval $(call BuildPackage,rsim-card-pcsc))
 $(eval $(call BuildPackage,wwand-rsim))
+$(eval $(call BuildPackage,wwand-rsim-provider))
 $(eval $(call BuildPackage,luci-app-wwand-rsim))

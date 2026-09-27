@@ -1,0 +1,131 @@
+--- a/tools/v8_gypfiles/v8.gyp
++++ b/tools/v8_gypfiles/v8.gyp
+@@ -105,6 +105,7 @@
+       ],
+       'hard_dependency': 1,
+       'direct_dependent_settings': {
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(SHARED_INTERMEDIATE_DIR)',
+         ],
+@@ -227,6 +228,7 @@
+           '<@(torque_outputs_cc)',
+           '<@(torque_outputs_inc)',
+         ],
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(SHARED_INTERMEDIATE_DIR)',
+         ],
+@@ -248,6 +250,7 @@
+         'sources': [
+           '<(generate_bytecode_builtins_list_output)',
+         ],
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(generate_bytecode_output_root)',
+           '<(SHARED_INTERMEDIATE_DIR)',
+@@ -331,6 +334,7 @@
+         'fp16',
+         'abseil.gyp:abseil',
+       ],
++      'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+       'include_dirs': [
+         '<(SHARED_INTERMEDIATE_DIR)',
+         '<(generate_bytecode_output_root)',
+@@ -952,6 +956,7 @@
+       'target_name': 'v8_compiler',
+       'type': 'static_library',
+       'toolsets': ['host', 'target'],
++      'libraries!':[ '-lcrypto', '-lssl', '-lz', '-lhttp_parser', '-luv', '-lnghttp2', '-lcares' ],
+       'dependencies': [
+         'generate_bytecode_builtins_list',
+         'run_torque',
+@@ -1084,6 +1089,7 @@
+       ],
+       'includes': ['inspector.gypi'],
+       'direct_dependent_settings': {
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(generate_bytecode_output_root)',
+           '<(SHARED_INTERMEDIATE_DIR)',
+@@ -1705,6 +1711,7 @@
+         }],
+       ],
+       'direct_dependent_settings': {
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(V8_ROOT)/include',
+         ],
+@@ -1725,6 +1732,7 @@
+     {
+       'target_name': 'bytecode_builtins_list_generator',
+       'type': 'executable',
++      'libraries!':[ '-licui18n', '-licuuc', '-licudata', '-lcrypto', '-lssl', '-lz', '-lhttp_parser', '-luv', '-lnghttp2', '-lcares' ],
+       'conditions': [
+         ['want_separate_host_toolset', {
+           'toolsets': ['host'],
+@@ -1765,6 +1773,8 @@
+     {
+       'target_name': 'mksnapshot',
+       'type': 'executable',
++      'libraries!':[ '-L<!@(echo "$STAGING_DIR"/usr/lib)', '-lcrypto', '-lssl', '-lz', '-lhttp_parser', '-luv', '-lnghttp2', '-lcares' ],
++      'libraries':[ '-L../../../../staging_dir/hostpkg/share/icu/current/lib' ],
+       'dependencies': [
+         'v8_base_without_compiler',
+         'v8_compiler_for_mksnapshot',
+@@ -1821,6 +1831,7 @@
+     {
+       'target_name': 'torque',
+       'type': 'executable',
++      'libraries!':[ '-licui18n', '-licuuc', '-licudata', '-lcrypto', '-lssl', '-lz', '-lhttp_parser', '-luv', '-lnghttp2', '-lcares' ],
+       'dependencies': [
+         'torque_base',
+         'abseil.gyp:abseil',
+@@ -1875,6 +1886,7 @@
+     {
+       'target_name': 'torque-language-server',
+       'type': 'executable',
++      'libraries!':[ '-licui18n', '-licuuc', '-licudata', '-lcrypto', '-lssl', '-lz', '-lhttp_parser', '-luv', '-lnghttp2', '-lcares' ],
+       'conditions': [
+         ['want_separate_host_toolset', {
+           'toolsets': ['host'],
+@@ -1917,6 +1929,8 @@
+     {
+       'target_name': 'gen-regexp-special-case',
+       'type': 'executable',
++      'libraries!':[ '-L<!@(echo "$STAGING_DIR"/usr/lib)', '-lcrypto', '-lssl', '-lz', '-lhttp_parser', '-luv', '-lnghttp2', '-lcares' ],
++      'libraries':[ '-L../../../../staging_dir/hostpkg/share/icu/current/lib' ],
+       'dependencies': [
+         'v8_libbase',
+         # "build/win:default_exe_manifest",
+@@ -2169,6 +2183,7 @@
+          }],
+       ],
+       'direct_dependent_settings': {
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(V8_ROOT)/include',
+         ],
+@@ -2310,12 +2325,14 @@
+         }],
+       ],
+       'direct_dependent_settings': {
++        'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+         'include_dirs': [
+           '<(V8_ROOT)/third_party/zlib',
+           '<(V8_ROOT)/third_party/zlib/google',
+         ],
+       },
+       'defines': [ 'ZLIB_IMPLEMENTATION' ],
++      'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+       'include_dirs': [
+         '<(V8_ROOT)/third_party/zlib',
+         '<(V8_ROOT)/third_party/zlib/google',
+@@ -2363,6 +2380,7 @@
+       'variables': {
+         'FP16_ROOT': '../../deps/v8/third_party/fp16',
+       },
++      'include_dirs!': [ '<!@(echo "$STAGING_DIR"/usr/include)' ],
+       'direct_dependent_settings': {
+         'include_dirs': [
+           '<(FP16_ROOT)/src/include',
