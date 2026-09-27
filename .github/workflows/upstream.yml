@@ -253,7 +253,6 @@ jobs:
         git_clone https://github.com/animegasan/luci-app-alpha-config
         git_clone https://github.com/gofly/openwrt-luci-proto-tinc
         git_clone https://github.com/hzyitc/mnh-openwrt && mvdir mnh-openwrt
-        git_clone https://github.com/VizzleTF/luci-theme-footstrap footstrap && mv footstrap/luci-theme-footstrap ./ && rm -rf footstrap
         git_clone https://github.com/VizzleTF/luci-app-gitbackup tigb && mv -f tigb/*/*gitbackup ./;rm -rf tigb
         git_clone https://github.com/VizzleTF/luci-app-footstrap-files footstrapf && mv -f footstrapf/luci-app-footstrap-files ./;rm -rf footstrapf
         ) &
@@ -267,7 +266,6 @@ jobs:
         git_clone https://github.com/linkease/istore-packages
         git clone https://github.com/laipeng668/luci-app-gecoosac gecoosac1 && mvdir gecoosac1
         git_clone https://github.com/eamonxg/luci-theme-shadcn
-        git_sparse_clone dashboard-wireless-band "https://github.com/eamonxg/luci" modules/luci-mod-dashboard
         ) &
         (
         git_clone https://github.com/muink/luci-app-dnsproxy
@@ -435,6 +433,7 @@ jobs:
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/!(ookla-speedtest) ./; rm -rf modemfeed
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel
         mv -f applications luciapp && rm -rf luciapp/luci-app-firewall
+        git_sparse_clone master "https://github.com/openwrt/luci" modules/luci-mod-dashboard themes/luci-theme-footstrap applications/luci-app-shunt
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications \
         modules/luci-base modules/luci-mod-network modules/luci-mod-status modules/luci-mod-system libs/rpcd-mod-luci protocols/luci-proto-openvpnc themes/luci-theme-design
         mv -n applications/* luciapp/; rm -rf applications
