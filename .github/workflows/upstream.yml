@@ -194,7 +194,7 @@ jobs:
         (
         git_clone https://github.com/honwen/luci-app-aliddns
         git_clone https://github.com/peter-tank/luci-app-dnscrypt-proxy2
-        git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-* ./; rm -rf openwrt-packages
+        git_clone https://github.com/sundaqiang/openwrt-packages && mv -n openwrt-packages/luci-app-!(wolplus) ./; rm -rf openwrt-packages
         git_clone https://github.com/CHN-beta/rkp-ipid
         git_clone https://github.com/lucas-albers-lz4/fwlive && mv -f fwlive/openwrt-feed/luci-app-fwlive ./;rm -rf fwlive
         git_clone https://github.com/2018nuoyan/openwrt_nezha && mv -n openwrt_nezha/*nezhav1 ./; rm -rf openwrt_nezha
@@ -229,7 +229,7 @@ jobs:
         git_clone https://github.com/Arthur97172/luci-app-substore
         git_clone https://github.com/Junatum/safeshield
         git_clone https://github.com/Junatum/luci-app-smartsafehub
-        https://github.com/dellzou/luci-app-dnsguard
+        git_clone https://github.com/dellzou/luci-app-dnsguard
         git_clone https://github.com/zow2023/luci-app-meow
         git_clone https://github.com/Andy7152/luci-app-minigate
         git_clone https://github.com/OneNAS-space/luci-app-adguardhome
