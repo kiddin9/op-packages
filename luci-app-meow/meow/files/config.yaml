@@ -1,0 +1,57 @@
+# Default meow-rs configuration shipped with the OpenWrt package.
+# Edit this file, then restart the service: /etc/init.d/meow restart
+# Full reference: https://github.com/meow-rs/meow-rs/blob/main/config.example.yaml
+
+# Combined HTTP + SOCKS5 proxy for LAN clients.
+mixed-port: 7890
+allow-lan: true
+bind-address: "0.0.0.0"
+
+# DIRECT sockets carry this mark so the managed output-chain rule skips them
+# (loop avoidance). Keep this even with an external firewall.
+routing-mark: 9527
+
+mode: rule
+log-level: info
+ipv6: false
+
+# REST API + built-in web panel (served at /ui).
+external-controller: 0.0.0.0:9090
+secret: ""
+
+# Transparent-gateway listener. MUST be declared here, NOT via the top-level
+# `tproxy-port:` shorthand: that shorthand hard-binds 127.0.0.1, so forwarded
+# LAN traffic (which the prerouting REDIRECT sends to LAN_IP:<port>) never
+# reaches it. `port` must match `tproxy_port` in /etc/config/meow.
+# Do NOT also set the top-level tproxy-port.
+listeners:
+  - name: tproxy-gw
+    type: tproxy
+    listen: '0.0.0.0'      # IPv4; see the nft template's `meta nfproto ipv6 return`
+    port: 7893
+
+# Recover the hostname for direct-IP TLS/HTTP where no DNS lookup happened.
+sniffer:
+  enable: true
+  override-destination: false
+  sniff:
+    TLS:  { ports: [443] }
+    HTTP: { ports: [80] }
+
+dns:
+  enable: true
+  # Bind 0.0.0.0 (not 127.0.0.1): the nft rules DNAT LAN :53 to <LAN_IP>:1053.
+  listen: 0.0.0.0:1053
+  # DNS mode is intentionally left at the default. Before switching to fake-ip
+  # you MUST add real proxies and make the LAST rule MATCH,<a proxy group>:
+  # with fake-ip the dst is always a synthetic 198.18.x.x address, and a
+  # trailing `MATCH,DIRECT` would send every unmatched domain to an unroutable
+  # address. Also keep 198.18.0.0/16 OUT of the nft bypass sets.
+  #   enhanced-mode: fake-ip
+  #   fake-ip-range: 198.18.0.0/16
+  nameserver:
+    - 223.5.5.5
+    - 1.1.1.1
+
+rules:
+  - MATCH,DIRECT          # placeholder: replace with MATCH,<proxy group> once proxies are added

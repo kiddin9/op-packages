@@ -1,0 +1,11 @@
+{
+  "luci-app-netstat": {
+    "description": "Grant access to LuCI Netstat app",
+    "read": {
+      "uci": [ "netstats" ]
+    },
+    "write": {
+      "uci": [ "netstats" ]
+    }
+  }
+}

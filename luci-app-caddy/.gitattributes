@@ -1,0 +1,10 @@
+# 保证脚本 / lua / shell 配置以 LF 入库, 避免 Windows 编辑后 CRLF 上传杀死 busybox ash
+* text=eol=lf
+
+# 二进制例外
+*.png binary
+*.jpg binary
+*.ico binary
+*.bin binary
+*.zip binary
+*.ipk binary

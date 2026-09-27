@@ -1,0 +1,135 @@
+msgid "ConnTrack"
+msgstr "连接跟踪"
+
+msgid "ConnTrack Connection Monitor"
+msgstr "ConnTrack 连接实时监视器"
+
+msgid "Realtime single-direction traffic speed flow based on Event-Stream (SSE)."
+msgstr "基于 Event-Stream (SSE) 长连接架构的单向实时网速/协议审计看板。"
+
+msgid "To show AppName, you'll need to patch kmod-nf-conntrack, please refers to"
+msgstr "想查看应用名称, 你需要给内核模块kmod-nf-connntrack打补丁, 详见"
+
+msgid "AppName"
+msgstr "应用名称"
+
+msgid "Show AppName (experiment)"
+msgstr "显示应用名称 (实验)"
+
+msgid "Interval (Seconds)"
+msgstr "采样刷新时间间隔"
+
+msgid "Display Rows"
+msgstr "屏幕显示最大行数"
+
+msgid "Actual Delta Time"
+msgstr "内核实际采样物理间隔"
+
+msgid "L3"
+msgstr "网络层"
+
+msgid "Protocol"
+msgstr "传输协议"
+
+msgid "State (Direction)"
+msgstr "连接状态 (单向流量方向)"
+
+msgid "Source IP:Port"
+msgstr "源 IP 地址 : 端口号"
+
+msgid "Destination IP:Port"
+msgstr "目的 IP 地址 : 端口号"
+
+msgid "Accumulated"
+msgstr "该方向累计消耗流量"
+
+msgid "Current Speed"
+msgstr "当前方向即时网速"
+
+msgid "Connecting to Event-Stream..."
+msgstr "正在安全握手并建立 Event-Stream 毫秒级长连接数据通道..."
+
+msgid "No active traffic speed detected..."
+msgstr "当前暂无活跃网速的大流量连接，表格已自动过滤零速率空闲链..."
+
+msgid "Stream connection lost, retrying..."
+msgstr "Event-Stream 连接意外被系统或网页剥离，正在疯狂尝试自动重新重连..."
+
+msgid "Filter Local/Loopback"
+msgstr "过滤本地或回环连接"
+
+msgid "Honor of Kings"
+msgstr "王者荣耀"
+
+msgid "YouTube"
+msgstr "油管"
+
+msgid "TikTok"
+msgstr "抖音"
+
+msgid "Tencent Video"
+msgstr "腾讯视频"
+
+msgid "X (Twitter)"
+msgstr "X (推特)"
+
+msgid "Instagram"
+msgstr "INS 照片墙"
+
+msgid "HTTPS Connection"
+msgstr "HTTPS 连接"
+
+msgid "Custom Icons Config"
+msgstr "自定义图标配置"
+
+msgid "Manage your custom application regex mappings and SVG icons here. Note that the regex and icon mappings only apply to tracked TCP connections that successfully return a domain name for matching, and will not affect existing hardcoded rules (such as YouTube detection). Custom regex expressions and icon mappings will be matched with the highest priority based on their ranking order."
+msgstr "在此管理您的自定义应用正则表达式与 SVG 图标库。请注意，正则表达式与图标映射仅适用于能够成功返回明文域名进行匹配的跟踪 TCP 连接，且绝不会影响系统中已有的固定硬编码规则（例如 YouTube 判定）。自定义的正则表达式与图标映射将严格按照列表中的上下排名次序享有最高优先匹配权。"
+
+msgid "Connection Tracking List"
+msgstr "连接跟踪列表"
+
+msgid "Custom App Icons Config"
+msgstr "自定义应用图标配置"
+
+msgid "Conntrack Custom App Icons"
+msgstr "连接跟踪自定义应用图标"
+
+msgid "Regex Expression & Icon Mappings"
+msgstr "正则表达式与图标映射"
+
+msgid "Regex Pattern"
+msgstr "正则模式"
+
+msgid "Iconify ID"
+msgstr "Iconify ID"
+
+msgid "Custom SVG Icons Repository"
+msgstr "自定义 SVG 图标库"
+
+msgid "Icon Preview"
+msgstr "图标预览"
+
+msgid "Icon Width"
+msgstr "宽度"
+
+msgid "Icon Height"
+msgstr "高度"
+
+msgid "SVG Body (Raw XML)"
+msgstr "SVG 源码 (原始 XML)"
+
+msgid "You can use an <a href=\"https://icon-sets.iconify.design/\" target=\"_blank\">existing Iconify ID</a> (e.g., logos:youtube) or a custom ID defined in the Custom SVG Icons Repository below."
+msgstr "可以使用<a href=\"https://icon-sets.iconify.design/\" target=\"_blank\">已有的公共 Iconify ID</a>（例如 logos:youtube），或者下方【自定义 SVG 图标库】中已注册的专属 ID。"
+
+msgid "You can use an existing Iconify ID (e.g., logos:youtube) or a custom ID defined in the Custom SVG Icons Repository below."
+msgstr "可以使用已有的公共 Iconify ID（例如 logos:youtube），或者下方【自定义 SVG 图标库】中已注册的专属 ID。"
+
+msgid "The Iconify ID must start with 'conntrack:' prefix to avoid overriding existing Iconify datasets."
+msgstr "Iconify ID 必须以 'conntrack:' 前缀起始，以避免与系统已有的远程通用图标集产生命名空间冲突。"
+
+msgid "Validation Error: The Iconify ID must begin with 'conntrack:' prefix (e.g., conntrack:custom_name)."
+msgstr "验证错误：Iconify ID 必须以 'conntrack:' 前缀起始 (例如 conntrack:custom_name)。"
+
+msgid "Invalid SVG content. Must start with <svg> tag."
+msgstr "无效的 SVG 内容。必须以 <svg> 标签起始。"
+

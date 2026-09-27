@@ -1,0 +1,135 @@
+#!/bin/sh
+# dnsguard-rollback —— 回滚点管理与自动回滚
+#
+#   dnsguard-rollback                     列出可用回滚点
+#   dnsguard-rollback --arm [分钟]        把"当前 UCI + 当前规则文件"做成回滚点，并挂倒计时自动回滚
+#   dnsguard-rollback --disarm            取消挂起的自动回滚（= 确认保留；不影响已有回滚点）
+#   dnsguard-rollback --status            输出一行 JSON：挂起状态 + 可用回滚点
+#   dnsguard-rollback <时间戳|latest>      还原到指定回滚点（UCI + 规则文件一起还原）并 reload
+#   dnsguard-rollback --auto <ts> <秒>    内部使用：倒计时结束后自动还原
+#
+# 为什么要有「自动回滚」：DNS 是全家网的命门，改错了人可能连路由器都访问不到（域名解析不了）。
+# 挂一个 N 分钟倒计时，人不在旁边确认就自动还原 —— 与"改 LAN IP 前挂回滚定时器"同一套纪律。
+#
+# 生成：WorkBuddy  2026-09-26
+
+set -u
+
+BAKDIR=/mnt/data/backup-dnsguard
+OUT=/etc/nftables.d/20-dns-guard.nft
+REC=/tmp/.dnsguard-rollback
+LOG_TAG=dnsguard
+
+snapshot() {
+	# snapshot <时间戳>   把 UCI + 当前规则文件存进回滚点目录
+	_t="$1"
+	mkdir -p "$BAKDIR/$_t" 2>/dev/null
+	[ -f "$OUT" ] && cp "$OUT" "$BAKDIR/$_t/20-dns-guard.nft" 2>/dev/null
+	uci export dnsguard > "$BAKDIR/$_t/dnsguard.uci" 2>/dev/null
+	[ -f "$BAKDIR/$_t/dnsguard.uci" ] && chmod 600 "$BAKDIR/$_t/dnsguard.uci" 2>/dev/null
+}
+
+do_restore() {
+	_t="$1"
+	if [ ! -d "$BAKDIR/$_t" ]; then
+		echo "回滚点不存在：$BAKDIR/$_t" >&2
+		return 1
+	fi
+	# 还原 UCI（让界面显示与实际一致）
+	if [ -f "$BAKDIR/$_t/dnsguard.uci" ]; then
+		uci import dnsguard < "$BAKDIR/$_t/dnsguard.uci" 2>/dev/null
+		uci commit dnsguard 2>/dev/null
+	fi
+	# 还原规则文件
+	if [ -f "$BAKDIR/$_t/20-dns-guard.nft" ]; then
+		cp "$BAKDIR/$_t/20-dns-guard.nft" "$OUT" 2>/dev/null
+	else
+		rm -f "$OUT" 2>/dev/null
+	fi
+	fw4 reload >/dev/null 2>&1
+	logger -t "$LOG_TAG" "已回滚到回滚点 $_t（UCI + 规则文件），防火墙已重载"
+	echo "已回滚到 $_t"
+	return 0
+}
+
+# ---------------- 参数分发 ----------------
+
+case "${1:-}" in
+	"")
+		echo "可用回滚点（新 → 旧）："
+		ls -1t "$BAKDIR" 2>/dev/null | head -20
+		;;
+
+	--status)
+		PEND=""
+		if [ -f "$REC" ]; then
+			read -r RTS RSEC RDL RSRC < "$REC" 2>/dev/null
+			NOW=$(date +%s)
+			LEFT=$(( ${RDL:-0} - NOW ))
+			[ "$LEFT" -lt 0 ] && LEFT=0
+			PEND="\"pending\":true,\"pending_ts\":\"${RTS:-}\",\"pending_left\":${LEFT},\"pending_total\":${RSEC:-0}"
+		else
+			PEND='"pending":false,"pending_ts":"","pending_left":0,"pending_total":0'
+		fi
+		LIST=""
+		for d in $(ls -1t "$BAKDIR" 2>/dev/null | head -10); do
+			[ -n "$LIST" ] && LIST="$LIST,"
+			LIST="$LIST\"$d\""
+		done
+		printf '{"status":"ok",%s,"backups":[%s]}\n' "$PEND" "$LIST"
+		;;
+
+	--arm)
+		SEC=$(printf '%s' "${2:-10}" | tr -dc '0-9'); [ -n "$SEC" ] || SEC=10
+		# 秒数上限保护：1 分钟 ~ 120 分钟
+		[ "$SEC" -lt 1 ] && SEC=1
+		[ "$SEC" -gt 120 ] && SEC=120
+		TS=$(date +%Y%m%d-%H%M%S)
+		snapshot "$TS"
+		DL=$(( $(date +%s) + SEC * 60 ))
+		printf '%s %s %s %s\n' "$TS" "$((SEC * 60))" "$DL" "pending" > "$REC"
+		setsid /bin/sh -c "/usr/bin/dnsguard-rollback --auto '$TS' '$((SEC * 60))'" >/dev/null 2>&1 &
+		logger -t "$LOG_TAG" "已挂自动回滚：$SEC 分钟后（若无确认）还原到回滚点 $TS"
+		printf '{"status":"ok","ts":"%s","seconds":%s}\n' "$TS" "$((SEC * 60))"
+		;;
+
+	--disarm)
+		if [ -f "$REC" ]; then
+			read -r RTS RSEC RDL RSRC < "$REC" 2>/dev/null
+			rm -f "$REC"
+			# 尽力杀掉倒计时进程；即使没杀干净，--auto 也会因为记录文件不存在而放弃
+			for pid in $(ps w 2>/dev/null | grep '[d]nsguard-rollback --auto' | awk '{print $1}'); do
+				kill "$pid" 2>/dev/null
+			done
+			logger -t "$LOG_TAG" "已取消自动回滚（确认保留当前设置），回滚点 $RTS 仍保留"
+			printf '{"status":"ok","message":"已取消自动回滚，当前设置被保留","ts":"%s"}\n' "$RTS"
+		else
+			printf '{"status":"ok","message":"没有挂起的自动回滚"}\n'
+		fi
+		;;
+
+	--auto)
+		TS="${2:-}"
+		SEC="${3:-600}"
+		sleep "$SEC" 2>/dev/null
+		# 记录文件是唯一真相：被 --disarm 删掉、或被后来的 --arm 覆盖，就什么都不做
+		[ -f "$REC" ] || exit 0
+		read -r RTS RSEC RDL RSRC < "$REC" 2>/dev/null
+		[ "${RTS:-}" = "$TS" ] || exit 0
+		rm -f "$REC"
+		logger -t "$LOG_TAG" "自动回滚触发：$((SEC / 60)) 分钟内未确认，正在还原到 $TS"
+		do_restore "$TS" >/dev/null 2>&1
+		exit 0
+		;;
+
+	*)
+		TS="$1"
+		if [ "$TS" = "latest" ]; then
+			TS=$(ls -1t "$BAKDIR" 2>/dev/null | head -1)
+		fi
+		[ -n "$TS" ] || { echo "找不到回滚点" >&2; exit 1; }
+		do_restore "$TS"
+		;;
+esac
+
+exit 0

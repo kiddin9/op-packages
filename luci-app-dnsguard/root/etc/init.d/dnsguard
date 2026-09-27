@@ -1,0 +1,32 @@
+#!/bin/sh /etc/rc.common
+# dnsguard —— DNS 防绕过服务封装（纯文件应用，无 procd 常驻进程）
+#
+# 规则真正的生效路径是 fw4 在启动/重载时 include /etc/nftables.d/20-dns-guard.nft，
+# 所以开机不需要本脚本做任何事（boot 为空实现）；这里只提供手工 reload / 临时卸载。
+#
+# 生成：WorkBuddy  2026-09-26
+
+START=99
+STOP=10
+
+boot() {
+	# 开机不做动作：规则文件由 fw4 include，本脚本若在 AGH 起来之前跑会被安全闸门拒绝
+	return 0
+}
+
+start() {
+	/usr/bin/dnsguard-apply --quiet
+}
+
+reload() {
+	/usr/bin/dnsguard-apply --quiet
+}
+
+stop() {
+	# 只临时摘掉本应用注入的链（配置文件不动，fw4 reload 后会按配置恢复）
+	nft delete chain inet fw4 dns_guard_redirect 2>/dev/null
+	nft delete chain inet fw4 dns_guard_block 2>/dev/null
+	nft delete chain inet fw4 dns_guard_pre_forward 2>/dev/null
+	logger -t dnsguard "已临时移除 DNS 防绕过链（配置未改，fw4 reload 后恢复）"
+	echo "已临时移除 DNS 防绕过链（配置未改，fw4 reload 后恢复）"
+}

@@ -1,0 +1,524 @@
+<%+header%>
+<%
+local uci = require "luci.model.uci".cursor()
+
+local function g(sec, opt, def)
+	local v = uci:get("dnsguard", sec, opt)
+	if v == nil or v == "" then return def or "" end
+	return v
+end
+
+local function e(s)
+	s = tostring(s or "")
+	return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"):gsub('"', "&quot;"))
+end
+
+local function on(sec, opt)
+	return g(sec, opt, "0") == "1"
+end
+
+-- 取 API 地址：优先 build_url，拿不到就退回固定路径（保证页面不白屏）
+local api_url = "/cgi-bin/luci/admin/services/dnsguard/api"
+local ok_disp, disp = pcall(require, "luci.dispatcher")
+if ok_disp and disp and disp.build_url then
+	local ok1, u1 = pcall(disp.build_url, "admin", "services", "dnsguard", "api")
+	if ok1 and u1 then api_url = u1 end
+end
+
+local cfg_enabled   = on("main", "enabled")
+local cfg_redirect  = on("main", "redirect53")
+local cfg_watch     = on("main", "watch")
+local cfg_853       = on("main", "block853")
+local cfg_doh       = on("main", "blockdoh")
+local cfg_port      = g("main", "target_port", "53")
+local cfg_ifaces    = g("main", "ifaces", "br-lan")
+local cfg_skip      = g("main", "skip_devices", "")
+local cfg_loglimit  = g("main", "log_limit", "5")
+local cfg_rollmin   = g("main", "rollback_minutes", "10")
+local cfg_nh4       = g("limits", "never_hijack4", "")
+local cfg_nh6       = g("limits", "never_hijack6", "")
+local cfg_dohsrv    = g("limits", "doh_servers", "")
+%>
+
+<style>
+/* 主题里 .cbi-section-node 横向 padding 为 0，自定义块必须自己补，否则会顶到左边 */
+.dg-pad { padding: 0 1rem .5rem 1rem; }
+.dg-table { width: 100%; max-width: 720px; border-collapse: collapse; font-size: 13px; }
+.dg-table td { padding: .45rem 0; border-bottom: 1px solid #eceef1; vertical-align: top; }
+.dg-table tr:last-child td { border-bottom: 0; }
+.dg-table .dg-k { width: 11rem; color: #57606a; }
+.dg-mono { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.dg-ok  { color: #0f6e56; font-weight: 600; }
+.dg-bad { color: #a32d2d; font-weight: 600; }
+.dg-warn{ color: #8a5a00; font-weight: 600; }
+.dg-banner { display:none; padding:.6rem .75rem; border-radius:.375rem; margin-bottom:.75rem; font-size:13px; line-height:1.7; white-space:pre-wrap; }
+.dg-pre { max-height:300px; overflow:auto; background:#f6f8fa; border-radius:.375rem; padding:.625rem; font-size:12px; line-height:1.55; color:#333; margin:.5rem 0 0; }
+</style>
+
+<div class="cbi-map">
+	<h2 name="content">DNS 防绕过</h2>
+	<div class="cbi-map-descr">
+		把局域网内「绕过 AdGuard Home 的 DNS」拉回本机解析：<strong>53 明文</strong>用透明重定向（客户端无感）、
+		<strong>853 DoT</strong> 用阻断（逼其回落 53）、<strong>DoH 专用 IP</strong> 可选阻断。
+		配置存于 <code>/etc/config/dnsguard</code>，保存后渲染到 <code>/etc/nftables.d/20-dns-guard.nft</code> 并重载 fw4。
+	</div>
+
+	<div class="cbi-section">
+		<h3>当前状态</h3>
+		<div class="cbi-section-node">
+			<div class="dg-pad">
+				<div id="dg-banner" class="dg-banner"></div>
+				<table class="dg-table">
+					<tr><td class="dg-k">总开关</td><td id="st-enabled">读取中…</td></tr>
+					<tr><td class="dg-k">AdGuard Home</td><td id="st-agh">—</td></tr>
+					<tr><td class="dg-k">:53 监听</td><td id="st-listen" class="dg-mono">—</td></tr>
+					<tr><td class="dg-k">53 透明重定向</td><td id="st-redirect">—</td></tr>
+					<tr><td class="dg-k">已收编包数</td><td id="st-redpk">—</td></tr>
+					<tr><td class="dg-k">观察计数（forward）</td><td id="st-watch">—</td></tr>
+					<tr><td class="dg-k">规则文件</td><td id="st-file">—</td></tr>
+					<tr><td class="dg-k">观察期累计日志</td><td id="st-logs">—</td></tr>
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<form id="dg-config" onsubmit="return false">
+		<div class="cbi-section">
+			<h3>开关</h3>
+			<div class="cbi-section-node">
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-enabled">启用 DNS 防绕过</label>
+					<div class="cbi-value-field">
+						<input type="checkbox" id="dg-enabled"<% if cfg_enabled then %> checked="checked"<% end %> />
+						<div class="cbi-value-description">总开关。关闭后不生成任何规则（等于恢复出厂状态）。</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-redirect">53 透明重定向</label>
+					<div class="cbi-value-field">
+						<input type="checkbox" id="dg-redirect"<% if cfg_redirect then %> checked="checked"<% end %> />
+						<div class="cbi-value-description">
+							把 LAN 内发往外部 <code>:53</code> 的 TCP/UDP 查询改道到本机 AdGuard Home（nat prerouting，优先级 -105）。
+							客户端<strong>无感</strong>，硬编码 DNS 的设备不用改设置。<br />
+							⚠️ 只在 AdGuard Home 正常运行时才有意义：<strong>AGH 挂了就会被安全闸门拒绝应用</strong>。
+						</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-watch">观察计数</label>
+					<div class="cbi-value-field">
+						<input type="checkbox" id="dg-watch"<% if cfg_watch then %> checked="checked"<% end %> />
+						<div class="cbi-value-description">
+							只计数 + 抽样记日志到 <code>/mnt/data/logs/messages</code>，不拦截。<br />
+							注意：53 被重定向后不再进入 forward 链，<strong>此计数会趋近于 0（只剩 853 / DoH）</strong>，这是正常的。
+						</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-853">阻断 853（DoT）</label>
+					<div class="cbi-value-field">
+						<input type="checkbox" id="dg-853"<% if cfg_853 then %> checked="checked"<% end %> />
+						<div class="cbi-value-description">DoT 无法透明重定向，只能阻断；客户端会回落到 853 之外的明文 53，从而被上面的重定向收编。建议重定向稳定 1 天后再开。</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-doh">阻断 DoH 专用 IP</label>
+					<div class="cbi-value-field">
+						<input type="checkbox" id="dg-doh"<% if cfg_doh then %> checked="checked"<% end %> />
+						<div class="cbi-value-description">
+							⚠️ 风险最高：按 IP 命中，可能误伤「恰好也部署在这些 IP 上」的其它服务（例如 <code>223.5.5.5:443</code>）。
+							更精准的做法是在 AdGuard Home 里加域名规则。默认关闭。
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="cbi-section">
+			<h3>参数</h3>
+			<div class="cbi-section-node">
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-port">重定向目标端口</label>
+					<div class="cbi-value-field">
+						<input type="text" class="cbi-input-text" id="dg-port" style="width:80px" value="<%=e(cfg_port)%>" />
+						<div class="cbi-value-description">本机 AdGuard Home 的监听端口，默认 53。<strong>不要</strong>填 dnsmasq 的 5353。</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-ifaces">入接口</label>
+					<div class="cbi-value-field">
+						<input type="text" class="cbi-input-text" id="dg-ifaces" style="width:260px" value="<%=e(cfg_ifaces)%>" />
+						<div class="cbi-value-description">监听哪个接口进来的流量，默认 <code>br-lan</code>。多个用空格分隔。</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-skip">例外设备</label>
+					<div class="cbi-value-field">
+						<input type="text" class="cbi-input-text" id="dg-skip" style="width:100%;max-width:420px" value="<%=e(cfg_skip)%>" placeholder="留空 = 全屋收编" />
+						<div class="cbi-value-description">
+							这些源地址<strong>不做</strong>重定向（IPv4 / IPv6 混填，空格分隔）。只在确实需要保留某个设备走外部 DNS 时使用。<br />
+							⚠️ 不要把整个 <code>192.168.0.0/16</code> 填进「永不劫持」：那样红米 K80 这类静态指向旧私网地址的设备会继续解析失败。
+						</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-loglimit">日志限速</label>
+					<div class="cbi-value-field">
+						<input type="text" class="cbi-input-text" id="dg-loglimit" style="width:80px" value="<%=e(cfg_loglimit)%>" />
+						<div class="cbi-value-description">观察日志每分钟最多写几条（1-999），防止刷爆日志。</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-rollmin">自动回滚倒计时</label>
+					<div class="cbi-value-field">
+						<input type="text" class="cbi-input-text" id="dg-rollmin" style="width:80px" value="<%=e(cfg_rollmin)%>" />
+						<div class="cbi-value-description">
+							把「53 重定向」从<strong>关改到开</strong>时，自动拍一个回滚快照并倒计时；到点未点「确认保留」就自动还原。<br />
+							DNS 是全家网的命门，改错了人可能连这台路由器都访问不到（域名解析不了）——这是最后的保险绳。单位：分钟（1-120）。
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="cbi-section">
+			<h3>高级：地址集合</h3>
+			<div class="cbi-section-node">
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-nh4">永不劫持（IPv4）</label>
+					<div class="cbi-value-field">
+						<textarea class="cbi-input-textarea" id="dg-nh4" rows="3" style="width:100%;max-width:560px"><%=e(cfg_nh4)%></textarea>
+						<div class="cbi-value-description">指向这些网段的 DNS 查询不会被改道（内网 / 保留段）。空格分隔。</div>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-nh6">永不劫持（IPv6）</label>
+					<div class="cbi-value-field">
+						<textarea class="cbi-input-textarea" id="dg-nh6" rows="2" style="width:100%;max-width:560px"><%=e(cfg_nh6)%></textarea>
+					</div>
+				</div>
+				<div class="cbi-value">
+					<label class="cbi-value-title" for="dg-dohsrv">DoH 专用地址集合</label>
+					<div class="cbi-value-field">
+						<textarea class="cbi-input-textarea" id="dg-dohsrv" rows="4" style="width:100%;max-width:560px"><%=e(cfg_dohsrv)%></textarea>
+						<div class="cbi-value-description">用于「DoH 专用 IP 阻断」与观察计数，也用于反查哪些设备在走这些地址。空格分隔。</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</form>
+
+	<div class="cbi-section">
+		<h3>操作</h3>
+		<div class="cbi-section-node">
+			<div class="dg-pad">
+				<div id="dg-msg" class="dg-banner"></div>
+
+				<div id="dg-pendbox" style="display:none;padding:.6rem .75rem;border-radius:.375rem;margin-bottom:.75rem;font-size:13px;background:#fff6e5;border:1px solid #d9a400;color:#5a3c00"></div>
+
+				<div style="margin-bottom:.75rem">
+					<button type="button" id="btn-save" class="cbi-button cbi-button-apply" style="margin-right:.5rem" onclick="dgSave()">保存并应用</button>
+					<button type="button" id="btn-apply" class="cbi-button" style="margin-right:.5rem" onclick="dgApply()">按当前配置重新应用</button>
+					<button type="button" id="btn-test" class="cbi-button cbi-button-action" style="margin-right:.5rem" onclick="dgSelfTest()">健康自检</button>
+					<button type="button" id="btn-rules" class="cbi-button" onclick="dgRules()">预览将要生成的规则</button>
+				</div>
+
+				<div id="dg-pendbtn" style="display:none;margin-bottom:.75rem">
+					<button type="button" id="btn-disarm" class="cbi-button cbi-button-negative" onclick="dgDisarm()">确认保留（取消自动回滚）</button>
+				</div>
+
+				<details id="dg-details">
+					<summary style="cursor:pointer;font-size:12.5px;color:#57606a">自检结果 / 规则预览 / 命令回显（点开查看）</summary>
+					<div id="dg-checks" style="margin:.5rem 0 0"></div>
+					<pre id="dg-out" class="dg-pre">（等待操作）</pre>
+				</details>
+			</div>
+		</div>
+	</div>
+
+	<div class="cbi-section">
+		<h3>回滚点</h3>
+		<div class="cbi-section-node">
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="dg-rb">选择回滚点</label>
+				<div class="cbi-value-field">
+					<select class="cbi-input-select" id="dg-rb" style="min-width:200px;margin-right:8px"></select>
+					<button type="button" id="btn-restore" class="cbi-button cbi-button-negative" onclick="dgRestore()">还原到该回滚点</button>
+					<div class="cbi-value-description">
+						还原会同时恢复 <strong>UCI 配置 + 规则文件</strong>并重载防火墙。回滚点目录：<code>/mnt/data/backup-dnsguard/</code>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+var DG_API = '<%=e(api_url)%>';
+
+function dgEsc(s) {
+	s = (s === null || s === undefined) ? '' : String(s);
+	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function dgBox(el, kind, text) {
+	var map = {
+		ok:   ['#e1f5ee', '#0f6e56', '#04342c'],
+		err:  ['#fcebeb', '#a32d2d', '#501313'],
+		busy: ['#e6f1fb', '#185fa5', '#042c53']
+	};
+	var c = map[kind] || map.busy;
+	el.style.display = 'block';
+	el.style.background = c[0];
+	el.style.border = '1px solid ' + c[1];
+	el.style.color = c[2];
+	el.textContent = text;
+	if (el.scrollIntoView) { el.scrollIntoView({ block: 'nearest' }); }
+}
+
+function dgMsg(kind, text) { dgBox(document.getElementById('dg-msg'), kind, text); }
+
+function dgOut(t) { document.getElementById('dg-out').textContent = t; }
+
+function dgDetails(openIt) {
+	var d = document.getElementById('dg-details');
+	if (openIt) { d.open = true; }
+}
+
+function dgBusy(id, on, label) {
+	var b = document.getElementById(id);
+	if (!b) { return; }
+	if (on) {
+		if (!b.getAttribute('data-orig')) { b.setAttribute('data-orig', b.textContent); }
+		b.textContent = label || '处理中…';
+		b.disabled = true;
+	} else {
+		var o = b.getAttribute('data-orig');
+		if (o) { b.textContent = o; }
+		b.disabled = false;
+	}
+}
+
+function dgVal(id) { var e = document.getElementById(id); return e ? e.value : ''; }
+function dgChk(id) { var e = document.getElementById(id); return e && e.checked ? '1' : '0'; }
+
+function dgEnc(o) {
+	var out = [];
+	for (var k in o) { out.push(encodeURIComponent(k) + '=' + encodeURIComponent(o[k])); }
+	return out.join('&');
+}
+
+function dgPost(params, cb) {
+	var x = new XMLHttpRequest();
+	x.open('POST', DG_API, true);
+	x.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	x.timeout = 90000;
+	x.onreadystatechange = function () {
+		if (x.readyState !== 4) { return; }
+		var d = null;
+		try { d = JSON.parse(x.responseText); } catch (err) { d = null; }
+		cb(x.status, d, x.responseText);
+	};
+	x.ontimeout = function () { cb(0, null, '请求超时（90 秒）—— 防火墙重载可能较慢，请刷新页面查看当前状态'); };
+	x.send(params);
+}
+
+function dgFmtBytes(n) {
+	n = Number(n) || 0;
+	if (n < 1024) { return n + ' B'; }
+	if (n < 1048576) { return (n / 1024).toFixed(1) + ' KB'; }
+	return (n / 1048576).toFixed(1) + ' MB';
+}
+
+function dgSave() {
+	dgMsg('busy', '正在保存并应用（会重载防火墙，几秒钟）…');
+	dgBusy('btn-save', true, '保存中…');
+	dgPost(dgEnc({
+		action: 'save',
+		enabled: dgChk('dg-enabled'),
+		redirect53: dgChk('dg-redirect'),
+		watch: dgChk('dg-watch'),
+		block853: dgChk('dg-853'),
+		blockdoh: dgChk('dg-doh'),
+		target_port: dgVal('dg-port'),
+		ifaces: dgVal('dg-ifaces'),
+		skip_devices: dgVal('dg-skip'),
+		log_limit: dgVal('dg-loglimit'),
+		rollback_minutes: dgVal('dg-rollmin'),
+		never_hijack4: dgVal('dg-nh4'),
+		never_hijack6: dgVal('dg-nh6'),
+		doh_servers: dgVal('dg-dohsrv')
+	}), function (code, d, raw) {
+		dgBusy('btn-save', false);
+		if (!d) {
+			dgMsg('err', '保存请求失败（HTTP ' + code + '）\n' + raw);
+			dgOut(raw); dgDetails(true);
+			return;
+		}
+		dgOut(d.message + '\n\n--- dnsguard-apply 回显 ---\n' + (d.apply || ''));
+		if (d.status === 'ok') {
+			var extra = '';
+			if (d.armed) { extra = '\n🛟 已挂自动回滚，未点「确认保留」将自动还原（快照 ' + d.armed + '）'; }
+			dgMsg('ok', '✅ ' + d.message + '（' + (d.at || '') + '）' + extra);
+			dgStatus();
+		} else {
+			dgMsg('err', '❌ ' + d.message);
+			dgDetails(true);
+			dgStatus();
+		}
+	});
+}
+
+function dgApply() {
+	dgMsg('busy', '正在按当前配置重新渲染并应用…');
+	dgBusy('btn-apply', true, '应用中…');
+	dgPost(dgEnc({ action: 'apply' }), function (code, d, raw) {
+		dgBusy('btn-apply', false);
+		if (!d) { dgMsg('err', '请求失败（HTTP ' + code + '）\n' + raw); dgOut(raw); dgDetails(true); return; }
+		dgOut(d.message + '\n\n' + (d.apply || ''));
+		if (d.status === 'ok') { dgMsg('ok', '✅ ' + d.message + '（' + (d.at || '') + '）'); }
+		else { dgMsg('err', '❌ ' + d.message); dgDetails(true); }
+		dgStatus();
+	});
+}
+
+function dgSelfTest() {
+	dgMsg('busy', '正在执行健康自检…');
+	dgBusy('btn-test', true, '自检中…');
+	dgDetails(true);
+	dgPost(dgEnc({ action: 'selftest' }), function (code, d, raw) {
+		dgBusy('btn-test', false);
+		if (!d || !d.items) {
+			dgMsg('err', '自检失败（HTTP ' + code + '）\n' + raw);
+			dgOut(raw);
+			return;
+		}
+		var html = '<table class="dg-table">';
+		var bad = 0, warn = 0;
+		for (var i = 0; i < d.items.length; i++) {
+			var it = d.items[i];
+			var cls = it.state === 'ok' ? 'dg-ok' : (it.state === 'warn' ? 'dg-warn' : 'dg-bad');
+			var tag = it.state === 'ok' ? '正常' : (it.state === 'warn' ? '注意' : '异常');
+			if (it.state === 'fail') { bad++; }
+			if (it.state === 'warn') { warn++; }
+			html += '<tr><td class="dg-k">' + dgEsc(it.name) + '</td><td><span class="' + cls + '">' + tag + '</span> · ' + dgEsc(it.detail) + '</td></tr>';
+		}
+		html += '</table>';
+		document.getElementById('dg-checks').innerHTML = html;
+		dgOut('（自检明细见上方表格）');
+		if (bad > 0) { dgMsg('err', '❌ 自检发现 ' + bad + ' 项异常、' + warn + ' 项注意 —— 详见下方明细'); }
+		else if (warn > 0) { dgMsg('busy', '⚠️ 自检通过，但有 ' + warn + ' 项注意 —— 详见下方明细'); }
+		else { dgMsg('ok', '✅ 自检全部正常'); }
+		dgStatus();
+	});
+}
+
+function dgRules() {
+	dgMsg('busy', '正在渲染规则预览…');
+	dgBusy('btn-rules', true, '渲染中…');
+	dgDetails(true);
+	dgPost(dgEnc({ action: 'rules' }), function (code, d, raw) {
+		dgBusy('btn-rules', false);
+		if (!d || d.status !== 'ok') {
+			dgMsg('err', '❌ 预览失败：' + ((d && d.message) || ('HTTP ' + code)));
+			dgOut(raw);
+			return;
+		}
+		dgOut(d.text || '');
+		dgMsg('ok', '✅ 已生成 ' + d.lines + ' 行规则（未应用到防火墙，只是预览）');
+	});
+}
+
+function dgDisarm() {
+	dgBusy('btn-disarm', true, '处理中…');
+	dgPost(dgEnc({ action: 'disarm' }), function (code, d, raw) {
+		dgBusy('btn-disarm', false);
+		if (!d) { dgMsg('err', '请求失败（HTTP ' + code + '）\n' + raw); return; }
+		dgMsg(d.status === 'ok' ? 'ok' : 'err', (d.status === 'ok' ? '✅ ' : '❌ ') + (d.message || raw));
+		dgStatus();
+	});
+}
+
+function dgRestore() {
+	var sel = document.getElementById('dg-rb');
+	var ts = sel ? sel.value : '';
+	if (!ts) { dgMsg('err', '请先选择一个回滚点'); return; }
+	if (!confirm('确认还原到回滚点 ' + ts + ' ？\n\n会同时恢复 UCI 配置与规则文件，并重载防火墙。')) { return; }
+	dgMsg('busy', '正在还原到 ' + ts + ' …');
+	dgBusy('btn-restore', true, '还原中…');
+	dgPost(dgEnc({ action: 'rollback', ts: ts }), function (code, d, raw) {
+		dgBusy('btn-restore', false);
+		if (!d) { dgMsg('err', '请求失败（HTTP ' + code + '）\n' + raw); return; }
+		dgMsg(d.status === 'ok' ? 'ok' : 'err', (d.status === 'ok' ? '✅ ' : '❌ ') + (d.message || raw));
+		setTimeout(function () { location.reload(); }, 1500);
+	});
+}
+
+function dgStatus() {
+	dgPost(dgEnc({ action: 'status' }), function (code, d, raw) {
+		if (!d) {
+			document.getElementById('st-enabled').textContent = '状态读取失败（HTTP ' + code + '）';
+			return;
+		}
+		function set(id, html) { document.getElementById(id).innerHTML = html; }
+
+		set('st-enabled', d.enabled === '1' ? '<span class="dg-ok">已启用</span>' : '<span class="dg-bad">已关闭</span>');
+		set('st-agh', d.agh_pid ? '<span class="dg-ok">运行中</span> · PID ' + dgEsc(d.agh_pid) : '<span class="dg-bad">未运行</span>');
+		set('st-listen', d.listen53 ? dgEsc(d.listen53) : '<span class="dg-bad">无进程监听 :53</span>');
+
+		if (d.redirect_active) {
+			set('st-redirect', '<span class="dg-ok">已生效</span> · 目标 :' + dgEsc(d.target_port) + ' · 接口 ' + dgEsc(d.ifaces) + (d.skip_devices ? ' · 例外 ' + dgEsc(d.skip_devices) : ' · 无例外'));
+		} else if (d.redirect53 === '1') {
+			set('st-redirect', '<span class="dg-bad">配置为开启，但链不存在！</span> 请点「健康自检」');
+		} else {
+			set('st-redirect', '<span class="dg-warn">未启用</span>（仅观察）');
+		}
+
+		set('st-redpk', d.redirect_packets ? (d.redirect_packets + ' 个包 / ' + dgFmtBytes(d.redirect_bytes) + '（自上次重载）') : '0（未有流量被收编）');
+
+		if (d.watch_active) {
+			set('st-watch', d.watch_packets + ' 个包 / ' + dgFmtBytes(d.watch_bytes) + (d.redirect_active && Number(d.watch_packets) === 0 ? ' · 53 已改道，计数归零属正常' : ''));
+		} else {
+			set('st-watch', '<span class="dg-warn">未启用</span>');
+		}
+
+		if (d.managed === '1') {
+			set('st-file', '<span class="dg-ok">由本应用托管</span> · 最后生成 ' + dgEsc(d.file_mtime));
+		} else if (d.file_mtime) {
+			set('st-file', '<span class="dg-warn">存在但不是本应用生成</span> · ' + dgEsc(d.file_mtime) + '（点「保存并应用」会被接管）');
+		} else {
+			set('st-file', '不存在（总开关关闭或从未应用过）');
+		}
+
+		set('st-logs', dgEsc(d.bypass_lines || '0') + ' 行（DNS-BYPASS）');
+
+		// 自动回滚横幅
+		var pb = document.getElementById('dg-pendbox');
+		var pbtn = document.getElementById('dg-pendbtn');
+		if (d.pending) {
+			pb.style.display = 'block';
+			pb.textContent = '🛟 自动回滚倒计时进行中：约 ' + d.pending_left + ' 秒后（快照 ' + d.pending_ts + '）若无确认将自动还原，并重载防火墙。确认当前设置没问题就点下面的「确认保留」。';
+			pbtn.style.display = 'block';
+		} else {
+			pb.style.display = 'none';
+			pbtn.style.display = 'none';
+		}
+
+		// 回滚点下拉
+		var sel = document.getElementById('dg-rb');
+		if (sel && d.backups) {
+			var cur = sel.value;
+			var html = '';
+			for (var i = 0; i < d.backups.length; i++) {
+				html += '<option value="' + dgEsc(d.backups[i]) + '">' + dgEsc(d.backups[i]) + '</option>';
+			}
+			sel.innerHTML = html || '<option value="">（暂无回滚点）</option>';
+			if (cur) { sel.value = cur; }
+		}
+	});
+}
+
+window.addEventListener('load', function () { dgStatus(); });
+</script>
+
+<%+footer%>

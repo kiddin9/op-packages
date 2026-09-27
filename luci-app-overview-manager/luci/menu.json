@@ -1,0 +1,13 @@
+{
+	"admin/status/overview-manager": {
+		"title": "Overview Manager",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "overview-manager/settings"
+		},
+		"depends": {
+			"acl": [ "luci-app-overview-manager" ]
+		}
+	}
+}

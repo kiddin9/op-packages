@@ -1,0 +1,26 @@
+From c8fd7d003099e858306ad6801ad10cc158bab461 Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Fri, 29 May 2026 07:46:16 +0800
+Subject: [PATCH] Create adguardhome.nft.tpl
+
+---
+ root/usr/share/AdGuardHome/adguardhome.nft.tpl | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+ create mode 100644 root/usr/share/AdGuardHome/adguardhome.nft.tpl
+
+diff --git a/root/usr/share/AdGuardHome/adguardhome.nft.tpl b/root/usr/share/AdGuardHome/adguardhome.nft.tpl
+new file mode 100644
+index 0000000..d11a9dd
+--- /dev/null
++++ b/root/usr/share/AdGuardHome/adguardhome.nft.tpl
+@@ -0,0 +1,10 @@
++table inet adguardhome {
++    chain prerouting {
++        type nat hook prerouting priority dstnat; policy accept;
++
++        iifname { __WAN_EXCLUDES__ } return
++
++        fib daddr type local udp dport 53 redirect to :__AGH_PORT__
++        fib daddr type local tcp dport 53 redirect to :__AGH_PORT__
++    }
++}

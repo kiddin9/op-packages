@@ -1,0 +1,8 @@
+config audio 'main'
+	option enabled '0'
+	option device ''
+	option music_dir '/srv/music'
+	option volume '40'
+	option dlna_name ''
+	option unmute '1'
+	option persist_volume '1'

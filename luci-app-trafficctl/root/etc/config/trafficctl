@@ -1,0 +1,89 @@
+config trafficctl 'main'
+	option enabled '1'
+	option default_mode 'limiter'
+	option persist_rules '0'
+	# Extra subnets to monitor (space-separated CIDRs), for downstream-router
+	# clients that have no kernel route on this router. Subnets with a
+	# "via" route over a LAN interface are picked up automatically.
+	option extra_subnets ''
+	# Resolve names for devices with no DHCP lease here (routed/downstream
+	# clients) via reverse DNS. rdns_server is a space-separated list of
+	# resolvers tried in order before the system resolver — point it at the
+	# downstream router (e.g. a MikroTik) so its lease names get used.
+	option resolve_names '1'
+	option rdns_server ''
+	option rdns_ttl '300'
+	# Optional netifyd (DPI) integration — adds application labels per device.
+	# Inactive unless the agent is installed and its socket exists.
+	option netify_enabled '1'
+	option netify_socket '/var/run/netifyd/netifyd.sock'
+	# Where flow telemetry is published. Agent v5's unix socket is a
+	# request/response API that never pushes flows — the socket SINK does,
+	# usually tcp://127.0.0.1:1780. Empty = auto-detect from
+	# /etc/netifyd/netify-sink-socket.json.
+	option netify_endpoint ''
+	option netify_interval '45'
+	# IFB device used to shape upload pre-NAT (needs kmod-ifb).
+	option shape_ifb 'tctl-ifb0'
+	# Dashboard defaults for a browser that has not chosen its own. The Poll
+	# and Window chips still override per-browser — these only decide what a
+	# fresh session starts with, which is the part an admin can usefully set
+	# once for a router rather than per person (#12).
+	#
+	# poll_interval: seconds between live samples; 0 disables polling.
+	#   A smaller number costs a conntrack read per tick on the router, which
+	#   is the overhead the request was about.
+	# avg_window: seconds of history the displayed speed is averaged over.
+	#   Samples kept per device are avg_window/poll_interval, so a long window
+	#   with a short poll is the expensive combination.
+	option poll_interval '2'
+	option avg_window '15'
+
+config newdevice 'newdevice'
+	# Apply a limit automatically the first time a device is seen. Off by
+	# default: it is the only setting here that restricts a device nobody
+	# has looked at yet. limit_kbit 0 means "no limit" and makes enabled
+	# a no-op. An existing limit is never overwritten.
+	option enabled '0'
+	option limit_kbit '0'
+	option limit_mode 'limiter'
+
+config logging 'logging'
+	option enabled '1'
+	option log_file '/tmp/trafficctl/activity.log'
+	option max_lines '500'
+	option syslog '1'
+	option log_blocks '1'
+	option log_ratelimits '1'
+	option log_shapes '1'
+	option log_telegram '1'
+	option log_config '1'
+
+config telegram 'telegram'
+	option enabled '0'
+	option bot_token ''
+	option chat_id ''
+	option poll_interval '3'
+	option notify_new_device '1'
+	option notify_known_device '0'
+	option control_enabled '1'
+	option notify_template ''
+	option btn_block_inet '1'
+	option btn_block_wifi '1'
+	option btn_limiter '1'
+	option btn_shaper '1'
+
+config metrics 'metrics'
+	# Prometheus/OpenMetrics exporter. Off by default: it exposes device
+	# names, addresses and traffic volumes without a LuCI session.
+	option enabled '0'
+	# Shared token for the CGI endpoint (empty = no token check).
+	option token ''
+	# Per-device gauges (connections, blocked, limits, name/mac). Costs a
+	# full summary run per scrape — set 0 for byte counters only.
+	option state '1'
+	# Port-forward metrics.
+	option portfw '1'
+	# DPI application metrics. Off by default: device x application is a
+	# cardinality trap on a busy network.
+	option apps '0'

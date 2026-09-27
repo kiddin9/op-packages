@@ -1,0 +1,38 @@
+From 864c042e5cdbe61922f917d1785bf7342b3fc90d Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Sun, 31 May 2026 08:25:55 +0800
+Subject: [PATCH] Create helper.sh for YAML reading and writing
+
+Added a helper script for YAML configuration management.
+---
+ root/usr/share/AdGuardHome/helper.sh | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+ create mode 100644 root/usr/share/AdGuardHome/helper.sh
+
+diff --git a/root/usr/share/AdGuardHome/helper.sh b/root/usr/share/AdGuardHome/helper.sh
+new file mode 100644
+index 0000000..35f0198
+--- /dev/null
++++ b/root/usr/share/AdGuardHome/helper.sh
+@@ -0,0 +1,21 @@
++#!/bin/sh
++# Auxiliary functions specially used for reading and writing YAML
++config_editor() {
++    awk -v yaml="$1" -v value="$2" -v file="$3" -v ro="$4" '
++    BEGIN{split(yaml,part,"\.");s="";i=1;l=length(part);}
++    {
++        if (match($0,s""part[i]":")) {
++            if (i==l) {
++                split($0,t,": ");
++                if (ro==""){
++                    system("sed -i '\''"FNR"c\\" t[1] ": " value "'\'' " file " >/dev/null 2>&1");
++                } else {
++                    print(t[2]);
++                }
++                exit;
++            }
++            s=s"[- ]{2}";
++            i++;
++        }
++    }' "$3"
++}

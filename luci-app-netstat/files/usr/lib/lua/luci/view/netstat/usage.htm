@@ -1,0 +1,293 @@
+<%
+local sys  = require "luci.sys"
+local http = require "luci.http"
+local uci  = require "luci.model.uci".cursor()
+
+local function to_bytes(value, unit)
+    local m = { KiB=1024, MiB=1048576, GiB=1073741824, TiB=1099511627776 }
+    return tonumber(value) * (m[unit] or 1)
+end
+
+local function format_date(date_str)
+    local months = {"Jan","Feb","Mar","Apr","May","Jun",
+                    "Jul","Aug","Sep","Oct","Nov","Dec"}
+    local mo, d, y = date_str:match("(%d%d)/(%d%d)/(%d%d)")
+    if mo and d and y then
+        return string.format("%02d %s %02d", tonumber(d), months[tonumber(mo)], tonumber(y))
+    end
+    return date_str
+end
+
+local function today_label()    return os.date("%d %b %y") end
+local function curmonth_label() return os.date("%b '%y")   end
+
+local function ensure_today(stats)
+    local lbl = today_label()
+    for _, s in ipairs(stats) do if s.date == lbl then return stats end end
+    table.insert(stats, { date=lbl, rx=0, tx=0 })
+    return stats
+end
+
+local function ensure_curmonth(stats)
+    local lbl = curmonth_label()
+    for _, s in ipairs(stats) do if s.month == lbl then return stats end end
+    table.insert(stats, { month=lbl, rx=0, tx=0 })
+    return stats
+end
+
+local function get_interfaces()
+    local ifaces = {}
+    local p = io.popen("ls /etc/vnstat/ 2>/dev/null | grep -v '.conf$' | grep -v '.old$'")
+    if p then
+        for iface in p:lines() do
+            iface = iface:match("^%s*(.-)%s*$")
+            if iface ~= "" then table.insert(ifaces, iface) end
+        end
+        p:close()
+    end
+    table.sort(ifaces)
+    return ifaces
+end
+
+local function get_daily_stats(iface)
+    local stats = {}
+    local out = sys.exec("vnstat -i " .. iface .. " --days 2>/dev/null") or ""
+    for date, rx_v, rx_u, tx_v, tx_u in
+        out:gmatch("(%d%d/%d%d/%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
+        table.insert(stats, {
+            date = format_date(date),
+            rx   = to_bytes(rx_v, rx_u),
+            tx   = to_bytes(tx_v, tx_u)
+        })
+    end
+    return ensure_today(stats)
+end
+
+local function get_monthly_stats(iface)
+    local stats = {}
+    local out = sys.exec("vnstat -i " .. iface .. " --months 2>/dev/null") or ""
+    for month, rx_v, rx_u, tx_v, tx_u in
+        out:gmatch("(%a+%s+'%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
+        table.insert(stats, {
+            month = month,
+            rx    = to_bytes(rx_v, rx_u),
+            tx    = to_bytes(tx_v, tx_u)
+        })
+    end
+    return ensure_curmonth(stats)
+end
+
+local function fmt_bytes(v)
+    if     v >= 1099511627776 then return string.format("%.2f TB", v/1099511627776)
+    elseif v >= 1073741824    then return string.format("%.2f GB", v/1073741824)
+    elseif v >= 1048576       then return string.format("%.2f MB", v/1048576)
+    elseif v >= 1024          then return string.format("%.2f KB", v/1024)
+    end
+    return tostring(v) .. " B"
+end
+
+local ifaces      = get_interfaces()
+local saved_iface = uci:get("netstats", "@config[0]", "prefer") or ""
+local saved_mode  = uci:get("netstats", "@config[0]", "mode")   or "daily"
+local cur_iface   = http.formvalue("iface") or saved_iface or ifaces[1] or ""
+local view_mode   = http.formvalue("mode")  or saved_mode
+if view_mode ~= "daily" and view_mode ~= "monthly" then view_mode = "daily" end
+
+local stats, title = {}, ""
+if cur_iface ~= "" then
+    if view_mode == "monthly" then
+        stats = get_monthly_stats(cur_iface)
+        title = translate("Monthly")
+    else
+        stats = get_daily_stats(cur_iface)
+        title = translate("Daily")
+    end
+end
+
+local total_rx, total_tx = 0, 0
+for _, s in ipairs(stats) do
+    total_rx = total_rx + (s.rx or 0)
+    total_tx = total_tx + (s.tx or 0)
+end
+%>
+
+<link rel="stylesheet" href="/luci-static/resources/netstat/netstat-usage.css" />
+
+<div class="netstat-dashboard">
+    <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">
+        <%:Usage is displayed using the Interface and View Mode selected in the Settings tab.%>
+    </p>
+
+<% if cur_iface ~= "" and #stats > 0 then %>
+
+    <div class="netstat-summary">
+        <div class="netstat-summary-item">
+            <span class="netstat-summary-dot rx"></span>
+            <span class="netstat-summary-label"><%:Download%>:</span>
+            <strong><%=fmt_bytes(total_rx)%></strong>
+        </div>
+        <div class="netstat-summary-item">
+            <span class="netstat-summary-dot tx"></span>
+            <span class="netstat-summary-label"><%:Upload%>:</span>
+            <strong><%=fmt_bytes(total_tx)%></strong>
+        </div>
+        <div class="netstat-summary-item netstat-summary-total">
+            <span class="netstat-summary-label"><%:Total%>:</span>
+            <strong><%=fmt_bytes(total_rx + total_tx)%></strong>
+        </div>
+    </div>
+
+    <div class="netstat-chart-wrap">
+        <div class="netstat-chart-header">
+            <h3 class="netstat-chart-title"><%=title%> <%:Usage%></h3>
+            <span class="netstat-chart-badge"><%=cur_iface%></span>
+        </div>
+        <canvas id="trafficChart" class="netstat-chart-canvas"></canvas>
+    </div>
+
+    <script src="/luci-static/resources/netstat/chart.js"></script>
+    <script src="/luci-static/resources/netstat/chartjs-plugin-datalabels"></script>
+    <script>
+    (function () {
+        var isDark    = window._netstatDark || false;
+        var textColor = isDark ? '#f3f4f6' : '#1f2937';
+        var gridColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)';
+
+        var labels = [
+            <% for i, stat in ipairs(stats) do
+                local lbl = view_mode == "daily" and stat.date or stat.month
+            %>"<%=lbl%>"<% if i < #stats then %>,<% end %>
+            <% end %>
+        ];
+        var rxData = [
+            <% for i, stat in ipairs(stats) do
+            %><%= math.floor(stat.rx) %><% if i < #stats then %>,<% end %>
+            <% end %>
+        ];
+        var txData = [
+            <% for i, stat in ipairs(stats) do
+            %><%= math.floor(stat.tx) %><% if i < #stats then %>,<% end %>
+            <% end %>
+        ];
+
+        var BAR_H  = 48;
+        var canvas = document.getElementById('trafficChart');
+        canvas.height = Math.min(Math.max(labels.length * BAR_H, 280), 700);
+        canvas.width  = canvas.offsetWidth || canvas.parentElement.clientWidth;
+
+        var ctx = canvas.getContext('2d');
+
+        function rxGradient() {
+            var g = ctx.createLinearGradient(0, 0, canvas.width || 600, 0);
+            g.addColorStop(0, '#86efac');
+            g.addColorStop(1, '#15803d');
+            return g;
+        }
+
+        function fmtBytes(v) {
+            if (v >= 1099511627776) return (v/1099511627776).toFixed(2) + ' TB';
+            if (v >= 1073741824)   return (v/1073741824).toFixed(2) + ' GB';
+            if (v >= 1048576)      return (v/1048576).toFixed(2) + ' MB';
+            if (v >= 1024)         return (v/1024).toFixed(2) + ' KB';
+            return v + ' B';
+        }
+
+        var maxVal = Math.max.apply(null, rxData.concat(txData).concat([1]));
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: '<%:Download (RX)%>',
+                        data: rxData,
+                        backgroundColor: rxData.map(function() { return rxGradient(); }),
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        datalabels: {
+                            color: '#fff',
+                            anchor: 'center',
+                            align: 'center',
+                            font: { size: 11, weight: '600' },
+                            formatter: fmtBytes,
+                            display: function(ctx) {
+                                return maxVal > 0 && ctx.dataset.data[ctx.dataIndex] / maxVal > 0.08;
+                            }
+                        }
+                    },
+                    {
+                        label: '<%:Upload (TX)%>',
+                        data: txData,
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        datalabels: {
+                            color: textColor,
+                            anchor: 'end',
+                            align: 'right',
+                            font: { size: 11, weight: '600' },
+                            formatter: fmtBytes,
+                            display: function(ctx) {
+                                return maxVal > 0 && ctx.dataset.data[ctx.dataIndex] / maxVal > 0.02;
+                            }
+                        }
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: false,
+                maintainAspectRatio: false,
+                animation: { duration: 400 },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            color: textColor,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 16
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return ' ' + fmtBytes(ctx.raw); }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid:  { color: gridColor },
+                        ticks: {
+                            color: textColor,
+                            callback: fmtBytes,
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        grid:  { display: false },
+                        ticks: { color: textColor, autoSkip: false }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    })();
+    </script>
+
+<% elseif #ifaces == 0 then %>
+    <div class="netstat-empty">
+        <span class="netstat-empty-icon">&#128225;</span>
+        <%:No vnStat interfaces were found. Make sure vnStat has been initialized.%>
+    </div>
+<% else %>
+    <div class="netstat-empty">
+        <span class="netstat-empty-icon">&#128202;</span>
+        <%:No data available for%> <strong><%=cur_iface%></strong>
+        <div class="netstat-hint">
+            <%:vnStat may still be collecting its first data. Try again in a few minutes.%>
+        </div>
+    </div>
+<% end %>
+</div>

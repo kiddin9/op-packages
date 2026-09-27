@@ -1,0 +1,79 @@
+#!/bin/sh
+# shellcheck shell=dash
+# Rate-limit bandwidth in both directions (policer).
+#
+# Usage: trafficctl-ratelimit.sh <target> <rate_kbit> [label] [mode]
+#   target   a host (10.0.20.122), a CIDR (10.0.20.0/24), or "all"
+#   mode     each   — every address in the target gets its own bucket (default
+#                     for CIDR/all, so "5 Mbit each" means per device)
+#            shared — the whole target shares one bucket (aggregate cap)
+# rate_kbit=0 removes the limit.
+
+. /usr/local/bin/trafficctl-fw.sh
+
+IP="$1"
+RATE="$2"
+MODE="$4"
+
+if [ -z "$IP" ] || [ -z "$RATE" ]; then
+    echo '{"ok":false,"msg":"usage: trafficctl-ratelimit.sh <target> <rate_kbit> [label] [each|shared]"}'
+    exit 1
+fi
+
+TARGET=$(tctl_validate_target "$IP") || {
+    echo '{"ok":false,"msg":"invalid target — expected an IP, a CIDR, or \"all\""}'
+    exit 1
+}
+IP="$TARGET"
+
+# A block limited "shared" would let one device starve the rest, so per-device
+# is the sane default whenever the target covers more than one address.
+if [ -z "$MODE" ]; then
+    case "$IP" in
+        */32) MODE="shared" ;;   # a /32 is one host; both modes are identical
+        */*)  MODE="each" ;;     # any wider block: per-device buckets
+        *)    MODE="shared" ;;   # bare host address
+    esac
+fi
+case "$MODE" in
+    each|shared) ;;
+    *) echo '{"ok":false,"msg":"mode must be each or shared"}'; exit 1 ;;
+esac
+
+LABEL="${3:-rl_$(tctl_target_slug "$IP")}"
+COMMENT=$(tctl_ratelimit_comment "$IP")
+
+if [ "$RATE" = "0" ]; then
+    # Limits written before comments were derived from the target carry the
+    # caller's label, so one set from LuCI could not be removed from Telegram.
+    tctl_ratelimit_remove "$IP" "rl_ratelimit_${LABEL}" 2>/dev/null
+    if tctl_ratelimit_remove "$IP" "$COMMENT"; then
+        tctl_persist_enabled && tctl_persist_remove "ratelimit" "$IP"
+        tctl_log "ratelimit_remove" "$IP" "" "${TCTL_VIA:-cli}" "${TCTL_SRC:-local}"
+        echo "{\"ok\":true,\"msg\":\"rate limit removed for $IP\"}"
+    else
+        echo "{\"ok\":false,\"msg\":\"failed to remove rate limit for $IP\"}"
+        exit 1
+    fi
+else
+    tctl_ratelimit_remove "$IP" "$COMMENT" 2>/dev/null
+    TCTL_RL_DOWNLOAD_FAILED=0
+    TCTL_RL_UPLOAD_FAILED=0
+    tctl_ratelimit_add "$IP" "$RATE" "$COMMENT" "$MODE"
+
+    # A half-applied limit is a silent trap: report exactly which direction
+    # is live rather than claiming success for both.
+    if [ "$TCTL_RL_DOWNLOAD_FAILED" = "1" ] && [ "$TCTL_RL_UPLOAD_FAILED" = "1" ]; then
+        echo "{\"ok\":false,\"msg\":\"failed to set rate limit for $IP (no usable WAN or LAN ingress device)\"}"
+        exit 1
+    fi
+    tctl_persist_enabled && tctl_persist_save "ratelimit" "$IP" "$RATE"
+    tctl_log "ratelimit_set" "$IP" "${RATE}kbit" "${TCTL_VIA:-cli}" "${TCTL_SRC:-local}"
+    if [ "$TCTL_RL_DOWNLOAD_FAILED" = "1" ]; then
+        echo "{\"ok\":true,\"msg\":\"rate limit ${RATE} kbit/s applied to $IP UPLOAD ONLY — WAN device not resolvable\"}"
+    elif [ "$TCTL_RL_UPLOAD_FAILED" = "1" ]; then
+        echo "{\"ok\":true,\"msg\":\"rate limit ${RATE} kbit/s applied to $IP DOWNLOAD ONLY — no LAN ingress device\"}"
+    else
+        echo "{\"ok\":true,\"msg\":\"rate limit ${RATE} kbit/s for $IP (both directions, $MODE)\"}"
+    fi
+fi

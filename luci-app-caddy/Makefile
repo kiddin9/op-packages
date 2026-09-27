@@ -1,4 +1,5 @@
-# Copyright (C) 2016 Openwrt.org
+# luci-app-caddy - LuCI 管理 Caddy (反向代理 / ACME DNS-01 / Aliyun DDNS)
+# Copyright (C) 2026 andangel - https://github.com/andangel/luci-app-caddy
 #
 # This is free software, licensed under the Apache License, Version 2.0 .
 #
@@ -9,17 +10,18 @@ PKG_NAME:=luci-app-caddy
 
 LUCI_TITLE:=LuCI support for caddy
 LUCI_DEPENDS:=+caddy
-PKG_VERSION:=1.0
-PKG_RELEASE:=2
+PKG_VERSION:=2.0
+PKG_RELEASE:=3
 
 define Package/$(PKG_NAME)/conffiles
-/etc/caddy
+/etc/config/caddy
+/etc/caddy/Caddyfile
 endef
 
 define Package/$(PKG_NAME)/postrm
 #!/bin/sh
 [ -f /etc/caddy/Caddyfile ] && rm -rf /etc/caddy/Caddyfile >/dev/null 2>&1
- return 0
+return 0
 endef
 
 define Package/$(PKG_NAME)/postinst

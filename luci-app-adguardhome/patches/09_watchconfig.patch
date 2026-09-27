@@ -1,0 +1,34 @@
+From b1391765b484c6f50feba7f09bdf50d3aa443356 Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Fri, 29 May 2026 14:27:56 +0800
+Subject: [PATCH] Add watchconfig.sh to monitor AdGuardHome config
+
+---
+ root/usr/share/AdGuardHome/watchconfig.sh | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+ create mode 100644 root/usr/share/AdGuardHome/watchconfig.sh
+
+diff --git a/root/usr/share/AdGuardHome/watchconfig.sh b/root/usr/share/AdGuardHome/watchconfig.sh
+new file mode 100644
+index 0000000..c7267bf
+--- /dev/null
++++ b/root/usr/share/AdGuardHome/watchconfig.sh
+@@ -0,0 +1,18 @@
++#!/bin/sh
++# /usr/share/AdGuardHome/watchconfig.sh
++
++PATH="/usr/sbin:/usr/bin:/sbin:/bin"
++
++configpath=$(uci -q get adguardhome.config.config_file)
++[ -z "$configpath" ] && configpath="/etc/adguardhome/adguardhome.yaml"
++
++while :
++do
++	sleep 10
++	if [ -f "$configpath" ]; then
++		/etc/init.d/adguardhome do_redirect 1
++		break
++	fi
++done
++
++exit 0

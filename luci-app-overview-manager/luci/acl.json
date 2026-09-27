@@ -1,0 +1,22 @@
+{
+	"luci-app-overview-manager": {
+		"description": "Configure the Status Overview widget layout",
+		"read": {
+			"file": {
+				"/usr/libexec/overview-manager files": [ "exec" ],
+				"/usr/libexec/overview-manager layout": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/usr/libexec/overview-manager save *": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "exec" ]
+			}
+		}
+	}
+}

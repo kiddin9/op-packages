@@ -1,0 +1,933 @@
+<%+header%>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.3.2/css/flag-icons.min.css" />
+<script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+<script src="/luci-static/conntrack/js/iconify_custom_icons.js"></script>
+<script type="text/javascript" src="<%=pcdata(luci.dispatcher.build_url('admin', 'network', 'conntrack', 'conntrack_custom_js'))%>"></script>
+
+<style>
+span.iconify {
+	display:inline-block;
+	font-size:14px;
+	width: 32px;
+	height: 32px;
+}
+</style>
+<style type="text/css">
+	.ct-flag-inline {
+		margin-right: 6px;
+		vertical-align: middle;
+		box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+	}
+
+	.fixed-table {
+		width: 100%;
+	/*	table-layout: fixed !important; */
+		border-collapse: collapse;
+	}
+	.text-ellipsis {
+		white-space: nowrap !important;
+		overflow: hidden !important;
+		text-overflow: ellipsis !important;
+		word-break: break-all;
+	}
+	.unit-toggle {
+		cursor: pointer;
+		padding: 2px 6px;
+		background: #f0f0f0;
+		border: 1px solid #ccc;
+		border-radius: 3px;
+		margin-left: 5px;
+		font-size: 11px;
+		color: #333;
+		user-select: none;
+		display: inline-block;
+		vertical-align: middle;
+	}
+	.unit-toggle:hover {
+		background: #e0e0e0;
+		border-color: #999;
+	}
+	span.active, span.inactive { padding: 2px; }
+	span.active { cursor: pointer; color: #000; margin-left: 5px; }
+	span.inactive { cursor: pointer; color: #000; margin-left: 5px; }
+	.table-responsive-wrapper {
+		width: 100%;
+		overflow-x: auto !important;
+		-webkit-overflow-scrolling: touch;
+		margin-bottom: 15px;
+	}
+	th { padding-left: 5px !important; padding-right: 5px !important; }
+	.conntrack-table th, .conntrack-table td:not(.ip-col-limit) {
+		white-space: nowrap !important;
+	}
+	@media screen and (min-width: 992px) {
+		.ip-col-limit {
+			max-width: 220px !important;
+		}
+		.icon-col-limit {
+                        max-width: 160px !important;
+                }
+	}
+	@media screen and (max-width: 991px) {
+		.ip-col-limit {
+			max-width: 180px !important;
+		}
+		.icon-col-limit {
+                        max-width: 120px !important;
+                }
+	}
+</style>
+
+<div class="cbi-map">
+	<h2>
+		<ul class="cbi-tabmenu" style="border-bottom:0 !important;">
+		<li class="cbi-tab"><a href="<%=luci.dispatcher.build_url('admin/network/conntrack')%>"><strong><%:ConnTrack%></strong></a></li>
+		<li class="cbi-tab-disabled"><a href="<%=luci.dispatcher.build_url('admin/network/conntrack/conntrack_icons_config')%>"><%:Custom App Icons Config%></a></li>
+		</ul>
+	</h2>
+	<div class="cbi-map-descr"><%:Realtime single-direction traffic speed flow based on Event-Stream (SSE).%><br /><%:To show AppName, you'll need to patch kmod-nf-conntrack, please refers to%><a href="https://github.com/simonchen/luci-app-conntrack" target="_blank"> Github luci-app-conntrack</a></div>
+	
+	<fieldset class="cbi-section">
+		<div class="cbi-section-node">
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="interval_select"><%:Interval (Seconds)%></label>
+				<div class="cbi-value-field">
+					<select class="cbi-input-select" id="interval_select">
+						<option value="1000" selected>1.0s</option>
+						<option value="1500">1.5s</option>
+						<option value="2000">2.0s</option>
+						<option value="2500">2.5s</option>
+						<option value="3000">3.0s</option>
+						<option value="3500">3.5s</option>
+						<option value="4000">4.0s</option>
+						<option value="4500">4.5s</option>
+						<option value="5000">5.0s</option>
+						<option value="5500">5.5s</option>
+						<option value="6000">6.0s</option>
+						<option value="6500">6.5s</option>
+						<option value="7000">7.0s</option>
+						<option value="7500">7.5s</option>
+						<option value="8000">8.0s</option>
+						<option value="8500">8.5s</option>
+						<option value="9000">9.0s</option>
+						<option value="9500">9.5s</option>
+						<option value="10000">10.0s</option>
+					</select>
+				</div>
+			</div>
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="rows_select"><%:Display Rows%></label>
+				<div class="cbi-value-field">
+					<select class="cbi-input-select" id="rows_select">
+						<option value="10">10</option>
+						<option value="20">20</option>
+						<option value="30">30</option>
+						<option value="40">40</option>
+						<option value="50" selected>50</option>
+						<option value="60">60</option>
+						<option value="70">70</option>
+						<option value="80">80</option>
+						<option value="90">90</option>
+						<option value="100">100</option>
+					</select>
+				</div>
+			</div>
+			<div class="cbi-map">
+			<div class="cbi-value" style="display: flex; justify-content: space-between; align-items: center; width: 100%; height: 2.5em; box-sizing: border-box;">
+				<div style="display: flex; align-items: center; height: 100%;">
+					<label class="cbi-value-title" style="margin: 0; padding: 0; display: inline-block; vertical-align: middle;"><%:Actual Delta Time%></label>
+					<div class="cbi-value-field" id="delta_label" style="font-weight: bold; color: #0071c5; padding-left: 10px; display: inline-block; vertical-align: middle;">0.0000s</div>
+				</div>
+				<div style="display: flex; align-items: center; height: 100%; padding-right: 15px;">
+					<label style="font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; margin: 0; height: 100%;">
+						<input type="checkbox" checked id="filter_local_checkbox" style="margin: 0 6px 0 0; padding: 0; width: 14px; height: 14px; display: inline-block; vertical-align: middle;" />
+						<span style="display: inline-block; vertical-align: middle; line-height: 14px;"><%:Filter Local/Loopback%></span>
+					</label>
+                                        <label style="font-weight: bold; cursor: pointer; user-select: none; display: flex; align-items: center; margin:0 15px; height: 100%;">
+                                                <input type="checkbox" id="show_appname_checkbox" style="margin: 0 6px 0 0; padding: 0; width: 14px; height: 14px; display:
+                                                <span style="display: inline-block; vertical-align: middle; line-height: 14px;"><%:Show AppName (experiment)%></span>
+                                        </label>
+				</div>
+			</div>
+		</div>
+	</fieldset>
+
+	<fieldset class="cbi-section">
+		<table class="table cbi-section-table fixed-table" id="conntrack_table" style="width:100%; text-align:left;">
+			<tr class="cbi-section-table-titles">
+				<th class="cbi-section-table-cell" style="width:8%;"><%:L3%></th>
+				<th class="cbi-section-table-cell" style="width:10%;"><%:Protocol%></th>
+				<th class="cbi-section-table-cell" style="width:17%;"><%:State (Direction)%></th>
+				<th class="cbi-section-table-cell text-ellipsis ip-col-limit" style="width:23%;">
+					<select id="filter_src_select" style="width:120px; padding:2px; font-weight:bold; color:#333; border:1px solid #ccc; border-radius:3px;">
+						<option value="all" selected><%:Source IP:Port%></option>
+					</select>
+				</th>
+				<th class="cbi-section-table-cell text-ellipsis ip-col-limit" style="width:23%;">
+					<select id="filter_dst_select" style="width:120px; padding:2px; font-weight:bold; color:#333; border:1px solid #ccc; border-radius:3px;">
+						<option value="all" selected><%:Destination IP:Port%></option>
+					</select>
+				</th>
+				<th class="cbi-section-table-cell" style="width:11%;"><%:Accumulated%><span id="arrow-flow" class="active">&darr;</span></th>
+				<th class="cbi-section-table-cell" style="width:11%;">
+					<%:Current Speed%><span id="arrow-rate" class="inactive">&#8645;</span><span id="toggle_btn" class="unit-toggle">Bit</span>
+				</th>
+				<th id="th_appname" class="cbi-section-table-cell text-ellipsis icon-col-limit" style="width:11%;"><%:AppName%></th>
+			</tr>
+			<tr class="cbi-section-table-row"><td colspan="7" style="text-align:center;" id="loading_msg"><%:Connecting to Event-Stream...%></td></tr>
+		</table>
+	</fieldset>
+</div>
+
+<script type="text/javascript">//<![CDATA[
+	var eventSource = null;
+	var currentUnit = 'Bit';
+	var lastCacheData = null;
+	var localIsSrcFocus = false;
+	var localIsDstFocus = false;
+	var isSrcOpen = false;
+	var isDstOpen = false;
+	var globalHostMap = {};
+
+	var serverCache = {}; // Temp used to capture server names
+	var geoIpCache = {};
+	var geoIpQueue = [];
+	var isGeoIpProcessing = false;
+	var queuedIpMap = {};
+
+	const appMapper = {
+		"0102b75000000001": "<%:Honor of Kings%>",
+
+		isDomainHonorOfKings: function(d) {
+			if (!d) return -1;
+			if (!d.match(/\.qq\.com/i) && !d.match(/\.tencent\.com/i)) return -1;
+			if (d.match(/smoba\.qq\.com/i) || d.match(/sgame/i) || d.match(/tgpa\.qq\.com/i) || d.match(/kohesport\.qq\.com/i) || d.match(/tga\.qq\.com/i)) return 1;
+			if (d.match(/crashsight\.qq\.com/i) || d.match(/perfsight\.qq\.com/i) || d.match(/gcloud\.qq\.com/i) || d.match(/msdk\.qq\.com/i) || d.match(/pandora\.qq\.com/i) || d.match(/game\.qq\.com/i) || d.match(/dlied\d*\.qq\.com/i)) return 1;
+			return 0;
+		},
+	
+		iconifyIcon: function(org) {
+			if (!org) return "";
+
+			if (window._customIconRules && window._customIconRules.length > 0) {
+				for (var i = 0; i < window._customIconRules.length; i++) {
+					var rule = window._customIconRules[i];
+					if (org.match(rule.reg)) {
+						return rule.icon;
+					}
+				}
+			}
+			if (org.match(/<%:PCDN Stream Media%>/i))
+				return 'glyphs-poly:stream';
+			if (org.match(/<%:Honor of Kings%>/i))
+				return 'logos:honorofkings';
+			if (org.match(/telegram/i))
+				return 'logos:telegram';
+			if (org.match(/youtube/i) || org.match(/\.ggpht\./i) || org.match(/<%:YouTube%>/i))
+				return 'logos:youtube';
+			if (org.match(/azure/i))
+				return 'logos:azure';
+			if (org.match(/gmail/i))
+				return 'selfhst:gmail';
+			if (org.match(/google/i) || org.match(/gstatic/i))
+				return 'logos:google';
+			if (org.match(/github/i))
+				return 'logos:github';
+			if (org.match(/douyin/i) || org.match(/\.amemv\.com/i) || org.match(/<%:TikTok%>/i))
+				return 'logos:tiktok';
+			if (org.match(/<%:Instagram%>/i))
+				return 'logos:instagram';
+			if (org.match(/facebook/i))
+				return 'logos:facebook';
+			if (org.match(/<%:X (Twitter)%>/i) || org.match(/^x\.com/i) || org.match(/\.x\./i) || org.match(/\.twimg\./i))
+				return 'logos:twittr';
+			if (org.match(/<%:Netflix%>/i))
+				return 'logos:netflix-icon';
+			if (org.match(/cloudflare/i))
+				return 'logos:cloudflare';
+			if (org.match(/aws/i))
+				return 'logos:aws';
+			if (org.match(/<%:Bilibili%>/i) || org.match(/bili/i))
+				return 'ant-design:bilibili-filled';
+			if (org.match(/<%:Bilibili Video%>/i))
+				return 'thesvg-color:bilibili';
+			if (org.match(/miui/i) || org.match(/xiaomi/i))
+				return 'thesvg-color:xiaomi';
+			if (org.match(/weixin/i))
+				return 'fa7-brands:weixin';
+			if (org.match(/v.*?\.qq\.com/i))
+				return 'logos:tencent-video';
+			if (org.match(/tencent/i) || org.match(/\.qq\.com/i) || org.match(/\.tencent\.com/i))
+				return 'thesvg-color:tencent';
+			if (org.match(/china unicom/i) || org.match(/unicom/i))
+				return 'arcticons:china-unicom';
+			if (org.match(/china telecom/i) || org.match(/telecom/i) || org.match(/chinanet/i))
+				return 'arcticons:china-telecom';
+			if (org.match(/china mobile/i))
+				return 'arcticons:china-mobile';
+			if (org.match(/alibaba/i))
+				return 'selfhst:alibaba';
+			if (org.match(/alipay/i))
+				return 'thesvg-color:alipay';
+			if (org.match(/aliyun/i))
+				return 'thesvg-color:alibaba-cloud';
+			if (org.match(/baidu/i))
+				return 'selfhst:baidu';
+			if (org.match(/\.iqiyi\./i) || org.match(/\.qiyi\./i) || org.match(/\.qy\./i))
+				return 'logos:iqiyi';
+			if (org.match(/Skype/i) || org.match(/Microsoft Teams/i))
+				return 'thesvg-color:microsoft-teams';
+			if (org.match(/outlook/i) || org.match(/live\.com/i))
+				return 'thesvg-color:microsoft-outlook';
+			if (org.match(/microsoft/i) || org.match(/\.windows\./i) || org.match(/\.office\./i) || org.match(/\.msn\./i))
+				return 'arcticons:microsoft';
+			if (org.match(/^bing\./i) || org.match(/\.bing\./i))
+				return 'logos:bing';
+			if (org.match(/\.intel\./i))
+				return 'thesvg-color:intel';
+			if (org.match(/nvidia/i))
+				return 'logos:nvidia';
+			if (org.match(/amd/i))
+				return 'thesvg-color:amd';
+			if (org.match(/amazon/i))
+				return 'selfhst:amazon';
+			if (org.match(/linkedin/i))
+				return 'logos:linkedin-icon';
+
+			return "";
+		},
+
+		renderIcon: function(icon, appName, as) {
+			var as_code = "";
+			if (as) {
+				var m = as.match(/(AS\d+)/ig);
+				if (m) as_code = m[0];
+			}
+			function as_link(as_code, content) {
+				if (!as_code) return content;
+				return 	`<a href="https://ipinfo.io/${as_code}" target="_blank" style="color:#666;cursor:pointer;">${content}</a>`;
+			}
+			if (!icon) return as_link(as_code, appName);
+
+			if (typeof(Iconify) != 'undefined') {
+				if (!Iconify.iconExists(icon)) {
+					Iconify.loadIcon(icon);
+				}
+				var cp = {width:40, height:40};
+				var icon_data = Iconify.getIcon(icon);
+				if (icon_data) {
+					if (icon_data.width/icon_data.height >= 2 ||
+						icon_data.height/icon_data.width >= 2) {
+						cp = {};
+					}
+				}
+				var html = Iconify.renderHTML(icon, cp) || "";
+				if (html) return as_link(as_code, html);
+			}
+
+			return as_link(as_code, appName);
+		},
+
+		getAppName: function(payload, geoInfo, proto, bytes) {
+			var isPayloadHexStr = isPureHexString(payload);
+			if (!isPayloadHexStr) { // domain - plain text
+				serverCache[payload] = true;
+
+				if (payload.match(/googlevideo/i))
+					return "<%:YouTube%>";
+				if (payload.match(/bilivideo/i))
+					return "<%:Bilibili Video%>";
+				if (payload.match(/gmail/i))
+					return "<%:Gmail%>";
+				if (payload.match(/skype/i))
+					return "<%:Skype%>";
+				if (payload.match(/teams\.microsoft/i) || payload.match(/teams\.live\./i))
+					return "<%:Microsoft Teams%>";
+				if (this.isDomainHonorOfKings(payload) == 1)
+					return "<%:Honor of Kings%>";
+
+				if (payload)
+					return payload; // (i.e, the exact server name)
+			}
+	
+			const prefix = payload.substring(0, 6);
+			const org = geoInfo && geoInfo.as ? geoInfo.as.toLowerCase() : "";
+			org_as = geoInfo ? (geoInfo.as || geoInfo.org) : ""; org_as = org_as.replace(/^AS\d+\s+/ig, '');
+
+			// Intercept standard TLS (160301 / 160303) handshakes and match via ASN
+			if (payload.charAt(0) === 'c' && payload.substring(2, 6) === '0000') { // UDP(QUIC) feature with payload
+				if (org.includes("google") || org.includes("youtube")) {
+					return "<%:YouTube%>";
+				}
+				if (org.includes("akamai") || org.includes('fastly') || org.includes("bytedance") || org.includes("tiktok")) {
+					return "<%:TikTok%>";
+				}
+			}
+
+			if (prefix === "160301" || prefix === "160303") { // TCP HTTPS feature (443 port)
+				if (org.includes("google") || org.includes("youtube")) {
+					if (bytes && bytes >= 4194304) { // at least 4MB to ensure..
+						return "<%:YouTube%>";
+					}
+					return "<%:Google Service%>";
+				}
+				if (org.includes("akamai") || org.includes('fastly') || org.includes("bytedance") || org.includes("tiktok")) {
+					if (bytes && bytes >= 2097152) { // at least 2MB to ensure..
+						return "<%:TikTok%>";
+					}
+				}
+				if (org.includes("unicom") || org.includes("telecom") || org.includes("chinanet") || org.includes("cmnet")) {
+					if (bytes && bytes >= 4194304) { // at least 4MB to ensure..
+						return "<%:Bilibili%>";
+					}
+				}
+				if (org.includes("tencent") || org.includes("qq")) return "<%:Tencent%>";
+				if (org.includes("bilibili")) return "<%:Bilibili%>";
+				if (org.includes("netflix")) return "<%:Netflix%>";
+				if (org.includes("twitter") || org.includes("x corp")) return "<%:X (Twitter)%>";
+				if (org.includes("instagram") || org.includes("facebook") || org.includes("meta")) return "<%:Instagram%>";
+			
+				return org_as ? org_as : "<%:HTTPS Connection%>";
+			} else { // Non HTTPS connection 
+				if (org.includes("google") || org.includes("youtube")) {
+					if (bytes && bytes >= 4194304) { // at least 4MB to ensure..
+                                                return "<%:YouTube%>";
+                                        }
+				}
+				// General steram media? (Current payload equals to previous cache's ?)
+				if (payload && (payload == geoInfo.payload) && proto && proto.toLowerCase() == 'udp' && bytes > 1000) {
+					return "<%:PCDN Stream Media%>";
+				}
+			}
+			
+			return org_as ? org_as : "";
+		}
+	};
+
+	function isPureHexString(payloadStr) {
+		if (!payloadStr) return false;
+		return /^[0-9a-fA-F]+$/.test(payloadStr);
+	}
+
+	function isLocalIp(ip) {
+		if (!ip) return true;
+		let clean = ip.toLowerCase().replace(/[\s\[\]]/g, '');
+		if (clean === '127.0.0.1' || clean === '0.0.0.0' || clean === '::1' || clean === '::') return true;
+		if (clean.replace(/0/g, '') === ':::::::1' || clean.replace(/0/g, '') === '::::::::') return true;
+		if (/^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(clean)) return true;
+		if (/^f[cd]/.test(clean)) return true;
+		if (/^fe[89ab]/.test(clean)) return true;
+		return false;
+	}
+
+	function fastNormalizeIP(ip) {
+		if (!ip) return '';
+		let clean = ip.toLowerCase().replace(/[\s\[\]]/g, '');
+		if (clean.includes('.') && !clean.includes(':')) {
+			return ip.trim();
+		}
+		if (clean.startsWith('::ffff:') && clean.includes('.')) {
+			return clean.substring(7);
+		}
+		let parts = [];
+		if (clean.includes('::')) {
+			const sides = clean.split('::');
+			const left = sides[0] ? sides[0].split(':') : [];
+			const right = sides[1] ? sides[1].split(':') : [];
+			const missingCount = 8 - (left.length + right.length);
+			parts = [...left, ...Array(missingCount).fill('0000'), ...right];
+		} else {
+			parts = clean.split(':');
+		}
+		for (let i = 0; i < parts.length; i++) {
+			let segment = parts[i] || '0000';
+			if (segment.length < 4) {
+				segment = segment.padStart(4, '0');
+			}
+			parts[i] = segment;
+		}
+		while (parts.length < 8) {
+			parts.push('0000');
+		}
+		return parts.slice(0, 8).join(':');
+	}
+
+	var geoIpTimer = null;
+	function fetchGeoIp(ip, srcId, dstId, payload) {
+		if (isLocalIp(ip)) return;
+		if (geoIpCache[ip]) {
+			applyGeoIpToDom(ip, srcId, dstId);
+			return;
+		}
+		if (!queuedIpMap[ip]) queuedIpMap[ip] = [];
+		queuedIpMap[ip].push({ srcId: srcId, dstId: dstId, payload: payload });
+		if (geoIpQueue.indexOf(ip) === -1) geoIpQueue.push(ip);
+		
+		if (geoIpTimer) clearTimeout(geoIpTimer);
+		
+		geoIpTimer = setTimeout(function() {
+			if (!isGeoIpProcessing) {
+				isGeoIpProcessing = true;
+				processGeoIpBatch();
+			}
+		}, 150);
+	}
+
+	function processGeoIpBatch() {
+		if (geoIpQueue.length === 0) {
+			isGeoIpProcessing = false;
+			return;
+		}
+		var batchIps = [];
+		while (geoIpQueue.length > 0 && batchIps.length < 100) {
+			var ip = geoIpQueue.shift();
+			if (geoIpCache[ip]) {
+				var targets = queuedIpMap[ip] || [];
+				targets.forEach(function(t) { applyGeoIpToDom(ip, t.srcId, t.dstId); });
+				delete queuedIpMap[ip];
+			} else {
+				batchIps.push(ip);
+			}
+		}
+		if (batchIps.length === 0) {
+			setTimeout(processGeoIpBatch, 10);
+			return;
+		}
+		fetch('http://ip-api.com/batch?lang=<%= (luci.util.exec("uci -q get luci.main.lang"):gsub("%s+", ""):find("zh") and "zh-CN" or "en") %>', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(batchIps)
+		})
+		.then(function(res) {
+			if (res.status === 429) {
+				batchIps.forEach(function(ip) { geoIpQueue.push(ip); });
+				setTimeout(processGeoIpBatch, 5000);
+				return null;
+			}
+			return res.json();
+		})
+		.then(function(results) {
+			if (!results) return;
+			results.forEach(function(json) {
+				if (json && json.status === 'success') {
+					var queryIp = fastNormalizeIP(json.query);
+					var region = json.country + ' ' + (json.regionName || '') + ' ' + (json.city || '') + ' (' + (json.isp || '') + ')';
+					var flagHtml = '';
+					if (json.countryCode && json.countryCode.length === 2) {
+						var code = json.countryCode.toLowerCase();
+						flagHtml = '<span class="fi fi-' + code + ' ct-flag-inline"></span>';
+					}
+					var appName = "", appIcon = "", payload = "", bytes = "";
+					if (queuedIpMap[queryIp]) {
+						var arr = queuedIpMap[queryIp][0].payload.split('|');
+						payload = arr[0], proto = arr[1], bytes = arr[2];
+						if (payload) {
+							appName = appMapper[payload];
+							if (!appName) appName = appMapper.getAppName(payload, json, proto, bytes);
+							appIcon = appMapper.iconifyIcon(appName);
+							//if (appName && !(appName in appMapper)) appMapper[payload] = appName;
+							var payload_elems = document.querySelectorAll(`[payload="{payload}"]`);
+							payload_elems.forEach(function(elem) { elem.innerHTML = appMapper.renderIcon(appIcon, appName, json.as); elem.title = appName; });
+						}
+					}
+					geoIpCache[queryIp] = { org: json.org, as: json.as, region: region, flagHtml: flagHtml, appName: appName, appIcon: appIcon, payload: payload };
+					var targets = queuedIpMap[queryIp] || [];
+					targets.forEach(function(t) { applyGeoIpToDom(queryIp, t.srcId, t.dstId); });
+					delete queuedIpMap[queryIp];
+				}
+				if (json && json.status == 'fail') {
+					var queryIp = fastNormalizeIP(json.query);
+					delete queuedIpMap[queryIp];
+				}
+			});
+			setTimeout(processGeoIpBatch, 2000);
+		})
+		.catch(function(err) {
+			console.error("GeoIP Batch failed:", err);
+			batchIps.forEach(function(ip) { geoIpQueue.push(ip); });
+			setTimeout(processGeoIpBatch, 2000);
+		});
+	}
+
+	function applyGeoIpToDom(ip, srcId, dstId) {
+		var cached = geoIpCache[ip];
+		if (!cached) return;
+		var elSrc = document.getElementById(srcId);
+		var elDst = document.getElementById(dstId);
+		if (elSrc && elSrc.getAttribute('data-ip') === ip && !elSrc.getAttribute('data-geo-loaded')) {
+			elSrc.title = elSrc.title + '\nGeo: ' + cached.region;
+			if (cached.flagHtml || cached.region) {
+				var infoStr = cached.flagHtml ? cached.flagHtml + ' ' + cached.region : cached.region;
+				elSrc.innerHTML = elSrc.innerHTML + '<br /><span style="font-size:11px; color:#666; font-weight:normal;">' + infoStr + '</span>';
+			}
+			elSrc.setAttribute('data-geo-loaded', 'true');
+		}
+		if (elDst && elDst.getAttribute('data-ip') === ip && !elDst.getAttribute('data-geo-loaded')) {
+			elDst.title = elDst.title + '\nGeo: ' + cached.region;
+			if (cached.flagHtml || cached.region) {
+				var infoStr = cached.flagHtml ? cached.flagHtml + ' ' + cached.region : cached.region;
+				elDst.innerHTML = elDst.innerHTML + '<br /><span style="font-size:11px; color:#666; font-weight:normal;">' + infoStr + '</span>';
+			}
+			elDst.setAttribute('data-geo-loaded', 'true');
+		}
+	}
+
+	function formatSpeed(bytesPerSec) {
+		if (currentUnit === 'Bit') {
+			var bitsPerSec = bytesPerSec * 8;
+			if (bitsPerSec >= 1000 * 1000 * 1000) return (bitsPerSec / 1000 / 1000 / 1000).toFixed(2) + ' Gbps';
+			if (bitsPerSec >= 1000 * 1000) return (bitsPerSec / 1000 / 1000).toFixed(2) + ' Mbps';
+			if (bitsPerSec >= 1000) return (bitsPerSec / 1000).toFixed(2) + ' Kbps';
+			return bitsPerSec + ' bps';
+		} else {
+			if (bytesPerSec >= 1024 * 1024) return (bytesPerSec / 1024 / 1024).toFixed(2) + ' MB/s';
+			if (bytesPerSec >= 1024) return (bytesPerSec / 1024).toFixed(2) + ' KB/s';
+			return bytesPerSec + ' B/s';
+		}
+	}
+
+	function formatBytes(bytes) {
+		if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+		if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+		return (bytes / 1024).toFixed(2) + ' KB';
+	}
+
+	function updateFilterOptions(selectId, ipList, currentValue) {
+		var select = document.getElementById(selectId);
+		var defaultText = select.options[0] ? select.options[0].text : (selectId === 'filter_src_select' ? '<%:Source IP:Port%>' : '<%:Destination IP:Port%>');
+		select.options.length = 0;
+		var defaultOpt = document.createElement('option');
+		defaultOpt.value = 'all'; defaultOpt.text = defaultText;
+		if (currentValue === 'all') defaultOpt.selected = true;
+		select.appendChild(defaultOpt);
+		ipList.forEach(function(ip) {
+			var opt = document.createElement('option');
+			opt.value = ip;
+			var host = globalHostMap[ip];
+			opt.text = host ? ip + ' (' + host + ')' : ip;
+			if (ip === currentValue) opt.selected = true;
+			select.appendChild(opt);
+		});
+	}
+
+	function renderTable(data, showAppName) {
+		var table = document.getElementById('conntrack_table');
+		while (table.rows.length > 1) {
+			table.deleteRow(1);
+		}
+
+		if (data.connections.length === 0) {
+			var row = table.insertRow(-1);
+			row.className = 'cbi-section-table-row';
+			var cell = row.insertCell(0);
+			cell.colSpan = 7;
+			cell.style.textAlign = 'center';
+			cell.innerHTML = '<%:No active traffic speed detected...%>';
+			return;
+		}
+
+		data.connections.forEach(function(conn) {
+			var row = table.insertRow(-1);
+			row.className = 'cbi-section-table-row';
+
+			if (conn.payload && !isPureHexString(conn.payload)) {
+				if (!(conn.src in globalHostMap)) {
+					globalHostMap[conn.src] = conn.payload;
+				}
+				if (!(conn.dst in globalHostMap)) {
+					globalHostMap[conn.dst] = conn.payload;
+				}
+			}
+
+			var src_host = globalHostMap[conn.src];
+			var dst_host = globalHostMap[conn.dst];
+			var src_display = src_host ? src_host + ':' + conn.sport : conn.src + ':' + conn.sport;
+			var dst_display = dst_host ? dst_host + ':' + conn.dport : conn.dst + ':' + conn.dport;
+			var src_title = conn.src + ':' + conn.sport + (src_host ? ' (' + src_host + ')' : '');
+			var dst_title = conn.dst + ':' + conn.dport + (dst_host ? ' (' + dst_host + ')' : '');
+
+			var speedStr = formatSpeed(conn.speed);
+
+			var c0 = row.insertCell(0); c0.className = 'text-ellipsis'; c0.innerHTML = conn.l3.toUpperCase(); c0.title = conn.l3.toUpperCase();
+			var c1 = row.insertCell(1); c1.className = 'text-ellipsis'; c1.innerHTML = '<strong>' + conn.proto.toUpperCase() + '</strong>'; c1.title = conn.proto.toUpperCase();
+			var c2 = row.insertCell(2); c2.className = 'text-ellipsis'; c2.innerHTML = conn.state; c2.title = conn.state;
+			
+			var c3 = row.insertCell(3); c3.className = 'text-ellipsis ip-col-limit'; c3.innerHTML = src_display; c3.title = src_title;
+			var c4 = row.insertCell(4); c4.className = 'text-ellipsis ip-col-limit'; c4.innerHTML = dst_display; c4.title = dst_title;
+
+			var randId = Math.random().toString(36).substr(2, 9);
+			var src_dom_id = 'src_' + randId;
+			var dst_dom_id = 'dst_' + randId;
+			c3.id = src_dom_id; c3.setAttribute('data-ip', conn.src);
+			c4.id = dst_dom_id; c4.setAttribute('data-ip', conn.dst);
+
+			if (geoIpCache[conn.src]) { applyGeoIpToDom(conn.src, src_dom_id, dst_dom_id); }
+			if (geoIpCache[conn.dst]) { applyGeoIpToDom(conn.dst, src_dom_id, dst_dom_id); }
+
+			if (!geoIpCache[conn.src]) { fetchGeoIp(conn.src, src_dom_id, dst_dom_id, conn.payload+'|'+conn.proto+'|'+conn.bytes); }
+			if (!geoIpCache[conn.dst]) { fetchGeoIp(conn.dst, src_dom_id, dst_dom_id, conn.payload+'|'+conn.proto+'|'+conn.bytes); }
+	
+			var c5 = row.insertCell(5); c5.className = 'text-ellipsis'; c5.innerHTML = formatBytes(conn.bytes); c5.title = formatBytes(conn.bytes);
+			var c6 = row.insertCell(6); c6.className = 'text-ellipsis'; c6.innerHTML = '<span style="color:#468847; font-weight:bold;">' + speedStr + '</span>'; c6.title = speedStr;
+
+			var c7 = row.insertCell(7); c7.className = 'text-ellipsis icon-col-limit'; c7.style.display = showAppName ? '' : 'none';
+			var payload = conn.payload, appName = "", as = "";
+			if (payload) {
+				c7.setAttribute("payload", payload);
+				if (appMapper[payload]) {
+			    		appName = appMapper[payload];
+				}
+			}
+			if (!appName) {
+				if (geoIpCache[conn.src]){ // Revise appName by conn.bytes
+					appName = appMapper.getAppName(payload, geoIpCache[conn.src], conn.proto, conn.bytes);
+					if (appName) geoIpCache[conn.src].appName = appName;
+					as = geoIpCache[conn.src].as;
+				} else if (geoIpCache[conn.dst]){ // Revise appName by conn.bytes
+					appName = appMapper.getAppName(payload, geoIpCache[conn.dst], conn.proto, conn.bytes);
+                                        if (appName) geoIpCache[conn.dst].appName = appName;
+					as = geoIpCache[conn.dst].as;
+				}
+			}
+			c7.innerHTML = appMapper.renderIcon(appMapper.iconifyIcon(appName), appName, as);
+			c7.title = appName;
+		});
+	}
+
+	var streamRestartTimer = null;
+	function startStream() {
+		if (eventSource) {
+			eventSource.close();
+		}
+
+		if (streamRestartTimer) { clearTimeout(streamRestartTimer); streamRestartTimer = null; }
+
+		var interval = document.getElementById('interval_select').value;
+		var rows = document.getElementById('rows_select').value;
+		var filterSrc = document.getElementById('filter_src_select').value;
+		var filterDst = document.getElementById('filter_dst_select').value;
+		var filterLocal = document.getElementById('filter_local_checkbox').checked ? "true" : "false";
+		var sort = isRateSorted ? "rate" : (isFlowSorted ? "flow" : "rate");
+
+		var url = '<%=luci.dispatcher.build_url("admin", "network", "conntrack_stream")%>' + 
+			'?interval=' + interval + '&rows=' + rows + '&filter_src=' + filterSrc + '&filter_dst=' + filterDst + '&filter_local=' + filterLocal + "&sort=" + sort;
+
+		eventSource = new EventSource(url);
+
+		eventSource.onmessage = function(event) {
+			var showAppName = document.getElementById('show_appname_checkbox').checked ? true : false;
+			document.getElementById('th_appname').style.display = showAppName ? '' : 'none';
+
+			if (!streamRestartTimer) {
+				streamRestartTimer = setTimeout(function() {
+					streamRestartTimer = null;
+					startStream();
+				}, 1800000);
+			}
+
+			var loading = document.getElementById('loading_msg');
+			if (loading) loading.style.display = 'none';
+
+			var data = JSON.parse(event.data);
+			if (data.host_map) { globalHostMap = data.host_map; }
+			document.getElementById('delta_label').innerHTML = data.delta + 's';
+			lastCacheData = data;
+
+			if (!localIsSrcFocus && !localIsDstFocus) {
+				var currentSrc = document.getElementById('filter_src_select').value;
+				var currentDst = document.getElementById('filter_dst_select').value;
+				renderTable(data, showAppName);
+				updateFilterOptions('filter_src_select', data.unique_ips, currentSrc);
+				updateFilterOptions('filter_dst_select', data.unique_ips, currentDst);
+			}
+		};
+
+		eventSource.onerror = function(err) {
+			console.error("EventSource failed:", err);
+			var loading = document.getElementById('loading_msg');
+			if (loading) {
+				loading.style.display = 'table-cell';
+				loading.innerHTML = '<span style="color:red;"><%:Stream connection lost, retrying...%></span>';
+			}
+		};
+	}
+
+	let isFlowSorted = true;
+	let isRateSorted = false;
+
+	function updateArrows() {
+		const f = document.getElementById('arrow-flow');
+		const r = document.getElementById('arrow-rate');
+
+		f.innerHTML = isFlowSorted ? '&darr;' : '&#8645;';
+		f.className = isFlowSorted ? 'active' : 'inactive';
+
+		r.innerHTML = isRateSorted ? '&darr;' : '&#8645;';
+		r.className = isRateSorted ? 'active' : 'inactive';
+	}
+
+	document.getElementById('arrow-flow').addEventListener('click', function() {
+		isRateSorted = false;
+		isFlowSorted = true;
+		updateArrows();
+		startStream();
+	});
+	document.getElementById('arrow-rate').addEventListener('click', function() {
+		isRateSorted = true;
+                isFlowSorted = false;
+		updateArrows();
+		startStream();
+        });
+
+	document.getElementById('toggle_btn').addEventListener('click', function() {
+		if (currentUnit === 'Bit') {
+			currentUnit = 'B';
+			this.innerHTML = 'B';
+		} else {
+			currentUnit = 'Bit';
+			this.innerHTML = 'Bit';
+		}
+		if (lastCacheData) {
+			renderTable(lastCacheData);
+		}
+	});
+
+	document.getElementById('interval_select').addEventListener('change', startStream);
+	document.getElementById('rows_select').addEventListener('change', startStream);
+	
+	document.getElementById('filter_src_select').addEventListener('change', function() {
+		isSrcOpen = false;
+		this.blur();
+		localIsSrcFocus = false;
+		startStream();
+	});
+
+	document.getElementById('filter_dst_select').addEventListener('change', function() {
+		isDstOpen = false;
+		this.blur();
+		localIsDstFocus = false;
+		startStream();
+	});
+
+	document.getElementById('filter_src_select').addEventListener('click', function() {
+		isSrcOpen = !isSrcOpen;
+		if (!isSrcOpen) { this.blur(); }
+	});
+
+	document.getElementById('filter_src_select').addEventListener('blur', function() {
+		isSrcOpen = false;
+	});
+
+	document.getElementById('filter_dst_select').addEventListener('click', function() {
+		isDstOpen = !isDstOpen;
+		if (!isDstOpen) { this.blur(); }
+	});
+
+	document.getElementById('filter_dst_select').addEventListener('blur', function() {
+		isDstOpen = false;
+	});
+
+	document.getElementById('filter_src_select').addEventListener('focus', function() { localIsSrcFocus = true; });
+	document.getElementById('filter_src_select').addEventListener('blur', function() { localIsSrcFocus = false; });
+	document.getElementById('filter_dst_select').addEventListener('focus', function() { localIsDstFocus = true; });
+	document.getElementById('filter_dst_select').addEventListener('blur', function() { localIsDstFocus = false; });
+
+	document.getElementById('filter_local_checkbox').addEventListener('change', startStream);
+
+	window.addEventListener('DOMContentLoaded', startStream);
+//]]></script>
+<script type="text/javascript">//<![CDATA[
+(function() {
+	var getUrl = "<%=luci.dispatcher.build_url('admin/network/conntrack/get_settings')%>";
+	var setUrl = "<%=luci.dispatcher.build_url('admin/network/conntrack/set_settings')%>";
+	
+	var activeTimer = null;
+	
+	var elements = {
+		interval: document.getElementById("interval_select"),
+		rows: document.getElementById("rows_select"),
+		filter_local: document.getElementById("filter_local_checkbox"),
+		show_appname: document.getElementById("show_appname_checkbox")
+	};
+
+	window.conntrack_settings = {
+		interval: 1.5,
+		rows: 50,
+		filter_local: true,
+		show_appname: false
+	};
+
+	var loadSavedSettings = function() {
+		fetch(getUrl, { method: "GET", cache: "no-cache" })
+			.then(function(res) { return res.json(); })
+			.then(function(config) {
+				if (config) {
+					window.conntrack_settings.interval = parseFloat(config.interval) || 1.5;
+					window.conntrack_settings.rows = parseInt(config.rows) || 50;
+					window.conntrack_settings.filter_local = (config.filter_local === "true");
+					window.conntrack_settings.show_appname = (config.show_appname === "true");
+
+					if (elements.interval) elements.interval.value = config.interval;
+					if (elements.rows) elements.rows.value = config.rows;
+					if (elements.filter_local) {
+						if (elements.filter_local.type === "checkbox") elements.filter_local.checked = window.conntrack_settings.filter_local;
+						else elements.filter_local.value = config.filter_local;
+					}
+					if (elements.show_appname) {
+						if (elements.show_appname.type === "checkbox") elements.show_appname.checked = window.conntrack_settings.show_appname;
+						else elements.show_appname.value = config.show_appname;
+					}
+
+					if (typeof window.startStream === "function") {
+						window.startStream();
+					}
+				}
+			})
+			.catch(function() {});
+	};
+
+	var bindAutoSyncEvents = function() {
+		var postUpdate = function() {
+			var payload = {
+				interval: elements.interval ? elements.interval.value : "1500",
+				rows: elements.rows ? elements.rows.value : "50",
+				filter_local: elements.filter_local ? (elements.filter_local.type === "checkbox" ? elements.filter_local.checked : elements.filter_local.value === "true") : true,
+				show_appname: elements.show_appname ? (elements.show_appname.type === "checkbox" ? elements.show_appname.checked : elements.show_appname.value === "true") : false
+			};
+
+			window.conntrack_settings.interval = parseFloat(payload.interval);
+			window.conntrack_settings.rows = parseInt(payload.rows);
+			window.conntrack_settings.filter_local = (payload.filter_local === true || payload.filter_local === "true");
+			window.conntrack_settings.show_appname = (payload.show_appname === true || payload.show_appname === "true");
+
+			fetch(setUrl, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload)
+			})
+			.then(function(res) { return res.json(); })
+			.then(function(data) {
+				if (data && data.status === "ok" && typeof window.startStream === "function") {
+					// window.startStream(); // have been processed (see above individual event handler)
+				}
+			})
+			.catch(function() {});
+		};
+
+		for (var key in elements) {
+			if (elements.hasOwnProperty(key) && elements[key]) {
+				var evType = (elements[key].type === "checkbox" || elements[key].tagName === "SELECT") ? "change" : "input";
+				elements[key].addEventListener(evType, postUpdate);
+			}
+		}
+	};
+
+	document.addEventListener("DOMContentLoaded", function() {
+		loadSavedSettings();
+		bindAutoSyncEvents();
+	});
+})();
+//]]></script>
+</script>
+<%+footer%>
+

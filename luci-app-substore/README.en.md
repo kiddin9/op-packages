@@ -21,6 +21,9 @@ group them, then re-emit them in a format your client can consume.
   (optionally with keyword include / exclude and dedup rules) into one combination that
   has its own name, token and subscription link; combinations are recomputed automatically
   when a source updates
+- **Local subscription**: no URL needed — paste node text (mixed YAML / URI / JSON) or
+  enter nodes one by one via a form whose fields adapt to the selected protocol
+  (vmess / vless / ss / ssr / trojan / hysteria2 / tuic / wireguard / socks)
 
 **Input parsing**
 - Subscription formats: URI lists, Base64, JSON, Clash YAML, sing-box JSON,
@@ -30,7 +33,12 @@ group them, then re-emit them in a format your client can consume.
   `tuic` / `socks` (and more)
 
 **Node processing**
-- Browse nodes, filter by protocol, keyword search, sort
+- Browse nodes, filter by group / protocol, keyword search, sort
+- Node grouping: set a node's group inline in the Group column (saved via XHR without
+  reload), filter via the Group dropdown
+- Per-node edit / delete (Actions column); header checkbox selects all, then the Delete
+  button batch-deletes the selection; the Refresh button reloads the list keeping the
+  current filters
 - Per-subscription rules applied on every update:
   - keyword include / exclude (comma-separated, multi-keyword)
   - deduplication
@@ -59,18 +67,18 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.1.3-r6`).
+> [Makefile](Makefile) (currently `2.2.0-r1`).
 
 opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
 
 ```bash
-opkg install luci-app-substore-2.1.3-r6.ipk
+opkg install luci-app-substore-2.2.0-r1.ipk
 ```
 
 apk (OpenWrt / ImmortalWrt 25.12+):
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.1.3-r6.apk
+apk add --allow-untrusted luci-app-substore-2.2.0-r1.apk
 ```
 
 Then open LuCI: **Services → Subscriptions**.
@@ -78,9 +86,12 @@ Then open LuCI: **Services → Subscriptions**.
 ## Usage
 
 1. **Add a subscription** — paste the subscription URL; optionally set up a
-   per-subscription cron schedule, rules, or a download proxy.
+   per-subscription cron schedule, rules, or a download proxy. No remote source?
+   Use **Add local subscription**: paste node text or enter nodes via the form.
 2. **Update** — fetch, parse and filter the nodes.
-3. **Browse nodes** — filter, sort, and probe latency.
+3. **Browse nodes** — filter (group / protocol / keyword), sort, probe latency; tick
+   checkboxes and hit Delete for batch deletion, edit / delete / regroup in-row, and
+   Refresh reloads the list.
 4. **Export** — pick one of the 13 output formats, or copy the subscription link
    to feed a downstream client (Passwall / OpenClash / …).
 

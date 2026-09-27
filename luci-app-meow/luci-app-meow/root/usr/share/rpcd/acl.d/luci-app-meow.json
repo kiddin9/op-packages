@@ -1,0 +1,24 @@
+{
+  "luci-app-meow": {
+    "description": "Grant access to meow service configuration",
+    "read": {
+      "uci": [ "meow" ],
+      "ubus": {
+        "service": [ "list" ],
+        "log": [ "read" ]
+      },
+      "file": {
+        "/etc/meow/*": [ "read", "list" ],
+        "/etc/init.d/meow": [ "exec" ]
+      }
+    },
+    "write": {
+      "uci": [ "meow" ],
+      "file": {
+        "/etc/meow/*": [ "write" ],
+        "/bin/chmod": [ "exec" ],
+        "/etc/init.d/meow": [ "exec" ]
+      }
+    }
+  }
+}

@@ -1,0 +1,356 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Active devices"
+msgstr ""
+
+msgid "Adding to"
+msgstr ""
+
+msgid "All"
+msgstr ""
+
+msgid "All active devices"
+msgstr ""
+
+msgid "Apply"
+msgstr ""
+
+msgid "Avg"
+msgstr ""
+
+msgid "Block"
+msgstr ""
+
+msgid "BLOCKED"
+msgstr ""
+
+msgid "Blocked"
+msgstr ""
+
+msgid "Blocking"
+msgstr ""
+
+msgid "Bytes"
+msgstr ""
+
+msgid "Bytes queued in tc"
+msgstr ""
+
+msgid "Calculating…"
+msgstr ""
+
+msgid "Click a row to inspect that device. Download speed updates every 2 seconds."
+msgstr ""
+
+msgid "Click header to sort."
+msgstr ""
+
+msgid "Click to inspect"
+msgstr ""
+
+msgid "Connections"
+msgstr ""
+
+msgid "Conns"
+msgstr ""
+
+msgid "Custom…"
+msgstr ""
+
+msgid "DL Speed"
+msgstr ""
+
+msgid "Device"
+msgstr ""
+
+msgid "Dropped"
+msgstr ""
+
+msgid "Dst IP"
+msgstr ""
+
+msgid "Group"
+msgstr ""
+
+msgid "Group by"
+msgstr ""
+
+msgid "Hostname"
+msgstr ""
+
+msgid "Hostname / Dst IP"
+msgstr ""
+
+msgid "Inet"
+msgstr ""
+
+msgid "Limited"
+msgstr ""
+
+msgid "Limiter (drop)"
+msgstr ""
+
+msgid "Limiter (nft drop)"
+msgstr ""
+
+msgid "Limiting"
+msgstr ""
+
+msgid "Max"
+msgstr ""
+
+msgid "Mode"
+msgstr ""
+
+msgid "No active connections."
+msgstr ""
+
+msgid "No active devices."
+msgstr ""
+
+msgid "None (per-flow)"
+msgstr ""
+
+msgid "Off"
+msgstr ""
+
+msgid "Open DHCP/DNS bindings"
+msgstr ""
+
+msgid "Passed"
+msgstr ""
+
+msgid "Port"
+msgstr ""
+
+msgid "Proto"
+msgstr ""
+
+msgid "Protocol"
+msgstr ""
+
+msgid "Queued"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "Removing from"
+msgstr ""
+
+msgid "Removing throttle for"
+msgstr ""
+
+msgid "Reverse DNS"
+msgstr ""
+
+msgid "Run"
+msgstr ""
+
+msgid "Running…"
+msgstr ""
+
+msgid "Scanning all devices…"
+msgstr ""
+
+msgid "Service"
+msgstr ""
+
+msgid "Shaped"
+msgstr ""
+
+msgid "Shaper (queue)"
+msgstr ""
+
+msgid "Shaper (tc/HTB queue)"
+msgstr ""
+
+msgid "Shaping"
+msgstr ""
+
+msgid "Show"
+msgstr ""
+
+msgid "Speed Limit"
+msgstr ""
+
+msgid "Speed limit"
+msgstr ""
+
+msgid "State"
+msgstr ""
+
+msgid "Stats"
+msgstr ""
+
+msgid "Throttle"
+msgstr ""
+
+msgid "Throttle removed"
+msgstr ""
+
+msgid "Traffic Control"
+msgstr ""
+
+msgid "Unblock"
+msgstr ""
+
+msgid "Unblocking"
+msgstr ""
+
+msgid "Unknown error"
+msgstr ""
+
+msgid "WiFi"
+msgstr ""
+
+msgid "WiFi Block"
+msgstr ""
+
+msgid "WiFi Unblock"
+msgstr ""
+
+msgid "WiFi blocked"
+msgstr ""
+
+msgid "WiFi deny list"
+msgstr ""
+
+msgid "blocked"
+msgstr ""
+
+msgid "connections"
+msgstr ""
+
+msgid "dropped"
+msgstr ""
+
+msgid "groups from"
+msgstr ""
+
+msgid "ok"
+msgstr ""
+
+msgid "resolving…"
+msgstr ""
+
+msgid "value"
+msgstr ""
+
+msgid "Extended stats"
+msgstr ""
+
+msgid "Extended Statistics"
+msgstr ""
+
+msgid "Poll"
+msgstr ""
+
+msgid "Avg window"
+msgstr ""
+
+msgid "Method"
+msgstr ""
+
+msgid "Simple"
+msgstr ""
+
+msgid "EWMA"
+msgstr ""
+
+msgid "Drops"
+msgstr ""
+
+msgid "Overlimits"
+msgstr ""
+
+msgid "ECN marks"
+msgstr ""
+
+msgid "Flows"
+msgstr ""
+
+msgid "new"
+msgstr ""
+
+msgid "old"
+msgstr ""
+
+msgid "Queue memory"
+msgstr ""
+
+msgid "Lended"
+msgstr ""
+
+msgid "Borrowed"
+msgstr ""
+
+msgid "Utilization"
+msgstr ""
+
+msgid "Packets dropped"
+msgstr ""
+
+msgid "Bytes dropped"
+msgstr ""
+
+msgid "Drop ratio"
+msgstr ""
+
+msgid "No extended stats available for this device."
+msgstr ""
+
+msgid "What do these stats mean?"
+msgstr ""
+
+msgid "packets dropped by queue overflow"
+msgstr ""
+
+msgid "rate exceeded events"
+msgstr ""
+
+msgid "congestion signals without drop"
+msgstr ""
+
+msgid "active concurrent connections in queue"
+msgstr ""
+
+msgid "bytes allocated by the queue discipline"
+msgstr ""
+
+msgid "own-rate vs parent-rate packets"
+msgstr ""
+
+msgid "current speed as percentage of rate limit"
+msgstr ""
+
+msgid "traffic discarded by nft policer"
+msgstr ""
+
+msgid "percentage of total traffic that was dropped"
+msgstr ""
+
+msgid "Shaped devices"
+msgstr ""
+
+msgid "Total drops"
+msgstr ""
+
+msgid "Total queue memory"
+msgstr ""
+
+msgid "Limited devices"
+msgstr ""
+
+msgid "Total dropped"
+msgstr ""
+
+msgid "pkts"
+msgstr ""
+
+msgid "No extended stats available."
+msgstr ""
+
+msgid "all devices"
+msgstr ""

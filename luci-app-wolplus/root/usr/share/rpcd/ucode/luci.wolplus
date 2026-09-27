@@ -1,0 +1,45 @@
+#!/usr/bin/ucode
+
+'use strict';
+
+import { popen } from 'fs';
+import { cursor } from 'uci';
+
+const etherwake = '/usr/bin/etherwake';
+
+function shellquote(s) {
+	return "'" + replace(s, "'", "'\\''") + "'";
+}
+
+const methods = {
+	awake: {
+		args: { section: 'string' },
+		call: function(request) {
+			const section = request.args.section;
+			if (!section || match(section, /[^A-Za-z0-9_]/))
+				return { data: 'invalid section' };
+
+			let ctx = cursor();
+			let lan = ctx.get('wolplus', section, 'maceth') || '';
+			let mac = ctx.get('wolplus', section, 'macaddr') || '';
+
+			if (!mac)
+				return { data: 'missing MAC address' };
+
+			let cmd = etherwake + ' -D' +
+				(lan ? ' -i ' + shellquote(lan) : '') +
+				' -b ' + shellquote(mac) + ' 2>&1';
+
+			const fd = popen(cmd);
+			let out = fd.read('all') || '';
+			fd.close();
+
+			if (length(out) > 500)
+				out = substr(out, 0, 500) + '...';
+
+			return { data: out };
+		}
+	}
+};
+
+return { 'luci.wolplus': methods };

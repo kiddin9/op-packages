@@ -1,0 +1,38 @@
+/* ── netstat_dark.css  (dark theme)  ── */
+/* Imports light theme then overrides only the colour tokens.
+   This eliminates ~120 lines of duplicated rules.            */
+@import url("netstat.css");
+
+:root {
+  --ns-bg:           #0f1113;
+  --ns-border:       #374151;
+  --ns-text:         #f4f4f4;
+  --ns-muted:        #9ca3af;
+  --ns-number:       #f4f4f4;
+  --ns-unit:         #d6d6d6;
+  --ns-label:        #c8c8c8;
+  --ns-box-shadow:   rgba(0,0,0,0.35);
+  --ns-dl-color:     #7fdc98;
+  --ns-ul-color:     #7db8ff;
+  --ns-total-color:  #f0f0f0;
+  --ns-status-up:    #7fdc98;
+  --ns-status-down:  #ff7d7d;
+  --ns-sep:          #e6e6e6;
+  --ns-summary-bg:   #1a1d20;
+  --ns-badge-bg:     #1e3a5f;
+  --ns-badge-text:   #93c5fd;
+  --ns-mem-color:    #a78bfa;
+  --ns-temp-color:   #f87171;
+  --ns-disk-color:   #22d3ee;
+  --ns-bar-bg:       #374151;
+}
+
+/* Dark-specific trend arrow colours */
+.ns-trend-up   { color: #7fdc98 !important; }
+.ns-trend-down { color: #ff7d7d !important; }
+
+/* Dark-specific hover (slightly lighter border) */
+.netstat-box:hover {
+  border-color: #6b7280 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+}

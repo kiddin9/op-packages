@@ -1,0 +1,153 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+
+msgid "ALSA devices are muted by default. Enable to unmute automatically."
+msgstr "ALSA 设备默认静音，启用后开机自动解除。"
+
+msgid "Add"
+msgstr "加入队列"
+
+msgid "Apply failed: %s"
+msgstr "应用失败：%s"
+
+msgid "Basic settings"
+msgstr "基础设置"
+
+msgid "Clear queue"
+msgstr "清空队列"
+
+msgid "Current:"
+msgstr "当前播放："
+
+msgid "DLNA Music Player"
+msgstr "DLNA音乐播放器"
+
+msgid "DLNA device name"
+msgstr "DLNA 设备名"
+
+msgid "Default playback volume (0-100). Applied when you save, and on boot if \"Remember volume\" is off."
+msgstr "默认播放音量（0-100）。保存时立即生效；若关闭「记住音量」，开机也会应用。"
+
+msgid "Default volume"
+msgstr "默认音量"
+
+msgid "Enable audio service"
+msgstr "启用音频服务"
+
+msgid "Keep the playback volume across reboots."
+msgstr "重启后仍保留播放音量。"
+
+msgid "Leave empty to auto-detect. Pick a detected card below, or type a custom device such as <code>hw:0,0</code>."
+msgstr "留空则自动探测。可从下方列表选择，也可手填设备名（如 <code>hw:0,0</code>）。"
+
+msgid "Loop: OFF"
+msgstr "循环：关"
+
+msgid "Loop: ON"
+msgstr "循环：开"
+
+msgid "Music directory"
+msgstr "音乐目录"
+
+msgid "Next track"
+msgstr "下一首"
+
+msgid "No matching music."
+msgstr "没有匹配的音乐。"
+
+msgid "Pause"
+msgstr "暂停"
+
+msgid "Play"
+msgstr "播放"
+
+msgid "Play mode"
+msgstr "播放模式"
+
+msgid "Play queue"
+msgstr "队列"
+
+msgid "Player"
+msgstr "播放器"
+
+msgid "Player control"
+msgstr "播放控制"
+
+msgid "Progress"
+msgstr "进度"
+
+msgid "Remember volume"
+msgstr "记住音量"
+
+msgid "Rescan"
+msgstr "重新扫描"
+
+msgid "Search"
+msgstr "搜索"
+
+msgid "Sequential: OFF"
+msgstr "顺序播放：关"
+
+msgid "Sequential: ON"
+msgstr "顺序播放：开"
+
+msgid "Service status"
+msgstr "服务状态"
+
+msgid "Settings applied. Services restarted."
+msgstr "设置已应用，服务已重启。"
+
+msgid "Showing %d / %d"
+msgstr "显示 %d / %d 条"
+
+msgid "Shuffle: OFF"
+msgstr "随机：关"
+
+msgid "Shuffle: ON"
+msgstr "随机：开"
+
+msgid "Sound card"
+msgstr "声卡"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "The name shown on your phone when casting music. Leave empty to use the hostname."
+msgstr "手机投送音乐时显示的名称。留空则使用主机名。"
+
+msgid "Turn the audio setup on or off. When off, MPD and upmpdcli are stopped and disabled."
+msgstr "开启或关闭音频服务。关闭时会停止并禁用 MPD 与 upmpdcli。"
+
+msgid "Turn this device into a music player: auto-detect the sound card, configure MPD and upmpdcli (DLNA)."
+msgstr "把本机变成音乐播放器：自动探测声卡，配置 MPD 与 upmpdcli（DLNA 投送）。"
+
+msgid "Unmute on boot"
+msgstr "开机解除静音"
+
+msgid "Volume"
+msgstr "音量"
+
+msgid "Where your music files are stored (can be a mount point, e.g. /mnt/sda1/music)."
+msgstr "音乐文件存放位置（可以是挂载点，例如 /mnt/sda1/music）。"
+
+msgid "auto-detect"
+msgstr "自动探测"
+
+msgid "loading..."
+msgstr "加载中…"
+
+msgid "running"
+msgstr "运行中"
+
+msgid "stopped"
+msgstr "已停止"
+
+msgid "type to filter..."
+msgstr "输入关键词筛选…"
+
+msgid "use hostname"
+msgstr "使用主机名"

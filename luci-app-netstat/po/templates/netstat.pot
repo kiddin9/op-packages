@@ -1,0 +1,268 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-netstat\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: files/usr/lib/lua/luci/controller/netstat.lua:4
+msgid "Tools"
+msgstr ""
+
+#: files/usr/lib/lua/luci/controller/netstat.lua:5
+msgid "Netstat"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:6
+msgid "Configure traffic monitoring and view usage history from a single page."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:15
+msgid "Monitoring Settings"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:20
+msgid "Traffic Backend"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:22
+msgid "Normal (Real-time)"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:23
+msgid "vnStat (Historical, Delayed)"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:24
+msgid ""
+"Normal reads live counters from /proc/net/dev. "
+"vnStat reads the vnStat database which updates on its own schedule."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:30
+msgid "View Mode"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:32
+msgid "Daily Usage"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:33
+msgid "Monthly Usage"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:34
+msgid "Default view shown on the Network Usage tab."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:37
+msgid "Preferred Interface"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:38
+msgid ""
+"WAN interface to track. Leave blank for auto-detection.<br>"
+"<strong>Tip:</strong> If your WAN uses a dynamic name (e.g. wwan0_1) "
+"it will be detected automatically when left blank."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:43
+msgid "Auto detect"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:54
+msgid "vnStat Database"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:63
+msgid "Location: /etc/vnstat/"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:69
+msgid "Reset Historical Data"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:70
+msgid "Reset Database"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:72
+msgid ""
+"<strong style='color:#b91c1c;'>Warning:</strong> "
+"This permanently deletes all stored traffic history for every interface."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:87
+msgid "Are you sure? All traffic history will be permanently deleted."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:109
+msgid "vnStat database has been reset successfully for all interfaces."
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:113
+msgid "About"
+msgstr ""
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:117
+#: files/usr/lib/lua/luci/view/netstat/tabs.htm:11
+msgid "Network Usage"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/tabs.htm:12
+msgid "Settings"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:2
+msgid "LuCI Netstat"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:4
+msgid "Frontend for traffic monitoring and usage charts on OpenWrt."
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:9
+msgid "Developer"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:14
+msgid "Repository"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:22
+msgid "Contributors"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:25
+msgid "View on GitHub"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:30
+msgid "License"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:35
+msgid "Issues / Support"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:38
+msgid "Open an issue"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:45
+msgid "Made with"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:45
+msgid "for the OpenWrt community"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:100
+msgid "Monthly"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:103
+msgid "Daily"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:118
+msgid "Usage is displayed using the Interface and View Mode selected in the Settings tab."
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:126
+msgid "Download"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:131
+msgid "Upload"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:135
+msgid "Total"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:142
+msgid "Usage"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:203
+msgid "Download (RX)"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:220
+msgid "Upload (TX)"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:282
+msgid "No vnStat interfaces were found. Make sure vnStat has been initialized."
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:287
+msgid "No data available for"
+msgstr ""
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:289
+msgid "vnStat may still be collecting its first data. Try again in a few minutes."
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:241
+msgid "Internet"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:242
+msgid "Connected"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:242
+msgid "Disconnected"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:244
+msgid "IP"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:497
+msgid "Loading network stats..."
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:526
+msgid "download"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:531
+msgid "upload"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:545
+msgid "downloaded"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:546
+msgid "uploaded"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:214
+msgid "Peak"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:301
+msgid "RAM"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:313
+msgid "STORAGE"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:332
+msgid "CPU TEMP"
+msgstr ""
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:343
+msgid "UPTIME"
+msgstr ""

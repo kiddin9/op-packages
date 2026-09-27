@@ -1,0 +1,24 @@
+{
+	"luci-app-dlna-player": {
+		"description": "Grant access to DLNA Music Player",
+		"read": {
+			"file": {
+				"/usr/bin/aplay": [ "exec" ],
+				"/usr/bin/mpc": [ "exec" ],
+				"/bin/pidof": [ "exec" ],
+				"/etc/init.d/dlna-player": [ "exec" ]
+			},
+			"uci": [ "dlna-player" ]
+		},
+		"write": {
+			"file": {
+				"/usr/bin/mpc": [ "exec" ],
+				"/etc/init.d/dlna-player": [ "exec" ],
+				"/etc/init.d/dlna-player-volume": [ "exec" ],
+				"/etc/init.d/upmpdcli": [ "exec" ],
+				"/etc/init.d/mpd": [ "exec" ]
+			},
+			"uci": [ "dlna-player" ]
+		}
+	}
+}

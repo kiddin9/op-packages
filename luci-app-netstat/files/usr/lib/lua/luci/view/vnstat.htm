@@ -1,0 +1,250 @@
+<%+header%>
+
+<%
+local sys  = require "luci.sys"
+local http = require "luci.http"
+local uci  = require "luci.model.uci".cursor()
+
+local function to_bytes(value, unit)
+    local multipliers = {
+        ["KiB"] = 1024,
+        ["MiB"] = 1024^2,
+        ["GiB"] = 1024^3,
+        ["TiB"] = 1024^4
+    }
+    return tonumber(value) * (multipliers[unit] or 1)
+end
+
+local function format_date(date_str)
+    local month_names = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}
+    local m, d, y = date_str:match("(%d%d)/(%d%d)/(%d%d)")
+    if m and d and y then
+        return string.format("%02d %s %02d", tonumber(d), month_names[tonumber(m)], tonumber(y))
+    end
+    return date_str
+end
+
+local function get_interfaces()
+    local ifaces = {}
+    local p = io.popen("ls /etc/vnstat/ 2>/dev/null | grep -v '.conf$' | grep -v '.old$'")
+    if p then
+        for iface in p:lines() do
+            iface = iface:match("^%s*(.-)%s*$")
+            if iface ~= "" then table.insert(ifaces, iface) end
+        end
+        p:close()
+    end
+    table.sort(ifaces)
+    return ifaces
+end
+
+local function get_daily_stats(iface)
+    local stats = {}
+    local output = sys.exec("vnstat -i " .. iface .. " --days 2>/dev/null") or ""
+    for date, rx_val, rx_unit, tx_val, tx_unit in
+        output:gmatch("(%d%d/%d%d/%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
+        table.insert(stats, {
+            date  = format_date(date),
+            rx    = to_bytes(rx_val, rx_unit),
+            tx    = to_bytes(tx_val, tx_unit)
+        })
+    end
+    return stats
+end
+
+local function get_monthly_stats(iface)
+    local stats = {}
+    local output = sys.exec("vnstat -i " .. iface .. " --months 2>/dev/null") or ""
+    for month, rx_val, rx_unit, tx_val, tx_unit in
+        output:gmatch("(%a+%s+'%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
+        table.insert(stats, {
+            month = month,
+            rx    = to_bytes(rx_val, rx_unit),
+            tx    = to_bytes(tx_val, tx_unit)
+        })
+    end
+    return stats
+end
+
+local ifaces        = get_interfaces()
+local current_iface = http.formvalue("iface") or "wwan0_1"
+local view_mode     = http.formvalue("mode") or "daily"
+local stats, title  = {}, ""
+
+if current_iface ~= "" then
+    if view_mode == "daily" then
+        stats = get_daily_stats(current_iface)
+        title = "<%:Daily%>"
+    else
+        stats = get_monthly_stats(current_iface)
+        title = "<%:Monthly%>"
+    end
+end
+%>
+
+<div class="cbi-map">
+    <h2 name="content"><%:Network Usage%></h2>
+
+    <div class="cbi-section">
+        <!-- Interface & Mode Select -->
+        <form method="get" class="inline">
+            <div class="cbi-value">
+                <label class="cbi-value-title"><%:Interface%></label>
+                <div class="cbi-value-field">
+                    <select name="iface" onchange="this.form.submit()" class="cbi-input-select">
+                        <% if #ifaces == 0 then %>
+                            <option value=""><%:No interfaces found%></option>
+                        <% else %>
+                            <% for _, iface in ipairs(ifaces) do %>
+                                <option value="<%=iface%>" <%=current_iface == iface and 'selected="selected"' or ''%>><%=iface%></option>
+                            <% end %>
+                        <% end %>
+                    </select>
+                </div>
+            </div>
+
+            <div class="cbi-value">
+                <label class="cbi-value-title"><%:View Mode%></label>
+                <div class="cbi-value-field">
+                    <select name="mode" onchange="this.form.submit()" class="cbi-input-select">
+                        <option value="daily" <%=view_mode == "daily" and 'selected="selected"' or ''%>><%:Daily%></option>
+                        <option value="monthly" <%=view_mode == "monthly" and 'selected="selected"' or ''%>><%:Monthly%></option>
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <% if current_iface ~= "" and #stats > 0 then %>
+        <div class="cbi-section">
+            <h3><%=title%> <small>(<%=current_iface%>)</small></h3>
+            <div style="width: 100%; height: auto; min-height: 350px;">
+                <canvas id="trafficChart"></canvas>
+            </div>
+        </div>
+
+        <script src="/luci-static/resources/netstat/chart.js"></script>
+        <script src="/luci-static/resources/netstat/chartjs-plugin-datalabels"></script>
+        <script>
+        // Detect background brightness
+        function getTextColor() {
+            const bodyColor = window.getComputedStyle(document.body).backgroundColor;
+            if (!bodyColor) return '#000';
+            const rgb = bodyColor.match(/\d+/g).map(Number);
+            const brightness = (rgb[0]*299 + rgb[1]*587 + rgb[2]*114) / 1000;
+            return brightness < 128 ? '#fff' : '#000';
+        }
+        const textColor = getTextColor();
+
+        // Dynamic height per row
+        const barHeight = 60; // bigger for mobile
+        const chartCanvas = document.getElementById('trafficChart');
+        chartCanvas.height = Math.max(350, <%=#stats%> * barHeight);
+        const ctx = chartCanvas.getContext('2d');
+
+        // Download gradient (light green → dark green)
+        function getGradient(ctx, value, maxValue) {
+            const gradient = ctx.createLinearGradient(0, 0, chartCanvas.width, 0);
+            gradient.addColorStop(0, '#90ee90'); // light green
+            gradient.addColorStop(1, '#006400'); // dark green
+            return gradient;
+        }
+
+        // Format bytes -> readable
+        function formatBytes(value) {
+            if (value > 1099511627776) return (value/1099511627776).toFixed(2) + ' TB';
+            if (value > 1073741824)   return (value/1073741824).toFixed(2) + ' GB';
+            if (value > 1048576)      return (value/1048576).toFixed(2) + ' MB';
+            if (value > 1024)         return (value/1024).toFixed(2) + ' KB';
+            return value + ' B';
+        }
+
+        // Data arrays
+        const rxData = [
+            <% for _, stat in ipairs(stats) do %>
+                <%= math.floor(stat.rx) %>,
+            <% end %>
+        ];
+        const txData = [
+            <% for _, stat in ipairs(stats) do %>
+                <%= math.floor(stat.tx) %>,
+            <% end %>
+        ];
+        const maxValue = Math.max(...rxData, ...txData, 1);
+
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [
+                    <% for _, stat in ipairs(stats) do %>
+                        "<%= view_mode == "daily" and stat.date or stat.month %>",
+                    <% end %>
+                ],
+                datasets: [
+                    {
+                        label: '<%:Download (RX)%>',
+                        backgroundColor: rxData.map(v => getGradient(ctx, v, maxValue)),
+                        data: rxData,
+                        datalabels: {
+                            color: '#fff',
+                            anchor: 'center',
+                            align: 'center',
+                            formatter: function(value) { return formatBytes(value); }
+                        }
+                    },
+                    {
+                        label: '<%:Upload (TX)%>',
+                        backgroundColor: 'orange',
+                        data: txData,
+                        datalabels: {
+                            color: textColor,
+                            anchor: 'end',
+                            align: 'right',
+                            formatter: function(value) { return formatBytes(value); }
+                        }
+                    }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        position: 'top',
+                        labels: { color: textColor }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return formatBytes(context.raw);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { 
+                        ticks: { 
+                            color: textColor,
+                            callback: function(value) {
+                                return formatBytes(value);
+                            }
+                        }
+                    },
+                    y: { 
+                        ticks: { color: textColor, autoSkip: false }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+        </script>
+    <% else %>
+        <div class="alert-message warning">
+            <%:No data available for %> <%=current_iface%>
+        </div>
+    <% end %>
+</div>
+
+<%+footer%>

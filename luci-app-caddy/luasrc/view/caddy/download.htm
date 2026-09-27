@@ -1,0 +1,102 @@
+<%+cbi/valueheader%>
+<span style="color:#808080"><%:后台下载 (断点续传). 点击后进度自动刷新: 已下载 / 总大小 / 速度 / 百分比. 中途刷新页面不会中断, 可暂停/继续/停止, 再点[下载并重启]会从断点继续%></span>
+<div style="margin:6px 0">
+	<input type="button" id="<%=self.option%>-btn" class="btn cbi-button cbi-button-apply" value="<%:下载并重启%>" style="width:auto" onclick="return caddy_dl_start(this)" />
+	<input type="button" id="<%=self.option%>-btn-pause" class="btn cbi-button cbi-button-edit" value="<%:暂停%>" style="width:auto;display:none" onclick="return cdl_ctl('pause')" />
+	<input type="button" id="<%=self.option%>-btn-resume" class="btn cbi-button cbi-button-edit" value="<%:继续%>" style="width:auto;display:none" onclick="return cdl_ctl('resume')" />
+	<input type="button" id="<%=self.option%>-btn-stop" class="btn cbi-button cbi-button-remove" value="<%:停止%>" style="width:auto;display:none" onclick="return cdl_ctl('stop')" />
+	<span id="<%=self.option%>-pct" style="margin-left:10px;font-family:monospace"></span>
+</div>
+<div id="<%=self.option%>-barbox" style="display:none;width:100%;max-width:520px;background:#2b2b2b;border:1px solid #555;border-radius:4px;height:18px;overflow:hidden;margin:4px 0">
+	<div id="<%=self.option%>-bar" style="height:100%;width:0%;background:#008000;transition:width 1s linear"></div>
+</div>
+<div id="<%=self.option%>-stat" style="font-family:monospace;color:#bbb;font-size:12px"></div>
+<div id="<%=self.option%>-msg"></div>
+<script type="text/javascript">//<![CDATA[
+	var cdl_tid = null;
+	// 点击后的宽限窗口(ms 时间戳): 控制器先删旧 status 再启脚本, 新脚本要过 TOT 探测(几秒~几十秒)才写第一个 status,
+	// 这段空窗轮询回来是 idle, 若按普通 idle 停轮询就再也没人刷新了 → 窗口内的 idle 保持轮询, 终态(done/error/stopped)照常停
+	var cdl_until = 0;
+	function cdl_mb(n){ return (n/1048576).toFixed(2) + ' MB'; }
+	function cdl_esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+	function cdl_render(rv)
+	{
+		var bar   = document.getElementById('<%=self.option%>-bar');
+		var box   = document.getElementById('<%=self.option%>-barbox');
+		var pct   = document.getElementById('<%=self.option%>-pct');
+		var stat  = document.getElementById('<%=self.option%>-stat');
+		var msg   = document.getElementById('<%=self.option%>-msg');
+		var btn   = document.getElementById('<%=self.option%>-btn');
+		var bP    = document.getElementById('<%=self.option%>-btn-pause');
+		var bR    = document.getElementById('<%=self.option%>-btn-resume');
+		var bS    = document.getElementById('<%=self.option%>-btn-stop');
+		var size  = rv.size  || 0;
+		var total = rv.total || 0;
+		var speed = rv.speed || 0;
+		var text  = cdl_mb(size) + (total ? ' / ' + cdl_mb(total) : '');
+		if (total > 0) {
+			var p = Math.floor(size * 100 / total);
+			text += ' · ' + p + '%';
+		}
+		if (speed > 0) text += ' · ' + cdl_mb(speed) + '/s';
+		pct.innerHTML = text;
+		var st = rv.state || 'idle';
+		// 定时器由这里统一管理: 下载/暂停/校验中保持轮询, 结束(done/error/stopped)则停
+		// 窗口内的 idle(启动空窗)也算活动, 否则首次轮询落在空窗里就把轮询停死, UI 永远 idle
+		var active = (st === 'downloading' || st === 'paused' || st === 'verifying' || (st === 'idle' && Date.now() < cdl_until));
+		if (active && !cdl_tid) cdl_tid = setInterval(cdl_poll, 1500);
+		else if (!active && cdl_tid) { clearInterval(cdl_tid); cdl_tid = null; }
+		// 进度条
+		if (bar && box) {
+			if (st === 'downloading' || st === 'paused' || st === 'done' || st === 'verifying') box.style.display = 'block';
+			var w = total ? Math.min(100, Math.floor(size*100/total)) : 0;
+			bar.style.width = w + '%';
+		}
+		// 主按钮: 有已下载部分(error/stopped/有进度)时点它就是续传
+		if (btn) {
+			if (st === 'downloading') { btn.disabled = true; btn.value = '<%:下载中...%>'; }				else if (st === 'lost') { btn.disabled = false; btn.value = '<%:重新下载 (自动续传)%>'; }			else if (st === 'paused') { btn.disabled = true; btn.value = '<%:已暂停 (点[继续])%>'; }
+			else if (st === 'verifying') { btn.disabled = true; btn.value = '<%:校验/替换中...%>'; }
+			else if (st === 'stopped' || st === 'lost') { btn.disabled = false; btn.value = '<%:继续下载 (自动续传)%>'; }
+			else if (st === 'error') { btn.disabled = false; btn.value = '<%:重试 (自动续传)%>'; }
+			else { btn.disabled = false; btn.value = '<%:下载并重启%>'; }
+		}
+		// 暂停/继续/停止 控制按钮的显示与可用性
+		if (bP && bR && bS) {
+			var showCtl = (st === 'downloading' || st === 'paused');
+			bP.style.display = showCtl ? '' : 'none'; bP.disabled = (st !== 'downloading');
+			bR.style.display = showCtl ? '' : 'none'; bR.disabled = (st !== 'paused');
+			bS.style.display = showCtl ? '' : 'none'; bS.disabled = false;
+		}
+		if (stat) {
+			var stmap = { idle:'', downloading:'<%:下载中...%>', paused:'<%:已暂停%>', verifying:'<%:校验中...%>', done:'<%:完成%>', stopped:'<%:已停止%>', lost:'<%:进程丢失%>', error:'<%:出错%>' };
+			stat.innerHTML = (stmap[st] || st) + ' — ' + text;
+		}
+		if (msg) {
+			if (st === 'done') msg.innerHTML = "<font color='#008000'>" + cdl_esc(rv.msg) + "</font>";
+			else if (st === 'error' || st === 'lost') msg.innerHTML = "<font color='#DB7093'>" + cdl_esc(rv.msg || '') + "</font>";
+			else if (st === 'stopped' || st === 'paused') msg.innerHTML = "<font color='#aaaaaa'>" + cdl_esc(rv.msg || '') + "</font>";
+			else msg.innerHTML = "";
+		}
+	}
+	function cdl_poll()
+	{
+		XHR.get('<%=luci.dispatcher.build_url("admin","network","caddy","download_status")%>', null, function(x, rv){ cdl_render(rv); });
+	}
+	function cdl_ctl(act)
+	{
+		XHR.post('<%=luci.dispatcher.build_url("admin","network","caddy","download_ctl")%>', { act: act }, function(){ cdl_poll(); });
+		return false;
+	}
+	function caddy_dl_start(btn)
+	{
+		btn.disabled = true; btn.value = '<%:启动中...%>';
+		cdl_until = Date.now() + 60000;   // 60s 宽限: 覆盖 控制器删旧 status → 新脚本 TOT 探测 → 第一个进度 的空窗
+		XHR.get('<%=luci.dispatcher.build_url("admin","network","caddy","download")%>', null, function(x, rv){
+			cdl_poll();
+		});
+		return false;
+	}
+	// 页面加载时若上次在后台下载, 恢复进度显示
+	window.addEventListener('load', function(){ cdl_poll(); });
+//]]></script>
+<%+cbi/valuefooter%>

@@ -1,0 +1,5 @@
+
+config config
+	option prefer 'wwan0_1'
+	option backend 'normal'
+

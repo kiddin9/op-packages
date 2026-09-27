@@ -1,0 +1,126 @@
+<%
+local http       = require "luci.http"
+local dispatcher = require "luci.dispatcher"
+
+local active_tab = http.formvalue("tab") or "usage"
+local base_url   = dispatcher.build_url("admin", "tools", "netstat")
+
+local function tab_url(tab) return base_url .. "?tab=" .. tab end
+
+local tabs_def = {
+    { id="usage",    label=translate("Network Usage") },
+    { id="settings", label=translate("Settings")      },
+    { id="about",    label=translate("About")         },
+}
+
+%>
+
+<style>
+.netstat-tab-wrap    { margin: 4px 0 14px; }
+
+.netstat-tabmenu     { display:flex; gap:4px; margin:0; padding:0; list-style:none; flex-wrap:wrap; }
+
+.netstat-tabmenu li a {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid #cfd6e2;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    background: #e6ebf2;
+    color: #2f3b52;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background 0.1s, color 0.1s;
+}
+
+.netstat-tabmenu li a:hover:not(.active-link) {
+    background: #d8e2f0;
+}
+
+.netstat-tabmenu li.active a,
+.netstat-tabmenu li a.active-link {
+    background: #f7f9fc;
+    border-color: #cfd6e2;
+    border-bottom-color: #f7f9fc;
+    color: #3659d9;
+    font-weight: 600;
+}
+
+.netstat-tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+.netstat-tabmenu li.active .netstat-tab-dot { opacity: 1; }
+
+.netstat-tab-divider {
+    border: none;
+    border-top: 1px solid #cfd6e2;
+    margin-top: -1px;
+    margin-bottom: 0;
+}
+
+<% if active_tab == "settings" then %>
+.cbi-map > .cbi-section:last-of-type {
+    border: 1px solid #dfe3eb;
+    border-radius: 10px;
+    background: #fff;
+    padding: 16px 18px;
+}
+<% end %>
+
+</style>
+
+<style id="netstat-dark-style"></style>
+<script>
+(function () {
+    var isDark = localStorage.getItem('luci-theme') === 'dark'
+             || document.body.classList.contains('dark-theme');
+    window._netstatDark = isDark;
+    if (!isDark) return;
+    document.getElementById('netstat-dark-style').textContent = [
+        '.netstat-tabmenu li a{background:#2a2d32!important;border-color:#4b5563!important;color:#d1d5db!important}',
+        '.netstat-tabmenu li.active a{background:#1a1d20!important;border-color:#4b5563!important;border-bottom-color:#1a1d20!important;color:#60a5fa!important}',
+        '.netstat-tab-divider{border-top-color:#4b5563!important}',
+        '.netstat-dashboard{background:#1a1d20!important;border-color:#374151!important;color:#f3f4f6!important}',
+        '.netstat-summary{background:#111315!important;border-color:#374151!important;color:#f3f4f6!important}',
+        '.netstat-chart-wrap{background:#1a1d20!important;border-color:#374151!important}',
+        '.netstat-chart-header{background:#1a1d20!important}',
+        '.netstat-chart-title{color:#f3f4f6!important}',
+        '.netstat-chart-badge{background:#1e3a5f!important;color:#93c5fd!important}',
+        '.netstat-summary-label{color:#9ca3af!important}',
+        '.netstat-summary-item{color:#f3f4f6!important}',
+        '.netstat-empty{color:#9ca3af!important}',
+        '.netstat-hint{color:#6b7280!important}',
+        '.netstat-about-card{background:#1a1d20!important;border-color:#374151!important;color:#f3f4f6!important}',
+        '.netstat-about-card h3{color:#f3f4f6!important}',
+        '.netstat-about-card hr{border-top-color:#374151!important}',
+        '.netstat-about-label{color:#9ca3af!important}',
+        '.netstat-about-row a{color:#60a5fa!important}',
+        '.cbi-map>.cbi-section:last-of-type{background:#1a1d20!important;border-color:#374151!important}'
+    ].join('');
+})();
+</script>
+
+<div class="netstat-tab-wrap">
+    <ul class="netstat-tabmenu">
+        <% for _, tab in ipairs(tabs_def) do %>
+        <li class="<%= active_tab == tab.id and "active" or "" %>">
+            <a href="<%= tab_url(tab.id) %>">
+                <span class="netstat-tab-dot"></span>
+                <%= tab.label %>
+            </a>
+        </li>
+        <% end %>
+    </ul>
+    <hr class="netstat-tab-divider" />
+</div>
+
+<input type="hidden" name="tab" value="<%=active_tab%>" />

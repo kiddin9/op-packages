@@ -1,0 +1,14 @@
+#!/bin/sh
+# 注册 meow 的 nft 规则回调到 fw4：每次 firewall reload 都会执行该脚本
+[ -f /etc/config/firewall ] || touch /etc/config/firewall
+
+uci -q get firewall.meow >/dev/null 2>&1 || {
+	uci -q set firewall.meow=include >/dev/null
+	uci -q set firewall.meow.name='meow transparent gateway' >/dev/null
+}
+uci -q set firewall.meow.type='script' >/dev/null
+uci -q set firewall.meow.path='/etc/meow/firewall.sh' >/dev/null
+uci -q set firewall.meow.enabled='1' >/dev/null
+uci -q commit firewall
+
+exit 0

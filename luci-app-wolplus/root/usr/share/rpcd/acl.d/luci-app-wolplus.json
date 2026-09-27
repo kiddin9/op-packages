@@ -2,9 +2,16 @@
 	"luci-app-wolplus": {
 		"description": "Grant UCI access for luci-app-wolplus",
 		"read": {
+			"ubus": {
+				"luci.wolplus": [ "awake" ],
+				"luci-rpc": [ "getHostHints", "getNetworkDevices" ]
+			},
 			"uci": [ "wolplus" ]
 		},
 		"write": {
+			"ubus": {
+				"luci.wolplus": [ "awake" ]
+			},
 			"uci": [ "wolplus" ]
 		}
 	}

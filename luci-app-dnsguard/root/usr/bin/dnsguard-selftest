@@ -1,0 +1,131 @@
+#!/bin/sh
+# dnsguard-selftest —— DNS 防绕过健康自检，输出一行 JSON（供 WebUI 渲染）
+#
+#   用法：dnsguard-selftest
+#   只读：不修改任何配置、不重启任何服务
+#
+# 生成：WorkBuddy  2026-09-26
+
+set -u
+
+jesc() {
+	printf '%s' "${1:-}" | tr '\n' '\001' | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\001' '\n' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//'
+}
+
+ITEMS=""
+add() {
+	# add <名称> <ok|warn|fail> <说明>
+	_n="$1"; _s="$2"; _d="$3"
+	[ -n "$ITEMS" ] && ITEMS="$ITEMS,"
+	ITEMS="$ITEMS{\"name\":\"$(jesc "$_n")\",\"state\":\"$_s\",\"detail\":\"$(jesc "$_d")\"}"
+}
+
+MODE="none"
+
+# ---- 1. AdGuard Home 进程 ----
+AGH_PID=$(pidof AdGuardHome 2>/dev/null)
+if [ -n "$AGH_PID" ]; then
+	add "AdGuard Home 进程" ok "运行中，PID $AGH_PID"
+	AGH_OK=1
+else
+	add "AdGuard Home 进程" fail "未运行 —— 此时若已启用 53 重定向，全屋解析会失败"
+	AGH_OK=0
+fi
+
+# ---- 2. :53 监听 ----
+LISTEN=$(netstat -lntup 2>/dev/null | grep ':53 ' | tr -s ' ' ' ')
+if [ -n "$LISTEN" ]; then
+	add ":53 监听（TCP/UDP）" ok "$(printf '%s' "$LISTEN" | sed 's/ *$//' | tr '\n' ';')"
+	LISTEN_OK=1
+else
+	add ":53 监听（TCP/UDP）" fail "没有任何进程监听 :53"
+	LISTEN_OK=0
+fi
+
+# ---- 3. 本机解析（走 AGH）----
+if [ "$AGH_OK" = 1 ]; then
+	OUT1=$(nslookup baidu.com 127.0.0.1 2>&1)
+	N1=$(printf '%s' "$OUT1" | grep -c 'Address')
+	if [ "${N1:-0}" -ge 2 ]; then
+		IP1=$(printf '%s' "$OUT1" | grep 'Address' | tail -1 | awk '{print $NF}')
+		add "公网域名解析（baidu.com → 127.0.0.1）" ok "成功，返回 $IP1"
+	else
+		add "公网域名解析（baidu.com → 127.0.0.1）" fail "$(printf '%s' "$OUT1" | tr '\n' ' ' | sed 's/  */ /g' | cut -c1-160)"
+	fi
+
+	OUT2=$(nslookup iStoreOS.lan 127.0.0.1 2>&1)
+	N2=$(printf '%s' "$OUT2" | grep -c 'Address')
+	if [ "${N2:-0}" -ge 2 ]; then
+		IP2=$(printf '%s' "$OUT2" | grep 'Address' | tail -1 | awk '{print $NF}')
+		add "本地域名解析（iStoreOS.lan → 127.0.0.1）" ok "成功，返回 $IP2"
+	else
+		add "本地域名解析（iStoreOS.lan → 127.0.0.1）" warn "未返回地址（dnsmasq 5353 或 .lan 转发可能异常）"
+	fi
+else
+	add "本机解析自检" warn "AdGuard Home 未运行，跳过解析测试"
+fi
+
+# ---- 4. 重定向链是否生效 ----
+RED=$(nft list chain inet fw4 dns_guard_redirect 2>/dev/null)
+if printf '%s' "$RED" | grep -q 'chain dns_guard_redirect'; then
+	MODE=redirect
+	RP=$(printf '%s' "$RED" | grep -o 'counter packets [0-9]*' | head -1 | awk '{print $3}')
+	RB=$(printf '%s' "$RED" | grep -o 'bytes [0-9]*' | awk '{s+=$2} END {print s+0}')
+	add "53 透明重定向链" ok "已生效 · 已收编 ${RP:-0} 个包 / ${RB:-0} 字节（自上次重载起）"
+	if [ "${RP:-0}" -gt 0 ]; then
+		add "端到端收编验证" ok "有 LAN 客户端的 53 查询被改道到本机（计数 > 0）"
+	else
+		add "端到端收编验证" warn "计数为 0：可能是刚重载，或当前没有设备使用非本机 DNS"
+	fi
+else
+	add "53 透明重定向链" warn "不存在（未启用，或总开关关闭）"
+fi
+
+# ---- 5. 观察计数链 ----
+OBS=$(nft list chain inet fw4 dns_guard_pre_forward 2>/dev/null)
+if printf '%s' "$OBS" | grep -q 'chain dns_guard_pre_forward'; then
+	CNT=$(printf '%s' "$OBS" | grep -o 'packets [0-9]*' | awk '{print $2}' | tr '\n' ' ')
+	CNT=$(printf '%s' "$CNT" | sed 's/ *$//; s/  */ \/ /g')
+	add "观察计数链" ok "存在 · 各规则包数 ${CNT:-0}"
+else
+	add "观察计数链" warn "不存在（观察模式未启用）"
+fi
+
+# ---- 6. 规则文件归属 ----
+FN=/etc/nftables.d/20-dns-guard.nft
+if [ -f "$FN" ]; then
+	MT=$(stat -c '%y' "$FN" 2>/dev/null | cut -c1-19)
+	if grep -q 'DNS 防绕过' "$FN" 2>/dev/null; then
+		add "规则文件" ok "$FN · 由本应用托管 · 最后生成 $MT"
+	else
+		add "规则文件" warn "$FN 存在但不是本应用生成的（手工文件）—— 点「保存并应用」会被接管"
+	fi
+else
+	add "规则文件" warn "$FN 不存在（总开关关闭或从未应用过）"
+fi
+
+# ---- 7. 例外设备 ----
+SKIP=$(uci -q get dnsguard.main.skip_devices)
+TMODE=$(uci -q get dnsguard.main.redirect53)
+if [ "${TMODE:-0}" = "1" ]; then
+	if [ -n "$SKIP" ]; then
+		add "重定向例外设备" ok "已配置：$SKIP"
+	else
+		add "重定向例外设备" ok "无（所有 LAN 客户端的明文 DNS 都会被收编）"
+	fi
+fi
+
+# ---- 8. 挂起的自动回滚 ----
+RF=/tmp/.dnsguard-rollback
+if [ -f "$RF" ]; then
+	read -r RTS RSEC RDL RSRC < "$RF" 2>/dev/null
+	NOW=$(date +%s)
+	LEFT=$(( ${RDL:-0} - NOW ))
+	[ "$LEFT" -lt 0 ] && LEFT=0
+	add "自动回滚倒计时" warn "挂起中：剩余约 ${LEFT} 秒后自动还原到快照 $RTS（点「确认保留」可取消）"
+else
+	add "自动回滚倒计时" ok "无挂起"
+fi
+
+printf '{"status":"ok","mode":"%s","items":[%s]}\n' "$MODE" "$ITEMS"
+exit 0

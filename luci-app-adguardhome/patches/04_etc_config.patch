@@ -1,0 +1,24 @@
+From 04b0fc3af8ce6b1277143093f1038493bfb3a3cd Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Mon, 1 Jun 2026 16:02:48 +0800
+Subject: [PATCH] Add configuration options for AdGuard Home
+
+---
+ root/etc/config/adguardhome | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/root/etc/config/adguardhome b/root/etc/config/adguardhome
+index 92d86e1..598f316 100644
+--- a/root/etc/config/adguardhome
++++ b/root/etc/config/adguardhome
+@@ -7,6 +7,10 @@ config adguardhome 'config'
+ 	option user 'adguardhome'
+ 	option group 'adguardhome'
+ 	option verbose '0'
++	option enabled '0'
++	option redirect 'none'
++	option core_version 'latest'
++	option update_url 'https://static.adtidy.org/adguardhome/release/AdGuardHome_linux_${Arch}.tar.gz'
+ 
+ 	# Files and directories that AdGuard Home has read-only access to
+ 	# list jail_mount '/etc/ssl/adguardhome.crt'

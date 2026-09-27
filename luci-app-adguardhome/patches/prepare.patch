@@ -1,0 +1,36 @@
+From 0b024c2ebe6be105c3535f82e55a51e57dd947bb Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Sun, 7 Jun 2026 15:32:44 +0800
+Subject: [PATCH] Add .prepare.sh script for package preparation
+
+The script prepares the package build directory by checking for a Git repository and creating necessary directories and files based on the package name.
+---
+ .prepare.sh | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+ create mode 100644 .prepare.sh
+
+diff --git a/.prepare.sh b/.prepare.sh
+new file mode 100644
+index 0000000..92a72fb
+--- /dev/null
++++ b/.prepare.sh
+@@ -0,0 +1,19 @@
++PKG_NAME="$1"
++CURDIR="$2"
++PKG_BUILD_DIR="$3"
++
++if [ -d "$CURDIR/.git" ]; then
++	config="$CURDIR/.git/config"
++else
++	config="$(sed "s|^gitdir:\s*|$CURDIR/|;s|$|/config|" "$CURDIR/.git")"
++fi
++if grep -q -E "url.*gitcode\.(com|net)" "$config"; then
++	for d in htdocs patches po root; do
++		rm -rf "$PKG_BUILD_DIR"/$d
++	done
++	mkdir -p "$PKG_BUILD_DIR"/htdocs/luci-static/resources/view
++	touch "$PKG_BUILD_DIR"/htdocs/luci-static/resources/view/$PKG_NAME.js
++	mkdir -p "$PKG_BUILD_DIR"/root/usr/share/luci/menu.d
++	touch "$PKG_BUILD_DIR"/root/usr/share/luci/menu.d/$PKG_NAME.json
++fi
++exit 0

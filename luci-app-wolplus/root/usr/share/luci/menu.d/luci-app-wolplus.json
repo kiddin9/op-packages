@@ -1,0 +1,14 @@
+{
+	"admin/services/wolplus": {
+		"title": "Wake on LAN +",
+		"order": 95,
+		"action": {
+			"type": "view",
+			"path": "wolplus"
+		},
+		"depends": {
+			"acl": [ "luci-app-wolplus" ],
+			"fs": { "/etc/config/wolplus": "file" }
+		}
+	}
+}

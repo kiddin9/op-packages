@@ -1,0 +1,17 @@
+From 9510be3c2646f7c1a7701072a1eb3e9fb77f6431 Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Fri, 29 May 2026 07:33:01 +0800
+Subject: [PATCH] Create 99-adguardhome.nft
+
+---
+ root/etc/nftables.d/99-adguardhome.nft | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 root/etc/nftables.d/99-adguardhome.nft
+
+diff --git a/root/etc/nftables.d/99-adguardhome.nft b/root/etc/nftables.d/99-adguardhome.nft
+new file mode 100644
+index 0000000..78819ad
+--- /dev/null
++++ b/root/etc/nftables.d/99-adguardhome.nft
+@@ -0,0 +1 @@
++include "/var/etc/adguardhome.nft"

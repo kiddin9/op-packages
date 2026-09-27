@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0-r1] - 节点页批量选择与操作
+
+- 「节点」页关键词搜索框缩短为原长度的 3/5（`size` 默认 20 → 12）
+- 节点表格最左新增复选框列：表头复选框全选 / 取消全选，行复选框单独勾选
+- 「筛选」后新增「刷新」按钮（重载页面，筛选参数随 GET URL 自动保留）与「删除」按钮（勾选批量删除，confirm 确认，返回保留筛选参数）
+- action_node_delete 的 idx 参数支持逗号分隔多值，倒序 table.remove 避免下标偏移；行内单删路径不变
+- po/zh-cn 新增 Refresh / Delete selected nodes? / Please select nodes first 三条
+- 版本号 2.1.3-r6 → 2.2.0-r1；README.md / README.en.md / docs/INSTALL.md 版本与功能描述同步
+
 ## [2.1.3-r6] - 节点分组与单节点编辑
 
 - 表单导入节点行新增「分组」输入框（`data-k="group"`，parse_local 透传入模型）

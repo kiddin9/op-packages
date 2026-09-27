@@ -19,6 +19,8 @@
   用于订阅源直连失败时
 - **组合订阅**：勾选任意子集的现有订阅（可叠加关键词包含 / 排除、去重规则）合并成一个组合，
   拥有独立名称、token 与订阅链接；源订阅更新后组合自动重算
+- **本地订阅**：不填 URL，直接粘贴节点文本（YAML / URI / JSON 混合）导入，或用「表单导入」
+  按协议动态字段逐条录入节点（vmess / vless / ss / ssr / trojan / hysteria2 / tuic / wireguard / socks）
 
 **输入解析**
 - 订阅格式：URI 列表、Base64、JSON、Clash YAML、sing-box JSON、V2Ray / Xray JSON、
@@ -26,7 +28,10 @@
 - 节点协议：`vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria2` / `tuic` / `socks`（及更多）
 
 **节点处理**
-- 浏览节点，按协议筛选、关键词搜索、排序
+- 浏览节点，按分组 / 协议筛选、关键词搜索、排序
+- 节点分组：「分组」列单元格内直接修改单节点分组（XHR 无刷新保存），配合「分组:」下拉筛选
+- 单节点编辑 / 删除（行尾「操作」列）；表头复选框全选、行复选框勾选后点「删除」批量删除；
+  「刷新」按钮重载列表（保留当前筛选条件）
 - 每次更新时生效的按订阅规则：
   - 关键词包含 / 排除（逗号分隔，支持多关键词）
   - 去重
@@ -54,18 +59,18 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.1.3-r6`）。
+> （当前 `2.2.0-r1`）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.1.3-r6.ipk
+opkg install luci-app-substore-2.2.0-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.1.3-r6.apk
+apk add --allow-untrusted luci-app-substore-2.2.0-r1.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
@@ -73,8 +78,10 @@ apk add --allow-untrusted luci-app-substore-2.1.3-r6.apk
 ## 使用方法
 
 1. **添加订阅** —— 粘贴订阅 URL；可选的按订阅 cron 定时、规则或下载代理。
+   无订阅源时可「添加本地订阅」：粘贴节点文本或表单逐条录入。
 2. **更新** —— 下载、解析并过滤节点。
-3. **浏览节点** —— 筛选、排序、探测延迟。
+3. **浏览节点** —— 筛选（分组 / 协议 / 关键词）、排序、探测延迟；勾选复选框后「删除」
+   可批量删除，行内可编辑 / 删除 / 改分组，「刷新」重载列表。
 4. **导出** —— 任选 13 种格式之一，或复制订阅链接供下游客户端（Passwall / OpenClash / …）使用。
 
 ## 目录结构

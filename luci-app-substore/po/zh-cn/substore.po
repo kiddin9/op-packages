@@ -266,3 +266,13 @@ msgstr "分组设置失败"
 
 msgid "Note: edits to this node are overwritten the next time the subscription is updated or re-saved."
 msgstr "注意：对该节点的修改会在订阅下次更新或重新保存后被覆盖。"
+
+# 节点页：刷新 / 勾选批量删除
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Delete selected nodes?"
+msgstr "确定删除选中的节点？"
+
+msgid "Please select nodes first"
+msgstr "请先勾选节点"

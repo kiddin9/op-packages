@@ -1,0 +1,51 @@
+From b65bfa5784b2cbec97740c96fa69d799f3203df0 Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Fri, 26 Jun 2026 06:50:26 +0800
+Subject: [PATCH] Modify Makefile for luci-app-adguardhome
+
+Updated maintainer information and added package configuration.
+---
+ Makefile | 26 ++++++++++++++++++++++----
+ 1 file changed, 22 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index a48c04d..ec35f24 100644
+--- a/Makefile
++++ b/Makefile
+@@ -3,14 +3,32 @@
+ include $(TOPDIR)/rules.mk
+ 
+ LUCI_NAME:=luci-app-adguardhome
+-LUCI_MAINTAINER:=George Sapkin <george@sapk.in>
++LUCI_MAINTAINER:=Jackie264 <OneNAS-space>
+ PKG_LICENSE:=GPL-2.0-only
++PKG_CPE_ID:=cpe:/a:Jackie264:luci-app-adguardhome
+ 
+ LUCI_TITLE:=LuCI support for AdGuard Home
+-LUCI_DEPENDS:=+adguardhome +luci-base
+-LUCI_EXTRA_DEPENDS:=adguardhome (>=0.107.73-r3)
++LUCI_DEPENDS:=+luci-base
+ LUCI_PKGARCH:=all
++USERID:=adguardhome=853:adguardhome=853
+ 
+-include ../../luci.mk
++PKG_UNPACK:=$(CURDIR)/.prepare.sh $(PKG_NAME) $(CURDIR) $(PKG_BUILD_DIR)
++
++define Package/luci-app-adguardhome/conffiles
++/etc/adguardhome/adguardhome.yaml
++/etc/config/adguardhome
++endef
++
++define Package/luci-app-adguardhome/prerm
++#!/bin/sh
++[ -n "$${IPKG_INSTROOT}" ] || { 
++    rm -f /tmp/luci-indexcache.*
++    rm -rf /tmp/luci-modulecache/
++    /etc/init.d/rpcd reload 2>/dev/null
++}
++exit 0
++endef
++
++include $(TOPDIR)/feeds/luci/luci.mk
+ 
+ # call BuildPackage - OpenWrt buildroot signature

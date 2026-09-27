@@ -1,0 +1,23 @@
+# 临时/生成物
+*.bak
+*.bak-*
+*.orig
+*.rej
+*.swp
+*~
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+
+# 本地部署残留（deploy.sh 打包产物）
+/tmp/
+*.tgz
+
+# 敏感物：绝不入库
+.env
+*.secret

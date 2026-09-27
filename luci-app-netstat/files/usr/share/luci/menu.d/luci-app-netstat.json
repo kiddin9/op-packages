@@ -1,0 +1,13 @@
+{
+  "admin/tools/netstat": {
+    "title": "Netstat",
+    "order": 20,
+    "action": {
+      "type": "cbi",
+      "path": "netstat/config"
+    },
+    "depends": {
+      "acl": [ "luci-app-netstat" ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+	"admin/status/thermal-guard": {
+		"title": "Thermal Guard",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "thermal-guard/monitor"
+		},
+		"depends": {
+			"acl": [ "luci-app-thermal-guard" ]
+		}
+	},
+
+	"admin/system/thermal-guard": {
+		"title": "Thermal Guard",
+		"order": 62,
+		"action": {
+			"type": "view",
+			"path": "thermal-guard/config"
+		},
+		"depends": {
+			"acl": [ "luci-app-thermal-guard" ],
+			"uci": { "thermal-guard": true }
+		}
+	}
+}

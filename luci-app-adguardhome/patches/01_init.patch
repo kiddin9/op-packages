@@ -1,0 +1,254 @@
+From 2cfa7fa8e6b2c20824bdb81a3d7449c9757ae793 Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Sat, 6 Jun 2026 23:21:32 +0800
+Subject: [PATCH] Enhance AdGuardHome init script with new features
+
+Add extra commands and improve cron handling in AdGuardHome init script.
+---
+ root/etc/init.d/adguardhome | 164 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 162 insertions(+), 2 deletions(-)
+
+diff --git a/root/etc/init.d/adguardhome b/root/etc/init.d/adguardhome
+index 4712913..1383834 100755
+--- a/root/etc/init.d/adguardhome
++++ b/root/etc/init.d/adguardhome
+@@ -3,6 +3,7 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ #
+ # shellcheck disable=SC3043 # ash supports local
++. /usr/share/AdGuardHome/helper.sh
+ 
+ # matches dnsmasq
+ START=19
+@@ -12,22 +13,87 @@ STOP=89
+ PROG=/usr/bin/AdGuardHome
+ USE_PROCD=1
+ 
++EXTRA_COMMANDS="do_redirect force_reload isrunning"
++EXTRA_HELP="\
++\tdo_redirect \t0 or 1\n\
++\tforce_reload\n\
++\tisrunning"
++
++CONTROL_SCRIPT="/usr/share/AdGuardHome/control.sh"
++CRON_FILE=/etc/crontabs/root
++
++get_tz() {
++	SET_TZ=""
++	local zonename
++	zonename="$(uci get system.@system[0].zonename 2>/dev/null)"
++	if [ -n "$zonename" ]; then
++		SET_TZ="$zonename"
++		return
++	fi
++	for tzfile in /etc/TZ /var/etc/TZ; do
++		[ -e "$tzfile" ] && tz="$(cat "$tzfile" 2>/dev/null)" && break
++	done
++	[ -n "$tz" ] && SET_TZ=$tz && return
++}
++
++do_crontab() {
++	local enabled="$1"
++	local crontab="$2"
++	local findstr default cronenable cronreload=0
++
++	findstr="/usr/share/AdGuardHome/update_core.sh"
++	default="30 3 * * * /usr/share/AdGuardHome/update_core.sh 2>&1"
++	[ "$enabled" = "0" ] || [ "${crontab//autoupdate/}" = "$crontab" ] && cronenable=0 || cronenable=1
++	crontab_editor
++
++	[ "$cronreload" -gt 0 ] && /etc/init.d/cron restart
++}
++
++crontab_editor() {
++	local line
++	line="$(grep "$findstr" $CRON_FILE 2>/dev/null)"
++	if [ "${line:0:1}" != "#" ]; then
++		if [ "$cronenable" -eq 1 ]; then
++			if [ -z "$line" ]; then
++				echo "$default" >> $CRON_FILE
++				cronreload=$((cronreload+1))
++			fi
++		elif [ -n "$line" ]; then
++			sed -i "\,$findstr,d" $CRON_FILE
++			echo "#$line" >> $CRON_FILE
++			cronreload=$((cronreload+1))
++		fi
++	else
++		if [ "$cronenable" -eq 1 ]; then
++			sed -i "\,$findstr,d" $CRON_FILE
++			echo "${line:1}" >> $CRON_FILE
++			cronreload=$((cronreload+1))
++		fi
++	fi
++}
++
+ boot() {
+ 	ADGUARDHOME_BOOT=1
+ 	start "$@"
+ }
+ 
+ start_service() {
++	mkdir -p /var/etc
++	[ ! -f /var/etc/adguardhome.nft ] && touch /var/etc/adguardhome.nft
++	chmod 644 /var/etc/adguardhome.nft
++
+ 	if [ -n "$ADGUARDHOME_BOOT" ]; then
+ 		# Do not start yet, wait for triggers
+ 		return 0
+ 	fi
+ 
++	rm -f /var/run/AdGserverdis 2>/dev/null
+ 	config_load 'adguardhome'
+ 
+ 	local config_name='config'
+ 	local config_file config group user verbose work_dir workdir
+ 	local gc maxprocs memlimit
++	local enabled hashpass crontab redirect
+ 
+ 	uci_validate_section 'adguardhome' 'adguardhome' "$config_name" \
+ 		'gc:uinteger:0' \
+@@ -41,12 +107,46 @@ start_service() {
+ 		'user:string:adguardhome' \
+ 		'verbose:bool:0' \
+ 		'workdir:string' \
+-		'work_dir:string:/var/lib/adguardhome'
++		'work_dir:string:/var/lib/adguardhome' \
++		'enabled:bool:0' \
++		'hashpass:string' \
++		'crontab:string' \
++		'redirect:string:none' \
++		'http_address:string'
+ 
+ 	# Compatibility with older configs
+ 	[ -n "$config" ] && config_file="$config"
+ 	[ -n "$workdir" ] && work_dir="$workdir"
+ 
++	# Handle hashpass clear text issuance and back brush removal
++	if [ -n "$hashpass" ]; then
++		config_editor "users.password" "$hashpass" "$config_file"
++		uci set adguardhome."$config_name".hashpass=""
++		uci commit adguardhome
++	fi
++
++	# Synchronize the front-end incing WebUI listening address to YAML
++	if [ -n "$http_address" ]; then
++		config_editor "http.address" "$http_address" "$config_file"
++		uci set adguardhome."$config_name".http_address=""
++		uci commit adguardhome
++	fi
++
++	# Isse the plan task change
++	do_crontab "$enabled" "$crontab"
++
++	# If it is not enabled, the linkage cleans up the redirection firewall rules and exits safely.
++	if [ "$enabled" = 0 ]; then
++		$CONTROL_SCRIPT 0
++		return 0
++	fi
++
++	if [ "$user" = "adguardhome" ] && ! grep -q "^adguardhome:" /etc/passwd; then
++		echo "luci-app: User 'adguardhome' is missing, injecting UID 853 into system files..." >&2
++		grep -q "^adguardhome:" /etc/group || echo "adguardhome:x:853:" >> /etc/group
++		echo "adguardhome:x:853:853:adguardhome:/var/run/adguardhome:/bin/false" >> /etc/passwd
++	fi
++
+ 	local config_dir
+ 	config_dir=$(dirname "$config_file")
+ 	if [ "$config_dir" = '/etc' ]; then
+@@ -59,6 +159,13 @@ start_service() {
+ 	mkdir -m 0700 -p "$work_dir"
+ 	chown -R "$user":"$group" "$work_dir"
+ 
++	# Silently downgrade and call the kernel download script when the kernel is missing.
++	if [ ! -f "$PROG" ]; then
++		$CONTROL_SCRIPT 0
++		/usr/share/AdGuardHome/update_core.sh >/tmp/AdGuardHome_update.log 2>&1 &
++		return 0
++	fi
++
+ 	procd_open_instance adguardhome
+ 
+ 	procd_set_param command "$PROG"
+@@ -67,12 +174,17 @@ start_service() {
+ 	[ "$maxprocs" -le 0 ] || procd_append_param env GOMAXPROCS="$maxprocs"
+ 	[ "$memlimit" -le 0 ] || procd_append_param env GOMEMLIMIT="$memlimit"
+ 
++	local SET_TZ
++	get_tz
++	[ -n "$SET_TZ" ] && procd_append_param env TZ="$SET_TZ"
++
+ 	procd_append_param command --config "$config_file"
+ 	procd_append_param command --logfile syslog
+-	procd_append_param command --no-check-update
++	# procd_append_param command --no-check-update
+ 	[ "$verbose" = 1 ] && procd_append_param command --verbose
+ 	procd_append_param command --work-dir "$work_dir"
+ 
++	procd_set_param file /etc/config/adguardhome "$config_file"
+ 	procd_set_param stdout 1
+ 	procd_set_param stderr 1
+ 	procd_set_param user "$user"
+@@ -91,10 +203,58 @@ start_service() {
+ 
+ 	procd_add_jail_mount '/etc/hosts'
+ 	procd_add_jail_mount '/etc/ssl/certs'
++	[ -f /etc/TZ ] && procd_add_jail_mount '/etc/TZ'
++
+ 	config_list_foreach "$config_name" jail_mount procd_add_jail_mount
+ 	config_list_foreach "$config_name" jail_mount_rw procd_add_jail_mount_rw
+ 
+ 	procd_close_instance
++
++	# After the main process is successfully submitted for start-up, it begins to intervene asynchronously and take over the control.
++	if [ -f "$config_file" ]; then
++		($CONTROL_SCRIPT 1) &
++	else
++		$CONTROL_SCRIPT 0
++		if [ "$redirect" != "none" ]; then
++			procd_open_instance "waitconfig"
++			procd_set_param command "/usr/share/AdGuardHome/watchconfig.sh"
++			procd_close_instance
++		fi
++	fi
++
++	(sleep 10 && [ -z "$(pgrep -f "$(basename "$PROG")")" ] && logger -t adguardhome "no process in 10s cancel redirect" && $CONTROL_SCRIPT 0 ) &
++}
++
++stop_service() {
++	config_load 'adguardhome'
++	local config_name='config'
++	local crontab
++	config_get crontab "$config_name" crontab ""
++
++	$CONTROL_SCRIPT 0
++	do_crontab 0 "$crontab"
++	touch /var/run/AdGserverdis
++}
++
++do_redirect() {
++	$CONTROL_SCRIPT "$1"
++}
++
++_isrunning() {
++	[ ! -f "$PROG" ] && return 2
++	pgrep -f "$(basename "$PROG")" >/dev/null 2>&1 && return 0
++	return 1
++}
++
++isrunning() {
++	_isrunning
++	local r=$?
++	[ "$r" = "0" ] && echo "running" || ([ "$r" = "1" ] && echo "not run" || echo "no bin")
++	return $r
++}
++
++force_reload() {
++	_isrunning && procd_send_signal adguardhome || start
+ }
+ 
+ service_triggers() {
+
+reload_service() {
+	restart
+}

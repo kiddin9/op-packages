@@ -1,0 +1,192 @@
+{
+	"MT7986_1_1": {
+		"up": true,
+		"pending": false,
+		"autostart": true,
+		"disabled": false,
+		"retry_setup_failed": false,
+		"config": {
+			"type": "mtwifi",
+			"band": "2g",
+			"channel": "auto",
+			"htmode": "HE20",
+			"noscan": true,
+			"txpower": 100,
+			"mu_beamformer": true,
+			"dbdc_main": true,
+			"country": "DE"
+		},
+		"interfaces": [
+			{
+				"section": "mgmt_2g",
+				"config": {
+					"network": [
+						"mgmt"
+					],
+					"isolate": true,
+					"device": "MT7986_1_1",
+					"mode": "ap",
+					"encryption": "sae-mixed",
+					"key": "REDACTED",
+					"ssid": "example-ssid",
+					"hidden": false,
+					"ieee80211k": false,
+					"radios": [
+						
+					]
+				},
+				"ifname": "ra0",
+				"vlans": [
+					
+				],
+				"stations": [
+					
+				]
+			},
+			{
+				"section": "gast_2g",
+				"config": {
+					"network": [
+						"gast"
+					],
+					"isolate": true,
+					"device": "MT7986_1_1",
+					"mode": "ap",
+					"encryption": "sae-mixed",
+					"key": "REDACTED",
+					"ssid": "example-ssid",
+					"hidden": false,
+					"ieee80211k": true,
+					"radios": [
+						
+					]
+				},
+				"ifname": "ra1",
+				"vlans": [
+					
+				],
+				"stations": [
+					
+				]
+			},
+			{
+				"section": "iot_2g",
+				"config": {
+					"network": [
+						"iot"
+					],
+					"isolate": true,
+					"device": "MT7986_1_1",
+					"mode": "ap",
+					"encryption": "psk2",
+					"key": "REDACTED",
+					"ssid": "example-ssid",
+					"hidden": false,
+					"ieee80211k": false,
+					"radios": [
+						
+					]
+				},
+				"ifname": "ra2",
+				"vlans": [
+					
+				],
+				"stations": [
+					
+				]
+			},
+			{
+				"section": "yoda_2g",
+				"config": {
+					"network": [
+						"lan"
+					],
+					"device": "MT7986_1_1",
+					"mode": "ap",
+					"encryption": "sae-mixed",
+					"key": "REDACTED",
+					"ssid": "example-ssid",
+					"radios": [
+						
+					]
+				},
+				"ifname": "ra3",
+				"vlans": [
+					
+				],
+				"stations": [
+					
+				]
+			}
+		]
+	},
+	"MT7986_1_2": {
+		"up": true,
+		"pending": false,
+		"autostart": true,
+		"disabled": false,
+		"retry_setup_failed": false,
+		"config": {
+			"type": "mtwifi",
+			"band": "5g",
+			"channel": "auto",
+			"htmode": "HE80",
+			"noscan": false,
+			"txpower": 100,
+			"mu_beamformer": true,
+			"dbdc_main": false,
+			"country": "DE"
+		},
+		"interfaces": [
+			{
+				"section": "yoda_5g",
+				"config": {
+					"network": [
+						"lan"
+					],
+					"device": "MT7986_1_2",
+					"mode": "ap",
+					"encryption": "sae-mixed",
+					"key": "REDACTED",
+					"ssid": "example-ssid",
+					"radios": [
+						
+					]
+				},
+				"ifname": "rax0",
+				"vlans": [
+					
+				],
+				"stations": [
+					
+				]
+			},
+			{
+				"section": "gast_5g",
+				"config": {
+					"network": [
+						"gast"
+					],
+					"isolate": true,
+					"device": "MT7986_1_2",
+					"mode": "ap",
+					"encryption": "sae-mixed",
+					"key": "REDACTED",
+					"ssid": "example-ssid",
+					"hidden": false,
+					"ieee80211k": true,
+					"radios": [
+						
+					]
+				},
+				"ifname": "rax1",
+				"vlans": [
+					
+				],
+				"stations": [
+					
+				]
+			}
+		]
+	}
+}

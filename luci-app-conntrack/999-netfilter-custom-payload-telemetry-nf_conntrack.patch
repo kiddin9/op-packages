@@ -1,0 +1,228 @@
+--- a/net/netfilter/Kconfig	2026-09-15 14:22:18.467281704 +0800
++++ b/net/netfilter/Kconfig	2026-09-11 12:51:21.318346650 +0800
+@@ -443,6 +443,20 @@
+ config NETFILTER_SYNPROXY
+ 	tristate
+ 
++config NF_CONNTRACK_CUSTOM_TELEMETRY
++	bool "Lightweight Layer 7 Payload Telemetry via conntrack"
++	depends on NF_CONNTRACK
++	default y
++	help
++	  This option intercepts the first payload-carrying packet of any 
++	  new connection (TCP/UDP) and stores its initial 8 bytes. This 
++	  data is then appended to the /proc/net/nf_conntrack stream.
++	  
++	  Perfect for lightweight gaming/video traffic identification 
++	  without running heavy user-space DPI tools.
++
++	  If unsure, say Y.
++
+ endif # NF_CONNTRACK
+ 
+ config NF_TABLES
+--- a/include/net/netfilter/nf_conntrack.h	2024-01-26 06:34:33.000000000 +0800
++++ b/include/net/netfilter/nf_conntrack.h	2026-09-14 11:54:57.287192651 +0800
+@@ -103,6 +103,15 @@
+ 	/* Extensions */
+ 	struct nf_ct_ext *ext;
+ 
++#if IS_ENABLED(CONFIG_NF_CONNTRACK_CUSTOM_TELEMETRY)
++	/*==================================================================
++	 * CUSTOM FIELDS FOR LIGHTWEIGHT L7 TELEMETRY (STRUCTURE SAFE)
++	 * Placed safely before the protocol union to avoid alignment bugs.
++	 *==================================================================*/
++	u8  init_payload[64];      /* Stores the 64 bytes of L7 payload that maybe plain text rather than hex string */
++	u8  has_custom_payload;   /* Boolean flag: 1 if raw hex string was captured, 2 if plain text was captured */
++#endif
++
+ 	/* Storage reserved for other modules, must be the last member */
+ 	union nf_conntrack_proto proto;
+ };
+--- a/net/netfilter/nf_conntrack_core.c	2026-09-15 14:22:18.467281704 +0800
++++ b/net/netfilter/nf_conntrack_core.c	2026-09-15 14:19:35.912229303 +0800
+@@ -1710,6 +1710,156 @@
+ 		goto out;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_NF_CONNTRACK_CUSTOM_TELEMETRY)
++	/* =================== CUSTOM L7 TELEMETRY START =================== */
++	/* 1. Only process successfully accepted packets if telemetry capture has not locked yet */
++	if (ret == NF_ACCEPT && ct != NULL && !ct->has_custom_payload) {
++		struct iphdr *iph = ip_hdr(skb);
++		if (iph) {
++			unsigned int l4_header_len = 0;
++
++			if (protonum == IPPROTO_TCP) {
++				struct tcphdr *th = tcp_hdr(skb);
++				if (th && th->doff >= 5 && th->doff <= 15) {
++					l4_header_len = th->doff * 4;
++				}
++			} else if (protonum == IPPROTO_UDP) {
++				l4_header_len = sizeof(struct udphdr);
++			}
++
++			if (l4_header_len > 0) {
++				unsigned int total_len = ntohs(iph->tot_len);
++				unsigned int payload_offset = dataoff + l4_header_len;
++
++				if (total_len > payload_offset && protonum == IPPROTO_UDP) {
++					unsigned int payload_len = total_len - payload_offset;
++					if (payload_len >= 8) {
++						u8 udp_buf[8];
++						unsigned int target_grab_len = (payload_len > 8) ? 8 : payload_len;
++						u8 *udp_ptr = skb_header_pointer(skb, payload_offset, target_grab_len, udp_buf);
++						
++						if (udp_ptr) {
++							memset(ct->init_payload, 0, 64);
++							memcpy(ct->init_payload, udp_ptr, target_grab_len);
++							ct->has_custom_payload = 1;
++						}
++					}
++				}
++
++				if (total_len > payload_offset && protonum == IPPROTO_TCP) {
++					unsigned int payload_len = total_len - payload_offset;
++					
++					/* PRE-FILTER BYPASS ANCHOR: Fast drop non-TLS or ultra-short corrupted flows */
++					if (payload_len > 44) {
++						u8 tls_pre_buf[2];
++						u8 *tls_pre = skb_header_pointer(skb, payload_offset, 2, tls_pre_buf);
++						
++						if (tls_pre && tls_pre[0] == 0x16 && tls_pre[1] == 0x03) {
++							unsigned int offset = 5; /* Step 1: Skip TLS Record Layer Header safely */
++							u8 len_buf[2];
++							u8 *p;
++							
++							/* Step 2: Extract Handshake Type (1 byte) and confirm it is Client Hello (0x01) */
++							p = skb_header_pointer(skb, payload_offset + offset, 1, len_buf);
++							if (p && p[0] == 0x01) {
++								offset += 4;  /* Move past Handshake Type(1B) + Handshake Length(3B) */
++								offset += 2;  /* Move past Version (2B, e.g., 0x03 0x03) */
++								offset += 32; /* FLY-OVER: Instantly blast through 32 bytes of static Random data via simple addition */
++								
++								/* Step 3: Extract dynamic Session ID length field safely (1 byte) */
++								p = skb_header_pointer(skb, payload_offset + offset, 1, len_buf);
++								if (p) {
++									u8 session_id_len = p[0];
++									offset += 1 + session_id_len; /* Skip length descriptor + payload data bytes */
++									
++									/* Step 4: Extract dynamic Cipher Suites length field safely (2 bytes) */
++									p = skb_header_pointer(skb, payload_offset + offset, 2, len_buf);
++									if (p) {
++										/* Use safe shift operations to enforce clean endian alignment on all router CPUs */
++										u16 cipher_suites_len = ((u16)p[0] << 8) | p[1];
++										offset += 2 + cipher_suites_len; /* Leap over Ciphers grid completely */
++										
++										/* Step 5: Extract dynamic Compression Methods length field safely (1 byte) */
++										p = skb_header_pointer(skb, payload_offset + offset, 1, len_buf);
++										if (p) {
++											u8 compression_len = p[0];
++											offset += 1 + compression_len; /* Skip Compression descriptors */
++											
++											/* Step 6: We have successfully reached the Extensions Array Block! Read Extensions Total Length (2B) */
++											p = skb_header_pointer(skb, payload_offset + offset, 2, len_buf);
++											if (p) {
++												u16 extensions_total_len = ((u16)p[0] << 8) | p[1];
++												unsigned int extensions_end = offset + 2 + extensions_total_len;
++												offset += 2; /* Shift layout offset right inside the core extensions list sequence */
++												
++												/* Strict boundary sanity guard against malicious malformed padding packets */
++												if (extensions_end <= payload_len) {
++													u8 loop_guard = 0;
++													u8 ext_buf[4];
++													u8 *ext_ptr;
++													
++													/* Step 7: High-Performance O(1) Leap Loop with anti-hang protection */
++													while (offset + 4 <= extensions_end && loop_guard++ < 32) {
++														ext_ptr = skb_header_pointer(skb, payload_offset + offset, 4, ext_buf);
++														if (!ext_ptr) break;
++														
++														u16 ext_type = ((u16)ext_ptr[0] << 8) | ext_ptr[1];
++														u16 ext_len = ((u16)ext_ptr[2] << 8) | ext_ptr[3];
++														
++														/* TARGET MATCHED: Extension Type 0x0000 matches Server Name Indication (SNI) perfectly! */
++														if (ext_type == 0x0000) {
++															unsigned int sni_ptr_offset = offset + 4;
++															u8 sni_buf[5];
++															p = skb_header_pointer(skb, payload_offset + sni_ptr_offset, 5, sni_buf);
++															if (p) {
++																/* Skip SNI List Length(2B) + Name Type(1B, 0=host_name) + Server Name Length(2B) */
++																u16 server_name_len = ((u16)p[3] << 8) | p[4];
++																unsigned int hostname_offset = sni_ptr_offset + 5;
++																
++																if (hostname_offset + server_name_len <= payload_len && server_name_len > 0) {
++																	u8 name_buf[64];
++																	u8 target_len = (server_name_len > 63) ? 63 : server_name_len;
++																	u8 *name_ptr = skb_header_pointer(skb, payload_offset + hostname_offset, target_len, name_buf);
++																	
++																	if (name_ptr) {
++																		memset(ct->init_payload, 0, 64);
++																		memcpy(ct->init_payload, name_ptr, target_len);
++																		ct->has_custom_payload = 2; /* Status '2' -> SNI text successfully harvested and locked! */
++																	}
++																}
++															}
++															break; /* Mission accomplished, kill the loop instantly */
++														}
++														
++														/* ULTRASONIC JUMP: Jump directly over heavy cryptography chunks (e.g. skip key_share 1263 bytes instantly) */
++														offset += 4 + ext_len;
++													}
++												}
++											}
++										}
++									}
++								}
++							}
++						}
++						
++						/* Fallback Route C: Standard original 8-byte hex binary telemetry backup if no structural domain was found */
++						if (!ct->has_custom_payload) {
++							u8 fallback_buf[8];
++							u8 *fb_ptr = skb_header_pointer(skb, payload_offset, 8, fallback_buf);
++							if (fb_ptr) {
++								memset(ct->init_payload, 0, 64);
++								memcpy(ct->init_payload, fb_ptr, 8);
++								ct->has_custom_payload = 1;
++							}
++						}
++					}
++				}
++			}
++		}
++	}
++	/* ==================== CUSTOM L7 TELEMETRY END ==================== */
++#endif
++
+ 	if (ctinfo == IP_CT_ESTABLISHED_REPLY &&
+ 	    !test_and_set_bit(IPS_SEEN_REPLY_BIT, &ct->status))
+ 		nf_conntrack_event_cache(IPCT_REPLY, ct);
+--- a/net/netfilter/nf_conntrack_standalone.c	2026-09-15 14:22:17.815253367 +0800
++++ b/net/netfilter/nf_conntrack_standalone.c	2026-09-12 16:27:05.964393178 +0800
+@@ -369,6 +369,25 @@
+ 	ct_show_zone(s, ct, NF_CT_DEFAULT_ZONE_DIR);
+ 	ct_show_delta_time(s, ct);
+ 
++#if IS_ENABLED(CONFIG_NF_CONNTRACK_CUSTOM_TELEMETRY)
++	/* =================== CUSTOM L7 OUTPUT START =================== */
++	if (ct->has_custom_payload) {
++		/* If status flag is '2', we successfully isolated an authentic plain-text ASCII string fragment! */
++		if (ct->has_custom_payload == 2) {
++			/* Enforce strict termination rendering using standard %s formatting safely bounded by your size allocation */
++			seq_printf(s, "payload=%s ", (char *)ct->init_payload);
++		} else {
++			/* Fallback status '1': Print classic 8-byte hexadecimal string sequence safely to avoid data corruption */
++			seq_printf(s, "payload=%02x%02x%02x%02x%02x%02x%02x%02x ",
++				   ct->init_payload[0], ct->init_payload[1],
++				   ct->init_payload[2], ct->init_payload[3],
++				   ct->init_payload[4], ct->init_payload[5],
++				   ct->init_payload[6], ct->init_payload[7]);
++		}
++	}
++	/* ==================== CUSTOM L7 OUTPUT END ==================== */
++#endif
++
+ 	seq_printf(s, "use=%u\n", atomic_read(&ct->ct_general.use));
+ 
+ 	if (seq_has_overflowed(s))

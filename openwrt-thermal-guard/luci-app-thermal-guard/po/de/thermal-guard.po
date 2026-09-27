@@ -1,0 +1,509 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-thermal-guard\n"
+"PO-Revision-Date: 2026-09-22\n"
+"Last-Translator: SyntaxError NullPointer <287466119+SyntaxError-NullPointer@users.noreply.github.com>\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Enter a whole number"
+msgstr "Ganze Zahl eingeben"
+
+msgid "Must be above %s (%d)"
+msgstr "Muss über %s (%d) liegen"
+
+msgid "Must be below %s (%d)"
+msgstr "Muss unter %s (%d) liegen"
+
+msgid "Must be an absolute path without \"..\""
+msgstr "Muss ein vollständiger Pfad ohne „..\" sein"
+
+msgid "Path must start with %s"
+msgstr "Pfad muss mit %s beginnen"
+
+msgid "Thermal Guard"
+msgstr "Thermal Guard"
+
+msgid "Monitors the temperature of the main processor and the modem. If the device gets too hot, it intervenes in up to three protection stages. Stages stay active until you clear them on the status page."
+msgstr "Überwacht die Temperatur des Hauptprozessors und des Modems. Wird das Gerät zu heiß, greift der Dienst in bis zu drei Schutzstufen ein. Die Stufen bleiben aktiv, bis Sie sie auf der Statusseite zurücksetzen."
+
+msgid "General"
+msgstr "Allgemein"
+
+msgid "Thresholds"
+msgstr "Schwellen"
+
+msgid "Temperatures at which each protection stage starts. What actually happens at stage 2 and 3 is set on the Actions tab."
+msgstr "Temperaturen, ab denen die jeweilige Schutzstufe einsetzt. Was bei Stufe 2 und 3 geschieht, legen Sie im Reiter „Aktionen\" fest."
+
+msgid "Fan"
+msgstr "Lüfter"
+
+msgid "Modem"
+msgstr "Modem"
+
+msgid "Actions"
+msgstr "Aktionen"
+
+msgid "What happens when a stage starts. Stage 1 of 3 warns and, if this service drives the fan (Fan tab), sets it to full speed. That cannot be changed."
+msgstr "Was beim Einsetzen einer Stufe geschieht. Stufe 1 von 3 warnt und setzt den Lüfter auf volle Drehzahl, sofern dieser Dienst ihn ansteuert (Reiter „Lüfter\"). Das ist nicht änderbar."
+
+msgid "Enabled"
+msgstr "Aktiv"
+
+msgid "Switching this off pauses the temperature checks. Protection stages that are already active stay applied and the fan is not handed back, so a broken fan cannot be hidden by a checkbox. Use Clear on the status page for that."
+msgstr "Durch Deaktivieren werden die Temperaturmessungen angehalten. Bereits aktive Schutzstufen bleiben bestehen und der Lüfter wird nicht freigegeben. Ein defekter Lüfter lässt sich dadurch nicht verbergen. Nutzen Sie dafür die Funktion „Schutzstufen zurücksetzen\" auf der Statusseite."
+
+msgid "Interval"
+msgstr "Intervall"
+
+msgid "Seconds between two temperature readings. Values below five seconds are treated as five."
+msgstr "Sekunden zwischen zwei Temperaturmessungen. Werte unter fünf Sekunden werden als fünf behandelt."
+
+msgid "Processor temperature source"
+msgstr "Quelle der Prozessortemperatur"
+
+msgid "System file the processor temperature is read from. The default fits most devices; change it only if your device reports its temperature elsewhere."
+msgstr "Systemdatei, aus der die Prozessortemperatur gelesen wird. Die Vorgabe passt für die meisten Geräte und muss nur geändert werden, wenn Ihr Gerät die Temperatur an anderer Stelle meldet."
+
+msgid "Processor warning (stage 1 of 3)"
+msgstr "Prozessor Warnung (Stufe 1 von 3)"
+
+msgid "Stage 1 of 3 starts when either temperature reaches its warning level: a warning, and full fan speed if this service drives the fan."
+msgstr "Stufe 1 von 3 setzt ein, sobald eine der beiden Temperaturen ihre Warnschwelle erreicht: eine Warnung und, sofern dieser Dienst den Lüfter ansteuert, volle Drehzahl."
+
+msgid "Processor critical"
+msgstr "Prozessor kritisch"
+
+msgid "Processor critical (stage 2 of 3)"
+msgstr "Prozessor kritisch (Stufe 2 von 3)"
+
+msgid "Processor warning"
+msgstr "Prozessor Warnung"
+
+msgid "Processor emergency"
+msgstr "Prozessor Notfall"
+
+msgid "Processor emergency (stage 3 of 3)"
+msgstr "Prozessor Notfall (Stufe 3 von 3)"
+
+msgid "Modem warning (stage 1 of 3)"
+msgstr "Modem Warnung (Stufe 1 von 3)"
+
+msgid "Modem critical"
+msgstr "Modem kritisch"
+
+msgid "Modem critical (stage 2 of 3)"
+msgstr "Modem kritisch (Stufe 2 von 3)"
+
+msgid "Modem warning"
+msgstr "Modem Warnung"
+
+msgid "Hold time"
+msgstr "Haltezeit"
+
+msgid "Minutes a stage has to last before the next one starts on time alone: stage 2 of 3 if the temperature has not dropped, stage 3 of 3 if it is still rising."
+msgstr "Minuten, die eine Stufe andauern muss, bevor allein nach Zeit die nächste einsetzt: Stufe 2 von 3, wenn die Temperatur nicht gesunken ist, Stufe 3 von 3, wenn sie weiter steigt."
+
+msgid "Hysteresis"
+msgstr "Hysterese"
+
+msgid "How many degrees the temperature has to fall below the warning level before the device counts as cooled down."
+msgstr "Um wie viel Grad die Temperatur unter die Warnschwelle fallen muss, damit das Gerät als abgekühlt gilt."
+
+msgid "Fan control method"
+msgstr "Art der Lüftersteuerung"
+
+msgid "Leave the fan to the regulator the device already has, unless it has none. Automatic uses the kernel fan control when the device offers it and otherwise leaves the fan alone. It never picks direct control, which needs the fan's polarity."
+msgstr "Überlassen Sie den Lüfter der Regelung, die das Gerät bereits hat, sofern es eine gibt. „Automatisch\" nutzt die Kernel-Lüfterregelung, wenn das Gerät sie anbietet, und lässt den Lüfter sonst unangetastet. Die direkte Steuerung wählt es nie, denn dafür muss die Polarität des Lüfters bekannt sein."
+
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgid "Kernel fan control"
+msgstr "Kernel-Lüfterregelung"
+
+msgid "Direct fan control (PWM)"
+msgstr "Direkte Lüftersteuerung (PWM)"
+
+msgid "Leave the fan alone"
+msgstr "Lüfter nicht ansteuern"
+
+msgid "Fan identifier"
+msgstr "Kennung des Lüfters"
+
+msgid "Name the kernel uses for the fan. Change it only if the fan is not found automatically."
+msgstr "Name, unter dem der Kernel den Lüfter führt. Nur ändern, wenn der Lüfter nicht automatisch gefunden wird."
+
+msgid "Control mode to restore"
+msgstr "Wiederherzustellendes Regelverfahren"
+
+msgid "Control mode handed back to the kernel when the stages are cleared and no earlier control mode was recorded. The default fits almost every device."
+msgstr "Regelverfahren, das beim Zurücksetzen der Schutzstufen an den Kernel übergeben wird, wenn kein früheres festgehalten wurde. Die Vorgabe passt für nahezu alle Geräte."
+
+msgid "Fan speed file"
+msgstr "Datei für die Lüfterdrehzahl"
+
+msgid "Only needed for direct fan control."
+msgstr "Nur bei direkter Lüftersteuerung nötig."
+
+msgid "Fan control file"
+msgstr "Datei zum Aktivieren der Steuerung"
+
+msgid "Only needed for direct fan control. Switches the fan chip to manual control."
+msgstr "Nur bei direkter Lüftersteuerung nötig. Schaltet den Lüfterbaustein auf manuelle Steuerung um."
+
+msgid "Value for full speed"
+msgstr "Wert für volle Drehzahl"
+
+msgid "Required for direct fan control. The raw value that makes this fan spin fastest. Some boards wire the signal inverted, where 1 is full speed and 255 stops the fan. Without this value and the slowest one, the fan is left alone."
+msgstr "Erforderlich für die direkte Lüftersteuerung. Der Rohwert, bei dem der Lüfter am schnellsten dreht. Auf manchen Platinen ist das Signal invertiert: 1 bedeutet dann volle Drehzahl und 255 Stillstand. Fehlt dieser Wert oder der für die langsamste Stufe, bleibt der Lüfter unangetastet."
+
+msgid "Value for the slowest setting"
+msgstr "Wert für die niedrigste Drehzahl"
+
+msgid "Required for direct fan control. The opposite end of the same scale. Together with full speed it states the polarity, and it shows the fan speed as a percentage. Never written to the hardware."
+msgstr "Erforderlich für die direkte Lüftersteuerung. Der Gegenwert am anderen Ende derselben Skala. Zusammen mit dem Wert für volle Drehzahl legt er die Polarität fest und dient zur Anzeige der Drehzahl in Prozent. Wird nie an die Hardware geschrieben."
+
+msgid "Modem temperature source"
+msgstr "Quelle der Modemtemperatur"
+
+msgid "Automatic tries the known modem commands in turn. Select your manufacturer if detection fails."
+msgstr "„Automatisch\" probiert die bekannten Modem-Kommandos nacheinander. Wählen Sie Ihren Hersteller, falls die Erkennung fehlschlägt."
+
+msgid "Quectel (AT+QTEMP)"
+msgstr "Quectel (AT+QTEMP)"
+
+msgid "Fibocom (AT+GTSENRDTEMP)"
+msgstr "Fibocom (AT+GTSENRDTEMP)"
+
+msgid "File"
+msgstr "Datei"
+
+msgid "Command"
+msgstr "Kommando"
+
+msgid "No modem"
+msgstr "Kein Modem"
+
+msgid "Modem control port"
+msgstr "Steuerport des Modems"
+
+msgid "Serial port the commands are sent to. Automatic checks the usual ports."
+msgstr "Serieller Anschluss, über den die Kommandos an das Modem gehen. „Automatisch\" sucht die üblichen Anschlüsse ab."
+
+msgid "Lock file for modem access"
+msgstr "Sperrdatei für Modemzugriffe"
+
+msgid "Prevents this service and other programs from sending commands to the modem at the same time. Point those programs at the same file."
+msgstr "Verhindert, dass dieser Dienst und andere Programme gleichzeitig Kommandos an das Modem senden. Richten Sie diese Programme auf dieselbe Datei aus."
+
+msgid "Temperature file"
+msgstr "Temperaturdatei"
+
+msgid "Own temperature source"
+msgstr "Eigene Temperaturquelle"
+
+msgid "Reads /etc/thermal-guard/hooks/modem-temp, which has to print the temperature in degrees as a whole number. Place the file over SSH; it runs as root and is deliberately not editable from here."
+msgstr "Liest /etc/thermal-guard/hooks/modem-temp aus. Das Skript muss die Temperatur in Grad als ganze Zahl ausgeben. Legen Sie die Datei per SSH an. Sie wird als root ausgeführt und ist bewusst nicht über diese Oberfläche bearbeitbar."
+
+msgid "Action at stage 2 of 3"
+msgstr "Aktion bei Stufe 2 von 3"
+
+msgid "Switch the modem radio off"
+msgstr "Mobilfunk abschalten"
+
+msgid "Switch Wi-Fi off"
+msgstr "WLAN abschalten"
+
+msgid "Take a network interface down"
+msgstr "Netzwerkschnittstelle herunterfahren"
+
+msgid "Run own script"
+msgstr "Eigenes Skript ausführen"
+
+msgid "Nothing"
+msgstr "Nichts"
+
+msgid "Script at stage 2 of 3"
+msgstr "Skript bei Stufe 2 von 3"
+
+msgid "Runs /etc/thermal-guard/hooks/stage1. Place the file over SSH and make it executable."
+msgstr "Führt /etc/thermal-guard/hooks/stage1 aus. Legen Sie die Datei per SSH an und machen Sie sie ausführbar."
+
+msgid "Action at stage 3 of 3"
+msgstr "Aktion bei Stufe 3 von 3"
+
+msgid "Script at stage 3 of 3"
+msgstr "Skript bei Stufe 3 von 3"
+
+msgid "How the modem is switched off"
+msgstr "Art der Modem-Abschaltung"
+
+msgid "Flight mode suits most modems. Use minimum function for a modem that does not accept flight mode. Either way the modem is asked afterwards (AT+CFUN?), and a modem that does not confirm counts as a failed stage."
+msgstr "Der Flugmodus passt für die meisten Modems. Minimalbetrieb ist für Modems gedacht, die den Flugmodus nicht annehmen. In beiden Fällen wird das Modem anschließend abgefragt (AT+CFUN?); bestätigt es den Zustand nicht, gilt die Stufe als fehlgeschlagen."
+
+msgid "Flight mode (AT+CFUN=4)"
+msgstr "Flugmodus (AT+CFUN=4)"
+
+msgid "Minimum function (AT+CFUN=0)"
+msgstr "Minimalbetrieb (AT+CFUN=0)"
+
+msgid "Interface to take down"
+msgstr "Herunterzufahrende Schnittstelle"
+
+msgid "Network interface taken down by the interface action and brought back up when the stages are cleared. Empty uses the modem network interface."
+msgstr "Netzwerkschnittstelle, die die Schnittstellen-Aktion herunterfährt und beim Zurücksetzen der Stufen wieder startet. Leer bedeutet: die Netzwerkschnittstelle des Modems."
+
+msgid "Runs /etc/thermal-guard/hooks/stage2. Place the file over SSH and make it executable."
+msgstr "Führt /etc/thermal-guard/hooks/stage2 aus. Legen Sie die Datei per SSH an und machen Sie sie ausführbar."
+
+msgid "Notification address"
+msgstr "Benachrichtigungsadresse"
+
+msgid "The warning text is posted here. Works with ntfy, Gotify, Matrix, Slack and anything else that accepts a plain POST body."
+msgstr "An diese Adresse wird der Warntext gesendet. Funktioniert mit ntfy, Gotify, Matrix, Slack und jedem anderen Dienst, der einen einfachen POST-Inhalt entgegennimmt."
+
+msgid "Must be an http:// or https:// address without quotes or spaces"
+msgstr "Muss eine http:// oder https://-Adresse ohne Anführungszeichen und Leerzeichen sein"
+
+msgid "Additional header"
+msgstr "Zusätzlicher Header"
+
+msgid "Sent with the notification, for example an authorisation token. Needs curl installed; the smaller uclient-fetch cannot send headers."
+msgstr "Wird mit der Benachrichtigung mitgesendet, zum Beispiel ein Autorisierungstoken. Erfordert ein installiertes curl; das kleinere uclient-fetch kann keine Header senden."
+
+msgid "Must be printable text without quotes or backslashes"
+msgstr "Muss druckbarer Text ohne Anführungszeichen und Backslashes sein"
+
+msgid "Modem network interface"
+msgstr "Netzwerkschnittstelle des Modems"
+
+msgid "Lets the service tell whether another internet connection exists, so a message from stage 2 of 3 on goes out or waits in the queue. Also the interface the interface action takes when none is set."
+msgstr "Damit erkennt der Dienst, ob eine andere Internetverbindung besteht, und entscheidet ab Stufe 2 von 3, ob eine Nachricht sofort hinausgeht oder in der Warteschlange wartet. Außerdem die Netzwerkschnittstelle, die die Schnittstellen-Aktion verwendet, wenn keine eingestellt ist."
+
+msgid "Wi-Fi %d"
+msgstr "WLAN %d"
+
+msgid "Ethernet"
+msgstr "Ethernet"
+
+msgid "SSD"
+msgstr "SSD"
+
+msgid "modem radio off"
+msgstr "Mobilfunk abgeschaltet"
+
+msgid "Wi-Fi off"
+msgstr "WLAN abgeschaltet"
+
+msgid "network interface down"
+msgstr "Netzwerkschnittstelle heruntergefahren"
+
+msgid "custom command"
+msgstr "eigenes Skript"
+
+msgid "no action"
+msgstr "keine Aktion"
+
+msgid "unknown action"
+msgstr "unbekannte Aktion"
+
+msgid "Stage 1 of 3 active: fan at full speed"
+msgstr "Stufe 1 von 3 aktiv: Lüfter auf voller Drehzahl"
+
+msgid "Stage 1 of 3 active: warning, fan left to its own controller"
+msgstr "Stufe 1 von 3 aktiv: Warnung, Lüfter bleibt bei seiner eigenen Regelung"
+
+msgid "Stage 2 of 3 active: %s"
+msgstr "Stufe 2 von 3 aktiv: %s"
+
+msgid "Stage 3 of 3 active: %s"
+msgstr "Stufe 3 von 3 aktiv: %s"
+
+msgid "No intervention, temperatures within range"
+msgstr "Kein Eingriff, Temperaturen im normalen Bereich"
+
+msgid "%d s ago"
+msgstr "vor %d s"
+
+msgid "%d min ago"
+msgstr "vor %d min"
+
+msgid "Current temperatures and protection state. Thresholds and actions are configured under System, Thermal Guard."
+msgstr "Aktuelle Temperaturen und Schutzzustand. Schwellen und Aktionen werden unter System, Thermal Guard eingestellt."
+
+msgid "No data yet. Check whether the Thermal Guard service is running."
+msgstr "Noch keine Daten. Prüfen Sie, ob der Dienst Thermal Guard läuft."
+
+msgid "Processor temperature"
+msgstr "Prozessortemperatur"
+
+msgid "Modem temperature"
+msgstr "Modemtemperatur"
+
+msgid "no reading"
+msgstr "kein Messwert"
+
+msgid "fan step %d of %d"
+msgstr "Lüfterstufe %d von %d"
+
+msgid "Fan control"
+msgstr "Lüftersteuerung"
+
+msgid "Another service is controlling this fan"
+msgstr "Der Lüfter wird von einem anderen Dienst gesteuert"
+
+msgid "This device does not report any temperature"
+msgstr "Dieses Gerät meldet keine Temperatur"
+
+msgid "No thermal sensor was found, so the processor is not watched on this hardware. The modem thresholds still apply while the modem reports a temperature."
+msgstr "Es wurde kein Temperatursensor gefunden, der Prozessor wird auf dieser Hardware daher nicht überwacht. Die Modemschwellen gelten weiter, solange das Modem eine Temperatur meldet."
+
+msgid "The service is not running. Protection stages stay applied and the fan is not handed back."
+msgstr "Der Dienst läuft nicht. Aktive Schutzstufen bleiben bestehen und der Lüfter wird nicht freigegeben."
+
+msgid "The service is not running. Temperatures are not being watched."
+msgstr "Der Dienst läuft nicht. Die Temperaturen werden nicht überwacht."
+
+msgid "The service is paused. Protection stages stay applied and the fan is not handed back."
+msgstr "Der Dienst ist angehalten. Aktive Schutzstufen bleiben bestehen und der Lüfter wird nicht freigegeben."
+
+msgid "The service is paused. Temperatures are not being watched."
+msgstr "Der Dienst ist angehalten. Die Temperaturen werden nicht überwacht."
+
+msgid "Protection stages stay active until you clear them. Clear them once the cause is fixed, for example a replaced fan."
+msgstr "Schutzstufen bleiben aktiv, bis Sie sie zurücksetzen. Setzen Sie sie zurück, sobald die Ursache behoben ist, etwa nach dem Austausch des Lüfters."
+
+msgid "Clear protection stages"
+msgstr "Schutzstufen zurücksetzen"
+
+msgid "Last reading: %s"
+msgstr "Letzte Messung: %s"
+
+msgid "modem source: %s"
+msgstr "Modemquelle: %s"
+
+msgid "fan mode: %s"
+msgstr "Lüftersteuerung: %s"
+
+msgid "version %s"
+msgstr "Version %s"
+
+msgid "Clearing failed: %s"
+msgstr "Zurücksetzen fehlgeschlagen: %s"
+
+msgid "Protection stages cleared."
+msgstr "Schutzstufen zurückgesetzt."
+
+msgid "Temperatures"
+msgstr "Temperaturen"
+
+msgid "Processor"
+msgstr "Prozessor"
+
+msgid "protection stage %d active"
+msgstr "Schutzstufe %d aktiv"
+
+msgid "Fan switching temperatures"
+msgstr "Schalttemperaturen des Lüfters"
+
+msgid "lowered by %d K for the modem"
+msgstr "für das Modem um %d K abgesenkt"
+
+msgid "The firmware brings new fan switching temperatures (%s °C). Your own values still apply; review them under System, Thermal Guard, Fan."
+msgstr "Die Firmware bringt neue Schalttemperaturen für den Lüfter mit (%s °C). Ihre eigenen Werte gelten weiter; prüfen Sie sie unter System, Thermal Guard, Lüfter."
+
+msgid "the kernel knows no fan on this device"
+msgstr "der Kernel kennt auf diesem Gerät keinen Lüfter"
+
+msgid "no thermal zone drives the fan"
+msgstr "keine Thermalzone steuert den Lüfter"
+
+msgid "the fan's thermal zone is not under /sys/class/thermal"
+msgstr "die Thermalzone des Lüfters liegt nicht unter /sys/class/thermal"
+
+msgid "the fan is not bound to any switching temperature"
+msgstr "der Lüfter ist an keine Schalttemperatur gebunden"
+
+msgid "the switching temperatures cannot be changed"
+msgstr "die Schalttemperaturen lassen sich nicht ändern"
+
+msgid "unknown reason"
+msgstr "unbekannter Grund"
+
+msgid "Managed by this service, switching temperatures now %s °C"
+msgstr "Von diesem Dienst verwaltet, Schalttemperaturen derzeit %s °C"
+
+msgid "Not possible on this device: %s"
+msgstr "Auf diesem Gerät nicht möglich: %s"
+
+msgid "Not managed by this service"
+msgstr "Nicht von diesem Dienst verwaltet"
+
+msgid "Speed the fan up for the modem"
+msgstr "Lüfter für das Modem hochregeln"
+
+msgid "Where the kernel drives the fan, its switching temperatures are lowered while the modem runs hotter than the processor, so the fan speeds up for the modem as well. They only ever go down, never above the base values. A missing modem reading keeps them where they are."
+msgstr "Wo der Kernel den Lüfter steuert, werden seine Schalttemperaturen abgesenkt, solange das Modem wärmer ist als der Prozessor. So dreht der Lüfter auch für das Modem hoch. Die Werte werden nur abgesenkt, nie über die Grundwerte angehoben. Fehlt ein Messwert des Modems, bleiben sie, wo sie sind."
+
+msgid "Off"
+msgstr "Aus"
+
+msgid "Follow the modem temperature"
+msgstr "Der Modemtemperatur folgen"
+
+msgid "Modem allowance"
+msgstr "Spielraum für das Modem"
+
+msgid "Degrees the modem may run above the processor before the switching temperatures are lowered."
+msgstr "Grad, um die das Modem wärmer sein darf als der Prozessor, bevor die Schalttemperaturen abgesenkt werden."
+
+msgid "Base values in degrees at which the kernel moves the fan one step up, lowest first, one value per step. Empty uses the values of the installed firmware: %s °C."
+msgstr "Grundwerte in Grad, bei denen der Kernel den Lüfter eine Stufe höher schaltet, der niedrigste zuerst, ein Wert je Stufe. Leer gelten die Werte der installierten Firmware: %s °C."
+
+msgid "Base values in degrees at which the kernel moves the fan one step up, lowest first, one value per step. Empty uses the values of the installed firmware."
+msgstr "Grundwerte in Grad, bei denen der Kernel den Lüfter eine Stufe höher schaltet, der niedrigste zuerst, ein Wert je Stufe. Leer gelten die Werte der installierten Firmware."
+
+msgid "Must be between 20 and 95"
+msgstr "Muss zwischen 20 und 95 liegen"
+
+msgid "Each value must be higher than the one before"
+msgstr "Jeder Wert muss höher sein als der vorige"
+
+msgid "Must be below %d, the temperature at which the kernel itself intervenes"
+msgstr "Muss unter %d liegen, der Temperatur, bei der der Kernel selbst eingreift"
+
+msgid "Needs exactly %d values, one per fan step"
+msgstr "Genau %d Werte nötig, einer je Lüfterstufe"
+
+msgid "New firmware values"
+msgstr "Neue Werte der Firmware"
+
+msgid "The installed firmware now uses %s °C. Your own base values were set for an earlier firmware and still apply."
+msgstr "Die installierte Firmware verwendet jetzt %s °C. Ihre eigenen Grundwerte wurden für eine frühere Firmware eingestellt und gelten weiter."
+
+msgid "Use the firmware values"
+msgstr "Werte der Firmware übernehmen"
+
+msgid "Keep my values"
+msgstr "Eigene Werte behalten"
+
+msgid "Recording the firmware values failed: %s"
+msgstr "Die Firmware-Werte konnten nicht festgehalten werden: %s"
+
+msgid "Firmware values recorded. The notice goes away with the next check."
+msgstr "Firmware-Werte festgehalten. Der Hinweis verschwindet mit der nächsten Prüfung."
+
+msgid "Fan steps of the firmware"
+msgstr "Lüfterstufen der Firmware"
+
+msgid "Raw value per fan step from the device tree, with the duty cycle of the signal. They belong to the fan that is fitted and change only with a new firmware image."
+msgstr "Rohwert je Lüfterstufe aus dem Device Tree, mit dem Tastverhältnis des Signals. Sie gehören zum eingebauten Lüfter und ändern sich nur mit einer neuen Firmware."
+
+msgid "step %d: %d (%d %%)"
+msgstr "Stufe %d: %d (%d %%)"

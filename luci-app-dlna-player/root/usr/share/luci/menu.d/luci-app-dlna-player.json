@@ -1,0 +1,13 @@
+{
+	"admin/services/dlna-player": {
+		"title": "DLNA 音乐播放器",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "dlna-player2"
+		},
+		"depends": {
+			"acl": [ "luci-app-dlna-player" ]
+		}
+	}
+}

@@ -1,0 +1,11 @@
+{
+	"luci-app-dnsguard": {
+		"description": "Grant UCI access for the DNS guard (DNS bypass prevention / 53 transparent redirect) LuCI application",
+		"read": {
+			"uci": [ "dnsguard" ]
+		},
+		"write": {
+			"uci": [ "dnsguard" ]
+		}
+	}
+}

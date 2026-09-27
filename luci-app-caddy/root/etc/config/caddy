@@ -1,14 +1,28 @@
+# luci-app-caddy 默认配置
+#
+# 数据模型:
+#   config caddy   -> 全局 (单条): 启用 / 路径 / 重定向开关
+#   config domain  -> 域名 (多条, 增删): 每条 = 一个域名 + AK + DDNS 参数
+#   config proxy   -> Host (多条, 增删): 每条 = 一段 Caddyfile 的 域名:端口 { ... }
+#
+# domain 示例 (在 LuCI [Domain] 页点 添加 创建):
+#   config domain 'd1'
+#       option domain_name 'example.com'
+#       option key_id '<AK_ID>'
+#       option key_secret '<AK_SECRET>'
+#       option ddns_on '0'
+#
+# proxy 示例 (在 LuCI [Host] 页点 添加 创建):
+#   config proxy 'host1'
+#       option name 'my-host'
+#       option enabled '1'
+#       option domain 'example.com'
+#       option port '8443'
+#       option tls '1'
+#       option target '192.168.1.x:8080'
+
 config caddy
-	option 'enabled' '0'
-	option cmd '默认'
-	option 'port' '12311'
-	option 'webdav' '0'
-	option 'filezip' '0'
-	option 'webzip' '0'
-	option 'cgi' '0'
-	option 'api' '0'
-	option 'data_dir' '/mnt'
-	option 'file_pass' '0'
-	option 'log' '1'
-	option 'log_dir' '/tmp/caddy/requests.log'
-	option allow_wan '0'
+	option enabled '0'
+	option disable_redirect '1'
+	option bin_dir '/usr/sbin/caddy'
+	option log_dir '/tmp/caddy/requests.log'

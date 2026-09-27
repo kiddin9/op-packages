@@ -1,0 +1,388 @@
+#!/bin/sh
+# dnsguard-apply —— 把 UCI(/etc/config/dnsguard) 渲染成 /etc/nftables.d/20-dns-guard.nft 并应用
+#
+# 设计原则（与邮件日报应用一致）：本脚本是唯一"写防火墙"的地方，WebUI 只调用它。
+#
+#   用法：
+#     dnsguard-apply                    渲染 + 校验 + 落盘 + fw4 reload，输出一行 JSON
+#     dnsguard-apply --quiet            同上，不输出
+#     dnsguard-apply --render-only      只渲染到 --out 指定文件（不动 /etc、不 reload），用于界面预览
+#     dnsguard-apply --no-reload        渲染 + 落盘，但不 reload（文件变更下次 fw4 reload 生效）
+#
+#   安全闸门：
+#     ① 片段先包进临时表名做 nft -c 语法校验，不通过绝不落盘
+#     ② 落盘后用 fw4 check 全量校验真实规则集，不通过立即还原旧文件
+#     ③ reload 后核对 dns_guard_redirect 链是否真的存在，不存在立即还原
+#     ④ redirect53=1 而 AdGuardHome 未运行 -> 直接拒绝（不然全屋解析全挂）
+#
+# 生成：WorkBuddy  2026-09-26
+
+set -u
+
+CFG=dnsguard
+OUT=/etc/nftables.d/20-dns-guard.nft
+BAKDIR=/mnt/data/backup-dnsguard
+GENMARK='由 LuCI 应用「DNS 防绕过」自动生成'
+
+QUIET=0
+RENDER_ONLY=0
+NO_RELOAD=0
+OUTFILE=""
+
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--quiet)       QUIET=1 ;;
+		--render-only) RENDER_ONLY=1 ;;
+		--no-reload)   NO_RELOAD=1 ;;
+		--out)         shift; OUTFILE="${1:-}" ;;
+		*) : ;;
+	esac
+	shift
+done
+
+# ---------------- 工具 ----------------
+
+uget() { uci -q get "$CFG.$1" 2>/dev/null; }
+
+bool() {
+	case "${1:-}" in
+		1|on|true|yes|enabled) echo 1 ;;
+		*) echo 0 ;;
+	esac
+}
+
+digits_only() { printf '%s' "${1:-}" | tr -dc '0-9'; }
+
+# 单行转义成 JSON 字符串内容（换行 -> \n，反斜杠与双引号转义）
+jesc() {
+	printf '%s' "${1:-}" | tr '\n' '\001' | sed 's/\\/\\\\/g; s/"/\\"/g' | tr '\001' '\n' | awk '{printf "%s\\n", $0}' | sed 's/\\n$//'
+}
+
+# 统一的行输出：整行作为单个参数传入，避免 ${VAR} 里的双引号被 shell 吃掉
+p() { printf '%s\n' "$1"; }
+
+out_json() {
+	[ "$QUIET" -eq 1 ] && return 0
+	printf '%s\n' "$1"
+}
+
+EMIT_JSON() {
+	out_json "{\"status\":\"${STATUS:-error}\",\"message\":\"$(jesc "${MSG:-}")\",\"enabled\":\"${ENABLED:-0}\",\"redirect\":\"${REDIRECT:-0}\",\"watch\":\"${WATCH:-0}\",\"block853\":\"${B853:-0}\",\"blockdoh\":\"${BDOH:-0}\",\"file\":\"${FILE_STATE:-none}\",\"reload\":\"${RELOAD_STATE:-skipped}\",\"redirect_active\":\"${REDIRECT_ACTIVE:-0}\",\"target\":\"${TARGET:-53}\",\"ifaces\":\"$(jesc "${IFACES:-}")\",\"backup\":\"$(jesc "${BAK_TS:-}")\"}"
+}
+
+fail() {
+	STATUS=error
+	MSG="$1"
+	EMIT_JSON
+	exit "${2:-1}"
+}
+
+# 只保留合法 IP/CIDR，其余丢弃 —— 防止把垃圾写进 nft 导致整个防火墙加载失败
+# ⚠️ 必须用 printf '%s\n' 补结尾换行：否则 while read 会把「最后一个元素」丢掉（踩过）
+set_elems() {
+	printf '%s\n' "${1:-}" | sed 's/[[:space:]]\{1,\}/\n/g' | while read -r e; do
+		[ -n "$e" ] || continue
+		case "$e" in
+			*:*)
+				printf '%s' "$e" | grep -qE '^[0-9a-fA-F:]+(/[0-9]{1,3})?$' && printf '%s ' "$e" ;;
+			*)
+				printf '%s' "$e" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$' && printf '%s ' "$e" ;;
+		esac
+	done
+}
+
+# 允许的入接口（字母数字点下划线连字符）
+set_ifaces() {
+	printf '%s\n' "${1:-}" | sed 's/[[:space:]]\{1,\}/\n/g' | while read -r e; do
+		[ -n "$e" ] || continue
+		printf '%s' "$e" | grep -qE '^[0-9A-Za-z._-]+$' && printf '%s ' "$e"
+	done
+}
+
+split4() { for e in ${1:-}; do case "$e" in *:*) : ;; *) printf '%s ' "$e" ;; esac; done; }
+split6() { for e in ${1:-}; do case "$e" in *:*) printf '%s ' "$e" ;; *) : ;; esac; done; }
+
+# 空格分隔 -> nft 集合元素 "a, b, c"
+join_elems() {
+	printf '%s' "${1:-}" | sed 's/^ *//; s/ *$//; s/  */, /g'
+}
+
+# ---------------- 1. 读配置 ----------------
+
+ENABLED=$(bool "$(uget main.enabled)")
+REDIRECT=$(bool "$(uget main.redirect53)")
+WATCH=$(bool "$(uget main.watch)")
+B853=$(bool "$(uget main.block853)")
+BDOH=$(bool "$(uget main.blockdoh)")
+
+TARGET=$(digits_only "$(uget main.target_port)"); [ -n "$TARGET" ] || TARGET=53
+LOGLIMIT=$(digits_only "$(uget main.log_limit)"); [ -n "$LOGLIMIT" ] || LOGLIMIT=5
+IFACES=$(set_ifaces "$(uget main.ifaces)")
+[ -n "$IFACES" ] || IFACES="br-lan"
+IFACES=$(printf '%s' "$IFACES" | sed 's/ *$//')
+
+SKIP_RAW=$(set_elems "$(uget main.skip_devices)")
+SKIP4=$(split4 "$SKIP_RAW")
+SKIP6=$(split6 "$SKIP_RAW")
+
+NH4=$(set_elems "$(uget limits.never_hijack4)")
+NH6=$(set_elems "$(uget limits.never_hijack6)")
+DOH=$(set_elems "$(uget limits.doh_servers)")
+
+# 接口集合：单接口写 "br-lan"，多接口写 { "a", "b" }
+IIF_RENDER=$(printf '%s' "$IFACES" | sed 's/^ *//; s/ *$//' | awk '{
+	n = split($0, a, " ")
+	if (n <= 1) { print "\"" a[1] "\"" }
+	else { s = "{ "; for (i = 1; i <= n; i++) { s = s "\"" a[i] "\"" (i < n ? ", " : " ") } s = s "}"; print s }
+}')
+
+STATUS=ok
+MSG=""
+FILE_STATE=none
+RELOAD_STATE=skipped
+REDIRECT_ACTIVE=0
+BAK_TS=""
+
+# 安全闸门 ④：重定向开着但 AGH 没跑 —— 无论如何都不能生成这条规则
+AGH_PID=$(pidof AdGuardHome 2>/dev/null)
+if [ "$ENABLED" = "1" ] && [ "$REDIRECT" = "1" ] && [ -z "$AGH_PID" ]; then
+	fail "AdGuard Home 未运行（pidof 为空）—— 已拒绝应用 53 透明重定向：此时重定向会让全屋解析失败。请先启动 AdGuard Home。" 3
+fi
+
+# ---------------- 2. 渲染 ----------------
+
+TMPD="/tmp/dg-apply.$$"
+mkdir -p "$TMPD" 2>/dev/null
+TMP="$TMPD/20-dns-guard.nft"
+
+gen() {
+	p "## ============================================================"
+	p "## DNS 防绕过 —— ${GENMARK}，请勿手工编辑"
+	p "##   生成时间：$(date '+%Y-%m-%d %H:%M:%S')  （= 规则上一次实际变化的时间；幂等比较时会忽略本行）"
+	p "##   入口：LuCI -> 服务 -> DNS 防绕过    回滚：/usr/bin/dnsguard-rollback"
+	p "##   备份目录：$BAKDIR"
+	p "##   本文件由 fw4 在 inet/fw4 表上下文内 include（见 /etc/nftables.d/README）"
+	p "## ============================================================"
+	p ""
+
+	if [ "$ENABLED" != "1" ]; then
+		p "## 总开关已关闭：不生成任何链（等于恢复出厂状态）"
+		return 0
+	fi
+
+	# ---- 集合 ----
+	if [ -n "$DOH" ]; then
+		p "set doh_servers {"
+		p "	type ipv4_addr"
+		p "	flags interval"
+		p "	elements = { $(join_elems "$DOH") }"
+		p "}"
+		p ""
+	fi
+
+	p "## 永不劫持的目标（内网 / 保留段）—— 避免把指向内网 DNS 的查询也改道"
+	p "set dns_never_hijack4 {"
+	p "	type ipv4_addr"
+	p "	flags interval"
+	[ -n "$NH4" ] && p "	elements = { $(join_elems "$NH4") }"
+	p "}"
+	p ""
+	p "set dns_never_hijack6 {"
+	p "	type ipv6_addr"
+	p "	flags interval"
+	[ -n "$NH6" ] && p "	elements = { $(join_elems "$NH6") }"
+	p "}"
+	p ""
+
+	if [ "$REDIRECT" = "1" ] && [ -n "$SKIP_RAW" ]; then
+		p "## 设备级例外：这些源地址不做透明重定向（界面「例外设备」）"
+		p "set dns_hijack_skip4 {"
+		p "	type ipv4_addr"
+		p "	flags interval"
+		[ -n "$SKIP4" ] && p "	elements = { $(join_elems "$SKIP4") }"
+		p "}"
+		p ""
+		p "set dns_hijack_skip6 {"
+		p "	type ipv6_addr"
+		p "	flags interval"
+		[ -n "$SKIP6" ] && p "	elements = { $(join_elems "$SKIP6") }"
+		p "}"
+		p ""
+	fi
+
+	# ---- 层 ①：53 透明重定向 ----
+	if [ "$REDIRECT" = "1" ]; then
+		if [ -n "$SKIP_RAW" ]; then
+			S4="ip saddr != @dns_hijack_skip4"
+			S6="ip6 saddr != @dns_hijack_skip6"
+		else
+			S4=""
+			S6=""
+		fi
+		p "## 层 ① 53 透明重定向 -> AdGuard Home（nat prerouting priority -105，早于 fw4 dstnat -100）"
+		p "##       客户端无感：以为还在跟 8.8.8.8 说话，实际被改道到本机 :${TARGET}"
+		p "chain dns_guard_redirect {"
+		p "	type nat hook prerouting priority -105; policy accept;"
+		p ""
+		p "	iifname ${IIF_RENDER} meta l4proto { tcp, udp } th dport 53 ${S4} ip daddr != @dns_never_hijack4 counter redirect to :${TARGET}"
+		p "	iifname ${IIF_RENDER} meta l4proto { tcp, udp } th dport 53 ${S6} ip6 daddr != @dns_never_hijack6 counter redirect to :${TARGET}"
+		p "}"
+		p ""
+	fi
+
+	# ---- 层 ②③：853 / DoH 阻断（默认关闭）----
+	if [ "$B853" = "1" ] || [ "$BDOH" = "1" ]; then
+		p "## 层 ②③ 853(DoT) 与 DoH 专用地址阻断（filter forward priority -2，早于 fw4 默认链）"
+		p "chain dns_guard_block {"
+		p "	type filter hook forward priority -2; policy accept;"
+		p ""
+		if [ "$B853" = "1" ]; then
+			if [ -n "$SKIP_RAW" ]; then SB="ip saddr != @dns_hijack_skip4"; else SB=""; fi
+			p "	## DoT 阻断：客户端会回落到明文 53，从而被上面的重定向收编"
+			p "	iifname ${IIF_RENDER} meta l4proto tcp th dport 853 ${SB} counter reject with tcp reset"
+			p "	iifname ${IIF_RENDER} meta l4proto udp th dport 853 ${SB} counter reject"
+			p ""
+		fi
+		if [ "$BDOH" = "1" ] && [ -n "$DOH" ]; then
+			p "	## DoH 专用地址阻断（按 IP 命中，可能误伤「恰好也在这个 IP 上」的其它服务，慎用）"
+			p "	iifname ${IIF_RENDER} tcp dport 443 ip daddr @doh_servers counter reject with tcp reset"
+			p ""
+		fi
+		p "}"
+		p ""
+	fi
+
+	# ---- 观察计数（阶段 1 沿用）----
+	if [ "$WATCH" = "1" ]; then
+		p "## 观察计数：只计数 + 抽样记日志，不拦截"
+		p "##   注意：53 被上面重定向后不再进 forward 链，此链的 53 计数会趋近于 0（只剩 853/DoH）"
+		p "chain dns_guard_pre_forward {"
+		p "	type filter hook forward priority -1; policy accept;"
+		p ""
+		p "	iifname ${IIF_RENDER} oifname \"pppoe-wan\" meta l4proto { tcp, udp } th dport { 53, 853 } counter log prefix \"DNS-BYPASS-53853: \" limit rate ${LOGLIMIT}/minute"
+		[ -n "$DOH" ] && p "	iifname ${IIF_RENDER} oifname \"pppoe-wan\" meta l4proto tcp th dport 443 ip daddr @doh_servers counter log prefix \"DNS-BYPASS-DOH: \" limit rate ${LOGLIMIT}/minute"
+		p "}"
+		p ""
+	fi
+
+	return 0
+}
+
+gen > "$TMP" 2>/dev/null
+
+if [ ! -s "$TMP" ]; then
+	rm -rf "$TMPD"
+	fail "渲染失败：生成的规则文件为空" 4
+fi
+
+# ---------------- 3. 语法校验（临时表包裹）----------------
+
+validate() {
+	CK="$TMPD/check.nft"
+	{ echo "table inet dgcheck {"; cat "$1"; echo "}"; } > "$CK" 2>/dev/null
+	ERR=$(nft -c -f "$CK" 2>&1)
+	RC=$?
+	rm -f "$CK"
+	if [ "$RC" -ne 0 ]; then
+		printf '%s' "$ERR"
+		return 1
+	fi
+	return 0
+}
+
+ERRMSG=$(validate "$TMP")
+if [ -n "$ERRMSG" ]; then
+	rm -rf "$TMPD"
+	fail "nft 语法校验未通过，已中止（未改动任何文件）：$ERRMSG" 5
+fi
+
+# ---------------- 4. 仅渲染（界面预览）----------------
+
+if [ "$RENDER_ONLY" -eq 1 ]; then
+	DEST="${OUTFILE:-/tmp/dg-preview.nft}"
+	cp "$TMP" "$DEST" 2>/dev/null
+	rm -rf "$TMPD"
+	STATUS=ok
+	MSG="已渲染到 $DEST（未应用到防火墙）"
+	FILE_STATE=preview
+	EMIT_JSON
+	exit 0
+fi
+
+# ---------------- 5. 落盘 + 应用 ----------------
+
+# 幂等比较：必须忽略会变的「生成时间」行，否则每次都比出差异、白白重载一次防火墙
+strip_volatile() { sed '/^##   生成时间：/d' "$1"; }
+
+if [ -f "$OUT" ]; then
+	strip_volatile "$TMP" > "$TMPD/norm.new" 2>/dev/null
+	strip_volatile "$OUT" > "$TMPD/norm.old" 2>/dev/null
+	if cmp -s "$TMPD/norm.new" "$TMPD/norm.old"; then
+		FILE_STATE=unchanged
+		rm -rf "$TMPD"
+		if [ "$REDIRECT" = "1" ]; then
+			nft list chain inet fw4 dns_guard_redirect >/dev/null 2>&1 && REDIRECT_ACTIVE=1
+		fi
+		STATUS=ok
+		MSG="规则无变化（未重新加载防火墙）"
+		EMIT_JSON
+		exit 0
+	fi
+fi
+
+# 备份旧文件
+OLD="/tmp/dg-old.$$.nft"
+cp "$OUT" "$OLD" 2>/dev/null
+if [ -f "$OUT" ]; then
+	BAK_TS=$(date +%Y%m%d-%H%M%S)
+	mkdir -p "$BAKDIR/$BAK_TS" 2>/dev/null
+	cp "$OUT" "$BAKDIR/$BAK_TS/20-dns-guard.nft" 2>/dev/null
+fi
+
+cp "$TMP" "$OUT" 2>/dev/null
+chmod 644 "$OUT" 2>/dev/null
+FILE_STATE=written
+
+# fw4 全量校验：不通过就立刻还原
+if ! fw4 check >/dev/null 2>&1; then
+	CKERR=$(fw4 check 2>&1 | grep -v 'Automatically including' | grep -v 'docker_nat' | head -5)
+	if [ -f "$OLD" ]; then
+		cp "$OLD" "$OUT" 2>/dev/null
+	else
+		rm -f "$OUT"
+	fi
+	rm -f "$OLD"; rm -rf "$TMPD"
+	fail "fw4 全量校验未通过，已还原旧规则：$CKERR" 6
+fi
+
+if [ "$NO_RELOAD" -eq 1 ]; then
+	RELOAD_STATE="deferred"
+	rm -f "$OLD"; rm -rf "$TMPD"
+	STATUS=ok
+	MSG="规则已写入 $OUT（未重载，下次防火墙重载生效）"
+	EMIT_JSON
+	exit 0
+fi
+
+fw4 reload >/dev/null 2>&1
+RELOAD_STATE=done
+
+# 应用后核对：开了重定向就必须真有这条链
+if [ "$REDIRECT" = "1" ]; then
+	if nft list chain inet fw4 dns_guard_redirect >/dev/null 2>&1; then
+		REDIRECT_ACTIVE=1
+	else
+		if [ -f "$OLD" ]; then
+			cp "$OLD" "$OUT" 2>/dev/null
+			fw4 reload >/dev/null 2>&1
+		fi
+		rm -f "$OLD"; rm -rf "$TMPD"
+		fail "规则已写入但重定向链未生效（已还原旧规则）—— 请检查 /etc/nftables.d 与 fw4 日志" 7
+	fi
+fi
+
+rm -f "$OLD"; rm -rf "$TMPD"
+STATUS=ok
+MSG="规则已应用并重载防火墙"
+EMIT_JSON
+exit 0

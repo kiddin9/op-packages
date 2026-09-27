@@ -1,0 +1,54 @@
+From 883995b0d027fcd32fb9ba4ff24d607e9c176ee2 Mon Sep 17 00:00:00 2001
+From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
+Date: Thu, 28 May 2026 10:14:54 +0800
+Subject: [PATCH] Update luci-app-adguardhome.json
+
+---
+ .../rpcd/acl.d/luci-app-adguardhome.json      | 36 +++++++++++--------
+ 1 file changed, 21 insertions(+), 15 deletions(-)
+
+diff --git a/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json b/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json
+index 748778a..33ba1fd 100644
+--- a/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json
++++ b/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json
+@@ -1,17 +1,25 @@
+ {
+-	"luci-app-adguardhome": {
+-		"description": "Grant permissions for the AdGuard Home LuCI app",
+-		"read": {
+-			"file": {
+-				"/usr/bin/AdGuardHome --version": [ "exec" ]
+-			},
+-			"ubus": {
+-				"service": [ "list" ]
+-			},
+-			"uci": [ "adguardhome" ]
+-		},
+-		"write": {
+-			"uci": [ "adguardhome" ]
+-		}
+-	}
++	"luci-app-adguardhome": {
++		"description": "Grant permissions for the AdGuard Home LuCI app",
++		"read": {
++			"file": {
++				"/tmp/AdGuardHome_update.log": [ "read" ],
++				"/var/run/update_core": [ "stat" ],
++				"/var/run/update_core_error": [ "stat" ],
++				"/var/run/AdGredir": [ "read" ],
++				"/var/run/AdGserverdis": [ "read" ],
++				"/usr/bin/AdGuardHome --version": [ "exec" ]
++			},
++			"ubus": {
++				"service": [ "list" ]
++			},
++			"uci": [ "adguardhome" ]
++		},
++		"write": {
++			"file": {
++				"/usr/share/AdGuardHome/update_core.sh": [ "exec" ]
++			},
++			"uci": [ "adguardhome" ]
++		}
++	}
+ }

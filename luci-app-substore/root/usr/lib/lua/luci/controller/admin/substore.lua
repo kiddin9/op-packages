@@ -218,20 +218,31 @@ function action_node_save()
 	back_to_nodes(http)
 end
 
--- 单节点删除
+-- 节点删除：idx 支持单个（行内删除按钮）或逗号分隔多个（勾选批量删除）
 function action_node_delete()
 	local http = require("luci.http")
 	local core = require("substore.core")
 	if post_ok() then
 		local id = http.formvalue("id") or ""
-		local idx = tonumber(http.formvalue("idx") or "")
+		local idx_param = http.formvalue("idx") or ""
+		if type(idx_param) == "table" then idx_param = table.concat(idx_param, ",") end
 		local nodes = core.read_nodes(id)
-		if idx and nodes[idx] then
-			table.remove(nodes, idx)
-			if core.write_nodes(id, nodes) then
-				core.save_meta(id, { node_count = #nodes })
-				core.refresh_combos(id)
+		local idxs = {}
+		for s in tostring(idx_param):gmatch("%d+") do
+			idxs[#idxs + 1] = tonumber(s)
+		end
+		-- 倒序删除，避免 table.remove 后下标偏移
+		table.sort(idxs, function(a, b) return a > b end)
+		local removed = false
+		for _, i in ipairs(idxs) do
+			if nodes[i] then
+				table.remove(nodes, i)
+				removed = true
 			end
+		end
+		if removed and core.write_nodes(id, nodes) then
+			core.save_meta(id, { node_count = #nodes })
+			core.refresh_combos(id)
 		end
 	end
 	back_to_nodes(http)

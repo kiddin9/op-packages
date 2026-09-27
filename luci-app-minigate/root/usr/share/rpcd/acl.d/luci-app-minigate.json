@@ -1,0 +1,11 @@
+{
+	"luci-app-minigate": {
+		"description": "Grant UCI access for luci-app-minigate",
+		"read": {
+			"uci": [ "minigate" ]
+		},
+		"write": {
+			"uci": [ "minigate" ]
+		}
+	}
+}

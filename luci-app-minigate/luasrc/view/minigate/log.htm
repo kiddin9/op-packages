@@ -1,0 +1,21 @@
+<%+header%>
+<h2>MiniGate - 日志</h2>
+<div style="margin-bottom:15px">
+<select id="ls" style="padding:5px 10px;border-radius:4px;border:1px solid #ccc">
+<option value="all">全部</option><option value="ddns">DDNS</option><option value="acme">ACME</option><option value="proxy">代理</option>
+</select>
+<button class="cbi-button cbi-button-action" onclick="rl()" style="margin-left:10px">刷新</button>
+<label style="margin-left:15px"><input type="checkbox" id="ar" checked> 自动刷新(5秒)</label>
+</div>
+<pre id="lc" style="background:#1e1e2e;color:#cdd6f4;font-family:monospace;font-size:12px;line-height:1.5;padding:15px;border-radius:8px;max-height:600px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin:0">加载中...</pre>
+<script type="text/javascript">
+var lt;
+var lu='<%=luci.dispatcher.build_url("admin/services/minigate/get_log")%>';
+function rl(){var s=document.getElementById('ls').value;var c=document.getElementById('lc');
+XHR.get(lu,{source:s},function(x,d){if(d&&d.log){c.textContent=d.log||'（暂无）';c.scrollTop=c.scrollHeight}else c.textContent='（无法读取）'})}
+function sa(){if(lt)clearInterval(lt);if(document.getElementById('ar').checked)lt=setInterval(rl,5000)}
+document.getElementById('ar').addEventListener('change',sa);
+document.getElementById('ls').addEventListener('change',rl);
+rl();sa();
+</script>
+<%+footer%>

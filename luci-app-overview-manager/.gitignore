@@ -1,0 +1,12 @@
+.DS_Store
+build/
+dist/
+# Operational notes tied to a specific machine, router or account. Nothing here
+# is published; docs/ holds everything that belongs in the repository.
+local/
+*.apk
+*.ipk
+*.key
+*-private.pem
+private-key.pem
+signing/

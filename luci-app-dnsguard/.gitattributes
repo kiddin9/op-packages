@@ -1,0 +1,18 @@
+# 统一换行：仓库内存 LF，避免 Windows 上 checkout 出 CRLF 破坏 shell/Lua 脚本
+* text=auto eol=lf
+
+# 二进制：不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+
+# 明确脚本类型（在这些设备上必须是 LF，否则 #!/bin/sh 会带 \r 直接执行失败）
+*.sh    text eol=lf
+*.lua   text eol=lf
+*.htm   text eol=lf
+dnsguard-apply    text eol=lf
+dnsguard-selftest text eol=lf
+dnsguard-rollback text eol=lf
+dnsguard          text eol=lf

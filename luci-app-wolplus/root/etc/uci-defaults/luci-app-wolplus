@@ -1,19 +1,11 @@
 #!/bin/sh
-[ ! -f "/usr/share/ucitrack/luci-app-wolplus.json" ] && {
-    cat > /usr/share/ucitrack/luci-app-wolplus.json << EEOF
-{
-    "config": "wolplus",
-    "init": "wolplus"
-}
-EEOF
-}
 
-uci -q batch <<-EOF >/dev/null
-	delete ucitrack.@wolplus[-1]
-	add ucitrack wolplus
-	set ucitrack.@wolplus[-1].init=wolplus
-	commit ucitrack
-EOF
+# 修复 rpcd ucode 脚本执行权限（rpcd 仅加载带可执行位的脚本）
+chmod 0755 /usr/share/rpcd/ucode/luci.wolplus 2>/dev/null
 
-rm -f /tmp/luci-indexcache
+# 清理缓存并重载 rpcd
+rm -f /tmp/luci-indexcache.*
+rm -rf /tmp/luci-modulecache/
+/etc/init.d/rpcd reload 2>/dev/null
+
 exit 0

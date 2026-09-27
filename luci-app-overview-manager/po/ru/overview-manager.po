@@ -1,0 +1,53 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Change the order of widgets on Status → Overview and hide widgets you do not need."
+msgstr "Меняйте порядок карточек на странице «Статус → Обзор» и скрывайте ненужные виджеты."
+
+msgid "Default order restored locally. Save to apply it."
+msgstr "Исходный порядок восстановлен. Сохраните, чтобы применить его."
+
+msgid "Drag rows or use the arrow buttons. Newly installed widgets are appended in their normal filename order."
+msgstr "Перетаскивайте строки или используйте стрелки. Новые виджеты добавляются в конец в обычном порядке имён файлов."
+
+msgid "Drag to reorder"
+msgstr "Перетащите для изменения порядка"
+
+# "Move down", "Move up" and "Show" also exist in the luci-base catalog. All
+# catalogs are merged into one lookup table in an unspecified order, so these
+# keep the exact luci-base wording to make the collision a no-op.
+msgid "Move down"
+msgstr "Переместить вниз"
+
+msgid "Move up"
+msgstr "Переместить вверх"
+
+msgid "No Overview widgets were found."
+msgstr "Виджеты страницы «Обзор» не найдены."
+
+msgid "OpenWrt 25.12 also has a browser-local Hide button. A widget hidden there remains hidden only in that browser, independently of this router-wide layout."
+msgstr "В OpenWrt 25.12 также есть локальная для браузера кнопка «Скрыть». Скрытый ею виджет остаётся скрытым только в этом браузере независимо от общей раскладки роутера."
+
+msgid "Overview widgets"
+msgstr "Виджеты страницы «Обзор»"
+
+msgid "Restore defaults"
+msgstr "Вернуть исходный порядок"
+
+msgid "Save layout"
+msgstr "Сохранить раскладку"
+
+msgid "Saved. Reload Overview to see the layout."
+msgstr "Сохранено. Обновите страницу «Обзор», чтобы увидеть раскладку."
+
+msgid "Saving…"
+msgstr "Сохраняю…"
+
+msgid "Show"
+msgstr "Показать"
+
+msgid "Unable to save the layout."
+msgstr "Не удалось сохранить раскладку."

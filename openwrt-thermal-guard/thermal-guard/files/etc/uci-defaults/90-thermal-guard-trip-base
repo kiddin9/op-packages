@@ -1,0 +1,25 @@
+#!/bin/sh
+# shellcheck shell=busybox
+# SPDX-License-Identifier: GPL-2.0-only
+# Moves trip_dt out of /etc/config/thermal-guard. The daemon keeps the device
+# tree trips that trip_active was made for in /etc/thermal-guard/trip_base now.
+# Safe to run again; always exits 0, so it runs once and is removed.
+
+dir="${PERSIST_DIR:-/etc/thermal-guard}"
+f="$dir/trip_base"
+v=$(uci -q get thermal-guard.main.trip_dt)
+[ -n "$v" ] || exit 0
+
+# Whole degrees only. Anything else is nothing worth moving, only removing.
+case "$v" in
+	*[!0-9\ ]*) v="" ;;
+esac
+if [ -n "$v" ] && [ ! -e "$f" ]; then
+	# A failed write keeps the option, so the value is not lost with it.
+	mkdir -p "$dir" && echo "$v" > "$f.tmp" && chmod 644 "$f.tmp" &&
+		mv "$f.tmp" "$f" || exit 0
+	sync
+fi
+uci -q delete thermal-guard.main.trip_dt
+uci -q commit thermal-guard
+exit 0

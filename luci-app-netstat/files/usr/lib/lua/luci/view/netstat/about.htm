@@ -1,0 +1,86 @@
+<div class="netstat-about-card">
+    <h3 style="margin:0 0 4px;"><%:LuCI Netstat%></h3>
+    <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">
+        <%:Frontend for traffic monitoring and usage charts on OpenWrt.%>
+    </p>
+
+    <div class="netstat-about-grid">
+        <div class="netstat-about-row">
+            <span class="netstat-about-label"><%:Developer%></span>
+            <strong>NoobLk</strong>
+        </div>
+
+        <div class="netstat-about-row">
+            <span class="netstat-about-label"><%:Repository%></span>
+            <a href="https://github.com/nooblk-98/luci-app-netstat"
+               target="_blank" rel="noopener noreferrer">
+                github.com/nooblk-98/luci-app-netstat
+            </a>
+        </div>
+
+        <div class="netstat-about-row">
+            <span class="netstat-about-label"><%:Contributors%></span>
+            <a href="https://github.com/nooblk-98/luci-app-netstat/graphs/contributors"
+               target="_blank" rel="noopener noreferrer">
+                <%:View on GitHub%>
+            </a>
+        </div>
+
+        <div class="netstat-about-row">
+            <span class="netstat-about-label"><%:License%></span>
+            <span>GPL-3.0</span>
+        </div>
+
+        <div class="netstat-about-row">
+            <span class="netstat-about-label"><%:Issues / Support%></span>
+            <a href="https://github.com/nooblk-98/luci-app-netstat/issues"
+               target="_blank" rel="noopener noreferrer">
+                <%:Open an issue%>
+            </a>
+        </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0 12px;">
+    <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
+        <%:Made with%> ♥ <%:for the OpenWrt community%>
+    </p>
+</div>
+
+<style>
+.netstat-about-card {
+    border: 1px solid #dfe3eb;
+    border-radius: 10px;
+    background: #fff;
+    padding: 20px 22px;
+    max-width: 520px;
+}
+
+.netstat-about-grid   { display: flex; flex-direction: column; gap: 10px; }
+
+.netstat-about-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+.netstat-about-label {
+    min-width: 110px;
+    flex-shrink: 0;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.netstat-about-row a {
+    color: #2563eb;
+    text-decoration: none;
+}
+.netstat-about-row a:hover { text-decoration: underline; }
+
+@media (max-width: 480px) {
+    .netstat-about-row { flex-direction: column; gap: 2px; }
+    .netstat-about-label { min-width: unset; }
+}
+</style>
+

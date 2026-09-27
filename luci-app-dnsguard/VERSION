@@ -1,0 +1,31 @@
+0.1.0 (2026-09-26)
+
+target : iStoreOS 25.12.5 (x86_64, apk) / LuCI 26.253 + luci-compat / fw4 + nftables 1.1.6 / kernel 6.12.94
+form   : 纯文件 LuCI 应用（免 SDK 免编译）+ 三个 POSIX shell 脚本
+
+功能：
+  - 53 透明重定向 -> AdGuard Home（nat prerouting priority -105，早于 fw4 dstnat -100）
+  - 853(DoT) 阻断 / DoH 专用 IP 阻断（可选，默认关）
+  - 观察计数链（沿用阶段 1，只计数 + 抽样记日志）
+  - 健康自检、规则预览、回滚点管理、延迟自动回滚（DNS 变更的安全绳）
+  - 安全闸门：AdGuardHome 未运行时拒绝启用重定向；渲染片段先 nft -c 校验，落盘后 fw4 check 全量校验，
+    应用后核对链是否真的存在，任一环节失败即自动还原旧规则
+  - install.sh 首次安装会读 br-lan 的 IPv4 地址、算出真实 LAN 网段，替换默认配置里的占位网段
+
+repo note:
+  - 公开仓库里的默认配置使用 192.168.1.0/24 作占位网段，真实部署值以设备上的 UCI 为准
+  - deploy.sh / install.sh 中出现的路由器地址是通用占位值，请按自己的环境替换
+  - 不含任何截图二进制；README 中的图走博客图床外链
+
+verified on device:
+  - 静态检查（shell / JSON / Lua 控制器 / 模板内嵌 Lua）
+  - nft 片段语法预检（临时表包裹，nft -c）通过
+  - fw4 check 全量校验通过
+  - UCI 解析自检 + 首次安装迁移现有防火墙状态
+  - 渲染脚本幂等（第二次报 unchanged，不重载防火墙）
+  - 53 重定向端到端：LAN 客户端查询 8.8.8.8 被收编到 AGH（计数增加、AGH 查询日志可见）
+  - 例外设备（skip_devices）写入 dns_hijack_skip4/6 后确实不被重定向
+  - 延迟自动回滚：--arm 后 --disarm 可取消；不取消则到点自动还原 UCI + 规则文件
+  - AGH 停机时 dnsguard-apply 返回 status=error 且不落盘（安全闸门生效）
+  - 控制器打桩直调 action_api：12 个分支全部返回合法 JSON
+  - LAN 网段探测：/24、/16、/8、/12、/25、/30 六种前缀算出的网络地址均正确

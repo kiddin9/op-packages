@@ -1,0 +1,275 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: luci-app-netstat\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 3.5\n"
+
+#: files/usr/lib/lua/luci/controller/netstat.lua:4
+msgid "Tools"
+msgstr "工具"
+
+#: files/usr/lib/lua/luci/controller/netstat.lua:5
+msgid "Netstat"
+msgstr "网络状态"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:6
+msgid "Configure traffic monitoring and view usage history from a single page."
+msgstr "配置流量监控，并在单个页面查看使用历史。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:15
+msgid "Monitoring Settings"
+msgstr "监控设置"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:20
+msgid "Traffic Backend"
+msgstr "流量后端"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:22
+msgid "Normal (Real-time)"
+msgstr "普通（实时）"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:23
+msgid "vnStat (Historical, Delayed)"
+msgstr "vnStat（历史，延迟）"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:24
+msgid ""
+"Normal reads live counters from /proc/net/dev. "
+"vnStat reads the vnStat database which updates on its own schedule."
+msgstr ""
+"普通模式从 /proc/net/dev 读取实时计数器。"
+"vnStat 模式从 vnStat 数据库读取，其更新有自己的计划。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:30
+msgid "View Mode"
+msgstr "视图模式"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:32
+msgid "Daily Usage"
+msgstr "每日用量"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:33
+msgid "Monthly Usage"
+msgstr "每月用量"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:34
+msgid "Default view shown on the Network Usage tab."
+msgstr "在网络用量标签页上显示的默认视图。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:37
+msgid "Preferred Interface"
+msgstr "首选接口"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:38
+msgid ""
+"WAN interface to track. Leave blank for auto-detection.<br>"
+"<strong>Tip:</strong> If your WAN uses a dynamic name (e.g. wwan0_1) "
+"it will be detected automatically when left blank."
+msgstr ""
+"要跟踪的 WAN 接口。留空以自动检测。<br>"
+"<strong>提示：</strong>如果您的 WAN 使用动态名称（例如 wwan0_1），"
+"留空时将自动检测。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:43
+msgid "Auto detect"
+msgstr "自动检测"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:54
+msgid "vnStat Database"
+msgstr "vnStat 数据库"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:63
+msgid "Location: /etc/vnstat/"
+msgstr "位置：/etc/vnstat/"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:69
+msgid "Reset Historical Data"
+msgstr "重置历史数据"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:70
+msgid "Reset Database"
+msgstr "重置数据库"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:72
+msgid ""
+"<strong style='color:#b91c1c;'>Warning:</strong> "
+"This permanently deletes all stored traffic history for every interface."
+msgstr ""
+"<strong style='color:#b91c1c;'>警告：</strong>"
+"这将永久删除所有接口的所有已存储流量历史记录。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:87
+msgid "Are you sure? All traffic history will be permanently deleted."
+msgstr "您确定吗？所有流量历史记录将被永久删除。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:109
+msgid "vnStat database has been reset successfully for all interfaces."
+msgstr "vnStat 数据库已成功为所有接口重置。"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:113
+msgid "About"
+msgstr "关于"
+
+#: files/usr/lib/lua/luci/model/cbi/netstat/config.lua:117
+#: files/usr/lib/lua/luci/view/netstat/tabs.htm:11
+msgid "Network Usage"
+msgstr "网络用量"
+
+#: files/usr/lib/lua/luci/view/netstat/tabs.htm:12
+msgid "Settings"
+msgstr "设置"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:2
+msgid "LuCI Netstat"
+msgstr "LuCI 网络状态"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:4
+msgid "Frontend for traffic monitoring and usage charts on OpenWrt."
+msgstr "OpenWrt 上用于流量监控和用量图表的前端。"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:9
+msgid "Developer"
+msgstr "开发者"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:14
+msgid "Repository"
+msgstr "代码仓库"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:22
+msgid "Contributors"
+msgstr "贡献者"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:25
+msgid "View on GitHub"
+msgstr "在 GitHub 上查看"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:30
+msgid "License"
+msgstr "许可证"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:35
+msgid "Issues / Support"
+msgstr "问题 / 支持"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:38
+msgid "Open an issue"
+msgstr "提交问题"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:45
+msgid "Made with"
+msgstr "用"
+
+#: files/usr/lib/lua/luci/view/netstat/about.htm:45
+msgid "for the OpenWrt community"
+msgstr "为 OpenWrt 社区制作"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:100
+msgid "Monthly"
+msgstr "每月"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:103
+msgid "Daily"
+msgstr "每日"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:118
+msgid "Usage is displayed using the Interface and View Mode selected in the Settings tab."
+msgstr "用量根据"设置"选项卡中选择的接口和视图模式显示。"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:126
+msgid "Download"
+msgstr "下载"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:131
+msgid "Upload"
+msgstr "上传"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:135
+msgid "Total"
+msgstr "总计"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:142
+msgid "Usage"
+msgstr "用量"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:203
+msgid "Download (RX)"
+msgstr "下载（接收）"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:220
+msgid "Upload (TX)"
+msgstr "上传（发送）"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:282
+msgid "No vnStat interfaces were found. Make sure vnStat has been initialized."
+msgstr "未找到 vnStat 接口。请确保已初始化 vnStat。"
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:287
+msgid "No data available for"
+msgstr "没有可用数据："
+
+#: files/usr/lib/lua/luci/view/netstat/usage.htm:289
+msgid "vnStat may still be collecting its first data. Try again in a few minutes."
+msgstr "vnStat 可能仍在收集初始数据，请几分钟后重试。"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:241
+msgid "Internet"
+msgstr "互联网"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:242
+msgid "Connected"
+msgstr "已连接"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:242
+msgid "Disconnected"
+msgstr "已断开"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:244
+msgid "IP"
+msgstr "IP 地址"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:497
+msgid "Loading network stats..."
+msgstr "正在加载网络统计..."
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:526
+msgid "download"
+msgstr "下载"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:531
+msgid "upload"
+msgstr "上传"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:545
+msgid "downloaded"
+msgstr "已下载"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:546
+msgid "uploaded"
+msgstr "已上传"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:214
+msgid "Peak"
+msgstr "峰值"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:301
+msgid "RAM"
+msgstr "内存"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:313
+msgid "STORAGE"
+msgstr "存储"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:332
+msgid "CPU TEMP"
+msgstr "CPU 温度"
+
+#: files/www/luci-static/resources/view/status/include/08_stats.js:343
+msgid "UPTIME"
+msgstr "运行时间"

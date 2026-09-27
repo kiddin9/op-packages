@@ -1,0 +1,35 @@
+#!/bin/sh
+
+# Register the bundled catalogs in luci.languages, the same way the stock
+# luci-i18n-* packages do. Without this LuCI never selects the language: both
+# the language dropdown and the "auto" browser detection only consider codes
+# present in this list.
+
+set -e
+
+changed=0
+
+# The section normally exists already, but uci set would fail without it.
+uci -q get luci.languages >/dev/null || uci set luci.languages=internal
+
+for catalog in /usr/lib/lua/luci/i18n/overview-manager.*.lmo; do
+  [ -f "$catalog" ] || continue
+
+  language="${catalog##*/overview-manager.}"
+  language="${language%.lmo}"
+
+  case "$language" in
+    ru) name='Русский' ;;
+    *) name="$language" ;;
+  esac
+
+  # LuCI stores the option name with underscores, as in luci.languages.pt_br.
+  option="$(printf '%s' "$language" | tr '-' '_')"
+
+  uci set "luci.languages.$option=$name"
+  changed=1
+done
+
+[ "$changed" = 0 ] || uci commit luci
+
+exit 0

@@ -1,0 +1,22 @@
+#!/bin/sh
+# 首次启动时执行一次：启用各服务
+
+# 启用音频初始化脚本（START=50，早于 mpd）
+/etc/init.d/dlna-player enable
+
+# 创建音乐目录
+MUSIC_DIR="$(uci -q get dlna-player.main.music_dir)"
+[ -z "$MUSIC_DIR" ] && MUSIC_DIR="/srv/music"
+mkdir -p "$MUSIC_DIR"
+chmod 755 "$MUSIC_DIR"
+
+# MPD 需要以 root 运行（否则打不开声卡）
+if [ -f /etc/init.d/mpd ]; then
+	sed -i 's/^USER="mpd"/USER="root"/; s/^GROUP="mpd"/GROUP="root"/' /etc/init.d/mpd
+	/etc/init.d/mpd enable
+fi
+
+# DLNA 服务
+[ -f /etc/init.d/upmpdcli ] && /etc/init.d/upmpdcli enable
+
+exit 0
