@@ -11,6 +11,14 @@
 
 NF_LOG_IPV4="${FWLIVE_NF_LOG_IPV4_PATH:-/proc/sys/net/netfilter/nf_log/2}"
 NF_LOG_IPV6="${FWLIVE_NF_LOG_IPV6_PATH:-/proc/sys/net/netfilter/nf_log/10}"
+# BusyBox ash may resolve its enabled timeout applet ahead of PATH entries.
+# Use the coreutils-timeout package path explicitly so GNU `-k` is available.
+# FWLIVE_TIMEOUT_BIN is an environment seam for host tests; rpcd's environment
+# is root-owned and no ubus input can set it.
+FWLIVE_TIMEOUT_BIN="${FWLIVE_TIMEOUT_BIN:-/usr/bin/timeout}"
+fwlive_timeout_available() {
+	[ -x "$FWLIVE_TIMEOUT_BIN" ]
+}
 # /proc/sys/net/netfilter/nf_log/10 is a backend selector, not an IPv6
 # availability probe.  A missing or empty /proc/net/if_inet6 means the IPv6
 # stack is absent (compiled out or ipv6.disable=1), so an IPv6 backend is
@@ -660,9 +668,9 @@ legacy_iptables_active() {
 collect_logging_warnings() {
 	LOGGING_WARNINGS=''
 
-	# rpcd/fwlive run_with_timeout fail-closes to 127 without timeout.
+	# rpcd/fwlive run_with_timeout fail-closes to 127 without GNU timeout.
 	# Warnings are diagnostics only — do not gate the enable-logging CTA.
-	command -v timeout >/dev/null 2>&1 || logging_warnings_append 'timeout_missing'
+	fwlive_timeout_available || logging_warnings_append 'timeout_missing'
 
 	# Diagnostic only: supported releases use nftables, but a registered legacy
 	# iptables table can still exist in the namespace visible to rpcd. LuCI

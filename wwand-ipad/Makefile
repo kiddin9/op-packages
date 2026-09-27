@@ -15,12 +15,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ipad
-PKG_VERSION:=0.1.0
-PKG_RELEASE:=2
+PKG_VERSION:=0.1.0_p21
+PKG_RELEASE:=3
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/ipad.git
-PKG_SOURCE_VERSION:=fbb175f4d272f0db45b3bc006392f172cd248aa5
+PKG_SOURCE_VERSION:=fef4e5807f43eebc54327ff6f3751705d74b2dd7
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only Apache-2.0
@@ -30,6 +30,14 @@ PKG_MAINTAINER:=
 MBEDTLS_VERSION:=3.6.7
 
 PKG_BUILD_PARALLEL:=1
+
+# mbedTLS' MULADDC inline assembly (library/bn_mul.h) is plain MIPS32 and cannot
+# be assembled inside a MIPS16 function, which is how OpenWrt compiles
+# mips_24kc/mipsel_24kc by default: bignum_core.c fails with "invalid operands
+# `lw $10,16($sp)'" and "unrecognized opcode `addi'" (run 36239783275, both mips
+# legs, nothing else). Same reason wwand-lpac sets it for wolfSSL's SP math.
+PKG_BUILD_FLAGS:=no-mips16
+
 CMAKE_BINARY_SUBDIR:=openwrt-build
 
 include $(INCLUDE_DIR)/package.mk

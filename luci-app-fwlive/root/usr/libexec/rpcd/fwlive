@@ -24,16 +24,19 @@ RESOLVE_MAX=32
 # Per-lookup nslookup timeout (integer seconds — BusyBox `timeout` truncates
 # fractional values to 0 on OpenWrt 23.05/1.36, so 0.5 would silently
 # degrade to no timeout; luna fold 2026-08-10). The wall-clock budget
-# below is the real whole-call bound; this per-lookup cap only prevents a
-# single hung resolver from dominating the budget. LAN/local-resolver
-# lookups are single-digit ms, so 1s is ample. Passed as argv to
-# `timeout`, never interpolated into a shell string.
+# below stops starting work after the budget; this per-lookup cap plus the
+# shared TERM/KILL grace bounds the last in-progress lookup. LAN/local-resolver
+# lookups are single-digit ms, so 1s is ample. Passed as argv to `timeout`,
+# never interpolated into a shell string.
 RESOLVE_TIMEOUT=1
 # Wall-clock budget (seconds) for a single ubus fwlive.resolve call. The
 # lookup loop checks elapsed time and aborts cleanly once this budget is
 # spent, so a flood of unresolvable IPs cannot hold an rpcd worker for the
 # full RESOLVE_MAX * RESOLVE_TIMEOUT worst case. Worst case total time is
-# budget + one in-progress lookup (<= RESOLVE_TIMEOUT), i.e. ~6s.
+# budget + one in-progress lookup (RESOLVE_TIMEOUT + TIMEOUT_KILL_GRACE),
+# plus scheduling/IPC overhead: approximately 7s before scheduler/IPC delay.
+# Elapsed time comes from /proc/uptime centiseconds so an NTP step cannot
+# stretch the budget; RESOLVE_MAX still bounds the work if uptime is unreadable.
 RESOLVE_BUDGET=5
 # Cap raw logd lines per poll (~2000 ≈ typical logd ring / ~200 KB JSON before filter).
 POLL_LINES_MAX=2000
@@ -42,6 +45,11 @@ NFT_TIMEOUT=5
 # Bound poll log.read (wedged logd must not hold an rpcd worker past the UI cadence).
 # Integer seconds — BusyBox timeout truncates fractions to 0 (see RESOLVE_TIMEOUT).
 POLL_TIMEOUT=5
+# Outer GNU timeout hard-kills the command group after the inner command's
+# duration plus this TERM grace. The package dependency ensures GNU's
+# --foreground and signal options are available, including when BusyBox also
+# has a timeout applet.
+TIMEOUT_KILL_GRACE=1
 # Host tests override this to a pinned libubox helper; devices keep the package path.
 : "${FWLIVE_JSHN_SH:=/usr/share/libubox/jshn.sh}"
 
@@ -52,7 +60,7 @@ POLL_TIMEOUT=5
 . "$ADAPTIVE_SH"
 
 slug_key() {
-	echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' _' '--'
+	printf '%s\n' "$1" | tr '[:upper:]' '[:lower:]' | tr ' _' '--'
 }
 
 # Cap rules JSON size so a huge ruleset cannot unbound an rpcd reply.
@@ -143,7 +151,7 @@ map_prefix_with_label() {
 			map_add "$slug" "$label"
 		fi
 	else
-		cosmetic=$(echo "$prefix" | tr '-' ' ')
+		cosmetic=$(printf '%s\n' "$prefix" | tr '-' ' ')
 		map_add "$prefix" "$cosmetic"
 		if [ "$slug" != "$prefix" ]; then
 			map_add "$slug" "$cosmetic"
@@ -154,10 +162,61 @@ map_prefix_with_label() {
 run_with_timeout() {
 	secs="$1"
 	shift
-	if command -v timeout >/dev/null 2>&1; then
-		timeout "$secs" "$@" 2>/dev/null
+	if fwlive_timeout_available; then
+		run_timeout_busybox="$(command -v busybox 2>/dev/null)" || return 127
+		run_timeout_cat="$(command -v cat 2>/dev/null)" || return 127
+		[ -n "$run_timeout_busybox" ] && [ -n "$run_timeout_cat" ] || return 127
+		# The inner foreground timeout sends TERM to the direct command at its
+		# deadline. Keep a pipe reader alive until every inherited stdout fd
+		# closes; the outer timeout then KILLs the whole process group at the
+		# hard deadline. After the pipeline ends, keep this wrapper alive while
+		# any other live process remains in its dedicated process group. setsid keeps
+		# unrelated rpcd processes out of that scan and lets the outer timeout
+		# kill children even when they close stdout. BusyBox ash pipefail
+		# preserves the inner timeout status; invoking it explicitly keeps this
+		# portable from host dash too.
+		"$run_timeout_busybox" setsid "$FWLIVE_TIMEOUT_BIN" -s KILL "$((secs + TIMEOUT_KILL_GRACE))" \
+			"$run_timeout_busybox" sh -c '
+				set -o pipefail || exit 125
+				timeout_bin="$1"
+				duration="$2"
+				cat_bin="$3"
+				busybox_bin="$4"
+				shift 4
+				"$timeout_bin" --foreground "$duration" "$@" | "$cat_bin"
+				status="$?"
+				IFS= read -r proc_fields < "/proc/$$/stat" || exit 125
+				proc_fields="${proc_fields##*) }"
+				proc_fields="${proc_fields#* }"
+				proc_fields="${proc_fields#* }"
+				group="${proc_fields%% *}"
+				while :; do
+					peer=0
+					for proc_stat in /proc/[0-9]*/stat; do
+						[ -r "$proc_stat" ] || continue
+						IFS= read -r proc_fields < "$proc_stat" || continue
+						proc_fields="${proc_fields##*) }"
+						proc_state="${proc_fields%% *}"
+						proc_fields="${proc_fields#* }"
+						proc_fields="${proc_fields#* }"
+						proc_group="${proc_fields%% *}"
+						proc_pid="${proc_stat#/proc/}"
+						proc_pid="${proc_pid%/stat}"
+						if [ "$proc_group" = "$group" ] && \
+							[ "$proc_pid" != "$group" ] && [ "$proc_pid" != "$$" ] && \
+							[ "$proc_state" != Z ]; then
+							peer=1
+							break
+						fi
+					done
+					[ "$peer" = 1 ] || break
+					"$busybox_bin" sleep 0.1
+				done
+				exit "$status"
+			' fwlive-timeout "$FWLIVE_TIMEOUT_BIN" "$secs" \
+			"$run_timeout_cat" "$run_timeout_busybox" "$@" 2>/dev/null
 	else
-		# Fail closed: never run unbounded when timeout is absent.
+		# Fail closed: never run unbounded without the GNU provider.
 		return 127
 	fi
 }
@@ -402,7 +461,11 @@ build_rules_map() {
 
 	# Temp file first, then a single nft_list_ruleset; backend from success.
 	if command -v nft >/dev/null 2>&1; then
-		enrich_rules_dump fwlive-nft
+		if fwlive_timeout_available; then
+			enrich_rules_dump fwlive-nft
+		else
+			_enrich_error='timeout_missing'
+		fi
 	fi
 
 	if [ "$backend" = unknown ] && [ -z "$_enrich_error" ]; then
@@ -526,15 +589,24 @@ fetch_firewall_logs() {
 	export FWLIVE_SUMMARY
 
 	# Do not swallow a filter failure into a silent empty table.
-	# If the filter exits non-zero but still printed JSON, keep it.
+	# A killed classifier can leave a truncated body that still ends in `}`.
+	# Keep a non-zero body only when it is one of the complete error
+	# objects the shipped filter prints; otherwise emit filter_failed.
 	# Empty success is not valid poll JSON — the shipped filter always
 	# prints {"log":[...]}, but a stub/regression must not emit a blank body.
 	_filter_ok=1
 	if ! out=$(printf '%s' "$raw" | run_with_timeout "$POLL_TIMEOUT" "$FILTER_SH" /tmp); then
 		_filter_ok=0
-		if [ -z "$out" ]; then
-			out='{"log":[],"error":"filter_failed"}'
-		fi
+		case "$out" in
+			'{"log":[],"error":"filter_failed"}'|\
+			'{"log":[],"error":"jsonfilter_missing"}'|\
+			'{"log":[],"error":"classifier_missing"}'|\
+			'{"log":[],"error":"filter_tempfile_failed"}')
+				;;
+			*)
+				out='{"log":[],"error":"filter_failed"}'
+				;;
+		esac
 	fi
 	if [ -z "$out" ]; then
 		_filter_ok=0
@@ -567,6 +639,10 @@ fetch_firewall_logs() {
 }
 
 poll_logs() {
+	if ! fwlive_timeout_available; then
+		printf '{"log":[],"error":"timeout_missing"}'
+		return 0
+	fi
 	# Optional JSON on $1 (rpcd may also pass argv $3 at the call site); else stdin.
 	input=$(read_rpc_input "$1")
 	fetch_firewall_logs "$input"
@@ -715,6 +791,11 @@ resolve_addresses() {
 		printf '{"names":{},"error":"no_resolver"}'
 		return 0
 	fi
+	# Do not turn a missing timeout provider into a negative PTR cache entry.
+	if ! fwlive_timeout_available; then
+		printf '{"names":{},"error":"timeout_missing"}'
+		return 0
+	fi
 
 	# Load shed: previous poll was hot.
 	if fwlive_adaptive_is_hot; then
@@ -726,10 +807,9 @@ resolve_addresses() {
 	input=$(read_rpc_input "$1")
 	# Wall-clock budget starts after the input read and bounds the lookup
 	# loop only. Stalled stdin is not interrupted — production rpcd closes
-	# a finite payload. `date +%s` can jump under NTP sync — accepted
-	# (worst case the budget over- or under-runs by the jump; worker
-	# starvation is still prevented).
-	start=$(date +%s)
+	# a finite payload. /proc/uptime centiseconds are monotonic across an
+	# NTP step; if the clock helper prints 0, RESOLVE_MAX still bounds work.
+	start=$(fwlive_adaptive_clock_cs)
 	lookups=0
 	truncated=0
 	OUT=''
@@ -777,8 +857,8 @@ resolve_addresses() {
 			fi
 			# Abort cleanly once the lookup-loop wall-clock budget is spent;
 			# never START a lookup past the budget.
-			now=$(date +%s)
-			if [ $((now - start)) -ge "$RESOLVE_BUDGET" ]; then
+			now=$(fwlive_adaptive_clock_cs)
+			if [ $((now - start)) -ge $((RESOLVE_BUDGET * 100)) ]; then
 				truncated=1
 				break
 			fi
@@ -884,6 +964,13 @@ run_selftest() {
 		echo 'is_uci_style_name: expected reject empty' >&2
 		return 1
 	fi
+	# echo would swallow -n/-E and dash echo would expand backslashes.
+	_slug=$(slug_key '-n')
+	check_eq 'slug_key -n' "$_slug" '-n' "expected -n got $_slug" || return 1
+	_slug=$(slug_key '-E')
+	check_eq 'slug_key -E' "$_slug" '-e' "expected -e got $_slug" || return 1
+	_slug=$(slug_key "$(printf 'a\\tb')")
+	check_eq 'slug_key backslash' "$_slug" "$(printf 'a\\tb')" "expected literal backslash got $_slug" || return 1
 
 	if is_resolvable_address 'not an ip'; then
 		echo 'is_resolvable_address: expected reject for spaces' >&2

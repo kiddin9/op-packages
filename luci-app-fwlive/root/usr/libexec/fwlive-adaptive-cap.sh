@@ -483,7 +483,12 @@ fwlive_adaptive_merge_reply() {
 	fwlive_adaptive_enabled || _adapt=0
 	case "$_body" in
 		'{}') _sep= ;;
-		*\}) _sep=, ;;
+		'{"log":[]'*|*'],"messages_received":'*)
+			case "$_body" in
+				*\}) _sep=, ;;
+				*) printf '%s' "$_body"; return 0 ;;
+			esac
+			;;
 		*) printf '%s' "$_body"; return 0 ;;
 	esac
 	_base=${_body%\}}
