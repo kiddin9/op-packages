@@ -227,9 +227,20 @@ jobs:
         ) &
         (
         git_clone https://github.com/Arthur97172/luci-app-substore
-        git_clone https://github.com/QiuSimons/luci-app-honk
         git_clone https://github.com/Junatum/safeshield
         git_clone https://github.com/Junatum/luci-app-smartsafehub
+        https://github.com/dellzou/luci-app-dnsguard
+        git_clone https://github.com/zow2023/luci-app-meow
+        git_clone https://github.com/Andy7152/luci-app-minigate
+        git_clone https://github.com/OneNAS-space/luci-app-adguardhome
+        git_clone https://github.com/sakura-builder1/luci-app-dlna-player
+        git_clone https://github.com/sakura-builder1/luci-app-wolplus
+        git_clone https://github.com/SyntaxError-NullPointer/openwrt-thermal-guard
+        git_clone https://github.com/Nikitid/luci-app-wrqr
+        git_clone https://github.com/Nikitid/luci-app-overview-manager
+        git_clone https://github.com/YusDyr/luci-app-trafficctl trafficctl && mv -f trafficctl/luci-app* ./;rm -rf trafficctl
+        git_clone https://github.com/nooblk-98/luci-app-netstat
+        git_clone https://github.com/simonchen/luci-app-conntrack
         ) &
         (
         git_clone https://github.com/Diciya/luci-app-broadbandacc
@@ -250,6 +261,7 @@ jobs:
         git_clone https://github.com/kenzok8/openwrt-daede && mv -f openwrt-daede/*dae* ./;rm -rf openwrt-daede
         git_clone https://github.com/kenzok8/vmlinux-btf vmlinuxb && mvdir vmlinuxb
         git_clone https://github.com/QiuSimons/luci-app-daed daed1 && mv -f daed1/luci-app* ./;rm -rf daed1
+        git_clone https://github.com/QiuSimons/luci-app-honk honk1 && mv -f honk1/{luci-app*,honk1} ./;rm -rf honk1
         git_clone https://github.com/JiaY-shi/fancontrol fanc && mv fanc/{fancontrol,luci-app-fancontrol} ./;rm -rf fanc
         git_sparse_clone master "https://github.com/coolsnowwolf/lede" package/lean package/network/services/shellsync package/qca/shortcut-fe
         git_clone https://github.com/linkease/istore-packages
@@ -313,7 +325,7 @@ jobs:
         git_clone https://github.com/RymFred11/luci-app-nettask nettask && mv nettask/luci-app-nettask ./;rm -rf nettask
         git_clone https://github.com/jarod360/luci-app-xupnpd
         git_clone https://github.com/fuqiang03/openwrt-caddy
-        git_clone https://github.com/lmq8267/luci-app-caddy luci-caddy && mv luci-caddy/luci-app-caddy ./;rm -rf luci-caddy
+        git_clone https://github.com/andangel/luci-app-caddy
         git_clone https://github.com/sbwml/luci-app-smbuser
         git_clone https://github.com/rushxrushx/luci-app-redsocks
         git_clone https://github.com/luochongjun/luci-app-dynv6
