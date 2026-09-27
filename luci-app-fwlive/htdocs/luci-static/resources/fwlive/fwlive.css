@@ -533,6 +533,9 @@
 .fwlive-logging-notice {
 	color: var(--fwlive-pass-color);
 }
+.fwlive-logging-notice-fail {
+	color: var(--fwlive-deny-color);
+}
 .fwlive-filter-link {
 	color: inherit;
 	text-decoration: underline;

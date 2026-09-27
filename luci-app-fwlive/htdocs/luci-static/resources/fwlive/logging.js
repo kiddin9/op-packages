@@ -9,7 +9,7 @@
  *
  * renderToolbar(host, state, callbacks) → void
  *   host      - #fwlive-logging-bar strip slot (cleared and rebuilt; element kept)
- *   state     - { loggingStatus, loggingBusy, loggingNotice }
+ *   state     - { loggingStatus, loggingBusy, loggingNotice, loggingNoticeFail }
  *   callbacks - { onEnable(), onDisable() }
  *
  * G Hybrid chrome: when WAN logging is on, one merged control carries status +
@@ -88,9 +88,15 @@ function labelWithZoneCandidates(label, st) {
 	return children;
 }
 
+function loggingNoticeClass(state) {
+	return state.loggingNoticeFail
+		? 'fwlive-logging-notice fwlive-logging-notice-fail'
+		: 'fwlive-logging-notice';
+}
+
 function appendLoggingNotice(host, state) {
 	if (!state.loggingNotice) return;
-	host.appendChild(E('span', { 'class': 'fwlive-logging-notice' }, [state.loggingNotice]));
+	host.appendChild(E('span', { 'class': loggingNoticeClass(state) }, [state.loggingNotice]));
 }
 
 function appendBlockerStatus(host, blocker, st) {
@@ -254,7 +260,7 @@ function buildEmptyStateNodes(state, callbacks) {
 
 	if (state.loggingNotice) {
 		nodes.push(
-			E('p', { 'class': 'fwlive-logging-notice' }, [
+			E('p', { 'class': loggingNoticeClass(state) }, [
 				state.loggingNotice,
 				' ',
 				links.firewallZonesLink()
@@ -287,14 +293,12 @@ function buildEmptyStateNodes(state, callbacks) {
 		nodes.push(
 			E('p', {}, [
 				_(
-					'Kernel netfilter log modules are missing. Install kmod-nf-log-ipv4 and kmod-nf-log-ipv6 (or kmod-nf-log / kmod-nf-log6), then reload the firewall.'
+					'Kernel netfilter log modules are missing. Install kmod-nf-log and kmod-nf-log6, then reload the firewall.'
 				)
 			])
 		);
 		nodes.push(
-			E('p', {}, [
-				E('code', {}, ['opkg update && opkg install kmod-nf-log-ipv4 kmod-nf-log-ipv6'])
-			])
+			E('p', {}, [E('code', {}, ['opkg update && opkg install kmod-nf-log kmod-nf-log6'])])
 		);
 		return nodes;
 	}

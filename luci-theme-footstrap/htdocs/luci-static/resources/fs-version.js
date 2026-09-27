@@ -1,7 +1,7 @@
 'use strict';
 'require baseclass';
 
-/* The installed version, shown on the Appearance tab with no network call; which version is
+/* The installed version, shown on the Appearance page with no network call; which version is
  * available is the package manager's question.
  *
  * The Makefile (Build/Prepare), dev-sync.sh and tools/stage.sh sed the literal below BY FILE

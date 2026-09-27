@@ -177,6 +177,7 @@ return view.extend({
 	loggingStatusReadGeneration: 0,
 	loggingBusy: false,
 	loggingNotice: '',
+	loggingNoticeFail: false,
 	_loggingNoticeFromToggle: false,
 	/* Session-only dismiss of first-run consent (Not now without checkbox). */
 	consentDismissedSession: false,
@@ -704,10 +705,13 @@ return view.extend({
 			/* Bounds / mktemp failures are reply.error — same idea as poll. */
 			this.lastRulesError = (res && res.error) || null;
 			if (this.lastRulesError) console.warn('fwlive rules map error:', this.lastRulesError);
+			this.refreshBufferedRuleLabels();
 		} catch (_e) {
 			if (!this.isCurrentPollEpoch(epoch)) return;
-			this.rulesMap = {};
-			this.firewallBackend = 'nft';
+			if (!(this.rulesMap && Object.keys(this.rulesMap).length)) {
+				this.rulesMap = {};
+				this.firewallBackend = 'nft';
+			}
 			this.lastRulesError = 'rules_unavailable';
 		}
 		this.updateBackendUi();
@@ -762,7 +766,10 @@ return view.extend({
 			)
 				return;
 			this.loggingStatus = status;
-			if (!this._loggingNoticeFromToggle) this.loggingNotice = '';
+			if (!this._loggingNoticeFromToggle) {
+				this.loggingNotice = '';
+				this.loggingNoticeFail = false;
+			}
 			this.weakDevice = !!(this.loggingStatus && this.loggingStatus.weak_device === true);
 		} catch (_e) {
 			if (
@@ -771,10 +778,12 @@ return view.extend({
 			)
 				return;
 			/* Keep last-known toolbar; unknown until the first successful fetch. */
-			if (!this.loggingNotice)
+			if (!this.loggingNotice) {
 				this.loggingNotice = this.loggingStatus
 					? _('Could not refresh logging status; showing the last known state.')
 					: _('Could not load logging status.');
+				this.loggingNoticeFail = true;
+			}
 		}
 		this.updateBackendUi();
 		this.updateLoggingToolbarUi();
@@ -791,6 +800,7 @@ return view.extend({
 		this.loggingStatusReadGeneration++;
 		this.loggingBusy = true;
 		this.loggingNotice = '';
+		this.loggingNoticeFail = false;
 		this._loggingNoticeFromToggle = false;
 		opts.initialUi();
 
@@ -798,12 +808,14 @@ return view.extend({
 			const res = await opts.call();
 			if (!res || !res.ok) {
 				this.loggingNotice = opts.failureNotice(res);
+				this.loggingNoticeFail = true;
 				this._loggingNoticeFromToggle = true;
 				await this.loadLoggingStatus();
 				return;
 			}
 
 			this.loggingNotice = opts.successNotice(res);
+			this.loggingNoticeFail = false;
 			this._loggingNoticeFromToggle = !!this.loggingNotice;
 			if (opts.onSuccess) opts.onSuccess(res);
 			if (this.loggingStatus && typeof opts.wanLog === 'boolean')
@@ -813,6 +825,7 @@ return view.extend({
 			await this.loadLoggingStatus();
 		} catch (_e) {
 			this.loggingNotice = opts.catchNotice();
+			this.loggingNoticeFail = true;
 			this._loggingNoticeFromToggle = true;
 			await this.loadLoggingStatus();
 		} finally {
@@ -847,6 +860,16 @@ return view.extend({
 					return _('Could not snapshot the current logging state.');
 				if (res && res.error === 'firewall_reload_failed')
 					return _('The firewall did not reload; saved and live logging may differ.');
+				if (res && res.error === 'uci_set_failed')
+					return _('Could not write the WAN zone log option.');
+				if (res && res.error === 'uci_delete_failed')
+					return _('Could not clear the WAN zone log option.');
+				if (res && res.error === 'uci_commit_failed')
+					return _('Could not save the firewall configuration.');
+				if (res && res.error === 'firewall_commit_raced')
+					return _(
+						'Another change overwrote WAN logging after it was saved; check the current state.'
+					);
 				return _('Could not enable logging.');
 			},
 			successNotice: (res) =>
@@ -876,6 +899,16 @@ return view.extend({
 					return _('Could not acquire the logging lock.');
 				if (res && res.error === 'firewall_reload_failed')
 					return _('The firewall did not reload; saved and live logging may differ.');
+				if (res && res.error === 'uci_set_failed')
+					return _('Could not write the WAN zone log option.');
+				if (res && res.error === 'uci_delete_failed')
+					return _('Could not clear the WAN zone log option.');
+				if (res && res.error === 'uci_commit_failed')
+					return _('Could not save the firewall configuration.');
+				if (res && res.error === 'firewall_commit_raced')
+					return _(
+						'Another change overwrote WAN logging after it was saved; check the current state.'
+					);
 				return _('Could not disable logging.');
 			},
 			successNotice: (res) => (res.changed ? _('WAN drop/reject logging is off.') : ''),
@@ -905,6 +938,7 @@ return view.extend({
 			loggingStatus: this.loggingStatus,
 			loggingBusy: this.loggingBusy,
 			loggingNotice: this.loggingNotice,
+			loggingNoticeFail: !!this.loggingNoticeFail,
 			showConsent: this.shouldShowLoggingConsent()
 		};
 	},
@@ -924,6 +958,7 @@ return view.extend({
 			candidates,
 			this.loggingBusy ? '1' : '0',
 			this.loggingNotice || '',
+			this.loggingNoticeFail ? 'f1' : 'f0',
 			this.shouldShowLoggingConsent() ? 'c1' : 'c0'
 		].join('|');
 	},
@@ -1145,6 +1180,9 @@ return view.extend({
 			/* Recovery RPCs can outlive the poll epoch; don't repaint stale views. */
 			if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;
 			this.refreshBufferedRuleLabels();
+		} else if (this.lastRulesError === 'rules_unavailable') {
+			await this.loadRulesMap(epoch);
+			if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;
 		}
 	},
 
@@ -1505,12 +1543,11 @@ return view.extend({
 	},
 
 	scheduleResolvePaint() {
+		this.resolvePaintPending = true;
 		if (this.tablePaused) {
-			this.resolvePaintPending = true;
 			this.updateStatus();
 			return;
 		}
-		this.resolvePaintPending = false;
 		this.scheduleRenderRows(true);
 	},
 

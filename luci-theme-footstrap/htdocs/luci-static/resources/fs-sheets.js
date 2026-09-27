@@ -301,7 +301,8 @@ function documentCarries(path) {
  * original is deliberately not one. */
 function documentPoisoned() {
 	const names = themeNames();
-	return Array.from(document.querySelectorAll(VIEW_SHEETS)).some(
+	return Array.prototype.some.call(
+		document.querySelectorAll(VIEW_SHEETS),
 		(el) => outlivesPage(el)
 			&& (!names || (invasiveSheet(el, names) && !_owner.has(el) && !_silenced.has(el))));
 }
@@ -416,7 +417,7 @@ function fenceImported(styleEl, names, until) {
 
 /* what a sheet IS, as text: the rules that are applying, not the markup that may have produced
  * them. Serialised only to compare, never re-parsed. */
-const serializeRules = (rules) => Array.from(rules, (r) => r.cssText).join('\n');
+const serializeRules = (rules) => Array.prototype.map.call(rules, (r) => r.cssText).join('\n');
 
 /* ---- a <style>'s textContent is NOT its sheet ----
  *
@@ -535,12 +536,13 @@ function ownerKey() {
 	return (_ownerHint !== null) ? _ownerHint : currentKey();
 }
 
-/* L.env.dispatchpath (ctx.path) is stamped by luci-base's own header.ut before any theme script
- * runs, on every page including blank_page — verified on openwrt-24.10, no location.pathname
- * fallback needed. */
 function currentKey() {
 	if (_curKey !== null) return _curKey;
-	return appKey(L.env.dispatchpath);
+	const dp = L.env && L.env.dispatchpath;
+	if (dp && dp.length) return appKey(dp);
+	/* no env to read (a document that never got the bootstrap): the URL is all there is */
+	const p = location.pathname.replace(/^.*\/cgi-bin\/luci\/?/, '').replace(/\/+$/, '');
+	return appKey(p ? p.split('/') : []);
 }
 
 /* Both halves, for the reason silence() gives: el.disabled is the element's flag, el.sheet.disabled
