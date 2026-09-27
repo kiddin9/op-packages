@@ -112,7 +112,7 @@ msgstr "Классический (зелёный/красный)"
 msgid "Classic uses green/red; Accessible uses teal/orange"
 msgstr "Классический — зелёный/красный; доступный — бирюзовый/оранжевый"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:150
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:156
 msgid "Clear all"
 msgstr "Очистить всё"
 
@@ -294,7 +294,7 @@ msgstr "Включение…"
 msgid "Exclude"
 msgstr "Исключить"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:86
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:92
 msgid "Exclude instead"
 msgstr "Исключить вместо этого"
 
@@ -402,7 +402,7 @@ msgstr ""
 msgid "Inbound"
 msgstr "Входящий"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:86
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:92
 msgid "Include instead"
 msgstr "Включить вместо этого"
 
@@ -570,7 +570,7 @@ msgstr "Протокол — частые значения"
 msgid "Quick search"
 msgstr "Быстрый поиск"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:109
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:115
 msgid "Remove filter"
 msgstr "Удалить фильтр"
 
@@ -874,7 +874,11 @@ msgstr "буфер заполнен"
 msgid "default 10/minute"
 msgstr "по умолчанию 10/мин"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:44
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:36
+msgid "contains"
+msgstr "содержит"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:50
 msgid "does not contain"
 msgstr "не содержит"
 
@@ -883,7 +887,7 @@ msgstr "не содержит"
 msgid "drop"
 msgstr "отброшен"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:35
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:41
 msgid "is"
 msgstr "есть"
 
@@ -900,7 +904,7 @@ msgstr "загрузка…"
 msgid "none"
 msgstr "нет"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:49
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:55
 msgid "not"
 msgstr "не"
 

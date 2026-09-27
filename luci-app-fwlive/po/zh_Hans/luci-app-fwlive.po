@@ -105,7 +105,7 @@ msgstr "经典（绿/红）"
 msgid "Classic uses green/red; Accessible uses teal/orange"
 msgstr "经典使用绿/红；无障碍使用青绿/橙色"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:150
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:156
 msgid "Clear all"
 msgstr "全部清除"
 
@@ -276,7 +276,7 @@ msgstr "正在启用…"
 msgid "Exclude"
 msgstr "排除"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:86
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:92
 msgid "Exclude instead"
 msgstr "改为排除"
 
@@ -379,7 +379,7 @@ msgstr ""
 msgid "Inbound"
 msgstr "入站"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:86
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:92
 msgid "Include instead"
 msgstr "改为包含"
 
@@ -542,7 +542,7 @@ msgstr "协议 — 常用值"
 msgid "Quick search"
 msgstr "快速搜索"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:109
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:115
 msgid "Remove filter"
 msgstr "移除筛选"
 
@@ -829,7 +829,11 @@ msgstr "缓冲区已满"
 msgid "default 10/minute"
 msgstr "默认 10 条/分钟"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:44
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:36
+msgid "contains"
+msgstr "包含"
+
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:50
 msgid "does not contain"
 msgstr "不包含"
 
@@ -838,7 +842,7 @@ msgstr "不包含"
 msgid "drop"
 msgstr "丢弃"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:35
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:41
 msgid "is"
 msgstr "是"
 
@@ -855,7 +859,7 @@ msgstr "加载中…"
 msgid "none"
 msgstr "无"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:49
+#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/fwlive/chips.js:55
 msgid "not"
 msgstr "非"
 
