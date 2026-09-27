@@ -1,0 +1,35 @@
+Hooks for thermal-guard
+=======================
+
+Executables placed here run as root when the matching action fires. They are
+files rather than configuration options on purpose: the LuCI page may edit
+every option in /etc/config/thermal-guard, but it cannot write into this
+directory, so nothing changed through the web interface can introduce code
+that runs as root.
+
+Put a hook here over SSH and make it executable (chmod 0755). A hook that is
+missing or not executable is skipped: for stage1 and stage2 the daemon logs
+that the action could not be carried out, a missing notify hook means no
+delivery that way, and a missing modem-temp hook means no modem reading.
+
+  notify        Receives the message text on stdin. Only needed for a delivery
+                that notify_url cannot express, a local mailer for example.
+                When notify_url is set as well, it is tried first and this hook
+                is the fallback.
+
+  stage1        Runs when stage 2 of 3 starts and stage1_action is 'command'.
+  stage2        Runs when stage 3 of 3 starts and stage2_action is 'command'.
+
+  modem-temp    Runs when modem_source is 'command'. Has to print the modem
+                temperature in whole degrees Celsius on stdout, nothing else.
+
+Every hook runs under a time limit: 15 seconds for notify, stage1 and stage2,
+5 seconds for modem-temp, which runs every cycle. A hook still running then
+gets TERM, and KILL 5 seconds later. It counts as failed: a stage action is
+reported as not carried out, a modem-temp hook as no reading. Keep hooks short;
+a mail or HTTP call inside one needs its own, shorter time limit.
+
+Example, a notify hook for a local mailer:
+
+  #!/bin/sh
+  exec mail -s "thermal-guard" root

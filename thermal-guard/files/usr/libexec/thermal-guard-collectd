@@ -1,0 +1,67 @@
+#!/bin/sh
+# shellcheck shell=busybox
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# collectd exec plugin feed. Reads the status file the daemon writes and prints
+# PUTVAL lines, so temperatures end up in RRD without anyone else touching the
+# modem. Add to /etc/collectd.conf:
+#
+#   LoadPlugin exec
+#   <Plugin exec>
+#       Exec "nobody:nogroup" "/usr/libexec/thermal-guard-collectd"
+#   </Plugin>
+#
+# The status file is world readable, so an unprivileged user is enough.
+
+set -u
+
+STATUS_FILE="${STATUS_FILE:-/var/run/thermal-guard.status}"
+INTERVAL="${COLLECTD_INTERVAL:-30}"
+HOSTNAME="${COLLECTD_HOSTNAME:-$(cat /proc/sys/kernel/hostname 2>/dev/null || echo localhost)}"
+
+# collectd wants whole seconds and refuses an interval of zero
+INTERVAL=${INTERVAL%%.*}
+[ "$INTERVAL" -ge 1 ] 2>/dev/null || INTERVAL=30
+
+# The status file is written by the daemon, but a truncated write or a stale
+# file from an older version can still hand us something that is not a number.
+# Anything that is not a plain integer becomes empty, and empty is not emitted.
+tg_num() {
+	case "$1" in
+		''|*[!0-9-]*|-|?*-*) echo "" ;;
+		*) echo "$1" ;;
+	esac
+}
+
+putval() { # $1 type-instance, $2 value
+	[ -n "$2" ] || return 0
+	printf 'PUTVAL "%s/thermal_guard/temperature-%s" interval=%s N:%s\n' \
+		"$HOSTNAME" "$1" "$INTERVAL" "$2"
+}
+
+putgauge() { # $1 type-instance, $2 value
+	[ -n "$2" ] || return 0
+	printf 'PUTVAL "%s/thermal_guard/gauge-%s" interval=%s N:%s\n' \
+		"$HOSTNAME" "$1" "$INTERVAL" "$2"
+}
+
+while :; do
+	if [ -r "$STATUS_FILE" ]; then
+		cpu=""; modem=""; stage=""; fan=""
+		while IFS='=' read -r k v; do
+			case "$k" in
+				cpu_c) cpu=$(tg_num "$v") ;;
+				modem_c) modem=$(tg_num "$v") ;;
+				stage) stage=$(tg_num "$v") ;;
+				fan_state) fan=$(tg_num "$v") ;;
+			esac
+		done < "$STATUS_FILE"
+
+		putval soc "$cpu"
+		putval modem "$modem"
+		putgauge fan_step "$fan"
+		# -1 means idle, the graph then shows anything above zero as an incident
+		putgauge stage "$stage"
+	fi
+	sleep "$INTERVAL"
+done

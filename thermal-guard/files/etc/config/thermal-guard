@@ -1,0 +1,80 @@
+
+config thermal-guard 'main'
+	option enabled '1'
+	# seconds between readings, minimum 5
+	option interval '20'
+
+	# stage thresholds in degrees celsius, must be ordered warn < crit < emergency
+	option cpu_warn '70'
+	option cpu_crit '80'
+	option cpu_emergency '90'
+	option modem_warn '80'
+	option modem_crit '88'
+
+	# minutes a stage has to persist before the next one can trigger on time alone
+	option hold_minutes '3'
+	# degrees below the warn thresholds that count as cooled down
+	option hysteresis '10'
+
+	option cpu_temp_path '/sys/class/thermal/thermal_zone0/temp'
+	# also report the other temperature sensors of the board, Wi-Fi chips and so on
+	option extra_sensors '1'
+
+	# none, cooling_device (kernel thermal zone), pwm (sysfs) or auto.
+	# none leaves the fan to whatever regulates it already. auto takes the cooling
+	# device if there is one and otherwise stays off the fan; it never picks pwm.
+	option fan_mode 'none'
+	# type of the fan's cooling device, for cooling_device, auto and trip
+	# management; empty means pwm-fan
+	option fan_cooling_device_type 'pwm-fan'
+	# governor the zone is handed back to on reset when none was recorded
+	# before: step_wise, fair_share, bang_bang or power_allocator. Not
+	# user_space, nothing would regulate then.
+	option fan_governor 'step_wise'
+	# pwm mode. Leave the paths empty to look the fan chip up by hwmon name.
+	#option pwm_path '/sys/class/hwmon/hwmon2/pwm1'
+	#option pwm_enable_path '/sys/class/hwmon/hwmon2/pwm1_enable'
+	# raw value for fastest and for slowest, both required for pwm mode. Some
+	# boards run these the other way round, 1 full speed and 255 stopped
+	#option pwm_full '255'
+	#option pwm_idle '0'
+
+	# auto, quectel (AT+QTEMP), fibocom (AT+GTSENRDTEMP), file, command or none
+	option modem_source 'auto'
+	option modem_at_port 'auto'
+	#option modem_temp_file '/var/run/modem_temp'
+	# "command" reads /etc/thermal-guard/hooks/modem-temp
+	# shared lock so concurrent AT users do not talk over each other
+	option at_lock '/var/lock/modem-at.lock'
+
+	# Lower the fan's active trips while the modem runs hotter than the CPU, so
+	# the kernel spins the fan up for it. off or modem. Needs a thermal zone that
+	# drives the fan; nothing is written while this is off and trip_active is unset.
+	# Unset means off, so an image can switch it on for its board at first boot
+	#option trip_boost 'modem'
+	# how much warmer than the CPU the modem may run before trips are lowered, 0-40
+	#option trip_boost_offset '15'
+	# baseline for the active trips in degrees, ascending, one value per trip.
+	# Unset means the device tree values of the running image
+	#list trip_active '50'
+	#list trip_active '60'
+	#list trip_active '70'
+
+	# modem_radio_off, wifi_off, interface_down, command or none. "command" runs
+	# /etc/thermal-guard/hooks/stage1 and .../stage2
+	option stage1_action 'modem_radio_off'
+	option stage2_action 'wifi_off'
+	# AT+CFUN=4 (flight mode) or AT+CFUN=0 (minimum function), nothing else.
+	# Read back with AT+CFUN? either way
+	option modem_radio_off_at 'AT+CFUN=4'
+	# interface taken down by interface_down, the uplink interface when unset
+	#option action_interface 'wwan'
+
+	# the message is posted here. Works with ntfy, Gotify, Matrix, Slack and
+	# anything else that takes a plain POST body. For a delivery HTTP cannot
+	# express, put an executable at /etc/thermal-guard/hooks/notify instead
+	#option notify_url 'https://ntfy.sh/my-topic'
+	# only sent when curl is installed, uclient-fetch cannot set headers
+	#option notify_header 'Authorization: Bearer secret'
+	# network interface of the modem, lets the daemon tell whether another uplink exists
+	#option uplink_interface 'wwan'
