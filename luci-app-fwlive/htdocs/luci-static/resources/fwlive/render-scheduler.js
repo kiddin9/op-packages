@@ -25,10 +25,11 @@ function createScheduler(options) {
 
 	function schedule(force) {
 		if (disposed) return;
-		force = !!force || nextForce !== null;
-		nextForce = null;
+		const reservation = nextForce;
+		force = !!force || reservation !== null;
 		const epoch = getEpoch();
 		if (typeof requestFrame !== 'function') {
+			nextForce = null;
 			render(!!force);
 			return;
 		}
@@ -38,16 +39,20 @@ function createScheduler(options) {
 			 * replaces the frame. The callback always reads current view state. */
 			pending.force = pending.force || !!force;
 			pending.epoch = epoch;
+			if (reservation && !pending.reservation) pending.reservation = reservation;
 			return;
 		}
 
-		pending = { epoch: epoch, force: !!force };
+		pending = { epoch: epoch, force: !!force, reservation: reservation };
 		frameId = requestFrame(function () {
 			const request = pending;
 			pending = null;
 			frameId = null;
 			if (disposed || request.epoch !== getEpoch()) return;
 
+			/* Drop only the reservation this frame used. A newer forceNextRender
+			 * after an unforced schedule must survive this callback. */
+			if (nextForce === request.reservation) nextForce = null;
 			/* A current request queued behind stale work gets its own frame. */
 			if (epoch !== request.epoch) schedule(request.force);
 			else render(request.force);

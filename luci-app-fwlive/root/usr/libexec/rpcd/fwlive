@@ -72,6 +72,16 @@ map_add() {
 	val="$2"
 	[ -n "$key" ] || return 0
 	[ -n "$val" ] || return 0
+	# Cheap first-wins for keys that match their escaped form (typical prefixes)
+	# so duplicate fw4 names skip the json_escape fork.
+	case "$key" in
+		*[\"\\*?[]*) ;;
+		*)
+			case "$OUT" in
+				*"\"$key\":"*) return 0 ;;
+			esac
+			;;
+	esac
 	esc_key=$(printf '%s' "$key" | json_escape)
 	# Global first-wins deduplication: skip if escaped key already present.
 	# Uses anchored pattern "\"<key>\":" to avoid substring false positives
@@ -413,6 +423,31 @@ _fwlive_mktemp() {
 	printf '%s' "$_mk_file"
 }
 
+_rules_dump=
+_nft_tsv=
+_nft_wait=
+_fwlive_tmp_cleanup() {
+	if [ -n "${_nft_wait:-}" ]; then
+		kill "$_nft_wait" 2>/dev/null || true
+		_nft_wait=
+	fi
+	if [ -n "${_rules_dump:-}" ]; then
+		rm -f "$_rules_dump"
+		_rules_dump=
+	fi
+	if [ -n "${_nft_tsv:-}" ]; then
+		rm -f "$_nft_tsv"
+		_nft_tsv=
+	fi
+}
+# Same five traps as fwlive-log-filter.sh. The nft dump waits in the
+# background so a trapped SIGTERM is not deferred behind setsid.
+trap '_fwlive_tmp_cleanup' 0
+trap '_fwlive_tmp_cleanup; exit 129' 1
+trap '_fwlive_tmp_cleanup; exit 130' 2
+trap '_fwlive_tmp_cleanup; exit 131' 3
+trap '_fwlive_tmp_cleanup; exit 143' 15
+
 enrich_rules_dump() {
 	_dump_prefix="$1"
 
@@ -420,7 +455,13 @@ enrich_rules_dump() {
 	if [ -n "$_rules_dump" ]; then
 		# One dump serves detect + parse. Empty/failed dump is not nft
 		# (unknown/no_backend, same as a failed detect probe).
-		if nft_list_ruleset >"$_rules_dump" 2>/dev/null; then
+		# Background + wait: dash defers trapped SIGTERM until a
+		# foreground setsid/timeout child exits; wait is interruptible.
+		# Clear inherited traps so the child's EXIT cannot rm the dump.
+		( trap - 0 1 2 3 15; nft_list_ruleset >"$_rules_dump" 2>/dev/null ) &
+		_nft_wait=$!
+		if wait "$_nft_wait"; then
+			_nft_wait=
 			backend=nft
 			# Stream awk output to a second temp so a huge dump is
 			# not materialized in the rpcd worker's shell heap.
@@ -438,9 +479,13 @@ enrich_rules_dump() {
 					_enrich_error='tsv_failed'
 				fi
 				rm -f "$_nft_tsv"
+				_nft_tsv=
 			fi
+		else
+			_nft_wait=
 		fi
 		rm -f "$_rules_dump"
+		_rules_dump=
 	else
 		# nft is on PATH (caller checked); skip enrichment without a dump.
 		_enrich_error='mktemp_failed'
@@ -851,6 +896,11 @@ resolve_addresses() {
 		return 0
 	}
 	while IFS= read -r ip; do
+			[ -n "${ip:-}" ] || continue
+			# Producer already validated; skip repeats before they cost a slot.
+			case "$OUT" in
+				*"\"$ip\":"*) continue ;;
+			esac
 			if [ "$lookups" -ge "$RESOLVE_MAX" ]; then
 				truncated=1
 				break
@@ -861,10 +911,6 @@ resolve_addresses() {
 			if [ $((now - start)) -ge $((RESOLVE_BUDGET * 100)) ]; then
 				truncated=1
 				break
-			fi
-			# Missing/empty element: set -u cannot read bare $ip.
-			if ! is_resolvable_address "${ip:-}"; then
-				continue
 			fi
 			lookups=$((lookups + 1))
 			# NXDOMAIN / timeout: resolve_hostname returns 1. set -e

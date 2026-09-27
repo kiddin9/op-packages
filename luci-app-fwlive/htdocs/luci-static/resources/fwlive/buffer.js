@@ -59,7 +59,9 @@ function applyFetchedEntries(entries, normalized, opts) {
 
 	let next;
 	if (merge) next = mergeById(entries, normalized, cap);
-	else next = (normalized || []).slice(-cap);
+	else if (!normalized || !normalized.length)
+		next = entries && entries.length ? entries.slice(-cap) : [];
+	else next = normalized.slice(-cap);
 
 	if (!paused && next.length > rowLimit) next = next.slice(-rowLimit);
 

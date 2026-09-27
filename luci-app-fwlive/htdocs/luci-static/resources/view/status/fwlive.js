@@ -108,6 +108,12 @@ function isIpv4Address(addr) {
 	return true;
 }
 
+/* Scoped IPv6 (`fe80::1%eth0`) still resolves as the bare address. */
+function stripIpZone(addr) {
+	const zone = addr.lastIndexOf('%');
+	return zone === -1 ? addr : addr.slice(0, zone);
+}
+
 return view.extend({
 	rowLimit: constants.DEFAULT_ROW_LIMIT,
 	fetchMode: constants.DEFAULT_FETCH_MODE,
@@ -585,6 +591,8 @@ return view.extend({
 
 	isLikelyIp(addr) {
 		if (typeof addr !== 'string' || !addr) return false;
+		addr = stripIpZone(addr);
+		if (!addr) return false;
 		if (isIpv4Address(addr)) return true;
 		if (!addr.includes(':') || !/^[\da-f:.]+$/i.test(addr) || addr.includes(':::'))
 			return false;
@@ -1029,6 +1037,7 @@ return view.extend({
 	failPollReply(rtt, errorCode) {
 		this.lastPollError = true;
 		this.lastPollErrorCode = typeof errorCode === 'string' ? errorCode : null;
+		this.lastBatchNewIdCount = 0;
 		this.fillingBuffer = false;
 		this.notePollRtt(rtt, true);
 		this.updateAdaptiveBanner();
@@ -1774,8 +1783,8 @@ return view.extend({
 
 		for (let i = 0; i < entries.length; i++) {
 			const r = entries[i];
-			if (r.src && this.isLikelyIp(r.src)) ips.add(r.src);
-			if (r.dst && this.isLikelyIp(r.dst)) ips.add(r.dst);
+			if (r.src && this.isLikelyIp(r.src)) ips.add(stripIpZone(r.src));
+			if (r.dst && this.isLikelyIp(r.dst)) ips.add(stripIpZone(r.dst));
 		}
 
 		return Array.from(ips);
@@ -2016,7 +2025,8 @@ return view.extend({
 			{
 				rows: rows.slice(),
 				columns: this.activeColumns().slice(),
-				forceRender: !!force,
+				/* force only bypasses the paint budget; the key sees expand/hostnames. */
+				forceRender: false,
 				viewMode: this.viewMode,
 				messageLayout: this.messageLayout,
 				expandedRowId: this.expandedRowId,
@@ -2070,7 +2080,9 @@ return view.extend({
 		const scroll = ev && ev.target;
 		if (!scroll || this.tablePaused) return;
 
-		this.followLive = scroll.scrollTop < 8;
+		const now = scroll.scrollTop < 8;
+		if (now === this.followLive) return;
+		this.followLive = now;
 		this.updateStatus();
 	},
 

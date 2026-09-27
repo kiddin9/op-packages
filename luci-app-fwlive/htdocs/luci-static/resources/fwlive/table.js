@@ -25,8 +25,10 @@
  * flowCell, buildColumnCell.
  *
  * Modules must not mutate state. Forced renders clear and rebuild the host;
- * normal polls reuse unchanged keyed rows and only build changed rows. Does
- * not touch #fwlive-scroll or #fwlive-empty.
+ * normal polls reuse unchanged keyed rows and only build changed rows.
+ * rowRenderKey must include every painted field (including resolved hostnames)
+ * so a non-forced paint can refresh display-only changes. Does not touch
+ * #fwlive-scroll or #fwlive-empty.
  */
 
 function columnLabel(col) {
@@ -268,6 +270,16 @@ function renderThead(host, state, _callbacks) {
 	}
 }
 
+function hostnameCacheValue(ip, state) {
+	if (!state.showHostnames || !state.hostnameCache || !ip) return '';
+	const key =
+		typeof ip === 'string' && ip.lastIndexOf('%') !== -1
+			? ip.slice(0, ip.lastIndexOf('%'))
+			: ip;
+	const value = state.hostnameCache.get ? state.hostnameCache.get(key) : undefined;
+	return value == null ? '' : String(value);
+}
+
 function rowRenderKey(row, state, columns) {
 	return JSON.stringify([
 		row.id,
@@ -291,7 +303,9 @@ function rowRenderKey(row, state, columns) {
 		state.messageLayout,
 		state.expandedRowId === row.id,
 		!!state.rowTint,
-		!!state.showHostnames
+		!!state.showHostnames,
+		hostnameCacheValue(row.src, state),
+		hostnameCacheValue(row.dst, state)
 	]);
 }
 
