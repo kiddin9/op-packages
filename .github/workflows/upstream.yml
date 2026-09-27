@@ -235,7 +235,7 @@ jobs:
         git_clone https://github.com/OneNAS-space/luci-app-adguardhome
         git_clone https://github.com/sakura-builder1/luci-app-dlna-player
         git_clone https://github.com/sakura-builder1/luci-app-wolplus
-        git_clone https://github.com/SyntaxError-NullPointer/openwrt-thermal-guard && mv -f openwrt-thermal-guard/*thermal-guard;rm -rf openwrt-thermal-guard
+        git_clone https://github.com/SyntaxError-NullPointer/openwrt-thermal-guard && mv -f openwrt-thermal-guard/*thermal-guard ./;rm -rf openwrt-thermal-guard
         git_clone https://github.com/Nikitid/luci-app-wrqr
         git_clone https://github.com/Nikitid/luci-app-overview-manager
         git_clone https://github.com/YusDyr/luci-app-trafficctl trafficctl && mv -f trafficctl/luci-app* ./;rm -rf trafficctl
