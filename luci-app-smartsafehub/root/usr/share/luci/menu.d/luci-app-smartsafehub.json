@@ -1,0 +1,34 @@
+{
+  "smartsafehub": {
+    "title": "SmartSafeHub",
+    "order": 1,
+    "action": {
+      "type": "template",
+      "path": "smartsafehub/login"
+    },
+    "auth": {}
+  },
+  "smartsafehub/session": {
+    "action": {
+      "type": "template",
+      "path": "smartsafehub/session"
+    },
+    "auth": {
+      "methods": [
+        "cookie:sysauth_https",
+        "cookie:sysauth_http"
+      ],
+      "login": true
+    },
+    "firstchild_ineligible": true
+  },
+  "admin/smartsafehub": {
+    "title": "SmartSafeHub",
+    "order": 5,
+    "action": {
+      "type": "template",
+      "path": "smartsafehub/login"
+    },
+    "auth": {}
+  }
+}

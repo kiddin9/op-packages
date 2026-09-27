@@ -1,0 +1,349 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+
+RUNTIME_DIR="${SMARTSAFEHUB_RUNTIME_DIR:-/tmp/smartsafehub}"
+STATE_FILE="${SMARTSAFEHUB_MAINTENANCE_STATE_FILE:-$RUNTIME_DIR/maintenance.state}"
+UPDATE_STATE_FILE="${SMARTSAFEHUB_MAINTENANCE_UPDATE_STATE_FILE:-$RUNTIME_DIR/updates.state}"
+FIRMWARE_STATE_FILE="${SMARTSAFEHUB_MAINTENANCE_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
+UPDATE_LOCK_DIR="${SMARTSAFEHUB_MAINTENANCE_UPDATE_LOCK_DIR:-$RUNTIME_DIR/updater.lock}"
+FIRMWARE_LOCK_DIR="${SMARTSAFEHUB_MAINTENANCE_FIRMWARE_LOCK_DIR:-$RUNTIME_DIR/firmware.lock}"
+FIRMWARE_IMAGE_FILE="${SMARTSAFEHUB_MAINTENANCE_FIRMWARE_IMAGE_FILE:-$RUNTIME_DIR/firmware.bin}"
+UCI_BIN="${SMARTSAFEHUB_MAINTENANCE_UCI_BIN:-uci}"
+REBOOT_BIN="${SMARTSAFEHUB_MAINTENANCE_REBOOT_BIN:-/sbin/reboot}"
+SYNC_BIN="${SMARTSAFEHUB_MAINTENANCE_SYNC_BIN:-/bin/sync}"
+DATE_BIN="${SMARTSAFEHUB_MAINTENANCE_DATE_BIN:-date}"
+UPTIME_FILE="${SMARTSAFEHUB_MAINTENANCE_UPTIME_FILE:-/proc/uptime}"
+
+DAEMON_TICK_S="${SMARTSAFEHUB_MAINTENANCE_DAEMON_TICK_S:-30}"
+DEFER_S="${SMARTSAFEHUB_MAINTENANCE_DEFER_S:-900}"
+MAX_DEFER_S="${SMARTSAFEHUB_MAINTENANCE_MAX_DEFER_S:-7200}"
+MIN_UPTIME_S="${SMARTSAFEHUB_MAINTENANCE_MIN_UPTIME_S:-600}"
+
+ENABLED=0
+FREQUENCY="weekly"
+DAY="sun"
+REBOOT_TIME="04:00"
+
+log_message() {
+	logger -t smartsafehub-maintenance -- "$*" 2>/dev/null || true
+}
+
+uci_get() {
+	"$UCI_BIN" -q get "smartsafehub.maintenance.$1" 2>/dev/null || true
+}
+
+valid_frequency() {
+	case "$1" in
+		daily|weekly) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+valid_day() {
+	case "$1" in
+		mon|tue|wed|thu|fri|sat|sun) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+valid_time() {
+	case "$1" in
+		[01][0-9]:[0-5][0-9]|2[0-3]:[0-5][0-9]) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+load_settings() {
+	local value
+
+	value="$(uci_get scheduled_reboot_enabled)"
+	[ "$value" = "1" ] && ENABLED=1 || ENABLED=0
+
+	value="$(uci_get scheduled_reboot_frequency)"
+	if valid_frequency "$value"; then
+		FREQUENCY="$value"
+	else
+		FREQUENCY="weekly"
+	fi
+
+	value="$(uci_get scheduled_reboot_day)"
+	if valid_day "$value"; then
+		DAY="$value"
+	else
+		DAY="sun"
+	fi
+
+	value="$(uci_get scheduled_reboot_time)"
+	if valid_time "$value"; then
+		REBOOT_TIME="$value"
+	else
+		REBOOT_TIME="04:00"
+	fi
+}
+
+state_value() {
+	local key="$1"
+	[ -f "$STATE_FILE" ] || return 0
+	awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$STATE_FILE" 2>/dev/null || true
+}
+
+sanitize_field() {
+	printf '%s' "$1" | tr '\r\n\t' '   ' | cut -c 1-160
+}
+
+write_state() {
+	local last_key="${1:-}"
+	local pending_key="${2:-}"
+	local pending_since="${3:-0}"
+	local next_retry_at="${4:-0}"
+	local last_result="${5:-}"
+	local last_result_at="${6:-0}"
+	local tmp
+
+	tmp="${STATE_FILE}.$$"
+	umask 022
+	{
+		printf 'version\t1\n'
+		printf 'last_key\t%s\n' "$(sanitize_field "$last_key")"
+		printf 'pending_key\t%s\n' "$(sanitize_field "$pending_key")"
+		printf 'pending_since\t%s\n' "$pending_since"
+		printf 'next_retry_at\t%s\n' "$next_retry_at"
+		printf 'last_result\t%s\n' "$(sanitize_field "$last_result")"
+		printf 'last_result_at\t%s\n' "$last_result_at"
+	} > "$tmp"
+	mv "$tmp" "$STATE_FILE"
+}
+
+phase_value() {
+	local file="$1"
+	[ -f "$file" ] || return 0
+	awk -F '\t' '$1 == "phase" { print $2; exit }' "$file" 2>/dev/null || true
+}
+
+lock_is_active() {
+	local lock_dir="$1" pid
+	[ -d "$lock_dir" ] || return 1
+	pid="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null
+}
+
+busy_reason() {
+	local phase
+
+	if lock_is_active "$UPDATE_LOCK_DIR"; then
+		printf 'management_software_update'
+		return 0
+	fi
+
+	phase="$(phase_value "$UPDATE_STATE_FILE")"
+	case "$phase" in
+		checking|installing)
+			printf 'management_software_update'
+			return 0
+			;;
+	esac
+
+	if lock_is_active "$FIRMWARE_LOCK_DIR"; then
+		printf 'firmware_update'
+		return 0
+	fi
+
+	# cgi-io writes the manual image before validation can acquire the firmware
+	# helper lock. Treat either the final image or a download part as active work
+	# so a scheduled reboot cannot interrupt an upload between those phases.
+	if [ -f "$FIRMWARE_IMAGE_FILE" ] || [ -f "${FIRMWARE_IMAGE_FILE}.part" ]; then
+		printf 'firmware_update'
+		return 0
+	fi
+
+	phase="$(phase_value "$FIRMWARE_STATE_FILE")"
+	case "$phase" in
+		checking|downloading|verifying|ready|flashing)
+			printf 'firmware_update'
+			return 0
+			;;
+	esac
+
+	return 1
+}
+
+day_number() {
+	case "$1" in
+		mon) printf '1' ;;
+		tue) printf '2' ;;
+		wed) printf '3' ;;
+		thu) printf '4' ;;
+		fri) printf '5' ;;
+		sat) printf '6' ;;
+		sun) printf '7' ;;
+		*) printf '0' ;;
+	esac
+}
+
+system_uptime_seconds() {
+	local raw
+	raw="$(cut -d ' ' -f 1 "$UPTIME_FILE" 2>/dev/null || true)"
+	raw="${raw%%.*}"
+	case "$raw" in
+		''|*[!0-9]*) printf '0' ;;
+		*) printf '%s' "$raw" ;;
+	esac
+}
+
+schedule_key() {
+	printf '%s-%s' "$($DATE_BIN +%Y-%m-%d)" "$REBOOT_TIME"
+}
+
+schedule_is_due() {
+	[ "$($DATE_BIN +%H:%M)" = "$REBOOT_TIME" ] || return 1
+
+	if [ "$FREQUENCY" = "daily" ]; then
+		return 0
+	fi
+
+	[ "$($DATE_BIN +%u)" = "$(day_number "$DAY")" ]
+}
+
+perform_reboot() {
+	local key="$1" result_time
+	result_time="$($DATE_BIN +%s)"
+	write_state "$key" '' 0 0 'rebooting' "$result_time"
+	log_message "scheduled reboot executing: key=$key"
+	"$SYNC_BIN" >/dev/null 2>&1 || true
+	if "$REBOOT_BIN" >/dev/null 2>&1; then
+		return 0
+	fi
+
+	write_state "$key" '' 0 0 'reboot_failed' "$($DATE_BIN +%s)"
+	log_message "scheduled reboot failed: key=$key"
+	return 1
+}
+
+start_or_defer_reboot() {
+	local key="$1" now="$2" reason uptime
+	uptime="$(system_uptime_seconds)"
+	if [ "$uptime" -lt "$MIN_UPTIME_S" ]; then
+		write_state "$key" '' 0 0 'skipped_recent_boot' "$now"
+		log_message "scheduled reboot skipped after recent boot: key=$key uptime=${uptime}s"
+		return 0
+	fi
+
+	if reason="$(busy_reason)"; then
+		write_state "$(state_value last_key)" "$key" "$now" "$((now + DEFER_S))" "deferred_${reason}" "$now"
+		log_message "scheduled reboot deferred: key=$key reason=$reason"
+		return 0
+	fi
+
+	perform_reboot "$key"
+}
+
+retry_pending_reboot() {
+	local now="$1" key pending_since next_retry reason
+	key="$(state_value pending_key)"
+	[ -n "$key" ] || return 0
+
+	pending_since="$(state_value pending_since)"
+	next_retry="$(state_value next_retry_at)"
+	case "$pending_since" in ''|*[!0-9]*) pending_since=0 ;; esac
+	case "$next_retry" in ''|*[!0-9]*) next_retry=0 ;; esac
+
+	if [ "$pending_since" -le 0 ]; then
+		write_state "$(state_value last_key)" '' 0 0 'pending_state_invalid' "$now"
+		return 0
+	fi
+
+	if [ "$((now - pending_since))" -ge "$MAX_DEFER_S" ]; then
+		write_state "$key" '' 0 0 'skipped_defer_timeout' "$now"
+		log_message "scheduled reboot skipped after defer timeout: key=$key"
+		return 0
+	fi
+
+	[ "$now" -ge "$next_retry" ] || return 0
+
+	if reason="$(busy_reason)"; then
+		write_state "$(state_value last_key)" "$key" "$pending_since" "$((now + DEFER_S))" "deferred_${reason}" "$now"
+		log_message "scheduled reboot remains deferred: key=$key reason=$reason"
+		return 0
+	fi
+
+	perform_reboot "$key"
+}
+
+run_once() {
+	local now key last_key pending_key
+	load_settings
+	if [ "$ENABLED" -ne 1 ]; then
+		rm -f "$STATE_FILE" 2>/dev/null || true
+		return 0
+	fi
+
+	now="$($DATE_BIN +%s)"
+	retry_pending_reboot "$now"
+
+	pending_key="$(state_value pending_key)"
+	[ -z "$pending_key" ] || return 0
+
+	schedule_is_due || return 0
+	key="$(schedule_key)"
+	last_key="$(state_value last_key)"
+	[ "$last_key" != "$key" ] || return 0
+
+	start_or_defer_reboot "$key" "$now"
+}
+
+configure() {
+	local enabled="${1:-}" frequency="${2:-}" day="${3:-}" reboot_time="${4:-}"
+
+	case "$enabled" in
+		0|1) ;;
+		*) return 2 ;;
+	esac
+	valid_frequency "$frequency" || return 2
+	valid_day "$day" || return 2
+	valid_time "$reboot_time" || return 2
+
+	if ! "$UCI_BIN" -q batch <<EOF_UCI
+set smartsafehub.maintenance=maintenance
+set smartsafehub.maintenance.scheduled_reboot_enabled='$enabled'
+set smartsafehub.maintenance.scheduled_reboot_frequency='$frequency'
+set smartsafehub.maintenance.scheduled_reboot_day='$day'
+set smartsafehub.maintenance.scheduled_reboot_time='$reboot_time'
+commit smartsafehub
+EOF_UCI
+	then
+		return 1
+	fi
+
+	# A changed/disabled schedule must never inherit a deferred reboot from the
+	# previous configuration. The daemon recreates runtime state as needed.
+	rm -f "$STATE_FILE" 2>/dev/null || true
+	return 0
+}
+
+daemon() {
+	while true; do
+		run_once || true
+		sleep "$DAEMON_TICK_S"
+	done
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-daemon}" in
+	daemon)
+		daemon
+		;;
+	run-once)
+		run_once
+		;;
+	configure)
+		shift
+		configure "$@"
+		;;
+	*)
+		echo "usage: $0 {daemon|run-once|configure <0|1> <daily|weekly> <mon..sun> <HH:MM>}" >&2
+		exit 2
+		;;
+esac

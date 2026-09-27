@@ -1,0 +1,157 @@
+<%+header%>
+<h2><%:Subscriptions%></h2>
+
+<div class="cbi-section">
+	<a class="cbi-button cbi-button-add" href="<%=luci.dispatcher.build_url('admin/services/substore/form')%>">
+		<%:Add subscription link%>
+	</a>
+	<a class="cbi-button cbi-button-add" href="<%=luci.dispatcher.build_url('admin/services/substore/localform')%>">
+		<%:Add local subscription%>
+	</a>
+	<a class="cbi-button cbi-button-add" href="<%=luci.dispatcher.build_url('admin/services/substore/combo')%>">
+		<%:Add combination%>
+	</a>
+</div>
+
+<table class="cbi-section-table">
+	<tr class="cbi-section-table-titles">
+		<th><%:Name%></th>
+		<th><%:URL%></th>
+		<th><%:Nodes%></th>
+		<th><%:Updated%></th>
+		<th><%:Status%></th>
+		<th><%:Subscription link%></th>
+		<th><%:Actions%></th>
+	</tr>
+
+<%
+	local core = require("substore.core")
+	local http_env = require("luci.http")
+	local items = core.list()
+	local base = luci.dispatcher.build_url("substore", "download")
+	local scheme = (http_env.getenv("HTTPS") and http_env.getenv("HTTPS") ~= "off") and "https" or "http"
+	local host = http_env.getenv("HTTP_HOST")
+		or (http_env.getenv("SERVER_NAME") and http_env.getenv("SERVER_NAME") .. ":" .. (http_env.getenv("SERVER_PORT") or "80"))
+		or "127.0.0.1"
+	local prefix = scheme .. "://" .. host .. base
+	local name_by_id = {}
+	for _, it2 in ipairs(items) do name_by_id[it2.id] = it2.name end
+	for _, it in ipairs(items) do
+		local status_color = "#808080"
+		local status_text = luci.i18n.translate("Pending")
+		if it.error and it.error ~= "" then
+			status_color = "#cc0000"
+			status_text = it.error
+		elseif it.node_count and it.node_count > 0 then
+			status_color = "#006600"
+			status_text = luci.i18n.translate("OK")
+		end
+		local sub_token = core.ensure_token(it.id)
+		local sub_link_base = prefix .. "?token=" .. sub_token .. "&target="
+%>
+	<tr class="cbi-section-table-row">
+		<td>
+			<% if it.combo then %>
+			<span class="cbi-value-description" style="color:#0066aa">[<%:Combination%>]</span> <%=it.name%>
+			<% else %>
+			<%=it.name%>
+			<% end %>
+			<% if it.cron_enable == true or it.cron_enable == "1" then %>
+			<div class="cbi-value-description">定时: <%=luci.util.pcdata(it.cron_time or "")%></div>
+			<% end %>
+		</td>
+		<td class="cbi-value-description" style="word-break:break-all"><%
+			if it.combo then
+				local names = {}
+				if type(it.sources) == "table" then
+					for _, sid in ipairs(it.sources) do names[#names + 1] = name_by_id[sid] or sid end
+				end
+				%><span style="color:#808080"><%=table.concat(names, " + ")%></span><%
+			elseif it["local"] then
+				%><span style="color:#0066aa">[<%:Local%>]</span><%
+			else
+				%><%=it.url%><%
+			end
+		%></td>
+		<td><%=it.node_count or 0%></td>
+		<td><%=it.last_update and os.date("%Y-%m-%d %H:%M", it.last_update) or "-"%></td>
+		<td style="color:<%=status_color%>"><%=status_text%></td>
+		<td>
+			<div style="display:flex;gap:0.25em;align-items:center">
+				<select id="fmt_<%=it.id%>" data-base="<%=luci.util.pcdata(sub_link_base)%>"
+					onchange="substore_setlink(this, '<%=it.id%>')">
+					<option value=""><%:Select format%></option>
+					<option value="clashmeta">Clash.Meta / Mihomo</option>
+					<option value="stash">Stash</option>
+					<option value="surge">Surge</option>
+					<option value="surfboard">Surfboard</option>
+					<option value="surgemac">SurgeMac</option>
+					<option value="loon">Loon</option>
+					<option value="egern">Egern</option>
+					<option value="qx">Quantumult X</option>
+					<option value="shadowrocket">Shadowrocket</option>
+					<option value="singbox">sing-box</option>
+					<option value="v2ray">V2Ray</option>
+					<option value="v2rayuri">V2Ray URI</option>
+					<option value="plain">Plain JSON</option>
+				</select>
+			</div>
+			<div id="linkwrap_<%=it.id%>" style="display:none;margin-top:0.25em">
+				<div style="display:flex;gap:0.25em;align-items:center">
+					<input id="link_<%=it.id%>" type="text" readonly style="width:280px" value=""/>
+					<button type="button" class="cbi-button cbi-button-apply"
+						onclick="var e=document.getElementById('link_<%=it.id%>');e.select();document.execCommand('copy');"><%:Copy%></button>
+				</div>
+			</div>
+			<div class="cbi-value-description"><%:选择格式后生成订阅链接，格式可随时切换%></div>
+		</td>
+		<td>
+			<% if it["local"] then %>
+			<span class="cbi-button cbi-button-action" style="opacity:0.5;cursor:not-allowed"><%:Update%></span>
+			<% else %>
+			<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/update')%>" style="display:inline">
+				<input type="hidden" name="token" value="<%=token%>"/>
+				<input type="hidden" name="id" value="<%=it.id%>"/>
+				<input type="submit" class="cbi-button cbi-button-action" value="<%:Update%>"/>
+			</form>
+			<% end %>
+			<% if it.combo then %>
+			<a class="cbi-button cbi-button-apply" href="<%=luci.dispatcher.build_url('admin/services/substore/combo')%>?id=<%=luci.util.urlencode(it.id)%>"><%:Edit%></a>
+			<% elseif it["local"] then %>
+			<a class="cbi-button cbi-button-apply" href="<%=luci.dispatcher.build_url('admin/services/substore/localform')%>?id=<%=luci.util.urlencode(it.id)%>"><%:Edit%></a>
+			<% else %>
+			<a class="cbi-button cbi-button-apply" href="<%=luci.dispatcher.build_url('admin/services/substore/form')%>?id=<%=luci.util.urlencode(it.id)%>"><%:Edit%></a>
+			<% end %>
+			<a class="cbi-button cbi-button-apply" href="<%=luci.dispatcher.build_url('admin/services/substore/nodes')%>?id=<%=luci.util.urlencode(it.id)%>"><%:Nodes%></a>
+			<a class="cbi-button cbi-button-apply" href="<%=luci.dispatcher.build_url('admin/services/substore/output')%>?id=<%=luci.util.urlencode(it.id)%>"><%:Output%></a>
+			<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/delete')%>" style="display:inline"
+			      onsubmit="return confirm('<%=luci.util.pcdata(luci.i18n.translate('Delete this subscription?'))%>');">
+				<input type="hidden" name="token" value="<%=token%>"/>
+				<input type="hidden" name="id" value="<%=it.id%>"/>
+				<input type="submit" class="cbi-button cbi-button-reset" value="<%:Delete%>"/>
+			</form>
+		</td>
+	</tr>
+<%
+	end
+	if #items == 0 then
+%>
+	<tr class="cbi-section-table-row">
+		<td colspan="7" style="text-align:center;color:#808080"><%:No subscriptions yet.%></td>
+	</tr>
+<%
+	end
+%>
+</table>
+<script>
+function substore_setlink(sel, id) {
+	var wrap = document.getElementById('linkwrap_' + id);
+	if (!wrap) return;
+	if (!sel.value) { wrap.style.display = 'none'; return; }
+	var inp = document.getElementById('link_' + id);
+	var base = sel.getAttribute('data-base') || '';
+	inp.value = base + encodeURIComponent(sel.value);
+	wrap.style.display = 'block';
+}
+</script>
+<%+footer%>

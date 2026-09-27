@@ -1,0 +1,62 @@
+#!/bin/sh
+set -e
+
+IPKG_INSTROOT="${IPKG_INSTROOT:-}"
+export IPKG_INSTROOT
+PKG_NAME='safeshield'
+export PKG_NAME
+
+# Initialize SafeShield identity once during first boot/package install.
+# The script is also safe to run repeatedly because identity-init never
+# regenerates an existing identity.env.
+
+if [ -r /lib/functions.sh ]; then
+	# shellcheck disable=SC1091
+	. /lib/functions.sh
+fi
+
+if [ -r /lib/functions/system.sh ]; then
+	# shellcheck disable=SC1091
+	. /lib/functions/system.sh
+fi
+
+if [ -r /usr/lib/safeshield/utils.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/lib/safeshield/utils.sh
+fi
+
+if [ -r /usr/lib/safeshield/log.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/lib/safeshield/log.sh
+fi
+
+if [ -r /usr/lib/safeshield/status.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/lib/safeshield/status.sh
+fi
+
+if [ -r /usr/lib/safeshield/config.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/lib/safeshield/config.sh
+	ss_load_config >/dev/null 2>&1 || true
+fi
+
+if [ -r /usr/lib/safeshield/blocklist.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/lib/safeshield/blocklist.sh
+fi
+
+if command -v ss_sync_detected_device_config >/dev/null 2>&1; then
+	ss_sync_detected_device_config >/dev/null 2>&1 || true
+fi
+
+if [ -r /usr/lib/safeshield/identity.sh ]; then
+	# shellcheck disable=SC1091
+	. /usr/lib/safeshield/identity.sh
+
+	model="$(ss_detect_device_model 2>/dev/null || cat /tmp/sysinfo/model 2>/dev/null || echo OpenWrt)"
+	arch="$(ss_detect_device_arch 2>/dev/null || uname -m 2>/dev/null || echo unknown)"
+	ss_identity_ensure "$model" "$arch" >/dev/null 2>&1 || true
+fi
+
+exit 0

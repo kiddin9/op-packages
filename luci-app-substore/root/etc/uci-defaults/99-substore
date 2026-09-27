@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# 迁移：全局定时更新与全局规则均已废弃，改为按订阅配置
+# 清理旧版遗留的全局 cron 文件与 UCI 设置
+rm -f /etc/cron.d/substore
+
+uci -q batch <<-EOF
+	delete substore.settings.cron_enable
+	delete substore.settings.cron_time
+	delete substore.default
+	commit substore
+EOF
+
+exit 0

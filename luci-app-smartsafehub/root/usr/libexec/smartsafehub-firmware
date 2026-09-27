@@ -1,0 +1,679 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME_DIR="${SMARTSAFEHUB_RUNTIME_DIR:-/tmp/smartsafehub}"
+STATE_FILE="${SMARTSAFEHUB_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
+RESOLVE_FILE="${SMARTSAFEHUB_FIRMWARE_RESOLVE_FILE:-$RUNTIME_DIR/firmware-resolve.json}"
+IMAGE_FILE="${SMARTSAFEHUB_FIRMWARE_IMAGE_FILE:-$RUNTIME_DIR/firmware.bin}"
+LOCK_DIR="${SMARTSAFEHUB_FIRMWARE_LOCK_DIR:-$RUNTIME_DIR/firmware.lock}"
+FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_FIRMWARE_METADATA_FILE:-/usr/share/smartsafehub/firmware.json}"
+BOARD_NAME_FILE="${SMARTSAFEHUB_FIRMWARE_BOARD_NAME_FILE:-/tmp/sysinfo/board_name}"
+UCI_BIN="${SMARTSAFEHUB_FIRMWARE_UCI_BIN:-uci}"
+UCLIENT_FETCH_BIN="${SMARTSAFEHUB_FIRMWARE_UCLIENT_FETCH_BIN:-uclient-fetch}"
+JSONFILTER_BIN="${SMARTSAFEHUB_FIRMWARE_JSONFILTER_BIN:-jsonfilter}"
+SHA256SUM_BIN="${SMARTSAFEHUB_FIRMWARE_SHA256SUM_BIN:-sha256sum}"
+UBUS_BIN="${SMARTSAFEHUB_FIRMWARE_UBUS_BIN:-ubus}"
+SYSUPGRADE_BIN="${SMARTSAFEHUB_FIRMWARE_SYSUPGRADE_BIN:-/sbin/sysupgrade}"
+EVENTS_BIN="${SMARTSAFEHUB_FIRMWARE_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
+DEFAULT_API_BASE_URL="https://www.smartsafehub.com/api/v1"
+CHECK_TIMEOUT_S=20
+DOWNLOAD_TIMEOUT_S=180
+DEFAULT_CHECK_INTERVAL_S=21600
+MIN_CHECK_INTERVAL_S=900
+MAX_CHECK_INTERVAL_S=604800
+DAEMON_TICK_S=60
+DAEMON_INITIAL_DELAY_S=10
+BOOT_CHECK_RETRY_S=60
+BOOT_CHECK_MAX_ATTEMPTS=3
+
+PHASE="idle"
+SOURCE=""
+LAST_CHECK_AT=0
+LAST_PREPARE_AT=0
+ERROR_CODE=""
+ERROR_MESSAGE=""
+FILENAME=""
+PREPARED_SHA256=""
+PREPARED_SIZE=0
+ALLOW_BACKUP=0
+TARGET_BUILD_ID=""
+CHECK_INTERVAL_S="$DEFAULT_CHECK_INTERVAL_S"
+
+log_message() {
+	logger -t smartsafehub-firmware -- "$*" 2>/dev/null || true
+}
+
+emit_firmware_event() {
+	local event_type="$1" severity="$2" error_code="$3" keep_settings="$4" keep_json metadata
+	[ -x "$EVENTS_BIN" ] || return 0
+	case "$keep_settings" in
+		1) keep_json='true' ;;
+		0) keep_json='false' ;;
+		*) keep_json='null' ;;
+	esac
+	metadata="{\"source\":\"$(json_escape "$SOURCE")\",\"target_build_id\":\"$(json_escape "$TARGET_BUILD_ID")\",\"keep_settings\":$keep_json,\"error_code\":\"$(json_escape "$error_code")\"}"
+	"$EVENTS_BIN" emit firmware "$event_type" "$severity" "$metadata" >/dev/null 2>&1 || true
+}
+
+sanitize_field() {
+	printf '%s' "$1" | tr '\r\n\t' '   ' | cut -c 1-500
+}
+
+state_value() {
+	local key="$1"
+	[ -f "$STATE_FILE" ] || return 0
+	awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$STATE_FILE" 2>/dev/null || true
+}
+
+numeric_or_zero() {
+	case "$1" in
+		''|*[!0-9]*) printf '0' ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+
+load_state() {
+	local value
+
+	value="$(state_value phase)"
+	case "$value" in
+		idle|checking|downloading|verifying|ready|flashing|error) PHASE="$value" ;;
+		*) PHASE="idle" ;;
+	esac
+
+	SOURCE="$(state_value source)"
+	LAST_CHECK_AT="$(numeric_or_zero "$(state_value last_check_at)")"
+	LAST_PREPARE_AT="$(numeric_or_zero "$(state_value last_prepare_at)")"
+	ERROR_CODE="$(state_value error_code)"
+	ERROR_MESSAGE="$(state_value error_message)"
+	FILENAME="$(state_value filename)"
+	PREPARED_SHA256="$(state_value prepared_sha256)"
+	PREPARED_SIZE="$(numeric_or_zero "$(state_value prepared_size)")"
+	ALLOW_BACKUP="$(numeric_or_zero "$(state_value allow_backup)")"
+	TARGET_BUILD_ID="$(state_value target_build_id)"
+}
+
+save_state() {
+	local tmp="${STATE_FILE}.$$"
+	umask 022
+	{
+		printf 'version\t1\n'
+		printf 'phase\t%s\n' "$(sanitize_field "$PHASE")"
+		printf 'source\t%s\n' "$(sanitize_field "$SOURCE")"
+		printf 'last_check_at\t%s\n' "${LAST_CHECK_AT:-0}"
+		printf 'last_prepare_at\t%s\n' "${LAST_PREPARE_AT:-0}"
+		printf 'error_code\t%s\n' "$(sanitize_field "$ERROR_CODE")"
+		printf 'error_message\t%s\n' "$(sanitize_field "$ERROR_MESSAGE")"
+		printf 'filename\t%s\n' "$(sanitize_field "$FILENAME")"
+		printf 'prepared_sha256\t%s\n' "$(sanitize_field "$PREPARED_SHA256")"
+		printf 'prepared_size\t%s\n' "${PREPARED_SIZE:-0}"
+		printf 'allow_backup\t%s\n' "${ALLOW_BACKUP:-0}"
+		printf 'target_build_id\t%s\n' "$(sanitize_field "$TARGET_BUILD_ID")"
+	} > "$tmp"
+	mv "$tmp" "$STATE_FILE"
+}
+
+clear_error() {
+	ERROR_CODE=""
+	ERROR_MESSAGE=""
+}
+
+reset_prepared() {
+	SOURCE=""
+	LAST_PREPARE_AT=0
+	FILENAME=""
+	PREPARED_SHA256=""
+	PREPARED_SIZE=0
+	ALLOW_BACKUP=0
+	TARGET_BUILD_ID=""
+	rm -f "$IMAGE_FILE" "${IMAGE_FILE}.part"
+}
+
+set_error() {
+	PHASE="error"
+	ERROR_CODE="$1"
+	ERROR_MESSAGE="$2"
+	save_state
+	log_message "$ERROR_CODE: $ERROR_MESSAGE"
+	return 1
+}
+
+acquire_lock() {
+	local owner
+	if mkdir "$LOCK_DIR" 2>/dev/null; then
+		printf '%s\n' "$$" > "$LOCK_DIR/pid"
+		return 0
+	fi
+
+	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
+		return 1
+	fi
+
+	rm -rf "$LOCK_DIR" 2>/dev/null || return 1
+	mkdir "$LOCK_DIR" 2>/dev/null || return 1
+	printf '%s\n' "$$" > "$LOCK_DIR/pid"
+}
+
+release_lock() {
+	rm -rf "$LOCK_DIR" 2>/dev/null || true
+}
+
+uci_get() {
+	"$UCI_BIN" -q get "smartsafehub.firmware.$1" 2>/dev/null || true
+}
+
+load_daemon_settings() {
+	local value
+
+	value="$(uci_get check_interval_s)"
+	case "$value" in
+		''|*[!0-9]*) value="$DEFAULT_CHECK_INTERVAL_S" ;;
+	esac
+	if [ "$value" -lt "$MIN_CHECK_INTERVAL_S" ] || [ "$value" -gt "$MAX_CHECK_INTERVAL_S" ]; then
+		value="$DEFAULT_CHECK_INTERVAL_S"
+	fi
+	CHECK_INTERVAL_S="$value"
+}
+
+json_value() {
+	local file="$1" expression="$2"
+	[ -f "$file" ] || return 0
+	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+
+safe_build_id() {
+	case "$1" in
+		''|*[!A-Za-z0-9._~:+-]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+supported_firmware_device_code() {
+	case "$1" in
+		iptime-ax3000sm|iptime-a3004t|iptime-ax3000se|gl-mt300n-v2|xiaomi-ax3000t)
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+firmware_device_code() {
+	local value board
+
+	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.device_code')"
+	if supported_firmware_device_code "$value"; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	value="$(uci_get device_code)"
+	if supported_firmware_device_code "$value"; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	board="$(cat "$BOARD_NAME_FILE" 2>/dev/null || true)"
+	case "$board" in
+		iptime,ax3000sm) printf '%s' 'iptime-ax3000sm' ;;
+		iptime,a3004t) printf '%s' 'iptime-a3004t' ;;
+		iptime,ax3000se) printf '%s' 'iptime-ax3000se' ;;
+		glinet,gl-mt300n-v2) printf '%s' 'gl-mt300n-v2' ;;
+		xiaomi,mi-router-ax3000t|xiaomi,ax3000t) printf '%s' 'xiaomi-ax3000t' ;;
+		*) return 1 ;;
+	esac
+}
+
+firmware_channel() {
+	local value
+
+	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.channel')"
+	case "$value" in
+		stable|beta)
+			printf '%s' "$value"
+			return 0
+			;;
+	esac
+
+	value="$(uci_get channel)"
+	case "$value" in
+		stable|beta)
+			printf '%s' "$value"
+			return 0
+			;;
+	esac
+
+	printf '%s' 'stable'
+}
+
+installed_build_id() {
+	local value
+
+	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.build_id')"
+	if safe_build_id "$value"; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	value="$(uci_get current_build_id)"
+	if safe_build_id "$value"; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	printf '%s' ''
+}
+
+api_base_url() {
+	local value
+	value="$(uci_get api_base_url)"
+	case "$value" in
+		https://*) printf '%s' "${value%/}" ;;
+		*) printf '%s' "$DEFAULT_API_BASE_URL" ;;
+	esac
+}
+
+file_size() {
+	local value
+	value="$(wc -c < "$1" 2>/dev/null | tr -d '[:space:]')"
+	numeric_or_zero "$value"
+}
+
+file_sha256() {
+	"$SHA256SUM_BIN" "$1" 2>/dev/null | awk '{ print $1 }'
+}
+
+validate_firmware_image() {
+	local validation_file valid allow_backup
+	validation_file="${STATE_FILE}.validation.$$"
+
+	if ! "$UBUS_BIN" call system validate_firmware_image \
+		"{\"path\":\"$IMAGE_FILE\"}" > "$validation_file" 2>/dev/null; then
+		rm -f "$validation_file"
+		return 1
+	fi
+
+	valid="$(json_value "$validation_file" '@.valid')"
+	allow_backup="$(json_value "$validation_file" '@.allow_backup')"
+	rm -f "$validation_file"
+
+	[ "$valid" = "true" ] || [ "$valid" = "1" ] || return 1
+	if [ "$allow_backup" = "true" ] || [ "$allow_backup" = "1" ]; then
+		ALLOW_BACKUP=1
+	else
+		ALLOW_BACKUP=0
+	fi
+
+	"$SYSUPGRADE_BIN" --test "$IMAGE_FILE" >/dev/null 2>&1
+}
+
+perform_check() {
+	local device_code channel current_build_id base request_file response_tmp schema response_device response_channel update_available
+
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	load_state
+	reset_prepared
+	# Never leave an older resolved release available after a failed refresh.
+	# The next prepare must only use a response accepted by this check run.
+	rm -f "$RESOLVE_FILE"
+	PHASE="checking"
+	LAST_CHECK_AT="$(date +%s)"
+	clear_error
+	save_state
+
+	device_code="$(firmware_device_code 2>/dev/null || true)"
+	if [ -z "$device_code" ]; then
+		set_error 'FIRMWARE_DEVICE_UNSUPPORTED' '이 장치의 SmartSafeHub 펌웨어 식별 정보를 확인하지 못했습니다.'
+		return 1
+	fi
+
+	channel="$(firmware_channel)"
+	current_build_id="$(installed_build_id)"
+	base="$(api_base_url)"
+	request_file="${STATE_FILE}.request.$$"
+	response_tmp="${RESOLVE_FILE}.tmp.$$"
+
+	cat > "$request_file" <<EOF2
+{"schema":1,"device_code":"$device_code","channel":"$channel","current_build_id":"$current_build_id"}
+EOF2
+
+	if ! "$UCLIENT_FETCH_BIN" -q -T "$CHECK_TIMEOUT_S" \
+		--method=POST \
+		--body-file="$request_file" \
+		--header='Content-Type: application/json' \
+		-O "$response_tmp" \
+		"$base/firmware/resolve"; then
+		rm -f "$request_file" "$response_tmp"
+		set_error 'FIRMWARE_RESOLVE_FAILED' '펌웨어 업데이트 서버에 연결하지 못했습니다.'
+		return 1
+	fi
+	rm -f "$request_file"
+
+	schema="$(json_value "$response_tmp" '@.schema')"
+	response_device="$(json_value "$response_tmp" '@.device_code')"
+	response_channel="$(json_value "$response_tmp" '@.channel')"
+	update_available="$(json_value "$response_tmp" '@.update_available')"
+
+	if [ "$schema" != "1" ] || [ "$response_device" != "$device_code" ] || [ "$response_channel" != "$channel" ]; then
+		rm -f "$response_tmp"
+		set_error 'FIRMWARE_RESOLVE_INVALID' '펌웨어 업데이트 서버가 올바르지 않은 응답을 반환했습니다.'
+		return 1
+	fi
+	case "$update_available" in
+		true|false|1|0) ;;
+		*)
+			rm -f "$response_tmp"
+			set_error 'FIRMWARE_RESOLVE_INVALID' '펌웨어 업데이트 서버가 올바르지 않은 응답을 반환했습니다.'
+			return 1
+			;;
+	esac
+
+	mv "$response_tmp" "$RESOLVE_FILE"
+	PHASE="idle"
+	SOURCE="online"
+	clear_error
+	save_state
+	return 0
+}
+
+perform_prepare_online() {
+	local update_available release_device release_channel download_url expected_sha expected_size expected_build filename part_size actual_sha
+
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	load_state
+
+	update_available="$(json_value "$RESOLVE_FILE" '@.update_available')"
+	if [ "$update_available" != "true" ] && [ "$update_available" != "1" ]; then
+		set_error 'FIRMWARE_UPDATE_NOT_AVAILABLE' '설치할 새 펌웨어가 없습니다. 먼저 업데이트를 확인해 주세요.'
+		return 1
+	fi
+
+	release_device="$(json_value "$RESOLVE_FILE" '@.release.device_code')"
+	release_channel="$(json_value "$RESOLVE_FILE" '@.release.channel')"
+	download_url="$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.download_url')"
+	expected_sha="$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.sha256' | tr 'A-F' 'a-f')"
+	expected_size="$(numeric_or_zero "$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.size_bytes')")"
+	expected_build="$(json_value "$RESOLVE_FILE" '@.release.build_id')"
+	filename="$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.filename')"
+
+	if [ "$release_device" != "$(firmware_device_code 2>/dev/null || true)" ] || [ "$release_channel" != "$(firmware_channel)" ]; then
+		set_error 'FIRMWARE_RELEASE_MISMATCH' '배포된 펌웨어 정보가 현재 장치 또는 업데이트 채널과 일치하지 않습니다.'
+		return 1
+	fi
+	if ! safe_build_id "$expected_build"; then
+		set_error 'FIRMWARE_BUILD_ID_INVALID' '배포된 펌웨어의 빌드 식별자가 올바르지 않습니다.'
+		return 1
+	fi
+
+	case "$download_url" in
+		https://*) ;;
+		*)
+			set_error 'FIRMWARE_DOWNLOAD_URL_INVALID' '펌웨어 다운로드 주소가 올바르지 않습니다.'
+			return 1
+			;;
+	esac
+	case "$expected_sha" in
+		''|*[!0-9a-f]*)
+			set_error 'FIRMWARE_CHECKSUM_MISSING' '펌웨어 무결성 정보를 확인하지 못했습니다.'
+			return 1
+			;;
+	esac
+	if [ "${#expected_sha}" -ne 64 ]; then
+		set_error 'FIRMWARE_CHECKSUM_MISSING' '펌웨어 무결성 정보를 확인하지 못했습니다.'
+		return 1
+	fi
+
+	reset_prepared
+	SOURCE="online"
+	FILENAME="$filename"
+	TARGET_BUILD_ID="$expected_build"
+	PHASE="downloading"
+	clear_error
+	save_state
+
+	if ! "$UCLIENT_FETCH_BIN" -q -T "$DOWNLOAD_TIMEOUT_S" -O "${IMAGE_FILE}.part" "$download_url"; then
+		rm -f "${IMAGE_FILE}.part"
+		set_error 'FIRMWARE_DOWNLOAD_FAILED' '펌웨어 파일을 다운로드하지 못했습니다.'
+		return 1
+	fi
+
+	part_size="$(file_size "${IMAGE_FILE}.part")"
+	if [ "$part_size" -le 0 ] || { [ "$expected_size" -gt 0 ] && [ "$part_size" -ne "$expected_size" ]; }; then
+		rm -f "${IMAGE_FILE}.part"
+		set_error 'FIRMWARE_SIZE_MISMATCH' '다운로드한 펌웨어 파일 크기가 배포 정보와 일치하지 않습니다.'
+		return 1
+	fi
+
+	actual_sha="$(file_sha256 "${IMAGE_FILE}.part")"
+	if [ "$actual_sha" != "$expected_sha" ]; then
+		rm -f "${IMAGE_FILE}.part"
+		set_error 'FIRMWARE_CHECKSUM_MISMATCH' '다운로드한 펌웨어의 SHA-256 검증에 실패했습니다.'
+		return 1
+	fi
+
+	mv "${IMAGE_FILE}.part" "$IMAGE_FILE"
+	PHASE="verifying"
+	PREPARED_SHA256="$actual_sha"
+	PREPARED_SIZE="$part_size"
+	save_state
+
+	if ! validate_firmware_image; then
+		rm -f "$IMAGE_FILE"
+		set_error 'FIRMWARE_IMAGE_INVALID' '이 장치에 설치할 수 있는 Sysupgrade 이미지가 아닙니다.'
+		return 1
+	fi
+
+	PHASE="ready"
+	LAST_PREPARE_AT="$(date +%s)"
+	clear_error
+	save_state
+	return 0
+}
+
+perform_validate_upload() {
+	local filename size sha
+
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	load_state
+
+	filename="${1:-firmware.bin}"
+	case "$filename" in
+		''|*[!A-Za-z0-9._+-]*) filename='firmware.bin' ;;
+	esac
+
+	if [ ! -s "$IMAGE_FILE" ]; then
+		set_error 'FIRMWARE_UPLOAD_MISSING' '업로드된 펌웨어 파일을 찾지 못했습니다.'
+		return 1
+	fi
+
+	SOURCE="manual"
+	FILENAME="$filename"
+	TARGET_BUILD_ID=""
+	PHASE="verifying"
+	clear_error
+	size="$(file_size "$IMAGE_FILE")"
+	sha="$(file_sha256 "$IMAGE_FILE")"
+	PREPARED_SIZE="$size"
+	PREPARED_SHA256="$sha"
+	save_state
+
+	if [ "$size" -le 0 ] || [ -z "$sha" ] || ! validate_firmware_image; then
+		rm -f "$IMAGE_FILE"
+		set_error 'FIRMWARE_IMAGE_INVALID' '업로드한 파일이 이 장치에서 사용할 수 있는 Sysupgrade 이미지가 아닙니다.'
+		return 1
+	fi
+
+	PHASE="ready"
+	LAST_PREPARE_AT="$(date +%s)"
+	clear_error
+	save_state
+	return 0
+}
+
+persist_target_build_id() {
+	[ "$SOURCE" = "online" ] || return 0
+	safe_build_id "$TARGET_BUILD_ID" || return 0
+
+	"$UCI_BIN" -q set smartsafehub.firmware.current_build_id="$TARGET_BUILD_ID" 2>/dev/null || return 0
+	"$UCI_BIN" -q commit smartsafehub 2>/dev/null || true
+}
+
+perform_install() {
+	local keep_settings actual_sha
+
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	load_state
+	keep_settings="${1:-1}"
+
+	if [ "$PHASE" != "ready" ] || [ ! -s "$IMAGE_FILE" ]; then
+		emit_firmware_event firmware.update.failed error FIRMWARE_NOT_READY "$keep_settings"
+		set_error 'FIRMWARE_NOT_READY' '설치할 펌웨어가 준비되지 않았습니다.'
+		return 1
+	fi
+	if [ "$keep_settings" != "0" ] && [ "$keep_settings" != "1" ]; then
+		emit_firmware_event firmware.update.failed error FIRMWARE_INSTALL_ARGUMENT_INVALID "$keep_settings"
+		set_error 'FIRMWARE_INSTALL_ARGUMENT_INVALID' '펌웨어 설치 옵션이 올바르지 않습니다.'
+		return 1
+	fi
+	if [ "$keep_settings" = "1" ] && [ "$ALLOW_BACKUP" != "1" ]; then
+		emit_firmware_event firmware.update.failed error FIRMWARE_BACKUP_UNSUPPORTED "$keep_settings"
+		set_error 'FIRMWARE_BACKUP_UNSUPPORTED' '이 펌웨어는 현재 설정을 유지한 업그레이드를 지원하지 않습니다.'
+		return 1
+	fi
+
+	actual_sha="$(file_sha256 "$IMAGE_FILE")"
+	if [ -z "$PREPARED_SHA256" ] || [ "$actual_sha" != "$PREPARED_SHA256" ]; then
+		emit_firmware_event firmware.update.failed error FIRMWARE_CHECKSUM_MISMATCH "$keep_settings"
+		set_error 'FIRMWARE_CHECKSUM_MISMATCH' '설치 직전 펌웨어 무결성 검증에 실패했습니다.'
+		return 1
+	fi
+
+	PHASE="verifying"
+	clear_error
+	save_state
+	if ! validate_firmware_image; then
+		emit_firmware_event firmware.update.failed error FIRMWARE_IMAGE_INVALID "$keep_settings"
+		set_error 'FIRMWARE_IMAGE_INVALID' '설치 직전 펌웨어 이미지 검증에 실패했습니다.'
+		return 1
+	fi
+
+	if [ "$keep_settings" = "1" ]; then
+		persist_target_build_id
+	fi
+
+	PHASE="flashing"
+	clear_error
+	save_state
+	emit_firmware_event firmware.update.started info '' "$keep_settings"
+	release_lock
+	trap - EXIT INT TERM
+
+	if [ "$keep_settings" = "1" ]; then
+		(sleep 2; "$SYSUPGRADE_BIN" "$IMAGE_FILE") >/dev/null 2>&1 </dev/null &
+	else
+		(sleep 2; "$SYSUPGRADE_BIN" -n "$IMAGE_FILE") >/dev/null 2>&1 </dev/null &
+	fi
+	return 0
+}
+
+perform_clean() {
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	load_state
+	reset_prepared
+	PHASE="idle"
+	clear_error
+	save_state
+	return 0
+}
+
+execute_check() {
+	"$0" check >/dev/null 2>&1
+}
+
+boot_check_with_retry() {
+	local attempt=1
+
+	while [ "$attempt" -le "$BOOT_CHECK_MAX_ATTEMPTS" ]; do
+		load_daemon_settings
+
+		if execute_check; then
+			return 0
+		fi
+
+		if [ "$attempt" -ge "$BOOT_CHECK_MAX_ATTEMPTS" ]; then
+			log_message "initial firmware update check failed after $attempt attempts; resuming normal schedule"
+			return 1
+		fi
+
+		attempt=$((attempt + 1))
+		sleep "$BOOT_CHECK_RETRY_S"
+	done
+
+	return 1
+}
+
+periodic_check_if_due() {
+	local now last_check phase
+
+	phase="$(state_value phase)"
+	case "$phase" in
+		checking|downloading|verifying|ready|flashing) return 0 ;;
+	esac
+
+	now="$(date +%s)"
+	last_check="$(numeric_or_zero "$(state_value last_check_at)")"
+	if [ "$last_check" -eq 0 ] || [ "$now" -lt "$last_check" ] || [ $((now - last_check)) -ge "$CHECK_INTERVAL_S" ]; then
+		execute_check || true
+	fi
+}
+
+run_daemon() {
+	load_daemon_settings
+	sleep "$DAEMON_INITIAL_DELAY_S"
+	boot_check_with_retry || true
+
+	while true; do
+		load_daemon_settings
+		periodic_check_if_due
+		sleep "$DAEMON_TICK_S"
+	done
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	check)
+		perform_check
+		;;
+	prepare)
+		perform_prepare_online
+		;;
+	validate-upload)
+		perform_validate_upload "${2:-firmware.bin}"
+		;;
+	install)
+		perform_install "${2:-1}"
+		;;
+	clean)
+		perform_clean
+		;;
+	daemon)
+		run_daemon
+		;;
+	*)
+		echo "usage: $0 {check|prepare|validate-upload [filename]|install {0|1}|clean|daemon}" >&2
+		exit 2
+		;;
+esac

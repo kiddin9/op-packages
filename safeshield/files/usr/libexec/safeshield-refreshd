@@ -1,0 +1,258 @@
+#!/bin/sh
+# shellcheck shell=ash
+
+# Variables below are populated by sourced helpers and ss_load_config()
+# shellcheck disable=SC2154
+
+LC_ALL=C
+IPKG_INSTROOT="${IPKG_INSTROOT:-}"
+export IPKG_INSTROOT
+
+# shellcheck disable=SC1091
+. /lib/functions.sh
+# shellcheck disable=SC1091
+. /usr/lib/safeshield/core.sh
+
+readonly SS_REFRESHD_LOCK='/var/lock/safeshield-refreshd.lock'
+readonly SS_REFRESHD_LOCK_FD=308
+
+ss_should_terminate=0
+ss_sleep_pid=''
+
+refreshd_lock() {
+	mkdir -p "${SS_REFRESHD_LOCK%/*}" || return 1
+	eval "exec ${SS_REFRESHD_LOCK_FD}>\"${SS_REFRESHD_LOCK}\"" || return 1
+	flock -n "${SS_REFRESHD_LOCK_FD}" || return 1
+}
+
+refreshd_unlock() {
+	flock -u "${SS_REFRESHD_LOCK_FD}" 2>/dev/null || true
+	eval "exec ${SS_REFRESHD_LOCK_FD}>&-" 2>/dev/null || true
+}
+
+handle_term() {
+	ss_should_terminate=1
+	if [ -n "$ss_sleep_pid" ]; then
+		kill "$ss_sleep_pid" 2>/dev/null || true
+	fi
+}
+
+sleep_seconds() {
+	local seconds="$1"
+	local rc=0
+
+	[ "$ss_should_terminate" -eq 1 ] && return 1
+	[ "$seconds" -gt 0 ] 2>/dev/null || return 0
+
+	sleep "$seconds" &
+	ss_sleep_pid=$!
+	wait "$ss_sleep_pid" 2>/dev/null || rc=$?
+	ss_sleep_pid=''
+
+	[ "$ss_should_terminate" -eq 1 ] && return 1
+	[ "$rc" -eq 0 ]
+}
+
+wait_for_wan_if_needed() {
+	local require_wan
+
+	require_wan="$(ss_config_get config require_wan 1)"
+
+	case "$require_wan" in
+		1)
+			ubus -t 30 wait_for network.interface.wan 2>/dev/null || true
+			;;
+	esac
+}
+
+status_epoch() {
+	local key="$1"
+	local value
+
+	value="$(json get "$key" 2>/dev/null)"
+	is_valid_integer "$value" || value=0
+	printf '%s\n' "$value"
+}
+
+schedule_base_epoch() {
+	local now="$1"
+	local last_success last_attempt base=0
+
+	last_success="$(status_epoch last_success)"
+	last_attempt="$(status_epoch last_attempt)"
+
+	if [ "$last_success" -gt 0 ] 2>/dev/null && [ "$last_success" -le "$now" ] 2>/dev/null; then
+		base="$last_success"
+	fi
+
+	# A failed or currently-running refresh must also move the retry window
+	# forward so refreshd cannot enter an immediate retry loop. A successful
+	# refresh is naturally newer than its attempt timestamp and wins here.
+	if [ "$last_attempt" -gt "$base" ] 2>/dev/null && [ "$last_attempt" -le "$now" ] 2>/dev/null; then
+		base="$last_attempt"
+	fi
+
+	printf '%s\n' "$base"
+}
+
+has_recent_success() {
+	local interval="$1"
+	local now last_success age
+
+	now="$(date +%s)"
+	last_success="$(status_epoch last_success)"
+
+	[ "$last_success" -gt 0 ] 2>/dev/null || return 1
+	[ "$last_success" -le "$now" ] 2>/dev/null || return 1
+
+	age=$((now - last_success))
+	[ "$age" -lt "$interval" ] 2>/dev/null
+}
+
+set_next_refresh_epoch() {
+	local epoch="$1"
+
+	is_valid_integer "$epoch" || epoch=0
+	ss_status_set next_refresh_at "$epoch"
+}
+
+clear_next_refresh_at() {
+	ss_status_set next_refresh_at "0"
+}
+
+wait_until_refresh_due() {
+	local interval="$1"
+	local fallback_epoch="$2"
+	local now base due remaining
+
+	while :; do
+		[ "$ss_should_terminate" -eq 1 ] && return 1
+
+		now="$(date +%s)"
+		base="$(schedule_base_epoch "$now")"
+		if [ "$base" -le 0 ] 2>/dev/null; then
+			base="$fallback_epoch"
+		fi
+
+		due=$((base + interval))
+		remaining=$((due - now))
+
+		if [ "$remaining" -le 0 ] 2>/dev/null; then
+			clear_next_refresh_at
+			return 0
+		fi
+
+		set_next_refresh_epoch "$due"
+		sleep_seconds "$remaining" || return 1
+
+		# A manual refresh may have completed while refreshd was sleeping.
+		# Recalculate from the latest last_success/last_attempt before running.
+	done
+}
+
+main() {
+	local interval
+	local boot_delay
+	local refresh_on_boot
+	local schedule_anchor
+
+	refreshd_lock || exit 0
+
+	ss_load_config || exit 1
+	if [ ! -s "${RUNNING_STATUS_FILE}" ]; then
+		ss_status_reset || true
+	fi
+	ss_sync_blocklist_status
+	ss_status_set status "idle"
+	ss_status_set stage "starting"
+
+	interval="$(ss_config_get config refresh_interval_s 28800)"
+	boot_delay="$(ss_config_get config boot_start_delay_s 30)"
+	refresh_on_boot="$(ss_config_get config refresh_on_boot 1)"
+
+	is_valid_integer "$interval" || interval=28800
+	[ "$interval" -gt 0 ] 2>/dev/null || interval=28800
+
+	is_valid_integer "$boot_delay" || boot_delay=30
+
+	wait_for_wan_if_needed
+	ss_status_set stage "boot_delay"
+	set_next_refresh_epoch "$(($(date +%s) + boot_delay))"
+	sleep_seconds "$boot_delay" || exit 0
+
+	if [ "$refresh_on_boot" = "1" ] && [ "${ss_enabled}" = "1" ]; then
+		if has_recent_success "$interval"; then
+			log_info "Skipping boot refresh because a recent refresh already succeeded"
+			ss_status_set status "idle"
+			ss_status_set stage "boot_refresh_skipped"
+		else
+			ss_status_set status "running"
+			ss_status_set stage "boot_refresh"
+			clear_next_refresh_at
+			safeshield_force_download
+		fi
+	fi
+
+	schedule_anchor="$(date +%s)"
+
+	while :; do
+		ss_load_config || {
+			schedule_anchor="$(date +%s)"
+			sleep_seconds 5 || break
+			continue
+		}
+
+		interval="$(ss_config_get config refresh_interval_s 28800)"
+		is_valid_integer "$interval" || interval=28800
+		[ "$interval" -gt 0 ] 2>/dev/null || interval=28800
+
+		if [ "${ss_enabled}" != "1" ]; then
+			ss_status_set status "disabled"
+			ss_status_set stage "disabled"
+			clear_next_refresh_at
+			sleep_seconds "$interval" || break
+			schedule_anchor="$(date +%s)"
+			continue
+		fi
+
+		ss_status_set status "idle"
+		ss_status_set stage "scheduled_wait"
+		wait_until_refresh_due "$interval" "$schedule_anchor" || break
+
+		ss_load_config || {
+			schedule_anchor="$(date +%s)"
+			continue
+		}
+
+		if [ "${ss_enabled}" != "1" ]; then
+			ss_status_set status "disabled"
+			ss_status_set stage "disabled"
+			clear_next_refresh_at
+			schedule_anchor="$(date +%s)"
+			continue
+		fi
+
+		wait_for_wan_if_needed || true
+
+		ss_status_set status "running"
+		ss_status_set stage "scheduled_refresh"
+		clear_next_refresh_at
+		safeshield_force_download
+		schedule_anchor="$(date +%s)"
+	done
+
+	ss_load_config >/dev/null 2>&1 || true
+	if [ "${ss_enabled:-0}" = "1" ]; then
+		ss_status_set status "idle"
+		ss_status_set stage "stopped"
+	else
+		ss_status_set status "disabled"
+		ss_status_set stage "disabled"
+	fi
+	clear_next_refresh_at
+}
+
+trap "handle_term" TERM INT
+trap "refreshd_unlock; clear_next_refresh_at" EXIT
+
+main "$@"

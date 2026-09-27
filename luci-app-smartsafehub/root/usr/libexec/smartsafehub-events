@@ -1,0 +1,649 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+umask 077
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME_DIR="${SMARTSAFEHUB_EVENTS_RUNTIME_DIR:-/tmp/smartsafehub}"
+EVENTS_FILE="${SMARTSAFEHUB_EVENTS_FILE:-$RUNTIME_DIR/events.jsonl}"
+HISTORY_FILE="${SMARTSAFEHUB_EVENTS_HISTORY_FILE:-$RUNTIME_DIR/activity-history.jsonl}"
+LOCK_DIR="${SMARTSAFEHUB_EVENTS_LOCK_DIR:-$RUNTIME_DIR/events.lock}"
+SEQ_FILE="${SMARTSAFEHUB_EVENTS_SEQ_FILE:-$RUNTIME_DIR/events.seq}"
+BOOT_MARKER_FILE="${SMARTSAFEHUB_EVENTS_BOOT_MARKER_FILE:-$RUNTIME_DIR/events.boot-id}"
+BOOT_ID_FILE="${SMARTSAFEHUB_EVENTS_BOOT_ID_FILE:-/proc/sys/kernel/random/boot_id}"
+JSONFILTER_BIN="${SMARTSAFEHUB_EVENTS_JSONFILTER_BIN:-jsonfilter}"
+UCI_BIN="${SMARTSAFEHUB_EVENTS_UCI_BIN:-uci}"
+DATE_BIN="${SMARTSAFEHUB_EVENTS_DATE_BIN:-date}"
+LOGGER_BIN="${SMARTSAFEHUB_EVENTS_LOGGER_BIN:-logger}"
+LOCK_SLEEP_BIN="${SMARTSAFEHUB_EVENTS_LOCK_SLEEP_BIN:-sleep}"
+LOCK_RETRY_COUNT="${SMARTSAFEHUB_EVENTS_LOCK_RETRY_COUNT:-40}"
+LOCK_RETRY_DELAY_S="${SMARTSAFEHUB_EVENTS_LOCK_RETRY_DELAY_S:-0.05}"
+MAX_EVENTS="${SMARTSAFEHUB_EVENTS_MAX_EVENTS:-128}"
+MAX_METADATA_BYTES="${SMARTSAFEHUB_EVENTS_MAX_METADATA_BYTES:-4096}"
+ACTIVITY_SYNC_WAKE_FILE="${SMARTSAFEHUB_ACTIVITY_SYNC_WAKE_FILE:-$RUNTIME_DIR/activity-sync.wake}"
+
+# SafeShield blocklist refresh is asynchronous, so the event subsystem keeps a
+# narrow observer for terminal refresh timestamps. Keep the existing state file
+# name so r12 upgrades do not replay a result already observed by the former
+# standalone smartsafehub-safeshield-events daemon.
+SAFESHIELD_STATE_FILE="${SMARTSAFEHUB_EVENTS_SAFESHIELD_STATE_FILE:-$RUNTIME_DIR/safeshield-events.state}"
+SAFESHIELD_LOCK_DIR="${SMARTSAFEHUB_EVENTS_SAFESHIELD_LOCK_DIR:-$RUNTIME_DIR/safeshield-events.lock}"
+SAFESHIELD_UBUS_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_UBUS_BIN:-ubus}"
+SAFESHIELD_JSONFILTER_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_JSONFILTER_BIN:-$JSONFILTER_BIN}"
+SAFESHIELD_DATE_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_DATE_BIN:-$DATE_BIN}"
+SAFESHIELD_SLEEP_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_SLEEP_BIN:-sleep}"
+SAFESHIELD_POLL_INTERVAL_S="${SMARTSAFEHUB_EVENTS_SAFESHIELD_POLL_INTERVAL_S:-60}"
+SAFESHIELD_WATCH_INTERVAL_S="${SMARTSAFEHUB_EVENTS_SAFESHIELD_WATCH_INTERVAL_S:-1}"
+SAFESHIELD_WATCH_TIMEOUT_S="${SMARTSAFEHUB_EVENTS_SAFESHIELD_WATCH_TIMEOUT_S:-180}"
+
+STOP_REQUESTED=0
+WAIT_PID=''
+
+log_message() {
+	"$LOGGER_BIN" -t smartsafehub-events -- "$*" 2>/dev/null || true
+}
+
+cloud_sync_enabled() {
+	local value
+	if [ -n "${SMARTSAFEHUB_ACTIVITY_CLOUD_SYNC_ENABLED:-}" ]; then
+		value="$SMARTSAFEHUB_ACTIVITY_CLOUD_SYNC_ENABLED"
+	else
+		value="$("$UCI_BIN" -q get smartsafehub.activity.cloud_sync_enabled 2>/dev/null || true)"
+	fi
+	case "$value" in
+		0|false|off|no) return 1 ;;
+		1|true|on|yes|'') return 0 ;;
+		*) return 0 ;;
+	esac
+}
+
+sanitize_token() {
+	printf '%s' "$1" | tr -cd 'A-Za-z0-9_.:-' | cut -c 1-120
+}
+
+now_epoch() {
+	local value
+	value="$("$DATE_BIN" +%s 2>/dev/null || true)"
+	case "$value" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	printf '%s' "$value"
+}
+
+normalized_limit() {
+	case "$MAX_EVENTS" in
+		''|*[!0-9]*) MAX_EVENTS=128 ;;
+	esac
+	if [ "$MAX_EVENTS" -lt 8 ] 2>/dev/null || [ "$MAX_EVENTS" -gt 1024 ] 2>/dev/null; then
+		MAX_EVENTS=128
+	fi
+	case "$MAX_METADATA_BYTES" in
+		''|*[!0-9]*) MAX_METADATA_BYTES=4096 ;;
+	esac
+	if [ "$MAX_METADATA_BYTES" -lt 256 ] 2>/dev/null || [ "$MAX_METADATA_BYTES" -gt 16384 ] 2>/dev/null; then
+		MAX_METADATA_BYTES=4096
+	fi
+}
+
+lock_owner_pid() {
+	local lock_dir="$1" owner
+	owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+	case "$owner" in
+		''|*[!0-9]*) printf '%s' '' ;;
+		*) printf '%s' "$owner" ;;
+	esac
+}
+
+try_acquire_dir_lock() {
+	local lock_dir="$1"
+	if ! mkdir "$lock_dir" 2>/dev/null; then
+		return 1
+	fi
+
+	# mkdir() is the lock acquisition. A contender may observe the directory
+	# before this pid file is written, so a missing owner must be treated as
+	# "initializing/busy", never as stale.
+	if ! printf '%s\n' "$$" > "$lock_dir/pid" 2>/dev/null; then
+		rm -rf "$lock_dir" 2>/dev/null || true
+		return 1
+	fi
+	return 0
+}
+
+reclaim_stale_dir_lock() {
+	local lock_dir="$1" reclaim_dir="$2" allow_pidless="${3:-0}" owner
+	[ -d "$lock_dir" ] || return 0
+	mkdir "$reclaim_dir" 2>/dev/null || return 1
+
+	owner="$(lock_owner_pid "$lock_dir")"
+	if [ -n "$owner" ]; then
+		if ! kill -0 "$owner" 2>/dev/null; then
+			rm -rf "$lock_dir" 2>/dev/null || true
+		fi
+	elif [ "$allow_pidless" = '1' ]; then
+		# A pid-less lock is only reclaimed after the full bounded wait. This
+		# closes the mkdir -> pid write race while still recovering from a process
+		# killed in that tiny initialization window.
+		rm -rf "$lock_dir" 2>/dev/null || true
+	fi
+
+	rm -rf "$reclaim_dir" 2>/dev/null || true
+	return 0
+}
+
+acquire_dir_lock() {
+	local lock_dir="$1" reclaim_dir="$2" attempts=0 max_attempts delay owner
+	max_attempts="$LOCK_RETRY_COUNT"
+	case "$max_attempts" in ''|*[!0-9]*) max_attempts=40 ;; esac
+	if [ "$max_attempts" -lt 1 ] 2>/dev/null || [ "$max_attempts" -gt 200 ] 2>/dev/null; then
+		max_attempts=40
+	fi
+	delay="$LOCK_RETRY_DELAY_S"
+	[ -n "$delay" ] || delay='0.05'
+
+	while [ "$attempts" -lt "$max_attempts" ]; do
+		try_acquire_dir_lock "$lock_dir" && return 0
+		owner="$(lock_owner_pid "$lock_dir")"
+		if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null; then
+			reclaim_stale_dir_lock "$lock_dir" "$reclaim_dir" 0 || true
+		fi
+		attempts=$((attempts + 1))
+		[ "$attempts" -lt "$max_attempts" ] || break
+		"$LOCK_SLEEP_BIN" "$delay" 2>/dev/null || true
+	done
+
+	# If the creator died after mkdir() but before writing pid, only reclaim it
+	# after waiting the complete bounded interval. A live owner has had ample
+	# time to publish its pid by this point.
+	reclaim_stale_dir_lock "$lock_dir" "$reclaim_dir" 1 || true
+	try_acquire_dir_lock "$lock_dir" && return 0
+	return 1
+}
+
+release_dir_lock() {
+	local lock_dir="$1" owner
+	owner="$(lock_owner_pid "$lock_dir")"
+	[ "$owner" = "$$" ] || return 0
+	rm -rf "$lock_dir" 2>/dev/null || true
+}
+
+acquire_lock() {
+	if acquire_dir_lock "$LOCK_DIR" "${LOCK_DIR}.reclaim"; then
+		return 0
+	fi
+	log_message "event store lock remained busy after bounded wait"
+	return 1
+}
+
+release_lock() {
+	release_dir_lock "$LOCK_DIR"
+}
+
+metadata_is_valid() {
+	local metadata="$1" file size compact
+	size="$(printf '%s' "$metadata" | wc -c | tr -d '[:space:]')"
+	case "$size" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	[ "$size" -le "$MAX_METADATA_BYTES" ] || return 1
+
+	compact="$(printf '%s' "$metadata" | tr -d '[:space:]')"
+	case "$compact" in
+		\{*\}) ;;
+		*) return 1 ;;
+	esac
+
+	file="$RUNTIME_DIR/events-metadata.$$.json"
+	printf '%s\n' "$metadata" > "$file" || return 1
+	if ! "$JSONFILTER_BIN" -i "$file" -e '@' >/dev/null 2>&1; then
+		rm -f "$file"
+		return 1
+	fi
+	rm -f "$file"
+	return 0
+}
+
+next_sequence() {
+	local value
+	value="$(cat "$SEQ_FILE" 2>/dev/null || true)"
+	case "$value" in
+		''|*[!0-9]*) value=0 ;;
+	esac
+	value=$((value + 1))
+	printf '%s\n' "$value" > "$SEQ_FILE"
+	printf '%s' "$value"
+}
+
+boot_id() {
+	local value
+	value="$(cat "$BOOT_ID_FILE" 2>/dev/null || true)"
+	value="$(printf '%s' "$value" | tr -cd 'A-Za-z0-9-')"
+	[ -n "$value" ] || value='unknown'
+	printf '%s' "$value"
+}
+
+append_bounded_event() {
+	local file="$1" event_json="$2" keep_count="$3" tmp
+	tmp="${file}.tmp.$$"
+
+	if [ -s "$file" ] && [ "$keep_count" -gt 0 ]; then
+		tail -n "$keep_count" "$file" > "$tmp" 2>/dev/null || : > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	printf '%s\n' "$event_json" >> "$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	mv "$tmp" "$file"
+}
+
+seed_history_from_outbox() {
+	local keep_count="$1" tmp
+
+	# r8 only had the Cloud outbox. On the first r9 event, preserve those
+	# already-collected records in the dedicated local history before the new
+	# event is appended. A history file that already exists is authoritative.
+	[ ! -e "$HISTORY_FILE" ] || return 0
+	[ -s "$EVENTS_FILE" ] || return 0
+
+	tmp="${HISTORY_FILE}.tmp.$$"
+	if [ "$keep_count" -gt 0 ]; then
+		tail -n "$keep_count" "$EVENTS_FILE" > "$tmp" 2>/dev/null || : > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	mv "$tmp" "$HISTORY_FILE"
+}
+
+emit_event() {
+	local source event_type severity metadata occurred_at sequence current_boot event_id event_json keep_count
+	source="$(sanitize_token "${1:-}")"
+	event_type="$(sanitize_token "${2:-}")"
+	severity="${3:-}"
+	metadata="${4:-}"
+	[ -n "$metadata" ] || metadata='{}'
+	occurred_at="${5:-}"
+
+	[ -n "$source" ] && [ -n "$event_type" ] || return 2
+	case "$severity" in
+		info|success|warning|error) ;;
+		*) return 2 ;;
+	esac
+	case "$occurred_at" in
+		'') occurred_at="$(now_epoch)" || return 1 ;;
+		*[!0-9]*) return 2 ;;
+	esac
+	[ "$occurred_at" -gt 0 ] 2>/dev/null || return 2
+
+	mkdir -p "$RUNTIME_DIR" || return 1
+	normalized_limit
+	metadata_is_valid "$metadata" || return 2
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+
+	sequence="$(next_sequence)"
+	current_boot="$(boot_id)"
+	event_id="${current_boot}-${occurred_at}-${sequence}"
+	keep_count=$((MAX_EVENTS - 1))
+	event_json="$(printf '{"schema":1,"event_id":"%s","event_type":"%s","severity":"%s","occurred_at":%s,"device_uuid":null,"source":"%s","metadata":%s}' \
+		"$(json_escape "$event_id")" \
+		"$(json_escape "$event_type")" \
+		"$severity" \
+		"$occurred_at" \
+		"$(json_escape "$source")" \
+		"$metadata")"
+
+	seed_history_from_outbox "$keep_count" || return 1
+	append_bounded_event "$HISTORY_FILE" "$event_json" "$keep_count" || return 1
+	if cloud_sync_enabled; then
+		append_bounded_event "$EVENTS_FILE" "$event_json" "$keep_count" || return 1
+		: > "$ACTIVITY_SYNC_WAKE_FILE" 2>/dev/null || true
+	else
+		: > "${EVENTS_FILE}.tmp.$$" || return 1
+		mv "${EVENTS_FILE}.tmp.$$" "$EVENTS_FILE" || return 1
+		rm -f "$ACTIVITY_SYNC_WAKE_FILE" 2>/dev/null || true
+	fi
+
+	release_lock
+	trap - EXIT INT TERM
+	printf '%s\n' "$event_id"
+}
+
+list_event_file() {
+	local file="$1" first=1 line
+	printf '{"schema":1,"events":['
+	if [ -s "$file" ]; then
+		while IFS= read -r line || [ -n "$line" ]; do
+			[ -n "$line" ] || continue
+			if [ "$first" -eq 0 ]; then
+				printf ','
+			fi
+			printf '%s' "$line"
+			first=0
+		done < "$file"
+	fi
+	printf ']}\n'
+}
+
+list_events() {
+	list_event_file "$EVENTS_FILE"
+}
+
+list_history() {
+	if [ -s "$HISTORY_FILE" ]; then
+		list_event_file "$HISTORY_FILE"
+	else
+		# Preserve locally collected r8 events across the r8 -> r9 upgrade until
+		# the first new event creates the dedicated history file.
+		list_event_file "$EVENTS_FILE"
+	fi
+}
+
+ack_event() {
+	local event_id tmp needle
+	event_id="$(printf '%s' "${1:-}" | tr -cd 'A-Za-z0-9._:-')"
+	[ -n "$event_id" ] || return 2
+	[ -f "$EVENTS_FILE" ] || return 0
+
+	mkdir -p "$RUNTIME_DIR" || return 1
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	tmp="${EVENTS_FILE}.tmp.$$"
+	needle="\"event_id\":\"$event_id\""
+	awk -v needle="$needle" 'index($0, needle) == 0 { print }' "$EVENTS_FILE" > "$tmp"
+	mv "$tmp" "$EVENTS_FILE"
+	release_lock
+	trap - EXIT INT TERM
+}
+
+clear_outbox() {
+	mkdir -p "$RUNTIME_DIR" || return 1
+	acquire_lock || return 75
+	trap release_lock EXIT INT TERM
+	: > "${EVENTS_FILE}.tmp.$$" || return 1
+	mv "${EVENTS_FILE}.tmp.$$" "$EVENTS_FILE" || return 1
+	rm -f "$ACTIVITY_SYNC_WAKE_FILE" 2>/dev/null || true
+	release_lock
+	trap - EXIT INT TERM
+}
+
+record_boot() {
+	local current previous metadata
+	mkdir -p "$RUNTIME_DIR" || return 1
+	current="$(boot_id)"
+	previous="$(cat "$BOOT_MARKER_FILE" 2>/dev/null || true)"
+	[ "$current" != "$previous" ] || return 0
+	metadata="{\"boot_id\":\"$(json_escape "$current")\"}"
+	emit_event system system.booted info "$metadata" >/dev/null || return $?
+	printf '%s\n' "$current" > "${BOOT_MARKER_FILE}.tmp.$$"
+	mv "${BOOT_MARKER_FILE}.tmp.$$" "$BOOT_MARKER_FILE"
+	log_message "recorded boot event for $current"
+}
+
+normalized_integer() {
+	local value="$1" fallback="$2" minimum="$3" maximum="$4"
+	case "$value" in ''|*[!0-9]*) value="$fallback" ;; esac
+	if [ "$value" -lt "$minimum" ] 2>/dev/null || [ "$value" -gt "$maximum" ] 2>/dev/null; then
+		value="$fallback"
+	fi
+	printf '%s' "$value"
+}
+
+safeshield_json_value() {
+	local file="$1" expression="$2"
+	[ -s "$file" ] || return 0
+	"$SAFESHIELD_JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+
+safeshield_number_value() {
+	case "$1" in ''|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac
+}
+
+safeshield_json_string_or_null() {
+	if [ -n "$1" ]; then printf '"%s"' "$(json_escape "$1")"; else printf 'null'; fi
+}
+
+safeshield_state_value() {
+	local key="$1"
+	[ -f "$SAFESHIELD_STATE_FILE" ] || return 0
+	awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$SAFESHIELD_STATE_FILE" 2>/dev/null || true
+}
+
+safeshield_acquire_lock() {
+	acquire_dir_lock "$SAFESHIELD_LOCK_DIR" "${SAFESHIELD_LOCK_DIR}.reclaim"
+}
+
+safeshield_release_lock() {
+	release_dir_lock "$SAFESHIELD_LOCK_DIR"
+}
+
+safeshield_write_state() {
+	local last_success="$1" last_failure="$2" tmp
+	tmp="${SAFESHIELD_STATE_FILE}.tmp.$$"
+	{
+		printf 'version\t1\n'
+		printf 'last_success\t%s\n' "$last_success"
+		printf 'last_failure\t%s\n' "$last_failure"
+	} > "$tmp"
+	mv "$tmp" "$SAFESHIELD_STATE_FILE"
+}
+
+safeshield_status_snapshot() {
+	local status_file success failure version count error
+	status_file="$RUNTIME_DIR/safeshield-event-status.$$.json"
+	rm -f "$status_file"
+	if ! "$SAFESHIELD_UBUS_BIN" call safeshield status > "$status_file" 2>/dev/null; then
+		rm -f "$status_file"
+		return 1
+	fi
+
+	success="$(safeshield_number_value "$(safeshield_json_value "$status_file" '@.timestamps.last_success')")"
+	failure="$(safeshield_number_value "$(safeshield_json_value "$status_file" '@.timestamps.last_failure')")"
+	version="$(safeshield_json_value "$status_file" '@.artifact.version')"
+	count="$(safeshield_number_value "$(safeshield_json_value "$status_file" '@.artifact.unique_domains')")"
+	[ "$count" -gt 0 ] 2>/dev/null || count="$(safeshield_number_value "$(safeshield_json_value "$status_file" '@.blocklist.valid_line_count')")"
+	error="$(safeshield_json_value "$status_file" '@.runtime.last_error_code')"
+	rm -f "$status_file"
+	printf '%s\t%s\t%s\t%s\t%s\n' "$success" "$failure" "$version" "$count" "$error"
+}
+
+safeshield_record_result() {
+	local kind="$1" occurred_at="$2" artifact_version="$3" domain_count="$4" error_code="$5"
+	local previous_success previous_failure current_success current_failure metadata
+	[ "$occurred_at" -gt 0 ] 2>/dev/null || return 0
+	safeshield_acquire_lock || return 75
+	previous_success="$(safeshield_number_value "$(safeshield_state_value last_success)")"
+	previous_failure="$(safeshield_number_value "$(safeshield_state_value last_failure)")"
+	current_success="$previous_success"
+	current_failure="$previous_failure"
+
+	case "$kind" in
+		success)
+			if [ "$occurred_at" -le "$previous_success" ] 2>/dev/null; then
+				safeshield_release_lock
+				return 0
+			fi
+			metadata="{\"artifact_version\":$(safeshield_json_string_or_null "$artifact_version"),\"domain_count\":$domain_count,\"origin\":\"observer\"}"
+			if ! "$0" emit-quiet safeshield safeshield.blocklist.updated success "$metadata" "$occurred_at" >/dev/null 2>&1; then
+				safeshield_release_lock
+				return 1
+			fi
+			current_success="$occurred_at"
+			;;
+		failure)
+			if [ "$occurred_at" -le "$previous_failure" ] 2>/dev/null; then
+				safeshield_release_lock
+				return 0
+			fi
+			metadata="{\"error_code\":$(safeshield_json_string_or_null "$error_code"),\"origin\":\"observer\"}"
+			if ! "$0" emit-quiet safeshield safeshield.blocklist.update_failed error "$metadata" "$occurred_at" >/dev/null 2>&1; then
+				safeshield_release_lock
+				return 1
+			fi
+			current_failure="$occurred_at"
+			;;
+		*)
+			safeshield_release_lock
+			return 2
+			;;
+	esac
+	safeshield_write_state "$current_success" "$current_failure"
+	safeshield_release_lock
+}
+
+safeshield_observe_once() {
+	local snapshot success failure version count error previous_success previous_failure
+	snapshot="$(safeshield_status_snapshot 2>/dev/null || true)"
+	[ -n "$snapshot" ] || return 1
+	IFS="$(printf '\t')" read -r success failure version count error <<EOF_SNAPSHOT
+$snapshot
+EOF_SNAPSHOT
+	previous_success="$(safeshield_number_value "$(safeshield_state_value last_success)")"
+	previous_failure="$(safeshield_number_value "$(safeshield_state_value last_failure)")"
+
+	if [ ! -f "$SAFESHIELD_STATE_FILE" ]; then
+		safeshield_acquire_lock || return 0
+		safeshield_write_state "$success" "$failure"
+		safeshield_release_lock
+		return 0
+	fi
+	[ "$success" -le "$previous_success" ] 2>/dev/null || safeshield_record_result success "$success" "$version" "$count" "$error"
+	[ "$failure" -le "$previous_failure" ] 2>/dev/null || safeshield_record_result failure "$failure" "$version" "$count" "$error"
+}
+
+safeshield_watch_refresh() {
+	local baseline_success baseline_failure requested_at deadline now snapshot success failure version count error
+	baseline_success="$(safeshield_number_value "${1:-0}")"
+	baseline_failure="$(safeshield_number_value "${2:-0}")"
+	requested_at="$(safeshield_number_value "${3:-0}")"
+	now="$(safeshield_number_value "$("$SAFESHIELD_DATE_BIN" +%s 2>/dev/null || true)")"
+	[ "$requested_at" -gt 0 ] 2>/dev/null || requested_at="$now"
+	deadline=$((now + $(normalized_integer "$SAFESHIELD_WATCH_TIMEOUT_S" 180 30 600)))
+
+	while [ "$STOP_REQUESTED" -eq 0 ]; do
+		snapshot="$(safeshield_status_snapshot 2>/dev/null || true)"
+		if [ -n "$snapshot" ]; then
+			IFS="$(printf '\t')" read -r success failure version count error <<EOF_SNAPSHOT
+$snapshot
+EOF_SNAPSHOT
+			if [ "$success" -gt "$baseline_success" ] 2>/dev/null && [ "$success" -ge "$requested_at" ] 2>/dev/null; then
+				safeshield_record_result success "$success" "$version" "$count" "$error"
+				return 0
+			fi
+			if [ "$failure" -gt "$baseline_failure" ] 2>/dev/null && [ "$failure" -ge "$requested_at" ] 2>/dev/null; then
+				safeshield_record_result failure "$failure" "$version" "$count" "$error"
+				return 0
+			fi
+		fi
+		now="$(safeshield_number_value "$("$SAFESHIELD_DATE_BIN" +%s 2>/dev/null || true)")"
+		[ "$now" -lt "$deadline" ] 2>/dev/null || break
+		"$SAFESHIELD_SLEEP_BIN" "$(normalized_integer "$SAFESHIELD_WATCH_INTERVAL_S" 1 1 10)"
+	done
+	log_message 'SafeShield refresh result watch timed out without a terminal timestamp change.'
+	return 0
+}
+
+safeshield_watch_refresh_detached() {
+	local success="$1" failure="$2" requested="$3"
+	(
+		trap - INT TERM
+		"$0" watch-refresh "$success" "$failure" "$requested" >/dev/null 2>&1
+	) </dev/null >/dev/null 2>&1 &
+}
+
+request_stop() {
+	STOP_REQUESTED=1
+	[ -z "$WAIT_PID" ] || kill "$WAIT_PID" 2>/dev/null || true
+}
+
+interruptible_sleep() {
+	local duration="$1"
+	"$SAFESHIELD_SLEEP_BIN" "$duration" &
+	WAIT_PID=$!
+	wait "$WAIT_PID" 2>/dev/null || true
+	WAIT_PID=''
+	[ "$STOP_REQUESTED" -eq 0 ]
+}
+
+events_daemon_loop() {
+	local interval
+	STOP_REQUESTED=0
+	trap request_stop INT TERM
+	safeshield_observe_once || true
+	interval="$(normalized_integer "$SAFESHIELD_POLL_INTERVAL_S" 60 15 3600)"
+	while [ "$STOP_REQUESTED" -eq 0 ]; do
+		interruptible_sleep "$interval" || break
+		safeshield_observe_once || true
+	done
+	trap - INT TERM
+}
+
+usage() {
+	cat <<'EOF_USAGE'
+Usage: smartsafehub-events <command>
+
+Commands:
+  emit SOURCE EVENT_TYPE SEVERITY [METADATA_JSON] [OCCURRED_AT]
+  emit-quiet SOURCE EVENT_TYPE SEVERITY [METADATA_JSON] [OCCURRED_AT]
+  list
+  history
+  ack EVENT_ID
+  clear-outbox
+  boot
+  daemon
+  observe-once
+  watch-refresh BASE_SUCCESS BASE_FAILURE REQUESTED_AT
+  watch-refresh-detached BASE_SUCCESS BASE_FAILURE REQUESTED_AT
+EOF_USAGE
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	emit)
+		shift
+		emit_event "$@"
+		;;
+	emit-quiet)
+		shift
+		emit_event "$@" >/dev/null
+		;;
+	list)
+		list_events
+		;;
+	history)
+		list_history
+		;;
+	ack)
+		shift
+		ack_event "$@"
+		;;
+	clear-outbox)
+		clear_outbox
+		;;
+	boot)
+		record_boot
+		;;
+	daemon)
+		events_daemon_loop
+		;;
+	observe-once)
+		safeshield_observe_once
+		;;
+	watch-refresh)
+		shift
+		safeshield_watch_refresh "$@"
+		;;
+	watch-refresh-detached)
+		shift
+		safeshield_watch_refresh_detached "$@"
+		;;
+	*)
+		usage >&2
+		exit 2
+		;;
+esac

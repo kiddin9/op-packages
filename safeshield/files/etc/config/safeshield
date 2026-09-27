@@ -1,0 +1,47 @@
+config safeshield 'config'
+	option enabled '1'
+	option verbosity '2'
+
+	# Device identity / profile
+	option device_vendor ''
+	option device_model ''
+	option device_arch ''
+	option device_memory_mb ''
+
+	# Local overrides
+	option apply_local_overrides '1'
+
+	# Artifact validation / installation
+	option max_blocklist_file_size_kb '30000'
+	option min_valid_line_count '3000'
+	option compress_blocklist '0'
+	option initial_dnsmasq_restart '0'
+	option dnsmasq_sanity_check '1'
+
+	# Local statistics (runtime state in RAM; supported profiles also persist aggregates)
+	option statistics_enabled '1'
+	option statistics_snapshot_interval_s '60'
+	option statistics_retention_hours '168'
+
+	# Download / refresh runtime
+	option download_timeout '10'
+	option download_retry '3'
+	option pause_timeout '20'
+	option boot_start_delay_s '30'
+	option refresh_on_boot '1'
+	option refresh_interval_s '28800'
+	option require_wan '1'
+	option debug '0'
+
+config identity 'identity'
+	option physical_fingerprint ''
+	option fingerprint_version '1'
+	option identity_provider ''
+	option identity_source ''
+	option identity_strength ''
+	option identity_profile ''
+	option device_code ''
+	option device_code_source ''
+	option installation_id ''
+	option created_at ''
+	option updated_at ''

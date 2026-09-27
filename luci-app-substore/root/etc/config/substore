@@ -1,0 +1,2 @@
+# LuCI configuration for luci-app-substore
+# 订阅元数据、定时更新与规则均已迁移至 /etc/substore/subscriptions.json（按订阅配置），此处不再使用 UCI。

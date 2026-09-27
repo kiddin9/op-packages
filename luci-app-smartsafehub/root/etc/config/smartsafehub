@@ -1,0 +1,38 @@
+config updates 'updates'
+	option check_enabled '1'
+	option check_interval_s '21600'
+	option auto_install_time '03:00'
+	option repository_host 'repo.smartsafehub.com'
+
+config firmware 'firmware'
+	option check_interval_s '21600'
+	option api_base_url 'https://www.smartsafehub.com/api/v1'
+
+config maintenance 'maintenance'
+	option scheduled_reboot_enabled '0'
+	option scheduled_reboot_frequency 'weekly'
+	option scheduled_reboot_day 'sun'
+	option scheduled_reboot_time '04:00'
+
+config license 'license'
+	option check_interval_s '300'
+	option startup_delay_s '30'
+	option api_base_url 'https://www.smartsafehub.com/api/v1'
+
+
+config activity 'activity'
+	option cloud_sync_enabled '0'
+	option sync_interval_s '300'
+	option startup_delay_s '45'
+	option api_base_url 'https://www.smartsafehub.com/api/v1'
+
+config health 'health'
+	option check_interval_s '300'
+	option startup_grace_s '120'
+	option reporter_enabled '0'
+	option report_interval_s '1800'
+	option api_base_url 'https://www.smartsafehub.com/api/v1'
+
+config iptv 'iptv'
+	option enabled '0'
+	option provider 'skb'

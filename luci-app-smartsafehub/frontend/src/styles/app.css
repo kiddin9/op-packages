@@ -1,0 +1,2334 @@
+@layer properties, theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@source "../**/*.{ts,tsx}";
+
+/*
+ * Tailwind CSS v4 initializes utility internals such as --tw-border-style,
+ * ring/shadow state and transforms through @property. Browsers do not
+ * reliably register @property rules declared inside a ShadowRoot, so the
+ * production stylesheet can otherwise lose borders/rings while Vite dev
+ * appears correct. Mirror Tailwind's own property-layer fallback directly
+ * inside this ShadowRoot stylesheet. Keeping it in the lowest `properties`
+ * layer lets normal Tailwind utilities override these defaults.
+ */
+@layer properties {
+  :host,
+  *,
+  *::before,
+  *::after {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-space-y-reverse: 0;
+    --tw-divide-y-reverse: 0;
+    --tw-border-style: solid;
+    --tw-leading: initial;
+    --tw-font-weight: initial;
+    --tw-tracking: initial;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-shadow-alpha: 100%;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-inset-shadow-alpha: 100%;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-inset: initial;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-blur: initial;
+    --tw-brightness: initial;
+    --tw-contrast: initial;
+    --tw-grayscale: initial;
+    --tw-hue-rotate: initial;
+    --tw-invert: initial;
+    --tw-opacity: initial;
+    --tw-saturate: initial;
+    --tw-sepia: initial;
+    --tw-drop-shadow: initial;
+    --tw-drop-shadow-color: initial;
+    --tw-drop-shadow-alpha: 100%;
+    --tw-drop-shadow-size: initial;
+    --tw-backdrop-blur: initial;
+    --tw-backdrop-brightness: initial;
+    --tw-backdrop-contrast: initial;
+    --tw-backdrop-grayscale: initial;
+    --tw-backdrop-hue-rotate: initial;
+    --tw-backdrop-invert: initial;
+    --tw-backdrop-opacity: initial;
+    --tw-backdrop-saturate: initial;
+    --tw-backdrop-sepia: initial;
+    --tw-duration: initial;
+    --tw-ease: initial;
+  }
+
+  ::backdrop {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-space-y-reverse: 0;
+    --tw-divide-y-reverse: 0;
+    --tw-border-style: solid;
+    --tw-leading: initial;
+    --tw-font-weight: initial;
+    --tw-tracking: initial;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-shadow-alpha: 100%;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-inset-shadow-alpha: 100%;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-inset: initial;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-blur: initial;
+    --tw-brightness: initial;
+    --tw-contrast: initial;
+    --tw-grayscale: initial;
+    --tw-hue-rotate: initial;
+    --tw-invert: initial;
+    --tw-opacity: initial;
+    --tw-saturate: initial;
+    --tw-sepia: initial;
+    --tw-drop-shadow: initial;
+    --tw-drop-shadow-color: initial;
+    --tw-drop-shadow-alpha: 100%;
+    --tw-drop-shadow-size: initial;
+    --tw-backdrop-blur: initial;
+    --tw-backdrop-brightness: initial;
+    --tw-backdrop-contrast: initial;
+    --tw-backdrop-grayscale: initial;
+    --tw-backdrop-hue-rotate: initial;
+    --tw-backdrop-invert: initial;
+    --tw-backdrop-opacity: initial;
+    --tw-backdrop-saturate: initial;
+    --tw-backdrop-sepia: initial;
+    --tw-duration: initial;
+    --tw-ease: initial;
+  }
+}
+
+/*
+ * This stylesheet is loaded inside the SmartSafeHub shadow root.
+ * Tailwind Preflight is therefore safe to enable: its reset and utility
+ * rules cannot alter the surrounding LuCI header, navigation or dialogs.
+ */
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  color: #0f172a;
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+}
+
+.smartsafehub-shadow-root {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.smartsafehub-shadow-root,
+.smartsafehub-shadow-root *,
+.smartsafehub-shadow-root *::before,
+.smartsafehub-shadow-root *::after {
+  box-sizing: border-box;
+}
+
+.ssh-app {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: clip;
+}
+
+.ssh-app main,
+.ssh-app section,
+.ssh-app article,
+.ssh-app aside,
+.ssh-app nav,
+.ssh-app div {
+  min-width: 0;
+}
+
+.ssh-product-hero {
+  border-radius: 0;
+}
+
+/* Match only the desktop header action border colors to Cloud Console.
+ * Keep the router button geometry, icons, background, shadow and spacing unchanged. */
+.ssh-product-header-action {
+  border-color: #e2e8f0 !important;
+}
+
+.ssh-product-header-action:hover {
+  border-color: #5eead4 !important;
+}
+
+.ssh-app a,
+.ssh-app button,
+.ssh-app input,
+.ssh-app textarea {
+  touch-action: manipulation;
+}
+
+/* SmartSafeHub select menus are rendered inside the product root instead of
+ * using the OS-native popup. Keep disabled/focus states legible in dark mode
+ * even when the menu itself is portaled to the application root. */
+.ssh-app[data-theme='dark'] .ssh-custom-select-trigger:disabled {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #64748b;
+}
+
+.ssh-app[data-theme='dark'] .ssh-custom-select-trigger:focus-visible {
+  --tw-ring-color: rgb(19 78 74 / 0.65);
+}
+
+.ssh-app[data-theme='dark'] .ssh-custom-select-menu {
+  box-shadow: 0 18px 45px rgb(0 0 0 / 0.35);
+}
+
+.ssh-mobile-navigation {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+.ssh-mobile-menu {
+  max-height: calc(100dvh - 4.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ssh-touch-scroll {
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ssh-touch-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .ssh-app {
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  .ssh-product-hero {
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .ssh-product-main {
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .ssh-app input,
+  .ssh-app textarea {
+    font-size: 16px;
+  }
+
+  .ssh-app button,
+  .ssh-app a {
+    min-height: 44px;
+  }
+}
+
+
+.ssh-sidebar-toggle {
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.12);
+}
+
+.ssh-sidebar-toggle:hover {
+  border-color: #99f6e4;
+  background: #f8fafc;
+  color: #0f766e;
+}
+
+.ssh-app[data-theme='dark'] .ssh-sidebar-toggle {
+  border-color: #334155;
+  background: #1e293b;
+  color: #94a3b8;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
+}
+
+.ssh-app[data-theme='dark'] .ssh-sidebar-toggle:hover {
+  border-color: #0f766e;
+  background: #334155;
+  color: #5eead4;
+}
+
+.ssh-update-progress-track {
+  position: relative;
+  height: 0.375rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: #bae6fd;
+}
+
+.ssh-update-progress-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
+  border-radius: inherit;
+  background: #0284c7;
+  animation: ssh-update-progress 1.2s ease-in-out infinite;
+}
+
+.ssh-app[data-theme='dark'] .ssh-update-progress-track {
+  background: #1e3a5f;
+}
+
+.ssh-app[data-theme='dark'] .ssh-update-progress-bar {
+  background: #38bdf8;
+}
+
+/* Keep compact switch controls geometrically stable on every viewport.
+ * The mobile touch-target rule uses `.ssh-app button { min-height: 44px; }`,
+ * so the switch needs a more specific selector to keep its visual track at
+ * 48x28 instead of being stretched vertically on narrow screens. */
+.ssh-app button.ssh-switch-control {
+  width: 3rem;
+  min-width: 3rem;
+  max-width: 3rem;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  max-height: 1.75rem;
+  flex: 0 0 3rem;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.ssh-switch-thumb {
+  width: 1.25rem;
+  min-width: 1.25rem;
+  max-width: 1.25rem;
+  height: 1.25rem;
+  min-height: 1.25rem;
+  max-height: 1.25rem;
+  aspect-ratio: 1 / 1;
+  box-sizing: border-box;
+  border-radius: 9999px;
+  background-color: #fff;
+}
+
+@keyframes ssh-update-progress {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
+}
+
+/* The automatic-update section can sit inside the narrower half of the
+ * management-software card on tablet landscape. Viewport breakpoints alone
+ * therefore cannot decide when its two setting cards actually fit. Let the
+ * grid wrap from its own available width instead, and keep the channel card
+ * spanning every generated column. */
+.ssh-software-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+}
+
+.ssh-software-settings-channel {
+  grid-column: 1 / -1;
+}
+
+/* iPadOS/WebKit gives native `input[type="time"]` controls a localized
+ * intrinsic width that can exceed a narrow settings card. SmartSafeHub uses
+ * the same custom dropdown primitive as the rest of the product instead of
+ * relying on that native control. Keep both hour/minute tracks explicitly
+ * shrinkable so the selector remains contained at tablet widths. */
+.ssh-time-select {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ssh-time-select > * {
+  min-width: 0;
+}
+
+.ssh-time-select .ssh-custom-select-trigger {
+  min-width: 0;
+  max-width: 100%;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+}
+
+/* Authenticated product color theme. The application lives inside a shadow
+ * root, so these overrides can safely remap the existing utility palette
+ * without affecting LuCI itself. */
+.ssh-app[data-theme='dark'] {
+  background: #020617;
+  color: #f8fafc;
+  color-scheme: dark;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-white'] {
+  background-color: #0f172a;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-white/95'] {
+  background-color: rgb(15 23 42 / 0.95);
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-white/70'] {
+  background-color: rgb(15 23 42 / 0.78);
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-slate-50'] {
+  background-color: #020617;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-slate-50/70'] {
+  background-color: rgb(2 6 23 / 0.72);
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-slate-100'] {
+  background-color: #1e293b;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-slate-200'] {
+  background-color: #334155;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-slate-300'] {
+  background-color: #475569;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-slate-400'] {
+  background-color: #64748b;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-black/5'] {
+  background-color: rgb(255 255 255 / 0.05);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-slate-950'] {
+  color: #f8fafc;
+}
+
+.ssh-app[data-theme='dark'] [class~='text-slate-900'] {
+  color: #f1f5f9;
+}
+
+.ssh-app[data-theme='dark'] [class~='text-slate-800'] {
+  color: #e2e8f0;
+}
+
+.ssh-app[data-theme='dark'] [class~='text-slate-700'],
+.ssh-app[data-theme='dark'] [class~='text-slate-600'] {
+  color: #cbd5e1;
+}
+
+.ssh-app[data-theme='dark'] [class~='text-slate-500'],
+.ssh-app[data-theme='dark'] [class~='text-slate-400'] {
+  color: #94a3b8;
+}
+
+.ssh-app[data-theme='dark'] [class~='text-slate-300'] {
+  color: #cbd5e1;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-slate-100'],
+.ssh-app[data-theme='dark'] [class~='border-slate-200'],
+.ssh-app[data-theme='dark'] [class~='divide-slate-200'] {
+  border-color: #1e293b;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-slate-300'] {
+  border-color: #334155;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-white/80'] {
+  border-color: #334155;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-slate-100'],
+.ssh-app[data-theme='dark'] [class~='ring-slate-200'],
+.ssh-app[data-theme='dark'] [class~='ring-white'] {
+  --tw-ring-color: #334155;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-teal-50'],
+.ssh-app[data-theme='dark'] [class~='bg-teal-100'] {
+  background-color: rgb(13 148 136 / 0.16);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-teal-700'],
+.ssh-app[data-theme='dark'] [class~='text-teal-800'],
+.ssh-app[data-theme='dark'] [class~='text-teal-950'] {
+  color: #5eead4;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-teal-200'],
+.ssh-app[data-theme='dark'] [class~='border-teal-300'] {
+  border-color: #115e59;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-teal-100'],
+.ssh-app[data-theme='dark'] [class~='ring-teal-200'] {
+  --tw-ring-color: #134e4a;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-sky-50'],
+.ssh-app[data-theme='dark'] [class~='bg-sky-50/60'] {
+  background-color: rgb(14 165 233 / 0.12);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-sky-700'] {
+  color: #7dd3fc;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-sky-200'] {
+  border-color: #075985;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-sky-100'],
+.ssh-app[data-theme='dark'] [class~='ring-sky-200'] {
+  --tw-ring-color: #0c4a6e;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-emerald-50'],
+.ssh-app[data-theme='dark'] [class~='bg-emerald-100'] {
+  background-color: rgb(16 185 129 / 0.13);
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-emerald-50/70'] {
+  background-color: rgb(16 185 129 / 0.10);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-emerald-700'],
+.ssh-app[data-theme='dark'] [class~='text-emerald-800'],
+.ssh-app[data-theme='dark'] [class~='text-emerald-900'],
+.ssh-app[data-theme='dark'] [class~='text-emerald-950'] {
+  color: #6ee7b7;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-emerald-200'] {
+  border-color: #065f46;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-emerald-100'],
+.ssh-app[data-theme='dark'] [class~='ring-emerald-200'] {
+  --tw-ring-color: #064e3b;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-amber-50'],
+.ssh-app[data-theme='dark'] [class~='bg-amber-50/60'],
+.ssh-app[data-theme='dark'] [class~='bg-amber-100'],
+.ssh-app[data-theme='dark'] [class~='bg-amber-100/70'] {
+  background-color: rgb(245 158 11 / 0.13);
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-amber-50/70'] {
+  background-color: rgb(245 158 11 / 0.10);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-amber-700'],
+.ssh-app[data-theme='dark'] [class~='text-amber-800'],
+.ssh-app[data-theme='dark'] [class~='text-amber-900'],
+.ssh-app[data-theme='dark'] [class~='text-amber-900/80'],
+.ssh-app[data-theme='dark'] [class~='text-amber-950'] {
+  color: #fcd34d;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-amber-200'],
+.ssh-app[data-theme='dark'] [class~='border-amber-300'] {
+  border-color: #92400e;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-amber-100'],
+.ssh-app[data-theme='dark'] [class~='ring-amber-200'] {
+  --tw-ring-color: #78350f;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-red-50'],
+.ssh-app[data-theme='dark'] [class~='bg-red-100'] {
+  background-color: rgb(239 68 68 / 0.12);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-red-700'],
+.ssh-app[data-theme='dark'] [class~='text-red-800'],
+.ssh-app[data-theme='dark'] [class~='text-red-900'],
+.ssh-app[data-theme='dark'] [class~='text-red-950'] {
+  color: #fca5a5;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-red-200'],
+.ssh-app[data-theme='dark'] [class~='border-red-300'] {
+  border-color: #991b1b;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-red-100'],
+.ssh-app[data-theme='dark'] [class~='ring-red-200'] {
+  --tw-ring-color: #7f1d1d;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-rose-50'] {
+  background-color: rgb(244 63 94 / 0.12);
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-rose-50/70'] {
+  background-color: rgb(244 63 94 / 0.10);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-rose-600'],
+.ssh-app[data-theme='dark'] [class~='text-rose-700'],
+.ssh-app[data-theme='dark'] [class~='text-rose-800'],
+.ssh-app[data-theme='dark'] [class~='text-rose-900'],
+.ssh-app[data-theme='dark'] [class~='text-rose-950'] {
+  color: #fda4af;
+}
+
+.ssh-app[data-theme='dark'] [class~='border-rose-200'],
+.ssh-app[data-theme='dark'] [class~='border-rose-300'] {
+  border-color: #9f1239;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-rose-200'] {
+  --tw-ring-color: #881337;
+}
+
+.ssh-app[data-theme='dark'] [class~='bg-blue-50'] {
+  background-color: rgb(59 130 246 / 0.12);
+}
+
+.ssh-app[data-theme='dark'] [class~='text-blue-700'] {
+  color: #93c5fd;
+}
+
+.ssh-app[data-theme='dark'] [class~='ring-blue-200'] {
+  --tw-ring-color: #1e3a8a;
+}
+
+.ssh-app[data-theme='dark'] .hover\:bg-slate-50:hover {
+  background-color: #1e293b;
+}
+
+.ssh-app[data-theme='dark'] .hover\:bg-rose-50:hover {
+  background-color: rgb(244 63 94 / 0.18);
+}
+
+.ssh-app[data-theme='dark'] .hover\:text-slate-950:hover {
+  color: #f8fafc;
+}
+
+.ssh-app[data-theme='dark'] .hover\:text-slate-700:hover {
+  color: #e2e8f0;
+}
+
+.ssh-app[data-theme='dark'] .hover\:text-rose-800:hover {
+  color: #fecdd3;
+}
+
+.ssh-app[data-theme='dark'] .hover\:border-slate-300:hover {
+  border-color: #475569;
+}
+
+/* Keep only the desktop header action border colors aligned with Cloud Console.
+ * Other dark-mode button styling remains unchanged. */
+.ssh-app[data-theme='dark'] .ssh-product-header-action {
+  border-color: #334155 !important;
+  background-color: #0f172a;
+  color: #cbd5e1;
+}
+
+.ssh-app[data-theme='dark'] .ssh-product-header-action:hover {
+  border-color: #0f766e !important;
+  color: #5eead4;
+}
+
+.ssh-app[data-theme='dark'] .ssh-product-header-action:focus-visible {
+  --tw-ring-color: #134e4a;
+}
+
+.ssh-initial-setup-probe {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 1.5rem;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.ssh-initial-setup-probe-card {
+  display: grid;
+  width: min(100%, 28rem);
+  justify-items: center;
+  gap: 0.7rem;
+  padding: 2.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 20px 55px rgb(15 23 42 / 0.08);
+}
+
+.ssh-initial-setup-probe-card > svg {
+  width: 2rem;
+  height: 2rem;
+  color: #0f766e;
+}
+
+.ssh-initial-setup-probe-card strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.ssh-initial-setup-probe-card span {
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.ssh-initial-setup-probe-card button {
+  min-height: 2.75rem;
+  margin-top: 0.4rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 0.8rem;
+  background: #0f766e;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+/* SmartSafeHub public login. It is mounted into its own shadow root so these
+ * styles remain isolated from LuCI themes and from the authenticated product. */
+.smartsafehub-login-shadow-root {
+  min-height: 100dvh;
+  background: #f8fafc;
+}
+
+.ssh-login-page,
+.ssh-login-page *,
+.ssh-login-page *::before,
+.ssh-login-page *::after {
+  box-sizing: border-box;
+}
+
+.ssh-login-page {
+  --ssh-login-bg: #f8fafc;
+  --ssh-login-surface: #ffffff;
+  --ssh-login-surface-soft: #f8fafc;
+  --ssh-login-border: #e2e8f0;
+  --ssh-login-border-strong: #cbd5e1;
+  --ssh-login-text: #0f172a;
+  --ssh-login-muted: #64748b;
+  --ssh-login-muted-soft: #94a3b8;
+  --ssh-login-accent: #0f766e;
+  --ssh-login-accent-hover: #115e59;
+  --ssh-login-accent-soft: #f0fdfa;
+  --ssh-login-accent-ring: rgb(20 184 166 / 0.14);
+  --ssh-login-card-shadow: 0 24px 70px rgb(15 23 42 / 0.08), 0 2px 10px rgb(15 23 42 / 0.04);
+  display: grid;
+  min-height: 100dvh;
+  grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.92fr);
+  background: var(--ssh-login-bg);
+  color: var(--ssh-login-text);
+}
+
+.ssh-login-page[data-theme='dark'] {
+  --ssh-login-bg: #020617;
+  --ssh-login-surface: #0f172a;
+  --ssh-login-surface-soft: #111827;
+  --ssh-login-border: #1e293b;
+  --ssh-login-border-strong: #334155;
+  --ssh-login-text: #f8fafc;
+  --ssh-login-muted: #94a3b8;
+  --ssh-login-muted-soft: #64748b;
+  --ssh-login-accent: #2dd4bf;
+  --ssh-login-accent-hover: #5eead4;
+  --ssh-login-accent-soft: rgb(20 184 166 / 0.1);
+  --ssh-login-accent-ring: rgb(45 212 191 / 0.18);
+  --ssh-login-card-shadow: 0 28px 72px rgb(0 0 0 / 0.24), 0 0 0 1px rgb(148 163 184 / 0.04);
+}
+
+.ssh-login-toast {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top));
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  width: min(calc(100% - 2rem), 34rem);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #99f6e4;
+  border-radius: 1rem;
+  background: #f0fdfa;
+  color: #115e59;
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.45;
+  box-shadow: 0 18px 45px rgb(15 23 42 / 0.16);
+  transform: translateX(-50%);
+}
+
+.ssh-login-toast svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+}
+
+.ssh-login-page[data-theme='dark'] .ssh-login-toast {
+  border-color: rgb(45 212 191 / 0.34);
+  background: #0f2f2e;
+  color: #99f6e4;
+  box-shadow: 0 18px 45px rgb(0 0 0 / 0.32);
+}
+
+.ssh-login-brand {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(3rem, 7vw, 7rem);
+  background:
+    radial-gradient(circle at 16% 14%, rgb(45 212 191 / 0.16), transparent 28rem),
+    linear-gradient(145deg, #020617 0%, #0f172a 56%, #042f2e 140%);
+  color: #f8fafc;
+}
+
+.ssh-login-brand::after {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(148 163 184 / 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(148 163 184 / 0.055) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: '';
+  mask-image: linear-gradient(to bottom right, #000, transparent 78%);
+  pointer-events: none;
+}
+
+.ssh-login-brand-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+.ssh-login-brand-orb-one {
+  top: -10rem;
+  right: -8rem;
+  width: 30rem;
+  height: 30rem;
+  border: 1px solid rgb(45 212 191 / 0.16);
+  box-shadow: inset 0 0 6rem rgb(20 184 166 / 0.05);
+}
+
+.ssh-login-brand-orb-two {
+  bottom: -13rem;
+  left: -10rem;
+  width: 36rem;
+  height: 36rem;
+  border: 1px solid rgb(94 234 212 / 0.11);
+}
+
+.ssh-login-brand-content {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 680px);
+}
+
+.ssh-login-brand-mark,
+.ssh-login-mobile-mark {
+  display: grid;
+  place-items: center;
+  background: rgb(20 184 166 / 0.13);
+  color: #5eead4;
+  box-shadow: inset 0 0 0 1px rgb(94 234 212 / 0.18);
+}
+
+.ssh-login-brand-mark {
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 2rem;
+  border-radius: 1.5rem;
+}
+
+.ssh-login-brand-mark svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.ssh-login-eyebrow,
+.ssh-login-kicker {
+  margin: 0;
+  color: #5eead4;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.ssh-login-brand h1 {
+  margin: 0.7rem 0 0;
+  font-size: clamp(2.7rem, 5vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.ssh-password-setup-brand-title-line {
+  display: block;
+}
+
+.ssh-login-brand-description {
+  max-width: 39rem;
+  margin: 1.6rem 0 0;
+  color: #cbd5e1;
+  font-size: clamp(1rem, 1.5vw, 1.16rem);
+  line-height: 1.85;
+}
+
+.ssh-login-features {
+  display: grid;
+  max-width: 40rem;
+  margin-top: 3rem;
+  gap: 0.85rem;
+}
+
+.ssh-login-feature {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgb(148 163 184 / 0.11);
+  border-radius: 1rem;
+  background: rgb(15 23 42 / 0.46);
+  backdrop-filter: blur(8px);
+}
+
+.ssh-login-feature-icon {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: rgb(20 184 166 / 0.11);
+  color: #5eead4;
+}
+
+.ssh-login-feature-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.ssh-login-feature-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.ssh-login-feature-copy strong {
+  color: #f8fafc;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.ssh-login-feature-copy > span {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.ssh-login-panel {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(2rem, 5vw, 5rem);
+  background: var(--ssh-login-bg);
+  transition: background-color 180ms ease;
+}
+
+.ssh-login-theme-toggle {
+  position: absolute;
+  top: max(1.25rem, env(safe-area-inset-top));
+  right: max(1.25rem, env(safe-area-inset-right));
+  z-index: 2;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 1px solid var(--ssh-login-border);
+  border-radius: 0.9rem;
+  background: var(--ssh-login-surface);
+  color: var(--ssh-login-muted);
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgb(15 23 42 / 0.06);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.ssh-login-theme-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.ssh-login-theme-toggle:hover {
+  border-color: var(--ssh-login-border-strong);
+  color: var(--ssh-login-accent);
+  transform: translateY(-1px);
+}
+
+.ssh-login-panel-inner {
+  display: flex;
+  width: min(100%, 480px);
+  min-height: min(40rem, calc(100dvh - 4rem));
+  flex-direction: column;
+  justify-content: center;
+}
+
+.ssh-login-card {
+  width: 100%;
+  padding: clamp(1.6rem, 4vw, 2.6rem);
+  border: 1px solid var(--ssh-login-border);
+  border-radius: 1.5rem;
+  background: var(--ssh-login-surface);
+  box-shadow: var(--ssh-login-card-shadow);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
+}
+
+.ssh-login-card-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.ssh-login-card-heading > div {
+  min-width: 0;
+}
+
+.ssh-login-mobile-mark {
+  display: none;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  border-radius: 1.1rem;
+  background: #0f766e;
+  color: #fff;
+  box-shadow: 0 12px 28px rgb(15 118 110 / 0.22);
+}
+
+.ssh-login-mobile-mark svg {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.ssh-login-kicker {
+  color: var(--ssh-login-accent);
+  letter-spacing: 0.18em;
+}
+
+.ssh-login-card h2 {
+  margin: 0.65rem 0 0;
+  color: var(--ssh-login-text);
+  font-size: clamp(1.8rem, 4vw, 2.25rem);
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+}
+
+.ssh-login-subtitle {
+  margin: 0.7rem 0 0;
+  color: var(--ssh-login-muted);
+  font-size: 0.94rem;
+  line-height: 1.6;
+}
+
+.ssh-login-alert {
+  margin-top: 1.3rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #fecdd3;
+  border-radius: 0.85rem;
+  background: #fff1f2;
+  color: #9f1239;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.ssh-login-page[data-theme='dark'] .ssh-login-alert {
+  border-color: rgb(244 63 94 / 0.35);
+  background: rgb(136 19 55 / 0.18);
+  color: #fecdd3;
+}
+
+.ssh-login-form {
+  display: grid;
+  margin-top: 1.6rem;
+  gap: 1.1rem;
+}
+
+.ssh-login-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ssh-login-label {
+  color: var(--ssh-login-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.ssh-login-input-wrap {
+  display: flex;
+  min-height: 3.3rem;
+  align-items: center;
+  overflow: hidden;
+  border: 2px solid var(--ssh-login-border-strong);
+  border-radius: 0.9rem;
+  background: var(--ssh-login-surface-soft);
+  color: var(--ssh-login-muted);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.035);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.ssh-login-input-wrap:focus-within {
+  border-color: var(--ssh-login-accent);
+  background: var(--ssh-login-surface);
+  box-shadow: 0 0 0 4px var(--ssh-login-accent-ring);
+}
+
+.ssh-login-field-icon {
+  display: grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  margin-left: 0.55rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.65rem;
+  background: var(--ssh-login-accent-soft);
+  color: var(--ssh-login-accent);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.ssh-login-field-icon svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.ssh-login-input-wrap:focus-within .ssh-login-field-icon {
+  box-shadow: inset 0 0 0 1px var(--ssh-login-accent-ring);
+}
+
+.ssh-login-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  height: 3.15rem;
+  padding: 0 0.8rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ssh-login-text);
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.ssh-login-input-wrap input::placeholder {
+  color: var(--ssh-login-muted-soft);
+  font-weight: 600;
+  opacity: 0.82;
+}
+
+.ssh-login-input-wrap input:-webkit-autofill,
+.ssh-login-input-wrap input:-webkit-autofill:hover,
+.ssh-login-input-wrap input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ssh-login-text);
+  caret-color: var(--ssh-login-text);
+  box-shadow: 0 0 0 1000px var(--ssh-login-surface-soft) inset;
+}
+
+.ssh-login-input-wrap:focus-within input:-webkit-autofill {
+  box-shadow: 0 0 0 1000px var(--ssh-login-surface) inset;
+}
+
+.ssh-login-input-wrap input:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.ssh-login-password-toggle {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin-right: 0.45rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  background: transparent;
+  color: var(--ssh-login-muted);
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.ssh-login-password-toggle svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.ssh-login-password-toggle:hover:not(:disabled) {
+  border-color: var(--ssh-login-border);
+  background: var(--ssh-login-accent-soft);
+  color: var(--ssh-login-accent);
+}
+
+.ssh-login-password-toggle:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.ssh-login-theme-toggle:focus-visible,
+.ssh-login-password-toggle:focus-visible,
+.ssh-login-submit:focus-visible,
+.ssh-login-fallback:focus-visible {
+  outline: 3px solid var(--ssh-login-accent-ring);
+  outline-offset: 2px;
+}
+
+.ssh-login-password-hint {
+  margin: -0.55rem 0 -0.15rem;
+  color: var(--ssh-login-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.ssh-password-requirements {
+  display: grid;
+  margin: -0.25rem 0 0;
+  padding: 0;
+  gap: 0.4rem;
+  list-style: none;
+}
+
+.ssh-password-requirement {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ssh-login-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ssh-password-requirement svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  color: var(--ssh-login-muted-soft);
+}
+
+.ssh-password-requirement.is-met,
+.ssh-password-requirement.is-met svg,
+.ssh-password-match.is-met {
+  color: var(--ssh-login-accent);
+}
+
+.ssh-password-match {
+  margin: -0.5rem 0 -0.1rem;
+  color: #be123c;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ssh-password-setup-summary {
+  display: flex;
+  max-width: 40rem;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-top: 2.4rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgb(94 234 212 / 0.18);
+  border-radius: 1rem;
+  background: rgb(20 184 166 / 0.09);
+}
+
+.ssh-password-setup-summary > svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-top: 0.1rem;
+  flex: 0 0 auto;
+  color: #5eead4;
+}
+
+.ssh-password-setup-summary > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ssh-password-setup-summary strong {
+  color: #f8fafc;
+  font-size: 0.9rem;
+}
+
+.ssh-password-setup-summary span {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.ssh-login-caps {
+  margin: -0.45rem 0 -0.15rem;
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.ssh-login-page[data-theme='dark'] .ssh-login-caps {
+  color: #fbbf24;
+}
+
+.ssh-login-submit {
+  display: inline-flex;
+  min-height: 3.3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: #0f766e;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 900;
+  box-shadow: 0 12px 26px rgb(15 118 110 / 0.2);
+  transition:
+    background-color 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.ssh-login-submit:hover:not(:disabled) {
+  background: #115e59;
+  box-shadow: 0 16px 30px rgb(15 118 110 / 0.25);
+  transform: translateY(-1px);
+}
+
+.ssh-login-submit:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.ssh-login-submit-spinner,
+.ssh-login-probe-spinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: ssh-login-spin 0.75s linear infinite;
+}
+
+.ssh-login-submit-spinner {
+  width: 1rem;
+  height: 1rem;
+  color: #fff;
+}
+
+.ssh-login-security-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin-top: 1.2rem;
+  color: var(--ssh-login-muted);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.ssh-login-security-note svg {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.06rem;
+  flex: 0 0 auto;
+  color: var(--ssh-login-accent);
+}
+
+.ssh-login-fallback {
+  display: flex;
+  min-height: 2.7rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.9rem;
+  border: 1px solid var(--ssh-login-border-strong);
+  border-radius: 0.8rem;
+  background: var(--ssh-login-surface);
+  color: var(--ssh-login-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.ssh-login-fallback:hover {
+  border-color: var(--ssh-login-muted-soft);
+  background: var(--ssh-login-surface-soft);
+  color: var(--ssh-login-text);
+}
+
+.ssh-login-probe {
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  padding: 2.5rem;
+  color: var(--ssh-login-muted);
+  text-align: center;
+}
+
+.ssh-login-probe-spinner {
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 0.4rem;
+  color: var(--ssh-login-accent);
+}
+
+.ssh-login-probe strong {
+  color: var(--ssh-login-text);
+  font-size: 1rem;
+}
+
+.ssh-login-probe > span:last-child {
+  font-size: 0.82rem;
+}
+
+.ssh-login-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  color: var(--ssh-login-muted-soft);
+  font-size: 0.72rem;
+}
+
+@keyframes ssh-login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 980px) {
+  .ssh-login-page {
+    grid-template-columns: 1fr;
+  }
+
+  .ssh-login-brand {
+    display: none;
+  }
+
+  .ssh-login-panel {
+    padding:
+      max(1.25rem, env(safe-area-inset-top))
+      max(1.25rem, env(safe-area-inset-right))
+      max(1.25rem, env(safe-area-inset-bottom))
+      max(1.25rem, env(safe-area-inset-left));
+  }
+
+  .ssh-login-panel-inner {
+    min-height: calc(100dvh - 2.5rem);
+  }
+
+  .ssh-login-mobile-mark {
+    display: grid;
+  }
+}
+
+@media (max-width: 520px) {
+  .ssh-login-panel {
+    align-items: stretch;
+    padding: 0;
+    background: var(--ssh-login-surface);
+  }
+
+  .ssh-login-theme-toggle {
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    box-shadow: none;
+  }
+
+  .ssh-login-panel-inner {
+    width: 100%;
+    min-height: 100dvh;
+  }
+
+  .ssh-login-card {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+    justify-content: center;
+    padding:
+      max(4.75rem, calc(env(safe-area-inset-top) + 4.25rem))
+      max(1.25rem, env(safe-area-inset-right))
+      max(2rem, env(safe-area-inset-bottom))
+      max(1.25rem, env(safe-area-inset-left));
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .ssh-login-card-heading {
+    display: block;
+  }
+
+  .ssh-login-mobile-mark {
+    margin-bottom: 1.25rem;
+  }
+
+  .ssh-login-input-wrap input {
+    font-size: 16px;
+  }
+
+  .ssh-login-footer {
+    display: none;
+  }
+
+  .ssh-login-probe {
+    min-height: 100dvh;
+    align-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssh-login-panel,
+  .ssh-login-card,
+  .ssh-login-theme-toggle,
+  .ssh-login-submit,
+  .ssh-login-input-wrap {
+    transition: none;
+  }
+
+  .ssh-login-submit-spinner,
+  .ssh-login-probe-spinner {
+    animation-duration: 1.4s;
+  }
+}
+
+/* SafeShield refresh progress keeps internal stage names out of the product UI
+ * and presents the six user-facing refresh phases as a compact donut. */
+/* SafeShield membership presentation. Paid plans use restrained, static
+ * tier colors so membership reads like a product entitlement rather than a
+ * promotional badge. Keep shadows shallow and avoid glow/motion in both themes. */
+.ssh-safeshield-plan-badge {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.3rem 0.82rem 0.3rem 0.36rem;
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.085em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ssh-safeshield-plan-badge[data-compact='true'] {
+  min-height: 1.72rem;
+  padding: 0.22rem 0.66rem 0.22rem 0.3rem;
+  font-size: 0.69rem;
+}
+
+.ssh-safeshield-plan-badge-mark {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.ssh-safeshield-plan-badge[data-compact='true'] .ssh-safeshield-plan-badge-mark {
+  width: 1.02rem;
+  height: 1.02rem;
+  font-size: 0.66rem;
+}
+
+.ssh-safeshield-plan-badge[data-tier='free'] {
+  border-color: #cbd5e1;
+  background: linear-gradient(135deg, #fff 0%, #f1f5f9 100%);
+  color: #475569;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9);
+}
+
+.ssh-safeshield-plan-badge[data-tier='free'] .ssh-safeshield-plan-badge-mark {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.ssh-safeshield-plan-badge[data-tier='pro'] {
+  border-color: #0f766e;
+  background: linear-gradient(135deg, #115e59 0%, #0f766e 62%, #0d9488 100%);
+  color: #f0fdfa;
+  box-shadow:
+    0 1px 2px rgb(15 118 110 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.14);
+}
+
+.ssh-safeshield-plan-badge[data-tier='pro'] .ssh-safeshield-plan-badge-mark {
+  border: 1px solid rgb(153 246 228 / 0.46);
+  background: rgb(240 253 250 / 0.12);
+  color: #ccfbf1;
+  box-shadow: none;
+}
+
+.ssh-safeshield-plan-badge[data-tier='ultimate'] {
+  border-color: #b45309;
+  background: linear-gradient(135deg, #78350f 0%, #92400e 58%, #b45309 100%);
+  color: #fffbeb;
+  box-shadow:
+    0 1px 2px rgb(120 53 15 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+.ssh-safeshield-plan-badge[data-tier='ultimate'] .ssh-safeshield-plan-badge-mark {
+  border: 1px solid rgb(253 230 138 / 0.46);
+  background: rgb(255 251 235 / 0.12);
+  color: #fde68a;
+  box-shadow: none;
+}
+
+.ssh-safeshield-plan-badge[data-tier='paid'] {
+  border-color: #0369a1;
+  background: linear-gradient(135deg, #0c4a6e 0%, #075985 58%, #0369a1 100%);
+  color: #f0f9ff;
+  box-shadow:
+    0 1px 2px rgb(3 105 161 / 0.16),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+}
+
+.ssh-safeshield-plan-badge[data-tier='paid'] .ssh-safeshield-plan-badge-mark {
+  border: 1px solid rgb(186 230 253 / 0.46);
+  background: rgb(240 249 255 / 0.12);
+  color: #bae6fd;
+  box-shadow: none;
+}
+
+.ssh-safeshield-plan-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-plan-badge[data-tier='free'] {
+  border-color: #475569;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+
+.ssh-app[data-theme='dark']
+  .ssh-safeshield-plan-badge[data-tier='free']
+  .ssh-safeshield-plan-badge-mark {
+  background: #475569;
+  color: #e2e8f0;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-plan-badge[data-tier='pro'] {
+  border-color: #0f766e;
+  background: linear-gradient(135deg, #042f2e 0%, #134e4a 100%);
+  color: #99f6e4;
+  box-shadow: inset 0 1px 0 rgb(153 246 228 / 0.08);
+}
+
+.ssh-app[data-theme='dark']
+  .ssh-safeshield-plan-badge[data-tier='pro']
+  .ssh-safeshield-plan-badge-mark {
+  border-color: rgb(45 212 191 / 0.38);
+  background: rgb(13 148 136 / 0.12);
+  color: #99f6e4;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-plan-badge[data-tier='ultimate'] {
+  border-color: #b45309;
+  background: linear-gradient(135deg, #451a03 0%, #78350f 100%);
+  color: #fde68a;
+  box-shadow: inset 0 1px 0 rgb(253 230 138 / 0.08);
+}
+
+.ssh-app[data-theme='dark']
+  .ssh-safeshield-plan-badge[data-tier='ultimate']
+  .ssh-safeshield-plan-badge-mark {
+  border-color: rgb(217 119 6 / 0.46);
+  background: rgb(146 64 14 / 0.16);
+  color: #fde68a;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-plan-badge[data-tier='paid'] {
+  border-color: #0369a1;
+  background: linear-gradient(135deg, #082f49 0%, #0c4a6e 100%);
+  color: #bae6fd;
+  box-shadow: inset 0 1px 0 rgb(186 230 253 / 0.08);
+}
+
+.ssh-app[data-theme='dark']
+  .ssh-safeshield-plan-badge[data-tier='paid']
+  .ssh-safeshield-plan-badge-mark {
+  border-color: rgb(14 165 233 / 0.36);
+  background: rgb(3 105 161 / 0.14);
+  color: #bae6fd;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-plan-caption {
+  color: #94a3b8;
+}
+
+.ssh-safeshield-upgrade-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+  border: 1px solid #99f6e4;
+  border-radius: 1rem;
+  background: linear-gradient(120deg, #f0fdfa 0%, #ecfeff 58%, #fff7ed 100%);
+  padding: 0.9rem 1rem;
+  box-shadow: 0 10px 24px rgb(15 118 110 / 0.08);
+}
+
+.ssh-safeshield-upgrade-mark {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: linear-gradient(135deg, #0f766e, #0891b2);
+  color: #fff;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 18px rgb(13 148 136 / 0.22);
+}
+
+.ssh-safeshield-upgrade-copy {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 0.2rem;
+}
+
+.ssh-safeshield-upgrade-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  color: #0f766e;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ssh-safeshield-upgrade-soon {
+  border-radius: 999px;
+  background: rgb(15 118 110 / 0.1);
+  padding: 0.18rem 0.45rem;
+  letter-spacing: 0.06em;
+}
+
+.ssh-safeshield-upgrade-copy strong {
+  color: #0f172a;
+  font-size: 0.86rem;
+  line-height: 1.35rem;
+}
+
+.ssh-safeshield-upgrade-copy > span {
+  color: #64748b;
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.15rem;
+}
+
+.ssh-safeshield-upgrade-action {
+  display: inline-flex;
+  min-height: 2.45rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid #0f766e;
+  border-radius: 0.8rem;
+  background: #0f766e;
+  padding: 0.55rem 0.8rem;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.ssh-safeshield-upgrade-action:hover {
+  border-color: #115e59;
+  background: #115e59;
+  transform: translateY(-1px);
+}
+
+.ssh-safeshield-upgrade-action:focus-visible {
+  outline: 3px solid rgb(20 184 166 / 0.24);
+  outline-offset: 2px;
+}
+
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-card {
+  border-color: #134e4a;
+  background: linear-gradient(
+    120deg,
+    rgb(13 148 136 / 0.13) 0%,
+    rgb(15 23 42 / 0.98) 58%,
+    rgb(146 64 14 / 0.12) 100%
+  );
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.18);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-mark {
+  background: linear-gradient(135deg, #0d9488, #0891b2);
+  box-shadow: 0 8px 20px rgb(45 212 191 / 0.13);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-meta {
+  color: #5eead4;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-soon {
+  background: rgb(45 212 191 / 0.12);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-copy strong {
+  color: #f8fafc;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-copy > span {
+  color: #94a3b8;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-action {
+  border-color: #2dd4bf;
+  background: rgb(13 148 136 / 0.22);
+  color: #ccfbf1;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-upgrade-action:hover {
+  border-color: #5eead4;
+  background: rgb(13 148 136 / 0.32);
+}
+
+@media (max-width: 640px) {
+  .ssh-safeshield-upgrade-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .ssh-safeshield-upgrade-action {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.ssh-safeshield-refresh {
+  display: flex;
+  max-width: 48rem;
+  align-items: center;
+  gap: 0.875rem;
+  margin-top: 1rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #ccfbf1;
+  border-radius: 1rem;
+  background: rgb(240 253 250 / 0.7);
+}
+
+.ssh-safeshield-refresh[data-state='error'] {
+  border-color: #fecaca;
+  background: rgb(254 242 242 / 0.78);
+}
+
+.ssh-safeshield-refresh-copy {
+  min-width: 0;
+}
+
+.ssh-safeshield-refresh-kicker,
+.ssh-safeshield-refresh-title,
+.ssh-safeshield-refresh-description,
+.ssh-safeshield-refresh-error-code {
+  margin: 0;
+}
+
+.ssh-safeshield-refresh-kicker {
+  color: #0f766e;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.ssh-safeshield-refresh[data-state='error'] .ssh-safeshield-refresh-kicker {
+  color: #b91c1c;
+}
+
+.ssh-safeshield-refresh-title {
+  margin-top: 0.25rem;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.ssh-safeshield-refresh-description {
+  margin-top: 0.25rem;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+.ssh-safeshield-refresh-error-code {
+  margin-top: 0.375rem;
+  overflow-wrap: anywhere;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.ssh-safeshield-refresh-error-code code {
+  font: inherit;
+}
+
+.ssh-safeshield-refresh-donut {
+  position: relative;
+  display: grid;
+  width: 3.35rem;
+  min-width: 3.35rem;
+  height: 3.35rem;
+  place-items: center;
+  color: #0d9488;
+}
+
+.ssh-safeshield-refresh-donut[data-state='error'] {
+  color: #dc2626;
+}
+
+.ssh-safeshield-refresh-loader-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  animation: ssh-safeshield-refresh-loader-rotate 0.82s linear infinite;
+}
+
+.ssh-safeshield-refresh-loader-svg-error {
+  animation: none;
+}
+
+.ssh-safeshield-refresh-loader-track {
+  color: #cbd5e1;
+  stroke: #cbd5e1;
+}
+
+.ssh-safeshield-refresh-loader-arc {
+  color: #0f172a;
+  stroke: #0f172a;
+  filter: drop-shadow(0 0 0.06rem rgb(15 23 42 / 0.28));
+}
+
+.ssh-safeshield-refresh-donut[data-state='error'] .ssh-safeshield-refresh-loader-track {
+  color: #dc2626;
+  stroke: #dc2626;
+}
+
+.ssh-safeshield-refresh-donut-label {
+  position: relative;
+  z-index: 1;
+  color: #0f766e;
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 900;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh {
+  border-color: #134e4a;
+  background: rgb(15 118 110 / 0.12);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh[data-state='error'] {
+  border-color: #7f1d1d;
+  background: rgb(127 29 29 / 0.18);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-title {
+  color: #f8fafc;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-description,
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-error-code {
+  color: #94a3b8;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-loader-track {
+  color: #334155;
+  stroke: #334155;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-loader-arc {
+  color: #ffffff;
+  stroke: #ffffff;
+  filter: drop-shadow(0 0 0.08rem rgb(255 255 255 / 0.55));
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-donut-label {
+  color: #5eead4;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-refresh-donut[data-state='error']
+  .ssh-safeshield-refresh-loader-track {
+  color: #ef4444;
+  stroke: #ef4444;
+}
+
+
+.ssh-safeshield-license-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #ffffff, #f8fafc 62%, #f8fafc);
+  padding: 0.95rem 1rem;
+}
+
+.ssh-safeshield-license-summary-main {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.ssh-safeshield-license-summary-status {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.ssh-safeshield-license-key-mask {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.ssh-safeshield-license-editor {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  padding: 1rem;
+}
+
+.ssh-safeshield-license-editor-header {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.ssh-safeshield-license-editor-label {
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.ssh-safeshield-license-editor-hint {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ssh-safeshield-license-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ssh-safeshield-license-input {
+  min-height: 2.85rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 2px solid #cbd5e1;
+  border-radius: 0.95rem;
+  background: #ffffff;
+  padding: 0.72rem 0.95rem;
+  color: #0f172a;
+  font-size: 0.9rem;
+  font-weight: 700;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 43, 0.05);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.ssh-safeshield-license-input::placeholder {
+  color: #94a3b8;
+}
+
+.ssh-safeshield-license-input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
+}
+
+.ssh-safeshield-license-input:disabled {
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.ssh-safeshield-license-secondary-action,
+.ssh-safeshield-license-primary-action,
+.ssh-safeshield-license-danger-action {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 0.95rem;
+  padding: 0.7rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ssh-safeshield-license-secondary-action {
+  flex: none;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  box-shadow: 0 1px 2px rgba(15, 23, 43, 0.04);
+}
+
+.ssh-safeshield-license-secondary-action:hover {
+  border-color: #5eead4;
+  background: #f0fdfa;
+  color: #115e59;
+}
+
+.ssh-safeshield-license-primary-action {
+  border: 1px solid #0f766e;
+  background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.16);
+}
+
+.ssh-safeshield-license-primary-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(13, 148, 136, 0.2);
+}
+
+.ssh-safeshield-license-danger-action {
+  border: 1px solid #fecaca;
+  background: #ffffff;
+  color: #b91c1c;
+}
+
+.ssh-safeshield-license-danger-action:hover {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.ssh-safeshield-license-actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.ssh-safeshield-license-secondary-action:focus-visible,
+.ssh-safeshield-license-primary-action:focus-visible,
+.ssh-safeshield-license-danger-action:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.16);
+  outline-offset: 2px;
+}
+
+.ssh-safeshield-license-secondary-action:disabled,
+.ssh-safeshield-license-primary-action:disabled,
+.ssh-safeshield-license-danger-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-summary,
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-editor {
+  border-color: #1e293b;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.98));
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-summary-status,
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-editor-hint {
+  color: #94a3b8;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-key-mask {
+  color: #64748b;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-editor-label {
+  color: #e2e8f0;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-input {
+  border-color: #334155;
+  background: #020617;
+  color: #f8fafc;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-input::placeholder {
+  color: #64748b;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-input:focus {
+  border-color: #2dd4bf;
+  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.14);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-input:disabled {
+  background: #0f172a;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-secondary-action {
+  border-color: #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-secondary-action:hover {
+  border-color: #2dd4bf;
+  background: rgba(13, 148, 136, 0.16);
+  color: #ccfbf1;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-primary-action {
+  border-color: #14b8a6;
+  background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
+  box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-danger-action {
+  border-color: rgba(239, 68, 68, 0.22);
+  background: rgba(127, 29, 29, 0.08);
+  color: #fca5a5;
+}
+
+.ssh-app[data-theme='dark'] .ssh-safeshield-license-danger-action:hover {
+  border-color: rgba(252, 165, 165, 0.28);
+  background: rgba(127, 29, 29, 0.14);
+}
+
+@media (max-width: 640px) {
+  .ssh-safeshield-license-summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ssh-safeshield-license-key-mask {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+}
+
+@media (min-width: 640px) {
+  .ssh-safeshield-license-input-row {
+    flex-direction: row;
+  }
+
+  .ssh-safeshield-license-secondary-action {
+    min-width: 9.5rem;
+  }
+
+  .ssh-safeshield-license-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@keyframes ssh-safeshield-refresh-loader-rotate {
+  to {
+    transform: rotate(270deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ssh-safeshield-refresh-loader-svg {
+    animation: none;
+  }
+}

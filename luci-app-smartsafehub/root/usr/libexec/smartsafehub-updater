@@ -1,0 +1,916 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME_DIR="${SMARTSAFEHUB_RUNTIME_DIR:-/tmp/smartsafehub}"
+STATE_FILE="${SMARTSAFEHUB_UPDATER_STATE_FILE:-$RUNTIME_DIR/updates.state}"
+RELEASE_NOTES_FILE="${SMARTSAFEHUB_UPDATER_RELEASE_NOTES_FILE:-$RUNTIME_DIR/release-notes.json}"
+LOCK_DIR="${SMARTSAFEHUB_UPDATER_LOCK_DIR:-$RUNTIME_DIR/updater.lock}"
+AUTO_MARKER="${SMARTSAFEHUB_UPDATER_AUTO_MARKER:-$RUNTIME_DIR/updater-auto-date}"
+AUTO_RETRY_MARKER="${SMARTSAFEHUB_UPDATER_AUTO_RETRY_MARKER:-$RUNTIME_DIR/updater-auto-retry-at}"
+AUTO_RETRY_COUNT_MARKER="${SMARTSAFEHUB_UPDATER_AUTO_RETRY_COUNT_MARKER:-$RUNTIME_DIR/updater-auto-retry-count}"
+APK_WORLD_FILE="${SMARTSAFEHUB_UPDATER_APK_WORLD_FILE:-/etc/apk/world}"
+REPOSITORY_DIR="${SMARTSAFEHUB_UPDATER_REPOSITORY_DIR:-/etc/apk/repositories.d}"
+REPOSITORY_FILE="${SMARTSAFEHUB_UPDATER_REPOSITORY_FILE:-$REPOSITORY_DIR/smartsafehub.list}"
+APK_BIN="${SMARTSAFEHUB_UPDATER_APK_BIN:-apk}"
+UCLIENT_FETCH_BIN="${SMARTSAFEHUB_UPDATER_UCLIENT_FETCH_BIN:-uclient-fetch}"
+UCI_BIN="${SMARTSAFEHUB_UPDATER_UCI_BIN:-uci}"
+RPCD_INIT="${SMARTSAFEHUB_UPDATER_RPCD_INIT:-/etc/init.d/rpcd}"
+LUCI_INDEX_CACHE="${SMARTSAFEHUB_UPDATER_LUCI_INDEX_CACHE:-/tmp/luci-indexcache}"
+EVENTS_BIN="${SMARTSAFEHUB_UPDATER_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
+UPDATE_PACKAGE="luci-app-smartsafehub"
+SAFESHIELD_PACKAGE="safeshield"
+FEED_NAME="smartsafehub"
+DEFAULT_REPOSITORY_HOST="repo.smartsafehub.com"
+RELEASE_NOTE_TIMEOUT_S=10
+RELEASE_INDEX_MAX_BYTES=65536
+RELEASE_NOTE_MAX_BYTES=65536
+RELEASE_NOTES_MAX_BYTES=1048576
+RELEASE_NOTES_MAX_COUNT=32
+DEFAULT_CHECK_INTERVAL_S=21600
+MIN_CHECK_INTERVAL_S=900
+MAX_CHECK_INTERVAL_S=604800
+DAEMON_TICK_S=60
+DAEMON_INITIAL_DELAY_S=20
+BOOT_CHECK_RETRY_S=60
+BOOT_CHECK_MAX_ATTEMPTS=3
+AUTO_INSTALL_RETRY_S=900
+AUTO_INSTALL_MAX_ATTEMPTS=3
+
+CHECK_ENABLED=1
+CHECK_INTERVAL_S="$DEFAULT_CHECK_INTERVAL_S"
+AUTO_INSTALL=0
+AUTO_INSTALL_TIME="03:00"
+REPOSITORY_HOST="$DEFAULT_REPOSITORY_HOST"
+
+log_message() {
+	logger -t smartsafehub-updater -- "$*" 2>/dev/null || true
+}
+
+emit_update_event() {
+	local event_type="$1" severity="$2" stage="$3" error_code="$4" from_version="$5" to_version="$6" metadata
+	[ -x "$EVENTS_BIN" ] || return 0
+	metadata="{\"package\":\"$UPDATE_PACKAGE\",\"stage\":\"$(json_escape "$stage")\",\"error_code\":\"$(json_escape "$error_code")\",\"from_version\":\"$(json_escape "$from_version")\",\"to_version\":\"$(json_escape "$to_version")\"}"
+	"$EVENTS_BIN" emit updater "$event_type" "$severity" "$metadata" >/dev/null 2>&1 || true
+}
+
+uci_get() {
+	"$UCI_BIN" -q get "smartsafehub.updates.$1" 2>/dev/null || true
+}
+
+default_auto_install() {
+	local line
+	[ -f "$REPOSITORY_FILE" ] || { printf '0'; return 0; }
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			''|'#'*) continue ;;
+			*/stable/packages/*)
+				printf '1'
+				return 0
+				;;
+			*/beta/packages/*)
+				printf '0'
+				return 0
+				;;
+		esac
+	done < "$REPOSITORY_FILE"
+
+	printf '0'
+}
+
+load_settings() {
+	local value
+
+	value="$(uci_get check_enabled)"
+	[ "$value" = "0" ] && CHECK_ENABLED=0 || CHECK_ENABLED=1
+
+	value="$(uci_get check_interval_s)"
+	case "$value" in
+		''|*[!0-9]*) value="$DEFAULT_CHECK_INTERVAL_S" ;;
+	esac
+	if [ "$value" -lt "$MIN_CHECK_INTERVAL_S" ] || [ "$value" -gt "$MAX_CHECK_INTERVAL_S" ]; then
+		value="$DEFAULT_CHECK_INTERVAL_S"
+	fi
+	CHECK_INTERVAL_S="$value"
+
+	value="$(uci_get auto_install)"
+	case "$value" in
+		1) AUTO_INSTALL=1 ;;
+		0) AUTO_INSTALL=0 ;;
+		*) AUTO_INSTALL="$(default_auto_install)" ;;
+	esac
+
+	value="$(uci_get auto_install_time)"
+	case "$value" in
+		[01][0-9]:[0-5][0-9]|2[0-3]:[0-5][0-9]) AUTO_INSTALL_TIME="$value" ;;
+		*) AUTO_INSTALL_TIME="03:00" ;;
+	esac
+
+	value="$(uci_get repository_host)"
+	[ -n "$value" ] && REPOSITORY_HOST="$value" || REPOSITORY_HOST="$DEFAULT_REPOSITORY_HOST"
+}
+
+state_value() {
+	local key="$1"
+	[ -f "$STATE_FILE" ] || return 0
+	awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$STATE_FILE" 2>/dev/null || true
+}
+
+state_package_lines() {
+	[ -f "$STATE_FILE" ] || return 0
+	awk -F '\t' '$1 == "package" { print }' "$STATE_FILE" 2>/dev/null || true
+}
+
+state_package_field() {
+	local package="$1" field="$2"
+	[ -f "$STATE_FILE" ] || return 0
+	awk -F '\t' -v package="$package" -v field="$field" \
+		'$1 == "package" && $2 == package { print $field; exit }' \
+		"$STATE_FILE" 2>/dev/null || true
+}
+
+sanitize_field() {
+	printf '%s' "$1" | tr '\r\n\t' '   ' | cut -c 1-300
+}
+
+write_state() {
+	local phase="$1"
+	local last_check_at="$2"
+	local last_install_at="$3"
+	local error_code="$4"
+	local error_message="$5"
+	local packages_file="${6:-}"
+	local last_error_at last_attempt_at tmp
+
+	last_error_at="$(state_value last_error_at)"
+	[ -n "$last_error_at" ] || last_error_at=0
+	if [ -n "$error_code" ]; then
+		last_error_at="$(date +%s)"
+	fi
+
+	last_attempt_at="$(state_value last_attempt_at)"
+	[ -n "$last_attempt_at" ] || last_attempt_at=0
+	if [ "$phase" = 'checking' ]; then
+		last_attempt_at="$(date +%s)"
+	fi
+
+	tmp="${STATE_FILE}.$$"
+	umask 022
+	{
+		printf 'version\t1\n'
+		printf 'phase\t%s\n' "$(sanitize_field "$phase")"
+		printf 'last_check_at\t%s\n' "${last_check_at:-0}"
+		printf 'last_attempt_at\t%s\n' "${last_attempt_at:-0}"
+		printf 'last_install_at\t%s\n' "${last_install_at:-0}"
+		printf 'last_error_at\t%s\n' "${last_error_at:-0}"
+		printf 'error_code\t%s\n' "$(sanitize_field "$error_code")"
+		printf 'error_message\t%s\n' "$(sanitize_field "$error_message")"
+		if [ -n "$packages_file" ] && [ -f "$packages_file" ]; then
+			cat "$packages_file"
+		else
+			state_package_lines
+		fi
+	} > "$tmp"
+	mv "$tmp" "$STATE_FILE"
+}
+
+set_phase() {
+	local phase="$1"
+	local last_check_at last_install_at
+	last_check_at="$(state_value last_check_at)"
+	last_install_at="$(state_value last_install_at)"
+	write_state "$phase" "${last_check_at:-0}" "${last_install_at:-0}" '' ''
+}
+
+acquire_lock() {
+	local owner
+	if mkdir "$LOCK_DIR" 2>/dev/null; then
+		printf '%s\n' "$$" > "$LOCK_DIR/pid"
+		return 0
+	fi
+
+	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
+		return 1
+	fi
+
+	rm -rf "$LOCK_DIR" 2>/dev/null || return 1
+	mkdir "$LOCK_DIR" 2>/dev/null || return 1
+	printf '%s\n' "$$" > "$LOCK_DIR/pid"
+	return 0
+}
+
+release_lock() {
+	rm -rf "$LOCK_DIR" 2>/dev/null || true
+}
+
+repository_is_configured() {
+	local file line
+	[ -d "$REPOSITORY_DIR" ] || return 1
+
+	for file in "$REPOSITORY_DIR"/*; do
+		[ -f "$file" ] || continue
+		while IFS= read -r line || [ -n "$line" ]; do
+			case "$line" in
+				''|'#'*) continue ;;
+				*"$REPOSITORY_HOST"*) return 0 ;;
+			esac
+		done < "$file"
+	done
+
+	return 1
+}
+
+repository_release_base_url() {
+	local line url rest channel
+	[ -f "$REPOSITORY_FILE" ] || return 1
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			''|'#'*) continue ;;
+		esac
+
+		url="$(printf '%s\n' "$line" | awk '{ print $1 }')"
+		case "$url" in
+			https://"$REPOSITORY_HOST"/*/packages/*/"$FEED_NAME"/packages.adb)
+				rest="${url#https://$REPOSITORY_HOST/}"
+				channel="${rest%%/*}"
+				case "$channel" in
+					''|*[!A-Za-z0-9._-]*) continue ;;
+				esac
+				printf 'https://%s/%s' "$REPOSITORY_HOST" "$channel"
+				return 0
+				;;
+		esac
+	done < "$REPOSITORY_FILE"
+
+	return 1
+}
+
+safe_release_version() {
+	case "$1" in
+		''|*[!A-Za-z0-9._~+-]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+file_size_is_valid() {
+	local file="$1" max_bytes="$2" size
+	size="$(wc -c < "$file" 2>/dev/null | tr -d '[:space:]')"
+	case "$size" in
+		''|*[!0-9]*) size=0 ;;
+	esac
+	[ "$size" -gt 0 ] && [ "$size" -le "$max_bytes" ]
+}
+
+release_notes_cache_matches_range() {
+	local installed="$1" available="$2" cached_installed cached_available
+
+	[ -f "$RELEASE_NOTES_FILE" ] || return 1
+	file_size_is_valid "$RELEASE_NOTES_FILE" "$RELEASE_NOTES_MAX_BYTES" || return 1
+
+	cached_installed="$(
+		awk -F '"' '/"installed_version"[[:space:]]*:/ { print $4; exit }' \
+			"$RELEASE_NOTES_FILE" 2>/dev/null || true
+	)"
+	cached_available="$(
+		awk -F '"' '/"available_version"[[:space:]]*:/ { print $4; exit }' \
+			"$RELEASE_NOTES_FILE" 2>/dev/null || true
+	)"
+
+	[ "$cached_installed" = "$installed" ] && [ "$cached_available" = "$available" ]
+}
+
+preserve_release_notes_cache_or_remove() {
+	local installed="$1" available="$2" reason="$3"
+
+	if release_notes_cache_matches_range "$installed" "$available"; then
+		log_message "release note refresh unavailable for $installed -> $available; keeping cached bundle ($reason)"
+		return 0
+	fi
+
+	rm -f "$RELEASE_NOTES_FILE"
+	return 0
+}
+
+select_release_versions() {
+	local index_file="$1" installed="$2" available="$3" output_file="$4"
+	local versions_file candidate_file version started found_installed count truncated
+
+	versions_file="${output_file}.index"
+	candidate_file="${output_file}.candidate"
+	: > "$candidate_file"
+
+	sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*$/\1/p' \
+		"$index_file" > "$versions_file"
+
+	started=0
+	found_installed=0
+	count=0
+	truncated=0
+	while IFS= read -r version || [ -n "$version" ]; do
+		safe_release_version "$version" || continue
+
+		if [ "$started" -eq 0 ]; then
+			[ "$version" = "$available" ] || continue
+			started=1
+		fi
+
+		if [ "$version" = "$installed" ]; then
+			found_installed=1
+			break
+		fi
+
+		if [ "$count" -lt "$RELEASE_NOTES_MAX_COUNT" ]; then
+			printf '%s\n' "$version" >> "$candidate_file"
+			count=$((count + 1))
+		else
+			truncated=1
+		fi
+	done < "$versions_file"
+
+	rm -f "$versions_file"
+
+	if [ "$started" -eq 1 ] && [ "$found_installed" -eq 1 ] && [ -s "$candidate_file" ]; then
+		mv "$candidate_file" "$output_file"
+		[ "$truncated" -eq 0 ]
+		return
+	fi
+
+	rm -f "$candidate_file"
+	printf '%s\n' "$available" > "$output_file"
+	return 1
+}
+
+refresh_release_notes() {
+	local packages_file="$1" installed available base index_url index_file versions_file
+	local work_dir bundle_tmp log_file complete version note_file note_count first size
+
+	installed="$(
+		awk -F '\t' -v package="$UPDATE_PACKAGE" \
+			'$1 == "package" && $2 == package && $5 == "1" { print $3; exit }' \
+			"$packages_file" 2>/dev/null || true
+	)"
+	available="$(
+		awk -F '\t' -v package="$UPDATE_PACKAGE" \
+			'$1 == "package" && $2 == package && $5 == "1" { print $4; exit }' \
+			"$packages_file" 2>/dev/null || true
+	)"
+
+	if [ -z "$installed" ] || [ -z "$available" ]; then
+		rm -f "$RELEASE_NOTES_FILE"
+		return 0
+	fi
+
+	if ! safe_release_version "$installed" || ! safe_release_version "$available"; then
+		rm -f "$RELEASE_NOTES_FILE"
+		log_message "release notes skipped for unsafe version range: $installed -> $available"
+		return 0
+	fi
+
+	base="$(repository_release_base_url 2>/dev/null || true)"
+	if [ -z "$base" ]; then
+		rm -f "$RELEASE_NOTES_FILE"
+		log_message 'release notes skipped: SmartSafeHub repository channel could not be resolved'
+		return 0
+	fi
+
+	work_dir="$RUNTIME_DIR/updater-release-notes.$$"
+	index_file="$work_dir/index.json"
+	versions_file="$work_dir/versions"
+	bundle_tmp="${RELEASE_NOTES_FILE}.$$"
+	log_file="$work_dir/fetch.log"
+	complete=true
+	umask 022
+	rm -rf "$work_dir"
+	mkdir -p "$work_dir" || {
+		preserve_release_notes_cache_or_remove "$installed" "$available" 'work directory unavailable'
+		return 0
+	}
+
+	index_url="${base}/releases/${UPDATE_PACKAGE}/index.json"
+	if "$UCLIENT_FETCH_BIN" -q -T "$RELEASE_NOTE_TIMEOUT_S" -O "$index_file" "$index_url" > "$log_file" 2>&1 \
+		&& file_size_is_valid "$index_file" "$RELEASE_INDEX_MAX_BYTES"; then
+		if ! select_release_versions "$index_file" "$installed" "$available" "$versions_file"; then
+			complete=false
+		fi
+	else
+		printf '%s\n' "$available" > "$versions_file"
+		complete=false
+		log_message "release index unavailable for $installed -> $available; using latest release note only"
+	fi
+
+	note_count=0
+	while IFS= read -r version || [ -n "$version" ]; do
+		safe_release_version "$version" || {
+			complete=false
+			continue
+		}
+
+		note_file="$work_dir/note.$(printf '%03d' "$note_count").json"
+		if ! "$UCLIENT_FETCH_BIN" -q -T "$RELEASE_NOTE_TIMEOUT_S" -O "$note_file" \
+			"${base}/releases/${UPDATE_PACKAGE}/${version}.json" >> "$log_file" 2>&1; then
+			rm -f "$note_file"
+			complete=false
+			log_message "release note unavailable for $version"
+			continue
+		fi
+
+		if ! file_size_is_valid "$note_file" "$RELEASE_NOTE_MAX_BYTES" \
+			|| ! grep -Fq "\"package\": \"$UPDATE_PACKAGE\"" "$note_file" \
+			|| ! grep -Fq "\"version\": \"$version\"" "$note_file"; then
+			rm -f "$note_file"
+			complete=false
+			log_message "release note rejected for $version"
+			continue
+		fi
+
+		note_count=$((note_count + 1))
+	done < "$versions_file"
+
+	if [ "$note_count" -eq 0 ]; then
+		rm -rf "$work_dir"
+		rm -f "$bundle_tmp"
+		preserve_release_notes_cache_or_remove "$installed" "$available" 'no release notes fetched'
+		return 0
+	fi
+
+	{
+		printf '{\n'
+		printf '  "schema_version": 1,\n'
+		printf '  "package": "%s",\n' "$UPDATE_PACKAGE"
+		printf '  "installed_version": "%s",\n' "$installed"
+		printf '  "available_version": "%s",\n' "$available"
+		printf '  "complete": %s,\n' "$complete"
+		printf '  "releases": [\n'
+		first=1
+		for note_file in "$work_dir"/note.*.json; do
+			[ -f "$note_file" ] || continue
+			if [ "$first" -eq 0 ]; then
+				printf ',\n'
+			fi
+			cat "$note_file"
+			first=0
+		done
+		printf '  ]\n'
+		printf '}\n'
+	} > "$bundle_tmp"
+
+	size="$(wc -c < "$bundle_tmp" 2>/dev/null | tr -d '[:space:]')"
+	case "$size" in
+		''|*[!0-9]*) size=0 ;;
+	esac
+	if [ "$size" -le 0 ] || [ "$size" -gt "$RELEASE_NOTES_MAX_BYTES" ]; then
+		rm -rf "$work_dir"
+		rm -f "$bundle_tmp"
+		log_message "release note bundle rejected: invalid size $size"
+		preserve_release_notes_cache_or_remove "$installed" "$available" 'invalid bundle size'
+		return 0
+	fi
+
+	mv "$bundle_tmp" "$RELEASE_NOTES_FILE"
+	rm -rf "$work_dir"
+	log_message "release note bundle cached for $installed -> $available ($note_count release(s), complete=$complete)"
+	return 0
+}
+
+apk_error_message() {
+	local log_file="$1" message
+	message="$(tail -n 6 "$log_file" 2>/dev/null | tr '\r\n\t' '   ' | cut -c 1-300)"
+	[ -n "$message" ] || message='패키지 저장소 작업에 실패했습니다.'
+	printf '%s' "$message"
+}
+
+refresh_indexes() {
+	local log_file="$1"
+
+	if ! repository_is_configured; then
+		printf '%s' 'SmartSafeHub 패키지 저장소가 APK 설정에 등록되어 있지 않습니다.' > "$log_file"
+		return 1
+	fi
+
+	"$APK_BIN" update > "$log_file" 2>&1
+}
+
+installed_version() {
+	local package="$1"
+	"$APK_BIN" list -I --manifest "$package" 2>/dev/null |
+		awk -v package="$package" '$1 == package { print $2; exit }'
+}
+
+available_upgrade_version() {
+	local package="$1" identifier
+	identifier="$("$APK_BIN" list -u "$package" 2>/dev/null | awk 'NR == 1 { print $1; exit }')"
+	case "$identifier" in
+		"$package"-*) printf '%s' "${identifier#${package}-}" ;;
+		*) return 0 ;;
+	esac
+}
+
+package_has_identity_pin() {
+	local package="$1" line
+	[ -n "$package" ] || return 1
+	[ -f "$APK_WORLD_FILE" ] || return 1
+
+	while IFS= read -r line || [ -n "$line" ]; do
+		case "$line" in
+			"$package"'><Q'*) return 0 ;;
+		esac
+	done < "$APK_WORLD_FILE"
+
+	return 1
+}
+
+normalize_package_identity_pin() {
+	local package="$1" label="$2" log_file="$3" tmp_file
+
+	package_has_identity_pin "$package" || return 0
+
+	# Installing a local APK can leave a repository identity hash in /etc/apk/world.
+	# Do not use `apk add --upgrade --latest` to normalize it: that command can
+	# broaden dependency resolution into unrelated OpenWrt packages and kernel
+	# modules. Rewrite only the exact SmartSafeHub-managed world entry instead;
+	# the targeted apk upgrade below remains responsible for dependency changes.
+	tmp_file="${APK_WORLD_FILE}.smartsafehub.$$"
+	log_message "normalizing local APK identity pin for $package without package upgrade"
+	if ! awk -v package="$package" '
+		index($0, package "><Q") == 1 { print package; next }
+		{ print }
+	' "$APK_WORLD_FILE" > "$tmp_file"; then
+		rm -f "$tmp_file"
+		printf '%s\n' \
+			"${label} 패키지의 로컬 APK identity pin 정보를 읽지 못했습니다." >> "$log_file"
+		return 1
+	fi
+
+	if ! mv -f "$tmp_file" "$APK_WORLD_FILE"; then
+		rm -f "$tmp_file"
+		printf '%s\n' \
+			"${label} 패키지의 로컬 APK identity pin을 안전하게 해제하지 못했습니다." >> "$log_file"
+		return 1
+	fi
+
+	if package_has_identity_pin "$package"; then
+		printf '%s\n' \
+			"${label} 패키지의 로컬 APK identity pin을 해제하지 못했습니다." >> "$log_file"
+		return 1
+	fi
+	return 0
+}
+
+upgrade_update_package() {
+	local log_file="$1"
+	: > "$log_file"
+
+	# Local APK installs can pin SmartSafeHub and its managed SafeShield dependency
+	# to repository identity hashes. Normalize only those world entries, then let a
+	# single targeted SmartSafeHub upgrade resolve the dependency version it truly
+	# requires. Never run a broad `apk add --upgrade --latest` normalization step.
+	if ! normalize_package_identity_pin "$SAFESHIELD_PACKAGE" 'SafeShield' "$log_file"; then
+		return 1
+	fi
+	if ! normalize_package_identity_pin "$UPDATE_PACKAGE" 'SmartSafeHub' "$log_file"; then
+		return 1
+	fi
+
+	if ! "$APK_BIN" upgrade "$UPDATE_PACKAGE" >> "$log_file" 2>&1; then
+		return 1
+	fi
+	return 0
+}
+
+collect_packages() {
+	local output_file="$1" installed available update_available
+	: > "$output_file"
+
+	installed="$(installed_version "$UPDATE_PACKAGE")"
+	[ -n "$installed" ] || return 0
+	available="$(available_upgrade_version "$UPDATE_PACKAGE")"
+	[ -n "$available" ] && update_available=1 || update_available=0
+	printf 'package\t%s\t%s\t%s\t%s\n' \
+		"$UPDATE_PACKAGE" "$installed" "$available" "$update_available" >> "$output_file"
+}
+
+collect_packages_with_live_installed() {
+	local output_file="$1" installed cached_installed cached_available cached_update_available
+	: > "$output_file"
+
+	installed="$(installed_version "$UPDATE_PACKAGE")"
+	[ -n "$installed" ] || return 0
+
+	cached_installed="$(state_package_field "$UPDATE_PACKAGE" 3)"
+	cached_available="$(state_package_field "$UPDATE_PACKAGE" 4)"
+	cached_update_available="$(state_package_field "$UPDATE_PACKAGE" 5)"
+
+	if [ "$installed" != "$cached_installed" ]; then
+		cached_available=''
+		cached_update_available=0
+	elif [ "$cached_update_available" != '1' ] || [ -z "$cached_available" ]; then
+		cached_available=''
+		cached_update_available=0
+	fi
+
+	printf 'package\t%s\t%s\t%s\t%s\n' \
+		"$UPDATE_PACKAGE" "$installed" "$cached_available" "$cached_update_available" >> "$output_file"
+}
+
+perform_check_locked() {
+	local log_file packages_file now last_install_at message
+	log_file="$RUNTIME_DIR/updater-apk.$$.log"
+	packages_file="$RUNTIME_DIR/updater-packages.$$.state"
+	last_install_at="$(state_value last_install_at)"
+	[ -n "$last_install_at" ] || last_install_at=0
+	set_phase checking
+
+	if ! refresh_indexes "$log_file"; then
+		message="$(apk_error_message "$log_file")"
+		collect_packages_with_live_installed "$packages_file"
+		if [ -s "$packages_file" ]; then
+			refresh_release_notes "$packages_file"
+		fi
+		write_state error "$(state_value last_check_at)" "$last_install_at" \
+			'UPDATES_INDEX_REFRESH_FAILED' "$message" "$packages_file"
+		rm -f "$log_file" "$packages_file"
+		log_message "update check failed: $message"
+		return 1
+	fi
+
+	collect_packages "$packages_file"
+	refresh_release_notes "$packages_file"
+	now="$(date +%s)"
+	write_state idle "$now" "$last_install_at" '' '' "$packages_file"
+	rm -f "$log_file" "$packages_file"
+	log_message 'update check completed'
+	return 0
+}
+
+perform_check() {
+	load_settings
+	if ! acquire_lock; then
+		return 75
+	fi
+	perform_check_locked
+	local result=$?
+	release_lock
+	return "$result"
+}
+
+perform_install_locked() {
+	local log_file packages_file after_file now last_check_at message upgradable target_version installed_before installed_after
+	log_file="$RUNTIME_DIR/updater-apk.$$.log"
+	packages_file="$RUNTIME_DIR/updater-packages.$$.state"
+	after_file="$RUNTIME_DIR/updater-packages-after.$$.state"
+	set_phase installing
+
+	if ! refresh_indexes "$log_file"; then
+		message="$(apk_error_message "$log_file")"
+		collect_packages_with_live_installed "$packages_file"
+		if [ -s "$packages_file" ]; then
+			refresh_release_notes "$packages_file"
+		fi
+		write_state error "$(state_value last_check_at)" "$(state_value last_install_at)" \
+			'UPDATES_INDEX_REFRESH_FAILED' "$message" "$packages_file"
+		installed_before="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $3; exit }' "$packages_file")"
+		emit_update_event software.update.failed error index_refresh UPDATES_INDEX_REFRESH_FAILED "$installed_before" ''
+		rm -f "$log_file" "$packages_file" "$after_file"
+		log_message "update install failed while refreshing indexes: $message"
+		return 1
+	fi
+
+	collect_packages "$packages_file"
+	refresh_release_notes "$packages_file"
+	upgradable="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $5; exit }' "$packages_file")"
+	target_version="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $4; exit }' "$packages_file")"
+
+	now="$(date +%s)"
+	last_check_at="$now"
+	if [ "$upgradable" != '1' ]; then
+		write_state idle "$last_check_at" "$(state_value last_install_at)" '' '' "$packages_file"
+		rm -f "$log_file" "$packages_file" "$after_file"
+		log_message 'no SmartSafeHub update to install'
+		return 0
+	fi
+
+	if ! upgrade_update_package "$log_file"; then
+		message="$(apk_error_message "$log_file")"
+		installed_before="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $3; exit }' "$packages_file")"
+		write_state error "$last_check_at" "$(state_value last_install_at)" \
+			'UPDATES_INSTALL_FAILED' "$message" "$packages_file"
+		emit_update_event software.update.failed error install UPDATES_INSTALL_FAILED "$installed_before" "$target_version"
+		rm -f "$log_file" "$packages_file" "$after_file"
+		log_message "SmartSafeHub package update failed: $message"
+		return 1
+	fi
+
+	collect_packages "$after_file"
+	installed_after="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $3; exit }' "$after_file")"
+	if [ -z "$target_version" ] || [ "$installed_after" != "$target_version" ]; then
+		refresh_release_notes "$after_file"
+		installed_before="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $3; exit }' "$packages_file")"
+		message="SmartSafeHub 패키지 버전이 업데이트 후에도 목표 버전 ${target_version:-unknown}과 일치하지 않습니다. 현재 버전: ${installed_after:-unknown}"
+		write_state error "$last_check_at" "$(state_value last_install_at)" \
+			'UPDATES_INSTALL_VERSION_UNCHANGED' "$message" "$after_file"
+		emit_update_event software.update.failed error verify UPDATES_INSTALL_VERSION_UNCHANGED "$installed_before" "$target_version"
+		rm -f "$log_file" "$packages_file" "$after_file"
+		log_message "SmartSafeHub package update did not change to the expected version: ${installed_after:-unknown} -> ${target_version:-unknown}"
+		return 1
+	fi
+
+	refresh_release_notes "$after_file"
+	installed_before="$(awk -F '\t' -v package="$UPDATE_PACKAGE" '$1 == "package" && $2 == package { print $3; exit }' "$packages_file")"
+	now="$(date +%s)"
+	write_state idle "$last_check_at" "$now" '' '' "$after_file"
+	emit_update_event software.update.completed success install '' "$installed_before" "$installed_after"
+	rm -f "$log_file" "$packages_file" "$after_file" "$LUCI_INDEX_CACHE"
+	log_message "SmartSafeHub package update completed: $UPDATE_PACKAGE"
+
+	if [ -n "$RPCD_INIT" ] && [ -x "$RPCD_INIT" ]; then
+		( sleep 2; "$RPCD_INIT" reload >/dev/null 2>&1 ) &
+	fi
+	return 0
+}
+
+perform_install() {
+	load_settings
+	if ! acquire_lock; then
+		return 75
+	fi
+	perform_install_locked
+	local result=$?
+	release_lock
+	return "$result"
+}
+
+time_to_number() {
+	printf '%s' "$1" | tr -d ':'
+}
+
+read_auto_retry_count() {
+	local today="$1" retry_date retry_count
+	retry_date=''
+	retry_count=0
+
+	if [ -f "$AUTO_RETRY_COUNT_MARKER" ]; then
+		read -r retry_date retry_count < "$AUTO_RETRY_COUNT_MARKER" || true
+	fi
+	case "$retry_count" in
+		''|*[!0-9]*) retry_count=0 ;;
+	esac
+
+	if [ "$retry_date" != "$today" ]; then
+		rm -f "$AUTO_RETRY_COUNT_MARKER" "$AUTO_RETRY_MARKER"
+		retry_count=0
+	fi
+
+	printf '%s\n' "$retry_count"
+}
+
+initialize_auto_marker() {
+	local today now target retry_count
+	[ "$AUTO_INSTALL" = '1' ] || return 0
+	[ -f "$AUTO_MARKER" ] && return 0
+
+	today="$(date +%Y-%m-%d)"
+	retry_count="$(read_auto_retry_count "$today")"
+	if [ "$retry_count" -gt 0 ]; then
+		return 0
+	fi
+
+	now="$(time_to_number "$(date +%H:%M)")"
+	target="$(time_to_number "$AUTO_INSTALL_TIME")"
+	if [ "$now" -gt "$target" ]; then
+		printf '%s\n' "$today" > "$AUTO_MARKER"
+	fi
+}
+
+auto_install_if_due() {
+	local today now target last_attempt result current_epoch retry_at elapsed retry_count
+	[ "$AUTO_INSTALL" = '1' ] || return 0
+
+	today="$(date +%Y-%m-%d)"
+	last_attempt="$(cat "$AUTO_MARKER" 2>/dev/null || true)"
+	[ "$last_attempt" != "$today" ] || return 0
+
+	retry_count="$(read_auto_retry_count "$today")"
+	[ "$retry_count" -lt "$AUTO_INSTALL_MAX_ATTEMPTS" ] || return 0
+
+	now="$(time_to_number "$(date +%H:%M)")"
+	target="$(time_to_number "$AUTO_INSTALL_TIME")"
+	[ "$now" -ge "$target" ] || return 0
+
+	current_epoch="$(date +%s)"
+	retry_at="$(cat "$AUTO_RETRY_MARKER" 2>/dev/null || true)"
+	case "$retry_at" in
+		''|*[!0-9]*) retry_at=0 ;;
+	esac
+	if [ "$retry_at" -gt 0 ]; then
+		elapsed=$((current_epoch - retry_at))
+		if [ "$elapsed" -ge 0 ] && [ "$elapsed" -lt "$AUTO_INSTALL_RETRY_S" ]; then
+			return 0
+		fi
+	fi
+
+	perform_install
+	result=$?
+	if [ "$result" -eq 0 ]; then
+		printf '%s\n' "$today" > "$AUTO_MARKER"
+		rm -f "$AUTO_RETRY_MARKER" "$AUTO_RETRY_COUNT_MARKER"
+	elif [ "$result" -ne 75 ]; then
+		retry_count=$((retry_count + 1))
+		printf '%s %s\n' "$today" "$retry_count" > "$AUTO_RETRY_COUNT_MARKER"
+		if [ "$retry_count" -lt "$AUTO_INSTALL_MAX_ATTEMPTS" ]; then
+			printf '%s\n' "$current_epoch" > "$AUTO_RETRY_MARKER"
+		else
+			rm -f "$AUTO_RETRY_MARKER"
+			log_message "automatic update failed after $retry_count attempts; retrying tomorrow"
+		fi
+	fi
+
+	return 0
+}
+
+execute_check() {
+	"$0" check >/dev/null 2>&1
+}
+
+boot_check_with_retry() {
+	local attempt=1
+
+	while [ "$attempt" -le "$BOOT_CHECK_MAX_ATTEMPTS" ]; do
+		load_settings
+		[ "$CHECK_ENABLED" = '1' ] || return 0
+
+		if execute_check; then
+			return 0
+		fi
+
+		if [ "$attempt" -ge "$BOOT_CHECK_MAX_ATTEMPTS" ]; then
+			log_message "initial management software update check failed after $attempt attempts; resuming normal schedule"
+			return 1
+		fi
+
+		attempt=$((attempt + 1))
+		sleep "$BOOT_CHECK_RETRY_S"
+	done
+
+	return 1
+}
+
+periodic_check_if_due() {
+	local now last_check last_attempt reference_at
+	[ "$CHECK_ENABLED" = '1' ] || return 0
+
+	now="$(date +%s)"
+	last_check="$(state_value last_check_at)"
+	case "$last_check" in
+		''|*[!0-9]*) last_check=0 ;;
+	esac
+	last_attempt="$(state_value last_attempt_at)"
+	case "$last_attempt" in
+		''|*[!0-9]*) last_attempt=0 ;;
+	esac
+	reference_at="$last_check"
+	[ "$last_attempt" -gt "$reference_at" ] && reference_at="$last_attempt"
+
+	if [ "$reference_at" -eq 0 ] || [ "$now" -lt "$reference_at" ] || [ $((now - reference_at)) -ge "$CHECK_INTERVAL_S" ]; then
+		execute_check || true
+	fi
+}
+
+run_daemon() {
+	load_settings
+	initialize_auto_marker
+	sleep "$DAEMON_INITIAL_DELAY_S"
+	boot_check_with_retry || true
+
+	while true; do
+		load_settings
+		periodic_check_if_due
+		load_settings
+		auto_install_if_due
+		sleep "$DAEMON_TICK_S"
+	done
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	check)
+		perform_check
+		;;
+	install)
+		perform_install
+		;;
+	daemon)
+		run_daemon
+		;;
+	*)
+		echo "Usage: $0 {check|install|daemon}" >&2
+		exit 2
+		;;
+esac

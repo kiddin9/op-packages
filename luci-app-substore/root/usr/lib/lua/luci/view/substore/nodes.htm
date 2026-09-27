@@ -1,0 +1,203 @@
+<%+header%>
+<%
+	local http = require("luci.http")
+	local core = require("substore.core")
+	local node = require("substore.node")
+	local ctx = luci.dispatcher.context or {}
+	local q = ctx.query or {}
+	local id = http.formvalue("id") or q.id or ""
+	local meta = id ~= "" and core.get(id) or nil
+	local nodes = id ~= "" and core.read_nodes(id) or {}
+	local proto = http.formvalue("proto") or q.proto or ""
+	local keyword = http.formvalue("keyword") or q.keyword or ""
+	local group = http.formvalue("group") or q.group or ""
+	local sort_by = http.formvalue("sort") or q.sort or "name"
+	local sort_desc = http.formvalue("desc") == "1" or q.desc == "1"
+
+	-- 标注原始数组下标（filter 保留表引用、sort 原地排序，下标可穿透筛选排序）
+	for i, nn in ipairs(nodes) do nn.__idx = i end
+	-- 分组下拉选项：当前订阅节点的去重分组集合
+	local group_set, group_list = {}, {}
+	for _, nn in ipairs(nodes) do
+		local g = nn.group
+		if g and g ~= "" and not group_set[g] then
+			group_set[g] = true
+			group_list[#group_list + 1] = g
+		end
+	end
+	table.sort(group_list)
+
+	if proto ~= "" then nodes = node.filter(nodes, {proto = proto}) end
+	if group ~= "" then nodes = node.filter(nodes, {group = group}) end
+	if keyword ~= "" then nodes = node.filter(nodes, {keyword = keyword}) end
+	nodes = node.sort(nodes, sort_by, sort_desc)
+	local node_edit_base = luci.dispatcher.build_url('admin/services/substore/node_edit')
+%>
+<h2><%:Nodes%> — <%=meta and meta.name or ""%></h2>
+<div style="margin:0.5em 0">
+	<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
+</div>
+
+<form method="get" action="<%=luci.dispatcher.build_url('admin/services/substore/nodes')%>" class="cbi-map">
+	<input type="hidden" name="id" value="<%=id%>"/>
+	<div style="display:flex;gap:0.5em;align-items:center;flex-wrap:wrap;margin:0.5em 0">
+		<label><%:Protocol%>:
+			<select name="proto">
+				<option value=""><%:All%></option>
+				<% for _, p in ipairs({"vmess","vless","trojan","shadowsocks","ssr","hysteria2","tuic","hysteria","wireguard","socks"}) do %>
+					<option value="<%=p%>" <%=proto==p and "selected" or ""%>><%=p%></option>
+				<% end %>
+			</select>
+		</label>
+		<label><%:Group%>:
+			<select name="group">
+				<option value=""><%:All%></option>
+				<% for _, g in ipairs(group_list) do %>
+					<option value="<%=luci.util.pcdata(g)%>" <%=group==g and "selected" or ""%>><%=g%></option>
+				<% end %>
+			</select>
+		</label>
+		<label><%:Keyword%>: <input type="text" name="keyword" value="<%=keyword%>"/></label>
+		<label><%:Sort by%>:
+			<select name="sort">
+				<option value="name" <%=sort_by=="name" and "selected" or ""%>>name</option>
+				<option value="server" <%=sort_by=="server" and "selected" or ""%>>server</option>
+				<option value="proto" <%=sort_by=="proto" and "selected" or ""%>>proto</option>
+				<option value="port" <%=sort_by=="port" and "selected" or ""%>>port</option>
+				<option value="group" <%=sort_by=="group" and "selected" or ""%>>group</option>
+			</select>
+		</label>
+		<label style="margin-left:0.5em"><input type="checkbox" name="desc" value="1" <%=sort_desc and "checked" or ""%>/> <%:Desc%></label>
+		<input type="submit" class="cbi-button cbi-button-apply" value="<%:Filter%>"/>
+		<button type="button" class="cbi-button" onclick="runProbe('ping')">Ping</button>
+		<button type="button" class="cbi-button" onclick="runProbe('tcping')">TCPing</button>
+		<button type="button" class="cbi-button" onclick="runProbe('url')"><%:URL Test%></button>
+	</div>
+</form>
+
+<table class="cbi-section-table">
+	<tr class="cbi-section-table-titles">
+		<th><%:Name%></th>
+		<th><%:Group%></th>
+		<th><%:Protocol%></th>
+		<th><%:Server%></th>
+		<th><%:Port%></th>
+		<th><%:Latency%></th>
+		<th><%:Actions%></th>
+	</tr>
+	<% for _, n in ipairs(nodes) do %>
+	<tr class="cbi-section-table-row" data-server="<%=n.server or ""%>" data-port="<%=n.port or ""%>">
+		<td><%=n.name or ""%></td>
+		<td>
+			<input type="text" class="group-input" style="width:8em" value="<%=luci.util.pcdata(n.group or "")%>"
+				data-idx="<%=n.__idx%>" onchange="substore_set_group(this)"/>
+		</td>
+		<td><%=n.proto or ""%></td>
+		<td><%=n.server or ""%></td>
+		<td><%=n.port or ""%></td>
+		<td class="node-latency">-</td>
+		<td style="white-space:nowrap">
+			<a class="cbi-button cbi-button-apply" href="<%=node_edit_base%>?id=<%=luci.util.urlencode(id)%>&idx=<%=n.__idx%>"><%:Edit%></a>
+			<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/node_delete')%>" style="display:inline"
+			      onsubmit="return confirm('<%=luci.util.pcdata(luci.i18n.translate('Delete this node?'))%>');">
+				<input type="hidden" name="token" value="<%=token%>"/>
+				<input type="hidden" name="id" value="<%=id%>"/>
+				<input type="hidden" name="idx" value="<%=n.__idx%>"/>
+				<input type="hidden" name="proto" value="<%=proto%>"/>
+				<input type="hidden" name="keyword" value="<%=keyword%>"/>
+				<input type="hidden" name="group" value="<%=group%>"/>
+				<input type="hidden" name="sort" value="<%=sort_by%>"/>
+				<% if sort_desc then %><input type="hidden" name="desc" value="1"/><% end %>
+				<input type="submit" class="cbi-button cbi-button-reset" value="<%:Delete%>"/>
+			</form>
+		</td>
+	</tr>
+	<% end %>
+	<% if #nodes == 0 then %>
+	<tr class="cbi-section-table-row"><td colspan="7" style="text-align:center;color:#808080"><%:No nodes found.%></td></tr>
+	<% end %>
+</table>
+<div id="probe_area" style="display:none;margin:0.5em 0">
+	<div id="probe_summary" style="margin:0.5em 0;color:#808080"></div>
+</div>
+
+<script>
+function esc(s) {
+	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function substore_set_group(el) {
+	var oldBg = el.style.background;
+	el.disabled = true;
+	var xhr = new XMLHttpRequest();
+	xhr.open('POST', '<%=luci.dispatcher.build_url('admin/services/substore/node_set_group')%>', true);
+	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState !== 4) return;
+		el.disabled = false;
+		var ok = false;
+		try { ok = xhr.status === 200 && JSON.parse(xhr.responseText).ok === true; } catch (e) {}
+		if (ok) {
+			el.style.background = '#e6ffed';
+			setTimeout(function() { el.style.background = oldBg; }, 800);
+		} else {
+			el.style.background = '#ffe6e6';
+			alert('<%:Failed to set group%>');
+		}
+	};
+	xhr.send('id=' + encodeURIComponent('<%=id%>')
+		+ '&idx=' + encodeURIComponent(el.getAttribute('data-idx'))
+		+ '&group=' + encodeURIComponent(el.value)
+		+ '&token=' + encodeURIComponent('<%=token%>'));
+}
+function runProbe(mode) {
+	var area = document.getElementById('probe_area');
+	var sum = document.getElementById('probe_summary');
+	var xhr = new XMLHttpRequest();
+	xhr.open('POST', '<%=luci.dispatcher.build_url('admin/services/substore/probe')%>', true);
+	xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+	area.style.display = 'none';
+	sum.textContent = 'Testing...';
+	xhr.onreadystatechange = function() {
+		if (xhr.readyState !== 4) return;
+		if (xhr.status !== 200) {
+			sum.textContent = 'Test failed (HTTP ' + xhr.status + ')';
+			return;
+		}
+		var r;
+		try { r = JSON.parse(xhr.responseText); } catch (e) { sum.textContent = 'Parse error'; return; }
+		// Update latency cells in the main table by matching server+port
+		for (var i = 0; i < r.results.length; i++) {
+			var it = r.results[i];
+			var lat = (it.latency === null || it.latency === undefined)
+				? '<span style="color:#cc0000">Fail</span>'
+				: Math.round(it.latency) + ' ms';
+			// Find row by server and port
+			var rows = document.querySelectorAll('tr[data-server][data-port]');
+			for (var j = 0; j < rows.length; j++) {
+				var row = rows[j];
+				var server = row.getAttribute('data-server');
+				var port = row.getAttribute('data-port');
+				if (server === (it.server || '') && port === String(it.port || '')) {
+					var cell = row.querySelector('.node-latency');
+					if (cell) {
+						cell.innerHTML = lat;
+					}
+					break;
+				}
+			}
+		}
+		var avgTxt = (r.avg === null || r.avg === undefined) ? '' : ', avg ' + r.avg + ' ms';
+		sum.textContent = r.ok_count + ' / ' + r.total + ' ok' + avgTxt;
+	};
+	var idEl = document.getElementsByName('id')[0];
+	var protoEl = document.getElementsByName('proto')[0];
+	var kwEl = document.getElementsByName('keyword')[0];
+	var params = 'id=' + encodeURIComponent(idEl ? idEl.value : '')
+		+ '&mode=' + encodeURIComponent(mode)
+		+ '&proto=' + encodeURIComponent(protoEl ? protoEl.value : '')
+		+ '&keyword=' + encodeURIComponent(kwEl ? kwEl.value : '')
+		+ '&token=' + encodeURIComponent('<%=token%>');
+	xhr.send(params);
+}
+</script>
+<%+footer%>

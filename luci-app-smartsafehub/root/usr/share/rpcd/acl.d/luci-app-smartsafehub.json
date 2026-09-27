@@ -1,0 +1,92 @@
+{
+  "luci-app-smartsafehub": {
+    "description": "Grant access to the SmartSafeHub device application",
+    "read": {
+      "ubus": {
+        "smartsafehub": [
+          "system_root_password_status",
+          "status",
+          "connected_devices",
+          "wifi_summary",
+          "updates_status",
+          "firmware_status",
+          "system_time_settings",
+          "system_scheduled_reboot_settings",
+          "license_status",
+          "health_status"
+        ],
+        "safeshield": [
+          "status",
+          "statistics",
+          "config",
+          "rules_list"
+        ],
+        "smartsafehub_network": [
+          "lan_settings",
+          "iptv_settings"
+        ]
+      },
+      "cgi-io": [
+        "backup"
+      ]
+    },
+    "write": {
+      "ubus": {
+        "smartsafehub": [
+          "system_root_password_set",
+          "wifi_update",
+          "system_timezone_update",
+          "system_time_sync",
+          "system_scheduled_reboot_update",
+          "system_reboot",
+          "updates_check",
+          "updates_install",
+          "updates_settings_update",
+          "firmware_check",
+          "firmware_prepare",
+          "firmware_validate_upload",
+          "firmware_install",
+          "firmware_discard",
+          "system_backup_validate",
+          "system_backup_restore",
+          "system_backup_discard",
+          "license_activate",
+          "activity_cloud_sync_update",
+          "health_run",
+          "health_reporter_update",
+          "safeshield_set_enabled",
+          "safeshield_refresh",
+          "safeshield_statistics_update",
+          "safeshield_rule_add",
+          "safeshield_rule_delete",
+          "safeshield_license_update"
+        ],
+        "safeshield": [
+          "set_enabled",
+          "config_update",
+          "refresh",
+          "rule_add",
+          "rule_delete",
+          "license_get",
+          "license_update"
+        ],
+        "smartsafehub_network": [
+          "lan_update",
+          "lan_auto_subnet",
+          "iptv_update"
+        ]
+      },
+      "cgi-io": [
+        "upload"
+      ],
+      "file": {
+        "/tmp/smartsafehub/firmware.bin": [
+          "write"
+        ],
+        "/tmp/smartsafehub/config-backup.tar.gz": [
+          "write"
+        ]
+      }
+    }
+  }
+}

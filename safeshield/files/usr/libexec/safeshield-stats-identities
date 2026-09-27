@@ -1,0 +1,54 @@
+#!/usr/bin/ucode
+'use strict';
+
+const ubus = require('ubus');
+
+function clean(value) {
+    return replace(sprintf('%s', value || ''), /[\t\r\n]/g, '_');
+}
+
+function main() {
+    let conn = ubus.connect();
+    if (!conn) {
+        return;
+    }
+
+    let data = conn.call('dhcp', 'ipv6leases', {});
+    if (type(data) != 'object' || type(data.device) != 'object') {
+        conn.disconnect();
+        return;
+    }
+
+    for (let _, device in data.device) {
+        if (type(device) != 'object' || type(device.leases) != 'array') {
+            continue;
+        }
+
+        for (let lease in device.leases) {
+            if (type(lease) != 'object') {
+                continue;
+            }
+
+            let duid = lc(clean(lease.duid));
+            let hostname = clean(lease.hostname);
+            let addresses = lease['ipv6-addr'];
+            if (!duid || type(addresses) != 'array') {
+                continue;
+            }
+
+            for (let address in addresses) {
+                if (type(address) != 'object') {
+                    continue;
+                }
+                let ip = clean(address.address);
+                if (ip) {
+                    printf('%s\t%s\t%s\n', ip, duid, hostname);
+                }
+            }
+        }
+    }
+
+    conn.disconnect();
+}
+
+main();

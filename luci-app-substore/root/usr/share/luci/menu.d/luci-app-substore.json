@@ -1,0 +1,18 @@
+{
+    "admin/services/substore": {
+        "title": "Subscriptions",
+        "order": 60,
+        "action": {
+            "type": "view",
+            "path": "admin/services/substore/list"
+        }
+    },
+    "admin/services/substore/list": {
+        "title": "Subscriptions",
+        "order": 10,
+        "action": {
+            "type": "view",
+            "path": "admin/services/substore/list"
+        }
+    }
+}

@@ -1,0 +1,171 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -eu
+
+RUNTIME_DIR="${SMARTSAFEHUB_RUNTIME_DIR:-/tmp/smartsafehub}"
+BACKUP_FILE="${SMARTSAFEHUB_BACKUP_FILE:-$RUNTIME_DIR/config-backup.tar.gz}"
+MAX_BACKUP_BYTES="${SMARTSAFEHUB_BACKUP_MAX_BYTES:-16777216}"
+SYSUPGRADE_BIN="${SMARTSAFEHUB_BACKUP_SYSUPGRADE_BIN:-/sbin/sysupgrade}"
+TAR_BIN="${SMARTSAFEHUB_BACKUP_TAR_BIN:-/bin/tar}"
+REBOOT_BIN="${SMARTSAFEHUB_BACKUP_REBOOT_BIN:-/sbin/reboot}"
+REBOOT_DELAY_S="${SMARTSAFEHUB_BACKUP_REBOOT_DELAY_S:-2}"
+UCI_BIN="${SMARTSAFEHUB_BACKUP_UCI_BIN:-/sbin/uci}"
+JSONFILTER_BIN="${SMARTSAFEHUB_BACKUP_JSONFILTER_BIN:-/usr/bin/jsonfilter}"
+FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_METADATA_FILE:-/usr/share/smartsafehub/firmware.json}"
+UPDATE_STATE_FILE="${SMARTSAFEHUB_BACKUP_UPDATE_STATE_FILE:-$RUNTIME_DIR/updates.state}"
+FIRMWARE_STATE_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
+UPDATE_LOCK_DIR="${SMARTSAFEHUB_BACKUP_UPDATE_LOCK_DIR:-$RUNTIME_DIR/updater.lock}"
+FIRMWARE_LOCK_DIR="${SMARTSAFEHUB_BACKUP_FIRMWARE_LOCK_DIR:-$RUNTIME_DIR/firmware.lock}"
+FIRMWARE_IMAGE_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_IMAGE_FILE:-$RUNTIME_DIR/firmware.bin}"
+
+numeric_or_zero() {
+	case "${1:-}" in
+		'' | *[!0-9]*) printf '0' ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+
+file_size() {
+	local value
+	value="$(wc -c < "$1" 2>/dev/null | tr -d '[:space:]')"
+	numeric_or_zero "$value"
+}
+
+archive_paths_are_safe() {
+	local list_file="$1" entry normalized has_config=0
+
+	while IFS= read -r entry || [ -n "$entry" ]; do
+		[ -n "$entry" ] || continue
+		normalized="${entry#./}"
+		case "$normalized" in
+			/* | .. | ../* | */.. | */../*) return 1 ;;
+		esac
+
+		case "$normalized" in
+			etc/config | etc/config/) ;;
+			etc/config/*) has_config=1 ;;
+		esac
+	done < "$list_file"
+
+	[ "$has_config" -eq 1 ]
+}
+
+validate_backup() {
+	local size list_file
+
+	[ -f "$BACKUP_FILE" ] && [ ! -L "$BACKUP_FILE" ] || return 1
+	size="$(file_size "$BACKUP_FILE")"
+	[ "$size" -gt 0 ] && [ "$size" -le "$MAX_BACKUP_BYTES" ] || return 1
+
+	list_file="${BACKUP_FILE}.list.$$"
+	if ! "$TAR_BIN" -tzf "$BACKUP_FILE" > "$list_file" 2>/dev/null; then
+		rm -f "$list_file"
+		return 1
+	fi
+
+	if ! archive_paths_are_safe "$list_file"; then
+		rm -f "$list_file"
+		return 1
+	fi
+
+	rm -f "$list_file"
+	return 0
+}
+
+phase_value() {
+	local file="$1"
+	[ -f "$file" ] || return 0
+	awk -F '\t' '$1 == "phase" { print $2; exit }' "$file" 2>/dev/null || true
+}
+
+lock_is_active() {
+	local lock_dir="$1" pid
+	[ -d "$lock_dir" ] || return 1
+	pid="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null
+}
+
+restore_is_busy() {
+	local phase
+
+	if lock_is_active "$UPDATE_LOCK_DIR"; then
+		return 0
+	fi
+
+	phase="$(phase_value "$UPDATE_STATE_FILE")"
+	case "$phase" in
+		checking | installing) return 0 ;;
+	esac
+
+	if lock_is_active "$FIRMWARE_LOCK_DIR"; then
+		return 0
+	fi
+
+	if [ -f "$FIRMWARE_IMAGE_FILE" ] || [ -f "${FIRMWARE_IMAGE_FILE}.part" ]; then
+		return 0
+	fi
+
+	phase="$(phase_value "$FIRMWARE_STATE_FILE")"
+	case "$phase" in
+		checking | downloading | verifying | ready | flashing) return 0 ;;
+	esac
+
+	return 1
+}
+
+sync_firmware_identity() {
+	local build_id
+
+	[ -f "$FIRMWARE_METADATA_FILE" ] || return 0
+	[ -x "$JSONFILTER_BIN" ] || return 0
+	[ -x "$UCI_BIN" ] || return 0
+
+	build_id="$($JSONFILTER_BIN -i "$FIRMWARE_METADATA_FILE" -e '@.build_id' 2>/dev/null || true)"
+	case "$build_id" in
+		'' | *[!A-Za-z0-9._~:+-]*) return 0 ;;
+	esac
+
+	"$UCI_BIN" -q set smartsafehub.firmware.current_build_id="$build_id" 2>/dev/null || return 0
+	"$UCI_BIN" -q commit smartsafehub 2>/dev/null || true
+}
+
+perform_restore() {
+	validate_backup || return 1
+	restore_is_busy && return 75
+
+	if ! "$SYSUPGRADE_BIN" --restore-backup "$BACKUP_FILE" >/dev/null 2>&1; then
+		return 1
+	fi
+
+	# An older backup may contain the previous firmware build ID. Keep the
+	# restored user configuration, but re-pin the runtime firmware identity to
+	# the image that is actually installed before rebooting.
+	sync_firmware_identity
+	rm -f "$BACKUP_FILE"
+
+	(
+		sleep "$REBOOT_DELAY_S"
+		"$REBOOT_BIN"
+	) >/dev/null 2>&1 </dev/null &
+
+	return 0
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	validate)
+		validate_backup
+		;;
+	restore)
+		perform_restore
+		;;
+	discard)
+		rm -f "$BACKUP_FILE"
+		;;
+	*)
+		echo "usage: $0 {validate|restore|discard}" >&2
+		exit 2
+		;;
+esac

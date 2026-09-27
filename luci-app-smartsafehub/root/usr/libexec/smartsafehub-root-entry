@@ -1,0 +1,97 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -eu
+
+HANDLER_FILE="${SMARTSAFEHUB_ROOT_HANDLER:-/etc/uhttpd/smartsafehub-root.json}"
+UHTTPD_INIT="${SMARTSAFEHUB_UHTTPD_INIT:-/etc/init.d/uhttpd}"
+PROC_ROOT="${SMARTSAFEHUB_PROC_ROOT:-/proc}"
+ACTION='install'
+RECONCILE_RUNTIME=0
+
+usage() {
+	echo "usage: $0 [--install|--remove] [--reconcile]" >&2
+	exit 2
+}
+
+for arg in "$@"; do
+	case "$arg" in
+		--install) ACTION='install' ;;
+		--remove) ACTION='remove' ;;
+		--reconcile) RECONCILE_RUNTIME=1 ;;
+		*) usage ;;
+	esac
+done
+
+runtime_has_handler() {
+	local pid cmdline
+
+	for pid in $(pidof uhttpd 2>/dev/null || true); do
+		[ -r "$PROC_ROOT/$pid/cmdline" ] || continue
+		cmdline="$(tr '\000' ' ' < "$PROC_ROOT/$pid/cmdline")"
+		case " $cmdline " in
+			*" -H $HANDLER_FILE "*) return 0 ;;
+		esac
+	done
+
+	return 1
+}
+
+restart_uhttpd_if_mismatched() {
+	local should_have_handler="$1"
+	local runtime_has=0
+
+	[ "$RECONCILE_RUNTIME" -eq 1 ] || return 0
+	[ -x "$UHTTPD_INIT" ] || return 0
+	pidof uhttpd >/dev/null 2>&1 || return 0
+
+	if runtime_has_handler; then
+		runtime_has=1
+	fi
+
+	[ "$runtime_has" -ne "$should_have_handler" ] || return 0
+
+	"$UHTTPD_INIT" restart >/dev/null 2>&1
+
+	if [ "$should_have_handler" -eq 1 ]; then
+		runtime_has_handler
+	else
+		! runtime_has_handler
+	fi
+}
+
+uci -q show uhttpd.main >/dev/null 2>&1 || exit 0
+
+current_handlers="$(uci -q get uhttpd.main.json_script 2>/dev/null || true)"
+has_handler=0
+for handler in $current_handlers; do
+	if [ "$handler" = "$HANDLER_FILE" ]; then
+		has_handler=1
+		break
+	fi
+done
+
+changed=0
+case "$ACTION" in
+	install)
+		[ -s "$HANDLER_FILE" ] || exit 0
+		if [ "$has_handler" -eq 0 ]; then
+			uci -q add_list uhttpd.main.json_script="$HANDLER_FILE"
+			changed=1
+		fi
+		;;
+	remove)
+		if [ "$has_handler" -eq 1 ]; then
+			uci -q del_list uhttpd.main.json_script="$HANDLER_FILE" >/dev/null 2>&1 || true
+			changed=1
+		fi
+		;;
+esac
+
+if [ "$changed" -eq 1 ]; then
+	uci -q commit uhttpd
+fi
+
+case "$ACTION" in
+	install) restart_uhttpd_if_mismatched 1 ;;
+	remove) restart_uhttpd_if_mismatched 0 ;;
+esac

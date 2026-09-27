@@ -1,0 +1,407 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+umask 077
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME_DIR="${SMARTSAFEHUB_ACTIVITY_RUNTIME_DIR:-/tmp/smartsafehub}"
+STATE_FILE="${SMARTSAFEHUB_ACTIVITY_STATE_FILE:-$RUNTIME_DIR/activity-sync.json}"
+CREDENTIAL_FILE="${SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE:-$RUNTIME_DIR/activity-sync-credential.json}"
+WAKE_FILE="${SMARTSAFEHUB_ACTIVITY_WAKE_FILE:-$RUNTIME_DIR/activity-sync.wake}"
+LOCK_DIR="${SMARTSAFEHUB_ACTIVITY_LOCK_DIR:-$RUNTIME_DIR/activity-sync.lock}"
+EVENTS_BIN="${SMARTSAFEHUB_ACTIVITY_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
+LICENSE_BIN="${SMARTSAFEHUB_ACTIVITY_LICENSE_BIN:-/usr/libexec/smartsafehub-license}"
+UCI_BIN="${SMARTSAFEHUB_ACTIVITY_UCI_BIN:-uci}"
+JSONFILTER_BIN="${SMARTSAFEHUB_ACTIVITY_JSONFILTER_BIN:-jsonfilter}"
+UCLIENT_FETCH_BIN="${SMARTSAFEHUB_ACTIVITY_UCLIENT_FETCH_BIN:-uclient-fetch}"
+DATE_BIN="${SMARTSAFEHUB_ACTIVITY_DATE_BIN:-date}"
+SLEEP_BIN="${SMARTSAFEHUB_ACTIVITY_SLEEP_BIN:-sleep}"
+LOGGER_BIN="${SMARTSAFEHUB_ACTIVITY_LOGGER_BIN:-logger}"
+DEFAULT_SYNC_INTERVAL_S=300
+DEFAULT_STARTUP_DELAY_S=45
+DAEMON_TICK_S=15
+REQUEST_TIMEOUT_S=15
+CREDENTIAL_REFRESH_MARGIN_S=600
+RETRY_INITIAL_S=900
+RETRY_MAX_S=3600
+
+UPLOAD_BODY_FILE=''
+UPLOAD_RESPONSE_FILE=''
+LICENSE_STATUS_FILE=''
+STOP_REQUESTED=0
+WAIT_PID=''
+
+cleanup_files() {
+	[ -n "$UPLOAD_BODY_FILE" ] && rm -f "$UPLOAD_BODY_FILE"
+	[ -n "$UPLOAD_RESPONSE_FILE" ] && rm -f "$UPLOAD_RESPONSE_FILE"
+	[ -n "$LICENSE_STATUS_FILE" ] && rm -f "$LICENSE_STATUS_FILE"
+}
+
+request_stop() {
+	STOP_REQUESTED=1
+	[ -z "$WAIT_PID" ] || kill "$WAIT_PID" 2>/dev/null || true
+}
+trap cleanup_files EXIT
+trap request_stop INT TERM
+
+log_message() { "$LOGGER_BIN" -t smartsafehub-activity-sync -- "$*" 2>/dev/null || true; }
+uci_get() { "$UCI_BIN" -q get "smartsafehub.activity.$1" 2>/dev/null || true; }
+
+cloud_sync_enabled() {
+	local value
+	value="$(uci_get cloud_sync_enabled)"
+	case "$value" in
+		0|false|off|no) return 1 ;;
+		1|true|on|yes|'') return 0 ;;
+		*) return 0 ;;
+	esac
+}
+
+normalized_integer() {
+	local value="$1" fallback="$2" minimum="$3" maximum="$4"
+	case "$value" in ''|*[!0-9]*) value="$fallback" ;; esac
+	if [ "$value" -lt "$minimum" ] 2>/dev/null || [ "$value" -gt "$maximum" ] 2>/dev/null; then value="$fallback"; fi
+	printf '%s' "$value"
+}
+
+sync_interval_s() { normalized_integer "$(uci_get sync_interval_s)" "$DEFAULT_SYNC_INTERVAL_S" 60 86400; }
+startup_delay_s() { normalized_integer "$(uci_get startup_delay_s)" "$DEFAULT_STARTUP_DELAY_S" 0 600; }
+now_epoch() {
+	local value
+	value="$("$DATE_BIN" +%s 2>/dev/null || true)"
+	case "$value" in ''|*[!0-9]*) value=0 ;; esac
+	printf '%s' "$value"
+}
+json_value() {
+	local file="$1" expression="$2"
+	[ -s "$file" ] || return 0
+	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+json_string_or_null() {
+	if [ -n "$1" ]; then printf '"%s"' "$(json_escape "$1")"; else printf 'null'; fi
+}
+sanitize_code() { printf '%s' "$1" | tr -cd 'A-Za-z0-9_.:-' | cut -c 1-120; }
+number_value() { case "$1" in ''|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac; }
+
+acquire_lock() {
+	local owner
+	if mkdir "$LOCK_DIR" 2>/dev/null; then printf '%s\n' "$$" > "$LOCK_DIR/pid"; return 0; fi
+	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then return 1; fi
+	rm -rf "$LOCK_DIR" 2>/dev/null || return 1
+	mkdir "$LOCK_DIR" 2>/dev/null || return 1
+	printf '%s\n' "$$" > "$LOCK_DIR/pid"
+}
+release_lock() { rm -rf "$LOCK_DIR" 2>/dev/null || true; }
+
+pending_count() {
+	local file count
+	file="$RUNTIME_DIR/activity-pending.$$.json"
+	if ! "$EVENTS_BIN" list > "$file" 2>/dev/null; then rm -f "$file"; printf '0'; return; fi
+	count="$("$JSONFILTER_BIN" -i "$file" -e '@.events[*].event_id' 2>/dev/null | wc -l | tr -d '[:space:]')"
+	rm -f "$file"
+	case "$count" in ''|*[!0-9]*) count=0 ;; esac
+	printf '%s' "$count"
+}
+
+previous_state_number() {
+	local expression="$1" value
+	value="$(json_value "$STATE_FILE" "$expression")"
+	number_value "$value"
+}
+
+retry_delay_s() {
+	local previous_error previous_attempt previous_next previous_delay delay
+	previous_error="$(json_value "$STATE_FILE" '@.lastErrorCode')"
+	previous_attempt="$(previous_state_number '@.lastAttemptAt')"
+	previous_next="$(previous_state_number '@.nextSyncAt')"
+	delay="$RETRY_INITIAL_S"
+
+	if [ -n "$previous_error" ] && [ "$previous_next" -gt "$previous_attempt" ] 2>/dev/null; then
+		previous_delay=$((previous_next - previous_attempt))
+		if [ "$previous_delay" -ge "$RETRY_INITIAL_S" ] 2>/dev/null; then
+			delay=$((previous_delay * 2))
+		fi
+	fi
+	[ "$delay" -le "$RETRY_MAX_S" ] 2>/dev/null || delay="$RETRY_MAX_S"
+	printf '%s' "$delay"
+}
+
+retry_backoff_active() {
+	local now next error
+	error="$(json_value "$STATE_FILE" '@.lastErrorCode')"
+	[ -n "$error" ] || return 1
+	now="$(now_epoch)"
+	next="$(previous_state_number '@.nextSyncAt')"
+	[ "$next" -gt "$now" ] 2>/dev/null
+}
+
+write_state() {
+	local phase="$1" eligible="$2" plan="$3" retention_days="$4" pending="$5"
+	local last_attempt="$6" last_success="$7" uploaded="$8" error_code="$9"
+	shift 9
+	local next_sync="$1" tmp eligible_json
+	case "$eligible" in true|false) eligible_json="$eligible" ;; *) eligible_json='null' ;; esac
+	tmp="${STATE_FILE}.tmp.$$"
+	cat > "$tmp" <<EOF_STATE
+{"schema":1,"component":"activity_sync","phase":"$(json_escape "$phase")","eligible":$eligible_json,"plan":$(json_string_or_null "$(sanitize_code "$plan")"),"retentionDays":$retention_days,"pendingEvents":$pending,"lastAttemptAt":$last_attempt,"lastSuccessAt":$last_success,"lastUploadedCount":$uploaded,"lastErrorCode":$(json_string_or_null "$(sanitize_code "$error_code")"),"nextSyncAt":$next_sync}
+EOF_STATE
+	mv "$tmp" "$STATE_FILE"
+}
+
+apply_disabled_runtime() {
+	local now previous_success
+	now="$(now_epoch)"
+	previous_success="$(previous_state_number '@.lastSuccessAt')"
+	"$EVENTS_BIN" clear-outbox >/dev/null 2>&1 || true
+	rm -f "$CREDENTIAL_FILE" "$WAKE_FILE"
+	write_state disabled null '' 0 0 "$now" "$previous_success" 0 '' 0
+}
+
+apply_configuration() {
+	local now previous_success pending
+	mkdir -p "$RUNTIME_DIR" || return 1
+	acquire_lock || return 75
+	trap 'release_lock; cleanup_files' EXIT INT TERM
+
+	if ! cloud_sync_enabled; then
+		apply_disabled_runtime
+		release_lock
+		trap cleanup_files EXIT
+		return 0
+	fi
+
+	now="$(now_epoch)"
+	previous_success="$(previous_state_number '@.lastSuccessAt')"
+	pending="$(pending_count)"
+	write_state preparing null '' 0 "$pending" "$now" "$previous_success" 0 '' 0
+	: > "$WAKE_FILE" 2>/dev/null || true
+	release_lock
+	trap cleanup_files EXIT
+	return 0
+}
+
+post_authorized_json() {
+	local body_file="$1" output_file="$2" url="$3" token="$4"
+	"$UCLIENT_FETCH_BIN" -q -T "$REQUEST_TIMEOUT_S" --method=POST --body-file="$body_file" \
+		--header='Content-Type: application/json' --header="Authorization: Bearer $token" \
+		-O "$output_file" "$url"
+}
+
+credential_valid() {
+	local now expires token url
+	[ -s "$CREDENTIAL_FILE" ] || return 1
+	now="$(now_epoch)"
+	expires="$(number_value "$(json_value "$CREDENTIAL_FILE" '@.expires_at')")"
+	token="$(json_value "$CREDENTIAL_FILE" '@.token')"
+	url="$(json_value "$CREDENTIAL_FILE" '@.upload_url')"
+	[ -n "$token" ] || return 1
+	case "$url" in https://*) ;; *) return 1 ;; esac
+	[ "$expires" -gt $((now + CREDENTIAL_REFRESH_MARGIN_S)) ] 2>/dev/null
+}
+
+refresh_credential_from_license() {
+	local phase plan action
+	[ -x "$LICENSE_BIN" ] || return 1
+
+	# /licenses/status is owned by the license component. It already has the
+	# authoritative device identity, reconciliation rules and proven request
+	# path. Refresh it once, then consume the activity credential it cached.
+	SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE="$CREDENTIAL_FILE" "$LICENSE_BIN" status-sync >/dev/null 2>&1 || return 1
+	credential_valid && return 0
+
+	LICENSE_STATUS_FILE="$RUNTIME_DIR/activity-license-status.$$.json"
+	"$LICENSE_BIN" status > "$LICENSE_STATUS_FILE" 2>/dev/null || return 1
+	phase="$(json_value "$LICENSE_STATUS_FILE" '@.phase' | tr '[:upper:]' '[:lower:]')"
+	plan="$(json_value "$LICENSE_STATUS_FILE" '@.plan' | tr '[:upper:]' '[:lower:]')"
+	action="$(json_value "$LICENSE_STATUS_FILE" '@.deviceAction' | tr '[:upper:]' '[:lower:]')"
+
+	case "$phase:$action:$plan" in
+		unconfigured:*:*|cleared:*:*|*:clear_license:*|*:*:free)
+			rm -f "$CREDENTIAL_FILE"
+			"$EVENTS_BIN" clear-outbox >/dev/null 2>&1 || true
+			return 2
+			;;
+		active:none:pro|active:none:ultimate)
+			# The license API succeeded and the account is paid, but no usable
+			# activity credential was published. Preserve the bounded outbox.
+			return 3
+			;;
+		*) return 1 ;;
+	esac
+}
+
+sync_once() {
+	local now previous_success interval next_sync retry_delay pending batch_count plan retention token url received accepted duplicates expired processed event_id credential_rc
+	mkdir -p "$RUNTIME_DIR" || return 1
+	acquire_lock || return 75
+	trap 'release_lock; cleanup_files' EXIT INT TERM
+	now="$(now_epoch)"
+	previous_success="$(previous_state_number '@.lastSuccessAt')"
+	interval="$(sync_interval_s)"
+	retry_delay="$(retry_delay_s)"
+	next_sync=$((now + interval))
+
+	if ! cloud_sync_enabled; then
+		apply_disabled_runtime
+		release_lock
+		trap cleanup_files EXIT
+		return 0
+	fi
+
+	pending="$(pending_count)"
+	write_state syncing null '' 0 "$pending" "$now" "$previous_success" 0 '' "$next_sync"
+
+	if ! credential_valid; then
+		credential_rc=0
+		refresh_credential_from_license || credential_rc=$?
+		case "$credential_rc" in
+			2)
+				pending="$(pending_count)"
+				write_state ineligible false '' 0 "$pending" "$now" "$previous_success" 0 '' "$next_sync"
+				release_lock; trap cleanup_files EXIT; return 0
+				;;
+			0) ;;
+			3)
+				next_sync=$((now + retry_delay))
+				write_state error true '' 0 "$pending" "$now" "$previous_success" 0 ACTIVITY_CREDENTIAL_UNAVAILABLE "$next_sync"
+				release_lock; trap cleanup_files EXIT; return 1
+				;;
+			*)
+				next_sync=$((now + retry_delay))
+				write_state error null '' 0 "$pending" "$now" "$previous_success" 0 ACTIVITY_LICENSE_STATUS_FAILED "$next_sync"
+				release_lock; trap cleanup_files EXIT; return 1
+				;;
+		esac
+	fi
+
+	plan="$(json_value "$CREDENTIAL_FILE" '@.plan')"
+	retention="$(number_value "$(json_value "$CREDENTIAL_FILE" '@.retention_days')")"
+	token="$(json_value "$CREDENTIAL_FILE" '@.token')"
+	url="$(json_value "$CREDENTIAL_FILE" '@.upload_url')"
+	pending="$(pending_count)"
+	if [ "$pending" -eq 0 ] 2>/dev/null; then
+		write_state idle true "$plan" "$retention" 0 "$now" "$previous_success" 0 '' "$next_sync"
+		release_lock; trap cleanup_files EXIT; return 0
+	fi
+
+	UPLOAD_BODY_FILE="$RUNTIME_DIR/activity-upload-body.$$.json"
+	UPLOAD_RESPONSE_FILE="$RUNTIME_DIR/activity-upload-response.$$.json"
+	if ! "$EVENTS_BIN" list > "$UPLOAD_BODY_FILE" 2>/dev/null; then
+		next_sync=$((now + retry_delay))
+		write_state error true "$plan" "$retention" "$pending" "$now" "$previous_success" 0 ACTIVITY_OUTBOX_READ_FAILED "$next_sync"
+		release_lock; trap cleanup_files EXIT; return 1
+	fi
+	batch_count="$("$JSONFILTER_BIN" -i "$UPLOAD_BODY_FILE" -e '@.events[*].event_id' 2>/dev/null | awk 'NF { count++ } END { print count + 0 }')"
+	case "$batch_count" in ''|*[!0-9]*) batch_count=0 ;; esac
+	if [ "$batch_count" -eq 0 ] 2>/dev/null; then
+		write_state idle true "$plan" "$retention" "$pending" "$now" "$previous_success" 0 '' "$next_sync"
+		release_lock; trap cleanup_files EXIT; return 0
+	fi
+	if ! post_authorized_json "$UPLOAD_BODY_FILE" "$UPLOAD_RESPONSE_FILE" "$url" "$token"; then
+		rm -f "$CREDENTIAL_FILE"
+		next_sync=$((now + retry_delay))
+		write_state error true "$plan" "$retention" "$pending" "$now" "$previous_success" 0 ACTIVITY_UPLOAD_FAILED "$next_sync"
+		release_lock; trap cleanup_files EXIT; return 1
+	fi
+	received="$(number_value "$(json_value "$UPLOAD_RESPONSE_FILE" '@.received')")"
+	accepted="$(number_value "$(json_value "$UPLOAD_RESPONSE_FILE" '@.accepted')")"
+	duplicates="$(number_value "$(json_value "$UPLOAD_RESPONSE_FILE" '@.duplicates')")"
+	expired="$(number_value "$(json_value "$UPLOAD_RESPONSE_FILE" '@.expired')")"
+	processed=$((accepted + duplicates + expired))
+	if [ "$received" -ne "$batch_count" ] 2>/dev/null || [ "$processed" -ne "$received" ] 2>/dev/null; then
+		next_sync=$((now + retry_delay))
+		write_state error true "$plan" "$retention" "$pending" "$now" "$previous_success" 0 ACTIVITY_UPLOAD_RESPONSE_INVALID "$next_sync"
+		release_lock; trap cleanup_files EXIT; return 1
+	fi
+
+	"$JSONFILTER_BIN" -i "$UPLOAD_BODY_FILE" -e '@.events[*].event_id' 2>/dev/null | while IFS= read -r event_id; do
+		[ -n "$event_id" ] || continue
+		"$EVENTS_BIN" ack "$event_id" >/dev/null 2>&1 || true
+	done
+	now="$(now_epoch)"
+	pending="$(pending_count)"
+	write_state idle true "$plan" "$retention" "$pending" "$now" "$now" "$received" '' $((now + interval))
+	release_lock
+	trap cleanup_files EXIT
+	return 0
+}
+
+show_status() {
+	if [ -s "$STATE_FILE" ]; then cat "$STATE_FILE"; else
+		printf '%s\n' '{"schema":1,"component":"activity_sync","phase":"preparing","eligible":null,"plan":null,"retentionDays":0,"pendingEvents":0,"lastAttemptAt":0,"lastSuccessAt":0,"lastUploadedCount":0,"lastErrorCode":null,"nextSyncAt":0}'
+	fi
+}
+
+interruptible_sleep() {
+	local duration="$1"
+	[ "$duration" -gt 0 ] 2>/dev/null || return 0
+	"$SLEEP_BIN" "$duration" & WAIT_PID=$!; wait "$WAIT_PID" 2>/dev/null || true; WAIT_PID=''
+	[ "$STOP_REQUESTED" -eq 0 ]
+}
+
+consume_wake_marker() {
+	local consumed
+	[ -e "$WAKE_FILE" ] || return 1
+	consumed="${WAKE_FILE}.consumed.$$"
+	# Rename instead of unlinking so an event emitted while sync is running can
+	# create a fresh marker that remains visible for the next daemon tick.
+	if mv "$WAKE_FILE" "$consumed" 2>/dev/null; then
+		rm -f "$consumed"
+		return 0
+	fi
+	return 1
+}
+
+daemon_loop() {
+	local delay tick now next_sync
+	STOP_REQUESTED=0
+	delay="$(startup_delay_s)"
+	interruptible_sleep "$delay" || return 0
+	consume_wake_marker || true
+	sync_once || true
+	tick="$(normalized_integer "$DAEMON_TICK_S" 15 5 60)"
+	while [ "$STOP_REQUESTED" -eq 0 ]; do
+		interruptible_sleep "$tick" || break
+		if ! cloud_sync_enabled; then
+			continue
+		fi
+		now="$(now_epoch)"
+		next_sync="$(previous_state_number '@.nextSyncAt')"
+
+		if [ -e "$WAKE_FILE" ] && ! retry_backoff_active; then
+			# Healthy sync may react to a new event immediately. When the backend is
+			# unavailable, keep the marker and honor nextSyncAt so each new event does
+			# not bypass the retry backoff and cause another resolve request.
+			consume_wake_marker || true
+			sync_once || true
+		elif [ "$next_sync" -le 0 ] 2>/dev/null || [ "$now" -ge "$next_sync" ] 2>/dev/null; then
+			consume_wake_marker || true
+			sync_once || true
+		fi
+	done
+}
+
+usage() {
+	cat <<'EOF_USAGE'
+Usage: smartsafehub-activity-sync <command>
+
+Commands:
+  daemon
+  sync-once
+  apply-config
+  status
+EOF_USAGE
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+case "${1:-}" in
+	daemon) daemon_loop ;;
+	sync-once) sync_once ;;
+	apply-config) apply_configuration ;;
+	status) show_status ;;
+	*) usage >&2; exit 2 ;;
+esac

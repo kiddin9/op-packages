@@ -1,0 +1,442 @@
+#!/usr/bin/ucode
+/*
+ * SPDX-License-Identifier: GPL-2.0-only
+ *
+ * Copyright (C) 2023-2024 ImmortalWrt.org
+ */
+
+'use strict';
+
+import { access, error, lstat, popen, readfile, writefile } from 'fs';
+
+import { isBinary, isValidECHConfig, isValidPEM, shellQuote, executeCommand } from '/etc/homeproxy/scripts/homeproxy.uc';
+import { parse_uri } from '/etc/homeproxy/scripts/parser/uri.uc';
+
+/* Kanged from ucode/luci - replaced by the imported shellQuote() so every shell
+ * argument in this file goes through one helper. */
+function hasKernelModule(kmod) {
+	return (system(sprintf('[ -e "/lib/modules/$(uname -r)"/%s ]', shellQuote(kmod))) === 0);
+}
+
+const HP_DIR = '/etc/homeproxy';
+const RUN_DIR = '/var/run/homeproxy';
+const LOG_PATH = `${RUN_DIR}/homeproxy.log`;
+
+/* Queried by singbox_get_features and by node_parse: the share-link parser
+ * skips QUIC protocols and uTLS fingerprints the running sing-box cannot
+ * serve, so it needs the same feature set the UI displays. */
+function collectFeatures() {
+	let features = {};
+
+	const fd = popen('/usr/bin/sing-box version');
+	if (fd) {
+		for (let line = fd.read('line'); length(line); line = fd.read('line')) {
+			if (match(trim(line), /^sing-box version (.*)/))
+				features.version = match(trim(line), /^sing-box version (.*)/)[1];
+
+			let tags = match(trim(line), /^Tags: (.*)/);
+			if (tags)
+				for (let i in split(tags[1], ','))
+					features[i] = true;
+		}
+
+		fd.close();
+	}
+
+	features.hp_has_ip_full = access('/usr/libexec/ip-full');
+	features.hp_has_tcp_brutal = hasKernelModule('brutal.ko');
+	features.hp_has_tproxy = hasKernelModule('nft_tproxy.ko') || access('/etc/modules.d/nft-tproxy');
+	features.hp_has_tun = hasKernelModule('tun.ko') || access('/etc/modules.d/30-tun');
+
+	return features;
+}
+
+const methods = {
+	acllist_read: {
+		args: { type: 'type' },
+		call: function(req) {
+			if (index(['direct_list', 'proxy_list'], req.args?.type) === -1)
+				return { content: null, error: 'illegal type' };
+
+			const filecontent = readfile(`${HP_DIR}/resources/${req.args?.type}.txt`);
+			return { content: filecontent };
+		}
+	},
+	acllist_write: {
+		args: { type: 'type', content: 'content' },
+		call: function(req) {
+			if (index(['direct_list', 'proxy_list'], req.args?.type) === -1)
+				return { result: false, error: 'illegal type' };
+
+			const file = `${HP_DIR}/resources/${req.args?.type}.txt`;
+			let content = req.args?.content;
+
+			/* Sanitize content */
+			if (content) {
+				content = trim(content);
+				content = replace(content, /\r\n?/g, '\n');
+				if (!match(content, /\n$/))
+					content += '\n';
+
+				/* Domains only: reject lines that could break the downstream
+				   dnsmasq/nftset injection (whitespace / shell or directive chars).
+				   Review L1: the rejection used to say "invalid character in
+				   domain list" with no line number, so a 200-line list with one
+				   bad entry forced the user to bisect by hand.  Report line 1
+				   for the first bad row so the user can jump straight to it. */
+				const lines = split(content, /\n/);
+				for (let i = 0; i < length(lines); i++) {
+					const line = lines[i];
+					if (!trim(line))
+						continue;
+					if (match(line, /[ \t\/\\;<>="'&#|]/))
+						return { result: false, error: `line ${i + 1}: invalid character in domain list (only domains, no spaces/comments)` };
+				}
+			}
+
+			/* writefile() with a null body writes nothing useful; an empty
+			 * body is what clearing the field means. */
+			if (content == null)
+				content = '';
+
+			system(`mkdir -p ${shellQuote(HP_DIR)}/resources`);
+			writefile(file, content);
+
+			return { result: true };
+		}
+	},
+
+	certificate_write: {
+		args: { filename: 'filename' },
+		call: function(req) {
+			/* `kind` is 'cert', 'key' or 'ech'.  Each certificate button
+			 * has its own PEM shape; an ECH config list in particular is
+			 * neither a certificate nor a key, so reusing isValidPEM()
+			 * for it would reject every valid upload with a misleading
+			 * "does not look like a correct PEM file". */
+			const writeCertificate = (filename, kind) => {
+				/* Per-button staging path. The previous code used a
+				 * single /tmp/homeproxy_certificate.tmp shared by every
+				 * certificate button, which was a race: the second upload
+				 * landed on top of the first while the backend was still
+				 * reading it, and a slow upload could overwrite a faster
+				 * one. The frontend (homeproxy.js uploadCertificate)
+				 * derives the same path from the UCI option name, and
+				 * the ACL write list enumerates all four. */
+				const tmpcert = `/tmp/homeproxy_cert_${filename}.tmp`;
+				const filestat = lstat(tmpcert);
+
+				if (!filestat || filestat.type !== 'file' || filestat.size <= 0) {
+					system(`rm -f ${shellQuote(tmpcert)}`);
+					return { result: false, error: 'empty certificate file' };
+				}
+
+				let filecontent = readfile(tmpcert);
+				if (isBinary(filecontent)) {
+					system(`rm -f ${shellQuote(tmpcert)}`);
+					return { result: false, error: 'illegal file type: binary' };
+				}
+
+				/* Validate the PEM structure before storing it */
+				const wellformed = kind === 'ech'
+					? isValidECHConfig(filecontent)
+					: isValidPEM(filecontent, kind === 'key');
+
+				if (!wellformed) {
+					system(`rm -f ${shellQuote(tmpcert)}`);
+					return { result: false, error: 'this does not look like a correct PEM file' };
+				}
+
+				/* Sanitize certificate */
+				filecontent = trim(filecontent);
+				filecontent = replace(filecontent, /\r\n?/g, '\n');
+				if (!match(filecontent, /\n$/))
+					filecontent += '\n';
+
+				system(`mkdir -p ${shellQuote(HP_DIR)}/certs`);
+				writefile(`${HP_DIR}/certs/${filename}.pem`, filecontent);
+				/* writefile() is fopen(path, "w"): 0666 & ~umask, i.e. 0644 at
+				 * the usual 022 - world-readable, on a file that can be a TLS
+				 * private key.  Start it at 0600; the start path
+				 * (runtime/service.sh, hp_prepare_runtime_files) hands the
+				 * directory and its files to the sing-box user so the jailed
+				 * server can read them, with the mode kept at 0600. */
+				system(`chmod 600 ${shellQuote(HP_DIR)}/certs/${shellQuote(filename + '.pem')}`);
+				system(`rm -f ${shellQuote(tmpcert)}`);
+
+				return { result: true };
+			};
+
+			const filename = req.args?.filename;
+			switch (filename) {
+			case 'client_ca':
+			case 'server_publickey':
+				return writeCertificate(filename, 'cert');
+				break;
+			case 'server_privatekey':
+				return writeCertificate(filename, 'key');
+				break;
+			/* The node form's fourth upload button. It was missing here
+			 * from the initial commit, so the button always failed with
+			 * "illegal cerificate filename" while the ACL granted the
+			 * two write paths - the frontend assumed the backend case
+			 * existed and nothing tested that it did. */
+			case 'client_ech_conf':
+				return writeCertificate(filename, 'ech');
+				break;
+			default:
+				return { result: false, error: 'illegal cerificate filename' };
+				break;
+			}
+		}
+	},
+
+	connection_check: {
+		args: { site: 'site' },
+		call: function(req) {
+			let url;
+			switch(req.args?.site) {
+			case 'baidu':
+				url = 'https://www.baidu.com';
+				break;
+			case 'google':
+				url = 'https://www.google.com';
+				break;
+			default:
+				return { result: false, error: 'illegal site' };
+				break;
+			}
+
+			return { result: (system(`/usr/bin/wget --spider -qT3 ${shellQuote(url)} 2>"/dev/null"`, 3100) === 0) };
+		}
+	},
+
+	log_clean: {
+		args: { type: 'type' },
+		call: function(req) {
+			if (index(['homeproxy', 'sing-box-c', 'sing-box-s'], req.args?.type) === -1)
+				return { result: false, error: 'illegal type' };
+
+			const filestat = lstat(`${RUN_DIR}/${req.args?.type}.log`);
+			if (filestat)
+				writefile(`${RUN_DIR}/${req.args?.type}.log`, '');
+			return { result: true };
+		}
+	},
+
+	singbox_generator: {
+		args: { type: 'type', params: 'params' },
+		call: function(req) {
+			if (index(['ech-keypair', 'uuid', 'reality-keypair', 'vapid-keypair', 'wg-keypair'], req.args?.type) === -1)
+				return { result: false, error: 'illegal type' };
+
+			const type = req.args?.type;
+			let result = {};
+
+			const fd = popen(`/usr/bin/sing-box generate ${shellQuote(type)} ${shellQuote(req.args?.params || '')}`);
+			if (fd) {
+				let ech_cfg_set = false;
+				let ech_key_set = false;
+
+				for (let line = fd.read('line'); length(line); line = fd.read('line')) {
+					if (type === 'uuid')
+						result.uuid = trim(line);
+					else if (index(['reality-keypair', 'vapid-keypair', 'wg-keypair'], type) !== -1) {
+						let priv = match(trim(line), /PrivateKey: (.*)/);
+						if (priv)
+							result.private_key = priv[1];
+						let pub = match(trim(line), /PublicKey: (.*)/);
+						if (pub)
+							result.public_key = pub[1];
+					} else if (type === 'ech-keypair') {
+						if (trim(line) === '-----BEGIN ECH CONFIGS-----')
+							ech_cfg_set = true;
+						else if (trim(line) === '-----BEGIN ECH KEYS-----')
+							ech_key_set = true;
+
+						if (ech_cfg_set)
+							result.ech_cfg = result.ech_cfg ? result.ech_cfg + '\n' + trim(line) : trim(line) ;
+						if (ech_key_set)
+							result.ech_key = result.ech_key ? result.ech_key + '\n' + trim(line) : trim(line) ;
+
+						if (trim(line) === '-----END ECH CONFIGS-----')
+							ech_cfg_set = false;
+						else if (trim(line) === '-----END ECH KEYS-----')
+							ech_key_set = false;
+					}
+				}
+
+				fd.close();
+			}
+
+			return { result };
+		}
+	},
+
+	singbox_get_features: {
+		call: function() {
+			return collectFeatures();
+		}
+	},
+
+	/* Parse one share link with the same parser the subscription pipeline
+	 * uses (parse_uri.uc).  This exists so the browser does not need a second
+	 * implementation: the LuCI form used to carry a 388-line JavaScript copy
+	 * of the parser that had already drifted from the backend (the vmess
+	 * branch lost vmess_global_padding, anytls defaulted a missing port to
+	 * 80) and that wrote nodes into UCI without the /sbin/validate_data
+	 * host/port checks parse_uri() applies. */
+	node_parse: {
+		args: { uri: 'string' },
+		call: function(req) {
+			const uri = req.args?.uri;
+
+			if (type(uri) !== 'string' || !length(uri) || length(uri) > 4096)
+				return { config: null, error: 'illegal share link' };
+
+			let config;
+			try {
+				/* parse_uri() reports skipped nodes through the logger;
+				 * the caller only needs the verdict. */
+				config = parse_uri(trim(uri), collectFeatures(), function() {});
+			} catch (e) {
+				return { config: null, error: 'parse failed: ' + e.message };
+			}
+
+			if (!config)
+				return { config: null, error: 'unsupported or invalid share link' };
+
+			return { config: config };
+		}
+	},
+
+	resources_get_version: {
+		args: { type: 'type' },
+		call: function(req) {
+			/* whitelist resource types to prevent path traversal */
+			if (index(['china_ip4', 'china_ip6', 'gfw_list', 'china_list'], req.args?.type) === -1)
+				return { error: 'illegal type', version: null, updated_at: null };
+			let version = trim(readfile(`${HP_DIR}/resources/${req.args?.type}.ver`));
+			/* Review M7: the version file holds the upstream commit date
+			 * and SHA; .updated_at is when *this router* last succeeded.
+			 * The two are not the same - a successful run on a stale
+			 * router still records the same upstream date, so the UI
+			 * shows both. */
+			/* The shipped .ver files hold a single timestamp (the format the
+			 * resource updater used before it started recording the upstream
+			 * commit); a runtime update writes "<date> <sha>".  Show the date
+			 * part when there is one, and the value as it stands otherwise.
+			 *
+			 * No non-capturing groups: ucode's regex engine rejects `(?:...)`
+			 * with "Repetition not preceded by valid expression" when the
+			 * literal is evaluated, so it compiles fine and then takes this
+			 * method down at call time. */
+			const fields = version ? match(version, /^(\S+) \S+$/) : null;
+			version = fields ? fields[1] : version;
+			/* Only a missing .ver means "not found"; that is the case the
+			 * UI paints red. */
+			if (!version)
+				return { version: null, updated_at: null, error: 'no version file' };
+			/* .updated_at is written by update_resources.sh after a
+			 * successful run, so a device that has never updated anything
+			 * legitimately has none.  Returning error() here reported the
+			 * errno left behind by *that* missing file, which made every
+			 * fresh install show "not found" in red next to a perfectly
+			 * good version string. */
+			const updated_at = trim(readfile(`${HP_DIR}/resources/${req.args?.type}.updated_at`));
+			return { version: version, updated_at: updated_at || null };
+		}
+	},
+	resources_update: {
+		args: { type: 'type' },
+		call: function(req) {
+			if (index(['china_ip4', 'china_ip6', 'gfw_list', 'china_list'], req.args?.type) === -1)
+				return { status: 255, error: 'illegal type' };
+			if (req.args?.type) {
+				const exit_code = system(`${shellQuote(HP_DIR)}/scripts/update_resources.sh ${shellQuote(req.args?.type)}`);
+				return { status: exit_code };
+			} else
+				return { status: 255, error: 'illegal type' };
+		}
+	},
+	update_subscriptions: {
+		/* Run the subscription updater once and report how it went.
+		 *
+		 * The LuCI button used fs.exec_direct() on
+		 * /etc/homeproxy/scripts/update_subscriptions.uc, which is the only
+		 * reason the package ACL had to grant `file exec` on a root-owned
+		 * entry point: the browser session was authorised to execute that
+		 * path. Through one named ubus method the session is granted the
+		 * action instead, and the ACL lists no executable path at all
+		 * (arch-guard 30).
+		 *
+		 * The previous synchronous shape returned the orchestrator's exit
+		 * status and captured stderr, but the full pipeline (wget fetch
+		 * through a CN -> overseas link, UCI commit, /etc/init.d/homeproxy
+		 * reload, the 30 s sing-box health gate) regularly took 10-15 s,
+		 * which exceeded the browser XHR timeout on every browser we tried.
+		 * The UI button then surfaced "XHR request timed out" while the
+		 * backend happily completed the work; the user was left with a
+		 * stale page and no obvious way to know whether anything happened.
+		 *
+		 * The fix: spawn the script detached via "sh -c '... &'", return
+		 * immediately, and let the frontend poll update_subscriptions_status
+		 * until the orchestrator's lock file is gone (created in
+		 * acquire_lock(), removed on every exit path). The lock is also
+		 * what serialises two simultaneous updates, so refusing a second
+		 * call while the lock is present is consistent with the script's
+		 * own behaviour. The script's stdio is redirected so it cannot
+		 * block on a closed pipe when the rpcd process exits. */
+		call: function() {
+			const lock = `${RUN_DIR}/update_subscriptions.lock`;
+			if (lstat(lock))
+				return { result: false, error: 'Subscription update already running', running: true };
+
+			/* Trailing '&' is what makes this return immediately: /bin/sh
+			 * backgrounds the script before the shell exits, and system()
+			 * sees only the (sub-)shell's exit. Redirections (<dev/null,
+			 * >dev/null, 2>&1) are the other half: the orphaned script
+			 * must not hold open any fd inherited from rpcd, or it
+			 * keeps rpcd's stdio alive across the call. */
+			const script = shellQuote(`${HP_DIR}/scripts/update_subscriptions.uc`);
+			system(`sh -c ${shellQuote(`${script} </dev/null >/dev/null 2>&1 &`)}`);
+
+			return { result: true, async: true };
+		}
+	},
+
+	update_subscriptions_status: {
+		/* Status companion to update_subscriptions. Reports whether the
+		 * updater is still running (lock file present) and the last ~12
+		 * lines of the homeproxy log so the page can show what the run
+		 * said without re-reading everything. The log is world-readable
+		 * and is rotated by runtime/service.sh -> log-cleaner.sh.
+		 *
+		 * `readfile()` returns null (not throws) on a missing file in this
+		 * ucode build, and the downstream split/slice/join then propagate
+		 * that null straight through. Guard with a truthy check on the
+		 * raw text so log_tail stays a string even when the log has never
+		 * been written - the test_rpc_methods shape contract pins it as
+		 * `string`, and the UI otherwise shows "null" in the toast. */
+		call: function() {
+			const lock = `${RUN_DIR}/update_subscriptions.lock`;
+			const running = !!lstat(lock);
+
+			let tail = '';
+			try {
+				const text = readfile(`${LOG_PATH}`);
+				if (text) {
+					const lines = split(text, '\n');
+					const start = length(lines) > 12 ? length(lines) - 12 : 0;
+					tail = join('\n', slice(lines, start)) || '';
+				}
+			} catch (e) {
+				tail = '';
+			}
+
+			return { running, log_tail: tail };
+		}
+	}
+};
+
+return { 'luci.homeproxy': methods };

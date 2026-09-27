@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f8fafc">
+    <meta name="application-name" content="SmartSafeHub">
+    <meta name="description" content="SmartSafeHub에서 네트워크, Wi-Fi, 연결된 기기와 SafeShield DNS 보호 상태를 관리합니다.">
+    <meta name="robots" content="noindex,nofollow,noarchive">
+    <meta name="referrer" content="same-origin">
+    <title>SmartSafeHub</title>
+    <link rel="icon" type="image/svg+xml" href="/luci-static/smartsafehub/favicon.svg?v=0.2.22-r1">
+  </head>
+  <body style="margin:0;background:#f8fafc;min-height:100vh;">
+    <div
+      id="smartsafehub-entry-root"
+      data-asset-base="/luci-static/smartsafehub/"
+      data-asset-version="0.2.22-r1"
+      style="display:block;width:100%;min-height:100vh;"
+    ></div>
+    <noscript>SmartSafeHub를 사용하려면 JavaScript를 활성화해 주세요.</noscript>
+    <script type="module" src="/luci-static/smartsafehub/app.js?v=0.2.22-r1"></script>
+  </body>
+</html>

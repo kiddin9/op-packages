@@ -1,0 +1,283 @@
+#!/bin/sh
+# shellcheck shell=ash
+
+# Variables are populated by sourced SafeShield helpers and ss_load_config().
+# shellcheck disable=SC2154
+LC_ALL=C
+export LC_ALL
+umask 077
+
+SS_STATSD_FUNCTIONS_LIB="${SS_STATSD_FUNCTIONS_LIB:-/lib/functions.sh}"
+SS_STATSD_CORE_LIB="${SS_STATSD_CORE_LIB:-/usr/lib/safeshield/core.sh}"
+SS_STATSD_AWK_DIR="${SS_STATSD_AWK_DIR:-/usr/lib/safeshield/statistics}"
+SS_STATSD_POLL_COMMAND="${SS_STATSD_POLL_COMMAND:-/usr/libexec/safeshield-stats-poll}"
+SS_STATSD_IDENTITY_COMMAND="${SS_STATSD_IDENTITY_COMMAND:-/usr/libexec/safeshield-stats-identities}"
+SS_STATSD_PERSISTENT_STATE_FILE="${SS_STATSD_PERSISTENT_STATE_FILE:-/etc/safeshield/statistics-state.tsv}"
+SS_STATSD_PERSISTENT_JOURNAL_FILE="${SS_STATSD_PERSISTENT_JOURNAL_FILE:-/etc/safeshield/statistics-journal.tsv}"
+SS_STATSD_SEQUENCE_FILE="${SS_STATSD_SEQUENCE_FILE:-/etc/safeshield/statistics-sequence.tsv}"
+SS_STATSD_SEQUENCE_RESERVATION_SIZE="${SS_STATSD_SEQUENCE_RESERVATION_SIZE:-4096}"
+SS_STATSD_UPLOAD_WINDOW_HOURS="${SS_STATSD_UPLOAD_WINDOW_HOURS:-2}"
+SS_STATSD_PERSISTENT_INTERVAL_S="${SS_STATSD_PERSISTENT_INTERVAL_S:-3600}"
+SS_STATSD_PERSISTENT_COMPACT_INTERVAL_S="${SS_STATSD_PERSISTENT_COMPACT_INTERVAL_S:-604800}"
+
+# shellcheck disable=SC1090
+. "$SS_STATSD_FUNCTIONS_LIB"
+# shellcheck disable=SC1090
+. "$SS_STATSD_CORE_LIB"
+
+stats_poller_pid=''
+stats_awk_pid=''
+stats_fifo=''
+stats_lock_dir=''
+stats_lock_owned=0
+
+stats_new_generation_id() {
+	local generation_id="${SS_STATSD_GENERATION_ID:-}"
+
+	if [ -n "$generation_id" ]; then
+		printf '%s\n' "$generation_id"
+		return 0
+	fi
+
+	if [ -r /proc/sys/kernel/random/uuid ]; then
+		IFS= read -r generation_id </proc/sys/kernel/random/uuid || generation_id=''
+	fi
+
+	if [ -z "$generation_id" ]; then
+		generation_id="fallback-$(date +%s 2>/dev/null || printf '0')-$$"
+	fi
+
+	printf '%s\n' "$generation_id"
+}
+
+stats_process_running() {
+	local pid="${1:-}"
+	[ -n "$pid" ] || return 1
+	kill -0 "$pid" 2>/dev/null
+}
+
+stats_cleanup() {
+	trap - EXIT HUP INT TERM
+
+	# Stop the low-frequency UBus poller first. awk then receives EOF and runs
+	# its END block, which performs the final snapshot and persistence flush.
+	if stats_process_running "$stats_poller_pid"; then
+		kill "$stats_poller_pid" 2>/dev/null || true
+	fi
+
+	[ -n "$stats_poller_pid" ] && wait "$stats_poller_pid" 2>/dev/null || true
+	stats_poller_pid=''
+
+	[ -n "$stats_awk_pid" ] && wait "$stats_awk_pid" 2>/dev/null || true
+	stats_awk_pid=''
+
+	[ -n "$stats_fifo" ] && rm -f "$stats_fifo"
+
+	if [ "$stats_lock_owned" -eq 1 ] && [ -n "$stats_lock_dir" ]; then
+		rm -rf "$stats_lock_dir"
+	fi
+}
+
+stats_terminate() {
+	local rc="${1:-0}"
+	stats_cleanup
+	exit "$rc"
+}
+
+stats_acquire_lock() {
+	local owner_pid=''
+
+	stats_lock_dir="${SS_STATISTICS_DIR}/collector.lock"
+
+	if mkdir "$stats_lock_dir" 2>/dev/null; then
+		stats_lock_owned=1
+		printf '%s\n' "$$" >"${stats_lock_dir}/pid"
+		return 0
+	fi
+
+	if [ -r "${stats_lock_dir}/pid" ]; then
+		owner_pid="$(cat "${stats_lock_dir}/pid" 2>/dev/null || true)"
+	fi
+
+	if stats_process_running "$owner_pid"; then
+		log_warn "Statistics collector is already running (pid=${owner_pid})"
+		return 1
+	fi
+
+	log_warn 'Removing stale statistics collector lock'
+	rm -rf "$stats_lock_dir" || return 1
+	mkdir "$stats_lock_dir" || return 1
+	stats_lock_owned=1
+	printf '%s\n' "$$" >"${stats_lock_dir}/pid"
+	return 0
+}
+
+stats_poll_loop() {
+	local snapshot_interval="$1"
+	local poll_command="$2"
+	local sleep_pid=''
+
+	trap 'if [ -n "$sleep_pid" ]; then kill "$sleep_pid" 2>/dev/null || true; fi; exit 0' HUP INT TERM
+
+	while :; do
+		if ! "$poll_command"; then
+			printf 'error\tdnsmasq_ubus_poll_failed\n'
+		fi
+
+		sleep "$snapshot_interval" &
+		sleep_pid=$!
+		wait "$sleep_pid" 2>/dev/null || true
+		sleep_pid=''
+	done
+}
+
+stats_run_collector() {
+	local snapshot_interval="$1"
+	local retention_hours="$2"
+	local lease_file="$3"
+	local persistent_state_file="$4"
+	local persistent_journal_file="$5"
+	local sequence_file="$6"
+	local generation_id ipv6_neigh_command='' ipv6_identity_command='' ipv6_identity_file="${SS_STATSD_IPV6_IDENTITY_FILE:-}" force_rebaseline=0 rc=0
+
+	if [ -f "${SS_STATISTICS_REBASELINE_FILE}" ]; then
+		force_rebaseline=1
+	fi
+
+	# This is only a candidate for a brand-new dataset. The collector modules keep
+	# the generation restored from tmpfs or persistent state when one already exists.
+	generation_id="$(stats_new_generation_id)"
+	if command_exists ip; then
+		ipv6_neigh_command='ip -6 neigh show 2>/dev/null'
+	fi
+	if [ -z "$ipv6_identity_file" ] && [ -x "$SS_STATSD_IDENTITY_COMMAND" ]; then
+		ipv6_identity_command="$SS_STATSD_IDENTITY_COMMAND 2>/dev/null"
+	fi
+
+	stats_fifo="${SS_STATISTICS_DIR}/events.$$"
+	rm -f "$stats_fifo"
+	mkfifo "$stats_fifo" || {
+		log_error "Failed to create statistics FIFO: ${stats_fifo}"
+		return 1
+	}
+
+	stats_poll_loop "$snapshot_interval" "$SS_STATSD_POLL_COMMAND" >"$stats_fifo" &
+	stats_poller_pid=$!
+
+	awk \
+		-v state_file="${SS_STATISTICS_STATE_FILE}" \
+		-v json_file="${SS_STATISTICS_JSON_FILE}" \
+		-v upload_json_file="${SS_STATISTICS_UPLOAD_JSON_FILE}" \
+		-v upload_window_hours="${SS_STATSD_UPLOAD_WINDOW_HOURS}" \
+		-v persistent_state_file="${persistent_state_file}" \
+		-v persistent_journal_file="${persistent_journal_file}" \
+		-v sequence_file="${sequence_file}" \
+		-v snapshot_seq_reservation_size="${SS_STATSD_SEQUENCE_RESERVATION_SIZE}" \
+		-v persistent_interval="${SS_STATSD_PERSISTENT_INTERVAL_S}" \
+		-v persistent_compact_interval="${SS_STATSD_PERSISTENT_COMPACT_INTERVAL_S}" \
+		-v snapshot_interval="${snapshot_interval}" \
+		-v retention_hours="${retention_hours}" \
+		-v lease_file="${lease_file}" \
+		-v ipv6_neigh_command="${ipv6_neigh_command}" \
+		-v ipv6_identity_file="${ipv6_identity_file}" \
+		-v ipv6_identity_command="${ipv6_identity_command}" \
+		-v lease_refresh_interval=60 \
+		-v identity_cache_ttl=60 \
+		-v max_devices=128 \
+		-v generation_seed="${generation_id}" \
+		-v force_rebaseline="${force_rebaseline}" \
+		-v rebaseline_file="${SS_STATISTICS_REBASELINE_FILE}" \
+		-f "$SS_STATSD_AWK_DIR/00-common.awk" \
+		-f "$SS_STATSD_AWK_DIR/10-recovery.awk" \
+		-f "$SS_STATSD_AWK_DIR/20-identity.awk" \
+		-f "$SS_STATSD_AWK_DIR/30-aggregate.awk" \
+		-f "$SS_STATSD_AWK_DIR/40-persistence.awk" \
+		-f "$SS_STATSD_AWK_DIR/50-output.awk" \
+		-f "$SS_STATSD_AWK_DIR/90-main.awk" \
+		<"$stats_fifo" &
+	stats_awk_pid=$!
+
+	wait "$stats_awk_pid" || rc=$?
+	stats_awk_pid=''
+
+	if stats_process_running "$stats_poller_pid"; then
+		kill "$stats_poller_pid" 2>/dev/null || true
+	fi
+	wait "$stats_poller_pid" 2>/dev/null || true
+	stats_poller_pid=''
+
+	return "$rc"
+}
+
+main() {
+	local snapshot_interval configured_snapshot_interval retention_hours lease_file configured_lease_file
+	local persistent_state_file persistent_journal_file sequence_file persistence_mode rc=0
+
+	ss_load_config || return 1
+	[ "${ss_enabled}" = "1" ] || return 0
+	[ "${ss_statistics_enabled}" = "1" ] || return 0
+
+	if ! ss_dnsmasq_safeshield_block_supported; then
+		log_warn 'SafeShield statistics collector is disabled because dnsmasq does not provide the SafeShield extension'
+		return 0
+	fi
+
+	[ -x "$SS_STATSD_POLL_COMMAND" ] || {
+		log_error "SafeShield statistics poll command is unavailable: ${SS_STATSD_POLL_COMMAND}"
+		return 1
+	}
+	command_exists mkfifo || {
+		log_error 'mkfifo is required for SafeShield statistics'
+		return 1
+	}
+
+	persistent_state_file="${SS_STATSD_PERSISTENT_STATE_FILE}"
+	persistent_journal_file="${SS_STATSD_PERSISTENT_JOURNAL_FILE}"
+	sequence_file="${SS_STATSD_SEQUENCE_FILE}"
+	persistence_mode='journal'
+	if ! ss_statistics_persistence_enabled; then
+		persistent_state_file=''
+		persistent_journal_file=''
+		sequence_file=''
+		persistence_mode='volatile'
+	fi
+
+	mkdir -p "${SS_STATISTICS_DIR}" || return 1
+	if [ -n "$persistent_state_file" ]; then
+		mkdir -p "${persistent_state_file%/*}" || return 1
+	fi
+	if [ -n "$persistent_journal_file" ]; then
+		mkdir -p "${persistent_journal_file%/*}" || return 1
+	fi
+	if [ -n "$sequence_file" ]; then
+		mkdir -p "${sequence_file%/*}" || return 1
+	fi
+	stats_acquire_lock || return 0
+
+	trap 'stats_cleanup' EXIT
+	trap 'stats_terminate 129' HUP
+	trap 'stats_terminate 130' INT
+	trap 'stats_terminate 143' TERM
+
+	configured_snapshot_interval="${ss_statistics_snapshot_interval_s}"
+	snapshot_interval="$(ss_statistics_effective_snapshot_interval "$configured_snapshot_interval")"
+	retention_hours="${ss_statistics_retention_hours}"
+	lease_file="${SS_STATSD_DHCP_LEASE_FILE:-/tmp/dhcp.leases}"
+	if [ -z "${SS_STATSD_DHCP_LEASE_FILE:-}" ] && command_exists uci; then
+		configured_lease_file="$(uci -q get dhcp.@dnsmasq[0].leasefile 2>/dev/null || true)"
+		[ -n "$configured_lease_file" ] && lease_file="$configured_lease_file"
+	fi
+
+	log_info "Starting statistics collector (source=dnsmasq-ubus snapshot=${snapshot_interval}s configured_snapshot=${configured_snapshot_interval}s retention=${retention_hours}h persistence=${persistence_mode} journal=${SS_STATSD_PERSISTENT_INTERVAL_S}s compact=${SS_STATSD_PERSISTENT_COMPACT_INTERVAL_S}s)"
+
+	stats_run_collector \
+		"$snapshot_interval" \
+		"$retention_hours" \
+		"$lease_file" \
+		"$persistent_state_file" \
+		"$persistent_journal_file" \
+		"$sequence_file" || rc=$?
+	return "$rc"
+}
+
+main "$@"

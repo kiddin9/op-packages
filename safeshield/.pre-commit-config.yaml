@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: safeshield-shell-lint
+        name: SafeShield shell lint
+        entry: sh scripts/lint.sh
+        language: system
+        pass_filenames: false
+        always_run: true

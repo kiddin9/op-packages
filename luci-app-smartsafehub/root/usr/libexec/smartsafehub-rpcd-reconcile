@@ -1,0 +1,63 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+
+RPCD_INIT="${SMARTSAFEHUB_RPCD_INIT:-/etc/init.d/rpcd}"
+UBUS_BIN="${SMARTSAFEHUB_UBUS_BIN:-/bin/ubus}"
+SLEEP_BIN="${SMARTSAFEHUB_SLEEP_BIN:-sleep}"
+RPC_OBJECT="${SMARTSAFEHUB_RPCD_OBJECT:-smartsafehub}"
+PROBE_ATTEMPTS="${SMARTSAFEHUB_RPCD_PROBE_ATTEMPTS:-5}"
+PROBE_DELAY_S="${SMARTSAFEHUB_RPCD_PROBE_DELAY_S:-1}"
+REQUIRED_READY_PROBES="${SMARTSAFEHUB_RPCD_REQUIRED_READY_PROBES:-2}"
+
+log_notice() {
+	if command -v logger >/dev/null 2>&1; then
+		logger -t smartsafehub-postinst "$*" >/dev/null 2>&1 || true
+	fi
+}
+
+rpc_object_ready() {
+	"$UBUS_BIN" list "$RPC_OBJECT" 2>/dev/null | grep -Fxq "$RPC_OBJECT"
+}
+
+wait_for_rpc_object() {
+	attempt=0
+	consecutive_ready=0
+	while [ "$attempt" -lt "$PROBE_ATTEMPTS" ]; do
+		"$SLEEP_BIN" "$PROBE_DELAY_S"
+		if rpc_object_ready; then
+			consecutive_ready=$((consecutive_ready + 1))
+			if [ "$consecutive_ready" -ge "$REQUIRED_READY_PROBES" ]; then
+				return 0
+			fi
+		else
+			consecutive_ready=0
+		fi
+		attempt=$((attempt + 1))
+	done
+	return 1
+}
+
+[ -x "$RPCD_INIT" ] || exit 0
+[ -x "$UBUS_BIN" ] || exit 0
+
+if "$RPCD_INIT" reload >/dev/null 2>&1; then
+	if wait_for_rpc_object; then
+		exit 0
+	fi
+else
+	log_notice 'rpcd reload failed; falling back to restart'
+fi
+
+log_notice "rpcd reload did not restore the $RPC_OBJECT ubus object; restarting rpcd"
+if ! "$RPCD_INIT" restart >/dev/null 2>&1; then
+	log_notice 'rpcd restart failed while reconciling SmartSafeHub RPC objects'
+	exit 1
+fi
+
+if wait_for_rpc_object; then
+	exit 0
+fi
+
+log_notice "$RPC_OBJECT ubus object is still unavailable after rpcd restart"
+exit 1

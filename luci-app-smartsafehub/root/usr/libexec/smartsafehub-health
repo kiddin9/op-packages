@@ -1,0 +1,851 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME_DIR="${SMARTSAFEHUB_HEALTH_RUNTIME_DIR:-/tmp/smartsafehub}"
+HEALTH_FILE="${SMARTSAFEHUB_HEALTH_FILE:-$RUNTIME_DIR/health.json}"
+REPORT_STATE_FILE="${SMARTSAFEHUB_HEALTH_REPORT_STATE_FILE:-$RUNTIME_DIR/health-reporter.state}"
+MEMINFO_FILE="${SMARTSAFEHUB_HEALTH_MEMINFO_FILE:-/proc/meminfo}"
+LOADAVG_FILE="${SMARTSAFEHUB_HEALTH_LOADAVG_FILE:-/proc/loadavg}"
+CPUINFO_FILE="${SMARTSAFEHUB_HEALTH_CPUINFO_FILE:-/proc/cpuinfo}"
+UPTIME_FILE="${SMARTSAFEHUB_HEALTH_UPTIME_FILE:-/proc/uptime}"
+UPDATER_STATE_FILE="${SMARTSAFEHUB_HEALTH_UPDATER_STATE_FILE:-$RUNTIME_DIR/updates.state}"
+FIRMWARE_STATE_FILE="${SMARTSAFEHUB_HEALTH_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
+DNSMASQ_INIT="${SMARTSAFEHUB_HEALTH_DNSMASQ_INIT:-/etc/init.d/dnsmasq}"
+UCI_BIN="${SMARTSAFEHUB_HEALTH_UCI_BIN:-uci}"
+UBUS_BIN="${SMARTSAFEHUB_HEALTH_UBUS_BIN:-ubus}"
+JSONFILTER_BIN="${SMARTSAFEHUB_HEALTH_JSONFILTER_BIN:-jsonfilter}"
+UCLIENT_FETCH_BIN="${SMARTSAFEHUB_HEALTH_UCLIENT_FETCH_BIN:-uclient-fetch}"
+DF_BIN="${SMARTSAFEHUB_HEALTH_DF_BIN:-df}"
+DATE_BIN="${SMARTSAFEHUB_HEALTH_DATE_BIN:-date}"
+SLEEP_BIN="${SMARTSAFEHUB_HEALTH_SLEEP_BIN:-sleep}"
+LOGGER_BIN="${SMARTSAFEHUB_HEALTH_LOGGER_BIN:-logger}"
+EVENTS_BIN="${SMARTSAFEHUB_HEALTH_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
+EVENT_OBSERVER_STATE_FILE="${SMARTSAFEHUB_HEALTH_EVENT_STATE_FILE:-$RUNTIME_DIR/activity-observer.state}"
+DEFAULT_API_BASE_URL="https://www.smartsafehub.com/api/v1"
+DEFAULT_CHECK_INTERVAL_S=300
+DEFAULT_REPORT_INTERVAL_S=1800
+DEFAULT_STARTUP_GRACE_S=120
+MIN_CHECK_INTERVAL_S=60
+MIN_REPORT_INTERVAL_S=300
+REPORT_TIMEOUT_S=15
+REPORT_RETRY_S=300
+DAEMON_TICK_S=60
+DAEMON_INITIAL_DELAY_S=15
+DNSMASQ_CONFIRM_ATTEMPTS="${SMARTSAFEHUB_HEALTH_DNSMASQ_CONFIRM_ATTEMPTS:-3}"
+DNSMASQ_CONFIRM_INTERVAL_S="${SMARTSAFEHUB_HEALTH_DNSMASQ_CONFIRM_INTERVAL_S:-2}"
+
+CHECKS_FILE=""
+ISSUES_FILE=""
+SAFESHIELD_STATUS_FILE=""
+REPORT_PAYLOAD_FILE=""
+CHECK_COUNT=0
+OK_COUNT=0
+WARNING_COUNT=0
+CRITICAL_COUNT=0
+UNKNOWN_COUNT=0
+OVERALL="ok"
+ISSUE_FINGERPRINT=""
+MEMORY_AVAILABLE_PERCENT=0
+LOAD_1M="0"
+OVERLAY_AVAILABLE_PERCENT=0
+SAFESHIELD_INITIALIZING=0
+HEALTH_EVENT_FINGERPRINT=""
+HEALTH_EVENT_WARNING_COUNT=0
+HEALTH_EVENT_CRITICAL_COUNT=0
+WAN_STATE="unknown"
+SAFESHIELD_ENABLED_STATE="unknown"
+SAFESHIELD_LAST_SUCCESS=0
+SAFESHIELD_LAST_FAILURE=0
+SAFESHIELD_DOMAIN_COUNT=0
+SAFESHIELD_ARTIFACT_VERSION=""
+SAFESHIELD_LAST_ERROR_CODE=""
+
+cleanup() {
+	[ -n "$CHECKS_FILE" ] && rm -f "$CHECKS_FILE"
+	[ -n "$ISSUES_FILE" ] && rm -f "$ISSUES_FILE"
+	[ -n "$SAFESHIELD_STATUS_FILE" ] && rm -f "$SAFESHIELD_STATUS_FILE"
+	[ -n "$REPORT_PAYLOAD_FILE" ] && rm -f "$REPORT_PAYLOAD_FILE"
+}
+trap cleanup EXIT INT TERM
+
+log_message() {
+	"$LOGGER_BIN" -t smartsafehub-health -- "$*" 2>/dev/null || true
+}
+
+uci_get() {
+	"$UCI_BIN" -q get "smartsafehub.health.$1" 2>/dev/null || true
+}
+
+normalized_integer() {
+	local value="$1" fallback="$2" minimum="$3"
+	case "$value" in
+		''|*[!0-9]*) value="$fallback" ;;
+	esac
+	[ "$value" -ge "$minimum" ] 2>/dev/null || value="$fallback"
+	printf '%s' "$value"
+}
+
+check_interval_s() {
+	normalized_integer "$(uci_get check_interval_s)" "$DEFAULT_CHECK_INTERVAL_S" "$MIN_CHECK_INTERVAL_S"
+}
+
+report_interval_s() {
+	normalized_integer "$(uci_get report_interval_s)" "$DEFAULT_REPORT_INTERVAL_S" "$MIN_REPORT_INTERVAL_S"
+}
+
+startup_grace_s() {
+	normalized_integer "$(uci_get startup_grace_s)" "$DEFAULT_STARTUP_GRACE_S" 0
+}
+
+system_uptime_s() {
+	awk '{ split($1, parts, "."); print parts[1]; exit }' "$UPTIME_FILE" 2>/dev/null || true
+}
+
+in_startup_grace() {
+	local uptime grace
+	uptime="$(system_uptime_s)"
+	grace="$(startup_grace_s)"
+	case "$uptime:$grace" in
+		*[!0-9:]*) return 1 ;;
+	esac
+	[ "$grace" -gt 0 ] 2>/dev/null || return 1
+	[ "$uptime" -lt "$grace" ] 2>/dev/null
+}
+
+is_safeshield_refresh_stage() {
+	case "$1" in
+		starting|boot_delay|boot_refresh|boot_refresh_skipped|scheduled_refresh|init|resolve_api|download_artifact|local_overrides|merge|install|restart_dnsmasq|runtime_check|blocklist_verify) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+safeshield_startup_pending() {
+	local status="$1" stage="$2" dns_ok="$3" installed="$4"
+	in_startup_grace || return 1
+	case "$status" in error|failed) return 1 ;; esac
+	[ "$status" = 'running' ] && return 0
+	is_safeshield_refresh_stage "$stage" && return 0
+	case "$dns_ok" in true|1) ;; *) return 0 ;; esac
+	case "$installed" in true|1) ;; *) return 0 ;; esac
+	return 1
+}
+
+reporter_enabled() {
+	[ "$(uci_get reporter_enabled)" = "1" ]
+}
+
+api_base_url() {
+	local value
+	value="$(uci_get api_base_url)"
+	case "$value" in
+		https://*) printf '%s' "${value%/}" ;;
+		*) printf '%s' "$DEFAULT_API_BASE_URL" ;;
+	esac
+}
+
+json_string_or_null() {
+	if [ -n "$1" ]; then
+		printf '"%s"' "$(json_escape "$1")"
+	else
+		printf 'null'
+	fi
+}
+
+json_value() {
+	local file="$1" expression="$2"
+	[ -f "$file" ] || return 0
+	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+
+state_value() {
+	local file="$1" key="$2"
+	[ -f "$file" ] || return 0
+	awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$file" 2>/dev/null || true
+}
+
+sanitize_code() {
+	printf '%s' "$1" | tr -cd 'A-Za-z0-9_.:|-' | cut -c 1-120
+}
+
+append_json_line() {
+	local file="$1" count="$2" payload="$3"
+	[ "$count" -eq 0 ] || printf ',\n' >> "$file"
+	printf '%s' "$payload" >> "$file"
+}
+
+raise_overall() {
+	case "$1" in
+		critical) OVERALL="critical" ;;
+		warning)
+			[ "$OVERALL" = "critical" ] || OVERALL="warning"
+			;;
+	esac
+}
+
+add_check() {
+	local id="$1" label="$2" status="$3" code="$4" message="$5" value_json="$6" unit="$7"
+	local payload issue_payload
+
+	case "$status" in
+		ok) OK_COUNT=$((OK_COUNT + 1)) ;;
+		initializing) UNKNOWN_COUNT=$((UNKNOWN_COUNT + 1)) ;;
+		warning) WARNING_COUNT=$((WARNING_COUNT + 1)); raise_overall warning ;;
+		critical) CRITICAL_COUNT=$((CRITICAL_COUNT + 1)); raise_overall critical ;;
+		*) status="unknown"; UNKNOWN_COUNT=$((UNKNOWN_COUNT + 1)) ;;
+	esac
+
+	payload="{\"id\":\"$(json_escape "$id")\",\"label\":\"$(json_escape "$label")\",\"status\":\"$status\",\"code\":$(json_string_or_null "$code"),\"message\":\"$(json_escape "$message")\",\"value\":$value_json,\"unit\":$(json_string_or_null "$unit")}"
+	append_json_line "$CHECKS_FILE" "$CHECK_COUNT" "$payload"
+	CHECK_COUNT=$((CHECK_COUNT + 1))
+
+	case "$status" in
+		warning|critical)
+			issue_payload="{\"code\":\"$(json_escape "$code")\",\"severity\":\"$status\"}"
+			append_json_line "$ISSUES_FILE" "$((WARNING_COUNT + CRITICAL_COUNT - 1))" "$issue_payload"
+			if [ -z "$ISSUE_FINGERPRINT" ]; then
+				ISSUE_FINGERPRINT="$code:$status"
+			else
+				ISSUE_FINGERPRINT="$ISSUE_FINGERPRINT|$code:$status"
+			fi
+
+			case "$id" in
+				system.memory|system.load|system.storage|service.dnsmasq|system.time)
+					if [ -z "$HEALTH_EVENT_FINGERPRINT" ]; then
+						HEALTH_EVENT_FINGERPRINT="$code:$status"
+					else
+						HEALTH_EVENT_FINGERPRINT="$HEALTH_EVENT_FINGERPRINT|$code:$status"
+					fi
+					if [ "$status" = 'critical' ]; then
+						HEALTH_EVENT_CRITICAL_COUNT=$((HEALTH_EVENT_CRITICAL_COUNT + 1))
+					else
+						HEALTH_EVENT_WARNING_COUNT=$((HEALTH_EVENT_WARNING_COUNT + 1))
+					fi
+					;;
+			esac
+			;;
+	esac
+}
+
+collect_memory() {
+	local total available percent status code message
+	total="$(awk '$1 == "MemTotal:" { print $2; exit }' "$MEMINFO_FILE" 2>/dev/null || true)"
+	available="$(awk '$1 == "MemAvailable:" { print $2; exit }' "$MEMINFO_FILE" 2>/dev/null || true)"
+	case "$total:$available" in
+		*[!0-9:]*|:*|*:) add_check system.memory '메모리' unknown '' '사용 가능한 메모리 정보를 확인하지 못했습니다.' null '%' ; return ;;
+	esac
+	[ "$total" -gt 0 ] || { add_check system.memory '메모리' unknown '' '사용 가능한 메모리 정보를 확인하지 못했습니다.' null '%'; return; }
+	percent=$((available * 100 / total))
+	MEMORY_AVAILABLE_PERCENT="$percent"
+	status=ok; code=''; message='사용 가능한 메모리가 충분합니다.'
+	if [ "$percent" -lt 8 ]; then
+		status=critical; code='MEMORY_PRESSURE'; message='사용 가능한 메모리가 매우 부족합니다.'
+	elif [ "$percent" -lt 15 ]; then
+		status=warning; code='MEMORY_PRESSURE'; message='사용 가능한 메모리가 부족합니다.'
+	fi
+	add_check system.memory '메모리' "$status" "$code" "$message" "$percent" '% available'
+}
+
+collect_load() {
+	local load1 cores ratio status code message
+	load1="$(awk '{ print $1; exit }' "$LOADAVG_FILE" 2>/dev/null || true)"
+	cores="$(awk '/^processor[[:space:]]*:/ { count += 1 } END { print count + 0 }' "$CPUINFO_FILE" 2>/dev/null || true)"
+	case "$cores" in ''|0|*[!0-9]*) cores=1 ;; esac
+	case "$load1" in ''|*[!0-9.]*) add_check system.load '시스템 부하' unknown '' '시스템 부하를 확인하지 못했습니다.' null 'load/core'; return ;; esac
+	ratio="$(awk -v load_value="$load1" -v cores="$cores" 'BEGIN { if (cores < 1) cores=1; printf "%d", (load_value * 100 / cores) + 0.5 }')"
+	LOAD_1M="$load1"
+	status=ok; code=''; message='시스템 부하가 정상 범위입니다.'
+	if [ "$ratio" -ge 250 ]; then
+		status=critical; code='SYSTEM_LOAD_HIGH'; message='CPU 코어 수에 비해 시스템 부하가 매우 높습니다.'
+	elif [ "$ratio" -ge 150 ]; then
+		status=warning; code='SYSTEM_LOAD_HIGH'; message='CPU 코어 수에 비해 시스템 부하가 높습니다.'
+	fi
+	add_check system.load '시스템 부하' "$status" "$code" "$message" "$ratio" '% per core'
+}
+
+collect_storage() {
+	local used available status code message
+	used="$("$DF_BIN" -Pk /overlay 2>/dev/null | awk 'NR == 2 { gsub(/%/, "", $5); print $5; exit }' || true)"
+	case "$used" in ''|*[!0-9]*) add_check system.storage '저장 공간' unknown '' '저장 공간 사용량을 확인하지 못했습니다.' null '% available'; return ;; esac
+	available=$((100 - used))
+	OVERLAY_AVAILABLE_PERCENT="$available"
+	status=ok; code=''; message='설정 저장 공간이 충분합니다.'
+	if [ "$available" -lt 8 ]; then
+		status=critical; code='STORAGE_LOW'; message='설정 저장 공간이 매우 부족합니다.'
+	elif [ "$available" -lt 15 ]; then
+		status=warning; code='STORAGE_LOW'; message='설정 저장 공간이 부족합니다.'
+	fi
+	add_check system.storage '저장 공간' "$status" "$code" "$message" "$available" '% available'
+}
+
+collect_wan() {
+	local file up
+	file="$RUNTIME_DIR/health-wan.$$.json"
+	if ! "$UBUS_BIN" call network.interface.wan status > "$file" 2>/dev/null; then
+		rm -f "$file"
+		add_check network.wan '인터넷 연결' unknown '' 'WAN 인터페이스 상태를 확인하지 못했습니다.' null ''
+		return
+	fi
+	up="$(json_value "$file" '@.up')"
+	rm -f "$file"
+	case "$up" in
+		true|1) WAN_STATE='up'; add_check network.wan '인터넷 연결' ok '' 'WAN 인터페이스가 연결되어 있습니다.' null '' ;;
+		false|0) WAN_STATE='down'; add_check network.wan '인터넷 연결' critical 'WAN_DOWN' 'WAN 인터페이스가 연결되어 있지 않습니다.' null '' ;;
+		*) add_check network.wan '인터넷 연결' unknown '' 'WAN 인터페이스 연결 여부를 확인하지 못했습니다.' null '' ;;
+	esac
+}
+
+collect_dnsmasq() {
+	local attempt attempts interval
+
+	if [ ! -x "$DNSMASQ_INIT" ]; then
+		add_check service.dnsmasq 'DNS 서비스' critical 'DNSMASQ_UNAVAILABLE' 'dnsmasq 실행 상태를 확인할 수 없습니다.' null ''
+		return
+	fi
+
+	attempts="$(normalized_integer "$DNSMASQ_CONFIRM_ATTEMPTS" 3 1)"
+	interval="$(normalized_integer "$DNSMASQ_CONFIRM_INTERVAL_S" 2 0)"
+	attempt=1
+	while [ "$attempt" -le "$attempts" ]; do
+		if "$DNSMASQ_INIT" running >/dev/null 2>&1; then
+			add_check service.dnsmasq 'DNS 서비스' ok '' 'dnsmasq가 실행 중입니다.' null ''
+			return
+		fi
+
+		[ "$attempt" -ge "$attempts" ] && break
+		if [ "$interval" -gt 0 ]; then
+			"$SLEEP_BIN" "$interval" >/dev/null 2>&1 || true
+		fi
+		attempt=$((attempt + 1))
+	done
+
+	add_check service.dnsmasq 'DNS 서비스' critical 'DNSMASQ_UNAVAILABLE' "dnsmasq가 ${attempts}회 연속 확인에서 실행 중이 아닙니다." null ''
+}
+
+collect_safeshield() {
+	local enabled status stage dns_ok installed last_error code last_success last_failure domain_count artifact_version
+	SAFESHIELD_STATUS_FILE="$RUNTIME_DIR/health-safeshield.$$.json"
+	if ! "$UBUS_BIN" call safeshield status > "$SAFESHIELD_STATUS_FILE" 2>/dev/null; then
+		if in_startup_grace; then
+			SAFESHIELD_INITIALIZING=1
+			add_check safeshield.runtime 'SafeShield' initializing 'SAFESHIELD_INITIALIZING' 'SafeShield 보호 기능을 준비하고 있습니다.' null ''
+		else
+			add_check safeshield.runtime 'SafeShield' warning 'SAFESHIELD_STATUS_UNAVAILABLE' 'SafeShield 상태 API를 확인하지 못했습니다.' null ''
+		fi
+		return
+	fi
+
+	enabled="$(json_value "$SAFESHIELD_STATUS_FILE" '@.enabled')"
+	status="$(json_value "$SAFESHIELD_STATUS_FILE" '@.status')"
+	stage="$(json_value "$SAFESHIELD_STATUS_FILE" '@.stage')"
+	dns_ok="$(json_value "$SAFESHIELD_STATUS_FILE" '@.runtime.dns_runtime_ok')"
+	installed="$(json_value "$SAFESHIELD_STATUS_FILE" '@.blocklist.installed')"
+	last_error="$(sanitize_code "$(json_value "$SAFESHIELD_STATUS_FILE" '@.runtime.last_error_code')")"
+	last_success="$(json_value "$SAFESHIELD_STATUS_FILE" '@.timestamps.last_success')"
+	last_failure="$(json_value "$SAFESHIELD_STATUS_FILE" '@.timestamps.last_failure')"
+	domain_count="$(json_value "$SAFESHIELD_STATUS_FILE" '@.artifact.unique_domains')"
+	artifact_version="$(json_value "$SAFESHIELD_STATUS_FILE" '@.artifact.version')"
+	case "$last_success" in ''|*[!0-9]*) last_success=0 ;; esac
+	case "$last_failure" in ''|*[!0-9]*) last_failure=0 ;; esac
+	case "$domain_count" in ''|*[!0-9]*) domain_count=0 ;; esac
+	SAFESHIELD_LAST_SUCCESS="$last_success"
+	SAFESHIELD_LAST_FAILURE="$last_failure"
+	SAFESHIELD_DOMAIN_COUNT="$domain_count"
+	SAFESHIELD_ARTIFACT_VERSION="$artifact_version"
+	SAFESHIELD_LAST_ERROR_CODE="$last_error"
+	case "$enabled" in
+		true|1) SAFESHIELD_ENABLED_STATE='1' ;;
+		false|0) SAFESHIELD_ENABLED_STATE='0' ;;
+		*) SAFESHIELD_ENABLED_STATE='unknown' ;;
+	esac
+
+	case "$enabled" in
+		false|0)
+			add_check safeshield.runtime 'SafeShield' ok '' 'SafeShield가 사용자 설정에 따라 꺼져 있습니다.' null ''
+			return
+			;;
+	esac
+
+	if safeshield_startup_pending "$status" "$stage" "$dns_ok" "$installed"; then
+		SAFESHIELD_INITIALIZING=1
+		add_check safeshield.runtime 'SafeShield' initializing 'SAFESHIELD_INITIALIZING' 'SafeShield 보호 기능을 준비하고 있습니다.' null ''
+		return
+	fi
+
+	case "$dns_ok" in
+		true|1) ;;
+		false|0)
+			code="${last_error:-SAFESHIELD_DNS_RUNTIME_ERROR}"
+			add_check safeshield.runtime 'SafeShield' critical "$code" 'SafeShield와 DNS 서비스의 연동 상태에 이상이 있습니다.' null ''
+			return
+			;;
+		*)
+			add_check safeshield.runtime 'SafeShield' warning 'SAFESHIELD_STATUS_INCOMPLETE' 'SafeShield DNS 런타임 상태를 확인하지 못했습니다.' null ''
+			return
+			;;
+	esac
+	case "$installed" in
+		true|1) ;;
+		false|0)
+			add_check safeshield.runtime 'SafeShield' warning 'SAFESHIELD_BLOCKLIST_MISSING' 'SafeShield 차단 목록이 설치되어 있지 않습니다.' null ''
+			return
+			;;
+		*)
+			add_check safeshield.runtime 'SafeShield' warning 'SAFESHIELD_STATUS_INCOMPLETE' 'SafeShield 차단 목록 상태를 확인하지 못했습니다.' null ''
+			return
+			;;
+	esac
+	case "$status" in
+		error|failed)
+			code="${last_error:-SAFESHIELD_RUNTIME_ERROR}"
+			add_check safeshield.runtime 'SafeShield' warning "$code" 'SafeShield의 최근 작업에서 오류가 확인되었습니다.' null ''
+			;;
+		*) add_check safeshield.runtime 'SafeShield' ok '' 'SafeShield가 정상적으로 동작하고 있습니다.' null '' ;;
+	esac
+}
+
+collect_updater_state() {
+	local phase code
+	phase="$(state_value "$UPDATER_STATE_FILE" phase)"
+	code="$(sanitize_code "$(state_value "$UPDATER_STATE_FILE" error_code)")"
+	if [ "$phase" = 'error' ]; then
+		add_check software.updater '관리 소프트웨어 업데이트' warning "${code:-SOFTWARE_UPDATE_FAILED}" '최근 관리 소프트웨어 업데이트 작업에서 오류가 확인되었습니다.' null ''
+	else
+		add_check software.updater '관리 소프트웨어 업데이트' ok '' '관리 소프트웨어 업데이트 상태에 지속 중인 오류가 없습니다.' null ''
+	fi
+}
+
+collect_firmware_state() {
+	local phase code
+	phase="$(state_value "$FIRMWARE_STATE_FILE" phase)"
+	code="$(sanitize_code "$(state_value "$FIRMWARE_STATE_FILE" error_code)")"
+	if [ "$phase" = 'error' ]; then
+		add_check firmware.updater '펌웨어 업데이트' warning "${code:-FIRMWARE_UPDATE_FAILED}" '최근 펌웨어 업데이트 작업에서 오류가 확인되었습니다.' null ''
+	else
+		add_check firmware.updater '펌웨어 업데이트' ok '' '펌웨어 업데이트 상태에 지속 중인 오류가 없습니다.' null ''
+	fi
+}
+
+collect_time() {
+	local now
+	now="$("$DATE_BIN" +%s 2>/dev/null || true)"
+	case "$now" in ''|*[!0-9]*) add_check system.time '시스템 시간' unknown '' '시스템 시간을 확인하지 못했습니다.' null '' ; return ;; esac
+	if [ "$now" -lt 1704067200 ]; then
+		add_check system.time '시스템 시간' warning 'SYSTEM_TIME_INVALID' '시스템 시간이 올바르게 동기화되지 않은 것으로 보입니다.' "$now" 'epoch'
+	else
+		add_check system.time '시스템 시간' ok '' '시스템 시간이 유효한 범위입니다.' "$now" 'epoch'
+	fi
+}
+
+activity_state_value() {
+	local key="$1"
+	[ -f "$EVENT_OBSERVER_STATE_FILE" ] || return 0
+	awk -F '\t' -v key="$key" '$1 == key { print $2; exit }' "$EVENT_OBSERVER_STATE_FILE" 2>/dev/null || true
+}
+
+emit_activity_event() {
+	local source="$1" event_type="$2" severity="$3" metadata="$4" occurred_at="${5:-}"
+	[ -x "$EVENTS_BIN" ] || return 0
+	if [ -n "$occurred_at" ]; then
+		"$EVENTS_BIN" emit "$source" "$event_type" "$severity" "$metadata" "$occurred_at" >/dev/null 2>&1 || true
+	else
+		"$EVENTS_BIN" emit "$source" "$event_type" "$severity" "$metadata" >/dev/null 2>&1 || true
+	fi
+}
+
+write_activity_state() {
+	local initialized="$1" wan_state="$2" wan_down_since="$3" health_fingerprint="$4" tmp
+	tmp="${EVENT_OBSERVER_STATE_FILE}.tmp.$$"
+	{
+		printf 'version\t2\n'
+		printf 'initialized\t%s\n' "$initialized"
+		printf 'wan_state\t%s\n' "$(sanitize_code "$wan_state")"
+		printf 'wan_down_since\t%s\n' "$wan_down_since"
+		printf 'health_fingerprint\t%s\n' "$(sanitize_code "$health_fingerprint")"
+	} > "$tmp"
+	mv "$tmp" "$EVENT_OBSERVER_STATE_FILE"
+}
+
+record_activity_transitions() {
+	local now initialized previous_wan previous_down_since next_wan next_down_since
+	local previous_health severity metadata downtime
+	now="$("$DATE_BIN" +%s 2>/dev/null || printf '0')"
+	case "$now" in ''|*[!0-9]*) now=0 ;; esac
+	initialized="$(activity_state_value initialized)"
+	previous_wan="$(activity_state_value wan_state)"
+	previous_down_since="$(activity_state_value wan_down_since)"
+	previous_health="$(activity_state_value health_fingerprint)"
+	case "$previous_down_since" in ''|*[!0-9]*) previous_down_since=0 ;; esac
+
+	next_wan="$WAN_STATE"
+	next_down_since="$previous_down_since"
+
+	if [ "$initialized" != '1' ]; then
+		[ "$next_wan" != 'unknown' ] || next_wan='unknown'
+		if [ "$next_wan" = 'down' ]; then next_down_since="$now"; else next_down_since=0; fi
+		write_activity_state 1 "$next_wan" "$next_down_since" "$HEALTH_EVENT_FINGERPRINT"
+		return 0
+	fi
+
+	# Observer-owned events are limited to state changes that do not have a
+	# reliable mutation call site. SafeShield mutations are emitted directly by
+	# the SmartSafeHub SafeShield adapter, while refresh completion is observed by
+	# the dedicated SafeShield event bridge.
+	if [ "$WAN_STATE" = 'down' ]; then
+		if [ "$previous_wan" = 'up' ]; then
+			next_down_since="$now"
+			emit_activity_event network network.internet.disconnected error '{"previous_state":"up","current_state":"down","origin":"observer"}'
+		elif [ "$previous_wan" != 'down' ]; then
+			next_down_since="$now"
+		fi
+	elif [ "$WAN_STATE" = 'up' ]; then
+		if [ "$previous_wan" = 'down' ]; then
+			downtime=0
+			if [ "$previous_down_since" -gt 0 ] 2>/dev/null && [ "$now" -ge "$previous_down_since" ] 2>/dev/null; then
+				downtime=$((now - previous_down_since))
+			fi
+			metadata="{\"previous_state\":\"down\",\"current_state\":\"up\",\"downtime_seconds\":$downtime,\"origin\":\"observer\"}"
+			emit_activity_event network network.internet.recovered success "$metadata"
+		fi
+		next_down_since=0
+	else
+		next_wan="$previous_wan"
+	fi
+
+	if [ -z "$previous_health" ] && [ -n "$HEALTH_EVENT_FINGERPRINT" ]; then
+		severity='warning'
+		[ "$HEALTH_EVENT_CRITICAL_COUNT" -eq 0 ] || severity='error'
+		metadata="{\"issue_fingerprint\":\"$(json_escape "$HEALTH_EVENT_FINGERPRINT")\",\"warning_count\":$HEALTH_EVENT_WARNING_COUNT,\"critical_count\":$HEALTH_EVENT_CRITICAL_COUNT,\"origin\":\"observer\"}"
+		emit_activity_event health health.issue.started "$severity" "$metadata"
+	elif [ -n "$previous_health" ] && [ -z "$HEALTH_EVENT_FINGERPRINT" ]; then
+		metadata="{\"previous_issue_fingerprint\":\"$(json_escape "$previous_health")\",\"origin\":\"observer\"}"
+		emit_activity_event health health.issue.resolved success "$metadata"
+	elif [ -n "$previous_health" ] && [ -n "$HEALTH_EVENT_FINGERPRINT" ] && [ "$previous_health" != "$HEALTH_EVENT_FINGERPRINT" ]; then
+		severity='warning'
+		[ "$HEALTH_EVENT_CRITICAL_COUNT" -eq 0 ] || severity='error'
+		metadata="{\"previous_issue_fingerprint\":\"$(json_escape "$previous_health")\",\"issue_fingerprint\":\"$(json_escape "$HEALTH_EVENT_FINGERPRINT")\",\"warning_count\":$HEALTH_EVENT_WARNING_COUNT,\"critical_count\":$HEALTH_EVENT_CRITICAL_COUNT,\"origin\":\"observer\"}"
+		emit_activity_event health health.issue.changed "$severity" "$metadata"
+	fi
+
+	write_activity_state 1 "$next_wan" "$next_down_since" "$HEALTH_EVENT_FINGERPRINT"
+}
+
+health_summary_message() {
+	case "$OVERALL" in
+		critical) printf '%s' '즉시 확인이 필요한 이상 항목이 있습니다.' ;;
+		warning) printf '%s' '확인이 필요한 주의 항목이 있습니다.' ;;
+		initializing) printf '%s' 'SafeShield 보호 기능을 준비하고 있습니다.' ;;
+		*) printf '%s' '현재 진단에서 이상이 발견되지 않았습니다.' ;;
+	esac
+}
+
+write_health_file() {
+	local generated tmp
+	generated="$("$DATE_BIN" +%s 2>/dev/null || printf '0')"
+	tmp="${HEALTH_FILE}.tmp.$$"
+	umask 022
+	cat > "$tmp" <<EOF_HEALTH
+{"schema":1,"generatedAt":$generated,"overall":"$OVERALL","summary":{"message":"$(json_escape "$(health_summary_message)")","total":$CHECK_COUNT,"ok":$OK_COUNT,"warning":$WARNING_COUNT,"critical":$CRITICAL_COUNT,"unknown":$UNKNOWN_COUNT},"metrics":{"memoryAvailablePercent":$MEMORY_AVAILABLE_PERCENT,"load1m":$LOAD_1M,"overlayAvailablePercent":$OVERLAY_AVAILABLE_PERCENT},"checks":[
+$(cat "$CHECKS_FILE")
+]}
+EOF_HEALTH
+	mv "$tmp" "$HEALTH_FILE"
+}
+
+collect_health() {
+	mkdir -p "$RUNTIME_DIR" || return 1
+	[ -n "$CHECKS_FILE" ] && rm -f "$CHECKS_FILE"
+	[ -n "$ISSUES_FILE" ] && rm -f "$ISSUES_FILE"
+	[ -n "$SAFESHIELD_STATUS_FILE" ] && rm -f "$SAFESHIELD_STATUS_FILE"
+	[ -n "$REPORT_PAYLOAD_FILE" ] && rm -f "$REPORT_PAYLOAD_FILE"
+	CHECKS_FILE="$RUNTIME_DIR/health-checks.$$.json"
+	ISSUES_FILE="$RUNTIME_DIR/health-issues.$$.json"
+	: > "$CHECKS_FILE"
+	: > "$ISSUES_FILE"
+	CHECK_COUNT=0; OK_COUNT=0; WARNING_COUNT=0; CRITICAL_COUNT=0; UNKNOWN_COUNT=0
+	OVERALL=ok; ISSUE_FINGERPRINT=''; MEMORY_AVAILABLE_PERCENT=0; LOAD_1M='0'; OVERLAY_AVAILABLE_PERCENT=0; SAFESHIELD_INITIALIZING=0
+	HEALTH_EVENT_FINGERPRINT=''; HEALTH_EVENT_WARNING_COUNT=0; HEALTH_EVENT_CRITICAL_COUNT=0
+	WAN_STATE='unknown'; SAFESHIELD_ENABLED_STATE='unknown'; SAFESHIELD_LAST_SUCCESS=0; SAFESHIELD_LAST_FAILURE=0
+	SAFESHIELD_DOMAIN_COUNT=0; SAFESHIELD_ARTIFACT_VERSION=''; SAFESHIELD_LAST_ERROR_CODE=''
+
+	collect_memory
+	collect_load
+	collect_storage
+	collect_wan
+	collect_dnsmasq
+	collect_safeshield
+	collect_updater_state
+	collect_firmware_state
+	collect_time
+	if [ "$SAFESHIELD_INITIALIZING" -eq 1 ] && [ "$OVERALL" = 'ok' ]; then
+		OVERALL=initializing
+	fi
+	write_health_file
+	record_activity_transitions
+}
+
+license_eligible() {
+	local status_file configured plan license_status normalized_plan normalized_status temporary
+	status_file="$SAFESHIELD_STATUS_FILE"
+	temporary=0
+	if [ -z "$status_file" ] || [ ! -f "$status_file" ]; then
+		status_file="$RUNTIME_DIR/health-license.$$.json"
+		temporary=1
+		if ! "$UBUS_BIN" call safeshield status > "$status_file" 2>/dev/null; then
+			rm -f "$status_file"
+			printf '%s\t%s\t%s' '0' '' ''
+			return
+		fi
+	fi
+	configured="$(json_value "$status_file" '@.license.configured')"
+	plan="$(json_value "$status_file" '@.license.plan')"
+	license_status="$(json_value "$status_file" '@.license.status')"
+	[ "$temporary" -eq 0 ] || rm -f "$status_file"
+	normalized_plan="$(printf '%s' "$plan" | tr '[:lower:]' '[:upper:]')"
+	normalized_status="$(printf '%s' "$license_status" | tr '[:upper:]' '[:lower:]')"
+
+	if [ "$configured" != 'true' ] && [ "$configured" != '1' ]; then
+		printf '%s\t%s\t%s' '0' "$normalized_plan" "$normalized_status"
+		return
+	fi
+	case "$normalized_status" in
+		trial|trialing)
+			printf '%s\t%s\t%s' '1' "$normalized_plan" "$normalized_status"
+			return
+			;;
+		active)
+			if [ -n "$normalized_plan" ] && [ "$normalized_plan" != 'FREE' ]; then
+				printf '%s\t%s\t%s' '1' "$normalized_plan" "$normalized_status"
+				return
+			fi
+			;;
+	esac
+	printf '%s\t%s\t%s' '0' "$normalized_plan" "$normalized_status"
+}
+write_report_state() {
+	local enabled="$1" eligible="$2" plan="$3" license_status="$4" last_report_at="$5" last_result="$6" last_error="$7" fingerprint="$8"
+	local next_retry_at="${9:-}" tmp next_report interval
+	interval="$(report_interval_s)"
+	case "$last_report_at" in ''|*[!0-9]*) last_report_at=0 ;; esac
+	if [ -z "$next_retry_at" ]; then
+		next_retry_at="$(state_value "$REPORT_STATE_FILE" next_retry_at)"
+	fi
+	case "$next_retry_at" in ''|*[!0-9]*) next_retry_at=0 ;; esac
+	if [ "$last_report_at" -gt 0 ]; then next_report=$((last_report_at + interval)); else next_report=0; fi
+	tmp="${REPORT_STATE_FILE}.tmp.$$"
+	{
+		printf 'version\t1\n'
+		printf 'enabled\t%s\n' "$enabled"
+		printf 'eligible\t%s\n' "$eligible"
+		printf 'plan\t%s\n' "$(sanitize_code "$plan")"
+		printf 'license_status\t%s\n' "$(sanitize_code "$license_status")"
+		printf 'last_report_at\t%s\n' "$last_report_at"
+		printf 'next_report_at\t%s\n' "$next_report"
+		printf 'next_retry_at\t%s\n' "$next_retry_at"
+		printf 'last_result\t%s\n' "$(sanitize_code "$last_result")"
+		printf 'last_error_code\t%s\n' "$(sanitize_code "$last_error")"
+		printf 'fingerprint\t%s\n' "$(sanitize_code "$fingerprint")"
+	} > "$tmp"
+	mv "$tmp" "$REPORT_STATE_FILE"
+}
+
+sync_reporter_state() {
+	local eligibility eligible plan license_status enabled last_at last_result last_error fingerprint next_retry_at
+	enabled=0
+	reporter_enabled && enabled=1
+	eligibility="$(license_eligible)"
+	eligible="$(printf '%s' "$eligibility" | cut -f1)"
+	plan="$(printf '%s' "$eligibility" | cut -f2)"
+	license_status="$(printf '%s' "$eligibility" | cut -f3)"
+	last_at="$(state_value "$REPORT_STATE_FILE" last_report_at)"
+	last_result="$(state_value "$REPORT_STATE_FILE" last_result)"
+	last_error="$(state_value "$REPORT_STATE_FILE" last_error_code)"
+	fingerprint="$(state_value "$REPORT_STATE_FILE" fingerprint)"
+	case "$last_at" in ''|*[!0-9]*) last_at=0 ;; esac
+	next_retry_at="$(state_value "$REPORT_STATE_FILE" next_retry_at)"
+	case "$next_retry_at" in ''|*[!0-9]*) next_retry_at=0 ;; esac
+	if [ "$enabled" -ne 1 ]; then
+		last_result=disabled
+		last_error=''
+		next_retry_at=0
+	elif [ "$eligible" != '1' ]; then
+		last_result=ineligible
+		last_error=HEALTH_REPORTER_NOT_ELIGIBLE
+		next_retry_at=0
+	elif [ -z "$last_result" ] || [ "$last_result" = 'disabled' ] || [ "$last_result" = 'ineligible' ]; then
+		last_result=never
+		last_error=''
+		next_retry_at=0
+	fi
+	write_report_state "$enabled" "$eligible" "$plan" "$license_status" "$last_at" "$last_result" "$last_error" "$fingerprint" "$next_retry_at"
+}
+
+read_license_key() {
+	local file key
+	file="$RUNTIME_DIR/health-license-key.$$.json"
+	if ! "$UBUS_BIN" call safeshield license_get > "$file" 2>/dev/null; then
+		rm -f "$file"
+		return 1
+	fi
+	# SafeShield license_get returns the sensitive value under .license.key.
+	# Keep the old top-level key only as a compatibility fallback for older
+	# development builds; current packages must use the nested contract.
+	key="$(json_value "$file" '@.license.key')"
+	[ -n "$key" ] || key="$(json_value "$file" '@.key')"
+	rm -f "$file"
+	[ -n "$key" ] || return 1
+	printf '%s' "$key"
+}
+
+build_report_payload() {
+	local generated payload overall
+	generated="$(json_value "$HEALTH_FILE" '@.generatedAt')"
+	overall="$(json_value "$HEALTH_FILE" '@.overall')"
+	REPORT_PAYLOAD_FILE="$RUNTIME_DIR/health-report.$$.json"
+	cat > "$REPORT_PAYLOAD_FILE" <<EOF_REPORT
+{"schema":1,"generated_at":${generated:-0},"overall":"$(json_escape "${overall:-unknown}")","metrics":{"memory_available_percent":$MEMORY_AVAILABLE_PERCENT,"load_1m":$LOAD_1M,"overlay_available_percent":$OVERLAY_AVAILABLE_PERCENT},"issues":[
+$(cat "$ISSUES_FILE")
+]}
+EOF_REPORT
+}
+
+maybe_report() {
+	local eligibility eligible plan license_status enabled now last_at last_fingerprint next_retry_at interval due key base
+	enabled=0
+	reporter_enabled && enabled=1
+	eligibility="$(license_eligible)"
+	eligible="$(printf '%s' "$eligibility" | cut -f1)"
+	plan="$(printf '%s' "$eligibility" | cut -f2)"
+	license_status="$(printf '%s' "$eligibility" | cut -f3)"
+	now="$("$DATE_BIN" +%s 2>/dev/null || printf '0')"
+	last_at="$(state_value "$REPORT_STATE_FILE" last_report_at)"
+	last_fingerprint="$(state_value "$REPORT_STATE_FILE" fingerprint)"
+	case "$last_at" in ''|*[!0-9]*) last_at=0 ;; esac
+
+	if [ "$enabled" -ne 1 ]; then
+		write_report_state 0 "$eligible" "$plan" "$license_status" "$last_at" disabled '' "$last_fingerprint" 0
+		return 0
+	fi
+	if [ "$eligible" != '1' ]; then
+		write_report_state 1 0 "$plan" "$license_status" "$last_at" ineligible 'HEALTH_REPORTER_NOT_ELIGIBLE' "$last_fingerprint" 0
+		return 0
+	fi
+	if [ "$SAFESHIELD_INITIALIZING" -eq 1 ]; then
+		write_report_state 1 1 "$plan" "$license_status" "$last_at" initializing '' "$last_fingerprint" 0
+		return 0
+	fi
+
+	next_retry_at="$(state_value "$REPORT_STATE_FILE" next_retry_at)"
+	case "$next_retry_at" in ''|*[!0-9]*) next_retry_at=0 ;; esac
+	if [ "$next_retry_at" -gt 0 ] && [ "$now" -lt "$next_retry_at" ]; then
+		return 0
+	fi
+
+	interval="$(report_interval_s)"
+	due=0
+	[ "$last_at" -eq 0 ] && due=1
+	[ "$ISSUE_FINGERPRINT" != "$last_fingerprint" ] && due=1
+	[ "$now" -ge $((last_at + interval)) ] && due=1
+	if [ "$due" -ne 1 ]; then
+		write_report_state 1 1 "$plan" "$license_status" "$last_at" idle '' "$last_fingerprint"
+		return 0
+	fi
+
+	key="$(read_license_key 2>/dev/null || true)"
+	if [ -z "$key" ]; then
+		write_report_state 1 1 "$plan" "$license_status" "$last_at" failed 'HEALTH_REPORTER_LICENSE_UNAVAILABLE' "$last_fingerprint" $((now + REPORT_RETRY_S))
+		return 1
+	fi
+	build_report_payload
+	base="$(api_base_url)"
+	if "$UCLIENT_FETCH_BIN" -q -T "$REPORT_TIMEOUT_S" \
+		--method=POST \
+		--body-file="$REPORT_PAYLOAD_FILE" \
+		--header='Content-Type: application/json' \
+		--header="X-SafeShield-License-Key: $key" \
+		-O /dev/null \
+		"$base/health/reports"; then
+		write_report_state 1 1 "$plan" "$license_status" "$now" reported '' "$ISSUE_FINGERPRINT" 0
+		return 0
+	fi
+
+	write_report_state 1 1 "$plan" "$license_status" "$last_at" failed 'HEALTH_REPORTER_UPLOAD_FAILED' "$last_fingerprint" $((now + REPORT_RETRY_S))
+	log_message 'HEALTH_REPORTER_UPLOAD_FAILED: 원격 상태 보고를 전송하지 못했습니다.'
+	return 1
+}
+
+set_reporter() {
+	local requested="$1" eligibility eligible plan license_status
+	case "$requested" in 0|1) ;; *) return 2 ;; esac
+	if [ "$requested" = '1' ]; then
+		collect_health || return 1
+		eligibility="$(license_eligible)"
+		eligible="$(printf '%s' "$eligibility" | cut -f1)"
+		plan="$(printf '%s' "$eligibility" | cut -f2)"
+		license_status="$(printf '%s' "$eligibility" | cut -f3)"
+		if [ "$eligible" != '1' ]; then
+			write_report_state 0 0 "$plan" "$license_status" "$(state_value "$REPORT_STATE_FILE" last_report_at)" ineligible 'HEALTH_REPORTER_NOT_ELIGIBLE' "$(state_value "$REPORT_STATE_FILE" fingerprint)" 0
+			return 3
+		fi
+	fi
+
+	if ! "$UCI_BIN" -q set "smartsafehub.health.reporter_enabled=$requested" >/dev/null 2>&1; then
+		return 1
+	fi
+	if ! "$UCI_BIN" -q commit smartsafehub >/dev/null 2>&1; then
+		return 1
+	fi
+
+	sync_reporter_state
+	return 0
+}
+
+run_once() {
+	collect_health || return 1
+	sync_reporter_state
+}
+
+run_cycle() {
+	collect_health || return 1
+	maybe_report || true
+}
+
+run_daemon() {
+	local last_check now interval
+	sleep "$DAEMON_INITIAL_DELAY_S"
+	last_check=0
+	while true; do
+		now="$("$DATE_BIN" +%s 2>/dev/null || printf '0')"
+		interval="$(check_interval_s)"
+		if [ "$last_check" -eq 0 ] || [ "$now" -ge $((last_check + interval)) ]; then
+			run_cycle || true
+			if [ "$SAFESHIELD_INITIALIZING" -eq 1 ]; then
+				# During boot, recheck on the short daemon tick instead of leaving the
+				# UI in a transient state for the full regular health interval.
+				last_check=0
+			else
+				last_check="$now"
+			fi
+		fi
+		# Keep a short scheduler tick so a changed check_interval_s is picked up
+		# quickly, but perform diagnostics and reporter work only on a health cycle.
+		sleep "$DAEMON_TICK_S"
+	done
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	run-once) run_once ;;
+	run-cycle) run_cycle ;;
+	set-reporter) set_reporter "${2:-}" ;;
+	daemon) run_daemon ;;
+	*)
+		echo "usage: $0 {run-once|run-cycle|set-reporter 0|1|daemon}" >&2
+		exit 2
+		;;
+esac

@@ -1,0 +1,417 @@
+#!/bin/sh /etc/rc.common
+# shellcheck shell=ash
+
+# Variables below are populated by sourced helpers and ss_load_config()
+# shellcheck disable=SC2154
+
+# Used by /etc/rc.common
+# shellcheck disable=SC2034
+START=20
+# shellcheck disable=SC2034
+STOP=1
+# shellcheck disable=SC2034
+USE_PROCD=1
+LC_ALL=C
+IPKG_INSTROOT="${IPKG_INSTROOT:-}"
+export IPKG_INSTROOT
+
+readonly PKG_NAME='safeshield'
+readonly PKG_VERSION='0.3.24-r1'
+
+if type extra_command >/dev/null 2>&1; then
+	extra_command 'apply_local_rules' 'Apply local allow/block rules using the cached Hub artifact'
+	extra_command 'force_download' 'Resolve and download latest Hub artifact'
+	extra_command 'pause' 'Pause the service'
+	extra_command 'refresh_once' 'Run one immediate refresh in foreground'
+	extra_command 'reconcile_statistics' 'Reconcile SafeShield statistics runtime without restarting refreshd'
+	extra_command 'resume' 'Resume the service'
+	extra_command 'show_blocklist' 'List currently blocked domains'
+	extra_command 'sizes' 'Display SafeShield blocklist size information'
+	extra_command 'statistics' 'Display local SafeShield DNS statistics'
+	extra_command 'version' 'Show version information'
+fi
+
+# shellcheck disable=SC1091
+. "${IPKG_INSTROOT}/lib/functions.sh"
+# shellcheck disable=SC1091
+. "${IPKG_INSTROOT}/usr/lib/safeshield/core.sh"
+
+boot() {
+	rc_procd start_service boot
+}
+
+start_service() {
+	local statistics_dnsmasq_changed=0
+	local blocklist_restart_expected=0
+
+	ss_load_config || {
+		log_error "Failed to load config"
+		return 1
+	}
+
+	ss_identity_ensure "$(ss_detect_device_model 2>/dev/null || echo OpenWrt)" "$(ss_detect_device_arch 2>/dev/null || echo unknown)" || {
+		log_error "Failed to initialize SafeShield device identity"
+		return 1
+	}
+
+	ss_mkdirs || {
+		log_error "Failed to create runtime directories"
+		return 1
+	}
+
+	if [ "${ss_enabled}" != "1" ]; then
+		log_warn "${PKG_NAME} is disabled"
+		ss_statistics_request_rebaseline || {
+			log_error "Failed to mark statistics for rebaseline while SafeShield is disabled"
+			return 1
+		}
+		statistics_dnsmasq_changed="$(ss_statistics_configure_dnsmasq 0)" || {
+			log_error "Failed to remove legacy dnsmasq statistics logging"
+			return 1
+		}
+		[ -f "${SS_BLOCKLIST_FILE}" ] && blocklist_restart_expected=1
+
+		ss_runtime_deactivate_blocklist || {
+			log_error "Failed to deactivate SafeShield blocklist"
+			return 1
+		}
+
+		if [ "$statistics_dnsmasq_changed" = "1" ] && [ "$blocklist_restart_expected" = "0" ]; then
+			dnsmasq_restart || {
+				log_error "Failed to restart dnsmasq after removing legacy statistics logging"
+				return 1
+			}
+		fi
+
+		ss_status_set status "disabled"
+		ss_status_set stage "disabled"
+		ss_status_set last_result "disabled"
+		ss_status_set next_refresh_at "0"
+		return 0
+	fi
+
+	ss_require_supported_dnsmasq || {
+		ss_status_set stage "dnsmasq_version_check"
+		ss_status_mark_failure "$(ss_dnsmasq_check_error)"
+		return 1
+	}
+
+	ss_statistics_disable_if_dnsmasq_unpatched || {
+		log_error "Failed to apply the dnsmasq compatibility guard for statistics"
+		return 1
+	}
+
+	if [ "${ss_statistics_enabled}" != "1" ]; then
+		ss_statistics_request_rebaseline || {
+			log_error "Failed to mark statistics for rebaseline while statistics are inactive"
+			return 1
+		}
+	fi
+
+	ss_reconcile_installed_blocklists_for_dnsmasq || {
+		log_error "Failed to reconcile installed blocklist directives for dnsmasq"
+		ss_status_mark_failure "blocklist_directive_migration_failed"
+		return 1
+	}
+
+	if [ "${ss_statistics_enabled}" = "1" ]; then
+		ss_ensure_dnsmasq_confdir || {
+			log_error "dnsmasq confdir is unavailable while enabling statistics"
+			return 1
+		}
+		statistics_dnsmasq_changed="$(ss_statistics_configure_dnsmasq 1)" || {
+			log_error "Failed to reconcile legacy dnsmasq statistics logging"
+			return 1
+		}
+	else
+		statistics_dnsmasq_changed="$(ss_statistics_configure_dnsmasq 0)" || {
+			log_error "Failed to remove legacy dnsmasq statistics logging"
+			return 1
+		}
+	fi
+
+	if [ -f "${SS_BLOCKLIST_FILE}" ] || [ -f "${SS_INACTIVE_BLOCKLIST_FILE}" ]; then
+		blocklist_restart_expected=1
+	fi
+
+	ss_runtime_activate_blocklist || {
+		log_error "Failed to activate SafeShield blocklist"
+		return 1
+	}
+
+	if [ "$statistics_dnsmasq_changed" = "1" ] && [ "$blocklist_restart_expected" = "0" ]; then
+		dnsmasq_restart || {
+			log_error "Failed to restart dnsmasq after removing legacy statistics logging"
+			return 1
+		}
+	fi
+
+	procd_open_instance
+	procd_set_param command /usr/libexec/safeshield-refreshd
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_set_param file /etc/config/safeshield
+	procd_set_param data service safeshield
+	procd_close_instance
+
+	if [ "${ss_statistics_enabled}" = "1" ]; then
+		ss_statistics_add_procd_instance
+		ss_statistics_add_upload_procd_instance
+	fi
+}
+
+stop_service() {
+	local statistics_dnsmasq_changed=0
+	local blocklist_restart_expected=0
+
+	ss_load_config >/dev/null 2>&1 || true
+
+	statistics_dnsmasq_changed="$(ss_statistics_configure_dnsmasq 0)" || {
+		log_error "Failed to remove legacy dnsmasq statistics logging while stopping service"
+		return 1
+	}
+	[ -f "${SS_BLOCKLIST_FILE}" ] && blocklist_restart_expected=1
+
+	ss_runtime_deactivate_blocklist || {
+		log_error "Failed to deactivate SafeShield blocklist while stopping service"
+		return 1
+	}
+
+	if [ "$statistics_dnsmasq_changed" = "1" ] && [ "$blocklist_restart_expected" = "0" ]; then
+		dnsmasq_restart || {
+			log_error "Failed to restart dnsmasq after removing legacy statistics logging"
+			return 1
+		}
+	fi
+
+	ss_status_set next_refresh_at "0"
+	if [ "${ss_enabled:-0}" = "1" ]; then
+		ss_status_set status "idle"
+		ss_status_set stage "stopped"
+		ss_status_set last_result "stopped"
+	else
+		ss_status_set status "disabled"
+		ss_status_set stage "disabled"
+		ss_status_set last_result "disabled"
+	fi
+
+	return 0
+}
+
+reconcile_statistics() {
+	ss_load_config || {
+		log_error "Failed to load config while reconciling statistics"
+		return 1
+	}
+
+	ss_mkdirs || {
+		log_error "Failed to create runtime directories while reconciling statistics"
+		return 1
+	}
+
+	ss_statistics_reconcile_runtime
+}
+
+reload_service() {
+	stop
+	start
+}
+
+restart_service() {
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger 'safeshield'
+	procd_add_reload_interface_trigger 'wan' /etc/init.d/safeshield reload
+	procd_add_reload_interface_trigger 'wan6' /etc/init.d/safeshield reload
+}
+
+status_service() {
+	local status stage valid_line_count
+	local enabled refresh_interval_s refresh_on_boot require_wan boot_delay
+	local license_key artifact_tier artifact_version license_plan device_profile
+	local artifact_source_count artifact_block_source_count artifact_allow_source_count
+	local dnsmasq_version dnsmasq_min_version
+	local statistics_enabled statistics_snapshot_interval_s statistics_retention_hours
+
+	if ! ss_load_config >/dev/null 2>&1; then
+		printf '%s\n' 'config: load failed'
+	fi
+
+	enabled="$(ss_config_get config enabled 0)"
+	refresh_interval_s="$(ss_config_get config refresh_interval_s 28800)"
+	refresh_on_boot="$(ss_config_get config refresh_on_boot 1)"
+	require_wan="$(ss_config_get config require_wan 1)"
+	boot_delay="$(ss_config_get config boot_start_delay_s 30)"
+	license_key="$(ss_config_get config license_key '')"
+	statistics_enabled="$(ss_config_get config statistics_enabled 1)"
+	statistics_snapshot_interval_s="$(ss_config_get config statistics_snapshot_interval_s 60)"
+	statistics_retention_hours="$(ss_config_get config statistics_retention_hours 168)"
+
+	status=""
+	stage=""
+	valid_line_count="0"
+
+	if [ -f "${RUNNING_STATUS_FILE}" ]; then
+		status="$(json get status 2>/dev/null)"
+		stage="$(json get stage 2>/dev/null)"
+		valid_line_count="$(json get valid_line_count 2>/dev/null)"
+		artifact_tier="$(json get artifact_tier 2>/dev/null)"
+		artifact_version="$(json get artifact_version 2>/dev/null)"
+		artifact_source_count="$(json get artifact_source_count 2>/dev/null)"
+		artifact_block_source_count="$(json get artifact_block_source_count 2>/dev/null)"
+		artifact_allow_source_count="$(json get artifact_allow_source_count 2>/dev/null)"
+		license_plan="$(json get license_plan 2>/dev/null)"
+		device_profile="$(json get device_profile 2>/dev/null)"
+		dnsmasq_version="$(json get dnsmasq_version 2>/dev/null)"
+		dnsmasq_min_version="$(json get dnsmasq_min_version 2>/dev/null)"
+	fi
+
+	[ -n "$status" ] || status="idle"
+	[ -n "$valid_line_count" ] || valid_line_count="0"
+
+	printf 'enabled: %s\n' "$enabled"
+	printf 'refresh_interval_s: %s\n' "$refresh_interval_s"
+	printf 'refresh_on_boot: %s\n' "$refresh_on_boot"
+	printf 'require_wan: %s\n' "$require_wan"
+	printf 'boot_start_delay_s: %s\n' "$boot_delay"
+	printf 'license_key: %s\n' "$(ss_mask_secret "$license_key")"
+
+	if [ -f "${SS_BLOCKLIST_FILE}" ]; then
+		printf '%s\n' 'blocklist: installed'
+	else
+		printf '%s\n' 'blocklist: not installed'
+	fi
+
+	if check_dns_runtime; then
+		printf '%s\n' 'dnsmasq: ok'
+	else
+		printf '%s\n' 'dnsmasq: failed'
+	fi
+	[ -n "$dnsmasq_version" ] && printf 'dnsmasq_version: %s\n' "$dnsmasq_version"
+	printf 'dnsmasq_min_version: %s\n' "${dnsmasq_min_version:-$SS_MIN_DNSMASQ_VERSION}"
+
+	printf 'status: %s\n' "$status"
+	[ -n "$stage" ] && printf 'stage: %s\n' "$stage"
+	[ -n "$license_plan" ] && printf 'license_plan: %s\n' "$license_plan"
+	[ -n "$device_profile" ] && printf 'device_profile: %s\n' "$device_profile"
+	[ -n "$artifact_tier" ] && printf 'artifact_tier: %s\n' "$artifact_tier"
+	[ -n "$artifact_version" ] && printf 'artifact_version: %s\n' "$artifact_version"
+	[ -n "$artifact_source_count" ] && printf 'artifact_source_count: %s\n' "$artifact_source_count"
+	[ -n "$artifact_block_source_count" ] && printf 'artifact_block_source_count: %s\n' "$artifact_block_source_count"
+	[ -n "$artifact_allow_source_count" ] && printf 'artifact_allow_source_count: %s\n' "$artifact_allow_source_count"
+	printf 'valid_line_count: %s\n' "$valid_line_count"
+	printf 'statistics_enabled: %s\n' "$statistics_enabled"
+	printf 'statistics_snapshot_interval_s: %s\n' "$statistics_snapshot_interval_s"
+	printf 'statistics_retention_hours: %s\n' "$statistics_retention_hours"
+	if procd_running safeshield statistics; then
+		printf 'statistics_collector: running\n'
+	else
+		printf 'statistics_collector: stopped\n'
+	fi
+
+	if procd_running safeshield; then
+		printf '%s\n' 'refreshd: running'
+	else
+		printf '%s\n' 'refreshd: stopped'
+	fi
+}
+
+apply_local_rules() {
+	ss_load_config || return 1
+	ss_mkdirs || return 1
+	safeshield_apply_local_rules
+}
+
+refresh_once() {
+	ss_load_config || return 1
+	ss_mkdirs || return 1
+	safeshield_force_download
+}
+
+force_download() {
+	refresh_once "$@"
+}
+
+pause() {
+	local timeout
+
+	ss_load_config || return 1
+	timeout="${1:-$ss_pause_timeout}"
+
+	if ! is_valid_integer "$timeout"; then
+		log_error "Invalid pause timeout: ${timeout}"
+		return 1
+	fi
+
+	log_info "Pausing ${PKG_NAME} for ${timeout} seconds"
+
+	ss_export_existing_blocklist >/dev/null 2>&1 || true
+	rm -f "${SS_BLOCKLIST_FILE}"
+	dnsmasq_restart
+
+	sleep "$timeout"
+
+	log_info "Resuming ${PKG_NAME} after pause"
+	ss_restore_previous_blocklist >/dev/null 2>&1 || true
+	dnsmasq_restart
+}
+
+resume() {
+	log_info "Resuming ${PKG_NAME}"
+
+	ss_restore_previous_blocklist >/dev/null 2>&1 || true
+	dnsmasq_restart
+}
+
+show_blocklist() {
+	if [ -f "${SS_BLOCKLIST_FILE}" ]; then
+		cat "${SS_BLOCKLIST_FILE}"
+	else
+		printf '%s\n' 'No installed blocklist'
+	fi
+}
+
+sizes() {
+	local blocklist_file_size_kb backup_file_size_kb valid_line_count
+
+	ss_load_config || return 1
+
+	blocklist_file_size_kb="0"
+	backup_file_size_kb="0"
+	valid_line_count="0"
+
+	if [ -f "${SS_BLOCKLIST_FILE}" ]; then
+		blocklist_file_size_kb="$(du -k "${SS_BLOCKLIST_FILE}" 2>/dev/null | awk '{print $1}')"
+		valid_line_count="$(grep -c . "${SS_BLOCKLIST_FILE}" 2>/dev/null)"
+	fi
+
+	if [ -f "${SS_PREV_BLOCKLIST_GZ}" ]; then
+		backup_file_size_kb="$(du -k "${SS_PREV_BLOCKLIST_GZ}" 2>/dev/null | awk '{print $1}')"
+	fi
+
+	[ -n "$blocklist_file_size_kb" ] || blocklist_file_size_kb="0"
+	[ -n "$backup_file_size_kb" ] || backup_file_size_kb="0"
+	[ -n "$valid_line_count" ] || valid_line_count="0"
+
+	printf 'max_blocklist_file_size_kb: %s\n' "$ss_max_blocklist_file_size_kb"
+	printf 'min_valid_line_count: %s\n' "$ss_min_valid_line_count"
+	printf 'blocklist_file_size_kb: %s\n' "$blocklist_file_size_kb"
+	printf 'backup_blocklist_file_size_kb: %s\n' "$backup_file_size_kb"
+	printf 'valid_line_count: %s\n' "$valid_line_count"
+}
+
+statistics() {
+	if [ -s "${SS_STATISTICS_JSON_FILE}" ]; then
+		cat "${SS_STATISTICS_JSON_FILE}"
+	else
+		printf '%s\n' '{"schema":{"name":"safeshield.statistics","version":3},"volatile":true,"generation_id":"","snapshot_seq":0,"totals":{"queries":0,"blocked":0},"hourly":[],"devices":[]}'
+	fi
+}
+
+version() {
+	printf '%s\n' "$PKG_VERSION"
+}

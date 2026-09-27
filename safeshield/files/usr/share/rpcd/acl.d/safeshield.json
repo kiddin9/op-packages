@@ -1,0 +1,28 @@
+{
+  "safeshield": {
+    "description": "Access SafeShield service API",
+    "read": {
+      "ubus": {
+        "safeshield": [
+          "status",
+          "config",
+          "statistics",
+          "rules_list"
+        ]
+      }
+    },
+    "write": {
+      "ubus": {
+        "safeshield": [
+          "config_update",
+          "set_enabled",
+          "refresh",
+          "rule_add",
+          "rule_delete",
+          "license_get",
+          "license_update"
+        ]
+      }
+    }
+  }
+}

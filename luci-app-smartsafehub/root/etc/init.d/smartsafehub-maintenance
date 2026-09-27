@@ -1,0 +1,38 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+USE_PROCD=1
+START=97
+STOP=8
+
+RUNTIME_DIR=/tmp/smartsafehub
+PROG=/usr/libexec/smartsafehub-maintenance
+
+ensure_config() {
+	uci -q get smartsafehub.maintenance >/dev/null 2>&1 && return 0
+
+	uci -q batch <<'EOF_UCI'
+set smartsafehub.maintenance=maintenance
+set smartsafehub.maintenance.scheduled_reboot_enabled='0'
+set smartsafehub.maintenance.scheduled_reboot_frequency='weekly'
+set smartsafehub.maintenance.scheduled_reboot_day='sun'
+set smartsafehub.maintenance.scheduled_reboot_time='04:00'
+commit smartsafehub
+EOF_UCI
+}
+
+start_service() {
+	mkdir -p "$RUNTIME_DIR" || return 1
+	ensure_config
+
+	procd_open_instance
+	procd_set_param command "$PROG" daemon
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+service_triggers() {
+	procd_add_reload_trigger smartsafehub
+}

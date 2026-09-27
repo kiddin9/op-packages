@@ -1,0 +1,80 @@
+<%+header%>
+<%
+	local http = require("luci.http")
+	local core = require("substore.core")
+	local id = http.formvalue("id") or ""
+	local it = id ~= "" and core.get(id) or nil
+	local is_edit = it ~= nil
+	local rules_enabled = it and (it.rules_enable == true or it.rules_enable == "1") or false
+	local ki = (it and it.keyword_include) or ""
+	local ke = (it and it.keyword_exclude) or ""
+	local dedup = it and (it.dedup == "1" or it.dedup == true)
+	local sel = {}
+	if it and type(it.sources) == "table" then
+		for _, s in ipairs(it.sources) do sel[s] = true end
+	end
+	local srcs = {}
+	for _, x in ipairs(core.list()) do
+		if not x.combo then srcs[#srcs + 1] = x end
+	end
+%>
+<h2><%=is_edit and luci.i18n.translate("Edit combination") or luci.i18n.translate("Add combination")%></h2>
+
+<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/combo_save')%>" class="cbi-map">
+	<input type="hidden" name="token" value="<%=token%>"/>
+	<% if is_edit then %><input type="hidden" name="id" value="<%=it.id%>"/><% end %>
+
+	<div class="cbi-section">
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="name" style="display:inline-block;min-width:10em"><%:Name%></label>
+			<input type="text" id="name" name="name" value="<%=is_edit and it.name or ''%>"/>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Source subscriptions%></label>
+			<div style="display:inline-block">
+				<% for _, x in ipairs(srcs) do %>
+				<div style="margin:0.25em 0">
+					<input type="checkbox" id="src_<%=x.id%>" name="src_<%=x.id%>" value="1" <%=sel[x.id] and "checked" or ""%>/>
+					<label for="src_<%=x.id%>"><%=x.name%>（<%=x.node_count or 0%>）</label>
+				</div>
+				<% end %>
+				<% if #srcs == 0 then %>
+				<span style="color:#808080"><%:No subscriptions yet.%></span>
+				<% end %>
+			</div>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em">启用规则</label>
+			<input type="checkbox" name="rules_enable" value="1" <%=rules_enabled and "checked" or ""%>
+				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
+			<span class="cbi-value-description">按关键词包含 / 排除、去重规则筛选合并后的节点</span>
+		</div>
+		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">关键词包含</label>
+				<input type="text" name="keyword_include" value="<%=ki%>" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">关键词排除</label>
+				<input type="text" name="keyword_exclude" value="<%=ke%>" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">去重</label>
+				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<span style="color:#808080">多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。</span>
+			</div>
+		</div>
+		<% if is_edit then %>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<span style="color:#808080"><%:Nodes:%> <%=it.node_count or 0%> | <%:Last updated:%> <%=it.last_update and os.date("%Y-%m-%d %H:%M", it.last_update) or "-"%></span>
+		</div>
+		<% end %>
+		<div class="cbi-page-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="<%:Save%>"/>
+			<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
+		</div>
+	</div>
+</form>
+<%+footer%>

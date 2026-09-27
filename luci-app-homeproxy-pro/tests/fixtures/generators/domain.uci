@@ -1,0 +1,167 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Fixture for the domain model skeleton test (Stage A1.2+). It exercises
+# every UCI section the Config Loader is supposed to read, and is *not*
+# used by the generator regression suite (tests/fixtures/generators/
+# client.uci and custom.uci are). Sections in this file:
+#
+#   config           general routing_mode, main_node, etc.
+#   infra            ports and marks
+#   dns              DNS settings (default_strategy, cache knobs)
+#   dns_server       one UDP server
+#   dns_rule         one hijack rule
+#   routing          default_outbound, default_outbound_dns
+#   routing_node     one urltest-style selector
+#   routing_rule     one sniffer route
+#   ruleset          one remote rule-set
+#   control          bind_interface, lan_proxy_mode, wan_proxy_*_ips
+#   subscription     auto_update, filter_keywords, etc.
+#   server           one inbound (for the self-host side; client ignores it)
+#   node             two nodes (anytls + snell) so the existing node-shape
+#                    assertions keep working
+#
+# A domain-model test that loads this fixture can assert every Loader
+# sub-object without depending on the generator's particular routing
+# mode or proxy mode.
+
+config homeproxy 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '0'
+	option log_level 'error'
+	option main_node 'urltest'
+	option main_udp_node 'nil'
+	option main_urltest_nodes 'n_anytls'
+	option main_urltest_nodes 'n_snell'
+	option dns_server '8.8.8.8'
+	option china_dns_server '223.5.5.5'
+	option routing_port 'common'
+	option github_token ''
+	option cn_ip_fallback '0'
+
+config homeproxy 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option tproxy_port '5332'
+	option tun_name 'singtun0'
+	option tun_addr4 '172.19.0.1/30'
+	option tun_addr6 'fdfe:dcba:9876::1/126'
+	option tun_mtu '9000'
+	option self_mark '100'
+	option tun_mark '102'
+	option table_mark '100'
+	option tproxy_mark '101'
+	option ntp_server 'time.apple.com'
+	option common_port '22,53,80,443'
+	option dns_redirect '1'
+	option udp_timeout ''
+
+config homeproxy 'dns'
+	option default_strategy 'prefer_ipv4'
+	option default_server 'default-dns'
+	option disable_cache '0'
+	option disable_cache_expire '0'
+	option optimistic_cache '0'
+	option cache_file_store_dns '0'
+	option dns_timeout '5s'
+	option optimistic_timeout '3s'
+
+config dns_server 'ds_main'
+	option label 'main-dns'
+	option type 'udp'
+	option server '8.8.8.8'
+	option server_port '53'
+	option detour 'direct-out'
+
+config dns_rule 'dr_hijack'
+	option enabled '1'
+	option label 'hijack-private'
+	option mode 'default'
+	option action 'hijack-dns'
+
+config homeproxy 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+	option domain_strategy ''
+	option find_neighbor '0'
+	option udp_timeout '5m'
+	option tcpip_stack 'system'
+	option endpoint_independent_nat ''
+
+config routing_node 'rn_main'
+	option enabled '1'
+	option label 'main'
+	option node 'urltest'
+	option urltest_nodes 'n_anytls'
+	option urltest_nodes 'n_snell'
+	option urltest_interval '3m'
+	option urltest_tolerance '50'
+
+config routing_rule 'rr_sniff'
+	option enabled '1'
+	option label 'sniff-route'
+	option outbound 'main-out'
+	option action 'route'
+
+config ruleset 'rs_cn'
+	option enabled '1'
+	option label 'china-list'
+	option type 'remote'
+	option format 'source'
+	option url 'https://example.com/cn.list'
+	option download_detour 'main-out'
+	option update_interval '24h'
+
+config homeproxy 'control'
+	option bind_interface ''
+	option lan_proxy_mode 'disabled'
+	list wan_proxy_ipv4_ips '91.108.4.0/22'
+	list wan_proxy_ipv6_ips '2001:67c:4e8::/48'
+
+config homeproxy 'subscription'
+	option auto_update '0'
+	option allow_insecure '0'
+	option packet_encoding 'xudp'
+	option update_via_proxy '0'
+	option filter_nodes 'blacklist'
+	list filter_keywords '重置|到期'
+	list filter_keywords 'Expiration'
+	option user_agent 'HomeProxy/1.0'
+	list subscription_url 'https://example.com/sub'
+
+config homeproxy 'server'
+	option enabled '1'
+	option log_level 'warn'
+
+config server 's_vless'
+	option enabled '1'
+	option label 'server-vless'
+	option type 'vless'
+	option address '::'
+	option port '443'
+	option uuid '3af88561-9c69-4b19-8f7e-f08d580bc339'
+	option tls '1'
+	option tls_sni 'server.example.com'
+
+config homeproxy 'migration'
+	option crontab '1'
+
+config node 'n_anytls'
+	option label 'anytls'
+	option type 'anytls'
+	option address 'a.example.com'
+	option port '443'
+	option password 'secret'
+	option tls '1'
+	option tls_sni 'a.example.com'
+	option tls_insecure '0'
+
+config node 'n_snell'
+	option label 'snell'
+	option type 'snell'
+	option address 'g.example.com'
+	option port '443'
+	option password 'psk123456789012'
+	option snell_version '4'
+	option snell_userkey 'ukey'

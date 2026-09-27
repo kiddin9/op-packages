@@ -1,0 +1,496 @@
+#!/bin/sh
+# shellcheck shell=ash
+
+# Variables are populated by sourced SafeShield helpers and ss_load_config().
+# shellcheck disable=SC2154
+LC_ALL=C
+export LC_ALL
+umask 077
+
+SS_STATS_UPLOAD_FUNCTIONS_LIB="${SS_STATS_UPLOAD_FUNCTIONS_LIB:-/lib/functions.sh}"
+SS_STATS_UPLOAD_CORE_LIB="${SS_STATS_UPLOAD_CORE_LIB:-/usr/lib/safeshield/core.sh}"
+SS_STATS_UPLOAD_INTERVAL_S="${SS_STATS_UPLOAD_INTERVAL_S:-1800}"
+SS_STATS_UPLOAD_IDLE_WAIT_S="${SS_STATS_UPLOAD_IDLE_WAIT_S:-15}"
+SS_STATS_UPLOAD_RETRY_DELAY_S="${SS_STATS_UPLOAD_RETRY_DELAY_S:-2}"
+SS_STATS_UPLOAD_FULL_EVERY="${SS_STATS_UPLOAD_FULL_EVERY:-23}"
+SS_STATS_UPLOAD_DENIED_RECHECK_S="${SS_STATS_UPLOAD_DENIED_RECHECK_S:-43200}"
+SS_STATS_UPLOAD_RESPONSE_FILE="${SS_STATS_UPLOAD_RESPONSE_FILE:-/tmp/safeshield/statistics/upload.response.json}"
+
+# shellcheck disable=SC1090
+. "$SS_STATS_UPLOAD_FUNCTIONS_LIB"
+# shellcheck disable=SC1090
+. "$SS_STATS_UPLOAD_CORE_LIB"
+
+ss_should_terminate=0
+upload_sleep_pid=''
+upload_state_generation=''
+upload_state_last_success_seq=0
+upload_state_last_full_seq=0
+upload_state_recent_successes=0
+upload_state_needs_full=1
+upload_pending_mode=''
+upload_pending_generation=''
+upload_pending_seq=0
+
+upload_handle_term() {
+	ss_should_terminate=1
+	if [ -n "$upload_sleep_pid" ]; then
+		kill "$upload_sleep_pid" 2>/dev/null || true
+	fi
+}
+
+upload_sleep() {
+	local seconds="$1"
+	local rc=0
+
+	[ "$ss_should_terminate" -eq 1 ] && return 1
+	[ "$seconds" -gt 0 ] 2>/dev/null || return 0
+
+	sleep "$seconds" &
+	upload_sleep_pid=$!
+	wait "$upload_sleep_pid" 2>/dev/null || rc=$?
+	upload_sleep_pid=''
+
+	[ "$ss_should_terminate" -eq 1 ] && return 1
+	[ "$rc" -eq 0 ]
+}
+
+upload_state_reset() {
+	upload_state_generation=''
+	upload_state_last_success_seq=0
+	upload_state_last_full_seq=0
+	upload_state_recent_successes=0
+	upload_state_needs_full=1
+}
+
+upload_state_load() {
+	local old_ifs
+
+	upload_state_reset
+	[ -s "$SS_STATISTICS_UPLOAD_STATE_FILE" ] || return 0
+
+	old_ifs="$IFS"
+	IFS="$(printf '\t')"
+	read -r upload_state_generation upload_state_last_success_seq upload_state_last_full_seq upload_state_recent_successes upload_state_needs_full <"$SS_STATISTICS_UPLOAD_STATE_FILE" || true
+	IFS="$old_ifs"
+
+	is_valid_integer "$upload_state_last_success_seq" || upload_state_last_success_seq=0
+	is_valid_integer "$upload_state_last_full_seq" || upload_state_last_full_seq=0
+	is_valid_integer "$upload_state_recent_successes" || upload_state_recent_successes=0
+	case "$upload_state_needs_full" in
+		0 | 1) ;;
+		*) upload_state_needs_full=1 ;;
+	esac
+}
+
+upload_state_save() {
+	local tmp="${SS_STATISTICS_UPLOAD_STATE_FILE}.tmp.$$"
+
+	mkdir -p "${SS_STATISTICS_UPLOAD_STATE_FILE%/*}" || return 1
+	printf '%s\t%s\t%s\t%s\t%s\n' \
+		"$upload_state_generation" \
+		"$upload_state_last_success_seq" \
+		"$upload_state_last_full_seq" \
+		"$upload_state_recent_successes" \
+		"$upload_state_needs_full" >"$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	mv -f "$tmp" "$SS_STATISTICS_UPLOAD_STATE_FILE" || {
+		rm -f "$tmp"
+		return 1
+	}
+}
+
+upload_mark_needs_full() {
+	local generation="${1:-$upload_state_generation}"
+
+	if [ -n "$generation" ] && [ "$upload_state_generation" != "$generation" ]; then
+		upload_state_generation="$generation"
+		upload_state_last_success_seq=0
+		upload_state_last_full_seq=0
+		upload_state_recent_successes=0
+	fi
+	upload_state_needs_full=1
+	upload_state_save >/dev/null 2>&1 || true
+}
+
+upload_pending_clear() {
+	rm -f "$SS_STATISTICS_UPLOAD_PENDING_FILE" "$SS_STATISTICS_UPLOAD_PENDING_META_FILE"
+	upload_pending_mode=''
+	upload_pending_generation=''
+	upload_pending_seq=0
+}
+
+upload_pending_load() {
+	local old_ifs payload_generation payload_seq
+
+	upload_pending_mode=''
+	upload_pending_generation=''
+	upload_pending_seq=0
+	[ -s "$SS_STATISTICS_UPLOAD_PENDING_FILE" ] || return 1
+	[ -s "$SS_STATISTICS_UPLOAD_PENDING_META_FILE" ] || {
+		upload_pending_clear
+		return 1
+	}
+
+	old_ifs="$IFS"
+	IFS="$(printf '\t')"
+	read -r upload_pending_mode upload_pending_generation upload_pending_seq <"$SS_STATISTICS_UPLOAD_PENDING_META_FILE" || true
+	IFS="$old_ifs"
+
+	case "$upload_pending_mode" in
+		full | recent) ;;
+		*)
+			upload_pending_clear
+			return 1
+			;;
+	esac
+	is_valid_integer "$upload_pending_seq" || {
+		upload_pending_clear
+		return 1
+	}
+	[ "$upload_pending_seq" -gt 0 ] 2>/dev/null || {
+		upload_pending_clear
+		return 1
+	}
+
+	payload_generation="$(ss_json_get_file "$SS_STATISTICS_UPLOAD_PENDING_FILE" '@.generation_id')"
+	payload_seq="$(ss_json_get_file "$SS_STATISTICS_UPLOAD_PENDING_FILE" '@.snapshot_seq')"
+	if [ "$payload_generation" != "$upload_pending_generation" ] || [ "$payload_seq" != "$upload_pending_seq" ]; then
+		upload_pending_clear
+		return 1
+	fi
+	return 0
+}
+
+upload_source_is_v3() {
+	local file="$1"
+	local schema_name schema_version seq generation
+
+	[ -s "$file" ] || return 1
+	schema_name="$(ss_json_get_file "$file" '@.schema.name')"
+	schema_version="$(ss_json_get_file "$file" '@.schema.version')"
+	generation="$(ss_json_get_file "$file" '@.generation_id')"
+	seq="$(ss_json_get_file "$file" '@.snapshot_seq')"
+	[ "$schema_name" = 'safeshield.statistics' ] || return 1
+	[ "$schema_version" = '3' ] || return 1
+	[ -n "$generation" ] || return 1
+	is_valid_integer "$seq" || return 1
+	[ "$seq" -gt 0 ] 2>/dev/null
+}
+
+upload_pending_create() {
+	local source mode source_generation source_seq full_generation full_seq
+	local tmp_payload tmp_meta
+
+	upload_state_load
+	upload_source_is_v3 "$SS_STATISTICS_JSON_FILE" || return 1
+	full_generation="$(ss_json_get_file "$SS_STATISTICS_JSON_FILE" '@.generation_id')"
+	full_seq="$(ss_json_get_file "$SS_STATISTICS_JSON_FILE" '@.snapshot_seq')"
+
+	if [ "$upload_state_generation" != "$full_generation" ]; then
+		upload_state_generation="$full_generation"
+		upload_state_last_success_seq=0
+		upload_state_last_full_seq=0
+		upload_state_recent_successes=0
+		upload_state_needs_full=1
+		upload_state_save >/dev/null 2>&1 || true
+	fi
+
+	mode='recent'
+	source="$SS_STATISTICS_UPLOAD_JSON_FILE"
+	if [ "$upload_state_needs_full" = '1' ] ||
+		[ "$upload_state_last_full_seq" -le 0 ] 2>/dev/null ||
+		[ "$upload_state_recent_successes" -ge "$SS_STATS_UPLOAD_FULL_EVERY" ] 2>/dev/null; then
+		mode='full'
+		source="$SS_STATISTICS_JSON_FILE"
+	elif ! upload_source_is_v3 "$source"; then
+		mode='full'
+		source="$SS_STATISTICS_JSON_FILE"
+	fi
+
+	tmp_payload="${SS_STATISTICS_UPLOAD_PENDING_FILE}.tmp.$$"
+	tmp_meta="${SS_STATISTICS_UPLOAD_PENDING_META_FILE}.tmp.$$"
+	mkdir -p "${SS_STATISTICS_UPLOAD_PENDING_FILE%/*}" || return 1
+	cp "$source" "$tmp_payload" || {
+		rm -f "$tmp_payload"
+		return 1
+	}
+
+	upload_source_is_v3 "$tmp_payload" || {
+		rm -f "$tmp_payload"
+		return 1
+	}
+	source_generation="$(ss_json_get_file "$tmp_payload" '@.generation_id')"
+	source_seq="$(ss_json_get_file "$tmp_payload" '@.snapshot_seq')"
+	if [ "$source_generation" != "$full_generation" ]; then
+		rm -f "$tmp_payload"
+		return 1
+	fi
+	if [ "$mode" = 'recent' ] && [ "$source_seq" != "$full_seq" ]; then
+		# The collector publishes the full snapshot before its recent projection.
+		# Avoid promoting a previous projection while those two atomic writes cross.
+		rm -f "$tmp_payload"
+		return 1
+	fi
+	if [ "$source_seq" -le "$upload_state_last_success_seq" ] 2>/dev/null; then
+		rm -f "$tmp_payload"
+		return 2
+	fi
+
+	printf '%s\t%s\t%s\n' "$mode" "$source_generation" "$source_seq" >"$tmp_meta" || {
+		rm -f "$tmp_payload" "$tmp_meta"
+		return 1
+	}
+	mv -f "$tmp_payload" "$SS_STATISTICS_UPLOAD_PENDING_FILE" || {
+		rm -f "$tmp_payload" "$tmp_meta"
+		return 1
+	}
+	mv -f "$tmp_meta" "$SS_STATISTICS_UPLOAD_PENDING_META_FILE" || {
+		rm -f "$tmp_meta"
+		upload_pending_clear
+		return 1
+	}
+
+	upload_pending_mode="$mode"
+	upload_pending_generation="$source_generation"
+	upload_pending_seq="$source_seq"
+	return 0
+}
+
+upload_ensure_credentials() {
+	ss_statistics_upload_denied && return 2
+	ss_statistics_load_upload_credentials && return 0
+	log_info 'Refreshing Hub statistics upload credentials'
+	ss_statistics_refresh_upload_credentials || return $?
+	ss_statistics_load_upload_credentials
+}
+
+upload_response_valid() {
+	local response="$1"
+	local status generation server_seq
+
+	[ -s "$response" ] || return 1
+	status="$(ss_json_get_file "$response" '@.status')"
+	generation="$(ss_json_get_file "$response" '@.generation_id')"
+	server_seq="$(ss_json_get_file "$response" '@.last_snapshot_seq')"
+	case "$status" in
+		applied | duplicate | stale) ;;
+		*) return 1 ;;
+	esac
+	[ "$generation" = "$upload_pending_generation" ] || return 1
+	is_valid_integer "$server_seq" || return 1
+	[ "$server_seq" -ge "$upload_pending_seq" ] 2>/dev/null || return 1
+
+	SS_STATS_UPLOAD_RESPONSE_STATUS="$status"
+	SS_STATS_UPLOAD_RESPONSE_SEQ="$server_seq"
+	return 0
+}
+
+upload_record_success() {
+	local result_status="$1"
+	local server_seq="$2"
+
+	upload_state_load
+	if [ "$upload_state_generation" != "$upload_pending_generation" ]; then
+		upload_state_generation="$upload_pending_generation"
+		upload_state_last_success_seq=0
+		upload_state_last_full_seq=0
+		upload_state_recent_successes=0
+		upload_state_needs_full=1
+	fi
+	if [ "$server_seq" -gt "$upload_state_last_success_seq" ] 2>/dev/null; then
+		upload_state_last_success_seq="$server_seq"
+	fi
+
+	if [ "$upload_pending_mode" = 'full' ] && [ "$result_status" != 'stale' ]; then
+		upload_state_last_full_seq="$upload_pending_seq"
+		upload_state_recent_successes=0
+		upload_state_needs_full=0
+	else
+		if [ "$result_status" = 'stale' ]; then
+			upload_state_needs_full=1
+		elif [ "$upload_state_needs_full" = '0' ]; then
+			upload_state_recent_successes=$((upload_state_recent_successes + 1))
+		fi
+	fi
+	upload_state_save >/dev/null 2>&1 || true
+}
+
+upload_record_failure() {
+	upload_mark_needs_full "$upload_pending_generation"
+}
+
+upload_send_pending() {
+	local retries reauthenticated=0 response_status response_seq credentials_rc=0 refresh_rc=0
+
+	upload_pending_load || return 1
+	upload_ensure_credentials || credentials_rc=$?
+	case "$credentials_rc" in
+		0) ;;
+		2)
+			upload_pending_clear
+			return 2
+			;;
+		*)
+			upload_record_failure 'statistics_credentials_unavailable'
+			return 1
+			;;
+	esac
+
+	retries=1
+	while [ "$retries" -le "${ss_download_retry:-3}" ]; do
+		[ "$ss_should_terminate" -eq 1 ] && return 130
+		rm -f "$SS_STATS_UPLOAD_RESPONSE_FILE"
+		if ss_http_post_json \
+			"$SS_STATISTICS_UPLOAD_URL" \
+			"$SS_STATISTICS_UPLOAD_PENDING_FILE" \
+			"$SS_STATS_UPLOAD_RESPONSE_FILE" \
+			"Bearer $SS_STATISTICS_UPLOAD_TOKEN"; then
+			if upload_response_valid "$SS_STATS_UPLOAD_RESPONSE_FILE"; then
+				response_status="$SS_STATS_UPLOAD_RESPONSE_STATUS"
+				response_seq="$SS_STATS_UPLOAD_RESPONSE_SEQ"
+				upload_record_success "$response_status" "$response_seq"
+				log_info "Uploaded SafeShield statistics (${upload_pending_mode}, seq=${upload_pending_seq}, status=${response_status})"
+				upload_pending_clear
+				rm -f "$SS_STATS_UPLOAD_RESPONSE_FILE"
+				return 0
+			fi
+
+			upload_record_failure 'statistics_upload_invalid_response' '200'
+			log_warn 'Hub statistics upload returned an invalid success response; preserving pending payload for retry'
+			rm -f "$SS_STATS_UPLOAD_RESPONSE_FILE"
+			return 1
+		fi
+
+		case "${SS_HTTP_STATUS:-}" in
+			401)
+				if [ "$reauthenticated" -eq 0 ]; then
+					refresh_rc=0
+					reauthenticated=1
+					ss_statistics_clear_upload_credentials
+					ss_statistics_refresh_upload_credentials || refresh_rc=$?
+					if [ "$refresh_rc" -eq 0 ] && ss_statistics_load_upload_credentials; then
+						continue
+					fi
+					if [ "$refresh_rc" -eq 2 ]; then
+						log_info 'Cloud statistics upload is no longer enabled for the current license'
+						upload_pending_clear
+						return 2
+					fi
+				fi
+				upload_record_failure 'statistics_upload_auth_failed' '401'
+				log_warn 'Hub rejected statistics upload credentials'
+				return 1
+				;;
+			400 | 409 | 413)
+				upload_record_failure "statistics_upload_http_${SS_HTTP_STATUS}" "$SS_HTTP_STATUS"
+				log_error "Hub rejected statistics payload (HTTP ${SS_HTTP_STATUS}); discarding this snapshot and scheduling full reconciliation"
+				upload_pending_clear
+				rm -f "$SS_STATS_UPLOAD_RESPONSE_FILE"
+				return 2
+				;;
+		esac
+
+		upload_record_failure 'statistics_upload_failed' "${SS_HTTP_STATUS:-0}"
+		retries=$((retries + 1))
+		if [ "$retries" -le "${ss_download_retry:-3}" ]; then
+			upload_sleep "$SS_STATS_UPLOAD_RETRY_DELAY_S" || return 130
+		fi
+	done
+
+	log_warn "Statistics upload failed after ${ss_download_retry:-3} attempt(s); pending payload will be retried"
+	return 1
+}
+
+main() {
+	local create_rc=0 wait_s entitlement_rc
+
+	ss_load_config || return 1
+	[ "${ss_enabled}" = '1' ] || return 0
+	[ "${ss_statistics_enabled}" = '1' ] || return 0
+	mkdir -p "$SS_STATISTICS_DIR" || return 1
+
+	is_valid_integer "$SS_STATS_UPLOAD_INTERVAL_S" || SS_STATS_UPLOAD_INTERVAL_S=1800
+	[ "$SS_STATS_UPLOAD_INTERVAL_S" -ge 60 ] 2>/dev/null || SS_STATS_UPLOAD_INTERVAL_S=1800
+	is_valid_integer "$SS_STATS_UPLOAD_IDLE_WAIT_S" || SS_STATS_UPLOAD_IDLE_WAIT_S=15
+	[ "$SS_STATS_UPLOAD_IDLE_WAIT_S" -ge 1 ] 2>/dev/null || SS_STATS_UPLOAD_IDLE_WAIT_S=15
+	is_valid_integer "$SS_STATS_UPLOAD_RETRY_DELAY_S" || SS_STATS_UPLOAD_RETRY_DELAY_S=2
+	is_valid_integer "$SS_STATS_UPLOAD_FULL_EVERY" || SS_STATS_UPLOAD_FULL_EVERY=23
+	[ "$SS_STATS_UPLOAD_FULL_EVERY" -ge 1 ] 2>/dev/null || SS_STATS_UPLOAD_FULL_EVERY=23
+	is_valid_integer "$SS_STATS_UPLOAD_DENIED_RECHECK_S" || SS_STATS_UPLOAD_DENIED_RECHECK_S=43200
+	[ "$SS_STATS_UPLOAD_DENIED_RECHECK_S" -ge 60 ] 2>/dev/null || SS_STATS_UPLOAD_DENIED_RECHECK_S=43200
+
+	upload_state_load
+	while [ "$ss_should_terminate" -eq 0 ]; do
+		ss_load_config || {
+			upload_sleep "$SS_STATS_UPLOAD_IDLE_WAIT_S" || break
+			continue
+		}
+		if [ "${ss_enabled}" != '1' ] || [ "${ss_statistics_enabled}" != '1' ]; then
+			break
+		fi
+
+		wait_s="$SS_STATS_UPLOAD_INTERVAL_S"
+		if [ -z "${ss_license_key:-}" ]; then
+			ss_statistics_upload_denied || ss_statistics_disable_cloud_upload >/dev/null 2>&1 || true
+		fi
+		if ss_statistics_upload_denied; then
+			upload_pending_clear
+			if [ -n "${ss_license_key:-}" ] && ss_statistics_upload_denied_recheck_due "$SS_STATS_UPLOAD_DENIED_RECHECK_S"; then
+				log_info 'Rechecking Hub statistics upload entitlement'
+				# Stamp this attempt before network I/O so a failed resolve cannot
+				# turn into a routine upload retry loop while entitlement is denied.
+				ss_statistics_set_upload_entitlement denied >/dev/null 2>&1 || true
+				entitlement_rc=0
+				ss_statistics_refresh_upload_credentials || entitlement_rc=$?
+				case "$entitlement_rc" in
+					0) ;;
+					2)
+						upload_sleep "$wait_s" || break
+						continue
+						;;
+					*)
+						log_warn 'Hub statistics entitlement recheck failed; keeping cloud upload disabled'
+						upload_sleep "$wait_s" || break
+						continue
+						;;
+				esac
+			fi
+			if ss_statistics_upload_denied; then
+				upload_sleep "$wait_s" || break
+				continue
+			fi
+		fi
+
+		if upload_pending_load; then
+			upload_send_pending || true
+		else
+			create_rc=0
+			upload_pending_create || create_rc=$?
+			case "$create_rc" in
+				0)
+					upload_send_pending || true
+					;;
+				1)
+					wait_s="$SS_STATS_UPLOAD_IDLE_WAIT_S"
+					;;
+				2)
+					# The collector has not produced a sequence newer than the last ACK yet.
+					;;
+			esac
+		fi
+
+		upload_sleep "$wait_s" || break
+	done
+
+	rm -f "$SS_STATS_UPLOAD_RESPONSE_FILE"
+	return 0
+}
+
+if [ "${SS_STATS_UPLOAD_LIBRARY_ONLY:-0}" != '1' ]; then
+	trap 'upload_handle_term' TERM INT
+	trap 'rm -f "$SS_STATS_UPLOAD_RESPONSE_FILE"' EXIT
+	main "$@"
+fi

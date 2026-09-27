@@ -1,0 +1,268 @@
+# luci-app-substore 简体中文翻译
+# 运行时语言代码 zh-cn（LUCI_LC_ALIAS.zh_Hans=zh-cn），
+# 编译产物 substore.zh-cn.lmo 由 Makefile 的 install 步骤用 po2lmo 生成。
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh-cn\n"
+
+# 菜单 / 页面标题
+msgid "Subscriptions"
+msgstr "订阅管理"
+
+msgid "Add subscription"
+msgstr "添加订阅"
+
+msgid "Edit subscription"
+msgstr "编辑订阅"
+
+msgid "Nodes"
+msgstr "节点"
+
+msgid "Output"
+msgstr "输出"
+
+msgid "Merged"
+msgstr "合并"
+
+# 通用按钮 / 标签
+msgid "Back"
+msgstr "返回"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "URL"
+msgstr "订阅地址"
+
+msgid "Updated"
+msgstr "更新时间"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Subscription link"
+msgstr "订阅链接转换"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Copy"
+msgstr "复制"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Format"
+msgstr "格式"
+
+msgid "Generate"
+msgstr "生成"
+
+# 订阅列表
+msgid "Pending"
+msgstr "待更新"
+
+msgid "OK"
+msgstr "正常"
+
+msgid "Select format"
+msgstr "选择格式"
+
+msgid "No subscriptions yet."
+msgstr "暂无订阅"
+
+msgid "Delete this subscription?"
+msgstr "确定删除该订阅？"
+
+# 订阅编辑表单
+msgid "Subscription URL"
+msgstr "订阅 URL"
+
+msgid "Nodes:"
+msgstr "节点数:"
+
+msgid "Last updated:"
+msgstr "更新时间:"
+
+msgid "Remaining traffic:"
+msgstr "剩余流量:"
+
+msgid "Remaining time:"
+msgstr "剩余时长:"
+
+# 节点页筛选
+msgid "Protocol"
+msgstr "协议"
+
+msgid "All"
+msgstr "全部"
+
+msgid "Keyword"
+msgstr "关键词"
+
+msgid "Sort by"
+msgstr "排序方式"
+
+msgid "Desc"
+msgstr "降序"
+
+msgid "Filter"
+msgstr "筛选"
+
+msgid "Server"
+msgstr "服务器"
+
+msgid "Port"
+msgstr "端口"
+
+msgid "No nodes found."
+msgstr "未找到节点"
+
+# 节点探测结果
+msgid "Node"
+msgstr "节点"
+
+msgid "Address"
+msgstr "地址"
+
+msgid "Latency"
+msgstr "延迟"
+
+msgid "URL Test"
+msgstr "URL 测试"
+
+# 组合订阅
+msgid "Add combination"
+msgstr "添加组合订阅"
+
+msgid "Edit combination"
+msgstr "编辑组合订阅"
+
+msgid "Combination"
+msgstr "组合"
+
+msgid "Source subscriptions"
+msgstr "来源订阅"
+
+# 本地订阅
+msgid "Add subscription link"
+msgstr "添加订阅链接"
+
+msgid "Add local subscription"
+msgstr "添加本地订阅"
+
+msgid "Edit local subscription"
+msgstr "编辑本地订阅"
+
+msgid "Subscription info"
+msgstr "订阅信息"
+
+msgid "Text import"
+msgstr "文本导入"
+
+msgid "Form import"
+msgstr "表单导入"
+
+msgid "Local"
+msgstr "本地"
+
+msgid "Add node"
+msgstr "添加节点"
+
+msgid "Paste YAML/URI/JSON node list here. Mixed protocols supported."
+msgstr "在此粘贴 YAML/URI/JSON 节点列表，支持混合协议。"
+
+msgid "Add nodes via form below. Each node will be saved as JSON and parsed on save."
+msgstr "在下方表单中添加节点，保存时将序列化为 JSON 并解析。"
+
+# 表单导入字段标签
+msgid "Password"
+msgstr "密码"
+
+msgid "Cipher"
+msgstr "加密"
+
+msgid "Encryption method"
+msgstr "加密方式"
+
+msgid "Security"
+msgstr "安全设置"
+
+msgid "Network"
+msgstr "传输方式"
+
+msgid "Path"
+msgstr "路径"
+
+msgid "Obfs"
+msgstr "混淆"
+
+msgid "Obfs password"
+msgstr "混淆密码"
+
+msgid "Camouflage type"
+msgstr "伪装类型"
+
+msgid "Obfs param"
+msgstr "混淆参数"
+
+msgid "Protocol param"
+msgstr "协议参数"
+
+msgid "Skip cert verify"
+msgstr "跳过证书验证"
+
+msgid "Private key"
+msgstr "私钥"
+
+msgid "Peer public key"
+msgstr "对端公钥"
+
+msgid "Default"
+msgstr "默认"
+
+# 规则区（本地订阅表单）
+msgid "Enable rules"
+msgstr "启用规则"
+
+msgid "When enabled, apply keyword include/exclude and dedup rules to nodes"
+msgstr "启用后，按关键词包含/排除、去重规则处理节点"
+
+msgid "Keyword include"
+msgstr "关键词包含"
+
+msgid "Keyword exclude"
+msgstr "关键词排除"
+
+msgid "Dedup"
+msgstr "去重"
+
+# 节点分组 / 单节点编辑
+msgid "Group"
+msgstr "分组"
+
+msgid "Edit node"
+msgstr "编辑节点"
+
+msgid "Node not found."
+msgstr "节点不存在或已被删除。"
+
+msgid "Delete this node?"
+msgstr "确定删除该节点？"
+
+msgid "Failed to set group"
+msgstr "分组设置失败"
+
+msgid "Note: edits to this node are overwritten the next time the subscription is updated or re-saved."
+msgstr "注意：对该节点的修改会在订阅下次更新或重新保存后被覆盖。"

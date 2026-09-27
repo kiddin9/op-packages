@@ -1,0 +1,621 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+umask 077
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME_DIR="${SMARTSAFEHUB_LICENSE_RUNTIME_DIR:-/tmp/smartsafehub}"
+STATE_FILE="${SMARTSAFEHUB_LICENSE_STATE_FILE:-$RUNTIME_DIR/license.json}"
+ACTIVITY_CREDENTIAL_FILE="${SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE:-$RUNTIME_DIR/activity-sync-credential.json}"
+ACTIVATION_LOCK="${SMARTSAFEHUB_LICENSE_ACTIVATION_LOCK:-$RUNTIME_DIR/license-activate.lock}"
+ACTIVATION_REQUEST_PATH="${SMARTSAFEHUB_LICENSE_ACTIVATION_REQUEST_FILE:-$RUNTIME_DIR/license-activate.request.json}"
+UCI_BIN="${SMARTSAFEHUB_LICENSE_UCI_BIN:-uci}"
+UBUS_BIN="${SMARTSAFEHUB_LICENSE_UBUS_BIN:-ubus}"
+JSONFILTER_BIN="${SMARTSAFEHUB_LICENSE_JSONFILTER_BIN:-jsonfilter}"
+UCLIENT_FETCH_BIN="${SMARTSAFEHUB_LICENSE_UCLIENT_FETCH_BIN:-uclient-fetch}"
+DATE_BIN="${SMARTSAFEHUB_LICENSE_DATE_BIN:-date}"
+LOGGER_BIN="${SMARTSAFEHUB_LICENSE_LOGGER_BIN:-logger}"
+SLEEP_BIN="${SMARTSAFEHUB_LICENSE_SLEEP_BIN:-sleep}"
+EVENTS_BIN="${SMARTSAFEHUB_LICENSE_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
+DEFAULT_API_BASE_URL="https://www.smartsafehub.com/api/v1"
+DEFAULT_CHECK_INTERVAL_S=300
+DEFAULT_STARTUP_DELAY_S=30
+MIN_CHECK_INTERVAL_S=60
+REQUEST_TIMEOUT_S=10
+ACTIVATION_STALE_S=60
+
+ACTIVATION_REQUEST_FILE=''
+ACTIVATION_KEY=''
+ACTIVATION_BODY_FILE=''
+ACTIVATION_RESPONSE_FILE=''
+STATUS_REQUEST_FILE=''
+STATUS_RESPONSE_FILE=''
+SAFESHIELD_STATUS_FILE=''
+LICENSE_FILE=''
+STOP_REQUESTED=0
+WAIT_PID=''
+
+cleanup_files() {
+	[ -n "$ACTIVATION_BODY_FILE" ] && rm -f "$ACTIVATION_BODY_FILE"
+	[ -n "$ACTIVATION_RESPONSE_FILE" ] && rm -f "$ACTIVATION_RESPONSE_FILE"
+	[ -n "$STATUS_REQUEST_FILE" ] && rm -f "$STATUS_REQUEST_FILE"
+	[ -n "$STATUS_RESPONSE_FILE" ] && rm -f "$STATUS_RESPONSE_FILE"
+	[ -n "$SAFESHIELD_STATUS_FILE" ] && rm -f "$SAFESHIELD_STATUS_FILE"
+	[ -n "$LICENSE_FILE" ] && rm -f "$LICENSE_FILE"
+}
+
+request_stop() {
+	STOP_REQUESTED=1
+	if [ -n "$WAIT_PID" ]; then
+		kill "$WAIT_PID" 2>/dev/null || true
+	fi
+}
+
+trap cleanup_files EXIT
+trap request_stop INT TERM
+
+log_message() {
+	"$LOGGER_BIN" -t smartsafehub-license -- "$*" 2>/dev/null || true
+}
+
+uci_get() {
+	"$UCI_BIN" -q get "smartsafehub.license.$1" 2>/dev/null || true
+}
+
+activity_cloud_sync_enabled() {
+	local value
+	value="$("$UCI_BIN" -q get smartsafehub.activity.cloud_sync_enabled 2>/dev/null || true)"
+	case "$value" in
+		0|false|off|no) return 1 ;;
+		1|true|on|yes|'') return 0 ;;
+		*) return 0 ;;
+	esac
+}
+
+normalized_integer() {
+	local value="$1" fallback="$2" minimum="$3"
+	case "$value" in
+		''|*[!0-9]*) value="$fallback" ;;
+	esac
+	[ "$value" -ge "$minimum" ] 2>/dev/null || value="$fallback"
+	printf '%s' "$value"
+}
+
+check_interval_s() {
+	normalized_integer "$(uci_get check_interval_s)" "$DEFAULT_CHECK_INTERVAL_S" "$MIN_CHECK_INTERVAL_S"
+}
+
+startup_delay_s() {
+	normalized_integer "$(uci_get startup_delay_s)" "$DEFAULT_STARTUP_DELAY_S" 0
+}
+
+api_base_url() {
+	local value
+	value="$(uci_get api_base_url)"
+	case "$value" in
+		https://*) printf '%s' "${value%/}" ;;
+		*) printf '%s' "$DEFAULT_API_BASE_URL" ;;
+	esac
+}
+
+now_epoch() {
+	local value
+	value="$("$DATE_BIN" +%s 2>/dev/null || true)"
+	case "$value" in
+		''|*[!0-9]*) value=0 ;;
+	esac
+	printf '%s' "$value"
+}
+
+json_string_or_null() {
+	if [ -n "$1" ]; then
+		printf '"%s"' "$(json_escape "$1")"
+	else
+		printf 'null'
+	fi
+}
+
+emit_license_event() {
+	local event_type="$1" severity="$2" from_plan="$3" to_plan="$4" license_status="$5" reason="$6" metadata
+	[ -x "$EVENTS_BIN" ] || return 0
+	metadata="{\"from_plan\":$(json_string_or_null "$from_plan"),\"to_plan\":$(json_string_or_null "$to_plan"),\"license_status\":$(json_string_or_null "$license_status"),\"reason\":$(json_string_or_null "$reason")}"
+	"$EVENTS_BIN" emit license "$event_type" "$severity" "$metadata" >/dev/null 2>&1 || true
+}
+
+json_value() {
+	local file="$1" expression="$2"
+	[ -f "$file" ] || return 0
+	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+
+sanitize_code() {
+	printf '%s' "$1" | tr -cd 'A-Za-z0-9_.:-' | cut -c 1-120
+}
+
+number_value() {
+	case "$1" in
+		''|*[!0-9]*) printf '0' ;;
+		*) printf '%s' "$1" ;;
+	esac
+}
+
+store_activity_credential_from_status() {
+	local response="$1" token url ttl retention plan now expires tmp
+	token="$(json_value "$response" '@.activity_history.token')"
+	url="$(json_value "$response" '@.activity_history.upload_url')"
+	ttl="$(number_value "$(json_value "$response" '@.activity_history.token_expires_in_s')")"
+	retention="$(number_value "$(json_value "$response" '@.activity_history.retention_days')")"
+	plan="$(json_value "$response" '@.license.plan')"
+
+	[ -n "$token" ] || return 2
+	case "$url" in https://*) ;; *) return 3 ;; esac
+	[ "$ttl" -gt 600 ] 2>/dev/null || return 4
+	[ "$retention" -gt 0 ] 2>/dev/null || retention=90
+
+	now="$(now_epoch)"
+	expires=$((now + ttl))
+	tmp="${ACTIVITY_CREDENTIAL_FILE}.tmp.$$"
+	cat > "$tmp" <<EOF_ACTIVITY_CREDENTIAL
+{"schema":1,"token":"$(json_escape "$token")","upload_url":"$(json_escape "$url")","expires_at":$expires,"retention_days":$retention,"plan":"$(json_escape "$plan")"}
+EOF_ACTIVITY_CREDENTIAL
+	if ! mv "$tmp" "$ACTIVITY_CREDENTIAL_FILE"; then
+		rm -f "$tmp"
+		return 5
+	fi
+	return 0
+}
+
+write_state_fields() {
+	local phase="$1" result="$2" error="$3" last_attempt_at="$4" last_checked_at="$5"
+	local last_activated_at="$6" next_check_at="$7" plan="$8" license_status="$9"
+	shift 9
+	local activation_status="$1" device_action="$2" http_status_override="$3"
+	local activation_result_override="$4" activation_error_override="$5"
+	local last_http_status last_activation_result last_activation_error http_json tmp
+
+	last_http_status="$(json_value "$STATE_FILE" '@.lastHttpStatus')"
+	last_activation_result="$(json_value "$STATE_FILE" '@.lastActivationResult')"
+	last_activation_error="$(json_value "$STATE_FILE" '@.lastActivationErrorCode')"
+
+	case "$http_status_override" in
+		keep) ;;
+		null) last_http_status='' ;;
+		*) last_http_status="$http_status_override" ;;
+	esac
+	case "$activation_result_override" in
+		keep) ;;
+		null) last_activation_result='' ;;
+		*) last_activation_result="$activation_result_override" ;;
+	esac
+	case "$activation_error_override" in
+		keep) ;;
+		null) last_activation_error='' ;;
+		*) last_activation_error="$activation_error_override" ;;
+	esac
+
+	case "$last_http_status" in
+		''|*[!0-9]*) http_json='null' ;;
+		*) http_json="$last_http_status" ;;
+	esac
+
+	mkdir -p "$RUNTIME_DIR" || return 1
+	tmp="${STATE_FILE}.tmp.$$"
+	cat > "$tmp" <<EOF_STATE
+{"schema":1,"component":"license","phase":"$(json_escape "$phase")","lastResult":"$(json_escape "$result")","lastErrorCode":$(json_string_or_null "$(sanitize_code "$error")"),"lastAttemptAt":$last_attempt_at,"lastCheckedAt":$last_checked_at,"lastActivatedAt":$last_activated_at,"nextCheckAt":$next_check_at,"plan":$(json_string_or_null "$(sanitize_code "$plan")"),"licenseStatus":$(json_string_or_null "$(sanitize_code "$license_status")"),"activationStatus":$(json_string_or_null "$(sanitize_code "$activation_status")"),"deviceAction":$(json_string_or_null "$(sanitize_code "$device_action")"),"lastHttpStatus":$http_json,"lastActivationResult":$(json_string_or_null "$(sanitize_code "$last_activation_result")"),"lastActivationErrorCode":$(json_string_or_null "$(sanitize_code "$last_activation_error")")}
+EOF_STATE
+	mv "$tmp" "$STATE_FILE"
+}
+
+write_state() {
+	write_state_fields "$@" keep keep keep
+}
+
+read_previous_number() {
+	local expression="$1" value
+	value="$(json_value "$STATE_FILE" "$expression")"
+	case "$value" in
+		''|*[!0-9]*) value=0 ;;
+	esac
+	printf '%s' "$value"
+}
+
+read_license_key() {
+	local configured key
+	LICENSE_FILE="$RUNTIME_DIR/license-local.$$.json"
+	if ! "$UBUS_BIN" call safeshield license_get > "$LICENSE_FILE" 2>/dev/null; then
+		return 1
+	fi
+	configured="$(json_value "$LICENSE_FILE" '@.license.configured')"
+	key="$(json_value "$LICENSE_FILE" '@.license.key')"
+	[ -n "$key" ] || key="$(json_value "$LICENSE_FILE" '@.key')"
+	case "$configured" in
+		true|1) ;;
+		*) printf '%s' ''; return 0 ;;
+	esac
+	printf '%s' "$key"
+}
+
+read_physical_fingerprint() {
+	local fingerprint
+	SAFESHIELD_STATUS_FILE="$RUNTIME_DIR/license-safeshield.$$.json"
+	if ! "$UBUS_BIN" call safeshield status > "$SAFESHIELD_STATUS_FILE" 2>/dev/null; then
+		return 1
+	fi
+	fingerprint="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.physical_fingerprint')"
+	case "$fingerprint" in
+		????????????????????????????????????????????????????????????????)
+			case "$fingerprint" in *[!0-9a-fA-F]*) return 1 ;; esac
+			;;
+		*) return 1 ;;
+	esac
+	printf '%s' "$fingerprint"
+}
+
+build_activation_body() {
+	local request_file="$1" key fingerprint fingerprint_version identity_provider identity_source
+	local identity_strength identity_profile installation_id vendor model arch memory_mb version memory_json
+
+	key="$(json_value "$request_file" '@.license_key')"
+	[ -n "$key" ] || return 12
+
+	SAFESHIELD_STATUS_FILE="$RUNTIME_DIR/license-safeshield.$$.json"
+	if ! "$UBUS_BIN" call safeshield status > "$SAFESHIELD_STATUS_FILE" 2>/dev/null; then
+		return 10
+	fi
+
+	fingerprint="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.physical_fingerprint')"
+	case "$fingerprint" in
+		????????????????????????????????????????????????????????????????)
+			case "$fingerprint" in *[!0-9a-fA-F]*) return 10 ;; esac
+			;;
+		*) return 10 ;;
+	esac
+
+	fingerprint_version="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.fingerprint_version')"
+	case "$fingerprint_version" in
+		''|*[!0-9]*) fingerprint_version=1 ;;
+	esac
+	[ "$fingerprint_version" -ge 1 ] 2>/dev/null || fingerprint_version=1
+
+	identity_provider="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.identity_provider')"
+	identity_source="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.identity_source')"
+	identity_strength="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.identity_strength')"
+	identity_profile="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.identity_profile')"
+	installation_id="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.installation_id')"
+	vendor="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.configured.vendor')"
+	model="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.configured.model')"
+	arch="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.configured.arch')"
+	memory_mb="$(json_value "$SAFESHIELD_STATUS_FILE" '@.device.configured.memory_mb')"
+	version="$(json_value "$SAFESHIELD_STATUS_FILE" '@.version')"
+
+	[ -n "$vendor" ] && [ -n "$model" ] && [ -n "$arch" ] && [ -n "$version" ] || return 11
+	case "$memory_mb" in
+		''|*[!0-9]*) memory_json='null' ;;
+		*)
+			if [ "$memory_mb" -gt 0 ] 2>/dev/null; then
+				memory_json="$memory_mb"
+			else
+				memory_json='null'
+			fi
+			;;
+	esac
+
+	ACTIVATION_BODY_FILE="$RUNTIME_DIR/license-activate-body.$$.json"
+	cat > "$ACTIVATION_BODY_FILE" <<EOF_ACTIVATION_BODY
+{"license_key":"$(json_escape "$key")","device":{"physical_fingerprint":"$(json_escape "$fingerprint")","fingerprint_version":$fingerprint_version,"identity_provider":"$(json_escape "$identity_provider")","identity_source":"$(json_escape "$identity_source")","identity_strength":"$(json_escape "$identity_strength")","identity_profile":"$(json_escape "$identity_profile")","installation_id":$(json_string_or_null "$installation_id"),"vendor":"$(json_escape "$vendor")","model":"$(json_escape "$model")","arch":"$(json_escape "$arch")","memory_mb":$memory_json,"safeshield_version":"$(json_escape "$version")"}}
+EOF_ACTIVATION_BODY
+	ACTIVATION_KEY="$key"
+	return 0
+}
+
+post_json() {
+	local body_file="$1" output_file="$2" url="$3"
+	"$UCLIENT_FETCH_BIN" -q -T "$REQUEST_TIMEOUT_S" \
+		--method=POST \
+		--body-file="$body_file" \
+		--header='Content-Type: application/json' \
+		-O "$output_file" \
+		"$url"
+}
+
+server_error_code() {
+	local file="$1" code
+	code="$(json_value "$file" '@.code')"
+	[ -n "$code" ] || code="$(json_value "$file" '@.error.code')"
+	printf '%s' "$(sanitize_code "$code")"
+}
+
+update_local_license() {
+	local key="$1" payload
+	payload="{\"license_key\":\"$(json_escape "$key")\"}"
+	"$UBUS_BIN" call safeshield license_update "$payload" >/dev/null 2>&1
+}
+
+activation_cleanup() {
+	[ -n "$ACTIVATION_REQUEST_FILE" ] && rm -f "$ACTIVATION_REQUEST_FILE"
+	rmdir "$ACTIVATION_LOCK" 2>/dev/null || true
+}
+
+activation_in_progress() {
+	local now phase started age
+	[ -d "$ACTIVATION_LOCK" ] || return 1
+
+	now="$(now_epoch)"
+	phase="$(json_value "$STATE_FILE" '@.phase')"
+	started="$(read_previous_number '@.lastAttemptAt')"
+	if [ "$phase" = 'activating' ] && [ "$started" -gt 0 ] 2>/dev/null && [ "$now" -ge "$started" ] 2>/dev/null; then
+		age=$((now - started))
+		[ "$age" -lt "$ACTIVATION_STALE_S" ] && return 0
+	fi
+
+	# A detached activation helper can be killed independently of the daemon.
+	# Recover an abandoned lock so periodic status checks and later activations
+	# are not blocked until the next reboot.
+	rm -f "$ACTIVATION_REQUEST_PATH" 2>/dev/null || true
+	rmdir "$ACTIVATION_LOCK" 2>/dev/null || true
+	if [ -d "$ACTIVATION_LOCK" ]; then
+		return 0
+	fi
+	log_message 'LICENSE_ACTIVATION_STALE: 중단된 라이선스 활성화 lock을 정리했습니다.'
+	return 1
+}
+
+activate_license() {
+	local request_file='' now previous_checked previous_activated base key build_rc licensed activation_status plan license_status error_code interval
+
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--request-file)
+				[ "$#" -ge 2 ] || return 2
+				request_file="$2"
+				shift 2
+				;;
+			*) return 2 ;;
+		esac
+	done
+	[ -n "$request_file" ] && [ -f "$request_file" ] || return 2
+	ACTIVATION_REQUEST_FILE="$request_file"
+	ACTIVATION_RESPONSE_FILE="$RUNTIME_DIR/license-activate-response.$$.json"
+	now="$(now_epoch)"
+	previous_checked="$(read_previous_number '@.lastCheckedAt')"
+	previous_activated="$(read_previous_number '@.lastActivatedAt')"
+	write_state_fields activating activating '' "$now" "$previous_checked" "$previous_activated" 0 '' '' '' none keep activating null
+
+	build_rc=0
+	build_activation_body "$request_file" || build_rc=$?
+	if [ "$build_rc" -ne 0 ]; then
+		case "$build_rc" in
+			10) error_code='LICENSE_DEVICE_IDENTITY_UNAVAILABLE' ;;
+			11) error_code='LICENSE_DEVICE_PROFILE_UNAVAILABLE' ;;
+			*) error_code='LICENSE_KEY_INVALID' ;;
+		esac
+		write_state_fields error failed "$error_code" "$now" "$previous_checked" "$previous_activated" 0 '' '' '' none keep failed "$error_code"
+		log_message "$error_code: 라이선스 등록 요청에 필요한 장치 정보를 준비하지 못했습니다."
+		activation_cleanup
+		return 1
+	fi
+	key="$ACTIVATION_KEY"
+
+	base="$(api_base_url)"
+	if ! post_json "$ACTIVATION_BODY_FILE" "$ACTIVATION_RESPONSE_FILE" "$base/licenses/activate"; then
+		error_code="$(server_error_code "$ACTIVATION_RESPONSE_FILE")"
+		[ -n "$error_code" ] || error_code='LICENSE_ACTIVATE_HTTP_FAILED'
+		write_state_fields error failed "$error_code" "$now" "$previous_checked" "$previous_activated" 0 '' '' '' none null failed "$error_code"
+		log_message "$error_code: 라이선스 활성화 요청에 실패했습니다."
+		activation_cleanup
+		return 1
+	fi
+
+	licensed="$(json_value "$ACTIVATION_RESPONSE_FILE" '@.license.is_licensed')"
+	activation_status="$(json_value "$ACTIVATION_RESPONSE_FILE" '@.activation.status')"
+	plan="$(json_value "$ACTIVATION_RESPONSE_FILE" '@.license.plan')"
+	license_status="$(json_value "$ACTIVATION_RESPONSE_FILE" '@.license.status')"
+	if [ "$licensed" != 'true' ] && [ "$licensed" != '1' ]; then
+		write_state_fields error failed LICENSE_ACTIVATE_RESPONSE_INVALID "$now" "$previous_checked" "$previous_activated" 0 "$plan" "$license_status" "$activation_status" none 200 failed LICENSE_ACTIVATE_RESPONSE_INVALID
+		log_message 'LICENSE_ACTIVATE_RESPONSE_INVALID: 활성화 응답이 유효하지 않습니다.'
+		activation_cleanup
+		return 1
+	fi
+	if [ "$activation_status" != 'active' ]; then
+		write_state_fields error failed LICENSE_ACTIVATE_RESPONSE_INVALID "$now" "$previous_checked" "$previous_activated" 0 "$plan" "$license_status" "$activation_status" none 200 failed LICENSE_ACTIVATE_RESPONSE_INVALID
+		log_message 'LICENSE_ACTIVATE_RESPONSE_INVALID: activation 상태가 active가 아닙니다.'
+		activation_cleanup
+		return 1
+	fi
+
+	if [ -z "$key" ] || ! update_local_license "$key"; then
+		write_state_fields error failed LICENSE_LOCAL_UPDATE_FAILED "$now" "$previous_checked" "$previous_activated" 0 "$plan" "$license_status" "$activation_status" none 200 failed LICENSE_LOCAL_UPDATE_FAILED
+		log_message 'LICENSE_LOCAL_UPDATE_FAILED: SafeShield에 라이선스 키를 저장하지 못했습니다.'
+		activation_cleanup
+		return 1
+	fi
+
+	# A credential belongs to the previously resolved license state. Invalidate
+	# it only after the new license key was successfully applied locally; the
+	# next status-sync will issue a credential for the new entitlement.
+	rm -f "$ACTIVITY_CREDENTIAL_FILE"
+
+	now="$(now_epoch)"
+	interval="$(check_interval_s)"
+	write_state_fields active activated '' "$now" "$now" "$now" $((now + interval)) "$plan" "$license_status" "$activation_status" none 200 active null
+	emit_license_event license.activated success '' "$plan" "$license_status" explicit_activation
+	log_message '라이선스 활성화와 로컬 적용을 완료했습니다.'
+	activation_cleanup
+	return 0
+}
+
+status_sync() {
+	local now previous_activated previous_plan previous_license_status interval next_check key fingerprint base action licensed plan license_status activation_status activity_credential_rc
+
+	# Activation and periodic reconciliation share one state file. Do not let a
+	# scheduled status check overwrite an in-flight explicit activation result.
+	activation_in_progress && return 0
+
+	now="$(now_epoch)"
+	previous_activated="$(read_previous_number '@.lastActivatedAt')"
+	previous_plan="$(json_value "$STATE_FILE" '@.plan')"
+	previous_license_status="$(json_value "$STATE_FILE" '@.licenseStatus')"
+	interval="$(check_interval_s)"
+	next_check=$((now + interval))
+
+	if ! key="$(read_license_key 2>/dev/null)"; then
+		write_state error failed LICENSE_LOCAL_READ_FAILED "$now" "$now" "$previous_activated" "$next_check" '' '' '' none
+		log_message 'LICENSE_LOCAL_READ_FAILED: SafeShield 라이선스 상태를 읽지 못했습니다.'
+		return 1
+	fi
+	if [ -z "$key" ]; then
+		rm -f "$ACTIVITY_CREDENTIAL_FILE"
+		write_state unconfigured unconfigured '' "$now" "$now" "$previous_activated" "$next_check" '' unlicensed not_found none
+		return 0
+	fi
+
+	fingerprint="$(read_physical_fingerprint 2>/dev/null || true)"
+	if [ -z "$fingerprint" ]; then
+		write_state error failed LICENSE_DEVICE_IDENTITY_UNAVAILABLE "$now" "$now" "$previous_activated" "$next_check" '' '' '' none
+		log_message 'LICENSE_DEVICE_IDENTITY_UNAVAILABLE: SafeShield 장치 식별 정보를 읽지 못했습니다.'
+		return 1
+	fi
+
+	STATUS_REQUEST_FILE="$RUNTIME_DIR/license-status-request.$$.json"
+	STATUS_RESPONSE_FILE="$RUNTIME_DIR/license-status-response.$$.json"
+	cat > "$STATUS_REQUEST_FILE" <<EOF_REQUEST
+{"license_key":"$(json_escape "$key")","device":{"physical_fingerprint":"$(json_escape "$fingerprint")"}}
+EOF_REQUEST
+
+	write_state checking checking '' "$now" "$now" "$previous_activated" "$next_check" '' '' '' none
+	base="$(api_base_url)"
+	if ! post_json "$STATUS_REQUEST_FILE" "$STATUS_RESPONSE_FILE" "$base/licenses/status"; then
+		write_state_fields error failed LICENSE_STATUS_HTTP_FAILED "$now" "$now" "$previous_activated" "$next_check" '' '' '' none null keep keep
+		log_message 'LICENSE_STATUS_HTTP_FAILED: 라이선스 상태를 확인하지 못했습니다.'
+		return 1
+	fi
+
+	action="$(json_value "$STATUS_RESPONSE_FILE" '@.device_action')"
+	licensed="$(json_value "$STATUS_RESPONSE_FILE" '@.license.is_licensed')"
+	plan="$(json_value "$STATUS_RESPONSE_FILE" '@.license.plan')"
+	license_status="$(json_value "$STATUS_RESPONSE_FILE" '@.license.status')"
+	activation_status="$(json_value "$STATUS_RESPONSE_FILE" '@.activation.status')"
+
+	if [ "$action" = 'none' ] && { [ "$licensed" = 'true' ] || [ "$licensed" = '1' ]; }; then
+		activity_credential_rc=0
+		if activity_cloud_sync_enabled; then
+			store_activity_credential_from_status "$STATUS_RESPONSE_FILE" || activity_credential_rc=$?
+		else
+			rm -f "$ACTIVITY_CREDENTIAL_FILE"
+		fi
+		if [ "$activity_credential_rc" -ne 0 ]; then
+			# License status remains authoritative even when an optional Cloud
+			# feature credential is unavailable. Keep any still-valid cached
+			# credential and surface the exact non-secret failure class in logread.
+			case "$activity_credential_rc" in
+				2) log_message 'LICENSE_ACTIVITY_CREDENTIAL_TOKEN_MISSING: activity_history token이 없습니다.' ;;
+				3) log_message 'LICENSE_ACTIVITY_CREDENTIAL_URL_INVALID: upload URL이 HTTPS가 아닙니다.' ;;
+				4) log_message 'LICENSE_ACTIVITY_CREDENTIAL_TTL_INVALID: upload token TTL이 너무 짧거나 잘못되었습니다.' ;;
+				5) log_message 'LICENSE_ACTIVITY_CREDENTIAL_WRITE_FAILED: runtime credential cache를 저장하지 못했습니다.' ;;
+				*) log_message 'LICENSE_ACTIVITY_CREDENTIAL_INVALID: activity_history credential을 사용할 수 없습니다.' ;;
+			esac
+		fi
+		write_state_fields active active '' "$now" "$now" "$previous_activated" "$next_check" "$plan" "$license_status" "$activation_status" none 200 keep keep
+		if { [ -n "$previous_plan" ] && [ "$previous_plan" != "$plan" ]; } || \
+			{ [ -n "$previous_license_status" ] && [ "$previous_license_status" != "$license_status" ]; }; then
+			emit_license_event license.changed info "$previous_plan" "$plan" "$license_status" status_sync
+		fi
+		return 0
+	fi
+
+	if [ "$action" = 'clear_license' ]; then
+		rm -f "$ACTIVITY_CREDENTIAL_FILE"
+		if ! update_local_license ''; then
+			write_state_fields error failed LICENSE_LOCAL_CLEAR_FAILED "$now" "$now" "$previous_activated" "$next_check" "$plan" "$license_status" "$activation_status" clear_license 200 keep keep
+			log_message 'LICENSE_LOCAL_CLEAR_FAILED: 서버 해제 지시를 로컬에 적용하지 못했습니다.'
+			return 1
+		fi
+		write_state_fields cleared cleared '' "$now" "$now" "$previous_activated" "$next_check" "$plan" "$license_status" "$activation_status" clear_license 200 keep keep
+		emit_license_event license.cleared info "$previous_plan" '' "$license_status" server_reconcile
+		log_message "서버 라이선스 상태($activation_status)에 따라 로컬 라이선스를 제거했습니다."
+		return 0
+	fi
+
+	write_state_fields error failed LICENSE_STATUS_RESPONSE_INVALID "$now" "$now" "$previous_activated" "$next_check" "$plan" "$license_status" "$activation_status" "$action" 200 keep keep
+	log_message 'LICENSE_STATUS_RESPONSE_INVALID: 상태 API 응답 계약이 올바르지 않습니다.'
+	return 1
+}
+
+show_status() {
+	if [ -s "$STATE_FILE" ]; then
+		cat "$STATE_FILE"
+	else
+		printf '%s\n' '{"schema":1,"component":"license","phase":"unknown","lastResult":"never","lastErrorCode":null,"lastAttemptAt":0,"lastCheckedAt":0,"lastActivatedAt":0,"nextCheckAt":0,"plan":null,"licenseStatus":null,"activationStatus":null,"deviceAction":null,"lastHttpStatus":null,"lastActivationResult":null,"lastActivationErrorCode":null}'
+	fi
+}
+
+interruptible_sleep() {
+	local duration="$1" wait_rc=0
+	[ "$duration" -gt 0 ] 2>/dev/null || return 0
+	[ "$STOP_REQUESTED" -eq 0 ] || return 1
+
+	"$SLEEP_BIN" "$duration" &
+	WAIT_PID=$!
+	wait "$WAIT_PID" 2>/dev/null || wait_rc=$?
+	WAIT_PID=''
+
+	[ "$STOP_REQUESTED" -eq 0 ] || return 1
+	return "$wait_rc"
+}
+
+daemon_loop() {
+	local delay interval
+	STOP_REQUESTED=0
+	delay="$(startup_delay_s)"
+	if [ "$delay" -gt 0 ] 2>/dev/null; then
+		interruptible_sleep "$delay" || return 0
+	fi
+
+	while [ "$STOP_REQUESTED" -eq 0 ]; do
+		status_sync || true
+		[ "$STOP_REQUESTED" -eq 0 ] || break
+		interval="$(check_interval_s)"
+		interruptible_sleep "$interval" || break
+	done
+	return 0
+}
+
+usage() {
+	cat <<'EOF_USAGE'
+Usage: smartsafehub-license <command>
+
+Commands:
+  daemon                         Run periodic license status synchronization.
+  activate --request-file PATH   Activate a license using a prepared Hub request.
+  status-sync                    Check Hub license status once and reconcile locally.
+  status                         Print the current local license-agent state.
+EOF_USAGE
+}
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+
+case "${1:-}" in
+	daemon)
+		shift
+		daemon_loop "$@"
+		;;
+	activate)
+		shift
+		activate_license "$@"
+		;;
+	status-sync)
+		shift
+		status_sync "$@"
+		;;
+	status)
+		shift
+		show_status "$@"
+		;;
+	*)
+		usage >&2
+		exit 2
+		;;
+esac

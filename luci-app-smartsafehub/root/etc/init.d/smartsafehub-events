@@ -1,0 +1,25 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+USE_PROCD=1
+START=14
+STOP=89
+
+RUNTIME_DIR=/tmp/smartsafehub
+PROG=/usr/libexec/smartsafehub-events
+
+start_service() {
+	mkdir -p "$RUNTIME_DIR" || return 1
+	[ -x "$PROG" ] || return 0
+
+	# Record at most one boot event per kernel boot, even when this service is
+	# restarted after a package upgrade.
+	"$PROG" boot >/dev/null 2>&1 || true
+
+	procd_open_instance
+	procd_set_param command "$PROG" daemon
+	procd_set_param respawn 3600 5 5
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}

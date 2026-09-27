@@ -1,0 +1,112 @@
+<%+header%>
+<%
+	local http = require("luci.http")
+	local core = require("substore.core")
+	local id = http.formvalue("id") or ""
+	local it = id ~= "" and core.get(id) or nil
+	local is_edit = it ~= nil
+	local cron_enabled = it and (it.cron_enable == true or it.cron_enable == "1") or false
+	local cron = (it and it.cron_time and it.cron_time ~= "") and it.cron_time or "0 3 * * *"
+	local cm, ch, cdom, cmon, cdow = cron:match("^(%S+) (%S+) (%S+) (%S+) (%S+)$")
+	cm = cm or "0"; ch = ch or "3"; cdom = cdom or "*"; cmon = cmon or "*"; cdow = cdow or "*"
+	local rules_enabled = it and (it.rules_enable == true or it.rules_enable == "1") or false
+	local ki = (it and it.keyword_include) or ""
+	local ke = (it and it.keyword_exclude) or ""
+	local dedup = it and (it.dedup == "1" or it.dedup == true)
+	local proxy_enabled = it and (it.proxy_enable == true or it.proxy_enable == "1") or false
+	local util = require("substore.util")
+	-- 剩余流量 / 剩余时长（仅编辑页且有 subscription-userinfo 数据时显示，首页不显示）
+	local traffic_str = nil
+	local time_str = nil
+	if is_edit and it then
+		if it.total then
+			local rem = (tonumber(it.total) or 0) - (tonumber(it.upload) or 0) - (tonumber(it.download) or 0)
+			if rem < 0 then rem = 0 end
+			traffic_str = util.human_bytes(rem)
+		end
+		if it.expire then
+			time_str = util.human_duration((tonumber(it.expire) or 0) - os.time())
+		end
+	end
+%>
+<h2><%=is_edit and luci.i18n.translate("Edit subscription") or luci.i18n.translate("Add subscription")%></h2>
+
+<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore', is_edit and 'save' or 'create')%>" class="cbi-map">
+	<input type="hidden" name="token" value="<%=token%>"/>
+	<% if is_edit then %><input type="hidden" name="id" value="<%=it.id%>"/><% end %>
+
+	<div class="cbi-section">
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="name" style="display:inline-block;min-width:10em"><%:Name%></label>
+			<input type="text" id="name" name="name" value="<%=is_edit and it.name or ''%>"/>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="url" style="display:inline-block;min-width:10em"><%:Subscription URL%></label>
+			<input type="text" id="url" name="url" value="<%=is_edit and it.url or ''%>" style="width:60%"/>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em">订阅代理</label>
+			<input type="checkbox" name="proxy_enable" value="1" <%=proxy_enabled and "checked" or ""%>
+				onchange="var r=document.getElementById('proxy_row');if(r)r.style.display=this.checked?'block':'none';"/>
+		</div>
+		<div id="proxy_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=proxy_enabled and "block" or "none"%>">
+			<label for="proxy" style="display:inline-block;min-width:10em">代理地址</label>
+			<input type="text" id="proxy" name="proxy" value="<%=is_edit and it.proxy or ''%>" style="width:60%"/>
+			<div style="color:#808080;margin-top:0.25em">通过代理下载订阅（留空则不使用），支持 http:// 或 socks5:// 地址，如 socks5://192.168.5.1:1080</div>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em">启用定时更新</label>
+			<input type="checkbox" name="cron_enable" value="1" <%=cron_enabled and "checked" or ""%>
+				onchange="var r=document.getElementById('cron_time_row');if(r)r.style.display=this.checked?'block':'none';"/>
+		</div>
+		<div id="cron_time_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=cron_enabled and "block" or "none"%>">
+			<label style="display:inline-block;min-width:10em;vertical-align:middle">定时更新时间</label>
+			<span style="display:inline-flex;flex-wrap:wrap;gap:0.5em;vertical-align:middle">
+				<select name="cron_min"><% for i=0,59 do %><option value="<%=i%>" <%=tonumber(cm)==i and "selected" or ""%>><%=i%></option><% end %></select> 分钟
+				<select name="cron_hour"><% for i=0,23 do %><option value="<%=i%>" <%=tonumber(ch)==i and "selected" or ""%>><%=i%></option><% end %></select> 小时
+				<select name="cron_dom"><% for _,v in ipairs({"*","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"}) do %><option value="<%=v%>" <%=cdom==v and "selected" or ""%>><%=v%></option><% end %></select> 日
+				<select name="cron_mon"><% for _,v in ipairs({"*","1","2","3","4","5","6","7","8","9","10","11","12"}) do %><option value="<%=v%>" <%=cmon==v and "selected" or ""%>><%=v%></option><% end %></select> 月
+				<select name="cron_dow"><% for _,v in ipairs({"*","0","1","2","3","4","5","6"}) do %><option value="<%=v%>" <%=cdow==v and "selected" or ""%>><%=v%></option><% end %></select> 周
+			</span>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em">启用规则</label>
+			<input type="checkbox" name="rules_enable" value="1" <%=rules_enabled and "checked" or ""%>
+				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
+			<span class="cbi-value-description">启用后，更新订阅时按关键词包含/排除、去重规则处理节点</span>
+		</div>
+		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">关键词包含</label>
+				<input type="text" name="keyword_include" value="<%=ki%>" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">关键词排除</label>
+				<input type="text" name="keyword_exclude" value="<%=ke%>" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em">去重</label>
+				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<span style="color:#808080">多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。</span>
+			</div>
+		</div>
+		<% if is_edit and it.last_update then %>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<span style="color:#808080">
+				<%:Nodes:%> <%=it.node_count or 0%>
+				<% if traffic_str then %> | <%:Remaining traffic:%> <%=traffic_str%><% end %>
+				<% if time_str then %> | <%:Remaining time:%> <%=time_str%><% end %>
+				 | <%:Last updated:%> <%=os.date("%Y-%m-%d %H:%M", it.last_update)%>
+				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=it.error%></span><% end %>
+			</span>
+		</div>
+		<% end %>
+		<div class="cbi-page-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="<%:Save%>"/>
+			<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
+		</div>
+	</div>
+</form>
+<%+footer%>

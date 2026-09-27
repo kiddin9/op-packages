@@ -1,0 +1,89 @@
+#!/usr/bin/ucode
+'use strict';
+
+let ubus = require('ubus').connect();
+
+function token(value) {
+    let text = sprintf('%s', value == null ? '' : value);
+    return replace(text, /[\t\r\n]/g, '');
+}
+
+function uint_or_null(value) {
+    if (value == null) {
+        return null;
+    }
+
+    let number = int(value);
+    return (type(number) == 'int' && number >= 0) ? number : null;
+}
+
+function optional_uint(value) {
+    let number = uint_or_null(value);
+    return number == null ? 0 : number;
+}
+
+if (!ubus) {
+    exit(1);
+}
+
+let data = ubus.call('dnsmasq', 'safeshield_stats', {});
+if (type(data) != 'object' || uint_or_null(data.schema) != 1) {
+    exit(1);
+}
+
+let instance_id = token(data.instance_id);
+if (!instance_id || type(data.totals) != 'object' || type(data.clients) != 'array') {
+    exit(1);
+}
+
+let total_queries = uint_or_null(data.totals.queries);
+let total_blocked = uint_or_null(data.totals.blocked);
+if (total_queries == null || total_blocked == null) {
+    exit(1);
+}
+
+let transport_scope = token(data.transport_scope || 'unknown');
+let client_capacity = optional_uint(data.client_capacity);
+let tracked_clients = optional_uint(data.tracked_clients);
+let untracked_queries = optional_uint(data.untracked_queries);
+let untracked_blocked = optional_uint(data.untracked_blocked);
+let normalized_clients = [];
+
+for (let client in data.clients) {
+    if (type(client) != 'object') {
+        exit(1);
+    }
+
+    let address = token(client.address);
+    let queries = uint_or_null(client.queries);
+    let blocked = uint_or_null(client.blocked);
+    if (!address || queries == null || blocked == null) {
+        exit(1);
+    }
+
+    push(normalized_clients, {
+        address: address,
+        queries: queries,
+        blocked: blocked
+    });
+}
+
+printf('snapshot\t%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\n',
+    instance_id,
+    transport_scope,
+    client_capacity,
+    tracked_clients,
+    untracked_queries,
+    untracked_blocked,
+    total_queries,
+    total_blocked);
+
+for (let client in normalized_clients) {
+    printf('client\t%s\t%d\t%d\n',
+        client.address,
+        client.queries,
+        client.blocked);
+}
+
+print('commit\n');
+exit(0);

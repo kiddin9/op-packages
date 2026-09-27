@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[ -f /usr/libexec/smartsafehub-root-entry ] || exit 0
+/bin/sh /usr/libexec/smartsafehub-root-entry --install
+exit 0

@@ -1,0 +1,19 @@
+# MacOS related
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Vim
+*~
+*.swp
+*.swo
+
+# IDE user config
+.vscode/
+.idea/
+.vs/
+
+# etc
+*.orig
+*.rej
+/*.patch

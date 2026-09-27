@@ -1,0 +1,172 @@
+<%+header%>
+<%
+	local http = require("luci.http")
+	local core = require("substore.core")
+	local id = http.formvalue("id") or ""
+	local it = id ~= "" and core.get(id) or nil
+	local is_edit = it ~= nil
+	local rules_enabled = it and (it.rules_enable == true or it.rules_enable == "1") or false
+	local ki = (it and it.keyword_include) or ""
+	local ke = (it and it.keyword_exclude) or ""
+	local dedup = it and (it.dedup == "1" or it.dedup == true)
+	local local_mode = (it and it.local_mode) or "text"
+	local content = (it and it.raw_content) or ""
+	-- 注入 JS 的初始内容：JSON 字符串字面量，转义 "</" 防止提前闭合 script
+	local util = require("substore.util")
+	local js_content = (util.json_encode(content) or '""'):gsub("</", "<\\/")
+%>
+<h2><%=is_edit and luci.i18n.translate("Edit local subscription") or luci.i18n.translate("Add local subscription")%></h2>
+
+<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore', is_edit and 'local_save' or 'local_create')%>" class="cbi-map"
+      onsubmit="return substore_local_prepare()">
+	<input type="hidden" name="token" value="<%=token%>"/>
+	<% if is_edit then %><input type="hidden" name="id" value="<%=it.id%>"/><% end %>
+
+	<div class="cbi-section">
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="name" style="display:inline-block;min-width:10em"><%:Name%></label>
+			<input type="text" id="name" name="name" value="<%=is_edit and it.name or ''%>"/>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Subscription info%></label>
+			<div style="display:inline-block;width:80%">
+				<div style="margin-bottom:0.5em">
+					<select name="local_mode" id="local_mode_sel" onchange="substore_local_switch(this.value)">
+						<option value="text" <%=local_mode=="text" and "selected" or ""%>><%:Text import%></option>
+						<option value="form" <%=local_mode=="form" and "selected" or ""%>><%:Form import%></option>
+					</select>
+				</div>
+				<div id="text_area_wrap" style="display:<%=local_mode=="text" and "block" or "none"%>">
+					<textarea id="content_text" name="content" rows="16" style="width:100%"
+						<%=local_mode=="text" and "" or "disabled"%>><%=luci.util.pcdata(content)%></textarea>
+					<div style="color:#808080;margin-top:0.25em"><%:Paste YAML/URI/JSON node list here. Mixed protocols supported.%></div>
+				</div>
+				<div id="form_nodes_container" style="display:<%=local_mode=="form" and "block" or "none"%>">
+					<div style="margin-bottom:0.5em;color:#808080"><%:Add nodes via form below. Each node will be saved as JSON and parsed on save.%></div>
+					<div id="nodes_list"></div>
+					<button type="button" class="cbi-button cbi-button-apply" onclick="addNodeRow()">+ <%:Add node%></button>
+					<input type="hidden" name="content" id="form_content" value=""
+						<%=local_mode=="form" and "" or "disabled"%>/>
+				</div>
+			</div>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label style="display:inline-block;min-width:10em"><%:Enable rules%></label>
+			<input type="checkbox" name="rules_enable" value="1" <%=rules_enabled and "checked" or ""%>
+				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
+			<span class="cbi-value-description"><%:When enabled, apply keyword include/exclude and dedup rules to nodes%></span>
+		</div>
+		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em"><%:Keyword include%></label>
+				<input type="text" name="keyword_include" value="<%=ki%>" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em"><%:Keyword exclude%></label>
+				<input type="text" name="keyword_exclude" value="<%=ke%>" style="width:60%"/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em"><%:Dedup%></label>
+				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
+			</div>
+		</div>
+		<% if is_edit and it.last_update then %>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<span style="color:#808080">
+				<%:Nodes:%> <%=it.node_count or 0%>
+				| <%:Last updated:%> <%=os.date("%Y-%m-%d %H:%M", it.last_update)%>
+				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=it.error%></span><% end %>
+			</span>
+		</div>
+		<% end %>
+		<div class="cbi-page-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="<%:Save%>"/>
+			<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
+		</div>
+	</div>
+</form>
+
+<script>
+// 编辑时的初始内容（文本或 JSON），由服务端注入
+var SUBSTORE_INIT_CONTENT = <%=js_content%>;
+var SUBSTORE_INIT_MODE = "<%=local_mode%>";
+
+// 字段标签与界面文本（nodeform.js 读取；翻译由服务端按系统语言渲染）
+var FIELD_LABELS = {
+	"name": "<%:Name%>",
+	"group": "<%:Group%>",
+	"protocol": "<%:Protocol%>",
+	"server": "<%:Server%>",
+	"port": "<%:Port%>",
+	"password": "<%:Password%>",
+	"uuid": "UUID",
+	"alterId": "Alter ID",
+	"cipher": "<%:Cipher%>",
+	"method": "<%:Encryption method%>",
+	"security": "<%:Security%>",
+	"net": "<%:Network%>",
+	"headerType": "<%:Camouflage type%>",
+	"flow": "Flow",
+	"path": "<%:Path%>",
+	"host": "Host",
+	"sni": "SNI",
+	"tls": "TLS",
+	"obfs": "<%:Obfs%>",
+	"obfs-param": "<%:Obfs param%>",
+	"obfs-password": "<%:Obfs password%>",
+	"protocol-param": "<%:Protocol param%>",
+	"udp": "UDP",
+	"skip-cert-verify": "<%:Skip cert verify%>",
+	"private-key": "<%:Private key%>",
+	"peer-public-key": "<%:Peer public key%>"
+};
+var NODEFORM_I18N = {
+	"node": "<%:Node%>",
+	"defaultOpt": "<%:Default%>"
+};
+</script>
+<script src="/luci-static/resources/substore/nodeform.js?v=2.1.3"></script>
+<script>
+// 切换导入模式：仅切换显示/禁用，不提交表单
+function substore_local_switch(mode) {
+	document.getElementById("text_area_wrap").style.display = (mode === "text") ? "block" : "none";
+	document.getElementById("form_nodes_container").style.display = (mode === "form") ? "block" : "none";
+	document.getElementById("content_text").disabled = (mode !== "text");
+	document.getElementById("form_content").disabled = (mode !== "form");
+	if (mode === "form" && document.getElementById("nodes_list").children.length === 0) addNodeRow();
+}
+
+// 提交前：表单模式把节点序列化为 JSON 写入隐藏 content 字段
+function substore_local_prepare() {
+	var mode = document.getElementById("local_mode_sel").value;
+	if (mode === "form") {
+		var hidden = document.getElementById("form_content");
+		hidden.disabled = false;
+		hidden.value = JSON.stringify(collectNodes());
+		document.getElementById("content_text").disabled = true;
+	}
+	return true;
+}
+
+function initLocalForm() {
+	if (SUBSTORE_INIT_MODE !== "form") return;
+	var data = null;
+	try {
+		data = JSON.parse(SUBSTORE_INIT_CONTENT || "[]");
+	} catch (e) {
+		data = null;
+	}
+	if (data && Object.prototype.toString.call(data) === "[object Array]" && data.length > 0) {
+		for (var i = 0; i < data.length; i++) addNodeRow(data[i]);
+	} else {
+		addNodeRow();
+	}
+}
+
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", initLocalForm);
+} else {
+	initLocalForm();
+}
+</script>
+<%+footer%>

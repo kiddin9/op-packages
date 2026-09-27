@@ -1,0 +1,99 @@
+<%+header%>
+<%
+	local http = require("luci.http")
+	local core = require("substore.core")
+	local util = require("substore.util")
+	local id = http.formvalue("id") or ""
+	local idx = tonumber(http.formvalue("idx") or "") or 0
+	local meta = id ~= "" and core.get(id) or nil
+	local nodes = id ~= "" and core.read_nodes(id) or {}
+	local n = nodes[idx]
+	-- 注入 JS 的节点对象：转义 "</" 防止提前闭合 script
+	local js_node = n and (util.json_encode(n):gsub("</", "<\\/")) or "null"
+	local back_url = luci.dispatcher.build_url('admin/services/substore/nodes') .. "?id=" .. luci.util.urlencode(id)
+%>
+<h2><%:Edit node%> — <%=meta and meta.name or ""%></h2>
+
+<% if not n then %>
+<div class="cbi-section">
+	<p style="color:#cc0000"><%:Node not found.%></p>
+	<a class="cbi-button cbi-button-reset" href="<%=back_url%>"><%:Back%></a>
+</div>
+<% else %>
+<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/node_save')%>" class="cbi-map"
+      onsubmit="return node_edit_prepare()">
+	<input type="hidden" name="token" value="<%=token%>"/>
+	<input type="hidden" name="id" value="<%=id%>"/>
+	<input type="hidden" name="idx" value="<%=idx%>"/>
+	<div class="cbi-section">
+		<div id="nodes_list"></div>
+		<input type="hidden" name="content" id="form_content" value=""/>
+		<div class="cbi-section-descr" style="margin:0.5em 0;color:#808080">
+			<%:Note: edits to this node are overwritten the next time the subscription is updated or re-saved.%>
+		</div>
+		<div class="cbi-page-actions">
+			<input type="submit" class="cbi-button cbi-button-apply" value="<%:Save%>"/>
+			<a class="cbi-button cbi-button-reset" href="<%=back_url%>"><%:Back%></a>
+		</div>
+	</div>
+</form>
+
+<script>
+var FIELD_LABELS = {
+	"name": "<%:Name%>",
+	"group": "<%:Group%>",
+	"protocol": "<%:Protocol%>",
+	"server": "<%:Server%>",
+	"port": "<%:Port%>",
+	"password": "<%:Password%>",
+	"uuid": "UUID",
+	"alterId": "Alter ID",
+	"cipher": "<%:Cipher%>",
+	"method": "<%:Encryption method%>",
+	"security": "<%:Security%>",
+	"net": "<%:Network%>",
+	"headerType": "<%:Camouflage type%>",
+	"flow": "Flow",
+	"path": "<%:Path%>",
+	"host": "Host",
+	"sni": "SNI",
+	"tls": "TLS",
+	"obfs": "<%:Obfs%>",
+	"obfs-param": "<%:Obfs param%>",
+	"obfs-password": "<%:Obfs password%>",
+	"protocol-param": "<%:Protocol param%>",
+	"udp": "UDP",
+	"skip-cert-verify": "<%:Skip cert verify%>",
+	"private-key": "<%:Private key%>",
+	"peer-public-key": "<%:Peer public key%>"
+};
+var NODEFORM_I18N = {
+	"node": "<%:Node%>",
+	"defaultOpt": "<%:Default%>"
+};
+var NODE_EDIT_DATA = <%=js_node%>;
+</script>
+<script src="/luci-static/resources/substore/nodeform.js?v=2.1.3"></script>
+<script>
+function node_edit_prepare() {
+	var arr = collectNodes();
+	if (arr.length === 0) return false;
+	document.getElementById("form_content").value = JSON.stringify(arr);
+	return true;
+}
+
+function initNodeEdit() {
+	var row = addNodeRow(NODE_EDIT_DATA);
+	// 编辑页只有一个节点行，不允许移除
+	var rm = row && row.querySelector(".node_remove");
+	if (rm) rm.style.display = "none";
+}
+
+if (document.readyState === "loading") {
+	document.addEventListener("DOMContentLoaded", initNodeEdit);
+} else {
+	initNodeEdit();
+}
+</script>
+<% end %>
+<%+footer%>
