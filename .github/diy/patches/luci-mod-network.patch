@@ -1,3 +1,17 @@
+diff --git a/luci-mod-network/root/usr/share/ucitrack/luci-mod-network-dnsmasq.json b/luci-mod-network/root/usr/share/ucitrack/luci-mod-network-dnsmasq.json
+deleted file mode 100644
+index 260ee3dd3..000000000
+--- a/luci-mod-network/root/usr/share/ucitrack/luci-mod-network-dnsmasq.json
++++ /dev/null
+@@ -1,7 +0,0 @@
+-{
+-	"config": "dhcp",
+-	"init": "dnsmasq",
+-	"affects": [
+-		"odhcpd"
+-	]
+-}
+
 --- a/luci-mod-network/htdocs/luci-static/resources/view/network/dns.js
 +++ b/luci-mod-network/htdocs/luci-static/resources/view/network/dns.js
 @@ -437,6 +442,9 @@ return view.extend({
