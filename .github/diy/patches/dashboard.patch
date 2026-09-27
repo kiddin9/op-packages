@@ -32,14 +32,3 @@
  		"action": {
  			"type": "view",
  			"path": "dashboard/index"
-
---- a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/20_lan.js
-+++ b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/20_lan.js
-@@ -43,6 +43,7 @@ return baseclass.extend({
- 
- 	renderTable() {
- 		return charts.table({
-+			id: 'dashboard-lan-table',
- 			head: [ _('Hostname'), _('IP Address'), _('MAC') ],
- 			rows: this.params.lan.devices.map(device => [
- 				device.hostname,
