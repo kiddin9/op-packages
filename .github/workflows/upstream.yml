@@ -222,8 +222,14 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-atcommands atcommands && mvdir atcommands
         git_clone https://github.com/wukongdaily/luci-app-run run1 && mvdir run1
         git_clone https://github.com/szwjp/luci-app-homeproxy
-        git_clone https://github.com/1andrevich/homeproxy-hiddify
+        git_clone https://github.com/szwjp/luci-app-homeproxy-pro
         git_clone https://github.com/weicaixian86/luci-app-pingpacket
+        ) &
+        (
+        git_clone https://github.com/Arthur97172/luci-app-substore
+        git_clone https://github.com/QiuSimons/luci-app-honk
+        git_clone https://github.com/Junatum/safeshield
+        git_clone https://github.com/Junatum/luci-app-smartsafehub
         ) &
         (
         git_clone https://github.com/Diciya/luci-app-broadbandacc
