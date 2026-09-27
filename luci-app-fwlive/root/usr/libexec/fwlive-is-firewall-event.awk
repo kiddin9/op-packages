@@ -197,7 +197,7 @@ function summary_json(out) {
 	out = out ",\"top_drops\":" summary_top(summary_drop_counts, 3)
 	out = out ",\"top_rules\":" summary_top(summary_rule_counts, 3) "}"
 	# LC_ALL=C makes this a byte budget; utf8_prefix keeps field cuts valid.
-	if (length(out) > 256) return "{\"scope\":\"top of shown sample\",\"truncated\":true}"
+	if (length(out) > 1024) return "{\"scope\":\"top of shown sample\",\"truncated\":true}"
 	return out
 }
 BEGIN {

@@ -263,8 +263,8 @@ EOF
 
 # One awk pass: prefix<TAB>comment. Last quoted log prefix / comment on
 # the line, including \" units (same capture as the former sed).
-# Raw tabs in prefix/comment become the two-character sequence \t so the
-# separator tab is unique. Backslashes are not re-encoded.
+# Raw tabs become \t and backslashes become \\ so the separator tab is
+# unique. Walk bytes: BusyBox awk ≥1.37 gsub cannot emit those sequences.
 nft_dump_fields() {
 	LC_ALL=C awk '
 	function last_at(s, needle,    p, i, found) {
@@ -275,6 +275,22 @@ nft_dump_fields() {
 			p = found + 1
 		}
 		return found
+	}
+	function tsv_escape(s,    out, i, n, c) {
+		# BusyBox awk ≥1.37 treats gsub replacement "\\t" as a tab
+		# (and "\\\\" as one backslash). Walk bytes instead.
+		out = ""
+		n = length(s)
+		for (i = 1; i <= n; i++) {
+			c = substr(s, i, 1)
+			if (c == "\\")
+				out = out "\\\\"
+			else if (c == "\t")
+				out = out "\\t"
+			else
+				out = out c
+		}
+		return out
 	}
 	function quoted_at(s, needle,    i, rest, out, c, n, esc, j) {
 		i = last_at(s, needle)
@@ -307,10 +323,8 @@ nft_dump_fields() {
 		comment = quoted_at($0, "comment \"")
 		if (prefix == "" && comment == "")
 			next
-		gsub(/\\/, "\\\\", prefix)
-		gsub(/\t/, "\\t", prefix)
-		gsub(/\\/, "\\\\", comment)
-		gsub(/\t/, "\\t", comment)
+		prefix = tsv_escape(prefix)
+		comment = tsv_escape(comment)
 		print prefix "\t" comment
 	}
 	' || return 1
