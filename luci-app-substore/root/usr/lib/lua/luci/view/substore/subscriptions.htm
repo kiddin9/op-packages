@@ -26,6 +26,7 @@
 
 <%
 	local core = require("substore.core")
+	local output = require("substore.output")
 	local http_env = require("luci.http")
 	local items = core.list()
 	local base = luci.dispatcher.build_url("substore", "download")
@@ -81,19 +82,7 @@
 				<select id="fmt_<%=it.id%>" data-base="<%=luci.util.pcdata(sub_link_base)%>"
 					onchange="substore_setlink(this, '<%=it.id%>')">
 					<option value=""><%:Select format%></option>
-					<option value="clashmeta">Clash.Meta / Mihomo</option>
-					<option value="stash">Stash</option>
-					<option value="surge">Surge</option>
-					<option value="surfboard">Surfboard</option>
-					<option value="surgemac">SurgeMac</option>
-					<option value="loon">Loon</option>
-					<option value="egern">Egern</option>
-					<option value="qx">Quantumult X</option>
-					<option value="shadowrocket">Shadowrocket</option>
-					<option value="singbox">sing-box</option>
-					<option value="v2ray">V2Ray</option>
-					<option value="v2rayuri">V2Ray URI</option>
-					<option value="plain">Plain JSON</option>
+<% for _, fo in ipairs(output.FORMAT_OPTIONS) do %><option value="<%=fo[1]%>"><%=fo[2]%></option><% end %>
 				</select>
 			</div>
 			<div id="linkwrap_<%=it.id%>" style="display:none;margin-top:0.25em">

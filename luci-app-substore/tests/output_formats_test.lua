@@ -33,7 +33,7 @@ local nodes = {
 check("module exists", output ~= nil)
 check("generate exists", type(output.generate) == "function")
 
--- 13 种目标格式均返回字符串
+-- 各目标格式均返回字符串
 local formats = {
 	"clash", "clashmeta", "mihomo", "stash",
 	"surge", "surfboard", "surgemac", "loon", "egern",
@@ -83,7 +83,10 @@ local pj = util.json_decode(plain)
 check("plain is json array", type(pj) == "table" and pj[1] ~= nil and pj[1].proto == "vmess")
 
 -- 别名映射
-check("alias clashmeta", output.generate(nodes, "clashmeta") == output.generate(nodes, "clash"))
+-- 注意：clash 自 2.3.0-r2 起指"Clash 原版"（会过滤 vless/hysteria2/tuic/wireguard），
+-- 不再是 clashmeta 的别名；clashmeta 的别名是 yaml / mihomo
+check("alias yaml -> clashmeta", output.generate(nodes, "clashmeta") == output.generate(nodes, "yaml"))
+check("alias mihomo -> clashmeta", output.generate(nodes, "clashmeta") == output.generate(nodes, "mihomo"))
 check("alias sing_box", output.generate(nodes, "sing_box") == output.generate(nodes, "singbox"))
 
 -- 未知格式报错

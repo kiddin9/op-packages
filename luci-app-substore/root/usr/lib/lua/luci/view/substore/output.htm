@@ -33,19 +33,7 @@
 	<div style="display:flex;gap:0.5em;align-items:center;margin:0.5em 0">
 		<label><%:Format%>:
 			<select name="fmt">
-				<option value="clashmeta" <%=fmt=="clashmeta" and "selected" or ""%>>Clash.Meta / Mihomo</option>
-				<option value="stash" <%=fmt=="stash" and "selected" or ""%>>Stash</option>
-				<option value="surge" <%=fmt=="surge" and "selected" or ""%>>Surge</option>
-				<option value="surfboard" <%=fmt=="surfboard" and "selected" or ""%>>Surfboard</option>
-				<option value="surgemac" <%=fmt=="surgemac" and "selected" or ""%>>SurgeMac</option>
-				<option value="loon" <%=fmt=="loon" and "selected" or ""%>>Loon</option>
-				<option value="egern" <%=fmt=="egern" and "selected" or ""%>>Egern</option>
-				<option value="qx" <%=fmt=="qx" and "selected" or ""%>>Quantumult X</option>
-				<option value="shadowrocket" <%=fmt=="shadowrocket" and "selected" or ""%>>Shadowrocket</option>
-				<option value="singbox" <%=fmt=="singbox" and "selected" or ""%>>sing-box</option>
-				<option value="v2ray" <%=fmt=="v2ray" and "selected" or ""%>>V2Ray</option>
-				<option value="v2rayuri" <%=fmt=="v2rayuri" and "selected" or ""%>>V2Ray URI</option>
-				<option value="plain" <%=fmt=="plain" and "selected" or ""%>>Plain JSON</option>
+				<% for _, fo in ipairs(output.FORMAT_OPTIONS) do %><option value="<%=fo[1]%>" <%=fmt==fo[1] and "selected" or ""%>><%=fo[2]%></option><% end %>
 			</select>
 		</label>
 		<input type="submit" class="cbi-button cbi-button-apply" value="<%:Generate%>"/>

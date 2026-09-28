@@ -12,7 +12,7 @@ LUCI_INDEX_CACHE="${LUCI_INDEX_CACHE:-/tmp/luci-indexcache}"
 
 cleanup_upgrade_state() {
 	rm -f "$UPGRADE_STATE_DIR/tailscale" "$UPGRADE_STATE_DIR/tailscale_openclash" \
-		"$UPGRADE_STATE_DIR/tailscale_openclash.absent" "$UPGRADE_STATE_DIR/tailscale_policy_routing" \
+		"$UPGRADE_STATE_DIR/tailscale_policy_routing" \
 		"$UPGRADE_STATE_DIR/.complete"
 	rmdir "$UPGRADE_STATE_DIR" 2>/dev/null || true
 }
@@ -47,20 +47,18 @@ cleanup_legacy_adguard_dns_service() {
 	fi
 
 	cp -p "$LEGACY_ADGUARD_DNS_INIT" "$backup_dir/init" || return 1
+
 	for link in "$LEGACY_ADGUARD_DNS_RC_DIR"/*tailscale-adguard-dns; do
 		[ -e "$link" ] || [ -L "$link" ] || continue
 		rm -f "$link" || return 1
 	done
+
 	mv "$LEGACY_ADGUARD_DNS_INIT" "$backup_dir/tailscale-adguard-dns.disabled" || return 1
 }
 
 if [ -f "$UPGRADE_STATE_DIR/.complete" ]; then
 	restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale" /etc/config/tailscale || exit 1
-	if [ -f "$UPGRADE_STATE_DIR/tailscale_openclash.absent" ]; then
-		rm -f /etc/config/tailscale_openclash
-	else
-		restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale_openclash" /etc/config/tailscale_openclash || exit 1
-	fi
+	restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale_openclash" /etc/config/tailscale_openclash || exit 1
 	restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale_policy_routing" /etc/config/tailscale_policy_routing || exit 1
 	cleanup_upgrade_state
 elif [ -d "$UPGRADE_STATE_DIR" ]; then

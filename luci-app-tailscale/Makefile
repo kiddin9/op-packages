@@ -9,7 +9,7 @@ LUCI_DEPENDS:=+tailscale +jshn +curl +jq +flock
 LUCI_PKGARCH:=all
 
 PKG_VERSION:=1.2.17
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 # Keep UCI configs as ordinary package data. The pre-install hook snapshots an
 # existing configuration before extraction; the UCI-defaults script restores it
@@ -43,7 +43,8 @@ disable_legacy_hotplug() {
 
 disable_legacy_hotplug || exit 1
 
-[ -f /etc/config/tailscale ] || exit 0
+# 若系统内无任何相关配置文件，说明是全新安装，直接退出让包管理器正常解压释放默认配置
+[ -f /etc/config/tailscale ] || [ -f /etc/config/tailscale_openclash ] || [ -f /etc/config/tailscale_policy_routing ] || exit 0
 [ -f "$${state_dir}/.complete" ] && exit 0
 
 clear_state_dir() {
@@ -55,20 +56,26 @@ clear_state_dir() {
 
 clear_state_dir "$${state_dir}" || exit 1
 clear_state_dir "$${state_pending}" || exit 1
+
 umask 077
 mkdir "$${state_pending}" || exit 1
 chmod 700 "$${state_pending}" || exit 1
-cp /etc/config/tailscale "$${state_pending}/tailscale" || exit 1
+
+if [ -f /etc/config/tailscale ]; then
+	cp /etc/config/tailscale "$${state_pending}/tailscale" || exit 1
+fi
+
 if [ -f /etc/config/tailscale_openclash ]; then
 	cp /etc/config/tailscale_openclash "$${state_pending}/tailscale_openclash" || exit 1
-else
-	: >"$${state_pending}/tailscale_openclash.absent" || exit 1
 fi
+
 if [ -f /etc/config/tailscale_policy_routing ]; then
 	cp /etc/config/tailscale_policy_routing "$${state_pending}/tailscale_policy_routing" || exit 1
 fi
+
 : >"$${state_pending}/.complete" || exit 1
 mv "$${state_pending}" "$${state_dir}" || exit 1
+
 exit 0
 endef
 

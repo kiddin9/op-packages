@@ -147,6 +147,22 @@ function M.to_stash(nodes, options)
 	return clash_meta.generate(nodes, options)
 end
 
+-- Clash 原版（Dreamacro Clash / ClashX / Clash for Windows）不支持的协议类型。
+-- 只排除"确定不支持"的，不做白名单，避免误丢原版其实支持的类型。
+local CLASH_LEGACY_UNSUPPORTED = {
+	vless = true, hysteria2 = true, hysteria = true, tuic = true, wireguard = true,
+}
+
+-- Clash 原版：过滤掉原版不认识的协议后，复用 Clash.Meta 的 YAML 生成
+function M.to_clash(nodes, options)
+	local kept = {}
+	for _, n in ipairs(nodes or {}) do
+		local p = props(n)
+		if not CLASH_LEGACY_UNSUPPORTED[p] then kept[#kept + 1] = n end
+	end
+	return clash_meta.generate(kept, options)
+end
+
 -- Quantumult X
 function M.to_qx(nodes, options)
 	options = options or {}
@@ -210,6 +226,7 @@ function M.generate(nodes, format, options)
 	if format == "egern" then return M.to_egern(nodes, options) end
 	if format == "qx" then return M.to_qx(nodes, options) end
 	if format == "stash" then return M.to_stash(nodes, options) end
+	if format == "clash" then return M.to_clash(nodes, options) end
 	if format == "plain" then return M.to_plain(nodes) end
 	return nil, "unsupported format: " .. tostring(format)
 end

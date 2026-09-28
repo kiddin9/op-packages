@@ -60,9 +60,13 @@ group them, then re-emit them in a format your client can consume.
 - SSR (`ssr://`) input is re-emitted losslessly to SSR-capable clients only — Mihomo /
   Clash.Meta, Stash, Loon, Egern, Shadowrocket — and dropped for the rest (sing-box,
   V2Ray/Xray, Surge family), since SSR is not convertible to/from other protocols
-- 13 output formats (all implemented): Plain JSON, Stash, Clash.Meta / Mihomo YAML,
-  Surfboard, Surge, Surge Mac, Loon, Egern, Shadowrocket, Quantumult X, sing-box,
-  V2Ray / Xray, V2Ray URI
+- 15 output formats (all implemented): Plain JSON, Stash, Clash.Meta / Mihomo YAML,
+  Clash (original), Surfboard, Surge, Surge Mac, Loon, Egern, Shadowrocket,
+  Quantumult X, sing-box, V2Ray / Xray, V2Ray URI, WireGuard / AmneziaWG `.conf`
+  - **Clash (original)**: for Dreamacro Clash / ClashX / Clash for Windows; protocols the
+    original does not support (vless / hysteria2 / hysteria / tuic / wireguard) are filtered out
+  - **WireGuard / AmneziaWG `.conf`**: wg-quick single-interface config with `[Interface]` /
+    `[Peer]` sections and AmneziaWG obfuscation parameters, importable by AmneziaWG clients
 
 **Subscription links**
 - Per-subscription random token → public download endpoint
@@ -75,18 +79,18 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.3.0-r1`).
+> [Makefile](Makefile) (currently `2.3.0-r2`).
 
 opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
 
 ```bash
-opkg install luci-app-substore-2.3.0-r1.ipk
+opkg install luci-app-substore-2.3.0-r2.ipk
 ```
 
 apk (OpenWrt / ImmortalWrt 25.12+):
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.3.0-r1.apk
+apk add --allow-untrusted luci-app-substore-2.3.0-r2.apk
 ```
 
 Then open LuCI: **Services → Subscriptions**.
@@ -100,7 +104,7 @@ Then open LuCI: **Services → Subscriptions**.
 3. **Browse nodes** — filter (group / protocol / keyword), sort, probe latency; tick
    checkboxes and hit Delete for batch deletion, edit / delete / regroup in-row, and
    Refresh reloads the list.
-4. **Export** — pick one of the 13 output formats, or copy the subscription link
+4. **Export** — pick one of the 15 output formats, or copy the subscription link
    to feed a downstream client (Passwall / OpenClash / …).
 
 ## Project layout

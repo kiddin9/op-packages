@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0-r2] - 新增 Clash 原版与 WireGuard .conf 输出，输出层清理
+
+- 新增输出格式 **WireGuard / AmneziaWG `.conf`**（`target=wgconf`，别名 `wg` / `wireguard` / `amneziawg` / `amnezia` / `conf`）
+  - 与 `parser.parse_wireguard_conf` 互为逆操作：输出 `[Interface]` / `[Peer]` 标准 wg-quick 配置
+  - `[Interface]`：PrivateKey / Address（IPv4 + IPv6 合并）/ ListenPort / MTU / DNS / AmneziaWG 参数（键名首字母大写，按键名排序保证可 diff）
+  - `[Peer]`：PublicKey / PresharedKey / AllowedIPs / Endpoint / PersistentKeepalive
+  - IPv6 Endpoint 自动加方括号（`[2001:db8::1]:51821`）
+  - 仅输出 wireguard 节点；无 wireguard 节点时明确报错（而非下载到空文件）
+  - 已知有损项：`Reserved` 不是 wg-quick 标准键，导出时不写出（`reserved` 仍保留在 clash.meta / sing-box / URI 输出中）
+  - 新增模块 `root/usr/share/substore/output_wireguard_conf.lua`
+- 新增输出格式 **Clash 原版**（`target=clash`），面向 Dreamacro Clash / ClashX / Clash for Windows
+  - 过滤原版不支持的协议（vless / hysteria2 / hysteria / tuic / wireguard），其余复用 Clash.Meta 的 YAML 生成
+  - 采用排除法而非白名单，避免误丢原版其实支持的协议
+- ⚠️ **行为变更**：`target=clash` 语义由「Clash.Meta」改为「Clash 原版」。原先使用 `?target=clash` 拉取 Clash.Meta 配置的用户请改用 `target=clashmeta`（或 `yaml` / `mihomo`）
+- ⚠️ **行为变更（无感）**：未指定 `target` 时的默认格式显式固定为 `clashmeta`，与历史默认行为一致
+- 输出层清理（`output.lua`）
+  - 删除死代码 `to_clash_yaml` / `to_json` / `to_base64`（无任何调用点；且 `to_clash_yaml` 会把 `type:` 写成原始协议名，产出非法 YAML）
+  - 删除随之失效的 `util` / `node` require
+  - 新增 `M.FORMAT_OPTIONS` 作为格式清单的唯一数据源，`subscriptions.htm` 与 `output.htm` 两处硬编码 `<option>` 列表改为遍历生成，避免新增格式时漏改模板
+  - 默认格式提取为 `DEFAULT_FORMAT` 常量，供 content-type / 扩展名 / 生成三处共用
+- 新增测试 `tests/output_new_formats_test.lua`（66 项）：格式注册表一致性（每个 UI 选项都有别名、content-type、扩展名与分发分支）、Clash 原版协议过滤、`.conf` 结构与 AmneziaWG 键排序、IPv6 方括号、无 wireguard 报错、`.conf` 导出 → 重新导入的完整往返
+- `tests/core_link_test.lua` 的目标格式列表改为从 `output.FORMAT_OPTIONS` 派生，新增格式自动纳入覆盖
+- 版本号 2.3.0-r1 → 2.3.0-r2；README.md / README.en.md / docs/INSTALL.md 同步（输出格式 13 → 15 种）
+
 ## [2.3.0-r1] - wg-quick / AmneziaWG .conf 导入与导出修复
 
 - 新增 wg-quick / AmneziaWG `.conf` 文本导入：解析 `[Interface]` / `[Peer]` 分段

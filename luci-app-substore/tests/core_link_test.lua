@@ -40,12 +40,16 @@ check("token idempotent", core.ensure_token(id) == token)
 local nodes = {
 	{ proto = "vmess", name = "NodeA", server = "1.1.1.1", port = 443, uuid = "u1", net = "tcp" },
 	{ proto = "shadowsocks", name = "NodeB", server = "2.2.2.2", port = 8388, method = "aes-256-gcm", password = "p1" },
+	{ proto = "wireguard", name = "NodeC", server = "3.3.3.3", port = 51820, ["private-key"] = "K", ["public-key"] = "P", ip = "10.0.0.1/32" },
 }
 check("write nodes", core.write_nodes(id, nodes) == true)
 
--- 各格式生成
+-- 各格式生成（列表与 output.FORMAT_OPTIONS 保持一致）
+local output_mod = require("substore.output")
+local targets = {}
+for _, fo in ipairs(output_mod.FORMAT_OPTIONS) do targets[#targets + 1] = fo[1] end
 local ok = true
-for _, target in ipairs({ "ClashMeta", "singbox", "v2ray", "Surge", "QX", "Shadowrocket", "V2RayURI", "Plain", "Stash", "Loon", "Egern", "Surfboard", "SurgeMac" }) do
+for _, target in ipairs(targets) do
 	local content, ct, filename, err = core.generate_link(token, target)
 	if type(content) == "string" and content ~= "" and ct and filename then
 		-- ok
@@ -54,7 +58,7 @@ for _, target in ipairs({ "ClashMeta", "singbox", "v2ray", "Surge", "QX", "Shado
 		print("       fail:", target, tostring(err))
 	end
 end
-check("all 13 targets generate", ok)
+check("all " .. #targets .. " targets generate", ok)
 
 local yaml, ct, filename = core.generate_link(token, "ClashMeta")
 check("clashmeta has proxies", yaml and yaml:find("proxies:") ~= nil)

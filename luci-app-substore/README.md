@@ -52,9 +52,13 @@
 - SSR（`ssr://`）订阅源支持：仅能原样输出到支持它的客户端（Mihomo / Clash.Meta、Stash、
   Loon、Egern、Shadowrocket），对其余目标（sing-box、V2Ray/Xray、Surge 家族）丢弃；SSR
   不能与 vmess/vless 等其它协议互转（协议不兼容）
-- 13 种输出格式（全部实现）：Plain JSON、Stash、Clash.Meta / Mihomo YAML、Surfboard、
-  Surge、Surge Mac、Loon、Egern、Shadowrocket、Quantumult X、sing-box、V2Ray / Xray、
-  V2Ray URI
+- 15 种输出格式（全部实现）：Plain JSON、Stash、Clash.Meta / Mihomo YAML、Clash 原版、
+  Surfboard、Surge、Surge Mac、Loon、Egern、Shadowrocket、Quantumult X、sing-box、
+  V2Ray / Xray、V2Ray URI、WireGuard / AmneziaWG `.conf`
+  - **Clash 原版**：面向 Dreamacro Clash / ClashX / Clash for Windows，自动过滤原版不支持的
+    协议（vless / hysteria2 / hysteria / tuic / wireguard）
+  - **WireGuard / AmneziaWG `.conf`**：wg-quick 单接口配置，含 `[Interface]` / `[Peer]` 与
+    AmneziaWG 混淆参数，可直接导入 AmneziaWG 客户端
 
 **订阅链接**
 - 每个订阅独立随机 token → 公开下载端点
@@ -66,18 +70,18 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.3.0-r1`）。
+> （当前 `2.3.0-r2`）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.3.0-r1.ipk
+opkg install luci-app-substore-2.3.0-r2.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.3.0-r1.apk
+apk add --allow-untrusted luci-app-substore-2.3.0-r2.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
@@ -89,7 +93,7 @@ apk add --allow-untrusted luci-app-substore-2.3.0-r1.apk
 2. **更新** —— 下载、解析并过滤节点。
 3. **浏览节点** —— 筛选（分组 / 协议 / 关键词）、排序、探测延迟；勾选复选框后「删除」
    可批量删除，行内可编辑 / 删除 / 改分组，「刷新」重载列表。
-4. **导出** —— 任选 13 种格式之一，或复制订阅链接供下游客户端（Passwall / OpenClash / …）使用。
+4. **导出** —— 任选 15 种格式之一，或复制订阅链接供下游客户端（Passwall / OpenClash / …）使用。
 
 ## 目录结构
 
