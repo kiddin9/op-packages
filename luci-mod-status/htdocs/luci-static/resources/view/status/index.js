@@ -2,6 +2,7 @@
 'require view';
 'require dom';
 'require poll';
+'require fs';
 'require network';
 'require ui';
 
@@ -278,27 +279,14 @@ return view.extend({
 	},
 
 	load: function() {
-		var includeModules = [
-			{ name: 'view.status.include.10_system' },
-			{ name: 'view.status.include.19_cpu' },
-			{ name: 'view.status.include.15_ports', title: _('Port status'), deferFirstLoad: true },
-			{ name: 'view.status.include.20_memory' },
-			{ name: 'view.status.include.25_storage' },
-			{ name: 'view.status.include.30_network' },
-			{ name: 'view.status.include.40_dhcp', title: _('Online Hosts'), deferFirstLoad: true },
-			{ name: 'view.status.include.50_dsl' },
-			{ name: 'view.status.include.60_wifi' }
-		];
-
-		return Promise.all(includeModules.map(L.bind(function(spec) {
-			if (spec.deferFirstLoad)
-				return this.wrapDeferredInclude(spec);
-
-			return L.resolveDefault(L.require(spec.name), null);
-		}, this))).then(function(includes) {
-			return includes.filter(function(include) {
-				return include != null;
-			});
+		return L.resolveDefault(fs.list('/www' + L.resource('view/status/include')), []).then(function(entries) {
+			return Promise.all(entries.filter(function(e) {
+				return (e.type == 'file' && e.name.match(/\.js$/));
+			}).map(function(e) {
+				return 'view.status.include.' + e.name.replace(/\.js$/, '');
+			}).sort().map(function(n) {
+				return L.require(n);
+			}));
 		});
 	},
 
