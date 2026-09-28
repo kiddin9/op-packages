@@ -8,7 +8,7 @@ PKG_LICENSE:=GPL-2.0-only
 PKG_CPE_ID:=cpe:/a:Jackie264:luci-app-adguardhome
 
 LUCI_TITLE:=LuCI support for AdGuard Home
-LUCI_DEPENDS:=+luci-base
+LUCI_DEPENDS:=+luci-base +adguardhome
 LUCI_PKGARCH:=all
 USERID:=adguardhome=853:adguardhome=853
 
