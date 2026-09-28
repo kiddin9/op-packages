@@ -222,7 +222,7 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-atcommands atcommands && mvdir atcommands
         git_clone https://github.com/wukongdaily/luci-app-run run1 && mvdir run1
         git_clone https://github.com/szwjp/luci-app-homeproxy
-        git_clone https://github.com/szwjp/luci-app-homeproxy-pro
+        # git_clone https://github.com/szwjp/luci-app-homeproxy-pro
         git_clone https://github.com/weicaixian86/luci-app-pingpacket
         ) &
         (
