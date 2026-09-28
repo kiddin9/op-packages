@@ -7,8 +7,14 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI for Tailscale
 LUCI_DEPENDS:=+tailscale +jshn +curl +jq +flock
 LUCI_PKGARCH:=all
+
 PKG_VERSION:=1.2.17
-PKG_RELEASE:=5
+PKG_RELEASE:=6
+
+# Keep UCI configs as ordinary package data. The pre-install hook snapshots an
+# existing configuration before extraction; the UCI-defaults script restores it
+# afterwards. Declaring the same files as opkg conffiles conflicts with this
+# lifecycle and creates inactive *-opkg files during upgrades.
 
 define Package/luci-app-tailscale/conffiles
 /etc/config/tailscale
