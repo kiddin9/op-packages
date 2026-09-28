@@ -371,6 +371,7 @@ jobs:
         git_clone https://github.com/sbwml/luci-app-mentohust mentohust1 && mvdir mentohust1
         git_clone https://github.com/vernette/beszel-agent-openwrt && mvdir beszel-agent-openwrt
         # git_clone https://github.com/natpierce/luci-app-natpierce natpierce && mv natpierce/luci-app-natpierce ./;rm -rf natpierce
+        git_clone https://github.com/jearton/luci-app-tailscale
         ) &
         (
         git_sparse_clone revision https://github.com/Self-Hosting-Group/luci applications/luci-app-upnp
