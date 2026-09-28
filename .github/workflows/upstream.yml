@@ -401,7 +401,7 @@ jobs:
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/immortalwrt" \
         package/kernel/rtl8189es package/emortal/autocore package/emortal/automount \
         package/emortal/cpufreq package/network/utils/fullconenat package/network/utils/fullconenat-nft \
-        package/utils/mhz package/utils/pcat-manager
+        package/utils/mhz package/utils/pcat-manager package/system/opkg
         ) &
         (
         git_sparse_clone master "https://github.com/x-wrt/com.x-wrt" luci-app-macvlan luci-app-xwan
