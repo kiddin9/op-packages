@@ -1,0 +1,26 @@
+#!/bin/sh
+
+# Set default firewall rule for openbox-panel
+uci -q get firewall.openbox_panel >/dev/null || {
+	uci -q set firewall.openbox_panel=rule
+	uci -q set firewall.openbox_panel.name='Open-Box Panel'
+	uci -q set firewall.openbox_panel.src='lan'
+	uci -q set firewall.openbox_panel.proto='tcp'
+	uci -q set firewall.openbox_panel.dest_port='3036'
+	uci -q set firewall.openbox_panel.target='ACCEPT'
+	uci -q commit firewall
+}
+
+# Create open-box CLI link if available
+[ -e /usr/bin/open-box ] || {
+	if [ -f /usr/share/openbox/open-box ]; then
+		ln -sf /usr/share/openbox/open-box /usr/bin/open-box
+	elif [ -f /opt/open-box/openwrt/bin/open-box ]; then
+		ln -sf /opt/open-box/openwrt/bin/open-box /usr/bin/open-box
+	fi
+}
+
+# Clean LuCI cache
+rm -rf /tmp/luci-*cache* 2>/dev/null || true
+
+exit 0

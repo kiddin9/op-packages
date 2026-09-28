@@ -1,0 +1,208 @@
+#!/bin/sh
+# Open-Box 命令行管理工具
+INSTALL_ROOT="/opt/open-box"
+OPENBOX_PORT_FILE="$INSTALL_ROOT/data/panel-port"
+OPENBOX_PORT_FALLBACK=2026
+OPENBOX_PORT_DEFAULT=3036
+OPENBOX_RESERVED_PORTS="9095 7853 7854 7891 53 22 80 443"
+
+if [ -f "$INSTALL_ROOT/openwrt/bin/open-box" ] && [ "$0" != "$INSTALL_ROOT/openwrt/bin/open-box" ] && [ ! -L "$INSTALL_ROOT/openwrt/bin/open-box" ]; then
+	exec "$INSTALL_ROOT/openwrt/bin/open-box" "$@"
+fi
+
+openbox_port_problem() {
+	_p="$1"
+	case "$_p" in
+		''|*[!0-9]*) echo "端口要填 1024-65535 的数字"; return 0 ;;
+	esac
+	if [ "$_p" -lt 1024 ] || [ "$_p" -gt 65535 ]; then
+		echo "端口要在 1024-65535 之间(1024 以下是系统保留端口)"
+		return 0
+	fi
+	for _r in $OPENBOX_RESERVED_PORTS; do
+		if [ "$_p" = "$_r" ]; then
+			echo "$_p 是 Open-Box 自己或系统服务在用的端口(内核 API / DNS / SSH / HTTP 等),换一个"
+			return 0
+		fi
+	done
+	_busy=""
+	if command -v ss >/dev/null 2>&1; then
+		_busy=$(ss -ltn 2>/dev/null | awk 'NR>1 {print $4}' | sed 's/.*[:.]//' | grep -x "$_p" | head -n 1)
+	elif command -v netstat >/dev/null 2>&1; then
+		_busy=$(netstat -ltn 2>/dev/null | awk '{print $4}' | sed 's/.*[:.]//' | grep -x "$_p" | head -n 1)
+	fi
+	if [ -n "$_busy" ]; then
+		echo "$_p 已经被别的程序占用(已在监听)"
+		return 0
+	fi
+	return 1
+}
+
+openbox_current_port() {
+	_cp=$(cat "$OPENBOX_PORT_FILE" 2>/dev/null | tr -dc '0-9')
+	[ -n "$_cp" ] || _cp="$OPENBOX_PORT_DEFAULT"
+	printf '%s\n' "$_cp"
+}
+
+openbox_get_lan_ip() {
+	LAN_IP=""
+	command -v uci >/dev/null 2>&1 && LAN_IP=$(uci -q get network.lan.ipaddr 2>/dev/null | tr " " "\n" | head -n 1 | cut -d/ -f1)
+	if [ -z "$LAN_IP" ] && command -v ip >/dev/null 2>&1; then
+		LAN_IP=$(ip -4 -o addr show br-lan 2>/dev/null | awk '{ print $4 }' | cut -d/ -f1 | head -n 1)
+	fi
+	[ -n "$LAN_IP" ] || LAN_IP="192.168.1.1"
+	printf '%s\n' "$LAN_IP"
+}
+
+openbox_get_password() {
+	if [ -f "$INSTALL_ROOT/data/openbox.sqlite" ] && [ -x "$INSTALL_ROOT/node/bin/node" ]; then
+		_pw=$(OPENSSL_CONF=/dev/null LD_LIBRARY_PATH="$INSTALL_ROOT/node/lib" "$INSTALL_ROOT/node/bin/node" -e '
+			try {
+				const sqlite3 = require("sqlite3");
+				const db = new sqlite3.Database("'$INSTALL_ROOT'/data/openbox.sqlite", sqlite3.OPEN_READONLY, (err) => {
+					if (err) process.exit(1);
+					db.get("SELECT value FROM settings WHERE key = ?", ["password"], (e, row) => {
+						if (row && row.value) console.log(row.value);
+						db.close();
+					});
+				});
+			} catch (_) {}
+		' 2>/dev/null)
+		if [ -n "$_pw" ]; then
+			printf '%s\n' "$_pw"
+			return 0
+		fi
+	fi
+	if [ -f "$INSTALL_ROOT/data/password" ]; then
+		cat "$INSTALL_ROOT/data/password" 2>/dev/null
+		return 0
+	fi
+	echo "尚未设置(首次打开面板设置管理密码)"
+}
+
+openbox_get_version() {
+	_ver=$(sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p' "$INSTALL_ROOT/meta.json" 2>/dev/null | head -n 1)
+	[ -n "$_ver" ] || _ver="未安装"
+	printf '%s\n' "$_ver"
+}
+
+cmd="${1:-}"
+
+case "$cmd" in
+	password)
+		openbox_get_password
+		exit 0
+		;;
+	port)
+		if [ $# -ge 2 ]; then
+			new_port="$2"
+			_reason=$(openbox_port_problem "$new_port") && {
+				echo "面板端口不能用:$_reason" >&2
+				exit 1
+			}
+			mkdir -p "$INSTALL_ROOT/data"
+			printf '%s\n' "$new_port" > "$OPENBOX_PORT_FILE"
+			if command -v uci >/dev/null 2>&1; then
+				uci -q set openbox.main.port="$new_port"
+				uci -q set firewall.openbox_panel.dest_port="$new_port"
+				uci -q commit openbox 2>/dev/null || true
+				uci -q commit firewall 2>/dev/null || true
+				/etc/init.d/firewall reload >/dev/null 2>&1 || true
+			fi
+			echo "面板端口已修改为: $new_port"
+			/etc/init.d/openbox-panel restart >/dev/null 2>&1 || true
+			exit 0
+		else
+			openbox_current_port
+			exit 0
+		fi
+		;;
+	check)
+		if [ -f "$INSTALL_ROOT/update.sh" ]; then
+			sh "$INSTALL_ROOT/update.sh" --probe direct
+		elif [ -f /usr/share/openbox/update.sh ]; then
+			sh /usr/share/openbox/update.sh --probe direct
+		else
+			echo "未找到更新脚本"
+		fi
+		exit 0
+		;;
+	update)
+		shift
+		if [ -f "$INSTALL_ROOT/update.sh" ]; then
+			sh "$INSTALL_ROOT/update.sh" "$@"
+		elif [ -f /usr/share/openbox/update.sh ]; then
+			sh /usr/share/openbox/update.sh "$@"
+		else
+			echo "未找到更新脚本" >&2
+			exit 1
+		fi
+		exit 0
+		;;
+	restart)
+		/etc/init.d/openbox restart
+		/etc/init.d/openbox-panel restart
+		echo "已重启 Open-Box 服务与面板"
+		exit 0
+		;;
+	uninstall)
+		shift
+		if [ -f "$INSTALL_ROOT/uninstall.sh" ]; then
+			sh "$INSTALL_ROOT/uninstall.sh" "$@"
+		elif [ -f /usr/share/openbox/uninstall.sh ]; then
+			sh /usr/share/openbox/uninstall.sh "$@"
+		else
+			/etc/init.d/openbox stop
+			/etc/init.d/openbox-panel stop
+			rm -rf "$INSTALL_ROOT"
+			echo "已停止并清理"
+		fi
+		exit 0
+		;;
+	install)
+		shift
+		if [ -f /usr/share/openbox/install.sh ]; then
+			sh /usr/share/openbox/install.sh "$@"
+		else
+			curl -fsSL https://raw.githubusercontent.com/liandu2024/Open-Box/main/scripts/install.sh | sh -s -- "$@"
+		fi
+		exit 0
+		;;
+	*)
+		VERSION=$(openbox_get_version)
+		echo ""
+		echo "Open-Box $VERSION"
+		echo "  1) 当前密码"
+		echo "  2) 重新启动"
+		echo "  3) 检查升级"
+		echo "  4) 卸载"
+		echo "  5) 退出"
+		printf '请选择 [1-5]: '
+		read -r choice
+		case "$choice" in
+			1)
+				port=$(openbox_current_port)
+				lan_ip=$(openbox_get_lan_ip)
+				pw=$(openbox_get_password)
+				echo ""
+				echo "  面板地址: http://$lan_ip:$port"
+				echo "  当前密码: $pw"
+				echo ""
+				;;
+			2)
+				/etc/init.d/openbox restart
+				/etc/init.d/openbox-panel restart
+				echo "服务已重启。"
+				;;
+			3)
+				sh "$0" update
+				;;
+			4)
+				sh "$0" uninstall
+				;;
+			5|*)
+				exit 0
+				;;
+		esac
+		;;
+esac

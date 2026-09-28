@@ -1,0 +1,34 @@
+{
+	"luci-app-openbox": {
+		"description": "Grant UCI and system execution access for luci-app-openbox",
+		"read": {
+			"cgi-io": [ "backup" ],
+			"file": {
+				"/opt/open-box/meta.json": [ "read" ],
+				"/opt/open-box/data/panel-port": [ "read" ],
+				"/tmp/openbox-update.status": [ "read" ],
+				"/tmp/openbox-update.log": [ "read" ],
+				"/tmp/openbox-uninstall.status": [ "read" ],
+				"/tmp/openbox-uninstall.log": [ "read" ]
+			},
+			"uci": [ "network", "firewall", "openbox" ],
+			"ubus": {
+				"service": [ "list" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/etc/init.d/openbox": [ "exec" ],
+				"/etc/init.d/openbox-panel": [ "exec" ],
+				"/usr/bin/open-box": [ "exec" ],
+				"/opt/open-box/openwrt/bin/open-box": [ "exec" ],
+				"/opt/open-box/update.sh": [ "exec" ],
+				"/opt/open-box/uninstall.sh": [ "exec" ],
+				"/usr/share/openbox/install.sh": [ "exec" ],
+				"/usr/share/openbox/update.sh": [ "exec" ],
+				"/usr/share/openbox/uninstall.sh": [ "exec" ]
+			},
+			"uci": [ "firewall", "openbox" ]
+		}
+	}
+}
