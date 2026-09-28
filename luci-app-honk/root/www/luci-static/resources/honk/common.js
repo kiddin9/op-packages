@@ -420,25 +420,7 @@ function createConfigFileView(filePath, mapTitle, mapDesc, fieldTitle, successMs
 			o.wrap = 'off';
 			o.load = function(section_id) {
 				return readFile(filePath).then(function(content) {
-					if ((!content || !content.trim()) && filePath.endsWith('/api.dae')) {
-						return [
-							'# api.dae',
-							'# Configure API access for HONK dashboards and controllers.',
-							'',
-							'experimental {',
-							'    native_api {',
-							'        enabled: true',
-							"        listen: '0.0.0.0:9527'",
-							"        secret: 'honk114514'",
-							"        ui: '/etc/honk/doona'",
-							"        config_write: true",
-							"        geosite_download_url: 'https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/release/geosite.dat'",
-							"        geoip_download_url: 'https://raw.githubusercontent.com/QiuSimons/geoip-moedove/refs/heads/main/geoip.dat'",
-							'    }',
-							'}'
-						].join('\n') + '\n';
-					}
-					return content;
+					return content || '';
 				});
 			};
 			o.write = function(section_id, formvalue) {

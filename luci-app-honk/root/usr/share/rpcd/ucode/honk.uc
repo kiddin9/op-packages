@@ -233,7 +233,7 @@ function get_dashboard_info(req) {
 			});
 		}
 	}
-	if (!requested_type) requested_type = "doona";
+	if (!requested_type) requested_type = "none";
 
 	let api_cfg = get_api_config();
 	if (!api_cfg.is_legacy) {
@@ -264,6 +264,10 @@ function get_dashboard_info(req) {
 		has_clash_api: !!parsed_clash,
 		has_native_api: !!(parsed_native && parsed_native.enabled)
 	};
+
+	if (requested_type == "none") {
+		return res;
+	}
 
 	let target_default_ui = (requested_type == "zashboard") ? "/etc/honk/zashboard" : "/etc/honk/doona";
 	let other_default_ui = (requested_type == "zashboard") ? "/etc/honk/doona" : "/etc/honk/zashboard";
@@ -349,6 +353,17 @@ function switch_dashboard_api(target_type) {
 	clean_legacy_api_from_config(config_file);
 
 	system("mkdir -p /etc/honk/config.d");
+
+	if (target_type == "none" || !target_type) {
+		let cur = readfile(api_file);
+		if (cur && trim(cur) != "") {
+			writefile(api_file, "");
+			system("/etc/init.d/honk restart >/dev/null 2>&1 &");
+			return { success: true, type: "none" };
+		}
+		writefile(api_file, "");
+		return { success: true, type: "none", noop: true };
+	}
 
 	let api_cfg = get_api_config();
 	let parsed_clash = api_cfg.parsed_clash;
@@ -508,7 +523,7 @@ return {
 		switch_dashboard_api: {
 			args: { type: "string" },
 			call: function(req) {
-				let t = req.args ? req.args.type : "doona";
+				let t = req.args ? req.args.type : "none";
 				return switch_dashboard_api(t);
 			}
 		}

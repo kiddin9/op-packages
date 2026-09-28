@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0-r3] - 节点表单导入字段语言混合优化
+
+- 「添加本地订阅」表单导入 /「编辑节点」页：名称 / 分组 / 协议保持系统语言（中/英切换），其余技术参数字段固定为英文（Server / Port / Password / Cipher / Method / Security / Network / Header Type / Path / Obfs / Obfs Param / Obfs Password / Protocol Param / Skip Cert Verify / Private Key / Peer Public Key），与 Clash YAML / 分享链接字段名保持一致，提升可对照性
+
 ## [2.2.0-r2] - 节点页按钮顺序调整
 
 - 「节点」页「筛选」后的「刷新」「删除」按钮位置互换（现为：筛选 | 删除 | 刷新）
