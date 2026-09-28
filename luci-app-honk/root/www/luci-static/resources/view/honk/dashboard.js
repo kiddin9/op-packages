@@ -17,8 +17,9 @@ return view.extend({
 	},
 
 	render: function() {
-		if (honk && honk.applyAdvancedTabVisibility) {
-			honk.applyAdvancedTabVisibility();
+		var applyTabs = (honk && (honk.applyTabVisibility || honk.applyAdvancedTabVisibility));
+		if (applyTabs) {
+			applyTabs();
 		}
 		var sec = (uci.sections('honk', 'honk')[0] || {});
 		var sid = sec['.name'] || 'config';
@@ -85,13 +86,12 @@ return view.extend({
 				'style': 'margin-right: 10px;',
 				'change': function(ev) {
 					var newType = ev.target.value;
-					uci.set('honk', sid, 'dashboard', newType);
-					uci.save().then(function() {
-						return uci.apply();
-					}).then(function() {
-						return honk.callHonkSwitchDashboardApi(newType);
-					}).then(function() {
+					sel.disabled = true;
+					honk.callHonkSwitchDashboardApi(newType).then(function() {
 						window.location.reload();
+					}).catch(function(err) {
+						sel.disabled = false;
+						honk.showNotification(null, E('p', _('Failed to switch dashboard:') + ' ' + (err.message || err)), 'error');
 					});
 				}
 			});

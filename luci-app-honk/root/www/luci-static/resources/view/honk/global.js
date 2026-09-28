@@ -62,6 +62,8 @@ return view.extend({
 			var newDash = uci.get('honk', sid, 'dashboard') || 'none';
 			if (newDash !== oldDash) {
 				return honk.callHonkSwitchDashboardApi(newDash);
+			} else {
+				return honk.callHonkReload();
 			}
 		}).then(function() {
 			return ui.changes.apply(mode == '0');
