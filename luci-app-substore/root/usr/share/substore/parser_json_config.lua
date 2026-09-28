@@ -70,9 +70,33 @@ function M.parse_singbox_json(content)
 						if outbound.congestion_control then node_data.congestion_control = outbound.congestion_control end
 					elseif proto == "wireguard" then
 						node_data["private-key"] = outbound["private-key"] or outbound.private_key
-						node_data["peer-public-key"] = outbound["peer-public-key"] or outbound.peer_public_key
-						node_data["preshared-key"] = outbound["preshared-key"] or outbound.preshared_key
+						node_data["peer-public-key"] = outbound["peer-public-key"] or outbound.peer_public_key or outbound["public-key"] or outbound.public_key
+						node_data["public-key"] = outbound["public-key"] or outbound.public_key or outbound["peer-public-key"] or outbound.peer_public_key
+						node_data["preshared-key"] = outbound["preshared-key"] or outbound.preshared_key or outbound["pre-shared-key"] or outbound.pre_shared_key
+						node_data["pre-shared-key"] = outbound["pre-shared-key"] or outbound.pre_shared_key or outbound["preshared-key"] or outbound.preshared_key
+						-- local_address 允许字符串或字符串数组；数组时按是否含 ":" 分归 ip / ipv6
+						local la = outbound["local-address"] or outbound.local_address
+						if type(la) == "table" then
+							for _, a in ipairs(la) do
+								if type(a) == "string" and a ~= "" then
+									if a:find(":", 1, true) then
+										if node_data.ipv6 == nil then node_data.ipv6 = a end
+									else
+										if node_data.ip == nil then node_data.ip = a end
+									end
+								end
+							end
+						elseif type(la) == "string" and la ~= "" then
+							if la:find(":", 1, true) then node_data.ipv6 = la else node_data.ip = la end
+						end
+						node_data["allowed-ips"] = outbound["allowed-ips"] or outbound.allowed_ips
+						node_data.reserved = outbound.reserved
+						node_data["persistent-keepalive"] = outbound["persistent-keepalive"] or outbound.persistent_keepalive
+							or outbound.persistent_keepalive_interval
+						node_data["listen-port"] = outbound["listen-port"] or outbound.listen_port
 						if outbound.mtu then node_data.mtu = outbound.mtu end
+						node_data.dns = outbound.dns
+						node_data["amnezia-wg-option"] = outbound["amnezia-wg-option"] or outbound.amnezia_wg_option
 					elseif proto == "socks" or proto == "http" then
 						node_data.username = outbound.username
 						node_data.password = outbound.password
@@ -234,9 +258,19 @@ function M.parse_clash_json(content)
 						node_data.password = proxy.password
 					elseif proto == "wireguard" then
 						node_data["private-key"] = proxy["private-key"] or proxy.private_key
-						node_data["peer-public-key"] = proxy["peer-public-key"] or proxy.peer_public_key
-						node_data["preshared-key"] = proxy["preshared-key"] or proxy.preshared_key
+						node_data["peer-public-key"] = proxy["peer-public-key"] or proxy.peer_public_key or proxy["public-key"] or proxy.public_key
+						node_data["public-key"] = proxy["public-key"] or proxy.public_key or proxy["peer-public-key"] or proxy.peer_public_key
+						node_data["preshared-key"] = proxy["preshared-key"] or proxy.preshared_key or proxy["pre-shared-key"] or proxy.pre_shared_key
+						node_data["pre-shared-key"] = proxy["pre-shared-key"] or proxy.pre_shared_key or proxy["preshared-key"] or proxy.preshared_key
+						node_data.ip = proxy.ip or proxy["local-address"] or proxy.local_address
+						node_data.ipv6 = proxy.ipv6
+						node_data["allowed-ips"] = proxy["allowed-ips"] or proxy.allowed_ips
+						node_data.reserved = proxy.reserved
+						node_data["persistent-keepalive"] = proxy["persistent-keepalive"] or proxy.persistent_keepalive
+						node_data["listen-port"] = proxy["listen-port"] or proxy.listen_port
 						if proxy.mtu then node_data.mtu = proxy.mtu end
+						node_data.dns = proxy.dns
+						node_data["amnezia-wg-option"] = proxy["amnezia-wg-option"] or proxy.amnezia_wg_option
 					elseif proto == "socks" or proto == "http" then
 						node_data.username = proxy.username
 						node_data.password = proxy.password

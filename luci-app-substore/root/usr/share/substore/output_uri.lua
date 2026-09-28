@@ -123,8 +123,18 @@ function M.to_share_uri(n)
 			server = server,
 			port = tostring(port),
 			["private-key"] = n["private-key"] or n.private_key,
+			["public-key"] = n["public-key"] or n.public_key or n["peer-public-key"] or n.peer_public_key,
 			["peer-public-key"] = n["peer-public-key"] or n.peer_public_key,
+			["pre-shared-key"] = n["pre-shared-key"] or n.pre_shared_key or n["preshared-key"] or n.preshared_key,
 			["preshared-key"] = n["preshared-key"] or n.preshared_key,
+			ip = n.ip,
+			ipv6 = n.ipv6,
+			["allowed-ips"] = n["allowed-ips"],
+			reserved = n.reserved,
+			["persistent-keepalive"] = n["persistent-keepalive"],
+			["listen-port"] = n["listen-port"],
+			dns = n.dns,
+			["amnezia-wg-option"] = n["amnezia-wg-option"],
 		}
 		if n.mtu then json.mtu = tostring(n.mtu) end
 		if n.name then json.name = n.name end

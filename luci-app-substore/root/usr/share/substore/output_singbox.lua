@@ -114,12 +114,24 @@ function M.to_outbound(n)
 		if n.congestion_control then o.congestion_control = n.congestion_control end
 	elseif stype == "wireguard" then
 		local pk = n["private-key"] or n.private_key
-		local ppk = n["peer-public-key"] or n.peer_public_key
-		local psk = n["preshared-key"] or n.preshared_key
+		local ppk = n["peer-public-key"] or n.peer_public_key or n["public-key"] or n.public_key
+		local psk = n["pre-shared-key"] or n.pre_shared_key or n["preshared-key"] or n.preshared_key
 		if pk then o.private_key = pk end
 		if ppk then o.peer_public_key = ppk end
-		if psk then o.preshared_key = psk end
+		if psk then o.pre_shared_key = psk end
+		-- sing-box 的 local_address 接受字符串或字符串数组；同时有 IPv4/IPv6 时必须用数组，
+		-- 逗号拼接（"a,b"）不是合法值
+		local addr = {}
+		if n.ip then addr[#addr + 1] = n.ip end
+		if n.ipv6 then addr[#addr + 1] = n.ipv6 end
+		if #addr == 1 then o.local_address = addr[1]
+		elseif #addr > 1 then o.local_address = addr end
+		if n["allowed-ips"] then o.allowed_ips = n["allowed-ips"] end
+		if n.reserved then o.reserved = n.reserved end
+		if n["persistent-keepalive"] then o.persistent_keepalive_interval = tonumber(n["persistent-keepalive"]) end
+		if n["listen-port"] then o.listen_port = tonumber(n["listen-port"]) end
 		if n.mtu then o.mtu = tonumber(n.mtu) end
+		if n.dns then o.dns = n.dns end
 	elseif stype == "socks" then
 		if n.username then o.username = n.username end
 		if n.password then o.password = n.password end

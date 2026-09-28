@@ -40,6 +40,11 @@ function M.detect(content)
 			return "yaml"
 		end
 	end
+	-- wg-quick / AmneziaWG .conf：[Interface] 段 + PrivateKey 行（双条件收紧，避免误判普通文本）
+	local lower = content:lower()
+	if lower:match("%[interface%]") and lower:match("privatekey%s*=") then
+		return "wireguard-conf"
+	end
 	if stripped:find("vmess://", 1, true) or stripped:find("vless://", 1, true)
 		or stripped:find("trojan://", 1, true) or stripped:find("ssr://", 1, true)
 		or stripped:find("ss://", 1, true) or content:find("://", 1, true) then
@@ -365,13 +370,120 @@ local function parse_wireguard(uri, body)
 	local out = node.normalize({
 		proto = "wireguard", name = name, server = j.server, port = tonumber(j.port),
 		["private-key"] = j["private-key"] or j.private_key,
-		["peer-public-key"] = j["peer-public-key"] or j.peer_public_key,
-		["preshared-key"] = j["preshared-key"] or j.preshared_key,
+		["peer-public-key"] = j["peer-public-key"] or j.peer_public_key or j["public-key"] or j.public_key,
+		["public-key"] = j["public-key"] or j.public_key or j["peer-public-key"] or j.peer_public_key,
+		["preshared-key"] = j["preshared-key"] or j.preshared_key or j["pre-shared-key"] or j.pre_shared_key,
+		["pre-shared-key"] = j["pre-shared-key"] or j.pre_shared_key or j["preshared-key"] or j.preshared_key,
+		ip = j.ip or j["local-address"] or j.local_address,
+		ipv6 = j.ipv6,
+		["allowed-ips"] = j["allowed-ips"] or j.allowed_ips,
+		reserved = j.reserved,
+		["persistent-keepalive"] = j["persistent-keepalive"] or j.persistent_keepalive,
+		mtu = tonumber(j.mtu),
+		dns = j.dns,
+		["amnezia-wg-option"] = j["amnezia-wg-option"] or j.amnezia_wg_option,
 		raw = uri,
 	})
-	if j.mtu then out.mtu = tonumber(j.mtu) end
 	if out.name == "" and j.name then out.name = j.name end
 	return out
+end
+
+-- AmneziaWG 参数随版本演进，未知键直接丢弃：不猜语义，避免把上游新参数错误映射到 mihomo 字段。
+-- 取值统一走 tonumber-or-raw：数值型（jc/s1/h1…）转数字；非数值载荷（i1..i5、h1 的 "a-b" 区间）保留字符串。
+local AWG_CONF_KEYS = {
+	"jc", "jmin", "jmax", "s1", "s2", "s3", "s4",
+	"h1", "h2", "h3", "h4",
+	"i1", "i2", "i3", "i4", "i5",
+	"j1", "j2", "j3", "itime",
+}
+
+-- wg-quick / AmneziaWG .conf 解析（[Interface] / [Peer] 分段，Key = Value）
+-- AmneziaWG 客户端导出的 .conf 即标准 wg-quick 格式 + Jc/Jmin/Jmax/S1/S2/H1..H4 等键
+local function parse_wireguard_conf(content)
+	local iface, peer = {}, {}
+	local section = nil
+	for line in content:gmatch("[^\r\n]+") do
+		local s = util.trim(line)
+		if s == "" or s:sub(1, 1) == "#" or s:sub(1, 1) == ";" then
+			-- 空行 / 注释
+		elseif s:sub(1, 1) == "[" then
+			local name = s:match("^%[%s*(.-)%s*%]")
+			name = name and name:lower() or ""
+			if name == "interface" then section = iface
+			elseif name == "peer" then section = peer
+			else section = nil end
+		elseif section then
+			local k, v = s:match("^([^=]+)=(.*)$")
+			if k then
+				k = util.trim(k):lower()
+				v = util.trim(v)
+				if v ~= "" then section[k] = v end
+			end
+		end
+	end
+
+	local host, port = util.split_hostport(peer["endpoint"] or "")
+	if not host or host == "" or not port then return nil, "bad wireguard conf: no endpoint" end
+
+	local out = {
+		proto = "wireguard",
+		server = host,
+		port = tonumber(port),
+		["private-key"] = iface["privatekey"],
+		["public-key"] = peer["publickey"],
+		["pre-shared-key"] = peer["presharedkey"],
+		["persistent-keepalive"] = tonumber(peer["persistentkeepalive"]),
+		["listen-port"] = tonumber(iface["listenport"]),
+		mtu = tonumber(iface["mtu"]),
+	}
+
+	-- Address 可含多个地址（逗号分隔），按是否含 ":" 分别归入 ip / ipv6
+	for a in (iface["address"] or ""):gmatch("[^,]+") do
+		a = util.trim(a)
+		if a ~= "" then
+			if a:find(":", 1, true) then
+				if out.ipv6 == nil then out.ipv6 = a end
+			else
+				if out.ip == nil then out.ip = a end
+			end
+		end
+	end
+
+	-- AllowedIPs 拆分数组
+	local allowed = {}
+	for a in (peer["allowedips"] or ""):gmatch("[^,]+") do
+		a = util.trim(a)
+		if a ~= "" then allowed[#allowed + 1] = a end
+	end
+	if #allowed > 0 then out["allowed-ips"] = allowed end
+
+	-- DNS 拆分：单值存字符串，多值存数组
+	local dns = {}
+	for a in (iface["dns"] or ""):gmatch("[^,]+") do
+		a = util.trim(a)
+		if a ~= "" then dns[#dns + 1] = a end
+	end
+	if #dns == 1 then out.dns = dns[1]
+	elseif #dns > 1 then out.dns = dns end
+
+	-- Reserved（部分客户端写法，逗号或空格分隔）
+	local reserved = {}
+	for a in (iface["reserved"] or ""):gmatch("[^,%s]+") do
+		reserved[#reserved + 1] = tonumber(a) or a
+	end
+	if #reserved > 0 then out.reserved = reserved end
+
+	-- AmneziaWG 参数
+	local awg = {}
+	for _, k in ipairs(AWG_CONF_KEYS) do
+		local raw = iface[k]
+		if raw ~= nil and raw ~= "" then
+			awg[k] = tonumber(raw) or raw
+		end
+	end
+	if next(awg) then out["amnezia-wg-option"] = awg end
+
+	return node.normalize(out)
 end
 
 -- 解析单条节点 URI，返回节点表或 nil, err
@@ -665,6 +777,10 @@ function M.parse(content)
 	elseif format == "surge" then
 		local nodes = parser_surge.parse(content)
 		return { nodes = nodes, format = "surge" }
+	elseif format == "wireguard-conf" then
+		local n, err = parse_wireguard_conf(content)
+		if not n then return nil, err end
+		return { nodes = { n }, format = "wireguard-conf" }
 	end
 	return nil, "无法识别的订阅格式"
 end

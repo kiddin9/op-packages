@@ -41,7 +41,7 @@
 <form method="get" action="<%=luci.dispatcher.build_url('admin/services/substore/nodes')%>" class="cbi-map">
 	<input type="hidden" name="id" value="<%=id%>"/>
 	<div style="display:flex;gap:0.5em;align-items:center;flex-wrap:wrap;margin:0.5em 0">
-		<label><%:Protocol%>:
+		<label><%:Type%>:
 			<select name="proto">
 				<option value=""><%:All%></option>
 				<% for _, p in ipairs({"vmess","vless","trojan","shadowsocks","ssr","hysteria2","tuic","hysteria","wireguard","socks"}) do %>
@@ -94,7 +94,7 @@
 		<th style="width:1em"><input type="checkbox" onclick="substore_toggle_all(this)"/></th>
 		<th><%:Name%></th>
 		<th><%:Group%></th>
-		<th><%:Protocol%></th>
+		<th><%:Type%></th>
 		<th><%:Server%></th>
 		<th><%:Port%></th>
 		<th><%:Latency%></th>

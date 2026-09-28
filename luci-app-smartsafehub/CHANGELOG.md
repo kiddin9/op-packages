@@ -1,5 +1,22 @@
 # 변경 기록
 
+## [0.2.24-r1] - 2026-09-28
+
+### 수정
+
+- 내부 설정 충돌을 해결하였습니다.
+
+## [0.2.23-r2] - 2026-09-28
+
+### 수정
+
+- 펌웨어에서 공통 `/etc/config/system` 파일을 통째로 덮어쓰지 않고 `90-smartsafehub-system-defaults` uci-defaults 스크립트가 SmartSafeHub 기본 hostname, 시간대, 로그와 NTP 옵션만 적용하도록 변경했습니다.
+- OpenWrt가 기기별로 생성하는 `system.@system[0].compat_version`을 그대로 보존해 A3004T처럼 `compat_version=1.1`을 사용하는 장치에서 정상 Sysupgrade 이미지가 `FIRMWARE_IMAGE_INVALID`로 거부되지 않도록 했습니다.
+
+### 테스트
+
+- system/NTP 섹션이 이미 존재할 때 섹션을 재생성하지 않는지, `compat_version`을 수정하거나 삭제하지 않는지, 누락된 섹션만 방어적으로 생성하는지 검증하는 회귀 테스트를 추가했습니다.
+
 ## [0.2.23-r1] - 2026-09-28
 
 ### 개선

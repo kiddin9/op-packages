@@ -341,6 +341,11 @@ local FORM_KEYS = {
 	["skip-cert-verify"] = true, skip_cert_verify = true, security = true, flow = true,
 	["obfs-password"] = true, obfs_password = true,
 	["private-key"] = true, private_key = true, ["peer-public-key"] = true, peer_public_key = true,
+	["public-key"] = true, public_key = true, ["pre-shared-key"] = true, preshared_key = true, 
+	ip = true, ipv6 = true, ["allowed-ips"] = true, allowed_ips = true,
+	reserved = true, ["persistent-keepalive"] = true, persistent_keepalive = true,
+	["listen-port"] = true, listen_port = true,
+	mtu = true, dns = true, ["amnezia-wg-option"] = true,
 }
 
 -- 合并表单节点到原节点：表单字段整体替换（可清空），非表单字段保留

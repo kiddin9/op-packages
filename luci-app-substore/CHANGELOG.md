@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0-r1] - wg-quick / AmneziaWG .conf 导入与导出修复
+
+- 新增 wg-quick / AmneziaWG `.conf` 文本导入：解析 `[Interface]` / `[Peer]` 分段
+  - `[Interface]`：PrivateKey / Address（自动区分 IPv4 与 IPv6）/ ListenPort / MTU / DNS
+  - `[Peer]`：PublicKey / PresharedKey / AllowedIPs（拆分为数组）/ PersistentKeepalive / Endpoint（拆出 server + port，支持 `[v6]:port`）
+  - AmneziaWG 参数（Jc/Jmin/Jmax/S1–S4/H1–H4/I1–I5/J1–J3/Itime）按白名单映射到 `amnezia-wg-option`，未知键丢弃（不猜语义）
+  - 键名大小写不敏感，支持 `#` / `;` 注释；缺少 Endpoint 时明确报错而非产出半成品节点
+  - 本地订阅文本导入与远程订阅下载同时生效（无需改 sync 流程）
+- 修复 P1 引入的数组输出缺陷：clash.meta 的 `allowed-ips` / `reserved` / `dns` 值为数组时改用 YAML 列表输出，不再产生 `table: 0x...`
+- 修复 sing-box `local_address`：同时有 IPv4/IPv6 时输出数组，不再逗号拼接（非法值）
+- `amnezia-wg-option` 子块按键名排序输出，同一节点每次导出结果一致，便于 diff
+- 修复 `parser_clash_yaml` 列表项误判：`- "::/0"` 等引号标量含冒号时不再被解析成 table
+- 补全 sing-box / Clash JSON 导入：`local_address` 数组拆分、`persistent_keepalive_interval`、`listen_port`、`amnezia-wg-option`
+- 新增 `listen-port` 字段贯通全链路（表单 / FORM_KEYS / clash.meta / sing-box / URI 输出）
+- 新增测试 `tests/wireguard_conf_test.lua`（61 项）、`tests/amnezia_wg_test.lua`（67 项）
+- 版本号 2.2.0-r5 → 2.3.0-r1；README.md / README.en.md / docs/INSTALL.md 同步
+
+## [2.2.0-r5] - WireGuard 完整字段与 AmneziaWG 支持
+
+- WireGuard 节点补全字段：public-key/pre-shared-key/ip/ipv6/allowed-ips/reserved/persistent-keepalive/mtu/dns/amnezia-wg-option
+- Clash Meta 导出字段名修正为 public-key/pre-shared-key，补齐 ip/allowed-ips 等必填项，支持 amnezia-wg-option 子块全量输出
+- sing-box 导出修正 pre_shared_key，补齐 local_address/reserved/persistent_keepalive_interval
+- parser 补读 WireGuard 扩展字段，兼容旧名 peer-public-key/preshared-key
+- core FORM_KEYS 补入 WireGuard 扩展字段，避免表单编辑后丢失
+- nodeform.js PROTO_FIELDS.wireguard 扩充，表单显示完整字段
+- local_form.htm / node_edit.htm FIELD_LABELS 补入 WireGuard 扩展字段标签
+- parser_clash_yaml 补内联数组解析，支持 reserved/allowed-ips
+- output_clash_meta esc_yaml 修复 find 平文匹配 bug
+- 版本号 2.2.0-r4 → 2.2.0-r5；README/INSTALL 同步
+
+## [2.2.0-r4] - 节点协议标签统一为 Type / 类型
+
+- 节点列表页筛选标签与表头由 `Protocol / 协议` 统一改为 `Type / 类型`
+- 节点编辑 / 本地订阅表单导入的协议选择标签由 `Protocol` 改为 `Type`，中文显示为“类型”
+- `nodeform.js` 标签键由 `protocol` 改为 `type`，与下拉框 `data-k="type"` 一致
+- `local_form.htm` / `node_edit.htm` 的 `FIELD_LABELS` 由 `"protocol": "<%:Protocol%>"` 改为 `"type": "<%:Type%>"`
+- 版本号 2.2.0-r3 → 2.2.0-r4；README.md / README.en.md / docs/INSTALL.md 版本同步
+
 ## [2.2.0-r3] - 节点表单导入字段语言混合优化
 
 - 「添加本地订阅」表单导入 /「编辑节点」页：名称 / 分组 / 协议保持系统语言（中/英切换），其余技术参数字段固定为英文（Server / Port / Password / Cipher / Method / Security / Network / Header Type / Path / Obfs / Obfs Param / Obfs Password / Protocol Param / Skip Cert Verify / Private Key / Peer Public Key），与 Clash YAML / 分享链接字段名保持一致，提升可对照性

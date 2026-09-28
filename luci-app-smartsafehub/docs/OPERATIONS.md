@@ -152,6 +152,12 @@ SmartSafeHub 펌웨어는 OpenWrt 기본 `/etc/rc.button/reset`과 제품 전용
 
 `0.2.22-r12` 이상 패키지는 실행 중인 장치에 OpenWrt 기본 reset handler가 남아 있으면 live package upgrade를 중단합니다. 이 경우 관리 소프트웨어만 먼저 올리지 말고 Reset Policy v1 config로 빌드한 펌웨어를 먼저 설치해야 합니다. 펌웨어 이미지에 패키지가 함께 포함되는 정상 빌드에서는 rootfs 생성 시 기본 handler가 제거된 상태이므로 충돌하지 않습니다.
 
+### 펌웨어 공통 system 기본값
+
+펌웨어 build overlay에서 `/etc/config/system` 전체를 제공하면 OpenWrt가 장치별로 생성하는 `compat_version` 같은 메타데이터를 덮어쓸 수 있습니다. 특히 A3004T처럼 Sysupgrade metadata가 `compat_version=1.1`인 장치에서는 실행 중인 `/etc/config/system`에 값이 없을 경우 현재 버전을 1.0으로 판단해 정상 이미지도 호환성 불일치로 거부할 수 있습니다.
+
+따라서 build 서버의 `overlays/common/etc/config/system`은 사용하지 않고, SmartSafeHub 패키지의 `/etc/uci-defaults/90-smartsafehub-system-defaults`가 기존 system 섹션을 유지한 채 hostname, 시간대, 로그와 NTP 옵션만 갱신합니다. 새 펌웨어를 만들기 전에 외부 build overlay의 기존 `/etc/config/system` 파일을 반드시 제거해야 합니다.
+
 비밀번호 복구는 `/etc/smartsafehub/password-recovery` marker로 추적합니다. helper는 root 비밀번호만 비우고 Dropbear의 기존 enable 상태를 marker에 기록한 뒤 SSH를 중지/비활성화합니다. 재부팅 후 공개 recovery bridge는 marker가 존재하고 root 비밀번호가 비어 있을 때만 `system_root_password_status`와 `system_root_password_set` 두 RPC로 제한된 15분 ubus 세션을 발급하므로 일반 로그인 화면 없이 복구 UI로 바로 진입할 수 있습니다. 새 관리자 비밀번호 설정이 완료되면 marker를 삭제하고 이전 SSH enable 상태를 복원합니다.
 
 ## 진단 다운로드 확인

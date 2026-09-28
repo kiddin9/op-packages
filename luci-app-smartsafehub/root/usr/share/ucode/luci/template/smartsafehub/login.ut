@@ -10,16 +10,16 @@
     <meta name="robots" content="noindex,nofollow,noarchive">
     <meta name="referrer" content="same-origin">
     <title>SmartSafeHub</title>
-    <link rel="icon" type="image/svg+xml" href="/luci-static/smartsafehub/favicon.svg?v=0.2.23-r1">
+    <link rel="icon" type="image/svg+xml" href="/luci-static/smartsafehub/favicon.svg?v=0.2.24-r1">
   </head>
   <body style="margin:0;background:#f8fafc;min-height:100vh;">
     <div
       id="smartsafehub-entry-root"
       data-asset-base="/luci-static/smartsafehub/"
-      data-asset-version="0.2.23-r1"
+      data-asset-version="0.2.24-r1"
       style="display:block;width:100%;min-height:100vh;"
     ></div>
     <noscript>SmartSafeHub를 사용하려면 JavaScript를 활성화해 주세요.</noscript>
-    <script type="module" src="/luci-static/smartsafehub/app.js?v=0.2.23-r1"></script>
+    <script type="module" src="/luci-static/smartsafehub/app.js?v=0.2.24-r1"></script>
   </body>
 </html>

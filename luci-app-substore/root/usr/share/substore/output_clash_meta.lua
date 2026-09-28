@@ -6,7 +6,8 @@ local M = {}
 local function esc_yaml(s)
 	s = tostring(s or "")
 	s = s:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n")
-	if s:find("[ :#{}[\],&*?|>'\"%@`]", 1, true) or s:match("^[-?]*:") then
+	-- 注意：这里必须用 Lua 模式（不能传 plain=true），否则整串被当作字面量、永不匹配
+	if s:find("[ :#{}%[%],&*?|>'\"%@`]") or s:match("^[-?]*:") then
 		return '"' .. s .. '"'
 	end
 	return s
@@ -22,6 +23,16 @@ local function yaml_list(items, level)
 		out[#out + 1] = indent(level) .. "- " .. esc_yaml(v)
 	end
 	return table.concat(out, "\n")
+end
+
+-- 值可能是标量也可能是数组：数组输出为 YAML 列表，标量输出为单行
+local function yaml_value(lines, key, v, level)
+	if type(v) == "table" then
+		lines[#lines + 1] = indent(level) .. key .. ":"
+		lines[#lines + 1] = yaml_list(v, level + 1)
+	else
+		lines[#lines + 1] = indent(level) .. key .. ": " .. esc_yaml(v)
+	end
 end
 
 local PROTOCOL_TYPE_MAP = {
@@ -161,14 +172,45 @@ local function format_node(node)
 		if node["private-key"] then
 			lines[#lines + 1] = "    private-key: " .. esc_yaml(node["private-key"])
 		end
-		if node["peer-public-key"] then
-			lines[#lines + 1] = "    peer-public-key: " .. esc_yaml(node["peer-public-key"])
+		if node["public-key"] or node["peer-public-key"] then
+			lines[#lines + 1] = "    public-key: " .. esc_yaml(node["public-key"] or node["peer-public-key"])
 		end
-		if node["preshared-key"] then
-			lines[#lines + 1] = "    preshared-key: " .. esc_yaml(node["preshared-key"])
+		if node["pre-shared-key"] or node["preshared-key"] then
+			lines[#lines + 1] = "    pre-shared-key: " .. esc_yaml(node["pre-shared-key"] or node["preshared-key"])
 		end
-		if node.uuid then
-			lines[#lines + 1] = "    uuid: " .. esc_yaml(node.uuid)
+		if node.ip then
+			lines[#lines + 1] = "    ip: " .. esc_yaml(node.ip)
+		end
+		if node.ipv6 then
+			lines[#lines + 1] = "    ipv6: " .. esc_yaml(node.ipv6)
+		end
+		if node["allowed-ips"] then
+			yaml_value(lines, "allowed-ips", node["allowed-ips"], 2)
+		end
+		if node.reserved then
+			yaml_value(lines, "reserved", node.reserved, 2)
+		end
+		if node["persistent-keepalive"] then
+			lines[#lines + 1] = "    persistent-keepalive: " .. esc_yaml(node["persistent-keepalive"])
+		end
+		if node["listen-port"] then
+			lines[#lines + 1] = "    listen-port: " .. esc_yaml(node["listen-port"])
+		end
+		if node.mtu then
+			lines[#lines + 1] = "    mtu: " .. esc_yaml(node.mtu)
+		end
+		if node.dns then
+			yaml_value(lines, "dns", node.dns, 2)
+		end
+		if type(node["amnezia-wg-option"]) == "table" then
+			lines[#lines + 1] = "    amnezia-wg-option:"
+			-- 排序输出，保证同一节点每次导出结果一致（便于 diff / 校验）
+			local keys = {}
+			for k in pairs(node["amnezia-wg-option"]) do keys[#keys + 1] = k end
+			table.sort(keys)
+			for _, k in ipairs(keys) do
+				lines[#lines + 1] = "      " .. k .. ": " .. esc_yaml(node["amnezia-wg-option"][k])
+			end
 		end
 	end
 

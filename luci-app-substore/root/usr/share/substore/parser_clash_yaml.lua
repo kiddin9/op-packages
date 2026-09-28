@@ -32,6 +32,16 @@ local function scalar(raw)
 	if raw == "false" or raw == "False" or raw == "FALSE" then return false end
 	if raw == "null" or raw == "~" or raw == "" then return nil end
 	raw = raw:gsub('^"(.*)"$', "%1"):gsub("^'(.*)'$", "%1")
+	-- 内联数组 [1,2,3] / ['a','b']
+	if raw:sub(1,1) == "[" and raw:sub(-1) == "]" then
+		local arr = {}
+		for item in raw:sub(2,-2):gmatch("[^,%s]+") do
+			item = item:gsub('^"(.*)"$', "%1"):gsub("^'(.*)'$", "%1")
+			local n = tonumber(item)
+			if n then arr[#arr+1]=n else arr[#arr+1]=item end
+		end
+		return arr
+	end
 	local n = tonumber(raw)
 	if n then return n end
 	return raw
@@ -106,7 +116,9 @@ local function parse_yaml(content)
 				if type(obj) == "table" then m = obj end
 			else
 				local k, v = dash:match("^([^:]+):%s*(.*)$")
-				if k and v ~= "" then
+				-- 引号开头的列表项是标量而非映射：避免把 "- \"::/0\"" 里的冒号
+				-- 当成 key:value 分隔符，从而把整个标量解析成 table
+				if k and v ~= "" and not dash:match("^[\"']") then
 					m = { [k:gsub("%s*$", "")] = scalar(v) }
 				end
 			end
