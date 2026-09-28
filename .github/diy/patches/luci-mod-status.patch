@@ -125,3 +125,7 @@
  				E('button', {
  					'class': 'btn cbi-button',
  					'click': function() { location.href = 'nftables/iptables' }
+diff --git a/luci-mod-status/htdocs/luci-static/resources/view/status/include/20_memory.js b/luci-mod-status/htdocs/luci-static/resources/view/status/include/12_memory.js
+similarity index 100%
+rename from luci-mod-status/htdocs/luci-static/resources/view/status/include/20_memory.js
+rename to luci-mod-status/htdocs/luci-static/resources/view/status/include/12_memory.js
