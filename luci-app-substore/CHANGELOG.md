@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0-r2] - 节点页按钮顺序调整
+
+- 「节点」页「筛选」后的「刷新」「删除」按钮位置互换（现为：筛选 | 删除 | 刷新）
+
 ## [2.2.0-r1] - 节点页批量选择与操作
 
 - 「节点」页关键词搜索框缩短为原长度的 3/5（`size` 默认 20 → 12）

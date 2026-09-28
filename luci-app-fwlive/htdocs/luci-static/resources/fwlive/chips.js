@@ -78,6 +78,7 @@ function renderFilterChips(host, state, callbacks) {
 		if (!val) continue;
 
 		const parsed = log.parseFilterValue(val);
+		if (!parsed.value) continue;
 		const negated = parsed.negate;
 		const kids = [];
 		const lead = chipLeadingSym(negated);

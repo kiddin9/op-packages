@@ -243,11 +243,6 @@ return view.extend({
 			_('Wired users do not need to authenticate to access the internet.'));
 		o.rmempty = false;
 
-		o = s.taboption('advanced', form.Flag, 'apple_cna', _('Apple CNA'),
-			_('Enable Apple Captive Network Assistant.'));
-		o.rmempty = false;
-		o.default = false;
-
 		o = s.taboption('advanced', form.Flag, 'js_filter', _('JS Filter'),
 			_('Enable JS redirect.'));
 		o.rmempty = false;

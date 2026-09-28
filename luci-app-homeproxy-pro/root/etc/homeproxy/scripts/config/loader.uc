@@ -392,6 +392,7 @@ export const Loader = {
 			udp_filtering: opt(uci, 'main', 'udp_filtering'),
 			udp_nat_max: opt(uci, 'main', 'udp_nat_max'),
 			cn_ip_fallback: opt(uci, 'main', 'cn_ip_fallback'),
+			sniffer_advanced_mode: opt(uci, 'main', 'sniffer_advanced_mode'),
 			main_urltest_nodes: opt(uci, 'main', 'main_urltest_nodes') || [],
 			main_urltest_interval: opt(uci, 'main', 'main_urltest_interval'),
 			main_urltest_tolerance: opt(uci, 'main', 'main_urltest_tolerance'),

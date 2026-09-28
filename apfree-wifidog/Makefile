@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=apfree-wifidog
-PKG_VERSION:=9.09.2947
-PKG_RELEASE:=2
+PKG_VERSION:=9.09.2955
+PKG_RELEASE:=3
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/liudf0716/$(PKG_NAME)/tar.gz/$(PKG_VERSION)?
@@ -22,6 +22,11 @@ PKG_LICENSE_FILES:=COPYING
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
+
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) /media/windows/github/wifidogx/apfree-wifidog/* $(PKG_BUILD_DIR)/
+endef
 
 define Package/apfree-wifidog
   SUBMENU:=Captive Portals

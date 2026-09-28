@@ -69,8 +69,8 @@
 		</label>
 		<label style="margin-left:0.5em"><input type="checkbox" name="desc" value="1" <%=sort_desc and "checked" or ""%>/> <%:Desc%></label>
 		<input type="submit" class="cbi-button cbi-button-apply" value="<%:Filter%>"/>
-		<button type="button" class="cbi-button" onclick="location.reload()"><%:Refresh%></button>
 		<button type="button" class="cbi-button cbi-button-reset" onclick="substore_delete_selected()"><%:Delete%></button>
+		<button type="button" class="cbi-button" onclick="location.reload()"><%:Refresh%></button>
 		<button type="button" class="cbi-button" onclick="runProbe('ping')">Ping</button>
 		<button type="button" class="cbi-button" onclick="runProbe('tcping')">TCPing</button>
 		<button type="button" class="cbi-button" onclick="runProbe('url')"><%:URL Test%></button>

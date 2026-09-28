@@ -1176,10 +1176,15 @@ return view.extend({
 			resumeMerge: resumeMerge
 		});
 		if (recoveringTimeoutProvider && !this.lastPollError) {
-			await Promise.all([this.loadRulesMap(epoch), this.loadLoggingStatus(epoch)]);
-			/* Recovery RPCs can outlive the poll epoch; don't repaint stale views. */
-			if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;
-			this.refreshBufferedRuleLabels();
+			try {
+				await Promise.all([this.loadRulesMap(epoch), this.loadLoggingStatus(epoch)]);
+				/* Recovery RPCs can outlive the poll epoch; don't repaint stale views. */
+				if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;
+				this.refreshBufferedRuleLabels();
+			} catch (_e) {
+				/* A throw here is local UI work after a successful poll. Leave
+				 * lastPollError / lastPollErrorCode as applyPollReply set them. */
+			}
 		} else if (this.lastRulesError === 'rules_unavailable') {
 			await this.loadRulesMap(epoch);
 			if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;

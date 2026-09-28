@@ -8,6 +8,8 @@
 参考 [Sub-Store](https://github.com/sub-store-org/Sub-Store) 的功能与用户体验，
 独立设计与实现：不使用 Docker，不依赖外部云端服务，资源占用友好，适配低配置路由器。
 
+![Screenshot](screenshot.png)
+
 ## 功能特性
 
 **订阅管理**
@@ -59,18 +61,18 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.2.0-r1`）。
+> （当前 `2.2.0-r2`）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.2.0-r1.ipk
+opkg install luci-app-substore-2.2.0-r2.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.2.0-r1.apk
+apk add --allow-untrusted luci-app-substore-2.2.0-r2.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。

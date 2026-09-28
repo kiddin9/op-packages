@@ -35,18 +35,31 @@ import { get_outbound, get_resolver, get_ruleset, get_direct_override } from './
 
 /* Initialise config.route with the always-on rules and the defaults
  * that every mode shares (dns-in hijack, sniff, optional auto_detect).
- * The caller must have created an empty config.route; we mutate it. */
+ * The caller must have created an empty config.route; we mutate it.
+ *
+ * Sniff tuning follows §2.7 of docs/linux.json 与 pro 的差距分析.md:
+ * the default rule is the conservative 300ms / unconstrained sniffer list
+ * (tutorial demo recommends 100ms + ['http','tls','stun','quic','dns'],
+ * which costs less CPU but is a behaviour change). sniffer_advanced_mode
+ * is the opt-in switch that flips to the tutorial profile. */
 function initRoute(config, ctx) {
+	const sniff_rule = (ctx.sniffer_advanced_mode === '1')
+		? {
+			action: 'sniff',
+			sniffer: ['http', 'tls', 'stun', 'quic', 'dns'],
+			timeout: '100ms'
+		}
+		: {
+			action: 'sniff',
+			timeout: '300ms'
+		};
 	config.route = {
 		rules: [
 			{
 				inbound: 'dns-in',
 				action: 'hijack-dns'
 			},
-			{
-				action: 'sniff',
-				timeout: '300ms'
-			}
+			sniff_rule
 		],
 		rule_set: [],
 		auto_detect_interface: isEmpty(ctx.default_interface) ? true : null,

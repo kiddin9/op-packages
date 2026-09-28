@@ -90,6 +90,15 @@ if (!migration_crontab) {
 if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 	uci.set(uciconfig, ucimain, 'log_level', 'warn');
 
+/* v28.9.1.16: cn_ip_fallback default flipped to '1' (tutorial §2.1 / docs/linux.json 与 pro 的差距分析.md).
+ * Existing users get the behaviour change only when they ask for it, so write
+ * '0' explicitly into their config on upgrade; new installs read '1' straight
+ * from /etc/config/homeproxy (the package ships with that as the default).
+ * isEmpty() is the same gate log_level uses, so an upgrade that already has
+ * the option set (the fresh-install path of a prior release) keeps its value. */
+if (isEmpty(uci.get(uciconfig, ucimain, 'cn_ip_fallback')))
+	uci.set(uciconfig, ucimain, 'cn_ip_fallback', '0');
+
 if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
 

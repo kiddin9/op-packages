@@ -74,6 +74,75 @@
 
 **一句话总结**：pro 的核心价值是**把"单文件能跑"变成"orchestrator + table-driven adapter + 可独立测试的模块"**，并把约束、质量、回滚三件事从靠人盯变成靠代码执行（arch-guard 131 checks 静态锁住跨文件不变量）。
 
+## 与七尺宇 demo 的对照
+
+> 教程《sing-box 1.14 配置文件精讲》(BV `B6zcuUo2bJ0`) 在 B 站放出了一份配套 `linux.json` + 9 张示意图，演示 sing-box 1.14 的新特性和底层分流逻辑。pro 在那之上做了更多工程化的工作，本节把两者的边界划清，方便后来人评估"该不该跟 demo 走"。
+
+### pro 已经做到的（demo 的全部主线字段 + 实战打磨）
+
+| demo 的字段/能力 | pro 是否实现 | 证据 / 说明 |
+|---|---|---|
+| `$schema` 顶层 | ✅ 已实现 | `attachSchema()` in `generator/common.uc` |
+| `http_clients` + `http_client` | ✅ 已实现 | `generator/ruleset.uc:build_http_clients()` 1.14 规范改写 |
+| `dns.servers` 8 类（local / https / tls / fakeip / hosts / udp / tcp / ...） | ✅ 已实现 | `generator/dns.uc` 自研 parser 覆盖全部 UCI 类型 |
+| `dns.rules` D① 拒 HTTPS/SVCB | ✅ proxy mode line 102 / ✅ custom mode 新前置 | arch-guard 38 锁顺序 |
+| `dns.rules` D② clash_mode 切换 | ⚠️ 故意没做（见下表） | — |
+| `dns.rules` D⑥ evaluate + D⑦ match_response | ✅ **v28.9.1.16 默认 '1'** (新装);存量用户由 `migrate_config.uc` 写 '0' 锁住 | `generator/dns.uc:142-154` + `migrate_config.uc` |
+| `dns.rules` reject + `no_drop` | ✅ 已完整 | `route.uc:279` |
+| `dns.servers` hosts + predefined（DoH 兜底） | ✅ auto-detect + auto-emit | `generator/dns.uc:KNOWN_ENCRYPTED_DNS_HOSTS` |
+| `route.rules` action: bypass 复合规则 | ⚠️ 故意走 `resolve + geoip-cn`（v2 路线图阶段 3 候选） | pro 注释：geosite 误判 gvt2.com 等 |
+| `route.rules` action: route-options (override_address/port) | ✅ 已完整 | `route.uc:114-118, 284-292` |
+| `route.rules` rule_set 数组化 + `{tag}` 占位符 | ✅ 已完整 | `ruleset.uc:38-87` |
+| `route.rules` sniff sniffer list + 100ms | ✅ opt-in UCI `sniffer_advanced_mode`（默认 '0' = 300ms / 默认列表）| `generator/route.uc:46-60` |
+| `route.rules` clash_mode Global → GLOBAL | ⚠️ 故意没做 | 见下表 |
+| `experimental.cache_file` + `store_dns` | ✅ UCI Flag | `dns.js:43` |
+| `experimental.reverse_mapping` | ✅ **v28.9.1.15 起显式 emit** | `common.uc:198`,arch-guard 39 |
+| **v28.9.1.16 迁移安全**:cn_ip_fallback 默认 '1' + migrate 写 '0' 锁存量 | ✅ 默认开 + 升级不感知 | `context.uc:184` + `migrate_config.uc` log_level 旁 |
+| `default_domain_resolver` | ✅ 已完整 | `route.uc:65-67, 188-190` |
+| `ntp` 顶层块 | ⚠️ 故意没做（路由器已有 chrony） | — |
+
+### pro 故意没做的（demo 有，pro 不要）
+
+| 项 | 排除理由 |
+|---|---|
+| **22 个 selector 的"业务向"策略组（默认代理 / YouTube / Telegram / Netflix / Wallet / ...）** | LuCI 用户不需要这么细，pro 把"分流策略"和"具体规则"解耦（4 模式 + 用户自配 routing_rule），v2 路线图已表态 |
+| **`clash_mode` 联动 DNS rules / final** | pro 范式是"面板模式与 DNS 行为解耦"，v2 路线图批次 2 候选 |
+| **bridge outbound**（windows.json） | Windows 专属，路由器用不上 |
+| **momo 6 入站网关模式** | 路由器不当网关客户端 |
+| **sub-store 集成**（xream/template.js + URL 参数） | 外依赖风险 + 跟 pro 自研范式冲突 |
+| **providers 拉取模式**（reF1nd 风格的 use_all_providers + regex） | UCI subscription 已覆盖 90% 用户 |
+| **`services.api` + dashboard UI** | LuCI 已是 UI，不需要再加一层 |
+| **FakeIP 模式** | v2 路线图阶段 4 候选（feature flag + 隔离大议题），默认不开 |
+| **`strategy: ipv4_only` for `default_domain_resolver`** | pro 用 `prefer_ipv4` —— sing-box 默认就降级到 IPv6，对国内多数场景更友好 |
+
+### pro 超出 demo 的工程化（demo 没有，pro 必须有）
+
+| 维度 | pro 实际状态 | 证据 |
+|---|---|---|
+| 重新加载事务 + 健康门 + 自动回滚 | 生成 → check → probe → 健康门 → known-good；不健康自动 rollback | `runtime/{config,health}.sh` |
+| UCI 1.14 迁移 | 36 checks | `migrate_config.uc` |
+| sing-box 版本门 | `hp_require_singbox()` 启动显式拒绝 `<1.14` | `runtime/service.sh` |
+| arch-guard 静态锁 | **131+ checks** 锁跨文件不变量 | `tests/arch-guard.sh` |
+| 测试规模 | 78 测试文件 / 131 check | `tests/print-stats.sh` 实测 |
+| Capabilities 收紧 | 仅 NET_ADMIN + NET_BIND_SERVICE（去 PTRACE / NET_RAW） | `homeproxy.json` + arch-guard 12 |
+| 路径白名单 | traversal/relative 拒绝 + 限 3 个根 | `homeproxy.uc:48/99` + `homeproxy.js:HP_CERT_PATH_ROOTS` |
+| Status 语义 | 3 态（RUNNING / **STATUS UNKNOWN 黄** / NOT RUNNING） | `homeproxy.js:statusLabel` |
+| 路由 ops 流程 | 替换文件不重启服务；`killall -HUP rpcd` 由 apk scripts 自动 | `runtime/{config,service}.sh` |
+
+## 推荐 rule_set 源
+
+如果你想自己跑 binary `.srs` 格式的规则集（而不是 pro 内置的 `china_list.txt` / `gfw_list.txt` 文本），下面三个仓库是 sing-box 官方维护的（教程 demo 也用这套）：
+
+| 类型 | 来源 | 格式 | 适用 |
+|---|---|---|---|
+| **geosite-cn** | `https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs`（通过 gh-proxy.com 加速） | binary | 国内域名（直连） |
+| **geosite-geolocation-!cn** | `.../sing-geosite/rule-set/geosite-geolocation-!cn.srs` | binary | 海外域名（代理） |
+| **fakeip-filter-cn** | `https://raw.githubusercontent.com/qichiyuhub/rule/main/rules/fakeip-filter-cn.json` | source | FakeIP 模式的国内例外清单 |
+| **geoip-cn** | `https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs` | binary | 国内 IP（evaluate fallback） |
+
+> **教程明确反对 Mihomo 规则库**：Mihomo 的 `cn.srs` 文件名会与 sing-box 同名冲突，导致标签解析失败。
+> pro 的默认 `china_list.txt` 仍是文本格式（教程 demo 没暴露这种兼容路径），但你随时可在 LuCI 添加 binary `.srs` 规则集替换。
+
 ## 已知限制
 
 - **试验性**：不承诺 API/配置稳定，重大变更可能在 minor 版本里发生。

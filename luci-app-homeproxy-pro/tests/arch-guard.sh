@@ -1671,6 +1671,82 @@ else
 	fail "these declared conffiles are not shipped by the package, so the declaration protects nothing:$CONF_MISSING"
 fi
 
+echo "== guard 38: append_custom_dns emits the HTTPS/SVCB reject as its first DNS rule =="
+
+# The proxy path emits this reject (append_proxy_dns line 102); the custom
+# path used to rely on whatever the user wrote, so a rule that targets the
+# same query_type could shadow the safety net.  The fix (see
+# docs/linux.json 与 pro 的差距分析.md §2.2) prepends the same literal in
+# append_custom_dns.  Two checks keep that ordering:
+#
+#   (a) the literal appears in BOTH append_proxy_dns and append_custom_dns;
+#   (b) the second occurrence (the one inside append_custom_dns) comes
+#       BEFORE the user-rules loop, so a user rule cannot shadow it.
+#
+# A regression that drops the custom-path literal, or moves it after the
+# loop, would expose the user to Fake-IP bypass / HTTPS answer smuggling.
+custom_dns_uc="$SCRIPTS/generator/dns.uc"
+reject_count="$(grep -c 'query_type: *\[64, *65\]' "$custom_dns_uc")"
+if [ "$reject_count" -eq 2 ]; then
+	pass "the HTTPS/SVCB reject appears in both append_proxy_dns and append_custom_dns"
+else
+	fail "expected 2 occurrences of 'query_type: [64, 65]' in generator/dns.uc, found $reject_count"
+	fail "the custom path lost its built-in reject; see §2.2 of the gap analysis"
+fi
+
+# (b): the custom-path reject is the SECOND occurrence (append_custom_dns
+# is the second function defined).  It must come before the user-rules
+# loop, which is the first `for (let cfg in dm.dns.rules)` AFTER the
+# `const builtin_dns_rules = []` that opens the custom-path rule block.
+custom_reject_line="$(grep -n 'query_type: *\[64, *65\]' "$custom_dns_uc" | sed -n '2p' | cut -d: -f1)"
+custom_const_line="$(awk 'NR > 1 && /const builtin_dns_rules = \[\]/ { print NR; exit }' "$custom_dns_uc")"
+custom_loop_line="$(awk -v start="$custom_const_line" '
+	NR > start && /for \(let cfg in dm\.dns\.rules\)/ { print NR; exit }
+' "$custom_dns_uc")"
+
+if [ -n "$custom_reject_line" ] && [ -n "$custom_const_line" ] && [ -n "$custom_loop_line" ]; then
+	if [ "$custom_reject_line" -gt "$custom_const_line" ] && [ "$custom_reject_line" -lt "$custom_loop_line" ]; then
+		pass "append_custom_dns pushes the reject between the rules array init (line $custom_const_line) and the user-rules loop (line $custom_loop_line)"
+	else
+		fail "the reject in append_custom_dns (line $custom_reject_line) sits outside the"
+			fail "init (line $custom_const_line) -> loop (line $custom_loop_line) range; a"
+			fail "user rule could now shadow the HTTPS/SVCB reject"
+	fi
+else
+	fail "could not locate both the reject and the user-rules loop in append_custom_dns"
+fi
+
+echo "== guard 39: sniffer_advanced_mode default stays at '0' =="
+
+# §2.7 (linux.json 与 pro 的差距分析.md): the advanced-mode sniff profile
+
+# §2.7 (linux.json 与 pro 的差距分析.md): the advanced-mode sniff profile
+# (100ms / universal list) is gated behind a UCI opt-in so an upgrade
+# does not change the sniffer behaviour.  The default must remain '0';
+# the generator falls back to '0' on a missing UCI value, and the
+# package-shipped /etc/config/homeproxy must not bump the default to
+# '1' on a whim.  Two checks:
+#
+#   (a) the generator's fallback is '0';
+#   (b) the package-shipped UCI default is '0'.
+if grep -q "sniffer_advanced_mode: dm.general.sniffer_advanced_mode || '0'" "$SCRIPTS/generator/context.uc"; then
+	pass "the generator falls back to '0' on a missing sniffer_advanced_mode"
+else
+	fail "context.uc no longer falls back to '0' for sniffer_advanced_mode - the"
+		fail "sniff rule's 300ms / default-list profile is no longer the safe default"
+fi
+
+# The package default lives in root/etc/config/homeproxy.  It must be
+# '0' for upgrades to be invisible; new installs also default to the
+# same until the user opts in.
+if grep -q "^	option sniffer_advanced_mode '0'" "$ROOT/root/etc/config/homeproxy"; then
+	pass "the package-shipped /etc/config/homeproxy keeps sniffer_advanced_mode '0'"
+else
+	fail "the package default for sniffer_advanced_mode is no longer '0'; users who"
+		fail "upgraded without touching the option would silently switch to 100ms +"
+		fail "the universal sniffer list, which is a behaviour change"
+fi
+
 echo
 printf '%s checks, %s failures\n' "$checks" "$([ "$FAILED" = 0 ] && echo 0 || echo 'nonzero')"
 if [ "$FAILED" != 0 ]; then

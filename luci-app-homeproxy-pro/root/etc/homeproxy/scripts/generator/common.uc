@@ -178,7 +178,17 @@ export function attachSchema(config) {
 
 /* Attach the experimental cache_file block when one of the routing modes
  * that needs it is active. Routing-mode gating stays here because the
- * block is the same regardless of mode; only the condition differs. */
+ * block is the same regardless of mode; only the condition differs.
+ *
+ * Note: docs/linux.json 与 pro 的差距分析.md §2.5 once asked for an
+ * explicit `reverse_mapping: true` here (so a future sing-box change to
+ * the default would not silently move us off the mapping table). The
+ * sing-box 1.14.0-r1 we test against rejects that field as
+ * "json: unknown field" - the field is recognised by newer builds but
+ * not the floor pinned by arch-guard 31. sing-box's default is already
+ * `true`, so leaving it implicit matches runtime behaviour and keeps the
+ * generated config compatible with the test target. Revisit if the
+ * floor moves past the release where the field was introduced. */
 export function attachExperimental(config, routing_mode, dns_store_dns) {
 	if (routing_mode in ['bypass_mainland_china', 'custom']) {
 		config.experimental = {

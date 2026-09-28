@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-trafficctl
-PKG_VERSION:=1.17.0
-PKG_RELEASE:=1
+PKG_VERSION:=1.18.0
+PKG_RELEASE:=2
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Denis Iusupov <yusdyr@gmail.com>
@@ -42,6 +42,17 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 	if [ -x /etc/init.d/trafficctl-telegram ]; then
 		/etc/init.d/trafficctl-telegram start 2>/dev/null || true
 	fi
+fi
+exit 0
+endef
+
+# Fail open on removal. A global internet cut left engaged by a package that is
+# going away is a lockout with no UI left to undo it — the drop rule would sit
+# in nftables with nothing on the router admitting to owning it.
+define Package/$(PKG_NAME)/prerm
+#!/bin/sh
+if [ -z "$${IPKG_INSTROOT}" ] && [ -x /usr/local/bin/trafficctl-cut.sh ]; then
+	/usr/local/bin/trafficctl-cut.sh release >/dev/null 2>&1 || true
 fi
 exit 0
 endef

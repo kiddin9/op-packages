@@ -113,18 +113,41 @@ map_add() {
 
 uci_rule_names() {
 	# uci missing / empty firewall config is "no names", not fatal.
-	# pipefail + set -e cannot apply to this pipeline.
-	# One show dump; named-section names still use uci get.
+	# Read the captured show output once; never fork one uci get per section.
 	_firewall_show=$(uci -q show firewall 2>/dev/null || true)
-	{
-		printf '%s\n' "$_firewall_show" |
-			sed -n "s/^firewall\.@rule\[[0-9]*\]\.name='\(.*\)'$/\1/p" || true
-		printf '%s\n' "$_firewall_show" |
-			sed -n 's/^firewall\.\([A-Za-z0-9_-]*\)=rule$/\1/p' |
-			while IFS= read -r section; do
-				uci -q get "firewall.${section}.name" 2>/dev/null || true
-			done || true
-	}
+	printf '%s\n' "$_firewall_show" |
+		awk -v max="$RULES_MAP_MAX_LINES" '
+			function emit(value, quote) {
+				quote = sprintf("%c", 39)
+				if (substr(value, 1, 1) == quote && substr(value, length(value), 1) == quote)
+					value = substr(value, 2, length(value) - 2)
+				if (count >= max) {
+					truncated = 1
+					exit 42
+				}
+				print value
+				count++
+			}
+			{
+				equal = index($0, "=")
+				if (!equal) next
+				key = substr($0, 1, equal - 1)
+				value = substr($0, equal + 1)
+				if (key ~ /^firewall\.@rule\[[0-9][0-9]*\]\.name$/) {
+					emit(value)
+					next
+				}
+				if (key ~ /^firewall\.[A-Za-z0-9_-]+$/) {
+					section = key
+					sub(/^firewall\./, "", section)
+					current_rule = (value == "rule")
+					next
+				}
+				if (current_rule && key == "firewall." section ".name")
+					emit(value)
+			}
+			END { if (truncated) exit 42 }
+		'
 }
 
 is_uci_style_name() {
@@ -242,23 +265,39 @@ run_with_timeout() {
 }
 
 map_uci_rule_names() {
-	# Line-wise (here-doc, not an unquoted for-loop) so a name with
-	# spaces stays one token. Names that fail is_uci_style_name are
-	# skipped: parseRuleHint() cannot match them, and fragments of
-	# "My Rule" must not shadow a real rule named Rule.
-	# The while-read stays in the current shell (here-doc, not a
-	# pipeline) so map_add mutations reach OUT.
+	# Line-wise so each name stays one token. Names outside the key charset
+	# are skipped; one shared line cap also bounds duplicate UCI names that
+	# do not trip the output key/byte caps.
+	# Keep the loop in this shell so map_add mutations reach OUT.
+	if _uci_names="$(uci_rule_names)"; then
+		_uci_names_truncated=''
+	else
+		_uci_names_status=$?
+		# uci_rule_names uses 42 only for the deliberate line cap. Other
+		# command/parser failures keep the former best-effort empty-name path.
+		if [ "$_uci_names_status" -eq 42 ]; then
+			_uci_names_truncated=1
+		else
+			_uci_names=''
+			_uci_names_truncated=''
+		fi
+	fi
 	while IFS= read -r name || [ -n "$name" ]; do
+		[ -n "$_map_overflow" ] && break
 		[ -n "$name" ] || continue
 		is_uci_style_name "$name" || continue
 		map_add "$name" "$name"
+		[ -n "$_map_overflow" ] && break
 		slug=$(slug_key "$name")
 		if [ "$slug" != "$name" ]; then
 			map_add "$slug" "$name"
 		fi
 	done <<EOF
-$(uci_rule_names)
+$_uci_names
 EOF
+	if [ -n "$_uci_names_truncated" ]; then
+		_map_overflow=1
+	fi
 }
 
 # One awk pass: prefix<TAB>comment. Last quoted log prefix / comment on

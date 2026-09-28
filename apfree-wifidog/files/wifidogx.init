@@ -72,8 +72,8 @@ add_white_list_entries() {
 }
 
 prepare_common_settings() {
-	printf "CheckInterval %s\nClientTimeout %s\nJsFilter %s\nWiredPassed %s\nBypassAppleCNA %s\n" \
-		"$check_interval" "$client_timeout" "$js_filter" "$wired_passed" "$apple_cna" >> "$CONFIGFILE"
+	printf "CheckInterval %s\nClientTimeout %s\nJsFilter %s\nWiredPassed %s\n" \
+		"$check_interval" "$client_timeout" "$js_filter" "$wired_passed" >> "$CONFIGFILE"
 	
 	printf "EnableAntiNat %s\n" "$enable_anti_nat" >> "$CONFIGFILE"
 	printf "TTLValues %s\n" "$ttl_values" >> "$CONFIGFILE"
@@ -237,7 +237,6 @@ prepare_wifidog_conf() {
 		'check_interval:integer:60' \
 		'client_timeout:integer:5' \
 		'wired_passed:bool:1' \
-		'apple_cna:bool:0' \
 		'trusted_domains:list(host)' \
 		'trusted_wildcard_domains:list(string)' \
 		'trusted_macs:list(string)' \

@@ -181,7 +181,20 @@ export function build_context(dm, env) {
 		dns_default_strategy: (routing_mode === 'custom')
 			? (dm.dns.settings || {}).default_strategy
 			: ((ipv6_support !== '1') ? 'ipv4_only' : null),
-		cn_ip_fallback: dm.general.cn_ip_fallback,
+		/* cn_ip_fallback: evaluate/match_response fallback for unknown-host
+		 * queries (tutorial §2.1 / docs/linux.json 与 pro 的差距分析.md).
+		 * The v28.9.1.16 flip turns this on by default for fresh installs;
+		 * migrate_config.uc writes '0' explicitly for upgrade-existing users
+		 * so they keep the prior behaviour until they opt in. '0' is truthy
+		 * in JS so the || picks it over '1' when UCI sets it to '0' - a
+		 * user who has cn_ip_fallback='0' written (the upgrade path) gets
+		 * exactly what they had. */
+		cn_ip_fallback: dm.general.cn_ip_fallback || '1',
+		/* sniffer_advanced_mode: when '1' (opt-in), the route sniff rule
+		 * gets the universal protocol list + 100ms timeout (tutorial §2.7 /
+		 * docs/linux.json 与 pro 的差距分析.md). Default '0' preserves the
+		 * 300ms / default-list behaviour so an upgrade is invisible. */
+		sniffer_advanced_mode: dm.general.sniffer_advanced_mode || '0',
 		main_urltest_nodes: dm.general.main_urltest_nodes || [],
 		main_urltest_interval: dm.general.main_urltest_interval,
 		main_urltest_tolerance: dm.general.main_urltest_tolerance,

@@ -517,6 +517,213 @@ fi
 
 run_case custom "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json
 
+# §2.2 (linux.json 与 pro 的差距分析): append_custom_dns now prepends the
+# HTTPS/SVCB reject so a user-written rule cannot shadow the safety net.
+# Without a dns_server in custom.uci the rule block is empty, so the
+# generated config still has the reject at index 0.
+custom_json="$WORK/custom/run/sing-box-c.json"
+if [ ! -f "$custom_json" ]; then
+	echo "FAIL: custom-dns-rule-prefix: no config was generated"
+	FAILED=1
+else
+	# Walk the JSON to pick the first rule. Grepping for the literal would
+	# also match later rules (the user's domain-rule block emits its own
+	# query_type); a JSON walker is unambiguous and tolerant of any
+	# whitespace or quoting sing-box picks when serialising.
+	cat > "$WORK/dns-rule-prefix.uc" <<'EOF'
+'use strict';
+import { readfile } from 'fs';
+const config = json(readfile(ARGV[0]));
+const rules = config.dns.rules || [];
+let qt = '', action = '';
+for (let r in rules) {
+	qt = (type(r.query_type) === 'array') ? r.query_type[0] + ',' + r.query_type[1] : '';
+	action = r.action || '';
+	break;
+}
+printf('%s|%s\n', qt, action);
+EOF
+	dns_first="$(ucode "$WORK/dns-rule-prefix.uc" "$custom_json" 2>/dev/null)"
+	if [ "$dns_first" = "64,65|reject" ]; then
+		echo "PASS: custom-dns-rule-prefix: the HTTPS/SVCB reject is the first DNS rule"
+	else
+		echo "FAIL: custom-dns-rule-prefix: first DNS rule is '$dns_first', expected '64,65|reject'"
+		FAILED=1
+	fi
+fi
+
+# §2.5 (linux.json 与 pro 的差距分析): the original plan was to set
+# `experimental.reverse_mapping: true` so the literal pinned us against a
+# future sing-box default flip. sing-box 1.14.0-r1 (the CI floor pinned
+# by arch-guard 31) rejects the field as "json: unknown field" - the
+# default is already true, and leaving the field implicit matches the
+# runtime behaviour.  Re-evaluate this guard when the floor moves past
+# the release where the field was added.  No regression check here on
+# purpose: the only assertion that matters is that the generated config
+# passes sing-box check, which the test runner does for every case.
+
+# §2.4 (linux.json 与 pro 的差距分析): when the user configures a DoH
+# upstream against a known hostname, append_custom_dns emits a hosts-type
+# DNS server pinning that hostname to its real IPs.  Without it, the DoH
+# resolver itself has to be resolved through the system DNS, and a DNS
+# outage once over leaves the resolver unreachable (chicken-and-egg).
+run_case custom-doh-fallback "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	# Note: __RULESET_DIR__ is substituted by run_case() to a /tmp path BEFORE
+	# this sed runs, so the literal '__RULESET_DIR__/test.srs' would never
+	# match.  Match the trailing /test.srs instead - the ruleset line is the
+	# last 'option path .../test.srs' in custom.uci.
+	"s#^\\([[:space:]]*\\)option path .*/test.srs'#\\1&\n\nconfig dns_server 'ds_doh'\n\toption enabled '1'\n\toption type 'https'\n\toption server 'doh.pub'\n\toption path '/dns-query'#"
+
+doh_json="$WORK/custom-doh-fallback/run/sing-box-c.json"
+if [ ! -f "$doh_json" ]; then
+	echo "FAIL: custom-doh-fallback: no config was generated"
+	FAILED=1
+elif ! grep -q '"tag": "hp-dns-hosts"' "$doh_json"; then
+	echo "FAIL: custom-doh-fallback: the hosts-type DNS server (tag hp-dns-hosts) is missing"
+	echo "      a DoH upstream was configured against a known hostname, so the generator"
+	echo "      should have pre-emitted a predefined entry to break the resolver->DNS loop"
+	FAILED=1
+else
+	# Walk the JSON: the server must be type=hosts with a predefined entry
+	# listing at least one known DoH hostname->IP pair.
+	cat > "$WORK/doh-check.uc" <<'EOF'
+'use strict';
+import { readfile } from 'fs';
+const config = json(readfile(ARGV[0]));
+for (let s in (config.dns?.servers || [])) {
+	if (s.tag === 'hp-dns-hosts' && s.type === 'hosts' && s.predefined) {
+		const names = keys(s.predefined);
+		printf('%d %s\n', length(names), names[0] ?? '');
+		exit(0);
+	}
+}
+printf('0\n');
+EOF
+	doh_info="$(ucode "$WORK/doh-check.uc" "$doh_json" 2>/dev/null)"
+	if [ -z "$doh_info" ] || [ "${doh_info%% *}" = "0" ]; then
+		echo "FAIL: custom-doh-fallback: hp-dns-hosts was emitted but has no predefined entry"
+		FAILED=1
+	else
+		doh_count="${doh_info%% *}"
+		doh_name="$(printf '%s' "$doh_info" | awk '{print $2}')"
+		echo "PASS: custom-doh-fallback: $doh_count predefined entry/entries under hp-dns-hosts (sample: $doh_name)"
+	fi
+fi
+
+# §2.1 (linux.json 与 pro 的差距分析): cn_ip_fallback default flipped to '1'
+# for fresh installs (the package ships option cn_ip_fallback '1' and
+# context.uc falls back to '1' on a missing value).  Existing users
+# upgrading get '0' written by migrate_config.uc and keep the prior
+# behaviour.  This case verifies the fresh-install default: client.uci
+# (proxy mode) does NOT set cn_ip_fallback, so the generator emits the
+# evaluate + match_response pair under the cn-fallback tag.
+client_json="$WORK/client/run/sing-box-c.json"
+if [ ! -f "$client_json" ]; then
+	echo "FAIL: cn-fallback-default-on: no proxy config was generated"
+	FAILED=1
+else
+	cat > "$WORK/cn-fallback.uc" <<'EOF'
+'use strict';
+import { readfile } from 'fs';
+const config = json(readfile(ARGV[0]));
+const rules = config.dns?.rules || [];
+let has_eval_tag = false, has_match_response = false, geoip_ref = false;
+for (let r in rules) {
+	if (r.action === 'evaluate' && r.tag === 'cn-fallback')
+		has_eval_tag = true;
+	if (r.match_response === 'cn-fallback') {
+		has_match_response = true;
+		if (r.rule_set === 'geoip-cn')
+			geoip_ref = true;
+	}
+}
+printf('%d %d %d\n', +has_eval_tag, +has_match_response, +geoip_ref);
+EOF
+	cn_info="$(ucode "$WORK/cn-fallback.uc" "$client_json" 2>/dev/null)"
+	if [ "$cn_info" = "1 1 1" ]; then
+		echo "PASS: cn-fallback-default-on: evaluate+match_response with geoip-cn is in the proxy config"
+	else
+		echo "FAIL: cn-fallback-default-on: evaluate/match_response flags = '$cn_info', expected '1 1 1'"
+		FAILED=1
+	fi
+fi
+
+# §2.1 opt-out: a fixture with cn_ip_fallback='0' must NOT emit the pair.
+# client.uci does not set the option (so it defaults to '1' in the proxy
+# config above); here we stage a variant with '0' to assert the
+# upgrade-safe path of migrate_config.uc - existing users see no change.
+run_case client-cn-fallback-off "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
+	"s#^\\([[:space:]]*\\)option main_node 'urltest'#\\1option main_node 'urltest'\\n\\1option cn_ip_fallback '0'#"
+
+cfoff_json="$WORK/client-cn-fallback-off/run/sing-box-c.json"
+if [ ! -f "$cfoff_json" ]; then
+	echo "FAIL: cn-fallback-opt-out: no config was generated"
+	FAILED=1
+else
+	cfoff_info="$(ucode "$WORK/cn-fallback.uc" "$cfoff_json" 2>/dev/null)"
+	if [ "$cfoff_info" = "0 0 0" ]; then
+		echo "PASS: cn-fallback-opt-out: cn_ip_fallback='0' suppresses both rules (upgrade path keeps prior behaviour)"
+	else
+		echo "FAIL: cn-fallback-opt-out: evaluate/match_response flags = '$cfoff_info', expected '0 0 0'"
+		FAILED=1
+	fi
+fi
+
+# §2.7 (linux.json 与 pro 的差距分析): sniffer_advanced_mode default stays
+# '0'.  Client mode must emit the conservative sniff rule (300ms / no
+# sniffer list); advanced mode emits the 100ms / universal-list profile.
+if [ ! -f "$client_json" ]; then
+	echo "FAIL: sniffer-default-300ms: no proxy config was generated"
+	FAILED=1
+else
+	cat > "$WORK/sniff.uc" <<'EOF'
+'use strict';
+import { readfile } from 'fs';
+const config = json(readfile(ARGV[0]));
+const rules = config.route.rules || [];
+let to = 'none';
+let count = 0;
+for (let r in rules) {
+	if (r.action === 'sniff') {
+		to = r.timeout || '';
+		count = (type(r.sniffer) === 'array') ? length(r.sniffer) : 0;
+		break;
+	}
+}
+printf('%s|%d\n', to, count);
+EOF
+	sniff_info="$(ucode "$WORK/sniff.uc" "$client_json" 2>/dev/null)"
+	if [ "$sniff_info" = "300ms|0" ]; then
+		echo "PASS: sniffer-default-300ms: sniff rule keeps 300ms and the default sniffer list (no array)"
+	elif [ "$sniff_info" = "100ms|"* ]; then
+		echo "FAIL: sniffer-default-300ms: the default flipped to 100ms (advanced); users upgrading"
+		echo "      without setting sniffer_advanced_mode should see the legacy 300ms profile"
+		FAILED=1
+	else
+		echo "FAIL: sniffer-default-300ms: sniff rule has unexpected shape '$sniff_info'"
+		FAILED=1
+	fi
+fi
+
+# §2.7 opt-in: sniffer_advanced_mode='1' flips the sniff rule to 100ms +
+# the universal protocol list.  sed-injected on client.uci.
+run_case client-sniffer-advanced "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
+	"s#^\\([[:space:]]*\\)option main_node 'urltest'#\\1option main_node 'urltest'\\n\\1option sniffer_advanced_mode '1'#"
+
+sniff_json="$WORK/client-sniffer-advanced/run/sing-box-c.json"
+if [ ! -f "$sniff_json" ]; then
+	echo "FAIL: sniffer-advanced-100ms: no config was generated"
+	FAILED=1
+else
+	sniff_adv="$(ucode "$WORK/sniff.uc" "$sniff_json" 2>/dev/null)"
+	if [ "$sniff_adv" = "100ms|5" ]; then
+		echo "PASS: sniffer-advanced-100ms: sniff rule has 100ms timeout and 5 sniffer protocols"
+	else
+		echo "FAIL: sniffer-advanced-100ms: sniff rule has unexpected shape '$sniff_adv', expected '100ms|5'"
+		FAILED=1
+	fi
+fi
+
 # P1-6: the main-node reference is mode-dependent, and LuCI hides config.main_node
 # in custom mode without clearing it (`rmempty = false`).  A router that was
 # configured in a preset mode and then switched to custom therefore keeps the
