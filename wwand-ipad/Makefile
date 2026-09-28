@@ -16,11 +16,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ipad
 PKG_VERSION:=0.1.0_p21
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/ipad.git
-PKG_SOURCE_VERSION:=6c057a00a80eea8140c7f985ddeeaeed43d06cf4
+PKG_SOURCE_VERSION:=624455f393f97f2ddfcc0d201164b6559f6996cf
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only Apache-2.0

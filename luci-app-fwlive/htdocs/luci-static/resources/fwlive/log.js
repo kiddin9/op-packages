@@ -169,24 +169,33 @@ return baseclass.extend({
 		};
 
 		const evalNode = function (node) {
-			if (node.and) {
+			const keys = Object.keys(node);
+			if (keys.length !== 1)
+				throw new Error(
+					'CLASSIFY_SPEC node must have exactly one key: ' + JSON.stringify(node)
+				);
+			const key = keys[0];
+			if (key === 'and') {
+				if (!Array.isArray(node.and))
+					throw new Error('CLASSIFY_SPEC and node must be an array');
 				for (let i = 0; i < node.and.length; i++) {
 					if (!evalNode(node.and[i])) return false;
 				}
 				return true;
 			}
-			if (node.or) {
+			if (key === 'or') {
+				if (!Array.isArray(node.or))
+					throw new Error('CLASSIFY_SPEC or node must be an array');
 				for (let i = 0; i < node.or.length; i++) {
 					if (evalNode(node.or[i])) return true;
 				}
 				return false;
 			}
-			const keys = Object.keys(node);
-			for (let i = 0; i < keys.length; i++) {
-				const k = keys[i];
-				if (pred[k]) return pred[k](node);
-			}
-			return false;
+			if (!Object.prototype.hasOwnProperty.call(pred, key))
+				throw new Error(
+					'unrecognised CLASSIFY_SPEC predicate node: ' + JSON.stringify(node)
+				);
+			return pred[key](node);
 		};
 
 		for (let i = 0; i < this.CLASSIFY_SPEC.rules.length; i++) {

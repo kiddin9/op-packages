@@ -253,7 +253,7 @@ run_with_timeout() {
 						fi
 					done
 					[ "$peer" = 1 ] || break
-					"$busybox_bin" sleep 0.1
+					"$busybox_bin" sleep 0.1 || "$busybox_bin" sleep 1 || exit 125
 				done
 				exit "$status"
 			' fwlive-timeout "$FWLIVE_TIMEOUT_BIN" "$secs" \
@@ -1220,6 +1220,7 @@ run_selftest() {
 	got=$(printf '%s\n' "log prefix \"fwlive${_tab}tabbed\" comment \"!fw4: TabRule\"" | nft_dump_fields)
 	OUT=''
 	_map_keys=0
+	_map_lines=0
 	_map_overflow=''
 	map_from_nft_stream all <<EOF
 $got
@@ -1236,6 +1237,7 @@ EOF
 	fi
 	OUT=''
 	_map_keys=0
+	_map_lines=0
 	_map_overflow=''
 	map_from_nft_stream all <<EOF
 $got

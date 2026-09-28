@@ -12,9 +12,11 @@
 # Lock: sibling ${FWLIVE_ADAPTIVE_LOCK_FILE:-$STATE.lock} — never the JSON
 # inode (atomic mv replaces that inode; locking it would not serialize writers).
 # Lock covers only short update — never held across ubus/filter work.
-# Hot-path budget: ≤1 flock exec per update (release by closing the fd when the
-# subshell exits — no flock -u). /proc/uptime + state I/O via shell builtins/
-# redirects (no sed/cat/jsonfilter on the adaptive path). Fail-open on missing
+# Hot-path budget: ≤1 flock exec and 2 find execs per successful update
+# (directory safety checked before lock open and before the state write).
+# Release flock by closing the fd when the subshell exits (no flock -u).
+# /proc/uptime + state I/O use shell builtins/redirects (no sed/cat/jsonfilter
+# on the adaptive path). Fail-open on missing
 # flock, lock busy, or corrupt state. Fail-closed if the lock file cannot be
 # opened (skip the write; do not record unlocked). Lock-busy ⇒ unlocked
 # last-writer-wins is acceptable (state stays one valid JSON line; ordering

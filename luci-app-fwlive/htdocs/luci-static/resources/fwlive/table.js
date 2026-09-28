@@ -320,7 +320,7 @@ function rowClass(index, row, state, callbacks) {
 		.join(' ');
 }
 
-function buildRow(row, index, state, columns, callbacks) {
+function buildRow(row, index, state, columns, callbacks, key) {
 	const cells = [];
 	for (let c = 0; c < columns.length; c++)
 		cells.push(buildColumnCell(columns[c], row, state, callbacks));
@@ -334,7 +334,7 @@ function buildRow(row, index, state, columns, callbacks) {
 		cells
 	);
 	tr._fwliveRowId = String(row.id);
-	tr._fwliveRowKey = rowRenderKey(row, state, columns);
+	tr._fwliveRowKey = key === undefined ? rowRenderKey(row, state, columns) : key;
 	return tr;
 }
 
@@ -398,7 +398,7 @@ function renderRows(host, state, callbacks) {
 		const id = String(row.id);
 		const key = rowRenderKey(row, state, columns);
 		let tr = existingRows.get(id);
-		if (!tr || tr._fwliveRowKey !== key) tr = buildRow(row, i, state, columns, callbacks);
+		if (!tr || tr._fwliveRowKey !== key) tr = buildRow(row, i, state, columns, callbacks, key);
 		else tr.setAttribute('class', rowClass(i, row, state, callbacks));
 		tr._fwliveRowId = id;
 		tr._fwliveRowKey = key;
