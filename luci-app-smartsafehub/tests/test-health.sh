@@ -13,13 +13,14 @@ API="$ROOT_DIR/frontend/src/api/smartsafehub.ts"
 HOOK="$ROOT_DIR/frontend/src/hooks/useHealth.ts"
 SETTINGS_PAGE="$ROOT_DIR/frontend/src/pages/SettingsPage.tsx"
 HEALTH_TYPES="$ROOT_DIR/frontend/src/types/health.ts"
+COMMON_LIB="$ROOT_DIR/root/usr/lib/smartsafehub/common.sh"
 
 fail() {
 	echo "FAIL: $*" >&2
 	exit 1
 }
 
-for file in "$HELPER" "$INIT_SCRIPT" "$CONFIG" "$HEALTH_MODULE" "$RPC_ENTRY" "$ACL" "$API" "$HOOK" "$SETTINGS_PAGE" "$HEALTH_TYPES"; do
+for file in "$HELPER" "$INIT_SCRIPT" "$CONFIG" "$HEALTH_MODULE" "$RPC_ENTRY" "$ACL" "$API" "$HOOK" "$SETTINGS_PAGE" "$HEALTH_TYPES" "$COMMON_LIB"; do
 	[ -f "$file" ] || fail "Health 소스 파일이 없습니다: ${file#$ROOT_DIR/}"
 done
 
@@ -28,6 +29,13 @@ sh -n "$INIT_SCRIPT" || fail 'Health init script가 POSIX shell 문법 검사를
 if grep -Fq -- '-v load=' "$HELPER"; then
 	fail 'GNU awk의 load 내장 이름을 -v 변수명으로 사용하면 안 됩니다.'
 fi
+if grep -Eq "tr ['\"]\[:(lower|upper):\]['\"]" "$HELPER"; then
+	fail 'OpenWrt BusyBox tr 호환성을 위해 Health helper에서 POSIX 문자 클래스 대소문자 변환을 사용하면 안 됩니다.'
+fi
+grep -Fq "tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'" "$COMMON_LIB" || \
+	fail '공통 라이브러리는 BusyBox 호환 ASCII 대문자 정규화를 제공해야 합니다.'
+grep -Fq "tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'" "$COMMON_LIB" || \
+	fail '공통 라이브러리는 BusyBox 호환 ASCII 소문자 정규화를 제공해야 합니다.'
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
@@ -412,6 +420,13 @@ free_status=$?
 set -e
 [ "$free_status" -eq 3 ] || fail 'FREE 사용자가 원격 상태 보고를 활성화하려는 요청은 거부해야 합니다.'
 grep -Eq '^smartsafehub.health.reporter_enabled=0$' "$UCI_STATE" || fail 'FREE 사용자의 opt-in 거부 후 Reporter는 비활성 상태를 유지해야 합니다.'
+
+# SafeShield는 plan/status를 소문자나 대문자로 반환할 수 있다. OpenWrt BusyBox tr에서
+# POSIX 문자 클래스를 지원하지 않는 대상에서도 pro -> PRO가 정확히 유지되어야 한다.
+run_health_case MOCK_LICENSE_PLAN=pro MOCK_LICENSE_STATUS=ACTIVE -- run-once
+grep -Eq '^plan[[:space:]]+PRO$' "$REPORT_STATE" || fail '소문자 pro 플랜은 BusyBox 호환 방식으로 PRO로 정규화해야 합니다.'
+grep -Eq '^license_status[[:space:]]+active$' "$REPORT_STATE" || fail '대문자 ACTIVE 라이선스 상태는 active로 정규화해야 합니다.'
+grep -Eq '^eligible[[:space:]]+1$' "$REPORT_STATE" || fail '정규화된 PRO active 라이선스는 Health Reporter 유료 권한으로 판정해야 합니다.'
 
 # 유료 active 사용자는 명시적으로 opt-in 할 수 있고, 첫 cycle에서 최소 상태 payload만 전송한다.
 printf 'MemTotal:       100000 kB\nMemAvailable:    50000 kB\n' > "$MEMINFO"

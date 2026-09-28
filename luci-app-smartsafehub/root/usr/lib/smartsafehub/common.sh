@@ -9,3 +9,15 @@ json_escape() {
 		-e 's/\\/\\\\/g' \
 		-e 's/"/\\"/g'
 }
+
+# BusyBox tr builds used by some OpenWrt targets do not expand POSIX character
+# classes such as [:lower:] / [:upper:] and can treat them as literal bytes.
+# Use explicit ASCII alphabets for protocol/status tokens so, for example,
+# `pro` always normalizes to `PRO` on every supported router.
+ascii_upper() {
+	printf '%s' "${1:-}" | tr 'abcdefghijklmnopqrstuvwxyz' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+}
+
+ascii_lower() {
+	printf '%s' "${1:-}" | tr 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 'abcdefghijklmnopqrstuvwxyz'
+}

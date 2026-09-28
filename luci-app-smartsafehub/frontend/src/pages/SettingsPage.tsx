@@ -9,6 +9,8 @@ import {
   formatUptime,
   getMemoryUsage,
 } from '../app/format';
+import { changeRootPassword } from '../api/security';
+import { logoutLuciSession } from '../auth/session';
 import { CustomSelect } from '../components/CustomSelect';
 import { TimeSelect } from '../components/TimeSelect';
 import {
@@ -18,6 +20,9 @@ import {
   ClockIcon,
   DatabaseIcon,
   DownloadIcon,
+  EyeIcon,
+  EyeOffIcon,
+  KeyIcon,
   PowerIcon,
   SettingsIcon,
 } from '../components/Icons';
@@ -34,7 +39,9 @@ import type {
   ScheduledRebootSettingsInput,
   SystemTimeSettings,
 } from '../types/system';
+import { errorMessage } from '../utils/errors';
 import { luciAdminUrl } from '../utils/luci';
+import { passwordPolicy, passwordPolicySatisfied } from '../utils/password';
 
 interface SettingsPageProps {
   action: SystemAction;
@@ -90,6 +97,7 @@ interface SettingsPageProps {
   onSaveScheduledReboot: (input: ScheduledRebootSettingsInput) => Promise<boolean>;
   onSaveTimezone: (zonename: string) => Promise<boolean>;
   onSyncTime: () => Promise<boolean>;
+  onAdministratorPasswordChanged: () => void;
 }
 
 function InfoCard(props: { label: string; value: string; description: string }) {
@@ -719,6 +727,246 @@ function HealthDiagnosticCard(props: {
   );
 }
 
+function PasswordInputField(props: {
+  autoComplete: 'current-password' | 'new-password';
+  disabled: boolean;
+  id: string;
+  label: string;
+  name: string;
+  onInput: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <label class="block min-w-0" for={props.id}>
+      <span class="mb-2 block text-sm font-extrabold text-slate-800">
+        {props.label}
+      </span>
+      <span class="relative block min-w-0">
+        <input
+          autoComplete={props.autoComplete}
+          class="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 pr-12 text-sm font-bold text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:cursor-wait disabled:opacity-60"
+          disabled={props.disabled}
+          id={props.id}
+          name={props.name}
+          onInput={(event) => props.onInput(event.currentTarget.value)}
+          placeholder={props.placeholder}
+          type={visible ? 'text' : 'password'}
+          value={props.value}
+        />
+        <button
+          aria-label={visible ? `${props.label} 숨기기` : `${props.label} 표시`}
+          aria-pressed={visible}
+          class="absolute inset-y-0 right-1 my-auto flex size-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
+          disabled={props.disabled}
+          onClick={() => setVisible((current) => !current)}
+          title={visible ? '비밀번호 숨기기' : '비밀번호 표시'}
+          type="button"
+        >
+          {visible ? <EyeOffIcon class="size-4" /> : <EyeIcon class="size-4" />}
+        </button>
+      </span>
+    </label>
+  );
+}
+
+function PasswordRequirement(props: { met: boolean; label: string }) {
+  return (
+    <li
+      class={`flex min-w-0 items-center gap-1.5 text-xs font-bold ${
+        props.met ? 'text-emerald-700' : 'text-slate-500'
+      }`}
+    >
+      <CheckCircleIcon class="size-3.5 shrink-0" aria-hidden="true" />
+      <span>{props.label}</span>
+    </li>
+  );
+}
+
+function AdministratorPasswordCard(props: { onChanged: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const policy = passwordPolicy(newPassword);
+  const policySatisfied = passwordPolicySatisfied(policy);
+  const confirmationMatches =
+    confirmation.length > 0 && newPassword === confirmation;
+  const passwordChanged =
+    currentPassword.length > 0 &&
+    newPassword.length > 0 &&
+    currentPassword !== newPassword;
+  const canSubmit =
+    !submitting &&
+    passwordChanged &&
+    policySatisfied &&
+    confirmationMatches;
+
+  const submit = async () => {
+    setError(null);
+
+    if (!currentPassword) {
+      setError('현재 관리자 비밀번호를 입력해 주세요.');
+      return;
+    }
+    if (!policySatisfied) {
+      setError(
+        '새 비밀번호는 8자 이상이며 영문과 숫자를 각각 하나 이상 포함해야 합니다.',
+      );
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setError('새 관리자 비밀번호는 현재 비밀번호와 다르게 설정해 주세요.');
+      return;
+    }
+    if (newPassword !== confirmation) {
+      setError('새 비밀번호 확인 값이 일치하지 않습니다.');
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      await changeRootPassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmation('');
+
+      try {
+        await logoutLuciSession();
+      } catch {
+        // The password RPC invalidates the authenticated ubus session itself.
+        // This best-effort LuCI logout clears the browser-side session cookie
+        // when the router remains reachable after the password change.
+      }
+
+      setSubmitting(false);
+      props.onChanged();
+    } catch (caught) {
+      setError(
+        errorMessage(
+          caught,
+          '관리자 비밀번호를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        ),
+      );
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <ActionCard
+      description="현재 비밀번호를 확인한 뒤 공유기 관리자 비밀번호를 변경합니다. 변경이 완료되면 새 비밀번호로 다시 로그인해야 합니다."
+      icon={<KeyIcon class="size-5" />}
+      title="관리자 비밀번호"
+    >
+      <form
+        class="space-y-4"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        {error && (
+          <div
+            aria-live="polite"
+            class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-800"
+            role="alert"
+          >
+            {error}
+          </div>
+        )}
+
+        <PasswordInputField
+          autoComplete="current-password"
+          disabled={submitting}
+          id="smartsafehub-current-admin-password"
+          label="현재 비밀번호"
+          name="current-password"
+          onInput={setCurrentPassword}
+          placeholder="현재 관리자 비밀번호"
+          value={currentPassword}
+        />
+
+        <PasswordInputField
+          autoComplete="new-password"
+          disabled={submitting}
+          id="smartsafehub-new-admin-password"
+          label="새 비밀번호"
+          name="new-password"
+          onInput={setNewPassword}
+          placeholder="새 관리자 비밀번호"
+          value={newPassword}
+        />
+
+        <ul
+          aria-label="새 비밀번호 요구 사항"
+          class="m-0 grid list-none grid-cols-1 gap-2 p-0 sm:grid-cols-3"
+        >
+          <PasswordRequirement label="8자 이상" met={policy.length} />
+          <PasswordRequirement label="영문자 포함" met={policy.letter} />
+          <PasswordRequirement label="숫자 포함" met={policy.number} />
+        </ul>
+
+        <PasswordInputField
+          autoComplete="new-password"
+          disabled={submitting}
+          id="smartsafehub-confirm-admin-password"
+          label="새 비밀번호 확인"
+          name="confirm-password"
+          onInput={setConfirmation}
+          placeholder="새 관리자 비밀번호 다시 입력"
+          value={confirmation}
+        />
+
+        {confirmation.length > 0 && (
+          <p
+            aria-live="polite"
+            class={`m-0 text-xs font-bold ${
+              confirmationMatches ? 'text-emerald-700' : 'text-rose-700'
+            }`}
+            role="status"
+          >
+            {confirmationMatches
+              ? '새 비밀번호가 일치합니다.'
+              : '새 비밀번호 확인 값이 일치하지 않습니다.'}
+          </p>
+        )}
+
+        {newPassword.length > 0 && currentPassword === newPassword && (
+          <p class="m-0 text-xs font-bold text-amber-700">
+            새 비밀번호는 현재 비밀번호와 다르게 설정해 주세요.
+          </p>
+        )}
+
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+          비밀번호는 현재 공유기에 직접 적용되며 외부 서버로 전송되지 않습니다.
+          변경 후 현재 로그인 세션은 종료됩니다.
+        </div>
+
+        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+          <strong class="block font-extrabold">비밀번호를 잊었을 때</strong>
+          전원이 켜진 상태에서 Reset 버튼을 5~9초 누른 뒤 놓으면 관리자 비밀번호만 복구할 수 있습니다. 네트워크, Wi-Fi와 SafeShield 설정은 유지됩니다. 10초 이상 누르면 모든 사용자 설정을 초기화하는 기기 초기화가 실행됩니다.
+        </div>
+
+        <div class="flex justify-end">
+          <button
+            class="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+            disabled={!canSubmit}
+            type="submit"
+          >
+            {submitting ? '비밀번호 변경 중' : '비밀번호 변경'}
+          </button>
+        </div>
+      </form>
+    </ActionCard>
+  );
+}
+
 function ConfigurationBackupCard(props: {
   action: ConfigurationBackupAction;
   error: string | null;
@@ -925,9 +1173,9 @@ function ConfigurationBackupCard(props: {
   );
 }
 
-
 function SystemToolsCard(props: {
   action: SystemAction;
+  className?: string;
   advancedSystemUrl: string;
   confirmingReboot: boolean;
   logsUrl: string;
@@ -939,6 +1187,7 @@ function SystemToolsCard(props: {
   return (
     <ActionCard
       description="공유기 재부팅과 SmartSafeHub에서 제공하지 않는 고급 관리 도구를 한곳에서 제공합니다."
+      {...(props.className !== undefined ? { className: props.className } : {})}
       icon={<SettingsIcon class="size-5" />}
       title="시스템 도구"
     >
@@ -1325,6 +1574,7 @@ export function SettingsPage({
   onSaveScheduledReboot,
   onSaveTimezone,
   onSyncTime,
+  onAdministratorPasswordChanged,
 }: SettingsPageProps) {
   const [confirmingReboot, setConfirmingReboot] = useState(false);
 
@@ -1506,10 +1756,12 @@ export function SettingsPage({
           </p>
           <h2 class="mt-2 mb-0 text-xl font-black text-slate-950">시스템 관리</h2>
           <p class="mt-2 mb-0 text-sm leading-6 text-slate-500">
-            설정 백업·복원, 공유기 재부팅과 고급 시스템 도구를 한곳에서 관리합니다.
+            관리자 비밀번호, 설정 백업·복원과 공유기 시스템 도구를 한곳에서 관리합니다.
           </p>
         </div>
         <div class="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+          <AdministratorPasswordCard onChanged={onAdministratorPasswordChanged} />
+
           <ConfigurationBackupCard
             action={backupAction}
             error={backupError}
@@ -1527,6 +1779,7 @@ export function SettingsPage({
 
           <SystemToolsCard
             action={action}
+            className="lg:col-span-2"
             advancedSystemUrl={advancedSystemUrl}
             confirmingReboot={confirmingReboot}
             logsUrl={logsUrl}

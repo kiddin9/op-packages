@@ -141,6 +141,20 @@ Describe 'SmartSafeHub 셸 계약 테스트'
     The error should be blank
   End
 
+  It 'WAN DHCP/PPPoE/고정 IPv4 설정 계약을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-wan-settings.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It 'PPPoE WAN UCI 런타임과 비밀번호 비노출을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-wan-uci-runtime.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
   It 'SKB/LG U+ IPTV Beta 계약을 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-iptv.sh"
     The status should be success

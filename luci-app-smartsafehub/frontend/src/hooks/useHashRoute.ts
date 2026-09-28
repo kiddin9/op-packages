@@ -5,7 +5,9 @@ import type { AppRoute } from '../app/routes';
 const HASH_ROUTES: Readonly<Record<string, AppRoute>> = {
   '#home': 'home',
   '#activity': 'activity',
-  '#lan': 'lan',
+  '#network': 'network',
+  '#wan': 'network',
+  '#lan': 'network',
   '#wifi': 'wifi',
   '#iptv': 'iptv',
   '#devices': 'devices',

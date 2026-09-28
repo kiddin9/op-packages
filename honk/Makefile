@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=honk
 PKG_VERSION:=0.0.1_beta82
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 # Raw upstream release tag. It keeps the dots in qualifiers (e.g. v0.0.1.beta.49)
 # because that is what the GitHub release asset name uses.
@@ -67,7 +67,8 @@ define Package/honk/config
 endef
 
 define Package/honk/conffiles
-/etc/honk/
+/etc/honk/config.dae
+/etc/honk/config.d/
 /etc/config/honk
 endef
 

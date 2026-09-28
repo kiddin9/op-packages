@@ -25,12 +25,10 @@ MAX_EVENTS="${SMARTSAFEHUB_EVENTS_MAX_EVENTS:-128}"
 MAX_METADATA_BYTES="${SMARTSAFEHUB_EVENTS_MAX_METADATA_BYTES:-4096}"
 ACTIVITY_SYNC_WAKE_FILE="${SMARTSAFEHUB_ACTIVITY_SYNC_WAKE_FILE:-$RUNTIME_DIR/activity-sync.wake}"
 
-# SafeShield blocklist refresh is asynchronous, so the event subsystem keeps a
-# narrow observer for terminal refresh timestamps. Keep the existing state file
-# name so r12 upgrades do not replay a result already observed by the former
-# standalone smartsafehub-safeshield-events daemon.
-SAFESHIELD_STATE_FILE="${SMARTSAFEHUB_EVENTS_SAFESHIELD_STATE_FILE:-$RUNTIME_DIR/safeshield-events.state}"
-SAFESHIELD_LOCK_DIR="${SMARTSAFEHUB_EVENTS_SAFESHIELD_LOCK_DIR:-$RUNTIME_DIR/safeshield-events.lock}"
+# SafeShield blocklist refresh is asynchronous, so the unified event daemon keeps
+# a narrow observer for terminal refresh timestamps.
+SAFESHIELD_STATE_FILE="${SMARTSAFEHUB_EVENTS_SAFESHIELD_STATE_FILE:-$RUNTIME_DIR/safeshield-observer.state}"
+SAFESHIELD_LOCK_DIR="${SMARTSAFEHUB_EVENTS_SAFESHIELD_LOCK_DIR:-$RUNTIME_DIR/safeshield-observer.lock}"
 SAFESHIELD_UBUS_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_UBUS_BIN:-ubus}"
 SAFESHIELD_JSONFILTER_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_JSONFILTER_BIN:-$JSONFILTER_BIN}"
 SAFESHIELD_DATE_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_DATE_BIN:-$DATE_BIN}"

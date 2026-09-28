@@ -285,6 +285,53 @@
   color: #5eead4;
 }
 
+/* Keep the update count readable when the desktop sidebar is collapsed.
+ * Generic amber surfaces become intentionally translucent in dark mode,
+ * which is too subtle for a tiny notification counter over the nav icon. */
+.ssh-update-nav-badge {
+  display: inline-flex;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.25rem;
+  border: 1px solid #f59e0b;
+  border-radius: 9999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+
+.ssh-update-nav-badge[data-collapsed='true'] {
+  position: absolute;
+  z-index: 1;
+  top: 0.125rem;
+  right: 0.125rem;
+  min-width: 1.25rem;
+  width: auto;
+  height: 1.25rem;
+  padding: 0 0.25rem;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 2px 5px rgb(15 23 42 / 0.2);
+}
+
+.ssh-app[data-theme='dark'] .ssh-update-nav-badge {
+  border-color: #fcd34d;
+  background: #fbbf24;
+  color: #422006;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+.ssh-app[data-theme='dark'] .ssh-update-nav-badge[data-collapsed='true'] {
+  box-shadow:
+    0 0 0 2px #0f172a,
+    0 2px 6px rgb(0 0 0 / 0.38);
+}
+
 .ssh-update-progress-track {
   position: relative;
   height: 0.375rem;
@@ -389,6 +436,43 @@
   max-width: 100%;
   gap: 0.5rem;
   padding-inline: 0.75rem;
+}
+
+/* Safari/WebKit can preserve a replaced input element's intrinsic width even
+ * inside a shrinking flex row. IPv4/DHCP editors therefore use four explicit
+ * minmax(0, 1fr) tracks and render separators in the track gaps. This keeps
+ * every octet inside the card on iPhone-sized viewports without reducing the
+ * 44px touch target or hiding any part of the address. */
+.ssh-ipv4-segments {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ssh-ipv4-segment {
+  position: relative;
+  min-width: 0;
+}
+
+.ssh-ipv4-separator {
+  position: absolute;
+  top: 50%;
+  right: -0.375rem;
+  transform: translate(50%, -50%);
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .ssh-ipv4-segments {
+    gap: 1rem;
+  }
+
+  .ssh-ipv4-separator {
+    right: -0.5rem;
+  }
 }
 
 /* Authenticated product color theme. The application lives inside a shadow
@@ -512,7 +596,9 @@
   background-color: rgb(14 165 233 / 0.12);
 }
 
-.ssh-app[data-theme='dark'] [class~='text-sky-700'] {
+.ssh-app[data-theme='dark'] [class~='text-sky-700'],
+.ssh-app[data-theme='dark'] [class~='text-sky-800'],
+.ssh-app[data-theme='dark'] [class~='text-sky-950'] {
   color: #7dd3fc;
 }
 

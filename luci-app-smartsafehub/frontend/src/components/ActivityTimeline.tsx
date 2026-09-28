@@ -72,6 +72,19 @@ function licensePlan(value: string | null): string | null {
   return value.toUpperCase();
 }
 
+function protocolLabelForActivity(protocol: string): string {
+  switch (protocol) {
+    case 'dhcp':
+      return '자동 IP(DHCP)';
+    case 'pppoe':
+      return 'PPPoE';
+    case 'static':
+      return '고정 IPv4';
+    default:
+      return protocol.toUpperCase();
+  }
+}
+
 export function activityPresentation(event: ActivityEvent): ActivityPresentation {
   switch (event.eventType) {
     case 'system.booted':
@@ -221,6 +234,16 @@ export function activityPresentation(event: ActivityEvent): ActivityPresentation
         title: 'Wi-Fi 설정 변경',
         description: 'Wi-Fi 설정을 저장하고 무선 네트워크에 적용했습니다.',
       };
+
+    case 'settings.wan.updated': {
+      const protocol = metadataString(event, 'protocol');
+      return {
+        title: '인터넷 설정 변경',
+        description: protocol
+          ? `${protocolLabelForActivity(protocol)} 방식으로 WAN 설정을 변경했습니다.`
+          : 'WAN 인터넷 연결 설정을 변경했습니다.',
+      };
+    }
 
     case 'settings.lan.updated':
       return {

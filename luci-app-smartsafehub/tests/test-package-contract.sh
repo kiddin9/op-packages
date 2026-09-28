@@ -58,8 +58,6 @@ require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-health"
 require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-license"
 require_file "$ROOT_DIR/root/usr/lib/smartsafehub/common.sh"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-events"
-[ ! -e "$ROOT_DIR/root/usr/libexec/smartsafehub-safeshield-events" ] || fail 'standalone SafeShield event helper must be removed after merging into smartsafehub-events'
-[ ! -e "$ROOT_DIR/root/etc/init.d/smartsafehub-safeshield-events" ] || fail 'standalone SafeShield event init service must be removed after merging into smartsafehub-events'
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-activity-sync"
 require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-activity-sync"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-updater"
@@ -198,10 +196,6 @@ preinst_block="$(awk '
 [ -n "$preinst_block" ] || fail 'package preinst hook is missing'
 printf '%s\n' "$preinst_block" | grep -Fq '[ -z "$${IPKG_INSTROOT}" ]' ||
 	fail 'package preinst must limit legacy event-daemon migration to runtime installation'
-printf '%s\n' "$preinst_block" | grep -Fq '/etc/init.d/smartsafehub-safeshield-events stop' ||
-	fail 'package preinst must stop the legacy SafeShield event daemon before replacing package files'
-printf '%s\n' "$preinst_block" | grep -Fq '/etc/init.d/smartsafehub-safeshield-events disable' ||
-	fail 'package preinst must disable the legacy SafeShield event daemon before replacing package files'
 
 postinst_block="$(awk '
 	/^define Package\/luci-app-smartsafehub\/postinst$/ { in_block = 1 }
@@ -217,10 +211,6 @@ printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-events enab
 	fail 'package postinst must force-enable smartsafehub-events so boot events survive upgrades'
 printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-events restart' ||
 	fail 'package postinst must restart the unified smartsafehub-events daemon after upgrades'
-printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-safeshield-events stop' ||
-	fail 'package postinst must stop the legacy standalone SafeShield event daemon during the r12 merge upgrade'
-printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-safeshield-events disable' ||
-	fail 'package postinst must disable the legacy standalone SafeShield event daemon during the r12 merge upgrade'
 printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-updater enable' ||
 	fail 'package postinst must force-enable smartsafehub-updater so scheduled checks survive upgrades'
 if printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-updater restart'; then

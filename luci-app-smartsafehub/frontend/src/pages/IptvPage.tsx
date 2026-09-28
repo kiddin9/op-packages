@@ -128,50 +128,47 @@ export function IptvPage({
       ) : null}
 
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5 sm:p-6">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div class="min-w-0 max-w-2xl">
-            <div class="flex items-center gap-3">
-              <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700">
-                <TvIcon class="size-5" />
-              </span>
-              <div>
-                <h2 class="m-0 text-lg font-black text-slate-950">IPTV</h2>
-                <p class="mt-1 mb-0 text-sm leading-6 text-slate-600">
-                  WAN의 멀티캐스트 방송을 LAN 셋톱박스로 전달합니다.
-                </p>
+        <div class="flex min-w-0 items-start gap-3">
+          <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-700">
+            <TvIcon class="size-5" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <h2 class="m-0 text-lg font-black text-slate-950">IPTV</h2>
+              <div class="flex shrink-0 items-center gap-2">
+                {dirty ? (
+                  <span
+                    aria-live="polite"
+                    class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-800"
+                    role="status"
+                  >
+                    <AlertIcon aria-hidden="true" class="size-3.5 shrink-0" />
+                    저장되지 않음
+                  </span>
+                ) : null}
+                <button
+                  aria-checked={enabled}
+                  aria-label="IPTV 사용"
+                  class={`ssh-switch-control relative inline-flex shrink-0 rounded-full border-0 transition focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 ${
+                    enabled ? 'bg-teal-700' : 'bg-slate-300'
+                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                  disabled={saving || !data.available}
+                  onClick={() => setEnabled((current) => !current)}
+                  role="switch"
+                  type="button"
+                >
+                  <span
+                    aria-hidden="true"
+                    class={`ssh-switch-thumb absolute top-1 shadow-sm transition-[left] ${
+                      enabled ? 'left-6' : 'left-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
-          </div>
-
-          <div class="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
-            {dirty ? (
-              <span
-                aria-live="polite"
-                class="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-extrabold text-amber-800"
-                role="status"
-              >
-                <AlertIcon aria-hidden="true" class="size-3.5 shrink-0" />
-                저장되지 않음
-              </span>
-            ) : null}
-            <button
-              aria-checked={enabled}
-              aria-label="IPTV 사용"
-              class={`relative h-8 w-14 shrink-0 rounded-full border-0 transition ${
-                enabled ? 'bg-teal-700' : 'bg-slate-300'
-              } disabled:cursor-not-allowed disabled:opacity-60`}
-              disabled={saving || !data.available}
-              onClick={() => setEnabled((current) => !current)}
-              role="switch"
-              type="button"
-            >
-              <span
-                aria-hidden="true"
-                class={`absolute top-1 size-6 rounded-full bg-white shadow-sm transition-[left] ${
-                  enabled ? 'left-7' : 'left-1'
-                }`}
-              />
-            </button>
+            <p class="mt-1 mb-0 text-sm leading-6 text-slate-600">
+              WAN의 멀티캐스트 방송을 LAN 셋톱박스로 전달합니다.
+            </p>
           </div>
         </div>
 

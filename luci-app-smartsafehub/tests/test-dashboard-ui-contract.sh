@@ -28,8 +28,8 @@ grep -Fq "const dashboardSafeShield = useSafeShieldStatus(route === 'home');" "$
 	fail '대시보드는 SafeShield 상태를 불러와야 합니다'
 grep -Fq "const dashboardSafeShieldStatistics = useSafeShieldStatistics(route === 'home', false);" "$APP" || \
 	fail '대시보드 SafeShield 통계는 주기 polling을 사용하지 않아야 합니다'
-grep -Fq "route === 'system' || route === 'home' || route === 'settings'" "$APP" || \
-	fail '대시보드와 설정 페이지는 SmartSafeHub 펌웨어 식별 정보를 불러와야 합니다'
+grep -Fq 'const firmware = useFirmwareUpdates(true);' "$APP" || \
+	fail '펌웨어 상태는 대시보드/설정뿐 아니라 전역 업데이트 알림을 위해 모든 화면에서 유지되어야 합니다'
 grep -Fq 'devices={dashboardDevices.data}' "$APP" || \
 	fail '대시보드는 연결 기기 요약 데이터를 전달받아야 합니다'
 grep -Fq 'safeshield={dashboardSafeShield.data}' "$APP" || \
@@ -40,7 +40,7 @@ grep -Fq 'firmware={firmware.data}' "$APP" || \
 	fail '대시보드는 SmartSafeHub 펌웨어 상태를 전달받아야 합니다'
 grep -Fq "const health = useHealth(route === 'home' || route === 'settings');" "$APP" || \
 	fail '대시보드와 설정 페이지가 같은 로컬 Health 상태를 조회해야 합니다'
-grep -Fq "const lan = useLan(route === 'home' || route === 'lan');" "$APP" || \
+grep -Fq "const lan = useLan(route === 'home' || route === 'network');" "$APP" || \
 	fail '대시보드는 LAN/WAN 대역과 충돌 상태를 함께 조회해야 합니다'
 grep -Fq 'health={health.data}' "$APP" || \
 	fail '대시보드에 로컬 Health 진단 데이터를 전달해야 합니다'
@@ -107,8 +107,8 @@ grep -Fq 'eyebrow="Software update"' "$HOME" || \
 	fail '대시보드는 소프트웨어 업데이트 정보를 표시해야 합니다'
 grep -Fq 'const networkConflict = Boolean(lan?.conflict.detected);' "$HOME" || \
 	fail 'Internet 개요 카드는 WAN/LAN 대역 충돌 상태를 사용해야 합니다'
-grep -Fq 'href="#lan"' "$HOME" || \
-	fail 'Internet 개요와 연결 상태 상세는 LAN 설정으로 연결되어야 합니다'
+grep -Fq 'href="#network"' "$HOME" || \
+	fail 'Internet 개요와 연결 상태 상세는 통합 네트워크 설정으로 연결되어야 합니다'
 grep -Fq "linkLabel={networkConflict ? '해결하기 →' : '자세히 보기 →'}" "$HOME" || \
 	fail 'Internet 개요 카드는 정상 상태에서 다른 개요 카드와 같은 자세히 보기 문구를 사용하고 충돌 시 해결하기를 표시해야 합니다'
 grep -Fq "? '⚠ LAN 대역과 충돌합니다'" "$HOME" || \
@@ -130,12 +130,18 @@ grep -Fq 'firstOctet === undefined || secondOctet === undefined' "$HOME" || \
 if grep -Eq 'octets\[1\][[:space:]]*(>=|<=|===|==|>|<)' "$HOME"; then
 	fail '사설 WAN 판별에서 noUncheckedIndexedAccess를 우회하는 직접 배열 비교를 사용하면 안 됩니다'
 fi
-grep -Fq 'LAN 설정 보기' "$HOME" || \
-	fail '연결 상태 상세 카드의 주 동작은 LAN 설정으로 이동해야 합니다'
+grep -Fq '네트워크 보기' "$HOME" || \
+	fail '연결 상태 상세 카드의 주 동작은 통합 네트워크 화면으로 이동해야 합니다'
 grep -Fq 'title="네트워크 보호 활동"' "$HOME" || \
 	fail '대시보드는 네트워크 보호 활동 영역을 표시해야 합니다'
 grep -Fq '<DashboardSafeShieldActivity' "$HOME" || \
 	fail '대시보드는 SafeShield 활동 시각화를 렌더링해야 합니다'
+grep -Fq 'nowTimestamp={relativeNow}' "$HOME" || \
+	fail 'SafeShield 최근 집계 상대 시간은 대시보드의 1분 갱신 시계를 공유해야 합니다'
+grep -Fq 'action={' "$HOME" || \
+	fail '최근 활동 전체 보기 링크는 SectionHeading 제목 행의 action으로 배치해야 합니다'
+grep -Fq 'class="inline-flex whitespace-nowrap text-xs font-extrabold text-teal-700 no-underline hover:text-teal-900"' "$HOME" || \
+	fail '최근 활동 전체 보기 링크는 모바일에서 줄바꿈되지 않아야 합니다'
 grep -Fq 'title="시스템 상태"' "$HOME" || \
 	fail '대시보드는 시스템 상태 영역을 표시해야 합니다'
 grep -Fq 'function DashboardHealthSummary({' "$HOME" || \
@@ -205,6 +211,17 @@ grep -Fq "updates && !updates.settings.checkEnabled" "$HOME" || \
 	fail '소프트웨어 자동 확인이 꺼져 있으면 지연 상태로 표시하지 않아야 합니다'
 grep -Fq 'const RELATIVE_TIME_TICK_MS = 60_000;' "$HOME" || \
 	fail '대시보드 상대 시간 문구는 백엔드 polling 없이 1분마다 갱신되어야 합니다'
+grep -Fq "import { formatNumber, formatRelativeTime, formatTimestamp } from '../app/format';" "$ACTIVITY" || \
+	fail 'SafeShield 최근 활동 카드는 공통 상대 시간 formatter를 사용해야 합니다'
+grep -Fq 'class="shrink-0 whitespace-nowrap text-xs font-extrabold text-teal-700 no-underline hover:text-teal-800"' "$ACTIVITY" || \
+	fail 'SafeShield 상세 통계 링크는 제목 오른쪽에서 모바일 줄바꿈 없이 유지되어야 합니다'
+grep -Fq 'title={formatTimestamp(data.updatedAt)}' "$ACTIVITY" || \
+	fail 'SafeShield 상대 집계 시각은 정확한 절대 시각을 title 정보로 유지해야 합니다'
+grep -Fq '`집계: ${formatRelativeTime(data.updatedAt, nowTimestamp)}`' "$ACTIVITY" || \
+	fail 'SafeShield 최근 집계 시각은 상대 시간으로 표시해야 합니다'
+if grep -Fq '`집계: ${formatTimestamp(data.updatedAt)}`' "$ACTIVITY"; then
+	fail '대시보드 SafeShield 집계 시각을 절대 날짜로 직접 표시하면 안 됩니다'
+fi
 grep -Fq "return '방금 전';" "$FORMAT" || \
 	fail '상대 시간 formatter는 방금 전 상태를 지원해야 합니다'
 grep -Fq 'Math.floor(elapsedSeconds / 60)}분 전' "$FORMAT" || \

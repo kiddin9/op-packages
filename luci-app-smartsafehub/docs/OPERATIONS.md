@@ -45,7 +45,7 @@ ubus -v list smartsafehub
 ubus call smartsafehub status '{}'
 ```
 
-LAN/DHCP 구현은 기존 관리 RPC의 가용성을 보호하기 위해 별도 `smartsafehub_network` ubus 객체로 격리되어 있습니다. LAN 화면은 같은 `rpcd` 프로세스 안에서 다른 객체를 동기 프록시하지 않고 이 객체를 직접 호출합니다. `smartsafehub_network`는 자체적으로 관리자 비밀번호 설정 상태를 확인하며 LuCI ACL도 LAN 읽기/쓰기 메서드에만 제한됩니다.
+LAN/DHCP 구현은 기존 관리 RPC의 가용성을 보호하기 위해 별도 `smartsafehub_network` ubus 객체로 격리되어 있습니다. `네트워크` 화면의 내부 네트워크 영역은 같은 `rpcd` 프로세스 안에서 다른 객체를 동기 프록시하지 않고 이 객체를 직접 호출합니다. `smartsafehub_network`는 자체적으로 관리자 비밀번호 설정 상태를 확인하며 LuCI ACL도 LAN 읽기/쓰기 메서드에만 제한됩니다.
 
 ```bash
 ubus -v list smartsafehub_network
@@ -139,6 +139,20 @@ daemon의 startup/check 대기는 foreground `sleep`이 아니라 interrupt 가�
 ### 라이선스 셸 계약 테스트
 
 `tests/test-license.sh`는 activate/status 동기화, stale activation lock 복구, activation 진단 필드 보존과 장기 sleep 중 SIGTERM 정상 종료를 검증합니다. 각 시나리오는 mock 환경을 명시적으로 초기화해 Linux `dash`와 macOS `/bin/sh`처럼 함수 앞 임시 환경 변수의 처리 차이가 있는 환경에서도 이전 실패 주기의 값이 다음 테스트에 누적되지 않도록 합니다.
+
+
+## SmartSafeHub Reset Policy v1
+
+SmartSafeHub 펌웨어는 OpenWrt 기본 `/etc/rc.button/reset`과 제품 전용 Reset 정책이 동시에 존재하지 않도록 빌드해야 합니다. OpenWrt 소스 빌드 config에서 `CONFIG_TARGET_BUTTON_CUSTOMIZATION=y`와 `CONFIG_TARGET_BUTTON_CUSTOMIZATION_RESET_DISABLED=y`를 활성화하고, firmware image에 포함되는 `luci-app-smartsafehub`가 `/etc/rc.button/reset`을 제공합니다.
+
+- 1초 미만: 재부팅
+- 1~4초: 동작 없음
+- 5~9초: 관리자 비밀번호 복구
+- 10초 이상: `factoryreset -y` 후 재부팅
+
+`0.2.22-r12` 이상 패키지는 실행 중인 장치에 OpenWrt 기본 reset handler가 남아 있으면 live package upgrade를 중단합니다. 이 경우 관리 소프트웨어만 먼저 올리지 말고 Reset Policy v1 config로 빌드한 펌웨어를 먼저 설치해야 합니다. 펌웨어 이미지에 패키지가 함께 포함되는 정상 빌드에서는 rootfs 생성 시 기본 handler가 제거된 상태이므로 충돌하지 않습니다.
+
+비밀번호 복구는 `/etc/smartsafehub/password-recovery` marker로 추적합니다. helper는 root 비밀번호만 비우고 Dropbear의 기존 enable 상태를 marker에 기록한 뒤 SSH를 중지/비활성화합니다. 재부팅 후 공개 recovery bridge는 marker가 존재하고 root 비밀번호가 비어 있을 때만 `system_root_password_status`와 `system_root_password_set` 두 RPC로 제한된 15분 ubus 세션을 발급하므로 일반 로그인 화면 없이 복구 UI로 바로 진입할 수 있습니다. 새 관리자 비밀번호 설정이 완료되면 marker를 삭제하고 이전 SSH enable 상태를 복원합니다.
 
 ## 진단 다운로드 확인
 

@@ -215,9 +215,9 @@ refresh_credential_from_license() {
 
 	LICENSE_STATUS_FILE="$RUNTIME_DIR/activity-license-status.$$.json"
 	"$LICENSE_BIN" status > "$LICENSE_STATUS_FILE" 2>/dev/null || return 1
-	phase="$(json_value "$LICENSE_STATUS_FILE" '@.phase' | tr '[:upper:]' '[:lower:]')"
-	plan="$(json_value "$LICENSE_STATUS_FILE" '@.plan' | tr '[:upper:]' '[:lower:]')"
-	action="$(json_value "$LICENSE_STATUS_FILE" '@.deviceAction' | tr '[:upper:]' '[:lower:]')"
+	phase="$(ascii_lower "$(json_value "$LICENSE_STATUS_FILE" '@.phase')")"
+	plan="$(ascii_lower "$(json_value "$LICENSE_STATUS_FILE" '@.plan')")"
+	action="$(ascii_lower "$(json_value "$LICENSE_STATUS_FILE" '@.deviceAction')")"
 
 	case "$phase:$action:$plan" in
 		unconfigured:*:*|cleared:*:*|*:clear_license:*|*:*:free)

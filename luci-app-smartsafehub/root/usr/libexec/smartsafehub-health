@@ -605,8 +605,8 @@ license_eligible() {
 	plan="$(json_value "$status_file" '@.license.plan')"
 	license_status="$(json_value "$status_file" '@.license.status')"
 	[ "$temporary" -eq 0 ] || rm -f "$status_file"
-	normalized_plan="$(printf '%s' "$plan" | tr '[:lower:]' '[:upper:]')"
-	normalized_status="$(printf '%s' "$license_status" | tr '[:upper:]' '[:lower:]')"
+	normalized_plan="$(ascii_upper "$plan")"
+	normalized_status="$(ascii_lower "$license_status")"
 
 	if [ "$configured" != 'true' ] && [ "$configured" != '1' ]; then
 		printf '%s\t%s\t%s' '0' "$normalized_plan" "$normalized_status"

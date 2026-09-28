@@ -1,0 +1,59 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+. /lib/functions.sh
+
+SMARTSAFEHUB_RESET_POLICY='smartsafehub-v1'
+PROC_MOUNTS="${SMARTSAFEHUB_RESET_PROC_MOUNTS:-/proc/mounts}"
+RECOVERY_HELPER="${SMARTSAFEHUB_RESET_RECOVERY_HELPER:-/usr/libexec/smartsafehub-password-recovery}"
+REBOOT_BIN="${SMARTSAFEHUB_RESET_REBOOT_BIN:-reboot}"
+FACTORYRESET_BIN="${SMARTSAFEHUB_RESET_FACTORYRESET_BIN:-factoryreset}"
+SYNC_BIN="${SMARTSAFEHUB_RESET_SYNC_BIN:-sync}"
+CONSOLE_FILE="${SMARTSAFEHUB_RESET_CONSOLE_FILE:-/dev/console}"
+DIAG_SH="${SMARTSAFEHUB_RESET_DIAG_SH:-/etc/diag.sh}"
+OVERLAY="$(grep ' /overlay ' "$PROC_MOUNTS" 2>/dev/null || true)"
+
+console_log() {
+	printf '%s\n' "$*" > "$CONSOLE_FILE" 2>/dev/null || true
+}
+
+case "${ACTION:-}" in
+pressed)
+	[ -z "$OVERLAY" ] && return 0
+
+	# Preserve OpenWrt's five-second timeout event so supported devices can
+	# provide their normal diagnostic LED feedback. The destructive/non-
+	# destructive action is selected only when the button is released.
+	return 5
+	;;
+timeout)
+	if [ -r "$DIAG_SH" ]; then
+		. "$DIAG_SH"
+		set_state failsafe
+	fi
+	;;
+released)
+	case "${SEEN:-}" in
+		''|*[!0-9]*) return 0 ;;
+	esac
+
+	if [ "$SEEN" -lt 1 ]; then
+		console_log 'REBOOT'
+		"$SYNC_BIN"
+		"$REBOOT_BIN"
+	elif [ "$SEEN" -ge 5 ] && [ "$SEEN" -lt 10 ] && [ -n "$OVERLAY" ]; then
+		console_log 'SMARTSAFEHUB PASSWORD RECOVERY'
+		if [ -x "$RECOVERY_HELPER" ]; then
+			"$RECOVERY_HELPER" request || \
+				console_log 'SMARTSAFEHUB PASSWORD RECOVERY FAILED'
+		else
+			console_log 'SMARTSAFEHUB PASSWORD RECOVERY HELPER MISSING'
+		fi
+	elif [ "$SEEN" -ge 10 ] && [ -n "$OVERLAY" ]; then
+		console_log 'FACTORY RESET'
+		"$FACTORYRESET_BIN" -y && "$REBOOT_BIN" &
+	fi
+	;;
+esac
+
+return 0

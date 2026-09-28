@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact';
-import { formatNumber, formatTimestamp } from '../app/format';
+import { formatNumber, formatRelativeTime, formatTimestamp } from '../app/format';
 import type {
   SafeShieldStatistics,
   SafeShieldStatisticsBucket,
@@ -10,6 +10,7 @@ interface DashboardSafeShieldActivityProps {
   data: SafeShieldStatistics | null;
   error: string | null;
   loading: boolean;
+  nowTimestamp: number;
   refreshing: boolean;
 }
 
@@ -66,6 +67,7 @@ export function DashboardSafeShieldActivity({
   data,
   error,
   loading,
+  nowTimestamp,
   refreshing,
 }: DashboardSafeShieldActivityProps) {
   let content: ComponentChildren;
@@ -136,25 +138,29 @@ export function DashboardSafeShieldActivity({
 
   return (
     <article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5 sm:p-6">
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p class="m-0 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">
-            SafeShield activity
-          </p>
-          <h3 class="mt-2 mb-0 text-xl font-black text-slate-950">
+      <div class="min-w-0">
+        <p class="m-0 text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">
+          SafeShield activity
+        </p>
+        <div class="mt-2 flex min-w-0 items-center justify-between gap-3">
+          <h3 class="m-0 min-w-0 text-xl font-black text-slate-950">
             최근 24시간 보호 활동
           </h3>
-        </div>
-        <div class="text-right">
-          <a class="text-xs font-extrabold text-teal-700 no-underline hover:text-teal-800" href="#safeshield">
+          <a
+            class="shrink-0 whitespace-nowrap text-xs font-extrabold text-teal-700 no-underline hover:text-teal-800"
+            href="#safeshield"
+          >
             상세 통계 →
           </a>
-          {data?.updatedAt ? (
-            <p class="mt-1 mb-0 text-[0.68rem] font-semibold text-slate-400">
-              {refreshing ? '갱신 중…' : `집계 ${formatTimestamp(data.updatedAt)}`}
-            </p>
-          ) : null}
         </div>
+        {data?.updatedAt ? (
+          <p
+            class="mt-2 mb-0 text-[0.68rem] font-semibold text-slate-400"
+            title={formatTimestamp(data.updatedAt)}
+          >
+            {refreshing ? '갱신 중…' : `집계: ${formatRelativeTime(data.updatedAt, nowTimestamp)}`}
+          </p>
+        ) : null}
       </div>
       {content}
       {error && data ? (

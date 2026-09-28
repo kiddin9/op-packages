@@ -332,6 +332,13 @@ export function LoginApp({
                 <span>입력한 계정 정보는 현재 공유기의 LuCI 인증 경로로만 전송됩니다.</span>
               </div>
 
+              <div class="ssh-login-security-note">
+                <KeyIcon aria-hidden="true" />
+                <span>
+                  관리자 비밀번호를 잊었다면 전원이 켜진 상태에서 Reset 버튼을 5~9초 누른 뒤 놓아 비밀번호만 복구할 수 있습니다. 10초 이상 누르면 모든 사용자 설정을 초기화하는 기기 초기화가 실행됩니다.
+                </span>
+              </div>
+
               {showFallback ? (
                 <a class="ssh-login-fallback" href={fallbackUrl}>
                   기본 LuCI 로그인으로 계속

@@ -19,15 +19,48 @@ TIME_SELECT="$ROOT_DIR/frontend/src/components/TimeSelect.tsx"
 RUNTIME_APP_JS="$ROOT_DIR/root/www/luci-static/smartsafehub/app.js"
 RUNTIME_APP_CSS="$ROOT_DIR/root/www/luci-static/smartsafehub/app.css"
 UPDATE_FRESHNESS="$ROOT_DIR/frontend/src/utils/softwareUpdates.ts"
+APP="$ROOT_DIR/frontend/src/app/App.tsx"
+NAVIGATION="$ROOT_DIR/frontend/src/components/ProductNavigation.tsx"
 
 fail() {
 	echo "FAIL: $*" >&2
 	exit 1
 }
 
-for file in "$UPDATES_CARD" "$FIRMWARE_CARD" "$FIRMWARE_HOOK" "$FIRMWARE_UPLOAD" "$FIRMWARE_TYPES" "$FIRMWARE_RPC" "$UPDATE_PAGE" "$SETTINGS_PAGE" "$UPDATES_HOOK" "$ASYNC_RESOURCE" "$APP_CSS" "$TIME_SELECT" "$RUNTIME_APP_JS" "$RUNTIME_APP_CSS" "$UPDATE_FRESHNESS"; do
+for file in "$UPDATES_CARD" "$FIRMWARE_CARD" "$FIRMWARE_HOOK" "$FIRMWARE_UPLOAD" "$FIRMWARE_TYPES" "$FIRMWARE_RPC" "$UPDATE_PAGE" "$SETTINGS_PAGE" "$UPDATES_HOOK" "$ASYNC_RESOURCE" "$APP_CSS" "$TIME_SELECT" "$RUNTIME_APP_JS" "$RUNTIME_APP_CSS" "$UPDATE_FRESHNESS" "$APP" "$NAVIGATION"; do
 	[ -f "$file" ] || fail "missing required file: ${file#$ROOT_DIR/}"
 done
+
+# The sidebar update indicator must cover both management software and firmware.
+grep -Fq 'const firmware = useFirmwareUpdates(true);' "$APP" || \
+	fail 'firmware status must stay active on every route so the sidebar notification remains current'
+grep -Fq 'const managementSoftwareUpdateAvailable = (updates.data?.updateCount ?? 0) > 0;' "$APP" || \
+	fail 'sidebar update badge must collapse any number of management-software updates into one category'
+grep -Fq '(managementSoftwareUpdateAvailable ? 1 : 0) +' "$APP" || \
+	fail 'sidebar update badge must count management software as at most one category'
+grep -Fq '(firmware.data?.updateAvailable ? 1 : 0);' "$APP" || \
+	fail 'sidebar update badge must count firmware as at most one category'
+if grep -Fq '(updates.data?.updateCount ?? 0) + (firmware.data?.updateAvailable ? 1 : 0)' "$APP"; then
+	fail 'sidebar update badge must not expose the raw management-software package count'
+fi
+grep -Fq 'updateCount={updateCount}' "$APP" || \
+	fail 'App must pass the combined management-software and firmware count to the shell'
+grep -Fq "{routeName === 'system' && updateCount > 0 ? (" "$NAVIGATION" || \
+	fail 'update navigation item must render a badge whenever the combined update count is non-zero'
+grep -Fq 'aria-label={`${updateCount}개의 업데이트 유형`}' "$NAVIGATION" || \
+	fail 'collapsed update notification must describe the combined update-category count accurately'
+grep -Fq 'class="ssh-update-nav-badge"' "$NAVIGATION" || \
+	fail 'update navigation count must use the dedicated high-contrast badge style'
+grep -Fq 'data-collapsed="true"' "$NAVIGATION" || \
+	fail 'collapsed update notification must expose the compact badge variant'
+grep -Fq ".ssh-update-nav-badge[data-collapsed='true']" "$APP_CSS" || \
+	fail 'collapsed update badge must keep a dedicated 20px notification geometry'
+grep -Fq ".ssh-app[data-theme='dark'] .ssh-update-nav-badge {" "$APP_CSS" || \
+	fail 'update badge must define a dedicated dark-mode contrast treatment'
+grep -Fq 'background: #fbbf24;' "$APP_CSS" || \
+	fail 'dark update badge must use a solid amber surface instead of the generic translucent amber background'
+grep -Fq 'color: #422006;' "$APP_CSS" || \
+	fail 'dark update badge count must keep strong contrast against the solid amber surface'
 
 # Firmware and management software must read as separate update products.
 grep -Fq '관리 소프트웨어 업데이트' "$UPDATES_CARD" || \
@@ -175,6 +208,10 @@ grep -Fq '설치가 완료되면 이 화면이 자동으로 갱신됩니다.' "$
 	fail 'installing copy must explain automatic status refresh'
 grep -Fq '@keyframes ssh-update-progress' "$APP_CSS" || \
 	fail 'update progress indicator must define an indeterminate animation'
+grep -Fq ".ssh-app[data-theme='dark'] [class~='text-sky-800']," "$APP_CSS" || \
+	fail 'dark theme must remap software-update progress description text to a readable sky tone'
+grep -Fq ".ssh-app[data-theme='dark'] [class~='text-sky-950'] {" "$APP_CSS" || \
+	fail 'dark theme must remap software-update progress heading text to a readable sky tone'
 if grep -Fq '완료 후 화면을 새로고침해 주세요.' "$UPDATES_HOOK"; then
 	fail 'install start feedback must not ask the user to refresh manually'
 fi

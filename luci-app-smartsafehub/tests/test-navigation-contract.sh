@@ -134,14 +134,18 @@ grep -Fq 'class="ssh-mobile-navigation' "$NAVIGATION" || \
 ROUTES="$ROOT_DIR/frontend/src/app/routes.ts"
 HASH_ROUTE="$ROOT_DIR/frontend/src/hooks/useHashRoute.ts"
 
-grep -Fq "{ label: 'Network', routes: ['lan', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-	fail 'Network navigation group must place LAN before Wi-Fi and connected devices'
-grep -Fq "route: 'lan'" "$ROUTES" || \
-	fail 'LAN route must be registered'
-grep -Fq "hash: '#lan'" "$ROUTES" || \
-	fail 'LAN route must expose the #lan hash'
-grep -Fq "'#lan': 'lan'" "$HASH_ROUTE" || \
-	fail 'hash router must resolve #lan'
+grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
+	fail 'Network navigation group must expose one combined network settings entry before Wi-Fi and connected devices'
+grep -Fq "route: 'network'" "$ROUTES" || \
+	fail 'combined network settings route must be registered'
+grep -Fq "hash: '#network'" "$ROUTES" || \
+	fail 'combined network settings route must expose the #network hash'
+grep -Fq "'#network': 'network'" "$HASH_ROUTE" || \
+	fail 'hash router must resolve #network'
+grep -Fq "'#wan': 'network'" "$HASH_ROUTE" || \
+	fail 'legacy #wan hash must resolve to combined network settings'
+grep -Fq "'#lan': 'network'" "$HASH_ROUTE" || \
+	fail 'legacy #lan hash must resolve to combined network settings'
 grep -Fq "{ label: 'System', routes: ['system', 'settings'] }" "$NAVIGATION" || \
 	fail 'System navigation group must place settings directly below updates'
 grep -Fq "case 'settings':" "$NAVIGATION" || \

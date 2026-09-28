@@ -16,6 +16,11 @@ sh -n "$COMMON_LIB" || fail '공통 shell library가 POSIX shell 문법 검사�
 # shellcheck disable=SC1090
 . "$COMMON_LIB"
 command -v json_escape >/dev/null 2>&1 || fail '공통 library가 json_escape 함수를 제공해야 합니다.'
+command -v ascii_upper >/dev/null 2>&1 || fail '공통 library가 ascii_upper 함수를 제공해야 합니다.'
+command -v ascii_lower >/dev/null 2>&1 || fail '공통 library가 ascii_lower 함수를 제공해야 합니다.'
+
+[ "$(ascii_upper 'pro-Ultimate_1')" = 'PRO-ULTIMATE_1' ] || fail 'ascii_upper는 라이선스 토큰을 명시적 ASCII 매핑으로 대문자화해야 합니다.'
+[ "$(ascii_lower 'PRO-Ultimate_1')" = 'pro-ultimate_1' ] || fail 'ascii_lower는 라이선스 토큰을 명시적 ASCII 매핑으로 소문자화해야 합니다.'
 
 actual="$(json_escape "$(printf 'path\\name"value\r\nnext')")"
 expected='path\\name\"value  next'
@@ -27,7 +32,8 @@ for file in \
 	root/usr/libexec/smartsafehub-updater \
 	root/usr/libexec/smartsafehub-firmware \
 	root/usr/libexec/smartsafehub-health \
-	root/usr/libexec/smartsafehub-license; do
+	root/usr/libexec/smartsafehub-license \
+	root/usr/libexec/smartsafehub-activity-sync; do
 	path="$ROOT_DIR/$file"
 	grep -Fq '../lib/smartsafehub/common.sh' "$path" || fail "$file 이 공통 shell library를 사용해야 합니다."
 	grep -Fq '. "$COMMON_LIB"' "$path" || fail "$file 이 공통 shell library를 source해야 합니다."
@@ -36,4 +42,4 @@ for file in \
 	fi
 done
 
-printf 'PASS: shared SmartSafeHub json_escape helper and consumers are valid\n'
+printf 'PASS: shared SmartSafeHub shell helpers and consumers are valid\n'

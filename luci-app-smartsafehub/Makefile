@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-smartsafehub
-PKG_VERSION:=0.2.22
-PKG_RELEASE:=1
+PKG_VERSION:=0.2.23
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -27,6 +27,15 @@ endef
 define Package/luci-app-smartsafehub/preinst
 #!/bin/sh
 if [ -z "$${IPKG_INSTROOT}" ]; then
+	# SmartSafeHub Reset Policy v1 requires the firmware build to remove the
+	# stock OpenWrt /etc/rc.button/reset before this package owns that path.
+	# Refuse live upgrades on older firmware rather than risking a package file
+	# collision or showing 5-9 second recovery guidance while OpenWrt still
+	# interprets the same hold as an immediate factory reset.
+	if [ -f /etc/rc.button/reset ] && ! grep -Fq "SMARTSAFEHUB_RESET_POLICY='smartsafehub-v1'" /etc/rc.button/reset 2>/dev/null; then
+		echo "luci-app-smartsafehub: firmware update required for SmartSafeHub Reset Policy v1" >&2
+		exit 1
+	fi
 	# r18 and earlier had Cloud activity sync enabled implicitly whenever the
 	# device was eligible. Preserve that behavior across the r19 upgrade even
 	# if opkg replaces an otherwise-unmodified conffile with the new default-off
@@ -35,14 +44,6 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 	if [ -x /usr/libexec/smartsafehub-activity-sync ] && ! uci -q get smartsafehub.activity.cloud_sync_enabled >/dev/null 2>&1; then
 		mkdir -p /tmp/smartsafehub
 		: > /tmp/smartsafehub/activity-cloud-sync-upgrade-enable
-	fi
-
-	# r12 initially ran SafeShield refresh observation in a separate daemon.
-	# Stop it before files are replaced so the unified event daemon is the only
-	# observer after this package is unpacked.
-	if [ -x /etc/init.d/smartsafehub-safeshield-events ]; then
-		/etc/init.d/smartsafehub-safeshield-events stop >/dev/null 2>&1 || true
-		/etc/init.d/smartsafehub-safeshield-events disable >/dev/null 2>&1 || true
 	fi
 fi
 exit 0
@@ -58,13 +59,6 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 		rm -f /tmp/smartsafehub/activity-cloud-sync-upgrade-enable
 	fi
 	uci -q commit smartsafehub >/dev/null 2>&1 || true
-	# r12 initially shipped the SafeShield refresh observer as a separate procd
-	# service. Stop/disable it when upgrading to the unified event daemon while
-	# the legacy init script is still present.
-	if [ -x /etc/init.d/smartsafehub-safeshield-events ]; then
-		/etc/init.d/smartsafehub-safeshield-events stop >/dev/null 2>&1 || true
-		/etc/init.d/smartsafehub-safeshield-events disable >/dev/null 2>&1 || true
-	fi
 	if [ -x /etc/init.d/smartsafehub-events ]; then
 		/etc/init.d/smartsafehub-events enable
 		/etc/init.d/smartsafehub-events restart >/dev/null 2>&1 || true
@@ -81,6 +75,10 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 	fi
 	if [ -x /etc/init.d/smartsafehub-maintenance ]; then
 		/etc/init.d/smartsafehub-maintenance enable
+	fi
+	if [ -x /etc/init.d/smartsafehub-password-recovery ]; then
+		/etc/init.d/smartsafehub-password-recovery enable
+		/etc/init.d/smartsafehub-password-recovery start >/dev/null 2>&1 || true
 	fi
 	if [ -x /etc/init.d/smartsafehub-health ]; then
 		/etc/init.d/smartsafehub-health enable

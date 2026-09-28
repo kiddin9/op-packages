@@ -6,7 +6,10 @@ import { root_password_configured } from './smartsafehub/security.uc';
 import {
 	apply_recommended_lan,
 	read_lan_settings,
-	update_lan_settings
+	read_wan_settings,
+	reconnect_wan,
+	update_lan_settings,
+	update_wan_settings
 } from './smartsafehub/network-management.uc';
 import {
 	read_iptv_settings,
@@ -35,6 +38,36 @@ function require_root_password(handler) {
 }
 
 const methods = {
+	wan_settings: {
+		call: require_root_password(function(request) {
+			return read_wan_settings();
+		}),
+	},
+	wan_update: {
+		args: {
+			protocol: 'dhcp',
+			pppoe_username: '',
+			pppoe_password: '',
+			pppoe_password_changed: false,
+			static_address: '',
+			static_prefix_length: 24,
+			static_gateway: '',
+			dns_primary: '',
+			dns_secondary: '',
+			confirm: '',
+		},
+		call: require_root_password(function(request) {
+			return update_wan_settings(request);
+		}),
+	},
+	wan_reconnect: {
+		args: {
+			confirm: '',
+		},
+		call: require_root_password(function(request) {
+			return reconnect_wan(request);
+		}),
+	},
 	lan_settings: {
 		call: require_root_password(function(request) {
 			return read_lan_settings();

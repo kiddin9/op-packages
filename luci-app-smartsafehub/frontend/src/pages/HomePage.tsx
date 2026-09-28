@@ -159,24 +159,29 @@ function OverviewCard({
 }
 
 function SectionHeading({
+  action,
   description,
   eyebrow,
   id,
   title,
 }: {
+  action?: ComponentChildren;
   description: string;
   eyebrow: string;
   id: string;
   title: string;
 }) {
   return (
-    <div class="mb-4">
+    <div class="mb-4 min-w-0">
       <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.18em] text-teal-700">
         {eyebrow}
       </p>
-      <h2 class="mt-2 mb-0 text-xl font-black tracking-tight text-slate-950" id={id}>
-        {title}
-      </h2>
+      <div class="mt-2 flex min-w-0 items-center justify-between gap-3">
+        <h2 class="m-0 min-w-0 text-xl font-black tracking-tight text-slate-950" id={id}>
+          {title}
+        </h2>
+        {action ? <div class="shrink-0">{action}</div> : null}
+      </div>
       <p class="mt-2 mb-0 text-sm leading-6 text-slate-500">{description}</p>
     </div>
   );
@@ -661,7 +666,7 @@ export function HomePage({
           <OverviewCard
             detail={wanDetail}
             eyebrow="Internet"
-            href="#lan"
+            href="#network"
             icon={<GlobeIcon class="size-5" />}
             linkLabel={networkConflict ? '해결하기 →' : '자세히 보기 →'}
             meta={internetMeta}
@@ -749,6 +754,7 @@ export function HomePage({
             data={statistics}
             error={statisticsError}
             loading={statisticsLoading}
+            nowTimestamp={relativeNow}
             refreshing={statisticsRefreshing}
           />
 
@@ -821,29 +827,29 @@ export function HomePage({
 
             <a
               class="mt-5 inline-flex min-h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-extrabold text-slate-700 no-underline transition hover:border-teal-200 hover:bg-teal-50 hover:text-teal-800"
-              href="#lan"
+              href="#network"
             >
-              LAN 설정 보기
+              네트워크 보기
             </a>
           </article>
         </div>
       </section>
 
       <section aria-labelledby="dashboard-recent-activity-title">
-        <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <SectionHeading
-            description="인터넷, 보호, 업데이트와 진단에서 실제 상태가 바뀐 시점을 확인합니다."
-            eyebrow="History"
-            id="dashboard-recent-activity-title"
-            title="최근 활동"
-          />
-          <a
-            class="mb-4 inline-flex text-xs font-extrabold text-teal-700 no-underline hover:text-teal-900"
-            href="#activity"
-          >
-            전체 보기 →
-          </a>
-        </div>
+        <SectionHeading
+          action={
+            <a
+              class="inline-flex whitespace-nowrap text-xs font-extrabold text-teal-700 no-underline hover:text-teal-900"
+              href="#activity"
+            >
+              전체 보기 →
+            </a>
+          }
+          description="인터넷, 보호, 업데이트와 진단에서 실제 상태가 바뀐 시점을 확인합니다."
+          eyebrow="History"
+          id="dashboard-recent-activity-title"
+          title="최근 활동"
+        />
         <article class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5 sm:p-6">
           {activityLoading || (activityError && !activity) ? (
             <ActivityLoadState error={activityError} loading={activityLoading} />

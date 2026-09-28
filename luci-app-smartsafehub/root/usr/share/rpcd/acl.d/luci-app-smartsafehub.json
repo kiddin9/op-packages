@@ -22,6 +22,7 @@
           "rules_list"
         ],
         "smartsafehub_network": [
+          "wan_settings",
           "lan_settings",
           "iptv_settings"
         ]
@@ -34,6 +35,7 @@
       "ubus": {
         "smartsafehub": [
           "system_root_password_set",
+          "system_root_password_change",
           "wifi_update",
           "system_timezone_update",
           "system_time_sync",
@@ -71,6 +73,8 @@
           "license_update"
         ],
         "smartsafehub_network": [
+          "wan_reconnect",
+          "wan_update",
           "lan_update",
           "lan_auto_subnet",
           "iptv_update"

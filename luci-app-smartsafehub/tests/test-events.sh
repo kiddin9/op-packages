@@ -253,7 +253,7 @@ run_events list > "$TMP/boot-list.json"
 # successful observation is baseline-only; a later terminal timestamp emits one
 # observer event and persists the timestamp so the same result is not replayed.
 rm -f "$TMP/runtime/events.jsonl" "$TMP/runtime/activity-history.jsonl" "$TMP/runtime/events.seq" \
-	"$TMP/runtime/safeshield-events.state"
+	"$TMP/runtime/safeshield-observer.state"
 cat > "$TMP/safeshield-status.json" <<'EOF_SAFE_BASELINE'
 {"timestamps":{"last_success":1800003000,"last_failure":0},"artifact":{"version":"2026.09.21","unique_domains":33818},"runtime":{"last_error_code":""}}
 EOF_SAFE_BASELINE

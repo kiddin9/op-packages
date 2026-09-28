@@ -94,8 +94,8 @@ fi
 grep -Fq "route: 'iptv'" "$ROUTES" || fail 'IPTV route가 필요합니다.'
 grep -Fq "hash: '#iptv'" "$ROUTES" || fail 'IPTV route는 #iptv hash를 사용해야 합니다.'
 grep -Fq "'#iptv': 'iptv'" "$HASH_ROUTE" || fail '#iptv hash router 연결이 필요합니다.'
-grep -Fq "{ label: 'Network', routes: ['lan', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-  fail 'IPTV 메뉴는 Network 그룹에서 Wi-Fi 다음에 표시되어야 합니다.'
+grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
+  fail 'IPTV 메뉴는 Network 그룹에서 네트워크 설정과 Wi-Fi 다음에 표시되어야 합니다.'
 grep -Fq "routeName === 'iptv'" "$NAVIGATION" || fail 'IPTV 메뉴에 Beta badge 조건이 필요합니다.'
 grep -Fq 'Beta' "$NAVIGATION" || fail 'IPTV 메뉴에 Beta 표시가 필요합니다.'
 grep -Fq 'class="absolute right-0.5 top-0.5 inline-flex size-5' "$NAVIGATION" || \
@@ -136,6 +136,12 @@ grep -Fq 'SK Broadband/LG U+ 공통 IGMP Proxy 프로파일' "$PAGE" || \
 grep -Fq 'KT IPTV는 별도 네트워크 방식이 필요해 아직 지원하지 않습니다.' "$PAGE" || \
   fail 'Beta 안내에서 KT가 현재 미지원임을 명확히 표시해야 합니다.'
 grep -Fq 'role="switch"' "$PAGE" || fail 'IPTV 활성화는 접근 가능한 switch control을 사용해야 합니다.'
+grep -Fq 'ssh-switch-control relative inline-flex shrink-0 rounded-full' "$PAGE" || fail 'IPTV 스위치는 모바일 44px touch-target 규칙에 늘어나지 않는 공통 switch geometry를 사용해야 합니다.'
+grep -Fq 'ssh-switch-thumb absolute top-1 shadow-sm transition-[left]' "$PAGE" || fail 'IPTV 스위치 thumb은 공통 switch geometry에 맞는 크기와 위치를 사용해야 합니다.'
+grep -Fq 'class="flex min-w-0 flex-wrap items-center justify-between gap-2"' "$PAGE" || fail 'IPTV 제목과 스위치는 좁은 모바일 카드 안에서 wrap 가능한 같은 제목 행을 사용해야 합니다.'
+if grep -Fq 'relative h-8 w-14 shrink-0 rounded-full' "$PAGE"; then
+  fail 'IPTV 스위치에 모바일 touch-target과 충돌하는 독립 h-8/w-14 geometry를 다시 사용하면 안 됩니다.'
+fi
 grep -Fq 'IGMP Proxy' "$PAGE" || fail 'IPTV runtime에서 IGMP Proxy 상태를 보여줘야 합니다.'
 grep -Fq 'IGMP Snooping' "$PAGE" || fail 'IPTV runtime에서 IGMP Snooping 상태를 보여줘야 합니다.'
 grep -Fq ".ssh-app[data-theme='dark'] [class~='bg-amber-50']" "$STYLES" || \

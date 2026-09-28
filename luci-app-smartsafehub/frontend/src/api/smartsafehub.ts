@@ -35,6 +35,12 @@ import type {
   WifiUpdateInput,
   WifiUpdateResult,
 } from '../types/wifi';
+import type {
+  WanReconnectResult,
+  WanSettings,
+  WanSettingsInput,
+  WanUpdateResult,
+} from '../types/wan';
 import { callApi } from './rpc';
 
 const API_OBJECT = 'smartsafehub';
@@ -220,6 +226,41 @@ export function requestConfigurationBackupDiscard(): Promise<ConfigurationBackup
 
 export function requestSystemReboot(): Promise<SystemRebootResult> {
   return callApi(API_OBJECT, 'system_reboot', { confirm: 'reboot' });
+}
+
+export function fetchWanSettings(): Promise<WanSettings> {
+  return callApi(LAN_API_OBJECT, 'wan_settings');
+}
+
+export function updateWanSettings(
+  input: WanSettingsInput,
+): Promise<WanUpdateResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'wan_update',
+    {
+      protocol: input.protocol,
+      pppoe_username: input.pppoeUsername,
+      pppoe_password: input.pppoePassword,
+      pppoe_password_changed: input.pppoePasswordChanged,
+      static_address: input.staticAddress,
+      static_prefix_length: input.staticPrefixLength,
+      static_gateway: input.staticGateway,
+      dns_primary: input.dnsPrimary,
+      dns_secondary: input.dnsSecondary,
+      confirm: 'apply',
+    },
+    { timeoutMs: 10_000 },
+  );
+}
+
+export function reconnectWan(): Promise<WanReconnectResult> {
+  return callApi(
+    LAN_API_OBJECT,
+    'wan_reconnect',
+    { confirm: 'reconnect' },
+    { timeoutMs: 10_000 },
+  );
 }
 
 export function fetchLanSettings(): Promise<LanSettings> {

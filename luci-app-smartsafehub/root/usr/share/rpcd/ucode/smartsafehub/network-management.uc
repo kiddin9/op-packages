@@ -14,6 +14,8 @@ import {
 
 const LAN_UPDATE_LOCK = '/tmp/smartsafehub/lan-update.lock';
 const LAN_UPDATE_LOCK_STALE_SECONDS = 120;
+const WAN_UPDATE_LOCK = '/tmp/smartsafehub/wan-update.lock';
+const WAN_UPDATE_LOCK_STALE_SECONDS = 120;
 const DEFAULT_PREFIX_LENGTH = 24;
 const DEFAULT_LEASE_TIME = '12h';
 
@@ -737,6 +739,529 @@ function with_lan_update_lock(callback) {
 	release_lan_update_lock();
 	return result;
 }
+
+function valid_wan_prefix_length(value) {
+	const prefix = integer_value(value, -1);
+
+	return prefix >= 0 && prefix <= 32 ? prefix : null;
+}
+
+function wan_prefix_from_netmask(value) {
+	const parsed = parse_ipv4(value);
+	if (parsed == null) {
+		return null;
+	}
+
+	for (let prefix = 0; prefix <= 32; prefix++) {
+		if (netmask_from_prefix(prefix) == parsed.address) {
+			return prefix;
+		}
+	}
+
+	return null;
+}
+
+function wan_protocol_supported(protocol) {
+	return protocol == 'dhcp' || protocol == 'pppoe' || protocol == 'static';
+}
+
+function wan_usable_ipv4(ip) {
+	if (ip == null) {
+		return false;
+	}
+
+	const first_octet = int(ip.value / 16777216);
+	return ip.value != 0 && ip.value != 4294967295 && first_octet != 0 && first_octet != 127 && first_octet < 224;
+}
+
+function parse_wan_ipaddr(value, netmask) {
+	const legacy_prefix = wan_prefix_from_netmask(string_value(netmask, ''));
+
+	for (let candidate in string_values(value)) {
+		let raw_address = candidate;
+		let prefix = legacy_prefix;
+
+		if (match(candidate, /\//) != null) {
+			const parts = split(candidate, '/');
+			if (length(parts) != 2) {
+				continue;
+			}
+
+			raw_address = parts[0];
+			prefix = valid_wan_prefix_length(parts[1]);
+		}
+
+		const ip = parse_ipv4(raw_address);
+		if (!wan_usable_ipv4(ip) || prefix == null) {
+			continue;
+		}
+
+		return {
+			ip: ip,
+			prefixLength: prefix,
+			netmask: netmask_from_prefix(prefix),
+		};
+	}
+
+	return null;
+}
+
+function wan_config(ctx) {
+	const section = ctx?.get_all('network', 'wan');
+	if (section == null || section?.['.type'] != 'interface') {
+		return null;
+	}
+
+	const protocol = string_value(section?.proto, 'dhcp');
+	const static_address = parse_wan_ipaddr(section?.ipaddr, section?.netmask);
+	const gateway = parse_ipv4(section?.gateway);
+	let dns = [];
+
+	for (let candidate in string_values(section?.dns)) {
+		const parsed = parse_ipv4(candidate);
+		if (wan_usable_ipv4(parsed)) {
+			push(dns, parsed.address);
+		}
+	}
+
+	return {
+		section: section,
+		protocol: protocol,
+		supported: wan_protocol_supported(protocol),
+		pppoeUsername: string_value(section?.username, ''),
+		pppoePasswordConfigured: type(section?.password) == 'string' && length(section.password) > 0,
+		staticAddress: static_address,
+		staticGateway: wan_usable_ipv4(gateway) ? gateway.address : null,
+		staticDns: dns,
+	};
+}
+
+function wan_default_gateway(status) {
+	for (let route in status?.route ?? []) {
+		const mask = integer_value(route?.mask, -1);
+		const target = string_value(route?.target, '');
+		const gateway = parse_ipv4(route?.nexthop);
+
+		if ((mask == 0 || target == '0.0.0.0') && wan_usable_ipv4(gateway)) {
+			return gateway.address;
+		}
+	}
+
+	return null;
+}
+
+function wan_runtime_status() {
+	const status = safe_call('network.interface.wan', 'status', {});
+	let primary = null;
+
+	for (let address in status?.['ipv4-address'] ?? []) {
+		const ip = parse_ipv4(address?.address);
+		const prefix = valid_wan_prefix_length(address?.mask);
+		if (!wan_usable_ipv4(ip) || prefix == null) {
+			continue;
+		}
+
+		primary = {
+			address: ip.address,
+			prefixLength: prefix,
+		};
+		break;
+	}
+
+	let dns = [];
+	for (let candidate in status?.['dns-server'] ?? []) {
+		if (type(candidate) == 'string' && length(candidate)) {
+			push(dns, candidate);
+		}
+	}
+
+	return {
+		connected: status?.up == true,
+		pending: status?.pending == true,
+		protocol: string_value(status?.proto, null),
+		device: string_value(status?.l3_device, string_value(status?.device, null)),
+		address: primary?.address ?? null,
+		prefixLength: primary?.prefixLength ?? null,
+		gateway: wan_default_gateway(status),
+		dns: dns,
+		uptimeSeconds: integer_value(status?.uptime, 0),
+	};
+}
+
+function wan_settings_payload() {
+	const ctx = new_uci_cursor();
+	if (!ctx) {
+		return null;
+	}
+
+	const config = wan_config(ctx);
+	if (config == null) {
+		return null;
+	}
+
+	return {
+		configuration: {
+			protocol: config.protocol,
+			supported: config.supported,
+			pppoe: {
+				username: config.pppoeUsername,
+				passwordConfigured: config.pppoePasswordConfigured,
+			},
+			static: {
+				address: config.staticAddress?.ip?.address ?? null,
+				prefixLength: config.staticAddress?.prefixLength ?? null,
+				netmask: config.staticAddress?.netmask ?? null,
+				gateway: config.staticGateway,
+				dns: config.staticDns,
+			},
+		},
+		status: wan_runtime_status(),
+	};
+}
+
+function normalized_dns(primary, secondary) {
+	let dns = [];
+	for (let candidate in [ primary, secondary ]) {
+		const raw = type(candidate) == 'string' ? trim(candidate) : '';
+		if (!length(raw)) {
+			continue;
+		}
+
+		const parsed = parse_ipv4(raw);
+		if (!wan_usable_ipv4(parsed)) {
+			return null;
+		}
+		if (length(dns) && dns[0] == parsed.address) {
+			continue;
+		}
+		push(dns, parsed.address);
+	}
+
+	return dns;
+}
+
+function same_string_array(first, second) {
+	if (length(first) != length(second)) {
+		return false;
+	}
+
+	for (let i = 0; i < length(first); i++) {
+		if (first[i] != second[i]) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+function validate_requested_wan_settings(request) {
+	if (request.args.confirm != 'apply') {
+		return {
+			error: failure('WAN_UPDATE_CONFIRMATION_REQUIRED', '인터넷 연결 설정 변경 확인 값이 올바르지 않습니다.'),
+		};
+	}
+
+	const protocol = string_value(request.args.protocol, '');
+	if (!wan_protocol_supported(protocol)) {
+		return {
+			error: failure('WAN_PROTOCOL_INVALID', '지원하는 인터넷 연결 방식(DHCP, PPPoE, 고정 IPv4)을 선택해 주세요.'),
+		};
+	}
+
+	const ctx = new_uci_cursor();
+	const current = ctx ? wan_config(ctx) : null;
+	if (current == null) {
+		return {
+			error: failure('WAN_CONFIG_UNAVAILABLE', 'WAN 기본 설정을 찾지 못했습니다.'),
+		};
+	}
+
+	if (protocol == 'dhcp') {
+		return { protocol: protocol, current: current };
+	}
+
+	if (protocol == 'pppoe') {
+		const username = type(request.args.pppoe_username) == 'string'
+			? trim(request.args.pppoe_username)
+			: '';
+		const password = type(request.args.pppoe_password) == 'string'
+			? request.args.pppoe_password
+			: '';
+		const password_changed = request.args.pppoe_password_changed;
+
+		if (!length(username) || length(username) > 128) {
+			return {
+				error: failure('WAN_PPPOE_USERNAME_INVALID', 'PPPoE 사용자명을 1~128자로 입력해 주세요.'),
+			};
+		}
+		if (type(password_changed) != 'bool') {
+			return {
+				error: failure('WAN_PPPOE_PASSWORD_STATE_INVALID', 'PPPoE 비밀번호 변경 상태가 올바르지 않습니다.'),
+			};
+		}
+		if (password_changed && (!length(password) || length(password) > 128)) {
+			return {
+				error: failure('WAN_PPPOE_PASSWORD_INVALID', 'PPPoE 비밀번호를 1~128자로 입력해 주세요.'),
+			};
+		}
+		if (!password_changed && (current.protocol != 'pppoe' || !current.pppoePasswordConfigured)) {
+			return {
+				error: failure('WAN_PPPOE_PASSWORD_REQUIRED', 'PPPoE 연결을 시작하려면 비밀번호를 입력해 주세요.'),
+			};
+		}
+
+		return {
+			protocol: protocol,
+			current: current,
+			pppoeUsername: username,
+			pppoePassword: password,
+			pppoePasswordChanged: password_changed,
+		};
+	}
+
+	const ip = parse_ipv4(request.args.static_address);
+	const prefix = valid_wan_prefix_length(request.args.static_prefix_length);
+	const gateway = parse_ipv4(request.args.static_gateway);
+	const dns = normalized_dns(request.args.dns_primary, request.args.dns_secondary);
+
+	if (!wan_usable_ipv4(ip)) {
+		return { error: failure('WAN_STATIC_ADDRESS_INVALID', '고정 IPv4 주소를 올바르게 입력해 주세요.') };
+	}
+	if (prefix == null) {
+		return { error: failure('WAN_STATIC_PREFIX_INVALID', '고정 IPv4 서브넷 마스크를 /0~32 범위에서 선택해 주세요.') };
+	}
+	if (prefix <= 30 && !valid_host_address(ip, subnet_for(ip, prefix))) {
+		return { error: failure('WAN_STATIC_ADDRESS_HOST_INVALID', '네트워크/브로드캐스트 주소는 WAN 주소로 사용할 수 없습니다.') };
+	}
+	if (!wan_usable_ipv4(gateway)) {
+		return { error: failure('WAN_STATIC_GATEWAY_INVALID', '기본 게이트웨이를 올바른 IPv4 주소로 입력해 주세요.') };
+	}
+	if (dns == null || !length(dns)) {
+		return { error: failure('WAN_STATIC_DNS_INVALID', '고정 IPv4 연결에 사용할 DNS 서버를 하나 이상 입력해 주세요.') };
+	}
+
+	return {
+		protocol: protocol,
+		current: current,
+		staticAddress: ip,
+		staticPrefixLength: prefix,
+		staticNetmask: netmask_from_prefix(prefix),
+		staticGateway: gateway,
+		staticDns: dns,
+	};
+}
+
+function acquire_wan_update_lock() {
+	const lock = fs.stat(WAN_UPDATE_LOCK);
+	if (lock) {
+		if (time() - integer_value(lock.mtime, 0) < WAN_UPDATE_LOCK_STALE_SECONDS) {
+			return false;
+		}
+		fs.rmdir(WAN_UPDATE_LOCK);
+	}
+
+	return fs.mkdir(WAN_UPDATE_LOCK) == true;
+}
+
+function release_wan_update_lock() {
+	fs.rmdir(WAN_UPDATE_LOCK);
+}
+
+function wan_snapshot(section) {
+	return {
+		proto: section?.proto,
+		ipaddr: section?.ipaddr,
+		netmask: section?.netmask,
+		gateway: section?.gateway,
+		dns: section?.dns,
+		peerdns: section?.peerdns,
+		username: section?.username,
+		password: section?.password,
+	};
+}
+
+function restore_wan_snapshot(snapshot) {
+	const ctx = new_uci_cursor();
+	if (!ctx) {
+		return false;
+	}
+
+	const restored =
+		restore_option(ctx, 'network', 'wan', 'proto', snapshot.proto) &&
+		restore_option(ctx, 'network', 'wan', 'ipaddr', snapshot.ipaddr) &&
+		restore_option(ctx, 'network', 'wan', 'netmask', snapshot.netmask) &&
+		restore_option(ctx, 'network', 'wan', 'gateway', snapshot.gateway) &&
+		restore_option(ctx, 'network', 'wan', 'dns', snapshot.dns) &&
+		restore_option(ctx, 'network', 'wan', 'peerdns', snapshot.peerdns) &&
+		restore_option(ctx, 'network', 'wan', 'username', snapshot.username) &&
+		restore_option(ctx, 'network', 'wan', 'password', snapshot.password);
+
+	return restored && ctx.commit('network') == true;
+}
+
+function schedule_wan_reconnect() {
+	return run_command([
+		'/bin/sh',
+		'-c',
+		'( sleep 2; /sbin/ifdown wan; /sbin/ifup wan ) >/dev/null 2>&1 </dev/null &',
+	], 2000);
+}
+
+function wan_settings_changed(validated) {
+	const current = validated.current;
+	if (current.protocol != validated.protocol) {
+		return true;
+	}
+
+	if (validated.protocol == 'dhcp') {
+		return false;
+	}
+	if (validated.protocol == 'pppoe') {
+		return current.pppoeUsername != validated.pppoeUsername || validated.pppoePasswordChanged;
+	}
+
+	return current.staticAddress?.ip?.address != validated.staticAddress.address ||
+		current.staticAddress?.prefixLength != validated.staticPrefixLength ||
+		current.staticGateway != validated.staticGateway.address ||
+		!same_string_array(current.staticDns, validated.staticDns);
+}
+
+function clear_wan_option(ctx, option) {
+	return restore_option(ctx, 'network', 'wan', option, null);
+}
+
+function apply_validated_wan_settings(validated) {
+	const ctx = new_uci_cursor();
+	if (!ctx) {
+		return failure('WAN_CONFIG_READ_FAILED', '인터넷 연결 설정을 읽지 못했습니다.');
+	}
+
+	const current = wan_config(ctx);
+	if (current == null) {
+		return failure('WAN_CONFIG_UNAVAILABLE', 'WAN 기본 설정을 찾지 못했습니다.');
+	}
+	if (!wan_settings_changed(validated)) {
+		return success({
+			changed: false,
+			reconnectScheduled: false,
+			settings: wan_settings_payload(),
+		});
+	}
+
+	const snapshot = wan_snapshot(current.section);
+	let updated = ctx.set('network', 'wan', 'proto', validated.protocol) == true;
+
+	if (updated && validated.protocol == 'dhcp') {
+		updated =
+			clear_wan_option(ctx, 'ipaddr') &&
+			clear_wan_option(ctx, 'netmask') &&
+			clear_wan_option(ctx, 'gateway') &&
+			clear_wan_option(ctx, 'username') &&
+			clear_wan_option(ctx, 'password');
+		if (updated && current.protocol != 'dhcp') {
+			updated = clear_wan_option(ctx, 'dns') && clear_wan_option(ctx, 'peerdns');
+		}
+	}
+	else if (updated && validated.protocol == 'pppoe') {
+		updated =
+			ctx.set('network', 'wan', 'username', validated.pppoeUsername) == true &&
+			clear_wan_option(ctx, 'ipaddr') &&
+			clear_wan_option(ctx, 'netmask') &&
+			clear_wan_option(ctx, 'gateway');
+		if (updated && validated.pppoePasswordChanged) {
+			updated = ctx.set('network', 'wan', 'password', validated.pppoePassword) == true;
+		}
+		if (updated && current.protocol != 'pppoe') {
+			updated = clear_wan_option(ctx, 'dns') && clear_wan_option(ctx, 'peerdns');
+		}
+	}
+	else if (updated) {
+		updated =
+			ctx.set('network', 'wan', 'ipaddr', validated.staticAddress.address) == true &&
+			ctx.set('network', 'wan', 'netmask', validated.staticNetmask) == true &&
+			ctx.set('network', 'wan', 'gateway', validated.staticGateway.address) == true &&
+			ctx.set('network', 'wan', 'dns', validated.staticDns) == true &&
+			clear_wan_option(ctx, 'peerdns') &&
+			clear_wan_option(ctx, 'username') &&
+			clear_wan_option(ctx, 'password');
+	}
+
+	if (!updated || ctx.commit('network') != true) {
+		restore_wan_snapshot(snapshot);
+		return failure('WAN_CONFIG_COMMIT_FAILED', '인터넷 연결 설정을 저장하지 못했습니다.');
+	}
+
+	if (!schedule_wan_reconnect()) {
+		const restored = restore_wan_snapshot(snapshot);
+		return restored
+			? failure('WAN_RECONNECT_SCHEDULE_FAILED', 'WAN 재연결을 시작하지 못해 이전 설정으로 되돌렸습니다.')
+			: failure('WAN_ROLLBACK_FAILED', 'WAN 설정 적용과 복구에 실패했습니다. 기존 LuCI에서 인터넷 설정을 확인해 주세요.');
+	}
+
+	emit_activity_event('network', 'settings.wan.updated', 'info', {
+		origin: 'direct',
+		protocol: validated.protocol,
+	});
+
+	return success({
+		changed: true,
+		reconnectScheduled: true,
+		settings: wan_settings_payload(),
+	});
+}
+
+function with_wan_update_lock(callback) {
+	if (!acquire_wan_update_lock()) {
+		return failure('WAN_UPDATE_RUNNING', '다른 인터넷 연결 설정 변경이 진행 중입니다. 잠시 후 다시 시도해 주세요.');
+	}
+
+	let result;
+	try {
+		result = callback();
+	}
+	catch (e) {
+		result = failure('WAN_UPDATE_FAILED', '인터넷 연결 설정을 처리하는 중 예기치 않은 오류가 발생했습니다.');
+	}
+
+	release_wan_update_lock();
+	return result;
+}
+
+export function read_wan_settings() {
+	const payload = wan_settings_payload();
+
+	return payload == null
+		? failure('WAN_CONFIG_READ_FAILED', '인터넷 연결 설정을 읽지 못했습니다.')
+		: success(payload);
+};
+
+export function update_wan_settings(request) {
+	return with_wan_update_lock(function() {
+		const validated = validate_requested_wan_settings(request);
+		if (validated?.error != null) {
+			return validated.error;
+		}
+
+		return apply_validated_wan_settings(validated);
+	});
+};
+
+export function reconnect_wan(request) {
+	return with_wan_update_lock(function() {
+		if (request.args.confirm != 'reconnect') {
+			return failure('WAN_RECONNECT_CONFIRMATION_REQUIRED', 'WAN 재연결 확인 값이 올바르지 않습니다.');
+		}
+		if (!schedule_wan_reconnect()) {
+			return failure('WAN_RECONNECT_FAILED', 'WAN 재연결을 시작하지 못했습니다.');
+		}
+
+		return success({
+			accepted: true,
+			reconnectScheduled: true,
+			settings: wan_settings_payload(),
+		});
+	});
+};
 
 export function read_lan_settings() {
 	const payload = settings_payload();

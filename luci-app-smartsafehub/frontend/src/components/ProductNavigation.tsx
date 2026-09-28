@@ -4,10 +4,10 @@ import { ROUTE_BY_NAME } from '../app/routes';
 import type { AppRoute } from '../app/routes';
 import { luciAdminUrl } from '../utils/luci';
 import {
-  CableIcon,
   CloseIcon,
   ClockIcon,
   DevicesIcon,
+  GlobeIcon,
   HomeIcon,
   LogOutIcon,
   MenuIcon,
@@ -42,7 +42,7 @@ const NAVIGATION_GROUPS: readonly {
   routes: readonly AppRoute[];
 }[] = [
   { label: 'Overview', routes: ['home', 'activity'] },
-  { label: 'Network', routes: ['lan', 'wifi', 'iptv', 'devices'] },
+  { label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] },
   { label: 'Security', routes: ['safeshield', 'rules'] },
   { label: 'System', routes: ['system', 'settings'] },
 ];
@@ -53,8 +53,8 @@ function NavigationIcon({ route }: { route: AppRoute }) {
       return <HomeIcon class="size-5" />;
     case 'activity':
       return <ClockIcon class="size-5" />;
-    case 'lan':
-      return <CableIcon class="size-5" />;
+    case 'network':
+      return <GlobeIcon class="size-5" />;
     case 'wifi':
       return <WifiIcon class="size-5" />;
     case 'iptv':
@@ -155,13 +155,14 @@ function NavigationItems({
                   {routeName === 'system' && updateCount > 0 ? (
                     collapsed ? (
                       <span
-                        aria-label={`${updateCount}개의 업데이트`}
-                        class="absolute right-1.5 top-1.5 min-w-4 rounded-full bg-amber-100 px-1 py-0.5 text-center text-[9px] font-black leading-none text-amber-800 ring-2 ring-white"
+                        aria-label={`${updateCount}개의 업데이트 유형`}
+                        class="ssh-update-nav-badge"
+                        data-collapsed="true"
                       >
                         {updateCount}
                       </span>
                     ) : (
-                      <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-800">
+                      <span class="ssh-update-nav-badge" data-collapsed="false">
                         {updateCount}
                       </span>
                     )

@@ -45,7 +45,7 @@ assert_acl_object_method() {
 		"$ACL" >/dev/null || fail "$object.$method is missing from $access ACL"
 }
 
-for method in system_root_password_status system_root_password_set \
+for method in system_root_password_status system_root_password_set system_root_password_change \
 	updates_status updates_check updates_install updates_settings_update \
 	firmware_status firmware_check firmware_prepare firmware_validate_upload firmware_install firmware_discard \
 	system_time_settings system_timezone_update system_time_sync \
@@ -63,6 +63,7 @@ jq -e \
 assert_acl_method read system_root_password_status
 assert_acl_method read status
 assert_acl_method write system_root_password_set
+assert_acl_method write system_root_password_change
 [ -f "$LAN_RPC_ENTRY" ] || fail 'isolated LAN rpc entry is missing'
 [ -f "$LAN_MODULE" ] || fail 'LAN implementation module is missing'
 if grep -Eq "network[-_]management\.uc" "$RPC_ENTRY"; then
@@ -187,6 +188,10 @@ if grep -Fq 'oldpassword:' "$SECURITY_MODULE" || grep -Fq 'rpcd:' "$SECURITY_MOD
 fi
 grep -Fq "defer_call('session', 'destroy'" "$SECURITY_MODULE" || \
 	fail 'initial security setup must invalidate the bootstrap session after setting a password'
+grep -Fq "defer_call('session', 'login'" "$SECURITY_MODULE" || \
+	fail 'administrator password changes must verify the current password through rpcd authentication'
+grep -Fq "'SYSTEM_ROOT_PASSWORD_CURRENT_INVALID'" "$SECURITY_MODULE" || \
+	fail 'administrator password changes must distinguish an incorrect current password'
 grep -Fq "'SYSTEM_ROOT_PASSWORD_REQUIRED'" "$RPC_ENTRY" || \
 	fail 'normal SmartSafeHub RPC methods must enforce the root password setup gate'
 

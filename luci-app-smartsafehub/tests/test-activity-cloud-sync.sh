@@ -31,8 +31,6 @@ grep -Fq 'watch-refresh-detached' "$SAFE_ADAPTER" || fail 'manual refresh must s
 grep -Fq 'safeshield.blocklist.updated' "$EVENTS_BIN" || fail 'unified event daemon must record each observed SafeShield refresh completion'
 grep -Fq 'safeshield.blocklist.update_failed' "$EVENTS_BIN" || fail 'unified event daemon must record SafeShield refresh failures'
 grep -Fq 'safeshield_observe_once' "$EVENTS_BIN" || fail 'SafeShield refresh observer must live in smartsafehub-events'
-[ ! -e "$ROOT_DIR/root/usr/libexec/smartsafehub-safeshield-events" ] || fail 'standalone SafeShield event daemon must be removed'
-[ ! -e "$ROOT_DIR/root/etc/init.d/smartsafehub-safeshield-events" ] || fail 'standalone SafeShield event init service must be removed'
 if grep -Fq 'safeshield.protection.enabled' "$HEALTH_BIN" || grep -Fq 'safeshield.blocklist.updated' "$HEALTH_BIN"; then
   fail 'Health observer must not duplicate SafeShield mutation/refresh events'
 fi
@@ -59,6 +57,10 @@ grep -Fq '"$LICENSE_BIN" status-sync' "$SYNC_BIN" || fail 'missing/expired activ
 grep -Fq 'store_activity_credential_from_status' "$LICENSE_BIN" || fail 'license helper must cache activity_history credentials from its authoritative status response'
 grep -Fq '$base/licenses/status' "$LICENSE_BIN" || fail 'license helper must remain the single owner of /licenses/status'
 grep -Fq '[ -e "$WAKE_FILE" ] && ! retry_backoff_active' "$SYNC_BIN" || fail 'event wake must not bypass Cloud failure backoff'
+if grep -Eq "tr ['\"]\[:(lower|upper):\]['\"]" "$SYNC_BIN"; then
+  fail 'OpenWrt BusyBox tr 호환성을 위해 activity sync에서 POSIX 문자 클래스 대소문자 변환을 사용하면 안 됩니다.'
+fi
+grep -Fq 'ascii_lower' "$SYNC_BIN" || fail 'activity sync license token normalization must use the shared BusyBox-compatible ASCII helper'
 
 for contract in \
   'root/usr/share/rpcd/ucode/smartsafehub/system.uc:settings.scheduled_reboot.updated' \
@@ -66,6 +68,7 @@ for contract in \
   'root/usr/share/rpcd/ucode/smartsafehub/updates.uc:settings.software_updates.updated' \
   'root/usr/share/rpcd/ucode/smartsafehub/health.uc:settings.health_reporter.enabled' \
   'root/usr/share/rpcd/ucode/smartsafehub/wifi-management.uc:settings.wifi.updated' \
+  'root/usr/share/rpcd/ucode/smartsafehub/network-management.uc:settings.wan.updated' \
   'root/usr/share/rpcd/ucode/smartsafehub/network-management.uc:settings.lan.updated' \
   'root/usr/share/rpcd/ucode/smartsafehub/iptv-management.uc:settings.iptv.updated'; do
   file="${contract%%:*}"
@@ -216,6 +219,12 @@ EOF_CREDENTIAL
 ' '{"schema":1,"component":"license","phase":"active","plan":"pro","licenseStatus":"active","activationStatus":"active","deviceAction":"none"}' > "$MOCK_LICENSE_STATUS_FILE"
         exit 0
         ;;
+      paid-missing-uppercase)
+        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
+        printf '%s
+' '{"schema":1,"component":"license","phase":"ACTIVE","plan":"PRO","licenseStatus":"ACTIVE","activationStatus":"ACTIVE","deviceAction":"NONE"}' > "$MOCK_LICENSE_STATUS_FILE"
+        exit 0
+        ;;
       revoked)
         rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
         printf '%s
@@ -333,6 +342,18 @@ fi
 [ ! -s "$CLEAR_LOG" ] || fail 'paid missing-credential response must not clear the Cloud outbox'
 jq -e '.phase == "error" and .lastErrorCode == "ACTIVITY_CREDENTIAL_UNAVAILABLE"' "$RUNTIME/activity-sync.json" >/dev/null || \
   fail 'paid missing-credential response must surface a rollout-safe status error'
+
+rm -f "$RUNTIME/activity-sync-credential.json"
+: > "$ACK_LOG"
+: > "$CLEAR_LOG"
+: > "$LICENSE_CALL_LOG"
+write_outbox
+if run_sync paid-missing-uppercase >/dev/null 2>&1; then
+  fail 'uppercase paid status without an activity credential must remain retryable'
+fi
+[ -s "$OUTBOX" ] || fail 'uppercase paid status must preserve the Cloud outbox while waiting for a credential'
+jq -e '.phase == "error" and .eligible == true and .lastErrorCode == "ACTIVITY_CREDENTIAL_UNAVAILABLE"' "$RUNTIME/activity-sync.json" >/dev/null || \
+  fail 'uppercase ACTIVE/PRO/NONE license tokens must normalize to the paid missing-credential path'
 
 rm -f "$RUNTIME/activity-sync-credential.json"
 : > "$ACK_LOG"

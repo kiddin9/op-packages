@@ -30,8 +30,8 @@ grep -Fq "const systemTime = useSystemTimeSettings(route === 'settings');" "$APP
 	fail 'settings route must load dedicated timezone settings'
 grep -Fq "const scheduledReboot = useScheduledRebootSettings(route === 'settings');" "$APP" || \
 	fail 'settings route must load scheduled reboot settings'
-grep -Fq "route === 'system' || route === 'home' || route === 'settings'" "$APP" || \
-	fail 'settings route must load cached SmartSafeHub firmware identity'
+grep -Fq 'const firmware = useFirmwareUpdates(true);' "$APP" || \
+	fail 'settings route must share the globally active SmartSafeHub firmware state used by update notifications'
 grep -Fq 'firmware={firmware.data}' "$APP" || \
 	fail 'settings page must receive SmartSafeHub firmware status'
 grep -Fq 'firmwareError={firmware.error}' "$APP" || \
@@ -173,13 +173,22 @@ grep -Fq 'System management' "$SETTINGS_PAGE" || \
 	fail 'settings page must retain a dedicated system management section'
 grep -Fq 'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2' "$SETTINGS_PAGE" || \
 	fail 'settings action groups must use responsive two-column layout on desktop'
+grep -Fq 'title="관리자 비밀번호"' "$SETTINGS_PAGE" || \
+	fail 'system management must expose administrator password management as a first-class card'
 if sed -n '/^function ConfigurationBackupCard/,/^function SystemToolsCard/p' "$SETTINGS_PAGE" | grep -F 'className="lg:col-span-2"' >/dev/null; then
-	fail 'configuration backup must share the desktop row instead of spanning both columns'
+	fail 'configuration backup must share the first desktop row with administrator password management'
 fi
 sed -n '/^function ConfigurationBackupCard/,/^function SystemToolsCard/p' "$SETTINGS_PAGE" | grep -F 'grid min-w-0 grid-cols-1 gap-3' >/dev/null || \
 	fail 'configuration backup internals must use a compact vertical layout at half-row width'
 grep -Fq '<SystemToolsCard' "$SETTINGS_PAGE" || \
-	fail 'system management must render the combined system tools card beside backup/restore'
+	fail 'system management must retain the combined system tools card'
+grep -Fq 'className="lg:col-span-2"' "$SETTINGS_PAGE" || \
+	fail 'system tools must span the full desktop row below administrator password and backup cards'
+if grep -Fq 'className={props.className}' "$SETTINGS_PAGE"; then
+	fail 'optional ActionCard className must not pass explicit undefined with exactOptionalPropertyTypes'
+fi
+grep -Fq '{...(props.className !== undefined ? { className: props.className } : {})}' "$SETTINGS_PAGE" || \
+	fail 'system tools must omit the optional ActionCard className prop when it is undefined'
 
 grep -Fq "const BACKUP_DOWNLOAD_ENDPOINT = '/cgi-backup';" "$BACKUP_API" || \
 	fail 'backup downloads must use the authenticated cgi-backup endpoint'

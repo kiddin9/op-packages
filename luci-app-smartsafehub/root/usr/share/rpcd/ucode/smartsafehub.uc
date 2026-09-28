@@ -9,6 +9,7 @@ import {
 	validate_uploaded_backup
 } from './smartsafehub/backup.uc';
 import {
+	change_root_password,
 	read_root_password_status,
 	root_password_configured,
 	set_initial_root_password
@@ -94,6 +95,15 @@ const methods = {
 		call: function(request) {
 			return set_initial_root_password(request);
 		},
+	},
+	system_root_password_change: {
+		args: {
+			current_password: '',
+			new_password: '',
+		},
+		call: require_root_password(function(request) {
+			return change_root_password(request);
+		}),
 	},
 	status: {
 		call: require_root_password(function(request) {

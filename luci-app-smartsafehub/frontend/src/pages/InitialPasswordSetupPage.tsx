@@ -20,23 +20,11 @@ import {
   readColorTheme,
 } from '../utils/theme';
 import type { ColorTheme } from '../utils/theme';
+import { passwordPolicy, passwordPolicySatisfied } from '../utils/password';
 
 interface InitialPasswordSetupPageProps {
   onCompleted: () => void;
-}
-
-interface PasswordPolicy {
-  length: boolean;
-  letter: boolean;
-  number: boolean;
-}
-
-function passwordPolicy(password: string): PasswordPolicy {
-  return {
-    length: password.length >= 8,
-    letter: /[A-Za-z]/.test(password),
-    number: /[0-9]/.test(password),
-  };
+  recovery: boolean;
 }
 
 function ThemeIcon({ theme }: { theme: ColorTheme }) {
@@ -54,6 +42,7 @@ function Requirement({ met, children }: { met: boolean; children: string }) {
 
 export function InitialPasswordSetupPage({
   onCompleted,
+  recovery,
 }: InitialPasswordSetupPageProps) {
   const passwordInput = useRef<HTMLInputElement>(null);
   const confirmationInput = useRef<HTMLInputElement>(null);
@@ -66,7 +55,7 @@ export function InitialPasswordSetupPage({
   const [theme, setTheme] = useState<ColorTheme>(readColorTheme);
 
   const policy = passwordPolicy(password);
-  const policySatisfied = policy.length && policy.letter && policy.number;
+  const policySatisfied = passwordPolicySatisfied(policy);
   const confirmationMatches = confirmation.length > 0 && password === confirmation;
   const themeLabel = theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환';
 
@@ -137,21 +126,28 @@ export function InitialPasswordSetupPage({
           <span class="ssh-login-brand-mark" aria-hidden="true">
             <ShieldIcon />
           </span>
-          <p class="ssh-login-eyebrow">FIRST SECURITY SETUP</p>
+          <p class="ssh-login-eyebrow">{recovery ? 'PASSWORD RECOVERY' : 'FIRST SECURITY SETUP'}</p>
           <h1 id="ssh-password-setup-brand-title">
             <span class="ssh-password-setup-brand-title-line">SmartSafeHub</span>
-            <span class="ssh-password-setup-brand-title-line">보호 시작</span>
+            <span class="ssh-password-setup-brand-title-line">
+              {recovery ? '비밀번호 복구' : '보호 시작'}
+            </span>
           </h1>
           <p class="ssh-login-brand-description">
-            관리자 비밀번호가 없는 상태에서는 SmartSafeHub 관리 기능을 사용할 수 없습니다.
-            먼저 이 공유기의 root 관리자 비밀번호를 설정해 주세요.
+            {recovery
+              ? '물리 Reset 버튼으로 관리자 비밀번호 복구가 요청되었습니다. 네트워크, Wi-Fi, SafeShield 등 기존 설정은 그대로 유지됩니다.'
+              : '관리자 비밀번호가 없는 상태에서는 SmartSafeHub 관리 기능을 사용할 수 없습니다. 먼저 이 공유기의 root 관리자 비밀번호를 설정해 주세요.'}
           </p>
 
           <div class="ssh-password-setup-summary">
             <ShieldIcon aria-hidden="true" />
             <div>
-              <strong>초기 보안 설정이 필요합니다</strong>
-              <span>설정이 완료되기 전까지 다른 SmartSafeHub 기능은 잠겨 있습니다.</span>
+              <strong>{recovery ? '새 관리자 비밀번호를 설정해 주세요' : '초기 보안 설정이 필요합니다'}</strong>
+              <span>
+                {recovery
+                  ? '새 비밀번호를 설정하기 전까지 SSH 접근은 비활성화되고 다른 관리 기능도 잠겨 있습니다.'
+                  : '설정이 완료되기 전까지 다른 SmartSafeHub 기능은 잠겨 있습니다.'}
+              </span>
             </div>
           </div>
         </div>
@@ -176,7 +172,9 @@ export function InitialPasswordSetupPage({
               </span>
               <div>
                 <p class="ssh-login-kicker">ADMIN PASSWORD</p>
-                <h2 id="ssh-password-setup-title">관리자 비밀번호 설정</h2>
+                <h2 id="ssh-password-setup-title">
+                  {recovery ? '관리자 비밀번호 복구' : '관리자 비밀번호 설정'}
+                </h2>
                 <p class="ssh-login-subtitle">
                   비밀번호 설정 후 새 비밀번호로 다시 로그인해야 합니다.
                 </p>

@@ -11,6 +11,7 @@ SESSION="$ROOT_DIR/frontend/src/auth/session.ts"
 ENTRY="$ROOT_DIR/frontend/src/app/AuthenticatedEntry.tsx"
 SETUP_PAGE="$ROOT_DIR/frontend/src/pages/InitialPasswordSetupPage.tsx"
 SETUP_API="$ROOT_DIR/frontend/src/api/initialSetup.ts"
+PASSWORD_UTIL="$ROOT_DIR/frontend/src/utils/password.ts"
 STYLES="$ROOT_DIR/frontend/src/styles/app.css"
 FEATURES="$ROOT_DIR/docs/FEATURES.md"
 
@@ -19,7 +20,7 @@ fail() {
 	exit 1
 }
 
-for file in "$RPC_ENTRY" "$SECURITY_MODULE" "$ACL" "$LOGIN" "$SESSION" "$ENTRY" "$SETUP_PAGE" "$SETUP_API" "$STYLES" "$FEATURES"; do
+for file in "$RPC_ENTRY" "$SECURITY_MODULE" "$ACL" "$LOGIN" "$SESSION" "$ENTRY" "$SETUP_PAGE" "$SETUP_API" "$PASSWORD_UTIL" "$STYLES" "$FEATURES"; do
 	[ -f "$file" ] || fail "missing initial password setup file: ${file#$ROOT_DIR/}"
 done
 
@@ -83,15 +84,19 @@ grep -Fq "setPhase(status.configured ? 'ready' : 'required');" "$ENTRY" || \
 	fail 'authenticated entry must force initial setup when root password is missing'
 grep -Fq "if (phase === 'ready')" "$ENTRY" || \
 	fail 'normal SmartSafeHub App must only mount after the password gate passes'
-grep -Fq '<InitialPasswordSetupPage onCompleted={onPasswordConfigured} />' "$ENTRY" || \
+grep -Fq '<InitialPasswordSetupPage' "$ENTRY" || \
 	fail 'missing-password state must render the dedicated initial setup page'
+grep -Fq 'recovery={passwordRecovery}' "$ENTRY" || \
+	fail 'initial setup entry must pass through password recovery state'
 
-grep -Fq 'length: password.length >= 8' "$SETUP_PAGE" || \
-	fail 'frontend password policy must require at least eight characters'
-grep -Fq 'letter: /[A-Za-z]/.test(password)' "$SETUP_PAGE" || \
-	fail 'frontend password policy must require an English letter'
-grep -Fq 'number: /[0-9]/.test(password)' "$SETUP_PAGE" || \
-	fail 'frontend password policy must require a number'
+grep -Fq 'length: password.length >= 8' "$PASSWORD_UTIL" || \
+	fail 'shared frontend password policy must require at least eight characters'
+grep -Fq 'letter: /[A-Za-z]/.test(password)' "$PASSWORD_UTIL" || \
+	fail 'shared frontend password policy must require an English letter'
+grep -Fq 'number: /[0-9]/.test(password)' "$PASSWORD_UTIL" || \
+	fail 'shared frontend password policy must require a number'
+grep -Fq "import { passwordPolicy, passwordPolicySatisfied } from '../utils/password';" "$SETUP_PAGE" || \
+	fail 'initial setup must consume the shared frontend password policy'
 grep -Fq 'if (password !== confirmation)' "$SETUP_PAGE" || \
 	fail 'initial setup must require password confirmation'
 grep -Fq 'autoComplete="new-password"' "$SETUP_PAGE" || \
@@ -109,8 +114,8 @@ grep -Fq '새 비밀번호로 다시 로그인' "$SETUP_PAGE" || \
 
 grep -Fq '<span class="ssh-password-setup-brand-title-line">SmartSafeHub</span>' "$SETUP_PAGE" || \
 	fail 'initial setup hero must keep SmartSafeHub on its own title line'
-grep -Fq '<span class="ssh-password-setup-brand-title-line">보호 시작</span>' "$SETUP_PAGE" || \
-	fail 'initial setup hero must render protection start on the next title line'
+grep -Fq "recovery ? '비밀번호 복구' : '보호 시작'" "$SETUP_PAGE" || \
+	fail 'initial setup hero must render protection start and recovery variants on the second title line'
 grep -Fq '.ssh-password-setup-brand-title-line {' "$STYLES" || \
 	fail 'initial setup hero title lines must have dedicated block styling'
 grep -Fq '비밀번호는 현재 공유기에 직접 설정되며 외부 서버로 전송되지 않습니다.' "$SETUP_PAGE" || \

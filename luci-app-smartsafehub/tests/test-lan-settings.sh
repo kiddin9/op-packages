@@ -10,6 +10,7 @@ ACL="$ROOT_DIR/root/usr/share/rpcd/acl.d/luci-app-smartsafehub.json"
 API="$ROOT_DIR/frontend/src/api/smartsafehub.ts"
 HOOK="$ROOT_DIR/frontend/src/hooks/useLan.ts"
 PAGE="$ROOT_DIR/frontend/src/pages/LanPage.tsx"
+IPV4_INPUT="$ROOT_DIR/frontend/src/components/Ipv4OctetInput.tsx"
 APP_STYLE="$ROOT_DIR/frontend/src/styles/app.css"
 ROUTES="$ROOT_DIR/frontend/src/app/routes.ts"
 HASH_ROUTE="$ROOT_DIR/frontend/src/hooks/useHashRoute.ts"
@@ -59,7 +60,7 @@ assert_ucode_export_terminated() {
 	fi
 }
 
-for file in "$RPC_ENTRY" "$LAN_RPC_ENTRY" "$LAN_MODULE" "$ACL" "$API" "$HOOK" "$PAGE" "$ROUTES" "$HASH_ROUTE" "$NAVIGATION" "$APP"; do
+for file in "$RPC_ENTRY" "$LAN_RPC_ENTRY" "$LAN_MODULE" "$ACL" "$API" "$HOOK" "$PAGE" "$IPV4_INPUT" "$ROUTES" "$HASH_ROUTE" "$NAVIGATION" "$APP"; do
 	[ -f "$file" ] || fail "LAN 설정 계약 파일이 없습니다: ${file#$ROOT_DIR/}"
 done
 
@@ -162,20 +163,27 @@ grep -Fq "export function useLan(active: boolean)" "$HOOK" || \
 grep -Fq 'newAddress: result.newAddress ?? result.settings.lan.address' "$HOOK" || \
 	fail 'LAN IP 변경 뒤 새 관리 주소를 사용자에게 전달해야 합니다.'
 
-grep -Fq "route: 'lan'" "$ROUTES" || fail 'LAN route가 등록되어야 합니다.'
-grep -Fq "hash: '#lan'" "$ROUTES" || fail 'LAN route는 #lan hash를 사용해야 합니다.'
-grep -Fq "'#lan': 'lan'" "$HASH_ROUTE" || fail '#lan hash router 연결이 필요합니다.'
-grep -Fq "{ label: 'Network', routes: ['lan', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-	fail 'Network 메뉴에서 LAN이 Wi-Fi와 연결된 기기보다 먼저 표시되어야 합니다.'
-grep -Fq "case 'lan':" "$APP" || fail 'App이 LAN 페이지를 렌더링해야 합니다.'
-grep -Fq "const lan = useLan(route === 'home' || route === 'lan');" "$APP" || \
-	fail '대시보드와 LAN route가 같은 LAN/WAN 충돌 상태를 조회해야 합니다.'
+grep -Fq "route: 'network'" "$ROUTES" || fail 'WAN과 LAN을 통합한 네트워크 설정 route가 등록되어야 합니다.'
+grep -Fq "hash: '#network'" "$ROUTES" || fail '네트워크 설정 route는 #network hash를 사용해야 합니다.'
+grep -Fq "'#lan': 'network'" "$HASH_ROUTE" || fail '기존 #lan hash는 통합 네트워크 설정으로 연결되어야 합니다.'
+grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
+	fail 'Network 메뉴에서 통합 네트워크 설정이 Wi-Fi와 연결된 기기보다 먼저 표시되어야 합니다.'
+grep -Fq "case 'network':" "$APP" || fail 'App이 통합 네트워크 설정 화면을 렌더링해야 합니다.'
+grep -Fq '<LanPage' "$APP" || fail '통합 네트워크 설정 화면에 LAN 영역이 포함되어야 합니다.'
+grep -Fq "const lan = useLan(route === 'home' || route === 'network');" "$APP" || \
+	fail '대시보드와 네트워크 설정 route가 같은 LAN/WAN 충돌 상태를 조회해야 합니다.'
 
 grep -Fq '상위 네트워크' "$PAGE" || fail 'LAN 화면에 상위 네트워크 정보를 표시해야 합니다.'
 grep -Fq '주소 대역이 겹칩니다' "$PAGE" || fail 'LAN 화면에 subnet 충돌 상태를 표시해야 합니다.'
 grep -Fq '추천 대역으로 자동 변경' "$PAGE" || fail 'LAN 화면에 자동 충돌 해결 동작이 필요합니다.'
-grep -Fq 'function Ipv4OctetInput' "$PAGE" || fail '공유기 IP는 4개 octet 입력으로 분리해야 합니다.'
-grep -Fq 'maxLength={3}' "$PAGE" || fail '각 IPv4 octet 입력은 최대 3자리로 제한해야 합니다.'
+grep -Fq '<Ipv4OctetInput' "$PAGE" || fail '공유기 IP는 공용 4개 octet 입력으로 분리해야 합니다.'
+grep -Fq 'export function Ipv4OctetInput' "$IPV4_INPUT" || fail 'WAN/LAN 공용 IPv4 octet 입력 컴포넌트가 필요합니다.'
+grep -Fq 'ssh-ipv4-segments mt-2 min-h-11' "$IPV4_INPUT" || fail '공유기 IP octet 입력은 공통 모바일 IPv4 4열 레이아웃을 사용해야 합니다.'
+grep -Fq 'ssh-ipv4-segments mt-2 min-h-11' "$PAGE" || fail 'DHCP 입력은 동일한 모바일 IPv4 4열 레이아웃을 사용해야 합니다.'
+grep -Fq '.ssh-ipv4-segments {' "$APP_STYLE" || fail '모바일 IPv4 입력용 전용 레이아웃 스타일이 필요합니다.'
+grep -Fq 'grid-template-columns: repeat(4, minmax(0, 1fr));' "$APP_STYLE" || fail 'IPv4 입력은 iPhone 폭에서도 줄어드는 4개의 minmax grid track을 사용해야 합니다.'
+grep -Fq 'class="min-h-11 w-full min-w-0 max-w-full rounded-xl border-2' "$IPV4_INPUT" || fail 'IPv4 편집 input은 grid track 폭을 넘지 않도록 width 제약이 필요합니다.'
+grep -Fq 'maxLength={3}' "$IPV4_INPUT" || fail '각 IPv4 octet 입력은 최대 3자리로 제한해야 합니다.'
 grep -Fq 'function DhcpHostInput' "$PAGE" || fail 'DHCP 주소는 공유기 대역 prefix와 마지막 octet을 분리해 입력해야 합니다.'
 grep -Fq '앞 3개 주소는 공유기 IP 주소와 동일하게 유지됩니다.' "$PAGE" || fail 'DHCP 앞 3개 octet 고정 안내가 필요합니다.'
 grep -Fq 'const nextDhcpStart = startHost ? `${nextPrefix}.${startHost}`' "$PAGE" || fail '공유기 IP 앞 3개 octet 변경 시 DHCP 시작 주소가 같은 prefix를 따라가야 합니다.'
