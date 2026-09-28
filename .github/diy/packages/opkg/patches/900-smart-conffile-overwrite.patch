@@ -1,0 +1,78 @@
+--- a/libopkg/opkg_install.c
++++ b/libopkg/opkg_install.c
+@@ -1102,6 +1102,64 @@
+ 	return 0;
+ }
+ 
++static int conffile_is_user_modified(const char *cf_name, const char *cf_backup, pkg_t *pkg)
++{
++	pkg_vec_t *installed;
++	conffile_t *orig_cf = NULL;
++	char *rom_filename;
++	int i;
++
++	installed = pkg_vec_alloc();
++	pkg_hash_fetch_all_installed(installed);
++	for (i = 0; i < installed->len; i++) {
++		pkg_t *p = installed->pkgs[i];
++		if (p == pkg)
++			continue;
++		orig_cf = pkg_get_conffile(p, cf_name);
++		if (orig_cf && orig_cf->value)
++			break;
++		orig_cf = NULL;
++	}
++	pkg_vec_free(installed);
++
++	if (orig_cf && orig_cf->value) {
++		char *orig_chksum;
++		int modified = 1;
++
++		if (strlen(orig_cf->value) > 33)
++			orig_chksum = file_sha256sum_alloc(cf_backup);
++		else
++			orig_chksum = file_md5sum_alloc(cf_backup);
++
++		if (orig_chksum) {
++			modified = (strcmp(orig_chksum, orig_cf->value) != 0);
++			free(orig_chksum);
++			return modified;
++		}
++	}
++
++	sprintf_alloc(&rom_filename, "/rom%s", cf_name);
++	if (file_exists(rom_filename)) {
++		char *rom_chksum = file_sha256sum_alloc(rom_filename);
++		char *backup_chksum = file_sha256sum_alloc(cf_backup);
++		int modified = 1;
++
++		if (rom_chksum && backup_chksum)
++			modified = (strcmp(rom_chksum, backup_chksum) != 0);
++
++		if (rom_chksum)
++			free(rom_chksum);
++		if (backup_chksum)
++			free(backup_chksum);
++		free(rom_filename);
++
++		return modified;
++	}
++	free(rom_filename);
++
++	return 1;
++}
++
+ static int resolve_conffiles(pkg_t * pkg)
+ {
+ 	conffile_list_elt_t *iter;
+@@ -1147,6 +1205,10 @@
+ 					opkg_msg(NOTICE,
+ 						 "Conffile %s using maintainer's setting.\n",
+ 						 cf_backup);
++				} else if (!conffile_is_user_modified(cf->name, cf_backup, pkg)) {
++					opkg_msg(NOTICE,
++						 "Existing conffile %s was not modified by user, updating to new version.\n",
++						 root_filename);
+ 				} else {
+ 					char *new_conffile;
+ 					sprintf_alloc(&new_conffile, "%s-opkg",
