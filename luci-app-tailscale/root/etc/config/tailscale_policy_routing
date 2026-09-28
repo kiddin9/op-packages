@@ -1,0 +1,3 @@
+config settings 'settings'
+	# Prefer Tailscale table 52 before mwan3 fwmark policy rules.
+	option enabled '0'

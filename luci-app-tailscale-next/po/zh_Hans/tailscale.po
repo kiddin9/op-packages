@@ -1,0 +1,335 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "(Experimental) Reduce Memory Usage"
+msgstr "（实验性）减少内存占用"
+
+msgid "Accept Routes"
+msgstr "接受子网路由"
+
+msgid "Advertise Exit Node"
+msgstr "宣告出口节点"
+
+msgid "Advertise Subnet Routes"
+msgstr "通告子网路由"
+
+msgid "Allow LAN Access"
+msgstr "允许访问局域网"
+
+msgid "Allow accepting subnet routes announced by other nodes (--accept-routes)."
+msgstr "允许接收并应用其他节点通告的子网路由 (--accept-routes)。"
+
+msgid "Allow connecting to this device through the native SSH function of Tailscale (--ssh)."
+msgstr "允许通过 Tailscale 原生 SSH 功能连接到此设备 (--ssh)。"
+
+msgid "Allow user access to tailscale"
+msgstr "允许访问 Tailscale"
+
+msgid "Announce subnet routes behind this device (--advertise-routes). Select from the detected subnets below or enter custom routes (comma-separated)."
+msgstr "向 Tailnet 通告本设备后方的子网路由 (--advertise-routes)。从下方检测到的子网中选择或手动输入自定义路由（逗号分隔）。"
+
+msgid "Are you sure you want to log out?"
+msgstr "确定要退出登录吗？"
+
+msgid "Are you sure you want to restart Tailscale service?"
+msgstr "确定要重启 Tailscale 服务吗？"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Client Connectivity"
+msgstr "客户端连通性"
+
+msgid "Collecting data ..."
+msgstr "正在收集数据..."
+
+msgid "Confirm Logout"
+msgstr "确认退出登录"
+
+msgid "Connection Info"
+msgstr "连接信息"
+
+msgid "Control Server"
+msgstr "控制服务器"
+
+msgid "Controls how Tailscale DNS is handled (--accept-dns)."
+msgstr "控制 Tailscale DNS 的处理方式 (--accept-dns)。"
+
+msgid "Could not open a new tab. Please check if your browser or an extension blocked the pop-up."
+msgstr "无法打开新标签页，请检查浏览器或扩展程序是否拦截了弹出窗口。"
+
+msgid "Custom Control Server"
+msgstr "自定义控制服务器"
+
+msgid "Custom Server (%s)"
+msgstr "自定义服务器 (%s)"
+
+msgid "Custom Server Auth Key"
+msgstr "自定义服务器预认证密钥"
+
+msgid "DNS Mode"
+msgstr "DNS 模式"
+
+msgid "Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node)."
+msgstr "将此设备声明为出口节点，允许其他节点通过它路由所有流量 (--advertise-exit-node)。"
+
+msgid "Devices List"
+msgstr "设备列表"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Disabled: system DNS only."
+msgstr "禁用：仅使用系统 DNS。"
+
+msgid "Enable Peer Relay"
+msgstr "启用节点中继"
+
+msgid "Enable Tailscale SSH"
+msgstr "启用 Tailscale SSH"
+
+msgid "Enable Tailscale Service"
+msgstr "启用 Tailscale 服务"
+
+msgid "Enable Tunnel Traffic SNAT"
+msgstr "开启隧道流量 SNAT"
+
+msgid "Enable Web Interface"
+msgstr "启用 Web 管理界面"
+
+msgid "Enable or disable the Tailscale background service (/etc/init.d/tailscale)."
+msgstr "启用或禁用 Tailscale 后台守护进程 (/etc/init.d/tailscale)。"
+
+msgid "Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router."
+msgstr "将此设备作为节点中继服务器 (--peer-relay)。需要公网 IP 并在路由器上开放 UDP 端口。"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10)."
+msgstr "启用此选项可以减少内存占用，但可能会牺牲部分性能（设置 GOGC=10）。"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Exit Node"
+msgstr "出口节点"
+
+msgid "Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient)."
+msgstr "在 5252 端口开放本地 Web 管理界面，以便通过 Tailscale 管理此节点 (--webclient)。"
+
+msgid "Failed to get login URL. You may close this tab."
+msgstr "获取登录 URL 失败，您可以关闭此标签页。"
+
+msgid "Failed to get login URL: %s"
+msgstr "获取登录 URL 失败：%s"
+
+msgid "Failed to get login URL: Invalid response from server."
+msgstr "获取登录 URL 失败：服务器响应无效。"
+
+msgid "Failed to load devices: %s"
+msgstr "加载设备列表失败：%s"
+
+msgid "Failed to load logs: %s"
+msgstr "加载日志失败：%s"
+
+msgid "Failed to restart: %s"
+msgstr "重启失败：%s"
+
+msgid "General Settings"
+msgstr "常规设置"
+
+msgid "Hostname"
+msgstr "主机名"
+
+msgid "Invalid Date"
+msgstr "无效日期"
+
+msgid "Just now"
+msgstr "刚刚"
+
+msgid "Last Seen"
+msgstr "最后活跃"
+
+msgid "Logging out..."
+msgstr "正在退出登录..."
+
+msgid "Login"
+msgstr "登录"
+
+msgid "Logout"
+msgstr "退出登录"
+
+msgid "Logout failed: %s"
+msgstr "退出登录失败：%s"
+
+msgid "Logs"
+msgstr "运行日志"
+
+msgid "MagicDNS: Tailscale overrides resolv.conf."
+msgstr "MagicDNS：Tailscale 将根据设置覆写系统 resolv.conf 配置。"
+
+msgid "N/A"
+msgstr "不适用"
+
+msgid "NOT INSTALLED"
+msgstr "未安装"
+
+msgid "NOT LOGGED IN"
+msgstr "未登录"
+
+msgid "NOT RUNNING"
+msgstr "未运行"
+
+msgid "Nearest Relay"
+msgstr "最近中继节点"
+
+msgid "No peer devices found."
+msgstr "未发现对等设备。"
+
+msgid "No tailscale-related logs found."
+msgstr "未找到 Tailscale 相关日志。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Now"
+msgstr "当前在线"
+
+msgid "OS"
+msgstr "操作系统"
+
+msgid "Official Server (Tailscale SaaS)"
+msgstr "官方服务器 (Tailscale SaaS)"
+
+msgid "Offline"
+msgstr "离线"
+
+msgid "Online"
+msgstr "在线"
+
+msgid "OpenWrt Forward"
+msgstr "OpenWrt 转发"
+
+msgid "OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)"
+msgstr "OpenWrt 转发：通过 dnsmasq 转发 MagicDNS（仅支持 ts.net 域名）。"
+
+msgid "Optional: Specify a custom control server URL (e.g., a Headscale instance, --login-server). Leave blank for default Tailscale control plane."
+msgstr "可选：指定自定义控制服务器地址（例如 Headscale 实例，--login-server）。留空则使用 Tailscale 官方服务器。"
+
+msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
+msgstr "可选：指定自定义控制服务器的预认证密钥（--auth-key）。留空则无需认证密钥。"
+
+msgid "Peer Relay Port"
+msgstr "节点中继端口"
+
+msgid "Please wait while the service is restarting..."
+msgstr "服务正在重启，请稍候..."
+
+msgid "Please wait."
+msgstr "请稍候。"
+
+msgid "Public Endpoints"
+msgstr "公网端点"
+
+msgid "RUNNING"
+msgstr "运行中"
+
+msgid "RX"
+msgstr "接收流量"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Requesting Login URL..."
+msgstr "正在获取登录链接..."
+
+msgid "Requesting Tailscale login URL... Please wait."
+msgstr "正在请求 Tailscale 登录链接，请稍候..."
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Restart Service"
+msgstr "重启服务"
+
+msgid "Restarting Tailscale..."
+msgstr "正在重启 Tailscale..."
+
+msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
+msgstr "从列表中选择出口节点 (--exit-node)。如果启用，将隐式允许访问本地局域网。"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Shields Up"
+msgstr "防护模式"
+
+msgid "Status"
+msgstr "状态概览"
+
+msgid "Successfully logged out."
+msgstr "已成功退出登录。"
+
+msgid "TUN Mode"
+msgstr "TUN 模式"
+
+msgid "TX"
+msgstr "发送流量"
+
+msgid "Tailnet Account"
+msgstr "Tailnet 账户"
+
+msgid "Tailscale"
+msgstr "Tailscale"
+
+msgid "Tailscale IP"
+msgstr "Tailscale IP"
+
+msgid "Tailscale IPv4"
+msgstr "Tailscale IPv4"
+
+msgid "Tailscale IPv6"
+msgstr "Tailscale IPv6"
+
+msgid "Tailscale Login"
+msgstr "Tailscale 登录认证"
+
+msgid "Tailscale is a mesh VPN solution that makes it easy to connect your devices securely. This configuration page allows you to manage Tailscale settings on your OpenWrt device."
+msgstr "Tailscale 是一种网状 Mesh VPN 解决方案，可让您安全轻松地连接各类设备。此页面用于管理 OpenWrt 上的 Tailscale 服务配置。"
+
+msgid "Tailscale is not installed."
+msgstr "Tailscale 未安装。"
+
+msgid "Tailscale is not logged in. Please log in to view devices."
+msgstr "Tailscale 未登录。请先登录以查看设备列表。"
+
+msgid "Tailscale is not running."
+msgstr "Tailscale 未运行。"
+
+msgid "This can take up to 30 seconds."
+msgstr "此过程最长可能需要 30 秒。"
+
+msgid "This will disconnect this device from your Tailnet and require you to re-authenticate."
+msgstr "这将断开本设备与 Tailnet 的连接，并且需要重新进行身份验证。"
+
+msgid "UDP port for the Peer Relay service (--peer-relay-port). Open this port on your router firewall/NAT."
+msgstr "节点中继服务的 UDP 端口 (--peer-relay-port)。请确保在路由器防火墙中放行此端口。"
+
+msgid "Unknown error"
+msgstr "未知错误"
+
+msgid "Use OpenWrt system firewall to manage NAT for Tailscale tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
+msgstr "由 OpenWrt 系统防火墙统一接管 Tailscale 隧道及对端子网流量的地址转换。禁用此项将禁用源地址伪装，在局域网中保留对端节点和子网的真实源 IP。"
+
+msgid "Version"
+msgstr "版本信息"
+
+msgid "When enabled, blocks all inbound connections from the Tailscale network (--shields-up)."
+msgstr "启用后，阻止所有来自 Tailscale 网络的主动入站连接 (--shields-up)。"
+
+msgid "When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access)."
+msgstr "在使用或宣告出口节点时，允许访问本地局域网设备 (--exit-node-allow-lan-access)。"
+
+msgid "ago"
+msgstr "前"

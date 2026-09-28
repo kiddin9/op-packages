@@ -1,0 +1,457 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+START=99
+STOP=10
+
+NAME=tailscale-settings
+EXTRA_COMMANDS="clean_firewall clean_firewall_rules"
+
+# Compare version strings: return 0 (true) if $1 >= $2
+version_gte() {
+	awk -v a="${1%%-*}" -v b="${2%%-*}" 'BEGIN {
+		split(a, av, ".")
+		split(b, bv, ".")
+		for (i=1; i<=3; i++) {
+			ai = int(av[i]+0); bi = int(bv[i]+0)
+			if (ai > bi) { exit 0 }
+			if (ai < bi) { exit 1 }
+		}
+		exit 0
+	}'
+	return $?
+}
+
+# Add/remove DNS forward entry in dnsmasq for MagicDNS via OpenWrt
+setup_tailscale_dns_forward() {
+	if [ ! -x /usr/sbin/tailscale ] && [ ! -x /usr/bin/tailscale ]; then
+		return 0
+	fi
+
+	local entry="/.ts.net/100.100.100.100"
+	local count
+	count=$(uci -q get dhcp.@dnsmasq[0].server 2>/dev/null | tr ' ' '\n' | grep -Fxc "$entry" 2>/dev/null)
+
+	if [ "$count" -gt 1 ]; then
+		uci -q del_list dhcp.@dnsmasq[0].server="$entry"
+		uci add_list dhcp.@dnsmasq[0].server="$entry"
+		uci commit dhcp
+		/etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart 2>/dev/null
+		logger -t "$NAME" "Collapsed duplicate DNS forward entries"
+	elif [ "$count" -eq 0 ]; then
+		uci add_list dhcp.@dnsmasq[0].server="$entry"
+		uci commit dhcp
+		/etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart 2>/dev/null
+		logger -t "$NAME" "Added DNS forward: $entry"
+	fi
+}
+
+remove_tailscale_dns_forward() {
+	local entry="/.ts.net/100.100.100.100"
+	local idx=0
+	local removed=0
+	while true; do
+		local val
+		val=$(uci -q get dhcp.@dnsmasq[0].server."${idx}" 2>/dev/null)
+		[ -z "$val" ] && break
+		if [ "$val" = "$entry" ]; then
+			uci -q del_list dhcp.@dnsmasq[0].server="$entry"
+			removed=1
+			break
+		fi
+		idx=$((idx + 1))
+	done
+
+	if [ "$removed" = "1" ]; then
+		uci commit dhcp
+		/etc/init.d/dnsmasq reload 2>/dev/null || /etc/init.d/dnsmasq restart 2>/dev/null
+		logger -t "$NAME" "Removed Tailscale DNS forward entry: $entry"
+	fi
+}
+
+check_zone() {
+	local cfg="$1"
+	local name
+	config_get name "$cfg" name
+	if [ "$name" = "tailscale" ]; then
+		FOUND_TS_ZONE="$cfg"
+	fi
+}
+
+check_forwarding() {
+	local cfg="$1"
+	local src dst
+	config_get src "$cfg" src
+	config_get dst "$cfg" dest
+	[ "$src" = "lan" ] && [ "$dst" = "tailscale" ] && FWD_LAN_TS=1
+	[ "$src" = "tailscale" ] && [ "$dst" = "lan" ] && FWD_TS_LAN=1
+	[ "$src" = "tailscale" ] && [ "$dst" = "wan" ] && FWD_TS_WAN=1
+}
+
+setup_firewall_rules() {
+	local changed_net=0
+	local changed_fw=0
+
+	# 1. Interface (set both device and ifname for broad OpenWrt version compatibility)
+	local dev ifname
+	dev=$(uci -q get network.tailscale.device)
+	ifname=$(uci -q get network.tailscale.device)
+
+	if [ -z "$dev" ] && [ -z "$ifname" ]; then
+		uci -q set network.tailscale=interface
+		uci -q set network.tailscale.proto='none'
+		uci -q set network.tailscale.device='tailscale0'
+		uci -q set network.tailscale.device='tailscale0'
+		changed_net=1
+	else
+		if [ -z "$dev" ]; then
+			uci -q set network.tailscale.device='tailscale0'
+			changed_net=1
+		fi
+		if [ -z "$ifname" ]; then
+			uci -q set network.tailscale.device='tailscale0'
+			changed_net=1
+		fi
+	fi
+
+	# 2. Zone
+	local tunnel_snat target_masq="0"
+	tunnel_snat=$(uci -q get tailscale.settings.tunnel_snat)
+	[ "$tunnel_snat" = "1" ] && target_masq="1"
+
+	config_load firewall
+	FOUND_TS_ZONE=""
+	config_foreach check_zone zone
+
+	if [ -z "$FOUND_TS_ZONE" ]; then
+		local zid
+		zid=$(uci -q add firewall zone)
+		uci -q set firewall."$zid".name='tailscale'
+		uci -q set firewall."$zid".input='ACCEPT'
+		uci -q set firewall."$zid".output='ACCEPT'
+		uci -q set firewall."$zid".forward='ACCEPT'
+		uci -q set firewall."$zid".masq="$target_masq"
+		uci -q set firewall."$zid".mtu_fix='1'
+		uci -q add_list firewall."$zid".network='tailscale'
+		changed_fw=1
+	else
+		local cur_masq
+		cur_masq=$(uci -q get firewall."$FOUND_TS_ZONE".masq)
+		if [ "$cur_masq" != "$target_masq" ]; then
+			uci -q set firewall."$FOUND_TS_ZONE".masq="$target_masq"
+			changed_fw=1
+		fi
+
+		local has_net=0
+		local net
+		for net in $(uci -q get firewall."$FOUND_TS_ZONE".network); do
+			[ "$net" = "tailscale" ] && has_net=1
+		done
+		if [ "$has_net" = "0" ]; then
+			uci -q add_list firewall."$FOUND_TS_ZONE".network='tailscale'
+			changed_fw=1
+		fi
+	fi
+
+	# 3. Forwardings
+	FWD_LAN_TS=0
+	FWD_TS_LAN=0
+	FWD_TS_WAN=0
+	config_foreach check_forwarding forwarding
+
+	if [ "$FWD_LAN_TS" = "0" ]; then
+		local fid
+		fid=$(uci -q add firewall forwarding)
+		uci -q set firewall."$fid".src='lan'
+		uci -q set firewall."$fid".dest='tailscale'
+		changed_fw=1
+	fi
+	if [ "$FWD_TS_LAN" = "0" ]; then
+		local fid=$(uci -q add firewall forwarding)
+		uci -q set firewall."$fid".src='tailscale'
+		uci -q set firewall."$fid".dest='lan'
+		changed_fw=1
+	fi
+	if [ "$FWD_TS_WAN" = "0" ]; then
+		local fid=$(uci -q add firewall forwarding)
+		uci -q set firewall."$fid".src='tailscale'
+		uci -q set firewall."$fid".dest='wan'
+		changed_fw=1
+	fi
+
+	if [ "$changed_net" = "1" ]; then
+		uci -q commit network
+		logger -t "$NAME" "Auto configured tailscale network interface (tailscale0)"
+	fi
+
+	if [ "$changed_fw" = "1" ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload 2>/dev/null
+		logger -t "$NAME" "Auto configured tailscale firewall zone and forwarding rules"
+	fi
+}
+
+clean_firewall_rules() {
+	local changed_net=0
+	local changed_fw=0
+
+	# 1. Remove forwarding rules referencing tailscale
+	config_load firewall
+	local fwds_to_del=""
+	delete_ts_fwd() {
+		local cfg="$1"
+		local src dst
+		config_get src "$cfg" src
+		config_get dst "$cfg" dest
+		if [ "$src" = "tailscale" ] || [ "$dst" = "tailscale" ]; then
+			fwds_to_del="$fwds_to_del $cfg"
+		fi
+	}
+	config_foreach delete_ts_fwd forwarding
+
+	for fwd in $fwds_to_del; do
+		uci -q delete firewall."$fwd"
+		changed_fw=1
+	done
+
+	# 2. Remove tailscale zone
+	local zones_to_del=""
+	find_ts_zone() {
+		local cfg="$1"
+		local name
+		config_get name "$cfg" name
+		if [ "$name" = "tailscale" ]; then
+			zones_to_del="$zones_to_del $cfg"
+		fi
+	}
+	config_foreach find_ts_zone zone
+
+	for z in $zones_to_del; do
+		uci -q delete firewall."$z"
+		changed_fw=1
+	done
+
+	# 3. Remove network interface
+	if uci -q get network.tailscale >/dev/null; then
+		uci -q delete network.tailscale
+		changed_net=1
+	fi
+
+	# 4. Remove DNS forward entry in dnsmasq
+	remove_tailscale_dns_forward
+
+	if [ "$changed_net" = "1" ]; then
+		uci -q commit network
+		logger -t "$NAME" "Cleaned tailscale network interface"
+	fi
+
+	if [ "$changed_fw" = "1" ]; then
+		uci -q commit firewall
+		/etc/init.d/firewall reload 2>/dev/null
+		logger -t "$NAME" "Cleaned tailscale firewall zone and forwarding rules"
+	fi
+}
+
+clean_firewall() {
+	clean_firewall_rules
+}
+
+apply_settings() {
+	setup_firewall_rules
+
+	local ts_bin
+	if [ -x /usr/sbin/tailscale ]; then
+		ts_bin=/usr/sbin/tailscale
+	elif [ -x /usr/bin/tailscale ]; then
+		ts_bin=/usr/bin/tailscale
+	else
+		logger -t "$NAME" "tailscale binary not found, skipping settings apply"
+		return 0
+	fi
+
+	config_load tailscale
+
+	local accept_routes advertise_exit_node exit_node exit_node_allow_lan_access
+	local ssh shields_up runwebclient tunnel_snat hostname dns_mode
+	local enable_relay relay_server_port
+
+	config_get accept_routes              settings accept_routes              '0'
+	config_get advertise_exit_node        settings advertise_exit_node        '0'
+	config_get exit_node                  settings exit_node                  ''
+	config_get exit_node_allow_lan_access settings exit_node_allow_lan_access '0'
+	config_get ssh                        settings ssh                        '0'
+	config_get dns_mode                   settings dns_mode                   'disabled'
+	config_get shields_up                 settings shields_up                 '0'
+	config_get runwebclient               settings runwebclient               '0'
+	config_get tunnel_snat                settings tunnel_snat                '0'
+	config_get hostname                   settings hostname                   ''
+	config_get enable_relay               settings enable_relay               '0'
+	config_get relay_server_port          settings relay_server_port          '40000'
+
+	# Collect advertise_routes UCI list into comma-separated string
+	local routes=""
+	append_route() {
+		if [ -z "$routes" ]; then
+			routes="$1"
+		else
+			routes="$routes,$1"
+		fi
+	}
+	config_list_foreach settings advertise_routes append_route
+
+	# Build argument list for 'tailscale set'
+	set -- set
+
+	# --accept-routes
+	[ "$accept_routes" = "1" ] \
+		&& set -- "$@" --accept-routes=true \
+		|| set -- "$@" --accept-routes=false
+
+	# --advertise-exit-node (only when no exit node is selected)
+	[ "$advertise_exit_node" = "1" ] && [ -z "$exit_node" ] \
+		&& set -- "$@" --advertise-exit-node=true \
+		|| set -- "$@" --advertise-exit-node=false
+
+	# --exit-node-allow-lan-access (only when no exit node is selected)
+	if [ -z "$exit_node" ]; then
+		[ "$exit_node_allow_lan_access" = "1" ] \
+			&& set -- "$@" --exit-node-allow-lan-access=true \
+			|| set -- "$@" --exit-node-allow-lan-access=false
+	fi
+
+	# --ssh
+	[ "$ssh" = "1" ] \
+		&& set -- "$@" --ssh=true \
+		|| set -- "$@" --ssh=false
+
+	# --accept-dns based on dns_mode
+	case "$dns_mode" in
+		magicdns)
+			set -- "$@" --accept-dns=true
+			remove_tailscale_dns_forward
+			;;
+		openwrt_forward)
+			set -- "$@" --accept-dns=false
+			setup_tailscale_dns_forward
+			;;
+		*)
+			# disabled (default)
+			set -- "$@" --accept-dns=false
+			remove_tailscale_dns_forward
+			;;
+	esac
+
+	# --shields-up
+	[ "$shields_up" = "1" ] \
+		&& set -- "$@" --shields-up=true \
+		|| set -- "$@" --shields-up=false
+
+	# --webclient
+	[ "$runwebclient" = "1" ] \
+		&& set -- "$@" --webclient=true \
+		|| set -- "$@" --webclient=false
+
+	# --snat-subnet-routes (aligned with tunnel_snat)
+	[ "$tunnel_snat" = "1" ] \
+		&& set -- "$@" --snat-subnet-routes=true \
+		|| set -- "$@" --snat-subnet-routes=false
+
+	# --advertise-routes (comma-separated, empty clears routes)
+	set -- "$@" "--advertise-routes=$routes"
+
+	# --exit-node (empty clears the exit node)
+	set -- "$@" "--exit-node=$exit_node"
+
+	# when an exit node is configured, always allow LAN access
+	[ -n "$exit_node" ] && set -- "$@" --exit-node-allow-lan-access=true
+
+	# --hostname (only set if non-empty)
+	[ -n "$hostname" ] && set -- "$@" "--hostname=$hostname"
+
+	# --relay-server-port (requires tailscale >= 1.90.5)
+	local ts_ver
+	ts_ver=$("$ts_bin" version 2>/dev/null | head -n1)
+	if version_gte "$ts_ver" "1.90.5"; then
+		if [ "$enable_relay" = "1" ]; then
+			set -- "$@" "--relay-server-port=${relay_server_port:-40000}"
+		else
+			set -- "$@" "--relay-server-port="
+		fi
+	fi
+
+	# Always enforce netfilter-mode=off so OpenWrt manages all firewall rules cleanly
+	set -- "$@" --netfilter-mode=off
+
+	# Wait for tailscaled daemon to be ready (up to 5 seconds)
+	local i=0
+	local daemon_ready=0
+	while [ $i -lt 5 ]; do
+		if "$ts_bin" status >/dev/null 2>&1; then
+			daemon_ready=1
+			break
+		fi
+		if ! "$ts_bin" status 2>&1 | grep -q "failed to connect to local tailscaled"; then
+			daemon_ready=1
+			break
+		fi
+		sleep 1
+		i=$((i + 1))
+	done
+
+	if [ "$daemon_ready" = "0" ]; then
+		logger -t "$NAME" "Tailscale daemon is not running or socket is unreachable, skipping settings apply"
+		return 0
+	fi
+
+	# Check logged-in status. Skip applying settings if logged out to prevent command error.
+	local status_out
+	status_out=$("$ts_bin" status 2>&1)
+	if echo "$status_out" | grep -qE "Logged out|NeedsLogin|NeedsCard"; then
+		logger -t "$NAME" "Tailscale is logged out, saving settings locally but skipping immediate apply"
+		return 0
+	fi
+
+	logger -t "$NAME" "Applying settings via tailscale set"
+	"$ts_bin" "$@"
+	local ret=$?
+	if [ $ret -eq 0 ]; then
+		logger -t "$NAME" "Settings applied successfully"
+	else
+		logger -t "$NAME" "Failed to apply settings (exit code: $ret)"
+	fi
+
+	return 0
+}
+
+handle_service_state() {
+	config_load tailscale
+	local service_enabled
+	config_get service_enabled settings service_enabled '0'
+	
+	if [ "$service_enabled" = "0" ]; then
+		logger -t "$NAME" "Service is disabled, stopping tailscale and cleaning up"
+		/etc/init.d/tailscale stop 2>/dev/null
+		/etc/init.d/tailscale disable 2>/dev/null
+		clean_firewall_rules
+		killall -9 tailscaled 2>/dev/null || true
+	else
+		logger -t "$NAME" "Service is enabled, ensuring tailscale is running"
+		/etc/init.d/tailscale enable 2>/dev/null
+		if ! /usr/sbin/tailscale status >/dev/null 2>&1 && ! /usr/bin/tailscale status >/dev/null 2>&1; then
+			/etc/init.d/tailscale start 2>/dev/null
+		fi
+		apply_settings
+	fi
+}
+
+start_service() {
+	handle_service_state
+}
+
+service_triggers() {
+	procd_add_reload_trigger "tailscale"
+}
+
+reload_service() {
+	handle_service_state
+}

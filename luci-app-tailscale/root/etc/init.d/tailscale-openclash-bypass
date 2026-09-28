@@ -1,0 +1,25 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+USE_PROCD=1
+PROG="${PROG:-/usr/sbin/tailscale_openclash_bypass}"
+
+service_triggers() {
+	procd_add_reload_trigger "tailscale_openclash"
+}
+
+sync_instance() {
+	"$PROG" sync
+}
+
+start_service() {
+	sync_instance
+}
+
+reload_service() {
+	start_service
+}
+
+stop_service() {
+	"$PROG" cleanup
+}

@@ -1,0 +1,86 @@
+#!/bin/sh
+
+UPGRADE_STATE_DIR="${UPGRADE_STATE_DIR:-/etc/.luci-app-tailscale-upgrade}"
+TAILSCALE_SECRETS_BIN="${TAILSCALE_SECRETS_BIN:-/usr/sbin/tailscale_secrets}"
+UCI_BIN="${UCI_BIN:-uci}"
+OPENCLASH_BYPASS_INIT="${OPENCLASH_BYPASS_INIT:-/etc/init.d/tailscale-openclash-bypass}"
+POLICY_ROUTING_INIT="${POLICY_ROUTING_INIT:-/etc/init.d/tailscale-policy-routing}"
+LEGACY_ADGUARD_DNS_INIT="${LEGACY_ADGUARD_DNS_INIT:-/etc/init.d/tailscale-adguard-dns}"
+LEGACY_ADGUARD_DNS_RC_DIR="${LEGACY_ADGUARD_DNS_RC_DIR:-/etc/rc.d}"
+LEGACY_ADGUARD_DNS_BACKUP_DIR="${LEGACY_ADGUARD_DNS_BACKUP_DIR:-/etc/tailscale/luci-app-tailscale-legacy}"
+LUCI_INDEX_CACHE="${LUCI_INDEX_CACHE:-/tmp/luci-indexcache}"
+
+cleanup_upgrade_state() {
+	rm -f "$UPGRADE_STATE_DIR/tailscale" "$UPGRADE_STATE_DIR/tailscale_openclash" \
+		"$UPGRADE_STATE_DIR/tailscale_openclash.absent" "$UPGRADE_STATE_DIR/tailscale_policy_routing" \
+		"$UPGRADE_STATE_DIR/.complete"
+	rmdir "$UPGRADE_STATE_DIR" 2>/dev/null || true
+}
+
+restore_upgrade_config() {
+	local source_file="$1" target_file="$2" temporary_file
+
+	[ -f "$source_file" ] || return 0
+	temporary_file="$target_file.luci-app-tailscale-upgrade.$$"
+	cp "$source_file" "$temporary_file" || return 1
+	mv "$temporary_file" "$target_file" || {
+		rm -f "$temporary_file"
+		return 1
+	}
+}
+
+cleanup_legacy_adguard_dns_service() {
+	local backup_dir link
+
+	[ -e "$LEGACY_ADGUARD_DNS_INIT" ] || return 0
+	backup_dir="$LEGACY_ADGUARD_DNS_BACKUP_DIR/tailscale-adguard-dns.$(date +%Y%m%d%H%M%S).$$"
+	mkdir -p "$backup_dir" || return 1
+
+	for link in "$LEGACY_ADGUARD_DNS_RC_DIR"/*tailscale-adguard-dns; do
+		[ -e "$link" ] || [ -L "$link" ] || continue
+		printf '%s\t%s\n' "${link##*/}" "$(readlink "$link" 2>/dev/null || true)" >>"$backup_dir/rc-links"
+	done
+
+	if [ -x "$LEGACY_ADGUARD_DNS_INIT" ]; then
+		"$LEGACY_ADGUARD_DNS_INIT" stop || return 1
+		"$LEGACY_ADGUARD_DNS_INIT" disable || true
+	fi
+
+	cp -p "$LEGACY_ADGUARD_DNS_INIT" "$backup_dir/init" || return 1
+	for link in "$LEGACY_ADGUARD_DNS_RC_DIR"/*tailscale-adguard-dns; do
+		[ -e "$link" ] || [ -L "$link" ] || continue
+		rm -f "$link" || return 1
+	done
+	mv "$LEGACY_ADGUARD_DNS_INIT" "$backup_dir/tailscale-adguard-dns.disabled" || return 1
+}
+
+if [ -f "$UPGRADE_STATE_DIR/.complete" ]; then
+	restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale" /etc/config/tailscale || exit 1
+	if [ -f "$UPGRADE_STATE_DIR/tailscale_openclash.absent" ]; then
+		rm -f /etc/config/tailscale_openclash
+	else
+		restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale_openclash" /etc/config/tailscale_openclash || exit 1
+	fi
+	restore_upgrade_config "$UPGRADE_STATE_DIR/tailscale_policy_routing" /etc/config/tailscale_policy_routing || exit 1
+	cleanup_upgrade_state
+elif [ -d "$UPGRADE_STATE_DIR" ]; then
+	cleanup_upgrade_state
+fi
+
+cleanup_legacy_adguard_dns_service || exit 1
+
+"$TAILSCALE_SECRETS_BIN" migrate || exit 1
+
+openclash_bypass_enabled="$("$UCI_BIN" -q get tailscale_openclash.settings.enabled 2>/dev/null || true)"
+if [ "$openclash_bypass_enabled" = '1' ] && [ -x "$OPENCLASH_BYPASS_INIT" ]; then
+	"$OPENCLASH_BYPASS_INIT" enable
+	"$OPENCLASH_BYPASS_INIT" start
+fi
+
+if [ -x "$POLICY_ROUTING_INIT" ]; then
+	"$POLICY_ROUTING_INIT" enable
+	"$POLICY_ROUTING_INIT" start
+fi
+
+rm -f "$LUCI_INDEX_CACHE"
+exit 0

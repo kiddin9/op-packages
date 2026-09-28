@@ -1,0 +1,429 @@
+#!/bin/sh
+
+# Copyright (C) 2026 jearton
+# SPDX-License-Identifier: GPL-3.0-only
+
+UCI_BIN="${UCI_BIN:-uci}"
+IP_BIN="${IP_BIN:-ip}"
+JQ_BIN="${JQ_BIN:-jq}"
+LOGGER_CMD="${LOGGER_CMD:-logger}"
+FLOCK_BIN="${FLOCK_BIN:-flock}"
+MWAN3_INIT="${MWAN3_INIT:-/etc/init.d/mwan3}"
+LOCK_FILE="${LOCK_FILE:-/var/lock/tailscale-policy-routing.lock}"
+SLEEP_BIN="${SLEEP_BIN:-sleep}"
+MONITOR_INTERVAL="${MONITOR_INTERVAL:-15}"
+
+SETTINGS_PACKAGE='tailscale_policy_routing'
+SETTINGS_SECTION='settings'
+NETWORK_SECTION='ts_mwan3_table52'
+PRIORITY='1000'
+TABLE='52'
+RULE_NAME='luci-app-tailscale: Tailscale table 52 before mwan3'
+
+log_error() {
+	"$LOGGER_CMD" -p daemon.err -t tailscale_policy_routing "$1"
+}
+
+setting_enabled() {
+	case "$("$UCI_BIN" -q get "$SETTINGS_PACKAGE.$SETTINGS_SECTION.enabled" 2>/dev/null || true)" in
+	1) return 0 ;;
+	0|'') return 1 ;;
+	*) return 2 ;;
+	esac
+}
+
+network_section_exists() {
+	"$UCI_BIN" -q get "network.$NETWORK_SECTION" >/dev/null 2>&1
+}
+
+network_section_owned() {
+	[ "$("$UCI_BIN" -q get "network.$NETWORK_SECTION" 2>/dev/null || true)" = 'rule' ] && \
+		[ "$("$UCI_BIN" -q get "network.$NETWORK_SECTION.name" 2>/dev/null || true)" = "$RULE_NAME" ] && \
+		[ "$("$UCI_BIN" -q get "network.$NETWORK_SECTION.family" 2>/dev/null || true)" = 'ipv4' ] && \
+		[ "$("$UCI_BIN" -q get "network.$NETWORK_SECTION.priority" 2>/dev/null || true)" = "$PRIORITY" ] && \
+		[ "$("$UCI_BIN" -q get "network.$NETWORK_SECTION.lookup" 2>/dev/null || true)" = "$TABLE" ]
+}
+
+rule_dump() {
+	"$IP_BIN" -4 rule show 2>/dev/null
+}
+
+route_dump() {
+	"$IP_BIN" -4 route show table "$TABLE" 2>/dev/null
+}
+
+priority_lines() {
+	printf '%s\n' "$1" | sed -n "/^$PRIORITY:[[:space:]]/p"
+}
+
+priority_line_count() {
+	priority_lines "$1" | sed '/^$/d' | wc -l | tr -d ' '
+}
+
+is_exact_rule_line() {
+	# ip-rule has no comments or other ownership metadata. Only the exact rule we
+	# create can be treated as app-owned; constrained table-52 rules are foreign.
+	printf '%s\n' "$1" | grep -Fqx "$PRIORITY: from all lookup $TABLE"
+}
+
+runtime_rule_state() {
+	rules="$1"
+	lines="$(priority_lines "$rules")"
+	count="$(priority_line_count "$rules")"
+	case "$count" in
+	0) printf '%s\n' 'absent' ;;
+	1)
+		if is_exact_rule_line "$lines"; then
+			printf '%s\n' 'exact'
+		else
+			printf '%s\n' 'conflict'
+		fi
+		;;
+	*) printf '%s\n' 'conflict' ;;
+	esac
+}
+
+table_has_default_route() {
+	route_dump | grep -Eq '^default[[:space:]]'
+}
+
+tailscale_rule_priority() {
+	rule_dump | awk -v preferred="$PRIORITY" -v table="$TABLE" '
+		$0 ~ ("(lookup|table)[[:space:]]+" table "([[:space:]]|$)") {
+			priority = $1
+			sub(/:$/, "", priority)
+			if (priority != preferred && (best == "" || priority + 0 < best + 0))
+				best = priority
+		}
+		END { print best }
+	'
+}
+
+mwan3_present() {
+	[ -x "$MWAN3_INIT" ] && \
+		[ "$("$UCI_BIN" -q get mwan3.globals 2>/dev/null || true)" = 'globals' ]
+}
+
+mwan3_mark_mask() {
+	mask="$("$UCI_BIN" -q get mwan3.globals.mmx_mask 2>/dev/null || true)"
+	case "$mask" in
+	0[xX][0-9A-Fa-f]*) printf '%s\n' "$mask" | tr '[:upper:]' '[:lower:]' ;;
+	*) printf '%s\n' '0x3f00' ;;
+	esac
+}
+
+mwan3_earlier_mark_rule() {
+	rules="$1"
+	threshold="$2"
+	mask="$(mwan3_mark_mask)"
+	mwan3_present || return 1
+	printf '%s\n' "$rules" | awk -v threshold="$threshold" -v mask="$mask" '
+		/fwmark/ && index(tolower($0), "/" mask) && /(lookup|table)/ {
+			priority = $1
+			sub(/:$/, "", priority)
+			if (priority + 0 < threshold + 0) {
+				found = 1
+				exit
+			}
+		}
+		END { exit !found }
+	'
+}
+
+write_owned_network_rule() {
+	"$UCI_BIN" set "network.$NETWORK_SECTION=rule" || return 1
+	"$UCI_BIN" set "network.$NETWORK_SECTION.name=$RULE_NAME" || return 1
+	"$UCI_BIN" set "network.$NETWORK_SECTION.family=ipv4" || return 1
+	"$UCI_BIN" set "network.$NETWORK_SECTION.priority=$PRIORITY" || return 1
+	"$UCI_BIN" set "network.$NETWORK_SECTION.lookup=$TABLE" || return 1
+	"$UCI_BIN" commit network
+}
+
+delete_owned_network_rule() {
+	network_section_exists || return 3
+	network_section_owned || return 2
+	"$UCI_BIN" delete "network.$NETWORK_SECTION" || return 1
+	"$UCI_BIN" commit network
+}
+
+add_runtime_rule() {
+	rules="$(rule_dump)" || return 1
+	case "$(runtime_rule_state "$rules")" in
+	absent) "$IP_BIN" -4 rule add priority "$PRIORITY" lookup "$TABLE" ;;
+	exact) return 0 ;;
+	conflict) return 2 ;;
+	esac
+}
+
+delete_runtime_rule() {
+	rules="$(rule_dump)" || return 1
+	case "$(runtime_rule_state "$rules")" in
+	absent) return 0 ;;
+	exact) "$IP_BIN" -4 rule del priority "$PRIORITY" lookup "$TABLE" ;;
+	conflict) return 2 ;;
+	esac
+}
+
+cleanup_owned_state() {
+	strict_cleanup="${1:-0}"
+	rules="$(rule_dump)" || return 1
+	if ! network_section_exists; then
+		# A normal disable does not adopt or remove manually-created exact rules.
+		# Package removal is stricter: it must not leave an indistinguishable
+		# priority-1000 rule behind after the helper is gone.
+		if [ "$strict_cleanup" = 1 ] && [ "$(runtime_rule_state "$rules")" = exact ]; then
+			log_error 'refusing package cleanup because an unowned priority 1000 table 52 rule remains'
+			return 2
+		fi
+		return 0
+	fi
+	if ! network_section_owned; then
+		log_error 'refusing to delete a non-owned network rule section'
+		return 2
+	fi
+
+	delete_runtime_rule
+	delete_status=$?
+	case "$delete_status" in
+	0) ;;
+	2)
+		log_error 'refusing to delete conflicting priority 1000 policy rules'
+		return 2
+		;;
+	*) return "$delete_status" ;;
+	esac
+
+	# Keep the ownership declaration until the runtime rule is gone. If deletion
+	# fails, a later sync can retry safely instead of treating the rule as foreign.
+	delete_owned_network_rule
+}
+
+sync_enabled() {
+	rules="$(rule_dump)" || return 1
+
+	if table_has_default_route; then
+		cleanup_owned_state
+		cleanup_status=$?
+		case "$cleanup_status" in
+		0) return 0 ;;
+		2)
+			log_error 'table 52 has a default route and an unowned rule prevents safe cleanup'
+			return 1
+			;;
+		*) return "$cleanup_status" ;;
+		esac
+	fi
+
+	if mwan3_earlier_mark_rule "$rules" "$PRIORITY"; then
+		if network_section_owned; then
+			delete_runtime_rule
+			cleanup_status=$?
+			case "$cleanup_status" in
+			0) ;;
+			2)
+				log_error 'refusing to remove the managed rule because priority 1000 now conflicts'
+				return 1
+				;;
+			*) return "$cleanup_status" ;;
+			esac
+		fi
+		log_error 'mwan3 has a fwmark policy rule before priority 1000; table 52 precedence is blocked'
+		return 0
+	fi
+
+	if network_section_exists; then
+		if ! network_section_owned; then
+			log_error 'network.ts_mwan3_table52 exists but is not owned by luci-app-tailscale'
+			return 1
+		fi
+	else
+		case "$(runtime_rule_state "$rules")" in
+		absent) write_owned_network_rule || return 1 ;;
+		exact)
+			log_error 'priority 1000 table 52 rule already exists without app ownership'
+			return 1
+			;;
+		conflict)
+			log_error 'priority 1000 is occupied by another policy rule'
+			return 1
+			;;
+		esac
+	fi
+
+	add_runtime_rule
+	add_status=$?
+	case "$add_status" in
+	0) return 0 ;;
+	2)
+		# Keep the declaration so a later sync can safely recover if the foreign
+		# rule disappears. It also records that the app must not adopt that rule.
+		log_error 'priority 1000 is occupied by another policy rule'
+		return 1
+		;;
+	*) return "$add_status" ;;
+	esac
+}
+
+sync() {
+	setting_enabled
+	enabled_status=$?
+	case "$enabled_status" in
+	0) sync_enabled ;;
+	1) cleanup_owned_state ;;
+	2)
+		log_error 'tailscale_policy_routing.settings.enabled is invalid'
+		return 1
+		;;
+	esac
+}
+
+ensure() {
+	setting_enabled
+	enabled_status=$?
+	case "$enabled_status" in
+	0) ;;
+	1) return 0 ;;
+	2)
+		log_error 'tailscale_policy_routing.settings.enabled is invalid'
+		return 1
+		;;
+	esac
+	rules="$(rule_dump)" || return 1
+	if table_has_default_route; then
+		# Keep the persistent declaration for recovery after the exit node is
+		# removed, but never leave our high-priority runtime rule ahead of a
+		# default route in table 52.
+		network_section_owned || return 0
+		delete_runtime_rule
+		return $?
+	fi
+	if mwan3_earlier_mark_rule "$rules" "$PRIORITY"; then
+		network_section_owned || return 0
+		delete_runtime_rule
+		cleanup_status=$?
+		case "$cleanup_status" in
+		0)
+			log_error 'mwan3 has a fwmark policy rule before priority 1000; table 52 precedence is blocked'
+			return 0
+			;;
+		2)
+			log_error 'refusing to remove the managed rule because priority 1000 now conflicts'
+			return 1
+			;;
+		*) return "$cleanup_status" ;;
+		esac
+	fi
+	network_section_owned || return 0
+	add_runtime_rule
+}
+
+bool_json() {
+	if "$1"; then
+		printf '%s\n' true
+	else
+		printf '%s\n' false
+	fi
+}
+
+print_status() {
+	rules="$(rule_dump)" || exit 1
+	enabled=false
+	settings_invalid=false
+	setting_enabled
+	enabled_status=$?
+	case "$enabled_status" in
+	0) enabled=true ;;
+	2) settings_invalid=true ;;
+	esac
+	runtime_state="$(runtime_rule_state "$rules")"
+	owned=false
+	network_section_owned && owned=true
+	section_exists=false
+	network_section_exists && section_exists=true
+	default_route=false
+	table_has_default_route && default_route=true
+	tailscale_priority="$(tailscale_rule_priority)"
+	mwan3=false
+	mwan3_present && mwan3=true
+	early_mark=false
+	if mwan3_earlier_mark_rule "$rules" "$PRIORITY"; then
+		early_mark=true
+	fi
+
+	if [ "$settings_invalid" = true ]; then
+		state=error
+		message='The policy-routing enable setting is invalid.'
+	elif [ "$enabled" = false ]; then
+		state=disabled
+		message='Policy routing precedence is disabled.'
+	elif [ "$default_route" = true ]; then
+		state=blocked_default_route
+		message='Table 52 contains a default route, so precedence is blocked to preserve mwan3 routing.'
+	elif [ "$early_mark" = true ]; then
+		state=blocked_mwan3_priority
+		message='A mwan3 fwmark policy rule precedes priority 1000, so table 52 precedence is blocked.'
+	elif [ "$section_exists" = true ] && [ "$owned" = false ]; then
+		state=blocked_ownership
+		message='The named network rule is not owned by luci-app-tailscale.'
+	elif [ "$runtime_state" = conflict ]; then
+		state=blocked_priority_conflict
+		message='Priority 1000 is occupied by another policy rule.'
+	elif [ "$runtime_state" = exact ] && [ "$owned" = false ]; then
+		state=blocked_ownership
+		message='Priority 1000 lookup 52 exists but is not owned by luci-app-tailscale.'
+	elif [ "$runtime_state" = exact ] && [ "$owned" = true ]; then
+		state=active
+		message='Tailscale table 52 is evaluated before mwan3 policy rules.'
+	else
+		state=waiting
+		message='Waiting to install the managed table 52 policy rule.'
+	fi
+
+	"$JQ_BIN" -nc \
+		--arg state "$state" \
+		--arg message "$message" \
+		--arg tailscale_priority "$tailscale_priority" \
+		--argjson enabled "$enabled" \
+		--argjson mwan3_present "$mwan3" \
+		--argjson mwan3_earlier_mark_rule "$early_mark" \
+		--argjson managed_network_rule "$owned" \
+		--argjson runtime_rule_present "$( [ "$runtime_state" = exact ] && printf true || printf false )" \
+		--argjson default_route "$default_route" \
+		'{state:$state, message:$message, enabled:$enabled, mwan3_present:$mwan3_present, mwan3_earlier_mark_rule:$mwan3_earlier_mark_rule, managed_network_rule:$managed_network_rule, runtime_rule_present:$runtime_rule_present, default_route:$default_route, tailscale_rule_priority:($tailscale_priority | if . == "" then null else tonumber end)}'
+}
+
+monitor() {
+	while :; do
+		if setting_enabled; then
+			# The normal sync and hotplug paths report actionable errors. The monitor
+			# retries quietly so a persistent external conflict cannot flood syslog.
+			saved_logger="$LOGGER_CMD"
+			LOGGER_CMD=:
+			run_locked ensure || :
+			LOGGER_CMD="$saved_logger"
+		fi
+		"$SLEEP_BIN" "$MONITOR_INTERVAL" || return 0
+	done
+}
+
+run_locked() {
+	lock_dir="${LOCK_FILE%/*}"
+	[ "$lock_dir" = "$LOCK_FILE" ] && lock_dir=.
+	mkdir -p "$lock_dir" || return 1
+	exec 9>"$LOCK_FILE"
+	"$FLOCK_BIN" -xn 9 || return 1
+	"$@"
+}
+
+case "${1:-}" in
+sync) run_locked sync ;;
+ensure) run_locked ensure ;;
+cleanup) run_locked cleanup_owned_state 1 ;;
+enabled) setting_enabled ;;
+monitor) monitor ;;
+status) print_status ;;
+*)
+	echo "usage: $0 {sync|ensure|cleanup|enabled|monitor|status}" >&2
+	exit 2
+	;;
+esac

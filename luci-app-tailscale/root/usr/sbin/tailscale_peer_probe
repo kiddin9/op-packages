@@ -1,0 +1,89 @@
+#!/bin/sh
+
+# Peer probe for LuCI Tailscale diagnostics.
+
+TAILSCALE_BIN="${TAILSCALE_BIN:-/usr/sbin/tailscale}"
+JQ_BIN="${JQ_BIN:-/usr/bin/jq}"
+
+emit_json() {
+	peer="$1"
+	ok="$2"
+	path="$3"
+	latency_ms="$4"
+	relay="$5"
+	summary="$6"
+	raw="$7"
+	latency_json="null"
+
+	[ -n "$latency_ms" ] && latency_json="$latency_ms"
+
+	"$JQ_BIN" -nc \
+		--arg peer "$peer" \
+		--arg path "$path" \
+		--arg relay "$relay" \
+		--arg summary "$summary" \
+		--arg raw "$raw" \
+		--argjson ok "$ok" \
+		--argjson latency_ms "$latency_json" \
+		'{peer:$peer,ok:$ok,path:$path,latency_ms:$latency_ms,relay:$relay,summary:$summary,raw:$raw}'
+}
+
+usage() {
+	emit_json "" false failed "" "" "usage: tailscale_peer_probe <peer>" ""
+	exit 2
+}
+
+[ "$#" -eq 1 ] || usage
+
+peer="$1"
+
+case "$peer" in
+	""|*[!A-Za-z0-9_.:-]*)
+		emit_json "" false failed "" "" "invalid peer argument" ""
+		exit 2
+		;;
+esac
+
+peer_len=${#peer}
+if [ "$peer_len" -lt 1 ] || [ "$peer_len" -gt 253 ]; then
+	emit_json "" false failed "" "" "invalid peer argument" ""
+	exit 2
+fi
+
+raw="$("$TAILSCALE_BIN" ping --c=1 --timeout=2s "$peer" 2>&1)"
+rc="$?"
+
+latency_ms="$(printf '%s\n' "$raw" | sed -nE 's/.* in ([0-9]+(\.[0-9]+)?)ms.*/\1/p' | head -n 1)"
+relay="$(printf '%s\n' "$raw" | sed -nE 's/.*DERP\(([^)]*)\).*/\1/p' | head -n 1)"
+direct_note="$(printf '%s\n' "$raw" | sed -n '/direct connection not established/{p;q;}')"
+
+if [ -n "$relay" ]; then
+	if [ -n "$latency_ms" ]; then
+		summary="DERP $relay $latency_ms ms"
+	else
+		summary="DERP $relay"
+	fi
+	[ -n "$direct_note" ] && summary="$summary - direct connection not established"
+	emit_json "$peer" true derp "$latency_ms" "$relay" "$summary" "$raw"
+	exit 0
+fi
+
+if [ "$rc" -ne 0 ]; then
+	emit_json "$peer" false failed "" "" "tailscale ping failed" "$raw"
+	exit 0
+fi
+
+case "$raw" in
+	*pong\ from*)
+		if [ -n "$latency_ms" ]; then
+			summary="direct $latency_ms ms"
+			emit_json "$peer" true direct "$latency_ms" "" "$summary" "$raw"
+		else
+			summary="unknown path"
+			emit_json "$peer" true unknown "" "" "$summary" "$raw"
+		fi
+		;;
+	*)
+		emit_json "$peer" true unknown "" "" "unknown path" "$raw"
+		;;
+esac

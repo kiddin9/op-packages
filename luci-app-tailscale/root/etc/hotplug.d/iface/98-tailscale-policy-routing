@@ -1,0 +1,14 @@
+#!/bin/sh
+
+POLICY_HELPER="${POLICY_HELPER:-/usr/sbin/tailscale_policy_routing}"
+LOGGER_CMD="${LOGGER_CMD:-logger}"
+
+case "${ACTION:-}" in
+ifup|ifupdate) ;;
+*) exit 0 ;;
+esac
+
+[ -x "$POLICY_HELPER" ] || exit 0
+
+"$POLICY_HELPER" ensure >/dev/null 2>&1 || \
+	"$LOGGER_CMD" -p daemon.err -t tailscale_policy_routing 'failed to restore Tailscale table 52 policy priority'

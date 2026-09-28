@@ -1,0 +1,230 @@
+#!/bin/sh
+
+# Copyright (C) 2026 jearton
+# SPDX-License-Identifier: GPL-3.0-only
+
+PRECHECK_BIN="${PRECHECK_BIN:-/usr/sbin/tailscale_adguard_dns_switch}"
+SECRETS_BIN="${SECRETS_BIN:-/usr/sbin/tailscale_secrets}"
+OPENCLASH_BYPASS_BIN="${OPENCLASH_BYPASS_BIN:-/usr/sbin/tailscale_openclash_bypass}"
+POLICY_ROUTING_BIN="${POLICY_ROUTING_BIN:-/usr/sbin/tailscale_policy_routing}"
+JQ_BIN="${JQ_BIN:-jq}"
+
+print_methods() {
+	printf '%s\n' '{"secret_status":{},"openclash_bypass_status":{},"policy_routing_status":{},"adguard_preflight":{"candidate":"","api_url":"","username":"","password_set":"","password":"","default_upstreams":"","tailnet_upstreams":"","health_domain":"","expected_ips":""},"set_secrets":{"authkey_set":"","authkey":"","adguard_password_set":"","adguard_password":"","api_url":"","username":"","base_ref":""}}'
+}
+
+fail_json() {
+	message="$1"
+	"$JQ_BIN" -nc --arg error "$message" '{code: 2, ready: "fail", error: $error}'
+	exit 1
+}
+
+parse_request() {
+	request="$(cat)"
+	printf '%s' "$request" | "$JQ_BIN" -e '
+		type == "object" and
+		(.candidate | type == "string") and
+		(.api_url | type == "string") and
+		(.username | type == "string") and
+		(.password_set | type == "string") and
+		(.password | type == "string") and
+		(.default_upstreams | type == "string") and
+		(.tailnet_upstreams | type == "string") and
+		(.health_domain | type == "string") and
+		(.expected_ips | type == "string")
+	' >/dev/null 2>&1 || fail_json "invalid request"
+
+	candidate="$(printf '%s' "$request" | "$JQ_BIN" -r '.candidate')"
+	api_url="$(printf '%s' "$request" | "$JQ_BIN" -r '.api_url')"
+	username="$(printf '%s' "$request" | "$JQ_BIN" -r '.username')"
+	password_set="$(printf '%s' "$request" | "$JQ_BIN" -r '.password_set')"
+	password="$(printf '%s' "$request" | "$JQ_BIN" -r '.password')"
+	default_upstreams="$(printf '%s' "$request" | "$JQ_BIN" -r '.default_upstreams')"
+	tailnet_upstreams="$(printf '%s' "$request" | "$JQ_BIN" -r '.tailnet_upstreams')"
+	health_domain="$(printf '%s' "$request" | "$JQ_BIN" -r '.health_domain')"
+	expected_ips="$(printf '%s' "$request" | "$JQ_BIN" -r '.expected_ips')"
+
+	case "$candidate" in
+		0|1) ;;
+		*) fail_json "invalid candidate mode" ;;
+	esac
+
+	case "$password_set" in
+		0|1) ;;
+		*) fail_json "invalid password mode" ;;
+	esac
+	if [ "$candidate" = "1" ]; then
+		case "$api_url" in
+			http://?*|https://?*) ;;
+			*) fail_json "AdGuard API URL must use HTTP or HTTPS" ;;
+		esac
+	fi
+}
+
+run_preflight() {
+	if [ "$candidate" = "1" ] && [ "$password_set" = "0" ]; then
+		"$SECRETS_BIN" matches-adguard "$api_url" "$username" >/dev/null 2>&1 || \
+			fail_json "saved AdGuard password is not bound to this API URL and username"
+	fi
+
+	if [ "$candidate" = "1" ]; then
+		if output="$(
+			TAILSCALE_ADGUARD_PREFLIGHT_CANDIDATE=1 \
+			TAILSCALE_ADGUARD_PREFLIGHT_API_URL="$api_url" \
+			TAILSCALE_ADGUARD_PREFLIGHT_USERNAME="$username" \
+			TAILSCALE_ADGUARD_PREFLIGHT_PASSWORD_SET="$password_set" \
+			TAILSCALE_ADGUARD_PREFLIGHT_PASSWORD="$password" \
+			TAILSCALE_ADGUARD_PREFLIGHT_DEFAULT_UPSTREAMS="$default_upstreams" \
+			TAILSCALE_ADGUARD_PREFLIGHT_TAILNET_UPSTREAMS="$tailnet_upstreams" \
+			TAILSCALE_ADGUARD_PREFLIGHT_HEALTH_DOMAIN="$health_domain" \
+			TAILSCALE_ADGUARD_PREFLIGHT_EXPECTED_IPS="$expected_ips" \
+			"$PRECHECK_BIN" --preflight
+		)"; then
+			code=0
+		else
+			code=$?
+		fi
+	else
+		if output="$("$PRECHECK_BIN" --preflight)"; then
+			code=0
+		else
+			code=$?
+		fi
+	fi
+
+	printf '%s\n' "$output" | "$JQ_BIN" -Rn --argjson code "$code" '
+		reduce inputs as $line ({code: $code};
+			($line | index("=")) as $separator |
+			if $separator == null then .
+			else . + {($line[0:$separator]): $line[$separator + 1:]}
+			end
+		)
+	'
+}
+
+run_secret_status() {
+	"$SECRETS_BIN" migrate >/dev/null 2>&1 || fail_json "failed to migrate protected credentials"
+	authkey_set=0
+	adguard_password_set=0
+	"$SECRETS_BIN" has authkey >/dev/null 2>&1 && authkey_set=1
+	"$SECRETS_BIN" has adguard_password >/dev/null 2>&1 && adguard_password_set=1
+	"$JQ_BIN" -nc \
+		--arg authkey_set "$authkey_set" \
+		--arg adguard_password_set "$adguard_password_set" \
+		'{authkey_set:$authkey_set,adguard_password_set:$adguard_password_set}'
+}
+
+run_openclash_bypass_status() {
+	if output="$("$OPENCLASH_BYPASS_BIN" status 2>&1)"; then
+		:
+	else
+		fail_json "failed to read OpenClash bypass status"
+	fi
+
+	printf '%s\n' "$output" | "$JQ_BIN" -se 'length == 1 and (.[0] | type == "object")' >/dev/null 2>&1 || \
+		fail_json "invalid OpenClash bypass status"
+	printf '%s\n' "$output"
+}
+
+run_policy_routing_status() {
+	if output="$("$POLICY_ROUTING_BIN" status 2>&1)"; then
+		:
+	else
+		fail_json "failed to read Tailscale policy-routing status"
+	fi
+
+	printf '%s\n' "$output" | "$JQ_BIN" -se 'length == 1 and (.[0] | type == "object")' >/dev/null 2>&1 || \
+		fail_json "invalid Tailscale policy-routing status"
+	printf '%s\n' "$output"
+}
+
+run_set_secrets() {
+	request="$(cat)"
+	printf '%s' "$request" | "$JQ_BIN" -e '
+		def valid_ref_or_empty:
+			type == "string" and
+			all(explode[];
+				(. >= 48 and . <= 57) or
+				(. >= 65 and . <= 90) or
+				(. >= 97 and . <= 122) or
+				. == 45 or . == 46 or . == 95
+			);
+		type == "object" and
+		(.authkey_set | type == "string" and (. == "0" or . == "1")) and
+		(.authkey | type == "string") and
+		(.adguard_password_set | type == "string" and (. == "0" or . == "1")) and
+		(.adguard_password | type == "string") and
+		(.api_url | type == "string") and
+		(.username | type == "string") and
+		(.base_ref | valid_ref_or_empty) and
+		(if .authkey_set == "1" then (.authkey | length > 0) else true end) and
+		(if .adguard_password_set == "1" then
+			(.adguard_password | length > 0)
+		 else true end)
+	' >/dev/null 2>&1 || fail_json "invalid credential batch request"
+
+	authkey_set="$(printf '%s' "$request" | "$JQ_BIN" -r '.authkey_set')"
+	adguard_password_set="$(printf '%s' "$request" | "$JQ_BIN" -r '.adguard_password_set')"
+	base_ref="$(printf '%s' "$request" | "$JQ_BIN" -r '.base_ref')"
+	case "$base_ref" in
+	*[!A-Za-z0-9_.-]*) fail_json "invalid credential batch request" ;;
+	esac
+	if [ "$adguard_password_set" = "1" ]; then
+		api_url="$(printf '%s' "$request" | "$JQ_BIN" -r '.api_url')"
+		case "$api_url" in
+		http://?*|https://?*) ;;
+		*) fail_json "invalid credential batch request" ;;
+		esac
+	fi
+	if [ "$authkey_set" = "0" ] && [ "$adguard_password_set" = "0" ]; then
+		"$JQ_BIN" -nc --arg ref "$base_ref" '{code:0,ref:$ref}'
+		return 0
+	fi
+
+	if ! ref="$(printf '%s' "$request" | "$JQ_BIN" -c '
+		{
+			authkey: (if .authkey_set == "1" then .authkey else null end),
+			adguard: (if .adguard_password_set == "1" then {
+				password: .adguard_password,
+				api_url: .api_url,
+				username: .username
+			} else null end)
+		}
+	' | "$SECRETS_BIN" stage-batch "$base_ref")"; then
+		fail_json "failed to stage protected credentials"
+	fi
+	case "$ref" in
+		''|*[!A-Za-z0-9_.-]*) fail_json "invalid protected credential reference" ;;
+	esac
+	"$JQ_BIN" -nc --arg ref "$ref" '{code:0,ref:$ref}'
+}
+
+case "${1:-}" in
+	list)
+		print_methods
+		;;
+	call)
+		case "${2:-}" in
+			secret_status)
+				run_secret_status
+				;;
+			openclash_bypass_status)
+				run_openclash_bypass_status
+				;;
+			policy_routing_status)
+				run_policy_routing_status
+				;;
+			adguard_preflight)
+				parse_request
+				run_preflight
+				;;
+			set_secrets)
+				run_set_secrets
+				;;
+			*) exit 1 ;;
+		esac
+		;;
+	*)
+		exit 1
+		;;
+esac

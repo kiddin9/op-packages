@@ -1,0 +1,41 @@
+#!/bin/sh
+
+# Tailscale table 52 route recovery via tailscaled restart.
+#
+# Trigger: netifd brings tailscale0 back up (ifup) after an external
+# interface rebuild (e.g. network reload, firewall reload).
+#
+# tailscaled maintains an in-memory route state that diverges from the
+# kernel after netifd flushes tailscale0 routes.  The only reliable
+# fix is a full tailscaled restart, which re-initialises from a clean
+# state and re-applies all table 52 routes from the current NetworkMap.
+#
+# Atomicity: a timestamp lock file (30 s TTL) prevents the recursive
+# loop that would otherwise arise because the restart itself causes
+# tailscale0 to be torn down and rebuilt, firing another ifup event.
+
+[ "$DEVICE" = "tailscale0" ] || exit 0
+[ "$ACTION"  = "ifup"      ] || exit 0
+
+# Check if Tailscale service is enabled
+service_enabled=$(uci -q get tailscale.settings.service_enabled 2>/dev/null || echo 0)
+[ "$service_enabled" = "1" ] || exit 0
+
+LOCK=/tmp/tailscale_hotplug.lock
+
+# Timestamp-based lock: bail out if another restart fired within 30 s.
+if [ -f "$LOCK" ]; then
+	ts=$(cat "$LOCK" 2>/dev/null)
+	[ -n "$ts" ] && [ $(( $(date +%s) - ts )) -lt 30 ] && exit 0
+fi
+
+# Skip if tailscaled is not yet ready (normal first ifup during boot).
+tailscale status >/dev/null 2>&1 || exit 0
+
+# Record lock timestamp only after confirming service readiness
+date +%s > "$LOCK"
+
+logger -t tailscale-hotplug \
+	"tailscale0 ifup: restarting tailscaled to restore table 52 routes"
+
+/etc/init.d/tailscale restart

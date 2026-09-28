@@ -1,0 +1,68 @@
+config tailscale 'settings'
+	# Set whether Tailcale is enabled or not
+	option enabled '0'
+	# Set the port to listen on for incoming Tailscale packets (default 41641)
+	option port '41641'
+	# Allow WAN inbound UDP traffic to the local Tailscale listen port for first-packet direct connections
+	#option allow_wan_direct '0'
+	# Firewall source zones used when WAN direct is enabled
+	list wan_direct_zones 'wan'
+	# Path to config file
+	option config_path '/etc/tailscale'
+	# Default to using nftables - change below to 'iptables' if still using iptables
+	option fw_mode 'nftables'
+	# Enable stdout log
+	option log_stdout '1'
+	# Enable stderr log
+	option log_stderr '1'
+	# Accept subnet routes that other nodes advertise
+	#option accept_routes '1'
+	# Provide a hostname to use for the device instead of the one provided by the OS
+	#option hostname ''
+	# Accept DNS configuration from the admin console. (default accept)
+	option accept_dns '1'
+	# Offer to be an exit node for outbound internet traffic from the Tailscale network
+	#option advertise_exit_node '1'
+	# Provide a Tailscale IP or machine name to use as an exit node
+	#option exit_node ''
+	# Expose physical subnet routes to your entire Tailscale network (e.g. 10.0.0.0/24)
+	#list advertise_routes ''
+	# Set to '1' to disable subnet route masquerading
+	#option disable_snat_subnet_routes '1'
+	# Set firewall zone (ts_ac_lan: Tailscale access LAN, ts_ac_wan: Tailscale access WAN:, lan_ac_ts: LAN access Tailscale, wan_ac_ts: WAN access Tailscale)
+	# Documentation https://openwrt.org/docs/guide-user/services/vpn/tailscale/start
+	#list access 'ts_ac_lan'
+	#list access 'ts_ac_wan'
+	#list access 'lan_ac_ts'
+	#list access 'wan_ac_ts'
+	# Enable periodic Tailscale pings to keep selected peer paths warm
+	#option keepalive_enabled '0'
+	# Select peer hostnames from tailscale status --json
+	#list keepalive_peers ''
+	# Seconds between keepalive probes
+	option keepalive_interval '20'
+	# Seconds between repeated failure log messages for the same peer
+	option keepalive_failure_log_interval '300'
+	# Enable automatic AdGuard Home upstream switching based on tailnet DNS health
+	#option adguard_dns_switch_enabled '0'
+	# Configure at least one default upstream in LuCI before enabling the switch
+	#list adguard_default_upstreams ''
+	# Configure at least one tailnet upstream in LuCI before enabling the switch
+	#list adguard_tailnet_upstreams ''
+	# Domain and expected IPs for tailnet DNS health checks through 100.100.100.100; fill both before enabling
+	#option adguard_health_domain ''
+	# Add at least one expected IP before enabling the AdGuard DNS switch
+	#list adguard_health_expected_ips ''
+	# Seconds between AdGuard DNS health checks
+	option adguard_check_interval '10'
+	# Consecutive health check results required before switching profiles
+	option adguard_success_threshold '2'
+	option adguard_failure_threshold '2'
+	# AdGuard Home API endpoint and optional credentials
+	option adguard_api_url 'http://127.0.0.1:3000'
+	#option adguard_username ''
+	# Set extra flags for enabling settings upon the initiation of Tailscale
+	# Documentation https://tailscale.com/kb/1241/tailscale-up
+	#list flags ''
+	# Provide the base URL of a custom server instead of https://controlplane.tailscale.com
+	#option login_server ''

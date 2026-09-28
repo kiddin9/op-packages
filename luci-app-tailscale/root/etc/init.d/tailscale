@@ -1,0 +1,313 @@
+#!/bin/sh /etc/rc.common
+
+START=90
+
+USE_PROCD=1
+
+PROG=/usr/sbin/tailscale_helper
+PROGK=/usr/sbin/tailscale_keepalive
+PROGA=/usr/sbin/tailscale_adguard_dns_switch
+PROGS=/usr/sbin/tailscale_secrets
+PROGD=/usr/sbin/tailscaled
+CONFIG_PATH=/var/lib/tailscale
+ADGUARD_DNS_STATE_DIR="${ADGUARD_DNS_STATE_DIR:-/var/run/tailscale_adguard_dns_switch}"
+FIREWALL_PENDING_STATE_FILE="${FIREWALL_PENDING_STATE_FILE:-/var/run/tailscale-firewall-pending}"
+
+service_triggers() {
+	procd_add_reload_trigger "tailscale"
+}
+
+reload_in_progress() {
+	[ "${TAILSCALE_INTERNAL_RELOAD:-0}" = "1" ]
+}
+
+section_enabled() {
+	config_get_bool enabled "$1" 'enabled' 0
+	[ $enabled -gt 0 ]
+}
+
+append_wan_direct_zone() {
+	wan_direct_zones="${wan_direct_zones:+$wan_direct_zones }$1"
+}
+
+normalize_tailscale_port() {
+	case "$1" in
+		''|*[!0-9]*) printf '%s\n' 41641 ;;
+		*)
+			if [ "$1" -ge 1 ] 2>/dev/null && [ "$1" -le 65535 ] 2>/dev/null; then
+				printf '%s\n' "$1"
+			else
+				printf '%s\n' 41641
+			fi
+			;;
+	esac
+}
+
+tailscale_helper() {
+	local cfg="$1"
+	local state_was_present="${2:-0}"
+	local accept_routes hostname accept_dns advertise_exit_node exit_node advertise_routes disable_snat_subnet_routes allow_wan_direct wan_direct_zones access flags login_server std_out std_err port
+
+	config_get port $cfg 'port'
+	port="$(normalize_tailscale_port "$port")"
+	config_get_bool accept_routes $cfg 'accept_routes' 0
+	config_get hostname $cfg 'hostname'
+	config_get_bool accept_dns $cfg 'accept_dns' 1
+	config_get_bool advertise_exit_node $cfg 'advertise_exit_node' 0
+	config_get exit_node $cfg 'exit_node'
+	config_get advertise_routes $cfg 'advertise_routes'
+	config_get_bool disable_snat_subnet_routes $cfg 'disable_snat_subnet_routes' 0
+	config_get_bool allow_wan_direct $cfg 'allow_wan_direct' 0
+	wan_direct_zones=""
+	config_list_foreach "$cfg" 'wan_direct_zones' append_wan_direct_zone
+	wan_direct_zones="${wan_direct_zones:-wan}"
+	config_get access $cfg 'access'
+	config_get flags $cfg 'flags'
+	config_get login_server $cfg 'login_server'
+	config_get_bool std_out $cfg 'log_stdout'
+	config_get_bool std_err $cfg 'log_stderr'
+
+	procd_open_instance
+	procd_set_param command $PROG --run
+
+	[ "$accept_routes" = "1" ] && procd_append_param command --accept-routes=true
+	[ -n "$hostname" ] && procd_append_param command --hostname="$hostname"
+	[ "$accept_dns" = "0" ] && procd_append_param command --accept-dns=false
+	[ "$advertise_exit_node" = "1" ] && procd_append_param command --advertise-exit-node
+	[ -n "$exit_node" ] && {
+		procd_append_param command --exit-node="$exit_node"
+		procd_append_param command --exit-node-allow-lan-access=true
+	}
+	[ -n "$advertise_routes" ] && procd_append_param command --advertise-routes="$(echo $advertise_routes | tr ' ' ',')"
+	if [ "$disable_snat_subnet_routes" = "1" ]; then
+		procd_append_param command --snat-subnet-routes=false
+	else
+		procd_append_param command --snat-subnet-routes=true
+	fi
+	[ -n "$flags" ] && procd_append_param command $flags
+	[ -n "$login_server" ] && procd_append_param command --login-server="$login_server"
+
+	procd_set_param env \
+		ACCEPT_DNS="$accept_dns" \
+		EXIT_NODE="$exit_node" \
+		ACCESS="$access" \
+		DISABLE_SNAT_SUBNET_ROUTES="$disable_snat_subnet_routes" \
+		ALLOW_WAN_DIRECT="$allow_wan_direct" \
+		WAN_DIRECT_ZONES="$wan_direct_zones" \
+		TAILSCALE_PORT="$port" \
+		TAILSCALE_STATE_WAS_PRESENT="$state_was_present" \
+		TAILSCALE_HELPER_STATE_DIR="$CONFIG_PATH" \
+		FIREWALL_PENDING_STATE_FILE="$FIREWALL_PENDING_STATE_FILE"
+
+	procd_set_param stdout "$std_out"
+	procd_set_param stderr "$std_err"
+	procd_close_instance
+}
+
+tailscale_keepalive() {
+	local cfg="$1"
+	local keepalive_enabled keepalive_peers keepalive_interval keepalive_failure_log_interval std_out std_err
+
+	config_get_bool keepalive_enabled $cfg 'keepalive_enabled' 0
+	[ "$keepalive_enabled" = "1" ] || return 0
+
+	config_get keepalive_peers $cfg 'keepalive_peers'
+	[ -n "$keepalive_peers" ] || {
+		logger -p daemon.err -t tailscale "keepalive enabled but no peers configured"
+		return 0
+	}
+
+	config_get keepalive_interval $cfg 'keepalive_interval' 20
+	config_get keepalive_failure_log_interval $cfg 'keepalive_failure_log_interval' 300
+	config_get_bool std_out $cfg 'log_stdout'
+	config_get_bool std_err $cfg 'log_stderr'
+
+	procd_open_instance keepalive
+	procd_set_param command $PROGK --run "$keepalive_interval" "$keepalive_failure_log_interval"
+	procd_append_param command $keepalive_peers
+	procd_set_param respawn
+	procd_set_param stdout "$std_out"
+	procd_set_param stderr "$std_err"
+	procd_close_instance
+}
+
+tailscale_adguard_dns() {
+	local cfg="$1"
+	local adguard_dns_switch_enabled std_out std_err
+	local adguard_health_domain adguard_health_expected_ips
+	local adguard_default_upstreams adguard_tailnet_upstreams
+
+	config_get_bool adguard_dns_switch_enabled "$cfg" 'adguard_dns_switch_enabled' 0
+	[ "$adguard_dns_switch_enabled" = "1" ] || return 0
+
+	config_get adguard_health_domain "$cfg" 'adguard_health_domain'
+	config_get adguard_health_expected_ips "$cfg" 'adguard_health_expected_ips'
+	config_get adguard_default_upstreams "$cfg" 'adguard_default_upstreams'
+	config_get adguard_tailnet_upstreams "$cfg" 'adguard_tailnet_upstreams'
+
+	[ -n "$adguard_health_domain" ] || {
+		logger -p daemon.err -t tailscale_adguard_dns "adguard_dns_switch_enabled=1 but adguard_health_domain is not configured"
+		return 0
+	}
+	[ -n "$adguard_health_expected_ips" ] || {
+		logger -p daemon.err -t tailscale_adguard_dns "adguard_dns_switch_enabled=1 but adguard_health_expected_ips is not configured"
+		return 0
+	}
+	[ -n "$adguard_default_upstreams" ] || {
+		logger -p daemon.err -t tailscale_adguard_dns "adguard_dns_switch_enabled=1 but adguard_default_upstreams is not configured"
+		return 0
+	}
+	[ -n "$adguard_tailnet_upstreams" ] || {
+		logger -p daemon.err -t tailscale_adguard_dns "adguard_dns_switch_enabled=1 but adguard_tailnet_upstreams is not configured"
+		return 0
+	}
+
+	config_get_bool std_out "$cfg" 'log_stdout' 1
+	config_get_bool std_err "$cfg" 'log_stderr' 1
+
+	procd_open_instance adguard_dns
+	procd_set_param command "$PROGA" --run
+	procd_set_param respawn
+	procd_set_param stdout "$std_out"
+	procd_set_param stderr "$std_err"
+	procd_close_instance
+}
+
+tailscale_adguard_dns_apply_down() {
+	local cfg="$1"
+	local adguard_dns_switch_enabled adguard_current_profile
+
+	config_get_bool adguard_dns_switch_enabled "$cfg" 'adguard_dns_switch_enabled' 0
+	adguard_current_profile="$(cat "$ADGUARD_DNS_STATE_DIR/current_profile" 2>/dev/null || true)"
+	[ "$adguard_current_profile" != "down" ] || return 0
+	[ "$adguard_dns_switch_enabled" = "1" ] || [ "$adguard_current_profile" = "up" ] || return 0
+
+	"$PROGA" --apply-profile down >/dev/null 2>&1 || {
+		logger -p daemon.err -t tailscale_adguard_dns "failed to restore AdGuard DNS down profile"
+		return 1
+	}
+}
+
+start_instance() {
+	local cfg="$1"
+	local port config_path fw_mode std_out std_err state_file state_was_present allow_wan_direct secrets_ref
+
+	config_get secrets_ref "$cfg" 'secrets_ref'
+	if [ -n "$secrets_ref" ] && ! "$PROGS" activate "$secrets_ref"; then
+		logger -p daemon.err -t tailscale "failed to activate protected credential version"
+		return 1
+	fi
+
+	if ! section_enabled "$cfg"; then
+		TAILSCALE_HELPER_STATE_DIR="$CONFIG_PATH" \
+			FIREWALL_PENDING_STATE_FILE="$FIREWALL_PENDING_STATE_FILE" \
+			"$PROG" --cleanup-managed-firewall || logger -p daemon.err -t tailscale "failed to remove managed firewall state for disabled service"
+		echo "disabled in /etc/config/tailscale"
+		return 1
+	fi
+
+	config_get port $cfg 'port'
+	port="$(normalize_tailscale_port "$port")"
+	config_get config_path $cfg 'config_path'
+	config_get fw_mode $cfg 'fw_mode'
+	config_get_bool std_out $cfg 'log_stdout'
+	config_get_bool std_err $cfg 'log_stderr'
+	config_get_bool allow_wan_direct $cfg 'allow_wan_direct' 0
+	if [ "$allow_wan_direct" != "1" ]; then
+		TAILSCALE_HELPER_STATE_DIR="$CONFIG_PATH" \
+			FIREWALL_PENDING_STATE_FILE="$FIREWALL_PENDING_STATE_FILE" \
+			"$PROG" --cleanup-wan-direct-firewall || return 1
+	fi
+
+	[ -d $config_path ] || mkdir -p $config_path
+	[ -d $CONFIG_PATH ] || mkdir -p $CONFIG_PATH
+	state_file="$config_path/tailscaled.state"
+	state_was_present=0
+	[ ! -s "$state_file" ] || state_was_present=1
+	
+	"$PROGD" --cleanup
+
+	procd_open_instance
+	procd_set_param command $PROGD
+
+	procd_append_param command --port "$port"
+	[ -n "$state_file" ] && procd_append_param command --state "$state_file"
+
+	procd_set_param env TS_DEBUG_FIREWALL_MODE="$fw_mode"
+	
+	procd_set_param respawn
+	procd_set_param stdout "$std_out"
+	procd_set_param stderr "$std_err"
+	procd_close_instance
+
+	tailscale_helper "$cfg" "$state_was_present"
+	tailscale_keepalive "$cfg"
+	tailscale_adguard_dns "$cfg"
+}
+
+start_service() {
+	"$PROGS" migrate || {
+		logger -p daemon.err -t tailscale "failed to migrate protected credentials"
+		return 1
+	}
+	config_load 'tailscale'
+	config_foreach start_instance 'tailscale'
+}
+
+stop_instance() {
+	local cfg="$1"
+	local helper_cleanup_failed=0 cleanup_action
+
+	if reload_in_progress; then
+		cleanup_action=--cleanup-exit-node-firewall
+	else
+		cleanup_action=--cleanup-managed-firewall
+	fi
+	TAILSCALE_HELPER_STATE_DIR="$CONFIG_PATH" \
+		FIREWALL_PENDING_STATE_FILE="$FIREWALL_PENDING_STATE_FILE" \
+		"$PROG" "$cleanup_action" || helper_cleanup_failed=1
+
+	# Remove dnsmasq settings
+	MagicDNSSuffix=$(tailscale status --json | awk -F'"' '/"MagicDNSSuffix"/ {last=$(NF-1)} END {print last}')
+	if [ -n "$MagicDNSSuffix" ]; then
+		target_address="/$MagicDNSSuffix/100.100.100.100"
+		indexes=$(uci show dhcp | sed -n 's/^dhcp\.@dnsmasq\[\([0-9][0-9]*\)\]=dnsmasq$/\1/p')
+		for index in $indexes; do
+			option="dhcp.@dnsmasq[$index].address"
+			uci -q del_list "$option=$target_address"
+		done
+	fi
+ 
+	# Tailscale owns tailscale0, policy rules, and table 52 routes. Do not reload
+	# network here; netifd must not manage tailscale0.
+	[ -n "$(uci changes dhcp)" ] && uci commit dhcp && /etc/init.d/dnsmasq reload
+
+	"$PROGD" --cleanup
+
+	# Keep helper recovery state available when firewall cleanup needs a retry.
+	[ "$helper_cleanup_failed" -ne 0 ] || rm -rf "$CONFIG_PATH"
+
+	[ "$helper_cleanup_failed" -eq 0 ]
+}
+
+stop_service() {
+	config_load 'tailscale'
+	config_foreach stop_instance 'tailscale'
+}
+
+service_stopped() {
+	config_load 'tailscale'
+	config_foreach tailscale_adguard_dns_apply_down 'tailscale'
+}
+
+reload_service() {
+	local reload_status=0
+	TAILSCALE_INTERNAL_RELOAD=1
+	stop || reload_status=1
+	TAILSCALE_INTERNAL_RELOAD=0
+	if ! start; then
+		reload_status=1
+		stop || reload_status=1
+	fi
+	return "$reload_status"
+}

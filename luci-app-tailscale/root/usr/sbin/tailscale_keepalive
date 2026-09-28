@@ -1,0 +1,286 @@
+#!/bin/sh
+
+# Copyright (C) 2026 jearton
+# SPDX-License-Identifier: GPL-3.0-only
+
+TAILSCALE_BIN="${TAILSCALE_BIN:-/usr/sbin/tailscale}"
+LOGGER_CMD="${LOGGER_CMD:-logger}"
+JSHN_LIB="${JSHN_LIB:-/usr/share/libubox/jshn.sh}"
+
+log_msg() {
+	local priority="$1"
+	local message="$2"
+
+	"$LOGGER_CMD" -p "$priority" -t tailscale_keepalive "$message"
+}
+
+state_key() {
+	printf '%s' "$1" | sed 's/[^A-Za-z0-9_.-]/_/g'
+}
+
+log_rate_limited_error() {
+	local key="$1"
+	local message="$2"
+	local interval="$3"
+	local now="$4"
+	local last_file="$TMP_STATE_DIR/$key.last_error"
+	local last_seen=0
+
+	[ -r "$last_file" ] && last_seen="$(cat "$last_file" 2>/dev/null || echo 0)"
+	if [ $((now - last_seen)) -ge "$interval" ]; then
+		log_msg daemon.err "$message"
+		printf '%s\n' "$now" >"$last_file"
+	fi
+}
+
+read_status() {
+	if [ -n "${TAILSCALE_STATUS_FILE:-}" ] && [ -r "$TAILSCALE_STATUS_FILE" ]; then
+		cat "$TAILSCALE_STATUS_FILE"
+	else
+		"$TAILSCALE_BIN" status --json
+	fi
+}
+
+normalize_dns() {
+	printf '%s' "$1" | sed 's/\.$//'
+}
+
+short_dns_name() {
+	normalize_dns "$1" | sed 's/\..*$//'
+}
+
+peer_matches() {
+	local peer="$1"
+	local host="$2"
+	local dns="$3"
+	local matched_ip="$4"
+	local normalized_dns short_dns
+
+	normalized_dns="$(normalize_dns "$dns")"
+	short_dns="$(short_dns_name "$dns")"
+
+	[ "$host" = "$peer" ] || \
+		[ "$dns" = "$peer" ] || \
+		[ "$normalized_dns" = "$peer" ] || \
+		[ "$short_dns" = "$peer" ] || \
+		[ "$matched_ip" = "$peer" ]
+}
+
+emit_resolved_peer() {
+	local peer="$1"
+	local host="$2"
+	local dns="$3"
+	local ip="$4"
+	local matched_ip="$5"
+
+	[ -n "$host" ] || [ -n "$dns" ] || [ -n "$matched_ip" ] || return 1
+	peer_matches "$peer" "$host" "$dns" "$matched_ip" || return 1
+
+	if [ -n "$matched_ip" ]; then
+		printf 'OK\t%s\n' "$matched_ip"
+	elif [ -n "$ip" ]; then
+		printf 'OK\t%s\n' "$ip"
+	else
+		printf 'NO_IP\t\n'
+	fi
+	return 0
+}
+
+resolve_peer_with_jshn() {
+	local peer="$1"
+	local status keys key host dns ips ip matched_ip value
+
+	[ -r "$JSHN_LIB" ] || return 1
+	status="$(read_status)" || return 1
+
+	# OpenWrt ships jshn.sh in the jshn package; it parses JSON independently of
+	# whitespace and field order.
+	. "$JSHN_LIB" || return 1
+
+	json_cleanup
+	json_load "$status" || {
+		json_cleanup
+		return 1
+	}
+
+	json_select Peer || {
+		json_cleanup
+		return 1
+	}
+
+	json_get_keys keys
+	for key in $keys; do
+		json_select "$key" || continue
+
+		host=
+		dns=
+		ips=
+		ip=
+		matched_ip=
+		json_get_var host HostName
+		json_get_var dns DNSName
+
+		if json_select TailscaleIPs; then
+			json_get_values ips
+			for value in $ips; do
+				[ -n "$ip" ] || ip="$value"
+				[ "$value" = "$peer" ] && matched_ip="$value"
+			done
+			json_select ..
+		fi
+
+		if emit_resolved_peer "$peer" "$host" "$dns" "$ip" "$matched_ip"; then
+			json_cleanup
+			return 0
+		fi
+
+		json_select ..
+	done
+
+	json_cleanup
+	printf 'NOT_FOUND\t\n'
+	return 0
+}
+
+resolve_peer_with_python() {
+	local peer="$1"
+	local status
+
+	command -v python3 >/dev/null 2>&1 || return 1
+	status="$(read_status)" || return 1
+
+	STATUS_JSON="$status" python3 - "$peer" <<'PY'
+import json
+import os
+import sys
+
+peer = sys.argv[1]
+
+try:
+    status = json.loads(os.environ["STATUS_JSON"])
+except Exception:
+    sys.exit(1)
+
+
+def norm_dns(value):
+    return value[:-1] if value.endswith(".") else value
+
+
+def short_dns(value):
+    return norm_dns(value).split(".", 1)[0]
+
+
+for item in status.get("Peer", {}).values():
+    host = item.get("HostName", "")
+    dns = item.get("DNSName", "")
+    ips = item.get("TailscaleIPs") or []
+    matched_ip = next((value for value in ips if value == peer), "")
+
+    if peer in (host, dns, norm_dns(dns), short_dns(dns)) or matched_ip:
+        if matched_ip:
+            print("OK\t%s" % matched_ip)
+        elif ips:
+            print("OK\t%s" % ips[0])
+        else:
+            print("NO_IP\t")
+        sys.exit(0)
+
+print("NOT_FOUND\t")
+PY
+}
+
+resolve_peer_from_status() {
+	local peer="$1"
+
+	resolve_peer_with_jshn "$peer" && return 0
+	resolve_peer_with_python "$peer" && return 0
+
+	printf 'ERROR\tno JSON parser available\n'
+}
+
+resolve_peers() {
+	local peer result
+
+	for peer in "$@"; do
+		result="$(resolve_peer_from_status "$peer")"
+		printf '%s\t%s\n' "$peer" "$result"
+	done
+}
+
+run_once() {
+	local failure_log_interval="$1"
+	shift
+	local now peer result status ip peer_key last_success
+
+	now="$(date +%s)"
+	for peer in "$@"; do
+		peer_key="$(state_key "$peer")"
+		result="$(resolve_peer_from_status "$peer")"
+		status="${result%%	*}"
+		ip="${result#*	}"
+
+		case "$status" in
+			OK)
+				if "$TAILSCALE_BIN" ping --timeout=5s --c=1 "$ip" >/dev/null 2>&1; then
+					last_success="$TMP_STATE_DIR/$peer_key.success"
+					if [ ! -e "$last_success" ]; then
+						log_msg daemon.info "peer $peer resolved to $ip and is reachable"
+					fi
+					: >"$last_success"
+					rm -f "$TMP_STATE_DIR/$peer_key.last_error"
+				else
+					log_rate_limited_error "$peer_key" "peer $peer resolved to $ip but tailscale ping failed" "$failure_log_interval" "$now"
+					rm -f "$TMP_STATE_DIR/$peer_key.success"
+				fi
+				;;
+			NO_IP)
+				log_rate_limited_error "$peer_key" "peer $peer has no Tailscale IP" "$failure_log_interval" "$now"
+				rm -f "$TMP_STATE_DIR/$peer_key.success"
+				;;
+			ERROR)
+				log_rate_limited_error "$peer_key" "peer $peer resolution failed: $ip" "$failure_log_interval" "$now"
+				rm -f "$TMP_STATE_DIR/$peer_key.success"
+				;;
+			*)
+				log_rate_limited_error "$peer_key" "peer $peer not found in tailscale status" "$failure_log_interval" "$now"
+				rm -f "$TMP_STATE_DIR/$peer_key.success"
+				;;
+		esac
+	done
+}
+
+run_loop() {
+	local interval="$1"
+	local failure_log_interval="$2"
+	shift 2
+
+	[ "$interval" -gt 0 ] 2>/dev/null || interval=20
+	[ "$failure_log_interval" -gt 0 ] 2>/dev/null || failure_log_interval=300
+	[ "$#" -gt 0 ] || {
+		log_msg daemon.err "keepalive enabled but no peers configured"
+		exit 1
+	}
+
+	TMP_STATE_DIR="/var/run/tailscale_keepalive"
+	mkdir -p "$TMP_STATE_DIR"
+
+	while true; do
+		run_once "$failure_log_interval" "$@"
+		sleep "$interval"
+	done
+}
+
+case "$1" in
+	--resolve-peers)
+		shift
+		resolve_peers "$@"
+		;;
+	--run)
+		shift
+		run_loop "$@"
+		;;
+	*)
+		echo "Usage: $0 --resolve-peers <peer>... | --run <interval> <failure-log-interval> <peer>..." >&2
+		exit 2
+		;;
+esac

@@ -1,0 +1,26 @@
+{
+	"luci-app-tailscale": {
+		"description": "Grant access to Tailscale configuration",
+		"read": {
+			"file": {
+				"/sbin/ip -s -j ad": [ "exec" ],
+				"/sbin/logread -e tailscale": [ "exec" ],
+				"/usr/sbin/tailscale status --json": [ "exec" ],
+				"/usr/sbin/tailscale_peer_probe": [ "exec" ],
+				"/usr/sbin/tailscale login": [ "exec" ],
+				"/usr/sbin/tailscale logout": [ "exec" ]
+			},
+			"ubus": {
+				"luci.tailscale": [ "secret_status", "openclash_bypass_status", "policy_routing_status" ],
+				"service": [ "list" ]
+			},
+			"uci": [ "tailscale", "tailscale_openclash", "tailscale_policy_routing" ]
+		},
+		"write": {
+			"ubus": {
+				"luci.tailscale": [ "adguard_preflight", "set_secrets" ]
+			},
+			"uci": [ "tailscale", "tailscale_openclash", "tailscale_policy_routing" ]
+		}
+	}
+}

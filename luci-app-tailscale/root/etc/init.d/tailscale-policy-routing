@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+
+START=91
+USE_PROCD=1
+
+PROG="${PROG:-/usr/sbin/tailscale_policy_routing}"
+
+service_triggers() {
+	procd_add_reload_trigger "tailscale_policy_routing"
+}
+
+start_service() {
+	"$PROG" sync || true
+	"$PROG" enabled || return 0
+
+	procd_open_instance monitor
+	procd_set_param command "$PROG" monitor
+	procd_set_param respawn
+	procd_close_instance
+}
+
+reload_service() {
+	start_service
+}
+
+stop_service() {
+	# Persistent cleanup is reserved for an explicit disable or package removal.
+	# A normal service stop must not erase the enabled UCI declaration.
+	return 0
+}

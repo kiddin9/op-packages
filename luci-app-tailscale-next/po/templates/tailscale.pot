@@ -1,0 +1,335 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "(Experimental) Reduce Memory Usage"
+msgstr ""
+
+msgid "Accept Routes"
+msgstr ""
+
+msgid "Advertise Exit Node"
+msgstr ""
+
+msgid "Advertise Subnet Routes"
+msgstr ""
+
+msgid "Allow LAN Access"
+msgstr ""
+
+msgid "Allow accepting subnet routes announced by other nodes (--accept-routes)."
+msgstr ""
+
+msgid "Allow connecting to this device through the native SSH function of Tailscale (--ssh)."
+msgstr ""
+
+msgid "Allow user access to tailscale"
+msgstr ""
+
+msgid "Announce subnet routes behind this device (--advertise-routes). Select from the detected subnets below or enter custom routes (comma-separated)."
+msgstr ""
+
+msgid "Are you sure you want to log out?"
+msgstr ""
+
+msgid "Are you sure you want to restart Tailscale service?"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Client Connectivity"
+msgstr ""
+
+msgid "Collecting data ..."
+msgstr ""
+
+msgid "Confirm Logout"
+msgstr ""
+
+msgid "Connection Info"
+msgstr ""
+
+msgid "Control Server"
+msgstr ""
+
+msgid "Controls how Tailscale DNS is handled (--accept-dns)."
+msgstr ""
+
+msgid "Could not open a new tab. Please check if your browser or an extension blocked the pop-up."
+msgstr ""
+
+msgid "Custom Control Server"
+msgstr ""
+
+msgid "Custom Server (%s)"
+msgstr ""
+
+msgid "Custom Server Auth Key"
+msgstr ""
+
+msgid "DNS Mode"
+msgstr ""
+
+msgid "Declare this device as an exit node, allowing other nodes to route all traffic through it (--advertise-exit-node)."
+msgstr ""
+
+msgid "Devices List"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Disabled: system DNS only."
+msgstr ""
+
+msgid "Enable Peer Relay"
+msgstr ""
+
+msgid "Enable Tailscale SSH"
+msgstr ""
+
+msgid "Enable Tailscale Service"
+msgstr ""
+
+msgid "Enable Tunnel Traffic SNAT"
+msgstr ""
+
+msgid "Enable Web Interface"
+msgstr ""
+
+msgid "Enable or disable the Tailscale background service (/etc/init.d/tailscale)."
+msgstr ""
+
+msgid "Enable this device as a Peer Relay server (--peer-relay). Requires a public IP and an UDP port open on the router."
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Enabling this option can reduce memory usage, but it may sacrifice some performance (set GOGC=10)."
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Exit Node"
+msgstr ""
+
+msgid "Expose a local web interface on port 5252 for managing this node over Tailscale (--webclient)."
+msgstr ""
+
+msgid "Failed to get login URL. You may close this tab."
+msgstr ""
+
+msgid "Failed to get login URL: %s"
+msgstr ""
+
+msgid "Failed to get login URL: Invalid response from server."
+msgstr ""
+
+msgid "Failed to load devices: %s"
+msgstr ""
+
+msgid "Failed to load logs: %s"
+msgstr ""
+
+msgid "Failed to restart: %s"
+msgstr ""
+
+msgid "General Settings"
+msgstr ""
+
+msgid "Hostname"
+msgstr ""
+
+msgid "Invalid Date"
+msgstr ""
+
+msgid "Just now"
+msgstr ""
+
+msgid "Last Seen"
+msgstr ""
+
+msgid "Logging out..."
+msgstr ""
+
+msgid "Login"
+msgstr ""
+
+msgid "Logout"
+msgstr ""
+
+msgid "Logout failed: %s"
+msgstr ""
+
+msgid "Logs"
+msgstr ""
+
+msgid "MagicDNS: Tailscale overrides resolv.conf."
+msgstr ""
+
+msgid "N/A"
+msgstr ""
+
+msgid "NOT INSTALLED"
+msgstr ""
+
+msgid "NOT LOGGED IN"
+msgstr ""
+
+msgid "NOT RUNNING"
+msgstr ""
+
+msgid "Nearest Relay"
+msgstr ""
+
+msgid "No peer devices found."
+msgstr ""
+
+msgid "No tailscale-related logs found."
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Now"
+msgstr ""
+
+msgid "OS"
+msgstr ""
+
+msgid "Official Server (Tailscale SaaS)"
+msgstr ""
+
+msgid "Offline"
+msgstr ""
+
+msgid "Online"
+msgstr ""
+
+msgid "OpenWrt Forward"
+msgstr ""
+
+msgid "OpenWrt Forward: MagicDNS via dnsmasq forwarding.(Only support ts.net)"
+msgstr ""
+
+msgid "Optional: Specify a custom control server URL (e.g., a Headscale instance, --login-server). Leave blank for default Tailscale control plane."
+msgstr ""
+
+msgid "Optional: Specify an authentication key for the custom control server (--auth-key). Leave blank if not required."
+msgstr ""
+
+msgid "Peer Relay Port"
+msgstr ""
+
+msgid "Please wait while the service is restarting..."
+msgstr ""
+
+msgid "Please wait."
+msgstr ""
+
+msgid "Public Endpoints"
+msgstr ""
+
+msgid "RUNNING"
+msgstr ""
+
+msgid "RX"
+msgstr ""
+
+msgid "Refresh"
+msgstr ""
+
+msgid "Requesting Login URL..."
+msgstr ""
+
+msgid "Requesting Tailscale login URL... Please wait."
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Restart Service"
+msgstr ""
+
+msgid "Restarting Tailscale..."
+msgstr ""
+
+msgid "Select an exit node from the list (--exit-node). If enabled, Allow LAN Access is enabled implicitly."
+msgstr ""
+
+msgid "Service Status"
+msgstr ""
+
+msgid "Shields Up"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Successfully logged out."
+msgstr ""
+
+msgid "TUN Mode"
+msgstr ""
+
+msgid "TX"
+msgstr ""
+
+msgid "Tailnet Account"
+msgstr ""
+
+msgid "Tailscale"
+msgstr ""
+
+msgid "Tailscale IP"
+msgstr ""
+
+msgid "Tailscale IPv4"
+msgstr ""
+
+msgid "Tailscale IPv6"
+msgstr ""
+
+msgid "Tailscale Login"
+msgstr ""
+
+msgid "Tailscale is a mesh VPN solution that makes it easy to connect your devices securely. This configuration page allows you to manage Tailscale settings on your OpenWrt device."
+msgstr ""
+
+msgid "Tailscale is not installed."
+msgstr ""
+
+msgid "Tailscale is not logged in. Please log in to view devices."
+msgstr ""
+
+msgid "Tailscale is not running."
+msgstr ""
+
+msgid "This can take up to 30 seconds."
+msgstr ""
+
+msgid "This will disconnect this device from your Tailnet and require you to re-authenticate."
+msgstr ""
+
+msgid "UDP port for the Peer Relay service (--peer-relay-port). Open this port on your router firewall/NAT."
+msgstr ""
+
+msgid "Unknown error"
+msgstr ""
+
+msgid "Use OpenWrt system firewall to manage NAT for Tailscale tunnel and subnet traffic. Disabling this option disables source address masquerading to preserve real source IPs of remote peers and subnets in the local network."
+msgstr ""
+
+msgid "Version"
+msgstr ""
+
+msgid "When enabled, blocks all inbound connections from the Tailscale network (--shields-up)."
+msgstr ""
+
+msgid "When using or advertising the exit node, allow access to the local LAN (--exit-node-allow-lan-access)."
+msgstr ""
+
+msgid "ago"
+msgstr ""
