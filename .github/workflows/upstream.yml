@@ -436,7 +436,7 @@ jobs:
         lang/lua/lua-periphery lang/lua/lua-neturl lang/lua/lua-maxminddb lang/golang devel/gn lang/node/node-pnpm  lang/node/node
         git_clone https://github.com/koshev-msk/modemfeed && mv -n modemfeed/*/!(telephony)/!(ookla-speedtest) ./; rm -rf modemfeed
         git_sparse_clone openwrt-25.12 "https://github.com/immortalwrt/luci" applications collections/luci-nginx protocols/luci-proto-minieap protocols/luci-proto-quectel
-        mv -f applications luciapp && rm -rf luciapp/{luci-app-firewall,luci-app-tailscale-community}
+        mv -f applications luciapp && rm -rf luciapp/luci-app-firewall
         git_sparse_clone master "https://github.com/openwrt/luci" modules/luci-mod-dashboard \
         themes/luci-theme-footstrap applications/luci-app-shunt applications/luci-app-qosify applications/luci-app-sfp-info
         git_sparse_clone openwrt-25.12 "https://github.com/coolsnowwolf/luci" applications \
