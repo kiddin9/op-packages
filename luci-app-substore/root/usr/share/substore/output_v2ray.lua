@@ -47,13 +47,19 @@ local function build_stream_settings(n)
 	return ss
 end
 
+-- 该协议能否落到 V2Ray / Xray outbound（SSR 无法表达，跳过）
+local function supported(proto)
+	return (proto or "vmess") ~= "ssr"
+end
+
 -- 单节点 → V2Ray outbound 表
-function M.to_outbound(n)
+-- tag 可选：完整配置里由 util.unique_tags 统一分配，避免节点重名导致 tag 冲突
+function M.to_outbound(n, tag)
 	local proto = n.proto or "vmess"
-	if proto == "ssr" then return nil end -- V2Ray / Xray 不支持 SSR，跳过
+	if not supported(proto) then return nil end
 	local o = {
 		protocol = (proto == "ss" and "shadowsocks" or proto),
-		tag = n.name or ((n.server or "") .. ":" .. tostring(n.port or "")),
+		tag = tag or n.name or ((n.server or "") .. ":" .. tostring(n.port or "")),
 		settings = {},
 		streamSettings = build_stream_settings(n),
 	}
@@ -94,15 +100,61 @@ function M.to_outbound(n)
 	return o
 end
 
-function M.generate(nodes)
-	local outbounds = {}
-	for _, n in ipairs(nodes or {}) do
-		if type(n) == "table" then
-			local o = M.to_outbound(n)
-			if o then outbounds[#outbounds + 1] = o end
-		end
+-- Xray 的 balancer / observatory selector 按「前缀」匹配 outbound tag。
+-- 若某节点 tag 恰好是 "direct" / "block" / "auto" 的前缀（例如节点名就叫 "d"、"auto"），
+-- selector 会把这些保留出站一并纳入负载均衡，导致流量被丢进 direct / block。
+-- 因此把保留 tag 的所有真前缀也登记为冲突，交给 util.unique_tags 加后缀消解。
+local function reserved_with_prefixes(names)
+	local r = {}
+	for _, s in ipairs(names) do
+		r[s] = true
+		for i = 1, #s - 1 do r[s:sub(1, i)] = true end
 	end
-	return util.json_encode({ outbounds = outbounds })
+	return r
+end
+
+-- 生成完整 V2Ray / Xray 配置（outbounds + observatory + routing）。
+-- 不含 inbounds / dns：这两项会绑定本地监听端口、覆盖用户既有 DNS 设置，
+-- 由用户在自己的配置里维护，本输出只负责节点与分流。
+function M.generate(nodes, options)
+	local usable = {}
+	for _, n in ipairs(nodes or {}) do
+		if type(n) == "table" and supported(n.proto) then usable[#usable + 1] = n end
+	end
+	local tags = util.unique_tags(usable, reserved_with_prefixes({ "direct", "block", "auto" }))
+
+	local outbounds, proxy_tags = {}, {}
+	for i, n in ipairs(usable) do
+		outbounds[#outbounds + 1] = M.to_outbound(n, tags[i])
+		proxy_tags[#proxy_tags + 1] = tags[i]
+	end
+
+	-- direct / block 必须存在：路由规则要按 tag 引用它们
+	outbounds[#outbounds + 1] = { protocol = "freedom", tag = "direct", settings = util.JSON_EMPTY_OBJECT }
+	outbounds[#outbounds + 1] = { protocol = "blackhole", tag = "block", settings = { response = { type = "none" } } }
+
+	local routing = {
+		domainStrategy = "IPIfNonMatch",
+		rules = { { type = "field", ip = { "geoip:private" }, outboundTag = "direct" } },
+	}
+	local cfg = { log = { loglevel = "warning" }, outbounds = outbounds, routing = routing }
+
+	if #proxy_tags > 0 then
+		-- leastPing 依赖 observatory 的探测结果；不配 observatory 时该策略不生效
+		cfg.observatory = {
+			subjectSelector = proxy_tags,
+			probeUrl = "https://www.gstatic.com/generate_204",
+			probeInterval = "10s",
+			enableConcurrency = true,
+		}
+		routing.balancers = { { tag = "auto", selector = proxy_tags, strategy = { type = "leastPing" } } }
+		routing.rules[#routing.rules + 1] = { type = "field", network = "tcp,udp", balancerTag = "auto" }
+	else
+		-- 无可用节点时没有 balancer 可引用；首元素 direct 即默认出站
+		routing.rules[#routing.rules + 1] = { type = "field", network = "tcp,udp", outboundTag = "direct" }
+	end
+
+	return util.json_encode(cfg)
 end
 
 return M

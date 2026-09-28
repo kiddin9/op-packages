@@ -27,6 +27,11 @@ local TYPE_MAP = {
 	http = "http",
 }
 
+-- 该协议能否落到 sing-box outbound（SSR 无法表达，跳过）
+local function supported(proto)
+	return (TYPE_MAP[proto] or proto) ~= "ssr"
+end
+
 -- 构建 TLS 字段
 local function build_tls(n)
 	local tls
@@ -47,6 +52,9 @@ local function build_tls(n)
 		elseif n.skip_cert_verify ~= nil then
 			tls.insecure = bool(n.skip_cert_verify)
 		end
+		-- 空表会被 json_encode 编码成 []，而 tls 必须是对象；
+		-- security=tls 但无 sni/alpn/insecure 时就会走到这里
+		if next(tls) == nil then return util.JSON_EMPTY_OBJECT end
 		return tls
 	end
 	return nil
@@ -79,12 +87,13 @@ local function build_transport(n)
 end
 
 -- 单节点 → sing-box outbound 表
-function M.to_outbound(n)
+-- tag 可选：完整配置里由 util.unique_tags 统一分配，避免节点重名导致 tag 冲突
+function M.to_outbound(n, tag)
 	local stype = TYPE_MAP[n.proto] or n.proto
 	if stype == "ssr" then return nil end -- sing-box 不支持 SSR，跳过
 	local o = {
 		type = stype,
-		tag = n.name or ((n.server or "") .. ":" .. tostring(n.port or "")),
+		tag = tag or n.name or ((n.server or "") .. ":" .. tostring(n.port or "")),
 		server = n.server or "",
 		server_port = tonumber(n.port) or 0,
 	}
@@ -145,15 +154,53 @@ function M.to_outbound(n)
 	return o
 end
 
-function M.generate(nodes)
-	local outbounds = {}
+-- 保留 tag：节点名不得与之重名（util.unique_tags 负责消解）
+local RESERVED_TAGS = { select = true, auto = true, direct = true, block = true }
+
+-- 生成完整 sing-box 配置（outbounds + route）。
+-- 不含 inbounds / dns：这两项会绑定本地监听端口、覆盖用户既有 DNS 设置，
+-- 由用户在自己的配置里维护，本输出只负责节点与分流。
+--
+-- 版本兼容说明：route 规则里的 action 字段自 1.11.0 起才存在，其默认值即 "route"，
+-- 因此这里刻意省略 action —— 未知字段会被 sing-box 拒绝，而省略默认值在
+-- 1.10 与 1.11+ 上都能工作。
+function M.generate(nodes, options)
+	local usable = {}
 	for _, n in ipairs(nodes or {}) do
-		if type(n) == "table" then
-			local o = M.to_outbound(n)
-			if o then outbounds[#outbounds + 1] = o end
-		end
+		if type(n) == "table" and supported(n.proto) then usable[#usable + 1] = n end
 	end
-	return util.json_encode({ outbounds = outbounds })
+	local tags = util.unique_tags(usable, RESERVED_TAGS)
+
+	local outbounds, proxy_tags = {}, {}
+	for i, n in ipairs(usable) do
+		outbounds[#outbounds + 1] = M.to_outbound(n, tags[i])
+		proxy_tags[#proxy_tags + 1] = tags[i]
+	end
+
+	local final
+	if #proxy_tags > 0 then
+		-- select 供手工切换，auto 自动测速选优
+		local sel = { type = "selector", tag = "select", outbounds = { "auto", "direct" } }
+		for _, t in ipairs(proxy_tags) do sel.outbounds[#sel.outbounds + 1] = t end
+		sel.default = "auto"
+		outbounds[#outbounds + 1] = sel
+		outbounds[#outbounds + 1] = { type = "urltest", tag = "auto", outbounds = proxy_tags }
+		final = "select"
+	else
+		-- 无可用节点时不能生成 selector / urltest（outbounds 不允许为空）
+		final = "direct"
+	end
+	outbounds[#outbounds + 1] = { type = "direct", tag = "direct" }
+	outbounds[#outbounds + 1] = { type = "block", tag = "block" }
+
+	return util.json_encode({
+		outbounds = outbounds,
+		route = {
+			rules = { { ip_is_private = true, outbound = "direct" } },
+			final = final,
+			auto_detect_interface = true,
+		},
+	})
 end
 
 return M

@@ -59,6 +59,16 @@
     协议（vless / hysteria2 / hysteria / tuic / wireguard）
   - **WireGuard / AmneziaWG `.conf`**：wg-quick 单接口配置，含 `[Interface]` / `[Peer]` 与
     AmneziaWG 混淆参数，可直接导入 AmneziaWG 客户端
+  - **sing-box / V2Ray(Xray)**：输出**完整可用配置**（`outbounds` + 分流），而非仅有
+    `outbounds` 的片段
+    - sing-box：节点出站 + `selector`（手工切换）+ `urltest`（自动测速）+ `direct` / `block`，
+      `route.final` 指向 `selector`，内置私网直连规则
+    - V2Ray/Xray：节点出站 + `freedom`(direct) / `blackhole`(block) + `observatory` +
+      `routing.balancers`（`leastPing` 自动选优），内置 `geoip:private` 直连与兜底分流
+    - 刻意**不含 `inbounds` / `dns`**：这两项会绑定本地监听端口、覆盖你既有的 DNS 设置，
+      请在你自己的配置里维护；把本输出合并进已有配置即可
+    - ⚠️ 与 2.3.x 不兼容：2.3.x 输出的是仅含 `outbounds` 的片段，需要粘进已有配置使用；
+      2.4.0 起是完整配置，可直接作为单文件配置启动
 
 **订阅链接**
 - 每个订阅独立随机 token → 公开下载端点
@@ -70,18 +80,18 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.3.0-r2`）。
+> （当前 `2.4.0-r1`）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.3.0-r2.ipk
+opkg install luci-app-substore-2.4.0-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.3.0-r2.apk
+apk add --allow-untrusted luci-app-substore-2.4.0-r1.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。

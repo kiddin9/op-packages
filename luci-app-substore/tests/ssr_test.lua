@@ -81,10 +81,21 @@ local surge = output.generate({ n }, "surge")
 check("surge drops ssr", surge and surge:find("127%.0%.0%.1") == nil)
 
 -- ---------- sing-box / V2Ray 丢弃 SSR ----------
+-- 完整配置里 outbounds 恒含 direct / block，因此断言「不含 ssr 出站」
+-- 而非「outbounds 为空」；无可用节点时也不生成分组
 local sb = output.generate({ n }, "singbox")
-check("singbox drops ssr", sb and util.json_decode(sb) and #util.json_decode(sb).outbounds == 0)
+local sbd = util.json_decode(sb)
+local sb_types = {}
+for _, o in ipairs(sbd and sbd.outbounds or {}) do sb_types[o.type] = true end
+check("singbox drops ssr", sbd and not sb_types.ssr and not sb_types.shadowsocksr)
+check("singbox no group without nodes", sbd and not sb_types.selector and not sb_types.urltest)
+check("singbox keeps direct/block", sb_types.direct and sb_types.block)
 local v2 = output.generate({ n }, "v2ray")
-check("v2ray drops ssr", v2 and util.json_decode(v2) and #util.json_decode(v2).outbounds == 0)
+local v2d = util.json_decode(v2)
+local v2_protos = {}
+for _, o in ipairs(v2d and v2d.outbounds or {}) do v2_protos[o.protocol] = true end
+check("v2ray drops ssr", v2d and not v2_protos.ssr and not v2_protos.shadowsocksr)
+check("v2ray keeps freedom/blackhole", v2_protos.freedom and v2_protos.blackhole)
 
 -- ---------- 最小 ssr（无参数，默认 origin/plain） ----------
 local minimal = parser.parse_uri("ssr://" .. util.base64_encode("1.2.3.4:80:origin:aes-256-cfb:plain:" .. util.base64_encode("p")))

@@ -147,6 +147,11 @@ end
 -- JSON null 占位符：仅在数组中用于保留位置（对象中的 null 仍解码为 nil）
 local JSON_NULL = {}
 
+-- JSON 空对象占位符。Lua 的空表无法区分 {} 与 []（is_array 判定空表为数组），
+-- 而 sing-box / Xray 的部分字段必须是对象（"tls": {}、"settings": {}），
+-- 编码成 [] 会被客户端拒绝。需要空对象时显式使用本常量。
+M.JSON_EMPTY_OBJECT = setmetatable({}, { __tostring = function() return "{}" end })
+
 function M.json_encode(v)
 	local function enc(v)
 		local t = type(v)
@@ -169,7 +174,9 @@ function M.json_encode(v)
 		elseif t == "boolean" then
 			return v and "true" or "false"
 		elseif t == "table" then
-			if is_array(v) then
+			if v == M.JSON_EMPTY_OBJECT then
+				return "{}"
+			elseif is_array(v) then
 				local a = {}
 				for i = 1, #v do a[#a + 1] = enc(v[i]) end
 				return "[" .. table.concat(a, ",") .. "]"
@@ -376,6 +383,30 @@ function M.human_duration(secs)
 	local m = secs / 60
 	if m >= 1 then return string.format("%d分钟", math.floor(m)) end
 	return "不足1分钟"
+end
+
+-- 为一组节点生成唯一 tag（供 sing-box / Xray 完整配置使用）。
+-- 节点名可能重复，也可能与保留 tag（direct / block / select / auto …）同名；
+-- sing-box 与 Xray 都要求 outbound tag 唯一，重名时追加 " #2"、" #3"。
+-- 返回与 nodes 等长的 tag 数组。
+function M.unique_tags(nodes, reserved)
+	local used = {}
+	for k in pairs(reserved or {}) do used[k] = true end
+	local tags = {}
+	for i, n in ipairs(nodes or {}) do
+		local base = n.name
+		if base == nil or base == "" then
+			base = (n.server or "") .. ":" .. tostring(n.port or "")
+		end
+		local tag, k = base, 2
+		while used[tag] do
+			tag = base .. " #" .. k
+			k = k + 1
+		end
+		used[tag] = true
+		tags[i] = tag
+	end
+	return tags
 end
 
 return M

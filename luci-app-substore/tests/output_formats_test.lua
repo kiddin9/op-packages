@@ -57,15 +57,18 @@ check("qx has [server_local]", qx:find("%[server_local%]") ~= nil)
 check("qx has vmess line", qx:find("vmess=1.1.1.1:443") ~= nil)
 check("qx has policy", qx:find("%[policy%]") ~= nil)
 
+-- sing-box / v2ray 自 2.4.0 起输出完整配置：outbounds 除节点外还含
+-- selector / urltest（sing-box）与 direct / block，故此处不再断言节点数量，
+-- 改为断言节点出站按序在前、且结构与分流齐全（详见 output_full_config_test.lua）
 local singbox = output.generate(nodes, "singbox")
 check("singbox is json", singbox:find("{") == 1)
 local sb = util.json_decode(singbox)
-check("singbox has outbounds", sb and sb.outbounds ~= nil and #sb.outbounds == 4)
+check("singbox has outbounds", sb and sb.outbounds ~= nil and #sb.outbounds == 4 + 4)
 check("singbox type vmess", sb and sb.outbounds[1] and sb.outbounds[1].type == "vmess")
 
 local v2ray = output.generate(nodes, "v2ray")
 local vr = util.json_decode(v2ray)
-check("v2ray has outbounds", vr and vr.outbounds ~= nil and #vr.outbounds == 4)
+check("v2ray has outbounds", vr and vr.outbounds ~= nil and #vr.outbounds == 4 + 2)
 check("v2ray protocol vmess", vr and vr.outbounds[1] and vr.outbounds[1].protocol == "vmess")
 
 local uri = output.generate(nodes, "v2rayuri")
