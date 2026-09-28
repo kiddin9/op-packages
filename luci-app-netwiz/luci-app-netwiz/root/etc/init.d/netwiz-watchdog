@@ -1,0 +1,29 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2026 huchd0 <https://github.com/huchd0/luci-app-netwiz>
+# Licensed under the GNU General Public License v3.0
+# 描述: Netwiz IPv6 背景守护进程
+
+START=99
+USE_PROCD=1
+
+start_service() {
+    # 1. 检查前端是否开启了开关，没开就不启动进程，0內存损耗
+    local enable=$(uci -q get netwiz.main.watchdog_enable)
+    [ "$enable" != "1" ] && return 0
+
+    # 2. 注册背景守护进程（交由procd监控）
+    procd_open_instance
+    # 指向我们唯一的后端脚本，并传入daemon参数
+    procd_set_param command /usr/libexec/rpcd/netwiz daemon
+    # 开启崩溃自动重启机制（Respawn）
+    procd_set_param respawn
+    # 捕获脚本的标准输出到系统日志
+    procd_set_param stdout 1
+    procd_set_param stderr 1
+    procd_close_instance
+}
+
+service_triggers() {
+    # 连动：在前端修改netwiz界面并储存时，procd会自动重新启动此进程套用新网址
+    procd_add_reload_trigger "netwiz"
+}
