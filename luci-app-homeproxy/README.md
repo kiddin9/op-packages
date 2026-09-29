@@ -7,7 +7,7 @@
 
 **The modern ImmortalWrt proxy platform for ARM64 / AMD64**
 
-基于 sing-box 1.14 内核的现代代理平台 — 简洁、高效、开箱即用。
+本项目发版到R13后将不再频繁维护，除非存在重大修复。日常只推进“luci-app-homeproxy-pro”版本
 
 ---
 

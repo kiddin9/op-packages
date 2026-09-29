@@ -14,6 +14,10 @@
 	-- 注入 JS 的初始内容：JSON 字符串字面量，转义 "</" 防止提前闭合 script
 	local util = require("substore.util")
 	local js_content = (util.json_encode(content) or '""'):gsub("</", "<\\/")
+	-- local_mode 是用户可提交的字段，直接拼进 JS 字符串会被闭合引号注入；
+	-- 归一为白名单取值后用 json_encode 输出，保证是合法的 JS 字符串字面量
+	if local_mode ~= "form" then local_mode = "text" end
+	local js_mode = util.json_encode(local_mode) or '"text"'
 %>
 <h2><%=is_edit and luci.i18n.translate("Edit local subscription") or luci.i18n.translate("Add local subscription")%></h2>
 
@@ -25,7 +29,7 @@
 	<div class="cbi-section">
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label for="name" style="display:inline-block;min-width:10em"><%:Name%></label>
-			<input type="text" id="name" name="name" value="<%=is_edit and it.name or ''%>"/>
+			<input type="text" id="name" name="name" value="<%=luci.util.pcdata(is_edit and it.name or "")%>"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Subscription info%></label>
@@ -59,11 +63,11 @@
 		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em"><%:Keyword include%></label>
-				<input type="text" name="keyword_include" value="<%=ki%>" style="width:60%"/>
+				<input type="text" name="keyword_include" value="<%=luci.util.pcdata(ki)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em"><%:Keyword exclude%></label>
-				<input type="text" name="keyword_exclude" value="<%=ke%>" style="width:60%"/>
+				<input type="text" name="keyword_exclude" value="<%=luci.util.pcdata(ke)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em"><%:Dedup%></label>
@@ -75,7 +79,7 @@
 			<span style="color:#808080">
 				<%:Nodes:%> <%=it.node_count or 0%>
 				| <%:Last updated:%> <%=os.date("%Y-%m-%d %H:%M", it.last_update)%>
-				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=it.error%></span><% end %>
+				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=luci.util.pcdata(it.error)%></span><% end %>
 			</span>
 		</div>
 		<% end %>
@@ -89,7 +93,7 @@
 <script>
 // 编辑时的初始内容（文本或 JSON），由服务端注入
 var SUBSTORE_INIT_CONTENT = <%=js_content%>;
-var SUBSTORE_INIT_MODE = "<%=local_mode%>";
+var SUBSTORE_INIT_MODE = <%=js_mode%>;
 
 // 字段标签与界面文本（nodeform.js 读取；翻译由服务端按系统语言渲染）
 var FIELD_LABELS = {

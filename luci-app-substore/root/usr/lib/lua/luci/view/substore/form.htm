@@ -38,11 +38,11 @@
 	<div class="cbi-section">
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label for="name" style="display:inline-block;min-width:10em"><%:Name%></label>
-			<input type="text" id="name" name="name" value="<%=is_edit and it.name or ''%>"/>
+			<input type="text" id="name" name="name" value="<%=luci.util.pcdata(is_edit and it.name or "")%>"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label for="url" style="display:inline-block;min-width:10em"><%:Subscription URL%></label>
-			<input type="text" id="url" name="url" value="<%=is_edit and it.url or ''%>" style="width:60%"/>
+			<input type="text" id="url" name="url" value="<%=luci.util.pcdata(is_edit and it.url or "")%>" style="width:60%"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label style="display:inline-block;min-width:10em">订阅代理</label>
@@ -51,7 +51,7 @@
 		</div>
 		<div id="proxy_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=proxy_enabled and "block" or "none"%>">
 			<label for="proxy" style="display:inline-block;min-width:10em">代理地址</label>
-			<input type="text" id="proxy" name="proxy" value="<%=is_edit and it.proxy or ''%>" style="width:60%"/>
+			<input type="text" id="proxy" name="proxy" value="<%=luci.util.pcdata(is_edit and it.proxy or "")%>" style="width:60%"/>
 			<div style="color:#808080;margin-top:0.25em">通过代理下载订阅（留空则不使用），支持 http:// 或 socks5:// 地址，如 socks5://192.168.5.1:1080</div>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
@@ -78,11 +78,11 @@
 		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em">关键词包含</label>
-				<input type="text" name="keyword_include" value="<%=ki%>" style="width:60%"/>
+				<input type="text" name="keyword_include" value="<%=luci.util.pcdata(ki)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em">关键词排除</label>
-				<input type="text" name="keyword_exclude" value="<%=ke%>" style="width:60%"/>
+				<input type="text" name="keyword_exclude" value="<%=luci.util.pcdata(ke)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em">去重</label>
@@ -99,7 +99,7 @@
 				<% if traffic_str then %> | <%:Remaining traffic:%> <%=traffic_str%><% end %>
 				<% if time_str then %> | <%:Remaining time:%> <%=time_str%><% end %>
 				 | <%:Last updated:%> <%=os.date("%Y-%m-%d %H:%M", it.last_update)%>
-				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=it.error%></span><% end %>
+				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=luci.util.pcdata(it.error)%></span><% end %>
 			</span>
 		</div>
 		<% end %>

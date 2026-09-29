@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0-r1] - 订阅可靠性、错误反馈与 WireGuard 去重修复
+
+- **修复严重缺陷（订阅更新可能「看起来成功其实失败」）**：`core.sync` 失败时是
+  「返回 `nil, err`」而**不是**抛异常，而调用方只判断了 `pcall` 的第一层返回值。
+  `pcall` 返回 `true` 只说明没有抛错，第二个返回值才是 `sync` 自身的结果——
+  于是「同步返回 `nil, err`」被统计成**成功**。
+  - `root/usr/bin/substore-cron.sh`：改为 `local ok, res, err = pcall(core.sync, id)`，
+    并要求 `ok and res` 才算成功；失败时打印真实原因。同时把脚本输出同时写 stdout 与
+    syslog（原先只进 syslog，cron 邮件里看不到）
+  - `root/usr/lib/lua/luci/controller/admin/substore.lua`：`action_update` 同样处理两层结果
+- **修复严重缺陷（代理静默失效，属 silent fallback）**：
+  - `core.sync` 原先在「代理已启用但代理地址无效」时只记一条日志就**直连下载**，
+    用户会以为流量走了代理、实际暴露真实 IP。现改为**明确失败**并把原因写入订阅状态
+  - wget 后端原先在遇到它不支持的代理协议（`socks*`）时**丢掉代理继续直连**。
+    现改为明确报错并提示安装 curl 或改用 http 代理（busybox wget 只能通过
+    `http_proxy` / `https_proxy` 环境变量使用 http(s) 代理）
+- **修复严重缺陷（wget 后端重定向绕过 SSRF 预检）**：curl 路径逐跳校验重定向目标，
+  wget 路径**完全不校验**，可被重定向到 `127.0.0.1` / 内网而绕过 `check_public`。
+  现 wget 改用 `-S` 输出响应头日志，由新增的 `http.validate_redirect_chain`
+  按出现顺序解析整条重定向链并逐跳复检，任一跳不安全即整体失败并**丢弃响应体**。
+  另修复协议相对地址（`//host/path`）被误当成同主机路径而漏检的问题
+- **修复严重缺陷（界面失败无反馈）**：订阅的新建 / 保存 / 本地订阅新建 / 保存
+  失败时，控制器只静默跳回列表页，用户看到的是「什么都没发生」，与成功无法区分。
+  现失败原因经 `?err=` 回传到列表页并渲染为可见的错误提示
+- **修复严重缺陷（WireGuard 节点被错误去重合并）**：去重键为 `proto+server+port`，
+  而同一 endpoint 上的**不同 peer 公钥是不同节点**，会被错误合并而丢节点。
+  现 WireGuard / `wg` 节点的去重键并入 peer 公钥（兼容 `public-key` / `public_key` /
+  `peer-public-key` / `peer_public_key` 四种写法）；其余协议去重行为**完全不变**
+- **修复严重缺陷（多个 WireGuard 节点被拼进一个 `.conf`）**：一个 `.conf` 文件只能包含
+  一个 `[Interface]`，拼接会产生客户端无法导入（或只取首段）的畸形配置。
+  现多于一个 WireGuard 节点时**明确报错**（错误信息含节点数与「一条隧道」提示），
+  而不是静默拼接
+- **修复 AmneziaWG `.conf` 导出键名靠猜测**：原先用「首字母大写」由内部键名推导 `.conf`
+  键名，多词键会被写错（`header-protection-key` → `Header-protection-key`，
+  正确为 `HeaderProtectionKey`），未知键可能让客户端拒绝整份配置。
+  现改为显式映射表，只输出能**确定**键名的键（`Jc/Jmin/Jmax/S1–S4/H1–H4/I1–I5/J1–J3/Itime`），
+  映射不到的键一律不输出；已支持键集合零变化
+- **修复模板注入（HTML / JS）**：7 个模板把用户可控数据（订阅名、URL、代理、节点字段、
+  解析错误信息）直接以 `<%= %>` 原样输出。现按上下文分别转义：
+  HTML 用 `luci.util.pcdata`，注入 JS 的字符串用 `json_encode`（并转义 `</` 防止提前
+  闭合 `script`），URL 用 `urlencode`
+- **修复日志/错误信息泄漏凭据**：新增 `http.redact_proxy`（代理地址去凭据）与
+  `http.scrub_credentials`（抹掉 URL 中的 `//user:pass@`），用于日志与订阅错误信息
+- **修复失败路径污染 `node_count`**：同步失败时不再把 `node_count` 清零——
+  磁盘上的旧节点仍在、订阅链接仍在下发，清零会让界面显示与实际不符
+- 新增测试：`tests/controller_local_test.lua`（22 项）、`tests/template_escape_test.lua`（21 项）、
+  `tests/cron_result_test.sh`（5 项）；`tests/wireguard_conf_test.lua` 扩至 93 项、
+  `tests/node_extended_test.lua` 扩至 28 项、`tests/http_proxy_test.lua` 扩充代理矩阵与
+  重定向链复检。全部测试共 1174 项断言通过
+- 版本号 2.4.0-r2 → 2.5.0-r1；README.md / README.en.md / docs/INSTALL.md 同步
+- 已知限制（本次**未**修改，另行处理）：`check_public` 在无 DNS 解析能力时放行
+  （fail-open）且解析与下载之间存在 TOCTOU 窗口；wget 路径的重定向校验是事后的
+  （busybox wget 无 `--max-redirect`），响应体虽被丢弃但请求已经发出，且无法限制下载体积；
+  AmneziaWG 3.0 / 3.1 新增的 9 个字段（`HeaderProtectionKey`、`ContentPaddingAddition`、
+  `RekeyAfterTime`、`RekeyTimeout`、`RejectAfterTime`、`KeepaliveTimeout`、
+  `MaxHandshakeAttempts`、`RandomTrailers`、`DisableCookies`）**不被 `.conf` 解析器接受**
+  （白名单外，导入即丢弃），但会从 Clash / JSON / `wireguard://` 导入路径原样透传；
+  sing-box 本身不支持 AmneziaWG，其输出会丢弃 AWG 参数
+
 ## [2.4.0-r2] - 修复 vmess 加密方式与 TLS 层混淆
 
 - **修复严重缺陷**：经典 vmess 分享链接 `vmess://base64(json)` 的 `scy` 是**加密方式**

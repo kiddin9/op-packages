@@ -200,10 +200,50 @@ local function resolve_url(base, loc)
 	if loc:find("://", 1, true) then return loc end
 	local scheme, host = base:match("^([%w]+)://([^/]+)")
 	if not scheme then return loc end
+	-- 协议相对地址（//host/path）：沿用 scheme，但主机取自 Location 本身，
+	-- 否则会被误当成同主机的路径而漏掉跨主机跳转
+	if loc:sub(1, 2) == "//" then return scheme .. ":" .. loc end
 	if loc:sub(1, 1) == "/" then return scheme .. "://" .. host .. loc end
 	local base_path = base:match("^[%w]+://[^/]+(.*)$") or "/"
 	local dir = base_path:match("^(.*)/[^/]*$") or ""
 	return scheme .. "://" .. host .. dir .. "/" .. loc
+end
+
+-- 从 wget -S 日志中按出现顺序提取重定向目标（Location）
+local function locations_from_log(raw)
+	local locs = {}
+	for line in (raw or ""):gmatch("[^\r\n]+") do
+		local v = line:match("^%s*[Ll]ocation:%s*(.+)$")
+		if v then locs[#locs + 1] = util.trim(v) end
+	end
+	return locs
+end
+
+-- 复检重定向链：每一跳都必须通过 check_public。
+-- busybox wget 没有 --max-redirect，无法在发出请求前拦住重定向，只能在 -S 日志里
+-- 逐跳校验；任一跳不安全即整体失败并丢弃响应体（§14/§16）。
+-- 纯函数，不触网，便于离线测试。返回 ok, err
+function M.validate_redirect_chain(base_url, log)
+	for _, loc in ipairs(locations_from_log(log)) do
+		local next_url = resolve_url(base_url, loc)
+		local np = M.parse_url(next_url)
+		if not np then return false, "重定向目标无效: " .. tostring(loc) end
+		local ok, re = M.check_public(np.host)
+		if not ok then return false, "重定向目标不安全: " .. (re or "") end
+	end
+	return true
+end
+
+-- 代理地址去凭据，用于日志（§39：不记录代理密码）
+function M.redact_proxy(p)
+	local scheme, rest = tostring(p or ""):match("^(%a[%w]*)://(.*)$")
+	if not scheme then return "***" end
+	return scheme .. "://" .. (rest:gsub("^[^@]*@", ""))
+end
+
+-- 抹掉文本中的 URL 凭据（//user:pass@），用于日志与错误信息（§39）
+function M.scrub_credentials(text)
+	return (tostring(text or ""):gsub("//([^%s/@:]*)%:([^%s/@]*)@", "//***@"))
 end
 
 local function fetch_curl(url, parsed, opts)
@@ -253,17 +293,38 @@ local function fetch_curl(url, parsed, opts)
 	return nil, "重定向次数过多"
 end
 
+-- wget 后端的代理环境变量。busybox wget 只能通过 http_proxy/https_proxy 环境变量
+-- 使用 http(s) 代理；遇到它不支持的协议（socks*）必须明确报错，
+-- 不能丢掉代理静默直连（§12）。返回 env 或 nil, err
+function M.wget_proxy_env(proxy)
+	if proxy == nil or proxy == "" then return "" end
+	local scheme = tostring(proxy):match("^(%a[%w]*)://")
+	scheme = scheme and scheme:lower() or ""
+	if scheme ~= "http" and scheme ~= "https" then
+		return nil, "当前下载后端 (wget) 不支持 " .. string.upper(scheme) ..
+			" 代理，请安装 curl 或改用 http 代理"
+	end
+	return string.format("http_proxy=%q https_proxy=%q ", proxy, proxy)
+end
+
 local function fetch_wget(url, parsed, opts)
 	local max, t = opts.max_size, opts.timeout
+	local proxy_env, perr = M.wget_proxy_env(opts.proxy)
+	if not proxy_env then return nil, perr end
 	local tmp = "/tmp/substore_dl_wget.tmp"
-	os.remove(tmp)
-	-- 仅 http/https 代理可用环境变量传递（busybox wget 不支持 socks 代理）
-	local proxy_env = ""
-	if opts.proxy and opts.proxy ~= "" and opts.proxy:match("^https?://") then
-		proxy_env = string.format("http_proxy=%q https_proxy=%q ", opts.proxy, opts.proxy)
-	end
-	local cmd = proxy_env .. string.format("wget -q -T %d -O %q %q 2>/dev/null", t, tmp, url)
+	local log = tmp .. ".log"
+	os.remove(tmp); os.remove(log)
+	-- -S 打印响应头（含整条重定向链），据此逐跳复检 SSRF；
+	-- 日志与响应体分流：体写 tmp，链写 log
+	local cmd = proxy_env .. string.format("wget -S -q -T %d -O %q %q >%q 2>&1", t, tmp, url, log)
 	os.execute(cmd)
+	local logtext = util.read_file(log) or ""
+	os.remove(log)
+	local safe, reason = M.validate_redirect_chain(url, logtext)
+	if not safe then
+		os.remove(tmp)
+		return nil, reason
+	end
 	local size = util.file_size(tmp)
 	if size > max then os.remove(tmp); return nil, "响应超过大小限制 (" .. max .. " 字节)" end
 	if size == 0 then os.remove(tmp); return nil, "下载失败或内容为空" end

@@ -7,7 +7,7 @@ local parser = require("substore.parser")
 
 local M = {}
 
-M.version = "2.1.3"
+M.version = "2.5.0"
 M.DATA_DIR = "/etc/substore"
 M.LIST_FILE = M.DATA_DIR .. "/subscriptions.json"
 M.NODES_DIR = M.DATA_DIR .. "/nodes"
@@ -243,13 +243,14 @@ function M.sync(id)
 		log("Sync local subscription")
 		local content = meta.raw_content or ""
 		if content == "" then
-			M.save_meta(id, { error = "本地订阅内容为空", node_count = 0, last_update = os.time() })
+			-- 失败路径一律不改 node_count：磁盘上的旧节点仍在，订阅链接仍在下发（§35）
+			M.save_meta(id, { error = "本地订阅内容为空", last_update = os.time() })
 			return nil, "本地订阅内容为空"
 		end
 		local res, perr = parser.parse_local(content, meta.local_mode or "text")
 		if not res or not res.nodes then
 			log("Parse local fail: " .. tostring(perr))
-			M.save_meta(id, { error = perr or "本地解析失败", node_count = 0, last_update = os.time() })
+			M.save_meta(id, { error = perr or "本地解析失败", last_update = os.time() })
 			return nil, perr or "本地解析失败"
 		end
 		log("Parse local ok nodes="..#res.nodes)
@@ -267,23 +268,29 @@ function M.sync(id)
 	end
 	if not meta.url or meta.url == "" then log("Sync fail: no URL"); return nil, "无订阅 URL" end
 
-	-- 订阅代理：开启且代理地址有效时，通过代理下载订阅
+	-- 订阅代理：开启时代理地址必须有效。无效就明确失败——
+	-- 静默直连会让用户以为流量走了代理，属于必须避免的 silent fallback（§12）。
 	local proxy = ""
 	if meta.proxy_enable == true or meta.proxy_enable == "1" then
 		local p, perr = http.parse_proxy(meta.proxy or "")
-		if p and p ~= "" then
-			proxy = p
-		elseif perr then
-			log("Proxy ignored: " .. tostring(perr))
+		if not p or p == "" then
+			local msg = perr or "代理地址为空"
+			log("Proxy invalid: " .. tostring(msg))
+			M.save_meta(id, { error = "代理配置无效: " .. tostring(msg), last_update = os.time() })
+			return nil, "代理配置无效: " .. tostring(msg)
 		end
+		proxy = p
 	end
-	if proxy ~= "" then log("Using proxy " .. proxy) end
+	-- 日志不记录代理凭据（§39）
+	if proxy ~= "" then log("Using proxy " .. http.redact_proxy(proxy)) end
 
 	local content, headers, err = http.download(meta.url, { max_size = M.MAX_SIZE, timeout = M.TIMEOUT, proxy = proxy })
 	if not content then
-		log("Download fail: " .. tostring(err))
-		M.save_meta(id, { error = err, last_update = os.time() })
-		return nil, err
+		-- 下载工具的报错可能回显含凭据的 URL，写日志与入库前先抹掉（§39）
+		local safe_err = http.scrub_credentials(err or "下载失败")
+		log("Download fail: " .. safe_err)
+		M.save_meta(id, { error = safe_err, last_update = os.time() })
+		return nil, safe_err
 	end
 	log("Download ok size="..#content)
 
@@ -293,7 +300,7 @@ function M.sync(id)
 	local res, perr = parser.parse(content)
 	if not res or not res.nodes then
 		log("Parse fail: " .. tostring(perr))
-		M.save_meta(id, { error = perr or "解析失败", node_count = 0, last_update = os.time() })
+		M.save_meta(id, { error = perr or "解析失败", last_update = os.time() })
 		return nil, perr or "解析失败"
 	end
 	log("Parse ok nodes="..#res.nodes)

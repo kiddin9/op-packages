@@ -184,6 +184,93 @@ if type(uri) == "string" then
 	check("uri roundtrip listen-port", r["listen-port"] == 51820)
 end
 
+-- ---------- 导出：wg-quick .conf 单接口约束（§55/§56） ----------
+local wgconf = require("substore.output_wireguard_conf")
+
+local c1 = wgconf.generate({ n })
+check("wgconf single node returns text", type(c1) == "string")
+check("wgconf single node has one Interface", select(2, c1:gsub("%[Interface%]", "")) == 1)
+check("wgconf single node has one Peer", select(2, c1:gsub("%[Peer%]", "")) == 1)
+
+-- 多节点：必须明确报错，绝不把多个 [Interface] 拼进一个文件
+local multi = wgconf.generate({
+	{ proto = "wireguard", name = "w1", server = "a.example.com", port = 51820, ["public-key"] = "K1" },
+	{ proto = "wireguard", name = "w2", server = "b.example.com", port = 51820, ["public-key"] = "K2" },
+})
+check("wgconf multi node returns nil", multi == nil)
+local _, multi_err = wgconf.generate({
+	{ proto = "wireguard", name = "w1", server = "a.example.com", port = 51820, ["public-key"] = "K1" },
+	{ proto = "wireguard", name = "w2", server = "b.example.com", port = 51820, ["public-key"] = "K2" },
+})
+check("wgconf multi node error is string", type(multi_err) == "string")
+check("wgconf multi node error names the count", multi_err:find("2", 1, true) ~= nil)
+check("wgconf multi node error mentions single tunnel", multi_err:find("一条隧道", 1, true) ~= nil)
+
+-- 无 WireGuard 节点：仍是「没有可导出节点」而非拼接
+local none, none_err = wgconf.generate({ { proto = "vmess", server = "x", port = 443 } })
+check("wgconf no wg node returns nil", none == nil)
+check("wgconf no wg node error", type(none_err) == "string" and none_err:find("没有可导出", 1, true) ~= nil)
+local empty, empty_err = wgconf.generate({})
+check("wgconf empty list returns nil", empty == nil)
+check("wgconf empty list error", type(empty_err) == "string")
+
+-- 单节点 .conf 必须能被自家解析器读回（往返一致）
+local rt = parser.parse(c1)
+check("wgconf roundtrip parses", rt ~= nil and rt.nodes and #rt.nodes == 1)
+if rt and rt.nodes and rt.nodes[1] then
+	local r = rt.nodes[1]
+	check("wgconf roundtrip server", r.server == n.server)
+	check("wgconf roundtrip port", r.port == n.port)
+	check("wgconf roundtrip public-key", r["public-key"] == n["public-key"])
+	check("wgconf roundtrip ip", r.ip == n.ip)
+end
+
+-- ---------- 导出：AmneziaWG 参数写入 .conf 的键名（§110） ----------
+-- 已知键必须写成客户端认得的 .conf 名；无法确定名字的键绝不能靠「首字母大写」
+-- 猜一个出来（header-protection-key → Header-protection-key 会被客户端拒）
+local awg_out = wgconf.generate({ {
+	proto = "wireguard", name = "awg", server = "wg.example.com", port = 51820,
+	["private-key"] = "PRIV", ["public-key"] = "PUB", ip = "10.0.0.1/32",
+	["allowed-ips"] = "0.0.0.0/0",
+	["amnezia-wg-option"] = {
+		jc = 5, jmin = 50, jmax = 1000,
+		s1 = 86, s2 = 574, h1 = "1000-2000", h4 = "7000-8000", itime = 30,
+		["header-protection-key"] = "c2VjcmV0",
+		["random-trailers"] = "on",
+	},
+} })
+check("awg conf export returns text", type(awg_out) == "string")
+check("awg conf Jc", awg_out and awg_out:find("Jc = 5", 1, true) ~= nil)
+check("awg conf Jmin", awg_out and awg_out:find("Jmin = 50", 1, true) ~= nil)
+check("awg conf S1", awg_out and awg_out:find("S1 = 86", 1, true) ~= nil)
+check("awg conf Itime", awg_out and awg_out:find("Itime = 30", 1, true) ~= nil)
+-- range 必须原样保留（不能变成数字）
+check("awg conf H1 range kept", awg_out and awg_out:find("H1 = 1000-2000", 1, true) ~= nil)
+check("awg conf H4 range kept", awg_out and awg_out:find("H4 = 7000-8000", 1, true) ~= nil)
+-- 多词键：宁可不输出，也不能输出错误键名
+check("awg conf no mangled Header-protection-key",
+	awg_out and awg_out:find("Header-protection-key", 1, true) == nil)
+check("awg conf no mangled Random-trailers",
+	awg_out and awg_out:find("Random-trailers", 1, true) == nil)
+check("awg conf unmappable value not leaked", awg_out and awg_out:find("c2VjcmV0", 1, true) == nil)
+-- 已知键按 .conf 名排序，保证可 diff
+local iH1 = awg_out and awg_out:find("H1 = ", 1, true)
+local iJc = awg_out and awg_out:find("Jc = ", 1, true)
+local iS1 = awg_out and awg_out:find("S1 = ", 1, true)
+check("awg conf sorted H1<Jc<S1", iH1 and iJc and iS1 and iH1 < iJc and iJc < iS1)
+
+-- 导出的 .conf 必须能被自家解析器读回（AWG 参数往返一致）
+local art = parser.parse(awg_out)
+check("awg conf roundtrip parses", art ~= nil and art.nodes and #art.nodes == 1)
+if art and art.nodes and art.nodes[1] then
+	local ao = art.nodes[1]["amnezia-wg-option"] or {}
+	check("awg conf roundtrip jc", ao.jc == 5)
+	check("awg conf roundtrip s1", ao.s1 == 86)
+	check("awg conf roundtrip h1 range is string",
+		ao.h1 == "1000-2000" and type(ao.h1) == "string")
+	check("awg conf roundtrip itime", ao.itime == 30)
+end
+
 -- ---------- 结果 ----------
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

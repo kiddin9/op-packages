@@ -23,13 +23,13 @@
 	end
 	local out, err = output.generate(nodes, fmt)
 %>
-<h2><%:Output%> — <%=meta and meta.name or luci.i18n.translate("Merged")%></h2>
+<h2><%:Output%> — <%=luci.util.pcdata(meta and meta.name or luci.i18n.translate("Merged"))%></h2>
 <div style="margin:0.5em 0">
 	<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
 </div>
 
 <form method="get" action="<%=luci.dispatcher.build_url('admin/services/substore/output')%>" class="cbi-map">
-	<input type="hidden" name="id" value="<%=id%>"/>
+	<input type="hidden" name="id" value="<%=luci.util.pcdata(id)%>"/>
 	<div style="display:flex;gap:0.5em;align-items:center;margin:0.5em 0">
 		<label><%:Format%>:
 			<select name="fmt">
@@ -41,7 +41,7 @@
 </form>
 
 <% if err then %>
-<div style="color:#cc0000"><%=err%></div>
+<div style="color:#cc0000"><%=luci.util.pcdata(err)%></div>
 <% else %>
 <textarea id="out_text" readonly style="width:100%;height:300px;font-family:monospace"><%=luci.util.pcdata(out)%></textarea>
 <div style="margin-top:0.5em">

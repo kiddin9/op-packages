@@ -3,6 +3,7 @@
 	local http = require("luci.http")
 	local core = require("substore.core")
 	local node = require("substore.node")
+	local util = require("substore.util")
 	local ctx = luci.dispatcher.context or {}
 	local q = ctx.query or {}
 	local id = http.formvalue("id") or q.id or ""
@@ -13,6 +14,8 @@
 	local group = http.formvalue("group") or q.group or ""
 	local sort_by = http.formvalue("sort") or q.sort or "name"
 	local sort_desc = http.formvalue("desc") == "1" or q.desc == "1"
+	-- id 会进入 <script> 里的 JS 字符串字面量，用 JSON 编码而不是 HTML 转义
+	local js_id = util.json_encode(id) or '""'
 
 	-- 标注原始数组下标（filter 保留表引用、sort 原地排序，下标可穿透筛选排序）
 	for i, nn in ipairs(nodes) do nn.__idx = i end
@@ -33,13 +36,13 @@
 	nodes = node.sort(nodes, sort_by, sort_desc)
 	local node_edit_base = luci.dispatcher.build_url('admin/services/substore/node_edit')
 %>
-<h2><%:Nodes%> — <%=meta and meta.name or ""%></h2>
+<h2><%:Nodes%> — <%=luci.util.pcdata(meta and meta.name or "")%></h2>
 <div style="margin:0.5em 0">
 	<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
 </div>
 
 <form method="get" action="<%=luci.dispatcher.build_url('admin/services/substore/nodes')%>" class="cbi-map">
-	<input type="hidden" name="id" value="<%=id%>"/>
+	<input type="hidden" name="id" value="<%=luci.util.pcdata(id)%>"/>
 	<div style="display:flex;gap:0.5em;align-items:center;flex-wrap:wrap;margin:0.5em 0">
 		<label><%:Type%>:
 			<select name="proto">
@@ -57,7 +60,7 @@
 				<% end %>
 			</select>
 		</label>
-		<label><%:Keyword%>: <input type="text" name="keyword" size="12" value="<%=keyword%>"/></label>
+		<label><%:Keyword%>: <input type="text" name="keyword" size="12" value="<%=luci.util.pcdata(keyword)%>"/></label>
 		<label><%:Sort by%>:
 			<select name="sort">
 				<option value="name" <%=sort_by=="name" and "selected" or ""%>>name</option>
@@ -80,12 +83,12 @@
 <!-- 勾选批量删除用的隐藏表单：JS 收集选中下标填入 idx（逗号分隔）后提交 -->
 <form id="batch_delete_form" method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/node_delete')%>" style="display:none">
 	<input type="hidden" name="token" value="<%=token%>"/>
-	<input type="hidden" name="id" value="<%=id%>"/>
+	<input type="hidden" name="id" value="<%=luci.util.pcdata(id)%>"/>
 	<input type="hidden" name="idx" value=""/>
-	<input type="hidden" name="proto" value="<%=proto%>"/>
-	<input type="hidden" name="keyword" value="<%=keyword%>"/>
-	<input type="hidden" name="group" value="<%=group%>"/>
-	<input type="hidden" name="sort" value="<%=sort_by%>"/>
+	<input type="hidden" name="proto" value="<%=luci.util.pcdata(proto)%>"/>
+	<input type="hidden" name="keyword" value="<%=luci.util.pcdata(keyword)%>"/>
+	<input type="hidden" name="group" value="<%=luci.util.pcdata(group)%>"/>
+	<input type="hidden" name="sort" value="<%=luci.util.pcdata(sort_by)%>"/>
 	<% if sort_desc then %><input type="hidden" name="desc" value="1"/><% end %>
 </form>
 
@@ -101,28 +104,28 @@
 		<th><%:Actions%></th>
 	</tr>
 	<% for _, n in ipairs(nodes) do %>
-	<tr class="cbi-section-table-row" data-server="<%=n.server or ""%>" data-port="<%=n.port or ""%>">
+	<tr class="cbi-section-table-row" data-server="<%=luci.util.pcdata(n.server or "")%>" data-port="<%=luci.util.pcdata(tostring(n.port or ""))%>">
 		<td><input type="checkbox" class="node-check" value="<%=n.__idx%>"/></td>
-		<td><%=n.name or ""%></td>
+		<td><%=luci.util.pcdata(n.name or "")%></td>
 		<td>
 			<input type="text" class="group-input" style="width:8em" value="<%=luci.util.pcdata(n.group or "")%>"
 				data-idx="<%=n.__idx%>" onchange="substore_set_group(this)"/>
 		</td>
-		<td><%=n.proto or ""%></td>
-		<td><%=n.server or ""%></td>
-		<td><%=n.port or ""%></td>
+		<td><%=luci.util.pcdata(n.proto or "")%></td>
+		<td><%=luci.util.pcdata(n.server or "")%></td>
+		<td><%=luci.util.pcdata(tostring(n.port or ""))%></td>
 		<td class="node-latency">-</td>
 		<td style="white-space:nowrap">
 			<a class="cbi-button cbi-button-apply" href="<%=node_edit_base%>?id=<%=luci.util.urlencode(id)%>&idx=<%=n.__idx%>"><%:Edit%></a>
 			<form method="post" action="<%=luci.dispatcher.build_url('admin/services/substore/node_delete')%>" style="display:inline"
 			      onsubmit="return confirm('<%=luci.util.pcdata(luci.i18n.translate('Delete this node?'))%>');">
 				<input type="hidden" name="token" value="<%=token%>"/>
-				<input type="hidden" name="id" value="<%=id%>"/>
+				<input type="hidden" name="id" value="<%=luci.util.pcdata(id)%>"/>
 				<input type="hidden" name="idx" value="<%=n.__idx%>"/>
-				<input type="hidden" name="proto" value="<%=proto%>"/>
-				<input type="hidden" name="keyword" value="<%=keyword%>"/>
-				<input type="hidden" name="group" value="<%=group%>"/>
-				<input type="hidden" name="sort" value="<%=sort_by%>"/>
+				<input type="hidden" name="proto" value="<%=luci.util.pcdata(proto)%>"/>
+				<input type="hidden" name="keyword" value="<%=luci.util.pcdata(keyword)%>"/>
+				<input type="hidden" name="group" value="<%=luci.util.pcdata(group)%>"/>
+				<input type="hidden" name="sort" value="<%=luci.util.pcdata(sort_by)%>"/>
 				<% if sort_desc then %><input type="hidden" name="desc" value="1"/><% end %>
 				<input type="submit" class="cbi-button cbi-button-reset" value="<%:Delete%>"/>
 			</form>
@@ -160,7 +163,7 @@ function substore_set_group(el) {
 			alert('<%:Failed to set group%>');
 		}
 	};
-	xhr.send('id=' + encodeURIComponent('<%=id%>')
+	xhr.send('id=' + encodeURIComponent(<%=js_id%>)
 		+ '&idx=' + encodeURIComponent(el.getAttribute('data-idx'))
 		+ '&group=' + encodeURIComponent(el.value)
 		+ '&token=' + encodeURIComponent('<%=token%>'));

@@ -27,7 +27,7 @@
 	<div class="cbi-section">
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label for="name" style="display:inline-block;min-width:10em"><%:Name%></label>
-			<input type="text" id="name" name="name" value="<%=is_edit and it.name or ''%>"/>
+			<input type="text" id="name" name="name" value="<%=luci.util.pcdata(is_edit and it.name or "")%>"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Source subscriptions%></label>
@@ -52,11 +52,11 @@
 		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em">关键词包含</label>
-				<input type="text" name="keyword_include" value="<%=ki%>" style="width:60%"/>
+				<input type="text" name="keyword_include" value="<%=luci.util.pcdata(ki)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em">关键词排除</label>
-				<input type="text" name="keyword_exclude" value="<%=ke%>" style="width:60%"/>
+				<input type="text" name="keyword_exclude" value="<%=luci.util.pcdata(ke)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em">去重</label>

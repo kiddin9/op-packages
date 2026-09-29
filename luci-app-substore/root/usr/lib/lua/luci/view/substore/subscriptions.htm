@@ -1,6 +1,17 @@
 <%+header%>
 <h2><%:Subscriptions%></h2>
 
+<%
+	-- §18：控制器把失败原因放在 ?err= 上带回来，这里渲染成可见的提示。
+	-- pcdata 转义：err 可能包含用户提交的内容，不能直接当 HTML 输出。
+	local flash_err = require("luci.http").formvalue("err")
+	if flash_err and flash_err ~= "" then
+%>
+<div class="cbi-section" style="border-left:4px solid #cc0000;padding:0.5em 0.75em;background:#fdf0f0;color:#cc0000">
+	<strong><%:操作失败%>:</strong> <%=luci.util.pcdata(flash_err)%>
+</div>
+<% end %>
+
 <div class="cbi-section">
 	<a class="cbi-button cbi-button-add" href="<%=luci.dispatcher.build_url('admin/services/substore/form')%>">
 		<%:Add subscription link%>
@@ -53,9 +64,9 @@
 	<tr class="cbi-section-table-row">
 		<td>
 			<% if it.combo then %>
-			<span class="cbi-value-description" style="color:#0066aa">[<%:Combination%>]</span> <%=it.name%>
+			<span class="cbi-value-description" style="color:#0066aa">[<%:Combination%>]</span> <%=luci.util.pcdata(it.name or "")%>
 			<% else %>
-			<%=it.name%>
+			<%=luci.util.pcdata(it.name or "")%>
 			<% end %>
 			<% if it.cron_enable == true or it.cron_enable == "1" then %>
 			<div class="cbi-value-description">定时: <%=luci.util.pcdata(it.cron_time or "")%></div>
@@ -67,16 +78,16 @@
 				if type(it.sources) == "table" then
 					for _, sid in ipairs(it.sources) do names[#names + 1] = name_by_id[sid] or sid end
 				end
-				%><span style="color:#808080"><%=table.concat(names, " + ")%></span><%
+				%><span style="color:#808080"><%=luci.util.pcdata(table.concat(names, " + "))%></span><%
 			elseif it["local"] then
 				%><span style="color:#0066aa">[<%:Local%>]</span><%
 			else
-				%><%=it.url%><%
+				%><%=luci.util.pcdata(it.url or "")%><%
 			end
 		%></td>
 		<td><%=it.node_count or 0%></td>
 		<td><%=it.last_update and os.date("%Y-%m-%d %H:%M", it.last_update) or "-"%></td>
-		<td style="color:<%=status_color%>"><%=status_text%></td>
+		<td style="color:<%=status_color%>"><%=luci.util.pcdata(status_text or "")%></td>
 		<td>
 			<div style="display:flex;gap:0.25em;align-items:center">
 				<select id="fmt_<%=it.id%>" data-base="<%=luci.util.pcdata(sub_link_base)%>"

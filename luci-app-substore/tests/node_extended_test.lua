@@ -84,5 +84,60 @@ node.add_tags(nodes5, {"vip"})
 check("add_tags existing", nodes5[1].tags and #nodes5[1].tags == 2 and nodes5[1].tags[2] == "vip")
 check("add_tags new", nodes5[2].tags and #nodes5[2].tags == 1 and nodes5[2].tags[1] == "vip")
 
+-- ---------- dedup ----------
+-- 非 WireGuard：行为不变，仍按 proto+server+port
+local d0 = node.dedup({
+	{ proto = "vmess", server = "1.1.1.1", port = 443, uuid = "a" },
+	{ proto = "vmess", server = "1.1.1.1", port = 443, uuid = "b" },
+	{ proto = "vless", server = "1.1.1.1", port = 443, uuid = "c" },
+})
+check("dedup keeps first of identical vmess", #d0 == 2)
+check("dedup treats different proto as distinct", d0[2].proto == "vless")
+
+-- WireGuard（§32/§43）：同 server+port 但 peer 公钥不同 → 不能合并
+local d1 = node.dedup({
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_A" },
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_B" },
+})
+check("wg dedup keeps different public keys", #d1 == 2)
+check("wg dedup first key kept", d1[1]["public-key"] == "KEY_A")
+check("wg dedup second key kept", d1[2]["public-key"] == "KEY_B")
+
+-- WireGuard：公钥相同 → 仍应去重
+local d2 = node.dedup({
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_A" },
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_A" },
+})
+check("wg dedup removes identical peer", #d2 == 1)
+
+-- WireGuard：公钥别名（导入/历史写法）同样参与去重键
+local d3 = node.dedup({
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, public_key = "KEY_A" },
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, ["peer-public-key"] = "KEY_A" },
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, peer_public_key = "KEY_B" },
+})
+check("wg dedup honours public_key aliases", #d3 == 2)
+
+-- proto 别名 "wg"
+local d4 = node.dedup({
+	{ proto = "wg", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_A" },
+	{ proto = "wg", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_B" },
+})
+check("wg alias proto keeps different peers", #d4 == 2)
+
+-- 双方都没有公钥：退化为 server+port 去重（保持旧行为）
+local d5 = node.dedup({
+	{ proto = "wireguard", server = "wg.example.com", port = 51820 },
+	{ proto = "wireguard", server = "wg.example.com", port = 51820 },
+})
+check("wg dedup without keys falls back to endpoint", #d5 == 1)
+
+-- 不同端口仍是不同节点
+local d6 = node.dedup({
+	{ proto = "wireguard", server = "wg.example.com", port = 51820, ["public-key"] = "KEY_A" },
+	{ proto = "wireguard", server = "wg.example.com", port = 51821, ["public-key"] = "KEY_A" },
+})
+check("wg dedup keeps different ports", #d6 == 2)
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

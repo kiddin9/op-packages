@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-substore
 # 版本约定：每次提交 PKG_RELEASE +1（2.1.2-r1 ~ r9）；
 # 达到 r10 时 PKG_VERSION 末位 +1（2.1.2 -> 2.1.3），PKG_RELEASE 重置为 1。
-PKG_VERSION:=2.4.0
-PKG_RELEASE:=8
+PKG_VERSION:=2.5.0
+PKG_RELEASE:=9
 
 LUCI_DEPENDS:=+luci-lua-runtime +luci-compat
 

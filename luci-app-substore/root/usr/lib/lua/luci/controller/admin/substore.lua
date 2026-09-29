@@ -2,9 +2,15 @@
 
 module("luci.controller.admin.substore", package.seeall)
 
-local function back_to_list()
+-- 返回列表页。err 非空时把错误带到列表页显示（§18：失败必须让用户看见，
+-- 不能「失败了却看起来像成功」）。沿用 LuCI 既有的 query + 模板渲染，不引入新 framework。
+local function back_to_list(err)
 	local http = require("luci.http")
-	http.redirect(luci.dispatcher.build_url("admin", "services", "substore", "list"))
+	local url = luci.dispatcher.build_url("admin", "services", "substore", "list")
+	if err ~= nil and tostring(err) ~= "" then
+		url = url .. "?err=" .. luci.util.urlencode(tostring(err))
+	end
+	http.redirect(url)
 end
 
 function index()
@@ -84,18 +90,20 @@ function action_create()
 		local proxy_enable = http.formvalue("proxy_enable") or "0"
 		if proxy_enable ~= "1" then proxy_enable = "0" end
 		local proxy = (http.formvalue("proxy") or ""):gsub("^%s+", ""):gsub("%s+$", "")
-		if name ~= "" and url ~= "" then
-			local cron_enable, cron_time = read_cron_fields()
-			local rules = read_rules_fields()
-			core.add(name, url, {
-				proxy_enable = proxy_enable, proxy = proxy,
-				cron_enable = cron_enable, cron_time = cron_time,
-				rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
-				keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
-				dedup = rules.dedup, rename_map = rules.rename_map,
-			})
-			core.write_cron()
+		if name == "" or url == "" then
+			return back_to_list("名称和 URL 不能为空")
 		end
+		local cron_enable, cron_time = read_cron_fields()
+		local rules = read_rules_fields()
+		local id, err = core.add(name, url, {
+			proxy_enable = proxy_enable, proxy = proxy,
+			cron_enable = cron_enable, cron_time = cron_time,
+			rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
+			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
+			dedup = rules.dedup, rename_map = rules.rename_map,
+		})
+		if not id then return back_to_list(err or "创建订阅失败") end
+		core.write_cron()
 	end
 	back_to_list()
 end
@@ -110,18 +118,21 @@ function action_save()
 		local proxy_enable = http.formvalue("proxy_enable") or "0"
 		if proxy_enable ~= "1" then proxy_enable = "0" end
 		local proxy = (http.formvalue("proxy") or ""):gsub("^%s+", ""):gsub("%s+$", "")
-		if name ~= "" and url ~= "" then
-			local cron_enable, cron_time = read_cron_fields()
-			local rules = read_rules_fields()
-			core.save_meta(id, {
-				name = name, url = url, proxy_enable = proxy_enable, proxy = proxy,
-				cron_enable = cron_enable, cron_time = cron_time,
-				rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
-				keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
-				dedup = rules.dedup, rename_map = rules.rename_map,
-			})
-			core.write_cron()
+		if id == "" then return back_to_list("缺少订阅 ID") end
+		if name == "" or url == "" then
+			return back_to_list("名称和 URL 不能为空")
 		end
+		local cron_enable, cron_time = read_cron_fields()
+		local rules = read_rules_fields()
+		local ok, err = core.save_meta(id, {
+			name = name, url = url, proxy_enable = proxy_enable, proxy = proxy,
+			cron_enable = cron_enable, cron_time = cron_time,
+			rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
+			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
+			dedup = rules.dedup, rename_map = rules.rename_map,
+		})
+		if not ok then return back_to_list(err or "保存失败") end
+		core.write_cron()
 	end
 	back_to_list()
 end
@@ -134,15 +145,17 @@ function action_local_create()
 		local content = http.formvalue("content") or ""
 		local local_mode = http.formvalue("local_mode") or "text"
 		local rules = read_rules_fields()
-		if name ~= "" and content ~= "" then
-			core.add_local(name, content, local_mode, {
-				rules_enable = rules.rules_enable,
-				proto_filter = rules.proto_filter,
-				keyword_include = rules.keyword_include,
-				keyword_exclude = rules.keyword_exclude,
-				dedup = rules.dedup,
-			})
-		end
+		-- §19：空名称 / 空内容必须明确报错，不能无声创建无效订阅
+		if name == "" then return back_to_list("名称不能为空") end
+		if content == "" then return back_to_list("订阅内容不能为空") end
+		local id, err = core.add_local(name, content, local_mode, {
+			rules_enable = rules.rules_enable,
+			proto_filter = rules.proto_filter,
+			keyword_include = rules.keyword_include,
+			keyword_exclude = rules.keyword_exclude,
+			dedup = rules.dedup,
+		})
+		if not id then return back_to_list(err or "创建本地订阅失败") end
 	end
 	back_to_list()
 end
@@ -156,19 +169,23 @@ function action_local_save()
 		local content = http.formvalue("content") or ""
 		local local_mode = http.formvalue("local_mode") or "text"
 		local rules = read_rules_fields()
-		if id ~= "" and name ~= "" and content ~= "" then
-			core.save_meta(id, {
-				name = name,
-				raw_content = content,
-				local_mode = local_mode,
-				rules_enable = rules.rules_enable,
-				proto_filter = rules.proto_filter,
-				keyword_include = rules.keyword_include,
-				keyword_exclude = rules.keyword_exclude,
-				dedup = rules.dedup,
-			})
-			core.sync(id)
-		end
+		if id == "" then return back_to_list("缺少订阅 ID") end
+		if name == "" then return back_to_list("名称不能为空") end
+		if content == "" then return back_to_list("订阅内容不能为空") end
+		local ok, err = core.save_meta(id, {
+			name = name,
+			raw_content = content,
+			local_mode = local_mode,
+			rules_enable = rules.rules_enable,
+			proto_filter = rules.proto_filter,
+			keyword_include = rules.keyword_include,
+			keyword_exclude = rules.keyword_exclude,
+			dedup = rules.dedup,
+		})
+		if not ok then return back_to_list(err or "保存失败") end
+		-- 解析失败会写进 meta.error（列表页 Status 列可见），此处再明确提示一次
+		local sok, serr = core.sync(id)
+		if not sok then return back_to_list(serr or "解析订阅内容失败") end
 	end
 	back_to_list()
 end
@@ -315,12 +332,15 @@ function action_update()
 			-- local subscription does not support auto update
 			return
 		end
-		-- pcall fallback: parse or write error will not 500 the page, error saved to list status
-		local ok, err = pcall(function()
-			return core.sync(id)
-		end)
+		-- pcall 只保证「不抛异常」；core.sync 的失败是「返回 nil, err」而非抛错，
+		-- 因此必须同时检查两层结果，否则失败永远不会写回列表状态。
+		local ok, res, err = pcall(core.sync, id)
 		if not ok then
-			core.save_meta(id, { error = tostring(err), last_update = os.time() })
+			-- 抛异常：第二个返回值是错误信息
+			core.save_meta(id, { error = tostring(res), last_update = os.time() })
+		elseif not res then
+			-- 正常返回但失败：第三个返回值是错误信息
+			core.save_meta(id, { error = tostring(err or "更新失败"), last_update = os.time() })
 		end
 	end
 	back_to_list()

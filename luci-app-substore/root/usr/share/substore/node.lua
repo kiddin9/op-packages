@@ -112,12 +112,23 @@ function M.filter(nodes, opts)
 	return out
 end
 
--- 去重：按 proto+server+port 唯一
+-- WireGuard peer 公钥。字段名以 parser 产出的 "public-key" 为准，
+-- 其余为历史/导入别名（output_wireguard_conf 同样接受这几种写法）
+local function wg_public_key(n)
+	return n["public-key"] or n.public_key or n["peer-public-key"] or n.peer_public_key
+end
+
+-- 去重：按 proto+server+port 唯一。
+-- WireGuard/AmneziaWG 例外：同一个 endpoint 上不同 peer 公钥是**不同**的节点，
+-- 只按 server+port 去重会把它们错误合并（§32/§43），因此把公钥并入去重键。
 function M.dedup(nodes)
 	local seen = {}
 	local out = {}
 	for _, n in ipairs(nodes) do
 		local key = (n.proto or "") .. "|" .. (n.server or "") .. "|" .. tostring(n.port or "")
+		if n.proto == "wireguard" or n.proto == "wg" then
+			key = key .. "|" .. tostring(wg_public_key(n) or "")
+		end
 		if not seen[key] then
 			seen[key] = true
 			out[#out + 1] = n
