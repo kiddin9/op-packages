@@ -247,12 +247,25 @@ check("awg conf Itime", awg_out and awg_out:find("Itime = 30", 1, true) ~= nil)
 -- range 必须原样保留（不能变成数字）
 check("awg conf H1 range kept", awg_out and awg_out:find("H1 = 1000-2000", 1, true) ~= nil)
 check("awg conf H4 range kept", awg_out and awg_out:find("H4 = 7000-8000", 1, true) ~= nil)
--- 多词键：宁可不输出，也不能输出错误键名
+-- 多词键：名字必须与 amneziawg-tools 的写法逐字符一致，不能靠「首字母大写」猜
 check("awg conf no mangled Header-protection-key",
 	awg_out and awg_out:find("Header-protection-key", 1, true) == nil)
 check("awg conf no mangled Random-trailers",
 	awg_out and awg_out:find("Random-trailers", 1, true) == nil)
-check("awg conf unmappable value not leaked", awg_out and awg_out:find("c2VjcmV0", 1, true) == nil)
+-- AWG 3.0/3.1 多词键名核对自 amneziawg-tools src/config.c，因此应当输出
+check("awg conf HeaderProtectionKey",
+	awg_out and awg_out:find("HeaderProtectionKey = c2VjcmV0", 1, true) ~= nil)
+check("awg conf RandomTrailers on/off", awg_out and awg_out:find("RandomTrailers = on", 1, true) ~= nil)
+-- 真正未知的键仍然必须丢弃（不猜语义）
+local awg_unknown = wgconf.generate({ {
+	proto = "wireguard", name = "awg", server = "wg.example.com", port = 51820,
+	["private-key"] = "PRIV", ["public-key"] = "PUB",
+	["amnezia-wg-option"] = { jc = 5, ["totally-unknown-key"] = "SECRETVALUE" },
+} })
+check("awg conf unknown key dropped",
+	awg_unknown and awg_unknown:find("SECRETVALUE", 1, true) == nil)
+check("awg conf unknown key name absent",
+	awg_unknown and awg_unknown:find("totally-unknown-key", 1, true) == nil)
 -- 已知键按 .conf 名排序，保证可 diff
 local iH1 = awg_out and awg_out:find("H1 = ", 1, true)
 local iJc = awg_out and awg_out:find("Jc = ", 1, true)
@@ -269,6 +282,203 @@ if art and art.nodes and art.nodes[1] then
 	check("awg conf roundtrip h1 range is string",
 		ao.h1 == "1000-2000" and type(ao.h1) == "string")
 	check("awg conf roundtrip itime", ao.itime == 30)
+end
+
+-- ---------- AmneziaWG 3.0 / 3.1 字段导入 ----------
+-- 键名与类型核对自 amneziawg-tools src/config.c 与 mihomo AmneziaWGOption：
+-- 规范名用 mihomo 的 proxy tag（小写连字符），布尔键只认 on/off/十进制数。
+local AWG3_CONF = [[
+[Interface]
+PrivateKey = PRIV3
+Address = 10.0.0.2/32
+Jc = 4
+HeaderProtectionKey = AAAA
+ContentPaddingAddition = 16
+RekeyAfterTime = 120
+RekeyTimeout = 5
+RejectAfterTime = 180
+KeepaliveTimeout = 10
+MaxHandshakeAttempts = 18
+RandomTrailers = on
+DisableCookies = off
+
+[Peer]
+PublicKey = PUB3
+AllowedIPs = 0.0.0.0/0
+Endpoint = 1.2.3.4:51820
+]]
+local r3 = parser.parse(AWG3_CONF, "wireguard-conf")
+check("awg3 parses", r3 ~= nil and r3.nodes and #r3.nodes == 1)
+local o3 = r3 and r3.nodes[1] and r3.nodes[1]["amnezia-wg-option"] or {}
+check("awg3 HeaderProtectionKey", o3["header-protection-key"] == "AAAA")
+check("awg3 ContentPaddingAddition", o3["content-padding-addition"] == 16)
+check("awg3 RekeyAfterTime", o3["rekey-after-time"] == 120)
+check("awg3 RekeyTimeout", o3["rekey-timeout"] == 5)
+check("awg3 RejectAfterTime", o3["reject-after-time"] == 180)
+check("awg3 KeepaliveTimeout", o3["keepalive-timeout"] == 10)
+check("awg3 MaxHandshakeAttempts", o3["max-handshake-attempts"] == 18)
+check("awg3 RandomTrailers bool true", o3["random-trailers"] == true)
+check("awg3 DisableCookies bool false", o3["disable-cookies"] == false)
+check("awg3 legacy jc still parsed", o3.jc == 4)
+-- 大小写不敏感（config.c 的 process_line）
+check("awg3 case-insensitive key",
+	(parser.parse((AWG3_CONF:gsub("RandomTrailers", "RANDOMTRAILERS")), "wireguard-conf")
+		or {}).nodes[1]["amnezia-wg-option"]["random-trailers"] == true)
+-- 十进制布尔（0 假 / 非 0 真）
+local r3d = parser.parse((AWG3_CONF:gsub("RandomTrailers = on", "RandomTrailers = 1")
+	:gsub("DisableCookies = off", "DisableCookies = 0")), "wireguard-conf")
+check("awg3 decimal bool true",
+	r3d.nodes[1]["amnezia-wg-option"]["random-trailers"] == true)
+check("awg3 decimal bool false",
+	r3d.nodes[1]["amnezia-wg-option"]["disable-cookies"] == false)
+-- 非法布尔值（true/false/yes/no 都不是 config.c 认的写法）必须丢弃，不能留给 mihomo 报错
+local r3b = parser.parse((AWG3_CONF:gsub("RandomTrailers = on", "RandomTrailers = yes")),
+	"wireguard-conf")
+check("awg3 invalid bool dropped",
+	r3b.nodes[1]["amnezia-wg-option"]["random-trailers"] == nil)
+-- 往返：导出后能被自家解析器读回，值一致
+local r3out = wgconf.generate({ r3.nodes[1] })
+check("awg3 export HeaderProtectionKey",
+	r3out and r3out:find("HeaderProtectionKey = AAAA", 1, true) ~= nil)
+check("awg3 export RandomTrailers on",
+	r3out and r3out:find("RandomTrailers = on", 1, true) ~= nil)
+check("awg3 export DisableCookies off",
+	r3out and r3out:find("DisableCookies = off", 1, true) ~= nil)
+check("awg3 export MaxHandshakeAttempts",
+	r3out and r3out:find("MaxHandshakeAttempts = 18", 1, true) ~= nil)
+local r3back = parser.parse(r3out)
+check("awg3 roundtrip bool preserved",
+	r3back.nodes[1]["amnezia-wg-option"]["random-trailers"] == true
+	and r3back.nodes[1]["amnezia-wg-option"]["disable-cookies"] == false)
+check("awg3 roundtrip string preserved",
+	r3back.nodes[1]["amnezia-wg-option"]["header-protection-key"] == "AAAA")
+-- [Peer] 段独有的 AdvancedSecurity 不得被并进 amnezia-wg-option：
+-- 并进来会在导出时写到 [Interface] 下（错误段落），宁可不支持
+local r3peer = parser.parse(AWG3_CONF:gsub("Endpoint = 1%.2%.3%.4:51820",
+	"Endpoint = 1.2.3.4:51820\nAdvancedSecurity = on"), "wireguard-conf")
+check("awg3 peer-only key not merged",
+	r3peer.nodes[1]["amnezia-wg-option"]["advanced-security"] == nil)
+check("awg3 peer-only key not exported",
+	(wgconf.generate({ r3peer.nodes[1] }) or ""):find("AdvancedSecurity", 1, true) == nil)
+
+-- ---------- 多个 [Peer]：每个对端一个节点 ----------
+local MULTI_PEER = [[
+[Interface]
+PrivateKey = PRIVM
+Address = 10.0.0.2/32
+Jc = 7
+
+[Peer]
+PublicKey = PEER1
+PresharedKey = PSK1
+AllowedIPs = 0.0.0.0/0
+Endpoint = 1.2.3.4:51820
+
+[Peer]
+PublicKey = PEER2
+AllowedIPs = 10.0.0.0/8
+Endpoint = 5.6.7.8:51820
+]]
+local mp = parser.parse(MULTI_PEER, "wireguard-conf")
+check("multi-peer yields two nodes", mp ~= nil and mp.nodes and #mp.nodes == 2)
+if mp and mp.nodes and #mp.nodes == 2 then
+	local a, b = mp.nodes[1], mp.nodes[2]
+	check("multi-peer peer1 server", a.server == "1.2.3.4" and a.port == 51820)
+	check("multi-peer peer2 server", b.server == "5.6.7.8" and b.port == 51820)
+	check("multi-peer peer1 public-key", a["public-key"] == "PEER1")
+	check("multi-peer peer2 public-key", b["public-key"] == "PEER2")
+	-- 关键回归：不能把 A 段的 PresharedKey 拼到 B 段上
+	check("multi-peer peer1 psk", a["pre-shared-key"] == "PSK1")
+	check("multi-peer peer2 psk not inherited", b["pre-shared-key"] == nil)
+	check("multi-peer peer1 allowed-ips", table.concat(a["allowed-ips"], ",") == "0.0.0.0/0")
+	check("multi-peer peer2 allowed-ips", table.concat(b["allowed-ips"], ",") == "10.0.0.0/8")
+	-- [Interface] 设置由两个节点共享
+	check("multi-peer shared private-key", a["private-key"] == "PRIVM" and b["private-key"] == "PRIVM")
+	check("multi-peer shared ip", a.ip == "10.0.0.2/32" and b.ip == "10.0.0.2/32")
+	check("multi-peer shared awg", a["amnezia-wg-option"].jc == 7 and b["amnezia-wg-option"].jc == 7)
+	-- 不能共享同一个表：改一个不能影响另一个
+	check("multi-peer awg tables distinct",
+		a["amnezia-wg-option"] ~= b["amnezia-wg-option"])
+	-- 多节点导出仍按 §55/§56 明确报错，而不是静默拼接
+	local merr = wgconf.generate({ a, b })
+	check("multi-peer export still refuses", merr == nil)
+end
+check("conf with no Peer rejected",
+	(parser.parse("[Interface]\nPrivateKey = X\n", "wireguard-conf")) == nil)
+
+-- ---------- LuCI 表单路径：字符串 → 统一模型 ----------
+-- 表单里所有输入框的值都是字符串，而统一模型（见 .conf 解析）里
+-- allowed-ips / reserved / dns 是数组、amnezia-wg-option 是 table。
+-- 不归一就会出现两种症状：
+--   (a) amnezia-wg-option 是字符串 → 下游三处 type(...)=="table" 全部失败，
+--       UI 里编辑过的 WireGuard 节点导出时丢掉全部 AmneziaWG 参数（静默）
+--   (b) allowed-ips / reserved / dns 是标量字符串 → mihomo / sing-box
+--       的对应字段是列表类型，导出结果非法
+do
+	local util = require("substore.util")
+	local wgconf = require("substore.output_wireguard_conf")
+	local payload = util.json_encode({ {
+		type = "wireguard", name = "wgform", server = "1.2.3.4", port = "51820",
+		["private-key"] = "PRIVF", ["public-key"] = "PUBF",
+		ip = "10.0.0.2/32", ipv6 = "fd00::2/128",
+		["allowed-ips"] = "0.0.0.0/0, ::/0",
+		reserved = "1, 2, 3",
+		dns = "1.1.1.1, 8.8.8.8",
+		["amnezia-wg-option"] = '{"jc":4,"jmin":40,"jmax":70,"s1":30,"s2":40,"h1":1234,"random-trailers":true}',
+	} })
+	local res = parser.parse_local(payload, "form")
+	local n = res and res.nodes and res.nodes[1]
+	check("form: node parsed", n ~= nil)
+	check("form: awg decoded to table", type(n["amnezia-wg-option"]) == "table")
+	check("form: awg jc value", n["amnezia-wg-option"].jc == 4)
+	check("form: awg bool preserved", n["amnezia-wg-option"]["random-trailers"] == true)
+	check("form: allowed-ips is array",
+		type(n["allowed-ips"]) == "table" and #n["allowed-ips"] == 2)
+	check("form: reserved is numeric array",
+		type(n.reserved) == "table" and n.reserved[3] == 3)
+	check("form: dns multi becomes array", type(n.dns) == "table" and #n.dns == 2)
+
+	-- (a) 导出 .conf：AmneziaWG 参数必须在
+	local conf = wgconf.generate({ n })
+	check("form: .conf keeps Jc", conf ~= nil and conf:find("Jc = 4", 1, true) ~= nil)
+	check("form: .conf keeps RandomTrailers as on/off",
+		conf ~= nil and conf:find("RandomTrailers = on", 1, true) ~= nil)
+
+	-- (b) 导出 clash：必须是 YAML 列表而不是带引号的标量
+	local cm = output_clash_meta.generate({ n })
+	check("form: clash allowed-ips is a list",
+		cm:find("allowed%-ips:%s*\n%s+%- 0%.0%.0%.0/0") ~= nil)
+	check("form: clash has no scalar allowed-ips",
+		cm:find('allowed%-ips: "') == nil)
+	check("form: clash amnezia-wg-option emitted",
+		cm:find("amnezia%-wg%-option:") ~= nil and cm:find("jc: 4") ~= nil)
+
+	-- sing-box 的 allowed_ips / reserved / dns 都是数组
+	local sb = output_singbox.generate({ n })
+	check("form: singbox allowed_ips array", sb:find('"allowed_ips":%[') ~= nil)
+	check("form: singbox reserved array", sb:find('"reserved":%[1,2,3%]') ~= nil)
+	check("form: singbox dns array", sb:find('"dns":%[') ~= nil)
+
+	-- 单值 DNS 仍保持字符串（与 .conf 解析一致）
+	local single = parser.parse_local(util.json_encode({ {
+		type = "wireguard", server = "1.2.3.4", port = "51820", dns = "1.1.1.1",
+	} }), "form").nodes[1]
+	check("form: single dns stays string", single.dns == "1.1.1.1")
+
+	-- 非法 JSON 必须明确报错，不能留个字符串让它在导出时无声消失
+	local bad, berr = parser.parse_local(util.json_encode({ {
+		type = "wireguard", server = "1.2.3.4", port = "51820",
+		["amnezia-wg-option"] = "{not json",
+	} }), "form")
+	check("form: invalid awg json rejected", bad == nil)
+	check("form: invalid awg json error message", type(berr) == "string" and #berr > 0)
+
+	-- 空字符串等于「未设置」
+	local empty = parser.parse_local(util.json_encode({ {
+		type = "wireguard", server = "1.2.3.4", port = "51820",
+		["amnezia-wg-option"] = "",
+	} }), "form").nodes[1]
+	check("form: empty awg json cleared", empty["amnezia-wg-option"] == nil)
 end
 
 -- ---------- 结果 ----------

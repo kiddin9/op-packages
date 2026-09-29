@@ -2,6 +2,120 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.1-r1] - 安全加固与数据保真修复
+
+本轮为缺陷修复版本，重点是**命令注入 / SSRF 绕过 / 静默数据丢失**三类问题。
+所有修改均经代码或测试确认，未做任何推测性改动。
+
+### 安全
+
+- **修复命令注入（可被远程触发）**：此前拼 shell 命令行时使用 `string.format("%q")`
+  做转义。`%q` 生成的是**双引号**字符串，而 `/bin/sh` 在双引号内**仍然执行**
+  `$(...)` 与 `` `...` `` 命令替换——已实测确认 `format("%q", "$(touch /tmp/x)")`
+  会真的创建文件。新增 `util.shq()` 改用单引号转义（`'` → `'\''`），并应用于所有
+  拼接外部数据的位置：
+  - `http.lua`：curl / wget 命令行、临时文件路径、`-x` 代理参数、错误输出文件
+  - `http.lua`：`http_proxy` / `https_proxy` 环境变量赋值
+  - `core.lua`：`logger -t luci-app-substore <msg>`（msg 含下载失败原因等外部内容）
+  - `probe.lua`：探测命令
+  - `util.lua`：`ensure_dir` 的 `mkdir -p`
+- **修复 SSRF 检查绕过（fail-open）**：`http.parse_url` 只按 `/` 截断主机部分，
+  于是 `http://127.0.0.1?a=1` 的「主机」是 `127.0.0.1?a=1`——既非合法主机名也非
+  数值型 IPv4，DNS 解析必然失败，而**解析失败是放行的**，`curl` 实际连的是回环地址
+  （路由器上正是 LuCI 的 `:80`）。现按 RFC 3986 截断到第一个 `/` `?` `#`，
+  并额外剥离 userinfo（`http://evil@127.0.0.1/` 同理可绕过）。
+- **修复 curl 后端接受 3xx**：`code:match("^[23]%d%d$")` 会把 3xx 当成成功。
+  重定向应由 `-L` 跟随并由 `validate_redirect_chain` 逐跳校验，而不是靠 3xx 直接放行；
+  现只接受 `2xx`。
+- **修复 wget 后端不检查退出码**：`os.execute` 的返回值此前被忽略，
+  下载失败但残留部分内容时会当成成功解析。现要求退出码为 0。
+
+### 数据保真（静默丢字段）
+
+- **修复从 LuCI 表单编辑 WireGuard 节点会丢掉全部 AmneziaWG 参数**：
+  `amnezia-wg-option` 在表单里是 JSON 文本框，提交上来是**字符串**，
+  而 `output_wireguard_conf` / `output_clash_meta` / `output_uri` 三处都要求它是
+  `table`——字符串被静默忽略。现于表单模式统一解码；JSON 非法时**明确报错**
+  而不是留个字符串让它在导出时无声消失。
+- **修复表单里的数组字段被写成标量**：`allowed-ips` / `reserved` / `dns` 在统一模型中
+  是数组（见 `.conf` 解析），但表单输入框只能给字符串，导出到 mihomo / sing-box
+  时字段类型非法（这两个客户端的对应字段是列表）。现于表单模式拆分为数组；
+  单值 `dns` 仍保持字符串，与 `.conf` 解析保持一致。
+- **修复 AmneziaWG 3.0 / 3.1 字段在 `.conf` 导入时被丢弃**：`.conf` 键名白名单只到
+  1.5 版，`HeaderProtectionKey` / `ContentPaddingAddition` / `RekeyAfterTime` /
+  `RekeyTimeout` / `RejectAfterTime` / `KeepaliveTimeout` / `MaxHandshakeAttempts` /
+  `RandomTrailers` / `DisableCookies` 九个字段在导入时被丢掉，而同样的配置走
+  Clash / JSON / URI 路径却能通过——同一份配置换个格式就丢参数。键名核对自
+  amneziawg-tools `src/config.c`；布尔字段按 `parse_bool` 的规则只认 `on` / `off` / 数字。
+- **修复多个 `[Peer]` 的 `.conf` 只产出部分节点**：现每个 `[Peer]` 各生成一个节点
+  并共享 `[Interface]` 设置；AmneziaWG 参数表**按节点复制**，避免多个节点共享
+  同一个 table 而互相影响。
+- **修复节点改名规则中的 Lua 模式陷阱**（`node.lua`）：
+  - `-` 在 Lua 模式里是**惰性量词**，于是 `Node-(\d+)` 被解释成 `Nod` + `e-` + 数字，
+    **永远匹配不上且不报错**。现于字符类外转义为 `%-`
+  - `|` 在 Lua 模式里没有「或」语义，整个规则静默不匹配。现按**顶层** `|` 拆成多个
+    候选依次替换；括号内与字符类 `[...]` 内的 `|` 不拆（拆开会得到残缺模式，比不拆更糟）
+  - `\b` / `\B` 原被映射成 `%b`——那是 Lua 的「成对匹配」模式，语义完全不同。
+    现按无操作处理（Lua 模式无词边界）
+  - 模板改名的替换值现在转义 `%`，否则 `[50% OFF]` 这类名字会产生 NUL 字节
+- **修复 Clash YAML 的 `type` 字段泄漏进节点**：`type` 是协议判别字段（已被映射为
+  `proto`），原样拷进来会让 `output_uri` 把它当成 vmess 的 header type 写出
+  （`"type":"vmess"`），生成客户端无法识别的 `vmess://` 链接。
+- **修复订阅流量信息无法清空**：`save_meta` 用 `pairs` 遍历补丁，而 `pairs` 永远
+  不会给出 `nil` 值，调用方无法表达「把这个字段删掉」，导致过期的流量/到期时间
+  一直显示。新增 `core.CLEAR` 哨兵表达清除。
+
+### 界面
+
+- **修复节点保存失败无反馈**：`action_node_save` 此前只在成功分支做事，
+  其余情况一律静默重定向——用户提交了坏数据却看到「已保存」的样子（违反 §18）。
+  现所有失败路径（下标无效 / 内容为空 / 解析失败 / 写入失败）都经 `?err=` 回传，
+  并在节点页渲染为可见的错误提示。
+- **修复存储型 XSS**：节点页的分组下拉与组合订阅页的名称用 `<%= %>` 原样输出
+  （未转义），恶意订阅里的分组名/名称可注入脚本。现统一走 `luci.util.pcdata()`。
+
+### Cron
+
+- **退出码现在反映本轮结果**：`substore-cron.sh` 此前无论成败一律 `exit 0`，
+  cron 的 `MAILTO` / 外部监控无法据此判断。现只要有订阅更新失败即返回非 0；
+  找不到 lua 解释器（整条链路不可用）同样返回非 0，而不是静默成功。
+
+### 解析器补齐
+
+- `vless://` 补 `path` / `host` / `flow`；`vmess://`（新格式）补
+  `host` / `path` / `headerType` / `fp` / `alpn`；`trojan://` 补
+  `type`→`net` / `path` / `host` / `fp`；`hysteria2://` 补 `security` 与
+  `skip-cert-verify`；经典 vmess JSON 的 `aid` 正确映射为 `alterId`
+- `b64u_decode` 增加 round-trip 校验：合法 base64url 解码后重新编码必然一致，
+  明文则不一致——以此区分「这是 base64」和「这就是明文」，避免把明文
+  误当 base64 解出乱码
+- `M.detect` 调整判定顺序：Surge 配置在 URI 兜底分支之前判定，避免被误判成 URI
+
+### 测试
+
+- 新增 `tests/security_fixes_test.lua`（37 项）：`shq` 用真实 `sh -c` 验证命令替换
+  不发生；`parse_url` 的 query / fragment / userinfo 剥离；`save_meta` 的 `CLEAR`
+  语义；改名的 `-` / `|` / `%` 行为
+- `tests/cron_result_test.sh` 增加退出码断言（含缺解释器、无订阅文件两种边界），
+  并验证该测试确实能捕获修复前的行为（对旧脚本跑会失败 3 项）
+- `tests/controller_local_test.lua` 增加 `action_node_save` 的 6 条失败路径断言，
+  同样验证对旧控制器会失败 6 项
+- `tests/wireguard_conf_test.lua` 增加表单路径断言（AWG JSON 解码、数组归一、
+  非法 JSON 报错、单值 DNS 保持字符串），并覆盖 AWG 3.0 / 3.1 字段导入与多 `[Peer]`
+- 全量：33 个 `tests/*_test.lua` 共 **1286** 项断言全部通过；shell 测试 11 项通过
+
+### 已知限制（未在本轮修复）
+
+- LuCI 里 `amnezia-wg-option` 仍是**单个 JSON 文本框**，没有逐字段的表单控件。
+  数据已能正确往返（见上），但录入体验不佳。逐字段化属于新功能，按版本约定
+  应进入 minor 版本，故不在 2.5.1 中改动。
+- wget 后端的下载体积上限仍是**下载后**判断（busybox wget 没有「下载前限流」的选项）。
+- 括号内的「或」`(a|b)` 在改名规则中不支持（Lua 模式无此语义，按字面处理）。
+
+### 版本
+
+- 版本号 2.5.0-r1 → 2.5.1-r1；README.md / README.en.md / docs/INSTALL.md 同步
+
 ## [2.5.0-r1] - 订阅可靠性、错误反馈与 WireGuard 去重修复
 
 - **修复严重缺陷（订阅更新可能「看起来成功其实失败」）**：`core.sync` 失败时是

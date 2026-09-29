@@ -3,6 +3,7 @@
 #   (a) core.sync 抛异常
 #   (b) core.sync 返回 nil, err  ← pcall 第一层仍为 true（修复前被统计成成功）
 #   (c) core.sync 返回节点数（成功，含 0）
+# 以及退出码必须反映本轮结果（有失败 → 非 0），供 cron MAILTO / 外部监控判断。
 #
 # 通过桩 core 模块 + SUBSTORE_DATA_DIR 覆盖驱动真实脚本，不依赖公网。
 # 用法：sh tests/cron_result_test.sh
@@ -38,6 +39,9 @@ contains() {
 	esac
 }
 
+OUT=""
+RC=0
+
 run_case() {
 	# $1 = M.sync 的 Lua 实现体
 	cat >"$TMP/stub/substore/core.lua" <<EOF
@@ -46,20 +50,24 @@ M.list = function() return { { id = "s00000001", enabled = true } } end
 M.sync = function(id) $1 end
 return M
 EOF
-	SUBSTORE_DATA_DIR="$TMP/data" LUA_PATH="$TMP/stub/?.lua" \
-		sh "$SCRIPT" 2>/dev/null
+	OUT=$(SUBSTORE_DATA_DIR="$TMP/data" LUA_PATH="$TMP/stub/?.lua" \
+		sh "$SCRIPT" 2>/dev/null)
+	RC=$?
 }
 
+last_line() { printf '%s\n' "$OUT" | tail -1; }
+
 # (a) 抛异常 → 失败
-OUT=$(run_case 'error("boom")' | tail -1)
-check "exception counted as failure" "$OUT" "substore cron done: 0 ok, 1 failed"
+run_case 'error("boom")'
+check "exception counted as failure" "$(last_line)" "substore cron done: 0 ok, 1 failed"
+check "exception yields non-zero exit" "$RC" "1"
 
 # (b) 返回 nil, err → 失败（这是修复的核心：pcall 第一层为 true）
-OUT=$(run_case 'return nil, "下载失败"' | tail -1)
-check "nil,err counted as failure" "$OUT" "substore cron done: 0 ok, 1 failed"
+run_case 'return nil, "下载失败"'
+check "nil,err counted as failure" "$(last_line)" "substore cron done: 0 ok, 1 failed"
+check "nil,err yields non-zero exit" "$RC" "1"
 
 # (b2) 失败原因必须被打印出来
-OUT=$(run_case 'return nil, "下载失败"')
 if contains "failure reason surfaced" "$OUT" "下载失败"; then
 	pass=$((pass + 1))
 	echo "PASS failure reason surfaced"
@@ -69,12 +77,28 @@ else
 fi
 
 # (c) 成功返回节点数 → 成功
-OUT=$(run_case 'return 3' | tail -1)
-check "node count counted as success" "$OUT" "substore cron done: 1 ok, 0 failed"
+run_case 'return 3'
+check "node count counted as success" "$(last_line)" "substore cron done: 1 ok, 0 failed"
+check "success yields zero exit" "$RC" "0"
 
 # (c2) 成功但 0 节点 → 仍然是成功（0 在 Lua 中为真）
-OUT=$(run_case 'return 0' | tail -1)
-check "zero nodes still success" "$OUT" "substore cron done: 1 ok, 0 failed"
+run_case 'return 0'
+check "zero nodes still success" "$(last_line)" "substore cron done: 1 ok, 0 failed"
+check "zero nodes yields zero exit" "$RC" "0"
+
+# (d) 缺少 lua 解释器 → 必须非 0（整条链路不可用，不能静默成功）
+#     用空 PATH 让 command -v 找不到任何解释器。注意此时连 sh 本身都无法按名
+#     解析，必须用绝对路径调用，否则拿到的是「找不到 sh」的 127 而非脚本退出码。
+#     logger 也一并消失，脚本对 logger 已做 command -v 保护，不会因此报错。
+mkdir -p "$TMP/emptybin"
+OUT=$(SUBSTORE_DATA_DIR="$TMP/data" PATH="$TMP/emptybin" /bin/sh "$SCRIPT" 2>/dev/null)
+RC=$?
+check "missing interpreter yields non-zero exit" "$RC" "1"
+
+# (e) 订阅文件不存在 → 无事可做，仍是 0
+OUT=$(SUBSTORE_DATA_DIR="$TMP/nodata" LUA_PATH="$TMP/stub/?.lua" sh "$SCRIPT" 2>/dev/null)
+RC=$?
+check "no subscriptions file yields zero exit" "$RC" "0"
 
 echo ""
 echo "$pass passed, $fail failed"

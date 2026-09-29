@@ -22,10 +22,35 @@ local AWG_CONF_KEY_MAP = {
 	h1 = "H1", h2 = "H2", h3 = "H3", h4 = "H4",
 	i1 = "I1", i2 = "I2", i3 = "I3", i4 = "I4", i5 = "I5",
 	j1 = "J1", j2 = "J2", j3 = "J3", itime = "Itime",
+	-- AWG 3.0 / 3.1（键名核对自 amneziawg-tools src/config.c）
+	["header-protection-key"] = "HeaderProtectionKey",
+	["content-padding-addition"] = "ContentPaddingAddition",
+	["rekey-after-time"] = "RekeyAfterTime",
+	["rekey-timeout"] = "RekeyTimeout",
+	["reject-after-time"] = "RejectAfterTime",
+	["keepalive-timeout"] = "KeepaliveTimeout",
+	["max-handshake-attempts"] = "MaxHandshakeAttempts",
+	["random-trailers"] = "RandomTrailers",
+	["disable-cookies"] = "DisableCookies",
+	["advanced-security"] = "AdvancedSecurity",
+}
+
+-- 布尔键在 .conf 里必须写成 on/off：amneziawg-tools 的 parse_bool 只接受
+-- on/off（大小写不敏感）或十进制数，写 true/false 会被判为非法值。
+local AWG_BOOL_CONF_KEYS = {
+	RandomTrailers = true, DisableCookies = true, AdvancedSecurity = true,
 }
 
 local function conf_key(k)
 	return AWG_CONF_KEY_MAP[k]
+end
+
+-- 值 → .conf 文本：布尔转 on/off，其余 tostring
+local function conf_val(conf_key_name, v)
+	if AWG_BOOL_CONF_KEYS[conf_key_name] and type(v) == "boolean" then
+		return v and "on" or "off"
+	end
+	return tostring(v)
 end
 
 -- 值可能是标量或数组，统一转为 "a, b, c"
@@ -83,7 +108,7 @@ local function build_section(n)
 		end
 		table.sort(mapped, function(x, y) return x[1] < y[1] end)
 		for _, kv in ipairs(mapped) do
-			put(kv[1], tostring(kv[2]))
+			put(kv[1], conf_val(kv[1], kv[2]))
 		end
 	end
 
@@ -122,6 +147,15 @@ function M.generate(nodes, options)
 	end
 
 	local n = wg[1]
+
+	-- PrivateKey 是 wg-quick / AmneziaWG 的必填项：缺了它导出的 .conf 连本项目的
+	-- parser.detect 都认不出来（detect 要求 [Interface] + PrivateKey 同时存在），
+	-- 客户端更是无法导入。宁可不导出，也不要产出这种「看起来成功」的残缺文件。
+	local priv = n["private-key"] or n.private_key
+	if priv == nil or priv == "" then
+		return nil, "该 WireGuard 节点没有私钥 (private-key)，无法导出 .conf"
+	end
+
 	local lines = { "# " .. (n.name or ((n.server or "") .. ":" .. tostring(n.port or ""))) }
 	for _, line in ipairs(build_section(n)) do lines[#lines + 1] = line end
 	return table.concat(lines, "\n") .. "\n"

@@ -8,12 +8,23 @@ local M = {}
 
 M.TIMEOUT = 2 -- 每个目标的超时（秒）
 
--- shell 引号（%q 双引号转义），配合 safe_host 校验，双重防命令注入
-local function q(s) return string.format("%q", s) end
+-- shell 引号：用单引号转义（util.shq），配合 safe_host 校验，双重防命令注入。
+-- 不能用 string.format("%q")：它生成双引号字符串，sh 在双引号内仍会做 $() / ``
+-- 命令替换，实测可注入。
+local function q(s) return util.shq(s) end
 
 -- 校验目标主机名/IP：仅允许 [A-Za-z0-9._-] 与冒号（IPv6），杜绝命令注入
 local function safe_host(host)
 	return type(host) == "string" and host ~= "" and host:match("^[%w%.%-%:]+$") ~= nil
+end
+
+-- 构造 http URL：IPv6 字面量必须写成 [addr]:port，否则 "2001:db8::1:443" 不是合法 URL，
+-- curl 直接报 URL rejected（code 000），导致所有 IPv6 节点的 URL 测试恒为失败。
+local function http_url(server, port)
+	if server:find(":", 1, true) then
+		return "http://[" .. server .. "]:" .. port .. "/"
+	end
+	return "http://" .. server .. ":" .. port .. "/"
 end
 
 local function safe_port(port)
@@ -94,7 +105,7 @@ function M.url_test(server, port)
 	server = util.trim(server or "")
 	port = safe_port(port)
 	if not safe_host(server) or not port then return nil end
-	local url = "http://" .. server .. ":" .. port .. "/"
+	local url = http_url(server, port)
 	local cmd, parse = build_url_job(url)
 	local f = io.popen(cmd)
 	local out = f and f:read("*a") or ""
@@ -117,7 +128,7 @@ local function build_job(mode, server, port)
 	elseif mode == "url" then
 		port = safe_port(port)
 		if not port then return nil end
-		return build_url_job("http://" .. server .. ":" .. port .. "/")
+		return build_url_job(http_url(server, port))
 	end
 	return nil
 end

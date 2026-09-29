@@ -142,9 +142,16 @@ function M.sort(nodes, by, desc)
 	by = by or "name"
 	desc = desc and true or false
 	table.sort(nodes, function(a, b)
-		local av = a[by] or ""
-		local bv = b[by] or ""
-		if by == "port" then av, bv = tonumber(av) or 0, tonumber(bv) or 0 end
+		local av, bv = a[by], b[by]
+		if by == "port" then
+			av, bv = tonumber(av) or 0, tonumber(bv) or 0
+		else
+			-- 字段值可能是数字（例如 Clash YAML 里 `- name: 123`），
+			-- 数字和字符串直接比较会抛 "attempt to compare number with string"，
+			-- 整个节点列表页就崩了；统一转成字符串再比。
+			av = tostring(av == nil and "" or av)
+			bv = tostring(bv == nil and "" or bv)
+		end
 		if av == bv then return false end
 		if desc then return av > bv else return av < bv end
 	end)
@@ -157,6 +164,19 @@ function M.rename(node, new_name)
 		node.name = new_name
 	end
 	return node
+end
+
+-- 逗号分隔列表 → 数组，逐项去空白。
+-- 与 split_keywords 的区别：不做小写化（group / template 名是大小写敏感的）。
+-- 原来各过滤器直接 gmatch("[^,]+") 不去空白，"vmess, vless" 会把 " vless"
+-- （带前导空格）当成一个协议名，于是只剩 1 个节点且不报错。
+local function split_list(s)
+	local out = {}
+	for item in (s or ""):gmatch("[^,]+") do
+		item = item:match("^%s*(.-)%s*$")
+		if item ~= "" then out[#out + 1] = item end
+	end
+	return out
 end
 
 -- 将关键词串拆分为数组（英文逗号/中文逗号/空白分隔），忽略空项，并统一小写
@@ -187,7 +207,7 @@ function M.apply_rules(nodes, rules)
 	-- 协议过滤
 	if rules.proto_filter and rules.proto_filter ~= "" then
 		local set = {}
-		for p in rules.proto_filter:gmatch("[^,]+") do set[p]=true end
+		for _, p in ipairs(split_list(rules.proto_filter)) do set[p] = true end
 		local out = {}
 		for _,n in ipairs(nodes) do
 			if set[n.proto] then out[#out+1]=n end
@@ -197,7 +217,7 @@ function M.apply_rules(nodes, rules)
 	-- 分组过滤
 	if rules.group_filter and rules.group_filter ~= "" then
 		local set = {}
-		for g in rules.group_filter:gmatch("[^,]+") do set[g]=true end
+		for _, g in ipairs(split_list(rules.group_filter)) do set[g]=true end
 		local out = {}
 		for _,n in ipairs(nodes) do
 			if set[n.group] then out[#out+1]=n end
@@ -207,7 +227,7 @@ function M.apply_rules(nodes, rules)
 	-- 标签包含
 	if rules.tags_include and rules.tags_include ~= "" then
 		local set = {}
-		for t in rules.tags_include:gmatch("[^,]+") do set[t]=true end
+		for _, t in ipairs(split_list(rules.tags_include)) do set[t]=true end
 		local out = {}
 		for _,n in ipairs(nodes) do
 			local match = false
@@ -221,7 +241,7 @@ function M.apply_rules(nodes, rules)
 	-- 模板过滤
 	if rules.template_filter and rules.template_filter ~= "" then
 		local set = {}
-		for tmpl in rules.template_filter:gmatch("[^,]+") do set[tmpl]=true end
+		for _, tmpl in ipairs(split_list(rules.template_filter)) do set[tmpl]=true end
 		local out = {}
 		for _,n in ipairs(nodes) do
 			if set[n.template] then out[#out+1]=n end
@@ -400,16 +420,103 @@ function M.parse_rename_rules(rule_str)
 end
 
 -- 展开模板：替换 {var} 占位符
+-- gsub 的**替换串**里 % 有特殊含义（%1 反向引用、%% 转义），而节点数据是不可信输入：
+-- 名字里带 "%" 时会被静默吞掉（"50% OFF" → "50 OFF"），更糟的是能拼出 %0，
+-- 在结果里产生 NUL 字节并一路写进节点名、写盘、下发到各订阅文件。
+-- 所以替换前必须先把值里的 % 转义成 %%。
 local function expand_template(template, n)
+	local function esc(v) return (tostring(v == nil and "" or v):gsub("%%", "%%%%")) end
 	local out = template
-	out = out:gsub("{server}", n.server or "")
-	out = out:gsub("{port}", tostring(n.port or ""))
-	out = out:gsub("{proto}", n.proto or "")
-	out = out:gsub("{name}", n.name or "")
-	out = out:gsub("{uuid}", n.uuid or "")
-	out = out:gsub("{password}", n.password or "")
-	out = out:gsub("{group}", n.group or "")
+	out = out:gsub("{server}", esc(n.server))
+	out = out:gsub("{port}", esc(n.port))
+	out = out:gsub("{proto}", esc(n.proto))
+	out = out:gsub("{name}", esc(n.name))
+	out = out:gsub("{uuid}", esc(n.uuid))
+	out = out:gsub("{password}", esc(n.password))
+	out = out:gsub("{group}", esc(n.group))
 	return out
+end
+
+-- 正则风格 → Lua pattern 的转义映射。
+-- Lua pattern 里转义符是 %，所以 \d 之类要改写；\d \D \w \W \s \S 与 Lua 的
+-- %d %D %w %W %s %S 一一对应。
+-- \b \B（词边界）在 Lua pattern 里**没有**对应写法：原来一律把 \ 换成 %，
+-- 于是 \b 变成了 %b —— 那是「成对匹配」（%bxy 匹配 x…y），语义完全不同，
+-- 而且经常直接抛错、被下面的 pcall 吞掉。这里按「无操作」处理。
+local REGEX_ESCAPE = {
+	d = "%d", D = "%D", w = "%w", W = "%W", s = "%s", S = "%S",
+	b = "", B = "",
+}
+
+-- 把「正则里是普通字符、Lua pattern 里却是元字符」的字符转义。
+-- 最要命的是 `-`：正则里在字符类外就是普通字符（"HK-01"、"Node-42"），
+-- Lua pattern 里却是「懒惰量词」，于是 `Node-(\d+)` 被解释成 Nod + e- + 数字，
+-- 永远匹配不上，而且不报错（pcall 也吞不掉，因为根本没抛错）。
+-- 字符类 [...] 内的 - 是范围（[a-z]），两边语义一致，保持原样。
+-- `\x` 按 REGEX_ESCAPE 映射（\d→%d，\b→空），其余转义字符按 Lua 写法 %x。
+local function regex_to_lua(pat)
+	local out, i, in_class = {}, 1, false
+	local n = #pat
+	while i <= n do
+		local c = pat:sub(i, i)
+		if c == "\\" and i < n then
+			local nx = pat:sub(i + 1, i + 1)
+			local m = REGEX_ESCAPE[nx]
+			out[#out + 1] = (m ~= nil) and m or ("%" .. nx)
+			i = i + 2
+		elseif c == "[" then
+			in_class = true; out[#out + 1] = c; i = i + 1
+		elseif c == "]" then
+			in_class = false; out[#out + 1] = c; i = i + 1
+		elseif c == "-" and not in_class then
+			out[#out + 1] = "%-"; i = i + 1
+		else
+			out[#out + 1] = c; i = i + 1
+		end
+	end
+	return table.concat(out)
+end
+
+-- 把 `a|b` 拆成多个候选（**仅顶层** |）。
+-- 正则的「或」在 Lua pattern 里不存在，原来整个规则会静默不匹配。
+-- 只拆括号深度为 0、且不在字符类 [] 里的 |：
+--   * `[...]` 里的 | 是字面字符（Lua 的 [a|b] 匹配 a、| 或 b），拆开会破坏字符类
+--   * `(...)` 里的 | 属于分组内部。Lua pattern 的 () 只是捕获，没有「或」语义，
+--     拆开只会得到 `^(HK` / `US` / `JP)%-(.*)$` 这种残缺模式——比不拆更糟：
+--     每一段都匹配不上，还静默无提示。分组内的「或」明确不支持，按字面处理。
+local function split_alternatives(pat)
+	local alts, buf = {}, {}
+	local depth, in_class, i = 0, false, 1
+	local n = #pat
+	-- 必须是 while 而不是 for：下面遇到 % 转义序列要一次吃掉两个字符，
+	-- Lua 的数值 for 会在每轮重新赋值控制变量，循环体内改 i 不生效。
+	-- 也不用 goto（Lua 5.1 没有）。
+	while i <= n do
+		local c = pat:sub(i, i)
+		if c == "%" then
+			-- Lua 转义序列整体保留（regex_to_lua 已产出 %d / %- 这类两字符序列）
+			buf[#buf + 1] = c .. pat:sub(i + 1, i + 1)
+			i = i + 2
+		elseif c == "|" and depth == 0 and not in_class then
+			alts[#alts + 1] = table.concat(buf)
+			buf = {}
+			i = i + 1
+		else
+			if in_class then
+				if c == "]" then in_class = false end
+			elseif c == "[" then
+				in_class = true
+			elseif c == "(" then
+				depth = depth + 1
+			elseif c == ")" and depth > 0 then
+				depth = depth - 1
+			end
+			buf[#buf + 1] = c
+			i = i + 1
+		end
+	end
+	alts[#alts + 1] = table.concat(buf)
+	return alts
 end
 
 -- 按规则链式重命名节点（就地修改）
@@ -423,11 +530,16 @@ function M.rename_with_rules(nodes, rules)
 				n.name = expand_template(r.template, n)
 			elseif r.type == "regex" then
 				local name = n.name or ""
-				-- 正则风格 → Lua pattern：\d -> %d、$1 -> %1
-				local pat = (r.pattern or ""):gsub("\\", "%%")
+				-- 正则风格 → Lua pattern：\d -> %d、$1 -> %1、HK-01 里的 - 转义成 %-
+				local pat = regex_to_lua(r.pattern or "")
 				local repl = (r.replacement or ""):gsub("%$", "%%")
 				local ok, result = pcall(function()
-					return string.gsub(name, pat, repl)
+					-- 顶层 | 拆成多个候选依次替换（Lua pattern 没有「或」）
+					local s = name
+					for _, alt in ipairs(split_alternatives(pat)) do
+						s = s:gsub(alt, repl)
+					end
+					return s
 				end)
 				if ok then
 					n.name = result

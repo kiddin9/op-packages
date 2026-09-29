@@ -184,8 +184,12 @@ local function map_clash_node(p)
 	end
 
 	-- 保留其余字段（wireguard 的 private-key、peer-public-key 等）
+	-- 但 type 要排除：Clash 的 type 是协议判别字段（vmess/ss/trojan），
+	-- 已经在上面映射成 proto；原样拷进来会让节点多出一个 type，
+	-- 而 output_uri 把它当成 vmess 的 header type 写出（"type":"vmess"），
+	-- 生成客户端无法识别的 vmess:// 链接。
 	for k, v in pairs(p) do
-		if n[k] == nil then n[k] = v end
+		if k ~= "type" and n[k] == nil then n[k] = v end
 	end
 
 	return node.normalize(n)

@@ -155,5 +155,93 @@ ctl.action_local_create()
 check("no token still redirects", type(LAST_REDIRECT) == "string")
 check("no token no error banner", not has_err())
 
+-- ---------- §18 单节点保存：解析/写入失败必须可见 ----------
+-- 修复前 action_node_save 只在成功分支做事，其余情况一律静默重定向，
+-- 用户提交了坏数据却看到「已保存」的样子。
+local NODES = {}
+local WRITE_CALLS = 0
+local CORE_STUB = package.loaded["substore.core"]
+CORE_STUB.read_nodes = function() return NODES end
+CORE_STUB.write_nodes = function(_, ns)
+	WRITE_CALLS = WRITE_CALLS + 1
+	NODES = ns
+	return true
+end
+CORE_STUB.refresh_combos = function() end
+-- 真实的 merge_form_node 在 substore.core 里（会碰 /etc/substore），这里只要
+-- 「表单字段覆盖原节点」的语义即可
+CORE_STUB.merge_form_node = function(orig, form)
+	local out = {}
+	for k, v in pairs(orig or {}) do out[k] = v end
+	for k, v in pairs(form or {}) do out[k] = v end
+	return out
+end
+
+local VALID_NODE = '[{"type":"vmess","server":"1.2.3.4","port":"443","uuid":"u1"}]'
+
+reset()
+NODES = { { name = "old", proto = "vmess", server = "1.2.3.4", port = 443 } }
+WRITE_CALLS = 0
+FORM = { token = "t", id = "s00000001", idx = "1", content = VALID_NODE }
+ctl.action_node_save()
+check("node_save valid writes", WRITE_CALLS == 1)
+check("node_save valid has no err", not has_err())
+
+-- 解析失败：必须报错且不写盘
+reset()
+NODES = { { name = "old", proto = "vmess", server = "1.2.3.4", port = 443 } }
+WRITE_CALLS = 0
+FORM = { token = "t", id = "s00000001", idx = "1", content = "not json at all" }
+ctl.action_node_save()
+check("node_save bad json reports error", has_err())
+check("node_save bad json does not write", WRITE_CALLS == 0)
+
+-- 下标无效
+reset()
+NODES = { { name = "old" } }
+WRITE_CALLS = 0
+FORM = { token = "t", id = "s00000001", idx = "9", content = VALID_NODE }
+ctl.action_node_save()
+check("node_save bad idx reports error", has_err())
+check("node_save bad idx does not write", WRITE_CALLS == 0)
+
+-- 缺 idx
+reset()
+NODES = { { name = "old" } }
+WRITE_CALLS = 0
+FORM = { token = "t", id = "s00000001", content = VALID_NODE }
+ctl.action_node_save()
+check("node_save missing idx reports error", has_err())
+check("node_save missing idx does not write", WRITE_CALLS == 0)
+
+-- 空内容
+reset()
+NODES = { { name = "old" } }
+WRITE_CALLS = 0
+FORM = { token = "t", id = "s00000001", idx = "1", content = "" }
+ctl.action_node_save()
+check("node_save empty content reports error", has_err())
+check("node_save empty content does not write", WRITE_CALLS == 0)
+
+-- 写入失败
+reset()
+NODES = { { name = "old" } }
+WRITE_CALLS = 0
+CORE_STUB.write_nodes = function() WRITE_CALLS = WRITE_CALLS + 1; return false end
+FORM = { token = "t", id = "s00000001", idx = "1", content = VALID_NODE }
+ctl.action_node_save()
+check("node_save write failure reports error", has_err())
+check("node_save write failure surfaced reason", URLENC[#URLENC] == "写入节点数据失败")
+
+-- 无 token：不做任何事，也不报错
+reset()
+NODES = { { name = "old" } }
+WRITE_CALLS = 0
+FORM = { id = "s00000001", idx = "1", content = VALID_NODE }
+ctl.action_node_save()
+check("node_save no token redirects", type(LAST_REDIRECT) == "string")
+check("node_save no token no error banner", not has_err())
+check("node_save no token does not write", WRITE_CALLS == 0)
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -201,12 +201,17 @@ function action_delete()
 end
 
 -- 节点页返回链接：保留当前筛选参数
-local function back_to_nodes(http)
+-- 返回节点页。err 非空时把失败原因带到页面显示（§18：失败必须让用户看见，
+-- 不能「失败了却看起来像成功」）。与 back_to_list 同一套约定。
+local function back_to_nodes(http, err)
 	local id = http.formvalue("id") or ""
 	local qs = "?id=" .. luci.util.urlencode(id)
 	for _, k in ipairs({ "proto", "keyword", "group", "sort", "desc" }) do
 		local v = http.formvalue(k)
 		if v and v ~= "" then qs = qs .. "&" .. k .. "=" .. luci.util.urlencode(v) end
+	end
+	if err ~= nil and tostring(err) ~= "" then
+		qs = qs .. "&err=" .. luci.util.urlencode(tostring(err))
 	end
 	http.redirect(luci.dispatcher.build_url("admin", "services", "substore", "nodes") .. qs)
 end
@@ -221,16 +226,29 @@ function action_node_save()
 		local idx = tonumber(http.formvalue("idx") or "")
 		local content = http.formvalue("content") or ""
 		local nodes = core.read_nodes(id)
-		if idx and nodes[idx] and content ~= "" then
-			local res = parser.parse_local(content, "form")
-			local newn = res and res.nodes and res.nodes[1]
-			if newn then
-				nodes[idx] = core.merge_form_node(nodes[idx], newn)
-				if core.write_nodes(id, nodes) then
-					core.refresh_combos(id)
-				end
-			end
+		-- §18：任何一条失败路径都必须把原因带回页面。
+		-- 原来只在成功分支里做事，其余情况一律静默重定向，
+		-- 用户提交了坏数据却看到「已保存」的样子。
+		if not idx or not nodes[idx] then
+			back_to_nodes(http, "节点不存在或下标无效")
+			return
 		end
+		if content == "" then
+			back_to_nodes(http, "提交内容为空")
+			return
+		end
+		local res, perr = parser.parse_local(content, "form")
+		local newn = res and res.nodes and res.nodes[1]
+		if not newn then
+			back_to_nodes(http, perr or "表单数据解析失败")
+			return
+		end
+		nodes[idx] = core.merge_form_node(nodes[idx], newn)
+		if not core.write_nodes(id, nodes) then
+			back_to_nodes(http, "写入节点数据失败")
+			return
+		end
+		core.refresh_combos(id)
 	end
 	back_to_nodes(http)
 end

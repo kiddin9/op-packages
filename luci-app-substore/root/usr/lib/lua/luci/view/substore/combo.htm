@@ -35,7 +35,7 @@
 				<% for _, x in ipairs(srcs) do %>
 				<div style="margin:0.25em 0">
 					<input type="checkbox" id="src_<%=x.id%>" name="src_<%=x.id%>" value="1" <%=sel[x.id] and "checked" or ""%>/>
-					<label for="src_<%=x.id%>"><%=x.name%>（<%=x.node_count or 0%>）</label>
+					<label for="src_<%=x.id%>"><%=luci.util.pcdata(x.name or "")%>（<%=x.node_count or 0%>）</label>
 				</div>
 				<% end %>
 				<% if #srcs == 0 then %>

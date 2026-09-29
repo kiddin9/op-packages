@@ -96,11 +96,17 @@ function append_proxy_dns(config, dm, ctx) {
 	if (isEmpty(ctx.main_node))
 		return;
 
+	/* The user's DoH/DoT endpoint is the one server in this block whose
+	 * address is a hostname, so it is the one that needs the bootstrap
+	 * resolver; without a configured one it keeps resolving through
+	 * default-dns (the WAN resolver), exactly as before. */
+	const main_resolver = isEmpty(ctx.bootstrap_dns) ? 'default-dns' : 'bootstrap-dns';
+
 	/* Main DNS */
 	push(config.dns.servers, {
 		tag: 'main-dns',
 		domain_resolver: {
-			server: 'default-dns',
+			server: main_resolver,
 			strategy: (ctx.ipv6_support !== '1') ? 'ipv4_only' : null
 		},
 		detour: 'main-out',
@@ -113,6 +119,21 @@ function append_proxy_dns(config, dm, ctx) {
 			rule_set: 'direct-domain',
 			action: 'route',
 			server: (ctx.routing_mode === 'bypass_mainland_china') ? 'china-dns' : 'default-dns'
+		});
+
+	/* Everything on the proxy list resolves through the proxy path, in
+	 * every proxy mode - not just bypass_mainland_china.  The list is the
+	 * user's "this domain must not be answered by the domestic resolver"
+	 * escape hatch (Google Play's connect.googleapis.cn and friends), and
+	 * the routing half of it (route.uc pushes the same tag to main-out in
+	 * all of these modes) was already mode-agnostic.  It has to sit after
+	 * direct-domain so that a suffix present in both lists keeps the
+	 * bypass-mode precedence and stays predictable. */
+	if (length(ctx.proxy_domain_list))
+		push(config.dns.rules, {
+			rule_set: 'proxy-domain',
+			action: 'route',
+			server: 'main-dns'
 		});
 
 	/* Reject SVCB/HTTPS queries to avoid proxy DNS timeout on null domains */
@@ -146,13 +167,6 @@ function append_proxy_dns(config, dm, ctx) {
 			action: 'route',
 			server: 'default-dns'
 		});
-
-		if (length(ctx.proxy_domain_list))
-			push(config.dns.rules, {
-				rule_set: 'proxy-domain',
-				action: 'route',
-				server: 'main-dns'
-			});
 
 		push(config.dns.rules, {
 			rule_set: 'geosite-cn',
@@ -466,6 +480,39 @@ function initDns(config, ctx) {
 	};
 }
 
+/* Append the bootstrap resolver, if the user configured one.
+ *
+ * Every DNS server whose address is a *hostname* needs a domain_resolver
+ * before sing-box will start it, and that lookup is the one step nothing
+ * else can bootstrap: it has to work before any of the configured servers
+ * can answer.  `main-dns` is exactly that case - it is the user's DoH/DoT
+ * endpoint - and it used to borrow default-dns (the WAN/ISP resolver) for
+ * it, which is the single resolver a polluted or unreachable WAN takes down.
+ *
+ * The bootstrap server carries a plain IP, has no domain_resolver of its own
+ * and is never referenced by a DNS rule: it exists only as the target of the
+ * domain_resolver pointer, so there is no cycle for sing-box to reject.
+ * Nothing is emitted when the list is empty ("resolve through the WAN
+ * resolver"), which keeps an untouched configuration byte-identical.
+ *
+ * Only the first entry is used.  sing-box resolves a hostname through
+ * exactly one transport (`DomainResolveOptions.Server` is a single tag), and
+ * registering extra servers would not make them a fallback chain - it would
+ * only leave unused servers in the config.  The list form is kept because
+ * the option is a DynamicList in the UI and a value with several entries
+ * must not produce an unparseable address. */
+function append_bootstrap_dns(config, ctx) {
+	if (isEmpty(ctx.bootstrap_dns))
+		return;
+
+	push(config.dns.servers, {
+		tag: 'bootstrap-dns',
+		type: 'udp',
+		server: ctx.bootstrap_dns[0],
+		detour: ctx.self_mark ? 'direct-out' : null
+	});
+}
+
 /* Build the sing-box `dns` block. Mutates `config` and returns it for
  * chaining. Routing mode is determined by ctx.routing_mode: any non-
  * 'custom' mode follows the proxy path (the proxy-mode split inside the
@@ -473,10 +520,14 @@ function initDns(config, ctx) {
 export function build_dns(config, dm, ctx) {
 	initDns(config, ctx);
 
+	/* Custom mode has no main-dns and never resolves its own servers'
+	 * hostnames, so it has no bootstrap problem to solve. */
 	if (ctx.routing_mode === 'custom')
 		append_custom_dns(config, dm, ctx);
-	else
+	else {
+		append_bootstrap_dns(config, ctx);
 		append_proxy_dns(config, dm, ctx);
+	}
 
 	return config;
 };

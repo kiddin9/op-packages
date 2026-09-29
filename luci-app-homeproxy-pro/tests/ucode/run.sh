@@ -432,6 +432,13 @@ fi
 echo "== generator regression tests =="
 sh "$ROOT/tests/ucode/test_generators.sh" "$ROOT" "$WORK/generators" || FAILED=1
 
+echo "== proxy-domain DNS routing and DNS bootstrap =="
+# The generator suite truncates the resource lists and has no bootstrap option,
+# so it can see neither proxy_list.txt -> dns.rules (per proxy mode: the
+# routing half was always mode-agnostic, the DNS half was not) nor the
+# bootstrap resolver main-dns uses for its own hostname.
+sh "$ROOT/tests/ucode/test_dns_proxy_list.sh" "$ROOT" "$WORK/dns-proxy-list" || FAILED=1
+
 echo "== golden protocol snapshot =="
 sh "$ROOT/tests/ucode/test_golden_outbounds.sh" "$ROOT" "$WORK/golden" || FAILED=1
 

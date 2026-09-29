@@ -3282,7 +3282,7 @@
 					"kind": "Value",
 					"name": "dns_server",
 					"title": "DNS server",
-					"description": "Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.",
+					"description": "Resolves every domain that is not on the China DNS path, through the selected proxy node. Pick an overseas service: a domestic resolver answers these queries with polluted or NXDOMAIN results, which is what makes a foreign site fail to resolve while the proxy itself works. Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.",
 					"depends": [
 						{
 							"routing_mode": "custom",
@@ -3334,7 +3334,7 @@
 					"kind": "Value",
 					"name": "china_dns_server",
 					"title": "China DNS server",
-					"description": "The dns server for resolving China domains. Support UDP, TCP, DoH, DoQ, DoT.",
+					"description": "Resolves the domains on the China path, so it has to be a domestic service to get the correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT.",
 					"depends": [
 						[
 							"routing_mode",
@@ -3385,6 +3385,24 @@
 					"subsection": null,
 					"props": {
 						"rmempty": false
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "bootstrap_dns",
+					"title": "Bootstrap DNS server",
+					"description": "Resolver used to look up the DNS server's own hostname - only relevant when that address is a domain, as with a DoH/DoT endpoint. Leave empty to use the WAN resolver. Only the first entry is used.",
+					"depends": [
+						{
+							"routing_mode": "custom",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"subsection": null,
+					"props": {
+						"datatype": "ipaddr",
+						"modalonly": true
 					}
 				},
 				{

@@ -10,6 +10,55 @@ M.DEFAULT_TIMEOUT = 20
 M.MAX_REDIRECTS = 4
 
 -- ---------- 私网 / 保留地址判断 ----------
+
+-- 单段数值：十进制 / 八进制（前导 0）/ 十六进制（0x 前缀）
+-- 返回数值；不是数值写法返回 nil
+local function numeral(seg)
+	if seg:match("^0[xX]%x+$") then return tonumber(seg:sub(3), 16) end
+	if seg:match("^0%d+$") then return tonumber(seg:sub(2), 8) end
+	if seg:match("^%d+$") then return tonumber(seg, 10) end
+	return nil
+end
+
+-- 把 inet_aton 接受的各种数值型 IPv4 写法归一为点分十进制。
+-- curl / wget 都按 inet_aton 语义解析主机名，因此 SSRF 检查必须用同一套语义，
+-- 否则 "0177.0.0.1"（八进制 127.0.0.1）、"2130706433"（十进制）、"0x7f000001"（十六进制）、
+-- "127.1"（短写）会被 is_private_ipv4 当成公网地址而放行，实测这几种写法都能连到 127.0.0.1。
+-- 段数与点号数必须一致（拒绝 "1..2" 这类畸形写法）。
+-- 返回 "a.b.c.d"；不是数值型 IPv4 时返回 nil。
+local function normalize_ipv4(host)
+	local dots = select(2, host:gsub("%.", ""))
+	local parts = {}
+	for seg in host:gmatch("[^%.]+") do parts[#parts + 1] = seg end
+	if #parts ~= dots + 1 or #parts > 4 then return nil end
+
+	local vals = {}
+	for i, seg in ipairs(parts) do
+		local v = numeral(seg)
+		if not v then return nil end
+		vals[i] = v
+	end
+
+	-- inet_aton：前 k-1 段各 8 位，最后一段吃掉剩余位宽
+	local k = #vals
+	for i = 1, k - 1 do
+		if vals[i] > 255 then return nil end
+	end
+	if vals[k] >= 2 ^ (32 - 8 * (k - 1)) then return nil end
+
+	local n = 0
+	for i, v in ipairs(vals) do
+		local shift = (i < k) and (32 - 8 * i) or 0
+		n = n + v * 2 ^ shift
+	end
+
+	local o1 = math.floor(n / 2 ^ 24) % 256
+	local o2 = math.floor(n / 2 ^ 16) % 256
+	local o3 = math.floor(n / 2 ^ 8) % 256
+	local o4 = n % 256
+	return string.format("%d.%d.%d.%d", o1, o2, o3, o4)
+end
+
 local function is_private_ipv4(ip)
 	local a, b, c, d = ip:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
 	if not a then return false end
@@ -60,6 +109,18 @@ local function is_private(ip)
 	return is_private_ipv4(ip)
 end
 
+-- 粗校验：像不像一个 IPv6 字面量。
+-- 带 ":" 的主机并不都是 IPv6 —— parse_url 对 "127.0.0.1:" 这类「有冒号但端口为空」
+-- 的写法取不到端口，会把整个 "127.0.0.1:" 当主机名返回；它既不是合法域名，
+-- is_private_ipv6 也识别不出，于是被当成公网放行。实测 curl 会把它连到 127.0.0.1:80。
+-- 因此：含 ":" 但不像 IPv6 的一律拒绝（fail-closed）。
+local function looks_like_ipv6(h)
+	if not h:match("^[%x:%.]+$") then return false end
+	if select(2, h:gsub(":", "")) < 2 then return false end
+	if h:find("::.*::") then return false end -- "::" 最多出现一次
+	return true
+end
+
 -- ---------- URL 解析 ----------
 function M.parse_url(url)
 	url = util.trim(url or "")
@@ -67,7 +128,20 @@ function M.parse_url(url)
 	if not scheme then return nil, "无效 URL" end
 	scheme = scheme:lower()
 	if scheme ~= "http" and scheme ~= "https" then return nil, "仅支持 http/https" end
-	local hostport = rest:gsub("/.*$", "")
+	-- 主机部分到第一个 / ? # 为止（RFC 3986）。只剥 "/" 是不够的：
+	-- "http://127.0.0.1?a=1" 会剩下 "127.0.0.1?a=1"，它既不是合法主机名也不是
+	-- 数值型 IPv4，DNS 解析必然失败，而解析失败是放行的（fail-open），
+	-- 于是绕过 SSRF 检查；curl 实际连的是 127.0.0.1（路由器上的 LuCI 就是 :80）。
+	local hostport = rest:match("^[^/%?#]*") or ""
+	-- 剥掉 userinfo（user:pass@）：RFC 3986 里 userinfo 到**最后一个** @ 为止，
+	-- @ 之后才是主机。不剥的话 "http://evil@127.0.0.1/" 会把 "evil@127.0.0.1"
+	-- 当成主机名交给 check_public，DNS 解析失败即放行（fail-open），
+	-- 而 curl 实际连的是 127.0.0.1 —— 实测可复现。
+	local at = hostport:find("@", 1, true)
+	while at do
+		hostport = hostport:sub(at + 1)
+		at = hostport:find("@", 1, true)
+	end
 	local host, port
 	if hostport:sub(1, 1) == "[" then
 		local close = hostport:find("]", 1, true)
@@ -143,15 +217,50 @@ local function resolve(host)
 	return ips
 end
 
+-- 回环别名（/etc/hosts 常见写法），比较前会先去掉尾部点
+local LOOPBACK_NAMES = {
+	["localhost"] = true,
+	["localhost.localdomain"] = true,
+	["localhost4"] = true,
+	["localhost4.localdomain4"] = true,
+	["localhost6"] = true,
+	["localhost6.localdomain6"] = true,
+	["ip6-localhost"] = true,
+	["ip6-loopback"] = true,
+	["ip6-localnet"] = true,
+}
+
 -- SSRF 预检：拒绝 localhost / 私网 / 保留地址。返回 ok, reason
 function M.check_public(host)
-	host = util.trim(host or "")
+	host = util.trim(host or ""):lower()
 	if host == "" then return false, "空主机名" end
-	if host:match("^%d+%.%d+%.%d+%.%d+$") or host:find(":", 1, true) then
-		if is_private(host) then return false, "目标为内网/保留地址" end
+	-- userinfo 应已被 parse_url 剥掉；这里再挡一次。
+	-- "evil@127.0.0.1" 不是合法主机名，DNS 解析必然失败，而解析失败是放行的
+	-- （fail-open），于是会绕过检查 —— 实测该写法确实能连到 127.0.0.1。
+	if host:find("@", 1, true) then return false, "主机名含非法字符 @" end
+	-- 空白 / 百分号编码：主机名里都不合法（"127.0.0.1%00.example.com" 这类
+	-- 截断写法当前版本的 curl 会直接判 URL 非法，但不同版本行为不一，直接拒绝更稳）
+	if host:find("[%s%%]") then return false, "主机名含非法字符" end
+	-- 去掉尾部点："localhost." 与 "localhost" 指向同一台机器，
+	-- 不归一会被当成普通域名交给 DNS，解析失败时即放行。
+	host = host:gsub("%.$", "")
+	if host == "" then return false, "空主机名" end
+
+	if host:find(":", 1, true) then
+		if not looks_like_ipv6(host) then return false, "无效主机名" end
+		if is_private_ipv6(host) then return false, "目标为内网/保留地址" end
 		return true
 	end
-	if host:lower() == "localhost" then return false, "目标为 localhost" end
+
+	-- 数值型 IPv4（十进制 / 八进制 / 十六进制 / 短写）按 inet_aton 语义归一后再判私网
+	local norm = normalize_ipv4(host)
+	if norm then
+		if is_private_ipv4(norm) then return false, "目标为内网/保留地址" end
+		return true
+	end
+
+	if LOOPBACK_NAMES[host] then return false, "目标为 localhost" end
+
 	local ips = resolve(host)
 	if not ips then
 		-- 无 DNS 解析能力：放行，交由下载工具处理（尽力而为）
@@ -250,17 +359,20 @@ local function fetch_curl(url, parsed, opts)
 	local max, t = opts.max_size, opts.timeout
 	local proxy_arg = ""
 	if opts.proxy and opts.proxy ~= "" then
-		proxy_arg = string.format(" -x %q", opts.proxy)
+		proxy_arg = " -x " .. util.shq(opts.proxy)
 	end
+	-- 临时文件名带随机标记：固定路径会让两个并发下载（如两个订阅的 cron 同时触发，
+	-- 或手动更新撞上 cron）互相覆盖，A 订阅存下 B 的内容且都不报错。
+	local tag = util.rnd_hex(8)
 	local cur = url
 	for redirect = 0, M.MAX_REDIRECTS do
-		local tmp = "/tmp/substore_dl_" .. redirect .. ".tmp"
+		local tmp = "/tmp/substore_dl_" .. tag .. "_" .. redirect .. ".tmp"
 		local hdr = tmp .. ".hdr"
 		local errf = tmp .. ".err"
 		os.remove(tmp); os.remove(hdr); os.remove(errf)
 		local cmd = string.format(
-			"curl -sS -o %q --max-time %d --connect-timeout %d --max-redirs 0 --max-filesize %d -D %q -w \"%%{http_code}\"%s %q 2>%q",
-			tmp, t, math.min(t, 10), max, hdr, proxy_arg, cur, errf)
+			"curl -sS -o %s --max-time %d --connect-timeout %d --max-redirs 0 --max-filesize %d -D %s -w \"%%{http_code}\"%s %s 2>%s",
+			util.shq(tmp), t, math.min(t, 10), max, util.shq(hdr), proxy_arg, util.shq(cur), util.shq(errf))
 		local p = io.popen(cmd)
 		local code = p and p:read("*a") or ""
 		if p then p:close() end
@@ -268,7 +380,10 @@ local function fetch_curl(url, parsed, opts)
 		if code == "" or code == "000" then
 			return nil, util.trim(util.read_file(errf) or "下载失败")
 		end
-		if code:match("^[23]%d%d$") then
+		-- 只把 2xx 当成功。写成 [23] 会把 3xx 也当成功，于是重定向响应体（通常是空的
+		-- 或一段 HTML）被当成订阅内容存下去：已存的节点被清空、node_count 归 0，
+		-- 而 error 仍是空字符串，列表页看不出任何异常。下面的重定向分支也因此永远不会执行。
+		if code:match("^2%d%d$") then
 			local size = util.file_size(tmp)
 			if size > max then return nil, "响应超过大小限制 (" .. max .. " 字节)" end
 			local content = util.read_file(tmp)
@@ -304,20 +419,26 @@ function M.wget_proxy_env(proxy)
 		return nil, "当前下载后端 (wget) 不支持 " .. string.upper(scheme) ..
 			" 代理，请安装 curl 或改用 http 代理"
 	end
-	return string.format("http_proxy=%q https_proxy=%q ", proxy, proxy)
+	return "http_proxy=" .. util.shq(proxy) .. " https_proxy=" .. util.shq(proxy) .. " "
 end
 
 local function fetch_wget(url, parsed, opts)
 	local max, t = opts.max_size, opts.timeout
 	local proxy_env, perr = M.wget_proxy_env(opts.proxy)
 	if not proxy_env then return nil, perr end
-	local tmp = "/tmp/substore_dl_wget.tmp"
+	local tag = util.rnd_hex(8)
+	local tmp = "/tmp/substore_dl_wget_" .. tag .. ".tmp"
 	local log = tmp .. ".log"
 	os.remove(tmp); os.remove(log)
-	-- -S 打印响应头（含整条重定向链），据此逐跳复检 SSRF；
+	-- -S 打印响应头（含整条重定向链），据此复检 SSRF；
 	-- 日志与响应体分流：体写 tmp，链写 log
-	local cmd = proxy_env .. string.format("wget -S -q -T %d -O %q %q >%q 2>&1", t, tmp, url, log)
-	os.execute(cmd)
+	local cmd = proxy_env .. string.format("wget -S -q -T %d -O %s %s >%s 2>&1",
+		t, util.shq(tmp), util.shq(url), util.shq(log))
+	local rc = os.execute(cmd)
+	-- 退出码必须看：wget 失败时可能已经写下半截响应体，只判断 size == 0
+	-- 会把残缺内容当成下载成功。
+	-- Lua 5.1 的 os.execute 返回数字退出码，5.2+ 返回 true/nil, "exit", code，两者都兼容。
+	local exit_ok = (rc == true) or (type(rc) == "number" and rc == 0)
 	local logtext = util.read_file(log) or ""
 	os.remove(log)
 	local safe, reason = M.validate_redirect_chain(url, logtext)
@@ -327,6 +448,10 @@ local function fetch_wget(url, parsed, opts)
 	end
 	local size = util.file_size(tmp)
 	if size > max then os.remove(tmp); return nil, "响应超过大小限制 (" .. max .. " 字节)" end
+	if not exit_ok then
+		os.remove(tmp)
+		return nil, "下载失败（wget 退出码非 0）"
+	end
 	if size == 0 then os.remove(tmp); return nil, "下载失败或内容为空" end
 	local content = util.read_file(tmp)
 	os.remove(tmp)

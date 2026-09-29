@@ -69,6 +69,14 @@ function M.base64_url_decode(s)
 	return M.base64_decode(s)
 end
 
+-- shell 单引号转义。拼进 shell 命令行的**一切外部数据**都必须走这里。
+-- 不能用 string.format("%q")：它生成的是双引号字符串，而 /bin/sh 在双引号内
+-- 仍然会做 $() 和 `` 命令替换，所以 format("%q", "$(rm -rf /)") 会被真的执行。
+-- 单引号内除 ' 之外所有字符都是字面量，' 本身写作 '\'' 即可闭合再转义。
+function M.shq(s)
+	return "'" .. tostring(s or ""):gsub("'", "'\\''") .. "'"
+end
+
 -- 生成随机十六进制 token（用于下载链接访问控制）
 function M.rnd_hex(len)
 	len = len or 16
@@ -353,7 +361,7 @@ function M.atomic_write(path, content)
 end
 
 function M.ensure_dir(path)
-	os.execute("mkdir -p " .. string.format("%q", path))
+	os.execute("mkdir -p " .. M.shq(path))
 end
 
 -- ---------- 人性化格式 ----------

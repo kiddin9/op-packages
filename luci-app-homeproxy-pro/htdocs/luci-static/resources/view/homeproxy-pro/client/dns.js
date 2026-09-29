@@ -122,7 +122,10 @@ function renderDnsCache(ctx) {
 	s.tab('dns_cache', _('DNS Settings'));
 
 	o = s.taboption('dns_cache', form.Value, 'dns_server', _('DNS server'),
-		_('Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
+		_('Resolves every domain that is not on the China DNS path, through the selected proxy node. ' +
+		'Pick an overseas service: a domestic resolver answers these queries with polluted or ' +
+		'NXDOMAIN results, which is what makes a foreign site fail to resolve while the proxy itself works. ' +
+		'Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
 	o.value('wan', _('WAN DNS (read from interface)'));
 	o.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
 	o.value('208.67.222.222', _('Cisco Public DNS (208.67.222.222)'));
@@ -160,7 +163,10 @@ function renderDnsCache(ctx) {
 	}
 
 	o = s.taboption('dns_cache', form.Value, 'china_dns_server', _('China DNS server'),
-		_('The dns server for resolving China domains. Support UDP, TCP, DoH, DoQ, DoT.'));
+		_('Resolves the domains on the China path, so it has to be a domestic service to get the ' +
+		'correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case ' +
+		'a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. ' +
+		'Support UDP, TCP, DoH, DoQ, DoT.'));
 	o.value('wan', _('WAN DNS (read from interface)'));
 	o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
 	o.value('210.2.4.8', _('CNNIC Public DNS (210.2.4.8)'));
@@ -197,6 +203,20 @@ function renderDnsCache(ctx) {
 		_('When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.'));
 	o.depends('routing_mode', 'bypass_mainland_china');
 	o.rmempty = false;
+
+	/* The DNS server above is the DoH/DoT endpoint, and it is the one server
+	 * in the generated configuration whose address is a hostname: it has to
+	 * be resolved before it can answer anything.  Left empty, that lookup
+	 * goes through the WAN resolver (the pre-1.14 behaviour); naming a
+	 * resolver here decouples it from the ISP/upstream one.  Only one is
+	 * used - sing-box resolves a hostname through exactly one server. */
+	o = s.taboption('dns_cache', form.DynamicList, 'bootstrap_dns', _('Bootstrap DNS server'),
+		_('Resolver used to look up the DNS server\'s own hostname - only relevant when that address ' +
+		'is a domain, as with a DoH/DoT endpoint. Leave empty to use the WAN resolver. ' +
+		'Only the first entry is used.'));
+	o.datatype = 'ipaddr';
+	o.depends({'routing_mode': 'custom', '!reverse': true});
+	o.modalonly = true;
 
 	o = s.taboption('dns_cache', form.SectionValue, '_dns_cache', form.NamedSection, 'dns', 'homeproxy-pro');
 	o.depends({'routing_mode': 'custom', '!reverse': true});

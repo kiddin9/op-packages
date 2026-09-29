@@ -45,6 +45,12 @@ function M.detect(content)
 	if lower:match("%[interface%]") and lower:match("privatekey%s*=") then
 		return "wireguard-conf"
 	end
+	-- Surge / Loon：必须排在下面的 URI 兜底判断之前。
+	-- Surge 配置头部的 "#!MANAGED-CONFIG https://…" 含 "://"，排在后面会被判成 uri，
+	-- 于是整份订阅解析出 0 个节点，且因为 parse 返回的是合法表，同步还会报成功。
+	if parser_surge.is_config(content) then return "surge" end
+	-- JSON 数组（节点数组）：必须排在 .conf 判断之后，否则 "[Interface]" 会被当成数组
+	if stripped:sub(1, 1) == "[" then return "json" end
 	if stripped:find("vmess://", 1, true) or stripped:find("vless://", 1, true)
 		or stripped:find("trojan://", 1, true) or stripped:find("ssr://", 1, true)
 		or stripped:find("ss://", 1, true) or content:find("://", 1, true) then
@@ -121,11 +127,17 @@ local function parse_ss(body)
 	return out
 end
 
--- SSR 参数值可能为 base64url、标准 base64 或纯文本：优先 base64url 解码，失败回退 URL 解码
+-- SSR 参数值可能为 base64url、标准 base64 或纯文本：优先 base64url 解码，失败回退 URL 解码。
+-- util.base64_url_decode 永远不会「失败」——它把非 base64 字符直接剔掉再解码，
+-- 所以纯文本也会解出乱码字节而不是空串，原来的 `if v ~= ""` 回退分支根本不可达，
+-- 节点名 / obfsparam / group 会被解成乱码（并写盘、下发）。
+-- 可靠的判据是往返一致性：合法 base64url 重新编码后与原文逐字符相同，纯文本不会。
 local function b64u_decode(s)
 	s = s or ""
 	local v = util.base64_url_decode(s)
-	if v ~= "" then return v end
+	if v ~= "" and util.base64_url_encode(v) == (s:gsub("=+$", "")) then
+		return v
+	end
 	return util.url_decode(s)
 end
 
@@ -206,6 +218,13 @@ local function parse_vless(uri, body)
 	if query.fp then out.fp = query.fp end
 	if query.alpn then out.alpn = query.alpn end
 	if query.headerType then out.headerType = query.headerType end
+	-- path / host / flow 以前没有回读：output_uri 会写出这三个参数，读不回来就造成
+	-- 往返丢字段。丢 path/host 的后果尤其严重——Clash 输出会得到 network: ws 却没有
+	-- ws-opts.path，客户端请求 "/" 而非真实路径，节点直接连不上。
+	-- flow 是 XTLS Vision（xtls-rprx-vision）的必需参数，丢了同样握手失败。
+	if query.path then out.path = query.path end
+	if query.host then out.host = query.host end
+	if query.flow then out.flow = query.flow end
 	return out
 end
 
@@ -236,6 +255,12 @@ local function parse_trojan(uri, body)
 	if query.sni then out.sni = query.sni end
 	if query.security then out.security = query.security end
 	if query.alpn then out.alpn = query.alpn end
+	-- trojan 同样支持 ws/grpc 等传输：output_uri 会写出 type/path/host/fp，
+	-- 以前只回读 sni/security/alpn，造成往返丢字段
+	if query.type then out.net = query.type end
+	if query.path then out.path = query.path end
+	if query.host then out.host = query.host end
+	if query.fp then out.fp = query.fp end
 	return out
 end
 
@@ -267,6 +292,12 @@ local function parse_vmess(uri, body)
 		if query.type then out.net = query.type end
 		if query.security then out.security = query.security end
 		if query.sni then out.sni = query.sni end
+		if query.fp then out.fp = query.fp end
+		if query.alpn then out.alpn = query.alpn end
+		-- 同上：vmess 新版 URI 也带 host / path / headerType
+		if query.host then out.host = query.host end
+		if query.path then out.path = query.path end
+		if query.headerType then out.headerType = query.headerType end
 		return out
 	end
 	-- 经典格式：vmess://base64(json)
@@ -278,7 +309,7 @@ local function parse_vmess(uri, body)
 		proto = "vmess",
 		name = j.ps or (j.add .. ":" .. tostring(j.port)),
 		server = j.add, port = tonumber(j.port),
-		uuid = j.id, aid = tonumber(j.aid),
+		uuid = j.id, alterId = tonumber(j.aid),
 		net = j.net, type = j.type,
 		-- scy 是 vmess 加密方式（cipher），不是 TLS 层；TLS 由 tls 字段表达
 		-- （"tls" 表示启用，"" 表示不启用）
@@ -315,7 +346,17 @@ local function parse_hysteria2(uri, body)
 		password = password, raw = uri,
 	})
 	if query.sni then out.sni = query.sni end
-	if query.insecure ~= nil then out.insecure = query.insecure end
+	-- hysteria2 / hysteria 在 sing-box 与 mihomo 里都是 TLS-only，而 hy2 URI 不带
+	-- security 参数。不补上的话 output_singbox.build_tls 直接返回 nil，
+	-- sni / insecure 全部丢失，生成的 outbound 不可用。
+	out.security = "tls"
+	-- insecure 是 URI 参数名，模型里的权威字段是 skip-cert-verify
+	-- （parser_json_config 也把 sing-box 的 tls.insecure 映射到它）。
+	-- 两个都保留：skip-cert-verify 供各输出消费，insecure 供 URI 回写。
+	if query.insecure ~= nil then
+		out.insecure = query.insecure
+		out["skip-cert-verify"] = not (query.insecure == "0" or query.insecure == "false")
+	end
 	-- 混淆参数回读，保证导出→导入回环不丢字段
 	if query.obfs then out.obfs = query.obfs end
 	if query["obfs-password"] then out["obfs-password"] = query["obfs-password"] end
@@ -392,19 +433,61 @@ local function parse_wireguard(uri, body)
 	return out
 end
 
--- AmneziaWG 参数随版本演进，未知键直接丢弃：不猜语义，避免把上游新参数错误映射到 mihomo 字段。
--- 取值统一走 tonumber-or-raw：数值型（jc/s1/h1…）转数字；非数值载荷（i1..i5、h1 的 "a-b" 区间）保留字符串。
-local AWG_CONF_KEYS = {
-	"jc", "jmin", "jmax", "s1", "s2", "s3", "s4",
-	"h1", "h2", "h3", "h4",
-	"i1", "i2", "i3", "i4", "i5",
-	"j1", "j2", "j3", "itime",
+-- AmneziaWG 参数。字段名与类型逐字段核对自两份一手来源，不靠推断：
+--   .conf 键名 → amneziawg-tools src/config.c（process_line，大小写不敏感）
+--   规范名/类型 → mihomo adapter/outbound/wireguard.go 的 AmneziaWGOption（proxy tag）
+-- 内部规范名 = mihomo 的 proxy tag（小写连字符）：Clash 输出直接透传这些键名，
+-- 所以必须与 mihomo 一致；.conf 导出时再用显式映射换成 CamelCase。
+-- 未列入的键一律丢弃（不猜语义，§110）。
+local AWG_CONF_FIELDS = {
+	-- v1.0
+	jc = "jc", jmin = "jmin", jmax = "jmax",
+	s1 = "s1", s2 = "s2",
+	h1 = "h1", h2 = "h2", h3 = "h3", h4 = "h4",
+	-- v1.5
+	s3 = "s3", s4 = "s4",
+	i1 = "i1", i2 = "i2", i3 = "i3", i4 = "i4", i5 = "i5",
+	j1 = "j1", j2 = "j2", j3 = "j3", itime = "itime",
+	-- v3.0
+	headerprotectionkey = "header-protection-key",
+	contentpaddingaddition = "content-padding-addition",
+	rekeyaftertime = "rekey-after-time",
+	rekeytimeout = "rekey-timeout",
+	rejectaftertime = "reject-after-time",
+	keepalivetimeout = "keepalive-timeout",
+	maxhandshakeattempts = "max-handshake-attempts",
+	-- v3.1
+	randomtrailers = "random-trailers",
+	disablecookies = "disable-cookies",
 }
+
+-- 布尔字段（mihomo 侧类型为 bool）。amneziawg-tools 的 parse_bool 只认
+-- on/off（大小写不敏感）或十进制数（0 假、非 0 真）；true/false/yes/no 都是非法值。
+-- 非法值一律丢弃：留着会让 mihomo 解析该字段时报错。
+local AWG_BOOL_FIELDS = {
+	["random-trailers"] = true,
+	["disable-cookies"] = true,
+}
+
+-- on/off 或十进制数 → 布尔；其余返回 nil（非法值，丢弃）
+local function awg_bool(raw)
+	local s = tostring(raw or ""):lower()
+	if s == "on" then return true end
+	if s == "off" then return false end
+	if s:match("^%d+$") then return tonumber(s) ~= 0 end
+	return nil
+end
 
 -- wg-quick / AmneziaWG .conf 解析（[Interface] / [Peer] 分段，Key = Value）
 -- AmneziaWG 客户端导出的 .conf 即标准 wg-quick 格式 + Jc/Jmin/Jmax/S1/S2/H1..H4 等键
+-- 一个 .conf 可以含多个 [Peer]（wg-quick 的多对端隧道）。本项目的节点模型是
+-- 「一个节点 = 一个对端」，无法表达多对端隧道；旧实现把所有 [Peer] 写进同一个表，
+-- 后一段覆盖前一段，结果既丢掉前面的对端，又可能把 A 段的 PresharedKey 和
+-- B 段的 Endpoint 拼成一个并不存在的节点。这里改为每个 [Peer] 生成一个节点，
+-- 共享同一份 [Interface] 设置。返回 nodes 数组；失败返回 nil, err。
 local function parse_wireguard_conf(content)
-	local iface, peer = {}, {}
+	local iface = {}
+	local peers = {}
 	local section = nil
 	for line in content:gmatch("[^\r\n]+") do
 		local s = util.trim(line)
@@ -413,9 +496,15 @@ local function parse_wireguard_conf(content)
 		elseif s:sub(1, 1) == "[" then
 			local name = s:match("^%[%s*(.-)%s*%]")
 			name = name and name:lower() or ""
-			if name == "interface" then section = iface
-			elseif name == "peer" then section = peer
-			else section = nil end
+			if name == "interface" then
+				section = iface
+			elseif name == "peer" then
+				local p = {}
+				peers[#peers + 1] = p
+				section = p
+			else
+				section = nil
+			end
 		elseif section then
 			local k, v = s:match("^([^=]+)=(.*)$")
 			if k then
@@ -426,17 +515,12 @@ local function parse_wireguard_conf(content)
 		end
 	end
 
-	local host, port = util.split_hostport(peer["endpoint"] or "")
-	if not host or host == "" or not port then return nil, "bad wireguard conf: no endpoint" end
+	if #peers == 0 then return nil, "bad wireguard conf: no [Peer]" end
 
-	local out = {
+	-- [Interface] 由各节点共享
+	local common = {
 		proto = "wireguard",
-		server = host,
-		port = tonumber(port),
 		["private-key"] = iface["privatekey"],
-		["public-key"] = peer["publickey"],
-		["pre-shared-key"] = peer["presharedkey"],
-		["persistent-keepalive"] = tonumber(peer["persistentkeepalive"]),
 		["listen-port"] = tonumber(iface["listenport"]),
 		mtu = tonumber(iface["mtu"]),
 	}
@@ -446,20 +530,12 @@ local function parse_wireguard_conf(content)
 		a = util.trim(a)
 		if a ~= "" then
 			if a:find(":", 1, true) then
-				if out.ipv6 == nil then out.ipv6 = a end
+				if common.ipv6 == nil then common.ipv6 = a end
 			else
-				if out.ip == nil then out.ip = a end
+				if common.ip == nil then common.ip = a end
 			end
 		end
 	end
-
-	-- AllowedIPs 拆分数组
-	local allowed = {}
-	for a in (peer["allowedips"] or ""):gmatch("[^,]+") do
-		a = util.trim(a)
-		if a ~= "" then allowed[#allowed + 1] = a end
-	end
-	if #allowed > 0 then out["allowed-ips"] = allowed end
 
 	-- DNS 拆分：单值存字符串，多值存数组
 	local dns = {}
@@ -467,27 +543,66 @@ local function parse_wireguard_conf(content)
 		a = util.trim(a)
 		if a ~= "" then dns[#dns + 1] = a end
 	end
-	if #dns == 1 then out.dns = dns[1]
-	elseif #dns > 1 then out.dns = dns end
+	if #dns == 1 then common.dns = dns[1]
+	elseif #dns > 1 then common.dns = dns end
 
 	-- Reserved（部分客户端写法，逗号或空格分隔）
 	local reserved = {}
 	for a in (iface["reserved"] or ""):gmatch("[^,%s]+") do
 		reserved[#reserved + 1] = tonumber(a) or a
 	end
-	if #reserved > 0 then out.reserved = reserved end
+	if #reserved > 0 then common.reserved = reserved end
 
-	-- AmneziaWG 参数
+	-- AmneziaWG [Interface] 参数：按 AWG_CONF_FIELDS 映射成规范名
 	local awg = {}
-	for _, k in ipairs(AWG_CONF_KEYS) do
-		local raw = iface[k]
+	for ck, canon in pairs(AWG_CONF_FIELDS) do
+		local raw = iface[ck]
 		if raw ~= nil and raw ~= "" then
-			awg[k] = tonumber(raw) or raw
+			if AWG_BOOL_FIELDS[canon] then
+				local b = awg_bool(raw)
+				if b ~= nil then awg[canon] = b end
+			else
+				awg[canon] = tonumber(raw) or raw
+			end
 		end
 	end
-	if next(awg) then out["amnezia-wg-option"] = awg end
 
-	return node.normalize(out)
+	local nodes = {}
+	for _, p in ipairs(peers) do
+		local host, port = util.split_hostport(p["endpoint"] or "")
+		if not host or host == "" or not port then return nil, "bad wireguard conf: no endpoint" end
+
+		local out = {}
+		for k, v in pairs(common) do out[k] = v end
+		out.server = host
+		out.port = tonumber(port)
+		out["public-key"] = p["publickey"]
+		out["pre-shared-key"] = p["presharedkey"]
+		out["persistent-keepalive"] = tonumber(p["persistentkeepalive"])
+
+		-- AllowedIPs 拆分数组
+		local allowed = {}
+		for a in (p["allowedips"] or ""):gmatch("[^,]+") do
+			a = util.trim(a)
+			if a ~= "" then allowed[#allowed + 1] = a end
+		end
+		if #allowed > 0 then out["allowed-ips"] = allowed end
+
+		-- [Peer] 段的 AmneziaWG 参数（AdvancedSecurity）不在此处解析：
+		-- 它属于 [Peer] 段，而本项目的 amnezia-wg-option 只对应 [Interface] 段，
+		-- 合并进来会在导出时被写到 [Interface] 下（错误段落）。宁可不支持，
+		-- 也不要产出一份键位置错误的 .conf（§110）。
+		-- 每个节点各拿一份副本：共享同一个表会让后续修改一处影响全部节点。
+		if next(awg) then
+			local o = {}
+			for k, v in pairs(awg) do o[k] = v end
+			out["amnezia-wg-option"] = o
+		end
+
+		nodes[#nodes + 1] = node.normalize(out)
+	end
+
+	return nodes
 end
 
 -- 解析单条节点 URI，返回节点表或 nil, err
@@ -785,9 +900,9 @@ function M.parse(content)
 		local nodes = parser_surge.parse(content)
 		return { nodes = nodes, format = "surge" }
 	elseif format == "wireguard-conf" then
-		local n, err = parse_wireguard_conf(content)
-		if not n then return nil, err end
-		return { nodes = { n }, format = "wireguard-conf" }
+		local nodes, err = parse_wireguard_conf(content)
+		if not nodes then return nil, err end
+		return { nodes = nodes, format = "wireguard-conf" }
 	end
 	return nil, "无法识别的订阅格式"
 end
@@ -828,6 +943,49 @@ function M.parse_local(content, mode)
 				-- SSR 参数别名
 				if n.obfs_param == nil and n["obfs-param"] ~= nil then n.obfs_param = n["obfs-param"] end
 				if n.protocol_param == nil and n["protocol-param"] ~= nil then n.protocol_param = n["protocol-param"] end
+
+				-- 表单里所有输入框的值都是字符串，但统一模型里这几个字段是数组
+				-- （见 parse_wireguard_conf：AllowedIPs/Reserved/DNS 都拆成数组）。
+				-- 不归一的话，从 UI 编辑 WireGuard 节点会把数组写成标量字符串，
+				-- 而 mihomo / sing-box 的对应字段是列表类型，导出结果非法。
+				for _, lk in ipairs({ "allowed-ips", "reserved", "dns" }) do
+					if type(n[lk]) == "string" then
+						local arr = {}
+						for piece in n[lk]:gmatch("[^,%s]+") do
+							if piece ~= "" then arr[#arr + 1] = piece end
+						end
+						-- reserved 是端口保留位，语义上是数字
+						if lk == "reserved" then
+							for i, piece in ipairs(arr) do arr[i] = tonumber(piece) or piece end
+						end
+						if #arr == 0 then
+							n[lk] = nil
+						elseif #arr == 1 and lk == "dns" then
+							n[lk] = arr[1] -- 单值 DNS 保持字符串，与 .conf 解析一致
+						else
+							n[lk] = arr
+						end
+					end
+				end
+
+				-- amnezia-wg-option 在表单里是一个 JSON 文本框，提交上来是字符串。
+				-- 下游（output_wireguard_conf / output_clash_meta / output_uri）
+				-- 一律要求它是 table，字符串会被静默忽略 —— 即从 UI 编辑
+				-- WireGuard 节点会丢掉全部 AmneziaWG 参数。这里统一解码；
+				-- 解不开就明确报错，而不是留个字符串让它在导出时无声消失。
+				if type(n["amnezia-wg-option"]) == "string" then
+					local s = util.trim(n["amnezia-wg-option"])
+					if s == "" then
+						n["amnezia-wg-option"] = nil
+					else
+						local opt = util.json_decode(s)
+						if type(opt) ~= "table" then
+							return nil, "AmneziaWG 参数必须是合法的 JSON 对象"
+						end
+						n["amnezia-wg-option"] = opt
+					end
+				end
+
 				if n.name == nil or n.name == "" then
 					n.name = (n.server or "") .. ":" .. tostring(n.port or "")
 				end

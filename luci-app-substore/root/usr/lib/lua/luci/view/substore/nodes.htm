@@ -36,6 +36,16 @@
 	nodes = node.sort(nodes, sort_by, sort_desc)
 	local node_edit_base = luci.dispatcher.build_url('admin/services/substore/node_edit')
 %>
+<%
+	-- §18：控制器把失败原因放在 ?err= 上带回来，这里渲染成可见的提示。
+	-- pcdata 转义：err 可能包含用户提交的内容，不能直接当 HTML 输出。
+	local flash_err = http.formvalue("err")
+	if flash_err and flash_err ~= "" then
+%>
+<div class="cbi-section" style="border-left:4px solid #cc0000;padding:0.5em 0.75em;background:#fdf0f0;color:#cc0000">
+	<strong><%:操作失败%>:</strong> <%=luci.util.pcdata(flash_err)%>
+</div>
+<% end %>
 <h2><%:Nodes%> — <%=luci.util.pcdata(meta and meta.name or "")%></h2>
 <div style="margin:0.5em 0">
 	<a class="cbi-button cbi-button-reset" href="<%=luci.dispatcher.build_url('admin/services/substore/list')%>"><%:Back%></a>
@@ -56,7 +66,7 @@
 			<select name="group">
 				<option value=""><%:All%></option>
 				<% for _, g in ipairs(group_list) do %>
-					<option value="<%=luci.util.pcdata(g)%>" <%=group==g and "selected" or ""%>><%=g%></option>
+					<option value="<%=luci.util.pcdata(g)%>" <%=group==g and "selected" or ""%>><%=luci.util.pcdata(g)%></option>
 				<% end %>
 			</select>
 		</label>

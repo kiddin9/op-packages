@@ -7,7 +7,7 @@ local parser = require("substore.parser")
 
 local M = {}
 
-M.version = "2.5.0"
+M.version = "2.5.1"
 M.DATA_DIR = "/etc/substore"
 M.LIST_FILE = M.DATA_DIR .. "/subscriptions.json"
 M.NODES_DIR = M.DATA_DIR .. "/nodes"
@@ -171,13 +171,18 @@ function M.generate_link(token, target, opts)
 	return content, ct, filename, nil
 end
 
+-- save_meta 补丁里的「清除」哨兵值。
+-- Lua 的 pairs 永远不会产出值为 nil 的键，所以补丁表里写 `k = nil` 等于什么都没写，
+-- 调用方无法表达「把这个字段删掉」。需要清除时传 M.CLEAR，save_meta 会还原成 nil。
+M.CLEAR = setmetatable({}, { __tostring = function() return "substore.CLEAR" end })
+
 function M.save_meta(id, patch)
 	if not id_is_valid(id) then return false, "非法 ID" end
 	local seq, items = load()
 	local meta = items[id]
 	if not meta then return false, "订阅不存在" end
 	for k, v in pairs(patch or {}) do
-		if v == nil then meta[k] = nil else meta[k] = v end
+		if v == nil or v == M.CLEAR then meta[k] = nil else meta[k] = v end
 	end
 	return save(seq, items)
 end
@@ -227,7 +232,7 @@ end
 
 -- 下载并解析订阅，写入节点文件并更新状态。成功返回 node_count，失败返回 nil, err
 function M.sync(id)
-	local log = function(msg) os.execute("logger -t luci-app-substore " .. string.format("%q", msg)) end
+	local log = function(msg) os.execute("logger -t luci-app-substore " .. util.shq(msg)) end
 	log("Sync start id="..tostring(id))
 	local meta = M.get(id)
 	if not meta then log("Sync fail: subscription not found"); return nil, "订阅不存在" end
@@ -313,7 +318,12 @@ function M.sync(id)
 
 	local ok = M.save_meta(id, {
 		node_count = #nodes, format = res.format, error = "", last_update = os.time(),
-		upload = ui and ui.upload, download = ui and ui.download, total = ui and ui.total, expire = ui and ui.expire,
+		-- 机场不再下发 subscription-userinfo 时必须把旧数值清掉，
+		-- 否则列表页会一直显示早已过期的流量/到期时间。用 M.CLEAR 表达「清除」。
+		upload = (ui and ui.upload) or M.CLEAR,
+		download = (ui and ui.download) or M.CLEAR,
+		total = (ui and ui.total) or M.CLEAR,
+		expire = (ui and ui.expire) or M.CLEAR,
 	})
 	if not ok then return nil, "更新状态失败" end
 	-- 源订阅更新后，刷新引用它的组合订阅
