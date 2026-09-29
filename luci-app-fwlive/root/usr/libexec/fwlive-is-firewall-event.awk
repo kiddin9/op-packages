@@ -103,11 +103,9 @@ function is_fw(s, action) {
 	if (s == "") return 0
 	if (non_fw_prefix(s)) return 0
 	action = detect_action(s)
-	if (has_kv(s, "SRC") && has_kv(s, "DST")) return 1
-	if ((has_kv(s, "IN") || has_kv(s, "OUT")) && (has_kv(s, "SRC") || has_kv(s, "DST") || has_kv(s, "PROTO") || has_kv(s, "SPT") || has_kv(s, "DPT"))) return 1
-	if (action != "UNKNOWN" && (has_kv(s, "IN") || has_kv(s, "OUT") || has_kv(s, "PROTO") || has_kv(s, "SRC") || has_kv(s, "DST"))) return 1
-	if (has_hint(s) && action != "UNKNOWN") return 1
-	if (has_hint(s) && (has_kv(s, "IN") || has_kv(s, "OUT") || has_kv(s, "SRC") || has_kv(s, "DST") || has_kv(s, "PROTO"))) return 1
+	if (((has_kv(s, "SRC") && has_kv(s, "DST")) || ((has_kv(s, "IN") || has_kv(s, "OUT")) && (has_kv(s, "SRC") || has_kv(s, "DST") || has_kv(s, "PROTO") || has_kv(s, "SPT") || has_kv(s, "DPT"))) || (action != "UNKNOWN" && (has_kv(s, "IN") || has_kv(s, "OUT") || has_kv(s, "PROTO") || has_kv(s, "SRC") || has_kv(s, "DST"))))) return 1
+	if ((has_hint(s) && action != "UNKNOWN")) return 1
+	if ((has_hint(s) && (has_kv(s, "IN") || has_kv(s, "OUT") || has_kv(s, "SRC") || has_kv(s, "DST") || has_kv(s, "PROTO")))) return 1
 	return 0
 }
 function utf8_prefix(s, max_bytes, out, i, c, width) {

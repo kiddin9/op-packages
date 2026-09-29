@@ -1,0 +1,43 @@
+{
+	"luci-app-homeproxy": {
+		"description": "Grant access to homeproxy configuration",
+		"read": {
+			"file": {
+				"/var/run/homeproxy/homeproxy.log": [ "read" ],
+				"/var/run/homeproxy/sing-box-c.log": [ "read" ],
+				"/var/run/homeproxy/sing-box-s.log": [ "read" ]
+			},
+			"ubus": {
+				"service": [ "list" ],
+				"luci.homeproxy": [
+					"acllist_read",
+					"connection_check",
+					"node_parse",
+					"resources_get_version",
+					"singbox_get_features",
+					"update_subscriptions_status"
+				]
+			},
+			"uci": [ "homeproxy" ]
+		},
+		"write": {
+			"file": {
+				"/tmp/homeproxy_cert_server_publickey.tmp": [ "write" ],
+				"/tmp/homeproxy_cert_server_privatekey.tmp": [ "write" ],
+				"/tmp/homeproxy_cert_client_ca.tmp": [ "write" ],
+				"/tmp/homeproxy_cert_client_ech_conf.tmp": [ "write" ]
+			},
+			"ubus": {
+				"luci.homeproxy": [
+					"acllist_write",
+					"certificate_write",
+					"log_clean",
+					"resources_update",
+					"singbox_generator",
+					"update_subscriptions"
+				]
+			},
+			"uci": [ "homeproxy" ]
+		}
+	}
+}

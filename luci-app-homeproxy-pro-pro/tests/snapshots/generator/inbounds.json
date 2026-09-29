@@ -1,0 +1,184 @@
+{
+	"s_vless_ws": {
+		"type": "vless",
+		"tag": "cfg-s_vless_ws-in",
+		"listen": "10.0.0.1",
+		"listen_port": 8443,
+		"users": [
+			{
+				"name": "cfg-s_vless_ws-server",
+				"uuid": "3af88561-9c69-4b19-8f7e-f08d580bc339"
+			}
+		],
+		"tls": {
+			"enabled": true,
+			"server_name": "a.example.com",
+			"alpn": "h2",
+			"min_version": "1.2",
+			"certificate_provider": {
+				"type": "acme",
+				"domain": [
+					"a.example.com"
+				],
+				"data_directory": "<HP_DIR>/certs",
+				"default_server_name": "a.example.com",
+				"email": "admin@example.com",
+				"provider": "letsencrypt",
+				"key_type": "p256"
+			}
+		},
+		"transport": {
+			"type": "ws",
+			"path": "/ws",
+			"headers": {
+				"Host": "a.example.com"
+			},
+			"max_early_data": 2048
+		}
+	},
+	"s_anytls": {
+		"type": "anytls",
+		"tag": "cfg-s_anytls-in",
+		"listen": "10.0.0.1",
+		"listen_port": 8444,
+		"padding_scheme": "stop=8",
+		"users": [
+			{
+				"name": "cfg-s_anytls-server",
+				"password": "secret"
+			}
+		],
+		"tls": {
+			"enabled": true,
+			"server_name": "b.example.com",
+			"certificate_provider": {
+				"type": "acme",
+				"domain": [
+					"b.example.com"
+				],
+				"data_directory": "<HP_DIR>/certs",
+				"default_server_name": "b.example.com",
+				"email": "admin@example.com",
+				"provider": "zerossl"
+			}
+		}
+	},
+	"s_hy2": {
+		"type": "hysteria2",
+		"tag": "cfg-s_hy2-in",
+		"listen": "10.0.0.1",
+		"listen_port": 8445,
+		"up_mbps": 100,
+		"down_mbps": 500,
+		"obfs": {
+			"type": "salamander",
+			"password": "obfspass"
+		},
+		"masquerade": "https://example.com",
+		"users": [
+			{
+				"name": "cfg-s_hy2-server",
+				"password": "secret"
+			}
+		],
+		"tls": {
+			"enabled": true,
+			"server_name": "c.example.com",
+			"certificate_provider": {
+				"type": "acme",
+				"domain": [
+					"c.example.com"
+				],
+				"data_directory": "<HP_DIR>/certs",
+				"default_server_name": "c.example.com",
+				"email": "admin@example.com",
+				"provider": "letsencrypt"
+			}
+		}
+	},
+	"s_trojan_grpc": {
+		"type": "trojan",
+		"tag": "cfg-s_trojan_grpc-in",
+		"listen": "10.0.0.1",
+		"listen_port": 8446,
+		"users": [
+			{
+				"name": "cfg-s_trojan_grpc-server",
+				"password": "secret"
+			}
+		],
+		"multiplex": {
+			"enabled": true,
+			"padding": true
+		},
+		"tls": {
+			"enabled": true,
+			"server_name": "d.example.com",
+			"certificate_provider": {
+				"type": "acme",
+				"domain": [
+					"d.example.com"
+				],
+				"data_directory": "<HP_DIR>/certs",
+				"default_server_name": "d.example.com",
+				"email": "admin@example.com",
+				"provider": "letsencrypt"
+			}
+		},
+		"transport": {
+			"type": "grpc",
+			"service_name": "gs"
+		}
+	},
+	"s_ss": {
+		"type": "shadowsocks",
+		"tag": "cfg-s_ss-in",
+		"listen": "10.0.0.1",
+		"listen_port": 8447,
+		"udp_timeout": "300s",
+		"network": "tcp",
+		"method": "aes-256-gcm",
+		"password": "secret",
+		"tls": null
+	},
+	"s_snell": {
+		"type": "snell",
+		"tag": "cfg-s_snell-in",
+		"listen": "::",
+		"listen_port": 8448,
+		"psk": "psk123456789012",
+		"version": 5,
+		"obfs_mode": "http",
+		"tls": null
+	},
+	"s_tuic": {
+		"type": "tuic",
+		"tag": "cfg-s_tuic-in",
+		"listen": "10.0.0.1",
+		"listen_port": 8449,
+		"congestion_control": "bbr",
+		"auth_timeout": "3s",
+		"heartbeat": "10s",
+		"users": [
+			{
+				"name": "cfg-s_tuic-server",
+				"password": "secret",
+				"uuid": "3af88561-9c69-4b19-8f7e-f08d580bc339"
+			}
+		],
+		"tls": {
+			"enabled": true,
+			"server_name": "e.example.com",
+			"certificate_provider": {
+				"type": "acme",
+				"domain": [
+					"e.example.com"
+				],
+				"data_directory": "<HP_DIR>/certs",
+				"default_server_name": "e.example.com",
+				"email": "admin@example.com",
+				"provider": "letsencrypt"
+			}
+		}
+	}
+}
