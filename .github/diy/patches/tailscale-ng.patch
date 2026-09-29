@@ -1,8 +1,8 @@
-diff --git a/po/zh_Hans/luci-app-tailscale-ng.po b/po/zh_Hans/luci-app-tailscale-ng.po
+diff --git a/luci-app-tailscale-ng/po/zh_Hans/luci-app-tailscale-ng.po b/luci-app-tailscale-ng/po/zh_Hans/luci-app-tailscale-ng.po
 new file mode 100644
 index 0000000..15796d9
 --- /dev/null
-+++ b/po/zh_Hans/luci-app-tailscale-ng.po
++++ b/luci-app-tailscale-ng/po/zh_Hans/luci-app-tailscale-ng.po
 @@ -0,0 +1,331 @@
 +# SPDX-License-Identifier: GPL-3.0-only
 +#
