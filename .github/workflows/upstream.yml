@@ -574,14 +574,16 @@ jobs:
         luci-theme-argon/htdocs/luci-static/argon/css/dark.css
         OLD="homeproxy"
         NEW="homeproxy-pro"
-        mv luci-app-homeproxy-pro/po/templates/homeproxy.pot luci-app-homeproxy-pro/po/templates/homeproxy-pro.pot 2>/dev/null || true
-        find luci-app-homeproxy-pro/po/ -name "homeproxy.po" -execdir mv homeproxy.po homeproxy-pro.po \; 2>/dev/null || true
-        find ./luci-app-homeproxy-pro/ -depth -name "*${OLD}*" | while IFS= read -r item; do
+        find ./luci-app-homeproxy-pro/* -depth -name "*${OLD}*" | while IFS= read -r item; do
             dir=$(dirname "$item")
             base=$(basename "$item")
             mv "$item" "$dir/${base//${OLD}/${NEW}}"
         done
-        sed -i 's/"title": "HomeProxy"/"title": "HomeProxy Pro"/g' luci-app-homeproxy-pro/root/usr/share/luci/menu.d/luci-app-homeproxy.json
+        find ./luci-app-homeproxy-pro/ -type f -exec sed -i \
+            -e "s/\b${OLD}\b/${NEW}/g" \
+            -e "s/${NEW}${NEW#${OLD}}/${NEW}/g" \
+            -e 's/"title": "HomeProxy"/"title": "HomeProxy Pro"/g' {} +
+
         while [[ ! -f /tmp/ok || ! -f /tmp/ok2 || ! -f /tmp/ok3 ]]; do
             echo "wait"
           sleep 1
