@@ -26,7 +26,7 @@ endif
 
 PKG_NAME:=meow
 PKG_VERSION:=$(MEOW_VERSION)
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 # 直接用上游 release 的 aarch64 静态 musl 二进制，不在 buildroot 内交叉编译 Rust
 PKG_SOURCE:=$(MEOW_TARBALL_FILE)
@@ -55,12 +55,23 @@ define Package/meow/description
  透明代理 / 网关模式需自行选中内核模块：kmod-nft-tproxy kmod-nft-socket
 endef
 
-# 预编译二进制：解包即可；上游 tarball 内部布局变化时自动定位二进制
+预编译二进制：解包后定位 meow 并安装到 $(PKG_BUILD_DIR)/meow
+
+注意 1：配方里的 shell 变量与命令替换必须写成 $$ 形式（$$BIN、$$(find ...)）。
+  写成单个 $ 时 make 会先做变量展开：$B 展开为空、$(find ...) 展开为空，
+  命令退化成 BIN=; ... install -m 0755 "IN" ...，报错 install: cannot stat 'IN'。
+
+注意 2：OpenWrt 的解包命令为 tar -C $(PKG_BUILD_DIR)/.. -xf -，不带
+  --strip-components，tarball 顶层目录会落在 $(PKG_BUILD_DIR) 的同级位置。
+  上游 release 顶层目录是 meow-v<ver>-aarch64-unknown-linux-musl；自建扁平
+  结构 tarball 的 meow 会直接落在 $(PKG_BUILD_DIR)/.. 下。故搜索范围必须
+  同时覆盖 $(PKG_BUILD_DIR) 与其父目录，否则会误报未找到 meow 二进制。
 define Build/Prepare
 	$(call Build/Prepare/Default)
 	if [ ! -f $(PKG_BUILD_DIR)/meow ]; then \
-		BIN=$$(find $(PKG_BUILD_DIR) -type f -name meow | head -n1); \
+		BIN=$$(find $(PKG_BUILD_DIR) $(PKG_BUILD_DIR)/.. -maxdepth 3 -type f -name meow 2>/dev/null | head -n1); \
 		[ -n "$$BIN" ] || { echo "ERROR: $(PKG_SOURCE) 内未找到 meow 二进制"; exit 1; }; \
+		echo "meow binary: $$BIN"; \
 		install -m 0755 "$$BIN" $(PKG_BUILD_DIR)/meow; \
 	fi
 endef
