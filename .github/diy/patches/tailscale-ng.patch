@@ -1,0 +1,337 @@
+diff --git a/po/zh_Hans/luci-app-tailscale-ng.po b/po/zh_Hans/luci-app-tailscale-ng.po
+new file mode 100644
+index 0000000..15796d9
+--- /dev/null
++++ b/po/zh_Hans/luci-app-tailscale-ng.po
+@@ -0,0 +1,331 @@
++# SPDX-License-Identifier: GPL-3.0-only
++#
++# LuCI for Tailscale (NG) - Simplified Chinese (简体中文) translation
++#
++# Extracted with: build/i18n-scan.pl from the openwrt/luci repository
++# Language: zh_CN / zh-cn
++msgid ""
++msgstr ""
++"Project-Id-Version: luci-app-tailscale-ng 0.1.1\n"
++"Report-Msgid-Bugs-To: \n"
++"POT-Creation-Date: 2026-08-15 00:00+0000\n"
++"PO-Revision-Date: 2026-08-15 00:00+0000\n"
++"Last-Translator: \n"
++"Language-Team: Chinese (Simplified) <zh-cn>\n"
++"Language: zh_CN\n"
++"MIME-Version: 1.0\n"
++"Content-Type: text/plain; charset=UTF-8\n"
++"Content-Transfer-Encoding: 8bit\n"
++"Plural-Forms: nplurals=1; plural=0;\n"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:199
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:618
++msgid "-- None --"
++msgstr "-- 无 --"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:587
++msgid "Accept DNS"
++msgstr "接受 DNS"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:588
++msgid "Accept DNS configuration from the control server."
++msgstr "接受来自控制服务器的 DNS 配置"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:601
++msgid "Accept Subnet Routes"
++msgstr "接受子网路由"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:602
++msgid "Accept subnet routes that other nodes advertise."
++msgstr "接受其他节点通告的子网路由"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:648
++msgid "Additional Flags"
++msgstr "附加参数"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:596
++msgid "Advertise Exit Node"
++msgstr "通告出口节点"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:606
++msgid "Advertised Routes"
++msgstr "通告路由"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:164
++msgid "Are you sure you want to log out and clean the local state?"
++msgstr "确定要注销并清除本地状态吗？"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:522
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:528
++msgid "Authentication"
++msgstr "认证"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:534
++msgid "Base URL of login (control) server."
++msgstr "登录（控制）服务器的基础 URL"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:283
++msgid "Checking login..."
++msgstr "正在检查登录状态..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:368
++msgid "Checking status..."
++msgstr "正在检查状态..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:355
++msgid "Click here to log in"
++msgstr "点击此处登录"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:131
++msgid "Command exited with code"
++msgstr "命令退出代码："
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:585
++msgid "DNS"
++msgstr ""
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:552
++msgid ""
++"Disconnect from login server, expire current login, and flush local state "
++"cache."
++msgstr "断开与登录服务器的连接，使当前登录失效并清除本地状态缓存"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:173
++msgid "Error:"
++msgstr "错误："
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:151
++msgid "Error: unable to load status data."
++msgstr "错误：无法加载状态数据"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:616
++msgid "Exit Node"
++msgstr "出口节点"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:646
++msgid "Extra"
++msgstr "其他"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:650
++msgid "Extra flags in format --flag=value. See %s for available options."
++msgstr "格式为 --flag=value 的附加参数。可用选项请参阅 %s"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:575
++msgid "Firewall Mode"
++msgstr "防火墙模式"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:560
++msgid "General"
++msgstr "常规"
++
++#: root/usr/share/rpcd/acl.d/luci-app-tailscale-ng.json:3
++msgid "Grant access to Tailscale NG configuration"
++msgstr "授予对 Tailscale NG 配置的访问权限"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:562
++msgid "Listen Port"
++msgstr "监听端口"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:387
++msgid "Loading..."
++msgstr "加载中..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:279
++msgid "Logged in"
++msgstr "已登录"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:281
++msgid "Logged out"
++msgstr "已注销"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:630
++msgid "Logging"
++msgstr "日志"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:167
++msgid "Logging out and cleaning state..."
++msgstr "正在注销并清除状态..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:634
++msgid "Logging program activities."
++msgstr "记录程序的活动日志"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:640
++msgid "Logging program errors and exceptions."
++msgstr "记录程序的错误和异常日志"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:533
++msgid "Login Server"
++msgstr "登录服务器"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:530
++msgid "Login Status"
++msgstr "登录状态"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:549
++msgid "Logout"
++msgstr "注销"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:546
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:550
++msgid "Logout and Clean"
++msgstr "注销并清理"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:363
++msgid "Manage in Admin Console"
++msgstr "在管理控制台中管理"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:514
++msgid "N/A"
++msgstr "不适用"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:391
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:707
++msgid "No output available. Service may not be running."
++msgstr "没有可用输出。服务可能未在运行"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:270
++msgid "Not running"
++msgstr "未运行"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:597
++msgid "Offer to be an exit node for outbound internet traffic."
++msgstr "作为出口节点为出站互联网流量提供服务"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:571
++msgid "Path to state file. WARNING: Changing this requires reauthentication."
++msgstr "状态文件的路径。警告：更改此设置需要重新认证"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:538
++msgid "Pre-authentication Key"
++msgstr "预认证密钥"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:313
++msgid "Restart"
++msgstr "重启"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:315
++msgid "Restarting Tailscale service..."
++msgstr "正在重启 Tailscale 服务..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:594
++msgid "Routing"
++msgstr "路由"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:273
++msgid "Running"
++msgstr "运行中"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:617
++msgid "Select an online machine to use as an exit node."
++msgstr "选择一台在线设备作为出口节点"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:577
++msgid "Select the firewall backend to use."
++msgstr "选择要使用的防火墙后端"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:366
++msgid "Service not running"
++msgstr "服务未运行"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:539
++msgid "Set the machine authorization key."
++msgstr "设置设备授权密钥"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:523
++msgid "Settings"
++msgstr "设置"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:326
++msgid "Start"
++msgstr "启动"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:504
++msgid "Start Tailscale service on boot."
++msgstr "开机时启动 Tailscale 服务"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:328
++msgid "Starting Tailscale service..."
++msgstr "正在启动 Tailscale 服务..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:569
++msgid "State File"
++msgstr "状态文件"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:524
++msgid "Status"
++msgstr "状态"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:638
++msgid "StdErr Logging"
++msgstr "标准错误日志"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:632
++msgid "StdOut Logging"
++msgstr "标准输出日志"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:319
++msgid "Stop"
++msgstr "停止"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:321
++msgid "Stopping Tailscale service..."
++msgstr "正在停止 Tailscale 服务..."
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:607
++msgid ""
++"Subnets to advertise to other Tailscale nodes, e.g. <code>192.168.1.0/24</"
++"code>."
++msgstr "向其他 Tailscale 节点通告的子网，例如 <code>192.168.1.0/24</code>"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:681
++msgid "Tailscale DNS Status"
++msgstr "Tailscale DNS 状态"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:503
++msgid "Tailscale Enabled"
++msgstr "启用 Tailscale"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:663
++msgid "Tailscale IP"
++msgstr ""
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:669
++msgid "Tailscale Interface"
++msgstr "Tailscale 接口"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:492
++#: root/usr/share/luci/menu.d/luci-app-tailscale-ng.json:3
++msgid "Tailscale NG"
++msgstr ""
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:675
++msgid "Tailscale Netcheck"
++msgstr ""
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:508
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:657
++msgid "Tailscale Status"
++msgstr "Tailscale 状态"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:512
++msgid "Tailscale Version"
++msgstr "Tailscale 版本"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:651
++msgid "Tailscale documentation"
++msgstr "Tailscale 文档"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:493
++msgid "Tailscale is a cross-platform and easy to use virtual LAN."
++msgstr "Tailscale 是一个跨平台且易于使用的虚拟局域网"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:564
++msgid "UDP port to listen on for WireGuard and peer-to-peer traffic."
++msgstr "用于监听 WireGuard 与点对点流量的 UDP 端口"
++
++#: htdocs/luci-static/resources/view/tailscale-ng/index.js:540
++msgid ""
++"Use a non-reusable auth key and disable key expiry for trusted machines via "
++"the provider admin console."
++msgstr "对于受信任的设备，请通过服务商管理控制台使用不可重复使用的认证密钥并禁用密钥过期"
