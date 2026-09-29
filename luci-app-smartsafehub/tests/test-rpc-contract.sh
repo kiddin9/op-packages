@@ -225,6 +225,16 @@ grep -Fq '"$SYSUPGRADE_BIN" --restore-backup "$BACKUP_FILE"' "$BACKUP_HELPER" ||
 	fail 'configuration restore helper must use the OpenWrt sysupgrade restore path'
 grep -Fq 'restore_is_busy && return 75' "$BACKUP_HELPER" || \
 	fail 'configuration restore must not run while firmware or management update work is active'
+grep -Fq 'BACKUP_DEVICE_MISMATCH=65' "$BACKUP_HELPER" || \
+	fail 'configuration restore must distinguish backups created for another SmartSafeHub device'
+grep -Fq 'FIRMWARE_METADATA_ARCHIVE_PATH="usr/share/smartsafehub/firmware.json"' "$BACKUP_HELPER" || \
+	fail 'configuration backup validation must reuse firmware.json as the source device identity'
+grep -Fq 'restore_installed_firmware_metadata "$saved_metadata"' "$BACKUP_HELPER" || \
+	fail 'configuration restore must restore the currently installed firmware metadata after sysupgrade extraction'
+grep -Fq 'SYSTEM_BACKUP_DEVICE_MISMATCH' "$BACKUP_MODULE" || \
+	fail 'configuration restore RPC must expose a same-device mismatch error'
+grep -Fq 'SYSTEM_BACKUP_DEVICE_UNVERIFIED' "$BACKUP_MODULE" || \
+	fail 'configuration restore RPC must fail closed when source device identity cannot be verified'
 grep -Fq 'current_build_id="$build_id"' "$BACKUP_HELPER" || \
 	fail 'configuration restore must re-sync current firmware identity after applying an older backup'
 

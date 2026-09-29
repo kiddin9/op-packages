@@ -4,6 +4,7 @@ set -eu
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 HELPER="$ROOT_DIR/root/usr/libexec/smartsafehub-backup"
+KEEP_FILE="$ROOT_DIR/root/lib/upgrade/keep.d/smartsafehub"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
 
@@ -14,11 +15,24 @@ fail() {
 
 make_backup() {
 	archive="$1"
+	device_code="${2:-iptime-ax3000sm}"
+	build_id="${3:-20260901T010203Z-oldbuild}"
 	root="$TMP_DIR/archive"
 	rm -rf "$root"
-	mkdir -p "$root/etc/config" "$root/etc/dropbear"
+	mkdir -p "$root/etc/config" "$root/etc/dropbear" "$root/usr/share/smartsafehub"
 	printf "config system 'system'\n\toption hostname 'SmartSafeHub'\n" > "$root/etc/config/system"
 	printf 'root:x:0:0:root:/root:/bin/ash\n' > "$root/etc/passwd"
+	printf '{"schema":1,"device_code":"%s","build_id":"%s","channel":"stable"}\n' \
+		"$device_code" "$build_id" > "$root/usr/share/smartsafehub/firmware.json"
+	tar -czf "$archive" -C "$root" etc usr
+}
+
+make_legacy_backup() {
+	archive="$1"
+	root="$TMP_DIR/legacy"
+	rm -rf "$root"
+	mkdir -p "$root/etc/config"
+	printf "config system 'system'\n\toption hostname 'Legacy'\n" > "$root/etc/config/system"
 	tar -czf "$archive" -C "$root" etc
 }
 
@@ -44,7 +58,7 @@ SYSUPGRADE_BIN="$TMP_DIR/sysupgrade"
 REBOOT_BIN="$TMP_DIR/reboot"
 UCI_BIN="$TMP_DIR/uci"
 JSONFILTER_BIN="$TMP_DIR/jsonfilter"
-FIRMWARE_METADATA_FILE="$TMP_DIR/firmware.json"
+FIRMWARE_METADATA_FILE="$TMP_DIR/installed/usr/share/smartsafehub/firmware.json"
 UPDATE_STATE_FILE="$TMP_DIR/updates.state"
 FIRMWARE_STATE_FILE="$TMP_DIR/firmware.state"
 UPDATE_LOCK_DIR="$TMP_DIR/updater.lock"
@@ -53,10 +67,19 @@ FIRMWARE_IMAGE_FILE="$TMP_DIR/firmware.bin"
 SYSUPGRADE_LOG="$TMP_DIR/sysupgrade.log"
 REBOOT_MARKER="$TMP_DIR/rebooted"
 UCI_LOG="$TMP_DIR/uci.log"
+CURRENT_BUILD_ID='20260929T010203Z-currentbuild'
+
+mkdir -p "$(dirname "$FIRMWARE_METADATA_FILE")"
+printf '{"schema":1,"device_code":"iptime-ax3000sm","build_id":"%s","channel":"stable"}\n' \
+	"$CURRENT_BUILD_ID" > "$FIRMWARE_METADATA_FILE"
 
 cat > "$SYSUPGRADE_BIN" <<EOF_SYSUPGRADE
 #!/bin/sh
-printf '%s\\n' "\$*" >> "$SYSUPGRADE_LOG"
+printf '%s\n' "\$*" >> "$SYSUPGRADE_LOG"
+if [ "\${1:-}" = '--restore-backup' ]; then
+	tar -xOzf "\$2" usr/share/smartsafehub/firmware.json > \
+		"\$SMARTSAFEHUB_BACKUP_FIRMWARE_METADATA_FILE"
+fi
 exit 0
 EOF_SYSUPGRADE
 cat > "$REBOOT_BIN" <<EOF_REBOOT
@@ -65,43 +88,80 @@ touch "$REBOOT_MARKER"
 EOF_REBOOT
 cat > "$UCI_BIN" <<EOF_UCI
 #!/bin/sh
-printf '%s\\n' "\$*" >> "$UCI_LOG"
+printf '%s\n' "\$*" >> "$UCI_LOG"
 exit 0
 EOF_UCI
 cat > "$JSONFILTER_BIN" <<'EOF_JSONFILTER'
 #!/bin/sh
-printf '%s\n' '20260915T010203Z-abcd1234'
+file=''
+expr=''
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		-i) file="$2"; shift 2 ;;
+		-e) expr="$2"; shift 2 ;;
+		*) shift ;;
+	esac
+done
+[ -f "$file" ] || exit 0
+case "$expr" in
+	'@.device_code') sed -n 's/.*"device_code"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$file" ;;
+	'@.build_id') sed -n 's/.*"build_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$file" ;;
+esac
 EOF_JSONFILTER
 chmod +x "$SYSUPGRADE_BIN" "$REBOOT_BIN" "$UCI_BIN" "$JSONFILTER_BIN"
 
+[ -f "$KEEP_FILE" ] || fail 'SmartSafeHub sysupgrade keep.d file must exist'
+grep -Fxq '/usr/share/smartsafehub/firmware.json' "$KEEP_FILE" || \
+	fail 'standard OpenWrt backups must carry the existing SmartSafeHub firmware metadata'
+
 make_backup "$BACKUP_FILE"
-run_helper validate || fail 'a normal OpenWrt-style configuration archive must validate'
+run_helper validate || fail 'a same-device OpenWrt-style configuration archive must validate'
+
+make_backup "$BACKUP_FILE" 'xiaomi-ax3000t'
+set +e
+run_helper validate >/dev/null 2>&1
+status=$?
+set -e
+[ "$status" -eq 65 ] || fail 'a backup from another device must fail with device mismatch status 65'
+
+make_legacy_backup "$BACKUP_FILE"
+set +e
+run_helper validate >/dev/null 2>&1
+status=$?
+set -e
+[ "$status" -eq 66 ] || fail 'a backup without firmware device metadata must fail closed with status 66'
 
 printf 'not-a-gzip' > "$BACKUP_FILE"
 if run_helper validate >/dev/null 2>&1; then
 	fail 'non-gzip input must be rejected'
 fi
 
-mkdir -p "$TMP_DIR/no-config/etc"
+mkdir -p "$TMP_DIR/no-config/usr/share/smartsafehub" "$TMP_DIR/no-config/etc"
+printf '{"device_code":"iptime-ax3000sm"}\n' > "$TMP_DIR/no-config/usr/share/smartsafehub/firmware.json"
 printf 'invalid\n' > "$TMP_DIR/no-config/etc/banner"
-tar -czf "$BACKUP_FILE" -C "$TMP_DIR/no-config" etc
+tar -czf "$BACKUP_FILE" -C "$TMP_DIR/no-config" etc usr
 if run_helper validate >/dev/null 2>&1; then
 	fail 'an archive without /etc/config content must be rejected'
 fi
 
-mkdir -p "$TMP_DIR/empty-config/etc/config"
-tar -czf "$BACKUP_FILE" -C "$TMP_DIR/empty-config" etc
+mkdir -p "$TMP_DIR/empty-config/etc/config" "$TMP_DIR/empty-config/usr/share/smartsafehub"
+printf '{"device_code":"iptime-ax3000sm"}\n' > "$TMP_DIR/empty-config/usr/share/smartsafehub/firmware.json"
+tar -czf "$BACKUP_FILE" -C "$TMP_DIR/empty-config" etc usr
 if run_helper validate >/dev/null 2>&1; then
 	fail 'an archive with only an empty /etc/config directory must be rejected'
 fi
 
-make_backup "$BACKUP_FILE"
-printf '{"build_id":"20260915T010203Z-abcd1234"}\n' > "$FIRMWARE_METADATA_FILE"
-run_helper restore || fail 'validated backup must restore successfully'
+make_backup "$BACKUP_FILE" 'iptime-ax3000sm' '20260901T010203Z-oldbuild'
+run_helper restore || fail 'validated same-device backup must restore successfully'
 grep -Fxq -- "--restore-backup $BACKUP_FILE" "$SYSUPGRADE_LOG" || \
 	fail 'restore must delegate to sysupgrade --restore-backup'
 [ ! -e "$BACKUP_FILE" ] || fail 'successful restore must delete the uploaded archive'
-grep -Fq 'set smartsafehub.firmware.current_build_id=20260915T010203Z-abcd1234' "$UCI_LOG" || \
+grep -Fq "\"build_id\":\"$CURRENT_BUILD_ID\"" "$FIRMWARE_METADATA_FILE" || \
+	fail 'restore must keep firmware.json from the currently installed image, not the backup source image'
+if grep -Fq '20260901T010203Z-oldbuild' "$FIRMWARE_METADATA_FILE"; then
+	fail 'backup source build metadata must not replace the installed firmware metadata'
+fi
+grep -Fq "set smartsafehub.firmware.current_build_id=$CURRENT_BUILD_ID" "$UCI_LOG" || \
 	fail 'restore must re-sync firmware build identity from the installed image metadata'
 grep -Fq 'commit smartsafehub' "$UCI_LOG" || \
 	fail 'firmware build identity re-sync must be committed'
@@ -113,7 +173,7 @@ done
 [ -e "$REBOOT_MARKER" ] || fail 'successful restore must schedule a reboot'
 
 : > "$SYSUPGRADE_LOG"
-rm -f "$REBOOT_MARKER" "$FIRMWARE_METADATA_FILE"
+rm -f "$REBOOT_MARKER"
 make_backup "$BACKUP_FILE"
 touch "$FIRMWARE_IMAGE_FILE"
 set +e
@@ -125,8 +185,11 @@ set -e
 [ -e "$BACKUP_FILE" ] || fail 'busy restore must keep the validated archive for retry'
 rm -f "$FIRMWARE_IMAGE_FILE"
 
-cat > "$SYSUPGRADE_BIN" <<'EOF_SYSUPGRADE_FAIL'
+cat > "$SYSUPGRADE_BIN" <<EOF_SYSUPGRADE_FAIL
 #!/bin/sh
+# Simulate a partially applied restore before sysupgrade reports failure.
+tar -xOzf "\$2" usr/share/smartsafehub/firmware.json > \
+	"\$SMARTSAFEHUB_BACKUP_FIRMWARE_METADATA_FILE"
 exit 1
 EOF_SYSUPGRADE_FAIL
 chmod +x "$SYSUPGRADE_BIN"
@@ -136,6 +199,8 @@ status=$?
 set -e
 [ "$status" -ne 0 ] || fail 'sysupgrade restore failure must propagate as an error'
 [ -e "$BACKUP_FILE" ] || fail 'failed restore must keep the archive for inspection or retry'
+grep -Fq "\"build_id\":\"$CURRENT_BUILD_ID\"" "$FIRMWARE_METADATA_FILE" || \
+	fail 'failed restore must also restore the installed firmware metadata after a partial write'
 [ ! -e "$REBOOT_MARKER" ] || fail 'failed restore must never reboot the device'
 
 run_helper discard || fail 'discard command must succeed'
@@ -144,4 +209,4 @@ run_helper discard || fail 'discard command must succeed'
 grep -Fq '/* | .. | ../* | */.. | */../*' "$HELPER" || \
 	fail 'backup validation must reject path traversal entries before restore'
 
-echo 'PASS: configuration backup validation, restore safety, firmware identity sync and reboot contract are consistent'
+echo 'PASS: configuration backup validation, same-device enforcement, metadata preservation and reboot safety are consistent'

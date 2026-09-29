@@ -8,6 +8,7 @@ EVENTS_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-events"
 LICENSE_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-license"
 SAFE_ADAPTER="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/safeshield-management.uc"
 HEALTH_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-health"
+ACTIVITY_RPC="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/activity.uc"
 CONFIG="$ROOT_DIR/root/etc/config/smartsafehub"
 INIT_SYNC="$ROOT_DIR/root/etc/init.d/smartsafehub-activity-sync"
 TMP_DIR="$(mktemp -d)"
@@ -18,7 +19,7 @@ fail() {
   exit 1
 }
 
-for file in "$SYNC_BIN" "$EVENTS_BIN" "$LICENSE_BIN" "$SAFE_ADAPTER" "$CONFIG" "$INIT_SYNC"; do
+for file in "$SYNC_BIN" "$EVENTS_BIN" "$LICENSE_BIN" "$SAFE_ADAPTER" "$ACTIVITY_RPC" "$CONFIG" "$INIT_SYNC"; do
   [ -f "$file" ] || fail "missing activity producer/sync component: $file"
 done
 
@@ -45,10 +46,18 @@ grep -Fq 'cloud_sync_enabled' "$SYNC_BIN" || fail 'activity sync must honor the 
 grep -Fq 'apply-config' "$SYNC_BIN" || fail 'activity sync must expose a runtime apply command for immediate toggle cleanup'
 grep -Fq 'activity_cloud_sync_enabled' "$LICENSE_BIN" || fail 'license status must not retain an activity credential while Cloud transfer is disabled'
 grep -Fq "option cloud_sync_enabled '0'" "$CONFIG" || fail 'fresh installs must default Cloud activity transfer to OFF'
-grep -Fq 'activity-cloud-sync-upgrade-enable' "$ROOT_DIR/Makefile" || fail 'package upgrade must preserve pre-r19 implicit Cloud sync'
-grep -Fq "smartsafehub.activity.cloud_sync_enabled='1'" "$ROOT_DIR/Makefile" || fail 'postinst must restore Cloud sync for pre-r19 upgrades'
+if grep -Fq 'activity-cloud-sync-upgrade-enable' "$ROOT_DIR/Makefile"; then
+  fail 'package install scripts must not retain the retired pre-r19 implicit Cloud-sync migration marker'
+fi
+if grep -Fq "smartsafehub.activity.cloud_sync_enabled='1'" "$ROOT_DIR/Makefile"; then
+  fail 'package install scripts must not force-enable Cloud activity sync during upgrades'
+fi
 grep -Fq "set smartsafehub.activity.cloud_sync_enabled='0'" "$INIT_SYNC" || fail 'dynamically created activity sections must default Cloud activity transfer to OFF'
-grep -Fq "1|true|on|yes|'') return 0" "$SYNC_BIN" || fail 'missing pre-r19 Cloud preference must preserve legacy enabled behavior on upgrade'
+grep -Fq "1|true|on|yes) return 0" "$SYNC_BIN" || fail 'activity sync must enable Cloud upload only for explicit positive values'
+grep -Fq "1|true|on|yes) return 0" "$EVENTS_BIN" || fail 'event outbox creation must require an explicit positive Cloud preference'
+grep -Fq "1|true|on|yes) return 0" "$LICENSE_BIN" || fail 'license credential caching must require an explicit positive Cloud preference'
+grep -Fq "return bool_config(ctx.get('smartsafehub', 'activity', 'cloud_sync_enabled'), false);" "$ACTIVITY_RPC" || \
+  fail 'activity RPC must interpret a missing Cloud preference as OFF'
 if grep -Fq '$base/licenses/status' "$SYNC_BIN" || grep -Fq '$base/licenses/resolve' "$SYNC_BIN" || grep -Fq 'post_json()' "$SYNC_BIN"; then
   fail 'activity sync must not duplicate license API calls; smartsafehub-license owns license status and activity credential acquisition'
 fi

@@ -52,9 +52,8 @@ cloud_sync_enabled() {
 		value="$("$UCI_BIN" -q get smartsafehub.activity.cloud_sync_enabled 2>/dev/null || true)"
 	fi
 	case "$value" in
-		0|false|off|no) return 1 ;;
-		1|true|on|yes|'') return 0 ;;
-		*) return 0 ;;
+		1|true|on|yes) return 0 ;;
+		*) return 1 ;;
 	esac
 }
 

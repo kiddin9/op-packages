@@ -187,8 +187,8 @@ README에는 제품을 빠르게 파악하는 데 필요한 핵심 기능만 유
 - 진단 파일에 Wi-Fi 비밀번호와 SafeShield 라이선스 키를 포함하지 않음
 - 진단 파일에는 호스트명, WAN IPv4와 Wi-Fi SSID가 포함될 수 있으므로 외부 전달 전 확인 필요
 - OpenWrt 표준 `sysupgrade` 설정 백업을 SmartSafeHub에서 직접 다운로드하고, SmartSafeHub 또는 기본 LuCI에서 만든 `.tar.gz` 백업을 업로드·검증한 뒤 복원 가능
-- 복원 archive는 16MB로 제한하고 gzip/tar 구조, `/etc/config` 포함 여부와 위험한 경로를 검사하며, 업데이트나 펌웨어 작업 중에는 복원을 차단
-- 설정 복원 후 현재 펌웨어 이미지의 `firmware.json`을 기준으로 `current_build_id`를 다시 동기화하고 자동 재부팅해 이전 백업의 펌웨어 identity가 남지 않도록 처리
+- 복원 archive는 16MB로 제한하고 gzip/tar 구조, `/etc/config` 포함 여부와 위험한 경로를 검사하며, 백업에 포함된 기존 `/usr/share/smartsafehub/firmware.json`의 `device_code`가 현재 장치와 일치할 때만 복원을 허용
+- 백업의 `firmware.json`은 장치 식별에만 사용하고 복원 후에는 현재 설치된 펌웨어의 metadata를 다시 고정한 뒤 `current_build_id`를 동기화하므로 오래된 백업이 현재 firmware identity를 되돌리지 않음
 - 설정 백업에는 Wi-Fi 비밀번호, 관리자 설정, VPN 키와 라이선스 정보 등 민감한 설정이 포함될 수 있으므로 안전한 위치에 보관해야 하며, 펌웨어 이미지와 설치 패키지 자체는 포함하지 않음
 - 데스크톱의 시스템 관리 영역은 `관리자 비밀번호`와 `설정 백업 및 복원`을 1:1 두 열로 배치하고 `시스템 도구`는 그 아래 전체 폭으로 표시합니다. 모바일에서는 모든 카드를 한 열로 쌓습니다.
 - 백업/복원 카드는 절반 폭에서도 읽기 쉽도록 `현재 설정 백업`과 `설정 복원`을 compact 세로 섹션으로 표시
@@ -202,7 +202,7 @@ README에는 제품을 빠르게 파악하는 데 필요한 핵심 기능만 유
 
 설정 UI에서는 예약 재부팅을 별도 시스템 관리 카드로 분리하지 않고 `시간 및 시간대` 카드의 하위 섹션으로 표시합니다. 시간대 변경과 예약 시각의 관계를 한 화면에서 확인할 수 있고, 데스크톱에서는 주기·요일·시각을 한 행에 배치하며 모바일에서는 세로로 자연스럽게 쌓입니다.
 
-설정 백업 다운로드는 LuCI의 인증된 `/cgi-bin/cgi-backup` 경로를 통해 OpenWrt `sysupgrade --create-backup` 형식을 그대로 사용합니다. 복원은 `/cgi-bin/cgi-upload`로 전용 `/tmp/smartsafehub/config-backup.tar.gz` 경로에만 업로드한 뒤 `/usr/libexec/smartsafehub-backup`이 archive 구조와 업데이트 충돌 여부를 확인하고 `sysupgrade --restore-backup`을 실행합니다. 따라서 SmartSafeHub 백업은 기본 LuCI/CLI와 상호 호환되며 별도의 독자 백업 포맷을 만들지 않습니다.
+설정 백업 다운로드는 LuCI의 인증된 `/cgi-bin/cgi-backup` 경로를 통해 OpenWrt `sysupgrade --create-backup` 형식을 그대로 사용합니다. `/lib/upgrade/keep.d/smartsafehub`는 이미 펌웨어에 존재하는 `/usr/share/smartsafehub/firmware.json`을 표준 백업에 포함해 별도의 장치 식별 파일을 만들지 않습니다. 복원은 `/cgi-bin/cgi-upload`로 전용 `/tmp/smartsafehub/config-backup.tar.gz` 경로에만 업로드한 뒤 `/usr/libexec/smartsafehub-backup`이 archive 구조와 `device_code` 일치 여부, 업데이트 충돌 여부를 확인하고 `sysupgrade --restore-backup`을 실행합니다. 백업 metadata는 검증에만 사용하며 복원 직후 현재 설치된 펌웨어의 `firmware.json`을 다시 복구합니다.
 
 SmartSafeHub가 생성하는 휘발성 런타임 상태와 임시 파일은 `/tmp/smartsafehub/` 한 디렉터리에 모읍니다. 업데이트 상태와 릴리즈 노트, 펌웨어 상태·다운로드 이미지, Health 진단/Reporter 상태, 예약 재부팅 상태, Wi-Fi 변경 lock, 설정 백업 업로드 파일이 이 경로를 공유하며 `updater/`나 `firmware/` 같은 추가 하위 분류 디렉터리는 만들지 않습니다. `/tmp` 기반이므로 재부팅 시 함께 초기화되고 flash 저장 공간에는 기록하지 않습니다. 각 helper와 init script가 필요할 때 디렉터리를 다시 생성합니다.
 
@@ -247,7 +247,7 @@ Health observer의 첫 주기는 WAN/Health 현재 상태를 baseline으로만 �
 
 공유기 웹사이트는 기존 로그인 세션과 RPC 시그니처를 그대로 유지하기 위해 인자 없는 read-only `smartsafehub.status` 응답에 최근 활동을 함께 포함해 읽고, 대시보드에는 최근 3건, `최근 활동` 전용 화면에는 최대 128건을 날짜별로 묶어 표시합니다. 대시보드의 compact 타임라인은 각 항목 사이에 작은 세로 간격을 두어 짧은 제목/설명이 연속해서 붙어 보이지 않도록 합니다. 저장된 원본에는 한국어 제목/설명을 넣지 않고 프론트엔드가 `event_type + metadata`를 렌더링합니다. 로컬 UI는 무료 장치 기능이며 **현재 부팅 이후의 휘발성 이력**을 제공합니다.
 
-Pro/Ultimate 장치에서는 공유기 `최근 활동` 화면에서 **Cloud 활동 기록 전송을 사용자가 직접 ON/OFF**할 수 있습니다. 새 설치는 `smartsafehub.activity.cloud_sync_enabled=0`으로 시작하지만, r18 이하 장치에는 이 옵션이 존재하지 않았으므로 업그레이드 시 누락된 값은 기존 동작을 보존하기 위해 ON으로 해석합니다. 사용자가 OFF로 저장한 값 `0`은 명시적 opt-out으로 취급합니다.
+Pro/Ultimate 장치에서는 공유기 `최근 활동` 화면에서 **Cloud 활동 기록 전송을 사용자가 직접 ON/OFF**할 수 있습니다. `smartsafehub.activity.cloud_sync_enabled=0`이 기본값이며, Cloud 전송은 사용자가 명시적으로 ON으로 저장한 경우에만 동작합니다. 옵션이 없거나 해석할 수 없는 값이면 OFF로 처리해 설정 누락만으로 활동 기록이 서버에 전송되지 않도록 합니다.
 
 Cloud 전송이 ON일 때 `/usr/libexec/smartsafehub-activity-sync`가 같은 이벤트의 Cloud outbox를 `/api/v1/activity/events`로 batch 전송합니다. Hub 1.4.86부터 `activity_history` upload credential은 artifact resolve와 분리된 `/api/v1/licenses/status`에서 발급되지만, **license status API의 단일 소유자는 `/usr/libexec/smartsafehub-license`** 입니다. `smartsafehub-license status-sync`가 기존 라이선스 reconciliation과 함께 `activity_history` token/URL을 검증해 `/tmp/smartsafehub/activity-sync-credential.json`에 원자적으로 저장하고, `smartsafehub-activity-sync`는 이 runtime credential을 소비해 upload/ack만 담당합니다. 따라서 activity sync가 license key/device fingerprint를 다시 읽거나 `/licenses/status`와 `/licenses/resolve`를 별도로 호출하지 않습니다.
 

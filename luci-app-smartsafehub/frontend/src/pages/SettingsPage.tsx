@@ -912,16 +912,18 @@ function AdministratorPasswordCard(props: { onChanged: () => void }) {
           <PasswordRequirement label="숫자 포함" met={policy.number} />
         </ul>
 
-        <PasswordInputField
-          autoComplete="new-password"
-          disabled={submitting}
-          id="smartsafehub-confirm-admin-password"
-          label="새 비밀번호 확인"
-          name="confirm-password"
-          onInput={setConfirmation}
-          placeholder="새 관리자 비밀번호 다시 입력"
-          value={confirmation}
-        />
+        <div class="pt-2">
+          <PasswordInputField
+            autoComplete="new-password"
+            disabled={submitting}
+            id="smartsafehub-confirm-admin-password"
+            label="새 비밀번호 확인"
+            name="confirm-password"
+            onInput={setConfirmation}
+            placeholder="새 관리자 비밀번호 다시 입력"
+            value={confirmation}
+          />
+        </div>
 
         {confirmation.length > 0 && (
           <p
@@ -943,9 +945,11 @@ function AdministratorPasswordCard(props: { onChanged: () => void }) {
           </p>
         )}
 
-        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
-          비밀번호는 현재 공유기에 직접 적용되며 외부 서버로 전송되지 않습니다.
-          변경 후 현재 로그인 세션은 종료됩니다.
+        <div class="pt-2">
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+            비밀번호는 현재 공유기에 직접 적용되며 외부 서버로 전송되지 않습니다.
+            변경 후 현재 로그인 세션은 종료됩니다.
+          </div>
         </div>
 
         <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">

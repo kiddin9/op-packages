@@ -8,9 +8,9 @@
  * Pure Map helpers — safe to unit-test on host without LuCI.
  */
 return baseclass.extend({
-	CACHE_MAX: 2000,
+	CACHE_MAX: 4000,
 	FAIL_TTL_MS: 60000,
-	FAIL_MAX: 2000,
+	FAIL_MAX: 4000,
 
 	/* Touch-on-write LRU: re-insert moves key to newest; evict oldest when over max. */
 	lruSet: function (map, key, value, max) {

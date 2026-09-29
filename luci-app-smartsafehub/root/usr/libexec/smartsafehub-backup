@@ -12,11 +12,14 @@ REBOOT_DELAY_S="${SMARTSAFEHUB_BACKUP_REBOOT_DELAY_S:-2}"
 UCI_BIN="${SMARTSAFEHUB_BACKUP_UCI_BIN:-/sbin/uci}"
 JSONFILTER_BIN="${SMARTSAFEHUB_BACKUP_JSONFILTER_BIN:-/usr/bin/jsonfilter}"
 FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_METADATA_FILE:-/usr/share/smartsafehub/firmware.json}"
+FIRMWARE_METADATA_ARCHIVE_PATH="usr/share/smartsafehub/firmware.json"
 UPDATE_STATE_FILE="${SMARTSAFEHUB_BACKUP_UPDATE_STATE_FILE:-$RUNTIME_DIR/updates.state}"
 FIRMWARE_STATE_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
 UPDATE_LOCK_DIR="${SMARTSAFEHUB_BACKUP_UPDATE_LOCK_DIR:-$RUNTIME_DIR/updater.lock}"
 FIRMWARE_LOCK_DIR="${SMARTSAFEHUB_BACKUP_FIRMWARE_LOCK_DIR:-$RUNTIME_DIR/firmware.lock}"
 FIRMWARE_IMAGE_FILE="${SMARTSAFEHUB_BACKUP_FIRMWARE_IMAGE_FILE:-$RUNTIME_DIR/firmware.bin}"
+BACKUP_DEVICE_MISMATCH=65
+BACKUP_DEVICE_UNVERIFIED=66
 
 numeric_or_zero() {
 	case "${1:-}" in
@@ -29,6 +32,28 @@ file_size() {
 	local value
 	value="$(wc -c < "$1" 2>/dev/null | tr -d '[:space:]')"
 	numeric_or_zero "$value"
+}
+
+safe_identity_value() {
+	case "${1:-}" in
+		'' | *[!A-Za-z0-9._~:+-]*) return 1 ;;
+		*) return 0 ;;
+	esac
+}
+
+json_value() {
+	local file="$1" expression="$2"
+	[ -f "$file" ] || return 0
+	[ -x "$JSONFILTER_BIN" ] || return 0
+	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+}
+
+current_device_code() {
+	local value
+
+	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.device_code')"
+	safe_identity_value "$value" || return 1
+	printf '%s' "$value"
 }
 
 archive_paths_are_safe() {
@@ -50,8 +75,54 @@ archive_paths_are_safe() {
 	[ "$has_config" -eq 1 ]
 }
 
+backup_firmware_metadata_archive_path() {
+	local list_file="$1" entry normalized found='' count=0
+
+	while IFS= read -r entry || [ -n "$entry" ]; do
+		normalized="${entry#./}"
+		if [ "$normalized" = "$FIRMWARE_METADATA_ARCHIVE_PATH" ]; then
+			found="$entry"
+			count=$((count + 1))
+		fi
+	done < "$list_file"
+
+	[ "$count" -eq 1 ] || return 1
+	printf '%s' "$found"
+}
+
+validate_backup_device() {
+	local list_file="$1" archive_path metadata_tmp metadata_size
+	local backup_device current_device
+
+	archive_path="$(backup_firmware_metadata_archive_path "$list_file" 2>/dev/null || true)"
+	[ -n "$archive_path" ] || return "$BACKUP_DEVICE_UNVERIFIED"
+
+	metadata_tmp="${BACKUP_FILE}.firmware-metadata.$$"
+	rm -f "$metadata_tmp"
+	if ! "$TAR_BIN" -xOzf "$BACKUP_FILE" "$archive_path" > "$metadata_tmp" 2>/dev/null; then
+		rm -f "$metadata_tmp"
+		return "$BACKUP_DEVICE_UNVERIFIED"
+	fi
+
+	metadata_size="$(file_size "$metadata_tmp")"
+	if [ "$metadata_size" -le 0 ] || [ "$metadata_size" -gt 4096 ]; then
+		rm -f "$metadata_tmp"
+		return "$BACKUP_DEVICE_UNVERIFIED"
+	fi
+
+	backup_device="$(json_value "$metadata_tmp" '@.device_code')"
+	rm -f "$metadata_tmp"
+	safe_identity_value "$backup_device" || return "$BACKUP_DEVICE_UNVERIFIED"
+
+	current_device="$(current_device_code 2>/dev/null || true)"
+	safe_identity_value "$current_device" || return "$BACKUP_DEVICE_UNVERIFIED"
+
+	[ "$backup_device" = "$current_device" ] || return "$BACKUP_DEVICE_MISMATCH"
+	return 0
+}
+
 validate_backup() {
-	local size list_file
+	local size list_file device_status=0
 
 	[ -f "$BACKUP_FILE" ] && [ ! -L "$BACKUP_FILE" ] || return 1
 	size="$(file_size "$BACKUP_FILE")"
@@ -68,7 +139,9 @@ validate_backup() {
 		return 1
 	fi
 
+	validate_backup_device "$list_file" || device_status=$?
 	rm -f "$list_file"
+	[ "$device_status" -eq 0 ] || return "$device_status"
 	return 0
 }
 
@@ -121,7 +194,7 @@ sync_firmware_identity() {
 	[ -x "$JSONFILTER_BIN" ] || return 0
 	[ -x "$UCI_BIN" ] || return 0
 
-	build_id="$($JSONFILTER_BIN -i "$FIRMWARE_METADATA_FILE" -e '@.build_id' 2>/dev/null || true)"
+	build_id="$(json_value "$FIRMWARE_METADATA_FILE" '@.build_id')"
 	case "$build_id" in
 		'' | *[!A-Za-z0-9._~:+-]*) return 0 ;;
 	esac
@@ -130,17 +203,54 @@ sync_firmware_identity() {
 	"$UCI_BIN" -q commit smartsafehub 2>/dev/null || true
 }
 
+save_installed_firmware_metadata() {
+	local output_file="$1"
+	[ -f "$FIRMWARE_METADATA_FILE" ] && [ ! -L "$FIRMWARE_METADATA_FILE" ] || return 1
+	cp "$FIRMWARE_METADATA_FILE" "$output_file" || return 1
+	[ "$(file_size "$output_file")" -gt 0 ] || return 1
+}
+
+restore_installed_firmware_metadata() {
+	local saved_file="$1" metadata_dir
+	[ -f "$saved_file" ] || return 1
+	metadata_dir="$(dirname "$FIRMWARE_METADATA_FILE")"
+	mkdir -p "$metadata_dir" || return 1
+	rm -f "$FIRMWARE_METADATA_FILE" || return 1
+	cp "$saved_file" "$FIRMWARE_METADATA_FILE" || return 1
+	chmod 0644 "$FIRMWARE_METADATA_FILE" || return 1
+}
+
 perform_restore() {
-	validate_backup || return 1
+	local validation_status=0 saved_metadata restore_status=0
+
+	validate_backup || validation_status=$?
+	[ "$validation_status" -eq 0 ] || return "$validation_status"
 	restore_is_busy && return 75
 
-	if ! "$SYSUPGRADE_BIN" --restore-backup "$BACKUP_FILE" >/dev/null 2>&1; then
+	# The backup contains firmware.json only as immutable source-device metadata
+	# for compatibility validation. Preserve the currently installed image's
+	# metadata so restoring an older backup cannot roll build_id/device metadata
+	# back to the source firmware.
+	saved_metadata="${RUNTIME_DIR}/firmware-metadata.before-restore.$$"
+	rm -f "$saved_metadata"
+	save_installed_firmware_metadata "$saved_metadata" || {
+		rm -f "$saved_metadata"
 		return 1
+	}
+
+	if ! "$SYSUPGRADE_BIN" --restore-backup "$BACKUP_FILE" >/dev/null 2>&1; then
+		restore_status=1
 	fi
 
-	# An older backup may contain the previous firmware build ID. Keep the
-	# restored user configuration, but re-pin the runtime firmware identity to
-	# the image that is actually installed before rebooting.
+	# Even a failed restore may already have written some files. Re-pin
+	# firmware.json before returning so the running image identity stays true.
+	if ! restore_installed_firmware_metadata "$saved_metadata"; then
+		rm -f "$saved_metadata"
+		return 1
+	fi
+	rm -f "$saved_metadata"
+	[ "$restore_status" -eq 0 ] || return "$restore_status"
+
 	sync_firmware_identity
 	rm -f "$BACKUP_FILE"
 

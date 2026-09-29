@@ -203,8 +203,8 @@ grep -Fq 'activityHistory?: ActivityHistory;' "$API" || \
 	fail 'frontend must tolerate a pre-reload status response without activityHistory'
 grep -Fq 'const activity = status.activityHistory ?? emptyActivityHistory();' "$API" || \
 	fail 'frontend must render an empty activity state while an older in-memory RPC handler is draining'
-grep -Fq 'enabled: activity.cloud.enabled ?? true' "$API" || \
-	fail 'pre-r19 activity responses must retain the legacy always-enabled Cloud behavior during rolling upgrades'
+grep -Fq 'enabled: activity.cloud.enabled ?? false' "$API" || \
+	fail 'activity responses without an explicit Cloud toggle must fail closed to OFF'
 grep -Fq 'const ACTIVITY_REFRESH_INTERVAL_MS = 60_000;' "$HOOK" || \
 	fail 'recent activity may refresh at a lightweight one-minute interval'
 grep -Fq 'refreshOnFocus: true' "$HOOK" || \

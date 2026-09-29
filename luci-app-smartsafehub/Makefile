@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-smartsafehub
-PKG_VERSION:=0.2.24
-PKG_RELEASE:=4
+PKG_VERSION:=0.2.25
+PKG_RELEASE:=5
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -36,15 +36,6 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 		echo "luci-app-smartsafehub: firmware update required for SmartSafeHub Reset Policy v1" >&2
 		exit 1
 	fi
-	# r18 and earlier had Cloud activity sync enabled implicitly whenever the
-	# device was eligible. Preserve that behavior across the r19 upgrade even
-	# if opkg replaces an otherwise-unmodified conffile with the new default-off
-	# package config. Fresh installs have no existing activity-sync helper and
-	# therefore keep the new explicit opt-in default.
-	if [ -x /usr/libexec/smartsafehub-activity-sync ] && ! uci -q get smartsafehub.activity.cloud_sync_enabled >/dev/null 2>&1; then
-		mkdir -p /tmp/smartsafehub
-		: > /tmp/smartsafehub/activity-cloud-sync-upgrade-enable
-	fi
 fi
 exit 0
 endef
@@ -54,10 +45,6 @@ define Package/luci-app-smartsafehub/postinst
 if [ -z "$${IPKG_INSTROOT}" ]; then
 	mkdir -p /tmp/smartsafehub
 	uci -q delete smartsafehub.firmware.check_enabled >/dev/null 2>&1 || true
-	if [ -f /tmp/smartsafehub/activity-cloud-sync-upgrade-enable ]; then
-		uci -q set smartsafehub.activity.cloud_sync_enabled='1' >/dev/null 2>&1 || true
-		rm -f /tmp/smartsafehub/activity-cloud-sync-upgrade-enable
-	fi
 	uci -q commit smartsafehub >/dev/null 2>&1 || true
 	if [ -x /etc/init.d/smartsafehub-events ]; then
 		/etc/init.d/smartsafehub-events enable

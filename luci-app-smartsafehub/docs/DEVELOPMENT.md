@@ -88,6 +88,7 @@ luci-app-smartsafehub/
 │   ├── usr/libexec/smartsafehub-health
 │   ├── usr/libexec/smartsafehub-license
 │   ├── usr/libexec/smartsafehub-maintenance
+│   ├── lib/upgrade/keep.d/smartsafehub
 │   ├── usr/libexec/smartsafehub-backup
 │   ├── usr/share/luci/menu.d/
 │   ├── usr/share/rpcd/acl.d/

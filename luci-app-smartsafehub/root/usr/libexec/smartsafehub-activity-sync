@@ -54,9 +54,8 @@ cloud_sync_enabled() {
 	local value
 	value="$(uci_get cloud_sync_enabled)"
 	case "$value" in
-		0|false|off|no) return 1 ;;
-		1|true|on|yes|'') return 0 ;;
-		*) return 0 ;;
+		1|true|on|yes) return 0 ;;
+		*) return 1 ;;
 	esac
 }
 

@@ -85,9 +85,9 @@ export async function fetchActivityHistory(): Promise<ActivityHistory> {
     ...activity,
     cloud: {
       ...activity.cloud,
-      // Pre-r19 RPC responses have no explicit toggle and always used Cloud
-      // sync when eligible. Preserve that behavior during rolling upgrades.
-      enabled: activity.cloud.enabled ?? true,
+      // Cloud activity upload is explicit opt-in. Older or partial RPC
+      // responses without the toggle must render as OFF rather than opt in.
+      enabled: activity.cloud.enabled ?? false,
     },
   };
 }

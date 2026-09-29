@@ -98,13 +98,12 @@ function bool_config(value, fallback) {
 function cloud_sync_enabled() {
 	const ctx = new_uci_cursor();
 	if (ctx == null) {
-		return true;
+		return false;
 	}
 
-	// Releases before r19 had no explicit toggle and always uploaded when paid.
-	// Treat a missing option as enabled for upgrade compatibility, while fresh
-	// r19 installations ship cloud_sync_enabled=0.
-	return bool_config(ctx.get('smartsafehub', 'activity', 'cloud_sync_enabled'), true);
+	// Cloud activity upload is explicit opt-in. Missing or malformed values
+	// must fail closed so local activity never starts uploading unexpectedly.
+	return bool_config(ctx.get('smartsafehub', 'activity', 'cloud_sync_enabled'), false);
 }
 
 function license_cloud_entitlement() {

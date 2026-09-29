@@ -82,6 +82,20 @@ grep -Fq 'autoComplete="current-password"' "$SETTINGS_PAGE" || \
 	fail 'current administrator password must expose password-manager autocomplete semantics'
 grep -Fq 'autoComplete="new-password"' "$SETTINGS_PAGE" || \
 	fail 'new administrator password fields must expose new-password autocomplete semantics'
+awk '
+	/aria-label="새 비밀번호 요구 사항"/ { in_requirements = 1 }
+	in_requirements && /<div class="pt-2">/ { has_spacing = 1 }
+	in_requirements && /id="smartsafehub-confirm-admin-password"/ { reached_confirmation = 1 }
+	END { exit !(has_spacing && reached_confirmation) }
+' "$SETTINGS_PAGE" || \
+	fail 'administrator password confirmation must keep extra spacing below the password requirement guidance'
+awk '
+	/새 비밀번호 확인 값이 일치하지 않습니다/ { after_confirmation_status = 1 }
+	after_confirmation_status && /<div class="pt-2">/ { has_notice_spacing = 1 }
+	after_confirmation_status && /비밀번호는 현재 공유기에 직접 적용되며 외부 서버로 전송되지 않습니다/ { reached_local_notice = 1 }
+	END { exit !(has_notice_spacing && reached_local_notice) }
+' "$SETTINGS_PAGE" || \
+	fail 'administrator password status feedback must keep extra spacing before the local-only notice'
 grep -Fq 'await changeRootPassword(currentPassword, newPassword);' "$SETTINGS_PAGE" || \
 	fail 'administrator password card must call the dedicated frontend API'
 grep -Fq 'await logoutLuciSession();' "$SETTINGS_PAGE" || \

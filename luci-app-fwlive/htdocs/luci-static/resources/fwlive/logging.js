@@ -293,13 +293,16 @@ function buildEmptyStateNodes(state, callbacks) {
 		nodes.push(
 			E('p', {}, [
 				_(
-					'Kernel netfilter log modules are missing. Install kmod-nf-log and kmod-nf-log6, then reload the firewall.'
+					'Install kmod-nf-log and kmod-nf-log6 with the command for your OpenWrt release, then reload the firewall.'
 				)
 			])
 		);
+		nodes.push(E('p', {}, [_('OpenWrt 24.10 and older (opkg):')]));
 		nodes.push(
 			E('p', {}, [E('code', {}, ['opkg update && opkg install kmod-nf-log kmod-nf-log6'])])
 		);
+		nodes.push(E('p', {}, [_('OpenWrt 25.12 and newer (apk):')]));
+		nodes.push(E('p', {}, [E('code', {}, ['apk -U add kmod-nf-log kmod-nf-log6'])]));
 		return nodes;
 	}
 

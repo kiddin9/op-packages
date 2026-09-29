@@ -1,31 +1,59 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Keep OpenWrt-generated system metadata such as compat_version intact.  Only
-# apply SmartSafeHub product defaults to individual UCI options instead of
-# replacing /etc/config/system from a common firmware overlay.
+# Preserve OpenWrt-generated metadata (including compat_version) and user
+# changes across firmware upgrades. SmartSafeHub only replaces values that are
+# still unset or at the stock defaults used on a fresh OpenWrt installation.
+uci_get() {
+	uci -q get "$1" 2>/dev/null || true
+}
+
+set_if_missing() {
+	local key="$1" value="$2"
+	[ -n "$(uci_get "$key")" ] || uci -q set "$key=$value" || exit 1
+}
+
 if ! uci -q get system.@system[0] >/dev/null 2>&1; then
 	uci -q add system system >/dev/null || exit 1
 fi
 
-uci -q set system.@system[0].hostname='SmartRouter' || exit 1
-uci -q set system.@system[0].zonename='Asia/Seoul' || exit 1
-uci -q set system.@system[0].timezone='UTC+9' || exit 1
-uci -q set system.@system[0].ttylogin='0' || exit 1
-uci -q set system.@system[0].log_size='64' || exit 1
-uci -q set system.@system[0].urandom_seed='0' || exit 1
+hostname="$(uci_get system.@system[0].hostname)"
+case "$hostname" in
+	''|OpenWrt)
+		uci -q set system.@system[0].hostname='SmartRouter' || exit 1
+		;;
+esac
+
+zonename="$(uci_get system.@system[0].zonename)"
+timezone="$(uci_get system.@system[0].timezone)"
+case "$zonename" in
+	''|UTC)
+		case "$timezone" in
+			''|UTC|UTC0)
+				uci -q set system.@system[0].zonename='Asia/Seoul' || exit 1
+				uci -q set system.@system[0].timezone='UTC+9' || exit 1
+				;;
+		esac
+		;;
+esac
+
+set_if_missing system.@system[0].ttylogin '0'
+set_if_missing system.@system[0].log_size '64'
+set_if_missing system.@system[0].urandom_seed '0'
 
 if ! uci -q get system.ntp >/dev/null 2>&1; then
 	uci -q set system.ntp='timeserver' || exit 1
 fi
 
-uci -q set system.ntp.enabled='1' || exit 1
-uci -q set system.ntp.enable_server='0' || exit 1
-uci -q delete system.ntp.server >/dev/null 2>&1 || true
-uci -q add_list system.ntp.server='0.openwrt.pool.ntp.org' || exit 1
-uci -q add_list system.ntp.server='1.openwrt.pool.ntp.org' || exit 1
-uci -q add_list system.ntp.server='2.openwrt.pool.ntp.org' || exit 1
-uci -q add_list system.ntp.server='3.openwrt.pool.ntp.org' || exit 1
+set_if_missing system.ntp.enabled '1'
+set_if_missing system.ntp.enable_server '0'
+
+if [ -z "$(uci_get system.ntp.server)" ]; then
+	uci -q add_list system.ntp.server='0.openwrt.pool.ntp.org' || exit 1
+	uci -q add_list system.ntp.server='1.openwrt.pool.ntp.org' || exit 1
+	uci -q add_list system.ntp.server='2.openwrt.pool.ntp.org' || exit 1
+	uci -q add_list system.ntp.server='3.openwrt.pool.ntp.org' || exit 1
+fi
 
 uci -q commit system || exit 1
 exit 0
