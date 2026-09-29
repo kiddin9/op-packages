@@ -572,9 +572,9 @@ jobs:
         sed -i -e "s/data-page=admin-dashboard/data-page=admin-status-dashboard/g" \
         -e '$a\.modal>pre,.modal>textarea{color: #ccc};' \
         luci-theme-argon/htdocs/luci-static/argon/css/dark.css
-        sed -i 's,https://raw.githubusercontent.com,https://gh-proxy.com/raw.githubusercontent.com,g' \
+        sed -i 's,https://raw.githubusercontent.com,https://v4.gh-proxy.org/https://raw.githubusercontent.com,g' \
         luci-app-homeproxy/root/etc/homeproxy/scripts/generate_client.uc
-        sed -i 's,https://raw.githubusercontent.com,https://gh-proxy.com/raw.githubusercontent.com,g' \
+        sed -i 's,https://raw.githubusercontent.com,https://v4.gh-proxy.org/https://raw.githubusercontent.com,g' \
         luci-app-homeproxy-pro/root/etc/homeproxy/scripts/generator/route.uc
         OLD="homeproxy"
         NEW="homeproxy-pro"
