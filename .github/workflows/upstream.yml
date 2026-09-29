@@ -582,7 +582,7 @@ jobs:
             base=$(basename "$item")
             mv "$item" "$dir/${base//${OLD}/${NEW}}"
         done
-        find . -type f ! -path '*/.git*' -exec sed -i \
+        find . -type f -exec sed -i \
             -e "s/\b${OLD}\b/${NEW}/g" \
             -e "s/${NEW}${NEW#${OLD}}/${NEW}/g" \
             -e 's/"title": "HomeProxy"/"title": "HomeProxy Pro"/g' {} +
