@@ -26,14 +26,6 @@
 			"path": "tailscale/interface"
 		}
 	},
-	"admin/vpn/tailscale/peers": {
-		"title": "Peers",
-		"order": 25,
-		"action": {
-			"type": "view",
-			"path": "tailscale/peers"
-		}
-	},
 	"admin/vpn/tailscale/log": {
 		"title": "Logs",
 		"order": 30,

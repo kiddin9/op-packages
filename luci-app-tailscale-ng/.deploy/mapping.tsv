@@ -1,0 +1,10 @@
+# local_path_from_deploy_dir<TAB+>remote_absolute_path<TAB+>mode
+# You can use multiple TABs between columns for visual alignment.
+
+../htdocs/luci-static/resources/view/tailscale-ng/index.js  	/www/luci-static/resources/view/tailscale-ng/index.js	644
+../root/etc/config/luci-app-tailscale-ng					    /etc/config/luci-app-tailscale-ng					    644
+../root/etc/hotplug.d/iface/40-luci-app-tailscale-ng		    /etc/hotplug.d/iface/40-luci-app-tailscale-ng		    755
+../root/etc/init.d/luci-app-tailscale-ng						/etc/init.d/luci-app-tailscale-ng						755
+../root/etc/uci-defaults/40_luci-app-tailscale-ng			    /etc/uci-defaults/40_luci-app-tailscale-ng			    755
+../root/usr/share/luci/menu.d/luci-app-tailscale-ng.json	    /usr/share/luci/menu.d/luci-app-tailscale-ng.json	    644
+../root/usr/share/rpcd/acl.d/luci-app-tailscale-ng.json 	    /usr/share/rpcd/acl.d/luci-app-tailscale-ng.json	    644

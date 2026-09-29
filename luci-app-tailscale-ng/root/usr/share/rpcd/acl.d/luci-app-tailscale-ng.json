@@ -1,0 +1,23 @@
+{
+	"luci-app-tailscale-ng": {
+		"description": "Grant access to Tailscale NG configuration",
+		"read": {
+			"file": {
+				"/sys/class/net/tailscale0/*": [ "read" ],
+				"/sbin/ip": [ "exec" ],
+				"/usr/sbin/tailscale": [ "exec" ]
+			},
+			"ubus": {
+				"luci": [ "getInitList", "setInitAction" ],
+				"service": [ "list" ]
+			},
+			"uci": [ "tailscale", "luci-app-tailscale-ng" ]
+		},
+		"write": {
+			"ubus": {
+				"luci": [ "setInitAction" ]
+			},
+			"uci": [ "tailscale", "luci-app-tailscale-ng" ]
+		}
+	}
+}

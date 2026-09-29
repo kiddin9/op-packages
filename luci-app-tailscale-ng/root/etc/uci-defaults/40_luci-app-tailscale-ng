@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# Enable service on boot and start it once to register procd triggers
+/etc/init.d/luci-app-tailscale-ng enable
+/etc/init.d/luci-app-tailscale-ng start >/dev/null 2>&1 || true
+
+rm -f /tmp/luci-indexcache
+exit 0

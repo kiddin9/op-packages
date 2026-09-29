@@ -9,7 +9,9 @@
 | `converter_*_test.lua` | 协议转换、URL 模板渲染 |
 | `node_*_test.lua` | 节点模型扩展、分组、重命名 |
 | `output_clash_meta_test.lua` | Clash.Meta / Mihomo YAML 生成 |
-| `output_formats_test.lua` | 13 种目标格式统一分发 |
+| `output_formats_test.lua` | 15 种目标格式统一分发 |
+| `output_full_config_test.lua` | sing-box / V2Ray 完整配置输出 |
+| `vmess_cipher_test.lua` | vmess 加密方式（cipher）与 TLS 层（security）不混淆 |
 | `core_link_test.lua` | 订阅 token + generate_link 链接生成 |
 | `parser_clash_yaml_test.lua` | Clash YAML 解析 |
 | `parser_json_config_test.lua` | sing-box / V2Ray / Clash JSON 解析 |
@@ -22,7 +24,7 @@
 1. 编译安装到目标设备
 2. 添加订阅 URL，手动更新，验证节点数
 3. 节点浏览：筛选、排序
-4. 输出生成：13 种格式下拉均可生成
+4. 输出生成：15 种格式下拉均可生成
 5. 订阅链接：复制 `/substore/download?token=...&target=ClashMeta` 到 Passwall/OpenClash 验证可拉取
 6. 输入源：导入 Clash YAML / sing-box JSON / V2Ray JSON / Surge / QX 配置验证解析
 7. 定时更新：修改 Settings cron，验证 `/etc/cron.d/substore` 生成

@@ -10,7 +10,7 @@ OpenWrt / ImmortalWrt 原生 LuCI 机场订阅管理工具。参考 Sub-Store �
 - 订阅管理：多订阅源增删改查、手动/定时更新、更新时间/节点数/状态展示
 - 节点管理：解析常见代理协议、查看/搜索/筛选/排序/重命名/去重
 - 订阅处理：按条件筛选、去重、重命名、排序、多订阅合并、生成客户端订阅
-- 输出格式：13 种全量实现（Plain JSON / Stash / Clash.Meta / Surfboard / Surge / SurgeMac / Loon / Egern / Shadowrocket / QX / sing-box / V2Ray / V2Ray URI）
+- 输出格式：15 种全量实现（Plain JSON / Stash / Clash.Meta / Clash 原版 / Surfboard / Surge / SurgeMac / Loon / Egern / Shadowrocket / QX / sing-box / V2Ray / V2Ray URI / WireGuard `.conf`）
 - 订阅链接：转换结果以订阅链接形式下发，供 Passwall / OpenClash 等拉取
 - LuCI 界面：订阅列表、编辑更新、节点查看、规则配置、输出复制、状态日志
 

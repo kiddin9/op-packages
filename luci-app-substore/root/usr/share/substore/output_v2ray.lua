@@ -72,7 +72,8 @@ function M.to_outbound(n, tag)
 			users = { {
 				id = n.uuid or "",
 				alterId = tonumber(n.alterId or n.aid or 0),
-				security = n.security or "auto",
+				-- users[].security 是 vmess 加密方式，取 cipher 而非 TLS 层
+				security = n.cipher or "auto",
 			} },
 		} }
 	elseif proto == "vless" then

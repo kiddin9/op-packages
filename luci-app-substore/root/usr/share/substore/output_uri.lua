@@ -39,12 +39,15 @@ function M.to_share_uri(n)
 			port = tostring(port),
 			id = n.uuid or "",
 			aid = tostring(n.alterId or n.aid or 0),
-			scy = n.security or "auto",
+			-- scy 是 vmess 加密方式，取 cipher 而非 TLS 层
+			scy = n.cipher or "auto",
 			net = n.net or n.network or "tcp",
 			type = n.type or n.headerType or "none",
 			host = n.host or "",
 			path = n.path or "",
-			tls = (n.tls and n.tls ~= "none" and n.tls ~= false) and "tls" or "",
+			-- 经典 vmess JSON 的 tls 字段是 TLS 层（"tls" 或 ""），
+			-- security 经 node.normalize 归一后是唯一权威来源
+			tls = (n.security and n.security ~= "none") and "tls" or "",
 		}
 		return "vmess://" .. util.base64_encode(util.json_encode(json))
 	end

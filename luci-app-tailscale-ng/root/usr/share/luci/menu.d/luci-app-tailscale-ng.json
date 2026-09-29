@@ -1,0 +1,14 @@
+{
+	"admin/vpn/tailscale-ng": {
+		"title": "Tailscale NG",
+		"order": 90,
+		"action": {
+			"type": "view",
+			"path": "tailscale-ng/index"
+		},
+		"depends": {
+			"acl": [ "luci-app-tailscale-ng" ],
+			"uci": { "tailscale": true }
+		}
+	}
+}

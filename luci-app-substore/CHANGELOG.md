@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0-r2] - 修复 vmess 加密方式与 TLS 层混淆
+
+- **修复严重缺陷**：经典 vmess 分享链接 `vmess://base64(json)` 的 `scy` 是**加密方式**
+  （`auto` / `aes-128-gcm` / `chacha20-poly1305` / `none` / `zero`），`tls` 才是 **TLS 层**
+  （`"tls"` 启用，`""` 不启用）。解析器此前把 `scy` 写进了统一模型的 `security` 字段，
+  而该字段在项目其余各处一律表示 TLS 层（`node.lua` DEFAULTS、vless/trojan URI 的
+  `security=`、Xray `streamSettings.security`、Clash `tls: true`）
+  - 后果：**一个不启用 TLS 的节点被三个目标同时误判为启用 TLS**，而这是机场订阅最常见的形态
+    - sing-box 多出 `"tls": {}`，同时 `security` 被写成加密方式
+    - V2Ray `streamSettings.security: "auto"` —— **非法取值，Xray 会拒绝启动**
+    - Clash.Meta 多出 `tls: true`；Surge 家族多出 `tls=true`
+  - 统一模型新增 `cipher` 字段专表 vmess 加密方式，`security` 回归纯 TLS 层语义
+  - 解析侧：`parser.lua` 经典 vmess JSON 改为 `cipher = scy`、`security` 由 `tls` 推导；
+    `parser_json_config.lua` 的 sing-box 导入改为 vmess 的 `security` → `cipher`，
+    TLS 由 `tls` 对象表达（并补齐 `alpn` / `insecure` → `skip-cert-verify` 的反向映射）；
+    `parser.lua` 简易 YAML 回退路径同步修正
+  - 输出侧：`output_singbox.lua` / `output_v2ray.lua` / `output_uri.lua` 的 vmess 加密方式
+    改取 `cipher`；`output_clash_meta.lua` 原本就取 `cipher`，此前因 `cipher` 从未被写入而
+    恒回退到 `auto`（`cipher: aes-128-gcm` 这类非默认值会被静默丢弃，本次一并修复）
+- **修复 `tls` 字段的真值陷阱**：空串 `""` 在 Lua 中为真值，`tls: ""`（经典 vmess JSON 表示
+  「不启用 TLS」的标准写法）会被 `output_formats.lua` / `output_clash_meta.lua` 的
+  `if node.tls then` 误判为启用 TLS。`node.normalize` 现将 `""` / `"none"` / `"false"`
+  归一为 `nil`、`"true"`（简易 YAML 解析器的字符串布尔）归一为 `true`，并把 `tls` 统一
+  落到权威字段 `security`
+- **非法加密方式不再写入配置**：新增 `node.VMESS_CIPHERS` 白名单，非白名单取值
+  （如被第三方工具误写成 `"tls"` 的）在归一化时丢弃，输出端回退到 `auto`，
+  避免生成客户端拒绝加载的配置
+- 新增测试 `tests/vmess_cipher_test.lua`（47 项），覆盖上述全部路径与分享链接回环
+- 版本号 2.4.0-r1 → 2.4.0-r2；README.md / README.en.md / docs/INSTALL.md 同步
+
 ## [2.4.0-r1] - sing-box / V2Ray 输出完整配置
 
 - ⚠️ **破坏性变更**：`target=singbox` 与 `target=v2ray` 由「仅含 `outbounds` 的片段」

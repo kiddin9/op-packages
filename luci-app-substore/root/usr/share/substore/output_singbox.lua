@@ -101,7 +101,8 @@ function M.to_outbound(n, tag)
 	if stype == "vmess" then
 		o.uuid = n.uuid or ""
 		if n.alterId ~= nil then o.alter_id = tonumber(n.alterId) end
-		if n.security then o.security = n.security end
+		-- 此处的 security 是 vmess 加密方式，取 cipher 而非 TLS 层
+		o.security = n.cipher or "auto"
 		if n.flow then o.flow = n.flow end
 	elseif stype == "vless" then
 		o.uuid = n.uuid or ""

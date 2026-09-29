@@ -13,9 +13,12 @@
 
 return view.extend({
 	async load() {
-		const res = await fs.exec('/sbin/ip', ['-s', '-j', 'ad']);
+		let res = await fs.exec('/sbin/ip', ['-s', '-j', 'ad']);
 		if (res.code !== 0 || !res.stdout || res.stdout.trim() === '') {
-			ui.addNotification(null, E('p', {}, _('Unable to get interface info: %s.').format(res.message)));
+			res = await fs.exec('/usr/bin/ip', ['-s', '-j', 'ad']);
+		}
+		if (res.code !== 0 || !res.stdout || res.stdout.trim() === '') {
+			ui.addNotification(null, E('p', {}, _('Unable to get interface info: %s.').format(res.message || res.stderr || 'unknown error')));
 			return [];
 		}
 

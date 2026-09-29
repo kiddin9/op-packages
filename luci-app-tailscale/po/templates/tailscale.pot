@@ -37,14 +37,6 @@ msgstr ""
 msgid "Auth Key"
 msgstr ""
 
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:267
-msgid "Configured"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:268
-msgid "Used once for first-time enrollment or explicit re-enrollment, then removed after a successful connection. Leave blank for normal restarts."
-msgstr ""
-
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:248
 msgid "Available flags"
 msgstr ""
@@ -60,10 +52,6 @@ msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:255
 msgid "Custom Server Settings"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:529
-msgid "Current device"
 msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:182
@@ -117,126 +105,6 @@ msgstr ""
 
 #: luci-app-tailscale/root/usr/share/luci/menu.d/luci-app-tailscale.json:22
 msgid "Interface Info"
-msgstr ""
-
-#: luci-app-tailscale/root/usr/share/luci/menu.d/luci-app-tailscale.json:30
-msgid "Peers"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:216
-msgid "Tailscale Peers"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:217
-msgid "View all peers and manually probe whether traffic is direct or relayed through DERP."
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:170
-msgid "Unable to load Tailscale peer status"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:151
-msgid "No peers match the selected filter."
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:151
-msgid "No peers found"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:191
-msgid "No probe target available"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:55
-msgid "Probe failed"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:74
-msgid "Not probed"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:84
-msgid "Probing..."
-msgstr ""
-
-msgid "Continuing probe %d/%d"
-msgstr ""
-
-msgid "%d probes; direct connection not established"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:85
-msgid "Probe"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:62
-msgid "Direct"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:63
-msgid "DERP"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:64
-msgid "Failed"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:64
-msgid "Unknown"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:133
-msgid "Filter"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:142
-msgid "All"
-msgstr ""
-
-msgid "Items per page"
-msgstr ""
-
-msgid "All peers"
-msgstr ""
-
-msgid "Showing %d-%d of %d peers"
-msgstr ""
-
-msgid "Page %d / %d"
-msgstr ""
-
-msgid "Previous"
-msgstr ""
-
-msgid "Next"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:183
-msgid "Name"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:184
-msgid "Tailnet IP"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:186
-msgid "Last Seen"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:187
-msgid "Role"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:95
-msgid "Exit node"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:98
-msgid "Advertising subnets"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/peers.js:188
-msgid "Advertised Subnets"
 msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/interface.js:69
@@ -298,6 +166,10 @@ msgstr ""
 msgid "No Available Exit Nodes"
 msgstr ""
 
+#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:228
+msgid "No Available Subnet Routes"
+msgstr ""
+
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/interface.js:61
 msgid "No interface online."
 msgstr ""
@@ -334,24 +206,16 @@ msgstr ""
 msgid "Select an online machine name to use as an exit node."
 msgstr ""
 
+#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:222
+msgid "Select subnet routes advertised by other nodes in Tailscale network."
+msgstr ""
+
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:258
 msgid "Server Address"
 msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:153
 msgid "Set the Tailscale port number."
-msgstr ""
-
-msgid "Allow WAN Direct"
-msgstr ""
-
-msgid "Allow inbound UDP traffic from WAN to the local Tailscale listen port so remote peers can establish direct connections without first using DERP."
-msgstr ""
-
-msgid "WAN Direct Source Zones"
-msgstr ""
-
-msgid "Firewall source zones allowed to reach the local Tailscale listen port when WAN direct is enabled."
 msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:217
@@ -364,6 +228,10 @@ msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:168
 msgid "StdOut Log"
+msgstr ""
+
+#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:222
+msgid "Subnet Routes"
 msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/interface.js:100
@@ -408,15 +276,6 @@ msgstr ""
 msgid "Unable to load log data:"
 msgstr ""
 
-msgid "Log is empty."
-msgstr ""
-
-msgid "Unknown error"
-msgstr ""
-
-msgid "logread command not found"
-msgstr ""
-
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:256
 msgid "Use %s to deploy a private server."
 msgstr ""
@@ -433,243 +292,4 @@ msgstr ""
 
 #: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:158
 msgid "Workdir"
-msgstr ""
-
-msgid "Online"
-msgstr ""
-
-msgid "Offline"
-msgstr ""
-
-msgid "Not found"
-msgstr ""
-
-msgid "Keepalive"
-msgstr ""
-
-msgid "Peer Keepalive"
-msgstr ""
-
-msgid "Periodically send lightweight Tailscale pings to selected peers."
-msgstr ""
-
-msgid "Keepalive Peers"
-msgstr ""
-
-msgid "Only peers advertising subnet routes are shown. Selected peers are periodically pinged to keep cross-subnet paths active."
-msgstr ""
-
-msgid "No Available Peers"
-msgstr ""
-
-msgid "No subnet routes"
-msgstr ""
-
-msgid "Subnets"
-msgstr ""
-
-msgid "Keepalive Interval"
-msgstr ""
-
-msgid "Seconds between keepalive probes."
-msgstr ""
-
-msgid "Failure Log Interval"
-msgstr ""
-
-msgid "Seconds between repeated failure log messages for the same peer."
-msgstr ""
-
-msgid "AdGuard DNS"
-msgstr ""
-
-msgid "AdGuard API URL"
-msgstr ""
-
-msgid "AdGuard Username"
-msgstr ""
-
-msgid "AdGuard Password"
-msgstr ""
-
-msgid "Leave blank to keep the existing AdGuard password; enter a new value to replace it."
-msgstr ""
-
-msgid "Status"
-msgstr ""
-
-msgid "Checking ..."
-msgstr ""
-
-msgid "Pass"
-msgstr ""
-
-msgid "Fail"
-msgstr ""
-
-msgid "AdGuard process"
-msgstr ""
-
-msgid "Port 53 is AdGuard"
-msgstr ""
-
-msgid "LAN DHCP advertises this router as DNS"
-msgstr ""
-
-msgid "AdGuard API"
-msgstr ""
-
-msgid "Tailnet DNS health check"
-msgstr ""
-
-msgid "Enable AdGuard DNS Auto Switch"
-msgstr ""
-
-msgid "Only enable when all status checks pass."
-msgstr ""
-
-msgid "Re-enter the AdGuard password after changing the API URL or username."
-msgstr ""
-
-msgid "Save error"
-msgstr ""
-
-msgid "An error occurred while saving the form:"
-msgstr ""
-
-msgid "Failed to stage protected credentials."
-msgstr ""
-
-msgid "Health Check Domain is required before enabling AdGuard DNS auto switch."
-msgstr ""
-
-msgid "At least one Expected Internal IP is required before enabling AdGuard DNS auto switch."
-msgstr ""
-
-msgid "At least one Default Upstream is required before enabling AdGuard DNS auto switch."
-msgstr ""
-
-msgid "At least one Tailnet Upstream is required before enabling AdGuard DNS auto switch."
-msgstr ""
-
-msgid "AdGuard DNS auto switch cannot be enabled until every environment status check passes."
-msgstr ""
-
-msgid "Default Upstreams"
-msgstr ""
-
-msgid "Used when Tailnet DNS is unhealthy."
-msgstr ""
-
-msgid "Tailnet Upstreams"
-msgstr ""
-
-msgid "Added when Tailnet DNS is healthy."
-msgstr ""
-
-msgid "Health Check Domain"
-msgstr ""
-
-msgid "Resolved through Tailscale DNS 100.100.100.100. The result must match one of the expected internal IPs."
-msgstr ""
-
-msgid "Expected Internal IPs"
-msgstr ""
-
-msgid "Check Interval"
-msgstr ""
-
-msgid "Success Threshold"
-msgstr ""
-
-msgid "Failure Threshold"
-msgstr ""
-
-msgid "Unknown user"
-msgstr ""
-
-msgid "Offline peers cannot be probed"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:345
-msgid "Enabled; 4 bypass rules are active"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:346
-msgid "Enabled; waiting for OpenClash nftables chains"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:347
-msgid "Disabled; Tailscale traffic is handled by OpenClash"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:348
-msgid "OpenClash is not installed; bypass is not required"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:349
-msgid "Unsupported; firewall4/nftables is required"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:350
-msgid "Configuration error"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:352
-msgid "Unknown status"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:363
-msgid "Unable to read OpenClash bypass status."
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:798
-msgid "OpenClash"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:800
-msgid "Protect Tailscale Traffic (Bypass OpenClash)"
-msgstr ""
-
-#: luci-app-tailscale/htdocs/luci-static/resources/view/tailscale/setting.js:801
-msgid "Keep Tailscale control connections, direct connections, Tailnet DNS, and subnet traffic outside OpenClash. When disabled, this traffic is handled by OpenClash; node connectivity, direct paths, subnet access, and internal DNS are no longer protected by this feature. Keep this enabled while using OpenClash."
-msgstr ""
-
-msgid "Prioritize Tailscale Routes Before mwan3"
-msgstr ""
-
-msgid "Give routes already present in Tailscale table 52 priority over mwan3-marked traffic. This fixes LAN clients being sent to a WAN instead of a Tailnet or routed subnet. Public destinations not present in table 52 continue through mwan3. Disabled leaves mwan3 precedence unchanged. Verify from a real LAN client or with an equivalent mwan3 fwmark; the router's unmarked ip route get alone is insufficient. The feature remains blocked while table 52 has a default route, such as when using an exit node."
-msgstr ""
-
-msgid "Policy Routing Status"
-msgstr ""
-
-msgid "Enabled; mwan3 is not installed"
-msgstr ""
-
-msgid "Enabled; no earlier mwan3-marked rule was detected"
-msgstr ""
-
-msgid "Enabled; Tailscale routes take precedence over mwan3"
-msgstr ""
-
-msgid "Enabled; waiting for the managed policy rule"
-msgstr ""
-
-msgid "Disabled; mwan3 routing is unchanged"
-msgstr ""
-
-msgid "Blocked; table 52 contains a default route"
-msgstr ""
-
-msgid "Blocked; a mwan3 rule has higher priority than 1000"
-msgstr ""
-
-msgid "Blocked; priority 1000 is already in use"
-msgstr ""
-
-msgid "Blocked; an existing rule is not managed by this app"
-msgstr ""
-
-msgid "Unable to read Tailscale policy-routing status."
 msgstr ""

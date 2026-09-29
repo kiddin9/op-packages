@@ -4,23 +4,23 @@
 		"read": {
 			"file": {
 				"/sbin/ip -s -j ad": [ "exec" ],
+				"/usr/bin/ip -s -j ad": [ "exec" ],
 				"/sbin/logread -e tailscale": [ "exec" ],
 				"/usr/sbin/tailscale status --json": [ "exec" ],
-				"/usr/sbin/tailscale_peer_probe": [ "exec" ],
+				"/usr/sbin/tailscale version": [ "exec" ],
 				"/usr/sbin/tailscale login": [ "exec" ],
-				"/usr/sbin/tailscale logout": [ "exec" ]
+				"/usr/sbin/tailscale logout": [ "exec" ],
+				"/usr/sbin/tailscale_helper": [ "exec" ],
+				"/usr/sbin/tailscale_helper check_update": [ "exec" ],
+				"/usr/sbin/tailscale_helper do_update": [ "exec" ]
 			},
 			"ubus": {
-				"luci.tailscale": [ "secret_status", "openclash_bypass_status", "policy_routing_status" ],
 				"service": [ "list" ]
 			},
-			"uci": [ "tailscale", "tailscale_openclash", "tailscale_policy_routing" ]
+			"uci": [ "tailscale" ]
 		},
 		"write": {
-			"ubus": {
-				"luci.tailscale": [ "adguard_preflight", "set_secrets" ]
-			},
-			"uci": [ "tailscale", "tailscale_openclash", "tailscale_policy_routing" ]
+			"uci": [ "tailscale" ]
 		}
 	}
 }

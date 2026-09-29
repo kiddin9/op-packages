@@ -14,6 +14,14 @@ local DEFAULTS = {
 	trojan = { security = "tls" },
 }
 
+-- vmess 加密方式（cipher）白名单。sing-box 的 vmess.security、Xray 的
+-- users[].security、Clash 的 vmess.cipher 取同一组值；写入非法值会让客户端
+-- 拒绝整份配置，因此归一化时丢弃未知取值，由输出端回退到 "auto"。
+M.VMESS_CIPHERS = {
+	auto = true, none = true, zero = true,
+	["aes-128-gcm"] = true, ["chacha20-poly1305"] = true,
+}
+
 -- 判断节点是否拥有某标签；兼容 tags 为数组（{"fast"}）或 set（{fast=true}）
 local function has_tag(node, tag)
 	local t = node and node.tags
@@ -33,6 +41,33 @@ function M.normalize(node)
 	for k, v in pairs(d) do
 		if node[k] == nil then node[k] = v end
 	end
+
+	-- tls 的空串 / "none" / "false" 在 Lua 里都是真值，会被下游的
+	-- `if node.tls then` 误判为「启用 TLS」（经典 vmess JSON 的 tls:"" 即此例），
+	-- 统一归一为 nil
+	if node.tls == "" or node.tls == "none" or node.tls == "false" then
+		node.tls = nil
+	elseif node.tls == "true" then
+		-- 简易 YAML 解析器把 tls: true 读成字符串 "true"
+		node.tls = true
+	end
+
+	-- tls 与 security 是同一语义（TLS 层）的两种写法，统一落到 security；
+	-- 已显式给出 security（含 DEFAULTS 补的 "none"）时不覆盖
+	if node.security == nil or node.security == "none" then
+		if node.tls == true then
+			node.security = "tls"
+		elseif node.tls == "tls" or node.tls == "reality" then
+			node.security = node.tls
+		end
+	end
+
+	-- vmess 的加密方式存于 cipher，与 TLS 层（security）无关；
+	-- 非白名单取值（例如被误写成 "tls"）直接丢弃，避免输出非法配置
+	if node.proto == "vmess" and node.cipher ~= nil and not M.VMESS_CIPHERS[node.cipher] then
+		node.cipher = nil
+	end
+
 	if node.name == nil or node.name == "" then
 		node.name = (node.server or "") .. ":" .. tostring(node.port or "")
 	end

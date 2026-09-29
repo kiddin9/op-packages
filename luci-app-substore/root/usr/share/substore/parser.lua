@@ -279,7 +279,11 @@ local function parse_vmess(uri, body)
 		name = j.ps or (j.add .. ":" .. tostring(j.port)),
 		server = j.add, port = tonumber(j.port),
 		uuid = j.id, aid = tonumber(j.aid),
-		net = j.net, type = j.type, security = j.scy or j.security, tls = j.tls,
+		net = j.net, type = j.type,
+		-- scy 是 vmess 加密方式（cipher），不是 TLS 层；TLS 由 tls 字段表达
+		-- （"tls" 表示启用，"" 表示不启用）
+		cipher = j.scy or j.security,
+		security = (j.tls == "tls" or j.tls == true) and "tls" or nil,
 		raw = uri,
 	})
 	return out
@@ -637,8 +641,11 @@ local function parse_yaml_content(content)
 				uuid = n.uuid or n.id,
 				password = n.password,
 				method = n.cipher or n.method,
-				net = n.network or n.net,
-				security = n.tls or n.security,
+				-- Clash 的 cipher 是 vmess 加密方式；tls 才是 TLS 层，
+				-- 交由 node.normalize 归一到 security
+				cipher = (proto == "vmess") and n.cipher or nil,
+				tls = n.tls,
+				security = n.security,
 				sni = n.sni or n.servername,
 				alterId = tonumber(n.alterId),
 			}

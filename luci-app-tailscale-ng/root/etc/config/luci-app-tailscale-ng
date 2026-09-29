@@ -1,0 +1,29 @@
+config settings 'settings'
+	# Enable Tailscale service on boot
+	option enabled '0'
+
+	# Custom login/control server URL; set only for non-default control like Headscale.
+	#option login_server 'https://headscale.example.com'
+
+	# Pre-authentication key
+	#option authkey 'tskey-auth-xxxxxxxxxxxxxxxx'
+
+	# Accept DNS configuration from the control server
+	option accept_dns '0'
+
+	# Accept subnet routes that other nodes advertise
+	option accept_routes '0'
+
+	# Offer to be an exit node for outbound internet traffic
+	option advertise_exit_node '0'
+
+	# Use this machine as an exit node (Tailscale IP or node name)
+	#option exit_node 'openwrt-server'
+
+	# Subnets to advertise to other Tailscale nodes. Add one "list advertise_routes" line per subnet.
+	#list advertise_routes '192.168.1.0/24'
+	#list advertise_routes '192.168.50.0/24'
+
+	# Extra tailscale up flags not exposed in LuCI yet. Add one "list flags" line per flag.
+	#list flags '--hostname=openwrt-router'
+	#list flags '--ssh=true'

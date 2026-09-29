@@ -102,17 +102,26 @@ function M.parse_singbox_json(content)
 						node_data.password = outbound.password
 					end
 
+					-- sing-box 用 tls 对象表达 TLS 层（enabled 缺省即 true）
 					if outbound.tls and type(outbound.tls) == "table" then
 						if outbound.tls.server_name then
 							node_data.sni = outbound.tls.server_name
 						end
-						if outbound.tls.enabled ~= nil then
-							node_data.tls = outbound.tls.enabled
+						if outbound.tls.enabled ~= false then
+							node_data.security = "tls"
+						end
+						if outbound.tls.alpn then
+							node_data.alpn = outbound.tls.alpn
+						end
+						if outbound.tls.insecure ~= nil then
+							node_data["skip-cert-verify"] = outbound.tls.insecure
 						end
 					end
 
-					if outbound.security then
-						node_data.security = outbound.security
+					-- sing-box 只有 vmess 出站有 security 字段，且它是加密方式
+					-- （cipher），不是 TLS 层；TLS 由上面的 tls 对象表达
+					if outbound.security and proto == "vmess" then
+						node_data.cipher = outbound.security
 					end
 					if outbound.network then
 						node_data.net = outbound.network

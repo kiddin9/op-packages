@@ -1,30 +1,9 @@
 #!/bin/sh
 
-TAILSCALE_SECRETS_BIN="${TAILSCALE_SECRETS_BIN:-/usr/sbin/tailscale_secrets}"
-UCI_BIN="${UCI_BIN:-uci}"
-OPENCLASH_BYPASS_INIT="${OPENCLASH_BYPASS_INIT:-/etc/init.d/tailscale-openclash-bypass}"
-POLICY_ROUTING_INIT="${POLICY_ROUTING_INIT:-/etc/init.d/tailscale-policy-routing}"
-LUCI_INDEX_CACHE="${LUCI_INDEX_CACHE:-/tmp/luci-indexcache}"
+uci -q batch <<-EOF >/dev/null
+	delete ucitrack.@tailscale[-1]
+	commit ucitrack
+EOF
 
-# 初始化密钥存储
-if [ -x "$TAILSCALE_SECRETS_BIN" ]; then
-	"$TAILSCALE_SECRETS_BIN" migrate || exit 1
-fi
-
-# 根据配置启用 OpenClash 旁路分流服务
-openclash_bypass_enabled="$("$UCI_BIN" -q get tailscale_openclash.settings.enabled 2>/dev/null || true)"
-if [ "$openclash_bypass_enabled" = '1' ] && [ -x "$OPENCLASH_BYPASS_INIT" ]; then
-	"$OPENCLASH_BYPASS_INIT" enable
-	"$OPENCLASH_BYPASS_INIT" start
-fi
-
-# 启用策略路由服务
-if [ -x "$POLICY_ROUTING_INIT" ]; then
-	"$POLICY_ROUTING_INIT" enable
-	"$POLICY_ROUTING_INIT" start
-fi
-
-# 刷新 LuCI 缓存使菜单立即生效
-rm -f "$LUCI_INDEX_CACHE"
-
+rm -f /tmp/luci-indexcache
 exit 0

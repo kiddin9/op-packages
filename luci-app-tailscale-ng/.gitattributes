@@ -1,0 +1,19 @@
+# Force LF line endings for all text files (required for OpenWRT)
+* text=auto eol=lf
+
+# Explicitly mark shell scripts
+*.sh text eol=lf
+**/init.d/* text eol=lf
+**/hotplug.d/**/* text eol=lf
+**/uci-defaults/* text eol=lf
+
+# LuCI files
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+
+# Config files
+**/config/* text eol=lf
+
+# Documentation (can stay as-is)
+*.md text eol=lf
