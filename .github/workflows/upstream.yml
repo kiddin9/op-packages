@@ -375,7 +375,7 @@ jobs:
         git_clone https://github.com/huchd0/luci-app-netwiz
         ) &
         (
-        git_clone https://github.com/GFander/luci-app-tailscale-ng
+        git_clone https://github.com/vad-b/luci-app-tailscale-ng
         git_clone https://github.com/Kingwong55/luci-app-tailscale
         git_clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community tailscalec && mv -f tailscalec/luci-app* ./;rm -rf tailscalec
         ) &
