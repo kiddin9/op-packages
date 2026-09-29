@@ -1,0 +1,661 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2022-2023 ImmortalWrt.org
+#
+# This file is the lifecycle orchestrator only.  Everything
+# that is not "read the configuration, decide, and drive procd" now lives in
+# /etc/homeproxy-pro/scripts/runtime/:
+#
+#   config.sh    generated-configuration transaction (known-good, restore,
+#                rollback) - pure, takes explicit paths
+#   health.sh    the health gate: procd state + listener ownership, sustained
+#                over several samples
+#   service.sh   sing-box version gate, auto-update cron, runtime-file
+#                preparation, procd instance registration, the
+#                generate->known-good transaction
+#   dns.sh       dnsmasq snippet directory, snippet writing, teardown
+#   firewall.sh  fw4 pre/post scripts, reload, owned-object teardown, upnp
+#   net.sh       tproxy / TUN ip rules and routes, teardown
+#
+# What deliberately stays here: USE_PROCD and the start/stop/reload/
+# service_triggers skeletons, the configuration reads that choose between
+# client, server and neither, and the ordering that makes a reload safe
+# (generate first, tear down later, prove it came up, roll back otherwise).
+#
+# The transaction, in order:
+#
+#   start_service    generate  -> register with procd -> PROVE IT RUNS ->
+#                    record known-good
+#   reload_service   generate (abort before teardown if invalid) -> stop ->
+#                    start -> if start could not prove the new configuration,
+#                    roll back to the known-good copy and restart
+#
+# A3: on the reload path the generation happens exactly once. reload_service
+# generates each enabled side and hands start_service the per-side
+# HP_CANDIDATE_* flags; hp_start_generated_config() then activates that exact
+# file instead of generating a second one. The generator's env (WAN resolver,
+# domain-resource lists) can change between two invocations, so "validate A,
+# discard A, generate B, run B" is no longer possible.
+#
+# "Prove it runs" is the health gate in runtime/health.sh.  It used to be a
+# single "is a matching process alive?" probe, which was satisfied by a stale
+# process and by procd's own respawn loop while the service was dead - and
+# because the generated file was recorded as known-good *before* that probe
+# ran, the rollback had nothing left to restore.
+#
+# What the rollback does NOT cover: the dnsmasq snippets, the ip rules/routes
+# and the nft rules are rebuilt from the *current* UCI on every start, so a
+# reload that fails because of a UCI-level change (a port that is now taken, a
+# proxy-mode switch) restores the sing-box configuration and leaves the network
+# layer describing the new settings.  Rolling that back as well would mean
+# snapshotting UCI at promotion time; that is deliberately not attempted here,
+# which is why this paragraph exists rather than a note in a plan document.
+
+USE_PROCD=1
+
+START=99
+STOP=10
+
+CONF="homeproxy-pro"
+PROG="/usr/bin/sing-box"
+
+HP_DIR="/etc/homeproxy-pro"
+RUN_DIR="/var/run/homeproxy-pro"
+LOG_PATH="$RUN_DIR/homeproxy-pro.log"
+
+# Last configuration that was proven to run.  start_service records it only
+# after the health gate passed, and reload_service restores it when a new
+# configuration fails to come up.
+GOOD_DIR="$RUN_DIR/known-good"
+
+
+# fw4 chain/set inventory; single source of truth shared with firewall_post.ut
+[ -f "$HP_DIR/scripts/fw4_names.sh" ] && . "$HP_DIR/scripts/fw4_names.sh"
+
+# Configuration transaction (known-good copy, restore, rollback) and the
+# health gate that decides whether a configuration may be recorded or must be
+# rolled back.
+[ -f "$HP_DIR/scripts/runtime/config.sh" ] && . "$HP_DIR/scripts/runtime/config.sh"
+[ -f "$HP_DIR/scripts/runtime/health.sh" ] && . "$HP_DIR/scripts/runtime/health.sh"
+
+# Device-side orchestration extracted from the init script.
+[ -f "$HP_DIR/scripts/runtime/service.sh" ] && . "$HP_DIR/scripts/runtime/service.sh"
+[ -f "$HP_DIR/scripts/runtime/dns.sh" ] && . "$HP_DIR/scripts/runtime/dns.sh"
+[ -f "$HP_DIR/scripts/runtime/firewall.sh" ] && . "$HP_DIR/scripts/runtime/firewall.sh"
+[ -f "$HP_DIR/scripts/runtime/net.sh" ] && . "$HP_DIR/scripts/runtime/net.sh"
+
+log() {
+	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
+}
+
+# hp_client_outbound_node <routing-mode> <dest-var>
+# Read the client's "main node" reference into <dest-var>.
+#
+# The reference is mode-dependent: the built-in routing modes keep it on
+# config.main_node, while custom routing keeps it on routing.default_outbound.
+# start_service, service_started and reload_service all need this value to
+# decide whether a client instance exists at all, and each of them used to
+# spell the branch out itself.
+hp_client_outbound_node() {
+	if [ "$1" != "custom" ]; then
+		config_get "$2" "config" "main_node" "nil"
+	else
+		config_get "$2" "routing" "default_outbound" "nil"
+	fi
+}
+
+# Resolve the dnsmasq snippet directory once, at load time.  stop_service
+# reuses the stored value rather than recomputing it, so a dnsmasq
+# reconfiguration between start and stop cannot make it delete the wrong
+# directory (see runtime/dns.sh).
+hp_dnsmasq_resolve_dir
+
+# hp_intercept_installed
+# True when a previous start actually installed the intercept layer: the fw4
+# post fragment holds the redirect/tproxy chains, the dnsmasq include file
+# points at the snippets.  Both live in tmpfs, so after a reboot there is
+# nothing stale to release.
+hp_intercept_installed() {
+	[ -s "$RUN_DIR/fw4_post.nft" ] || [ -e "$DNSMASQ_DIR/../dnsmasq-homeproxy-pro.conf" ]
+}
+
+# hp_release_intercept
+# Take the intercept layer back down, without touching the service's own
+# instances (procd keeps supervising them).
+#
+# A start that cannot prove the client came up must not leave the redirect
+# rules and the DNS snippets in place: they point the LAN's TCP and DNS at
+# listeners that are not there, so the routers' clients lose both instead of
+# merely not being proxied.  The reload path gets that for free through its
+# rollback; the start path (boot, a manual start, LuCI's Start button) has no
+# rollback at all, which is the asymmetry this closes.
+#
+# The server's inbound accepts (fw4_forward/fw4_input) are left in place: a
+# failed *client* does not make the server unreachable, and the two sides are
+# independent instances.
+#
+# The release is recorded in $RUN_DIR/intercept-released so that service_started
+# can put the layer back once the instance does come up.  Without that marker the
+# release is one-way: procd keeps respawning the instance, the health check can
+# start passing on a later attempt, and nothing reinstalls the rules - the router
+# then reports the service as running while the LAN is not proxied at all.
+hp_release_intercept() {
+	log "Reverting the intercept layer; traffic will go out unproxied until the client is up."
+	hp_net_teardown
+	hp_firewall_teardown "$RUN_DIR" keep-pre
+	hp_dnsmasq_remove_snippets "$DNSMASQ_DIR"
+	printf '%s\n' "1" > "$RUN_DIR/intercept-released"
+}
+
+# hp_rearm_intercept <proxy-mode> <routing-mode>
+# Reinstall the layer a failed start released, once the client is proven up.
+# It only runs when that failure actually happened - on a healthy start there is
+# nothing to redo - which is what makes the release in hp_release_intercept()
+# reversible instead of a silent, permanent downgrade to direct routing.
+hp_rearm_intercept() {
+	[ -f "$RUN_DIR/intercept-released" ] || return 0
+	rm -f "$RUN_DIR/intercept-released"
+	log "Client is up again; reinstalling the intercept layer."
+	hp_dnsmasq_write_snippets "$DNSMASQ_DIR" "$HP_DIR" "$2"
+	hp_net_setup "$1" "$2"
+	# hp_firewall_apply already writes $RUN_DIR/failed-firewall on its own
+	# failure, but the helper's caller is service_started, which only reads
+	# that marker when it comes from the candidate path.  A failed rearm
+	# must surface the same way: writing the file here makes the run a
+	# "firewall did not come up" candidate, the health gate will not pass,
+	# and the user sees a definite failure rather than "running but LAN
+	# not proxied".  The marker is cleared by service_started once the run
+	# is otherwise healthy (see the rm -f near $RUN_DIR/failed-firewall below).
+	if ! hp_firewall_apply "$HP_DIR" "$RUN_DIR" "1"; then
+		log "Error: the firewall rules could not be reinstalled; the proxy may not be enforced."
+		printf '%s\n' "firewall" > "$RUN_DIR/failed-firewall"
+		return 1
+	fi
+}
+
+# hp_release_stale_intercept
+# The same, but only when a previous start left something installed.  Without
+# the check every start of an unconfigured router would pay a full fw4 reload
+# and a dnsmasq restart to undo rules that were never installed.
+hp_release_stale_intercept() {
+	hp_intercept_installed || return 0
+	hp_release_intercept
+}
+
+start_service() {
+	config_load "$CONF"
+
+	# Every refusal below happens *before* this run installs anything, so a
+	# stale intercept layer is released rather than re-applied.  Without it,
+	# a router whose node was removed (or whose sing-box just failed its
+	# version gate) keeps redirecting the LAN into a listener that no instance
+	# is serving any more.
+	if ! hp_require_singbox; then
+		hp_release_stale_intercept
+		return 1
+	fi
+
+	local routing_mode proxy_mode outbound_node server_enabled
+	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
+	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
+	hp_client_outbound_node "$routing_mode" outbound_node
+
+	config_get_bool server_enabled "server" "enabled" "0"
+
+	if [ "$outbound_node" = "nil" ] && [ "$server_enabled" = "0" ]; then
+		log "Neither client nor server is configured. Service not started."
+		hp_release_stale_intercept
+		return 1
+	fi
+
+	local client_enabled=0
+	[ "$outbound_node" = "nil" ] || client_enabled=1
+
+	# Client switched off (main_node cleared, or custom routing without a
+	# default outbound): the redirect rules and the DNS snippets from the
+	# previous start have to go, or the LAN keeps pointing at listeners no
+	# instance is serving.  This matters more since a reload keeps the DNS
+	# layer across its stop (see stop_service): without it, a reload that
+	# disables the client would leave the snippets installed forever.
+	# The server's accepts (fw4_forward/fw4_input) are left alone.
+	if [ "$client_enabled" != "1" ]; then
+		hp_release_stale_intercept
+	fi
+
+	mkdir -p "$RUN_DIR"
+
+	# Kernel 6.6.x has a TUN/GSO bug that needs GSO turned off for the tun
+	# inbound; other releases either carry the fix or never had the problem.
+	local disable_gso=0
+	uname -r | grep -Eq "^6\.6" && disable_gso=1
+
+	# The health gate reads the ports the running configuration declares from
+	# sing-box-c.json (service_started -> hp_config_ports), not from UCI: after
+	# a rollback the live file is the older known-good copy and may bind
+	# different ports.  Reading mixed_port/dns_port here as well only produced
+	# two unused locals.
+	if [ "$client_enabled" = "1" ]; then
+		hp_net_wait_wan 60
+
+		if ! hp_start_generated_config c "$HP_DIR" "$RUN_DIR" "$GOOD_DIR"; then
+			hp_release_stale_intercept
+			return 1
+		fi
+
+		local auto_update auto_update_time
+		config_get_bool auto_update "subscription" "auto_update" "0"
+		config_get auto_update_time "subscription" "auto_update_time" "2"
+		hp_sync_autoupdate_cron "$auto_update" "$auto_update_time"
+
+		# The DNS snippets are the other half of the intercept layer: without
+		# them the LAN resolves through the ISP while the nft rules still send
+		# its DNS to sing-box's dns-in, which the redirect chain does not cover.
+		# The writer already reports failures (render or install) instead of
+		# leaving an empty snippet behind; record it the same way a firewall
+		# failure is recorded, so the configuration is not promoted to
+		# known-good and the log names the real problem.
+		if ! hp_dnsmasq_write_snippets "$DNSMASQ_DIR" "$HP_DIR" "$routing_mode"; then
+			log "Error: the dnsmasq snippets were not installed; LAN DNS keeps using the previous configuration."
+			printf '%s\n' "dns" > "$RUN_DIR/failed-dns"
+		fi
+		hp_net_setup "$proxy_mode" "$routing_mode"
+
+		# R-08: gfwlist mode routes by the nft set that dnsmasq populates
+		# (`nftset=`), and the post-template gates every proxy chain on
+		# `ip daddr != @homeproxy_gfw_list_v4`.  On a dnsmasq without nftset the
+		# set is never filled, so that gate is true for every packet and the
+		# whole mode silently degrades to direct routing.  Record the capability
+		# where the template can read it (it renders before this point on the
+		# next start, so the file has to exist by then) and let the template
+		# omit the gate instead: traffic then reaches sing-box, which routes it
+		# by geoip exactly like the nftset gate would have.
+		hp_dnsmasq_has_nftset && printf '%s\n' "1" > "$HP_DIR/resources/.dnsmasq-nftset" \
+			|| rm -f "$HP_DIR/resources/.dnsmasq-nftset"
+
+		hp_procd_client_instance "$PROG" "$HP_DIR" "$RUN_DIR" "$routing_mode" "$disable_gso"
+	fi
+
+	if [ "$server_enabled" = "1" ]; then
+		if ! hp_start_generated_config s "$HP_DIR" "$RUN_DIR" "$GOOD_DIR"; then
+			# Only the server side failed.  hp_release_stale_intercept() tears
+			# down the *client* layer (net rules + redirect chains + DNS
+			# snippets), so calling it here took a healthy, already-verified
+			# client off the air because a server certificate or port was bad -
+			# the opposite of the "the two sides are independent instances"
+			# rule this file states above.  service_started()'s
+			# failed="sing-box-s" path handles the server side and already
+			# leaves the client layer alone.
+			return 1
+		fi
+
+		hp_procd_server_instance "$PROG" "$HP_DIR" "$RUN_DIR" "$disable_gso"
+	fi
+
+	hp_procd_log_cleaner "$HP_DIR"
+
+	hp_prepare_runtime_files "$HP_DIR" "$RUN_DIR" "$routing_mode" "$client_enabled" "$server_enabled"
+
+	# A firewall that did not apply means traffic is not actually being
+	# intercepted.  sing-box still runs (the service stays up), but the
+	# configuration must not become the rollback target - service_started()
+	# reads this marker before promoting.
+	if ! hp_firewall_apply "$HP_DIR" "$RUN_DIR" "$client_enabled"; then
+		log "Error: the firewall rules were not applied completely; the proxy may not be enforced."
+		printf '%s\n' "firewall" > "$RUN_DIR/failed-firewall"
+	fi
+
+	# Nothing is verified here on purpose.  With USE_PROCD=1 the
+	# procd_open_instance/procd_close_instance calls above only *register* the
+	# instances; procd starts them when rc.common closes the service, which
+	# happens after this function returns.  Gating here would sample a service
+	# that has not been started yet and always time out - the health gate
+	# therefore lives in service_started(), which rc.common calls at the point
+	# where the instances are actually up.
+	return 0
+}
+
+# service_started() is rc.common's post-start hook:
+#
+#   start() { rc_procd start_service "$@"; service_started; }
+#
+# so this runs after procd_close_service.  It is where a configuration earns
+# the right to be called good.
+service_started() {
+	config_load "$CONF"
+
+	local routing_mode outbound_node server_enabled proxy_mode
+	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
+	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
+	hp_client_outbound_node "$routing_mode" outbound_node
+	config_get_bool server_enabled "server" "enabled" "0"
+
+	local client_enabled=0
+	[ "$outbound_node" = "nil" ] || client_enabled=1
+
+	[ "$client_enabled" = "1" ] || [ "$server_enabled" = "1" ] || return 0
+
+	# The listeners to verify are the ones the running configuration declares,
+	# read from the file rather than from UCI: after a rollback the live file
+	# is the older known-good copy, so UCI describes ports this configuration
+	# does not use.
+	#
+	# The gate checks that sing-box OWNS them: a port that is listening but
+	# belongs to another process is exactly the failure it has to catch.
+	#
+	# `sing-box check` cannot see a port that is already taken or a
+	# certificate it cannot read, and a single process probe cannot tell a
+	# healthy instance from procd restarting a dying one.
+	local failed="" client_ports server_ports
+	if [ "$client_enabled" = "1" ]; then
+		client_ports="$(hp_config_ports "$RUN_DIR/sing-box-c.json")"
+		hp_wait_service "sing-box-c" "$RUN_DIR/sing-box-c.json" \
+			"$HP_HEALTH_BUDGET" "$HP_HEALTH_STABLE" $client_ports \
+			|| failed="sing-box-c"
+
+		# The probes read their ports from the running configuration, not from
+		# UCI: after a rollback the live file is the older known-good copy and
+		# may bind different ports, and probing the candidate's ports would
+		# warn about a healthy service (or, with health_probe_strict on, roll
+		# it back again).
+		if [ -z "$failed" ]; then
+			local probe_dns_port probe_mixed_port probe_strict probe_name
+			probe_dns_port="$(hp_config_port_for_tag "$RUN_DIR/sing-box-c.json" 'dns-in')"
+			probe_mixed_port="$(hp_config_port_for_tag "$RUN_DIR/sing-box-c.json" 'mixed-in')"
+			config_get_bool probe_strict "config" "health_probe_strict" "0"
+			config_get probe_name "config" "health_probe_name" "example.com"
+
+			HP_PROBE_STRICT="$probe_strict"
+			HP_PROBE_NAME="$probe_name"
+			export HP_PROBE_STRICT HP_PROBE_NAME
+
+			hp_run_probes "client" "$probe_dns_port" "$probe_mixed_port" \
+				|| failed="sing-box-c"
+		fi
+	fi
+	if [ "$server_enabled" = "1" ] && [ -z "$failed" ]; then
+		server_ports="$(hp_config_ports "$RUN_DIR/sing-box-s.json")"
+		hp_wait_service "sing-box-s" "$RUN_DIR/sing-box-s.json" \
+			"$HP_HEALTH_BUDGET" "$HP_HEALTH_STABLE" $server_ports \
+			|| failed="sing-box-s"
+	fi
+
+	if [ -n "$failed" ]; then
+		# start() returns procd's status, not start_service's, so the failure
+		# is recorded where reload_service cannot miss it.  A file is used
+		# rather than a shell variable because service_started and
+		# reload_service are not the same shell invocation.
+		printf '%s\n' "$failed" > "$RUN_DIR/failed-side"
+		log "Error: $failed did not come up with the new configuration."
+		# The intercept rules were installed by start_service before this
+		# gate ran, and on the *start* path nothing else takes them back
+		# down: the LAN would keep sending TCP to the redirect port and DNS
+		# to the dnsmasq snippets while no instance is listening.  Only a
+		# failed client black-holes the LAN - the server's accepts are
+		# inbound and a failed *server* leaves the client working - so this
+		# is scoped to the client side.  On the reload path the rollback
+		# below re-applies everything on its way to the old configuration.
+		[ "$failed" = "sing-box-c" ] && hp_release_intercept
+		# The rollback is driven by reload_service, which can stop and
+		# restart the service.
+		return 1
+	fi
+
+	rm -f "$RUN_DIR/failed-side"
+
+	# A previous start may have released the intercept layer because the client
+	# did not come up (hp_release_intercept).  procd respawns the instance, and
+	# now that it is proven healthy the rules have to come back - otherwise the
+	# service runs and reports "running" while the LAN is not proxied.
+	[ "$client_enabled" = "1" ] && hp_rearm_intercept "$proxy_mode" "$routing_mode"
+
+	# Proven good: this is what a later failed reload rolls back to.  A
+	# configuration whose intercept layer is incomplete is not "good" - traffic
+	# is not being intercepted the way the configuration says - so it is not
+	# recorded, and the previous known-good survives as the rollback target.
+	# Two independent markers, because a successful hp_firewall_apply() must not
+	# be able to mask a failed snippet install (or the other way round).
+	if [ -s "$RUN_DIR/failed-firewall" ] || [ -s "$RUN_DIR/failed-dns" ]; then
+		[ -s "$RUN_DIR/failed-firewall" ] \
+			&& log "Warning: the firewall rules did not apply; keeping the previous known-good configuration."
+		[ -s "$RUN_DIR/failed-dns" ] \
+			&& log "Warning: the DNS snippets were not installed; keeping the previous known-good configuration."
+		rm -f "$RUN_DIR/failed-firewall" "$RUN_DIR/failed-dns"
+	else
+		[ "$client_enabled" = "1" ] && hp_promote_known_good c "$RUN_DIR" "$GOOD_DIR"
+		[ "$server_enabled" = "1" ] && hp_promote_known_good s "$RUN_DIR" "$GOOD_DIR"
+	fi
+
+	log "sing-box $(sing-box version -n 2>/dev/null || echo "unknown") started."
+	return 0
+}
+
+stop_service() {
+	hp_clear_autoupdate_cron
+
+	config_load "$CONF"
+
+	# P1-8: on a reload the network layer is left in place too.  The ip rules and
+	# the routing table are the same before and after a configuration change
+	# (they derive from the infra marks, not from the nodes), hp_net_setup() is
+	# idempotent since r20, and tearing them down here only opened a window in
+	# which the tproxy rules were gone.  A real stop still removes them.
+	[ "${HP_RELOAD_IN_PROGRESS:-0}" = "1" ] || hp_net_teardown
+	hp_firewall_teardown "$RUN_DIR"
+	# A reload is a restart, not a shutdown, and it keeps the DNS layer: the
+	# snippets are re-rendered by start_service moments later, and their writer
+	# compares content before restarting dnsmasq.  Taking them down here would
+	# leak the LAN's queries to the ISP resolvers for the whole stop/start
+	# window and restart dnsmasq twice (flushing every client's cache) for a
+	# configuration that did not change.  The cost is that DNS points at
+	# sing-box's dns-in while the instances are down - a few seconds of failed
+	# lookups instead of a few seconds of plaintext queries.  A real stop (no
+	# flag) removes them, and a reload that disables the client releases them
+	# through hp_release_stale_intercept() in start_service.
+	[ "${HP_RELOAD_IN_PROGRESS:-0}" = "1" ] || hp_dnsmasq_remove_snippets "$DNSMASQ_DIR"
+
+	rm -f "$RUN_DIR/sing-box-c.json" "$RUN_DIR/sing-box-c.log" \
+		"$RUN_DIR/sing-box-s.json" "$RUN_DIR/sing-box-s.log" \
+		"$RUN_DIR/failed-side" "$RUN_DIR/failed-firewall" "$RUN_DIR/failed-dns"
+	# A released marker only means something within one start; a stop clears it
+	# so the next start does not reinstall a layer it is about to install anyway.
+	[ "${HP_RELOAD_IN_PROGRESS:-0}" = "1" ] || rm -f "$RUN_DIR/intercept-released"
+
+	log "Service stopped."
+}
+
+service_stopped() {
+	config_load "$CONF"
+
+	# Review P2 (2026-09-28): a reload stops then starts the service
+	# inside the same procd invocation, and HP_RELOAD_IN_PROGRESS is set
+	# during that window (set by reload_service just before the
+	# `stop; start`).  When the reload is a tun -> tun reload, removing
+	# the tun device here pulls the default route out of table 100, so
+	# marked traffic falls back to the main table while the new sing-box
+	# is starting up - the LAN hits the WAN with the real IP.  Skip the
+	# tuntap del on the reload path; the next start will reuse the
+	# existing device if its name and address match (hp_net_setup checks).
+	# A genuine stop (HP_RELOAD_IN_PROGRESS=0) keeps the original
+	# behaviour: the device is torn down so a subsequent start can
+	# create a fresh one with whatever the new UCI asked for.
+	if [ "${HP_RELOAD_IN_PROGRESS:-0}" = "1" ]; then
+		:
+	else
+		hp_net_remove_tun
+	fi
+}
+
+reload_service() {
+	log "Reloading service..."
+
+	config_load "$CONF"
+	local routing_mode
+	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
+
+	local outbound_node
+	hp_client_outbound_node "$routing_mode" outbound_node
+
+	# Generate first, tear down later.  If the new configuration is invalid
+	# the generator leaves the running one in place, so the reload is
+	# aborted *before* stop_service() - the old configuration keeps running
+	# instead of the router ending up with no service at all.
+	#
+	# A3: whichever sides are generated here are the candidates start_service
+	# must activate - it must not generate them a second time. Two invocations
+	# of the generator are not guaranteed to write the same bytes (its env
+	# carries the WAN resolver and the domain-resource lists), so regenerating
+	# in start_service would run a file that was never `sing-box check`ed:
+	# validate A -> discard A -> generate B -> run B.
+	#
+	# The flags are per side on purpose: reload_service and start_service each
+	# do their own config_load, and if the two disagree (a concurrent UCI
+	# change) the side this preflight did not generate must still be generated
+	# rather than activated from a stale file.
+	HP_CANDIDATE_CLIENT=0
+	HP_CANDIDATE_SERVER=0
+
+	if [ "$outbound_node" != "nil" ]; then
+		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
+			log "Error: new client configuration is invalid, reload aborted; the running configuration is kept."
+			return 1
+		fi
+		HP_CANDIDATE_CLIENT=1
+	fi
+
+	local server_enabled
+	config_get_bool server_enabled "server" "enabled" "0"
+	if [ "$server_enabled" = "1" ]; then
+		if ! ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"; then
+			log "Error: new server configuration is invalid, reload aborted; the running configuration is kept."
+			return 1
+		fi
+		HP_CANDIDATE_SERVER=1
+	fi
+
+	# stop_service() deletes $RUN_DIR/sing-box-*.json (runtime state), so the
+	# file that was just validated would not survive to start_service. Stage a
+	# copy of each validated side first; the stop that follows cannot reach it,
+	# and start_service activates those exact bytes. A staging failure aborts
+	# the reload while the running configuration is still untouched.
+	if [ "$HP_CANDIDATE_CLIENT" = "1" ]; then
+		if ! hp_capture_candidate "$RUN_DIR" c; then
+			log "Error: could not stage the validated client configuration; reload aborted; the running configuration is kept."
+			return 1
+		fi
+	fi
+	if [ "$HP_CANDIDATE_SERVER" = "1" ]; then
+		if ! hp_capture_candidate "$RUN_DIR" s; then
+			log "Error: could not stage the validated server configuration; reload aborted; the running configuration is kept."
+			return 1
+		fi
+	fi
+
+	# `start` runs start_service in this same shell, but export them anyway so
+	# the contract does not depend on that: HP_USE_KNOWN_GOOD is exported the
+	# same way in the rollback path below.
+	export HP_CANDIDATE_CLIENT HP_CANDIDATE_SERVER
+
+	# Both configurations passed `sing-box check`; now it is safe to restart.
+	# start_service owns the rest of the transaction: it proves the instances
+	# came up and only then records the new known-good, so the previous one
+	# survives until that point - which is what makes the rollback below
+	# possible.
+	#
+	# The flag tells stop_service that this stop belongs to a reload, so the
+	# DNS layer is left in place for start_service to re-render (it compares
+	# content and only restarts dnsmasq when something actually changed).  It
+	# stays set for the rollback path below, which is also a reload.
+	HP_RELOAD_IN_PROGRESS=1
+	export HP_RELOAD_IN_PROGRESS
+	stop
+	start
+
+	# start_service proved the candidate does not run (it left the marker).
+	# The known-good copy still holds the previous configuration, because a
+	# candidate is no longer recorded before it has proven itself.
+	local failed=""
+	[ -s "$RUN_DIR/failed-side" ] && failed="$(cat "$RUN_DIR/failed-side")"
+
+	# reload_service and start_service each do their own config_load.  If the
+	# two disagree - a concurrent reload, or a read that fell back to the UCI
+	# defaults - the marker can be missing while nothing was started at all.
+	# The filesystem is the tie-breaker: a side this reload believed was
+	# enabled must have produced a live configuration.
+	if [ -z "$failed" ] && [ "$outbound_node" != "nil" ] && [ ! -s "$RUN_DIR/sing-box-c.json" ]; then
+		failed="sing-box-c"
+	fi
+	if [ -z "$failed" ] && [ "$server_enabled" = "1" ] && [ ! -s "$RUN_DIR/sing-box-s.json" ]; then
+		failed="sing-box-s"
+	fi
+
+	if [ -z "$failed" ]; then
+		log "Reload completed."
+		return 0
+	fi
+
+	log "Error: $failed did not come up with the new configuration, rolling back."
+
+	# Review P1-3 (2026-09-28): restore the nft-layer-driving UCI keys
+	# *before* the rolled-back stop;start.  Without this, start_service()
+	# re-reads CURRENT UCI (the failing, new configuration) and installs
+	# the wrong layer - the classic "rollback worked but LAN still not
+	# proxied" symptom.  hp_promote_known_good snapshots these keys when
+	# the candidate is healthy; this is the symmetric restore.
+	if ! hp_restore_known_good_uci "$GOOD_DIR"; then
+		log "Warning: no uci-snapshot alongside the known-good copy; the firewall/dnsmasq layer will be reinstalled from the failing UCI on the rollback restart.  This snapshot exists from r27 onwards; older installs fall back to the previous behaviour."
+	fi
+
+	local good="$GOOD_DIR/$failed.json"
+	local live="$RUN_DIR/$failed.json"
+	local rolled_back=0
+
+	if hp_same_file "$live" "$good"; then
+		log "Error: the failing configuration is already the known-good one; nothing to roll back to."
+		# Review P1-4 (2026-09-28): the failing candidate is byte-equal to
+		# known-good and we are skipping stop;start, so the
+		# intercept-released marker set by hp_release_intercept during
+		# the failed start would otherwise survive until a manual reload.
+		# Clear it here and let the next reload or stop:start rearm the
+		# intercept layer; the proxy still does not work in this exact
+		# moment, but at least no marker lies about its state.
+		[ -f "$RUN_DIR/intercept-released" ] && rm -f "$RUN_DIR/intercept-released"
+	elif hp_rollback "$live" "$good"; then
+		rolled_back=1
+	else
+		log "Error: no known-good configuration to roll back to."
+	fi
+
+	if [ "$rolled_back" = "0" ]; then
+		log "Error: rollback was not possible; the service may be down. Check $LOG_PATH."
+		return 1
+	fi
+
+	# Start from the recorded file rather than regenerating: the generator
+	# is a pure function of UCI, so it would rebuild the config that just
+	# failed.
+	HP_USE_KNOWN_GOOD=1
+	# The failed candidate has just exhausted procd's respawn retries, so the
+	# restart below can take noticeably longer than a normal start.
+	HP_HEALTH_BUDGET="$HP_HEALTH_ROLLBACK_BUDGET"
+	export HP_USE_KNOWN_GOOD HP_HEALTH_BUDGET
+
+	stop
+	start
+
+	if [ ! -s "$RUN_DIR/failed-side" ]; then
+		log "Rollback completed; the previous configuration is running."
+		return 0
+	fi
+
+	log "Error: rollback did not restore the service; manual intervention required."
+	return 1
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$CONF"
+	# `wan` is the logical name netifd and the firewall use on every target
+	# (a PPPoE uplink is `wan` at the logical layer, `pppoe-wan` only at the
+	# device layer), so this does not need a per-device lookup.
+	procd_add_interface_trigger "interface.*.up" wan /etc/init.d/$CONF reload
+}

@@ -184,6 +184,11 @@ function parseShareLink(uri, features) {
 				if (url.search && url.searchParams.get('plugin')) {
 					let plugin_info = url.searchParams.get('plugin').split(';');
 					plugin = plugin_info[0];
+					/* sing-box only knows obfs-local; simple-obfs (an old
+					   alias providers still emit) would otherwise be rejected
+					   as "plugin not found" and take the whole config with it */
+					if (plugin === 'simple-obfs')
+						plugin = 'obfs-local';
 					plugin_opts = (plugin_info.length > 1) ? plugin_info.slice(1).join(';') : null;
 				}
 
@@ -302,7 +307,10 @@ function parseShareLink(uri, features) {
 				tls_reality_public_key: params.get('pbk') ? decodeURIComponent(params.get('pbk')) : null,
 				tls_reality_short_id: params.get('sid'),
 				tls_utls: features.with_utls ? params.get('fp') : null,
-				vless_flow: ['tls', 'reality'].includes(params.get('security')) ? params.get('flow') : null
+				/* only the value sing-box supports: any other flow is
+				   rejected with "unsupported flow" and one bad node breaks
+				   the whole generated config */
+				vless_flow: (['tls', 'reality'].includes(params.get('security')) && params.get('flow') === 'xtls-rprx-vision') ? params.get('flow') : null
 			};
 			switch (params.get('type')) {
 			case 'grpc':
@@ -332,8 +340,10 @@ function parseShareLink(uri, features) {
 
 			break;
 		case 'vmess':
-			/* "Lovely" shadowrocket format */
-			if (uri.includes('&'))
+			/* "Lovely" shadowrocket format; uri is the split scheme/rest
+			   array, so this has to test the link body (testing the array
+			   itself compared '&' against its elements and never matched) */
+			if (uri[1].includes('&'))
 				return null;
 
 			/* https://github.com/2dust/v2rayN/wiki/Description-of-VMess-share-link */
@@ -1149,7 +1159,15 @@ return view.extend({
 								let packet_encoding = uci.get(data[0], 'subscription', 'packet_encoding');
 								let imported_node = 0;
 								input_links.forEach((l) => {
-									let config = parseShareLink(l, features);
+									let config;
+									try {
+										config = parseShareLink(l, features);
+									} catch (e) {
+										/* a single unparsable link must not abort
+										   the whole import (the changes made so
+										   far were left unsaved before) */
+										config = null;
+									}
 									if (config) {
 										if (config.tls === '1' && allow_insecure === '1')
 											config.tls_insecure = '1'
@@ -1157,7 +1175,16 @@ return view.extend({
 											config.packet_encoding = packet_encoding
 
 										let nameHash = hp.calcStringMD5(config.label);
+										let previous = uci.get(data[0], nameHash) || {};
 										let sid = uci.add(data[0], 'node', nameHash);
+										/* drop options the node no longer has:
+										   uci.set() only writes the keys below,
+										   so re-importing a changed protocol
+										   used to leave the old fields behind */
+										Object.keys(previous).forEach((k) => {
+											if (k.charAt(0) !== '.' && !(k in config))
+												uci.unset(data[0], sid, k);
+										});
 										Object.keys(config).forEach((k) => {
 											uci.set(data[0], sid, k, config[k]);
 										});

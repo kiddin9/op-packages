@@ -1,0 +1,677 @@
+{
+	"sections": [
+		{
+			"id": "TypedSection:#0",
+			"kind": "TypedSection",
+			"tabs": [],
+			"options": [],
+			"subsection": null
+		},
+		{
+			"id": "NamedSection:config#1",
+			"kind": "NamedSection",
+			"name": "config",
+			"tabs": [
+				[
+					"routing",
+					"Routing Settings"
+				],
+				[
+					"routing_node",
+					"Routing Nodes"
+				],
+				[
+					"routing_rule",
+					"Routing Rules"
+				],
+				[
+					"dns",
+					"DNS Settings"
+				],
+				[
+					"dns_server",
+					"DNS Servers"
+				],
+				[
+					"dns_rule",
+					"DNS Rules"
+				],
+				[
+					"ruleset",
+					"Rule Set"
+				],
+				[
+					"control",
+					"Access Control"
+				],
+				[
+					"dns_cache",
+					"DNS Cache (1.14)"
+				]
+			],
+			"options": [
+				{
+					"kind": "ListValue",
+					"name": "main_node",
+					"title": "Main node",
+					"description": null,
+					"depends": [
+						{
+							"routing_mode": "custom",
+							"!reverse": true
+						}
+					],
+					"values": [
+						[
+							"nil",
+							"Disable"
+						],
+						[
+							"urltest",
+							"URLTest"
+						]
+					],
+					"props": {
+						"default": "nil",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "CBI.StaticList",
+					"name": "main_urltest_nodes",
+					"title": "URLTest nodes",
+					"description": "List of nodes to test.",
+					"depends": [
+						[
+							"main_node",
+							"urltest"
+						]
+					],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "main_urltest_interval",
+					"title": "Test interval",
+					"description": "The test interval in seconds.",
+					"depends": [
+						[
+							"main_node",
+							"urltest"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"placeholder": "180"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "main_urltest_tolerance",
+					"title": "Test tolerance",
+					"description": "The test tolerance in milliseconds.",
+					"depends": [
+						[
+							"main_node",
+							"urltest"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"placeholder": "50"
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "main_udp_node",
+					"title": "Main UDP node",
+					"description": null,
+					"depends": [
+						{
+							"routing_mode": {},
+							"proxy_mode": {}
+						}
+					],
+					"values": [
+						[
+							"nil",
+							"Disable"
+						],
+						[
+							"same",
+							"Same as main node"
+						],
+						[
+							"urltest",
+							"URLTest"
+						]
+					],
+					"props": {
+						"default": "nil",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "CBI.StaticList",
+					"name": "main_udp_urltest_nodes",
+					"title": "URLTest nodes",
+					"description": "List of nodes to test.",
+					"depends": [
+						[
+							"main_udp_node",
+							"urltest"
+						]
+					],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "main_udp_urltest_interval",
+					"title": "Test interval",
+					"description": "The test interval in seconds.",
+					"depends": [
+						[
+							"main_udp_node",
+							"urltest"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"placeholder": "180"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "main_udp_urltest_tolerance",
+					"title": "Test tolerance",
+					"description": "The test tolerance in milliseconds.",
+					"depends": [
+						[
+							"main_udp_node",
+							"urltest"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger",
+						"placeholder": "50"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "dns_server",
+					"title": "DNS server",
+					"description": "Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.",
+					"depends": [
+						{
+							"routing_mode": "custom",
+							"!reverse": true
+						}
+					],
+					"values": [
+						[
+							"wan",
+							"WAN DNS (read from interface)"
+						],
+						[
+							"1.1.1.1",
+							"CloudFlare Public DNS (1.1.1.1)"
+						],
+						[
+							"208.67.222.222",
+							"Cisco Public DNS (208.67.222.222)"
+						],
+						[
+							"8.8.8.8",
+							"Google Public DNS (8.8.8.8)"
+						],
+						[
+							"",
+							"---"
+						],
+						[
+							"223.5.5.5",
+							"Aliyun Public DNS (223.5.5.5)"
+						],
+						[
+							"119.29.29.29",
+							"Tencent Public DNS (119.29.29.29)"
+						],
+						[
+							"117.50.10.10",
+							"ThreatBook Public DNS (117.50.10.10)"
+						]
+					],
+					"props": {
+						"default": "8.8.8.8",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "china_dns_server",
+					"title": "China DNS server",
+					"description": "The dns server for resolving China domains. Support UDP, TCP, DoH, DoQ, DoT.",
+					"depends": [
+						[
+							"routing_mode",
+							"bypass_mainland_china"
+						]
+					],
+					"values": [
+						[
+							"wan",
+							"WAN DNS (read from interface)"
+						],
+						[
+							"223.5.5.5",
+							"Aliyun Public DNS (223.5.5.5)"
+						],
+						[
+							"210.2.4.8",
+							"CNNIC Public DNS (210.2.4.8)"
+						],
+						[
+							"119.29.29.29",
+							"Tencent Public DNS (119.29.29.29)"
+						],
+						[
+							"117.50.10.10",
+							"ThreatBook Public DNS (117.50.10.10)"
+						]
+					],
+					"props": {
+						"default": "223.5.5.5",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "routing_mode",
+					"title": "Routing mode",
+					"description": null,
+					"depends": [],
+					"values": [
+						[
+							"gfwlist",
+							"GFWList"
+						],
+						[
+							"bypass_mainland_china",
+							"Bypass mainland China"
+						],
+						[
+							"proxy_mainland_china",
+							"Only proxy mainland China"
+						],
+						[
+							"custom",
+							"Custom routing"
+						],
+						[
+							"global",
+							"Global"
+						]
+					],
+					"props": {
+						"default": "bypass_mainland_china",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "routing_port",
+					"title": "Routing ports",
+					"description": "Specify target ports to be proxied. Multiple ports must be separated by commas.",
+					"depends": [],
+					"values": [
+						[
+							"",
+							"All ports"
+						],
+						[
+							"common",
+							"Common ports only (bypass P2P traffic)"
+						]
+					],
+					"props": {}
+				},
+				{
+					"kind": "ListValue",
+					"name": "proxy_mode",
+					"title": "Proxy mode",
+					"description": null,
+					"depends": [],
+					"values": [
+						[
+							"redirect",
+							"Redirect TCP"
+						]
+					],
+					"props": {
+						"default": "redirect_tproxy",
+						"description": "To enable Tun support, you need to install <code>ip-full</code> and <code>kmod-tun</code>",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "ipv6_support",
+					"title": "IPv6 support",
+					"description": null,
+					"depends": [],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "cn_ip_fallback",
+					"title": "CN-IP DNS fallback (sing-box 1.14)",
+					"description": "When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.",
+					"depends": [
+						[
+							"routing_mode",
+							"bypass_mainland_china"
+						]
+					],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "block_https_rr",
+					"title": "Block HTTPS/SVCB DNS records",
+					"description": "Answer HTTPS (type 65) and SVCB (type 64) queries with an empty response. Keeps clients off HTTPS-RR/ECH, which this DNS chain cannot serve through some proxies; disable it if ECH is wanted.",
+					"depends": [],
+					"values": [],
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "tun_dns_mode",
+					"title": "TUN DNS mode (1.14)",
+					"description": "Since sing-box 1.14 the default (Unset) behaves as hijack: sing-box sets the platform interface DNS and hijacks port 53. On OpenWrt this overlaps with the own dnsmasq/nftables DNS hijack of this plugin, so keep Disabled on a gateway unless you need sing-box to own TUN DNS.",
+					"depends": [
+						[
+							"proxy_mode",
+							"redirect_tun"
+						],
+						[
+							"proxy_mode",
+							"tun"
+						]
+					],
+					"values": [
+						[
+							"default",
+							"Unset (default)"
+						],
+						[
+							"disabled",
+							"Disabled"
+						],
+						[
+							"native",
+							"Native"
+						],
+						[
+							"hijack",
+							"Hijack"
+						]
+					],
+					"props": {
+						"default": "default",
+						"rmempty": true
+					}
+				},
+				{
+					"kind": "DynamicList",
+					"name": "tun_dns_address",
+					"title": "TUN DNS addresses (1.14)",
+					"description": null,
+					"depends": [
+						{
+							"proxy_mode": {},
+							"tun_dns_mode": {}
+						}
+					],
+					"values": [],
+					"props": {
+						"datatype": "ipaddr",
+						"modalonly": true
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "udp_mapping",
+					"title": "UDP NAT mapping (1.14)",
+					"description": null,
+					"depends": [
+						[
+							"proxy_mode",
+							"redirect_tproxy"
+						],
+						[
+							"proxy_mode",
+							"redirect_tun"
+						],
+						[
+							"proxy_mode",
+							"tun"
+						]
+					],
+					"values": [
+						[
+							"endpoint_independent",
+							"Endpoint independent"
+						],
+						[
+							"address_dependent",
+							"Address dependent"
+						],
+						[
+							"address_and_port_dependent",
+							"Address and port dependent"
+						]
+					],
+					"props": {
+						"default": "endpoint_independent",
+						"description": "sing-box default; recommended for home use (small NAT table, QUIC/game friendly). Choose stricter only for specific UDP issues.",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "ListValue",
+					"name": "udp_filtering",
+					"title": "UDP NAT filtering (1.14)",
+					"description": null,
+					"depends": [
+						[
+							"proxy_mode",
+							"redirect_tproxy"
+						],
+						[
+							"proxy_mode",
+							"redirect_tun"
+						],
+						[
+							"proxy_mode",
+							"tun"
+						]
+					],
+					"values": [
+						[
+							"endpoint_independent",
+							"Endpoint independent"
+						],
+						[
+							"address_dependent",
+							"Address dependent"
+						],
+						[
+							"address_and_port_dependent",
+							"Address and port dependent"
+						]
+					],
+					"props": {
+						"default": "endpoint_independent",
+						"description": "sing-box default; recommended for home use (accepts replies from any remote after mapping). Choose stricter only for specific UDP issues.",
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "udp_nat_max",
+					"title": "UDP NAT sessions max (1.14)",
+					"description": null,
+					"depends": [
+						[
+							"proxy_mode",
+							"redirect_tproxy"
+						],
+						[
+							"proxy_mode",
+							"redirect_tun"
+						],
+						[
+							"proxy_mode",
+							"tun"
+						]
+					],
+					"values": [],
+					"props": {
+						"datatype": "uinteger"
+					}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_routing",
+					"description": "routing",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_routing_node",
+					"description": "routing_node",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_routing_rule",
+					"description": "routing_rule",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_dns",
+					"description": "dns",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_dns_server",
+					"description": "dns_server",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_dns_rule",
+					"description": "dns_rule",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_ruleset",
+					"description": "ruleset",
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_control",
+					"description": "control",
+					"depends": [],
+					"values": [],
+					"props": {}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_dns_cache",
+					"description": "dns",
+					"depends": [
+						{
+							"routing_mode": "custom",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"props": {}
+				}
+			],
+			"subsection": null
+		}
+	]
+}

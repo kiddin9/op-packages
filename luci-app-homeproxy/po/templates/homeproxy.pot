@@ -106,8 +106,8 @@ msgstr ""
 msgid "Add a server"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:1068
-msgid "Additional headers to be sent to the DNS server."
+#: htdocs/luci-static/resources/view/homeproxy/client.js:1072
+msgid "Additional headers to be sent to the DNS server, one <code>Name: value</code> per line."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1050
@@ -3501,4 +3501,23 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1573
 msgid "{tag} in initial path when extra tags are used"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:302
+msgid "Block HTTPS/SVCB DNS records"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:303
+msgid ""
+"Answer HTTPS (type 65) and SVCB (type 64) queries with an empty response. "
+"Keeps clients off HTTPS-RR/ECH, which this DNS chain cannot serve through "
+"some proxies; disable it if ECH is wanted."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:260
+msgid "GeoIP CN rule-set version"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:264
+msgid "GeoSite CN rule-set version"
 msgstr ""

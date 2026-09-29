@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Regression fixture: a direct node as the main node.
+#
+# generate_outbound() turns a direct node's override_address / override_port
+# into a route action rather than outbound fields, so main-out ends up as a
+# bare {"type":"direct","tag":"main-out"}.  main-dns used to hard-code
+# `detour: 'main-out'`, and the rule-set http_client inherited it; sing-box
+# refuses to detour into an empty direct outbound:
+#
+#   FATAL start service: start dns/tcp[main-dns]: detour to an empty direct
+#   outbound makes no sense
+#   FATAL start service: initialize rule-set[0]: ... detour to an empty direct
+#   outbound makes no sense
+#
+# and the service never started.  `sing-box check` accepts such a config, so
+# test_generators.sh inspects the generated JSON instead of trusting check.
+
+config homeproxy-pro 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'tun'
+	option ipv6_support '0'
+	option log_level 'error'
+	option main_node 'n_direct'
+	option main_udp_node 'nil'
+	option dns_server '223.5.5.5'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option tun_name 'singtun0'
+	option tun_addr4 '172.19.0.1/30'
+	option tun_addr6 'fdfe:dcba:9876::1/126'
+	option tun_mtu '9000'
+	option self_mark '100'
+	option tun_mark '102'
+	option table_mark '100'
+	option ntp_server 'nil'
+
+config node 'n_direct'
+	option label 'direct-main'
+	option type 'direct'
+	option override_address '127.0.0.1'
+	option override_port '8080'
+	option enabled '1'

@@ -21,7 +21,7 @@ echo "== zh_Hans translation coverage =="
 python3 "$ROOT/tests/i18n-coverage.py" --warn-below 100
 
 echo "== LuCI form snapshots =="
-for target in node server; do
+for target in node client server; do
 	if ! node "$ROOT/tests/luci-form-snapshot.js" "$ROOT" "$target" > "/tmp/hp-snapshot-$target.json" 2> "/tmp/hp-snapshot-$target.err"; then
 		echo "FAIL: could not render the $target form"
 		cat "/tmp/hp-snapshot-$target.err"

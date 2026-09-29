@@ -39,6 +39,29 @@ function closeFD(fd) {
 	}
 };
 
+/*
+ * Read a descriptor to EOF. A single read(size) only returns up to `size`
+ * bytes, so the previous one-shot read(512 KiB) silently truncated larger
+ * responses - a subscription list above that size was cut mid-base64/mid-JSON
+ * and only showed up as a parse failure. MAX_OUTPUT bounds what an oversized
+ * or endless response can allocate.
+ */
+const MAX_OUTPUT = 16 * 1024 * 1024;
+
+function readAll(fd) {
+	let out = '';
+	for (;;) {
+		const chunk = fd.read(64 * 1024) ?? '';
+		if (length(chunk) === 0)
+			break;
+		out += chunk;
+		if (length(out) >= MAX_OUTPUT)
+			break;
+	}
+
+	return out;
+};
+
 export function executeCommand(...args) {
 	let outfd = null, errfd = null;
 
@@ -51,8 +74,8 @@ export function executeCommand(...args) {
 		outfd.seek(0);
 		errfd.seek(0);
 
-		const stdout = outfd.read(1024 * 512) ?? '';
-		const stderr = errfd.read(1024 * 512) ?? '';
+		const stdout = readAll(outfd);
+		const stderr = readAll(errfd);
 
 		const binary = isBinary(stdout);
 
@@ -180,6 +203,19 @@ export function strToTime(str) {
 	return match(str, /[a-zA-Z]$/) ? str : (str + 's');
 };
 
+/*
+ * Milliseconds variant of strToTime(). Used by options whose LuCI field is
+ * documented and validated in milliseconds while sing-box expects a duration
+ * (e.g. route rule tls_fragment_fallback_delay, whose default is 500ms);
+ * strToTime() used to turn "500" into "500s".
+ */
+export function strToMs(str) {
+	if (isEmpty(str))
+		return null;
+
+	return match(str, /[a-zA-Z]$/) ? str : (str + 'ms');
+};
+
 export function removeBlankAttrs(res) {
 	let content;
 
@@ -229,10 +265,18 @@ export function isValidCIDR(addr, family) {
 	if (!addr)
 		return false;
 
-	/* Split address and optional prefix */
+	/* Split address and optional prefix. The prefix has to be validated as
+	   strictly as the address: `int()` accepts a leading number ("1.2.3.4/0 }
+	   ..." parses as 0), which would let a poisoned resource file inject
+	   statements into the nftables template this feeds. */
 	const parts = split(addr, '/');
 	const ip = parts[0];
 	const prefix = parts[1];
+
+	if (length(parts) > 2)
+		return false;
+	if (length(parts) === 2 && !match(prefix, /^\d{1,3}$/))
+		return false;
 
 	/* Validate IP part */
 	if (family === 4) {
@@ -244,7 +288,7 @@ export function isValidCIDR(addr, family) {
 			if (int(o) > 255)
 				return false;
 		/* Validate prefix if present */
-		if (prefix && (int(prefix) < 0 || int(prefix) > 32))
+		if (prefix && int(prefix) > 32)
 			return false;
 	} else if (family === 6) {
 		/* Only hex digits and colons */
@@ -281,7 +325,7 @@ export function isValidCIDR(addr, family) {
 				return false;
 		}
 
-		if (prefix && (int(prefix) < 0 || int(prefix) > 128))
+		if (prefix && int(prefix) > 128)
 			return false;
 	} else {
 		return false;
@@ -305,6 +349,50 @@ export function decodeBase64Str(str) {
 		str = str + substr('====', padding);
 
 	return b64dec(str);
+};
+
+/*
+ * Decode %XX escapes without touching '+'. urldecode() maps '+' to a space,
+ * which corrupts base64 userinfo ("+" is part of the alphabet), so share-link
+ * userinfo is percent-decoded with this instead.
+ */
+/*
+ * ucode has no tolower(), so both hex cases are mapped by hand.
+ */
+function hexValue(ch) {
+	const lower = index('0123456789abcdef', ch);
+	if (lower >= 0)
+		return lower;
+
+	const upper = index('ABCDEF', ch);
+
+	return upper < 0 ? -1 : 10 + upper;
+}
+
+/*
+ * ucode's regex engine rejects \x00 inside a character class ("Missing ']'"),
+ * so control bytes are checked by hand.
+ */
+function hasControlChar(str) {
+	for (let i = 0; i < length(str); i++) {
+		const code = ord(str, i);
+		if (code < 0x20 || code === 0x7f)
+			return true;
+	}
+
+	return false;
+}
+
+export function percentDecode(str) {
+	if (isEmpty(str))
+		return str;
+
+	return replace(str, /%([0-9A-Fa-f]{2})/g, (whole, hex) => {
+		const hi = hexValue(substr(hex, 0, 1));
+		const lo = hexValue(substr(hex, 1, 1));
+
+		return (hi < 0 || lo < 0) ? whole : chr(hi * 16 + lo);
+	});
 };
 
 export function parseURL(url) {
@@ -361,18 +449,30 @@ export function parseURL(url) {
 		return null;
 
 	if (objurl.userinfo) {
-		objurl.userinfo = replace(objurl.userinfo, /:(.+)$/, (_, val) => {
+		/* Percent-decode first: providers emit base64 userinfo with the
+		   padding escaped ("=" as "%3D"), which used to decode to nothing
+		   and silently dropped method/password. */
+		let userinfo = percentDecode(objurl.userinfo);
+
+		userinfo = replace(userinfo, /:(.+)$/, (_, val) => {
 			objurl.password = val;
 			return '';
 		});
 
-		if (match(objurl.userinfo, /^[A-Za-z0-9\+\-\_\.]+$/)) {
-			objurl.username = objurl.userinfo;
-			delete objurl.userinfo;
-		} else {
-			delete objurl.userinfo;
+		/*
+		 * Keep anything without whitespace or control characters: real-world
+		 * userinfo carries base64 (with '=' or '+'), percent-encoded tokens
+		 * and passwords with punctuation. The previous class was written as
+		 * [A-Za-z0-9\+\-\_\.] but ucode's regex reads \+-\_ as the range
+		 * 0x2B-0x5F, so it accepted '=@:;[]\^<>,/' and rejected '!' - it
+		 * neither did what it documented nor covered real passwords.
+		 */
+		if (!match(userinfo, /\s/) && !hasControlChar(userinfo))
+			objurl.username = userinfo;
+		else
 			delete objurl.password;
-		}
+
+		delete objurl.userinfo;
 	};
 
 	if (!objurl.port)

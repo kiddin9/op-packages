@@ -303,6 +303,11 @@ return view.extend({
 		o.depends('routing_mode', 'bypass_mainland_china');
 		o.rmempty = false;
 
+		o = s.taboption('routing', form.Flag, 'block_https_rr', _('Block HTTPS/SVCB DNS records'),
+			_('Answer HTTPS (type 65) and SVCB (type 64) queries with an empty response. Keeps clients off HTTPS-RR/ECH, which this DNS chain cannot serve through some proxies; disable it if ECH is wanted.'));
+		o.default = o.enabled;
+		o.rmempty = false;
+
 		o = s.taboption('routing', form.ListValue, 'tun_dns_mode', _('TUN DNS mode (1.14)'),
 			_('Since sing-box 1.14 the default (Unset) behaves as hijack: sing-box sets the platform interface DNS and hijacks port 53. On OpenWrt this overlaps with the own dnsmasq/nftables DNS hijack of this plugin, so keep Disabled on a gateway unless you need sing-box to own TUN DNS.'));
 		o.value('default', _('Unset (default)'));
@@ -1064,7 +1069,7 @@ return view.extend({
 		so.modalonly = true;
 
 		so = ss.option(form.DynamicList, 'headers', _('Headers'),
-			_('Additional headers to be sent to the DNS server.'));
+			_('Additional headers to be sent to the DNS server, one <code>Name: value</code> per line.'));
 		so.depends('type', 'https');
 		so.depends('type', 'h3');
 		so.modalonly = true;

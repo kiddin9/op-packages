@@ -12,7 +12,7 @@
 'use strict';
 
 import { lsdir } from 'fs';
-import { executeCommand, isValidPEM, shellQuote } from 'homeproxy';
+import { executeCommand, isValidCIDR, isValidPEM, shellQuote } from 'homeproxy';
 
 let failures = 0,
     checks = 0;
@@ -53,6 +53,25 @@ expect('false.exitcode', executeCommand('false').exitcode, 1);
 const bin = executeCommand('sh', '-c', shellQuote('printf "\\001\\002\\003"'));
 expect('bin.binary', bin.binary, true);
 expect('bin.stdout', bin.stdout, null);
+
+/* output larger than the old one-shot 512 KiB read must not be truncated
+   (subscription lists above that size used to arrive cut in half) */
+const big_want = 700 * 1024;
+const big = executeCommand('sh', '-c', shellQuote('yes a | head -c ' + big_want));
+expect('big.exitcode', big.exitcode, 0);
+expect('big.length', length(big.stdout), big_want);
+
+/* isValidCIDR(): the prefix needs the same strict validation as the address,
+   otherwise a poisoned resource file reaches the nftables template */
+expect('cidr.ok', isValidCIDR('1.2.3.4/24', 4), true);
+expect('cidr.bare', isValidCIDR('1.2.3.4', 4), true);
+expect('cidr.bad-prefix', isValidCIDR('1.2.3.4/abc', 4), false);
+expect('cidr.empty-prefix', isValidCIDR('1.2.3.4/', 4), false);
+expect('cidr.out-of-range', isValidCIDR('1.2.3.4/33', 4), false);
+expect('cidr.two-slashes', isValidCIDR('1.2.3.4/24/1', 4), false);
+expect('cidr.injection', isValidCIDR('1.2.3.4/0 } flush ruleset; table inet x {', 4), false);
+expect('cidr.v6-ok', isValidCIDR('2001:db8::/32', 6), true);
+expect('cidr.v6-injection', isValidCIDR('2001:db8::/32 } flush ruleset;', 6), false);
 
 /* isValidPEM(): certificate vs private key, boundaries and body */
 const pem_cert = '-----BEGIN CERTIFICATE-----\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n-----END CERTIFICATE-----';

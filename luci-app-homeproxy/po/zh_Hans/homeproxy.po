@@ -119,8 +119,8 @@ msgid "Add a server"
 msgstr "新增服务器"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1068
-msgid "Additional headers to be sent to the DNS server."
-msgstr "发送到 DNS 服务器的附加标头。"
+msgid "Additional headers to be sent to the DNS server, one <code>Name: value</code> per line."
+msgstr "发送到 DNS 服务器的附加请求头，每行一个 <code>名称: 值</code>。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1050
 #: htdocs/luci-static/resources/view/homeproxy/node.js:468
@@ -3626,6 +3626,24 @@ msgstr "使用额外标签时 URL 需包含 {tag}"
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1573
 msgid "{tag} in initial path when extra tags are used"
 msgstr "使用额外标签时初始路径需包含 {tag}"
+
+
+msgid "Block HTTPS/SVCB DNS records"
+msgstr "拦截 HTTPS/SVCB DNS 记录"
+
+msgid ""
+"Answer HTTPS (type 65) and SVCB (type 64) queries with an empty response. "
+"Keeps clients off HTTPS-RR/ECH, which this DNS chain cannot serve through "
+"some proxies; disable it if ECH is wanted."
+msgstr ""
+"对 HTTPS（type 65）与 SVCB（type 64）查询返回空响应：这条 DNS 链路经某些代理"
+"无法正常提供 HTTPS-RR/ECH，因此默认拦截；需要 ECH 时请关闭。"
+
+msgid "GeoIP CN rule-set version"
+msgstr "GeoIP CN 规则集版本"
+
+msgid "GeoSite CN rule-set version"
+msgstr "GeoSite CN 规则集版本"
 
 #~ msgid "Disable Path MTU discovery"
 #~ msgstr "禁用路径 MTU 探测"

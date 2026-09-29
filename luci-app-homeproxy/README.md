@@ -102,6 +102,28 @@
 
 > 回归保障：订阅抓取用 stub wget 覆盖 GNU / 非 GNU 两条分支，并在装有 `/bin/uclient-fetch` 的目标上直接执行生成的命令行；自定义路由新增 `custom.uci` fixture（本地规则集 + 直连节点覆盖 + 路由规则）。
 
+## 安全与可用性修复（r13）
+
+一轮以"资源/订阅链路真正生效"和"收敛暴露面"为目标的修复，全部结论都做了实机或本地复现。
+
+| 领域 | 变更 |
+| --- | --- |
+| **资源更新生效** | `update_resources.sh` 的 `--header-file=` 改为 `--header=`——uclient-fetch 与 GNU wget 都不认 `--header-file`，填了 GitHub token 时四个清单的版本探测会全部失败；新增 `/etc/init.d/homeproxy refresh_lists`，清单下载后重建 fw4 集合与 dnsmasq 片段（此前 cron 只改磁盘文件，只有订阅更新"顺带"重启时才真正生效） |
+| **规则集** | 删除无人引用的 `geosite-noncn`（sing-box 会初始化每一个声明的远程规则集，引用与否都会下载、失败即拒绝启动）；`geoip-cn` / `geosite-cn` 在本地 `.srs` 存在时生成为 `type: local`，否则回退远端——cron 经 jsdelivr 固定 commit 下载，冷启动不再依赖"经节点拉 CDN" |
+| **订阅与导入** | 入库前按协议校验必需字段并跳过坏节点（此前一个坏节点会让整份配置生成失败、看似更新成功却一直跑旧配置）；`flow` 只保留 `xtls-rprx-vision`；SS userinfo 先做百分号解码（`%3D` 不再丢 method/password）；`simple-obfs` 归一化为 `obfs-local`；不支持的 transport（xhttp 等）直接跳过；订阅更新加 mkdir 锁；`update_via_proxy=1` 时配置变更也会重启；日志中的订阅 URL 脱敏 |
+| **暴露面** | 生成的客户端/服务端配置权限改为 600（含全部节点凭据）；capabilities 去掉 `CAP_SYS_PTRACE` / `CAP_NET_RAW`；`dns-in` 只监听 `127.0.0.1`（此前 LAN 内可把它当解析器用）；custom 路由模式也进 ujail；core dump 关闭（`core=0`） |
+| **DNS** | `dns.servers[].headers` 由界面列表转成 1.14 要求的 map（此前填 Headers 会让整份配置非法）；`action: route` 缺 server 的 DNS 规则跳过并告警；`tls_fragment_fallback_delay` 单位修正为毫秒（原先被当成秒，放大 1000 倍）；新增 `block_https_rr` 开关（默认仍拦截 HTTPS/SVCB，需要 ECH 时关闭） |
+| **健壮性** | 大响应不再被单次 512 KiB 读取截断；防火墙模板对端口/mark/IP/MAC/接口名逐一校验（非法值不再让之后每次 `fw4 reload` 都失败）；`isValidCIDR` 严格校验前缀，堵住远程清单注入 nft 模板的路径；生成失败按退出码报错而不是沿用旧配置；`log()` 先建目录，首启诊断不再丢 |
+| **验证** | 新增 client 表单快照、client 生成 golden 快照（逐字节锁定生成结果）、700 KiB 读取与 CIDR 注入用例；CI 增加 shell/JS 语法检查，i18n 覆盖率由 warn 改为 fail |
+
+> 有意未改动的项：订阅抓取仍在 `update_via_proxy=0` 时先停服（这是该选项的定义，改抓取时序会改变抓取路径）；`tls_self_sign`、`hysteria_protocol` 与 `ssh_priv_key` 的 DynamicList 展示保持与 `-pro` 分支一致，留待两线一起收敛。
+
+### 已知限制
+
+- DNS 劫持只重定向 UDP/53，使用 DoT/DoH 的客户端绕过它（与 OpenWrt 原生 `dns_redirect` 行为一致）。
+- `bypass_mainland_china` / `custom` / `global` 下 dnsmasq 被配成 `no-resolv` + 转发给 sing-box，此时选 `system-dns` 会绕回 sing-box 自身，建议使用 `default-dns`。
+- 订阅更新在 `update_via_proxy=0` 期间服务处于停止状态，订阅多或源慢时停机时间会变长；需要零中断可开启 `update_via_proxy`。
+
 ## 运行要求
 
 - ImmortalWrt / OpenWrt ≥ 24.10+（apk 或 opkg 均可安装）

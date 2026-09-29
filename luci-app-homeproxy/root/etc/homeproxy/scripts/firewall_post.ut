@@ -76,6 +76,61 @@ function resolve_mark(str) {
 		return `mark and ${fw4.hex(~mark.mask & 0xffffffff)} xor ${fw4.hex(mark.mark)}`;
 }
 
+/*
+ * Everything below is interpolated into an nftables script. fw4 loads its
+ * includes in one atomic transaction, so a single unparseable value does not
+ * just break this rule: every later `fw4 reload` fails and the whole firewall
+ * stops being updated. The UI validates its fields, but the values can also
+ * come from `uci set`, so each one is checked here as well and dropped when it
+ * is not the type the rule expects.
+ */
+const iface_re = /^[A-Za-z0-9._-]{1,15}$/;
+const mac_re = /^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/;
+
+function filter_iface(list, fallback) {
+	if (isEmpty(list))
+		return list;
+
+	let out = [];
+	for (let i in list)
+		if (match(trim(i), iface_re))
+			push(out, trim(i));
+
+	if (isEmpty(out) && !isEmpty(fallback))
+		push(out, fallback);
+
+	return out;
+}
+
+function filter_mac(list) {
+	if (isEmpty(list))
+		return list;
+
+	let out = [];
+	for (let m in list)
+		if (match(trim(m), mac_re))
+			push(out, trim(m));
+
+	return out;
+}
+
+function filter_ipv4(list) {
+	if (isEmpty(list))
+		return list;
+
+	let out = [];
+	for (let ip in list)
+		if (isValidCIDR(ip, 4))
+			push(out, trim(ip));
+
+	return out;
+}
+
+function resolve_port(str, fallback) {
+	const port = trim(str ?? '');
+	return match(port, /^\d{1,5}$/) && int(port) > 0 && int(port) <= 65535 ? port : fallback;
+}
+
 /* Misc config */
 const resources_dir = '/etc/homeproxy/resources';
 
@@ -100,6 +155,19 @@ let routing_port = uci.get(cfgname, 'config', 'routing_port');
 if (routing_port === 'common')
 	routing_port = uci.get(cfgname, 'infra', 'common_port') || '22,53,80,143,443,465,587,853,873,993,995,8080,8443,9418';
 
+/* the port list is interpolated into an nftables set: keep only real ports,
+   and fall back to "no list" (the guards below then skip the set and its
+   rules) when nothing survives */
+if (routing_port) {
+	let ports = [];
+	for (let port in split(routing_port, ',')) {
+		const p = trim(port);
+		if (match(p, /^\d{1,5}$/) && int(p) > 0 && int(p) <= 65535)
+			push(ports, p);
+	}
+	routing_port = length(ports) ? join(',', ports) : null;
+}
+
 const proxy_mode = uci.get(cfgname, 'config', 'proxy_mode') || 'redirect_tproxy',
       ipv6_support = uci.get(cfgname, 'config', 'ipv6_support') || '0';
 
@@ -108,16 +176,19 @@ let self_mark, redirect_port,
     tun_name, tun_mark;
 
 if (match(proxy_mode, /redirect/)) {
-	self_mark = uci.get(cfgname, 'infra', 'self_mark') || '100';
-	redirect_port = uci.get(cfgname, 'infra', 'redirect_port') || '5331';
+	/* print as a valid mark expression; a hand-edited "value/mask" would
+	   otherwise reach nft verbatim and break the whole file */
+	self_mark = resolve_mark(uci.get(cfgname, 'infra', 'self_mark')) || resolve_mark('100');
+	redirect_port = resolve_port(uci.get(cfgname, 'infra', 'redirect_port'), '5331');
 }
 if (match(proxy_mode, /tproxy/))
 	if (outbound_udp_node !== 'nil' || routing_mode === 'custom') {
-		tproxy_port = uci.get(cfgname, 'infra', 'tproxy_port') || '5332';
+		tproxy_port = resolve_port(uci.get(cfgname, 'infra', 'tproxy_port'), '5332');
 		tproxy_mark = resolve_mark(uci.get(cfgname, 'infra', 'tproxy_mark') || '101');
 	}
 if (match(proxy_mode, /tun/)) {
-	tun_name = uci.get(cfgname, 'infra', 'tun_name') || 'singtun0';
+	const tun_name_raw = trim(uci.get(cfgname, 'infra', 'tun_name') ?? '');
+	tun_name = match(tun_name_raw, iface_re) ? tun_name_raw : 'singtun0';
 	tun_mark = resolve_mark(uci.get(cfgname, 'infra', 'tun_mark') || '102');
 }
 
@@ -132,12 +203,26 @@ const control_options = [
 ];
 const control_info = {};
 
-for (let i in control_options)
-	control_info[i] = uci.get(cfgname, 'control', i);
+for (let i in control_options) {
+	const raw = uci.get(cfgname, 'control', i);
+
+	if (match(i, /_mac_addrs$/))
+		control_info[i] = filter_mac(raw);
+	else if (match(i, /_ipv4_ips$/))
+		control_info[i] = filter_ipv4(raw);
+	else if (i === 'listen_interfaces')
+		/* fail closed: a configured but unusable interface list must not turn
+		   into "every interface" (that is exactly what the option restricts) */
+		control_info[i] = filter_iface(raw, '__hp_invalid_iface__');
+	else
+		control_info[i] = raw;
+}
 
 const dns_redirect = uci.get(cfgname, 'infra', 'dns_redirect') || '1';
+/* dnsmasq's port, not sing-box's dns_port (the hijack hands the query to
+   dnsmasq, which forwards to the sing-box listener itself) */
 const dns_hijacked = uci.get('dhcp', '@dnsmasq[0]', 'dns_redirect') || '0',
-      dns_port = uci.get('dhcp', '@dnsmasq[0]', 'port') || '53';
+      dnsmasq_port = resolve_port(uci.get('dhcp', '@dnsmasq[0]', 'port'), '53');
 /* UCI config end */
 -%}
 
@@ -288,7 +373,7 @@ chain dstnat {
 	{% if (control_info.listen_interfaces): %}
 	meta iifname {{ array_to_nftarr(control_info.listen_interfaces) }}
 	{%- endif /* listen_interfaces */ %}
-	meta nfproto { ipv4, ipv6 } udp dport 53 counter redirect to :{{ dns_port }} comment "!{{ cfgname }}: DNS hijack"
+	meta nfproto { ipv4, ipv6 } udp dport 53 counter redirect to :{{ dnsmasq_port }} comment "!{{ cfgname }}: DNS hijack"
 {% endif /* dns_hijacked */ %}
 {% if (match(proxy_mode, /redirect/)): %}
 	meta nfproto { {{ (ipv6_support === '1') ? 'ipv4, ipv6' : 'ipv4' }} } meta l4proto tcp jump homeproxy_redirect_lanac

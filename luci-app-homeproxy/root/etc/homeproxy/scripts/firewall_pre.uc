@@ -20,8 +20,12 @@ if (match(proxy_mode, /tun/)) {
 	else
 		outbound_node = uci.get(cfgname, 'config', 'main_node') || 'nil';
 
-	if (outbound_node !== 'nil')
-		tun_name = uci.get(cfgname, 'infra', 'tun_name') || 'singtun0';
+	if (outbound_node !== 'nil') {
+		/* the name is interpolated into an nftables rule: keep it to what an
+		   interface name can actually be */
+		const raw_tun = trim(uci.get(cfgname, 'infra', 'tun_name') ?? '');
+		tun_name = match(raw_tun, /^[A-Za-z0-9._-]{1,15}$/) ? raw_tun : 'singtun0';
+	}
 }
 
 const server_enabled = uci.get(cfgname, 'server', 'enabled');

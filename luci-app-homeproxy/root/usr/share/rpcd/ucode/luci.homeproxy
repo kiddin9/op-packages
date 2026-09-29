@@ -23,6 +23,11 @@ function hasKernelModule(kmod) {
 const HP_DIR = '/etc/homeproxy';
 const RUN_DIR = '/var/run/homeproxy';
 
+/* Resource lists the status page may query/update; single source for the two
+   methods below (the update path also validates the type against it to keep
+   path traversal out). */
+const RESOURCE_TYPES = ['china_ip4', 'china_ip6', 'gfw_list', 'china_list', 'geoip_cn', 'geosite_cn'];
+
 const methods = {
 	acllist_read: {
 		args: { type: 'type' },
@@ -108,6 +113,8 @@ const methods = {
 			switch (filename) {
 			case 'client_ca':
 			case 'server_publickey':
+			/* the ECH config the client form uploads (node.js uploadCertificate) */
+			case 'client_ech_conf':
 				return writeCertificate(filename, false);
 				break;
 			case 'server_privatekey':
@@ -234,7 +241,7 @@ const methods = {
 		args: { type: 'type' },
 		call: function(req) {
 			/* whitelist resource types to prevent path traversal */
-			if (index(['china_ip4', 'china_ip6', 'gfw_list', 'china_list'], req.args?.type) === -1)
+			if (index(RESOURCE_TYPES, req.args?.type) === -1)
 				return { error: 'illegal type', version: null };
 			let version = trim(readfile(`${HP_DIR}/resources/${req.args?.type}.ver`));
 			const fields = version ? match(version, /^(\S+) (\S+)$/) : null;
@@ -246,7 +253,7 @@ const methods = {
 	resources_update: {
 		args: { type: 'type' },
 		call: function(req) {
-			if (index(['china_ip4', 'china_ip6', 'gfw_list', 'china_list'], req.args?.type) === -1)
+			if (index(RESOURCE_TYPES, req.args?.type) === -1)
 				return { status: 255, error: 'illegal type' };
 			if (req.args?.type) {
 				const type = shellquote(req.args?.type);

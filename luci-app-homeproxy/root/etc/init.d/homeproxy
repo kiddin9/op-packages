@@ -8,6 +8,13 @@ USE_PROCD=1
 START=99
 STOP=10
 
+# refresh_lists re-applies the on-disk resource lists (dnsmasq snippets + the
+# fw4 sets built from china_ip4/ip6.txt) without restarting sing-box. It is
+# called by update_crond.sh after a resource update, because a list update on
+# disk has no effect until the firewall/dnsmasq side is regenerated.
+EXTRA_COMMANDS="refresh_lists"
+EXTRA_HELP="	refresh_lists	Re-apply the updated resource lists (dnsmasq + fw4)"
+
 CONF="homeproxy"
 PROG="/usr/bin/sing-box"
 
@@ -19,6 +26,11 @@ LOG_PATH="$RUN_DIR/homeproxy.log"
 [ -f "$HP_DIR/scripts/fw4_names.sh" ] && . "$HP_DIR/scripts/fw4_names.sh"
 
 log() {
+	# The log file lives in tmpfs, so it does not exist yet on the first start
+	# (or right after a reboot) while the earliest diagnostics - missing
+	# sing-box, unsupported version, no node configured - are already being
+	# written. Create the directory here so those lines are not lost.
+	mkdir -p "$RUN_DIR" 2>"/dev/null"
 	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
 }
 
@@ -39,13 +51,79 @@ if [ -n "$DNSMASQ_UCI_CONFIG" ] && [ -f "/tmp/etc/dnsmasq.conf.$DNSMASQ_UCI_CONF
 fi
 
 if [ -z "$DNSMASQ_DIR" ]; then
-	log "WARNING: unable to derive the dnsmasq conf-dir (section '${DNSMASQ_UCI_CONFIG:-unknown}'), using /tmp/dnsmasq.d/dnsmasq-homeproxy.d."
+	log "WARNING: unable to derive the dnsmasq conf-dir (section '${DNSMASQ_UCI_CONFIG:-unknown}'), using /tmp/dnsmasq.d/dnsmasq-homeproxy.d; DNS-based routing will not take effect on setups where dnsmasq reads a different conf-dir."
 	DNSMASQ_DIR="/tmp/dnsmasq.d/dnsmasq-homeproxy.d"
 fi
 
 restore_upnp_mappings() {
 	[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd enabled && /etc/init.d/miniupnpd running \
 		&& /etc/init.d/miniupnpd restart >"/dev/null" 2>&1
+}
+
+# Render the dnsmasq snippets that implement DNS-based routing for the current
+# routing_mode (the conf-dir include plus one snippet per mode). Shared by
+# start_service and refresh_lists; requires config_load to have run. Existing
+# snippets are dropped first so a routing_mode switch cannot leave a stale
+# snippet behind when start runs without a preceding stop.
+render_dns_snippets() {
+	local ipv6_support dns_port
+	config_get_bool ipv6_support "config" "ipv6_support" "0"
+	config_get dns_port "infra" "dns_port" "5333"
+
+	mkdir -p "$DNSMASQ_DIR" || log "Warning: failed to create ${DNSMASQ_DIR}."
+	rm -f "$DNSMASQ_DIR"/*.conf 2>"/dev/null"
+	echo -e "conf-dir=$DNSMASQ_DIR" > "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" \
+		|| log "Warning: failed to write the dnsmasq conf-dir file."
+	case "$routing_mode" in
+	"bypass_mainland_china"|"custom"|"global")
+		cat <<-EOF > "$DNSMASQ_DIR/redirect-dns.conf"
+			no-poll
+			no-resolv
+			server=127.0.0.1#$dns_port
+		EOF
+		;;
+	"gfwlist")
+		local gfw_nftset_v6
+		[ "$ipv6_support" -eq "0" ] || gfw_nftset_v6=",6#inet#fw4#homeproxy_gfw_list_v6"
+		sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_gfw_list_v4$gfw_nftset_v6/g" \
+			"$HP_DIR/resources/gfw_list.txt" > "$DNSMASQ_DIR/gfw_list.conf"
+		;;
+	"proxy_mainland_china")
+		sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port/g" \
+			"$HP_DIR/resources/china_list.txt" > "$DNSMASQ_DIR/china_list.conf"
+		;;
+	esac
+
+	if [ "$routing_mode" != "custom" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
+		local wan_nftset_v6
+		[ "$ipv6_support" -eq "0" ] || wan_nftset_v6=",6#inet#fw4#homeproxy_wan_proxy_addr_v6"
+		sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
+			"$HP_DIR/resources/proxy_list.txt" > "$DNSMASQ_DIR/proxy_list.conf"
+	fi
+
+	/etc/init.d/dnsmasq restart >"/dev/null" 2>&1 \
+		|| log "Warning: failed to restart dnsmasq, DNS-based routing may be stale."
+}
+
+# (Re)render the fw4 snippets and reload the firewall. The nft sets that carry
+# the china/gfw address lists are built here from the resource files on disk,
+# so this must run again after a resource update (refresh_lists) as well.
+apply_firewall() {
+	local outbound_node="$1"
+
+	mkdir -p "$RUN_DIR" || { log "Error: failed to create ${RUN_DIR}."; return 1; }
+	# Truncate first: firewall_pre.uc only writes a file when it has content,
+	# so a mode/server switch would otherwise keep the previous rules.
+	: > "$RUN_DIR/fw4_forward.nft"
+	: > "$RUN_DIR/fw4_input.nft"
+	: > "$RUN_DIR/fw4_post.nft"
+
+	ucode "$HP_DIR/scripts/firewall_pre.uc" 2>"/dev/null" || log "Error: firewall pre-script failed."
+	if [ "$outbound_node" != "nil" ]; then
+		utpl -S "$HP_DIR/scripts/firewall_post.ut" > "$RUN_DIR/fw4_post.nft" 2>"/dev/null" || log "Error: firewall post-script failed."
+	fi
+	fw4 reload >"/dev/null" 2>&1 || log "Error: fw4 reload failed."
+	restore_upnp_mappings
 }
 
 start_service() {
@@ -102,10 +180,17 @@ start_service() {
 			sleep 1
 		done
 
-		ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"
+		# Judge by the generator's exit code, not by the file: the generator
+		# keeps the previous sing-box-c.json when it fails, so an existing file
+		# only proves that some older config is valid - the service would then
+		# silently keep running the old nodes/routing while reporting success.
+		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
+			log "Error: failed to generate client configuration."
+			return 1
+		fi
 
 		if [ ! -e "$RUN_DIR/sing-box-c.json" ]; then
-			log "Error: failed to generate client configuration."
+			log "Error: client configuration was not generated."
 			return 1
 		elif ! "$PROG" check --config "$RUN_DIR/sing-box-c.json" 2>>"$LOG_PATH"; then
 			log "Error: wrong client configuration detected."
@@ -123,40 +208,7 @@ start_service() {
 			/etc/init.d/cron restart >"/dev/null" 2>&1 || log "Warning: failed to restart cron."
 		fi
 
-		local ipv6_support dns_port
-		config_get_bool ipv6_support "config" "ipv6_support" "0"
-		config_get dns_port "infra" "dns_port" "5333"
-		mkdir -p "$DNSMASQ_DIR" || log "Warning: failed to create ${DNSMASQ_DIR}."
-		echo -e "conf-dir=$DNSMASQ_DIR" > "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" \
-			|| log "Warning: failed to write the dnsmasq conf-dir file."
-		case "$routing_mode" in
-		"bypass_mainland_china"|"custom"|"global")
-			cat <<-EOF > "$DNSMASQ_DIR/redirect-dns.conf"
-				no-poll
-				no-resolv
-				server=127.0.0.1#$dns_port
-			EOF
-			;;
-		"gfwlist")
-			local gfw_nftset_v6
-			[ "$ipv6_support" -eq "0" ] || gfw_nftset_v6=",6#inet#fw4#homeproxy_gfw_list_v6"
-			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_gfw_list_v4$gfw_nftset_v6/g" \
-				"$HP_DIR/resources/gfw_list.txt" > "$DNSMASQ_DIR/gfw_list.conf"
-			;;
-		"proxy_mainland_china")
-			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port/g" \
-				"$HP_DIR/resources/china_list.txt" > "$DNSMASQ_DIR/china_list.conf"
-			;;
-		esac
-
-		if [ "$routing_mode" != "custom" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
-			local wan_nftset_v6
-			[ "$ipv6_support" -eq "0" ] || wan_nftset_v6=",6#inet#fw4#homeproxy_wan_proxy_addr_v6"
-			sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
-				"$HP_DIR/resources/proxy_list.txt" > "$DNSMASQ_DIR/proxy_list.conf"
-		fi
-		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1 \
-			|| log "Warning: failed to restart dnsmasq, DNS-based routing may be stale."
+		render_dns_snippets
 
 		local table_mark
 		config_get table_mark "infra" "table_mark" "100"
@@ -213,22 +265,36 @@ start_service() {
 
 		[ "$disable_gso" -eq "1" ] && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
 
-		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
+		if [ -x "/sbin/ujail" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
 			procd_add_jail "sing-box-c" log procfs
 			procd_add_jail_mount "$RUN_DIR/sing-box-c.json"
 			procd_add_jail_mount_rw "$RUN_DIR/sing-box-c.log"
-			[ "$routing_mode" != "bypass_mainland_china" ] || procd_add_jail_mount_rw "$HP_DIR/cache.db"
+			# custom routing may point a local rule-set at any path under
+			# HP_DIR, so the whole directory goes in read-only. procd orders
+			# the mounts by path, so this parent cannot shadow the read-write
+			# cache.db below.
+			procd_add_jail_mount "$HP_DIR/"
+			case "$routing_mode" in
+			"bypass_mainland_china"|"custom")
+				procd_add_jail_mount_rw "$HP_DIR/cache.db" ;;
+			esac
 			procd_add_jail_mount "$HP_DIR/certs/"
+			procd_add_jail_mount "/etc/acme/"
 			procd_add_jail_mount "/etc/ssl/"
+			# custom routing's find_neighbor reads LAN hostnames from the
+			# dnsmasq lease file.
+			procd_add_jail_mount "/tmp/dhcp.leases"
 			procd_add_jail_mount "/etc/localtime"
 			procd_add_jail_mount "/etc/TZ"
 			procd_set_param capabilities "/etc/capabilities/homeproxy.json"
 			procd_set_param no_new_privs 1
 			procd_set_param user sing-box
 			procd_set_param group sing-box
+		elif [ ! -x "/sbin/ujail" ]; then
+			log "Warning: /sbin/ujail is missing; sing-box client runs as root without a jail."
 		fi
 
-		procd_set_param limits core="unlimited"
+		procd_set_param limits core="0"
 		procd_set_param limits nofile="1000000 1000000"
 		procd_set_param stderr 1
 		procd_set_param respawn
@@ -237,10 +303,13 @@ start_service() {
 	fi
 
 	if [ "$server_enabled" = "1" ]; then
-		ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"
+		if ! ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"; then
+			log "Error: failed to generate server configuration."
+			return 1
+		fi
 
 		if [ ! -e "$RUN_DIR/sing-box-s.json" ]; then
-			log "Error: failed to generate server configuration."
+			log "Error: server configuration was not generated."
 			return 1
 		elif ! "$PROG" check --config "$RUN_DIR/sing-box-s.json" 2>>"$LOG_PATH"; then
 			log "Error: wrong server configuration detected."
@@ -269,7 +338,7 @@ start_service() {
 			procd_set_param group sing-box
 		fi
 
-		procd_set_param limits core="unlimited"
+		procd_set_param limits core="0"
 		procd_set_param limits nofile="1000000 1000000"
 		procd_set_param stderr 1
 		procd_set_param respawn
@@ -282,16 +351,22 @@ start_service() {
 	procd_set_param respawn
 	procd_close_instance
 
+	# cache_file is enabled for bypass_mainland_china and custom alike, and the
+	# file has to exist before the client jail binds it read-write.
 	case "$routing_mode" in
-	"bypass_mainland_china")
+	"bypass_mainland_china"|"custom")
 		[ -e "$HP_DIR/cache.db" ] || touch "$HP_DIR/cache.db" \
 			|| log "Warning: failed to create ${HP_DIR}/cache.db."
 		;;
-	"custom")
+	esac
+	if [ "$routing_mode" = "custom" ]; then
 		[ -d "$HP_DIR/ruleset" ] || mkdir -p "$HP_DIR/ruleset" \
 			|| log "Warning: failed to create ${HP_DIR}/ruleset."
-		;;
-	esac
+		# A local rule-set is opened by the client, which is jailed and no
+		# longer root, so the documented directory has to be readable by it.
+		chown -R sing-box:sing-box "$HP_DIR/ruleset" 2>"/dev/null" \
+			|| log "Warning: failed to hand ${HP_DIR}/ruleset to sing-box."
+	fi
 
 	[ "$outbound_node" = "nil" ] || echo > "$RUN_DIR/sing-box-c.log"
 	if [ "$server_enabled" = "1" ]; then
@@ -299,15 +374,18 @@ start_service() {
 		mkdir -p "$HP_DIR/certs" || log "Warning: failed to create ${HP_DIR}/certs."
 	fi
 
-	chown sing-box:sing-box "$RUN_DIR"/sing-box-*.json "$RUN_DIR"/sing-box-*.log "$HP_DIR"/cache.db 2>"/dev/null" \
-		|| log "Warning: failed to change the ownership of the runtime files to sing-box."
+	# chown only what is actually there: a mode that does not create one of
+	# these paths is not an error worth logging on every start.
+	for hp_file in "$RUN_DIR"/sing-box-*.json "$RUN_DIR"/sing-box-*.log "$HP_DIR"/cache.db; do
+		[ -e "$hp_file" ] || continue
+		chown sing-box:sing-box "$hp_file" 2>"/dev/null" \
+			|| log "Warning: failed to change the ownership of ${hp_file}."
+	done
+	# the generated client config carries every node credential
+	[ -e "$RUN_DIR/sing-box-c.json" ] && chmod 600 "$RUN_DIR/sing-box-c.json" 2>"/dev/null"
+	[ -e "$RUN_DIR/sing-box-s.json" ] && chmod 600 "$RUN_DIR/sing-box-s.json" 2>"/dev/null"
 
-	ucode "$HP_DIR/scripts/firewall_pre.uc" 2>"/dev/null" || log "Error: firewall pre-script failed."
-	if [ "$outbound_node" != "nil" ]; then
-		utpl -S "$HP_DIR/scripts/firewall_post.ut" > "$RUN_DIR/fw4_post.nft" 2>"/dev/null" || log "Error: firewall post-script failed."
-	fi
-	fw4 reload >"/dev/null" 2>&1 || log "Error: fw4 reload failed."
-	restore_upnp_mappings
+	apply_firewall "$outbound_node"
 
 	log "sing-box $(sing-box version -n 2>/dev/null || echo "unknown") started."
 }
@@ -390,7 +468,10 @@ reload_service() {
 	fi
 
 	if [ "$outbound_node" != "nil" ]; then
-		ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"
+		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
+			log "Error: failed to generate client configuration, reload aborted."
+			return 1
+		fi
 		if ! "$PROG" check --config "$RUN_DIR/sing-box-c.json" 2>>"$LOG_PATH"; then
 			log "Error: new client config is invalid, reload aborted."
 			return 1
@@ -400,7 +481,10 @@ reload_service() {
 	local server_enabled
 	config_get_bool server_enabled "server" "enabled" "0"
 	if [ "$server_enabled" = "1" ]; then
-		ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"
+		if ! ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"; then
+			log "Error: failed to generate server configuration, reload aborted."
+			return 1
+		fi
 		if ! "$PROG" check --config "$RUN_DIR/sing-box-s.json" 2>>"$LOG_PATH"; then
 			log "Error: new server config is invalid, reload aborted."
 			return 1
@@ -409,6 +493,27 @@ reload_service() {
 
 	stop
 	start
+}
+
+# Re-apply the resource lists that were refreshed on disk (called by
+# update_crond.sh). Only the firewall sets and the dnsmasq snippets depend on
+# those files, so sing-box itself is left running.
+refresh_lists() {
+	config_load "$CONF"
+
+	local routing_mode outbound_node
+	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
+	if [ "$routing_mode" != "custom" ]; then
+		config_get outbound_node "config" "main_node" "nil"
+	else
+		config_get outbound_node "routing" "default_outbound" "nil"
+	fi
+	[ "$outbound_node" != "nil" ] || return 0
+
+	render_dns_snippets
+	apply_firewall "$outbound_node"
+
+	log "Resource list changes applied (dnsmasq snippets + fw4 sets)."
 }
 
 service_triggers() {

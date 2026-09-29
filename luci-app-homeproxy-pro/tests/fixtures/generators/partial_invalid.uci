@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Regression fixture for P0-5: a broken node inside an urltest group must not
+# abort the whole configuration.
+#
+# The Adapter's create() calls die() on validation problems, and the generator
+# built every urltest member through it, so ONE node missing its uuid made
+# generate_client.uc exit non-zero.  init.d then had no configuration at all
+# and the service could not start - even though the rest of the group was
+# fine.  urltest candidates are now pruned (with a warning) instead, while
+# nodes that routing rules actually resolve through stay fatal.
+#
+# n_broken is a vless node with no uuid on purpose; the test asserts that
+# generation succeeds and that n_broken is absent from the emitted group.
+
+config homeproxy-pro 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'tun'
+	option ipv6_support '0'
+	option log_level 'error'
+	option main_node 'urltest'
+	option main_udp_node 'nil'
+	list main_urltest_nodes 'n_ok'
+	list main_urltest_nodes 'n_broken'
+	option dns_server 'https://cloudflare-dns.com/dns-query'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option tun_name 'singtun0'
+	option tun_addr4 '172.19.0.1/30'
+	option tun_addr6 'fdfe:dcba:9876::1/126'
+	option tun_mtu '9000'
+	option self_mark '100'
+	option tun_mark '102'
+	option table_mark '100'
+	option ntp_server 'nil'
+
+config node 'n_ok'
+	option label 'ok'
+	option type 'vless'
+	option address 'ok.example.com'
+	option port '443'
+	option uuid '3af88561-9c69-4b19-8f7e-f08d580bc339'
+	option tls '1'
+	option tls_sni 'ok.example.com'
+
+config node 'n_broken'
+	option label 'broken'
+	option type 'vless'
+	option address 'broken.example.com'
+	option port '443'
+	option tls '1'
+	option tls_sni 'broken.example.com'

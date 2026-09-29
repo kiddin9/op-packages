@@ -1,0 +1,1966 @@
+
+===== scenario: A-tun-bypass-client-only (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+init.d/dnsmasq restart
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=5333 example.com 127.0.0.1
+nc 127.0.0.1 5330
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-c.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+init.d/dnsmasq restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file var/run/homeproxy-pro/known-good/sing-box-c.json: {|	"log": {},|	"inbounds": [|		{|			"tag": "dns-in",|			"listen_port": 5333|		},|		{|			"tag": "mixed-in",|			"listen_port": 5330|		}|	],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/uci-snapshot.txt: homeproxy-pro.config.main_node=n1|homeproxy-pro.config.main_udp_node=nil|homeproxy-pro.config.proxy_mode=tun|homeproxy-pro.config.routing_mode=bypass_mainland_china|homeproxy-pro.config.routing_port=|homeproxy-pro.config.ipv6_support=0|homeproxy-pro.config.china_dns_server=|homeproxy-pro.infra.self_mark=|homeproxy-pro.infra.redirect_port=|homeproxy-pro.infra.tproxy_port=|homeproxy-pro.infra.tproxy_mark=101|homeproxy-pro.infra.tun_mark=102|homeproxy-pro.infra.tun_name=singtun0|homeproxy-pro.infra.tun_addr4=|homeproxy-pro.infra.tun_addr6=|homeproxy-pro.infra.dns_redirect=|homeproxy-pro.infra.dns_port=5333|homeproxy-pro.infra.common_port=|homeproxy-pro.infra.table_mark=100|homeproxy-pro.routing.bypass_cn_traffic=|homeproxy-pro.routing.default_outbound=direct-out|homeproxy-pro.server.enabled=0|homeproxy-pro.control.lan_proxy_mode=|list homeproxy-pro.control.listen_interfaces=|list homeproxy-pro.control.lan_direct_ipv4_ips=|list homeproxy-pro.control.lan_direct_ipv6_ips=|list homeproxy-pro.control.lan_direct_mac_addrs=|list homeproxy-pro.control.lan_proxy_ipv4_ips=|list homeproxy-pro.control.lan_proxy_ipv6_ips=|list homeproxy-pro.control.lan_proxy_mac_addrs=|list homeproxy-pro.control.lan_gaming_mode_ipv4_ips=|list homeproxy-pro.control.lan_gaming_mode_ipv6_ips=|list homeproxy-pro.control.lan_gaming_mode_mac_addrs=|list homeproxy-pro.control.lan_global_proxy_ipv4_ips=|list homeproxy-pro.control.lan_global_proxy_ipv6_ips=|list homeproxy-pro.control.lan_global_proxy_mac_addrs=|list homeproxy-pro.control.wan_proxy_ipv4_ips=|list homeproxy-pro.control.wan_proxy_ipv6_ips=|list homeproxy-pro.control.wan_direct_ipv4_ips=|list homeproxy-pro.control.wan_direct_ipv6_ips=|
+file etc/homeproxy-pro/cache.db: 
+
+===== scenario: B-tproxy-gfwlist-ipv6-with-server (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+chmod 600 etc/crontabs/root
+init.d/cron restart
+init.d/dnsmasq restart
+ip rule del fwmark 101 table 100
+ip rule add fwmark 101 table 100
+ip route replace local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 rule add fwmark 101 table 100
+ip -6 route replace local ::/0 dev lo table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+ucode -S etc/homeproxy-pro/scripts/generate_server.uc
+procd_open_instance sing-box-s
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-s.json
+procd_add_jail sing-box-s log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-s.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-s.log
+procd_add_jail_mount_rw etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box etc/homeproxy-pro/certs
+chmod 700 etc/homeproxy-pro/certs
+chown sing-box:sing-box etc/homeproxy-pro/certs/server_privatekey.pem
+chmod 600 etc/homeproxy-pro/certs/server_privatekey.pem
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-s.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-s.log
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=5333 example.com 127.0.0.1
+nc 127.0.0.1 5330
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-c.json
+config_load homeproxy-pro
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-s.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+init.d/dnsmasq restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file var/run/homeproxy-pro/known-good/sing-box-c.json: {|	"log": {},|	"inbounds": [|		{|			"tag": "dns-in",|			"listen_port": 5333|		},|		{|			"tag": "mixed-in",|			"listen_port": 5330|		}|	],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/sing-box-s.json: {|	"log": {},|	"inbounds": [],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/uci-snapshot.txt: homeproxy-pro.config.main_node=n1|homeproxy-pro.config.main_udp_node=u1|homeproxy-pro.config.proxy_mode=redirect_tproxy|homeproxy-pro.config.routing_mode=gfwlist|homeproxy-pro.config.routing_port=|homeproxy-pro.config.ipv6_support=1|homeproxy-pro.config.china_dns_server=|homeproxy-pro.infra.self_mark=|homeproxy-pro.infra.redirect_port=|homeproxy-pro.infra.tproxy_port=|homeproxy-pro.infra.tproxy_mark=101|homeproxy-pro.infra.tun_mark=102|homeproxy-pro.infra.tun_name=singtun0|homeproxy-pro.infra.tun_addr4=|homeproxy-pro.infra.tun_addr6=|homeproxy-pro.infra.dns_redirect=|homeproxy-pro.infra.dns_port=5333|homeproxy-pro.infra.common_port=|homeproxy-pro.infra.table_mark=100|homeproxy-pro.routing.bypass_cn_traffic=|homeproxy-pro.routing.default_outbound=direct-out|homeproxy-pro.server.enabled=1|homeproxy-pro.control.lan_proxy_mode=|list homeproxy-pro.control.listen_interfaces=|list homeproxy-pro.control.lan_direct_ipv4_ips=|list homeproxy-pro.control.lan_direct_ipv6_ips=|list homeproxy-pro.control.lan_direct_mac_addrs=|list homeproxy-pro.control.lan_proxy_ipv4_ips=|list homeproxy-pro.control.lan_proxy_ipv6_ips=|list homeproxy-pro.control.lan_proxy_mac_addrs=|list homeproxy-pro.control.lan_gaming_mode_ipv4_ips=|list homeproxy-pro.control.lan_gaming_mode_ipv6_ips=|list homeproxy-pro.control.lan_gaming_mode_mac_addrs=|list homeproxy-pro.control.lan_global_proxy_ipv4_ips=|list homeproxy-pro.control.lan_global_proxy_ipv6_ips=|list homeproxy-pro.control.lan_global_proxy_mac_addrs=|list homeproxy-pro.control.wan_proxy_ipv4_ips=|list homeproxy-pro.control.wan_proxy_ipv6_ips=|list homeproxy-pro.control.wan_direct_ipv4_ips=|list homeproxy-pro.control.wan_direct_ipv6_ips=|
+
+===== scenario: C-nothing-configured (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+log Neither client nor server is configured. Service not started.
+config_load homeproxy-pro
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+
+===== scenario: D-health-gate-rollback (reload) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+init.d/dnsmasq restart
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=5333 example.com 127.0.0.1
+nc 127.0.0.1 5330
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-c.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+prime start rc=0
+log Reloading service...
+config_load homeproxy-pro
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+chmod 600 var/run/homeproxy-pro/candidate/sing-box-c.json
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+log Activating the client configuration validated by the reload preflight.
+log dnsmasq snippets unchanged, skipping the restart.
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+log Error: sing-box-c did not come up with the new configuration.
+log Reverting the intercept layer; traffic will go out unproxied until the client is up.
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+init.d/dnsmasq restart
+log Error: sing-box-c did not come up with the new configuration, rolling back.
+uci set homeproxy-pro.config.main_node=n1
+uci set homeproxy-pro.config.main_udp_node=nil
+uci set homeproxy-pro.config.proxy_mode=tun
+uci set homeproxy-pro.config.routing_mode=bypass_mainland_china
+uci set homeproxy-pro.config.routing_port=
+uci set homeproxy-pro.config.ipv6_support=0
+uci set homeproxy-pro.config.china_dns_server=
+uci set homeproxy-pro.infra.self_mark=
+uci set homeproxy-pro.infra.redirect_port=
+uci set homeproxy-pro.infra.tproxy_port=
+uci set homeproxy-pro.infra.tproxy_mark=101
+uci set homeproxy-pro.infra.tun_mark=102
+uci set homeproxy-pro.infra.tun_name=singtun0
+uci set homeproxy-pro.infra.tun_addr4=
+uci set homeproxy-pro.infra.tun_addr6=
+uci set homeproxy-pro.infra.dns_redirect=
+uci set homeproxy-pro.infra.dns_port=5333
+uci set homeproxy-pro.infra.common_port=
+uci set homeproxy-pro.infra.table_mark=100
+uci set homeproxy-pro.routing.bypass_cn_traffic=
+uci set homeproxy-pro.routing.default_outbound=direct-out
+uci set homeproxy-pro.server.enabled=0
+uci set homeproxy-pro.control.lan_proxy_mode=
+uci delete homeproxy-pro.control.listen_interfaces
+uci delete homeproxy-pro.control.lan_direct_ipv4_ips
+uci delete homeproxy-pro.control.lan_direct_ipv6_ips
+uci delete homeproxy-pro.control.lan_direct_mac_addrs
+uci delete homeproxy-pro.control.lan_proxy_ipv4_ips
+uci delete homeproxy-pro.control.lan_proxy_ipv6_ips
+uci delete homeproxy-pro.control.lan_proxy_mac_addrs
+uci delete homeproxy-pro.control.lan_gaming_mode_ipv4_ips
+uci delete homeproxy-pro.control.lan_gaming_mode_ipv6_ips
+uci delete homeproxy-pro.control.lan_gaming_mode_mac_addrs
+uci delete homeproxy-pro.control.lan_global_proxy_ipv4_ips
+uci delete homeproxy-pro.control.lan_global_proxy_ipv6_ips
+uci delete homeproxy-pro.control.lan_global_proxy_mac_addrs
+uci delete homeproxy-pro.control.wan_proxy_ipv4_ips
+uci delete homeproxy-pro.control.wan_proxy_ipv6_ips
+uci delete homeproxy-pro.control.wan_direct_ipv4_ips
+uci delete homeproxy-pro.control.wan_direct_ipv6_ips
+uci commit homeproxy-pro
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+log Starting with the last known-good client configuration.
+init.d/dnsmasq restart
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=5333 example.com 127.0.0.1
+nc 127.0.0.1 5330
+log Client is up again; reinstalling the intercept layer.
+log dnsmasq snippets unchanged, skipping the restart.
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-c.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+log Rollback completed; the previous configuration is running.
+reload_service rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file var/run/homeproxy-pro/known-good/sing-box-c.json: {|	"log": {},|	"inbounds": [|		{|			"tag": "dns-in",|			"listen_port": 5333|		},|		{|			"tag": "mixed-in",|			"listen_port": 5330|		}|	],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/uci-snapshot.txt: homeproxy-pro.config.main_node=n1|homeproxy-pro.config.main_udp_node=nil|homeproxy-pro.config.proxy_mode=tun|homeproxy-pro.config.routing_mode=bypass_mainland_china|homeproxy-pro.config.routing_port=|homeproxy-pro.config.ipv6_support=0|homeproxy-pro.config.china_dns_server=|homeproxy-pro.infra.self_mark=|homeproxy-pro.infra.redirect_port=|homeproxy-pro.infra.tproxy_port=|homeproxy-pro.infra.tproxy_mark=101|homeproxy-pro.infra.tun_mark=102|homeproxy-pro.infra.tun_name=singtun0|homeproxy-pro.infra.tun_addr4=|homeproxy-pro.infra.tun_addr6=|homeproxy-pro.infra.dns_redirect=|homeproxy-pro.infra.dns_port=5333|homeproxy-pro.infra.common_port=|homeproxy-pro.infra.table_mark=100|homeproxy-pro.routing.bypass_cn_traffic=|homeproxy-pro.routing.default_outbound=direct-out|homeproxy-pro.server.enabled=0|homeproxy-pro.control.lan_proxy_mode=|list homeproxy-pro.control.listen_interfaces=|list homeproxy-pro.control.lan_direct_ipv4_ips=|list homeproxy-pro.control.lan_direct_ipv6_ips=|list homeproxy-pro.control.lan_direct_mac_addrs=|list homeproxy-pro.control.lan_proxy_ipv4_ips=|list homeproxy-pro.control.lan_proxy_ipv6_ips=|list homeproxy-pro.control.lan_proxy_mac_addrs=|list homeproxy-pro.control.lan_gaming_mode_ipv4_ips=|list homeproxy-pro.control.lan_gaming_mode_ipv6_ips=|list homeproxy-pro.control.lan_gaming_mode_mac_addrs=|list homeproxy-pro.control.lan_global_proxy_ipv4_ips=|list homeproxy-pro.control.lan_global_proxy_ipv6_ips=|list homeproxy-pro.control.lan_global_proxy_mac_addrs=|list homeproxy-pro.control.wan_proxy_ipv4_ips=|list homeproxy-pro.control.wan_proxy_ipv6_ips=|list homeproxy-pro.control.wan_direct_ipv4_ips=|list homeproxy-pro.control.wan_direct_ipv6_ips=|
+file etc/homeproxy-pro/cache.db: 
+file dnsmasq/dnsmasq-homeproxy-pro.conf: conf-dir=dnsmasq/dnsmasq-homeproxy-pro.d|
+file dnsmasq/dnsmasq-homeproxy-pro.d/proxy_list.conf: server=/proxy.example.net/127.0.0.1#5333|nftset=/proxy.example.net/4#inet#fw4#homeproxy_wan_proxy_addr_v4|
+file dnsmasq/dnsmasq-homeproxy-pro.d/redirect-dns.conf: no-poll|no-resolv|server=127.0.0.1#5333|
+
+===== scenario: E-custom-routing-runtime-files (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+init.d/dnsmasq restart
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown -R sing-box:sing-box etc/homeproxy-pro/ruleset
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=5333 example.com 127.0.0.1
+nc 127.0.0.1 5330
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-c.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+init.d/dnsmasq restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file var/run/homeproxy-pro/known-good/sing-box-c.json: {|	"log": {},|	"inbounds": [|		{|			"tag": "dns-in",|			"listen_port": 5333|		},|		{|			"tag": "mixed-in",|			"listen_port": 5330|		}|	],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/uci-snapshot.txt: homeproxy-pro.config.main_node=n1|homeproxy-pro.config.main_udp_node=nil|homeproxy-pro.config.proxy_mode=tun|homeproxy-pro.config.routing_mode=custom|homeproxy-pro.config.routing_port=|homeproxy-pro.config.ipv6_support=0|homeproxy-pro.config.china_dns_server=|homeproxy-pro.infra.self_mark=|homeproxy-pro.infra.redirect_port=|homeproxy-pro.infra.tproxy_port=|homeproxy-pro.infra.tproxy_mark=101|homeproxy-pro.infra.tun_mark=102|homeproxy-pro.infra.tun_name=singtun0|homeproxy-pro.infra.tun_addr4=|homeproxy-pro.infra.tun_addr6=|homeproxy-pro.infra.dns_redirect=|homeproxy-pro.infra.dns_port=5333|homeproxy-pro.infra.common_port=|homeproxy-pro.infra.table_mark=100|homeproxy-pro.routing.bypass_cn_traffic=|homeproxy-pro.routing.default_outbound=direct-out|homeproxy-pro.server.enabled=0|homeproxy-pro.control.lan_proxy_mode=|list homeproxy-pro.control.listen_interfaces=|list homeproxy-pro.control.lan_direct_ipv4_ips=|list homeproxy-pro.control.lan_direct_ipv6_ips=|list homeproxy-pro.control.lan_direct_mac_addrs=|list homeproxy-pro.control.lan_proxy_ipv4_ips=|list homeproxy-pro.control.lan_proxy_ipv6_ips=|list homeproxy-pro.control.lan_proxy_mac_addrs=|list homeproxy-pro.control.lan_gaming_mode_ipv4_ips=|list homeproxy-pro.control.lan_gaming_mode_ipv6_ips=|list homeproxy-pro.control.lan_gaming_mode_mac_addrs=|list homeproxy-pro.control.lan_global_proxy_ipv4_ips=|list homeproxy-pro.control.lan_global_proxy_ipv6_ips=|list homeproxy-pro.control.lan_global_proxy_mac_addrs=|list homeproxy-pro.control.wan_proxy_ipv4_ips=|list homeproxy-pro.control.wan_proxy_ipv6_ips=|list homeproxy-pro.control.wan_direct_ipv4_ips=|list homeproxy-pro.control.wan_direct_ipv6_ips=|
+file etc/homeproxy-pro/cache.db: 
+
+===== scenario: F-custom-routing-nothing-configured (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+log Neither client nor server is configured. Service not started.
+config_load homeproxy-pro
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+
+===== scenario: G-start-health-gate-failure (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+init.d/dnsmasq restart
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+log Error: sing-box-c did not come up with the new configuration.
+log Reverting the intercept layer; traffic will go out unproxied until the client is up.
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+init.d/dnsmasq restart
+start rc=1
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file etc/homeproxy-pro/cache.db: 
+
+===== scenario: I-dns-snippet-write-failure (start) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+log Warning: infra.dns_port=70000 is out of range; skipping the dnsmasq snippets.
+log Error: the dnsmasq snippets were not installed; LAN DNS keeps using the previous configuration.
+ip link show singtun0
+ip link set singtun0 up
+ip route replace default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip rule add fwmark 102 table 100
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=70000 example.com 127.0.0.1
+nc 127.0.0.1 5398
+log Warning: the DNS snippets were not installed; keeping the previous known-good configuration.
+sing-box version -n
+log sing-box 1.14.0 started.
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file etc/homeproxy-pro/cache.db: 
+
+===== scenario: H-start-disables-client (start-twice) =====
+uci -q show dhcp.@dnsmasq[0]
+config_load homeproxy-pro
+sing-box version -n
+uname -r
+ip route show default
+ip -6 route show default
+ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/generate_client.uc
+init.d/dnsmasq restart
+procd_open_instance sing-box-c
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail sing-box-c log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
+procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
+procd_add_jail_mount etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /tmp/dhcp.leases
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+ucode -S etc/homeproxy-pro/scripts/generate_server.uc
+procd_open_instance sing-box-s
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-s.json
+procd_add_jail sing-box-s log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-s.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-s.log
+procd_add_jail_mount_rw etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box etc/homeproxy-pro/certs
+chmod 700 etc/homeproxy-pro/certs
+chown sing-box:sing-box etc/homeproxy-pro/certs/server_privatekey.pem
+chmod 600 etc/homeproxy-pro/certs/server_privatekey.pem
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-s.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-s.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+utpl -S etc/homeproxy-pro/scripts/firewall_post.ut
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-c']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+netstat -ltnup
+nslookup -port=5333 example.com 127.0.0.1
+nc 127.0.0.1 5330
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-c.json
+config_load homeproxy-pro
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-s.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+prime start rc=0
+config_load homeproxy-pro
+sing-box version -n
+log Reverting the intercept layer; traffic will go out unproxied until the client is up.
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+init.d/dnsmasq restart
+uname -r
+ucode -S etc/homeproxy-pro/scripts/generate_server.uc
+procd_open_instance sing-box-s
+procd_set_param command /usr/bin/sing-box
+procd_append_param command run --config var/run/homeproxy-pro/sing-box-s.json
+procd_add_jail sing-box-s log procfs
+procd_add_jail_mount var/run/homeproxy-pro/sing-box-s.json
+procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-s.log
+procd_add_jail_mount_rw etc/homeproxy-pro/certs/
+procd_add_jail_mount /etc/acme/
+procd_add_jail_mount /etc/ssl/
+procd_add_jail_mount /etc/localtime
+procd_add_jail_mount /etc/TZ
+procd_set_param capabilities /etc/capabilities/homeproxy-pro.json
+procd_set_param no_new_privs 1
+procd_set_param user sing-box
+procd_set_param group sing-box
+procd_set_param limits core=unlimited
+procd_set_param limits nofile=1000000 1000000
+procd_set_param stderr 1
+procd_set_param respawn
+procd_close_instance
+procd_open_instance log-cleaner
+procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
+procd_set_param respawn
+procd_close_instance
+chown sing-box:sing-box etc/homeproxy-pro/certs
+chmod 700 etc/homeproxy-pro/certs
+chown sing-box:sing-box etc/homeproxy-pro/certs/server_privatekey.pem
+chmod 600 etc/homeproxy-pro/certs/server_privatekey.pem
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-s.json
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-c.log
+chown sing-box:sing-box var/run/homeproxy-pro/sing-box-s.log
+chown sing-box:sing-box etc/homeproxy-pro/cache.db
+ucode etc/homeproxy-pro/scripts/firewall_pre.uc
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+config_load homeproxy-pro
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+sleep 1
+jsonfilter -e @['homeproxy-pro'].instances['sing-box-s']
+jsonfilter -e @.running
+jsonfilter -e @.exit_code
+chmod 600 var/run/homeproxy-pro/known-good/sing-box-s.json
+config_load homeproxy-pro
+sing-box version -n
+log sing-box 1.14.0 started.
+start rc=0
+chmod 600 etc/crontabs/root
+init.d/cron restart
+config_load homeproxy-pro
+ip rule del fwmark 101 table 100
+ip route del local 0.0.0.0/0 dev lo table 100
+ip -6 rule del fwmark 101 table 100
+ip -6 route del local ::/0 dev lo table 100
+ip route del default dev singtun0 table 100
+ip rule del fwmark 102 table 100
+ip -6 route del default dev singtun0 table 100
+ip -6 rule del fwmark 102 table 100
+nft flush chain inet fw4 homeproxy_output_redir
+nft delete chain inet fw4 homeproxy_output_redir
+nft flush chain inet fw4 homeproxy_redirect
+nft delete chain inet fw4 homeproxy_redirect
+nft flush chain inet fw4 homeproxy_redirect_proxy
+nft delete chain inet fw4 homeproxy_redirect_proxy
+nft flush chain inet fw4 homeproxy_redirect_proxy_port
+nft delete chain inet fw4 homeproxy_redirect_proxy_port
+nft flush chain inet fw4 homeproxy_redirect_lanac
+nft delete chain inet fw4 homeproxy_redirect_lanac
+nft flush chain inet fw4 homeproxy_mangle_prerouting
+nft delete chain inet fw4 homeproxy_mangle_prerouting
+nft flush chain inet fw4 homeproxy_mangle_output
+nft delete chain inet fw4 homeproxy_mangle_output
+nft flush chain inet fw4 homeproxy_mangle_tproxy
+nft delete chain inet fw4 homeproxy_mangle_tproxy
+nft flush chain inet fw4 homeproxy_mangle_tproxy_port
+nft delete chain inet fw4 homeproxy_mangle_tproxy_port
+nft flush chain inet fw4 homeproxy_mangle_lanac
+nft delete chain inet fw4 homeproxy_mangle_lanac
+nft flush chain inet fw4 homeproxy_mangle_mark
+nft delete chain inet fw4 homeproxy_mangle_mark
+nft flush chain inet fw4 homeproxy_mangle_tun
+nft delete chain inet fw4 homeproxy_mangle_tun
+nft flush chain inet fw4 homeproxy_mangle_tun_mark
+nft delete chain inet fw4 homeproxy_mangle_tun_mark
+nft flush set inet fw4 homeproxy_local_addr_v4
+nft delete set inet fw4 homeproxy_local_addr_v4
+nft flush set inet fw4 homeproxy_local_addr_v6
+nft delete set inet fw4 homeproxy_local_addr_v6
+nft flush set inet fw4 homeproxy_gfw_list_v4
+nft delete set inet fw4 homeproxy_gfw_list_v4
+nft flush set inet fw4 homeproxy_gfw_list_v6
+nft delete set inet fw4 homeproxy_gfw_list_v6
+nft flush set inet fw4 homeproxy_mainland_addr_v4
+nft delete set inet fw4 homeproxy_mainland_addr_v4
+nft flush set inet fw4 homeproxy_mainland_addr_v6
+nft delete set inet fw4 homeproxy_mainland_addr_v6
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v4
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v4
+nft flush set inet fw4 homeproxy_wan_proxy_addr_v6
+nft delete set inet fw4 homeproxy_wan_proxy_addr_v6
+nft flush set inet fw4 homeproxy_wan_direct_addr_v4
+nft delete set inet fw4 homeproxy_wan_direct_addr_v4
+nft flush set inet fw4 homeproxy_wan_direct_addr_v6
+nft delete set inet fw4 homeproxy_wan_direct_addr_v6
+nft flush set inet fw4 homeproxy_routing_port
+nft delete set inet fw4 homeproxy_routing_port
+fw4 reload
+init.d/miniupnpd enabled
+init.d/miniupnpd running
+init.d/miniupnpd restart
+log Service stopped.
+config_load homeproxy-pro
+ip link set singtun0 down
+ip tuntap del mode tun name singtun0
+stop rc=0
+file var/run/homeproxy-pro/fw4_forward.nft: 
+file var/run/homeproxy-pro/fw4_input.nft: 
+file var/run/homeproxy-pro/fw4_post.nft: 
+file var/run/homeproxy-pro/homeproxy-pro.log: 
+file var/run/homeproxy-pro/known-good/sing-box-c.json: {|	"log": {},|	"inbounds": [|		{|			"tag": "dns-in",|			"listen_port": 5333|		},|		{|			"tag": "mixed-in",|			"listen_port": 5330|		}|	],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/sing-box-s.json: {|	"log": {},|	"inbounds": [],|	"outbounds": []|}|
+file var/run/homeproxy-pro/known-good/uci-snapshot.txt: homeproxy-pro.config.main_node=nil|homeproxy-pro.config.main_udp_node=nil|homeproxy-pro.config.proxy_mode=redirect_tproxy|homeproxy-pro.config.routing_mode=bypass_mainland_china|homeproxy-pro.config.routing_port=|homeproxy-pro.config.ipv6_support=0|homeproxy-pro.config.china_dns_server=|homeproxy-pro.infra.self_mark=|homeproxy-pro.infra.redirect_port=|homeproxy-pro.infra.tproxy_port=|homeproxy-pro.infra.tproxy_mark=101|homeproxy-pro.infra.tun_mark=102|homeproxy-pro.infra.tun_name=singtun0|homeproxy-pro.infra.tun_addr4=|homeproxy-pro.infra.tun_addr6=|homeproxy-pro.infra.dns_redirect=|homeproxy-pro.infra.dns_port=5333|homeproxy-pro.infra.common_port=|homeproxy-pro.infra.table_mark=100|homeproxy-pro.routing.bypass_cn_traffic=|homeproxy-pro.routing.default_outbound=direct-out|homeproxy-pro.server.enabled=1|homeproxy-pro.control.lan_proxy_mode=|list homeproxy-pro.control.listen_interfaces=|list homeproxy-pro.control.lan_direct_ipv4_ips=|list homeproxy-pro.control.lan_direct_ipv6_ips=|list homeproxy-pro.control.lan_direct_mac_addrs=|list homeproxy-pro.control.lan_proxy_ipv4_ips=|list homeproxy-pro.control.lan_proxy_ipv6_ips=|list homeproxy-pro.control.lan_proxy_mac_addrs=|list homeproxy-pro.control.lan_gaming_mode_ipv4_ips=|list homeproxy-pro.control.lan_gaming_mode_ipv6_ips=|list homeproxy-pro.control.lan_gaming_mode_mac_addrs=|list homeproxy-pro.control.lan_global_proxy_ipv4_ips=|list homeproxy-pro.control.lan_global_proxy_ipv6_ips=|list homeproxy-pro.control.lan_global_proxy_mac_addrs=|list homeproxy-pro.control.wan_proxy_ipv4_ips=|list homeproxy-pro.control.wan_proxy_ipv6_ips=|list homeproxy-pro.control.wan_direct_ipv4_ips=|list homeproxy-pro.control.wan_direct_ipv6_ips=|
+file etc/homeproxy-pro/cache.db: 

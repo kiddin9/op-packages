@@ -7,13 +7,13 @@
 
 'use strict';
 
-import { readfile, writefile } from 'fs';
+import { access, readfile, writefile } from 'fs';
 import { isnan } from 'math';
 import { connect } from 'ubus';
 import { cursor } from 'uci';
 
 import {
-	isEmpty, parseURL, strToBool, strToInt, strToTime,
+	isEmpty, parseURL, strToBool, strToInt, strToTime, strToMs,
 	removeBlankAttrs, validation, buildTLSObject, buildTransportObject,
 	HP_DIR, RUN_DIR
 } from 'homeproxy';
@@ -418,6 +418,57 @@ function isDirectOutboundTag(tag) {
 	const node = uci.get_all(uciconfig, node_name);
 	return !isEmpty(node) && node.type === 'direct';
 }
+
+/*
+ * Remote rule-sets are downloaded through a top-level http_client in sing-box
+ * 1.14 (the per-rule-set download_detour was removed). One client is created
+ * per distinct detour and reused by every rule-set that dials through it.
+ */
+const http_clients = [];
+const http_seen = {};
+
+function http_client_for(detour) {
+	if (isEmpty(detour))
+		detour = (routing_mode === 'custom') ? (get_outbound(default_outbound) || 'direct-out') : 'direct-out';
+
+	const tag = 'hp-' + detour;
+	if (http_seen[detour])
+		return tag;
+
+	http_seen[detour] = true;
+	const client = { tag: tag };
+	/* sing-box 1.14 rejects an empty detour on the direct outbound (pure TUN
+	   mode has no self_mark on it); omitting detour uses the same system
+	   direct dialer, so behaviour is unchanged. */
+	if (!(isEmpty(self_mark) && isDirectOutboundTag(detour)))
+		client.detour = detour;
+
+	push(http_clients, client);
+
+	return tag;
+}
+
+/*
+ * sing-box requires dns.servers[].headers to be a map, while the LuCI field is
+ * a dynamic list of "Name: value" lines (and older configs may hold either).
+ */
+function parse_headers(headers) {
+	if (isEmpty(headers))
+		return null;
+
+	if (type(headers) === 'object')
+		return headers;
+
+	const lines = (type(headers) === 'array') ? headers : [headers];
+	const out = {};
+	for (let line in lines) {
+		const pos = index(line, ':');
+		if (pos > 0)
+			out[trim(substr(line, 0, pos))] = trim(substr(line, pos + 1));
+	}
+
+	return isEmpty(out) ? null : out;
+}
 /* Config helper end */
 
 const config = {};
@@ -487,18 +538,22 @@ if (!isEmpty(main_node)) {
 			server: (routing_mode === 'bypass_mainland_china') ? 'china-dns' : 'default-dns'
 		});
 
-	/* Reject SVCB/HTTPS queries to avoid proxy DNS timeout on null domains */
-	push(config.dns.rules, {
-		query_type: [64, 65],
-		action: 'reject'
-	});
+	/* Reject SVCB/HTTPS queries to avoid proxy DNS timeout on null domains.
+	   Opt out with `block_https_rr 0` when clients should use HTTPS RR/ECH. */
+	if (uci.get(uciconfig, ucimain, 'block_https_rr') !== '0')
+		push(config.dns.rules, {
+			query_type: [64, 65],
+			action: 'reject'
+		});
 
 	if (routing_mode === 'bypass_mainland_china') {
 		push(config.dns.servers, {
 			tag: 'china-dns',
 			domain_resolver: {
 				server: 'default-dns',
-				strategy: 'prefer_ipv6'
+				/* follow the IPv6 setting like main-dns does, instead of
+				   preferring AAAA even on IPv4-only setups */
+				strategy: (ipv6_support !== '1') ? 'ipv4_only' : null
 			},
 			detour: self_mark ? 'direct-out' : null,
 			...parse_dnsserver(china_dns_server)
@@ -559,7 +614,7 @@ if (!isEmpty(main_node)) {
 			server: cfg.server,
 			server_port: strToInt(cfg.server_port),
 			path: cfg.path,
-			headers: cfg.headers,
+			headers: parse_headers(cfg.headers),
 			tls: cfg.tls_sni ? {
 				enabled: true,
 				server_name: cfg.tls_sni
@@ -668,6 +723,13 @@ if (!isEmpty(main_node)) {
 			rule.ip_is_private = strToBool(cfg.ip_is_private);
 		}
 
+		/* sing-box rejects the whole config when a route/evaluate action has no
+		   server, so drop such a rule with a reason instead. */
+		if ((rule.action === 'route' || rule.action === 'evaluate') && isEmpty(rule.server)) {
+			warn(sprintf("homeproxy: DNS rule '%s' has no server configured, skipping it.", cfg['.name']));
+			return;
+		}
+
 		push(builtin_dns_rules, rule);
 	});
 	config.dns.rules = builtin_dns_rules;
@@ -679,10 +741,18 @@ if (!isEmpty(main_node)) {
 /* Inbound start */
 config.inbounds = [];
 
+/*
+ * dns-in is the local listener the DNS chain hands queries to: dnsmasq
+ * forwards to 127.0.0.1#<dns_port> and the nft DNS hijack redirects to
+ * dnsmasq, not here.  It used to listen on '::', which published a
+ * proxy-backed resolver to every LAN client on the DNS port; loopback is the
+ * whole reachable surface it needs.  mixed-in stays on '::' - that one is the
+ * SOCKS/HTTP listener clients are meant to reach.
+ */
 push(config.inbounds, {
 	type: 'direct',
 	tag: 'dns-in',
-	listen: '::',
+	listen: '127.0.0.1',
 	listen_port: int(dns_port)
 });
 
@@ -986,36 +1056,48 @@ if (!isEmpty(main_node)) {
 
 	if (routing_mode === 'bypass_mainland_china') {
 		/*
-		 * Fetched straight from the upstream SagerNet repositories and
-		 * downloaded through the selected node. A direct fetch depends on
-		 * the CDN staying reachable from mainland China, where DNS pollution
-		 * makes it fail intermittently; the three files total ~250 KB per
-		 * day, so proxying the download costs almost nothing.
+		 * The two rule-sets sing-box actually needs for this mode. Each one is
+		 * used from the local .srs file when update_resources.sh has fetched
+		 * it, and only falls back to a remote fetch otherwise: a remote
+		 * rule-set is initialized at every start (sing-box fails to start when
+		 * the fetch fails even if nothing references it), which would make a
+		 * cold boot depend on reaching the CDN through the node. The fallback
+		 * keeps a fresh install working before the first resource update.
+		 * geosite-noncn is intentionally not declared: no rule references it,
+		 * and sing-box downloads it anyway.
 		 */
-		push(config.route.rule_set, {
-			type: 'remote',
-			tag: 'geoip-cn',
-			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs',
-			update_interval: '24h',
-			download_detour: 'main-out'
-		});
-		push(config.route.rule_set, {
-			type: 'remote',
-			tag: 'geosite-cn',
-			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs',
-			update_interval: '24h',
-			download_detour: 'main-out'
-		});
-		push(config.route.rule_set, {
-			type: 'remote',
-			tag: 'geosite-noncn',
-			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs',
-			update_interval: '24h',
-			download_detour: 'main-out'
-		});
+		const preset_rulesets = [
+			{
+				tag: 'geoip-cn',
+				path: HP_DIR + '/resources/geoip_cn.srs',
+				url: 'https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs'
+			},
+			{
+				tag: 'geosite-cn',
+				path: HP_DIR + '/resources/geosite_cn.srs',
+				url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs'
+			}
+		];
+
+		for (let rs in preset_rulesets) {
+			if (access(rs.path)) {
+				push(config.route.rule_set, {
+					type: 'local',
+					tag: rs.tag,
+					format: 'binary',
+					path: rs.path
+				});
+			} else {
+				push(config.route.rule_set, {
+					type: 'remote',
+					tag: rs.tag,
+					format: 'binary',
+					url: rs.url,
+					update_interval: '24h',
+					http_client: http_client_for('main-out')
+				});
+			}
+		}
 	}
 
 	if (isEmpty(config.route.rule_set))
@@ -1084,7 +1166,7 @@ if (!isEmpty(main_node)) {
 			udp_connect: strToBool(cfg.udp_connect),
 			udp_timeout: strToTime(cfg.udp_timeout),
 			tls_fragment: strToBool(cfg.tls_fragment),
-			tls_fragment_fallback_delay: strToTime(cfg.tls_fragment_fallback_delay),
+			tls_fragment_fallback_delay: strToMs(cfg.tls_fragment_fallback_delay),
 			tls_record_fragment: strToBool(cfg.tls_record_fragment),
 			tls_spoof: cfg.tls_spoof || null,
 			tls_spoof_method: cfg.tls_spoof_method || null,
@@ -1147,48 +1229,18 @@ if (!isEmpty(main_node)) {
 			url: cfg.url,
 			update_interval: cfg.update_interval
 		};
-		/* download_detour is a pre-1.14 option that only makes sense for
-		   remote rule-sets; emitting it for local/inline ones makes sing-box
-		   1.14 reject the whole config. It is translated into http_clients
-		   right below. */
+		/* sing-box 1.14 downloads remote rule-sets through a top-level
+		   http_client; download_detour no longer exists. */
 		if (cfg.type === 'remote')
-			ruleset.download_detour = get_outbound(cfg.outbound) || get_outbound(default_outbound);
+			ruleset.http_client = http_client_for(get_outbound(cfg.outbound) || get_outbound(default_outbound));
 		if (cfg.type === 'remote' && !isEmpty(cfg.initial_path))
 			ruleset.initial_path = cfg.initial_path;
 		push(config.route.rule_set, ruleset);
 	});
 }
 
-/* sing-box 1.14: remote rule-sets download via top-level http_clients;
-   replaces the legacy download_detour field everywhere (preset + custom). */
-const http_clients = [];
-const http_seen = {};
-for (let rs in (config.route.rule_set || [])) {
-	/* Strip the legacy field from every entry first, including the
-	   local/inline ones: sing-box 1.14 rejects it everywhere except on
-	   remote rule-sets, where it is replaced by http_client below. */
-	let detour = rs.download_detour;
-	delete rs.download_detour;
-
-	if (rs.type !== 'remote')
-		continue;
-
-	if (isEmpty(detour))
-		detour = (routing_mode === 'custom') ? (get_outbound(default_outbound) || 'direct-out') : 'direct-out';
-
-	const tag = 'hp-' + detour;
-	rs.http_client = tag;
-	if (!http_seen[detour]) {
-		http_seen[detour] = true;
-		/* sing-box 1.14 rejects detouring to an empty direct outbound
-		   (pure TUN mode has no self_mark on direct-out). Omitting detour
-		   uses the same system direct dialer, so behavior is unchanged. */
-		const client = { tag: tag };
-		if (!(isEmpty(self_mark) && isDirectOutboundTag(detour)))
-			client.detour = detour;
-		push(http_clients, client);
-	}
-}
+/* Remote rule-sets download through the http_clients collected while the
+   rule-sets were built (see http_client_for). */
 if (length(http_clients))
 	config.http_clients = http_clients;
 /* Routing rules end */
@@ -1215,3 +1267,7 @@ if (system('/usr/bin/sing-box check --config ' + client_tmp) !== 0) {
 	exit(1);
 }
 system('mv -f ' + client_tmp + ' ' + RUN_DIR + '/sing-box-c.json');
+/* The generated config carries every node credential (passwords, UUIDs,
+   private keys) and writefile() has no mode argument, so it lands with the
+   process umask; chmod it to the sing-box user only. */
+system('chmod 600 ' + RUN_DIR + '/sing-box-c.json');

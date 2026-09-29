@@ -8,7 +8,7 @@
 
 import { urldecode, urlencode } from 'luci.http';
 
-import { decodeBase64Str, parseURL, isEmpty, validation } from 'homeproxy';
+import { decodeBase64Str, parseURL, percentDecode, isEmpty, validation } from 'homeproxy';
 
 /*
  * Share-link parsers. Every protocol has its own parse_<scheme>_uri() so the
@@ -19,6 +19,17 @@ import { decodeBase64Str, parseURL, isEmpty, validation } from 'homeproxy';
  * `features` is the sing-box feature map (with_quic/with_utls/...), `log` is a
  * logging callback, both injected so the parsers stay free of ubus/uci.
  */
+
+/*
+ * Transports sing-box accepts on a V2Ray-style outbound. Anything else
+ * (xhttp, splithttp, ...) makes sing-box reject the whole generated config,
+ * so such a node is dropped while importing instead of poisoning every node.
+ */
+const SUPPORTED_TRANSPORTS = ['ws', 'http', 'grpc', 'httpupgrade', 'quic'];
+
+function unsupported_transport(config) {
+	return !isEmpty(config.transport) && !(config.transport in SUPPORTED_TRANSPORTS);
+}
 
 /* https://shadowsocks.org/guide/sip008.html */
 export function parse_sip008_uri(uri) {
@@ -178,8 +189,9 @@ export function parse_ss_uri(uri) {
 	if (length(ss_suri) <= 2) {
 		if (length(ss_suri) === 2)
 			ss_slabel = '#' + urlencode(ss_suri[1]);
-		if (decodeBase64Str(ss_suri[0]))
-			uri[1] = decodeBase64Str(ss_suri[0]) + ss_slabel;
+		const ss_decoded = decodeBase64Str(percentDecode(ss_suri[0]));
+		if (ss_decoded)
+			uri[1] = ss_decoded + ss_slabel;
 	}
 
 	/* Legacy format is not supported, it should be never appeared in modern subscriptions */
@@ -188,13 +200,13 @@ export function parse_ss_uri(uri) {
 	/* SIP002 format https://shadowsocks.org/guide/sip002.html */
 	const url = parseURL('http://' + uri[1]) || {};
 
-	let ss_userinfo = {};
+	let ss_userinfo = [];
 	if (url.username && url.password)
-		/* User info encoded with URIComponent */
-		ss_userinfo = [url.username, urldecode(url.password)];
+		/* User info encoded with URIComponent; parseURL() already decoded it */
+		ss_userinfo = [url.username, url.password];
 	else if (url.username)
-		/* User info encoded with base64 */
-		ss_userinfo = split(decodeBase64Str(urldecode(url.username)), ':', 2);
+		/* User info encoded with base64 (padding may have arrived as %3D) */
+		ss_userinfo = split(decodeBase64Str(url.username) ?? '', ':', 2);
 
 	let ss_plugin, ss_plugin_opts;
 	if (url.search && url.searchParams.plugin) {
@@ -248,6 +260,11 @@ export function parse_trojan_uri(uri) {
 			config.ws_path = split(config.ws_path, '?ed=')[0];
 		}
 		break;
+	}
+
+	if (unsupported_transport(config)) {
+		log(sprintf('Skipping unsupported %s transport node: %s.', config.transport, config.label || config.address));
+		return null;
 	}
 
 	return config;
@@ -315,7 +332,11 @@ export function parse_vless_uri(uri, features, log) {
 		tls_reality_public_key: params.pbk ? urldecode(params.pbk) : null,
 		tls_reality_short_id: params.sid,
 		tls_utls: features.with_utls ? params.fp : null,
-		vless_flow: (params.security in ['tls', 'reality']) ? params.flow : null
+		/* sing-box rejects every other value ("unsupported flow") and a single
+		   rejected outbound makes the whole generated config fail, so only the
+		   supported value is imported (the common
+		   "xtls-rprx-vision-udp443" becomes "no flow" instead of breaking). */
+		vless_flow: (params.security in ['tls', 'reality'] && params.flow === 'xtls-rprx-vision') ? params.flow : null
 	};
 	switch (params.type) {
 	case 'grpc':
@@ -341,6 +362,11 @@ export function parse_vless_uri(uri, features, log) {
 			config.ws_path = split(config.ws_path, '?ed=')[0];
 		}
 		break;
+	}
+
+	if (unsupported_transport(config)) {
+		log(sprintf('Skipping unsupported %s transport node: %s.', config.transport, config.label || config.address));
+		return null;
 	}
 
 	return config;
@@ -426,6 +452,11 @@ export function parse_vmess_uri(uri, features, log) {
 			config.ws_path = split(config.ws_path, '?ed=')[0];
 		}
 		break;
+	}
+
+	if (unsupported_transport(config)) {
+		log(sprintf('Skipping unsupported %s transport node: %s.', config.transport, config.label || config.address));
+		return null;
 	}
 
 	return config;

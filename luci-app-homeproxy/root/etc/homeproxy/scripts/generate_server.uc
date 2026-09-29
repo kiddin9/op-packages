@@ -150,3 +150,5 @@ if (system('/usr/bin/sing-box check --config ' + server_tmp) !== 0) {
 	exit(1);
 }
 system('mv -f ' + server_tmp + ' ' + RUN_DIR + '/sing-box-s.json');
+/* keep the config (key paths, user credentials) out of world-readable mode */
+system('chmod 600 ' + RUN_DIR + '/sing-box-s.json');

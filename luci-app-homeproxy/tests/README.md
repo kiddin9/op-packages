@@ -10,8 +10,8 @@ tests/run.sh
 ```
 
 * The **LuCI form snapshots** run locally and only need `node`. They re-render
-  the node/server views through a mock LuCI runtime and diff the result against
-  `tests/snapshots/*.json`.
+  the node/client/server views through a mock LuCI runtime and diff the result
+  against `tests/snapshots/*.json`.
 * The **ucode tests** need `ucode`; the generator cases additionally run
   `sing-box check`, so they need sing-box ≥ 1.14 as well (available on an
   OpenWrt/ImmortalWrt target). When the host running `tests/run.sh` has neither,
@@ -35,14 +35,14 @@ sh tests/ucode/run.sh "$PWD"
 | Path | Checks |
 | --- | --- |
 | `tests/i18n-coverage.py` | Reports how many `po/templates/homeproxy.pot` strings have a non-fuzzy, non-empty `po/zh_Hans/homeproxy.po` translation. Technical tokens that stay as-is are listed in `tests/i18n-ignore.txt`; anything else missing produces a warning annotation (`--warn-below 100` by default) and a job-summary entry. Run by `.github/workflows/i18n.yml` on push/PR and before a release. |
-| `tests/luci-form-snapshot.js` | Dumps every option (name, kind, title, description, depends, values, datatype/default/…) of the node and server views. Diffs against `tests/snapshots/{node,server}.json`, so a refactor that changes a field or its visibility fails. |
-| `tests/ucode/test_homeproxy_utils.uc` | `executeCommand()` return shape, stderr/exit-code capture, binary detection, and a descriptor-leak check (200 calls). |
+| `tests/luci-form-snapshot.js` | Dumps every option (name, kind, title, description, depends, values, datatype/default/…) of the node, client and server views. Diffs against `tests/snapshots/{node,client,server}.json`, so a refactor that changes a field or its visibility fails. |
+| `tests/ucode/test_homeproxy_utils.uc` | `executeCommand()` return shape, stderr/exit-code capture, binary detection, a 700 KiB read (the one-shot 512 KiB read used to truncate large subscription lists), `isValidCIDR()` prefix/address validation incl. template-injection input, and a descriptor-leak check (200 calls). |
 | `tests/ucode/test_homeproxy_utils_inject.uc` | The failure path of `executeCommand()`: the script stages a copy of `homeproxy.uc` whose `system()` call is replaced by `die()`, then checks that the exception still propagates and that neither descriptor leaks. |
 | `tests/ucode/test_wget_flavor.uc` | The `wget --version` probe (`classifyWgetFlavor()`) and the command line `wGETVerbose()` builds from it. `run.sh` points the module at a stub wget and runs the file twice — once answering like GNU wget (expects `-nv`), once like uclient-fetch (expects `-q` and no GNU-only option at all). |
 | `tests/ucode/test_wget_verbose_uclient.uc` | Runs `wGETVerbose()` against the target's real `/bin/uclient-fetch` (skipped where it is absent). The request goes to a closed loopback port, so the point is only that uclient-fetch gets past getopt — a GNU-only flag in the command line fails the test. |
 | `tests/ucode/test_fw4_names.sh` | Keeps the fw4 chain/set inventory in `scripts/fw4_names.sh` (used by `init.d/homeproxy` to clean up on stop) in sync with the objects declared in `scripts/firewall_post.ut`. |
 | `tests/ucode/test_parse_uri.uc` | Per-scheme assertions on the `parse_uri()` result: anytls, http/https, hysteria, hysteria2/hy2, snell, socks(4/4a/5/5h), shadowsocks (SIP002 base64 + plain + plugin, Shadowrocket), trojan (ws/grpc), tuic, vless (reality/ws/http/httpupgrade), vmess (ws/h2/httpupgrade/grpc) and SIP008 objects, plus the rejection paths (unsupported kcp/quic, no QUIC support, invalid port, unknown scheme). |
-| `tests/ucode/test_generators.sh` | Runs `generate_client.uc`/`generate_server.uc` against the UCI fixtures in `tests/fixtures/generators/` inside a scratch directory (the `uci` cursor and `HP_DIR`/`RUN_DIR` are redirected) and validates each result with `sing-box check`. |
+| `tests/ucode/test_generators.sh` | Runs `generate_client.uc`/`generate_server.uc` against the UCI fixtures in `tests/fixtures/generators/` inside a scratch directory (the `uci` cursor and `HP_DIR`/`RUN_DIR` are redirected) and validates each result with `sing-box check`. The client case is additionally compared byte for byte against the golden snapshot `tests/snapshots/client.generated.json` (with the scratch directory normalized out), which is what catches rule-order/DNS-routing/field-emission regressions that `sing-box check` accepts. |
 
 `tests/ucode/mocks/homeproxy.uc` is a test double for the real module: only
 `validation()` is stubbed (the real one runs `/sbin/validate_data`, which does
@@ -58,5 +58,15 @@ not exist outside OpenWrt), everything else is a copy of the production code.
 
   ```sh
   node tests/luci-form-snapshot.js . node   > tests/snapshots/node.json
+  node tests/luci-form-snapshot.js . client > tests/snapshots/client.json
   node tests/luci-form-snapshot.js . server > tests/snapshots/server.json
+  ```
+* Intentional generated-config change → regenerate the client golden after
+  reviewing the diff (the file lives in `/tmp/hp-ucode-tests/generators/client/`
+  on the host that ran the suite):
+
+  ```sh
+  sed 's#/tmp/hp-ucode-tests/generators/client#__WORKDIR__#g' \
+      /tmp/hp-ucode-tests/generators/client/run/sing-box-c.json \
+      > tests/snapshots/client.generated.json
   ```

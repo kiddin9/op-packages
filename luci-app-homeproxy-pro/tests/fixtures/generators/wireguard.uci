@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Regression fixture for the WireGuard endpoint path.
+#
+# WireGuard is the one protocol generate_client.uc emits as a sing-box
+# *endpoint* instead of an outbound, through generate_endpoint().  A2/A3
+# converted every call site to pass a Node but left that function reading the
+# flat UCI option names (node.wireguard_*, node.tcp_fast_open, ...), which no
+# Node carries - so the endpoint came out with a null private key and a peer
+# with no public key, and `sing-box check` rejected the whole configuration.
+# The unit test asserts the key material survives, not just that sing-box
+# accepts the file.
+
+config homeproxy-pro 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'tun'
+	option ipv6_support '0'
+	option log_level 'error'
+	option main_node 'n_wg'
+	option main_udp_node 'nil'
+	option dns_server 'https://cloudflare-dns.com/dns-query'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option tun_name 'singtun0'
+	option tun_addr4 '172.19.0.1/30'
+	option tun_addr6 'fdfe:dcba:9876::1/126'
+	option tun_mtu '9000'
+	option self_mark '100'
+	option tun_mark '102'
+	option table_mark '100'
+	option ntp_server 'nil'
+
+config node 'n_wg'
+	option label 'wireguard'
+	option type 'wireguard'
+	option address 'wg.example.com'
+	option port '51820'
+	option wireguard_private_key 'iKaNuoWRQTFPD5V3OoMNdMshsMgU9t7rolJNpgNx+UM='
+	option wireguard_peer_public_key 'DDcdTHUv0Q6XYDf9l93jzwwuoY/G1TC+g74QH0A9HmM='
+	list wireguard_local_address '172.16.0.2/32'
+	list wireguard_local_address 'fd00::2/128'
+	option wireguard_mtu '1420'
+	option wireguard_persistent_keepalive_interval '25'
+	list wireguard_reserved '1'
+	list wireguard_reserved '2'
+	list wireguard_reserved '3'
+	option tcp_fast_open '1'
+	option udp_fragment '1'

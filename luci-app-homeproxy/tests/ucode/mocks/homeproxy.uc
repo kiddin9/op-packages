@@ -62,6 +62,50 @@ export function validation(datatype, data) {
 	}
 };
 
+/*
+ * Decode %XX escapes without touching '+'. urldecode() maps '+' to a space,
+ * which corrupts base64 userinfo ("+" is part of the alphabet), so share-link
+ * userinfo is percent-decoded with this instead.
+ */
+/*
+ * ucode has no tolower(), so both hex cases are mapped by hand.
+ */
+function hexValue(ch) {
+	const lower = index('0123456789abcdef', ch);
+	if (lower >= 0)
+		return lower;
+
+	const upper = index('ABCDEF', ch);
+
+	return upper < 0 ? -1 : 10 + upper;
+}
+
+/*
+ * ucode's regex engine rejects \x00 inside a character class ("Missing ']'"),
+ * so control bytes are checked by hand.
+ */
+function hasControlChar(str) {
+	for (let i = 0; i < length(str); i++) {
+		const code = ord(str, i);
+		if (code < 0x20 || code === 0x7f)
+			return true;
+	}
+
+	return false;
+}
+
+export function percentDecode(str) {
+	if (isEmpty(str))
+		return str;
+
+	return replace(str, /%([0-9A-Fa-f]{2})/g, (whole, hex) => {
+		const hi = hexValue(substr(hex, 0, 1));
+		const lo = hexValue(substr(hex, 1, 1));
+
+		return (hi < 0 || lo < 0) ? whole : chr(hi * 16 + lo);
+	});
+};
+
 export function parseURL(url) {
 	if (type(url) !== 'string')
 		return null;
@@ -116,18 +160,20 @@ export function parseURL(url) {
 		return null;
 
 	if (objurl.userinfo) {
-		objurl.userinfo = replace(objurl.userinfo, /:(.+)$/, (_, val) => {
+		/* keep in sync with the production parser (homeproxy.uc) */
+		let userinfo = percentDecode(objurl.userinfo);
+
+		userinfo = replace(userinfo, /:(.+)$/, (_, val) => {
 			objurl.password = val;
 			return '';
 		});
 
-		if (match(objurl.userinfo, /^[A-Za-z0-9\+\-\_\.]+$/)) {
-			objurl.username = objurl.userinfo;
-			delete objurl.userinfo;
-		} else {
-			delete objurl.userinfo;
+		if (!match(userinfo, /\s/) && !hasControlChar(userinfo))
+			objurl.username = userinfo;
+		else
 			delete objurl.password;
-		}
+
+		delete objurl.userinfo;
 	};
 
 	if (!objurl.port)

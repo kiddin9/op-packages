@@ -35,18 +35,20 @@ check_list_update() {
 		return 2
 	fi
 
-	local github_header_file=""
+	# --header= is the only header switch understood by all three wget
+	# implementations this runs on (uclient-fetch, GNU wget, busybox wget);
+	# the previous --header-file= is rejected by uclient-fetch and GNU wget
+	# alike, which made every version probe fail whenever a GitHub token was
+	# configured. The token is therefore visible in `ps` for the duration of
+	# the request; that is the trade-off for a single code path.
+	local api_url="https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1"
+	local list_info
 	if [ -n "$github_token" ]; then
-		github_header_file="$RUN_DIR/.gh_header_${listtype}"
-		( umask 077; printf 'Authorization: Bearer %s\n' "$github_token" > "$github_header_file" )
-		trap "[ -n \"$github_header_file\" ] && rm -f \"$github_header_file\"" EXIT INT TERM
+		list_info="$($wget --header="Authorization: Bearer $github_token" -O- "$api_url")"
+	else
+		list_info="$($wget -O- "$api_url")"
 	fi
-
-	local list_info="$($wget ${github_header_file:+--header-file=$github_header_file} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
 	local wget_exit=$?
-
-	[ -n "$github_header_file" ] && rm -f "$github_header_file"
-	trap - EXIT INT TERM
 
 	if [ $wget_exit -ne 0 ]; then
 		log "[$(to_upper "$listtype")] Failed to fetch version info (wget exit $wget_exit)."
@@ -105,8 +107,14 @@ case "$1" in
 	check_list_update "$1" "Loyalsoldier/v2ray-rules-dat" "release" "direct-list.txt" && \
 		sed -i -e "s/full://g" -e "/:/d" "$RESOURCES_DIR/china_list.txt"
 	;;
+"geoip_cn")
+	check_list_update "$1" "SagerNet/sing-geoip" "rule-set" "geoip-cn.srs"
+	;;
+"geosite_cn")
+	check_list_update "$1" "SagerNet/sing-geosite" "rule-set" "geosite-geolocation-cn.srs"
+	;;
 *)
-	echo -e "Usage: $0 <china_ip4 / china_ip6 / gfw_list / china_list>"
+	echo -e "Usage: $0 <china_ip4 / china_ip6 / gfw_list / china_list / geoip_cn / geosite_cn>"
 	exit 1
 	;;
 esac

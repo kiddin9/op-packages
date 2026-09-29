@@ -1,2 +1,7 @@
 .DS_Store
 /homeproxy
+
+# Local working documents (review reports, improvement plans). They are kept in
+# the checkout on purpose and must never be published - same rule as
+# luci-app-homeproxy-pro.
+/docs/

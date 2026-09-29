@@ -1,0 +1,5 @@
+#!/bin/sh
+
+ucode "/etc/homeproxy-pro/scripts/migrate_config.uc"
+
+exit 0

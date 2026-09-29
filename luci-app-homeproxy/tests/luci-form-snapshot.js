@@ -10,7 +10,7 @@
  * snapshots diffed, so that a pure refactor can be proven not to change any
  * option name, dependency, default or label.
  *
- * Usage: node tests/luci-form-snapshot.js <repo-root> [node|server]
+ * Usage: node tests/luci-form-snapshot.js <repo-root> [node|client|server]
  */
 
 'use strict';
@@ -171,11 +171,19 @@ const rpc = { declare: () => () => Promise.resolve({}) };
 const fsMock = { exec_direct: () => Promise.resolve(''), read: () => Promise.resolve(''), write: () => Promise.resolve() };
 const widgets = { DeviceSelect: class {} };
 
+/* tools.firewall is used by the client view for the LAN ACL lists; the mock
+   has to return an option object like the real addIPOption/addMACOption. */
+const fwtool = {
+	addIPOption: (section, _policy, name, title, _desc, _family, _hosts, _optional) => section.option(form.DynamicList, name, title),
+	addMACOption: (section, _policy, name, title, _desc, _hosts) => section.option(form.DynamicList, name, title)
+};
+
 const deps = {
 	baseclass, form, fs: fsMock, rpc, uci, ui, view, poll,
 	'luci.http': { urldecode: (s) => s, urlencode: (s) => s, urldecode_params: () => ({}) },
 	'luci.sys': { init_action: () => {} },
-	'tools.widgets': widgets
+	'tools.widgets': widgets,
+	'tools.firewall': fwtool
 };
 
 /* --- LuCI runtime mock end --------------------------------------------- */
@@ -195,7 +203,7 @@ function main() {
 	const root = process.argv[2];
 	const target = process.argv[3] || 'node';
 	if (!root)
-		throw new Error('usage: luci-form-snapshot.js <repo-root> [node|server]');
+		throw new Error('usage: luci-form-snapshot.js <repo-root> [node|client|server]');
 
 	const viewDir = path.join(root, 'htdocs/luci-static/resources');
 	const homeproxy = loadLuciModule(path.join(viewDir, 'homeproxy.js'), {});

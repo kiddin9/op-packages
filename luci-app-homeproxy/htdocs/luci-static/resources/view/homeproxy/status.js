@@ -257,6 +257,15 @@ return view.extend({
 		o.cfgvalue = L.bind(getResVersion, this, o, 'gfw_list');
 		o.rawhtml = true;
 
+		/* local rule-sets (used by bypass_mainland_china when present) */
+		o = s.option(form.DummyValue, '_geoip_cn_version', _('GeoIP CN rule-set version'));
+		o.cfgvalue = L.bind(getResVersion, this, o, 'geoip_cn');
+		o.rawhtml = true;
+
+		o = s.option(form.DummyValue, '_geosite_cn_version', _('GeoSite CN rule-set version'));
+		o.cfgvalue = L.bind(getResVersion, this, o, 'geosite_cn');
+		o.rawhtml = true;
+
 		o = s.option(form.Value, 'github_token', _('GitHub token'));
 		o.password = true;
 		o.renderWidget = function() {

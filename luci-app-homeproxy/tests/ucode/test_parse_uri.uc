@@ -165,6 +165,28 @@ expect_null('hysteria-without-quic', parse_uri('hysteria://s.example.com:443?aut
 expect_null('tuic-without-quic', parse_uri('tuic://u:p@s.example.com:443#NoQuic', NO_QUIC, LOG));
 expect_null('invalid-port', parse_uri('vless://u@t.example.com:99999?security=tls#BadPort', FEATURES, LOG));
 expect_null('unknown-scheme', parse_uri('unknown://u@t.example.com:443', FEATURES, LOG));
+/* sing-box has no xhttp transport; importing it used to make the whole
+   generated config fail with "unknown transport type" */
+expect_null('vless-xhttp-unsupported', parse_uri('vless://u@t.example.com:443?security=tls&type=xhttp#Xhttp', FEATURES, LOG));
+
+/* percent-encoded base64 userinfo (%3D instead of =): used to lose method and
+   password, which made the node break the generated config */
+expect_fields('ss-percent-encoded-userinfo', parse_uri('ss://YWVzLTI1Ni1nY206cGFzc3dvcmQ%3D@j.example.com:8388#SSEnc', FEATURES, LOG), {
+	label: 'SSEnc', type: 'shadowsocks', address: 'j.example.com', port: '8388',
+	shadowsocks_encrypt_method: 'aes-256-gcm', password: 'password'
+});
+
+/* unsupported flow must import as "no flow" instead of breaking sing-box */
+expect_fields('vless-flow-udp443-dropped', parse_uri('vless://vless-uuid@n.example.com:443?security=tls&flow=xtls-rprx-vision-udp443&sni=n.example.com#FlowDrop', FEATURES, LOG), {
+	label: 'FlowDrop', type: 'vless', address: 'n.example.com', port: '443',
+	uuid: 'vless-uuid', tls: '1', tls_sni: 'n.example.com', vless_flow: null
+});
+
+/* punctuation in a password survives now that userinfo is not whitelisted */
+expect_fields('trojan-punctuation-password', parse_uri('trojan://pa!ss~1@m.example.com:443?sni=m.example.com#Punct', FEATURES, LOG), {
+	label: 'Punct', type: 'trojan', address: 'm.example.com', port: '443',
+	password: 'pa!ss~1', tls: '1', tls_sni: 'm.example.com'
+});
 
 printf('%d checks, %d failures\n', checks, failures);
 exit(failures === 0 ? 0 : 1);
