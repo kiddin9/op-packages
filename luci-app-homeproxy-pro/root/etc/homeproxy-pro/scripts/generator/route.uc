@@ -193,7 +193,7 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			type: 'remote',
 			tag: 'geoip-cn',
 			format: 'binary',
-			url: 'https://gh-proxy.com/raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
+			url: 'https://v4.gh-proxy.org/https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
 			update_interval: '24h',
 			download_detour: 'main-out'
 		});
@@ -201,7 +201,7 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			type: 'remote',
 			tag: 'geosite-cn',
 			format: 'binary',
-			url: 'https://gh-proxy.com/raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs',
+			url: 'https://v4.gh-proxy.org/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs',
 			update_interval: '24h',
 			download_detour: 'main-out'
 		});

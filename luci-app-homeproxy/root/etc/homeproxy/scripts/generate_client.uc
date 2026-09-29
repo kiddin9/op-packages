@@ -1070,12 +1070,12 @@ if (!isEmpty(main_node)) {
 			{
 				tag: 'geoip-cn',
 				path: HP_DIR + '/resources/geoip_cn.srs',
-				url: 'https://gh-proxy.com/raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs'
+				url: 'https://v4.gh-proxy.org/https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs'
 			},
 			{
 				tag: 'geosite-cn',
 				path: HP_DIR + '/resources/geosite_cn.srs',
-				url: 'https://gh-proxy.com/raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs'
+				url: 'https://v4.gh-proxy.org/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs'
 			}
 		];
 
