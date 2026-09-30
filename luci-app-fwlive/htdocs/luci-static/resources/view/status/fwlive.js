@@ -125,6 +125,7 @@ return view.extend({
 	manualFetchLinesExplicit: false,
 	rpcPreferencesResolved: false,
 	entries: [],
+	filteredRowsCache: null,
 	sessionSeen: null,
 	pauseBufferLoading: false,
 	/* Freezes row rendering while polling, health, and cadence updates continue. */
@@ -1057,6 +1058,8 @@ return view.extend({
 			}
 		}
 
+		if (changed) this.invalidateFilteredRows();
+
 		/* Keep buffered rows current without painting a paused or hidden table. */
 		if (changed && !this.tablePaused && (!this.summaryMode || this.summaryRowsShown))
 			this.renderRows(true);
@@ -1214,7 +1217,7 @@ return view.extend({
 				await Promise.all([this.loadRulesMap(epoch), this.loadLoggingStatus(epoch)]);
 				/* Recovery RPCs can outlive the poll epoch; don't repaint stale views. */
 				if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;
-				this.refreshBufferedRuleLabels();
+				/* loadRulesMap refreshes buffered labels when its map read succeeds. */
 			} catch (_e) {
 				/* A throw here is local UI work after a successful poll. Leave
 				 * lastPollError / lastPollErrorCode as applyPollReply set them. */
@@ -1547,7 +1550,7 @@ return view.extend({
 			if (!card.style) card.style = { display: '' };
 			card.style.display = this.summaryMode ? 'block' : 'none';
 		}
-		this.syncEmptyScrollVisibility(this.filteredRows().length);
+		this.syncEmptyScrollVisibility(this.filteredRowsState().rows.length);
 		if (toggle) {
 			toggle.textContent = this.summaryRowsShown ? _('Hide rows') : _('Show rows');
 			toggle.setAttribute('aria-pressed', this.summaryRowsShown ? 'true' : 'false');
@@ -1568,7 +1571,7 @@ return view.extend({
 		this.summaryData = null;
 		this.updateSummaryUi();
 		if (this.tablePaused) {
-			this.syncEmptyScrollVisibility(this.filteredRows().length);
+			this.syncEmptyScrollVisibility(this.filteredRowsState().rows.length);
 			this.updateStatus();
 		} else {
 			this.resolvePaintPending = false;
@@ -1612,27 +1615,61 @@ return view.extend({
 		}
 	},
 
-	filteredRows() {
-		const filters = this.readFilters();
-		return this.entries
-			.filter((row) => log.matchesFilter(row, filters))
-			.slice(-this.displayRowCap())
-			.reverse();
+	invalidateFilteredRows() {
+		/* Use after in-place edits: free-text query matching reads every row field. */
+		this.filteredRowsCache = null;
 	},
 
-	compactCountText(matchCount) {
+	/* Internal shared result: consumers must treat the state and rows as read-only.
+	 * filteredRows() provides an array copy for callers that need to mutate it. */
+	filteredRowsState() {
+		/* Poll ingest and limit trimming replace the array, even at equal length.
+		 * Rule-label edits invalidate explicitly because query matches all fields. */
+		const filters = this.readFilters();
+		const filterKey = JSON.stringify(filters);
+		const rowCap = this.displayRowCap();
+		const entries = this.entries;
+		const cached = this.filteredRowsCache;
+
+		if (
+			cached &&
+			cached.entries === entries &&
+			cached.filterKey === filterKey &&
+			cached.rowCap === rowCap
+		)
+			return cached;
+
+		const matching = [];
+		for (let i = 0; i < entries.length; i++) {
+			if (log.matchesFilter(entries[i], filters)) matching.push(entries[i]);
+		}
+
+		const state = {
+			entries: entries,
+			filterKey: filterKey,
+			rowCap: rowCap,
+			matchCount: matching.length,
+			rows: matching.slice(-rowCap).reverse()
+		};
+		this.filteredRowsCache = state;
+		return state;
+	},
+
+	filteredRows() {
+		return this.filteredRowsState().rows.slice();
+	},
+
+	compactCountText(filtered) {
 		const stored = this.entries.length;
 		/* Keep the stored-buffer denominator tied to the user's Limit. A weak
 		 * device's rendered-row cap is called out separately in statusSuffix(). */
 		const limit = this.rowLimit;
 		const suffix = this.statusSuffix();
-		/* While the table is paused the buffer can grow past the display limit — count matches
-		 * over the full buffer so "matching" is not capped at visibleRows. */
-		let shown = matchCount;
-		if (this.tablePaused) {
-			const filters = this.readFilters();
-			shown = this.entries.filter((row) => log.matchesFilter(row, filters)).length;
-		}
+		/* The filter state contains both visible rows and the full match count, so
+		 * paused status can report matches beyond the display cap without rescanning. */
+		const state =
+			filtered && Array.isArray(filtered.rows) ? filtered : this.filteredRowsState();
+		const shown = this.tablePaused ? state.matchCount : state.rows.length;
 
 		if (this.pauseBufferLoading && stored === 0) return _('loading…') + suffix;
 
@@ -1643,11 +1680,12 @@ return view.extend({
 		return '';
 	},
 
-	updateStatus(rows) {
+	updateStatus(filtered) {
 		const status = document.getElementById('fwlive-status');
 		if (!status) return;
 
-		const matchCount = rows ? rows.length : this.filteredRows().length;
+		const state =
+			filtered && Array.isArray(filtered.rows) ? filtered : this.filteredRowsState();
 		const suffix = this.statusSuffix();
 
 		if (this.lastPollError) {
@@ -1663,7 +1701,7 @@ return view.extend({
 		status.className = this.tablePaused
 			? 'fwlive-status fwlive-status-paused'
 			: 'fwlive-status';
-		status.textContent = this.compactCountText(matchCount);
+		status.textContent = this.compactCountText(state);
 		this.updateAdaptiveBanner();
 	},
 
@@ -2079,7 +2117,8 @@ return view.extend({
 		const scroll = document.getElementById('fwlive-scroll');
 		this.updateHash(this.readFilters());
 
-		const rows = this.filteredRows();
+		const filtered = this.filteredRowsState();
+		const rows = filtered.rows.slice();
 		const paint = this.ensureRenderScheduler().shouldRender(
 			rows,
 			!!force,
@@ -2090,7 +2129,7 @@ return view.extend({
 		if (!paint) {
 			this.updateFloodBanner();
 			this.syncEmptyScrollVisibility(rows.length);
-			this.updateStatus(rows);
+			this.updateStatus(filtered);
 			return;
 		}
 
@@ -2099,7 +2138,7 @@ return view.extend({
 		const prevScroll = scroll ? scroll.scrollTop : 0;
 
 		this.syncEmptyScrollVisibility(rows.length);
-		this.updateStatus(rows);
+		this.updateStatus(filtered);
 		this.renderFilterChips();
 
 		table.renderRows(
