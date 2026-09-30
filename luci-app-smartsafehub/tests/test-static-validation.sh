@@ -81,7 +81,8 @@ for script in \
 	tests/test-ucode-syntax.sh \
 	tests/test-ucode-imports.sh \
 	tests/test-updater.sh \
-	tests/test-firmware-updater.sh; do
+	tests/test-firmware-updater.sh \
+	tests/test-firmware-identity.sh; do
 	sh -n "$ROOT_DIR/$script"
 done
 

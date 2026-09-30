@@ -1,0 +1,6 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[ -x /usr/libexec/smartsafehub-firmware ] || exit 0
+/usr/libexec/smartsafehub-firmware sync-identity >/dev/null 2>&1 || true
+exit 0

@@ -9,7 +9,11 @@
  *
  * While paused, ingest grows up to fetchLinesMax. Live mode caps at rowLimit.
  * On resume, merge (do not replace) so pause-accumulated rows survive the first
- * live poll.
+ * live poll. In live mode, an empty normalized poll preserves the current rows:
+ * the buffer cannot tell inactivity from a cleared server log. The view reports
+ * how long ago it last received a non-empty batch after its stale threshold.
+ * A repeated non-empty window resets that receipt clock even if all events are
+ * old; the hint measures received batches, not the age of the last new event.
  */
 
 function ingestCap(paused, rowLimit, fetchLinesMax) {

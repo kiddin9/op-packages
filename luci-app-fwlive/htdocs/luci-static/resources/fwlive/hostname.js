@@ -32,6 +32,20 @@ return baseclass.extend({
 		return value;
 	},
 
+	/* Scoped IPv6 (`fe80::1%eth0`) resolves and caches under the bare address. */
+	stripZone: function (addr) {
+		if (typeof addr !== 'string') return addr;
+		const zone = addr.lastIndexOf('%');
+		return zone === -1 ? addr : addr.slice(0, zone);
+	},
+
+	/* Display reads refresh recency so visible names stay warm in the LRU. */
+	cachedName: function (map, addr) {
+		if (!map || !addr) return null;
+		const value = this.lruGet(map, this.stripZone(addr));
+		return value == null ? null : String(value);
+	},
+
 	failIsHot: function (failedMap, ip, nowMs, ttlMs) {
 		if (!failedMap || !failedMap.has(ip)) return false;
 		const at = failedMap.get(ip);

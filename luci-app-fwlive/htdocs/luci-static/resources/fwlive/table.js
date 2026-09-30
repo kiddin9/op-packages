@@ -4,6 +4,7 @@
 'require baseclass';
 'require fwlive.log as log';
 'require fwlive.links as links';
+'require fwlive.hostname as hostname';
 
 /**
  * Table thead/rows DOM renderer for luci-app-fwlive.
@@ -271,13 +272,8 @@ function renderThead(host, state, _callbacks) {
 }
 
 function hostnameCacheValue(ip, state) {
-	if (!state.showHostnames || !state.hostnameCache || !ip) return '';
-	const key =
-		typeof ip === 'string' && ip.lastIndexOf('%') !== -1
-			? ip.slice(0, ip.lastIndexOf('%'))
-			: ip;
-	const value = state.hostnameCache.get ? state.hostnameCache.get(key) : undefined;
-	return value == null ? '' : String(value);
+	if (!state.showHostnames) return '';
+	return hostname.cachedName(state.hostnameCache, ip) || '';
 }
 
 function rowRenderKey(row, state, columns) {
@@ -363,21 +359,11 @@ function renderAllRows(host, rows, state, columns, callbacks) {
 	}
 }
 
-function canReuseRows(host) {
-	return (
-		host &&
-		host.childNodes &&
-		typeof host.childNodes.length === 'number' &&
-		typeof host.insertBefore === 'function' &&
-		typeof host.removeChild === 'function'
-	);
-}
-
 function renderRows(host, state, callbacks) {
 	const rows = state.rows || [];
 	const columns = state.columns || [];
 
-	if (state.forceRender || !canReuseRows(host)) {
+	if (state.forceRender) {
 		renderAllRows(host, rows, state, columns, callbacks);
 		return;
 	}

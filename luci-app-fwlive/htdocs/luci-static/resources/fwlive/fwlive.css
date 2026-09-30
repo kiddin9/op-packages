@@ -216,19 +216,23 @@
 }
 /* Draw our own disclosure arrow — themes that restyle summary drop the native marker. */
 .fwlive-more-filters > summary,
-.fwlive-help > summary {
+.fwlive-help > summary,
+.fwlive-rules-details > summary {
 	cursor: pointer;
 	list-style: none;
 }
 .fwlive-more-filters > summary::-webkit-details-marker,
-.fwlive-help > summary::-webkit-details-marker { display: none; }
+.fwlive-help > summary::-webkit-details-marker,
+.fwlive-rules-details > summary::-webkit-details-marker { display: none; }
 .fwlive-more-filters > summary::before,
-.fwlive-help > summary::before {
+.fwlive-help > summary::before,
+.fwlive-rules-details > summary::before {
 	content: "▸ ";
 	color: var(--text-color-medium);
 }
 .fwlive-more-filters[open] > summary::before,
-.fwlive-help[open] > summary::before { content: "▾ "; }
+.fwlive-help[open] > summary::before,
+.fwlive-rules-details[open] > summary::before { content: "▾ "; }
 .fwlive-ctl {
 	display: inline-flex;
 	align-items: center;
@@ -753,6 +757,15 @@
 .fwlive-backend.fwlive-backend-warn {
 	color: var(--warn-color-high);
 	font-weight: 600;
+}
+.fwlive-rules-details {
+	margin: 4px 0 8px;
+	color: var(--text-color-high);
+}
+#fwlive-rules-details-body {
+	margin: 6px 0;
+	white-space: pre-line;
+	overflow-wrap: anywhere;
 }
 .fwlive-filter-panel { margin-bottom: 12px; }
 .fwlive-map[data-view="simple"] .fwlive-grid-core {

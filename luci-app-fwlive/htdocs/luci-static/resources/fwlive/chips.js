@@ -23,7 +23,7 @@ function chipFieldLabel(spec) {
 }
 
 function chipValueNodes(spec, val) {
-	const key = spec.key;
+	const contains = log.isSubstringFilterField(spec.key);
 	const label = chipFieldLabel(spec);
 	const p = log.parseFilterValue(val);
 	if (!p.value) return [''];
@@ -31,7 +31,7 @@ function chipValueNodes(spec, val) {
 	const valueNode = p.negate ? E('span', { 'class': 'fwlive-chip-strike' }, [p.value]) : p.value;
 
 	if (!p.negate) {
-		if (key === 'q' || key === 'src' || key === 'dst')
+		if (contains)
 			return [
 				E('span', { 'class': 'fwlive-chip-polarity' }, [_('contains')]),
 				' ',
@@ -44,7 +44,7 @@ function chipValueNodes(spec, val) {
 		];
 	}
 
-	if (key === 'q' || key === 'src' || key === 'dst')
+	if (contains)
 		return [
 			label + ': ',
 			E('strong', { 'class': 'fwlive-chip-not' }, [_('does not contain')]),

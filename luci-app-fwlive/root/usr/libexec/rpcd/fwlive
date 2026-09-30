@@ -21,6 +21,8 @@ LOGGING_SH="$LIBEXEC_DIR/fwlive-logging.sh"
 ADAPTIVE_SH="$LIBEXEC_DIR/fwlive-adaptive-cap.sh"
 # Max reverse-DNS lookups per resolve call (~32 names keeps nslookup load bounded on small routers).
 RESOLVE_MAX=32
+# DNS names are at most 253 octets; a longer PTR answer is treated as no name.
+RESOLVE_NAME_MAX=253
 # Per-lookup nslookup timeout (integer seconds — BusyBox `timeout` truncates
 # fractional values to 0 on OpenWrt 23.05/1.36, so 0.5 would silently
 # degrade to no timeout; luna fold 2026-08-10). The wall-clock budget
@@ -70,6 +72,15 @@ RULES_MAP_MAX_BYTES=65536
 # the whole dump. Bound map_prefix_with_label calls independently.
 RULES_MAP_MAX_LINES=512
 
+# Append one already-escaped "key":"value" to OUT. Value may be empty.
+# No first-wins dedupe and no RULES_MAP_MAX_* caps.
+json_object_append() {
+	if [ -n "$OUT" ]; then
+		OUT="${OUT},"
+	fi
+	OUT="${OUT}\"$1\":\"$2\""
+}
+
 map_add() {
 	key="$1"
 	val="$2"
@@ -105,10 +116,7 @@ map_add() {
 		return 0
 	fi
 	_map_keys=$(( ${_map_keys:-0} + 1 ))
-	if [ -n "$OUT" ]; then
-		OUT="${OUT},"
-	fi
-	OUT="${OUT}\"${esc_key}\":\"${esc_val}\""
+	json_object_append "$esc_key" "$esc_val"
 }
 
 uci_rule_names() {
@@ -581,10 +589,12 @@ build_rules_map() {
 		_enrich_error='no_backend'
 	fi
 	_rules_json="{\"backend\":\"$backend\",\"rules\":{$OUT}"
+	# Map limits and enrichment failures are independent outcomes.
+	_truncated=false
+	[ -n "$_map_overflow" ] && _truncated=true
+	_rules_json="${_rules_json},\"truncated\":${_truncated}"
 	if [ -n "$_enrich_error" ]; then
 		_rules_json="${_rules_json},\"error\":\"${_enrich_error}\""
-	elif [ -n "$_map_overflow" ]; then
-		_rules_json="${_rules_json},\"error\":\"rules_truncated\""
 	fi
 	printf '%s}' "$_rules_json"
 }
@@ -617,6 +627,22 @@ poll_clamp_lines() {
 	fi
 }
 
+# jshn_load_input JSON
+# Status 0: JSON loaded (json_* available). Status 2: library missing
+# (FWLIVE_JSHN_SH or json_init). Status 1: parse failure.
+# Caller checks command -v jshn (jshn_missing) and runs with nounset off.
+# jshn uses intentionally unset state variables.
+jshn_load_input() {
+	# shellcheck disable=SC1090,SC1091
+	. "${FWLIVE_JSHN_SH:-/usr/share/libubox/jshn.sh}" 2>/dev/null || return 2
+	json_init >/dev/null 2>&1 || return 2
+	# json_load masks a failing jshn exit through eval. Check the real
+	# parser once, then evaluate only its generated shell assignments.
+	_json_no_warning=1
+	_json_code=$(jshn -r "$1" 2>/dev/null) || return 1
+	eval "$_json_code" || return 1
+}
+
 # Failed jshn reads still default to 50 (silent numeric contract; syslog named cause only).
 poll_lines_from_input() {
 	input="$1"
@@ -627,20 +653,12 @@ poll_lines_from_input() {
 		_cause=jshn_missing
 	else
 		_rc=0
-		# jshn uses intentionally unset state variables. Keep nounset disabled in
-		# this subshell so strict mode is restored automatically on every exit.
-		# exit 2: library missing or source failed; exit 1: JSON parse failed.
+		# Keep nounset disabled in this subshell so strict mode is restored
+		# on every exit. Status 2: library missing; status 1: parse failure.
 		# Missing addresses[0] is an intentional silent default, not a parse error.
 		_first=$( (
 			set +u
-			# shellcheck disable=SC1090,SC1091
-			. "${FWLIVE_JSHN_SH:-/usr/share/libubox/jshn.sh}" 2>/dev/null || exit 2
-			json_init >/dev/null 2>&1 || exit 2
-			# json_load masks a failing jshn exit through eval. Check the real
-			# parser once, then evaluate only its generated shell assignments.
-			_json_no_warning=1
-			_json_code=$(jshn -r "$input" 2>/dev/null) || exit 1
-			eval "$_json_code" || exit 1
+			jshn_load_input "$input" || exit $?
 			first=
 			if json_select addresses 2>/dev/null; then
 				json_get_var first 1 || first=
@@ -928,15 +946,10 @@ resolve_addresses() {
 		return 0
 	fi
 
+	_rc=0
 	_addresses=$( (
 		set +u
-		# shellcheck disable=SC1090,SC1091
-		. "${FWLIVE_JSHN_SH:-/usr/share/libubox/jshn.sh}"
-		# json_load masks a failing jshn exit through eval. Check the real
-		# parser once, then evaluate only its generated shell assignments.
-		_json_no_warning=1
-		_json_code=$(jshn -r "$input" 2>/dev/null) || exit 1
-		eval "$_json_code" || exit 1
+		jshn_load_input "$input" || exit $?
 		if ! json_select addresses 2>/dev/null; then exit 0; fi
 		idx=1
 		# json_get_type false ends the array. A non-string element is skipped
@@ -955,49 +968,44 @@ resolve_addresses() {
 			fi
 			idx=$((idx + 1))
 		done
-	) ) || {
+	) ) || _rc=$?
+	if [ "$_rc" -eq 2 ]; then
+		printf '{"names":{},"error":"jshn_lib_missing"}'
+		return 0
+	fi
+	if [ "$_rc" -ne 0 ]; then
 		printf '{"names":{},"error":"invalid_input"}'
 		return 0
-	}
+	fi
 	while IFS= read -r ip; do
-			[ -n "${ip:-}" ] || continue
-			# Producer already validated; skip repeats before they cost a slot.
-			case "$OUT" in
-				*"\"$ip\":"*) continue ;;
-			esac
-			if [ "$lookups" -ge "$RESOLVE_MAX" ]; then
-				truncated=1
-				break
-			fi
-			# Abort cleanly once the lookup-loop wall-clock budget is spent;
-			# never START a lookup past the budget.
-			now=$(fwlive_adaptive_clock_cs)
-			if [ $((now - start)) -ge $((RESOLVE_BUDGET * 100)) ]; then
-				truncated=1
-				break
-			fi
-			lookups=$((lookups + 1))
-			# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
-			# cannot apply to this assignment.
-			name=$(resolve_hostname "$ip") || name=
-			if [ -n "$name" ]; then
-				map_add "$ip" "$name"
-			else
-				# Record a completed miss so the view can fail-mark NXDOMAIN
-				# without treating the unprocessed truncated tail as tried.
-				# map_add skips empty values (rules-map labels); resolve needs them.
-				esc_key=$(printf '%s' "$ip" | json_escape)
-				case "$OUT" in
-					*"\"$esc_key\":"*) ;;
-					*)
-						if [ -n "$OUT" ]; then
-							OUT="${OUT},"
-						fi
-						OUT="${OUT}\"${esc_key}\":\"\""
-						;;
-				esac
-			fi
-		done <<EOF
+		[ -n "${ip:-}" ] || continue
+		# Producer already validated; skip repeats before they cost a slot.
+		case "$OUT" in
+			*"\"$ip\":"*) continue ;;
+		esac
+		if [ "$lookups" -ge "$RESOLVE_MAX" ]; then
+			truncated=1
+			break
+		fi
+		# Abort cleanly once the lookup-loop wall-clock budget is spent;
+		# never START a lookup past the budget.
+		now=$(fwlive_adaptive_clock_cs)
+		if [ $((now - start)) -ge $((RESOLVE_BUDGET * 100)) ]; then
+			truncated=1
+			break
+		fi
+		lookups=$((lookups + 1))
+		# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
+		# cannot apply to this assignment.
+		name=$(resolve_hostname "$ip") || name=
+		[ "${#name}" -le "$RESOLVE_NAME_MAX" ] || name=
+		esc_key=$(printf '%s' "$ip" | json_escape)
+		esc_val=
+		if [ -n "$name" ]; then
+			esc_val=$(printf '%s' "$name" | json_escape)
+		fi
+		json_object_append "$esc_key" "$esc_val"
+	done <<EOF
 $_addresses
 EOF
 
@@ -1419,6 +1427,12 @@ case "${1:-}" in
 	__selftest)
 		run_selftest
 		exit $?
+		;;
+	__limits)
+		printf '%s %s %s %s %s\n' \
+			"$POLL_TIMEOUT" "$TIMEOUT_KILL_GRACE" "$NFT_TIMEOUT" \
+			"$RESOLVE_TIMEOUT" "$RESOLVE_BUDGET"
+		exit 0
 		;;
 	__poll_clamp)
 		poll_clamp_lines "${2:-}"

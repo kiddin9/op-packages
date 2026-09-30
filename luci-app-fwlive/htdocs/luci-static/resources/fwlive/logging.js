@@ -25,6 +25,9 @@
  *     state     - loggingState + { showConsent }
  *     callbacks - { onEnable(), onDismissConsent(persist) }
  *
+ * toggleFailureNotice(code, fallback) → string
+ *   rpcd enable/disable error code → notice; unknown codes return fallback.
+ *
  * Modules must not mutate state. host is cleared then rebuilt (idempotent replace).
  */
 
@@ -46,18 +49,51 @@ function persistConsentDismissed() {
 	}
 }
 
+/* Shared by enable and disable; codes a toggle cannot emit fall through. */
+function toggleFailureNotice(code, fallback) {
+	switch (code) {
+		case 'nf_log_missing':
+			return _('Cannot enable logging until kernel log modules are installed.');
+		case 'firewall_changes_pending':
+			return _('Another change is staged for the firewall; apply or revert it first.');
+		case 'no_wan_zone':
+			return _('No WAN zone found; cannot toggle logging without one.');
+		case 'lock_failed':
+			return _('Could not acquire the logging lock.');
+		case 'rollback_tracking_failed':
+			return _('Could not track the logging change safely; logging was not changed.');
+		case 'baseline_snapshot_failed':
+			return _('Could not snapshot the current logging state.');
+		case 'firewall_reload_failed':
+			return _('The firewall did not reload; saved and live logging may differ.');
+		case 'uci_set_failed':
+			return _('Could not write the WAN zone log option.');
+		case 'uci_delete_failed':
+			return _('Could not clear the WAN zone log option.');
+		case 'uci_commit_failed':
+			return _('Could not save the firewall configuration.');
+		case 'firewall_commit_raced':
+			return _(
+				'Another change overwrote WAN logging after it was saved; check the current state.'
+			);
+		default:
+			return fallback;
+	}
+}
+
 function enableLoggingButton(state, callbacks) {
 	return E(
 		'button',
 		{
 			'class': 'cbi-button cbi-button-action',
 			'type': 'button',
+			'title': _('Enable WAN zone drop/reject logging (same as Network → Firewall).'),
 			'disabled': state.loggingBusy ? '' : null,
 			'click': function () {
 				callbacks.onEnable();
 			}
 		},
-		[state.loggingBusy ? _('Enabling…') : _('Enable WAN drop/reject logging')]
+		[state.loggingBusy ? _('Enabling…') : _('Enable logging')]
 	);
 }
 
@@ -180,21 +216,7 @@ function renderToolbar(host, state, callbacks) {
 		return;
 	}
 
-	host.appendChild(
-		E(
-			'button',
-			{
-				'class': 'cbi-button cbi-button-action',
-				'type': 'button',
-				'title': _('Enable WAN zone drop/reject logging (same as Network → Firewall).'),
-				'disabled': state.loggingBusy ? '' : null,
-				'click': function () {
-					callbacks.onEnable();
-				}
-			},
-			[state.loggingBusy ? _('Enabling…') : _('Enable logging')]
-		)
-	);
+	host.appendChild(enableLoggingButton(state, callbacks));
 	appendLoggingNotice(host, state);
 }
 
@@ -359,7 +381,9 @@ function buildEmptyStateNodes(state, callbacks) {
 		])
 	);
 	nodes.push(
-		E('p', { 'class': 'fwlive-empty-muted' }, [_('Nothing changes until you click Enable.')])
+		E('p', { 'class': 'fwlive-empty-muted' }, [
+			_('Nothing changes until you click Enable logging.')
+		])
 	);
 	nodes.push(
 		E('p', {}, [
@@ -399,6 +423,7 @@ return baseclass.extend({
 	CONSENT_STORAGE_KEY: CONSENT_STORAGE_KEY,
 	consentDismissedPermanent: consentDismissedPermanent,
 	persistConsentDismissed: persistConsentDismissed,
+	toggleFailureNotice: toggleFailureNotice,
 	renderToolbar: renderToolbar,
 	buildEmptyStateNodes: buildEmptyStateNodes,
 	renderEmptyState: renderEmptyState,
