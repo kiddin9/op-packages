@@ -19,21 +19,51 @@ refresh_web_cache() {
 	rm -f /tmp/luci-indexcache* 2>/dev/null
 }
 
+# ---------- 检测 HDMI 是否接了显示器/电视 ----------
+hdmi_connected() {
+	local f
+	for f in /sys/class/drm/*/status; do
+		[ -f "$f" ] || continue
+		case "$f" in
+			*HDMI*|*DP*)
+				[ "$(cat "$f" 2>/dev/null)" = "connected" ] && return 0
+				;;
+		esac
+	done
+	return 1
+}
+
 # ---------- 自动探测声卡 ----------
 detect_device() {
 	local dev
 
-	# 1) 优先选名字里带 Analog 的（板载模拟输出）
+	# 1) HDMI 已接显示设备 -> 优先 HDMI（电视/功放/显示器音响 ✓）
+	if hdmi_connected; then
+		dev=$(aplay -l 2>/dev/null \
+			| grep -i 'hdmi' \
+			| head -n1 \
+			| sed -n 's/^card \([0-9]*\): .*device \([0-9]*\):.*/hw:\1,\2/p')
+		[ -n "$dev" ] && { echo "$dev"; return 0; }
+	fi
+
+	# 2) 板载模拟输出
 	dev=$(aplay -l 2>/dev/null \
 		| grep -i 'analog' \
 		| head -n1 \
 		| sed -n 's/^card \([0-9]*\): .*device \([0-9]*\):.*/hw:\1,\2/p')
 	[ -n "$dev" ] && { echo "$dev"; return 0; }
 
-	# 2) 退而求其次：排除 Dummy / pcsp / HDMI，取第一个可播放设备
+	# 3) 有 HDMI 就退而用 HDMI（哪怕没检测到显示器 ✓）
+	dev=$(aplay -l 2>/dev/null \
+		| grep -i 'hdmi' \
+		| head -n1 \
+		| sed -n 's/^card \([0-9]*\): .*device \([0-9]*\):.*/hw:\1,\2/p')
+	[ -n "$dev" ] && { echo "$dev"; return 0; }
+
+	# 4) 兜底：排除 Dummy / pcsp / 数字回声设备
 	dev=$(aplay -l 2>/dev/null \
 		| grep '^card ' \
-		| grep -viE 'dummy|pcsp|hdmi|iec958' \
+		| grep -viE 'dummy|pcsp|iec958' \
 		| head -n1 \
 		| sed -n 's/^card \([0-9]*\): .*device \([0-9]*\):.*/hw:\1,\2/p')
 	[ -n "$dev" ] && { echo "$dev"; return 0; }

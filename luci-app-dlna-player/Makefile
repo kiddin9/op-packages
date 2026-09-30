@@ -29,7 +29,7 @@ LUCI_DEPENDS:=+mpd-full +mpc +upmpdcli +alsa-utils \
 
 PKG_NAME:=luci-app-dlna-player
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_MAINTAINER:=sakura-builder1 <sakura-builder1@users.noreply.github.com>
 PKG_LICENSE:=GPL-3.0
 

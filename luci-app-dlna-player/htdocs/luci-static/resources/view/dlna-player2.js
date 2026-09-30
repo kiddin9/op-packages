@@ -127,7 +127,11 @@ return view.extend({
 					'.dlna-player-line { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:.5rem; padding-left:1rem; }',
 					'.dlna-player-line > label { flex:0 0 8.5rem; max-width:8.5rem; text-align:left; }',
 					/* 列表也留出同样的左边距，视觉更整齐 */
-					'.dlna-player-row .dlna-player-list { margin-left:1rem; }'
+					'.dlna-player-row .dlna-player-list { margin-left:1rem; border:1px solid rgba(128,128,128,.35); border-radius:.3rem; }',
+					'.dlna-player-list .dlna-player-item { border-radius:.2rem; }',
+					'.dlna-player-list .dlna-player-item.is-playing { background:rgba(120,180,120,.35); }',
+					'.dlna-player-list .dlna-player-empty { padding:.8rem; text-align:center; opacity:.65; }',
+					'.dlna-player-count { margin-top:.2rem; font-size:.9em; opacity:.7; }'
 				]));
 			}
 
@@ -207,7 +211,7 @@ return view.extend({
 
 					fileRows.forEach(function (item) {
 						var on = (item.name === cur);
-						item.el.style.background = on ? '#e8f5e9' : '';
+						item.el.classList.toggle('is-playing', on);
 						item.el.style.fontWeight = on ? 'bold' : '';
 					});
 				});
@@ -258,13 +262,14 @@ return view.extend({
 				fileRows = [];
 				listFrame.innerHTML = '';
 				if (!fl.length) {
-					listFrame.appendChild(E('div', { 'style': 'padding:.8rem;color:#888;text-align:center' }, [
+					listFrame.appendChild(E('div', { 'class': 'dlna-player-empty' }, [
 						_('No matching music.')
 					]));
 				} else {
 					fl.forEach(function (f) {
 						var row = E('div', {
-							'style': 'display:flex;align-items:center;gap:.5rem;padding:.3rem .4rem;border-radius:.2rem'
+							'class': 'dlna-player-item',
+							'style': 'display:flex;align-items:center;gap:.5rem;padding:.3rem .4rem'
 						}, [
 							pbtn(_('Play'), 'action', function () { return playFile(f); }),
 							E('span', { 'class': 'dlna-player-name' }, [ f ]),
@@ -281,7 +286,7 @@ return view.extend({
 
 				fileRows.forEach(function (item) {
 					var on = (item.name === curFile);
-					item.el.style.background = on ? '#e8f5e9' : '';
+					item.el.classList.toggle('is-playing', on);
 					item.el.style.fontWeight = on ? 'bold' : '';
 				});
 			}
@@ -370,7 +375,7 @@ return view.extend({
 							'placeholder': _('type to filter...'),
 							'style': 'width:100%;max-width:22rem'
 						}, []),
-						E('div', { 'style': 'margin-top:.2rem;color:#666;font-size:.9em' }, [
+						E('div', { 'class': 'dlna-player-count' }, [
 							listCount = E('span', {}, [ '' ])
 						])
 					])
@@ -379,8 +384,7 @@ return view.extend({
 				/* 列表：只滚动，不翻页 */
 				listFrame = E('div', {
 					'class': 'dlna-player-list',
-					'style': 'border:1px solid #ccc;border-radius:.3rem;' +
-						'max-height:20rem;overflow-y:auto;overflow-x:hidden;background:#fff'
+					'style': 'max-height:20rem;overflow-y:auto;overflow-x:hidden'
 				}, [])
 			]);
 
