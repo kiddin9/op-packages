@@ -243,6 +243,22 @@ expect "an unusable dns_port is reported in the log" \
 	"$(grep -c 'dns_port' "$LOG")" "1"
 
 echo
+echo "== proxy_mainland_china: every query goes to sing-box =="
+
+# This mode used to expand china_list.txt (111353 domains in the bundled list)
+# into one `server=` line each, which measured at about 25 MB of dnsmasq RSS on
+# a real device (1.0 MB empty, 27.2 MB with the list) for no behavioural
+# difference: the mode's dns.final is default-dns, the WAN resolver, so a
+# mainland domain resolves through the ISP either way.
+run "proxy_mainland_china"
+expect "proxy_mainland_china installs the global redirect snippet" \
+	"$(exists "$DNS_DIR/redirect-dns.conf")" "yes"
+expect "proxy_mainland_china no longer expands china_list.txt" \
+	"$(exists "$DNS_DIR/china_list.conf")" "no"
+expect "the redirect snippet points at sing-box" \
+	"$(grep -c "server=127.0.0.1#" "$DNS_DIR/redirect-dns.conf")" "1"
+
+echo
 printf '%s checks, %s failures\n' "$CHECKS" "$FAILURES"
 if [ "$FAILED" != 0 ]; then
 	echo "DNS SNIPPET TESTS FAILED"

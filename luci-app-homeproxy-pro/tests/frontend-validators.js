@@ -133,5 +133,35 @@ check('cert path ignores an empty value',
 check('cert path ignores a missing section',
 	hp.validateCertificatePath(null, '/etc/passwd') === true);
 
+/* A query type name reaches sing-box's miekg/dns uppercase table
+ * (option/types.go); a lowercase name is an "unknown DNS query type" and the
+ * whole configuration is refused, which the user only ever saw as the reload
+ * keeping the previous state.  A numeric code is valid as-is. */
+check('query type accepts an uppercase name',
+	hp.validateQueryType('sec1', 'AAAA') === true);
+check('query type accepts a numeric code',
+	hp.validateQueryType('sec1', '65') === true);
+check('query type rejects a lowercase name',
+	isError(hp.validateQueryType('sec1', 'aaaa')));
+check('query type rejects a name with a trailing space',
+	isError(hp.validateQueryType('sec1', 'A ')));
+check('query type rejects a code above 65535',
+	isError(hp.validateQueryType('sec1', '70000')));
+check('query type ignores an empty value',
+	hp.validateQueryType('sec1', '') === true);
+check('query type ignores a missing section',
+	hp.validateQueryType(null, 'aaaa') === true);
+
+/* An uncompilable regex is not caught anywhere downstream either: sing-box
+ * rejects the configuration as a whole. */
+check('regex accepts a valid pattern',
+	hp.validateRegex('sec1', '^stun\\..+') === true);
+check('regex rejects an unbalanced group',
+	isError(hp.validateRegex('sec1', '(unclosed')));
+check('regex ignores an empty value',
+	hp.validateRegex('sec1', '') === true);
+check('regex ignores a missing section',
+	hp.validateRegex(null, '(unclosed') === true);
+
 console.log(`frontend validators: ${checks} checks, ${failures} failures`);
 process.exit(failures ? 1 : 0);

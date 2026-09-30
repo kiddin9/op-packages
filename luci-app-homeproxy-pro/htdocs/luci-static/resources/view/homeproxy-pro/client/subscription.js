@@ -52,11 +52,16 @@ function render(ctx) {
 	so.default = 'remote';
 	so.rmempty = false;
 
-	so = ss.option(form.ListValue, 'format', _('Format'));
+	so = ss.option(form.ListValue, 'format', _('Format'),
+		_('Leave empty to infer it from a <code>.json</code> or <code>.srs</code> path/url; sing-box requires it for any other extension.'));
+	so.value('', _('Automatic (by extension)'));
 	so.value('binary', _('Binary file'));
 	so.value('source', _('Source file'));
-	so.default = 'binary';
-	so.rmempty = false;
+	/* Not `binary` by default: sing-box only infers the format when the
+	 * field is absent, and an explicit value wins.  Defaulting to binary
+	 * meant every local rule-set pointing at a .json file was parsed as a
+	 * compiled .srs unless the user remembered to change the dropdown. */
+	so.rmempty = true;
 
 	so = ss.option(form.Value, 'path', _('Path'));
 	so.datatype = 'file';
@@ -99,7 +104,7 @@ function render(ctx) {
 		this.value('', _('Default'));
 		this.value('direct-out', _('Direct'));
 		uci.sections('homeproxy-pro', 'routing_node', (res) => {
-			if (res.enabled === '1')
+			if (res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 

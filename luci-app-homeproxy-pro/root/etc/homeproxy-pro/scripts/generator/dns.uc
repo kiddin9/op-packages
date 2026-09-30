@@ -72,6 +72,50 @@ function parse_dnsquery(strquery) {
 	return querys;
 }
 
+/* Build the sing-box `headers` object from the UCI string list.
+ *
+ * sing-box types this field as `badoption.HTTPHeader`, i.e.
+ * map[string][]string; an array (or a bare string) fails to decode and the
+ * whole configuration is rejected.  The LuCI form is a DynamicList, so every
+ * entry lands in UCI as a string and the two sides disagreed on the shape:
+ * `"headers": ["Name: value"]` is not a map.
+ *
+ * The form keeps its list widget and one entry is written `Name: Value`;
+ * repeating a name appends to that name's value list, which is how HTTP
+ * expresses a multi-valued header.  An entry that does not fit the form is
+ * named and rejected here rather than left for sing-box to report as
+ * "cannot unmarshal array into Go value of type badoption.HTTPHeader". */
+function parse_http_headers(list, where) {
+	if (isEmpty(list))
+		return null;
+
+	/* A single hand-written UCI option arrives as a string, not a list. */
+	if (type(list) !== 'array')
+		list = [ list ];
+
+	const headers = {};
+	for (let item in list) {
+		const line = trim(item);
+		if (line === '')
+			continue;
+
+		const sep = index(line, ':');
+		if (sep <= 0)
+			die(sprintf("homeproxy-pro: %s: header '%s' is not in 'Name: Value' form.", where, line));
+
+		const name = trim(substr(line, 0, sep));
+		const value = trim(substr(line, sep + 1));
+		if (isEmpty(name) || isEmpty(value))
+			die(sprintf("homeproxy-pro: %s: header '%s' is not in 'Name: Value' form.", where, line));
+
+		if (!headers[name])
+			headers[name] = [];
+		push(headers[name], value);
+	}
+
+	return isEmpty(keys(headers)) ? null : headers;
+}
+
 /* --- proxy routing-mode path (bypass_mainland_china / proxy / / gfwlist) -- */
 
 /* Domains whose NAPTR (qtype 35) queries bypass china-dns.  Aliyun
@@ -87,7 +131,6 @@ function parse_dnsquery(strquery) {
  * someone reads the comment and thinks "I know a domain that should
  * go direct". */
 const NAPTR_BYPASS_SUFFIXES = [
-	'r.10086.cn',
 	'10086.cn',
 	'pub.3gppnetwork.org'
 ];
@@ -194,7 +237,16 @@ function append_proxy_dns(config, dm, ctx) {
 			server: 'main-dns'
 		});
 
-	/* Reject SVCB/HTTPS queries to avoid proxy DNS timeout on null domains */
+	/* Reject SVCB/HTTPS queries: a client that learns the address from these
+	 * record types dials the embedded IP without asking again, which is what
+	 * lets a query slip past the DNS split (and, in the custom path, past
+	 * Fake-IP).
+	 *
+	 * It sits after the two domain lists on purpose, so a domain the user put
+	 * on a list keeps whatever resolver that list chose - the custom path
+	 * below puts the same reject first instead, because there the user's own
+	 * rules are the ones that must not be shadowed.  The two orders are
+	 * deliberate; do not "fix" one into the other. */
 	push(config.dns.rules, {
 		query_type: [64, 65],
 		action: 'reject'
@@ -317,7 +369,7 @@ function append_custom_dns(config, dm, ctx) {
 			server: cfg.server,
 			server_port: strToInt(cfg.server_port),
 			path: cfg.path,
-			headers: cfg.headers,
+			headers: parse_http_headers(cfg.headers, sprintf("dns server '%s'", cfg.name)),
 			tls: cfg.tls_sni ? {
 				enabled: true,
 				server_name: cfg.tls_sni
@@ -385,24 +437,71 @@ function append_custom_dns(config, dm, ctx) {
 			rule_set: get_ruleset(cfg.rule_set, dm),
 			rule_set_ip_cidr_match_source: strToBool(cfg.rule_set_ip_cidr_match_source),
 			invert: strToBool(cfg.invert),
-			race: strToBool(cfg.race),
-			speculative: strToBool(cfg.speculative),
 			action: cfg.action
 		};
 
-		/* `route` (and `evaluate`, which needs a server for the eval step).
-		 * `resolve` is also a possibility but is not currently exposed in
-		 * the UI; if it ever is, this branch is where it lands. */
-		if (cfg.action === 'route' || cfg.action === 'evaluate' || cfg.action === 'resolve') {
+		/* race/speculative are action fields, not match fields, and their
+		 * legality is decided at load time by sing-box's
+		 * validateDNSRuleAction() (route/rule/rule_dns.go):
+		 *
+		 *   - race and speculative are mutually exclusive ("`race` and
+		 *     `speculative` cannot be combined on the same rule");
+		 *   - race is only allowed on a final action - route, respond,
+		 *     reject, predefined - and "`race` requires a final action"
+		 *     otherwise;
+		 *   - speculative exists only in the route and evaluate option
+		 *     structs, so on any other action it is an unknown field and
+		 *     DisallowUnknownFields rejects the whole configuration.
+		 *
+		 * The old code emitted both unconditionally.  The form hides them
+		 * with depends(), but LuCI does not delete the value of a hidden
+		 * option, so "tick race on a route rule, then switch the rule to
+		 * evaluate" left an illegal value behind.  Gate by action and die
+		 * on the combination, naming the field rather than letting sing-box
+		 * answer with "unknown field". */
+		const want_race = strToBool(cfg.race) === true,
+		      want_speculative = strToBool(cfg.speculative) === true;
+
+		if (want_race && want_speculative)
+			die(sprintf("homeproxy-pro: DNS rule '%s' enables both race and speculative; sing-box refuses that combination.", cfg.name));
+
+		if (want_race) {
+			if (!(cfg.action in ['route', 'reject', 'predefined']))
+				die(sprintf("homeproxy-pro: DNS rule '%s' uses race with action '%s'; race is only allowed on a final action (route, reject, predefined).", cfg.name, cfg.action));
+			rule.race = true;
+		}
+
+		if (want_speculative) {
+			if (!(cfg.action in ['route', 'evaluate']))
+				die(sprintf("homeproxy-pro: DNS rule '%s' uses speculative with action '%s'; speculative is only valid for route and evaluate.", cfg.name, cfg.action));
+			rule.speculative = true;
+		}
+
+		/* `route` and `evaluate` (which needs a server for the eval step).
+		 * DNS rules have no `resolve` action - that one belongs to the route
+		 * rules - and the form does not offer it here.  It used to be handled
+		 * anyway, which would have emitted an action sing-box does not know
+		 * the moment a stale UCI value carried it. */
+		if (cfg.action === 'route' || cfg.action === 'evaluate') {
 			rule.server = get_resolver(cfg.server, dm);
 			rule.disable_cache = strToBool(cfg.dns_disable_cache);
 			rule.disable_optimistic_cache = strToBool(cfg.disable_optimistic_cache);
 			rule.rewrite_ttl = strToInt(cfg.rewrite_ttl);
+			/* Load-time mutual exclusion in validateDNSRuleAction():
+			 * "`client_subnet` and `remove_client_subnet` are mutually
+			 * exclusive".  The form draws them as two independent
+			 * controls, so both can be left set. */
+			if (!isEmpty(cfg.client_subnet) && strToBool(cfg.remove_client_subnet) === true)
+				die(sprintf("homeproxy-pro: DNS rule '%s' sets both client_subnet and remove_client_subnet; sing-box refuses that combination.", cfg.name));
 			rule.client_subnet = cfg.client_subnet;
 			rule.remove_client_subnet = strToBool(cfg.remove_client_subnet);
 		}
 
-		if (cfg.action === 'route' || cfg.action === 'resolve')
+		/* 1.14's evaluate action carries the same timeout override as route
+		 * (DNSEvaluateActionOptions embeds AbstractDNSRouteActionOptions), and
+		 * the form shows the field for both actions.  Emitting it for route
+		 * only made the value disappear silently on an evaluate rule. */
+		if (cfg.action === 'route' || cfg.action === 'evaluate')
 			rule.timeout = strToTime(cfg.dns_timeout);
 
 		/* `reject` only accepts method + no_drop.  Anything else here is
@@ -476,11 +575,43 @@ function append_custom_dns(config, dm, ctx) {
 			rule.response_extra = cfg.response_extra;
 		}
 
+		/* race also requires match_response in 1.14.  This check has to sit
+		 * after every match_response assignment: the legacy address-filter
+		 * wrapping above gives one to those rules too, and that satisfies
+		 * sing-box just as well. */
+		if (want_race && !rule.match_response)
+			die(sprintf("homeproxy-pro: DNS rule '%s' enables race without match_response; sing-box requires one.", cfg.name));
+
 		push(builtin_dns_rules, rule);
 	}
 	config.dns.rules = builtin_dns_rules;
 
 	config.dns.final = get_resolver(ctx.dns_default_server, dm);
+}
+
+/* Reject AAAA when this router does not proxy IPv6.
+ *
+ * Every IPv6 rule-set and rule in firewall_post.ut sits inside
+ * `ipv6_support === '1'`, so with the switch off the router does not
+ * intercept v6 at all - and nothing in this DNS block ever refused a AAAA
+ * query.  dns.strategy=ipv4_only on the preset paths is a resolution
+ * preference, not a query block, and custom routing takes the UCI default
+ * (prefer_ipv4).  A dual-stack LAN therefore still received AAAA records and
+ * connected straight out over the WAN, bypassing both the proxied resolver
+ * and the destination-based split.
+ *
+ * Appended last so a user rule keeps precedence over it.  A client with its
+ * own DoH/DoT can still bypass this layer; a hard block would have to be an
+ * nft rule, which changes the user-visible "IPv6 still works" behaviour of
+ * the switch and is therefore not done here. */
+function append_ipv6_guard(config, ctx) {
+	if (ctx.ipv6_support === '1')
+		return;
+
+	push(config.dns.rules, {
+		query_type: [28],
+		action: 'reject'
+	});
 }
 
 /* --- public entry ------------------------------------------------------ */
@@ -553,6 +684,8 @@ export function build_dns(config, dm, ctx) {
 		append_bootstrap_dns(config, ctx);
 		append_proxy_dns(config, dm, ctx);
 	}
+
+	append_ipv6_guard(config, ctx);
 
 	return config;
 };

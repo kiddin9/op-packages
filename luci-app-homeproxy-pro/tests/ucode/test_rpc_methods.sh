@@ -224,9 +224,9 @@ check('certificate_write tolerates an empty request', threw == null, threw);
  * executed.  Four of these were referenced by no test at all. */
 const all_methods = [
 	'acllist_read', 'acllist_write', 'certificate_write', 'connection_check',
-	'log_clean', 'node_parse', 'resources_get_version', 'resources_update',
-	'singbox_generator', 'singbox_get_features', 'update_subscriptions',
-	'update_subscriptions_status'
+	'gfw_set_counts', 'log_clean', 'node_parse', 'resources_get_version',
+	'resources_update', 'singbox_generator', 'singbox_get_features',
+	'update_subscriptions', 'update_subscriptions_status'
 ];
 
 for (let m in all_methods) {

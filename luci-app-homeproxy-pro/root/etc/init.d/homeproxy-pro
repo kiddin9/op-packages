@@ -515,6 +515,21 @@ reload_service() {
 	HP_CANDIDATE_CLIENT=0
 	HP_CANDIDATE_SERVER=0
 
+	# Digest what is running *before* the generators overwrite it: a reload
+	# that produces the same bytes must not stop and start the instances.
+	# service_triggers() reloads on every `interface.*.up` for wan, and a
+	# flapping PPPoE link would otherwise interrupt every connection even when
+	# the WAN resolver - the only thing that trigger can change - came back
+	# the same.
+	local digest_c="" digest_s="" server_enabled
+	if [ "$outbound_node" != "nil" ]; then
+		digest_c="$(hp_file_digest "$RUN_DIR/sing-box-c.json")"
+	fi
+	config_get_bool server_enabled "server" "enabled" "0"
+	if [ "$server_enabled" = "1" ]; then
+		digest_s="$(hp_file_digest "$RUN_DIR/sing-box-s.json")"
+	fi
+
 	if [ "$outbound_node" != "nil" ]; then
 		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
 			log "Error: new client configuration is invalid, reload aborted; the running configuration is kept."
@@ -523,14 +538,29 @@ reload_service() {
 		HP_CANDIDATE_CLIENT=1
 	fi
 
-	local server_enabled
-	config_get_bool server_enabled "server" "enabled" "0"
 	if [ "$server_enabled" = "1" ]; then
 		if ! ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"; then
 			log "Error: new server configuration is invalid, reload aborted; the running configuration is kept."
 			return 1
 		fi
 		HP_CANDIDATE_SERVER=1
+	fi
+
+	# Both sides regenerated to what is already live: keep them running.  The
+	# staged candidates are dropped too, so a later start that never validated
+	# anything cannot pick them up.
+	local reload_needed=0
+	if [ "$outbound_node" != "nil" ] && hp_config_changed "$RUN_DIR/sing-box-c.json" "$digest_c"; then
+		reload_needed=1
+	fi
+	if [ "$server_enabled" = "1" ] && hp_config_changed "$RUN_DIR/sing-box-s.json" "$digest_s"; then
+		reload_needed=1
+	fi
+
+	if [ "$reload_needed" = "0" ]; then
+		rm -rf "$RUN_DIR/candidate"
+		log "Reload: the generated configuration is unchanged; the running instances are kept."
+		return 0
 	fi
 
 	# stop_service() deletes $RUN_DIR/sing-box-*.json (runtime state), so the

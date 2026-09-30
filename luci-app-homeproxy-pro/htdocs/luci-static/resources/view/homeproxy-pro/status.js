@@ -98,6 +98,38 @@ function getConnStat(o, site) {
 	]);
 }
 
+/* The gfwlist routing mode routes by an nft set that dnsmasq fills through
+ * `nftset=`.  A LAN client with its own DoH/DoT never asks this router's DNS,
+ * so the set stays empty and the mode silently degrades to direct routing.
+ * The count is what tells "the mode is working" from "the mode is doing
+ * nothing", so it sits next to the resource versions. */
+function getGfwSetStat(o) {
+	return hp.rpcCall('gfw_set_counts', [], { expect: { '': {} } }).then((res) => {
+		let field = E('div', { 'style': 'cbi-value-field' });
+		let warn = false;
+
+		[ [ 'IPv4', res.v4 ], [ 'IPv6', res.v6 ] ].forEach(([ label, count ]) => {
+			let value;
+
+			if (count == null)
+				value = E('em', {}, _('not installed'));
+			else if (count === 0) {
+				value = E('strong', { 'style': 'color:orange' }, '%d'.format(count));
+				warn = warn || (label === 'IPv4');
+			} else
+				value = E('strong', { 'style': 'color:green' }, '%d'.format(count));
+
+			field.appendChild(E('span', {}, [ label + ': ', value ]));
+			field.appendChild(document.createTextNode(' '));
+		});
+
+		if (warn)
+			field.appendChild(E('em', {}, _('empty: clients may be bypassing this router\'s DNS')));
+
+		return field;
+	});
+}
+
 function getResVersion(o, type) {
 	return hp.rpcCall('resources_get_version', [type],
 			{ params: ['type'], expect: { '': {} } }).then((res) => {
@@ -273,6 +305,9 @@ return view.extend({
 		o = s.option(form.DummyValue, '_gfw_list_version', _('GFW list version'));
 		o.cfgvalue = L.bind(getResVersion, this, o, 'gfw_list');
 		o.rawhtml = true;
+
+		o = s.option(form.DummyValue, '_gfw_set_size', _('GFW list addresses'));
+		o.cfgvalue = L.bind(getGfwSetStat, this, o);
 
 		o = s.option(form.Value, 'github_token', _('GitHub token'));
 		o.password = true;

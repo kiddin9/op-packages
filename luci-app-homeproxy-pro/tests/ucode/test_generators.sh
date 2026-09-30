@@ -975,7 +975,7 @@ else
 	esac
 fi
 
-# 3) P2 #4 / §2.2.1: the three NAPTR (qtype 35) bypass suffixes must be
+# 3) P2 #4 / §2.2.1: the NAPTR (qtype 35) bypass suffixes must be
 #    emitted as a single domain_suffix entry backed by the
 #    NAPTR_BYPASS_SUFFIXES constant. ucode's pretty-printer emits the
 #    query_type array and the domain_suffix array as multi-line:
@@ -983,7 +983,6 @@ fi
 #          35
 #      ],
 #      "domain_suffix": [
-#          "r.10086.cn",
 #          "10086.cn",
 #          "pub.3gppnetwork.org"
 #      ],
@@ -1000,7 +999,7 @@ else
 	# naptr_body should contain the three suffixes in order. If
 	# any is missing, the layout shifted and the test fails loud.
 	naptr_ok=1
-	for sfx in 'r.10086.cn' '10086.cn' 'pub.3gppnetwork.org'; do
+	for sfx in '10086.cn' 'pub.3gppnetwork.org'; do
 		if ! printf '%s\n' "$naptr_body" | grep -q "\"$sfx\""; then
 			echo "FAIL: naptr-bypass-domains: NAPTR rule is missing suffix \"$sfx\""
 			echo "      grep window:"
@@ -1009,7 +1008,7 @@ else
 		fi
 	done
 	if [ "$naptr_ok" = 1 ]; then
-		echo "PASS: naptr-bypass-domains: qtype-35 rule domain_suffix carries the 3 NAPTR_BYPASS_SUFFIXES entries"
+		echo "PASS: naptr-bypass-domains: qtype-35 rule domain_suffix carries every NAPTR_BYPASS_SUFFIXES entry"
 	fi
 fi
 
@@ -1083,5 +1082,221 @@ run_case_type_error local-ruleset-bad-path "outside the homeproxy-pro whitelist"
 #    is the only domain_suffix source); the runtime die() path is
 #    covered by manual testing on r28. Re-add this case via a
 #    custom_extra_tags.uci fixture when convenient.
+
+
+# --- review 2026-09-30: fields sing-box refuses at load time ----------------
+#
+# Each of these reached sing-box as a configuration it rejects outright - an
+# unknown field, an empty action object, a mutually exclusive pair - and the
+# only symptom the user saw was "my setting did not take".  The generator now
+# refuses them by name before writing anything, which is what
+# run_case_type_error observes.
+cat > "$WORK/dns-field-guard.uc" <<'EOF'
+'use strict';
+
+import { readfile } from 'fs';
+
+const config = json(readfile(ARGV[0]));
+const mode = ARGV[1];
+
+function has_aaaa() {
+	for (let r in (config.dns?.rules || []))
+		if (r.action === 'reject' && type(r.query_type) === 'array' && r.query_type[0] === 28)
+			return true;
+	return false;
+}
+
+switch (mode) {
+case 'headers':
+	for (let s in (config.dns?.servers || [])) {
+		if (s.tag !== 'cfg-ds_https-dns')
+			continue;
+		if (type(s.headers) !== 'object') {
+			print('headers is not an object');
+			exit(1);
+		}
+		if (length(s.headers['X-Test'] || []) !== 2) {
+			print('X-Test is not a two-value list');
+			exit(1);
+		}
+		if (s.headers['X-Test'][0] !== 'one' || s.headers['X-Test'][1] !== 'two') {
+			print('X-Test values are wrong');
+			exit(1);
+		}
+		if ((s.headers['Authorization'] || [])[0] !== 'Bearer t') {
+			print('Authorization is wrong');
+			exit(1);
+		}
+		print('OK');
+		exit(0);
+	}
+	print('cfg-ds_https-dns is missing');
+	exit(1);
+case 'aaaa-present':
+	print(has_aaaa() ? 'OK' : 'the AAAA reject rule is missing');
+	exit(has_aaaa() ? 0 : 1);
+case 'aaaa-absent':
+	print(has_aaaa() ? 'an AAAA reject rule was emitted with ipv6_support on' : 'OK');
+	exit(has_aaaa() ? 1 : 0);
+case 'evaluate-timeout':
+	for (let r in (config.dns?.rules || []))
+		if (r.action === 'evaluate') {
+			print(r.timeout === '5s' ? 'OK' : 'the evaluate rule carries no 5s timeout: ' + r.timeout);
+			exit(r.timeout === '5s' ? 0 : 1);
+		}
+	print('no evaluate DNS rule was generated');
+	exit(1);
+case 'http-client-detour':
+	for (let c in (config.http_clients || [])) {
+		if (c.detour !== 'main-out') {
+			print('an http_client detours through ' + c.detour);
+			exit(1);
+		}
+	}
+	print('OK');
+	exit(0);
+case 'update-interval':
+	for (let rs in (config.route?.rule_set || []))
+		if (rs.tag === 'cfg-rs_remote-rule') {
+			print(rs.update_interval === '3600s' ? 'OK' : 'update_interval is ' + rs.update_interval);
+			exit(rs.update_interval === '3600s' ? 0 : 1);
+		}
+	print('cfg-rs_remote-rule is missing');
+	exit(1);
+}
+print('unknown mode');
+exit(1);
+EOF
+
+assert_guard() {
+	local name="$1" json="$2" mode="$3" want="$4"
+	local got
+
+	if [ ! -s "$json" ]; then
+		echo "FAIL: $name: no configuration was generated"
+		FAILED=1
+		return
+	fi
+
+	got="$(ucode "$WORK/dns-field-guard.uc" "$json" "$mode" 2>&1)"
+	if [ "$got" = "$want" ]; then
+		echo "PASS: $name"
+	else
+		echo "FAIL: $name: $got"
+		FAILED=1
+	fi
+}
+
+# 1) DNS server headers: the UCI string list has to become
+#    map[string][]string, not a JSON array.
+run_case dns-headers-object "$ROOT/tests/fixtures/generators/dns_headers.uci" \
+	generate_client.uc sing-box-c.json
+assert_guard "dns-headers-object: the UCI list became a header object" \
+	"$WORK/dns-headers-object/run/sing-box-c.json" headers OK
+
+# 2) The baseline both variations below are measured against: with the flags
+#    off, the fixture has to generate and pass sing-box check.  Without it a
+#    refusal in 3)-5) could just as well come from the fixture itself.
+run_case dns-action-guards-baseline "$ROOT/tests/fixtures/generators/dns_action_guards.uci" \
+	generate_client.uc sing-box-c.json
+
+# 3) race + speculative on one rule.
+run_case_type_error dns-race-speculative "enables both race and speculative" \
+	"$ROOT/tests/fixtures/generators/dns_action_guards.uci" generate_client.uc sing-box-c.json \
+	"s#option race '0'#option race '1'#; s#option speculative '0'#option speculative '1'#"
+
+# 4) race on an action that is not final (evaluate).
+run_case_type_error dns-race-final-action "race is only allowed on a final action" \
+	"$ROOT/tests/fixtures/generators/dns_action_guards.uci" generate_client.uc sing-box-c.json \
+	"s#option action 'route'#option action 'evaluate'#; s#option race '0'#option race '1'#"
+
+# 5) client_subnet + remove_client_subnet.
+run_case_type_error dns-client-subnet-conflict "sets both client_subnet and remove_client_subnet" \
+	"$ROOT/tests/fixtures/generators/dns_action_guards.uci" generate_client.uc sing-box-c.json \
+	"s#option remove_client_subnet '0'#option remove_client_subnet '1'#"
+
+# 6) route-options with no payload at all.
+run_case_type_error routing-route-options-empty "selects the route-options action but sets none of its fields" \
+	"$ROOT/tests/fixtures/generators/routing_rule_route_options_empty.uci" generate_client.uc sing-box-c.json
+
+# 7) tls_fragment + tls_record_fragment.
+run_case_type_error routing-tls-fragment-conflict "enables both tls_fragment and tls_record_fragment" \
+	"$ROOT/tests/fixtures/generators/routing_rule_tls_fragment.uci" generate_client.uc sing-box-c.json
+
+# 8) AAAA is refused when the router does not proxy IPv6, and left alone when
+#    it does.  firewall_post.ut emits no IPv6 rule at all with the switch off,
+#    so a AAAA answer was the client's ticket straight out over the WAN.
+run_case ipv6-guard-off "$ROOT/tests/fixtures/generators/custom.uci" \
+	generate_client.uc sing-box-c.json
+assert_guard "ipv6-guard-off: AAAA is refused while ipv6_support is off" \
+	"$WORK/ipv6-guard-off/run/sing-box-c.json" aaaa-present OK
+
+run_case ipv6-guard-on "$ROOT/tests/fixtures/generators/client.uci" \
+	generate_client.uc sing-box-c.json \
+	"s#option ipv6_support '0'#option ipv6_support '1'#"
+assert_guard "ipv6-guard-on: no AAAA rule while ipv6_support is on" \
+	"$WORK/ipv6-guard-on/run/sing-box-c.json" aaaa-absent OK
+
+# 9) evaluate carries the same timeout override as route: emitting it for
+#    route only made the field silently ineffective on an evaluate rule.
+run_case dns-evaluate-timeout "$ROOT/tests/fixtures/generators/dns_action_guards.uci" \
+	generate_client.uc sing-box-c.json
+assert_guard "dns-evaluate-timeout: the evaluate rule kept its query timeout" \
+	"$WORK/dns-evaluate-timeout/run/sing-box-c.json" evaluate-timeout OK
+
+# 10) A bare-number update_interval is a duration to sing-box; without a unit
+#     it reports "time: missing unit in duration" and refuses everything.
+run_case ruleset-update-interval "$ROOT/tests/fixtures/generators/ruleset_remote_update_interval.uci" \
+	generate_client.uc sing-box-c.json
+assert_guard "ruleset-update-interval: '3600' became '3600s'" \
+	"$WORK/ruleset-update-interval/run/sing-box-c.json" update-interval OK
+
+# 11) A rule pointing at a routing_node that was switched off used to emit a
+#     tag nothing generates ("outbound not found: cfg-rn_off-out").
+run_case_type_error routing-disabled-node "is disabled" \
+	"$ROOT/tests/fixtures/generators/routing_rule_disabled_node.uci" generate_client.uc sing-box-c.json
+
+# 12) initial_path outside the whitelist: the same gate as a local rule-set
+#     path, and the same fail-loud treatment (it used to be dropped silently).
+run_case_type_error ruleset-bad-initial-path "initial_path" \
+	"$ROOT/tests/fixtures/generators/ruleset_remote_bad_initial_path.uci" generate_client.uc sing-box-c.json
+
+# 13) A preset mode downloads its remote rule-sets through the main outbound,
+#     not direct-out: a router that can only reach the rule-set host through
+#     the proxy otherwise just logs a failed download.
+run_case ruleset-remote-preset "$ROOT/tests/fixtures/generators/ruleset_remote_preset.uci" \
+	generate_client.uc sing-box-c.json
+assert_guard "ruleset-remote-preset: the remote rule-set downloads through main-out" \
+	"$WORK/ruleset-remote-preset/run/sing-box-c.json" http-client-detour OK
+
+# 14) A missing china_ip4.json must not leave a `type: local` rule-set - and
+#     the rule matching it - pointing at a path sing-box cannot open: that
+#     fails the whole configuration, not just the rule.  The mode keeps
+#     working through geoip-cn.  The staged bypass-mode case is reused with
+#     the file removed and put back.
+CHINA_CASE="$WORK/client"
+if [ -f "$CHINA_CASE/resources/china_ip4.json" ]; then
+	mv "$CHINA_CASE/resources/china_ip4.json" "$CHINA_CASE/resources/china_ip4.json.bak"
+	rm -f "$CHINA_CASE/run/sing-box-c.json"
+	if ( cd "$CHINA_CASE/scripts" && ucode -L "$CHINA_CASE/scripts" generate_client.uc 2>"$CHINA_CASE/missing.err" ); then
+		if grep -q '"china-ip"' "$CHINA_CASE/run/sing-box-c.json"; then
+			echo "FAIL: china-ip-missing: the configuration still references the missing rule-set"
+			FAILED=1
+		elif grep -q '"tag": "geoip-cn"' "$CHINA_CASE/run/sing-box-c.json"; then
+			echo "PASS: china-ip-missing: the mainland split falls back to geoip-cn"
+		else
+			echo "FAIL: china-ip-missing: neither china-ip nor geoip-cn is declared"
+			FAILED=1
+		fi
+	else
+		echo "FAIL: china-ip-missing: generation failed"
+		head -3 "$CHINA_CASE/missing.err"
+		FAILED=1
+	fi
+	mv "$CHINA_CASE/resources/china_ip4.json.bak" "$CHINA_CASE/resources/china_ip4.json"
+else
+	echo "FAIL: china-ip-missing: the client case did not stage china_ip4.json"
+	FAILED=1
+fi
 
 exit ${FAILED:-0}

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# A routing rule on the action the UI offers but gives no field to fill.
+# Match fields belong to the rule, not to the action payload, so this rule
+# reaches sing-box as `{"action": "route-options", ...}` with an empty action
+# object, and RouteOptionsActionOptions.UnmarshalJSON() refuses exactly that
+# with "empty route option action" - taking the whole configuration with it.
+# The generator refuses it by name before writing anything.
+
+config homeproxy-pro 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '1'
+	option log_level 'error'
+
+config homeproxy-pro 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+config routing_rule 'rr_empty'
+	option enabled '1'
+	option label 'rr-empty'
+	option action 'route-options'

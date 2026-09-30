@@ -108,7 +108,11 @@ function render(ctx) {
 
 			let ports = [];
 			for (let i of value.split(',')) {
-				if (!stubValidator.apply('port', i) && !stubValidator.apply('portrange', i))
+				/* A bare decimal port only: the backend's ports_to_nftarr()
+				 * (firewall_utils.uc) keeps nothing else, so a range like
+				 * "80-90" was accepted here and then dropped without a word -
+				 * the port the user asked for was simply never proxied. */
+				if (!stubValidator.apply('port', i) || i === '0')
 					return _('Expecting: %s').format(_('valid port value'));
 				if (ports.includes(i))
 					return _('Port %s alrealy exists!').format(i);
@@ -210,7 +214,7 @@ function render(ctx) {
 		this.value('direct-out', _('Direct'));
 		this.value('block-out', _('Block'));
 		uci.sections('homeproxy-pro', 'routing_node', (res) => {
-			if (res.enabled === '1')
+			if (res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 
@@ -228,7 +232,7 @@ function render(ctx) {
 		this.value('default-dns', _('Default DNS (issued by WAN)'));
 		this.value('system-dns', _('System DNS'));
 		uci.sections('homeproxy-pro', 'dns_server', (res) => {
-			if (res.enabled === '1')
+			if (res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 

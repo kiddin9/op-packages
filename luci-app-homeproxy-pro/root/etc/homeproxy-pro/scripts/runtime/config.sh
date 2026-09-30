@@ -149,3 +149,29 @@ hp_restore_known_good_uci() {
 	[ "$saved" = "1" ] && uci commit homeproxy-pro </dev/null || return 1
 	return 0
 }
+
+# hp_file_digest <file>
+# Digest of <file>, or nothing when it is missing or empty.  The reload path
+# uses it to tell "the generator produced the same bytes as what is running"
+# from "something actually changed".
+hp_file_digest() {
+	[ -s "$1" ] || return 1
+
+	md5sum "$1" 2>"/dev/null" | awk '{ print $1 }'
+}
+
+# hp_config_changed <live> <digest-before>
+# 0 when <live> differs from <digest-before> (or does not exist), 1 when the
+# two are byte-identical.  An empty <digest-before> means there was nothing
+# running to compare against, which counts as a change.
+hp_config_changed() {
+	local live="$1"
+	local before="$2"
+	local now
+
+	now="$(hp_file_digest "$live")" || return 0
+
+	[ -n "$before" ] && [ "$now" = "$before" ] && return 1
+
+	return 0
+}

@@ -153,11 +153,11 @@ export function build_context(dm, env) {
 		 * its own outbound/rule tables (routing.default_outbound plus the
 		 * routing_node / routing_rule / ruleset sections).  A residual
 		 * config.main_node must therefore not switch the generator back to
-		 * the preset path: LuCI hides that field in custom mode but does not
-		 * clear it (`rmempty = false`), so a router that was configured in a
-		 * preset mode and then switched to custom keeps the old value in
-		 * UCI - and the pre-refactor code read it only when the mode was not
-		 * custom.  Reading it here anyway silently dropped every custom
+		 * the preset path.  LuCI itself does clear a field the user can no
+		 * longer see (depends() makes parse() remove the value), but UCI is
+		 * writable from anywhere - a script, an older version, a hand edit -
+		 * and the pre-refactor code read this value only when the mode was
+		 * not custom.  Reading it here anyway silently dropped every custom
 		 * routing rule and made route.final 'main-out'. */
 		main_node: (routing_mode === 'custom') ? null : dm.general.main_node,
 		main_udp_node: (routing_mode === 'custom') ? null : dm.general.main_udp_node,
@@ -247,6 +247,14 @@ export function build_context(dm, env) {
 		ctx.direct_domain_list = env.direct_domain_list || [];
 		ctx.proxy_domain_list = env.proxy_domain_list || [];
 	}
+
+	/* Whether the local china-ip rule-set file exists (the CLI resolved it;
+	 * see generate_client.uc).  route.uc emits that rule-set - and the rule
+	 * that matches it - only when it does, so a file that is missing degrades
+	 * the mainland split to geoip-cn instead of making sing-box refuse the
+	 * whole configuration over a path it cannot open.  A caller that does not
+	 * supply the flag keeps the previous behaviour. */
+	ctx.china_ip_ruleset_available = env.china_ip_ruleset_available !== false;
 
 	/* `dedicated_udp_node` means main_udp_node was set to a different
 	 * proxy-able node than main_node (the 'same'/'nil' sentinels don't
