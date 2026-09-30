@@ -1128,35 +1128,6 @@ return baseclass.extend({
 		return true;
 	},
 
-	/* A regular expression that does not compile reaches sing-box as-is and
-	 * takes the whole configuration with it, so the reload keeps the previous
-	 * one and the user only sees "my setting did not take".  Go's RE2 and this
-	 * engine differ in the corners, but every typo is caught here. */
-	validateRegex(section_id, value) {
-		if (section_id && value) {
-			try {
-				new RegExp(value);
-			} catch (e) {
-				return _('Expecting: %s').format(_('valid regular expression'));
-			}
-		}
-
-		return true;
-	},
-
-	/* sing-box resolves a DNS query type name through miekg/dns's uppercase
-	 * type table (option/types.go), so "aaaa" is an "unknown DNS query type"
-	 * and takes the configuration down with it.  A numeric code up to 65535 is
-	 * valid as-is. */
-	validateQueryType(section_id, value) {
-		if (section_id && value) {
-			if (!((/^[0-9]{1,5}$/.test(value) && parseInt(value, 10) <= 65535) || /^[A-Z][A-Z0-9-]*$/.test(value)))
-				return _('Expecting: %s').format(_('a numeric code or an uppercase type name (for example AAAA)'));
-		}
-
-		return true;
-	},
-
 	validateUniqueValue(uciconfig, ucisection, ucioption, section_id, value) {
 		if (section_id) {
 			if (!value)

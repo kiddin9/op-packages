@@ -31,7 +31,6 @@ HP_FW4_CHAINS="
 	homeproxy_mangle_mark
 	homeproxy_mangle_tun
 	homeproxy_mangle_tun_mark
-	homeproxy_ipv6_guard
 "
 
 HP_FW4_SETS="

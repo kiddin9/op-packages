@@ -41,6 +41,10 @@
 					"Rule Set"
 				],
 				[
+					"dns_cache",
+					"DNS Settings"
+				],
+				[
 					"control",
 					"Access Control"
 				],
@@ -271,7 +275,7 @@
 					],
 					"subsection": null,
 					"props": {
-						"validate": "fn(349:31d7a7fd11ff)"
+						"validate": "fn(376:3a1eaf5f61c2)"
 					}
 				},
 				{
@@ -494,7 +498,7 @@
 								"subsection": null,
 								"props": {
 									"default": "nil",
-									"load": "fn(347:1e6b4e82357b)",
+									"load": "fn(347:bdff551797c2)",
 									"rmempty": false
 								}
 							},
@@ -508,7 +512,7 @@
 								"subsection": null,
 								"props": {
 									"default": "default-dns",
-									"load": "fn(326:b9d3cd52289f)",
+									"load": "fn(326:345de0db50cf)",
 									"rmempty": false
 								}
 							}
@@ -593,7 +597,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"load": "fn(356:8d5ad606a86f)",
+									"load": "fn(356:d9c0755071ec)",
 									"modalonly": true
 								}
 							},
@@ -669,7 +673,7 @@
 								"subsection": null,
 								"props": {
 									"editable": true,
-									"load": "fn(284:01fc7f231969)",
+									"load": "fn(284:530aca6575b5)",
 									"validate": "fn(487:34bee8692641)"
 								}
 							},
@@ -1024,7 +1028,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"load": "fn(219:0275f2977497)",
+									"load": "fn(219:b7b6c816012f)",
 									"modalonly": true
 								}
 							},
@@ -1098,7 +1102,7 @@
 								"subsection": null,
 								"props": {
 									"editable": true,
-									"load": "fn(263:a19a1b2bf7ba)",
+									"load": "fn(263:6f52e51cea77)",
 									"rmempty": false
 								}
 							},
@@ -1111,10 +1115,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									]
 								],
 								"values": [],
@@ -1133,10 +1133,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									]
 								],
 								"values": [],
@@ -1155,10 +1151,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									]
 								],
 								"values": [],
@@ -1176,10 +1168,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									]
 								],
 								"values": [],
@@ -1197,10 +1185,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									]
 								],
 								"values": [],
@@ -1219,15 +1203,7 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
-									],
-									{
-										"tls_fragment": "1",
-										"!reverse": true
-									}
+									]
 								],
 								"values": [],
 								"subsection": null,
@@ -1244,15 +1220,7 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
-									],
-									{
-										"tls_record_fragment": "1",
-										"!reverse": true
-									}
+									]
 								],
 								"values": [],
 								"subsection": null,
@@ -1288,10 +1256,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									]
 								],
 								"values": [],
@@ -1310,10 +1274,6 @@
 									[
 										"action",
 										"route"
-									],
-									[
-										"action",
-										"route-options"
 									],
 									[
 										"tls_spoof",
@@ -1361,7 +1321,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"load": "fn(356:8d5ad606a86f)",
+									"load": "fn(356:d9c0755071ec)",
 									"modalonly": true
 								}
 							},
@@ -1580,8 +1540,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"modalonly": true,
-									"validate": "fn(184:0290625d9d6f)"
+									"modalonly": true
 								}
 							},
 							{
@@ -1744,8 +1703,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"modalonly": true,
-									"validate": "fn(184:0290625d9d6f)"
+									"modalonly": true
 								}
 							}
 						],
@@ -1754,99 +1712,15 @@
 					"props": {}
 				},
 				{
-					"kind": "Value",
-					"name": "dns_server",
-					"title": "Overseas DNS server",
-					"description": "Resolves every domain that is not on the China DNS path, through the selected proxy node. A domestic resolver answers these queries with polluted or NXDOMAIN results, which is what makes a foreign site fail to resolve while the proxy itself works - so only overseas services are offered here. Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.",
-					"depends": [
-						{
-							"routing_mode": "custom",
-							"!reverse": true
-						}
-					],
-					"values": [
-						[
-							"1.1.1.1",
-							"CloudFlare Public DNS (1.1.1.1)"
-						],
-						[
-							"208.67.222.222",
-							"Cisco Public DNS (208.67.222.222)"
-						],
-						[
-							"8.8.8.8",
-							"Google Public DNS (8.8.8.8)"
-						]
-					],
-					"subsection": null,
-					"props": {
-						"default": "8.8.8.8",
-						"rmempty": false,
-						"validate": "fn(730:48f7f360fbd2)"
-					}
-				},
-				{
-					"kind": "Value",
-					"name": "china_dns_server",
-					"title": "China DNS server",
-					"description": "Resolves the domains on the China path, so it has to be a domestic service to get the correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT. A DoH/DoT address here also sends the bootstrap lookup back to the WAN resolver: only a bare IP can resolve the proxy DNS endpoint without the ISP.",
-					"depends": [
-						[
-							"routing_mode",
-							"bypass_mainland_china"
-						]
-					],
-					"values": [
-						[
-							"wan",
-							"WAN DNS (read from interface)"
-						],
-						[
-							"223.5.5.5",
-							"Aliyun Public DNS (223.5.5.5)"
-						],
-						[
-							"210.2.4.8",
-							"CNNIC Public DNS (210.2.4.8)"
-						],
-						[
-							"119.29.29.29",
-							"Tencent Public DNS (119.29.29.29)"
-						],
-						[
-							"117.50.10.10",
-							"ThreatBook Public DNS (117.50.10.10)"
-						]
-					],
-					"subsection": null,
-					"props": {
-						"default": "223.5.5.5",
-						"rmempty": false,
-						"validate": "fn(624:299cd4e865be)"
-					}
-				},
-				{
-					"kind": "Flag",
-					"name": "cn_ip_fallback",
-					"title": "CN-IP DNS fallback (sing-box 1.14)",
-					"description": "When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.",
-					"depends": [
-						[
-							"routing_mode",
-							"bypass_mainland_china"
-						]
-					],
-					"values": [],
-					"subsection": null,
-					"props": {
-						"rmempty": false
-					}
-				},
-				{
 					"kind": "SectionValue",
 					"name": "_dns",
 					"description": "dns",
-					"depends": [],
+					"depends": [
+						[
+							"routing_mode",
+							"custom"
+						]
+					],
 					"values": [],
 					"subsection": {
 						"id": "GridSection:_dns#5",
@@ -1859,12 +1733,7 @@
 								"name": "default_strategy",
 								"title": "Default DNS strategy",
 								"description": "The DNS strategy for resolving the domain name in the address.",
-								"depends": [
-									[
-										"routing_mode",
-										"custom"
-									]
-								],
+								"depends": [],
 								"values": [
 									[
 										"",
@@ -1895,17 +1764,12 @@
 								"name": "default_server",
 								"title": "Default DNS server",
 								"description": null,
-								"depends": [
-									[
-										"routing_mode",
-										"custom"
-									]
-								],
+								"depends": [],
 								"values": [],
 								"subsection": null,
 								"props": {
 									"default": "default-dns",
-									"load": "fn(326:b9d3cd52289f)",
+									"load": "fn(326:345de0db50cf)",
 									"rmempty": false
 								}
 							},
@@ -1939,12 +1803,7 @@
 								"name": "client_subnet",
 								"title": "EDNS Client subnet",
 								"description": "Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.",
-								"depends": [
-									[
-										"routing_mode",
-										"custom"
-									]
-								],
+								"depends": [],
 								"values": [],
 								"subsection": null,
 								"props": {
@@ -2150,7 +2009,7 @@
 								"kind": "DynamicList",
 								"name": "headers",
 								"title": "Headers",
-								"description": "Additional headers to be sent to the DNS server, one <code>Name: Value</code> per line.",
+								"description": "Additional headers to be sent to the DNS server.",
 								"depends": [
 									[
 										"type",
@@ -2205,7 +2064,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"load": "fn(384:2a0361acfbde)",
+									"load": "fn(384:9fa59da460cf)",
 									"modalonly": true,
 									"validate": "fn(322:e76c15d647fc)"
 								}
@@ -2259,7 +2118,7 @@
 								"props": {
 									"default": "direct-out",
 									"editable": true,
-									"load": "fn(263:a19a1b2bf7ba)",
+									"load": "fn(263:6f52e51cea77)",
 									"rmempty": false
 								}
 							}
@@ -2383,8 +2242,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"modalonly": true,
-									"validate": "fn(286:47dea50f33ea)"
+									"modalonly": true
 								}
 							},
 							{
@@ -2474,7 +2332,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"load": "fn(219:0275f2977497)",
+									"load": "fn(219:b7b6c816012f)",
 									"modalonly": true
 								}
 							},
@@ -2552,7 +2410,7 @@
 								"subsection": null,
 								"props": {
 									"editable": true,
-									"load": "fn(326:b9d3cd52289f)",
+									"load": "fn(326:345de0db50cf)",
 									"rmempty": false
 								}
 							},
@@ -3022,8 +2880,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"modalonly": true,
-									"validate": "fn(184:0290625d9d6f)"
+									"modalonly": true
 								}
 							},
 							{
@@ -3211,8 +3068,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"modalonly": true,
-									"validate": "fn(184:0290625d9d6f)"
+									"modalonly": true
 								}
 							}
 						],
@@ -3290,13 +3146,9 @@
 								"kind": "ListValue",
 								"name": "format",
 								"title": "Format",
-								"description": "Leave empty to infer it from a <code>.json</code> or <code>.srs</code> path/url; sing-box requires it for any other extension.",
+								"description": null,
 								"depends": [],
 								"values": [
-									[
-										"",
-										"Automatic (by extension)"
-									],
 									[
 										"binary",
 										"Binary file"
@@ -3308,7 +3160,8 @@
 								],
 								"subsection": null,
 								"props": {
-									"rmempty": true
+									"default": "binary",
+									"rmempty": false
 								}
 							},
 							{
@@ -3364,7 +3217,7 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"load": "fn(293:81de93c500ec)"
+									"load": "fn(293:8a1c8158e8ba)"
 								}
 							},
 							{
@@ -3426,13 +3279,184 @@
 					"props": {}
 				},
 				{
+					"kind": "Value",
+					"name": "dns_server",
+					"title": "Overseas DNS server",
+					"description": "Resolves every domain that is not on the China DNS path, through the selected proxy node. A domestic resolver answers these queries with polluted or NXDOMAIN results, which is what makes a foreign site fail to resolve while the proxy itself works - so only overseas services are offered here. Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.",
+					"depends": [
+						{
+							"routing_mode": "custom",
+							"!reverse": true
+						}
+					],
+					"values": [
+						[
+							"1.1.1.1",
+							"CloudFlare Public DNS (1.1.1.1)"
+						],
+						[
+							"208.67.222.222",
+							"Cisco Public DNS (208.67.222.222)"
+						],
+						[
+							"8.8.8.8",
+							"Google Public DNS (8.8.8.8)"
+						]
+					],
+					"subsection": null,
+					"props": {
+						"default": "8.8.8.8",
+						"rmempty": false,
+						"validate": "fn(730:48f7f360fbd2)"
+					}
+				},
+				{
+					"kind": "Value",
+					"name": "china_dns_server",
+					"title": "China DNS server",
+					"description": "Resolves the domains on the China path, so it has to be a domestic service to get the correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT.",
+					"depends": [
+						[
+							"routing_mode",
+							"bypass_mainland_china"
+						]
+					],
+					"values": [
+						[
+							"wan",
+							"WAN DNS (read from interface)"
+						],
+						[
+							"223.5.5.5",
+							"Aliyun Public DNS (223.5.5.5)"
+						],
+						[
+							"210.2.4.8",
+							"CNNIC Public DNS (210.2.4.8)"
+						],
+						[
+							"119.29.29.29",
+							"Tencent Public DNS (119.29.29.29)"
+						],
+						[
+							"117.50.10.10",
+							"ThreatBook Public DNS (117.50.10.10)"
+						]
+					],
+					"subsection": null,
+					"props": {
+						"default": "223.5.5.5",
+						"rmempty": false,
+						"validate": "fn(624:299cd4e865be)"
+					}
+				},
+				{
+					"kind": "Flag",
+					"name": "cn_ip_fallback",
+					"title": "CN-IP DNS fallback (sing-box 1.14)",
+					"description": "When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.",
+					"depends": [
+						[
+							"routing_mode",
+							"bypass_mainland_china"
+						]
+					],
+					"values": [],
+					"subsection": null,
+					"props": {
+						"rmempty": false
+					}
+				},
+				{
+					"kind": "SectionValue",
+					"name": "_dns_cache",
+					"description": "dns",
+					"depends": [
+						{
+							"routing_mode": "custom",
+							"!reverse": true
+						}
+					],
+					"values": [],
+					"subsection": {
+						"id": "GridSection:_dns_cache#9",
+						"kind": "GridSection",
+						"name": "_dns_cache",
+						"tabs": [],
+						"options": [
+							{
+								"kind": "Flag",
+								"name": "optimistic_cache",
+								"title": "Optimistic DNS cache",
+								"description": "Return expired cache immediately and refresh in background (sing-box 1.14).",
+								"depends": [
+									[
+										"disable_cache",
+										"0"
+									],
+									[
+										"disable_cache_expire",
+										"0"
+									]
+								],
+								"values": [],
+								"subsection": null,
+								"props": {
+									"rmempty": false
+								}
+							},
+							{
+								"kind": "Value",
+								"name": "optimistic_timeout",
+								"title": "Optimistic cache timeout",
+								"description": "Max time an expired entry may be served. Examples: 3d, 1h.",
+								"depends": [],
+								"values": [],
+								"subsection": null,
+								"props": {}
+							},
+							{
+								"kind": "Value",
+								"name": "dns_timeout",
+								"title": "DNS query timeout",
+								"description": "Default timeout per DNS query in seconds (sing-box default: 10).",
+								"depends": [],
+								"values": [],
+								"subsection": null,
+								"props": {
+									"datatype": "uinteger"
+								}
+							},
+							{
+								"kind": "Flag",
+								"name": "cache_file_store_dns",
+								"title": "Store DNS cache",
+								"description": "Persist DNS cache across restarts (sing-box 1.14, replaces Store RDRC).",
+								"depends": [
+									[
+										"disable_cache",
+										"0"
+									]
+								],
+								"values": [],
+								"subsection": null,
+								"props": {
+									"rmempty": false
+								}
+							}
+						],
+						"subsection": null
+					},
+					"props": {}
+				},
+				{
 					"kind": "SectionValue",
 					"name": "_control",
 					"description": "control",
 					"depends": [],
 					"values": [],
 					"subsection": {
-						"id": "GridSection:_control#9",
+						"id": "GridSection:_control#10",
 						"kind": "GridSection",
 						"name": "_control",
 						"tabs": [
@@ -3488,12 +3512,12 @@
 								"kind": "ListValue",
 								"name": "lan_proxy_mode",
 								"title": "Proxy filter mode",
-								"description": "\"No filter\" proxies every LAN client, which is the default; the other two values select clients by the lists below.",
+								"description": null,
 								"depends": [],
 								"values": [
 									[
 										"disabled",
-										"No filter (proxy every client)"
+										"Disable"
 									],
 									[
 										"listed_only",

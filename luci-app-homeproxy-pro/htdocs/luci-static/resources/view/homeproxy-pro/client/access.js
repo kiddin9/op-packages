@@ -44,9 +44,8 @@ function render(ctx) {
 	/* LAN IP policy start */
 	ss.tab('lan_ip_policy', _('LAN IP Policy'));
 
-	so = ss.taboption('lan_ip_policy', form.ListValue, 'lan_proxy_mode', _('Proxy filter mode'),
-		_('"No filter" proxies every LAN client, which is the default; the other two values select clients by the lists below.'));
-	so.value('disabled', _('No filter (proxy every client)'));
+	so = ss.taboption('lan_ip_policy', form.ListValue, 'lan_proxy_mode', _('Proxy filter mode'));
+	so.value('disabled', _('Disable'));
 	so.value('listed_only', _('Proxy listed only'));
 	so.value('except_listed', _('Proxy all except listed'));
 	so.default = 'disabled';

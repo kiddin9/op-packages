@@ -120,23 +120,17 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			outbound: ctx.proxy_fallback ? 'direct-out' : 'main-out'
 		});
 	}
-	/* geoip-cn.srs is upstream's list; the firewall's mainland set is
-	 * built from our own china_ip4.txt (firewall_post.ut reads it
-	 * directly).  The two disagree - the bundled list has 8.152.0.0/13
-	 * (Alibaba Cloud) and geoip-cn.srs does not - so a connection into
-	 * that range passes the firewall as "not mainland" and would then be
-	 * sent direct by the rule above instead of to the proxy.  This local
-	 * rule-set is generated from the same china_ip4.txt, which is what
-	 * makes both sides decide from one list.  In
-	 * proxy_mainland_china it is not needed twice: the geoip-cn rule
-	 * already selects the mainland side for the proxy.
-	 *
-	 * Only when the file is actually there: service.sh generates it before
-	 * the client configuration, but a fresh install whose generation failed
-	 * would otherwise leave a `type: local` rule-set pointing at a path
-	 * sing-box cannot open, which fails the whole configuration rather than
-	 * this one rule.  The geoip-cn rule above still covers the split. */
-	if (ctx.routing_mode === 'bypass_mainland_china' && ctx.china_ip_ruleset_available) {
+	if (ctx.routing_mode === 'bypass_mainland_china') {
+		/* geoip-cn.srs is upstream's list; the firewall's mainland set is
+		 * built from our own china_ip4.txt (firewall_post.ut reads it
+		 * directly).  The two disagree - the bundled list has 8.152.0.0/13
+		 * (Alibaba Cloud) and geoip-cn.srs does not - so a connection into
+		 * that range passes the firewall as "not mainland" and would then be
+		 * sent direct by the rule above instead of to the proxy.  This local
+		 * rule-set is generated from the same china_ip4.txt, which is what
+		 * makes both sides decide from one list.  In
+		 * proxy_mainland_china it is not needed twice: the geoip-cn rule
+		 * already selects the mainland side for the proxy. */
 		push(config.route.rules, {
 			rule_set: 'china-ip',
 			action: 'route',
@@ -258,14 +252,13 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 		 * file the running instance reloads it in place - no restart and,
 		 * more importantly, no second copy of the list to keep in sync.
 		 * China IPv6 is deliberately absent: the firewall only fills the v6
-		 * set when ipv6_support is on.  Declared only when the file exists,
-		 * for the same reason as the rule that matches it (see above). */
-		if (ctx.china_ip_ruleset_available)
-			push(config.route.rule_set, {
-				type: 'local',
-				tag: 'china-ip',
-				path: HP_DIR + '/resources/china_ip4.json'
-			});
+		 * set when ipv6_support is on, and the client refuses to resolve
+		 * AAAA when it is off. */
+		push(config.route.rule_set, {
+			type: 'local',
+			tag: 'china-ip',
+			path: HP_DIR + '/resources/china_ip4.json'
+		});
 	}
 
 	if (isEmpty(config.route.rule_set))
@@ -310,6 +303,7 @@ function build_route_custom(config, dm, ctx, direct_overrides) {
 			ip_version: strToInt(cfg.ip_version),
 			protocol: cfg.protocol,
 			network: cfg.network,
+			client: cfg.client,
 			domain: cfg.domain,
 			domain_suffix: cfg.domain_suffix,
 			domain_keyword: cfg.domain_keyword,
@@ -334,15 +328,6 @@ function build_route_custom(config, dm, ctx, direct_overrides) {
 			source_hostname: cfg.source_hostname
 		};
 
-		/* The sniffed client type is only set for QUIC and SSH traffic; the
-		 * form offers the field under those two protocols only, but a value
-		 * left behind by an earlier protocol would make the rule match
-		 * nothing, so it is emitted only when it can apply. */
-		const protocols = type(cfg.protocol) === 'array' ? cfg.protocol
-			: (isEmpty(cfg.protocol) ? [] : [ cfg.protocol ]);
-		if ('quic' in protocols || 'ssh' in protocols)
-			rule.client = cfg.client;
-
 		/* `route-options` only takes the override_* fields; `outbound` is the
 		 * `route` action's field.  The two used to share one branch and
 		 * `route-options` ended up carrying an `outbound` sing-box then
@@ -361,39 +346,6 @@ function build_route_custom(config, dm, ctx, direct_overrides) {
 			rule.tls_record_fragment = strToBool(cfg.tls_record_fragment);
 			rule.tls_spoof = cfg.tls_spoof || null;
 			rule.tls_spoof_method = cfg.tls_spoof_method || null;
-		}
-
-		/* Load-time mutual exclusion in RouteOptionsActionOptions.UnmarshalJSON()
-		 * (option/rule_action.go): "`tls_fragment` and `tls_record_fragment`
-		 * are mutually exclusive".  The form draws both switches for the
-		 * route action and neither hides the other, so a user following the
-		 * description ("try TLS record fragment first") can easily tick
-		 * both and lose the whole configuration. */
-		if (strToBool(cfg.tls_fragment) === true && strToBool(cfg.tls_record_fragment) === true)
-			die(sprintf("homeproxy-pro: routing rule '%s' enables both tls_fragment and tls_record_fragment; sing-box refuses that combination.", cfg.name));
-
-		/* The same unmarshaller rejects an empty action object with "empty
-		 * route option action".  Match fields belong to the rule, not to the
-		 * action payload, so a rule that selects Route options and fills in
-		 * none of the fields above fails the whole configuration with a
-		 * message that names nothing.  The fields are judged on their parsed
-		 * values, not on the raw UCI strings: a UCI '0' becomes `false`,
-		 * which is the Go zero value and is not payload. */
-		if (cfg.action === 'route-options') {
-			const has_payload =
-				!isEmpty(rule_override_address) ||
-				!isEmpty(rule_override_port) ||
-				strToBool(cfg.udp_disable_domain_unmapping) === true ||
-				strToBool(cfg.udp_connect) === true ||
-				!isEmpty(cfg.udp_timeout) ||
-				strToBool(cfg.tls_fragment) === true ||
-				!isEmpty(cfg.tls_fragment_fallback_delay) ||
-				strToBool(cfg.tls_record_fragment) === true ||
-				!isEmpty(cfg.tls_spoof) ||
-				!isEmpty(cfg.tls_spoof_method);
-
-			if (!has_payload)
-				die(sprintf("homeproxy-pro: routing rule '%s' selects the route-options action but sets none of its fields; sing-box rejects an empty route option action.", cfg.name));
 		}
 		/* `route` alone is the action that picks a destination - `route-options`
 		 * adjusts the existing connection, so it does not take `outbound`. */

@@ -253,7 +253,7 @@ function buildCustomOutbounds(dm, config, ctx, direct_overrides) {
 			 * comes from a routing_node. `|| {}` made it look non-null and the
 			 * failure surfaced as a null dereference two lines later. */
 			if (isEmpty(outbound))
-				die(sprintf("routing node '%s' refers to a node that does not exist.\n", cfg.name));
+				die(sprintf("routing node '%s' refers to a node that does not exist.\n", cfg['.name']));
 
 			if (outbound.type === 'wireguard') {
 				/* WireGuard goes through generate_endpoint() which tags
@@ -274,7 +274,7 @@ function buildCustomOutbounds(dm, config, ctx, direct_overrides) {
 				const ob = generate_outbound(outbound, mark, direct_overrides);
 
 				if (ob == null)
-					die(sprintf("routing node '%s' cannot be built from node '%s'.\n", cfg.name, cfg.node));
+					die(sprintf("routing node '%s' cannot be built from node '%s'.\n", cfg['.name'], cfg.node));
 
 				ob.bind_interface = cfg.bind_interface;
 				ob.detour = get_outbound(cfg.outbound, dm);

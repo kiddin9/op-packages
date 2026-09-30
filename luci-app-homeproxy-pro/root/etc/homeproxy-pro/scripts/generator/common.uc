@@ -52,15 +52,6 @@ export function get_outbound(cfg, dm) {
 		return cfg;
 	default:
 		const rn = ConfigQuery.find_by_name(dm.routing.nodes, cfg);
-		/* A routing_node that was disabled after something started referring
-		 * to it is skipped by generate_outbound(), so the tag returned below
-		 * would exist nowhere: sing-box refuses the whole configuration with
-		 * "outbound not found: cfg-<name>-out", which does not name the node
-		 * the user actually turned off.  Fail here instead, the way
-		 * get_resolver()/get_ruleset() already do.  The caller passes the
-		 * section name, so it is what the message names. */
-		if (rn && (rn.enabled === false || rn.enabled === '0'))
-			die(sprintf("the routing node '%s' is disabled; enable it or point the rule at another outbound.", cfg));
 		if (!rn || isEmpty(rn.node))
 			die(sprintf("%s's node is missing, please check your configuration.", cfg));
 		else if (rn.node === 'urltest')

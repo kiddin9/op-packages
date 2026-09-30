@@ -12,7 +12,6 @@
 				"luci.homeproxy-pro": [
 					"acllist_read",
 					"connection_check",
-					"gfw_set_counts",
 					"node_parse",
 					"resources_get_version",
 					"singbox_get_features",

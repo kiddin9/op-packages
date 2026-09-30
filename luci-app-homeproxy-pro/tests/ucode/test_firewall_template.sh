@@ -96,28 +96,6 @@ if ! grep -q '\.dnsmasq-nftset' "$ROOT/root/etc/init.d/homeproxy-pro"; then
 	FAILED=1
 fi
 
-# --- ipv6_support off refuses IPv6 forwarding ------------------------------
-# The DNS side answers AAAA with REFUSED, but only for clients that ask this
-# router: a cached address or a client with its own resolver still reaches the
-# WAN.  The guard is therefore a forward-hook base chain of its own - fw4's
-# forward chain jumps into the zone chains, whose accept rules end the traversal
-# before anything appended at the end of it is reached - ordered ahead of fw4's
-# forward (priority mangle vs filter).
-#
-# Asserted at the source level, like the gfwlist gate below: the render uses
-# the device's own UCI, so the ipv6_support branch cannot be exercised in both
-# of its states from here.
-GUARD_COND="$(grep -c "if (ipv6_support !== '1'):" "$TEMPLATE_SRC")"
-GUARD_HOOK="$(grep -c 'type filter hook forward priority mangle' "$TEMPLATE_SRC")"
-GUARD_RULE="$(grep -c 'meta nfproto ipv6 counter reject' "$TEMPLATE_SRC")"
-
-if [ "$GUARD_COND" -ne 1 ] || [ "$GUARD_HOOK" -ne 1 ] || [ "$GUARD_RULE" -ne 1 ]; then
-	echo "FAIL: the IPv6 forwarding guard is incomplete or ungated"
-	echo "      condition=$GUARD_COND hook=$GUARD_HOOK rule=$GUARD_RULE (each must be 1)"
-	echo "      a guard on priority filter would run after fw4's forward chain and never match"
-	FAILED=1
-fi
-
 # --- layer 2: the render -------------------------------------------------
 # The render output and its stderr live beside the staged template, never at a
 # fixed /tmp path.  A caller that passes a work dir (tests/ucode/run.sh hands
@@ -200,14 +178,6 @@ done
 if grep -nE "^#[^!].*homeproxy_[a-z0-9_]+ \{" "$OUT" > "/dev/null"; then
 	echo "FAIL: an nft statement is glued onto a comment line"
 	grep -nE "^#[^!].*homeproxy_[a-z0-9_]+ \{" "$OUT" | head -2
-	FAILED=1
-fi
-
-# The template defaults ipv6_support to '0', so the guard chain has to appear in
-# the render both on a device without the switch set and in CI, where there is
-# no /etc/config/homeproxy-pro at all.
-if ! grep -q "^chain homeproxy_ipv6_guard {" "$OUT"; then
-	echo "FAIL: the IPv6 forwarding guard chain is missing from the rendered template"
 	FAILED=1
 fi
 
