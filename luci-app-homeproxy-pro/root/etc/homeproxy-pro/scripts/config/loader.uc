@@ -385,7 +385,6 @@ export const Loader = {
 			/* A2.1: scalar + list fields on the `config` section. */
 			dns_server: opt(uci, 'main', 'dns_server'),
 			china_dns_server: opt(uci, 'main', 'china_dns_server'),
-			bootstrap_dns: opt(uci, 'main', 'bootstrap_dns') || [],
 			log_level: opt(uci, 'main', 'log_level') || 'warn',
 			tun_dns_mode: opt(uci, 'main', 'tun_dns_mode'),
 			tun_dns_address: opt(uci, 'main', 'tun_dns_address'),

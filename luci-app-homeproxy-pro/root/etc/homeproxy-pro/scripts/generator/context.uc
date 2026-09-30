@@ -94,26 +94,6 @@ export function build_context(dm, env) {
 		? env.wan_dns
 		: ((routing_mode in ['proxy_mainland_china', 'global']) ? '8.8.8.8' : '223.5.5.5');
 
-	/* Bootstrap resolvers: the servers the proxy path uses to look up a DNS
-	 * server's *own* hostname.  `main-dns` is the user's DoH/DoT endpoint
-	 * and the only server whose address may be a name, so this lookup has to
-	 * work before any configured resolver can answer.
-	 *
-	 * It used to be borrowed from default-dns (the WAN/ISP resolver), which
-	 * is the one resolver a polluted or unreachable WAN takes down; the
-	 * option lets the user name a resolver that still answers.  Empty means
-	 * "keep using the WAN resolver", so an untouched configuration
-	 * generates exactly the same bytes as before. */
-	const bootstrap_dns = [];
-	if (type(dm.general.bootstrap_dns) === 'array') {
-		for (let server in dm.general.bootstrap_dns)
-			if (!isEmpty(server))
-				push(bootstrap_dns, server);
-	} else if (!isEmpty(dm.general.bootstrap_dns)) {
-		/* UCI hands back a bare string for a list with a single value. */
-		push(bootstrap_dns, dm.general.bootstrap_dns);
-	}
-
 	/* dns/routing fields used by both sections */
 	const dns_optimistic_cache = (dm.dns.settings || {}).optimistic_cache || '0';
 	const dns_optimistic_timeout = (dm.dns.settings || {}).optimistic_timeout;
@@ -157,7 +137,7 @@ export function build_context(dm, env) {
 		tcpip_stack, endpoint_independent_nat,
 		udp_timeout, udp_mapping, udp_filtering, udp_nat_max,
 		tun_dns_mode, tun_dns_address,
-		wan_dns, bootstrap_dns, dns_optimistic_cache, dns_optimistic_timeout,
+		wan_dns, dns_optimistic_cache, dns_optimistic_timeout,
 		dns_query_timeout, dns_store_dns,
 		default_interface: (dm.access_control.control || {}).bind_interface,
 

@@ -1,0 +1,44 @@
+# Default meow-rs configuration shipped with the OpenWrt package.
+# Edit this file, then restart the service: /etc/init.d/meow restart
+# Full reference: https://github.com/madeye/meow-rs/blob/main/config.example.yaml
+
+mixed-port: 7890
+allow-lan: true
+bind-address: "0.0.0.0"
+
+mode: rule
+log-level: info
+ipv6: false
+
+external-controller: 0.0.0.0:9090
+secret: ""
+
+routing-mark: 9527
+
+listeners:
+  - name: tproxy-lan
+    type: tproxy
+    listen: 0.0.0.0
+    port: 7893
+    udp: true
+    firewall: false
+    max-connections: 4096
+
+sniffer:
+  enable: true
+  override-destination: false
+  sniff:
+    TLS: { ports: [443] }
+    HTTP: { ports: [80] }
+
+dns:
+  enable: true
+  listen: 0.0.0.0:1053
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.0/16
+  nameserver:
+    - 223.5.5.5
+    - 8.8.8.8
+
+rules:
+  - MATCH,DIRECT

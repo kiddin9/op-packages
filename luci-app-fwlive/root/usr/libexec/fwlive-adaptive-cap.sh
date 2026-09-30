@@ -12,15 +12,16 @@
 # Lock: sibling ${FWLIVE_ADAPTIVE_LOCK_FILE:-$STATE.lock} — never the JSON
 # inode (atomic mv replaces that inode; locking it would not serialize writers).
 # Lock covers only short update — never held across ubus/filter work.
-# Hot-path budget: ≤1 flock exec and 2 find execs per successful update
-# (directory safety checked before lock open and before the state write).
+# Hot-path budget: ≤1 flock exec and ≤1 find exec per record
+# (directory safety checked once before the lock is opened; the state write
+# relies on that check).
 # Release flock by closing the fd when the subshell exits (no flock -u).
 # /proc/uptime + state I/O use shell builtins/redirects (no sed/cat/jsonfilter
-# on the adaptive path). Fail-open on missing
-# flock, lock busy, or corrupt state. Fail-closed if the lock file cannot be
-# opened (skip the write; do not record unlocked). Lock-busy ⇒ unlocked
-# last-writer-wins is acceptable (state stays one valid JSON line; ordering
-# is not guaranteed).
+# on the adaptive path). Fail-open on missing flock, a busy lock, or corrupt
+# state. Fail-closed when the state directory check fails, or when the lock
+# file cannot be created, opened, or is not a regular writable file (skip the
+# write; do not record unlocked). Lock-busy ⇒ unlocked last-writer-wins is
+# acceptable (state stays one valid JSON line; ordering is not guaranteed).
 # Failed ubus log.read must NOT call record() — a ~0 ms failure is not "cold"
 # health and must not clear an existing hot/shed cap.
 # Outside the measured duration interval: plan (pre), record/merge (post).
@@ -213,7 +214,6 @@ fwlive_adaptive_write_state() {
 	_w=$4
 	_s=$5
 	_c=$6
-	fwlive_adaptive_state_dir_ok || return 0
 	# Refuse to follow a symlinked state path (same discipline as logging.lock).
 	[ -L "$FWLIVE_ADAPTIVE_STATE_FILE" ] && return 0
 	_tmp="${FWLIVE_ADAPTIVE_STATE_FILE}.tmp.$$"
@@ -229,36 +229,32 @@ fwlive_adaptive_write_state() {
 	return 0
 }
 
-# One non-blocking flock on the persistent sibling lock file; fail-open if
-# missing/busy. Release by exiting the subshell (closes fd 9) — no flock -u.
-# Busy ⇒ run unlocked: last-writer-wins is acceptable (valid one-line JSON;
-# ordering under contention is not guaranteed).
-# Lock-open failure (redirection): fail-closed — skip the write; do not run
-# record() unlocked. Probe fd 9 first so a set -eu caller does not abort.
+# One non-blocking flock on the persistent sibling lock file.
+# Fail-open only when flock is missing or the lock is busy (unlocked
+# last-writer-wins: valid one-line JSON; ordering is not guaranteed).
+# Fail-closed — skip the body — when the state directory is unsafe, or the
+# lock cannot be created, opened, or is not a regular writable file.
+# Release by exiting the subshell (closes fd 9) — no flock -u.
+# Probe fd 9 first so a set -eu caller does not abort.
 fwlive_adaptive_with_lock() {
+	fwlive_adaptive_state_dir_ok || return 0
 	if ! command -v flock >/dev/null 2>&1; then
 		"$@"
 		return $?
 	fi
-	fwlive_adaptive_state_dir_ok || {
-		"$@"
-		return $?
-	}
 	_lock=$(fwlive_adaptive_lock_path)
-	# Symlinked or non-file lock path: do not create/follow; fail open unlocked.
-	if [ -L "$_lock" ] || [ -d "$_lock" ]; then
-		"$@"
-		return $?
+	if [ -L "$_lock" ]; then
+		return 0
 	fi
 	# Create lock at 0600 (world-readable fd can take LOCK_EX).
 	if [ ! -e "$_lock" ]; then
 		if ! ( umask 077; : >"$_lock" ) 2>/dev/null; then
-			"$@"
-			return $?
+			return 0
 		fi
-	elif [ ! -w "$_lock" ]; then
-		"$@"
-		return $?
+	fi
+	# Only a regular file: a writable FIFO would block the fd-9 open below.
+	if [ ! -f "$_lock" ] || [ ! -w "$_lock" ]; then
+		return 0
 	fi
 	# Probe in a subshell first: a failed fd-9 redirection aborts a POSIX
 	# non-interactive shell (set -eu) before any fallback can run.
@@ -270,7 +266,6 @@ fwlive_adaptive_with_lock() {
 			"$@"
 			exit $?
 		fi
-		# Lock busy — fail open (unlocked).
 		"$@"
 	) 9>>"$_lock"
 	return $?
@@ -290,6 +285,22 @@ fwlive_adaptive_bucket_for_ms() {
 	fi
 }
 
+# Clamp $_limit into [1, min($1, $2)].
+fwlive_adaptive_clamp() {
+	[ "$_limit" -gt "$1" ] && _limit=$1
+	[ "$_limit" -gt "$2" ] && _limit=$2
+	[ "$_limit" -lt 1 ] && _limit=1
+	return 0
+}
+
+# Double $_limit. A base below 1 becomes $1; the result is capped at $1.
+fwlive_adaptive_double() {
+	[ "$_limit" -lt 1 ] && _limit=$1
+	_limit=$((_limit * 2))
+	[ "$_limit" -gt "$1" ] && _limit=$1
+	return 0
+}
+
 # Args: requested_limit duration_ms prev_limit prev_bucket prev_warm
 #       prev_completed_cs planning
 # Prints next limit. A full-sized cold sample may retain one upward probe
@@ -307,6 +318,7 @@ fwlive_adaptive_compute_limit() {
 	_bucket=$(fwlive_adaptive_bucket_for_ms "$_ms")
 	_limit=$_max
 	_cd=0
+	_probe=0
 
 	case "$_prev_b" in
 		hot) _cd=$FWLIVE_ADAPTIVE_COOLDOWN_HOT_CS ;;
@@ -316,44 +328,30 @@ fwlive_adaptive_compute_limit() {
 
 	if [ "$_cd" -gt 0 ] && [ "$_prev_c" -gt 0 ] && \
 		[ "$_elapsed" -lt "$_cd" ]; then
-		if [ "$_ms" -le "$FWLIVE_ADAPTIVE_HOT_EXIT_MS" ] && \
-			[ "$_bucket" != hot ]; then
-			:
-		else
+		if [ "$_ms" -gt "$FWLIVE_ADAPTIVE_HOT_EXIT_MS" ] || \
+			[ "$_bucket" = hot ]; then
 			_limit=$_prev_l
-			[ "$_limit" -gt "$_req" ] && _limit=$_req
-			[ "$_limit" -gt "$_max" ] && _limit=$_max
-			[ "$_limit" -lt 1 ] && _limit=1
+			fwlive_adaptive_clamp "$_req" "$_max"
 			printf '%s\n' "$_limit"
 			return 0
 		fi
 	fi
 
 	# Once a hot/warm cooldown expires, deliberately test a larger request.
-	# Planning and recording use the same pure helper: planning raises the next
-	# request, while recording raises the retained limit only when that probe
-	# completed below the hot-exit threshold. A still-hot probe therefore falls
-	# through to the hot floor below.
+	# Planning raises the next request. Recording raises the retained limit
+	# only when that probe completed below the hot-exit threshold. A still-hot
+	# probe falls through to the hot floor below.
 	if [ "$_cd" -gt 0 ] && [ "$_prev_c" -gt 0 ] && \
 		[ "$_elapsed" -ge "$_cd" ]; then
-		if [ "$_planning" = 1 ]; then
-			_limit=$_prev_l
-			[ "$_limit" -lt 1 ] && _limit=$_max
-			_limit=$((_limit * 2))
-			[ "$_limit" -gt "$_max" ] && _limit=$_max
-			[ "$_limit" -gt "$_req" ] && _limit=$_req
-			[ "$_limit" -lt 1 ] && _limit=1
-			printf '%s\n' "$_limit"
-			return 0
-		fi
+		_healthy=0
 		if [ "$_ms" -le "$FWLIVE_ADAPTIVE_HOT_EXIT_MS" ] && \
 			[ "$_bucket" != hot ]; then
+			_healthy=1
+		fi
+		if [ "$_planning" = 1 ] || [ "$_healthy" = 1 ]; then
 			_limit=$_prev_l
-			[ "$_limit" -lt 1 ] && _limit=$_max
-			_limit=$((_limit * 2))
-			[ "$_limit" -gt "$_max" ] && _limit=$_max
-			[ "$_limit" -gt "$_req" ] && _limit=$_req
-			[ "$_limit" -lt 1 ] && _limit=1
+			fwlive_adaptive_double "$_max"
+			fwlive_adaptive_clamp "$_req" "$_max"
 			printf '%s\n' "$_limit"
 			return 0
 		fi
@@ -369,7 +367,9 @@ fwlive_adaptive_compute_limit() {
 			elif [ "$_req" -ge "$_base" ]; then
 				# A full-sized cold sample earns one doubling, not a jump
 				# from the 250-line floor straight to the maximum.
-				_limit=$((_base * 2))
+				_limit=$_base
+				fwlive_adaptive_double "$_max"
+				[ "$_prev_l" -ge 1 ] && _probe=1
 			else
 				# A short cold sample does not prove the larger request is safe.
 				_limit=$_base
@@ -381,7 +381,7 @@ fwlive_adaptive_compute_limit() {
 			# 250-line cap.
 			if [ "$_prev_l" -gt "$FWLIVE_ADAPTIVE_COOL_CAP" ] && \
 				[ "$_prev_c" -gt 0 ] && \
-				[ "$((_now - _prev_c))" -lt "$FWLIVE_ADAPTIVE_COOLDOWN_PROBE_CS" ]; then
+				[ "$_elapsed" -lt "$FWLIVE_ADAPTIVE_COOLDOWN_PROBE_CS" ]; then
 				_limit=$_prev_l
 			else
 				_limit=$FWLIVE_ADAPTIVE_COOL_CAP
@@ -401,12 +401,11 @@ fwlive_adaptive_compute_limit() {
 		hot) _limit=$FWLIVE_ADAPTIVE_HOT_FLOOR ;;
 	esac
 
-	if [ "$_planning" = 1 ] || [ "$_bucket" != cold ] || \
-		[ "$_prev_l" -lt 1 ] || [ "$_req" -lt "$_prev_l" ]; then
-		[ "$_limit" -gt "$_req" ] && _limit=$_req
+	if [ "$_probe" = 1 ]; then
+		fwlive_adaptive_clamp "$_max" "$_max"
+	else
+		fwlive_adaptive_clamp "$_req" "$_max"
 	fi
-	[ "$_limit" -gt "$_max" ] && _limit=$_max
-	[ "$_limit" -lt 1 ] && _limit=1
 	printf '%s\n' "$_limit"
 }
 
@@ -498,34 +497,19 @@ fwlive_adaptive_merge_reply() {
 		*) printf '%s' "$_body"; return 0 ;;
 	esac
 	_base=${_body%\}}
-	_effective=
-	[ "$_success" = 1 ] && _effective=",\"effective_limit\":$_limit"
-	_has_msgs=0
+	_tail="\"adaptive\":$_adapt"
 	case "$_body" in
-		*',"messages_received":'*) _has_msgs=1 ;;
+		*',"messages_received":'*) ;;
+		*) _tail="${_tail},\"messages_received\":$_msgs" ;;
 	esac
-	if [ "$_adapt" = 0 ]; then
-		if [ "$_has_msgs" = 1 ]; then
-			printf '%s%s"adaptive":0}' "$_base" "$_sep"
-		else
-			printf '%s%s"adaptive":0,"messages_received":%s}' "$_base" "$_sep" "$_msgs"
+	if [ "$_adapt" = 1 ]; then
+		if [ "$_success" = 1 ]; then
+			_tail="${_tail},\"effective_limit\":$_limit"
 		fi
-		return 0
-	fi
-	if [ "$_shed" = 1 ]; then
-		if [ "$_has_msgs" = 1 ]; then
-			printf '%s%s"adaptive":1%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-				"$_base" "$_sep" "$_effective" "$_trunc" "$_limit"
-		else
-			printf '%s%s"adaptive":1,"messages_received":%s%s,"truncated":%s,"shed":{"level":"hot","limit":%s}}' \
-				"$_base" "$_sep" "$_msgs" "$_effective" "$_trunc" "$_limit"
-		fi
-	else
-		if [ "$_has_msgs" = 1 ]; then
-			printf '%s%s"adaptive":1%s,"truncated":%s}' "$_base" "$_sep" "$_effective" "$_trunc"
-		else
-			printf '%s%s"adaptive":1,"messages_received":%s%s,"truncated":%s}' \
-				"$_base" "$_sep" "$_msgs" "$_effective" "$_trunc"
+		_tail="${_tail},\"truncated\":$_trunc"
+		if [ "$_shed" = 1 ]; then
+			_tail="${_tail},\"shed\":{\"level\":\"hot\",\"limit\":$_limit}"
 		fi
 	fi
+	printf '%s%s%s}' "$_base" "$_sep" "$_tail"
 }

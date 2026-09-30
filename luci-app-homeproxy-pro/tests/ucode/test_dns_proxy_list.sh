@@ -20,10 +20,13 @@
 #
 #   2. The bootstrap resolver: the DoH/DoT endpoint (main-dns) is the only
 #      server whose address is a hostname, and it used to borrow default-dns
-#      (the WAN/ISP resolver) for that lookup.  When the user configures a
-#      bootstrap resolver, main-dns must point at it instead, and that server
-#      must stay at the bottom of the chain (no domain_resolver of its own,
-#      no DNS rule routing to it) or the lookup depends on itself.
+#      (the WAN/ISP resolver) for that lookup, which makes the ISP the
+#      answerer of the one query that decides where every proxied name goes.
+#      The resolver is derived from the China DNS server now, so both halves
+#      of that rule are asserted: a bare IP there yields a bootstrap-dns that
+#      main-dns points at and which carries no domain_resolver of its own,
+#      and a hostname there yields no bootstrap server at all (a hostname
+#      cannot resolve the hostname it would be needed to resolve).
 #
 # Usage: sh tests/ucode/test_dns_proxy_list.sh <repo-root> [work-dir]
 
@@ -34,7 +37,8 @@ ROOT="$(cd "$ROOT" && pwd)"
 FIXTURE="$ROOT/tests/fixtures/generators/client.uci"
 DIRECT_DOMAIN="direct.example.cn"
 PROXY_DOMAIN="play.example.cn"
-BOOTSTRAP_DNS="223.5.5.5"
+CHINA_DNS_IP="223.5.5.5"
+CHINA_DNS_DOH="https://dns.alidns.com/dns-query"
 FAILED=0
 
 rm -rf "$WORK"
@@ -42,12 +46,14 @@ mkdir -p "$WORK"
 
 # Stage the checkout the way test_generators.sh does: HP_DIR/RUN_DIR/UCICONFIG_DIR
 # are rewritten into the work dir and the fixture is copied in as the UCI
-# config.  The extra bootstrap line is appended to the `config` section here
-# (the section's first named section), which is how the Loader reads it.
+# config.  The fixture carries no china_dns_server (the generator then falls
+# back to the Aliyun public resolver), so the line is inserted into the
+# `config` section here - the section the Loader reads it from.  It has to be
+# inserted rather than substituted for that reason.
 stage_case() {
 	dir="$1"
 	label="$2"
-	bootstrap="$3"
+	china_dns="$3"
 	fixture="$4"
 
 	rm -rf "$dir"
@@ -55,9 +61,9 @@ stage_case() {
 		"$dir/scripts/parser" "$dir/resources"
 
 	cp "$fixture" "$dir/config/homeproxy-pro"
-	if [ -n "$bootstrap" ]; then
+	if [ -n "$china_dns" ]; then
 		sed -i "/^\toption routing_mode /i\\
-\toption bootstrap_dns '$bootstrap'
+\toption china_dns_server '$china_dns'
 " "$dir/config/homeproxy-pro"
 	fi
 
@@ -237,18 +243,18 @@ check_proxy_list() {
 	return 0
 }
 
-# --- 1. bootstrap resolver -------------------------------------------------
+# --- 1. bootstrap resolver, derived from a bare-IP China DNS server ---------
 
 dir="$WORK/bootstrap"
-if stage_case "$dir" "bootstrap" "$BOOTSTRAP_DNS" "$FIXTURE"; then
+if stage_case "$dir" "bootstrap" "$CHINA_DNS_IP" "$FIXTURE"; then
 	json="$dir/run/sing-box-c.json"
 
 	bootstrap_line="$(grep -nF '"tag": "bootstrap-dns"' "$json" | head -1 | cut -d: -f1)"
 	if [ -z "$bootstrap_line" ]; then
-		echo "FAIL: bootstrap: no bootstrap-dns server was emitted"
+		echo "FAIL: bootstrap: a bare-IP China DNS server produced no bootstrap-dns server"
 		FAILED=1
-	elif ! sed -n "$bootstrap_line,$((bootstrap_line + 4))p" "$json" | grep -qF "\"$BOOTSTRAP_DNS\""; then
-		echo "FAIL: bootstrap: bootstrap-dns does not carry $BOOTSTRAP_DNS"
+	elif ! sed -n "$bootstrap_line,$((bootstrap_line + 4))p" "$json" | grep -qF "\"$CHINA_DNS_IP\""; then
+		echo "FAIL: bootstrap: bootstrap-dns does not carry the China DNS server ($CHINA_DNS_IP)"
 		FAILED=1
 	elif sed -n "$bootstrap_line,$((bootstrap_line + 4))p" "$json" | grep -qF '"domain_resolver"'; then
 		echo "FAIL: bootstrap: the bootstrap resolver has a domain_resolver of its own"
@@ -264,26 +270,30 @@ if stage_case "$dir" "bootstrap" "$BOOTSTRAP_DNS" "$FIXTURE"; then
 			echo "FAIL: bootstrap: main-dns still resolves through the WAN resolver"
 			FAILED=1
 		else
-			echo "PASS: bootstrap: main-dns resolves its own hostname through bootstrap-dns ($BOOTSTRAP_DNS)"
+			echo "PASS: bootstrap: main-dns resolves its own hostname through bootstrap-dns ($CHINA_DNS_IP)"
 		fi
 	fi
 else
 	FAILED=1
 fi
 
-# --- 2. the default (no bootstrap configured) ------------------------------
+# --- 2. a hostname China DNS server is not a usable bootstrap --------------
+# The option also accepts a DoH/DoT URL, and a URL is a hostname: using one to
+# resolve the hostname it would be needed to resolve is the cycle this whole
+# mechanism exists to avoid.  It must fall back to the WAN resolver, loudly
+# enough to be visible here, rather than to a broken bootstrap.
 
-dir="$WORK/default"
-if stage_case "$dir" "default" "" "$FIXTURE"; then
+dir="$WORK/hostname"
+if stage_case "$dir" "hostname" "$CHINA_DNS_DOH" "$FIXTURE"; then
 	json="$dir/run/sing-box-c.json"
 	if grep -qF '"tag": "bootstrap-dns"' "$json"; then
-		echo "FAIL: default: an unconfigured bootstrap resolver was emitted"
+		echo "FAIL: hostname: a DoH China DNS server was used as the bootstrap resolver"
 		FAILED=1
 	elif ! grep -qF '"server": "default-dns"' "$json"; then
-		echo "FAIL: default: main-dns no longer resolves through the WAN resolver"
+		echo "FAIL: hostname: no bootstrap server and main-dns does not use default-dns either"
 		FAILED=1
 	else
-		echo "PASS: default: no bootstrap server, main-dns still resolves through default-dns"
+		echo "PASS: hostname: a DoH China DNS server yields no bootstrap server, main-dns uses default-dns"
 	fi
 else
 	FAILED=1

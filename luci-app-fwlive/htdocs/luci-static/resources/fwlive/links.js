@@ -79,19 +79,7 @@ function filterLink(field, value, label, onFilterClick) {
 function addrFilterLink(field, ip, showHostnames, hostnameCache, onFilterClick) {
 	if (!ip) return log.formatCell(ip);
 
-	let name = null;
-	if (showHostnames && hostnameCache) {
-		/* Resolve stores the bare address; scoped rows still look up that key. */
-		const cacheKey =
-			typeof ip === 'string' && ip.lastIndexOf('%') !== -1
-				? ip.slice(0, ip.lastIndexOf('%'))
-				: ip;
-		/* Display reads refresh recency so visible names remain warm in the LRU. */
-		name =
-			hostname && typeof hostname.lruGet === 'function'
-				? hostname.lruGet(hostnameCache, cacheKey)
-				: hostnameCache.get(cacheKey);
-	}
+	const name = showHostnames ? hostname.cachedName(hostnameCache, ip) : null;
 	const display = name || ip;
 	const title = name ? ip : _('Filter by %s').format(log.filterFieldLabel(field));
 

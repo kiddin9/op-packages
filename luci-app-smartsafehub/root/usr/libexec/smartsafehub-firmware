@@ -12,6 +12,7 @@ RESOLVE_FILE="${SMARTSAFEHUB_FIRMWARE_RESOLVE_FILE:-$RUNTIME_DIR/firmware-resolv
 IMAGE_FILE="${SMARTSAFEHUB_FIRMWARE_IMAGE_FILE:-$RUNTIME_DIR/firmware.bin}"
 LOCK_DIR="${SMARTSAFEHUB_FIRMWARE_LOCK_DIR:-$RUNTIME_DIR/firmware.lock}"
 FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_FIRMWARE_METADATA_FILE:-/usr/share/smartsafehub/firmware.json}"
+ROM_FIRMWARE_METADATA_FILE="${SMARTSAFEHUB_FIRMWARE_ROM_METADATA_FILE:-/rom/usr/share/smartsafehub/firmware.json}"
 BOARD_NAME_FILE="${SMARTSAFEHUB_FIRMWARE_BOARD_NAME_FILE:-/tmp/sysinfo/board_name}"
 UCI_BIN="${SMARTSAFEHUB_FIRMWARE_UCI_BIN:-uci}"
 UCLIENT_FETCH_BIN="${SMARTSAFEHUB_FIRMWARE_UCLIENT_FETCH_BIN:-uclient-fetch}"
@@ -187,6 +188,18 @@ json_value() {
 	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
 }
 
+firmware_metadata_value() {
+	local expression="$1" value
+
+	value="$(json_value "$ROM_FIRMWARE_METADATA_FILE" "$expression")"
+	if [ -n "$value" ]; then
+		printf '%s' "$value"
+		return 0
+	fi
+
+	json_value "$FIRMWARE_METADATA_FILE" "$expression"
+}
+
 safe_build_id() {
 	case "$1" in
 		''|*[!A-Za-z0-9._~:+-]*) return 1 ;;
@@ -208,7 +221,7 @@ supported_firmware_device_code() {
 firmware_device_code() {
 	local value board
 
-	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.device_code')"
+	value="$(firmware_metadata_value '@.device_code')"
 	if supported_firmware_device_code "$value"; then
 		printf '%s' "$value"
 		return 0
@@ -234,7 +247,7 @@ firmware_device_code() {
 firmware_channel() {
 	local value
 
-	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.channel')"
+	value="$(firmware_metadata_value '@.channel')"
 	case "$value" in
 		stable|beta)
 			printf '%s' "$value"
@@ -256,7 +269,7 @@ firmware_channel() {
 installed_build_id() {
 	local value
 
-	value="$(json_value "$FIRMWARE_METADATA_FILE" '@.build_id')"
+	value="$(firmware_metadata_value '@.build_id')"
 	if safe_build_id "$value"; then
 		printf '%s' "$value"
 		return 0
@@ -269,6 +282,34 @@ installed_build_id() {
 	fi
 
 	printf '%s' ''
+}
+
+sync_firmware_identity() {
+	local device_code build_id configured_device configured_build changed=0
+
+	device_code="$(firmware_device_code 2>/dev/null || true)"
+	build_id="$(firmware_metadata_value '@.build_id')"
+
+	if supported_firmware_device_code "$device_code"; then
+		configured_device="$(uci_get device_code)"
+		if [ "$configured_device" != "$device_code" ]; then
+			"$UCI_BIN" -q set smartsafehub.firmware.device_code="$device_code" 2>/dev/null || true
+			changed=1
+		fi
+	fi
+
+	if safe_build_id "$build_id"; then
+		configured_build="$(uci_get current_build_id)"
+		if [ "$configured_build" != "$build_id" ]; then
+			"$UCI_BIN" -q set smartsafehub.firmware.current_build_id="$build_id" 2>/dev/null || true
+			changed=1
+		fi
+	fi
+
+	if [ "$changed" -eq 1 ]; then
+		"$UCI_BIN" -q commit smartsafehub 2>/dev/null || true
+		rm -f "$RESOLVE_FILE"
+	fi
 }
 
 api_base_url() {
@@ -315,8 +356,9 @@ validate_firmware_image() {
 }
 
 perform_check() {
-	local device_code channel current_build_id base request_file response_tmp schema response_device response_channel update_available
+	local device_code channel current_build_id base request_file response_tmp schema response_device response_channel response_build update_available
 
+	sync_firmware_identity
 	acquire_lock || return 75
 	trap release_lock EXIT INT TERM
 	load_state
@@ -360,9 +402,10 @@ EOF2
 	schema="$(json_value "$response_tmp" '@.schema')"
 	response_device="$(json_value "$response_tmp" '@.device_code')"
 	response_channel="$(json_value "$response_tmp" '@.channel')"
+	response_build="$(json_value "$response_tmp" '@.current_build_id')"
 	update_available="$(json_value "$response_tmp" '@.update_available')"
 
-	if [ "$schema" != "1" ] || [ "$response_device" != "$device_code" ] || [ "$response_channel" != "$channel" ]; then
+	if [ "$schema" != "1" ] || [ "$response_device" != "$device_code" ] || [ "$response_channel" != "$channel" ] || [ "$response_build" != "$current_build_id" ]; then
 		rm -f "$response_tmp"
 		set_error 'FIRMWARE_RESOLVE_INVALID' '펌웨어 업데이트 서버가 올바르지 않은 응답을 반환했습니다.'
 		return 1
@@ -640,6 +683,7 @@ periodic_check_if_due() {
 }
 
 run_daemon() {
+	sync_firmware_identity
 	load_daemon_settings
 	sleep "$DAEMON_INITIAL_DELAY_S"
 	boot_check_with_retry || true
@@ -654,6 +698,9 @@ run_daemon() {
 mkdir -p "$RUNTIME_DIR" || exit 1
 
 case "${1:-}" in
+	sync-identity)
+		sync_firmware_identity
+		;;
 	check)
 		perform_check
 		;;
@@ -673,7 +720,7 @@ case "${1:-}" in
 		run_daemon
 		;;
 	*)
-		echo "usage: $0 {check|prepare|validate-upload [filename]|install {0|1}|clean|daemon}" >&2
+		echo "usage: $0 {sync-identity|check|prepare|validate-upload [filename]|install {0|1}|clean|daemon}" >&2
 		exit 2
 		;;
 esac

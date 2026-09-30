@@ -121,24 +121,26 @@ function renderDnsCache(ctx) {
 
 	s.tab('dns_cache', _('DNS Settings'));
 
-	o = s.taboption('dns_cache', form.Value, 'dns_server', _('DNS server'),
+	/* The name says overseas because that is the only thing that belongs
+	 * here: every query this field answers goes to a domain that is not on
+	 * the China path, and a domestic resolver answers those with polluted or
+	 * NXDOMAIN results.  The Chinese public resolvers that used to be listed
+	 * below a divider were therefore a footgun with a helpful-looking label -
+	 * the one combination that reliably breaks a working proxy.  Only the
+	 * overseas public resolvers are offered now. */
+	o = s.taboption('dns_cache', form.Value, 'dns_server', _('Overseas DNS server'),
 		_('Resolves every domain that is not on the China DNS path, through the selected proxy node. ' +
-		'Pick an overseas service: a domestic resolver answers these queries with polluted or ' +
-		'NXDOMAIN results, which is what makes a foreign site fail to resolve while the proxy itself works. ' +
-		'Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
-	o.value('wan', _('WAN DNS (read from interface)'));
+		'A domestic resolver answers these queries with polluted or NXDOMAIN results, which is what ' +
+		'makes a foreign site fail to resolve while the proxy itself works - so only overseas services ' +
+		'are offered here. Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
 	o.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
 	o.value('208.67.222.222', _('Cisco Public DNS (208.67.222.222)'));
 	o.value('8.8.8.8', _('Google Public DNS (8.8.8.8)'));
-	o.value('', '---');
-	o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
-	o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
-	o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
 	o.default = '8.8.8.8';
 	o.rmempty = false;
 	o.depends({'routing_mode': 'custom', '!reverse': true});
 	o.validate = function(section_id, value) {
-		if (section_id && !['wan'].includes(value)) {
+		if (section_id) {
 			if (!value)
 				return _('Expecting: %s').format(_('non-empty value'));
 
@@ -203,20 +205,6 @@ function renderDnsCache(ctx) {
 		_('When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.'));
 	o.depends('routing_mode', 'bypass_mainland_china');
 	o.rmempty = false;
-
-	/* The DNS server above is the DoH/DoT endpoint, and it is the one server
-	 * in the generated configuration whose address is a hostname: it has to
-	 * be resolved before it can answer anything.  Left empty, that lookup
-	 * goes through the WAN resolver (the pre-1.14 behaviour); naming a
-	 * resolver here decouples it from the ISP/upstream one.  Only one is
-	 * used - sing-box resolves a hostname through exactly one server. */
-	o = s.taboption('dns_cache', form.DynamicList, 'bootstrap_dns', _('Bootstrap DNS server'),
-		_('Resolver used to look up the DNS server\'s own hostname - only relevant when that address ' +
-		'is a domain, as with a DoH/DoT endpoint. Leave empty to use the WAN resolver. ' +
-		'Only the first entry is used.'));
-	o.datatype = 'ipaddr';
-	o.depends({'routing_mode': 'custom', '!reverse': true});
-	o.modalonly = true;
 
 	o = s.taboption('dns_cache', form.SectionValue, '_dns_cache', form.NamedSection, 'dns', 'homeproxy-pro');
 	o.depends({'routing_mode': 'custom', '!reverse': true});

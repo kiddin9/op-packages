@@ -92,15 +92,69 @@ const NAPTR_BYPASS_SUFFIXES = [
 	'pub.3gppnetwork.org'
 ];
 
+/* The address of the bootstrap resolver, or null when there is none.
+ *
+ * Every DNS server whose address is a *hostname* needs a domain_resolver
+ * before sing-box will start it, and that lookup is the one step nothing
+ * else can bootstrap: it has to work before any of the configured servers
+ * can answer.  `main-dns` is exactly that case - it is the user's DoH/DoT
+ * endpoint - and it used to borrow default-dns (the WAN/ISP resolver) for
+ * it, which is the single resolver a polluted or unreachable WAN takes down.
+ *
+ * It used to be a field of its own in the form, which made no sense to read:
+ * a second DNS address next to the China DNS server, both of them a bare
+ * public IP, for a lookup that happens once at startup.  It is derived now,
+ * from the China DNS server, which is the one address this router already
+ * knows it can reach directly.  That answer is only usable when it is a bare
+ * IP: the option also accepts the literal 'wan' and a DoH/DoT URL, and both
+ * of those are hostnames - a hostname cannot resolve the hostname it would be
+ * needed to resolve.  For those, and only for those, this returns null and
+ * main-dns keeps borrowing the WAN resolver, exactly as it did before any of
+ * this existed.
+ */
+function bootstrap_addr(ctx) {
+	const addr = ctx.china_dns_server;
+	if (isEmpty(addr))
+		return null;
+
+	return (match(addr, /^[0-9]+(\.[0-9]+){3}$/) != null
+		|| match(addr, /^[0-9a-fA-F:]+$/) != null) ? addr : null;
+}
+
+/* Append the bootstrap resolver, when there is a usable address for it.
+ *
+ * The bootstrap server carries a plain IP, has no domain_resolver of its own
+ * and is never referenced by a DNS rule: it exists only as the target of the
+ * domain_resolver pointer, so there is no cycle for sing-box to reject.
+ * Nothing is emitted when there is no such address ("resolve through the WAN
+ * resolver"), which keeps a configuration whose China DNS server is a
+ * hostname byte-identical to one that never had this.
+ *
+ * It is emitted only alongside main-dns: without a node there is no DoH/DoT
+ * endpoint to bootstrap, and a server nothing points at is just noise. */
+function append_bootstrap_dns(config, ctx) {
+	const addr = bootstrap_addr(ctx);
+	if (isEmpty(addr) || isEmpty(ctx.main_node))
+		return;
+
+	push(config.dns.servers, {
+		tag: 'bootstrap-dns',
+		type: 'udp',
+		server: addr,
+		detour: ctx.self_mark ? 'direct-out' : null
+	});
+}
+
 function append_proxy_dns(config, dm, ctx) {
 	if (isEmpty(ctx.main_node))
 		return;
 
 	/* The user's DoH/DoT endpoint is the one server in this block whose
 	 * address is a hostname, so it is the one that needs the bootstrap
-	 * resolver; without a configured one it keeps resolving through
-	 * default-dns (the WAN resolver), exactly as before. */
-	const main_resolver = isEmpty(ctx.bootstrap_dns) ? 'default-dns' : 'bootstrap-dns';
+	 * resolver.  Which resolver that is follows the China DNS server - the
+	 * one direct-routable address already configured for this router - and
+	 * only when it is a bare IP; see bootstrap_addr(). */
+	const main_resolver = isEmpty(bootstrap_addr(ctx)) ? 'default-dns' : 'bootstrap-dns';
 
 	/* Main DNS */
 	push(config.dns.servers, {
@@ -482,39 +536,6 @@ function initDns(config, ctx) {
 		} : null,
 		timeout: !isEmpty(ctx.dns_query_timeout) ? strToTime(ctx.dns_query_timeout) : null
 	};
-}
-
-/* Append the bootstrap resolver, if the user configured one.
- *
- * Every DNS server whose address is a *hostname* needs a domain_resolver
- * before sing-box will start it, and that lookup is the one step nothing
- * else can bootstrap: it has to work before any of the configured servers
- * can answer.  `main-dns` is exactly that case - it is the user's DoH/DoT
- * endpoint - and it used to borrow default-dns (the WAN/ISP resolver) for
- * it, which is the single resolver a polluted or unreachable WAN takes down.
- *
- * The bootstrap server carries a plain IP, has no domain_resolver of its own
- * and is never referenced by a DNS rule: it exists only as the target of the
- * domain_resolver pointer, so there is no cycle for sing-box to reject.
- * Nothing is emitted when the list is empty ("resolve through the WAN
- * resolver"), which keeps an untouched configuration byte-identical.
- *
- * Only the first entry is used.  sing-box resolves a hostname through
- * exactly one transport (`DomainResolveOptions.Server` is a single tag), and
- * registering extra servers would not make them a fallback chain - it would
- * only leave unused servers in the config.  The list form is kept because
- * the option is a DynamicList in the UI and a value with several entries
- * must not produce an unparseable address. */
-function append_bootstrap_dns(config, ctx) {
-	if (isEmpty(ctx.bootstrap_dns))
-		return;
-
-	push(config.dns.servers, {
-		tag: 'bootstrap-dns',
-		type: 'udp',
-		server: ctx.bootstrap_dns[0],
-		detour: ctx.self_mark ? 'direct-out' : null
-	});
 }
 
 /* Build the sing-box `dns` block. Mutates `config` and returns it for

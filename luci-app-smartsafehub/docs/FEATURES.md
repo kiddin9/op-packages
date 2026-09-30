@@ -187,8 +187,8 @@ README에는 제품을 빠르게 파악하는 데 필요한 핵심 기능만 유
 - 진단 파일에 Wi-Fi 비밀번호와 SafeShield 라이선스 키를 포함하지 않음
 - 진단 파일에는 호스트명, WAN IPv4와 Wi-Fi SSID가 포함될 수 있으므로 외부 전달 전 확인 필요
 - OpenWrt 표준 `sysupgrade` 설정 백업을 SmartSafeHub에서 직접 다운로드하고, SmartSafeHub 또는 기본 LuCI에서 만든 `.tar.gz` 백업을 업로드·검증한 뒤 복원 가능
-- 복원 archive는 16MB로 제한하고 gzip/tar 구조, `/etc/config` 포함 여부와 위험한 경로를 검사하며, 백업에 포함된 기존 `/usr/share/smartsafehub/firmware.json`의 `device_code`가 현재 장치와 일치할 때만 복원을 허용
-- 백업의 `firmware.json`은 장치 식별에만 사용하고 복원 후에는 현재 설치된 펌웨어의 metadata를 다시 고정한 뒤 `current_build_id`를 동기화하므로 오래된 백업이 현재 firmware identity를 되돌리지 않음
+- 복원 archive는 16MB로 제한하고 gzip/tar 구조, `/etc/config` 포함 여부와 위험한 경로를 검사하며, 백업의 `/etc/config/smartsafehub`에 저장된 `firmware.device_code`가 현재 장치와 일치할 때만 복원을 허용
+- `/usr/share/smartsafehub/firmware.json`은 설정 백업 대상에서 제외하고, 복원 후 현재 펌웨어의 `device_code`와 `build_id`를 UCI 캐시에 다시 동기화해 오래된 설정이 현재 firmware identity를 되돌리지 않음
 - 설정 백업에는 Wi-Fi 비밀번호, 관리자 설정, VPN 키와 라이선스 정보 등 민감한 설정이 포함될 수 있으므로 안전한 위치에 보관해야 하며, 펌웨어 이미지와 설치 패키지 자체는 포함하지 않음
 - 데스크톱의 시스템 관리 영역은 `관리자 비밀번호`와 `설정 백업 및 복원`을 1:1 두 열로 배치하고 `시스템 도구`는 그 아래 전체 폭으로 표시합니다. 모바일에서는 모든 카드를 한 열로 쌓습니다.
 - 백업/복원 카드는 절반 폭에서도 읽기 쉽도록 `현재 설정 백업`과 `설정 복원`을 compact 세로 섹션으로 표시
@@ -202,7 +202,7 @@ README에는 제품을 빠르게 파악하는 데 필요한 핵심 기능만 유
 
 설정 UI에서는 예약 재부팅을 별도 시스템 관리 카드로 분리하지 않고 `시간 및 시간대` 카드의 하위 섹션으로 표시합니다. 시간대 변경과 예약 시각의 관계를 한 화면에서 확인할 수 있고, 데스크톱에서는 주기·요일·시각을 한 행에 배치하며 모바일에서는 세로로 자연스럽게 쌓입니다.
 
-설정 백업 다운로드는 LuCI의 인증된 `/cgi-bin/cgi-backup` 경로를 통해 OpenWrt `sysupgrade --create-backup` 형식을 그대로 사용합니다. `/lib/upgrade/keep.d/smartsafehub`는 이미 펌웨어에 존재하는 `/usr/share/smartsafehub/firmware.json`을 표준 백업에 포함해 별도의 장치 식별 파일을 만들지 않습니다. 복원은 `/cgi-bin/cgi-upload`로 전용 `/tmp/smartsafehub/config-backup.tar.gz` 경로에만 업로드한 뒤 `/usr/libexec/smartsafehub-backup`이 archive 구조와 `device_code` 일치 여부, 업데이트 충돌 여부를 확인하고 `sysupgrade --restore-backup`을 실행합니다. 백업 metadata는 검증에만 사용하며 복원 직후 현재 설치된 펌웨어의 `firmware.json`을 다시 복구합니다.
+설정 백업 다운로드는 LuCI의 인증된 `/cgi-bin/cgi-backup` 경로를 통해 OpenWrt `sysupgrade --create-backup` 형식을 그대로 사용합니다. 현재 펌웨어의 `device_code`는 `/etc/config/smartsafehub`에 동기화되어 표준 설정 백업에 함께 저장되고, `/usr/share/smartsafehub/firmware.json`은 펌웨어 이미지 고유 정보이므로 백업 대상에 넣지 않습니다. 복원은 `/cgi-bin/cgi-upload`로 전용 `/tmp/smartsafehub/config-backup.tar.gz` 경로에만 업로드한 뒤 `/usr/libexec/smartsafehub-backup`이 archive 구조와 `device_code` 일치 여부, 업데이트 충돌 여부를 확인하고 `sysupgrade --restore-backup`을 실행합니다. 복원 직후 현재 펌웨어의 identity를 UCI 캐시에 다시 동기화합니다.
 
 SmartSafeHub가 생성하는 휘발성 런타임 상태와 임시 파일은 `/tmp/smartsafehub/` 한 디렉터리에 모읍니다. 업데이트 상태와 릴리즈 노트, 펌웨어 상태·다운로드 이미지, Health 진단/Reporter 상태, 예약 재부팅 상태, Wi-Fi 변경 lock, 설정 백업 업로드 파일이 이 경로를 공유하며 `updater/`나 `firmware/` 같은 추가 하위 분류 디렉터리는 만들지 않습니다. `/tmp` 기반이므로 재부팅 시 함께 초기화되고 flash 저장 공간에는 기록하지 않습니다. 각 helper와 init script가 필요할 때 디렉터리를 다시 생성합니다.
 

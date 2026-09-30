@@ -13,6 +13,7 @@ import {
 const FIRMWARE_STATE_FILE = '/tmp/smartsafehub/firmware.state';
 const FIRMWARE_RESOLVE_FILE = '/tmp/smartsafehub/firmware-resolve.json';
 const FIRMWARE_METADATA_FILE = '/usr/share/smartsafehub/firmware.json';
+const ROM_FIRMWARE_METADATA_FILE = '/rom/usr/share/smartsafehub/firmware.json';
 const BOARD_NAME_FILE = '/tmp/sysinfo/board_name';
 const OPENWRT_RELEASE_FILE = '/etc/openwrt_release';
 const FIRMWARE_HELPER = '/usr/libexec/smartsafehub-firmware';
@@ -49,6 +50,11 @@ function read_json_file(path, max_bytes) {
 	catch (e) {
 		return null;
 	}
+}
+
+function read_firmware_metadata() {
+	return read_json_file(ROM_FIRMWARE_METADATA_FILE, 65536) ??
+		read_json_file(FIRMWARE_METADATA_FILE, 65536) ?? {};
 }
 
 function read_state() {
@@ -153,7 +159,7 @@ function read_state() {
 }
 
 function read_firmware_channel() {
-	const metadata = read_json_file(FIRMWARE_METADATA_FILE, 65536) ?? {};
+	const metadata = read_firmware_metadata();
 	let channel = limited_string(metadata?.channel, 16);
 	if (channel == 'stable' || channel == 'beta') {
 		return channel;
@@ -224,7 +230,7 @@ function read_openwrt_release() {
 }
 
 function read_current_firmware() {
-	const metadata = read_json_file(FIRMWARE_METADATA_FILE, 65536) ?? {};
+	const metadata = read_firmware_metadata();
 	const ctx = new_uci_cursor();
 	const config = ctx?.get_all('smartsafehub', 'firmware') ?? {};
 	const board_name = limited_string(trim(fs.readfile(BOARD_NAME_FILE) ?? ''), 120);
@@ -258,12 +264,14 @@ function read_api_base_url() {
 }
 
 function sanitize_release(document, current) {
+	const resolved_build_id = limited_string(document?.current_build_id, 80);
 	if (
 		type(document) != 'object' ||
 		document?.schema != 1 ||
 		type(document?.update_available) != 'bool' ||
 		document?.device_code != current.deviceCode ||
-		document?.channel != read_firmware_channel()
+		document?.channel != read_firmware_channel() ||
+		(current.buildId != null && resolved_build_id != current.buildId)
 	) {
 		return { currentVersion: null, updateAvailable: false, release: null };
 	}

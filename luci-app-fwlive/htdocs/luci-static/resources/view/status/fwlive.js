@@ -23,9 +23,8 @@
 'require fwlive.render-policy as renderPolicy';
 'require fwlive.render-scheduler as renderScheduler';
 
-const RULES_RETRY_BASE_MS = 5000;
-/* Includes the initial read; a page reload starts a fresh retry budget. */
-const RULES_RETRY_MAX_ATTEMPTS = 6;
+/* Poll error codes that only a reinstall fixes; retrying cannot help. */
+const INSTALL_POLL_ERRORS = ['timeout_missing', 'jsonfilter_missing', 'classifier_missing'];
 
 const callFwlivePoll = rpc.declare({
 	object: 'fwlive',
@@ -112,12 +111,6 @@ function isIpv4Address(addr) {
 	return true;
 }
 
-/* Scoped IPv6 (`fe80::1%eth0`) still resolves as the bare address. */
-function stripIpZone(addr) {
-	const zone = addr.lastIndexOf('%');
-	return zone === -1 ? addr : addr.slice(0, zone);
-}
-
 return view.extend({
 	rowLimit: constants.DEFAULT_ROW_LIMIT,
 	fetchMode: constants.DEFAULT_FETCH_MODE,
@@ -159,6 +152,9 @@ return view.extend({
 	messageLayout: 'wrap',
 	/* Session-new IDs from the last applied batch; this is not buffer growth. */
 	lastBatchNewIdCount: 0,
+	/* Monotonic time for age hints after successful empty poll batches. */
+	lastNonEmptyBatchAt: null,
+	lastSuccessfulBatchEmpty: false,
 	showHostnames: false,
 	rowTint: constants.DEFAULT_ROW_TINT,
 	/* Last non-off palette so toggling tint back on restores Classic/Accessible. */
@@ -172,6 +168,8 @@ return view.extend({
 	lastPollError: false,
 	lastPollErrorCode: null,
 	lastRulesError: null,
+	rulesMapTruncated: false,
+	rulesMapLoaded: false,
 	rulesRetryAttempt: 0,
 	nextRulesRetryAt: 0,
 	followLive: true,
@@ -599,7 +597,7 @@ return view.extend({
 
 	isLikelyIp(addr) {
 		if (typeof addr !== 'string' || !addr) return false;
-		addr = stripIpZone(addr);
+		addr = hostname.stripZone(addr);
 		if (!addr) return false;
 		if (isIpv4Address(addr)) return true;
 		if (!addr.includes(':') || !/^[\da-f:.]+$/i.test(addr) || addr.includes(':::'))
@@ -708,17 +706,16 @@ return view.extend({
 			const res = await callFwliveRules();
 			if (!this.isCurrentPollEpoch(epoch)) return;
 			this.rulesMap = (res && res.rules) || {};
+			this.rulesMapTruncated = !!(res && res.truncated === true);
+			this.rulesMapLoaded = true;
 			this.firewallBackend = (res && res.backend) || 'nft';
-			/* Bounds / mktemp failures are reply.error — same idea as poll. */
+			/* Truncation belongs to this map; error describes its lookup failure. */
 			this.noteRulesMapOutcome((res && res.error) || null);
 			if (this.lastRulesError) console.warn('fwlive rules map error:', this.lastRulesError);
 			this.refreshBufferedRuleLabels();
 		} catch (_e) {
 			if (!this.isCurrentPollEpoch(epoch)) return;
-			if (!(this.rulesMap && Object.keys(this.rulesMap).length)) {
-				this.rulesMap = {};
-				this.firewallBackend = 'nft';
-			}
+			/* Retain the entire last snapshot, including an empty truncated map. */
 			this.noteRulesMapOutcome('rules_unavailable');
 		}
 		this.updateBackendUi();
@@ -735,15 +732,15 @@ return view.extend({
 		/* Back off consecutive failures, then stop after a bounded retry budget. */
 		this.rulesRetryAttempt = Math.min(
 			(this.rulesRetryAttempt || 0) + 1,
-			RULES_RETRY_MAX_ATTEMPTS
+			constants.RULES_RETRY_MAX_ATTEMPTS
 		);
-		if (this.rulesRetryAttempt >= RULES_RETRY_MAX_ATTEMPTS) {
+		if (this.rulesRetryAttempt >= constants.RULES_RETRY_MAX_ATTEMPTS) {
 			this.nextRulesRetryAt = 0;
 			return;
 		}
 		const delay = Math.min(
-			RULES_RETRY_BASE_MS * Math.pow(2, this.rulesRetryAttempt - 1),
-			60000
+			constants.RULES_RETRY_BASE_MS * Math.pow(2, this.rulesRetryAttempt - 1),
+			constants.RULES_RETRY_MAX_DELAY_MS
 		);
 		this.nextRulesRetryAt = this.nowMs() + delay;
 	},
@@ -751,6 +748,56 @@ return view.extend({
 	backendDisplayLabel() {
 		if (this.firewallBackend === 'nft') return _('using fw4');
 		return '';
+	},
+
+	rulesDiagnosticCause(error) {
+		switch (error) {
+			case 'mktemp_failed':
+				return _('Could not create a temporary file for rule names.');
+			case 'tsv_failed':
+				return _('Could not process firewall rule names.');
+			case 'no_backend':
+				return _('Could not read the active firewall rules.');
+			case 'timeout_missing':
+				return _('The required timeout utility is unavailable.');
+			case 'rules_unavailable':
+				if (!this.rulesMapLoaded) return _('Could not load rule names.');
+				if (this.rulesMap && Object.keys(this.rulesMap).length)
+					return _(
+						'Could not refresh rule names; previously loaded names are still shown.'
+					);
+				return _('Could not refresh rule names.');
+			default:
+				return _('Rule-name lookup failed.');
+		}
+	},
+
+	rulesDiagnosticLines() {
+		const lines = [];
+		if (this.rulesMapTruncated)
+			lines.push(_('Rule-name lookup reached a safety limit.') + ' (truncated=true)');
+		if (this.lastRulesError) {
+			const cause = this.rulesDiagnosticCause(this.lastRulesError);
+			/* Unknown RPC codes are bounded diagnostic text, never HTML. */
+			const code =
+				typeof this.lastRulesError === 'string' ? this.lastRulesError.slice(0, 80) : '';
+			lines.push(cause + (code ? ' (' + code + ')' : ''));
+		}
+		lines.push(_('Rule-name lookup does not change your firewall rules.'));
+		lines.push(
+			_(
+				'Some entries may show names derived from their log prefixes. Searching by a friendly rule name may miss those entries.'
+			)
+		);
+		return lines;
+	},
+
+	/* timeout_missing is an install problem shown elsewhere, not a rules-map gap. */
+	rulesMapDegraded() {
+		return !!(
+			this.rulesMapTruncated ||
+			(this.lastRulesError && this.lastRulesError !== 'timeout_missing')
+		);
 	},
 
 	updateBackendUi() {
@@ -762,13 +809,8 @@ return view.extend({
 			const warnings = (this.loggingStatus && this.loggingStatus.warnings) || [];
 			let text = this.backendDisplayLabel();
 			let degraded = false;
-			if (this.lastRulesError && this.lastRulesError !== 'timeout_missing') {
-				let err = '';
-				if (this.lastRulesError === 'rules_truncated')
-					err = _('Rule labels incomplete — map truncated');
-				else if (this.lastRulesError === 'mktemp_failed')
-					err = _('Rule labels unavailable — temp file failed');
-				else err = _('Rule labels unavailable');
+			if (this.rulesMapDegraded()) {
+				const err = _('Some rule names may be missing');
 				text = text ? text + ' \u00b7 ' + err : err;
 				degraded = true;
 			}
@@ -781,6 +823,14 @@ return view.extend({
 			}
 			label.textContent = text;
 			label.classList.toggle('fwlive-backend-warn', degraded);
+		}
+		const details = document.getElementById('fwlive-rules-details');
+		const body = document.getElementById('fwlive-rules-details-body');
+		if (details && body) {
+			const degraded = this.rulesMapDegraded();
+			details.style.display = degraded ? '' : 'none';
+			body.textContent = degraded ? this.rulesDiagnosticLines().join('\n\n') : '';
+			if (!degraded) details.open = false;
 		}
 
 		this.updateEmptyStateUi();
@@ -820,6 +870,7 @@ return view.extend({
 		this.updateLoggingToolbarUi();
 		this.updateEmptyStateUi();
 		this.updateStatus();
+		if (wasWeakDevice !== this.weakDevice) this.updateAdaptiveBanner();
 		if (wasWeakDevice !== this.weakDevice && document.getElementById('fwlive-table'))
 			this.renderRows(true);
 	},
@@ -876,35 +927,8 @@ return view.extend({
 				this.updateEmptyStateUi();
 				this.updateLoggingToolbarUi();
 			},
-			failureNotice: (res) => {
-				if (res && res.error === 'nf_log_missing')
-					return _('Cannot enable logging until kernel log modules are installed.');
-				if (res && res.error === 'firewall_changes_pending')
-					return _(
-						'Another change is staged for the firewall; apply or revert it first.'
-					);
-				if (res && res.error === 'no_wan_zone')
-					return _('No WAN zone found; cannot toggle logging without one.');
-				if (res && res.error === 'lock_failed')
-					return _('Could not acquire the logging lock.');
-				if (res && res.error === 'rollback_tracking_failed')
-					return _('Could not track the logging change safely; logging was not changed.');
-				if (res && res.error === 'baseline_snapshot_failed')
-					return _('Could not snapshot the current logging state.');
-				if (res && res.error === 'firewall_reload_failed')
-					return _('The firewall did not reload; saved and live logging may differ.');
-				if (res && res.error === 'uci_set_failed')
-					return _('Could not write the WAN zone log option.');
-				if (res && res.error === 'uci_delete_failed')
-					return _('Could not clear the WAN zone log option.');
-				if (res && res.error === 'uci_commit_failed')
-					return _('Could not save the firewall configuration.');
-				if (res && res.error === 'firewall_commit_raced')
-					return _(
-						'Another change overwrote WAN logging after it was saved; check the current state.'
-					);
-				return _('Could not enable logging.');
-			},
+			failureNotice: (res) =>
+				logging.toggleFailureNotice(res && res.error, _('Could not enable logging.')),
 			successNotice: (res) =>
 				res.changed
 					? _(
@@ -921,31 +945,8 @@ return view.extend({
 			wanLog: false,
 			call: () => callFwliveDisableLogging(),
 			initialUi: () => this.updateLoggingToolbarUi(),
-			failureNotice: (res) => {
-				if (res && res.error === 'firewall_changes_pending')
-					return _(
-						'Another change is staged for the firewall; apply or revert it first.'
-					);
-				if (res && res.error === 'no_wan_zone')
-					return _('No WAN zone found; cannot toggle logging without one.');
-				if (res && res.error === 'lock_failed')
-					return _('Could not acquire the logging lock.');
-				if (res && res.error === 'rollback_tracking_failed')
-					return _('Could not track the logging change safely; logging was not changed.');
-				if (res && res.error === 'firewall_reload_failed')
-					return _('The firewall did not reload; saved and live logging may differ.');
-				if (res && res.error === 'uci_set_failed')
-					return _('Could not write the WAN zone log option.');
-				if (res && res.error === 'uci_delete_failed')
-					return _('Could not clear the WAN zone log option.');
-				if (res && res.error === 'uci_commit_failed')
-					return _('Could not save the firewall configuration.');
-				if (res && res.error === 'firewall_commit_raced')
-					return _(
-						'Another change overwrote WAN logging after it was saved; check the current state.'
-					);
-				return _('Could not disable logging.');
-			},
+			failureNotice: (res) =>
+				logging.toggleFailureNotice(res && res.error, _('Could not disable logging.')),
 			successNotice: (res) => (res.changed ? _('WAN drop/reject logging is off.') : ''),
 			catchNotice: () => _('Administrator access is required to disable logging.')
 		});
@@ -1174,6 +1175,8 @@ return view.extend({
 
 		const batch = this.normalizePollBatch(raw);
 		this.lastBatchNewIdCount = batch.pollNew;
+		this.lastSuccessfulBatchEmpty = batch.rows.length === 0;
+		if (batch.rows.length) this.lastNonEmptyBatchAt = this.nowMs();
 
 		/* Oldest-first ring buffer; filteredRows() reverses for newest-first display. */
 		this.entries = buffer.applyFetchedEntries(this.entries, batch.rows, {
@@ -1224,7 +1227,7 @@ return view.extend({
 			}
 		} else if (
 			this.lastRulesError === 'rules_unavailable' &&
-			this.rulesRetryAttempt < RULES_RETRY_MAX_ATTEMPTS &&
+			this.rulesRetryAttempt < constants.RULES_RETRY_MAX_ATTEMPTS &&
 			!this.tablePaused &&
 			!this.lastPollError &&
 			this.nowMs() >= (this.nextRulesRetryAt || 0)
@@ -1269,16 +1272,14 @@ return view.extend({
 		const cap = this.ingestCap();
 		if (this.entries.length >= cap && cap > 0) bits.push(_('buffer full'));
 		if (this.ensureRenderScheduler().isFloodSuppressed())
-			bits.push(_('render paused (high rate)'));
+			bits.push(_('table refresh throttled'));
 		if (this.weakDevice && this.rowLimit > constants.WEAK_DEVICE_DISPLAY_ROW_CAP)
 			bits.push(
-				_('Display limited to %d rows on this device').format(
-					constants.WEAK_DEVICE_DISPLAY_ROW_CAP
-				)
+				_('display limited to %d rows').format(constants.WEAK_DEVICE_DISPLAY_ROW_CAP)
 			);
-		if (this.degradedSampling) bits.push(_('Degraded — sampling'));
-		if (this.serverTruncated) bits.push(_('truncated'));
-		if (this.resolveLoadShed) bits.push(_('resolve paused (load)'));
+		if (this.degradedSampling) bits.push(_('polling slowed'));
+		if (this.serverTruncated) bits.push(_('server limited fetch'));
+		if (this.resolveLoadShed) bits.push(_('hostname lookup paused'));
 		if (!this.tablePaused && !this.followLive)
 			bits.push(_('scroll frozen — scroll to top to follow live'));
 		return bits.length ? ' — ' + bits.join(', ') : '';
@@ -1445,21 +1446,33 @@ return view.extend({
 		else if (this.serverAdaptive === 0)
 			parts.push(_('Server adaptive protection is disabled.'));
 		if (this.degradedSampling)
-			parts.push(_('Degraded — sampling (slow poll RTT; cadence reduced).'));
+			parts.push(
+				_('Polling slowed: the router is responding slowly, so polls run less often.')
+			);
 		if (this.serverShed && this.serverShed.limit)
 			parts.push(
-				_('Server shedding — at most %d log lines per poll.').format(this.serverShed.limit)
+				_(
+					'Server limited fetch: the router is under load; at most %d log lines per poll.'
+				).format(this.serverShed.limit)
 			);
-		else if (this.serverTruncated) parts.push(_('Server truncated this poll (adaptive cap).'));
+		else if (this.serverTruncated)
+			parts.push(
+				_('Server limited fetch: this poll returned fewer lines to protect the router.')
+			);
 		if (this.resolveLoadShed)
-			parts.push(_('Hostname resolve paused while the router is under load.'));
+			parts.push(_('Hostname lookup paused while the router is under load.'));
+		if (this.weakDevice && this.rowLimit > constants.WEAK_DEVICE_DISPLAY_ROW_CAP)
+			parts.push(
+				_(
+					'Display limited to %d rows on this device; the larger Limit still buffers rows.'
+				).format(constants.WEAK_DEVICE_DISPLAY_ROW_CAP)
+			);
 		return parts;
 	},
 
 	updateAdaptiveBanner() {
 		const el = document.getElementById('fwlive-adaptive');
 		if (!el) return;
-		if (!el.style) el.style = { display: '' };
 
 		const parts = this.adaptiveBannerParts();
 
@@ -1534,11 +1547,9 @@ return view.extend({
 		const scroll = document.getElementById('fwlive-scroll');
 		const empty = document.getElementById('fwlive-empty');
 		if (scroll) {
-			if (!scroll.style) scroll.style = { display: '' };
 			scroll.style.display = hideTable ? 'none' : '';
 		}
 		if (empty) {
-			if (!empty.style) empty.style = { display: '' };
 			empty.style.display = hideTable ? 'none' : rowCount ? 'none' : 'block';
 		}
 	},
@@ -1547,7 +1558,6 @@ return view.extend({
 		const card = document.getElementById('fwlive-summary');
 		const toggle = document.getElementById('fwlive-summary-rows');
 		if (card) {
-			if (!card.style) card.style = { display: '' };
 			card.style.display = this.summaryMode ? 'block' : 'none';
 		}
 		this.syncEmptyScrollVisibility(this.filteredRowsState().rows.length);
@@ -1602,12 +1612,11 @@ return view.extend({
 	updateFloodBanner() {
 		const el = document.getElementById('fwlive-flood');
 		if (!el) return;
-		if (!el.style) el.style = { display: '' };
 
 		if (this.ensureRenderScheduler().isFloodSuppressed()) {
 			el.style.display = 'block';
 			el.textContent = _(
-				'High event rate — table refresh is throttled to protect the browser. The buffer still updates; refresh will resume automatically.'
+				'Table refresh throttled: the event rate is high, so the table repaints less often to protect the browser. The buffer still updates; refresh resumes automatically.'
 			);
 		} else {
 			el.style.display = 'none';
@@ -1659,12 +1668,37 @@ return view.extend({
 		return this.filteredRowsState().rows.slice();
 	},
 
+	formatAgeShort(seconds) {
+		if (seconds < 60) return _('%ds').format(seconds);
+		if (seconds < 3600) return _('%dm').format(Math.floor(seconds / 60));
+		if (seconds < 86400) return _('%dh').format(Math.floor(seconds / 3600));
+		return _('%dd').format(Math.floor(seconds / 86400));
+	},
+
+	stalenessHint() {
+		if (
+			!this.entries.length ||
+			!this.lastSuccessfulBatchEmpty ||
+			!Number.isFinite(this.lastNonEmptyBatchAt)
+		)
+			return '';
+
+		const elapsed = Math.max(0, this.nowMs() - this.lastNonEmptyBatchAt);
+		if (elapsed < constants.EMPTY_POLL_STALE_AFTER_MS) return '';
+
+		const age = this.formatAgeShort(Math.floor(elapsed / 1000));
+		return _('Firewall log has no current entries; showing rows last received %s ago.').format(
+			age
+		);
+	},
+
 	compactCountText(filtered) {
 		const stored = this.entries.length;
 		/* Keep the stored-buffer denominator tied to the user's Limit. A weak
 		 * device's rendered-row cap is called out separately in statusSuffix(). */
 		const limit = this.rowLimit;
-		const suffix = this.statusSuffix();
+		const stale = this.stalenessHint();
+		const suffix = this.statusSuffix() + (stale ? ' — ' + stale : '');
 		/* The filter state contains both visible rows and the full match count, so
 		 * paused status can report matches beyond the display cap without rescanning. */
 		const state =
@@ -1680,6 +1714,15 @@ return view.extend({
 		return '';
 	},
 
+	/* No reply is a transport failure; a typed code means rpcd answered. */
+	pollErrorText(suffix) {
+		const code = this.lastPollErrorCode;
+		if (INSTALL_POLL_ERRORS.indexOf(code) >= 0)
+			return _('Installation is incomplete. Reinstall luci-app-fwlive.');
+		if (code) return _('The router could not read the firewall log — retrying…') + suffix;
+		return _('Connection lost — retrying…') + suffix;
+	},
+
 	updateStatus(filtered) {
 		const status = document.getElementById('fwlive-status');
 		if (!status) return;
@@ -1690,10 +1733,7 @@ return view.extend({
 
 		if (this.lastPollError) {
 			status.className = 'fwlive-status fwlive-status-error';
-			status.textContent =
-				this.lastPollErrorCode === 'timeout_missing'
-					? _('Installation is incomplete. Reinstall luci-app-fwlive.')
-					: _('Connection lost — retrying…') + suffix;
+			status.textContent = this.pollErrorText(suffix);
 			this.updateAdaptiveBanner();
 			return;
 		}
@@ -1834,6 +1874,7 @@ return view.extend({
 		this.applyRowLimit(n);
 		this.saveRowLimit();
 		this.updateHash(this.readFilters());
+		this.updateAdaptiveBanner();
 		/* Reset flood throttle so Limit changes paint even during ping -A. */
 		this.ensureRenderScheduler().resetBudget();
 		const cancelForce = this.ensureRenderScheduler().forceNextRender();
@@ -1903,8 +1944,8 @@ return view.extend({
 
 		for (let i = 0; i < entries.length; i++) {
 			const r = entries[i];
-			if (r.src && this.isLikelyIp(r.src)) ips.add(stripIpZone(r.src));
-			if (r.dst && this.isLikelyIp(r.dst)) ips.add(stripIpZone(r.dst));
+			if (r.src && this.isLikelyIp(r.src)) ips.add(hostname.stripZone(r.src));
+			if (r.dst && this.isLikelyIp(r.dst)) ips.add(hostname.stripZone(r.dst));
 		}
 
 		return Array.from(ips);
@@ -1934,12 +1975,12 @@ return view.extend({
 
 		const ips = this.collectIpsFromEntries(entries);
 		const need = [];
-		const now = Date.now();
+		const now = this.nowMs();
 		/* While the router sheds resolve load, hold the paused banner without
 		 * re-asking every poll — retry after the cooldown expires. */
 		if (this.resolveLoadShed && now < (this.resolveShedUntil || 0)) return;
 
-		for (let i = 0; i < ips.length && need.length < 32; i++) {
+		for (let i = 0; i < ips.length && need.length < constants.RESOLVE_BATCH_MAX; i++) {
 			const ip = ips[i];
 			if (hostname.lruGet(this.hostnameCache, ip) !== undefined) continue;
 			if (hostname.failIsHot(this.hostnameFailed, ip, now)) continue;
@@ -1958,7 +1999,7 @@ return view.extend({
 
 			if (this.isLoadShedReply(res)) {
 				this.resolveLoadShed = true;
-				this.resolveShedUntil = Date.now() + 60000;
+				this.resolveShedUntil = this.nowMs() + constants.RESOLVE_SHED_COOLDOWN_MS;
 				this.updateAdaptiveBanner();
 				return;
 			}
@@ -2115,7 +2156,6 @@ return view.extend({
 
 		const body = el.querySelector('tbody');
 		const scroll = document.getElementById('fwlive-scroll');
-		this.updateHash(this.readFilters());
 
 		const filtered = this.filteredRowsState();
 		const rows = filtered.rows.slice();
@@ -2184,6 +2224,7 @@ return view.extend({
 	},
 
 	onFilterInput() {
+		this.updateHash(this.readFilters());
 		this.renderRows(true);
 	},
 
@@ -2194,7 +2235,7 @@ return view.extend({
 				this.filterInputTimer = null;
 				this.onFilterInput();
 			}.bind(this),
-			100
+			constants.FILTER_INPUT_DEBOUNCE_MS
 		);
 	},
 
@@ -2281,10 +2322,7 @@ return view.extend({
 				/* fetchEntries already accounts the poll RTT for every rpc
 				 * outcome; a throw here is a local normalize/buffer bug, not
 				 * network slowness, so count nothing further. */
-				if (epoch === this.currentPollEpoch()) {
-					this.lastPollError = true;
-					this.lastPollErrorCode = null;
-				}
+				this.markLocalPollFailure(epoch);
 			}
 
 			if (epoch !== this.currentPollEpoch()) return;
@@ -2317,11 +2355,15 @@ return view.extend({
 		} catch (_e) {
 			/* Keep the coordinator promise settling so a queued refresh cannot
 			 * be stranded by an unexpected local rendering failure. */
-			if (epoch === this.currentPollEpoch()) {
-				this.lastPollError = true;
-				this.lastPollErrorCode = null;
-			}
+			this.markLocalPollFailure(epoch);
 		}
+	},
+
+	/* No error code: the status line reports it as a lost connection. */
+	markLocalPollFailure(epoch) {
+		if (epoch !== this.currentPollEpoch()) return;
+		this.lastPollError = true;
+		this.lastPollErrorCode = null;
 	},
 
 	load() {
@@ -2442,7 +2484,14 @@ return view.extend({
 						)
 					]),
 					E('li', {}, [
-						_('Display options on the bar set Limit, row tint, palette, and hostnames.')
+						_(
+							'Display options set Limit, Fetch budget, Maximum raw lines, row tint, palette, and hostnames.'
+						)
+					]),
+					E('li', {}, [
+						_(
+							'Summary mode: when the router responds slowly, a compact summary replaces the table. Use Show rows to see the table; it returns automatically after three fast polls.'
+						)
 					]),
 					E('li', {}, [
 						_(
@@ -2550,6 +2599,18 @@ return view.extend({
 						)
 					])
 				]),
+				E(
+					'details',
+					{
+						'id': 'fwlive-rules-details',
+						'class': 'fwlive-rules-details',
+						'style': 'display:none'
+					},
+					[
+						E('summary', { 'aria-label': _('Rule name details') }, [_('Details')]),
+						E('div', { 'id': 'fwlive-rules-details-body' }, [])
+					]
+				),
 				E('div', { 'id': 'fwlive-watch-strip', 'class': 'fwlive-watch-strip' }, [
 					E('div', { 'class': 'fwlive-watch-group' }, [
 						E(
@@ -2797,6 +2858,7 @@ return view.extend({
 		this.updateEmptyStateUi();
 		this.updateBackendUi();
 		this.updateTintWarnUi();
+		this.updateHash(this.readFilters());
 		this.renderRows(true);
 		const testLi = document.getElementById('fwlive-manual-test');
 		if (testLi)

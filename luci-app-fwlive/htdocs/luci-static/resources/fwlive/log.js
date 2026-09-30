@@ -593,6 +593,11 @@ return baseclass.extend({
 		return p.negate ? !hit : hit;
 	},
 
+	/* Fields matchesFilter compares by substring ("contains"); the rest match exactly. */
+	isSubstringFilterField: function (key) {
+		return key === 'q' || key === 'src' || key === 'dst';
+	},
+
 	matchesFilter: function (row, filters) {
 		if (filters.q && !this.matchesQueryField(row, filters.q)) return false;
 		if (filters.action && !this.matchesActionField(row, filters.action)) return false;

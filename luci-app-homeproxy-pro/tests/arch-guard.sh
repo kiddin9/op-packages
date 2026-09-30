@@ -2065,31 +2065,48 @@ rm -rf "$SNAP_TMP"
 trap - EXIT INT TERM
 
 echo
-echo "== guard 45: a fresh install bootstraps main-dns, an untouched config still does not =="
+echo "== guard 45: the bootstrap resolver is derived, not configured =="
 
-# E3.  With no bootstrap_dns, `main-dns` (the DoH/DoT endpoint) falls back to
-# the WAN resolver, so the ISP answers the one lookup that decides where every
-# proxied name goes.  The package default below closes that for fresh
-# installs; this guard exists so neither half drifts silently:
-#   (a) an explicitly empty list must still emit NO bootstrap-dns server, so
-#       a user who clears the field gets the old behaviour back rather than a
-#       resolver the generator invents for them;
-#   (b) the package-shipped default is what makes the fix reach a new install
-#       at all - the field is read from the 'config' section, and the file is
-#       a conffile, so this line only lands on fresh installs.
-if grep -q "if (isEmpty(ctx.bootstrap_dns))" "$SCRIPTS/generator/dns.uc"; then
-	pass "an empty bootstrap_dns still emits no bootstrap-dns server"
+# main-dns is the user's DoH/DoT endpoint and the one server in the config
+# whose address is a hostname, so it needs a domain_resolver before it can
+# answer.  It used to borrow default-dns - the WAN/ISP resolver - which makes
+# the ISP the answerer of the single query that decides where every proxied
+# name goes.  It used to be a form field for that; it is derived now, from the
+# China DNS server.  Both halves are pinned:
+#   (a) the generator must read the China DNS server, never a separate option
+#       - a second DNS address next to the China one made no sense to read;
+#   (b) a bare IP is the only usable value, because the option also accepts
+#       'wan' and a DoH/DoT URL, and a hostname cannot resolve a hostname.
+if grep -q "const addr = ctx.china_dns_server;" "$SCRIPTS/generator/dns.uc"; then
+	pass "the bootstrap address is taken from the China DNS server"
 else
-	fail "append_bootstrap_dns no longer short-circuits on an empty bootstrap_dns - a"
-	fail "user who cleared the field would get a resolver they did not ask for"
+	fail "bootstrap_addr() no longer reads ctx.china_dns_server - if it reads a"
+	fail "separate option again, main-dns may fall back to the WAN resolver"
 fi
 
-if grep -q "^	list bootstrap_dns '223.5.5.5'" "$ROOT/root/etc/config/homeproxy-pro"; then
-	pass "a fresh install ships a bootstrap_dns, so main-dns never asks the ISP"
+if grep -qE "match\(addr, /\^\[0-9\]\+" "$SCRIPTS/generator/dns.uc" &&
+   grep -qE "match\(addr, /\^\[0-9a-fA-F:\]\+" "$SCRIPTS/generator/dns.uc"; then
+	pass "only a bare IP is accepted as the bootstrap address"
 else
-	fail "the package-shipped /etc/config/homeproxy-pro no longer ships a bootstrap_dns -"
-	fail "a new install would resolve its DoH endpoint's hostname through the WAN"
-	fail "resolver, which is the last query that still leaves via the ISP"
+	fail "bootstrap_addr() no longer rejects a non-IP value - a DoH URL or the"
+	fail "literal 'wan' is a hostname, and using one to resolve a hostname is a cycle"
+fi
+
+# The option is gone from the form and from the shipped config; leaving either
+# would mean a value nothing reads, which is how the confusing second field
+# came to exist in the first place.
+if grep -q "bootstrap_dns" "$ROOT/root/etc/config/homeproxy-pro"; then
+	fail "the package-shipped /etc/config/homeproxy-pro still carries a bootstrap_dns -"
+	fail "the generator derives it now, so this option is read by nothing"
+else
+	pass "the package-shipped /etc/config/homeproxy-pro carries no bootstrap_dns"
+fi
+
+if grep -rq "bootstrap_dns" "$ROOT/htdocs/luci-static/resources/view/homeproxy-pro/"; then
+	fail "a view still renders a bootstrap_dns field - the value is derived from"
+	fail "the China DNS server, and a second DNS address only reads as a mistake"
+else
+	pass "no view offers a bootstrap_dns field any more"
 fi
 
 echo

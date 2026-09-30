@@ -160,7 +160,7 @@ SmartSafeHub 펌웨어는 OpenWrt 기본 `/etc/rc.button/reset`과 제품 전용
 
 ### 설정 백업 장치 검증
 
-SmartSafeHub는 별도의 `backup-device.json`을 만들지 않습니다. `/lib/upgrade/keep.d/smartsafehub`가 펌웨어에 이미 존재하는 `/usr/share/smartsafehub/firmware.json`을 OpenWrt 표준 설정 백업에 포함하고, 복원 시 해당 파일의 `device_code`와 현재 설치된 펌웨어의 `device_code`를 비교합니다. 다른 모델의 백업이나 장치 식별 metadata가 없는 기존 백업은 fail-closed로 거부합니다. `firmware.json`은 검증용 metadata일 뿐이므로 `sysupgrade --restore-backup` 후에는 복원 전에 보관해 둔 현재 펌웨어의 파일을 다시 기록하여 `build_id`가 과거 값으로 되돌아가지 않도록 합니다.
+SmartSafeHub는 `/usr/share/smartsafehub/firmware.json`을 OpenWrt 설정 백업에 포함하지 않습니다. 이 파일은 현재 설치된 펌웨어 이미지의 고유 정보이므로 sysupgrade에서 이전 값을 보존하면 안 됩니다. 대신 부팅 및 패키지 업데이트 시 현재 펌웨어의 `device_code`를 `/etc/config/smartsafehub`의 `firmware.device_code`에 동기화하고, 복원 시 백업의 해당 값과 현재 장치를 비교합니다. 다른 모델의 백업이나 장치 식별 정보가 없는 기존 백업은 fail-closed로 거부합니다. 복원 후에는 현재 펌웨어의 `device_code`와 `build_id`를 UCI 캐시에 다시 동기화합니다.
 
 비밀번호 복구는 `/etc/smartsafehub/password-recovery` marker로 추적합니다. helper는 root 비밀번호만 비우고 Dropbear의 기존 enable 상태를 marker에 기록한 뒤 SSH를 중지/비활성화합니다. 재부팅 후 공개 recovery bridge는 marker가 존재하고 root 비밀번호가 비어 있을 때만 `system_root_password_status`와 `system_root_password_set` 두 RPC로 제한된 15분 ubus 세션을 발급하므로 일반 로그인 화면 없이 복구 UI로 바로 진입할 수 있습니다. 새 관리자 비밀번호 설정이 완료되면 marker를 삭제하고 이전 SSH enable 상태를 복원합니다.
 
