@@ -25,7 +25,7 @@
 'use strict';
 
 import { connect } from 'ubus';
-import { mkdtemp, open, readfile, writefile } from 'fs';
+import { mkdtemp, readfile, writefile } from 'fs';
 
 import { Loader } from './config/loader.uc';
 import { generate } from './generator/client.uc';
@@ -52,22 +52,8 @@ function resolve_env(dm) {
 	const env = {
 		wan_dns: (ubus?.call('network.interface', 'status', {'interface': 'wan'}))?.['dns-server']?.[0],
 		direct_domain_list: [],
-		proxy_domain_list: [],
-		china_ip_ruleset_available: false
+		proxy_domain_list: []
 	};
-
-	/* The route block references this file as a `type: local` rule-set, and
-	 * sing-box refuses the whole configuration when it cannot open the path.
-	 * service.sh generates it before the client configuration, so it is
-	 * normally there; a fresh install whose generation failed (no ucode, a
-	 * read-only filesystem, a full disk) is what this answers.  The generator
-	 * is a pure function, so the existence check belongs on this side of the
-	 * boundary.  open() rather than readfile(): the file is a few megabytes
-	 * and only its existence matters. */
-	const china_ip_json = open(HP_DIR + '/resources/china_ip4.json');
-	env.china_ip_ruleset_available = china_ip_json != null;
-	if (china_ip_json)
-		china_ip_json.close();
 
 	if (routing_mode !== 'custom') {
 		const direct_list_raw = readfile(HP_DIR + '/resources/direct_list.txt');

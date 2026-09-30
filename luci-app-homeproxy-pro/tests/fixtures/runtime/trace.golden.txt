@@ -109,8 +109,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -303,8 +301,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -389,8 +385,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -532,8 +526,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -737,8 +729,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -837,8 +827,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -981,8 +969,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1134,8 +1120,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1220,8 +1204,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1429,8 +1411,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1496,8 +1476,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1645,8 +1623,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1829,8 +1805,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
@@ -1952,8 +1926,6 @@ nft flush chain inet fw4 homeproxy_mangle_tun
 nft delete chain inet fw4 homeproxy_mangle_tun
 nft flush chain inet fw4 homeproxy_mangle_tun_mark
 nft delete chain inet fw4 homeproxy_mangle_tun_mark
-nft flush chain inet fw4 homeproxy_ipv6_guard
-nft delete chain inet fw4 homeproxy_ipv6_guard
 nft flush set inet fw4 homeproxy_local_addr_v4
 nft delete set inet fw4 homeproxy_local_addr_v4
 nft flush set inet fw4 homeproxy_local_addr_v6
