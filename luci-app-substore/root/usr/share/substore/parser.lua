@@ -10,9 +10,15 @@ local parser_surge = require("substore.parser_surge")
 
 local M = {}
 
+-- URI 文本导入支持的 scheme。
+-- 必须覆盖 output_uri.to_share_uri 能生成的全部 scheme，否则「导出→导入」回环会
+-- 丢节点：之前 hysteria / socks 只出不进（导出为 hysteria:// / socks5://，
+-- 再导入却报 "unsupported proto"），含这两类节点的订阅文本也会被整行丢弃。
+-- socks5 与 socks 都接受，统一归一为 proto="socks"（见 node.normalize）。
 local SUPPORTED = {
 	vmess = true, vless = true, trojan = true, ss = true, ssr = true,
-	hysteria2 = true, tuic = true, wireguard = true,
+	hysteria = true, hysteria2 = true, tuic = true, wireguard = true,
+	socks = true, socks5 = true,
 }
 
 local function split_lines(content)
@@ -363,6 +369,88 @@ local function parse_hysteria2(uri, body)
 	return out
 end
 
+-- hysteria://password@host:port/?sni=..&insecure=..&obfs=..#name（v1）
+-- 与 hysteria2 的区别（均已对照上游确认）：
+--   * v1 的 obfs 是普通字符串，没有 obfs-password（obfs-password 是 hysteria2 的 salamander）
+--   * 两者在 mihomo / sing-box 里都是 TLS-only，因此同样补 security="tls"
+-- 认不出的查询参数一律忽略（不报错），保证第三方生成的链接仍能解析出 server/port/password。
+local function parse_hysteria(uri, body)
+	local name, rest = "", body
+	local hash = rest:find("#", 1, true)
+	if hash then
+		name = util.url_decode(rest:sub(hash + 1))
+		rest = rest:sub(1, hash - 1)
+	end
+	local query = {}
+	local qpos = rest:find("?", 1, true)
+	local hp = rest
+	if qpos then
+		hp = rest:sub(1, qpos - 1)
+		for k, v in rest:sub(qpos + 1):gmatch("([^&=]+)=([^&]*)") do
+			query[k] = util.url_decode(v)
+		end
+	end
+	local at = hp:find("@", 1, true)
+	if not at then return nil, "bad hysteria" end
+	local password = util.url_decode(hp:sub(1, at - 1))
+	local host, port = util.split_hostport(hp:sub(at + 1))
+	if not host or host == "" then return nil, "bad hysteria" end
+	local out = node.normalize({
+		proto = "hysteria", name = name, server = host, port = tonumber(port),
+		password = password, raw = uri,
+	})
+	if query.sni then out.sni = query.sni end
+	out.security = "tls"
+	if query.insecure ~= nil then
+		out.insecure = query.insecure
+		out["skip-cert-verify"] = not (query.insecure == "0" or query.insecure == "false")
+	end
+	if query.obfs and query.obfs ~= "" then out.obfs = query.obfs end
+	return out
+end
+
+-- socks5://user:pass@host:port#name（socks:// 同义）
+-- 认证信息可选：没有 userinfo 时是无认证 socks。统一归一为 proto="socks"。
+local function parse_socks(uri, body)
+	local name, rest = "", body
+	local hash = rest:find("#", 1, true)
+	if hash then
+		name = util.url_decode(rest:sub(hash + 1))
+		rest = rest:sub(1, hash - 1)
+	end
+	-- socks 没有标准查询参数，但第三方链接可能带 ? 尾巴，截掉以免污染 host:port
+	local qpos = rest:find("?", 1, true)
+	local hp = qpos and rest:sub(1, qpos - 1) or rest
+
+	local username, password
+	-- 取**最后**一个 @ 作为 userinfo 与 authority 的分界：未编码的 @ 只可能出现在
+	-- 密码里（userinfo 不允许裸 @），按第一个 @ 切会把 "p@ss" 这类密码切坏，
+	-- 而且失败是静默的（解析出一个错的密码）。
+	local userinfo, hostport = hp:match("^(.*)@([^@]*)$")
+	if not userinfo then
+		hostport = hp
+	else
+		userinfo = util.url_decode(userinfo)
+		local cpos = userinfo:find(":", 1, true)
+		if cpos then
+			username = userinfo:sub(1, cpos - 1)
+			password = userinfo:sub(cpos + 1)
+		else
+			username = userinfo
+		end
+		if username == "" then username = nil end
+	end
+
+	local host, port = util.split_hostport(hostport)
+	if not host or host == "" then return nil, "bad socks" end
+	local out = node.normalize({
+		proto = "socks", name = name, server = host, port = tonumber(port), raw = uri,
+	})
+	if username then out.username = username end
+	if password then out.password = password end
+	return out
+end
+
 -- tuic://uuid:password@host:port/?congestion_control=..&alpn=..&sni=..#name
 local function parse_tuic(uri, body)
 	local name, rest = "", body
@@ -617,9 +705,11 @@ function M.parse_uri(uri)
 	if proto == "vless" then return parse_vless(uri, body) end
 	if proto == "trojan" then return parse_trojan(uri, body) end
 	if proto == "vmess" then return parse_vmess(uri, body) end
+	if proto == "hysteria" then return parse_hysteria(uri, body) end
 	if proto == "hysteria2" then return parse_hysteria2(uri, body) end
 	if proto == "tuic" then return parse_tuic(uri, body) end
 	if proto == "wireguard" then return parse_wireguard(uri, body) end
+	if proto == "socks" or proto == "socks5" then return parse_socks(uri, body) end
 	return nil, "unsupported"
 end
 
@@ -730,38 +820,72 @@ local function parse_yaml_content(content)
 		raw_nodes[#raw_nodes + 1] = current_node
 	end
 
-	-- 协议映射：Clash type -> proto
-	local proto_map = {
-		vmess = "vmess",
-		vless = "vless",
-		trojan = "trojan",
-		ss = "shadowsocks",
-		ssr = "ssr",
-		http = "http",
-		socks5 = "socks5",
-	}
+	-- 协议映射：Clash type -> proto。
+	-- 复用 parser_clash_yaml 的权威表（单一事实来源），本处曾自维护一份，缺
+	-- hysteria2/hysteria/tuic/wireguard 且 socks5 未归一，后果是：
+	--   * 认不出的 type 被 `or "vmess"` 兜底成 vmess —— 一份 sing-box YAML 里的
+	--     hysteria2/tuic/wireguard 出站会变成 4 个没有 uuid 的假 vmess 节点（静默数据损坏）
+	--   * socks5 原样保留，而节点页筛选/规则 proto_filter 用的是规范名 socks，节点查不到
+	local proto_map = parser_clash_yaml.TYPE_MAP
 
 	-- 转换字段名并归一化
 	local result = {}
 	for _, n in ipairs(raw_nodes) do
-		if not n or not n.server or not n.port then
-			-- 跳过无效节点
+		local proto = proto_map[n.type or n.proto]
+		-- 上面的 in_proxies 分支同时接受 `proxies:`（Clash）与 `outbounds:`（sing-box）
+		-- 两种段名，但两者字段名并不相同：Clash 用 port / name，sing-box 用
+		-- server_port / tag。此前只读 port / name，导致 sing-box YAML 的 outbounds
+		-- 全部卡在下面的 `not port` 判断上被静默丢弃（识别了段名却一个节点都拿不到）。
+		-- 下列别名逐字对照 parser_json_config.parse_singbox_json 读取的键名，
+		-- 那是本项目读取 sing-box 出站的权威实现，不另立一套。
+		local port = n.port or n.server_port
+		if not n or not n.server or not port or not proto then
+			-- 跳过无效节点 / 未知协议。
+			-- 未知协议不能兜底成 vmess：那是凭空造出一个字段全错的节点，
+			-- 比丢弃更糟（用户看到"导入成功"，实际拿到一批不可用的假节点）。
 		else
-			local proto = proto_map[n.type or n.proto] or "vmess"
+			-- vmess 的加密方式：Clash 写 cipher，sing-box 写 security。
+			-- security 在 node.normalize 里是 TLS 层，两者语义冲突，因此仅当取值
+			-- 落在 vmess 加密方式白名单内时才当作 cipher 消费掉，否则留给 TLS 层。
+			local vmess_cipher
+			if proto == "vmess" then
+				vmess_cipher = n.cipher
+				if vmess_cipher == nil and n.security ~= nil
+					and node.VMESS_CIPHERS[n.security] then
+					vmess_cipher = n.security
+				end
+			end
+			-- 同上的字符串真值问题：只认明确的真值写法
+			local scv = n["skip-cert-verify"] or n.insecure
+			local skip_cert_verify = nil
+			if scv == true or scv == "true" or scv == "1" then skip_cert_verify = true
+			elseif scv == false or scv == "false" or scv == "0" then skip_cert_verify = false end
+			-- 注意不能用 `(cond) and nil or x` 写法：Lua 的 and/or 在 cond 为真时
+			-- 结果是 nil，会被后面的 or 继续兜底，等于没生效
+			local tls_security = n.security
+			if vmess_cipher ~= nil then tls_security = nil end
 			local node_data = {
 				proto = proto,
-				name = n.name or n.Name or (n.server .. ":" .. tostring(n.port or "")),
+				name = n.name or n.Name or n.tag or (n.server .. ":" .. tostring(port)),
 				server = n.server,
-				port = tonumber(n.port),
+				port = tonumber(port),
 				uuid = n.uuid or n.id,
-				password = n.password,
+				-- sing-box 的 hysteria/hysteria2 认证字段是 password / auth_str / auth
+				password = n.password or n.auth_str or n.auth,
 				method = n.cipher or n.method,
 				-- Clash 的 cipher 是 vmess 加密方式；tls 才是 TLS 层，
 				-- 交由 node.normalize 归一到 security
-				cipher = (proto == "vmess") and n.cipher or nil,
+				cipher = vmess_cipher,
 				tls = n.tls,
-				security = n.security,
-				sni = n.sni or n.servername,
+				-- sing-box 的 vmess.security 已被上面消费为 cipher，不再当 TLS 层
+				security = tls_security,
+				-- Clash 写 sni / servername，sing-box 的 tls 子块写 server_name
+				sni = n.sni or n.servername or n.server_name,
+				-- sing-box 的 tls.insecure 对应 skip-cert-verify。
+				-- 行解析器读出来的是字符串，而 "false" / "0" 在 Lua 里也是真值，
+				-- 直接透传会让 skip-cert-verify=false 变成「跳过证书校验」，故显式判假。
+				["skip-cert-verify"] = skip_cert_verify,
+				net = n.net or n.network,
 				alterId = tonumber(n.alterId),
 			}
 			result[#result + 1] = node.normalize(node_data)
@@ -888,6 +1012,17 @@ function M.parse(content)
 		-- 兼容标准 base64 与 base64url（- _ 无 padding）：base64_url_decode 两者皆可
 		local decoded = util.base64_url_decode(content)
 		if decoded == "" then return nil, "Base64 解码失败" end
+		-- 解出来的内容本身可能是 YAML / JSON：机场把整份 Clash 配置或 sing-box
+		-- 配置 base64 后直接下发是很常见的做法。原先一律按 URI 列表解析，这类
+		-- 订阅会得到 0 个节点且不报错（用户只看到「订阅为空」）。
+		-- 递归走一遍 detect/parse 复用既有分支；inner == "base64" 时不再递归，
+		-- 避免 base64 套 base64 时无限递归。外层容器格式仍是 base64。
+		local inner = M.detect(decoded)
+		if inner ~= "base64" and inner ~= "empty" and inner ~= "unknown" then
+			local res, err = M.parse(decoded)
+			if res then res.format = "base64" end
+			return res, err
+		end
 		return { nodes = parse_lines(split_lines(decoded)), format = "base64" }
 	elseif format == "json" then
 		local nodes, err = parse_json_content(content)

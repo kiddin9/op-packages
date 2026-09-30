@@ -354,6 +354,14 @@ echo "== resource blob digest helper (B2) =="
 # repository's real resource files against git when the host has it.
 sh "$ROOT/tests/ucode/test_resource_blob_sha.sh" "$ROOT" "$WORK/resource_blob_sha" || FAILED=1
 
+echo "== china ip rule-set generator =="
+# The route side's mainland split is decided from a local rule-set generated out
+# of china_ip4.txt - the same list the firewall renders its nft set from.  One
+# malformed entry makes sing-box reject the whole rule-set and the client
+# refuses to start, and the list is replaced unattended, so the generator's
+# validation and its atomic write are both load-bearing.
+sh "$ROOT/tests/ucode/test_china_ip_ruleset.sh" "$ROOT" "$WORK/china_ip_ruleset" || FAILED=1
+
 echo "== test doubles still match production =="
 # The mocks copy isEmpty/decodeBase64Str/parseURL/redactUrl from production and
 # their headers say to keep them in sync; nothing enforced it, and the fetcher's

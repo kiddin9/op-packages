@@ -33,31 +33,32 @@ local function supported(proto)
 end
 
 -- 构建 TLS 字段
+--
+-- enabled 必须显式写 true：sing-box 的 OutboundTLSOptions.Enabled 是
+-- `bool` + `json:"enabled,omitempty"`（option/tls.go），缺省值即 false。
+-- 上游 common/tls/client.go 里 `if !options.Enabled { return dialer, nil }`
+-- 会直接按明文拨号，hysteria2 / tuic 更会因为 `options.TLS == nil ||
+-- !options.TLS.Enabled` 返回 C.ErrTLSRequired 而拒绝启动。只输出
+-- server_name / insecure 而不带 enabled 等于没配 TLS。
 local function build_tls(n)
-	local tls
-	if n.security and n.security ~= "none" then
-		tls = {}
-		if n.sni or n.servername then tls.server_name = n.sni or n.servername end
-		if n.alpn then
-			if type(n.alpn) == "string" then
-				local list = {}
-				for p in n.alpn:gmatch("[^,]+") do list[#list + 1] = p:match("^%s*(.-)%s*$") end
-				tls.alpn = list
-			else
-				tls.alpn = n.alpn
-			end
+	if not (n.security and n.security ~= "none") then return nil end
+	local tls = { enabled = true }
+	if n.sni or n.servername then tls.server_name = n.sni or n.servername end
+	if n.alpn then
+		if type(n.alpn) == "string" then
+			local list = {}
+			for p in n.alpn:gmatch("[^,]+") do list[#list + 1] = p:match("^%s*(.-)%s*$") end
+			tls.alpn = list
+		else
+			tls.alpn = n.alpn
 		end
-		if n["skip-cert-verify"] ~= nil then
-			tls.insecure = bool(n["skip-cert-verify"])
-		elseif n.skip_cert_verify ~= nil then
-			tls.insecure = bool(n.skip_cert_verify)
-		end
-		-- 空表会被 json_encode 编码成 []，而 tls 必须是对象；
-		-- security=tls 但无 sni/alpn/insecure 时就会走到这里
-		if next(tls) == nil then return util.JSON_EMPTY_OBJECT end
-		return tls
 	end
-	return nil
+	if n["skip-cert-verify"] ~= nil then
+		tls.insecure = bool(n["skip-cert-verify"])
+	elseif n.skip_cert_verify ~= nil then
+		tls.insecure = bool(n.skip_cert_verify)
+	end
+	return tls
 end
 
 -- 构建传输（transport）字段
@@ -112,11 +113,22 @@ function M.to_outbound(n, tag)
 	elseif stype == "shadowsocks" then
 		o.method = n.method or n.cipher or "aes-256-gcm"
 		o.password = n.password or ""
-	elseif stype == "hysteria2" or stype == "hysteria" then
+	elseif stype == "hysteria2" then
 		o.password = n.password or ""
-		-- 混淆（salamander）
+		-- 混淆（salamander）：hysteria2 的 obfs 是 { type, password } 对象
 		if n.obfs and n.obfs ~= "" and n.obfs ~= "plain" then
 			o.obfs = { type = n.obfs, password = n["obfs-password"] or n.obfs_password or "" }
+		end
+	elseif stype == "hysteria" then
+		-- hysteria(v1) 与 hysteria2 在 sing-box 里的字段名并不相同（已对照上游文档确认）：
+		--   * 认证字段是 auth_str，不是 password（parser_json_config 也是按
+		--     outbound.password or outbound.auth_str or outbound.auth 回读的）
+		--   * obfs 是普通字符串，不是 { type, password } 对象
+		-- 注意：sing-box 的 hysteria 出站还要求 up/down（带宽），本项目的节点模型
+		-- 不承载该字段，需用户在自己的配置里补上（见 CHANGELOG 已知限制）。
+		o.auth_str = n.password or ""
+		if n.obfs and n.obfs ~= "" and n.obfs ~= "plain" then
+			o.obfs = n.obfs
 		end
 	elseif stype == "tuic" then
 		o.uuid = n.uuid or ""
@@ -142,7 +154,8 @@ function M.to_outbound(n, tag)
 		if n["listen-port"] then o.listen_port = tonumber(n["listen-port"]) end
 		if n.mtu then o.mtu = tonumber(n.mtu) end
 		if n.dns then o.dns = n.dns end
-	elseif stype == "socks" then
+	elseif stype == "socks" or stype == "http" then
+		-- socks 与 http 出站的认证字段相同（username / password）
 		if n.username then o.username = n.username end
 		if n.password then o.password = n.password end
 	end

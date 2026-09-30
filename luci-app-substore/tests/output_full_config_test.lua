@@ -10,6 +10,7 @@ local util = require("substore.util")
 local output = require("substore.output")
 local singbox = require("substore.output_singbox")
 local v2ray = require("substore.output_v2ray")
+local sbjson = require("substore.parser_json_config")
 
 local passed, failed = 0, 0
 
@@ -96,13 +97,44 @@ check("sb route private -> direct", sb.route.rules[1].ip_is_private == true and 
 -- action 自 1.11.0 起才存在且默认即 "route"；省略它才能同时兼容 1.10 与 1.11+
 check("sb route rule omits action (version compat)", sb.route.rules[1].action == nil)
 
--- tls 必须是对象：security=tls 但无 sni 时曾产出非法的 "tls":[]
+-- tls 必须是对象，且必须显式 enabled=true：sing-box 的 OutboundTLSOptions.Enabled
+-- 是 `bool` + `json:"enabled,omitempty"`（option/tls.go），缺省值即 false。少了
+-- enabled 整个 tls 块会被上游忽略 —— vmess/vless/trojan 退化成明文拨号，
+-- hysteria2/tuic 更会以 C.ErrTLSRequired 拒绝启动。此处原本断言 "tls":{}，
+-- 等于把这个缺陷固化进了测试。
 local tls_node = { { proto = "vmess", name = "T", server = "1.1.1.1", port = 443, uuid = "u", security = "tls" } }
 local tls_raw = singbox.generate(tls_node)
-check("sb tls is object not array", tls_raw:find('"tls":{}') ~= nil and tls_raw:find('"tls":%[%]') == nil)
-check("sb tls with sni keeps server_name",
-	singbox.generate({ { proto = "vmess", name = "T", server = "1.1.1.1", port = 443, uuid = "u",
-		security = "tls", sni = "example.com" } }):find('"server_name":"example.com"') ~= nil)
+check("sb tls is object not array", tls_raw:find('"tls":%[%]') == nil)
+local tls_out = util.json_decode(tls_raw).outbounds[1].tls
+check("sb tls enabled explicit true", type(tls_out) == "table" and tls_out.enabled == true)
+
+local tls_sni = util.json_decode(singbox.generate({ { proto = "vmess", name = "T", server = "1.1.1.1", port = 443,
+	uuid = "u", security = "tls", sni = "example.com" } })).outbounds[1].tls
+check("sb tls with sni keeps server_name", tls_sni.server_name == "example.com")
+check("sb tls with sni keeps enabled", tls_sni.enabled == true)
+
+-- 无 TLS 的节点不得凭空得到 tls 块（enabled 不能无条件写）
+local no_tls = util.json_decode(singbox.generate({ { proto = "vmess", name = "N", server = "1.1.1.1",
+	port = 443, uuid = "u" } })).outbounds[1]
+check("sb no tls block without security", no_tls.tls == nil)
+check("sb security none yields no tls",
+	util.json_decode(singbox.generate({ { proto = "vmess", name = "N", server = "1.1.1.1", port = 443,
+		uuid = "u", security = "none" } })).outbounds[1].tls == nil)
+
+-- hysteria2 / tuic 在 sing-box 里是 TLS-only，security=tls 时必须带 enabled=true
+local hy2 = util.json_decode(singbox.generate({ { proto = "hysteria2", name = "H", server = "1.1.1.1",
+	port = 443, password = "pw", security = "tls", sni = "h.example.com" } })).outbounds[1]
+check("sb hysteria2 tls enabled", hy2.tls and hy2.tls.enabled == true and hy2.tls.server_name == "h.example.com")
+local tuic = util.json_decode(singbox.generate({ { proto = "tuic", name = "U", server = "1.1.1.1",
+	port = 443, uuid = "u", password = "pw", security = "tls" } })).outbounds[1]
+check("sb tuic tls enabled", tuic.tls and tuic.tls.enabled == true)
+
+-- 往返：本模块输出的 tls.enabled 必须能被 sing-box 解析器读回为 security=tls
+local rt_sb = util.json_decode(singbox.generate({ { proto = "vmess", name = "RT", server = "1.1.1.1",
+	port = 443, uuid = "u", security = "tls", sni = "rt.example.com" } }))
+local rt_node = sbjson.parse_singbox_json(util.json_encode(rt_sb))[1]
+check("sb tls round-trip keeps security", rt_node and rt_node.security == "tls")
+check("sb tls round-trip keeps sni", rt_node and rt_node.sni == "rt.example.com")
 
 -- 节点名与保留 tag 重名时不得冲突
 local clash_name = singbox.generate({ { proto = "vmess", name = "direct", server = "1.1.1.1", port = 443, uuid = "u" } })

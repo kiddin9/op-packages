@@ -148,5 +148,29 @@ local empty_output = output_clash_meta.generate({}, {})
 check("empty nodes handled", type(empty_output) == "string")
 
 -- ---------- 结果 ----------
+-- H12：sni 与 servername 是同一字段的两种写法，同时存在时只能输出一个 servername
+-- 键。Clash YAML 导入会同时填上两者，各写一行会让 YAML 出现重复键。
+local dup_out = output_clash_meta.generate({ { proto = "vmess", name = "D", server = "1.1.1.1",
+	port = 443, uuid = "u", sni = "s.example.com", servername = "s.example.com" } })
+local dup_count = 0
+for _ in dup_out:gmatch("servername:") do dup_count = dup_count + 1 end
+check("no duplicate servername key", dup_count == 1)
+check("servername value kept", dup_out:find("servername: s%.example%.com") ~= nil)
+check("servername only still emitted",
+	output_clash_meta.generate({ { proto = "vmess", name = "S", server = "1.1.1.1", port = 443,
+		uuid = "u", servername = "only.example.com" } }):find("servername: only%.example%.com") ~= nil)
+
+-- H13：含控制字符的值必须转义并加双引号。未加引号的换行/回车会破坏文档结构，
+-- 而转义后的 "\t" 落在 plain scalar 里会被 YAML 当成两个普通字符。
+local esc_out = output_clash_meta.generate({ { proto = "vmess", name = "tab\there", server = "1.1.1.1",
+	port = 443, uuid = "u", password = "p\rw" } })
+check("tab escaped and quoted", esc_out:find('"tab\\there"') ~= nil)
+check("CR escaped and quoted", esc_out:find('"p\\rw"') ~= nil)
+check("no raw CR in output", esc_out:find("\r") == nil)
+local nl_out = output_clash_meta.generate({ { proto = "vmess", name = "a\nb", server = "1.1.1.1",
+	port = 443, uuid = "u" } })
+check("newline name quoted and escaped", nl_out:find('name: "a\\nb"') ~= nil)
+check("newline name does not add a line", nl_out:find('name: a\nb') == nil)
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

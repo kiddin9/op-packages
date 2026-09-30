@@ -2,6 +2,8 @@
 -- luci-app-substore
 -- 与 parser.parse_wireguard_conf 互为逆操作：导入解析 [Interface] / [Peer]，此处按同格式写回。
 
+local util = require("substore.util")
+
 local M = {}
 
 -- 仅 wireguard 节点可用 .conf 表达；其余协议无法落到单行/单段，直接丢弃
@@ -156,7 +158,9 @@ function M.generate(nodes, options)
 		return nil, "该 WireGuard 节点没有私钥 (private-key)，无法导出 .conf"
 	end
 
-	local lines = { "# " .. (n.name or ((n.server or "") .. ":" .. tostring(n.port or ""))) }
+	-- 注释行也必须压成单行：节点名来自订阅（不可信），含换行时会注入出真正的
+	-- 配置行（例如 "x\n[Interface]"），伪造出一段用户没写过的隧道配置
+	local lines = { "# " .. util.one_line(n.name or ((n.server or "") .. ":" .. tostring(n.port or ""))) }
 	for _, line in ipairs(build_section(n)) do lines[#lines + 1] = line end
 	return table.concat(lines, "\n") .. "\n"
 end

@@ -174,6 +174,7 @@ procd_add_jail sing-box-c log procfs
 procd_add_jail_mount var/run/homeproxy-pro/sing-box-c.json
 procd_add_jail_mount_rw var/run/homeproxy-pro/sing-box-c.log
 procd_add_jail_mount etc/homeproxy-pro/
+procd_add_jail_mount_rw etc/homeproxy-pro/cache.db
 procd_add_jail_mount etc/homeproxy-pro/certs/
 procd_add_jail_mount /etc/acme/
 procd_add_jail_mount /etc/ssl/

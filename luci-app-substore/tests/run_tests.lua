@@ -120,6 +120,30 @@ check("detect BOM prefix", parser.detect(bom_sub) == "base64")
 local bom_res = parser.parse(bom_sub)
 check("parse BOM count", bom_res and #bom_res.nodes == 1)
 
+-- H5：base64 里包着 YAML / JSON（机场把整份配置 base64 后直接下发）
+-- 原先一律按 URI 列表解析，这类订阅会得到 0 个节点且不报错
+local b64_yaml = parser.parse(util.base64_encode([[
+proxies:
+  - name: BY
+    type: vmess
+    server: 6.6.6.6
+    port: 443
+    uuid: u
+]]))
+check("base64 yaml node count", b64_yaml and #b64_yaml.nodes == 1)
+check("base64 yaml node server", b64_yaml and b64_yaml.nodes[1] and b64_yaml.nodes[1].server == "6.6.6.6")
+check("base64 yaml keeps outer format", b64_yaml and b64_yaml.format == "base64")
+
+local b64_json = parser.parse(util.base64_encode(
+	'{"outbounds":[{"type":"vmess","tag":"BJ","server":"7.7.7.7","server_port":443,"uuid":"u"}]}'))
+check("base64 json node count", b64_json and #b64_json.nodes == 1)
+check("base64 json node server", b64_json and b64_json.nodes[1] and b64_json.nodes[1].server == "7.7.7.7")
+check("base64 json keeps outer format", b64_json and b64_json.format == "base64")
+
+-- base64 套 base64：不得无限递归
+local nested = parser.parse(util.base64_encode(util.base64_encode(plain)))
+check("nested base64 does not hang", nested ~= nil)
+
 -- ---------- 结果 ----------
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

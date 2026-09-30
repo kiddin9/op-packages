@@ -49,6 +49,19 @@ run_case() {
 	: > "$dir/resources/direct_list.txt"
 	: > "$dir/resources/proxy_list.txt"
 
+	# The client config now carries a `type: local` rule-set generated from
+	# china_ip4.txt (the same list the firewall renders its nft set from, so
+	# both sides decide mainland-China from one source).  sing-box opens that
+	# path during `check`, so the staged tree has to have it; on a router
+	# hp_prepare_runtime_files generates it before the config is used.
+	if ! ucode -S "$ROOT/root/etc/homeproxy-pro/scripts/runtime/china_ip_ruleset.uc" \
+		"$ROOT/root/etc/homeproxy-pro/resources/china_ip4.txt" "$dir/resources/china_ip4.json" \
+		>>"$dir/resources/china_ip4.log" 2>&1; then
+		# Most fixtures do not exercise the route side; an empty rule-set
+		# keeps `sing-box check` happy without inventing data.
+		printf '{"version":3,"rules":[{"ip_cidr":["192.0.2.0/24"]}]}\n' > "$dir/resources/china_ip4.json"
+	fi
+
 	if grep -q "__RULESET_DIR__" "$fixture"; then
 		# The fixture needs a real local rule-set on disk. The path must
 		# live under /tmp/homeproxy_* (validateHomeProxyPath() in
@@ -274,6 +287,34 @@ if grep -q '"detour": "direct-out"' "$WORK/client/run/sing-box-c.json"; then
 fi
 if ! grep -q '"detour": "main-out"' "$WORK/client/run/sing-box-c.json"; then
 	echo "FAIL: client: no remote rule-set is configured to download through main-out"
+	FAILED=1
+fi
+
+# The mainland split must be decided from the same list the firewall renders
+# its nft set from.  geoip-cn.srs (upstream) and china_ip4.txt (ours) disagree
+# on real ranges - the bundled list carries 8.152.0.0/13, geoip-cn.srs does
+# not - so a destination in that range passes the firewall as "not mainland"
+# and must still be sent direct by the route rule.  The local rule-set is
+# generated from china_ip4.txt by runtime/china_ip_ruleset.uc and watched with
+# fswatch, so a resource update needs no restart.
+if ! grep -q '"path": "'"$WORK"'/client/resources/china_ip4.json"' "$WORK/client/run/sing-box-c.json"; then
+	echo "FAIL: client: the mainland route rule does not read the generated china_ip4 rule-set"
+	FAILED=1
+fi
+if ! grep -q '"tag": "china-ip"' "$WORK/client/run/sing-box-c.json"; then
+	echo "FAIL: client: the local china-ip rule-set is missing from the generated config"
+	FAILED=1
+fi
+# ... and it has to be a rule the route layer actually consults, not a
+# declaration sing-box loads and never matches.
+if ! grep -A2 '"rule_set": "china-ip"' "$WORK/client/run/sing-box-c.json" | grep -q '"outbound": "direct-out"'; then
+	echo "FAIL: client: no route rule sends the china-ip rule-set to direct-out"
+	FAILED=1
+fi
+# The generated file itself must hold the list, or the node would run with a
+# split that matches nothing.
+if ! grep -q '8\.152\.0\.0/13' "$WORK/client/resources/china_ip4.json"; then
+	echo "FAIL: client: the generated china_ip4 rule-set does not carry the bundled list"
 	FAILED=1
 fi
 

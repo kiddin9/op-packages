@@ -5,7 +5,10 @@
  * 提供：SUBSTORE_PROTOS / PROTO_FIELDS / renderFields / collectNodes / addNodeRow
  */
 
-var SUBSTORE_PROTOS = ["vmess","vless","trojan","shadowsocks","ssr","hysteria2","tuic","wireguard"];
+// 必须与 substore/node.lua 的 M.PROTOS 一致（规格 §25「本地表单协议能力」的协议集合）。
+// 之前这里少了 hysteria / socks：node.lua、节点页筛选、规则 proto_filter 都认这两个协议，
+// 唯独表单下拉框选不到，用户无法用「表单导入」录入它们。
+var SUBSTORE_PROTOS = ["vmess","vless","trojan","shadowsocks","ssr","hysteria2","tuic","hysteria","wireguard","socks"];
 
 var PROTO_FIELDS = {
 	ssr: ["server","port","password","cipher","protocol","obfs","obfs-param","protocol-param","udp"],
@@ -14,8 +17,12 @@ var PROTO_FIELDS = {
 	trojan: ["server","port","password","sni","net","headerType","path","host","udp","skip-cert-verify"],
 	shadowsocks: ["server","port","password","method","headerType","udp"],
 	hysteria2: ["server","port","password","sni","obfs","obfs-password","skip-cert-verify"],
+	// hysteria(v1)：obfs 是普通字符串（不是 hysteria2 的 salamander），因此没有 obfs-password。
+	// 字段集合以各输出模块实际消费的键为准（output_clash_meta / output_singbox / output_uri）。
+	hysteria: ["server","port","password","sni","obfs","skip-cert-verify"],
 	tuic: ["server","port","uuid","password","sni","udp","skip-cert-verify"],
-	wireguard: ["server","port","private-key","public-key","pre-shared-key","ip","ipv6","allowed-ips","reserved","persistent-keepalive","listen-port","mtu","amnezia-wg-option"]
+	wireguard: ["server","port","private-key","public-key","pre-shared-key","ip","ipv6","allowed-ips","reserved","persistent-keepalive","listen-port","mtu","amnezia-wg-option"],
+	socks: ["server","port","username","password","udp"]
 };
 
 // 枚举字段用下拉框；键为 "协议.字段" 优先，退化为通用 "字段"

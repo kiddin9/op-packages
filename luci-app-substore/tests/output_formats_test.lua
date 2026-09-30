@@ -4,6 +4,7 @@
 package.path = "./root/usr/share/?.lua;" .. package.path
 
 local output = require("substore.output")
+local fmts = require("substore.output_formats")
 local util = require("substore.util")
 
 local passed, failed = 0, 0
@@ -99,6 +100,53 @@ check("unknown format has err", err ~= nil)
 
 -- 空节点
 check("empty nodes ok", type(output.generate({}, "surge")) == "string")
+
+-- H14：tuic 的 alpn 可能是数组（sing-box JSON / Clash YAML 的 alpn 列表导入后即为
+-- table），直接 "alpn=" .. n.alpn 会 attempt to concatenate a table value，
+-- 让整次导出直接报错。
+local ok_alpn, line_alpn = pcall(fmts.surge_line, { proto = "tuic", name = "T", server = "1.2.3.4",
+	port = 443, uuid = "u", password = "p", security = "tls", sni = "s.example.com",
+	alpn = { "h3", "h2" } })
+check("tuic alpn array does not raise", ok_alpn)
+check("tuic alpn array joined", ok_alpn and line_alpn:find("alpn=h3,h2", 1, true) ~= nil)
+check("tuic alpn string still works",
+	fmts.surge_line({ proto = "tuic", name = "T", server = "1.2.3.4", port = 443, uuid = "u",
+		alpn = "h3" }):find("alpn=h3", 1, true) ~= nil)
+
+-- H7：节点名 / 参数值来自订阅内容（不可信输入），含换行会截断当前行并伪造出
+-- 一条新的代理行。
+local nl_line = fmts.surge_line({ proto = "trojan", name = "A\nB = trojan, 6.6.6.6, 443, password=x",
+	server = "1.1.1.1", port = 443, password = "p", security = "tls" })
+check("surge line has no newline", nl_line:find("\n") == nil)
+check("surge line has no CR", nl_line:find("\r") == nil)
+check("surge line keeps name prefix", nl_line:sub(1, 1) == "A")
+
+local function count_lines(s)
+	local c = 0
+	for _ in s:gmatch("\n") do c = c + 1 end
+	return c
+end
+
+-- 代理组行同样不能被节点名注入：压平后的名字不得让输出多出一行，
+-- 也不得产生一条以注入内容开头的新行
+local grp = fmts.to_surge({ { proto = "trojan", name = "G\nINJECT = trojan, 9.9.9.9, 443, password=q",
+	server = "1.1.1.1", port = 443, password = "p", security = "tls" } })
+local grp_ok = fmts.to_surge({ { proto = "trojan", name = "GINJECT = trojan, 9.9.9.9, 443, password=q",
+	server = "1.1.1.1", port = 443, password = "p", security = "tls" } })
+check("surge group newline name adds no line", count_lines(grp) == count_lines(grp_ok))
+local starts_inject = false
+for l in grp:gmatch("[^\n]+") do
+	if l:sub(1, 6) == "INJECT" then starts_inject = true end
+end
+check("surge group line not injected", starts_inject == false)
+
+-- Quantumult X：节点名含换行不得让输出多出一行
+local qx_nl = fmts.to_qx({ { proto = "trojan", name = "X\nY", server = "1.1.1.1", port = 443,
+	password = "p" } })
+local qx_ok = fmts.to_qx({ { proto = "trojan", name = "XY", server = "1.1.1.1", port = 443,
+	password = "p" } })
+check("qx newline name does not add lines", count_lines(qx_nl) == count_lines(qx_ok))
+check("qx newline name flattened", qx_nl:find("X Y", 1, true) ~= nil)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

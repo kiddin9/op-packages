@@ -37,6 +37,11 @@ end
 function M.normalize(node)
 	if type(node) ~= "table" then return node end
 	if node.proto == "ss" then node.proto = "shadowsocks" end
+	-- socks5 与 socks 是同一个协议，只是各客户端写法不同（Clash 写 socks5、
+	-- sing-box 写 socks、分享链接写 socks5://）。统一成 socks：
+	-- 各输出模块本来就同时认这两种写法，但 node.filter / rules.proto_filter
+	-- 是精确比较，两种写法会互相看不见——节点页按协议筛选和规则过滤都会漏。
+	if node.proto == "socks5" then node.proto = "socks" end
 	local d = DEFAULTS[node.proto] or {}
 	for k, v in pairs(d) do
 		if node[k] == nil then node[k] = v end

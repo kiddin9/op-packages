@@ -7,7 +7,10 @@ local node = require("substore.node")
 
 local M = {}
 
--- Clash type → 统一 proto
+-- Clash type → 统一 proto。
+-- 这是**权威映射表**：parser_json_config 与 parser.lua 的简易 YAML 兜底解析都复用同一份，
+-- 避免各自维护一份而漂移（曾出现兜底那份缺 hysteria2/hysteria/tuic/wireguard，
+-- 且把 socks5 原样留下，导致这些节点被误当成 vmess 或被筛选器静默丢弃）。
 local TYPE_MAP = {
 	vmess = "vmess",
 	vless = "vless",
@@ -23,6 +26,9 @@ local TYPE_MAP = {
 	ssr = "ssr",
 	http = "http",
 }
+
+-- 导出供 parser.lua 的简易 YAML 兜底解析复用（单一事实来源）
+M.TYPE_MAP = TYPE_MAP
 
 -- 标量值转换：布尔 / 数字 / 去引号 / 保留字符串
 local function scalar(raw)
@@ -45,6 +51,74 @@ local function scalar(raw)
 	local n = tonumber(raw)
 	if n then return n end
 	return raw
+end
+
+-- 去掉行尾注释。YAML 规定内联注释的 # 前必须有空白，引号内的 # 不算注释。
+-- 不处理的话 `proxies: # 说明` 会把注释文本当成值，proxies 变成字符串，
+-- 整份配置被判定为「没有 proxies」→ 0 个节点且不报错。
+local function strip_comment(v)
+	local in_s, in_d = false, false
+	for i = 1, #v do
+		local c = v:sub(i, i)
+		if in_s then
+			if c == "'" then in_s = false end
+		elseif in_d then
+			if c == '"' then in_d = false end
+		elseif c == "'" then in_s = true
+		elseif c == '"' then in_d = true
+		elseif c == "#" and (i == 1 or v:sub(i - 1, i - 1):match("%s")) then
+			return (v:sub(1, i - 1):gsub("%s*$", ""))
+		end
+	end
+	return v
+end
+
+-- 按顶层分隔符切分，忽略引号内以及 {} / [] 内部的同级分隔符
+local function split_top(s, sep)
+	local parts, buf = {}, {}
+	local depth, in_s, in_d = 0, false, false
+	for i = 1, #s do
+		local c = s:sub(i, i)
+		if in_s then
+			if c == "'" then in_s = false end
+			buf[#buf + 1] = c
+		elseif in_d then
+			if c == '"' then in_d = false end
+			buf[#buf + 1] = c
+		elseif c == "'" then
+			in_s = true; buf[#buf + 1] = c
+		elseif c == '"' then
+			in_d = true; buf[#buf + 1] = c
+		elseif c == "{" or c == "[" then
+			depth = depth + 1; buf[#buf + 1] = c
+		elseif c == "}" or c == "]" then
+			depth = depth - 1; buf[#buf + 1] = c
+		elseif c == sep and depth == 0 then
+			parts[#parts + 1] = table.concat(buf); buf = {}
+		else
+			buf[#buf + 1] = c
+		end
+	end
+	parts[#parts + 1] = table.concat(buf)
+	return parts
+end
+
+-- 解析 YAML 流式映射 {...}。Clash 机场配置常用
+-- `- {name: A, type: vmess, server: 1.1.1.1, port: 443}` 这种写法：它是合法 YAML，
+-- 但不是合法 JSON（键没有加引号），util.json_decode 必然失败，节点被整条静默
+-- 丢弃（0 个节点且无报错）。
+local function parse_flow_map(s)
+	local body = s:match("^%s*{(.*)}%s*$")
+	if not body then return nil end
+	local map = {}
+	for _, part in ipairs(split_top(body, ",")) do
+		local k, v = part:match("^%s*([^:]+):%s*(.*)$")
+		if k then
+			map[k:gsub("%s*$", "")] = scalar(strip_comment(v))
+		end
+	end
+	if next(map) == nil then return nil end
+	return map
 end
 
 -- 预处理内容为 (indent, rest) 列表，跳过空行、注释、文档分隔符
@@ -79,6 +153,9 @@ local function parse_yaml(content)
 				pos = pos + 1
 			else
 				k = k:gsub("%s*$", "")
+				-- 行尾注释必须先去掉，否则 `proxies: # 说明` 会把注释文本当成值，
+				-- proxies 变成字符串，整份配置被判定为「没有 proxies」
+				v = strip_comment(v)
 				pos = pos + 1
 				if v == "" or v == "|" or v == ">" then
 					if pos <= n_items and items[pos].ind > it.ind then
@@ -108,12 +185,17 @@ local function parse_yaml(content)
 			if it.rest == "-" then dash = "" else dash = it.rest:match("^-%s*(.*)$") end
 			if dash == nil then break end
 			pos = pos + 1
+			-- 列表项也要去掉行尾注释：`- {a: 1} # 说明`、`- "::/0" # 说明`
+			-- 都会让注释文本混进值里（流式映射那条甚至会整项解析失败）
+			dash = strip_comment(dash)
 
 			local m = nil
 			-- 流式 JSON 对象：- {"name":"...","type":"vmess",...}（机场 clash 配置常见写法）
 			if dash:sub(1, 1) == "{" then
+				-- 先按 JSON 解（键带引号的流式写法），失败再按 YAML 流式映射解
 				local obj = util.json_decode(dash)
 				if type(obj) == "table" then m = obj end
+				if not m then m = parse_flow_map(dash) end
 			else
 				local k, v = dash:match("^([^:]+):%s*(.*)$")
 				-- 引号开头的列表项是标量而非映射：避免把 "- \"::/0\"" 里的冒号
@@ -152,7 +234,15 @@ local function map_clash_node(p)
 	if type(p) ~= "table" then return nil end
 	if not p.name or not p.server or not p.port then return nil end
 
-	local proto = TYPE_MAP[p.type] or p.type or "vmess"
+	-- 未知协议必须丢弃，不能原样透传、也不能兜底成 vmess：
+	--   * 原样透传：统一模型承载不了 snell / shadowtls / mieru / ssh 等类型（认证
+	--     方式与字段都不同），透传出去会在输出端变成 sing-box 的 type: "snell"、
+	--     Xray 的 protocol: "snell" 这类非法取值，客户端会拒绝加载整份配置。
+	--   * 兜底成 vmess：那是凭空造出一个字段全错的节点，比丢弃更糟（用户看到
+	--     "导入成功"，实际拿到一批不可用的假节点）。
+	-- parser.lua 的简易 YAML 兜底解析（复用同一张 TYPE_MAP）早已按此处理，此处对齐。
+	local proto = TYPE_MAP[p.type]
+	if not proto then return nil end
 	local n = {
 		proto = proto,
 		name = p.name,

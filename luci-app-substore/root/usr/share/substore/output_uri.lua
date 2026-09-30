@@ -84,11 +84,15 @@ function M.to_share_uri(n)
 		local q = {}
 		if n.sni then q[#q + 1] = "sni=" .. url_encode(n.sni) end
 		if n.insecure ~= nil then q[#q + 1] = "insecure=" .. tostring(n.insecure) end
-		-- 混淆（salamander）：hy2 URI 标准参数 obfs / obfs-password
+		-- 混淆：hysteria2 是 salamander，URI 参数为 obfs / obfs-password；
+		-- hysteria(v1) 的 obfs 只是普通字符串，**没有** obfs-password
+		-- （写到 v1 链接上是非法参数，且会误导下游客户端）
 		if n.obfs and n.obfs ~= "" and n.obfs ~= "plain" then
 			q[#q + 1] = "obfs=" .. url_encode(n.obfs)
-			local opw = n["obfs-password"] or n.obfs_password
-			if opw and opw ~= "" then q[#q + 1] = "obfs-password=" .. url_encode(opw) end
+			if proto == "hysteria2" then
+				local opw = n["obfs-password"] or n.obfs_password
+				if opw and opw ~= "" then q[#q + 1] = "obfs-password=" .. url_encode(opw) end
+			end
 		end
 		local suffix = #q > 0 and ("?" .. table.concat(q, "&")) or ""
 		return (proto == "hysteria2" and "hysteria2://" or "hysteria://")

@@ -36,18 +36,22 @@ NF_LOG_IPV6_READY=false
 # firewall.<zone>.log bit, computes a target, then uci set + uci commit. Two
 # concurrent callers could otherwise interleave and last-commit-wins.
 #
-# BusyBox flock constraint: it has NO -w timeout. The lock is opened with
-# `exec 9>>` + `flock 9`. In ash/dash, `>>` clears close-on-exec, so a live
-# child keeps fd 9 after this holder dies. A stuck lock therefore blocks any
-# waiter until the last fd-9 inheritor exits or the device reboots (killing
-# the holder alone may not release it). The critical section MUST stay SHORT
-# (a few uci commands). Do NOT hold the lock across the /etc/init.d/firewall
-# reload (can take seconds); the lock is released before reload.
-# Reload-failure rollback re-acquires the lock so the read-compare-restore
-# is atomic against concurrent writers; do not drop that re-acquire.
-# Overridable for tests/containers (default is root-only /etc/fwlive).
+# BusyBox flock has no -w timeout, so acquire with `flock -n 9` and poll for
+# WAN_LOG_LOCK_WAIT_SEC one-second retry intervals. In ash/dash, `>>` clears
+# close-on-exec, so a live child can keep fd 9 after this holder dies; callers
+# fail closed when that stale lock outlives the wait budget. The critical
+# section MUST stay SHORT (a few uci commands). Do NOT hold the lock across
+# the /etc/init.d/firewall reload (can take seconds); the lock is released
+# before reload. Reload-failure rollback re-acquires the lock and checks the
+# volatile commit generation so an intervening off->on write is not mistaken
+# for an unchanged value; do not drop that re-acquire or generation check.
+# The lock path can be overridden for tests/containers (default is root-only
+# /etc/fwlive); generation tests use the analogous FWLIVE_WAN_LOG_GENERATION_FILE.
 WAN_LOG_LOCK_FILE="${FWLIVE_WAN_LOG_LOCK_FILE:-/etc/fwlive/logging.lock}"
 WAN_LOG_BASELINE_FILE="${FWLIVE_WAN_LOG_BASELINE_FILE:-/etc/fwlive/wan-log-baseline}"
+WAN_LOG_GENERATION_FILE="${FWLIVE_WAN_LOG_GENERATION_FILE:-/var/run/fwlive/wan-log-generation}"
+WAN_LOG_LOCK_WAIT_SEC=5
+WAN_LOG_COMMIT_GENERATION='unavailable'
 WAN_ZONE_DIAGNOSTIC_JSON=''
 WAN_ZONE_FOUND=''
 
@@ -155,8 +159,9 @@ wan_log_lock_dir_safe() {
 	[ -z "$_writable" ]
 }
 
-# Acquire the exclusive logging lock on fd 9. Blocks until free; fails closed
-# (return 1) only if the lock file cannot be opened or flock is unavailable.
+# Acquire the exclusive logging lock on fd 9. Polls non-blocking flock for a
+# bounded retry budget; fails closed if the lock file cannot be opened, flock is
+# unavailable, or the lock stays busy for WAN_LOG_LOCK_WAIT_SEC intervals.
 # Create/tighten the lock to 0600 so unprivileged UIDs cannot take LOCK_EX on
 # a world-readable fd (flock(2) allows exclusive locks on O_RDONLY).
 acquire_wan_log_lock() {
@@ -182,16 +187,91 @@ acquire_wan_log_lock() {
 	# silence this process's stderr on the success path.
 	( exec 9>>"$WAN_LOG_LOCK_FILE" ) 2>/dev/null || return 1
 	exec 9>>"$WAN_LOG_LOCK_FILE"
-	flock 9 2>/dev/null || {
-		exec 9>&-
-		return 1
-	}
+	_waited=0
+	while :; do
+		if flock -n 9 2>/dev/null; then
+			return 0
+		else
+			_flock_rc=$?
+		fi
+		# BusyBox and util-linux both use status 1 for lock contention. Other
+		# failures (including a missing flock command) are setup errors.
+		if [ "$_flock_rc" -ne 1 ]; then
+			exec 9>&-
+			return 1
+		fi
+		[ "$_waited" -ge "$WAN_LOG_LOCK_WAIT_SEC" ] && break
+		sleep 1
+		_waited=$((_waited + 1))
+	done
+	exec 9>&-
+	return 1
 }
 
 # Release the logging lock (explicit unlock, then close fd 9).
 release_wan_log_lock() {
 	flock -u 9 2>/dev/null || true
 	exec 9>&-
+}
+
+# WAN_LOG_GENERATION_FILE is under a root-only volatile directory. Each
+# fwlive writer increments it while holding fd 9, before staging/committing
+# the UCI update. Atomic replacement keeps a killed writer from leaving a
+# truncated token; a token write that succeeds but is followed by a failed
+# commit is conservative (it can only suppress a later rollback).
+wan_log_generation_read() {
+	_generation_dir="$(dirname "$WAN_LOG_GENERATION_FILE")"
+	[ -L "$_generation_dir" ] && return 1
+	wan_log_lock_dir_safe "$_generation_dir" || return 1
+	[ -L "$WAN_LOG_GENERATION_FILE" ] && return 1
+	if [ ! -e "$WAN_LOG_GENERATION_FILE" ]; then
+		printf '0'
+		return 0
+	fi
+	[ -f "$WAN_LOG_GENERATION_FILE" ] || return 1
+	_generation_value=$(cat "$WAN_LOG_GENERATION_FILE" 2>/dev/null) || return 1
+	case "$_generation_value" in
+		''|*[!0-9]*|0[0-9]*) return 1 ;;
+	esac
+	printf '%s' "$_generation_value"
+}
+
+wan_log_generation_bump() {
+	_generation_dir="$(dirname "$WAN_LOG_GENERATION_FILE")"
+	[ -L "$_generation_dir" ] && return 1
+	( umask 077; mkdir -p "$_generation_dir" ) 2>/dev/null || return 1
+	[ -L "$_generation_dir" ] && return 1
+	wan_log_lock_dir_safe "$_generation_dir" || return 1
+	[ -L "$WAN_LOG_GENERATION_FILE" ] && return 1
+	_generation_value=$(wan_log_generation_read) || return 1
+	# Keep below signed 32-bit ash arithmetic bounds. Exhaustion fails closed;
+	# it must never wrap and let an old rollback token compare equal again.
+	[ "$_generation_value" -lt 2147483646 ] || return 1
+	_generation_next=$((_generation_value + 1))
+	_generation_tmp=$(mktemp "${WAN_LOG_GENERATION_FILE}.XXXXXX") || return 1
+	if ! printf '%s\n' "$_generation_next" >"$_generation_tmp"; then
+		rm -f "$_generation_tmp"
+		return 1
+	fi
+	chmod 0600 "$_generation_tmp" 2>/dev/null || {
+		rm -f "$_generation_tmp"
+		return 1
+	}
+	[ -L "$WAN_LOG_GENERATION_FILE" ] && {
+		rm -f "$_generation_tmp"
+		return 1
+	}
+	mv -f "$_generation_tmp" "$WAN_LOG_GENERATION_FILE" 2>/dev/null || {
+		rm -f "$_generation_tmp"
+		return 1
+	}
+	printf '%s' "$_generation_next"
+}
+
+wan_log_tracking_failed_json() {
+	_zone_json="$1"
+	logger -t fwlive "WAN log toggle aborted: commit generation unavailable" 2>/dev/null || true
+	printf '{"ok":false,"changed":false,"wan_zone":%s,"error":"rollback_tracking_failed"}' "$_zone_json"
 }
 
 find_wan_zone_section_state() {
@@ -765,6 +845,12 @@ restore_wan_zone_log() {
 		logger -t fwlive "WAN log rollback skipped: firewall changes pending" 2>/dev/null || true
 		return 1
 	fi
+	# Record this write before touching UCI. If generation tracking is
+	# unavailable, do not commit an untracked rollback over another caller.
+	wan_log_generation_bump >/dev/null || {
+		logger -t fwlive "WAN log rollback skipped: commit generation unavailable" 2>/dev/null || true
+		return 1
+	}
 	# Capture the committed value before staging our rollback. If another
 	# writer stages a firewall delta after this point, the post-stage guard
 	# below must be able to undo only our rollback staging without reverting
@@ -848,6 +934,7 @@ commit_wan_log_change() {
 	zone="$1"
 	zone_json="$2"
 	target="$3"
+	WAN_LOG_COMMIT_GENERATION='unavailable'
 
 	# Last-moment guard: runs before OUR delta is staged, so a
 	# non-empty changes list here can only be a foreign writer's race.
@@ -856,6 +943,16 @@ commit_wan_log_change() {
 		printf '{"ok":false,"changed":false,"wan_zone":%s,"error":"firewall_changes_pending"}' "$zone_json"
 		return 1
 	fi
+
+	# Advance the shared volatile revision before the UCI write. A later
+	# reload-failure rollback may restore only if this exact revision is still
+	# current. Failing closed here avoids a commit that other in-flight callers
+	# cannot detect. A failed UCI operation can leave a harmless revision gap.
+	_generation=$(wan_log_generation_bump) || {
+		wan_log_tracking_failed_json "$zone_json"
+		return 1
+	}
+	WAN_LOG_COMMIT_GENERATION="$_generation"
 
 	# Staging is empty here — capture the committed value so a post-stage
 	# foreign race can undo our delta without `uci revert firewall`.
@@ -946,21 +1043,21 @@ report_wan_log_after_commit() {
 		return 0
 	fi
 	shift 2
-	reload_and_report_wan_log "$@"
+	reload_and_report_wan_log "$@" "$WAN_LOG_COMMIT_GENERATION"
 }
 
 # Firewall reload + best-effort UCI rollback on reload failure. The reload
 # itself runs WITHOUT the logging lock (it can take seconds and a held lock
-# would block a concurrent toggle until the holder exits — BusyBox flock has
-# no -w timeout).
+# makes concurrent toggles poll across WAN_LOG_LOCK_WAIT_SEC one-second
+# intervals, plus command and scheduling overhead).
 #
-# The ROLLBACK re-acquires the lock: read->compare->restore is only
-# atomic when no other writer can commit between the read and the restore.
-# All writers hold the same flock, so re-acquiring it makes the
-# decision-and-restore a serialized unit. The lock is held only for the few
-# uci commands of the restore (short critical section), never across the
-# reload. If the lock cannot be re-acquired, skip the rollback (report the
-# reload failure; the next toggle self-corrects).
+# The ROLLBACK re-acquires the lock and checks the generation captured at
+# commit time. Value equality alone misses an off->on ABA while reload runs.
+# All fwlive writers advance the same generation under the lock before UCI
+# changes, so rollback proceeds only when no later writer has intervened.
+# The lock is held only for the few uci commands of the restore (short
+# critical section), never across the reload. If reacquisition or generation
+# verification fails, skip rollback and report the reload failure.
 reload_and_report_wan_log() {
 	zone="$1"
 	previous="$2"
@@ -968,26 +1065,29 @@ reload_and_report_wan_log() {
 	fail_msg="$4"
 	success_msg="$5"
 	zone_json="$6"
+	committed_generation="$7"
 
 	if ! reload_firewall; then
 		# Re-acquire the logging lock so the rollback decision is atomic
-		# against concurrent toggles (no check-then-restore race).
+		# against concurrent toggles and check for an intervening ABA.
 		if acquire_wan_log_lock; then
+			current_generation=$(wan_log_generation_read 2>/dev/null || true)
 			now="$(wan_zone_log_value "$zone")"
-			if [ "$now" = "$committed" ]; then
-				# Current value is still what THIS caller committed — restore
-				# the pre-commit value. (If a concurrent toggle committed the
-				# same value, the toggle is idempotent: the state intent is
-				# identical, so restoring previous is the correct rollback.)
+			if [ -n "$committed_generation" ] \
+				&& [ "$committed_generation" != unavailable ] \
+				&& [ "$current_generation" = "$committed_generation" ] \
+				&& [ "$now" = "$committed" ]; then
+				# No later fwlive commit attempt advanced the generation, and
+				# UCI still carries this caller's committed value.
 				if restore_wan_zone_log "$zone" "$previous"; then
 					logger -t fwlive "$fail_msg" 2>/dev/null || true
 				else
 					logger -t fwlive "Firewall reload failed; WAN log rollback skipped (pending changes or restore failed)" 2>/dev/null || true
 				fi
 			else
-				# A concurrent toggle changed the value after our commit; do
-				# not clobber it. Log the divergence and leave the newer value.
-				logger -t fwlive "Firewall reload failed; WAN log changed concurrently — rollback skipped" 2>/dev/null || true
+				# A later writer may have left the same value (ABA), or the
+				# revision may be unavailable. Do not clobber that intent.
+				logger -t fwlive "Firewall reload failed; WAN log changed concurrently or revision unavailable — rollback skipped" 2>/dev/null || true
 			fi
 			release_wan_log_lock
 		else
@@ -1045,6 +1145,11 @@ enable_wan_logging() {
 		# uninstall restore logging after disable. Skip-if-exists in
 		# the helper. Failure must not become baseline_snapshot_failed.
 		maybe_snapshot_wan_log_baseline "$zone" "" || true
+		if ! wan_log_generation_bump >/dev/null; then
+			release_wan_log_lock
+			wan_log_tracking_failed_json "$zone_json"
+			return 0
+		fi
 		release_wan_log_lock
 		printf '{"ok":true,"changed":false,"wan_zone":%s}' "$zone_json"
 		return 0
@@ -1098,6 +1203,11 @@ disable_wan_logging() {
 
 	current=$(wan_zone_log_value "$zone")
 	if [ -z "$current" ] || ! wan_filter_log_enabled "$current"; then
+		if ! wan_log_generation_bump >/dev/null; then
+			release_wan_log_lock
+			wan_log_tracking_failed_json "$zone_json"
+			return 0
+		fi
 		release_wan_log_lock
 		printf '{"ok":true,"changed":false,"wan_zone":%s}' "$zone_json"
 		return 0

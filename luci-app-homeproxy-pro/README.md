@@ -74,6 +74,38 @@
 
 **一句话总结**：pro 的核心价值是**把"单文件能跑"变成"orchestrator + table-driven adapter + 可独立测试的模块"**，并把约束、质量、回滚三件事从靠人盯变成靠代码执行（arch-guard 135 checks 静态锁住跨文件不变量）。
 
+## 排障要点
+
+两条会把人带偏的坑，都是实测踩出来的，写在这里省得下一个人重走一遍。
+
+**1. 客户端的 `sing-box-c.log` 里会出现"不是本机做出的决定"**
+
+代理节点侧的失败会用同样的措辞落进客户端日志。例如目的 IP 的 443 没有服务：
+
+```
+ERROR connection: open connection to 1.2.3.4:443 using outbound/direct[direct]:
+      dial tcp 1.2.3.4:443: connect: connection refused
+```
+
+这行**不代表**本机把该流量送去了直连——它可能是远端节点直连目标失败后的回传。曾据此误判"分流规则失效"，实际是节点侧错误被记进了客户端日志。
+
+判定真实走向要看**转发层**，不要看日志措辞：
+
+```sh
+# 被重定向到本机代理端口 = 流量确实进入了代理路径
+grep -m1 'dst=<IP>.*dport=443' /proc/net/nf_conntrack   # 回复方向出现 sport=5331
+# 分流链各分支计数：return 的分支=直连，最后 goto=走代理
+nft list chain inet fw4 homeproxy_redirect
+# 大陆集合：防火墙据此判定"直连"，与路由侧的 china-ip 规则集同源(china_ip4.txt)
+nft list chain inet fw4 homeproxy_redirect | grep mainland_addr_v4
+```
+
+**2. `sing-box tools connect/fetch` 不能用来验证分流**
+
+两者都通过 `instance.Outbound().Default()` 取默认出站（`cmd_tools_connect.go` / `cmd_tools_fetch.go`），**不经过 route 规则**。用它们测"某个域名/IP 会走代理还是直连"，得到的结论一定是错的。
+
+要验证实际走向，只能让**局域网真实客户端**发起连接，再看上面的 conntrack / nft 计数，或看 `sing-box-c.log` 里的 `outbound/xxx[tag]` 行（那才是本机的出站选择）。
+
 ## 已知限制
 
 - **试验性**：不承诺 API/配置稳定，重大变更可能在 minor 版本里发生。

@@ -21,14 +21,17 @@
   用于订阅源直连失败时
 - **组合订阅**：勾选任意子集的现有订阅（可叠加关键词包含 / 排除、去重规则）合并成一个组合，
   拥有独立名称、token 与订阅链接；源订阅更新后组合自动重算
-- **本地订阅**：不填 URL，直接粘贴节点文本（YAML / URI / JSON / wg-quick `.conf` 混合）导入，
+- **本地订阅**：不填 URL，直接粘贴节点文本（YAML / URI / JSON / wg-quick `.conf`）导入，
+  一次粘贴按**单一格式**识别（自动判定 YAML / URI / JSON / `.conf`，不支持多格式混排），
   或用「表单导入」按协议动态字段逐条录入节点
-  （vmess / vless / ss / ssr / trojan / hysteria2 / tuic / wireguard / socks）
+  （vmess / vless / ss / ssr / trojan / hysteria / hysteria2 / tuic / wireguard / socks）
 
 **输入解析**
 - 订阅格式：URI 列表、Base64、JSON、Clash YAML、sing-box JSON、V2Ray / Xray JSON、
   Surge / Surfboard / Loon / Quantumult X 配置、局域网订阅链接、wg-quick / AmneziaWG `.conf`
-- 节点协议：`vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria2` / `tuic` / `socks`（及更多）
+- 节点协议：`vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria` / `hysteria2` /
+  `tuic` / `wireguard` / `socks`（及 `http`，可由 Clash YAML / JSON 配置导入并导出，
+  但不在表单导入的可选协议内 —— 它不作为代理节点对外提供订阅）
 - **WireGuard / AmneziaWG**：导入并导出完整字段（`private-key` / `public-key` / `pre-shared-key` /
   `ip` / `ipv6` / `allowed-ips` / `reserved` / `persistent-keepalive` / `listen-port` / `mtu` / `dns`），
   以及 `amnezia-wg-option` 子块（Jc / Jmin / Jmax / S1–S4 / H1–H4 / I1–I5 / J1–J3 / Itime）；
@@ -80,18 +83,18 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.5.1-r1`）。
+> （当前 `2.6.0-r1`）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.5.1-r1.ipk
+opkg install luci-app-substore-2.6.0-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.5.1-r1.apk
+apk add --allow-untrusted luci-app-substore-2.6.0-r1.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。

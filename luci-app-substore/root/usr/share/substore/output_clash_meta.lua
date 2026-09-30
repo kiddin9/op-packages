@@ -5,9 +5,15 @@ local M = {}
 
 local function esc_yaml(s)
 	s = tostring(s or "")
-	s = s:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n")
-	-- 注意：这里必须用 Lua 模式（不能传 plain=true），否则整串被当作字面量、永不匹配
-	if s:find("[ :#{}%[%],&*?|>'\"%@`]") or s:match("^[-?]*:") then
+	-- 是否需要双引号必须在转义之前判定：转义之后的 \t / \r 只剩「反斜杠 + 字母」，
+	-- 落在 plain scalar 里会被 YAML 当成两个字面字符而不是制表符/回车。含任何控制
+	-- 字符（\n \r \t 等）时必须加引号 —— 未加引号的换行/回车会直接破坏文档结构。
+	local need_quote = s:find("%c") ~= nil
+		-- 注意：这里必须用 Lua 模式（不能传 plain=true），否则整串被当作字面量、永不匹配
+		or s:find("[ :#{}%[%],&*?|>'\"%@`]") ~= nil
+		or s:match("^[-?]*:") ~= nil
+	s = s:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
+	if need_quote then
 		return '"' .. s .. '"'
 	end
 	return s
@@ -106,11 +112,18 @@ local function format_node(node)
 	end
 
 	-- servername / sni
-	if node.sni then
-		lines[#lines + 1] = "    servername: " .. esc_yaml(node.sni)
-	end
-	if node.servername then
-		lines[#lines + 1] = "    servername: " .. esc_yaml(node.servername)
+	-- vmess / vless / trojan 在 mihomo 里用 servername；hysteria / hysteria2 用 sni
+	-- （已对照上游文档确认：hysteria 系列没有 servername 字段，写了会被忽略，
+	-- 结果 SNI 丢失 → 客户端拿 IP 校验证书直接握手失败）。hysteria 系列的 sni
+	-- 由下面的协议专属分支输出。
+	-- sni 与 servername 是同一个字段的两种写法，必须只输出一个键：Clash YAML 导入
+	-- 会同时填上两者（先 sni = p.sni or p.servername，随后的字段保留循环又原样复制了
+	-- servername），各写一行会让 YAML 出现重复键 —— 严格解析器直接报错，宽松解析器
+	-- 则取最后一个，行为不确定。
+	local is_hysteria = (ctype == "hysteria" or ctype == "hysteria2")
+	local tls_name = node.sni or node.servername
+	if tls_name and not is_hysteria then
+		lines[#lines + 1] = "    servername: " .. esc_yaml(tls_name)
 	end
 
 	-- 特殊字段
@@ -152,13 +165,24 @@ local function format_node(node)
 		if node.sni then
 			lines[#lines + 1] = "    sni: " .. esc_yaml(node.sni)
 		end
-		-- 混淆（salamander）
+		-- 混淆（salamander）：hysteria2 的 obfs 是 { type, password } 两段
 		if node.obfs and node.obfs ~= "" and node.obfs ~= "plain" then
 			lines[#lines + 1] = "    obfs: " .. esc_yaml(node.obfs)
 			local opw = node["obfs-password"] or node.obfs_password
 			if opw and opw ~= "" then
 				lines[#lines + 1] = "    obfs-password: " .. esc_yaml(opw)
 			end
+		end
+	end
+
+	if ctype == "hysteria" then
+		-- hysteria(v1)：obfs 只是普通字符串，**没有** obfs-password
+		-- （obfs-password 是 hysteria2 的 salamander 专属字段，写到 v1 上是非法键）
+		if node.sni then
+			lines[#lines + 1] = "    sni: " .. esc_yaml(node.sni)
+		end
+		if node.obfs and node.obfs ~= "" and node.obfs ~= "plain" then
+			lines[#lines + 1] = "    obfs: " .. esc_yaml(node.obfs)
 		end
 	end
 
@@ -214,12 +238,12 @@ local function format_node(node)
 		end
 	end
 
-	if ctype == "socks5" then
+	-- socks5 / http 的认证字段都是 username + password（已对照上游 mihomo 文档确认）。
+	-- password 已由上面的「协议通用字段」输出，这里只补 username——重复输出会让
+	-- YAML 里出现两个 password 键，属于非法/歧义配置。
+	if ctype == "socks5" or ctype == "http" then
 		if node.username then
 			lines[#lines + 1] = "    username: " .. esc_yaml(node.username)
-		end
-		if node.password then
-			lines[#lines + 1] = "    password: " .. esc_yaml(node.password)
 		end
 	end
 

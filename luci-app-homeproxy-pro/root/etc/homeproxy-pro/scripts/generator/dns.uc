@@ -112,7 +112,11 @@ function append_proxy_dns(config, dm, ctx) {
 		detour: 'main-out',
 		...parse_dnsserver(ctx.dns_server, 'tcp')
 	});
-	config.dns.final = 'main-dns';
+	/* The DNS half of the mode's default policy.  It has to name the same
+	 * side the route chain falls through to (ctx.proxy_fallback), or a
+	 * domain that ends up proxied would be resolved by the resolver of the
+	 * other path.  The pair is asserted per mode in the generator suite. */
+	config.dns.final = ctx.proxy_fallback ? 'main-dns' : 'default-dns';
 
 	if (length(ctx.direct_domain_list))
 		push(config.dns.rules, {

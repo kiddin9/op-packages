@@ -2,6 +2,99 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0-r1] - 协议覆盖补全与导入/输出保真修复
+
+本轮起因：用户报告「添加本地订阅 → 表单导入」的「类型」下拉框协议不全，
+与 README 描述不符。审计后确认问题存在，且**「文本导入」存在更严重的同类缺口**，
+并顺带查出若干静默数据丢失 / 非法输出问题。所有修改均经代码或测试确认，
+未做任何推测性改动。
+
+### 协议覆盖（本次报告的主问题）
+
+- **表单导入缺 `hysteria`(v1) 与 `socks`**：`nodeform.js` 的下拉框只有 8 个协议，
+  而 `node.lua` 的 `M.PROTOS`、节点页协议筛选、规则 `proto_filter` 都认 10 个。
+  用户因此无法用表单录入这两类节点。
+- **文本导入（URI）缺 `hysteria`(v1) 与 `socks`/`socks5`**，且这是**导出→导入回环断裂**：
+  `output_uri.to_share_uri` 会生成 `hysteria://` 与 `socks5://` 链接，但 `parser.parse_uri`
+  对二者一律返回 `unsupported proto`。含这两类节点的订阅文本会被**整行静默丢弃**。
+  已新增 `parse_hysteria` / `parse_socks` 并补齐 `SUPPORTED` 分发表。
+- **简易 YAML 兜底解析的协议表漂移**：该处自维护一份映射，缺
+  `hysteria2` / `hysteria` / `tuic` / `wireguard`，且 `socks5` 未归一，更严重的是
+  对认不出的 `type` 用 `or "vmess"` 兜底 —— 一份 sing-box YAML 里的
+  hysteria2/tuic/wireguard 出站会变成数个**字段全错的假 vmess 节点**（静默数据损坏）。
+  现改为复用 `parser_clash_yaml.TYPE_MAP`（单一事实来源），未知协议直接丢弃。
+- **简易 YAML 兜底解析的 `outbounds:` 分支从不生效**：该分支同时接受 Clash 的
+  `proxies:` 与 sing-box 的 `outbounds:` 段名，却只读 Clash 的 `port` / `name`，
+  而 sing-box 用 `server_port` / `tag`。结果是 sing-box YAML 出站**全部被静默丢弃**
+  （识别了段名却解析出 0 个节点）。现按 `parser_json_config.parse_singbox_json`
+  读取的键名逐字补齐别名：`server_port` / `tag` / `auth_str` / `auth` /
+  `tls.server_name` / `tls.insecure` / `security`(vmess 加密方式) / `network`。
+
+### 归一化
+
+- **`socks5` → `socks` 归一**：两者是同一协议的不同写法（Clash 写 `socks5`、
+  sing-box 写 `socks`、分享链接写 `socks5://`）。输出模块本来就同时认两种写法，
+  但 `node.filter` 与 `rules.proto_filter` 是精确比较，两种写法互相看不见 ——
+  节点页按协议筛选与规则过滤都会漏。现统一为规范名 `socks`。
+
+### 输出保真
+
+- **clashmeta：hysteria(v1) 的 SNI 丢失**。此前统一输出 `servername`，而 mihomo 的
+  hysteria 系列没有该字段（写 `servername` 会被忽略），SNI 丢失会导致客户端
+  以 IP 校验证书、握手直接失败。现按协议区分：hysteria / hysteria2 输出 `sni`，
+  vmess / vless / trojan 仍输出 `servername`。同时补上 v1 的 `obfs`（普通字符串）。
+- **clashmeta：socks5 的 `password` 被输出两次**（通用字段段 + 协议专属段），
+  在 YAML 里形成重复键，属非法/歧义配置。现协议专属段只补 `username`。
+- **clashmeta / singbox / surge：`http` 的用户名丢失**，只输出密码。现按上游文档
+  补齐 `username`（mihomo 的 http / socks5 用 `username` + `password`；
+  Surge 家族用 `username=` / `password=` 具名参数）。
+- **singbox：hysteria(v1) 字段名错误**。此前输出 `password` 与
+  `obfs = { type, password }`，但 sing-box 的 hysteria 出站认证字段是 `auth_str`，
+  `obfs` 是**普通字符串**（对象形式是 hysteria2 的 salamander 专属）。
+  该修正与本项目 `parser_json_config` 自身的回读逻辑一致
+  （其按 `outbound.password or outbound.auth_str or outbound.auth` 读取）。
+- **`output_uri` / `output_clash_meta`：hysteria(v1) 不应出现 `obfs-password`**。
+  该字段是 hysteria2 的 salamander 专属，写到 v1 上是非法参数/非法键。
+
+### 表单
+
+- **`core.FORM_KEYS` 缺 `username`**：`merge_form_node` 先按 `FORM_KEYS` 清空原节点
+  再套用提交值，不在表里的字段会保留旧值 —— 用户在表单里**清空用户名也删不掉**
+  （`collectNodes` 会略过空值）。已补入。
+
+### 已知限制（本轮不修，均有明确原因）
+
+- **混合格式文本导入不支持**。README 称可粘贴「YAML / URI / JSON / wg-quick `.conf` 混合」
+  文本，但 `parse_local → parse → detect` 只识别**一种**格式，其余部分被静默丢弃
+  （已实测：「URI + WG conf」只剩 WG 节点；「URI + JSON」只剩 URI 节点）。
+  这是**功能缺失**而非小缺陷，需要重新设计 parser 的分段架构（规格 §22 明确警告
+  不要直接采用未经验证的逐行算法），故留待专门版本处理。
+- **sing-box 的 hysteria(v1) 出站还要求 `up` / `down`（带宽）**，本项目的节点模型
+  不承载该字段。凭空填默认值属于猜测，故不输出；用户需在自己的配置里补上。
+- **hysteria(v1) 的上游 URI 规范未能核实**（上游文档站点持续 404，无法取得权威定义）。
+  因此 `parse_hysteria` 只保证解析本项目 `output_uri` 自身生成的链接形态
+  （回环已验证），认不出的查询参数一律忽略而不报错，不臆造参数语义。
+- **`http` 不加入任何 UI 协议列表**：规格 §25 的权威协议表恰好是 10 个协议、不含 `http`。
+  它可由 Clash YAML / JSON 配置导入并正常导出（凭据已修），但不作为表单可选项。
+- **`parser_yaml.lua` 为死代码**（`parser.lua` 顶部 require 后从未调用），
+  其中留有同样未归一的 `socks5` 映射，仅记录，不影响运行。
+- **`parse_tuic` / `parse_hysteria2` 按第一个 `@` 切分 userinfo**，与 `parse_socks`
+  修复前同类（密码含裸 `@` 会被切坏）。本轮只修了 socks，其余留作观察项。
+
+### 测试
+
+- 新增 `tests/protocol_coverage_test.lua`（110 项断言），覆盖上述全部修复：
+  hysteria / socks 的 URI 导入与导出→导入回环、混合文本不再丢行、
+  兜底解析不再造假日 vmess、sing-box YAML 出站别名、`socks5` 归一后筛选/规则命中、
+  clashmeta / singbox / surge 的输出字段、`FORM_KEYS` 的 `username`。
+- 全量测试：`tests/*_test.lua` 逐文件运行，**0 个失败文件**；
+  `tests/cron_result_test.sh` rc=0。
+
+### 版本
+
+- 版本号 2.5.1-r1 → 2.6.0-r1（协议覆盖为功能增强，走 minor）；
+  `README.md` / `README.en.md` / `docs/INSTALL.md` 同步。
+
 ## [2.5.1-r1] - 安全加固与数据保真修复
 
 本轮为缺陷修复版本，重点是**命令注入 / SSRF 绕过 / 静默数据丢失**三类问题。

@@ -57,8 +57,17 @@ function M.surge_line(n)
 		e[#e + 1] = "username=" .. (n.uuid or "")
 		if n.password then e[#e + 1] = "password=" .. n.password end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
-		if n.alpn then e[#e + 1] = "alpn=" .. n.alpn end
-	elseif proto == "socks5" or proto == "socks" then
+		if n.alpn then
+			-- alpn 可能是数组：sing-box JSON 与 Clash YAML 的 alpn 列表导入后就是 table，
+			-- 直接拼接会 "attempt to concatenate a table value" 让整次导出失败
+			local alpn = n.alpn
+			if type(alpn) == "table" then alpn = table.concat(alpn, ",") end
+			if alpn ~= "" then e[#e + 1] = "alpn=" .. alpn end
+		end
+	elseif proto == "socks5" or proto == "socks" or proto == "http" then
+		-- socks5 / http 在 Surge 家族里都用 username= / password= 具名参数
+		-- （Surge 手册：Name = http, <host>, <port>[, <username>, <password>]
+		--   "may be given positionally after the port, or as named parameters"）
 		if n.username then
 			e[#e + 1] = "username=" .. n.username
 			if n.password then e[#e + 1] = "password=" .. n.password end
@@ -70,7 +79,8 @@ function M.surge_line(n)
 
 	local line = (n.name or "") .. " = " .. head
 	if #e > 0 then line = line .. ", " .. table.concat(e, ", ") end
-	return line
+	-- 节点名与各参数值都来自订阅（不可信）：含换行会截断本行并伪造出一条新的代理行
+	return util.one_line(line)
 end
 
 -- 收集节点名列表
@@ -112,7 +122,7 @@ local function surge_config(nodes, group_name, supports_ssr)
 	local select = group_name .. " = select"
 	for _, nm in ipairs(names) do select = select .. ", " .. nm end
 	select = select .. ", DIRECT"
-	out[#out + 1] = select
+	out[#out + 1] = util.one_line(select)
 	return table.concat(out, "\n")
 end
 
@@ -172,6 +182,7 @@ function M.to_qx(nodes, options)
 		local proto = props(n)
 		local host = (n.server or "") .. ":" .. tostring(n.port or 0)
 		local tag = n.name or host
+		local before = #out
 		if proto == "shadowsocks" then
 			out[#out + 1] = string.format(
 				"shadowsocks=%s, method=%s, password=%s, tag=%s",
@@ -199,13 +210,16 @@ function M.to_qx(nodes, options)
 				host, n.password or "", tag)
 			if n.sni then out[#out] = out[#out] .. ", tls-host=" .. n.sni end
 		end
+		-- 节点名 / sni / path / host 全部来自订阅（不可信），含换行会截断本行
+		-- 并伪造出一条新的 server_local 行
+		for i = before + 1, #out do out[i] = util.one_line(out[i]) end
 	end
 	out[#out + 1] = ""
 	out[#out + 1] = "[policy]"
 	local names = names_of(nodes)
 	local policy = "static=" .. (options.name or "PROXY") .. ", DIRECT"
 	for _, nm in ipairs(names) do policy = policy .. ", " .. nm end
-	out[#out + 1] = policy
+	out[#out + 1] = util.one_line(policy)
 	out[#out + 1] = ""
 	out[#out + 1] = "[server_remote]"
 	return table.concat(out, "\n")

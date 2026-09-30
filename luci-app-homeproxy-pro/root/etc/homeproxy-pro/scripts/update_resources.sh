@@ -193,6 +193,23 @@ check_list_update() {
 		# can read it.
 		date -u +"%Y-%m-%dT%H:%M:%SZ" > "$RESOURCES_DIR/$listtype.updated_at"
 		log "[$(to_upper "$listtype")] Successfully updated via $mirror (blob $local_blob)."
+		# The route side reads the China list through a generated sing-box
+		# rule-set rather than geoip-cn.srs, so the list and what the kernel
+		# decides from cannot drift apart.  sing-box watches that file with
+		# fswatch and reloads it in place, so regenerating it here is the
+		# whole update path - no service restart.  A failure is logged and
+		# not fatal: the previous rule-set is still valid and the firewall
+		# has already switched to the new list, which is exactly the state
+		# the next run (or the next service start) repairs.
+		if [ "$listtype" = "china_ip4" ]; then
+			if ucode -S "$SCRIPT_DIR/runtime/china_ip_ruleset.uc" \
+				"$RESOURCES_DIR/china_ip4.txt" "$RESOURCES_DIR/china_ip4.json" >>"$LOG_PATH" 2>&1; then
+				log "[CHINA_IP4] Route-side rule-set regenerated."
+				chown sing-box:sing-box "$RESOURCES_DIR/china_ip4.json" 2>"/dev/null"
+			else
+				log "[CHINA_IP4] Warning: could not regenerate china_ip4.json; the route side keeps the previous list."
+			fi
+		fi
 	else
 		rm -f "$RUN_DIR/$listname"
 		log "[$(to_upper "$listtype")] Failed to install update (mv failed)."

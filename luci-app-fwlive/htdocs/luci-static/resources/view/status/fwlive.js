@@ -886,6 +886,8 @@ return view.extend({
 					return _('No WAN zone found; cannot toggle logging without one.');
 				if (res && res.error === 'lock_failed')
 					return _('Could not acquire the logging lock.');
+				if (res && res.error === 'rollback_tracking_failed')
+					return _('Could not track the logging change safely; logging was not changed.');
 				if (res && res.error === 'baseline_snapshot_failed')
 					return _('Could not snapshot the current logging state.');
 				if (res && res.error === 'firewall_reload_failed')
@@ -927,6 +929,8 @@ return view.extend({
 					return _('No WAN zone found; cannot toggle logging without one.');
 				if (res && res.error === 'lock_failed')
 					return _('Could not acquire the logging lock.');
+				if (res && res.error === 'rollback_tracking_failed')
+					return _('Could not track the logging change safely; logging was not changed.');
 				if (res && res.error === 'firewall_reload_failed')
 					return _('The firewall did not reload; saved and live logging may differ.');
 				if (res && res.error === 'uci_set_failed')

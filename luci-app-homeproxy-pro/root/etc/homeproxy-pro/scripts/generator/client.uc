@@ -58,6 +58,20 @@ import { attachSchema, attachExperimental } from './common.uc';
 export function generate(dm, env) {
 	const ctx = build_context(dm, env);
 
+	/* Everything the client prints lands in one file, and not all of it was
+	 * decided here: when the proxy node cannot reach a destination, sing-box
+	 * reports it through the same logger, so a line like
+	 *
+	 *   open connection to 1.2.3.4:443 using outbound/direct[direct]:
+	 *   connect: connection refused
+	 *
+	 * can be the *node's* failure rather than this router sending the traffic
+	 * direct.  Reading it as a local routing decision already produced one
+	 * wrong conclusion during review.  What the router actually did is in the
+	 * forwarding layer: `nft list chain inet fw4 homeproxy_redirect` (a
+	 * `return` branch is direct, the final `goto` is the proxy port) and
+	 * `/proc/net/nf_conntrack` (`sport=5331` on the reply tuple).  See the
+	 * README's troubleshooting section. */
 	const config = {
 		log: {
 			disabled: false,

@@ -130,9 +130,27 @@ export function build_context(dm, env) {
 	      udp_mapping = (udp_mapping_raw === 'default') ? '' : udp_mapping_raw,
 	      udp_filtering = (udp_filtering_raw === 'default') ? '' : udp_filtering_raw;
 
+	/* Where a destination the preset lists do not mention goes.  This is the
+	 * mode's whole default policy, so it is declared once here and read by
+	 * both consumers - the route rule chain and the DNS rule chain:
+	 *
+	 *   bypass_mainland_china  mainland -> direct, everything else -> proxy
+	 *   global                 everything -> proxy
+	 *   gfwlist                only the list -> proxy, everything else direct
+	 *   proxy_mainland_china   mainland -> proxy, everything else -> direct
+	 *
+	 * The two chains have to agree.  They used to say it independently (a
+	 * literal `main-dns` in dns.uc, a literal `main-out` in route.uc) with
+	 * nothing tying them together, and the route side applied "unknown goes
+	 * to the proxy" to all four modes - so "Only proxy mainland China" sent
+	 * every unlisted destination through the proxy, which is the opposite of
+	 * what the mode is named.  Both now derive from this one value. */
+	const proxy_fallback = (routing_mode !== 'proxy_mainland_china');
+
 	/* Routing-mode-dependent defaults */
 	const ctx = {
 		routing_mode, proxy_mode, ipv6_support, log_level,
+		proxy_fallback,
 		self_mark, ntp_server, dns_port, mixed_port,
 		redirect_port, tproxy_port,
 		tun_name, tun_addr4, tun_addr6, tun_mtu,

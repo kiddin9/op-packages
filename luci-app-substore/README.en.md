@@ -23,17 +23,20 @@ group them, then re-emit them in a format your client can consume.
   (optionally with keyword include / exclude and dedup rules) into one combination that
   has its own name, token and subscription link; combinations are recomputed automatically
   when a source updates
-- **Local subscription**: no URL needed — paste node text (mixed YAML / URI / JSON /
+- **Local subscription**: no URL needed — paste node text (YAML / URI / JSON /
   wg-quick `.conf`) or enter nodes one by one via a form whose fields adapt to the
-  selected protocol
-  (vmess / vless / ss / ssr / trojan / hysteria2 / tuic / wireguard / socks)
+  selected protocol. A paste is detected as **one** format (YAML / URI / JSON /
+  `.conf`); mixing several formats in one paste is not supported
+  (vmess / vless / ss / ssr / trojan / hysteria / hysteria2 / tuic / wireguard / socks)
 
 **Input parsing**
 - Subscription formats: URI lists, Base64, JSON, Clash YAML, sing-box JSON,
   V2Ray / Xray JSON, Surge / Surfboard / Loon / Quantumult X configs, LAN
   subscription links, and wg-quick / AmneziaWG `.conf`
-- Node protocols: `vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria2` /
-  `tuic` / `socks` (and more)
+- Node protocols: `vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria` /
+  `hysteria2` / `tuic` / `wireguard` / `socks` (plus `http`, which can be imported from
+  Clash YAML / JSON configs and exported, but is not offered in the form importer —
+  it is not served as a proxy node)
 - **WireGuard / AmneziaWG**: full field import and export (`private-key` / `public-key` /
   `pre-shared-key` / `ip` / `ipv6` / `allowed-ips` / `reserved` / `persistent-keepalive` /
   `listen-port` / `mtu` / `dns`) plus the `amnezia-wg-option` sub-block
@@ -93,18 +96,18 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.5.1-r1`).
+> [Makefile](Makefile) (currently `2.6.0-r1`).
 
 opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
 
 ```bash
-opkg install luci-app-substore-2.5.1-r1.ipk
+opkg install luci-app-substore-2.6.0-r1.ipk
 ```
 
 apk (OpenWrt / ImmortalWrt 25.12+):
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.5.1-r1.apk
+apk add --allow-untrusted luci-app-substore-2.6.0-r1.apk
 ```
 
 Then open LuCI: **Services → Subscriptions**.

@@ -482,5 +482,22 @@ do
 end
 
 -- ---------- 结果 ----------
+-- H7：.conf 的注释行同样要压成单行。节点名来自订阅（不可信输入），含换行时
+-- 会从注释里注入出真正的配置行，伪造出一段用户没写过的隧道配置。
+local wgconf_out = require("substore.output_wireguard_conf")
+local wg_evil = wgconf_out.generate({ { proto = "wireguard", name = "x\n[Interface]\nPrivateKey = injected",
+	server = "1.2.3.4", port = 51820, ["private-key"] = "PRIV", ["public-key"] = "PUB" } })
+-- 注入文本只能留在注释行里：既不能出现真正的 [Interface] 段头，也不能出现
+-- 以 "PrivateKey = injected" 开头的新行
+check("wgconf comment not injected", wg_evil:find("\n[Interface]\nPrivateKey = injected", 1, true) == nil)
+check("wgconf injected text stays in comment", wg_evil:find("\nPrivateKey = injected", 1, true) == nil)
+local real_iface = 0
+for l in wg_evil:gmatch("[^\n]+") do
+	if l == "[Interface]" then real_iface = real_iface + 1 end
+end
+check("wgconf single real Interface section", real_iface == 1)
+check("wgconf real private key kept", wg_evil:find("\nPrivateKey = PRIV", 1, true) ~= nil)
+check("wgconf comment is one line", wg_evil:match("^# [^\n]*\n") ~= nil)
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

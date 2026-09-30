@@ -77,12 +77,46 @@ function M.shq(s)
 	return "'" .. tostring(s or ""):gsub("'", "'\\''") .. "'"
 end
 
+-- 把值压成单行。Surge / Loon / Quantumult X / wg-quick .conf 都是行式格式：
+-- 值里一旦含换行，就会截断当前行并伪造出额外的一行（节点名、sni、path 等
+-- 全部来自订阅内容，属于不可信输入）。换行/回车压成空格，其余控制字符丢弃。
+function M.one_line(s)
+	if s == nil then return nil end
+	return (tostring(s):gsub("[\r\n]+", " "):gsub("%c", ""))
+end
+
 -- 生成随机十六进制 token（用于下载链接访问控制）
+--
+-- 不能直接用 math.random 产出：Lua 5.1 的 math.random 是 31 位 LCG，而原实现
+-- 每次调用都重新 randomseed，同一时钟刻度内的多次调用会给出完全相同的序列
+-- （实测 20 万次调用只有约 18 万个不同值，约 9.7% 的 token 重复）。订阅下载
+-- token 是访问控制的唯一凭据，重复即可被猜测。优先直接读内核熵源，
+-- 只有在 /dev/urandom 不可用时才退回 PRNG（且只播种一次）。
+local prng_seeded = false
+local function seed_prng()
+	if prng_seeded then return end
+	prng_seeded = true
+	math.randomseed(os.time() + math.floor((os.clock() * 1000000) % 1000000))
+end
+
 function M.rnd_hex(len)
 	len = len or 16
+	local f = io.open("/dev/urandom", "rb")
+	if f then
+		local need = math.ceil(len / 2)
+		local bytes = f:read(need)
+		f:close()
+		if bytes and #bytes == need then
+			local out = {}
+			for i = 1, #bytes do
+				out[#out + 1] = string.format("%02x", bytes:byte(i))
+			end
+			return (table.concat(out):sub(1, len))
+		end
+	end
+	seed_prng()
 	local hex = "0123456789abcdef"
 	local out = {}
-	math.randomseed(os.time() + (os.clock() * 1000000 % 1000000) + math.random(0, 65535))
 	for _ = 1, len do
 		local idx = math.random(1, 16)
 		out[#out + 1] = hex:sub(idx, idx)
@@ -345,17 +379,33 @@ function M.file_size(path)
 	return #data
 end
 
--- 原子写：先写临时文件再重命名，避免写一半损坏
+-- 原子写：先写临时文件再重命名，避免写一半损坏。
+--
+-- 两处必须做对，否则「原子」只是名义上的：
+--   1) 临时文件名不能固定成 "<path>.tmp"：两个进程同时写同一路径时会交错写进
+--      同一个临时文件，rename 上去的是两者内容的混合体，各自的原子性都失效。
+--   2) write / close 的返回值必须检查：磁盘写满或写入被截断时 f:write 会失败，
+--      但 os.rename 依然成功 —— 于是原子地换上一个残缺文件，调用方却以为成功，
+--      下一次读取才发现数据没了。
 function M.atomic_write(path, content)
-	local tmp = path .. ".tmp"
+	local tmp = string.format("%s.tmp.%s", path, M.rnd_hex(8))
 	local f, e = io.open(tmp, "wb")
 	if not f then return false, e end
-	f:write(content)
-	f:close()
-	local ok, e2 = os.rename(tmp, path)
-	if not ok then
+	local wok, werr = f:write(content)
+	if not wok then
+		f:close()
 		os.remove(tmp)
-		return false, e2
+		return false, werr
+	end
+	local cok, cerr = f:close()
+	if not cok then
+		os.remove(tmp)
+		return false, cerr
+	end
+	local rok, rerr = os.rename(tmp, path)
+	if not rok then
+		os.remove(tmp)
+		return false, rerr
 	end
 	return true
 end

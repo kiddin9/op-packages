@@ -7,7 +7,7 @@ local parser = require("substore.parser")
 
 local M = {}
 
-M.version = "2.5.1"
+M.version = "2.6.0"
 M.DATA_DIR = "/etc/substore"
 M.LIST_FILE = M.DATA_DIR .. "/subscriptions.json"
 M.NODES_DIR = M.DATA_DIR .. "/nodes"
@@ -25,12 +25,21 @@ function M.ensure_dirs()
 	util.ensure_dir(M.NODES_DIR)
 end
 
+-- 读取订阅列表，返回 seq, items, err。
+--
+-- 必须区分「文件不存在 / 为空」（合法的空列表）与「文件存在但解析失败」
+-- （内容损坏、被截断、磁盘错误）。后者若按空列表处理，后果是灾难性的：
+-- M.add / M.add_local / M.add_combo 会在这个空表上追加一条然后整表写回，
+-- 把用户已有的全部订阅抹掉，并且 _seq 归零后重新发出 s00000001 这种
+-- 已经用过的 ID。因此损坏时必须显式报错，由调用方拒绝写入。
 local function load()
 	M.ensure_dirs()
 	local raw = util.read_file(M.LIST_FILE)
 	if not raw or raw == "" then return 0, {} end
 	local data = util.json_decode(raw)
-	if type(data) ~= "table" then return 0, {} end
+	if type(data) ~= "table" then
+		return 0, {}, "订阅列表文件已损坏，无法解析：" .. M.LIST_FILE
+	end
 	local seq = tonumber(data._seq) or 0
 	local items = type(data.items) == "table" and data.items or {}
 	return seq, items
@@ -41,8 +50,11 @@ local function save(seq, items)
 	return util.atomic_write(M.LIST_FILE, util.json_encode({ _seq = seq, items = items }))
 end
 
+-- 返回 arr, err。err 非空表示列表文件已损坏（此时 arr 为空）。
+-- 追加第二个返回值是向后兼容的：调用方普遍写成 ipairs(core.list()) 或
+-- local items = core.list()，都只取第一个值。
 function M.list()
-	local _, items = load()
+	local _, items, lerr = load()
 	local arr = {}
 	for id, meta in pairs(items) do
 		local m = {}
@@ -51,7 +63,7 @@ function M.list()
 		arr[#arr + 1] = m
 	end
 	table.sort(arr, function(a, b) return (a.name or "") < (b.name or "") end)
-	return arr
+	return arr, lerr
 end
 
 function M.get(id)
@@ -70,7 +82,8 @@ function M.add(name, url, opts)
 	url = util.trim(url or "")
 	opts = opts or {}
 	if name == "" or url == "" then return nil, "名称/URL 不能为空" end
-	local seq, items = load()
+	local seq, items, lerr = load()
+	if lerr then return nil, lerr end
 	seq = seq + 1
 	local id = string.format("s%08x", seq)
 	local cron_time = util.trim(opts.cron_time or "")
@@ -103,7 +116,8 @@ function M.add_local(name, raw_content, local_mode, opts)
 	local_mode = local_mode or "text"
 	opts = opts or {}
 	if name == "" or raw_content == "" then return nil, "名称/内容 不能为空" end
-	local seq, items = load()
+	local seq, items, lerr = load()
+	if lerr then return nil, lerr end
 	seq = seq + 1
 	local id = string.format("s%08x", seq)
 	items[id] = {
@@ -131,7 +145,8 @@ end
 -- 获取订阅的下载 token；若不存在则生成并持久化
 function M.ensure_token(id)
 	if not id_is_valid(id) then return nil end
-	local seq, items = load()
+	local seq, items, lerr = load()
+	if lerr then return nil end
 	local meta = items[id]
 	if not meta then return nil end
 	if not meta.token or meta.token == "" then
@@ -178,7 +193,8 @@ M.CLEAR = setmetatable({}, { __tostring = function() return "substore.CLEAR" end
 
 function M.save_meta(id, patch)
 	if not id_is_valid(id) then return false, "非法 ID" end
-	local seq, items = load()
+	local seq, items, lerr = load()
+	if lerr then return false, lerr end
 	local meta = items[id]
 	if not meta then return false, "订阅不存在" end
 	for k, v in pairs(patch or {}) do
@@ -189,7 +205,8 @@ end
 
 function M.remove(id)
 	if not id_is_valid(id) then return false end
-	local seq, items = load()
+	local seq, items, lerr = load()
+	if lerr then return false, lerr end
 	if not items[id] then return false end
 	items[id] = nil
 	save(seq, items)
@@ -363,6 +380,10 @@ local FORM_KEYS = {
 	reserved = true, ["persistent-keepalive"] = true, persistent_keepalive = true,
 	["listen-port"] = true, listen_port = true,
 	mtu = true, dns = true, ["amnezia-wg-option"] = true,
+	-- socks / http 的用户名。必须在表里：下面的 merge_form_node 先按 FORM_KEYS
+	-- 清空原节点再套用提交值，不在表里的字段会保留旧值——用户在表单里清空用户名
+	-- 也删不掉（collectNodes 会略过空值），等于改不动。
+	username = true,
 }
 
 -- 合并表单节点到原节点：表单字段整体替换（可清空），非表单字段保留
@@ -441,7 +462,8 @@ function M.add_combo(name, sources, opts)
 		end
 	end
 	if #srcs == 0 then return nil, "请选择至少一个订阅" end
-	local seq, items = load()
+	local seq, items, lerr = load()
+	if lerr then return nil, lerr end
 	seq = seq + 1
 	local id = string.format("s%08x", seq)
 	items[id] = {

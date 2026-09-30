@@ -102,7 +102,10 @@ function M.parse_singbox_json(content)
 						node_data.password = outbound.password
 					end
 
-					-- sing-box 用 tls 对象表达 TLS 层（enabled 缺省即 true）
+					-- sing-box 用 tls 对象表达 TLS 层。注意 enabled 的缺省值是 false
+					-- （option/tls.go: `Enabled bool` + omitempty），本输出模块因此总是
+					-- 显式写 enabled=true。读取侧这里放宽为「只要不是显式 false 就当作
+					-- 启用」，以便导入那些省略 enabled 的第三方配置时仍能保留 TLS 层。
 					if outbound.tls and type(outbound.tls) == "table" then
 						if outbound.tls.server_name then
 							node_data.sni = outbound.tls.server_name

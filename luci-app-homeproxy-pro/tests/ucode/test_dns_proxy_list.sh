@@ -68,6 +68,15 @@ stage_case() {
 	printf '%s\n' "$DIRECT_DOMAIN" > "$dir/resources/direct_list.txt"
 	printf '%s\n' "$PROXY_DOMAIN" > "$dir/resources/proxy_list.txt"
 
+	# The client config carries a `type: local` rule-set generated from
+	# china_ip4.txt; sing-box opens that path during `check`, and on a router
+	# hp_prepare_runtime_files generates it before the config is used.
+	if ! ucode -S "$ROOT/root/etc/homeproxy-pro/scripts/runtime/china_ip_ruleset.uc" \
+		"$ROOT/root/etc/homeproxy-pro/resources/china_ip4.txt" "$dir/resources/china_ip4.json" \
+		>>"$dir/resources/china_ip4.log" 2>&1; then
+		printf '{"version":3,"rules":[{"ip_cidr":["192.0.2.0/24"]}]}\n' > "$dir/resources/china_ip4.json"
+	fi
+
 	VALIDATE_DATA="${HP_VALIDATE_DATA:-/sbin/validate_data}"
 	sed -e "s#^export const HP_DIR = '/etc/homeproxy-pro';#export const HP_DIR = '$dir';#" \
 	    -e "s#^export const RUN_DIR = '/var/run/homeproxy-pro';#export const RUN_DIR = '$dir/run';#" \
@@ -109,6 +118,68 @@ stage_case() {
 		echo "FAIL: $label: sing-box rejected the generated configuration"
 		return 1
 	fi
+
+	return 0
+}
+
+# The mode's default policy, asserted as a *pair*.  The DNS chain and the
+# route chain each end in a fallback (`dns.final`, `route.final`), and they
+# have to name the same side: a domain that ends up proxied must be resolved
+# by the proxy-path resolver, and one that ends up direct must not be
+# resolved through the proxy.  The two were literals in different modules with
+# nothing tying them together, and the route side applied "unknown goes to the
+# proxy" to all four modes - so "Only proxy mainland China" proxied everything
+# it was not told to proxy.
+check_fallback_pair() {
+	label="$1"
+	json="$2"
+
+	case "$label" in
+	proxy_mainland_china) want_route="direct-out"; want_dns="default-dns" ;;
+	*)                    want_route="main-out";   want_dns="main-dns" ;;
+	esac
+
+	# The two finals sit in different blocks and their relative order is not
+	# fixed (route.final is emitted before dns.final in the modes whose dns
+	# block grows, after it in the others), so each is taken from its own
+	# block: dns.final is the only '"final"' indented by two tabs inside the
+	# top-level dns object, route.final the only one inside route.
+	have_dns="$(awk '/^\t"dns": \{/{d=1} d && /^\t\t"final":/{gsub(/.*: "|".*/,""); print; exit}' "$json")"
+	have_route="$(awk '/^\t"route": \{/{r=1} r && /^\t\t"final":/{gsub(/.*: "|".*/,""); print; exit}' "$json")"
+
+	if [ "$have_route" != "$want_route" ]; then
+		echo "FAIL: $label: route.final is '$have_route', the mode's policy is '$want_route'"
+		return 1
+	fi
+	if [ "$have_dns" != "$want_dns" ]; then
+		echo "FAIL: $label: dns.final is '$have_dns', the mode's policy is '$want_dns'"
+		return 1
+	fi
+	# Stated as its own property, because the failure it catches is silent:
+	# if one of the two ever gains a new value, the pair is what breaks.
+	proxy_route=no; proxy_dns=no
+	[ "$have_route" = "main-out" ] && proxy_route=yes
+	[ "$have_dns" = "main-dns" ] && proxy_dns=yes
+	if [ "$proxy_route" != "$proxy_dns" ]; then
+		echo "FAIL: $label: route.final ($have_route) and dns.final ($have_dns) disagree on the mode's default"
+		return 1
+	fi
+
+	echo "PASS: $label: route.final=$have_route and dns.final=$have_dns agree"
+
+	# Both mainland modes match destinations against geoip-cn, so both have to
+	# declare it.  proxy_mainland_china reached this point without the
+	# declaration once and sing-box refused the whole config with
+	# "initialize rule[3]: rule-set not found: geoip-cn"; the health gate then
+	# rolled the intercept layer back and the network went unproxied.
+	case "$label" in
+	bypass_mainland_china|proxy_mainland_china)
+		if ! grep -qF '"rule_set": "geoip-cn"' "$json" || ! grep -qF '"tag": "geoip-cn"' "$json"; then
+			echo "FAIL: $label: the route rule matches geoip-cn but the rule-set is not declared"
+			return 1
+		fi
+		;;
+	esac
 
 	return 0
 }
@@ -232,6 +303,7 @@ for mode in bypass_mainland_china global gfwlist proxy_mainland_china; do
 		else
 			FAILED=1
 		fi
+		check_fallback_pair "$mode" "$dir/run/sing-box-c.json"
 	else
 		FAILED=1
 	fi
