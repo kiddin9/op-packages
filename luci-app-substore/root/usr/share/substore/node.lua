@@ -7,11 +7,55 @@ M.PROTOS = {
 	"vmess", "vless", "trojan", "shadowsocks", "ssr", "hysteria2", "tuic", "hysteria", "wireguard", "socks",
 }
 
+-- 每种协议在「表单导入 / 节点编辑」界面里渲染的字段集合，数组顺序即界面顺序。
+--
+-- 这里是**唯一**的字段清单：LuCI 页面把它渲染成 window.SUBSTORE_PROTO_FIELDS
+-- 交给 nodeform.js 渲染表单，core.merge_form_node 用它决定「哪些字段可以被表单
+-- 覆盖（含清空）」。两边共用一份数据不是洁癖，而是必须的 —— 表单没渲染的字段
+-- 提交不上来，合并时若一并清空就等于用空值覆盖原值：
+--   * vmess 的 TLS 层字段是 security，而表单原先渲染的是 tls，编辑一次就把
+--     security 抹成 nil，normalize 再补成 "none"，一个启用 TLS 的 vmess 节点
+--     静默变成明文；
+--   * hysteria2 / tuic / hysteria 是 TLS-only 协议（parser.lua 补 security="tls"），
+--     表单不渲染 security，编辑一次就丢掉 TLS，sing-box 会因 C.ErrTLSRequired
+--     直接拒绝启动；
+--   * WireGuard 的 dns、vmess 的 flow 同理。
+-- 所以字段清单必须与表单渲染的字段严格一致，不能各维护一份。
+M.PROTO_FIELDS = {
+	ssr = { "server", "port", "password", "cipher", "protocol", "obfs", "obfs-param", "protocol-param", "udp" },
+	-- vmess 的 TLS 开关是 security（与 vless 一致）：节点模型里 TLS 层统一存于
+	-- security，vmess 的加密方式存于 cipher。表单渲染 tls 时读不到 security，
+	-- 保存即丢 TLS。
+	vmess = { "server", "port", "uuid", "alterId", "cipher", "net", "headerType", "path", "host", "sni", "security", "udp", "skip-cert-verify" },
+	vless = { "server", "port", "uuid", "security", "flow", "net", "headerType", "path", "host", "sni", "udp", "skip-cert-verify" },
+	trojan = { "server", "port", "password", "sni", "net", "headerType", "path", "host", "udp", "skip-cert-verify" },
+	shadowsocks = { "server", "port", "password", "method", "headerType", "udp" },
+	hysteria2 = { "server", "port", "password", "sni", "obfs", "obfs-password", "skip-cert-verify" },
+	-- hysteria(v1)：obfs 是普通字符串（不是 hysteria2 的 salamander），因此没有 obfs-password。
+	-- 字段集合以各输出模块实际消费的键为准（output_clash_meta / output_singbox / output_uri）。
+	hysteria = { "server", "port", "password", "sni", "obfs", "skip-cert-verify" },
+	tuic = { "server", "port", "uuid", "password", "sni", "udp", "skip-cert-verify" },
+	wireguard = { "server", "port", "private-key", "public-key", "pre-shared-key", "ip", "ipv6", "allowed-ips", "reserved", "persistent-keepalive", "listen-port", "mtu", "amnezia-wg-option" },
+	socks = { "server", "port", "username", "password", "udp" },
+}
+
+-- 表单里与协议无关、始终渲染的字段（nodeform.js 的 nodeTemplate 固定输出这三个）
+M.FORM_ALWAYS_FIELDS = { "name", "group" }
+
 -- 协议默认值，用于补全缺省字段
 local DEFAULTS = {
 	vmess = { net = "tcp", security = "none" },
 	vless = { net = "tcp", security = "none" },
 	trojan = { security = "tls" },
+	-- hysteria2 / hysteria / tuic 在 sing-box 与 mihomo 里都是 TLS-only：
+	-- sing-box 的 hysteria2/tuic 出站在 TLS 缺失或未启用时直接返回 C.ErrTLSRequired
+	-- 拒绝启动。URI 解析器（parser.lua）本来就会补 security="tls"，但 Clash YAML
+	-- 与 sing-box JSON 导入的 hysteria2/tuic 节点没有这个字段，导出后是一份客户端
+	-- 起不来的配置。TLS-only 是协议本身的约束，属于归一化该保证的不变量，
+	-- 与 trojan 同理。
+	hysteria2 = { security = "tls" },
+	hysteria = { security = "tls" },
+	tuic = { security = "tls" },
 }
 
 -- vmess 加密方式（cipher）白名单。sing-box 的 vmess.security、Xray 的

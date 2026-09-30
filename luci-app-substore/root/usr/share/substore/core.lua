@@ -386,11 +386,68 @@ local FORM_KEYS = {
 	username = true,
 }
 
--- 合并表单节点到原节点：表单字段整体替换（可清空），非表单字段保留
+-- FORM_KEYS 里同一个语义的多种写法。表单只渲染其中的规范写法，别名必须跟随规范
+-- 写法一起清空：解析器产出的就是别名（parser_clash_yaml 写 skip_cert_verify、
+-- parser_json_config 与 parser.lua 写 obfs_param / protocol_param），残留的别名
+-- 仍会被输出模块读到，表现为「关不掉」——例如 build_tls 在 security 为 "none"
+-- 时还会退回 n.tls，output_formats.surge_line 同理，于是用户把 vmess 的 TLS
+-- 关掉之后 Surge 输出里依然是 tls=true。
+local FORM_ALIASES = {
+	["obfs_param"] = "obfs-param",
+	["protocol_param"] = "protocol-param",
+	["skip_cert_verify"] = "skip-cert-verify",
+	["obfs_password"] = "obfs-password",
+	["private_key"] = "private-key",
+	["public_key"] = "public-key",
+	["peer-public-key"] = "public-key",
+	["peer_public_key"] = "public-key",
+	["preshared_key"] = "pre-shared-key",
+	["allowed_ips"] = "allowed-ips",
+	["persistent_keepalive"] = "persistent-keepalive",
+	["listen_port"] = "listen-port",
+	["network"] = "net",
+	-- normalize 把 tls 归一到 security，两者是同一语义的两种写法
+	["tls"] = "security",
+	-- shadowsocks 用 method、vmess/ssr 用 cipher，parse_local 双向互为别名
+	["method"] = "cipher",
+	["cipher"] = "method",
+}
+
+-- 合并表单节点到原节点。
+--
+-- 只有「该协议的表单确实渲染过」的字段才允许被覆盖（含被清空）：表单按
+-- node.PROTO_FIELDS[proto] 渲染，未渲染的字段根本提交不上来，把它们一并清空
+-- 就等于用空值覆盖原值 —— vmess 的 security、hysteria2/tuic 的 security、
+-- WireGuard 的 dns 都是这样被静默抹掉的（详见 node.PROTO_FIELDS 的注释）。
+-- 别名（FORM_ALIASES）跟随其规范写法一起清空，避免残留值「关不掉」。
+--
+-- 协议未知（不在 PROTO_FIELDS 里）时退回「清空全部表单字段」的旧行为：
+-- 那时无从判断表单渲染了什么，清空虽然可能丢字段，但至少不会留下用户改不动的旧值。
 function M.merge_form_node(orig, formnode)
+	local node_mod = require("substore.node")
 	local out = {}
 	for k, v in pairs(orig or {}) do out[k] = v end
-	for k in pairs(FORM_KEYS) do out[k] = nil end
+	local fields = type(formnode) == "table" and node_mod.PROTO_FIELDS[formnode.proto] or nil
+	local old_fields = type(orig) == "table" and node_mod.PROTO_FIELDS[orig.proto] or nil
+	-- 原协议未知（或原节点没有 proto）时不做「只清渲染字段」的裁剪：那种情况下
+	-- 无从判断原节点里哪些字段是本协议的，退回到清空全部表单字段的旧行为。
+	if fields and (orig == nil or orig.proto == nil or old_fields) then
+		local rendered = {}
+		for _, k in ipairs(fields) do rendered[k] = true end
+		-- 协议被改过时，旧协议的字段也要清掉（vmess 改成 trojan 不该留着 uuid）。
+		-- 协议没变时 old_fields == fields，是同一个集合，无副作用。
+		for _, k in ipairs(old_fields or {}) do rendered[k] = true end
+		for _, k in ipairs(node_mod.FORM_ALWAYS_FIELDS) do rendered[k] = true end
+		for k in pairs(FORM_KEYS) do
+			-- 先看字段本身是否被渲染；只有「别名」才回退到它的规范写法。
+			-- 顺序不能反：method 与 cipher 互为别名，若一律先查别名表，
+			-- shadowsocks 渲染的 method 会被判成「cipher 没渲染」而不清空。
+			local canon = rendered[k] and k or (FORM_ALIASES[k] or k)
+			if rendered[canon] then out[k] = nil end
+		end
+	else
+		for k in pairs(FORM_KEYS) do out[k] = nil end
+	end
 	for k, v in pairs(formnode or {}) do
 		if k ~= "type" then out[k] = v end
 	end

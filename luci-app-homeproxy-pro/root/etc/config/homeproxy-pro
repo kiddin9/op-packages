@@ -26,6 +26,15 @@ config homeproxy-pro 'config'
 	option main_udp_node 'same'
 	option dns_server '8.8.8.8'
 	option china_dns_server '223.5.5.5'
+	# Bootstrap resolver for the DoH/DoT endpoint's own hostname.  Without
+	# it `main-dns` borrows the WAN resolver, so the one lookup that decides
+	# where every proxied name goes is answered by the ISP: poisoning that
+	# single answer is enough to break the whole DNS split, and it is the
+	# only query that was still leaving through the ISP after the split
+	# itself was configured correctly.  This is a conffile, so upgrading
+	# never rewrites an existing /etc/config/homeproxy-pro - the value below
+	# only reaches fresh installs.
+	list bootstrap_dns '223.5.5.5'
 	option routing_mode 'bypass_mainland_china'
 	option routing_port 'common'
 	option proxy_mode 'redirect_tproxy'

@@ -18,6 +18,10 @@
 	-- 归一为白名单取值后用 json_encode 输出，保证是合法的 JS 字符串字面量
 	if local_mode ~= "form" then local_mode = "text" end
 	local js_mode = util.json_encode(local_mode) or '"text"'
+	-- 协议与字段清单：与 core.merge_form_node 共用 substore/node.lua 的同一份数据
+	local node_mod = require("substore.node")
+	local js_protos = (util.json_encode(node_mod.PROTOS) or "[]"):gsub("</", "<\\/")
+	local js_proto_fields = (util.json_encode(node_mod.PROTO_FIELDS) or "{}"):gsub("</", "<\\/")
 %>
 <h2><%=is_edit and luci.i18n.translate("Edit local subscription") or luci.i18n.translate("Add local subscription")%></h2>
 
@@ -118,6 +122,7 @@ var FIELD_LABELS = {
 	"obfs": "Obfs",
 	"obfs-param": "Obfs Param",
 	"obfs-password": "Obfs Password",
+	"protocol": "Protocol",
 	"protocol-param": "Protocol Param",
 	"udp": "UDP",
 	"skip-cert-verify": "Skip Cert Verify",
@@ -140,8 +145,13 @@ var NODEFORM_I18N = {
 	"node": "<%:Node%>",
 	"defaultOpt": "<%:Default%>"
 };
+// 协议与字段清单由服务端注入（唯一来源：substore/node.lua 的 M.PROTOS /
+// M.PROTO_FIELDS）。core.merge_form_node 用同一份清单决定哪些字段可以被表单
+// 覆盖，两边必须严格一致，因此不在前端另抄一份。
+var SUBSTORE_PROTOS = <%=js_protos%>;
+var SUBSTORE_PROTO_FIELDS = <%=js_proto_fields%>;
 </script>
-<script src="/luci-static/resources/substore/nodeform.js?v=2.2.0"></script>
+<script src="/luci-static/resources/substore/nodeform.js?v=2.6.1"></script>
 <script>
 // 切换导入模式：仅切换显示/禁用，不提交表单
 function substore_local_switch(mode) {

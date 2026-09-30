@@ -10,6 +10,10 @@
 	local n = nodes[idx]
 	-- 注入 JS 的节点对象：转义 "</" 防止提前闭合 script
 	local js_node = n and ((util.json_encode(n) or "null"):gsub("</", "<\\/")) or "null"
+	-- 协议与字段清单：与 core.merge_form_node 共用 substore/node.lua 的同一份数据
+	local node_mod = require("substore.node")
+	local js_protos = (util.json_encode(node_mod.PROTOS) or "[]"):gsub("</", "<\\/")
+	local js_proto_fields = (util.json_encode(node_mod.PROTO_FIELDS) or "{}"):gsub("</", "<\\/")
 	local back_url = luci.dispatcher.build_url('admin/services/substore/nodes') .. "?id=" .. luci.util.urlencode(id)
 %>
 <h2><%:Edit node%> — <%=luci.util.pcdata(meta and meta.name or "")%></h2>
@@ -61,6 +65,7 @@ var FIELD_LABELS = {
 	"obfs": "Obfs",
 	"obfs-param": "Obfs Param",
 	"obfs-password": "Obfs Password",
+	"protocol": "Protocol",
 	"protocol-param": "Protocol Param",
 	"udp": "UDP",
 	"skip-cert-verify": "Skip Cert Verify",
@@ -83,9 +88,14 @@ var NODEFORM_I18N = {
 	"node": "<%:Node%>",
 	"defaultOpt": "<%:Default%>"
 };
+// 协议与字段清单由服务端注入（唯一来源：substore/node.lua 的 M.PROTOS /
+// M.PROTO_FIELDS）。core.merge_form_node 用同一份清单决定哪些字段可以被表单
+// 覆盖，两边必须严格一致，因此不在前端另抄一份。
+var SUBSTORE_PROTOS = <%=js_protos%>;
+var SUBSTORE_PROTO_FIELDS = <%=js_proto_fields%>;
 var NODE_EDIT_DATA = <%=js_node%>;
 </script>
-<script src="/luci-static/resources/substore/nodeform.js?v=2.2.0"></script>
+<script src="/luci-static/resources/substore/nodeform.js?v=2.6.1"></script>
 <script>
 function node_edit_prepare() {
 	var arr = collectNodes();

@@ -14,8 +14,12 @@
 	local group = http.formvalue("group") or q.group or ""
 	local sort_by = http.formvalue("sort") or q.sort or "name"
 	local sort_desc = http.formvalue("desc") == "1" or q.desc == "1"
-	-- id 会进入 <script> 里的 JS 字符串字面量，用 JSON 编码而不是 HTML 转义
-	local js_id = util.json_encode(id) or '""'
+	-- id 会进入 <script> 里的 JS 字符串字面量，用 JSON 编码而不是 HTML 转义。
+	-- 但只有 JSON 编码还不够：json_encode 不转义 "<"，id 直接来自查询串，
+	-- 形如 "</script><script>alert(1)</script>" 的值会在 HTML 词法阶段就闭合
+	-- script 元素（与 JS 字符串上下文无关），剩下的部分被当作 HTML 执行。
+	-- 转义 "</" 即可：在 JS 字符串里 "\/" 就是 "/"，而 HTML 不再看到 "</script"。
+	local js_id = (util.json_encode(id) or '""'):gsub("</", "<\\/")
 
 	-- 标注原始数组下标（filter 保留表引用、sort 原地排序，下标可穿透筛选排序）
 	for i, nn in ipairs(nodes) do nn.__idx = i end

@@ -2,28 +2,19 @@
  * 依赖页面在引入本文件前定义：
  *   var FIELD_LABELS = { "name": "...", "group": "...", ... };   // 字段标签（模板用 <%:...%> 渲染）
  *   var NODEFORM_I18N = { node: "...", defaultOpt: "..." };      // 界面文本（同上）
+ *   var SUBSTORE_PROTOS = [...];                                 // 协议下拉框
+ *   var SUBSTORE_PROTO_FIELDS = { proto: [...] };                // 各协议渲染的字段
  * 提供：SUBSTORE_PROTOS / PROTO_FIELDS / renderFields / collectNodes / addNodeRow
+ *
+ * 协议与字段清单**不在本文件里**，由页面从 substore/node.lua 的 M.PROTOS /
+ * M.PROTO_FIELDS 渲染后注入。这不是洁癖：服务端的 core.merge_form_node 用同一份
+ * 清单决定「哪些字段可以被表单覆盖（含清空）」，两边各维护一份必然会漂移 ——
+ * 表单没渲染的字段提交不上来，而合并时一并清空就等于用空值覆盖原值（vmess 与
+ * hysteria2/tuic 的 TLS 层字段就是这样被静默抹掉的）。详见 node.PROTO_FIELDS 的注释。
  */
+var SUBSTORE_PROTOS = window.SUBSTORE_PROTOS || [];
 
-// 必须与 substore/node.lua 的 M.PROTOS 一致（规格 §25「本地表单协议能力」的协议集合）。
-// 之前这里少了 hysteria / socks：node.lua、节点页筛选、规则 proto_filter 都认这两个协议，
-// 唯独表单下拉框选不到，用户无法用「表单导入」录入它们。
-var SUBSTORE_PROTOS = ["vmess","vless","trojan","shadowsocks","ssr","hysteria2","tuic","hysteria","wireguard","socks"];
-
-var PROTO_FIELDS = {
-	ssr: ["server","port","password","cipher","protocol","obfs","obfs-param","protocol-param","udp"],
-	vmess: ["server","port","uuid","alterId","cipher","net","headerType","path","host","sni","tls","udp","skip-cert-verify"],
-	vless: ["server","port","uuid","security","flow","net","headerType","path","host","sni","udp","skip-cert-verify"],
-	trojan: ["server","port","password","sni","net","headerType","path","host","udp","skip-cert-verify"],
-	shadowsocks: ["server","port","password","method","headerType","udp"],
-	hysteria2: ["server","port","password","sni","obfs","obfs-password","skip-cert-verify"],
-	// hysteria(v1)：obfs 是普通字符串（不是 hysteria2 的 salamander），因此没有 obfs-password。
-	// 字段集合以各输出模块实际消费的键为准（output_clash_meta / output_singbox / output_uri）。
-	hysteria: ["server","port","password","sni","obfs","skip-cert-verify"],
-	tuic: ["server","port","uuid","password","sni","udp","skip-cert-verify"],
-	wireguard: ["server","port","private-key","public-key","pre-shared-key","ip","ipv6","allowed-ips","reserved","persistent-keepalive","listen-port","mtu","amnezia-wg-option"],
-	socks: ["server","port","username","password","udp"]
-};
+var PROTO_FIELDS = window.SUBSTORE_PROTO_FIELDS || {};
 
 // 枚举字段用下拉框；键为 "协议.字段" 优先，退化为通用 "字段"
 // 选项集合以模型/输出模块实际支持的值为准（见 output_singbox.build_transport / output_uri）

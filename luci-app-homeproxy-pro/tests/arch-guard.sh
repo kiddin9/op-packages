@@ -2065,6 +2065,34 @@ rm -rf "$SNAP_TMP"
 trap - EXIT INT TERM
 
 echo
+echo "== guard 45: a fresh install bootstraps main-dns, an untouched config still does not =="
+
+# E3.  With no bootstrap_dns, `main-dns` (the DoH/DoT endpoint) falls back to
+# the WAN resolver, so the ISP answers the one lookup that decides where every
+# proxied name goes.  The package default below closes that for fresh
+# installs; this guard exists so neither half drifts silently:
+#   (a) an explicitly empty list must still emit NO bootstrap-dns server, so
+#       a user who clears the field gets the old behaviour back rather than a
+#       resolver the generator invents for them;
+#   (b) the package-shipped default is what makes the fix reach a new install
+#       at all - the field is read from the 'config' section, and the file is
+#       a conffile, so this line only lands on fresh installs.
+if grep -q "if (isEmpty(ctx.bootstrap_dns))" "$SCRIPTS/generator/dns.uc"; then
+	pass "an empty bootstrap_dns still emits no bootstrap-dns server"
+else
+	fail "append_bootstrap_dns no longer short-circuits on an empty bootstrap_dns - a"
+	fail "user who cleared the field would get a resolver they did not ask for"
+fi
+
+if grep -q "^	list bootstrap_dns '223.5.5.5'" "$ROOT/root/etc/config/homeproxy-pro"; then
+	pass "a fresh install ships a bootstrap_dns, so main-dns never asks the ISP"
+else
+	fail "the package-shipped /etc/config/homeproxy-pro no longer ships a bootstrap_dns -"
+	fail "a new install would resolve its DoH endpoint's hostname through the WAN"
+	fail "resolver, which is the last query that still leaves via the ISP"
+fi
+
+echo
 printf '%s checks, %s failures\n' "$checks" "$([ "$FAILED" = 0 ] && echo 0 || echo 'nonzero')"
 if [ "$FAILED" != 0 ]; then
 	echo "ARCHITECTURE GUARD FAILED"
