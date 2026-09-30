@@ -18,6 +18,11 @@ function hasKernelModule(kmod) {
 	return (system(sprintf('[ -e "/lib/modules/$(uname -r)"/%s ]', shellQuote(kmod))) === 0);
 }
 
+/* The nft sets gfw_set_counts() reports on.  A named constant rather than an
+ * `in [...]` literal: this file keeps its membership tests on index() and
+ * named arrays (arch-guard checks both). */
+const GFW_SET_FAMILIES = ['v4', 'v6'];
+
 const HP_DIR = '/etc/homeproxy-pro';
 const RUN_DIR = '/var/run/homeproxy-pro';
 const LOG_PATH = `${RUN_DIR}/homeproxy-pro.log`;
@@ -49,6 +54,37 @@ function collectFeatures() {
 	features.hp_has_tun = hasKernelModule('tun.ko') || access('/etc/modules.d/30-tun');
 
 	return features;
+}
+
+/* Element count of an nft set, or null when the set does not exist.  Used by
+ * gfw_set_counts(): the gfwlist routing mode decides with a set that dnsmasq
+ * fills through `nftset=`, so an empty set means the mode is silently routing
+ * everything direct. */
+function nft_set_size(name) {
+	const ret = executeCommand('nft', '-j', 'list', 'set', 'inet', 'fw4', shellQuote(name));
+
+	if (ret == null || ret.exitcode !== 0 || isEmpty(ret.stdout))
+		return null;
+
+	let doc;
+	try {
+		doc = json(ret.stdout);
+	} catch (e) {
+		return null;
+	}
+
+	/* `elem` is what nft 1.1.6 emits (`nft -j list set`); older builds used
+	 * `elements`.  Accepting both keeps the count right on either, because
+	 * the wrong key silently reads as "0 elements" - the very answer this
+	 * method exists to distinguish from "not filled". */
+	for (let item in (doc?.nftables || [])) {
+		const elements = item.set ? (item.set.elem || item.set.elements) : null;
+
+		if (elements)
+			return length(elements);
+	}
+
+	return 0;
 }
 
 const methods = {
@@ -435,6 +471,23 @@ const methods = {
 			}
 
 			return { running, log_tail: tail };
+		}
+	},
+
+	/* The gfwlist mode routes by an nft set that dnsmasq populates through
+	 * `nftset=`.  A LAN client with its own DoH/DoT never asks this router's
+	 * DNS, the set stays empty, and the mode degrades to direct routing with
+	 * no visible symptom - the count is what separates "the mode is working"
+	 * from "the mode is doing nothing". */
+	gfw_set_counts: {
+		args: {},
+		call: function() {
+			let counts = {};
+
+			for (let family in GFW_SET_FAMILIES)
+				counts[family] = nft_set_size('homeproxy_gfw_list_' + family);
+
+			return counts;
 		}
 	}
 };

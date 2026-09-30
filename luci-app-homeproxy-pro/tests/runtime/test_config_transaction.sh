@@ -378,5 +378,29 @@ reset_samples
 hp_wait_instance "sing-box-c" "$CFG" 1
 expect "wait_instance (compat): times out when down" "$?" "1"
 
+# A reload that regenerates identical bytes must not restart the instances:
+# service_triggers() reloads on every `interface.*.up` for wan, so a flapping
+# link used to interrupt every connection for a configuration that had not
+# changed.  hp_config_changed() is the decision, and it is pure shell.
+printf 'configuration one\n' > "$WORK/live.json"
+DIGEST="$(hp_file_digest "$WORK/live.json")"
+expect "digest is stable" "$(hp_file_digest "$WORK/live.json")" "$DIGEST"
+
+hp_config_changed "$WORK/live.json" "$DIGEST" && RC=1 || RC=0
+expect "an identical file is not a change" "$RC" "0"
+
+printf 'configuration two\n' > "$WORK/live.json"
+hp_config_changed "$WORK/live.json" "$DIGEST" && RC=1 || RC=0
+expect "a rewritten file is a change" "$RC" "1"
+
+hp_config_changed "$WORK/missing.json" "$DIGEST" && RC=1 || RC=0
+expect "a missing live file is a change" "$RC" "1"
+
+hp_config_changed "$WORK/live.json" "" && RC=1 || RC=0
+expect "nothing to compare against is a change" "$RC" "1"
+
+: > "$WORK/empty.json"
+expect "an empty file has no digest" "$(hp_file_digest "$WORK/empty.json")" ""
+
 printf '%d checks, %d failures\n' "$CHECKS" "$FAILURES"
 exit $FAILED

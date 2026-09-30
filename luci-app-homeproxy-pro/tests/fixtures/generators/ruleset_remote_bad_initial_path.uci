@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# A remote rule-set whose initial_path points outside the homeproxy-pro whitelist.
+# The path is read off the local disk as root, so the same gate as a local
+# rule-set's path applies - and it has to fail the same way.  It used to be
+# dropped silently (initial_path := null), which left a rule-set the user
+# believed had a local copy downloading at first start instead.
+
+config homeproxy-pro 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '1'
+	option log_level 'error'
+
+config homeproxy-pro 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+config ruleset 'rs_seed'
+	option enabled '1'
+	option label 'rs-seed'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.invalid/ruleset.srs'
+	option initial_path '/etc/passwd'
+
+config routing_rule 'rr_seed'
+	option enabled '1'
+	option label 'rr-seed'
+	option action 'route'
+	option outbound 'direct-out'
+	option rule_set 'rs_seed'

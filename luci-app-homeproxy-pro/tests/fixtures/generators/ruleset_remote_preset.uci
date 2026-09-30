@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# A remote rule-set in a preset routing mode.  It used to be fetched through
+# direct-out regardless of the mode, which fails on a router that can only
+# reach the rule-set host through the proxy - and the only trace is a line in
+# the sing-box log.  The built-in geoip-cn / geosite-cn rule-sets already
+# download through main-out (route.uc sets download_detour for them).
+
+config homeproxy-pro 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '1'
+	option log_level 'error'
+	option main_node 'n_vless'
+
+config homeproxy-pro 'routing'
+	option default_outbound 'direct-out'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+config node 'n_vless'
+	option label 'n-vless'
+	option type 'vless'
+	option address 'example.invalid'
+	option port '443'
+	option uuid '00000000-0000-0000-0000-000000000000'
+	option tls '1'
+	option tls_sni 'example.invalid'
+
+config routing_node 'rn_main'
+	option enabled '1'
+	option label 'rn-main'
+	option node 'n_vless'
+
+config ruleset 'rs_remote'
+	option enabled '1'
+	option label 'rs-remote'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.invalid/ruleset.srs'
+
+config routing_rule 'rr_rs'
+	option enabled '1'
+	option label 'rr-rs'
+	option action 'route'
+	option outbound 'rn_main'
+	option rule_set 'rs_remote'

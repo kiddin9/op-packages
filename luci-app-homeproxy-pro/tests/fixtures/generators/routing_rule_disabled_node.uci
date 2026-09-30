@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# A routing rule pointing at a routing_node that was switched off afterwards.
+# generate_outbound() skips disabled nodes, so the tag the rule refers to is
+# generated nowhere and sing-box refuses the whole configuration with
+# "outbound not found: cfg-rn_off-out" - a message that never names the node
+# the user turned off.  get_outbound() now refuses it the way
+# get_resolver()/get_ruleset() already do.
+
+config homeproxy-pro 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '1'
+	option log_level 'error'
+
+config homeproxy-pro 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+config node 'n_direct'
+	option label 'n-direct'
+	option type 'direct'
+
+config routing_node 'rn_off'
+	option enabled '0'
+	option label 'rn-off'
+	option node 'n_direct'
+
+config routing_rule 'rr_off'
+	option enabled '1'
+	option label 'rr-off'
+	option action 'route'
+	option outbound 'rn_off'

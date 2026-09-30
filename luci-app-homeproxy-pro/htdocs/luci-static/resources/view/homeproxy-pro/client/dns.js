@@ -13,17 +13,20 @@
 'require homeproxy-pro as hp';
 'require view.homeproxy-pro.client.common as common';
 
-/* The four cache options exist on the 'dns' NamedSection in both the custom
- * mode tab (renderDnsSettings) and the preset mode tab (renderDnsCache).
- * Both used to spell them out separately, which registered the same four
- * option names twice in one map: LuCI keeps the first registration for writes
- * and lookupOption(), so the second copy's dependencies did nothing while its
- * description could drift.  They are declared here once and rendered from
- * wherever the tab needs them, in the original order.
+/* DNS settings: both routing-mode families in one tab.
  *
- * The depends() are the custom-mode copy's: with the cache disabled the
- * optimistic cache and its persisted file have no effect, so both are hidden
- * (disable_cache_expire is itself conditional on disable_cache). */
+ * They used to be two tabs with the same title ('dns' and 'dns_cache'), each
+ * wrapping the same 'dns' NamedSection.  Two form.NamedSection instances over
+ * one UCI section produce identical cbids, and LuCI resolves a cbid by taking
+ * the first matching element in DOM order - which follows tab registration,
+ * i.e. the custom-mode tab.  The four cache options were registered in both,
+ * so under a preset routing mode the controls the user could actually see were
+ * reading and writing an element inside a hidden tab: "Store DNS cache" and
+ * "DNS query timeout" did not take.
+ *
+ * The tab is declared once now and no option name is registered twice, so
+ * there is no first-match to get wrong.  Each option carries the routing mode
+ * it belongs to as a depends(). */
 function renderDnsCacheOptions(ss) {
 	let so;
 
@@ -50,85 +53,23 @@ function renderDnsCacheOptions(ss) {
  * routing.renderRoutingRules() so the NamedSection chain reads
  * config -> routing_node -> routing_rule -> dns from left to right. */
 function renderDnsSettings(ctx) {
-	const { s } = ctx;
+	const { s, stubValidator } = ctx;
 	let o, ss, so;
 
 	s.tab('dns', _('DNS Settings'));
-	o = s.taboption('dns', form.SectionValue, '_dns', form.NamedSection, 'dns', 'homeproxy-pro');
-	o.depends('routing_mode', 'custom');
 
-	ss = o.subsection;
-	so = ss.option(form.ListValue, 'default_strategy', _('Default DNS strategy'),
-		_('The DNS strategy for resolving the domain name in the address.'));
-	for (let i in hp.dns_strategy)
-		so.value(i, hp.dns_strategy[i]);
-
-	so = ss.option(form.ListValue, 'default_server', _('Default DNS server'));
-	so.load = function(section_id) {
-		delete this.keylist;
-		delete this.vallist;
-
-		this.value('default-dns', _('Default DNS (issued by WAN)'));
-		this.value('system-dns', _('System DNS'));
-		uci.sections('homeproxy-pro', 'dns_server', (res) => {
-			if (res.enabled === '1')
-				this.value(res['.name'], res.label);
-		});
-
-		return this.super('load', section_id);
-	}
-	so.default = 'default-dns';
-	so.rmempty = false;
-
-	so = ss.option(form.Flag, 'disable_cache', _('Disable DNS cache'));
-
-	so = ss.option(form.Flag, 'disable_cache_expire', _('Disable cache expire'));
-	so.depends('disable_cache', '0');
-
-	so = ss.option(form.Value, 'client_subnet', _('EDNS Client subnet'),
-		_('Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>' +
-		'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
-	so.datatype = 'or(cidr, ipaddr)';
-
-	renderDnsCacheOptions(ss);
-	/* DNS settings end */
-}
-
-/* DNS rules sub-section. Split out from renderDnsSettings() so the
- * orchestrator can call it after nodes.renderDnsServers() and preserve
- * the original tab ordering (dns, dns_server, dns_rule). */
-function renderDnsRules(ctx) {
-	const { s, self } = ctx;
-
-	/* DNS rules start */
-	common.renderRuleSection(s, 'dns', self);
-	/* DNS rules end */
-}
-
-/* DNS tab for the preset routing modes.  Titled 'DNS Settings' exactly like
- * the custom-mode tab in renderDnsSettings(): the two are mutually exclusive
- * (custom vs the presets), so whichever one a user lands on is called the
- * same thing.
- *
- * The three server options below are config.* (not dns.*) options that used
- * to live on the routing tab.  They are DNS settings, and the routing page
- * only carried them because of the order the old monolithic client.js
- * happened to be written in.  They stay on the 'config' NamedSection, so
- * only the tab they render under changed. */
-function renderDnsCache(ctx) {
-	const { s, stubValidator } = ctx;
-	let o, ss;
-
-	s.tab('dns_cache', _('DNS Settings'));
-
-	/* The name says overseas because that is the only thing that belongs
+	/* The preset-mode fields.  They belong to the 'config' section, not to
+	 * 'dns', so they were never part of the duplicate-cbid problem above -
+	 * they are rendered here because this is the only DNS tab now.
+	 *
+	 * The name says overseas because that is the only thing that belongs
 	 * here: every query this field answers goes to a domain that is not on
 	 * the China path, and a domestic resolver answers those with polluted or
 	 * NXDOMAIN results.  The Chinese public resolvers that used to be listed
 	 * below a divider were therefore a footgun with a helpful-looking label -
 	 * the one combination that reliably breaks a working proxy.  Only the
 	 * overseas public resolvers are offered now. */
-	o = s.taboption('dns_cache', form.Value, 'dns_server', _('Overseas DNS server'),
+	o = s.taboption('dns', form.Value, 'dns_server', _('Overseas DNS server'),
 		_('Resolves every domain that is not on the China DNS path, through the selected proxy node. ' +
 		'A domestic resolver answers these queries with polluted or NXDOMAIN results, which is what ' +
 		'makes a foreign site fail to resolve while the proxy itself works - so only overseas services ' +
@@ -164,11 +105,13 @@ function renderDnsCache(ctx) {
 		return true;
 	}
 
-	o = s.taboption('dns_cache', form.Value, 'china_dns_server', _('China DNS server'),
+	o = s.taboption('dns', form.Value, 'china_dns_server', _('China DNS server'),
 		_('Resolves the domains on the China path, so it has to be a domestic service to get the ' +
 		'correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case ' +
 		'a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. ' +
-		'Support UDP, TCP, DoH, DoQ, DoT.'));
+		'Support UDP, TCP, DoH, DoQ, DoT. A DoH/DoT address here also sends the bootstrap ' +
+		'lookup back to the WAN resolver: only a bare IP can resolve the proxy DNS endpoint ' +
+		'without the ISP.'));
 	o.value('wan', _('WAN DNS (read from interface)'));
 	o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
 	o.value('210.2.4.8', _('CNNIC Public DNS (210.2.4.8)'));
@@ -201,16 +144,67 @@ function renderDnsCache(ctx) {
 		return true;
 	}
 
-	o = s.taboption('dns_cache', form.Flag, 'cn_ip_fallback', _('CN-IP DNS fallback (sing-box 1.14)'),
+	o = s.taboption('dns', form.Flag, 'cn_ip_fallback', _('CN-IP DNS fallback (sing-box 1.14)'),
 		_('When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.'));
 	o.depends('routing_mode', 'bypass_mainland_china');
 	o.rmempty = false;
 
-	o = s.taboption('dns_cache', form.SectionValue, '_dns_cache', form.NamedSection, 'dns', 'homeproxy-pro');
-	o.depends({'routing_mode': 'custom', '!reverse': true});
+	/* The 'dns' section, registered exactly once: see the file header.  The
+	 * custom-only options below keep their own depends() because the section
+	 * is visible in both routing-mode families. */
+	o = s.taboption('dns', form.SectionValue, '_dns', form.NamedSection, 'dns', 'homeproxy-pro');
 	ss = o.subsection;
 
+	so = ss.option(form.ListValue, 'default_strategy', _('Default DNS strategy'),
+		_('The DNS strategy for resolving the domain name in the address.'));
+	for (let i in hp.dns_strategy)
+		so.value(i, hp.dns_strategy[i]);
+	so.depends('routing_mode', 'custom');
+
+	so = ss.option(form.ListValue, 'default_server', _('Default DNS server'));
+	so.load = function(section_id) {
+		delete this.keylist;
+		delete this.vallist;
+
+		this.value('default-dns', _('Default DNS (issued by WAN)'));
+		this.value('system-dns', _('System DNS'));
+		uci.sections('homeproxy-pro', 'dns_server', (res) => {
+			if (res.enabled !== '0')
+				this.value(res['.name'], res.label);
+		});
+
+		return this.super('load', section_id);
+	}
+	so.default = 'default-dns';
+	so.rmempty = false;
+	so.depends('routing_mode', 'custom');
+
+	so = ss.option(form.Flag, 'disable_cache', _('Disable DNS cache'));
+
+	so = ss.option(form.Flag, 'disable_cache_expire', _('Disable cache expire'));
+	so.depends('disable_cache', '0');
+
+	so = ss.option(form.Value, 'client_subnet', _('EDNS Client subnet'),
+		_('Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>' +
+		'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
+	so.datatype = 'or(cidr, ipaddr)';
+	so.depends('routing_mode', 'custom');
+
+	/* The four cache options are common to both families, so they are
+	 * registered once, with no routing-mode dependency of their own. */
 	renderDnsCacheOptions(ss);
+	/* DNS settings end */
 }
 
-return baseclass.extend({ renderDnsSettings, renderDnsRules, renderDnsCache });
+/* DNS rules sub-section. Split out from renderDnsSettings() so the
+ * orchestrator can call it after nodes.renderDnsServers() and preserve
+ * the original tab ordering (dns, dns_server, dns_rule). */
+function renderDnsRules(ctx) {
+	const { s, self } = ctx;
+
+	/* DNS rules start */
+	common.renderRuleSection(s, 'dns', self);
+	/* DNS rules end */
+}
+
+return baseclass.extend({ renderDnsSettings, renderDnsRules });

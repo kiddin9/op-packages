@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# DNS rule action fields that sing-box validates at load time
+# (route/rule/rule_dns.go, validateDNSRuleAction):
+#
+#   * `race` and `speculative` cannot be combined on the same rule;
+#   * `client_subnet` and `remove_client_subnet` are mutually exclusive.
+#
+# The rules below are a *legal* baseline: both sides of each pair are off.
+# The testbed opens one side with a one-line sed variation, so the case that
+# must be refused differs from the case that must pass by exactly the flag
+# under test.
+
+config homeproxy-pro 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '1'
+	option log_level 'error'
+
+config homeproxy-pro 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+config dns_rule 'dr_race'
+	option enabled '1'
+	option label 'dr-race'
+	option action 'route'
+	option server 'default-dns'
+	option race '0'
+	option speculative '0'
+
+config dns_rule 'dr_subnet'
+	option enabled '1'
+	option label 'dr-subnet'
+	option action 'route'
+	option server 'default-dns'
+	option client_subnet '1.2.3.0/24'
+	option remove_client_subnet '0'
+
+config dns_rule 'dr_eval'
+	option enabled '1'
+	option label 'dr-eval'
+	option action 'evaluate'
+	option server 'default-dns'
+	option dns_timeout '5'

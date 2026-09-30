@@ -65,7 +65,7 @@ function renderRoutingNodes(ctx) {
 		this.value('default-dns', _('Default DNS (issued by WAN)'));
 		this.value('system-dns', _('System DNS'));
 		uci.sections('homeproxy-pro', 'dns_server', (res) => {
-			if (res.enabled === '1')
+			if (res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 
@@ -96,7 +96,7 @@ function renderRoutingNodes(ctx) {
 
 		this.value('', _('Direct'));
 		uci.sections('homeproxy-pro', 'routing_node', (res) => {
-			if (res['.name'] !== section_id && res.enabled === '1')
+			if (res['.name'] !== section_id && res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 
@@ -264,7 +264,7 @@ function renderDnsServers(ctx) {
 	so.modalonly = true;
 
 	so = ss.option(form.DynamicList, 'headers', _('Headers'),
-		_('Additional headers to be sent to the DNS server.'));
+		_('Additional headers to be sent to the DNS server, one <code>Name: Value</code> per line.'));
 	so.depends('type', 'https');
 	so.depends('type', 'h3');
 	so.modalonly = true;
@@ -287,7 +287,7 @@ function renderDnsServers(ctx) {
 		this.value('default-dns', _('Default DNS (issued by WAN)'));
 		this.value('system-dns', _('System DNS'));
 		uci.sections('homeproxy-pro', 'dns_server', (res) => {
-			if (res['.name'] !== section_id && res.enabled === '1')
+			if (res['.name'] !== section_id && res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 
@@ -324,7 +324,7 @@ function renderDnsServers(ctx) {
 
 		this.value('direct-out', _('Direct'));
 		uci.sections('homeproxy-pro', 'routing_node', (res) => {
-			if (res.enabled === '1')
+			if (res.enabled !== '0')
 				this.value(res['.name'], res.label);
 		});
 

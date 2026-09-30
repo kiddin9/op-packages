@@ -26,7 +26,7 @@
 
 'use strict';
 
-import { isEmpty, validateHomeProxyPath } from '../homeproxy-pro.uc';
+import { isEmpty, strToTime, validateHomeProxyPath } from '../homeproxy-pro.uc';
 
 import { get_outbound, isDirectOutboundTag } from './common.uc';
 
@@ -39,6 +39,13 @@ export function build_user_rulesets(rule_set_array, dm, ctx) {
 	for (let cfg in dm.routing.rulesets) {
 		if (!cfg.enabled)
 			continue;
+
+		/* An inline rule-set is a `rules` array, and nothing in this package
+		 * ever writes one: the form only offers local and remote.  Emitting
+		 * `{type: 'inline'}` without `rules` is rejected by sing-box, so a
+		 * hand-written UCI section is refused by name here. */
+		if (cfg.type === 'inline')
+			die(sprintf("homeproxy-pro: rule-set '%s' is declared inline, which this package cannot edit; use a local or remote rule-set.", cfg.name));
 
 		const extra_tags = cfg.extra_tags || [];
 		let rs_tag = 'cfg-' + cfg.name + '-rule';
@@ -78,18 +85,29 @@ export function build_user_rulesets(rule_set_array, dm, ctx) {
 			format: cfg.format,
 			path: cfg.path,
 			url: cfg.url,
-			update_interval: cfg.update_interval
+			/* A duration to sing-box: a bare number is rejected with
+			 * "time: missing unit in duration", taking the whole
+			 * configuration down, and the form only offers a placeholder
+			 * ("1d"), not a format check.  Same treatment as the DNS
+			 * timeouts. */
+			update_interval: strToTime(cfg.update_interval)
 		};
-		/* download_detour is a pre-1.14 option that only makes sense for
-		   remote rule-sets; emitting it for local/inline ones makes sing-box
-		 * 1.14 reject the whole config. It is translated into http_clients
-		   right below. */
+		/* download_detour is deprecated since 1.14 (removed in 1.16) and only
+		 * ever applied to remote rule-sets; emitting it at all makes sing-box
+		 * refuse the configuration.  It is translated into http_clients right
+		 * below. */
 		if (cfg.type === 'remote')
 			ruleset.download_detour = get_outbound(cfg.outbound, dm) || get_outbound(ctx.default_outbound, dm);
-		if (cfg.type === 'remote' && !isEmpty(cfg.initial_path))
-			/* initial_path is read off the local disk as root; same
-			 * whitelist as the local ruleset path. */
-			ruleset.initial_path = validateHomeProxyPath(cfg.initial_path) ? cfg.initial_path : null;
+		if (cfg.type === 'remote' && !isEmpty(cfg.initial_path)) {
+			/* initial_path is read off the local disk as root; same whitelist
+			 * as the local ruleset path - and now the same fail-loud
+			 * treatment.  Dropping it silently made a rule-set the user
+			 * believed had a local copy depend on a download at first start,
+			 * with nothing said about why. */
+			if (!validateHomeProxyPath(cfg.initial_path))
+				die(sprintf("homeproxy-pro: rule-set '%s' initial_path '%s' is outside the homeproxy-pro whitelist; choose a path under /etc/homeproxy-pro/.", cfg.name, cfg.initial_path));
+			ruleset.initial_path = cfg.initial_path;
+		}
 		push(rule_set_array, ruleset);
 	}
 };
@@ -114,8 +132,21 @@ export function build_http_clients(rule_set_array, dm, ctx) {
 		if (rs.type !== 'remote')
 			continue;
 
-		if (isEmpty(detour))
-			detour = (ctx.routing_mode === 'custom') ? (get_outbound(ctx.default_outbound, dm) || 'direct-out') : 'direct-out';
+		if (isEmpty(detour)) {
+			/* A remote rule-set still has to be fetched through something.
+			 * The preset modes used to fall back to direct-out, which fails
+			 * on a router that can only reach GitHub through the proxy - and
+			 * the only trace is a line in the sing-box log.  Follow the
+			 * mode's main outbound instead, the way the built-in geoip-cn /
+			 * geosite-cn rule-sets already do (route.uc gives them
+			 * download_detour: main-out). */
+			if (ctx.routing_mode === 'custom')
+				detour = get_outbound(ctx.default_outbound, dm) || 'direct-out';
+			else if (!isEmpty(ctx.main_node))
+				detour = 'main-out';
+			else
+				detour = 'direct-out';
+		}
 
 		const tag = 'hp-' + detour;
 		rs.http_client = tag;

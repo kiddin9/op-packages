@@ -115,7 +115,19 @@ hp_dnsmasq_render_snippets() {
 	hp_dnsmasq_has_nftset || nftset_ok=0
 
 	case "$routing_mode" in
-	"bypass_mainland_china"|"custom"|"global")
+	"bypass_mainland_china"|"custom"|"global"|"proxy_mainland_china")
+		# Every one of these hands all queries to sing-box, which is the only
+		# DNS front end the mode needs.
+		#
+		# proxy_mainland_china used to be the exception: it expanded
+		# china_list.txt (111353 domains in the bundled list) into one
+		# `server=` line each, so that only those domains reached sing-box.
+		# Measured on a real device (ImmortalWrt 25.12.2, x86-64, dnsmasq
+		# 2.93) that costs about 25 MB of RSS - 1.0 MB empty, 27.2 MB with
+		# the list - while the outcome is the same: this mode's dns.final is
+		# default-dns (the WAN resolver), so a mainland domain resolves
+		# through the ISP either way.  The split that actually matters is
+		# decided on the route side, by geoip-cn/china-ip.
 		cat <<-EOF > "$stage/redirect-dns.conf" || return 1
 			no-poll
 			no-resolv
@@ -133,12 +145,6 @@ hp_dnsmasq_render_snippets() {
 				sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port/g" \
 					"$hp_dir/resources/gfw_list.txt" > "$stage/gfw_list.conf" || return 1
 			fi
-		fi
-		;;
-	"proxy_mainland_china")
-		if [ -s "$hp_dir/resources/china_list.txt" ]; then
-			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port/g" \
-				"$hp_dir/resources/china_list.txt" > "$stage/china_list.conf" || return 1
 		fi
 		;;
 	esac

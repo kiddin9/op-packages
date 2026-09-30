@@ -281,7 +281,12 @@ set homeproxy_mainland_addr_v4 {
 		{% endfor %}
 	}
 }
-{% if ((ipv6_support === '1') || china_dns_server): %}
+{# The v6 mainland set is only ever matched inside `ipv6_support === '1'`
+   blocks - every reference to it below is gated on that - so the old
+   `|| china_dns_server` alternative only ever built a set nothing pointed
+   at: 1033 prefixes loaded into the kernel on every fw4 reload for nothing.
+   china_dns_server is a DNS-side setting and has no bearing on v6 routing. #}
+{% if (ipv6_support === '1'): %}
 set homeproxy_mainland_addr_v6 {
 	type ipv6_addr
 	flags interval
@@ -344,6 +349,25 @@ set homeproxy_routing_port {
 	flags interval
 	auto-merge
 	elements = { {{ ports_to_nftarr(routing_port) }} }
+}
+{% endif %}
+
+{# IPv6 forwarding is refused outright when the switch is off.
+   The DNS side already answers AAAA with REFUSED, but that only covers clients
+   that ask *this* router: a cached address, a client with its own resolver, or
+   an IPv6-only destination still reaches the WAN and bypasses both the proxy
+   and the mainland split.
+   fw4's own forward chain cannot be used for this - it jumps into the zone
+   chains, whose accept rules end the traversal before anything appended at the
+   end of the chain is reached - so this is a base chain of its own, ordered
+   before fw4's forward (priority filter == 0).
+   Intra-LAN IPv6 is covered as well, which is what "this router does not do
+   IPv6" means for `ipv6_support` off. #}
+{% if (ipv6_support !== '1'): %}
+chain homeproxy_ipv6_guard {
+	type filter hook forward priority mangle; policy accept
+
+	meta nfproto ipv6 counter reject comment "!{{ cfgname }}: IPv6 forwarding is disabled (ipv6_support is off)"
 }
 {% endif %}
 
@@ -562,14 +586,14 @@ chain homeproxy_mangle_prerouting {
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr != @homeproxy_gfw_list_v6 counter return
 	{% endif /* ipv6_support */ %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: reject QUIC (UDP 80/443), clients fall back to TCP"
 	{% elif (routing_mode === 'bypass_mainland_china' || bypass_cn_traffic === '1'): %}
 	ip daddr @homeproxy_mainland_addr_v4 counter return
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr @homeproxy_mainland_addr_v6 counter return
 	{% endif /* ipv6_support */ %}
 	{% if (routing_mode !== 'custom'): %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: reject QUIC (UDP 80/443), clients fall back to TCP"
 	{% endif /* routing_mode */ %}
 	{% elif (routing_mode === 'proxy_mainland_china'): %}
 	ip daddr != @homeproxy_mainland_addr_v4 counter return
@@ -723,14 +747,14 @@ chain homeproxy_mangle_tun {
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr != @homeproxy_gfw_list_v6 counter return
 	{% endif /* ipv6_support */ %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: reject QUIC (UDP 80/443), clients fall back to TCP"
 	{% elif (routing_mode === 'bypass_mainland_china' || bypass_cn_traffic === '1'): %}
 	ip daddr @homeproxy_mainland_addr_v4 counter return
 	{% if (ipv6_support === '1'): %}
 	ip6 daddr @homeproxy_mainland_addr_v6 counter return
 	{% endif /* ipv6_support */ %}
 	{% if (routing_mode !== 'custom'): %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: reject QUIC (UDP 80/443), clients fall back to TCP"
 	{% endif /* routing_mode */ %}
 	{% elif (routing_mode === 'proxy_mainland_china'): %}
 	ip daddr != @homeproxy_mainland_addr_v4 counter return
