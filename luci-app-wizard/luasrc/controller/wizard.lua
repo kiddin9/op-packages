@@ -40,6 +40,8 @@ function landing_page()
             target = {"admin", "routerdog"}
         elseif check_wifi(uci) then
             target = {"admin", "status", "dashboard"}
+        else
+            target = {"admin", "status", "overview"}
         end
 
     -- 2. 常规指定页面
