@@ -569,12 +569,14 @@ jobs:
         sed -i 's/icon!=="baby"/icon!==""/' luci-app-quickstart/htdocs/luci-static/quickstart/index.js
         sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile
         sed -i 's/+luci-base/+luci-base +luci-app-oui +luci-mod-dashboard/' luci-mod-status/Makefile
-        sed -i -e "s/data-page=admin-dashboard/data-page=admin-status-dashboard/g" \
-        -e '$a\.modal>pre,.modal>textarea{color: #ccc}
-        .login-page.defwallpaper .login-container{background-color: rgb(136 136 136 / 14%);backdrop-filter: blur(0);margin:0 auto;}'
-        .defwallpaper.defwallpaper .main-bg img{object-position: -99999px -99999px;}
+        sed -i \
+          -e 's/data-page=admin-dashboard/data-page=admin-status-dashboard/g' \
+          -e '$a\
+        .modal>pre,.modal>textarea{color: #ccc}\
+        .login-page.defwallpaper .login-container{background-color: rgb(136 136 136 / 14%);backdrop-filter: blur(0);margin:0 auto;}\
+        .defwallpaper.defwallpaper .main-bg img{object-position: -99999px -99999px;}\
         .main .main-right{background-color: transparent}' \
-        luci-theme-argon/htdocs/luci-static/argon/css/dark.css
+          luci-theme-argon/htdocs/luci-static/argon/css/dark.css
         sed -i 's,https://raw.githubusercontent.com,https://v4.gh-proxy.org/https://raw.githubusercontent.com,g' \
         luci-app-homeproxy/root/etc/homeproxy/scripts/generate_client.uc
         sed -i 's,https://raw.githubusercontent.com,https://v4.gh-proxy.org/https://raw.githubusercontent.com,g' \
