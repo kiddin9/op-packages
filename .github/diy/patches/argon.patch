@@ -1,15 +1,11 @@
 --- a/luci-app-argon-config/root/etc/config/argon
 +++ b/luci-app-argon-config/root/etc/config/argon
-@@ -3,8 +3,8 @@ config global
- 	option dark_primary '#483d8b'
- 	option blur '10'
+@@ -5,6 +5,6 @@ config global
  	option blur_dark '10'
--	option transparency '0.5'
--	option transparency_dark '0.5'
+ 	option transparency '0.5'
+ 	option transparency_dark '0.5'
 -	option mode 'normal'
 -	option online_wallpaper 'bing'
-+	option transparency '0.3'
-+	option transparency_dark '0.3'
 +	option mode 'dark'
 +	option online_wallpaper 'default'
  
@@ -57,25 +53,28 @@
 
 --- a/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
-@@ -136,11 +136,12 @@
- 	<!-- Video Player End -->
- 	{% else %}
- 	<!-- Image Background Start -->
--	<div class="main-bg" id="main-bg"><img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt=""></div>
-+	{% online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? 'default' %}
-+	<div class="main-bg" id="main-bg">{% if (online_wallpaper != 'default'): %}<img src="{{ entityencode(bgArry.bgUrl, true) }}" data-fallback="{{ media }}/img/bg1.jpg" onerror="this.onerror=null;this.src=this.dataset.fallback" alt="">{% endif %}</div>
- 	<!-- Image Background End -->
- 	{% endif %}
- 	<!-- Login Container Start -->
--	<div class="login-container">
-+	<div class="login-container" {% if (online_wallpaper == 'default'): %} style="backdrop-filter: blur(0px)"{% endif %}>
- 		<div class="login-form">
- 			<!-- Logo Start -->
- 			<a class="brand" href="/"><img src="{{ media }}/img/argon.svg" class="icon">
+@@ -63,7 +63,7 @@
+ 		let mimeType = "";
+ 
+ 		if (fs.access("/etc/config/argon")) {
+-			let online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? (cfg.get_first('argon', 'global', 'bing_background') == '1' ? 'bing' : null);
++			online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? (cfg.get_first('argon', 'global', 'bing_background') == '1' ? 'bing' : null);
+ 			if (online_wallpaper && online_wallpaper != "none") {
+ 				const picurl = ubus.call("luci.argon_wallpaper", "get_url") ?? {};
+ 				if (type(picurl?.url) == 'string' && match(picurl.url, /^https:\/\/[^[:space:]"'<>]+$/)) {
+@@ -93,7 +93,7 @@
+ 
+ %}
+ <!-- Login Page Start -->
+-<div class="login-page">
++<div class="login-page {{ online_wallpaper == 'default' ? ' defwallpaper' : '' }}">
+ 	{% if ( bgArry.backgroundType == "Video" ): %}
+ 	<!-- Video Player Start -->
+ 	<div class="video">
 
 --- a/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
 +++ b/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
-@@ -103,6 +103,22 @@ body {
+@@ -124,6 +124,20 @@ body {
    -webkit-tap-highlight-color: transparent;
    font-size: 0.875rem;
  }
@@ -91,10 +90,8 @@
 +    bottom: 0;
 +    z-index: -1;
 +    pointer-events: none;
-+    opacity: .3;
++    opacity: .4;
 +}
-+:root[data-darkmode="false"] body::before {opacity: .8}
-+.main .main-right{background-color: transparent !important}
  main {
    display: block;
  }
