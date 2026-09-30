@@ -3,10 +3,10 @@
 @@ -49,7 +49,7 @@
  	FW3_OPT("synflood_rate",       limit,    defaults, syn_flood_rate),
  	FW3_OPT("synflood_burst",      int,      defaults, syn_flood_rate.burst),
- 
+ 	
 -	FW3_OPT("fullcone",           bool,     defaults, fullcone),
 +	FW3_OPT("fullcone",           int,     defaults, fullcone),
- 
+ 	
  	FW3_OPT("tcp_syncookies",      bool,     defaults, tcp_syncookies),
  	FW3_OPT("tcp_ecn",             int,      defaults, tcp_ecn),
 
