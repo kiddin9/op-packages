@@ -48,6 +48,45 @@ hp_require_singbox() {
 	return 0
 }
 
+# hp_require_ucode
+# Refuse to start when the installed ucode cannot load this package's own
+# modules at all.  Returns 1 (and logs) when the interpreter is unusable.
+#
+# Why a check and not a documented requirement: ucode resolves `import` when a
+# module is LOADED, not when a function is called, and homeproxy-pro.uc imports
+#
+#     import { access, lstat, mkdtemp, open, rmdir, unlink } from 'fs';
+#
+# so on a ucode whose fs module has no `mkdtemp` export, *every* entry point
+# into this package dies with the same one-line reference error at load time -
+# the install-time migration (etc/uci-defaults/luci-homeproxy-pro-migration),
+# both config generators, and the LuCI RPC module that imports homeproxy-pro.uc
+# too.  The first of those to run is the migration, which is why the only
+# thing an affected user ever saw was a stack trace during `apk add` /
+# `opkg install` (issue #3) and never a sentence naming the requirement.
+#
+# `mkdtemp` entered ucode on 2025-11-07 (lib/fs.c, "fs: add mkdtemp() method
+# for creating temporary directories").  It replaced `mkstemp`, which every
+# older ucode does export - so this is a hard floor, not a preference, and no
+# ImmortalWrt 24.10 release can satisfy it.
+#
+# The probe is `ucode -e`, the same form tests/ucode/run.sh uses for its
+# module syntax checks.  Its own output is not discarded: if this ucode is so
+# old that even the probe fails, that is exactly the information the operator
+# needs, so the error goes into the log next to the requirement.
+hp_require_ucode() {
+	local probe_out
+
+	probe_out="$(ucode -e "import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)" 2>&1)" && return 0
+
+	log "Error: this build needs a ucode whose fs module exports mkdtemp (added in ucode 2025-11-07, shipped in ImmortalWrt 25.12); the installed ucode does not provide it."
+	log "Error: every script in this package imports it, so the service, the config generators and the LuCI RPC all fail to load on this firmware."
+	[ -n "$probe_out" ] && log "Error: the capability check itself reported: ${probe_out}"
+	log "Hint: this firmware's ucode is too old for this package; ImmortalWrt 25.12 or newer is required."
+
+	return 1
+}
+
 # hp_crontab_drop <crontab>
 # Remove the auto-update entry from <crontab>.
 #

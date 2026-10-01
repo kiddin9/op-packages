@@ -157,7 +157,13 @@ function M.parse_url(url)
 		end
 	end
 	if not host or host == "" then return nil, "无效主机名" end
-	return { scheme = scheme, host = host, port = port }
+	-- 端口范围校验：`(%d+)` 只保证是数字，`http://host:99999/` 与 `:0` 都能通过，
+	-- 而这两个端口连不出去 —— 下载必然失败，却会先经过一轮 DNS/SSRF 检查，
+	-- 报出来的是「连接失败」这种指错方向的原因。parse_proxy 早已做了同样的校验，
+	-- 这里对齐。
+	local pn = tonumber(port)
+	if not pn or pn < 1 or pn > 65535 then return nil, "端口无效" end
+	return { scheme = scheme, host = host, port = tostring(pn) }
 end
 
 -- 校验并规范化代理地址：支持 http/https/socks4/socks5/socks5h，可含 user:pass@
@@ -182,7 +188,8 @@ function M.parse_proxy(p)
 		return nil, "代理用户名/密码含非法字符"
 	end
 	local host, port
-	if hostport:sub(1, 1) == "[" then
+	local bracketed = hostport:sub(1, 1) == "["
+	if bracketed then
 		host = hostport:match("^%[([%w%.%-%:]+)%]")
 		port = hostport:match("^%[.*%]%:(%d+)$")
 	else
@@ -192,10 +199,22 @@ function M.parse_proxy(p)
 	if not host or host == "" or not host:match("^[%w%.%-%:]+$") then
 		return nil, "代理主机无效"
 	end
+	-- 未加方括号的 IPv6 字面量：RFC 3986 要求 IPv6 主机必须写成 [addr]。
+	-- 没有方括号时 `::1:1080` 既可能是「地址 ::1 + 端口 1080」，也可能就是
+	-- 地址 `::1:1080` —— 无法判定。与其猜一个再拼出一条 curl -x 解析不了的
+	-- 代理串（静默失效），不如明确报错让用户补上方括号。
+	if not bracketed and select(2, host:gsub(":", "")) > 1 then
+		return nil, "IPv6 代理地址必须加方括号，例如 http://[::1]:1080"
+	end
 	if port then
 		port = tonumber(port)
 		if not port or port < 1 or port > 65535 then return nil, "代理端口无效" end
 	end
+	-- IPv6 字面量必须把方括号拼回去：上面为做主机校验把 [::1] 拆成了 ::1，
+	-- 直接拼会得到 `http://::1:1080` —— 冒号歧义，curl -x 与 http_proxy= 都
+	-- 解析不了（curl 会把 `::1:1080` 整个当成主机名），代理静默失效。
+	-- 单个冒号才是 host:port 的分隔符。
+	if host:find(":", 1, true) then host = "[" .. host .. "]" end
 	local r = scheme .. "://"
 	if userinfo ~= "" then r = r .. userinfo .. "@" end
 	r = r .. host
@@ -263,8 +282,19 @@ function M.check_public(host)
 
 	local ips = resolve(host)
 	if not ips then
-		-- 无 DNS 解析能力：放行，交由下载工具处理（尽力而为）
-		return true
+		-- 解析不出 IP 一律拒绝（fail-closed）。
+		--
+		-- 此前这里放行，理由是「无 DNS 解析能力时尽力而为」—— 但那是一个
+		-- SSRF 绕过口：`127.0.0.1.nip.io` 这类**公网可解析到内网**的域名，
+		-- 只要本机这一刻解析不出来（nixio 缺失、解析器临时故障、超时），
+		-- 就绕过上面全部检查被放行，而 curl 自己仍会把它解析到 127.0.0.1
+		-- 并连上去。检查的强度不能低于被检查者。
+		--
+		-- 代价为零：本包依赖 luci-lua-runtime，后者硬依赖 luci-lib-nixio，
+		-- 所以 resolve() 返回 nil 只意味着「解析真的失败了」—— 那种情况下
+		-- curl 同样解析不了，下载本来就会失败，只是错误信息会变成
+		-- 「连接失败」这种指错方向的说法。
+		return false, "无法解析目标主机名"
 	end
 	for _, ip in ipairs(ips) do
 		if not is_private(ip) then return true end
@@ -369,7 +399,16 @@ local function fetch_curl(url, parsed, opts)
 		local tmp = "/tmp/substore_dl_" .. tag .. "_" .. redirect .. ".tmp"
 		local hdr = tmp .. ".hdr"
 		local errf = tmp .. ".err"
-		os.remove(tmp); os.remove(hdr); os.remove(errf)
+		-- 清理必须在**每一条**退出路径上执行。
+		-- 此前只在「本轮开始」和「2xx 成功」两处 os.remove：失败路径（curl 报错、
+		-- 超限、重定向无 Location / 目标不安全、HTTP 4xx-5xx、重定向次数过多）
+		-- 都把文件留在 /tmp。而 OpenWrt 的 /tmp 是 tmpfs —— 占的是内存；
+		-- 订阅更新失败（cron 定时重试）会一轮轮往内存里堆 .tmp/.hdr/.err，
+		-- 其中 .tmp 可能是部分下载的响应体，最大到 max_size。
+		local function cleanup()
+			os.remove(tmp); os.remove(hdr); os.remove(errf)
+		end
+		cleanup()
 		local cmd = string.format(
 			"curl -sS -o %s --max-time %d --connect-timeout %d --max-redirs 0 --max-filesize %d -D %s -w \"%%{http_code}\"%s %s 2>%s",
 			util.shq(tmp), t, math.min(t, 10), max, util.shq(hdr), proxy_arg, util.shq(cur), util.shq(errf))
@@ -378,30 +417,46 @@ local function fetch_curl(url, parsed, opts)
 		if p then p:close() end
 		code = util.trim(code)
 		if code == "" or code == "000" then
-			return nil, util.trim(util.read_file(errf) or "下载失败")
+			local msg = util.trim(util.read_file(errf) or "下载失败")
+			cleanup()
+			return nil, msg
 		end
 		-- 只把 2xx 当成功。写成 [23] 会把 3xx 也当成功，于是重定向响应体（通常是空的
 		-- 或一段 HTML）被当成订阅内容存下去：已存的节点被清空、node_count 归 0，
 		-- 而 error 仍是空字符串，列表页看不出任何异常。下面的重定向分支也因此永远不会执行。
 		if code:match("^2%d%d$") then
 			local size = util.file_size(tmp)
-			if size > max then return nil, "响应超过大小限制 (" .. max .. " 字节)" end
+			if size > max then
+				cleanup()
+				return nil, "响应超过大小限制 (" .. max .. " 字节)"
+			end
 			local content = util.read_file(tmp)
 			local headers = read_headers(hdr)
-			os.remove(tmp); os.remove(hdr); os.remove(errf)
+			cleanup()
 			if not content then return nil, "读取响应失败" end
 			return content, headers
 		end
 		if code:match("^3%d%d$") then
 			local loc = location_from_headers(hdr)
-			if not loc then return nil, "重定向无 Location" end
+			if not loc then
+				cleanup()
+				return nil, "重定向无 Location"
+			end
 			local next_url = resolve_url(cur, loc)
 			local np = M.parse_url(next_url)
-			if not np then return nil, "重定向目标无效" end
+			if not np then
+				cleanup()
+				return nil, "重定向目标无效"
+			end
 			local ok, re = M.check_public(np.host)
-			if not ok then return nil, "重定向目标不安全: " .. (re or "") end
+			if not ok then
+				cleanup()
+				return nil, "重定向目标不安全: " .. (re or "")
+			end
+			cleanup()
 			cur = next_url
 		else
+			cleanup()
 			return nil, "HTTP 错误 " .. code
 		end
 	end

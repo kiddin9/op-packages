@@ -24,7 +24,7 @@
 'require fwlive.render-scheduler as renderScheduler';
 
 /* Poll error codes that only a reinstall fixes; retrying cannot help. */
-const INSTALL_POLL_ERRORS = ['timeout_missing', 'jsonfilter_missing', 'classifier_missing'];
+const INSTALL_POLL_ERRORS = ['jsonfilter_missing', 'classifier_missing'];
 
 const callFwlivePoll = rpc.declare({
 	object: 'fwlive',
@@ -758,8 +758,6 @@ return view.extend({
 				return _('Could not process firewall rule names.');
 			case 'no_backend':
 				return _('Could not read the active firewall rules.');
-			case 'timeout_missing':
-				return _('The required timeout utility is unavailable.');
 			case 'rules_unavailable':
 				if (!this.rulesMapLoaded) return _('Could not load rule names.');
 				if (this.rulesMap && Object.keys(this.rulesMap).length)
@@ -792,12 +790,8 @@ return view.extend({
 		return lines;
 	},
 
-	/* timeout_missing is an install problem shown elsewhere, not a rules-map gap. */
 	rulesMapDegraded() {
-		return !!(
-			this.rulesMapTruncated ||
-			(this.lastRulesError && this.lastRulesError !== 'timeout_missing')
-		);
+		return !!(this.rulesMapTruncated || this.lastRulesError);
 	},
 
 	updateBackendUi() {
@@ -1114,7 +1108,6 @@ return view.extend({
 		this.fillingBuffer = false;
 		this.notePollRtt(rtt, true);
 		this.updateAdaptiveBanner();
-		if (this.lastPollErrorCode === 'timeout_missing') this.updateBackendUi();
 	},
 
 	applyPollReply(poll, context) {
@@ -1208,24 +1201,13 @@ return view.extend({
 		/* Visibility changes and disposal invalidate all application of this reply. */
 		if (epoch !== this.currentPollEpoch()) return;
 
-		const recoveringTimeoutProvider = this.lastPollErrorCode === 'timeout_missing';
 		this.applyPollReply(poll, {
 			beforeLength: beforeLength,
 			fetchLines: fetchLines,
 			pausedAtStart: pausedAtStart,
 			resumeMerge: resumeMerge
 		});
-		if (recoveringTimeoutProvider && !this.lastPollError) {
-			try {
-				await Promise.all([this.loadRulesMap(epoch), this.loadLoggingStatus(epoch)]);
-				/* Recovery RPCs can outlive the poll epoch; don't repaint stale views. */
-				if (epoch !== this.currentPollEpoch() || this.viewDisposed) return;
-				/* loadRulesMap refreshes buffered labels when its map read succeeds. */
-			} catch (_e) {
-				/* A throw here is local UI work after a successful poll. Leave
-				 * lastPollError / lastPollErrorCode as applyPollReply set them. */
-			}
-		} else if (
+		if (
 			this.lastRulesError === 'rules_unavailable' &&
 			this.rulesRetryAttempt < constants.RULES_RETRY_MAX_ATTEMPTS &&
 			!this.tablePaused &&

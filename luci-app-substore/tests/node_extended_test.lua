@@ -85,14 +85,38 @@ check("add_tags existing", nodes5[1].tags and #nodes5[1].tags == 2 and nodes5[1]
 check("add_tags new", nodes5[2].tags and #nodes5[2].tags == 1 and nodes5[2].tags[1] == "vip")
 
 -- ---------- dedup ----------
--- 非 WireGuard：行为不变，仍按 proto+server+port
+-- M17：去重键必须含凭据。此前只按 proto+server+port，同一入口上的多账号
+-- （不同 uuid / 密码）会被当成重复而删掉一个 —— 静默丢节点。
+-- 同一台服务器上的两个 vmess，uuid 不同 → 是两个节点，都必须留下。
 local d0 = node.dedup({
 	{ proto = "vmess", server = "1.1.1.1", port = 443, uuid = "a" },
 	{ proto = "vmess", server = "1.1.1.1", port = 443, uuid = "b" },
 	{ proto = "vless", server = "1.1.1.1", port = 443, uuid = "c" },
 })
-check("dedup keeps first of identical vmess", #d0 == 2)
-check("dedup treats different proto as distinct", d0[2].proto == "vless")
+-- 下标先判空：修复前这里只有 2 个元素，直接取 d0[3] 会抛错中断整套测试
+check("dedup keeps vmess with different uuid", #d0 == 3)
+check("dedup keeps second vmess uuid", d0[2] ~= nil and d0[2].uuid == "b")
+check("dedup treats different proto as distinct", d0[3] ~= nil and d0[3].proto == "vless")
+
+-- 完全相同（含凭据）的两个节点仍然要去重
+local d0b = node.dedup({
+	{ proto = "vmess", server = "1.1.1.1", port = 443, uuid = "a" },
+	{ proto = "vmess", server = "1.1.1.1", port = 443, uuid = "a" },
+})
+check("dedup removes fully identical vmess", #d0b == 1)
+
+-- 各协议的凭据都要参与去重键
+local d0c = node.dedup({
+	{ proto = "shadowsocks", server = "1.1.1.1", port = 443, method = "aes-128-gcm", password = "p1" },
+	{ proto = "shadowsocks", server = "1.1.1.1", port = 443, method = "aes-128-gcm", password = "p2" },
+	{ proto = "trojan", server = "1.1.1.1", port = 443, password = "p1" },
+	{ proto = "trojan", server = "1.1.1.1", port = 443, password = "p2" },
+	{ proto = "socks", server = "1.1.1.1", port = 443, username = "u1", password = "p" },
+	{ proto = "socks", server = "1.1.1.1", port = 443, username = "u2", password = "p" },
+})
+check("dedup honours shadowsocks password", #d0c == 6)
+check("dedup honours trojan password", d0c[4] ~= nil and d0c[4].password == "p2")
+check("dedup honours socks username", d0c[6] ~= nil and d0c[6].username == "u2")
 
 -- WireGuard（§32/§43）：同 server+port 但 peer 公钥不同 → 不能合并
 local d1 = node.dedup({

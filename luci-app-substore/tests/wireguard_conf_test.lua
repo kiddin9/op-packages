@@ -481,6 +481,115 @@ do
 	check("form: empty awg json cleared", empty["amnezia-wg-option"] == nil)
 end
 
+-- ---------- M9：行内注释 ----------
+-- wg-quick 的 parse_options 用 `stripped="${line%%\#*}"`，即从**第一个** # 起
+-- 全部丢弃（不要求 # 前有空白），所以 .conf 是支持行内注释的。旧实现只跳整行
+-- 注释，`Endpoint = 1.2.3.4:51820 # 备用` 会把 "# 备用" 当成值的一部分，
+-- split_hostport 取不到端口 → 整份 .conf 报错。
+local INLINE_CONF = [[
+[Interface]
+PrivateKey = PRIVI          # 主密钥
+Address = 10.11.0.2/32      # 隧道地址
+DNS = 1.1.1.1, 8.8.8.8      # 双 DNS
+
+[Peer]
+PublicKey = PUBI            # 对端公钥
+AllowedIPs = 0.0.0.0/0, ::/0 # 全量路由
+Endpoint = 198.51.100.7:51820 # 备用入口
+PersistentKeepalive = 25    # 保活
+]]
+local ires = parser.parse(INLINE_CONF, "wireguard-conf")
+check("inline comment conf parses", ires ~= nil and ires.nodes and #ires.nodes == 1)
+local inode = ires and ires.nodes[1] or {}
+check("inline comment endpoint host", inode.server == "198.51.100.7")
+check("inline comment endpoint port", inode.port == 51820)
+check("inline comment private-key", inode["private-key"] == "PRIVI")
+check("inline comment public-key", inode["public-key"] == "PUBI")
+check("inline comment allowed-ips", type(inode["allowed-ips"]) == "table"
+	and #inode["allowed-ips"] == 2 and inode["allowed-ips"][2] == "::/0")
+check("inline comment keepalive", inode["persistent-keepalive"] == 25)
+check("inline comment dns array", type(inode.dns) == "table" and #inode.dns == 2)
+
+-- ---------- M9：一个坏 [Peer] 不得废掉整份文件 ----------
+-- 旧实现在第一个失败的对端上直接 return nil，同文件里其它完好的对端全部丢失。
+local PARTIAL_CONF = [[
+[Interface]
+PrivateKey = PRIVP
+Address = 10.12.0.2/32
+
+[Peer]
+PublicKey = NOENDPOINT
+AllowedIPs = 10.0.0.0/8
+
+[Peer]
+PublicKey = GOODPEER
+AllowedIPs = 0.0.0.0/0
+Endpoint = 203.0.113.77:51820
+]]
+local pres = parser.parse(PARTIAL_CONF, "wireguard-conf")
+check("partial conf still parses", pres ~= nil and pres.nodes ~= nil)
+check("partial conf keeps the good peer", pres and pres.nodes and #pres.nodes == 1)
+check("partial conf good peer server",
+	pres and pres.nodes[1] and pres.nodes[1].server == "203.0.113.77")
+check("partial conf good peer key",
+	pres and pres.nodes[1] and pres.nodes[1]["public-key"] == "GOODPEER")
+
+-- 全部 [Peer] 都缺 Endpoint：必须报错，不能返回空列表 ——
+-- 空列表会被上层当成「解析成功但 0 节点」（静默失败）
+local ALLBAD_CONF = [[
+[Interface]
+PrivateKey = PRIVB
+
+[Peer]
+PublicKey = B1
+
+[Peer]
+PublicKey = B2
+Endpoint = :51820
+]]
+local abres, aberr = parser.parse(ALLBAD_CONF, "wireguard-conf")
+check("all-bad peers returns nil", abres == nil)
+check("all-bad peers returns error", type(aberr) == "string" and #aberr > 0)
+
+-- ---------- L20：多 [Peer] 时数组字段不得共享同一个表 ----------
+-- common 里的 dns / reserved 是数组。浅拷贝让所有节点指向同一个表，
+-- 按节点编辑 DNS 会同时改到全部节点。
+local SHARE_CONF = [[
+[Interface]
+PrivateKey = PRIVS
+Address = 10.13.0.2/32
+DNS = 1.1.1.1, 8.8.8.8
+Reserved = 1, 2, 3
+
+[Peer]
+PublicKey = S1
+AllowedIPs = 0.0.0.0/0
+Endpoint = 198.51.100.1:51820
+
+[Peer]
+PublicKey = S2
+AllowedIPs = 10.0.0.0/8
+Endpoint = 198.51.100.2:51820
+]]
+local sres = parser.parse(SHARE_CONF, "wireguard-conf")
+check("shared-table conf two nodes", sres ~= nil and sres.nodes and #sres.nodes == 2)
+if sres and sres.nodes and #sres.nodes == 2 then
+	local s1, s2 = sres.nodes[1], sres.nodes[2]
+	check("dns tables distinct",
+		type(s1.dns) == "table" and type(s2.dns) == "table" and s1.dns ~= s2.dns)
+	check("reserved tables distinct",
+		type(s1.reserved) == "table" and type(s2.reserved) == "table"
+		and s1.reserved ~= s2.reserved)
+	check("allowed-ips tables distinct", s1["allowed-ips"] ~= s2["allowed-ips"])
+	check("shared awg tables distinct",
+		s1["amnezia-wg-option"] == nil and s2["amnezia-wg-option"] == nil)
+	-- 改一个节点不能影响另一个
+	s1.dns[1] = "MUTATED"
+	s1.reserved[1] = 99
+	check("dns mutation isolated", s2.dns[1] == "1.1.1.1")
+	check("reserved mutation isolated", s2.reserved[1] == 1)
+end
+
 -- ---------- 结果 ----------
 -- H7：.conf 的注释行同样要压成单行。节点名来自订阅（不可信输入），含换行时
 -- 会从注释里注入出真正的配置行，伪造出一段用户没写过的隧道配置。

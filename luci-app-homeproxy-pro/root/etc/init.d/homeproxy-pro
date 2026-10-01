@@ -191,6 +191,16 @@ start_service() {
 	# a router whose node was removed (or whose sing-box just failed its
 	# version gate) keeps redirecting the LAN into a listener that no instance
 	# is serving any more.
+	#
+	# The ucode gate comes first because it is the more fundamental one: when
+	# the interpreter cannot load this package's modules, the generator below
+	# would fail too, and the sing-box version line is the less useful of the
+	# two messages.
+	if ! hp_require_ucode; then
+		hp_release_stale_intercept
+		return 1
+	fi
+
 	if ! hp_require_singbox; then
 		hp_release_stale_intercept
 		return 1

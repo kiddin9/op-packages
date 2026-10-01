@@ -42,6 +42,16 @@ group them, then re-emit them in a format your client can consume.
   `listen-port` / `mtu` / `dns`) plus the `amnezia-wg-option` sub-block
   (Jc / Jmin / Jmax / S1–S4 / H1–H4 / I1–I5 / J1–J3 / Itime); you can paste the contents
   of a `.conf` file exported by an AmneziaWG client directly
+- **Parsing tolerance**: `ssr://` accepts both the standard and the base64url alphabet
+  for its outer layer; incomplete nodes (missing `server`, or `port` outside 1–65535)
+  are dropped **at parse time** (otherwise they become `server:` / `port: 0`, which makes
+  mihomo and sing-box refuse to load the whole file — one bad node kills a subscription);
+  passwords containing `@` are split on the **last** `@`; sing-box YAML's nested `tls:`
+  block (including the `alpn` list and `utls.fingerprint`) is fully expanded; wg-quick
+  `.conf` supports inline `#` comments (matching wg-quick's own splitting semantics),
+  and a single bad `[Peer]` skips only itself instead of discarding the whole file;
+  whitespace-only content is treated as an empty subscription rather than reported as
+  an unrecognised format
 
 **Node processing**
 - Browse nodes, filter by group / protocol, keyword search, sort
@@ -50,9 +60,14 @@ group them, then re-emit them in a format your client can consume.
 - Per-node edit / delete (Actions column); header checkbox selects all, then the Delete
   button batch-deletes the selection; the Refresh button reloads the list keeping the
   current filters
-- Per-subscription rules applied on every update:
+- Per-subscription rules applied on every update (available on all three forms:
+  subscription / combination / local subscription):
   - keyword include / exclude (comma-separated, multi-keyword)
-  - deduplication
+  - protocol filter (tick the protocols to keep; none ticked = no filtering)
+  - deduplication (multiple accounts on the same endpoint are not merged: the
+    dedup key includes each protocol's own credentials)
+  - rename (one rule per line: `OLD=NEW` exact, `PATTERN -> REPLACEMENT` regex,
+    `{server}_{port}_{proto}` placeholder template)
 
 **Network probing** (Nodes page)
 - Ping (ICMP latency), TCPing (connect latency), URL test (HTTP latency)
@@ -66,6 +81,8 @@ group them, then re-emit them in a format your client can consume.
 - 15 output formats (all implemented): Plain JSON, Stash, Clash.Meta / Mihomo YAML,
   Clash (original), Surfboard, Surge, Surge Mac, Loon, Egern, Shadowrocket,
   Quantumult X, sing-box, V2Ray / Xray, V2Ray URI, WireGuard / AmneziaWG `.conf`
+  - **Clash.Meta / Mihomo**: emits transport parameters in full (`ws-opts` / `grpc-opts` /
+    `h2-opts` path, host and service name) plus vless `flow` (XTLS Vision)
   - **Clash (original)**: for Dreamacro Clash / ClashX / Clash for Windows; protocols the
     original does not support (vless / hysteria2 / hysteria / tuic / wireguard) are filtered out
   - **WireGuard / AmneziaWG `.conf`**: wg-quick single-interface config with `[Interface]` /
@@ -78,12 +95,31 @@ group them, then re-emit them in a format your client can consume.
     - V2Ray/Xray: node outbounds + `freedom` (direct) / `blackhole` (block) + `observatory` +
       `routing.balancers` (`leastPing` auto-selection), with built-in `geoip:private` direct
       and a catch-all route
+      - Only Xray-supported protocols are emitted (vmess / vless / trojan / shadowsocks /
+        socks / http); hysteria2 / hysteria / tuic / wireguard / ssr have no corresponding
+        outbound type and are filtered out (an unknown `protocol` makes Xray refuse to load
+        the whole config)
     - Deliberately **excludes `inbounds` / `dns`**: those bind local listening ports and
       override your existing DNS settings — keep them in your own config and merge this
       output into it
     - ⚠️ Not compatible with 2.3.x: 2.3.x emitted an `outbounds`-only fragment meant to be
       pasted into an existing config; from 2.4.0 it is a complete config you can start
       directly as a single file
+- **Output validity**: only what the target client can actually load is emitted — not
+  something that merely looks right
+  - WireGuard `allowed-ips` / `reserved` / `dns` are always emitted as the arrays the
+    target client requires (`[]string` / `[]uint8` for both mihomo and sing-box),
+    whether the source was a YAML list or a comma-separated string; a scalar makes the
+    client **refuse to load the whole config**
+  - Surge-family / Quantumult X proxy-group member lists drop node names containing a
+    **comma**: those formats have no quoting or escaping, so a comma in a name is read as
+    a member separator, yielding two members that do not exist and making the client
+    refuse the whole config for referencing unknown proxies; Quantumult X's `[policy]`
+    additionally lists only nodes that actually got a `[server_local]` line, so no
+    dangling references remain
+  - hysteria / hysteria2 share links take `insecure` from the authoritative
+    `skip-cert-verify` field, so nodes imported from Clash YAML / sing-box JSON / the
+    form no longer lose "skip certificate verification"
 
 **Subscription links**
 - Per-subscription random token → public download endpoint
@@ -96,18 +132,18 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.6.0-r1`).
+> [Makefile](Makefile) (currently `2.6.8-r1`).
 
 opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
 
 ```bash
-opkg install luci-app-substore-2.6.0-r1.ipk
+opkg install luci-app-substore-2.6.8-r1.ipk
 ```
 
 apk (OpenWrt / ImmortalWrt 25.12+):
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.6.0-r1.apk
+apk add --allow-untrusted luci-app-substore-2.6.8-r1.apk
 ```
 
 Then open LuCI: **Services → Subscriptions**.
@@ -157,6 +193,7 @@ Then open LuCI: **Services → Subscriptions**.
 - [docs/TESTING.md](docs/TESTING.md) — testing
 - [docs/UCODE_MIGRATION.md](docs/UCODE_MIGRATION.md) — `.htm` → `.ut` (ucode) migration notes
 - [CHANGELOG.md](CHANGELOG.md) — changelog
+- [docs/LEGACY_ISSUES.md](docs/LEGACY_ISSUES.md) — known unfixed issues (pending decision)
 
 ## Building
 
@@ -185,11 +222,14 @@ Target-device verification is required for the LuCI UI and cron behaviour — se
 
 ## Security
 
-SSRF protection (private / reserved / link-local ranges rejected), protocol
-whitelisting, response size & timeout limits, command-injection defence
-(whitelisted parsing + shell quoting), token-based access control on the public
-download endpoint, and no credentials in logs. See
-[docs/SECURITY.md](docs/SECURITY.md).
+SSRF protection (private / reserved / link-local ranges rejected; a hostname that
+**fails to resolve is rejected** rather than allowed, so "unresolvable ⇒ pass" is not
+a bypass), protocol whitelisting and port range validation (1–65535), response size &
+timeout limits, download temp files removed on every exit path (`/tmp` is a tmpfs),
+command-injection defence (whitelisted parsing + shell quoting, plus probe targets
+starting with `-` rejected — busybox `getopt` would read them as options),
+token-based access control on the public download endpoint, and no credentials in
+logs. See [docs/SECURITY.md](docs/SECURITY.md).
 
 ## License
 

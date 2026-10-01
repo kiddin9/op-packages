@@ -157,6 +157,12 @@ function M.split_hostport(s)
 	else
 		local host, port = s:match("^([^:]+):(%d+)$")
 		if host then return host, port end
+		-- 没有可识别的端口，整串就是主机名 —— 但必须先剥掉**尾随**冒号：
+		-- `"example.com:"` 此前原样返回 host="example.com:"，调用方拿这个带
+		-- 冒号的串当主机名，DNS 解析必然失败，而失败点离这里很远、很难定位。
+		-- 只剥结尾的冒号，`"::1"` 这类不带方括号的裸 IPv6 不受影响。
+		s = s:gsub(":$", "")
+		if s == "" then return nil, nil end
 		return s, nil
 	end
 end
@@ -218,6 +224,12 @@ function M.json_encode(v)
 		elseif t == "table" then
 			if v == M.JSON_EMPTY_OBJECT then
 				return "{}"
+			elseif v == JSON_NULL then
+				-- 数组里的 null 解码时被换成 JSON_NULL 占位（见 json_decode），
+				-- 编码时必须还原成 null。此前没有这个分支，占位符落进下面的
+				-- is_array 判定（空表判为数组）被编成 []，于是 `[null,1]` 往返
+				-- 变成 `[[],1]` —— 结构被悄悄改写。
+				return "null"
 			elseif is_array(v) then
 				local a = {}
 				for i = 1, #v do a[#a + 1] = enc(v[i]) end
@@ -256,15 +268,21 @@ function M.json_decode(s)
 			i = i + 1
 			local obj = {}
 			skip_ws()
-			if s:sub(i, i) == "}" then i = i + 1 return obj end
+			-- 空对象必须返回 JSON_EMPTY_OBJECT 而不是裸 {}：Lua 的空表无法区分
+			-- {} 与 []，裸 {} 会被 is_array 判成数组、编码回 []，于是
+			-- `{"tls":{}}` 往返变成 `{"tls":[]}` —— sing-box / Xray 里
+			-- 要求是对象的字段（tls / settings）会因此被客户端拒绝。
+			if s:sub(i, i) == "}" then i = i + 1 return M.JSON_EMPTY_OBJECT end
 			while true do
 				skip_ws()
 				local k, ke = parse()
+				if ke then return nil, ke end
 				if not k or type(k) ~= "string" then return nil, "expected string key" end
 				skip_ws()
 				if s:sub(i, i) ~= ":" then return nil, "expected ':'" end
 				i = i + 1
-				local val = parse()
+				local val, verr = parse()
+				if verr then return nil, verr end
 				obj[k] = val
 				skip_ws()
 				local cc = s:sub(i, i)
@@ -284,7 +302,11 @@ function M.json_decode(s)
 			skip_ws()
 			if s:sub(i, i) == "]" then i = i + 1 return arr end
 			while true do
-				local val = parse()
+				local val, verr = parse()
+				-- 必须把内层错误透出去：此前无条件把 nil 当成 null 占位，
+				-- 于是 `[1,]` 这种畸形输入被静默接受（parse 报错后 i 未前进，
+				-- 下一轮读到 `]` 就当成数组结束），解出 `{1, JSON_NULL}`。
+				if verr then return nil, verr end
 				if val == nil then val = JSON_NULL end
 				arr[#arr + 1] = val
 				skip_ws()
@@ -358,7 +380,17 @@ function M.json_decode(s)
 		end
 	end
 
-	local v = parse()
+	local v, perr = parse()
+	-- 此前写成 `local v = parse(); return v` —— parse 的第二返回值（错误串）
+	-- 被直接丢弃，于是 json_decode **永远不返回错误**：所有调用方的
+	-- `local data, err = util.json_decode(...)` 里 err 判断都是死代码，
+	-- 畸形输入一律表现为「解出来是 nil」，与「内容就是 null」无法区分。
+	if perr then return nil, perr end
+	-- 解析出一个值还不够，必须确认**没有剩余内容**：parse 只消费一个值，
+	-- 于是 "1 2" / "[1] junk" / "1.2.3"（数字模式只吃 1.2）这类输入会被
+	-- 当成合法值静默接受，尾部的脏数据凭空消失。
+	skip_ws()
+	if i <= len then return nil, "trailing content at position " .. i end
 	return v
 end
 

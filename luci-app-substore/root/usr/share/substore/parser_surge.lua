@@ -3,8 +3,22 @@
 
 local util = require("substore.util")
 local node = require("substore.node")
+-- 协议白名单复用 Clash YAML 那张表：两边都是「外部格式的类型名 → 统一模型 proto」，
+-- 各维护一份必然漂移。TYPE_MAP 的键就是这里要判定的原始类型名。
+local TYPE_MAP = require("substore.parser_clash_yaml").TYPE_MAP
 
 local M = {}
+
+-- 把 Surge / QX 行里的类型名映射到统一模型 proto，未知类型返回 nil。
+-- 与 parser_clash_yaml 的未知协议处理保持一致（见那边的长注释）：snell / ssh /
+-- shadowtls / mieru 这类在统一模型里没有对应字段，原样透传会在输出端变成
+-- sing-box 的 type: "snell"、Xray 的 protocol: "snell" 这类非法取值，
+-- 客户端会拒绝加载整份配置；兜底成 vmess 更糟（凭空造出字段全错的假节点）。
+-- 两者都比丢弃差，所以丢弃。
+local function map_proto(raw)
+	if type(raw) ~= "string" then return nil end
+	return TYPE_MAP[raw:lower()]
+end
 
 -- 解析 Surge 风格行：Name = proto, server, port, k=v, ...
 local function parse_surge_line(name, rest)
@@ -14,8 +28,8 @@ local function parse_surge_line(name, rest)
 	end
 	if #parts < 3 then return nil end
 
-	local proto = parts[1]:lower()
-	if proto == "ss" then proto = "shadowsocks" end
+	local proto = map_proto(parts[1])
+	if not proto then return nil end
 	local server = parts[2]
 	local port = tonumber(parts[3])
 
@@ -74,8 +88,8 @@ local function parse_qx_line(content)
 	end
 
 	local name = kv.tag or (host .. ":" .. tostring(port or ""))
-	proto = proto:lower()
-	if proto == "ss" then proto = "shadowsocks" end
+	local proto = map_proto(proto)
+	if not proto then return nil end
 
 	local data = { proto = proto, name = name, server = host, port = tonumber(port) }
 	if proto == "shadowsocks" then
@@ -120,12 +134,17 @@ function M.parse(content)
 	return nodes
 end
 
--- 判断内容是否为客户端配置文件
+-- 判断内容是否为客户端配置文件。
+-- 段名大小写不敏感：Surge 官方配置写 `[Proxy]`，但 Loon / 第三方转换器常写
+-- `[PROXY]` / `[General]` 这类全大写段名。原来的 find("%[Proxy%]") 只认大小写
+-- 完全一致的写法，于是 detect 不认为这是 Surge 配置，继续往下走——
+-- 而 `[` 开头的内容会被判成 JSON 数组，整份订阅报「JSON 解析失败」，
+-- 一个节点都拿不到（M.parse 本身是按小写段名匹配的，本来就能解析）。
 function M.is_config(content)
 	content = content or ""
-	return content:find("%[Proxy%]") ~= nil
-		or content:find("%[proxy%]") ~= nil
-		or content:find("%[server_local%]") ~= nil
+	local lower = content:lower()
+	return lower:find("[proxy]", 1, true) ~= nil
+		or lower:find("[server_local]", 1, true) ~= nil
 end
 
 return M

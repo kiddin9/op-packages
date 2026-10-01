@@ -51,6 +51,16 @@ local h1, p1 = util.split_hostport("1.2.3.4:443")
 check("split_hostport v4", h1 == "1.2.3.4" and p1 == "443")
 local h2, p2 = util.split_hostport("[::1]:80")
 check("split_hostport v6", h2 == "::1" and p2 == "80")
+-- L13：尾随冒号此前被当成主机名的一部分返回（host="example.com:"），
+-- 调用方拿它去解析 DNS 必然失败，且失败点离这里很远。
+local h3, p3 = util.split_hostport("example.com:")
+check("split_hostport strips trailing colon", h3 == "example.com" and p3 == nil)
+local h4, p4 = util.split_hostport("[::1]:")
+check("split_hostport v6 without port", h4 == "::1" and p4 == nil)
+local h5, p5 = util.split_hostport("::1")
+check("split_hostport bare ipv6 untouched", h5 == "::1" and p5 == nil)
+local h6, p6 = util.split_hostport(":")
+check("split_hostport bare colon rejected", h6 == nil and p6 == nil)
 check("url_extract", util.url_extract("?type=tcp&security=none", "security") == "none")
 check("url_decode", util.url_decode("%E6%9C%BA%E5%9C%BA") == "机场")
 

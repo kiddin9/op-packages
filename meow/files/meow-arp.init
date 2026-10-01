@@ -1,4 +1,9 @@
 #!/bin/sh /etc/rc.common
+# procd init for meow's ARP client-steering loop (arp-hijack.sh). Self-gates on
+# the `arp_hijack` section of /etc/config/meow: does nothing unless enabled and
+# at least the feature is turned on. Separate from the meow service so steering
+# can be toggled without restarting the proxy.
+
 USE_PROCD=1
 START=96
 STOP=9

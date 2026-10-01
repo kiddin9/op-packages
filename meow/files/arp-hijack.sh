@@ -35,6 +35,7 @@ load_config() {
 	[ -n "$gateway" ] || network_get_gateway gateway "$interface"
 }
 
+# JSON array of the LAN neighbour table, marking which MACs are selected.
 cmd_clients() {
 	load_config
 	local sel
@@ -52,6 +53,7 @@ cmd_clients() {
 	printf ']\n'
 }
 
+# Current IP for a selected MAC (resolved fresh each sweep; DHCP may move it).
 mac_to_ip() {
 	ip neigh show dev "$device" 2>/dev/null | awk -v m="$(echo "$1" | tr 'A-F' 'a-f')" '
 		{ mac=""; for (i=1;i<=NF;i++) if ($i=="lladdr") mac=tolower($(i+1))
@@ -63,6 +65,7 @@ sweep() {
 	for mac in $clients; do
 		ip=$(mac_to_ip "$mac")
 		[ -n "$ip" ] || continue
+		# ARP reply: "gateway is at <our MAC>", unicast to the client.
 		if ! /usr/bin/meow arp-reply "$device" "$gateway" "$mac" "$ip"; then
             logger -t meow-arp "failed to send unicast reply to $mac ($ip)"
             return 1

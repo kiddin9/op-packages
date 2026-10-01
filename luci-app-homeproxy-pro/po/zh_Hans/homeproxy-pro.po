@@ -162,7 +162,7 @@ msgstr "激进"
 msgid "Alibaba Cloud DNS"
 msgstr "阿里云 DNS"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:173
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:186
 msgid "Aliyun Public DNS (223.5.5.5)"
 msgstr "阿里云公共 DNS（223.5.5.5）"
 
@@ -350,11 +350,11 @@ msgstr "默认使用防火墙规则绕过中国大陆流量。"
 msgid "CA provider"
 msgstr "CA 颁发机构"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:204
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:217
 msgid "CN-IP DNS fallback (sing-box 1.14)"
 msgstr "大陆 IP DNS 兜底（sing-box 1.14）"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:174
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:187
 msgid "CNNIC Public DNS (210.2.4.8)"
 msgstr "CNNIC 公共 DNS（210.2.4.8）"
 
@@ -379,7 +379,7 @@ msgstr "检查"
 msgid "Check update"
 msgstr "检查更新"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:167
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:176
 msgid "China DNS server"
 msgstr "国内 DNS 服务器"
 
@@ -907,12 +907,12 @@ msgstr "Evaluate 标签"
 #: htdocs/luci-static/resources/homeproxy-pro.js:1156
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/access.js:158
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/access.js:203
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:145
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:157
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:161
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:183
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:194
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:198
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:154
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:166
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:170
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:196
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:207
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:211
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/nodes.js:141
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/nodes.js:155
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/nodes.js:158
@@ -2256,16 +2256,24 @@ msgstr ""
 "回被污染或 NXDOMAIN 的结果，这正是代理本身正常、境外网站却解析失败的原因，因"
 "此这里只提供境外服务。支持 UDP、TCP、DoH、DoQ、DoT，未指定协议时使用 TCP。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:168
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:177
 msgid ""
 "Resolves the domains on the China path, so it has to be a domestic service "
 "to get the correct local CDN answers. Keep the default; the upstream may "
 "block UDP/53, in which case a DoH address (https://dns.alidns.com/dns-query, "
-"https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT."
+"https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT. This "
+"address is also the resolver the proxy DNS server above uses to look up its "
+"own hostname when that one is a domain - and a URL here is a domain, which "
+"cannot do that lookup itself, so with a URL here the proxy DNS server falls "
+"back to the WAN resolver. Enter the bare IP form of the same service to keep "
+"that lookup on this router."
 msgstr ""
-"解析中国路径上的域名，必须是国内服务才能获得正确的本地 CDN 结果。建议保持默认"
-"值；若上游封禁 UDP/53，也可使用 DoH 地址（https://dns.alidns.com/dns-query、"
-"https://doh.pub/dns-query）。支持 UDP、TCP、DoH、DoQ、DoT。"
+"解析走中国大陆路径的域名，所以必须是国内服务，才能拿到正确的本地 CDN 结果。保持"
+"默认即可；上游可能封锁 UDP/53，此时改填 DoH 地址（https://dns.alidns.com/"
+"dns-query、https://doh.pub/dns-query）也可用。支持 UDP、TCP、DoH、DoQ、DoT。"
+"这个地址同时是上方代理 DNS 服务器解析自身域名所用的解析器（当上方填的是域名"
+"时）；而 URL 本身就是域名，无法完成这次解析——所以此处填 URL 时，上方代理 DNS "
+"服务器会退回由 WAN 解析器解析。想避免就把这里填成同一服务的裸 IP。"
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/status.js:258
 msgid "Resources management"
@@ -2737,7 +2745,7 @@ msgid ""
 "Tell the client to use the BBR flow control algorithm instead of Hysteria CC."
 msgstr "让客户端使用 BBR 流控算法。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:175
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:188
 msgid "Tencent Public DNS (119.29.29.29)"
 msgstr "腾讯公共 DNS（119.29.29.29）"
 
@@ -2966,7 +2974,7 @@ msgstr ""
 "这是 UDP over TCP 协议的 TUIC 版本，旨在提供 TUIC 本身不具备的基于 QUIC 流的 "
 "UDP 中继模式。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:176
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:189
 msgid "ThreatBook Public DNS (117.50.10.10)"
 msgstr "微步在线公共 DNS（117.50.10.10）"
 
@@ -3212,7 +3220,7 @@ msgstr "VLESS"
 msgid "VMess"
 msgstr "VMess"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:172
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:185
 msgid "WAN DNS (read from interface)"
 msgstr "WAN DNS（从接口获取）"
 
@@ -3228,7 +3236,7 @@ msgstr "警告"
 msgid "WebSocket"
 msgstr "WebSocket"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:205
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:218
 msgid ""
 "When the main DNS returns a mainland China IP, re-resolve via China DNS "
 "using evaluate/match_response."
@@ -3314,8 +3322,8 @@ msgstr ""
 #: htdocs/luci-static/resources/homeproxy-pro.js:220
 #: htdocs/luci-static/resources/homeproxy-pro.js:1134
 #: htdocs/luci-static/resources/homeproxy-pro.js:1154
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:145
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:183
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:154
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:196
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/nodes.js:141
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/subscription.js:72
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:484
@@ -3436,10 +3444,10 @@ msgstr ""
 msgid "v6"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:157
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:161
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:194
-#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:198
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:166
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:170
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:207
+#: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:211
 msgid "valid DNS server address"
 msgstr "有效 DNS 服务器地址"
 

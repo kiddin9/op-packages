@@ -15,7 +15,9 @@
 
 ## 运行要求
 
-- ImmortalWrt / OpenWrt ≥ 24.10（`apk` 或 `opkg` 均可安装）；sing-box ≥ 1.14.0 是硬要求；低于 1.14 时服务拒绝启动并记录明确日志
+- **ImmortalWrt ≥ 25.12**（`apk` 或 `opkg` 均可安装）。这条以前写的是 "≥ 24.10"，是错的：从 r11 起本包在模块顶层 `import { … mkdtemp … } from 'fs'`，而 `fs.mkdtemp` 是 ucode 在 2025-11-07 才加上的（`ucode-lang/ucode` 的 `lib/fs.c`），24.10 分支线的 ucode 早于此，**整个 24.10 系列都不满足**。ucode 在模块加载期解析 import，所以不满足时安装期迁移、配置生成器、LuCI RPC 三处同时失败——不是一个"装不上"的问题，而是这个插件整体不可用。旧版本 24.10 用户请停留在 r10 及更早的 pro。
+- sing-box ≥ 1.14.0 是硬要求；低于 1.14 时服务拒绝启动并记录明确日志。
+- 启动时会检查 ucode 是否提供 `fs.mkdtemp`，不满足则拒绝启动并记录明确日志（`hp_require_ucode()`，与 `hp_require_singbox()` 并列），而不是让用户看到一段模块加载堆栈。
 
 ## 按功能性对比
 

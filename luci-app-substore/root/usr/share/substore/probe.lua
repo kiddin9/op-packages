@@ -15,7 +15,14 @@ local function q(s) return util.shq(s) end
 
 -- 校验目标主机名/IP：仅允许 [A-Za-z0-9._-] 与冒号（IPv6），杜绝命令注入
 local function safe_host(host)
-	return type(host) == "string" and host ~= "" and host:match("^[%w%.%-%:]+$") ~= nil
+	if type(host) ~= "string" or host == "" then return false end
+	if not host:match("^[%w%.%-%:]+$") then return false end
+	-- 以 "-" 开头会被 busybox 的 getopt 当成**选项**而不是参数：
+	-- 命令是 `ping -c 1 -W 2 <host>`，host="--help" / "-c" 会改变 ping 的行为。
+	-- 引号（util.shq）挡不住这个 —— 引号由 shell 剥掉，getopt 看到的仍是 -x。
+	-- 合法主机名（RFC 1123 要求首字符为字母或数字）与 IP 都不会以 "-" 开头。
+	if host:sub(1, 1) == "-" then return false end
+	return true
 end
 
 -- 构造 http URL：IPv6 字面量必须写成 [addr]:port，否则 "2001:db8::1:443" 不是合法 URL，

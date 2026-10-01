@@ -2,6 +2,7 @@
 ===== scenario: A-tun-bypass-client-only (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -152,6 +153,7 @@ file etc/homeproxy-pro/cache.db:
 ===== scenario: B-tproxy-gfwlist-ipv6-with-server (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -344,6 +346,7 @@ file var/run/homeproxy-pro/known-good/uci-snapshot.txt: homeproxy-pro.config.mai
 ===== scenario: C-nothing-configured (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 log Neither client nor server is configured. Service not started.
 config_load homeproxy-pro
@@ -423,6 +426,7 @@ file var/run/homeproxy-pro/fw4_post.nft:
 ===== scenario: D-health-gate-rollback (reload) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -555,6 +559,7 @@ init.d/miniupnpd restart
 log Service stopped.
 config_load homeproxy-pro
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -856,6 +861,7 @@ init.d/miniupnpd restart
 log Service stopped.
 config_load homeproxy-pro
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -1012,6 +1018,7 @@ file dnsmasq/dnsmasq-homeproxy-pro.d/redirect-dns.conf: no-poll|no-resolv|server
 ===== scenario: E-custom-routing-runtime-files (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -1163,6 +1170,7 @@ file etc/homeproxy-pro/cache.db:
 ===== scenario: F-custom-routing-nothing-configured (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 log Neither client nor server is configured. Service not started.
 config_load homeproxy-pro
@@ -1242,6 +1250,7 @@ file var/run/homeproxy-pro/fw4_post.nft:
 ===== scenario: G-start-health-gate-failure (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -1516,6 +1525,7 @@ file etc/homeproxy-pro/cache.db:
 ===== scenario: I-dns-snippet-write-failure (start) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -1663,6 +1673,7 @@ file etc/homeproxy-pro/cache.db:
 ===== scenario: H-start-disables-client (start-twice) =====
 uci -q show dhcp.@dnsmasq[0]
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 uname -r
 ip route show default
@@ -1769,6 +1780,7 @@ sing-box version -n
 log sing-box 1.14.0 started.
 prime start rc=0
 config_load homeproxy-pro
+ucode -e import * as fs from 'fs'; exit('mkdtemp' in keys(fs) ? 0 : 1)
 sing-box version -n
 log Reverting the intercept layer; traffic will go out unproxied until the client is up.
 ip rule del fwmark 101 table 100

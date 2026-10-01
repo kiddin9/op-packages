@@ -167,17 +167,56 @@ local function wg_public_key(n)
 	return n["public-key"] or n.public_key or n["peer-public-key"] or n.peer_public_key
 end
 
--- 去重：按 proto+server+port 唯一。
--- WireGuard/AmneziaWG 例外：同一个 endpoint 上不同 peer 公钥是**不同**的节点，
--- 只按 server+port 去重会把它们错误合并（§32/§43），因此把公钥并入去重键。
+-- 去重键的「身份」部分：同一 server:port 上的**不同账号是不同节点**。
+--
+-- 旧键只有 proto|server|port，于是「同一入口的多账号」被当成重复，静默删掉
+-- 其中一个 —— 那是数据丢失而不是去重（与下面 WireGuard 公钥的说明同理）。
+-- 这里取各协议里真正代表账号身份的字段；未知协议不猜，退回空身份。
+local function identity_key(n)
+	local proto = (n.proto or ""):lower()
+	if proto == "ss" then proto = "shadowsocks" end
+	if proto == "wg" then proto = "wireguard" end
+	if proto == "socks5" then proto = "socks" end
+
+	-- WireGuard 的身份是 peer 公钥（同一个 endpoint 上不同公钥是不同节点）
+	if proto == "wireguard" then
+		return tostring(wg_public_key(n) or "")
+	end
+	if proto == "shadowsocks" then
+		return tostring(n.method or n.cipher or "") .. "\1" .. tostring(n.password or "")
+	end
+	if proto == "ssr" then
+		-- SSR 的加密方式、密码、协议插件、混淆方式是四段独立参数，任一不同
+		-- 都是不同的节点
+		return tostring(n.method or n.cipher or "") .. "\1" .. tostring(n.password or "")
+			.. "\1" .. tostring(n.protocol or "") .. "\1" .. tostring(n.obfs or "")
+	end
+	if proto == "vmess" or proto == "vless" then
+		return tostring(n.uuid or "")
+	end
+	if proto == "tuic" then
+		return tostring(n.uuid or "") .. "\1" .. tostring(n.password or "")
+	end
+	if proto == "socks" or proto == "http" then
+		return tostring(n.username or "") .. "\1" .. tostring(n.password or "")
+	end
+	if proto == "trojan" or proto == "hysteria" or proto == "hysteria2" then
+		return tostring(n.password or "")
+	end
+	return ""
+end
+
+-- 去重：按 proto+server+port+身份唯一。
+-- proto 先归一：`wg` 与 `wireguard` 是同一协议，不归一的话同一条链路以两种
+-- 写法出现时不会被去重。
 function M.dedup(nodes)
 	local seen = {}
 	local out = {}
 	for _, n in ipairs(nodes) do
-		local key = (n.proto or "") .. "|" .. (n.server or "") .. "|" .. tostring(n.port or "")
-		if n.proto == "wireguard" or n.proto == "wg" then
-			key = key .. "|" .. tostring(wg_public_key(n) or "")
-		end
+		local proto = (n.proto or ""):lower()
+		if proto == "wg" then proto = "wireguard" end
+		local key = proto .. "|" .. (n.server or "") .. "|" .. tostring(n.port or "")
+			.. "|" .. identity_key(n)
 		if not seen[key] then
 			seen[key] = true
 			out[#out + 1] = n
@@ -569,6 +608,37 @@ local function split_alternatives(pat)
 end
 
 -- 按规则链式重命名节点（就地修改）
+-- 把用户写的替换串翻译成 string.gsub 的替换串。
+--
+-- 两个坑：
+--   * 捕获引用写的是 `$1`（正则风格），而 gsub 要的是 `%1`，必须转换。
+--   * 其余字符必须按**字面**处理。用户写的 `%` 若原样传进 gsub，就落进了 gsub
+--     的替换串语义：`%` 后接非数字字符时被吞掉（"50%off" → "50off"），
+--     结尾的 `%` 会注入一个 NUL 字节（"100%" → "100\0"）。这不是显示问题——
+--     节点名会写进节点文件并下发给所有客户端。
+-- 原先只做了 `$` → `%` 的替换，没有转义字面 `%`，上述两种损坏都会发生。
+local function build_replacement(rep)
+	rep = rep or ""
+	local out, i, n = {}, 1, #rep
+	while i <= n do
+		local c = rep:sub(i, i)
+		local nx = rep:sub(i + 1, i + 1)
+		if c == "$" and nx:match("%d") then
+			-- $1..$9 → %1..%9（gsub 的捕获引用）
+			out[#out + 1] = "%" .. nx
+			i = i + 2
+		elseif c == "%" then
+			-- 字面百分号：转义成 %%
+			out[#out + 1] = "%%"
+			i = i + 1
+		else
+			out[#out + 1] = c
+			i = i + 1
+		end
+	end
+	return table.concat(out)
+end
+
 function M.rename_with_rules(nodes, rules)
 	rules = rules or {}
 	for _, n in ipairs(nodes) do
@@ -581,7 +651,7 @@ function M.rename_with_rules(nodes, rules)
 				local name = n.name or ""
 				-- 正则风格 → Lua pattern：\d -> %d、$1 -> %1、HK-01 里的 - 转义成 %-
 				local pat = regex_to_lua(r.pattern or "")
-				local repl = (r.replacement or ""):gsub("%$", "%%")
+				local repl = build_replacement(r.replacement)
 				local ok, result = pcall(function()
 					-- 顶层 | 拆成多个候选依次替换（Lua pattern 没有「或」）
 					local s = name

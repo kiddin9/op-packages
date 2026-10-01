@@ -38,11 +38,21 @@ No `luasrc/` — modern JS-only app.
 
 ## Dependencies
 
-- `luci-base`, `logd`, `jsonfilter`, `coreutils-timeout` (declared in `LUCI_DEPENDS`; `rpcd` via `luci-base`)
+- `luci-base`, `logd`, `jsonfilter` (declared in `LUCI_DEPENDS`; `rpcd` via `luci-base`)
 - Optional reverse DNS uses BusyBox `nslookup` (stock image; not a package depend)
 - No hard `firewall4` dependency
 - Menu depends on ACL only (no `fs` AND of `nft`+`iptables` — that hid the entry on stock fw3 and fw4)
 - Runtime backend detection selects **fw4/nft** on supported **23.05+** images; log lines tagged **iptables** still classify. OpenWrt **21.02** / **22.03** are unsupported
+
+The rpcd plugin invokes its read helpers directly and does not require GNU
+`timeout`. The `log.read` ubus invocation uses ubus's native five-second reply
+timeout after object lookup; this does not cancel a remote method already
+running. Existing line, byte, and count limits still apply, and reverse DNS
+stops starting lookups after its elapsed-time budget. Other helpers have no
+fwlive deadline. Stock rpcd kills the plugin process after its configured
+execution timeout (30 seconds), but does not kill its descendants; helpers can
+outlive the request. This is an accepted maintenance tradeoff, to be
+reconsidered if users report reliability problems.
 
 ## Maintenance
 
