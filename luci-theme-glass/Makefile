@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=Glass - Apple-inspired glassmorphism theme for LuCI
 LUCI_DEPENDS:=
 PKG_VERSION:=$(shell cat $(CURDIR)/ucode/template/themes/glass/version | tr -d '[:space:]')
-PKG_RELEASE:=1
+PKG_RELEASE:=3
 
 # Disable CSS minification (backdrop-filter can break with csstidy)
 CONFIG_LUCI_CSSTIDY:=
