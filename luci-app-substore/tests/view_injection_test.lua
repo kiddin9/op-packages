@@ -37,9 +37,14 @@ local VIEWS = {
 	"root/usr/lib/lua/luci/view/substore/output.htm",
 }
 
--- ---------- H2：JSON 编码注入到 JS 的位置必须同时转义 "</" ----------
+-- ---------- H2：JSON 编码注入到 JS 的位置必须转义**全部** "<" ----------
 --
--- 逐个 json_encode 调用点检查：要么同一行/下一行出现 gsub("</", …)，
+-- 只转 "</" 是不够的：HTML 词法阶段一旦看到 "<!--"，就进入 script data escaped
+-- 状态，其后的 "</script>" 不再结束脚本块 —— 页面剩余部分全被当成脚本文本吞掉。
+-- 转义全部 "<" 为 \u003c 后，HTML 词法阶段看不到任何 "<"，两个坑一并堵上；
+-- 而 \u003c 在 JSON 与 JS 字符串字面量里都还原成 "<"，取值不受影响。
+--
+-- 逐个 json_encode 调用点检查：要么同一行/下一行出现 gsub("<", …)，
 -- 要么该值是白名单归一化后的固定取值（注释里标注了「白名单」）。
 for _, path in ipairs(VIEWS) do
 	local src = util.read_file(path)
@@ -51,10 +56,11 @@ for _, path in ipairs(VIEWS) do
 			if l:find("json_encode") and not l:match("^%s*%-%-") and not l:match("^%s*//") then
 				-- 转义可能写在下一行，白名单说明通常写在紧邻的注释里（上一两行）
 				local window = (lines[i - 2] or "") .. (lines[i - 1] or "") .. l .. (lines[i + 1] or "")
-				local escaped = window:find('gsub("</"', 1, true) ~= nil
+				local escaped = window:find('gsub("<"', 1, true) ~= nil
+					and window:find("\\u003c", 1, true) ~= nil
 				-- 白名单归一化的取值（"text"/"form"）不含 "<"，无需转义
 				local whitelisted = window:find("白名单", 1, true) ~= nil
-				check(path:match("[^/]+$") .. ":" .. i .. " json_encode escapes </",
+				check(path:match("[^/]+$") .. ":" .. i .. ' json_encode escapes <',
 					escaped or whitelisted)
 			end
 		end
@@ -66,6 +72,16 @@ local payload = "</script><script>alert(1)</script>"
 check("json_encode does not escape <", util.json_encode(payload):find("</script", 1, true) ~= nil)
 check("gsub(</) removes the closing tag",
 	(util.json_encode(payload):gsub("</", "<\\/")):find("</script", 1, true) == nil)
+
+-- 反向验证之二：只转 "</" 挡不住 "<!--" —— 这正是本轮把转义范围放宽到全部 "<" 的原因。
+-- 该断言在旧实现（gsub("</") ）上必须成立，否则说明这条理由不成立。
+local comment_payload = "<!--x"
+check("gsub(</) alone still leaves <!-- (page-breaking)",
+	(util.json_encode(comment_payload):gsub("</", "<\\/")):find("<!--", 1, true) ~= nil)
+check("gsub(<) escapes <!-- too",
+	(util.json_encode(comment_payload):gsub("<", "\\u003c")):find("<!--", 1, true) == nil)
+check("gsub(<) still removes the closing tag",
+	(util.json_encode(payload):gsub("<", "\\u003c")):find("</script", 1, true) == nil)
 
 -- ---------- 字段清单：唯一来源在 Lua，页面负责注入 ----------
 local js = util.read_file("root/www/luci-static/resources/substore/nodeform.js")

@@ -8,12 +8,13 @@
 	local meta = id ~= "" and core.get(id) or nil
 	local nodes = id ~= "" and core.read_nodes(id) or {}
 	local n = nodes[idx]
-	-- 注入 JS 的节点对象：转义 "</" 防止提前闭合 script
-	local js_node = n and ((util.json_encode(n) or "null"):gsub("</", "<\\/")) or "null"
+	-- 注入 JS 的节点对象：把全部 "<" 转成 <，同时挡住 "</script" 提前闭合
+	-- 与 "<!--" 让脚本块吞掉其后整页（详见 nodes.htm 同名注释）
+	local js_node = n and ((util.json_encode(n) or "null"):gsub("<", "\\u003c")) or "null"
 	-- 协议与字段清单：与 core.merge_form_node 共用 substore/node.lua 的同一份数据
 	local node_mod = require("substore.node")
-	local js_protos = (util.json_encode(node_mod.PROTOS) or "[]"):gsub("</", "<\\/")
-	local js_proto_fields = (util.json_encode(node_mod.PROTO_FIELDS) or "{}"):gsub("</", "<\\/")
+	local js_protos = (util.json_encode(node_mod.PROTOS) or "[]"):gsub("<", "\\u003c")
+	local js_proto_fields = (util.json_encode(node_mod.PROTO_FIELDS) or "{}"):gsub("<", "\\u003c")
 	local back_url = luci.dispatcher.build_url('admin/services/substore/nodes') .. "?id=" .. luci.util.urlencode(id)
 %>
 <h2><%:Edit node%> — <%=luci.util.pcdata(meta and meta.name or "")%></h2>

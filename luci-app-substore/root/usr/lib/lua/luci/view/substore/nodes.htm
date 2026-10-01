@@ -18,8 +18,11 @@
 	-- 但只有 JSON 编码还不够：json_encode 不转义 "<"，id 直接来自查询串，
 	-- 形如 "</script><script>alert(1)</script>" 的值会在 HTML 词法阶段就闭合
 	-- script 元素（与 JS 字符串上下文无关），剩下的部分被当作 HTML 执行。
-	-- 转义 "</" 即可：在 JS 字符串里 "\/" 就是 "/"，而 HTML 不再看到 "</script"。
-	local js_id = (util.json_encode(id) or '""'):gsub("</", "<\\/")
+	-- 把**全部** "<" 转成 <：在 JS/JSON 字符串里这就是 "<"，而 HTML 词法
+	-- 阶段再也看不到 "<"，于是 "</script"（提前闭合）与 "<!--"（进入 script
+	-- data escaped 状态，后面的 </script> 不再结束脚本块，整页被吞进脚本）两个
+	-- 坑一并堵上。只转 "</" 挡不住 "<!--"。
+	local js_id = (util.json_encode(id) or '""'):gsub("<", "\\u003c")
 
 	-- 标注原始数组下标（filter 保留表引用、sort 原地排序，下标可穿透筛选排序）
 	for i, nn in ipairs(nodes) do nn.__idx = i end
@@ -47,7 +50,7 @@
 	if flash_err and flash_err ~= "" then
 %>
 <div class="cbi-section" style="border-left:4px solid #cc0000;padding:0.5em 0.75em;background:#fdf0f0;color:#cc0000">
-	<strong><%:操作失败%>:</strong> <%=luci.util.pcdata(flash_err)%>
+	<strong><%:Operation failed%>:</strong> <%=luci.util.pcdata(flash_err)%>
 </div>
 <% end %>
 <h2><%:Nodes%> — <%=luci.util.pcdata(meta and meta.name or "")%></h2>

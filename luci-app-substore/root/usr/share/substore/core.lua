@@ -7,7 +7,7 @@ local parser = require("substore.parser")
 
 local M = {}
 
-M.version = "2.6.8"
+M.version = "2.6.9"
 M.DATA_DIR = "/etc/substore"
 M.LIST_FILE = M.DATA_DIR .. "/subscriptions.json"
 M.NODES_DIR = M.DATA_DIR .. "/nodes"
@@ -28,9 +28,20 @@ local function id_is_valid(id)
 	return type(id) == "string" and id ~= "" and id:match("^[A-Za-z0-9_%-]+$") ~= nil
 end
 
+-- 目录权限只收紧一次（每进程）。load() 每次读列表都会调用 ensure_dirs()，
+-- 无条件 chmod 会让每次读取都多 fork 两个子进程。
+local dirs_secured = false
 function M.ensure_dirs()
-	util.ensure_dir(M.DATA_DIR)
-	util.ensure_dir(M.NODES_DIR)
+	util.ensure_dir(M.DATA_DIR, "700")
+	util.ensure_dir(M.NODES_DIR, "700")
+	if not dirs_secured then
+		dirs_secured = true
+		-- mkdir -m 只对**本次新建**的目录生效；从旧版本升级上来的机器上目录已存在，
+		-- 权限仍是当初按 umask 建的（通常 0755），所以这里显式再 chmod 一次。
+		-- 目录里是订阅 URL、公开下载 token 与节点凭据，0700 只留 root。
+		util.chmod(M.DATA_DIR, "700")
+		util.chmod(M.NODES_DIR, "700")
+	end
 end
 
 -- 读取订阅列表，返回 seq, items, err。
@@ -73,7 +84,8 @@ end
 
 local function save(seq, items)
 	M.ensure_dirs()
-	return util.atomic_write(M.LIST_FILE, util.json_encode({ _seq = seq, items = items }))
+	-- 0600：列表里有订阅 URL 与公开下载 token
+	return util.atomic_write(M.LIST_FILE, util.json_encode({ _seq = seq, items = items }), "600")
 end
 
 -- 返回 arr, err。err 非空表示列表文件已损坏。
@@ -248,7 +260,8 @@ end
 
 function M.write_nodes(id, nodes)
 	M.ensure_dirs()
-	return util.atomic_write(M.nodes_file(id), util.json_encode(nodes))
+	-- 0600：节点文件里有 uuid / 密码 / 私钥等全部凭据
+	return util.atomic_write(M.nodes_file(id), util.json_encode(nodes), "600")
 end
 
 function M.read_nodes(id)

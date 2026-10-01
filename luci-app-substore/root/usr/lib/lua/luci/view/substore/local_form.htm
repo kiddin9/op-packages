@@ -18,17 +18,18 @@
 	local rm = (it and it.rename_map) or ""
 	local local_mode = (it and it.local_mode) or "text"
 	local content = (it and it.raw_content) or ""
-	-- 注入 JS 的初始内容：JSON 字符串字面量，转义 "</" 防止提前闭合 script
+	-- 注入 JS 的初始内容：JSON 字符串字面量，把全部 "<" 转成 <，
+	-- 同时挡住 "</script" 提前闭合与 "<!--" 吞掉其后整页（详见 nodes.htm 同名注释）
 	local util = require("substore.util")
-	local js_content = (util.json_encode(content) or '""'):gsub("</", "<\\/")
+	local js_content = (util.json_encode(content) or '""'):gsub("<", "\\u003c")
 	-- local_mode 是用户可提交的字段，直接拼进 JS 字符串会被闭合引号注入；
 	-- 归一为白名单取值后用 json_encode 输出，保证是合法的 JS 字符串字面量
 	if local_mode ~= "form" then local_mode = "text" end
 	local js_mode = util.json_encode(local_mode) or '"text"'
 	-- 协议与字段清单：与 core.merge_form_node 共用 substore/node.lua 的同一份数据
 	local node_mod = require("substore.node")
-	local js_protos = (util.json_encode(node_mod.PROTOS) or "[]"):gsub("</", "<\\/")
-	local js_proto_fields = (util.json_encode(node_mod.PROTO_FIELDS) or "{}"):gsub("</", "<\\/")
+	local js_protos = (util.json_encode(node_mod.PROTOS) or "[]"):gsub("<", "\\u003c")
+	local js_proto_fields = (util.json_encode(node_mod.PROTO_FIELDS) or "{}"):gsub("<", "\\u003c")
 %>
 <h2><%=is_edit and luci.i18n.translate("Edit local subscription") or luci.i18n.translate("Add local subscription")%></h2>
 

@@ -8,7 +8,7 @@
 	if flash_err and flash_err ~= "" then
 %>
 <div class="cbi-section" style="border-left:4px solid #cc0000;padding:0.5em 0.75em;background:#fdf0f0;color:#cc0000">
-	<strong><%:操作失败%>:</strong> <%=luci.util.pcdata(flash_err)%>
+	<strong><%:Operation failed%>:</strong> <%=luci.util.pcdata(flash_err)%>
 </div>
 <% end %>
 
@@ -103,7 +103,7 @@
 						onclick="var e=document.getElementById('link_<%=it.id%>');e.select();document.execCommand('copy');"><%:Copy%></button>
 				</div>
 			</div>
-			<div class="cbi-value-description"><%:选择格式后生成订阅链接，格式可随时切换%></div>
+			<div class="cbi-value-description"><%:Pick a format to generate the subscription link; you can switch formats at any time%></div>
 		</td>
 		<td>
 			<% if it["local"] then %>

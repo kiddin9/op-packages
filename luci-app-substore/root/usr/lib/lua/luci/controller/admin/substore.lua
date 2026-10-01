@@ -90,10 +90,15 @@ local function read_cron_fields()
 	return cron_enable, cron_time
 end
 
--- read subscription level rules from form, return rules table
+-- read subscription level rules from form, return rules table, err
+--
+-- 第二个返回值是**用户可见**的校验错误。目前只有重命名规则的正则需要校验：
+-- 非法 pattern 会被 node.rename_with_rules 里的 pcall 静默吞掉，用户看到的是
+-- 「规则写了但没生效」。在这里拦下来，调用方用 back_to_list(err) 回显。
 local function read_rules_fields()
 	local http = require("luci.http")
 	local core = require("substore.core")
+	local node = require("substore.node")
 	local proto_list = {}
 	-- 协议清单来自 core.RULE_PROTOS，与表单模板共用一份（见该常量的说明）
 	for _, p in ipairs(core.RULE_PROTOS) do
@@ -101,13 +106,16 @@ local function read_rules_fields()
 	end
 	local rules_enable = fv(http, "rules_enable") or "0"
 	if rules_enable ~= "1" then rules_enable = "0" end
+	local rename_map = fv(http, "rename_map") or ""
+	local vok, verr = node.validate_rename_map(rename_map)
+	if not vok then return nil, verr end
 	return {
 		rules_enable = rules_enable,
 		proto_filter = table.concat(proto_list, ","),
 		keyword_include = fv(http, "keyword_include") or "",
 		keyword_exclude = fv(http, "keyword_exclude") or "",
 		dedup = fv(http, "dedup") or "0",
-		rename_map = fv(http, "rename_map") or "",
+		rename_map = rename_map,
 	}
 end
 
@@ -124,7 +132,9 @@ function action_create()
 			return back_to_list("名称和 URL 不能为空")
 		end
 		local cron_enable, cron_time = read_cron_fields()
-		local rules = read_rules_fields()
+		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
+		local rules, rules_err = read_rules_fields()
+		if not rules then return back_to_list(rules_err or "规则无效") end
 		local id, err = core.add(name, url, {
 			proxy_enable = proxy_enable, proxy = proxy,
 			cron_enable = cron_enable, cron_time = cron_time,
@@ -153,7 +163,9 @@ function action_save()
 			return back_to_list("名称和 URL 不能为空")
 		end
 		local cron_enable, cron_time = read_cron_fields()
-		local rules = read_rules_fields()
+		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
+		local rules, rules_err = read_rules_fields()
+		if not rules then return back_to_list(rules_err or "规则无效") end
 		local ok, err = core.save_meta(id, {
 			name = name, url = url, proxy_enable = proxy_enable, proxy = proxy,
 			cron_enable = cron_enable, cron_time = cron_time,
@@ -174,7 +186,9 @@ function action_local_create()
 		local name = (fv(http, "name") or ""):gsub("^%s+", ""):gsub("%s+$", "")
 		local content = fv(http, "content") or ""
 		local local_mode = fv(http, "local_mode") or "text"
-		local rules = read_rules_fields()
+		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
+		local rules, rules_err = read_rules_fields()
+		if not rules then return back_to_list(rules_err or "规则无效") end
 		-- §19：空名称 / 空内容必须明确报错，不能无声创建无效订阅
 		if name == "" then return back_to_list("名称不能为空") end
 		if content == "" then return back_to_list("订阅内容不能为空") end
@@ -198,7 +212,9 @@ function action_local_save()
 		local name = (fv(http, "name") or ""):gsub("^%s+", ""):gsub("%s+$", "")
 		local content = fv(http, "content") or ""
 		local local_mode = fv(http, "local_mode") or "text"
-		local rules = read_rules_fields()
+		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
+		local rules, rules_err = read_rules_fields()
+		if not rules then return back_to_list(rules_err or "规则无效") end
 		if id == "" then return back_to_list("缺少订阅 ID") end
 		if name == "" then return back_to_list("名称不能为空") end
 		if content == "" then return back_to_list("订阅内容不能为空") end
@@ -370,7 +386,9 @@ function action_combo_save()
 		-- §18：此前名称留空、或一个来源都没勾选时，这里整段跳过、直接跳回列表 ——
 		-- 用户填了表单却什么都没发生，页面上也没有任何提示。
 		if name == "" then return back_to_list("名称不能为空") end
-		local rules = read_rules_fields()
+		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
+		local rules, rules_err = read_rules_fields()
+		if not rules then return back_to_list(rules_err or "规则无效") end
 		local o = {
 			rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
 			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,

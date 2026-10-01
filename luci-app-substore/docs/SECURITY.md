@@ -17,6 +17,9 @@
 - 下载临时文件（`.tmp` / `.tmp.hdr` / `.tmp.err`）在**每一条**退出路径上清理。
   OpenWrt 的 `/tmp` 是 tmpfs，占的是内存；失败路径不清理会让 cron 定时重试
   一轮轮往内存里堆文件，其中 `.tmp` 可能是最大到 `max-size` 的部分响应体
+- 批量节点探测并发上限 `probe.MAX_PARALLEL = 16`。节点数由订阅内容决定（可上千），
+  每个探测占 1 个进程 + 1 个管道 fd；不限并发会打满路由器的 fd / 进程额度，
+  之后 `io.popen` **静默失败** —— 症状是一大片节点探测不出来，而不是报错
 
 ## 输入校验
 - 订阅名/文件名白名单校验，禁止 `..`、`/`
@@ -30,6 +33,15 @@
 - 订阅 URL 中的 token 不写入普通日志
 - 输出/下载接口使用**每订阅随机 16 位十六进制 token** 鉴权（`core.ensure_token`），不可猜测；`/substore/download` 无登录态
 - 日志使用 `logger -t luci-app-substore`，不记录敏感信息
+- 落盘权限：`/etc/substore` 目录 `0700`，`subscriptions.json` 与 `nodes/*.json` `0600`。
+  `io.open` 按 umask 创建（通常 0644），同机任何用户都能读到订阅 URL、下载 token
+  与节点凭据，因此 `util.atomic_write` 在 `os.rename` **之后**显式 chmod ——
+  先 chmod 再 rename 的话，临时文件名可猜，中间窗口里仍能读到。
+  目录侧由 `core.ensure_dirs` 建目录时带 `-m 700`，并对旧版本升级上来、
+  已存在的目录补一次 `chmod 700`（每进程一次，避免 `load()` 每次都 fork）
+- 注入到页面 `<script>` 的 JSON 转义**全部** `<`（`<`）：只转 `</` 挡得住
+  `</script>` 提前闭合，却挡不住 `<!--` —— 后者让 HTML 词法阶段进入
+  script data escaped 状态，其后的 `</script>` 不再结束脚本块，整页被吞进脚本
 
 ## 安全测试
 - 已验证 SSRF 私网拒绝

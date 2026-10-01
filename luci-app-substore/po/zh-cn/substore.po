@@ -288,3 +288,15 @@ msgstr "确定删除选中的节点？"
 
 msgid "Please select nodes first"
 msgstr "请先勾选节点"
+
+# 节点页 / 订阅页的失败提示（控制器经 ?err= 带回）
+msgid "Operation failed"
+msgstr "操作失败"
+
+# 订阅页：导出格式下拉的说明
+msgid "Pick a format to generate the subscription link; you can switch formats at any time"
+msgstr "选择格式后生成订阅链接，格式可随时切换"
+
+# 节点表头 / 节点编辑表单里的字段标签
+msgid "Type"
+msgstr "类型"

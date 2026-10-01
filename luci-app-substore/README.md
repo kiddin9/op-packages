@@ -108,18 +108,18 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.6.8-r1`）。
+> （当前 `2.6.9-r1`）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.6.8-r1.ipk
+opkg install luci-app-substore-2.6.9-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.6.8-r1.apk
+apk add --allow-untrusted luci-app-substore-2.6.9-r1.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
@@ -197,6 +197,14 @@ SSRF 防护（拒绝内网 / 保留 / 链路本地地址；**DNS 解析失败即
 响应体大小与超时限制、下载临时文件在每条退出路径上清理（`/tmp` 是 tmpfs）、
 命令注入防护（白名单解析 + shell 引用 + 探测目标拒绝以 `-` 开头的主机名）、
 公开下载端点基于 token 的访问控制、日志不含凭据。
+
+数据落盘权限：`/etc/substore` 目录 `0700`，`subscriptions.json` 与 `nodes/*.json`
+`0600`（前者含订阅 URL 与公开下载 token，后者含 uuid / 密码 / 私钥）——
+`io.open` 按 umask 创建（通常 0644），同机任何用户都能读到，因此写入后显式收紧。
+
+批量节点探测的并发上限为 16 个进程（`probe.MAX_PARALLEL`）：节点数由订阅内容决定，
+不限并发会把路由器的 fd / 进程额度打满，之后 `io.popen` 静默失败。
+
 详见 [docs/SECURITY.md](docs/SECURITY.md)。
 
 ## 许可证
