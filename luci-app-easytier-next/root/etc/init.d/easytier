@@ -342,7 +342,7 @@ start_core() {
 	config_get ip6addr settings ip6addr ''
 	config_get external_node settings external_node ''
 	config_get rpc_port settings rpc_port '15888'
-	config_get encryption_algorithm settings encryption_algorithm ''
+	config_get encryption_algorithm settings encryption_algorithm 'aes-gcm'
 	config_get dev_name settings dev_name 'easytier0'
 	config_get custom_config_file settings custom_config_file '/etc/easytier/config.toml'
 	config_get web_config settings web_config ''

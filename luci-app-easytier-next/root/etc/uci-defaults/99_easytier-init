@@ -10,8 +10,14 @@
 	fi
 	if [ -n "$new_uuid" ]; then
 		uci -q set easytier.settings.machine_id="$new_uuid"
-		uci -q commit easytier
 	fi
+
+	# 检测 SoC 是否支持硬件 AES 加速，不支持则切换默认加密算法为 chacha20-poly1305
+	if ! grep -q -i -E '^(flags|Features)[[:space:]]*:.*[[:space:]]aes([[:space:]]|$)' /proc/cpuinfo 2>/dev/null; then
+		uci -q set easytier.settings.encryption_algorithm='chacha20-poly1305'
+	fi
+
+	uci -q commit easytier
 }
 
 rm -f /tmp/luci-indexcache* 2>/dev/null
