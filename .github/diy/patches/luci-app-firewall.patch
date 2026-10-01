@@ -1,27 +1,3 @@
---- a/luci-app-firewall/htdocs/luci-static/resources/view/firewall/custom.js
-+++ b/luci-app-firewall/htdocs/luci-static/resources/view/firewall/custom.js
-@@ -23,7 +23,7 @@ return view.extend({
- 	render(fwuser) {
- 		return E([
- 			E('h2', _('Firewall - Custom Rules')),
--			E('p', {}, _('Custom rules allow you to execute arbitrary iptables commands which are not otherwise covered by the firewall framework. The commands are executed after each firewall restart, right after the default ruleset has been loaded.')),
-+			E('p', {}, _('Custom rules allow you to define custom firewall rules which are not otherwise covered by the firewall framework. On firewall4 systems, these rules must use nftables syntax.'))
- 			E('p', {}, E('textarea', { 'style': 'width:100%', 'rows': 25 }, [ fwuser != null ? fwuser : '' ]))
- 		]);
- 	},
-
---- a/luci-app-firewall/root/usr/share/luci/menu.d/luci-app-firewall.json
-+++ b/luci-app-firewall/root/usr/share/luci/menu.d/luci-app-firewall.json
-@@ -65,8 +65,5 @@
- 			"type": "view",
- 			"path": "firewall/custom"
- 		},
--		"depends": {
--			"fs": { "/usr/share/fw3/helpers.conf": "file" }
--		}
- 	}
- }
-
 --- a/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
 +++ b/luci-app-firewall/htdocs/luci-static/resources/view/firewall/zones.js
 @@ -73,6 +73,7 @@ return view.extend({
