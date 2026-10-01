@@ -1,0 +1,11 @@
+--- a/luci-theme-glass/ucode/template/themes/glass/header.ut
++++ b/luci-theme-glass/ucode/template/themes/glass/header.ut
+@@ -63,7 +63,7 @@
+   }
+ -%}
+ <!DOCTYPE html>
+-<html lang="{{ dispatcher.lang }}">
++<html lang="{{ dispatcher.lang }}"{% if (glass_mode == 'dark'): %} data-darkmode="true"{% elif (glass_mode == 'light'): %} data-darkmode="false"{% endif %}>
+ <head>
+   <meta charset="utf-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
