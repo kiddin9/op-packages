@@ -124,6 +124,33 @@ function M.rnd_hex(len)
 	return table.concat(out)
 end
 
+-- RFC 4122 version 4 UUID（8-4-4-4-12 十六进制）。
+--
+-- 客户端的 uuid 字段要的是**合法 UUID**，不是「一串随机字符」：
+-- vmess/vless 的 uuid 会被解析成 16 字节，格式不对时多数客户端直接拒绝该节点。
+-- 所以这里按规范置版本位（第 13 位十六进制 = 4）与变体位（第 17 位 ∈ 8/9/a/b），
+-- 而不是随便取 36 个字符。随机源复用 rnd_hex（优先 /dev/urandom）。
+-- 32 个十六进制字符按 8-4-4-4-12 切分；第 13 位固定 '4'（版本），
+-- 第 17 位取 8/9/a/b（变体，即高两位为二进制的 10）。
+function M.uuid()
+	local h = M.rnd_hex(32)
+	if #h < 32 then return nil end
+	local variant = tonumber(h:sub(17, 17), 16) % 4 + 8 -- 8..11 → 8/9/a/b
+	return string.format("%s-%s-4%s-%x%s-%s",
+		h:sub(1, 8), h:sub(9, 12), h:sub(14, 16),
+		variant, h:sub(18, 20),
+		h:sub(21, 32))
+end
+
+-- 把任意字符串转成 string.gsub 的**字面**替换串。
+--
+-- gsub 的替换串有自己的语义：`%` 后接数字是捕获引用，`%%` 才是字面百分号，
+-- 而 `%` 后接其它字符会被吞掉、结尾的 `%` 会注入 NUL 字节。
+-- 用户提供的替换值（节点名、模板变量）必须原样落地，所以先转义。
+function M.gsub_literal(s)
+	return (tostring(s or ""):gsub("%%", "%%%%"))
+end
+
 -- ---------- URL ----------
 function M.url_decode(s)
 	if type(s) ~= "string" then return "" end
@@ -411,6 +438,12 @@ function M.file_size(path)
 	return #data
 end
 
+-- 修改文件权限。Lua 5.1 标准库**没有** os.chmod（那是 nixio/posix 才有的），
+-- 所以走 busybox 的 chmod，路径经 shq 引用。mode 传八进制字符串（如 "600"）。
+function M.chmod(path, mode)
+	return os.execute("chmod " .. mode .. " " .. M.shq(path) .. " >/dev/null 2>&1") == 0
+end
+
 -- 原子写：先写临时文件再重命名，避免写一半损坏。
 --
 -- 两处必须做对，否则「原子」只是名义上的：
@@ -419,7 +452,10 @@ end
 --   2) write / close 的返回值必须检查：磁盘写满或写入被截断时 f:write 会失败，
 --      但 os.rename 依然成功 —— 于是原子地换上一个残缺文件，调用方却以为成功，
 --      下一次读取才发现数据没了。
-function M.atomic_write(path, content)
+--
+-- mode 可选：写盘后把文件权限收紧到该值。数据文件里是订阅 URL、公开下载 token、
+-- 节点凭据；io.open 按 umask 创建，默认通常是 0644 —— 同机任何用户都能读到。
+function M.atomic_write(path, content, mode)
 	local tmp = string.format("%s.tmp.%s", path, M.rnd_hex(8))
 	local f, e = io.open(tmp, "wb")
 	if not f then return false, e end
@@ -439,11 +475,21 @@ function M.atomic_write(path, content)
 		os.remove(tmp)
 		return false, rerr
 	end
+	-- rename 保留临时文件自身的权限，所以收紧必须在 rename **之后**做：
+	-- 先 chmod 再 rename 的话，临时文件名是公开可猜的，中间窗口里别人仍能读到。
+	if mode then M.chmod(path, mode) end
 	return true
 end
 
-function M.ensure_dir(path)
-	os.execute("mkdir -p " .. M.shq(path))
+-- 建目录。mode 可选，仅在目录**由本次调用创建**时生效 ——
+-- 对已存在的目录 busybox mkdir 不会改权限（要改得显式 chmod），
+-- 调用方若需要「无论新建与否都收紧」，用 M.chmod 单独补一次。
+function M.ensure_dir(path, mode)
+	if mode then
+		os.execute("mkdir -p -m " .. mode .. " " .. M.shq(path) .. " >/dev/null 2>&1")
+	else
+		os.execute("mkdir -p " .. M.shq(path))
+	end
 end
 
 -- ---------- 人性化格式 ----------

@@ -129,8 +129,13 @@ M.FORMAT_OPTIONS = {
 
 -- 统一分发：nodes → 目标格式字符串
 function M.generate(nodes, format, options)
-	format = (format or DEFAULT_FORMAT) or DEFAULT_FORMAT
-	if type(format) ~= "string" then format = DEFAULT_FORMAT end
+	-- 空串 / 纯空白等同于「未指定」。
+	-- `?target=` 会传进来 ""，而 "" 在 Lua 里是**真值**，所以 `format or DEFAULT_FORMAT`
+	-- 兜不住它，会一路落到 "unsupported format: "（冒号后面什么都没有）——
+	-- 用户拿到的是一个说不出原因的错误页。控制器只在 nil 时兜底，覆盖不到空串。
+	if type(format) ~= "string" then format = "" end
+	format = format:match("^%s*(.-)%s*$") or ""
+	if format == "" then format = DEFAULT_FORMAT end
 	local norm = M.FORMAT_ALIASES[format:lower():gsub("[-_%s]", "")]
 	if not norm then norm = M.FORMAT_ALIASES[format:lower()] end
 	if not norm then return nil, "unsupported format: " .. tostring(format) end

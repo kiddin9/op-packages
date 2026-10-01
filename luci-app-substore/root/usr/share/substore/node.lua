@@ -1,6 +1,9 @@
 -- node.lua — 统一节点模型（纯 Lua）
 -- luci-app-substore
 
+-- util 是叶子模块（自身不 require 任何 substore.*），所以这里不会形成循环依赖。
+local util = require("substore.util")
+
 local M = {}
 
 M.PROTOS = {
@@ -366,11 +369,13 @@ function M.apply_rules(nodes, rules)
 	if rules.template_apply == true or rules.template_apply == "1" then
 		for _,n in ipairs(nodes) do
 			if n.template and n.template ~= "" and not n.url then
+				-- 替换值按字面处理：gsub 替换串里的 `%` 有语义，裸 `%` 会被吞掉、
+				-- 结尾的 `%` 会注入 NUL 字节（与 build_replacement 同一类问题）。
 				local url = n.template
-				url = url:gsub("{server}", n.server or "")
-				url = url:gsub("{port}", tostring(n.port or ""))
-				url = url:gsub("{uuid}", n.uuid or n.password or "")
-				url = url:gsub("{name}", n.name or "")
+				url = url:gsub("{server}", util.gsub_literal(n.server))
+				url = url:gsub("{port}", util.gsub_literal(n.port))
+				url = url:gsub("{uuid}", util.gsub_literal(n.uuid or n.password))
+				url = url:gsub("{name}", util.gsub_literal(n.name))
 				n.url = url
 			end
 		end
@@ -485,21 +490,24 @@ end
 --   "旧名称=新名称"（精确匹配，type="exact"）
 --   "pattern -> replacement"（正则替换，type="regex"）
 --   "{server}_{port}_{proto}"（含 {var} 占位符，type="template"）
+-- line_no 记录规则在原始文本里的行号（从 1 起），仅用于报错时定位到用户写的那一行
 function M.parse_rename_rules(rule_str)
 	rule_str = rule_str or ""
 	local rules = {}
+	local no = 0
 	for line in rule_str:gmatch("[^\r\n]+") do
+		no = no + 1
 		line = line:match("^%s*(.-)%s*$")
 		if line ~= "" and not line:match("^#") then
 			local pat, repl = line:match("^(.-)%s*%-%>%s*(.+)$")
 			if pat then
-				rules[#rules + 1] = { type = "regex", pattern = pat, replacement = repl }
+				rules[#rules + 1] = { type = "regex", pattern = pat, replacement = repl, line_no = no }
 			elseif line:find("{", 1, true) then
-				rules[#rules + 1] = { type = "template", template = line }
+				rules[#rules + 1] = { type = "template", template = line, line_no = no }
 			else
 				local k, v = line:match("^([^=]+)=(.*)$")
 				if k and v then
-					rules[#rules + 1] = { type = "exact", old = k:match("^%s*(.-)%s*$"), new = v:match("^%s*(.-)%s*$") }
+					rules[#rules + 1] = { type = "exact", old = k:match("^%s*(.-)%s*$"), new = v:match("^%s*(.-)%s*$"), line_no = no }
 				end
 			end
 		end
@@ -513,7 +521,7 @@ end
 -- 在结果里产生 NUL 字节并一路写进节点名、写盘、下发到各订阅文件。
 -- 所以替换前必须先把值里的 % 转义成 %%。
 local function expand_template(template, n)
-	local function esc(v) return (tostring(v == nil and "" or v):gsub("%%", "%%%%")) end
+	local esc = util.gsub_literal
 	local out = template
 	out = out:gsub("{server}", esc(n.server))
 	out = out:gsub("{port}", esc(n.port))
@@ -637,6 +645,32 @@ local function build_replacement(rep)
 		end
 	end
 	return table.concat(out)
+end
+
+-- 校验重命名规则串里的正则是否可用。返回 ok, err。
+--
+-- 用户写的 pattern 经 regex_to_lua 转换后交给 string.gsub；非法 pattern（未闭合的
+-- `[`、结尾的 `%` 等）会让 gsub 抛错。rename_with_rules 里那个 pcall 会把它吞掉，
+-- 结果是「规则明明写了却完全不生效，页面上没有任何提示」—— 用户只会觉得功能坏了。
+-- 在**保存时**校验并回显，用户才知道错在哪一行。
+function M.validate_rename_map(rule_str)
+	for _, r in ipairs(M.parse_rename_rules(rule_str)) do
+		if r.type == "regex" then
+			local pat = regex_to_lua(r.pattern or "")
+			local repl = build_replacement(r.replacement)
+			local ok = pcall(function()
+				-- 空串足以让 gsub 编译 pattern 与替换串；抛错即说明写法非法
+				for _, alt in ipairs(split_alternatives(pat)) do
+					(""):gsub(alt, repl)
+				end
+			end)
+			if not ok then
+				return false, string.format("重命名规则第 %d 行：正则表达式无效（%s）",
+					r.line_no or 0, r.pattern or "")
+			end
+		end
+	end
+	return true
 end
 
 function M.rename_with_rules(nodes, rules)

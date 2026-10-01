@@ -125,10 +125,12 @@ function M.convert_protocol(node, target_proto)
 		new_node.port = node.port
 	end
 
-	-- trojan -> vmess/vless 生成新 uuid，避免直接复用密码
+	-- trojan -> vmess/vless 生成新 uuid，避免直接复用密码。
+	-- 必须是真的 UUID：客户端的 uuid 字段会按 16 字节解析，格式不对时多数客户端
+	-- 直接拒绝该节点。原来写的是 base64(seed) 截前 36 位 —— base64 只产出 24 个
+	-- 字符（`sub(1,36)` 是空操作），里面还可能带 `+` `/` `=`，不是合法 UUID。
 	if src == "trojan" and (tgt == "vmess" or tgt == "vless") then
-		local seed = tostring(os.time()) .. tostring(math.random(100000, 999999))
-		new_node.uuid = util.base64_encode(seed):sub(1, 36)
+		new_node.uuid = util.uuid()
 	end
 
 	-- 丢弃源协议专属字段（不带入转换后的协议）
@@ -251,11 +253,14 @@ function M.apply_template(nodes, template)
 		local cp = {}
 		for k, v in pairs(n) do cp[k] = v end
 		if cp.name and template ~= "" then
+			-- 替换值一律按**字面**处理：gsub 的替换串里 `%` 有语义
+			-- （`%1` 是捕获引用，`%%` 才是字面百分号，裸 `%` 会被吞掉或注入 NUL）。
+			-- 节点名来自订阅内容，必须原样落地。
 			local new_name = template
-			new_name = new_name:gsub("{{name}}", cp.name or "")
-			new_name = new_name:gsub("{{proto}}", cp.proto or "")
-			new_name = new_name:gsub("{{server}}", cp.server or "")
-			new_name = new_name:gsub("{{port}}", tostring(cp.port or ""))
+			new_name = new_name:gsub("{{name}}", util.gsub_literal(cp.name))
+			new_name = new_name:gsub("{{proto}}", util.gsub_literal(cp.proto))
+			new_name = new_name:gsub("{{server}}", util.gsub_literal(cp.server))
+			new_name = new_name:gsub("{{port}}", util.gsub_literal(cp.port))
 			cp.name = new_name
 		end
 		out[#out + 1] = cp

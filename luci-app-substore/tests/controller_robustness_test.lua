@@ -65,10 +65,15 @@ package.loaded["luci.i18n"] = _G.luci.i18n
 -- ---------- substore 依赖 stub ----------
 local CORE = {}
 package.loaded["substore.core"] = CORE
-package.loaded["substore.node"] = {
+-- 控制器在 read_rules_fields 里会调用 node.validate_rename_map 校验重命名规则
+-- （非法正则要在保存时报错，而不是静默不生效）。stub 必须提供同名函数，
+-- 否则整条保存路径都会因 nil 调用而 500 —— 那是 stub 缺口，不是产品代码缺陷。
+local NODE = {
 	filter = function(ns) return ns end,
 	sort = function(ns) return ns end,
+	validate_rename_map = function() return true end,
 }
+package.loaded["substore.node"] = NODE
 package.loaded["substore.probe"] = {
 	probe = function() return {} end,
 }

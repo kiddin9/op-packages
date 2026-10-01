@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-substore
 # 版本约定：每次提交 PKG_RELEASE +1（2.1.2-r1 ~ r9）；
 # 达到 r10 时 PKG_VERSION 末位 +1（2.1.2 -> 2.1.3），PKG_RELEASE 重置为 1。
-PKG_VERSION:=2.6.8
-PKG_RELEASE:=13
+PKG_VERSION:=2.6.9
+PKG_RELEASE:=14
 
 LUCI_DEPENDS:=+luci-lua-runtime +luci-compat
 
@@ -65,11 +65,11 @@ define Package/luci-app-substore/install
 	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/local_form.htm $(1)/usr/lib/lua/luci/view/substore/local_form.htm
 	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/nodes.htm $(1)/usr/lib/lua/luci/view/substore/nodes.htm
 	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/node_edit.htm $(1)/usr/lib/lua/luci/view/substore/node_edit.htm
+	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/output.htm $(1)/usr/lib/lua/luci/view/substore/output.htm
+	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/combo.htm $(1)/usr/lib/lua/luci/view/substore/combo.htm
 
 	$(INSTALL_DIR) $(1)/www/luci-static/resources/substore
 	$(INSTALL_DATA) ./root/www/luci-static/resources/substore/nodeform.js $(1)/www/luci-static/resources/substore/nodeform.js
-	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/output.htm $(1)/usr/lib/lua/luci/view/substore/output.htm
-	$(INSTALL_DATA) ./root/usr/lib/lua/luci/view/substore/combo.htm $(1)/usr/lib/lua/luci/view/substore/combo.htm
 
 	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
 	$(INSTALL_DATA) ./root/usr/share/luci/menu.d/luci-app-substore.json $(1)/usr/share/luci/menu.d/luci-app-substore.json
