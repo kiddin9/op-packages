@@ -32,3 +32,399 @@
  		"action": {
  			"type": "view",
  			"path": "dashboard/index"
+
+--- a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/css/custom.css
++++ b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/css/custom.css
+@@ -153,7 +153,7 @@
+ 	gap: 20px;
+ 	margin-block: auto;
+ 	/* Override Footstrap's negative SVG container margins to preserve card padding. */
+-	margin-inline: 0;
++	margin-inline: 0 !important;
+ }
+ 
+ .dashboard-donut svg {
+@@ -349,8 +349,8 @@
+ 
+ .dashboard-bars-stack i.dashboard-bar-ok { background: var(--dashboard-success); }
+ .dashboard-bars-stack i.dashboard-bar-mid { background: var(--dashboard-warn); }
+-.dashboard-bars-stack i.dashboard-bar-up { background: var(--dashboard-series-1); }
+-.dashboard-bars-stack i.dashboard-bar-down { background: var(--dashboard-series-2); }
++.dashboard-bars-stack i.dashboard-bar-up { background: var(--dashboard-series-2); }
++.dashboard-bars-stack i.dashboard-bar-down { background: var(--dashboard-series-1); }
+ .dashboard-bars-stack i.dashboard-bar-none { background: var(--dashboard-border); }
+ 
+ .dashboard-bars-label {
+@@ -373,8 +373,8 @@
+ 
+ .dashboard-legend-inline i.dashboard-bar-ok { background: var(--dashboard-success); }
+ .dashboard-legend-inline i.dashboard-bar-mid { background: var(--dashboard-warn); }
+-.dashboard-legend-inline i.dashboard-bar-up { background: var(--dashboard-series-1); }
+-.dashboard-legend-inline i.dashboard-bar-down { background: var(--dashboard-series-2); }
++.dashboard-legend-inline i.dashboard-bar-up { background: var(--dashboard-series-2); }
++.dashboard-legend-inline i.dashboard-bar-down { background: var(--dashboard-series-1); }
+ 
+ /* ---- Time series (shares the axis and grid of the bar chart) ---- */
+ .dashboard-lines-plot {
+@@ -422,6 +422,11 @@
+ 	color: var(--dashboard-text);
+ }
+ 
++/* ---- WAN traffic: one counter source per plot ---- */
++.dashboard-traffic-source {
++	min-width: 0;
++}
++
+ /* ---- Wireless network boxes (LuCI .ifacebox) ---- */
+ .dashboard-net-grid {
+ 	display: grid;
+diff --git a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/15_traffic.js b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/15_traffic.js
+index 4f74e617467b..390f53300d57 100644
+--- a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/15_traffic.js
++++ b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/15_traffic.js
+@@ -1,81 +1,86 @@
+ 'use strict';
+ 'require baseclass';
+-'require network';
+ 'require view.dashboard.lib.charts as charts';
+ 'require view.dashboard.lib.history as history';
+ 
+ const NET = 4;
+ 
+-return baseclass.extend({
+-	title: _('WAN traffic'),
++function rate(cur, prev, seconds, name, index) {
++	const a = prev?.[NET]?.[name];
++	const b = cur?.[NET]?.[name];
+ 
+-	widgets: [
+-		{ id: 'wan', slot: 'charts', title: _('WAN traffic'), order: 10 }
+-	],
++	if (!Array.isArray(a) || !Array.isArray(b) || !Number.isFinite(seconds) || seconds <= 0)
++		return null;
+ 
+-	load() {
+-		return Promise.all([
+-			network.getWANNetworks(),
+-			network.getWAN6Networks(),
+-			history.load()
+-		]);
+-	},
++	// Older rpcd instances provide only two fields. Crossing to the new
++	// format, like a change of ifindex, starts a fresh pair of samples.
++	if (a[2] !== b[2] || a[2] === null || b[2] === null)
++		return null;
+ 
+-	uplink(wan, wan6) {
+-		const pick = list => list.slice().sort((a, b) => a.getMetric() - b.getMetric())[0];
+-
+-		return pick(wan) || pick(wan6) || null;
+-	},
++	for (let i = 0; i < 2; i++)
++		if (!Number.isFinite(a[i]) || !Number.isFinite(b[i]) || a[i] < 0 || b[i] < a[i])
++			return null;
+ 
+-	// Rates come from the byte counters of two samples and the time between
+-	// them on the router's clock. Counters that went backwards, as after the
+-	// interface was brought up again, give no rate and leave a gap.
+-	rates(name, index) {
+-		return history.series((cur, prev, seconds) => {
+-			const a = prev ? prev[NET][name] : null;
+-			const b = cur[NET][name];
++	return (b[index] - a[index]) * 8 / seconds;
++}
+ 
+-			if (a == null || b == null || b[0] < a[0] || b[1] < a[1])
+-				return null;
++function selectedRate(cur, prev, seconds, index) {
++	const current = cur?.[5]?.devices, previous = prev?.[5]?.devices;
++	if (current?.length !== 1 || previous?.length !== 1 || current[0] !== previous[0])
++		return null;
++	return rate(cur, prev, seconds, current[0], index);
++}
+ 
+-			return (b[index] - a[index]) * 8 / seconds;
+-		});
+-	},
++function points(index) {
++	const points = history.series((cur, prev, seconds) => selectedRate(cur, prev, seconds, index));
++	const last = points[points.length - 1];
++	if (last && history.now - last.t > history.step * 2.5)
++		points.push({ t: history.now, v: null });
++	return points;
++}
+ 
+-	render([wan, wan6]) {
+-		const ifc = this.uplink(wan, wan6);
+-		const dev = ifc ? ifc.getL3Device() : null;
++return baseclass.extend({
++	title: _('WAN traffic'),
++	widgets: [
++		{ id: 'wan', slot: 'charts', title: _('WAN traffic'), order: 10 }
++	],
+ 
+-		if (dev == null)
+-			return { charts: [ { id: 'wan', node: charts.card({ title: this.title, body: charts.empty(_('Not connected')) }) } ] };
++	load() {
++		return history.load();
++	},
+ 
+-		const down = this.rates(dev.getName(), 0);
+-		const up = this.rates(dev.getName(), 1);
++	render() {
++		const down = points(0);
++		const up = points(1);
+ 		const last = points => points.length ? points[points.length - 1].v : null;
+ 		const scale = charts.rateScale(Math.max(1, ...down.concat(up).map(p => p.v || 0)));
+-		const names = (ifc.getName() == dev.getName()) ? [ dev.getName() ] : [ ifc.getName(), dev.getName() ];
++		const available = down.some(p => p.v != null) || up.some(p => p.v != null);
++		const current = last(down) != null && last(up) != null;
++		const sample = history.samples[history.samples.length - 1];
++		const device = sample?.[5]?.devices?.[0];
++		const body = [];
++
++		if (available) {
++			body.push(charts.lines({
++				span: history.span(),
++				max: scale.max,
++				ticks: scale.ticks,
++				ariaLabel: this.title,
++				series: [ { values: down, area: true }, { values: up, area: true } ]
++			}), charts.legend([
++				{ className: 'dashboard-series-1', label: _('Download'), value: scale.format(last(down)) },
++				{ className: 'dashboard-series-2', label: _('Upload'), value: scale.format(last(up)) }
++			]));
++		}
++		if (!current)
++			body.push(charts.empty(history.failed || !sample?.[5]?.devices?.length
++				? _('No data received') : available ? _('Waiting for a new sample...') : history.status()));
+ 
+-		return {
+-			charts: [ {
+-				id: 'wan',
+-				node: charts.card({
+-					title: this.title,
+-					desc: names.concat([ scale.unit ]).join(' · '),
+-					body: down.length ? [
+-						charts.lines({
+-							span: history.span(),
+-							max: scale.max,
+-							ticks: scale.ticks,
+-							ariaLabel: this.title,
+-							series: [ { values: down, area: true }, { values: up, area: true } ]
+-						}),
+-						charts.legend([
+-							{ className: 'dashboard-series-1', label: _('Down.'), value: charts.formatRate(last(down)) },
+-							{ className: 'dashboard-series-2', label: _('Up.'), value: charts.formatRate(last(up)) }
+-						])
+-					] : charts.empty(history.status())
+-				})
+-			} ]
+-		};
++		// No null children: older LuCI DOM helpers render them as literal text.
++		return { charts: [ { id: 'wan', node: charts.card({
++			title: this.title,
++			desc: device ? device + ' · ' + scale.unit : scale.unit,
++			body: [ E('section', { 'class': 'dashboard-traffic-source' }, body) ]
++		}) } ] };
+ 	}
+ });
+diff --git a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/30_wifi.js b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/30_wifi.js
+index ebb772d35eee..4780c6289257 100644
+--- a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/30_wifi.js
++++ b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/include/30_wifi.js
+@@ -165,17 +165,17 @@ return baseclass.extend({
+ 					ticks: [ 0, 1, 2, 3, 4 ].map(n => ({ value: scale.step * n, label: scale.format(scale.step * n) })),
+ 					items: devices.map(device => ({
+ 						label: device.hostname.value,
+-						title: '%s · %s %s · %s %s'.format(device.hostname.value, _('Up.'), device.transferred.value.rx, _('Down.'), device.transferred.value.tx)
++						title: '%s · %s %s · %s %s'.format(device.hostname.value, _('Download'), device.transferred.value.tx, _('Upload'), device.transferred.value.rx)
+ 							+ (device.connected.value ? ' · %s %s'.format(_('Connected'), device.connected.value) : ''),
+ 						values: [
+-							{ value: device.transferred.value.bytes.rx, className: 'dashboard-bar-up' },
+-							{ value: device.transferred.value.bytes.tx, className: 'dashboard-bar-down' }
++							{ value: device.transferred.value.bytes.tx, className: 'dashboard-bar-down' },
++							{ value: device.transferred.value.bytes.rx, className: 'dashboard-bar-up' }
+ 						]
+ 					}))
+ 				}),
+ 				charts.legend([
+-					{ className: 'dashboard-bar-up', label: _('Up.') },
+-					{ className: 'dashboard-bar-down', label: _('Down.') }
++					{ className: 'dashboard-bar-down', label: _('Download') },
++					{ className: 'dashboard-bar-up', label: _('Upload') }
+ 				])
+ 			] : charts.empty(_('No wireless clients connected'))
+ 		});
+diff --git a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/charts.js b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/charts.js
+index 96e629fa799c..6f0705af9c58 100644
+--- a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/charts.js
++++ b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/charts.js
+@@ -36,13 +36,24 @@ function rateUnit(value) {
+ }
+ 
+ return baseclass.extend({
+-	formatRate(value) {
++	formatRate(value, targetExp) {
+ 		if (value == null)
+ 			return '-';
+ 
+-		const exp = rateUnit(value);
++		const exp = (targetExp != null) ? targetExp : rateUnit(value);
++		const unit = Math.pow(1000, exp);
++		const num = value / unit;
++
++		if (num === 0)
++			return '0 %s'.format(RATE_UNITS[exp]);
++
++		if (num > 0 && num < 0.01 && exp > 0)
++			return '< 0.01 %s'.format(RATE_UNITS[exp]);
++
++		if (num < 1 && exp > 0)
++			return '%.2f %s'.format(num, RATE_UNITS[exp]);
+ 
+-		return '%.1f %s'.format(value / Math.pow(1000, exp), RATE_UNITS[exp]);
++		return '%.1f %s'.format(num, RATE_UNITS[exp]);
+ 	},
+ 
+ 	rateScale(peak) {
+@@ -55,7 +66,8 @@ return baseclass.extend({
+ 		return {
+ 			max: step * 4 * unit,
+ 			unit: RATE_UNITS[exp],
+-			ticks: [ 0, 1, 2, 3, 4 ].map(n => ({ value: step * n * unit, label: String(+(step * n).toFixed(2)) }))
++			ticks: [ 0, 1, 2, 3, 4 ].map(n => ({ value: step * n * unit, label: String(+(step * n).toFixed(2)) })),
++			format: value => this.formatRate(value, exp)
+ 		};
+ 	},
+ 
+diff --git a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/history.js b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/history.js
+index a198dbc02d6d..2a8bd6bd4d23 100644
+--- a/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/history.js
++++ b/luci-mod-dashboard/htdocs/luci-static/resources/view/dashboard/lib/history.js
+@@ -31,6 +31,7 @@ return baseclass.extend({
+ 				this.samples = [];
+ 
+ 			this.id = res.id;
++			this.now = res.now;
+ 			this.step = res.step;
+ 			this.slots = res.slots;
+ 			this.samples = this.samples.concat(res.samples).filter(sample => sample[TIME] > res.now - res.step * res.slots);
+@@ -57,7 +58,7 @@ return baseclass.extend({
+ 	},
+ 
+ 	near(prev, cur) {
+-		return (prev != null && cur[TIME] - prev[TIME] <= 2.5 * this.step);
++		return (prev != null && cur[TIME] > prev[TIME] && cur[TIME] - prev[TIME] <= 2.5 * this.step);
+ 	},
+ 
+ 	pair() {
+diff --git a/luci-mod-dashboard/root/usr/share/rpcd/ucode/luci.dashboard b/luci-mod-dashboard/root/usr/share/rpcd/ucode/luci.dashboard
+index d87679d9b027..e8b3131b0b17 100644
+--- a/luci-mod-dashboard/root/usr/share/rpcd/ucode/luci.dashboard
++++ b/luci-mod-dashboard/root/usr/share/rpcd/ucode/luci.dashboard
+@@ -2,10 +2,58 @@
+ 
+ import { readfile } from 'fs';
+ import * as uloop from 'uloop';
++import { connect } from 'ubus';
+ 
+ const STEP = 5000, SLOTS = 60;
+ 
+-let ring = [], seq = 0, timer;
++let ring = [], seq = 0, timer, selectedDevice;
++const bus = connect();
++
++// Observe one main-table default-route device. Prefer IPv4, then route metric;
++// keep the existing device on equal priority to avoid polling-order switches.
++function sources(interfaces, previous) {
++	let best = null;
++	for (let iface in interfaces) {
++		if (!iface.up)
++			continue;
++		let name = iface.device;
++		if (!name || name == 'lo' || substr(name, 0, 1) == '@')
++			name = iface.l3_device;
++		if (!name || name == 'lo' || substr(name, 0, 1) == '@')
++			continue;
++
++		for (let route in iface.route ?? []) {
++			if (+route.mask != 0)
++				continue;
++			const family = route.target == '0.0.0.0' ? 4 : route.target == '::' ? 6 : 0;
++			if (!family)
++				continue;
++			// netifd omits route.table when it is inherited from the interface.
++			const table = route.table ?? (family == 4 ? iface.ip4table : iface.ip6table);
++			if (table && table != 254)
++				continue;
++			const metric = +(route.metric ?? iface.metric ?? 0);
++			if (!best || family < best.family ||
++			    (family == best.family && (metric < best.metric ||
++			    (metric == best.metric && (name == previous ||
++			    (best.device != previous && name < best.device))))))
++				best = { device: name, family, metric };
++		}
++	}
++
++	// Use the configured carrier (including a VLAN) without walking to its
++	// physical parent, which may also carry LAN or IPTV traffic.
++	return best ? [ best.device ] : [];
++}
++
++function traffic_boundary() {
++	const dump = bus.call('network.interface', 'dump');
++	if (type(dump?.interface) != 'array')
++		return null;
++	const devices = sources(dump.interface, selectedDevice);
++	selectedDevice = devices[0];
++	return { devices };
++}
+ 
+ function now() {
+ 	const c = clock(true);
+@@ -19,7 +67,10 @@ const id = trim(readfile('/proc/sys/kernel/random/uuid'));
+ // Counters as the kernel has them. Whoever draws them takes the differences,
+ // over the time between two samples on the clock they were read by.
+ function sample() {
+-	const t = now(), cpus = {}, net = {};
++	const cpus = {}, net = {};
++	let boundary = null;
++	try { boundary = traffic_boundary(); }
++	catch (e) { warn(`luci.dashboard: traffic discovery: ${e}\n`); }
+ 
+ 	for (let line in split(readfile('/proc/stat') ?? '', '\n')) {
+ 		if (substr(line, 0, 3) != 'cpu')
+@@ -32,14 +83,26 @@ function sample() {
+ 
+ 	const mem = match(readfile('/proc/meminfo', 256) ?? '', /MemAvailable:\s+(\d+)/);
+ 
+-	for (let line in slice(split(readfile('/proc/net/dev') ?? '', '\n'), 2)) {
+-		const fields = split(trim(line), /[: ]+/);
+-
+-		if (length(fields) > 9 && fields[0] != 'lo')
+-			net[fields[0]] = [ +fields[1], +fields[9] ];
++	// Only the selected WAN consumes network history. Check its identity
++	// on both sides of the counter read to detect device recreation.
++	const name = boundary?.devices?.[0];
++	const before = name ? int(readfile(`/sys/class/net/${name}/ifindex`)) : null;
++	const t = now();
++
++	if (name) {
++		for (let line in slice(split(readfile('/proc/net/dev') ?? '', '\n'), 2)) {
++			const fields = split(trim(line), /[: ]+/);
++			if (length(fields) <= 9 || fields[0] != name)
++				continue;
++
++			const after = int(readfile(`/sys/class/net/${name}/ifindex`));
++			net[name] = [ +fields[1], +fields[9],
++				after > 0 && after == before ? after : null ];
++			break;
++		}
+ 	}
+ 
+-	push(ring, [ ++seq, t, cpus, mem ? +mem[1] * 1024 : null, net ]);
++	push(ring, [ ++seq, t, cpus, mem ? +mem[1] * 1024 : null, net, boundary ]);
+ 
+ 	while (length(ring) > SLOTS)
+ 		shift(ring);
