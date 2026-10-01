@@ -1,4 +1,6 @@
 #!/bin/sh
+# Small, allowlisted bridge from authenticated LuCI RPC to the local HTTP API.
+# Caller-controlled hosts, ports and arbitrary API paths are never accepted.
 set -eu
 case "$#:${1:-}:${2:-}" in
     2:GET:/version|2:GET:/configs|2:GET:/connections) body='' ;;

@@ -47,9 +47,25 @@ local function build_stream_settings(n)
 	return ss
 end
 
--- 该协议能否落到 V2Ray / Xray outbound（SSR 无法表达，跳过）
+-- 该协议能否落到 V2Ray / Xray outbound。
+-- 白名单而不是「排除 ssr」：原来的 `proto ~= "ssr"` 会把 hysteria2 / hysteria /
+-- tuic / wireguard / snell 一并放行，而 to_outbound 里没有它们的分支，全部落进
+-- 末尾的 else —— 于是生成 `"protocol": "hysteria2"` 这种 Xray 根本不认识的
+-- outbound，凭据还被塞进无意义的 users 字段。Xray 解析到未知 protocol 会拒绝
+-- 整份配置，一个节点废掉整个订阅（与 parser 侧丢弃未知协议是同一个理由）。
+local V2RAY_PROTOS = {
+	vmess = true,
+	vless = true,
+	trojan = true,
+	shadowsocks = true,
+	ss = true,
+	socks = true,
+	socks5 = true,
+	http = true,
+}
+
 local function supported(proto)
-	return (proto or "vmess") ~= "ssr"
+	return V2RAY_PROTOS[proto or "vmess"] == true
 end
 
 -- 单节点 → V2Ray outbound 表

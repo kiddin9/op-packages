@@ -100,6 +100,37 @@ OUT=$(SUBSTORE_DATA_DIR="$TMP/nodata" LUA_PATH="$TMP/stub/?.lua" sh "$SCRIPT" 2>
 RC=$?
 check "no subscriptions file yields zero exit" "$RC" "0"
 
+# (f) Lua 层致命失败 → 必须非 0
+#     core.list() 在 pcall **之外**调用，抛异常会让整个 Lua 进程带着 traceback
+#     退出，结果行根本没被打印。此时 FAILED 变量为空 —— 旧实现的 case 分支
+#     `''|0) exit 0` 把它和成功混为一谈，一次彻底失败的更新在 cron 看来与成功
+#     无异。这里必须与 (c) 的「0 failed」严格区分开。
+cat >"$TMP/stub/substore/core.lua" <<'EOF'
+local M = {}
+M.list = function() error("list exploded") end
+M.sync = function(id) return 1 end
+return M
+EOF
+# 这里刻意把 stderr 一并收进 OUT：诊断信息就写在 stderr 上
+OUT=$(SUBSTORE_DATA_DIR="$TMP/data" LUA_PATH="$TMP/stub/?.lua" sh "$SCRIPT" 2>&1)
+RC=$?
+check "lua fatal error yields non-zero exit" "$RC" "1"
+if contains "no result line reported" "$OUT" "no result line"; then
+	pass=$((pass + 1))
+	echo "PASS no result line reported"
+else
+	fail=$((fail + 1))
+	echo "FAIL no result line reported"
+fi
+
+# (f2) 模块加载失败（require 不到）同样是致命失败
+cat >"$TMP/stub/substore/core.lua" <<'EOF'
+this is not valid lua ((
+EOF
+OUT=$(SUBSTORE_DATA_DIR="$TMP/data" LUA_PATH="$TMP/stub/?.lua" sh "$SCRIPT" 2>/dev/null)
+RC=$?
+check "module load failure yields non-zero exit" "$RC" "1"
+
 echo ""
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ] || exit 1

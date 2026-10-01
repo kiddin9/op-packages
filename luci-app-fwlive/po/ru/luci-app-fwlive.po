@@ -672,10 +672,6 @@ msgstr "Брандмауэр не перезагрузился; сохранён
 msgid "The rate shown for WAN logging is the firewall zone log_limit. OpenWrt defaults to 10/minute when no explicit limit is configured; fwlive does not impose this cap."
 msgstr "Показанная частота WAN-журнала — log_limit зоны. По умолчанию OpenWrt: 10/мин без явного лимита; fwlive сам лимит не задаёт."
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:762
-msgid "The required timeout utility is unavailable."
-msgstr "Необходимая утилита ограничения времени недоступна."
-
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1722
 msgid "The router could not read the firewall log — retrying…"
 msgstr "Маршрутизатор не смог прочитать журнал межсетевого экрана — повторная попытка…"

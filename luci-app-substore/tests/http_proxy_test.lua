@@ -75,9 +75,13 @@ local function chain(...)
 	return table.concat(lines, "\n")
 end
 
-local BASE = "http://sub.example.com/api/sub"
+-- 主机一律用**公网 IP 字面量**，不用域名。
+-- check_public 在 DNS 解析失败时是 fail-closed 的（解析不出来即拒绝），
+-- 而 example.com 这类域名在离线/沙箱环境解析不出来 —— 用它会让「公网目标应放行」
+-- 变成「取决于本机有没有 DNS」，测试不可复现。IP 字面量不经过 DNS，结论确定。
+local BASE = "http://1.1.1.1/api/sub"
 check("chain public -> public allowed",
-	http.validate_redirect_chain(BASE, chain("http://cdn.example.com/a")) == true)
+	http.validate_redirect_chain(BASE, chain("http://8.8.8.8/a")) == true)
 check("chain no redirect allowed",
 	http.validate_redirect_chain(BASE, "  HTTP/1.1 200 OK") == true)
 check("chain relative location allowed",
@@ -105,14 +109,14 @@ check("chain to ipv6 link-local rejected",
 check("chain protocol-relative to private rejected",
 	http.validate_redirect_chain(BASE, chain("//127.0.0.1/evil")) == false)
 check("chain protocol-relative to public allowed",
-	http.validate_redirect_chain(BASE, chain("//cdn.example.com/a")) == true)
+	http.validate_redirect_chain(BASE, chain("//8.8.8.8/a")) == true)
 -- 多跳：只要有一跳不安全就整体拒绝
 check("chain multi-hop second hop private rejected",
 	http.validate_redirect_chain(BASE,
-		chain("http://cdn.example.com/a", "http://192.168.1.1/b")) == false)
+		chain("http://8.8.8.8/a", "http://192.168.1.1/b")) == false)
 check("chain multi-hop all public allowed",
 	http.validate_redirect_chain(BASE,
-		chain("http://cdn.example.com/a", "http://cdn2.example.com/b")) == true)
+		chain("http://8.8.8.8/a", "http://9.9.9.9/b")) == true)
 -- 非法 Location
 check("chain invalid location rejected",
 	http.validate_redirect_chain(BASE, chain("ftp://example.com/x")) == false)

@@ -23,7 +23,7 @@ LUCI_DEPENDS:= \
 
 PKG_NAME:=luci-app-homeproxy-pro
 PKG_VERSION:=28.9.1.14
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 
 # Only files the package actually ships belong here.  The previous list named
 # four paths that exist nowhere in the tree - certs/ and ruleset/ are created at

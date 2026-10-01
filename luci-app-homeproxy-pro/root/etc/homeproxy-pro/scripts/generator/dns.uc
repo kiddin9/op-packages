@@ -25,7 +25,7 @@
 
 'use strict';
 
-import { isEmpty, strToBool, strToInt, strToTime, parseURL, validation, parse_port } from '../homeproxy-pro.uc';
+import { isEmpty, strToBool, strToInt, strToTime, parseURL, validation, parse_port, isValidCIDR } from '../homeproxy-pro.uc';
 
 
 import { get_outbound, get_resolver, get_ruleset } from './common.uc';
@@ -72,6 +72,32 @@ function parse_dnsquery(strquery) {
 	return querys;
 }
 
+/* parse_dnsserver() returns null for an address it cannot make sense of, and
+ * both call sites used to spread that null straight into the server object.
+ * Spreading null is not a no-op in ucode - it throws
+ *
+ *   Type error: Value (null) is not iterable
+ *
+ * so one unusable DNS address took the generator down with an exception that
+ * names no field, and the user only saw a rollback. Reproduced on a router
+ * (2026-10-01) by putting a single-label value in the China DNS field:
+ * parseURL() only sets `hostname` when /sbin/validate_data accepts the value
+ * as a hostname, and a dotless name ('cafe', 'beef', 'decade') is not one.
+ *
+ * A DNS server with no address is not something the configuration can do
+ * without, so this fails the same way get_resolver()/get_ruleset() do - with
+ * the field name and a usable example - instead of substituting a working
+ * resolver the user did not ask for. */
+function require_dnsserver(addr, default_protocol, field) {
+	const server = parse_dnsserver(addr, default_protocol);
+
+	if (!server)
+		die(sprintf("the %s '%s' is not a usable address; use a bare IP, or a DoH/DoT URL such as https://dns.google/dns-query.\n",
+			field, addr));
+
+	return server;
+};
+
 /* --- proxy routing-mode path (bypass_mainland_china / proxy / / gfwlist) -- */
 
 /* Domains whose NAPTR (qtype 35) queries bypass china-dns.  Aliyun
@@ -117,8 +143,34 @@ function bootstrap_addr(ctx) {
 	if (isEmpty(addr))
 		return null;
 
-	return (match(addr, /^[0-9]+(\.[0-9]+){3}$/) != null
-		|| match(addr, /^[0-9a-fA-F:]+$/) != null) ? addr : null;
+	/* isValidCIDR(), not a hand-rolled shape test.
+	 *
+	 * The pair of regexes this replaces accepted anything made only of hex
+	 * digits and colons - `cafe`, `face`, `abc`, `add`, `dead:beef` are
+	 * all perfectly good hostnames and all passed - and the IPv4 branch did
+	 * not range-check the octets, so 999.999.999.999 passed too. Measured
+	 * on the device (2026-10-01): all six returned an address.
+	 *
+	 * The cost of being wrong here is not one misbehaving resolver.
+	 * append_bootstrap_dns() emits the bootstrap server deliberately
+	 * *without* a domain_resolver of its own - existing is the whole point,
+	 * it is what every other server bootstraps its own hostname through -
+	 * so a hostname there can never be satisfied, and sing-box refuses to
+	 * start at all. Verified against 1.14.2 with `server: "cafe"`:
+	 *
+	 *   FATAL create service: initialize DNS server[0]: missing domain
+	 *   resolver for domain server address
+	 *
+	 * isValidCIDR() is the validator the firewall path already runs every
+	 * resource value through for the same reason (a value that is not a
+	 * real IP or CIDR reaches a root context), and it range-checks both
+	 * families. Reusing it keeps one definition of "is this an address".
+	 *
+	 * Behaviour for every value this generator is actually pointed at is
+	 * unchanged: 223.5.5.5, 1.12.12.21, fdfe::1 and the other literals the
+	 * option documents all still pass, and 'wan' / empty / a real hostname
+	 * still return null so main-dns keeps borrowing the WAN resolver. */
+	return (isValidCIDR(addr, 4) || isValidCIDR(addr, 6)) ? addr : null;
 }
 
 /* Append the bootstrap resolver, when there is a usable address for it.
@@ -164,7 +216,7 @@ function append_proxy_dns(config, dm, ctx) {
 			strategy: (ctx.ipv6_support !== '1') ? 'ipv4_only' : null
 		},
 		detour: 'main-out',
-		...parse_dnsserver(ctx.dns_server, 'tcp')
+		...require_dnsserver(ctx.dns_server, 'tcp', 'DNS server')
 	});
 	/* The DNS half of the mode's default policy.  It has to name the same
 	 * side the route chain falls through to (ctx.proxy_fallback), or a
@@ -213,7 +265,7 @@ function append_proxy_dns(config, dm, ctx) {
 				strategy: (ctx.ipv6_support !== '1') ? 'ipv4_only' : 'prefer_ipv6'
 			},
 			detour: ctx.self_mark ? 'direct-out' : null,
-			...parse_dnsserver(ctx.china_dns_server)
+			...require_dnsserver(ctx.china_dns_server, null, 'China DNS server')
 		});
 
 		/* Route NAPTR (qtype 35) queries for SIP/ENUM domains to the ISP

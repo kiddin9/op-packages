@@ -140,7 +140,16 @@ function renderDnsCache(ctx) {
 	o.rmempty = false;
 	o.depends({'routing_mode': 'custom', '!reverse': true});
 	o.validate = function(section_id, value) {
-		if (section_id) {
+		/* 'wan' is the value this field stored while the dropdown still
+		 * offered "WAN DNS (read from interface)" - the resolver the WAN
+		 * interface handed us.  It is no longer offered, because the ISP
+		 * resolver is precisely what this field must not be, but the
+		 * generator still maps the literal to wan_dns
+		 * (generator/context.uc), so a configuration that chose it back
+		 * then keeps working.  Rejecting it here would block saving that
+		 * untouched, working configuration - hence accepted, but never
+		 * offered again. */
+		if (section_id && !['wan'].includes(value)) {
 			if (!value)
 				return _('Expecting: %s').format(_('non-empty value'));
 
@@ -168,7 +177,11 @@ function renderDnsCache(ctx) {
 		_('Resolves the domains on the China path, so it has to be a domestic service to get the ' +
 		'correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case ' +
 		'a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. ' +
-		'Support UDP, TCP, DoH, DoQ, DoT.'));
+		'Support UDP, TCP, DoH, DoQ, DoT. This address is also the resolver the proxy DNS server ' +
+		'above uses to look up its own hostname when that one is a domain - and a URL here is a ' +
+		'domain, which cannot do that lookup itself, so with a URL here the proxy DNS server falls ' +
+		'back to the WAN resolver. Enter the bare IP form of the same service to keep that lookup ' +
+		'on this router.'));
 	o.value('wan', _('WAN DNS (read from interface)'));
 	o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
 	o.value('210.2.4.8', _('CNNIC Public DNS (210.2.4.8)'));

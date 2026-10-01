@@ -672,10 +672,6 @@ msgstr "Die Firewall wurde nicht neu geladen; gespeicherte und aktive Protokolli
 msgid "The rate shown for WAN logging is the firewall zone log_limit. OpenWrt defaults to 10/minute when no explicit limit is configured; fwlive does not impose this cap."
 msgstr "Die angezeigte Rate für WAN-Protokollierung ist das Zonen-log_limit. OpenWrt-Standard ist 10/Minute ohne explizites Limit; fwlive setzt diese Grenze nicht."
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:762
-msgid "The required timeout utility is unavailable."
-msgstr "Das erforderliche Programm zur Zeitbegrenzung ist nicht verfügbar."
-
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1722
 msgid "The router could not read the firewall log — retrying…"
 msgstr "Der Router konnte das Firewall-Protokoll nicht lesen — neuer Versuch…"

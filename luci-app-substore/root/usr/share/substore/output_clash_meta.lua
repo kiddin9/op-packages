@@ -12,8 +12,12 @@ local function esc_yaml(s)
 		-- 注意：这里必须用 Lua 模式（不能传 plain=true），否则整串被当作字面量、永不匹配
 		or s:find("[ :#{}%[%],&*?|>'\"%@`]") ~= nil
 		or s:match("^[-?]*:") ~= nil
-	s = s:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
+	-- 转义只在**加引号时**做：未加引号的 plain scalar 里反斜杠就是字面反斜杠，
+	-- 提前翻倍会让回读得到两个反斜杠（`pa\ss` → 输出 `pa\\ss` → 读回 `pa\\ss`，
+	-- 密码/路径直接错）。\ 本身不在上面的 need_quote 触发集里，所以含反斜杠的
+	-- 值恰恰是最容易走到这条路径的一类。
 	if need_quote then
+		s = s:gsub("\\", "\\\\"):gsub("\"", "\\\""):gsub("\n", "\\n"):gsub("\r", "\\r"):gsub("\t", "\\t")
 		return '"' .. s .. '"'
 	end
 	return s
@@ -31,14 +35,34 @@ local function yaml_list(items, level)
 	return table.concat(out, "\n")
 end
 
--- 值可能是标量也可能是数组：数组输出为 YAML 列表，标量输出为单行
-local function yaml_value(lines, key, v, level)
+-- 把「数组或逗号分隔字符串」统一成数组。
+-- mihomo 的 wireguard 出站里 allowed-ips / dns 是 []string、reserved 是 []uint8，
+-- 三者都**只接受列表**。节点模型里这些字段的形态取决于来源：Clash YAML 的嵌套
+-- 列表解析后是 table，表单导入 / URI 导入后是 "0.0.0.0/0, ::/0" 这样的字符串。
+-- 字符串原样输出会得到 `allowed-ips: 0.0.0.0/0` 这个标量，mihomo 反序列化
+-- 到 []string 失败，**整份配置拒绝加载**。
+local function as_list(v)
+	local out = {}
 	if type(v) == "table" then
-		lines[#lines + 1] = indent(level) .. key .. ":"
-		lines[#lines + 1] = yaml_list(v, level + 1)
+		for _, x in ipairs(v) do
+			if x ~= nil and tostring(x) ~= "" then out[#out + 1] = x end
+		end
 	else
-		lines[#lines + 1] = indent(level) .. key .. ": " .. esc_yaml(v)
+		for x in tostring(v or ""):gmatch("[^,]+") do
+			x = x:match("^%s*(.-)%s*$")
+			if x ~= "" then out[#out + 1] = x end
+		end
 	end
+	return out
+end
+
+-- 值可能是数组也可能是逗号分隔字符串：一律输出为 YAML 列表。
+-- 空列表直接不输出该键（`allowed-ips: []` 同样是非法值）。
+local function yaml_value(lines, key, v, level)
+	local items = as_list(v)
+	if #items == 0 then return end
+	lines[#lines + 1] = indent(level) .. key .. ":"
+	lines[#lines + 1] = yaml_list(items, level + 1)
 end
 
 local PROTOCOL_TYPE_MAP = {
@@ -65,7 +89,9 @@ local function format_node(node)
 	lines[#lines + 1] = "  - name: " .. esc_yaml(node.name or "")
 	lines[#lines + 1] = "    type: " .. esc_yaml(ctype)
 	lines[#lines + 1] = "    server: " .. esc_yaml(node.server or "")
-	lines[#lines + 1] = "    port: " .. tostring(node.port or 0)
+	-- 端口必须是数字：`port: abc` / `port: 443/tcp` 这类非数字值会让 mihomo 拒绝
+	-- 加载整份配置。sing-box / v2ray 输出一直用 `tonumber() or 0` 兜底，此处对齐。
+	lines[#lines + 1] = "    port: " .. tostring(tonumber(node.port) or 0)
 
 	-- 协议通用字段
 	if node.uuid then
@@ -96,6 +122,28 @@ local function format_node(node)
 			if node.host then
 				lines[#lines + 1] = "      headers:"
 				lines[#lines + 1] = "        Host: " .. esc_yaml(node.host)
+			end
+		elseif net == "grpc" then
+			-- 服务名写在 grpc-opts 里。只写 network: grpc 的话客户端用默认服务名
+			-- 去连，握手失败——与 ws 丢 path 是同一类问题（原来的实现只写了 network）。
+			-- 键名对照上游 transport 文档：grpc-service-name，带 grpc- 前缀。
+			-- 服务名取自 node.path，与 output_v2ray 的 serviceName、
+			-- output_singbox 的 service_name 同源。
+			if node.path then
+				lines[#lines + 1] = "    grpc-opts:"
+				lines[#lines + 1] = "      grpc-service-name: " .. esc_yaml(node.path)
+			end
+		elseif net == "h2" then
+			-- 上游 transport 文档：h2-opts.host 是**列表**，h2-opts.path 是标量。
+			if node.path or node.host then
+				lines[#lines + 1] = "    h2-opts:"
+				if node.host then
+					lines[#lines + 1] = "      host:"
+					lines[#lines + 1] = "        - " .. esc_yaml(node.host)
+				end
+				if node.path then
+					lines[#lines + 1] = "      path: " .. esc_yaml(node.path)
+				end
 			end
 		end
 	end
@@ -158,6 +206,16 @@ local function format_node(node)
 		end
 		if not node.cipher then
 			lines[#lines + 1] = "    cipher: auto"
+		end
+	end
+
+	if ctype == "vless" then
+		-- flow 是 XTLS Vision（xtls-rprx-vision）的必需参数。不写的话 mihomo 按
+		-- 普通 vless 处理，服务端要求 vision 时握手失败。surge / v2ray / URI 三个
+		-- 输出都写 flow，只有 clashmeta 漏了；parser_clash_yaml 也回读 flow，
+		-- 所以「Clash YAML → 导出 clashmeta」这条路径上 flow 会凭空消失。
+		if node.flow then
+			lines[#lines + 1] = "    flow: " .. esc_yaml(node.flow)
 		end
 	end
 

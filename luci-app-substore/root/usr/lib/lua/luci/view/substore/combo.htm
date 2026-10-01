@@ -9,6 +9,13 @@
 	local ki = (it and it.keyword_include) or ""
 	local ke = (it and it.keyword_exclude) or ""
 	local dedup = it and (it.dedup == "1" or it.dedup == true)
+	-- 协议筛选 / 重命名：控制器一直在读这两项（read_rules_fields），但此前三个表单
+	-- 都没有提交它们的控件 —— 字段永远写空，且每次保存会把 UCI 里已有的值重置为 ""。
+	local proto_sel = {}
+	for p in ((it and it.proto_filter) or ""):gmatch("[^,]+") do
+		proto_sel[p:match("^%s*(.-)%s*$")] = true
+	end
+	local rm = (it and it.rename_map) or ""
 	local sel = {}
 	if it and type(it.sources) == "table" then
 		for _, s in ipairs(it.sources) do sel[s] = true end
@@ -63,7 +70,21 @@
 				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<span style="color:#808080">多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。</span>
+				<label style="display:inline-block;min-width:10em;vertical-align:top">协议筛选</label>
+				<% for _, p in ipairs(core.RULE_PROTOS) do %>
+				<label style="margin-right:0.75em;white-space:nowrap">
+					<input type="checkbox" name="proto_filter_<%=p%>" value="1" <%=proto_sel[p] and "checked" or ""%>/> <%=p%>
+				</label>
+				<% end %>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top">重命名</label>
+				<textarea name="rename_map" rows="3" style="width:60%"><%=luci.util.pcdata(rm)%></textarea>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<span style="color:#808080">多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。<br/>
+				协议筛选：全部不勾选 = 不筛选（保留所有协议）。<br/>
+				重命名每行一条：<code>旧名称=新名称</code>（精确匹配）、<code>模式 -> 替换</code>（正则替换）、<code>{server}_{port}_{proto}</code>（占位符模板）。</span>
 			</div>
 		</div>
 		<% if is_edit then %>

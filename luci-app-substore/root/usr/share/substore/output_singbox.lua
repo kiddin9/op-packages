@@ -11,6 +11,38 @@ local function bool(v)
 	return true
 end
 
+-- 把「数组或逗号分隔字符串」统一成数组（空项丢弃）。
+-- 节点模型里 wireguard 的 allowed-ips / reserved / dns 形态取决于来源：Clash YAML
+-- 的嵌套列表解析后是 table，表单导入 / URI 导入后是 "0.0.0.0/0, ::/0" 这样的
+-- 字符串。字符串原样写进 JSON 会得到 `"allowed_ips":"0.0.0.0/0"`，而 sing-box
+-- 这几个字段是 []string / []uint8，反序列化失败 → 整份配置拒绝启动。
+local function as_list(v)
+	local out = {}
+	if type(v) == "table" then
+		for _, x in ipairs(v) do
+			if x ~= nil and tostring(x) ~= "" then out[#out + 1] = x end
+		end
+	else
+		for x in tostring(v or ""):gmatch("[^,]+") do
+			x = x:match("^%s*(.-)%s*$")
+			if x ~= "" then out[#out + 1] = x end
+		end
+	end
+	return out
+end
+
+-- 同 as_list，但把每项转成数字（非数字项丢弃）。
+-- reserved 在 sing-box 里是 []uint8：JSON 里写成 ["1","2","3"]（字符串）同样
+-- 反序列化失败，必须输出 [1,2,3]。
+local function as_num_list(v)
+	local out = {}
+	for _, x in ipairs(as_list(v)) do
+		local num = tonumber(x)
+		if num then out[#out + 1] = num end
+	end
+	return out
+end
+
 -- sing-box type 映射
 local TYPE_MAP = {
 	vmess = "vmess",
@@ -148,12 +180,17 @@ function M.to_outbound(n, tag)
 		if n.ipv6 then addr[#addr + 1] = n.ipv6 end
 		if #addr == 1 then o.local_address = addr[1]
 		elseif #addr > 1 then o.local_address = addr end
-		if n["allowed-ips"] then o.allowed_ips = n["allowed-ips"] end
-		if n.reserved then o.reserved = n.reserved end
+		-- 三个字段在 sing-box 里都是列表（allowed_ips/dns 是 []string，reserved 是
+		-- []uint8），字符串形态必须归一后再写，否则整份配置起不来
+		local aips = as_list(n["allowed-ips"])
+		if #aips > 0 then o.allowed_ips = aips end
+		local rsv = as_num_list(n.reserved)
+		if #rsv > 0 then o.reserved = rsv end
 		if n["persistent-keepalive"] then o.persistent_keepalive_interval = tonumber(n["persistent-keepalive"]) end
 		if n["listen-port"] then o.listen_port = tonumber(n["listen-port"]) end
 		if n.mtu then o.mtu = tonumber(n.mtu) end
-		if n.dns then o.dns = n.dns end
+		local dns = as_list(n.dns)
+		if #dns > 0 then o.dns = dns end
 	elseif stype == "socks" or stype == "http" then
 		-- socks 与 http 出站的认证字段相同（username / password）
 		if n.username then o.username = n.username end

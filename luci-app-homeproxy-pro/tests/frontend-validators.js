@@ -133,5 +133,100 @@ check('cert path ignores an empty value',
 check('cert path ignores a missing section',
 	hp.validateCertificatePath(null, '/etc/passwd') === true);
 
+/* --- dns_server: the legacy 'wan' value has to stay acceptable ---------- *
+ * The preset-mode "Overseas DNS server" field used to offer a 'wan' entry
+ * ("WAN DNS (read from interface)").  The entry is gone from the dropdown -
+ * the ISP resolver is the one thing that must not be picked there - but the
+ * literal is what a configuration saved back then still carries, and the
+ * generator keeps mapping it to wan_dns
+ * (root/etc/homeproxy-pro/scripts/generator/context.uc).  Dropping the entry
+ * without keeping the validator in step made those configurations unsaveable:
+ * every field's validator runs on save, and 'wan' is neither a hostname nor
+ * an address, so the page refused to save a configuration that was working.
+ *
+ * The callback is inline in renderDnsCache(), so the form is rendered against
+ * a minimal Section mock and the stored validate is called the way a widget
+ * calls it - with the config section id, not null.
+ */
+function dnsServerValidate() {
+	const classes = [ 'Value', 'ListValue', 'Flag', 'DynamicList', 'MultiValue', 'TextValue',
+		'Button', 'TypedSection', 'NamedSection', 'GridSection', 'SectionValue' ];
+	const formMock = {};
+	for (const name of classes) {
+		formMock[name] = class {};
+		formMock[name].__name__ = name;
+	}
+
+	let captured = null;
+	const sectionMock = {
+		tab() {},
+		taboption(_tab, kind, name, title, description) { return this.option(kind, name, title, description); },
+		option(kind, name, title, description) {
+			const option = { kind, name, title, description, value() {}, depends() {} };
+			if (kind && kind.__name__ === 'SectionValue')
+				option.subsection = sectionMock;
+			if (name === 'dns_server')
+				captured = option;
+			return option;
+		}
+	};
+
+	const dns = loadLuciModule(
+		path.join(root, 'htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js'),
+		{
+			baseclass: { extend: (o) => o },
+			form: formMock,
+			uci: { load: () => {}, get: () => undefined },
+			homeproxy-pro: {},
+			'view.homeproxy-pro.client.common': {}
+		});
+
+	/* Only the datatypes this validator asks for are implemented.  A stub
+	 * that accepted everything would also pass the 'wan' check below, which
+	 * is why the empty-value and not-an-address checks are here too. */
+	const stubValidator = {
+		value: null,
+		apply(type, value) {
+			if (value != null)
+				this.value = value;
+			switch (type) {
+			case 'ip4addr':
+				return /^\d{1,3}(\.\d{1,3}){3}$/.test(this.value) &&
+					this.value.split('.').every((octet) => parseInt(octet, 10) <= 255);
+			case 'ip6addr':
+				return typeof this.value === 'string' && this.value.includes(':');
+			case 'ipaddr':
+				return this.apply('ip4addr', this.value) || this.apply('ip6addr', this.value);
+			case 'hostname':
+				return /^[A-Za-z0-9.-]+$/.test(this.value) &&
+					!/^\d{1,3}(\.\d{1,3}){3}$/.test(this.value);
+			default:
+				return true;
+			}
+		},
+		assert: (condition) => !!condition
+	};
+
+	dns.renderDnsCache({ s: sectionMock, stubValidator });
+
+	const validator = captured && captured.validate;
+	if (typeof validator !== 'function')
+		throw new Error('dns.js no longer registers a dns_server validator');
+
+	const ctx = { section: { formvalue: () => '0' } };
+	return (value) => validator.call(ctx, 'config', value);
+}
+
+const validateDnsServer = dnsServerValidate();
+
+check("dns_server accepts the legacy 'wan' literal the generator still maps",
+	validateDnsServer('wan') === true);
+check('dns_server still accepts a bare IP', validateDnsServer('1.1.1.1') === true);
+check('dns_server still accepts a DoH endpoint',
+	validateDnsServer('https://cloudflare-dns.com/dns-query') === true);
+check('dns_server still rejects an empty value', isError(validateDnsServer('')));
+check('dns_server still rejects a value that is neither a hostname nor an address',
+	isError(validateDnsServer('not a dns server')));
+
 console.log(`frontend validators: ${checks} checks, ${failures} failures`);
 process.exit(failures ? 1 : 0);

@@ -672,10 +672,6 @@ msgstr "防火墙未能重新加载；已保存的日志设置与当前生效状
 msgid "The rate shown for WAN logging is the firewall zone log_limit. OpenWrt defaults to 10/minute when no explicit limit is configured; fwlive does not impose this cap."
 msgstr "WAN 日志显示的速率是防火墙区域的 log_limit。未显式配置时 OpenWrt 默认为 10 条/分钟；此上限并非 fwlive 施加。"
 
-#: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:762
-msgid "The required timeout utility is unavailable."
-msgstr "所需的超时工具不可用。"
-
 #: openwrt-feed/luci-app-fwlive/htdocs/luci-static/resources/view/status/fwlive.js:1722
 msgid "The router could not read the firewall log — retrying…"
 msgstr "路由器无法读取防火墙日志 — 正在重试…"

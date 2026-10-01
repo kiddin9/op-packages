@@ -14,6 +14,29 @@ local function url_encode(s)
 	end))
 end
 
+-- alpn 归一成逗号分隔字符串。
+-- alpn 可能是数组：Clash YAML 的 alpn 列表与 sing-box JSON 的 tls.alpn 导入后
+-- 就是 table。直接交给 url_encode 会 tostring 成 "table: 0x..."，链接里出现
+-- `alpn=table%3A%200x...`（客户端解析失败）。
+local function alpn_str(v)
+	if type(v) == "table" then return table.concat(v, ",") end
+	return v
+end
+
+-- 是否跳过证书校验。模型里的权威字段是 skip-cert-verify（见 parser.lua 中
+-- hysteria2/hysteria URI 解析处的说明）；insecure 只是 URI 参数名，且**只有**
+-- URI 解析器会写它 —— Clash YAML / sing-box JSON / 表单导入的节点只有
+-- skip-cert-verify。只读 insecure 会让这些节点在导出链接时丢掉该项，
+-- 客户端按严格校验握手直接失败。
+local function insecure_flag(n)
+	local v = n["skip-cert-verify"]
+	if v == nil then v = n.skip_cert_verify end
+	if v == nil then v = n.insecure end
+	if v == nil then return nil end
+	if v == false or v == "false" or v == 0 or v == "0" then return "0" end
+	return "1"
+end
+
 -- 生成单节点分享链接；无法生成时返回 nil
 function M.to_share_uri(n)
 	if type(n) ~= "table" or not n.server or not n.port then return nil end
@@ -59,10 +82,7 @@ function M.to_share_uri(n)
 		q[#q + 1] = "security=" .. url_encode(n.security or "none")
 		if n.sni then q[#q + 1] = "sni=" .. url_encode(n.sni) end
 		if n.fp then q[#q + 1] = "fp=" .. url_encode(n.fp) end
-		if n.alpn then
-			local alpn = type(n.alpn) == "table" and table.concat(n.alpn, ",") or n.alpn
-			q[#q + 1] = "alpn=" .. url_encode(alpn)
-		end
+		if n.alpn then q[#q + 1] = "alpn=" .. url_encode(alpn_str(n.alpn)) end
 		if n.path then q[#q + 1] = "path=" .. url_encode(n.path) end
 		if n.host then q[#q + 1] = "host=" .. url_encode(n.host) end
 		if n.flow then q[#q + 1] = "flow=" .. url_encode(n.flow) end
@@ -74,7 +94,7 @@ function M.to_share_uri(n)
 		local q = {}
 		q[#q + 1] = "security=" .. url_encode(n.security or "tls")
 		if n.sni then q[#q + 1] = "sni=" .. url_encode(n.sni) end
-		if n.alpn then q[#q + 1] = "alpn=" .. url_encode(n.alpn) end
+		if n.alpn then q[#q + 1] = "alpn=" .. url_encode(alpn_str(n.alpn)) end
 		if n.fp then q[#q + 1] = "fp=" .. url_encode(n.fp) end
 		return "trojan://" .. url_encode(n.password or "") .. "@" .. server .. ":" .. tostring(port)
 			.. "?" .. table.concat(q, "&") .. "#" .. name
@@ -83,7 +103,8 @@ function M.to_share_uri(n)
 	if proto == "hysteria2" or proto == "hysteria" then
 		local q = {}
 		if n.sni then q[#q + 1] = "sni=" .. url_encode(n.sni) end
-		if n.insecure ~= nil then q[#q + 1] = "insecure=" .. tostring(n.insecure) end
+		local ins = insecure_flag(n)
+		if ins ~= nil then q[#q + 1] = "insecure=" .. ins end
 		-- 混淆：hysteria2 是 salamander，URI 参数为 obfs / obfs-password；
 		-- hysteria(v1) 的 obfs 只是普通字符串，**没有** obfs-password
 		-- （写到 v1 链接上是非法参数，且会误导下游客户端）
@@ -104,7 +125,7 @@ function M.to_share_uri(n)
 		local userinfo = (n.uuid or "") .. ":" .. url_encode(n.password or "")
 		local q = {}
 		if n.congestion_control then q[#q + 1] = "congestion_control=" .. url_encode(n.congestion_control) end
-		if n.alpn then q[#q + 1] = "alpn=" .. url_encode(n.alpn) end
+		if n.alpn then q[#q + 1] = "alpn=" .. url_encode(alpn_str(n.alpn)) end
 		if n.sni then q[#q + 1] = "sni=" .. url_encode(n.sni) end
 		local suffix = #q > 0 and ("?" .. table.concat(q, "&")) or ""
 		return "tuic://" .. userinfo .. "@" .. server .. ":" .. tostring(port)

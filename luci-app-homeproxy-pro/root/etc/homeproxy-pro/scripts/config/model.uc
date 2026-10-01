@@ -20,7 +20,7 @@
 
 'use strict';
 
-import { isEmpty } from '../homeproxy-pro.uc';
+import { isEmpty, isValidCIDR } from '../homeproxy-pro.uc';
 
 /* Canonical credential multiplexing for a Node. The current generator picks
  * these apart with ternaries per field (`username` vs `user` vs `password` vs
@@ -268,11 +268,47 @@ export const Node = {
 				problems = [...problems, `invalid port '${node.port}'`];
 		}
 
-		/* TLS without server_name is a sing-box-side rejection, but the
-		 * rule itself is protocol-agnostic - the reality branch covers the
-		 * only legitimate escape - so it stays here. */
-		if (node.tls.enabled === '1' && !node.tls.server_name && node.tls.reality.enabled !== '1')
-			problems = [...problems, 'TLS enabled without server_name'];
+		/* TLS without an explicit server_name.
+		 *
+		 * sing-box defaults an outbound's tls.server_name to the
+		 * outbound's server address, so a node whose address is a
+		 * *hostname* works fine without one: the handshake sends that
+		 * hostname as SNI and verifies the certificate against it. That
+		 * is the documented default (outbound tls.server_name defaults to
+		 * "server address"), not a leniency we invented.
+		 *
+		 * This check used to fire for both address shapes, and firing
+		 * meant die() - OutboundFactory.create() treats a non-empty
+		 * problems list as fatal. A trojan:// / anytls:// / hysteria2://
+		 * / tuic:// share link with no `sni=` parameter produces exactly
+		 * such a node (each parser writes `tls_sni: params.sni` and
+		 * nothing else), and so does the node form, whose "TLS SNI"
+		 * field is an optional form.Value gated only on tls=1
+		 * (homeproxy-pro.js:672). As a main node it then took the whole
+		 * client configuration down:
+		 *
+		 *   node '<section>': TLS enabled without server_name
+		 *
+		 * Reproduced on a real router (2026-10-01, sing-box 1.14.2):
+		 * with the SNI removed from the main node, buildable() is false
+		 * and generate() dies - so a reload rolled back to the previous
+		 * configuration and a boot start refused to come up, over a node
+		 * sing-box would have dialed without complaint.
+		 *
+		 * The case that IS worth a problem is an IP address: the implicit
+		 * SNI is then the literal IP, which no real server presents a
+		 * matching certificate for, so the connection cannot succeed.
+		 * That stays fatal for a node a rule or the main node points at
+		 * (the existing contract for an unbuildable node) and is pruned
+		 * with a warning inside a urltest group
+		 * (generator/outbound.uc keep_candidate). reality is the escape
+		 * hatch: it runs its own handshake and does not use server_name.
+		 */
+		if (node.tls.enabled === '1' && !node.tls.server_name
+			&& node.tls.reality.enabled !== '1'
+			&& (isValidCIDR(node.address, 4) || isValidCIDR(node.address, 6)))
+			problems = [...problems,
+				`TLS enabled on IP address ${node.address} without server_name`];
 
 		return problems;
 	},

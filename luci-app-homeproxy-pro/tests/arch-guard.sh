@@ -2077,6 +2077,22 @@ echo "== guard 45: the bootstrap resolver is derived, not configured =="
 #       - a second DNS address next to the China one made no sense to read;
 #   (b) a bare IP is the only usable value, because the option also accepts
 #       'wan' and a DoH/DoT URL, and a hostname cannot resolve a hostname.
+#
+# (b) is asserted on the *validator*, not on a hand-rolled regex.  The guard
+# used to require the two shape tests this function used to carry
+# (/^[0-9]+(\.[0-9]+){3}$/ and /^[0-9a-fA-F:]+$/), and that is exactly what let
+# a real bug through: the second one matches any hostname made only of hex
+# digits and colons - cafe, face, abc, add, dead:beef - and the first one never
+# range-checked the octets, so 999.999.999.999 passed too (measured on the
+# device, 2026-10-01).  The bootstrap server is emitted with no
+# domain_resolver by design, so any of those is unsatisfiable and sing-box
+# refuses to start at all:
+#   FATAL create service: initialize DNS server[0]: missing domain resolver
+#   for domain server address
+# isValidCIDR() - the same validator the firewall path runs every address
+# through - is the shared definition of "is this an address", and the ucode
+# test tests/ucode/test_build_guards.uc pins the behaviour (bare v4/v6 in,
+# 'wan' / a DoH URL / a hostname / an out-of-range address out).
 if grep -q "const addr = ctx.china_dns_server;" "$SCRIPTS/generator/dns.uc"; then
 	pass "the bootstrap address is taken from the China DNS server"
 else
@@ -2084,12 +2100,19 @@ else
 	fail "separate option again, main-dns may fall back to the WAN resolver"
 fi
 
-if grep -qE "match\(addr, /\^\[0-9\]\+" "$SCRIPTS/generator/dns.uc" &&
-   grep -qE "match\(addr, /\^\[0-9a-fA-F:\]\+" "$SCRIPTS/generator/dns.uc"; then
-	pass "only a bare IP is accepted as the bootstrap address"
+if grep -q "isValidCIDR(addr, 4) || isValidCIDR(addr, 6)" "$SCRIPTS/generator/dns.uc"; then
+	pass "only a bare IP is accepted as the bootstrap address (via isValidCIDR)"
 else
 	fail "bootstrap_addr() no longer rejects a non-IP value - a DoH URL or the"
 	fail "literal 'wan' is a hostname, and using one to resolve a hostname is a cycle"
+	fail "(it must go through isValidCIDR; a hand-rolled shape test accepted"
+	fail "'cafe' and 999.999.999.999, which made sing-box refuse to start)"
+fi
+
+if grep -qE "match\(addr, /\^\[0-9" "$SCRIPTS/generator/dns.uc"; then
+	fail "a hand-rolled IP shape test is back in bootstrap_addr() - use isValidCIDR"
+else
+	pass "no hand-rolled IP shape test in bootstrap_addr()"
 fi
 
 # The option is gone from the form and from the shipped config; leaving either

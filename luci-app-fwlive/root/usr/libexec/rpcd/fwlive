@@ -23,35 +23,12 @@ ADAPTIVE_SH="$LIBEXEC_DIR/fwlive-adaptive-cap.sh"
 RESOLVE_MAX=32
 # DNS names are at most 253 octets; a longer PTR answer is treated as no name.
 RESOLVE_NAME_MAX=253
-# Per-lookup nslookup timeout (integer seconds — BusyBox `timeout` truncates
-# fractional values to 0 on OpenWrt 23.05/1.36, so 0.5 would silently
-# degrade to no timeout; luna fold 2026-08-10). The wall-clock budget
-# below stops starting work after the budget; this per-lookup cap plus the
-# shared TERM/KILL grace bounds the last in-progress lookup. LAN/local-resolver
-# lookups are single-digit ms, so 1s is ample. Passed as argv to `timeout`,
-# never interpolated into a shell string.
-RESOLVE_TIMEOUT=1
-# Wall-clock budget (seconds) for a single ubus fwlive.resolve call. The
-# lookup loop checks elapsed time and aborts cleanly once this budget is
-# spent, so a flood of unresolvable IPs cannot hold an rpcd worker for the
-# full RESOLVE_MAX * RESOLVE_TIMEOUT worst case. Worst case total time is
-# budget + one in-progress lookup (RESOLVE_TIMEOUT + TIMEOUT_KILL_GRACE),
-# plus scheduling/IPC overhead: approximately 7s before scheduler/IPC delay.
-# Elapsed time comes from /proc/uptime centiseconds so an NTP step cannot
-# stretch the budget; RESOLVE_MAX still bounds the work if uptime is unreadable.
+# Elapsed budget stops starting additional lookups; it cannot interrupt an
+# in-progress helper. fwlive adds no helper deadline; rpcd limits the plugin process, not descendants.
+# /proc/uptime avoids NTP steps; RESOLVE_MAX bounds work if uptime is unreadable.
 RESOLVE_BUDGET=5
 # Cap raw logd lines per poll (~2000 ≈ typical logd ring / ~200 KB JSON before filter).
 POLL_LINES_MAX=2000
-# Bound nft ruleset dumps (corrupted/hung nft must not block LuCI rules load).
-NFT_TIMEOUT=5
-# Bound poll log.read (wedged logd must not hold an rpcd worker past the UI cadence).
-# Integer seconds — BusyBox timeout truncates fractions to 0 (see RESOLVE_TIMEOUT).
-POLL_TIMEOUT=5
-# Outer GNU timeout hard-kills the command group after the inner command's
-# duration plus this TERM grace. The package dependency ensures GNU's
-# --foreground and signal options are available, including when BusyBox also
-# has a timeout applet.
-TIMEOUT_KILL_GRACE=1
 # Host tests override this to a pinned libubox helper; devices keep the package path.
 : "${FWLIVE_JSHN_SH:=/usr/share/libubox/jshn.sh}"
 
@@ -207,68 +184,6 @@ map_prefix_with_label() {
 		if [ "$slug" != "$prefix" ]; then
 			map_add "$slug" "$cosmetic"
 		fi
-	fi
-}
-
-run_with_timeout() {
-	secs="$1"
-	shift
-	if fwlive_timeout_available; then
-		run_timeout_busybox="$(command -v busybox 2>/dev/null)" || return 127
-		run_timeout_cat="$(command -v cat 2>/dev/null)" || return 127
-		[ -n "$run_timeout_busybox" ] && [ -n "$run_timeout_cat" ] || return 127
-		# The inner foreground timeout sends TERM to the direct command at its
-		# deadline. Keep a pipe reader alive until every inherited stdout fd
-		# closes; the outer timeout then KILLs the whole process group at the
-		# hard deadline. After the pipeline ends, keep this wrapper alive while
-		# any other live process remains in its dedicated process group. setsid keeps
-		# unrelated rpcd processes out of that scan and lets the outer timeout
-		# kill children even when they close stdout. BusyBox ash pipefail
-		# preserves the inner timeout status; invoking it explicitly keeps this
-		# portable from host dash too.
-		"$run_timeout_busybox" setsid "$FWLIVE_TIMEOUT_BIN" -s KILL "$((secs + TIMEOUT_KILL_GRACE))" \
-			"$run_timeout_busybox" sh -c '
-				set -o pipefail || exit 125
-				timeout_bin="$1"
-				duration="$2"
-				cat_bin="$3"
-				busybox_bin="$4"
-				shift 4
-				"$timeout_bin" --foreground "$duration" "$@" | "$cat_bin"
-				status="$?"
-				IFS= read -r proc_fields < "/proc/$$/stat" || exit 125
-				proc_fields="${proc_fields##*) }"
-				proc_fields="${proc_fields#* }"
-				proc_fields="${proc_fields#* }"
-				group="${proc_fields%% *}"
-				while :; do
-					peer=0
-					for proc_stat in /proc/[0-9]*/stat; do
-						[ -r "$proc_stat" ] || continue
-						IFS= read -r proc_fields < "$proc_stat" || continue
-						proc_fields="${proc_fields##*) }"
-						proc_state="${proc_fields%% *}"
-						proc_fields="${proc_fields#* }"
-						proc_fields="${proc_fields#* }"
-						proc_group="${proc_fields%% *}"
-						proc_pid="${proc_stat#/proc/}"
-						proc_pid="${proc_pid%/stat}"
-						if [ "$proc_group" = "$group" ] && \
-							[ "$proc_pid" != "$group" ] && [ "$proc_pid" != "$$" ] && \
-							[ "$proc_state" != Z ]; then
-							peer=1
-							break
-						fi
-					done
-					[ "$peer" = 1 ] || break
-					"$busybox_bin" sleep 0.1 || "$busybox_bin" sleep 1 || exit 125
-				done
-				exit "$status"
-			' fwlive-timeout "$FWLIVE_TIMEOUT_BIN" "$secs" \
-			"$run_timeout_cat" "$run_timeout_busybox" "$@" 2>/dev/null
-	else
-		# Fail closed: never run unbounded without the GNU provider.
-		return 127
 	fi
 }
 
@@ -462,7 +377,7 @@ map_from_nft_stream() {
 }
 
 nft_list_ruleset() {
-	run_with_timeout "$NFT_TIMEOUT" nft list ruleset
+	nft list ruleset
 }
 
 _fwlive_tmp_dir_ok() {
@@ -512,7 +427,7 @@ _fwlive_tmp_cleanup() {
 	fi
 }
 # Same five traps as fwlive-log-filter.sh. The nft dump waits in the
-# background so a trapped SIGTERM is not deferred behind setsid.
+# background so a trapped SIGTERM is not deferred behind a foreground helper.
 trap '_fwlive_tmp_cleanup' 0
 trap '_fwlive_tmp_cleanup; exit 129' 1
 trap '_fwlive_tmp_cleanup; exit 130' 2
@@ -527,7 +442,7 @@ enrich_rules_dump() {
 		# One dump serves detect + parse. Empty/failed dump is not nft
 		# (unknown/no_backend, same as a failed detect probe).
 		# Background + wait: dash defers trapped SIGTERM until a
-		# foreground setsid/timeout child exits; wait is interruptible.
+		# foreground child exits; wait is interruptible.
 		# Clear inherited traps so the child's EXIT cannot rm the dump.
 		( trap - 0 1 2 3 15; nft_list_ruleset >"$_rules_dump" 2>/dev/null ) &
 		_nft_wait=$!
@@ -578,11 +493,7 @@ build_rules_map() {
 
 	# Temp file first, then a single nft_list_ruleset; backend from success.
 	if command -v nft >/dev/null 2>&1; then
-		if fwlive_timeout_available; then
-			enrich_rules_dump fwlive-nft
-		else
-			_enrich_error='timeout_missing'
-		fi
+		enrich_rules_dump fwlive-nft
 	fi
 
 	if [ "$backend" = unknown ] && [ -z "$_enrich_error" ]; then
@@ -696,8 +607,9 @@ fetch_firewall_logs() {
 	shed_flag=${2:-0}
 	# Adaptive plan prints: lines shed bucket
 	start_cs=$(fwlive_adaptive_clock_cs)
-	# Drop dead oneshot flag — only consumed on logd's stream branch.
-	if ! raw=$(run_with_timeout "$POLL_TIMEOUT" ubus call log read "{\"lines\":$lines,\"stream\":false}"); then
+	# Bound the log.read invocation with ubus's native client timeout. This
+	# begins after object lookup and does not cancel the remote logd method.
+	if ! raw=$(ubus -t 5 call log read "{\"lines\":$lines,\"stream\":false}"); then
 		# Do not record ~0 ms as cold: failure is not healthy fast processing
 		# and must not clear an existing hot/shed cap.
 		out='{"log":[],"error":"log_read_failed"}'
@@ -722,7 +634,7 @@ fetch_firewall_logs() {
 	# Empty success is not valid poll JSON — the shipped filter always
 	# prints {"log":[...]}, but a stub/regression must not emit a blank body.
 	_filter_ok=1
-	if ! out=$(printf '%s' "$raw" | run_with_timeout "$POLL_TIMEOUT" "$FILTER_SH" /tmp); then
+	if ! out=$(printf '%s' "$raw" | "$FILTER_SH" /tmp); then
 		_filter_ok=0
 		case "$out" in
 			'{"log":[],"error":"filter_failed"}'|\
@@ -766,10 +678,6 @@ fetch_firewall_logs() {
 }
 
 poll_logs() {
-	if ! fwlive_timeout_available; then
-		printf '{"log":[],"error":"timeout_missing"}'
-		return 0
-	fi
 	# Optional JSON on $1 (rpcd may also pass argv $3 at the call site); else stdin.
 	input=$(read_rpc_input "$1")
 	fetch_firewall_logs "$input"
@@ -817,8 +725,8 @@ resolve_hostname() {
 	[ -n "$ip" ] || return 1
 	is_resolvable_address "$ip" || return 1
 	command -v nslookup >/dev/null 2>&1 || return 1
-	# timeout/nslookup miss is "no PTR", not a plugin abort.
-	out=$(run_with_timeout "$RESOLVE_TIMEOUT" nslookup "$ip") || return 1
+	# An unsuccessful nslookup is "no PTR", not a plugin abort.
+	out=$(nslookup "$ip") || return 1
 	[ -n "$out" ] || return 1
 	name=$(parse_nslookup_name "$out") || return 1
 	[ -n "$name" ] || return 1
@@ -918,11 +826,6 @@ resolve_addresses() {
 		printf '{"names":{},"error":"no_resolver"}'
 		return 0
 	fi
-	# Do not turn a missing timeout provider into a negative PTR cache entry.
-	if ! fwlive_timeout_available; then
-		printf '{"names":{},"error":"timeout_missing"}'
-		return 0
-	fi
 
 	# Load shed: previous poll was hot.
 	if fwlive_adaptive_is_hot; then
@@ -995,7 +898,7 @@ resolve_addresses() {
 			break
 		fi
 		lookups=$((lookups + 1))
-		# NXDOMAIN / timeout: resolve_hostname returns 1. set -e
+		# Unsuccessful lookup: resolve_hostname returns 1. set -e
 		# cannot apply to this assignment.
 		name=$(resolve_hostname "$ip") || name=
 		[ "${#name}" -le "$RESOLVE_NAME_MAX" ] || name=
@@ -1427,12 +1330,6 @@ case "${1:-}" in
 	__selftest)
 		run_selftest
 		exit $?
-		;;
-	__limits)
-		printf '%s %s %s %s %s\n' \
-			"$POLL_TIMEOUT" "$TIMEOUT_KILL_GRACE" "$NFT_TIMEOUT" \
-			"$RESOLVE_TIMEOUT" "$RESOLVE_BUDGET"
-		exit 0
 		;;
 	__poll_clamp)
 		poll_clamp_lines "${2:-}"

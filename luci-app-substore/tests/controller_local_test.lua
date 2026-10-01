@@ -59,6 +59,10 @@ package.loaded["substore.core"] = {
 	sync = function() SYNC_CALLS = SYNC_CALLS + 1; return CORE_RESULT.sync[1], CORE_RESULT.sync[2] end,
 	write_cron = function() end,
 	cron_time_valid = function() return true end,
+	-- read_rules_fields 会遍历它收集 proto_filter_*。这里只是 stub：真实清单的
+	-- 内容/规范性由 tests/rules_fields_test.lua 对着 core.lua 校验，本文件只保证
+	-- 控制器在「清单存在」的前提下能正常跑完（缺了它 read_rules_fields 会崩）。
+	RULE_PROTOS = { "vmess", "trojan" },
 }
 
 -- 载入控制器（module() 会在 package.loaded 里建表，不需要真实 luci 模块）

@@ -514,4 +514,12 @@ sh "$ROOT/tests/ucode/test_protocol_inventory.sh" "$ROOT" "$WORK/inventory" || F
 echo "== domain model skeleton =="
 sh "$ROOT/tests/ucode/test_domain_model_skeleton.sh" "$ROOT" "$WORK/domain_model" || FAILED=1
 
+echo "== build guards (TLS server_name, bootstrap address) =="
+# The two rules that decide whether a configuration can be built at all. Both
+# used to be fatal rejections of configurations sing-box accepts, so a node
+# without an SNI (every share link with no `sni=`) took the main outbound -
+# and with it the whole client configuration - down. Pure functions, so this
+# one needs no fixture and no confdir.
+sh "$ROOT/tests/ucode/test_build_guards.sh" "$ROOT" "$WORK/build_guards" || FAILED=1
+
 exit $FAILED

@@ -3307,14 +3307,14 @@
 					"props": {
 						"default": "8.8.8.8",
 						"rmempty": false,
-						"validate": "fn(730:48f7f360fbd2)"
+						"validate": "fn(758:77dbe8107e5c)"
 					}
 				},
 				{
 					"kind": "Value",
 					"name": "china_dns_server",
 					"title": "China DNS server",
-					"description": "Resolves the domains on the China path, so it has to be a domestic service to get the correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT.",
+					"description": "Resolves the domains on the China path, so it has to be a domestic service to get the correct local CDN answers. Keep the default; the upstream may block UDP/53, in which case a DoH address (https://dns.alidns.com/dns-query, https://doh.pub/dns-query) also works. Support UDP, TCP, DoH, DoQ, DoT. This address is also the resolver the proxy DNS server above uses to look up its own hostname when that one is a domain - and a URL here is a domain, which cannot do that lookup itself, so with a URL here the proxy DNS server falls back to the WAN resolver. Enter the bare IP form of the same service to keep that lookup on this router.",
 					"depends": [
 						[
 							"routing_mode",

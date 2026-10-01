@@ -9,6 +9,13 @@
 	local ki = (it and it.keyword_include) or ""
 	local ke = (it and it.keyword_exclude) or ""
 	local dedup = it and (it.dedup == "1" or it.dedup == true)
+	-- 协议筛选 / 重命名：控制器一直在读这两项（read_rules_fields），但此前三个表单
+	-- 都没有提交它们的控件 —— 字段永远写空，且每次保存会把 UCI 里已有的值重置为 ""。
+	local proto_sel = {}
+	for p in ((it and it.proto_filter) or ""):gmatch("[^,]+") do
+		proto_sel[p:match("^%s*(.-)%s*$")] = true
+	end
+	local rm = (it and it.rename_map) or ""
 	local local_mode = (it and it.local_mode) or "text"
 	local content = (it and it.raw_content) or ""
 	-- 注入 JS 的初始内容：JSON 字符串字面量，转义 "</" 防止提前闭合 script
@@ -76,6 +83,22 @@
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em"><%:Dedup%></label>
 				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Protocol filter%></label>
+				<% for _, p in ipairs(core.RULE_PROTOS) do %>
+				<label style="margin-right:0.75em;white-space:nowrap">
+					<input type="checkbox" name="proto_filter_<%=p%>" value="1" <%=proto_sel[p] and "checked" or ""%>/> <%=p%>
+				</label>
+				<% end %>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Rename%></label>
+				<textarea name="rename_map" rows="3" style="width:60%"><%=luci.util.pcdata(rm)%></textarea>
+			</div>
+			<div class="cbi-section-descr" style="margin:0.25em 0">
+				<span style="color:#808080"><%:Protocol filter: with none ticked no filtering is applied.%><br/>
+				<%:One rename rule per line: OLD=NEW (exact), PATTERN -> REPLACEMENT (regex), or {server}_{port}_{proto} (placeholder template).%></span>
 			</div>
 		</div>
 		<% if is_edit and it.last_update then %>

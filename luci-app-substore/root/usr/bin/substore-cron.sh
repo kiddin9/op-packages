@@ -69,6 +69,14 @@ fi
 # 不存在前导零，故可直接按字面比较。
 FAILED=$(printf '%s\n' "$OUT" | sed -n 's/.*: [0-9][0-9]* ok, \([0-9][0-9]*\) failed.*/\1/p' | tail -1)
 case "$FAILED" in
-	''|0) exit 0 ;;
+	'')
+		# 没有结果行 ≠「0 个失败」，而是 Lua 根本没跑到最后：模块加载失败、
+		# core.list() 抛异常（它在 pcall 之外）、解释器中途死掉等等。
+		# 旧实现把这种情况和成功归为一类（''|0) exit 0），于是一次彻底失败的
+		# 更新在 cron / 外部监控看来与成功无异 —— 故障永远不会被发现。
+		echo "substore cron: no result line, lua did not complete" >&2
+		exit 1
+		;;
+	0) exit 0 ;;
 	*) exit 1 ;;
 esac

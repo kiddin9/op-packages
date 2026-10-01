@@ -83,11 +83,22 @@ function M.surge_line(n)
 	return util.one_line(line)
 end
 
--- 收集节点名列表
+-- 收集可用于「逗号分隔成员列表」的节点名（Surge 家族 [Proxy Group] / QX [policy]）。
+--
+-- 两类名字必须排除，否则生成的配置整体非法：
+--   * 含逗号：这些格式的成员列表就是 `NAME = select, X, Y, DIRECT`，语法里没有
+--     引号 / 转义机制，名字里的逗号会被当成成员分隔符 —— `A,B` 被读成两个成员
+--     `A` 与 `B`，两个都不存在，Surge / QX 会因引用不存在的代理而拒绝加载整份
+--     配置。节点定义本身仍留在 [Proxy] / [server_local] 中，只是不进成员列表。
+--   * 换行：定义行经过 util.one_line（换行→空格），成员列表若用原始名就对不上
+--     定义行，同样成为悬空引用。这里统一先 one_line 再比对，保证两边一致。
 local function names_of(nodes)
 	local out = {}
 	for _, n in ipairs(nodes or {}) do
-		if n.name then out[#out + 1] = n.name end
+		local nm = util.one_line(n.name)
+		if nm and nm ~= "" and not nm:find(",", 1, true) then
+			out[#out + 1] = nm
+		end
 	end
 	return out
 end
@@ -177,6 +188,10 @@ end
 function M.to_qx(nodes, options)
 	options = options or {}
 	local out = {}
+	-- 真正写出了 [server_local] 行的节点。QX 只支持下面这 4 类协议，其余节点
+	-- （hysteria2 / hysteria / tuic / socks / wireguard / ssr …）没有定义行；
+	-- [policy] 若把它们也列进去，就成了引用不存在服务器的悬空条目。
+	local emitted = {}
 	out[#out + 1] = "[server_local]"
 	for _, n in ipairs(nodes or {}) do
 		local proto = props(n)
@@ -213,10 +228,12 @@ function M.to_qx(nodes, options)
 		-- 节点名 / sni / path / host 全部来自订阅（不可信），含换行会截断本行
 		-- 并伪造出一条新的 server_local 行
 		for i = before + 1, #out do out[i] = util.one_line(out[i]) end
+		-- 上面的 if/elseif 命中时必定追加一行，未命中时一行不加
+		if #out > before then emitted[#emitted + 1] = n end
 	end
 	out[#out + 1] = ""
 	out[#out + 1] = "[policy]"
-	local names = names_of(nodes)
+	local names = names_of(emitted)
 	local policy = "static=" .. (options.name or "PROXY") .. ", DIRECT"
 	for _, nm in ipairs(names) do policy = policy .. ", " .. nm end
 	out[#out + 1] = util.one_line(policy)

@@ -248,6 +248,18 @@ msgstr "关键词排除"
 msgid "Dedup"
 msgstr "去重"
 
+msgid "Protocol filter"
+msgstr "协议筛选"
+
+msgid "Protocol filter: with none ticked no filtering is applied."
+msgstr "协议筛选：全部不勾选 = 不筛选（保留所有协议）。"
+
+msgid "Rename"
+msgstr "重命名"
+
+msgid "One rename rule per line: OLD=NEW (exact), PATTERN -> REPLACEMENT (regex), or {server}_{port}_{proto} (placeholder template)."
+msgstr "重命名每行一条：旧名称=新名称（精确匹配）、模式 -> 替换（正则替换）、{server}_{port}_{proto}（占位符模板）。"
+
 # 节点分组 / 单节点编辑
 msgid "Group"
 msgstr "分组"
