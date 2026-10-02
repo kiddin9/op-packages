@@ -579,7 +579,8 @@ jobs:
         .modal>pre,.modal>textarea{color: #ccc}\
         .login-page.defwallpaper .login-container{background-color: rgb(136 136 136 / 14%);backdrop-filter: blur(0);margin:0 auto;}\
         .defwallpaper.defwallpaper .main-bg img{object-position: -99999px -99999px;opacity: 0;}\
-        .main .main-right{background-color: transparent}' \
+        .main .main-right{background-color: transparent}\
+        input[placeholder]::placeholder {color: #888888;opacity: 1}' \
           luci-theme-argon/htdocs/luci-static/argon/css/dark.css
         sed -i 's,https://raw.githubusercontent.com,https://v4.gh-proxy.org/https://raw.githubusercontent.com,g' \
         luci-app-homeproxy/root/etc/homeproxy/scripts/generate_client.uc
