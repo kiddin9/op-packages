@@ -377,6 +377,7 @@ jobs:
         (
         git_clone https://github.com/rchen14b/luci-theme-glass
         git_clone https://github.com/zzsj0928/luci-theme-liquid
+        git_clone https://github.com/rabbitrogi/luci-app-zerotier
         ) &
         (
         git_clone https://github.com/vad-b/luci-app-tailscale-ng
