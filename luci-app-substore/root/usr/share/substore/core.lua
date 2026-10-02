@@ -7,11 +7,16 @@ local parser = require("substore.parser")
 
 local M = {}
 
-M.version = "2.6.9"
+M.version = "2.7.0"
 M.DATA_DIR = "/etc/substore"
 M.LIST_FILE = M.DATA_DIR .. "/subscriptions.json"
 M.NODES_DIR = M.DATA_DIR .. "/nodes"
 M.CRON_FILE = "/etc/cron.d/substore"
+-- 列表文件的互斥锁超时（秒）。锁目录固定为 DATA_DIR 下的 .lock，
+-- 由 with_list_lock 现算 —— 不做成常量：那样任何改了 DATA_DIR 的调用方
+-- （测试、或将来支持自定义数据目录）都必须记得同步改它，忘了就会去锁真实
+-- 的 /etc/substore，症状是写入全部报「正被另一个进程修改」。
+M.LOCK_STALE = util.LOCK_STALE
 
 M.MAX_SIZE = 10 * 1024 * 1024 -- 10MB
 M.TIMEOUT = 20
@@ -23,6 +28,56 @@ M.TIMEOUT = 20
 -- 不含 socks5：解析阶段已把它归一成 socks（见 parser.lua 的说明）。
 M.RULE_PROTOS = { "vmess", "vless", "trojan", "shadowsocks", "ssr",
 	"hysteria2", "tuic", "hysteria", "wireguard", "socks" }
+
+-- 「订阅客户端类型」预设。部分机场（如 Allblue 加速器）按 User-Agent 区分客户端：
+-- 同一个订单链接，只有用**该订单绑定的客户端**的 UA 去请求才返回真实节点，
+-- 其它 UA 拿到的是「与您使用客户端不兼容」的占位内容 —— 表现为订阅能解析成功，
+-- 但只有 7 个指向 127.0.0.1:1080 的假节点。
+--
+-- 各 UA 字符串取自客户端源码，非猜测：
+--   clash-verge  clash-verge-rev  src-tauri/src/utils/network.rs  `clash-verge/v{版本}`
+--   v2rayn       v2rayN          ServiceLib/Common/Utils.cs      `{AppName}/{版本}`（无 v 前缀）
+--   clash-party  Clash Party     src/main/config/profile.ts      `mihomo.party/v{版本} (clash.meta)`
+--   flclash      FlClash         lib/common/package.dart         三段空格分隔，含 Platform/<os>
+-- 版本号取用户给出的**最低可用版本**；机场若提高门槛，用户可在「自定义」里改。
+-- 顺序即表单下拉的显示顺序，不要用 pairs 遍历。
+M.UA_PRESETS = {
+	{ key = "clash-verge", label = "Clash Verge", ua = "clash-verge/v2.5.0" },
+	{ key = "v2rayn",      label = "v2rayN",      ua = "v2rayN/7.22.0" },
+	{ key = "clash-party", label = "Clash Party", ua = "mihomo.party/v2.0.0 (clash.meta)" },
+	{ key = "flclash",     label = "FlClash",     ua = "FlClash/v0.8.93 clash-verge Platform/linux" },
+}
+
+local UA_BY_KEY = {}
+for _, p in ipairs(M.UA_PRESETS) do UA_BY_KEY[p.key] = p.ua end
+
+-- 把表单的 (预设 key, 自定义文本) 解析成最终要发送的 UA 字符串。
+-- 返回 "" 表示不设置（沿用下载工具自带的 UA），nil + err 表示输入非法。
+function M.resolve_user_agent(preset, custom)
+	preset = util.trim(preset or "")
+	if preset == "" then return "" end
+	local ua
+	if preset == "custom" then
+		ua = util.trim(custom or "")
+		-- 选了「自定义」却留空 = 明确要求不设置 UA，不是错误。
+		if ua == "" then return "" end
+	else
+		ua = UA_BY_KEY[preset]
+		if not ua then return nil, "未知的订阅客户端类型: " .. preset end
+	end
+	return http.validate_user_agent(ua)
+end
+
+-- 反向：把已存的 UA 字符串映射回预设 key（编辑页回显用）。
+-- 不在预设里的一律落到 "custom"，由调用方把原值填进自定义输入框。
+function M.ua_preset_of(ua)
+	local s = util.trim(ua or "")
+	if s == "" then return "" end
+	for _, p in ipairs(M.UA_PRESETS) do
+		if p.ua == s then return p.key end
+	end
+	return "custom"
+end
 
 local function id_is_valid(id)
 	return type(id) == "string" and id ~= "" and id:match("^[A-Za-z0-9_%-]+$") ~= nil
@@ -88,6 +143,41 @@ local function save(seq, items)
 	return util.atomic_write(M.LIST_FILE, util.json_encode({ _seq = seq, items = items }), "600")
 end
 
+-- 把「读整表 → 改 → 写整表」串行化。
+--
+-- 没有锁时，LuCI 页面保存订阅、cron 定时更新、组合订阅自动重算三者同时发生，
+-- 后写者会整表覆盖先写者 —— 用户新增的订阅静默消失，且没有任何报错。
+--
+-- **可重入**：save_combo 内部会调 save_meta，两者都要保护。若第二次调用再去
+-- 抢锁，会把自己挡在门外（mkdir 已被本进程建过）并返回「正被占用」，
+-- 于是嵌套的调用必定失败。所以本进程已持锁时只加计数、不再取锁。
+-- 跨进程互斥仍由 util.lock_acquire 的 mkdir 保证。
+local lock_depth = 0
+local function with_list_lock(f)
+	-- 锁目录是 DATA_DIR 的子目录，父目录不存在时 mkdir 直接失败，
+	-- 而失败在 lock_acquire 眼里等同于「别人正持有」—— 全新安装上第一次
+	-- 保存订阅就会报「正被另一个进程修改」。所以先把目录建出来。
+	M.ensure_dirs()
+	if lock_depth > 0 then
+		lock_depth = lock_depth + 1
+		local a, b = f()
+		lock_depth = lock_depth - 1
+		return a, b
+	end
+	local lock_dir = M.DATA_DIR .. "/.lock"
+	if not util.lock_acquire(lock_dir, { stale = M.LOCK_STALE }) then
+		return nil, "订阅列表正被另一个进程修改，请稍后重试"
+	end
+	lock_depth = 1
+	local a, b = f()
+	lock_depth = 0
+	util.lock_release(lock_dir)
+	return a, b
+end
+-- 注：f 抛异常时不会走到释放，锁会留在盘上。这是有意不捕获的 —— 用 pcall
+-- 包住会把异常改成返回值，调用方（控制器 / cron）看到的错误形态就变了。
+-- 残留锁由 util.lock_acquire 的陈旧回收兜底：超过 LOCK_STALE 秒后自动可回收。
+
 -- 返回 arr, err。err 非空表示列表文件已损坏。
 -- 整体无法解析时 arr 为空；只有部分条目非法时 arr 仍包含能用的条目
 -- （坏条目已被 load 过滤掉，否则下面的 pairs(meta) 会抛异常）。
@@ -134,6 +224,7 @@ function M.add(name, url, opts)
 		token = util.rnd_hex(16),
 		proxy_enable = (opts.proxy_enable == true or opts.proxy_enable == "1") and "1" or "0",
 		proxy = util.trim(opts.proxy or ""),
+		user_agent = util.trim(opts.user_agent or ""),
 		cron_enable = (opts.cron_enable == true or opts.cron_enable == "1") and cron_time ~= "",
 		cron_time = cron_time,
 		rules_enable = (opts.rules_enable == true or opts.rules_enable == "1") and true or false,
@@ -164,7 +255,7 @@ function M.add_local(name, raw_content, local_mode, opts)
 		name = name, url = "", enabled = true,
 		node_count = 0, last_update = nil, error = "", format = "",
 		token = util.rnd_hex(16),
-		proxy_enable = "0", proxy = "",
+		proxy_enable = "0", proxy = "", user_agent = "",
 		cron_enable = false, cron_time = "",
 		rules_enable = (opts.rules_enable == true or opts.rules_enable == "1") and true or false,
 		proto_filter = util.trim(opts.proto_filter or ""),
@@ -190,8 +281,14 @@ function M.ensure_token(id)
 	local meta = items[id]
 	if not meta then return nil end
 	if not meta.token or meta.token == "" then
-		meta.token = util.rnd_hex(16)
-		save(seq, items)
+		local tok = util.rnd_hex(16)
+		meta.token = tok
+		-- 没落盘的 token 不能交出去：id_by_token 是从磁盘读的，交出去等于给用户
+		-- 一个必然报「无效的订阅 token」的链接；而且内存表用完即弃，
+		-- 下一次调用会再生成一个**不同**的 token，链接还会跳来跳去。
+		-- 失败就返回 nil，由调用方按「拿不到 token」处理。
+		if not save(seq, items) then return nil, "写入失败" end
+		return tok
 	end
 	return meta.token
 end
@@ -249,8 +346,46 @@ function M.remove(id)
 	if lerr then return false, lerr end
 	if not items[id] then return false end
 	items[id] = nil
-	save(seq, items)
+	-- 引用这个订阅的组合：把死 id 从 sources 里摘掉，同时记下要重算的组合。
+	--
+	-- 必须**在同一趟里**收集，不能摘完再调 M.refresh_combos(id)：后者是按
+	-- 「sources 里包含 src_id」来筛组合的，死 id 一旦摘掉就一个都匹配不到，
+	-- 物化节点会一直是旧的 —— 看着改了，其实没修。
+	--
+	-- 摘掉死 id 而不是留着：留着的话列表页「来源」列会显示 s00000003 这种裸 id
+	-- （模板用 name_by_id[sid] or sid 兜底），而且当组合的来源被删光时，
+	-- combo_refresh 看到 #srcs > 0，不会给出「请选择至少一个订阅」，
+	-- 组合会静默变成 0 节点。与列表同一次写盘落盘，不留下中间状态。
+	local affected = {}
+	for cid, c in pairs(items) do
+		local srcs = type(c.sources) == "table" and c.sources or nil
+		if srcs then
+			local kept, hit = {}, false
+			for _, s in ipairs(srcs) do
+				if s == id then hit = true else kept[#kept + 1] = s end
+			end
+			if hit then
+				c.sources = kept
+				affected[#affected + 1] = cid
+			end
+		end
+	end
+	-- 写盘失败必须中止。`items[id] = nil` 只改了内存里的表，磁盘上这条订阅还在：
+	-- 继续往下走会删掉它的节点文件，于是订阅「列表里还在、点进去却空了」，
+	-- 而调用方拿到 true，以为删成功了。
+	-- 组合的 sources 剪除同理：没落盘的改动不重算（重算只会从磁盘读回旧状态）。
+	local ok, serr = save(seq, items)
+	if not ok then return false, serr or "写入失败" end
 	os.remove(M.nodes_file(id))
+	-- 组合的物化节点在 nodes/<combo>.json，只有 combo_refresh 会重写它。
+	-- 不在这里重算的话，组合的下载链接会继续吐已删订阅的节点，一直等到别的源
+	-- 更新（M.sync 里那次 refresh_combos）才被动纠正。
+	--
+	-- 位置与 M.sync 一致：都在写入口内部调用，由 save_meta 进入临界区
+	-- （with_list_lock 可重入，见文件末尾的说明）。
+	for _, cid in ipairs(affected) do
+		M.combo_refresh(cid)
+	end
 	return true
 end
 
@@ -347,7 +482,19 @@ function M.sync(id)
 	-- 日志不记录代理凭据（§39）
 	if proxy ~= "" then log("Using proxy " .. http.redact_proxy(proxy)) end
 
-	local content, headers, err = http.download(meta.url, { max_size = M.MAX_SIZE, timeout = M.TIMEOUT, proxy = proxy })
+	-- 订阅客户端类型（User-Agent）：部分机场按 UA 决定返回真实节点还是占位内容。
+	-- 与代理一样，**非法值必须明确失败**：静默忽略会让用户以为 UA 已生效，
+	-- 而实际拿到的是占位节点（§12 禁止 silent fallback）。
+	local ua, uaerr = http.validate_user_agent(meta.user_agent)
+	if not ua then
+		log("User-Agent invalid: " .. tostring(uaerr))
+		M.save_meta(id, { error = "User-Agent 无效: " .. tostring(uaerr), last_update = os.time() })
+		return nil, "User-Agent 无效: " .. tostring(uaerr)
+	end
+	if ua ~= "" then log("Using User-Agent " .. ua) end
+
+	local content, headers, err = http.download(meta.url, { max_size = M.MAX_SIZE, timeout = M.TIMEOUT,
+		proxy = proxy, user_agent = ua })
 	if not content then
 		-- 下载工具的报错可能回显含凭据的 URL，写日志与入库前先抹掉（§39）
 		local safe_err = http.scrub_credentials(err or "下载失败")
@@ -415,6 +562,9 @@ local FORM_KEYS = {
 	headerType = true, path = true, host = true, sni = true, tls = true,
 	["skip-cert-verify"] = true, skip_cert_verify = true, security = true, flow = true,
 	["obfs-password"] = true, obfs_password = true,
+	-- SIP003 插件串（shadowsocks）。必须在表里：merge_form_node 只清 FORM_KEYS 里
+	-- 的键，缺了这一项，用户在表单里清空插件输入框也删不掉旧值。
+	plugin = true,
 	["private-key"] = true, private_key = true, ["peer-public-key"] = true, peer_public_key = true,
 	["public-key"] = true, public_key = true, ["pre-shared-key"] = true, preshared_key = true, 
 	ip = true, ipv6 = true, ["allowed-ips"] = true, allowed_ips = true,
@@ -568,7 +718,7 @@ function M.add_combo(name, sources, opts)
 		name = name, url = "", enabled = true, combo = true, sources = srcs,
 		node_count = 0, last_update = nil, error = "", format = "",
 		token = util.rnd_hex(16),
-		proxy_enable = "0", proxy = "",
+		proxy_enable = "0", proxy = "", user_agent = "",
 		cron_enable = false, cron_time = "",
 		rules_enable = (opts.rules_enable == true or opts.rules_enable == "1") and true or false,
 		proto_filter = util.trim(opts.proto_filter or ""),
@@ -638,9 +788,16 @@ end
 -- 校验 cron 表达式：5 个字段，每个为数字或 *，防 cron 文件命令注入
 function M.cron_time_valid(ct)
 	if type(ct) ~= "string" then return false end
+	-- 控制字符一律拒绝。原先用 `%S+` 取词，它把换行也当分隔符：`"1\n 3 * * *"`
+	-- 同样切成 5 个合法词元并通过校验，然后被 write_cron 原样写进
+	-- /etc/cron.d/substore —— 那一行会断成两行，前一行 `1` 不是合法的
+	-- crontab 条目，cron 每次 reload 都报语法错。分隔符必须是单个空格：
+	-- 下面改用整串匹配，制表符 / 多空格 / 换行都落不进来。
+	if ct:find("%c") then return false end
 	local fields = {}
 	for f in ct:gmatch("%S+") do fields[#fields + 1] = f end
 	if #fields ~= 5 then return false end
+	if not ct:match("^%S+ %S+ %S+ %S+ %S+$") then return false end
 	for _, f in ipairs(fields) do
 		if f ~= "*" and not f:match("^%d+$") then return false end
 	end
@@ -662,6 +819,33 @@ function M.write_cron()
 		return true
 	end
 	return util.atomic_write(M.CRON_FILE, table.concat(lines, "\n") .. "\n")
+end
+
+-- ---------- 写入口的列表锁 ----------
+--
+-- 逐个函数改名再包一层，而不是在每个函数体里手写 acquire/release：
+-- 后者一旦有人在中途 return（`if lerr then return nil, lerr end` 这种）就会漏掉
+-- 释放，而漏释放的症状是「过一会儿自己好了」（陈旧回收），最难查。
+-- 包在最外层则无论函数从哪条路径返回都会释放。
+--
+-- 只包**写**入口。M.list / M.get / M.read_nodes / M.merge 是只读的（merge 只
+-- 读各订阅的节点、过滤排序后返回数组，从不写列表），加锁会让每次页面刷新都去
+-- 抢锁，白白增加失败面 —— 而且失败时它们会返回 nil 而不是原本的数组/表，
+-- 把「拿不到锁」变成调用方眼里的「没有数据」，比不加锁更糟。
+-- M.sync / M.combo_refresh / M.refresh_combos 自己不写列表（写列表的是它们内部
+-- 调用的 M.save_meta），因此也不在此列 —— 它们经由被包住的 save_meta 进入临界区。
+for _, name in ipairs({
+	"add", "add_local", "ensure_token", "save_meta",
+	"remove", "add_combo", "save_combo",
+}) do
+	local inner = M[name]
+	M[name] = function(...)
+		-- Lua 5.1 不允许在内层函数里直接用外层函数的 `...`，先收进表再展开。
+		-- 这些入口的参数都是位置参数且非 nil（可选参数一律排在最后），
+		-- 不存在中间空洞把 unpack 截断的情况。
+		local args = { ... }
+		return with_list_lock(function() return inner(unpack(args)) end)
+	end
 end
 
 return M

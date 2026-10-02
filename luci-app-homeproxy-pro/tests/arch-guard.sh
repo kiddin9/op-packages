@@ -2133,6 +2133,213 @@ else
 fi
 
 echo
+echo "== guard 46: IPv6 is only handled when mainland IPv6 is classifiable =="
+
+# issue #4 / the china_ip6 defect share one root cause: every IPv6 decision
+# was keyed off ipv6_support, a flag that says what the user *wants*, not
+# whether the two halves of the split can agree on what "mainland" means.
+# geoip-cn.srs and china_ip4.json are IPv4-only, so with IPv6 on a mainland
+# destination reached over IPv6 matched no rule on either side and fell
+# through to the default - the proxy.  The firewall half was worse than
+# useless in the empty-list case: nft accepts `elements = { }`, so the
+# mainland v6 return matched nothing while the file looked fine.
+#
+# The invariants, all of which had to be introduced together:
+#   a) the template derives v6_handled from the list, not from the flag
+#   b) the v6 route rule exists, so the route half can classify
+#   c) the DNS cn-fallback match names the same v6 rule-set
+#   d) both halves ask the *same* question, so neither can name a tag the
+#      other never declared
+#   e) the degraded state is announced, not silent
+
+# (a) The template must not branch on the raw flag anywhere. A single
+# remaining `ipv6_support === '1'` gate is a v6 path that ignores whether the
+# list can classify anything - the exact shape of the original defect.
+#
+# Scoped to template *tags* on purpose: the header legitimately tests the flag
+# twice in plain code (defining v6_handled, and building the degraded-warning
+# string), and a substring search over the whole file flags those too. What
+# must not exist is a `{% ... %}` that branches on the raw flag.
+leftover_v6_gates="$(grep -nE "\{%[^%]*ipv6_support[^%]*%\}" "$SCRIPTS/firewall_post.ut" || true)"
+if [ -n "$leftover_v6_gates" ]; then
+	fail "firewall_post.ut still gates an IPv6 path on the raw ipv6_support flag:"
+	printf '%s\n' "$leftover_v6_gates" | sed 's/^/      /'
+else
+	pass "no template tag in firewall_post.ut branches on the raw ipv6_support flag"
+fi
+
+# v6_handled must be the conjunction, not a rename of the flag.
+if grep -q "v6_handled = (ipv6_support === '1') && cn_ipv6_ready" "$SCRIPTS/firewall_post.ut"; then
+	pass "v6_handled requires both the flag and a usable china_ip6 list"
+else
+	fail "v6_handled is no longer (ipv6_support === '1') && cn_ipv6_ready - a v6 path"
+	fail "can be re-enabled without the list that makes it correct"
+fi
+
+# (b) The route half. Its absence is the silent proxy hop.
+if grep -q "rule_set: 'china-ip6'" "$SCRIPTS/generator/route.uc"; then
+	pass "the route block carries a china-ip6 rule"
+else
+	fail "no china-ip6 route rule - a mainland IPv6 destination matches nothing and"
+	fail "falls through to final, which is the proxy in bypass_mainland_china"
+fi
+
+# (c) The DNS half, or the answer for a mainland AAAA keeps coming from the
+# proxy resolver even though the route side would now send it direct.
+cn_fb_block="$(sed -n '/cn_fallback/,/^		}/p' "$SCRIPTS/generator/dns.uc" || true)"
+if printf '%s' "$cn_fb_block" | grep -q "china-ip6"; then
+	pass "the cn-fallback response match covers china-ip6 as well as geoip-cn"
+else
+	fail "cn-fallback still matches geoip-cn only; the DNS half of the IPv6 split"
+	fail "is not in agreement with the route half"
+fi
+
+# (d) One question, asked once, by the one layer allowed to ask it.  The
+# route rule and the DNS match must reference the same rule-set: if one of
+# them decides the file is there and the other decides it is not, one names
+# a tag the other never declared and sing-box rejects the whole config.  The
+# stat therefore belongs in the CLI's env (guard 27 forbids fs under
+# generator/) and reaches both halves as one context field.
+ctx_flag="$(grep -c 'china_ip6_ready' "$SCRIPTS/generator/context.uc")"
+route_flag="$(grep -c 'ctx.china_ip6_ready' "$SCRIPTS/generator/route.uc")"
+dns_flag="$(grep -c 'ctx.china_ip6_ready' "$SCRIPTS/generator/dns.uc")"
+env_flag="$(grep -c 'china_ip6_ready' "$SCRIPTS/generate_client.uc")"
+if [ "$ctx_flag" -ge 1 ] && [ "$route_flag" -ge 1 ] && [ "$dns_flag" -ge 1 ] && [ "$env_flag" -ge 1 ]; then
+	pass "one context field (china_ip6_ready) decides it for both halves, and the"
+	pass "  CLI that is allowed to stat the file is the one that sets it"
+else
+	fail "the route half ($route_flag), the DNS half ($dns_flag), the context ($ctx_flag)"
+	fail "and the CLI env ($env_flag) do not all read one china_ip6_ready flag - a"
+	fail "disagreement makes one of them name a rule-set the other never declared"
+fi
+
+# The default must be pessimistic. An env that forgot the field (the server
+# path, a future caller) must not turn "no file" into "assume there is one".
+if grep -q "china_ip6_ready: (env?.china_ip6_ready === true)" "$SCRIPTS/generator/context.uc"; then
+	pass "china_ip6_ready defaults to false when the caller did not resolve it"
+else
+	fail "china_ip6_ready is not defaulting to false - a caller that omits it would"
+	fail "emit a rule naming a rule-set file that may not exist"
+fi
+
+# (e) The degraded state has to be visible without tcpdump: a log line on
+# every start, and a rule comment that survives into `nft list ruleset`.
+if grep -q "WARNING: IPv6 support is ON but" "$RUNTIME/service.sh"; then
+	pass "service.sh logs the unusable-china_ip6 state on every start"
+else
+	fail "service.sh says nothing when IPv6 is on but china_ip6.txt is unusable -"
+	fail "the user is left with an unexplained, unproxied IPv6 path"
+fi
+
+if grep -q 'comment "!homeproxy-pro: WARNING china_ip6' "$SCRIPTS/firewall_post.ut"; then
+	pass "the degraded state is also carried as an nft rule comment, so"
+	pass "  nft list ruleset shows it without reading the log"
+else
+	fail "the degraded state is not announced in the ruleset itself"
+fi
+
+# (f) The degraded warning stays a single interpolated string.
+#
+# An earlier version of this guard banned `{% else %}` outright, on the
+# strength of a render failure traced to "utpl cannot parse an else branch
+# nested in the tproxy/tun chain blocks".  That diagnosis was wrong and the
+# ban with it: the failure only ever reproduced in stubbed copies of the
+# template, never in the template itself - the else-form renders fine on the
+# target, and else at top level, nested one level and nested two levels all
+# render fine in isolation.  The interpolation is kept because it is one
+# string instead of three copies of a comment, not because else is banned.
+#
+# What is worth pinning is the thing that was actually verified: the warning
+# has to be present on the jump rules, in a form that survives into
+# `nft list ruleset`.
+if grep -q "const v6_warn_comment" "$SCRIPTS/firewall_post.ut" &&
+   [ "$(grep -c "{{ v6_warn_comment }}" "$SCRIPTS/firewall_post.ut")" -eq 3 ]; then
+	pass "the degraded warning is one string interpolated into all three jump rules"
+else
+	fail "v6_warn_comment is gone or no longer used by all three jump rules - the"
+	fail "degraded state has no in-ruleset marker again"
+fi
+
+echo
+echo "== guard 47: fs.access() is only ever called with one argument =="
+
+# Found on the target, not by reading: this ucode build's fs.access() answers
+# in its one-argument form only.  access(path) returns true for an existing
+# path and null for a missing one; access(path, mode) returns null for both.
+# A two-argument call therefore reports every file as missing, and the caller
+# cannot tell that from "the file is not there" - the exact shape of a
+# silently disabled feature.  The IPv6 split shipped broken this way once:
+# generate_client.uc asked access(path, 0) === 0, which is false even for a
+# perfectly good china_ip6.json, so route/DNS stayed silent about mainland
+# IPv6 while every log line said everything was fine.
+#
+# The one-argument call sites are correct and are not what this guards.
+# Comment lines are filtered out the way guard 27 does it: this file, and the
+# source it guards, both have to be able to *name* the bad form in prose.
+bad_access="$(grep -rnE '\baccess\([^)]*,' --include='*.uc' "$SCRIPTS" 2>/dev/null |
+	grep -vE ':[0-9]+:[[:space:]]*(\*|/\*|//|#)' || true)"
+if [ -z "$bad_access" ]; then
+	pass "no fs.access() call passes a second argument (the form that always says 'missing')"
+else
+	fail "a two-argument fs.access() call reads as 'path does not exist' for every path:"
+	printf '%s\n' "$bad_access" | sed 's/^/      /'
+	fail "  use the one-argument form, or lstat() (which the stderr-size check already uses)"
+fi
+
+# And the reason this is worth a guard rather than a comment: the failure is
+# invisible. Both spellings compile, both run, and the wrong one produces a
+# correct-looking config that is quietly missing a whole feature.
+if grep -q "lstat(HP_DIR + '/resources/china_ip6.json')" "$SCRIPTS/generate_client.uc"; then
+	pass "the china-ip6 presence check goes through lstat(), which cannot be mis-called"
+else
+	fail "the china-ip6 presence check no longer uses lstat()"
+fi
+
+echo
+echo "== guard 48: the connection check probes the configured address family =="
+
+# The button used to run `wget --spider` with no family, so its answer was
+# about busybox wget's retry order rather than about the proxy. A target with
+# seven AAAA records (Google) spends -T3 on each, so it blew the 3100 ms
+# system() budget and the button said "failed" while the same request over
+# IPv4 worked; Baidu passed only because its IPv6 goes out direct. Pin the two
+# halves: the backend has to force the family, and the verdict has to say which
+# one, or "passed" stays unfalsifiable.
+if grep -qF "wget -\${(family === 'IPv6') ? '6' : '4'} --spider" "$RPC" &&
+   grep -qF "uci.get('homeproxy-pro', 'config', 'ipv6_support')" "$RPC"; then
+	pass "connection_check forces the address family from homeproxy-pro.config.ipv6_support"
+else
+	fail "connection_check does not force an address family - the result is whatever"
+	fail "busybox wget happens to try first, which is how a working proxy reads as failed"
+fi
+
+if grep -qF "family: family" "$RPC"; then
+	pass "the probed family is returned so the view can report it"
+else
+	fail "the response does not carry the family it probed, so the label cannot be"
+	fail "trusted - and the only way to get it in the view is to re-read UCI there"
+fi
+
+# The view must take the family from that response. An earlier revision called
+# form.Map.formvalue(), which does not exist in this LuCI: the status page
+# threw "m.formvalue is not a function" on a real router, and it only reached
+# CI because the stubs had been given the same invented method. The stubs must
+# keep modelling what LuCI actually provides, so a call the device does not
+# have fails here instead of on someone's router.
+if grep -qF "let fam = ret.family ?" "$VIEWS/view/homeproxy-pro/status.js"; then
+	pass "the view reports the family the backend returned"
+else
+	fail "the view no longer shows which family was probed"
+fi
+
+if grep -rqE "\bm\.formvalue\(" "$VIEWS/view/homeproxy-pro/"; then
+	fail "a view calls form.Map.formvalue(), which this LuCI does not provide -"
+	fail "  (formvalue lives on a section; the map has no such method)"
+else
+	pass "no view calls the non-existent form.Map.formvalue()"
+fi
+
+echo
 printf '%s checks, %s failures\n' "$checks" "$([ "$FAILED" = 0 ] && echo 0 || echo 'nonzero')"
 if [ "$FAILED" != 0 ]; then
 	echo "ARCHITECTURE GUARD FAILED"

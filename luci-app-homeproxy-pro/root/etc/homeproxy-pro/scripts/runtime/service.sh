@@ -166,7 +166,7 @@ hp_prepare_runtime_files() {
 	local client_enabled="$4"
 	local server_enabled="$5"
 
-	# The route rule that keeps mainland destinations direct matches a local
+	# The route rules that keep mainland destinations direct match a local
 	# rule-set generated from china_ip4.txt, the same list the firewall
 	# renders its nft set from, so both sides decide from one source.  It is
 	# regenerated here as well as by the resource updater: an install that
@@ -182,6 +182,40 @@ hp_prepare_runtime_files() {
 		else
 			log "Warning: could not generate ${hp_dir}/resources/china_ip4.json; the route side keeps the previous list."
 		fi
+	fi
+
+	# IPv6 half of the same arrangement, and the only place the "IPv6 is on
+	# but cannot be classified" condition is reported in a place a user reads
+	# without tcpdump.  geoip-cn.srs and china_ip4.json are both IPv4-only, so
+	# without a v6 rule-set a mainland destination reached over IPv6 matches
+	# no route rule at all and falls through to `final` - i.e. to the proxy.
+	# The firewall would normally have returned it first, but that set is
+	# filled from the same china_ip6.txt, so a list that is missing or has no
+	# usable prefix leaves neither side able to classify it.  Say so plainly
+	# instead: the generated ruleset also carries the same text as a rule
+	# comment, so `nft list ruleset` shows the degraded state too.
+	local ipv6_support cn_ipv6
+	config_get_bool ipv6_support "config" "ipv6_support" "0"
+	cn_ipv6=0
+	if [ -f "$hp_dir/resources/china_ip6.txt" ]; then
+		cn_ipv6="$(grep -cE '^[0-9a-fA-F:]+:[0-9a-fA-F:]*(/[0-9]{1,3})?[[:space:]]*$' \
+			"$hp_dir/resources/china_ip6.txt" 2>"/dev/null")"
+		[ -n "$cn_ipv6" ] || cn_ipv6=0
+		if [ "$cn_ipv6" -gt 0 ] && ucode -S "$hp_dir/scripts/runtime/china_ip_ruleset.uc" \
+			"$hp_dir/resources/china_ip6.txt" "$hp_dir/resources/china_ip6.json" >>"$LOG_PATH" 2>&1; then
+			chown sing-box:sing-box "$hp_dir/resources/china_ip6.json" 2>"/dev/null" \
+				|| log "Warning: failed to hand ${hp_dir}/resources/china_ip6.json to sing-box."
+		else
+			# Only reached when the source is unusable, which china_ip_ruleset.uc
+			# reports as "no usable CIDR entries".  Keep the previous file: an
+			# empty one would make the route-side set match nothing, which is the
+			# same silent inversion this whole branch exists to prevent.
+			log "Warning: could not generate ${hp_dir}/resources/china_ip6.json; the route side keeps the previous list."
+		fi
+	fi
+	if [ "$ipv6_support" -eq 1 ] && [ "$cn_ipv6" -eq 0 ]; then
+		log "WARNING: IPv6 support is ON but ${hp_dir}/resources/china_ip6.txt has 0 usable prefixes."
+		log "WARNING: mainland IPv6 cannot be told apart from foreign IPv6, so IPv6 is passed through UNPROXIED (both sides of the split degrade). Run: ${hp_dir}/scripts/update_resources.sh china_ip6"
 	fi
 
 	# cache_file is enabled for bypass_mainland_china and custom alike

@@ -85,6 +85,13 @@ msgstr "暂无订阅"
 msgid "Delete this subscription?"
 msgstr "确定删除该订阅？"
 
+# 订阅页：勾选批量删除
+msgid "Delete selected subscriptions?"
+msgstr "确定删除选中的订阅？"
+
+msgid "Please select subscriptions first"
+msgstr "请先勾选订阅"
+
 # 订阅编辑表单
 msgid "Subscription URL"
 msgstr "订阅 URL"
@@ -180,8 +187,8 @@ msgstr "本地"
 msgid "Add node"
 msgstr "添加节点"
 
-msgid "Paste YAML/URI/JSON node list here. Mixed protocols supported."
-msgstr "在此粘贴 YAML/URI/JSON 节点列表，支持混合协议。"
+msgid "Paste a node list here — one format at a time (URI / Base64 / YAML / JSON / WireGuard .conf); protocols may be mixed within that format."
+msgstr "在此粘贴节点列表 —— 一次只支持一种格式（URI / Base64 / YAML / JSON / WireGuard .conf）；同一种格式内可混用协议。"
 
 msgid "Add nodes via form below. Each node will be saved as JSON and parsed on save."
 msgstr "在下方表单中添加节点，保存时将序列化为 JSON 并解析。"
@@ -296,6 +303,10 @@ msgstr "操作失败"
 # 订阅页：导出格式下拉的说明
 msgid "Pick a format to generate the subscription link; you can switch formats at any time"
 msgstr "选择格式后生成订阅链接，格式可随时切换"
+
+# 订阅页：未解析出节点时格式下拉被禁用，说明原因
+msgid "Update and parse nodes before choosing a format"
+msgstr "更新并解析出节点后才能选择格式"
 
 # 节点表头 / 节点编辑表单里的字段标签
 msgid "Type"

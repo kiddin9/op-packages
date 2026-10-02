@@ -1,0 +1,109 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Regression fixture for the custom routing mode WITHOUT a default outbound.
+#
+# This is the shape the LuCI UI produces by default in custom mode: every
+# routing rule names its own outbound, so `default_outbound` is left at 'nil'.
+# The generator used to select its config branch by asking whether
+# default_outbound was non-empty, so this configuration fell through the DNS,
+# outbound and route branches alike and produced a config containing none of
+# the user's DNS servers, nodes, rules or rule-sets. With the two built-in
+# DNS servers (default-dns / system-dns) still emitted, sing-box 1.14 then
+# refused to start at all:
+#
+#   ERROR missing `route.default_domain_resolver` or `domain_resolver` in
+#   dial fields ... FATAL ... sing-box 1.14.0
+#
+# and generate_client.uc deleted the config instead of moving it into place,
+# so the user got no sing-box.json and no log.
+
+config homeproxy 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '0'
+	option log_level 'error'
+
+# No default outbound: the point of this fixture. Each routing_rule below
+# picks its own.
+config homeproxy 'routing'
+	option default_outbound 'nil'
+	option default_outbound_dns 'default-dns'
+	option sniff_override '1'
+
+config homeproxy 'dns'
+	option default_server 'default-dns'
+
+config homeproxy 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option tproxy_port '5332'
+	option self_mark '100'
+	option ntp_server 'nil'
+
+# A node addressed by domain, so the generated outbound carries dial fields
+# that sing-box 1.14 requires a resolver for.
+config node 'n_hk'
+	option label 'hk'
+	option type 'trojan'
+	option address 'hk.example.com'
+	option port '443'
+	option password 'secret'
+	option tls '1'
+	option tls_sni 'hk.example.com'
+
+config node 'n_sg'
+	option label 'sg'
+	option type 'vless'
+	option address 'sg.example.com'
+	option port '443'
+	option uuid '3af88561-9c69-4b19-8f7e-f08d580bc339'
+	option tls '1'
+	option tls_sni 'sg.example.com'
+
+# urltest group: exercises the urltest_nodes back-fill loop as well
+config routing_node 'Routing_Node_Proxy'
+	option enabled '1'
+	option label 'Routing_Node_Proxy'
+	option node 'urltest'
+	list urltest_nodes 'n_hk'
+	list urltest_nodes 'n_sg'
+	option urltest_url 'https://www.gstatic.com/generate_204'
+	option urltest_interval '10m'
+
+# A user-defined DNS server, resolved through the built-in system resolver.
+config dns_server 'DNS_Server_Proxy'
+	option enabled '1'
+	option label 'DNS_Server_Proxy'
+	option type 'tls'
+	option server '8.8.8.8'
+	option address_resolver 'system-dns'
+	option address_strategy 'ipv4_only'
+	option outbound 'Routing_Node_Proxy'
+
+config dns_rule 'DNS_Rule_Proxy'
+	option enabled '1'
+	option label 'DNS_Rule_Proxy'
+	option mode 'default'
+	list domain_suffix 'dns-rule-marker.example.com'
+	list rule_set 'rs_cn'
+	option action 'route'
+	option server 'DNS_Server_Proxy'
+
+config ruleset 'rs_cn'
+	option enabled '1'
+	option label 'rs-cn'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.com/geoip-cn.srs'
+	option update_interval '24h'
+	option outbound 'Routing_Node_Proxy'
+
+config routing_rule 'Routing_Rule_Proxy'
+	option enabled '1'
+	option label 'Routing_Rule_Proxy'
+	option mode 'default'
+	list domain_suffix 'routing-rule-marker.example.com'
+	list rule_set 'rs_cn'
+	option action 'route'
+	option outbound 'Routing_Node_Proxy'

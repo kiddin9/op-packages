@@ -3,7 +3,6 @@
 
 local util = require("substore.util")
 local node = require("substore.node")
-local parser_yaml = require("substore.parser_yaml")
 local parser_clash_yaml = require("substore.parser_clash_yaml")
 local parser_json_config = require("substore.parser_json_config")
 local parser_surge = require("substore.parser_surge")
@@ -95,6 +94,98 @@ function M.detect(content)
 	end
 	if parser_surge.is_config(content) then return "surge" end
 	return "unknown"
+end
+
+-- 「混合格式」提示里各格式的显示名
+local FORMAT_LABELS = {
+	uri = "URI 链接",
+	json = "JSON",
+	yaml = "Clash YAML",
+	["wireguard-conf"] = "WireGuard .conf",
+	surge = "Surge/Loon 配置",
+}
+
+-- 行首锚定，数出「整行就是一条节点链接」的行数。
+--
+-- 不能用 detect() 里那条宽松的 `content:find("://")`：Clash YAML 的
+-- `url: https://…`、sing-box JSON 的 `"url": "https://…"` 都含 "://"，
+-- 拿它当 URI 判据的话，一份**完全正常**、只是带了个订阅地址的配置
+-- 会被判成「YAML + URI 混合」而拒绝导入 —— 误判比漏报更糟。
+-- 锚定行首之后，只有「一行就是一条链接」才算数，那正是 URI 订阅的形态。
+local function count_uri_lines(content)
+	local n = 0
+	for line in content:gmatch("[^\r\n]+") do
+		local scheme = line:match("^%s*(%a[%w]*):/")
+		if scheme and SUPPORTED[scheme:lower()] then n = n + 1 end
+	end
+	return n
+end
+
+-- INI 段头：`[Interface]` / `[Peer]` / `[Proxy]` / `[server_local]`
+-- 它们同样以 "[" 开头，但**不是** JSON 数组。
+-- detect() 靠判断次序避开了这一点（surge 与 .conf 都排在 "[" 之前，先命中就返回），
+-- 而 detect_all 是「全部收集」，次序挡不住，必须显式排除 ——
+-- 否则一份完全正常的 Surge 配置会被判成「Surge + JSON 混合」而拒绝导入。
+local function is_ini_section_head(line)
+	return line:match("^%s*%[%a[%w_%-%s]*%]%s*$") ~= nil
+end
+
+-- 行首的 JSON 对象起始：`{` 单独一行，或 `{"key"…`。
+-- 对象的第一个键必然是带引号的字符串，因此 YAML 的流式映射 `{path: /x}`
+-- （未加引号的键）不会被误判成 JSON。
+local function has_json_object_line(content)
+	for line in content:gmatch("[^\r\n]+") do
+		if line:match("^%s*{%s*$") or line:match('^%s*{%s*"') then return true end
+	end
+	return false
+end
+
+-- 行首的 JSON 数组起始，排除 INI 段头
+local function has_json_array_line(content)
+	for line in content:gmatch("[^\r\n]+") do
+		if line:match("^%s*%[") and not is_ini_section_head(line) then return true end
+	end
+	return false
+end
+
+-- 内容**同时**命中的全部格式，按 detect() 的优先级排列。
+--
+-- 只服务于「混合格式」提示（见 M.parse_local 的文本模式）：detect() 只返回
+-- 优先级最高的那一个，其余格式的内容会被**静默丢弃** —— 粘进「URI + WG conf」，
+-- 只导入到 WG 节点；粘进「URI + JSON」，只导入到 URI 节点。而 parse 返回的是
+-- 合法表，同步报成功，用户以为整份都导进来了。
+--
+-- 判据必须从严：这个返回值会被用来**拒绝导入**，误判会把一份正常配置挡在门外。
+-- 因此一律用「整份文档级标记 + 行首锚定」，宁可漏报，不可误报。
+function M.detect_all(content)
+	content = util.trim(content or "")
+	content = content:gsub("^\239\187\191", "")
+	local out = {}
+	if content == "" then return out end
+	local lower = content:lower()
+
+	-- .conf 的双条件与 detect() 一致
+	local wg_conf = lower:match("%[interface%]") and lower:match("privatekey%s*=")
+	if wg_conf then out[#out + 1] = "wireguard-conf" end
+
+	if content:match("^[%s]*proxies:") or content:match("^[%s]*outbounds:") then
+		out[#out + 1] = "yaml"
+	else
+		for line in content:gmatch("[^\r\n]+") do
+			if line:match("^%s*proxies:%s*$") or line:match("^%s*outbounds:%s*$") then
+				out[#out + 1] = "yaml"
+				break
+			end
+		end
+	end
+	if parser_surge.is_config(content) then out[#out + 1] = "surge" end
+	if count_uri_lines(content) > 0 then out[#out + 1] = "uri" end
+	-- JSON 排在最后：它的判据最宽（一份 JSON 配置里也可能出现 URI 行），
+	-- 放前面不影响结果，但排最后读起来与 detect() 的优先级一致。
+	if (has_json_object_line(content) or has_json_array_line(content)) and not wg_conf then
+		out[#out + 1] = "json"
+	end
+	return out
 end
 
 -- ---------- 协议解析 ----------
@@ -1087,6 +1178,42 @@ local function parse_yaml_content(content)
 					end
 				end
 			end
+			-- sing-box 的 transport 同样是嵌套 map：{type, path, headers.Host,
+			-- service_name, host}。字段名对照 parser_json_config.parse_singbox_json
+			-- （本项目读取 sing-box 出站的权威实现），不另立一套。
+			-- 不展开的话 net 只会取到 n.net / n.network —— sing-box 出站里这两个
+			-- 字段都不存在，ws / grpc 节点会全部按 tcp 导入，客户端拿明文 tcp 去连
+			-- 只开了 ws 的端口，握手必然失败且不报错。
+			local transport_map = type(n.transport) == "table" and n.transport or nil
+			local t_net, t_path, t_host
+			if transport_map then
+				local tt = transport_map.type
+				if tt == "ws" then
+					t_net = "ws"
+					t_path = transport_map.path
+					if type(transport_map.headers) == "table" then
+						t_host = transport_map.headers.Host or transport_map.headers.host
+					end
+				elseif tt == "grpc" then
+					t_net = "grpc"
+					t_path = transport_map.service_name
+				elseif tt == "http" then
+					t_net = "http"
+					t_path = transport_map.path
+					-- http 的 host 是数组，取首个；httpupgrade 的是单个字符串
+					if type(transport_map.host) == "table" then
+						t_host = transport_map.host[1]
+					elseif type(transport_map.host) == "string" and transport_map.host ~= "" then
+						t_host = transport_map.host
+					end
+				elseif tt == "httpupgrade" then
+					t_net = "http"
+					t_path = transport_map.path
+					if type(transport_map.host) == "string" and transport_map.host ~= "" then
+						t_host = transport_map.host
+					end
+				end
+			end
 			-- 注意不能用 `(cond) and nil or x` 写法：Lua 的 and/or 在 cond 为真时
 			-- 结果是 nil，会被后面的 or 继续兜底，等于没生效
 			local tls_security = n.security
@@ -1127,7 +1254,12 @@ local function parse_yaml_content(content)
 				-- 行解析器读出来的是字符串，而 "false" / "0" 在 Lua 里也是真值，
 				-- 直接透传会让 skip-cert-verify=false 变成「跳过证书校验」，故显式判假。
 				["skip-cert-verify"] = skip_cert_verify,
-				net = n.net or n.network,
+				-- transport 展开的传输层优先：它才是 sing-box 的权威写法
+				net = t_net or n.net or n.network,
+				-- 简易解析器此前**完全没有**把 path / host 带进 node_data，
+				-- 于是走这条回退路径的 ws / grpc 节点连 path 与 Host 都丢了
+				path = t_path or n.path,
+				host = t_host or n.host,
 				alterId = tonumber(n.alterId),
 			}
 			result[#result + 1] = node.normalize(node_data)
@@ -1322,6 +1454,23 @@ function M.parse_local_link(url)
 end
 
 -- 解析订阅内容，返回 { nodes = {...}, format = "..." } 或 nil, err
+-- 统一兜底：丢弃残缺节点（缺 server，或端口为空 / 不在 1–65535）。
+--
+-- 这类节点会被写成客户端加载不了的配置，而 mihomo / sing-box / Xray 都是
+-- 「一个坏节点废掉整份文件」——用户看到的是整个订阅不可用，而不是少一个节点。
+-- URI 路径一直在各解析器内部做这个校验（valid_hostport），Clash YAML /
+-- sing-box JSON / Surge 路径漏了：一份 `port: 1e999` 的 YAML 能产出 port=inf
+-- 的节点，落盘读回来又是 nil。各解析器只管把字段填对，校验统一放在这里。
+local function finish(nodes, format)
+	local out = {}
+	for _, n in ipairs(nodes or {}) do
+		if type(n) == "table" and valid_hostport(n.server, n.port) then
+			out[#out + 1] = n
+		end
+	end
+	return { nodes = out, format = format }
+end
+
 function M.parse(content)
 	if not content or content == "" then return { nodes = {}, format = "empty" } end
 	local format = M.detect(content)
@@ -1332,7 +1481,7 @@ function M.parse(content)
 		-- 不是格式不认识。与空串保持同一返回形态（0 节点、格式 empty）。
 		return { nodes = {}, format = "empty" }
 	elseif format == "uri" then
-		return { nodes = parse_lines(split_lines(content)), format = "uri" }
+		return finish(parse_lines(split_lines(content)), "uri")
 	elseif format == "base64" then
 		-- 兼容标准 base64 与 base64url（- _ 无 padding）：base64_url_decode 两者皆可
 		local decoded = util.base64_url_decode(content)
@@ -1348,21 +1497,21 @@ function M.parse(content)
 			if res then res.format = "base64" end
 			return res, err
 		end
-		return { nodes = parse_lines(split_lines(decoded)), format = "base64" }
+		return finish(parse_lines(split_lines(decoded)), "base64")
 	elseif format == "json" then
 		local nodes, err = parse_json_content(content)
 		if not nodes then return nil, err end
-		return { nodes = nodes, format = "json" }
+		return finish(nodes, "json")
 	elseif format == "yaml" then
 		local nodes = M.parse_yaml(content)
-		return { nodes = nodes, format = "yaml" }
+		return finish(nodes, "yaml")
 	elseif format == "surge" then
 		local nodes = parser_surge.parse(content)
-		return { nodes = nodes, format = "surge" }
+		return finish(nodes, "surge")
 	elseif format == "wireguard-conf" then
 		local nodes, err = parse_wireguard_conf(content)
 		if not nodes then return nil, err end
-		return { nodes = nodes, format = "wireguard-conf" }
+		return finish(nodes, "wireguard-conf")
 	end
 	return nil, "无法识别的订阅格式"
 end
@@ -1454,7 +1603,20 @@ function M.parse_local(content, mode)
 		end
 		return { nodes = nodes, format = "local-form" }
 	end
-	-- 文本模式：使用通用解析
+	-- 文本模式：使用通用解析。
+	--
+	-- 但先挡住「一份文本里混了多种格式」：detect() 只认优先级最高的那一种，
+	-- 其余部分被静默丢弃，而 parse 返回的是合法表 —— 同步报成功，
+	-- 用户以为整份都导进来了（实测：「URI + WG conf」只剩 WG 节点，
+	-- 「URI + JSON」只剩 URI 节点，err 均为 nil）。
+	-- 一次只导入一种格式，混用就明确报错，而不是默默少一半节点。
+	local formats = M.detect_all(content)
+	if #formats > 1 then
+		local names = {}
+		for i, f in ipairs(formats) do names[i] = FORMAT_LABELS[f] or f end
+		return nil, "同一份文本里混用了多种格式（" .. table.concat(names, " + ") ..
+			"）：一次只能导入一种格式，请拆开后分次导入"
+	end
 	return M.parse(content)
 end
 

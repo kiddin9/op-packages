@@ -217,6 +217,8 @@ procd_open_instance log-cleaner
 procd_set_param command etc/homeproxy-pro/scripts/clean_log.sh
 procd_set_param respawn
 procd_close_instance
+log WARNING: IPv6 support is ON but etc/homeproxy-pro/resources/china_ip6.txt has 0 usable prefixes.
+log WARNING: mainland IPv6 cannot be told apart from foreign IPv6, so IPv6 is passed through UNPROXIED (both sides of the split degrade). Run: etc/homeproxy-pro/scripts/update_resources.sh china_ip6
 chown sing-box:sing-box etc/homeproxy-pro/certs
 chmod 700 etc/homeproxy-pro/certs
 chown sing-box:sing-box etc/homeproxy-pro/certs/server_privatekey.pem

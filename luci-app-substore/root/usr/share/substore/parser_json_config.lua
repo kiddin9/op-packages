@@ -119,6 +119,11 @@ function M.parse_singbox_json(content)
 						if outbound.tls.insecure ~= nil then
 							node_data["skip-cert-verify"] = outbound.tls.insecure
 						end
+						-- uTLS 指纹。简易 YAML 侧早就读了这个字段，JSON 侧一直漏着，
+						-- 同一条订阅走两条导入路径会得到不同的节点。
+						if type(outbound.tls.utls) == "table" and outbound.tls.utls.fingerprint then
+							node_data.fp = outbound.tls.utls.fingerprint
+						end
 					end
 
 					-- sing-box 只有 vmess 出站有 security 字段，且它是加密方式
@@ -128,6 +133,45 @@ function M.parse_singbox_json(content)
 					end
 					if outbound.network then
 						node_data.net = outbound.network
+					end
+
+					-- sing-box 用 transport 对象表达传输层，字段名与 v2ray 的
+					-- streamSettings 完全不同（上游 configuration/shared/v2ray-transport/）：
+					--   ws           path、headers.Host
+					--   grpc         service_name
+					--   http         path、host（**数组**）
+					--   httpupgrade  path、host（**单个字符串**）
+					--   quic         本项目模型没有该传输方式，不猜映射
+					-- 只读 outbound.network 是不够的：sing-box 出站里根本没有这个字段，
+					-- 于是 ws / grpc / h2 节点全部按 tcp 导入 —— 客户端拿明文 tcp 去连
+					-- 只开了 ws 的端口，握手必然失败且不报错。这类节点在机场导出的
+					-- sing-box 配置里占比很高。
+					if type(outbound.transport) == "table" then
+						local t = outbound.transport
+						if t.type == "ws" then
+							node_data.net = "ws"
+							if t.path then node_data.path = t.path end
+							if type(t.headers) == "table" then
+								node_data.host = t.headers.Host or t.headers.host
+							end
+						elseif t.type == "grpc" then
+							node_data.net = "grpc"
+							if t.service_name then node_data.path = t.service_name end
+						elseif t.type == "http" then
+							node_data.net = "http"
+							if t.path then node_data.path = t.path end
+							if type(t.host) == "table" then
+								if t.host[1] then node_data.host = t.host[1] end
+							elseif type(t.host) == "string" and t.host ~= "" then
+								node_data.host = t.host
+							end
+						elseif t.type == "httpupgrade" then
+							node_data.net = "http"
+							if t.path then node_data.path = t.path end
+							if type(t.host) == "string" and t.host ~= "" then
+								node_data.host = t.host
+							end
+						end
 					end
 
 					nodes[#nodes + 1] = node.normalize(node_data)

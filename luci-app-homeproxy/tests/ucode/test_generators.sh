@@ -129,6 +129,40 @@ else
 fi
 
 run_case custom "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json
+# Custom mode without a default outbound: the default shape of the custom UI.
+# `sing-box check` alone is not enough -- before the fix the generator emitted a
+# config with none of the user's DNS servers, nodes, rules or rule-sets, and
+# sing-box 1.14 then refused to start it for a missing
+# route.default_domain_resolver. Assert on the emitted config so a partial
+# regression cannot pass as green.
+run_case custom_no_default "$ROOT/tests/fixtures/generators/custom-no-default-outbound.uci" generate_client.uc sing-box-c.json
+
+CUSTOM_OUT="$WORK/custom_no_default/run/sing-box-c.json"
+
+assert_json() {
+	label="$1"
+	pattern="$2"
+	if grep -q -- "$pattern" "$CUSTOM_OUT"; then
+		echo "PASS: $label"
+	else
+		echo "FAIL: $label (no match for: $pattern)"
+		FAILED=1
+	fi
+}
+
+# sing-box always emits default-dns and system-dns, so more than one DNS server
+# is always present and 1.14 requires a global domain resolver.
+assert_json "custom/no-default: a global domain resolver is declared" '"default_domain_resolver"'
+assert_json "custom/no-default: the user DNS server survived" '"cfg-DNS_Server_Proxy-dns"'
+# A sing-box rule has no label field, so the UCI `option label` never reaches the
+# JSON. Match the marker the rule body actually carries.
+assert_json "custom/no-default: the user DNS rule survived" 'dns-rule-marker.example.com'
+assert_json "custom/no-default: the urltest group survived" '"cfg-Routing_Node_Proxy-out"'
+assert_json "custom/no-default: its member nodes survived" '"cfg-n_hk-out"'
+assert_json "custom/no-default: the user rule-set survived" '"cfg-rs_cn-rule"'
+assert_json "custom/no-default: the user routing rule survived" 'routing-rule-marker.example.com'
+assert_json "custom/no-default: dns.final follows default_server" '"final": "default-dns"'
+
 run_case server "$ROOT/tests/fixtures/generators/server.uci" generate_server.uc sing-box-s.json
 
 exit $FAILED

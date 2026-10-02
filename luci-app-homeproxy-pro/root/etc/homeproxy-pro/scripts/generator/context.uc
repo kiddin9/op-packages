@@ -131,6 +131,13 @@ export function build_context(dm, env) {
 	const ctx = {
 		routing_mode, proxy_mode, ipv6_support, log_level,
 		proxy_fallback,
+		/* Resolved by the caller, which is the only layer allowed to look at
+		 * the filesystem (guard 27).  The route rule and the DNS cn-fallback
+		 * match must agree on it: they reference the same generated rule-set,
+		 * and one of them naming a tag the other never declared fails the
+		 * whole config.  Default false - an absent env must not turn into an
+		 * optimistic "assume the file is there". */
+		china_ip6_ready: (env?.china_ip6_ready === true),
 		self_mark, ntp_server, dns_port, mixed_port,
 		redirect_port, tproxy_port,
 		tun_name, tun_addr4, tun_addr6, tun_mtu,

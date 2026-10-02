@@ -8,7 +8,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:222
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:231
 msgid "%s log"
 msgstr "%s 日志"
 
@@ -20,11 +20,11 @@ msgstr "移除了 %s 个节点"
 msgid "(empty)"
 msgstr "(空)"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:110
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:119
 msgid "(last updated %s)"
 msgstr "（最后更新 %s）"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:111
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:120
 msgid "(never updated on this device)"
 msgstr "（本设备从未更新）"
 
@@ -191,11 +191,11 @@ msgstr "从订阅获取节点时，默认允许不安全连接。"
 msgid "Allowed payload size is in the request."
 msgstr "请求中允许的载荷大小。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:129
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:138
 msgid "Already at the latest version."
 msgstr "已是最新版本。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:126
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:135
 msgid "Already in updating."
 msgstr "已在更新中。"
 
@@ -289,7 +289,7 @@ msgstr "BBR 拥塞控制算法档位。仅 Hysteria2。"
 msgid "BBR profile (1.14)"
 msgstr "BBR 档位（1.14）"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:252
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:261
 msgid "BaiDu"
 msgstr "百度"
 
@@ -371,11 +371,11 @@ msgstr "取消"
 msgid "Certificate path"
 msgstr "证书路径"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:95
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:104
 msgid "Check"
 msgstr "检查"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:139
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:148
 msgid "Check update"
 msgstr "检查更新"
 
@@ -383,15 +383,15 @@ msgstr "检查更新"
 msgid "China DNS server"
 msgstr "国内 DNS 服务器"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:261
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:270
 msgid "China IPv4 list version"
 msgstr "国内 IPv4 库版本"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:265
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:274
 msgid "China IPv6 list version"
 msgstr "国内 IPv6 库版本"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:269
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:278
 msgid "China list version"
 msgstr "国内域名列表版本"
 
@@ -407,7 +407,7 @@ msgstr "密码套件"
 msgid "Cisco Public DNS (208.67.222.222)"
 msgstr "思科公共 DNS（208.67.222.222）"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:231
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:240
 msgid "Clean log"
 msgstr "清空日志"
 
@@ -433,7 +433,7 @@ msgstr "Cloudflare"
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/client.js:130
 #: htdocs/luci-static/resources/view/homeproxy-pro/server.js:146
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:212
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:221
 msgid "Collecting data..."
 msgstr "正在收集数据中..."
 
@@ -445,7 +445,7 @@ msgstr "仅常用端口（绕过 P2P 流量）"
 msgid "Congestion control algorithm"
 msgstr "拥塞控制算法"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:249
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:258
 msgid "Connection check"
 msgstr "连接检查"
 
@@ -507,7 +507,7 @@ msgstr "DNS01 验证"
 msgid "DTLS"
 msgstr "DTLS"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:179
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:188
 msgid "Debug"
 msgstr "调试"
 
@@ -884,7 +884,7 @@ msgstr "加密方式"
 msgid "Endpoint independent"
 msgstr "端点无关"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:182
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:191
 msgid "Error"
 msgstr "错误"
 
@@ -974,7 +974,7 @@ msgstr "读取域名列表失败：%s。"
 msgid "Failed to upload %s, error: %s."
 msgstr "上传 %s 失败，错误：%s。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:183
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:192
 msgid "Fatal"
 msgstr "致命"
 
@@ -1028,7 +1028,7 @@ msgstr "分片回退延迟"
 msgid "GET"
 msgstr "GET"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:273
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:282
 msgid "GFW list version"
 msgstr "GFW 域名列表版本"
 
@@ -1058,7 +1058,7 @@ msgstr "Gecko（1.14）"
 msgid "Generate"
 msgstr "生成"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:277
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:286
 msgid "GitHub token"
 msgstr "GitHub 令牌"
 
@@ -1086,7 +1086,7 @@ msgstr "全局代理 MAC 地址"
 msgid "Global settings"
 msgstr "全局设置"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:255
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:264
 msgid "Google"
 msgstr "谷歌"
 
@@ -1162,7 +1162,7 @@ msgstr "劫持"
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/client.js:70
 #: htdocs/luci-static/resources/view/homeproxy-pro/client.js:119
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:299
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:308
 #: root/usr/share/luci/menu.d/luci-app-homeproxy-pro.json:3
 msgid "HomeProxy"
 msgstr "HomeProxy"
@@ -1337,7 +1337,7 @@ msgid ""
 "seconds."
 msgstr "在检查中，关闭空闲时间超过此值的会话（单位：秒）。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:180
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:189
 msgid "Info"
 msgstr "信息"
 
@@ -1461,7 +1461,7 @@ msgstr "监听接口"
 msgid "Listen port"
 msgstr "监听端口"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:210
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:219
 msgid "Loading"
 msgstr "加载中"
 
@@ -1941,7 +1941,7 @@ msgstr "数据包编码"
 msgid "Padding scheme"
 msgstr "填充方案"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:184
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:193
 msgid "Panic"
 msgstr "崩溃"
 
@@ -2192,7 +2192,7 @@ msgstr "Redirect TCP + TProxy UDP"
 msgid "Redirect TCP + Tun UDP"
 msgstr "Redirect TCP + Tun UDP"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:236
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:245
 msgid "Refresh every %s seconds."
 msgstr "每 %s 秒刷新。"
 
@@ -2268,14 +2268,14 @@ msgid ""
 "back to the WAN resolver. Enter the bare IP form of the same service to keep "
 "that lookup on this router."
 msgstr ""
-"解析走中国大陆路径的域名，所以必须是国内服务，才能拿到正确的本地 CDN 结果。保持"
-"默认即可；上游可能封锁 UDP/53，此时改填 DoH 地址（https://dns.alidns.com/"
+"解析走中国大陆路径的域名，所以必须是国内服务，才能拿到正确的本地 CDN 结果。保"
+"持默认即可；上游可能封锁 UDP/53，此时改填 DoH 地址（https://dns.alidns.com/"
 "dns-query、https://doh.pub/dns-query）也可用。支持 UDP、TCP、DoH、DoQ、DoT。"
 "这个地址同时是上方代理 DNS 服务器解析自身域名所用的解析器（当上方填的是域名"
 "时）；而 URL 本身就是域名，无法完成这次解析——所以此处填 URL 时，上方代理 DNS "
 "服务器会退回由 WAN 解析器解析。想避免就把这里填成同一服务的裸 IP。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:258
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:267
 msgid "Resources management"
 msgstr "资源管理"
 
@@ -2400,8 +2400,8 @@ msgstr "Salamander"
 msgid "Same as main node"
 msgstr "保持与主节点一致"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:284
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:290
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:293
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:299
 msgid "Save"
 msgstr "保存"
 
@@ -2623,7 +2623,7 @@ msgstr "订阅"
 msgid "Successfully imported %s nodes of total %s."
 msgstr "成功导入 %s 个节点，共 %s 个。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:120
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:129
 msgid "Successfully updated."
 msgstr "更新成功。"
 
@@ -2998,7 +2998,7 @@ msgid ""
 msgstr ""
 "要启用 Tun 支持，你需要安装 <code>ip-full</code> 和 <code>kmod-tun</code>。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:178
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:187
 msgid "Trace"
 msgstr "跟踪"
 
@@ -3092,7 +3092,7 @@ msgstr "URLTest 节点"
 msgid "UUID"
 msgstr "UUID"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:132
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:141
 msgid "Unknown error."
 msgstr "未知错误。"
 
@@ -3112,7 +3112,7 @@ msgstr "不支持的指纹！"
 msgid "Update %s subscriptions"
 msgstr "更新 %s 个订阅"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:123
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:132
 msgid "Update failed."
 msgstr "更新失败。"
 
@@ -3228,7 +3228,7 @@ msgstr "WAN DNS（从接口获取）"
 msgid "WAN IP Policy"
 msgstr "WAN IP 策略"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:181
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:190
 msgid "Warn"
 msgstr "警告"
 
@@ -3294,7 +3294,7 @@ msgstr "主动连接 UDP"
 msgid "default"
 msgstr "默认"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:91
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:100
 msgid "failed"
 msgstr "失败"
 
@@ -3343,7 +3343,7 @@ msgstr "无"
 msgid "packet addr (v2ray-core v5+)"
 msgstr "packet addr (v2ray-core v5+)"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:88
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:97
 msgid "passed"
 msgstr "通过"
 
@@ -3355,7 +3355,7 @@ msgstr "私钥"
 msgid "quic-go / uquic chrome"
 msgstr "quic-go / uquic chrome"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:302
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:311
 msgid "sing-box client"
 msgstr "sing-box 客户端"
 
@@ -3383,7 +3383,7 @@ msgstr ""
 "sing-box 将 Snell v4/v5 线协议统一为 v4，另提供 v6；v6 的预共享密钥（上方密"
 "码）长度须为 12-255 字节。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:305
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:314
 msgid "sing-box server"
 msgstr "sing-box 服务端"
 
@@ -3399,7 +3399,7 @@ msgstr ""
 "uTLS 是 “crypto/tls” 的一个分支，可提供 ClientHello 指纹识别抵抗能力。uTLS "
 "是 \"crypto/tls\" 的一个分支，拥有抵抗 ClientHello 指纹识别的能力。"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:97
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:106
 msgid "unchecked"
 msgstr "未检查"
 
@@ -3509,6 +3509,12 @@ msgstr "使用额外标签时 URL 需包含 {tag}"
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/subscription.js:126
 msgid "{tag} in initial path when extra tags are used"
 msgstr "使用额外标签时初始路径需包含 {tag}"
+
+#~ msgid "BaiDu (%s)"
+#~ msgstr "百度 (%s)"
+
+#~ msgid "Google (%s)"
+#~ msgstr "谷歌 (%s)"
 
 #~ msgid "Bootstrap DNS server"
 #~ msgstr "引导 DNS 服务器"

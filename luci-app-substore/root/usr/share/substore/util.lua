@@ -194,6 +194,64 @@ function M.split_hostport(s)
 	end
 end
 
+-- 解析 SIP003 插件串（shadowsocks 的 `plugin` 字段）。
+--
+-- 格式出自 SIP002 §"For plugin argument"，与 SIP003 的 SS_PLUGIN_OPTIONS 同构：
+--     <name>[;<key>=<value>]...        例：obfs-local;obfs=http;obfs-host=www.baidu.com
+-- 值里的 `;`、`=`、`\` 按规范用反斜杠转义，因此切分必须跳过转义序列 ——
+-- 否则 `path=/a\;b` 会被切成两段，得到一个并不存在的选项，而 `\;` 是 v2ray-plugin
+-- 的 path 里完全可能出现的写法。
+--
+-- 返回 name, opts_string, opts_map：
+--   * opts_string 是 `;` 之后的原样串（含转义），用于 sing-box 的 plugin_opts ——
+--     该字段就是交给插件进程的 SS_PLUGIN_OPTIONS，原样透传才不失真；
+--   * opts_map 是拆好的键值对，用于需要逐键映射的目标（mihomo 的 plugin-opts）。
+--     不带 `=` 的裸标志（v2ray-plugin 的 `tls`）取值为 true。
+-- 空串或没有插件名时返回 nil。
+function M.parse_sip003_plugin(raw)
+	if type(raw) ~= "string" or raw == "" then return nil end
+	local fields, buf = {}, {}
+	local i, n = 1, #raw
+	-- 必须是 while：下面遇到转义序列要一次吃掉两个字符，Lua 的数值 for 会在每轮
+	-- 重新赋值控制变量，循环体内改 i 不生效。
+	while i <= n do
+		local c = raw:sub(i, i)
+		if c == "\\" and i < n then
+			buf[#buf + 1] = c .. raw:sub(i + 1, i + 1)
+			i = i + 2
+		elseif c == ";" then
+			fields[#fields + 1] = table.concat(buf)
+			buf = {}
+			i = i + 1
+		else
+			buf[#buf + 1] = c
+			i = i + 1
+		end
+	end
+	fields[#fields + 1] = table.concat(buf)
+
+	local name = M.trim(fields[1] or "")
+	if name == "" then return nil end
+
+	local opts_list = {}
+	for idx = 2, #fields do
+		local f = M.trim(fields[idx])
+		if f ~= "" then opts_list[#opts_list + 1] = f end
+	end
+
+	local map = {}
+	for _, f in ipairs(opts_list) do
+		local k, v = f:match("^([^=]+)=(.*)$")
+		if k then
+			map[M.trim(k)] = v
+		else
+			map[f] = true
+		end
+	end
+
+	return name, table.concat(opts_list, ";"), map
+end
+
 -- ---------- JSON ----------
 local function utf8_char(cp)
 	if cp < 0x80 then
@@ -225,7 +283,14 @@ local JSON_NULL = {}
 -- JSON 空对象占位符。Lua 的空表无法区分 {} 与 []（is_array 判定空表为数组），
 -- 而 sing-box / Xray 的部分字段必须是对象（"tls": {}、"settings": {}），
 -- 编码成 [] 会被客户端拒绝。需要空对象时显式使用本常量。
-M.JSON_EMPTY_OBJECT = setmetatable({}, { __tostring = function() return "{}" end })
+--
+-- 标记用的是**元表**而不是表本身的同一性：解码器每遇到一个 `{}` 必须返回一张
+-- 新表，不能返回这张共享的常量表。core.load 拿到 items 后会直接往里塞订阅
+-- （`items[id] = {...}`），共享表会让这次写入落到全局哨兵上，随后 json_encode
+-- 又把哨兵短路成 `{}` —— 结果是「接口返回新增成功、进程内 list 也看得到，
+-- 但文件里什么都没写，重启即消失」。
+local JSON_OBJ_MT = { __tostring = function() return "{}" end }
+M.JSON_EMPTY_OBJECT = setmetatable({}, JSON_OBJ_MT)
 
 function M.json_encode(v)
 	local function enc(v)
@@ -244,12 +309,22 @@ function M.json_encode(v)
 				else return string.format("\\u%04x", c:byte()) end
 			end) .. '"'
 		elseif t == "number" then
-			if v ~= v then return "null" end
+			-- 非有限数必须编成 null：`%.14g` 对 inf / -inf 产出的是字面量
+			-- `inf` / `-inf`，那不是合法 JSON —— 整份文件会因此解析不了。
+			-- 触发路径是真实存在的：订阅响应头 `subscription-userinfo` 里的
+			-- `total=1e999` 经 tonumber 就是 inf，写进 subscriptions.json 后
+			-- 下一次 load() 直接判「列表文件已损坏」，全部订阅从界面上消失；
+			-- 节点侧的 port 同理，一个 inf 会毁掉该订阅的整个节点文件。
+			if v ~= v or v == math.huge or v == -math.huge then return "null" end
 			return string.format("%.14g", v)
 		elseif t == "boolean" then
 			return v and "true" or "false"
 		elseif t == "table" then
-			if v == M.JSON_EMPTY_OBJECT then
+			-- 带空对象标记、且**确实还是空的**才编成 {}：标记只是「这里曾经是
+			-- 空对象」的线索，调用方完全可能拿到解码结果后往里加键
+			-- （core.load 就是这么用 items 的）。少了 next(v) == nil 这一半，
+			-- 加过键的表会被编回 {}，内容静默丢失。
+			if getmetatable(v) == JSON_OBJ_MT and next(v) == nil then
 				return "{}"
 			elseif v == JSON_NULL then
 				-- 数组里的 null 解码时被换成 JSON_NULL 占位（见 json_decode），
@@ -286,10 +361,23 @@ function M.json_decode(s)
 		end
 	end
 
-	local function parse()
+	-- 嵌套深度上限。parse 是递归下降，每进一层容器就多一层 Lua 调用栈；
+	-- 几千层时 Lua 5.1 会**抛出** "stack overflow" 而不是返回错误，而本函数的
+	-- 契约是 `nil, err`。抛出的异常会一路冒到调用方：core.add_local 里的
+	-- `M.sync(id)` 没有 pcall，控制器也没兜住，于是本地订阅导入在订阅行已经
+	-- 写盘之后变成 HTTP 500，且 sync 内的 save_meta(error=...) 全被跳过，
+	-- 留下一条「看起来还在更新中」的空记录。
+	-- 64 层远超任何真实配置（订阅节点是扁平的，sing-box 配置最深也不过十几层）。
+	local MAX_DEPTH = 64
+
+	local function parse(depth)
 		skip_ws()
 		if i > len then return nil, "unexpected end" end
 		local c = s:sub(i, i)
+
+		if (c == "{" or c == "[") and depth >= MAX_DEPTH then
+			return nil, "nesting too deep"
+		end
 
 		if c == "{" then
 			i = i + 1
@@ -299,16 +387,18 @@ function M.json_decode(s)
 			-- {} 与 []，裸 {} 会被 is_array 判成数组、编码回 []，于是
 			-- `{"tls":{}}` 往返变成 `{"tls":[]}` —— sing-box / Xray 里
 			-- 要求是对象的字段（tls / settings）会因此被客户端拒绝。
-			if s:sub(i, i) == "}" then i = i + 1 return M.JSON_EMPTY_OBJECT end
+			-- 每次返回**新表**（带同一标记元表），不能返回共享常量：
+			-- 见 JSON_OBJ_MT 处的说明。
+			if s:sub(i, i) == "}" then i = i + 1 return setmetatable({}, JSON_OBJ_MT) end
 			while true do
 				skip_ws()
-				local k, ke = parse()
+				local k, ke = parse(depth + 1)
 				if ke then return nil, ke end
 				if not k or type(k) ~= "string" then return nil, "expected string key" end
 				skip_ws()
 				if s:sub(i, i) ~= ":" then return nil, "expected ':'" end
 				i = i + 1
-				local val, verr = parse()
+				local val, verr = parse(depth + 1)
 				if verr then return nil, verr end
 				obj[k] = val
 				skip_ws()
@@ -329,7 +419,7 @@ function M.json_decode(s)
 			skip_ws()
 			if s:sub(i, i) == "]" then i = i + 1 return arr end
 			while true do
-				local val, verr = parse()
+				local val, verr = parse(depth + 1)
 				-- 必须把内层错误透出去：此前无条件把 nil 当成 null 占位，
 				-- 于是 `[1,]` 这种畸形输入被静默接受（parse 报错后 i 未前进，
 				-- 下一轮读到 `]` 就当成数组结束），解出 `{1, JSON_NULL}`。
@@ -407,7 +497,7 @@ function M.json_decode(s)
 		end
 	end
 
-	local v, perr = parse()
+	local v, perr = parse(0)
 	-- 此前写成 `local v = parse(); return v` —— parse 的第二返回值（错误串）
 	-- 被直接丢弃，于是 json_decode **永远不返回错误**：所有调用方的
 	-- `local data, err = util.json_decode(...)` 里 err 判断都是死代码，
@@ -490,6 +580,62 @@ function M.ensure_dir(path, mode)
 	else
 		os.execute("mkdir -p " .. M.shq(path))
 	end
+end
+
+-- ---------- 互斥锁（mkdir 锁 + 陈旧锁回收） ----------
+--
+-- 用途：把「读整表 → 改 → 写整表」这段临界区串行化。LuCI 页面保存订阅、
+-- cron 定时更新、组合订阅自动重算三者可能同时发生，后写者整表覆盖先写者，
+-- 结果是订阅静默丢失。本机没有 nixio，用不了 flock；Lua 5.1 的 io.open 也没有
+-- O_EXCL —— 但 `mkdir` 本身是原子的，成功者只有一个，拿它当锁。
+--
+-- 崩溃残留：持有者被杀掉时目录会留在原地，后来者必须能回收，否则永久死锁
+-- （比丢数据更糟：整台设备的订阅从此无法再修改）。判据是**锁目录自身的
+-- mtime**，不是目录里的文件 —— mtime 由 mkdir 原子地设好，不存在「目录已建、
+-- 时间戳还没写」的窗口；写在目录里的持有者文件只作排障用，不参与判定。
+M.LOCK_STALE = 60 -- 秒。超过这个时长仍未释放即视为持有者已死。
+
+-- 锁目录是否已陈旧。用一条 shell 判断完成，不解析 stat 输出（少一处格式依赖）。
+-- stat 失败时回退成 0，于是「距今」必然大于阈值 —— 判定为陈旧，可以回收。
+-- 这是有意的失败方向：无法确认的锁宁可回收，也不要永久卡死。
+local function lock_is_stale(path, stale)
+	local cmd = string.format(
+		"[ $(( $(date +%%s) - $(stat -c %%Y %s 2>/dev/null || echo 0) )) -gt %d ]",
+		M.shq(path), stale)
+	return os.execute(cmd) == 0
+end
+
+-- 取锁。成功返回 true，调用方**必须**在临界区结束时调 lock_release。
+-- 失败返回 false（别人正持有，且未判定为陈旧）。
+-- opts.stale 覆盖超时阈值；opts.pid 写入持有者文件（默认 os.getpid 不可用，留 0）。
+function M.lock_acquire(path, opts)
+	opts = opts or {}
+	local stale = tonumber(opts.stale) or M.LOCK_STALE
+	-- 最多两轮：第一轮抢不到就查一次陈旧性，回收后第二轮重抢。
+	for _ = 1, 2 do
+		if os.execute("mkdir " .. M.shq(path) .. " >/dev/null 2>&1") == 0 then
+			-- 持有者信息纯属排障用（`cat` 一眼看出是谁、什么时候拿的）。
+			-- 写失败不影响正确性，因此不检查返回值。
+			local f = io.open(path .. "/owner", "wb")
+			if f then
+				f:write(string.format("%d %d\n", tonumber(opts.pid) or 0, os.time()))
+				f:close()
+			end
+			return true
+		end
+		if lock_is_stale(path, stale) then
+			os.execute("rm -rf " .. M.shq(path) .. " >/dev/null 2>&1")
+		else
+			return false
+		end
+	end
+	return false
+end
+
+-- 释放锁。持有者之外的人不应调用；这里不做持有者校验 —— 校验需要额外的
+-- 竞态窗口，而收益只是把「用错 API」变成一条错误信息。
+function M.lock_release(path)
+	os.execute("rm -rf " .. M.shq(path) .. " >/dev/null 2>&1")
 end
 
 -- ---------- 人性化格式 ----------

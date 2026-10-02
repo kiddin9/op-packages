@@ -1,6 +1,8 @@
 -- output_clash_meta.lua — Clash.Meta / Mihomo 格式输出（纯 Lua）
 -- luci-app-substore
 
+local util = require("substore.util")
+
 local M = {}
 
 local function esc_yaml(s)
@@ -10,8 +12,17 @@ local function esc_yaml(s)
 	-- 字符（\n \r \t 等）时必须加引号 —— 未加引号的换行/回车会直接破坏文档结构。
 	local need_quote = s:find("%c") ~= nil
 		-- 注意：这里必须用 Lua 模式（不能传 plain=true），否则整串被当作字面量、永不匹配
-		or s:find("[ :#{}%[%],&*?|>'\"%@`]") ~= nil
+		-- `%` `!` 与开头的 `-` 也是 YAML 的 c-indicator，不能作为 plain scalar 的首字符：
+		-- `password: %foo` → "found character '%' that cannot start any token"，
+		-- `name: !x` → 被当成标签（"could not determine a constructor for the tag '!x'"），
+		-- 裸 `-` → 被当成块序列条目（"sequence entries are not allowed here"）。
+		-- 三者都会让客户端拒绝**整份**配置。节点名以 `%`/`!` 开头并不罕见（机场命名
+		-- 很随意），密码里出现 `%` 更是常见，所以必须一起判。
+		or s:find("[ :#{}%[%],&*?|>'\"%@`!%%]") ~= nil
 		or s:match("^[-?]*:") ~= nil
+		-- 首字符是 `-`（含单独的 "-"）时同样要加引号：`^[-?]*:` 只覆盖
+		-- 「`-` 后跟冒号」的写法，覆盖不到裸 `-` 与 `-foo`。
+		or s:match("^%-") ~= nil
 	-- 转义只在**加引号时**做：未加引号的 plain scalar 里反斜杠就是字面反斜杠，
 	-- 提前翻倍会让回读得到两个反斜杠（`pa\ss` → 输出 `pa\\ss` → 读回 `pa\\ss`，
 	-- 密码/路径直接错）。\ 本身不在上面的 need_quote 触发集里，所以含反斜杠的
@@ -83,10 +94,44 @@ local function get_clash_type(proto)
 	return PROTOCOL_TYPE_MAP[proto] or proto
 end
 
-local function format_node(node)
+-- SIP003 插件 → mihomo 的 plugin / plugin-opts。
+--
+-- 名称与参数名都和 SIP003 原文不同，需要逐项翻译：
+--   obfs-local / simple-obfs / obfs  →  obfs，          参数 obfs → mode、obfs-host → host
+--   v2ray-plugin                    →  v2ray-plugin，  参数 mode → mode、host → host、
+--                                                      path → path、tls → tls
+--
+-- mihomo 对这两类插件的参数是**强校验**的（adapter/outbound/shadowsocks.go）：
+-- obfs 的 mode 不在 {tls,http} 里报 "ss %s obfs mode error"，v2ray-plugin 的
+-- mode 不是 websocket 同样报错，两者都会让这个 outbound 构造失败，进而拒绝
+-- 加载**整份**配置 —— 一个坏节点废掉整个订阅。所以参数不全时宁可整个不输出
+-- 插件，也不能输出一个必然被拒绝的组合。
+-- 未知插件名直接忽略：mihomo 的 plugin 分支没有收尾 else，未知名字本来就静默跳过。
+local function ss_plugin_mihomo(node)
+	local name, _, opts = util.parse_sip003_plugin(node.plugin)
+	if not name then return nil end
+	if name == "obfs-local" or name == "simple-obfs" or name == "obfs" then
+		local mode = opts.obfs or opts.mode
+		if mode ~= "tls" and mode ~= "http" then return nil end
+		local out = { { "mode", mode } }
+		local host = opts["obfs-host"] or opts.host
+		if host then out[#out + 1] = { "host", host } end
+		return "obfs", out
+	elseif name == "v2ray-plugin" then
+		if opts.mode ~= "websocket" then return nil end
+		local out = { { "mode", "websocket" } }
+		if opts.host then out[#out + 1] = { "host", opts.host } end
+		if opts.path then out[#out + 1] = { "path", opts.path } end
+		if opts.tls == true or opts.tls == "true" then out[#out + 1] = { "tls", "true" } end
+		return "v2ray-plugin", out
+	end
+	return nil
+end
+
+local function format_node(node, name)
 	local lines = {}
 	local ctype = get_clash_type(node.proto)
-	lines[#lines + 1] = "  - name: " .. esc_yaml(node.name or "")
+	lines[#lines + 1] = "  - name: " .. esc_yaml(name)
 	lines[#lines + 1] = "    type: " .. esc_yaml(ctype)
 	lines[#lines + 1] = "    server: " .. esc_yaml(node.server or "")
 	-- 端口必须是数字：`port: abc` / `port: 443/tcp` 这类非数字值会让 mihomo 拒绝
@@ -105,6 +150,18 @@ local function format_node(node)
 			lines[#lines + 1] = "    cipher: " .. esc_yaml(node.method)
 		end
 	end
+	-- SIP003 插件。ss 节点带 obfs / v2ray-plugin 时，服务端只接受带插件的
+	-- 握手；丢掉这一项导出的配置会以明文 SS 去连，必然失败且客户端不报错。
+	if ctype == "ss" and node.plugin then
+		local plugin_name, plugin_opts = ss_plugin_mihomo(node)
+		if plugin_name then
+			lines[#lines + 1] = "    plugin: " .. esc_yaml(plugin_name)
+			lines[#lines + 1] = "    plugin-opts:"
+			for _, kv in ipairs(plugin_opts) do
+				lines[#lines + 1] = "      " .. esc_yaml(kv[1]) .. ": " .. esc_yaml(kv[2])
+			end
+		end
+	end
 	if node.cipher then
 		if ctype == "vmess" or ctype == "vless" then
 			lines[#lines + 1] = "    cipher: " .. esc_yaml(node.cipher)
@@ -115,13 +172,22 @@ local function format_node(node)
 		lines[#lines + 1] = "    network: " .. esc_yaml(net)
 		-- ws 特殊处理
 		if net == "ws" then
-			if node.path then
+			-- ws-opts 是 path 与 headers 的**共同**父键：只有 host 没有 path 时
+			-- 也必须先把 ws-opts 写出来。原来 ws-opts 行放在 `if node.path` 里面，
+			-- 于是「有 host、无 path」的节点会输出一个缩进 6 空格的 headers，
+			-- 而它的父键根本不存在 —— YAML 直接报
+			-- "mapping values are not allowed here"，客户端拒绝整份配置。
+			-- 这条路径是真实可达的：Clash YAML 的 ws-opts.headers.Host 与
+			-- ws-opts.path 是各自独立读取的，表单里也允许只填 host。
+			if node.path or node.host then
 				lines[#lines + 1] = "    ws-opts:"
-				lines[#lines + 1] = "      path: " .. esc_yaml(node.path)
-			end
-			if node.host then
-				lines[#lines + 1] = "      headers:"
-				lines[#lines + 1] = "        Host: " .. esc_yaml(node.host)
+				if node.path then
+					lines[#lines + 1] = "      path: " .. esc_yaml(node.path)
+				end
+				if node.host then
+					lines[#lines + 1] = "      headers:"
+					lines[#lines + 1] = "        Host: " .. esc_yaml(node.host)
+				end
 			end
 		elseif net == "grpc" then
 			-- 服务名写在 grpc-opts 里。只写 network: grpc 的话客户端用默认服务名
@@ -291,7 +357,11 @@ local function format_node(node)
 			for k in pairs(node["amnezia-wg-option"]) do keys[#keys + 1] = k end
 			table.sort(keys)
 			for _, k in ipairs(keys) do
-				lines[#lines + 1] = "      " .. k .. ": " .. esc_yaml(node["amnezia-wg-option"][k])
+				-- 键名同样要过 esc_yaml。子表是从 Clash YAML / sing-box JSON /
+				-- wireguard:// 原样拷进来的，键名由订阅内容决定，不是我们写死的：
+				-- 键里带换行会在第 0 列插进一行，带 `: ` 会写出 `x: 1: 2` 这种
+				-- 映射值错误 —— 两者都让客户端拒绝整份配置。
+				lines[#lines + 1] = "      " .. esc_yaml(k) .. ": " .. esc_yaml(node["amnezia-wg-option"][k])
 			end
 		end
 	end
@@ -318,26 +388,23 @@ local function format_node(node)
 	return table.concat(lines, "\n")
 end
 
-local function generate_proxies(nodes)
+local function generate_proxies(nodes, tags)
 	if not nodes or #nodes == 0 then
 		return "proxies: []"
 	end
 	local out = {}
 	out[#out + 1] = "proxies:"
-	for _, node in ipairs(nodes) do
-		out[#out + 1] = format_node(node)
+	for i, node in ipairs(nodes) do
+		out[#out + 1] = format_node(node, tags[i])
 	end
 	return table.concat(out, "\n")
 end
 
-local function generate_groups(nodes, options)
+local function generate_groups(nodes, tags, options)
 	local out = {}
 	out[#out + 1] = "proxy-groups:"
 
-	local names = {}
-	for _, n in ipairs(nodes) do
-		names[#names + 1] = n.name or ""
-	end
+	local names = tags
 
 	local group_name = (options and options.name) or "Proxy"
 
@@ -386,13 +453,29 @@ end
 
 function M.generate(nodes, options)
 	options = options or {}
+	nodes = nodes or {}
 	local parts = {}
 
+	-- 重名节点必须改名后再输出。mihomo 的 parseProxies 遇到重复的 proxy 名会
+	-- 直接返回 "proxy %s is the duplicate name" 拒绝**整份**配置；节点重名在
+	-- 订阅里很常见（node.dedup 默认关闭，而且它按 proto+server+port+身份去重，
+	-- 同名不同服务器根本不会被去掉）。生成组名也要一起占位，节点名撞上组名
+	-- 同样是 "proxy group %s: the duplicate name"。
+	-- 与 sing-box / Xray 输出共用 util.unique_tags，两边的改名规则保持一致。
+	local group_name = (options and options.name) or "Proxy"
+	local tags = util.unique_tags(nodes, {
+		[group_name] = true,
+		["URL-Test"] = true,
+		["Load-Balance"] = true,
+		["DIRECT"] = true,
+		["REJECT"] = true,
+	})
+
 	-- 生成 proxies
-	parts[#parts + 1] = generate_proxies(nodes or {})
+	parts[#parts + 1] = generate_proxies(nodes, tags)
 
 	-- 生成 proxy-groups
-	parts[#parts + 1] = generate_groups(nodes or {}, options)
+	parts[#parts + 1] = generate_groups(nodes, tags, options)
 
 	return table.concat(parts, "\n\n")
 end

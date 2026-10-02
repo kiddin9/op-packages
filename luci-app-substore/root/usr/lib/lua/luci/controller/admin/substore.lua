@@ -65,10 +65,38 @@ local function fv(http, key)
 	return tostring(v)
 end
 
+-- post_ok 失败的原因，供调用方回显（§18：失败必须让用户看见）。
+-- 每个请求是一个独立的 Lua 进程，不存在跨请求残留；同一进程内多次调用时
+-- post_ok 成功会把它清空，因此不会把上一次的失败带进这一次。
+local post_fail_msg = nil
+
+-- POST 请求的 token 校验。
+--
+-- 上游 LuCI 渲染表单时，模板变量 `token` 就是 luci.dispatcher.context.authtoken
+-- （modules/luci-lua-runtime/luasrc/template.lua 的 viewns 元表：
+--    elseif key == "token" then return disp.context.authtoken），
+-- 所以「提交的 token == authtoken」正是框架自己那套判定，
+-- 不可能误拒合法表单 —— 合法表单提交的就是 authtoken。
+--
+-- 此前的判定是 `token ~= nil`：`token=`（空串）也能通过，等于没有校验。
+-- 取不到 authtoken 时（老版本 LuCI / 非标准上下文）退回原判定，
+-- 不能因为拿不到框架内部字段就把所有表单都拒掉。
 local function post_ok()
-	-- 拒绝缺失 CSRF token 的 POST
 	local http = require("luci.http")
-	return fv(http, "token") ~= nil
+	local tok = fv(http, "token")
+	if tok == nil then
+		post_fail_msg = "请求校验失败（缺少 token），请刷新页面后重试"
+		return false
+	end
+	local ok, authtoken = pcall(function()
+		return require("luci.dispatcher").context.authtoken
+	end)
+	if ok and type(authtoken) == "string" and authtoken ~= "" and tok ~= authtoken then
+		post_fail_msg = "请求校验失败（token 不匹配），请刷新页面后重试"
+		return false
+	end
+	post_fail_msg = nil
+	return true
 end
 
 -- read cron fields from form, validate cron expression, return cron_enable cron_time
@@ -88,6 +116,20 @@ local function read_cron_fields()
 	end
 	if cron_enable ~= "1" then cron_enable = "0" end
 	return cron_enable, cron_time
+end
+
+-- read subscription client type (User-Agent) from form, return ua string, err
+--
+-- 部分机场按 User-Agent 决定返回真实节点还是占位内容。表单提交的是
+-- 「预设 key（ua_preset）+ 自定义文本（ua_custom）」，这里解析成最终要存的 UA。
+-- 非法值必须回显（与规则校验同理）：静默存空会让用户以为设置生效了，
+-- 实际更新出来的仍是占位节点。
+local function read_ua_fields()
+	local http = require("luci.http")
+	local core = require("substore.core")
+	local ua, err = core.resolve_user_agent(fv(http, "ua_preset"), fv(http, "ua_custom"))
+	if not ua then return nil, err end
+	return ua
 end
 
 -- read subscription level rules from form, return rules table, err
@@ -135,8 +177,10 @@ function action_create()
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
 		if not rules then return back_to_list(rules_err or "规则无效") end
+		local user_agent, ua_err = read_ua_fields()
+		if user_agent == nil then return back_to_list(ua_err or "订阅客户端类型无效") end
 		local id, err = core.add(name, url, {
-			proxy_enable = proxy_enable, proxy = proxy,
+			proxy_enable = proxy_enable, proxy = proxy, user_agent = user_agent,
 			cron_enable = cron_enable, cron_time = cron_time,
 			rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
 			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
@@ -145,7 +189,7 @@ function action_create()
 		if not id then return back_to_list(err or "创建订阅失败") end
 		core.write_cron()
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 function action_save()
@@ -166,8 +210,11 @@ function action_save()
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
 		if not rules then return back_to_list(rules_err or "规则无效") end
+		local user_agent, ua_err = read_ua_fields()
+		if user_agent == nil then return back_to_list(ua_err or "订阅客户端类型无效") end
 		local ok, err = core.save_meta(id, {
 			name = name, url = url, proxy_enable = proxy_enable, proxy = proxy,
+			user_agent = user_agent,
 			cron_enable = cron_enable, cron_time = cron_time,
 			rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
 			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
@@ -176,7 +223,7 @@ function action_save()
 		if not ok then return back_to_list(err or "保存失败") end
 		core.write_cron()
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 function action_local_create()
@@ -201,7 +248,7 @@ function action_local_create()
 		})
 		if not id then return back_to_list(err or "创建本地订阅失败") end
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 function action_local_save()
@@ -233,7 +280,7 @@ function action_local_save()
 		local sok, serr = core.sync(id)
 		if not sok then return back_to_list(serr or "解析订阅内容失败") end
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 function action_delete()
@@ -243,11 +290,41 @@ function action_delete()
 		-- §18：删除失败必须让用户看见。core.remove 对「非法 ID / 订阅不存在」
 		-- 返回 false（或 false, err），此前返回值被整个丢弃 —— 用户点了删除，
 		-- 页面正常跳回，订阅却还在，看起来像「删了但没生效」。
-		local ok, err = core.remove(fv(http, "id") or "")
-		if not ok then return back_to_list(err or "删除失败：订阅不存在") end
-		core.write_cron()
+		--
+		-- id 支持单个（行内删除按钮）或逗号分隔多个（勾选批量删除），
+		-- 与节点页 action_node_delete 的 idx 同一套约定。订阅 id 是 "s%08x"，
+		-- 不含逗号，切分不会切坏。
+		local ids = {}
+		for s in tostring(fv(http, "id") or ""):gmatch("[^,%s]+") do
+			ids[#ids + 1] = s
+		end
+		if #ids == 0 then return back_to_list("未指定要删除的订阅") end
+		local removed, first_err = 0, nil
+		for _, id in ipairs(ids) do
+			local ok, err = core.remove(id)
+			if ok then
+				removed = removed + 1
+			elseif not first_err then
+				first_err = err
+			end
+		end
+		-- 部分失败也必须说：勾了 5 个只删掉 3 个却显示「成功」，
+		-- 用户不会再回头管剩下那 2 个。
+		--
+		-- 只要**有订阅真的被删掉**就要重写 cron —— 部分失败的分支也不例外：
+		-- 被删掉的订阅的 cron 行若留着，substore-cron.sh 会拿着已不存在的 id
+		-- 反复执行，每次都以非 0 退出（见脚本末尾的 FAILED 判断），
+		-- 在日志里刷失败、并让监控误报。
+		if removed > 0 then core.write_cron() end
+		if removed < #ids then
+			if removed == 0 then
+				return back_to_list(first_err or "删除失败：订阅不存在")
+			end
+			return back_to_list(string.format("已删除 %d 个，另有 %d 个删除失败",
+				removed, #ids - removed))
+		end
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 -- 节点页返回链接：保留当前筛选参数
@@ -300,7 +377,7 @@ function action_node_save()
 		end
 		core.refresh_combos(id)
 	end
-	back_to_nodes(http)
+	back_to_nodes(http, post_fail_msg)
 end
 
 -- 节点删除：idx 支持单个（行内删除按钮）或逗号分隔多个（勾选批量删除）
@@ -340,7 +417,7 @@ function action_node_delete()
 		core.save_meta(id, { node_count = #nodes })
 		core.refresh_combos(id)
 	end
-	back_to_nodes(http)
+	back_to_nodes(http, post_fail_msg)
 end
 
 -- 单节点分组快速设置（XHR，JSON 响应）
@@ -366,6 +443,9 @@ function action_node_set_group()
 		http.write(util.json_encode({ ok = false, err = "write failed" }))
 		return
 	end
+	-- 与 node_save / node_delete 一致：group 是组合订阅筛选与重命名规则的输入，
+	-- 改了不同步组合的话，组合的下载链接会一直吐旧分组的数据。
+	core.refresh_combos(id)
 	http.write(util.json_encode({ ok = true }))
 end
 
@@ -404,7 +484,7 @@ function action_combo_save()
 		end
 		if not nid then return back_to_list(err or "保存组合订阅失败") end
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 function action_update()
@@ -431,7 +511,7 @@ function action_update()
 			core.save_meta(id, { error = tostring(err or "更新失败"), last_update = os.time() })
 		end
 	end
-	back_to_list()
+	back_to_list(post_fail_msg)
 end
 
 -- node probe endpoint: POST id + mode ping tcping url + proto + keyword, return JSON

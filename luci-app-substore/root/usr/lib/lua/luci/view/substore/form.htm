@@ -21,6 +21,10 @@
 	end
 	local rm = (it and it.rename_map) or ""
 	local proxy_enabled = it and (it.proxy_enable == true or it.proxy_enable == "1") or false
+	-- 订阅客户端类型（User-Agent）。部分机场按 UA 决定返回真实节点还是占位内容：
+	-- 同一个订单链接只有用绑定的客户端 UA 才拿得到真节点。预设见 core.UA_PRESETS。
+	local ua_preset = core.ua_preset_of(it and it.user_agent)
+	local ua_custom = (ua_preset == "custom") and (it and it.user_agent or "") or ""
 	local util = require("substore.util")
 	-- 剩余流量 / 剩余时长（仅编辑页且有 subscription-userinfo 数据时显示，首页不显示）
 	local traffic_str = nil
@@ -60,6 +64,29 @@
 			<label for="proxy" style="display:inline-block;min-width:10em">代理地址</label>
 			<input type="text" id="proxy" name="proxy" value="<%=luci.util.pcdata(is_edit and it.proxy or "")%>" style="width:60%"/>
 			<div style="color:#808080;margin-top:0.25em">通过代理下载订阅（留空则不使用），支持 http:// 或 socks5:// 地址，如 socks5://192.168.5.1:1080</div>
+		</div>
+		<div class="cbi-section-descr" style="margin:0.5em 0">
+			<label for="ua_preset" style="display:inline-block;min-width:10em">订阅客户端类型</label>
+			<select id="ua_preset" name="ua_preset" onchange="var r=document.getElementById('ua_custom_row');if(r)r.style.display=this.value=='custom'?'block':'none';">
+				<option value="" <%=ua_preset == "" and "selected" or ""%>>默认（不设置）</option>
+				<% for _, p in ipairs(core.UA_PRESETS) do %>
+				<option value="<%=p.key%>" <%=ua_preset == p.key and "selected" or ""%>><%=p.label%></option>
+				<% end %>
+				<option value="custom" <%=ua_preset == "custom" and "selected" or ""%>>自定义</option>
+			</select>
+			<div style="color:#808080;margin-top:0.25em">
+				部分机场按客户端类型下发节点：同一链接只有选对类型才解析得出真实节点，选错会得到「与您使用客户端不兼容」的占位节点。不确定就保持「默认」。<br/>
+				「自定义」用于预设里没有的客户端：填<b>要原样发送的 User-Agent 请求头</b>，格式与预设里的值同形，即
+				<code>客户端名/版本号</code>，例如 <code>clash-verge/v2.5.0</code>、<code>v2rayN/7.22.0</code>、
+				<code>mihomo.party/v2.0.0 (clash.meta)</code>。<br/>
+				可以含空格、括号、分号、下划线等可见字符（整串原样发送，不解析、不改写）；不能含换行等控制字符，
+				最长 256 字符。版本号填<b>机场要求的最低可用版本</b>，具体填什么以机场或客户端说明为准。
+				选「自定义」但留空 = 不发送 User-Agent（等同「默认」）。
+			</div>
+		</div>
+		<div id="ua_custom_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=ua_preset == "custom" and "block" or "none"%>">
+			<label for="ua_custom" style="display:inline-block;min-width:10em">自定义 User-Agent</label>
+			<input type="text" id="ua_custom" name="ua_custom" value="<%=luci.util.pcdata(ua_custom)%>" style="width:60%"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
 			<label style="display:inline-block;min-width:10em">启用定时更新</label>

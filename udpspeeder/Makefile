@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=UDPspeeder
 PKG_VERSION:=20230206.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_VERSION:=b6a1b5941d9ebb6ef4f6866abdf1e03a47b99b2d
@@ -30,7 +30,7 @@ define Package/UDPspeeder
   CATEGORY:=Network
   TITLE:=UDP Network Speed-Up Tool
   URL:=https://github.com/wangyu-/UDPspeeder
-  DEPENDS:=+libstdcpp +librt +libatomic
+  DEPENDS:=+libstdcpp +librt
 endef
 
 define Package/UDPspeeder/description

@@ -127,7 +127,7 @@
 ## 运行要求
 
 - ImmortalWrt / OpenWrt ≥ 24.10+（apk 或 opkg 均可安装）
-- sing-box ≥ 1.14.0（ImmortalWrt 25.12 源对应 sing-box 1.14.0-r1）
+- sing-box ≥ 1.14.0
 - 低于 1.14 时服务会拒绝启动并记录明确日志
 
 

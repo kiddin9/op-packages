@@ -168,11 +168,18 @@ acquire_wan_log_lock() {
 	if [ -z "${FWLIVE_WAN_LOG_LOCK_FILE:-}" ]; then
 		wan_log_lock_dir_safe "$lock_dir" || return 1
 	fi
+	# An existing FIFO would block even the create/tighten append below.
+	# Permit an absent path so normal first-use creation still works.
+	if [ -e "$WAN_LOG_LOCK_FILE" ] && [ ! -f "$WAN_LOG_LOCK_FILE" ]; then
+		return 1
+	fi
 	( umask 077; : >> "$WAN_LOG_LOCK_FILE" ) 2>/dev/null || return 1
+	[ -f "$WAN_LOG_LOCK_FILE" ] || return 1
 	[ -L "$WAN_LOG_LOCK_FILE" ] && return 1
 	chmod 0600 "$WAN_LOG_LOCK_FILE" 2>/dev/null || true
 	chown 0:0 "$WAN_LOG_LOCK_FILE" 2>/dev/null || true
 	[ -L "$WAN_LOG_LOCK_FILE" ] && return 1
+	[ -f "$WAN_LOG_LOCK_FILE" ] || return 1
 	# Probe in a subshell first: a failed `exec` redirection aborts a POSIX
 	# non-interactive shell outright, so `|| return 1` on the real exec would
 	# never run — and `2>/dev/null` on the same exec would permanently

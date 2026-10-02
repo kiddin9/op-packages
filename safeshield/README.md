@@ -120,14 +120,18 @@ https://www.smartsafehub.com/firmware/
 The firmware page currently provides releases for supported devices including:
 
 - **ipTIME AX3000SM**
+- **ipTIME AX3000SE**
+- **ipTIME A3004T**
 - **GL.iNet GL-MT300N-V2**
 - **Xiaomi Router AX3000T (International version)**
 
-Choose the image type that matches the installation state:
+Choose the image type that matches your installation method:
 
-- **Factory** — for an initial installation from vendor firmware or a device-specific recovery flow.
-- **Sysupgrade** — for updating a router that already runs SmartSafeHub/OpenWrt.
+- **Initramfs** — for temporarily booting SmartSafeHub/OpenWrt in RAM during an initial installation or recovery process.
+- **Factory** — for installing SmartSafeHub/OpenWrt from the vendor firmware or through a device-specific recovery process.
+- **Sysupgrade** — for upgrading a router that already runs SmartSafeHub/OpenWrt.
 
+Not every image type is available for every device. Follow the installation guide for your router and use only the image type provided for that installation method.
 Always verify the exact hardware model and follow the device-specific installation guide before flashing. Installing an image for a different model can prevent the router from booting.
 
 See the installation guide for the current procedure:

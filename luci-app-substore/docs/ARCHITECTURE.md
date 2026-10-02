@@ -42,8 +42,6 @@ luci-app-substore/
 - `core.lua` — 订阅源元数据读写、状态管理、订阅链接生成（token + generate_link）
 - `parser.lua` — 订阅格式解析（Base64/URI/Clash YAML/JSON）
 - `node.lua` — 节点模型、筛选、去重、重命名、排序
-- `node_converter.lua` — 协议间字段映射与协议转换
-- `converter.lua` — 通用转换器（字段映射、URL 模板渲染）
 - `output.lua` — 统一格式分发（FORMAT_ALIASES 别名映射、content-type/扩展名）
 - `output_clash_meta.lua` — Clash.Meta / Mihomo / Stash YAML
 - `output_uri.lua` — 分享链接 URI / Shadowrocket / V2Ray URI
@@ -64,7 +62,11 @@ LuCI 前端（`/usr/lib/lua/luci/`）：
 
 **订阅链接下发流程**：每个订阅在创建时生成随机 16 位十六进制 `token`，存入元数据。客户端请求公开端点
 `GET /substore/download?token=<token>&target=<format>`（如 `target=ClashMeta`），无需登录态、靠不可猜测的 token 鉴权，
-按 `target` 实时转换节点并返回（`node_converter.lua` 负责协议间转换，`output.*` 负责格式生成）。
+按 `target` 实时转换节点并返回（由 `output.*` 按目标格式生成）。
+
+> **历史说明**：早期设计里 `node_converter.lua` / `converter.lua` 负责「任意协议 →
+> 任意协议」的转换。实际实现中该转换入口从未接入（`output.*` 各模块直接消费统一
+> 节点模型），两个模块只被彼此与单元测试引用，已于 `[2.6.11-r1]` 作为死代码删除。
 
 节点统一内部模型（协议无关）：
 ```lua

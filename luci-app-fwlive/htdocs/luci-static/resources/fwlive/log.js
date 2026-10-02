@@ -61,6 +61,65 @@ const CLASSIFY_SPEC = {
 	]
 };
 
+/* Validate the trusted module configuration once, before constructing regexes. */
+validateClassifySpec(CLASSIFY_SPEC);
+
+function validateClassifySpec(spec) {
+	const validateNode = function (node) {
+		if (!node || typeof node !== 'object' || Array.isArray(node))
+			throw new Error('CLASSIFY_SPEC node must be an object');
+		const keys = Object.keys(node);
+		if (keys.length !== 1)
+			throw new Error(
+				'CLASSIFY_SPEC node must have exactly one key: ' + JSON.stringify(node)
+			);
+		const key = keys[0];
+		if (key === 'and' || key === 'or') {
+			const children = node[key];
+			if (!Array.isArray(children))
+				throw new Error('CLASSIFY_SPEC ' + key + ' node must be an array');
+			if (children.length === 0)
+				throw new Error('CLASSIFY_SPEC ' + key + ' node must be a non-empty array');
+			for (let i = 0; i < children.length; i++) validateNode(children[i]);
+			return;
+		}
+		if (key === 'kv' || key === 'kvAny') {
+			const values = node[key];
+			let valid = Array.isArray(values) && values.length > 0;
+			for (let i = 0; valid && i < values.length; i++) {
+				if (typeof values[i] !== 'string' || values[i].trim().length === 0) valid = false;
+			}
+			if (!valid)
+				throw new Error(
+					'CLASSIFY_SPEC ' +
+						key +
+						' predicate must be a non-empty array of non-empty strings'
+				);
+			for (let i = 0; i < values.length; i++) {
+				if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(values[i]))
+					throw new Error(
+						'CLASSIFY_SPEC ' + key + ' predicate contains an invalid KV name'
+					);
+			}
+			return;
+		}
+		if (key === 'action') {
+			if (node.action !== 'known')
+				throw new Error('CLASSIFY_SPEC action predicate must be "known"');
+			return;
+		}
+		if (key === 'hint') {
+			if (node.hint !== true) throw new Error('CLASSIFY_SPEC hint predicate must be true');
+			return;
+		}
+		throw new Error('unrecognised CLASSIFY_SPEC predicate node: ' + JSON.stringify(node));
+	};
+
+	if (!Array.isArray(spec.rules) || spec.rules.length === 0)
+		throw new Error('CLASSIFY_SPEC rules must be a non-empty array');
+	for (let i = 0; i < spec.rules.length; i++) validateNode(spec.rules[i]);
+}
+
 function wordPattern(words) {
 	const alt = words.join('|');
 	return new RegExp('(^|[^A-Za-z0-9_])(' + alt + ')([^A-Za-z0-9_]|$)', 'i');
@@ -99,6 +158,7 @@ const NETFILTER_KV_GLUE = new RegExp(
 
 return baseclass.extend({
 	CLASSIFY_SPEC: CLASSIFY_SPEC,
+	validateClassifySpec: validateClassifySpec,
 
 	TCP_FLAG_TAIL:
 		/\b((?:SYN|ACK|FIN|RST|PSH|URG|ECE|CWR)(?:\s+(?:SYN|ACK|FIN|RST|PSH|URG|ECE|CWR))*)(?:\s+[A-Z][A-Z0-9_]*=[^\s]+)*\s*$/i,
@@ -168,76 +228,23 @@ return baseclass.extend({
 			}
 		};
 
-		const validateNode = function (node) {
-			if (!node || typeof node !== 'object' || Array.isArray(node))
-				throw new Error('CLASSIFY_SPEC node must be an object');
-			const keys = Object.keys(node);
-			if (keys.length !== 1)
-				throw new Error(
-					'CLASSIFY_SPEC node must have exactly one key: ' + JSON.stringify(node)
-				);
-			const key = keys[0];
-			if (key === 'and' || key === 'or') {
-				const children = node[key];
-				if (!Array.isArray(children))
-					throw new Error('CLASSIFY_SPEC ' + key + ' node must be an array');
-				if (children.length === 0)
-					throw new Error('CLASSIFY_SPEC ' + key + ' node must be a non-empty array');
-				for (let i = 0; i < children.length; i++) validateNode(children[i]);
-				return;
-			}
-			if (key === 'kv' || key === 'kvAny') {
-				const values = node[key];
-				let valid = Array.isArray(values) && values.length > 0;
-				for (let i = 0; valid && i < values.length; i++) {
-					if (typeof values[i] !== 'string' || values[i].trim().length === 0)
-						valid = false;
-				}
-				if (!valid)
-					throw new Error(
-						'CLASSIFY_SPEC ' +
-							key +
-							' predicate must be a non-empty array of non-empty strings'
-					);
-				return;
-			}
-			if (key === 'action') {
-				if (node.action !== 'known')
-					throw new Error('CLASSIFY_SPEC action predicate must be "known"');
-				return;
-			}
-			if (key === 'hint') {
-				if (node.hint !== true)
-					throw new Error('CLASSIFY_SPEC hint predicate must be true');
-				return;
-			}
-			throw new Error('unrecognised CLASSIFY_SPEC predicate node: ' + JSON.stringify(node));
-		};
-
 		const evalNode = function (node) {
 			const keys = Object.keys(node);
 			const key = keys[0];
 			if (key === 'and') {
-				let matched = true;
 				for (let i = 0; i < node.and.length; i++) {
-					if (!evalNode(node.and[i])) matched = false;
+					if (!evalNode(node.and[i])) return false;
 				}
-				return matched;
+				return true;
 			}
 			if (key === 'or') {
-				let matched = false;
 				for (let i = 0; i < node.or.length; i++) {
-					if (evalNode(node.or[i])) matched = true;
+					if (evalNode(node.or[i])) return true;
 				}
-				return matched;
+				return false;
 			}
 			return pred[key](node);
 		};
-
-		if (!Array.isArray(this.CLASSIFY_SPEC.rules) || this.CLASSIFY_SPEC.rules.length === 0)
-			throw new Error('CLASSIFY_SPEC rules must be a non-empty array');
-		for (let i = 0; i < this.CLASSIFY_SPEC.rules.length; i++)
-			validateNode(this.CLASSIFY_SPEC.rules[i]);
 
 		for (let i = 0; i < this.CLASSIFY_SPEC.rules.length; i++) {
 			if (evalNode(this.CLASSIFY_SPEC.rules[i])) return true;
@@ -547,7 +554,7 @@ return baseclass.extend({
 		const p = this.parseFilterValue(spec);
 		if (!p.value) return true;
 
-		const hit = (haystack || '').indexOf(p.value) !== -1;
+		const hit = (haystack || '').toLowerCase().indexOf(p.value.toLowerCase()) !== -1;
 		return p.negate ? !hit : hit;
 	},
 

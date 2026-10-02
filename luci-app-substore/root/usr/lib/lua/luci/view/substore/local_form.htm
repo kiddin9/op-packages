@@ -55,7 +55,7 @@
 				<div id="text_area_wrap" style="display:<%=local_mode=="text" and "block" or "none"%>">
 					<textarea id="content_text" name="content" rows="16" style="width:100%"
 						<%=local_mode=="text" and "" or "disabled"%>><%=luci.util.pcdata(content)%></textarea>
-					<div style="color:#808080;margin-top:0.25em"><%:Paste YAML/URI/JSON node list here. Mixed protocols supported.%></div>
+					<div style="color:#808080;margin-top:0.25em"><%:Paste a node list here — one format at a time (URI / Base64 / YAML / JSON / WireGuard .conf); protocols may be mixed within that format.%></div>
 				</div>
 				<div id="form_nodes_container" style="display:<%=local_mode=="form" and "block" or "none"%>">
 					<div style="margin-bottom:0.5em;color:#808080"><%:Add nodes via form below. Each node will be saved as JSON and parsed on save.%></div>
@@ -146,6 +146,8 @@ var FIELD_LABELS = {
 	"obfs": "Obfs",
 	"obfs-param": "Obfs Param",
 	"obfs-password": "Obfs Password",
+	// SIP003 插件串，形如 obfs-local;obfs=http;obfs-host=www.baidu.com
+	"plugin": "Plugin (SIP003)",
 	"protocol": "Protocol",
 	"protocol-param": "Protocol Param",
 	"udp": "UDP",

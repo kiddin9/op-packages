@@ -125,6 +125,45 @@ local t1 = core.ensure_token(id1)
 check("subscription token length", type(t1) == "string" and #t1 == 16)
 check("subscription token stable", core.ensure_token(id1) == t1)
 
+-- ---------- 写盘失败时不得交出不存在的状态（M.remove / M.ensure_token） ----------
+-- 两处此前都丢弃了 save() 的返回值：
+--   M.remove       → 返回 true，且**已经删掉节点文件**：订阅在列表里还在，
+--                    点进去却是空的，用户以为删成功了
+--   M.ensure_token → 返回一个只存在于内存里的 token，而 id_by_token 从磁盘读，
+--                    用户拿到的是必然报「无效的订阅 token」的链接
+-- 用替身让 atomic_write 失败（比 chmod 更可移植：测试可能以 root 运行，
+-- 权限位对 root 不起作用）。
+local real_atomic_write = util.atomic_write
+
+-- 先正常建一条带节点的订阅（此时 atomic_write 还是真的）
+local fail_id = core.add("写盘失败用例", "http://example.com/fail")
+check("setup: add works before failure injection", fail_id ~= nil)
+local fail_nodes = core.write_nodes(fail_id, { { proto = "vmess", name = "n", server = "1.2.3.4", port = 443 } })
+check("setup: nodes written", fail_nodes == true)
+
+-- ensure_token：token 写不进去时返回 nil，而不是一个用不了的 token。
+-- add() 建订阅时就已经带了 token，先清掉才能走到「生成并持久化」那条路
+-- （M.CLEAR 是 save_meta 的清除哨兵，见 core.lua 的说明）。
+-- 这一步必须用**真实**的 atomic_write：失败替身只用于下面两条断言。
+check("setup: clear token", core.save_meta(id5, { token = core.CLEAR }) == true)
+
+util.atomic_write = function() return false, "No space left on device" end
+local rok, rerr = core.remove(fail_id)
+check("remove reports write failure", rok == false)
+check("remove surfaces the write error", type(rerr) == "string" and rerr ~= "")
+check("remove keeps nodes file on write failure",
+	#core.read_nodes(fail_id) == 1)
+
+local tok_fail, tok_err = core.ensure_token(id5)
+check("ensure_token reports write failure", tok_fail == nil)
+check("ensure_token surfaces the write error", type(tok_err) == "string" and tok_err ~= "")
+
+util.atomic_write = real_atomic_write
+-- 恢复后仍能正常发 token（替身没有把模块状态弄坏）
+local tok_ok = core.ensure_token(id5)
+check("ensure_token works after recovery", type(tok_ok) == "string" and #tok_ok == 16)
+check("ensure_token stable after recovery", core.ensure_token(id5) == tok_ok)
+
 os.execute("rm -rf " .. string.format("%q", tmp))
 
 -- ---------- 结果 ----------

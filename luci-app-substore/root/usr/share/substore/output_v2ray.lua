@@ -12,19 +12,30 @@ local function build_stream_settings(n)
 	ss.network = net
 
 	-- 传输层
+	-- 空表必须用 util.JSON_EMPTY_OBJECT（编码成 {}）而不是裸 {}：json_encode 的
+	-- is_array 会把空表判成数组编成 []，而 Xray 用标准库 json.Unmarshal 解析配置，
+	-- wsSettings / grpcSettings / httpSettings 在它那边是结构体指针，把数组解进
+	-- 结构体会直接 UnmarshalTypeError，Xray 拒绝启动。触发条件很普通：grpc 节点
+	-- 没填服务名、ws 节点既没 path 也没 host。
 	if net == "ws" then
-		local ws = {}
-		if n.path then ws.path = n.path end
-		if n.host then ws.headers = { Host = n.host } end
+		local ws = util.JSON_EMPTY_OBJECT
+		if n.path or n.host then
+			ws = {}
+			if n.path then ws.path = n.path end
+			if n.host then ws.headers = { Host = n.host } end
+		end
 		ss.wsSettings = ws
 	elseif net == "grpc" then
-		local g = {}
-		if n.path then g.serviceName = n.path end
+		local g = util.JSON_EMPTY_OBJECT
+		if n.path then g = { serviceName = n.path } end
 		ss.grpcSettings = g
 	elseif net == "http" or net == "h2" then
-		local h = {}
-		if n.host then h.host = { n.host } end
-		if n.path then h.path = n.path end
+		local h = util.JSON_EMPTY_OBJECT
+		if n.host or n.path then
+			h = {}
+			if n.host then h.host = { n.host } end
+			if n.path then h.path = n.path end
+		end
 		ss.httpSettings = h
 	elseif net == "kcp" then
 		ss.kcpSettings = { header = { type = n.headerType or "none" } }

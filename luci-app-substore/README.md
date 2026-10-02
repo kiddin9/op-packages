@@ -13,94 +13,58 @@
 ## 功能特性
 
 **订阅管理**
-- 新增 / 编辑 / 删除 / 更新多个订阅源
-- 手动更新 + 按订阅的定时（cron）更新
-- 状态总览：节点数、最近更新时间、错误信息
-- 每个订阅的剩余流量 / 剩余时长，从 `subscription-userinfo` 响应头解析（仅在编辑页显示）
-- **订阅代理**：通过 `http://` / `https://` / `socks4` / `socks5` / `socks5h` 代理下载订阅，
+- 多订阅源的新增 / 编辑 / 删除 / 更新，支持手动更新与按订阅的定时（cron）更新；
+  状态总览显示节点数、最近更新时间与错误信息
+- **勾选批量删除**：勾选一条或多条订阅（表头选择框可全选）后点「删除」一次删掉；
+  一条都没勾选时不会删除任何东西
+- 每个订阅的剩余流量 / 剩余时长（解析 `subscription-userinfo` 响应头）
+- **订阅代理**：经 `http` / `https` / `socks4` / `socks5` / `socks5h` 代理下载订阅，
   用于订阅源直连失败时
-- **组合订阅**：勾选任意子集的现有订阅（可叠加关键词包含 / 排除、去重规则）合并成一个组合，
-  拥有独立名称、token 与订阅链接；源订阅更新后组合自动重算
-- **本地订阅**：不填 URL，直接粘贴节点文本（YAML / URI / JSON / wg-quick `.conf`）导入，
-  一次粘贴按**单一格式**识别（自动判定 YAML / URI / JSON / `.conf`，不支持多格式混排），
-  或用「表单导入」按协议动态字段逐条录入节点
-  （vmess / vless / ss / ssr / trojan / hysteria / hysteria2 / tuic / wireguard / socks）
+- **订阅客户端类型**：按订阅指定下载时发送的 `User-Agent`，内置 Clash Verge /
+  v2rayN / Clash Party / FlClash 预设，也可自定义（直接填要原样发送的 UA 请求头，
+  形如 `clash-verge/v2.5.0`，最长 256 字符、不含控制字符）。部分机场按 UA 下发节点 ——
+  同一个链接只有用绑定的客户端才解析得出真实节点，用错会得到「与您使用客户端不兼容」
+  的占位节点（能解析成功，但全是 `127.0.0.1:1080` 的假节点）
+- **组合订阅**：把任意子集的现有订阅合并成一个新订阅，拥有独立名称、token 与订阅链接；
+  源订阅更新或**被删除**后组合自动重算（删除时死 id 会从「来源」里摘掉，
+  来源被删光则报错，而不是静默变成 0 节点）
+- **本地订阅**：不填 URL，直接粘贴节点文本导入（一次一种格式，自动判定），
+  或用表单按协议动态字段逐条录入节点
 
 **输入解析**
 - 订阅格式：URI 列表、Base64、JSON、Clash YAML、sing-box JSON、V2Ray / Xray JSON、
-  Surge / Surfboard / Loon / Quantumult X 配置、局域网订阅链接、wg-quick / AmneziaWG `.conf`
-- 节点协议：`vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria` / `hysteria2` /
-  `tuic` / `wireguard` / `socks`（及 `http`，可由 Clash YAML / JSON 配置导入并导出，
-  但不在表单导入的可选协议内 —— 它不作为代理节点对外提供订阅）
-- **WireGuard / AmneziaWG**：导入并导出完整字段（`private-key` / `public-key` / `pre-shared-key` /
-  `ip` / `ipv6` / `allowed-ips` / `reserved` / `persistent-keepalive` / `listen-port` / `mtu` / `dns`），
-  以及 `amnezia-wg-option` 子块（Jc / Jmin / Jmax / S1–S4 / H1–H4 / I1–I5 / J1–J3 / Itime）；
-  可直接粘贴 AmneziaWG 客户端导出的 `.conf` 文件内容
-- **解析容错**：`ssr://` 外层同时接受标准 base64 与 base64url 字母表；缺 `server`
-  或 `port` 不在 1–65535 的残缺节点在**解析阶段即丢弃**（否则会被写成 `server:` /
-  `port: 0`，mihomo 与 sing-box 会拒绝加载整份配置 —— 一个坏节点废掉整个订阅）；
-  含 `@` 的密码按**最后一个** `@` 切分；sing-box YAML 的嵌套 `tls:` 块
-  （含 `alpn` 列表与 `utls.fingerprint`）完整展开；wg-quick `.conf` 支持行内
-  `#` 注释（与 wg-quick 自身的切分语义一致），且单个坏 `[Peer]` 只跳过它自己、
-  不作废整份文件；纯空白内容按「空订阅」处理，而非报「无法识别的订阅格式」
+  Surge / Surfboard / Loon / Quantumult X 配置、wg-quick / AmneziaWG `.conf`
+- 节点协议：`vmess` / `vless` / `trojan` / `shadowsocks` / `ssr` / `hysteria` /
+  `hysteria2` / `tuic` / `wireguard` / `socks`
+  （`http` 可导入并导出，但不在表单可选协议内）
+- **WireGuard / AmneziaWG**：完整字段与 `amnezia-wg-option` 子块，
+  可直接粘贴 AmneziaWG 客户端导出的 `.conf` 内容
+- **解析容错**：缺 `server` 或端口不在 1–65535 的残缺节点在解析阶段即丢弃 ——
+  否则会被写成客户端无法加载的配置，一个坏节点废掉整个订阅
 
 **节点处理**
-- 浏览节点，按分组 / 协议筛选、关键词搜索、排序
-- 节点分组：「分组」列单元格内直接修改单节点分组（XHR 无刷新保存），配合「分组:」下拉筛选
-- 单节点编辑 / 删除（行尾「操作」列）；表头复选框全选、行复选框勾选后点「删除」批量删除；
-  「刷新」按钮重载列表（保留当前筛选条件）
-- 每次更新时生效的按订阅规则（订阅 / 组合 / 本地订阅三种表单均提供）：
-  - 关键词包含 / 排除（逗号分隔，支持多关键词）
-  - 协议筛选（勾选保留哪些协议，全不勾选 = 不筛选）
-  - 去重（同一入口的多账号不会被误合并：去重键含各协议各自的凭据）
-  - 重命名（每行一条：`旧名=新名` 精确匹配、`模式 -> 替换` 正则替换、
-    `{server}_{port}_{proto}` 占位符模板）
+- 按分组 / 协议筛选、关键词搜索、排序；分组可在表格内直接修改（无刷新保存）
+- 单节点编辑 / 删除，勾选后批量删除
+- 按订阅规则：关键词包含 / 排除、协议筛选、去重、重命名（精确匹配 / 正则 / 占位符模板）
 
 **网络探测**（节点页）
-- Ping（ICMP 延迟）、TCPing（连接延迟）、URL 测试（HTTP 延迟）
-- 并行探测，显示成功数与平均延迟
+- Ping（ICMP）、TCPing（TCP 连接）、URL 测试（HTTP），并行探测并显示成功数与平均延迟
 
 **转换与输出**
-- 协议转换：任意协议 → 任意协议
-- SSR（`ssr://`）订阅源支持：仅能原样输出到支持它的客户端（Mihomo / Clash.Meta、Stash、
-  Loon、Egern、Shadowrocket），对其余目标（sing-box、V2Ray/Xray、Surge 家族）丢弃；SSR
-  不能与 vmess/vless 等其它协议互转（协议不兼容）
-- 15 种输出格式（全部实现）：Plain JSON、Stash、Clash.Meta / Mihomo YAML、Clash 原版、
-  Surfboard、Surge、Surge Mac、Loon、Egern、Shadowrocket、Quantumult X、sing-box、
-  V2Ray / Xray、V2Ray URI、WireGuard / AmneziaWG `.conf`
-  - **Clash.Meta / Mihomo**：完整输出传输参数（`ws-opts` / `grpc-opts` / `h2-opts`
-    的 path、host、服务名）与 vless 的 `flow`（XTLS Vision）
-  - **Clash 原版**：面向 Dreamacro Clash / ClashX / Clash for Windows，自动过滤原版不支持的
-    协议（vless / hysteria2 / hysteria / tuic / wireguard）
-  - **WireGuard / AmneziaWG `.conf`**：wg-quick 单接口配置，含 `[Interface]` / `[Peer]` 与
-    AmneziaWG 混淆参数，可直接导入 AmneziaWG 客户端
-  - **sing-box / V2Ray(Xray)**：输出**完整可用配置**（`outbounds` + 分流），而非仅有
-    `outbounds` 的片段
-    - sing-box：节点出站 + `selector`（手工切换）+ `urltest`（自动测速）+ `direct` / `block`，
-      `route.final` 指向 `selector`，内置私网直连规则
-    - V2Ray/Xray：节点出站 + `freedom`(direct) / `blackhole`(block) + `observatory` +
-      `routing.balancers`（`leastPing` 自动选优），内置 `geoip:private` 直连与兜底分流
-      - 仅输出 Xray 支持的协议（vmess / vless / trojan / shadowsocks / socks / http）；
-        hysteria2 / hysteria / tuic / wireguard / ssr 没有对应的 outbound 类型，会被过滤
-        （写成 Xray 不认识的 `protocol` 会让它拒绝加载整份配置）
-    - 刻意**不含 `inbounds` / `dns`**：这两项会绑定本地监听端口、覆盖你既有的 DNS 设置，
-      请在你自己的配置里维护；把本输出合并进已有配置即可
-    - ⚠️ 与 2.3.x 不兼容：2.3.x 输出的是仅含 `outbounds` 的片段，需要粘进已有配置使用；
-      2.4.0 起是完整配置，可直接作为单文件配置启动
-- **输出合法性**：只输出目标客户端真正能加载的内容，而不是「看起来像那么回事」
-  - WireGuard 的 `allowed-ips` / `reserved` / `dns` 无论来源是 YAML 列表还是逗号分隔
-    字符串，一律输出为目标客户端要求的数组（mihomo 是 `[]string` / `[]uint8`，
-    sing-box 是 `[]string` / `[]uint8`）；写成标量会让客户端**拒绝加载整份配置**
-  - Surge 家族 / Quantumult X 的策略组成员列表会剔除**含逗号**的节点名：这些格式的
-    成员列表没有引号或转义机制，名字里的逗号会被当成成员分隔符，产出两个都不存在的
-    成员，客户端因「引用不存在的代理」拒绝加载整份配置；Quantumult X 的 `[policy]`
-    同时只收录真正写出了 `[server_local]` 行的节点，不再产生悬空引用
-  - hysteria / hysteria2 分享链接的 `insecure` 以权威字段 `skip-cert-verify` 为准，
-    Clash YAML / sing-box JSON / 表单导入的节点不再丢掉「跳过证书校验」
+- 15 种输出格式：Plain JSON、Stash、Clash.Meta / Mihomo、Clash 原版、Surfboard、Surge、
+  Surge Mac、Loon、Egern、Shadowrocket、Quantumult X、sing-box、V2Ray / Xray、
+  V2Ray URI、WireGuard / AmneziaWG `.conf`
+- SSR（`ssr://`）只能原样输出到支持它的客户端（Mihomo、Stash、Loon、Egern、Shadowrocket），
+  其余目标会将其丢弃
+- **只输出目标客户端真正能加载的内容**：按目标能力过滤协议；数组字段按客户端要求的类型
+  输出；策略组成员列表剔除会破坏语法的节点名
+- sing-box / V2Ray(Xray) 输出**完整可用配置**（含分流规则），可直接作为单文件配置启动
 
 **订阅链接**
 - 每个订阅独立随机 token → 公开下载端点
-  `/substore/download?token=<token>&target=<format>`，Passwall / OpenClash 等客户端可直接拉取
+  `/substore/download?token=<token>&target=<format>`，Passwall / OpenClash 等可直接拉取
+- 列表页的格式下拉在订阅**解析出节点之前**（刚添加、更新失败、节点数为 0）
+  置灰不可选，避免生成必然为空的订阅链接
 
 **LuCI 界面与国际化**
 - 默认英文，运行时语言为 `zh-cn` 时自动显示简体中文
@@ -108,18 +72,20 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.6.9-r1`）。
+> （当前 `2.7.0-r1`）。
+
+**最低支持 OpenWrt / ImmortalWrt 23.05**（更早的版本不在支持范围内）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.6.9-r1.ipk
+opkg install luci-app-substore-2.7.0-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.6.9-r1.apk
+apk add --allow-untrusted luci-app-substore-2.7.0-r1.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
@@ -132,6 +98,37 @@ apk add --allow-untrusted luci-app-substore-2.6.9-r1.apk
 3. **浏览节点** —— 筛选（分组 / 协议 / 关键词）、排序、探测延迟；勾选复选框后「删除」
    可批量删除，行内可编辑 / 删除 / 改分组，「刷新」重载列表。
 4. **导出** —— 任选 15 种格式之一，或复制订阅链接供下游客户端（Passwall / OpenClash / …）使用。
+
+> **重命名规则的匹配语法是 Lua 模式，不是 PCRE**。`|` 表示「或」，但只在**顶层**
+> 生效：写成 `(a|b)` 不会展开成「a 或 b」，而是按字面匹配（要求名字里真的出现
+> `a|b`）。多分支直接写 `a|b`，或拆成多条规则。字符类 `[...]` 内的 `|` 同样是字面。
+
+## 已知限制
+
+以下均为**经代码级审计确认**的限制，是有意保留而非疏漏；每项「为何不改」的依据见
+[docs/LEGACY_ISSUES.md](docs/LEGACY_ISSUES.md)。
+
+- **混合格式文本导入会被拒绝** —— 本地粘贴的节点文本一次只能是一种格式
+  （URI / Base64 / YAML / JSON / WireGuard `.conf`），同一种格式内可混用协议。
+  混用会**明确报错**并列出检出的格式，而不是静默丢掉一部分节点。
+  **远程订阅不受此检查影响**：订阅内容若混用格式，仍按优先级取一种（与历史行为一致）。
+- **hysteria v1 导出到 sing-box 需自行补 `up` / `down`（带宽）** —— 本项目的节点模型
+  不承载带宽字段，凭空填默认值属于猜测，故不输出。
+- **hysteria v1 的 URI 只保证「本包导出 → 本包导入」不失真** —— 上游 URI 规范
+  （文档站点持续 404）未能核实，因此认不出的查询参数一律忽略，不臆造其语义。
+- **`http` 协议不能在界面上手工新建** —— 权威协议表不含它，故表单不提供该选项；
+  但它可由 Clash / JSON 配置导入，并能正常导出。
+- **AmneziaWG 参数在界面上是一个 JSON 文本框**（`amnezia-wg-option`）—— 数据往返
+  正确，但需手写 JSON。
+- **wget 后端的体积与重定向检查发生在「请求发出之后」** —— busybox wget 没有
+  `--max-filesize` / `--max-redirect` 的等价选项。超限响应体会被**丢弃并报错**
+  （不会进入解析流程），重定向链也会**逐跳复检**、任一跳指向内网即整体拒绝；
+  差别仅在于这两项检查晚于请求发出。**安装 curl 可完全避免**（curl 路径用
+  `--max-filesize` 与 `--max-redirs 0` 在发出前拦截）。
+- **本机完全没有 DNS 解析能力时，wget 后端会拒绝下载域名订阅** —— 这类设备上预检
+  无法校验目标地址，而 wget 又没有 curl 的 `%{remote_ip}` 可用于「连接后复核」，
+  按「校验不了就拒绝」处理（错误信息会提示安装 curl）。字面 IP 目标与有解析手段的
+  设备不受影响。
 
 ## 目录结构
 
@@ -150,6 +147,7 @@ apk add --allow-untrusted luci-app-substore-2.6.9-r1.apk
 │   │   │   └── view/substore/*.htm             # 模板
 │   │   └── share/
 │   │       ├── luci/menu.d/luci-app-substore.json
+│   │       ├── rpcd/acl.d/luci-app-substore.json  # ACL 组（菜单 depends.acl 引用）
 │   │       └── substore/*.lua    # 核心逻辑（不依赖 luci.*）
 ├── po/zh-cn/substore.po          # 简体中文翻译
 ├── docs/                         # 设计与指南
@@ -192,11 +190,23 @@ LuCI 界面与 cron 行为仍需在目标设备上验证 —— 见 [docs/TESTIN
 
 ## 安全
 
-SSRF 防护（拒绝内网 / 保留 / 链路本地地址；**DNS 解析失败即拒绝**，不给
-「解析不出来就放行」留绕过口）、协议白名单与端口范围校验（1–65535）、
-响应体大小与超时限制、下载临时文件在每条退出路径上清理（`/tmp` 是 tmpfs）、
-命令注入防护（白名单解析 + shell 引用 + 探测目标拒绝以 `-` 开头的主机名）、
+SSRF 防护（拒绝内网 / 保留 / 链路本地地址；**有解析手段却解析不出即拒绝**，不给
+「解析不出来就放行」留绕过口；重定向链**逐跳复检**）、协议白名单与端口范围校验
+（1–65535）、响应体大小与超时限制、下载临时文件在每条退出路径上清理（`/tmp` 是
+tmpfs）、命令注入防护（白名单解析 + shell 引用 + 探测目标拒绝以 `-` 开头的主机名）、
 公开下载端点基于 token 的访问控制、日志不含凭据。
+
+**无 DNS 解析能力的设备**（nixio 与 nslookup 均不可用）无法在下载前校验域名，
+此时 curl 后端改用 `%{remote_ip}` 在**连接建立后**复核实际对端地址（同时关闭
+DNS rebinding 的 TOCTOU 窗口）；wget 后端没有等价手段，**直接拒绝**而非放行
+（见「已知限制」）。
+
+**表单提交校验**：写操作要求 `token` 存在、非空，并在可取到时与 LuCI 的
+`context.authtoken` 比对（这正是框架模板里 `token` 的取值来源）；校验失败会**回显
+原因**，不会静默丢弃。**访问控制**：`luci-app-substore` ACL 组经 `menu.d` 的
+`depends.acl` 生效 —— 未获授权的 LuCI 用户看不到本应用入口，**直接访问 URL 也会
+被拒（403）**（依据：ucode dispatcher 在分发时校验路径上累积的 `depends.acl`，
+已从上游源码核实，并**已在设备上实测通过**）。授权方式见 [docs/SECURITY.md](docs/SECURITY.md)。
 
 数据落盘权限：`/etc/substore` 目录 `0700`，`subscriptions.json` 与 `nodes/*.json`
 `0600`（前者含订阅 URL 与公开下载 token，后者含 uuid / 密码 / 私钥）——

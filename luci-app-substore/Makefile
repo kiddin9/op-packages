@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-substore
 # 版本约定：每次提交 PKG_RELEASE +1（2.1.2-r1 ~ r9）；
 # 达到 r10 时 PKG_VERSION 末位 +1（2.1.2 -> 2.1.3），PKG_RELEASE 重置为 1。
-PKG_VERSION:=2.6.9
-PKG_RELEASE:=14
+PKG_VERSION:=2.7.0
+PKG_RELEASE:=15
 
 LUCI_DEPENDS:=+luci-lua-runtime +luci-compat
 
@@ -73,6 +73,10 @@ define Package/luci-app-substore/install
 
 	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
 	$(INSTALL_DATA) ./root/usr/share/luci/menu.d/luci-app-substore.json $(1)/usr/share/luci/menu.d/luci-app-substore.json
+
+	# ACL 组：菜单 depends.acl 引用它，未授权的 LuCI 用户看不到本应用
+	$(INSTALL_DIR) $(1)/usr/share/rpcd/acl.d
+	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-substore.json $(1)/usr/share/rpcd/acl.d/luci-app-substore.json
 
 	# 简体中文翻译（运行时 zh-cn 时由 luci.template.parser 自动加载 *.zh-cn.lmo）
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n

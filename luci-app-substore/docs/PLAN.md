@@ -50,7 +50,9 @@
 - `output_singbox.lua`：sing-box JSON
 - `output_v2ray.lua`：V2Ray/Xray JSON
 - `output_formats.lua`：Surge / Surfboard / SurgeMac / Loon / QX / Egern / Plain JSON
-- `node_converter.lua` + `converter.lua`：协议间转换、URL 模板渲染
+- ~~`node_converter.lua` + `converter.lua`：协议间转换、URL 模板渲染~~
+  （**未落地**：转换入口从未接入，两模块只被彼此与测试引用，已于 `[2.6.11-r1]`
+  作为死代码删除。本文档保留当时的计划原貌，不代表当前实现。）
 - `parser_surge.lua`：Surge / Loon / QX 客户端配置导入
 - `parser.lua` 接线：sing-box / V2Ray / Clash JSON / Clash YAML / Surge / QX 输入源
 - `core.generate_link(token, target)` + 每订阅随机 token

@@ -25,7 +25,7 @@
 'use strict';
 
 import { connect } from 'ubus';
-import { mkdtemp, readfile, writefile } from 'fs';
+import { lstat, mkdtemp, readfile, writefile } from 'fs';
 
 import { Loader } from './config/loader.uc';
 import { generate } from './generator/client.uc';
@@ -52,7 +52,36 @@ function resolve_env(dm) {
 	const env = {
 		wan_dns: (ubus?.call('network.interface', 'status', {'interface': 'wan'}))?.['dns-server']?.[0],
 		direct_domain_list: [],
-		proxy_domain_list: []
+		proxy_domain_list: [],
+		/* Whether the generated mainland rule-set for IPv6 is on disk.
+		 *
+		 * generator/ may not stat anything (guard 27), and this is exactly
+		 * the kind of environment a generator is supposed to be handed:
+		 * geoip-cn.srs and china_ip4.json carry no IPv6, so china_ip6.json -
+		 * written by hp_prepare_runtime_files from the list the resource
+		 * updater maintains - is the only thing that lets the route and DNS
+		 * halves recognise a mainland IPv6 destination.  When it is absent
+		 * (the list is missing, or had no usable prefix when the file was
+		 * last written) both halves have to stay silent about IPv6 instead
+		 * of naming a rule-set that is not there: a `rule_set:` pointing at
+		 * a missing file makes sing-box reject the entire config, which the
+		 * health gate turns into a rollback and an unproxied network.  The
+		 * firewall has already degraded to passing IPv6 through, with a
+		 * warning in the ruleset and the log.
+		 *
+		 * lstat(), not the two-argument access(). fs.access() on this ucode
+		 * build answers only in its one-argument form: access(path) returns
+		 * true for an existing path and null for a missing one, while
+		 * access(path, mode) returns null either way. The two-argument form
+		 * is therefore the worst possible choice here - it reports every
+		 * file as missing, so this flag would be permanently false and the
+		 * whole IPv6 split would stay switched off with nothing logged. The
+		 * one-argument call sites elsewhere in the tree (homeproxy-pro.uc's
+		 * cleanup_exec_dir) are correct and must stay as they are.
+		 * lstat() is used because it is unambiguous - there is no second
+		 * argument to get wrong - and because the neighbouring stderr-size
+		 * check in homeproxy-pro.uc already reads sizes through it. */
+		china_ip6_ready: lstat(HP_DIR + '/resources/china_ip6.json') !== null
 	};
 
 	if (routing_mode !== 'custom') {

@@ -108,7 +108,12 @@ local ok_alpn, line_alpn = pcall(fmts.surge_line, { proto = "tuic", name = "T", 
 	port = 443, uuid = "u", password = "p", security = "tls", sni = "s.example.com",
 	alpn = { "h3", "h2" } })
 check("tuic alpn array does not raise", ok_alpn)
-check("tuic alpn array joined", ok_alpn and line_alpn:find("alpn=h3,h2", 1, true) ~= nil)
+-- 多值 alpn 在 Surge 家族的行语法里表达不了（逗号分隔的 key=value，无转义），
+-- 拼成 `alpn=h3,h2` 会被读成 `alpn=h3` 加一个悬空字段。该参数被省略、
+-- 节点本身保留 —— alpn 只是协商提示，缺省时客户端用服务端给出的列表。
+check("tuic alpn array omitted, node kept",
+	ok_alpn and line_alpn ~= nil and line_alpn:find("alpn=", 1, true) == nil
+	and line_alpn:find("tuic, 1.2.3.4, 443", 1, true) ~= nil)
 check("tuic alpn string still works",
 	fmts.surge_line({ proto = "tuic", name = "T", server = "1.2.3.4", port = 443, uuid = "u",
 		alpn = "h3" }):find("alpn=h3", 1, true) ~= nil)
