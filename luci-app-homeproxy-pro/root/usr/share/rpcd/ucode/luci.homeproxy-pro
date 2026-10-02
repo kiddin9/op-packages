@@ -8,6 +8,7 @@
 'use strict';
 
 import { access, error, lstat, popen, readfile, writefile } from 'fs';
+import { cursor } from 'uci';
 
 import { isBinary, isValidECHConfig, isValidPEM, shellQuote, executeCommand } from '/etc/homeproxy-pro/scripts/homeproxy-pro.uc';
 import { parse_uri } from '/etc/homeproxy-pro/scripts/parser/uri.uc';
@@ -207,7 +208,34 @@ const methods = {
 				break;
 			}
 
-			return { result: (system(`/usr/bin/wget --spider -qT3 ${shellQuote(url)} 2>"/dev/null"`, 3100) === 0) };
+			/* Probe the address family the configuration actually has.
+			 *
+			 * busybox wget has no Happy Eyeballs: it walks the resolved
+			 * addresses one at a time, and `-T3` is spent on each. A target
+			 * with seven AAAA records therefore takes over twenty seconds to
+			 * fail, against the 3100 ms budget of the system() call below -
+			 * so the button reported "failed" for Google while the same
+			 * request over IPv4 succeeded, and Baidu passed only because its
+			 * IPv6 goes out direct. The answer was about wget's retry order,
+			 * not about whether the proxy worked.
+			 *
+			 * Forcing the family makes the result mean what the label says.
+			 * With IPv6 support on this is a real IPv6 test: it fails when the
+			 * node cannot carry IPv6 egress, which is true information rather
+			 * than a false negative, and it is the same condition a LAN client
+			 * sees. With IPv6 support off, DNS hands out no AAAA at all, so
+			 * -4 states explicitly what used to happen by accident. */
+			const uci = cursor();
+			const family = ((uci.get('homeproxy-pro', 'config', 'ipv6_support') || '0') === '1') ? 'IPv6' : 'IPv4';
+
+			return {
+				result: (system(`/usr/bin/wget -${(family === 'IPv6') ? '6' : '4'} --spider -qT3 ${shellQuote(url)} 2>"/dev/null"`, 3100) === 0),
+				/* The backend already knows which family it probed, and it is the
+				 * only layer that can know without the view re-reading UCI. The
+				 * view shows this next to the verdict, which is where a "passed"
+				 * finally means something checkable. */
+				family: family
+			};
 		}
 	},
 

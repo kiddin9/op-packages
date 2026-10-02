@@ -148,6 +148,7 @@ return view.extend({
 	summaryData: null,
 	resolveLoadShed: false,
 	resolveShedUntil: 0,
+	resolveErrorUntil: 0,
 	filterInputTimer: null,
 	messageLayout: 'wrap',
 	/* Session-new IDs from the last applied batch; this is not buffer growth. */
@@ -1087,9 +1088,7 @@ return view.extend({
 			/* Raw logd lines, not post-filter rows. Fetch a multiple of the
 			 * display limit so mixed syslog still fills the table; pause
 			 * reads the ring cap so the buffer can catch up. */
-			reply = await callFwlivePoll({
-				addresses: [String(fetchLines)]
-			});
+			reply = await callFwlivePoll([String(fetchLines)]);
 		} catch (_e) {
 			reply = null;
 		}
@@ -1157,12 +1156,17 @@ return view.extend({
 
 		this.notePollRtt(rtt, false);
 		this.updateAdaptiveBanner();
-		if (this.clientBackoffEnabled() && rtt > constants.POLL_RTT_SLOW_MS) {
-			if (!this.summaryMode) this.enterSummaryMode(reply.summary);
-			else {
+		if (this.clientBackoffEnabled()) {
+			if (this.summaryMode) {
 				this.summaryData =
-					reply.summary && typeof reply.summary === 'object' ? reply.summary : null;
+					reply.summary &&
+					typeof reply.summary === 'object' &&
+					!Array.isArray(reply.summary)
+						? reply.summary
+						: null;
 				this.renderSummary();
+			} else if (rtt > constants.POLL_RTT_SLOW_MS) {
+				this.enterSummaryMode(reply.summary);
 			}
 		}
 
@@ -1552,7 +1556,8 @@ return view.extend({
 	enterSummaryMode(summary) {
 		this.summaryMode = true;
 		this.summaryRowsShown = false;
-		this.summaryData = summary && typeof summary === 'object' ? summary : null;
+		this.summaryData =
+			summary && typeof summary === 'object' && !Array.isArray(summary) ? summary : null;
 		this.renderSummary();
 	},
 
@@ -1780,6 +1785,13 @@ return view.extend({
 		/* Invalidate any in-flight resolve from the previous toggle state. */
 		this.resolveGeneration = (this.resolveGeneration || 0) + 1;
 		this.resolveInFlight = false;
+		/* A toggle is an explicit retry; drop resolver pauses from the last state. */
+		this.resolveErrorUntil = 0;
+		if (this.resolveLoadShed) {
+			this.resolveLoadShed = false;
+			this.resolveShedUntil = 0;
+			this.updateAdaptiveBanner();
+		}
 
 		/* Paint the existing cache immediately; resolving only fills misses. */
 		if (this.tablePaused) this.updateStatus();
@@ -1960,7 +1972,15 @@ return view.extend({
 		const now = this.nowMs();
 		/* While the router sheds resolve load, hold the paused banner without
 		 * re-asking every poll — retry after the cooldown expires. */
-		if (this.resolveLoadShed && now < (this.resolveShedUntil || 0)) return;
+		if (this.resolveLoadShed) {
+			if (now < (this.resolveShedUntil || 0)) return;
+			/* The cooldown is over; the next reply re-arms it if load persists. */
+			this.resolveLoadShed = false;
+			this.resolveShedUntil = 0;
+			this.updateAdaptiveBanner();
+		}
+		/* Resolver errors carry no per-address signal: back off the whole call. */
+		if (now < (this.resolveErrorUntil || 0)) return;
 
 		for (let i = 0; i < ips.length && need.length < constants.RESOLVE_BATCH_MAX; i++) {
 			const ip = ips[i];
@@ -1976,7 +1996,7 @@ return view.extend({
 		this.resolveInFlight = true;
 
 		try {
-			const res = await callFwliveResolve({ addresses: need });
+			const res = await callFwliveResolve(need);
 			if (gen !== this.resolveGeneration) return;
 
 			if (this.isLoadShedReply(res)) {
@@ -1992,7 +2012,11 @@ return view.extend({
 			const names = this.resolveNamesFromReply(res);
 			/* RPC-level failures carry no per-address signal. Do not turn numeric,
 			 * null, or malformed replies into negative hostname cache entries. */
-			if (names === null) return;
+			if (names === null) {
+				this.resolveErrorUntil = this.nowMs() + hostname.FAIL_TTL_MS;
+				return;
+			}
+			this.resolveErrorUntil = 0;
 			const truncated = res && typeof res === 'object' && res.truncated === true;
 			let updated = false;
 
@@ -2013,6 +2037,8 @@ return view.extend({
 			if (updated) this.scheduleResolvePaint();
 		} catch (_e) {
 			/* resolve unavailable — show IPs */
+			if (gen === this.resolveGeneration)
+				this.resolveErrorUntil = this.nowMs() + hostname.FAIL_TTL_MS;
 		} finally {
 			if (gen === this.resolveGeneration) this.resolveInFlight = false;
 		}
@@ -2296,6 +2322,11 @@ return view.extend({
 		return this.ensurePollCoordinator().requestPoll();
 	},
 
+	/* Join the request LuCI poll.add may already have fired. */
+	catchUpPoll() {
+		return this.ensurePollCoordinator().catchUp();
+	},
+
 	async runPollRequest(epoch) {
 		try {
 			try {
@@ -2366,10 +2397,12 @@ return view.extend({
 			window.addEventListener('pagehide', this.pagehideHandler);
 		}
 		coordinator.startPolling();
-		return Promise.all([this.loadRulesMap(), this.loadLoggingStatus()]).then(() => {
-			if (this.viewDisposed) return;
-			return this.requestPoll();
-		});
+		/* Join the bootstrap request before metadata can outlast it. Later
+		 * refresh, resume and visibility catch-ups must still request fresh data. */
+		const startupPoll = this.catchUpPoll();
+		return Promise.all([startupPoll, this.loadRulesMap(), this.loadLoggingStatus()]).then(
+			() => undefined
+		);
 	},
 
 	renderDisplayDrawer() {

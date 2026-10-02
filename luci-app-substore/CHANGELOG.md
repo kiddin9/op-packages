@@ -2,6 +2,586 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.0-r1] - ACL 设备实测通过（关闭 2.6.16-r1 遗留的「未实测」）
+
+**纯文档变更，无代码改动**（`core.lua` 仅同步版本号）。
+
+### 背景
+
+`[2.6.16-r1]` 引入的 ACL 组（`rpcd/acl.d/luci-app-substore.json` + `menu.d` 的
+`depends.acl`）当时只做到**读上游源码核实**：结论是 ucode dispatcher 在 `dispatch()`
+里校验路径上累积的 `depends.acl`，不足即 403，因此这是**入口级**门禁而非仅菜单隐藏。
+本机无 LuCI 运行环境，故在 `docs/SECURITY.md`、`docs/TESTING.md` 第 9 项、
+`docs/LEGACY_ISSUES.md` 1.2 与两份 README 中都**如实标注为「未在设备上实测」**。
+
+### 本轮变更
+
+按 `docs/TESTING.md` 第 9 项在目标设备完成复核，**三项断言全部通过**：
+
+| 断言 | 结果 |
+|------|------|
+| 非 root 且不在 `luci-app-substore` 组内的 LuCI 用户 | **看不到**本应用菜单入口 |
+| 把该用户加入组后 | 入口**出现** |
+| 该用户直接访问 `/cgi-bin/luci/admin/services/substore/list` | 返回 **403 Forbidden** |
+
+其中第三项是此前唯一「仅有源码依据」的结论 —— 现已在真实设备上确认，
+**入口级 403 的语义成立**，读源码得出的推断与实测一致。
+
+同步更新的文件：
+
+- `docs/SECURITY.md`「访问控制」：末条改为「已在设备上实测通过」并写明三项结果；
+  「安全测试」小节从未验证清单中移除 ACL（模板渲染与 cron 落盘**仍未验证**，保持标注）
+- `docs/TESTING.md` 第 9 项：标记 ✅ 已实测通过
+- `docs/LEGACY_ISSUES.md` 1.2：将「仍未做的验证」改写为「设备实测（已完成并通过）」，
+  逐条列出三项断言
+- `README.md` / `README.en.md`：安全小节的「未在设备上实测 / not measured on a device」
+  改为「已在设备上实测通过 / measured on a device」
+
+### 未做
+
+- **未记录实测固件版本** —— 用户未提供，不臆测填写
+- LuCI 模板渲染、cron 落盘行为**仍未在设备上验证**（这两项与 ACL 无关，维持原标注）
+
+### 历史条目说明
+
+`[2.6.16-r1]` / `[2.6.17-r1]` 中「未在设备上实测」的记载是那两个版本**当时**的真实
+状态，按惯例**不改写历史条目**；本条即为其后续结论。
+
+## [2.6.17-r1] - 明确最低支持系统为 OpenWrt / ImmortalWrt 23.05
+
+**纯文档变更，无代码改动**（`core.lua` 仅同步版本号）。
+
+### 背景
+
+`[2.6.16-r1]` 引入的 ACL 组靠 `menu.d` 的 `depends.acl` 生效。核实上游源码后确认：
+**入口级 403 的语义只存在于 ucode dispatcher（23.05 起）**；旧版 Lua dispatcher
+（≤ 22.03）里 menu.d 的 `depends.acl` 只影响菜单渲染，入口级拦截需另补
+`entry.acl_depends`。
+
+本项目的处置是**明确支持边界**，而不是为旧版补 `entry.acl_depends`：
+最低支持 **OpenWrt / ImmortalWrt 23.05**，更早的版本不在支持范围内。这样 ACL 的
+入口级语义在支持范围内始终成立，无需维护两套 dispatcher 分支。
+
+### 变更
+
+- `README.md` / `README.en.md` / `docs/INSTALL.md`：安装小节新增最低支持版本声明
+- `docs/LEGACY_ISSUES.md` 1.2、`docs/SECURITY.md`「访问控制」：旧版 dispatcher 段落
+  改述为「不在支持范围内，故无需处理」，并注明依据（用户 2026-10-02 确认）
+- 版本号同步：`Makefile` `PKG_VERSION` → 2.6.17、`core.lua` `M.version`、
+  三处安装文档中的包名
+
+### 未做
+
+- 未新增 `entry.acl_depends`（按上述支持边界，无必要）
+- 未在设备上实测 ACL 拦截效果 —— 仍需按 `docs/TESTING.md` 第 9 项复核
+
+## [2.6.16-r1] - 安全与数据完整性：wget SSRF 缺口、token 校验、ACL、静默失败
+
+本轮按 `docs/LEGACY_ISSUES.md`「六」的处置优先级 1–8 实施。**每项都补了自包含回归
+测试，并对 `HEAD` 做了反向验证**（新断言在修复前失败、修复后全绿）—— 只证明「修复后
+测试通过」无法排除「这条断言本来就不会失败」。
+
+### 1. wget 后端的 SSRF 缺口（安全）
+
+`[2.6.12-r1]` 的「连接后复核对端地址」只对 **curl** 成立 —— 它靠 `%{remote_ip}`
+拿到真实对端 IP。**wget 后端没有任何等价物**：busybox wget 拿不到对端 IP，`-S` 日志
+里的重定向链也只能**事后**看。于是在「本机没有 DNS 解析手段」的设备上，预检
+（`check_public` 的 fail-open 放行）之后**不存在任何一处校验** —— 等于完全没有 SSRF
+防护，而这条路径此前是**静默**的。
+
+现按与 `verify_peer_ip` 相同的原则收敛：**校验不了就拒绝**。`fetch_wget` 在
+`opts.unverified` 为真时直接返回错误并提示安装 curl。
+
+影响面：仅「无任何解析手段 **且** 目标是域名 **且** 后端是 wget」的设备。字面 IP
+目标不受影响（`check_public` 对 IP 提前返回，不产生 `unverified`）。
+
+测试：`tests/dns_fallback_test.lua` 用例 H（含桩写入 `evilbody`，确保断言不是因
+「内容为空」而误过）与对照组 H2。反向验证：修复前 3 条断言失败。
+
+### 2. 删除订阅部分失败时漏写 cron
+
+`action_delete` 原先只在**全部删除成功**时调用 `core.write_cron()`，部分失败时直接
+返回、跳过了它。后果：被删订阅的 cron 行仍留在 crontab 里，`substore-cron.sh` 拿着
+已不存在的 id 反复执行、每次非 0 退出，在日志里刷失败并让监控误报。
+
+现改为**只要有订阅真的被删掉（`removed > 0`）就重写 cron**，与成功/失败分支无关。
+
+测试：`tests/controller_robustness_test.lua` 增加部分失败仍写 cron、全部失败不写 cron
+两条断言。反向验证：修复前 1 条断言失败。
+
+### 3. 混合格式文本导入不再静默丢一半
+
+本地粘贴的文本若混用多种格式，此前 `detect()` 只认优先级最高的一种，其余部分被
+**静默丢弃**，而 `parse` 返回的是合法表 —— 同步报成功，用户以为整份都导进来了
+（实测：「URI + WG conf」只剩 WG 节点，「URI + JSON」只剩 URI 节点，`err` 均为 `nil`）。
+
+新增 `M.detect_all()` 收集文本中**全部**出现的格式，本地文本导入在多于一种时
+**明确报错**并列出检出的格式。
+
+实施中修正了两处**会把合法配置拒之门外**的误判：INI 段头 `[Proxy]` 被误判为 JSON
+数组（加 `is_ini_section_head()` 排除）；「URI + JSON」方向漏检（补行级
+`has_json_object_line()`）。
+
+**刻意限定范围**：守卫只作用于本地文本导入，远程订阅路径（`M.detect` / `M.parse`）
+**未改动** —— 远程内容若混用格式仍是静默取一种，与修复前一致。
+
+测试：新增 `tests/parser_mixed_format_test.lua`（70 条断言）。反向验证：修复前探针
+显示「URI + WG conf」得到 `nodes=1, err=nil`。
+
+### 4. 写盘失败被静默吞掉
+
+`core.lua` 的 `save()` 返回 `util.atomic_write(...)` 的结果（失败时是 `false, err`），
+而 `M.remove` / `M.ensure_token` 此前**丢弃了返回值**：写盘失败时 `M.remove` 仍报成功
+（订阅文件已删、索引没更新 → 索引指向不存在的订阅）；`M.ensure_token` 会把一个
+**没有落盘**的 token 返回给调用方（页面显示 token，实际不存在）。现改为透传失败与原因。
+
+测试：`tests/data_integrity_test.lua` 用 `util.atomic_write` 猴补丁注入写失败。
+反向验证：修复前 5 条断言失败。
+
+### 5. 表单 token 校验：空 token 此前可通过（M28）
+
+`post_ok()` 只判 `formvalue("token") ~= nil`，**空串也通过**；且所有 `entry` 均未声明
+`post`，框架的 `test_post_security` 从未执行（已从上游 `luci/dispatcher.lua` 核实）。
+
+已从上游 `luci/template.lua` 核实：viewns 元表的 `token` 键返回
+`disp.context.authtoken` —— 模板里的 `token` **就是** `context.authtoken`，因此
+「提交的 token 与 `authtoken` 比对」正是框架自身的判据，**不会误拒任何合法表单**。
+
+现要求 token 存在且非空，并在能取到 `authtoken` 时要求相等；取不到时退回「非空即
+通过」（不因取不到值而拒绝全部请求）。失败原因通过 `post_fail_msg` 回显到列表页。
+同时补齐原先 **9 处忽略返回值**的调用点（7 处 `back_to_list()`、2 处
+`back_to_nodes()`），使校验失败**必然**被用户看到。
+
+测试：`tests/controller_robustness_test.lua` M28 段 6 条断言。反向验证：修复前 7 条失败。
+
+### 6. 新增 ACL：未授权的 LuCI 用户不再看到本应用（M29）
+
+此前本应用**没有任何 ACL** —— 没有 acl.d 文件、菜单也没有 `depends.acl`，任意能登录
+LuCI 的用户都能读写全部订阅（含凭据 URL 与下载 token）。
+
+新增 `root/usr/share/rpcd/acl.d/luci-app-substore.json` 定义 `luci-app-substore` 组
+（读写 `uci: substore`），`menu.d` 两个条目均声明 `depends.acl` 引用它，`Makefile`
+增加对应的安装规则。ACL 结构已对照上游 `luci-base` 与 `luci-app-commands` 核实。
+
+**执行范围（已从上游源码核实）**：这是**入口级**门禁，不只是「菜单里看不见」。
+ucode dispatcher（23.05+，现代目标机实际运行的那套）的 `build_pagetree()` 把 menu.d
+与 Lua 控制器装进**同一棵树**，`dispatch()` 逐段 `ctx_append` 累积路径上每个节点的
+`depends.acl`，ACL 不足即返回 **403 Forbidden** —— 直接访问 URL 同样被拦住。
+又因 ACL 沿路径累积，挂在父节点 `admin/services/substore` 上的 ACL 已覆盖其下全部
+18 个 `entry`（form / nodes / delete / save / update / probe …）。
+旧版 Lua dispatcher（≤ 22.03）行为不同：menu.d 的 `depends.acl` 只影响菜单渲染，
+入口级需另补 `entry.acl_depends`（本轮未做，理由见 LEGACY_ISSUES 1.2）。
+
+**未在设备上实测**（如实记录）：以上来自读上游源码，本机无 LuCI 运行环境。
+需按 `docs/TESTING.md` 第 9 项复核 —— 未授权用户既看不到菜单入口，直接访问 URL
+也应返回 403。
+
+回滚：删除 acl.d 文件（及 Makefile 中对应两行）并移除 `menu.d` 两个条目的 `depends` 块。
+
+测试：新增 `tests/acl_menu_test.lua`（19 条断言）固化跨文件接线 —— 接线上任何一环写错
+都**不会报错**，只会静默失效（ACL 形同虚设），故必须由测试锁住。反向验证：修复前
+13 条断言失败。
+
+### 7 / 8. 确认为已知限制并写入文档（无代码改动）
+
+- hysteria v1 导出 sing-box 需自行补 `up` / `down`（节点模型无带宽字段，补默认值属猜测）
+- hysteria v1 的 URI 只保证「本包导出 → 本包导入」不失真（上游规范站点持续 404）
+- `http` 协议不可手工新建（权威协议表不含它；可导入可导出）
+- AmneziaWG 参数在界面上是单个 JSON 文本框
+- wget 后端的体积与重定向检查是**请求发出之后**的（busybox wget 无
+  `--max-filesize` / `--max-redirect`；超限响应体被丢弃并报错、重定向链逐跳复检，
+  差别仅在于晚于请求发出；装 curl 可完全避免）
+- 无 DNS 解析能力的设备上 wget 后端拒绝域名订阅（见上文第 1 项）
+
+已写入 `README.md` / `README.en.md` 新增的「已知限制 / Known limitations」小节、
+`docs/SECURITY.md` 与 `docs/LEGACY_ISSUES.md`（逐项记录「为何不改」的依据）。
+
+### 文档
+
+- `docs/LEGACY_ISSUES.md`：1.2（M28/M29）、2.1、2.2、2.3、2.4、3.1、3.2、3.4、3.5
+  更新为已实施/已确认；新增「六、本轮实施记录」含逐项回归测试与反向验证结果
+- `docs/SECURITY.md`：新增「访问控制」小节、wget 后端处置、重定向逐跳复检、
+  更新「安全测试」为实际测试文件清单
+- `docs/TESTING.md`：新增 4 个测试文件行与 3 项集成验证（混合格式、部分删除 cron、ACL、token）
+- `README.md` / `README.en.md`：新增「已知限制」小节、安全小节更新、目录结构补 acl.d
+
+## [2.6.15-r1] - 修复：删除订阅后引用它的组合订阅不重算
+
+### 缺陷
+
+删除一个订阅后，引用它的**组合订阅**会继续输出该订阅的节点：
+
+- 组合的节点物化在 `nodes/<combo_id>.json`，只有 `combo_refresh` 会重写它；
+- 会触发重算的路径只有 `M.sync`（源更新时）与三个节点级控制器入口
+  （`action_node_save` / `action_node_delete` / `action_node_set_group`），
+  **删除订阅这条路径从未调用过**；
+- 结果：删掉源订阅后，组合的下载链接
+  （`/substore/download?token=<combo>&target=...`）继续吐已删订阅的节点，
+  直到别的源更新时才被动纠正 —— 看着改了，其实没修。
+
+### 修复（`core.remove`）
+
+在**数据不变量**层面修，而不是在控制器里补一次调用：与 `add_combo` / `save_combo`
+在写入口内部调用 `combo_refresh` 的做法保持一致。
+
+删除订阅时，在同一次 `pairs(items)` 遍历里处理每个组合的 `sources`：
+
+1. **摘掉**死 id（不是留着），并记下受影响的组合 id；
+2. 与订阅列表**同一次写盘**落盘，不留下「列表已删、`sources` 还引用」的中间状态；
+3. 写盘后对每个受影响的组合调用 `combo_refresh`，立刻重算物化节点。
+
+摘掉死 id 而不是留着，有两个实际原因：列表页「来源」列用 `name_by_id[sid] or sid`
+兜底，留着就会显示 `s00000003` 这种裸 id；而且当组合的来源被删光时，
+`combo_refresh` 看到 `#srcs > 0`，不会给出「请选择至少一个订阅」，
+组合会**静默变成 0 节点**。摘掉后能正确报错。
+
+**实现上的坑**：不能先摘 `sources` 再调用 `M.refresh_combos(id)` —— 后者是按
+「`sources` 里包含 `src_id`」来筛组合的，死 id 一旦摘掉就一个都匹配不到。
+必须在同一趟里收集受影响的组合 id，再直接对每个调用 `combo_refresh`。
+
+### 测试
+
+`tests/core_combo_test.lua` 增加 13 项（23 → 36 项）：
+
+- 删除源后组合的 `node_count` **立刻**下降，物化节点里不再有已删源的节点
+- 下载链接（真正被 Passwall / OpenClash 拉取的东西）不再含已删源的节点名，
+  且保留其余源的节点
+- 死 id 已从 `sources` 摘掉
+- 来源被删光时报错（`error` 非空、`node_count == 0`、`sources` 为空）
+- 只被某个组合引用的订阅被删后该组合被清空，**无关组合不受影响**
+
+反向验证：拆掉本次改动后 8 项断言失败；只加刷新、不做剪除的变体恰好 3 项剪除断言失败 ——
+两半都是承重的，不是恒真断言。
+
+## [2.6.14-r1] - 订阅列表页勾选批量删除 + 「自定义」User-Agent 用法说明
+
+### 新增：订阅列表页的勾选批量删除
+
+订阅一多，只能一条条点行内的「删除」。改成与节点页一致的勾选批量删除：
+
+- 「名称」列**之前**新增选择框列：表头的选择框**全选 / 全不选**，每条订阅另有独立选择框
+- 「添加组合订阅」**之后**新增「删除」按钮：勾选后删除单条或多条；
+  **一个都没勾选时不删除任何东西**（只提示，与节点页 `substore_delete_selected` 同一套交互）
+- 批量删除走一个位于表格**之外**的隐藏表单（每一行已各有一个删除表单，HTML 不允许表单嵌套），
+  选中订阅的 id 以逗号拼接后写入
+
+控制器 `action_delete` 的 `id` 参数改为支持「单个」或「逗号分隔多个」，与节点页
+`action_node_delete` 的 `idx` 是同一套约定。订阅 id 形如 `s%08x`，不含逗号，切分不会切坏。
+
+**部分失败必须回显**（§18）：勾了 3 条只删掉 1 条时显示「已删除 1 个，另有 2 个删除失败」，
+而不是显示成功 —— 否则用户不会再回头管剩下那两条。全部失败时回显 `core.remove` 给出的原因；
+一个可用 id 都没有时报「未指定要删除的订阅」，不静默跳回。
+
+### 优化：「订阅客户端类型」的提示补充「自定义」用法
+
+原提示只说了「不确定就保持『默认』」，没说「自定义」该怎么填。补充说明：填**要原样发送的
+User-Agent 请求头**，格式与预设里的值同形（`客户端名/版本号`，例如 `clash-verge/v2.5.0`、
+`v2rayN/7.22.0`、`mihomo.party/v2.0.0 (clash.meta)`）；可含空格、括号、分号、下划线等可见字符
+（整串原样发送，不解析、不改写），不能含换行等控制字符，最长 256 字符；版本号填机场要求的
+最低可用版本；选「自定义」但留空 = 不发送 UA（等同「默认」）。以上均与
+`http.validate_user_agent` / `core.resolve_user_agent` 的实际行为一致，不是另写一套说法。
+
+### 测试
+
+- 新增 `tests/subscriptions_bulk_delete_test.lua`（34 项）：把 `subscriptions.htm` 按 LuCI 的
+  方式重建成 Lua chunk **真的渲染一遍**，再对生成的 HTML 断言 —— 选择框列在「名称」之前、
+  每行一个且 value 是订阅 id、删除按钮在「添加组合订阅」之后、隐藏表单在表格之外且带 token/id、
+  **空选时先 `alert` 且不提交**、id 以逗号拼接、全选同步所有行、空列表 `colspan` 与表头列数一致
+- `tests/controller_robustness_test.lua` 增加 7 项：多个 id 逐个删除、逗号两侧带空格、
+  成功后写一次 cron、部分失败回显且**每个 id 都尝试过**、全部失败回显原因、无可用 id 报错、
+  纯分隔符不得交给 core
+- 反向验证：拆掉本次改动后，视图侧 27 项、控制器侧 6 项断言确实失败（不是恒真断言）
+
+### 文档
+
+`README.md` / `README.en.md` / `docs/INSTALL.md` 同步版本号与批量删除说明，
+`docs/TESTING.md` 补测试清单。
+
+## [2.6.13-r1] - 新增「订阅客户端类型」（User-Agent）支持
+
+### 新增：按订阅指定下载用的 User-Agent
+
+**用户实测**：同一机场（Allblue 加速器，`8.217.0.49`）的 4 个订单链接，
+分别只有用 Clash Verge / v2rayN / Clash Party / FlClash 才解析得出节点；
+本应用只能解析出 7 个「描述信息」节点：
+
+```
+- name: 当前更新的订阅链接      type: ss  server: 127.0.0.1  port: 1080
+- name: 与您使用客户端不兼容     type: ss  server: 127.0.0.1  port: 1080
+- name: 请复制 curl/8.22.0 类型  type: ss  server: 127.0.0.1  port: 1080
+...（共 7 条，密码均为 00000000-0000-0000-0000-000000000000）
+```
+
+**根因**：机场按请求的 `User-Agent` 决定返回真实节点还是占位内容。本应用此前
+**完全不发送 UA**，curl 用的是自带的 `curl/x.y.z`，被机场判为「不兼容的客户端」，
+于是返回一段把提示语写进节点名的占位内容 —— 服务器把请求方的 UA 回显进了那句
+提示里（所以路由器上看到的是 `curl/8.22.0`，沙箱里看到的是 `curl/8.18.0`）。
+占位内容本身是**合法**的 `ss` 节点，所以解析不报错，症状是「更新成功但节点全不可用」。
+每个订单链接绑定**唯一**一种客户端：用错客户端的 UA 同样只拿到占位内容，
+不存在一个通用 UA 能同时适配四种链接。
+
+**修复**：新增按订阅的「订阅客户端类型」设置，下载时以 `-A`（curl）/ `-U`（busybox wget）
+发送对应 UA。四个预设的 UA 字符串**取自各客户端源码**（非猜测），版本号取用户给出的
+最低可用版本：
+
+| 预设 | User-Agent | 来源 |
+|------|-----------|------|
+| Clash Verge | `clash-verge/v2.5.0` | clash-verge-rev `src-tauri/src/utils/network.rs` |
+| v2rayN | `v2rayN/7.22.0` | v2rayN `ServiceLib/Common/Utils.cs`（无 `v` 前缀） |
+| Clash Party | `mihomo.party/v2.0.0 (clash.meta)` | Clash Party `src/main/config/profile.ts` |
+| FlClash | `FlClash/v0.8.93 clash-verge Platform/linux` | FlClash `lib/common/package.dart`（三段空格分隔） |
+
+另可选「自定义」自行填写。默认「不设置」= 保持原行为（发送下载工具自带的 UA）。
+
+**验证**：4 个链接各用对应预设，均解析出 **310 个 vless 节点**（Clash 系 UA 返回
+Clash YAML，v2rayN 返回 base64 URI 列表）；交叉验证用错预设仍是占位内容，
+不设 UA 仍是 7 个假节点。
+
+**安全**：UA 来自表单，属不可信输入。`http.validate_user_agent` 拒绝控制字符
+（换行会让 curl 把它当成额外请求头拼进去）与超过 256 字符的值；进入命令行前经
+`util.shq` 引用。与代理一致，**非法值明确失败而非静默忽略**（§12）：静默忽略会让
+用户以为 UA 已生效，实际拿到的仍是占位节点。
+
+**新增测试** `tests/user_agent_test.lua`（64 项，全部不触网）：UA 取值校验、
+`-A`/`-U` 确实进入命令行且经 shell 引用、**重定向的每一跳**都带 UA、预设解析与往返、
+`core.add`/`core.sync` 的存储与透传、非法 UA 不发起下载、以及「表单 → 控制器 →
+core」整条接线的端到端断言。已按反向验证确认：拆掉接线后对应断言确实失败
+（http 侧 6 项、控制器侧 5 项）。
+
+## [2.6.12-r1] - 修复 [2.6.8-r1] 引入的「无法解析目标主机名」回归 + 格式下拉启用条件
+
+### 修复：所有域名订阅在缺少 luci-lib-nixio 的设备上报「无法解析目标主机名」
+
+**用户实测**：2.6.7-r1 能正常解析的订阅（`update.glados-config.com` 的 mihomo YAML、
+`s.feijiyunduijie999999.com` 的 quantumult / quantumultx / shadowrocket 三种格式），
+从 2.6.8-r1 起状态一律变成「无法解析目标主机名」。
+
+**根因**（`392c658`，2.6.8-r1）：`http.check_public` 里「解析不出 IP」被改成一律
+fail-closed 拒绝，理由是「本包依赖 luci-lua-runtime，后者硬依赖 luci-lib-nixio，
+所以解析失败只意味着真的解析不了，代价为零」。这个前提在用户设备上不成立：
+`resolve()` 只有 `nixio.getaddrinfo` 一条路，nixio 取不到时恒返回 `nil`，
+于是**每一个域名**都被判成「解析失败」——而 curl/wget 自带 libc 解析器，
+照样能把域名解析出来并下载。真正的错误是把「本机没有解析手段」与
+「这个域名解析不出来」合并成了同一个 `nil`。
+
+**修复**：
+- `resolve()` 改为多级回退：`nixio.getaddrinfo` → busybox `nslookup`（`io.popen`，
+  只取 `Name:` 段之后的 `Address:` 行，避免把 DNS 服务器自己的地址当解析结果）。
+- 返回值拆成 `ips, have_resolver`：有解析手段却解析不出来 → 仍 fail-closed
+  （`127.0.0.1.nip.io` 这类绕过口必须继续堵死）；完全没有解析手段 → 放行，
+  但返回第三个值 `unverified = true`。
+- 新增连接时对端校验 `verify_peer_ip`：`fetch_curl` 的 `-w` 同时取
+  `%{http_code}` 与 `%{remote_ip}`，用**真正建立连接的那个 IP** 复核。
+  这既补上了 `unverified` 放行路径的校验，也顺带免疫「预检时解析到公网、
+  连接时解析到内网」的 DNS rebinding。重定向的**第一跳**同样复核
+  （`Location` 检查只能拦第二跳）。走代理时跳过（`%{remote_ip}` 是代理地址）。
+- `unverified` 且拿不到对端 IP → 拒绝：「无法校验」不等于「放行」。
+
+**验证**：同一台机器上对上述真实主机名调用 `check_public`，
+`HEAD` 返回 `false / 无法解析目标主机名`，修复后返回 `ok = true`。
+新增 `tests/dns_fallback_test.lua`（36 断言，覆盖 nslookup 解析、Server 段误用、
+NXDOMAIN fail-closed、无解析手段放行、连接时对端校验、代理跳过），
+对 `HEAD` 反向验证 **14 条失败**，修复后全绿。
+
+### 优化：订阅列表「订阅链接转换」的格式下拉，未解析出节点时禁用
+
+刚添加还没点「更新」、更新失败、或解析结果为空的订阅，`node_count` 为 0，
+此时格式下拉置灰不可选（`disabled="disabled"` + `opacity:0.5` +
+`cursor:not-allowed` + `title` 提示），下方说明文案同步切换为
+「更新并解析出节点后才能选择格式」（新增 msgid，已补 `po/zh-cn/substore.po`）。
+避免用户选出一个必然为空的订阅链接。
+
+新增 `tests/subscriptions_format_gate_test.lua`（20 断言）：把模板按 LuCI 的方式
+重建成 Lua chunk 并用替身环境**真实渲染**，再对生成的 HTML 断言
+（含「同一行在 node_count 变大后必须立刻变为可选」的反面对照）。
+对 `HEAD` 反向验证 **8 条失败**。
+
+## [2.6.11-r1] - P4：遗留项决策后实施（1.1 / 1.3 / 1.4 / 1.5 / 2.5，3.3 补文档）
+
+`docs/LEGACY_ISSUES.md`「五」的推荐方案中，除标记为**暂缓**的（2.1 / 2.2 / 2.4 /
+3.1 / 3.2 / 3.5）与**维持现状**的（2.3）外，其余全部实施。每项都补了自包含回归
+测试，并对 `HEAD` 做了反向验证 —— 新断言在修复前失败、修复后全绿：
+
+| 项 | 回归测试 | HEAD 上失败断言数 |
+|---|---|---|
+| 1.1 `mkdir` 锁 | `tests/list_lock_test.lua`（39 条） | 18 |
+| 1.3 sing-box `transport` | `tests/singbox_transport_test.lua`（28 条） | 18 |
+| 1.5 QX `tag=` 逗号 | `tests/qx_tag_comma_test.lua`（24 条） | 9 |
+
+全量：44 个 Lua 测试文件 + `tests/cron_result_test.sh`，全部通过。
+
+### 1.1 订阅列表读写加锁（`load()` → `save()` 丢更新）
+
+- 读整表、改、写整表全程无互斥：LuCI 页面保存订阅、cron 定时更新、组合订阅自动
+  重算三者同时发生时，后写者整表覆盖先写者，**订阅静默丢失且不报错**。
+- 本机没有 `nixio`（用不了 `flock`），Lua 5.1 的 `io.open` 也没有 `O_EXCL`，
+  因此用 `mkdir` 做锁（成功者唯一）。**陈旧锁回收**用锁目录**自身的 mtime** 判定，
+  而不是目录里的文件：mtime 由 `mkdir` 原子设好，不存在「目录已建、时间戳还没写」
+  的窗口。阈值 `util.LOCK_STALE = 60` 秒；持有者被 kill 后残留的锁最多 60 秒即可回收，
+  不会永久死锁（那比丢数据更糟 —— 订阅从此再也改不了）。
+- `core.lua` 新增 `with_list_lock`，把 7 个**写**入口（`add` / `add_local` /
+  `ensure_token` / `save_meta` / `remove` / `add_combo` / `save_combo`）统一包一层，
+  而不是在每个函数体里手写 acquire/release —— 后者一旦有人中途 `return`
+  （`if lerr then return nil, lerr end` 这种）就会漏掉释放。包在最外层则无论从哪条
+  路径返回都会释放。
+- **可重入**：`save_combo` 内部会调 `save_meta`，两者都要保护；不可重入的话第二次
+  取锁会把自己挡在门外，组合订阅永远保存不了。本进程已持锁时只加计数、不再取锁。
+- 实施中修正了推荐方案本身的两处疏漏：① 锁目录最初写成常量 `M.LOCK_DIR`，而测试
+  普遍在 `require` 之后改写 `core.DATA_DIR`，常量不会跟着变 —— 会去锁真实的
+  `/etc/substore`；改为由 `M.DATA_DIR` 现算。② 全新安装时 `DATA_DIR` 尚不存在，
+  `mkdir <DATA_DIR>/.lock` 失败，而失败在 `lock_acquire` 眼里等同于「他人持锁」，
+  症状是第一次保存订阅就报「正被另一个进程修改」；已在取锁前先 `ensure_dirs()`。
+- `M.merge` 是**只读**的（只读各订阅节点、过滤排序后返回数组），包进锁后一旦取锁
+  失败会返回 `nil` 顶掉原本的数组，把「拿不到锁」变成调用方眼里的「没有数据」——
+  比不加锁更糟。已移出包装列表。
+
+### 1.3 sing-box 读取侧 transport 整层丢失
+
+- 两个读取侧都不认 sing-box 的 `transport` 对象：`parser_json_config` 读的是
+  `outbound.network`（sing-box 出站里**根本没有这个字段**），简易 YAML 解析器只展开
+  `tls:` 子块。于是 ws / grpc / h2 节点全部按 tcp 导入 —— 客户端拿明文 tcp 去连
+  只开了 ws 的端口，握手必然失败且**不报错**。这类节点在机场导出的 sing-box 配置里
+  占比很高。简易 YAML 侧更彻底：`path` / `host` 连带都没带进 `node_data`。
+- 按上游 `configuration/shared/v2ray-transport/` 的字段名补全（已核实，非推测）：
+  ws → `path` + `headers.Host`；grpc → `service_name`；http → `path` + `host`
+  （**数组**，取首个）；httpupgrade → `path` + `host`（**单个字符串**）。`quic`
+  在本项目模型里没有对应传输方式，**不猜映射**。
+- 顺带补上 `tls.utls.fingerprint` → `fp`：简易 YAML 侧早就读了这个字段，JSON 侧一直
+  漏着，同一条订阅走两条导入路径会得到不同的节点。
+
+### 1.4 / 2.5 删除死代码
+
+- 删除 `converter.lua`、`node_converter.lua`、`parser_yaml.lua` 三个模块与四个对应
+  测试文件。三者均已确认无任何**实际**引用：前两者只被彼此与测试引用；
+  `parser_yaml.lua` 只被 `parser.lua` 一行 `require` 引入且从未使用（该行一并删除）。
+- `tests/p2_batch7_test.lua` 中对已删模块的依赖改为直接验证 `util.uuid` 本身 ——
+  那才是唯一在用的实现，形状要求（36 字符、只含十六进制与连字符）与当初一致。
+- `tests/parser_yaml_test.lua` **保留**：它实际 `require` 的是 `substore.parser`
+  （活跃路径），文件名有误导性但内容有效。
+
+### 1.5 QX 节点名含逗号时整条丢弃
+
+- `[server_local]` 行是逗号分隔的 `key=value` 序列，语法里没有引号 / 转义：节点名
+  `A,B` 输出成 `..., tag=A,B` 会被读成 `tag=A` 加一个悬空字段。QX 对这种行的实际
+  处置未经核实（本机没有 Quantumult X 可实测），但无论报错还是静默忽略，用户拿到的
+  都不是他填的那个名字。
+- 按推荐方案 B **整条丢弃**：定义行与 `[policy]` 成员一并去掉，与 Surge 家族丢
+  wireguard / ssr、Clash 原版丢不支持协议同一约定，也与 `names_of` 的排除条件
+  保持一致（判定用 `one_line` 之后的同一个字符串，两边不会再对不上）。
+- Surge 家族**不受影响**：其 `[Proxy]` 行是 `NAME = type, host, port, …`，名字在
+  `=` 左侧，逗号不影响该行解析。
+
+### 3.3 改名规则语法补文档说明
+
+- Lua 模式无 alternation 语义。`|` 表示「或」但只在**顶层**生效：`(a|b)` 不会展开成
+  「a 或 b」，而是按字面匹配；字符类 `[...]` 内的 `|` 同样是字面。已在
+  `README.md` / `README.en.md` 的「使用方法」补上说明。**无代码改动。**
+
+## [2.6.10-r1] - P3：输出层代码级复审（11 项）+ README 精简
+
+对 8 个输出模块与 `output.lua` 做了逐行复审，按「生成的配置能否被目标客户端加载」
+这一条标准筛出 10 项缺陷；另在复核 shadowsocks 数据通路时发现 SIP003 插件被全链路
+丢弃，共 11 项。**全部已修复、已补回归测试，并对 `HEAD` 反向验证**：
+`tests/output_layer_fixes_test.lua`（47 条断言）与 `tests/ss_plugin_test.lua`
+（41 条断言）在修复前分别失败 30 / 25 条，修复后全绿。
+
+共同特征与 P2 批次七一致 —— **都不报错**：导出成功、客户端却拒绝加载或静默跑错。
+
+### 输出层
+
+- **F1 `ws-opts` 父键缺失**（`output_clash_meta`）：`ws-opts:` 那一行写在
+  `if node.path` 里面，于是「有 host、无 path」的 ws 节点输出一个缩进 6 空格的
+  `headers:`，而它的父键根本不存在 —— YAML 直接报 `mapping values are not allowed
+  here`，客户端拒绝整份配置。改为 path 与 headers 共用同一个 `ws-opts` 父键。
+- **F2 空传输层编码成数组**（`output_v2ray`）：`wsSettings` / `grpcSettings` /
+  `httpSettings` 无参数时被 `json_encode` 的 `is_array` 判成空表，编码为 `[]`。
+  Xray 用标准库 `json.Unmarshal` 解析，这些字段是结构体指针，解进数组直接
+  `UnmarshalTypeError` 拒绝启动。触发条件很普通：grpc 节点没填服务名、
+  ws 节点既没 path 也没 host。为 `JSON_EMPTY_OBJECT` 加元表标记，编码为 `{}`；
+  解码出的空对象不带该标记，后续写入键仍照常编码。
+- **F3 节点重名不消解**（`output_clash_meta`）：mihomo 的 `proxies` 里 `name` 是
+  主键，重名直接拒绝加载整份配置。节点之间重名、节点与生成的策略组
+  （`Proxy` / `URL-Test` / `Load-Balance`）或保留名（`DIRECT` / `REJECT`）撞名
+  都会触发。改用既有的 `util.unique_tags` 统一分配名字。
+- **F4 未引用的非法 YAML 标量**（`output_clash_meta`）：`esc_yaml` 的需引号字符类
+  漏了 `%`（YAML 指令前缀）、`!`（标签前缀）与行首 `-`（块序列项），这三种开头的
+  裸标量都是非法 YAML。
+- **F9 `amnezia-wg-option` 子键未转义**（`output_clash_meta`）：子键来自导入的
+  YAML / JSON（不可信），键名里的 `:` 或引号会写坏映射。
+
+### Surge 家族 / Quantumult X
+
+- **F5 QX 的 vless 丢传输层**（`output_formats`）：QX 的 vless 与 vmess 共用同一套
+  参数名，但只有 vmess 分支写了 `obfs` / `obfs-uri` / `obfs-host` / `tls-host` /
+  `tls-verification`。vless + ws + tls 的节点导出成明文 tcp 条目，客户端按 tcp 去连
+  只开了 ws 的端口，必然失败且不报错。
+- **F6 Surge 家族的 vless 丢传输层**：同上，`ws=true` / `ws-path` / `ws-headers`
+  一个都没写。抽出 `add_ws()` 供 vmess / vless 共用。
+- **F7 参数值里的逗号静默截断凭据**：`[Proxy]` 行与 QX 的 `[server_local]` 行都是
+  逗号分隔的 `key=value` 序列，语法里没有引号 / 转义机制 —— `password=pa,ss` 会被
+  读成 `password=pa` 加一个悬空的 `ss`。含逗号的整条丢弃，并同步从成员列表
+  （`[Proxy Group]` / `[policy]`）剔除，避免引用不存在的代理。
+  顺带把 `to_qx` 从「边拼字符串边追加」改为「先把具名字段攒成列表再拼接」：
+  原先的实现无法区分行内本就有的 `, ` 结构分隔符与值里的逗号，会把每一条合法行
+  都误判成非法。
+- **多值 alpn 的处置**：`tests/output_formats_test.lua` 原断言 tuic 的 alpn 数组
+  输出 `alpn=h3,h2`。多值 alpn 在 Surge 家族的行语法里同样表达不了，而 F7 的通用
+  检查会因此丢掉整个节点。alpn 只是**协商提示**（缺省时客户端用服务端给出的列表），
+  不像凭据一旦截断就静默发错值 —— 所以只省略该参数、保留节点。断言已按此契约更新。
+
+### 分享链接
+
+- **F8 IPv6 字面量未加方括号**（`output_uri`）：RFC 3986 的 authority 里 IPv6 必须
+  写成 `[addr]`，否则 `::` 与端口分隔符无法区分。已是方括号形态的不重复包裹。
+
+### shadowsocks SIP003 插件（F11）
+
+`plugin` 能被解析、能通过 `node.normalize` 存活，但三个输出模块全都静默丢掉它，
+表单侧还会在保存时清空 —— 带 obfs / v2ray-plugin 的节点导出后以明文 SS 去连只接受
+带插件握手的服务端，必然失败且不报错；在界面上编辑一次该节点，插件配置即永久消失。
+
+处置依据均核对上游源码 / 文档（非推测）：
+
+- **SIP002**：`SS-URI = "ss://" userinfo "@" host ":" port [ "/" ] [ "?" plugin ] [ "#" tag ]`，
+  插件参数整体做百分号编码。新增 `util.parse_sip003_plugin`（含 `\;` `\=` 反斜杠转义）。
+- **sing-box**：`shadowsocks` 出站只有 `plugin`（字符串，官方文档明确 *"Only two are
+  supported: obfs-local and v2ray-plugin"*）与 `plugin_opts`（SIP003 原始参数串，
+  原样透传）。按白名单过滤，其余名字会被拒绝加载整份配置。
+- **mihomo**：`plugin-opts` 是**映射**而非字符串，名称与参数名都要翻译
+  （`obfs-local` / `simple-obfs` → `obfs`，参数 `obfs` → `mode`、`obfs-host` → `host`；
+  `v2ray-plugin` 的 `mode` / `host` / `path` / `tls`）。`adapter/outbound/shadowsocks.go`
+  对这两类插件是**强校验**的：obfs 的 mode 不在 `{tls,http}` 里报
+  `"ss %s obfs mode error"`，v2ray-plugin 的 mode 不是 `websocket` 同样报错 ——
+  都会让整个 outbound 构造失败，进而拒绝加载整份配置。因此参数不全时宁可整个不输出
+  插件，也不能输出一个必然被拒绝的组合。
+
+模型与表单侧：`node.PROTO_FIELDS.shadowsocks` 补 `plugin`（不进这个清单，表单不渲染
+它，且 `core.merge_form_node` 会在保存时把原值清掉）、`core.FORM_KEYS` 补 `plugin`
+（不进这个表，用户在表单里清空输入框也删不掉旧值），两个视图补字段标签。
+
+### 其他
+
+- **F10 空 target 的响应头与后缀落空**（`output.lua`）：`?target=` 传进来的是 `""`，
+  而 `""` 在 Lua 里是**真值**，`format or DEFAULT_FORMAT` 兜不住它 —— `M.generate`
+  一直在做归一化，但 `content_type_for` / `extension_for` 漏了，同一请求里正文按
+  clashmeta 生成，Content-Type 变成 `nil`（响应头缺失）、文件名后缀退回兜底的 `.txt`。
+  抽出 `normalize_format` 三处共用。
+- **`parser.lua` 集中丢弃残缺节点**：`finish()` 统一做 `valid_hostport` 校验，
+  YAML / JSON / Surge / wireguard-conf 路径与 URI 路径行为一致。
+- **`core.cron_time_valid` 收紧**：要求恰好 5 个空白分隔字段、无控制字符。
+- **`controller` 的 `action_node_set_group`** 补 `core.refresh_combos(id)`，
+  与 `node_save` / `node_delete` 对齐。
+- **`util.json_decode` 深度上限 64**，防止深嵌套输入耗尽栈。
+- **README / README.en 的「功能特性」精简**：删去逐字段罗列与「协议转换：任意协议 →
+  任意协议」的过度声明（实现侧并无该能力，见 `docs/LEGACY_ISSUES.md` 1.4）。
+
+### 文档
+
+- `docs/LEGACY_ISSUES.md`：新增「四、P3 输出层复审」逐项记录；新增「五、其余遗留项
+  的修复建议」给出推荐方案与理由；订正 2.6（AWG 3.0/3.1 九字段，`[2.6.10-r1]` 复核
+  已收录）与 3.4（`check_public` 已改 fail-closed）两处过期状态；1.3 补入已核实的
+  sing-box `transport` 权威字段映射，供下一轮直接实施。
+
 ## [2.6.9-r1] - P2 批次七：界面 / 探测 / 转换 / 权限（L1 / L5 / L6 / L8 / L9 / L23 / L24 / L25 / L26）
 
 P2 最后一批，九项分布在界面、探测、转换与文件权限四处。共同点是**问题都不报错**：

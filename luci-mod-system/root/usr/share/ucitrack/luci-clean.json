@@ -1,0 +1,4 @@
+{
+	"config": "luci",
+	"exec": "/bin/rm -f /tmp/luci-indexcache*"
+}

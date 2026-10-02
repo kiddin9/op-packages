@@ -152,12 +152,14 @@ ctl.action_local_save()
 check("local_save success has no err", not has_err())
 check("local_save success ran sync", SYNC_CALLS == 1)
 
--- ---------- 无 CSRF token：不做任何事，也不报错 ----------
+-- ---------- 无 CSRF token：拒绝执行，并明确回显（§18） ----------
+-- 此前是「静默重定向」：表单没提交上来，页面却和成功一样跳回去，
+-- 用户看不到任何原因。校验失败也是失败，必须让用户看见（M28）。
 reset()
 FORM = { name = "", content = "" }
 ctl.action_local_create()
 check("no token still redirects", type(LAST_REDIRECT) == "string")
-check("no token no error banner", not has_err())
+check("no token reports error", has_err())
 
 -- ---------- §18 单节点保存：解析/写入失败必须可见 ----------
 -- 修复前 action_node_save 只在成功分支做事，其余情况一律静默重定向，
@@ -237,14 +239,14 @@ ctl.action_node_save()
 check("node_save write failure reports error", has_err())
 check("node_save write failure surfaced reason", URLENC[#URLENC] == "写入节点数据失败")
 
--- 无 token：不做任何事，也不报错
+-- 无 token：拒绝执行，但**必须回显**（见上面 M28 的说明）
 reset()
 NODES = { { name = "old" } }
 WRITE_CALLS = 0
 FORM = { id = "s00000001", idx = "1", content = VALID_NODE }
 ctl.action_node_save()
 check("node_save no token redirects", type(LAST_REDIRECT) == "string")
-check("node_save no token no error banner", not has_err())
+check("node_save no token reports error", has_err())
 check("node_save no token does not write", WRITE_CALLS == 0)
 
 print(string.format("\n%d passed, %d failed", passed, failed))

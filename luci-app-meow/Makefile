@@ -1,7 +1,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-meow
-PKG_VERSION?=0.21.2
+
+# Keep in sync with meow/Makefile.
+PKG_BASE_VERSION?=0.21.2
+
+# Rewritten automatically by .github/workflows/sync-upstream.yml; the LuCI
+# package always carries the same version as the core it drives.
+PKG_VERSION?=$(PKG_BASE_VERSION).202610010807
 PKG_RELEASE?=1
 
 include $(INCLUDE_DIR)/package.mk
@@ -21,6 +27,10 @@ endef
 
 define Package/luci-app-meow/description
   LuCI interface for the meow OpenWrt package.
+
+  Adds Services -> meow (Overview, Panel, Configuration, Clients, Settings,
+  Log). Runtime data comes from the meow REST API through authenticated LuCI
+  RPC; curl is only used against the router's loopback API.
 endef
 
 define Build/Prepare

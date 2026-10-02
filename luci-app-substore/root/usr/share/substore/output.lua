@@ -73,9 +73,21 @@ local CONTENT_TYPES = {
 -- 未指定 target 时的默认格式（保持历史行为：Clash.Meta）
 local DEFAULT_FORMAT = "clashmeta"
 
+-- 归一 target：空串 / 纯空白等同于「未指定」。
+-- `?target=` 传进来的是 ""，而 "" 在 Lua 里是**真值**，`format or DEFAULT_FORMAT`
+-- 兜不住它。M.generate 一直在做这件事，但 content_type_for / extension_for 漏了：
+-- 同一个请求里正文按 clashmeta 生成，而这两个函数拿 "" 去查表全部落空 ——
+-- Content-Type 变成 nil（响应头缺失），文件名后缀退回兜底的 .txt。下游按后缀
+-- 判断格式的客户端会把 YAML 当成纯文本，解析失败。
+local function normalize_format(format)
+	if type(format) ~= "string" then return DEFAULT_FORMAT end
+	format = format:match("^%s*(.-)%s*$") or ""
+	if format == "" then return DEFAULT_FORMAT end
+	return format
+end
+
 function M.content_type_for(format)
-	format = (format or DEFAULT_FORMAT) or DEFAULT_FORMAT
-	if type(format) ~= "string" then format = DEFAULT_FORMAT end
+	format = normalize_format(format)
 	local norm = M.FORMAT_ALIASES[format:lower():gsub("[-_%s]", "")]
 	if not norm then norm = M.FORMAT_ALIASES[format:lower()] end
 	return CONTENT_TYPES[norm]
@@ -101,8 +113,7 @@ local FILENAME_EXT = {
 }
 
 function M.extension_for(format)
-	format = (format or DEFAULT_FORMAT) or DEFAULT_FORMAT
-	if type(format) ~= "string" then format = DEFAULT_FORMAT end
+	format = normalize_format(format)
 	local norm = M.FORMAT_ALIASES[format:lower():gsub("[-_%s]", "")]
 	if not norm then norm = M.FORMAT_ALIASES[format:lower()] end
 	return FILENAME_EXT[norm] or "txt"
@@ -133,9 +144,7 @@ function M.generate(nodes, format, options)
 	-- `?target=` 会传进来 ""，而 "" 在 Lua 里是**真值**，所以 `format or DEFAULT_FORMAT`
 	-- 兜不住它，会一路落到 "unsupported format: "（冒号后面什么都没有）——
 	-- 用户拿到的是一个说不出原因的错误页。控制器只在 nil 时兜底，覆盖不到空串。
-	if type(format) ~= "string" then format = "" end
-	format = format:match("^%s*(.-)%s*$") or ""
-	if format == "" then format = DEFAULT_FORMAT end
+	format = normalize_format(format)
 	local norm = M.FORMAT_ALIASES[format:lower():gsub("[-_%s]", "")]
 	if not norm then norm = M.FORMAT_ALIASES[format:lower()] end
 	if not norm then return nil, "unsupported format: " .. tostring(format) end

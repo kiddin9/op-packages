@@ -32,7 +32,10 @@ M.PROTO_FIELDS = {
 	vmess = { "server", "port", "uuid", "alterId", "cipher", "net", "headerType", "path", "host", "sni", "security", "udp", "skip-cert-verify" },
 	vless = { "server", "port", "uuid", "security", "flow", "net", "headerType", "path", "host", "sni", "udp", "skip-cert-verify" },
 	trojan = { "server", "port", "password", "sni", "net", "headerType", "path", "host", "udp", "skip-cert-verify" },
-	shadowsocks = { "server", "port", "password", "method", "headerType", "udp" },
+	-- plugin：SIP003 插件串（`obfs-local;obfs=http;obfs-host=x`）。不进这个清单
+	-- 会有两个后果：表单不渲染它，且 core.merge_form_node 会在保存时把原值清掉
+	-- —— 用户在界面上改一下带插件的 ss 节点，插件配置就永久消失。
+	shadowsocks = { "server", "port", "password", "method", "headerType", "udp", "plugin" },
 	hysteria2 = { "server", "port", "password", "sni", "obfs", "obfs-password", "skip-cert-verify" },
 	-- hysteria(v1)：obfs 是普通字符串（不是 hysteria2 的 salamander），因此没有 obfs-password。
 	-- 字段集合以各输出模块实际消费的键为准（output_clash_meta / output_singbox / output_uri）。

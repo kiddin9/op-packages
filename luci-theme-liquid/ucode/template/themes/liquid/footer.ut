@@ -45,6 +45,13 @@
 	}
 	if (theme_ver == '') theme_ver = '?';
 
+	/* 资源签名（缓存击穿）：同 header.ut，main.js 的 mtime+size 拼进 ?v=，
+	   热部署后 URL 变化 → 客户端不再用旧缓存的 JS。 */
+	let js_st = fs.stat('/www/luci-static/liquid/main.js');
+	let js_ver = theme_ver;
+	if (js_st && js_st.type == 'file')
+		js_ver += sprintf('-%x%x', js_st.mtime, js_st.size);
+
 	/* 固件信息：优先读 /etc/os-release 的 FIRMWARE_URL（固件 release 链接）
 	   与 OPENWRT_RELEASE（固件版本文本），读不到时回退动态构造。
 	   锁屏与登录后 foot 横幅共用。 */
@@ -112,7 +119,7 @@
 {% if (!blank_page): %}
 <script>L.require('menu-liquid')</script>
 {% endif %}
-<script type="text/javascript" src="{% print(media); %}/main.js?v={% print(theme_ver); %}"></script>
+<script type="text/javascript" src="{% print(media); %}/main.js?v={% print(js_ver); %}"></script>
 
 </body>
 </html>

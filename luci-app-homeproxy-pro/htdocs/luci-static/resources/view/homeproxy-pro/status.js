@@ -83,12 +83,21 @@ function getConnStat(o, site) {
 				return hp.rpcCall('connection_check', [site],
 						{ params: ['site'], expect: { '': {} } }).then((ret) => {
                                         let ele = o.default.firstElementChild.nextElementSibling;
+					/* The address family comes back with the verdict rather than
+					 * being read here: form.Map has no formvalue() in this LuCI
+					 * (an earlier revision called it and threw), and the backend
+					 * is the only layer that knows which family it probed. With
+					 * IPv6 support on, "passed" now means the IPv6 path works,
+					 * and a failure says the node cannot carry IPv6 - which is
+					 * the truth, not a wget retry-order artefact. IPv4/IPv6 are
+					 * protocol names, so they are appended untranslated. */
+					let fam = ret.family ? ' (' + ret.family + ')' : '';
 					if (ret.result) {
 						ele.style.setProperty('color', 'green');
-                                                ele.innerHTML = _('passed');
+                                                ele.innerHTML = _('passed') + fam;
 					} else {
 						ele.style.setProperty('color', 'red');
-                                                ele.innerHTML = _('failed');
+                                                ele.innerHTML = _('failed') + fam;
 					}
 				});
 			})

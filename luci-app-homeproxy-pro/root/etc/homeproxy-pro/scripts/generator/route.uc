@@ -28,7 +28,6 @@
 
 import { isEmpty, strToInt, strToTime, strToBool, parse_port, HP_DIR } from '../homeproxy-pro.uc';
 
-
 import { get_outbound, get_resolver, get_ruleset, get_direct_override } from './common.uc';
 
 /* --- shared initial block (every routing mode) ------------------------- */
@@ -136,6 +135,25 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			action: 'route',
 			outbound: 'direct-out'
 		});
+
+		/* IPv6 half of the same split, and the reason a mainland site opened
+		 * over IPv6 used to go through the proxy even with IPv6 support on.
+		 * geoip-cn.srs carries no IPv6 and china_ip4.json is generated from an
+		 * IPv4 list, so a destination that resolved to an AAAA address matched
+		 * neither and fell through to `final` - which in this mode is main-out.
+		 * The rule is emitted in both mainland modes (unlike china-ip, which
+		 * proxy_mainland_china does not need twice because geoip-cn already
+		 * picks the mainland side there): with no IPv6 in geoip-cn there is
+		 * nothing left to pick it, so the side has to be named explicitly.
+		 * `prefer_ipv4` on the resolve rule above is what lets both families
+		 * through - it biases, it does not filter. */
+		if (ctx.ipv6_support === '1' && ctx.china_ip6_ready) {
+			push(config.route.rules, {
+				rule_set: 'china-ip6',
+				action: 'route',
+				outbound: ctx.proxy_fallback ? 'direct-out' : 'main-out'
+			});
+		}
 	}
 
 	/* Main UDP out */
@@ -250,15 +268,27 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 		 * from, so the two cannot drift apart.  `type: local` is watched by
 		 * sing-box with fswatch, so when the resource updater replaces the
 		 * file the running instance reloads it in place - no restart and,
-		 * more importantly, no second copy of the list to keep in sync.
-		 * China IPv6 is deliberately absent: the firewall only fills the v6
-		 * set when ipv6_support is on, and the client refuses to resolve
-		 * AAAA when it is off. */
+		 * more importantly, no second copy of the list to keep in sync. */
 		push(config.route.rule_set, {
 			type: 'local',
 			tag: 'china-ip',
 			path: HP_DIR + '/resources/china_ip4.json'
 		});
+
+		/* The IPv6 counterpart, from china_ip6.txt - the same list the
+		 * firewall renders homeproxy_mainland_addr_v6 from, and the only
+		 * IPv6 mainland data either side of the split has.  Declared only
+		 * when the file is actually there: a rule_set pointing at a missing
+		 * file takes the whole config down with it, and a router whose v6
+		 * list is unusable must still start (the firewall has already
+		 * degraded to passing IPv6 through, with a warning). */
+		if (ctx.ipv6_support === '1' && ctx.china_ip6_ready) {
+			push(config.route.rule_set, {
+				type: 'local',
+				tag: 'china-ip6',
+				path: HP_DIR + '/resources/china_ip6.json'
+			});
+		}
 	}
 
 	if (isEmpty(config.route.rule_set))

@@ -2497,36 +2497,53 @@ select:not([multiple]):not(.cbi-dropdown select):not(.cbi-select select) option:
 	background: var(--glass-bg-hover);
 }
 
-/* 用量表格（内存/存储等）：表格转 block、行用 flex 强制同行
-   （与移动端同一方案；标题列 20ch 允许内部换行、值列占剩余宽度。
-     16ch 会把最长标签"CPU 使用率（%）"挤成两行（实测 16ch 折行、
-     18ch 起单行），20ch 留出中文字体度量的跨平台余量） */
+/* 标签/值两列表格（.table 内含 td[width="33%"]：概览"系统"表、存储/内存
+   用量表等多个页面共用同一标记 → 统一处理、不按页面特化；参考 Argon 让
+   列宽随内容自适应，再叠一层"放不下就换行"的弹性）：
+   ① 宽度足够：标签列 20ch 对齐、值同行（16ch 会把最长标签"CPU 使用率（%）"
+      挤成两行——实测 16ch 折行、18ch 起单行，20ch 留中文字体度量余量）；
+   ② 宽度不足：值整块换到下一行、占满行宽；
+   ③ 极窄：标签列可压缩，标题与值的文字都换行（不再横向滚动/被裁）。
+   （原方案：标签锁死 20ch + 值 nowrap，只能靠横向滚动，窄屏很挤） */
 .table:has(td[width="33%"]) {
 	display: block;
-	overflow-x: auto;
+	overflow-x: auto;   /* 仅兜底：单个不可断的超长串仍可横滚 */
 }
 
 .table:has(td[width="33%"]) tr {
 	display: flex;
+	/* 放不下的列换到下一行，而不是挤压/横向滚动 */
+	flex-wrap: wrap;
 	align-items: center;
-	white-space: nowrap;
+	/* 标题与值都允许换行 */
+	white-space: normal;
 }
 
 .table:has(td[width="33%"]) tr > td {
 	flex: 0 1 auto;
+	min-width: 0;
 }
 
 .table:has(td[width="33%"]) tr > td[width="33%"] {
-	flex: 0 0 20ch;
-	max-width: 20ch;
-	white-space: normal;
+	/* 首选 20ch 保持各行列对齐。
+	   !important 必须：单行规则(r13)给所有格设了 flex/width !important，
+	   而 important 无视特异性 → 不加会把桌面固定列压成"文字宽"、
+	   值列逐行错位（实测踩过） */
+	flex: 0 0 20ch !important;
+	width: 20ch !important;
+	max-width: 20ch !important;
+	white-space: normal !important;
 	overflow-wrap: break-word;
 	word-break: break-word;
 }
 
 .table:has(td[width="33%"]) tr > td:last-child {
-	flex: 1 1 100%;
-	white-space: nowrap;
+	/* 以内容宽为基准：同行放不下 → 整块换行并撑满该行 */
+	flex: 1 1 auto;
+	min-width: 0;
+	white-space: normal;
+	overflow-wrap: break-word;
+	word-break: break-word;
 }
 
 /* ==========================================================================
@@ -4420,7 +4437,10 @@ pre {
 	}
 
 	#maincontent {
-		padding: 0 16px 64px;
+		/* 外层卡片到屏幕边缘的留白：16px → 4px（用户反馈移动端概览页
+		   padding 偏大，大幅压缩）。内层卡片自身仍有 2~6px padding，
+		   文字距边缘合计约 14px，输入框聚焦 ring(3px) 也不至于贴边 */
+		padding: 0 4px 64px;
 		margin-left: 0;
 		/* r19 起移动端页面纵向滚动由文档承担（见下方「文档级滚动」块，
 		   为了让安卓浏览器地址栏随滚动收缩）。此处 flex-shrink:0 保证
@@ -4871,4 +4891,360 @@ table.liquid-actions-overflow th:not(.cbi-section-actions) {
 		flex-wrap: wrap;
 		align-items: center;
 	}
+}
+
+/* ==========================================================================
+   多列宽表响应式：一行三列 + 单元格自带表头（.liquid-grid，由 main.js 打标）
+   -------------------------------------------------------------------------
+   适用：DHCP 租约 / DDNS / WiFi / UPnP / 进程 等多列表（GridSection 与概览
+   include 表）。断点 1100px（实测：1150px 时"状态"列尚有 6.5 字/行，
+   1100px 掉到 4.3；移动端则整表按内容宽撑开只能横滚）。
+
+   断点判定放在 main.js 的 matchMedia（单一来源），这里只按 .liquid-grid 类
+   生效；关键声明用 !important —— ≤854px 的既有规则给 tr/td 设过
+   display:flex（同特异性会靠"后写"抢胜负，实测会输），必须显式压过。
+
+   排除两类已有专属布局的表：
+   - 接口页表（td[data-name="_ifacebox"]）：图标行有独立两行布局；
+   - 标签/值两列表（td[width="33%"]）：已有"20ch 标签列 + 值换行"方案。
+   单元格自带表头用 td::before 显示 data-title（Argon 同款机制，文案由
+   main.js 从同列 th 回填）；原表头行隐藏，带筛选输入的 thead 保留。 */
+.cbi-section-table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])),
+.table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])) {
+	display: block;
+	width: 100% !important;
+	min-width: 100% !important;
+	overflow-x: auto;
+}
+
+.cbi-section-table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])) tr:not(.table-titles):not(.cbi-section-table-titles),
+.table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])) tr:not(.table-titles):not(.cbi-section-table-titles) {
+	display: flex !important;
+	/* 放不下的列连同表头换到下一行，而不是挤压成一字一行/横向滚动 */
+	flex-wrap: wrap !important;
+	align-items: stretch;
+	white-space: normal !important;
+	/* 行与行之间的呼吸感：操作列换行到下一行时不至于贴着上一行 */
+	row-gap: 10px;
+}
+
+.cbi-section-table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])) tr > td:not(.cbi-section-actions),
+.table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])) tr > td:not(.cbi-section-actions) {
+	flex: 1 1 33.33% !important; /* 一行三列，列边界落在 0/33.3/66.6 */
+	display: block !important;
+	min-width: 0 !important;
+	white-space: normal !important;
+	overflow-wrap: break-word;
+	word-break: normal;         /* 按词换行，不再一字一断 */
+	border-bottom: 0 !important;
+	padding: 6px 10px;
+}
+
+/* 操作列前的内容格：跨满前两列（66.6%），使按钮正好从第三列起点开始
+   —— 与上一行第三列"同列对齐"（用户要求）；右 padding 24px 拉开间距。
+   :has(td.cbi-section-actions) 限定"有操作列的表"，避免误伤两列内容表。 */
+/* 选择器必须带与通用规则相同的 :not(:has(...)) 链：通用规则元素更多，
+   同特异性会输（实测 66.6% 被 33.33% 盖掉），补齐链路 + .td + :nth-last-child 才赢 */
+.cbi-section-table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])):has(td.cbi-section-actions) tr > td.td:nth-last-child(2),
+.table.liquid-grid:not(:has(td[data-name="_ifacebox"])):not(:has(td[width="33%"])):has(td.cbi-section-actions) tr > td.td:nth-last-child(2) {
+	flex: 2 1 66.6% !important;
+	padding-right: 24px;
+}
+
+/* 操作列占第三列：按钮起点 = 上一行第三列内容起点（严格同列对齐）；
+   顶对齐（align-self/items: flex-start）；放不下时 flex-wrap 自动换到下一行 */
+.cbi-section-table.liquid-grid tr > td.cbi-section-actions,
+.table.liquid-grid tr > td.cbi-section-actions {
+	flex: 1 1 33.4% !important;
+	min-width: 0 !important;
+	align-self: flex-start;
+	align-items: flex-start;
+	margin-left: 0;
+	padding: 6px 10px;
+	white-space: normal !important;
+}
+
+/* 单元格自带表头（Argon 同款；文案由 main.js 从同列 th 回填 data-title） */
+.cbi-section-table.liquid-grid td[data-title]::before,
+.table.liquid-grid td[data-title]::before {
+	content: attr(data-title);
+	display: block;
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.45;
+	letter-spacing: .2px;
+	color: var(--text-color-medium);
+	opacity: .9;
+	margin-bottom: 1px;
+}
+
+/* 原表头行隐藏（每格已自带表头）；带筛选输入的 thead 保留。
+   !important 必须：≤854px 的既有规则给 tr 设了 display:flex !important */
+.cbi-section-table.liquid-grid tr.table-titles,
+.cbi-section-table.liquid-grid tr.cbi-section-table-titles,
+.table.liquid-grid tr.table-titles,
+.cbi-section-table.liquid-grid thead:not(:has(input)),
+.table.liquid-grid thead:not(:has(input)) {
+	display: none !important;
+}
+
+/* 三列网格下操作列仅占 1/3 宽：按钮相邻间距 8→4px，尽量保持一行
+   （1000px 实测：4 按钮约 290px，格内可用 284px，8px 间距会挤成两行） */
+.cbi-section-table.liquid-grid td.cbi-section-actions > div > * + *,
+.table.liquid-grid td.cbi-section-actions > div > * + * {
+	margin-left: 4px;
+}
+
+/* 折叠态（按钮优先折叠）在此模式下的适配：操作列已占整行 → 按钮横排折行；
+   文字格的"一字一断"兜底改回按词换行 */
+/* 仅 grid 态（视口≤1100、操作列已独占整行）才把折叠按钮改横排；
+   桌面宽屏折叠态维持 r17 的"每个按钮一行"纵排 */
+table.liquid-actions-overflow.liquid-grid td.cbi-section-actions > div {
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+table.liquid-actions-overflow.liquid-grid td:not(.cbi-section-actions),
+table.liquid-actions-overflow.liquid-grid th:not(.cbi-section-actions) {
+	word-break: normal;
+	overflow-wrap: break-word;
+}
+
+/* ===== 移动端（≤854px）：标签/值两列表的标签列改为按自身文字宽度收缩 =====
+   原来固定 20ch≈145px（为了让最长标签"CPU 使用率（%）"单行），但短标签
+   （主机名/型号/温度…只需 40~60px）右侧空出 ~100px，把值列挤到换行——
+   实测移动端值列因此少 ~90px。改为 flex:0 1 auto + max-width:20ch：
+   改为固定 5 个字的内容宽（5em）：既让值列拿回空间（比 20ch≈145px 窄），
+   又保证全表标签列等宽、值列起点对齐（用户反馈：按文字收缩会让值列
+   逐行错位）。超过 5 字的标签（如 CPU 使用率（%））在本格内折行。
+   桌面（>854px）保持 20ch 固定列。 */
+@media screen and (max-width: 854px) {
+	.table:has(td[width="33%"]) tr > td[width="33%"],
+	.cbi-section-table tr > td[width="33%"],
+	.table tr > td[width="33%"] {
+		flex: 0 0 5em !important;
+		box-sizing: content-box !important; /* 5em=5 个汉字的内容宽，外加自身 padding */
+		width: 5em !important;
+		max-width: none !important;
+		min-width: 0 !important;
+		/* 固定 5 字宽后，超过 5 字的标签（CPU 使用率（%））在本格内折行，
+		   值列起点全表对齐（用户反馈：按文字收缩会导致值列不齐） */
+		white-space: normal !important;
+		overflow-wrap: break-word;
+		word-break: break-word;
+	}
+}
+
+/* ===== 启动项页（admin/system/startup）：操作列 5 个按钮排 3+2 =====
+   该页移动端按钮容器为整行宽，5 个按钮自然折行会排成 4+1（最后孤零零
+   一个，不美观）。改为 3 列网格：第一行 3 个、第二行 2 个。
+   仅按该页 data-page 生效（用户要求"单独优化这里"），其它表格不受影响。 */
+@media screen and (max-width: 854px) {
+	/* data-page 两种写法都匹配（连字符式 admin-system-startup /
+	   路径式 admin/system/startup，主题与 openclash 用前者） */
+	body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+		td.cbi-section-actions > div {
+		display: grid;
+		grid-template-columns: repeat(3, max-content);
+		justify-content: start;
+		align-items: start;
+		gap: 6px 8px;
+	}
+
+	/* 网格自带 gap，清掉相邻按钮的 margin-left（否则间距叠加不均） */
+	body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+		td.cbi-section-actions > div > * + * {
+		margin-left: 0;
+	}
+}
+
+/* ===== 有标题的操作格：标题在上、按钮在下、两者左对齐 =====
+   ui.Table（cbi_update_table）会把表头文案复制成单元格 data-title、并把
+   表头的 cbi-section-actions 类复制过来——如概览 DHCP 租约表的最后一列
+   （表头"静态租约" / 内容"设为静态"按钮）。该格在 ≤854px 被通用规则
+   变成 flex 行 → 标题与按钮排成左右两列，看起来像"两列东西"。
+   实际语义：标题=这列的表头，按钮=这列的内容 → 上下堆叠；
+   对齐方式经用户确认为左对齐（先居中后改回左对齐更合适）。 */
+.cbi-section-table.liquid-grid td.cbi-section-actions[data-title],
+.table.liquid-grid td.cbi-section-actions[data-title] {
+	display: block !important;   /* ::before 标题与按钮上下排 */
+	text-align: left;            /* 标题与按钮左对齐 */
+}
+
+/* 若格内是按钮容器（折叠/按钮组），同样左对齐 */
+.cbi-section-table.liquid-grid td.cbi-section-actions[data-title] > div,
+.table.liquid-grid td.cbi-section-actions[data-title] > div {
+	text-align: left;
+	justify-content: flex-start;
+}
+
+/* ===== 概览"系统"卡片（标签/值两列表 td[width="33%"]）：每行强制单行 =====
+   用户要求：每行只占一行不换行；固件版本这类超长值不折行，改为整卡
+   左右滑动查看右侧内容（.table 本就是 overflow-x:auto 的滚动容器）。
+   注意这是对 r4（放不下就换行）与 r10（标签按文字收缩）的本卡覆盖：
+   - 行 flex-wrap: nowrap + 单元格 white-space: nowrap → 行=内容宽；
+   - 单元格 flex:0 0 auto + width:max-content → 行宽=标签+值的自然宽；
+   - 表宽超出容器时由 .table:has(td[width="33%"]){overflow-x:auto} 横滚。
+   !important 必须：要压过 r10 移动端的 width:max-content/20ch 封顶以及
+   桌面 20ch 固定列规则（同特异性会靠顺序，这里统一显式压过）。 */
+.table:has(td[width="33%"]) tr {
+	flex-wrap: nowrap !important;
+	white-space: nowrap !important;
+}
+
+/* 值列（最后一格）必须占满剩余宽度：内存/存储的进度条要拉满到右侧。
+   r13 把所有格子改成 flex:0 0 auto + max-content 后，值列缩成内容宽 →
+   进度条看起来"等于文字长度"（用户反馈）。important 对 important 由
+   特异性决定（本规则带 :last-child 更高），故这里同样加 important。 */
+.table:has(td[width="33%"]) tr > td:last-child {
+	flex: 1 1 auto !important;
+	width: auto !important;
+}
+
+.table:has(td[width="33%"]) tr > td {
+	flex: 0 0 auto !important;
+	width: max-content !important;
+	max-width: none !important;
+	white-space: nowrap !important;
+	overflow-wrap: normal !important;
+	word-break: normal !important;
+}
+
+/* ===== 启动项页（admin/system/startup）：操作按钮按语义上色 =====
+   该页操作格内 5 个子元素顺序固定（startup.js rows.push）：
+   ① 启用开关（cbi-button-positive=已启用 / negative=已禁用）
+   ② 启动 Start  ③ 重启 Restart  ④ 重新加载 Reload  ⑤ 停止 Stop
+   需求：启用/启动=绿、重启/重新加载=橙、停止=红；仅本页生效。
+   主题现有 .cbi-button-positive 等走 accent 蓝渐变，这里按语义覆盖，
+   含 :hover 态（否则 hover 会被主题的 accent-grad 规则抢回蓝色）。 */
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(2),
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > .cbi-button-positive {
+	/* 启动 + 启用(已启用态) → 绿 */
+	color: var(--on-success-color);
+	background: linear-gradient(135deg, #34d399, var(--success-color-medium));
+	box-shadow: 0 6px 16px rgba(var(--success-color-high-rgb), 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(2):hover,
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > .cbi-button-positive:hover {
+	filter: brightness(1.08);
+}
+
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(3),
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(4) {
+	/* 重启 + 重新加载 → 橙（复用主题 amber 强调色渐变） */
+	color: #ffffff;
+	background: linear-gradient(135deg, #ffc04a 0%, #e8940f 48%, #c47100 100%);
+	box-shadow: 0 6px 16px rgba(232, 148, 15, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(3):hover,
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(4):hover {
+	filter: brightness(1.08);
+}
+
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(5) {
+	/* 停止 → 红（与主题 negative 同配方，保证禁用态/其它页一致观感） */
+	color: var(--on-error-color);
+	background: linear-gradient(135deg, #f06767, var(--error-color-high));
+	box-shadow: 0 6px 16px rgba(var(--error-color-high-rgb), 0.35);
+}
+
+body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
+	td.cbi-section-actions > div > :nth-child(5):hover {
+	filter: brightness(1.08);
+}
+
+/* ===== 小体积弹窗：含文件选择控件的对话框按内容收窄 =====
+   （用户反馈："选择要上传的文件…取消/上传"这类弹窗异常宽，右侧大片空白）
+   根因：#modal_overlay > .modal 固定 width:80%（max 80vw）——1920 屏上
+   一个只有标题+文件框+两个按钮的对话框也占 1536px；再叠加 .button-row
+   的 flex-end + 首按钮 margin-right:auto（取消在最左、上传在最右），
+   空白被进一步拉开。
+   方案：只对含 input[type=file] 的弹窗收窄到 520px（按内容包裹、文字
+   正常换行），按钮行随之收拢；其它表单弹窗保持 80% 不变。 */
+#modal_overlay > .modal:has(input[type="file"]) {
+	/* 按内容自适应（fit-content）：内容已全部左对齐，固定 520px 会在右侧
+	   留出大片空白（实测344px）。弹窗宽=最宽一行内容+内边距；超长说明文字
+	   仍会被 max-width 限制并正常换行 */
+	/* 宽度策略（用户定量要求：约当前的 180% ≈545px，且按钮/内容不许换行）：
+	   - fit-content：内容长时随内容展开（上限 80vw），绝不逼元素换行；
+	   - min-width 545：短内容也保底 545px —— 之前纯 fit-content 只有303px，
+	     弹窗过小、按钮行(.button-row flex-wrap:wrap)被挤到换行。 */
+	width: fit-content;
+	min-width: min(545px, 92vw);
+	max-width: 80vw;
+}
+
+/* 文件框随容器宽度走，别用浏览器默认 intrinsic 宽撑破 */
+#modal_overlay > .modal:has(input[type="file"]) input[type="file"] {
+	max-width: 100%;
+}
+
+/* ui.js 的上传弹窗真实结构（hideModal 里的 uploadFile）：
+     .modal > p(说明) + div[display:flex] > (.left[flex:1] = 选择文件按钮
+                                            .right[flex:1] = 取消 + 上传)
+   默认左右各占一半、右侧组贴中线，两组之间只有 129px 且上传按钮离右缘 56px。
+   用户要求拉开"选择文件"与"取消/上传"的间距 → 右侧整组靠右并加左间距。 */
+/* 按钮行左组（选择文件）必须贴左：标题/说明的 text-align:center（方案2）
+   会被 .left 继承 → 按钮被推到 .left 中央，左侧出现空白间隔（用户反馈）。 */
+#modal_overlay > .modal:has(input[type="file"]) > div[style*="display:flex"] .left {
+	text-align: left;
+}
+
+#modal_overlay > .modal:has(input[type="file"]) > div[style*="display:flex"] .right {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 10px;
+	margin-left: 32px;
+}
+
+/* 按钮收拢到右侧一组：.button-row 首按钮的 margin-right:auto 会把
+   "取消"甩到最左、"上传"顶到最右（间距 300+px 的空白带）。小弹窗里取消。 */
+#modal_overlay > .modal:has(input[type="file"]) .button-row > button:first-of-type {
+	margin-right: 0;
+}
+
+/* 方案2（用户选定）：标题与说明文字**居中**——左对齐时短文本行右侧会留
+   128~195px 空白，居中后空白分到两侧更平衡；文件框仍左对齐、按钮仍右对齐 */
+#modal_overlay > .modal:has(input[type="file"]) > :not(input):not(.button-row) {
+	text-align: center;
+}
+
+/* 对齐方式（用户最终指定）：标题、说明文字、选择文件按钮一律**左对齐**，
+   只有"取消/上传"两个按钮右对齐（.button-row 本就是 flex-end）。
+   （曾试过内容整体右对齐，用户反馈说明文字也要左 → 回到默认左对齐，
+   仅保留下方文件框的显式左推，防止被带 text-align 的包装层甩到右边。） */
+
+#modal_overlay > .modal:has(input[type="file"]) input[type="file"] {
+	display: block;
+	/* 选择文件按钮保持左对齐（用户指定）：块级 + margin-right:auto
+	   推到左侧——只靠 text-align:right 会把它甩到右边 */
+	margin-right: auto;
+	margin-left: 0;
+}
+
+/* ===== 会话过期/重新登录弹窗（luci.js notifySessionExpiry）收窄 =====
+   结构（源码确认）：.modal > h4 + div.alert-message.warning + div.right(登录按钮)。
+   它走通用规则 width:80% → 1920 屏上占 1536px，只有一句话却拉满整屏（用户反馈）。
+   按内容收窄：fit-content + 保底 420px（窄屏 92vw），上限 80vw；只命中"同时带
+   直接子级 .alert-message 与 .right"的弹窗，与上传弹窗（.right 在 flex 行内）不冲突。 */
+#modal_overlay > .modal:has(> .alert-message):has(> .right) {
+	width: fit-content;
+	/* 窄屏上原来 min(420px,92vw) 等于 92% 屏宽 → 看着像贴边大卡片；
+	   按用户要求改为"屏幕宽度的 75%"：窄屏下 min 与 max 都落到 75vw，
+	   长文本也被限在 75% 内换行；宽屏仍保底 420px 不会缩水 */
+	min-width: min(420px, 75vw);
+	max-width: 75vw;
 }

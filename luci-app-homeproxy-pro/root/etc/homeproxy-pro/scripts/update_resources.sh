@@ -201,15 +201,27 @@ check_list_update() {
 		# not fatal: the previous rule-set is still valid and the firewall
 		# has already switched to the new list, which is exactly the state
 		# the next run (or the next service start) repairs.
-		if [ "$listtype" = "china_ip4" ]; then
+		#
+		# china_ip6 is in the same boat for the same reason: geoip-cn.srs and
+		# china_ip4.json carry no IPv6 at all, so a mainland destination
+		# reached over v6 matches no route rule and falls through to `final`
+		# - the proxy - unless there is a v6 rule-set of our own.
+		case "$listtype" in
+		"china_ip4"|"china_ip6")
 			if ucode -S "$SCRIPT_DIR/runtime/china_ip_ruleset.uc" \
-				"$RESOURCES_DIR/china_ip4.txt" "$RESOURCES_DIR/china_ip4.json" >>"$LOG_PATH" 2>&1; then
-				log "[CHINA_IP4] Route-side rule-set regenerated."
-				chown sing-box:sing-box "$RESOURCES_DIR/china_ip4.json" 2>"/dev/null"
+				"$RESOURCES_DIR/$listtype.txt" "$RESOURCES_DIR/$listtype.json" >>"$LOG_PATH" 2>&1; then
+				log "[$(to_upper "$listtype")] Route-side rule-set regenerated."
+				chown sing-box:sing-box "$RESOURCES_DIR/$listtype.json" 2>"/dev/null"
 			else
-				log "[CHINA_IP4] Warning: could not regenerate china_ip4.json; the route side keeps the previous list."
+				# The helper exits non-zero on an empty or fully malformed
+				# list, and deliberately leaves the previous .json in place.
+				# Writing an empty one would be worse than not writing any:
+				# the rule would then match nothing, which is the silent
+				# "mainland IPv6 goes through the proxy" inversion.
+				log "[$(to_upper "$listtype")] Warning: could not regenerate $listtype.json (list has no usable CIDR entry?); the route side keeps the previous list."
 			fi
-		fi
+			;;
+		esac
 	else
 		rm -f "$RUN_DIR/$listname"
 		log "[$(to_upper "$listtype")] Failed to install update (mv failed)."

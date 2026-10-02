@@ -15,11 +15,10 @@
 
 ## 运行要求
 
-- **ImmortalWrt ≥ 25.12**（`apk` 或 `opkg` 均可安装）。这条以前写的是 "≥ 24.10"，是错的：从 r11 起本包在模块顶层 `import { … mkdtemp … } from 'fs'`，而 `fs.mkdtemp` 是 ucode 在 2025-11-07 才加上的（`ucode-lang/ucode` 的 `lib/fs.c`），24.10 分支线的 ucode 早于此，**整个 24.10 系列都不满足**。ucode 在模块加载期解析 import，所以不满足时安装期迁移、配置生成器、LuCI RPC 三处同时失败——不是一个"装不上"的问题，而是这个插件整体不可用。旧版本 24.10 用户请停留在 r10 及更早的 pro。
+- **ImmortalWrt ≥ 25.12**（`apk` 或 `opkg` 均可安装）。
 - sing-box ≥ 1.14.0 是硬要求；低于 1.14 时服务拒绝启动并记录明确日志。
-- 启动时会检查 ucode 是否提供 `fs.mkdtemp`，不满足则拒绝启动并记录明确日志（`hp_require_ucode()`，与 `hp_require_singbox()` 并列），而不是让用户看到一段模块加载堆栈。
 
-## 按功能性对比
+## 与上游 szwjp/luci-app-homeproxy-pro 对比
 
 ### 代码组织
 
@@ -70,9 +69,6 @@
 | 协议增改成本 | 改 110 行 ternary（README 旧行） | 改 5 个表行：`model.uc CREDENTIALS` + `loader.uc PROTOCOL_OPTIONS` + `adapter.uc OPTION_FIELDS` + `fixtures/` + golden snapshot；arch-guard 5 强制 fixtures 同步 | `config/{model,loader,adapter}.uc` + `tests/fixtures/generators/` |
 | 资源更新 | jsdelivr 单一镜像 | 4 镜像 fallback（`fastly.jsdelivr.net` / `gcore.jsdelivr.net` / `cdn.jsdelivr.net` / `raw.githubusercontent.com`）+ UI「上次成功时间」（arch-guard 17 / 18 锁） | `runtime/dns.sh` + arch-guard 17 / 18 |
 | ECH 上传 | 后端 case 缺失 | 补齐 `client_ech_conf` 标签 + `isValidECHConfig()` PEM 校验；ACL 显式列 4 个 tmp 路径 | `homeproxy-pro.uc:isValidECHConfig` + `luci.homeproxy-pro:certificate_write` |
-| 默认测试主机 | 硬编码作者内网 IP | `HP_TEST_HOST` 注入，未设时 fail-fast；`on-target.yml` ；ssh 前 `ssh -o ConnectTimeout=10` 先确认可达（不要从记忆里写地址） | `tests/run.sh` + `.github/workflows/on-target.yml` |
-| 文档 | 标准（README + CONTRIBUTING + SECURITY） | 精简（README only），`docs/` 自 2026-09-16 起只留本地（untrack + `.gitignore`），远端公开仓库不再发布 | `README.md` + `docs/`（本地） |
-| 路由 ops | — | 替换文件只动 JS / menu / acl / rpcd ucode（reload 不影响网络）；更深层改动前 `cp /etc/config/homeproxy-pro /tmp/hp-r<NN>-preflight-<DATE>/`，保留上一发版 .apk 24h；`killall -HUP rpcd` 由 apk scripts 自动做 | `runtime/{config,service}.sh` |
 
 **一句话总结**：pro 的核心价值是**把"单文件能跑"变成"orchestrator + table-driven adapter + 可独立测试的模块"**，并把约束、质量、回滚三件事从靠人盯变成靠代码执行（arch-guard 135 checks 静态锁住跨文件不变量）。
 

@@ -42,6 +42,14 @@
 	}
 	if (theme_ver == '') theme_ver = '?';
 
+	/* 资源签名（缓存击穿）：热部署（scp 覆盖文件）不改包版本号，?v= 不变
+	   → 浏览器继续用旧缓存，表现为"改了样式却没变化"。把 cascade.css 的
+	   mtime+size 拼进查询串：文件一改 URL 立即变化，客户端必然重新拉取。 */
+	let css_st = fs.stat('/www/luci-static/liquid/cascade.css');
+	let css_ver = theme_ver;
+	if (css_st && css_st.type == 'file')
+		css_ver += sprintf('-%x%x', css_st.mtime, css_st.size);
+
 	http.prepare_content('text/html; charset=UTF-8');
 
 	let ptitle = (node ?? dispatched)?.title;
@@ -196,7 +204,7 @@
 		} catch (e) {}
 	})();
 </script>
-<link rel="stylesheet" type="text/css" media="screen" href="{% print(media); %}/cascade.css?v={% print(theme_ver); %}" />
+<link rel="stylesheet" type="text/css" media="screen" href="{% print(media); %}/cascade.css?v={% print(css_ver); %}" />
 <link rel="icon" href="{{ media }}/logo.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="{{ media }}/logo.png" />
 <script type="text/javascript" src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>

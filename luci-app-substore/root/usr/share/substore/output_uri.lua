@@ -38,9 +38,21 @@ local function insecure_flag(n)
 end
 
 -- 生成单节点分享链接；无法生成时返回 nil
+-- 分享链接里的 server 字面量。IPv6 必须加方括号：RFC 3986 的 authority 是
+-- `host:port`，而裸 IPv6 本身就含冒号，`fd00::1:443` 无法判断哪一段是端口。
+-- 本项目自己的解析器（util.split_hostport）就拆不开，重新导入得到 0 个节点；
+-- 规范的客户端同样会拒绝或拆错。output_wireguard_conf 的 Endpoint 一直是这么做的。
+local function host_literal(server)
+	server = tostring(server or "")
+	if server:find(":", 1, true) and server:sub(1, 1) ~= "[" then
+		return "[" .. server .. "]"
+	end
+	return server
+end
+
 function M.to_share_uri(n)
 	if type(n) ~= "table" or not n.server or not n.port then return nil end
-	local server = n.server
+	local server = host_literal(n.server)
 	local port = tonumber(n.port) or 0
 	local name = url_encode(n.name or (server .. ":" .. tostring(port)))
 	local proto = (n.proto or ""):lower()
@@ -51,7 +63,15 @@ function M.to_share_uri(n)
 		local method = n.method or n.cipher or "aes-256-gcm"
 		local password = n.password or ""
 		local userinfo = util.base64_encode(method .. ":" .. password)
-		return "ss://" .. userinfo .. "@" .. server .. ":" .. tostring(port) .. "#" .. name
+		-- SIP002：SS-URI = "ss://" userinfo "@" host ":" port [ "/" ] [ "?" plugin ] [ "#" tag ]
+		-- 插件参数整体做一次百分号编码（`;` 与 `=` 在 query 里必须转义）。
+		-- 不回写这一项时，带插件的节点导出后再导入就永久丢失插件配置。
+		local query = ""
+		if type(n.plugin) == "string" and n.plugin ~= "" then
+			query = "/?plugin=" .. url_encode(n.plugin)
+		end
+		return "ss://" .. userinfo .. "@" .. server .. ":" .. tostring(port)
+			.. query .. "#" .. name
 	end
 
 	if proto == "vmess" then

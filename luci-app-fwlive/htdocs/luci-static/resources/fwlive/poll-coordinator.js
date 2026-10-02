@@ -25,20 +25,29 @@ function createCoordinator(options) {
 	let active = null;
 	let pending = null;
 	let started = false;
-	let registered = false;
+	let registered = null;
 	let disposed = false;
 	let hidden = isHidden();
 
+	/* LuCI poll.add dedupes by function identity, so each registration needs its
+	 * own entry. When the loop is idle, poll.add starts it and runs the entry
+	 * synchronously. */
+	function pollEntry() {
+		return function () {
+			return requestPoll();
+		};
+	}
+
 	function removePoll() {
 		if (!registered) return;
-		poll.remove(requestPoll);
-		registered = false;
+		poll.remove(registered);
+		registered = null;
 	}
 
 	function addPoll() {
 		if (!started || registered || disposed || isHidden()) return;
-		poll.add(requestPoll, cadenceSec);
-		registered = true;
+		registered = pollEntry();
+		poll.add(registered, cadenceSec);
 	}
 
 	function finish(batch, value) {
@@ -54,6 +63,7 @@ function createCoordinator(options) {
 		pending = null;
 		/* Claim ownership before invoking user code, including synchronous runs. */
 		active = batch;
+		batch.epoch = epoch;
 		let result;
 		try {
 			result = Promise.resolve(run(epoch));
@@ -81,13 +91,27 @@ function createCoordinator(options) {
 		return promise;
 	}
 
+	/* Ensure a request that started in the current epoch. Join one that is
+	 * already running (for example, the one poll.add just fired) instead of
+	 * queueing a back-to-back duplicate. */
+	function catchUp() {
+		if (disposed || isHidden()) return Promise.resolve();
+		if (active && active.epoch === epoch && !pending) return active.promise;
+		return requestPoll();
+	}
+
 	function setCadence(sec) {
 		if (disposed) return;
 		const next = Number.isFinite(sec) && sec > 0 ? sec : initialCadence;
 		if (next === cadenceSec) return;
 		cadenceSec = next;
-		removePoll();
+		if (!registered) return;
+		/* Add before remove: emptying LuCI's queue stops the loop, and the next
+		 * add would restart it with an immediate extra poll. */
+		const previous = registered;
+		registered = null;
 		addPoll();
+		poll.remove(previous);
 	}
 
 	function onVisibilityChange() {
@@ -102,7 +126,7 @@ function createCoordinator(options) {
 		addPoll();
 		/* A stale request may still be on the wire. Catch up only after it
 		 * settles, retaining any refresh requested before the tab was hidden. */
-		requestPoll();
+		catchUp();
 	}
 
 	function startPolling() {
@@ -129,6 +153,7 @@ function createCoordinator(options) {
 
 	return {
 		requestPoll: requestPoll,
+		catchUp: catchUp,
 		startPolling: startPolling,
 		setCadence: setCadence,
 		dispose: dispose,

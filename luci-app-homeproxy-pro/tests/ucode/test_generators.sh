@@ -42,6 +42,14 @@ run_case() {
 	# explicit than a near-copy fixture file, and the expression is visible at
 	# the call site next to the assertion it serves.
 	variation="${5:-}"
+	# 6th argument, "no-ipv6-ruleset": model an install whose china_ip6.txt
+	# yielded no usable prefix, so hp_prepare_runtime_files produced no
+	# rule-set.  A positional argument rather than an environment variable
+	# because `VAR=x run_case ...` does not reliably scope the assignment to
+	# the function body across the shells this suite runs under (dash on CI
+	# kept the staged file, and the degraded case silently tested the normal
+	# one instead).
+	no_ipv6_ruleset="${6:-}"
 	dir="$WORK/$name"
 
 	rm -rf "$dir"
@@ -60,6 +68,18 @@ run_case() {
 		# Most fixtures do not exercise the route side; an empty rule-set
 		# keeps `sing-box check` happy without inventing data.
 		printf '{"version":3,"rules":[{"ip_cidr":["192.0.2.0/24"]}]}\n' > "$dir/resources/china_ip4.json"
+	fi
+
+	# The IPv6 counterpart, staged by default because that is the normal
+	# install: the package ships china_ip6.txt and hp_prepare_runtime_files
+	# turns it into the rule-set both the route rule and the DNS cn-fallback
+	# match reference.  See the 6th argument of run_case for the degraded case.
+	if [ "$no_ipv6_ruleset" != "no-ipv6-ruleset" ]; then
+		if ! ucode -S "$ROOT/root/etc/homeproxy-pro/scripts/runtime/china_ip_ruleset.uc" \
+			"$ROOT/root/etc/homeproxy-pro/resources/china_ip6.txt" "$dir/resources/china_ip6.json" \
+			>>"$dir/resources/china_ip6.log" 2>&1; then
+			printf '{"version":3,"rules":[{"ip_cidr":["2001:db8::/32"]}]}\n' > "$dir/resources/china_ip6.json"
+		fi
 	fi
 
 	if grep -q "__RULESET_DIR__" "$fixture"; then
@@ -674,12 +694,17 @@ import { readfile } from 'fs';
 const config = json(readfile(ARGV[0]));
 const rules = config.dns?.rules || [];
 let has_eval_tag = false, has_match_response = false, geoip_ref = false;
+/* rule_set is emitted as an array because the cn-fallback match names more
+ * than one rule-set when IPv6 support is on (geoip-cn + china-ip6). sing-box
+ * accepts a bare string for the single-tag case, so accept both shapes here
+ * rather than pinning the one this build happens to produce. */
+const names = (v) => (type(v) === 'array' ? v : [v]);
 for (let r in rules) {
 	if (r.action === 'evaluate' && r.tag === 'cn-fallback')
 		has_eval_tag = true;
 	if (r.match_response === 'cn-fallback') {
 		has_match_response = true;
-		if (r.rule_set === 'geoip-cn')
+		if (index(names(r.rule_set), 'geoip-cn') >= 0)
 			geoip_ref = true;
 	}
 }
@@ -973,6 +998,89 @@ else
 		echo "FAIL: china-dns-strategy-v6-off: unexpected strategy: $cds_value (line: $cds_strategy)"
 		FAILED=1 ;;
 	esac
+fi
+
+# 4) IPv6 mainland split: with ipv6_support='1' the mainland destination
+#    has to be recognisable over IPv6, or it falls through to `final`
+#    (main-out) and a Chinese site opens through the proxy.  geoip-cn.srs
+#    and china_ip4.json are both IPv4-only, so the v6 rule-set generated
+#    from china_ip6.txt is the only thing that can match.  Asserted on both
+#    halves that have to agree: the route rule (which outbound) and the DNS
+#    cn-fallback match_response (which resolver).
+run_case route-china-ip6 "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
+	"s/option ipv6_support '0'/option ipv6_support '1'/"
+
+v6_json="$WORK/route-china-ip6/run/sing-box-c.json"
+if [ ! -f "$v6_json" ]; then
+	echo "FAIL: route-china-ip6: no config was generated"
+	FAILED=1
+else
+	# The rule-set declaration: a local entry tagged china-ip6 pointing at the
+	# generated file. Its absence is the bug - a rule referencing an
+	# undeclared tag fails the whole config.
+	if ! grep -q '"tag": "china-ip6"' "$v6_json"; then
+		echo "FAIL: route-china-ip6: rule_set does not declare china-ip6; a mainland IPv6"
+		echo "      destination would match no rule and fall through to final (the proxy)"
+		FAILED=1
+	fi
+
+	# The route rule, and the side it sends to. bypass_mainland_china means
+	# mainland -> direct-out; a rule pointing at main-out here would be the
+	# exact inversion this change exists to fix, so assert the outbound
+	# rather than the rule's presence.
+	v6_rule_out="$(grep -A 3 '"rule_set": "china-ip6"' "$v6_json" | grep '"outbound":' | head -1)"
+	case "$v6_rule_out" in
+	*'"outbound": "direct-out"'*)
+		echo "PASS: route-china-ip6: mainland IPv6 routes to direct-out in bypass_mainland_china" ;;
+	*)
+		echo "FAIL: route-china-ip6: the china-ip6 route rule does not send to direct-out"
+		echo "      (got: ${v6_rule_out:-<no rule>})"
+		FAILED=1 ;;
+	esac
+
+	# The DNS half: the cn-fallback match_response rule must name china-ip6
+	# too, or the answer for a mainland domain that resolved to AAAA keeps
+	# coming from the proxy resolver. ucode prints the array multi-line, so
+	# look at the rule body rather than for one line containing both tags.
+	v6_fb="$(sed -n '/"match_response": "cn-fallback"/,/}/p' "$v6_json")"
+	case "$v6_fb" in
+	*china-ip6*)
+		echo "PASS: route-china-ip6: the cn-fallback response match also covers china-ip6" ;;
+	*)
+		echo "FAIL: route-china-ip6: cn-fallback still matches geoip-cn only, so a mainland"
+		echo "      AAAA answer is not re-resolved by china-dns"
+		FAILED=1 ;;
+	esac
+fi
+
+# 5) The degraded path: ipv6_support='1' but no v6 rule-set on disk (the
+#    list yielded no usable prefix, so hp_prepare_runtime_files produced
+#    nothing).  Both halves must then stay silent about IPv6 rather than
+#    name a rule-set that is not there - a `rule_set:` pointing at a missing
+#    file makes sing-box reject the whole config, which the health gate
+#    turns into a rollback and an unproxied network.  The config still has
+#    to pass `sing-box check`, which run_case already asserted.
+run_case route-china-ip6-missing "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
+	"s/option ipv6_support '0'/option ipv6_support '1'/" no-ipv6-ruleset
+
+v6miss_json="$WORK/route-china-ip6-missing/run/sing-box-c.json"
+if [ ! -f "$v6miss_json" ]; then
+	echo "FAIL: route-china-ip6-missing: no config was generated"
+	FAILED=1
+else
+	# Match the tag, not the bare string: this case's own directory is named
+	# "route-china-ip6-missing", so every emitted path in the config
+	# (data_directory, log output, ...) contains "china-ip6" and a substring
+	# search reports a reference that is not there.
+	if grep -qE '"(tag|rule_set)": "?\[\]?"?china-ip6' "$v6miss_json" ||
+	   grep -qE '"(tag|rule_set)": \[[^]]*china-ip6' "$v6miss_json"; then
+		echo "FAIL: route-china-ip6-missing: the config still references china-ip6 with no"
+		echo "      rule-set file present; sing-box would refuse to start"
+		grep -nE '"(tag|rule_set)": .*china-ip6' "$v6miss_json" | sed 's/^/      /'
+		FAILED=1
+	else
+		echo "PASS: route-china-ip6-missing: no china-ip6 reference without the file (degrades cleanly)"
+	fi
 fi
 
 # 3) P2 #4 / §2.2.1: the three NAPTR (qtype 35) bypass suffixes must be

@@ -291,9 +291,24 @@ function append_proxy_dns(config, dm, ctx) {
 				server: 'main-dns',
 				tag: 'cn-fallback'
 			});
+			/* The response is matched by the addresses the upstream returned,
+			 * and geoip-cn has no IPv6 in it, so with IPv6 support on a
+			 * mainland domain that resolved to an AAAA address was never
+			 * recognised as mainland and its answer kept coming from the
+			 * proxy resolver.  Adding the v6 rule-set here is what makes the
+			 * DNS half of the split agree with the route half, which
+			 * classifies the same destinations through the same list
+			 * (route.uc: china-ip6).  Both tags have to be declared before
+			 * this rule runs, which is why the list is built here rather than
+			 * inlined: a rule_set naming an undeclared tag fails the config.
+			 * china-ip6 is only declared when its file exists, so it is only
+			 * named here under the same condition. */
+			const cn_fallback_sets = ['geoip-cn'];
+			if (ctx.ipv6_support === '1' && ctx.china_ip6_ready)
+				push(cn_fallback_sets, 'china-ip6');
 			push(config.dns.rules, {
 				match_response: 'cn-fallback',
-				rule_set: 'geoip-cn',
+				rule_set: cn_fallback_sets,
 				action: 'route',
 				server: 'china-dns'
 			});

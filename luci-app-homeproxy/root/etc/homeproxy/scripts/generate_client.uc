@@ -45,6 +45,19 @@ const uciruleset = 'ruleset';
 
 const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_mainland_china';
 
+/*
+ * Single source of truth for "which config branch are we generating".
+ *
+ * The three generation chains below (DNS, outbounds, route) must be selected by
+ * the routing mode, NOT by whether main_node / default_outbound happen to be
+ * set. Those two answer a different question: in custom mode default_outbound
+ * is legitimately 'nil' (every routing rule picks its own outbound, there is no
+ * default) and main_node is never read. Deriving the mode from them made a
+ * perfectly normal custom config fall through every branch and emit a config
+ * containing none of the user's DNS servers, nodes, rules or rule-sets.
+ */
+const is_custom_mode = (routing_mode === 'custom');
+
 let wan_dns = ubus.call('network.interface', 'status', {'interface': 'wan'})?.['dns-server']?.[0];
 if (!wan_dns)
 	wan_dns = (routing_mode in ['proxy_mainland_china', 'global']) ? '8.8.8.8' : '223.5.5.5';
@@ -598,7 +611,7 @@ if (!isEmpty(main_node)) {
 			});
 		}
 	}
-} else if (!isEmpty(default_outbound)) {
+} else if (is_custom_mode) {
 	/* DNS servers */
 	uci.foreach(uciconfig, ucidnsserver, (cfg) => {
 		if (cfg.enabled !== '1')
@@ -888,7 +901,7 @@ if (!isEmpty(main_node)) {
 			config.outbounds[length(config.outbounds)-1].tag = 'cfg-' + i + '-out';
 		}
 	}
-} else if (!isEmpty(default_outbound)) {
+} else if (is_custom_mode) {
 	let urltest_nodes = [],
 	    routing_nodes = [];
 
@@ -949,6 +962,12 @@ if (isEmpty(config.endpoints))
 
 /* Routing rules start */
 /* Default settings */
+/*
+ * The sniff rule below deliberately carries no `timeout`. Reports from
+ * sing-box 1.14.2 show it rejected with "route.rules[1].timeout: json: unknown
+ * field". The official builds accept it, so the exact trigger is still open,
+ * but the default is already 300ms and omitting the field is behaviour-neutral.
+ */
 config.route = {
 	rules: [
 		{
@@ -956,8 +975,7 @@ config.route = {
 			action: 'hijack-dns'
 		},
 		{
-			action: 'sniff',
-			timeout: '300ms'
+			action: 'sniff'
 		}
 	],
 	rule_set: [],
@@ -1102,7 +1120,7 @@ if (!isEmpty(main_node)) {
 
 	if (isEmpty(config.route.rule_set))
 		config.route.rule_set = null;
-} else if (!isEmpty(default_outbound)) {
+} else if (is_custom_mode) {
 	config.route.default_domain_resolver = {
 		server: get_resolver(default_outbound_dns)
 	};
@@ -1238,6 +1256,21 @@ if (!isEmpty(main_node)) {
 		push(config.route.rule_set, ruleset);
 	});
 }
+
+/*
+ * Belt-and-braces for route.default_domain_resolver.
+ *
+ * sing-box 1.14 removed the legacy outbound DNS rules and refuses to start when
+ * a dial-fields user has a domain to resolve without a resolver. The exemption
+ * for "only one DNS server configured" never applies here: default-dns and
+ * system-dns are emitted unconditionally, so every config has at least two.
+ * That makes this a global requirement, not a per-mode one, so it must not
+ * depend on which branch above ran. The branches already pick the right
+ * resolver (the WAN resolver, or default_outbound_dns in custom mode); this
+ * only covers the degenerate "not custom mode and no main node" case.
+ */
+if (isEmpty(config.route.default_domain_resolver))
+	config.route.default_domain_resolver = { server: 'default-dns' };
 
 /* Remote rule-sets download through the http_clients collected while the
    rule-sets were built (see http_client_for). */

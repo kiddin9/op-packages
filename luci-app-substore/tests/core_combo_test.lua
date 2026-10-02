@@ -99,6 +99,71 @@ check("empty sources err", eerr ~= nil)
 local e2 = core.add_combo("坏源", { "not-a-valid-id!!!" })
 check("invalid source returns nil", e2 == nil)
 
+-- ---------- 删除源订阅：引用它的组合必须立刻重算（本轮修复） ----------
+-- 此前只有 M.sync 与三个节点级控制器入口会调 refresh_combos，删除订阅这条路径
+-- 漏了：组合的物化节点在 nodes/<combo>.json，只有 combo_refresh 会重写它，
+-- 于是组合的下载链接会继续吐已删订阅的节点，直到别的源更新才被动纠正。
+local srcD = core.add("订阅D", "http://example.com/d")
+local srcE = core.add("订阅E", "http://example.com/e")
+core.write_nodes(srcD, {
+	{ proto = "vmess", name = "D-香港-01", server = "5.5.5.5", port = 443, uuid = "u5" },
+	{ proto = "vmess", name = "D-美国-01", server = "6.6.6.6", port = 443, uuid = "u6" },
+})
+core.write_nodes(srcE, {
+	{ proto = "vmess", name = "E-日本-01", server = "7.7.7.7", port = 443, uuid = "u7" },
+})
+local comboDE = core.add_combo("组合D+E", { srcD, srcE })
+check("combo D+E node_count = 3", core.get(comboDE).node_count == 3)
+
+check("remove source D returns true", core.remove(srcD) == true)
+
+local deMeta = core.get(comboDE)
+check("combo node_count drops right after source delete", deMeta.node_count == 1)
+local deNodes = core.read_nodes(comboDE)
+check("combo materialized nodes drop the deleted source", #deNodes == 1)
+local leaked = false
+for _, n in ipairs(deNodes) do
+	if n.server == "5.5.5.5" or n.server == "6.6.6.6" then leaked = true end
+end
+check("no node from the deleted source survives", not leaked)
+
+-- 死 id 必须从 sources 里摘掉，否则列表页「来源」列会显示裸 id
+local deSrcs = deMeta.sources
+local deadLeft = false
+for _, s in ipairs(type(deSrcs) == "table" and deSrcs or {}) do
+	if s == srcD then deadLeft = true end
+end
+check("deleted source pruned from combo sources",
+	not deadLeft and type(deSrcs) == "table" and #deSrcs == 1 and deSrcs[1] == srcE)
+
+-- 下载链接（真正被 Passwall / OpenClash 拉取的东西）也不该再有已删订阅的节点
+local deToken = core.ensure_token(comboDE)
+local deYaml = core.generate_link(deToken, "ClashMeta")
+check("combo link drops the deleted source node",
+	deYaml and deYaml:find("D-香港-01", 1, true) == nil)
+check("combo link keeps the remaining source node",
+	deYaml and deYaml:find("E-日本-01", 1, true) ~= nil)
+
+-- 来源被删光：必须给出「请选择至少一个订阅」，而不是静默 0 节点
+core.remove(srcE)
+local deMeta2 = core.get(comboDE)
+check("combo with all sources deleted reports an error",
+	type(deMeta2.error) == "string" and deMeta2.error ~= "" and deMeta2.node_count == 0)
+check("all-sources-deleted combo has empty sources",
+	type(deMeta2.sources) == "table" and #deMeta2.sources == 0)
+
+-- 删除一个只被某个组合引用的订阅：该组合被清空，其他组合不受影响
+local srcF = core.add("订阅F", "http://example.com/f")
+core.write_nodes(srcF, {
+	{ proto = "vmess", name = "F-01", server = "8.8.8.8", port = 443, uuid = "u8" },
+})
+local comboF = core.add_combo("组合F", { srcF })
+check("combo F node_count = 1", core.get(comboF).node_count == 1)
+core.remove(srcF)
+check("combo F emptied after its only source is deleted", core.get(comboF).node_count == 0)
+-- c 的来源是 b（未被删除），不得被误伤
+check("unrelated combo untouched", core.get(c).node_count == 1)
+
 -- 清理
 os.execute("rm -rf " .. string.format("%q", tmp))
 

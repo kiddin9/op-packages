@@ -5,6 +5,9 @@
         "action": {
             "type": "view",
             "path": "admin/services/substore/list"
+        },
+        "depends": {
+            "acl": [ "luci-app-substore" ]
         }
     },
     "admin/services/substore/list": {
@@ -13,6 +16,9 @@
         "action": {
             "type": "view",
             "path": "admin/services/substore/list"
+        },
+        "depends": {
+            "acl": [ "luci-app-substore" ]
         }
     }
 }

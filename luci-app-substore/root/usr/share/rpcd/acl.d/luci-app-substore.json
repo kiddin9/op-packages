@@ -1,6 +1,6 @@
 {
 	"luci-app-substore": {
-		"description": "Grant UCI access for luci-app-substore",
+		"description": "Grant access to the Subscriptions (luci-app-substore) application",
 		"read": {
 			"uci": [ "substore" ]
 		},

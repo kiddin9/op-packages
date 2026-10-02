@@ -11,6 +11,7 @@ LuCI **Firewall Live View** — client-side JS view polling `ubus fwlive poll` (
 | `htdocs/luci-static/resources/fwlive/log.js` | Parser/filter module (mirror of repo `core/fwlive-log.js`) |
 | `htdocs/luci-static/resources/fwlive/proto.js` | Protocol filter pair (select + custom field; typed custom wins) |
 | `htdocs/luci-static/resources/fwlive/constants.js` | Shared view constants (`baseclass.extend` module) |
+| `htdocs/luci-static/resources/fwlive/fwlive.css` | Stylesheet source; run `node scripts/embed-fwlive-css.js` to regenerate `css.js` |
 | `htdocs/luci-static/resources/fwlive/css.js` | Inline stylesheet string (`styleText` for `E('style', …)`) |
 | `htdocs/luci-static/resources/fwlive/tint.js` | Row-tint paint helpers (`baseclass.extend` module) |
 | `htdocs/luci-static/resources/fwlive/links.js` | Link-builder helpers (pure + filter-aware; no host) |

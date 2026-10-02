@@ -145,6 +145,19 @@ function M.to_outbound(n, tag)
 	elseif stype == "shadowsocks" then
 		o.method = n.method or n.cipher or "aes-256-gcm"
 		o.password = n.password or ""
+		-- SIP003 插件。sing-box 的 shadowsocks 出站只有 plugin（字符串）与
+		-- plugin_opts（字符串）两个字段，plugin_opts 就是 SIP003 的原始参数串
+		-- （`obfs=http;obfs-host=x`），不做任何翻译 —— 与 mihomo 的映射式
+		-- plugin-opts 正好相反。
+		-- 官方文档明确「Only two are supported: obfs-local and v2ray-plugin」，
+		-- 其余名字（kcptun / shadow-tls / restls / gost-plugin …）sing-box
+		-- 认不出来，会拒绝加载整份配置，所以按白名单过滤。
+		-- 丢掉这一项时服务端只接受带插件的握手，导出的配置必然连不上且不报错。
+		local pname, popts = util.parse_sip003_plugin(n.plugin)
+		if pname == "obfs-local" or pname == "v2ray-plugin" then
+			o.plugin = pname
+			if popts and popts ~= "" then o.plugin_opts = popts end
+		end
 	elseif stype == "hysteria2" then
 		o.password = n.password or ""
 		-- 混淆（salamander）：hysteria2 的 obfs 是 { type, password } 对象

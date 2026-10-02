@@ -10,7 +10,6 @@ local util = require("substore.util")
 local node = require("substore.node")
 local output = require("substore.output")
 local probe = require("substore.probe")
-local conv = require("substore.converter")
 
 local passed, failed = 0, 0
 local function check(name, cond)
@@ -164,33 +163,20 @@ local u = uuid()
 check("util.uuid shape", type(u) == "string" and u:match(UUID_RE) ~= nil)
 check("util.uuid unique-ish", uuid() ~= uuid())
 
-local trojan = { name = "t", proto = "trojan", server = "a.example.com", port = 443, password = "secretpw" }
-local as_vmess = conv.convert_protocol(trojan, "vmess")
-check("trojan->vmess produced node", type(as_vmess) == "table")
-check("trojan->vmess uuid valid", as_vmess and as_vmess.uuid ~= nil and as_vmess.uuid:match(UUID_RE) ~= nil)
-check("trojan->vmess uuid not the password", as_vmess and as_vmess.uuid ~= "secretpw")
-local as_vless = conv.convert_protocol(trojan, "vless")
-check("trojan->vless uuid valid", as_vless and as_vless.uuid ~= nil and as_vless.uuid:match(UUID_RE) ~= nil)
--- 反向对照：旧实现是 base64(seed) 的前 36 字符，base64 只产出 24 个字符，
--- 所以长度必然不等于 36 且含非十六进制字符。确认新值确实不是那个形状。
-check("uuid is not base64-shaped",
-	as_vmess and as_vmess.uuid:find("[+/=]", 1) == nil and #as_vmess.uuid == 36)
+-- L25 原先经 converter.convert_protocol 验证「转换时生成的 UUID 不是
+-- base64(seed) 的形状」。converter / node_converter 已作为死代码删除
+-- （见 docs/LEGACY_ISSUES.md 1.4），这里改为直接验证 util.uuid 本身 ——
+-- 那才是唯一在用的实现，形状要求与当初一致：36 字符、只含十六进制与连字符。
+-- 反向对照：旧实现是 base64(seed) 的前 36 字符，而 base64 只产出 24 个字符，
+-- 长度必然不等于 36 且含非十六进制字符。
+check("util.uuid not base64-shaped",
+	u:find("[+/=]", 1) == nil and #u == 36)
 
 -- ---------- L24：gsub 替换串必须按字面处理 ----------
 check("gsub_literal escapes percent", gsub_literal("100%") == "100%%")
 check("gsub_literal empty", gsub_literal(nil) == "")
 
-local tpl = { { name = "100%off", proto = "vmess", server = "s.example.com", port = 443 } }
-check("apply_template keeps percent",
-	conv.apply_template(tpl, "[{{name}}]")[1].name == "[100%off]")
-check("apply_template keeps capture-like text",
-	conv.apply_template({ { name = "a%1b", proto = "vmess", server = "s", port = 1 } }, "[{{name}}]")[1].name
-		== "[a%1b]")
-check("apply_template keeps trailing percent",
-	conv.apply_template({ { name = "x%", proto = "vmess", server = "s", port = 1 } }, "[{{name}}]")[1].name
-		== "[x%]")
-
--- node.apply_rules 的 {server} 模板占位符走的是另一条路径，同样要按字面替换。
+-- node.apply_rules 的 {server} 模板占位符同样要按字面替换。
 -- 该分支由 rules.template_apply 开关控制，必须显式打开。
 local TMPL_ON = { template_apply = true }
 local tmpl_nodes = { {
