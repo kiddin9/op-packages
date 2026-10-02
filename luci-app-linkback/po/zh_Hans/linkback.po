@@ -98,16 +98,16 @@ msgid "Logical interface from firewall WAN zone."
 msgstr "来自防火墙 WAN 区域的逻辑接口。"
 
 msgid "Gateway Alias (Optional)"
-msgstr "网关别名 (可选)"
+msgstr "网关别名 (选填)"
 
-msgid "Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used."
-msgstr "该网关的自定义别名 (例如：旁路由主网关、光猫备用网关)。若留空则自动使用网关 IP。"
+msgid "Descriptive alias for this gateway (e.g. Primary_GW, Backup_GW). If empty, Gateway IP will be used."
+msgstr "该网关的自定义名称 (例如：主网关、备用网关)。若留空则自动使用网关 IP。"
 
 msgid "Gateway IP"
 msgstr "网关 IP"
 
-msgid "Next-hop IPv4 address of this gateway (e.g. 192.168.1.254)."
-msgstr "该网关的下一跳 IPv4 地址 (例如：192.168.1.254)。"
+msgid "Next-hop IPv4 address of this gateway (e.g. 192.168.1.1)."
+msgstr "该网关的下一跳 IPv4 地址 (例如：192.168.1.1)。"
 
 msgid "Gateway IP is required."
 msgstr "网关 IP 不能为空。"
@@ -346,9 +346,5 @@ msgstr "未选择"
 msgid "WAN Interface is required."
 msgstr "WAN 网络接口不能为空。"
 
-msgid "已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。"
-msgstr "已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。"
 
-msgid "已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。"
-msgstr "已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。"
 

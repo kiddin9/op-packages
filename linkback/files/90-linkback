@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (C) 2026 Dante <dante@seckv.com>
+#
+# Hotplug event trigger script for LinkBack daemon.
+# Instantly wakes up linkbackd on interface ifup/ifdown state changes.
+
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || exit 0
+[ -n "$INTERFACE" ] || exit 0
+
+# Check if linkbackd is running
+PID=$(pidof linkbackd)
+[ -n "$PID" ] || exit 0
+
+# Send SIGUSR1 to trigger immediate health check / short-circuit
+kill -USR1 $PID 2>/dev/null

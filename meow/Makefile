@@ -11,7 +11,7 @@ PKG_BASE_VERSION?=0.21.2
 # All-numeric dotted segments keep the version valid for both package
 # managers:  apk -> meow-0.21.2.202610010430-r1.apk
 #            ipk -> meow_0.21.2.202610010430-1_<arch>.ipk
-PKG_VERSION?=$(PKG_BASE_VERSION).202610010807
+PKG_VERSION?=$(PKG_BASE_VERSION).202610021113
 PKG_RELEASE?=1
 
 include $(INCLUDE_DIR)/package.mk

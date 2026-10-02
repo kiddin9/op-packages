@@ -168,6 +168,8 @@ return view.extend({
 			uci.set('linkback', section_id, 'enabled', value);
 		};
 
+		var refreshTargetsSection = null;
+
 		// 2. Working Mode
 		o = s.option(form.ListValue, 'mode', _('Working Mode'),
 			_('Choose failover mode: Multi-WAN interface failover or Single-WAN multi-gateway redundancy.'));
@@ -177,17 +179,12 @@ return view.extend({
 		o.rmempty = false;
 		o.onchange = function(ev, section_id, value) {
 			uci.set('linkback', section_id, 'mode', value);
-			var links = uci.sections('linkback', 'link') || [];
-			if (links.length > 0) {
-				if (value === 'multi_gw') {
-					ui.addNotification(null, E('p',
-						_('已切换为单wan多网关模式。请确保监控目标列表中配置了有效的网关 IP。')
-					), 'info');
-				} else {
-					ui.addNotification(null, E('p',
-						_('已切换为多wan口模式。请确保监控目标列表中选择了正确的 WAN 接口。')
-					), 'info');
-				}
+			// 切换工作模式时直接清空旧链路配置，保持单模式纯净性
+			uci.sections('linkback', 'link').forEach(function(sec) {
+				uci.remove('linkback', sec['.name']);
+			});
+			if (typeof refreshTargetsSection === 'function') {
+				refreshTargetsSection();
 			}
 		};
 
@@ -228,10 +225,36 @@ return view.extend({
 		o.rmempty = false;
 
 		// --- Monitored Targets Section ---
-		s = m.section(form.GridSection, 'link', _('Monitored Targets'),
+		var targets_section = s = m.section(form.GridSection, 'link', _('Monitored Targets'),
 			_('Configure monitored WAN interfaces or next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).'));
 		s.anonymous = true;
 		s.addremove = true;
+
+		var origSectionRender = s.render;
+		s.render = function() {
+			var mode = getActiveMode();
+			if (mode === 'multi_gw') {
+				this.title = _('Monitored Gateways');
+				this.description = _('Add next-hop gateways with custom probe targets and priorities (1 = primary, 2 = backup).');
+			} else {
+				this.title = _('Monitored WAN Interfaces');
+				this.description = _('Add WAN interfaces from firewall zone with custom probe targets and priorities (1 = primary, 2 = backup).');
+			}
+			return origSectionRender.apply(this, arguments);
+		};
+
+		refreshTargetsSection = function() {
+			var old_node = document.getElementById('cbi-linkback-link') ||
+			               document.querySelector('.cbi-section[data-tab="link"]') ||
+			               document.querySelector('.cbi-section[id*="link"]');
+			if (old_node && old_node.parentNode) {
+				targets_section.render().then(function(new_node) {
+					if (old_node.parentNode) {
+						old_node.parentNode.replaceChild(new_node, old_node);
+					}
+				});
+			}
+		};
 
 		// Custom dynamic Modal title
 		s.modaltitle = function(section_id) {
@@ -284,27 +307,19 @@ return view.extend({
 		o.cfgvalue = function(section_id) {
 			var gw = uci.get('linkback', section_id, 'gateway');
 			var name = uci.get('linkback', section_id, 'name');
-			var mode = getActiveMode();
-			if (mode === 'multi_gw' || gw) {
-				if (gw) {
-					if (name && name !== gw) {
-						return gw + ' (' + name + ')';
-					}
-					return gw;
-				}
-				return name ? (_('Missing Gateway IP: %s').format(name)) : _('Unset');
-			} else {
-				return name || _('Unselected');
+			if (gw) {
+				return (name && name !== gw) ? (gw + ' (' + name + ')') : gw;
 			}
+			return name || '-';
 		};
 		makeTableColumnExpand(o, '24%');
 
 		// 3a. Gateway IP (Multi-GW mode only, Modal only)
 		var o_gw = s.option(form.Value, 'gateway', _('Gateway IP'),
-			_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.254).'));
+			_('Next-hop IPv4 address of this gateway (e.g. 192.168.1.1).'));
 		o_gw.datatype = 'ip4addr';
 		o_gw.modalonly = true;
-		o_gw.placeholder = '192.168.1.254';
+		o_gw.placeholder = '192.168.1.1';
 		var origRenderGw = o_gw.render;
 		o_gw.render = function(option_index, section_id, in_table) {
 			if (getActiveMode() !== 'multi_gw') {
@@ -350,9 +365,9 @@ return view.extend({
 
 		// 3b. Gateway Alias (Multi-GW mode only, Modal only)
 		var o_alias = s.option(form.Value, 'name_alias', _('Gateway Alias (Optional)'),
-			_('Descriptive alias for this gateway (e.g. Bypass_GW, Main_Router). If empty, Gateway IP will be used.'));
+			_('Descriptive alias for this gateway (e.g. Primary_GW, Backup_GW). If empty, Gateway IP will be used.'));
 		o_alias.modalonly = true;
-		o_alias.placeholder = 'Bypass_GW';
+		o_alias.placeholder = 'Primary_GW';
 		var origRenderAlias = o_alias.render;
 		o_alias.render = function(option_index, section_id, in_table) {
 			if (getActiveMode() !== 'multi_gw') {
@@ -432,11 +447,19 @@ return view.extend({
 		};
 
 		// 3. Priority
-		o = s.option(form.Value, 'priority', _('Priority'),
-			_('Lower number indicates higher priority (e.g. 1 = Primary, 2 = Backup).'));
+		o = s.option(form.Value, 'priority', _('Priority'));
 		o.datatype = 'uinteger';
 		o.default = '1';
 		o.rmempty = false;
+		var origRenderPrio = o.render;
+		o.render = function(option_index, section_id, in_table) {
+			if (in_table) {
+				this.description = null;
+			} else {
+				this.description = _('Lower number indicates higher priority (e.g. 1 = Primary, 2 = Backup).');
+			}
+			return origRenderPrio.call(this, option_index, section_id, in_table);
+		};
 		o.validate = function(section_id, value) {
 			if (value == null || value === '') {
 				return t_priority_empty;

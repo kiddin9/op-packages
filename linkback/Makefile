@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkback
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_MAINTAINER:=Dante
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -56,6 +56,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_CONF) ./files/linkback.config $(1)/etc/config/linkback
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_BIN) ./files/linkback.init $(1)/etc/init.d/linkback
+
+	# Install hotplug script
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
+	$(INSTALL_BIN) ./files/90-linkback $(1)/etc/hotplug.d/iface/90-linkback
 endef
 
 define Package/$(PKG_NAME)/postinst
