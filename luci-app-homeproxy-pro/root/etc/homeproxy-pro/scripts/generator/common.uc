@@ -186,7 +186,7 @@ export function attachSchema(config) {
  * gfwlist / proxy_mainland_china / global with cold-start DNS on every
  * reload and made the difference between modes hard to explain.
  *
- * Note: docs/linux.json 与 pro 的差距分析.md §2.5 once asked for an
+ * Note: the reference configuration this was compared against asked for an
  * explicit `reverse_mapping: true` here (so a future sing-box change to
  * the default would not silently move us off the mapping table). The
  * sing-box 1.14.0-r1 we test against rejects that field as

@@ -321,8 +321,10 @@ function append_proxy_dns(config, dm, ctx) {
  * configured one of these encrypted upstreams; without the predefined
  * entry, the resolver itself has to be resolved through the system DNS,
  * and a DNS outage of any kind taken once out leaves the resolver
- * unreachable - a chicken-and-egg loop. Mirrors the hosts server in
- * linux.json line 10; see docs/linux.json 与 pro 的差距分析.md §2.4.
+ * unreachable - a chicken-and-egg loop. The well-known sing-box reference
+ * configuration ships the same table in a `type: 'hosts'` server, reached by
+ * pointing each encrypted resolver's `domain_resolver` at that server's tag;
+ * append_custom_dns() does exactly that below with the 'hp-dns-hosts' tag.
  *
  * Additions go here when the user's pool of encrypted resolvers grows;
  * a new entry needs no code change beyond this table. */
@@ -337,15 +339,15 @@ const KNOWN_ENCRYPTED_DNS_HOSTS = {
 /* --- custom routing-mode path (user-defined dns_server / dns_rule) ----- */
 
 function append_custom_dns(config, dm, ctx) {
-	/* §2.4 DoH fallback. Pre-emit a hosts-type DNS server pinning any
+	/* Pre-emit a hosts-type DNS server pinning any
 	 * encrypted-resolver hostname the user configured to its real IPs. The
 	 * loop also remembers which server sections hit the table, so the user
 	 * server loop below can stamp `domain_resolver: 'hp-dns-hosts'` onto
 	 * them - sing-box only consults the hosts table for resolvers that
-	 * explicitly point at it, mirroring linux.json line 7
-	 * (`{"domain_resolver": "hosts"}`). Without the stamp, the resolver
-	 * still has to look up its own hostname through the system DNS and the
-	 * chicken-and-egg loop we are trying to break stays open. */
+	 * explicitly point at it, so the table is inert without the stamp. Without
+	 * it, the resolver still has to look up its own hostname through the
+	 * system DNS and the chicken-and-egg loop we are trying to break stays
+	 * open. */
 	let doh_predefined = null;
 	const doh_resolved_hosts = {};
 	for (let cfg in (dm.dns.servers || [])) {
@@ -403,7 +405,7 @@ function append_custom_dns(config, dm, ctx) {
 	/* sing-box >= 1.14: legacy address-filter rules are auto-wrapped with an
 	   evaluate action; deprecated strategy/accept_empty fields are dropped. */
 	const builtin_dns_rules = [];
-	/* §2.2 First safe rule: reject SVCB (qtype 64) and HTTPS (qtype 65)
+	/* The first rule has to be the SVCB (qtype 64) and HTTPS (qtype 65)
 	 * queries. A client that learns the answer from these record types
 	 * connects to the embedded IP without going through the resolver again,
 	 * which makes Fake-IP and any route that hinges on A/AAAA resolution

@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=linkback
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_MAINTAINER:=Dante
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)
@@ -59,7 +59,7 @@ define Package/$(PKG_NAME)/install
 endef
 
 define Package/$(PKG_NAME)/postinst
-#!/sh
+#!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/linkback enable
 	/etc/init.d/linkback restart

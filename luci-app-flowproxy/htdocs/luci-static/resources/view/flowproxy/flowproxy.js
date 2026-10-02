@@ -40,6 +40,18 @@ var callRestartService = rpc.declare({
     method: 'restart_service'
 });
 
+var callGetDatasetInfo = rpc.declare({
+    object: 'luci.flowproxy',
+    method: 'get_dataset_info',
+    params: ['file_path']
+});
+
+var callUpdateDataset = rpc.declare({
+    object: 'luci.flowproxy',
+    method: 'update_dataset',
+    params: ['url', 'file_path']
+});
+
 return L.view.extend({
     load: function() {
         return Promise.all([
@@ -189,11 +201,54 @@ return L.view.extend({
         s.taboption('settings', form.Flag, 'dns_proxy_enabled', _('Force upstream DNS to proxy server')).rmempty = false;
 
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
-        o.datatype = 'ip4addr'; o.rmempty = false;
         o.placeholder = '192.168.1.254';
+        o.rmempty = true;
         o.validate = function(section_id, value) {
+            var isEnabled = (s.formvalue(section_id, 'enabled') === '1');
+
+            // 1. 如果值为空：仅当启用了服务尝试保存时才提示必填；未启用时允许留空，绝不展示刺眼红框
+            if (!value || value.trim() === '') {
+                if (isEnabled) {
+                    return _('Proxy server IP address is required when FlowProxy is enabled.');
+                }
+                return true;
+            }
+
+            value = value.trim();
+
+            // 2. 基础 IPv4 格式校验
+            if (!value.match(/^([0-9]{1,3}\.){3}[0-9]{1,3}$/)) {
+                return _('Invalid IPv4 address format');
+            }
+            var octets = value.split('.');
+            for (var oi = 0; oi < 4; oi++) {
+                var oct = parseInt(octets[oi], 10);
+                if (isNaN(oct) || oct < 0 || oct > 255) {
+                    return _('Invalid IPv4 address format');
+                }
+            }
+
+            if (value === '127.0.0.1' || value === '0.0.0.0') {
+                return _('Invalid proxy server IP address.');
+            }
+
+            // 3. 拦截本路由器自身的 IP 地址，彻底避免产生自指路由环路导致网络崩溃
+            var allLocalIps = [];
+            for (var k = 0; k < ifaces.length; k++) {
+                var addrs = ifaces[k].getIPAddrs() || [];
+                for (var a = 0; a < addrs.length; a++) {
+                    var pureIp = addrs[a].split('/')[0];
+                    if (pureIp && allLocalIps.indexOf(pureIp) === -1) {
+                        allLocalIps.push(pureIp);
+                    }
+                }
+            }
+            if (allLocalIps.indexOf(value) !== -1) {
+                return _('The proxy server IP address cannot be the local router IP (%s).').format(value);
+            }
+
             var ipInCidr = function(ipStr, cidrStr) {
-                if (!cidrStr || cidrStr.indexOf(':') !== -1 || !ipStr || ipStr.indexOf(':') !== -1) return false;
+                if (!cidrStr || cidrStr.indexOf(':') !== -1 || !ipStr || ipStr.indexOf(':') !== -1) return null;
                 var parts = cidrStr.split('/');
                 var cidrIp = parts[0];
                 var maskBits = parseInt(parts[1] || '32', 10);
@@ -209,15 +264,19 @@ return L.view.extend({
 
                 var ipNum = ipToNum(ipStr);
                 var cidrNum = ipToNum(cidrIp);
-                
-                if (maskBits === 0) return true;
+                if (maskBits === 0) return { inSubnet: true, isBcastOrNet: false };
                 
                 var mask = (0xffffffff << (32 - maskBits)) >>> 0;
-                return (ipNum & mask) === (cidrNum & mask);
+                var inSubnet = ((ipNum & mask) === (cidrNum & mask));
+                var netNum = (cidrNum & mask) >>> 0;
+                var bcastNum = (netNum | (~mask >>> 0)) >>> 0;
+                var isBcastOrNet = (maskBits < 31 && (ipNum === netNum || ipNum === bcastNum));
+
+                return { inSubnet: inSubnet, isBcastOrNet: isBcastOrNet };
             };
 
             var selected_interface = s.formvalue(section_id, 'interface');
-            if (!value || !selected_interface) return true;
+            if (!selected_interface) return true;
 
             var target_iface = null;
             for (var i = 0; i < ifaces.length; i++) {
@@ -234,9 +293,12 @@ return L.view.extend({
             if (!ips || ips.length === 0) return true;
 
             var inSubnet = false;
+            var isBcastOrNet = false;
             for (var j = 0; j < ips.length; j++) {
-                if (ipInCidr(value, ips[j])) {
+                var res = ipInCidr(value, ips[j]);
+                if (res && res.inSubnet) {
                     inSubnet = true;
+                    if (res.isBcastOrNet) isBcastOrNet = true;
                     break;
                 }
             }
@@ -245,19 +307,60 @@ return L.view.extend({
                 return _('The proxy server IP address must be within the subnet of the selected interface (%s).').format(ips.join(', '));
             }
 
+            if (isBcastOrNet) {
+                return _('The proxy server IP address cannot be the network address or broadcast address.');
+            }
+
             return true;
         };
 
         o = s.taboption('settings', form.Value, 'proxy_server_dns_port', _('Proxy server DNS port'));
         o.datatype = 'port'; o.default = '5353'; o.rmempty = false;
 
-        o = s.taboption('settings', form.ListValue, 'interface', _('Proxy server interface'));
-        devices.forEach(function(d) { o.value(d.getName(), d.getName()); });
-        o.default = 'br-lan';
+        var iface_opt = s.taboption('settings', form.ListValue, 'interface', _('Proxy server interface'));
+        devices.forEach(function(d) { iface_opt.value(d.getName(), d.getName()); });
+        iface_opt.default = 'br-lan';
+        iface_opt.onchange = function(ev, sid, val) {
+            var ip_opt = m.lookupOption('proxy_server_ip_addr', sid)[0];
+            if (ip_opt) {
+                var currVal = ip_opt.formvalue(sid);
+                // 仅当输入框已有非空输入时才触发重新比对子网，避免在空值时派发失焦导致误报红框
+                if (currVal && currVal.trim() !== '') {
+                    var el = document.getElementById(ip_opt.cbid(sid));
+                    if (el) {
+                        var inputEl = el.tagName === 'INPUT' ? el : el.querySelector('input');
+                        if (inputEl) {
+                            inputEl.dispatchEvent(new CustomEvent('input', { bubbles: true }));
+                        }
+                    }
+                }
+            }
+        };
 
-        s.taboption('settings', form.Value, 'traffic_mark', _('Traffic Mark')).datatype = 'or(uinteger, hex)';
-        s.taboption('settings', form.Value, 'routing_table', _('Routing Table ID')).datatype = 'and(uinteger,range(1, 4294967295))';
-        s.taboption('settings', form.Value, 'rule_priority', _('Rule Priority')).datatype = 'and(uinteger,range(0, 4294967295))';
+        o = s.taboption('settings', form.Value, 'traffic_mark', _('Traffic Mark'));
+        o.datatype = 'or(uinteger, hex)';
+        o.default = '0x666';
+        o.validate = function(section_id, value) {
+            if (!value) return true;
+            var num = parseInt(value, (typeof value === 'string' && value.indexOf('0x') === 0) ? 16 : 10);
+            if (isNaN(num) || num <= 0) return _('Traffic mark cannot be 0.');
+            return true;
+        };
+
+        o = s.taboption('settings', form.Value, 'routing_table', _('Routing Table ID'));
+        o.datatype = 'and(uinteger,range(1, 4294967295))';
+        o.default = '888';
+        o.validate = function(section_id, value) {
+            var num = parseInt(value, 10);
+            if (num === 0 || num === 253 || num === 254 || num === 255) {
+                return _('Routing table ID %d is reserved by the system (0, 253, 254, 255). Please use another ID.').format(num);
+            }
+            return true;
+        };
+
+        o = s.taboption('settings', form.Value, 'rule_priority', _('Rule Priority'));
+        o.datatype = 'and(uinteger,range(10, 32765))';
+        o.default = '1000';
 
         // --- Rules ---
         var nftsets = uci.sections('flowproxy', 'nftset').map(function(ss) { return '@' + ss['.name']; });
@@ -419,16 +522,14 @@ return L.view.extend({
                 }
                 return true;
             };
-            // 联动：当 match_type 改变时，强制触发 match_value 的校验
+            // 联动：当 match_type 改变时，仅在已有输入内容时重新校验 match_value
             match_type.onchange = function(ev, sid, val) {
                 var value_input = m.lookupOption('match_value', sid)[0];
                 if (value_input) setTimeout(function() { 
                     var el = document.getElementById(value_input.cbid(sid));
                     if (el) {
                         var inputEl = el.tagName === 'INPUT' ? el : el.querySelector('input');
-                        if (inputEl) {
-                            inputEl.dispatchEvent(new CustomEvent('change', { bubbles: true }));
-                            inputEl.dispatchEvent(new CustomEvent('blur', { bubbles: true }));
+                        if (inputEl && inputEl.value && inputEl.value.trim() !== '') {
                             inputEl.dispatchEvent(new CustomEvent('input', { bubbles: true }));
                         }
                     }
@@ -460,7 +561,15 @@ return L.view.extend({
                 var path = uci.get('flowproxy', sid, 'file_path') || '/usr/share/flowproxy/chnroute.txt';
                 var resNode = E('span', { 'style': 'margin-left: 10px; font-weight: bold; color: #444;', 'id': 'line-count-status' }, [ '...' ]);
                 var input = node.querySelector('input'); if (input) input.parentNode.appendChild(resNode);
-                fs.exec('/usr/bin/wc', ['-l', path]).then(function(res) { L.dom.content(resNode, (res.code === 0) ? [ _('(%d lines)').format(res.stdout.trim().split(' ')[0]) ] : [ _('(n/a)') ]); });
+                callGetDatasetInfo(path).then(function(res) {
+                    if (res && res.exists) {
+                        L.dom.content(resNode, [ _('(%d lines)').format(res.lines) ]);
+                    } else {
+                        L.dom.content(resNode, [ _('(file not found)') ]);
+                    }
+                }).catch(function() {
+                    L.dom.content(resNode, [ _('(n/a)') ]);
+                });
                 return node;
             });
         };
@@ -474,14 +583,21 @@ return L.view.extend({
             if (!path) path = '/usr/share/flowproxy/chnroute.txt';
             if (!url) { ui.addNotification(null, E('p', _('Please set download_url first')), 'error'); return; }
             ui.showModal(null, [ E('p', { 'class': 'spinning', 'id': 'download-msg' }, [ _('Downloading chnroute data...') ]) ]);
-            return fs.exec('/usr/bin/wget', ['-q', '-O', path, url, '--timeout=10', '--no-check-certificate']).then(function(res) {
+            return callUpdateDataset(url, path).then(function(res) {
                 var msgEl = document.getElementById('download-msg');
-                if (res.code === 0) {
+                if (res && res.success) {
                     if (msgEl) { msgEl.classList.remove('spinning'); L.dom.content(msgEl, [ _('Updated successfully.') ]); }
-                    var cn = document.getElementById('line-count-status'); if (cn) fs.exec('/usr/bin/wc', ['-l', path]).then(function(r) { L.dom.content(cn, (r.code === 0) ? [ _('(%d lines)').format(r.stdout.trim().split(' ')[0]) ] : [ _('(n/a)') ]); });
+                    var cn = document.getElementById('line-count-status');
+                    if (cn) L.dom.content(cn, [ _('(%d lines)').format(res.lines || 0) ]);
                     setTimeout(ui.hideModal, 1500);
-                } else { ui.hideModal(); ui.addNotification(null, E('p', _('Download failed')), 'error'); }
-            }).catch(function(e) { ui.hideModal(); ui.addNotification(null, E('p', _('Error: %s').format(e.message)), 'error'); });
+                } else {
+                    ui.hideModal();
+                    ui.addNotification(null, E('p', _('Download failed: %s').format(res ? res.error : 'Unknown')), 'error');
+                }
+            }).catch(function(e) {
+                ui.hideModal();
+                ui.addNotification(null, E('p', _('Error: %s').format(e.message || String(e))), 'error');
+            });
         };
 
         var sg = s.taboption('lists', form.SectionValue, '_list_custom', form.GridSection, 'nftset', _('Custom nftables sets'));

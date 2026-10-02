@@ -250,3 +250,32 @@ msgstr "RPC 错误: %s"
 msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
 msgstr "代理服务器 IP 地址必须在所选网络接口的子网网段之内 (%s)。"
 
+msgid "(file not found)"
+msgstr "(文件不存在)"
+
+msgid "Download failed: %s"
+msgstr "下载失败: %s"
+
+msgid "Invalid proxy server IP address."
+msgstr "无效的代理服务器 IP 地址。"
+
+msgid "The proxy server IP address cannot be the local router IP (%s)."
+msgstr "代理服务器 IP 地址不能为本路由器自身 IP (%s)。"
+
+msgid "The proxy server IP address cannot be the network address or broadcast address."
+msgstr "代理服务器 IP 地址不能为网络地址或广播地址。"
+
+msgid "Traffic mark cannot be 0."
+msgstr "流量标记不能为 0。"
+
+msgid "Routing table ID %d is reserved by the system (0, 253, 254, 255). Please use another ID."
+msgstr "路由表 ID %d 为系统保留路由表 (0, 253, 254, 255)，请使用其他 ID。"
+
+msgid "Proxy server IP address is required when FlowProxy is enabled."
+msgstr "启用代理分流时，代理服务器 IP 地址为必填项。"
+
+msgid "Invalid IPv4 address format"
+msgstr "无效的 IPv4 地址格式"
+
+
+

@@ -22,6 +22,8 @@ const methods = {
 			if (!status) {
 				status = {
 					enabled: false,
+					mode: "multi_wan",
+					interface: "wan",
 					check_interval: 5,
 					active_link: "none",
 					links: []

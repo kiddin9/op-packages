@@ -49,10 +49,10 @@ return view.extend({
 
 		var container = E('div', { 'class': 'cbi-map' }, [
 			E('h2', {}, _('LinkBack 链路守护') + ' - ' + _('Overview')),
-			E('div', { 'class': 'cbi-map-descr' }, _('Real-time health state, priority mapping, and service control for Multi-WAN default routing metrics.'))
+			E('div', { 'class': 'cbi-map-descr' }, _('Real-time health state, priority mapping, and service control for Multi-WAN / Multi-Gateway failover.'))
 		]);
 
-		// --- Service Status Section (Aligned with lucky style) ---
+		// --- Service Status Section ---
 		var stateText = _('Collecting...');
 		var stateColor = '#999';
 
@@ -84,15 +84,19 @@ return view.extend({
 								click: ui.createHandlerFn(this, 'handleServiceAction', 'restart')
 							}, _('Restart'))
 						])
+					]),
+					E('tr', { 'class': 'tr' }, [
+						E('td', { 'class': 'td left', 'width': '33%' }, _('Working Mode')),
+						E('td', { 'class': 'td left', 'id': 'linkback-service-mode' }, '-')
 					])
 				])
 			])
 		]);
 		container.appendChild(statusSection);
 
-		// --- Link Status Section (Aligned with lucky style) ---
+		// --- Link Status Section ---
 		var linkSection = E('fieldset', { 'class': 'cbi-section' }, [
-			E('legend', {}, _('Link Status')),
+			E('legend', {}, _('Link / Gateway Status')),
 			E('div', { 'class': 'cbi-section-node' }, [
 				E('div', { id: 'linkback-status-box' }, [
 					E('p', { 'class': 'spinning' }, _('Loading real-time link status...'))
@@ -131,6 +135,16 @@ return view.extend({
 			}
 		}
 
+		// Update mode indicator
+		var modeEl = document.getElementById('linkback-service-mode');
+		if (modeEl && status) {
+			if (status.mode === 'multi_gw') {
+				modeEl.textContent = _('单wan多网关模式') + ' (' + _('wan网络接口') + ': ' + (status.interface || 'wan') + ')';
+			} else {
+				modeEl.textContent = _('多wan口模式');
+			}
+		}
+
 		var restartBtn = document.getElementById('linkback-restart-btn');
 		if (restartBtn) {
 			if (status && status.links && status.links.length > 0) {
@@ -143,7 +157,7 @@ return view.extend({
 		if (!status || !status.links || status.links.length === 0) {
 			dom.content(box, [
 				E('p', { style: 'color:#f44336; font-weight:bold; padding:20px;' },
-					_('LinkBack daemon is not running or no links are configured. Please check Settings page.'))
+					_('LinkBack daemon is not running or no targets are configured. Please check Settings page.'))
 			]);
 			return;
 		}
@@ -154,7 +168,7 @@ return view.extend({
 		var table = E('table', { 'class': 'table cbi-section-table' }, [
 			E('tr', { 'class': 'tr table-titles' }, [
 				E('th', { 'class': 'th', 'style': 'text-align:center; width:5%;' }, '#'),
-				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Link Name')),
+				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Target / Interface')),
 				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Status')),
 				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Routing Attributes')),
 				E('th', { 'class': 'th', 'style': 'text-align:left;' }, _('Latency Details'))

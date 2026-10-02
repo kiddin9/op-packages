@@ -3,3 +3,4 @@ body{background:#1e1e1e;color:#ccc}.spinning::before{filter:invert(1)}.login-pag
 .login-page.defwallpaper .login-container{background-color: rgb(136 136 136 / 14%);backdrop-filter: blur(0);margin:0 auto;}
 .defwallpaper.defwallpaper .main-bg img{object-position: -99999px -99999px;opacity: 0;}
 .main .main-right{background-color: transparent}
+input[placeholder]::placeholder {color: #888888;opacity: 1}

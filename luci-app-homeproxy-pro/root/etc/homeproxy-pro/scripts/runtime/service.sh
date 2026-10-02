@@ -541,7 +541,7 @@ hp_start_generated_config() {
 # the *new* (failing) value and start_service reinstalls a layer that no
 # longer matches the sing-box file it just restored.
 #
-# Review 2026-09-29 (docs/review-report-20260929-full.md §1.2) found the
+# The 2026-09-29 review found the
 # previous five-line list covered 4 real keys out of 22, and that the fifth
 # line named `infra.tun_address` - an option that exists nowhere.  The real
 # keys are `tun_addr4` / `tun_addr6` (config/loader.uc:411), so that line was

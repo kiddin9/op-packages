@@ -27,7 +27,7 @@
 | 后端架构 | 单文件巨型（`generate_client.uc` 1217 行 / 40 KB；`parse_uri.uc` ~400 行 / 15 KB） | orchestrator + 5 子层（`parser` / `config` / `generator` / `subscription` / `runtime`）+ 公共库（`homeproxy-pro.uc` / `firewall_utils.uc`）+ table-driven adapters | `root/etc/homeproxy-pro/scripts/{config,parser,generator,subscription,runtime}/` |
 | 前端架构 | 单一 66 KB `client.js` | `client.js` thin 入口 + 8 个 Tab 模块（`access` / `common` / `dns` / `nodes` / `routing` / `subscription` / `tun_dns` / `udp_nat`）+ 共享 helpers + 集中 `RPC.declare` | `htdocs/luci-static/resources/view/homeproxy-pro/client/` |
 | 协议建模 | 单 `parse_uri.uc` 内 13 个 scheme 分支 | `parser/{uri,flatten,normalize,mapping,protocols,validator}.uc` 6 个文件 + canonical Node 模型 + adapter table | `root/etc/homeproxy-pro/scripts/parser/` + `config/{model,adapter}.uc` |
-| Tab 模块化 | 1 个 `client.js` 含 12 个 Tab 渲染 | `homeproxy-pro.js` (1153 行 helpers) + 4 顶层 view + 8 个 `client/*.js`；helpers 集中 RPC / MD5 / validators / statusPoller / renderSectionAdd / uploadCertificate | `view/homeproxy-pro/client/{routing,nodes,dns,access,subscription,udp_nat,tun_dns,common}.js` |
+| Tab 模块化 | 1 个 `client.js` 含 12 个 Tab 渲染 | `homeproxy-pro.js` (1161 行 helpers) + 4 顶层 view + 8 个 `client/*.js`；helpers 集中 RPC / MD5 / validators / statusPoller / renderSectionAdd / uploadCertificate | `view/homeproxy-pro/client/{routing,nodes,dns,access,subscription,udp_nat,tun_dns,common}.js` |
 
 ### 稳定性
 
@@ -54,8 +54,8 @@
 
 | 维度 | upstream 形态 | pro 形态 | 证据 |
 |---|---|---|---|
-| 架构守卫 | 无 | `tests/arch-guard.sh` **38 个 guard / 135 个 check** 锁跨文件一致性（UCICONFIG_DIR / ACL / capabilities / conffiles / CERT_PATH_ROOTS / `redactUrl` mock / uCode 语法 / sing-box floor / adapter 共享表 / …） | `tests/arch-guard.sh` (guards 1-19, 21-39) |
-| 测试规模 | 7 个脚本 / 约 27 个 check | `tests/` 下 80 个文件：ucode 套件 + 8 个 frontend 验证器 + golden snapshot + mocks + 离线 runtime 测试；arch-guard 单跑 135 个 check | `tests/print-stats.sh` 实测 |
+| 架构守卫 | 无 | `tests/arch-guard.sh` **47 个 guard / 164 个 check** 锁跨文件一致性（UCICONFIG_DIR / ACL / capabilities / conffiles / CERT_PATH_ROOTS / `redactUrl` mock / uCode 语法 / sing-box floor / adapter 共享表 / …） | `tests/arch-guard.sh` (guards 1-49，编号跳过 20 与 44) |
+| 测试规模 | 7 个脚本 / 约 27 个 check | `tests/` 下 82 个文件：ucode 套件 + 8 个 frontend 验证器 + golden snapshot + mocks + 离线 runtime 测试；arch-guard 单跑 164 个 check | `tests/print-stats.sh` 实测 |
 | CI | `build` + `i18n` 两条平行 workflow | `build` 用 `workflow_call` 依赖 `arch-test`；`arch-test` 8 步（翻译 fast gate → toolchain cache → toolchain 校验 → `tests/run.sh` 唯一套件入口 → 模板检查）；`on-target` 手动 ssh + 不安装 | `.github/workflows/{arch-test,build,on-target}.yml` |
 | uCode dialect pin | 跟随 upstream HEAD（已放宽） | pin `UCODE_REV=85922056ef7abeace3cca3ab28bc1ac2d88e31b1`（完整 40 位 commit）+ `test_ucode_grammar.sh` canary 锁 strict 语法（拒 `export function … }` 无 `;`、对象/数组解构） | `tests/toolchain/build-ucode-linux.sh:UCODE_REV` + `tests/ucode/test_ucode_grammar.sh` |
 | MD5 实现 | 388 行 minified snippet；vmess 分支漏 `vmess_global_padding` | RFC 1321 完整实现 + `tests/frontend-md5.js` 锁 RFC 向量 + 与 Node `crypto.createHash('md5')` 双向 cross-check（44 / 44 PASS） | `homeproxy-pro.js:calcStringMD5` + `tests/frontend-md5.js` |
@@ -70,7 +70,31 @@
 | 资源更新 | jsdelivr 单一镜像 | 4 镜像 fallback（`fastly.jsdelivr.net` / `gcore.jsdelivr.net` / `cdn.jsdelivr.net` / `raw.githubusercontent.com`）+ UI「上次成功时间」（arch-guard 17 / 18 锁） | `runtime/dns.sh` + arch-guard 17 / 18 |
 | ECH 上传 | 后端 case 缺失 | 补齐 `client_ech_conf` 标签 + `isValidECHConfig()` PEM 校验；ACL 显式列 4 个 tmp 路径 | `homeproxy-pro.uc:isValidECHConfig` + `luci.homeproxy-pro:certificate_write` |
 
-**一句话总结**：pro 的核心价值是**把"单文件能跑"变成"orchestrator + table-driven adapter + 可独立测试的模块"**，并把约束、质量、回滚三件事从靠人盯变成靠代码执行（arch-guard 135 checks 静态锁住跨文件不变量）。
+**一句话总结**：pro 的核心价值是**把"单文件能跑"变成"orchestrator + table-driven adapter + 可独立测试的模块"**，并把约束、质量、回滚三件事从靠人盯变成靠代码执行（arch-guard 164 checks 静态锁住跨文件不变量）。
+
+## 自编译（OpenWrt buildroot）
+
+```sh
+make menuconfig
+```
+
+勾选 **luci-app-homeproxy-pro**，以及 **LuCI → Translations → 简体中文 (zh_Hans)**。
+后者不勾的话翻译包不会构建，且不报错，只在日志里留一行
+`WARNING: skipping luci-i18n-homeproxy-pro-zh-cn -- package not selected`。
+
+```sh
+make package/luci-app-homeproxy-pro/compile V=s -j1
+ls bin/packages/<target>/<subtarget>/base/ | grep -i homeproxy-pro
+```
+
+应同时得到两个包：
+
+```
+luci-app-homeproxy-pro-28.10.1.14-r37.apk
+luci-i18n-homeproxy-pro-zh-cn-28.10.1.14-r37.apk
+```
+
+本包不编译 sing-box，固件须自带 1.14+，否则依赖解析失败。
 
 ## 已知限制
 

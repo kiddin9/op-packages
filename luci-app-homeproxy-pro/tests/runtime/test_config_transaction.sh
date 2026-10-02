@@ -133,7 +133,7 @@ expect "uci restore: missing snapshot returns 1" "$?" "1"
 # Happy path: snapshot present, all keys applied, commit called.
 # The snapshot format carries the UCI type, because `uci set` on a list option
 # stores a string and the firewall validators then reject it (review
-# 2026-09-29, docs/review-report-20260929-full.md §1.5): lists are replayed
+# 2026-09-29 review): lists are replayed
 # with `uci delete` + `uci add_list`.
 : > "$HP_TEST_UCI_OUT"
 write_uci_stub

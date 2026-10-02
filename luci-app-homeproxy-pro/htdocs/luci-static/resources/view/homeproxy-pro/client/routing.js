@@ -136,9 +136,9 @@ function render(ctx) {
 	o.default = o.enabled;
 	o.rmempty = false;
 
-	/* §2.7 (linux.json 与 pro 的差距分析): opt-in switch to the tutorial's
-	 * universal sniffer list + 100ms timeout. Default off so an upgrade is
-	 * invisible; arch-guard 40 pins the default '0' against drift. */
+	/* Opt-in switch to the universal sniffer list + 100ms timeout. Default
+	 * off so an upgrade is invisible; arch-guard 39 pins the default '0'
+	 * against drift. */
 	o = s.taboption('routing', form.Flag, 'sniffer_advanced_mode',
 		_('Sniffer: advanced mode (100ms, universal list)'),
 		_('Use the tutorial-recommended sniffer profile (100ms timeout, http/tls/stun/quic/dns). Default keeps the 300ms / unconstrained-list behaviour.'));

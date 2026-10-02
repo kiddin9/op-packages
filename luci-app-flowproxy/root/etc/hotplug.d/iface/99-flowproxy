@@ -1,0 +1,13 @@
+#!/bin/sh
+# Hotplug trigger for flowproxy to restore policy routing on interface reload
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+enabled=$(uci -q get flowproxy.global.enabled || echo 0)
+[ "$enabled" = "1" ] || exit 0
+
+target_iface=$(uci -q get flowproxy.global.interface || echo "br-lan")
+
+if [ "$DEVICE" = "$target_iface" ] || [ "$INTERFACE" = "$target_iface" ]; then
+    [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy add_route
+fi
