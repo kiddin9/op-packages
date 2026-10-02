@@ -1,0 +1,276 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=98
+
+PROG=/etc/init.d/zerotier
+FW4_LOCK=/var/run/fw4.lock
+
+EXTRA_COMMANDS="sync"
+EXTRA_HELP="	sync	Re-sync the firewall zone device list from the
+	currently present ZeroTier interfaces (also driven by
+	hotplug on zt* device add/remove)"
+
+get_config() {
+	config_get_bool enabled $1 enabled 0
+	config_get_bool nat $1 nat 0
+}
+
+log() {
+	echo "$@"
+	logger -t luci-zerotier "$@"
+}
+
+validate_path() {
+	# $2 = kind: "file" (local_conf_path) additionally allows the upstream
+	# package's conventional single-file location /etc/zerotier.conf and
+	# volatile /tmp (harmless there — the daemon only uses it if present);
+	# "dir" (config_path) requires a persistent location: the daemon
+	# refuses to start when config_path is missing, so /tmp would leave
+	# it dead after every reboot.
+	case "$2:$1" in
+		file:/etc/zerotier.conf|file:/etc/zerotier/*|file:/tmp|file:/tmp/*)
+			return 0
+			;;
+		dir:/etc/zerotier|dir:/etc/zerotier/*)
+			return 0
+			;;
+	esac
+	log "Invalid path rejected: $1"
+	return 1
+}
+
+# fw4 holds /var/run/fw4.lock exclusively for the entire start/reload run,
+# INCLUDING the execution of script includes. Calling "firewall reload" from
+# such a context re-enters fw4 and deadlocks on that lock until the include
+# is SIGKILLed after 30s — and the orphaned nested fw4 process then starts
+# a self-sustaining reload cascade (reproduced on 24.10.7: ~36s cycles,
+# growing process backlog, zone flapping). So: only reload when the lock
+# is free. If the lock is held, whoever holds it has already rendered the
+# ruleset from the uci state we just committed, so skipping is safe.
+fw_reload() {
+	: >> "$FW4_LOCK" 2>/dev/null
+	if flock -n "$FW4_LOCK" true 2>/dev/null; then
+		/etc/init.d/firewall reload
+	else
+		log "fw4 lock is held (reload/include in progress), skipping explicit reload"
+	fi
+}
+
+any_rules_present() {
+	local s
+	for s in zerotier zerotier_lan lan_zerotier zerotier_wan; do
+		[ -n "$(uci -q get "firewall.$s")" ] && return 0
+	done
+	return 1
+}
+
+# Zone membership design (r31): the zone lists the EXPLICIT ZeroTier
+# device names present on the system, enumerated straight from the kernel
+# (/sys/class/net/zt*) — no zerotier-cli dependency (its port file can go
+# missing after service restarts), no netifd involvement (r29 proved that
+# netifd claiming zerotier-managed devices flushes the daemon-assigned
+# IPv4 on 24.10 — do not reintroduce that). The pre-r23 design already
+# used explicit devices but updated them from a firewall include with a
+# 20s readiness wait, which re-entered fw4's lock and deadlocked; the
+# update trigger is now the net hotplug hook instead (fires exactly when
+# a zt device appears or vanishes — no waiting, no include).
+#
+# Trade-off vs the r23 'zt+' glob, kept as documented residue: with real
+# device names LuCI's zone editor shows them and saves preserve them (a
+# glob gets flagged "Absent Interface" and was manually "fixed" away on
+# production boxes). The fw4 glob semantics are partially retained in the
+# matching below — absent devices are simply dropped from the list until
+# they reappear (fw4 would skip them anyway).
+
+# Enumerate the ZeroTier interfaces currently present in the kernel.
+zt_devices() {
+	local d
+	for d in /sys/class/net/zt*; do
+		[ -e "$d" ] && basename "$d"
+	done
+}
+
+# Parse the zone's device list out of `uci show` output. List options are
+# packed onto a single line as device='v1' 'v2' — split the quoted values
+# apart (r29's outage was rooted in parsing this wrong).
+zone_devices() {
+	uci -q show firewall.zerotier 2>/dev/null \
+		| sed -n "s/^firewall\.zerotier\.device='\(.*\)'\$/\1/p" \
+		| tr "'" '\n' \
+		| sed '/^[[:space:]]*$/d; s/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+rules_present() {
+	[ "$(uci -q get firewall.zerotier)" = "zone" ] || return 1
+	[ "$(uci -q get firewall.zerotier.name)" = "zerotier" ] || return 1
+	[ "$(uci -q get firewall.zerotier_lan)" = "forwarding" ] || return 1
+	[ "$(uci -q get firewall.lan_zerotier)" = "forwarding" ] || return 1
+	[ "$(uci -q get firewall.zerotier_wan)" = "forwarding" ] || return 1
+	return 0
+}
+
+state_ok() {
+	rules_present || return 1
+	[ "$(zt_devices | sort)" = "$(zone_devices | sort)" ]
+}
+
+# NOTE on transaction structure: every "uci commit firewall" fires procd's
+# config trigger, which makes fw4 re-render ASYNCHRONOUSLY. When a previous
+# commit's render is still in flight while we issue our next batch of uci
+# commands, individual uci CLI invocations can fail intermittently ("uci:
+# Invalid argument") and committed state silently loses options (observed on
+# 24.10.7: the zone's 'name' vanished, fw4 then skipped the zone and all
+# forwardings — NAT silently broken). Therefore:
+#   1. All edits of one phase happen in a SINGLE "uci batch" invocation
+#      (one delta load/save cycle — no inter-command window).
+#   2. The committed result is verified afterwards; the whole transaction is
+#      retried on failure. Intermediate async renders may still read a partial
+#      state, but the render triggered by our final commit always sees the
+#      complete state (eventual consistency), and the committed state itself
+#      is guaranteed intact by the verify-retry loop.
+
+# Apply the desired state in ONE uci transaction: zone (with the current
+# explicit device list) and forwardings are committed together, verified,
+# and retried. The fw4 reload only happens after the committed state is
+# complete (never a half-applied zone — that severs management access,
+# see the r29 incident notes).
+apply_state() {
+	if state_ok; then
+		log "ZeroTier firewall state already in sync, nothing to do"
+		return 0
+	fi
+	local attempt dev batch
+	for attempt in 1 2 3; do
+		batch="delete firewall.zerotier
+set firewall.zerotier=zone
+set firewall.zerotier.name='zerotier'
+set firewall.zerotier.input='ACCEPT'
+set firewall.zerotier.output='ACCEPT'
+set firewall.zerotier.forward='ACCEPT'
+set firewall.zerotier.masq='1'
+"
+		for dev in $(zt_devices); do
+			batch="${batch}add_list firewall.zerotier.device='$dev'
+"
+		done
+		# zerotier -> lan: 让 zerotier 客户端访问局域网
+		# lan -> zerotier: 让局域网设备通过 zerotier 互访
+		# zerotier -> wan: 让 zerotier 客户端通过本机 WAN 上网（网关模式）
+		batch="${batch}delete firewall.zerotier_lan
+set firewall.zerotier_lan=forwarding
+set firewall.zerotier_lan.src='zerotier'
+set firewall.zerotier_lan.dest='lan'
+delete firewall.lan_zerotier
+set firewall.lan_zerotier=forwarding
+set firewall.lan_zerotier.src='lan'
+set firewall.lan_zerotier.dest='zerotier'
+delete firewall.zerotier_wan
+set firewall.zerotier_wan=forwarding
+set firewall.zerotier_wan.src='zerotier'
+set firewall.zerotier_wan.dest='wan'
+"
+		printf '%s' "$batch" | uci -q batch
+		uci -q commit firewall
+		if state_ok; then
+			fw_reload
+			log "ZeroTier firewall zone applied ($(zt_devices | wc -l) devices: $(zt_devices | tr '\n' ' '))"
+			return 0
+		fi
+		log "uci transaction incomplete (attempt $attempt), retrying..."
+		sleep 1
+	done
+	log "ERROR: failed to apply ZeroTier firewall state after 3 attempts"
+	return 1
+}
+
+delete_rules() {
+	uci -q batch <<-'EOF'
+		delete firewall.zerotier
+		delete firewall.zerotier_lan
+		delete firewall.lan_zerotier
+		delete firewall.zerotier_wan
+	EOF
+}
+
+
+remove_rules() {
+	local attempt
+	any_rules_present || return 0
+	for attempt in 1 2 3; do
+		delete_rules
+		uci commit firewall
+		if ! any_rules_present; then
+			fw_reload
+			log "Removed uci firewall rules for ZeroTier"
+			return 0
+		fi
+		log "uci delete incomplete (attempt $attempt), retrying..."
+		sleep 1
+	done
+	log "ERROR: failed to remove firewall rules after 3 attempts"
+	return 1
+}
+
+start() {
+	config_load zerotier
+	config_foreach get_config zerotier
+
+	# Server-side path validation (defense-in-depth, mirrors general.js regex)
+	_local_conf=$(uci -q get zerotier.global.local_conf_path 2>/dev/null)
+	_config_path=$(uci -q get zerotier.global.config_path 2>/dev/null)
+	[ -n "$_local_conf" ] && { validate_path "$_local_conf" file || return 1; }
+	[ -n "$_config_path" ] && { validate_path "$_config_path" dir || return 1; }
+
+	# Disabled or NAT off: make sure no stale rules are left behind
+	# (previously these paths returned early without cleanup). The :-0
+	# defaults keep this fail-closed when the UCI config is missing
+	# entirely (unset vars would otherwise error both guards and fall
+	# through to add_rules).
+	[ "${enabled:-0}" -eq 0 ] && { remove_rules; log "Service disabled in config."; return 0; }
+	[ "${nat:-0}" -eq 0 ] && { remove_rules; log "NAT disabled in config."; return 0; }
+
+	# The zone lists the currently present devices, so there is no need to
+	# gate rule creation on daemon/interface readiness — the hotplug hook
+	# re-syncs the list the moment a zt device appears. Warn only, and
+	# install the rules unconditionally.
+	$PROG running 2>/dev/null || log "Warning: zerotier service is not running; installing rules anyway"
+
+	apply_state
+}
+
+# Hotplug/manual entrypoint: converge the zone device list onto the
+# currently present ZeroTier interfaces (idempotent).
+sync() {
+	config_load zerotier
+	config_foreach get_config zerotier
+
+	[ "${enabled:-0}" -eq 0 ] && { remove_rules; log "Service disabled in config."; return 0; }
+	[ "${nat:-0}" -eq 0 ] && { remove_rules; log "NAT disabled in config."; return 0; }
+
+	apply_state
+}
+
+# rc.common's default reload() is "restart" (stop+start): stop() runs the
+# runtime-state sync and tears the rules down, so every LuCI Save&Apply
+# (ucitrack fires reload on each committed change) churned uci, the
+# firewall and the flash twice over (ucitrack + the explicit RPC reload in
+# general.js). Defining reload_service() does NOT help here — that hook is
+# only honored for procd scripts (USE_PROCD=1); for a plain rc.common
+# script the function to override is reload() itself. start() is the
+# idempotent no-op this service was always meant to reload with.
+reload() {
+	start
+}
+
+stop() {
+	/usr/bin/zerotier-sync.sh 2>/dev/null
+	remove_rules
+}
+
+# Invoked via the K-link at system shutdown (rc.common's default shutdown()
+# would call stop(), churning uci and the firewall for nothing) — only the
+# runtime-state sync matters here.
+shutdown() {
+	/usr/bin/zerotier-sync.sh 2>/dev/null
+}

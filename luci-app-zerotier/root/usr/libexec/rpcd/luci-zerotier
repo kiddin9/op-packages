@@ -1,0 +1,889 @@
+#!/bin/sh
+
+. /usr/share/libubox/jshn.sh
+
+# Security: Define allowed operations only
+# No arbitrary command execution allowed
+
+# --- Moon helpers -------------------------------------------------------
+#
+# A ZeroTier moon is identified by a 40-bit address rendered as exactly 10
+# hex digits, but `zerotier-cli listmoons` reports the world id zero-padded to
+# 16 (e.g. 000000123456abcd). The daemon's control-plane route is
+#   /moon/([0-9a-fA-F]{10})
+# which matches EXACTLY 10 characters -- so passing the padded form, a
+# stripped form, or the docs' 14-char form all 404. Every id crossing this
+# boundary is therefore normalized to exactly 10 hex digits.
+#
+# `zerotier-cli orbit` is also a silent no-op (exit 0, no output, nothing
+# done) when the seed argument is zero -- the C++ is
+# `if ((worldId) && (seed)) { ... }` with no else branch. And
+# `zerotier-cli deorbit` returns "200 deorbit OK" for a moon that does not
+# exist. Exit codes are therefore never trusted: both mutating methods
+# verify the actual result by diffing `listmoons`.
+
+# Strip leading zeros (keeping >=1 char), then left-pad back to 10 digits.
+# Rejects non-hex input and anything still wider than 10 digits after
+# normalization, which could never match the route anyway.
+moon_norm_id() {
+	local v="$1"
+	while [ "${#v}" -gt 1 ]; do
+		case "$v" in
+			0*) v="${v#0}" ;;
+			*) break ;;
+		esac
+	done
+	while [ "${#v}" -lt 10 ]; do
+		v="0$v"
+	done
+	case "$v" in
+		*[!0-9a-fA-F]*) return 1 ;;
+	esac
+	[ "${#v}" -eq 10 ] || return 1
+	# the zero address is never a valid moon id
+	[ "$v" != "0000000000" ] || return 1
+	printf '%s' "$v"
+}
+
+# Persisted moon world files, one 16-digit hex name per line, from the
+# configured persistent config dir. Orbit persistence in ZeroTier 1.16 IS
+# the moons.d/<id>.moon file: there is no separate .orbit state object
+# (ZT_STATE_OBJECT_* covers only identity/planet/moon/peer/network-config),
+# and `deorbit` unlinks that file. zerotier-sync.sh already mirrors moons.d.
+moon_persisted_list() {
+	local d
+	d=$(uci -q get zerotier.global.config_path 2>/dev/null)
+	[ -n "$d" ] || d="/etc/zerotier"
+	[ -d "$d/moons.d" ] || return 0
+	find "$d/moons.d" -type f -name '*.moon' 2>/dev/null | while read -r f; do
+		printf '%s\n' "$(basename "$f" .moon)"
+	done
+}
+
+moon_is_listed() {
+	# $1 = 10-digit id, $2 = listmoons output.
+	# The daemon reports world ids as %.16llx, i.e. 16 hex digits zero-padded
+	# on the left. Our id is always normalized to 10 digits, so padding it
+	# with 6 zeros reproduces exactly the daemon's form for every id whose
+	# significant length is <= 10 (16-L zeros + L digits either way).
+	local id="$1" out="$2"
+	case "$out" in
+		*"\"000000$id\""*) return 0 ;;
+	esac
+	return 1
+}
+
+# Wait for an orbited moon to show up in `listmoons`.
+#
+# An orbit RPC only registers the seed in RAM (Topology::_moonSeeds); the moon
+# becomes visible in `listmoons` -- and only becomes persistent as
+# moons.d/<id>.moon -- once a root peer has delivered the signed world. That
+# handshake takes a moment, so an immediate re-check would report a false
+# failure for a perfectly valid orbit against a reachable moon. Poll for a
+# bounded grace period instead; a genuinely unreachable moon never appears.
+#
+# $1 = 10-digit id, $2 = attempts, $3 = seconds between attempts.
+moon_wait_listed() {
+	local id="$1" tries="$2" nap="$3" i out=""
+	i=0
+	while [ "$i" -lt "$tries" ]; do
+		out=$(zerotier-cli listmoons 2>/dev/null)
+		if moon_is_listed "$id" "$out"; then
+			return 0
+		fi
+		i=$((i + 1))
+		[ "$i" -lt "$tries" ] && sleep "$nap"
+	done
+	return 1
+}
+
+case "$1" in
+	list)
+		json_init
+		json_add_object "reload"
+		json_close_object
+		json_add_object "status"
+		json_close_object
+		json_add_object "get_networks_peers"
+		json_close_object
+		json_add_object "list_moons"
+		json_close_object
+		json_add_object "orbit_moon"
+			json_add_string "moon_id" "string"
+			json_add_string "seed" "string"
+		json_close_object
+		json_add_object "deorbit_moon"
+			json_add_string "moon_id" "string"
+		json_close_object
+		json_add_object "ping_networks"
+		json_close_object
+		json_add_object "sync_config"
+			json_add_string "local_conf_path" "path"
+		json_close_object
+		json_add_object "remote_list"
+		json_close_object
+		json_add_object "remote_host_set"
+			json_add_string "section" "string"
+			json_add_string "name" "string"
+			json_add_string "host" "string"
+			json_add_string "port" "string"
+			json_add_string "user" "string"
+			json_add_string "controller_port" "string"
+			json_add_string "private_key" "string"
+		json_close_object
+		json_add_object "remote_host_del"
+			json_add_string "section" "string"
+		json_close_object
+		json_add_object "remote_diagnose"
+			json_add_string "section" "string"
+		json_close_object
+		json_add_object "remote_ctl_get"
+			json_add_string "section" "string"
+			json_add_string "path" "string"
+		json_close_object
+		json_add_object "remote_member_list"
+			json_add_string "section" "string"
+			json_add_string "nwid" "string"
+		json_close_object
+		json_add_object "remote_peer_list"
+			json_add_string "section" "string"
+		json_close_object
+		json_add_object "remote_network_set"
+			json_add_string "section" "string"
+			json_add_string "nwid" "string"
+			json_add_string "body" "string"
+		json_close_object
+		json_add_object "remote_network_del"
+			json_add_string "section" "string"
+			json_add_string "nwid" "string"
+		json_close_object
+		json_add_object "remote_member_set"
+			json_add_string "section" "string"
+			json_add_string "nwid" "string"
+			json_add_string "member_id" "string"
+			json_add_string "body" "string"
+		json_close_object
+		json_add_object "remote_moon_plan"
+			json_add_string "section" "string"
+		json_close_object
+		json_add_object "remote_moon_apply"
+			json_add_string "section" "string"
+			json_add_string "confirm" "string"
+		json_close_object
+		json_add_object "restart_service"
+		json_close_object
+		json_dump
+		;;
+	call)
+		case "$2" in
+			reload)
+				# Reload luci-zerotier service - SAFE: specific operation
+				json_init
+
+				# Validate that the service exists before reloading
+				if [ ! -f "/etc/init.d/luci-zerotier" ]; then
+					json_add_int "code" 1
+					json_add_string "stdout" ""
+					json_add_string "stderr" "luci-zerotier service not found"
+				else
+					output=$(/etc/init.d/luci-zerotier reload 2>&1)
+					exit_code=$?
+
+					json_add_int "code" "$exit_code"
+					json_add_string "stdout" "$output"
+					json_add_string "stderr" ""
+				fi
+
+				json_dump
+				;;
+			status)
+				# Read-only: one liveness flag plus the node address, so the
+				# settings page needs a single RPC instead of two.
+				#
+				# The check is pid + /proc/<pid>/comm rather than
+				# `ps | grep zerotier-one`: comm confirms the pid was not
+				# recycled by an unrelated process, and both cat and read are
+				# builtins, so this costs zero forks. `uci get`/`uci show`
+				# results were also dropped -- nothing ever rendered them.
+				json_init
+
+				_pid=$(cat /var/lib/zerotier-one/zerotier-one.pid 2>/dev/null)
+				if [ -n "$_pid" ] && read -r _comm < "/proc/$_pid/comm" 2>/dev/null && [ "$_comm" = "zerotier-one" ]; then
+					json_add_boolean "running" 1
+				else
+					json_add_boolean "running" 0
+				fi
+
+				if command -v zerotier-cli >/dev/null 2>&1; then
+					_id=$(zerotier-cli -j info 2>/dev/null | jsonfilter -e '@.address' 2>/dev/null)
+					json_add_string "identity" "$_id"
+				else
+					json_add_string "identity" ""
+				fi
+
+				json_dump
+				;;
+			get_networks_peers)
+				# Merged on purpose: zerotier-cli is the 1.2 MB zerotier-one
+				# binary, so every call loads it and opens a connection to the
+				# local control port. The info page polls both data sets on the
+				# same 5s timer, so one method halves the process churn.
+				json_init
+
+				if ! command -v zerotier-cli >/dev/null 2>&1; then
+					json_add_int "code" 1
+					json_add_string "networks" ""
+					json_add_string "peers" ""
+					json_add_string "stderr" "zerotier-cli not found"
+					json_dump
+					return
+				fi
+
+				_networks=$(zerotier-cli -j listnetworks 2>/dev/null)
+				_rc_n=$?
+				_peers=$(zerotier-cli -j listpeers 2>/dev/null)
+				_rc_p=$?
+
+				# Report failure if either half failed, so the UI can tell
+				# "service unreachable" apart from "nothing joined".
+				if [ "$_rc_n" -ne 0 ]; then
+					_rc=$_rc_n
+				else
+					_rc=$_rc_p
+				fi
+
+				json_add_int "code" "$_rc"
+				json_add_string "networks" "$_networks"
+				json_add_string "peers" "$_peers"
+				json_add_string "stderr" ""
+				json_dump
+				;;
+			list_moons)
+				# Read-only: the daemon's own /moon control plane via
+				# `zerotier-cli listmoons`. Returns the raw JSON so the
+				# frontend can normalize the 16-digit world ids and read
+				# the per-moon `waiting` flag itself.
+				json_init
+
+				if ! command -v zerotier-cli >/dev/null 2>&1; then
+					json_add_int "code" 1
+					json_add_string "moons" ""
+					json_add_string "persisted" ""
+					json_add_string "stderr" "zerotier-cli not found"
+					json_dump
+					return
+				fi
+
+				_out=$(zerotier-cli listmoons 2>&1)
+				_rc=$?
+				json_add_int "code" "$_rc"
+				json_add_string "moons" "$_out"
+				json_add_string "persisted" "$(moon_persisted_list | tr '\n' ' ')"
+				json_add_string "stderr" ""
+				json_dump
+				;;
+			orbit_moon)
+				# Orbit a moon. The seed must be the address of one of the
+				# moon's roots; the node fetches the signed world from it and
+				# only then persists moons.d/<id>.moon. Until that happens the
+				# orbit lives purely in RAM (Topology::_moonSeeds is never
+				# persisted) and does not survive a daemon restart -- the
+				# daemon's `waiting:true` flag reports exactly that state and
+				# the UI surfaces it.
+				read -r input
+				json_load "$input" 2>/dev/null
+				json_get_var _mid moon_id 2>/dev/null
+				json_get_var _seed seed 2>/dev/null
+				unset input
+
+				json_init
+
+				if ! command -v zerotier-cli >/dev/null 2>&1; then
+					json_add_int "code" 1
+					json_add_string "moon_id" ""
+					json_add_boolean "orbited" 0
+					json_add_string "stderr" "zerotier-cli not found"
+					json_dump
+					return
+				fi
+
+				_nid=$(moon_norm_id "$_mid")
+				if [ -z "$_nid" ]; then
+					json_add_int "code" 1
+					json_add_string "moon_id" ""
+					json_add_boolean "orbited" 0
+					json_add_string "stderr" "Invalid Moon ID: expected hex digits (10, or the 16-digit padded form), not the zero address"
+					json_dump
+					return
+				fi
+
+				_sid=$(moon_norm_id "$_seed")
+				if [ -z "$_sid" ]; then
+					json_add_int "code" 1
+					json_add_string "moon_id" "$_nid"
+					json_add_boolean "orbited" 0
+					json_add_string "stderr" "Invalid Moon Seed: use the 10-digit address of one of the moon's roots (a zero seed is silently ignored by zerotier-cli)"
+					json_dump
+					return
+				fi
+
+				_out=$(zerotier-cli orbit "$_nid" "$_sid" 2>&1)
+				_rc=$?
+
+				if moon_wait_listed "$_nid" 6 2; then
+					# Definition arrived: the moon is fully in effect and
+					# moons.d/<id>.moon now exists, so it can be persisted.
+					json_add_int "code" 0
+					json_add_boolean "orbited" 1
+					json_add_boolean "pending" 0
+					json_add_string "stderr" ""
+					/usr/bin/zerotier-sync.sh >/dev/null 2>&1
+				elif [ "$_rc" -eq 0 ]; then
+					# The orbit itself SUCCEEDED. Topology::addMoon always
+					# records a non-zero seed in _moonSeeds, so the daemon has
+					# accepted it; only the signed world definition is still
+					# in flight (it arrives out-of-band from the root, which
+					# can take a while behind a relay or an unseen NAT).
+					# Reporting this as a failure would be wrong: the moon is
+					# already orbited. It is just not persistent yet -- which
+					# is exactly what the `waiting` state means.
+					json_add_int "code" 0
+					json_add_boolean "orbited" 1
+					json_add_boolean "pending" 1
+					json_add_string "stderr" ""
+				else
+					json_add_int "code" 1
+					json_add_boolean "orbited" 0
+					json_add_boolean "pending" 0
+					json_add_string "stderr" "zerotier-cli could not reach the ZeroTier service (rc=$_rc${_out:+, out=$_out})"
+				fi
+				json_add_string "moon_id" "$_nid"
+				json_dump
+				;;
+			deorbit_moon)
+				# `zerotier-cli deorbit` returns "200 deorbit OK" even for a
+				# moon that was never orbited (Topology::removeMoon just
+				# iterates the current set). So: snapshot, deorbit, re-check,
+				# and only report success when the moon actually disappeared.
+				read -r input
+				json_load "$input" 2>/dev/null
+				json_get_var _mid moon_id 2>/dev/null
+				unset input
+
+				json_init
+
+				if ! command -v zerotier-cli >/dev/null 2>&1; then
+					json_add_int "code" 1
+					json_add_string "moon_id" ""
+					json_add_boolean "deorbited" 0
+					json_add_string "stderr" "zerotier-cli not found"
+					json_dump
+					return
+				fi
+
+				_nid=$(moon_norm_id "$_mid")
+				if [ -z "$_nid" ]; then
+					json_add_int "code" 1
+					json_add_string "moon_id" ""
+					json_add_boolean "deorbited" 0
+					json_add_string "stderr" "Invalid Moon ID: expected hex digits (10, or the 16-digit padded form), not the zero address"
+					json_dump
+					return
+				fi
+
+				_before=$(zerotier-cli listmoons 2>/dev/null)
+				if ! moon_is_listed "$_nid" "$_before"; then
+					json_add_int "code" 0
+					json_add_boolean "deorbited" 0
+					json_add_string "stderr" "moon $_nid is not orbited"
+					json_add_string "moon_id" "$_nid"
+					json_dump
+					return
+				fi
+
+				_out=$(zerotier-cli deorbit "$_nid" 2>&1)
+				_rc=$?
+				_after=$(zerotier-cli listmoons 2>/dev/null)
+
+				if moon_is_listed "$_nid" "$_after"; then
+					json_add_int "code" 1
+					json_add_boolean "deorbited" 0
+					json_add_string "stderr" "moon still listed after deorbit (rc=$_rc${_out:+, out=$_out})"
+				else
+					json_add_int "code" 0
+					json_add_boolean "deorbited" 1
+					json_add_string "stderr" ""
+					# deorbit unlinks moons.d/<id>.moon; mirror the removal
+					# into the persistent dir so it does not come back.
+					/usr/bin/zerotier-sync.sh >/dev/null 2>&1
+				fi
+				json_add_string "moon_id" "$_nid"
+				json_dump
+				;;
+			ping_networks)
+				json_init
+
+				# 并发锁：防止多个 ping_networks 同时执行（多标签页、ubus 直调等）。
+				# noclobber (set -C) 原子创建，消除 check-then-create 竞态。
+				# 锁文件写入 "$PID $DEADLINE"（绝对期限，随扫描规模重算）。
+				# 双重校验：PID 还活着（kill -0）且未过 DEADLINE —— 兜底进程
+				# 暴毙（SIGKILL）后的锁复活。
+				LOCKFILE="/tmp/zt_ping.lock"
+				_lock_max=120
+				_lock_try() {
+					( set -C; echo "$$ $(( $(date +%s) + _lock_max ))" > "$LOCKFILE" ) 2>/dev/null
+				}
+				_lock_busy() {
+					json_add_int "code" 1
+					json_add_string "result" ""
+					json_add_string "stderr" "scan already in progress"
+					json_dump
+				}
+				# 只释放本进程持有的锁：扫描超过 deadline 后锁可能已被其他进程
+				# 判定过期并重建，无条件 rm 会破坏新锁，放任第三个并发扫描
+				_lock_release() {
+					if [ -f "$LOCKFILE" ]; then
+						read -r _lp _ld < "$LOCKFILE" 2>/dev/null
+						[ "$_lp" = "$$" ] && rm -f "$LOCKFILE"
+					fi
+				}
+				if ! _lock_try; then
+					read -r _lp _ld < "$LOCKFILE" 2>/dev/null
+					if [ -n "$_lp" ] && kill -0 "$_lp" 2>/dev/null && [ "$(date +%s)" -lt "${_ld:-0}" ]; then
+						_lock_busy
+						return
+					fi
+					rm -f "$LOCKFILE"
+					if ! _lock_try; then
+						_lock_busy
+						return
+					fi
+				fi
+
+				tmpfile=$(mktemp /tmp/zt_ping_XXXXXX)
+				_sem=""
+				trap '_lock_release; rm -f "$tmpfile" "$_sem" "$LOCKFILE.$$.tmp"; exec 9>&- 2>/dev/null' EXIT
+				trap 'exit 1' INT TERM
+
+				if ! command -v ping >/dev/null 2>&1; then
+					json_add_int "code" 1
+					json_add_string "result" ""
+					json_add_string "stderr" "ping not found"
+					json_dump
+					return
+				fi
+
+				if ! command -v zerotier-cli >/dev/null 2>&1; then
+					json_add_int "code" 1
+					json_add_string "result" ""
+					json_add_string "stderr" "zerotier-cli not found"
+					json_dump
+					return
+				fi
+
+				# Extract assigned IP addresses via JSON output (reliable field names
+				# instead of fragile column-position parsing of text output)
+				ip_list=$(zerotier-cli -j listnetworks 2>/dev/null | jsonfilter -e '$[*].assignedAddresses[*]' 2>/dev/null)
+				if [ -z "$ip_list" ]; then
+					json_add_int "code" 1
+					json_add_string "result" ""
+					json_add_string "stderr" "no assigned addresses or zerotier-cli failed"
+					json_dump
+					return
+				fi
+
+				# 已知扫描规模后重算锁期限（每个 v4 网段约 60s 最差耗时 + 60s 余量），
+				# 覆盖多网络/低并发场景，避免锁被误判过期
+				_nnets=0
+				for _ipc in $ip_list; do
+					case "$_ipc" in
+						*.*.*.*/*) _nnets=$((_nnets + 1)) ;;
+					esac
+				done
+				_lock_max=$((60 + _nnets * 60))
+				# 临时文件 + rename 原子更新期限：直接 > 覆写存在被并发申请者
+				# 读到空文件并误判锁过期的窗口
+				echo "$$ $(( $(date +%s) + _lock_max ))" > "$LOCKFILE.$$.tmp" && mv -f "$LOCKFILE.$$.tmp" "$LOCKFILE"
+
+				# 并发限流：FIFO 信号量模式。
+				# 预先向命名管道写入 MAX_RUNNING 个 token（换行符）；ping_one() 每次
+				# read -u 9 消费一个 token（管道空时自动阻塞，不消耗 CPU）；后台子 shell
+				# 在 ping 结束后 echo >&9 归还 token。
+				#
+				# 效果：始终精确保持 MAX_RUNNING 个并发 ping。一个快 ping（100ms 完成）
+				# 立刻让出 slot 给下一个 IP，不像 batch 模式那样要等齐一批里最慢的那个。
+				#
+				# 依赖 busybox ash 的 read 逐字节语义（不越过换行符吞掉多个 token）。
+				# OpenWrt 的 /bin/sh 永远是 busybox ash，所以保证可用。
+				# 不依赖 usleep / sleep 分数延时 / xargs -P（这些在 stock OpenWrt
+				# busybox 默认配置下均不可用）。
+				#
+				# MAX_RUNNING 自适应：根据当前可用内存动态计算。
+				# 实测每个 ping slot（subshell + ping 进程）并发时占 ~150 kB RSS
+				# （共享文本段 + COW 后的实际物理内存）。按 300 kB/slot（2x 安全余量）、
+				# 仅使用 1/3 可用内存计算，范围 [16, 512]。
+				_avail_kb=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null)
+				if [ -n "$_avail_kb" ] && [ "$_avail_kb" -gt 0 ]; then
+					MAX_RUNNING=$((_avail_kb / 3 / 300))
+					[ "$MAX_RUNNING" -lt 16 ] && MAX_RUNNING=16
+					[ "$MAX_RUNNING" -gt 512 ] && MAX_RUNNING=512
+				else
+					MAX_RUNNING=64
+				fi
+				_sem=$(mktemp -u /tmp/zt_ping_sem_XXXXXX)
+				if mkfifo "$_sem" 2>/dev/null; then
+					exec 9<>"$_sem"
+					_i=0
+					while [ "$_i" -lt "$MAX_RUNNING" ]; do
+						echo >&9
+						_i=$((_i + 1))
+					done
+					ping_one() {
+						read -u 9 2>/dev/null
+						(
+							ping -c 2 -W 1 "$1" >/dev/null 2>&1 && echo "OK:$1" || echo "FAIL:$1"
+							echo >&9 2>/dev/null
+						) >> "$tmpfile" 2>&1 &
+					}
+				else
+					rm -f "$_sem" 2>/dev/null; _sem=""
+					ping_one() {
+						( ping -c 2 -W 1 "$1" >/dev/null 2>&1 && echo "OK:$1" || echo "FAIL:$1" ) >> "$tmpfile" 2>&1 &
+					}
+				fi
+
+				# 设计说明：扫描器覆盖典型 ZeroTier 部署场景（/24 ~ /23，最多 512 个主机）。
+				# 对于更大的网段（/22、/21、/16 等），仅扫描当前 IP 所在的 /24，因为：
+				#   - /23 已覆盖普通用户使用 zerotier 的实际上限
+				#   - 扫描 /22+（1024+ 个 IP）对常规连通性检查属于过度操作
+				#   - 大网段用户应改用专门的扫描工具（nmap 等）
+				for ip_cidr in $ip_list; do
+					case "$ip_cidr" in
+						*.*.*.*/*)
+							ip=${ip_cidr%%/*}
+							cidr=${ip_cidr##*/}
+							if ! echo "$ip" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+								continue
+							fi
+							# Glob-validate the prefix BEFORE any test/arithmetic:
+							# a non-numeric cidr makes `[ -lt/-gt ]` error out on
+							# both sides (so the range check below would NOT skip
+							# it) and `$((32 - cidr))` would then evaluate as 32,
+							# yielding a ~4-billion-iteration ping loop as root.
+							case "$cidr" in
+								''|*[!0-9]*) continue ;;
+							esac
+							if [ "$cidr" -lt 1 ] || [ "$cidr" -gt 32 ]; then
+								continue
+							fi
+							_oldIFS="$IFS"
+							IFS='.'
+							set -- $ip
+							i1="$1"; i2="$2"; i3="$3"; i4="$4"
+							IFS="$_oldIFS"
+							if [ "$cidr" -le 24 ] && [ "$cidr" -ge 23 ]; then
+								if [ "$cidr" = "23" ]; then
+									base_i3=$((i3 & ~1))
+									for j in $(seq 0 255); do
+										ping_one "$i1.$i2.$base_i3.$j"
+									done
+									_base_i3=$((base_i3 + 1))
+									for j in $(seq 0 255); do
+										ping_one "$i1.$i2.$_base_i3.$j"
+									done
+								else
+									for j in $(seq 0 255); do
+										ping_one "$i1.$i2.$i3.$j"
+									done
+								fi
+							elif [ "$cidr" -lt 23 ]; then
+								# 大网段（/22、/21、/16...）只扫描当前所在 /24，详见上方设计说明
+								for j in $(seq 0 255); do
+									ping_one "$i1.$i2.$i3.$j"
+								done
+							else
+								shifts=$((32 - cidr))
+								host_count=1
+								while [ "$shifts" -gt 0 ]; do
+									host_count=$((host_count * 2))
+									shifts=$((shifts - 1))
+								done
+								net_mask=$((256 - host_count))
+								net_addr=$((i4 & net_mask))
+								for j in $(seq "$net_addr" "$((net_addr + host_count - 1))"); do
+									ping_one "$i1.$i2.$i3.$j"
+								done
+							fi
+							;;
+					esac
+				done
+
+				wait
+
+				# Release semaphore fd and clean up
+				[ -n "$_sem" ] && exec 9>&- 2>/dev/null
+				rm -f "$_sem" 2>/dev/null
+
+				if [ -f "$tmpfile" ]; then
+					result=$(sort -u "$tmpfile" | tr '\n' '|')
+					rm -f "$tmpfile"
+				else
+					result="no_result"
+				fi
+
+				json_add_int "code" 0
+				json_add_string "result" "$result"
+				json_add_string "stderr" ""
+				json_dump
+				;;
+			sync_config)
+				# Persist runtime state to the config dir - SAFE: specific operation
+				#
+				# 可选参数 local_conf_path：表单里尚未提交的新值（保存并应用时
+				# 由 general.js 传入）；缺省时回退到已提交的配置值（Backup Now
+				# 按钮路径）。参数经 stdin 以 JSON 传入（rpcd shell 插件惯例）。
+				read -r input
+				json_load "$input" 2>/dev/null
+				json_get_var _lc local_conf_path 2>/dev/null
+				[ -n "$_lc" ] || _lc=$(uci -q get zerotier.global.local_conf_path 2>/dev/null)
+
+				json_init
+
+				output=$(/usr/bin/zerotier-sync.sh 2>&1)
+				exit_code=$?
+
+				# 收敛 local_conf_path 到持久化配置目录：上游 init 用裸 `ln -s`
+				# 把它链入运行目录，当 config_path 已提供 local.conf（本应用会播种）
+				# 时静默失败。改为把文件内容导入 config_path/local.conf，上游的
+				# cp -r 自然会带上正确内容，ln -s 失败也无害。
+				# 必须在 sync 之后执行，避免被运行目录里的旧拷贝覆盖。
+				if [ -n "$_lc" ] && [ -f "$_lc" ]; then
+					_cp=$(uci -q get zerotier.global.config_path 2>/dev/null)
+					[ -n "$_cp" ] || _cp="/etc/zerotier"
+					[ "$_lc" != "$_cp/local.conf" ] && cp -f "$_lc" "$_cp/local.conf" 2>/dev/null
+				fi
+
+				json_add_int "code" "$exit_code"
+				json_add_string "stdout" "$output"
+				json_add_string "stderr" ""
+				json_dump
+				;;
+			restart_service)
+				# Restart ZeroTier service - SAFE: specific operation
+				json_init
+
+				# Validate that the service exists
+				if [ ! -f "/etc/init.d/zerotier" ]; then
+					json_add_int "code" 1
+					json_add_string "stdout" ""
+					json_add_string "stderr" "zerotier service not found"
+				else
+					# Persist runtime state first: the zerotier init's stop_service
+					# does rm -rf /var/lib/zerotier-one, discarding anything not yet
+					# synced (CLI-joined networks, controller/moon data)
+					/usr/bin/zerotier-sync.sh >/dev/null 2>&1
+
+					# Restart the main zerotier service
+					output=$(/etc/init.d/zerotier restart 2>&1)
+					exit_code=$?
+
+					json_add_int "code" "$exit_code"
+					json_add_string "stdout" "$output"
+					json_add_string "stderr" ""
+				fi
+
+				json_dump
+				;;
+			remote_list)
+				# Read-only: enumerate configured remote hosts. Key material is
+				# never returned -- only whether a key file exists.
+				json_init
+				json_add_array "hosts"
+				for _s in $(uci -q show zerotier 2>/dev/null | sed -n 's/^zerotier\.\([^.=]*\)=remote$/\1/p'); do
+					_h=$(uci -q get "zerotier.$_s.host")
+					[ -n "$_h" ] || continue
+					_kp=$(uci -q get "zerotier.$_s.key_path")
+					[ -n "$_kp" ] || _kp="/etc/zerotier/remote/$_s.key"
+					json_add_object ""
+					json_add_string "section" "$_s"
+					json_add_string "name" "$(uci -q get "zerotier.$_s.name" || echo "$_s")"
+					json_add_string "host" "$_h"
+					json_add_string "port" "$(uci -q get "zerotier.$_s.port" || echo 22)"
+					json_add_string "user" "$(uci -q get "zerotier.$_s.user" || echo root)"
+					json_add_string "controller_port" "$(uci -q get "zerotier.$_s.controller_port" || echo 9993)"
+					json_add_string "key_path" "$_kp"
+					if [ -f "$_kp" ]; then
+						json_add_boolean "key_present" 1
+					else
+						json_add_boolean "key_present" 0
+					fi
+					json_close_object
+				done
+				json_close_array
+				json_dump
+				;;
+			remote_host_set)
+				# The private key is written to a 0600 file, never into UCI:
+				# /etc/config is world-readable and is swept into sysupgrade
+				# backups, whereas a key file can be excluded from keep.d.
+				read -r input
+				json_load "$input" 2>/dev/null
+				json_get_var _sect section 2>/dev/null
+				json_get_var _hname name 2>/dev/null
+				json_get_var _rhost host 2>/dev/null
+				json_get_var _rport port 2>/dev/null
+				json_get_var _ruser user 2>/dev/null
+				json_get_var _cport controller_port 2>/dev/null
+				json_get_var _pkey private_key 2>/dev/null
+				unset input
+
+				json_init
+
+				case "$_sect" in
+					''|*[!A-Za-z0-9_]*) _err="invalid section name" ;;
+					*) _err="" ;;
+				esac
+				[ -z "$_err" ] || { json_add_int "code" 1; json_add_string "error" "$_err"; json_dump; return; }
+
+				case "$_rhost" in
+					''|*[!A-Za-z0-9.:_-]*) _err="host must be a hostname or IP literal" ;;
+					*) case "$_rhost" in *[!0-9A-Za-z]*) _err="" ;; *) _err="host must contain a letter or digit" ;; esac ;;
+				esac
+				[ -z "$_err" ] || { json_add_int "code" 1; json_add_string "error" "$_err"; json_dump; return; }
+
+				case "$_ruser" in
+					''|[a-zA-Z_]*) case "$_ruser" in *[!a-zA-Z0-9_-]*) _err="invalid ssh user" ;; esac ;;
+					*) _err="invalid ssh user" ;;
+				esac
+				[ -z "$_err" ] || { json_add_int "code" 1; json_add_string "error" "$_err"; json_dump; return; }
+
+				for _p in "$_rport" "$_cport"; do
+					case "$_p" in
+						''|*[!0-9]*) _err="ports must be numeric" ;;
+						*) [ "$_p" -ge 1 ] 2>/dev/null && [ "$_p" -le 65535 ] 2>/dev/null || _err="port out of range" ;;
+					esac
+					[ -z "$_err" ] || { json_add_int "code" 1; json_add_string "error" "$_err"; json_dump; return; }
+				done
+
+				_rport=${_rport:-22}
+				_ruser=${_ruser:-root}
+				_cport=${_cport:-9993}
+				_hname=${_hname:-$_sect}
+				_kp="/etc/zerotier/remote/$_sect.key"
+
+				mkdir -p /etc/zerotier/remote || { json_add_int "code" 1; json_add_string "error" "cannot create /etc/zerotier/remote"; json_dump; return; }
+				chmod 700 /etc/zerotier/remote 2>/dev/null
+
+				# An existing key is preserved when the field is left blank, so
+				# editing a host's name does not silently destroy its key.
+				if [ -n "$_pkey" ]; then
+					case "$_pkey" in
+						*"PRIVATE KEY"*) ;;
+						*) json_add_int "code" 1; json_add_string "error" "that does not look like a private key"; json_dump; return ;;
+					esac
+					(umask 077; printf '%s\n' "$_pkey" > "$_kp") || { json_add_int "code" 1; json_add_string "error" "could not write the key file"; json_dump; return; }
+					chmod 600 "$_kp" 2>/dev/null
+				fi
+
+				uci -q delete "zerotier.$_sect" 2>/dev/null
+				uci set "zerotier.$_sect=remote"
+				uci set "zerotier.$_sect.name=$_hname"
+				uci set "zerotier.$_sect.host=$_rhost"
+				uci set "zerotier.$_sect.port=$_rport"
+				uci set "zerotier.$_sect.user=$_ruser"
+				uci set "zerotier.$_sect.controller_port=$_cport"
+				uci set "zerotier.$_sect.key_path=$_kp"
+				uci commit zerotier || { json_add_int "code" 1; json_add_string "error" "uci commit failed"; json_dump; return; }
+
+				json_add_int "code" 0
+				json_add_string "key_path" "$_kp"
+				json_dump
+				;;
+			remote_host_del)
+				read -r input
+				json_load "$input" 2>/dev/null
+				json_get_var _sect section 2>/dev/null
+				unset input
+
+				json_init
+				case "$_sect" in
+					''|*[!A-Za-z0-9_]*) json_add_int "code" 1; json_add_string "error" "invalid section name"; json_dump; return ;;
+				esac
+				_kp=$(uci -q get "zerotier.$_sect.key_path")
+				[ -n "$_kp" ] || _kp="/etc/zerotier/remote/$_sect.key"
+				# Only unlink inside our own managed directory.
+				case "$_kp" in
+					/etc/zerotier/remote/*.key) [ -f "$_kp" ] && rm -f "$_kp" ;;
+				esac
+				uci -q delete "zerotier.$_sect"
+				uci commit zerotier
+				json_add_int "code" 0
+				json_dump
+				;;
+			remote_diagnose|remote_ctl_get|remote_member_list|remote_peer_list|remote_network_set|remote_network_del|remote_member_set|remote_moon_plan|remote_moon_apply)
+				# Thin delegation to zerotier-remote.sh, which owns all SSH,
+				# tunnel and validation logic. Its stdout is already the JSON we
+				# return verbatim, so nothing is re-encoded here.
+				read -r input
+				json_load "$input" 2>/dev/null
+				json_get_var _sect section 2>/dev/null
+				json_get_var _path path 2>/dev/null
+				json_get_var _nwid nwid 2>/dev/null
+				json_get_var _body body 2>/dev/null
+				json_get_var _mid member_id 2>/dev/null
+				json_get_var _cf confirm 2>/dev/null
+				unset input
+
+				case "$2" in
+					remote_diagnose)    _args="diagnose $_sect" ;;
+					remote_ctl_get)     _args="ctl-get $_sect $_path" ;;
+					remote_member_list) _args="member-list $_sect $_nwid" ;;
+					remote_peer_list)   _args="peer-list $_sect" ;;
+					remote_network_set) _args="ctl-network-set $_sect $_nwid $_body" ;;
+					remote_network_del) _args="ctl-network-del $_sect $_nwid" ;;
+					remote_member_set)  _args="ctl-member-set $_sect $_nwid $_mid $_body" ;;
+					remote_moon_plan)   _args="moon-plan $_sect" ;;
+					remote_moon_apply)  _args="moon-apply $_sect $_cf" ;;
+				esac
+
+				if [ ! -x /usr/bin/zerotier-remote.sh ]; then
+					json_init
+					json_add_int "code" 1
+					json_add_string "error" "zerotier-remote.sh is missing"
+					json_dump
+					return
+				fi
+
+				# Intentional word splitting: _args is a command line built
+				# from validated fields, and the helper re-validates each one.
+				# shellcheck disable=SC2086
+				_out=$(/usr/bin/zerotier-remote.sh $_args 2>/dev/null)
+				_rc=$?
+				if [ -z "$_out" ]; then
+					json_init
+					json_add_int "code" 1
+					if [ "$_rc" -eq 124 ]; then
+						json_add_string "error" "the remote host did not respond in time"
+					else
+						json_add_string "error" "remote helper failed (rc=$_rc)"
+					fi
+					json_dump
+					return
+				fi
+				printf '%s\n' "$_out"
+				;;
+			*)
+				# Invalid method - return error
+				json_init
+				json_add_int "code" 1
+				json_add_string "stdout" ""
+				json_add_string "stderr" "Invalid method: $2"
+				json_dump
+				;;
+		esac
+		;;
+esac
+
+reload_service() {
+	restart
+}

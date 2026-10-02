@@ -1,0 +1,91 @@
+#!/bin/sh
+[ ! -f "/usr/share/ucitrack/luci-app-registration.json" ] && {
+    cat > /usr/share/ucitrack/luci-app-registration.json << EEOF
+{
+    "config": "registration",
+    "init": "registration"
+}
+EEOF
+}
+
+# Migrate the misnamed option written by <= r22: the LuCI form stored the
+# local.conf path in `zerotier.global.local_conf`, but the zerotier package
+# init script only honors `local_conf_path` — the old value was silently
+# ignored. Rename it (keeping an explicitly set new value if both exist).
+_old_lc=$(uci -q get zerotier.global.local_conf)
+if [ -n "$_old_lc" ]; then
+    if [ -z "$(uci -q get zerotier.global.local_conf_path)" ]; then
+        uci set zerotier.global.local_conf_path="$_old_lc"
+    fi
+    uci delete zerotier.global.local_conf
+    uci commit zerotier
+fi
+
+# NOTE: reload-on-apply is handled by /usr/share/ucitrack/luci-app-zerotier.json
+# (procd config trigger -> /etc/init.d/luci-zerotier reload). The old uci-based
+# ucitrack registration (`uci add ucitrack ...`) is obsolete: modern ucitrack
+# only reads /usr/share/ucitrack/*.json, and `uci add` fails on systems where
+# /etc/config/ucitrack does not exist.
+
+# NOTE on firewall integration (r31+): the zerotier zone lists the
+# EXPLICIT device names of the currently present zt* interfaces,
+# maintained by /etc/init.d/luci-zerotier sync (run at service start and
+# from the net hotplug hook on zt* device add/remove). Earlier designs
+# are deliberately gone: the pre-r23 include re-entered fw4's lock and
+# deadlocked; the r23 'zt+' glob was flagged "Absent Interface" by LuCI's
+# DeviceSelect and got manually edited out of zones; r29's netifd
+# interface takeover flushed the daemon-assigned IPv4 on 24.10. Nothing
+# needs to be re-run on firewall reloads; the old include registration is
+# still cleaned up below (including the pre-r22 legacy name collision
+# where it was registered as `firewall.zerotier` type=include).
+# Only commit when something was actually deleted — every firewall commit
+# triggers an asynchronous fw4 re-render.
+_fw_changed=0
+uci -q delete firewall.zerotier_include && _fw_changed=1
+[ "$(uci -q get firewall.zerotier)" = "include" ] && { uci -q delete firewall.zerotier && _fw_changed=1; }
+[ "$_fw_changed" -eq 1 ] && uci commit firewall
+
+# Set default persistent config path if not already configured
+if ! uci -q get zerotier.global.config_path >/dev/null; then
+    uci set zerotier.global.config_path='/etc/zerotier'
+    uci set zerotier.global.copy_config_path='1'
+    uci commit zerotier
+fi
+
+# Seed local.conf from template if neither exists — but not when
+# local_conf_path is set: a seeded file in config_path would shadow it
+# (upstream links with plain `ln -s`, which fails when the target exists;
+# sync_config's import step handles the precedence instead).
+if [ -z "$(uci -q get zerotier.global.local_conf_path)" ] && [ ! -f /etc/zerotier/local.conf ]; then
+    if [ -f /etc/zerotier/local.conf.template ]; then
+        # Strip JSON comments (lines starting with //) to create valid JSON
+        grep -v '^[[:space:]]*//' /etc/zerotier/local.conf.template | grep -v '^$' > /etc/zerotier/local.conf
+    fi
+fi
+
+# r26 removed the periodic sync: backups run on demand (LuCI "Backup Now"
+# button) and from lifecycle hooks (init.d stop/shutdown, restart_service
+# RPC). Remove the legacy cron entry on upgrade.
+( crontab -l 2>/dev/null | grep -v 'zerotier-sync' ) | crontab -
+
+# Ensure scripts have execute permissions
+chmod +x /usr/bin/zerotier-sync.sh 2>/dev/null
+[ -f /usr/libexec/rpcd/luci-zerotier ] && chmod +x /usr/libexec/rpcd/luci-zerotier
+
+# Enable at rc level so ZeroTier firewall rules are (re)applied at boot out of
+# the box. Safe since r23: the service no longer re-enters fw4 from include
+# contexts, and start() is idempotent (skips the firewall reload entirely when
+# the desired rules are already in place). This must precede the ucitrack
+# restart below, because ucitrack only registers triggers for enabled inits.
+/etc/init.d/luci-zerotier enable
+
+# Register the procd config trigger from our ucitrack JSON without a reboot
+[ -x /etc/init.d/ucitrack ] && /etc/init.d/ucitrack restart
+
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart
+
+# No uhttpd restart: it would kill the very LuCI session performing this
+# install/upgrade; rpcd restart + dropping the index cache suffice for the
+# new ACLs, RPC object and menu entries to be picked up.
+rm -f /tmp/luci-indexcache
+exit 0

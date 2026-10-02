@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# When a ZeroTier device appears or disappears, converge the firewall
+# zone's explicit device list onto the interfaces currently present
+# (/etc/init.d/luci-zerotier sync). Events must not be dropped while a
+# previous sync still holds the lock (fw4 reload), so WAIT for the lock —
+# BusyBox flock has no -w, hence the bounded -n retry loop. If the lock
+# never frees up, run anyway: sync is idempotent and self-verifying.
+
+[ "$ACTION" = "add" ] || [ "$ACTION" = "remove" ] || exit 0
+case "$DEVICENAME" in zt??*) ;; *) exit 0 ;; esac
+
+(
+	_i=0
+	while ! flock -n 9; do
+		_i=$((_i + 1))
+		[ "$_i" -ge 20 ] && break
+		sleep 1
+	done
+	sleep 1
+	/etc/init.d/luci-zerotier sync >/dev/null 2>&1
+) 9>/var/run/luci-zerotier-hotplug.lock &
+
+exit 0
