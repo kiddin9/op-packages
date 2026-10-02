@@ -1,0 +1,33 @@
+{
+  "settings": {
+    "forceTcpRelay": false
+  }
+}
+
+// ZeroTier local.conf - Local Configuration
+//
+// This file configures ZeroTier's behavior when operating in restricted
+// networks (e.g., behind corporate firewalls or in mainland China).
+//
+// NOTE: the UDP port is managed by the app's "Port" option (passed to the
+// daemon as -p). Set it there, not here — a primaryPort entry in this file
+// would compete with it.
+//
+// Settings:
+//   tcpFallbackRelay:  TCP relay server for when UDP is blocked
+//                      Format: "IP_ADDRESS/PORT"
+//                      Example:  "10.10.10.10/443"
+//                      Replace with your own relay server IP or a public one
+//   forceTcpRelay:     Set to true to force TCP mode (slower but works
+//                      through most firewalls). Set to false to prefer UDP
+//                      with TCP as fallback.
+//
+// To enable TCP fallback (default disabled, prefer UDP):
+//   1. Add a tcpFallbackRelay line inside the "settings" object above,
+//      e.g.    "tcpFallbackRelay": "10.10.10.10/443"
+//      (replace 10.10.10.10 with your relay server's IP)
+//   2. Set forceTcpRelay to true if UDP is fully blocked in your network
+//   3. All // comment lines are stripped automatically at install time
+//      (JSON itself does not support comments)
+//   4. Refer to https://docs.zerotier.com/config#local-configuration-options
+//

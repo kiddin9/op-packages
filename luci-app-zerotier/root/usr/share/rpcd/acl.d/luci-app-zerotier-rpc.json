@@ -1,0 +1,38 @@
+{
+	"luci-app-zerotier-rpc": {
+		"description": "Grant access to luci-zerotier RPC methods - Security hardened",
+		"read": {
+			"ubus": {
+				"luci-zerotier": [
+					"status",
+					"get_networks_peers",
+					"list_moons",
+					"ping_networks",
+					"remote_list",
+					"remote_diagnose",
+					"remote_ctl_get",
+					"remote_member_list",
+					"remote_peer_list",
+					"remote_moon_plan"
+				]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci-zerotier": [
+					"reload",
+					"restart_service",
+					"sync_config",
+					"orbit_moon",
+					"deorbit_moon",
+					"remote_host_set",
+					"remote_host_del",
+					"remote_network_set",
+					"remote_network_del",
+					"remote_member_set",
+					"remote_moon_apply"
+				]
+			}
+		}
+	}
+}

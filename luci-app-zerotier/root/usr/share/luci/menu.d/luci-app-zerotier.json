@@ -1,29 +1,55 @@
 {
-	"admin/vpn/zerotier": {
-		"title": "ZeroTier",
-		"order": 90,
+	"admin/vpn": {
+		"title": "VPN",
+		"order": 45,
 		"action": {
 			"type": "firstchild"
+		}
+	},
+	"admin/vpn/zerotier": {
+		"title": "ZeroTier",
+		"order": 99,
+		"depends": {
+			"fs": {
+				"/etc/config/zerotier": "file"
+			}
+		},
+		"action": {
+			"type": "alias",
+			"path": "admin/vpn/zerotier/general"
+		}
+	},
+	"admin/vpn/zerotier/general": {
+		"title": "Base Setting",
+		"order": 1,
+		"action": {
+			"type": "view",
+			"path": "zerotier/general"
 		},
 		"depends": {
-			"acl": [ "luci-app-zerotier" ],
-			"uci": { "zerotier": true }
+			"acl": [ "luci-app-zerotier", "luci-app-zerotier-rpc" ]
 		}
 	},
-	"admin/vpn/zerotier/config": {
-		"title": "Configuration",
-		"order": 10,
+	"admin/vpn/zerotier/info": {
+		"title": "Interface Info",
+		"order": 2,
 		"action": {
 			"type": "view",
-			"path": "zerotier/config"
+			"path": "zerotier/info"
+		},
+		"depends": {
+			"acl": [ "luci-app-zerotier-rpc" ]
 		}
 	},
-	"admin/vpn/zerotier/interface": {
-		"title": "Interface info",
-		"order": 20,
+	"admin/vpn/zerotier/remote": {
+		"title": "Remote Controller",
+		"order": 3,
 		"action": {
 			"type": "view",
-			"path": "zerotier/interface"
+			"path": "zerotier/remote"
+		},
+		"depends": {
+			"acl": [ "luci-app-zerotier-rpc" ]
 		}
 	}
 }
