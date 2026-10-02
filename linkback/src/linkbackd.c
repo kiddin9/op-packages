@@ -40,6 +40,12 @@ static struct ubus_context *ubus_ctx = NULL;
 // Prototypes
 static void restore_all_metrics(void);
 static bool validate_loaded_config(void);
+static volatile sig_atomic_t hotplug_triggered = 0;
+static void handle_sigusr1(int sig) {
+	(void)sig;
+	hotplug_triggered = 1;
+}
+
 static void handle_signal(int sig) {
 	syslog(LOG_INFO, "Received signal %d, exiting...", sig);
 	keep_running = false;
@@ -439,6 +445,9 @@ static bool load_config(void) {
 
 		const char *failover = uci_lookup_option_string(ctx, global_sec, "failover_delay");
 		if (failover) global_cfg.failover_delay = atoi(failover);
+
+		global_cfg.is_up = false;
+		global_cfg.last_is_up = false;
 	}
 
 	// Parse links
@@ -527,6 +536,7 @@ static bool load_config(void) {
 		// Default runtime states
 		link->healthy = true;
 		link->is_up = false;
+		link->last_is_up = false;
 		link->last_checked = 0; // Force immediate check on startup
 
 		link_count++;
@@ -843,9 +853,10 @@ int main(int argc, char **argv) {
 	openlog("linkbackd", LOG_PID | LOG_NDELAY, LOG_DAEMON);
 	syslog(LOG_INFO, "Starting LinkBack daemon...");
 
-	// Register signal handlers for clean exits and metric restoration
+	// Register signal handlers for clean exits, metric restoration, and hotplug wakeup
 	signal(SIGTERM, handle_signal);
 	signal(SIGINT, handle_signal);
+	signal(SIGUSR1, handle_sigusr1);
 
 	// Load configuration
 	if (!load_config()) {
@@ -871,59 +882,137 @@ int main(int argc, char **argv) {
 		time_t now = time(NULL);
 		bool any_checked = false;
 
-		// If in multi_gw mode, resolve bind interface physical device once per cycle
+		bool force_check = false;
+		if (hotplug_triggered) {
+			hotplug_triggered = 0;
+			force_check = true;
+			syslog(LOG_INFO, "[Diagnostic] Hotplug signal received (SIGUSR1), triggering immediate interface & health evaluation.");
+		}
+
+		// In multi_gw mode, resolve and verify the bind interface state first
 		if (global_cfg.mode == MODE_MULTI_GW) {
 			char dev[MAX_NAME_LEN] = {0};
 			char gw[MAX_IP_LEN] = {0};
 			bool if_up = false;
-			get_interface_ubus_status(global_cfg.interface, dev, sizeof(dev), gw, sizeof(gw), &if_up);
-			strncpy(global_cfg.device, dev, sizeof(global_cfg.device) - 1);
+			bool ubus_ok = get_interface_ubus_status(global_cfg.interface, dev, sizeof(dev), gw, sizeof(gw), &if_up);
+			bool physical_up = ubus_ok && if_up && (dev[0] != '\0');
+
+			if (dev[0] != '\0') {
+				strncpy(global_cfg.device, dev, sizeof(global_cfg.device) - 1);
+				global_cfg.device[sizeof(global_cfg.device) - 1] = '\0';
+			}
+			global_cfg.is_up = physical_up;
+
+			// Diagnostic logging on bind interface UP/DOWN transition
+			if (global_cfg.is_up != global_cfg.last_is_up) {
+				syslog(LOG_NOTICE, "[Diagnostic] Multi-GW bind interface '%s' (%s) link state changed: %s -> %s",
+				       global_cfg.interface, global_cfg.device[0] ? global_cfg.device : "unknown",
+				       global_cfg.last_is_up ? "UP" : "DOWN",
+				       global_cfg.is_up ? "UP" : "DOWN");
+				global_cfg.last_is_up = global_cfg.is_up;
+			}
+
+			// P2 & Diagnostic: Global short-circuit when bind interface is DOWN.
+			// Stop all gateway probe attempts immediately without wasting timeout intervals.
+			if (!global_cfg.is_up) {
+				bool state_changed = false;
+				for (int i = 0; i < link_count; i++) {
+					link_t *link = &links[i];
+					link->is_up = false;
+					if (global_cfg.device[0] != '\0') {
+						strncpy(link->device, global_cfg.device, sizeof(link->device) - 1);
+						link->device[sizeof(link->device) - 1] = '\0';
+					}
+					if (link->gateway_cfg[0] != '\0') {
+						strncpy(link->gateway, link->gateway_cfg, sizeof(link->gateway) - 1);
+						link->gateway[sizeof(link->gateway) - 1] = '\0';
+					}
+
+					if (link->healthy || link->current_metric != 1000 + link->metric) {
+						syslog(LOG_WARNING, "[Diagnostic] Multi-GW bind interface '%s' is DOWN. Short-circuiting probe for target '%s' (gw=%s) and demoting metric.",
+						       global_cfg.interface, link->name, link->gateway[0] ? link->gateway : "none");
+						link->healthy = false;
+						update_route_metric(link, 1000 + link->metric, -1);
+						state_changed = true;
+					}
+
+					link->current_score = 0;
+					link->ping_ok = false;
+					link->dns_ok = false;
+					link->tcp_ok = false;
+					link->consecutive_success = 0;
+					link->consecutive_failure = link->failover_delay;
+					link->last_checked = now;
+				}
+
+				if (state_changed) {
+					write_status_json();
+				}
+				sleep(1);
+				continue;
+			}
 		}
 
 		for (int i = 0; i < link_count; i++) {
 			link_t *link = &links[i];
 
-			// Check if this link is due for checking
-			if (now - link->last_checked < link->check_interval) {
+			// Check if this link is due for checking (bypass interval if hotplug triggered)
+			if (!force_check && (now - link->last_checked < link->check_interval)) {
 				continue;
 			}
 			link->last_checked = now;
 			any_checked = true;
 
 			// 1. Fetch real-time netifd status
-			char dev[MAX_NAME_LEN] = {0};
-			char gw[MAX_IP_LEN] = {0};
-			bool is_up = false;
-
 			if (global_cfg.mode == MODE_MULTI_GW) {
-				// Inherit physical device from global bind interface
-				is_up = (global_cfg.device[0] != '\0');
-				strncpy(dev, global_cfg.device, sizeof(dev) - 1);
-				strncpy(gw, link->gateway_cfg, sizeof(gw) - 1);
+				// Inherit verified UP device from global bind interface
+				link->is_up = true;
+				strncpy(link->device, global_cfg.device, sizeof(link->device) - 1);
+				link->device[sizeof(link->device) - 1] = '\0';
+				strncpy(link->gateway, link->gateway_cfg, sizeof(link->gateway) - 1);
+				link->gateway[sizeof(link->gateway) - 1] = '\0';
 			} else {
-				// Query netifd for WAN interface
-				get_interface_ubus_status(link->name, dev, sizeof(dev), gw, sizeof(gw), &is_up);
-			}
+				// Multi-WAN mode: query netifd for independent interface status
+				char dev[MAX_NAME_LEN] = {0};
+				char gw[MAX_IP_LEN] = {0};
+				bool is_up = false;
+				bool ubus_ok = get_interface_ubus_status(link->name, dev, sizeof(dev), gw, sizeof(gw), &is_up);
+				bool physical_up = ubus_ok && is_up && (dev[0] != '\0');
 
-			link->is_up = is_up;
-			strncpy(link->device, dev, MAX_NAME_LEN - 1);
-			strncpy(link->gateway, gw, MAX_IP_LEN - 1);
-
-			// P2 optimization: Interface down short-circuit
-			if (!is_up || dev[0] == '\0') {
-				link->healthy = false;
-				link->current_score = 0;
-				link->ping_ok = false;
-				link->dns_ok = false;
-				link->tcp_ok = false;
-				link->consecutive_success = 0;
-				link->consecutive_failure = 0;
-
-				// If it still has low metric, float it immediately
-				if (link->current_metric == link->metric) {
-					update_route_metric(link, 1000 + link->metric, -1);
+				if (physical_up != link->last_is_up) {
+					syslog(LOG_NOTICE, "[Diagnostic] Multi-WAN interface '%s' (%s) link state changed: %s -> %s",
+					       link->name, dev[0] ? dev : "unknown",
+					       link->last_is_up ? "UP" : "DOWN",
+					       physical_up ? "UP" : "DOWN");
+					link->last_is_up = physical_up;
 				}
-				continue;
+
+				link->is_up = physical_up;
+				if (dev[0] != '\0') {
+					strncpy(link->device, dev, sizeof(link->device) - 1);
+					link->device[sizeof(link->device) - 1] = '\0';
+				}
+				if (gw[0] != '\0') {
+					strncpy(link->gateway, gw, sizeof(link->gateway) - 1);
+					link->gateway[sizeof(link->gateway) - 1] = '\0';
+				}
+
+				// Local short-circuit: interface DOWN, skip probe for this link
+				if (!physical_up) {
+					if (link->healthy || link->current_metric != 1000 + link->metric) {
+						syslog(LOG_WARNING, "[Diagnostic] Multi-WAN interface '%s' is DOWN. Short-circuiting probe for link '%s' and demoting metric.",
+						       link->name, link->name);
+						link->healthy = false;
+						update_route_metric(link, 1000 + link->metric, -1);
+					}
+					link->current_score = 0;
+					link->ping_ok = false;
+					link->dns_ok = false;
+					link->tcp_ok = false;
+					link->consecutive_success = 0;
+					link->consecutive_failure = link->failover_delay;
+					continue;
+				}
 			}
 
 			// 2. Perform health checks (P2: 1s non-blocking timeout)
@@ -973,7 +1062,7 @@ int main(int argc, char **argv) {
 				if (!link->healthy && link->consecutive_success >= link->recovery_delay) {
 					// Recovered! Failback!
 					link->healthy = true;
-					syslog(LOG_NOTICE, "Link %s (%s, gw=%s, priority %d) recovered to healthy after %d successes.", 
+					syslog(LOG_NOTICE, "[Diagnostic] Link %s (%s, gw=%s, priority %d) recovered to healthy after %d successes.", 
 					       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, link->consecutive_success);
 					
 					// Restore original metric
@@ -986,7 +1075,7 @@ int main(int argc, char **argv) {
 				if (link->healthy && link->consecutive_failure >= link->failover_delay) {
 					// Failed! Failover!
 					link->healthy = false;
-					syslog(LOG_WARNING, "Link %s (%s, gw=%s, priority %d) went down after %d failures.", 
+					syslog(LOG_WARNING, "[Diagnostic] Link %s (%s, gw=%s, priority %d) went down after %d failures.", 
 					       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, link->consecutive_failure);
 					
 					// Push metric out of choice range
@@ -999,7 +1088,7 @@ int main(int argc, char **argv) {
 				int expected_metric = (link->is_up && link->healthy) ? link->metric : (1000 + link->metric);
 				int real_metric = get_system_route_metric(link->device, link->gateway, expected_metric);
 				if (real_metric != -1 && real_metric != expected_metric) {
-					syslog(LOG_WARNING, "Route metric mismatch detected on %s (%s, gw=%s, priority %d): expected %d, got %d. Correcting...", 
+					syslog(LOG_WARNING, "[Diagnostic] Route metric mismatch detected on %s (%s, gw=%s, priority %d): expected %d, got %d. Correcting...", 
 					       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, expected_metric, real_metric);
 					update_route_metric(link, expected_metric, real_metric);
 				}

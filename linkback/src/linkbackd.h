@@ -51,6 +51,7 @@ typedef struct {
 	char device[MAX_NAME_LEN];   // physical interface name e.g., pppoe-wan, eth1, br-lan
 	char gateway[MAX_IP_LEN];   // gateway IP address
 	bool is_up;                 // whether interface is reported up by netifd
+	bool last_is_up;            // track interface UP/DOWN transition for logging
 	bool healthy;               // daemon link health state
 	int consecutive_success;
 	int consecutive_failure;
@@ -73,6 +74,8 @@ typedef struct {
 	linkback_mode_t mode;
 	char interface[MAX_NAME_LEN]; // Bind interface in multi_gw mode (e.g. lan)
 	char device[MAX_NAME_LEN];    // Resolved device in multi_gw mode (e.g. br-lan)
+	bool is_up;                   // Bind interface netifd up status
+	bool last_is_up;              // track bind interface UP/DOWN transition for logging
 	int check_interval;
 	int check_timeout;
 	int recovery_delay;
