@@ -90,7 +90,7 @@ if (!migration_crontab) {
 if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 	uci.set(uciconfig, ucimain, 'log_level', 'warn');
 
-/* v28.9.1.16: cn_ip_fallback default flipped to '1' (tutorial §2.1 / docs/linux.json 与 pro 的差距分析.md).
+/* v28.9.1.16: cn_ip_fallback default flipped to '1'.
  * Existing users get the behaviour change only when they ask for it, so write
  * '0' explicitly into their config on upgrade; new installs read '1' straight
  * from /etc/config/homeproxy-pro (the package ships with that as the default).

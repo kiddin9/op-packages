@@ -2,7 +2,7 @@ TARGET := linkbackd
 OBJS := linkbackd.o
 
 CFLAGS += -Wall -O2
-LIBS := -luci
+LIBS := -luci -lubox -lubus -lblobmsg_json
 
 all: $(TARGET)
 

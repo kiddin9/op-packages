@@ -44,20 +44,15 @@ gen_set_definition() {
 	[ -n "$uci_elems" ] && { [ -n "$elems" ] && elems="${elems}, "; elems="${elems}${uci_elems}"; }
 
 	file_path=$(uci -q get "$CONFIG.$section.file_path")
-	download_url=$(uci -q get "$CONFIG.$section.download_url")
-	if [ -n "$download_url" ] && [ -n "$file_path" ]; then
-		if [ ! -f "$file_path" ]; then
-			echo "Downloading $section data from $download_url to $file_path..." >&2
-			wget -q -O "$file_path" "$download_url" --timeout=10 --no-check-certificate
-			[ $? -ne 0 ] && { echo "Failed to download $section data" >&2; rm -f "$file_path"; }
-		fi
-	fi
-
-	if [ -n "$file_path" ] && [ -f "$file_path" ]; then
-		local file_elems=$(get_file_elements "$file_path")
-		if [ -n "$file_elems" ]; then
-			[ -n "$elems" ] && elems="${elems}, "
-			elems="${elems}${file_elems}"
+	if [ -n "$file_path" ]; then
+		if [ -f "$file_path" ]; then
+			local file_elems=$(get_file_elements "$file_path")
+			if [ -n "$file_elems" ]; then
+				[ -n "$elems" ] && elems="${elems}, "
+				elems="${elems}${file_elems}"
+			fi
+		else
+			log_debug "Set file $file_path not found, continuing without file elements"
 		fi
 	fi
 
@@ -183,15 +178,19 @@ TCP_ENABLED=$(uci -q get "$CONFIG.global.tcp_enabled" || echo "1")
 UDP_ENABLED=$(uci -q get "$CONFIG.global.udp_enabled" || echo "1")
 TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
 PROXY_SERVER_IP_ADDR=$(uci -q get "$CONFIG.global.proxy_server_ip_addr")
+INTERFACE=$(uci -q get "$CONFIG.global.interface")
+[ -z "$INTERFACE" ] && INTERFACE="br-lan"
 
 if [ "$TCP_ENABLED" = "1" ]; then
     cat >> "$OUTPUT_FILE" << EOF
     chain LAN_MARKFLOW_TCP {
         type filter hook prerouting priority mangle; policy accept;
+        iifname != "$INTERFACE" return
         fib daddr type { unspec, local, anycast, multicast } counter return
 EOF
     if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
-        echo "        ip saddr $PROXY_SERVER_IP_ADDR ip protocol tcp counter return" >> "$OUTPUT_FILE"
+        echo "        ip saddr $PROXY_SERVER_IP_ADDR counter return" >> "$OUTPUT_FILE"
+        echo "        ip daddr $PROXY_SERVER_IP_ADDR counter return" >> "$OUTPUT_FILE"
     fi
     for s in $SECTIONS_TCP; do process_rule "$s" "tcp" >> "$OUTPUT_FILE"; done
     echo "        ip protocol tcp counter meta mark set $TRAFFIC_MARK" >> "$OUTPUT_FILE"
@@ -202,10 +201,12 @@ if [ "$UDP_ENABLED" = "1" ]; then
     cat >> "$OUTPUT_FILE" << EOF
     chain LAN_MARKFLOW_UDP {
         type filter hook prerouting priority mangle; policy accept;
+        iifname != "$INTERFACE" return
         fib daddr type { unspec, local, anycast, multicast } counter return
 EOF
     if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
-        echo "        ip saddr $PROXY_SERVER_IP_ADDR ip protocol udp counter return" >> "$OUTPUT_FILE"
+        echo "        ip saddr $PROXY_SERVER_IP_ADDR counter return" >> "$OUTPUT_FILE"
+        echo "        ip daddr $PROXY_SERVER_IP_ADDR counter return" >> "$OUTPUT_FILE"
     fi
     for s in $SECTIONS_UDP; do process_rule "$s" "udp" >> "$OUTPUT_FILE"; done
     echo "        ip protocol udp counter meta mark set $TRAFFIC_MARK" >> "$OUTPUT_FILE"

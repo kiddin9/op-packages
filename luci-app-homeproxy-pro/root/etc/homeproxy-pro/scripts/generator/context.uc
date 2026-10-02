@@ -216,7 +216,7 @@ export function build_context(dm, env) {
 			? (dm.dns.settings || {}).default_strategy
 			: ((ipv6_support !== '1') ? 'ipv4_only' : null),
 		/* cn_ip_fallback: evaluate/match_response fallback for unknown-host
-		 * queries (tutorial §2.1 / docs/linux.json 与 pro 的差距分析.md).
+		 * queries.
 		 * The v28.9.1.16 flip turns this on by default for fresh installs;
 		 * migrate_config.uc writes '0' explicitly for upgrade-existing users
 		 * so they keep the prior behaviour until they opt in. '0' is truthy
@@ -225,8 +225,8 @@ export function build_context(dm, env) {
 		 * exactly what they had. */
 		cn_ip_fallback: dm.general.cn_ip_fallback || '1',
 		/* sniffer_advanced_mode: when '1' (opt-in), the route sniff rule
-		 * gets the universal protocol list + 100ms timeout (tutorial §2.7 /
-		 * docs/linux.json 与 pro 的差距分析.md). Default '0' preserves the
+		 * gets the universal protocol list + 100ms timeout.
+		 * Default '0' preserves the
 		 * 300ms / default-list behaviour so an upgrade is invisible. */
 		sniffer_advanced_mode: dm.general.sniffer_advanced_mode || '0',
 		main_urltest_nodes: dm.general.main_urltest_nodes || [],

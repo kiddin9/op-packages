@@ -12,7 +12,12 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <errno.h>
+
 #include <uci.h>
+#include <libubox/blobmsg.h>
+#include <libubox/blobmsg_json.h>
+#include <libubus.h>
+
 #include "linkbackd.h"
 
 // DNS Header struct for raw check
@@ -30,6 +35,7 @@ static global_config_t global_cfg;
 static link_t links[MAX_LINKS];
 static int link_count = 0;
 static volatile bool keep_running = true;
+static struct ubus_context *ubus_ctx = NULL;
 
 // Prototypes
 static void restore_all_metrics(void);
@@ -39,76 +45,156 @@ static void handle_signal(int sig) {
 	keep_running = false;
 }
 
-// Ubus popen JSON parser
-static bool get_interface_ubus_status(const char *ifname, char *device, int dev_len, char *gateway, int gw_len, bool *is_up) {
-	char cmd[256];
-	snprintf(cmd, sizeof(cmd), "ubus call network.interface.%s status 2>/dev/null", ifname);
-	FILE *fp = popen(cmd, "r");
-	if (!fp) return false;
+// Ubus Connection Management
+static bool init_ubus_connection(void) {
+	if (ubus_ctx) {
+		return true;
+	}
+	ubus_ctx = ubus_connect(NULL);
+	if (!ubus_ctx) {
+		syslog(LOG_ERR, "Failed to connect to ubus daemon");
+		return false;
+	}
+	return true;
+}
 
-	char buf[4096] = {0};
-	int bytes_read = fread(buf, 1, sizeof(buf) - 1, fp);
-	pclose(fp);
+static void close_ubus_connection(void) {
+	if (ubus_ctx) {
+		ubus_free(ubus_ctx);
+		ubus_ctx = NULL;
+	}
+}
 
-	if (bytes_read <= 0) return false;
+// Ubus Callback & Parsing Data Structure (P1 Refactor: Native Blobmsg Parser)
+struct iface_status_data {
+	bool up;
+	char device[MAX_NAME_LEN];
+	char gateway[MAX_IP_LEN];
+	bool found;
+};
 
-	// Check if interface is up
-	*is_up = false;
-	char *p_up = strstr(buf, "\"up\":");
-	if (p_up) {
-		char *p_true = strstr(p_up, "true");
-		// Ensure 'true' belongs to this property and isn't far away
-		if (p_true && p_true - p_up < 10) {
-			*is_up = true;
-		}
+enum {
+	IFACE_ATTR_UP,
+	IFACE_ATTR_DEVICE,
+	IFACE_ATTR_L3_DEVICE,
+	IFACE_ATTR_ROUTE,
+	__IFACE_ATTR_MAX
+};
+
+static const struct blobmsg_policy iface_policy[__IFACE_ATTR_MAX] = {
+	[IFACE_ATTR_UP] = { .name = "up", .type = BLOBMSG_TYPE_BOOL },
+	[IFACE_ATTR_DEVICE] = { .name = "device", .type = BLOBMSG_TYPE_STRING },
+	[IFACE_ATTR_L3_DEVICE] = { .name = "l3_device", .type = BLOBMSG_TYPE_STRING },
+	[IFACE_ATTR_ROUTE] = { .name = "route", .type = BLOBMSG_TYPE_ARRAY },
+};
+
+enum {
+	ROUTE_ATTR_TARGET,
+	ROUTE_ATTR_NEXTHOP,
+	ROUTE_ATTR_MASK,
+	__ROUTE_ATTR_MAX
+};
+
+static const struct blobmsg_policy route_policy[__ROUTE_ATTR_MAX] = {
+	[ROUTE_ATTR_TARGET] = { .name = "target", .type = BLOBMSG_TYPE_STRING },
+	[ROUTE_ATTR_NEXTHOP] = { .name = "nexthop", .type = BLOBMSG_TYPE_STRING },
+	[ROUTE_ATTR_MASK] = { .name = "mask", .type = BLOBMSG_TYPE_INT32 },
+};
+
+static void iface_status_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
+	struct iface_status_data *data = (struct iface_status_data *)req->priv;
+	struct blob_attr *tb[__IFACE_ATTR_MAX];
+
+	if (!msg) return;
+
+	blobmsg_parse(iface_policy, __IFACE_ATTR_MAX, tb, blob_data(msg), blob_len(msg));
+
+	if (tb[IFACE_ATTR_UP]) {
+		data->up = blobmsg_get_bool(tb[IFACE_ATTR_UP]);
 	}
 
-	// Extract physical device
-	device[0] = '\0';
-	char *p_dev = strstr(buf, "\"l3_device\":");
-	int dev_key_len = 12;
-	if (!p_dev) {
-		p_dev = strstr(buf, "\"device\":");
-		dev_key_len = 9;
-	}
-	if (p_dev) {
-		char *p_start = strchr(p_dev + dev_key_len, '"');
-		if (p_start) {
-			char *p_end = strchr(p_start + 1, '"');
-			if (p_end) {
-				int len = p_end - p_start - 1;
-				if (len >= dev_len) len = dev_len - 1;
-				strncpy(device, p_start + 1, len);
-				device[len] = '\0';
-			}
-		}
+	if (tb[IFACE_ATTR_L3_DEVICE]) {
+		strncpy(data->device, blobmsg_get_string(tb[IFACE_ATTR_L3_DEVICE]), sizeof(data->device) - 1);
+	} else if (tb[IFACE_ATTR_DEVICE]) {
+		strncpy(data->device, blobmsg_get_string(tb[IFACE_ATTR_DEVICE]), sizeof(data->device) - 1);
 	}
 
-	// Extract gateway/nexthop from route list
-	gateway[0] = '\0';
-	char *p_route = strstr(buf, "\"route\":");
-	if (p_route) {
-		char *p_nexthop = strstr(p_route, "\"nexthop\":");
-		if (p_nexthop) {
-			char *p_start = strchr(p_nexthop + 10, '"');
-			if (p_start) {
-				char *p_end = strchr(p_start + 1, '"');
-				if (p_end) {
-					int len = p_end - p_start - 1;
-					if (len >= gw_len) len = gw_len - 1;
-					strncpy(gateway, p_start + 1, len);
-					gateway[len] = '\0';
+	if (tb[IFACE_ATTR_ROUTE]) {
+		struct blob_attr *cur;
+		int rem;
+		blobmsg_for_each_attr(cur, tb[IFACE_ATTR_ROUTE], rem) {
+			struct blob_attr *rt_tb[__ROUTE_ATTR_MAX];
+			blobmsg_parse(route_policy, __ROUTE_ATTR_MAX, rt_tb, blobmsg_data(cur), blobmsg_len(cur));
+
+			if (rt_tb[ROUTE_ATTR_NEXTHOP]) {
+				const char *nh = blobmsg_get_string(rt_tb[ROUTE_ATTR_NEXTHOP]);
+				if (nh && nh[0] != '\0') {
+					strncpy(data->gateway, nh, sizeof(data->gateway) - 1);
+					// Default route target 0.0.0.0 is top priority
+					if (rt_tb[ROUTE_ATTR_TARGET]) {
+						const char *tgt = blobmsg_get_string(rt_tb[ROUTE_ATTR_TARGET]);
+						if (tgt && strcmp(tgt, "0.0.0.0") == 0) {
+							break;
+						}
+					}
 				}
 			}
 		}
 	}
 
+	data->found = true;
+}
+
+static bool get_interface_ubus_status(const char *ifname, char *device, int dev_len, char *gateway, int gw_len, bool *is_up) {
+	*is_up = false;
+	if (device && dev_len > 0) device[0] = '\0';
+	if (gateway && gw_len > 0) gateway[0] = '\0';
+
+	if (!ifname || ifname[0] == '\0') {
+		return false;
+	}
+
+	if (!init_ubus_connection()) {
+		return false;
+	}
+
+	char ubus_path[64];
+	snprintf(ubus_path, sizeof(ubus_path), "network.interface.%s", ifname);
+
+	uint32_t id;
+	if (ubus_lookup_id(ubus_ctx, ubus_path, &id) != 0) {
+		// Reconnect once in case ubusd restarted
+		close_ubus_connection();
+		if (!init_ubus_connection() || ubus_lookup_id(ubus_ctx, ubus_path, &id) != 0) {
+			return false;
+		}
+	}
+
+	struct iface_status_data data;
+	memset(&data, 0, sizeof(data));
+
+	int ret = ubus_invoke(ubus_ctx, id, "status", NULL, iface_status_cb, &data, 1000);
+	if (ret != 0 || !data.found) {
+		return false;
+	}
+
+	*is_up = data.up;
+	if (device && dev_len > 0) {
+		strncpy(device, data.device, dev_len - 1);
+		device[dev_len - 1] = '\0';
+	}
+	if (gateway && gw_len > 0) {
+		strncpy(gateway, data.gateway, gw_len - 1);
+		gateway[gw_len - 1] = '\0';
+	}
+
 	return true;
 }
 
-// Ping check
+// Ping check (P2: Strict timeout limit and early exit)
 static bool run_ping_check(const char *device, const char *target, int timeout, int *rtt_ms) {
 	if (device[0] == '\0' || target[0] == '\0') return false;
+	if (timeout <= 0) timeout = 1;
 
 	char cmd[256];
 	snprintf(cmd, sizeof(cmd), "ping -I %s -c 1 -W %d %s 2>/dev/null", device, timeout, target);
@@ -130,9 +216,10 @@ static bool run_ping_check(const char *device, const char *target, int timeout, 
 	return ok && (WIFEXITED(status) && WEXITSTATUS(status) == 0);
 }
 
-// DNS check
+// DNS check (P2: Non-blocking socket check with 1s default timeout)
 static bool run_dns_check(const char *device, const char *dns_server, const char *domain, int timeout, int *rtt_ms) {
 	if (device[0] == '\0' || dns_server[0] == '\0' || domain[0] == '\0') return false;
+	if (timeout <= 0) timeout = 1;
 
 	struct timeval start, end;
 	gettimeofday(&start, NULL);
@@ -181,12 +268,9 @@ static bool run_dns_check(const char *device, const char *dns_server, const char
 	}
 	*dst++ = 0;
 
-	unsigned short *qtype = (unsigned short *)dst;
-	*qtype = htons(1); // A Record
-	dst += 2;
-	unsigned short *qclass = (unsigned short *)dst;
-	*qclass = htons(1); // IN
-	dst += 2;
+	// Safe byte-by-byte write to prevent unaligned memory access SIGBUS on MIPS/ARM
+	*dst++ = 0; *dst++ = 1; // QTYPE: A (0x0001)
+	*dst++ = 0; *dst++ = 1; // QCLASS: IN (0x0001)
 
 	int packet_len = dst - packet;
 
@@ -219,16 +303,17 @@ static bool run_dns_check(const char *device, const char *dns_server, const char
 	if (resp_len < 12) return false;
 
 	struct dns_header *resp_dns = (struct dns_header *)response;
-	if (ntohs(resp_dns->id) != getpid()) return false;
+	if (ntohs(resp_dns->id) != (unsigned short)getpid()) return false;
 
 	gettimeofday(&end, NULL);
 	*rtt_ms = (int)((end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) / 1000);
 	return true;
 }
 
-// TCP check
+// TCP check (P2: Non-blocking socket connect with 1s default timeout)
 static bool run_tcp_check(const char *device, const char *tcp_target, int port, int timeout, int *rtt_ms) {
 	if (device[0] == '\0' || tcp_target[0] == '\0' || port <= 0) return false;
+	if (timeout <= 0) timeout = 1;
 
 	struct timeval start, end;
 	gettimeofday(&start, NULL);
@@ -305,8 +390,15 @@ static bool load_config(void) {
 		return false;
 	}
 
-	// Parse global config
+	// Default global settings
 	global_cfg.enabled = false;
+	global_cfg.mode = MODE_MULTI_WAN;
+	strncpy(global_cfg.interface, "wan", sizeof(global_cfg.interface) - 1);
+	global_cfg.device[0] = '\0';
+	global_cfg.check_interval = 5;
+	global_cfg.check_timeout = 1;
+	global_cfg.recovery_delay = 3;
+	global_cfg.failover_delay = 2;
 
 	struct uci_section *global_sec = uci_lookup_section(ctx, pkg, "global");
 	if (!global_sec) {
@@ -323,6 +415,30 @@ static bool load_config(void) {
 	if (global_sec) {
 		const char *enabled = uci_lookup_option_string(ctx, global_sec, "enabled");
 		global_cfg.enabled = (enabled && strcmp(enabled, "1") == 0);
+
+		const char *mode = uci_lookup_option_string(ctx, global_sec, "mode");
+		if (mode && strcmp(mode, "multi_gw") == 0) {
+			global_cfg.mode = MODE_MULTI_GW;
+		} else {
+			global_cfg.mode = MODE_MULTI_WAN;
+		}
+
+		const char *iface = uci_lookup_option_string(ctx, global_sec, "interface");
+		if (iface && iface[0] != '\0') {
+			strncpy(global_cfg.interface, iface, sizeof(global_cfg.interface) - 1);
+		}
+
+		const char *interval = uci_lookup_option_string(ctx, global_sec, "check_interval");
+		if (interval) global_cfg.check_interval = atoi(interval);
+
+		const char *timeout = uci_lookup_option_string(ctx, global_sec, "check_timeout");
+		if (timeout) global_cfg.check_timeout = atoi(timeout);
+
+		const char *recovery = uci_lookup_option_string(ctx, global_sec, "recovery_delay");
+		if (recovery) global_cfg.recovery_delay = atoi(recovery);
+
+		const char *failover = uci_lookup_option_string(ctx, global_sec, "failover_delay");
+		if (failover) global_cfg.failover_delay = atoi(failover);
 	}
 
 	// Parse links
@@ -339,7 +455,7 @@ static bool load_config(void) {
 		memset(link, 0, sizeof(link_t));
 
 		const char *name = uci_lookup_option_string(ctx, s, "name");
-		if (!name) continue;
+		if (!name || name[0] == '\0') continue;
 		strncpy(link->name, name, MAX_NAME_LEN - 1);
 
 		link->enabled = true;
@@ -351,6 +467,13 @@ static bool load_config(void) {
 		link->metric = link->priority * 10;
 		link->current_metric = link->metric;
 
+		// Parse gateway for multi_gw mode
+		const char *gw = uci_lookup_option_string(ctx, s, "gateway");
+		if (gw) {
+			strncpy(link->gateway_cfg, gw, MAX_IP_LEN - 1);
+			strncpy(link->gateway, gw, MAX_IP_LEN - 1);
+		}
+
 		// Parse ping targets (split by comma or space)
 		const char *pings = uci_lookup_option_string(ctx, s, "ping_targets");
 		if (pings) {
@@ -359,11 +482,9 @@ static bool load_config(void) {
 			tmp[sizeof(tmp) - 1] = '\0';
 			char *token = strtok(tmp, ", \t");
 			while (token && link->ping_target_count < MAX_TARGETS) {
-				// Trim leading whitespace
 				while (*token == ' ' || *token == '\t' || *token == '\r' || *token == '\n') {
 					token++;
 				}
-				// Trim trailing whitespace
 				char *end = token + strlen(token) - 1;
 				while (end > token && (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')) {
 					*end = '\0';
@@ -373,7 +494,7 @@ static bool load_config(void) {
 					strncpy(link->ping_targets[link->ping_target_count], token, MAX_IP_LEN - 1);
 					link->ping_target_count++;
 				}
-				token = strtok(NULL, ",");
+				token = strtok(NULL, ", \t");
 			}
 		}
 
@@ -392,16 +513,16 @@ static bool load_config(void) {
 		if (tcp_p) link->tcp_port = atoi(tcp_p);
 
 		const char *interval = uci_lookup_option_string(ctx, s, "check_interval");
-		link->check_interval = interval ? atoi(interval) : 5;
+		link->check_interval = interval ? atoi(interval) : global_cfg.check_interval;
 
 		const char *timeout = uci_lookup_option_string(ctx, s, "check_timeout");
-		link->check_timeout = timeout ? atoi(timeout) : 3;
+		link->check_timeout = timeout ? atoi(timeout) : global_cfg.check_timeout;
 
 		const char *recovery = uci_lookup_option_string(ctx, s, "recovery_delay");
-		link->recovery_delay = recovery ? atoi(recovery) : 3;
+		link->recovery_delay = recovery ? atoi(recovery) : global_cfg.recovery_delay;
 
 		const char *failover = uci_lookup_option_string(ctx, s, "failover_delay");
-		link->failover_delay = failover ? atoi(failover) : 2;
+		link->failover_delay = failover ? atoi(failover) : global_cfg.failover_delay;
 
 		// Default runtime states
 		link->healthy = true;
@@ -422,8 +543,7 @@ static bool load_config(void) {
 	return true;
 }
 
-// Startup-time defensive validation. LuCI-side checks can be bypassed by
-// direct UCI edits, so daemon must refuse unsafe/incomplete configs.
+// Startup-time defensive validation.
 static bool validate_loaded_config(void) {
 	if (!global_cfg.enabled) {
 		return true;
@@ -438,8 +558,20 @@ static bool validate_loaded_config(void) {
 		link_t *a = &links[i];
 
 		if (a->name[0] == '\0') {
-			syslog(LOG_ERR, "Invalid config: link[%d] has empty interface name.", i);
+			syslog(LOG_ERR, "Invalid config: link[%d] has empty name.", i);
 			return false;
+		}
+
+		if (global_cfg.mode == MODE_MULTI_GW) {
+			if (a->gateway_cfg[0] == '\0') {
+				syslog(LOG_ERR, "Invalid config: link %s requires gateway IP in multi_gw mode.", a->name);
+				return false;
+			}
+			struct in_addr test_addr;
+			if (inet_pton(AF_INET, a->gateway_cfg, &test_addr) <= 0) {
+				syslog(LOG_ERR, "Invalid config: link %s has invalid gateway IP: %s.", a->name, a->gateway_cfg);
+				return false;
+			}
 		}
 
 		if (a->priority <= 0) {
@@ -452,12 +584,23 @@ static bool validate_loaded_config(void) {
 			return false;
 		}
 
-		// No duplicate priorities
+		// Check for conflicts
 		for (int j = i + 1; j < link_count; j++) {
 			link_t *b = &links[j];
 			if (a->priority == b->priority) {
 				syslog(LOG_ERR, "Invalid config: duplicate priority %d on links %s and %s.", a->priority, a->name, b->name);
 				return false;
+			}
+			if (global_cfg.mode == MODE_MULTI_GW) {
+				if (strcmp(a->gateway_cfg, b->gateway_cfg) == 0) {
+					syslog(LOG_ERR, "Invalid config: duplicate gateway %s on links %s and %s.", a->gateway_cfg, a->name, b->name);
+					return false;
+				}
+			} else {
+				if (strcmp(a->name, b->name) == 0) {
+					syslog(LOG_ERR, "Invalid config: duplicate interface %s.", a->name);
+					return false;
+				}
 			}
 		}
 
@@ -499,26 +642,38 @@ static bool validate_loaded_config(void) {
 	return true;
 }
 
-// Retrieve the real default route metric for a device from /proc/net/route
-static int get_system_route_metric(const char *device, int expected_metric) {
+// Retrieve the real default route metric for a device and optional gateway from /proc/net/route
+static int get_system_route_metric(const char *device, const char *gateway, int expected_metric) {
 	if (device[0] == '\0') return -1;
 	FILE *fp = fopen("/proc/net/route", "r");
 	if (!fp) return -1;
 
 	char line[256];
 	char iface[32];
-	unsigned long dest;
+	unsigned long dest = 0;
+	unsigned long gw_hex = 0;
 	int metric = -1;
 	int first_found_metric = -1;
 	bool found_expected = false;
 
+	unsigned long expected_gw_hex = 0;
+	if (gateway && gateway[0] != '\0') {
+		struct in_addr addr;
+		if (inet_pton(AF_INET, gateway, &addr) == 1) {
+			expected_gw_hex = (unsigned long)addr.s_addr;
+		}
+	}
+
 	// Skip header line
 	if (fgets(line, sizeof(line), fp)) {
 		while (fgets(line, sizeof(line), fp)) {
-			// Destination is 2nd column, Metric is 7th column, dest is in hex.
-			// Use %*s for Gateway and Flags to safely skip non-numeric characters.
-			if (sscanf(line, "%31s %lx %*s %*s %*d %*d %d", iface, &dest, &metric) == 3) {
+			// Format: Iface Destination Gateway Flags RefCnt Use Metric Mask MTU Window IRTT
+			if (sscanf(line, "%31s %lx %lx %*s %*d %*d %d", iface, &dest, &gw_hex, &metric) == 4) {
 				if (strcmp(iface, device) == 0 && dest == 0) {
+					// In multi-gateway mode, check if gateway matches
+					if (expected_gw_hex != 0 && gw_hex != expected_gw_hex) {
+						continue;
+					}
 					if (first_found_metric == -1) {
 						first_found_metric = metric;
 					}
@@ -584,8 +739,8 @@ static void update_route_metric(link_t *link, int new_metric, int old_metric_to_
 		         link->device, new_metric);
 	}
 
-	syslog(LOG_INFO, "Applying route metric update on link %s (%s, priority %d): %d -> %d", 
-	       link->name, link->device, link->priority, link->current_metric, new_metric);
+	syslog(LOG_INFO, "Applying route metric update on link %s (dev=%s, gw=%s, priority=%d): %d -> %d", 
+	       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, link->current_metric, new_metric);
 	
 	int rc = system(cmd);
 	if (rc == 0) {
@@ -635,7 +790,9 @@ static void write_status_json(void) {
 
 	fprintf(fp, "{\n");
 	fprintf(fp, "  \"enabled\": %s,\n", global_cfg.enabled ? "true" : "false");
-	fprintf(fp, "  \"check_interval\": 5,\n");
+	fprintf(fp, "  \"mode\": \"%s\",\n", (global_cfg.mode == MODE_MULTI_GW) ? "multi_gw" : "multi_wan");
+	fprintf(fp, "  \"interface\": \"%s\",\n", global_cfg.interface);
+	fprintf(fp, "  \"check_interval\": %d,\n", global_cfg.check_interval);
 
 	// Find current active gateway link (first healthy link ordered by priority)
 	char active_link[MAX_NAME_LEN] = "none";
@@ -706,17 +863,27 @@ int main(int argc, char **argv) {
 	// Sort links by priority (lowest priority number first)
 	qsort(links, link_count, sizeof(link_t), compare_links);
 
-	syslog(LOG_INFO, "Loaded %d monitored interfaces. Starting health check scheduler.", link_count);
+	syslog(LOG_INFO, "Loaded %d monitored targets in %s mode. Starting health check scheduler.", 
+	       link_count, (global_cfg.mode == MODE_MULTI_GW) ? "multi_gw" : "multi_wan");
 
 	// Core check loop
 	while (keep_running) {
 		time_t now = time(NULL);
 		bool any_checked = false;
 
+		// If in multi_gw mode, resolve bind interface physical device once per cycle
+		if (global_cfg.mode == MODE_MULTI_GW) {
+			char dev[MAX_NAME_LEN] = {0};
+			char gw[MAX_IP_LEN] = {0};
+			bool if_up = false;
+			get_interface_ubus_status(global_cfg.interface, dev, sizeof(dev), gw, sizeof(gw), &if_up);
+			strncpy(global_cfg.device, dev, sizeof(global_cfg.device) - 1);
+		}
+
 		for (int i = 0; i < link_count; i++) {
 			link_t *link = &links[i];
 
-			// Check if this interface is due for checking
+			// Check if this link is due for checking
 			if (now - link->last_checked < link->check_interval) {
 				continue;
 			}
@@ -728,13 +895,22 @@ int main(int argc, char **argv) {
 			char gw[MAX_IP_LEN] = {0};
 			bool is_up = false;
 
-			get_interface_ubus_status(link->name, dev, sizeof(dev), gw, sizeof(gw), &is_up);
+			if (global_cfg.mode == MODE_MULTI_GW) {
+				// Inherit physical device from global bind interface
+				is_up = (global_cfg.device[0] != '\0');
+				strncpy(dev, global_cfg.device, sizeof(dev) - 1);
+				strncpy(gw, link->gateway_cfg, sizeof(gw) - 1);
+			} else {
+				// Query netifd for WAN interface
+				get_interface_ubus_status(link->name, dev, sizeof(dev), gw, sizeof(gw), &is_up);
+			}
+
 			link->is_up = is_up;
 			strncpy(link->device, dev, MAX_NAME_LEN - 1);
 			strncpy(link->gateway, gw, MAX_IP_LEN - 1);
 
+			// P2 optimization: Interface down short-circuit
 			if (!is_up || dev[0] == '\0') {
-				// Interface is down in netifd, mark unhealthy immediately
 				link->healthy = false;
 				link->current_score = 0;
 				link->ping_ok = false;
@@ -743,14 +919,14 @@ int main(int argc, char **argv) {
 				link->consecutive_success = 0;
 				link->consecutive_failure = 0;
 
-				// If it still has low metric, float it
+				// If it still has low metric, float it immediately
 				if (link->current_metric == link->metric) {
 					update_route_metric(link, 1000 + link->metric, -1);
 				}
 				continue;
 			}
 
-			// 2. Perform health checks
+			// 2. Perform health checks (P2: 1s non-blocking timeout)
 			bool check_success = false;
 
 			if (link->ping_target_count > 0) {
@@ -789,8 +965,7 @@ int main(int argc, char **argv) {
 
 			link->current_score = check_success ? 1 : 0;
 
-			// 3. Evaluate health state changes (filtering and delay)
-
+			// 3. Evaluate health state changes (anti-flap delay)
 			if (check_success) {
 				link->consecutive_success++;
 				link->consecutive_failure = 0;
@@ -798,8 +973,8 @@ int main(int argc, char **argv) {
 				if (!link->healthy && link->consecutive_success >= link->recovery_delay) {
 					// Recovered! Failback!
 					link->healthy = true;
-					syslog(LOG_NOTICE, "Link %s (%s, priority %d) recovered to healthy after %d successes.", 
-					       link->name, link->device, link->priority, link->consecutive_success);
+					syslog(LOG_NOTICE, "Link %s (%s, gw=%s, priority %d) recovered to healthy after %d successes.", 
+					       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, link->consecutive_success);
 					
 					// Restore original metric
 					update_route_metric(link, link->metric, -1);
@@ -811,8 +986,8 @@ int main(int argc, char **argv) {
 				if (link->healthy && link->consecutive_failure >= link->failover_delay) {
 					// Failed! Failover!
 					link->healthy = false;
-					syslog(LOG_WARNING, "Link %s (%s, priority %d) went down after %d failures.", 
-					       link->name, link->device, link->priority, link->consecutive_failure);
+					syslog(LOG_WARNING, "Link %s (%s, gw=%s, priority %d) went down after %d failures.", 
+					       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, link->consecutive_failure);
 					
 					// Push metric out of choice range
 					update_route_metric(link, 1000 + link->metric, -1);
@@ -822,26 +997,25 @@ int main(int argc, char **argv) {
 			// 4. Active routing metric self-healing to prevent external/netifd interference
 			if (link->device[0] != '\0') {
 				int expected_metric = (link->is_up && link->healthy) ? link->metric : (1000 + link->metric);
-				int real_metric = get_system_route_metric(link->device, expected_metric);
+				int real_metric = get_system_route_metric(link->device, link->gateway, expected_metric);
 				if (real_metric != -1 && real_metric != expected_metric) {
-					syslog(LOG_WARNING, "Route metric mismatch detected on %s (%s, priority %d): expected %d, got %d. Correcting...", 
-					       link->name, link->device, link->priority, expected_metric, real_metric);
+					syslog(LOG_WARNING, "Route metric mismatch detected on %s (%s, gw=%s, priority %d): expected %d, got %d. Correcting...", 
+					       link->name, link->device, link->gateway[0] ? link->gateway : "none", link->priority, expected_metric, real_metric);
 					update_route_metric(link, expected_metric, real_metric);
 				}
 			}
 		}
 
 		if (any_checked) {
-			// Write states to shared JSON file
 			write_status_json();
 		}
 
-		// High-responsiveness scheduler ticks every second
 		sleep(1);
 	}
 
 	// Terminating: clean up routes before exit
 	restore_all_metrics();
+	close_ubus_connection();
 	unlink(STATUS_FILE);
 	syslog(LOG_INFO, "LinkBack daemon terminated successfully.");
 	closelog();

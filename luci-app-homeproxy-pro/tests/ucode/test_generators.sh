@@ -578,7 +578,7 @@ fi
 
 run_case custom "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json
 
-# §2.2 (linux.json 与 pro 的差距分析): append_custom_dns now prepends the
+# append_custom_dns now prepends the
 # HTTPS/SVCB reject so a user-written rule cannot shadow the safety net.
 # Without a dns_server in custom.uci the rule block is empty, so the
 # generated config still has the reject at index 0.
@@ -613,7 +613,7 @@ EOF
 	fi
 fi
 
-# §2.5 (linux.json 与 pro 的差距分析): the original plan was to set
+# The original plan was to set
 # `experimental.reverse_mapping: true` so the literal pinned us against a
 # future sing-box default flip. sing-box 1.14.0-r1 (the CI floor pinned
 # by arch-guard 31) rejects the field as "json: unknown field" - the
@@ -623,7 +623,7 @@ fi
 # purpose: the only assertion that matters is that the generated config
 # passes sing-box check, which the test runner does for every case.
 
-# §2.4 (linux.json 与 pro 的差距分析): when the user configures a DoH
+# When the user configures a DoH
 # upstream against a known hostname, append_custom_dns emits a hosts-type
 # DNS server pinning that hostname to its real IPs.  Without it, the DoH
 # resolver itself has to be resolved through the system DNS, and a DNS
@@ -676,7 +676,7 @@ EOF
 	fi
 fi
 
-# §2.1 (linux.json 与 pro 的差距分析): cn_ip_fallback default flipped to '1'
+# cn_ip_fallback default flipped to '1'
 # for fresh installs (the package ships option cn_ip_fallback '1' and
 # context.uc falls back to '1' on a missing value).  Existing users
 # upgrading get '0' written by migrate_config.uc and keep the prior
@@ -719,7 +719,8 @@ EOF
 	fi
 fi
 
-# §2.1 opt-out: a fixture with cn_ip_fallback='0' must NOT emit the pair.
+# cn_ip_fallback opt-out: a fixture with cn_ip_fallback='0' must NOT emit
+# the pair.
 # client.uci does not set the option (so it defaults to '1' in the proxy
 # config above); here we stage a variant with '0' to assert the
 # upgrade-safe path of migrate_config.uc - existing users see no change.
@@ -740,7 +741,7 @@ else
 	fi
 fi
 
-# §2.7 (linux.json 与 pro 的差距分析): sniffer_advanced_mode default stays
+# sniffer_advanced_mode default stays
 # '0'.  Client mode must emit the conservative sniff rule (300ms / no
 # sniffer list); advanced mode emits the 100ms / universal-list profile.
 if [ ! -f "$client_json" ]; then
@@ -776,7 +777,7 @@ EOF
 	fi
 fi
 
-# §2.7 opt-in: sniffer_advanced_mode='1' flips the sniff rule to 100ms +
+# sniffer_advanced_mode opt-in: '1' flips the sniff rule to 100ms +
 # the universal protocol list.  sed-injected on client.uci.
 run_case client-sniffer-advanced "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
 	"s#^\\([[:space:]]*\\)option main_node 'urltest'#\\1option main_node 'urltest'\\n\\1option sniffer_advanced_mode '1'#"
@@ -920,8 +921,8 @@ run_case_type_error dangling-resolver "does not exist or is disabled" \
 
 # --- review@2026-09-29 batch -------------------------------------------------
 #
-# Six checks that pin the five generator fixes from
-# docs/review-report-20260929.md §7. Earlier rounds attempted ucode
+# Six checks that pin the five generator fixes from the 2026-09-29 review.
+# Earlier rounds attempted ucode
 # probes (arrow functions, optional chaining on arrays, ...) and each
 # round surfaced a different ucode dialect issue on the testbed - the
 # macOS dev box has no ucode so the loop could not iterate locally.
@@ -929,7 +930,7 @@ run_case_type_error dangling-resolver "does not exist or is disabled" \
 # it runs identically on macOS and the testbed. ucode-stdout probes
 # are out; structural assertions against the emitted bytes are in.
 
-# 1) P2 #2 / §1.4.1: geosite-cn is the *DNS*-layer rule_set consumer.
+# 1) P2 #2: geosite-cn is the *DNS*-layer rule_set consumer.
 #    The route layer never references it as a rule_set value (route.rule_set
 #    declares it as a tag). Indent cannot disambiguate dns.rules[] from
 #    route.rules[] (both pretty-print at 4 tabs on the testbed; both are
@@ -962,7 +963,7 @@ else
 	fi
 fi
 
-# 2) P3 #6 / §1.4.3: china-dns.strategy must mirror default-dns's gate
+# 2) P3 #6: china-dns.strategy must mirror default-dns's gate
 #    on ipv6_support. With ipv6_support='0' (client.uci's value),
 #    china-dns.strategy must be 'ipv4_only', not the pre-r28
 #    unconditional 'prefer_ipv6'. The generated JSON emits the dns
@@ -1083,7 +1084,7 @@ else
 	fi
 fi
 
-# 3) P2 #4 / §2.2.1: the three NAPTR (qtype 35) bypass suffixes must be
+# 3) P2 #4: the three NAPTR (qtype 35) bypass suffixes must be
 #    emitted as a single domain_suffix entry backed by the
 #    NAPTR_BYPASS_SUFFIXES constant. ucode's pretty-printer emits the
 #    query_type array and the domain_suffix array as multi-line:
@@ -1121,7 +1122,7 @@ else
 	fi
 fi
 
-# 4) P2 #3 / §1.4.3 / §5.1: attachExperimental() used to gate cache_file
+# 4) P2 #3: attachExperimental() used to gate cache_file
 #    on routing_mode in [bypass_mainland_china, custom]. After the r28
 #    fix, every routing_mode gets a cache_file block. Three sed
 #    variations of the same fixture cover gfwlist / proxy_mainland_china
@@ -1170,7 +1171,7 @@ else
 	echo "PASS: cache-file-custom: experimental.cache_file emitted for routing_mode='custom'"
 fi
 
-# 5) P3 #7 / §4.2.1: a local ruleset whose path is outside the homeproxy-pro
+# 5) P3 #7: a local ruleset whose path is outside the homeproxy-pro
 #    whitelist (e.g. /etc/passwd) used to silently set the field to
 #    null. The fix is to die() with a message naming the offender.
 #    run_case_type_error observes the refusal. The variation targets
@@ -1181,7 +1182,7 @@ run_case_type_error local-ruleset-bad-path "outside the homeproxy-pro whitelist"
 	"$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
 	"s%^[[:space:]]*option path '/tmp/homeproxy_test_ruleset\\.[^/]*/local-ruleset-bad-path/test.srs'%    option path '/etc/passwd'%"
 
-# 6) P3 #8 / §4.2.2 (extra_tags die() on missing {tag}): deferred to
+# 6) P3 #8 (extra_tags die() on missing {tag}): deferred to
 #    a dedicated 'testbed-dialect' sprint. The multi-line sed to
 #    attach an extra_tags list onto the existing rs_local ruleset
 #    drifted at the first whitespace change on the testbed, and

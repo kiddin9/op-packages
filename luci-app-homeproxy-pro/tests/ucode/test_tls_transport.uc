@@ -59,7 +59,7 @@ expect('server.insecure forced null', serverInsecure.insecure, null);
 /* 4. cert_path whitelist - the validator accepts /etc/homeproxy-pro/... and
  *      /tmp/homeproxy_..., and rejects everything else (including
  *      /etc/passwd and relative paths). This is the security patch
- *      that backs the §4 path-whitelist entry; a regression here would
+ *      that backs the path-whitelist entry above; a regression here would
  *      let UCI drive sing-box into reading arbitrary files as root. */
 expect('cert.path /etc/homeproxy-pro', validateHomeProxyPath('/etc/homeproxy-pro/certs/server_publickey.pem'), true);
 expect('cert.path /tmp/homeproxy_', validateHomeProxyPath('/tmp/homeproxy_test/foo.pem'), true);

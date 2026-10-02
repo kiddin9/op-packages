@@ -36,11 +36,13 @@ import { get_outbound, get_resolver, get_ruleset, get_direct_override } from './
  * that every mode shares (dns-in hijack, sniff, optional auto_detect).
  * The caller must have created an empty config.route; we mutate it.
  *
- * Sniff tuning follows §2.7 of docs/linux.json 与 pro 的差距分析.md:
- * the default rule is the conservative 300ms / unconstrained sniffer list
- * (tutorial demo recommends 100ms + ['http','tls','stun','quic','dns'],
- * which costs less CPU but is a behaviour change). sniffer_advanced_mode
- * is the opt-in switch that flips to the tutorial profile. */
+ * Two sniff profiles, and the default is deliberately the conservative one:
+ * 300ms with no sniffer list, so sing-box applies its own default set. The
+ * alternative - 100ms plus an explicit
+ * ['http','tls','stun','quic','dns'] - is cheaper on CPU but changes what a
+ * connection is sniffed as, which is a behaviour change, not a tuning knob.
+ * sniffer_advanced_mode is the opt-in that flips to it, so an upgrade from an
+ * earlier release is invisible. Guard 39 pins the default at '0'. */
 function initRoute(config, ctx) {
 	const sniff_rule = (ctx.sniffer_advanced_mode === '1')
 		? {

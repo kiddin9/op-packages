@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-linkback
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_MAINTAINER:=Dante
 
 LUCI_TITLE:=LuCI support for Multi-WAN LinkBack Failover/Failback
@@ -17,7 +17,7 @@ LUCI_DEPENDS:=+luci-base +ucode +ucode-mod-fs +ucode-mod-uci +ucode-mod-ubus +li
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/postinst
-#!/sh
+#!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/rpcd restart
 }
