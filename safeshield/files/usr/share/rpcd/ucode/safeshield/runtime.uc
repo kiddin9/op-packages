@@ -163,7 +163,3 @@ return {
     start_refresh_async: start_refresh_async,
     start_local_apply_async: start_local_apply_async
 };
-
-reload_service() {
-	restart
-}

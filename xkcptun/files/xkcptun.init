@@ -263,7 +263,3 @@ validate_server_section() {
 validate_client_section() {
 	validate_client_options "$1" "$2"
 }
-
-reload_service() {
-	restart
-}

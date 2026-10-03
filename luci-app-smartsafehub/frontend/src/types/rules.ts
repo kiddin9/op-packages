@@ -36,7 +36,3 @@ export interface SafeShieldRuleMutationResult {
   };
   rules: SafeShieldRules;
 }
-
-reload_service() {
-	restart
-}

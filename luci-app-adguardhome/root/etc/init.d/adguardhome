@@ -266,7 +266,3 @@ service_triggers() {
 		procd_add_raw_trigger 'interface.*.up' 5000 /etc/init.d/adguardhome restart
 	fi
 }
-
-reload_service() {
-	restart
-}

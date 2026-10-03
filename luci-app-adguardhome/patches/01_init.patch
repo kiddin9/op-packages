@@ -248,7 +248,3 @@ index 4712913..1383834 100755
  }
  
  service_triggers() {
-
-reload_service() {
-	restart
-}

@@ -152,6 +152,38 @@ function getSummaryLabel(data: SafeShieldStatus): string {
   return labels[protectionState];
 }
 
+function getArtifactOptimizationLabel(tier: string | null): string {
+  if (!tier) {
+    return '확인되지 않음';
+  }
+
+  return '자동 최적화';
+}
+
+function formatArtifactUpdatedAt(version: string | null): string {
+  if (!version) {
+    return '확인되지 않음';
+  }
+
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/.exec(version);
+
+  if (!match) {
+    return '확인되지 않음';
+  }
+
+  const [, year, month, day, hour, minute, second] = match;
+  const timestamp = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  ) / 1000;
+
+  return formatTimestamp(timestamp);
+}
+
 function getSummaryMessage(data: SafeShieldStatus): string {
   const protectionState = getProductProtectionState(data);
 
@@ -679,7 +711,7 @@ export function SafeShieldPage({
   function handleToggle(): void {
     if (enabled) {
       const confirmed = window.confirm(
-        'SafeShield 보호를 끄면 현재 차단 목록이 제거되고 DNS 차단이 즉시 중단됩니다. 계속하시겠습니까?',
+        '보호를 끄면, 현재 차단 목록이 제거되어 위험에 노출될 수 있습니다. 그래도 계속하시겠습니까?',
       );
 
       if (!confirmed) {
@@ -797,12 +829,12 @@ export function SafeShieldPage({
               value={<BooleanState falseLabel="중지됨" trueLabel="동작 중" value={data.active} />}
             />
             <DetailRow
-              label="dnsmasq"
+              label="DNS 서비스"
               value={<BooleanState falseLabel="중지됨" value={data.runtime.dnsmasqRunning} />}
             />
-            <DetailRow label="DNS 런타임" value={<BooleanState value={data.runtime.dnsRuntimeOk} />} />
+            <DetailRow label="SafeShield DNS 연동" value={<BooleanState value={data.runtime.dnsRuntimeOk} />} />
             <DetailRow
-              label="Refresh daemon"
+              label="차단 목록 갱신"
               value={<BooleanState falseLabel="중지됨" value={data.runtime.refreshdRunning} />}
             />
           </DetailCard>
@@ -858,7 +890,7 @@ export function SafeShieldPage({
 
       <section class="mt-7">
         <SectionHeading
-          description="라이선스와 현재 적용 중인 SafeShield 아티팩트 및 로컬 규칙 구성을 관리합니다."
+          description="라이선스, 현재 적용 중인 SafeShield 보호 데이터와 사용자 규칙을 관리합니다."
           eyebrow="Settings"
           title="SafeShield 설정"
         />
@@ -992,24 +1024,75 @@ export function SafeShieldPage({
           <div class="grid gap-4">
             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">
               <div class="flex items-start justify-between gap-4">
-                <div>
+                <div class="min-w-0">
                   <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
-                    Artifact
+                    Protection data
                   </p>
-                  <h3 class="mt-2 mb-0 text-lg font-black tracking-tight text-slate-950">
-                    보호 데이터
-                  </h3>
+                  <div class="mt-2 flex flex-wrap items-center gap-2">
+                    <h3 class="m-0 text-lg font-black tracking-tight text-slate-950">
+                      보호 데이터
+                    </h3>
+                    <span
+                      aria-label={`보호 데이터 상태: ${
+                        data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
+                          ? '최신'
+                          : '확인 필요'
+                      }`}
+                      class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${
+                        data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}
+                    >
+                      {data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk ? (
+                        <CheckCircleIcon class="size-3.5 shrink-0" />
+                      ) : (
+                        <AlertIcon class="size-3.5 shrink-0" />
+                      )}
+                      {data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
+                        ? '최신'
+                        : '확인 필요'}
+                    </span>
+                  </div>
+                  <p class="mt-2 mb-0 text-sm leading-6 text-slate-500">
+                    SafeShield가 기기 성능에 맞춰 사용하는 보호 목록의 구성과 최신 상태를 확인합니다.
+                  </p>
                 </div>
                 <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
                   <DatabaseIcon class="size-5" />
                 </span>
               </div>
-              <dl class="mt-5 mb-0 grid gap-3">
-                <DetailRow label="Tier" value={data.artifact.tier || '확인되지 않음'} />
-                <DetailRow label="Version" value={data.artifact.version || '확인되지 않음'} />
-                <DetailRow label="Rules" value={formatNumber(data.artifact.rules)} />
-                <DetailRow label="Unique domains" value={formatNumber(data.artifact.uniqueDomains)} />
+
+              <dl class="mt-5 mb-0 grid grid-cols-2 gap-3">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <dt class="text-xs font-bold text-slate-500">기기 최적화</dt>
+                  <dd class="mt-1 mb-0 text-sm font-extrabold text-slate-950">
+                    {getArtifactOptimizationLabel(data.artifact.tier)}
+                  </dd>
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <dt class="text-xs font-bold text-slate-500">마지막 업데이트</dt>
+                  <dd class="mt-1 mb-0 text-sm font-extrabold leading-5 text-slate-950">
+                    {formatArtifactUpdatedAt(data.artifact.version)}
+                  </dd>
+                </div>
               </dl>
+
+              <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <summary class="cursor-pointer text-sm font-extrabold text-slate-700">
+                  세부 정보
+                </summary>
+                <dl class="mt-3 mb-0 grid gap-3 border-t border-slate-200 pt-3">
+                  <DetailRow
+                    label="데이터 프로필"
+                    value={data.artifact.tier || '확인되지 않음'}
+                  />
+                  <DetailRow
+                    label="데이터 버전"
+                    value={data.artifact.version || '확인되지 않음'}
+                  />
+                </dl>
+              </details>
             </article>
 
             <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">

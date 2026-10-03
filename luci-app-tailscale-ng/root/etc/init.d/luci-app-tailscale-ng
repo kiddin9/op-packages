@@ -114,7 +114,3 @@ stop_service() {
 	logger -t "luci-app-tailscale-ng" "stopping tailscale"
 	/etc/init.d/tailscale stop
 }
-
-reload_service() {
-	restart
-}

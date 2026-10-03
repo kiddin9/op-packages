@@ -60,7 +60,3 @@ stop_service() {
     # Send a kill signal to stop the instance safely
     procd_send_signal $NAME
 }
-
-reload_service() {
-	restart
-}

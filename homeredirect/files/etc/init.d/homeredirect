@@ -151,7 +151,3 @@ stop_service() {
 service_triggers() {
 	procd_add_reload_trigger "homeredirect"
 }
-
-reload_service() {
-	restart
-}

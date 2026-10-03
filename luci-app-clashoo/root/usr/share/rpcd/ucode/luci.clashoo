@@ -4709,7 +4709,3 @@ return { success: false, message: '还原失败: ' + e };
 };
 
 return { 'luci.clashoo': methods };
-
-reload_service() {
-	restart
-}

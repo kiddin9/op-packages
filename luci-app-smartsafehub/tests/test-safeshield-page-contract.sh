@@ -56,6 +56,48 @@ grep -Fq '라이선스를 확인하고 이 기기에 적용하고 있습니다�
 grep -Fq 'border border-teal-700 bg-teal-700' "$PAGE" || \
 	fail 'SafeShield custom rules action must remain recognizable as a primary button'
 
+grep -Fq 'Protection data' "$PAGE" || \
+	fail 'SafeShield protection data card must use a user-facing eyebrow instead of Artifact'
+grep -Fq 'SafeShield가 기기 성능에 맞춰 사용하는 보호 목록의 구성과 최신 상태를 확인합니다.' "$PAGE" || \
+	fail 'SafeShield protection data card must explain device-optimized protection data and freshness'
+grep -Fq '보호 데이터 상태:' "$PAGE" || \
+	fail 'SafeShield protection data card must expose a compact freshness badge'
+grep -Fq "? '최신'" "$PAGE" || \
+	fail 'SafeShield protection data status must expose the latest state'
+if grep -Fq '보호 도메인' "$PAGE"; then
+	fail 'SafeShield protection data card must not duplicate the blocklist domain count'
+fi
+grep -Fq '기기 최적화' "$PAGE" || \
+	fail 'SafeShield protection data card must present artifact tier as device optimization rather than a protection level'
+grep -Fq "return '자동 최적화';" "$PAGE" || \
+	fail 'SafeShield artifact tier must be presented as automatic device optimization in the default view'
+if grep -Fq '보호 수준' "$PAGE" || grep -Fq "return '기본 보호';" "$PAGE"; then
+	fail 'SafeShield artifact tier must not look like a subscription protection grade'
+fi
+grep -Fq '마지막 업데이트' "$PAGE" || \
+	fail 'SafeShield protection data card must expose the last update time'
+grep -Fq 'formatArtifactUpdatedAt' "$PAGE" || \
+	fail 'SafeShield protection data version must be converted into a readable update time'
+grep -Fq '<details class=' "$PAGE" || \
+	fail 'SafeShield technical artifact metadata must be collapsed into details'
+grep -Fq '데이터 프로필' "$PAGE" || \
+	fail 'SafeShield protection data details must retain the raw artifact tier as a technical data profile'
+grep -Fq 'value={data.artifact.tier' "$PAGE" || \
+	fail 'SafeShield protection data profile must expose the raw artifact tier only inside technical details'
+grep -Fq '데이터 버전' "$PAGE" || \
+	fail 'SafeShield protection data details must retain the raw artifact version for diagnostics'
+if grep -Fq '<DetailRow label="적용 규칙"' "$PAGE"; then
+	fail 'SafeShield protection data details must not duplicate the blocklist rule count'
+fi
+if grep -Fq '<DetailRow label="Tier"' "$PAGE" || \
+	grep -Fq '<DetailRow label="Version"' "$PAGE" || \
+	grep -Fq '<DetailRow label="Rules"' "$PAGE" || \
+	grep -Fq '<DetailRow label="Unique domains"' "$PAGE"; then
+	fail 'SafeShield protection data card must not expose raw English artifact fields in the default view'
+fi
+grep -Fq 'SafeShield 보호 데이터와 사용자 규칙을 관리합니다.' "$PAGE" || \
+	fail 'SafeShield settings description must use protection data instead of artifact terminology'
+
 grep -Fq 'const DISPLAY_HOURS = 24;' "$PANEL" || \
 	fail 'SafeShield activity must continue to use 24 hourly buckets'
 grep -Fq 'const recentTotals = buckets.reduce(' "$PANEL" || \

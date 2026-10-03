@@ -110,7 +110,3 @@ start_service(){
 	procd_set_param command "/usr/bin/rule_manager"
 	procd_close_instance
 }
-
-reload_service() {
-	restart
-}

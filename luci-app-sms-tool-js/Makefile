@@ -12,7 +12,7 @@ LUCI_DEPENDS:=+sms-tool +kmod-usb-serial +kmod-usb-serial-option +comgt
 
 PKG_NAME:=luci-app-sms-tool-js
 PKG_VERSION:=2.0.29
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_MAINTAINER:=Rafał Wabik <4Rafal@gmail.com>
 
 define Package/luci-app-sms-tool-js/conffiles

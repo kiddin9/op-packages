@@ -529,7 +529,3 @@ ss_case_service_lifecycle() (
 	ss_spec_assert_file_line "$CALLS" 'status_set status disabled'
 	ss_spec_assert_file_line "$CALLS" 'status_set last_result disabled'
 )
-
-reload_service() {
-	restart
-}

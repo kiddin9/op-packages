@@ -10,7 +10,7 @@ LUCI_DEPENDS:=+netdata
 
 PKG_NAME:=luci-app-netdata
 PKG_VERSION:=2.0.4
-PKG_RELEASE:=4
+PKG_RELEASE:=5
 PKG_LICENSE:=GPL-3.0
 
 include $(TOPDIR)/feeds/luci/luci.mk

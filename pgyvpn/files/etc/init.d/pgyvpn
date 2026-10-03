@@ -150,10 +150,6 @@ stop_service()
 	rm oraysl_statusfilename 2> /dev/null #delete oraysl status file
 }
 
-reload_service() {
-	restart
-}
-
 service_triggers() {
 	procd_add_reload_trigger "pgyvpn"
 }

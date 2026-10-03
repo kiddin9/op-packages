@@ -58,10 +58,6 @@ stop_service(){
 	kill `pgrep -f $PROG` > /dev/null 2>&1
 }
 
-reload_service() {
-	restart
-}
-
 service_triggers() {
 	procd_add_reload_trigger "totd"
 }

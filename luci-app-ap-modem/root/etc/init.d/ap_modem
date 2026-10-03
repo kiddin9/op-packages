@@ -206,7 +206,3 @@ stop_service() {
     clean_config
     /etc/init.d/network reload
 }
-
-reload_service() {
-	restart
-}

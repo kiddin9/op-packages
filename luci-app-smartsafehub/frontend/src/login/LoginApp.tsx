@@ -185,13 +185,12 @@ export function LoginApp({
           <p class="ssh-login-eyebrow">SMART NETWORK PROTECTION</p>
           <h1 id="ssh-login-brand-title">SmartSafeHub</h1>
           <p class="ssh-login-brand-description">
-            네트워크와 보안을 하나의 허브에서 관리하세요. SafeShield 보호 상태부터
-            Wi-Fi와 연결 기기까지 로컬에서 빠르게 확인할 수 있습니다.
+            네트워크와 보안을 하나의 허브에서 편리하게 관리하세요.
           </p>
 
           <div class="ssh-login-features" aria-label="SmartSafeHub 주요 기능">
             <LoginFeature
-              description="DNS 기반 광고·피싱 차단과 사용자 보호 정책을 관리합니다."
+              description="DNS 기반 광고·피싱·추적 차단과 사용자 보호 정책을 관리합니다."
               icon={<ShieldIcon />}
               title="SafeShield 보호"
             />
@@ -235,7 +234,7 @@ export function LoginApp({
                 </span>
                 <div>
                   <p class="ssh-login-kicker">SMARTSAFEHUB ACCESS</p>
-                  <h2 id="ssh-login-title">SmartSafeHub에 로그인</h2>
+                  <h2 id="ssh-login-title">로그인</h2>
                   <p class="ssh-login-subtitle">
                     공유기 관리자 계정의 사용자 이름과 비밀번호를 입력해 주세요.
                   </p>
@@ -326,11 +325,6 @@ export function LoginApp({
                   <span>{busy ? '로그인 중…' : '로그인'}</span>
                 </button>
               </form>
-
-              <div class="ssh-login-security-note">
-                <ShieldIcon aria-hidden="true" />
-                <span>입력한 계정 정보는 현재 공유기의 LuCI 인증 경로로만 전송됩니다.</span>
-              </div>
 
               <div class="ssh-login-security-note">
                 <KeyIcon aria-hidden="true" />

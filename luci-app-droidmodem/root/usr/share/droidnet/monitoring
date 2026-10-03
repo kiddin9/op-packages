@@ -298,7 +298,3 @@ else
 	echo "	stop		Stop the service"
 	echo "	restart 	Restart the service"
 fi
-
-reload_service() {
-	restart
-}

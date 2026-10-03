@@ -13,11 +13,11 @@ fail() {
 [ -x "$DEFAULTS" ] || fail 'SmartSafeHub system defaults must be executable'
 
 grep -Fq "uci -q set system.@system[0].hostname='SmartRouter'" "$DEFAULTS" || \
-	fail 'system defaults must set the SmartSafeHub hostname on fresh OpenWrt defaults'
-grep -Fq "uci -q set system.@system[0].zonename='Asia/Seoul'" "$DEFAULTS" || \
-	fail 'system defaults must set the IANA timezone name on fresh OpenWrt defaults'
-grep -Fq "uci -q set system.@system[0].timezone='UTC+9'" "$DEFAULTS" || \
-	fail 'system defaults must keep the existing SmartSafeHub POSIX timezone default'
+	fail 'system defaults must force the SmartSafeHub hostname'
+if grep -Fq "uci -q set system.@system[0].zonename=" "$DEFAULTS" || \
+   grep -Fq "uci -q set system.@system[0].timezone=" "$DEFAULTS"; then
+	fail 'system defaults must leave timezone selection to first-login browser detection'
+fi
 grep -Fq "set_if_missing system.@system[0].log_size '64'" "$DEFAULTS" || \
 	fail 'system defaults must only fill a missing log size'
 grep -Fq "uci -q set system.ntp='timeserver'" "$DEFAULTS" || \
@@ -86,8 +86,9 @@ fi
 if grep -Fq -- '-q set system.ntp=timeserver' "$LOG_EXISTING"; then
 	fail 'existing NTP section must not be recreated'
 fi
+grep -Fq -- '-q set system.@system[0].hostname=SmartRouter' "$LOG_EXISTING" || \
+	fail 'SmartSafeHub hostname must be forced even when an existing hostname is present'
 for forbidden in \
-	'-q set system.@system[0].hostname=' \
 	'-q set system.@system[0].zonename=' \
 	'-q set system.@system[0].timezone=' \
 	'-q set system.@system[0].ttylogin=' \
@@ -122,10 +123,10 @@ MOCK_NTP_SERVERS='__MISSING__' \
 
 grep -Fq -- '-q set system.@system[0].hostname=SmartRouter' "$LOG_FRESH" || \
 	fail 'fresh OpenWrt hostname must receive the SmartSafeHub default'
-grep -Fq -- '-q set system.@system[0].zonename=Asia/Seoul' "$LOG_FRESH" || \
-	fail 'fresh OpenWrt timezone must receive the SmartSafeHub zonename default'
-grep -Fq -- '-q set system.@system[0].timezone=UTC+9' "$LOG_FRESH" || \
-	fail 'fresh OpenWrt timezone must receive the SmartSafeHub POSIX timezone default'
+if grep -Fq -- '-q set system.@system[0].zonename=' "$LOG_FRESH" || \
+   grep -Fq -- '-q set system.@system[0].timezone=' "$LOG_FRESH"; then
+	fail 'fresh OpenWrt timezone must remain untouched until browser initialization'
+fi
 grep -Fq -- '-q add_list system.ntp.server=0.openwrt.pool.ntp.org' "$LOG_FRESH" || \
 	fail 'fresh OpenWrt NTP configuration must receive the default server list'
 
@@ -141,4 +142,4 @@ grep -Fq -- '-q add system system' "$LOG_MISSING" || \
 grep -Fq -- '-q set system.ntp=timeserver' "$LOG_MISSING" || \
 	fail 'missing NTP section must be created defensively'
 
-echo 'PASS: SmartSafeHub defaults preserve OpenWrt metadata and existing user system settings'
+echo 'PASS: SmartSafeHub defaults force hostname while preserving timezone and OpenWrt metadata'

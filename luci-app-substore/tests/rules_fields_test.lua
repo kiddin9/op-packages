@@ -78,6 +78,22 @@ for _, path in ipairs(TEMPLATES) do
 	check(name .. " preloads rename_map", src:find("local rm =", 1, true) ~= nil)
 end
 
+-- ---------- 静态：协议复选框不得嵌在 <label> 里 ----------
+-- Argon 主题有一条 `label > input[type="checkbox"] { position:relative; top:0.4rem }`，
+-- 把复选框视觉下移 0.4rem（6.4px）却**不改变布局占位** —— 复选框于是探出所在行，
+-- 压到下一行（症状：协议筛选的复选框底部盖住「重命名」输入框；原生 bootstrap 无此规则，
+-- 所以只在 Argon 下复现）。改用 for/id 关联，让 input 不再是 label 的子元素即可绕开；
+-- 外面套 <span style="white-space:nowrap"> 分组，避免复选框与协议名被折行拆散。
+for _, path in ipairs(TEMPLATES) do
+	local src = util.read_file(path) or ""
+	local name = path:match("[^/]+$")
+	local blk = src:match("ipairs%(core%.RULE_PROTOS%)%s*do(.-)<%% end %%>") or ""
+	check(name .. " proto block extractable", blk ~= "")
+	check(name .. " proto checkbox not nested in <label>", blk:find("<label[^>]*>%s*<input") == nil)
+	check(name .. " proto checkbox associated by for/id",
+		blk:find('id="pf_', 1, true) ~= nil and blk:find('for="pf_', 1, true) ~= nil)
+end
+
 -- ---------- 静态：控制器不再自己抄一份协议清单 ----------
 local ctl = util.read_file(CONTROLLER) or ""
 check("controller uses core.RULE_PROTOS", ctl:find("RULE_PROTOS", 1, true) ~= nil)

@@ -59,10 +59,6 @@ stop_service() {
   killall -9 tailscaled 2>/dev/null || true
 }
 
-reload_service() {
-	restart
-}
-
 service_triggers() {
 	procd_add_reload_trigger "tailscale"
 }

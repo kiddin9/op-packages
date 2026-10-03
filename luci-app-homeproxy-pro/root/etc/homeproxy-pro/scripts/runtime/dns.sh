@@ -264,7 +264,3 @@ hp_dnsmasq_remove_snippets() {
 	/etc/init.d/dnsmasq restart >"/dev/null" 2>&1 \
 		|| log "Warning: failed to restart dnsmasq after removing the homeproxy-pro snippets."
 }
-
-reload_service() {
-	restart
-}

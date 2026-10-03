@@ -108,7 +108,3 @@ hp_firewall_teardown() {
 	fw4 reload >"/dev/null" 2>&1 || true
 	hp_restore_upnp_mappings
 }
-
-reload_service() {
-	restart
-}

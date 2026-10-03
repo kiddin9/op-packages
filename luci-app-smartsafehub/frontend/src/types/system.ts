@@ -52,6 +52,11 @@ export interface SystemDiagnostics {
   safeshield: SafeShieldDiagnosticStatus;
 }
 
+export interface SystemTimezoneInitializationResult {
+  applied: boolean;
+  zonename: string | null;
+}
+
 export interface SystemTimeSyncResult {
   accepted: boolean;
   requestedAt: number;

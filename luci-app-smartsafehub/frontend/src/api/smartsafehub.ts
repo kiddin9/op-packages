@@ -23,6 +23,7 @@ import type {
   SystemRebootResult,
   SystemTimeSettings,
   SystemTimeSyncResult,
+  SystemTimezoneInitializationResult,
 } from '../types/system';
 import type {
   SoftwareUpdateAccepted,
@@ -178,6 +179,12 @@ export function updateSoftwareUpdateSettings(
 
 export function fetchSystemTimeSettings(): Promise<SystemTimeSettings> {
   return callApi(API_OBJECT, 'system_time_settings');
+}
+
+export function initializeSystemTimezone(
+  zonename: string,
+): Promise<SystemTimezoneInitializationResult> {
+  return callApi(API_OBJECT, 'system_timezone_initialize', { zonename });
 }
 
 export function updateSystemTimezone(

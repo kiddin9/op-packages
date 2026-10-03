@@ -68,7 +68,3 @@ assert(local_spawned.accepted == true && local_spawned.reason == '' && local_spa
 assert(core.state.reloads >= 8, 'async entrypoints reload UCI before checking runtime state');
 
 print('ucode runtime tests: ok\n');
-
-reload_service() {
-	restart
-}

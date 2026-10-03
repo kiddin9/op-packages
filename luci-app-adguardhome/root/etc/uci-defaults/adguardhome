@@ -107,7 +107,3 @@ elif [ -z "$OLD_CONFIG_NEW_OPT_FILE" ] && [ "$OLD_CONFIG_FILE" != "$NEW_CONFIG_F
 else
 	echo "AdGuard Home config is in its default path '$NEW_CONFIG_FILE'"
 fi
-
-reload_service() {
-	restart
-}

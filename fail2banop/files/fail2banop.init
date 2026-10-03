@@ -35,7 +35,3 @@ service_triggers() {
   procd_add_reload_trigger "$NAME"
 }
 
-
-reload_service() {
-	restart
-}

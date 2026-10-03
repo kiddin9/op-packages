@@ -37,6 +37,7 @@
           "system_root_password_set",
           "system_root_password_change",
           "wifi_update",
+          "system_timezone_initialize",
           "system_timezone_update",
           "system_time_sync",
           "system_scheduled_reboot_update",

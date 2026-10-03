@@ -25,10 +25,6 @@ stop_service() {
         service_stop "${PROG}"
 }
 
-reload_service() {
-	restart
-}
-
 service_triggers() {
 	procd_add_reload_trigger "${NAME}"
 }
