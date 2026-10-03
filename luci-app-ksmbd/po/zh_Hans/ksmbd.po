@@ -2,8 +2,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2026-08-31 06:44+0000\n"
-"Last-Translator: Hosted Weblate user 54392 "
+"PO-Revision-Date: 2025-12-25 20:01+0000\n"
+"Last-Translator: 大王叫我来巡山 "
 "<hamburger2048@users.noreply.hosted.weblate.org>\n"
 "Language-Team: Chinese (Simplified Han script) <https://hosted.weblate.org/"
 "projects/openwrt/luciapplicationsksmbd/zh_Hans/>\n"
@@ -12,11 +12,14 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
-"X-Generator: Weblate 2026.9.dev0\n"
+"X-Generator: Weblate 5.15.1\n"
 
 #: applications/luci-app-ksmbd/htdocs/luci-static/resources/view/ksmbd.js:58
-msgid "Add optional guest access to IPC$ share, disabled by default"
-msgstr "为 IPC$ 共享添加可选的访客访问权限，默认禁用"
+msgid "Allow anonymous clients to list shared directories."
+msgstr "允许匿名客户端列出共享目录。"
+
+msgid "Enable"
+msgstr "启用"
 
 #: applications/luci-app-ksmbd/htdocs/luci-static/resources/view/ksmbd.js:57
 msgid "Allow guest on IPC$."
@@ -28,7 +31,7 @@ msgstr "允许访客"
 
 #: applications/luci-app-ksmbd/htdocs/luci-static/resources/view/ksmbd.js:60
 msgid "Allow legacy (insecure) protocols/authentication."
-msgstr "允许旧（不安全）的协议/身份验证"
+msgstr "允许旧协议与身份验证（不安全）。"
 
 #: applications/luci-app-ksmbd/htdocs/luci-static/resources/view/ksmbd.js:61
 msgid ""
@@ -70,7 +73,7 @@ msgstr "强制 Root"
 
 #: applications/luci-app-ksmbd/htdocs/luci-static/resources/view/ksmbd.js:33
 msgid "General Settings"
-msgstr "通用设置"
+msgstr "常规设置"
 
 #: applications/luci-app-ksmbd/root/usr/share/rpcd/acl.d/luci-app-ksmbd.json:3
 msgid "Grant access to LuCI app ksmbd"
@@ -132,3 +135,27 @@ msgstr ""
 #: applications/luci-app-ksmbd/htdocs/luci-static/resources/view/ksmbd.js:51
 msgid "Workgroup"
 msgstr "工作组"
+
+msgid "Share home-directories"
+msgstr "共享家目录"
+
+msgid "Allow system users to reach their home directories via network shares"
+msgstr "允许系统用户通过网络共享访问他们的家目录"
+
+msgid "Auto Share"
+msgstr "自动共享"
+
+msgid "Auto share local disk which connected"
+msgstr "自动匿名共享路由器所连接的硬盘"
+
+msgid "Browseable"
+msgstr "可浏览"
+
+msgid "Mask for new files"
+msgstr "新文件权限掩码"
+
+msgid "Mask for new directories"
+msgstr "新目录权限掩码"
+
+msgid "Hostname"
+msgstr "主机名"
