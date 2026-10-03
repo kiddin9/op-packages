@@ -26,9 +26,9 @@
 
 'use strict';
 
-import { isEmpty, strToInt, strToTime, strToBool, parse_port, HP_DIR } from '../homeproxy-pro.uc';
+import { isEmpty, strToInt, strToTime, strToBool, parse_port, ruleSetInitialFallback, HP_DIR } from '../homeproxy-pro.uc';
 
-import { get_outbound, get_resolver, get_ruleset, get_direct_override } from './common.uc';
+import { BUILTIN_REMOTE_RULE_SETS, declaresBuiltinRemoteRuleSets, get_outbound, get_resolver, get_ruleset, get_direct_override } from './common.uc';
 
 /* --- shared initial block (every routing mode) ------------------------- */
 
@@ -216,8 +216,7 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 	 * to reach this point without it and sing-box refused the whole config
 	 * with "initialize rule[3]: rule-set not found: geoip-cn", which the
 	 * health gate turned into a rollback and an unproxied network. */
-	if (ctx.routing_mode === 'bypass_mainland_china'
-		|| ctx.routing_mode === 'proxy_mainland_china') {
+	if (declaresBuiltinRemoteRuleSets(ctx.routing_mode)) {
 		/*
 		 * Fetched straight from the upstream SagerNet repositories and
 		 * downloaded through the selected node. A direct fetch depends on
@@ -237,34 +236,47 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 		 *               server: china-dns); the route layer never matches
 		 *               it. Sing-box still loads and keeps the rule-set in
 		 *               memory even when only one block references it, so
-		 *               removing it would also break the DNS split.  It is
-		 *               only declared for bypass_mainland_china because that
-		 *               is the only mode whose DNS chain routes through
-		 *               china-dns.
+		 *               removing it would also break the DNS split.
 		 *
 		 * History: a third geosite-noncn used to be declared here as well,
 		 * but no rule referenced it and sing-box still loaded and updated
 		 * it daily, so it was removed (the comment above was rewritten
 		 * during the 2026-09-29 review to clarify that geosite-cn is still
 		 * in use - the DNS side - just not from this block).
+		 *
+		 * The list itself lives in common.uc, because the CLI has to create
+		 * an "initial" fallback file for each of these before this generator
+		 * runs - see the note on BUILTIN_REMOTE_RULE_SETS.  That is the whole
+		 * reason this block is a loop: these two are the rule-sets a cold
+		 * install blocks on, so a change to them that only reached one of the
+		 * two readers would put the fallback out of step with the config
+		 * that points at it.
 		 */
-		push(config.route.rule_set, {
-			type: 'remote',
-			tag: 'geoip-cn',
-			format: 'binary',
-			url: 'https://v4.gh-proxy.org/https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
-			update_interval: '24h',
-			download_detour: 'main-out'
-		});
-		push(config.route.rule_set, {
-			type: 'remote',
-			tag: 'geosite-cn',
-			format: 'binary',
-			url: 'https://v4.gh-proxy.org/https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs',
-			update_interval: '24h',
-			download_detour: 'main-out'
-		});
-
+		for (let rs in BUILTIN_REMOTE_RULE_SETS) {
+			push(config.route.rule_set, {
+				type: 'remote',
+				tag: rs.tag,
+				format: rs.format,
+				url: rs.url,
+				update_interval: rs.update_interval,
+				/* Only with the opt-in on, and only for a fallback the CLI
+				 * actually wrote.  A remote rule-set with no initial_path is
+				 * fetched during initialization, before the inbounds bind, so
+				 * a cold cache makes the first start depend on the CDN - and
+				 * on the node, since these go through http_clients.  The
+				 * fallback is an EMPTY rule-set, which changes routing for
+				 * everything it would have matched, so it stays off unless
+				 * the user asks for it.
+				 *
+				 * These two are the rule-sets a fresh install blocks on, so
+				 * they are also the whole point of the feature: an earlier
+				 * version of this block only knew how to build the entries,
+				 * and the CLI had no idea they existed. */
+				initial_path: (ctx.ruleset_safe_start === '1' && ctx.ruleset_initial[rs.tag])
+					? ruleSetInitialFallback([ rs.tag ], rs.format, rs.url) : null,
+				download_detour: 'main-out'
+			});
+		}
 		/* Local, and not downloaded: it is generated from the same
 		 * china_ip4.txt the firewall renders homeproxy_mainland_addr_v4
 		 * from, so the two cannot drift apart.  `type: local` is watched by

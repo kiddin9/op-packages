@@ -183,8 +183,9 @@ return view.extend({
 
 		var self = this;
 		poll.add(function() {
-			return callGetStatus().then(function(res) {
+			return callGetInfo().then(function(res) {
 				self.updateStatus(res);
+				self.updateInfo(res);
 			});
 		}, 5);
 

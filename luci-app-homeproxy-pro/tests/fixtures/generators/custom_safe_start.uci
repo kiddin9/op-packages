@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Regression fixture for config.ruleset_safe_start = '1' (issue #7 batch 2a).
+#
+# custom.uci with the opt-in on and two REMOTE rule-sets added, because those
+# are the only ones the fallback applies to: a local rule-set already has its
+# file on disk and is never fetched during initialization.
+#
+# It is a separate file rather than three sed variations of custom.uci for two
+# reasons.  The opt-in has to be in the `config homeproxy-pro 'routing'` section
+# (dm.general.ruleset_safe_start), which is a different section from anything
+# the variations were anchored on; and a multi-expression sed that both inserts
+# an option and appends a section is a construct this suite had never run -
+# the one-expression form is proven, the two-expression form is not, and a test
+# whose own tooling is untested is how a case silently stops testing anything.
+#
+# The two rule-sets cover the two shapes the fallback has to get right:
+#
+#   rs_remote  one tag.  initial_path is a concrete path and one file is
+#              written for it.
+#   rs_multi   two tags.  sing-box substitutes {tag} and opens EVERY resulting
+#              file, so initial_path must carry the placeholder and one file
+#              must be written per tag - a rule-set with a literal
+#              "{tag}.srs" on disk falls back to downloading and blocks
+#              startup, which is the exact failure the feature removes.
+#
+# __RULESET_DIR__ is substituted by tests/ucode/test_generators.sh with the
+# per-run archive.
+
+config homeproxy-pro 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '0'
+	option log_level 'error'
+	option ruleset_safe_start '1'
+
+config homeproxy-pro 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy-pro 'infra'
+	option mixed_port '5330'
+	option dns_port '5333'
+	option redirect_port '5331'
+	option self_mark '100'
+
+# direct node: exercises the direct_overrides write path
+config node 'n_direct'
+	option label 'direct-node'
+	option type 'direct'
+	option override_address '1.2.3.4'
+	option override_port '8443'
+
+# routing node + rule: exercises get_direct_override() reading direct_overrides
+config routing_node 'rn_direct'
+	option enabled '1'
+	option label 'rn-direct'
+	option node 'n_direct'
+	option domain_resolver 'default-dns'
+	option domain_strategy 'prefer_ipv4'
+
+config routing_rule 'rr_direct'
+	option enabled '1'
+	option label 'rr-direct'
+	option outbound 'rn_direct'
+	option action 'route'
+
+# The two remote rule-sets the fallback applies to.  Neither has an
+# initial_path of its own, which is the whole precondition: a rule-set that has
+# one is left completely alone by the fallback.
+config ruleset 'rs_remote'
+	option enabled '1'
+	option label 'remote-rs'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.invalid/remote.srs'
+
+config ruleset 'rs_multi'
+	option enabled '1'
+	option label 'multi-rs'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.invalid/{tag}.srs'
+	list extra_tags 'alt'
+
+# A disabled remote rule-set: the fallback must not create a file for it, since
+# build_user_rulesets() skips it before it can ever reach the generated
+# configuration.
+config ruleset 'rs_off'
+	option enabled '0'
+	option label 'off-rs'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.invalid/off.srs'

@@ -10,7 +10,7 @@
 import { access, error, lstat, popen, readfile, writefile } from 'fs';
 import { cursor } from 'uci';
 
-import { isBinary, isValidECHConfig, isValidPEM, shellQuote, executeCommand } from '/etc/homeproxy-pro/scripts/homeproxy-pro.uc';
+import { fetchBinary, isBinary, isValidECHConfig, isValidPEM, shellQuote, executeCommand } from '/etc/homeproxy-pro/scripts/homeproxy-pro.uc';
 import { parse_uri } from '/etc/homeproxy-pro/scripts/parser/uri.uc';
 
 /* Kanged from ucode/luci - replaced by the imported shellQuote() so every shell
@@ -210,26 +210,35 @@ const methods = {
 
 			/* Probe the address family the configuration actually has.
 			 *
-			 * busybox wget has no Happy Eyeballs: it walks the resolved
+			 * The fetcher has no Happy Eyeballs: it walks the resolved
 			 * addresses one at a time, and `-T3` is spent on each. A target
 			 * with seven AAAA records therefore takes over twenty seconds to
 			 * fail, against the 3100 ms budget of the system() call below -
 			 * so the button reported "failed" for Google while the same
 			 * request over IPv4 succeeded, and Baidu passed only because its
-			 * IPv6 goes out direct. The answer was about wget's retry order,
-			 * not about whether the proxy worked.
+			 * IPv6 goes out direct. The answer was about the fetcher's retry
+			 * order, not about whether the proxy worked.
 			 *
 			 * Forcing the family makes the result mean what the label says.
 			 * With IPv6 support on this is a real IPv6 test: it fails when the
 			 * node cannot carry IPv6 egress, which is true information rather
 			 * than a false negative, and it is the same condition a LAN client
 			 * sees. With IPv6 support off, DNS hands out no AAAA at all, so
-			 * -4 states explicitly what used to happen by accident. */
+			 * -4 states explicitly what used to happen by accident.
+			 *
+			 * uclient-fetch rather than wget: wget is whichever implementation
+			 * the buildroot compiled, and the two share almost no options, so
+			 * a command line correct on one exits 2 on the other with
+			 * "unrecognized option" - which on a busybox-wget router read as a
+			 * FAILED PROXY rather than as a usage error. `--spider` is the
+			 * existence check the old --spider meant and -T is the same three
+			 * seconds.  The 3100 ms system() budget is the outer bound; -T
+			 * bounds the connect and request inside uclient-fetch. */
 			const uci = cursor();
 			const family = ((uci.get('homeproxy-pro', 'config', 'ipv6_support') || '0') === '1') ? 'IPv6' : 'IPv4';
 
 			return {
-				result: (system(`/usr/bin/wget -${(family === 'IPv6') ? '6' : '4'} --spider -qT3 ${shellQuote(url)} 2>"/dev/null"`, 3100) === 0),
+				result: (system(`${fetchBinary()} -${(family === 'IPv6') ? '6' : '4'} -q -s -T3 ${shellQuote(url)} 2>"/dev/null"`, 3100) === 0),
 				/* The backend already knows which family it probed, and it is the
 				 * only layer that can know without the view re-reading UCI. The
 				 * view shows this next to the verdict, which is where a "passed"
@@ -399,7 +408,7 @@ const methods = {
 		 * (arch-guard 30).
 		 *
 		 * The previous synchronous shape returned the orchestrator's exit
-		 * status and captured stderr, but the full pipeline (wget fetch
+		 * status and captured stderr, but the full pipeline (the fetch
 		 * through a CN -> overseas link, UCI commit, /etc/init.d/homeproxy-pro
 		 * reload, the 30 s sing-box health gate) regularly took 10-15 s,
 		 * which exceeded the browser XHR timeout on every browser we tried.

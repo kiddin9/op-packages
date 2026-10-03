@@ -23,15 +23,6 @@ WORK="${2:-/tmp/hp-generator-test}"
 ROOT="$(cd "$ROOT" && pwd)"
 FAILED=0
 
-# The local rule-set fixture has to live under /tmp/homeproxy_ (see below), so
-# it cannot sit inside $WORK; this is the per-run root that holds it instead.
-# Created lazily by the first case that needs one.
-RULESET_ROOT=""
-cleanup() {
-	[ -n "$RULESET_ROOT" ] && rm -rf "$RULESET_ROOT"
-}
-trap cleanup EXIT INT TERM
-
 run_case() {
 	name="$1"
 	fixture="$2"
@@ -83,35 +74,41 @@ run_case() {
 	fi
 
 	if grep -q "__RULESET_DIR__" "$fixture"; then
-		# The fixture needs a real local rule-set on disk. The path must
-		# live under /tmp/homeproxy_* (validateHomeProxyPath() in
-		# homeproxy-pro.uc whitelists /etc/homeproxy-pro/ and /tmp/homeproxy_
-		# only, and the custom fixture exercises the local-rule-set
-		# path whitelist gate introduced by the security patch).
+		# The fixture needs a real local rule-set on disk.  The path has to
+		# satisfy validateRuleSetPath(), whose RULE_PATH_ROOTS was rewritten
+		# to this run's scratch tree when homeproxy-pro.uc was staged below - so
+		# the archive IS $dir/ruleset and no out-of-tree copy is needed.
+		#
+		# It used to be copied out to a /tmp/homeproxy_* directory instead,
+		# because the whitelist then admitted /tmp/homeproxy_*.  Narrowing the
+		# policy to the single archive root removed the reason for the copy
+		# and, with it, the per-run mktemp that made this the only case in
+		# the suite reaching outside its own work dir.
 		printf '%s' '{"version":1,"rules":[{"domain_suffix":["example.com"]}]}' > "$dir/ruleset/src.json"
 		if ! sing-box rule-set compile "$dir/ruleset/src.json" -o "$dir/ruleset/test.srs"; then
 			echo "FAIL: $name: could not compile the local rule-set fixture"
 			FAILED=1
 			return
 		fi
-		# Stage the ruleset under a /tmp/homeproxy_* directory so the
-		# whitelist recognises the staging path. Production paths
-		# typically live at /etc/homeproxy-pro/ruleset/...
+
+		# Two more files in the archive, for the format-probe cases.  Both
+		# hold a VALID version-3 source rule-set; they differ only in what
+		# they are called, which is the whole point:
 		#
-		# The path cannot move under $WORK (validateHomeProxyPath() in
-		# homeproxy-pro.uc whitelists /etc/homeproxy-pro/ and /tmp/homeproxy_
-		# only), but it can still be per-run: mktemp gives each run its
-		# own tree, and the trap removes it even when a case bails out
-		# early.  The old fixed /tmp/homeproxy_test_ruleset/$name leaked
-		# one directory per run and let two concurrent runs overwrite
-		# each other's compiled .srs.
-		if [ -z "$RULESET_ROOT" ]; then
-			RULESET_ROOT="$(mktemp -d /tmp/homeproxy_test_ruleset.XXXXXX)"
-		fi
-		HP_RULESET="$RULESET_ROOT/$name"
-		mkdir -p "$HP_RULESET"
-		cp "$dir/ruleset/test.srs" "$HP_RULESET/test.srs"
-		sed "s#__RULESET_DIR__#$HP_RULESET#" "$fixture" > "$dir/config/homeproxy-pro"
+		#   source.json      the name agrees with the content - the baseline
+		#                    a correct configuration already looks like
+		#   mislabelled.srs  source content under a .srs name, i.e. exactly
+		#                    the state sing-box's extension inference gets
+		#                    wrong ("invalid sing-box rule-set file")
+		#
+		# They cannot be the same file: the cases need the *name* to be the
+		# variable while the content stays valid, and a rule-set that failed
+		# `sing-box check` for its own reasons would make every assertion
+		# about the correction meaningless.
+		printf '%s' '{"version":3,"rules":[{"domain_keyword":["example.com"]}]}' > "$dir/ruleset/source.json"
+		cp "$dir/ruleset/source.json" "$dir/ruleset/mislabelled.srs"
+
+		sed "s#__RULESET_DIR__#$dir/ruleset#" "$fixture" > "$dir/config/homeproxy-pro"
 	else
 		cp "$fixture" "$dir/config/homeproxy-pro"
 	fi
@@ -130,6 +127,16 @@ run_case() {
 	fi
 
 
+	# Stage the two empty-rule-set files the "do not block startup" fallback
+	# uses.  RULESET_INITIAL_DIR is derived from HP_DIR, which was rewritten
+	# to $dir above, so the generator looks for them under $dir/ruleset/initial
+	# and the repository's copy has to be staged there.  Copied rather than
+	# referenced so a case that deletes or corrupts one cannot damage the
+	# checkout - the byte-exactness of the constant is arch-guard 52's job.
+	mkdir -p "$dir/ruleset/initial"
+	cp "$ROOT/root/etc/homeproxy-pro/ruleset/initial/empty.srs" "$dir/ruleset/initial/"
+	cp "$ROOT/root/etc/homeproxy-pro/ruleset/initial/empty.source.json" "$dir/ruleset/initial/"
+
 	# HP_VALIDATE_DATA lets a development host replace /sbin/validate_data
 	# (see tests/README.md); on a target the production path is kept.
 	#
@@ -139,12 +146,32 @@ run_case() {
 	# the staging seam out of the source files - staging it as
 	# HP_DIR + '/config' instead would silently diverge from production,
 	# which is exactly the bug this constant replaced.
+	#
+	# RULE_PATH_ROOTS is rewritten for the same reason and with the same
+	# intent: it is the archive the local rule-set fixture has to live in,
+	# and the suite must not have to write to the real /etc/homeproxy-pro/ruleset
+	# to exercise the whitelist.  The value is this run's own $dir/ruleset -
+	# the same tree __RULESET_DIR__ was substituted with above.
 	VALIDATE_DATA="${HP_VALIDATE_DATA:-/sbin/validate_data}"
 	sed -e "s#^export const HP_DIR = '/etc/homeproxy-pro';#export const HP_DIR = '$dir';#" \
 	    -e "s#^export const RUN_DIR = '/var/run/homeproxy-pro';#export const RUN_DIR = '$dir/run';#" \
 	    -e "s#^export const UCICONFIG_DIR = '/etc/config';#export const UCICONFIG_DIR = '$dir/config';#" \
+	    -e "s#^export const RULE_PATH_ROOTS = \\['/etc/homeproxy-pro/ruleset/'\\];#export const RULE_PATH_ROOTS = ['$dir/ruleset/'];#" \
 	    -e "s#/sbin/validate_data#${VALIDATE_DATA}#" \
 	    "$ROOT/root/etc/homeproxy-pro/scripts/homeproxy-pro.uc" > "$dir/scripts/homeproxy-pro.uc"
+
+	# The rewrite above is a staging seam, so it has to be verified rather
+	# than assumed: a sed that stopped matching would leave the production
+	# roots in place, every local rule-set case would be refused by the
+	# whitelist, and the suite would report a generator regression instead.
+	# -F, because the bracket expressions would otherwise have to be escaped
+	# and this script also runs under busybox grep on a target.
+	if grep -qF "export const RULE_PATH_ROOTS = ['/etc/homeproxy-pro/ruleset/']" \
+		"$dir/scripts/homeproxy-pro.uc"; then
+		echo "FAIL: $name: RULE_PATH_ROOTS was not rewritten into the sandbox"
+		FAILED=1
+		return
+	fi
 
 	# Stage the config/ subtree (Loader / Model / Adapter, imported via
 	# the relative path "../config/*.uc" by the generator modules).
@@ -1171,17 +1198,334 @@ else
 	echo "PASS: cache-file-custom: experimental.cache_file emitted for routing_mode='custom'"
 fi
 
-# 5) P3 #7: a local ruleset whose path is outside the homeproxy-pro
-#    whitelist (e.g. /etc/passwd) used to silently set the field to
-#    null. The fix is to die() with a message naming the offender.
-#    run_case_type_error observes the refusal. The variation targets
-#    the *staged* config (after run_case substituted the placeholder
-#    with the per-run /tmp path), so the pattern is on the real path
-#    prefix rather than the fixture literal.
-run_case_type_error local-ruleset-bad-path "outside the homeproxy-pro whitelist" \
+# 5) P3 #7: a local ruleset whose path is outside the allowed rule-set roots
+#    used to be silently dropped (and later, for initial_path, silently set to
+#    null).  The fix is to die() with a message naming the offender.
+#    run_case_type_error observes the refusal.  The variation targets the
+#    *staged* config, whose path was rewritten by run_case to this run's
+#    scratch archive, so the pattern is on the staged path rather than the
+#    fixture's __RULESET_DIR__ literal.
+#
+# The roots were narrowed to the single archive (RULE_PATH_ROOTS), so this now
+# also pins that a path inside /etc/homeproxy-pro but OUTSIDE the archive is
+# refused - which the old /etc/homeproxy-pro/-wide gate would have accepted.
+run_case_type_error local-ruleset-bad-path "outside the allowed rule-set roots" \
 	"$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
-	"s%^[[:space:]]*option path '/tmp/homeproxy_test_ruleset\\.[^/]*/local-ruleset-bad-path/test.srs'%    option path '/etc/passwd'%"
+	"s%^[[:space:]]*option path '.*/ruleset/test.srs'%    option path '/etc/homeproxy-pro/resources/test.srs'%"
 
+# 5b) The traversal form of the same hole. A prefix comparison alone accepts
+#     /etc/homeproxy-pro/ruleset/../../etc/shadow, and sing-box opens the rule-set
+#     as root, so the gate has to reject the segment itself rather than the
+#     resolved path.
+run_case_type_error local-ruleset-traversal "outside the allowed rule-set roots" \
+	"$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"s%^[[:space:]]*option path '.*/ruleset/test.srs'%    option path '/etc/homeproxy-pro/ruleset/../../etc/shadow'%"
+
+# 5c) A path INSIDE the archive that nobody has put a file at.  This is the
+#     case the whole directory-timing fix is about: `sing-box check` opens
+#     every local rule_set path, so before the pre-check this produced
+#
+#       parse rule-set[0]: open <path>: no such file or directory
+#
+#     which names neither the rule-set the user created nor the directory they
+#     are meant to copy files into, and surfaced to them only as "new client
+#     configuration is invalid, reload aborted".  The message below names both.
+run_case_type_error local-ruleset-missing-file "which is missing, not a regular file, or empty" \
+	"$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"s%^[[:space:]]*option path '\(.*\)/ruleset/test.srs'%    option path '\1/ruleset/never-copied-here.srs'%"
+
+# 5d) An out-of-policy initial_path is now a refusal too, instead of a silent
+#     null.  The old behaviour dropped the field, so the rule-set went back to
+#     blocking startup on its first download and the configuration looked
+#     configured while behaving as if the field were empty.
+#
+#     One sed script, two expressions: turn the local rule-set into a remote one
+#     and give it an initial_path outside the archive.  The `path` line is
+#     replaced rather than left behind because a remote rule_set carries no
+#     `path`, and this case must fail on the whitelist rather than reach
+#     `sing-box check` with a field the remote type does not have.
+run_case_type_error remote-ruleset-bad-initial-path "initial_path .* is outside the allowed rule-set roots" \
+	"$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"s%option type 'local'%option type 'remote'%;s%^[[:space:]]*option path '.*/ruleset/test.srs'%    option url 'https://example.invalid/x.srs'\n    option initial_path '/etc/passwd'%"
+
+# 7) Batch 1: the format probe and the duration normalisation.
+#
+#    The `format` field describes a file's NAME, and sing-box infers it from
+#    the extension.  That guess is wrong in three ways, and each of them ends
+#    the same way - `sing-box check` rejects the configuration, the reload is
+#    aborted and the user sees only "my change did not take":
+#
+#      a) an explicit format naming the wrong one
+#      b) no explicit format, but the content disagrees with the extension
+#      c) no explicit format and no extension to infer from ("missing format")
+#
+#    generate_client.uc reads the first bytes of the file and hands the
+#    verdict over as ruleset_formats; ruleset.uc's resolveFormat() decides
+#    what to emit.  The archive holds a valid version-3 source rule-set under
+#    two names (see run_case) so these cases vary the NAME and the DECLARED
+#    value while the content stays valid.
+#
+#    Each case asserts on the GENERATED JSON rather than on the log: the
+#    generated `format` is the thing sing-box is given, and a log line that
+#    appears while the JSON is still wrong would be a false pass.
+
+# 7a) (a) declared binary, file is source JSON.
+rs_wrong_decl="$WORK/ruleset-format-wrong-declared/run/sing-box-c.json"
+run_case ruleset-format-wrong-declared "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"s%^[[:space:]]*option path '\(.*\)/ruleset/test.srs'%    option path '\1/ruleset/source.json'%"
+if [ ! -f "$rs_wrong_decl" ]; then
+	echo "FAIL: ruleset-format-wrong-declared: no config was generated"
+	FAILED=1
+elif ! grep -q '"tag": "cfg-rs_local-rule"' "$rs_wrong_decl"; then
+	echo "FAIL: ruleset-format-wrong-declared: the rule-set is missing from the config"
+	FAILED=1
+# The entry is multi-line, so read the block rather than grepping the whole
+# file: "format": "binary" appears on the built-in geoip-cn entry too.
+elif ! awk '/"tag": "cfg-rs_local-rule"/,/^		},$/' "$rs_wrong_decl" | grep -q '"format": "source"'; then
+	echo "FAIL: ruleset-format-wrong-declared: a source-JSON file declared binary was not corrected:"
+	awk '/"tag": "cfg-rs_local-rule"/,/^		},$/' "$rs_wrong_decl" | sed 's/^/      /'
+	FAILED=1
+else
+	echo "PASS: ruleset-format-wrong-declared: declared binary, file is source -> corrected to source"
+fi
+
+# 7b) (b) no declared format, content is source JSON under a .srs name.  The
+#     extension inference is what lies here, so the case also has to prove the
+#     correction is ANNOUNCED - otherwise the user cannot tell why their
+#     empty field turned into an explicit one.
+rs_mislabelled="$WORK/ruleset-format-mislabelled/run/sing-box-c.json"
+run_case ruleset-format-mislabelled "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"/^[[:space:]]*option format 'binary'\$/d;s%^[[:space:]]*option path '\(.*\)/ruleset/test.srs'%    option path '\1/ruleset/mislabelled.srs'%"
+if [ ! -f "$rs_mislabelled" ]; then
+	echo "FAIL: ruleset-format-mislabelled: no config was generated"
+	FAILED=1
+elif ! awk '/"tag": "cfg-rs_local-rule"/,/^		},$/' "$rs_mislabelled" | grep -q '"format": "source"'; then
+	echo "FAIL: ruleset-format-mislabelled: a source-JSON file named .srs was not declared as source:"
+	awk '/"tag": "cfg-rs_local-rule"/,/^		},$/' "$rs_mislabelled" | sed 's/^/      /'
+	FAILED=1
+else
+	echo "PASS: ruleset-format-mislabelled: source JSON under a .srs name -> declared source"
+fi
+
+# 7c) The case that must NOT change: a .srs holding a real .srs, with no
+#     declared format.  sing-box's inference is already right, so emitting an
+#     explicit value would alter the generated bytes of every working
+#     rule-set for no behavioural gain.  This is the assertion that keeps the
+#     correction from becoming a rewrite.
+rs_untouched="$WORK/ruleset-format-untouched/run/sing-box-c.json"
+run_case ruleset-format-untouched "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"/^[[:space:]]*option format 'binary'\$/d"
+if [ ! -f "$rs_untouched" ]; then
+	echo "FAIL: ruleset-format-untouched: no config was generated"
+	FAILED=1
+elif awk '/"tag": "cfg-rs_local-rule"/,/^		},$/' "$rs_untouched" | grep -q '"format":'; then
+	echo "FAIL: ruleset-format-untouched: a correct rule-set gained an explicit format;"
+	echo "      the probe must only speak when it disagrees with what sing-box would do"
+	awk '/"tag": "cfg-rs_local-rule"/,/^		},$/' "$rs_untouched" | sed 's/^/      /'
+	FAILED=1
+else
+	echo "PASS: ruleset-format-untouched: an already-correct rule-set is left exactly as it was"
+fi
+
+# 7d) update_interval normalisation.  sing-box parses it as a Go duration, and
+#     `update_interval: "3600"` is a measured hard failure on 1.14.2 ("time:
+#     missing unit in duration \"3600\"") that rejects the whole configuration.
+#     strToTime() appends the unit; "24h" must pass through untouched, because
+#     a value that already carries a unit is the normal case and must not be
+#     rewritten into something else.
+rs_interval="$WORK/ruleset-update-interval/run/sing-box-c.json"
+run_case ruleset-update-interval "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"s%^[[:space:]]*option path '.*/ruleset/test.srs'%&\n\nconfig ruleset 'rs_remote'\n\toption enabled '1'\n\toption label 'remote-rs'\n\toption type 'remote'\n\toption format 'binary'\n\toption url 'https://example.invalid/x.srs'\n\toption update_interval '3600'%"
+
+run_case ruleset-update-interval-unit "$ROOT/tests/fixtures/generators/custom.uci" generate_client.uc sing-box-c.json \
+	"s%^[[:space:]]*option path '.*/ruleset/test.srs'%&\n\nconfig ruleset 'rs_remote'\n\toption enabled '1'\n\toption label 'remote-rs'\n\toption type 'remote'\n\toption format 'binary'\n\toption url 'https://example.invalid/x.srs'\n\toption update_interval '24h'%"
+
+for pair in "ruleset-update-interval:3600s:3600" "ruleset-update-interval-unit:24h:24h"; do
+	name="${pair%%:*}"; rest="${pair#*:}"; want="${rest%%:*}"; was="${rest#*:}"
+	f="$WORK/$name/run/sing-box-c.json"
+	if [ ! -f "$f" ]; then
+		echo "FAIL: $name: no config was generated"
+		FAILED=1
+	elif ! grep -q "\"update_interval\": \"$want\"" "$f"; then
+		echo "FAIL: $name: update_interval '$was' should be emitted as '$want':"
+		grep -n '"update_interval"' "$f" | sed 's/^/      /'
+		FAILED=1
+	else
+		echo "PASS: $name: update_interval '$was' is emitted as '$want'"
+	fi
+done
+
+# 8) Batch 2a: the "do not block startup on the first download" fallback.
+#
+#    A remote rule-set with no initial_path is fetched during initialization,
+#    BEFORE the inbounds bind.  On a cold cache - which is what a fresh install
+#    has, since cache.db ships empty - that means the first start waits on
+#    raw.githubusercontent.com, through the selected node, before the instance
+#    will listen at all; and a failure there is a FATAL that the health gate
+#    turns into a rollback or a released intercept layer.
+#
+#    The opt-in points such a rule-set at an EMPTY rule-set, so sing-box reads
+#    a file, starts, and refreshes from the URL in the background.  It is
+#    opt-in because an empty rule-set matches nothing and everything it would
+#    have split falls through to `final` - a routing change, not a robustness
+#    tweak.
+#
+#    The first case is the one that matters most and is the easiest to get
+#    wrong: with the switch off, nothing may change.  Not "the feature is off",
+#    but no initial_path, no file written, and a configuration that differs
+#    from the pre-feature one.
+
+# 8a) The default.  opt-in off -> no initial_path anywhere, and no fallback
+#     file created.  The generated config must be identical to the same
+#     fixture with the option absent, which is the upgrade-invisible property.
+run_case safe-start-off "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json
+run_case safe-start-off-explicit "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
+	"s/option log_level 'error'/option log_level 'error'\n\toption ruleset_safe_start '0'/"
+
+for name in safe-start-off safe-start-off-explicit; do
+	f="$WORK/$name/run/sing-box-c.json"
+	if [ ! -f "$f" ]; then
+		echo "FAIL: $name: no config was generated"
+		FAILED=1
+	elif grep -q 'initial_path' "$f"; then
+		echo "FAIL: $name: the opt-in is OFF but the config carries an initial_path:"
+		grep -n 'initial_path' "$f" | sed 's/^/      /'
+		FAILED=1
+	elif [ -d "$WORK/$name/ruleset/initial" ] && [ -n "$(ls -A "$WORK/$name/ruleset/initial" 2>/dev/null | grep -v '^empty\.')" ]; then
+		echo "FAIL: $name: the opt-in is OFF but a fallback file was written:"
+		ls -1 "$WORK/$name/ruleset/initial" | sed 's/^/      /'
+		FAILED=1
+	else
+		echo "PASS: $name: opt-in off -> no initial_path, no fallback file"
+	fi
+done
+
+# 8b) opt-in on, the built-ins.  These two ARE the feature: an earlier version
+#     of this file only knew how to build their entries, and the CLI had no
+#     idea they existed, so a cold install blocked on downloading them.
+run_case safe-start-on "$ROOT/tests/fixtures/generators/client.uci" generate_client.uc sing-box-c.json \
+	"s/option log_level 'error'/option log_level 'error'\n\toption ruleset_safe_start '1'/"
+
+ss_json="$WORK/safe-start-on/run/sing-box-c.json"
+ss_initial="$WORK/safe-start-on/ruleset/initial"
+if [ ! -f "$ss_json" ]; then
+	echo "FAIL: safe-start-on: no config was generated"
+	FAILED=1
+else
+	# grep -F on the fully-constructed path, not an awk range around the entry.
+	# The range form over-captured: it ran past the entry's closing brace into
+	# the next one and then reported success on whatever it found, so a
+	# rule-set with NO initial_path would have passed whenever the next entry
+	# had one.  Asserting the exact string also pins that the path is inside
+	# this run's archive, which is the property that makes it readable by the
+	# jailed client and admitted by the path whitelist.
+	for tag in geoip-cn geosite-cn; do
+		want="\"initial_path\": \"$ss_initial/$tag.srs\""
+		if ! grep -qF "$want" "$ss_json"; then
+			echo "FAIL: safe-start-on: the built-in '$tag' does not carry"
+			echo "      $want"
+			grep -n 'initial_path' "$ss_json" | sed 's/^/      /'
+			FAILED=1
+		elif [ ! -s "$ss_initial/$tag.srs" ]; then
+			echo "FAIL: safe-start-on: '$tag' points at an initial file that was not written"
+			FAILED=1
+		else
+			echo "PASS: safe-start-on: built-in '$tag' -> initial_path inside the archive, file present"
+		fi
+	done
+
+	# The file has to be a real compiled rule-set, not a copy of the source
+	# JSON and not an empty file: sing-box IGNORES an initial file whose format
+	# does not match the declared one and blocks startup exactly as if there
+	# were none, which would make the whole feature a no-op that looks enabled.
+	# The magic is the check - it is what distinguishes a .srs from source JSON.
+	for tag in geoip-cn geosite-cn; do
+		f="$ss_initial/$tag.srs"
+		[ -s "$f" ] || continue
+		if [ "$(dd if="$f" bs=1 count=3 2>/dev/null)" = "SRS" ]; then
+			echo "PASS: safe-start-on: $tag.srs is a compiled rule-set (SRS magic)"
+		else
+			echo "FAIL: safe-start-on: $tag.srs is not a compiled rule-set - the first three"
+			echo "      bytes are not the SRS magic, so sing-box would ignore the initial file"
+			FAILED=1
+		fi
+	done
+fi
+
+# 8c/8d) opt-in on, user-defined remote rule-sets: one tag and two tags.
+#     One fixture covers both, plus a disabled one:
+#     tests/fixtures/generators/custom_safe_start.uci.  A separate file rather
+#     than sed variations of custom.uci, because the opt-in belongs to the
+#     `config homeproxy-pro 'routing'` section - a different section than anything
+#     the existing variations anchor on - and because a two-expression sed that
+#     both inserts an option and appends a whole section is a construct this
+#     suite has never run.  The one-expression form is proven here; the
+#     two-expression form is not, and a test whose own tooling is untested is
+#     how a case quietly stops testing anything.
+run_case safe-start-user-remote "$ROOT/tests/fixtures/generators/custom_safe_start.uci" \
+	generate_client.uc sing-box-c.json
+
+sr_json="$WORK/safe-start-user-remote/run/sing-box-c.json"
+sr_initial="$WORK/safe-start-user-remote/ruleset/initial"
+if [ ! -f "$sr_json" ]; then
+	echo "FAIL: safe-start-user-remote: no config was generated"
+	FAILED=1
+else
+	# Single tag: a concrete path, and the file it names has to be there.  A
+	# pointer at a file that does not exist is not a degraded feature, it is no
+	# feature - sing-box ignores it and blocks startup exactly as before.
+	# Same reason as 8b: assert the exact string, not a range that can run on
+	# into the next entry.
+	sr_want="\"initial_path\": \"$sr_initial/cfg-rs_remote-rule.srs\""
+	if ! grep -qF "$sr_want" "$sr_json"; then
+		echo "FAIL: safe-start-user-remote: the single-tag rule-set does not carry"
+		echo "      $sr_want"
+		grep -n 'initial_path' "$sr_json" | sed 's/^/      /'
+		FAILED=1
+	fi
+	if [ -s "$sr_initial/cfg-rs_remote-rule.srs" ]; then
+		echo "PASS: safe-start-user-remote: single-tag -> concrete initial_path, file present"
+	else
+		echo "FAIL: safe-start-user-remote: no fallback file for cfg-rs_remote-rule.srs"
+		FAILED=1
+	fi
+
+	# Multi tag: {tag} in the path, and one file per tag.  The entry is matched
+	# on the multi-tag shape (a tag ARRAY) rather than on the section name, so
+	# the assertion cannot be satisfied by the single-tag entry above.
+	mt_want="\"initial_path\": \"$sr_initial/{tag}.srs\""
+	if ! grep -qF "$mt_want" "$sr_json"; then
+		echo "FAIL: safe-start-user-remote: the multi-tag rule-set does not carry"
+		echo "      $mt_want"
+		echo "      sing-box substitutes {tag} and opens every resulting file, so a"
+		echo "      literal path would make it fetch and block - the failure this removes"
+		grep -n 'initial_path' "$sr_json" | sed 's/^/      /'
+		FAILED=1
+	fi
+	mt_missing=""
+	for tag in cfg-rs_multi-rule cfg-alt-rule; do
+		[ -s "$sr_initial/$tag.srs" ] || mt_missing="$mt_missing $tag"
+	done
+	if [ -n "$mt_missing" ]; then
+		echo "FAIL: safe-start-user-remote: no fallback file for:$mt_missing"
+		echo "      sing-box opens every tag's file, so a missing one blocks startup"
+		FAILED=1
+	else
+		echo "PASS: safe-start-user-remote: multi-tag -> {tag} placeholder, one file per tag"
+	fi
+
+	# Disabled: build_user_rulesets() skips it, so it must be absent from the
+	# config AND must not have caused a file to be written for it.
+	if grep -q 'cfg-rs_off-rule' "$sr_json"; then
+		echo "FAIL: safe-start-user-remote: a disabled rule-set reached the generated config"
+		FAILED=1
+	elif [ -e "$sr_initial/cfg-rs_off-rule.srs" ]; then
+		echo "FAIL: safe-start-user-remote: a fallback file was written for a disabled rule-set"
+		FAILED=1
+	else
+		echo "PASS: safe-start-user-remote: a disabled rule-set gets neither path nor file"
+	fi
+fi
 # 6) P3 #8 (extra_tags die() on missing {tag}): deferred to
 #    a dedicated 'testbed-dialect' sprint. The multi-line sed to
 #    attach an extra_tags list onto the existing rs_local ruleset

@@ -161,7 +161,7 @@ echo "== crontab permissions =="
 sh "$ROOT/tests/runtime/test_crontab_perms.sh" "$ROOT" "$WORK_ROOT/crontab-perms" || FAILED=1
 
 echo "== resource update verification (B2) =="
-# Pure shell: wget / jsonfilter / ucode / uci / flock are stubbed and the
+# Pure shell: uclient-fetch / jsonfilter / ucode / uci / flock are stubbed and the
 # script's absolute paths are rewritten into a sandbox, so this drives the
 # verification path - match, mismatch, no API digest, no local digest - without
 # a network or a router. What the *shipped* digest helper computes is

@@ -120,6 +120,68 @@ export function get_ruleset(cfg, dm) {
 	return rules;
 };
 
+/* rule_set_tags(cfg) - the rule_set tags ONE `dm.routing.rulesets` section
+ * produces: `cfg-<name>-rule`, plus one per entry in extra_tags.
+ *
+ * The generator needs it to build the tag; the CLI's environment resolution
+ * needs it too, because a `{tag}` placeholder in a source path has to be
+ * expanded to the real per-tag files before their existence can be checked.
+ * Two copies of this list would be free to drift, and the failure mode is
+ * quiet: the pre-check would stat files the running configuration never
+ * names, and a genuinely missing one would go unreported.
+ *
+ * Declared after get_ruleset() but before its callers for the same reason that
+ * function carries its own note: ucode resolves references at call time from
+ * what has already been evaluated. */
+export function rule_set_tags(cfg) {
+	const tags = [ 'cfg-' + cfg.name + '-rule' ];
+
+	for (let t in (cfg.extra_tags || []))
+		push(tags, 'cfg-' + t + '-rule');
+
+	return tags;
+};
+
+/* BUILTIN_REMOTE_RULE_SETS - the remote rule-sets the generator declares
+ * itself, in the modes that split on mainland China.
+ *
+ *   geoip-cn    referenced by the route rule to split destinations by IP
+ *   geosite-cn  referenced only by the DNS rule (server: china-dns); the
+ *               route layer never matches it, but sing-box still loads and
+ *               keeps it, so removing it would break the DNS split
+ *
+ * This list is shared with generate_client.uc, which has to create the
+ * "do not block startup" fallback file for each of them before the generator
+ * runs.  The two used to be independent: route.uc hard-coded the entries and
+ * the CLI knew nothing about them, which is why a cold-cache first start
+ * blocked on downloading them and why a change to either side could not be
+ * checked against the other.  One list, two readers.
+ *
+ * Not a conffile-order dependency - this is the generator's own declaration,
+ * in the order the generated rule_set array must keep so the emitted bytes
+ * stay stable. */
+export const BUILTIN_REMOTE_RULE_SETS = [
+	{
+		tag: 'geoip-cn',
+		format: 'binary',
+		url: 'https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
+		update_interval: '24h'
+	},
+	{
+		tag: 'geosite-cn',
+		format: 'binary',
+		url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs',
+		update_interval: '24h'
+	}
+];
+
+/* The routing modes that declare them.  Kept beside the list so the CLI can
+ * decide whether it needs to create their fallbacks without repeating the
+ * condition route.uc branches on - and so the two cannot drift. */
+export function declaresBuiltinRemoteRuleSets(routing_mode) {
+	return routing_mode === 'bypass_mainland_china' || routing_mode === 'proxy_mainland_china';
+};
+
 /* Resolve the direct-node destination override that the route builder
  * needs for a `direct` routing_node target. The override is recorded
  * earlier by generate_outbound() (see outbound.uc) when a direct node

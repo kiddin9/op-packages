@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=upx
 PKG_VERSION:=5.2.1
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-src.tar.xz
 PKG_SOURCE_URL:=https://github.com/upx/upx/releases/download/v$(PKG_VERSION)
@@ -20,7 +20,6 @@ PKG_LICENSE:=GPL-2.0-only
 PKG_LICENSE_FILES:=COPYING LICENSE
 
 HOST_BUILD_DIR:=$(BUILD_DIR_HOST)/$(PKG_NAME)-$(PKG_VERSION)-src
-HOST_BUILD_DEPENDS:=ucl/host
 MAKE_PATH:=src
 
 include $(INCLUDE_DIR)/package.mk
@@ -29,7 +28,7 @@ include $(INCLUDE_DIR)/host-build.mk
 define Package/upx
   SECTION:=utils
   CATEGORY:=Utilities
-  DEPENDS:=+libucl +libstdcpp +zlib
+  DEPENDS:=+libstdcpp
   TITLE:=The Ultimate Packer for eXecutables
   URL:=https://upx.github.io/
 endef
@@ -40,14 +39,14 @@ executable packer for several executable formats.
 endef
 
 define Host/Compile
-	UPX_UCLDIR=$(STAGING_DIR_HOST) \
-	$(MAKE) -C $(HOST_BUILD_DIR)/src \
+	$(MAKE) -C $(HOST_BUILD_DIR) release \
 		LDFLAGS="$(HOST_LDFLAGS)" \
 		CXX="$(HOSTCXX)"
 endef
 
 define Host/Install
-	$(CP) $(HOST_BUILD_DIR)/build/release/upx $(STAGING_DIR_HOST)/bin/upx
+	$(INSTALL_DIR) $(STAGING_DIR_HOST)/bin
+	$(INSTALL_BIN) $(HOST_BUILD_DIR)/build/release/upx $(STAGING_DIR_HOST)/bin/upx
 endef
 
 define Host/Clean

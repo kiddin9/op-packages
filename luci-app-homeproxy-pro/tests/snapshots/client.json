@@ -3146,7 +3146,7 @@
 								"kind": "ListValue",
 								"name": "format",
 								"title": "Format",
-								"description": null,
+								"description": "Rule-set file format. Leave it empty and HomeProxy reads it from the file itself; a value that does not match the file is corrected and reported in the log.",
 								"depends": [],
 								"values": [
 									[
@@ -3160,28 +3160,33 @@
 								],
 								"subsection": null,
 								"props": {
-									"default": "binary",
-									"rmempty": false
+									"rmempty": true
 								}
 							},
 							{
 								"kind": "Value",
 								"name": "path",
 								"title": "Path",
-								"description": null,
+								"description": "Rule-set file in /etc/homeproxy-pro/ruleset/. Copy it there first: the generator refuses a rule-set whose file is missing.",
 								"depends": [
 									[
 										"type",
 										"local"
 									]
 								],
-								"values": [],
+								"values": [
+									[
+										"/etc/homeproxy-pro/ruleset/example.srs",
+										null
+									]
+								],
 								"subsection": null,
 								"props": {
 									"datatype": "file",
 									"modalonly": true,
-									"placeholder": "/etc/homeproxy-pro/ruleset/example.json",
-									"rmempty": false
+									"placeholder": "/etc/homeproxy-pro/ruleset/example.srs",
+									"rmempty": false,
+									"validate": "fn(279:52e3f36f3a3c)"
 								}
 							},
 							{
@@ -3224,18 +3229,25 @@
 								"kind": "Value",
 								"name": "initial_path",
 								"title": "Initial path",
-								"description": "Local file with initial rule-set content; avoids blocking startup on first download (1.14).",
+								"description": "Local file with initial rule-set content; avoids blocking startup on first download (1.14). Must be under /etc/homeproxy-pro/ruleset/.",
 								"depends": [
 									[
 										"type",
 										"remote"
 									]
 								],
-								"values": [],
+								"values": [
+									[
+										"/etc/homeproxy-pro/ruleset/example.srs",
+										null
+									]
+								],
 								"subsection": null,
 								"props": {
 									"datatype": "file",
-									"modalonly": true
+									"modalonly": true,
+									"placeholder": "/etc/homeproxy-pro/ruleset/example.srs",
+									"validate": "fn(279:52e3f36f3a3c)"
 								}
 							},
 							{
@@ -3260,7 +3272,7 @@
 								"kind": "Value",
 								"name": "update_interval",
 								"title": "Update interval",
-								"description": "Update interval of rule set.",
+								"description": "Update interval of rule set, e.g. 24h or 3600 (seconds).",
 								"depends": [
 									[
 										"type",
@@ -3270,7 +3282,8 @@
 								"values": [],
 								"subsection": null,
 								"props": {
-									"placeholder": "1d"
+									"placeholder": "24h",
+									"validate": "fn(242:e40abf36902a)"
 								}
 							}
 						],

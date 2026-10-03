@@ -158,7 +158,7 @@ function json_escape(s, out, i, c) {
 		else if (c == "\n") out = out "\\n"
 		else if (c == "\r") out = out "\\r"
 		else if (c == "\t") out = out "\\t"
-		else if (c < " ") out = out " "
+		else if (c in json_control_ord) out = out sprintf("\\u%04x", json_control_ord[c])
 		else out = out c
 	}
 	return out
@@ -199,6 +199,8 @@ function summary_json(out) {
 	return out
 }
 BEGIN {
+	for (i = 1; i < 32; i++) json_control_ord[sprintf("%c", i)] = i
+	json_control_ord[sprintf("%c", 127)] = 127
 	if (MODE == "json_reply") {
 		ORS = ""
 		printf "{\"log\":["

@@ -221,7 +221,7 @@ function main() {
 		/* Keep the lock's mtime current for as long as this run is alive.
 		 * The stale window (LOCK_STALE) is what lets a later run reclaim a
 		 * lock a killed process left behind, but nothing refreshed it while
-		 * the fetch was in progress - and the fetch is one wget per URL,
+		 * the fetch was in progress - and the fetch is one request per URL,
 		 * ten seconds each.  A run that crosses the threshold while still
 		 * working can therefore have its lock broken underneath it, and the
 		 * two runs then interleave their read-modify-write exactly like the

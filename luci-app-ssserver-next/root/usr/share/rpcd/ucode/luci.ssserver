@@ -6,7 +6,7 @@ import * as fs from 'fs';
 const methods = {
 	get_log: {
 		call: function() {
-			let p = fs.popen('logread -e ssserver');
+			let p = fs.popen("logread -e 'ssserver' | grep -E 'ssserver(\\[[0-9]+\\])?: ' | tail -n 150");
 			let log = '';
 			if (p) {
 				log = p.read('all');

@@ -393,6 +393,18 @@ export const Loader = {
 			udp_nat_max: opt(uci, 'main', 'udp_nat_max'),
 			cn_ip_fallback: opt(uci, 'main', 'cn_ip_fallback'),
 			sniffer_advanced_mode: opt(uci, 'main', 'sniffer_advanced_mode'),
+			/* The "do not block startup on the first rule-set download"
+			 * opt-in.  Listed here because this object is an EXPLICIT key
+			 * list: a field the generators read off dm.general that is not
+			 * in it does not read as "absent", it reads as "never set" - and
+			 * with a `|| '0'` fallback in context.uc that is indistinguishable
+			 * from a user who left it off.  The first version of the feature
+			 * added the option to /etc/config/homeproxy-pro and read it in
+			 * context.uc, and nothing anywhere said the key was missing: the
+			 * configuration generated cleanly, `sing-box check` passed, and the
+			 * feature simply never turned on.  Guard 53 now compares the two
+			 * lists so that class cannot come back quietly. */
+			ruleset_safe_start: opt(uci, 'main', 'ruleset_safe_start'),
 			main_urltest_nodes: opt(uci, 'main', 'main_urltest_nodes') || [],
 			main_urltest_interval: opt(uci, 'main', 'main_urltest_interval'),
 			main_urltest_tolerance: opt(uci, 'main', 'main_urltest_tolerance'),

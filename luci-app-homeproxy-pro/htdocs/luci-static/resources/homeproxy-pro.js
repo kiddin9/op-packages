@@ -34,6 +34,30 @@ const HTTP_PING_KEEPALIVE_HINT = _('The timeout (in seconds) that after performi
    TLS listener failed with nothing pointing at the path. */
 const HP_CERT_PATH_ROOTS = [ '/etc/homeproxy-pro/certs/', '/etc/acme/', '/etc/ssl/' ];
 
+/* Rule-set source files: a `type: local` rule-set's `path` and a `type: remote`
+   one's `initial_path`. This list mirrors RULE_PATH_ROOTS in
+   /etc/homeproxy-pro/scripts/homeproxy-pro.uc, and tests/arch-guard.sh guard 50 fails
+   when the two drift apart - the same lock guard 29 puts on the certificate
+   list, for the same reason: the UI's check is only UX, UCI can be set from
+   anywhere on the LAN, and a path the UI accepted but the backend dropped made
+   the field vanish from the generated configuration with nothing pointing at
+   the path.
+
+   It is deliberately a single root, and deliberately narrower than the
+   general HP_DIR-shaped gate the backend also has: a rule-set belongs in the
+   archive, which the package creates at install time
+   (/etc/uci-defaults/luci-homeproxy-pro) and before every generation
+   (runtime/service.sh's hp_prepare_ruleset_dir). */
+const HP_RULE_PATH_ROOTS = [ '/etc/homeproxy-pro/ruleset/' ];
+
+/* The archive path offered as the datalist entry on the rule-set path fields,
+   so the default the backend expects is one click away instead of something
+   the user has to know. Kept as its own constant so the placeholder, the
+   datalist and the validator's message all quote the same directory - a
+   placeholder that named a path the validator then refused would be its own
+   small version of the bug this list exists to prevent. */
+const HP_RULE_PATH_DEFAULT = '/etc/homeproxy-pro/ruleset/example.srs';
+
 /* Methods whose failure has already been reported, so that a polled call
    cannot repeat the same notification every few seconds. */
 const rpc_warned = new Set();
@@ -58,6 +82,80 @@ for (let i = 0; i < 64; i++)
 	MD5_K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296);
 
 return baseclass.extend({
+	/* The archive path the rule-set form offers as its datalist entry and
+	   placeholder. Exported rather than left module-local so the view quotes
+	   this one string instead of repeating the path: a placeholder naming a
+	   directory the validator then refuses is its own small version of the
+	   drift guard 50 exists to catch, and the placeholder is exactly what a
+	   user copies. */
+	rule_path_default: HP_RULE_PATH_DEFAULT,
+
+	/* Parse sing-box's rule-set download failures out of a log.
+	 *
+	 * With `ruleset_safe_start` on, a remote rule-set that cannot be
+	 * downloaded is no longer a failed start: sing-box reads the `initial_path`
+	 * fallback, comes up, and retries in the background, logging
+	 *
+	 *   2026-10-03 01:15:42 ERROR router: fetch rule-set geoip-cn: Get "https://…": dial tcp …
+	 *
+	 * That is a good trade, and it is also invisible: the instance is healthy,
+	 * the health gate passes, the LAN is proxied - and the rule-set that is
+	 * supposed to keep mainland traffic direct matches NOTHING, so all of it
+	 * goes to `final`.  The status page is the only place a user looks without
+	 * ssh, so it has to show this.
+	 *
+	 * Two deliberate choices about the format:
+	 *
+	 *   - the tag and the reason are matched on the stable part
+	 *     (`fetch rule-set <tag>:`) and nothing assumes sing-box's timestamp
+	 *     or level layout.  A rule-set whose download failed long ago and whose
+	 *     log line moves out of the file must not read as "no failures", so a
+	 *     missing timestamp is omitted rather than faked.
+	 *   - the last occurrence of a tag wins.  The file is truncated at 50 KB by
+	 *     clean_log.sh, so a tag that failed every 24 hours is in there
+	 *     repeatedly, and the most recent reason is the one that is true now.
+	 *
+	 * The timestamp shape is the one thing that IS pinned, and it was pinned
+	 * from a real 1.14.2 line rather than guessed - the device writes
+	 *
+	 *   +0800 2026-10-03 09:29:34 ERROR router: fetch rule-set geoip-cn: Get ...
+	 *
+	 * i.e. a UTC offset BEFORE the date.  An earlier version of this anchored
+	 * the date at the start of the line and therefore returned no time for
+	 * every real line, which is the one shape the panel is supposed to show.
+	 * The offset is optional in the pattern so a build that omits it still
+	 * parses.
+	 *
+	 * Returns [{ tag, reason, at }], newest last. Never throws: this reads a
+	 * file that may be empty, half-written, or rotated mid-read. */
+	parseRuleSetFetchFailures(text) {
+		const out = [];
+		if (!text)
+			return out;
+
+		const seen = {};
+
+		for (const line of String(text).split('\n')) {
+			const m = /fetch rule-set\s+([^\s:]+):\s*(.*)$/.exec(line);
+			if (!m)
+				continue;
+
+			const tag = m[1];
+			const at = /^(?:[+-]\d{4}\s+)?(\d{4}-\d{2}-\d{2}[ T][0-9:.]+)/.exec(line);
+
+			if (seen[tag] !== undefined) {
+				out[seen[tag]].reason = m[2].trim();
+				out[seen[tag]].at = at ? at[1] : null;
+				continue;
+			}
+
+			seen[tag] = out.length;
+			out.push({ tag: tag, reason: m[2].trim(), at: at ? at[1] : null });
+		}
+
+		return out;
+	},
+
 	dns_strategy: {
 		'': _('Default'),
 		'prefer_ipv4': _('Prefer IPv4'),
@@ -1104,6 +1202,23 @@ return baseclass.extend({
 			if (value.match(/(^|\/)\.\.(\/|$)/) ||
 			    !HP_CERT_PATH_ROOTS.some((root) => value.indexOf(root) === 0 && value.length > root.length))
 				return _('Expecting: %s').format(_('/etc/homeproxy-pro/certs/..., /etc/acme/..., /etc/ssl/...'));
+
+		return true;
+	},
+
+	validateRuleSetPath(section_id, value) {
+		if (section_id && value)
+			/* HP_RULE_PATH_ROOTS is the same list the backend enforces
+			   (RULE_PATH_ROOTS, guard 50). The `..` rejection is explicit for
+			   the same reason as in validateCertificatePath: a prefix match
+			   alone accepts /etc/homeproxy-pro/ruleset/../../etc/shadow, and
+			   sing-box opens these files as root. The backend is the authority
+			   - this only saves a save that the generator would refuse a
+			   moment later with a message the user reads in a log file rather
+			   than on the page they are editing. */
+			if (value.match(/(^|\/)\.\.(\/|$)/) ||
+			    !HP_RULE_PATH_ROOTS.some((root) => value.indexOf(root) === 0 && value.length > root.length))
+				return _('Expecting: %s').format(_('/etc/homeproxy-pro/ruleset/...'));
 
 		return true;
 	},

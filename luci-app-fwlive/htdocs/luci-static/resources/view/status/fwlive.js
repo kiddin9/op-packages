@@ -100,6 +100,36 @@ function optionNodes(pairs) {
 	return opts;
 }
 
+function expansionButtonRowId(button) {
+	if (
+		!button ||
+		!button.classList ||
+		!button.classList.contains('fwlive-row-expand') ||
+		button._fwliveRowId == null
+	)
+		return null;
+
+	return String(button._fwliveRowId);
+}
+
+function restoreExpansionFocus(body, rowId, previousFocus) {
+	if (!body || typeof body.querySelectorAll !== 'function' || rowId == null) return false;
+
+	const buttons = body.querySelectorAll('button.fwlive-row-expand');
+	const activeElement = typeof document !== 'undefined' ? document.activeElement : null;
+	for (let i = 0; i < buttons.length; i++) {
+		const button = buttons[i];
+		if (String(button._fwliveRowId) !== String(rowId)) continue;
+		if (
+			(button !== previousFocus || activeElement !== button) &&
+			typeof button.focus === 'function'
+		)
+			button.focus();
+		return true;
+	}
+	return false;
+}
+
 function isIpv4Address(addr) {
 	if (addr.indexOf('.') === -1) return false;
 
@@ -687,8 +717,9 @@ return view.extend({
 		if (ev && ev.target && ev.target.closest && ev.target.closest('a.fwlive-filter-link'))
 			return;
 
+		const focusRowId = expansionButtonRowId(ev && ev.currentTarget);
 		this.expandedRowId = this.expandedRowId === rowId ? null : rowId;
-		this.renderRows(true);
+		this.renderRows(true, focusRowId);
 	},
 
 	renderThead() {
@@ -2158,12 +2189,15 @@ return view.extend({
 		this.renderRows(true);
 	},
 
-	renderRows(force) {
+	renderRows(force, focusRowId) {
 		const el = document.getElementById('fwlive-table');
 		if (!el || typeof el.querySelector !== 'function') return;
 
 		const body = el.querySelector('tbody');
 		const scroll = document.getElementById('fwlive-scroll');
+		const activeElement = typeof document !== 'undefined' ? document.activeElement : null;
+		const activeRowId = expansionButtonRowId(activeElement);
+		const restoreRowId = focusRowId != null ? String(focusRowId) : activeRowId;
 
 		const filtered = this.filteredRowsState();
 		const rows = filtered.rows.slice();
@@ -2209,10 +2243,11 @@ return view.extend({
 				actionRowTintClass: (action) => this.actionRowTintClass(action)
 			}
 		);
+		const expansionFocusKept = restoreExpansionFocus(body, restoreRowId, activeElement);
 		if (force && !this.isTabHidden()) this.resolvePaintPending = false;
 
 		if (scroll) {
-			if (!this.tablePaused && this.followLive) scroll.scrollTop = 0;
+			if (!this.tablePaused && this.followLive && !expansionFocusKept) scroll.scrollTop = 0;
 			else scroll.scrollTop = prevScroll;
 		}
 
@@ -2541,7 +2576,7 @@ return view.extend({
 					E('li', { 'id': 'fwlive-manual-test' }, []),
 					E('li', {}, [
 						_(
-							'Click a row (Time or other non-link cells) to see the full log line (Simple view).'
+							'In Simple view, activate the message button or click a row to show or hide the full log line.'
 						)
 					]),
 					E('li', {}, [

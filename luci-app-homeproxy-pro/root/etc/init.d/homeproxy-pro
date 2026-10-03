@@ -248,6 +248,14 @@ start_service() {
 	if [ "$client_enabled" = "1" ]; then
 		hp_net_wait_wan 60
 
+		# The rule-set archive has to exist before the generator runs, not
+		# after: `sing-box check` opens every local rule_set path, so a
+		# missing directory used to surface as sing-box's own
+		# "parse rule-set[0]: open ...: no such file" and nothing else.  The
+		# generator also refuses a rule-set whose file is absent, with a
+		# message that names the rule-set and the directory to copy into.
+		hp_prepare_ruleset_dir "$HP_DIR"
+
 		if ! hp_start_generated_config c "$HP_DIR" "$RUN_DIR" "$GOOD_DIR"; then
 			hp_release_stale_intercept
 			return 1
@@ -510,6 +518,12 @@ reload_service() {
 	# the generator leaves the running one in place, so the reload is
 	# aborted *before* stop_service() - the old configuration keeps running
 	# instead of the router ending up with no service at all.
+	#
+	# The rule-set archive is created before the preflight, for the same
+	# reason start_service does it: the generator's `sing-box check` opens
+	# every local rule_set path, so a missing directory would fail the
+	# preflight for a reason the user cannot act on.
+	hp_prepare_ruleset_dir "$HP_DIR"
 	#
 	# A3: whichever sides are generated here are the candidates start_service
 	# must activate - it must not generate them a second time. Two invocations
