@@ -1,0 +1,45 @@
+#!/bin/sh
+# Master switch for the quickactions failover system.
+#   quickactions-failover on|off|status|test
+
+LOCK=/tmp/quickactions_wan_down.lock
+FAILS=/tmp/quickactions_wan_fails.count
+OKS=/tmp/quickactions_wan_oks.count
+HP=/etc/hotplug.d/iface/99-quickactions-conntrack-flush
+CRON_LINE="* * * * * /usr/bin/wan-watchdog.sh"
+
+case "$1" in
+    on)
+        uci -q set quickactions.failover.enabled=1
+        uci -q commit quickactions
+        [ -f "$HP" ] && chmod 755 "$HP"
+        (crontab -l 2>/dev/null | grep -v "wan-watchdog.sh"; echo "$CRON_LINE") | crontab -
+        /etc/init.d/cron restart
+        echo "ENABLED"
+        logger -t quickactions-failover "master switch: enabled"
+        ;;
+    off)
+        uci -q set quickactions.failover.enabled=0
+        uci -q commit quickactions
+        [ -f "$HP" ] && chmod 644 "$HP"
+        crontab -l 2>/dev/null | grep -v "wan-watchdog.sh" | crontab -
+        rm -f "$LOCK" "$FAILS" "$OKS"
+        /etc/init.d/cron restart
+        echo "DISABLED"
+        logger -t quickactions-failover "master switch: disabled"
+        ;;
+    status)
+        en=$(uci -q get quickactions.failover.enabled)
+        [ -z "$en" ] && en=1
+        [ "$en" = "1" ] && echo "STATUS: [ON]" || echo "STATUS: [OFF]"
+        [ -f "$LOCK" ] && echo "MODE:   [BACKUP]" || echo "MODE:   [PRIMARY]"
+        ;;
+    test)
+        /usr/bin/wan-watchdog.sh
+        echo "manual run complete"
+        ;;
+    *)
+        echo "Usage: quickactions-failover [on|off|status|test]"
+        ;;
+esac
+exit 0

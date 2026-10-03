@@ -1,0 +1,617 @@
+#!/bin/sh
+
+crrun=$1
+crid=$2
+crstate=${3:-1}
+NAME=devgate
+DEBUG=1  # 开启调试
+
+LOG_FILE="/var/log/devgate.log"
+IDLIST="/var/$NAME.idlist"
+RULE_PREFIX="devgate_"
+DEFAULT_SRC_ZONE="lan"
+PUBLIC_DEST_ZONE="wan"
+INTERNAL_DEST_ZONE="*"
+
+bin_fw4=$(command -v fw4 2>/dev/null)
+
+config_t_get() {
+	local index=${3:-0}
+	local ret=$(uci -q get "${NAME}.@${1}[${index}].${2}")
+	echo "${ret:-$4}"
+}
+
+normalize_rule_uid() {
+	local uid
+	uid=$(printf '%s' "${1:-}" | tr 'A-F' 'a-f' | sed 's/[^a-z0-9]//g' | cut -c1-6)
+
+	if echo "$uid" | grep -qE '^[a-z0-9]{6}$'; then
+		echo "$uid"
+		return 0
+	fi
+
+	return 1
+}
+
+get_rule_uid() {
+	local id="$1"
+	local uid
+
+	uid="$(normalize_rule_uid "$(config_t_get device uid "$id")")" || uid=""
+	[ -n "$uid" ] || return 1
+
+	echo "$uid"
+}
+
+resolve_rule_ref() {
+	local ref="$1"
+	local uid
+
+	if echo "$ref" | grep -qE '^[0-9]+$' && uci -q show "${NAME}.@device[$ref]" >/dev/null 2>&1; then
+		get_rule_uid "$ref"
+		return $?
+	fi
+
+	normalize_rule_uid "$ref"
+}
+
+get_device_mode() {
+	local id="$1"
+	local device_mode=$(config_t_get device chain "$id" "forward")
+
+	case "$device_mode" in
+		all|input)
+			echo "all"
+			;;
+		*)
+			echo "forward"
+			;;
+	esac
+}
+
+get_forward_dest_zone() {
+	local device_mode="$1"
+
+	case "$device_mode" in
+		all)
+			echo "$INTERNAL_DEST_ZONE"
+			;;
+		*)
+			echo "$PUBLIC_DEST_ZONE"
+			;;
+	esac
+}
+
+normalize_enabled() {
+	case "${1:-1}" in
+		1|true|yes|on|enabled)
+			echo "1"
+			;;
+		*)
+			echo "0"
+			;;
+	esac
+}
+
+dbg() {
+	if [ "$DEBUG" -eq 1 ]; then
+		local d="$(date '+%Y-%m-%d %H:%M:%S')"
+		echo "[$d] FW-DEBUG: $@" >> "$LOG_FILE"
+	fi
+}
+
+info() {
+	local d="$(date '+%Y-%m-%d %H:%M:%S')"
+	echo "[$d] FW-INFO: $@" >> "$LOG_FILE"
+}
+
+run_logged() {
+	local label="$1"
+	shift
+
+	local output rc
+	output="$("$@" 2>&1)"
+	rc=$?
+
+	[ -n "$output" ] && {
+		while IFS= read -r line; do
+			dbg "$label: $line"
+		done <<-EOF
+		$output
+		EOF
+	}
+
+	return "$rc"
+}
+
+normalize_mac() {
+	local mac
+	mac=$(echo "${1:-}" | xargs | tr 'A-F' 'a-f')
+
+	if echo "$mac" | grep -qE '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'; then
+		echo "$mac"
+		return 0
+	fi
+
+	return 1
+}
+
+rule_section() {
+	local uid="$1"
+
+	echo "${RULE_PREFIX}${uid}"
+}
+
+rule_name() {
+	local uid="$1"
+
+	echo "DevGate-$uid"
+}
+
+input_rule_name() {
+	local uid="$1"
+
+	echo "DevGate-$uid-Input"
+}
+
+check_firewall_tool() {
+	if ! command -v uci >/dev/null 2>&1; then
+		info "错误: 未找到uci命令"
+		return 1
+	fi
+
+	if [ ! -x /etc/init.d/firewall ] && [ ! -x "$bin_fw4" ]; then
+		info "错误: 未找到firewall4防火墙服务"
+		return 1
+	fi
+
+	dbg "检测到OpenWrt firewall UCI接口"
+	[ -x /etc/init.d/firewall ] && dbg "firewall服务: /etc/init.d/firewall"
+	[ -x "$bin_fw4" ] && dbg "fw4命令: $bin_fw4"
+
+	return 0
+}
+
+reload_firewall() {
+	if [ -x /etc/init.d/firewall ]; then
+		run_logged "firewall reload" /etc/init.d/firewall reload
+		return $?
+	fi
+
+	run_logged "fw4 reload" "$bin_fw4" reload
+}
+
+commit_firewall() {
+	uci -q commit firewall || {
+		info "错误: 提交firewall配置失败"
+		return 1
+	}
+
+	if [ "${DEVGATE_DEFER_FIREWALL_RELOAD:-0}" = "1" ]; then
+		dbg "延迟firewall重载"
+		return 0
+	fi
+
+	reload_firewall || {
+		info "错误: 重载firewall失败"
+		return 1
+	}
+}
+
+delete_device_firewall_rules() {
+	local ref="$1"
+	local uid
+
+	uid="$(resolve_rule_ref "$ref")" || uid=""
+
+	[ -n "$uid" ] && {
+		uci -q delete "firewall.$(rule_section "$uid")"
+		uci -q delete "firewall.$(rule_section "$uid")_forward"
+		uci -q delete "firewall.$(rule_section "$uid")_input"
+	}
+
+	uci -q delete "firewall.${RULE_PREFIX}${ref}_forward"
+	uci -q delete "firewall.${RULE_PREFIX}${ref}_input"
+}
+
+delete_all_devgate_firewall_rules() {
+	local section
+
+	uci -q show firewall | sed -n "s/^firewall\.\(${RULE_PREFIX}[A-Za-z0-9_]*\)=rule$/\1/p" | while IFS= read -r section; do
+		[ -n "$section" ] && uci -q delete "firewall.$section"
+	done
+}
+
+set_firewall_option() {
+	local section="$1"
+	local option="$2"
+	local value="$3"
+
+	uci -q set "firewall.$section.$option=$value"
+}
+
+create_forward_rule() {
+	local section="$1"
+	local mac="$2"
+	local name="$3"
+	local dest="$4"
+	local enabled
+
+	enabled="$(normalize_enabled "$5")"
+
+	uci -q set "firewall.$section=rule" || return 1
+	set_firewall_option "$section" enabled "$enabled" || return 1
+	set_firewall_option "$section" name "$name" || return 1
+	set_firewall_option "$section" src "$DEFAULT_SRC_ZONE" || return 1
+	set_firewall_option "$section" dest "$dest" || return 1
+	set_firewall_option "$section" src_mac "$mac" || return 1
+	set_firewall_option "$section" proto "all" || return 1
+	set_firewall_option "$section" target "REJECT" || return 1
+}
+
+create_input_rule() {
+	local section="$1"
+	local mac="$2"
+	local name="$3"
+	local enabled
+
+	enabled="$(normalize_enabled "$4")"
+
+	uci -q set "firewall.$section=rule" || return 1
+	set_firewall_option "$section" enabled "$enabled" || return 1
+	set_firewall_option "$section" name "$name" || return 1
+	set_firewall_option "$section" src "$DEFAULT_SRC_ZONE" || return 1
+	set_firewall_option "$section" src_mac "$mac" || return 1
+	set_firewall_option "$section" proto "all" || return 1
+	set_firewall_option "$section" target "REJECT" || return 1
+}
+
+verify_firewall_rule() {
+	local uid="$1"
+	local mac="$2"
+	local device_mode="$3"
+	local expected_enabled="${4:-}"
+	local section input_section
+	local expected_dest
+
+	section=$(rule_section "$uid")
+	input_section="${section}_input"
+	expected_dest=$(get_forward_dest_zone "$device_mode")
+
+	dbg "验证firewall通信规则: UID=$uid MAC=$mac mode=$device_mode dest=$expected_dest"
+
+	[ "$(uci -q get "firewall.$section.name")" = "$(rule_name "$uid")" ] || {
+		dbg "验证失败: 规则名称不是$(rule_name "$uid")"
+		return 1
+	}
+
+	[ "$(uci -q get "firewall.$section.src_mac")" = "$mac" ] || {
+		dbg "验证失败: 转发规则不存在或MAC不匹配"
+		return 1
+	}
+
+	[ "$(uci -q get "firewall.$section.target")" = "REJECT" ] || {
+		dbg "验证失败: 转发规则目标不是REJECT"
+		return 1
+	}
+
+	[ "$(uci -q get "firewall.$section.dest")" = "$expected_dest" ] || {
+		dbg "验证失败: 转发规则目标区域不是$expected_dest"
+		return 1
+	}
+
+	if [ -n "$expected_enabled" ]; then
+		[ "$(uci -q get "firewall.$section.enabled")" = "$expected_enabled" ] || {
+			dbg "验证失败: 转发规则启用状态不是$expected_enabled"
+			return 1
+		}
+	fi
+
+	if [ "$device_mode" = "all" ]; then
+		[ "$(uci -q get "firewall.$input_section.name")" = "$(input_rule_name "$uid")" ] || {
+			dbg "验证失败: 本机访问规则名称不是$(input_rule_name "$uid")"
+			return 1
+		}
+
+		[ "$(uci -q get "firewall.$input_section.src_mac")" = "$mac" ] || {
+			dbg "验证失败: 本机访问规则不存在或MAC不匹配"
+			return 1
+		}
+
+		[ "$(uci -q get "firewall.$input_section.target")" = "REJECT" ] || {
+			dbg "验证失败: 本机访问规则目标不是REJECT"
+			return 1
+		}
+
+		if [ -n "$expected_enabled" ]; then
+			[ "$(uci -q get "firewall.$input_section.enabled")" = "$expected_enabled" ] || {
+				dbg "验证失败: 本机访问规则启用状态不是$expected_enabled"
+				return 1
+			}
+		fi
+	else
+		! uci -q show "firewall.$input_section" >/dev/null 2>&1 || {
+			dbg "验证失败: 存在过期本机访问规则"
+			return 1
+		}
+	fi
+
+	dbg "验证成功: DevGate通信规则已写入firewall配置"
+	return 0
+}
+
+init_firewall() {
+	check_firewall_tool || return 1
+
+	info "初始化防火墙规则 (黑名单模式，REJECT目标，规则同步到firewall通信规则)"
+	delete_all_devgate_firewall_rules
+	commit_firewall || return 1
+	rm -f "$IDLIST"
+	info "firewall通信规则初始化完成"
+
+	return 0
+}
+
+stop_firewall() {
+	info "停止防火墙规则"
+	check_firewall_tool || return 1
+
+	delete_all_devgate_firewall_rules
+	commit_firewall || return 1
+
+	rm -f "$IDLIST"
+	info "DevGate通信规则已删除"
+}
+
+disable_device_config() {
+	local id="$1"
+
+	uci -q set "${NAME}.@device[$id].enable=0" || return 1
+	uci -q commit "$NAME" || return 1
+}
+
+skip_device_without_mac() {
+	local id="$1"
+	local reason="$2"
+	local uid
+
+	info "$reason，固定为未启用: ID=$id"
+	uid="$(get_rule_uid "$id" 2>/dev/null)" || uid=""
+	[ -n "$uid" ] && delete_device_firewall_rules "$uid"
+	disable_device_config "$id" || return 1
+	commit_firewall || return 1
+}
+
+add_device() {
+	check_firewall_tool || return 1
+
+	local id="$1"
+	local rule_enabled
+	local uid
+	local target=$(config_t_get device mac "$id")
+	local device_mode=$(get_device_mode "$id")
+	local dest_zone
+	[ -z "$target" ] && {
+		skip_device_without_mac "$id" "目标设备为空" || return 1
+		return 0
+	}
+
+	local comment=$(config_t_get device comment "$id" "设备$id")
+	local mac
+
+	mac=$(normalize_mac "$target") || {
+		skip_device_without_mac "$id" "目标MAC无效: $target" || return 1
+		return 0
+	}
+	rule_enabled="$(normalize_enabled "$2")"
+	dest_zone=$(get_forward_dest_zone "$device_mode")
+	uid="$(get_rule_uid "$id")" || {
+		info "添加失败: 规则唯一识别码缺失 ID=$id"
+		return 1
+	}
+
+	info "添加设备到firewall通信规则: $comment ($mac, uid=$uid, $device_mode, dest=$dest_zone, enabled=$rule_enabled)"
+
+	delete_device_firewall_rules "$uid"
+	delete_device_firewall_rules "$id"
+	create_forward_rule "$(rule_section "$uid")" "$mac" "$(rule_name "$uid")" "$dest_zone" "$rule_enabled" || return 1
+	if [ "$device_mode" = "all" ]; then
+		create_input_rule "$(rule_section "$uid")_input" "$mac" "$(input_rule_name "$uid")" "$rule_enabled" || return 1
+	fi
+
+	if ! commit_firewall; then
+		info "添加失败: firewall重载失败，回滚DevGate规则"
+		delete_device_firewall_rules "$uid"
+		commit_firewall >/dev/null 2>&1 || true
+		return 1
+	fi
+
+	verify_firewall_rule "$uid" "$mac" "$device_mode" "$rule_enabled" || return 1
+}
+
+del_device() {
+	check_firewall_tool || return 1
+
+	local ref="$1"
+	local uid
+	local target=""
+	local comment="规则$ref"
+
+	uid="$(resolve_rule_ref "$ref")" || {
+		info "移除失败: 规则唯一识别码无效 $ref"
+		return 1
+	}
+
+	if echo "$ref" | grep -qE '^[0-9]+$' && uci -q show "${NAME}.@device[$ref]" >/dev/null 2>&1; then
+		target=$(config_t_get device mac "$ref")
+		comment=$(config_t_get device comment "$ref" "设备$ref")
+	fi
+
+	info "从firewall通信规则移除设备: $comment ($target, uid=$uid)"
+
+	delete_device_firewall_rules "$uid"
+	delete_device_firewall_rules "$ref"
+	commit_firewall || return 1
+}
+
+show_firewall_status() {
+	check_firewall_tool || return 1
+
+	echo ""
+	echo "防火墙状态:"
+	echo "控制方式: 黑名单"
+	echo "控制强度: 按设备规则"
+	echo "规则来源: /etc/config/firewall 通信规则"
+	echo ""
+
+	echo "DevGate通信规则:"
+	if uci -q show firewall | grep -q "^firewall\.${RULE_PREFIX}"; then
+		uci -q show firewall | grep "^firewall\.${RULE_PREFIX}"
+	else
+		echo "  当前没有DevGate通信规则"
+	fi
+}
+
+diagnose() {
+	echo ""
+	echo "=== 设备门禁系统诊断 ==="
+	echo ""
+
+	echo "1. 服务状态:"
+	if pidof devgatectrl >/dev/null 2>&1; then
+		echo "   ✓ devgatectrl 正在运行"
+	else
+		echo "   ✗ devgatectrl 未运行"
+	fi
+
+	echo ""
+	echo "2. 配置文件:"
+	if [ -f "/etc/config/devgate" ]; then
+		echo "   ✓ 配置文件存在"
+		uci show devgate 2>/dev/null | grep -c "device" | while read count; do
+			echo "   配置了 $count 个设备"
+		done
+	else
+		echo "   ✗ 配置文件不存在"
+	fi
+
+	echo ""
+	echo "3. 防火墙接口:"
+	if command -v uci >/dev/null 2>&1; then
+		echo "   ✓ uci: $(command -v uci)"
+	else
+		echo "   ✗ 未找到uci"
+	fi
+
+	if [ -x /etc/init.d/firewall ]; then
+		echo "   ✓ firewall服务: /etc/init.d/firewall"
+	else
+		echo "   ✗ 未找到firewall服务"
+	fi
+
+	if [ -x "$bin_fw4" ]; then
+		echo "   ✓ fw4: $bin_fw4"
+		echo "   版本: $($bin_fw4 -V 2>/dev/null | head -1)"
+	else
+		echo "   ? 未找到fw4命令"
+	fi
+
+	show_firewall_status
+
+	echo ""
+	echo "4. 当前控制列表:"
+	if [ -f "$IDLIST" ] && [ -s "$IDLIST" ]; then
+		echo "   当前禁止的设备:"
+		cat "$IDLIST" | sed 's/!//g' | while read ref; do
+			echo "   $ref"
+		done
+	else
+		echo "   当前没有设备被禁止"
+	fi
+
+	echo ""
+	echo "=== 诊断完成 ==="
+}
+
+case "$crrun" in
+	start)
+		info "启动设备门禁"
+		init_firewall
+		if [ $? -eq 0 ]; then
+			info "设备门禁启动成功"
+			show_firewall_status
+		else
+			info "设备门禁启动失败"
+			exit 1
+		fi
+		;;
+
+	stop)
+		info "停止设备门禁"
+		stop_firewall
+		info "设备门禁已停止"
+		;;
+
+	add)
+		[ -z "$crid" ] && {
+			echo "错误: 需要指定设备ID"
+			exit 1
+		}
+		info "添加设备控制: ID=$crid enabled=$(normalize_enabled "$crstate")"
+		add_device "$crid" "$crstate" || exit 1
+		show_firewall_status
+		;;
+
+	uid)
+		[ -z "$crid" ] && {
+			echo "错误: 需要指定设备ID"
+			exit 1
+		}
+		get_rule_uid "$crid" || exit 1
+		;;
+
+	del)
+		[ -z "$crid" ] && {
+			echo "错误: 需要指定设备ID"
+			exit 1
+		}
+		info "移除设备控制: ID=$crid"
+		del_device "$crid" || exit 1
+		show_firewall_status
+		;;
+
+	status)
+		show_firewall_status
+		;;
+
+	reload)
+		check_firewall_tool || exit 1
+		reload_firewall || exit 1
+		;;
+
+	diagnose)
+		diagnose
+		;;
+
+	help|"")
+		echo "设备门禁系统命令工具"
+		echo ""
+		echo "用法: $0 {start|stop|add <id>|del <id>|status|diagnose|help}"
+		echo ""
+		echo "命令说明:"
+		echo "  start           - 初始化firewall通信规则"
+		echo "  stop            - 停止并清理所有DevGate通信规则"
+		echo "  add <id> [0|1]  - 添加设备到控制列表，并设置防火墙规则启用状态"
+		echo "  del <id>        - 从控制列表移除设备"
+		echo "  status          - 显示防火墙状态"
+		echo "  reload          - 重载firewall服务"
+		echo "  diagnose        - 系统诊断"
+		echo "  help            - 显示此帮助信息"
+		;;
+
+	*)
+		echo "错误: 未知命令 '$crrun'"
+		echo "使用: $0 help 查看帮助"
+		exit 1
+		;;
+esac

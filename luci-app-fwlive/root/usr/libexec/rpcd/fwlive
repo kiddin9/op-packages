@@ -197,10 +197,13 @@ EOF
 	fi
 }
 
-# One awk pass: prefix<TAB>comment. Last quoted log prefix / comment on
-# the line, including \" units (same capture as the former sed).
-# Raw tabs become \t and backslashes become \\ so the separator tab is
-# unique. Walk bytes: BusyBox awk ≥1.37 gsub cannot emit those sequences.
+# One awk pass; output encoding depends on mode (default: raw). Raw mode emits
+# prefix<TAB>comment with TSV escapes (tab as \t, backslash as \\). Production
+# prepared mode emits kind<TAB>key<TAB>alias<TAB>value: kind is the unquoted
+# labeled/unlabeled token, while key, alias, and value are JSON-string-escaped
+# but not JSON-quoted. A missing alias is an empty field; the stream is
+# tab-delimited, not a JSON document. Last quoted log prefix / comment on the
+# line, including \" units (same capture as the former sed).
 nft_dump_fields() {
 	LC_ALL=C awk -v mode="${1:-raw}" -v tag="$FW4_TAG" -v max="$RULES_MAP_MAX_LINES" '
 	function last_at(s, needle,    p, i, found) {

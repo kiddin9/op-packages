@@ -1,0 +1,761 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-theme-fluent\n"
+"POT-Creation-Date: 2026-09-05 23:37+0800\n"
+"PO-Revision-Date: \n"
+"Last-Translator: TranslateGemma\n"
+"Language-Team: LuCI Theme Fluent\n"
+"Language: fa\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "%d second-level menus"
+msgstr "%d منوی سطح دوم"
+
+msgid "A new version is available!"
+msgstr "نسخه جدیدی در دسترس است!"
+
+msgid "About"
+msgstr "درباره"
+
+msgid "Above bar, end"
+msgstr "بالای نوار، پایان"
+
+msgid "Above bar, start"
+msgstr "بالای نوار، شروع"
+
+msgid "Accent color"
+msgstr "رنگ تأکیدی"
+
+msgid "Add primary menu"
+msgstr "افزودن منوی اصلی"
+
+msgid ""
+"Adjust layout, typography, transition timing, shadows, and inject custom CSS "
+"variables or rules when the built-in controls are not enough."
+msgstr ""
+"چیدمان، تایپوگرافی، زمان‌بندی گذارها و سایه‌ها را تنظیم کنید و وقتی "
+"کنترل‌های داخلی کافی نیستند، متغیرها یا قوانین CSS سفارشی اضافه کنید."
+
+msgid "Advanced"
+msgstr "پیشرفته"
+
+msgid "Advanced MAC Selector"
+msgstr "انتخابگر پیشرفته آدرس MAC"
+
+msgid "and %d more..."
+msgstr "و %d مورد دیگر..."
+
+msgid ""
+"Animate the active underline when switching between native LuCI tabs and "
+"themed tab menus."
+msgstr ""
+"هنگام جابه‌جایی بین زبانه‌های بومی LuCI و منوهای زبانه‌ای پوسته، زیرخط فعال "
+"را متحرک کنید."
+
+msgid "Animation"
+msgstr "انیمیشن"
+
+msgid ""
+"API rate limit exceeded. Please enter a GitHub Token to continue. This token "
+"is only used for frontend requests and will not be saved on the router "
+"backend."
+msgstr ""
+"محدودیت نرخ API پر شده است. برای ادامه، یک توکن GitHub وارد کنید. این توکن "
+"فقط برای درخواست‌های فرانت‌اند استفاده می‌شود و در سمت روتر ذخیره نخواهد شد."
+
+msgid ""
+"Applies to standard buttons, inputs, selects, and similar form controls "
+"across the theme."
+msgstr ""
+"برای دکمه‌ها، ورودی‌ها، فهرست‌های انتخاب و کنترل‌های مشابه فرم در سراسر "
+"پوسته اعمال می‌شود."
+
+msgid ""
+"Are you sure you want to clean up %d invalid/uninstalled menu items or "
+"rules?"
+msgstr ""
+"آیا مطمئن هستید که می‌خواهید %d مورد نامعتبر یا غیرنصب‌شده از منوها یا "
+"قوانین را حذف کنید؟"
+
+msgid "Author"
+msgstr "نویسنده"
+
+msgid "Auto-scroll"
+msgstr "اسکرول خودکار"
+
+msgid "Automatic (Arabic/Persian locales only)"
+msgstr "خودکار (فقط برای زبان‌های عربی/پارسی)"
+
+msgid "Backdrop blur radius"
+msgstr "شعاع تاری پس‌زمینه"
+
+msgid "Backend (GHProxy Acceleration)"
+msgstr "بک‌اند (شتاب‌دهی GHProxy)"
+
+msgid "Backend (Official GitHub)"
+msgstr "بک‌اند (GitHub رسمی)"
+
+msgid "Base font size"
+msgstr "اندازه پایه فونت"
+
+msgid "Below bar, end"
+msgstr "زیر نوار، پایان"
+
+msgid "Below bar, start"
+msgstr "زیر نوار، شروع"
+
+msgid ""
+"Blur radius in pixels behind the login card in dark mode. Use 0 to disable "
+"blur."
+msgstr ""
+"شعاع تاری بر حسب پیکسل پشت کارت ورود در حالت تیره. برای غیرفعال کردن تاری از "
+"0 استفاده کنید."
+
+msgid ""
+"Blur radius in pixels behind the login card in light mode. Use 0 to disable "
+"blur."
+msgstr ""
+"شعاع تاری بر حسب پیکسل پشت کارت ورود در حالت روشن. برای غیرفعال کردن تاری از "
+"0 استفاده کنید."
+
+msgid "Cancel"
+msgstr "انصراف"
+
+msgid "Card background"
+msgstr "پس‌زمینه کارت"
+
+msgid "Card shadow"
+msgstr "سایه کارت"
+
+msgid "Check for updates"
+msgstr "بررسی به‌روزرسانی‌ها"
+
+msgid "Checking for updates..."
+msgstr "در حال بررسی به‌روزرسانی‌ها..."
+
+msgid "Choose color"
+msgstr "انتخاب رنگ"
+
+msgid ""
+"Choose the document direction for authenticated and login pages. Automatic "
+"mode resolves Arabic and Persian locale codes (ar, ar_*, ar-*, fa, fa_*, "
+"fa-*) to RTL and falls back to LTR for missing or unrecognized locales."
+msgstr ""
+"جهت متن را برای صفحات احراز هویت و ورود انتخاب کنید. حالت خودکار، کدهای زبان "
+"عربی و پارسی (ar, ar_*, ar-*, fa, fa_*, fa-*) را شناسایی کرده و آن‌ها را به "
+"راست به چپ (RTL) تنظیم می‌کند و در صورت عدم وجود یا نامشخص بودن کد زبان، به "
+"چپ به راست (LTR) بازمی‌گردد."
+
+msgid "Clean up"
+msgstr "پاکسازی"
+
+msgid "Clean up invalid items"
+msgstr "پاکسازی موارد نامعتبر"
+
+msgid "Clean up invalid items (%d)"
+msgstr "پاکسازی موارد نامعتبر (%d)"
+
+msgid "Close"
+msgstr "بستن"
+
+msgid "Color mode"
+msgstr "حالت رنگ"
+
+msgid "Colors"
+msgstr "رنگ‌ها"
+
+msgid "Comfortable (42px)"
+msgstr "راحت (42px)"
+
+msgid "Compact (32px)"
+msgstr "فشرده (32px)"
+
+msgid ""
+"Configure color mode, accent colors, layout sizing, animation behavior, "
+"login-page appearance, and advanced CSS overrides for luci-theme-fluent."
+msgstr ""
+"حالت رنگ، رنگ‌های تأکیدی، اندازه‌بندی چیدمان، رفتار انیمیشن، ظاهر صفحه ورود "
+"و بازنویسی‌های پیشرفته CSS برای luci-theme-fluent را پیکربندی کنید."
+
+msgid "Confirm"
+msgstr "تایید"
+
+msgid "Confirm Installation"
+msgstr "تأیید نصب"
+
+msgid "Continue"
+msgstr "ادامه"
+
+msgid "Control height"
+msgstr "ارتفاع کنترل‌ها"
+
+msgid ""
+"Controls the font weight used by main navigation labels and related theme "
+"text accents."
+msgstr ""
+"ضخامت فونت مورد استفاده برای برچسب‌های اصلی ناوبری و متن‌های تأکیدی مرتبط با "
+"پوسته را کنترل می‌کند."
+
+msgid ""
+"Controls the shared Fluent corner radius tokens used by cards, buttons, "
+"inputs, and related UI surfaces."
+msgstr ""
+"مقادیر مشترک شعاع گوشه Fluent را که در کارت‌ها، دکمه‌ها، ورودی‌ها و سطوح "
+"مرتبط رابط کاربری استفاده می‌شوند کنترل می‌کند."
+
+msgid ""
+"Controls the shared Fluent transition timing used by menu, header, and other "
+"theme animations."
+msgstr ""
+"زمان‌بندی گذار مشترک Fluent را که در منو، سربرگ و دیگر انیمیشن‌های پوسته "
+"استفاده می‌شود کنترل می‌کند."
+
+msgid "Copied"
+msgstr "کپی شد"
+
+msgid "Copy log"
+msgstr "کپی لاگ"
+
+msgid "Corner radius"
+msgstr "شعاع گوشه"
+
+msgid "Current / Pending MAC Address"
+msgstr "آدرس MAC فعلی / در انتظار"
+
+msgid "Custom CSS"
+msgstr "CSS سفارشی"
+
+msgid ""
+"Customize the login page background, card opacity, and blur radius for light "
+"and dark modes."
+msgstr ""
+"پس‌زمینه صفحه ورود، شفافیت کارت و شعاع تاری را برای حالت‌های روشن و تیره "
+"سفارشی کنید."
+
+msgid "Dark mode"
+msgstr "حالت تیره"
+
+msgid "Delete primary menu"
+msgstr "حذف منوی اصلی"
+
+msgid "Disabled"
+msgstr "غیرفعال"
+
+msgid "Disconnects"
+msgstr "قطع شدن‌ها"
+
+msgid ""
+"Display the themed loading indicator at the top edge during page loads and "
+"transitions."
+msgstr ""
+"هنگام بارگذاری و گذار صفحات، نشانگر بارگذاری پوسته را در لبه بالایی نمایش "
+"می‌دهد."
+
+msgid "Download and Install"
+msgstr "دانلود و نصب"
+
+msgid "Download log"
+msgstr "دانلود لاگ"
+
+msgid "Downloaded"
+msgstr "دانلود شد"
+
+msgid "Downloading on router"
+msgstr "در حال دانلود روی روتر"
+
+msgid "Drag to move second-level menu"
+msgstr "برای جابجایی، منوی سطح دوم را بکشید"
+
+msgid "Drag to reorder primary menu"
+msgstr "برای تغییر ترتیب، منوی اصلی را بکشید"
+
+msgid "Drop second-level menus here"
+msgstr "منوهای سطح دوم را در اینجا رها کنید"
+
+msgid "Edit"
+msgstr "ویرایش"
+
+msgid "Enable page transition animation"
+msgstr "فعال‌سازی انیمیشن گذار صفحه"
+
+msgid "Enable tab underline animation"
+msgstr "فعال‌سازی انیمیشن زیرخط زبانه"
+
+msgid "Errors"
+msgstr "خطاها"
+
+msgid "Expecting: %s"
+msgstr "مورد انتظار: %s"
+
+msgid "Extra large (12px)"
+msgstr "بسیار بزرگ (12px)"
+
+msgid "Failed to check for updates"
+msgstr "بررسی به‌روزرسانی‌ها ناموفق بود"
+
+msgid "Failed to fetch current theme version."
+msgstr "واکشی نسخه فعلی پوسته ناموفق بود."
+
+msgid "Fast"
+msgstr "سریع"
+
+msgid "Finished"
+msgstr "تکمیل شد"
+
+msgid "Fix primary menu title errors before saving."
+msgstr "قبل از ذخیره، خطاهای عنوان منوی اصلی را برطرف کنید."
+
+msgid "Fluent Design 2 theme for LuCI"
+msgstr "پوسته Fluent Design 2 برای LuCI"
+
+msgid "Fluent Theme"
+msgstr "پوسته Fluent"
+
+msgid "Fluent theme settings"
+msgstr "تنظیمات پوسته Fluent"
+
+msgid "Follow system"
+msgstr "پیروی از سیستم"
+
+msgid "Force dark mode"
+msgstr "اجبار به حالت تیره"
+
+msgid "Force light mode"
+msgstr "اجبار به حالت روشن"
+
+msgid "Force LTR"
+msgstr "اجبار به چپ به راست (LTR)"
+
+msgid "Force RTL"
+msgstr "اجبار به راست به چپ (RTL)"
+
+msgid "General"
+msgstr "عمومی"
+
+msgid "GitHub Token Required"
+msgstr "توکن GitHub لازم است"
+
+msgid "Header height"
+msgstr "ارتفاع سربرگ"
+
+msgid "Height of the top header bar in pixels."
+msgstr "ارتفاع نوار سربرگ بالا بر حسب پیکسل."
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in dark mode."
+msgstr ""
+"رنگ HEX که هنگام نمایش رابط در حالت تیره به‌عنوان رنگ تأکیدی اصلی Fluent "
+"استفاده می‌شود."
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in light mode."
+msgstr ""
+"رنگ HEX که هنگام نمایش رابط در حالت روشن به‌عنوان رنگ تأکیدی اصلی Fluent "
+"استفاده می‌شود."
+
+msgid "HEX color used for container/card elements in dark mode."
+msgstr "رنگ HEX مورد استفاده برای عناصر ظرف/کارت در حالت تیره."
+
+msgid "HEX color used for container/card elements in light mode."
+msgstr "رنگ HEX مورد استفاده برای عناصر ظرف/کارت در حالت روشن."
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"dark mode."
+msgstr ""
+"رنگ HEX مورد استفاده برای برچسب‌های نوار پیشرفت هنگام نمایش رابط در حالت "
+"تیره."
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"light mode."
+msgstr ""
+"رنگ HEX مورد استفاده برای برچسب‌های نوار پیشرفت هنگام نمایش رابط در حالت "
+"روشن."
+
+msgid "HEX color used for the main page background in dark mode."
+msgstr "رنگ HEX مورد استفاده برای پس‌زمینه صفحه اصلی در حالت تیره."
+
+msgid "HEX color used for the main page background in light mode."
+msgstr "رنگ HEX مورد استفاده برای پس‌زمینه صفحه اصلی در حالت روشن."
+
+msgid "HEX color used for the navigation sidebar in dark mode."
+msgstr "رنگ HEX مورد استفاده برای نوار کناری ناوبری در حالت تیره."
+
+msgid "HEX color used for the navigation sidebar in light mode."
+msgstr "رنگ HEX مورد استفاده برای نوار کناری ناوبری در حالت روشن."
+
+msgid "Installation cancelled by user."
+msgstr "نصب توسط کاربر لغو شد."
+
+msgid "Installed version"
+msgstr "نسخه نصب‌شده"
+
+msgid "Installing package"
+msgstr "در حال نصب بسته"
+
+msgid "Keep action bar visible while scrolling"
+msgstr "نوار عملگرها را هنگام پیمایش، قابل مشاهده نگه دارید."
+
+msgid ""
+"Keep Save, Apply, and Reset actions fixed at the bottom of the viewport "
+"while scrolling."
+msgstr ""
+"دکمه‌های ذخیره، اعمال و بازنشانی را در پایین صفحه ثابت نگه دارید تا هنگام "
+"پیمایش همیشه قابل دسترس باشند."
+
+msgid "Large"
+msgstr "بزرگ"
+
+msgid "Large (8px)"
+msgstr "بزرگ (8px)"
+
+msgid "Light mode"
+msgstr "حالت روشن"
+
+msgid "Line %d"
+msgstr "سطر %d"
+
+msgid "Lines"
+msgstr "سطرها"
+
+msgid "Login"
+msgstr "ورود"
+
+msgid "Login card opacity"
+msgstr "شفافیت کارت ورود"
+
+msgid "Login page"
+msgstr "صفحه ورود"
+
+msgid "Medium"
+msgstr "متوسط"
+
+msgid "Medium (4px)"
+msgstr "متوسط (4px)"
+
+msgid "Menu"
+msgstr "منو"
+
+msgid "Menu title cannot be empty."
+msgstr "عنوان منو نمی‌تواند خالی باشد."
+
+msgid "Navigation font weight"
+msgstr "ضخامت فونت ناوبری"
+
+msgid "New primary menu"
+msgstr "منوی اصلی جدید"
+
+msgid "New primary menu %d"
+msgstr "منوی اصلی جدید %d"
+
+msgid "Next"
+msgstr "بعدی"
+
+msgid "Nightly build available (reinstallation check)."
+msgstr "بیلد Nightly در دسترس است (بررسی نیاز به نصب مجدد)."
+
+msgid "Nightly Channel (Prerelease)"
+msgstr "کانال Nightly (پیش‌انتشار)"
+
+msgid ""
+"No matching package asset found for your system architecture in this "
+"release."
+msgstr "هیچ بسته سازگار با معماری سیستم شما در این انتشار پیدا نشد."
+
+msgid "None"
+msgstr "هیچ‌کدام"
+
+msgid "Normal"
+msgstr "عادی"
+
+msgid ""
+"Opacity of the login card in dark mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr "شفافیت کارت ورود در حالت تیره. 0 یعنی کاملاً شفاف و 1 یعنی کاملاً مات."
+
+msgid ""
+"Opacity of the login card in light mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr "شفافیت کارت ورود در حالت روشن. 0 یعنی کاملاً شفاف و 1 یعنی کاملاً مات."
+
+msgid ""
+"Optional raw CSS injected into the Fluent header template. Use this for "
+"extra --fluent-* variable overrides or page-specific tweaks that are not "
+"exposed as dedicated options."
+msgstr ""
+"CSS خام اختیاری که به قالب سربرگ Fluent تزریق می‌شود. از آن برای "
+"بازنویسی‌های اضافی متغیرهای --fluent-* یا تنظیمات مخصوص صفحه که به‌صورت "
+"گزینه جداگانه ارائه نشده‌اند استفاده کنید."
+
+msgid "Package format"
+msgstr "قالب بسته"
+
+msgid "Page background"
+msgstr "پس‌زمینه صفحه"
+
+msgid "Please enter your password."
+msgstr "لطفاً گذرواژه خود را وارد کنید."
+
+msgid "Please enter your username."
+msgstr "لطفاً نام کاربری خود را وارد کنید."
+
+msgid ""
+"Position of progress-bar labels relative to the bar. Start/end alignment "
+"follows the text direction (LTR or RTL)."
+msgstr ""
+"موقعیت برچسب‌های نوار پیشرفت نسبت به نوار. تراز شروع/پایان از جهت متن (LTR "
+"یا RTL) پیروی می‌کند."
+
+msgid "Preset Vendor / Generator"
+msgstr "تنظیمات پیش‌فرض فروشنده / تولیدکننده"
+
+msgid "Primary menu title"
+msgstr "عنوان منوی اصلی"
+
+msgid "Primary menu titles cannot be empty."
+msgstr "عنوان‌های منوی اصلی نمی‌توانند خالی باشند."
+
+msgid "Primary menu titles must be unique."
+msgstr "عنوان‌های منوی اصلی باید منحصر به فرد باشند."
+
+msgid "Progress bar text color"
+msgstr "رنگ متن نوار پیشرفت"
+
+msgid "Progress bar text position"
+msgstr "موقعیت متن نوار پیشرفت"
+
+msgid "Random Local MAC"
+msgstr "آدرس MAC محلی تصادفی"
+
+msgid "Randomize MAC"
+msgstr "تغییر تصادفی آدرس MAC"
+
+msgid "Reload Web Interface"
+msgstr "بارگذاری مجدد رابط وب"
+
+msgid "Replace native select elements with the theme's custom dropdown widget."
+msgstr "عناصر انتخاب بومی را با ابزارک فهرست کشویی سفارشی پوسته جایگزین می‌کند."
+
+msgid "Respect reduced-motion preference"
+msgstr "رعایت ترجیح کاهش حرکت"
+
+msgid "Restore %s to its original menu name"
+msgstr "بازگرداندن %s به نام منوی پیش‌فرض"
+
+msgid "Restore %s to its original menu position"
+msgstr "بازگرداندن %s به موقعیت منوی پیش‌فرض"
+
+msgid "Restore defaults"
+msgstr "بازیابی تنظیمات پیش‌فرض"
+
+msgid "Restore to original title"
+msgstr "بازگرداندن به عنوان اصلی"
+
+msgid "Retrying with token..."
+msgstr "تلاش دوباره با توکن..."
+
+msgid "Rounded (6px)"
+msgstr "گرد (6px)"
+
+msgid "Save"
+msgstr "ذخیره"
+
+msgid "Scroll to bottom"
+msgstr "رفتن به پایین"
+
+msgid "Scroll to top"
+msgstr "رفتن به بالا"
+
+msgid "Search menu items"
+msgstr "جست‌وجوی موارد منو"
+
+msgid "Search menu..."
+msgstr "جست‌وجو در منو..."
+
+msgid "Second-level menu title"
+msgstr "عنوان منوی سطح دوم"
+
+msgid "Select the shadow depth applied to themed cards and panels."
+msgstr "عمق سایه اعمال‌شده به کارت‌ها و پنل‌های پوسته را انتخاب کنید."
+
+msgid "Select vendor prefix..."
+msgstr "انتخاب پیشوند سازنده..."
+
+msgid "Semibold"
+msgstr "نیمه‌پررنگ"
+
+msgid ""
+"Sets the base interface font size in pixels. Most theme text scales from "
+"this value through the Fluent CSS variables. Recommended range: 12-18px."
+msgstr ""
+"اندازه پایه فونت رابط را بر حسب پیکسل تنظیم می‌کند. بیشتر متن‌های پوسته از "
+"این مقدار از طریق متغیرهای CSS مربوط به Fluent مقیاس می‌گیرند. بازه "
+"پیشنهادی: 12-18px."
+
+msgid "Show %s in the menu"
+msgstr "نمایش %s در منو"
+
+msgid ""
+"Show pending UCI changes in the top apply-status message until the "
+"configuration apply completes."
+msgstr "نمایش تغییرات تنظیمات باقی‌مانده در پیام وضعیت اصلی تا تکمیل اعمال پیکربندی."
+
+msgid "Show top loading bar"
+msgstr "نمایش نوار بارگذاری بالا"
+
+msgid "Show UCI changes while applying configuration"
+msgstr "نمایش تغییرات تنظیمات در حین اعمال پیکربندی"
+
+msgid "Sidebar background"
+msgstr "پس‌زمینه نوار کناری"
+
+msgid "Sidebar width"
+msgstr "عرض نوار کناری"
+
+msgid "Slow"
+msgstr "کند"
+
+msgid "Small"
+msgstr "کوچک"
+
+msgid "Small (2px)"
+msgstr "کوچک (2px)"
+
+msgid "Software Update"
+msgstr "به‌روزرسانی نرم‌افزار"
+
+msgid "Source code"
+msgstr "کد منبع"
+
+msgid "Square (0px)"
+msgstr "مربع (0px)"
+
+msgid "Stable Channel"
+msgstr "کانال پایدار"
+
+msgid "Starting backend download..."
+msgstr "شروع دانلود در بک‌اند..."
+
+msgid "Starting update process..."
+msgstr "شروع فرایند به‌روزرسانی..."
+
+msgid "Submit"
+msgstr "ارسال"
+
+msgid "Switch theme mode"
+msgstr "تغییر حالت پوسته"
+
+msgid "Text direction"
+msgstr "جهت متن"
+
+msgid ""
+"The stored menu layout is invalid. Choose \"Restore defaults\" or make an edit "
+"before saving."
+msgstr ""
+"چیدمان منوی ذخیره شده نامعتبر است. از «بازیابی تنظیمات پیش‌فرض» استفاده کنید "
+"یا قبل از ذخیره، ویرایشی انجام دهید."
+
+msgid ""
+"The stored menu layout is invalid. Restore defaults or edit the layout "
+"before saving."
+msgstr ""
+"چیدمان منوی ذخیره شده نامعتبر است. تنظیمات پیش‌فرض را بازیابی کنید یا قبل از "
+"ذخیره، چیدمان را ویرایش کنید."
+
+msgid ""
+"The theme is being installed on your router. The logs are displayed below. "
+"Reloading the web interface will apply the changes once RPCD restarts."
+msgstr ""
+"پوسته در حال نصب روی روتر شما است. گزارش‌ها در پایین نمایش داده می‌شوند. پس "
+"از راه‌اندازی مجدد RPCD، با بارگذاری مجدد رابط وب تغییرات اعمال می‌شوند."
+
+msgid ""
+"The theme package is ready. Are you sure you want to proceed with the "
+"installation?"
+msgstr "بسته پوسته آماده است. آیا مطمئن هستید که می‌خواهید نصب را ادامه دهید؟"
+
+msgid ""
+"The token does NOT require any permissions/scopes to be granted (read-only "
+"public access is sufficient)."
+msgstr ""
+"این توکن به هیچ مجوز یا محدوده دسترسی اضافه‌ای نیاز ندارد (دسترسی عمومی "
+"فقط‌خواندنی کافی است)."
+
+msgid "Theme settings"
+msgstr "تنظیمات پوسته"
+
+msgid ""
+"Theme successfully updated! Reloading RPC service, please refresh the page "
+"in 5 seconds."
+msgstr ""
+"پوسته با موفقیت به‌روزرسانی شد! سرویس RPC در حال بارگذاری مجدد است، لطفاً 5 "
+"ثانیه دیگر صفحه را تازه‌سازی کنید."
+
+msgid "Theme transition speed"
+msgstr "سرعت گذار پوسته"
+
+msgid "Toggle fullscreen"
+msgstr "تغییر وضعیت تمام صفحه"
+
+msgid "Triggering installation on router..."
+msgstr "در حال آغاز نصب روی روتر..."
+
+msgid "Update channel"
+msgstr "کانال به‌روزرسانی"
+
+msgid "Update failed"
+msgstr "به‌روزرسانی ناموفق بود"
+
+msgid "Upgrade Successful!"
+msgstr "ارتقا با موفقیت انجام شد!"
+
+msgid "Use Fluent custom select dropdowns"
+msgstr "استفاده از فهرست‌های کشویی سفارشی Fluent"
+
+msgid ""
+"Use the browser View Transition API to animate navigation between LuCI pages "
+"when supported."
+msgstr ""
+"در صورت پشتیبانی، از View Transition API مرورگر برای انیمیشن ناوبری بین "
+"صفحات LuCI استفاده کنید."
+
+msgid ""
+"Use the system/browser preference, or always render the Fluent theme in a "
+"fixed light or dark palette."
+msgstr ""
+"از ترجیح سیستم/مرورگر استفاده کنید یا همیشه پوسته Fluent را با یک پالت ثابت "
+"روشن یا تیره نمایش دهید."
+
+msgid "Username is required."
+msgstr "نام کاربری الزامی است."
+
+msgid "valid HEX color value"
+msgstr "مقدار معتبر رنگ HEX"
+
+msgid "Warnings"
+msgstr "هشدارها"
+
+msgid ""
+"When enabled, Fluent animations follow the browser or operating system "
+"reduced-motion preference."
+msgstr ""
+"اگر فعال باشد، انیمیشن‌های Fluent از ترجیح کاهش حرکت مرورگر یا سیستم‌عامل "
+"پیروی می‌کنند."
+
+msgid "Width of the main navigation sidebar in pixels."
+msgstr "عرض نوار کناری اصلی ناوبری بر حسب پیکسل."
+
+msgid "Word wrap"
+msgstr "پیچش متن"
+
+msgid "You can create a new token at"
+msgstr "می‌توانید یک توکن جدید در اینجا ایجاد کنید:"
+
+msgid "Your theme is up to date!"
+msgstr "پوسته شما به‌روز است!"

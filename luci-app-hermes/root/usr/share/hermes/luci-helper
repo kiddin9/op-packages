@@ -1,0 +1,210 @@
+#!/bin/sh
+# luci-app-hermes — Backend helper for JS view
+# Called via ubus file.exec from the LuCI frontend
+
+. /lib/functions.sh 2>/dev/null || true
+
+HERMES_VENV="/opt/hermes/venv"
+HERMES_BIN="${HERMES_VENV}/bin/hermes"
+HERMES_DATA="/opt/hermes/data"
+HERMES_CONFIG="/root/.hermes/config.yaml"
+
+# ── JSON helper: escape string for JSON output ──
+json_esc() {
+	printf '%s' "$1" | sed 's/\\/\\\\/g;s/"/\\"/g;s/\t/\\t/g' | tr '\n' ' '
+}
+
+# ── Port listening check (ss or netstat) ──
+port_listening() {
+	local p="$1"
+	if command -v ss >/dev/null 2>&1; then
+		ss -tulnp 2>/dev/null | grep -q ":${p} "
+	else
+		netstat -tulnp 2>/dev/null | grep -q ":${p} "
+	fi
+}
+
+pid_by_port() {
+	local p="$1"
+	if command -v ss >/dev/null 2>&1; then
+		ss -tulnp 2>/dev/null | grep ":${p} " | sed -n 's/.*pid=\([0-9]*\).*/\1/p' | head -1
+	else
+		netstat -tulnp 2>/dev/null | grep ":${p} " | sed -n 's|.* \([0-9]*\)/.*|\1|p' | head -1
+	fi
+}
+
+case "$1" in
+
+# ═══════════════════════════════════════════
+# STATUS — gather all status info as JSON
+# ═══════════════════════════════════════════
+status)
+	enabled=$(uci -q get hermes.main.enabled || echo "0")
+	port=$(uci -q get hermes.main.port || echo "3000")
+	pty_port=$(uci -q get hermes.main.pty_port || echo "3001")
+
+	# Validate ports
+	case "$port" in *[!0-9]*) port="3000" ;; esac
+	case "$pty_port" in *[!0-9]*) pty_port="3001" ;; esac
+
+	# Gateway check
+	gw_running=false
+	gw_starting=false
+	port_listening "$port" && gw_running=true
+	if [ "$gw_running" = "false" ] && [ "$enabled" = "1" ]; then
+		pgrep -f 'hermes.*gateway' >/dev/null 2>&1 && gw_starting=true
+	fi
+
+	# PTY check
+	pty_running=false
+	port_listening "$pty_port" && pty_running=true
+
+	# Python version
+	python_ver=""
+	if [ -x "${HERMES_VENV}/bin/python3" ]; then
+		python_ver=$("${HERMES_VENV}/bin/python3" --version 2>/dev/null | tr -d '[:space:]')
+	elif command -v python3 >/dev/null 2>&1; then
+		python_ver=$(python3 --version 2>/dev/null | tr -d '[:space:]')
+	fi
+
+	# Hermes version
+	hermes_ver=""
+	if [ -x "$HERMES_BIN" ]; then
+		hermes_ver=$("$HERMES_BIN" --version 2>/dev/null | head -1 | tr -d '[:space:]')
+	fi
+
+	# Plugin version
+	plugin_ver=""
+	[ -f "/usr/share/hermes/VERSION" ] && plugin_ver=$(cat /usr/share/hermes/VERSION 2>/dev/null | tr -d '[:space:]')
+
+	# PID, memory, uptime
+	pid="" mem_kb=0 uptime_str=""
+	if [ "$gw_running" = "true" ]; then
+		pid=$(pid_by_port "$port")
+		if [ -n "$pid" ] && [ -d "/proc/$pid" ]; then
+			mem_kb=$(awk '/VmRSS/{print $2}' "/proc/$pid/status" 2>/dev/null)
+			[ -z "$mem_kb" ] && mem_kb=0
+			# Calculate uptime from /proc/$pid directory mtime
+			start_ts=$(date -r "/proc/$pid" +%s 2>/dev/null)
+			if [ -n "$start_ts" ]; then
+				now=$(date +%s)
+				diff=$((now - start_ts))
+				h=$((diff / 3600)) m=$(((diff % 3600) / 60)) s=$((diff % 60))
+				if [ $h -gt 0 ]; then uptime_str="${h}h ${m}m"
+				elif [ $m -gt 0 ]; then uptime_str="${m}m ${s}s"
+				else uptime_str="${s}s"; fi
+			fi
+		fi
+	fi
+
+	# Active model (from config.yaml)
+	active_model=""
+	if [ -f "$HERMES_CONFIG" ]; then
+		active_model=$(sed -n 's/.*primary: *"\{0,1\}\([^"]*\)"\{0,1\}/\1/p' "$HERMES_CONFIG" 2>/dev/null | head -1)
+	fi
+
+	cat <<JSON
+{
+	"enabled": "$enabled",
+	"port": "$port",
+	"pty_port": "$pty_port",
+	"gateway_running": $gw_running,
+	"gateway_starting": $gw_starting,
+	"pty_running": $pty_running,
+	"python_version": "$python_ver",
+	"hermes_version": "$hermes_ver",
+	"plugin_version": "$plugin_ver",
+	"pid": "$pid",
+	"memory_kb": ${mem_kb:-0},
+	"uptime": "$uptime_str",
+	"active_model": "$(json_esc "$active_model")"
+}
+JSON
+	;;
+
+# ═══════════════════════════════════════════
+# SETUP — install Python + Hermes Agent
+# ═══════════════════════════════════════════
+setup)
+	version="${2:-stable}"
+	# Clean old state
+	: > /tmp/hermes-setup.log
+	: > /tmp/hermes-setup.exit
+	: > /tmp/hermes-setup.pid
+
+	( /usr/bin/hermes-env setup > /tmp/hermes-setup.log 2>&1
+	  RC=$?
+	  echo $RC > /tmp/hermes-setup.exit
+	  if [ $RC -eq 0 ]; then
+	    uci set hermes.main.enabled=1
+	    uci commit hermes
+	    /etc/init.d/hermes enable 2>/dev/null
+	    sleep 1
+	    /etc/init.d/hermes start >> /tmp/hermes-setup.log 2>&1
+	  fi
+	) &
+	echo $! > /tmp/hermes-setup.pid
+
+	echo '{"status":"ok","message":"setup started"}'
+	;;
+
+# ═══════════════════════════════════════════
+# SETUP_LOG — poll setup progress
+# ═══════════════════════════════════════════
+setup_log)
+	log=""
+	[ -f /tmp/hermes-setup.log ] && log=$(cat /tmp/hermes-setup.log 2>/dev/null)
+
+	running=false
+	if [ -f /tmp/hermes-setup.pid ]; then
+		pid=$(cat /tmp/hermes-setup.pid 2>/dev/null | tr -d '[:space:]')
+		[ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && running=true
+	fi
+
+	exit_code=-1
+	if [ "$running" = "false" ] && [ -f /tmp/hermes-setup.exit ]; then
+		exit_code=$(cat /tmp/hermes-setup.exit 2>/dev/null | tr -d '[:space:]')
+		[ -z "$exit_code" ] && exit_code=-1
+	fi
+
+	state="idle"
+	if [ "$running" = "true" ]; then state="running"
+	elif [ "$exit_code" = "0" ]; then state="success"
+	elif [ "$exit_code" -gt 0 ] 2>/dev/null; then state="failed"
+	fi
+
+	# Escape log for JSON
+	log_escaped=$(printf '%s' "$log" | sed 's/\\/\\\\/g;s/"/\\"/g;s/\t/\\t/g' | tr '\n' '\\' | sed 's/\\/\\n/g')
+
+	printf '{"state":"%s","exit_code":%s,"log":"%s"}\n' "$state" "${exit_code}" "$log_escaped"
+	;;
+
+# ═══════════════════════════════════════════
+# GET_TOKEN — return gateway and PTY tokens
+# ═══════════════════════════════════════════
+get_token)
+	token=$(uci -q get hermes.main.token || echo "")
+	pty_token=$(uci -q get hermes.main.pty_token || echo "")
+	printf '{"token":"%s","pty_token":"%s"}\n' "$token" "$pty_token"
+	;;
+
+# ═══════════════════════════════════════════
+# UNINSTALL — remove environment
+# ═══════════════════════════════════════════
+uninstall)
+	/etc/init.d/hermes stop >/dev/null 2>&1
+	/etc/init.d/hermes disable 2>/dev/null
+	uci set hermes.main.enabled=0
+	uci commit hermes 2>/dev/null
+	[ -d /opt/hermes ] && { find /opt/hermes -delete 2>/dev/null || true; }
+	[ -d /root/.hermes ] && { find /root/.hermes -delete 2>/dev/null || true; }
+	: > /tmp/hermes-setup.log 2>/dev/null
+	: > /tmp/hermes-setup.pid 2>/dev/null
+	: > /tmp/hermes-setup.exit 2>/dev/null
+	echo '{"status":"ok","message":"uninstalled"}'
+	;;
+
+*)
+	echo '{"status":"error","message":"unknown command"}'
+	;;
+esac

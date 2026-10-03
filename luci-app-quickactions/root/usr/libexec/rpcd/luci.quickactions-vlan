@@ -1,0 +1,640 @@
+#!/bin/sh
+# ubus RPC module for Quick Actions VLAN tab.
+# Params arrive on stdin as JSON. No positional args.
+
+. /usr/share/libubox/jshn.sh
+
+VLAN_DIR=/etc/quickactions/vlan
+TPL_DIR=$VLAN_DIR/templates
+GEN_DIR=$VLAN_DIR/generated
+mkdir -p "$VLAN_DIR" "$TPL_DIR" "$GEN_DIR"
+
+list_methods() {
+    cat <<'EOF'
+{
+  "detect": {},
+  "preview": { "plan": "string" },
+  "apply": { "plan": "string", "safe": "string" },
+  "snapshot": { "note": "string" },
+  "list_snapshots": {},
+  "restore": { "path": "string" },
+  "confirm": {},
+  "generate_cli": { "plan": "string", "target": "string" },
+  "save_template": { "name": "string", "target": "string", "plan": "string", "notes": "string" },
+  "list_templates": {},
+  "load_template": { "name": "string" },
+  "delete_template": { "name": "string" },
+  "save_generated": { "name": "string", "target": "string", "content": "string" },
+  "list_generated": {},
+  "delete_generated": { "name": "string" },
+  "lldp_neighbors": {},
+  "snmp_query": { "ip": "string", "community": "string" },
+  "bridge_vlan_show": {},
+  "kernel_ifaces": {},
+  "iface_stats": { "ifaces": "string" },
+  "ping_test": { "iface": "string", "ip": "string" }
+}
+EOF
+}
+
+# read stdin and populate named vars (var=json_key pairs)
+_load() {
+    local payload
+    payload=$(cat)
+    json_load "$payload"
+    while [ "$#" -ge 2 ]; do
+        eval "$1=\"\$(json_get_var __v '$2'; echo \$__v)\""
+        shift 2
+    done
+}
+
+detect() {
+    json_init
+    local mode="none"
+    uci show network 2>/dev/null | grep -q "\.type='bridge'" && mode="dsa"
+    uci show network 2>/dev/null | grep -q "^network\.@switch\[0\]" && mode="swconfig"
+
+    json_add_string "mode" "$mode"
+
+    json_add_array "bridges"
+    for s in $(uci show network 2>/dev/null | grep "=device$" | cut -d. -f2 | cut -d= -f1); do
+        t=$(uci -q get "network.$s.type")
+        [ "$t" != "bridge" ] && continue
+        name=$(uci -q get "network.$s.name")
+        [ -z "$name" ] && name="$s"
+        json_add_object
+        json_add_string "sid" "$s"
+        json_add_string "name" "$name"
+        vf=$(uci -q get "network.$s.vlan_filtering")
+        json_add_string "vlan_filtering" "${vf:-0}"
+        json_close_object
+    done
+    json_close_array
+
+    json_add_array "bridge_vlans"
+    for s in $(uci show network 2>/dev/null | grep "=bridge-vlan$" | cut -d. -f2 | cut -d= -f1); do
+        json_add_object
+        json_add_string "sid" "$s"
+        json_add_string "device" "$(uci -q get network.$s.device)"
+        json_add_string "vlan" "$(uci -q get network.$s.vlan)"
+        json_add_string "ports" "$(uci -q get network.$s.ports | tr '\n' ' ')"
+        json_close_object
+    done
+    json_close_array
+
+    json_add_array "interfaces"
+    for s in $(uci show network 2>/dev/null | grep "=interface$" | cut -d. -f2 | cut -d= -f1); do
+        json_add_object
+        json_add_string "sid" "$s"
+        json_add_string "device" "$(uci -q get network.$s.device)"
+        json_add_string "proto" "$(uci -q get network.$s.proto)"
+        json_add_string "ipaddr" "$(uci -q get network.$s.ipaddr)"
+        json_add_string "netmask" "$(uci -q get network.$s.netmask)"
+        json_close_object
+    done
+    json_close_array
+
+    json_add_array "dhcp"
+    for s in $(uci show dhcp 2>/dev/null | grep "=dhcp$" | cut -d. -f2 | cut -d= -f1); do
+        json_add_object
+        json_add_string "sid" "$s"
+        json_add_string "interface" "$(uci -q get dhcp.$s.interface)"
+        json_add_string "start" "$(uci -q get dhcp.$s.start)"
+        json_add_string "limit" "$(uci -q get dhcp.$s.limit)"
+        json_close_object
+    done
+    json_close_array
+
+    json_add_array "zones"
+    local i=0
+    while true; do
+        local name
+        name=$(uci -q get "firewall.@zone[$i].name")
+        [ -z "$name" ] && break
+        json_add_object
+        json_add_string "name" "$name"
+        json_add_string "network" "$(uci -q get firewall.@zone[$i].network | tr '\n' ' ')"
+        json_add_string "input" "$(uci -q get firewall.@zone[$i].input)"
+        json_add_string "output" "$(uci -q get firewall.@zone[$i].output)"
+        json_add_string "forward" "$(uci -q get firewall.@zone[$i].forward)"
+        json_close_object
+        i=$((i + 1))
+    done
+    json_close_array
+
+    json_add_array "wifi"
+    for s in $(uci show wireless 2>/dev/null | grep "=wifi-iface$" | cut -d. -f2 | cut -d= -f1); do
+        json_add_object
+        json_add_string "sid" "$s"
+        json_add_string "device" "$(uci -q get wireless.$s.device)"
+        json_add_string "mode" "$(uci -q get wireless.$s.mode)"
+        json_add_string "ssid" "$(uci -q get wireless.$s.ssid)"
+        json_add_string "network" "$(uci -q get wireless.$s.network)"
+        json_close_object
+    done
+    json_close_array
+
+    json_add_array "easymesh"
+    for iface in /sys/class/net/bat0.*; do
+        [ -e "$iface" ] || continue
+        json_add_string "" "$(basename "$iface")"
+    done
+    json_close_array
+
+    json_add_string "kernel" "$(uname -r)"
+    json_add_string "mem_mb" "$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo 2>/dev/null)"
+    json_add_string "hostname" "$(cat /proc/sys/kernel/hostname 2>/dev/null)"
+    json_dump
+}
+
+kernel_ifaces() {
+    json_init
+    json_add_array "ifaces"
+    for d in /sys/class/net/*; do
+        [ -e "$d" ] || continue
+        local n
+        n=$(basename "$d")
+        case "$n" in
+            lo|sit*|ip6tnl*|gre*|gretap*|erspan*|ifb*|veth*) continue ;;
+        esac
+        local up
+        up="0"; [ "$(cat "$d/operstate" 2>/dev/null)" = "up" ] && up="1"
+        json_add_object
+        json_add_string "name" "$n"
+        json_add_int "up" "$up"
+        json_close_object
+    done
+    json_close_array
+    json_dump
+}
+
+preview() {
+    local plan
+    _load plan plan
+    [ -z "$plan" ] && { json_init; json_add_string "error" "no plan"; json_dump; return; }
+    echo "$plan" > "$VLAN_DIR/last-plan.json"
+    local out
+    out=$(
+        python3 - <<'PYPREVIEW' 2>&1
+import json
+plan = json.load(open("/etc/quickactions/vlan/last-plan.json"))
+lines = []
+for v in plan.get("vlans", []):
+    lines.append("network.%s=bridge-vlan device=%s vlan=%s" % (
+        v.get("sid","vlan"), v.get("bridge",""), v.get("vlan","")))
+for i in plan.get("interfaces", []):
+    lines.append("network.%s=interface device=%s proto=%s ip=%s" % (
+        i.get("name",""), i.get("device",""), i.get("proto",""), i.get("ipaddr","")))
+print("\n".join(lines))
+PYPREVIEW
+    )
+    json_init
+    json_add_string "diff" "$out"
+    json_dump
+}
+
+apply() {
+    local plan safe
+    _load plan plan safe safe
+    [ -z "$plan" ] && { json_init; json_add_string "error" "no plan"; json_dump; return; }
+    [ -z "$safe" ] && safe="0"
+
+    local ts
+    ts=$(date +%Y%m%d-%H%M%S)
+    cp /etc/config/network "$VLAN_DIR/network.bak.$ts" 2>/dev/null
+    echo "auto before apply" > "$VLAN_DIR/network.bak.$ts.note"
+
+    echo "$plan" > "$VLAN_DIR/last-plan.json"
+
+    if ! command -v python3 >/dev/null 2>&1; then
+        json_init
+        json_add_string "error" "python3 required for VLAN apply"
+        json_dump
+        return
+    fi
+
+    python3 - <<'PYAPPLY'
+import json, subprocess
+plan = json.load(open("/etc/quickactions/vlan/last-plan.json"))
+
+def uci(*args):
+    try:
+        subprocess.run(["uci"] + list(args), check=True, capture_output=True)
+    except subprocess.CalledProcessError:
+        return False
+    return True
+
+for v in plan.get("vlans", []):
+    name = v.get("sid") or ("vlan_%s_%s" % (v.get("bridge","br-lan"), v.get("vlan","0")))
+    uci("set", "network.%s=bridge-vlan" % name)
+    uci("set", "network.%s.device=%s" % (name, v.get("bridge","")))
+    uci("set", "network.%s.vlan=%s" % (name, v.get("vlan","")))
+    for p in v.get("tagged", []):
+        uci("add_list", "network.%s.ports=%s:t" % (name, p))
+    for p in v.get("untagged", []):
+        uci("add_list", "network.%s.ports=%s:u*" % (name, p))
+
+for i in plan.get("interfaces", []):
+    n = i.get("name","")
+    if not n: continue
+    uci("set", "network.%s=interface" % n)
+    uci("set", "network.%s.device=%s" % (n, i.get("device","")))
+    uci("set", "network.%s.proto=%s" % (n, i.get("proto","static")))
+    if i.get("ipaddr"):  uci("set", "network.%s.ipaddr=%s" % (n, i["ipaddr"]))
+    if i.get("netmask"): uci("set", "network.%s.netmask=%s" % (n, i["netmask"]))
+
+for d in plan.get("dhcp", []):
+    n = d.get("name","")
+    if not n: continue
+    uci("set", "dhcp.%s=dhcp" % n)
+    uci("set", "dhcp.%s.interface=%s" % (n, d.get("interface","")))
+    uci("set", "dhcp.%s.start=%s" % (n, d.get("start","100")))
+    uci("set", "dhcp.%s.limit=%s" % (n, d.get("limit","150")))
+    uci("set", "dhcp.%s.leasetime=%s" % (n, d.get("leasetime","12h")))
+
+for z in plan.get("zones", []):
+    n = z.get("name","")
+    if not n: continue
+    exists = subprocess.run(["uci","-q","get","firewall.%s" % n], capture_output=True).returncode == 0
+    if not exists:
+        uci("set", "firewall.%s=zone" % n)
+    uci("set", "firewall.%s.name=%s" % (n, n))
+    for net in z.get("network", []):
+        uci("add_list", "firewall.%s.network=%s" % (n, net))
+    uci("set", "firewall.%s.input=%s"   % (n, z.get("input","REJECT")))
+    uci("set", "firewall.%s.output=%s"  % (n, z.get("output","ACCEPT")))
+    uci("set", "firewall.%s.forward=%s" % (n, z.get("forward","REJECT")))
+
+subprocess.run(["uci","commit","network"])
+subprocess.run(["uci","commit","dhcp"])
+subprocess.run(["uci","commit","firewall"])
+PYAPPLY
+
+    if [ "$safe" = "1" ]; then
+        local now deadline
+        now=$(date +%s)
+        deadline=$((now + 90))
+        echo "$deadline" > "$VLAN_DIR/pending_rollback"
+        ( sleep 90
+          if [ -f "$VLAN_DIR/pending_rollback" ]; then
+              dl=$(cat "$VLAN_DIR/pending_rollback" 2>/dev/null)
+              if [ "$dl" = "$deadline" ]; then
+                  cp "$VLAN_DIR/network.bak.$ts" /etc/config/network
+                  uci commit network
+                  /etc/init.d/network reload
+                  rm -f "$VLAN_DIR/pending_rollback"
+              fi
+          fi ) >/dev/null 2>&1 &
+    fi
+
+    /etc/init.d/network reload >/dev/null 2>&1
+    sleep 2
+
+    json_init
+    json_add_boolean "ok" 1
+    json_add_string "snapshot" "$VLAN_DIR/network.bak.$ts"
+    [ "$safe" = "1" ] && json_add_int "rollback_in" 90
+    json_dump
+}
+
+snapshot() {
+    local note
+    _load note note
+    [ -z "$note" ] && note="manual"
+    local ts path
+    ts=$(date +%Y%m%d-%H%M%S)
+    path="$VLAN_DIR/network.bak.$ts"
+    cp /etc/config/network "$path" 2>/dev/null || { json_init; json_add_string "error" "cp failed"; json_dump; return; }
+    echo "$note" > "$path.note" 2>/dev/null
+    ls -1t $VLAN_DIR/network.bak.* 2>/dev/null | grep -v '\.note$' | tail -n +21 | while read -r old; do
+        rm -f "$old" "$old.note"
+    done
+    json_init
+    json_add_string "path" "$path"
+    json_add_string "ts" "$ts"
+    json_dump
+}
+
+list_snapshots() {
+    json_init
+    json_add_array "snapshots"
+    for f in $(ls -1t $VLAN_DIR/network.bak.* 2>/dev/null | grep -v '\.note$'); do
+        [ -f "$f" ] || continue
+        local sz note
+        sz=$(wc -c < "$f" 2>/dev/null)
+        note=""
+        [ -f "$f.note" ] && note=$(cat "$f.note" 2>/dev/null)
+        json_add_object
+        json_add_string "path" "$f"
+        json_add_string "size" "${sz:-0}"
+        json_add_string "note" "$note"
+        json_close_object
+    done
+    json_close_array
+    json_add_string "pending" "$(cat $VLAN_DIR/pending_rollback 2>/dev/null)"
+    json_dump
+}
+
+restore() {
+    local path
+    _load path path
+    [ -z "$path" ] || [ ! -f "$path" ] && { json_init; json_add_string "error" "bad path"; json_dump; return; }
+    cp "$path" /etc/config/network
+    uci commit network
+    /etc/init.d/network reload >/dev/null 2>&1
+    json_init
+    json_add_boolean "ok" 1
+    json_dump
+}
+
+confirm() {
+    rm -f "$VLAN_DIR/pending_rollback"
+    json_init
+    json_add_boolean "ok" 1
+    json_dump
+}
+
+generate_cli() {
+    local plan target
+    _load plan plan target target
+    [ -z "$target" ] && target="generic"
+    echo "$plan" > "$VLAN_DIR/last-plan.json"
+    local out
+    out=$(
+        python3 - <<PYGEN
+import json
+plan = json.load(open("/etc/quickactions/vlan/last-plan.json"))
+target = "$target"
+out = []
+
+if target == "mikrotik":
+    bridge = plan["vlans"][0].get("bridge","bridge1") if plan.get("vlans") else "bridge1"
+    pvid = {}
+    for v in plan.get("vlans", []):
+        for p in v.get("untagged", []):
+            pvid[p] = v.get("vlan")
+    out.append("/interface bridge")
+    out.append("add name=%s vlan-filtering=yes" % bridge)
+    out.append("/interface bridge port")
+    for p, vid in pvid.items():
+        out.append("add bridge=%s interface=%s pvid=%s" % (bridge, p, vid))
+    out.append("/interface bridge vlan")
+    for v in plan.get("vlans", []):
+        t = ",".join(v.get("tagged",[]))
+        u = ",".join(v.get("untagged",[]))
+        parts = ["bridge=%s" % bridge, "vlan-ids=%s" % v.get("vlan","")]
+        if t: parts.append("tagged=%s" % t)
+        if u: parts.append("untagged=%s" % u)
+        out.append("add " + " ".join(parts))
+
+elif target == "cisco":
+    for v in plan.get("vlans", []):
+        out.append("vlan %s" % v.get("vlan",""))
+        out.append(" name VLAN_%s" % v.get("vlan",""))
+    out.append("!")
+    trunks = set()
+    for v in plan.get("vlans", []):
+        for p in v.get("tagged", []):
+            trunks.add(p)
+    for p in sorted(trunks):
+        out.append("interface %s" % p)
+        out.append(" switchport trunk encapsulation dot1q")
+        out.append(" switchport mode trunk")
+        allowed = []
+        for v in plan.get("vlans", []):
+            if p in v.get("tagged", []):
+                allowed.append(str(v.get("vlan")))
+        out.append(" switchport trunk allowed vlan %s" % ",".join(allowed))
+        out.append("!")
+    for v in plan.get("vlans", []):
+        for p in v.get("untagged", []):
+            out.append("interface %s" % p)
+            out.append(" switchport mode access")
+            out.append(" switchport access vlan %s" % v.get("vlan",""))
+            out.append("!")
+
+elif target == "edgeos":
+    for v in plan.get("vlans", []):
+        vid = v.get("vlan","")
+        for p in v.get("tagged", []):
+            out.append("set interfaces ethernet %s vif %s description VLAN_%s" % (p, vid, vid))
+        for p in v.get("untagged", []):
+            out.append("set interfaces ethernet %s description VLAN_%s" % (p, vid))
+            out.append("set interfaces ethernet %s pvid %s" % (p, vid))
+
+else:
+    out.append("VLAN  Ports (T=tagged, U=untagged)")
+    for v in plan.get("vlans", []):
+        plist = []
+        for p in v.get("tagged", []):   plist.append("%s T" % p)
+        for p in v.get("untagged", []): plist.append("%s U" % p)
+        out.append("%-5s %s" % (v.get("vlan",""), ", ".join(plist)))
+
+print("\n".join(out))
+PYGEN
+    )
+    json_init
+    json_add_string "cli" "$out"
+    json_add_string "target" "$target"
+    json_dump
+}
+
+save_template() {
+    local name target plan notes
+    _load name name target target plan plan notes notes
+    [ -z "$name" ] && { json_init; json_add_string "error" "name required"; json_dump; return; }
+    local fname
+    fname=$(echo "$name" | tr -c 'a-zA-Z0-9._-' '_')
+    printf '%s\n' "$plan" > "$TPL_DIR/$fname.json"
+    printf '{"target":"%s","notes":"%s"}\n' "$target" "$notes" > "$TPL_DIR/$fname.meta"
+    json_init
+    json_add_string "name" "$fname"
+    json_dump
+}
+
+list_templates() {
+    json_init
+    json_add_array "templates"
+    for f in $TPL_DIR/*.json; do
+        [ -f "$f" ] || continue
+        local b meta
+        b=$(basename "$f" .json)
+        meta="{}"
+        [ -f "$TPL_DIR/$b.meta" ] && meta=$(cat "$TPL_DIR/$b.meta")
+        json_add_object
+        json_add_string "name" "$b"
+        json_add_string "meta" "$meta"
+        json_close_object
+    done
+    json_close_array
+    json_dump
+}
+
+load_template() {
+    local name
+    _load name name
+    local fname
+    fname=$(echo "$name" | tr -c 'a-zA-Z0-9._-' '_')
+    if [ ! -f "$TPL_DIR/$fname.json" ]; then
+        json_init; json_add_string "error" "not found"; json_dump; return
+    fi
+    json_init
+    json_add_string "plan" "$(cat "$TPL_DIR/$fname.json")"
+    [ -f "$TPL_DIR/$fname.meta" ] && json_add_string "meta" "$(cat "$TPL_DIR/$fname.meta")"
+    json_dump
+}
+
+delete_template() {
+    local name
+    _load name name
+    local fname
+    fname=$(echo "$name" | tr -c 'a-zA-Z0-9._-' '_')
+    rm -f "$TPL_DIR/$fname.json" "$TPL_DIR/$fname.meta"
+    json_init; json_add_boolean "ok" 1; json_dump
+}
+
+save_generated() {
+    local name target content
+    _load name name target target content content
+    [ -z "$name" ] && name="gen-$(date +%s)"
+    local fname
+    fname=$(echo "$name" | tr -c 'a-zA-Z0-9._-' '_')
+    printf '%s\n' "$content" > "$GEN_DIR/$fname.txt"
+    echo "$target" > "$GEN_DIR/$fname.target"
+    ls -1t $GEN_DIR/*.txt 2>/dev/null | tail -n +51 | while read -r old; do
+        rm -f "$old" "$old.target"
+    done
+    json_init; json_add_string "name" "$fname"; json_dump
+}
+
+list_generated() {
+    json_init
+    json_add_array "generated"
+    for f in $GEN_DIR/*.txt; do
+        [ -f "$f" ] || continue
+        local b tgt
+        b=$(basename "$f" .txt)
+        tgt=""
+        [ -f "$GEN_DIR/$b.target" ] && tgt=$(cat "$GEN_DIR/$b.target")
+        json_add_object
+        json_add_string "name" "$b"
+        json_add_string "target" "$tgt"
+        json_close_object
+    done
+    json_close_array
+    json_dump
+}
+
+delete_generated() {
+    local name
+    _load name name
+    local fname
+    fname=$(echo "$name" | tr -c 'a-zA-Z0-9._-' '_')
+    rm -f "$GEN_DIR/$fname.txt" "$GEN_DIR/$fname.target"
+    json_init; json_add_boolean "ok" 1; json_dump
+}
+
+lldp_neighbors() {
+    if ! command -v lldpcli >/dev/null 2>&1; then
+        json_init; json_add_string "error" "lldpcli not installed"; json_dump; return
+    fi
+    local out
+    out=$(lldpcli show neighbors 2>&1)
+    json_init
+    json_add_string "output" "$out"
+    json_dump
+}
+
+snmp_query() {
+    local ip community
+    _load ip ip community community
+    [ -z "$community" ] && community="public"
+    if ! command -v snmpwalk >/dev/null 2>&1; then
+        json_init; json_add_string "error" "snmpwalk not installed"; json_dump; return
+    fi
+    local out
+    out=$(snmpwalk -v2c -c "$community" -t 3 -r 1 "$ip" 1.3.6.1.2.1.17.7.1.4.3.1.2 2>&1)
+    json_init
+    json_add_string "ip" "$ip"
+    json_add_string "output" "$out"
+    json_dump
+}
+
+bridge_vlan_show() {
+    local out
+    out=$(bridge vlan show 2>&1)
+    json_init
+    json_add_string "output" "$out"
+    json_dump
+}
+
+iface_stats() {
+    local ifaces
+    _load ifaces ifaces
+    json_init
+    json_add_array "stats"
+    for i in $ifaces; do
+        [ -d "/sys/class/net/$i" ] || continue
+        local rx tx
+        rx=$(cat /sys/class/net/$i/statistics/rx_bytes 2>/dev/null)
+        tx=$(cat /sys/class/net/$i/statistics/tx_bytes 2>/dev/null)
+        json_add_object
+        json_add_string "iface" "$i"
+        json_add_int "rx" "${rx:-0}"
+        json_add_int "tx" "${tx:-0}"
+        json_close_object
+    done
+    json_close_array
+    json_dump
+}
+
+ping_test() {
+    local iface ip
+    _load iface iface ip ip
+    [ -z "$iface" ] && { json_init; json_add_string "error" "missing iface"; json_dump; return; }
+    [ -z "$ip" ] && { json_init; json_add_string "error" "missing ip"; json_dump; return; }
+    local out rc
+    out=$(ping -I "$iface" -c 3 -W 3 "$ip" 2>&1)
+    rc=$?
+    json_init
+    json_add_string "output" "$out"
+    json_add_int "exit_code" "$rc"
+    json_dump
+}
+
+call_method() {
+    local method="$1"
+    case "$method" in
+        detect)             detect ;;
+        preview)            preview ;;
+        apply)              apply ;;
+        snapshot)           snapshot ;;
+        list_snapshots)     list_snapshots ;;
+        restore)            restore ;;
+        confirm)            confirm ;;
+        generate_cli)       generate_cli ;;
+        save_template)      save_template ;;
+        list_templates)     list_templates ;;
+        load_template)      load_template ;;
+        delete_template)    delete_template ;;
+        save_generated)     save_generated ;;
+        list_generated)     list_generated ;;
+        delete_generated)   delete_generated ;;
+        lldp_neighbors)     lldp_neighbors ;;
+        snmp_query)         snmp_query ;;
+        bridge_vlan_show)   bridge_vlan_show ;;
+        kernel_ifaces)      kernel_ifaces ;;
+        iface_stats)        iface_stats ;;
+        ping_test)          ping_test ;;
+        *)                  cat >/dev/null
+                            json_init
+                            json_add_string "error" "unknown_method"
+                            json_dump ;;
+    esac
+}
+
+case "$1" in
+    list) list_methods ;;
+    call) call_method "$2" ;;
+    *) echo '{"error":"usage"}' ;;
+esac

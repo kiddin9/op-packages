@@ -1,0 +1,36 @@
+{
+  "luci-app-rmm-dashboard": {
+    "description": "Read router and RMM agent status",
+    "read": {
+      "ubus": {
+        "system": [
+          "board",
+          "info"
+        ],
+        "network.interface": [
+          "dump"
+        ],
+        "network.device": [
+          "status"
+        ],
+        "service": [
+          "list"
+        ],
+        "iwinfo": [
+          "devices",
+          "info",
+          "assoclist"
+        ],
+        "luci-rpc": [
+          "getDHCPLeases"
+        ],
+        "rmm.dashboard": [
+          "clients"
+        ]
+      },
+      "uci": [
+        "rmm-agent"
+      ]
+    }
+  }
+}

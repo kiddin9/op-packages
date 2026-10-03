@@ -1,0 +1,34 @@
+#!/bin/sh
+# Seed failover config on first install + append our scripts to sysupgrade.conf.
+
+# ---- 1. Failover config ----
+have=0
+[ -f /etc/config/quickactions ] && have=$(uci -q get quickactions.failover.primary)
+if [ -z "$have" ]; then
+    uci -q set quickactions.failover=failover
+    uci -q set quickactions.failover.enabled=1
+    uci -q set quickactions.failover.primary=wan
+    uci -q set quickactions.failover.backups="wanb wanbpppoe usbwan wandhcp"
+    uci -q set quickactions.failover.check_ips="1.1.1.1 8.8.8.8"
+    uci -q set quickactions.failover.check_interval=60
+    uci -q set quickactions.failover.ping_timeout=5
+    uci -q set quickactions.failover.fail_threshold=2
+    uci -q set quickactions.failover.recover_threshold=1
+    uci -q set quickactions.failover.tailscale_restart=0
+    uci -q set quickactions.failover.firewall_reset=1
+    uci -q set quickactions.failover.log_healthy=0
+    uci -q commit quickactions
+fi
+
+# ---- 2. Persist scripts through sysupgrade ----
+for f in /usr/bin/wan-watchdog.sh \
+         /usr/bin/quickactions-failover \
+         /etc/hotplug.d/iface/99-quickactions-conntrack-flush
+do
+    grep -qxF "$f" /etc/sysupgrade.conf 2>/dev/null || echo "$f" >> /etc/sysupgrade.conf
+done
+
+# ---- 3. Activate the failover subsystem ----
+/etc/init.d/quickactions-failover start >/dev/null 2>&1
+
+exit 0

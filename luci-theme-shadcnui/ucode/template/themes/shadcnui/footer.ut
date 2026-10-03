@@ -1,0 +1,10 @@
+{#
+ luci-theme-shadcnui — footer.ut
+ Closes the layout opened by header.ut.
+-#}
+
+	</main>
+</div>
+<script>L.require('menu-shadcnui')</script>
+</body>
+</html>

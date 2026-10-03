@@ -1,0 +1,12 @@
+#!/bin/sh
+
+uci -q batch <<EOF >/dev/null
+set luci.themes.shadcnui=/luci-static/shadcnui
+set luci.main.mediaurlbase=/luci-static/shadcnui
+commit luci
+EOF
+
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null
+killall -HUP rpcd 2>/dev/null
+
+exit 0

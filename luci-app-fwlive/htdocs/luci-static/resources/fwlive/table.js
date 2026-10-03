@@ -180,7 +180,9 @@ function buildColumnCell(col, row, state, callbacks) {
 		case 'time': {
 			const timeAttrs = { 'class': columnCellClass(col) };
 			if (state.viewMode === 'simple')
-				timeAttrs.title = _('Click a row for the full message');
+				timeAttrs.title = _(
+					'Activate the message button or click a row to show or hide the full message'
+				);
 			return E('td', timeAttrs, [
 				state.viewMode === 'simple'
 					? log.formatTimestampCompact(row.timestamp)

@@ -1,0 +1,25 @@
+{%
+  let configured_direction_mode = cfg.get_first('fluent', 'global', 'direction_mode') || defaults.direction_mode;
+  let direction_mode = configured_direction_mode;
+
+  if (direction_mode !== 'rtl' && direction_mode !== 'ltr' && direction_mode !== 'auto') {
+    direction_mode = defaults.direction_mode;
+  }
+
+  let locale = dispatcher.lang || '';
+  let resolved_direction = 'ltr';
+
+  if (direction_mode === 'rtl') {
+    resolved_direction = 'rtl';
+  } else if (direction_mode === 'auto') {
+    if (locale === 'ar' || locale === 'fa' ||
+        index(locale, 'ar_') === 0 || index(locale, 'ar-') === 0 ||
+        index(locale, 'fa_') === 0 || index(locale, 'fa-') === 0) {
+      resolved_direction = 'rtl';
+    }
+  }
+
+  direction.mode = direction_mode;
+  direction.locale = locale;
+  direction.resolved = resolved_direction;
+%}

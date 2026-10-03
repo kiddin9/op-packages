@@ -1,0 +1,1199 @@
+﻿msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"PO-Revision-Date: 2023-04-21 02:03+0000\n"
+"Last-Translator: permails <permails@github.com>\n"
+"Language-Team: Polski (Polish) <https://hosted.weblate.org/projects/"
+"openwrt/luciapplicationsdiskbox/pl/>\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Weblate 4.12.1-dev\n"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:5
+msgid "-- Please choose --"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:6
+msgid "-- custom --"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:95
+msgid "Active"
+msgstr "Aktywny"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:61
+msgid "Attrbute"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:58
+msgid "Back to Overview"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:19
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:104
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:244
+msgid "Btrfs"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:27
+msgid "Btrfs Info"
+msgstr "Informacja o Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:314
+msgid "Btrfs Label"
+msgstr "Etykieta Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:327
+msgid "Btrfs Member"
+msgstr "Cz艂onek Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:318
+msgid "Btrfs Raid Level"
+msgstr "Poziom Raid Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:62
+#: applications/luci-app-diskbox/luasrc/view/diskbox/partition_info.htm:132
+msgid "Cancel"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:72
+msgid "Collecting data..."
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:110
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:129
+msgid "Create"
+msgstr "Utw贸rz"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:344
+msgid "Create Btrfs"
+msgstr "Utw贸rz Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:295
+msgid "Create Raid"
+msgstr "Utw贸rz RAID"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:241
+msgid "Creation"
+msgstr "Kreator"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:30
+msgid "Data"
+msgstr "Data"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:121
+msgid "Default 2048 sector alignment, support +size{b,k,m,g,t} in End Sector"
+msgstr ""
+"Sektory wyr贸wnywane s膮 do wielokrotno艣ci 2048, sektor ko艅cowy mo偶na poda膰 "
+"jako rozmiar w postaci +size{b,k,m,g,t}"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:114
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:118
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:127
+msgid "Delete"
+msgstr "Usu艅"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:184
+msgid "Destination Path (optional)"
+msgstr "艢cie偶ka docelowa (opcjonalnie)"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:120
+msgid "Device"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:28
+msgid "Device Info"
+msgstr "Informacja o urz膮dzeniu"
+
+#: applications/luci-app-diskbox/luasrc/controller/diskbox.lua:24
+msgid "Disk Man"
+msgstr "Menad偶er dysk贸w"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:11
+msgid "diskbox"
+msgstr "Menad偶er dysk贸w"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:34
+msgid "Disks"
+msgstr "Dyski"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:52
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:91
+msgid "Eject"
+msgstr "Wysu艅"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:136
+msgid "End Sector"
+msgstr "Sektor ko艅cowy"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:139
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:184
+msgid "File System"
+msgstr "System plik贸w"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:62
+msgid "Flag"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:199
+#: applications/luci-app-diskbox/luasrc/view/diskbox/partition_info.htm:132
+msgid "Format"
+msgstr "Formatuj"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/partition_info.htm:132
+msgid "Format partation:"
+msgstr "Format partycji:"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/partition_info.htm:106
+msgid "Formatting.."
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:34
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:160
+msgid "Free Space"
+msgstr "Wolna przestrze艅"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:46
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:59
+msgid "Health"
+msgstr "Kondycja"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:53
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:60
+msgid "ID"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:320
+msgid "Invalid End Sector!"
+msgstr "Nieprawidłowy sektor końcowy!"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:301
+msgid "Invalid Start Sector!"
+msgstr "Nieprawidłowy sektor początkowy!"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:57
+msgid "KEY"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:36
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:106
+msgid "Label"
+msgstr "Etykieta"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:51
+msgid "Level"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:19
+msgid "Manage Btrfs"
+msgstr "Zarz膮dzaj Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:11
+msgid "Manage Disks over LuCI."
+msgstr "Zarz膮dzaj dyskami przez LuCI."
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:29
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:94
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:107
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:52
+msgid "Members"
+msgstr "Cz艂onkowie"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:31
+msgid "Metadata"
+msgstr "Metadata"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:38
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:32
+msgid "Model"
+msgstr "Model urz膮dzenia"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:210
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:214
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:224
+msgid "Mount"
+msgstr "Montuj"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:155
+msgid "Mount Options"
+msgstr "Opcje montowania"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:119
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:184
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:162
+msgid "Mount Point"
+msgstr "Punkt montowania"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:244
+msgid "Multiple Devices Btrfs Creation"
+msgstr "Kreator urz膮dze艅 Btrfs"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:124
+msgid "Name"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:279
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:285
+msgid "New"
+msgstr "Nowa"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:166
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:192
+msgid "New Snapshot"
+msgstr "Nowy obraz"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:43
+msgid "No Attrbute to display."
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xnullsection.htm:17
+msgid "One or more fields contain invalid values!"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xnullsection.htm:19
+msgid "One or more required fields have no value!"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:56
+msgid "Otime"
+msgstr "Otime"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:17
+msgid "Partition Disk over LuCI."
+msgstr "Zarz膮dzaj partycjami przez LuCI."
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:17
+msgid "Partition Management"
+msgstr "Menad偶er partycji"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:43
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:92
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:36
+msgid "Partition Table"
+msgstr "Tablica partycji"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:352
+msgid "Partition not exists!"
+msgstr "Partycja nie istnieje!"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:121
+msgid "Partitions Info"
+msgstr "Informacja o partycjach"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:58
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:37
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:89
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:31
+msgid "Path"
+msgstr "艢cie偶ka"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:206
+msgid "Please input Source Path of snapshot, Source Path must start with '/'"
+msgstr ""
+"Prosz臋 poda膰 艣cie偶k臋 藕r贸d艂ow膮 dla obrazu, 艣cie偶ka musi zaczyna膰 si臋 od '/'"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:133
+msgid "Please input Subvolume Path, Subvolume must start with '/'"
+msgstr ""
+"Prosz臋 poda膰 艣cie偶k臋 dla sub-wolumenu, sub-wolumen musi zaczyna膰 si臋 od '/'"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/partition_info.htm:103
+msgid "Please select file system!"
+msgstr "Prosz臋 wybra膰 system plik贸w!"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:243
+msgid "RAID"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:243
+msgid "RAID Creation"
+msgstr "Kreator RAID"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:87
+msgid "RAID Devices"
+msgstr "Urz膮dzenia RAID"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:90
+msgid "RAID mode"
+msgstr "Tryb RAID"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:255
+msgid "Raid Level"
+msgstr "Poziom RAID"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:278
+msgid "Raid Member"
+msgstr "Cz艂onek RAID"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:250
+msgid "Raid Name"
+msgstr "Nazwa RAID"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:68
+msgid "Raw"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:175
+msgid "Readonly"
+msgstr "Tylko do odczytu"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:89
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:276
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:348
+msgid "Remove"
+msgstr "Wysu艅"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:20
+msgid "Rescan Disks"
+msgstr "Skanuj dyski"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:76
+msgid "Reset"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:56
+msgid "Rotation Rate"
+msgstr "Obroty"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:53
+msgid "S.M.A.R.T Attrbutes"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:44
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:55
+msgid "SATA Version"
+msgstr "Wersja SATA"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:35
+msgid "Sector Size"
+msgstr "Rozmiar sektora"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:39
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:33
+msgid "Serial Number"
+msgstr "Numer seryjny"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:75
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:82
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:86
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:93
+msgid "Set Default"
+msgstr "Ustaw domy艣lnie"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:32
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:40
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:91
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:34
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:155
+msgid "Size"
+msgstr "Rozmiar"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:67
+msgid "Skip"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:57
+msgid "Snapshots"
+msgstr "Obrazy"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:168
+msgid "Source Path"
+msgstr "艢cie偶ka 藕r贸d艂owa"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:125
+msgid "Start Sector"
+msgstr "Sektor pocz膮tkowy"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:46
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:93
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:58
+msgid "Status"
+msgstr "Status"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:52
+msgid "SubVolumes"
+msgstr "Sub-wolumeny"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/cbi/xsimpleform.htm:71
+msgid "Submit"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:41
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:54
+msgid "Temp"
+msgstr "Temperatura"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:175
+msgid "The path where you want to store the snapshot"
+msgstr "艢cie偶ka w kt贸rej chcesz przechowywa膰 obraz"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:168
+msgid "The source path for create the snapshot"
+msgstr "艢cie偶ka 藕r贸d艂owa do utworzenia obrazu"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:65
+msgid "Thresh"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:54
+msgid "Top Level"
+msgstr "Top Level"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:157
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:66
+msgid "Type"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:28
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:55
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:105
+msgid "UUID"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:217
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:228
+msgid "Umount"
+msgstr "Odmontuj"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:58
+msgid "Unsupported raid reject!"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:42
+msgid "Update"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:67
+msgid "Updated"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:35
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:110
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:161
+msgid "Usage"
+msgstr "Wykorzystane"
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/btrfs.lua:33
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:159
+msgid "Used"
+msgstr "Zaj臋te"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:58
+msgid "VALUE"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:63
+msgid "Value"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/partition_info.htm:74
+msgid ""
+"Warnning !! \\nTHIS WILL OVERWRITE EXISTING PARTITIONS!! \\nModify the "
+"partition table?"
+msgstr ""
+"Ostrze偶enie !! \n"
+"ISTNIEJ膭CE PARTYCJE ZOSTAN膭 NADPISANE!! \n"
+"Zmodyfikowa膰 tablic臋 partycji?"
+
+#: applications/luci-app-diskbox/luasrc/view/diskbox/smart_detail.htm:64
+msgid "Worst"
+msgstr ""
+
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/disks.lua:63
+#: applications/luci-app-diskbox/luasrc/model/cbi/diskbox/partition.lua:99
+msgid "is in use! please unmount it first!"
+msgstr "aktualnie jest w użyciu, proszę najpierw odmontować!"
+
+#~ msgid "Partition NOT found!"
+#~ msgstr "Nie znaleziono partycji锛?
+
+#~ msgid "Filesystem NOT support!"
+#~ msgstr "System plik贸w nie jest obs艂ugiwany锛?
+
+
+msgid "(Distributed parity redundancy - needs at least 3 partitions)"
+msgstr ""
+
+msgid "(Double parity fault tolerance - needs at least 4 partitions)"
+msgstr ""
+
+msgid "(Mirror + Stripe hybrid - performance with high fault tolerance)"
+msgstr ""
+
+msgid "(Mirror - recommended dual-disk data fault tolerance, doubled read speed)"
+msgstr ""
+
+msgid "(Stripe - high throughput, no redundancy, full capacity)"
+msgstr ""
+
+msgid "(double metadata copies, recommended for important data)"
+msgstr ""
+
+msgid "(multi-device mirror redundancy)"
+msgstr ""
+
+msgid "(multi-device stripe for fast I/O)"
+msgstr ""
+
+msgid "(single-device, maximizes usable capacity)"
+msgstr ""
+
+msgid "-- No mountable partitions --"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Active RAID Arrays"
+msgstr ""
+
+msgid "All currently unmounted free storage partitions are listed automatically."
+msgstr ""
+
+msgid "Apply Table"
+msgstr ""
+
+msgid "Applying partition table..."
+msgstr ""
+
+msgid "Are you sure you want to delete partition %s?"
+msgstr ""
+
+msgid "Are you sure you want to delete subvolume %s?"
+msgstr ""
+
+msgid "Are you sure you want to eject/remove this device?"
+msgstr ""
+
+msgid "Are you sure you want to stop and remove RAID array %s?"
+msgstr ""
+
+msgid "Are you sure you want to unmount %s?"
+msgstr ""
+
+msgid "Attribute"
+msgstr ""
+
+msgid "Attributes"
+msgstr ""
+
+msgid "Auto Mount"
+msgstr ""
+
+msgid "Available Btrfs Filesystems"
+msgstr ""
+
+msgid "Available Storage Partition"
+msgstr ""
+
+msgid "Boot / Firmware (protected)"
+msgstr ""
+
+msgid "Btrfs Management"
+msgstr ""
+
+msgid "Btrfs Pools"
+msgstr ""
+
+msgid "Change Partition Table"
+msgstr ""
+
+msgid "Change mount point / options"
+msgstr ""
+
+msgid "Click to view SMART & Health details"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Confirm"
+msgstr ""
+
+msgid "Create Btrfs Pool"
+msgstr ""
+
+msgid "Create Partition"
+msgstr ""
+
+msgid "Create RAID"
+msgstr ""
+
+msgid "Create Snapshot"
+msgstr ""
+
+msgid "Create a fresh GPT/MBR partition table"
+msgstr ""
+
+msgid "Create a new partition from the largest free region"
+msgstr ""
+
+msgid "Create a partition in this free region"
+msgstr ""
+
+msgid "Create as read-only snapshot"
+msgstr ""
+
+msgid "Creating Btrfs"
+msgstr ""
+
+msgid "Creating Btrfs filesystem..."
+msgstr ""
+
+msgid "Creating Btrfs snapshot..."
+msgstr ""
+
+msgid "Creating Btrfs will ERASE the selected members. Continue?"
+msgstr ""
+
+msgid "Creating Partition"
+msgstr ""
+
+msgid "Creating RAID"
+msgstr ""
+
+msgid "Creating RAID device..."
+msgstr ""
+
+msgid "Creating Snapshot"
+msgstr ""
+
+msgid "Creating Subvolume"
+msgstr ""
+
+msgid "Creating a RAID array will ERASE the selected members. Continue?"
+msgstr ""
+
+msgid "Creating new partition..."
+msgstr ""
+
+msgid "Creating subvolume..."
+msgstr ""
+
+msgid "Data (in use)"
+msgstr ""
+
+msgid "Data (unmounted)"
+msgstr ""
+
+msgid "Data Profile"
+msgstr ""
+
+msgid "Default"
+msgstr ""
+
+msgid "Delete Partition"
+msgstr ""
+
+msgid "Delete Subvolume"
+msgstr ""
+
+msgid "Deleting Partition"
+msgstr ""
+
+msgid "Deleting Subvolume"
+msgstr ""
+
+msgid "Deleting subvolume..."
+msgstr ""
+
+msgid "Dest (opt)"
+msgstr ""
+
+msgid "Destination path where you want to store the snapshot"
+msgstr ""
+
+msgid "Detach this partition from its mount point. Data is kept and it can be remounted; required before format or delete."
+msgstr ""
+
+msgid "Detach this partition from its mount point; data is kept"
+msgstr ""
+
+msgid "Detail"
+msgstr ""
+
+msgid "Device /dev/%s not found or has no media."
+msgstr ""
+
+msgid "Device is in use! Please unmount all partitions first!"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Disk Health"
+msgstr ""
+
+msgid "Disk Manager"
+msgstr ""
+
+msgid "DiskBox"
+msgstr ""
+
+msgid "DiskBox Disk Manager"
+msgstr ""
+
+msgid "DiskManager"
+msgstr ""
+
+msgid "DiskManger"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Edit Mount"
+msgstr ""
+
+msgid "Eject Device"
+msgstr ""
+
+msgid "Ejecting"
+msgstr ""
+
+msgid "Ejecting device..."
+msgstr ""
+
+msgid "Empty (no filesystem)"
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Extended Partition"
+msgstr ""
+
+msgid "Failed"
+msgstr ""
+
+msgid "Failed to create Btrfs."
+msgstr ""
+
+msgid "Failed to create RAID."
+msgstr ""
+
+msgid "Failed to create partition."
+msgstr ""
+
+msgid "Failed to create snapshot."
+msgstr ""
+
+msgid "Failed to create subvolume."
+msgstr ""
+
+msgid "Failed to delete subvolume."
+msgstr ""
+
+msgid "Failed to eject device."
+msgstr ""
+
+msgid "Failed to load Btrfs pools."
+msgstr ""
+
+msgid "Failed to load Btrfs subvolumes."
+msgstr ""
+
+msgid "Failed to load disk info."
+msgstr ""
+
+msgid "Failed to modify partition table."
+msgstr ""
+
+msgid "Failed to mount."
+msgstr ""
+
+msgid "Failed to remove partition."
+msgstr ""
+
+msgid "Failed to set default subvolume."
+msgstr ""
+
+msgid "Failed to stop array."
+msgstr ""
+
+msgid "Failed to unmount."
+msgstr ""
+
+msgid "Failed to update label."
+msgstr ""
+
+msgid "Filesystem detected - mount it to use the existing data; no formatting needed."
+msgstr ""
+
+msgid "Force Format"
+msgstr ""
+
+msgid "Format and create a modern filesystem with snapshots, transparent compression and online growth"
+msgstr ""
+
+msgid "Format failed."
+msgstr ""
+
+msgid "Format partition: /dev/%s"
+msgstr ""
+
+msgid "Formatting erases all data on the partition"
+msgstr ""
+
+msgid "Formatting partition will ERASE all data stored on it."
+msgstr ""
+
+msgid "Formatting..."
+msgstr ""
+
+msgid "Go to DiskBox to Create Btrfs"
+msgstr ""
+
+msgid "Health Status"
+msgstr ""
+
+msgid "Healthy / Online"
+msgstr ""
+
+msgid "Invalid Partition size!"
+msgstr ""
+
+msgid "Invalid Start or End sector!"
+msgstr ""
+
+msgid "Invalid Start sector!"
+msgstr ""
+
+msgid "Kernel-managed (FIT)"
+msgstr ""
+
+msgid "Key"
+msgstr ""
+
+msgid "Linux mdadm redundant array monitoring"
+msgstr ""
+
+msgid "Loaded by the bootloader and kernel from the FIT image; not mounted as a separate filesystem."
+msgstr ""
+
+msgid "Loading Btrfs info..."
+msgstr ""
+
+msgid "Loading device info..."
+msgstr ""
+
+msgid "Loading..."
+msgstr ""
+
+msgid "Logical"
+msgstr ""
+
+msgid "Manage Btrfs filesystem, subvolumes and snapshots."
+msgstr ""
+
+msgid "Manage Partitions"
+msgstr ""
+
+msgid "Manage disks over LuCI."
+msgstr ""
+
+msgid "Manage disks, partitions, RAID and Btrfs over LuCI."
+msgstr ""
+
+msgid "Maximum available: %s"
+msgstr ""
+
+msgid "Modifying Partition Table"
+msgstr ""
+
+msgid "Mount Path"
+msgstr ""
+
+msgid "Mount Points"
+msgstr ""
+
+msgid "Mount a device"
+msgstr ""
+
+msgid "Mount this partition"
+msgstr ""
+
+msgid "Mounted"
+msgstr ""
+
+msgid "Mounted - unmount to delete"
+msgstr ""
+
+msgid "Mounted - unmount to format"
+msgstr ""
+
+msgid "Mounting"
+msgstr ""
+
+msgid "Mounting device..."
+msgstr ""
+
+msgid "New Partition"
+msgstr ""
+
+msgid "New Subvolume"
+msgstr ""
+
+msgid "New partition on /dev/%s. Start sector auto-detected and aligned to 1 MiB."
+msgstr ""
+
+msgid "No Btrfs filesystems found on this system."
+msgstr ""
+
+msgid "No Btrfs filesystems."
+msgstr ""
+
+msgid "No RAID arrays."
+msgstr ""
+
+msgid "No SMART attributes to display."
+msgstr ""
+
+msgid "No disks detected."
+msgstr ""
+
+msgid "No free partitions available to select."
+msgstr ""
+
+msgid "No partitions (Raw Disk / Unpartitioned)"
+msgstr ""
+
+msgid "No storage partitions found."
+msgstr ""
+
+msgid "Normal"
+msgstr ""
+
+msgid "Not mounted"
+msgstr ""
+
+msgid "Only use this if the partition cannot be mounted and its data is not needed. Formatting erases all data on the partition."
+msgstr ""
+
+msgid "Partition Size"
+msgstr ""
+
+msgid "Partition disk over LuCI."
+msgstr ""
+
+msgid "Partition formatted successfully!"
+msgstr ""
+
+msgid "Partition is in use! Please unmount it first!"
+msgstr ""
+
+msgid "Partitions"
+msgstr ""
+
+msgid "Partitions: %d"
+msgstr ""
+
+msgid "Passed"
+msgstr ""
+
+msgid "Physical Disks"
+msgstr ""
+
+msgid "Please select Btrfs member disks/partitions!"
+msgstr ""
+
+msgid "Please select RAID member disks/partitions!"
+msgstr ""
+
+msgid "Please select a device and input mount point!"
+msgstr ""
+
+msgid "Please select at least one Btrfs member!"
+msgstr ""
+
+msgid "Pool Label"
+msgstr ""
+
+msgid "Power Status"
+msgstr ""
+
+msgid "Primary"
+msgstr ""
+
+msgid "RAID Arrays"
+msgstr ""
+
+msgid "RAID Details"
+msgstr ""
+
+msgid "RAID Level"
+msgstr ""
+
+msgid "RAID Members"
+msgstr ""
+
+msgid "RAID Name"
+msgstr ""
+
+msgid "Read-Only"
+msgstr ""
+
+msgid "Read-only"
+msgstr ""
+
+msgid "Read/Write"
+msgstr ""
+
+msgid "Remove this partition from the partition table. Its space becomes unallocated and existing data is lost once overwritten."
+msgstr ""
+
+msgid "Remove this partition from the table; its space becomes unallocated"
+msgstr ""
+
+msgid "Removing partition..."
+msgstr ""
+
+msgid "Rescanning SCSI and RAID devices..."
+msgstr ""
+
+msgid "S.M.A.R.T Attributes"
+msgstr ""
+
+msgid "Select a Btrfs filesystem to manage."
+msgstr ""
+
+msgid "Select at least two RAID members!"
+msgstr ""
+
+msgid "Select two or more free partitions to build a high-reliability or high-performance array"
+msgstr ""
+
+msgid "Serial: %s"
+msgstr ""
+
+msgid "Setting Default"
+msgstr ""
+
+msgid "Setting default subvolume..."
+msgstr ""
+
+msgid "Size exceeds the available free space."
+msgstr ""
+
+msgid "Sleep"
+msgstr ""
+
+msgid "Snapshot"
+msgstr ""
+
+msgid "Source"
+msgstr ""
+
+msgid "Source path for creating snapshot (must start with '/')"
+msgstr ""
+
+msgid "Source path must start with '/'"
+msgstr ""
+
+msgid "Standard software RAID block device path, defaults to /dev/md1, /dev/md2..."
+msgstr ""
+
+msgid "Standby"
+msgstr ""
+
+msgid "Stop"
+msgstr ""
+
+msgid "Stop Array"
+msgstr ""
+
+msgid "Stopping Array"
+msgstr ""
+
+msgid "Stopping RAID array..."
+msgstr ""
+
+msgid "Storage pool volume label, used as the mount / management identifier."
+msgstr ""
+
+msgid "Subvolume"
+msgstr ""
+
+msgid "Subvolume path must start with '/'"
+msgstr ""
+
+msgid "Subvolumes"
+msgstr ""
+
+msgid "Subvolumes & Snapshots"
+msgstr ""
+
+msgid "System"
+msgstr ""
+
+msgid "System Data (in use)"
+msgstr ""
+
+msgid "System Firmware Partition"
+msgstr ""
+
+msgid "System Reserved / Unavailable"
+msgstr ""
+
+msgid "System RootFS / Overlay"
+msgstr ""
+
+msgid "System partition - cannot unmount"
+msgstr ""
+
+msgid "System partition, protected"
+msgstr ""
+
+msgid "Temperature"
+msgstr ""
+
+msgid "This partition contains data."
+msgstr ""
+
+msgid "Unallocated"
+msgstr ""
+
+msgid "Unallocated Space"
+msgstr ""
+
+msgid "Unformatted"
+msgstr ""
+
+msgid "Unmount"
+msgstr ""
+
+msgid "Unmount this partition, then it can be formatted"
+msgstr ""
+
+msgid "Unmounted"
+msgstr ""
+
+msgid "Unmounting"
+msgstr ""
+
+msgid "Unmounting %s..."
+msgstr ""
+
+msgid "Updating Btrfs label..."
+msgstr ""
+
+msgid "Updating Label"
+msgstr ""
+
+msgid "Urgent"
+msgstr ""
+
+msgid "Warning"
+msgstr ""
+
+msgid "Warning !!\nTHIS WILL OVERWRITE EXISTING PARTITIONS!!\nModify the partition table to %s?"
+msgstr ""
+
+msgid "next-gen CoW write-time-copy storage pool"
+msgstr ""
+
+msgid "sectors"
+msgstr ""

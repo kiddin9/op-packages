@@ -1,0 +1,71 @@
+<%#
+	Luxe is a clean HTML5 theme for LuCI. It is based on luci-theme-bootstrap and MUI
+
+	luci-theme-material
+	Copyright 2015-2017 Lutty Yang <lutty@wcan.in>
+	
+	luci-theme-luxe
+	Copyright 2026 de-quenx | xidz_x
+	
+	Have a bug? Please create an issue here on GitHub!
+	https://github.com/de-quenx/luci-theme-luxe/issues
+
+	luci-theme-bootstrap:
+	Copyright 2008 Steven Barth <steven@midlink.org>
+	Copyright 2008-2016 Jo-Philipp Wich <jow@openwrt.org>
+	Copyright 2012 David Menting <david@nut-bolt.nl>
+
+	MUI:
+	https://github.com/muicss/mui
+
+	Licensed to the public under the Apache License 2.0
+-%>
+<%
+	local util = require "luci.util"
+	local fs = require "nixio.fs"
+	
+	local boardinfo = util.ubus("system", "board") or { }
+	local hn_file = fs.readfile("/proc/sys/kernel/hostname")
+	local hostname = (hn_file and hn_file ~= "") and hn_file:gsub("\n", "") or (boardinfo.hostname or "OpenWrt")
+-%>
+<!DOCTYPE html>
+<html lang="en" class="luxe-login-auth">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	<title><%= hostname %></title>
+	<link rel="stylesheet" href="<%=media%>/css/cascade.css?v=1.0.1">
+	<link rel="shortcut icon" href="<%=media%>/luxe.ico">
+</head>
+<body class="luxe-login light">
+	<div class="theme-pages-toggle">
+		<button class="theme-pages-btn" id="b" type="button">LIGHT</button>
+	</div>
+	<form method="post" action="<%=luci.http.getenv('REQUEST_URI')%>">
+		<% if fuser then %>
+		<div class="alert-message" id="a">
+			Invalid username / password! Please try again.
+		</div>
+		<% end %>
+		<div class="login_form_container">
+			<div class="login_form">
+				<h2 id="hostname" data-text="<%= hostname %>"><%= hostname %></h2>
+				<div class="date-time">
+					<span id="d"></span> | <span id="t"></span>
+				</div>
+				<div class="input_group">
+					<input class="input_text pwd_input" id="u_in" type="text" name="luci_username" placeholder="Username" value="<%= duser or '' %>" required autofocus>
+					<div class="t_eye" id="u_eye"></div>
+				</div>
+				<div class="input_group">
+					<input class="input_text pwd_input" id="p_in" type="password" name="luci_password" placeholder="Password">
+					<div class="t_eye" id="t_eye"></div>
+				</div>
+				<input type="submit" value="LOGIN">
+				<div class="footer"></div>
+			</div>
+		</div>
+	</form>
+	<script src="<%=media%>/js/luxe.js?v=1.0.1"></script>
+</body>
+</html>

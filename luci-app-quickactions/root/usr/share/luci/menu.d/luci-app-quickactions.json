@@ -1,0 +1,10 @@
+{
+	"admin/quickactions": {
+		"title": "Quick Actions",
+		"action": {
+			"type": "view",
+			"path": "system/quickactions"
+		},
+		"order": 25
+	}
+}

@@ -1,0 +1,699 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-theme-fluent\n"
+"POT-Creation-Date: 2026-09-05 23:37+0800\n"
+"PO-Revision-Date: \n"
+"Last-Translator: LazuliKao\n"
+"Language-Team: LuCI Theme Fluent\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "%d second-level menus"
+msgstr "%d 个二级菜单"
+
+msgid "A new version is available!"
+msgstr "发现有新版本！"
+
+msgid "About"
+msgstr "关于"
+
+msgid "Above bar, end"
+msgstr "上方末尾"
+
+msgid "Above bar, start"
+msgstr "上方起始位置"
+
+msgid "Accent color"
+msgstr "强调色"
+
+msgid "Add primary menu"
+msgstr "添加主菜单"
+
+msgid ""
+"Adjust layout, typography, transition timing, shadows, and inject custom CSS "
+"variables or rules when the built-in controls are not enough."
+msgstr "调整布局、排版、过渡动画时间、阴影，并在内置控件不足时注入自定义 CSS 变量或规则。"
+
+msgid "Advanced"
+msgstr "高级"
+
+msgid "Advanced MAC Selector"
+msgstr "高级 MAC 选择器"
+
+msgid "and %d more..."
+msgstr "和更多 %d 个..."
+
+msgid ""
+"Animate the active underline when switching between native LuCI tabs and "
+"themed tab menus."
+msgstr "在切换原生 LuCI 标签页和主题化标签菜单时，为活动下划线添加动画。"
+
+msgid "Animation"
+msgstr "动画"
+
+msgid ""
+"API rate limit exceeded. Please enter a GitHub Token to continue. This token "
+"is only used for frontend requests and will not be saved on the router "
+"backend."
+msgstr "API 调用频率已达上限。请输入 GitHub Token 以继续。此 token 只用于前端请求，不会保存在路由器后端。"
+
+msgid ""
+"Applies to standard buttons, inputs, selects, and similar form controls "
+"across the theme."
+msgstr "适用于整个主题中的标准按钮、输入框、选择框及类似表单控件。"
+
+msgid ""
+"Are you sure you want to clean up %d invalid/uninstalled menu items or "
+"rules?"
+msgstr "您确定要清除 %d 个无效/已卸载的菜单项或规则吗？"
+
+msgid "Author"
+msgstr "作者"
+
+msgid "Auto-scroll"
+msgstr "自动滚动"
+
+msgid "Automatic (Arabic/Persian locales only)"
+msgstr "自动（仅阿拉伯语/波斯语语言环境）"
+
+msgid "Backdrop blur radius"
+msgstr "背景模糊半径"
+
+msgid "Backend (GHProxy Acceleration)"
+msgstr "后端 (GHProxy 加速)"
+
+msgid "Backend (Official GitHub)"
+msgstr "后端 (官方 GitHub)"
+
+msgid "Base font size"
+msgstr "基础字体大小"
+
+msgid "Below bar, end"
+msgstr "下方末尾"
+
+msgid "Below bar, start"
+msgstr "下方起始位置"
+
+msgid ""
+"Blur radius in pixels behind the login card in dark mode. Use 0 to disable "
+"blur."
+msgstr "深色模式下，登录卡片背后的模糊半径（单位：像素）。使用 0 可禁用模糊效果。"
+
+msgid ""
+"Blur radius in pixels behind the login card in light mode. Use 0 to disable "
+"blur."
+msgstr "亮色模式下，登录卡片背后的模糊半径（单位：像素）。使用 0 可禁用模糊效果。"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Card background"
+msgstr "卡片背景"
+
+msgid "Card shadow"
+msgstr "卡片阴影"
+
+msgid "Check for updates"
+msgstr "检查更新"
+
+msgid "Checking for updates..."
+msgstr "正在检查更新..."
+
+msgid "Choose color"
+msgstr "选择颜色"
+
+msgid ""
+"Choose the document direction for authenticated and login pages. Automatic "
+"mode resolves Arabic and Persian locale codes (ar, ar_*, ar-*, fa, fa_*, "
+"fa-*) to RTL and falls back to LTR for missing or unrecognized locales."
+msgstr ""
+"为已登录页面和登录页面选择文档方向。自动模式会将阿拉伯语和波斯语语言环境代码（ar、ar_*、ar-*、fa、fa_*、fa-*）解析为 "
+"RTL，对于缺失或无法识别的语言环境则回退为 LTR。"
+
+msgid "Clean up"
+msgstr "清除"
+
+msgid "Clean up invalid items"
+msgstr "清除无效项"
+
+msgid "Clean up invalid items (%d)"
+msgstr "清除无效项 (%d)"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Color mode"
+msgstr "色彩模式"
+
+msgid "Colors"
+msgstr "颜色"
+
+msgid "Comfortable (42px)"
+msgstr "舒适（42px）"
+
+msgid "Compact (32px)"
+msgstr "紧凑（32px）"
+
+msgid ""
+"Configure color mode, accent colors, layout sizing, animation behavior, "
+"login-page appearance, and advanced CSS overrides for luci-theme-fluent."
+msgstr "配置色彩模式、强调色、布局尺寸、动画行为、登录页面外观，以及用于 `luci-theme-fluent` 的高级 CSS 覆盖。"
+
+msgid "Confirm"
+msgstr "确认"
+
+msgid "Confirm Installation"
+msgstr "确认安装"
+
+msgid "Continue"
+msgstr "继续"
+
+msgid "Control height"
+msgstr "控件高度"
+
+msgid ""
+"Controls the font weight used by main navigation labels and related theme "
+"text accents."
+msgstr "控制主导航标签及相关主题强调文本的字体粗细。"
+
+msgid ""
+"Controls the shared Fluent corner radius tokens used by cards, buttons, "
+"inputs, and related UI surfaces."
+msgstr "控制卡片、按钮、输入框及相关 UI 元素共享的 Fluent 圆角半径值。"
+
+msgid ""
+"Controls the shared Fluent transition timing used by menu, header, and other "
+"theme animations."
+msgstr "控制菜单、头部和其他主题动画中使用的共享 Fluent 过渡时间。"
+
+msgid "Copied"
+msgstr "已复制"
+
+msgid "Copy log"
+msgstr "复制日志"
+
+msgid "Corner radius"
+msgstr "圆角半径"
+
+msgid "Current / Pending MAC Address"
+msgstr "当前 / 待定 MAC 地址"
+
+msgid "Custom CSS"
+msgstr "自定义 CSS"
+
+msgid ""
+"Customize the login page background, card opacity, and blur radius for light "
+"and dark modes."
+msgstr "自定义亮色模式和深色模式下登录页面的背景、卡片不透明度和模糊半径。"
+
+msgid "Dark mode"
+msgstr "深色模式"
+
+msgid "Delete primary menu"
+msgstr "删除主菜单"
+
+msgid "Disabled"
+msgstr "禁用"
+
+msgid "Disconnects"
+msgstr "断开"
+
+msgid ""
+"Display the themed loading indicator at the top edge during page loads and "
+"transitions."
+msgstr "在页面加载和过渡期间，在顶部边缘显示主题化的加载指示器。"
+
+msgid "Download and Install"
+msgstr "下载并安装"
+
+msgid "Download log"
+msgstr "下载日志"
+
+msgid "Downloaded"
+msgstr "已下载"
+
+msgid "Downloading on router"
+msgstr "正在路由器上下载..."
+
+msgid "Drag to move second-level menu"
+msgstr "拖动以移动二级菜单"
+
+msgid "Drag to reorder primary menu"
+msgstr "拖动以重新排序主菜单"
+
+msgid "Drop second-level menus here"
+msgstr "将二级菜单拖放到此处"
+
+msgid "Edit"
+msgstr "编辑"
+
+msgid "Enable page transition animation"
+msgstr "启用页面过渡动画"
+
+msgid "Enable tab underline animation"
+msgstr "启用标签页下划线动画"
+
+msgid "Errors"
+msgstr "错误"
+
+msgid "Expecting: %s"
+msgstr "预期：%s"
+
+msgid "Extra large (12px)"
+msgstr "超大 (12像素)"
+
+msgid "Failed to check for updates"
+msgstr "检查更新失败"
+
+msgid "Failed to fetch current theme version."
+msgstr "未能获取当前主题版本。"
+
+msgid "Fast"
+msgstr "快速"
+
+msgid "Finished"
+msgstr "完成"
+
+msgid "Fix primary menu title errors before saving."
+msgstr "保存前，请修复主菜单标题中的错误。"
+
+msgid "Fluent Design 2 theme for LuCI"
+msgstr "适用于 LuCI 的 Fluent Design 2 主题"
+
+msgid "Fluent Theme"
+msgstr "Fluent 主题"
+
+msgid "Fluent theme settings"
+msgstr "Fluent 主题设置"
+
+msgid "Follow system"
+msgstr "跟随系统"
+
+msgid "Force dark mode"
+msgstr "强制深色模式"
+
+msgid "Force light mode"
+msgstr "强制亮色模式"
+
+msgid "Force LTR"
+msgstr "强制 LTR"
+
+msgid "Force RTL"
+msgstr "强制 RTL"
+
+msgid "General"
+msgstr "常规"
+
+msgid "GitHub Token Required"
+msgstr "需要 GitHub Token"
+
+msgid "Header height"
+msgstr "头部高度"
+
+msgid "Height of the top header bar in pixels."
+msgstr "顶部标题栏的高度，单位为像素。"
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in dark mode."
+msgstr "在界面以深色模式渲染时，用作 Fluent 主要强调色的十六进制颜色。"
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in light mode."
+msgstr "在界面以亮色模式渲染时，用作 Fluent 主要强调色的十六进制颜色。"
+
+msgid "HEX color used for container/card elements in dark mode."
+msgstr "在深色模式下，用于容器/卡片元素的十六进制颜色。"
+
+msgid "HEX color used for container/card elements in light mode."
+msgstr "在亮色模式下，用于容器/卡片元素的十六进制颜色。"
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"dark mode."
+msgstr "在界面以深色模式渲染时，用于进度条标签的十六进制颜色。"
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"light mode."
+msgstr "在界面以亮色模式渲染时，用于进度条标签的十六进制颜色。"
+
+msgid "HEX color used for the main page background in dark mode."
+msgstr "在深色模式下，用于主页面的背景的十六进制颜色。"
+
+msgid "HEX color used for the main page background in light mode."
+msgstr "在亮色模式下，用于主页面的背景的十六进制颜色。"
+
+msgid "HEX color used for the navigation sidebar in dark mode."
+msgstr "深色模式下导航侧边栏使用的十六进制颜色。"
+
+msgid "HEX color used for the navigation sidebar in light mode."
+msgstr "亮色模式下导航侧边栏使用的十六进制颜色。"
+
+msgid "Installation cancelled by user."
+msgstr "用户已取消安装。"
+
+msgid "Installed version"
+msgstr "已安装版本"
+
+msgid "Installing package"
+msgstr "正在安装软件包"
+
+msgid "Keep action bar visible while scrolling"
+msgstr "滚动时保持操作栏可见"
+
+msgid ""
+"Keep Save, Apply, and Reset actions fixed at the bottom of the viewport "
+"while scrolling."
+msgstr "滚动时，将“保存”、“应用”和“重置”操作固定在视口底部。"
+
+msgid "Large"
+msgstr "大号"
+
+msgid "Large (8px)"
+msgstr "大号 (8px)"
+
+msgid "Light mode"
+msgstr "亮色模式"
+
+msgid "Line %d"
+msgstr "第 %d 行"
+
+msgid "Lines"
+msgstr "行"
+
+msgid "Login"
+msgstr "登录"
+
+msgid "Login card opacity"
+msgstr "登录卡片不透明度"
+
+msgid "Login page"
+msgstr "登录页"
+
+msgid "Medium"
+msgstr "中号"
+
+msgid "Medium (4px)"
+msgstr "中号 (4px)"
+
+msgid "Menu"
+msgstr "菜单"
+
+msgid "Menu title cannot be empty."
+msgstr "菜单标题不能为空。"
+
+msgid "Navigation font weight"
+msgstr "导航字体粗细"
+
+msgid "New primary menu"
+msgstr "新建主菜单"
+
+msgid "New primary menu %d"
+msgstr "新建主菜单 %d"
+
+msgid "Next"
+msgstr "下一步"
+
+msgid "Nightly build available (reinstallation check)."
+msgstr "有 Nightly 构建可用（检查是否需要重新安装）。"
+
+msgid "Nightly Channel (Prerelease)"
+msgstr "Nightly 通道 (预发布)"
+
+msgid ""
+"No matching package asset found for your system architecture in this "
+"release."
+msgstr "在此版本中，未找到适用于您系统架构的软件包资源。"
+
+msgid "None"
+msgstr "无"
+
+msgid "Normal"
+msgstr "常规"
+
+msgid ""
+"Opacity of the login card in dark mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr "深色模式下登录卡片的不透明度。0 表示完全透明，1 表示完全不透明。"
+
+msgid ""
+"Opacity of the login card in light mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr "亮色模式下登录卡片的不透明度。0 表示完全透明，1 表示完全不透明。"
+
+msgid ""
+"Optional raw CSS injected into the Fluent header template. Use this for "
+"extra --fluent-* variable overrides or page-specific tweaks that are not "
+"exposed as dedicated options."
+msgstr "在 Fluent 头部模板中注入可选的原始 CSS。用于额外的 `--fluent-*` 变量覆盖，或页面特定的调整，这些调整没有作为专门的选项暴露。"
+
+msgid "Package format"
+msgstr "软件包格式"
+
+msgid "Page background"
+msgstr "页面背景"
+
+msgid "Please enter your password."
+msgstr "请输入您的密码。"
+
+msgid "Please enter your username."
+msgstr "请输入您的用户名。"
+
+msgid ""
+"Position of progress-bar labels relative to the bar. Start/end alignment "
+"follows the text direction (LTR or RTL)."
+msgstr "进度条标签相对于进度条的位置。起始/末尾对齐方式会跟随文本方向（从左往右或从右往左）。"
+
+msgid "Preset Vendor / Generator"
+msgstr "预设厂商 / 生成器"
+
+msgid "Primary menu title"
+msgstr "主菜单标题"
+
+msgid "Primary menu titles cannot be empty."
+msgstr "主菜单标题不能为空。"
+
+msgid "Primary menu titles must be unique."
+msgstr "主菜单标题必须唯一。"
+
+msgid "Progress bar text color"
+msgstr "进度条文本颜色"
+
+msgid "Progress bar text position"
+msgstr "进度条文本位置"
+
+msgid "Random Local MAC"
+msgstr "随机本地 MAC"
+
+msgid "Randomize MAC"
+msgstr "随机化 MAC"
+
+msgid "Reload Web Interface"
+msgstr "重新加载网页界面"
+
+msgid "Replace native select elements with the theme's custom dropdown widget."
+msgstr "使用主题的自定义下拉组件替换原生的选择元素。"
+
+msgid "Respect reduced-motion preference"
+msgstr "遵循减少动态效果偏好设置"
+
+msgid "Restore %s to its original menu name"
+msgstr "恢复 %s 为其原始菜单名称"
+
+msgid "Restore %s to its original menu position"
+msgstr "恢复 %s 为其原始菜单位置"
+
+msgid "Restore defaults"
+msgstr "恢复默认设置"
+
+msgid "Restore to original title"
+msgstr "恢复为原始标题"
+
+msgid "Retrying with token..."
+msgstr "正在使用令牌重试..."
+
+msgid "Rounded (6px)"
+msgstr "圆角 (6px)"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Scroll to bottom"
+msgstr "滚动到底部"
+
+msgid "Scroll to top"
+msgstr "滚动到顶部"
+
+msgid "Search menu items"
+msgstr "搜索菜单项"
+
+msgid "Search menu..."
+msgstr "搜索菜单..."
+
+msgid "Second-level menu title"
+msgstr "二级菜单标题"
+
+msgid "Select the shadow depth applied to themed cards and panels."
+msgstr "选择应用于主题卡片和面板的阴影深度。"
+
+msgid "Select vendor prefix..."
+msgstr "选择厂商前缀..."
+
+msgid "Semibold"
+msgstr "半粗体"
+
+msgid ""
+"Sets the base interface font size in pixels. Most theme text scales from "
+"this value through the Fluent CSS variables. Recommended range: 12-18px."
+msgstr "设置基础界面字体大小（像素）。大多数主题文本会根据 Fluent CSS 变量从该值进行缩放。建议范围：12-18px。"
+
+msgid "Show %s in the menu"
+msgstr "在菜单中显示 %s"
+
+msgid ""
+"Show pending UCI changes in the top apply-status message until the "
+"configuration apply completes."
+msgstr "在应用配置完成前，在顶部应用状态消息中显示待处理的 UCI 变更。"
+
+msgid "Show top loading bar"
+msgstr "显示顶部加载条"
+
+msgid "Show UCI changes while applying configuration"
+msgstr "在应用配置时显示 UCI 变更"
+
+msgid "Sidebar background"
+msgstr "侧边栏背景"
+
+msgid "Sidebar width"
+msgstr "侧边栏宽度"
+
+msgid "Slow"
+msgstr "慢速"
+
+msgid "Small"
+msgstr "小号"
+
+msgid "Small (2px)"
+msgstr "小号 (2px)"
+
+msgid "Software Update"
+msgstr "软件更新"
+
+msgid "Source code"
+msgstr "源代码"
+
+msgid "Square (0px)"
+msgstr "方形 (0px)"
+
+msgid "Stable Channel"
+msgstr "稳定版本通道"
+
+msgid "Starting backend download..."
+msgstr "开始后端下载..."
+
+msgid "Starting update process..."
+msgstr "启动更新过程..."
+
+msgid "Submit"
+msgstr "提交"
+
+msgid "Switch theme mode"
+msgstr "切换主题模式"
+
+msgid "Text direction"
+msgstr "文本方向"
+
+msgid ""
+"The stored menu layout is invalid. Choose \"Restore defaults\" or make an edit "
+"before saving."
+msgstr "已存储的菜单布局无效。请选择“恢复默认设置”或编辑后再保存。"
+
+msgid ""
+"The stored menu layout is invalid. Restore defaults or edit the layout "
+"before saving."
+msgstr "已存储的菜单布局无效。恢复默认设置或编辑布局后再保存。"
+
+msgid ""
+"The theme is being installed on your router. The logs are displayed below. "
+"Reloading the web interface will apply the changes once RPCD restarts."
+msgstr "主题正在安装到您的路由器。日志显示在下方。重新加载网页界面将在 RPCD 重启后应用更改。"
+
+msgid ""
+"The theme package is ready. Are you sure you want to proceed with the "
+"installation?"
+msgstr "主题软件包已准备好。您确定要继续安装吗？"
+
+msgid ""
+"The token does NOT require any permissions/scopes to be granted (read-only "
+"public access is sufficient)."
+msgstr "该令牌不需要授予任何权限/范围（只读公开访问权限即可）。"
+
+msgid "Theme settings"
+msgstr "主题设置"
+
+msgid ""
+"Theme successfully updated! Reloading RPC service, please refresh the page "
+"in 5 seconds."
+msgstr "主题更新成功！正在重新加载 RPC 服务，请在 5 秒后刷新页面。"
+
+msgid "Theme transition speed"
+msgstr "主题过渡速度"
+
+msgid "Toggle fullscreen"
+msgstr "切换全屏"
+
+msgid "Triggering installation on router..."
+msgstr "触发路由器上的安装..."
+
+msgid "Update channel"
+msgstr "更新通道"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+msgid "Upgrade Successful!"
+msgstr "升级成功！"
+
+msgid "Use Fluent custom select dropdowns"
+msgstr "使用 Fluent 自定义下拉选择框"
+
+msgid ""
+"Use the browser View Transition API to animate navigation between LuCI pages "
+"when supported."
+msgstr "当浏览器支持时，使用浏览器的 View Transition API 为 LuCI 页面之间的导航添加过渡动画。"
+
+msgid ""
+"Use the system/browser preference, or always render the Fluent theme in a "
+"fixed light or dark palette."
+msgstr "使用系统/浏览器的偏好设置，或始终以固定的亮色或深色配色渲染 Fluent 主题。"
+
+msgid "Username is required."
+msgstr "必须输入用户名。"
+
+msgid "valid HEX color value"
+msgstr "有效的十六进制颜色值"
+
+msgid "Warnings"
+msgstr "警告"
+
+msgid ""
+"When enabled, Fluent animations follow the browser or operating system "
+"reduced-motion preference."
+msgstr "启用后，Fluent 动画将遵循浏览器或操作系统的减少动态效果偏好设置。"
+
+msgid "Width of the main navigation sidebar in pixels."
+msgstr "主导航侧边栏的宽度（像素）。"
+
+msgid "Word wrap"
+msgstr "自动换行"
+
+msgid "You can create a new token at"
+msgstr "您可以在这里创建新的令牌："
+
+msgid "Your theme is up to date!"
+msgstr "您的主题已是最新版本！"

@@ -1,0 +1,4 @@
+#!/bin/sh
+mkdir -p /etc/quickactions/scripts
+chmod 755 /etc/quickactions/scripts
+exit 0

@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Handle config: podman-opkg is the shipped default, podman is the live config
+if [ ! -f /etc/config/luci-podman ]; then
+	mv /etc/config/luci-podman-opkg /etc/config/luci-podman
+else
+	echo "Existing /etc/config/luci-podman preserved. New defaults at /etc/config/luci-podman-opkg"
+fi
+
+exit 0

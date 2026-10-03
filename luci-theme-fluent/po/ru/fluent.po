@@ -1,0 +1,764 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-theme-fluent\n"
+"POT-Creation-Date: 2026-09-05 23:37+0800\n"
+"PO-Revision-Date: \n"
+"Last-Translator: TranslateGemma\n"
+"Language-Team: LuCI Theme Fluent\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "%d second-level menus"
+msgstr "%d меню второго уровня"
+
+msgid "A new version is available!"
+msgstr "Доступна новая версия!"
+
+msgid "About"
+msgstr "О теме"
+
+msgid "Above bar, end"
+msgstr "Над полосой, конец"
+
+msgid "Above bar, start"
+msgstr "Над полосой, начало"
+
+msgid "Accent color"
+msgstr "Акцентный цвет"
+
+msgid "Add primary menu"
+msgstr "Добавить главное меню"
+
+msgid ""
+"Adjust layout, typography, transition timing, shadows, and inject custom CSS "
+"variables or rules when the built-in controls are not enough."
+msgstr ""
+"Настройте компоновку, типографику, длительность переходов, тени, а также "
+"добавьте собственные CSS-переменные или правила, если встроенных параметров "
+"недостаточно."
+
+msgid "Advanced"
+msgstr "Дополнительно"
+
+msgid "Advanced MAC Selector"
+msgstr "Расширенный выбор MAC-адресов"
+
+msgid "and %d more..."
+msgstr "и ещё %d..."
+
+msgid ""
+"Animate the active underline when switching between native LuCI tabs and "
+"themed tab menus."
+msgstr ""
+"Анимировать активное подчёркивание при переключении между стандартными "
+"вкладками LuCI и тематическими меню вкладок."
+
+msgid "Animation"
+msgstr "Анимация"
+
+msgid ""
+"API rate limit exceeded. Please enter a GitHub Token to continue. This token "
+"is only used for frontend requests and will not be saved on the router "
+"backend."
+msgstr ""
+"Превышен лимит запросов API. Введите токен GitHub, чтобы продолжить. Этот "
+"токен используется только для запросов фронтенда и не будет сохранён на "
+"стороне роутера."
+
+msgid ""
+"Applies to standard buttons, inputs, selects, and similar form controls "
+"across the theme."
+msgstr ""
+"Применяется к стандартным кнопкам, полям ввода, спискам выбора и похожим "
+"элементам формы во всей теме."
+
+msgid ""
+"Are you sure you want to clean up %d invalid/uninstalled menu items or "
+"rules?"
+msgstr ""
+"Вы уверены, что хотите удалить %d недействительных/неустановленных пунктов "
+"меню или правил?"
+
+msgid "Author"
+msgstr "Автор"
+
+msgid "Auto-scroll"
+msgstr "Автопрокрутка"
+
+msgid "Automatic (Arabic/Persian locales only)"
+msgstr "Автоматически (только для арабских и персидских локалей)"
+
+msgid "Backdrop blur radius"
+msgstr "Радиус размытия фона"
+
+msgid "Backend (GHProxy Acceleration)"
+msgstr "Серверная часть (ускорение через GHProxy)"
+
+msgid "Backend (Official GitHub)"
+msgstr "Серверная часть (официальный GitHub)"
+
+msgid "Base font size"
+msgstr "Базовый размер шрифта"
+
+msgid "Below bar, end"
+msgstr "Под полосой, конец"
+
+msgid "Below bar, start"
+msgstr "Под полосой, начало"
+
+msgid ""
+"Blur radius in pixels behind the login card in dark mode. Use 0 to disable "
+"blur."
+msgstr ""
+"Радиус размытия в пикселях за карточкой входа в тёмном режиме. Используйте "
+"0, чтобы отключить размытие."
+
+msgid ""
+"Blur radius in pixels behind the login card in light mode. Use 0 to disable "
+"blur."
+msgstr ""
+"Радиус размытия в пикселях за карточкой входа в светлом режиме. Используйте "
+"0, чтобы отключить размытие."
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Card background"
+msgstr "Фон карточки"
+
+msgid "Card shadow"
+msgstr "Тень карточки"
+
+msgid "Check for updates"
+msgstr "Проверить обновления"
+
+msgid "Checking for updates..."
+msgstr "Проверка обновлений..."
+
+msgid "Choose color"
+msgstr "Выбрать цвет"
+
+msgid ""
+"Choose the document direction for authenticated and login pages. Automatic "
+"mode resolves Arabic and Persian locale codes (ar, ar_*, ar-*, fa, fa_*, "
+"fa-*) to RTL and falls back to LTR for missing or unrecognized locales."
+msgstr ""
+"Выберите направление текста для страниц аутентификации и входа. В "
+"автоматическом режиме коды локалей арабского и персидского языков (ar, ar_*, "
+"ar-*, fa, fa_*, fa-*) определяются как RTL, а для отсутствующих или "
+"нераспознанных локалей используется LTR."
+
+msgid "Clean up"
+msgstr "Очистить"
+
+msgid "Clean up invalid items"
+msgstr "Очистить недействительные элементы"
+
+msgid "Clean up invalid items (%d)"
+msgstr "Очистить недействительные элементы (%d)"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Color mode"
+msgstr "Цветовой режим"
+
+msgid "Colors"
+msgstr "Цвета"
+
+msgid "Comfortable (42px)"
+msgstr "Удобный (42px)"
+
+msgid "Compact (32px)"
+msgstr "Компактный (32px)"
+
+msgid ""
+"Configure color mode, accent colors, layout sizing, animation behavior, "
+"login-page appearance, and advanced CSS overrides for luci-theme-fluent."
+msgstr ""
+"Настройте цветовой режим, акцентные цвета, размеры интерфейса, поведение "
+"анимации, внешний вид страницы входа и расширенные CSS-переопределения для "
+"luci-theme-fluent."
+
+msgid "Confirm"
+msgstr "Подтвердить"
+
+msgid "Confirm Installation"
+msgstr "Подтвердить установку"
+
+msgid "Continue"
+msgstr "Продолжить"
+
+msgid "Control height"
+msgstr "Высота элементов управления"
+
+msgid ""
+"Controls the font weight used by main navigation labels and related theme "
+"text accents."
+msgstr ""
+"Определяет насыщенность шрифта для основных навигационных подписей и "
+"связанных акцентных текстов темы."
+
+msgid ""
+"Controls the shared Fluent corner radius tokens used by cards, buttons, "
+"inputs, and related UI surfaces."
+msgstr ""
+"Определяет общие значения скругления Fluent, используемые карточками, "
+"кнопками, полями ввода и другими элементами интерфейса."
+
+msgid ""
+"Controls the shared Fluent transition timing used by menu, header, and other "
+"theme animations."
+msgstr ""
+"Определяет общую длительность переходов Fluent для меню, верхней панели и "
+"других анимаций темы."
+
+msgid "Copied"
+msgstr "Скопировано"
+
+msgid "Copy log"
+msgstr "Копировать журнал"
+
+msgid "Corner radius"
+msgstr "Радиус скругления"
+
+msgid "Current / Pending MAC Address"
+msgstr "Текущий / ожидающий MAC-адрес"
+
+msgid "Custom CSS"
+msgstr "Пользовательский CSS"
+
+msgid ""
+"Customize the login page background, card opacity, and blur radius for light "
+"and dark modes."
+msgstr ""
+"Настройте фон страницы входа, непрозрачность карточки и радиус размытия для "
+"светлого и тёмного режимов."
+
+msgid "Dark mode"
+msgstr "Тёмный режим"
+
+msgid "Delete primary menu"
+msgstr "Удалить главное меню"
+
+msgid "Disabled"
+msgstr "Отключено"
+
+msgid "Disconnects"
+msgstr "Отключения"
+
+msgid ""
+"Display the themed loading indicator at the top edge during page loads and "
+"transitions."
+msgstr ""
+"Показывать тематический индикатор загрузки в верхней части страницы во время "
+"загрузки и переходов."
+
+msgid "Download and Install"
+msgstr "Скачать и установить"
+
+msgid "Download log"
+msgstr "Загрузить журнал"
+
+msgid "Downloaded"
+msgstr "Загружено"
+
+msgid "Downloading on router"
+msgstr "Загрузка на роутере"
+
+msgid "Drag to move second-level menu"
+msgstr "Перетащите для перемещения меню второго уровня"
+
+msgid "Drag to reorder primary menu"
+msgstr "Перетащите для изменения порядка главного меню"
+
+msgid "Drop second-level menus here"
+msgstr "Перетащите сюда меню второго уровня"
+
+msgid "Edit"
+msgstr "Редактировать"
+
+msgid "Enable page transition animation"
+msgstr "Включить анимацию переходов между страницами"
+
+msgid "Enable tab underline animation"
+msgstr "Включить анимацию подчёркивания вкладок"
+
+msgid "Errors"
+msgstr "Ошибки"
+
+msgid "Expecting: %s"
+msgstr "Ожидается: %s"
+
+msgid "Extra large (12px)"
+msgstr "Очень большой (12px)"
+
+msgid "Failed to check for updates"
+msgstr "Не удалось проверить обновления"
+
+msgid "Failed to fetch current theme version."
+msgstr "Не удалось получить текущую версию темы."
+
+msgid "Fast"
+msgstr "Быстро"
+
+msgid "Finished"
+msgstr "Завершено"
+
+msgid "Fix primary menu title errors before saving."
+msgstr "Исправьте ошибки в заголовках главных меню перед сохранением."
+
+msgid "Fluent Design 2 theme for LuCI"
+msgstr "Тема Fluent Design 2 для LuCI"
+
+msgid "Fluent Theme"
+msgstr "Тема Fluent"
+
+msgid "Fluent theme settings"
+msgstr "Настройки темы Fluent"
+
+msgid "Follow system"
+msgstr "Следовать системе"
+
+msgid "Force dark mode"
+msgstr "Всегда тёмный режим"
+
+msgid "Force light mode"
+msgstr "Всегда светлый режим"
+
+msgid "Force LTR"
+msgstr "Принудительно LTR"
+
+msgid "Force RTL"
+msgstr "Принудительно RTL"
+
+msgid "General"
+msgstr "Общие"
+
+msgid "GitHub Token Required"
+msgstr "Требуется токен GitHub"
+
+msgid "Header height"
+msgstr "Высота верхней панели"
+
+msgid "Height of the top header bar in pixels."
+msgstr "Высота верхней панели в пикселях."
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in dark mode."
+msgstr "HEX-цвет, используемый как основной акцентный цвет Fluent в тёмном режиме."
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in light mode."
+msgstr "HEX-цвет, используемый как основной акцентный цвет Fluent в светлом режиме."
+
+msgid "HEX color used for container/card elements in dark mode."
+msgstr "HEX-цвет для элементов контейнеров и карточек в тёмном режиме."
+
+msgid "HEX color used for container/card elements in light mode."
+msgstr "HEX-цвет для элементов контейнеров и карточек в светлом режиме."
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"dark mode."
+msgstr "HEX-цвет текста индикатора прогресса в тёмном режиме."
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"light mode."
+msgstr "HEX-цвет текста индикатора прогресса в светлом режиме."
+
+msgid "HEX color used for the main page background in dark mode."
+msgstr "HEX-цвет фона основной страницы в тёмном режиме."
+
+msgid "HEX color used for the main page background in light mode."
+msgstr "HEX-цвет фона основной страницы в светлом режиме."
+
+msgid "HEX color used for the navigation sidebar in dark mode."
+msgstr "HEX-цвет боковой панели навигации в тёмном режиме."
+
+msgid "HEX color used for the navigation sidebar in light mode."
+msgstr "HEX-цвет боковой панели навигации в светлом режиме."
+
+msgid "Installation cancelled by user."
+msgstr "Установка отменена пользователем."
+
+msgid "Installed version"
+msgstr "Установленная версия"
+
+msgid "Installing package"
+msgstr "Установка пакета"
+
+msgid "Keep action bar visible while scrolling"
+msgstr "Оставлять панель действий видимой при прокрутке"
+
+msgid ""
+"Keep Save, Apply, and Reset actions fixed at the bottom of the viewport "
+"while scrolling."
+msgstr ""
+"Фиксировать кнопки 'Сохранить', 'Применить' и 'Сброс' внизу экрана во время "
+"прокрутки."
+
+msgid "Large"
+msgstr "Большой"
+
+msgid "Large (8px)"
+msgstr "Большой (8px)"
+
+msgid "Light mode"
+msgstr "Светлый режим"
+
+msgid "Line %d"
+msgstr "Строка %d"
+
+msgid "Lines"
+msgstr "Строки"
+
+msgid "Login"
+msgstr "Вход"
+
+msgid "Login card opacity"
+msgstr "Непрозрачность карточки входа"
+
+msgid "Login page"
+msgstr "Страница входа"
+
+msgid "Medium"
+msgstr "Средний"
+
+msgid "Medium (4px)"
+msgstr "Средний (4px)"
+
+msgid "Menu"
+msgstr "Меню"
+
+msgid "Menu title cannot be empty."
+msgstr "Название пункта меню не может быть пустым."
+
+msgid "Navigation font weight"
+msgstr "Насыщенность шрифта навигации"
+
+msgid "New primary menu"
+msgstr "Новое главное меню"
+
+msgid "New primary menu %d"
+msgstr "Новое главное меню %d"
+
+msgid "Next"
+msgstr "Далее"
+
+msgid "Nightly build available (reinstallation check)."
+msgstr "Доступна nightly-сборка (проверка необходимости переустановки)."
+
+msgid "Nightly Channel (Prerelease)"
+msgstr "Канал Nightly (предварительный выпуск)"
+
+msgid ""
+"No matching package asset found for your system architecture in this "
+"release."
+msgstr "В этом выпуске не найден подходящий пакет для архитектуры вашей системы."
+
+msgid "None"
+msgstr "Нет"
+
+msgid "Normal"
+msgstr "Обычно"
+
+msgid ""
+"Opacity of the login card in dark mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr ""
+"Непрозрачность карточки входа в тёмном режиме. 0 означает полностью "
+"прозрачную карточку, 1 — полностью непрозрачную."
+
+msgid ""
+"Opacity of the login card in light mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr ""
+"Непрозрачность карточки входа в светлом режиме. 0 означает полностью "
+"прозрачную карточку, 1 — полностью непрозрачную."
+
+msgid ""
+"Optional raw CSS injected into the Fluent header template. Use this for "
+"extra --fluent-* variable overrides or page-specific tweaks that are not "
+"exposed as dedicated options."
+msgstr ""
+"Необязательный необработанный CSS, внедряемый в шаблон заголовка Fluent. "
+"Используйте его для дополнительных переопределений переменных --fluent-* или "
+"точечных настроек страниц, для которых нет отдельных параметров."
+
+msgid "Package format"
+msgstr "Формат пакета"
+
+msgid "Page background"
+msgstr "Фон страницы"
+
+msgid "Please enter your password."
+msgstr "Введите пароль."
+
+msgid "Please enter your username."
+msgstr "Введите имя пользователя."
+
+msgid ""
+"Position of progress-bar labels relative to the bar. Start/end alignment "
+"follows the text direction (LTR or RTL)."
+msgstr ""
+"Положение текста индикатора прогресса относительно полосы. Выравнивание "
+"начала/конца следует направлению текста (слева направо или справа налево)."
+
+msgid "Preset Vendor / Generator"
+msgstr "Предустановленный производитель / генератор"
+
+msgid "Primary menu title"
+msgstr "Заголовок основного меню"
+
+msgid "Primary menu titles cannot be empty."
+msgstr "Заголовки основного меню не могут быть пустыми."
+
+msgid "Primary menu titles must be unique."
+msgstr "Заголовки основного меню должны быть уникальными."
+
+msgid "Progress bar text color"
+msgstr "Цвет текста индикатора прогресса"
+
+msgid "Progress bar text position"
+msgstr "Положение текста полосы прогресса"
+
+msgid "Random Local MAC"
+msgstr "Случайный локальный MAC-адрес"
+
+msgid "Randomize MAC"
+msgstr "Случайный MAC-адрес"
+
+msgid "Reload Web Interface"
+msgstr "Перезагрузить веб-интерфейс"
+
+msgid "Replace native select elements with the theme's custom dropdown widget."
+msgstr ""
+"Заменить стандартные списки выбора пользовательским выпадающим компонентом "
+"темы."
+
+msgid "Respect reduced-motion preference"
+msgstr "Учитывать настройку уменьшения анимации"
+
+msgid "Restore %s to its original menu name"
+msgstr "Восстановить исходное имя меню для %s"
+
+msgid "Restore %s to its original menu position"
+msgstr "Восстановить исходное положение меню для %s"
+
+msgid "Restore defaults"
+msgstr "Восстановить настройки по умолчанию"
+
+msgid "Restore to original title"
+msgstr "Восстановить исходное название"
+
+msgid "Retrying with token..."
+msgstr "Повторная попытка с токеном..."
+
+msgid "Rounded (6px)"
+msgstr "Скруглённый (6px)"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Scroll to bottom"
+msgstr "Прокрутить вниз"
+
+msgid "Scroll to top"
+msgstr "Прокрутить вверх"
+
+msgid "Search menu items"
+msgstr "Поиск по пунктам меню"
+
+msgid "Search menu..."
+msgstr "Искать в меню..."
+
+msgid "Second-level menu title"
+msgstr "Название второго уровня меню"
+
+msgid "Select the shadow depth applied to themed cards and panels."
+msgstr "Выберите глубину тени для тематических карточек и панелей."
+
+msgid "Select vendor prefix..."
+msgstr "Выбрать префикс производителя..."
+
+msgid "Semibold"
+msgstr "Полужирный"
+
+msgid ""
+"Sets the base interface font size in pixels. Most theme text scales from "
+"this value through the Fluent CSS variables. Recommended range: 12-18px."
+msgstr ""
+"Задаёт базовый размер шрифта интерфейса в пикселях. Большинство текстовых "
+"элементов темы масштабируются от этого значения через CSS-переменные Fluent. "
+"Рекомендуемый диапазон: 12-18px."
+
+msgid "Show %s in the menu"
+msgstr "Показать %s в меню"
+
+msgid ""
+"Show pending UCI changes in the top apply-status message until the "
+"configuration apply completes."
+msgstr ""
+"Отображать ожидающие изменения UCI в главном сообщении о статусе применения, "
+"пока процесс применения конфигурации не завершится."
+
+msgid "Show top loading bar"
+msgstr "Показывать верхнюю полосу загрузки"
+
+msgid "Show UCI changes while applying configuration"
+msgstr "Показывать изменения UCI во время применения конфигурации"
+
+msgid "Sidebar background"
+msgstr "Фон боковой панели"
+
+msgid "Sidebar width"
+msgstr "Ширина боковой панели"
+
+msgid "Slow"
+msgstr "Медленно"
+
+msgid "Small"
+msgstr "Маленький"
+
+msgid "Small (2px)"
+msgstr "Маленький (2px)"
+
+msgid "Software Update"
+msgstr "Обновление ПО"
+
+msgid "Source code"
+msgstr "Исходный код"
+
+msgid "Square (0px)"
+msgstr "Квадрат (0px)"
+
+msgid "Stable Channel"
+msgstr "Стабильный канал"
+
+msgid "Starting backend download..."
+msgstr "Запуск загрузки на стороне роутера..."
+
+msgid "Starting update process..."
+msgstr "Запуск процесса обновления..."
+
+msgid "Submit"
+msgstr "Отправить"
+
+msgid "Switch theme mode"
+msgstr "Переключить режим темы"
+
+msgid "Text direction"
+msgstr "Направление текста"
+
+msgid ""
+"The stored menu layout is invalid. Choose \"Restore defaults\" or make an edit "
+"before saving."
+msgstr ""
+"Сохраненная структура меню недействительна. Выберите \"Восстановить настройки "
+"по умолчанию\" или внесите изменения перед сохранением."
+
+msgid ""
+"The stored menu layout is invalid. Restore defaults or edit the layout "
+"before saving."
+msgstr ""
+"Сохраненная структура меню недействительна. Восстановите настройки по "
+"умолчанию или отредактируйте структуру перед сохранением."
+
+msgid ""
+"The theme is being installed on your router. The logs are displayed below. "
+"Reloading the web interface will apply the changes once RPCD restarts."
+msgstr ""
+"Тема устанавливается на ваш роутер. Журнал показан ниже. После перезапуска "
+"RPCD перезагрузка веб-интерфейса применит изменения."
+
+msgid ""
+"The theme package is ready. Are you sure you want to proceed with the "
+"installation?"
+msgstr "Пакет темы готов. Продолжить установку?"
+
+msgid ""
+"The token does NOT require any permissions/scopes to be granted (read-only "
+"public access is sufficient)."
+msgstr ""
+"Токену НЕ требуются дополнительные разрешения или области доступа "
+"(достаточно публичного доступа только для чтения)."
+
+msgid "Theme settings"
+msgstr "Настройки темы"
+
+msgid ""
+"Theme successfully updated! Reloading RPC service, please refresh the page "
+"in 5 seconds."
+msgstr ""
+"Тема успешно обновлена! Выполняется перезагрузка службы RPC, обновите "
+"страницу через 5 секунд."
+
+msgid "Theme transition speed"
+msgstr "Скорость переходов темы"
+
+msgid "Toggle fullscreen"
+msgstr "Переключить полноэкранный режим"
+
+msgid "Triggering installation on router..."
+msgstr "Запуск установки на роутере..."
+
+msgid "Update channel"
+msgstr "Канал обновлений"
+
+msgid "Update failed"
+msgstr "Обновление не удалось"
+
+msgid "Upgrade Successful!"
+msgstr "Обновление прошло успешно!"
+
+msgid "Use Fluent custom select dropdowns"
+msgstr "Использовать пользовательские выпадающие списки Fluent"
+
+msgid ""
+"Use the browser View Transition API to animate navigation between LuCI pages "
+"when supported."
+msgstr ""
+"Использовать View Transition API браузера для анимации переходов между "
+"страницами LuCI, если это поддерживается."
+
+msgid ""
+"Use the system/browser preference, or always render the Fluent theme in a "
+"fixed light or dark palette."
+msgstr ""
+"Использовать системные или браузерные предпочтения либо всегда отображать "
+"тему Fluent в фиксированной светлой или тёмной палитре."
+
+msgid "Username is required."
+msgstr "Требуется имя пользователя."
+
+msgid "valid HEX color value"
+msgstr "корректное значение HEX-цвета"
+
+msgid "Warnings"
+msgstr "Предупреждения"
+
+msgid ""
+"When enabled, Fluent animations follow the browser or operating system "
+"reduced-motion preference."
+msgstr ""
+"Если включено, анимации Fluent будут учитывать настройку уменьшения анимации "
+"в браузере или операционной системе."
+
+msgid "Width of the main navigation sidebar in pixels."
+msgstr "Ширина основной боковой панели навигации в пикселях."
+
+msgid "Word wrap"
+msgstr "Перенос слов"
+
+msgid "You can create a new token at"
+msgstr "Новый токен можно создать здесь:"
+
+msgid "Your theme is up to date!"
+msgstr "У вас уже установлена последняя версия темы!"

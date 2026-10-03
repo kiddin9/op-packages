@@ -1,0 +1,88 @@
+{
+	"admin/services/secbox": {
+		"title": "SecBox",
+		"order": "60",
+		"action": {
+			"type": "alias",
+			"path": "admin/services/secbox/overview"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-secbox"
+			],
+			"fs": {
+				"/usr/bin/banip-service.sh": "executable",
+				"/etc/init.d/banip": "executable",
+				"/etc/banip/banip.feeds": "file",
+				"/etc/banip/banip.countries": "file"
+			},
+			"uci": {
+				"banip": true
+			}
+		}
+	},
+	"admin/services/secbox/overview": {
+		"title": "Overview",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "secbox/overview"
+		}
+	},
+	"admin/services/secbox/settings": {
+		"title": "Configuration",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "secbox/settings"
+		}
+	},
+	"admin/services/secbox/allowlist": {
+		"title": "Allowlist",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "secbox/allowlist"
+		}
+	},
+	"admin/services/secbox/blocklist": {
+		"title": "Blocklist",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "secbox/blocklist"
+		}
+	},
+	"admin/services/secbox/feeds": {
+		"title": "Custom Feeds",
+		"order": 50,
+		"action": {
+			"type": "view",
+			"path": "secbox/feeds"
+		}
+	},
+	"admin/services/secbox/setreport": {
+		"title": "Set Reporting",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "secbox/setreport"
+		}
+	},
+	"admin/services/secbox/firewall_log": {
+		"title": "Firewall Log",
+		"order": 70,
+		"action": {
+			"type": "view",
+			"path": "secbox/firewall_log"
+		}
+	},
+	"admin/services/secbox/processing_log": {
+		"title": "Processing Log",
+		"order": 80,
+		"action": {
+			"type": "view",
+			"path": "secbox/processing_log"
+		}
+	}
+}

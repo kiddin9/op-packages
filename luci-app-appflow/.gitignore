@@ -1,0 +1,7 @@
+*.swp
+*.tmp
+.DS_Store
+node_modules/
+
+# Regents review verdicts. Written into the repo being reviewed; never committed.
+.regents/

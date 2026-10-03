@@ -1,0 +1,13 @@
+{
+	"admin/system/diskbox": {
+		"title": "DiskManager",
+		"order": 55,
+		"action": {
+			"type": "view",
+			"path": "diskbox/disks"
+		},
+		"depends": {
+			"acl": [ "luci-app-diskbox" ]
+		}
+	}
+}

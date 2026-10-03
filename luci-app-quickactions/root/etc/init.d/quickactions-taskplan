@@ -1,0 +1,135 @@
+#!/bin/sh /etc/rc.common
+# Merged from luci-app-taskplan — full independence edition
+# Author: sirpdboy (original) / quickactions merge
+
+START=99
+STOP=10
+TMP=/etc/quickactions-taskplan
+LOG=$TMP/taskplan.log
+TT=$TMP/taskplanrun
+CR=/etc/crontabs/root
+HANDLER=/usr/bin/quickactions-taskplanhandler
+
+[ ! -d $TMP ] && mkdir -p $TMP 2>/dev/null
+[ ! -s $LOG ] && echo '' > $LOG
+
+run_taskplan()
+{
+    [ -n "$(uci -q get taskplan.@global[0].customscript)" ] && \
+        uci -q get taskplan.@global[0].customscript > $TMP/taskplancustomscript && \
+        sed -i 's/\r$//' $TMP/taskplancustomscript
+
+    [ -n "$(uci -q get taskplan.@global[0].customscript2)" ] && \
+        uci -q get taskplan.@global[0].customscript2 > $TMP/taskplancustomscript2 && \
+        sed -i 's/\r$//' $TMP/taskplancustomscript2
+
+    ssum=$(uci -q show taskplan | grep -c "stime\[[0-9]\]" || echo 0)
+    lsum=$(uci -q show taskplan | grep -c "ltime\[[0-9]\]" || echo 0)
+
+    sed -i '/quickactions-taskplanhandler/d' $CR >/dev/null 2>&1
+
+    for i in $(seq 0 $((ssum-1)) 2>/dev/null); do
+        enable=$(uci -q get taskplan.@stime[$i].enable)
+        if [ "x$enable" = "x1" ]; then
+            month=$(uci -q get taskplan.@stime[$i].month || echo "*")
+            stype=$(uci -q get taskplan.@stime[$i].stype)
+            week=$(uci -q get taskplan.@stime[$i].week || echo "*")
+            minute=$(uci -q get taskplan.@stime[$i].minute || echo "0")
+            hour=$(uci -q get taskplan.@stime[$i].hour || echo "*")
+
+            [ "$hour" = "0" ] && hour="0"
+            [ "$minute" = "0" ] && minute="0"
+
+            case "$stype" in
+                1) cmd="$minute $hour * $month $week $HANDLER reboot Scheduled_task" ;;
+                2) cmd="$minute $hour * $month $week $HANDLER poweroff Scheduled_task" ;;
+                3) cmd="$minute $hour * $month $week $HANDLER network Scheduled_task" ;;
+                4) cmd="$minute $hour * $month $week $HANDLER restartsamba Scheduled_task" ;;
+                5) cmd="$minute $hour * $month $week $HANDLER restartwan Scheduled_task" ;;
+                6) cmd="$minute $hour * $month $week $HANDLER closewan Scheduled_task" ;;
+                7) cmd="$minute $hour * $month $week $HANDLER clearmem Scheduled_task" ;;
+                8) cmd="$minute $hour * $month $week $HANDLER sysfree Scheduled_task" ;;
+                9) cmd="$minute $hour * $month $week $HANDLER disreconn Scheduled_task" ;;
+                10) cmd="$minute $hour * $month $week $HANDLER disrereboot Scheduled_task" ;;
+                11) cmd="$minute $hour * $month $week $HANDLER restartmwan3 Scheduled_task" ;;
+                12) cmd="$minute $hour * $month $week $HANDLER customscript Scheduled_task" ;;
+                13) cmd="$minute $hour * $month $week $HANDLER upwifi Scheduled_task" ;;
+                14) cmd="$minute $hour * $month $week $HANDLER downwifi Scheduled_task" ;;
+                15) cmd="$minute $hour * $month $week $HANDLER customscript2 Scheduled_task" ;;
+                16) cmd="$minute $hour * $month $week $HANDLER restartlan Scheduled_task" ;;
+            esac
+            echo "$cmd" >> $CR
+        fi
+    done
+
+    echo "#!/bin/sh" > $TT
+    chmod +x $TT
+
+    for i in $(seq 0 $((lsum-1)) 2>/dev/null); do
+        enable=$(uci -q get taskplan.@ltime[$i].enable)
+        if [ "x$enable" = "x1" ]; then
+            stype=$(uci -q get taskplan.@ltime[$i].stype)
+            delay=$(uci -q get taskplan.@ltime[$i].delay || echo 10)
+
+            case "$stype" in
+                1) echo "(sleep $delay && $HANDLER reboot Startup_task) &" >>$TT ;;
+                2) echo "(sleep $delay && $HANDLER poweroff Startup_task) &" >>$TT ;;
+                3) echo "(sleep $delay && $HANDLER network Startup_task) &" >>$TT ;;
+                4) echo "(sleep $delay && $HANDLER restartsamba Startup_task) &" >>$TT ;;
+                5) echo "(sleep $delay && $HANDLER restartwan Startup_task) &" >>$TT ;;
+                6) echo "(sleep $delay && $HANDLER closewan Startup_task) &" >>$TT ;;
+                7) echo "(sleep $delay && $HANDLER clearmem Startup_task) &" >>$TT ;;
+                8) echo "(sleep $delay && $HANDLER sysfree Startup_task) &" >>$TT ;;
+                9) echo "(sleep $delay && $HANDLER disreconn Startup_task) &" >>$TT ;;
+                10) echo "(sleep $delay && $HANDLER disrereboot Startup_task) &" >>$TT ;;
+                11) echo "(sleep $delay && $HANDLER restartmwan3 Startup_task) &" >>$TT ;;
+                12) echo "(sleep $delay && $HANDLER customscript Startup_task) &" >>$TT ;;
+                13) echo "(sleep $delay && $HANDLER upwifi Startup_task) &" >>$TT ;;
+                14) echo "(sleep $delay && $HANDLER downwifi Startup_task) &" >>$TT ;;
+                15) echo "(sleep $delay && $HANDLER customscript2 Startup_task) &" >>$TT ;;
+                16) echo "(sleep $delay && $HANDLER restartlan Startup_task) &" >>$TT ;;
+            esac
+        fi
+    done
+
+    echo 'exit 0' >> $TT
+}
+
+start()
+{
+    del_cru
+    run_taskplan
+    /etc/init.d/cron reload
+    echo "$(date): quickactions-taskplan started" >> $LOG
+}
+
+boot()
+{
+    del_cru
+    run_taskplan
+    /etc/init.d/cron reload
+    if [ -f $TT ] && [ -s $TT ]; then
+        echo "$(date +'%Y-%m-%d %H:%M:%S'): Executing taskplanrun at boot" >> $LOG
+        if command -v bash >/dev/null 2>&1; then bash $TT >> $LOG 2>&1 & else sh $TT >> $LOG 2>&1 & fi
+    fi
+}
+
+stop()
+{
+    del_cru
+    /etc/init.d/cron reload
+}
+
+restart()
+{
+    stop
+    sleep 2
+    start
+}
+
+del_cru()
+{
+    sed -i '/quickactions-taskplanhandler/d' $CR >/dev/null 2>&1 || true
+    echo "#!/bin/sh" > $TT
+    chmod +x $TT
+}

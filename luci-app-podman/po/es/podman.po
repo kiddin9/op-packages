@@ -1,0 +1,1090 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-podman\n"
+"PO-Revision-Date: 2026-05-03 11:05+0000\n"
+"Last-Translator:\n"
+"Language-Team: Dutch <https://github.com/openwrt/luci/tree/master/modules/luci-base/po/es>\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "%d check(s) failed:"
+msgstr "%d comprobación(es) fallida(s):"
+
+msgid "%d updated, %d failed:"
+msgstr "%d actualizados, %d fallidos:"
+
+msgid "%s created successfully"
+msgstr "%s creado correctamente"
+
+msgid "%s: %d/%d"
+msgstr "%s: %d/%d"
+
+msgid "(none)"
+msgstr "(ninguno)"
+
+msgid "-- Select %s --"
+msgstr "-- Seleccionar %s --"
+
+msgid "1-253 characters: letters, numbers, underscore (_), hyphen (-) only"
+msgstr "1-253 caracteres: solo letras, números, guion bajo (_) y guion (-)"
+
+msgid "512m, 1g, or -1 for unlimited"
+msgstr "512m, 1g o -1 para ilimitado"
+
+msgid "API Version"
+msgstr "Versión de la API"
+
+msgid "Add the container to an existing pod. Network, hostname and port mappings come from the pod's infra container."
+msgstr "Añadir el contenedor a un pod existente. La red, el nombre de host y los mapeos de puertos provienen del contenedor infra del pod."
+
+msgid "All images updated successfully"
+msgstr "Todas las imágenes actualizadas correctamente"
+
+msgid "All volumes exported successfully"
+msgstr "Todos los volúmenes se exportaron correctamente"
+
+msgid "Allocate TTY (-t)"
+msgstr "Asignar TTY (-t)"
+
+msgid "Allocate container IP from this range"
+msgstr "Asignar IP del contenedor desde este rango"
+
+msgid "Always"
+msgstr "Siempre"
+
+msgid "Apply Updates"
+msgstr "Aplicar actualizaciones"
+
+msgid "Are you sure to delete the records?"
+msgstr "¿Eliminar los registros?"
+
+msgid "Are you sure to remove container?"
+msgstr "¿Eliminar el contenedor?"
+
+msgid "Are you sure to remove integration?"
+msgstr "¿Eliminar la integración?"
+
+msgid "Auto Remove (--rm)"
+msgstr "Eliminación automática (--rm)"
+
+msgid "Auto Update"
+msgstr "Actualización automática"
+
+msgid "Auto-Update"
+msgstr "Actualización automática"
+
+msgid "Automatically configure OpenWrt network interface, bridge, and firewall zone. <strong>Highly recommended</strong> for proper container networking on OpenWrt."
+msgstr "Configura automáticamente la interfaz de red, el puente y la zona de firewall de OpenWrt. <strong>Muy recomendado</strong> para una red de contenedores adecuada en OpenWrt."
+
+msgid "Automatically start the container after it is created"
+msgstr "Iniciar automáticamente el contenedor después de crearlo"
+
+msgid "Automatically update container when newer image is available. Adds label: io.containers.autoupdate=registry"
+msgstr "Actualizar automáticamente el contenedor cuando haya una imagen más reciente. Añade la etiqueta: io.containers.autoupdate=registry"
+
+msgid "Basic Information"
+msgstr "Información básica"
+
+msgid "Block I/O"
+msgstr "E/S de bloque"
+
+msgid "Boot"
+msgstr "Arranque"
+
+msgid "Bridge Interface Name"
+msgstr "Nombre de la interfaz puente"
+
+msgid "CPU"
+msgstr "CPU"
+
+msgid "CPU Limit"
+msgstr "Límite de CPU"
+
+msgid "CPU Set"
+msgstr "Conjunto de CPU"
+
+msgid "CPU Shares Weight"
+msgstr "Peso de CPU shares"
+
+msgid "CPU Usage"
+msgstr "Uso de CPU"
+
+msgid "CPU shares (relative weight). 0 = use default."
+msgstr "Cuotas de CPU (peso relativo). 0 = usar predeterminado."
+
+msgid "CPUs the pod is allowed to run on (e.g., \"0-3\" or \"0,2\")"
+msgstr "CPUs en las que el pod puede ejecutarse (p. ej., \"0-3\" o \"0,2\")"
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Check"
+msgstr "Comprobar"
+
+msgid "Check %d containers for updates?"
+msgstr "¿Comprobar actualizaciones de %d contenedores?"
+
+msgid "Check Complete"
+msgstr "Comprobación completa"
+
+msgid "Check for Updates"
+msgstr "Buscar actualizaciones"
+
+msgid "Check for updates: %s/%s"
+msgstr "Buscando actualizaciones: %s/%s"
+
+msgid "Choose firewall zone for this network."
+msgstr "Elegir zona de firewall para esta red."
+
+msgid "Clean Up Now"
+msgstr "Limpiar ahora"
+
+msgid "Cleaning up old images..."
+msgstr "Eliminando imágenes antiguas..."
+
+msgid "Cleanup / Prune"
+msgstr "Limpiar / Purgar"
+
+msgid "Cleanup Complete"
+msgstr "Limpieza completada"
+
+msgid "Cleanup Unused Resources"
+msgstr "Limpiar recursos no utilizados"
+
+msgid "Cleanup successful!"
+msgstr "¡Limpieza exitosa!"
+
+msgid "Clear logs"
+msgstr "Borrar registros"
+
+msgid "Click icon to repair"
+msgstr "Haz clic en el icono para reparar"
+
+msgid "Click to disconnect"
+msgstr "Clic para desconectar"
+
+msgid "Click to enable/disable"
+msgstr "Clic para habilitar/deshabilitar"
+
+msgid "Click to reveal/hide value"
+msgstr "Haga clic para mostrar/ocultar el valor"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Comma-separated list of supplementary group IDs"
+msgstr "Lista de IDs de grupos suplementarios separados por coma"
+
+msgid "Comma-separated ports to expose (e.g., 6052, 8080/udp)"
+msgstr "Puertos a exponer separados por coma (ej. 6052, 8080/udp)"
+
+msgid "Command"
+msgstr "Comando"
+
+msgid "Command to run (space-separated)"
+msgstr "Comando a ejecutar (separado por espacios)"
+
+msgid "Configuration"
+msgstr "Configuración"
+
+msgid "Configure resource limits for this container."
+msgstr "Configurar límites de recursos para este contenedor."
+
+msgid "Confirm"
+msgstr "Confirmar"
+
+msgid "Connect"
+msgstr "Conectar"
+
+msgid "Connect to"
+msgstr "Conectar a"
+
+msgid "Connected successfully to %s"
+msgstr "Conectado correctamente a %s"
+
+msgid "Connecting container to network"
+msgstr "Conectando contenedor a la red"
+
+msgid "Console"
+msgstr "Consola"
+
+msgid "Container"
+msgstr "Contenedor"
+
+msgid "Container Name"
+msgstr "Nombre del contenedor"
+
+msgid "Container image has no tag - cannot update"
+msgstr "La imagen del contenedor no tiene etiqueta - no se puede actualizar"
+
+msgid "Container image to use"
+msgstr "Imagen de contenedor a usar"
+
+msgid "Container is not running"
+msgstr "El contenedor no está en ejecución"
+
+msgid "Container updated successfully"
+msgstr "Contenedor actualizado correctamente"
+
+msgid "Containers"
+msgstr "Contenedores"
+
+msgid "Containers in pod %s"
+msgstr "Contenedores en el pod %s"
+
+msgid "Containers updated successfully"
+msgstr "Contenedores actualizados correctamente"
+
+msgid "Containers updated successfully."
+msgstr "Contenedores actualizados correctamente."
+
+msgid "Create"
+msgstr "Crear"
+
+msgid "Create %s"
+msgstr "Crear %s"
+
+msgid "Create Command"
+msgstr "Comando de creación"
+
+msgid "Create Infra Container"
+msgstr "Crear contenedor infra"
+
+msgid "Create new zone (will be named: podman_<network-name>)"
+msgstr "Crear nueva zona (se llamará: podman_<nombre-de-red>)"
+
+msgid "Created"
+msgstr "Creado"
+
+msgid "Creating %s"
+msgstr "Creando %s"
+
+msgid "Creating auto-start configuration for %s"
+msgstr "Creando configuración de inicio automático para %s"
+
+msgid "DNS Search Domains"
+msgstr "Dominios de búsqueda DNS"
+
+msgid "DNS Servers"
+msgstr "Servidores DNS"
+
+msgid "DNS search domains for the infra container"
+msgstr "Dominios de búsqueda DNS para el contenedor infra"
+
+msgid "DNS servers for the infra container (shared with all pod containers)"
+msgstr "Servidores DNS para el contenedor infra (compartidos con todos los contenedores del pod)"
+
+msgid "Delete"
+msgstr "Eliminar"
+
+msgid "Deleting records: %d/%d"
+msgstr "Eliminando registros: %d/%d"
+
+msgid "Deleting records: %s/%s"
+msgstr "Eliminando registros: %s/%s"
+
+msgid "Destination"
+msgstr "Destino"
+
+msgid "Device"
+msgstr "Dispositivo"
+
+msgid "Disabled"
+msgstr "Desactivado"
+
+msgid "Disabling init script"
+msgstr "Desactivando script de inicio"
+
+msgid "Disconnect container from network"
+msgstr "Desconectar contenedor de la red"
+
+msgid "Disconnected from %s"
+msgstr "Desconectado de %s"
+
+msgid "Dnsmasq"
+msgstr "Dnsmasq"
+
+msgid "Driver"
+msgstr "Controlador"
+
+msgid "Driver-specific options (comma-separated, e.g., type=tmpfs,o=size=100m)"
+msgstr "Opciones específicas del controlador (separadas por comas, ej. type=tmpfs,o=size=100m)"
+
+msgid "Enable IPv6"
+msgstr "Activar IPv6"
+
+msgid "Enable IPv6 networking"
+msgstr "Activar red IPv6"
+
+msgid "Enabling init script"
+msgstr "Activando script de inicio"
+
+msgid "Enter secret data (password, token, key, etc.)"
+msgstr "Introduzca datos secretos (contraseña, token, clave, etc.)"
+
+msgid "Entrypoint"
+msgstr "Punto de entrada (Entrypoint)"
+
+msgid "Environment Variables"
+msgstr "Variables de entorno"
+
+msgid "Ephemeral (--rm flag)"
+msgstr "Efímero (opción --rm)"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Error: %s"
+msgstr "Error: %s"
+
+msgid "Existing physical interface to use as parent. Required for macvlan/ipvlan networks."
+msgstr "Interfaz física existente para usar como padre. Requerido para redes macvlan/ipvlan."
+
+msgid "Expecting: %s"
+msgstr "Se espera: %s"
+
+msgid "Export"
+msgstr "Exportar"
+
+msgid "Exporting selected volumes: %d/%d"
+msgstr "Exportando volúmenes seleccionados: %d/%d"
+
+msgid "Expose Ports"
+msgstr "Exponer puertos"
+
+msgid "Failed to create container"
+msgstr "Error al crear el contenedor"
+
+msgid "Fetching information..."
+msgstr "Obteniendo información..."
+
+msgid "Find updateable containers"
+msgstr "Buscar contenedores actualizables"
+
+msgid "Firewall Zone"
+msgstr "Zona de firewall"
+
+msgid "Gateway"
+msgstr "Puerta de enlace"
+
+msgid "Generate"
+msgstr "Generar"
+
+msgid "Graph Root"
+msgstr "Raíz del gráfico (Graph Root)"
+
+msgid "Health"
+msgstr "Salud"
+
+msgid "Hostname"
+msgstr "Nombre de host"
+
+msgid "Hostname for the pod (defaults to pod name)"
+msgstr "Nombre de host del pod (por defecto, el nombre del pod)"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "IP Address"
+msgstr "Dirección IP"
+
+msgid "IP Range (CIDR)"
+msgstr "Rango de IP (CIDR)"
+
+msgid "IPv4 Gateway"
+msgstr "Puerta de enlace IPv4"
+
+msgid "IPv4 Subnet (CIDR)"
+msgstr "Subred IPv4 (CIDR)"
+
+msgid "IPv4 gateway address"
+msgstr "Dirección de puerta de enlace IPv4"
+
+msgid "IPv4 subnet in CIDR notation"
+msgstr "Subred IPv4 en notación CIDR"
+
+msgid "Image"
+msgstr "Imagen"
+
+msgid "Image ID"
+msgstr "ID de imagen"
+
+msgid "Image is already up-to-date"
+msgstr "La imagen ya está actualizada"
+
+msgid "Image pulled successfully"
+msgstr "Imagen descargada correctamente"
+
+msgid "Images"
+msgstr "Imágenes"
+
+msgid "Import"
+msgstr "Importar"
+
+msgid "Import from archive: %s"
+msgstr "Importar desde archivo: %s"
+
+msgid "Importing volume..."
+msgstr "Importando volumen..."
+
+msgid "Info"
+msgstr "Info"
+
+msgid "Information"
+msgstr "Información"
+
+msgid "Infra Image"
+msgstr "Imagen infra"
+
+msgid "Init Script"
+msgstr "Script de inicio"
+
+msgid "Inspect"
+msgstr "Inspeccionar"
+
+msgid "Int"
+msgstr "Ent"
+
+msgid "Interactive"
+msgstr "Interactivo"
+
+msgid "Interface"
+msgstr "Interfaz"
+
+msgid "Internal Network"
+msgstr "Red interna"
+
+msgid "Labels"
+msgstr "Etiquetas"
+
+msgid "Labels in key=value format, one per line"
+msgstr "Etiquetas en formato clave=valor, una por línea"
+
+msgid "Leave empty to auto-generate"
+msgstr "Dejar vacío para generar automáticamente"
+
+msgid "Links"
+msgstr "Enlaces"
+
+msgid "Linux namespaces shared between containers in the pod. Default matches `podman pod create`."
+msgstr "Namespaces de Linux compartidos entre los contenedores del pod. El valor por defecto coincide con `podman pod create`."
+
+msgid "Load"
+msgstr "Cargar"
+
+msgid "Load System diagnostics"
+msgstr "Cargar diagnósticos del sistema"
+
+msgid "Loading init script"
+msgstr "Cargando script de inicio"
+
+msgid "Loading..."
+msgstr "Cargando..."
+
+msgid "Logs"
+msgstr "Registros"
+
+msgid "Manage podman %s"
+msgstr "Gestionar podman %s"
+
+msgid "Memory"
+msgstr "Memoria"
+
+msgid "Memory %"
+msgstr "Memoria %"
+
+msgid "Memory + Swap Limit"
+msgstr "Límite de memoria + intercambio"
+
+msgid "Memory Limit"
+msgstr "Límite de memoria"
+
+msgid "Memory Usage"
+msgstr "Uso de memoria"
+
+msgid "Memory limit (e.g., 512m, 1g)"
+msgstr "Límite de memoria (ej. 512m, 1g)"
+
+msgid "Memory limit (e.g., 512m, 1g). -1 = unlimited, 0 = use default."
+msgstr "Límite de memoria (ej. 512m, 1g). -1 = ilimitado, 0 = predeterminado."
+
+msgid "Memory limit for the pod (e.g., 512m, 1g)"
+msgstr "Límite de memoria para el pod (p. ej., 512m, 1g)"
+
+msgid "Mode"
+msgstr "Modo"
+
+msgid "Mount Options"
+msgstr "Opciones de montaje"
+
+msgid "Mountpoint"
+msgstr "Punto de montaje"
+
+msgid "Mounts"
+msgstr "Montajes"
+
+msgid "Must be between 0 and 262144"
+msgstr "Debe estar entre 0 y 262144"
+
+msgid "Name"
+msgstr "Nombre"
+
+msgid "Name for the network"
+msgstr "Nombre para la red"
+
+msgid "Name of the bridge interface (e.g., podman0, mynet0). Leave empty to use: &lt;network-name&gt;0. Note: If the generated name conflicts with an existing interface, OpenWrt will auto-increment it."
+msgstr "Nombre de la interfaz puente (ej. podman0, mynet0). Dejar vacío para usar: &lt;nombre-de-red&gt;0. Nota: Si el nombre entra en conflicto con uno existente, OpenWrt lo incrementará."
+
+msgid "Name updated successfully"
+msgstr "Nombre actualizado correctamente"
+
+msgid "Network"
+msgstr "Red"
+
+msgid "Network I/O"
+msgstr "E/S de red"
+
+msgid "Network Mode"
+msgstr "Modo de red"
+
+msgid "Network Name"
+msgstr "Nombre de la red"
+
+msgid "Network driver"
+msgstr "Controlador de red"
+
+msgid "Network namespace for the pod. Containers in the pod share this network."
+msgstr "Namespace de red para el pod. Los contenedores del pod comparten esta red."
+
+msgid "Networks"
+msgstr "Redes"
+
+msgid "Never"
+msgstr "Nunca"
+
+msgid "No"
+msgstr "No"
+
+msgid "No %s selected"
+msgstr "No hay %s seleccionado"
+
+msgid "No containers in this pod"
+msgstr "No hay contenedores en este pod"
+
+msgid "No containers with auto-update label found."
+msgstr "No se encontraron contenedores con la etiqueta de actualización automática."
+
+msgid "No new updates available."
+msgstr "No hay nuevas actualizaciones disponibles."
+
+msgid "No suitable interfaces found"
+msgstr "No se encontraron interfaces adecuadas"
+
+msgid "No unused resources found"
+msgstr "No se encontraron recursos sin usar"
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0)"
+msgstr "Número de CPUs (ej. 0.5, 1.0, 2.0)"
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0). Leave empty for unlimited."
+msgstr "Número de CPUs (ej. 0.5, 1.0, 2.0). Dejar vacío para ilimitado."
+
+msgid "Number of CPUs available to the pod (e.g., 0.5, 1.0, 2.0)"
+msgstr "Número de CPUs disponibles para el pod (p. ej., 0.5, 1.0, 2.0)"
+
+msgid "Number of lines"
+msgstr "Número de líneas"
+
+msgid "OK"
+msgstr "Aceptar"
+
+msgid "Old image still used by other containers"
+msgstr "La imagen antigua aún la usan otros contenedores"
+
+msgid "On Failure"
+msgstr "En caso de fallo"
+
+msgid "One per line, format: host:container[/protocol]"
+msgstr "Uno por línea, formato: host:contenedor[/protocolo]"
+
+msgid "One per line, format: key=value"
+msgstr "Uno por línea, formato: clave=valor"
+
+msgid "One per line. Format: source:destination[:options]. Options: ro, rw, Z, z"
+msgstr "Uno por línea. Formato: origen:destino[:opciones]. Opciones: ro, rw, Z, z"
+
+msgid "OpenWrt integration exists\n\nClick to remove"
+msgstr "Integración OpenWrt existente\n\nClic para eliminar"
+
+msgid "OpenWrt integration incomplete"
+msgstr "Integración OpenWrt incompleta"
+
+msgid "OpenWrt integration requires subnet to be specified"
+msgstr "La integración de OpenWrt requiere especificar una subred"
+
+msgid "Override the image used for the infra container"
+msgstr "Sobrescribir la imagen utilizada para el contenedor infra"
+
+msgid "PIDs"
+msgstr "PIDs"
+
+msgid "Parent Interface"
+msgstr "Interfaz padre"
+
+msgid "Parent interface is required for macvlan/ipvlan networks"
+msgstr "La interfaz padre es obligatoria para redes macvlan/ipvlan"
+
+msgid "Part of a pod (\"%s\")"
+msgstr "Parte de un pod (\"%s\")"
+
+msgid "Pausing pod"
+msgstr "Pausando pod"
+
+msgid "Pod"
+msgstr "Pod"
+
+msgid "Pod Name"
+msgstr "Nombre del pod"
+
+msgid "Podman Version"
+msgstr "Versión de Podman"
+
+msgid "Pods"
+msgstr "Pods"
+
+msgid "Port Mappings"
+msgstr "Mapeo de puertos"
+
+msgid "Ports"
+msgstr "Puertos"
+
+msgid "Privileged"
+msgstr "Privilegiado"
+
+msgid "Privileged Mode"
+msgstr "Modo privilegiado"
+
+msgid "Processes"
+msgstr "Procesos"
+
+msgid "Pull Image"
+msgstr "Descargar imagen"
+
+msgid "Pull did not return an image ID - pull may have failed"
+msgstr "El pull no devolvió un ID de imagen - el pull puede haber fallado"
+
+msgid "Pulling %s"
+msgstr "Descargando %s"
+
+msgid "Read: %s / Write: %s"
+msgstr "Lectura: %s / Escritura: %s"
+
+msgid "Refreshing %s..."
+msgstr "Actualizando %s..."
+
+msgid "Registries"
+msgstr "Registros (Registries)"
+
+msgid "Registry"
+msgstr "Registro"
+
+msgid "Reload"
+msgstr "Recargar"
+
+msgid "Remove OpenWrt integration"
+msgstr "Eliminar integración OpenWrt"
+
+msgid "Remove all unused images (not just dangling)"
+msgstr "Eliminar todas las imágenes sin usar (no solo las huérfanas)"
+
+msgid "Remove container"
+msgstr "Eliminar contenedor"
+
+msgid "Remove unused volumes"
+msgstr "Eliminar volúmenes sin usar"
+
+msgid "Removed: %s"
+msgstr "Eliminado: %s"
+
+msgid "Removing unused resources, please wait..."
+msgstr "Eliminando recursos sin usar, espere..."
+
+msgid "Repository"
+msgstr "Repositorio"
+
+msgid "Required for shared network namespace. Disable only if you know you do not need it."
+msgstr "Requerido para el namespace de red compartido. Desactivar solo si está seguro de no necesitarlo."
+
+msgid "Resources"
+msgstr "Recursos"
+
+msgid "Restart Policy"
+msgstr "Política de reinicio"
+
+msgid "Restart container"
+msgstr "Reiniciar contenedor"
+
+msgid "Restart policy updated successfully"
+msgstr "Política de reinicio actualizada correctamente"
+
+msgid "Restarting pod"
+msgstr "Reiniciando pod"
+
+msgid "Restrict external access to the network"
+msgstr "Restringir el acceso externo a la red"
+
+msgid "Run Root"
+msgstr "Raíz de ejecución (Run Root)"
+
+msgid "Saving resource"
+msgstr "Guardando recurso"
+
+msgid "Secret"
+msgstr "Secreto (Secret)"
+
+msgid "Secret Data"
+msgstr "Datos secretos"
+
+msgid "Secret Name"
+msgstr "Nombre del secreto"
+
+msgid "Secret name can only contain letters, numbers, underscores, and hyphens"
+msgstr "El nombre del secreto solo puede contener letras, números, guiones bajos y guiones"
+
+msgid "Secrets"
+msgstr "Secretos"
+
+msgid "Security Notice:"
+msgstr "Aviso de seguridad:"
+
+msgid "Select containers to update"
+msgstr "Seleccionar contenedores para actualizar"
+
+msgid "Select network for the new container. User-created networks provide better isolation and DNS resolution between containers."
+msgstr "Seleccionar red para el nuevo contenedor. Las redes de usuario ofrecen mejor aislamiento y resolución DNS entre contenedores."
+
+msgid "Select what to clean up:"
+msgstr "Seleccione qué limpiar:"
+
+msgid "Sensitive data is hidden for security reasons."
+msgstr "Los datos sensibles están ocultos por razones de seguridad."
+
+msgid "Setup OpenWrt Integration"
+msgstr "Configurar integración de OpenWrt"
+
+msgid "Shared Namespaces"
+msgstr "Namespaces compartidos"
+
+msgid "Shares network with another container"
+msgstr "Comparte red con otro contenedor"
+
+msgid "Show"
+msgstr "Mostrar"
+
+msgid "Since"
+msgstr "Desde"
+
+msgid "Size"
+msgstr "Tamaño"
+
+msgid "Socket Path"
+msgstr "Ruta del socket"
+
+msgid "Source"
+msgstr "Origen"
+
+msgid "Space freed: %s"
+msgstr "Espacio liberado: %s"
+
+msgid "Start after creation"
+msgstr "Iniciar tras la creación"
+
+msgid "Start container"
+msgstr "Iniciar contenedor"
+
+msgid "Start on boot"
+msgstr "Iniciar al arrancar"
+
+msgid "Start script disabled"
+msgstr "Script de inicio desactivado"
+
+msgid "Start script missing\n\nClick to generate"
+msgstr "Script de inicio faltante\n\nHaga clic para generar"
+
+msgid "Start stream"
+msgstr "Iniciar transmisión"
+
+msgid "Started"
+msgstr "Iniciado"
+
+msgid "Started At"
+msgstr "Iniciado en"
+
+msgid "Starting pod"
+msgstr "Iniciando pod"
+
+msgid "Statistics"
+msgstr "Estadísticas"
+
+msgid "Stats"
+msgstr "Estadísticas"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Stop container"
+msgstr "Detener contenedor"
+
+msgid "Stop stream"
+msgstr "Detener transmisión"
+
+msgid "Stopping pod"
+msgstr "Deteniendo pod"
+
+msgid "Subnet"
+msgstr "Subred"
+
+msgid "Supplementary Groups"
+msgstr "Grupos suplementarios"
+
+msgid "System Diagnostics"
+msgstr "Diagnósticos del sistema"
+
+msgid "TTY"
+msgstr "TTY"
+
+msgid "Tag"
+msgstr "Etiqueta"
+
+msgid "The sensitive data to store securely"
+msgstr "Los datos sensibles a almacenar de forma segura"
+
+msgid "To enable auto-update for a container, add the label: io.containers.autoupdate=registry"
+msgstr "Para habilitar la actualización automática, añadir la etiqueta: io.containers.autoupdate=registry"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Total memory limit (memory + swap). -1 = unlimited, 0 = use default."
+msgstr "Límite de memoria total (memoria + swap). -1 = ilimitado, 0 = predeterminado."
+
+msgid "Type"
+msgstr "Tipo"
+
+msgid "Unknown"
+msgstr "Desconocido"
+
+msgid "Unless Stopped"
+msgstr "A menos que se detenga (Unless Stopped)"
+
+msgid "Until"
+msgstr "Hasta"
+
+msgid "Update"
+msgstr "Actualizar"
+
+msgid "Update Resources"
+msgstr "Actualizar recursos"
+
+msgid "Update name"
+msgstr "Actualizar nombre"
+
+msgid "Update restart policy"
+msgstr "Actualizar política de reinicio"
+
+msgid "Updating Images"
+msgstr "Actualizando imágenes"
+
+msgid "Updating container"
+msgstr "Actualizando contenedor"
+
+msgid "Upload failed: %s"
+msgstr "Error al subir: %s"
+
+msgid "Uploading file..."
+msgstr "Subiendo archivo..."
+
+msgid "User"
+msgstr "Usuario"
+
+msgid "User and group to run as (UID:GID)"
+msgstr "Usuario y grupo (UID:GID)"
+
+msgid "Value"
+msgstr "Valor"
+
+msgid "Variable"
+msgstr "Variable"
+
+msgid "Volume"
+msgstr "Volumen"
+
+msgid "Volume Name"
+msgstr "Nombre del volumen"
+
+msgid "Volume driver to use"
+msgstr "Controlador de volumen a usar"
+
+msgid "Volume imported successfully"
+msgstr "Volumen importado correctamente"
+
+msgid "Volume name. Leave empty to auto-generate."
+msgstr "Nombre del volumen. Dejar vacío para generar automáticamente."
+
+msgid "Volumes"
+msgstr "Volúmenes"
+
+msgid "Working Directory"
+msgstr "Directorio de trabajo"
+
+msgid "Yes"
+msgstr "Sí"
+
+msgid "default"
+msgstr "predeterminado"
+
+msgid "non-empty value"
+msgstr "valor no vacío"
+
+msgid "running"
+msgstr "en ejecución"
+
+msgid "total"
+msgstr "total"
+
+msgid "Are you sure to remove pod?"
+msgstr "¿Está seguro de eliminar el pod?"
+
+msgid "Cgroup parent"
+msgstr "Cgroup padre"
+
+msgid "CID"
+msgstr "CID"
+
+msgid "CPU %"
+msgstr "CPU %"
+
+msgid "CPU period"
+msgstr "Período de CPU"
+
+msgid "CPU quota"
+msgstr "Cuota de CPU"
+
+msgid "CPU set"
+msgstr "Conjunto de CPU"
+
+msgid "CPU shares"
+msgstr "Shares de CPU"
+
+msgid "DNS options"
+msgstr "Opciones DNS"
+
+msgid "DNS search"
+msgstr "Búsqueda DNS"
+
+msgid "DNS servers"
+msgstr "Servidores DNS"
+
+msgid "Exit policy"
+msgstr "Política de salida"
+
+msgid "Extra hosts"
+msgstr "Hosts adicionales"
+
+msgid "Host network"
+msgstr "Red del host"
+
+msgid "Infra container"
+msgstr "Contenedor infra"
+
+msgid "Memory limit"
+msgstr "Límite de memoria"
+
+msgid "Net I/O"
+msgstr "I/O de red"
+
+msgid "Pause pod"
+msgstr "Pausar pod"
+
+msgid "Pod is not running"
+msgstr "El pod no está en ejecución"
+
+msgid "Remove pod"
+msgstr "Eliminar pod"
+
+msgid "Restart policy"
+msgstr "Política de reinicio"
+
+msgid "Restart pod"
+msgstr "Reiniciar pod"
+
+msgid "Shared namespaces"
+msgstr "Namespaces compartidos"
+
+msgid "Start pod"
+msgstr "Iniciar pod"
+
+msgid "Static IPv4"
+msgstr "IPv4 estática"
+
+msgid "Static MAC"
+msgstr "MAC estática"
+
+msgid "Stop pod"
+msgstr "Detener pod"
+
+msgid "Unlimited"
+msgstr "Ilimitado"
+
+msgid "Unpause pod"
+msgstr "Reanudar pod"
+
+msgid "Stopping container"
+msgstr "Deteniendo contenedor"
+
+msgid "Stop failed: %s"
+msgstr "Error al detener: %s"
+
+msgid "Removing container"
+msgstr "Eliminando contenedor"
+
+msgid "Remove failed: %s"
+msgstr "Error al eliminar: %s"
+
+msgid "Creating container"
+msgstr "Creando contenedor"
+
+msgid "Create failed: %s"
+msgstr "Error al crear: %s"
+
+msgid "Starting container"
+msgstr "Iniciando contenedor"
+
+msgid "Start failed: %s"
+msgstr "Error al iniciar: %s"
+
+msgid "Reinstating init script"
+msgstr "Restableciendo script de inicio"
+
+msgid "Init script reinstate failed: %s"
+msgstr "Error al restablecer el script de inicio: %s"
+
+msgid "Updated to %s"
+msgstr "Actualizado a %s"
+
+msgid "Update image: %d/%d - %s"
+msgstr "Actualizar imagen: %d/%d - %s"
+
+msgid "Removed old image %s"
+msgstr "Imagen antigua %s eliminada"
+
+msgid "Done."
+msgstr "Listo."
+
+msgid "Pause container"
+msgstr "Pausar contenedor"
+
+msgid "Unpause container"
+msgstr "Reanudar contenedor"

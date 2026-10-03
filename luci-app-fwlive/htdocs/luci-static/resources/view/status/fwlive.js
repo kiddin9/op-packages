@@ -219,6 +219,7 @@ return view.extend({
 	consentDismissedSession: false,
 	_loggingToolbarSig: '',
 	_loggingEmptySig: '',
+	_filterChipCallbacks: null,
 	tintFallbackActive: false,
 	tintProbeDone: false,
 
@@ -2140,9 +2141,42 @@ return view.extend({
 		this.onFilterInput();
 	},
 
+	focusFilterFallback(field) {
+		if (this.viewDisposed) return;
+		let target = field ? document.getElementById('fwlive-' + field) : null;
+		if (!target || typeof target.focus !== 'function')
+			target = document.getElementById('fwlive-q');
+		if (target && typeof target.focus === 'function') {
+			const details = typeof target.closest === 'function' ? target.closest('details') : null;
+			if (details && !details.open) details.open = true;
+			target.focus();
+		}
+	},
+
 	renderFilterChips() {
 		const bar = document.getElementById('fwlive-chips');
-		if (!bar) return;
+		if (!bar || this.viewDisposed) return;
+
+		if (!this._filterChipCallbacks) {
+			this._filterChipCallbacks = {
+				onInvert: (field, ev) => {
+					if (!this.viewDisposed) this.invertFilter(field, ev);
+					else {
+						if (ev && ev.preventDefault) ev.preventDefault();
+						if (ev && ev.stopPropagation) ev.stopPropagation();
+					}
+				},
+				onClear: (field, ev) => {
+					if (!this.viewDisposed) this.clearFilter(field, ev);
+					else if (ev && ev.preventDefault) ev.preventDefault();
+				},
+				onClearAll: (ev) => {
+					if (!this.viewDisposed) this.clearAllFilters(ev);
+					else if (ev && ev.preventDefault) ev.preventDefault();
+				},
+				onFocusFallback: (field) => this.focusFilterFallback(field)
+			};
+		}
 
 		chips.renderFilterChips(
 			bar,
@@ -2150,11 +2184,7 @@ return view.extend({
 				filters: Object.assign({}, this.readFilters()),
 				chipFields: this.FILTER_CHIP_FIELDS
 			},
-			{
-				onInvert: (field, ev) => this.invertFilter(field, ev),
-				onClear: (field, ev) => this.clearFilter(field, ev),
-				onClearAll: (ev) => this.clearAllFilters(ev)
-			}
+			this._filterChipCallbacks
 		);
 	},
 
@@ -2576,7 +2606,7 @@ return view.extend({
 					E('li', { 'id': 'fwlive-manual-test' }, []),
 					E('li', {}, [
 						_(
-							'In Simple view, activate the message button or click a row to show or hide the full log line.'
+							'In Simple view, activate the message button or click a row to show or hide the full message.'
 						)
 					]),
 					E('li', {}, [
@@ -2788,19 +2818,27 @@ return view.extend({
 								'class': 'cbi-input-text',
 								'placeholder': _('Quick search')
 							}),
-							E('select', { 'id': 'fwlive-action', 'class': 'cbi-input-select' }, [
-								E('option', { 'value': '' }, [_('Any action')]),
-								E('option', { 'value': 'pass' }, [_('pass')]),
-								E('option', { 'value': 'block' }, [_('block')]),
-								E('option', { 'value': 'drop' }, [_('drop')]),
-								E('option', { 'value': 'reject' }, [_('reject')]),
-								E('option', { 'value': 'unknown' }, [_('unknown')]),
-								E('option', { 'value': '!pass' }, [_('not pass')]),
-								E('option', { 'value': '!drop' }, [_('not drop')]),
-								E('option', { 'value': '!block' }, [_('not block')]),
-								E('option', { 'value': '!reject' }, [_('not reject')]),
-								E('option', { 'value': '!unknown' }, [_('not unknown')])
-							]),
+							E(
+								'select',
+								{
+									'id': 'fwlive-action',
+									'class': 'cbi-input-select',
+									'aria-label': String(_('Filter by %s').format(_('Action')))
+								},
+								[
+									E('option', { 'value': '' }, [_('Any action')]),
+									E('option', { 'value': 'pass' }, [_('pass')]),
+									E('option', { 'value': 'block' }, [_('block')]),
+									E('option', { 'value': 'drop' }, [_('drop')]),
+									E('option', { 'value': 'reject' }, [_('reject')]),
+									E('option', { 'value': 'unknown' }, [_('unknown')]),
+									E('option', { 'value': '!pass' }, [_('not pass')]),
+									E('option', { 'value': '!drop' }, [_('not drop')]),
+									E('option', { 'value': '!block' }, [_('not block')]),
+									E('option', { 'value': '!reject' }, [_('not reject')]),
+									E('option', { 'value': '!unknown' }, [_('not unknown')])
+								]
+							),
 							E('div', { 'class': 'fwlive-proto-pair' }, [
 								E(
 									'select',
@@ -2861,7 +2899,7 @@ return view.extend({
 				E('div', { 'id': 'fwlive-chips', 'class': 'fwlive-chips' }, []),
 				E('p', { 'class': 'fwlive-hint-line' }, [
 					_(
-						'Click a cell to filter · ≠ on a chip to exclude · Ctrl+click a rule for firewall settings · in Simple view, click a row for the full message'
+						'Click a cell to filter · ≠ on a chip to exclude · Ctrl+click a rule for firewall settings · in Simple view, activate the message button or click a row to show or hide the full message'
 					)
 				]),
 				E(

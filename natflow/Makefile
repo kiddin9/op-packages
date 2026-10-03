@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=natflow
 PKG_VERSION:=20260930
-PKG_RELEASE:=88
+PKG_RELEASE:=89
 
 PKG_SOURCE:=$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://github.com/ptpt52/natflow.git
@@ -62,7 +62,7 @@ define Package/natflow-boot/conffiles
 /etc/config/natflow
 endef
 
-define Package/natflow-boot/nstall
+define Package/natflow-boot/install
 	$(INSTALL_DIR) $(1)/etc/init.d \
 			$(1)/etc/config \
 			$(1)/etc/hotplug.d/iface \

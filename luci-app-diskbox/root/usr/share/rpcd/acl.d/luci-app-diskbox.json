@@ -1,0 +1,41 @@
+{
+	"luci-app-diskbox": {
+		"description": "Grant access to LuCI DiskBox",
+		"read": {
+			"ubus": {
+				"luci.diskbox": [
+					"list_devices",
+					"get_disk_info",
+					"get_smart_attr",
+					"get_format_cmd",
+					"get_mount_points",
+					"list_raid_devices",
+					"list_btrfs_devices",
+					"get_btrfs_info",
+					"get_btrfs_subvolumes"
+				]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.diskbox": [
+					"format_partition",
+					"mk_partition_table",
+					"create_partition",
+					"remove_partition",
+					"mount",
+					"umount",
+					"eject_device",
+					"rescan_disks",
+					"create_raid",
+					"create_btrfs",
+					"btrfs_subvol_create",
+					"btrfs_subvol_delete",
+					"btrfs_subvol_set_default",
+					"btrfs_set_label",
+					"btrfs_snapshot_create"
+				]
+			}
+		}
+	}
+}

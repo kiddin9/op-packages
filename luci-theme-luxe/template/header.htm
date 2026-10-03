@@ -1,0 +1,193 @@
+<%#
+	Luxe is a clean HTML5 theme for LuCI. It is based on luci-theme-bootstrap and MUI
+
+	luci-theme-material
+	Copyright 2015-2017 Lutty Yang <lutty@wcan.in>
+	
+	luci-theme-luxe
+	Copyright 2026 de-quenx | xidz_x
+	
+	Have a bug? Please create an issue here on GitHub!
+	https://github.com/de-quenx/luci-theme-luxe/issues
+
+	luci-theme-bootstrap:
+	Copyright 2008 Steven Barth <steven@midlink.org>
+	Copyright 2008-2016 Jo-Philipp Wich <jow@openwrt.org>
+	Copyright 2012 David Menting <david@nut-bolt.nl>
+
+	MUI:
+	https://github.com/muicss/mui
+
+	Licensed to the public under the Apache License 2.0
+-%>
+
+<%
+	local sys  = require "luci.sys"
+	local util = require "luci.util"
+	local http = require "luci.http"
+	local disp = require "luci.dispatcher"
+	local ver  = require "luci.version"
+
+	local boardinfo = util.ubus("system", "board") or { }
+	local hostname = striptags(boardinfo.hostname or "?")
+	
+	local node = disp.context.dispatched
+	local path = table.concat(disp.context.path, "-")
+	
+	http.prepare_content("text/html; charset=UTF-8")
+-%>
+<!DOCTYPE html>
+<html lang="<%=luci.i18n.context.lang%>">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#24315e">
+<meta name="msapplication-tap-highlight" content="no">
+<meta name="msapplication-TileColor" content="#24315e">
+<meta name="application-name" content="<%= hostname %> - LuCI">
+<meta name="apple-mobile-web-app-title" content="<%= hostname %> - LuCI">
+<link rel="stylesheet" href="<%=media%>/css/cascade.css?v=26.167.08541~ffc779e">
+<link rel="icon" href="<%=media%>/luxe.png" sizes="64x64">
+<link rel="icon" href="<%=media%>/luxe.svg" sizes="any">
+<% if node and node.css then %>
+<link rel="stylesheet" href="<%=resource%>/<%=node.css%>">
+<% end %>
+<script src="<%=url('admin/translations', luci.i18n.context.lang)%>"></script>
+<script src="<%=resource%>/cbi.js?v=26.167.08541~ffc779e"></script>
+<title><%=hostname%><% if node and node.title then %> - <%=striptags(node.title)%><% end %> - LuCI</title>
+<% if css then %>
+<style title="text/css">
+	<%= css %>
+</style>
+<% end %>
+</head>
+<body class="lang_<%=luci.i18n.context.lang%> <% if luci.dispatcher.context.authsession then %>logged-in<% end %> <% if path ~= "" then %>node-<%= path %><% else %>node-main-login<% end %>" data-page="<%= pcdata(path) %>">
+<script>
+	document.body.setAttribute('data-theme', localStorage.getItem('luxe-theme') || 'normal');
+	let mMode = localStorage.getItem('luxe-mode') || 'normal';
+	if(mMode !== 'normal') document.body.setAttribute('data-force-scheme', mMode);
+	let flt = localStorage.getItem('luxe-floating') || '0';
+	document.body.setAttribute('data-enable-navbar', flt);
+	document.body.setAttribute('data-navbar-enabled', flt);
+	if(localStorage.getItem('luxe-slider') === '1') document.body.setAttribute('data-slider', 'true');
+	document.body.setAttribute('data-icon', localStorage.getItem('luxe-icon') || '5');
+	document.body.setAttribute('data-autohide', localStorage.getItem('luxe-autohide') || '0');
+	document.body.setAttribute('data-show-hostname', localStorage.getItem('luxe-hostname') || '0');
+</script>
+<header>
+	<div class="fill">
+		<div class="container" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+			<div style="display:flex;align-items:center;">
+				<span class="showSide"></span>
+				<a class="brand hostname" href="#"><%= hostname %></a>
+			</div>
+			<div id="luxe-settings-wrapper" class="cfg-wrap">
+				<span id="settings-toggle" class="cfg-tgl">
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+				</span>
+				<div id="luxe-settings-menu" class="cfg-menu">
+					<div class="cfg-row" id="row-hostname">
+						<span class="cfg-lbl">Tampilkan Hostname</span>
+						<label class="luxe-switch"><input type="checkbox" id="set-hostname"><span class="luxe-slider"></span></label>
+					</div>
+					<div class="cfg-row">
+						<span class="cfg-lbl">Floating Navbar</span>
+						<label class="luxe-switch"><input type="checkbox" id="set-floating"><span class="luxe-slider"></span></label>
+					</div>
+					<div class="cfg-row" id="row-autohide-navbar">
+						<span class="cfg-lbl">Sembunyi Otomatis Navbar</span>
+						<label class="luxe-switch"><input type="checkbox" id="set-autohide-navbar"><span class="luxe-slider"></span></label>
+					</div>
+					<div class="cfg-row" id="row-slider-navbar">
+						<span class="cfg-lbl">Slider Navbar</span>
+						<label class="luxe-switch"><input type="checkbox" id="set-slider-navbar"><span class="luxe-slider"></span></label>
+					</div>
+					<div class="cfg-blk" id="row-icon-count">
+						<span class="cfg-lbl-blk">Jumlah Icon</span>
+						<div class="style-scroll" style="justify-content: center;">
+							<div class="icon-card" data-icon="4">4</div><div class="icon-card active" data-icon="5">5</div><div class="icon-card" data-icon="6">6</div><div class="icon-card" data-icon="7">7</div><div class="icon-card" data-icon="8">8</div>
+						</div>
+					</div>
+					<div class="cfg-blk">
+						<span class="cfg-lbl-blk">Gaya / Style</span>
+						<div class="style-scroll">
+							<div class="style-card active" data-style="normal">LuxeOs</div><div class="style-card" data-style="glass-liquid">Glass Liquid</div><div class="style-card" data-style="glass-luxe">Glass Luxe</div><div class="style-card" data-style="glass-crystal">Glass Crystal</div><div class="style-card" data-style="glass-dark">Glass Dark</div><div class="style-card" data-style="neo">Neobrutalism</div><div class="style-card" data-style="neox">Neomorphism</div><div class="style-card" data-style="neon">Neon</div><div class="style-card" data-style="rgb">Rgb</div><div class="style-card" data-style="glaze">Glaze</div><div class="style-card" data-style="onyx">Onyx</div><div class="style-card" data-style="liquid-metal">Liquid Neo</div>
+						</div>
+					</div>
+					<div id="mode-selection-container" style="display:none; margin-bottom:4px;">
+						<span class="cfg-lbl-blk">Mode Tema</span>
+						<div style="display:flex; gap:8px;">
+							<div class="mode-card active" data-mode="normal">Auto</div><div class="mode-card" data-mode="light">Light</div><div class="mode-card" data-mode="dark">Dark</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div style="display:flex;align-items:center; justify-content:flex-end;">
+				<span class="status" id="indicators"></span>
+			</div>
+		</div>
+	</div>
+</header>
+
+<div id="floating-navbar" class="navbar">
+	<div class="nav-arrow" id="prevArrow">&#10094;</div>
+	<div class="floating-icons-wrapper" id="iconWrapper">
+		<a href='/cgi-bin/luci/admin/status/overview'><img src="<%=media%>/navbar/home.png"></a>
+		<a href='/cgi-bin/luci/admin/network/network'><img src="<%=media%>/navbar/interface.png"></a>
+		<a href='/cgi-bin/luci/admin/system/tinyfm'><img src="<%=media%>/navbar/tinyfm.png"></a>
+		<a href='/cgi-bin/luci/admin/services/ttyd'><img src="<%=media%>/navbar/terminal.png"></a>
+		<a href='/cgi-bin/luci/admin/services/openclash'><img src="<%=media%>/navbar/openclash.png"></a>
+		<a href='/cgi-bin/luci/admin/status/netmonitor'><img src="<%=media%>/navbar/netmon.png"></a>
+		<a href='/cgi-bin/luci/admin/services/nikki'><img src="<%=media%>/navbar/nikki.png"></a>
+		<a href='/cgi-bin/luci/admin/modem/andromodem'><img src="<%=media%>/navbar/droidnet.png"></a>
+		<a href='/cgi-bin/luci/admin/services/fusiontunx'><img src="<%=media%>/navbar/insomclash.png"></a>
+		<a href='/cgi-bin/luci/admin/modem/3ginfo-lite'><img src="<%=media%>/navbar/modem.png"></a>
+		<a href='/cgi-bin/luci/admin/services/passwall'><img src="<%=media%>/navbar/passwall.png"></a>
+		<a href='/cgi-bin/luci/admin/modem/modemdata'><img src="<%=media%>/navbar/mikhom.png"></a>
+		<a href='/cgi-bin/luci/admin/services/AdGuardHome'><img src="<%=media%>/navbar/adguard.png"></a>
+		<a href='/cgi-bin/luci/admin/vpn/tailscale'><img src="<%=media%>/navbar/tailscale.png"></a>
+		<a href='/cgi-bin/luci/admin/services/neko'><img src="<%=media%>/navbar/neko.png"></a>
+		<a href='/cgi-bin/luci/admin/modem/rakitanmanager'><img src="<%=media%>/navbar/rakitanmanager.png"></a>
+		<a href='/cgi-bin/luci/admin/modem/luci-app-sms-tool-js/sendat'><img src="<%=media%>/navbar/at.png"></a>
+	</div>
+	<div class="nav-arrow" id="nextArrow">&#10095;</div>
+</div>
+
+<div class="main">
+	<div style="" class="loading"><span><div class="loader"></div><%:Collecting data...%></span></div>
+	<div class="main-left" id="mainmenu" style="display:none"></div>
+	<div class="main-right">
+		<div class="modemenu-buttons" style="display:none"><ul id="modemenu"></ul></div>
+		<div class="darkMask"></div>
+		<div id="maincontent">
+			<div class="container">
+				<%- if luci.sys.process.info("uid") == 0 and luci.sys.user.getuser("root") and not luci.sys.user.getpasswd("root") and path ~= "admin-system-admin-password" then -%>
+					<div class="alert-message warning">
+						<h4><%:No password set!%></h4>
+						<p><%:There is no password set on this router. Please configure a root password to protect the web interface.%></p>
+						<% if disp.lookup("admin/system/admin") then %>
+							<div class="right"><a class="btn" href="<%=url("admin/system/admin")%>"><%:Go to password configuration...%></a></div>
+						<% end %>
+					</div>
+				<%- end -%>
+				
+				<% if boardinfo and boardinfo.rootfs_type == "initramfs" then %>
+					<div class="alert-message warning">
+						<h4><%:System running in recovery (initramfs) mode.%></h4>
+						<p><%:No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade%></p>
+						<% if disp.lookup("admin/system/flash") then %>
+							<div class="right"><a class="btn" href="<%=url("admin/system/flash")%>"><%:Go to firmware upgrade...%></a></div>
+						<% end %>
+					</div>
+				<% end %>
+				
+				<noscript>
+					<div class="alert-message warning">
+						<h4><%:JavaScript required!%></h4>
+						<p><%:You must enable JavaScript in your browser or LuCI will not work properly.%></p>
+					</div>
+				</noscript>
+				
+				<div id="tabmenu" style="display:none"></div>

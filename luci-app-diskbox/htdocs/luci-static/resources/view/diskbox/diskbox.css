@@ -1,0 +1,702 @@
+/**
+ * luci-app-diskbox — Modern Storage Manager component styles
+ * Ported from the DESIGN_SPEC demo. Built purely on top of OpenWrt 25
+ * cascade.css (uses only tokens cascade.css already defines, so light/dark
+ * themes both adapt). Does NOT override standard LuCI buttons, form
+ * controls, or the CBI value layout — only adds the partition-map / card
+ * / table-typography components.
+ */
+
+/* Visual Partition Map Component */
+/* Option B: Modern Storage Manager Partition Cards (群晖 DSM / TrueNAS 风格) */
+.disk-partition-card {
+	background: var(--background-color-high);
+	border: 1px solid var(--border-color-low);
+	border-radius: 6px;
+	padding: 12px 16px;
+	margin-bottom: 14px;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.disk-partition-card:hover {
+	border-color: var(--border-color-medium);
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.disk-part-card-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 6px;
+	font-size: 12px;
+}
+
+.disk-part-card-title {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.disk-bus-badge {
+	font-size: 10px;
+	font-weight: 600;
+	padding: 1px 6px;
+	border-radius: 3px;
+	background: var(--background-color-medium);
+	border: 1px solid var(--border-color-high);
+	color: var(--text-color-high);
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+}
+
+.disk-part-path {
+	font-size: 13px;
+	color: var(--text-color-highest);
+}
+
+.disk-part-model {
+	color: var(--text-color-medium);
+	font-size: 12px;
+}
+
+.disk-part-spec {
+	color: var(--text-color-low);
+	font-size: 11px;
+}
+
+.disk-part-card-meta {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	font-size: 12px;
+	color: var(--text-color-medium);
+}
+
+.disk-meta-tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* Slender, refined 14px pill partition bar */
+.disk-partition-bar {
+	width: 100%;
+	height: 14px;
+	background-color: var(--background-color-medium);
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	border-radius: 7px;
+	overflow: hidden;
+	display: flex;
+	position: relative;
+	box-sizing: border-box;
+	margin: 8px 0 10px 0;
+}
+
+.part-segment {
+	height: 100%;
+	min-width: 90px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 4px;
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 500;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	cursor: pointer;
+	position: relative;
+	border-right: 1px solid rgba(255, 255, 255, 0.4);
+	transition: filter 0.15s ease, opacity 0.15s ease;
+	user-select: none;
+	box-sizing: border-box;
+}
+
+.part-segment:last-child {
+	border-right: none;
+}
+
+.part-segment:hover {
+	filter: brightness(1.15);
+}
+
+/* Five-state semantic partition palette (DESIGN_SPEC) — fixed hues so the
+   state reads the same in light and dark. */
+.part-state-boot {
+	background-color: #546e7a !important; /* Muted Slate - System/Boot */
+	color: #ffffff !important;
+}
+
+.part-state-inuse {
+	background-color: #1e88e5 !important; /* Clean Modern Blue - Mounted */
+	color: #ffffff !important;
+}
+
+.part-state-unmounted {
+	background-color: #f59e0b !important; /* Soft Amber - Unmounted */
+	color: #ffffff !important;
+}
+
+.part-state-raw {
+	background-color: #94a3b8 !important; /* Neutral Cool Gray - Empty/Raw */
+	color: #ffffff !important;
+}
+
+.part-state-unalloc {
+	background-color: #f1f5f9 !important;
+	color: #64748b !important;
+	background-image: repeating-linear-gradient(
+		45deg,
+		rgba(0, 0, 0, 0.02),
+		rgba(0, 0, 0, 0.02) 6px,
+		rgba(0, 0, 0, 0.05) 6px,
+		rgba(0, 0, 0, 0.05) 12px
+	) !important;
+	border-right: none;
+}
+
+.part-state-unalloc:hover {
+	background-color: #e2e8f0 !important;
+}
+
+/* Refined Partition Legend */
+.disk-partition-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+	margin-bottom: 12px;
+	font-size: 12px;
+	color: var(--text-color-medium);
+	padding: 7px 14px;
+	background: var(--background-color-medium);
+	border-radius: 4px;
+	border: 1px solid var(--border-color-low);
+}
+
+.legend-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.legend-color-dot {
+	width: 9px;
+	height: 9px;
+	border-radius: 2px;
+	display: inline-block;
+}
+
+/* Segment Tooltip */
+.part-tooltip {
+	position: absolute;
+	bottom: calc(100% + 6px);
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--text-color-highest);
+	color: var(--background-color-high);
+	padding: 6px 10px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: normal;
+	white-space: nowrap;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+	z-index: 50;
+	pointer-events: none;
+	display: none;
+	line-height: 1.4;
+	text-align: left;
+}
+
+.part-tooltip::after {
+	content: "";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	transform: translateX(-50%);
+	border-width: 4px;
+	border-style: solid;
+	border-color: var(--text-color-highest) transparent transparent transparent;
+}
+
+.part-segment:hover .part-tooltip {
+	display: block;
+}
+
+/* Health and SMART Link */
+.smart-status-link {
+	font-weight: bold;
+	cursor: pointer;
+	text-decoration: underline;
+}
+.smart-status-link.passed {
+	color: var(--success-color-high);
+}
+.smart-status-link.warning {
+	color: var(--warn-color-high);
+}
+.smart-status-link.failed {
+	color: var(--error-color-high);
+}
+
+/* Hardware Info Two-Column Grid */
+.hw-info-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 8px 24px;
+	padding: 4px 0;
+}
+
+.hw-info-entry {
+	padding: 6px 0;
+	border-bottom: 1px solid var(--border-color-low);
+}
+
+.hw-info-label {
+	font-size: 11px;
+	font-weight: bold;
+	text-transform: uppercase;
+	letter-spacing: 0.4px;
+	color: var(--text-color-medium);
+	margin-bottom: 2px;
+}
+
+.hw-info-value {
+	font-size: 13px;
+	color: var(--text-color-highest);
+	word-break: break-all;
+}
+
+/* Command preview in modal */
+.command-preview-box {
+	background: var(--background-color-medium);
+	color: var(--primary-color-low);
+	font-family: monospace;
+	font-size: 12px;
+	padding: 8px 12px;
+	border-radius: 3px;
+	border: 1px solid var(--border-color-high);
+	margin: 8px 0;
+	overflow-x: auto;
+}
+
+
+/* OpenWrt Standard Tabs (选项卡标签) - NOT bold, NOT enlarged, 100% Native Font */
+.cbi-tabmenu,
+.cbi-tabmenu.map,
+.tabs {
+	margin: 0 0 16px 0 !important;
+	padding: 0 2px !important;
+	font-family: var(--font-sans) !important;
+}
+
+.cbi-tabmenu > li,
+.cbi-tabmenu.map > li,
+.tabs > li {
+	font-family: var(--font-sans) !important;
+	font-size: 13px !important;
+	font-weight: normal !important;
+	height: 25px !important;
+	line-height: 25px !important;
+}
+
+.cbi-tabmenu > li > a,
+.cbi-tabmenu.map > li > a,
+.tabs > li > a {
+	font-family: var(--font-sans) !important;
+	font-size: 13px !important;
+	font-weight: normal !important;
+	line-height: 18px !important;
+	padding: 4px 8px !important;
+}
+
+/* Table headers strictly left-aligned (matching body cells), OpenWrt native font, NOT bold, NOT enlarged */
+.th.cbi-section-actions,
+.table.cbi-section-table .th,
+.disk-card-table .th,
+.partition-master-table .th {
+	font-family: var(--font-sans) !important;
+	font-size: 13px !important;
+	font-weight: normal !important;
+	background-color: var(--background-color-medium) !important;
+	border-bottom: 2px solid var(--border-color-high) !important;
+	text-align: left !important;
+	white-space: nowrap !important;
+	vertical-align: middle !important;
+	line-height: 18px !important;
+}
+
+/* Table body cell contents strictly left-aligned, OpenWrt native font, NOT bold, NOT enlarged */
+.td.cbi-section-actions,
+.table.cbi-section-table .td,
+.disk-card-table .td,
+.partition-master-table .td {
+	font-family: var(--font-sans) !important;
+	font-size: 13px !important;
+	font-weight: normal !important;
+	vertical-align: middle !important;
+	padding: 8px 8px !important;
+	box-sizing: border-box !important;
+	overflow: hidden !important;
+	line-height: 18px !important;
+	text-align: left !important;
+}
+
+/* Overview table (physical disks): keep every cell on a single line. The
+   wrapping container carries overflow-x:auto, so it scrolls rather than wraps. */
+.disk-overview-table .td {
+	white-space: nowrap !important;
+}
+
+/* Actions column of the Physical Disks table. The guaranteed width comes from
+   the fixed-width <col> (180px) emitted in disks.js — a %-width column plus the
+   table's min-width lets Chromium keep the column narrower than the cell's
+   min-width, which clips the "Manage Partitions" button. This min-width is a
+   harmless fallback in case that col is ever reverted to a percentage. */
+.disk-overview-table .td.cbi-section-actions {
+	min-width: 175px;
+}
+
+/* Ensure no artificial bolding in tables */
+.table strong,
+.disk-card-table strong,
+.partition-master-table strong,
+.cbi-section-table strong {
+	font-weight: normal !important;
+}
+
+/* Universal OpenWrt Native Font for ALL tables and ALL table contents */
+.table,
+.table *,
+.disk-card-table,
+.disk-card-table *,
+.partition-master-table,
+.partition-master-table *,
+.cbi-section-table,
+.cbi-section-table * {
+	font-family: var(--font-sans) !important;
+}
+
+.table code,
+.disk-card-table code,
+.partition-master-table code,
+.cbi-section-table code {
+	font-family: var(--font-sans) !important;
+	background: transparent !important;
+	border: none !important;
+	padding: 0 !important;
+	color: inherit !important;
+	font-size: 13px !important;
+	font-weight: normal !important;
+}
+
+/* Inline table mount dropdown & input controls */
+.table select.cbi-input-select,
+.disk-card-table select.cbi-input-select {
+	font-family: var(--font-sans) !important;
+	font-size: 12px !important;
+	font-weight: normal !important;
+	height: 26px !important;
+	padding: 2px 6px !important;
+	box-sizing: border-box !important;
+	vertical-align: middle !important;
+}
+
+.table input.cbi-input-text,
+.disk-card-table input.cbi-input-text {
+	font-family: var(--font-sans) !important;
+	font-size: 12px !important;
+	font-weight: normal !important;
+	height: 26px !important;
+	padding: 2px 6px !important;
+	box-sizing: border-box !important;
+	vertical-align: middle !important;
+}
+
+/* Action buttons strictly in a single horizontal row, left-aligned */
+.td.cbi-section-actions .btn-group-actions,
+.td.cbi-section-actions > div {
+	display: inline-flex !important;
+	flex-direction: row !important;
+	flex-wrap: nowrap !important;
+	gap: 6px !important;
+	justify-content: flex-start !important;
+	align-items: center !important;
+	white-space: nowrap !important;
+}
+
+.td.cbi-section-actions .btn {
+	white-space: nowrap !important;
+	display: inline-block !important;
+	margin: 0 !important;
+	flex: 0 0 auto !important;
+}
+
+/* ==========================================================================
+   Unified Master Partition Table & Strict Column Alignment
+   ========================================================================== */
+.disk-card-table,
+.partition-master-table {
+	table-layout: fixed !important;
+	width: 100% !important;
+	border-collapse: collapse !important;
+	margin-bottom: 0 !important;
+}
+
+.disk-card-table .col-device,
+.disk-card-table .col-fs,
+.disk-card-table .col-mount,
+.disk-card-table .col-size,
+.disk-card-table .col-automount,
+.disk-card-table .col-actions {
+	white-space: nowrap !important;
+}
+
+.disk-card-table .col-mount {
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+}
+
+.disk-card-table .cbi-progressbar {
+	min-width: 0 !important;
+	width: 80px !important;
+	max-width: 80px !important;
+	margin: 1.3em 0 2px 0 !important;
+}
+
+.disk-card-table .cbi-progressbar::before {
+	font-size: 11px !important;
+	line-height: 14px !important;
+	top: -1.3em !important;
+	left: 0 !important;
+	right: auto !important;
+	width: auto !important;
+	text-align: left !important;
+	white-space: nowrap !important;
+	overflow: hidden !important;
+	text-overflow: ellipsis !important;
+}
+
+/* Form fields left-aligned in Create RAID and Create Btrfs Pool */
+.cbi-value {
+	text-align: left !important;
+}
+
+.cbi-value label.cbi-value-title,
+.cbi-value .cbi-value-title {
+	text-align: left !important;
+	width: 140px !important;
+	min-width: 140px !important;
+	flex: 0 0 140px !important;
+}
+
+.cbi-value .cbi-value-field {
+	text-align: left !important;
+	align-items: flex-start !important;
+	justify-content: flex-start !important;
+}
+
+.cbi-value .cbi-value-description {
+	text-align: left !important;
+}
+
+.cbi-page-actions {
+	display: flex;
+	justify-content: flex-start !important;
+	gap: 10px;
+	background: var(--background-color-high) !important;
+	border-top: none !important;
+}
+
+/* Status Badges */
+.badge-status {
+	display: inline-block;
+	padding: 2px 6px;
+	font-size: 11px;
+	border-radius: 3px;
+	font-weight: bold;
+	margin-right: 6px;
+	vertical-align: middle;
+	line-height: 14px;
+}
+
+.badge-mounted {
+	background: rgba(46, 125, 50, 0.12);
+	color: var(--success-color-high);
+	border: 1px solid rgba(46, 125, 50, 0.3);
+}
+
+.badge-unmounted {
+	background: var(--background-color-medium);
+	color: var(--text-color-medium);
+	border: 1px solid var(--border-color-high);
+}
+
+.mount-options-text {
+	font-family: monospace;
+	font-size: 11px;
+	color: var(--text-color-medium);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	display: block;
+	max-width: 100%;
+}
+
+/* Disk card section (per-physical-disk block on the Partition tab). It is a
+   fieldset so the <legend> title anchors at the top-left; the UA fieldset
+   border/padding is reset so it reads as a clean section, not a form frame. */
+.disk-card-section {
+	margin: 0 0 16px 0;
+	padding: 14px 16px;
+	border: 1px solid var(--border-color-low);
+	border-radius: 4px;
+	background: var(--background-color-high);
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+	min-width: 0;
+}
+
+.disk-card-section > legend {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-color-highest);
+}
+
+.disk-card-bar-wrap {
+	margin-bottom: 12px;
+	padding: 8px 12px;
+	background: var(--background-color-medium);
+	border: 1px solid var(--border-color-low);
+	border-radius: 4px;
+}
+
+/* Card-scoped action toolbar (bottom of a per-disk card) */
+.disk-card-actions-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+	padding: 8px 14px;
+	background: var(--background-color-medium);
+	border-top: 1px solid var(--border-color-low);
+}
+
+.disk-actions-flex {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.disk-actions-left,
+.disk-actions-right {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+}
+
+/* ==========================================================================
+   RAID & Btrfs Enhanced Components
+   ========================================================================== */
+.badge-tech {
+	font-family: monospace;
+	font-size: 11px;
+	padding: 2px 6px;
+	border-radius: 3px;
+	background: var(--background-color-medium);
+	color: var(--text-color-high);
+	border: 1px solid var(--border-color-high);
+	display: inline-block;
+	vertical-align: middle;
+}
+
+.badge-member {
+	font-family: monospace;
+	font-size: 11px;
+	padding: 2px 6px;
+	border-radius: 3px;
+	background: rgba(33, 150, 243, 0.08);
+	color: var(--primary-color-high);
+	border: 1px solid rgba(33, 150, 243, 0.3);
+	display: inline-block;
+	margin: 2px 4px 2px 0;
+	white-space: nowrap;
+}
+
+.btrfs-pool-card,
+.raid-pool-card {
+	margin-bottom: 24px;
+}
+
+.pool-meta-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 8px 12px;
+	margin-bottom: 12px;
+	background: var(--background-color-medium);
+	border: 1px solid var(--border-color-low);
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+.pool-meta-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.checkbox-chip-group {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-top: 4px;
+}
+
+.checkbox-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	background: transparent;
+	border: 1px solid var(--border-color-high);
+	border-radius: 3px;
+	cursor: pointer;
+	font-size: 12px;
+	user-select: none;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.checkbox-chip:hover {
+	background: var(--background-color-low);
+}
+
+.checkbox-chip input[type="checkbox"] {
+	margin: 0;
+	cursor: pointer;
+}
+
+/* Empty-state placeholder for the member selector (no free partitions). */
+.chip-empty-box {
+	border: 1px dashed var(--border-color-medium);
+	border-radius: 4px;
+	padding: 10px 14px;
+	background: var(--background-color-medium);
+	color: var(--text-color-medium);
+	font-size: 12px;
+	font-style: italic;
+}

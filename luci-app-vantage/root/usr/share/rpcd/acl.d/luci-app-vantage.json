@@ -1,0 +1,45 @@
+{
+	"luci-app-vantage": {
+		"description": "Vantage dashboard: read-only status of the device, uplink, radios and stations (wireless configuration without keys, through luci.vantage wireless)",
+		"read": {
+			"file": {
+				"/proc/stat": [ "read" ]
+			},
+			"ubus": {
+				"file": [ "read" ],
+				"system": [ "board", "info" ],
+				"network.interface": [ "dump" ],
+				"network.device": [ "status" ],
+				"luci-rpc": [ "getHostHints" ],
+				"luci.vantage": [ "wireless" ],
+				"iwinfo": [ "assoclist", "info" ],
+				"hostapd.*": [ "get_clients", "get_status" ],
+				"umdns": [ "hosts" ],
+				"uci": [ "get" ]
+			},
+			"uci": [ "vantage" ]
+		}
+	},
+	"luci-app-vantage-rdns": {
+		"description": "Vantage dashboard: client names from reverse DNS (lets the holder make the device send DNS PTR queries to any DNS server and port it names)",
+		"read": {
+			"ubus": {
+				"network.rrdns": [ "lookup" ]
+			}
+		}
+	},
+	"luci-app-vantage-names": {
+		"description": "Vantage dashboard: name stations (luci.vantage set_alias: validated names in /etc/config/vantage only, at most 512)",
+		"read": {
+			"ubus": {
+				"uci": [ "get" ]
+			},
+			"uci": [ "vantage" ]
+		},
+		"write": {
+			"ubus": {
+				"luci.vantage": [ "set_alias" ]
+			}
+		}
+	}
+}

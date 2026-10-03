@@ -1,0 +1,9 @@
+#!/bin/sh
+# Seed /etc/config/guestwifi on first install only.
+# Never overwrites an existing config → survives upgrades cleanly.
+[ -f /etc/config/guestwifi ] && exit 0
+
+cat > /etc/config/guestwifi << 'CONF'
+# Guest WiFi configuration managed by luci-app-quickactions
+CONF
+exit 0

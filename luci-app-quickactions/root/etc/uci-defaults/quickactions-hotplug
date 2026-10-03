@@ -1,0 +1,16 @@
+#!/bin/sh
+# Seed /etc/config/hotplug if the user has no rules yet.
+# The Hotplug tab in luci-app-quickactions writes to this config.
+[ -f /etc/config/hotplug ] && exit 0
+cat > /etc/config/hotplug << 'CONF'
+# Hotplug rules managed by luci-app-quickactions
+#
+# iface sections - run commands on network interface events.
+# Example:
+#   config iface 'wan_up'
+#       option action 'ifup'
+#       option enabled '1'
+#       option interface 'wan'
+#       list command '/etc/init.d/firewall restart'
+CONF
+exit 0

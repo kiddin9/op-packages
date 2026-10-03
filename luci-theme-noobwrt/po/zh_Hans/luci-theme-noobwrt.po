@@ -1,0 +1,221 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "NoobWrt Theme"
+msgstr "NoobWrt 主题设置"
+
+msgid "NoobWrt Theme Settings"
+msgstr "NoobWrt 主题设置"
+
+msgid "Customize the appearance, wallpaper, background effects, and toolbar panel of the NoobWrt LuCI theme."
+msgstr "自定义 NoobWrt LuCI 主题的外观、壁纸、背景效果和工具栏面板。"
+
+msgid "Appearance"
+msgstr "外观"
+
+msgid "Default Theme Mode"
+msgstr "默认主题模式"
+
+msgid "Theme applied on page load when Automatic mode is disabled. Users can also toggle it manually using the toolbar sun/moon button."
+msgstr "禁用自动模式时页面加载应用的主题模式。用户也可通过工具栏日/月按钮手动切换。"
+
+msgid "Light"
+msgstr "亮色"
+
+msgid "Dark"
+msgstr "暗色"
+
+msgid "Automatic Light / Dark Mode"
+msgstr "自动亮色/暗色模式"
+
+msgid "Automatically switch to Dark mode from 6 PM to 6 AM and Light mode from 6 AM to 6 PM. When enabled, the schedule overrides the manual toolbar toggle."
+msgstr "自动在 18:00 至 06:00 切换为暗色模式，06:00 至 18:00 切换为亮色模式。启用后，定时计划将覆盖工具栏手动切换。"
+
+msgid "Accent Color — Light Mode"
+msgstr "主题色 — 亮色模式"
+
+msgid "Primary accent color used throughout the light theme."
+msgstr "整个亮色主题使用的主要强调色。"
+
+msgid "Accent Color — Dark Mode"
+msgstr "主题色 — 暗色模式"
+
+msgid "Primary accent color used throughout the dark theme."
+msgstr "整个暗色主题使用的主要强调色。"
+
+msgid "Wallpaper"
+msgstr "壁纸"
+
+msgid "Online Wallpaper Source"
+msgstr "在线壁纸来源"
+
+msgid "Automatically fetch a wallpaper from an online source for the login page background. Set to None to use a custom uploaded image or the built-in default."
+msgstr "自动从在线来源获取登录页背景壁纸。设为"无"可使用自定义上传图片或内置默认壁纸。"
+
+msgid "None (use custom / default)"
+msgstr "无（使用自定义/默认）"
+
+msgid "Bing Daily Photo"
+msgstr "必应每日图片"
+
+msgid "Lorem Picsum (Random)"
+msgstr "随机图片（Lorem Picsum）"
+
+msgid "Wikimedia Picture of the Day"
+msgstr "维基媒体每日图片"
+
+msgid "Background Effects"
+msgstr "背景效果"
+
+msgid "Blur Radius — Light Mode"
+msgstr "模糊半径 — 亮色模式"
+
+msgid "Login page background blur radius in pixels for light mode. Default: 10"
+msgstr "亮色模式下登录页背景模糊半径（像素）。默认：10"
+
+msgid "Blur Radius — Dark Mode"
+msgstr "模糊半径 — 暗色模式"
+
+msgid "Login page background blur radius in pixels for dark mode. Default: 10"
+msgstr "暗色模式下登录页背景模糊半径（像素）。默认：10"
+
+msgid "Background Opacity — Light Mode"
+msgstr "背景透明度 — 亮色模式"
+
+msgid "Overlay opacity on the login page background for light mode. Range: 0.0 (transparent) to 1.0 (opaque). Default: 0.8"
+msgstr "亮色模式下登录页背景遮罩透明度。范围：0.0（透明）至 1.0（不透明）。默认：0.8"
+
+msgid "Background Opacity — Dark Mode"
+msgstr "背景透明度 — 暗色模式"
+
+msgid "Overlay opacity on the login page background for dark mode. Default: 0.8"
+msgstr "暗色模式下登录页背景遮罩透明度。默认：0.8"
+
+msgid "Toolbar Panel"
+msgstr "工具栏面板"
+
+msgid "Toolbar Panel Items"
+msgstr "工具栏面板项目"
+
+msgid "Upload a custom image to use as the login page background. Supported formats: JPG, PNG, WebP (max 10 MB)."
+msgstr "上传自定义图片作为登录页背景。支持格式：JPG、PNG、WebP（最大 10 MB）。"
+
+msgid "No custom wallpaper — using default"
+msgstr "未设置自定义壁纸 — 使用默认"
+
+msgid "Upload Wallpaper..."
+msgstr "上传壁纸..."
+
+msgid "Revert to Default"
+msgstr "恢复默认"
+
+msgid "Quick-access links displayed in the right-side toolbar panel on every page. Items are rendered in ascending Order number. Use the Add button below to create new entries."
+msgstr "显示在每个页面右侧工具栏面板中的快捷链接。按排序数字升序显示。点击下方添加按钮创建新条目。"
+
+msgid "Quick-access links displayed in the right-side toolbar panel on every page. "
+msgstr "显示在每个页面右侧工具栏面板中的快捷链接。"
+
+msgid "Enable"
+msgstr "启用"
+
+msgid "Label"
+msgstr "标签"
+
+msgid "URL / Path"
+msgstr "URL / 路径"
+
+msgid "Icon"
+msgstr "图标"
+
+msgid "Home"
+msgstr "主页"
+
+msgid "Signal / Status"
+msgstr "信号 / 状态"
+
+msgid "Cell / Modem"
+msgstr "蜂窝 / 调制解调器"
+
+msgid "SMS"
+msgstr "短信"
+
+msgid "Network / Data Usage"
+msgstr "网络 / 流量"
+
+msgid "NAS / Storage"
+msgstr "NAS / 存储"
+
+msgid "WiFi / Wireless"
+msgstr "WiFi / 无线"
+
+msgid "Firewall"
+msgstr "防火墙"
+
+msgid "Settings / System"
+msgstr "设置 / 系统"
+
+msgid "Terminal"
+msgstr "终端"
+
+msgid "VPN"
+msgstr "VPN"
+
+msgid "Files"
+msgstr "文件"
+
+msgid "Info / Log"
+msgstr "信息 / 日志"
+
+msgid "Order"
+msgstr "排序"
+
+msgid "Lower numbers appear first in the toolbar."
+msgstr "数字越小越靠前显示。"
+
+msgid "About"
+msgstr "关于"
+
+msgid "A clean modern LuCI theme for OpenWrt routers."
+msgstr "一款简洁现代的 OpenWrt LuCI 主题。"
+
+msgid "Developer"
+msgstr "开发者"
+
+msgid "Repository"
+msgstr "代码仓库"
+
+msgid "Contributors"
+msgstr "贡献者"
+
+msgid "View on GitHub"
+msgstr "在 GitHub 上查看"
+
+msgid "License"
+msgstr "许可证"
+
+msgid "Issues / Support"
+msgstr "问题 / 支持"
+
+msgid "Open an issue"
+msgstr "提交 Issue"
+
+msgid "Made with \u2665 for the OpenWrt community"
+msgstr "用 \u2665 为 OpenWrt 社区制作"
+
+msgid "Wallpaper uploaded! Refresh the login page to see it."
+msgstr "壁纸已上传！刷新登录页面即可查看。"
+
+msgid "Failed to save wallpaper."
+msgstr "壁纸保存失败。"
+
+msgid "Upload error: "
+msgstr "上传错误："
+
+msgid "Remove custom wallpaper and revert to default?"
+msgstr "删除自定义壁纸并恢复默认？"
+
+msgid "Reverted to default wallpaper."
+msgstr "已恢复默认壁纸。"
+
+msgid "Could not remove: "
+msgstr "无法删除："

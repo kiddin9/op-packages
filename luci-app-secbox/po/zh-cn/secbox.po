@@ -1,0 +1,1524 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+
+msgid "-- Please choose (optional) --"
+msgstr "-- 请选择（可选） --"
+
+msgid "-- Set Selection --"
+msgstr "-- IP 集选择 --"
+
+msgid "-- default --"
+msgstr "-- 默认 --"
+
+msgid "<IP-Address>"
+msgstr "<IP 地址>"
+
+msgid "<IP-Address><CSV-Separator>"
+msgstr "<IP-Address><CSV-Separator>"
+
+msgid "<IP-Address><Space><Netmask>"
+msgstr "<IP-Address><Space><Netmask>"
+
+msgid "<JSON Lines><IP-Address><JSON Lines>"
+msgstr "<JSON Lines><IP-Address><JSON Lines>"
+
+msgid "<Suricata Syntax>"
+msgstr "<Suricata 语法>"
+
+msgid "AFRINIC - serving Africa and the Indian Ocean region"
+msgstr "AFRINIC - 服务非洲和印度洋区域"
+
+msgid "APNIC - serving the Asia Pacific region"
+msgstr "APNIC - 服务亚太区域"
+
+msgid "ARIN - serving Canada and the United States"
+msgstr "ARIN - 服务加拿大和美国"
+
+msgid "ASN Selection"
+msgstr "ASN 选择"
+
+msgid "ASNs"
+msgstr "平均取样数"
+
+msgid "Active Devices"
+msgstr "活动设备"
+
+msgid "Active Feeds"
+msgstr "活动源"
+
+msgid "Active Uplink"
+msgstr "活跃的上行线路"
+
+msgid "AdGuardHome login error"
+msgstr "AdGuardHome 登录错误"
+
+msgid "Additional trigger delay in seconds before SecBox processing begins."
+msgstr "SecBox 处理开始之前的额外触发延迟（以秒为单位）。"
+
+msgid "Advanced Settings"
+msgstr "高级设置"
+
+msgid "Allow Protocol/Ports"
+msgstr "允许协议/端口"
+
+msgid "Allow VLAN Forwards"
+msgstr "允许 VLAN 转发"
+
+msgid "Allowlist Feed URLs"
+msgstr "白名单源 URL"
+
+msgid "Allowlist Only"
+msgstr "仅白名单"
+
+msgid "Allowlist modifications have been saved, reload SecBox that changes take effect."
+msgstr "允许列表的修改已保存,重新加载 SecBox 以使更改生效。"
+
+msgid "Always allow a protocol (tcp/udp) with certain ports or port ranges in WAN-Input and WAN-Forward chain."
+msgstr "在 WAN-Input 和 Wan-Forward 链中始终允许协议（tcp/udp）特定端口或端口区间。"
+
+msgid "Always allow certain VLAN forwards."
+msgstr "始终允许特定的 VLAN 转发。"
+
+msgid "Always block certain VLAN forwards."
+msgstr "始终拦截特定的 VLAN 转发。"
+
+msgid "Auto Allow Uplink"
+msgstr "自动允许上行线路"
+
+msgid "Auto Allowlist"
+msgstr "自动白名单"
+
+msgid "Auto Block Subnet"
+msgstr "自动拦截子网"
+
+msgid "Auto Blocklist"
+msgstr "自动黑名单"
+
+msgid "Auto Detection"
+msgstr "自动检测"
+
+msgid "Automatically add entire subnets to the blocklist Set based on an additional RDAP request with the suspicious IP."
+msgstr "基于和可疑 IP 地址的额外 RDAP 请求自动添加条目子网到黑名单集。"
+
+msgid "Automatically add resolved domains and suspicious IPs to the local SecBox blocklist."
+msgstr "自动添加已解析域名和可疑 IP 到本地 SecBox 黑名单。"
+
+msgid "Automatically add resolved domains and uplink IPs to the local SecBox allowlist."
+msgstr "自动添加已解析域名和上行线路 IP 到本地 SecBox 白名单。"
+
+msgid "Backup Directory"
+msgstr "备份目录"
+
+msgid "Base Directory"
+msgstr "工作目录"
+
+msgid "Base working directory while SecBox processing."
+msgstr "SecBox 处理时的基础工作目录。"
+
+msgid "Block VLAN Forwards"
+msgstr "拦截 VLAN 转发"
+
+msgid "Block packets with spoofed source IP addresses in all supported chains."
+msgstr "在所有支持的链中拦截伪造源 IP 地址的数据包。"
+
+msgid "Blocklist Feed"
+msgstr "黑名单源"
+
+msgid "Blocklist Set Expiry"
+msgstr "黑名单集过期时间"
+
+msgid "Blocklist modifications have been saved, reload SecBox that changes take effect."
+msgstr "阻止列表的修改已保存, 重新加载 SecBox 以使更改生效。"
+
+msgid "Burst size in packets for the shared NFT log limit."
+msgstr "共享 NFT 日志限制的 Burst 数据包大小。"
+
+msgid "CPU Cores"
+msgstr "CPU 核心数"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Chain"
+msgstr "链"
+
+msgid "Chain Priority"
+msgstr "链优先级"
+
+msgid "Changes on this tab needs a SecBox service reload to take effect."
+msgstr "此标签页上的更改需要重新加载 SecBox 服务方能生效。"
+
+msgid "Changes on this tab needs a SecBox service restart to take effect."
+msgstr "此标签页上进行的更改需要重启 SecBox 服务才能生效。"
+
+msgid "Clear"
+msgstr "清除"
+
+msgid "Collection of IP addresses based on Autonomous System Numbers."
+msgstr "基于 ASN 号码的 IP 地址集。"
+
+msgid "Configuration of the SecBox package to ban incoming and outgoing IPs via named nftables Sets. For further information please check the %s."
+msgstr "配置 SecBox 包通过命名的 nftables 集封禁入站和出站 IP。进一步信息请见 %s。"
+
+msgid "Count"
+msgstr "计数"
+
+msgid "Countries"
+msgstr "国家或地区"
+
+msgid "Country Selection"
+msgstr "国家/地区选择"
+
+msgid "Custom Feed Editor"
+msgstr "自定义源编辑器"
+
+msgid "Deduplicate IP addresses across all active Sets and tidy up the local blocklist."
+msgstr "去除所有活跃集合中的重复 IP 地址并整理本地黑名单。"
+
+msgid "Deduplicate IPs"
+msgstr "IP 去重"
+
+msgid "Description"
+msgstr "描述"
+
+msgid "Detect relevant network devices, interfaces, subnets, protocols and utilities automatically."
+msgstr "自动检测相关的网络设备、接口、子网、协议和工具。"
+
+msgid "Disable"
+msgstr "禁用"
+
+msgid "Don't check SSL server certificates during download."
+msgstr "下载期间不检查 SSL 服务器证书。"
+
+msgid "Download"
+msgstr "下载"
+
+msgid "Download Insecure"
+msgstr "允许非安全下载"
+
+msgid "Download Parameters"
+msgstr "下载参数"
+
+msgid "Download Retries"
+msgstr "下载重试"
+
+msgid "Download Utility"
+msgstr "下载工具"
+
+msgid "Drop packets silently or actively reject Inbound traffic."
+msgstr "静默丢弃数据包或主动拒绝传入流量。"
+
+msgid "E-Mail Notification"
+msgstr "邮件通知"
+
+msgid "E-Mail Profile"
+msgstr "邮箱配置文件"
+
+msgid "E-Mail Receiver Address"
+msgstr "电子邮件收件人地址"
+
+msgid "E-Mail Sender Address"
+msgstr "电子邮件发件人地址"
+
+msgid "E-Mail Settings"
+msgstr "电子邮件设置"
+
+msgid "E-Mail Topic"
+msgstr "电子邮件主题"
+
+msgid "Edit Allowlist"
+msgstr "编辑白名单"
+
+msgid "Edit Blocklist"
+msgstr "编辑黑名单"
+
+msgid "Element Count"
+msgstr "元素数量"
+
+msgid "Elements (max. 50)"
+msgstr "元素（最多 50）"
+
+msgid "Empty field not allowed"
+msgstr "不允许空的字段"
+
+msgid "Enable BCP38"
+msgstr "启用 BCP38"
+
+msgid "Enable GeoIP Map"
+msgstr "启用 GeoIP 地图"
+
+msgid "Enable NFT counters for Set elements and chain rules. Required for the GeoIP Map and packet statistics in the Set Reporting."
+msgstr "对集合元素和链路规则启用 NFT 计数器。对 GeoIP 地图和集合报告中的数据包统计数字是必需的。"
+
+msgid "Enable Remote Logging"
+msgstr "开启远程日志记录"
+
+msgid "Enable a GeoIP Map with suspicious Set elements. This requires external requests to get the map tiles and geolocation data."
+msgstr "启用带可疑集合元素的 GeoIP 地图。这需要外部请求来获取地图磁贴和地理位置数据。"
+
+msgid "Enable the SecBox service."
+msgstr "启用 SecBox 服务。"
+
+msgid "Enable the cgi interface to receive remote logging events."
+msgstr "允许 cgi 接口接收远程日志记录事件。"
+
+msgid "Enable verbose debug logging in case of processing errors."
+msgstr "如遇处理错误启用详细调试记录。"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Enables IPv4 support."
+msgstr "启用 IPv4 支持。"
+
+msgid "Enables IPv6 support."
+msgstr "启用 IPv6 支持。"
+
+msgid "Error Directory"
+msgstr "错误目录"
+
+msgid "Expiry time for auto added blocklist Set members."
+msgstr "自动添加的黑名单集成员的过期时间。"
+
+msgid "External Allowlist Feeds"
+msgstr "外部白名单源"
+
+msgid "External Blocklist Feeds"
+msgstr "外部黑名单源"
+
+msgid "Failed to generate a SecBox report!"
+msgstr "生成 SecBox 报告失败！"
+
+msgid "Feed Complete"
+msgstr "源完毕"
+
+msgid "Feed Flag Reset"
+msgstr "源标记重置"
+
+msgid "Feed Name"
+msgstr "源名称"
+
+msgid "Feed Selection"
+msgstr "源选择"
+
+msgid "Feed/Set Settings"
+msgstr "源/集合设置"
+
+msgid "Fill"
+msgstr "补充/修改"
+
+msgid "Firewall Log"
+msgstr "防火墙日志"
+
+msgid "Flag"
+msgstr "标记"
+
+msgid "Flag not supported"
+msgstr "此标记不受支持"
+
+msgid "General Settings"
+msgstr "常规设置"
+
+msgid "Grant access to LuCI app SecBox"
+msgstr "授予访问 LuCI 应用 SecBox 的权限"
+
+msgid "High Priority"
+msgstr "高优先级"
+
+msgid "Highest Priority"
+msgstr "最高优先级"
+
+msgid "ICMP-Threshold"
+msgstr "ICMP 阈值"
+
+msgid "ICMP-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
+msgstr "ICMP 阈值用于防止 WAN DoS 攻击。要禁用此保护措施,将其设置为 '0'。"
+
+msgid "IP"
+msgstr "IP"
+
+msgid "IP Search"
+msgstr "IP 搜索"
+
+msgid "IP Search..."
+msgstr "IP 搜索…"
+
+msgid "IPv4 Network Interfaces"
+msgstr "IPv4 网络接口"
+
+msgid "IPv4 Support"
+msgstr "IPv4 支持"
+
+msgid "IPv6 Network Interfaces"
+msgstr "IPv6 网络接口"
+
+msgid "IPv6 Support"
+msgstr "IPv6 支持"
+
+msgid "Inbound"
+msgstr "传入"
+
+msgid "Inbound & Outbound"
+msgstr "传入&传出"
+
+msgid "Inbound & Outbound Feed"
+msgstr "传入&传出源"
+
+msgid "Inbound Block Policy"
+msgstr "传入封禁策略"
+
+msgid "Inbound Feed"
+msgstr "传入源"
+
+msgid "Inbound&#160;(packets)"
+msgstr "传入&#160;(数据包)"
+
+msgid "Increase the maximal number of open files, e.g. to handle the amount of temporary split files while loading the Sets."
+msgstr "提升打开文件的最大数目来应对加载集合时的众多临时分割文件。"
+
+msgid "Information"
+msgstr "信息"
+
+msgid "Invalid URL format"
+msgstr "无效 URL 格式"
+
+msgid "Invalid characters"
+msgstr "无效字符"
+
+msgid "Invalid expiry format, e.g. 5m, 2h, 1d or 1h30m"
+msgstr "无效的过期时间格式，如 5m, 2h, 1d 或 1h30m"
+
+msgid "Invalid input values, unable to save modifications."
+msgstr "输入值无效，无法保存更改。"
+
+msgid "LACNIC - serving the Latin American and Caribbean region"
+msgstr "LACNIC - 服务拉丁美洲和加勒比地区"
+
+msgid "Last Run"
+msgstr "最后运行"
+
+msgid "Least Priority"
+msgstr "最低优先级"
+
+msgid "Less Priority"
+msgstr "较低优先级"
+
+msgid "Limit the cpu cores used by SecBox to save RAM, autodetected by default."
+msgstr "限制 SecBox 使用的 cpu 核心数来节省内存，默认自动检测。"
+
+msgid "Limit the uplink autoallow function."
+msgstr "限制上行线路自动允许功能。"
+
+msgid "List of available network interfaces to trigger the SecBox start."
+msgstr "触发 SecBox 启动的可用网络接口列表。"
+
+msgid "List the elements of a specific SecBox-related Set."
+msgstr "列出与某一特定 SecBox 有关的集的元素。"
+
+msgid "Local Feed Settings"
+msgstr "本地源设置"
+
+msgid "Location for parsing the log file, e.g. via syslog-ng, to deactivate the standard parsing via logread."
+msgstr "通过 syslog-ng 解析日志文件来取消通过 logread 的标准解析的位置。"
+
+msgid "Log Burst Limit"
+msgstr "记录 Burst 限制"
+
+msgid "Log Count"
+msgstr "日志数"
+
+msgid "Log Inbound"
+msgstr "记录传入数据"
+
+msgid "Log Limit"
+msgstr "日志限制"
+
+msgid "Log Outbound"
+msgstr "记录传出数据"
+
+msgid "Log Prerouting"
+msgstr "记录预路由"
+
+msgid "Log Rate Limit"
+msgstr "记录速率限制"
+
+msgid "Log Settings"
+msgstr "日志设置"
+
+msgid "Log Terms"
+msgstr "日志项"
+
+msgid "Log suspicious packets in the LAN-Forward chain."
+msgstr "记录局域网转发链中的可疑数据包。"
+
+msgid "Log suspicious packets in the Prerouting chain."
+msgstr "记录预路由链中的可疑数据包。"
+
+msgid "Log suspicious packets in the WAN-Input and WAN-Forward chain."
+msgstr "记录广域网输入和广域网转发链中的可疑数据包。"
+
+msgid "Logfile Location"
+msgstr "日志文件位置"
+
+msgid "LuCI failed login"
+msgstr "LuCI 登录失败"
+
+msgid "Map Reset"
+msgstr "地图重置"
+
+msgid "Map..."
+msgstr "地图…"
+
+msgid "Max Open Files"
+msgstr "打开文件的最大数目"
+
+msgid "NFT Information"
+msgstr "NFT 信息"
+
+msgid "NFT Log Level"
+msgstr "NFT 日志级别"
+
+msgid "Network Devices"
+msgstr "网络设备"
+
+msgid "Network error"
+msgstr "网络错误"
+
+msgid "Nice Level"
+msgstr "进程优先级"
+
+msgid "No %s related logs yet!"
+msgstr "还没有 %s 相关的日志！"
+
+msgid "No GeoIP Map data!"
+msgstr "没有 GeoIP 地图数据！"
+
+msgid "No SecBox config found!"
+msgstr "未找到 SecBox 配置！"
+
+msgid "Normal Priority"
+msgstr "正常优先级"
+
+msgid "Number of Set load attempts in case of an error."
+msgstr "如果发生错误，集合加载尝试的数目。"
+
+msgid "Number of download attempts in case of an error (not supported by uclient-fetch)."
+msgstr "下载出错时的重试次数（uclient-fetch 不支持）。"
+
+msgid "Number of failed login attempts of the same IP in the log before blocking."
+msgstr "进行拦截前允许同一 IP 的失败登录尝试在日志中出现几次。"
+
+msgid "Opt out specific feeds from the deduplication process."
+msgstr "将特定源排除在去重过程之外。"
+
+msgid "Outbound"
+msgstr "传出"
+
+msgid "Outbound Feed"
+msgstr "传出源"
+
+msgid "Outbound&#160;(packets)"
+msgstr "传出&#160;(数据包)"
+
+msgid "Override the default feed configuration and apply the feed to the inbound and outbound chain."
+msgstr "覆盖默认源配置并将源应用到传入和传出链。"
+
+msgid "Override the default feed configuration and apply the feed to the inbound chain only."
+msgstr "覆盖默认源配置并将源仅应用到传入链。"
+
+msgid "Override the default feed configuration and apply the feed to the outbound chain only."
+msgstr "覆盖默认源配置并将源仅应用到传出链。"
+
+msgid "Override the default feed configuration and remove existing port/protocol limitations."
+msgstr "覆盖默认源榜删除现有的端口/协议限制。"
+
+msgid "Override the pre-configured download options for the selected download utility. The output flag, e.g. '-o' for curl or '-O' for wget, must be the last parameter."
+msgstr "覆盖所选下载工具的预配置下载选项。输出标记，如 curl 的 '-o' 或 wget 的 '-O'，必须是最后一个参数。"
+
+msgid "Overview"
+msgstr "概况"
+
+msgid "Parse only the last stated number of log entries for suspicious events. To disable the log monitor at all set it to '0'."
+msgstr "仅解析可疑事件日志条目最后声明的数量。如需完全禁用日志监控，请将其设为 '0'。"
+
+msgid "Port&#160;/&#160;Protocol"
+msgstr "端口&#160;/&#160;协议"
+
+msgid "Processing Log"
+msgstr "处理日志"
+
+msgid "Profile used by 'msmtp' for SecBox notification E-Mails."
+msgstr "“msmtp”所用的 SecBox 电子邮件通知配置。"
+
+msgid "RIPE - serving Europe, Middle East and Central Asia"
+msgstr "RIPE - 服务欧洲、中东和中亚"
+
+msgid "Rate (per second) for the shared NFT log limit, applied globally across all logged rules. Set to '0' to disable rate limiting entirely, e.g. when using ulogd or other userspace log handlers."
+msgstr "共享的 NFT 日志限制的速率（每秒），全局应用于所有日志记录规则。当使用 ulogd 或其他用户空间日志处理器时设为 \"0\" 完全禁用速率限制。"
+
+msgid "Receive E-Mail notifications with every SecBox run."
+msgstr "接收每次 SecBox 运行的电子邮件通知。"
+
+msgid "Receiver address for SecBox notification E-Mails, this information is required to enable E-Mail functionality."
+msgstr "SecBox 通知电子邮件的接收地址，要开启电子邮件功能必须填写此信息。"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Regional Internet Registry"
+msgstr "区域互联网注册系统"
+
+msgid "Regular expressions to detect suspicious IPs in the system log. Uses the last IP per line; prefix a term with 'first:' for source-first formats, e.g. nginx."
+msgstr "在系统日志中检测可疑 IP 的正则表达式。每行使用最后一个 IP 地址；对于源优先格式，如 nginx，在术语前加上“first:” 前缀。"
+
+msgid "Remote Token"
+msgstr "远端令牌"
+
+msgid "Remote logging Event"
+msgstr "远程日志记录事件"
+
+msgid "Report Directory"
+msgstr "抓包文件目录"
+
+msgid "Reporting Counters"
+msgstr "报告计数"
+
+msgid "Restrict the internet access from/to a small number of secure IPs."
+msgstr "限制来自/对少量安全 IP 的互联网访问。"
+
+msgid "Result"
+msgstr "结果"
+
+msgid "Rule"
+msgstr "规则"
+
+msgid "Run Flags"
+msgstr "运行标记"
+
+msgid "Run Information"
+msgstr "运行信息"
+
+msgid "SYN-Threshold"
+msgstr "SYN 阈值"
+
+msgid "SYN-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
+msgstr "SYN 阈值用于防止 WAN DoS 攻击。要禁用此保护措施将其设置为 '0'。"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Save & Reload"
+msgstr "保存 & 重新加载"
+
+msgid "Save & Restart"
+msgstr "保存并重启"
+
+msgid "Search IP"
+msgstr "搜索 IP"
+
+msgid "Search is running, please wait..."
+msgstr "搜索运行中，请等待…"
+
+msgid "Search the SecBox-related Sets for a specific IP."
+msgstr "在 SecBox 相关的集中搜索一个特定的 IP。"
+
+msgid "Search timed out."
+msgstr "搜索超时。"
+
+msgid "Select one of the pre-configured download utilities."
+msgstr "选择一个预先配置的下载工具。"
+
+msgid "Select the WAN network device(s)."
+msgstr "选择广域网网络设备。"
+
+msgid "Select the logical WAN IPv4 network interface(s)."
+msgstr "选择逻辑广域网 IPv4 网络接口。"
+
+msgid "Select the logical WAN IPv6 network interface(s)."
+msgstr "选择逻辑广域网 IPv6 网络接口。"
+
+msgid "Sender address for SecBox notification E-Mails."
+msgstr "SecBox 通知邮件的发送地址。"
+
+msgid "Set"
+msgstr "设置"
+
+msgid "Set Content"
+msgstr "集合内容"
+
+msgid "Set Content..."
+msgstr "集合内容…"
+
+msgid "Set Load Retries"
+msgstr "集合加载重试"
+
+msgid "Set Policy"
+msgstr "设置策略"
+
+msgid "Set Reporting"
+msgstr "设置报告"
+
+msgid "Set Split Size"
+msgstr "设置分割尺寸"
+
+msgid "Set details"
+msgstr "集详情"
+
+msgid "Set the NFT chain priority within the SecBox table, lower values means higher priority."
+msgstr "设置 SecBox 表格中的 NFT 链优先级，较低的值表示较高的优先级。"
+
+msgid "Set the NFT policy for SecBox-related Sets."
+msgstr "设置 SecBox 相关集合的 NFT 策略。"
+
+msgid "Set the syslog level for NFT logging."
+msgstr "设定 NFT 日志记录的 syslog 级别。"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Show Content"
+msgstr "显示内容"
+
+msgid "Show only Set elements with hits"
+msgstr "只显示有命中的集合元素"
+
+msgid "Split ASN Set"
+msgstr "分割 ASN 集"
+
+msgid "Split Country Set"
+msgstr "分割国家/地区集"
+
+msgid "Split external Set loading after every n members to save RAM, disabled by default."
+msgstr "每 n 名成员后分割外部集合加载来节省内存，默认禁用。"
+
+msgid "Startup Trigger Interface"
+msgstr "启动触发接口"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Subnet"
+msgstr "子网"
+
+msgid "Summary of countries based on the Regional Internet Registry (RIR)."
+msgstr "基于区域互联网注册机构（RIR）的地区概述。"
+
+msgid "System Info"
+msgstr "系统信息"
+
+msgid "Table/Chain Settings"
+msgstr "表/链设置"
+
+msgid "Target directory for SecBox-related error files."
+msgstr "SecBox 相关错误文件的目标目录。"
+
+msgid "Target directory for SecBox-related report files."
+msgstr "SecBox 相关报告文件的目标目录。"
+
+msgid "Target directory for compressed feed backups."
+msgstr "压缩的源备份文件的目标目录。"
+
+msgid "The allowlist is too big, unable to save modifications."
+msgstr "白名单太大，无法保存修改。"
+
+msgid "The blocklist is too big, unable to save modifications."
+msgstr "黑名单太大，无法保存更改。"
+
+msgid "The selected ASNs are stored in separate Sets."
+msgstr "所选的 ASN 被存储在不同的集合中。"
+
+msgid "The selected Countries are stored in separate Sets."
+msgstr "所选国家/地区被存储在不同的集合中。"
+
+msgid "The selected priority will be used for SecBox background processing."
+msgstr "所选的优先级将用于 SecBox 后台处理。"
+
+msgid "The syslog output, pre-filtered for messages related to: %s"
+msgstr "与 %s 相关的系统日志"
+
+msgid "This is the local SecBox allowlist that will permit certain MAC-, IP-addresses or domain names.<br /> <em><b>Please note:</b></em> add only exactly one MAC/IPv4/IPv6 address or domain name per line. Ranges in CIDR notation and MAC/IP-bindings are allowed."
+msgstr "这是本地 SecBox 白名单，会允许特定的 MAC、IP 地址或域名。<br /> <em><b>请注意：</b></em> 每行只能添加一个 MAC/IPv4/IPv6 地址或域名。允许 CIDR 格式的 IP 范围和 MAC/IP 绑定。"
+
+msgid "This is the local SecBox blocklist that will prevent certain MAC-, IP-addresses or domain names.<br /> <em><b>Please note:</b></em> add only exactly one MAC/IPv4/IPv6 address or domain name per line. Ranges in CIDR notation and MAC/IP-bindings are allowed."
+msgstr "这是本地 SecBox 黑名单，会拦截特定的 MAC、IP 地址或域名。<br /> <em><b>请注意：</b></em> 每行只能添加一个 MAC/IPv4/IPv6 地址或域名。允许 CIDR 格式的 IP 范围和 MAC/IP 绑定。"
+
+msgid "This report shows the latest NFT Set statistics, press the 'Refresh' button to get a new one. You can also display the specific content of Sets, search for suspicious IPs and finally, these IPs can also be displayed on a map."
+msgstr "此报告显示最新的 NFT 集合统计数字，请按下“刷新”按钮来获取新的报告。你也可以展示集合的特定内容、搜索可疑 IP；也可以在地图上展示这些 IP。"
+
+msgid "Timestamp"
+msgstr "时间戳"
+
+msgid "To enable email notifications, set up the 'msmtp' package and specify a valid E-Mail receiver address."
+msgstr "要启用电子邮件通知，设置 'msmtp' 包并指定有效的电子邮件接收者地址。"
+
+msgid "Token to communicate with the cgi interface."
+msgstr "和 cgi 接口通信的令牌。"
+
+msgid "Topic for SecBox notification E-Mails."
+msgstr "SecBox 通知邮件的主题。"
+
+msgid "Trigger Delay"
+msgstr "触发延时"
+
+msgid "UDP-Threshold"
+msgstr "UDP 阈值"
+
+msgid "UDP-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
+msgstr "UDP 阈值用于防止 WAN DoS 攻击。要禁用此保护措施将其设置为 '0'。"
+
+msgid "URLv4"
+msgstr "URLv4"
+
+msgid "URLv6"
+msgstr "URLv6"
+
+msgid "Unable to parse the SecBox runtime information!"
+msgstr "无法解析 SecBox 运行时信息！"
+
+msgid "Unable to parse the countries file!"
+msgstr "无法解析国家文件!"
+
+msgid "Unable to parse the custom feed file!"
+msgstr "无法解析自定义源文件！"
+
+msgid "Unable to parse the default feed file!"
+msgstr "无法解析默认源文件！"
+
+msgid "Unable to parse the ruleset file!"
+msgstr "无法解析规则集文件！"
+
+msgid "Unable to save modifications: %s"
+msgstr "无法保存更改：%s"
+
+msgid "Upload"
+msgstr "上传"
+
+msgid "Upload of the custom feed file failed."
+msgstr "上传自定义源文件失败。"
+
+msgid "Verbose Debug Logging"
+msgstr "详细的调试记录"
+
+msgid "With this editor you can upload your local custom feed file or fill up an initial one (a 1:1 copy of the version shipped with the package). The file is located at '/etc/secbox/secbox.custom.feeds'. Then you can edit this file, delete entries, add new ones or make a local backup. To go back to the maintainers version just clear the custom feed file."
+msgstr "使用此编辑器您可以上传本地自定义的源文件或填充一个初始文件(与软件包中提供的版本一模一样)。该文件位于 '/etc/secbox/secbox.custom.feeds'。然后，您可以编辑此文件删除条目添加新的条目或进行本地备份。要恢复到维护者版本只需清除自定义源文件即可。"
+
+msgid "alert"
+msgstr "报警"
+
+msgid "asterisk invalid account"
+msgstr "星号无效账号"
+
+msgid "auto-added IPs to allowlist"
+msgstr "自动将 IP 添加到了白名单中"
+
+msgid "auto-added IPs to blocklist"
+msgstr "自动将 IP 添加到了黑名单中"
+
+msgid "SecBox"
+msgstr "网络安全"
+
+msgid "blocked bcp38 packets"
+msgstr "拦截 bcp38 数据包"
+
+msgid "blocked icmp-flood packets"
+msgstr "拦截了 icmp-flood 包"
+
+msgid "blocked invalid ct packets"
+msgstr "拦截了无效的 ct 包"
+
+msgid "blocked invalid tcp packets"
+msgstr "拦截了无效的 tcp 包"
+
+msgid "blocked syn-flood packets"
+msgstr "拦截了 syn-flood 包"
+
+msgid "blocked udp-flood packets"
+msgstr "拦截了 udp-flood 包"
+
+msgid "crit"
+msgstr "关键项"
+
+msgid "debug"
+msgstr "调试"
+
+msgid "drop"
+msgstr "丢弃"
+
+msgid "dropbear failed login"
+msgstr "dropbear 登录失败"
+
+msgid "emerg"
+msgstr "紧急项"
+
+msgid "err"
+msgstr "错误项"
+
+msgid "info"
+msgstr "信息"
+
+msgid "local allowlist"
+msgstr "本地白名单"
+
+msgid "local blocklist"
+msgstr "本地黑名单"
+
+msgid "memory"
+msgstr "内存"
+
+msgid "notice"
+msgstr "通知"
+
+msgid "online documentation"
+msgstr "在线文档"
+
+msgid "openvpn TLS error"
+msgstr "openvpn TLS 错误"
+
+msgid "performance"
+msgstr "性能"
+
+msgid "reject"
+msgstr "拒绝"
+
+msgid "sshd closed connection"
+msgstr "sshd 关闭了连接"
+
+msgid "sshd failed login"
+msgstr "sshd 登录失败"
+
+msgid "warn"
+msgstr "警告"
+
+msgid "The allowlist is too big, raw editor mode enforced."
+msgstr "白名单过大，已强制使用纯文本编辑器模式。"
+
+msgid "System rule"
+msgstr "系统规则"
+
+msgid "System Auto-Protected Rules"
+msgstr "系统自动保护规则"
+
+msgid "rules"
+msgstr "项规则"
+
+msgid "Auto detected by SecBox / protected"
+msgstr "由 SecBox 自动检测 / 受保护"
+
+msgid "Delete this custom rule"
+msgstr "删除此自定义规则"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Address / Domain / Network"
+msgstr "地址 / 域名 / 网段"
+
+msgid "Comment"
+msgstr "注释"
+
+msgid "Action"
+msgstr "操作"
+
+msgid "No custom allowlist entries yet. Add one above."
+msgstr "暂无自定义白名单条目，请在上方添加。"
+
+msgid "User Custom Rules"
+msgstr "用户自定义规则"
+
+msgid "custom rules"
+msgstr "项自定义规则"
+
+msgid "Switch to Raw Text Editor"
+msgstr "切换到纯文本编辑器"
+
+msgid "e.g. 192.168.1.100, 10.0.0.0/24, or example.com"
+msgstr "例如 192.168.1.100, 10.0.0.0/24 或 example.com"
+
+msgid "Optional comment (e.g. Office NAS)"
+msgstr "可选注释（例如：办公室 NAS）"
+
+msgid "Please specify an IP, CIDR, Domain, or MAC address."
+msgstr "请指定有效的 IP、CIDR、域名或 MAC 地址。"
+
+msgid "Invalid format: \"%s\" is not a valid IPv4, IPv6, CIDR, Domain or MAC."
+msgstr "格式无效：\"%s\" 不是合法的 IPv4、IPv6、CIDR、域名或 MAC 地址。"
+
+msgid "Added custom rule \"%s\"."
+msgstr "已添加自定义规则 \"%s\"。"
+
+msgid "Add User Custom Rule"
+msgstr "添加用户自定义规则"
+
+msgid "Address or Domain"
+msgstr "地址或域名"
+
+msgid "Comment / Note"
+msgstr "注释 / 备注"
+
+msgid "+ Add Rule"
+msgstr "+ 添加规则"
+
+msgid "Raw Text Editor"
+msgstr "纯文本编辑器"
+
+msgid "Switch to Dual Table View"
+msgstr "切换到双表格视图"
+
+msgid "One entry per line. Supports IPv4, IPv6, CIDR, MAC, Domain, and comments starting with \"#\"."
+msgstr "每行一条记录。支持 IPv4、IPv6、CIDR、MAC、域名以及以 \"#\" 开头的注释。"
+
+msgid "SecBox Allowlist"
+msgstr "网络安全白名单"
+
+msgid "Manage local trusted devices, subnets and domain names that will never be blocked by SecBox."
+msgstr "管理受信任的本地设备、子网及域名，这些条目绝不会被 SecBox 拦截。"
+
+msgid "Reloading SecBox service..."
+msgstr "正在重载 SecBox 服务..."
+
+msgid "Allowlist saved and SecBox service reloaded successfully!"
+msgstr "白名单已保存，SecBox 服务重载成功！"
+
+msgid "Saved allowlist, but failed to reload SecBox: %s"
+msgstr "已保存白名单，但重载 SecBox 失败：%s"
+
+msgid "Allowlist modifications have been saved."
+msgstr "白名单修改已保存。"
+
+msgid "The blocklist is too big, raw editor mode enforced."
+msgstr "黑名单过大，已强制使用纯文本编辑器模式。"
+
+msgid "Delete and unblock this rule"
+msgstr "删除并解封此规则"
+
+msgid "Blocked Address / Domain / Network"
+msgstr "拦截地址 / 域名 / 网段"
+
+msgid "Comment / Source"
+msgstr "注释 / 来源"
+
+msgid "No blocked entries currently. Add one above."
+msgstr "当前无黑名单拦截条目，请在上方添加。"
+
+msgid "Blocked Entries"
+msgstr "黑名单拦截条目"
+
+msgid "active rules"
+msgstr "项有效规则"
+
+msgid "e.g. 198.51.100.1, 203.0.113.0/24, or malicious-site.com"
+msgstr "例如 198.51.100.1, 203.0.113.0/24 或 malicious-site.com"
+
+msgid "Optional comment (e.g. Malicious Bot)"
+msgstr "可选注释（例如：恶意爬虫）"
+
+msgid "Added blocklist entry \"%s\"."
+msgstr "已添加黑名单条目 \"%s\"。"
+
+msgid "Quick Add Blocklist Rule"
+msgstr "快速添加黑名单规则"
+
+msgid "Switch to Table View"
+msgstr "切换到表格视图"
+
+msgid "SecBox Blocklist"
+msgstr "网络安全黑名单"
+
+msgid "Manage local blocked IP addresses, CIDR ranges, MAC addresses or domain names."
+msgstr "管理本地拉黑的 IP 地址、CIDR 范围、MAC 地址或域名。"
+
+msgid "Blocklist saved and SecBox service reloaded successfully!"
+msgstr "黑名单已保存，SecBox 服务重载成功！"
+
+msgid "Saved blocklist, but failed to reload SecBox: %s"
+msgstr "已保存黑名单，但重载 SecBox 失败：%s"
+
+msgid "Blocklist modifications have been saved."
+msgstr "黑名单修改已保存。"
+
+msgid "Executing action: %s..."
+msgstr "正在执行操作：%s..."
+
+msgid "SecBox service action \"%s\" executed successfully."
+msgstr "SecBox 服务操作 \"%s\" 执行成功。"
+
+msgid "Failed to execute action \"%s\": %s"
+msgstr "执行操作 \"%s\" 失败：%s"
+
+msgid "Enabling and starting SecBox service..."
+msgstr "正在启用并启动 SecBox 服务..."
+
+msgid "Stopping and disabling SecBox service..."
+msgstr "正在停止并禁用 SecBox 服务..."
+
+msgid "SecBox service enabled and started."
+msgstr "SecBox 服务已启用并成功启动。"
+
+msgid "SecBox service stopped and disabled."
+msgstr "SecBox 服务已停止并成功禁用。"
+
+msgid "Failed to update service status: %s"
+msgstr "更新服务状态失败：%s"
+
+msgid "Reload Service"
+msgstr "重载服务"
+
+msgid "Restart Service"
+msgstr "重启服务"
+
+msgid "Stop & Disable Service"
+msgstr "停止并禁用服务"
+
+msgid "Start & Enable Service"
+msgstr "启动并启用服务"
+
+msgid "SecBox Overview"
+msgstr "网络安全概况"
+
+msgid "Real-time runtime status, active sets and blocking statistics for the SecBox service."
+msgstr "SecBox 服务的实时运行状态、活动 IP 集及拦截统计。"
+
+msgid "Start Service"
+msgstr "启动服务"
+
+msgid "Interfaces"
+msgstr "接口信息"
+
+msgid "wan-dev"
+msgstr "WAN 设备"
+
+msgid "wan-if"
+msgstr "WAN 接口"
+
+msgid "vlan-allow"
+msgstr "放行 VLAN"
+
+msgid "vlan-block"
+msgstr "拦截 VLAN"
+
+msgid "uplink IPv4"
+msgstr "上行 IPv4"
+
+msgid "uplink IPv6"
+msgstr "上行 IPv6"
+
+msgid "Please enter or search an IP first."
+msgstr "请先输入或搜索 IP 地址。"
+
+msgid "IP \"%s\" is already in %s."
+msgstr "IP \"%s\" 已存在于 %s 中。"
+
+msgid "Successfully added \"%s\" to %s!"
+msgstr "成功将 \"%s\" 添加到 %s！"
+
+msgid "Failed to update list: %s"
+msgstr "更新列表失败：%s"
+
+msgid "IP Search & Quick Action"
+msgstr "IP 搜索与快速操作"
+
+msgid "Search the SecBox-related Sets for a specific IP and take quick actions."
+msgstr "在 SecBox 关联集合中检索指定 IP 并执行快捷操作。"
+
+msgid "Allowlist"
+msgstr "白名单"
+
+msgid "+ Add to Allowlist"
+msgstr "+ 加入白名单"
+
+msgid "Blocklist"
+msgstr "黑名单"
+
+msgid "+ Add to Blocklist"
+msgstr "+ 加入黑名单"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "packet counters disabled"
+msgstr "数据包计数器已禁用"
+
+msgid "SecBox Set Reporting"
+msgstr "网络安全集合报表"
+
+msgid "Sets"
+msgstr "IP 集合"
+
+msgid "Top Sets"
+msgstr "命中最多集合"
+
+msgid "elements / packets"
+msgstr "条目 / 数据包"
+
+msgid "no hits yet"
+msgstr "暂无命中"
+
+msgid "Worst Sets"
+msgstr "拦截最多集合"
+
+msgid "Blocked Packets"
+msgstr "已拦截数据包"
+
+msgid "syn-flood"
+msgstr "SYN 洪水"
+
+msgid "udp-flood"
+msgstr "UDP 洪水"
+
+msgid "icmp-flood"
+msgstr "ICMP 洪水"
+
+msgid "invalid ct"
+msgstr "无效连接"
+
+msgid "invalid tcp"
+msgstr "无效 TCP"
+
+msgid "bcp38"
+msgstr "BCP38 过滤"
+
+msgid "Auto-added IPs"
+msgstr "自动添加的 IP"
+
+msgid "allowlist"
+msgstr "白名单"
+
+msgid "blocklist"
+msgstr "黑名单"
+
+msgid "Applying configuration & reloading SecBox..."
+msgstr "正在应用配置并重载 SecBox..."
+
+msgid "SecBox configuration saved and service %sed successfully."
+msgstr "SecBox 配置已保存，服务已成功 %s。"
+
+msgid "Failed to %s SecBox: %s"
+msgstr "%s SecBox 失败：%s"
+
+msgid "SecBox Settings"
+msgstr "网络安全设置"
+
+msgid "Changes on this tab need a SecBox service restart to take effect."
+msgstr "此标签页上的更改需要重启 SecBox 服务后生效。"
+
+msgid "Detect relevant network devices, interfaces, subnets, protocols and utilities automatically."
+msgstr "自动检测相关的网络设备、接口、子网、协议和实用工具。"
+
+msgid "Override the pre-configured download options for the selected download utility. The output flag, e.g. '-o' for curl or '-O' for wget, must be the last parameter."
+msgstr "覆盖所选下载工具的预配置下载参数。输出参数（如 curl 的 '-o' 或 wget 的 '-O'）必须作为最后一个参数。"
+
+msgid "Number of download attempts in case of an error (not supported by uclient-fetch)."
+msgstr "下载出错时的重试次数（uclient-fetch 不支持）。"
+
+msgid "Enable NFT counters for Set elements and chain rules. Required for the GeoIP Map and packet statistics in the Set Reporting."
+msgstr "为集合条目和链规则启用 NFT 计数器。GeoIP 地图和集合报表统计需要此选项。"
+
+msgid "Enable a GeoIP Map with suspicious Set elements. This requires external requests to get the map tiles and geolocation data."
+msgstr "启用可疑集合条目的 GeoIP 地图。这需要向外部发起请求以获取地图瓦片和地理位置数据。"
+
+msgid "Increase the maximal number of open files, e.g. to handle the amount of temporary split files while loading the Sets."
+msgstr "增加最大打开文件数限制，例如在加载集合时处理大量临时分割文件。"
+
+msgid "Split external Set loading after every n members to save RAM, disabled by default."
+msgstr "每隔 n 个成员分割外部集合加载以节省内存，默认禁用。"
+
+msgid "Deduplicate IP addresses across all active Sets and tidy up the local blocklist."
+msgstr "在所有活动集合中对 IP 地址进行去重并整理本地黑名单。"
+
+msgid "Set the NFT chain priority within the SecBox table, lower values means higher priority."
+msgstr "设置 SecBox 表内 NFT 链的优先级，数值越低优先级越高。"
+
+msgid "Always allow a protocol (tcp/udp) with certain ports or port ranges in WAN-Input and WAN-Forward chain."
+msgstr "在 WAN-Input 和 WAN-Forward 链中始终放行带有特定端口或端口范围的协议 (tcp/udp)。"
+
+msgid "ICMP-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
+msgstr "每秒 ICMP 阈值包数，以防止 WAN-DoS 攻击。设为 '0' 可禁用此安全防护。"
+
+msgid "SYN-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
+msgstr "每秒 SYN 阈值包数，以防止 WAN-DoS 攻击。设为 '0' 可禁用此安全防护。"
+
+msgid "UDP-Threshold in packets per second to prevent WAN-DoS attacks. To disable this safeguard set it to '0'."
+msgstr "每秒 UDP 阈值包数，以防止 WAN-DoS 攻击。设为 '0' 可禁用此安全防护。"
+
+msgid "Override the default feed configuration and apply the feed to the inbound chain only."
+msgstr "覆盖默认源配置，仅将该源应用于入站链（Inbound）。"
+
+msgid "Override the default feed configuration and apply the feed to the outbound chain only."
+msgstr "覆盖默认源配置，仅将该源应用于出站链（Outbound）。"
+
+msgid "Override the default feed configuration and apply the feed to the inbound and outbound chain."
+msgstr "覆盖默认源配置，将该源同时应用于入站与出站链。"
+
+msgid "Override the default feed configuration and remove existing port/protocol limitations."
+msgstr "覆盖默认源配置并移除现有的端口/协议限制。"
+
+msgid "Location for parsing the log file, e.g. via syslog-ng, to deactivate the standard parsing via logread."
+msgstr "解析日志文件的路径（例如通过 syslog-ng），以停用通过 logread 的标准解析。"
+
+msgid "Parse only the last stated number of log entries for suspicious events. To disable the log monitor at all set it to '0'."
+msgstr "仅解析最后指定数量的日志条目以查找可疑事件。设为 '0' 可完全禁用日志监视器。"
+
+msgid "Number of failed login attempts of the same IP in the log before blocking."
+msgstr "在日志中同一 IP 登录失败多少次后触发拉黑拦截。"
+
+msgid "Rate (per second) for the shared NFT log limit, applied globally across all logged rules. Set to '0' to disable rate limiting entirely, e.g. when using ulogd or other userspace log handlers."
+msgstr "全局 NFT 日志记录速率限制（每秒条数）。设为 '0' 可完全禁用速率限制（例如使用 ulogd 时）。"
+
+msgid "Regular expressions to detect suspicious IPs in the system log. Uses the last IP per line; prefix a term with 'first:' for source-first formats, e.g. nginx."
+msgstr "用于在系统日志中检测可疑 IP 的正则表达式。默认使用每行的最后一个 IP；前缀加 'first:' 可匹配源优先格式（如 nginx）。"
+
+msgid "To enable email notifications, set up the 'msmtp' package and specify a valid E-Mail receiver address."
+msgstr "要启用邮件通知，请配置 'msmtp' 软件包并指定有效的收件人邮箱地址。"
+
+msgid "Receiver address for SecBox notification E-Mails, this information is required to enable E-Mail functionality."
+msgstr "接收 SecBox 告警邮件的收件人地址，必须填写此项才能启用邮件功能。"
+
+msgid "Automatically add resolved domains and uplink IPs to the local SecBox allowlist."
+msgstr "自动将解析出的域名及上行 IP 添加到本地 SecBox 白名单。"
+
+msgid "Automatically add resolved domains and suspicious IPs to the local SecBox blocklist."
+msgstr "自动将解析出的域名及可疑 IP 添加到本地 SecBox 黑名单。"
+
+msgid "Automatically add entire subnets to the blocklist Set based on an additional RDAP request with the suspicious IP."
+msgstr "基于可疑 IP 的 RDAP 查询结果，自动将整个所属子网添加到黑名单集合中。"
+
+msgid "Stop Service"
+msgstr "停止服务"
+
+msgid "Table"
+msgstr "表"
+
+msgid "Priority"
+msgstr "优先级"
+
+msgid "Policy"
+msgstr "策略"
+
+msgid "IPv4 Protocol"
+msgstr "IPv4 协议"
+
+msgid "IPv6 Protocol"
+msgstr "IPv6 协议"
+
+msgid "ICMP Limit"
+msgstr "ICMP 限制"
+
+msgid "SYN Limit"
+msgstr "SYN 限制"
+
+msgid "UDP Limit"
+msgstr "UDP 限制"
+
+msgid "Log Service"
+msgstr "日志服务"
+
+msgid "Download Tool"
+msgstr "下载工具"
+
+msgid "WAN Device"
+msgstr "WAN 设备"
+
+msgid "WAN Interface"
+msgstr "WAN 接口"
+
+msgid "Allowed VLAN"
+msgstr "放行 VLAN"
+
+msgid "Blocked VLAN"
+msgstr "拦截 VLAN"
+
+msgid "Uplink IPv4"
+msgstr "上行 IPv4"
+
+msgid "Uplink IPv6"
+msgstr "上行 IPv6"
+
+msgid "Running (active)"
+msgstr "运行中 (active)"
+
+msgid "Processing..."
+msgstr "处理中..."
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Error"
+msgstr "运行异常"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Not Running"
+msgstr "未运行"
+
+msgid "Rule Elements"
+msgstr "规则条目数"
+
+msgid "Configuration of the SecBox package to ban incoming and outgoing IPs via named nftables Sets. For further information please check the %s."
+msgstr "SecBox 软件包配置，通过指定的 nftables 集合拦截入站和出站 IP。更多详细信息请参阅 %s。"
+
+
+msgid "Live Log Console"
+msgstr "实时日志控制台"
+
+msgid "Auto-scroll: ON"
+msgstr "自动滚动: 开"
+
+msgid "Auto-scroll: OFF"
+msgstr "自动滚动: 关"
+
+msgid "System Log Output"
+msgstr "系统日志输出"
+
+msgid "Live Log Output"
+msgstr "实时日志输出"
+
+msgid "No related logs"
+msgstr "没有相关日志"
+
+msgid "Log Output"
+msgstr "日志输出"
+
+msgid "Blocklist Entries"
+msgstr "黑名单条目"
+
+msgid "Quick Add Block Rule"
+msgstr "添加黑名单规则"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "NFT & Interface Information"
+msgstr "NFT 与网络接口"
+
+msgid "Active Feeds & Flags"
+msgstr "活动源与运行标志"
+
+msgid "Runtime Information"
+msgstr "运行详细参数"
+
+msgid "Set Overview"
+msgstr "集合概况"
+
+msgid "Blocked Packets & Auto-added IPs"
+msgstr "攻击拦截与自动添加"
+
+msgid "Top Sets (Most Hits)"
+msgstr "命中最多集合"
+
+msgid "Auto-added to Allowlist"
+msgstr "自动添加至白名单"
+
+msgid "Auto-added to Blocklist"
+msgstr "自动添加至黑名单"
+
+msgid "Hits"
+msgstr "命中数"
+
+msgid "Top Sets (Most Hits)"
+msgstr "命中最多集合"
+
+msgid "Worst Sets (Least Hits)"
+msgstr "最少命中集合"
+
+msgid "Elements"
+msgstr "规则条目"
+
+msgid "No custom allowlist entries yet. Add one below."
+msgstr "暂无自定义白名单条目，请在下方添加。"
+
+msgid "Please specify a valid IP, CIDR, Domain or MAC address."
+msgstr "请输入有效的 IP、CIDR 网段、域名或 MAC 地址。"
+
+msgid "Format invalid: \"%s\" is not a valid address without spaces."
+msgstr "格式无效：“%s” 不是有效的无空格地址。"
+
+msgid "Add Rule"
+msgstr "添加规则"
+
+msgid "One record per line. Supports IPv4, IPv6, CIDR, MAC, Domain and comments starting with \"#\"."
+msgstr "每行一条记录。支持 IPv4、IPv6、CIDR 网段、MAC、域名以及以 “#” 开头的注释。"
+
+msgid "Manage trusted local devices, subnets and domains that will never be blocked by SecBox."
+msgstr "管理受信任的本地设备、子网及域名，这些目标将永不被网络安全服务拦截。"
+
+msgid "Allowlist changes saved."
+msgstr "白名单更改已成功保存。"
+
+msgid "Unable to save changes: %s"
+msgstr "保存更改失败：%s"
+
+msgid "Currently no blocked entries. Add one below."
+msgstr "暂无拦截条目，请在下方添加。"
+
+msgid "Manage locally blocked IP addresses, CIDR ranges, MAC addresses or domains."
+msgstr "管理本地拦截的 IP 地址、CIDR 网段、MAC 地址或域名。"
+
+msgid "Blocklist changes saved."
+msgstr "黑名单更改已成功保存。"
+
+msgid "Protocol/URL format not supported"
+msgstr "不支持的协议/URL 格式"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Rule Elements & Last Run"
+msgstr "规则条目与最后运行"
+
+msgid "网络安全"
+msgstr "网络安全"
+
+msgid "概况"
+msgstr "概况"
+
+msgid "配置"
+msgstr "配置"
+
+msgid "编辑白名单"
+msgstr "编辑白名单"
+
+msgid "编辑黑名单"
+msgstr "编辑黑名单"
+
+msgid "自定义源编辑器"
+msgstr "自定义源编辑器"
+
+msgid "设置报告"
+msgstr "设置报告"
+
+msgid "防火墙日志"
+msgstr "防火墙日志"
+
+msgid "处理日志"
+msgstr "处理日志"
+
+msgid "SecBox Configuration"
+msgstr "网络安全配置"
+
+msgid "SecBox Custom Feed Editor"
+msgstr "自定义源编辑器"
+
+msgid "SecBox Firewall Log"
+msgstr "防火墙日志"
+
+msgid "SecBox Processing Log"
+msgstr "处理日志"
+
+msgid "With this editor you can upload your local custom feed file or fill up an initial one (a 1:1 copy of the version shipped with the package). The file is located at '/etc/banip/banip.custom.feeds'. Then you can edit this file, delete entries, add new ones or make a local backup. To go back to the maintainers version just clear the custom feed file."
+msgstr "通过此编辑器，您可以上传本地自定义黑名单源文件或初始化一个初始文件（与软件包附带版本 1:1 完全一致的副本）。该文件位于 “/etc/banip/banip.custom.feeds”。随后您可以自由编辑该文件、删除条目、添加新源或创建本地备份。若要恢复为系统默认版本，只需清空自定义源文件即可。"
+
+msgid "Configuration"
+msgstr "配置"
+
+msgid "Custom Feeds"
+msgstr "自定义源编辑器"
+
+msgid "Running"
+msgstr "运行中"

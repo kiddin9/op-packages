@@ -1,0 +1,136 @@
+#!/bin/sh
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+
+CUSTOM_BG="/www/luci-static/noobwrt/background/custom.jpg"
+UPLOAD_TMP="/tmp/noobwrt_wallpaper.tmp"
+
+# Online wallpaper source (bing/picsum/wikimedia or none) — no API key required
+WEB_PIC_SRC="$(uci -q get noobwrt.@global[0].online_wallpaper || echo 'bing')"
+
+# Normalise legacy / unknown values to 'bing' so the case always matches
+case "$WEB_PIC_SRC" in
+bing|picsum|wikimedia|none) ;;
+*) WEB_PIC_SRC="bing" ;;
+esac
+
+CACHE="/var/run/noobwrt_${WEB_PIC_SRC}.url"
+WRLOCK="/var/lock/noobwrt_${WEB_PIC_SRC}.lock"
+
+fetch_pic_url() {
+	case "$WEB_PIC_SRC" in
+	bing)
+		local picpath="$(wget -T5 -qO- \
+			"https://www.bing.com/HPImageArchive.aspx?format=js&n=1" |
+			jsonfilter -qe '@.images[0].url' |
+			sed 's/1920x1080/UHD/g')"
+		[ -n "${picpath}" ] && echo "https://www.bing.com${picpath}"
+		;;
+	picsum)
+		# Lorem Picsum — free random photo, no API key needed
+		# Follow the 302 redirect and cache the direct CDN image URL
+		local seed="$(($(date '+%s') % 1000))"
+		local cdnurl="$(wget -T5 -S -O /dev/null \
+			"https://picsum.photos/seed/${seed}/1920/1080" 2>&1 |
+			grep -i 'location:' | head -n1 |
+			sed 's/.*[Ll]ocation: *//' | tr -d '\r\n')"
+		if [ -n "$cdnurl" ]; then
+			echo "$cdnurl"
+		else
+			echo "https://picsum.photos/seed/${seed}/1920/1080"
+		fi
+		;;
+	wikimedia)
+		# Wikimedia Commons Picture of the Day — free, no API key needed
+		# Fetch the featured image URL from the Wikimedia REST API
+		local today="$(date '+%Y/%m/%d')"
+		wget -T5 -qO- \
+			"https://api.wikimedia.org/feed/v1/wikipedia/en/featured/${today}" |
+			jsonfilter -qe '@.image.image.source' 2>/dev/null
+		;;
+	esac
+}
+
+try_update() {
+	local lock="$WRLOCK"
+	exec 200>"$lock"
+
+	if flock -n 200 >/dev/null 2>&1; then
+		local picurl="$(fetch_pic_url)"
+		if [ -n "$picurl" ]; then
+			echo "$picurl" | tee "$CACHE"
+		else
+			if [ -s "$CACHE" ]; then
+				cat "$CACHE"
+			else
+				touch "$CACHE"
+			fi
+		fi
+		flock -u 200 >/dev/null 2>&1
+	elif [ -s "$CACHE" ]; then
+		cat "$CACHE"
+	fi
+}
+
+case "$1" in
+"list")
+	json_init
+	json_add_object "get_url"
+	json_close_object
+	json_add_object "set_custom"
+	json_close_object
+	json_add_object "remove_custom"
+	json_close_object
+	json_dump
+	json_cleanup
+	;;
+"call")
+	case "$2" in
+	"set_custom")
+		if [ -f "$UPLOAD_TMP" ]; then
+			mv "$UPLOAD_TMP" "$CUSTOM_BG" && chmod 0644 "$CUSTOM_BG"
+			echo '{ "result": 0 }'
+		else
+			echo '{ "result": 1, "error": "tmp file not found" }'
+		fi
+		;;
+	"remove_custom")
+		rm -f "$CUSTOM_BG"
+		echo '{ "result": 0 }'
+		;;
+	"get_url")
+		read -r input
+		if [ "$WEB_PIC_SRC" = "none" ]; then
+			echo '{ "url": "" }'
+			exit 0
+		fi
+		if [ -f "$CACHE" ]; then
+			idle_t="$(($(date '+%s') - $(date -r "$CACHE" '+%s' 2>/dev/null || echo '0')))"
+			if [ -s "$CACHE" ]; then
+				if [ "$idle_t" -le 43200 ]; then
+					json_init
+					json_add_string "url" "$(cat "$CACHE")"
+					json_dump
+					json_cleanup
+					exit 0
+				fi
+			else
+				# Empty cache file means a fetch is in progress or recently
+				# failed — suppress retry for 120 s to avoid hammering the API
+				if [ "$idle_t" -le 120 ]; then
+					echo '{ "url": "" }'
+					exit 0
+				fi
+			fi
+		fi
+
+		json_init
+		json_add_string "url" "$(try_update)"
+		json_dump
+		json_cleanup
+		exit 0
+		;;
+	esac
+	;;
+esac

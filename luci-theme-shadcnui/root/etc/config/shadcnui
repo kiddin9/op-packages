@@ -1,0 +1,25 @@
+
+config shadcnui 'main'
+	option mode      'system'
+	option base      'zinc'
+	option accent    ''
+	option radius    '0.5rem'
+	option bg_source 'none'
+	option bg_url    ''
+
+config bing 'bing'
+	option enabled   '0'
+	option market    'auto'
+	option cache_ttl '86400'
+
+config unsplash 'unsplash'
+	option enabled   '0'
+	option access_key ''
+	option query     'nature'
+
+config wallhaven 'wallhaven'
+	option enabled   '0'
+	option api_key   ''
+	option query     'minimal'
+	option purity    '100'
+	option categories '111'

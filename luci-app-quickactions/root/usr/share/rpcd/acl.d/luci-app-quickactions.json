@@ -1,0 +1,239 @@
+{
+	"luci-app-quickactions": {
+		"description": "Grant access to Quick Actions",
+		"read": {
+			"ubus": {
+				"file": [
+					"exec",
+					"read"
+				],
+				"luci": [
+					"getInitList",
+					"getThemes"
+				],
+				"luci.quickactions-taskplan": [
+					"*"
+				],
+				"luci.quickactions-failover": [
+					"*"
+				],
+				"luci.quickactions-scripts": [
+					"*"
+				],
+				"luci.quickactions-vlan": [
+					"*"
+				]
+			},
+			"file": {
+				"/etc/crontabs/root": [
+					"read"
+				],
+				"/etc/config/hotplug": [
+					"read"
+				],
+				"/etc/quickactions-taskplan/taskplan.log": [
+					"read"
+				],
+				"/etc/quickactions-taskplan/taskplancustomscript": [
+					"read"
+				],
+				"/etc/quickactions-taskplan/taskplancustomscript2": [
+					"read"
+				],
+				"/etc/config/taskplan": [
+					"read"
+				],
+				"/etc/config/wizard": [
+					"read"
+				],
+				"/etc/config/netwizard": [
+					"read"
+				],
+				"/etc/config/network": [
+					"read"
+				],
+				"/etc/config/firewall": [
+					"read"
+				],
+				"/etc/config/dhcp": [
+					"read"
+				],
+				"/etc/config/wireless": [
+					"read"
+				],
+				"/etc/config/nginx": [
+					"read"
+				],
+				"/etc/config/uhttpd": [
+					"read"
+				],
+				"/etc/config/lighttpd": [
+					"read"
+				],
+				"/tmp/quickactions_wan_down.lock": [
+					"read"
+				],
+				"/tmp/quickactions_wan_fails.count": [
+					"read"
+				],
+				"/tmp/quickactions_wan_oks.count": [
+					"read"
+				],
+				"/etc/quickactions/scripts/*": [
+					"read"
+				],
+				"/etc/quickactions/vlan/*": [
+					"read"
+				],
+				"/etc/quickactions/vlan/templates/*": [
+					"read"
+				],
+				"/etc/quickactions/vlan/generated/*": [
+					"read"
+				]
+			},
+			"uci": [
+				"luci",
+				"quickactions",
+				"hotplug",
+				"guestwifi",
+				"network",
+				"wireless",
+				"dhcp",
+				"firewall",
+				"taskplan",
+				"wizard",
+				"netwizard",
+				"nginx"
+			],
+			"execute": {
+				"/usr/libexec/quickactions-netwizard/list-backups.sh": [
+					"exec"
+				]
+			}
+		},
+		"write": {
+			"ubus": {
+				"file": [
+					"exec",
+					"read",
+					"write"
+				],
+				"uci": [
+					"*"
+				],
+				"luci.quickactions-taskplan": [
+					"*"
+				],
+				"luci.quickactions-failover": [
+					"*"
+				],
+				"luci.quickactions-scripts": [
+					"*"
+				],
+				"luci.quickactions-vlan": [
+					"*"
+				]
+			},
+			"file": {
+				"/etc/crontabs/root": [
+					"write"
+				],
+				"/etc/config/hotplug": [
+					"write"
+				],
+				"/etc/quickactions-taskplan/taskplan.log": [
+					"write"
+				],
+				"/etc/quickactions-taskplan/taskplancustomscript": [
+					"write"
+				],
+				"/etc/quickactions-taskplan/taskplancustomscript2": [
+					"write"
+				],
+				"/etc/config/taskplan": [
+					"write"
+				],
+				"/etc/config/wizard": [
+					"write"
+				],
+				"/etc/config/netwizard": [
+					"write"
+				],
+				"/etc/config/network": [
+					"write"
+				],
+				"/etc/config/firewall": [
+					"write"
+				],
+				"/etc/config/dhcp": [
+					"write"
+				],
+				"/etc/config/wireless": [
+					"write"
+				],
+				"/etc/config/nginx": [
+					"write"
+				],
+				"/etc/config/uhttpd": [
+					"write"
+				],
+				"/etc/config/lighttpd": [
+					"write"
+				],
+				"/etc/quickactions/scripts/*": [
+					"write"
+				],
+				"/etc/quickactions/vlan/*": [
+					"write"
+				],
+				"/etc/quickactions/vlan/templates/*": [
+					"write"
+				],
+				"/etc/quickactions/vlan/generated/*": [
+					"write"
+				]
+			},
+			"uci": [
+				"luci",
+				"quickactions",
+				"hotplug",
+				"guestwifi",
+				"network",
+				"wireless",
+				"dhcp",
+				"firewall",
+				"taskplan",
+				"wizard",
+				"netwizard",
+				"nginx"
+			],
+			"execute": {
+				"/etc/init.d/quickactions-taskplan": [
+					"start",
+					"stop",
+					"restart",
+					"reload"
+				],
+				"/usr/libexec/quickactions-netwizard/apply-aggressive.sh": [
+					"exec"
+				],
+				"/usr/libexec/quickactions-netwizard/backup.sh": [
+					"exec"
+				],
+				"/usr/libexec/quickactions-netwizard/restore.sh": [
+					"exec"
+				],
+				"/usr/libexec/quickactions-netwizard/apply-shortcuts.sh": [
+					"exec"
+				],
+				"/usr/bin/quickactions-failover": [
+					"on",
+					"off",
+					"status",
+					"test"
+				]
+			}
+		}
+	}
+}

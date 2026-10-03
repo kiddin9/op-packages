@@ -1,0 +1,21 @@
+{
+    "luci-theme-noobwrt": {
+        "description": "Grant UCI read/write access and wallpaper upload for luci-theme-noobwrt",
+        "read": {
+            "uci": [ "noobwrt" ],
+            "file": {
+                "/www/luci-static/noobwrt/background/*": [ "read" ]
+            }
+        },
+        "write": {
+            "uci": [ "noobwrt" ],
+            "cgi-io": [ "upload" ],
+            "file": {
+                "/tmp/noobwrt_wallpaper.tmp": [ "write" ]
+            },
+            "ubus": {
+                "luci.noobwrt_wallpaper": [ "set_custom", "remove_custom" ]
+            }
+        }
+    }
+}

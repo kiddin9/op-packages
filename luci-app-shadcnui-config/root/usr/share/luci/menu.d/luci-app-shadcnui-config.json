@@ -1,0 +1,13 @@
+{
+	"admin/system/shadcnui-config": {
+		"title": "Theme",
+		"order": 80,
+		"action": {
+			"type": "view",
+			"path": "shadcnui/config"
+		},
+		"depends": {
+			"acl": [ "luci-app-shadcnui-config" ]
+		}
+	}
+}

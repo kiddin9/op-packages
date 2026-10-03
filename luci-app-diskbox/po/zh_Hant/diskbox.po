@@ -1,0 +1,900 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-diskbox 1.26.9\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-23 18:50+0800\n"
+"PO-Revision-Date: 2026-08-23 18:50+0800\n"
+"Last-Translator: permails <permails@github.com>\n"
+"Language-Team: Chinese (Traditional) <zh_Hant@li.org>
+"Language: zh_Hant
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "DiskBox"
+msgstr "磁碟盒子"
+
+msgid "DiskManager"
+msgstr "磁碟管理"
+
+msgid "DiskManger"
+msgstr "磁碟管理"
+
+msgid "DiskBox Disk Manager"
+msgstr "DiskBox 磁碟管理"
+
+msgid "Disk Manager"
+msgstr "磁碟管理"
+
+msgid "Manage disks over LuCI."
+msgstr "透過 LuCI 管理磁碟。"
+
+msgid "Rescan Disks"
+msgstr "重新掃描磁碟"
+
+msgid "Rescanning SCSI and RAID devices..."
+msgstr "正在重新掃描 SCSI 與 RAID 裝置..."
+
+msgid "Disks"
+msgstr "磁碟"
+
+msgid "Path"
+msgstr "路徑"
+
+msgid "Model"
+msgstr "型號"
+
+msgid "Serial Number"
+msgstr "序號"
+
+msgid "Size"
+msgstr "大小"
+
+msgid "Sector Size"
+msgstr "磁區大小"
+
+msgid "Partition Table"
+msgstr "分割表"
+
+msgid "Level"
+msgstr "層級"
+
+msgid "Temp"
+msgstr "溫度"
+
+msgid "Members"
+msgstr "成員"
+
+msgid "SATA Version"
+msgstr "SATA 版本"
+
+msgid "Rotation Rate"
+msgstr "轉速"
+
+msgid "Status"
+msgstr "狀態"
+
+msgid "Disk Health"
+msgstr "磁碟健康"
+
+msgid "Power Status"
+msgstr "電源狀態"
+
+msgid "Temperature"
+msgstr "溫度"
+
+msgid "Health"
+msgstr "健康"
+
+msgid "Health Status"
+msgstr "健康狀態"
+
+msgid "Normal"
+msgstr "正常"
+
+msgid "Passed"
+msgstr "正常"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Urgent"
+msgstr "嚴重"
+
+msgid "Failed"
+msgstr "失敗"
+
+msgid "Active"
+msgstr "活動"
+
+msgid "Standby"
+msgstr "待機"
+
+msgid "Sleep"
+msgstr "睡眠"
+
+msgid "Eject"
+msgstr "退出"
+
+msgid "Ejecting"
+msgstr "正在退出"
+
+msgid "Ejecting device..."
+msgstr "正在退出裝置..."
+
+msgid "Failed to eject device."
+msgstr "退出裝置失敗。"
+
+msgid "Are you sure you want to eject/remove this device?"
+msgstr "確定要退出/移除此裝置嗎？"
+
+msgid "Partition is in use! Please unmount it first!"
+msgstr "分割區正在使用中！請先卸載！"
+
+msgid "Edit"
+msgstr "編輯"
+
+msgid "Delete"
+msgstr "刪除"
+
+msgid "RAID Devices"
+msgstr "RAID 裝置"
+
+msgid "RAID Level"
+msgstr "RAID 層級"
+
+msgid "Btrfs"
+msgstr "Btrfs"
+
+msgid "UUID"
+msgstr "UUID"
+
+msgid "Label"
+msgstr "標籤"
+
+msgid "Usage"
+msgstr "使用率"
+
+msgid "Mount Points"
+msgstr "掛載點"
+
+msgid "Device"
+msgstr "裝置"
+
+msgid "File System"
+msgstr "檔案系統"
+
+msgid "Mount Options"
+msgstr "掛載選項"
+
+msgid "Mount Point"
+msgstr "掛載點"
+
+msgid "Mount"
+msgstr "掛載"
+
+msgid "Mounting"
+msgstr "正在掛載"
+
+msgid "Mounting device..."
+msgstr "正在掛載裝置..."
+
+msgid "Failed to mount."
+msgstr "掛載失敗。"
+
+msgid "Unmount"
+msgstr "卸載"
+
+msgid "Unmounting"
+msgstr "正在卸載"
+
+msgid "Unmounting %s..."
+msgstr "正在卸載 %s..."
+
+msgid "Failed to unmount."
+msgstr "卸載失敗。"
+
+msgid "Are you sure you want to unmount %s?"
+msgstr "確定要卸載 %s 嗎？"
+
+msgid "-- Please choose --"
+msgstr "-- 請選擇 --"
+
+msgid "Please select a device and input mount point!"
+msgstr "請選擇裝置並輸入掛載點！"
+
+msgid "Creation"
+msgstr "建立"
+
+msgid "RAID"
+msgstr "RAID"
+
+msgid "Create RAID"
+msgstr "建立 RAID"
+
+msgid "RAID Name"
+msgstr "RAID 名稱"
+
+msgid "RAID Members"
+msgstr "磁碟陣列成員"
+
+msgid "Creating RAID"
+msgstr "正在建立 RAID"
+
+msgid "Creating RAID device..."
+msgstr "正在建立 RAID 裝置..."
+
+msgid "Failed to create RAID."
+msgstr "建立 RAID 失敗。"
+
+msgid "Please select RAID member disks/partitions!"
+msgstr "請選擇 RAID 成員磁碟/分割區！"
+
+msgid "Create Btrfs"
+msgstr "建立 Btrfs"
+
+msgid "Btrfs Label"
+msgstr "Btrfs 標籤"
+
+msgid "Btrfs Raid Level"
+msgstr "Btrfs RAID 層級"
+
+msgid "Btrfs Member"
+msgstr "Btrfs 成員"
+
+msgid "Creating Btrfs"
+msgstr "正在建立 Btrfs"
+
+msgid "Creating Btrfs filesystem..."
+msgstr "正在建立 Btrfs 檔案系統..."
+
+msgid "Failed to create Btrfs."
+msgstr "建立 Btrfs 失敗。"
+
+msgid "Please select Btrfs member disks/partitions!"
+msgstr "請選擇 Btrfs 成員磁碟/分割區！"
+
+msgid "Partition Management"
+msgstr "分割區管理"
+
+msgid "Partition disk over LuCI."
+msgstr "透過 LuCI 分割磁碟。"
+
+msgid "Partitions Info"
+msgstr "分割區資訊"
+
+msgid "Default 2048 sector alignment, support +size{b,k,m,g,t} in End Sector"
+msgstr "預設 2048 磁區對齊，【終止磁區】支援輸入 +容量{b,k,m,g,t} 格式，例如：+500m +10g +1t"
+
+msgid "Name"
+msgstr "名稱"
+
+msgid "Start Sector"
+msgstr "起始磁區"
+
+msgid "End Sector"
+msgstr "終止磁區"
+
+msgid "Used"
+msgstr "已用"
+
+msgid "Free Space"
+msgstr "可用空間"
+
+msgid "Extended Partition"
+msgstr "擴充分割區"
+
+msgid "Primary"
+msgstr "主要分割區"
+
+msgid "Logical"
+msgstr "邏輯分割區"
+
+msgid "Unformatted"
+msgstr "未格式化"
+
+msgid "New"
+msgstr "新建"
+
+msgid "Creating Partition"
+msgstr "正在建立分割區"
+
+msgid "Creating new partition..."
+msgstr "正在建立新分割區..."
+
+msgid "Failed to create partition."
+msgstr "建立分割區失敗。"
+
+msgid "Invalid Start or End sector!"
+msgstr "無效的起始或終止磁區！"
+
+msgid "Deleting Partition"
+msgstr "正在刪除分割區"
+
+msgid "Removing partition..."
+msgstr "正在刪除分割區..."
+
+msgid "Failed to remove partition."
+msgstr "刪除分割區失敗。"
+
+msgid "Are you sure you want to delete partition %s?"
+msgstr "確定要刪除分割區 %s 嗎？"
+
+msgid "Format"
+msgstr "格式化"
+
+msgid "Format partition: /dev/%s"
+msgstr "格式化分割區：/dev/%s"
+
+msgid "Formatting..."
+msgstr "正在格式化..."
+
+msgid "Formatting partition will ERASE all data stored on it."
+msgstr "格式化分割區將清除其上的所有資料！"
+
+msgid "Partition formatted successfully!"
+msgstr "分割區格式化成功！"
+
+msgid "Format failed."
+msgstr "格式化失敗。"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Close"
+msgstr "關閉"
+
+msgid "Back to Overview"
+msgstr "返回至概覽"
+
+msgid "Device Info"
+msgstr "裝置資訊"
+
+msgid "Device /dev/%s not found or has no media."
+msgstr "未找到裝置 /dev/%s 或無媒體。"
+
+msgid "Warning !!\nTHIS WILL OVERWRITE EXISTING PARTITIONS!!\nModify the partition table to %s?"
+msgstr "警告！！\n這將覆蓋現有分割區！！\n確定要將分割表修改為 %s 嗎？"
+
+msgid "Modifying Partition Table"
+msgstr "正在修改分割表"
+
+msgid "Applying partition table..."
+msgstr "正在套用分割表..."
+
+msgid "Failed to modify partition table."
+msgstr "修改分割表失敗。"
+
+msgid "S.M.A.R.T Attributes"
+msgstr "S.M.A.R.T 屬性"
+
+msgid "Collecting data..."
+msgstr "正在收集資料..."
+
+msgid "No SMART attributes to display."
+msgstr "暫無 SMART 屬性顯示。"
+
+msgid "Attribute"
+msgstr "屬性"
+
+msgid "Flag"
+msgstr "標誌"
+
+msgid "Value"
+msgstr "目前值"
+
+msgid "Worst"
+msgstr "最差值"
+
+msgid "Thresh"
+msgstr "閥值"
+
+msgid "Type"
+msgstr "類型"
+
+msgid "Updated"
+msgstr "更新狀態"
+
+msgid "Raw"
+msgstr "原始資料"
+
+msgid "Btrfs Management"
+msgstr "Btrfs 管理"
+
+msgid "Manage Btrfs filesystem, subvolumes and snapshots."
+msgstr "管理 Btrfs 檔案系統、子卷與快照。"
+
+msgid "Select a Btrfs filesystem to manage."
+msgstr "請選擇要管理的 Btrfs 檔案系統。"
+
+msgid "No Btrfs filesystems found on this system."
+msgstr "系統中未找到 Btrfs 檔案系統。"
+
+msgid "Go to DiskBox to Create Btrfs"
+msgstr "前往 DiskBox 建立 Btrfs"
+
+msgid "Available Btrfs Filesystems"
+msgstr "可用的 Btrfs 檔案系統"
+
+msgid "Btrfs Info"
+msgstr "Btrfs 資訊"
+
+msgid "Data"
+msgstr "資料"
+
+msgid "Metadata"
+msgstr "元資料"
+
+msgid "Updating Label"
+msgstr "正在更新標籤"
+
+msgid "Updating Btrfs label..."
+msgstr "正在更新 Btrfs 標籤..."
+
+msgid "Failed to update label."
+msgstr "更新標籤失敗。"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Subvolumes"
+msgstr "子卷"
+
+msgid "ID"
+msgstr "ID"
+
+msgid "Top Level"
+msgstr "頂層"
+
+msgid "Set Default"
+msgstr "設為預設"
+
+msgid "Default"
+msgstr "預設"
+
+msgid "Setting Default"
+msgstr "正在設為預設"
+
+msgid "Setting default subvolume..."
+msgstr "正在設定預設子卷..."
+
+msgid "Failed to set default subvolume."
+msgstr "設定預設子卷失敗。"
+
+msgid "Deleting Subvolume"
+msgstr "正在刪除子卷"
+
+msgid "Deleting subvolume..."
+msgstr "正在刪除子卷..."
+
+msgid "Failed to delete subvolume."
+msgstr "刪除子卷失敗。"
+
+msgid "Are you sure you want to delete subvolume %s?"
+msgstr "確定要刪除子卷 %s 嗎？"
+
+msgid "Create"
+msgstr "建立"
+
+msgid "New Subvolume"
+msgstr "新建子卷"
+
+msgid "Creating Subvolume"
+msgstr "正在建立子卷"
+
+msgid "Creating subvolume..."
+msgstr "正在建立子卷..."
+
+msgid "Failed to create subvolume."
+msgstr "建立子卷失敗。"
+
+msgid "Subvolume path must start with '/'"
+msgstr "子卷路徑必須以 '/' 開頭"
+
+msgid "New Snapshot"
+msgstr "新建快照"
+
+msgid "Source Path"
+msgstr "來源路徑"
+
+msgid "Source path for creating snapshot (must start with '/')"
+msgstr "建立快照的來源路徑（必須以 '/' 開頭）"
+
+msgid "Source path must start with '/'"
+msgstr "來源路徑必須以 '/' 開頭"
+
+msgid "Read-Only"
+msgstr "唯讀"
+
+msgid "Create as read-only snapshot"
+msgstr "建立為唯讀快照"
+
+msgid "Destination Path (optional)"
+msgstr "目標路徑（可選）"
+
+msgid "Destination path where you want to store the snapshot"
+msgstr "存放快照的目標路徑"
+
+msgid "Create Snapshot"
+msgstr "建立快照"
+
+msgid "Creating Snapshot"
+msgstr "正在建立快照"
+
+msgid "Creating Btrfs snapshot..."
+msgstr "正在建立 Btrfs 快照..."
+
+msgid "Failed to create snapshot."
+msgstr "建立快照失敗。"
+
+msgid "Loading..."
+msgstr "載入中..."
+
+msgid "Loading device info..."
+msgstr "正在載入裝置資訊..."
+
+msgid "Loading Btrfs info..."
+msgstr "正在載入 Btrfs 資訊..."
+msgid "Available Storage Partition"
+msgstr "可用儲存分区"
+
+msgid "Boot / Firmware (protected)"
+msgstr "開機 / 韌體（受保護）"
+
+msgid "Click to view SMART & Health details"
+msgstr "點擊查看 SMART 與健康詳情"
+
+msgid "Force Format"
+msgstr "強制格式化"
+
+msgid "No partitions (Raw Disk / Unpartitioned)"
+msgstr "無分区（裸磁碟 / 未分区）"
+
+msgid "System"
+msgstr "系統"
+
+msgid "System Data (in use)"
+msgstr "系統資料（使用中）"
+
+msgid "System Firmware Partition"
+msgstr "系統韌體分区"
+
+msgid "System partition - cannot unmount"
+msgstr "系統分区 - 無法卸載"
+
+msgid "System Reserved / Unavailable"
+msgstr "系統保留 / 不可用"
+
+msgid "System RootFS / Overlay"
+msgstr "系統 RootFS / 疊加層"
+
+msgid "This partition contains data."
+msgstr "此分区包含資料。"
+
+msgid "No disks detected."
+msgstr "未偵測到磁碟設備。"
+
+msgid "No storage partitions found."
+msgstr "未發現儲存分区。"
+
+msgid "Partitions"
+msgstr "分区"
+
+msgid "Partitions: %d"
+msgstr "分区數: %d"
+
+msgid "Unallocated"
+msgstr "未分配"
+
+msgid "Unallocated Space"
+msgstr "未分配空間"
+
+msgid "Data (in use)"
+msgstr "資料（使用中）"
+
+msgid "Data (unmounted)"
+msgstr "資料（未卸載）"
+
+msgid "Empty (no filesystem)"
+msgstr "空白（無檔案系統）"
+
+msgid "System partition, protected"
+msgstr "系統分區，受保護"
+
+msgid "Not mounted"
+msgstr "未掛載"
+
+msgid "Mounted - unmount to delete"
+msgstr "已掛載 - 卸載後才能刪除"
+
+msgid "Unmount this partition, then it can be formatted"
+msgstr "卸載此分區後即可格式化"
+
+msgid "Mounted - unmount to format"
+msgstr "已掛載 - 卸載後才能格式化"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Detach this partition from its mount point. Data is kept and it can be remounted; required before format or delete."
+msgstr "將分區從掛載點分離，資料保留且可再次掛載；格式化或刪除前必須先執行。"
+
+msgid "Remove this partition from the partition table. Its space becomes unallocated and existing data is lost once overwritten."
+msgstr "從分區表中刪除該分區，空間變為未分配，原有資料被覆寫後不可恢復。"
+
+msgid "Filesystem detected - mount it to use the existing data; no formatting needed."
+msgstr "偵測到檔案系統 - 直接掛載即可使用現有資料，無需格式化。"
+
+msgid "Only use this if the partition cannot be mounted and its data is not needed. Formatting erases all data on the partition."
+msgstr "僅當分區無法掛載、且資料確定不再需要時使用；格式化將擦除該分區的全部資料。"
+
+msgid "Change Partition Table"
+msgstr "變更分割表"
+
+msgid "Confirm"
+msgstr "確認"
+
+msgid "Delete Partition"
+msgstr "刪除分區"
+
+msgid "Delete Subvolume"
+msgstr "刪除子卷"
+
+msgid "Eject Device"
+msgstr "彈出裝置"
+
+msgid "Mount a device"
+msgstr "掛載裝置"
+msgid "-- No mountable partitions --"
+msgstr "沒有可掛載的分區"
+
+msgid "Apply Table"
+msgstr "套用分割表"
+
+msgid "Auto Mount"
+msgstr "自動掛載"
+
+msgid "Btrfs Pools"
+msgstr "Btrfs 儲存集區"
+
+msgid "Change mount point / options"
+msgstr "變更掛載點 / 選項"
+
+msgid "Create Partition"
+msgstr "建立分割區"
+
+msgid "Create a fresh GPT/MBR partition table"
+msgstr "建立全新的 GPT/MBR 分割表"
+
+msgid "Create a new partition from the largest free region"
+msgstr "從最大剩餘空間建立新分割區"
+
+msgid "Create a partition in this free region"
+msgstr "在此剩餘空間建立分割區"
+
+msgid "Creating Btrfs will ERASE the selected members. Continue?"
+msgstr "建立 Btrfs 將抹掉所選成員磁碟。是否繼續？"
+
+msgid "Creating a RAID array will ERASE the selected members. Continue?"
+msgstr "建立 RAID 陣列將抹掉所選成員磁碟。是否繼續？"
+
+msgid "Data Profile"
+msgstr "資料設定"
+
+msgid "Dest (opt)"
+msgstr "目標(選填)"
+
+msgid "Detach this partition from its mount point; data is kept"
+msgstr "將此分割區從掛載點卸載；資料保留"
+
+msgid "Device is in use! Please unmount all partitions first!"
+msgstr "裝置使用中！請先卸載所有分割區！"
+
+msgid "Disabled"
+msgstr "已停用"
+
+msgid "Edit Mount"
+msgstr "編輯掛載"
+
+msgid "Enabled"
+msgstr "已啟用"
+
+msgid "Failed to load Btrfs subvolumes."
+msgstr "載入 Btrfs 子卷失敗。"
+
+msgid "Failed to load disk info."
+msgstr "載入磁碟資訊失敗。"
+
+msgid "Formatting erases all data on the partition"
+msgstr "格式化將抹掉分割區上的所有資料"
+
+msgid "Invalid Partition size!"
+msgstr "無效的分割區大小！"
+
+msgid "Invalid Start sector!"
+msgstr "無效的起始扇區！"
+
+msgid "Manage Partitions"
+msgstr "管理分割區"
+
+msgid "Manage disks, partitions, RAID and Btrfs over LuCI."
+msgstr "透過 LuCI 管理磁碟、分割區、RAID 與 Btrfs。"
+
+msgid "Maximum available: %s"
+msgstr "最大可用： %s"
+
+msgid "Mount this partition"
+msgstr "掛載此分割區"
+
+msgid "Mounted"
+msgstr "已掛載"
+
+msgid "New Partition"
+msgstr "建立分割區"
+
+msgid "New partition on /dev/%s. Start sector auto-detected and aligned to 1 MiB."
+msgstr "在 /dev/%s 上建立新分割區。起始扇區自動偵測並對齊到 1 MiB。"
+
+msgid "No Btrfs filesystems."
+msgstr "沒有 Btrfs 檔案系統。"
+
+msgid "No RAID arrays."
+msgstr "沒有 RAID 陣列。"
+
+msgid "Partition Size"
+msgstr "分割區大小"
+
+msgid "Physical Disks"
+msgstr "實體磁碟"
+
+msgid "RAID Arrays"
+msgstr "RAID 陣列"
+
+msgid "Read-only"
+msgstr "唯讀"
+
+msgid "Remove this partition from the table; its space becomes unallocated"
+msgstr "從分割表刪除此分割區；其空間將變成未分配"
+
+msgid "Serial: %s"
+msgstr "序號： %s"
+
+msgid "Size exceeds the available free space."
+msgstr "大小超過可用的剩餘空間。"
+
+msgid "Snapshot"
+msgstr "快照"
+
+msgid "Source"
+msgstr "來源"
+
+msgid "Unmounted"
+msgstr "未掛載"
+
+msgid "sectors"
+msgstr "扇區"
+
+msgid "(Distributed parity redundancy - needs at least 3 partitions)"
+msgstr "（分散式同位元冗餘 - 至少需 3 個分割區）"
+
+msgid "(Double parity fault tolerance - needs at least 4 partitions)"
+msgstr "（雙重同位元容錯 - 至少需 4 個分割區）"
+
+msgid "(Mirror + Stripe hybrid - performance with high fault tolerance)"
+msgstr "（鏡像+條帶混合 - 兼顧效能與高容錯）"
+
+msgid "(Mirror - recommended dual-disk data fault tolerance, doubled read speed)"
+msgstr "（鏡像 - 推薦雙盤數據容錯冗餘，讀取速度加倍）"
+
+msgid "(Stripe - high throughput, no redundancy, full capacity)"
+msgstr "（條帶化 - 高頻寬無冗餘，全盤容量疊加）"
+
+msgid "(double metadata copies, recommended for important data)"
+msgstr "（雙份中繼數據保護，推薦用於重要數據）"
+
+msgid "(multi-device mirror redundancy)"
+msgstr "（多裝置鏡像冗餘保護）"
+
+msgid "(multi-device stripe for fast I/O)"
+msgstr "（多裝置條帶化高速讀寫）"
+
+msgid "(single-device, maximizes usable capacity)"
+msgstr "（單裝置分配，最大化可用容量）"
+
+msgid "Active RAID Arrays"
+msgstr "活動 RAID 陣列"
+
+msgid "All currently unmounted free storage partitions are listed automatically."
+msgstr "已自動列出系統目前所有未掛載的空閒儲存分割區。"
+
+msgid "Are you sure you want to stop and remove RAID array %s?"
+msgstr "確定要停止並移除 RAID 陣列 %s 嗎？"
+
+msgid "Attributes"
+msgstr "屬性"
+
+msgid "Create Btrfs Pool"
+msgstr "建立 Btrfs 儲存池"
+
+msgid "Detail"
+msgstr "詳細"
+
+msgid "Failed to load Btrfs pools."
+msgstr "載入 Btrfs 儲存池失敗。"
+
+msgid "Failed to stop array."
+msgstr "停止陣列失敗。"
+
+msgid "Format and create a modern filesystem with snapshots, transparent compression and online growth"
+msgstr "格式化並建立支援快照、透明壓縮、線上擴容的現代檔案系統"
+
+msgid "Healthy / Online"
+msgstr "健康線上"
+
+msgid "Linux mdadm redundant array monitoring"
+msgstr "Linux mdadm 冗餘陣列監控"
+
+msgid "Mount Path"
+msgstr "掛載路徑"
+
+msgid "Please select at least one Btrfs member!"
+msgstr "請至少選擇一個 Btrfs 成員！"
+
+msgid "Pool Label"
+msgstr "儲存池標籤"
+
+msgid "RAID Details"
+msgstr "RAID 詳細"
+
+msgid "Read/Write"
+msgstr "讀寫"
+
+msgid "Reset"
+msgstr "重設"
+
+msgid "Select at least two RAID members!"
+msgstr "請至少選擇兩個 RAID 成員！"
+
+msgid "Select two or more free partitions to build a high-reliability or high-performance array"
+msgstr "選擇兩個或多個空閒分割區組合成高可靠或高效能陣列"
+
+msgid "Standard software RAID block device path, defaults to /dev/md1, /dev/md2..."
+msgstr "標準軟體 RAID 區塊裝置路徑，預設依序分配 /dev/md1、/dev/md2..."
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Stop Array"
+msgstr "停止陣列"
+
+msgid "Stopping Array"
+msgstr "正在停止陣列"
+
+msgid "Stopping RAID array..."
+msgstr "正在停止 RAID 陣列..."
+
+msgid "Storage pool volume label, used as the mount / management identifier."
+msgstr "儲存池標籤名稱，作為掛載與管理識別標。"
+
+msgid "Subvolume"
+msgstr "子卷"
+
+msgid "Subvolumes & Snapshots"
+msgstr "子卷與快照"
+
+msgid "next-gen CoW write-time-copy storage pool"
+msgstr "下一代 CoW 寫入時複製儲存池"
+
+msgid "Kernel-managed (FIT)"
+msgstr "核心管理（FIT）"
+
+msgid "Loaded by the bootloader and kernel from the FIT image; not mounted as a separate filesystem."
+msgstr "由開機程序與核心從 FIT 映像載入，不作為獨立檔案系統掛載。"
+
+msgid "No free partitions available to select."
+msgstr "目前沒有可選擇的空閒分割區。"
+
+
+msgid "Key"
+msgstr "鍵"

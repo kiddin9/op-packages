@@ -1,0 +1,1178 @@
+/*
+ * luci-theme-shadcnui — main stylesheet
+ * Targets LuCI markup (.cbi-*, .table, .alert-message, etc.) and reskins it
+ * to match shadcn/ui visual language using CSS variables from tokens.css.
+ */
+
+@import url("./tokens.css");
+
+/* ============================================================
+ * RESET / BASE
+ * ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+               "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a {
+  color: hsl(var(--primary));
+  text-decoration: none;
+  transition: color 120ms ease;
+}
+a:hover { text-decoration: underline; }
+
+code, pre, kbd, samp {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+               "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875em;
+}
+
+pre {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+  overflow-x: auto;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1rem 0;
+}
+
+/* ============================================================
+ * APP SHELL: sidebar + topbar + main
+ * ============================================================ */
+#shadcn-app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 56px 1fr;
+  grid-template-areas:
+    "sidebar topbar"
+    "sidebar main";
+  min-height: 100vh;
+}
+
+#shadcn-sidebar {
+  grid-area: sidebar;
+  background: hsl(var(--sidebar-background, var(--card)));
+  color: hsl(var(--sidebar-foreground, var(--foreground)));
+  border-right: 1px solid hsl(var(--sidebar-border, var(--border)));
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#shadcn-topbar {
+  grid-area: topbar;
+  background: hsl(var(--background) / 0.85);
+  backdrop-filter: saturate(180%) blur(8px);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid hsl(var(--border));
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+#shadcn-main {
+  grid-area: main;
+  padding: 1.5rem;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  #shadcn-app {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "topbar"
+      "main";
+  }
+  #shadcn-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 280px;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 200ms ease;
+    box-shadow: 0 8px 24px -8px hsl(0 0% 0% / 0.18);
+  }
+  #shadcn-app[data-sidebar="open"] #shadcn-sidebar {
+    transform: translateX(0);
+  }
+  #shadcn-app[data-sidebar="open"]::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: hsl(0 0% 0% / 0.4);
+    z-index: 40;
+  }
+  #shadcn-main { padding: 1rem; }
+}
+
+/* ============================================================
+ * SIDEBAR
+ * ============================================================ */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0 1rem;
+  height: 56px;
+  border-bottom: 1px solid hsl(var(--sidebar-border, var(--border)));
+  font-weight: 600;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.sidebar-header .logo {
+  width: 28px;
+  height: 28px;
+  border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 6px; }
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.sidebar-section {
+  margin-bottom: 0.125rem;
+}
+
+.sidebar-section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.sidebar-link,
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  margin: 1px 0;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.9375rem;  /* ~15px, matches shadcn original */
+  color: hsl(var(--sidebar-foreground, var(--foreground)));
+  cursor: pointer;
+  user-select: none;
+  border: 0;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.sidebar-link:hover,
+.sidebar-toggle:hover {
+  background: hsl(var(--sidebar-accent, var(--accent)));
+  color: hsl(var(--sidebar-accent-foreground, var(--accent-foreground)));
+  text-decoration: none;
+}
+
+.sidebar-link.active {
+  background: hsl(var(--sidebar-accent, var(--accent)));
+  color: hsl(var(--sidebar-accent-foreground, var(--accent-foreground)));
+  font-weight: 500;
+}
+
+.sidebar-link .icon,
+.sidebar-toggle .icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  opacity: 0.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sidebar-toggle .chevron {
+  margin-left: auto;
+  width: 15px;
+  height: 15px;
+  transition: transform 200ms ease;
+  opacity: 0.5;
+}
+
+/* Closed: chevron points right (default polyline 9 18 15 12 9 6) */
+/* Open: rotate to point down */
+.sidebar-section[data-open="true"] > .sidebar-toggle .chevron {
+  transform: rotate(90deg);
+}
+
+/* Children wrapper with vertical guide line */
+.sidebar-children {
+  display: none;
+  position: relative;
+  padding-left: 2.25rem;  /* icon width (17px) + gap (10px) + indent */
+  margin-left: 0.875rem;  /* align line under icon center */
+}
+
+.sidebar-children::before {
+  content: "";
+  position: absolute;
+  left: 0.85rem;          /* center under the icon */
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 1px;
+  background: hsl(var(--border));
+  border-radius: 1px;
+}
+
+.sidebar-section[data-open="true"] > .sidebar-children {
+  display: block;
+}
+
+.sidebar-children .sidebar-link {
+  font-size: 0.875rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.sidebar-footer {
+  padding: 0.5rem;
+  border-top: 1px solid hsl(var(--sidebar-border, var(--border)));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.sidebar-footer .mode-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  text-decoration: none;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.sidebar-footer .mode-chip:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  text-decoration: none;
+}
+.sidebar-footer .mode-chip.active {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-color: hsl(var(--primary));
+}
+
+/* Brand link in the sidebar header */
+.sidebar-header .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: inherit;
+  text-decoration: none;
+  width: 100%;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.sidebar-header .brand:hover { text-decoration: none; }
+
+/* Top-level sidebar links (no children) */
+.sidebar-link.sidebar-link-top {
+  font-weight: 500;
+}
+
+/* Mobile overlay */
+#shadcn-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: hsl(0 0% 0% / 0.4);
+  z-index: 40;
+}
+@media (max-width: 768px) {
+  #shadcn-app[data-sidebar="open"] #shadcn-overlay {
+    display: block;
+  }
+}
+
+/* ============================================================
+ * TOPBAR
+ * ============================================================ */
+.topbar-toggle {
+  display: none;            /* shown only on mobile via the media query below */
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  cursor: pointer;
+}
+.topbar-toggle:hover { background: hsl(var(--accent)); }
+
+@media (max-width: 768px) {
+  .topbar-toggle { display: inline-grid; }
+}
+
+.topbar-breadcrumb {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-breadcrumb .crumb-sep { opacity: 0.5; }
+.topbar-breadcrumb .crumb-current {
+  color: hsl(var(--foreground));
+  font-weight: 500;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ============================================================
+ * BUTTONS (LuCI uses input.cbi-button + .btn)
+ * ============================================================ */
+.btn,
+input.cbi-button,
+button.cbi-button,
+.cbi-page-actions .cbi-button,
+.cbi-page-actions input[type="submit"],
+.cbi-page-actions input[type="button"],
+.cbi-page-actions input[type="reset"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 36px;
+  padding: 0 0.875rem;
+  border-radius: calc(var(--radius) - 2px);
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease,
+              color 120ms ease, opacity 120ms ease,
+              transform 80ms ease, box-shadow 120ms ease;
+
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.btn:hover,
+input.cbi-button:hover,
+button.cbi-button:hover {
+  opacity: 0.9;
+}
+
+/* Press animation — subtle downward shift to feel tactile */
+.btn:active,
+input.cbi-button:active,
+button.cbi-button:active {
+  transform: translateY(1px);
+}
+
+/* Focus ring — thin inset shadow instead of a chunky outline */
+.btn:focus,
+input.cbi-button:focus,
+button.cbi-button:focus,
+.btn:focus-visible,
+input.cbi-button:focus-visible,
+button.cbi-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px hsl(var(--background)),
+              0 0 0 4px hsl(var(--ring) / 0.5);
+}
+/* Hide the ring for mouse clicks; only show for keyboard focus */
+.btn:focus:not(:focus-visible),
+input.cbi-button:focus:not(:focus-visible),
+button.cbi-button:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+
+.btn-secondary,
+.cbi-button-neutral,
+input.cbi-button-neutral {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+/* Reset / Clear — destructive (red) */
+.cbi-button-reset,
+input.cbi-button-reset {
+  background: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
+  border: 1px solid hsl(var(--destructive) / 0.3);
+}
+.cbi-button-reset:hover,
+input.cbi-button-reset:hover {
+  background: hsl(var(--destructive) / 0.18);
+  opacity: 1;
+}
+
+.btn-outline,
+.cbi-button-edit,
+input.cbi-button-edit {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+.btn-outline:hover,
+.cbi-button-edit:hover { background: hsl(var(--accent)); }
+
+.btn-ghost {
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+.btn-ghost:hover { background: hsl(var(--accent)); }
+
+.btn-destructive,
+.cbi-button-remove,
+.cbi-button-negative,
+input.cbi-button-remove,
+input.cbi-button-negative {
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
+}
+
+/* Save — green outline */
+.cbi-button-save,
+input.cbi-button-save {
+  background: hsl(142 71% 95%) !important;
+  color: hsl(142 71% 30%) !important;
+  border: 1px solid hsl(142 71% 60%) !important;
+}
+.cbi-button-save:hover,
+input.cbi-button-save:hover {
+  background: hsl(142 71% 88%) !important;
+  opacity: 1 !important;
+}
+
+/* Reset / Clear — red outline */
+.cbi-button-reset,
+input.cbi-button-reset {
+  background: hsl(var(--destructive) / 0.06) !important;
+  color: hsl(var(--destructive)) !important;
+  border: 1px solid hsl(var(--destructive) / 0.4) !important;
+}
+.cbi-button-reset:hover,
+input.cbi-button-reset:hover {
+  background: hsl(var(--destructive) / 0.12) !important;
+  opacity: 1 !important;
+}
+
+/* Add / positive */
+.cbi-button-add,
+.cbi-button-positive,
+input.cbi-button-add {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Apply dropdown — CSS only, argon-style */
+.cbi-page-actions .cbi-dropdown {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 36px !important;
+  padding: 0 !important;
+  background: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  overflow: visible !important;
+  box-shadow: none !important;
+  line-height: 36px !important;
+  min-width: 120px !important;
+}
+
+/* Main ul — show inline items */
+.cbi-page-actions .cbi-dropdown > ul:not(.dropdown) {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 0.75rem !important;
+  margin: 0 !important;
+  list-style: none !important;
+  height: 100% !important;
+}
+
+.cbi-page-actions .cbi-dropdown > ul:not(.dropdown) > li {
+  display: none !important;
+  list-style: none !important;
+}
+
+/* Show only LuCI-selected item (has display attribute) */
+.cbi-page-actions .cbi-dropdown > ul:not(.dropdown) > li[display] {
+  display: block !important;
+  white-space: nowrap !important;
+}
+
+/* Hide more (···) like argon */
+.cbi-page-actions .cbi-dropdown > .more {
+  display: block !important;
+  width: 1px !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  text-indent: 5000px !important;
+}
+
+/* Hide hidden input div */
+.cbi-page-actions .cbi-dropdown > div {
+  display: none !important;
+}
+
+/* Arrow */
+.cbi-page-actions .cbi-dropdown > .open {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2rem !important;
+  height: 100% !important;
+  padding: 0 !important;
+  font-size: 0.75rem !important;
+  color: hsl(var(--muted-foreground)) !important;
+  cursor: pointer !important;
+  background-color: transparent !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+  border-left: 1px solid hsl(var(--border)) !important;
+  flex-shrink: 0 !important;
+}
+
+/* Dropdown list */
+.cbi-page-actions .cbi-dropdown > ul.dropdown {
+  position: absolute !important;
+  bottom: auto !important;
+  top: calc(100% + 4px) !important;
+  left: 0 !important;
+  min-width: 180px !important;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: calc(var(--radius) - 2px) !important;
+  box-shadow: 0 4px 16px hsl(0 0% 0% / 0.12) !important;
+  list-style: none !important;
+  padding: 0.25rem !important;
+  margin: 0 !important;
+  z-index: 200 !important;
+}
+
+.cbi-page-actions .cbi-dropdown > ul.dropdown > li {
+  display: block !important;
+  padding: 0.4rem 0.65rem !important;
+  font-size: 0.875rem !important;
+  border-radius: calc(var(--radius) - 4px) !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  color: hsl(var(--foreground)) !important;
+  border-bottom: 0 !important;
+  list-style: none !important;
+  line-height: 1.4 !important;
+}
+
+.cbi-page-actions .cbi-dropdown > ul.dropdown > li:hover {
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Last item (Применить без проверки) — destructive style with separator */
+.cbi-page-actions .cbi-dropdown > ul.dropdown > li:last-child {
+  color: hsl(var(--destructive)) !important;
+  margin-top: 0.25rem !important;
+  padding-top: 0.4rem !important;
+  border-top: 1px solid hsl(var(--border)) !important;
+}
+
+.cbi-page-actions .cbi-dropdown > ul.dropdown > li:last-child:hover {
+  background: hsl(var(--destructive) / 0.08) !important;
+  color: hsl(var(--destructive)) !important;
+}
+
+.btn-sm { height: 32px; padding: 0 0.65rem; font-size: 0.8125rem; }
+.btn-lg { height: 40px; padding: 0 1.125rem; font-size: 0.9375rem; }
+.btn-icon { width: 36px; padding: 0; }
+
+/* ============================================================
+ * INPUTS
+ * ============================================================ */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="url"],
+input[type="tel"],
+input:not([type]),
+textarea,
+select {
+  display: block;
+  width: 100%;
+  height: 36px;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 2px);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+textarea {
+  height: auto;
+  min-height: 80px;
+  padding: 0.5rem 0.75rem;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.18);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: hsl(var(--primary));
+}
+
+label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+/* LuCI form rows */
+.cbi-section {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 2px 0 hsl(0 0% 0% / 0.04);
+}
+
+.cbi-section h3,
+.cbi-section legend,
+.cbi-section .cbi-section-descr {
+  margin: 0 0 0.25rem;
+}
+.cbi-section legend,
+.cbi-section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.cbi-section-descr {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.cbi-value {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.cbi-value:last-child { border-bottom: 0; }
+
+.cbi-value-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding-top: 0.5rem;
+}
+
+.cbi-value-description {
+  grid-column: 2;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+  .cbi-value { grid-template-columns: 1fr; gap: 0.4rem; }
+  .cbi-value-description { grid-column: auto; }
+}
+
+/* ============================================================
+ * TABLES
+ * ============================================================ */
+.table,
+table.cbi-section-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 0.875rem;
+}
+
+.table .tr,
+.cbi-section-table tr {
+  border-bottom: 1px solid hsl(var(--border));
+}
+.table .tr:last-child,
+.cbi-section-table tr:last-child { border-bottom: 0; }
+
+.table .th,
+.cbi-section-table th {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  letter-spacing: 0.01em;
+}
+
+.table .td,
+.cbi-section-table td {
+  padding: 0.625rem 0.875rem;
+  vertical-align: middle;
+  color: hsl(var(--foreground));
+}
+
+.table .tr:hover .td,
+.cbi-section-table tr:hover td {
+  background: hsl(var(--accent) / 0.5);
+}
+
+/* ============================================================
+ * ALERTS
+ * ============================================================ */
+.alert-message {
+  display: flex;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.alert-message.warning,
+.alert-message.notice {
+  border-color: hsl(var(--warning) / 0.4);
+  background: hsl(var(--warning) / 0.08);
+}
+
+.alert-message.error,
+.alert-message.danger {
+  border-color: hsl(var(--destructive) / 0.4);
+  background: hsl(var(--destructive) / 0.08);
+  color: hsl(var(--destructive));
+}
+
+.alert-message.info {
+  border-color: hsl(var(--info) / 0.4);
+  background: hsl(var(--info) / 0.08);
+}
+
+.alert-message.success {
+  border-color: hsl(var(--success) / 0.4);
+  background: hsl(var(--success) / 0.08);
+}
+
+/* ============================================================
+ * TABS (LuCI tab strip)
+ * ============================================================ */
+.cbi-tabmenu {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 1rem;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+
+/* CBI tab content panels — hidden by default, shown when active */
+[data-tab-title] {
+  display: none !important;
+}
+
+[data-tab-title][data-tab-active="true"] {
+  display: block !important;
+}
+
+.cbi-tabmenu li {
+  list-style: none;
+}
+
+.cbi-tabmenu li a {
+  display: inline-block;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.cbi-tabmenu li a:hover {
+  color: hsl(var(--foreground));
+  text-decoration: none;
+}
+.cbi-tabmenu li.cbi-tab a,
+.cbi-tabmenu li.active a {
+  color: hsl(var(--foreground));
+  border-bottom-color: hsl(var(--primary));
+  font-weight: 500;
+}
+
+/* ============================================================
+ * BADGES
+ * ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+.badge-primary { background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+.badge-success { background: hsl(var(--success) / 0.15); color: hsl(var(--success)); }
+.badge-warning { background: hsl(var(--warning) / 0.15); color: hsl(var(--warning)); }
+.badge-destructive { background: hsl(var(--destructive) / 0.15); color: hsl(var(--destructive)); }
+
+/* ============================================================
+ * LOGIN / SYSAUTH PAGE
+ * Our overridden /usr/share/ucode/luci/template/sysauth.ut renders:
+ *   <body class="lang_xx sysauth">
+ *     <main id="login-root">
+ *       <div class="login-bg" style="background-image:url(...)"></div>  (optional)
+ *       <div class="sysauth-card">
+ *         <div class="sysauth-brand">…</div>
+ *         <form>
+ *           <div class="alert-message error">…</div>           (only on failure)
+ *           <div class="cbi-value"><label/><input/></div>      (× 2)
+ *           <div class="cbi-page-actions"><input submit/></div>
+ *         </form>
+ *       </div>
+ *     </main>
+ *   </body>
+ * ============================================================ */
+body.sysauth {
+  margin: 0;
+  min-height: 100vh;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+#login-root {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.login-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.login-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--background) / 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.sysauth-card {
+  width: 100%;
+  max-width: 400px;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  box-shadow: 0 1px 3px 0 hsl(0 0% 0% / 0.1),
+              0 1px 2px -1px hsl(0 0% 0% / 0.1);
+}
+
+.sysauth-card .sysauth-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin-bottom: 1.5rem;
+}
+
+.sysauth-card .sysauth-brand .logo {
+  width: 40px;
+  height: 40px;
+  border-radius: calc(var(--radius) - 2px);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.sysauth-card h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sysauth-card .muted {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+  margin: 0.125rem 0 0;
+  line-height: 1.4;
+}
+
+.sysauth-card form { margin: 0; }
+
+.sysauth-card .cbi-value {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.375rem;
+  padding: 0;
+  border: 0;
+  margin-bottom: 0.875rem;
+}
+.sysauth-card .cbi-value:last-of-type { margin-bottom: 0; }
+
+.sysauth-card .cbi-value label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.sysauth-card .cbi-value input { width: 100%; }
+
+.sysauth-card .cbi-page-actions {
+  margin-top: 1.5rem;
+  padding-top: 0;
+  border-top: 0;
+  justify-content: stretch;
+}
+
+.sysauth-card .cbi-page-actions input[type="submit"],
+.sysauth-card .cbi-page-actions button {
+  width: 100%;
+  height: 38px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+/* ============================================================
+ * MISC LuCI-isms
+ * ============================================================ */
+.cbi-page-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* ============================================================
+ * Progress bar
+ * LuCI ships <div class="cbi-progressbar" title="…"><div style="width:N%"></div></div>
+ * The `title` attribute carries a human-readable label (e.g. "Used: 264 / 4096 MB (6%)")
+ * and the inner div carries the fill percentage as inline width.
+ * Style mirrors shadcn's <Progress /> component: small label above, thin track below.
+ * ============================================================ */
+/* Wrapper — no overflow:hidden here so ::before is not clipped */
+.cbi-progressbar {
+  position: relative;
+  height: 8px;
+  margin-top: 2em;       /* leave room for the title pseudo-element */
+  margin-bottom: 0.75em;
+  min-width: 120px;
+  width: 100%;
+}
+
+/* The actual track — overflow:hidden lives here so the fill is clipped properly */
+.cbi-progressbar > div {
+  background: hsl(var(--primary));
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 250ms ease-out;
+}
+
+/* Track background rendered via ::after so we keep overflow:hidden off the wrapper */
+.cbi-progressbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--muted));
+  border-radius: 9999px;
+  z-index: -1;
+}
+
+/* Title text: positioned above the track using attr(title) */
+.cbi-progressbar::before {
+  content: attr(title);
+  position: absolute;
+  top: -1.75em;
+  left: 0;
+  right: 0;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Inside cbi-section table cells, progress bars share the row with a label
+   on the left, so they should not push themselves down with extra top margin. */
+td > .cbi-progressbar,
+.td > .cbi-progressbar,
+.cbi-value-field > .cbi-progressbar {
+  margin-top: 2em;
+}
+
+
+/* ============================================================
+ * SPINNER (.spinning)
+ * The element contains a text label like "Loading view…"; we want a small
+ * spinning ring on the left and the text right next to it (mirrors how the
+ * stock bootstrap theme renders it).
+ * ============================================================ */
+.spinning {
+  position: relative;
+  padding-left: 26px;
+  display: inline-block;
+  line-height: 20px;
+  color: hsl(var(--muted-foreground));
+}
+
+.spinning::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 2px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
+  border-radius: 50%;
+  animation: shadcnui-spin 0.7s linear infinite;
+}
+
+/* When LuCI shows a full-page loader (`<div id="view"><div class="spinning">…`)
+   it centers it via `display: table; margin: 15vh auto`. Honor that by giving
+   the wrapper some breathing room. */
+#view > .spinning:first-child {
+  display: block;
+  margin: 15vh auto 0;
+  text-align: left;
+  font-size: 0.9375rem;
+}
+
+@keyframes shadcnui-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* H1/H2 headings of pages */
+h1, h2 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 0 0 0.5rem;
+}
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.25rem; }
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+.page-description {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9375rem;
+  margin: 0 0 1.25rem;
+}
+
+/* Scrollbars (Webkit) for whole page */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.5); }

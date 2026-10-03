@@ -1,0 +1,13 @@
+#!/bin/sh
+# Create seed configs only if missing. Do NOT touch network, firewall, dhcp, wireless.
+[ -f /etc/config/wizard ] || echo "config wizard 'default'" > /etc/config/wizard
+[ -f /etc/config/netwizard ] || printf "config netwizard 'default'\n\toption lan_netmask '255.255.255.0'\n" > /etc/config/netwizard
+
+# Ensure scripts are executable
+chmod +x /usr/libexec/quickactions-netwizard/*.sh 2>/dev/null
+
+# Enable the init so shortcuts/https/coremark hooks work
+/etc/init.d/quickactions-netwizard enable 2>/dev/null
+/etc/init.d/quickactions-netwizard start 2>/dev/null
+
+exit 0

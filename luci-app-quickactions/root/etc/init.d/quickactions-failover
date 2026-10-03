@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+START=95
+STOP=05
+USE_PROCD=0
+
+HP=/etc/hotplug.d/iface/99-quickactions-conntrack-flush
+CRON_LINE="* * * * * /usr/bin/wan-watchdog.sh"
+
+start() {
+    en=$(uci -q get quickactions.failover.enabled)
+    [ -z "$en" ] && en=1
+    if [ "$en" = "1" ]; then
+        [ -f "$HP" ] && chmod 755 "$HP"
+        (crontab -l 2>/dev/null | grep -v "wan-watchdog.sh"; echo "$CRON_LINE") | crontab -
+    else
+        [ -f "$HP" ] && chmod 644 "$HP"
+        crontab -l 2>/dev/null | grep -v "wan-watchdog.sh" | crontab -
+    fi
+    /etc/init.d/cron restart
+}
+
+stop() {
+    crontab -l 2>/dev/null | grep -v "wan-watchdog.sh" | crontab -
+    /etc/init.d/cron restart
+}
+
+restart() {
+    stop
+    start
+}

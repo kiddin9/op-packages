@@ -1,0 +1,30 @@
+'use strict';
+import * as rtnl from 'rtnl';
+import { access } from 'fs';
+import { inventory } from '../../ucode/rmm-dashboard/clients.uc';
+
+function dump(command, family) {
+    let rows = rtnl.request(command, rtnl.const.NLM_F_DUMP, { family });
+    if (type(rows) != 'array') die(rtnl.error() ?? 'Kernel table unavailable');
+    return rows;
+}
+
+return {
+    'rmm.dashboard': {
+        clients: {
+            call: function() {
+                try {
+                    let links = dump(rtnl.const.RTM_GETLINK, rtnl.const.AF_UNSPEC), wireless = {};
+                    for (let link in links) {
+                        // Names come only from the kernel; never accept paths or commands from RPC arguments.
+                        if (type(link.dev) == 'string' && !match(link.dev, /[\/]/))
+                            wireless[link.dev] = access(`/sys/class/net/${link.dev}/phy80211`) || access(`/sys/class/net/${link.dev}/wireless`);
+                    }
+                    return inventory(links, dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_BRIDGE),
+                        [ ...dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_INET), ...dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_INET6) ], wireless);
+                }
+                catch (err) { return { error: '' + err }; }
+            }
+        }
+    }
+};
