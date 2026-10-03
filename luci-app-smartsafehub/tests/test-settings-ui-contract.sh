@@ -74,6 +74,30 @@ grep -Fq '원격 상태 보고' "$SETTINGS_PAGE" || \
 	fail 'settings diagnostics must expose paid/trial remote health reporting'
 grep -Fq '기본값은 꺼짐이며 언제든지 다시 끌 수 있습니다.' "$SETTINGS_PAGE" || \
 	fail 'remote health reporting must be explicit opt-in with opt-out copy'
+grep -Fq '개인정보 보호' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must expose a recognizable privacy section'
+grep -Fq '진단에 필요한 최소한의 상태 정보만 전송하며, 네트워크 식별 정보와 이용 내용은 보내지 않습니다.' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must summarize its data-minimization policy'
+grep -Fq '기기 상태 수치' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must group transmitted device metrics'
+grep -Fq '메모리 · 부하 · 저장 공간' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must list transmitted device metrics clearly'
+grep -Fq '개인 식별 · 네트워크 정보' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must group excluded network identifiers'
+grep -Fq '호스트명 · WAN IP · Wi-Fi SSID/MAC' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must list excluded network identifiers clearly'
+grep -Fq '이용 내용 및 원문 데이터' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must group excluded request and log contents'
+grep -Fq 'DNS 요청 내용 · 시스템 로그 원문' "$SETTINGS_PAGE" || \
+	fail 'remote health reporting must list excluded content and raw logs clearly'
+grep -Fq 'border border-teal-200 bg-teal-50 p-3.5' "$SETTINGS_PAGE" || \
+	fail 'non-transmitted information must use a distinct privacy surface'
+grep -Fq ".ssh-app[data-theme='dark'] [class~='bg-teal-50']" "$APP_STYLES" || \
+	fail 'privacy emphasis surface must retain a dark-theme background mapping'
+grep -Fq "[class~='border-teal-200']" "$APP_STYLES" || \
+	fail 'privacy emphasis border must retain a dark-theme mapping'
+grep -Fq "[class~='text-teal-800']" "$APP_STYLES" || \
+	fail 'privacy emphasis text must retain dark-theme contrast'
 grep -Fq "const health = useHealth(route === 'home' || route === 'settings');" "$APP" || \
 	fail '설정 페이지와 대시보드가 같은 로컬 Health 리소스를 불러와야 합니다'
 grep -Fq 'title="설정 백업 및 복원"' "$SETTINGS_PAGE" || \

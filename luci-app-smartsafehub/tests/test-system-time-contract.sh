@@ -10,13 +10,16 @@ API="$ROOT_DIR/frontend/src/api/smartsafehub.ts"
 HOOK="$ROOT_DIR/frontend/src/hooks/useSystemTimeSettings.ts"
 SETTINGS_PAGE="$ROOT_DIR/frontend/src/pages/SettingsPage.tsx"
 APP_STYLE="$ROOT_DIR/frontend/src/styles/app.css"
+APP="$ROOT_DIR/frontend/src/app/App.tsx"
+TIMEZONE_UTIL="$ROOT_DIR/frontend/src/utils/timezone.ts"
+SMARTSAFEHUB_CONFIG="$ROOT_DIR/root/etc/config/smartsafehub"
 
 fail() {
 	echo "FAIL: $*" >&2
 	exit 1
 }
 
-for file in "$SYSTEM_MODULE" "$RPC_ENTRY" "$ACL" "$API" "$HOOK" "$SETTINGS_PAGE" "$APP_STYLE"; do
+for file in "$SYSTEM_MODULE" "$RPC_ENTRY" "$ACL" "$API" "$HOOK" "$SETTINGS_PAGE" "$APP_STYLE" "$APP" "$TIMEZONE_UTIL" "$SMARTSAFEHUB_CONFIG"; do
 	[ -f "$file" ] || fail "missing system time source: ${file#$ROOT_DIR/}"
 done
 
@@ -36,6 +39,19 @@ grep -Fq "SYSTEM_TIMEZONE_UNSUPPORTED" "$SYSTEM_MODULE" || \
 	fail 'timezone update must reject names missing from the device timezone database'
 grep -Fq "restore_system_time(" "$SYSTEM_MODULE" || \
 	fail 'timezone update must restore the previous UCI values when runtime apply fails'
+
+grep -Fq "option timezone_initialized '0'" "$SMARTSAFEHUB_CONFIG" || \
+	fail 'fresh SmartSafeHub configs must mark browser timezone initialization as pending'
+grep -Fq "export function initialize_timezone(request)" "$SYSTEM_MODULE" || \
+	fail 'system time backend must expose one-shot browser timezone initialization'
+grep -Fq "ctx.get('smartsafehub', 'system', 'timezone_initialized')" "$SYSTEM_MODULE" || \
+	fail 'automatic timezone initialization must be gated by the fresh-install marker'
+grep -Fq "is_stock_utc_timezone(current_zonename, current_timezone)" "$SYSTEM_MODULE" || \
+	fail 'automatic timezone initialization must preserve already configured OpenWrt timezones'
+grep -Fq "mark_timezone_initialized()" "$SYSTEM_MODULE" || \
+	fail 'automatic timezone initialization must consume its one-shot marker'
+grep -Fq "'initial_browser_timezone'" "$SYSTEM_MODULE" || \
+	fail 'automatic timezone changes must identify their activity origin'
 
 grep -Fq "const AUTO_INSTALL_MARKER = '/tmp/smartsafehub/updater-auto-date';" "$SYSTEM_MODULE" || \
 	fail 'timezone changes must know the software auto-install day marker'
@@ -59,12 +75,16 @@ grep -Fq "SYSTEM_TIME_SYNC_FAILED" "$SYSTEM_MODULE" || \
 
 grep -Eq '^[[:space:]]*system_time_settings:[[:space:]]*\{' "$RPC_ENTRY" || \
 	fail 'system_time_settings RPC must be registered'
+grep -Eq '^[[:space:]]*system_timezone_initialize:[[:space:]]*\{' "$RPC_ENTRY" || \
+	fail 'system_timezone_initialize RPC must be registered'
 grep -Eq '^[[:space:]]*system_timezone_update:[[:space:]]*\{' "$RPC_ENTRY" || \
 	fail 'system_timezone_update RPC must be registered'
 grep -Eq '^[[:space:]]*system_time_sync:[[:space:]]*\{' "$RPC_ENTRY" || \
 	fail 'system_time_sync RPC must be registered'
 jq -e '."luci-app-smartsafehub".read.ubus.smartsafehub | index("system_time_settings") != null' "$ACL" >/dev/null || \
 	fail 'system_time_settings must be granted read ACL access'
+jq -e '."luci-app-smartsafehub".write.ubus.smartsafehub | index("system_timezone_initialize") != null' "$ACL" >/dev/null || \
+	fail 'system_timezone_initialize must be granted write ACL access'
 jq -e '."luci-app-smartsafehub".write.ubus.smartsafehub | index("system_timezone_update") != null' "$ACL" >/dev/null || \
 	fail 'system_timezone_update must be granted write ACL access'
 jq -e '."luci-app-smartsafehub".write.ubus.smartsafehub | index("system_time_sync") != null' "$ACL" >/dev/null || \
@@ -72,6 +92,14 @@ jq -e '."luci-app-smartsafehub".write.ubus.smartsafehub | index("system_time_syn
 
 grep -Fq "callApi(API_OBJECT, 'system_time_settings')" "$API" || \
 	fail 'frontend must read timezone settings through the SmartSafeHub RPC API'
+grep -Fq "callApi(API_OBJECT, 'system_timezone_initialize', { zonename })" "$API" || \
+	fail 'frontend must expose the one-shot browser timezone initialization RPC'
+grep -Fq 'Intl.DateTimeFormat().resolvedOptions().timeZone' "$TIMEZONE_UTIL" || \
+	fail 'browser timezone detection must use the browser IANA timezone without geolocation'
+grep -Fq 'const detectedTimezone = browserTimezone();' "$APP" || \
+	fail 'authenticated app startup must detect the browser timezone'
+grep -Fq 'initializeSystemTimezone(detectedTimezone)' "$APP" || \
+	fail 'authenticated app startup must request one-shot timezone initialization'
 grep -Fq "callApi(API_OBJECT, 'system_timezone_update', { zonename })" "$API" || \
 	fail 'frontend must update timezone through the SmartSafeHub RPC API'
 grep -Fq "callApi(API_OBJECT, 'system_time_sync')" "$API" || \

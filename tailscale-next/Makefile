@@ -9,7 +9,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=tailscale-next
 PKG_VERSION:=1.102.4
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 
 # Architecture mapping for pre-built binaries
 ifeq ($(ARCH),x86_64)

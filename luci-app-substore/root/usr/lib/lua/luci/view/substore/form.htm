@@ -125,9 +125,10 @@
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em;vertical-align:top">协议筛选</label>
 				<% for _, p in ipairs(core.RULE_PROTOS) do %>
-				<label style="margin-right:0.75em;white-space:nowrap">
-					<input type="checkbox" name="proto_filter_<%=p%>" value="1" <%=proto_sel[p] and "checked" or ""%>/> <%=p%>
-				</label>
+				<span style="white-space:nowrap;margin-right:0.75em">
+					<input type="checkbox" id="pf_<%=p%>" name="proto_filter_<%=p%>" value="1" style="vertical-align:text-top;margin:0" <%=proto_sel[p] and "checked" or ""%>/>
+					<label for="pf_<%=p%>"><%=p%></label>
+				</span>
 				<% end %>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
@@ -135,9 +136,13 @@
 				<textarea name="rename_map" rows="3" style="width:60%"><%=luci.util.pcdata(rm)%></textarea>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<span style="color:#808080">多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。<br/>
-				协议筛选：全部不勾选 = 不筛选（保留所有协议）。<br/>
-				重命名每行一条：<code>旧名称=新名称</code>（精确匹配）、<code>模式 -> 替换</code>（正则替换）、<code>{server}_{port}_{proto}</code>（占位符模板）。</span>
+				<span style="color:#808080"><%:Separate multiple keywords with commas (e.g. HK,US,JP); include = keep if any matches, exclude = drop if any matches.%><br/>
+				<%:Protocol filter: with none ticked no filtering is applied.%><br/>
+				<%:Rename: one rule per line (# starts a comment); rules apply top to bottom and are chained. The three forms differ in scope:%><br/>
+				<%:OLD=NEW — exact match: renames only nodes named exactly OLD.%><br/>
+				<%:PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (Lua patterns, not PCRE; $1 for captures).%><br/>
+				<%:{server}_{port}_{proto} — placeholder template: renames every node unconditionally.%><br/>
+				<%:Placeholders: {server} {port} {proto} {name} {uuid} {password} {group}.%></span>
 			</div>
 		</div>
 		<% if is_edit and it.last_update then %>

@@ -2,7 +2,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_VERSION:=1.0.1-r20230405
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_MAINTAINER:=jjm2473 <jjm2473@gmail.com>
 
 LUCI_TITLE:=Generate MAC address for WAN

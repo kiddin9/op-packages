@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Preserve OpenWrt-generated metadata (including compat_version) and user
-# changes across firmware upgrades. SmartSafeHub only replaces values that are
-# still unset or at the stock defaults used on a fresh OpenWrt installation.
+# settings across firmware upgrades, except for the SmartSafeHub product
+# hostname which is intentionally fixed to SmartRouter. Missing safe defaults
+# are filled without replacing an existing timezone or other user values.
 uci_get() {
 	uci -q get "$1" 2>/dev/null || true
 }
@@ -18,24 +19,15 @@ if ! uci -q get system.@system[0] >/dev/null 2>&1; then
 fi
 
 hostname="$(uci_get system.@system[0].hostname)"
-case "$hostname" in
-	''|OpenWrt)
-		uci -q set system.@system[0].hostname='SmartRouter' || exit 1
-		;;
-esac
+if [ "$hostname" != 'SmartRouter' ]; then
+	uci -q set system.@system[0].hostname='SmartRouter' || exit 1
+fi
 
-zonename="$(uci_get system.@system[0].zonename)"
-timezone="$(uci_get system.@system[0].timezone)"
-case "$zonename" in
-	''|UTC)
-		case "$timezone" in
-			''|UTC|UTC0)
-				uci -q set system.@system[0].zonename='Asia/Seoul' || exit 1
-				uci -q set system.@system[0].timezone='UTC+9' || exit 1
-				;;
-		esac
-		;;
-esac
+# Keep the OpenWrt timezone untouched here. Fresh SmartSafeHub installations
+# carry smartsafehub.system.timezone_initialized=0 and the authenticated web UI
+# resolves the browser IANA timezone once. Existing installations do not gain
+# that marker through config-file upgrades, so their timezone is never changed
+# implicitly.
 
 set_if_missing system.@system[0].ttylogin '0'
 set_if_missing system.@system[0].log_size '64'

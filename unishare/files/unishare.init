@@ -319,7 +319,3 @@ service_stopped() {
 service_triggers() {
 	procd_add_reload_trigger "unishare"
 }
-
-reload_service() {
-	restart
-}

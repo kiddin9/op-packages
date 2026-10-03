@@ -18,6 +18,7 @@ import {
 	read_scheduled_reboot_settings,
 	read_status,
 	read_time_settings,
+	initialize_timezone,
 	reboot_system,
 	sync_time,
 	update_scheduled_reboot_settings,
@@ -201,6 +202,14 @@ const methods = {
 	system_time_settings: {
 		call: require_root_password(function(request) {
 			return read_time_settings(request);
+		}),
+	},
+	system_timezone_initialize: {
+		args: {
+			zonename: '',
+		},
+		call: require_root_password(function(request) {
+			return initialize_timezone(request);
 		}),
 	},
 	system_time_sync: {

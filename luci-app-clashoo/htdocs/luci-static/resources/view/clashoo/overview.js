@@ -2024,7 +2024,3 @@ return view.extend({
   handleSave:      null,
   handleReset:     null
 });
-
-reload_service() {
-	restart
-}

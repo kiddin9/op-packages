@@ -264,8 +264,23 @@ msgstr "协议筛选：全部不勾选 = 不筛选（保留所有协议）。"
 msgid "Rename"
 msgstr "重命名"
 
-msgid "One rename rule per line: OLD=NEW (exact), PATTERN -> REPLACEMENT (regex), or {server}_{port}_{proto} (placeholder template)."
-msgstr "重命名每行一条：旧名称=新名称（精确匹配）、模式 -> 替换（正则替换）、{server}_{port}_{proto}（占位符模板）。"
+msgid "Separate multiple keywords with commas (e.g. HK,US,JP); include = keep if any matches, exclude = drop if any matches."
+msgstr "多条关键词用逗号分隔（如：香港,美国,日本）；包含 = 命中任一即保留，排除 = 命中任一即去除。"
+
+msgid "Rename: one rule per line (# starts a comment); rules apply top to bottom and are chained. The three forms differ in scope:"
+msgstr "重命名每行一条（# 开头为注释），规则自上而下逐条叠加。三种写法作用范围不同："
+
+msgid "OLD=NEW — exact match: renames only nodes named exactly OLD."
+msgstr "旧名称=新名称 —— 精确匹配：只改名字完全相同的节点。"
+
+msgid "PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (Lua patterns, not PCRE; $1 for captures)."
+msgstr "模式 -> 替换 —— 正则替换：替换所有节点名字中的匹配部分（Lua 模式，非 PCRE；捕获引用写 $1）。"
+
+msgid "{server}_{port}_{proto} — placeholder template: renames every node unconditionally."
+msgstr "{server}_{port}_{proto} —— 占位符模板：无条件重命名所有节点。"
+
+msgid "Placeholders: {server} {port} {proto} {name} {uuid} {password} {group}."
+msgstr "可用占位符：{server} {port} {proto} {name} {uuid} {password} {group}。"
 
 # 节点分组 / 单节点编辑
 msgid "Group"

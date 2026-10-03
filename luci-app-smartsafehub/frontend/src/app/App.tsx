@@ -1,4 +1,7 @@
 import type { ComponentChildren } from 'preact';
+import { useEffect } from 'preact/hooks';
+
+import { initializeSystemTimezone } from '../api/smartsafehub';
 
 import { AppShell } from '../components/AppShell';
 import { useActivityHistory } from '../hooks/useActivityHistory';
@@ -31,6 +34,7 @@ import { SafeShieldRulesPage } from '../pages/SafeShieldRulesPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { UpdatePage } from '../pages/UpdatePage';
 import { WifiPage } from '../pages/WifiPage';
+import { browserTimezone } from '../utils/timezone';
 
 interface AppProps {
   onAdministratorPasswordChanged: () => void;
@@ -58,6 +62,26 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
   const health = useHealth(route === 'home' || route === 'settings');
   const scheduledReboot = useScheduledRebootSettings(route === 'settings');
   const systemTime = useSystemTimeSettings(route === 'settings');
+
+  useEffect(() => {
+    const detectedTimezone = browserTimezone();
+    if (!detectedTimezone) {
+      return;
+    }
+
+    void initializeSystemTimezone(detectedTimezone)
+      .then((result) => {
+        if (result.applied && route === 'settings') {
+          void systemTime.refresh();
+        }
+      })
+      .catch(() => {
+        // Automatic initialization is best-effort. Manual timezone controls in
+        // Settings remain available when browser detection or RPC application
+        // cannot complete.
+      });
+  }, []);
+
   const safeshieldActions = useSafeShieldActions(
     safeshield.refresh,
     safeshieldStatistics.refresh,

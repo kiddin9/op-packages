@@ -2054,7 +2054,3 @@ mwan3_track_clean()
 	rm -f "${MWAN3_STATUS_DIR:?}/iface_state/${1}" 2>/dev/null
 	rmdir --ignore-fail-on-non-empty "$MWAN3TRACK_STATUS_DIR" 2>/dev/null
 }
-
-reload_service() {
-	restart
-}

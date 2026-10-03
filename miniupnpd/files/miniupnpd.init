@@ -275,7 +275,3 @@ upnpd_add_acl_entry() {
 	[ "$action" = "disabled" ] && return 0
 	echo "$action $ext_port $int_addr $int_port${descr_filter} # $comment"
 }
-
-reload_service() {
-	restart
-}

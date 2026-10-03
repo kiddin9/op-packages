@@ -25,6 +25,7 @@ import {
   KeyIcon,
   PowerIcon,
   SettingsIcon,
+  ShieldIcon,
 } from '../components/Icons';
 import type { ConfigurationBackupAction } from '../hooks/useConfigurationBackup';
 import type { SystemAction } from '../hooks/useSystemActions';
@@ -42,6 +43,7 @@ import type {
 import { errorMessage } from '../utils/errors';
 import { luciAdminUrl } from '../utils/luci';
 import { passwordPolicy, passwordPolicySatisfied } from '../utils/password';
+import { browserTimezone } from '../utils/timezone';
 
 interface SettingsPageProps {
   action: SystemAction;
@@ -143,14 +145,6 @@ function ActionCard(props: {
       <div class="mt-5">{props.children}</div>
     </article>
   );
-}
-
-function browserTimezone(): string | null {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
-  } catch {
-    return null;
-  }
 }
 
 function TimeSettingsCard(props: {
@@ -481,7 +475,7 @@ function HealthDiagnosticCard(props: {
 
   return (
     <ActionCard
-      description="SmartSafeHub가 장치 상태를 직접 점검하고 이상 항목을 알려줍니다. 로컬 진단은 멤버십과 관계없이 사용할 수 있습니다."
+      description="SmartSafeHub가 장치 상태를 직접 점검하고 이상 항목을 알려줍니다."
       icon={<DownloadIcon class="size-5" />}
       title="진단 및 지원"
     >
@@ -710,14 +704,57 @@ function HealthDiagnosticCard(props: {
               </div>
             )}
 
-            <div class="mt-4 grid grid-cols-1 gap-3 text-xs leading-5 text-slate-500 sm:grid-cols-2">
-              <div class="rounded-xl border border-slate-200 p-3">
-                <p class="m-0 font-extrabold text-slate-700">전송되는 정보</p>
-                <p class="mt-1 mb-0">메모리·부하·저장 공간 수치, 진단 상태, 이상 코드와 보고 시각</p>
+            <div class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+              <div class="flex items-start gap-3">
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700">
+                  <ShieldIcon class="size-4" />
+                </span>
+                <div class="min-w-0">
+                  <p class="m-0 text-sm font-black text-slate-900">개인정보 보호</p>
+                  <p class="mt-1 mb-0 text-xs leading-5 text-slate-500">
+                    진단에 필요한 최소한의 상태 정보만 전송하며, 네트워크 식별 정보와 이용 내용은 보내지 않습니다.
+                  </p>
+                </div>
               </div>
-              <div class="rounded-xl border border-slate-200 p-3">
-                <p class="m-0 font-extrabold text-slate-700">전송하지 않는 정보</p>
-                <p class="mt-1 mb-0">호스트명, WAN IP, Wi-Fi SSID/MAC, DNS 요청 내용, 시스템 로그 원문</p>
+
+              <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
+                  <div class="flex items-center gap-2">
+                    <span class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600">
+                      <DatabaseIcon class="size-4" />
+                    </span>
+                    <p class="m-0 text-sm font-black text-slate-900">전송되는 정보</p>
+                  </div>
+                  <div class="mt-3 space-y-3">
+                    <div>
+                      <p class="m-0 text-[11px] font-extrabold text-slate-500">기기 상태 수치</p>
+                      <p class="mt-1 mb-0 text-xs font-semibold leading-5 text-slate-700">메모리 · 부하 · 저장 공간</p>
+                    </div>
+                    <div>
+                      <p class="m-0 text-[11px] font-extrabold text-slate-500">진단 정보</p>
+                      <p class="mt-1 mb-0 text-xs font-semibold leading-5 text-slate-700">진단 상태 · 이상 코드 · 보고 시각</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-xl border border-teal-200 bg-teal-50 p-3.5">
+                  <div class="flex items-center gap-2">
+                    <span class="flex size-7 shrink-0 items-center justify-center rounded-lg bg-white text-teal-700">
+                      <ShieldIcon class="size-4" />
+                    </span>
+                    <p class="m-0 text-sm font-black text-slate-900">전송하지 않는 정보</p>
+                  </div>
+                  <div class="mt-3 space-y-3">
+                    <div>
+                      <p class="m-0 text-[11px] font-extrabold text-teal-800">개인 식별 · 네트워크 정보</p>
+                      <p class="mt-1 mb-0 text-xs font-semibold leading-5 text-slate-700">호스트명 · WAN IP · Wi-Fi SSID/MAC</p>
+                    </div>
+                    <div>
+                      <p class="m-0 text-[11px] font-extrabold text-teal-800">이용 내용 및 원문 데이터</p>
+                      <p class="mt-1 mb-0 text-xs font-semibold leading-5 text-slate-700">DNS 요청 내용 · 시스템 로그 원문</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

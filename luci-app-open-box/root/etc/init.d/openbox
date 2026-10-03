@@ -90,7 +90,3 @@ status() {
 	echo "openbox is not running"
 	return 1
 }
-
-reload_service() {
-	restart
-}

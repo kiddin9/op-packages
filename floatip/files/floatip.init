@@ -76,7 +76,3 @@ service_stopped() {
 service_triggers() {
 	procd_add_reload_trigger "network" "floatip"
 }
-
-reload_service() {
-	restart
-}

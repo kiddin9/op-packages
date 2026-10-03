@@ -562,7 +562,3 @@ get_online_time() {
 	}
 }
 
-
-reload_service() {
-	restart
-}

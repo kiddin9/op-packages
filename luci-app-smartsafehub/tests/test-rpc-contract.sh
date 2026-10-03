@@ -48,7 +48,7 @@ assert_acl_object_method() {
 for method in system_root_password_status system_root_password_set system_root_password_change \
 	updates_status updates_check updates_install updates_settings_update \
 	firmware_status firmware_check firmware_prepare firmware_validate_upload firmware_install firmware_discard \
-	system_time_settings system_timezone_update system_time_sync \
+	system_time_settings system_timezone_initialize system_timezone_update system_time_sync \
 	system_scheduled_reboot_settings system_scheduled_reboot_update \
 	health_status health_run health_reporter_update \
 	license_status license_activate \
@@ -97,6 +97,7 @@ for method in firmware_check firmware_prepare firmware_validate_upload firmware_
 	assert_acl_method write "$method"
 done
 assert_acl_method read system_time_settings
+assert_acl_method write system_timezone_initialize
 assert_acl_method write system_timezone_update
 assert_acl_method write system_time_sync
 assert_acl_method read system_scheduled_reboot_settings

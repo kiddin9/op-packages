@@ -22,11 +22,11 @@ PKG_NAME:=luci-app-amlogic
 #   DD = day    (01 = 1st)
 #   NN = daily release sequence (01 = first release of the day, 02 = second, ...)
 # Example below: 26.10.0101 = October 1, 2026, 1st release of the day
-PKG_VERSION:=26.10.0101
+PKG_VERSION:=26.10.0301
 # PKG_RELEASE marks the LuCI variant; onekey-install.sh relies on it (do NOT bump)
 #   1 = Lua version (lua branch)  → tag: 26.10.0101
 #   2 = JS version  (main branch) → tag: 26.10.0101-js
-PKG_RELEASE:=19
+PKG_RELEASE:=20
 
 PKG_LICENSE:=GPL-2.0 License
 PKG_MAINTAINER:=ophub <https://github.com/ophub/luci-app-amlogic>

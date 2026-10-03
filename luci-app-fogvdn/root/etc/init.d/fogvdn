@@ -134,7 +134,3 @@ reload_servie()
     stop
     start
 }
-
-reload_service() {
-	restart
-}

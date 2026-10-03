@@ -210,7 +210,3 @@ service_triggers()
 	procd_add_reload_trigger "e2guardian"
 	procd_add_validation validate_e2guardian_section
 }
-
-reload_service() {
-	restart
-}

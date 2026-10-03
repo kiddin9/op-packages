@@ -88,7 +88,3 @@ stop_pool() {
 service_triggers() {
 	procd_add_reload_trigger "mergerfs"
 }
-
-reload_service() {
-	restart
-}

@@ -374,7 +374,3 @@ dhcp_backup() {
 			;;
 	esac
 }
-
-reload_service() {
-	restart
-}

@@ -107,7 +107,3 @@ if [ -f /etc/config/dae ]; then
 fi
 
 exit 0
-
-reload_service() {
-	restart
-}

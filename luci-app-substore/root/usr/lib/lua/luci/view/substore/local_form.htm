@@ -88,9 +88,10 @@
 			<div class="cbi-section-descr" style="margin:0.25em 0">
 				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Protocol filter%></label>
 				<% for _, p in ipairs(core.RULE_PROTOS) do %>
-				<label style="margin-right:0.75em;white-space:nowrap">
-					<input type="checkbox" name="proto_filter_<%=p%>" value="1" <%=proto_sel[p] and "checked" or ""%>/> <%=p%>
-				</label>
+				<span style="white-space:nowrap;margin-right:0.75em">
+					<input type="checkbox" id="pf_<%=p%>" name="proto_filter_<%=p%>" value="1" style="vertical-align:text-top;margin:0" <%=proto_sel[p] and "checked" or ""%>/>
+					<label for="pf_<%=p%>"><%=p%></label>
+				</span>
 				<% end %>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
@@ -98,8 +99,13 @@
 				<textarea name="rename_map" rows="3" style="width:60%"><%=luci.util.pcdata(rm)%></textarea>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<span style="color:#808080"><%:Protocol filter: with none ticked no filtering is applied.%><br/>
-				<%:One rename rule per line: OLD=NEW (exact), PATTERN -> REPLACEMENT (regex), or {server}_{port}_{proto} (placeholder template).%></span>
+				<span style="color:#808080"><%:Separate multiple keywords with commas (e.g. HK,US,JP); include = keep if any matches, exclude = drop if any matches.%><br/>
+				<%:Protocol filter: with none ticked no filtering is applied.%><br/>
+				<%:Rename: one rule per line (# starts a comment); rules apply top to bottom and are chained. The three forms differ in scope:%><br/>
+				<%:OLD=NEW — exact match: renames only nodes named exactly OLD.%><br/>
+				<%:PATTERN -> REPLACEMENT — regex: replaces matches in the name of every node (Lua patterns, not PCRE; $1 for captures).%><br/>
+				<%:{server}_{port}_{proto} — placeholder template: renames every node unconditionally.%><br/>
+				<%:Placeholders: {server} {port} {proto} {name} {uuid} {password} {group}.%></span>
 			</div>
 		</div>
 		<% if is_edit and it.last_update then %>

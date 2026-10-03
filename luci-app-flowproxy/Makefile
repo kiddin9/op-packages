@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-flowproxy
 PKG_VERSION:=1.0.4
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 LUCI_TITLE:=LuCI Support for FlowProxy Traffic Diversion
 LUCI_DEPENDS:=+luci-base +nftables +kmod-nft-core +ip-full

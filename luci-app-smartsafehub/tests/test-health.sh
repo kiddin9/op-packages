@@ -520,9 +520,11 @@ grep -Fq '원격 상태 보고가 켜져 있습니다.' "$SETTINGS_PAGE" || fail
 grep -Fq "return '첫 보고 준비 중';" "$SETTINGS_PAGE" || fail '활성화 직후 stale disabled/never 상태를 꺼짐이 아니라 첫 보고 준비 중으로 표시해야 합니다.'
 grep -Fq "return reporter.enabled ? '첫 보고 대기 중' : '보고 기록 없음';" "$SETTINGS_PAGE" || fail 'Reporter UI가 첫 서버 보고 전 상태를 명확하게 구분해야 합니다.'
 grep -Fq '최근 전송 상태' "$SETTINGS_PAGE" || fail 'Reporter 결과는 토글 상태와 혼동되지 않도록 최근 전송 상태로 표시해야 합니다.'
-grep -Fq '로컬 진단은 멤버십과 관계없이 사용할 수 있습니다.' "$SETTINGS_PAGE" || fail '설정 UI가 무료 로컬 진단을 설명해야 합니다.'
 grep -Fq '기본값은 꺼짐이며 언제든지 다시 끌 수 있습니다.' "$SETTINGS_PAGE" || fail '설정 UI가 Reporter opt-in과 opt-out을 설명해야 합니다.'
+grep -Fq '개인정보 보호' "$SETTINGS_PAGE" || fail '설정 UI가 Health Reporter의 개인정보 보호 영역을 명확하게 표시해야 합니다.'
+grep -Fq '전송되는 정보' "$SETTINGS_PAGE" || fail '설정 UI가 Health Reporter의 전송 항목을 구분해서 안내해야 합니다.'
 grep -Fq '전송하지 않는 정보' "$SETTINGS_PAGE" || fail '설정 UI가 Health Reporter의 개인정보 제외 항목을 안내해야 합니다.'
+grep -Fq 'DNS 요청 내용 · 시스템 로그 원문' "$SETTINGS_PAGE" || fail '설정 UI가 DNS 요청 내용과 시스템 로그 원문을 전송하지 않음을 명시해야 합니다.'
 grep -Fq "'@.license.key'" "$HELPER" || \
 	fail 'Health Reporter는 SafeShield license_get의 실제 중첩 응답(.license.key)에서 라이선스 키를 읽어야 합니다.'
 

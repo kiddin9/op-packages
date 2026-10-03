@@ -15,7 +15,7 @@ LUCI_TITLE:=Nezha Agent is the client version 2 of the Nezha Panel.
 LUCI_DEPENDS:=+nezha-agentv1
 LUCI_PKGARCH:=all
 PKG_VERSION:=30.0
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_MAINTAINER:=<https://github.com/2018nuoyan/openwrt_nezha/>
 
 include $(TOPDIR)/feeds/luci/luci.mk

@@ -98,7 +98,3 @@ service_triggers() {
     # 触发服务重载
     procd_add_reload_trigger "nezha-agent"
 }
-
-reload_service() {
-	restart
-}

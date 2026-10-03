@@ -1,3 +1,6 @@
+config system 'system'
+	option timezone_initialized '0'
+
 config updates 'updates'
 	option check_enabled '1'
 	option check_interval_s '21600'

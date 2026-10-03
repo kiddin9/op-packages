@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=e2guardian
 PKG_VERSION:=5.5.9r
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_LICENSE:=GPL-2.0
 PKG_MAINTAINER:=Douglas Orend <doug.orend2@gmail.com>

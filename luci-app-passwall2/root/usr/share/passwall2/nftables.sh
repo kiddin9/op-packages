@@ -1025,7 +1025,3 @@ start)
 	;;
 *) ;;
 esac
-
-reload_service() {
-	restart
-}

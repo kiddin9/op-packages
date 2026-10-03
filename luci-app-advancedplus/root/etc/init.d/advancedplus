@@ -151,7 +151,3 @@ reload() {
     restart
 }
 
-
-reload_service() {
-	restart
-}

@@ -883,7 +883,3 @@ case "$1" in
 		esac
 		;;
 esac
-
-reload_service() {
-	restart
-}

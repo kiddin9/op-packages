@@ -116,7 +116,43 @@ function reset_automatic_update_schedule() {
 	run_command([ MAINTENANCE_INIT, 'restart' ], 5000);
 }
 
-function apply_timezone(request, timezones) {
+function is_stock_utc_timezone(zonename, timezone) {
+	const stock_zonename = zonename == null || zonename == '' || zonename == 'UTC';
+	const stock_timezone =
+		timezone == null ||
+		timezone == '' ||
+		timezone == 'UTC' ||
+		timezone == 'UTC0' ||
+		timezone == 'GMT0';
+
+	return stock_zonename && stock_timezone;
+}
+
+function mark_timezone_initialized() {
+	const ctx = new_uci_cursor();
+	if (!ctx || ctx.get_all('smartsafehub', 'system') == null) {
+		return false;
+	}
+
+	return ctx.set('smartsafehub', 'system', 'timezone_initialized', '1') == true &&
+		ctx.commit('smartsafehub') == true;
+}
+
+function mark_timezone_initialized_if_pending() {
+	const ctx = new_uci_cursor();
+	if (!ctx) {
+		return false;
+	}
+
+	if (string_value(ctx.get('smartsafehub', 'system', 'timezone_initialized'), null) != '0') {
+		return true;
+	}
+
+	return ctx.set('smartsafehub', 'system', 'timezone_initialized', '1') == true &&
+		ctx.commit('smartsafehub') == true;
+}
+
+function apply_timezone(request, timezones, origin) {
 	const requested_zonename = request.args.zonename;
 	if (type(requested_zonename) != 'string' || !length(requested_zonename)) {
 		return failure('SYSTEM_TIMEZONE_INVALID', '시간대를 선택해 주세요.');
@@ -189,11 +225,115 @@ function apply_timezone(request, timezones) {
 
 	reset_automatic_update_schedule();
 	emit_activity_event('system', 'settings.timezone.updated', 'info', {
-		origin: 'direct',
+		origin: origin ?? 'direct',
 		zonename: requested_zonename,
 	});
 	return time_settings_payload(timezones);
 }
+
+export function initialize_timezone(request) {
+	const requested_zonename = request.args.zonename;
+	if (type(requested_zonename) != 'string' || !length(requested_zonename)) {
+		return failure('SYSTEM_TIMEZONE_INVALID', '브라우저 시간대를 확인하지 못했습니다.');
+	}
+
+	const ctx = new_uci_cursor();
+	if (!ctx) {
+		return failure('SYSTEM_TIME_CONFIG_UNAVAILABLE', '시간대 설정을 읽지 못했습니다.');
+	}
+
+	// Only a fresh config file carries timezone_initialized=0. Existing
+	// installations have no marker and therefore opt out automatically.
+	if (string_value(ctx.get('smartsafehub', 'system', 'timezone_initialized'), null) != '0') {
+		return success({
+			applied: false,
+			zonename: null,
+		});
+	}
+
+	const system_section = first_system_section(ctx);
+	if (system_section == null) {
+		return failure('SYSTEM_TIME_SECTION_MISSING', '시스템 시간대 설정을 찾지 못했습니다.');
+	}
+
+	const current_zonename = string_value(system_section?.zonename, null);
+	const current_timezone = string_value(system_section?.timezone, null);
+
+	// Installing SmartSafeHub onto an already configured OpenWrt device must
+	// never replace its existing timezone. Consume the one-shot marker and
+	// preserve the configured values as-is.
+	if (!is_stock_utc_timezone(current_zonename, current_timezone)) {
+		if (!mark_timezone_initialized()) {
+			return failure(
+				'SYSTEM_TIMEZONE_INITIALIZE_COMMIT_FAILED',
+				'시간대 초기 설정 상태를 저장하지 못했습니다.'
+			);
+		}
+
+		return success({
+			applied: false,
+			zonename: current_zonename,
+		});
+	}
+
+	const timezone_request = defer_call('luci', 'getTimezones', {}, function(code, timezones) {
+		if (code != 0 || type(timezones) != 'object') {
+			request.reply(failure(
+				'SYSTEM_TIMEZONE_DATABASE_UNAVAILABLE',
+				'장치의 시간대 목록을 불러오지 못했습니다.'
+			));
+			return;
+		}
+
+		const requested_timezone = string_value(timezones?.[requested_zonename]?.tzstring, null);
+		if (requested_timezone == null) {
+			// Browser IANA aliases can differ from the timezone database shipped
+			// on the router. Stop retrying silently and leave UTC available for
+			// manual selection in Settings.
+			if (!mark_timezone_initialized()) {
+				request.reply(failure(
+					'SYSTEM_TIMEZONE_INITIALIZE_COMMIT_FAILED',
+					'시간대 초기 설정 상태를 저장하지 못했습니다.'
+				));
+				return;
+			}
+
+			request.reply(success({
+				applied: false,
+				zonename: requested_zonename,
+			}));
+			return;
+		}
+
+		const result = apply_timezone(request, timezones, 'initial_browser_timezone');
+		if (!result.ok) {
+			request.reply(result);
+			return;
+		}
+
+		if (!mark_timezone_initialized()) {
+			request.reply(failure(
+				'SYSTEM_TIMEZONE_INITIALIZE_COMMIT_FAILED',
+				'시간대는 적용했지만 초기 설정 상태를 저장하지 못했습니다.'
+			));
+			return;
+		}
+
+		request.reply(success({
+			applied: current_zonename != requested_zonename || current_timezone != requested_timezone,
+			zonename: requested_zonename,
+		}));
+	});
+
+	if (timezone_request == null) {
+		return failure(
+			'SYSTEM_TIMEZONE_REQUEST_FAILED',
+			'시간대 목록 요청을 시작하지 못했습니다.'
+		);
+	}
+
+	return timezone_request;
+};
 
 export function read_time_settings(request) {
 	const timezone_request = defer_call('luci', 'getTimezones', {}, function(code, timezones) {
@@ -228,7 +368,16 @@ export function update_timezone(request) {
 			return;
 		}
 
-		request.reply(apply_timezone(request, timezones));
+		const result = apply_timezone(request, timezones, 'direct');
+		if (result.ok && !mark_timezone_initialized_if_pending()) {
+			request.reply(failure(
+				'SYSTEM_TIMEZONE_INITIALIZE_COMMIT_FAILED',
+				'시간대는 적용했지만 초기 설정 상태를 저장하지 못했습니다.'
+			));
+			return;
+		}
+
+		request.reply(result);
 	});
 
 	if (timezone_request == null) {

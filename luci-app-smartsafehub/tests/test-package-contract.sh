@@ -40,6 +40,10 @@ require_file "$MAKEFILE"
 require_file "$PACKAGE_JSON"
 require_file "$PACKAGE_LOCK"
 require_file "$CONFIG_FILE"
+grep -Fq "config system 'system'" "$CONFIG_FILE" || \
+	fail 'SmartSafeHub config must include the system metadata section'
+grep -Fq "option timezone_initialized '0'" "$CONFIG_FILE" || \
+	fail 'fresh SmartSafeHub config must leave browser timezone initialization pending'
 require_file "$LOGIN_TEMPLATE"
 require_file "$FRONTEND_ENTRY"
 require_file "$FRONTEND_INDEX"

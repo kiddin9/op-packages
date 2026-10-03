@@ -314,7 +314,3 @@ return view.extend({
 		return Promise.all(tasks);
 	}
 });
-
-reload_service() {
-	restart
-}
