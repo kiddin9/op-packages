@@ -1,0 +1,13 @@
+{#
+ luci-theme-shadcnui — out_header_login.ut
+ Idempotent header include used by sysauth.ut (the per-theme login page).
+ Pattern copied from luci-theme-argon — guards against double-include via
+ ctx.template_header_sent.
+-#}
+
+{%
+	if (!ctx.template_header_sent) {
+		include("themes/" + theme + "/header_login");
+		ctx.template_header_sent = true;
+	}
+%}

@@ -1,0 +1,332 @@
+// luci-app-vantage: server side of the Vantage dashboard.
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
+// ubus object luci.vantage, loaded by rpcd-mod-ucode:
+//
+//   wireless   network.wireless status reduced to the fields the dashboard
+//              reads: no key, sae_password, RADIUS or 802.11r secrets, no
+//              EAP credentials. Read group luci-app-vantage.
+//   set_alias  { mac, name, icon }: name one station, or remove its name
+//              with name ''. Validated here, whatever the browser did, and
+//              written to /etc/config/vantage only. Write group
+//              luci-app-vantage-names.
+//
+// Keep the validation in step with names.js (validateAlias, normMac,
+// ICONS) and with dev/replay/vantage-plugin.js; tests/plugin.test.js runs
+// all three against the same cases.
+
+'use strict';
+
+import { cursor } from 'uci';
+import { connect } from 'ubus';
+
+const CONFIG = 'vantage';
+const NAME_MAX = 48;              // code points, after collapsing spaces
+const NAME_MAX_UNITS = NAME_MAX * 8; // raw input cap, in UTF-16 code units (as names.js)
+const MAX_ALIASES = 512;          // client sections; bounds /etc/config/vantage
+const ICONS = [ 'phone', 'laptop', 'tablet', 'desktop', 'tv', 'speaker', 'printer', 'camera', 'console', 'watch', 'iot', 'router', 'device' ];
+
+/* ------------------------------------------------------------ helpers */
+
+// '02-00-5E-00-53-0F' / '0200.5e00.530f' / '02005e00530f' -> '02:00:5e:00:53:0f'
+function norm_mac(v) {
+	if (type(v) != 'string')
+		return null;
+
+	let h = lc(trim(v));
+
+	if (match(h, /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/))
+		return h;
+
+	if (match(h, /^[0-9a-f]{2}(-[0-9a-f]{2}){5}$/))
+		return replace(h, /-/g, ':');
+
+	if (match(h, /^[0-9a-f]{4}\.[0-9a-f]{4}\.[0-9a-f]{4}$/) || match(h, /^[0-9a-f]{12}$/)) {
+		h = replace(h, /\./g, '');
+		return join(':', map(match(h, /../g), (m) => m[0]));
+	}
+
+	return null;
+}
+
+function is_multicast(mac) {
+	return (hex(substr(mac, 0, 2)) & 1) == 1;
+}
+
+// UTF-8 -> [ [ code point, byte offset, byte length ], ... ]; null when the
+// bytes are not well-formed UTF-8 (overlong forms and surrogates included)
+function decode(s) {
+	let out = [], n = length(s), i = 0;
+
+	while (i < n) {
+		let b = ord(s, i), cp, need;
+
+		if (b < 0x80) { cp = b; need = 0; }
+		else if (b >= 0xc2 && b <= 0xdf) { cp = b & 0x1f; need = 1; }
+		else if (b >= 0xe0 && b <= 0xef) { cp = b & 0x0f; need = 2; }
+		else if (b >= 0xf0 && b <= 0xf4) { cp = b & 0x07; need = 3; }
+		else return null;
+
+		if (i + need >= n)
+			return null;
+
+		for (let k = 1; k <= need; k++) {
+			let c = ord(s, i + k);
+
+			if ((c & 0xc0) != 0x80)
+				return null;
+
+			cp = (cp << 6) | (c & 0x3f);
+		}
+
+		if ((need == 2 && cp < 0x800) || (need == 3 && (cp < 0x10000 || cp > 0x10ffff)) || (cp >= 0xd800 && cp <= 0xdfff))
+			return null;
+
+		push(out, [ cp, i, need + 1 ]);
+		i += need + 1;
+	}
+
+	return out;
+}
+
+// control, invisible, bidi and format characters: the C0/C1 controls plus
+// fmt.js UNSAFE_TEXT
+function forbidden(cp) {
+	return cp <= 0x1f || (cp >= 0x7f && cp <= 0x9f) ||
+		cp == 0xad || cp == 0x34f || cp == 0x61c || cp == 0x115f || cp == 0x1160 ||
+		cp == 0x17b4 || cp == 0x17b5 || cp == 0x180e || cp == 0x200b || cp == 0x200e || cp == 0x200f ||
+		(cp >= 0x2028 && cp <= 0x202e) || (cp >= 0x2060 && cp <= 0x206f) || cp == 0x3164 ||
+		(cp >= 0xfe00 && cp <= 0xfe0d) || cp == 0xfeff || cp == 0xffa0 || (cp >= 0xfff9 && cp <= 0xfffb) ||
+		(cp >= 0xe0000 && cp <= 0xe007f);
+}
+
+// space characters that collapse to one U+0020
+function is_space(cp) {
+	return cp == 0x20 || cp == 0xa0 || cp == 0x1680 || (cp >= 0x2000 && cp <= 0x200a) ||
+		cp == 0x202f || cp == 0x205f || cp == 0x3000;
+}
+
+// names.js validateAlias: -> { ok: true, value } ('' clears) or { ok: false, error }
+function validate_name(name) {
+	if (name == null)
+		name = '';
+
+	if (type(name) != 'string')
+		return { ok: false, error: 'invalid-name' };
+
+	let cps = decode(name);
+
+	if (cps == null)
+		return { ok: false, error: 'invalid-name' };
+
+	let units = 0;
+
+	for (let c in cps)
+		units += (c[0] > 0xffff) ? 2 : 1;
+
+	if (units > NAME_MAX_UNITS)
+		return { ok: false, error: 'name-too-long' };
+
+	for (let c in cps)
+		if (forbidden(c[0]))
+			return { ok: false, error: 'invalid-name' };
+
+	// collapse runs of spaces, trim both ends
+	let out = '', count = 0, pending = false;
+
+	for (let c in cps) {
+		if (is_space(c[0])) {
+			pending = true;
+			continue;
+		}
+
+		if (pending && count) {
+			out += ' ';
+			count++;
+		}
+
+		pending = false;
+		out += substr(name, c[1], c[2]);
+		count++;
+	}
+
+	if (count > NAME_MAX)
+		return { ok: false, error: 'name-too-long' };
+
+	return { ok: true, value: out };
+}
+
+function scalar(v) {
+	return (type(v) in [ 'string', 'int', 'double', 'bool' ]) ? v : null;
+}
+
+function short_string(v, max) {
+	return (type(v) == 'string' && length(v) <= max) ? v : null;
+}
+
+/* ----------------------------------------------------------- wireless */
+
+// the encryption mode ('sae-mixed+ccmp', 'psk2', 'none', ...): its leading
+// run of mode characters and nothing after it
+function encryption(v) {
+	let m = (type(v) == 'string') ? match(v, /^[A-Za-z0-9+_-]{1,40}/) : null;
+	return m ? m[0] : null;
+}
+
+function reduce_iface(i) {
+	let c = (type(i.config) == 'object') ? i.config : {};
+	let networks = [];
+
+	for (let n in ((type(c.network) == 'array') ? c.network : [ c.network ]))
+		if (type(n) == 'string' && length(n) <= 64)
+			push(networks, n);
+
+	return {
+		ifname: short_string(i.ifname, 64),
+		section: short_string(i.section, 64),
+		config: {
+			ssid: short_string(c.ssid, 128),
+			mode: short_string(c.mode, 32),
+			hidden: scalar(c.hidden),
+			encryption: encryption(c.encryption),
+			ieee80211w: scalar(c.ieee80211w),
+			ieee80211r: scalar(c.ieee80211r),
+			ieee80211k: scalar(c.ieee80211k),
+			ieee80211v: scalar(c.ieee80211v),
+			network: networks,
+			macaddr: norm_mac(c.macaddr)
+		}
+	};
+}
+
+function reduce_radio(r) {
+	let c = (type(r.config) == 'object') ? r.config : {};
+	let ifaces = [];
+
+	for (let i in ((type(r.interfaces) == 'array') ? r.interfaces : []))
+		if (type(i) == 'object')
+			push(ifaces, reduce_iface(i));
+
+	return {
+		up: r.up === true,
+		pending: r.pending === true,
+		disabled: r.disabled === true,
+		config: {
+			band: short_string(c.band, 16),
+			channel: scalar(c.channel),
+			htmode: short_string(c.htmode, 16),
+			country: short_string(c.country, 8),
+			txpower: scalar(c.txpower),
+			disabled: scalar(c.disabled)
+		},
+		interfaces: ifaces
+	};
+}
+
+/* ---------------------------------------------------------- set_alias */
+
+function set_alias(args) {
+	let mac = norm_mac(args.mac);
+
+	if (!mac || is_multicast(mac))
+		return { ok: false, error: 'invalid-mac' };
+
+	let v = validate_name(args.name);
+
+	if (!v.ok)
+		return v;
+
+	let icon = args.icon ?? '';
+
+	if (icon != '' && !(icon in ICONS))
+		return { ok: false, error: 'invalid-icon' };
+
+	let uci = cursor();
+	let mine = [], total = 0;
+
+	uci.load(CONFIG);
+	uci.foreach(CONFIG, 'client', (s) => {
+		total++;
+
+		if (norm_mac(s.mac) == mac)
+			push(mine, s['.name']);
+	});
+
+	let op;
+
+	if (v.value == '') {
+		if (!length(mine))
+			return { ok: true, op: 'none', mac };
+
+		for (let sid in mine)
+			uci.delete(CONFIG, sid);
+
+		op = 'delete';
+	}
+	else if (length(mine)) {
+		// one section per MAC: update the first, drop duplicates
+		uci.set(CONFIG, mine[0], 'mac', mac);
+		uci.set(CONFIG, mine[0], 'name', v.value);
+
+		if (icon != '')
+			uci.set(CONFIG, mine[0], 'icon', icon);
+		else
+			uci.delete(CONFIG, mine[0], 'icon');
+
+		for (let sid in slice(mine, 1))
+			uci.delete(CONFIG, sid);
+
+		op = 'set';
+	}
+	else {
+		if (total >= MAX_ALIASES)
+			return { ok: false, error: 'too-many' };
+
+		let sid = uci.add(CONFIG, 'client');
+
+		if (!sid)
+			return { ok: false, error: 'failed' };
+
+		uci.set(CONFIG, sid, 'mac', mac);
+		uci.set(CONFIG, sid, 'name', v.value);
+
+		if (icon != '')
+			uci.set(CONFIG, sid, 'icon', icon);
+
+		op = 'add';
+	}
+
+	if (!uci.commit(CONFIG))
+		return { ok: false, error: 'failed' };
+
+	return { ok: true, op, mac };
+}
+
+/* ------------------------------------------------------------ methods */
+
+const methods = {
+	wireless: {
+		call: function() {
+			let reply = connect()?.call('network.wireless', 'status');
+			let out = {};
+
+			if (type(reply) != 'object')
+				return out;
+
+			for (let name, r in reply)
+				if (type(r) == 'object' && match(name, /^[A-Za-z0-9_.-]{1,64}$/))
+					out[name] = reduce_radio(r);
+
+			return out;
+		}
+	},
+
+	set_alias: {
+		args: { mac: 'mac', name: 'name', icon: 'icon' },
+		call: function(request) {
+			return set_alias(request.args);
+		}
+	}
+};
+
+return { 'luci.vantage': methods };

@@ -1,0 +1,338 @@
+#!/bin/sh
+# ubus RPC module for Quick Actions Scripts
+. /usr/share/libubox/jshn.sh
+
+SCRIPTS_DIR=/etc/quickactions/scripts
+mkdir -p "$SCRIPTS_DIR"
+
+list_methods() {
+    cat <<'EOF'
+{
+  "list": {},
+  "read": { "sid": "string" },
+  "write": { "sid": "string", "name": "string", "category": "string", "content": "string", "args": "string", "timeout": "string", "enabled": "string" },
+  "delete": { "sid": "string" },
+  "run": { "sid": "string" },
+  "chmod": { "sid": "string", "mode": "string" },
+  "install_preset": { "preset": "string" },
+  "detail": { "sid": "string" }
+}
+EOF
+}
+
+method_list() {
+    cat >/dev/null
+    json_init
+    json_add_array "scripts"
+    # No pipe into while → no subshell → json_add works
+    for sid in $(uci show quickactions 2>/dev/null | grep '=script$' | cut -d. -f2 | cut -d= -f1); do
+        name=$(uci -q get "quickactions.$sid.name")
+        category=$(uci -q get "quickactions.$sid.category")
+        path=$(uci -q get "quickactions.$sid.path")
+        [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+        enabled=$(uci -q get "quickactions.$sid.enabled")
+        [ -z "$enabled" ] && enabled="1"
+        sz=0
+        [ -f "$path" ] && sz=$(wc -c < "$path" 2>/dev/null)
+        [ -z "$sz" ] && sz=0
+        json_add_object
+        json_add_string "sid" "$sid"
+        json_add_string "name" "$name"
+        json_add_string "category" "$category"
+        json_add_string "path" "$path"
+        json_add_string "enabled" "$enabled"
+        json_add_int "size" "$sz"
+        json_close_object
+    done
+    json_close_array
+    json_dump
+}
+
+method_read() {
+    local sid=""
+    json_load "$(cat)"
+    json_get_var sid "sid"
+    [ -z "$sid" ] && { json_init; json_add_string "error" "no sid"; json_dump; return; }
+
+    local path
+    path=$(uci -q get "quickactions.$sid.path")
+    [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+
+    json_init
+    if [ -f "$path" ]; then
+        json_add_string "content" "$(cat "$path")"
+    else
+        json_add_string "content" ""
+    fi
+    json_dump
+}
+
+method_write() {
+    local payload sid name category content args timeout enabled path
+    payload=$(cat)
+    json_load "$payload"
+    json_get_var sid "sid"
+    json_get_var name "name"
+    json_get_var category "category"
+    json_get_var content "content"
+    json_get_var args "args"
+    json_get_var timeout "timeout"
+    json_get_var enabled "enabled"
+
+    [ -z "$sid" ] && sid="script_$(date +%s)"
+    [ -z "$name" ] && name="$sid"
+    [ -z "$category" ] && category="custom"
+    [ -z "$timeout" ] && timeout="60"
+    [ -z "$enabled" ] && enabled="1"
+
+    path=$(uci -q get "quickactions.$sid.path")
+    [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+
+    mkdir -p "$(dirname "$path")"
+    printf '%s' "$content" > "$path"
+    chmod 755 "$path" 2>/dev/null
+
+    uci -q set "quickactions.$sid=script"
+    uci -q set "quickactions.$sid.name=$name"
+    uci -q set "quickactions.$sid.category=$category"
+    uci -q set "quickactions.$sid.path=$path"
+    uci -q set "quickactions.$sid.enabled=$enabled"
+    uci -q set "quickactions.$sid.timeout=$timeout"
+    [ -n "$args" ] && uci -q set "quickactions.$sid.args=$args"
+    uci -q commit quickactions
+
+    json_init
+    json_add_string "sid" "$sid"
+    json_add_boolean "ok" 1
+    json_dump
+}
+
+method_delete() {
+    local sid=""
+    json_load "$(cat)"
+    json_get_var sid "sid"
+    [ -z "$sid" ] && { json_init; json_add_boolean "ok" 0; json_dump; return; }
+
+    local path
+    path=$(uci -q get "quickactions.$sid.path")
+    [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+    [ -f "$path" ] && rm -f "$path"
+
+    uci -q delete "quickactions.$sid"
+    uci -q commit quickactions
+
+    json_init
+    json_add_boolean "ok" 1
+    json_dump
+}
+
+method_run() {
+    local sid=""
+    json_load "$(cat)"
+    json_get_var sid "sid"
+    [ -z "$sid" ] && { json_init; json_add_string "error" "no sid"; json_dump; return; }
+
+    local path timeout args
+    path=$(uci -q get "quickactions.$sid.path")
+    [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+    timeout=$(uci -q get "quickactions.$sid.timeout")
+    [ -z "$timeout" ] && timeout=60
+    args=$(uci -q get "quickactions.$sid.args")
+
+    if [ ! -f "$path" ]; then
+        json_init
+        json_add_string "output" "Script not found: $path"
+        json_add_int "exit_code" 127
+        json_dump
+        return
+    fi
+    [ -x "$path" ] || chmod 755 "$path" 2>/dev/null
+
+    local start_sec end_sec out rc
+    start_sec=$(date +%s 2>/dev/null)
+    out=$(cd / && timeout "$timeout" "$path" $args 2>&1)
+    rc=$?
+    end_sec=$(date +%s 2>/dev/null)
+
+    json_init
+    json_add_string "output" "$out"
+    json_add_int "exit_code" "$rc"
+    json_add_int "duration" "$((end_sec - start_sec))"
+    json_dump
+}
+
+method_chmod() {
+    local payload sid mode
+    payload=$(cat)
+    json_load "$payload"
+    json_get_var sid "sid"
+    json_get_var mode "mode"
+    [ -z "$mode" ] && mode="755"
+
+    local path
+    path=$(uci -q get "quickactions.$sid.path")
+    [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+
+    [ -f "$path" ] && chmod "$mode" "$path" 2>/dev/null
+
+    json_init
+    json_add_boolean "ok" 1
+    json_dump
+}
+
+method_detail() {
+    local sid=""
+    json_load "$(cat)"
+    json_get_var sid "sid"
+    [ -z "$sid" ] && { json_init; json_add_string "error" "no sid"; json_dump; return; }
+
+    local path
+    path=$(uci -q get "quickactions.$sid.path")
+    [ -z "$path" ] && path="$SCRIPTS_DIR/$sid.sh"
+
+    json_init
+    json_add_string "sid" "$sid"
+    json_add_string "name" "$(uci -q get quickactions.$sid.name)"
+    json_add_string "category" "$(uci -q get quickactions.$sid.category)"
+    json_add_string "path" "$path"
+    json_add_string "enabled" "$(uci -q get quickactions.$sid.enabled)"
+    json_add_string "timeout" "$(uci -q get quickactions.$sid.timeout)"
+    json_add_string "args" "$(uci -q get quickactions.$sid.args)"
+    json_add_string "description" "$(uci -q get quickactions.$sid.description)"
+    if [ -f "$path" ]; then
+        json_add_string "content" "$(cat "$path")"
+        json_add_int "size" "$(wc -c < "$path")"
+        json_add_string "permissions" "$(ls -l "$path" | awk '{print $1}')"
+    else
+        json_add_string "content" ""
+        json_add_int "size" 0
+        json_add_string "permissions" ""
+    fi
+    json_dump
+}
+
+method_install_preset() {
+    local preset=""
+    json_load "$(cat)"
+    json_get_var preset "preset"
+
+    local sid="failover-lite"
+    local path="$SCRIPTS_DIR/$sid.sh"
+    mkdir -p "$SCRIPTS_DIR"
+
+    if [ "$preset" = "failover" ] || [ -z "$preset" ]; then
+        cat > "$path" << 'FO_EOF'
+#!/bin/sh
+# Failover-lite — MWAN3 substitute for low-RAM routers.
+. /lib/functions.sh
+config_load quickactions
+cfg() { config_get v failover "$1" "$2"; echo "$v"; }
+
+ENABLED=$(cfg enabled 1); [ "$ENABLED" = "0" ] && exit 0
+PRIMARY=$(cfg primary ""); [ -z "$PRIMARY" ] && exit 0
+CHECK_IPS=$(cfg check_ips "1.1.1.1 8.8.8.8")
+PING_TIMEOUT=$(cfg ping_timeout 5)
+FAIL_AT=$(cfg fail_threshold 2)
+REC_AT=$(cfg recover_threshold 1)
+
+LOCK=/tmp/qa-failover-preset.lock
+FAIL_FILE=/tmp/qa-failover-preset.fails
+OK_FILE=/tmp/qa-failover-preset.oks
+
+phys_iface() {
+    local log="$1" dev
+    [ -e "/sys/class/net/pppoe-$log" ] && { echo "pppoe-$log"; return; }
+    case "$log" in *pppoe*) [ -e "/sys/class/net/$log" ] && { echo "$log"; return; } ;; esac
+    dev=$(uci -q get network.$log.device)
+    [ -n "$dev" ] && [ -e "/sys/class/net/$dev" ] && { echo "$dev"; return; }
+    echo "$log"
+}
+ping_ok() {
+    local iface="$1" ip
+    for ip in $CHECK_IPS; do
+        ping -I "$iface" -c 1 -W "$PING_TIMEOUT" "$ip" >/dev/null 2>&1 && return 0
+    done
+    return 1
+}
+flush_ct() {
+    [ -e /proc/net/nf_conntrack ] && echo f > /proc/net/nf_conntrack
+    [ -e /proc/net/ip_conntrack ] && echo f > /proc/net/ip_conntrack
+    return 0
+}
+
+DEV=$(phys_iface "$PRIMARY")
+
+if [ -f "$LOCK" ]; then
+    OK_N=0; [ -f "$OK_FILE" ] && OK_N=$(cat "$OK_FILE")
+    if ping_ok "$DEV"; then
+        OK_N=$((OK_N + 1))
+        if [ "$OK_N" -ge "$REC_AT" ]; then
+            rm -f "$LOCK" "$FAIL_FILE" "$OK_FILE"
+            flush_ct
+            logger -t qa-failover-preset "PRIMARY $PRIMARY recovered"
+        else
+            echo "$OK_N" > "$OK_FILE"
+        fi
+    else
+        echo 0 > "$OK_FILE"
+    fi
+    exit 0
+fi
+
+if ping_ok "$DEV"; then
+    rm -f "$FAIL_FILE"
+    exit 0
+fi
+
+FAIL_N=0; [ -f "$FAIL_FILE" ] && FAIL_N=$(cat "$FAIL_FILE")
+FAIL_N=$((FAIL_N + 1))
+echo "$FAIL_N" > "$FAIL_FILE"
+
+if [ "$FAIL_N" -ge "$FAIL_AT" ]; then
+    touch "$LOCK"; rm -f "$FAIL_FILE"; flush_ct
+    logger -t qa-failover-preset "PRIMARY $PRIMARY DOWN after $FAIL_AT failures"
+fi
+exit 0
+FO_EOF
+    fi
+
+    chmod 755 "$path"
+    uci -q set "quickactions.$sid=script"
+    uci -q set "quickactions.$sid.name=Failover-lite"
+    uci -q set "quickactions.$sid.category=failover"
+    uci -q set "quickactions.$sid.path=$path"
+    uci -q set "quickactions.$sid.enabled=0"
+    uci -q set "quickactions.$sid.timeout=30"
+    uci -q set "quickactions.$sid.description=MWAN3 substitute: ping test + conntrack flush"
+    uci -q commit quickactions
+
+    json_init
+    json_add_string "sid" "$sid"
+    json_add_string "path" "$path"
+    json_add_boolean "ok" 1
+    json_dump
+}
+
+call_method() {
+    local method="$1"
+    case "$method" in
+        list)           method_list ;;
+        read)           method_read ;;
+        write)          method_write ;;
+        delete)         method_delete ;;
+        run)            method_run ;;
+        chmod)          method_chmod ;;
+        detail)         method_detail ;;
+        install_preset) method_install_preset ;;
+        *)              cat >/dev/null
+                        json_init
+                        json_add_string "error" "unknown_method"
+                        json_dump ;;
+    esac
+}
+
+case "$1" in
+    list) list_methods ;;
+    call) call_method "$2" ;;
+    *) echo '{"error":"usage"}' ;;
+esac

@@ -1,0 +1,101 @@
+{
+	"luci-app-podman": {
+		"description": "Grant access to Podman RPC methods",
+		"read": {
+			"cgi-io": [
+				"exec"
+			],
+			"file": {
+				"/usr/libexec/podman-api volume_export *": [
+					"exec"
+				]
+			},
+			"ubus": {
+				"podman": [
+					"containers_list",
+					"container_inspect",
+					"container_stats",
+					"container_top",
+					"container_healthcheck_run",
+					"images_list",
+					"image_inspect",
+					"image_manifest_inspect",
+					"networks_list",
+					"network_inspect",
+					"volumes_list",
+					"volume_inspect",
+					"pods_list",
+					"pod_inspect",
+					"secrets_list",
+					"secret_inspect",
+					"system_df",
+					"version",
+					"info",
+					"init_script_status",
+					"init_script_show",
+					"system_debug"
+				]
+			},
+			"uci": [
+				"luci-podman",
+				"firewall",
+				"network",
+				"dhcp"
+			]
+		},
+		"write": {
+			"cgi-io": [
+				"exec",
+				"upload"
+			],
+			"file": {
+				"/tmp/podman-import": [
+					"write"
+				]
+			},
+			"ubus": {
+				"podman": [
+					"container_start",
+					"container_stop",
+					"container_restart",
+					"container_pause",
+					"container_unpause",
+					"container_remove",
+					"container_create",
+					"container_rename",
+					"container_update",
+					"container_healthcheck_run",
+					"image_remove",
+					"image_pull",
+					"network_create",
+					"network_remove",
+					"network_connect",
+					"network_disconnect",
+					"volume_create",
+					"volume_remove",
+					"volume_import",
+					"pod_start",
+					"pod_stop",
+					"pod_kill",
+					"pod_restart",
+					"pod_pause",
+					"pod_unpause",
+					"pod_remove",
+					"pod_create",
+					"secret_create",
+					"secret_remove",
+					"system_prune",
+					"init_script_generate",
+					"init_script_set_enabled",
+					"init_script_remove"
+				]
+			},
+			"uci": [
+				"luci-podman",
+				"firewall",
+				"network",
+				"dhcp"
+			]
+		}
+	}
+}

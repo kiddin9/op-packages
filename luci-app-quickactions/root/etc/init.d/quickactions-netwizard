@@ -1,0 +1,145 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+STOP=10
+USE_PROCD=1
+
+SHORTCUT_APPLIER=/usr/libexec/quickactions-netwizard/apply-shortcuts.sh
+
+clean_shortcuts() {
+    local sec
+    for sec in $(uci -q show nginx 2>/dev/null | sed -n "s/^nginx\.\(_sc_[^=.]*\)=server$/\1/p"); do
+        uci -q delete nginx."$sec"
+    done
+    for sec in $(uci -q show dhcp 2>/dev/null | sed -n "s/^dhcp\.\(_sc_[^=.]*\)=domain$/\1/p"); do
+        uci -q delete dhcp."$sec"
+    done
+}
+
+process_shortcut() {
+    local shortcut to_url lanaddr cfg="$1"
+    lanaddr="$(uci -q get network.lan.ipaddr | tr ' ' '\n' | head -n1)"
+    lanaddr="${lanaddr%%/*}"
+    [ -z "$lanaddr" ] && lanaddr="10.0.0.1"
+
+    config_get shortcut "$cfg" shortcut
+    config_get to_url "$cfg" to_url
+    [ -z "$shortcut" ] || [ -z "$to_url" ] && return 0
+
+    if [ -f /etc/nginx/uci.conf ]; then
+        SHORTCUTS_TOUCHED=1
+        uci -q set nginx._sc_$shortcut=server
+        uci -q set nginx._sc_$shortcut.server_name="$shortcut"
+        uci -q add_list nginx._sc_$shortcut.listen="80"
+        uci -q set nginx._sc_$shortcut.return="302 $to_url"
+        uci -q set dhcp._sc_$shortcut=domain
+        uci -q set dhcp._sc_$shortcut.name="$shortcut"
+        uci -q set dhcp._sc_$shortcut.ip="$lanaddr"
+    fi
+}
+
+sethttps() {
+    local cfg="${1:-default}" https
+    config_get https "$cfg" https 0
+    # Safety: only touch redirect_https if wizard.default.https is explicitly set
+    local explicit
+    explicit=$(uci -q get wizard.default.https)
+    if [ -z "$explicit" ]; then
+        return 0
+    fi
+
+    if [ -x /etc/init.d/nginx ] && [ -f /etc/nginx/uci.conf ]; then
+        if [ "x${https}" = "x1" ]; then
+            [ -z "$(uci -q get nginx._redirect2ssl)" ] && {
+                uci -q set nginx._redirect2ssl=server
+                uci -q set nginx._redirect2ssl.server_name='_redirect2ssl'
+                uci -q set nginx._redirect2ssl.return='302 https://$host$request_uri'
+                uci -q set nginx._redirect2ssl.access_log='off;'
+            }
+            uci -q del nginx.default_server.listen
+            uci -q add_list nginx.default_server.listen='80'
+            uci -q add_list nginx.default_server.listen='[::]:80'
+            uci -q del nginx._redirect2ssl.listen
+            uci -q add_list nginx._redirect2ssl.listen='80 default_server'
+            uci -q add_list nginx._redirect2ssl.listen='[::]:80 default_server'
+        else
+            uci -q delete nginx._redirect2ssl
+            uci -q del nginx.default_server.listen
+            uci -q add_list nginx.default_server.listen='80 default_server'
+            uci -q add_list nginx.default_server.listen='[::]:80 default_server'
+        fi
+        uci -q commit nginx
+        /etc/init.d/nginx reload >/dev/null 2>&1
+    elif [ -x /etc/init.d/lighttpd ] && [ -f /etc/lighttpd/conf.d/82-https.conf ]; then
+        if [ "x${https}" = "x1" ]; then
+            sed -i "s/^[ \t]*#*[ \t]*url\.redirect[ \t]*=.*/\turl.redirect =/" /etc/lighttpd/conf.d/82-https.conf 2>/dev/null
+        else
+            sed -i "s/^[ \t]*url\.redirect[ \t]*=.*/\t# url.redirect =/" /etc/lighttpd/conf.d/82-https.conf 2>/dev/null
+        fi
+        /etc/init.d/lighttpd reload >/dev/null 2>&1
+    elif [ -x /etc/init.d/uhttpd ]; then
+        if [ "x${https}" = "x1" ]; then
+            uci -q set uhttpd.main.redirect_https='1'
+        else
+            uci -q set uhttpd.main.redirect_https='0'
+        fi
+        uci -q commit uhttpd
+        /etc/init.d/uhttpd reload >/dev/null 2>&1
+    fi
+}
+
+reload_services() {
+    # Only commit if we actually wrote to dhcp/nginx (shortcuts changed)
+    if [ "$SHORTCUTS_TOUCHED" = "1" ]; then
+        uci -q commit dhcp
+        [ -x /etc/init.d/dnsmasq ] && /etc/init.d/dnsmasq reload >/dev/null 2>&1
+        if [ -f /etc/nginx/uci.conf ] && [ -x /etc/init.d/nginx ]; then
+            uci -q commit nginx
+            /etc/init.d/nginx reload >/dev/null 2>&1
+        fi
+    fi
+}
+
+SHORTCUTS_TOUCHED=0
+
+start_service() {
+    config_load wizard
+
+    # Cookie persist → luci.sgi (only if wizard.default.persistent_cookies is explicitly set)
+    local explicit_pc
+    explicit_pc=$(uci -q get wizard.default.persistent_cookies)
+    if [ -n "$explicit_pc" ]; then
+        [ -z "$(uci -q get luci.sgi)" ] && uci -q set luci.sgi=sgi
+        uci -q set luci.sgi.persistent_cookies="$explicit_pc"
+        uci -q commit luci
+    fi
+
+    # Shortcuts (nginx + dnsmasq)
+    clean_shortcuts
+    config_foreach process_shortcut shortcuts
+
+    # HTTPS redirect
+    sethttps default
+
+    reload_services
+}
+
+stop_service() {
+    clean_shortcuts
+    reload_services
+}
+
+service_triggers() {
+    procd_add_reload_trigger "wizard"
+}
+
+boot() {
+    start "$@"
+    # Background coremark if enabled and not yet run
+    local cm
+    cm=$(uci -q get wizard.@wizard[0].coremark)
+    [ "$cm" = "1" ] || cm=$(uci -q get wizard.default.coremark)
+    if [ "$cm" = "1" ] && [ ! -f /etc/bench.log ]; then
+        (sleep 5; /sbin/coremark >/dev/null 2>&1) &
+    fi
+}

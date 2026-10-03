@@ -1,0 +1,33 @@
+#!/bin/sh
+# Seed /etc/config/taskplan with one sample stime + ltime entry
+# so the Task Plan tab is not empty on first install.
+
+[ -f /etc/config/taskplan ] || touch /etc/config/taskplan
+
+# Only seed if there are no stime/ltime sections yet
+if ! uci -q show taskplan | grep -q "taskplan.@stime\|taskplan.@ltime"; then
+    # Ensure global exists
+    uci -q get taskplan.@global[0] >/dev/null 2>&1 || \
+        uci set taskplan.@global[0]=global
+
+    # Sample scheduled task: daily reboot at 04:00
+    sec=$(uci add taskplan stime)
+    uci set taskplan.$sec.remarks='Daily Reboot'
+    uci set taskplan.$sec.enable='0'
+    uci set taskplan.$sec.stype='1'
+    uci set taskplan.$sec.month='*'
+    uci set taskplan.$sec.week='*'
+    uci set taskplan.$sec.hour='4'
+    uci set taskplan.$sec.minute='0'
+
+    # Sample startup task: clear memory 30s after boot
+    sec=$(uci add taskplan ltime)
+    uci set taskplan.$sec.remarks='Startup: Clear Memory'
+    uci set taskplan.$sec.enable='0'
+    uci set taskplan.$sec.stype='7'
+    uci set taskplan.$sec.delay='30'
+
+    uci commit taskplan
+fi
+
+exit 0

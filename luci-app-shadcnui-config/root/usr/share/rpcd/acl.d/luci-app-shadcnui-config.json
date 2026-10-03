@@ -1,0 +1,23 @@
+{
+	"luci-app-shadcnui-config": {
+		"description": "Grant access to shadcnui theme configuration",
+		"read": {
+			"uci": [ "shadcnui" ],
+			"file": {
+				"/www/luci-static/shadcnui/img/background/": [ "list" ]
+			},
+			"ubus": {
+				"luci.shadcnui": [ "*" ]
+			}
+		},
+		"write": {
+			"uci": [ "shadcnui" ],
+			"file": {
+				"/www/luci-static/shadcnui/img/background/": [ "write" ]
+			},
+			"ubus": {
+				"luci.shadcnui": [ "*" ]
+			}
+		}
+	}
+}

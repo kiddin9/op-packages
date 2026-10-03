@@ -1,0 +1,3 @@
+#!/bin/sh
+chmod 0755 /usr/libexec/rpcd/luci.diskbox 2>/dev/null || true
+exit 0

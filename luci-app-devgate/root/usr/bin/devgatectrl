@@ -1,0 +1,427 @@
+#!/bin/sh
+
+NAME=devgate
+LOG_FILE="/var/log/devgate.log"
+DEBUG=1
+
+IDLIST="/var/$NAME.idlist"
+RELOAD_FLAG="/var/$NAME.reload"
+FIREWALL_DIRTY=0
+NO_ENABLED_CLEARED=0
+
+# 日志函数
+dbg() {
+	[ "$DEBUG" -eq 1 ] && {
+		local d="$(date '+%Y-%m-%d %H:%M:%S')"
+		echo "[$d] CTRL-DEBUG: $@" >> "$LOG_FILE"
+	}
+}
+
+info() {
+	local d="$(date '+%Y-%m-%d %H:%M:%S')"
+	echo "[$d] CTRL-INFO: $@" >> "$LOG_FILE"
+}
+
+# 配置文件读取
+config_t_get() {
+	local index=${3:-0}
+	local ret=$(uci -q get "${NAME}.@${1}[${index}].${2}")
+	echo "${ret:=${4}}"
+}
+
+normalize_mac() {
+	local mac
+	mac=$(echo "${1:-}" | xargs | tr 'A-F' 'a-f')
+
+	if echo "$mac" | grep -qE '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'; then
+		echo "$mac"
+		return 0
+	fi
+
+	return 1
+}
+
+# 获取启用设备
+get_enabled_devices() {
+	uci show "$NAME" 2>/dev/null | sed -n "s/^${NAME}\.@device\[\([0-9][0-9]*\)\]\.enable='1'.*/\1/p" | sort -n
+}
+
+get_enabled_device_count() {
+	get_enabled_devices | wc -l
+}
+
+is_enabled_device() {
+	local id="$1"
+
+	get_enabled_devices | grep -qx "$id"
+}
+
+get_device_uid() {
+	local id="$1"
+	local uid
+
+	uid="$(devgate uid "$id" 2>/dev/null)" || return 1
+	printf '%s\n' "$uid"
+}
+
+firewall_rule_section() {
+	local uid="$1"
+
+	echo "devgate_$uid"
+}
+
+firewall_rule_exists() {
+	local uid="$1"
+
+	[ -n "$uid" ] && uci -q show "firewall.$(firewall_rule_section "$uid")" >/dev/null 2>&1
+}
+
+get_firewall_rule_enabled() {
+	local uid="$1"
+	local value
+
+	value="$(uci -q get "firewall.$(firewall_rule_section "$uid").enabled")"
+	echo "${value:-0}"
+}
+
+remember_managed_uid() {
+	local uid="$1"
+
+	[ -n "$uid" ] || return 0
+	mkdir -p "$(dirname "$IDLIST")" 2>/dev/null
+	touch "$IDLIST" 2>/dev/null || return 1
+	if ! grep -q "!$uid!" "$IDLIST" 2>/dev/null; then
+		echo "!$uid!" >> "$IDLIST"
+	fi
+	sort -u "$IDLIST" -o "$IDLIST" 2>/dev/null || true
+}
+
+forget_managed_uid() {
+	local uid="$1"
+
+	[ -n "$uid" ] || return 0
+	sed -i "/!$uid!/d" "$IDLIST" 2>/dev/null
+}
+
+is_managed_uid() {
+	local uid="$1"
+
+	[ -f "$IDLIST" ] && grep -q "!${uid}!" "$IDLIST" 2>/dev/null
+}
+
+disable_device_rule() {
+	local id="$1"
+	local uid="$2"
+	local target=$(config_t_get device mac "$id")
+	local comment=$(config_t_get device comment "$id" "设备$id")
+
+	info "停用DevGate规则: $comment ($target, uid=$uid)"
+	uci -q set "${NAME}.@device[$id].enable=0" || return 1
+	uci -q commit "$NAME" || return 1
+	forget_managed_uid "$uid"
+	return 0
+}
+
+disable_device_without_mac() {
+	local id="$1"
+	local uid="$2"
+	local target=$(config_t_get device mac "$id")
+	local comment=$(config_t_get device comment "$id" "设备$id")
+
+	info "目标设备为空或无效，强制未启用: $comment ($target, uid=$uid)"
+	run_devgate_change del "$uid"
+	disable_device_rule "$id" "$uid"
+}
+
+is_enabled_uid() {
+	local uid="$1"
+	local id
+
+	for id in $(get_enabled_devices); do
+		[ "$(get_device_uid "$id")" = "$uid" ] && return 0
+	done
+
+	return 1
+}
+
+run_devgate_change() {
+	local rc
+
+	DEVGATE_DEFER_FIREWALL_RELOAD=1 devgate "$@"
+	rc=$?
+
+	[ "$rc" -eq 0 ] && FIREWALL_DIRTY=1
+	return "$rc"
+}
+
+flush_firewall_changes() {
+	[ "$FIREWALL_DIRTY" -eq 1 ] || return 0
+
+	if devgate reload; then
+		FIREWALL_DIRTY=0
+		return 0
+	fi
+
+	info "firewall重载失败"
+	return 1
+}
+
+# 时间检查函数
+time_to_minutes() {
+	local value="$1"
+	local hour="${value%:*}"
+	local minute="${value#*:}"
+
+	hour="$(echo "$hour" | sed 's/^0*//')"
+	minute="$(echo "$minute" | sed 's/^0*//')"
+	[ -n "$hour" ] || hour=0
+	[ -n "$minute" ] || minute=0
+
+	echo $((hour * 60 + minute))
+}
+
+is_time_value() {
+	local value="${1:-}"
+	local hour="${value%:*}"
+	local minute="${value#*:}"
+
+	[ "$hour:$minute" = "$value" ] || return 1
+	echo "$hour" | grep -qE '^[0-9]{1,2}$' || return 1
+	echo "$minute" | grep -qE '^[0-9]{1,2}$' || return 1
+
+	hour="$(echo "$hour" | sed 's/^0*//')"
+	minute="$(echo "$minute" | sed 's/^0*//')"
+	[ -n "$hour" ] || hour=0
+	[ -n "$minute" ] || minute=0
+
+	[ "$hour" -ge 0 ] && [ "$hour" -le 24 ] || return 1
+	[ "$minute" -ge 0 ] && [ "$minute" -le 59 ] || return 1
+	[ "$hour" -lt 24 ] || [ "$minute" -eq 0 ]
+}
+
+is_time_in_range() {
+	local start_time=$1
+	local end_time=$2
+	local current_time=$(date +%H:%M)
+	local start_min
+	local end_min
+	local current_min
+
+	start_min=$(time_to_minutes "$start_time")
+	end_min=$(time_to_minutes "$end_time")
+	current_min=$(time_to_minutes "$current_time")
+
+	if [ "$start_min" -eq "$end_min" ]; then
+		return 0
+	elif [ "$start_min" -lt "$end_min" ]; then
+		[ "$current_min" -ge "$start_min" ] && [ "$current_min" -lt "$end_min" ] && return 0
+	else
+		[ "$current_min" -ge "$start_min" ] || [ "$current_min" -lt "$end_min" ] && return 0
+	fi
+
+	return 1
+}
+
+is_time_ranges_active() {
+	local time_ranges="${1:-00:00-00:00}"
+	local range
+	local start_time
+	local end_time
+
+	for range in $(printf '%s' "$time_ranges" | sed 's/,/ /g'); do
+		range=$(echo "$range" | xargs)
+		[ -n "$range" ] || continue
+
+		start_time="${range%-*}"
+		end_time="${range#*-}"
+
+		if [ "$start_time" = "$range" ] || [ "$end_time" = "$range" ]; then
+			dbg "跳过无效禁用时段: $range"
+			continue
+		fi
+
+		if ! is_time_value "$start_time" || ! is_time_value "$end_time"; then
+			dbg "跳过无效禁用时段: $range"
+			continue
+		fi
+
+		is_time_in_range "$start_time" "$end_time" && return 0
+	done
+
+	return 1
+}
+
+is_weekday_in_range() {
+	local configured_weekdays=$1
+	local current_weekday=$(date +%u)
+
+	[ "$configured_weekdays" = "0" ] && return 0
+
+	for ww in $(echo "$configured_weekdays" | sed 's/,/ /g'); do
+		[ "$current_weekday" = "$ww" ] && return 0
+	done
+	return 1
+}
+
+# 主检查函数
+check_device_control() {
+	local id="$1"
+	local target=$(config_t_get device mac "$id")
+	local weekdays=$(config_t_get device week "$id" "0")
+	local time_ranges="$(config_t_get device time_ranges "$id" "00:00-00:00")"
+
+	is_weekday_in_range "$weekdays" || {
+		dbg "生效日期外: $target"
+		return 0
+	}
+
+	if is_time_ranges_active "$time_ranges"; then
+		dbg "禁用时段内: $target ($time_ranges)"
+		return 1
+	fi
+
+	dbg "禁用时段外: $target ($time_ranges)"
+	return 0
+}
+
+# 同步设备状态
+sync_device_status() {
+	local id="$1"
+	local force_refresh="${2:-0}"
+	local uid
+	local target=$(config_t_get device mac "$id")
+	local comment=$(config_t_get device comment "$id" "设备$id")
+	local mac
+	local should_block=0
+	local firewall_exists=0
+	local firewall_enabled
+
+	uid="$(get_device_uid "$id")" || {
+		info "规则唯一识别码缺失，停用DevGate规则: 设备$id"
+		uci -q set "${NAME}.@device[$id].enable=0" || return 1
+		uci -q commit "$NAME" || return 1
+		return 1
+	}
+
+	mac="$(normalize_mac "$target")" || {
+		disable_device_without_mac "$id" "$uid"
+		return 0
+	}
+
+	if firewall_rule_exists "$uid"; then
+		firewall_exists=1
+	elif is_managed_uid "$uid"; then
+		disable_device_rule "$id" "$uid"
+		return 0
+	fi
+
+	if ! check_device_control "$id"; then
+		should_block=1
+	fi
+
+	dbg "设备状态: $mac, uid=$uid, 防火墙规则存在=$firewall_exists, 应阻止=$should_block"
+
+	if [ "$firewall_exists" -eq 0 ]; then
+		dbg "创建托管防火墙规则: $target enabled=$should_block"
+		if run_devgate_change add "$id" "$should_block"; then
+			remember_managed_uid "$uid"
+			if [ "$should_block" -eq 1 ]; then
+				info "阻止上网: $comment ($target)"
+			else
+				info "规则待命: $comment ($target)"
+			fi
+		else
+			info "创建防火墙规则失败: $comment ($target)"
+		fi
+		return 0
+	fi
+
+	firewall_enabled="$(get_firewall_rule_enabled "$uid")"
+	if [ "$firewall_enabled" != "$should_block" ] || [ "$force_refresh" -eq 1 ]; then
+		if [ "$should_block" -eq 1 ]; then
+			dbg "启用防火墙阻止: $target"
+		else
+			dbg "停用防火墙阻止: $target"
+		fi
+		run_devgate_change add "$id" "$should_block"
+	fi
+	remember_managed_uid "$uid"
+
+	if [ "$should_block" -eq 1 ]; then
+		info "阻止上网: $comment ($target)"
+	else
+		info "允许上网: $comment ($target)"
+	fi
+}
+
+sync_removed_devices() {
+	local ids id tmp
+
+	[ -f "$IDLIST" ] || return 0
+
+	tmp="${IDLIST}.$$"
+	: > "$tmp"
+
+	ids=$(sed -n 's/^!\([A-Za-z0-9][A-Za-z0-9]*\)!$/\1/p' "$IDLIST" 2>/dev/null | sort | uniq)
+	for id in $ids; do
+		if is_enabled_uid "$id"; then
+			echo "!$id!" >> "$tmp"
+		else
+			dbg "清理已删除设备规则: $id"
+			run_devgate_change del "$id"
+			forget_managed_uid "$id"
+			info "移除已删除规则: $id"
+		fi
+	done
+
+	mv "$tmp" "$IDLIST"
+}
+
+wait_next_check() {
+	local seconds="${1:-10}"
+
+	while [ "$seconds" -gt 0 ]; do
+		[ -f "$RELOAD_FLAG" ] && return 0
+		sleep 1
+		seconds=$((seconds - 1))
+	done
+}
+
+# 主处理循环
+main_loop() {
+	info "设备门禁守护进程启动"
+	run_devgate_change start
+
+	while :; do
+		local force_refresh=0
+
+		dbg "开始检查设备"
+		if [ -f "$RELOAD_FLAG" ]; then
+			force_refresh=1
+			rm -f "$RELOAD_FLAG" 2>/dev/null
+			dbg "检测到配置重载标记"
+		fi
+
+		if [ "$(get_enabled_device_count)" -eq 0 ]; then
+			if [ "$NO_ENABLED_CLEARED" -eq 0 ]; then
+				run_devgate_change stop
+				flush_firewall_changes
+				NO_ENABLED_CLEARED=1
+			fi
+			wait_next_check 10
+			continue
+		fi
+
+		NO_ENABLED_CLEARED=0
+		sync_removed_devices
+		for id in $(get_enabled_devices); do
+			sync_device_status "$id" "$force_refresh"
+		done
+		flush_firewall_changes
+
+		wait_next_check 10
+	done
+}
+
+# 启动
+main_loop

@@ -1,0 +1,53 @@
+{#
+ luci-theme-shadcnui — header_login.ut
+ Renders the <head> and opens the <body> for the login page only. The actual
+ login form and a closing <body>/<html> are provided by the global sysauth.ut
+ (which we override) and by footer_login.ut.
+-#}
+
+{%
+	import { access } from 'fs';
+	import { cursor } from 'uci';
+
+	const boardinfo = ubus.call('system', 'board');
+	const hostname  = striptags(boardinfo?.hostname ?? 'OpenWrt');
+
+	let cfg = cursor();
+	let mode = 'system', base = 'zinc', accent = '', radius = '0.5rem', bg_url = '';
+
+	if (access('/etc/config/shadcnui')) {
+		mode   = cfg.get('shadcnui', 'main', 'mode')   ?? mode;
+		base   = cfg.get('shadcnui', 'main', 'base')   ?? base;
+		accent = cfg.get('shadcnui', 'main', 'accent') ?? '';
+		radius = cfg.get('shadcnui', 'main', 'radius') ?? radius;
+		bg_url = cfg.get('shadcnui', 'main', 'bg_url') ?? '';
+	}
+
+	let resolved = (mode == 'dark') ? 'dark' : 'light';
+
+	let style_overrides = '';
+	if (accent)            style_overrides += `--primary:${accent};--ring:${accent};`;
+	if (radius != '0.5rem') style_overrides += `--radius:${radius};`;
+	if (bg_url)            style_overrides += `--login-bg:url('${replace(bg_url, "'", "\\'")}');`;
+
+	http.prepare_content('text/html; charset=UTF-8');
+-%}
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}"
+      data-base="{{ base }}"
+      data-mode="{{ mode }}"
+      data-theme="{{ resolved }}"
+      style="{{ style_overrides }}">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="color-scheme" content="light dark">
+	<meta name="darkreader-lock">
+	<title>{{ hostname }} — LuCI</title>
+
+	<link rel="stylesheet" href="{{ media }}/css/shadcnui.css">
+	<link rel="icon" type="image/svg+xml" href="{{ media }}/icons/favicon.svg">
+
+	<script src="{{ media }}/js/theme.js" defer></script>
+</head>
+<body class="lang_{{ dispatcher.lang }} sysauth">

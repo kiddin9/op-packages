@@ -1,0 +1,496 @@
+{#
+  Fluent Theme for LuCI
+  Based on luci-theme-argon patterns, translated to ucode syntax
+
+  Licensed to the public under the Apache License 2.0
+#}
+
+{%
+  import { access } from 'fs';
+  import { cursor } from 'uci';
+  import { getuid, getspnam } from 'luci.core';
+  import { srand } from 'math';
+
+  //send as HTML5
+  http.prepare_content('text/html; charset=UTF-8');
+
+  srand(+substr(reverse(time() + ""), 0, 8));
+
+  // System info
+  let boardinfo = ubus.call('system', 'board');
+  let hostname = boardinfo && boardinfo.hostname ? boardinfo.hostname : '?';
+  let model = boardinfo && boardinfo.model ? boardinfo.model : (boardinfo && boardinfo.board_name ? boardinfo.board_name : '?');
+
+  let cfg = cursor();
+  let defaults = {};
+  include('themes/fluent/defaults', { defaults });
+  let mode = defaults.mode;
+  let primary = defaults.primary;
+  let dark_primary = defaults.dark_primary;
+  let blur_radius = defaults.blur;
+  let blur_radius_dark = defaults.blur_dark;
+  let blur_opacity = defaults.transparency;
+  let blur_opacity_dark = defaults.transparency_dark;
+  let font_weight = defaults.font_weight;
+  let font_size = defaults.font_size;
+  let progressbar_font = defaults.progressbar_font;
+  let dark_progressbar_font = defaults.dark_progressbar_font;
+  let main_left_font_color = '#69758c';
+  let bar_color = primary;
+  let sidebar_width = defaults.sidebar_width;
+  let header_height = defaults.header_height;
+  let border_radius = defaults.border_radius;
+  let card_shadow = defaults.card_shadow;
+  let control_height = defaults.control_height;
+  let transition_speed = defaults.transition_speed;
+  let custom_css = defaults.custom_css;
+  let custom_select = defaults.custom_select;
+  let view_transition = defaults.view_transition;
+  let tab_animation = defaults.tab_animation;
+  let prefers_reduced_motion = defaults.prefers_reduced_motion;
+  let loading_bar = defaults.loading_bar;
+  let sticky_action_bar = defaults.sticky_action_bar;
+  let page_bg = defaults.page_bg;
+  let card_bg = defaults.card_bg;
+  let sidebar_bg = defaults.sidebar_bg;
+  let dark_page_bg = defaults.dark_page_bg;
+  let dark_card_bg = defaults.dark_card_bg;
+  let dark_sidebar_bg = defaults.dark_sidebar_bg;
+  let progressbar_text_position = defaults.progressbar_text_position;
+  let menu_layout = defaults.menu_layout || null;
+  let direction = {};
+  include('themes/fluent/direction', { cfg, defaults, direction });
+
+  // Transition speed mapping
+  let transition_map = {
+    'fast': '100ms',
+    'normal': '150ms',
+    'slow': '250ms',
+    'none': '0ms'
+  };
+
+  // Shadow mapping (utilizing CSS variables for dynamic mode-aware soft shadows)
+  let shadow_map = {
+    'none': 'none',
+    'small': 'var(--fluent-shadow-sm)',
+    'medium': 'var(--fluent-shadow-md)',
+    'large': 'var(--fluent-shadow-lg)'
+  };
+
+  if (access('/etc/config/fluent')) {
+    mode = cfg.get_first('fluent', 'global', 'mode') || mode;
+    primary = cfg.get_first('fluent', 'global', 'primary') || primary;
+    dark_primary = cfg.get_first('fluent', 'global', 'dark_primary') || dark_primary;
+    font_weight = cfg.get_first('fluent', 'global', 'font_weight') || font_weight;
+    font_size = cfg.get_first('fluent', 'global', 'font_size') || font_size;
+    blur_radius = cfg.get_first('fluent', 'global', 'blur') || blur_radius;
+    blur_radius_dark = cfg.get_first('fluent', 'global', 'blur_dark') || blur_radius_dark;
+    blur_opacity = cfg.get_first('fluent', 'global', 'transparency') || blur_opacity;
+    blur_opacity_dark = cfg.get_first('fluent', 'global', 'transparency_dark') || blur_opacity_dark;
+    progressbar_font = cfg.get_first('fluent', 'global', 'progressbar_font') || progressbar_font;
+    dark_progressbar_font = cfg.get_first('fluent', 'global', 'dark_progressbar_font') || dark_progressbar_font;
+    sidebar_width = cfg.get_first('fluent', 'global', 'sidebar_width') || sidebar_width;
+    header_height = cfg.get_first('fluent', 'global', 'header_height') || header_height;
+    border_radius = cfg.get_first('fluent', 'global', 'border_radius') || border_radius;
+    card_shadow = cfg.get_first('fluent', 'global', 'card_shadow') || card_shadow;
+    control_height = cfg.get_first('fluent', 'global', 'control_height') || control_height;
+    transition_speed = cfg.get_first('fluent', 'global', 'transition_speed') || transition_speed;
+    custom_css = cfg.get_first('fluent', 'global', 'custom_css') || custom_css;
+    page_bg = cfg.get_first('fluent', 'global', 'page_bg') || page_bg;
+    card_bg = cfg.get_first('fluent', 'global', 'card_bg') || card_bg;
+    sidebar_bg = cfg.get_first('fluent', 'global', 'sidebar_bg') || sidebar_bg;
+    dark_page_bg = cfg.get_first('fluent', 'global', 'dark_page_bg') || dark_page_bg;
+    dark_card_bg = cfg.get_first('fluent', 'global', 'dark_card_bg') || dark_card_bg;
+    dark_sidebar_bg = cfg.get_first('fluent', 'global', 'dark_sidebar_bg') || dark_sidebar_bg;
+    custom_select = cfg.get_first('fluent', 'global', 'custom_select') || custom_select;
+    view_transition = cfg.get_first('fluent', 'global', 'view_transition') || view_transition;
+    tab_animation = cfg.get_first('fluent', 'global', 'tab_animation') || tab_animation;
+    prefers_reduced_motion = cfg.get_first('fluent', 'global', 'prefers_reduced_motion') || prefers_reduced_motion;
+    loading_bar = cfg.get_first('fluent', 'global', 'loading_bar') || loading_bar;
+    sticky_action_bar = cfg.get_first('fluent', 'global', 'sticky_action_bar') || sticky_action_bar;
+    progressbar_text_position = cfg.get_first('fluent', 'global', 'progressbar_text_position') || progressbar_text_position;
+    menu_layout = cfg.get_first('fluent', 'global', 'menu_layout') || null;
+
+    bar_color = mode === 'dark' ? dark_primary : primary;
+    main_left_font_color = font_weight === 'normal' ? '#5f6368' : '#69758c';
+  }
+
+  // Computed values
+  let transition_duration = transition_map[transition_speed] || '150ms';
+  let card_shadow_value = shadow_map[card_shadow] || shadow_map['small'];
+  let brand_name = hostname;
+  let page_title = striptags(hostname + (node && node.title ? ' - ' + _(node.title) : ''));
+%} {% if (ctx.authsession) { %}
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}" dir="{{ direction.resolved }}">
+
+<head>
+  <meta charset="utf-8">
+  <title>{{ page_title }} - LuCI</title>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport" />
+  <meta name="format-detection" content="telephone=no, email=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="x5-fullscreen" content="true">
+  <meta name="full-screen" content="yes">
+  <meta name="x5-page-mode" content="app">
+  <meta name="browsermode" content="application">
+  <meta name="msapplication-tap-highlight" content="no">
+  <meta name="msapplication-TileColor" content="{{ bar_color }}">
+  <meta name="application-name" content="{{ hostname }} - LuCI">
+  <meta name="apple-mobile-web-app-title" content="{{ hostname }} - LuCI">
+  <link rel="apple-touch-icon" href="{{ media }}/icon/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ media }}/icon/icon-192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ media }}/icon/favicon-32.png">
+  <link rel="icon" type="image/svg+xml" href="{{ media }}/img/fluent.svg">
+  <link rel="manifest" href="{{ media }}/icon/manifest.json" crossorigin="use-credentials">
+  <meta name="msapplication-TileColor" content="{{ bar_color }}">
+  <meta name="msapplication-TileImage" content="{{ media }}/icon/icon-192.png">
+
+  {% if (mode === 'auto') { %}
+  <meta name="theme-color" content="{{ bar_color }}">
+  <script type="text/javascript">
+    let prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDarkMode) {
+      viewport = document.querySelector("meta[name=theme-color]");
+      viewport.setAttribute('content', '#444950');
+    }
+  </script>
+  {% } else if (mode === 'dark') { %}
+  <meta name="theme-color" content="#444950">
+  {% } else if (mode === 'light') { %}
+  <meta name="theme-color" content="{{ bar_color }}">
+  {% } %}
+
+  {% if (access('/www/luci-static/fluent/css/fluent.css.gz')) { %}
+  <style id="fluent-compressed-css"></style>
+  <script>
+    (function () {
+      const style = document.getElementById('fluent-compressed-css');
+      if (!style || typeof DecompressionStream === 'undefined') return;
+
+      fetch('{{ media }}/css/fluent.css.gz?v={# PKG_VERSION #}').then((response) => {
+        if (!response.ok || !response.body) throw new Error('Unable to load Fluent CSS');
+        return new Response(response.body.pipeThrough(new DecompressionStream('gzip'))).text();
+      }).then((css) => {
+        style.textContent = css;
+      }).catch(() => {
+        style.remove();
+      });
+    })();
+  </script>
+  {% } else { %}
+  <link rel="stylesheet" href="{{ media }}/css/fluent.css">
+  {% } %}
+  <style title="text/css">
+    {# Default light values #}
+    :root {
+      --fluent-primary: {{ primary }};
+      --fluent-bg: {{ page_bg }};
+      --fluent-bg-card: {{ card_bg }};
+      --fluent-sidebar-bg: {{ sidebar_bg }};
+      --fluent-font-weight: {{ font_weight }};
+      --fluent-font-size: {{ font_size }}px;
+      --fluent-sidebar-width: {{ sidebar_width }}px;
+      --fluent-header-height: {{ header_height }}px;
+      --fluent-radius-sm: {{ border_radius / 2 }}px;
+      --fluent-control-height: {{ control_height }}px;
+      --fluent-radius-md: {{ border_radius }}px;
+      --fluent-card-shadow: {{ card_shadow_value }};
+      --fluent-transition-fast: {{ transition_duration }} ease;
+      --fluent-transition-normal: {{ transition_duration }} ease;
+      --fluent-progressbar-font-color: {{ progressbar_font }};
+      --fluent-blur-radius: {{ blur_radius }}px;
+      --fluent-blur-opacity: {{ blur_opacity }};
+      --fluent-blur-radius-dark: {{ blur_radius_dark }}px;
+      --fluent-blur-opacity-dark: {{ blur_opacity_dark }};
+      --fluent-main-left-font-color: {{ main_left_font_color }};
+    }
+
+    {# Dark mode overrides #}
+    :root[data-theme="dark"] {
+      --fluent-primary: {{ dark_primary }};
+      --fluent-bg: {{ dark_page_bg }};
+      --fluent-bg-card: {{ dark_card_bg }};
+      --fluent-sidebar-bg: {{ dark_sidebar_bg }};
+      --fluent-text: #f3f2f1;
+      --fluent-text-secondary: #a0a0a0;
+      --fluent-border: #404040;
+      --fluent-progressbar-font-color: {{ dark_progressbar_font }};
+    }
+
+    {# Font size on body #}
+    body {
+      font-size: {{ font_size }}px;
+    }
+
+    {# Custom CSS injection #}
+    {% if (custom_css) { %}
+    {{ custom_css }}
+    {% } %}
+  </style>
+
+  {% if (view_transition == '1') { %}
+  <style>
+    @view-transition {
+      navigation: auto;
+    }
+    
+    /* Smooth fade-over page transition without dimming unchanged areas */
+    ::view-transition-old(root) {
+      animation: none;
+    }
+    ::view-transition-new(root) {
+      animation: 180ms cubic-bezier(0, 0, 0.2, 1) both fade-in;
+    }
+    
+    @keyframes fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-old(root),
+      ::view-transition-new(root) {
+        animation: none !important;
+      }
+    }
+  </style>
+  {% } %}
+
+  {% if (loading_bar == '1') { %}
+  <style>
+    .fluent-loading-bar {
+      position: fixed;
+      top: 0;
+      inset-inline-start: 0;
+      width: 100%;
+      height: 3px;
+      background-color: transparent;
+      z-index: 99999;
+      pointer-events: none;
+      overflow: hidden;
+      opacity: 1;
+      transition: opacity 150ms ease;
+    }
+
+    .fluent-loading-bar.loaded {
+      opacity: 0;
+    }
+
+    .fluent-loading-bar-indicator {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      inset-inline-start: 0;
+      width: 100%;
+      background-color: var(--fluent-primary, #0078d4);
+      transform-origin: left;
+      animation: fluent-indeterminate-bar 1.8s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html[dir="rtl"] .fluent-loading-bar-indicator,
+    body[data-fluent-dir="rtl"] .fluent-loading-bar-indicator {
+      transform-origin: right;
+    }
+
+    @keyframes fluent-indeterminate-bar {
+      0% {
+        transform: translateX(-100%) scaleX(0.1);
+      }
+      50% {
+        transform: translateX(-30%) scaleX(0.6);
+      }
+      100% {
+        transform: translateX(100%) scaleX(0.1);
+      }
+    }
+  </style>
+  {% } %}
+
+  <link rel="shortcut icon" type="image/ico" href="{{ media }}/favicon.ico">
+  {% if (node && node.css) { %}
+  <link rel="stylesheet" href="{{ resource }}/{{ node.css }}">
+  {% } %}
+  {% if (css) { %}
+  <style title="text/css">
+    {{ css }}
+  </style>
+  {% } %}
+  <script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}?v={{ version.luciversion }}"></script>
+  <script src="{{ resource }}/cbi.js?v={{ version.luciversion }}"></script>
+  <script src="{{ resource }}/luci.js?v={{ version.luciversion }}"></script>
+  <script>
+    // Dark mode logic
+    (function() {
+      var mode = '{{ mode }}';
+      var isDark = (mode === 'dark');
+
+      if (mode === 'auto') {
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    })();
+  </script>
+</head>
+
+<body
+  class="lang_{{ dispatcher.lang }} {{ node ? entityencode(node.title, true) : '' }} {{ ctx.authsession ? 'logged-in' : '' }}"
+  data-page="{{ entityencode(join('-', ctx.request_path), true) }}"
+  data-theme-mode="{{ mode }}"
+  data-menu-layout="{{ entityencode(menu_layout ? sprintf('%J', menu_layout) : '', true) }}"
+  data-menu-cache-scope="{{ entityencode(ctx.authsession, true) }}"
+  data-tab-cache-path="{{ entityencode(sprintf('%J', ctx.request_path), true) }}"
+  data-fluent-dir="{{ direction.resolved }}"
+  data-theme-custom-select="{{ custom_select }}"
+  data-view-transition="{{ view_transition }}"
+  data-tab-animation="{{ tab_animation }}"
+  data-prefers-reduced-motion="{{ prefers_reduced_motion }}"
+  data-loading-bar="{{ loading_bar }}"
+  data-sticky-action-bar="{{ sticky_action_bar }}"
+  data-progressbar-text="{{ progressbar_text_position }}"
+  data-sidebar-state="expanded">
+  {% if (ctx.authsession) { %}
+  <script>
+    (function() {
+      if (window.innerWidth <= 768) return;
+      try {
+        var sidebarState = localStorage.getItem('fluent-sidebar-state');
+        if (sidebarState === 'collapsed' || sidebarState === 'expanded') {
+          document.body.setAttribute('data-sidebar-state', sidebarState);
+        }
+      } catch (_) {}
+    })();
+  </script>
+  {% } %}
+
+  {% if (loading_bar == '1') { %}
+  <div id="fluent-top-loading" class="fluent-loading-bar" aria-hidden="true">
+    <div class="fluent-loading-bar-indicator"></div>
+  </div>
+  {% } %}
+
+  <div class="main">
+    {% if (ctx.authsession) { %}
+    <div class="main-left" id="mainmenu" style="display:none">
+      <div class="sidebar__search-slot" aria-hidden="true"></div>
+    </div>
+    <script>
+      (function() {
+        try {
+          var cacheScope = document.body.getAttribute('data-menu-cache-scope');
+          if (!cacheScope) return;
+          var cached = sessionStorage.getItem('fluent_sidebar_html_' + cacheScope);
+          if (cached) {
+            var m = document.getElementById('mainmenu');
+            m.innerHTML = cached;
+            m.style.display = '';
+
+            var currentPath = location.pathname;
+            var links = m.querySelectorAll('a[href]');
+            var matched = null;
+            var maxLen = -1;
+
+            for (var i = 0; i < links.length; i++) {
+              var href = links[i].getAttribute('href');
+              if (href && href !== '#' && href.indexOf('javascript:') !== 0) {
+                if (currentPath === href || currentPath.indexOf(href) === 0) {
+                  if (href.length > maxLen) {
+                    matched = links[i];
+                    maxLen = href.length;
+                  }
+                }
+              }
+            }
+
+            if (matched) {
+              var actives = m.querySelectorAll('.active');
+              for (var j = 0; j < actives.length; j++) {
+                actives[j].classList.remove('active');
+              }
+
+              matched.classList.add('active');
+              if (matched.parentElement) {
+                matched.parentElement.classList.add('active');
+              }
+
+              var parentSubmenu = matched.closest('ul.slide-menu');
+              if (parentSubmenu) {
+                parentSubmenu.classList.add('active');
+                var parentLi = parentSubmenu.parentElement;
+                if (parentLi) {
+                  parentLi.classList.add('active');
+                  var parentA = parentLi.querySelector(':scope > a');
+                  if (parentA) parentA.classList.add('active');
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      })();
+    </script>
+    {% } %}
+    <div class="main-right">
+      <header class="header">
+        <div class="header__brand">
+          <button type="button" class="sidebar-collapse-toggle desktop-toggle"></button>
+          <a class="header__toggle showSide mobile-toggle"></a>
+          <a class="header__title brand" href="/">
+            <img src="{{ media }}/img/fluent.svg" class="icon" alt="">
+            <span>{{ brand_name }}</span>
+          </a>
+        </div>
+        {% if (ctx.authsession) { %}
+        <div class="header__search-slot" aria-hidden="true"><div class="header__search-placeholder"></div></div>
+        <div class="header-actions">
+          <button class="theme-toggle" id="theme-toggle" title="{{ _('Switch theme mode') }}" aria-label="{{ _('Switch theme mode') }}"></button>
+          <div class="status" id="indicators"></div>
+        </div>
+        {% } %}
+      </header>
+      <div class="darkMask"></div>
+      <div id="maincontent">
+        <div class="container">
+          {% if (getuid() == 0 && getspnam('root') && getspnam('root').pwdp === '' && join('-', ctx.request_path) != 'admin-system-admin') { %}
+          <div class="alert-message error">
+            <h4>{{ _('No password set!') }}</h4>
+            <p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+            {% if (dispatcher.lookup('admin/system/admin')) { %}
+            <div class="right"><a class="btn"
+                href="{{ dispatcher.build_url('admin/system/admin') }}">{{ _('Go to password configuration...') }}</a></div>
+            {% } %}
+          </div>
+          {% } %}
+
+          <noscript>
+            <div class="alert-message error">
+              <h4>{{ _('JavaScript required!') }}</h4>
+              <p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+            </div>
+          </noscript>
+
+          <div id="tabmenu" style="display:none"></div>
+          <script>
+            (function() {
+              try {
+                var cacheScope = document.body.getAttribute('data-menu-cache-scope');
+                if (!cacheScope) return;
+                var encodedPath = document.body.getAttribute('data-tab-cache-path');
+                var pathParts = encodedPath ? JSON.parse(encodedPath) : [];
+                if (!Array.isArray(pathParts) || pathParts.length < 3) return;
+                var pathKey = JSON.stringify(pathParts);
+                var cachedTabs = sessionStorage.getItem('fluent_tabmenu_html_' + cacheScope + '_' + pathKey);
+                if (cachedTabs) {
+                  var t = document.getElementById('tabmenu');
+                  t.innerHTML = cachedTabs;
+                  t.style.display = '';
+                }
+              } catch (_) {}
+            })();
+          </script>
+{% } else { %}
+{% include("themes/fluent/out_header_login"); %}
+{% include("themes/fluent/sysauth"); %}
+{% ctx._fluent_login_shown = true; %}
+{% } %}

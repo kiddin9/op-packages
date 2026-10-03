@@ -1,0 +1,486 @@
+{#
+	NoobWrt Theme - Compact Toolbar
+	Toolbar panel items are loaded dynamically from /etc/config/noobwrt
+	Copyright 2025 nooblk-98
+-#}
+
+{%
+	import { cursor } from 'uci';
+	import { access } from 'fs';
+
+	/* Default toolbar items — match uci-defaults seed values */
+	const default_toolbar = [
+		{ title: 'Home',       url: '/cgi-bin/luci/admin/status/overview',            icon: 'home.png',     enabled: true,  order: 1  },
+		{ title: 'Status',     url: '/cgi-bin/luci/admin/modem/modemdata',             icon: 'signal.png',   enabled: true,  order: 2  },
+		{ title: 'Modem',      url: '/cgi-bin/luci/admin/modem/qmodem',               icon: 'cell.png',     enabled: false, order: 3  },
+		{ title: 'SMS',        url: '/cgi-bin/luci/admin/modem/luci-app-sms-tool-js', icon: 'sms.png',      enabled: true,  order: 4  },
+		{ title: 'Data Usage', url: '/cgi-bin/luci/admin/tools/netstat',              icon: 'network.png',  enabled: true,  order: 5  },
+		{ title: 'NAS',        url: '/cgi-bin/luci/admin/services/samba4',            icon: 'nas.png',      enabled: false, order: 6  },
+		{ title: 'Wireless',   url: '/cgi-bin/luci/admin/network/wireless',           icon: 'wifi.png',     enabled: true,  order: 7  },
+		{ title: 'Firewall',   url: '/cgi-bin/luci/admin/network/firewall',           icon: 'firewall.png', enabled: false, order: 8  },
+		{ title: 'System Log', url: '/cgi-bin/luci/admin/status/logs',                icon: 'info.png',     enabled: false, order: 9  },
+		{ title: 'Terminal',   url: '/cgi-bin/luci/admin/system/ttyd',              icon: 'terminal.png', enabled: true,  order: 10 },
+		{ title: 'VPN',        url: '/cgi-bin/luci/admin/services/passwall',          icon: 'vpn.png',      enabled: false, order: 11 },
+		{ title: 'Files',      url: '/cgi-bin/luci/admin/nas/tinyfilemanager',        icon: 'files.png',    enabled: true,  order: 12 },
+		{ title: 'Settings',   url: '/cgi-bin/luci/admin/system/noobwrt',             icon: 'settings.png', enabled: true,  order: 13 },
+	];
+
+	/* Build sorted list of enabled toolbar items from UCI config */
+	let toolbar_items = [];
+	let auto_dark_mode = false;
+	if (access('/etc/config/noobwrt')) {
+		const tcfg = cursor();
+		tcfg.foreach('noobwrt', 'toolbar_item', function(s) {
+			push(toolbar_items, {
+				title:   s.title   || 'Link',
+				url:     s.url     || '#',
+				icon:    s.icon    || 'home.png',
+				enabled: s.enabled !== '0',
+				order:   +(s.order  || 99)
+			});
+		});
+		sort(toolbar_items, (a, b) => a.order - b.order);
+		const adm = tcfg.get_first('noobwrt', 'global', 'auto_dark_mode');
+		auto_dark_mode = (adm !== '0');
+	}
+	if (length(toolbar_items) == 0) toolbar_items = default_toolbar;
+-%}
+
+<style>
+/* ── Toolbar wrapper: sits at right edge, vertically centred ── */
+.toolbar-wrapper {
+	position: fixed;
+	right: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 999;
+	display: flex;
+	align-items: center;
+	transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hidden state: slide panel off-screen, leaving only the tab visible */
+.toolbar-wrapper.hidden {
+	transform: translateY(-50%) translateX(calc(100% - 20px));
+}
+
+/* Peek state: hover while hidden — slide panel fully in temporarily */
+.toolbar-wrapper.peek {
+	transform: translateY(-50%) translateX(0);
+}
+
+/* ── Pull tab (the ‹ / › chevron strip) ── */
+.toolbar-pull-tab {
+	width: 20px;
+	min-width: 20px;
+	height: 52px;
+	background: rgba(255, 255, 255, 0.95);
+	border: 1px solid rgba(0, 0, 0, 0.85);
+	border-right: none;
+	border-radius: 8px 0 0 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	flex-shrink: 0;
+	overflow: visible;
+	transition: background 0.2s ease, width 0.2s ease;
+	box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
+	padding: 0;
+}
+
+.toolbar-pull-tab:hover {
+	background: color-mix(in srgb, var(--primary) 15%, white);
+}
+
+body.dark-theme .toolbar-pull-tab {
+	background: rgba(20, 20, 25, 0.98);
+	border-color: rgba(255, 255, 255, 0.85);
+	box-shadow: -2px 0 10px rgba(0, 0, 0, 0.6);
+}
+
+body.dark-theme .toolbar-pull-tab:hover {
+	background: color-mix(in srgb, var(--dark-primary) 25%, rgba(20, 20, 25, 0.98));
+}
+
+.toolbar-pull-tab svg {
+	width: 12px;
+	height: 12px;
+	stroke: var(--primary);
+	flex-shrink: 0;
+	display: block;
+	transition: transform 0.35s ease, stroke 0.2s ease;
+}
+
+body.dark-theme .toolbar-pull-tab svg {
+	stroke: var(--dark-primary);
+}
+
+/* Hidden → chevron points right (›): rotate 180° */
+.toolbar-wrapper.hidden .toolbar-pull-tab svg {
+	transform: rotate(180deg);
+}
+
+/* ── Main toolbar panel ── */
+.toolbar-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	background: rgba(255, 255, 255, 0.95);
+	padding: 8px;
+	border-radius: 12px 0 0 12px;
+	border: 1px solid rgba(0, 0, 0, 0.85);
+	border-right: none;
+	box-shadow: -2px 0 12px rgba(0, 0, 0, 0.1);
+	transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+body.dark-theme .toolbar-container {
+	background: rgba(20, 20, 25, 0.98);
+	border-color: rgba(255, 255, 255, 0.85);
+	box-shadow: -2px 0 16px rgba(0, 0, 0, 0.7);
+}
+
+.toolbar-fab {
+	display: none;
+}
+
+.toolbar-menu {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	align-items: center;
+}
+
+.toolbar-item {
+	width: 40px;
+	height: 40px;
+	border-radius: 8px;
+	background: transparent;
+	border: none;
+	outline: none;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s ease;
+	text-decoration: none;
+	padding: 0;
+	overflow: hidden;
+	position: relative;
+}
+
+.toolbar-item img {
+	width: 24px;
+	height: 24px;
+	object-fit: contain;
+	filter: opacity(0.7);
+	transition: filter 0.2s ease;
+}
+
+body.dark-theme .toolbar-item img {
+	filter: opacity(0.8) invert(1);
+}
+
+.toolbar-item:hover {
+	background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+body.dark-theme .toolbar-item:hover {
+	background: color-mix(in srgb, var(--dark-primary) 30%, transparent);
+}
+
+.toolbar-item:hover img {
+	filter: opacity(1);
+}
+
+body.dark-theme .toolbar-item:hover img {
+	filter: opacity(1) invert(1);
+}
+
+.toolbar-item:active {
+	transform: scale(0.95);
+}
+
+/* Tooltip — appears to the left since panel is on the right edge */
+.toolbar-item:hover::after {
+	content: attr(title);
+	position: absolute;
+	right: 46px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: rgba(0, 0, 0, 0.8);
+	color: white;
+	padding: 4px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	white-space: nowrap;
+	pointer-events: none;
+	z-index: 1000;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+	background: color-mix(in srgb, var(--primary) 15%, transparent);
+	border-radius: 8px;
+	margin-bottom: 4px;
+	transition: background 0.3s ease;
+}
+
+body.dark-theme .theme-toggle {
+	background: color-mix(in srgb, var(--dark-primary) 35%, transparent);
+}
+
+.theme-toggle svg {
+	width: 20px;
+	height: 20px;
+	stroke: var(--primary);
+	transition: transform 0.3s ease, stroke 0.3s ease;
+}
+
+body.dark-theme .theme-toggle svg {
+	stroke: var(--dark-primary);
+}
+
+.theme-toggle:hover svg {
+	transform: rotate(20deg);
+}
+
+@media (max-width: 768px) {
+	.toolbar-container {
+		padding: 6px;
+		gap: 2px;
+	}
+
+	.toolbar-item {
+		width: 36px;
+		height: 36px;
+	}
+
+	.toolbar-item img {
+		width: 20px;
+		height: 20px;
+	}
+
+	.toolbar-pull-tab {
+		height: 40px;
+	}
+}
+</style>
+
+<div class="toolbar-wrapper" id="toolbar-wrapper">
+	<!-- Pull tab with chevron -->
+	<button class="toolbar-pull-tab" id="toolbar-pull-tab" aria-label="Toggle toolbar" title="Toggle toolbar">
+		<svg viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+			<polyline points="7,2 2,8 7,14"></polyline>
+		</svg>
+	</button>
+
+	<!-- Main panel -->
+	<div class="toolbar-container">
+		<button class="toolbar-item theme-toggle" id="theme-toggle" title="Toggle Theme">
+			<svg class="theme-icon sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<circle cx="12" cy="12" r="5"></circle>
+				<line x1="12" y1="1" x2="12" y2="3"></line>
+				<line x1="12" y1="21" x2="12" y2="23"></line>
+				<line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+				<line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+				<line x1="1" y1="12" x2="3" y2="12"></line>
+				<line x1="21" y1="12" x2="23" y2="12"></line>
+				<line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+				<line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+			</svg>
+			<svg class="theme-icon moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+				<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+			</svg>
+		</button>
+
+		<div class="toolbar-menu" id="toolbar-menu">
+
+			{% if (length(toolbar_items) > 0): %}
+				{% for (let item in toolbar_items): %}
+					{% if (item.enabled): %}
+			<a href="{{ item.url }}" class="toolbar-item" title="{{ item.title }}">
+				<img src="/luci-static/noobwrt/navbar/{{ item.icon }}" alt="{{ item.title }}" loading="lazy">
+			</a>
+					{% endif %}
+				{% endfor %}
+			{% else %}
+			<!-- Fallback: no UCI toolbar items configured -->
+			<a href="/cgi-bin/luci/admin/status/overview" class="toolbar-item" title="Home">
+				<img src="/luci-static/noobwrt/navbar/home.png" alt="Home" loading="lazy">
+			</a>
+			<a href="/cgi-bin/luci/admin/network/wireless" class="toolbar-item" title="Wireless">
+				<img src="/luci-static/noobwrt/navbar/wifi.png" alt="Wireless" loading="lazy">
+			</a>
+			<a href="/cgi-bin/luci/admin/system/system" class="toolbar-item" title="System">
+				<img src="/luci-static/noobwrt/navbar/settings.png" alt="System" loading="lazy">
+			</a>
+			{% endif %}
+
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">//<![CDATA[
+(function() {
+	const AUTO_DARK_MODE = {% if (auto_dark_mode): %}true{% else %}false{% endif %};
+
+	const themeToggle = document.getElementById('theme-toggle');
+	const sunIcon = themeToggle.querySelector('.sun-icon');
+	const moonIcon = themeToggle.querySelector('.moon-icon');
+	const toolbarWrapper = document.getElementById('toolbar-wrapper');
+	const pullTab = document.getElementById('toolbar-pull-tab');
+	const toolbarMenu = document.getElementById('toolbar-menu');
+
+	// Get or create dark theme style element
+	let darkThemeStyle = document.getElementById('dark-theme-style');
+	if (!darkThemeStyle) {
+		darkThemeStyle = document.createElement('style');
+		darkThemeStyle.id = 'dark-theme-style';
+		document.head.appendChild(darkThemeStyle);
+	}
+
+	const darkCssUrl = '/luci-static/noobwrt/css/dark.css';
+
+	// Returns true if the current local hour is in the dark period (18:00–05:59)
+	function isNightTime() {
+		const h = new Date().getHours();
+		return h >= 18 || h < 6;
+	}
+
+	function setIcons(dark) {
+		sunIcon.style.display  = dark ? 'none'  : 'block';
+		moonIcon.style.display = dark ? 'block' : 'none';
+	}
+
+	function loadDarkCSS(savePreference) {
+		if (darkThemeStyle.textContent) {
+			document.body.classList.add('dark-theme');
+			setIcons(true);
+			if (savePreference) localStorage.setItem('luci-theme', 'dark');
+			return;
+		}
+		fetch(darkCssUrl)
+			.then(r => r.text())
+			.then(css => {
+				darkThemeStyle.textContent = css;
+				document.body.classList.add('dark-theme');
+				setIcons(true);
+				if (savePreference) localStorage.setItem('luci-theme', 'dark');
+			})
+			.catch(err => {
+				console.error('Failed to load dark theme:', err);
+				document.body.classList.add('dark-theme');
+				setIcons(true);
+				if (savePreference) localStorage.setItem('luci-theme', 'dark');
+			});
+	}
+
+	function removeDarkCSS(savePreference) {
+		darkThemeStyle.textContent = '';
+		document.body.classList.remove('dark-theme');
+		setIcons(false);
+		if (savePreference) localStorage.setItem('luci-theme', 'light');
+	}
+
+	// Apply theme based on schedule (no localStorage side-effect)
+	function applyScheduledTheme() {
+		if (isNightTime()) {
+			loadDarkCSS(false);
+		} else {
+			removeDarkCSS(false);
+		}
+	}
+
+	/* ---- Initial theme application ---- */
+	if (AUTO_DARK_MODE) {
+		// Auto mode: schedule drives the theme, ignore saved manual preference
+		// If server already inlined dark CSS keep it and sync icons
+		if (document.body.classList.contains('server-dark')) {
+			setIcons(true);
+		}
+		applyScheduledTheme();
+
+		// Re-check every minute so the switch happens close to the hour boundary
+		setInterval(applyScheduledTheme, 60000);
+	} else {
+		// Manual mode — honour server-side setting first, then localStorage
+		if (document.body.classList.contains('server-dark')) {
+			localStorage.setItem('luci-theme', 'dark');
+			setIcons(true);
+		} else {
+			// On first visit (no saved preference), honour OS colour scheme
+			if (localStorage.getItem('luci-theme') === null) {
+				if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+					localStorage.setItem('luci-theme', 'dark');
+				} else {
+					localStorage.setItem('luci-theme', 'light');
+				}
+			}
+			if (localStorage.getItem('luci-theme') === 'dark') {
+				loadDarkCSS(true);
+			}
+		}
+	}
+
+	// Manual toggle — always works; in auto mode it applies until next schedule tick
+	themeToggle.addEventListener('click', function(e) {
+		e.preventDefault();
+		const isDark = document.body.classList.contains('dark-theme');
+		if (isDark) {
+			removeDarkCSS(!AUTO_DARK_MODE);
+		} else {
+			loadDarkCSS(!AUTO_DARK_MODE);
+		}
+	});
+
+	/* ---- Toolbar slide hide / show ---- */
+	function applyToolbarState(hidden) {
+		if (!toolbarWrapper || !pullTab) return;
+		toolbarWrapper.classList.toggle('hidden', hidden);
+		toolbarWrapper.classList.remove('peek');
+		pullTab.setAttribute('aria-pressed', hidden ? 'true' : 'false');
+		document.body.classList.toggle('toolbar-hidden', hidden);
+	}
+
+	function initToolbarState() {
+		let state = null;
+		try { state = localStorage.getItem('noobwrt.toolbar'); } catch (e) {}
+		applyToolbarState(state === 'hidden');
+	}
+
+	/* Click tab: permanently toggle hidden / visible */
+	if (pullTab) {
+		pullTab.addEventListener('click', function(e) {
+			e.preventDefault();
+			const isHidden = toolbarWrapper.classList.contains('hidden');
+			applyToolbarState(!isHidden);
+			try { localStorage.setItem('noobwrt.toolbar', !isHidden ? 'hidden' : 'visible'); } catch (e) {}
+		});
+	}
+
+	/* Hover peek: while hidden, mouse-enter slides panel in temporarily;
+	   mouse-leave slides it back — but only when the user hasn't pinned it open */
+	var peekTimeout = null;
+	if (toolbarWrapper) {
+		toolbarWrapper.addEventListener('mouseenter', function() {
+			clearTimeout(peekTimeout);
+			if (toolbarWrapper.classList.contains('hidden')) {
+				toolbarWrapper.classList.add('peek');
+			}
+		});
+		toolbarWrapper.addEventListener('mouseleave', function() {
+			if (toolbarWrapper.classList.contains('hidden')) {
+				/* small delay so clicking items doesn't race with the hide */
+				peekTimeout = setTimeout(function() {
+					toolbarWrapper.classList.remove('peek');
+				}, 200);
+			}
+		});
+	}
+
+	initToolbarState();
+})();
+//]]></script>

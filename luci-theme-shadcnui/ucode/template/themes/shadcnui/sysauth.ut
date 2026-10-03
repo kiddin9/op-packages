@@ -1,0 +1,82 @@
+{#
+ luci-theme-shadcnui — global sysauth.ut override
+
+ Replaces /usr/share/ucode/luci/template/sysauth.ut from luci-base. Pattern
+ copied from luci-theme-argon: include the theme's header_login wrapper,
+ render the login form, then include footer_login.
+
+ The runtime exposes:
+   theme  — basename of mediaurlbase (e.g. 'shadcnui')
+   media  — full mediaurlbase URL    (e.g. '/luci-static/shadcnui')
+   duser  — default username (usually 'root')
+   fuser  — non-empty if the previous attempt failed
+-#}
+
+{% include("themes/" + theme + "/out_header_login") %}
+
+{%
+	import { access } from 'fs';
+	import { cursor } from 'uci';
+
+	const boardinfo = ubus.call('system', 'board');
+	const hostname  = striptags(boardinfo?.hostname ?? 'OpenWrt');
+	const initials  = substr(uc(hostname), 0, 2);
+
+	let cfg = cursor();
+	let bg_url = '';
+	if (access('/etc/config/shadcnui')) {
+		bg_url = cfg.get('shadcnui', 'main', 'bg_url') ?? '';
+	}
+%}
+
+<main id="login-root">
+
+	{% if (bg_url): %}
+	<div class="login-bg" style="background-image:url('{{ bg_url }}')"></div>
+	{% endif %}
+
+	<div class="sysauth-card">
+		<div class="sysauth-brand">
+			<div class="logo" aria-hidden="true">{{ initials }}</div>
+			<div>
+				<h2>{{ hostname }}</h2>
+				<p class="muted">{{ _('Please sign in to manage this device.') }}</p>
+			</div>
+		</div>
+
+		<form method="post" action="{{ http.getenv('REQUEST_URI') }}">
+
+			{% if (fuser): %}
+			<div class="alert-message error">
+				{{ _('Invalid username and/or password! Please try again.') }}
+			</div>
+			{% endif %}
+
+			<div class="cbi-value">
+				<label for="cbi-input-user">{{ _('Username') }}</label>
+				<input id="cbi-input-user" type="text" name="luci_username"
+				       value="{{ entityencode(duser, true) }}"
+				       autocomplete="username" autofocus>
+			</div>
+
+			<div class="cbi-value">
+				<label for="cbi-input-password">{{ _('Password') }}</label>
+				<input id="cbi-input-password" type="password" name="luci_password"
+				       autocomplete="current-password">
+			</div>
+
+			<div class="cbi-page-actions">
+				<input type="submit" class="btn cbi-button cbi-button-apply"
+				       value="{{ _('Log in') }}">
+			</div>
+		</form>
+	</div>
+
+	<script>
+		var pw = document.getElementsByName('luci_password')[0];
+		if (pw) pw.focus();
+	</script>
+
+</main>
+
+{% include("themes/" + theme + "/footer_login") %}

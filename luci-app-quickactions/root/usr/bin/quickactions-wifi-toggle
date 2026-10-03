@@ -1,0 +1,12 @@
+#!/bin/sh
+# Quick Actions — toggle all WiFi radios on/off
+if wifi status 2>/dev/null | grep -qE '"up":[[:space:]]*true'; then
+	wifi down
+	logger -t quickactions "WiFi turned OFF"
+	echo "WiFi turned OFF"
+else
+	wifi up
+	logger -t quickactions "WiFi turned ON"
+	echo "WiFi turned ON"
+fi
+exit 0

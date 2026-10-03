@@ -1,0 +1,781 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-theme-fluent\n"
+"POT-Creation-Date: 2026-09-05 23:37+0800\n"
+"PO-Revision-Date: \n"
+"Last-Translator: castillofrancodamian\n"
+"Language-Team: LuCI Theme Fluent\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "%d second-level menus"
+msgstr "%d menús de segundo nivel"
+
+msgid "A new version is available!"
+msgstr "¡Ya está disponible una nueva versión!"
+
+msgid "About"
+msgstr "Acerca de"
+
+msgid "Above bar, end"
+msgstr "Arriba de la barra, fin"
+
+msgid "Above bar, start"
+msgstr "Arriba de la barra, inicio"
+
+msgid "Accent color"
+msgstr "Color de acento"
+
+msgid "Add primary menu"
+msgstr "Añadir menú principal"
+
+msgid ""
+"Adjust layout, typography, transition timing, shadows, and inject custom CSS "
+"variables or rules when the built-in controls are not enough."
+msgstr ""
+"Ajuste el diseño, la tipografía, la sincronización de las transiciones, las "
+"sombras e inserte variables o reglas CSS personalizadas cuando los controles "
+"integrados no sean suficientes."
+
+msgid "Advanced"
+msgstr "Avanzado"
+
+msgid "Advanced MAC Selector"
+msgstr "Selector avanzado de dirección MAC"
+
+msgid "and %d more..."
+msgstr "y %d más..."
+
+msgid ""
+"Animate the active underline when switching between native LuCI tabs and "
+"themed tab menus."
+msgstr ""
+"Animar el subrayado activo al cambiar entre las pestañas nativas de LuCI y "
+"los menús de pestañas con temas."
+
+msgid "Animation"
+msgstr "Animación"
+
+msgid ""
+"API rate limit exceeded. Please enter a GitHub Token to continue. This token "
+"is only used for frontend requests and will not be saved on the router "
+"backend."
+msgstr ""
+"Se ha superado el límite de solicitudes de la API. Ingrese un token de "
+"GitHub para continuar. Este token solo se utiliza para las solicitudes del "
+"frontend y no se guardará en el backend del enrutador."
+
+msgid ""
+"Applies to standard buttons, inputs, selects, and similar form controls "
+"across the theme."
+msgstr ""
+"Se aplica a botones, campos de entrada, menús desplegables y controles de "
+"formulario similares estándar en todo el tema."
+
+msgid ""
+"Are you sure you want to clean up %d invalid/uninstalled menu items or "
+"rules?"
+msgstr ""
+"¿Está seguro de que desea eliminar %d elementos o reglas de menú "
+"inválidos/no instalados?"
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "Auto-scroll"
+msgstr "Desplazamiento automático"
+
+msgid "Automatic (Arabic/Persian locales only)"
+msgstr "Automático (solo para configuraciones regionales árabe/persa)"
+
+msgid "Backdrop blur radius"
+msgstr "Radio de desenfoque del fondo"
+
+msgid "Backend (GHProxy Acceleration)"
+msgstr "Backend (Aceleración GHProxy)"
+
+msgid "Backend (Official GitHub)"
+msgstr "Backend (GitHub oficial)"
+
+msgid "Base font size"
+msgstr "Tamaño de fuente base"
+
+msgid "Below bar, end"
+msgstr "Abajo de la barra, fin"
+
+msgid "Below bar, start"
+msgstr "Abajo de la barra, inicio"
+
+msgid ""
+"Blur radius in pixels behind the login card in dark mode. Use 0 to disable "
+"blur."
+msgstr ""
+"Radio de desenfoque en píxeles detrás de la tarjeta de inicio de sesión en "
+"modo oscuro. Use 0 para desactivar el desenfoque."
+
+msgid ""
+"Blur radius in pixels behind the login card in light mode. Use 0 to disable "
+"blur."
+msgstr ""
+"Radio de desenfoque en píxeles detrás de la tarjeta de inicio de sesión en "
+"modo claro. Use 0 para desactivar el desenfoque."
+
+msgid "Cancel"
+msgstr "Cancelar"
+
+msgid "Card background"
+msgstr "Fondo de tarjeta"
+
+msgid "Card shadow"
+msgstr "Sombra de la tarjeta"
+
+msgid "Check for updates"
+msgstr "Verificar si hay actualizaciones"
+
+msgid "Checking for updates..."
+msgstr "Buscando actualizaciones..."
+
+msgid "Choose color"
+msgstr "Elegir color"
+
+msgid ""
+"Choose the document direction for authenticated and login pages. Automatic "
+"mode resolves Arabic and Persian locale codes (ar, ar_*, ar-*, fa, fa_*, "
+"fa-*) to RTL and falls back to LTR for missing or unrecognized locales."
+msgstr ""
+"Seleccione la dirección de los documentos para las páginas autenticadas y de "
+"inicio de sesión. El modo automático resuelve los códigos de configuración "
+"regional árabe y persa (ar, ar_*, ar-*, fa, fa_*, fa-*) a RTL y recurre a "
+"LTR en caso de que falten o no se reconozcan las configuraciones regionales."
+
+msgid "Clean up"
+msgstr "Limpiar"
+
+msgid "Clean up invalid items"
+msgstr "Limpiar elementos inválidos"
+
+msgid "Clean up invalid items (%d)"
+msgstr "Limpiar elementos inválidos (%d)"
+
+msgid "Close"
+msgstr "Cerrar"
+
+msgid "Color mode"
+msgstr "Modo de color"
+
+msgid "Colors"
+msgstr "Colores"
+
+msgid "Comfortable (42px)"
+msgstr "Cómodo (42px)"
+
+msgid "Compact (32px)"
+msgstr "Compacto (32px)"
+
+msgid ""
+"Configure color mode, accent colors, layout sizing, animation behavior, "
+"login-page appearance, and advanced CSS overrides for luci-theme-fluent."
+msgstr ""
+"Configure el modo de color, los colores de acento, el tamaño del diseño, el "
+"comportamiento de la animación, la apariencia de la página de inicio de "
+"sesión y las anulaciones CSS avanzadas para luci-theme-fluent."
+
+msgid "Confirm"
+msgstr "Confirmar"
+
+msgid "Confirm Installation"
+msgstr "Confirmar instalación"
+
+msgid "Continue"
+msgstr "Continuar"
+
+msgid "Control height"
+msgstr "Altura de control"
+
+msgid ""
+"Controls the font weight used by main navigation labels and related theme "
+"text accents."
+msgstr ""
+"Controla el grosor de la fuente utilizada por las etiquetas de navegación "
+"principales y los acentos de texto del tema relacionados."
+
+msgid ""
+"Controls the shared Fluent corner radius tokens used by cards, buttons, "
+"inputs, and related UI surfaces."
+msgstr ""
+"Controla los tokens de radio de esquina compartidos de Fluent que utilizan "
+"las tarjetas, los botones, los campos de entrada y las superficies de la "
+"interfaz de usuario relacionadas."
+
+msgid ""
+"Controls the shared Fluent transition timing used by menu, header, and other "
+"theme animations."
+msgstr ""
+"Controla la sincronización de transición compartida de Fluent utilizada por "
+"las animaciones de menú, encabezado y otros temas."
+
+msgid "Copied"
+msgstr "Copiado"
+
+msgid "Copy log"
+msgstr "Copiar registro"
+
+msgid "Corner radius"
+msgstr "Radio de esquina"
+
+msgid "Current / Pending MAC Address"
+msgstr "Dirección MAC actual / pendiente"
+
+msgid "Custom CSS"
+msgstr "CSS personalizado"
+
+msgid ""
+"Customize the login page background, card opacity, and blur radius for light "
+"and dark modes."
+msgstr ""
+"Personalice el fondo de la página de inicio de sesión, la opacidad de la "
+"tarjeta y el radio de desenfoque para los modos claro y oscuro."
+
+msgid "Dark mode"
+msgstr "Modo oscuro"
+
+msgid "Delete primary menu"
+msgstr "Eliminar menú principal"
+
+msgid "Disabled"
+msgstr "Desactivado"
+
+msgid "Disconnects"
+msgstr "Desconexiones"
+
+msgid ""
+"Display the themed loading indicator at the top edge during page loads and "
+"transitions."
+msgstr ""
+"Muestra el indicador de carga con el tema correspondiente en el borde "
+"superior durante la carga y las transiciones de la página."
+
+msgid "Download and Install"
+msgstr "Descargar e instalar"
+
+msgid "Download log"
+msgstr "Descargar registro"
+
+msgid "Downloaded"
+msgstr "Descargado"
+
+msgid "Downloading on router"
+msgstr "Descargando en el enrutador"
+
+msgid "Drag to move second-level menu"
+msgstr "Arrastrar para mover menú de segundo nivel"
+
+msgid "Drag to reorder primary menu"
+msgstr "Arrastrar para reordenar menú principal"
+
+msgid "Drop second-level menus here"
+msgstr "Soltar menús de segundo nivel aquí"
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Enable page transition animation"
+msgstr "Activar la animación de transición de página"
+
+msgid "Enable tab underline animation"
+msgstr "Activar la animación de subrayado de la pestaña"
+
+msgid "Errors"
+msgstr "Errores"
+
+msgid "Expecting: %s"
+msgstr "Esperando: %s"
+
+msgid "Extra large (12px)"
+msgstr "Extra grande (12 píxeles)"
+
+msgid "Failed to check for updates"
+msgstr "Error al comprobar si hay actualizaciones"
+
+msgid "Failed to fetch current theme version."
+msgstr "Error al obtener la versión actual del tema."
+
+msgid "Fast"
+msgstr "Rápido"
+
+msgid "Finished"
+msgstr "Finalizado"
+
+msgid "Fix primary menu title errors before saving."
+msgstr "Corregir errores en el título del menú principal antes de guardar."
+
+msgid "Fluent Design 2 theme for LuCI"
+msgstr "Tema Fluent Design 2 para LuCI"
+
+msgid "Fluent Theme"
+msgstr "Tema Fluent"
+
+msgid "Fluent theme settings"
+msgstr "Configuración del tema Fluent"
+
+msgid "Follow system"
+msgstr "Seguir el sistema"
+
+msgid "Force dark mode"
+msgstr "Forzar modo oscuro"
+
+msgid "Force light mode"
+msgstr "Forzar modo claro"
+
+msgid "Force LTR"
+msgstr "Forzar LTR"
+
+msgid "Force RTL"
+msgstr "Forzar RTL"
+
+msgid "General"
+msgstr "General"
+
+msgid "GitHub Token Required"
+msgstr "Se requiere token de GitHub"
+
+msgid "Header height"
+msgstr "Altura del encabezado"
+
+msgid "Height of the top header bar in pixels."
+msgstr "Altura de la barra de encabezado superior en píxeles."
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in dark mode."
+msgstr ""
+"Se utiliza un color HEX como acento principal de Fluent cuando la interfaz "
+"se muestra en modo oscuro."
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in light mode."
+msgstr ""
+"Se utiliza un color HEX como acento principal de Fluent cuando la interfaz "
+"se muestra en modo claro."
+
+msgid "HEX color used for container/card elements in dark mode."
+msgstr "Color HEX utilizado para los elementos de contenedor/tarjeta en modo oscuro."
+
+msgid "HEX color used for container/card elements in light mode."
+msgstr "Color HEX utilizado para los elementos de contenedor/tarjeta en modo claro."
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"dark mode."
+msgstr ""
+"Se utiliza un código de color hexadecimal para las etiquetas de la barra de "
+"progreso cuando la interfaz se muestra en modo oscuro."
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"light mode."
+msgstr ""
+"Se utiliza un código de color hexadecimal para las etiquetas de la barra de "
+"progreso cuando la interfaz se muestra en modo claro."
+
+msgid "HEX color used for the main page background in dark mode."
+msgstr "Color HEX utilizado para el fondo de la página principal en modo oscuro."
+
+msgid "HEX color used for the main page background in light mode."
+msgstr "Color HEX utilizado para el fondo de la página principal en modo claro."
+
+msgid "HEX color used for the navigation sidebar in dark mode."
+msgstr "Color HEX utilizado para la barra lateral de navegación en modo oscuro."
+
+msgid "HEX color used for the navigation sidebar in light mode."
+msgstr "Color HEX utilizado para la barra lateral de navegación en modo claro."
+
+msgid "Installation cancelled by user."
+msgstr "Instalación cancelada por el usuario."
+
+msgid "Installed version"
+msgstr "Versión instalada"
+
+msgid "Installing package"
+msgstr "Instalando paquete"
+
+msgid "Keep action bar visible while scrolling"
+msgstr "Mantener la barra de acciones visible al hacer desplazamiento."
+
+msgid ""
+"Keep Save, Apply, and Reset actions fixed at the bottom of the viewport "
+"while scrolling."
+msgstr ""
+"Mantener los botones Guardar, Aplicar y Restablecer fijos en la parte "
+"inferior de la pantalla al hacer desplazamiento."
+
+msgid "Large"
+msgstr "Grande"
+
+msgid "Large (8px)"
+msgstr "Grande (8 píxeles)"
+
+msgid "Light mode"
+msgstr "Modo claro"
+
+msgid "Line %d"
+msgstr "Línea %d"
+
+msgid "Lines"
+msgstr "Líneas"
+
+msgid "Login"
+msgstr "Acceso"
+
+msgid "Login card opacity"
+msgstr "Opacidad de la tarjeta de inicio de sesión"
+
+msgid "Login page"
+msgstr "Página de inicio de sesión"
+
+msgid "Medium"
+msgstr "Mediano"
+
+msgid "Medium (4px)"
+msgstr "Mediano (4px)"
+
+msgid "Menu"
+msgstr "Menú"
+
+msgid "Menu title cannot be empty."
+msgstr "El título del menú no puede estar vacío."
+
+msgid "Navigation font weight"
+msgstr "Peso de la fuente de navegación"
+
+msgid "New primary menu"
+msgstr "Nuevo menú principal"
+
+msgid "New primary menu %d"
+msgstr "Nuevo menú principal %d"
+
+msgid "Next"
+msgstr "Siguiente"
+
+msgid "Nightly build available (reinstallation check)."
+msgstr "Versión Nightly disponible (comprobación de reinstalación)."
+
+msgid "Nightly Channel (Prerelease)"
+msgstr "Canal Nightly (Lanzamiento anticipado)"
+
+msgid ""
+"No matching package asset found for your system architecture in this "
+"release."
+msgstr ""
+"No se encontró ningún paquete compatible con la arquitectura de su sistema "
+"en esta versión."
+
+msgid "None"
+msgstr "Ninguno"
+
+msgid "Normal"
+msgstr "Normal"
+
+msgid ""
+"Opacity of the login card in dark mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr ""
+"Opacidad de la tarjeta de inicio de sesión en modo oscuro. 0 es totalmente "
+"transparente y 1 es totalmente opaco."
+
+msgid ""
+"Opacity of the login card in light mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr ""
+"Opacidad de la tarjeta de inicio de sesión en modo claro. 0 es totalmente "
+"transparente y 1 es totalmente opaco."
+
+msgid ""
+"Optional raw CSS injected into the Fluent header template. Use this for "
+"extra --fluent-* variable overrides or page-specific tweaks that are not "
+"exposed as dedicated options."
+msgstr ""
+"CSS sin formato opcional que se inyecta en la plantilla de encabezado de "
+"Fluent. Úselo para anular variables adicionales de --fluent-* o para "
+"realizar ajustes específicos de la página que no estén disponibles como "
+"opciones dedicadas."
+
+msgid "Package format"
+msgstr "Formato del paquete"
+
+msgid "Page background"
+msgstr "Fondo de página"
+
+msgid "Please enter your password."
+msgstr "Por favor, ingrese su contraseña."
+
+msgid "Please enter your username."
+msgstr "Por favor, ingrese su nombre de usuario."
+
+msgid ""
+"Position of progress-bar labels relative to the bar. Start/end alignment "
+"follows the text direction (LTR or RTL)."
+msgstr ""
+"Posición de las etiquetas de la barra de progreso en relación con la barra. "
+"La alineación de inicio/fin sigue la dirección del texto (LTR o RTL)."
+
+msgid "Preset Vendor / Generator"
+msgstr "Generador/preajuste de fabricante"
+
+msgid "Primary menu title"
+msgstr "Título del menú principal"
+
+msgid "Primary menu titles cannot be empty."
+msgstr "Los títulos del menú principal no pueden estar vacíos."
+
+msgid "Primary menu titles must be unique."
+msgstr "Los títulos del menú principal deben ser únicos."
+
+msgid "Progress bar text color"
+msgstr "Color del texto de la barra de progreso"
+
+msgid "Progress bar text position"
+msgstr "Posición del texto de la barra de progreso"
+
+msgid "Random Local MAC"
+msgstr "MAC local aleatorio"
+
+msgid "Randomize MAC"
+msgstr "Aleatorizar MAC"
+
+msgid "Reload Web Interface"
+msgstr "Recargar la interfaz web"
+
+msgid "Replace native select elements with the theme's custom dropdown widget."
+msgstr ""
+"Reemplazar los elementos select nativos con el widget desplegable "
+"personalizado del tema."
+
+msgid "Respect reduced-motion preference"
+msgstr "Respetar la preferencia por movimientos reducidos"
+
+msgid "Restore %s to its original menu name"
+msgstr "Restaurar %s a su nombre de menú original"
+
+msgid "Restore %s to its original menu position"
+msgstr "Restaurar %s a su posición original en el menú"
+
+msgid "Restore defaults"
+msgstr "Restablecer valores predeterminados"
+
+msgid "Restore to original title"
+msgstr "Restaurar al título original"
+
+msgid "Retrying with token..."
+msgstr "Reintentando con token..."
+
+msgid "Rounded (6px)"
+msgstr "Redondeado (6px)"
+
+msgid "Save"
+msgstr "Guardar"
+
+msgid "Scroll to bottom"
+msgstr "Desplazarse al final"
+
+msgid "Scroll to top"
+msgstr "Desplazarse a la parte superior"
+
+msgid "Search menu items"
+msgstr "Buscar elementos del menú"
+
+msgid "Search menu..."
+msgstr "Menú de búsqueda..."
+
+msgid "Second-level menu title"
+msgstr "Título de menú secundario"
+
+msgid "Select the shadow depth applied to themed cards and panels."
+msgstr ""
+"Seleccione la profundidad de sombra que se aplicará a las tarjetas y paneles "
+"temáticos."
+
+msgid "Select vendor prefix..."
+msgstr "Seleccionar prefijo de fabricante..."
+
+msgid "Semibold"
+msgstr "Seminegrita"
+
+msgid ""
+"Sets the base interface font size in pixels. Most theme text scales from "
+"this value through the Fluent CSS variables. Recommended range: 12-18px."
+msgstr ""
+"Establezca el tamaño de fuente base de la interfaz en píxeles. La mayoría "
+"del texto del tema se ajusta a partir de este valor mediante las variables "
+"CSS de Fluent. Rango recomendado: 12-18 píxeles."
+
+msgid "Show %s in the menu"
+msgstr "Mostrar %s en el menú"
+
+msgid ""
+"Show pending UCI changes in the top apply-status message until the "
+"configuration apply completes."
+msgstr ""
+"Mostrar cambios de UCI pendientes en el mensaje superior de estado de "
+"aplicación hasta que se complete la aplicación de la configuración."
+
+msgid "Show top loading bar"
+msgstr "Mostrar barra de carga superior"
+
+msgid "Show UCI changes while applying configuration"
+msgstr "Mostrar cambios de UCI durante la aplicación de la configuración."
+
+msgid "Sidebar background"
+msgstr "Fondo de la barra lateral"
+
+msgid "Sidebar width"
+msgstr "Ancho de la barra lateral"
+
+msgid "Slow"
+msgstr "Lento"
+
+msgid "Small"
+msgstr "Pequeño"
+
+msgid "Small (2px)"
+msgstr "Pequeño (2px)"
+
+msgid "Software Update"
+msgstr "Actualización de software"
+
+msgid "Source code"
+msgstr "Código fuente"
+
+msgid "Square (0px)"
+msgstr "Cuadrado (0px)"
+
+msgid "Stable Channel"
+msgstr "Canal estable"
+
+msgid "Starting backend download..."
+msgstr "Iniciando la descarga del servidor..."
+
+msgid "Starting update process..."
+msgstr "Iniciando el proceso de actualización..."
+
+msgid "Submit"
+msgstr "Enviar"
+
+msgid "Switch theme mode"
+msgstr "Cambiar modo del tema"
+
+msgid "Text direction"
+msgstr "Dirección del texto"
+
+msgid ""
+"The stored menu layout is invalid. Choose \"Restore defaults\" or make an edit "
+"before saving."
+msgstr ""
+"La disposición del menú almacenada no es válida. Elija \"Restablecer valores "
+"predeterminados\" o realice una edición antes de guardar."
+
+msgid ""
+"The stored menu layout is invalid. Restore defaults or edit the layout "
+"before saving."
+msgstr ""
+"La disposición del menú almacenada no es válida. Restablezca los valores "
+"predeterminados o edite la disposición antes de guardar."
+
+msgid ""
+"The theme is being installed on your router. The logs are displayed below. "
+"Reloading the web interface will apply the changes once RPCD restarts."
+msgstr ""
+"El tema se está instalando en su enrutador. Los registros se muestran a "
+"continuación. Al reiniciar RPCD, se aplicarán los cambios a la interfaz web."
+
+msgid ""
+"The theme package is ready. Are you sure you want to proceed with the "
+"installation?"
+msgstr ""
+"El paquete de temas está listo. ¿Está seguro que desea continuar con la "
+"instalación?"
+
+msgid ""
+"The token does NOT require any permissions/scopes to be granted (read-only "
+"public access is sufficient)."
+msgstr ""
+"El token NO requiere que se otorguen permisos/ámbitos (el acceso público de "
+"solo lectura es suficiente)."
+
+msgid "Theme settings"
+msgstr "Configuración del tema"
+
+msgid ""
+"Theme successfully updated! Reloading RPC service, please refresh the page "
+"in 5 seconds."
+msgstr ""
+"¡Tema actualizado correctamente! Recargando el servicio RPC, y actualice la "
+"página en 5 segundos."
+
+msgid "Theme transition speed"
+msgstr "Velocidad de transición del tema"
+
+msgid "Toggle fullscreen"
+msgstr "Alternar pantalla completa"
+
+msgid "Triggering installation on router..."
+msgstr "Iniciando la instalación en el enrutador..."
+
+msgid "Update channel"
+msgstr "Canal de actualización"
+
+msgid "Update failed"
+msgstr "La actualización falló"
+
+msgid "Upgrade Successful!"
+msgstr "¡Actualización exitosa!"
+
+msgid "Use Fluent custom select dropdowns"
+msgstr "Utilizar menús desplegables de selección personalizada de Fluent"
+
+msgid ""
+"Use the browser View Transition API to animate navigation between LuCI pages "
+"when supported."
+msgstr ""
+"Utiliza la API de transición de vista del navegador para animar la "
+"navegación entre páginas de LuCI cuando sea compatible."
+
+msgid ""
+"Use the system/browser preference, or always render the Fluent theme in a "
+"fixed light or dark palette."
+msgstr ""
+"Se utiliza la preferencia del sistema/navegador o configure que el tema "
+"Fluent se muestre siempre con una paleta de colores fija, ya sea clara u "
+"oscura."
+
+msgid "Username is required."
+msgstr "Se requiere nombre de usuario."
+
+msgid "valid HEX color value"
+msgstr "valor de color HEX válido"
+
+msgid "Warnings"
+msgstr "Advertencias"
+
+msgid ""
+"When enabled, Fluent animations follow the browser or operating system "
+"reduced-motion preference."
+msgstr ""
+"Cuando están activadas, las animaciones Fluent respetan la preferencia de "
+"movimiento reducido del navegador o del sistema operativo."
+
+msgid "Width of the main navigation sidebar in pixels."
+msgstr "Ancho de la barra lateral de navegación principal en píxeles."
+
+msgid "Word wrap"
+msgstr "Ajuste de línea"
+
+msgid "You can create a new token at"
+msgstr "Puedes crear un nuevo token en:"
+
+msgid "Your theme is up to date!"
+msgstr "¡Tu tema está actualizado!"

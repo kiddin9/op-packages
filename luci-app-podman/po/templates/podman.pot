@@ -1,0 +1,1081 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "%d check(s) failed:"
+msgstr ""
+
+msgid "%d updated, %d failed:"
+msgstr ""
+
+msgid "%s created successfully"
+msgstr ""
+
+msgid "%s: %d/%d"
+msgstr ""
+
+msgid "(none)"
+msgstr ""
+
+msgid "-- Select %s --"
+msgstr ""
+
+msgid "1-253 characters: letters, numbers, underscore (_), hyphen (-) only"
+msgstr ""
+
+msgid "512m, 1g, or -1 for unlimited"
+msgstr ""
+
+msgid "API Version"
+msgstr ""
+
+msgid "Add the container to an existing pod. Network, hostname and port mappings come from the pod's infra container."
+msgstr ""
+
+msgid "All images updated successfully"
+msgstr ""
+
+msgid "All volumes exported successfully"
+msgstr ""
+
+msgid "Allocate TTY (-t)"
+msgstr ""
+
+msgid "Allocate container IP from this range"
+msgstr ""
+
+msgid "Always"
+msgstr ""
+
+msgid "Apply Updates"
+msgstr ""
+
+msgid "Are you sure to delete the records?"
+msgstr ""
+
+msgid "Are you sure to remove container?"
+msgstr ""
+
+msgid "Are you sure to remove integration?"
+msgstr ""
+
+msgid "Auto Remove (--rm)"
+msgstr ""
+
+msgid "Auto Update"
+msgstr ""
+
+msgid "Auto-Update"
+msgstr ""
+
+msgid "Automatically configure OpenWrt network interface, bridge, and firewall zone. <strong>Highly recommended</strong> for proper container networking on OpenWrt."
+msgstr ""
+
+msgid "Automatically start the container after it is created"
+msgstr ""
+
+msgid "Automatically update container when newer image is available. Adds label: io.containers.autoupdate=registry"
+msgstr ""
+
+msgid "Basic Information"
+msgstr ""
+
+msgid "Block I/O"
+msgstr ""
+
+msgid "Boot"
+msgstr ""
+
+msgid "Bridge Interface Name"
+msgstr ""
+
+msgid "CPU"
+msgstr ""
+
+msgid "CPU Limit"
+msgstr ""
+
+msgid "CPU Set"
+msgstr ""
+
+msgid "CPU Shares Weight"
+msgstr ""
+
+msgid "CPU Usage"
+msgstr ""
+
+msgid "CPU shares (relative weight). 0 = use default."
+msgstr ""
+
+msgid "CPUs the pod is allowed to run on (e.g., \"0-3\" or \"0,2\")"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Check"
+msgstr ""
+
+msgid "Check %d containers for updates?"
+msgstr ""
+
+msgid "Check Complete"
+msgstr ""
+
+msgid "Check for Updates"
+msgstr ""
+
+msgid "Check for updates: %s/%s"
+msgstr ""
+
+msgid "Choose firewall zone for this network."
+msgstr ""
+
+msgid "Clean Up Now"
+msgstr ""
+
+msgid "Cleaning up old images..."
+msgstr ""
+
+msgid "Cleanup / Prune"
+msgstr ""
+
+msgid "Cleanup Complete"
+msgstr ""
+
+msgid "Cleanup Unused Resources"
+msgstr ""
+
+msgid "Cleanup successful!"
+msgstr ""
+
+msgid "Clear logs"
+msgstr ""
+
+msgid "Click icon to repair"
+msgstr ""
+
+msgid "Click to disconnect"
+msgstr ""
+
+msgid "Click to enable/disable"
+msgstr ""
+
+msgid "Click to reveal/hide value"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Comma-separated list of supplementary group IDs"
+msgstr ""
+
+msgid "Comma-separated ports to expose (e.g., 6052, 8080/udp)"
+msgstr ""
+
+msgid "Command"
+msgstr ""
+
+msgid "Command to run (space-separated)"
+msgstr ""
+
+msgid "Configuration"
+msgstr ""
+
+msgid "Configure resource limits for this container."
+msgstr ""
+
+msgid "Confirm"
+msgstr ""
+
+msgid "Connect"
+msgstr ""
+
+msgid "Connect to"
+msgstr ""
+
+msgid "Connected successfully to %s"
+msgstr ""
+
+msgid "Connecting container to network"
+msgstr ""
+
+msgid "Console"
+msgstr ""
+
+msgid "Container"
+msgstr ""
+
+msgid "Container Name"
+msgstr ""
+
+msgid "Container image has no tag - cannot update"
+msgstr ""
+
+msgid "Container image to use"
+msgstr ""
+
+msgid "Container is not running"
+msgstr ""
+
+msgid "Container updated successfully"
+msgstr ""
+
+msgid "Containers"
+msgstr ""
+
+msgid "Containers in pod %s"
+msgstr ""
+
+msgid "Containers updated successfully"
+msgstr ""
+
+msgid "Containers updated successfully."
+msgstr ""
+
+msgid "Create"
+msgstr ""
+
+msgid "Create %s"
+msgstr ""
+
+msgid "Create Command"
+msgstr ""
+
+msgid "Create Infra Container"
+msgstr ""
+
+msgid "Create new zone (will be named: podman_<network-name>)"
+msgstr ""
+
+msgid "Created"
+msgstr ""
+
+msgid "Creating %s"
+msgstr ""
+
+msgid "Creating auto-start configuration for %s"
+msgstr ""
+
+msgid "DNS Search Domains"
+msgstr ""
+
+msgid "DNS Servers"
+msgstr ""
+
+msgid "DNS search domains for the infra container"
+msgstr ""
+
+msgid "DNS servers for the infra container (shared with all pod containers)"
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "Deleting records: %d/%d"
+msgstr ""
+
+msgid "Deleting records: %s/%s"
+msgstr ""
+
+msgid "Destination"
+msgstr ""
+
+msgid "Device"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Disabling init script"
+msgstr ""
+
+msgid "Disconnect container from network"
+msgstr ""
+
+msgid "Disconnected from %s"
+msgstr ""
+
+msgid "Dnsmasq"
+msgstr ""
+
+msgid "Driver"
+msgstr ""
+
+msgid "Driver-specific options (comma-separated, e.g., type=tmpfs,o=size=100m)"
+msgstr ""
+
+msgid "Enable IPv6"
+msgstr ""
+
+msgid "Enable IPv6 networking"
+msgstr ""
+
+msgid "Enabling init script"
+msgstr ""
+
+msgid "Enter secret data (password, token, key, etc.)"
+msgstr ""
+
+msgid "Entrypoint"
+msgstr ""
+
+msgid "Environment Variables"
+msgstr ""
+
+msgid "Ephemeral (--rm flag)"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Error: %s"
+msgstr ""
+
+msgid "Existing physical interface to use as parent. Required for macvlan/ipvlan networks."
+msgstr ""
+
+msgid "Expecting: %s"
+msgstr ""
+
+msgid "Export"
+msgstr ""
+
+msgid "Exporting selected volumes: %d/%d"
+msgstr ""
+
+msgid "Expose Ports"
+msgstr ""
+
+msgid "Failed to create container"
+msgstr ""
+
+msgid "Fetching information..."
+msgstr ""
+
+msgid "Find updateable containers"
+msgstr ""
+
+msgid "Firewall Zone"
+msgstr ""
+
+msgid "Gateway"
+msgstr ""
+
+msgid "Generate"
+msgstr ""
+
+msgid "Graph Root"
+msgstr ""
+
+msgid "Health"
+msgstr ""
+
+msgid "Hostname"
+msgstr ""
+
+msgid "Hostname for the pod (defaults to pod name)"
+msgstr ""
+
+msgid "ID"
+msgstr ""
+
+msgid "IP Address"
+msgstr ""
+
+msgid "IP Range (CIDR)"
+msgstr ""
+
+msgid "IPv4 Gateway"
+msgstr ""
+
+msgid "IPv4 Subnet (CIDR)"
+msgstr ""
+
+msgid "IPv4 gateway address"
+msgstr ""
+
+msgid "IPv4 subnet in CIDR notation"
+msgstr ""
+
+msgid "Image"
+msgstr ""
+
+msgid "Image ID"
+msgstr ""
+
+msgid "Image is already up-to-date"
+msgstr ""
+
+msgid "Image pulled successfully"
+msgstr ""
+
+msgid "Images"
+msgstr ""
+
+msgid "Import"
+msgstr ""
+
+msgid "Import from archive: %s"
+msgstr ""
+
+msgid "Importing volume..."
+msgstr ""
+
+msgid "Info"
+msgstr ""
+
+msgid "Information"
+msgstr ""
+
+msgid "Infra Image"
+msgstr ""
+
+msgid "Init Script"
+msgstr ""
+
+msgid "Inspect"
+msgstr ""
+
+msgid "Int"
+msgstr ""
+
+msgid "Interactive"
+msgstr ""
+
+msgid "Interface"
+msgstr ""
+
+msgid "Internal Network"
+msgstr ""
+
+msgid "Labels"
+msgstr ""
+
+msgid "Labels in key=value format, one per line"
+msgstr ""
+
+msgid "Leave empty to auto-generate"
+msgstr ""
+
+msgid "Links"
+msgstr ""
+
+msgid "Linux namespaces shared between containers in the pod. Default matches `podman pod create`."
+msgstr ""
+
+msgid "Load"
+msgstr ""
+
+msgid "Load System diagnostics"
+msgstr ""
+
+msgid "Loading init script"
+msgstr ""
+
+msgid "Loading..."
+msgstr ""
+
+msgid "Logs"
+msgstr ""
+
+msgid "Manage podman %s"
+msgstr ""
+
+msgid "Memory"
+msgstr ""
+
+msgid "Memory %"
+msgstr ""
+
+msgid "Memory + Swap Limit"
+msgstr ""
+
+msgid "Memory Limit"
+msgstr ""
+
+msgid "Memory Usage"
+msgstr ""
+
+msgid "Memory limit (e.g., 512m, 1g)"
+msgstr ""
+
+msgid "Memory limit (e.g., 512m, 1g). -1 = unlimited, 0 = use default."
+msgstr ""
+
+msgid "Memory limit for the pod (e.g., 512m, 1g)"
+msgstr ""
+
+msgid "Mode"
+msgstr ""
+
+msgid "Mount Options"
+msgstr ""
+
+msgid "Mountpoint"
+msgstr ""
+
+msgid "Mounts"
+msgstr ""
+
+msgid "Must be between 0 and 262144"
+msgstr ""
+
+msgid "Name"
+msgstr ""
+
+msgid "Name for the network"
+msgstr ""
+
+msgid "Name of the bridge interface (e.g., podman0, mynet0). Leave empty to use: &lt;network-name&gt;0. Note: If the generated name conflicts with an existing interface, OpenWrt will auto-increment it."
+msgstr ""
+
+msgid "Name updated successfully"
+msgstr ""
+
+msgid "Network"
+msgstr ""
+
+msgid "Network I/O"
+msgstr ""
+
+msgid "Network Mode"
+msgstr ""
+
+msgid "Network Name"
+msgstr ""
+
+msgid "Network driver"
+msgstr ""
+
+msgid "Network namespace for the pod. Containers in the pod share this network."
+msgstr ""
+
+msgid "Networks"
+msgstr ""
+
+msgid "Never"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+msgid "No %s selected"
+msgstr ""
+
+msgid "No containers in this pod"
+msgstr ""
+
+msgid "No containers with auto-update label found."
+msgstr ""
+
+msgid "No new updates available."
+msgstr ""
+
+msgid "No suitable interfaces found"
+msgstr ""
+
+msgid "No unused resources found"
+msgstr ""
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0)"
+msgstr ""
+
+msgid "Number of CPUs (e.g., 0.5, 1.0, 2.0). Leave empty for unlimited."
+msgstr ""
+
+msgid "Number of CPUs available to the pod (e.g., 0.5, 1.0, 2.0)"
+msgstr ""
+
+msgid "Number of lines"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Old image still used by other containers"
+msgstr ""
+
+msgid "On Failure"
+msgstr ""
+
+msgid "One per line, format: host:container[/protocol]"
+msgstr ""
+
+msgid "One per line, format: key=value"
+msgstr ""
+
+msgid "One per line. Format: source:destination[:options]. Options: ro, rw, Z, z"
+msgstr ""
+
+msgid "OpenWrt integration exists\n\nClick to remove"
+msgstr ""
+
+msgid "OpenWrt integration incomplete"
+msgstr ""
+
+msgid "OpenWrt integration requires subnet to be specified"
+msgstr ""
+
+msgid "Override the image used for the infra container"
+msgstr ""
+
+msgid "PIDs"
+msgstr ""
+
+msgid "Parent Interface"
+msgstr ""
+
+msgid "Parent interface is required for macvlan/ipvlan networks"
+msgstr ""
+
+msgid "Part of a pod (\"%s\")"
+msgstr ""
+
+msgid "Pausing pod"
+msgstr ""
+
+msgid "Pod"
+msgstr ""
+
+msgid "Pod Name"
+msgstr ""
+
+msgid "Podman Version"
+msgstr ""
+
+msgid "Pods"
+msgstr ""
+
+msgid "Port Mappings"
+msgstr ""
+
+msgid "Ports"
+msgstr ""
+
+msgid "Privileged"
+msgstr ""
+
+msgid "Privileged Mode"
+msgstr ""
+
+msgid "Processes"
+msgstr ""
+
+msgid "Pull Image"
+msgstr ""
+
+msgid "Pull did not return an image ID - pull may have failed"
+msgstr ""
+
+msgid "Pulling %s"
+msgstr ""
+
+msgid "Read: %s / Write: %s"
+msgstr ""
+
+msgid "Refreshing %s..."
+msgstr ""
+
+msgid "Registries"
+msgstr ""
+
+msgid "Registry"
+msgstr ""
+
+msgid "Reload"
+msgstr ""
+
+msgid "Remove OpenWrt integration"
+msgstr ""
+
+msgid "Remove all unused images (not just dangling)"
+msgstr ""
+
+msgid "Remove container"
+msgstr ""
+
+msgid "Remove unused volumes"
+msgstr ""
+
+msgid "Removed: %s"
+msgstr ""
+
+msgid "Removing unused resources, please wait..."
+msgstr ""
+
+msgid "Repository"
+msgstr ""
+
+msgid "Required for shared network namespace. Disable only if you know you do not need it."
+msgstr ""
+
+msgid "Resources"
+msgstr ""
+
+msgid "Restart Policy"
+msgstr ""
+
+msgid "Restart container"
+msgstr ""
+
+msgid "Restart policy updated successfully"
+msgstr ""
+
+msgid "Restarting pod"
+msgstr ""
+
+msgid "Restrict external access to the network"
+msgstr ""
+
+msgid "Run Root"
+msgstr ""
+
+msgid "Saving resource"
+msgstr ""
+
+msgid "Secret"
+msgstr ""
+
+msgid "Secret Data"
+msgstr ""
+
+msgid "Secret Name"
+msgstr ""
+
+msgid "Secret name can only contain letters, numbers, underscores, and hyphens"
+msgstr ""
+
+msgid "Secrets"
+msgstr ""
+
+msgid "Security Notice:"
+msgstr ""
+
+msgid "Select containers to update"
+msgstr ""
+
+msgid "Select network for the new container. User-created networks provide better isolation and DNS resolution between containers."
+msgstr ""
+
+msgid "Select what to clean up:"
+msgstr ""
+
+msgid "Sensitive data is hidden for security reasons."
+msgstr ""
+
+msgid "Setup OpenWrt Integration"
+msgstr ""
+
+msgid "Shared Namespaces"
+msgstr ""
+
+msgid "Shares network with another container"
+msgstr ""
+
+msgid "Show"
+msgstr ""
+
+msgid "Since"
+msgstr ""
+
+msgid "Size"
+msgstr ""
+
+msgid "Socket Path"
+msgstr ""
+
+msgid "Source"
+msgstr ""
+
+msgid "Space freed: %s"
+msgstr ""
+
+msgid "Start after creation"
+msgstr ""
+
+msgid "Start container"
+msgstr ""
+
+msgid "Start on boot"
+msgstr ""
+
+msgid "Start script disabled"
+msgstr ""
+
+msgid "Start script missing\n\nClick to generate"
+msgstr ""
+
+msgid "Start stream"
+msgstr ""
+
+msgid "Started"
+msgstr ""
+
+msgid "Started At"
+msgstr ""
+
+msgid "Starting pod"
+msgstr ""
+
+msgid "Statistics"
+msgstr ""
+
+msgid "Stats"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Stop container"
+msgstr ""
+
+msgid "Stop stream"
+msgstr ""
+
+msgid "Stopping pod"
+msgstr ""
+
+msgid "Subnet"
+msgstr ""
+
+msgid "Supplementary Groups"
+msgstr ""
+
+msgid "System Diagnostics"
+msgstr ""
+
+msgid "TTY"
+msgstr ""
+
+msgid "Tag"
+msgstr ""
+
+msgid "The sensitive data to store securely"
+msgstr ""
+
+msgid "To enable auto-update for a container, add the label: io.containers.autoupdate=registry"
+msgstr ""
+
+msgid "Total"
+msgstr ""
+
+msgid "Total memory limit (memory + swap). -1 = unlimited, 0 = use default."
+msgstr ""
+
+msgid "Type"
+msgstr ""
+
+msgid "Unknown"
+msgstr ""
+
+msgid "Unless Stopped"
+msgstr ""
+
+msgid "Until"
+msgstr ""
+
+msgid "Update"
+msgstr ""
+
+msgid "Update Resources"
+msgstr ""
+
+msgid "Update name"
+msgstr ""
+
+msgid "Update restart policy"
+msgstr ""
+
+msgid "Updating Images"
+msgstr ""
+
+msgid "Updating container"
+msgstr ""
+
+msgid "Upload failed: %s"
+msgstr ""
+
+msgid "Uploading file..."
+msgstr ""
+
+msgid "User"
+msgstr ""
+
+msgid "User and group to run as (UID:GID)"
+msgstr ""
+
+msgid "Value"
+msgstr ""
+
+msgid "Variable"
+msgstr ""
+
+msgid "Volume"
+msgstr ""
+
+msgid "Volume Name"
+msgstr ""
+
+msgid "Volume driver to use"
+msgstr ""
+
+msgid "Volume imported successfully"
+msgstr ""
+
+msgid "Volume name. Leave empty to auto-generate."
+msgstr ""
+
+msgid "Volumes"
+msgstr ""
+
+msgid "Working Directory"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "default"
+msgstr ""
+
+msgid "non-empty value"
+msgstr ""
+
+msgid "running"
+msgstr ""
+
+msgid "total"
+msgstr ""
+msgid "Are you sure to remove pod?"
+msgstr ""
+
+msgid "Cgroup parent"
+msgstr ""
+
+msgid "CID"
+msgstr ""
+
+msgid "CPU %"
+msgstr ""
+
+msgid "CPU period"
+msgstr ""
+
+msgid "CPU quota"
+msgstr ""
+
+msgid "CPU set"
+msgstr ""
+
+msgid "CPU shares"
+msgstr ""
+
+msgid "DNS options"
+msgstr ""
+
+msgid "DNS search"
+msgstr ""
+
+msgid "DNS servers"
+msgstr ""
+
+msgid "Exit policy"
+msgstr ""
+
+msgid "Extra hosts"
+msgstr ""
+
+msgid "Host network"
+msgstr ""
+
+msgid "Infra container"
+msgstr ""
+
+msgid "Memory limit"
+msgstr ""
+
+msgid "Net I/O"
+msgstr ""
+
+msgid "Pause pod"
+msgstr ""
+
+msgid "Pod is not running"
+msgstr ""
+
+msgid "Remove pod"
+msgstr ""
+
+msgid "Restart policy"
+msgstr ""
+
+msgid "Restart pod"
+msgstr ""
+
+msgid "Shared namespaces"
+msgstr ""
+
+msgid "Start pod"
+msgstr ""
+
+msgid "Static IPv4"
+msgstr ""
+
+msgid "Static MAC"
+msgstr ""
+
+msgid "Stop pod"
+msgstr ""
+
+msgid "Unlimited"
+msgstr ""
+
+msgid "Unpause pod"
+msgstr ""
+
+msgid "Stopping container"
+msgstr ""
+
+msgid "Stop failed: %s"
+msgstr ""
+
+msgid "Removing container"
+msgstr ""
+
+msgid "Remove failed: %s"
+msgstr ""
+
+msgid "Creating container"
+msgstr ""
+
+msgid "Create failed: %s"
+msgstr ""
+
+msgid "Starting container"
+msgstr ""
+
+msgid "Start failed: %s"
+msgstr ""
+
+msgid "Reinstating init script"
+msgstr ""
+
+msgid "Init script reinstate failed: %s"
+msgstr ""
+
+msgid "Updated to %s"
+msgstr ""
+
+msgid "Update image: %d/%d - %s"
+msgstr ""
+
+msgid "Removed old image %s"
+msgstr ""
+
+msgid "Done."
+msgstr ""
+
+msgid "Pause container"
+msgstr ""
+
+msgid "Unpause container"
+msgstr ""

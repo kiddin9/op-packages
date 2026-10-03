@@ -1,0 +1,431 @@
+:root {
+    --podman-terminal-bg: #1a1a1a;
+    --podman-terminal-fg: #0f0;
+    --warn-background-color-dark: rgba(166, 141, 69, 0.2);
+}
+
+.overview-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1.3125rem;
+}
+
+div.cbi-tooltip-container {
+    width: fit-content;
+}
+
+div.cbi-tooltip-container div.cbi-tooltip {
+    font-size: 13px;
+    font-weight: 400;
+    line-height: normal;
+}
+
+.overview-card-link,
+.overview-card-link:hover,
+.overview-card-link:focus {
+    text-decoration: none;
+    color: inherit;
+    justify-content: space-between;
+    min-height: 120px;
+    padding: 1.3125rem;
+    margin: 0 0 .625rem 0;
+    transition: all 0.2s ease-in-out;
+}
+
+.overview-card-link .card-link-header {
+    justify-content: space-between;
+    margin-bottom: .625rem;
+    font-size: 20px;
+}
+
+.overview-card-link .card-link-title {
+    font-size: 16px;
+    opacity: 0.8;
+}
+
+.overview-card-link .card-link-icon {
+    font-size: 24px;
+    opacity: 0.6;
+}
+
+.overview-card-link .card-link-headline {
+    font-size: 32px;
+}
+
+.overview-card-link .card-link-text {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: .3125rem;
+}
+
+.overview-card-containers {
+    border-left: 4px solid #3498db;
+}
+
+.overview-card-containers .card-link-headline {
+    color: #3498db;
+}
+
+.overview-card-pods {
+    border-left: 4px solid #2ecc71;
+}
+
+.overview-card-pods .card-link-headline {
+    color: #2ecc71;
+}
+
+.overview-card-images {
+    border-left: 4px solid #9b59b6;
+}
+
+.overview-card-images .card-link-headline {
+    color: #9b59b6;
+}
+
+.overview-card-networks {
+    border-left: 4px solid #e67e22;
+}
+
+.overview-card-networks .card-link-headline {
+    color: #e67e22;
+}
+
+.overview-card-volumes {
+    border-left: 4px solid #34495e;
+}
+
+.overview-card-volumes .card-link-headline {
+    color: #34495e;
+}
+
+.border-0 {
+    border: 0 !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.align-center {
+    align-items: center;
+}
+
+.align-start {
+    align-items: start;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-end {
+    justify-content: end;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.gap-5 {
+    gap: .3125rem;
+}
+
+.cbi-button-active {
+    background: linear-gradient(lightgray, lightgray 25%, var(--background-color-low));
+}
+
+.badge {
+    font-size: 0.85em;
+    padding: 0 4px;
+    text-align: center;
+    border-radius: .3125rem;
+    width: fit-content;
+}
+
+.badge.running {
+    background-color: var(--success-color-high);
+}
+
+.badge.exited {
+    background-color: var(--error-color-high);
+}
+
+.badge.created {
+    background-color: var(--background-color-low);
+}
+
+.badge.paused {
+    background-color: var(--warning-color-high, #d68a00);
+}
+
+.badge.degraded {
+    background-color: var(--warning-color-high, #d68a00);
+}
+
+.badge.stopped,
+.badge.dead {
+    background-color: var(--error-color-high);
+}
+
+.badge.running,
+.badge.error,
+.badge.exited,
+.badge.paused,
+.badge.degraded,
+.badge.stopped,
+.badge.dead {
+    color: white;
+}
+
+.tooltip {
+    border-bottom: 1px dotted;
+}
+
+.w-100 {
+    width: 100%;
+}
+
+.d-none {
+    display: none;
+}
+
+.modal.loading-modal {
+    padding: 1em;
+}
+
+.cbi-checkbox + label {
+    margin-left: 3px;
+}
+
+.text-success {
+    color: var(--success-color-high);
+}
+
+.text-error {
+    color: var(--error-color-high);
+}
+
+.mr-xs {
+    margin-right: .3125rem;
+}
+
+.ml-xs {
+    margin-left: .3125rem;
+}
+
+.ml-sm {
+    margin-left: .625rem;
+}
+
+.mt-sm {
+    margin-top: .625rem;
+}
+
+.mb-xs {
+    margin-bottom: .3125rem;
+}
+
+.mb-sm {
+    margin-bottom: .625rem;
+}
+
+.p-sm {
+    padding: .625rem;
+}
+
+.text-bold {
+    font-weight: bold;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.gap-xs {
+    gap: .25rem;
+}
+
+.gap-sm {
+    gap: .625rem;
+}
+
+.editable-field {
+    width: 100%;
+    display: flex;
+}
+
+.table-list>tr>td:first-of-type {
+    width: 33%;
+    font-weight: bold;
+}
+
+.code-area,
+.json-area,
+.terminal-area {
+    max-height: 600px;
+    font-weight: 100;
+    overflow: auto !important;
+    white-space: pre !important;
+    display: block;
+    word-wrap: normal;
+}
+
+.json-area .key {
+    color: #660066;
+    font-weight: bold;
+}
+
+.json-area .string {
+    color: #007700;
+}
+
+.json-area .boolean {
+    color: #aa5500;
+}
+
+.json-area .null {
+    color: #777777;
+}
+
+.json-area .number {
+    color: #0000ff;
+}
+
+.code-area.bash .comment {
+    color: #888888;
+    font-style: italic;
+}
+
+.code-area.bash .string {
+    color: #007700;
+}
+
+.code-area.bash .variable {
+    color: #aa5500;
+}
+
+.code-area.bash .keyword {
+    color: #0000ff;
+    font-weight: bold;
+}
+
+.code-area.bash .number {
+    color: #ff4500;
+}
+
+.terminal-area {
+    min-height: 100px;
+    background: var(--podman-terminal-bg);
+    color: var(--podman-terminal-fg);
+}
+
+.autostart-enabled {
+    color: var(--success-color-high);
+}
+
+.autostart-none,
+.autostart-disabled {
+    color: var(--text-color-medium);
+}
+
+.autostart-missing {
+    color: var(--warn-color-high);
+    cursor: pointer;
+}
+
+.autostart-error {
+    color: var(--error-color-high);
+}
+
+.loading-placeholder {
+    text-align: center;
+    padding: 30px;
+}
+
+.cbi-button-none {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.container-toolbar .d-flex {
+    gap: .25rem;
+}
+
+.checkbox-with-label .cbi-checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.container-icon-disconnect {
+    border: 0;
+}
+
+#log-viewer {
+    height: 600px;
+    overflow: auto;
+    white-space: pre;
+}
+
+#log-lines {
+    width: 50px;
+}
+
+#log-since,
+#log-until {
+    width: 100px;
+}
+
+#log-lines input,
+#log-since input,
+#log-until input {
+    width: inherit;
+}
+
+.cbi-section-table-select {
+    table-layout: fixed;
+}
+
+th[data-widget="Podman.Form.SelectDummyValue"] {
+    padding: .625rem .625rem 8px !important;
+}
+
+th[data-widget="Podman.Form.SelectDummyValue"] .cbi-checkbox {
+    margin-top: 1px;
+}
+
+td[data-widget="Podman.Form.SelectDummyValue"] {
+    padding: .625rem .625rem 7px !important;
+}
+
+td[data-widget="Podman.Form.SelectDummyValue"] .cbi-checkbox {
+    margin-top: 2px;
+}
+
+.podman-stream-log {
+    font-family: monospace;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    background: #1e1e1e;
+    color: #e8e8e8;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 0.5rem 0.75rem;
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.podman-stream-log .log-line {
+    white-space: pre;
+    word-break: keep-all;
+}

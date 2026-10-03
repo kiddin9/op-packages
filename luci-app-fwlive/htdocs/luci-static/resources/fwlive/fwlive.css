@@ -284,7 +284,8 @@
 }
 #fwlive-table { margin: 0; width: 100%; table-layout: auto; border-collapse: collapse; }
 .fwlive-map[data-view="simple"] #fwlive-table { table-layout: fixed; width: 100%; }
-.fwlive-map[data-view="simple"] col.fwlive-col-action { width: 5rem; }
+/* Keep the localized action label and message button inside the first cell. */
+.fwlive-map[data-view="simple"] col.fwlive-col-action { width: 11.5em; }
 .fwlive-map[data-view="simple"] col.fwlive-col-time { width: 5rem; }
 .fwlive-map[data-view="simple"] col.fwlive-col-iface { width: 5.5rem; }
 .fwlive-map[data-view="simple"] col.fwlive-col-proto { width: 4rem; }

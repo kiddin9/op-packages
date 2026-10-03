@@ -14,7 +14,8 @@ function createBatch() {
 
 /* Own request serialization and scheduling. The runner owns result application
  * and must check its epoch before applying asynchronous results. Adapters supply
- * poll.add/remove, visibility.add/remove, isHidden, run, and initialCadence. */
+ * poll.add/remove, visibility.add/remove, isHidden, run, and initialCadence;
+ * optional options.onVisible is called on a hidden-to-visible transition. */
 function createCoordinator(options) {
 	const { poll, visibility, isHidden, run, initialCadence } = options;
 	if (!Number.isFinite(initialCadence) || initialCadence <= 0)

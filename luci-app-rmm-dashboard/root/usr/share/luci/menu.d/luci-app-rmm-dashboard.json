@@ -1,0 +1,27 @@
+{
+	"admin/dashboard": {
+		"title": "RMM",
+		"order": 5,
+		"firstchild_ineligible": true,
+		"action": {
+			"type": "view",
+			"path": "status/rmm-dashboard"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-rmm-dashboard"
+			]
+		}
+	},
+	"admin/status/rmm-dashboard": {
+		"action": {
+			"type": "alias",
+			"path": "admin/dashboard"
+		},
+		"depends": {
+			"acl": [
+				"luci-app-rmm-dashboard"
+			]
+		}
+	}
+}

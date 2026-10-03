@@ -1,0 +1,191 @@
+#!/bin/sh
+
+NAME=cf-dns-speedtest
+STATE=/var/lib/$NAME
+RUN=/var/run/$NAME
+CFG=cf_dns_speedtest.config
+LOG_MAX=131072
+
+rotate_log() {
+	[ -f "$STATE/run.log" ] || return 0
+	[ "$(wc -c < "$STATE/run.log")" -le "$LOG_MAX" ] && return 0
+	tail -c 65536 "$STATE/run.log" > "$STATE/run.log.new" && mv "$STATE/run.log.new" "$STATE/run.log"
+}
+
+log() {
+	mkdir -p "$STATE"
+	logger -t "$NAME" "$*"
+	printf '%s %s\n' "$(date '+%F %T')" "$*" >> "$STATE/run.log"
+	rotate_log
+}
+
+cfg() { uci -q get "$CFG.$1"; }
+
+uint() {
+	case "$1" in ''|*[!0-9]*) printf '%s' "$2";; *) printf '%s' "$1";; esac
+}
+
+domains() {
+	uci -q get "$CFG.domains" | tr ' ' '\n' | sed 's/^\.//;s/\.$//' |
+		grep -E '^[A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?([.][A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?)+$' | sort -u
+}
+
+valid_ipv4() {
+	printf '%s\n' "$1" | awk -F. 'NF==4 { for (i=1;i<=4;i++) if ($i !~ /^[0-9]+$/ || $i>255) exit 1; exit 0 } { exit 1 }'
+}
+
+remove_old_routes() {
+	local route old port
+	if [ -s "$STATE/routes.active" ]; then
+		while IFS= read -r route; do
+			[ -n "$route" ] && uci -q del_list dhcp.@dnsmasq[0].server="$route"
+		done < "$STATE/routes.active"
+	elif [ -s "$STATE/domains.active" ]; then
+		# Migration from versions before 1.1.0. Only remove domain-scoped
+		# routes owned by this package; never touch the generic DNS upstream.
+		port="$(uint "$(cfg listen_port)" 5335)"
+		while IFS= read -r old; do
+			[ -n "$old" ] && uci -q del_list dhcp.@dnsmasq[0].server="/$old/127.0.0.1#$port"
+		done < "$STATE/domains.active"
+	fi
+}
+
+make_config() {
+	local ip="$1" port d route
+	port="$(uint "$(cfg listen_port)" 5335)"
+	[ "$port" -ge 1024 ] 2>/dev/null && [ "$port" -le 65535 ] 2>/dev/null || port=5335
+	mkdir -p "$STATE"
+	domains > "$STATE/domains.new"
+	[ -s "$STATE/domains.new" ] || { rm -f "$STATE/domains.new"; log "no valid domains configured"; return 1; }
+	: > "$STATE/hosts.txt.new"
+	: > "$STATE/routes.new"
+	while IFS= read -r d; do
+		printf '%s %s\n' "$d" "$ip" >> "$STATE/hosts.txt.new"
+		printf '/%s/127.0.0.1#%s\n' "$d" "$port" >> "$STATE/routes.new"
+	done < "$STATE/domains.new"
+	cat > "$STATE/mosdns.yaml.new" <<EOF
+log:
+  level: warn
+plugins:
+  - tag: cf_hosts
+    type: hosts
+    args:
+      files:
+        - $STATE/hosts.txt
+  - tag: main
+    type: sequence
+    args:
+      - exec: \$cf_hosts
+      - matches:
+          - has_resp
+        exec: accept
+      - exec: reject 3
+  - type: udp_server
+    args:
+      entry: main
+      listen: 127.0.0.1:$port
+  - type: tcp_server
+    args:
+      entry: main
+      listen: 127.0.0.1:$port
+EOF
+	remove_old_routes
+	if [ "$(cfg enabled)" = 1 ]; then
+		while IFS= read -r route; do
+			[ -n "$route" ] && uci -q add_list dhcp.@dnsmasq[0].server="$route"
+		done < "$STATE/routes.new"
+	fi
+	uci -q commit dhcp || return 1
+	mv "$STATE/hosts.txt.new" "$STATE/hosts.txt"
+	mv "$STATE/mosdns.yaml.new" "$STATE/mosdns.yaml"
+	mv "$STATE/domains.new" "$STATE/domains.active"
+	mv "$STATE/routes.new" "$STATE/routes.active"
+}
+
+update_cron() {
+	local schedule tmp=/tmp/$NAME.cron.$$
+	schedule="$(cfg schedule)"
+	grep -v '# cf-dns-speedtest$' /etc/crontabs/root 2>/dev/null > "$tmp" || :
+	if [ -n "$schedule" ] && [ "$(cfg enabled)" = 1 ]; then
+		printf '%s /usr/bin/cf-dns-speedtest start # cf-dns-speedtest\n' "$schedule" >> "$tmp"
+	fi
+	mv "$tmp" /etc/crontabs/root
+	/etc/init.d/cron restart >/dev/null 2>&1
+}
+
+restart_dns() {
+	/etc/init.d/$NAME restart || return 1
+	/etc/init.d/dnsmasq restart || return 1
+}
+
+apply() {
+	local ip
+	mkdir -p "$STATE"
+	ip="$(cat "$STATE/best_ip" 2>/dev/null)"
+	valid_ipv4 "$ip" || ip=1.1.1.1
+	make_config "$ip" || return 1
+	update_cron
+	restart_dns || { log "service restart failed"; return 1; }
+	log "configuration applied; active IP: $ip"
+}
+
+run_test() {
+	local threads probes count timeout latency speed url ip old_ip
+	mkdir -p "$STATE" "$RUN"
+	if [ -f "$RUN/pid" ] && kill -0 "$(cat "$RUN/pid")" 2>/dev/null; then log "a test is already running"; return 2; fi
+	rm -f "$RUN/pid"
+	printf '%s\n' "$$" > "$RUN/pid"
+	trap 'rm -f "$RUN/pid" "$STATE/result.csv.new"' EXIT INT TERM
+	rotate_log
+	echo running > "$STATE/status"
+	threads="$(uint "$(cfg threads)" 4)"; [ "$threads" -ge 1 ] && [ "$threads" -le 64 ] || threads=4
+	probes="$(uint "$(cfg probes)" 4)"; [ "$probes" -ge 1 ] && [ "$probes" -le 20 ] || probes=4
+	count="$(uint "$(cfg download_count)" 5)"; [ "$count" -ge 1 ] && [ "$count" -le 20 ] || count=5
+	timeout="$(uint "$(cfg timeout)" 5)"; [ "$timeout" -ge 1 ] && [ "$timeout" -le 30 ] || timeout=5
+	latency="$(uint "$(cfg max_latency)" 300)"; [ "$latency" -ge 1 ] && [ "$latency" -le 9999 ] || latency=300
+	speed="$(cfg min_speed)"; case "$speed" in ''|*[!0-9.]*) speed=1;; esac
+	url="$(cfg test_url)"; case "$url" in https://*|http://*) :;; *) echo failed > "$STATE/status"; log "invalid test URL"; return 1;; esac
+	cd /usr/share/$NAME || return 1
+	log "speed test started"
+	if ./cfst -f ip.txt -o "$STATE/result.csv.new" -n "$threads" -t "$probes" -dn "$count" -dt "$timeout" -tl "$latency" -sl "$speed" -p 10 -url "$url" > "$STATE/cfst.out" 2>&1; then
+		ip="$(awk -F, 'NR==2 {gsub(/\r/,""); print $1; exit}' "$STATE/result.csv.new")"
+		if ! valid_ipv4 "$ip"; then echo failed > "$STATE/status"; log "no valid IPv4 result"; return 1; fi
+		old_ip="$(cat "$STATE/best_ip" 2>/dev/null)"
+		if ! make_config "$ip" || ! restart_dns; then
+			[ -n "$old_ip" ] && make_config "$old_ip" && restart_dns
+			echo failed > "$STATE/status"; log "new DNS configuration failed; previous IP restored"; return 1
+		fi
+		mv "$STATE/result.csv.new" "$STATE/result.csv"
+		printf '%s\n' "$ip" > "$STATE/best_ip"
+		date '+%F %T' > "$STATE/last_run"
+		echo success > "$STATE/status"
+		log "speed test completed; best IP: $ip"
+	else
+		echo failed > "$STATE/status"
+		log "speed test failed; previous DNS configuration retained"
+		return 1
+	fi
+	# Keep diagnostic output bounded without polluting the user-facing log.
+	if [ "$(wc -c < "$STATE/cfst.out")" -gt 65536 ]; then
+		tail -c 65536 "$STATE/cfst.out" > "$STATE/cfst.out.new" && mv "$STATE/cfst.out.new" "$STATE/cfst.out"
+	fi
+}
+
+stop_test() {
+	if [ -f "$RUN/pid" ] && kill -0 "$(cat "$RUN/pid")" 2>/dev/null; then
+		kill "$(cat "$RUN/pid")" 2>/dev/null
+		log "speed test stopped"
+	fi
+	rm -f "$RUN/pid"
+	echo stopped > "$STATE/status"
+}
+
+case "$1" in
+	start) mkdir -p "$STATE" "$RUN"; (run_test </dev/null >/dev/null 2>&1 &) ;;
+	run) run_test ;;
+	stop) stop_test ;;
+	apply) apply ;;
+	status) printf 'status=%s\nbest_ip=%s\nlast_run=%s\n' "$(cat "$STATE/status" 2>/dev/null || echo idle)" "$(cat "$STATE/best_ip" 2>/dev/null || echo '-')" "$(cat "$STATE/last_run" 2>/dev/null || echo '-')"; tail -n 20 "$STATE/run.log" 2>/dev/null ;;
+	ui) printf 'status=%s\nbest_ip=%s\nenabled=%s\nlast_run=%s\nscheduled=%s\n' "$(cat "$STATE/status" 2>/dev/null || echo idle)" "$(cat "$STATE/best_ip" 2>/dev/null || echo '-')" "$(cfg enabled)" "$(cat "$STATE/last_run" 2>/dev/null || echo '-')" "$(grep -c '# cf-dns-speedtest$' /etc/crontabs/root 2>/dev/null)"; [ -s "$STATE/result.csv" ] && cat "$STATE/result.csv" ;;
+	*) echo "Usage: $0 {start|run|stop|apply|status|ui}"; exit 1 ;;
+esac

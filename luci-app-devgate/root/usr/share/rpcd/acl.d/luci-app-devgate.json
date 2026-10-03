@@ -1,0 +1,21 @@
+{
+	"luci-app-devgate": {
+		"description": "授予 luci-app-devgate 设备门禁权限",
+		"read": {
+			"file": {
+				"/usr/lib/opkg/status": [
+					"read"
+				]
+			},
+			"uci": [
+				"devgate",
+				"network"
+			]
+		},
+		"write": {
+			"uci": [
+				"devgate"
+			]
+		}
+	}
+}

@@ -1,0 +1,247 @@
+# Luci-Theme-LuxeOs
+
+<p align="center">
+    <img src="https://img.shields.io/github/downloads/de-quenx/luci-theme-luxe/total?style=for-the-badge&logo=openwrt&labelColor=blue">
+</p>
+
+[English](README_EN.md) | [Indonesia](README.md) | [China](README_CN.md)
+
+**Luci-Theme-LuxeOs** adalah tema modern untuk OpenWrt yang mendukung **Auto Light & Dark Mode**. Tema ini menyediakan berbagai gaya / style tema: mewah, elegan, soft, simple, dengan customisasi.
+
+---
+
+## **FITUR UTAMA / GAYA THEMES**
+
+- **Neumorphism**: Tombol & card lembut dan elegan.  
+- **Glassmorphism**: Panel transparan dengan blur ringan, tampil smooth.  
+- **Glass 3D**: Efek kedalaman 3D pada card & panel, modern.  
+- **Glass Dark**: Versi gelap Glassmorphism, nyaman di mode malam.  
+- **Neo-Brutalism**: Tipografi tebal & warna solid, menonjolkan elemen penting.  
+- **Simple UI**: Layout minimalis, fokus pada konten, mudah dinavigasi.  
+- **Neon UI**: Elemen interaktif dengan glow lembut.  
+- **Crystal Glass**: Efek kaca kristal transparan dengan pantulan cahaya lembut.  
+- **RGB Accent**: Aksen warna RGB halus untuk highlight interaktif dan modern.
+
+---
+
+## Preview Tema
+
+Berikut beberapa cuplikan tampilan tema **Luci-Theme-LuxeOs**. Klik untuk melihat detail:
+
+<details>
+<summary>Tampilkan Preview Login</summary>
+
+<table cellspacing="0" cellpadding="1">
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/light.png" alt="Light">
+      <div align="center"><small>Light</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/glass-crystall.png" alt="Glass Crystall">
+      <div align="center"><small>Glass Crystall</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/glass-matte.png" alt="Glass Matte">
+      <div align="center"><small>Glass Matte</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/gradient.png" alt="Gradient">
+      <div align="center"><small>Gradient</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/dark.png" alt="Dark">
+      <div align="center"><small>Dark</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/neon.png" alt="Neon">
+      <div align="center"><small>Neon</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/ocean.png" alt="Ocean">
+      <div align="center"><small>Ocean</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/curve.png" alt="Curve">
+      <div align="center"><small>Curve</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/matrix.png" alt="Matrix">
+      <div align="center"><small>Matrix</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/neo-brutalism.png" alt="Neo-Brutalism">
+      <div align="center"><small>Neo-Brutalism</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/liquid-metal.png" alt="Liquid Metal">
+      <div align="center"><small>Liquid Metal</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-login/liquid-flow.png" alt="Liquid Flow">
+      <div align="center"><small>Liquid Flow</small></div>
+    </td>
+  </tr>
+</table>
+
+</details>
+
+<details>
+<summary>Tampilkan Preview Dashboard</summary>
+
+<table cellspacing="0" cellpadding="1">
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/luxe-light.png" alt="Luxe Light">
+      <div align="center"><small>Luxe Light</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/luxe-dark.png" alt="Luxe Dark">
+      <div align="center"><small>Luxe Dark</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/glass-liquid.png" alt="Glass Liquid">
+      <div align="center"><small>Glass Liquid</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/glass-luxe.png" alt="Glass Luxe">
+      <div align="center"><small>Glass Luxe</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/glass-crystall.png" alt="Glass Crystall">
+      <div align="center"><small>Glass Crystall</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/glass-dark.png" alt="Glass Dark">
+      <div align="center"><small>Glass Dark</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/neobrutalism-light.png" alt="Neobrutalism Light">
+      <div align="center"><small>Neobrutalism Light</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/neobrutalism-dark.png" alt="Neobrutalism Dark">
+      <div align="center"><small>Neobrutalism Dark</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/neomorphism-light.png" alt="Neomorphism Light">
+      <div align="center"><small>Neomorphism Light</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/neomorphism-dark.png" alt="Neomorphism Dark">
+      <div align="center"><small>Neomorphism Dark</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/neon.png" alt="Neon">
+      <div align="center"><small>Neon</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/rgb.png" alt="RGB">
+      <div align="center"><small>RGB</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/glaze-light.png" alt="Glaze Light">
+      <div align="center"><small>Glaze Light</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/glaze-dark.png" alt="Glaze Dark">
+      <div align="center"><small>Glaze Dark</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/onyx-light.png" alt="Onyx Light">
+      <div align="center"><small>Onyx Light</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/onyx-dark.png" alt="Onyx Dark">
+      <div align="center"><small>Onyx Dark</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/liquid-neo.png" alt="Liquid Neo">
+      <div align="center"><small>Liquid Neo</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/sample-interface.png" alt="Sample Interface">
+      <div align="center"><small>Sample Interface</small></div>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/sample-wireless.png" alt="Sample Wireless">
+      <div align="center"><small>Sample Wireless</small></div>
+    </td>
+    <td width="50%" align="center">
+      <img src="./previews/luxe-home/sample-config.png" alt="Sample Config">
+      <div align="center"><small>Sample Config</small></div>
+    </td>
+  </tr>
+</table>
+
+</details>
+
+---
+
+## Instalasi
+
+1. **Unduh Paket**:
+
+   - OpenWrt (IPK):
+     ```bash
+     opkg install luci-theme-luxe*.ipk
+     ```
+   - SNAPSHOT (APK):
+     ```bash
+     apk add luci-theme-luxe*.apk
+     ```
+
+2. **Aktifkan Tema**:
+
+   - Buka LuCI → System → System → Language and Style.  
+   - Pilih **luxe** dari dropdown Design Theme.
+
+3. Selesai! Tema sudah aktif.
+
+---
+
+## Berkontribusi
+
+1. Laporkan bug melalui [GitHub Issues](https://github.com/de-quenx/luci-theme-luxe/issues).  
+2. Kirim Pull Request: fork repositori, buat perubahan, dan kirim PR.  
+3. Berikan saran atau masukan untuk pengembangan tema.
+
+---
+
+## Lisensi
+
+**Luci-Theme-LuxeOs** dilisensikan di bawah **Apache License 2.0**.
+
+---
+
+## Credit
+
+- [Theme Material](https://github.com/LuttyYang/luci-theme-material)

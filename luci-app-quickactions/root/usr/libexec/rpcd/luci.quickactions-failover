@@ -1,0 +1,82 @@
+#!/bin/sh
+# ubus RPC module for Quick Actions Failover
+. /usr/share/libubox/jshn.sh
+
+list_methods() {
+    cat <<'EOF'
+{
+  "status": {},
+  "interfaces": {},
+  "action": { "action": "string" }
+}
+EOF
+}
+
+method_status() {
+    cat >/dev/null
+    local en lock
+    en=$(uci -q get quickactions.failover.enabled); [ -z "$en" ] && en=1
+    [ -f /tmp/quickactions_wan_down.lock ] && lock=1 || lock=0
+    json_init
+    json_add_int "enabled" "$en"
+    json_add_int "on_backup" "$lock"
+    json_add_string "primary" "$(uci -q get quickactions.failover.primary)"
+    json_add_string "backups" "$(uci -q get quickactions.failover.backups)"
+    json_add_string "check_ips" "$(uci -q get quickactions.failover.check_ips)"
+    json_add_string "interval" "$(uci -q get quickactions.failover.check_interval)"
+    json_add_string "last_log" "$(logread 2>/dev/null | grep -E 'quickactions-(failover|hotplug)' | tail -1)"
+    json_dump
+}
+
+method_interfaces() {
+    cat >/dev/null
+    local list
+    list=$(
+        {
+            uci show network 2>/dev/null | grep '=interface$' | cut -d. -f2 | cut -d= -f1
+            ls -1 /sys/class/net/ 2>/dev/null | grep -E '^(pppoe-|eth|usb)'
+        } | sort -u | tr '\n' ' '
+    )
+    json_init
+    json_add_string "interfaces" "$list"
+    json_dump
+}
+
+method_action() {
+    local payload action out
+    payload=$(cat)
+    json_load "$payload"
+    json_get_var action "action"
+
+    case "$action" in
+        on|off|status|test)
+            out=$(/usr/bin/quickactions-failover "$action" 2>&1)
+            ;;
+        *)
+            out="unknown action: [$action]"
+            ;;
+    esac
+
+    json_init
+    json_add_string "output" "$out"
+    json_dump
+}
+
+call_method() {
+    local method="$1"
+    case "$method" in
+        action)     method_action ;;
+        status)     method_status ;;
+        interfaces) method_interfaces ;;
+        *)          cat >/dev/null
+                    json_init
+                    json_add_string "error" "unknown_method"
+                    json_dump ;;
+    esac
+}
+
+case "$1" in
+    list) list_methods ;;
+    call) call_method "$2" ;;
+    *) echo '{"error":"usage: '$0' {list|call <method>}"}' ;;
+esac

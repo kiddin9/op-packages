@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# Ensure the local-upload target directory exists & is writable by rpcd's user.
+mkdir -p /www/luci-static/shadcnui/img/background
+chmod 0755 /www/luci-static/shadcnui/img/background
+
+# Make our RPC handler executable in case Makefile permissions did not stick.
+[ -f /usr/libexec/rpcd/luci.shadcnui ] && chmod 0755 /usr/libexec/rpcd/luci.shadcnui
+
+# Tell rpcd to re-scan handlers and ACLs.
+killall -HUP rpcd 2>/dev/null
+/etc/init.d/rpcd reload 2>/dev/null
+
+# Drop LuCI's menu / ACL caches so the new entry shows up immediately.
+rm -f /tmp/luci-indexcache /tmp/luci-modulecache/* 2>/dev/null
+
+exit 0

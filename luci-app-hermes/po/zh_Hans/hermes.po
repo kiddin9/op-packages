@@ -1,0 +1,257 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: luci-app-hermes\n"
+"Language: zh_Hans\n"
+
+msgid "Active Model"
+msgstr "活跃模型"
+
+msgid "All Interfaces"
+msgstr "所有接口"
+
+msgid "API Endpoint"
+msgstr "API 端点"
+
+msgid "API Key"
+msgstr "API 密钥"
+
+msgid "API Settings"
+msgstr "API 设置"
+
+msgid "Already up to date"
+msgstr "已是最新版本"
+
+msgid "Basic Settings"
+msgstr "基本设置"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Check Update"
+msgstr "检查更新"
+
+msgid "Checking..."
+msgstr "检查中..."
+
+msgid "Complete"
+msgstr "完成"
+
+msgid "Config PTY"
+msgstr "配置终端"
+
+msgid "Config Terminal"
+msgstr "配置终端"
+
+msgid "Config terminal is not running."
+msgstr "配置终端未运行。"
+
+msgid "Confirm Uninstall"
+msgstr "确认卸载"
+
+msgid "Connecting..."
+msgstr "正在连接..."
+
+msgid "Connecting to config terminal..."
+msgstr "正在连接配置终端..."
+
+msgid "Default: 3000"
+msgstr "默认: 3000"
+
+msgid "Default: 3001"
+msgstr "默认: 3001"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Enable Service"
+msgstr "启用服务"
+
+msgid "Environment uninstalled successfully"
+msgstr "环境已成功卸载"
+
+msgid "Error: "
+msgstr "错误："
+
+msgid "Executing: "
+msgstr "正在执行："
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Failed to check status"
+msgstr "检查状态失败"
+
+msgid "Gateway Port"
+msgstr "网关端口"
+
+msgid "Gateway is not running. Please start the service first."
+msgstr "网关未运行。请先启动服务。"
+
+msgid "Hermes"
+msgstr "Hermes"
+
+msgid "Hermes Agent"
+msgstr "Hermes Agent"
+
+msgid "Hermes Agent Web UI — configure AI models and interact with the AI agent."
+msgstr "Hermes Agent Web UI — 配置 AI 模型并与 AI 代理交互。"
+
+msgid "Install"
+msgstr "安装"
+
+msgid "Install Environment"
+msgstr "安装环境"
+
+msgid "Installation failed. Check the log above for details."
+msgstr "安装失败，请查看上方日志了解详情。"
+
+msgid "Installation successful!"
+msgstr "安装成功！"
+
+msgid "Installing..."
+msgstr "安装中..."
+
+msgid "Interactive terminal for Hermes Agent configuration — AI models, health check, and system management."
+msgstr "Hermes Agent 交互式终端 — AI 模型配置、健康检查和系统管理。"
+
+msgid "Listen Interface"
+msgstr "监听接口"
+
+msgid "Log"
+msgstr "日志"
+
+msgid "Memory"
+msgstr "内存"
+
+msgid "Model"
+msgstr "模型"
+
+msgid "More"
+msgstr "更多"
+
+msgid "Not installed"
+msgstr "未安装"
+
+msgid "Overview"
+msgstr "概览"
+
+msgid "PID"
+msgstr "进程号"
+
+msgid "Plugin"
+msgstr "插件"
+
+msgid "Please start the Hermes service first."
+msgstr "请先启动 Hermes 服务。"
+
+msgid "Please start the service first."
+msgstr "请先启动服务。"
+
+msgid "Python"
+msgstr "Python"
+
+msgid "Python AI Agent Gateway for OpenWrt"
+msgstr "OpenWrt 路由器 Python AI 代理网关"
+
+msgid "Python-based AI Agent Gateway for OpenWrt routers."
+msgstr "基于 Python 的 OpenWrt 路由器 AI 代理网关。"
+
+msgid "PTY Port"
+msgstr "终端端口"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Refresh the page to see updated status."
+msgstr "刷新页面查看最新状态。"
+
+msgid "Requires internet connection and sufficient disk space (~100MB)."
+msgstr "需要互联网连接和足够的磁盘空间（约100MB）。"
+
+msgid "Reset"
+msgstr "重置"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Save & Apply"
+msgstr "保存并应用"
+
+msgid "Service Control"
+msgstr "服务控制"
+
+msgid "Service Status"
+msgstr "服务状态"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Settings saved successfully"
+msgstr "设置已保存"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Starting"
+msgstr "启动中"
+
+msgid "Starting installation"
+msgstr "开始安装"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "System Information"
+msgstr "系统信息"
+
+msgid "This action cannot be undone."
+msgstr "此操作不可撤销。"
+
+msgid "This will remove Python, Hermes Agent, and all related data."
+msgstr "这将移除 Python、Hermes Agent 和所有相关数据。"
+
+msgid "This will install Python 3 and Hermes Agent via pip."
+msgstr "这将通过 pip 安装 Python 3 和 Hermes Agent。"
+
+msgid "Uninstall"
+msgstr "卸载"
+
+msgid "Uninstalling..."
+msgstr "正在卸载..."
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Update Available"
+msgstr "有可用更新"
+
+msgid "Upgrade"
+msgstr "升级"
+
+msgid "Upgrade complete"
+msgstr "升级完成"
+
+msgid "Upgrade successful!"
+msgstr "升级成功！"
+
+msgid "Upgrading to "
+msgstr "正在升级到 "
+
+msgid "Upgrading..."
+msgstr "升级中..."
+
+msgid "Uptime"
+msgstr "运行时间"
+
+msgid "Web Console"
+msgstr "Web 控制台"
+
+msgid "Web console is not available."
+msgstr "Web 控制台不可用。"

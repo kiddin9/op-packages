@@ -1,0 +1,534 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Partial data"
+msgstr "Часть данных недоступна"
+
+msgid "Loading"
+msgstr "Загрузка"
+
+msgid "Current"
+msgstr "Актуально"
+
+msgid "Stale"
+msgstr "Устаревшие данные"
+
+msgid "Access denied"
+msgstr "Нет доступа"
+
+msgid "Last successful update"
+msgstr "Последнее успешное обновление"
+
+msgid "Never updated"
+msgstr "Ещё не обновлялось"
+
+msgid "Retry"
+msgstr "Повторить"
+
+msgid "Refreshing"
+msgstr "Обновление"
+
+msgid "Memory used"
+msgstr "Занято памяти"
+
+msgid "Network"
+msgstr "Сеть"
+
+msgid "Device"
+msgstr "Устройство"
+
+msgid "Received / sent"
+msgstr "Принято / отправлено"
+
+msgid "RX / TX rate"
+msgstr "Скорость RX / TX"
+
+msgid "Collecting"
+msgstr "Накопление данных"
+
+msgid "Not installed"
+msgstr "Не установлен"
+
+msgid "No interfaces"
+msgstr "Нет интерфейсов"
+
+msgid "Sources"
+msgstr "Источники"
+
+msgid "Traffic counters belong to devices; shared devices are not summed."
+msgstr "Счётчики относятся к устройствам; общие устройства не суммируются."
+
+msgid "Unavailable"
+msgstr "Недоступно"
+
+msgid "No address"
+msgstr "Нет адреса"
+
+msgid "Not configured"
+msgstr "Не настроено"
+
+msgid "Connected"
+msgstr "Подключено"
+
+msgid "Disconnected"
+msgstr "Отключено"
+
+msgid "Running"
+msgstr "Работает"
+
+msgid "Stopped"
+msgstr "Остановлен"
+
+msgid "Disabled"
+msgstr "Выключен"
+
+msgid "Router"
+msgstr "Роутер"
+
+msgid "Hostname"
+msgstr "Имя устройства"
+
+msgid "Model"
+msgstr "Модель"
+
+msgid "Firmware"
+msgstr "Прошивка"
+
+msgid "Uptime"
+msgstr "Время работы"
+
+msgid "System"
+msgstr "Система"
+
+msgid "Load (1 / 5 / 15 min)"
+msgstr "Нагрузка (1 / 5 / 15 мин)"
+
+msgid "Memory total"
+msgstr "Всего памяти"
+
+msgid "Memory available"
+msgstr "Доступно памяти"
+
+msgid "WAN connection"
+msgstr "Подключение WAN"
+
+msgid "Status"
+msgstr "Состояние"
+
+msgid "Interface"
+msgstr "Интерфейс"
+
+msgid "IP address"
+msgstr "IP-адрес"
+
+msgid "RMM agent"
+msgstr "Агент RMM"
+
+msgid "Heartbeat interval"
+msgstr "Интервал heartbeat"
+
+msgid "Connectivity check interval"
+msgstr "Интервал проверки связи"
+
+msgid "RMM overview"
+msgstr "Обзор RMM"
+
+msgid "Updates every 30 seconds"
+msgstr "Обновление каждые 30 секунд"
+
+msgid "WAN status shows the interface link state; it does not test Internet reachability."
+msgstr "Состояние WAN показывает состояние интерфейса, но не проверяет доступ в Интернет."
+
+msgid "SYSTEM / OVERVIEW"
+msgstr "СИСТЕМА / ОБЗОР"
+
+msgid "d"
+msgstr "д"
+
+msgid "h"
+msgstr "ч"
+
+msgid "m"
+msgstr "мин"
+
+msgid "s"
+msgstr "с"
+
+msgid "Read router and RMM agent status"
+msgstr "Чтение состояния роутера и агента RMM"
+
+msgid "RMM"
+msgstr "RMM"
+
+msgid "%s MiB"
+msgstr "%s MiB"
+
+msgid "%s s"
+msgstr "%s с"
+
+msgid "Traffic history"
+msgstr "История трафика"
+
+msgid "Memory history"
+msgstr "История памяти"
+
+msgid "Last 5 minutes"
+msgstr "Последние 5 минут"
+
+msgid "Peak"
+msgstr "Максимум"
+
+msgid "History starts when this page opens. Gaps indicate unavailable data."
+msgstr "История начинается при открытии страницы. Разрывы означают отсутствие данных."
+
+msgid "Wireless"
+msgstr "Беспроводная сеть"
+
+msgid "Associated stations"
+msgstr "Подключённые станции"
+
+msgid "Radio"
+msgstr "Радиомодуль"
+
+msgid "Band"
+msgstr "Диапазон"
+
+msgid "Channel"
+msgstr "Канал"
+
+msgid "Channel mode"
+msgstr "Режим канала"
+
+msgid "TX power"
+msgstr "Мощность TX"
+
+msgid "Noise"
+msgstr "Шум"
+
+msgid "Signal"
+msgstr "Сигнал"
+
+msgid "Link rate RX / TX"
+msgstr "Скорость соединения RX / TX"
+
+msgid "MAC address"
+msgstr "MAC-адрес"
+
+msgid "Connected time"
+msgstr "Время подключения"
+
+msgid "No associated stations"
+msgstr "Нет подключённых станций"
+
+msgid "No wireless interfaces reported"
+msgstr "Беспроводные интерфейсы не найдены"
+
+msgid "No local DHCP record"
+msgstr "Нет локальной DHCP-записи"
+
+msgid "Wireless interfaces visible to iwinfo are shown; disabled radios are not inventoried."
+msgstr "Показаны интерфейсы, доступные iwinfo; выключенные радиомодули не входят в этот список."
+
+msgid "Link rates are negotiated Wi-Fi rates, not measured traffic."
+msgstr "Скорость Wi-Fi-соединения не равна фактическому трафику."
+
+msgid "Invalid station records"
+msgstr "Некорректные записи станций"
+
+msgid "Search clients"
+msgstr "Поиск клиентов"
+
+msgid "All bands"
+msgstr "Все диапазоны"
+
+msgid "All signals"
+msgstr "Любой сигнал"
+
+msgid "Signal ≥ -67 dBm"
+msgstr "Сигнал ≥ -67 dBm"
+
+msgid "Signal -68…-75 dBm"
+msgstr "Сигнал -68…-75 dBm"
+
+msgid "Signal < -75 dBm"
+msgstr "Сигнал < -75 dBm"
+
+msgid "Unknown signal"
+msgstr "Сигнал неизвестен"
+
+msgid "Clear filters"
+msgstr "Сбросить фильтры"
+
+msgid "No matching stations"
+msgstr "Нет станций по выбранным фильтрам"
+
+msgid "Station details"
+msgstr "Детали станции"
+
+msgid "Signal history"
+msgstr "История сигнала"
+
+msgid "Station traffic"
+msgstr "Трафик станции"
+
+msgid "Station noise"
+msgstr "Шум станции"
+
+msgid "Shown / total stations"
+msgstr "Показано / всего станций"
+
+msgid "Search by name, MAC, IP or SSID"
+msgstr "Поиск по имени, MAC, IP или SSID"
+
+msgid "Signal bands are filters, not a connection quality score."
+msgstr "Диапазоны сигнала служат фильтром, а не оценкой качества соединения."
+
+msgid "Network relationships"
+msgstr "Связи сети"
+
+msgid "Local router"
+msgstr "Локальный роутер"
+
+msgid "Default route gateway"
+msgstr "Шлюз маршрута по умолчанию"
+
+msgid "No default gateway reported"
+msgstr "Шлюз по умолчанию не указан"
+
+msgid "Operating mode"
+msgstr "Режим работы"
+
+msgid "Access point"
+msgstr "Точка доступа"
+
+msgid "Station mode"
+msgstr "Режим станции"
+
+msgid "Open station details"
+msgstr "Открыть детали станции"
+
+msgid "Only reported routes and Wi-Fi associations are shown; physical cabling and Internet reachability are not inferred."
+msgstr "Показаны указанные маршруты и Wi-Fi-подключения; физическая коммутация и доступ в Интернет не определяются."
+
+msgid "Router overview"
+msgstr "Обзор роутера"
+
+msgid "Wi-Fi clients"
+msgstr "Клиенты Wi-Fi"
+
+msgid "Memory"
+msgstr "Память"
+
+msgid "WAN traffic"
+msgstr "Трафик WAN"
+
+msgid "Network interfaces"
+msgstr "Сетевые интерфейсы"
+
+msgid "Router details"
+msgstr "Детали роутера"
+
+msgid "Reported radios"
+msgstr "Доступные радиомодули"
+
+msgid "No WAN device reported"
+msgstr "Устройство WAN не указано"
+
+msgid "Summary"
+msgstr "Сводка"
+
+msgid "Gateway"
+msgstr "Шлюз"
+
+msgid "Local interfaces"
+msgstr "Локальные интерфейсы"
+
+msgid "Reported network path"
+msgstr "Связи по данным роутера"
+
+msgid "Logical interfaces and Wi-Fi associations"
+msgstr "Логические интерфейсы и подключения Wi-Fi"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Details"
+msgstr "Подробности"
+
+msgid "Sort clients"
+msgstr "Сортировка"
+
+msgid "By name"
+msgstr "По имени"
+
+msgid "Strongest signal"
+msgstr "Сначала сильный сигнал"
+
+msgid "Fastest link"
+msgstr "Сначала быстрое соединение"
+
+msgid "Group clients"
+msgstr "Группировка"
+
+msgid "No grouping"
+msgstr "Без группировки"
+
+msgid "By SSID"
+msgstr "По SSID"
+
+msgid "Received"
+msgstr "Принято"
+
+msgid "Sent"
+msgstr "Отправлено"
+
+msgid "Inspect samples with arrow keys"
+msgstr "Выбирайте измерения стрелками"
+
+msgid "Data is not reported"
+msgstr "Данные не получены"
+
+msgid "Attention required"
+msgstr "Требует внимания"
+
+msgid "No reported issues"
+msgstr "По полученным данным проблем нет"
+
+msgid "Memory usage ≥ 90%"
+msgstr "Занято памяти ≥ 90%"
+
+msgid "Object is no longer reported"
+msgstr "Объект больше не указан в данных"
+
+msgid "Refresh issues"
+msgstr "Проблемы обновления"
+
+msgid "Resource summary"
+msgstr "Состояние ресурсов"
+
+msgid "Customize dashboard"
+msgstr "Настроить обзор"
+
+msgid "Visible blocks and order"
+msgstr "Блоки и порядок"
+
+msgid "Compact mode"
+msgstr "Компактный режим"
+
+msgid "Reset layout"
+msgstr "Сбросить вид"
+
+msgid "Move up"
+msgstr "Выше"
+
+msgid "Move down"
+msgstr "Ниже"
+
+msgid "Preferences unavailable; changes last until this page closes."
+msgstr "Хранилище недоступно; изменения действуют до закрытия страницы."
+
+msgid "Clients"
+msgstr "Клиенты"
+
+msgid "Known DHCP clients"
+msgstr "Известные DHCP-клиенты"
+
+msgid "DHCP lease; connection unconfirmed"
+msgstr "DHCP-аренда; подключение не подтверждено"
+
+msgid "Wi-Fi association"
+msgstr "Wi-Fi-подключение"
+
+msgid "Connection evidence"
+msgstr "Источник состояния"
+
+msgid "DHCP clients may use wired or wireless links; a lease does not prove an active connection."
+msgstr "DHCP-клиенты могут быть проводными или беспроводными; аренда не подтверждает активное подключение."
+
+msgid "History period"
+msgstr "Период истории"
+
+msgid "Last 1 minute"
+msgstr "Последняя минута"
+
+msgid "Last 15 minutes"
+msgstr "Последние 15 минут"
+
+msgid "Counter reset"
+msgstr "Сброс счётчика"
+
+msgid "Data gap"
+msgstr "Пропуск данных"
+
+msgid "Last observation"
+msgstr "Последнее наблюдение"
+
+msgid "More interfaces"
+msgstr "Другие интерфейсы"
+
+msgid "Wi-Fi data unavailable"
+msgstr "Данные Wi-Fi недоступны"
+
+msgid "All clients"
+msgstr "Все клиенты"
+
+msgid "Connection type"
+msgstr "Тип записи"
+
+msgid "DHCP records"
+msgstr "DHCP-записи"
+
+msgid "Shown / total clients"
+msgstr "Показано / всего клиентов"
+
+msgid "Connection unconfirmed"
+msgstr "Подключение не подтверждено"
+
+msgid "Ethernet path"
+msgstr "Через Ethernet"
+
+msgid "Neighbor records"
+msgstr "ARP/NDP-записи"
+
+msgid "Via %s"
+msgstr "Через %s"
+
+msgid "Port ambiguous"
+msgstr "Несколько портов"
+
+msgid "Recently reachable"
+msgstr "Недавно доступен"
+
+msgid "Cached observation"
+msgstr "Запись в кэше"
+
+msgid "Static neighbor"
+msgstr "Статический сосед"
+
+msgid "Neighbor unreachable"
+msgstr "Сосед недоступен"
+
+msgid "Neighbor state"
+msgstr "Состояние ARP/NDP"
+
+msgid "Bridge / VLAN"
+msgstr "Мост / VLAN"
+
+msgid "FDB path; direct cable connection unconfirmed"
+msgstr "Путь по FDB; прямое подключение кабелем не подтверждено"
+
+msgid "Client inventory truncated"
+msgstr "Список клиентов ограничен"
+
+msgid "Port link down"
+msgstr "Линк порта отключён"
+
+msgid "No FDB observations"
+msgstr "Наблюдений FDB нет"
+
+msgid "FDB observations"
+msgstr "По данным FDB"

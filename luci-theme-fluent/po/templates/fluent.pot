@@ -1,0 +1,697 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-theme-fluent\n"
+"POT-Creation-Date: 2026-09-05 23:35+0800\n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "%d second-level menus"
+msgstr ""
+
+msgid "A new version is available!"
+msgstr ""
+
+msgid "About"
+msgstr ""
+
+msgid "Above bar, end"
+msgstr ""
+
+msgid "Above bar, start"
+msgstr ""
+
+msgid "Accent color"
+msgstr ""
+
+msgid "Add primary menu"
+msgstr ""
+
+msgid ""
+"Adjust layout, typography, transition timing, shadows, and inject custom CSS "
+"variables or rules when the built-in controls are not enough."
+msgstr ""
+
+msgid "Advanced"
+msgstr ""
+
+msgid "Advanced MAC Selector"
+msgstr ""
+
+msgid "and %d more..."
+msgstr ""
+
+msgid ""
+"Animate the active underline when switching between native LuCI tabs and "
+"themed tab menus."
+msgstr ""
+
+msgid "Animation"
+msgstr ""
+
+msgid ""
+"API rate limit exceeded. Please enter a GitHub Token to continue. This token "
+"is only used for frontend requests and will not be saved on the router "
+"backend."
+msgstr ""
+
+msgid ""
+"Applies to standard buttons, inputs, selects, and similar form controls "
+"across the theme."
+msgstr ""
+
+msgid ""
+"Are you sure you want to clean up %d invalid/uninstalled menu items or "
+"rules?"
+msgstr ""
+
+msgid "Author"
+msgstr ""
+
+msgid "Auto-scroll"
+msgstr ""
+
+msgid "Automatic (Arabic/Persian locales only)"
+msgstr ""
+
+msgid "Backdrop blur radius"
+msgstr ""
+
+msgid "Backend (GHProxy Acceleration)"
+msgstr ""
+
+msgid "Backend (Official GitHub)"
+msgstr ""
+
+msgid "Base font size"
+msgstr ""
+
+msgid "Below bar, end"
+msgstr ""
+
+msgid "Below bar, start"
+msgstr ""
+
+msgid ""
+"Blur radius in pixels behind the login card in dark mode. Use 0 to disable "
+"blur."
+msgstr ""
+
+msgid ""
+"Blur radius in pixels behind the login card in light mode. Use 0 to disable "
+"blur."
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Card background"
+msgstr ""
+
+msgid "Card shadow"
+msgstr ""
+
+msgid "Check for updates"
+msgstr ""
+
+msgid "Checking for updates..."
+msgstr ""
+
+msgid "Choose color"
+msgstr ""
+
+msgid ""
+"Choose the document direction for authenticated and login pages. Automatic "
+"mode resolves Arabic and Persian locale codes (ar, ar_*, ar-*, fa, fa_*, "
+"fa-*) to RTL and falls back to LTR for missing or unrecognized locales."
+msgstr ""
+
+msgid "Clean up"
+msgstr ""
+
+msgid "Clean up invalid items"
+msgstr ""
+
+msgid "Clean up invalid items (%d)"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Color mode"
+msgstr ""
+
+msgid "Colors"
+msgstr ""
+
+msgid "Comfortable (42px)"
+msgstr ""
+
+msgid "Compact (32px)"
+msgstr ""
+
+msgid ""
+"Configure color mode, accent colors, layout sizing, animation behavior, "
+"login-page appearance, and advanced CSS overrides for luci-theme-fluent."
+msgstr ""
+
+msgid "Confirm"
+msgstr ""
+
+msgid "Confirm Installation"
+msgstr ""
+
+msgid "Continue"
+msgstr ""
+
+msgid "Control height"
+msgstr ""
+
+msgid ""
+"Controls the font weight used by main navigation labels and related theme "
+"text accents."
+msgstr ""
+
+msgid ""
+"Controls the shared Fluent corner radius tokens used by cards, buttons, "
+"inputs, and related UI surfaces."
+msgstr ""
+
+msgid ""
+"Controls the shared Fluent transition timing used by menu, header, and other "
+"theme animations."
+msgstr ""
+
+msgid "Copied"
+msgstr ""
+
+msgid "Copy log"
+msgstr ""
+
+msgid "Corner radius"
+msgstr ""
+
+msgid "Current / Pending MAC Address"
+msgstr ""
+
+msgid "Custom CSS"
+msgstr ""
+
+msgid ""
+"Customize the login page background, card opacity, and blur radius for light "
+"and dark modes."
+msgstr ""
+
+msgid "Dark mode"
+msgstr ""
+
+msgid "Delete primary menu"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Disconnects"
+msgstr ""
+
+msgid ""
+"Display the themed loading indicator at the top edge during page loads and "
+"transitions."
+msgstr ""
+
+msgid "Download and Install"
+msgstr ""
+
+msgid "Download log"
+msgstr ""
+
+msgid "Downloaded"
+msgstr ""
+
+msgid "Downloading on router"
+msgstr ""
+
+msgid "Drag to move second-level menu"
+msgstr ""
+
+msgid "Drag to reorder primary menu"
+msgstr ""
+
+msgid "Drop second-level menus here"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Enable page transition animation"
+msgstr ""
+
+msgid "Enable tab underline animation"
+msgstr ""
+
+msgid "Errors"
+msgstr ""
+
+msgid "Expecting: %s"
+msgstr ""
+
+msgid "Extra large (12px)"
+msgstr ""
+
+msgid "Failed to check for updates"
+msgstr ""
+
+msgid "Failed to fetch current theme version."
+msgstr ""
+
+msgid "Fast"
+msgstr ""
+
+msgid "Finished"
+msgstr ""
+
+msgid "Fix primary menu title errors before saving."
+msgstr ""
+
+msgid "Fluent Design 2 theme for LuCI"
+msgstr ""
+
+msgid "Fluent Theme"
+msgstr ""
+
+msgid "Fluent theme settings"
+msgstr ""
+
+msgid "Follow system"
+msgstr ""
+
+msgid "Force dark mode"
+msgstr ""
+
+msgid "Force light mode"
+msgstr ""
+
+msgid "Force LTR"
+msgstr ""
+
+msgid "Force RTL"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "GitHub Token Required"
+msgstr ""
+
+msgid "Header height"
+msgstr ""
+
+msgid "Height of the top header bar in pixels."
+msgstr ""
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in dark mode."
+msgstr ""
+
+msgid ""
+"HEX color used as the primary Fluent accent when the interface is rendered "
+"in light mode."
+msgstr ""
+
+msgid "HEX color used for container/card elements in dark mode."
+msgstr ""
+
+msgid "HEX color used for container/card elements in light mode."
+msgstr ""
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"dark mode."
+msgstr ""
+
+msgid ""
+"HEX color used for progress-bar labels while the interface is rendered in "
+"light mode."
+msgstr ""
+
+msgid "HEX color used for the main page background in dark mode."
+msgstr ""
+
+msgid "HEX color used for the main page background in light mode."
+msgstr ""
+
+msgid "HEX color used for the navigation sidebar in dark mode."
+msgstr ""
+
+msgid "HEX color used for the navigation sidebar in light mode."
+msgstr ""
+
+msgid "Installation cancelled by user."
+msgstr ""
+
+msgid "Installed version"
+msgstr ""
+
+msgid "Installing package"
+msgstr ""
+
+msgid "Keep action bar visible while scrolling"
+msgstr ""
+
+msgid ""
+"Keep Save, Apply, and Reset actions fixed at the bottom of the viewport "
+"while scrolling."
+msgstr ""
+
+msgid "Large"
+msgstr ""
+
+msgid "Large (8px)"
+msgstr ""
+
+msgid "Light mode"
+msgstr ""
+
+msgid "Line %d"
+msgstr ""
+
+msgid "Lines"
+msgstr ""
+
+msgid "Login"
+msgstr ""
+
+msgid "Login card opacity"
+msgstr ""
+
+msgid "Login page"
+msgstr ""
+
+msgid "Medium"
+msgstr ""
+
+msgid "Medium (4px)"
+msgstr ""
+
+msgid "Menu"
+msgstr ""
+
+msgid "Menu title cannot be empty."
+msgstr ""
+
+msgid "Navigation font weight"
+msgstr ""
+
+msgid "New primary menu"
+msgstr ""
+
+msgid "New primary menu %d"
+msgstr ""
+
+msgid "Next"
+msgstr ""
+
+msgid "Nightly build available (reinstallation check)."
+msgstr ""
+
+msgid "Nightly Channel (Prerelease)"
+msgstr ""
+
+msgid ""
+"No matching package asset found for your system architecture in this "
+"release."
+msgstr ""
+
+msgid "None"
+msgstr ""
+
+msgid "Normal"
+msgstr ""
+
+msgid ""
+"Opacity of the login card in dark mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr ""
+
+msgid ""
+"Opacity of the login card in light mode. 0 is fully transparent and 1 is "
+"fully opaque."
+msgstr ""
+
+msgid ""
+"Optional raw CSS injected into the Fluent header template. Use this for "
+"extra --fluent-* variable overrides or page-specific tweaks that are not "
+"exposed as dedicated options."
+msgstr ""
+
+msgid "Package format"
+msgstr ""
+
+msgid "Page background"
+msgstr ""
+
+msgid "Please enter your password."
+msgstr ""
+
+msgid "Please enter your username."
+msgstr ""
+
+msgid ""
+"Position of progress-bar labels relative to the bar. Start/end alignment "
+"follows the text direction (LTR or RTL)."
+msgstr ""
+
+msgid "Preset Vendor / Generator"
+msgstr ""
+
+msgid "Primary menu title"
+msgstr ""
+
+msgid "Primary menu titles cannot be empty."
+msgstr ""
+
+msgid "Primary menu titles must be unique."
+msgstr ""
+
+msgid "Progress bar text color"
+msgstr ""
+
+msgid "Progress bar text position"
+msgstr ""
+
+msgid "Random Local MAC"
+msgstr ""
+
+msgid "Randomize MAC"
+msgstr ""
+
+msgid "Reload Web Interface"
+msgstr ""
+
+msgid "Replace native select elements with the theme's custom dropdown widget."
+msgstr ""
+
+msgid "Respect reduced-motion preference"
+msgstr ""
+
+msgid "Restore %s to its original menu name"
+msgstr ""
+
+msgid "Restore %s to its original menu position"
+msgstr ""
+
+msgid "Restore defaults"
+msgstr ""
+
+msgid "Restore to original title"
+msgstr ""
+
+msgid "Retrying with token..."
+msgstr ""
+
+msgid "Rounded (6px)"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "Scroll to bottom"
+msgstr ""
+
+msgid "Scroll to top"
+msgstr ""
+
+msgid "Search menu items"
+msgstr ""
+
+msgid "Search menu..."
+msgstr ""
+
+msgid "Second-level menu title"
+msgstr ""
+
+msgid "Select the shadow depth applied to themed cards and panels."
+msgstr ""
+
+msgid "Select vendor prefix..."
+msgstr ""
+
+msgid "Semibold"
+msgstr ""
+
+msgid ""
+"Sets the base interface font size in pixels. Most theme text scales from "
+"this value through the Fluent CSS variables. Recommended range: 12-18px."
+msgstr ""
+
+msgid "Show %s in the menu"
+msgstr ""
+
+msgid ""
+"Show pending UCI changes in the top apply-status message until the "
+"configuration apply completes."
+msgstr ""
+
+msgid "Show top loading bar"
+msgstr ""
+
+msgid "Show UCI changes while applying configuration"
+msgstr ""
+
+msgid "Sidebar background"
+msgstr ""
+
+msgid "Sidebar width"
+msgstr ""
+
+msgid "Slow"
+msgstr ""
+
+msgid "Small"
+msgstr ""
+
+msgid "Small (2px)"
+msgstr ""
+
+msgid "Software Update"
+msgstr ""
+
+msgid "Source code"
+msgstr ""
+
+msgid "Square (0px)"
+msgstr ""
+
+msgid "Stable Channel"
+msgstr ""
+
+msgid "Starting backend download..."
+msgstr ""
+
+msgid "Starting update process..."
+msgstr ""
+
+msgid "Submit"
+msgstr ""
+
+msgid "Switch theme mode"
+msgstr ""
+
+msgid "Text direction"
+msgstr ""
+
+msgid ""
+"The stored menu layout is invalid. Choose \"Restore defaults\" or make an edit "
+"before saving."
+msgstr ""
+
+msgid ""
+"The stored menu layout is invalid. Restore defaults or edit the layout "
+"before saving."
+msgstr ""
+
+msgid ""
+"The theme is being installed on your router. The logs are displayed below. "
+"Reloading the web interface will apply the changes once RPCD restarts."
+msgstr ""
+
+msgid ""
+"The theme package is ready. Are you sure you want to proceed with the "
+"installation?"
+msgstr ""
+
+msgid ""
+"The token does NOT require any permissions/scopes to be granted (read-only "
+"public access is sufficient)."
+msgstr ""
+
+msgid "Theme settings"
+msgstr ""
+
+msgid ""
+"Theme successfully updated! Reloading RPC service, please refresh the page "
+"in 5 seconds."
+msgstr ""
+
+msgid "Theme transition speed"
+msgstr ""
+
+msgid "Toggle fullscreen"
+msgstr ""
+
+msgid "Triggering installation on router..."
+msgstr ""
+
+msgid "Update channel"
+msgstr ""
+
+msgid "Update failed"
+msgstr ""
+
+msgid "Upgrade Successful!"
+msgstr ""
+
+msgid "Use Fluent custom select dropdowns"
+msgstr ""
+
+msgid ""
+"Use the browser View Transition API to animate navigation between LuCI pages "
+"when supported."
+msgstr ""
+
+msgid ""
+"Use the system/browser preference, or always render the Fluent theme in a "
+"fixed light or dark palette."
+msgstr ""
+
+msgid "Username is required."
+msgstr ""
+
+msgid "valid HEX color value"
+msgstr ""
+
+msgid "Warnings"
+msgstr ""
+
+msgid ""
+"When enabled, Fluent animations follow the browser or operating system "
+"reduced-motion preference."
+msgstr ""
+
+msgid "Width of the main navigation sidebar in pixels."
+msgstr ""
+
+msgid "Word wrap"
+msgstr ""
+
+msgid "You can create a new token at"
+msgstr ""
+
+msgid "Your theme is up to date!"
+msgstr ""

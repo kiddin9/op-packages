@@ -1,0 +1,111 @@
+{#
+ luci-theme-shadcnui — header.ut
+ Used for every authenticated LuCI page. The login screen is rendered by
+ sysauth.ut (which overrides /usr/share/ucode/luci/template/sysauth.ut) and
+ includes header_login.ut / footer_login.ut instead, so this file does NOT
+ need to detect the login state.
+-#}
+
+{%
+	import { access } from 'fs';
+	import { cursor } from 'uci';
+
+	const boardinfo = ubus.call('system', 'board');
+	const hostname  = striptags(boardinfo?.hostname ?? 'OpenWrt');
+
+	let cfg = cursor();
+
+	let mode      = 'system';
+	let base      = 'zinc';
+	let accent    = '';
+	let radius    = '0.5rem';
+	let bg_url    = '';
+
+	if (access('/etc/config/shadcnui')) {
+		mode   = cfg.get('shadcnui', 'main', 'mode')   ?? mode;
+		base   = cfg.get('shadcnui', 'main', 'base')   ?? base;
+		accent = cfg.get('shadcnui', 'main', 'accent') ?? '';
+		radius = cfg.get('shadcnui', 'main', 'radius') ?? radius;
+		bg_url = cfg.get('shadcnui', 'main', 'bg_url') ?? '';
+	}
+
+	let resolved = (mode == 'dark') ? 'dark' : 'light';
+
+	let style_overrides = '';
+	if (accent)            style_overrides += `--primary:${accent};--ring:${accent};`;
+	if (radius != '0.5rem') style_overrides += `--radius:${radius};`;
+	if (bg_url)            style_overrides += `--login-bg:url('${replace(bg_url, "'", "\\'")}');`;
+
+	http.prepare_content('text/html; charset=UTF-8');
+-%}
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}"
+      data-base="{{ base }}"
+      data-mode="{{ mode }}"
+      data-theme="{{ resolved }}"
+      style="{{ style_overrides }}">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="color-scheme" content="light dark">
+	<meta name="darkreader-lock">
+	<title>{{ hostname }}{{ node?.title ? ` — ${striptags(node.title)}` : '' }} — LuCI</title>
+
+	<link rel="stylesheet" href="{{ media }}/css/shadcnui.css">
+	<link rel="icon" type="image/svg+xml" href="{{ media }}/icons/favicon.svg">
+
+	{% if (node?.css): %}
+	<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">
+	{% endif -%}
+	{% if (css): %}
+	<style type="text/css">{{ css }}</style>
+	{% endif -%}
+
+	<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}?v={{ version.luciversion }}"></script>
+	<script src="{{ resource }}/cbi.js?v={{ version.luciversion }}"></script>
+	<script src="{{ resource }}/luci.js?v={{ version.luciversion }}"></script>
+	<script src="{{ media }}/js/theme.js" defer></script>
+	<script src="{{ media }}/js/sidebar.js" defer></script>
+</head>
+
+<body class="lang_{{ dispatcher.lang }}"
+      data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
+
+<div id="shadcn-app" data-sidebar="expanded">
+
+	<aside id="shadcn-sidebar" aria-label="Main navigation">
+		<div class="sidebar-header">
+			<a class="brand" href="/">
+				<div class="logo" aria-hidden="true">{{ substr(uc(hostname), 0, 2) }}</div>
+				<span>{{ hostname }}</span>
+			</a>
+		</div>
+		<nav class="sidebar-nav" id="shadcn-mainmenu" role="navigation"></nav>
+		<div class="sidebar-footer" id="shadcn-modemenu"></div>
+	</aside>
+
+	<div id="shadcn-overlay" class="darkMask"></div>
+
+	<header id="shadcn-topbar">
+		<button class="topbar-toggle showSide" id="shadcn-sidebar-toggle"
+		        type="button" aria-label="Toggle sidebar">
+			<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+			     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<line x1="3" y1="6"  x2="21" y2="6"/>
+				<line x1="3" y1="12" x2="21" y2="12"/>
+				<line x1="3" y1="18" x2="21" y2="18"/>
+			</svg>
+		</button>
+		<div class="topbar-breadcrumb" id="shadcn-breadcrumb"></div>
+		<div id="indicators" class="topbar-actions"></div>
+	</header>
+
+	<main id="shadcn-main">
+		<noscript>
+			<div class="alert-message warning">
+				<h4>{{ _('JavaScript required!') }}</h4>
+				<p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+			</div>
+		</noscript>
+
+		<div id="tabmenu" class="cbi-tabmenu" style="display:none"></div>

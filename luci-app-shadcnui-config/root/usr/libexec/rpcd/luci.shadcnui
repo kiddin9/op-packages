@@ -1,0 +1,197 @@
+#!/bin/sh
+# RPC handler for luci-app-shadcnui-config
+# Registered under /usr/libexec/rpcd/luci.shadcnui and invoked by rpcd via stdio.
+#
+# Methods:
+#   list             — return current UCI config (with secret keys masked)
+#   bing_image       — fetch today's Bing wallpaper URL
+#   unsplash_image   — fetch a random Unsplash photo URL (requires access_key)
+#   wallhaven_image  — fetch a random Wallhaven image URL
+#   save             — write user-supplied options back into /etc/config/shadcnui
+
+. /usr/share/libubox/jshn.sh
+
+case "$1" in
+	list)
+		json_init
+		json_add_object "list"; json_close_object
+		json_add_object "bing_image"; json_close_object
+		json_add_object "unsplash_image"
+			json_add_object "args"; json_add_string query ""; json_close_object
+		json_close_object
+		json_add_object "wallhaven_image"
+			json_add_object "args"; json_add_string query ""; json_close_object
+		json_close_object
+		json_add_object "save"
+			json_add_object "args"
+				json_add_string mode ""
+				json_add_string base ""
+				json_add_string accent ""
+				json_add_string radius ""
+				json_add_string bg_source ""
+				json_add_string bg_url ""
+				json_add_string unsplash_key ""
+				json_add_string wallhaven_key ""
+			json_close_object
+		json_close_object
+		json_dump
+	;;
+
+	call)
+		method="$2"
+		read -r input
+
+		case "$method" in
+			list)
+				json_init
+				json_add_object "config"
+					json_add_object "main"
+						for opt in mode base accent radius bg_source bg_url; do
+							v=$(uci -q get shadcnui.main."$opt")
+							json_add_string "$opt" "$v"
+						done
+					json_close_object
+					json_add_object "bing"
+						for opt in enabled market cache_ttl; do
+							v=$(uci -q get shadcnui.bing."$opt")
+							json_add_string "$opt" "$v"
+						done
+					json_close_object
+					json_add_object "unsplash"
+						v=$(uci -q get shadcnui.unsplash.enabled); json_add_string enabled "$v"
+						v=$(uci -q get shadcnui.unsplash.query);   json_add_string query "$v"
+						k=$(uci -q get shadcnui.unsplash.access_key)
+						if [ -n "$k" ]; then
+							json_add_string access_key "***"
+						else
+							json_add_string access_key ""
+						fi
+					json_close_object
+					json_add_object "wallhaven"
+						v=$(uci -q get shadcnui.wallhaven.enabled);    json_add_string enabled "$v"
+						v=$(uci -q get shadcnui.wallhaven.query);      json_add_string query "$v"
+						v=$(uci -q get shadcnui.wallhaven.purity);     json_add_string purity "$v"
+						v=$(uci -q get shadcnui.wallhaven.categories); json_add_string categories "$v"
+						k=$(uci -q get shadcnui.wallhaven.api_key)
+						if [ -n "$k" ]; then
+							json_add_string api_key "***"
+						else
+							json_add_string api_key ""
+						fi
+					json_close_object
+				json_close_object
+				json_dump
+			;;
+
+			bing_image)
+				body=$(curl -fsSL --max-time 10 \
+					'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US' 2>/dev/null)
+				path=$(echo "$body" | jsonfilter -e '@.images[0].url' 2>/dev/null)
+				json_init
+				if [ -n "$path" ]; then
+					json_add_string "url" "https://www.bing.com${path}"
+				else
+					json_add_string "error" "bing_fetch_failed"
+				fi
+				json_dump
+			;;
+
+			unsplash_image)
+				query=$(echo "$input" | jsonfilter -e '@.query' 2>/dev/null)
+				[ -z "$query" ] && query=$(uci -q get shadcnui.unsplash.query)
+				[ -z "$query" ] && query="nature"
+				key=$(uci -q get shadcnui.unsplash.access_key)
+				json_init
+				if [ -z "$key" ]; then
+					json_add_string "error" "no_access_key"
+				else
+					body=$(curl -fsSL --max-time 10 \
+						-H "Authorization: Client-ID $key" \
+						"https://api.unsplash.com/photos/random?orientation=landscape&query=$query" 2>/dev/null)
+					url=$(echo "$body" | jsonfilter -e '@.urls.regular' 2>/dev/null)
+					author=$(echo "$body" | jsonfilter -e '@.user.name' 2>/dev/null)
+					if [ -n "$url" ]; then
+						json_add_string "url" "$url"
+						json_add_string "attribution" "$author"
+					else
+						json_add_string "error" "unsplash_fetch_failed"
+					fi
+				fi
+				json_dump
+			;;
+
+			wallhaven_image)
+				query=$(echo "$input" | jsonfilter -e '@.query' 2>/dev/null)
+				[ -z "$query" ] && query=$(uci -q get shadcnui.wallhaven.query)
+				[ -z "$query" ] && query="minimal"
+				purity=$(uci -q get shadcnui.wallhaven.purity);     [ -z "$purity" ] && purity="100"
+				cats=$(uci -q get shadcnui.wallhaven.categories);   [ -z "$cats" ]   && cats="111"
+				key=$(uci -q get shadcnui.wallhaven.api_key)
+				url="https://wallhaven.cc/api/v1/search?q=${query}&purity=${purity}&categories=${cats}&sorting=random&atleast=1920x1080"
+				if [ -n "$key" ]; then
+					body=$(curl -fsSL --max-time 10 -H "X-API-Key: $key" "$url" 2>/dev/null)
+				else
+					body=$(curl -fsSL --max-time 10 "$url" 2>/dev/null)
+				fi
+				pick=$(echo "$body" | jsonfilter -e '@.data[0].path' 2>/dev/null)
+				pid=$(echo  "$body" | jsonfilter -e '@.data[0].id' 2>/dev/null)
+				json_init
+				if [ -n "$pick" ]; then
+					json_add_string "url" "$pick"
+					json_add_string "attribution" "wallhaven.cc/w/$pid"
+				else
+					json_add_string "error" "wallhaven_fetch_failed"
+				fi
+				json_dump
+			;;
+
+			save)
+				mode=$(echo "$input"      | jsonfilter -e '@.mode' 2>/dev/null)
+				base=$(echo "$input"      | jsonfilter -e '@.base' 2>/dev/null)
+				accent=$(echo "$input"    | jsonfilter -e '@.accent' 2>/dev/null)
+				radius=$(echo "$input"    | jsonfilter -e '@.radius' 2>/dev/null)
+				bg_source=$(echo "$input" | jsonfilter -e '@.bg_source' 2>/dev/null)
+				bg_url=$(echo "$input"    | jsonfilter -e '@.bg_url' 2>/dev/null)
+				uk=$(echo "$input"        | jsonfilter -e '@.unsplash_key' 2>/dev/null)
+				wk=$(echo "$input"        | jsonfilter -e '@.wallhaven_key' 2>/dev/null)
+
+				case "$mode" in system|light|dark)
+					uci -q set shadcnui.main.mode="$mode" ;;
+				esac
+				case "$base" in zinc|slate|stone|gray|neutral)
+					uci -q set shadcnui.main.base="$base" ;;
+				esac
+				case "$bg_source" in none|bing|unsplash|wallhaven|url|local)
+					uci -q set shadcnui.main.bg_source="$bg_source" ;;
+				esac
+
+				sanitized=$(echo "$accent" | tr -cd '0-9a-zA-Z .%#-')
+				uci -q set shadcnui.main.accent="$sanitized"
+
+				sanitized_r=$(echo "$radius" | tr -cd '0-9a-zA-Z .%-')
+				uci -q set shadcnui.main.radius="$sanitized_r"
+
+				uci -q set shadcnui.main.bg_url="$bg_url"
+
+				if [ -n "$uk" ] && [ "$uk" != "***" ]; then
+					uci -q set shadcnui.unsplash.access_key="$uk"
+				fi
+				if [ -n "$wk" ] && [ "$wk" != "***" ]; then
+					uci -q set shadcnui.wallhaven.api_key="$wk"
+				fi
+
+				uci -q commit shadcnui
+
+				json_init
+				json_add_boolean "ok" 1
+				json_dump
+			;;
+
+			*)
+				json_init
+				json_add_string "error" "unknown_method"
+				json_dump
+			;;
+		esac
+	;;
+esac

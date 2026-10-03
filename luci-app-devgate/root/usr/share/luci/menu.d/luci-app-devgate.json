@@ -1,0 +1,24 @@
+{
+    "admin/services/devgate": {
+        "title": "设备门禁",
+        "order": 90,
+        "action": {
+            "type": "view",
+            "path": "devgate/overview"
+        },
+        "depends": {
+            "acl": ["luci-app-devgate"]
+        }
+    },
+    "admin/services/devgate/remote_addr": {
+        "firstchild_ineligible": true,
+        "action": {
+            "type": "function",
+            "module": "luci.controller.devgate",
+            "function": "remote_addr"
+        },
+        "depends": {
+            "acl": ["luci-app-devgate"]
+        }
+    }
+}

@@ -1,0 +1,14 @@
+#!/bin/sh
+[ -f /etc/config/taskplan ] || cat > /etc/config/taskplan << 'EOF'
+config global 'global'
+	option customscript ' '
+	option customscript2 ' '
+EOF
+
+mkdir -p /etc/quickactions-taskplan
+touch /etc/quickactions-taskplan/taskplan.log
+chmod 600 /etc/quickactions-taskplan/taskplan.log
+chmod +x /usr/bin/quickactions-taskplanhandler
+chmod +x /etc/init.d/quickactions-taskplan
+chmod +x /usr/libexec/rpcd/luci.quickactions-taskplan
+exit 0

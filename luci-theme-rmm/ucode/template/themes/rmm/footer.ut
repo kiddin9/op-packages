@@ -1,0 +1,14 @@
+{# Adapted from LuCI Bootstrap. Licensed under the Apache License 2.0. -#}
+{% if (!blank_page): %}
+		</div>
+		<footer>
+			<span>OpenWrt RMM / <a href="https://github.com/openwrt/luci" target="_blank" rel="noreferrer">{{ version.luciname }} {{ version.luciversion }}</a> / {{ version.distname }} {{ version.distversion }}</span>
+			<ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
+		</footer>
+		<script>L.require('menu-bootstrap')</script>
+		<script src="{{ media }}/navigation.js?v=0.9.0" defer></script>
+		<script src="{{ media }}/components.js?v=0.9.0" defer></script>
+		<script src="{{ media }}/search.js?v=0.9.0" defer></script>
+{% endif %}
+	</body>
+</html>

@@ -1,0 +1,540 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "RMM overview"
+msgstr "RMM 概览"
+
+msgid "SYSTEM / OVERVIEW"
+msgstr "系统 / 概览"
+
+msgid "Updates every 30 seconds"
+msgstr "每 30 秒更新"
+
+msgid "WAN status shows the interface link state; it does not test Internet reachability."
+msgstr "WAN 状态仅显示接口链路状态，不测试互联网可达性。"
+
+msgid "Read router and RMM agent status"
+msgstr "读取路由器与 RMM 代理状态"
+
+msgid "Router"
+msgstr "路由器"
+
+msgid "Hostname"
+msgstr "主机名"
+
+msgid "Model"
+msgstr "型号"
+
+msgid "Firmware"
+msgstr "固件"
+
+msgid "Uptime"
+msgstr "运行时间"
+
+msgid "System"
+msgstr "系统"
+
+msgid "Load (1 / 5 / 15 min)"
+msgstr "负载（1 / 5 / 15 分钟）"
+
+msgid "Memory total"
+msgstr "内存总量"
+
+msgid "Memory available"
+msgstr "可用内存"
+
+msgid "WAN connection"
+msgstr "WAN 连接"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Interface"
+msgstr "接口"
+
+msgid "IP address"
+msgstr "IP 地址"
+
+msgid "RMM agent"
+msgstr "RMM 代理"
+
+msgid "Heartbeat interval"
+msgstr "心跳间隔"
+
+msgid "Connectivity check interval"
+msgstr "连通性检查间隔"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Disconnected"
+msgstr "已断开"
+
+msgid "Not configured"
+msgstr "未配置"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Unavailable"
+msgstr "不可用"
+
+msgid "No address"
+msgstr "无地址"
+
+msgid "%dd"
+msgstr "%d天"
+
+msgid "%dh %dm"
+msgstr "%d小时 %d分钟"
+
+msgid "%s MiB"
+msgstr "%s MiB"
+
+msgid "%s s"
+msgstr "%s 秒"
+
+msgid "Partial data"
+msgstr "部分数据不可用"
+
+msgid "Loading"
+msgstr "加载中"
+
+msgid "Current"
+msgstr "最新"
+
+msgid "Stale"
+msgstr "数据已过期"
+
+msgid "Access denied"
+msgstr "访问被拒绝"
+
+msgid "Last successful update"
+msgstr "最近成功更新"
+
+msgid "Never updated"
+msgstr "尚未更新"
+
+msgid "Retry"
+msgstr "重试"
+
+msgid "Refreshing"
+msgstr "正在更新"
+
+msgid "Memory used"
+msgstr "已用内存"
+
+msgid "Network"
+msgstr "网络"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Received / sent"
+msgstr "接收 / 发送"
+
+msgid "RX / TX rate"
+msgstr "接收 / 发送速率"
+
+msgid "Collecting"
+msgstr "正在收集数据"
+
+msgid "Not installed"
+msgstr "未安装"
+
+msgid "No interfaces"
+msgstr "无接口"
+
+msgid "Sources"
+msgstr "数据源"
+
+msgid "Traffic counters belong to devices; shared devices are not summed."
+msgstr "流量计数属于设备；共享设备不重复累计。"
+
+msgid "d"
+msgstr "天"
+
+msgid "h"
+msgstr "小时"
+
+msgid "m"
+msgstr "分钟"
+
+msgid "s"
+msgstr "秒"
+
+msgid "RMM"
+msgstr "RMM"
+
+msgid "Traffic history"
+msgstr "流量历史"
+
+msgid "Memory history"
+msgstr "内存历史"
+
+msgid "Last 5 minutes"
+msgstr "最近 5 分钟"
+
+msgid "Peak"
+msgstr "峰值"
+
+msgid "History starts when this page opens. Gaps indicate unavailable data."
+msgstr "历史记录从打开此页面开始。断点表示数据不可用。"
+
+msgid "Wireless"
+msgstr "无线网络"
+
+msgid "Associated stations"
+msgstr "关联站点"
+
+msgid "Radio"
+msgstr "无线电"
+
+msgid "Band"
+msgstr "频段"
+
+msgid "Channel"
+msgstr "信道"
+
+msgid "Channel mode"
+msgstr "信道模式"
+
+msgid "TX power"
+msgstr "发射功率"
+
+msgid "Noise"
+msgstr "噪声"
+
+msgid "Signal"
+msgstr "信号"
+
+msgid "Link rate RX / TX"
+msgstr "接收 / 发送连接速率"
+
+msgid "MAC address"
+msgstr "MAC 地址"
+
+msgid "Connected time"
+msgstr "连接时间"
+
+msgid "No associated stations"
+msgstr "没有关联站点"
+
+msgid "No wireless interfaces reported"
+msgstr "没有报告无线接口"
+
+msgid "No local DHCP record"
+msgstr "没有本地 DHCP 记录"
+
+msgid "Wireless interfaces visible to iwinfo are shown; disabled radios are not inventoried."
+msgstr "仅显示 iwinfo 可见的无线接口，不列出已禁用的无线电。"
+
+msgid "Link rates are negotiated Wi-Fi rates, not measured traffic."
+msgstr "连接速率为协商的 Wi-Fi 速率，并非实际流量。"
+
+msgid "Invalid station records"
+msgstr "无效站点记录"
+
+msgid "Search clients"
+msgstr "搜索客户端"
+
+msgid "All bands"
+msgstr "所有频段"
+
+msgid "All signals"
+msgstr "所有信号"
+
+msgid "Signal ≥ -67 dBm"
+msgstr "信号 ≥ -67 dBm"
+
+msgid "Signal -68…-75 dBm"
+msgstr "信号 -68…-75 dBm"
+
+msgid "Signal < -75 dBm"
+msgstr "信号 < -75 dBm"
+
+msgid "Unknown signal"
+msgstr "信号未知"
+
+msgid "Clear filters"
+msgstr "清除筛选"
+
+msgid "No matching stations"
+msgstr "没有匹配的站点"
+
+msgid "Station details"
+msgstr "站点详情"
+
+msgid "Signal history"
+msgstr "信号历史"
+
+msgid "Station traffic"
+msgstr "站点流量"
+
+msgid "Station noise"
+msgstr "站点噪声"
+
+msgid "Shown / total stations"
+msgstr "显示 / 总站点数"
+
+msgid "Search by name, MAC, IP or SSID"
+msgstr "按名称、MAC、IP 或 SSID 搜索"
+
+msgid "Signal bands are filters, not a connection quality score."
+msgstr "信号范围仅用于筛选，不是连接质量评分。"
+
+msgid "Network relationships"
+msgstr "网络关系"
+
+msgid "Local router"
+msgstr "本地路由器"
+
+msgid "Default route gateway"
+msgstr "默认路由网关"
+
+msgid "No default gateway reported"
+msgstr "未报告默认网关"
+
+msgid "Operating mode"
+msgstr "工作模式"
+
+msgid "Access point"
+msgstr "接入点"
+
+msgid "Station mode"
+msgstr "站点模式"
+
+msgid "Open station details"
+msgstr "打开站点详情"
+
+msgid "Only reported routes and Wi-Fi associations are shown; physical cabling and Internet reachability are not inferred."
+msgstr "仅显示报告的路由和 Wi-Fi 关联；不推断物理布线或互联网可达性。"
+
+msgid "Router overview"
+msgstr "路由器概览"
+
+msgid "Wi-Fi clients"
+msgstr "Wi-Fi 客户端"
+
+msgid "Memory"
+msgstr "内存"
+
+msgid "WAN traffic"
+msgstr "WAN 流量"
+
+msgid "Network interfaces"
+msgstr "网络接口"
+
+msgid "Router details"
+msgstr "路由器详情"
+
+msgid "Reported radios"
+msgstr "已报告的无线电"
+
+msgid "No WAN device reported"
+msgstr "未报告 WAN 设备"
+
+msgid "Summary"
+msgstr "摘要"
+
+msgid "Gateway"
+msgstr "网关"
+
+msgid "Local interfaces"
+msgstr "本地接口"
+
+msgid "Reported network path"
+msgstr "已报告的网络路径"
+
+msgid "Logical interfaces and Wi-Fi associations"
+msgstr "逻辑接口和 Wi-Fi 关联"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Details"
+msgstr "详情"
+
+msgid "Sort clients"
+msgstr "排序"
+
+msgid "By name"
+msgstr "按名称"
+
+msgid "Strongest signal"
+msgstr "信号优先"
+
+msgid "Fastest link"
+msgstr "速率优先"
+
+msgid "Group clients"
+msgstr "分组"
+
+msgid "No grouping"
+msgstr "不分组"
+
+msgid "By SSID"
+msgstr "按 SSID"
+
+msgid "Received"
+msgstr "接收"
+
+msgid "Sent"
+msgstr "发送"
+
+msgid "Inspect samples with arrow keys"
+msgstr "使用方向键查看样本"
+
+msgid "Data is not reported"
+msgstr "未报告数据"
+
+msgid "Attention required"
+msgstr "需要注意"
+
+msgid "No reported issues"
+msgstr "报告数据中未发现问题"
+
+msgid "Memory usage ≥ 90%"
+msgstr "内存使用率 ≥ 90%"
+
+msgid "Object is no longer reported"
+msgstr "对象已不在报告中"
+
+msgid "Refresh issues"
+msgstr "更新问题"
+
+msgid "Resource summary"
+msgstr "资源状态"
+
+msgid "Customize dashboard"
+msgstr "自定义概览"
+
+msgid "Visible blocks and order"
+msgstr "模块及顺序"
+
+msgid "Compact mode"
+msgstr "紧凑模式"
+
+msgid "Reset layout"
+msgstr "重置布局"
+
+msgid "Move up"
+msgstr "上移"
+
+msgid "Move down"
+msgstr "下移"
+
+msgid "Clients"
+msgstr "客户端"
+
+msgid "Known DHCP clients"
+msgstr "已知 DHCP 客户端"
+
+msgid "DHCP lease; connection unconfirmed"
+msgstr "DHCP 租约；连接未经确认"
+
+msgid "Wi-Fi association"
+msgstr "Wi-Fi 连接"
+
+msgid "Connection evidence"
+msgstr "状态来源"
+
+msgid "History period"
+msgstr "历史时间范围"
+
+msgid "Last 1 minute"
+msgstr "最近 1 分钟"
+
+msgid "Last 15 minutes"
+msgstr "最近 15 分钟"
+
+msgid "Counter reset"
+msgstr "计数器重置"
+
+msgid "Data gap"
+msgstr "数据缺失"
+
+msgid "Last observation"
+msgstr "最近观测"
+
+msgid "More interfaces"
+msgstr "其他接口"
+
+msgid "Wi-Fi data unavailable"
+msgstr "Wi-Fi 数据不可用"
+
+msgid "All clients"
+msgstr "所有客户端"
+
+msgid "Connection type"
+msgstr "记录类型"
+
+msgid "DHCP records"
+msgstr "DHCP 记录"
+
+msgid "Shown / total clients"
+msgstr "已显示 / 客户端总数"
+
+msgid "Connection unconfirmed"
+msgstr "连接未经确认"
+
+msgid "Preferences unavailable; changes last until this page closes."
+msgstr "存储不可用；更改只在本页有效。"
+
+msgid "DHCP clients may use wired or wireless links; a lease does not prove an active connection."
+msgstr "DHCP 客户端可能通过有线或无线连接；租约不代表当前在线。"
+
+msgid "Ethernet path"
+msgstr "以太网路径"
+
+msgid "Neighbor records"
+msgstr "邻居记录"
+
+msgid "Via %s"
+msgstr "经由 %s"
+
+msgid "Port ambiguous"
+msgstr "多个端口"
+
+msgid "Recently reachable"
+msgstr "近期可达"
+
+msgid "Cached observation"
+msgstr "缓存记录"
+
+msgid "Static neighbor"
+msgstr "静态邻居"
+
+msgid "Neighbor unreachable"
+msgstr "邻居不可达"
+
+msgid "Neighbor state"
+msgstr "邻居状态"
+
+msgid "Bridge / VLAN"
+msgstr "网桥 / VLAN"
+
+msgid "FDB path; direct cable connection unconfirmed"
+msgstr "FDB 路径；无法确认直接有线连接"
+
+msgid "Client inventory truncated"
+msgstr "客户端列表已截断"
+
+msgid "Port link down"
+msgstr "端口链路已断开"
+
+msgid "No FDB observations"
+msgstr "没有 FDB 观测记录"
+
+msgid "FDB observations"
+msgstr "FDB 观测记录"

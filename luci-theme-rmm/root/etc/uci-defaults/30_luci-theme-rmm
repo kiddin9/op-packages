@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+if ! uci -q get luci.themes.RMM >/dev/null 2>&1; then
+	uci set luci.themes.RMM='/luci-static/rmm'
+	uci commit luci
+fi
+
+exit 0

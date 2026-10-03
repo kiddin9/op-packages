@@ -1,0 +1,14 @@
+#!/bin/sh
+uci batch <<EOF
+set luci.themes.Fluent=/luci-static/fluent
+commit luci
+EOF
+
+if ! uci -q get fluent.@global[0] >/dev/null 2>&1; then
+	uci set fluent.global=global
+	uci commit fluent
+fi
+
+mkdir -p /www/luci-static/fluent/background
+chmod 0755 /www/luci-static/fluent/background
+exit 0

@@ -1,0 +1,1583 @@
+/* luci-theme-luxe
+ *  Copyright 2026 xidz_x
+ *
+ * luci-theme-material
+ *   Copyright 2015 Lutty Yang <lutty@wcan.in>
+ *
+ * New Concept Theme Openwrt design Simple, Neumorphism, Glassmorphism, Neo-Brutalism, Neon, Rgb, GradientGlass, GlassCrystall, MetalGlass
+ *
+ * Licensed to the public under the Apache License 2.0
+ */
+ 
+:root,
+[data-theme="normal"],
+body[data-mode="normal"][data-theme="light"] {
+    --bg: #fdfeff;
+    --mainbg: #fdfeff;
+    --bgwhite: #fdfeff;
+    --activeColor: #2563eb;
+    --activeBottom: #2563eb 2px solid;
+    --textColor: #1f2933;
+    --borderColor: rgba(31, 41, 51, 0.08);
+    --navbgColor: #fbfcff;
+    --navBorder: 1px solid rgba(31, 41, 51, 0.08);
+    --sectionbgColor: #ffffff;
+    --sectionbgColor2: #f4f5f8;
+    --sectionShaddow: 4px 4px 15px rgba(31, 41, 51, 0.03);
+    --sectionBorder: 1px solid rgba(31, 41, 51, 0.08);
+    --sectiontabBorder: 1px solid rgba(31, 41, 51, 0.08);
+    --tabmenuBorderLR: 1px solid rgba(31, 41, 51, 0.08);
+    --tabmenubgColor: #ffffff;
+    --tabmenuBottom: rgba(31, 41, 51, 0.08) 1px solid;
+    --sectionnodeBorder: rgba(31, 41, 51, 0.08) 1px solid;
+    --cbilineColor: rgba(31, 41, 51, 0.06) 1px solid;
+    --tabbgColor: #ffffff;
+    --inputbgColor: #f7f8fb;
+    --inputtextColor: #1f2933;
+    --inputBorder: 1px solid rgba(31, 41, 51, 0.1);
+    --mainleftbgColor: #ffffff;
+    --badgebgColor: #f2f3f6;
+    --badgeBorder: rgba(31, 41, 51, 0.08) 1px solid;
+    --progressbarColor: #dbeafe;
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #1f2933;
+    --progressbartxtShadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+    --logo_color: #1f2933;
+    --alertBackground: #2b2f36;
+    --modelBackground: #ffffff;
+    --scrollbarColor: #d7dbe3;
+    --focusColor: rgba(4, 110, 254, 0.16);
+    --codeBg: #f2f3f6;
+    --codeColor: #4b5563;
+    --btnPrimary: #046efe;
+    --btnPrimaryHover: #005bd6;
+    --btnSecondary: #9ca3af;
+    --btnSecondaryHover: #6b7280;
+    --btnInfo: #0ea5e9;
+    --btnInfoHover: #0284c7;
+    --btnDanger: #e11d48;
+    --btnDangerHover: #be123c;
+    --btnWarning: #d97706;
+    --btnWarningHover: #b45309;
+    --btnSuccess: #10b981;
+    --tableBorder: rgba(31, 41, 51, 0.08);
+    --tabmenuRadius: 0;
+    --bttextColor: #ffffff;
+    --alertColor: #ffffff;
+    --luxe-bg: #1c2135;
+    --luxe-text: #e2e8f0;
+    --luxe-accent: #38bdf8;
+    --luxe-input: #34d399;
+    --luxe-muted: #94a3b8;
+    --luxe-shadow-out: 8px 8px 16px #131725, -8px -8px 16px #252b45;
+    --luxe-shadow-in: inset 4px 4px 8px #131725, inset -4px -4px 8px #252b45;
+    --luxe-shadow-deep: 20px 20px 40px #0a0d17, -20px -20px 40px #2e3553;
+}
+input,
+select,
+textarea,
+.cbi-dropdown {
+    color: var(--inputtextColor) !important;
+}
+.btn,
+.cbi-button {
+    color: var(--bttextColor, #ffffff) !important;
+}
+.commandbox {
+    color: var(--textColor) !important;
+    background-color: var(--sectionbgColor2) !important;
+}
+.commandbox code {
+    color: var(--codeColor) !important;
+    background-color: var(--codeBg) !important;
+}
+[data-theme="dark"],
+body[data-mode="normal"][data-theme="dark"],
+[data-theme="normal"][data-force-scheme="dark"] {
+    --bg: #0f1115;
+    --mainbg: #15181d;
+    --bgwhite: #15181d;
+    --activeColor: #eab308;
+    --activeBottom: #eab308 2px solid;
+    --textColor: #ffffff;
+    --borderColor: rgba(255, 255, 255, 0.1);
+    --navbgColor: #797979;
+    --navBorder: 1px solid #797979;
+    --sectionbgColor: #15181d;
+    --sectionbgColor2: #1a1e24;
+    --sectionShaddow: 4px 4px 15px rgba(0, 0, 0, 0.2);
+    --sectionBorder: 1px solid #797979;
+    --sectiontabBorder: 1px solid #797979;
+    --tabmenuBorderLR: 1px solid #797979;
+    --tabmenubgColor: #15181d;
+    --tabmenuBottom: #797979 1px solid;
+    --sectionnodeBorder: #797979 1px solid;
+    --cbilineColor: #797979 1px solid;
+    --tabbgColor: #15181d;
+    --inputbgColor: #0f1115;
+    --inputtextColor: #ffffff;
+    --inputBorder: 1px solid #333842;
+    --mainleftbgColor: #15181d;
+    --badgebgColor: #1e222a;
+    --badgeBorder: #797979 1px solid;
+    --progressbarColor: rgba(234, 179, 8, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #111827;
+    --progressbartxtShadow: 0 1px 3px rgba(255, 255, 255, 0.85);
+    --logo_color: #ffffff;
+    --alertBackground: #d4af37;
+    --modelBackground: #15181d;
+    --scrollbarColor: #333842;
+    --focusColor: rgba(212, 175, 55, 0.25);
+    --codeBg: #15181d;
+    --codeColor: #cbd5e1;
+    --btnPrimary: #d4af37;
+    --btnPrimaryHover: #b8972e;
+    --btnSecondary: #333842;
+    --btnSecondaryHover: #474d5a;
+    --btnInfo: #0ea5e9;
+    --btnInfoHover: #0284c7;
+    --btnDanger: #e11d48;
+    --btnDangerHover: #be123c;
+    --btnWarning: #d97706;
+    --btnWarningHover: #b45309;
+    --btnSuccess: #10b981;
+    --tableBorder: #797979;
+}
+body[data-theme="normal"],
+body[data-mode="normal"] {
+    background-color: var(--bg);
+    background-image: none;
+}
+body[data-theme="liquid-metal"],
+body[data-theme="liquid-metal"][data-force-scheme="light"],
+body[data-theme="liquid-metal"][data-force-scheme="dark"] {
+    background: linear-gradient(160deg, #f4f5f7 0%, #b8c0cf 100%) !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+}
+[data-theme="liquid-metal"],
+[data-theme="liquid-metal"][data-force-scheme="light"],
+[data-theme="liquid-metal"][data-force-scheme="dark"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: #dde1ea;
+    --sectionbgColor: #dde1ea;
+    --sectionbgColor2: #cdd2de;
+    --navbgColor: #dde1ea;
+    --modelBackground: #dde1ea;
+    --mainleftbgColor: #dde1ea;
+    --tabmenubgColor: #dde1ea;
+    --tabbgColor: #dde1ea;
+    --inputbgColor: #e6ebf2;
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.4);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.3);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.3);
+    --inputBorder: 1px solid transparent;
+    --badgebgColor: #cdd2de;
+    --badgeBorder: 1px solid transparent;
+    --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.3);
+    --tabmenuBorderLR: 1px solid transparent;
+    --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.3);
+    --sectionnodeBorder: 1px solid transparent;
+    --codeBg: #cdd2de;
+    --tableBorder: rgba(255, 255, 255, 0.3);
+    --textColor: #374151;
+    --logo_color: #1f2933;
+    --inputtextColor: #374151;
+    --activeColor: #2563eb;
+    --activeBottom: #2563eb 2px solid;
+    --focusColor: rgba(107, 114, 128, 0.15);
+    --progressbarColor: #dbeafe;
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #1f2933;
+    --progressbartxtShadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+    --btnPrimary: #9ca3af;
+    --btnPrimaryHover: #6b7280;
+    --bttextColor: #374151;
+    --lm-outset: 6px 6px 14px rgba(145, 155, 175, 0.55), -2px -2px 5px rgba(255, 255, 255, 0.9), inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.8), inset -1.5px -1.5px 2px rgba(145, 155, 175, 0.3);
+    --lm-modal-outset: 6px 6px 14px rgba(145, 155, 175, 0.55), -1.5px -1.5px 4px rgba(255, 255, 255, 0.3), inset 1px 1px 1px rgba(255, 255, 255, 0.6), inset -1px -1px 1px rgba(145, 155, 175, 0.2);
+    --lm-side-outset: 4px 0 15px rgba(145, 155, 175, 0.45);
+    --lm-inset: inset 4px 4px 10px rgba(145, 155, 175, 0.55), inset -2px -2px 5px rgba(255, 255, 255, 0.9);
+    --lm-btn-outset: 4px 4px 10px rgba(145, 155, 175, 0.55), -1.5px -1.5px 4px rgba(255, 255, 255, 0.9), inset 1px 1px 1px rgba(255, 255, 255, 0.7), inset -1px -1px 1px rgba(145, 155, 175, 0.3);
+}
+[data-theme="liquid-metal"] .cbi-section,
+[data-theme="liquid-metal"] .panel,
+[data-theme="liquid-metal"] .commandbox,
+[data-theme="liquid-metal"] .node-admin-status-routes #view table,
+[data-theme="liquid-metal"] .node-admin-status-processes #view table,
+[data-theme="liquid-metal"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    box-shadow: var(--lm-outset) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;
+}
+[data-theme="liquid-metal"] .modal {
+    box-shadow: var(--lm-modal-outset) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;
+}
+[data-theme="liquid-metal"] .main-left {
+    box-shadow: var(--lm-side-outset) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;
+}
+[data-theme="liquid-metal"] input,
+[data-theme="liquid-metal"] select,
+[data-theme="liquid-metal"] textarea {
+    box-shadow: var(--lm-inset) !important;
+    border: var(--inputBorder) !important;
+    background: var(--inputbgColor) !important;
+}
+[data-theme="liquid-metal"] .cbi-button,
+[data-theme="liquid-metal"] .btn {
+    box-shadow: var(--lm-btn-outset) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;
+}
+[data-theme="liquid-metal"] .cbi-button:active,
+[data-theme="liquid-metal"] .btn:active {
+    box-shadow: var(--lm-inset) !important;
+}
+[data-theme="liquid-metal"] .navbar {
+    box-shadow: var(--lm-inset) !important;
+    border: none !important;
+    border-bottom: var(--navBorder) !important;
+    background-color: var(--navbgColor) !important;
+}
+[data-theme="liquid-metal"] header,
+[data-theme="liquid-metal"] .showSide {
+    box-shadow: none !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+[data-theme="neo"],
+[data-theme="neo"][data-force-scheme="light"] {
+    --bg: #f8fafc;
+    --mainbg: #f8fafc;
+    --bgwhite: #ffffff;
+    --sectionbgColor: #ffffff;
+    --sectionbgColor2: #f1f5f9;
+    --navbgColor: rgba(255, 255, 255, 0.95);
+    --modelBackground: #ffffff;
+    --mainleftbgColor: #ffffff;
+    --tabmenubgColor: #ffffff;
+    --tabbgColor: #ffffff;
+    --inputbgColor: #f8fafc;
+    --sectionBorder: 1px solid rgba(30, 41, 59, 0.3);
+    --navBorder: 1px solid rgba(30, 41, 59, 0.3);
+    --cbilineColor: 1px solid rgba(30, 41, 59, 0.08);
+    --inputBorder: 1px solid rgba(30, 41, 59, 0.3);
+    --badgebgColor: #f1f5f9;
+    --badgeBorder: 1px solid rgba(30, 41, 59, 0.3);
+    --sectiontabBorder: 1px solid rgba(30, 41, 59, 0.3);
+    --tabmenuBorderLR: 1px solid rgba(30, 41, 59, 0.3);
+    --tabmenuBottom: 1px solid rgba(30, 41, 59, 0.3);
+    --sectionnodeBorder: 1px solid rgba(30, 41, 59, 0.3);
+    --codeBg: #f1f5f9;
+    --tableBorder: rgba(30, 41, 59, 0.15);
+    --textColor: #1e293b;
+    --logo_color: #1e293b;
+    --inputtextColor: #1e293b;
+    --activeColor: #e06b74;
+    --activeBottom: #e06b74 2px solid;
+    --focusColor: rgba(224, 107, 116, 0.15);
+    --progressbarColor: #f1f5f9;
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #1e293b;
+    --progressbartxtShadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+    --btnPrimary: #e06b74;
+    --btnPrimaryHover: #cc5e66;
+    --neo-shadow: 5px 6px 0px rgba(15, 23, 42, 0.45), 0px 4px 14px rgba(0, 0, 0, 0.08);
+    --neo-inset: 2px 2px 0px rgba(15, 23, 42, 0.45);
+    --bttextColor: var(--textColor);
+}
+[data-theme="neo"][data-force-scheme="dark"] {
+    --bg: #12141c;
+    --mainbg: #12141c;
+    --bgwhite: #171a23;
+    --sectionbgColor: #171a23;
+    --sectionbgColor2: #1f2330;
+    --navbgColor: rgba(23, 26, 35, 0.95);
+    --modelBackground: #171a23;
+    --mainleftbgColor: #171a23;
+    --tabmenubgColor: #171a23;
+    --tabbgColor: #171a23;
+    --inputbgColor: #12141c;
+    --sectionBorder: 1px solid rgba(226, 232, 240, 0.24);
+    --navBorder: 1px solid rgba(226, 232, 240, 0.24);
+    --cbilineColor: 1px solid rgba(226, 232, 240, 0.06);
+    --inputBorder: 1px solid rgba(226, 232, 240, 0.22);
+    --badgebgColor: #1f2330;
+    --badgeBorder: 1px solid rgba(226, 232, 240, 0.22);
+    --sectiontabBorder: 1px solid rgba(226, 232, 240, 0.22);
+    --tabmenuBorderLR: 1px solid rgba(226, 232, 240, 0.22);
+    --tabmenuBottom: 1px solid rgba(226, 232, 240, 0.22);
+    --sectionnodeBorder: 1px solid rgba(226, 232, 240, 0.22);
+    --codeBg: #1f2330;
+    --tableBorder: rgba(226, 232, 240, 0.08);
+    --textColor: #e5e7eb;
+    --logo_color: #f8fafc;
+    --inputtextColor: #f8fafc;
+    --activeColor: #e06b74;
+    --activeBottom: #e06b74 2px solid;
+    --focusColor: rgba(224, 107, 116, 0.18);
+    --progressbarColor: #1f2330;
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --btnPrimary: #e06b74;
+    --btnPrimaryHover: #cc5e66;
+    --neo-shadow: 4px 4px 0px rgba(0, 0, 0, 0.55);
+    --neo-inset: 2px 2px 0px rgba(0, 0, 0, 0.55);
+    --bttextColor: var(--textColor);
+}
+[data-theme="neo"] .main-left,
+[data-theme="neo"] .cbi-section,
+[data-theme="neo"] .panel,
+[data-theme="neo"] .modal,
+[data-theme="neo"] .commandbox,
+[data-theme="neo"] .navbar,
+[data-theme="neo"] .node-admin-status-routes #view table,
+[data-theme="neo"] .node-admin-status-processes #view table,
+[data-theme="neo"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    box-shadow: var(--neo-shadow) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;
+    transition: box-shadow 0.2s ease;
+}
+[data-theme="neo"] input,
+[data-theme="neo"] select,
+[data-theme="neo"] textarea {
+    box-shadow: none !important;
+    border: var(--inputBorder) !important;
+    background: var(--inputbgColor) !important;
+    transition: all 0.2s ease;
+}
+[data-theme="neo"] input:focus,
+[data-theme="neo"] select:focus,
+[data-theme="neo"] textarea:focus {
+    box-shadow: var(--neo-inset) !important;
+}
+[data-theme="neo"] .cbi-button,
+[data-theme="neo"] .btn {
+    box-shadow: var(--neo-shadow) !important;
+    border: var(--sectionBorder) !important;
+}
+[data-theme="neo"] .cbi-button:active,
+[data-theme="neo"] .btn:active {
+    box-shadow: var(--neo-inset) !important;
+}
+[data-theme="neo"] .showSide {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+body[data-theme="neox"],
+body[data-theme="neox"][data-force-scheme="light"] {
+    background-color: #e5e8f6;
+    background-image: none;
+    transition: background-color 0.3s ease;
+}
+[data-theme="neox"],
+[data-theme="neox"][data-force-scheme="light"] {
+    --bg: #e5e8f6;
+    --mainbg: #e5e8f6;
+    --bgwhite: #e5e8f6;
+    --sectionbgColor: #e5e8f6;
+    --sectionbgColor2: #d9dcf0;
+    --navbgColor: rgba(229, 232, 246, 0.95);
+    --modelBackground: #e5e8f6;
+    --mainleftbgColor: #e5e8f6;
+    --tabmenubgColor: #e5e8f6;
+    --tabbgColor: #e5e8f6;
+    --inputbgColor: #e5e8f6;
+    --sectionBorder: 1px solid transparent;
+    --navBorder: 1px solid transparent;
+    --cbilineColor: 1px solid rgba(165, 170, 195, 0.2);
+    --inputBorder: 1px solid transparent;
+    --badgebgColor: #d9dcf0;
+    --badgeBorder: 1px solid transparent;
+    --sectiontabBorder: 1px solid rgba(165, 170, 195, 0.2);
+    --tabmenuBorderLR: 1px solid transparent;
+    --tabmenuBottom: 1px solid rgba(165, 170, 195, 0.2);
+    --sectionnodeBorder: 1px solid transparent;
+    --codeBg: #d9dcf0;
+    --tableBorder: rgba(165, 170, 195, 0.2);
+    --textColor: #464964;
+    --logo_color: #464964;
+    --inputtextColor: #464964;
+    --activeColor: #2563eb;
+    --activeBottom: #2563eb 2px solid;
+    --focusColor: rgba(124, 131, 253, 0.2);
+    --progressbarColor: #dbeafe;
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #464964;
+    --progressbartxtShadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+    --btnPrimary: #7c83fd;
+    --btnPrimaryHover: #636ae6;
+    --neox-shadow: 3px 3px 6px rgba(145, 153, 182, 0.45), -1.5px -1.5px 3px rgba(255, 255, 255, 0.95);
+    --neox-side-shadow: 4px 4px 10px rgba(145, 153, 182, 0.45);
+    --neox-nav-shadow: inset 2px 2px 5px rgba(145, 153, 182, 0.4), inset -1.5px -1.5px 3px rgba(255, 255, 255, 0.95);
+    --neox-inset: inset 2px 2px 5px rgba(145, 153, 182, 0.45), inset -1.5px -1.5px 3px rgba(255, 255, 255, 0.95);
+    --neox-header-shadow: 0 4px 10px rgba(145, 153, 182, 0.25);
+    --bttextColor: var(--textColor);
+}
+body[data-theme="neox"][data-force-scheme="dark"] {
+    background-color: #1a1a24;
+}
+[data-theme="neox"][data-force-scheme="dark"] {
+    --bg: #1a1a24;
+    --mainbg: #1a1a24;
+    --bgwhite: #1a1a24;
+    --sectionbgColor: #1a1a24;
+    --sectionbgColor2: #20202c;
+    --navbgColor: rgba(26, 26, 36, 0.95);
+    --modelBackground: #1a1a24;
+    --mainleftbgColor: #1a1a24;
+    --tabmenubgColor: #1a1a24;
+    --tabbgColor: #1a1a24;
+    --inputbgColor: #1a1a24;
+    --sectionBorder: 1px solid transparent;
+    --navBorder: 1px solid transparent;
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.03);
+    --inputBorder: 1px solid transparent;
+    --badgebgColor: #20202c;
+    --badgeBorder: 1px solid transparent;
+    --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.03);
+    --tabmenuBorderLR: 1px solid transparent;
+    --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.03);
+    --sectionnodeBorder: 1px solid transparent;
+    --codeBg: #121219;
+    --tableBorder: rgba(255, 255, 255, 0.03);
+    --textColor: #cbd5e1;
+    --logo_color: #f8fafc;
+    --inputtextColor: #f8fafc;
+    --activeColor: #eab308;
+    --activeBottom: #eab308 2px solid;
+    --focusColor: rgba(99, 102, 241, 0.15);
+    --progressbarColor: rgba(234, 179, 8, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --btnPrimary: #6366f1;
+    --btnPrimaryHover: #4f46e5;
+    --neox-shadow: 7px 7px 15px rgba(0, 0, 0, 0.5), -4px -4px 10px rgba(255, 255, 255, 0.025), inset 1px 1px 1px rgba(255, 255, 255, 0.035), inset -1px -1px 1px rgba(0, 0, 0, 0.42);
+    --neox-side-shadow: 5px 7px 14px rgba(0, 0, 0, 0.46), -2px -2px 6px rgba(255, 255, 255, 0.02), inset 1px 1px 1px rgba(255, 255, 255, 0.03), inset -1px -1px 1px rgba(0, 0, 0, 0.4);
+    --neox-nav-shadow: 4px 6px 12px rgba(0, 0, 0, 0.42), -2px -2px 5px rgba(255, 255, 255, 0.018), inset 1px 1px 1px rgba(255, 255, 255, 0.028), inset -1px -1px 1px rgba(0, 0, 0, 0.36);
+    --neox-inset: inset 5px 5px 10px rgba(0, 0, 0, 0.58), inset -5px -5px 10px rgba(255, 255, 255, 0.02);
+    --neox-header-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+    --bttextColor: var(--textColor);
+}
+[data-theme="neox"] .main-left,
+[data-theme="neox"] .cbi-section,
+[data-theme="neox"] .panel,
+[data-theme="neox"] .modal,
+[data-theme="neox"] .commandbox,
+[data-theme="neox"] .node-admin-status-routes #view table,
+[data-theme="neox"] .node-admin-status-processes #view table,
+[data-theme="neox"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    box-shadow: var(--neox-shadow) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;    
+}
+[data-theme="neox"] .navbar {
+    box-shadow: var(--neox-nav-shadow) !important;
+    background-color: var(--navbgColor) !important;    
+}
+[data-theme="neox"] .main-left {
+    box-shadow: var(--neox-side-shadow) !important;
+}
+[data-theme="neox"] input,
+[data-theme="neox"] select,
+[data-theme="neox"] textarea {
+    box-shadow: var(--neox-inset) !important;
+    border: var(--inputBorder) !important;
+    background: var(--inputbgColor) !important;    
+}
+[data-theme="neox"] header {
+    background-color: var(--bg) !important;
+    box-shadow: var(--neox-header-shadow) !important;
+    border: none !important;
+}
+[data-theme="neox"] .showSide {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+[data-theme="neox"] .showSide,
+[data-theme="neox"] .showSide:before {
+    filter: none !important;
+    text-shadow: none !important;
+}
+[data-theme="neox"] .cbi-button,
+[data-theme="neox"] .btn {
+    box-shadow: var(--neox-shadow) !important;
+    border: var(--sectionBorder) !important;
+    transition: box-shadow 0.2s ease !important;
+}
+[data-theme="neox"] .cbi-button:active,
+[data-theme="neox"] .btn:active {
+    box-shadow: var(--neox-inset) !important;
+}
+body[data-theme="glaze"],
+body[data-theme="glaze"][data-force-scheme="light"] {
+    background: linear-gradient(135deg, #e0f2fe 0%, #ede9fe 50%, #ffe4e6 100%) !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+    background-position: center !important;
+}
+[data-theme="glaze"],
+[data-theme="glaze"][data-force-scheme="light"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: rgba(255, 255, 255, 0.46);
+    --sectionbgColor: rgba(255, 255, 255, 0.44);
+    --sectionbgColor2: rgba(255, 255, 255, 0.3);
+    --navbgColor: rgba(255, 255, 255, 0.4);
+    --modelBackground: rgba(255, 255, 255, 0.5);
+    --mainleftbgColor: rgba(255, 255, 255, 0.46);
+    --tabmenubgColor: rgba(255, 255, 255, 0.26);
+    --tabbgColor: rgba(255, 255, 255, 0.28);
+    --inputbgColor: rgba(255, 255, 255, 0.42);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.6);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.64);
+    --cbilineColor: 1px solid rgba(92, 113, 148, 0.12);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.56);
+    --badgebgColor: rgba(255, 255, 255, 0.36);
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.52);
+    --sectiontabBorder: 1px solid rgba(92, 113, 148, 0.12);
+    --tabmenuBorderLR: 1px solid rgba(92, 113, 148, 0.1);
+    --tabmenuBottom: 1px solid rgba(92, 113, 148, 0.1);
+    --sectionnodeBorder: 1px solid rgba(92, 113, 148, 0.1);
+    --codeBg: rgba(255, 255, 255, 0.36);
+    --tableBorder: rgba(92, 113, 148, 0.12);
+    --textColor: #1f2a44;
+    --logo_color: #1f2a44;
+    --inputtextColor: #1f2a44;
+    --activeColor: #38f188;
+    --activeBottom: #38f188 2px solid;
+    --focusColor: rgba(40, 183, 242, 0.2);
+    --progressbarColor: rgba(13, 148, 136, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #1f2a44;
+    --progressbartxtShadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+    --scrollbarColor: rgba(40, 183, 242, 0.74);
+    --btnPrimary: rgba(40, 183, 242, 0.74);
+    --btnPrimaryHover: rgba(31, 145, 215, 0.86);
+    --btnSecondary: rgba(125, 145, 185, 0.55);
+    --btnSecondaryHover: rgba(96, 115, 156, 0.72);
+    --btnInfo: rgba(14, 165, 233, 0.72);
+    --btnInfoHover: rgba(2, 132, 199, 0.86);
+    --btnDanger: rgba(225, 29, 72, 0.72);
+    --btnDangerHover: rgba(190, 18, 60, 0.86);
+    --btnWarning: rgba(217, 119, 6, 0.72);
+    --btnWarningHover: rgba(180, 83, 9, 0.86);
+    --btnSuccess: rgba(16, 185, 129, 0.72);
+    --glaze-blur: blur(8px);
+    --glaze-shadow: 3px 6px 12px rgba(78, 98, 142, 0.08), inset 1px 1px 1px rgba(255, 255, 255, 0.4);
+    --glaze-inset: inset 2px 2px 5px rgba(78, 98, 142, 0.1), inset -2px -2px 5px rgba(255, 255, 255, 0.3);
+}
+body[data-theme="glaze"][data-force-scheme="dark"] {
+    background: linear-gradient(135deg, #0b1120 0%, #2a1b54 50%, #0f2e4a 100%) !important;
+    background-size: cover !important;
+    background-attachment: fixed !important;
+    background-position: center !important;
+}
+[data-theme="glaze"][data-force-scheme="dark"] {
+    --bgwhite: rgba(16, 23, 39, 0.5);
+    --sectionbgColor: rgba(16, 23, 39, 0.5);
+    --sectionbgColor2: rgba(24, 34, 55, 0.34);
+    --navbgColor: rgba(16, 23, 39, 0.54);
+    --modelBackground: rgba(16, 23, 39, 0.64);
+    --mainleftbgColor: rgba(16, 23, 39, 0.52);
+    --tabmenubgColor: rgba(23, 31, 49, 0.34);
+    --tabbgColor: rgba(23, 31, 49, 0.34);
+    --inputbgColor: rgba(18, 24, 39, 0.5);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.12);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --textColor: #e9eefb;
+    --logo_color: #f4f7ff;
+    --inputtextColor: #f4f7ff;
+    --activeColor: #8b5cf6;
+    --activeBottom: #8b5cf6 2px solid;
+    --focusColor: rgba(95, 200, 255, 0.2);
+    --progressbarColor: rgba(139, 92, 246, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f4f7ff;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    --codeBg: rgba(7, 11, 20, 0.45);
+    --tableBorder: rgba(255, 255, 255, 0.08);
+    --glaze-shadow: 3px 6px 12px rgba(0, 0, 0, 0.25), inset 1px 1px 1px rgba(255, 255, 255, 0.04);
+    --glaze-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.3), inset -1px -1px 2px rgba(255, 255, 255, 0.02);
+}
+[data-theme="glaze"] .main-left,
+[data-theme="glaze"] .cbi-section,
+[data-theme="glaze"] .panel,
+[data-theme="glaze"] .modal,
+[data-theme="glaze"] .commandbox,
+[data-theme="glaze"] .node-admin-status-routes #view table,
+[data-theme="glaze"] .node-admin-status-processes #view table,
+[data-theme="glaze"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    backdrop-filter: var(--glaze-blur);
+    -webkit-backdrop-filter: var(--glaze-blur);
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: var(--glaze-shadow) !important;
+    border: var(--sectionBorder) !important;
+}
+[data-theme="glaze"] .navbar {
+    background-color: var(--navbgColor) !important;
+    border: var(--navBorder) !important;
+}
+[data-theme="glaze"] .ifacebadge {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--navbgColor) !important;
+    box-shadow: var(--glaze-shadow) !important;
+    border: var(--badgeBorder) !important;
+}
+[data-theme="glaze"] input,
+[data-theme="glaze"] select,
+[data-theme="glaze"] textarea {
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+    box-shadow: var(--glaze-inset) !important;
+    color: var(--inputtextColor) !important;
+}
+[data-theme="glaze"] header,
+[data-theme="glaze"] .showSide {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+body[data-theme="onyx"],
+body[data-theme="onyx"][data-force-scheme="light"] {
+    background: radial-gradient(circle at 12% 16%, rgba(126, 112, 255, 0.36), transparent 28%), radial-gradient(circle at 86% 18%, rgba(38, 205, 235, 0.36), transparent 30%), radial-gradient(circle at 78% 86%, rgba(245, 105, 170, 0.22), transparent 30%), linear-gradient(135deg, #fbfdff 0%, #eafbff 44%, #f8f0ff 100%);
+    background-size: cover !important;
+    background-attachment: fixed !important;
+    background-position: center !important;
+}
+[data-theme="onyx"],
+[data-theme="onyx"][data-force-scheme="light"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: rgba(255, 255, 255, 0.46);
+    --sectionbgColor: rgba(255, 255, 255, 0.44);
+    --sectionbgColor2: rgba(255, 255, 255, 0.3);
+    --navbgColor: rgba(255, 255, 255, 0.65);
+    --modelBackground: rgba(255, 255, 255, 0.5);
+    --mainleftbgColor: rgba(255, 255, 255, 0.46);
+    --tabmenubgColor: rgba(255, 255, 255, 0.26);
+    --tabbgColor: rgba(255, 255, 255, 0.28);
+    --inputbgColor: rgba(255, 255, 255, 0.42);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.6);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.64);
+    --cbilineColor: 1px solid rgba(92, 113, 148, 0.12);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.56);
+    --badgebgColor: rgba(255, 255, 255, 0.36);
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.52);
+    --sectiontabBorder: 1px solid rgba(92, 113, 148, 0.12);
+    --tabmenuBorderLR: 1px solid rgba(92, 113, 148, 0.1);
+    --tabmenuBottom: 1px solid rgba(92, 113, 148, 0.1);
+    --sectionnodeBorder: 1px solid rgba(92, 113, 148, 0.1);
+    --codeBg: rgba(255, 255, 255, 0.36);
+    --tableBorder: rgba(92, 113, 148, 0.12);
+    --textColor: #1f2a44;
+    --logo_color: #1f2a44;
+    --inputtextColor: #1f2a44;
+    --activeColor: #38f188;
+    --activeBottom: #38f188 2px solid;
+    --focusColor: rgba(40, 183, 242, 0.2);
+    --progressbarColor: rgba(13, 148, 136, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #1f2a44;
+    --progressbartxtShadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+    --scrollbarColor: rgba(40, 183, 242, 0.74);
+    --btnPrimary: rgba(40, 183, 242, 0.74);
+    --btnPrimaryHover: rgba(31, 145, 215, 0.86);
+    --btnSecondary: rgba(125, 145, 185, 0.55);
+    --btnSecondaryHover: rgba(96, 115, 156, 0.72);
+    --btnInfo: rgba(14, 165, 233, 0.72);
+    --btnInfoHover: rgba(2, 132, 199, 0.86);
+    --btnDanger: rgba(225, 29, 72, 0.72);
+    --btnDangerHover: rgba(190, 18, 60, 0.86);
+    --btnWarning: rgba(217, 119, 6, 0.72);
+    --btnWarningHover: rgba(180, 83, 9, 0.86);
+    --btnSuccess: rgba(16, 185, 129, 0.72);
+    --onyx-blur: blur(12px);
+    --onyx-shadow: 3px 5px 10px rgba(78, 98, 142, 0.075), -1.5px -1.5px 5px rgba(255, 255, 255, 0.22), inset 0.8px 0.8px 1px rgba(255, 255, 255, 0.34), inset -0.8px -0.8px 1px rgba(78, 98, 142, 0.055);
+    --onyx-inset: inset 2.5px 2.5px 6px rgba(78, 98, 142, 0.08), inset -2.5px -2.5px 6px rgba(255, 255, 255, 0.22);
+}
+body[data-theme="onyx"][data-force-scheme="dark"] {
+    background: radial-gradient(circle at 12% 16%, rgba(117, 88, 255, 0.24), transparent 30%), radial-gradient(circle at 86% 18%, rgba(34, 211, 238, 0.19), transparent 32%), radial-gradient(circle at 78% 86%, rgba(245, 75, 128, 0.14), transparent 30%), linear-gradient(135deg, #0d1424 0%, #121b30 46%, #0c1424 100%);
+    background-size: cover !important;
+    background-attachment: fixed !important;
+    background-position: center !important;
+}
+[data-theme="onyx"][data-force-scheme="dark"] {
+    --bgwhite: rgba(16, 23, 39, 0.5);
+    --sectionbgColor: rgba(16, 23, 39, 0.5);
+    --sectionbgColor2: rgba(24, 34, 55, 0.34);
+    --navbgColor: rgba(16, 23, 39, 0.65);
+    --modelBackground: rgba(16, 23, 39, 0.64);
+    --mainleftbgColor: rgba(16, 23, 39, 0.52);
+    --tabmenubgColor: rgba(23, 31, 49, 0.34);
+    --tabbgColor: rgba(23, 31, 49, 0.34);
+    --inputbgColor: rgba(18, 24, 39, 0.5);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.12);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --textColor: #e9eefb;
+    --logo_color: #f4f7ff;
+    --inputtextColor: #f4f7ff;
+    --activeColor: #8b5cf6;
+    --activeBottom: #8b5cf6 2px solid;
+    --focusColor: rgba(95, 200, 255, 0.2);
+    --progressbarColor: rgba(139, 92, 246, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f4f7ff;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    --codeBg: rgba(7, 11, 20, 0.45);
+    --tableBorder: rgba(255, 255, 255, 0.08);
+    --onyx-shadow: 3px 5px 10px rgba(0, 0, 0, 0.18), -1.5px -1.5px 5px rgba(255, 255, 255, 0.012), inset 0.8px 0.8px 1px rgba(255, 255, 255, 0.024), inset -0.8px -0.8px 1px rgba(0, 0, 0, 0.2);
+    --onyx-inset: inset 2.5px 2.5px 6px rgba(0, 0, 0, 0.2), inset -2.5px -2.5px 6px rgba(255, 255, 255, 0.012);
+}
+[data-theme="onyx"] .main-left,
+[data-theme="onyx"] .cbi-section,
+[data-theme="onyx"] .panel,
+[data-theme="onyx"] .modal,
+[data-theme="onyx"] .commandbox,
+[data-theme="onyx"] .node-admin-status-routes #view table,
+[data-theme="onyx"] .node-admin-status-processes #view table,
+[data-theme="onyx"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    backdrop-filter: var(--onyx-blur);
+    -webkit-backdrop-filter: var(--onyx-blur);
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: var(--onyx-shadow) !important;
+    border: var(--sectionBorder) !important;
+}
+[data-theme="onyx"] .navbar {
+    backdrop-filter: var(--onyx-blur);
+    -webkit-backdrop-filter: var(--onyx-blur);
+    background-color: var(--navbgColor) !important;
+    box-shadow: var(--onyx-shadow) !important;
+    border: var(--navBorder) !important;
+}
+[data-theme="onyx"] .ifacebadge {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 2.5px 3.5px 8px rgba(78, 98, 142, 0.075), -1.5px -1.5px 5px rgba(255, 255, 255, 0.2), inset 0.8px 0.8px 1px rgba(255, 255, 255, 0.3) !important;
+    border: var(--badgeBorder) !important;
+}
+[data-theme="onyx"] input,
+[data-theme="onyx"] select,
+[data-theme="onyx"] textarea {
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+    box-shadow: var(--onyx-inset) !important;
+    color: var(--inputtextColor) !important;
+}
+[data-theme="onyx"] header,
+[data-theme="onyx"] .showSide {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+body[data-theme="glass-liquid"],
+body[data-theme="glass-crystal"],
+body[data-theme="glass-dark"],
+body[data-theme="glass-luxe"] {
+    background-image: url('../images/luxe-os.png');
+    background-size: cover !important;
+    background-attachment: fixed !important;
+    background-position: center !important;
+}
+body[data-theme="glass-luxe"]::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: -1;
+    background-color: rgba(0, 0, 0, 0.15);
+}
+body[data-theme="glass-liquid"] {
+    background-color: var(--bg);
+}
+[data-theme="glass-liquid"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: rgba(255, 255, 255, 0.05);
+    --sectionbgColor: rgba(255, 255, 255, 0.08);
+    --sectionbgColor2: rgba(255, 255, 255, 0.03);
+    --navbgColor: rgba(255, 255, 255, 0.1);
+    --modelBackground: rgba(255, 255, 255, 0.08);
+    --mainleftbgColor: rgba(255, 255, 255, 0.08);
+    --tabmenubgColor: rgba(255, 255, 255, 0.03);
+    --tabbgColor: rgba(255, 255, 255, 0.03);
+    --inputbgColor: rgba(255, 255, 255, 0.08);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.15);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.15);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.1);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.15);
+    --badgebgColor: rgba(255, 255, 255, 0.1);
+    --codeBg: rgba(255, 255, 255, 0.1);
+    --tableBorder: rgba(255, 255, 255, 0.15);
+    --textColor: #ffffff;
+    --logo_color: #ffffff;
+    --inputtextColor: #ffffff;
+    --activeColor: #38bdf8;
+    --activeBottom: #38bdf8 2px solid;
+    --progressbarColor: rgba(255, 255, 255, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --focusColor: rgba(59, 130, 246, 0.3);
+    --btnPrimary: rgba(37, 99, 235, 0.65);
+    --btnPrimaryHover: rgba(29, 78, 216, 0.8);
+    --btnSecondary: rgba(100, 116, 139, 0.65);
+    --btnSecondaryHover: rgba(71, 85, 105, 0.8);
+    --btnInfo: rgba(14, 165, 233, 0.65);
+    --btnInfoHover: rgba(2, 132, 199, 0.8);
+    --btnDanger: rgba(225, 29, 72, 0.65);
+    --btnDangerHover: rgba(190, 18, 60, 0.8);
+    --btnWarning: rgba(217, 119, 6, 0.65);
+    --btnWarningHover: rgba(180, 83, 9, 0.8);
+    --btnSuccess: rgba(16, 185, 129, 0.65);
+    --glass-blur: var(--glass-blur-radius, blur(16px));
+    --glass-outbox: var(--glass-shadow-out, 0 8px 24px rgba(0, 0, 0, 0.18), inset 2px 2px 3px rgba(255, 255, 255, 0.55), inset -2px -2px 3px rgba(0, 0, 0, 0.15));
+    --glass-inbox: var(--glass-shadow-in, inset 0 3px 8px rgba(0, 0, 0, 0.22), inset 2px 2px 3px rgba(0, 0, 0, 0.1), 0 1px 0 rgba(255, 255, 255, 0.4));
+}
+[data-theme="glass-liquid"] .cbi-section,
+[data-theme="glass-liquid"] .panel,
+[data-theme="glass-liquid"] .modal,
+[data-theme="glass-liquid"] .commandbox {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: var(--glass-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+[data-theme="glass-liquid"] .main-left {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: var(--glass-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+[data-theme="glass-liquid"] .navbar {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+[data-theme="glass-liquid"] .cbi-button,
+[data-theme="glass-liquid"] .btn,
+[data-theme="glass-liquid"] .ifacebadge,
+[data-theme="glass-liquid"] .node-admin-status-routes #view table,
+[data-theme="glass-liquid"] .node-admin-status-processes #view table,
+[data-theme="glass-liquid"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+[data-theme="glass-liquid"] .cbi-button:active,
+[data-theme="glass-liquid"] .btn:active {
+    box-shadow: var(--glass-inbox) !important;
+}
+[data-theme="glass-liquid"] input,
+[data-theme="glass-liquid"] select,
+[data-theme="glass-liquid"] textarea {
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-inbox) !important;
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+}
+[data-theme="glass-liquid"] header,
+[data-theme="glass-liquid"] .showSide {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+[data-theme="glass-luxe"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: rgba(255, 255, 255, 0.08);
+    --sectionbgColor: rgba(255, 255, 255, 0.12);
+    --sectionbgColor2: rgba(255, 255, 255, 0.05);
+    --navbgColor: rgba(255, 255, 255, 0.15);
+    --modelBackground: rgba(255, 255, 255, 0.12);
+    --mainleftbgColor: rgba(255, 255, 255, 0.12);
+    --tabmenubgColor: rgba(255, 255, 255, 0.05);
+    --tabbgColor: rgba(255, 255, 255, 0.05);
+    --inputbgColor: rgba(255, 255, 255, 0.1);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.25);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.25);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.15);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.2);
+    --badgebgColor: rgba(255, 255, 255, 0.15);
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.2);
+    --codeBg: rgba(255, 255, 255, 0.1);
+    --tableBorder: rgba(255, 255, 255, 0.15);
+    --textColor: #ffffff;
+    --logo_color: #ffffff;
+    --inputtextColor: #ffffff;
+    --activeColor: #38bdf8;
+    --activeBottom: #38bdf8 2px solid;
+    --progressbarColor: rgba(255, 255, 255, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #000000;
+    --progressbartxtShadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+    --focusColor: rgba(255, 255, 255, 0.2);
+    --btnPrimary: rgba(255, 255, 255, 0.25);
+    --btnPrimaryHover: rgba(255, 255, 255, 0.35);
+    --btnSecondary: rgba(255, 255, 255, 0.15);
+    --btnSecondaryHover: rgba(255, 255, 255, 0.25);
+}
+[data-theme="glass-luxe"] .main-left,
+[data-theme="glass-luxe"] .cbi-section,
+[data-theme="glass-luxe"] .panel,
+[data-theme="glass-luxe"] .modal,
+[data-theme="glass-luxe"] .commandbox,
+[data-theme="glass-luxe"] .navbar,
+[data-theme="glass-luxe"] .node-admin-status-routes #view table,
+[data-theme="glass-luxe"] .node-admin-status-processes #view table,
+[data-theme="glass-luxe"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+    border: var(--sectionBorder) !important;
+}
+[data-theme="glass-luxe"] input,
+[data-theme="glass-luxe"] select,
+[data-theme="glass-luxe"] textarea,
+[data-theme="glass-luxe"] .cbi-button,
+[data-theme="glass-luxe"] .btn,
+[data-theme="glass-luxe"] .ifacebadge {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+}
+[data-theme="glass-luxe"] header,
+[data-theme="glass-luxe"] .showSide {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+body[data-theme="glass-crystal"] {
+    background-color: transparent;
+}
+[data-theme="glass-crystal"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: transparent;
+    --sectionbgColor: transparent;
+    --sectionbgColor2: transparent;
+    --navbgColor: transparent;
+    --modelBackground: transparent;
+    --mainleftbgColor: transparent;
+    --tabmenubgColor: transparent;
+    --tabbgColor: transparent;
+    --inputbgColor: transparent;
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.2);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.22);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.12);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.18);
+    --badgebgColor: transparent;
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.18);
+    --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --tabmenuBorderLR: 1px solid rgba(255, 255, 255, 0.14);
+    --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.14);
+    --sectionnodeBorder: 1px solid rgba(255, 255, 255, 0.14);
+    --codeBg: transparent;
+    --tableBorder: rgba(255, 255, 255, 0.14);
+    --textColor: #ffffff;
+    --logo_color: #ffffff;
+    --inputtextColor: #ffffff;
+    --activeColor: #38bdf8;
+    --activeBottom: #38bdf8 2px solid;
+    --focusColor: rgba(245, 75, 92, 0.22);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --progressbarColor: rgba(255, 255, 255, 0.15);
+    --btnPrimary: transparent;
+    --btnPrimaryHover: rgba(255, 255, 255, 0.08);
+    --btnSecondary: transparent;
+    --btnSecondaryHover: rgba(255, 255, 255, 0.08);
+    --btnInfo: transparent;
+    --btnInfoHover: rgba(14, 165, 233, 0.12);
+    --btnDanger: transparent;
+    --btnDangerHover: rgba(225, 29, 72, 0.12);
+    --btnWarning: transparent;
+    --btnWarningHover: rgba(217, 119, 6, 0.12);
+    --btnSuccess: transparent;
+    --scrollbarColor: rgba(245, 75, 92, 0.34);
+    --glass-crystal-frame: 1px solid rgba(255, 255, 255, 0.2);
+    --glass-crystal-frame-soft: 1px solid rgba(255, 255, 255, 0.14);
+    --glass-crystal-line: rgba(255, 255, 255, 0.16);
+    --glass-crystal-fill: transparent;
+    --glass-crystal-hover: rgba(255, 255, 255, 0.06);
+}
+[data-theme="glass-crystal"] .main-left,
+[data-theme="glass-crystal"] .cbi-section,
+[data-theme="glass-crystal"] .panel,
+[data-theme="glass-crystal"] .modal,
+[data-theme="glass-crystal"] .commandbox {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--glass-crystal-fill) !important;
+    box-shadow: none !important;
+    border: var(--glass-crystal-frame) !important;
+}
+[data-theme="glass-crystal"] .navbar {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--glass-crystal-fill) !important;
+    box-shadow: none !important;
+    border: var(--navBorder) !important;
+}
+[data-theme="glass-crystal"] .ifacebadge,
+[data-theme="glass-crystal"] .node-admin-status-routes #view table,
+[data-theme="glass-crystal"] .node-admin-status-processes #view table,
+[data-theme="glass-crystal"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--glass-crystal-fill) !important;
+    box-shadow: none !important;
+    border: var(--glass-crystal-frame-soft) !important;
+}
+[data-theme="glass-crystal"] .cbi-button:hover,
+[data-theme="glass-crystal"] .btn:hover,
+[data-theme="glass-crystal"] .navbar a:hover {
+    background-color: var(--glass-crystal-hover) !important;
+}
+[data-theme="glass-crystal"] .cbi-button:active,
+[data-theme="glass-crystal"] .btn:active {
+    box-shadow: none !important;
+}
+[data-theme="glass-crystal"] input,
+[data-theme="glass-crystal"] select,
+[data-theme="glass-crystal"] textarea {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+}
+[data-theme="glass-crystal"] table,
+[data-theme="glass-crystal"] .table,
+[data-theme="glass-crystal"] .cbi-section-table,
+[data-theme="glass-crystal"] .cbi-section-table-row,
+[data-theme="glass-crystal"] .tr {
+    background-color: transparent !important;
+}
+[data-theme="glass-crystal"] header,
+[data-theme="glass-crystal"] .showSide {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+body[data-theme="glass-dark"] {
+    background-color: #05060a;
+}
+[data-theme="glass-dark"] {
+    --bg: transparent;
+    --mainbg: transparent;
+    --bgwhite: rgba(8, 9, 14, 0.36);
+    --sectionbgColor: rgba(10, 11, 17, 0.42);
+    --sectionbgColor2: rgba(14, 15, 22, 0.30);
+    --navbgColor: rgba(9, 10, 16, 0.52);
+    --modelBackground: rgba(8, 9, 14, 0.68);
+    --mainleftbgColor: rgba(10, 11, 17, 0.42);
+    --tabmenubgColor: rgba(12, 13, 20, 0.30);
+    --tabbgColor: rgba(12, 13, 20, 0.28);
+    --inputbgColor: rgba(7, 8, 13, 0.36);
+    --sectionBorder: 1px solid rgba(255, 255, 255, 0.07);
+    --navBorder: 1px solid rgba(255, 255, 255, 0.08);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.045);
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.10);
+    --badgebgColor: rgba(12, 13, 20, 0.36);
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.07);
+    --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.07);
+    --tabmenuBorderLR: 1px solid rgba(255, 255, 255, 0.07);
+    --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.07);
+    --sectionnodeBorder: 1px solid rgba(255, 255, 255, 0.07);
+    --codeBg: rgba(9, 10, 16, 0.42);
+    --tableBorder: rgba(255, 255, 255, 0.055);
+    --textColor: #edf2f7;
+    --logo_color: #ffffff;
+    --inputtextColor: #ffffff;
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --progressbarColor: rgba(255, 255, 255, 0.15);
+    --progressbar: var(--activeColor);
+    --activeColor: #38bdf8;
+    --activeBottom: #38bdf8 2px solid;
+    --focusColor: rgba(69, 93, 254, 0.20);
+    --btnPrimary: rgba(69, 93, 254, 0.34);
+    --btnPrimaryHover: rgba(69, 93, 254, 0.48);
+    --btnSecondary: rgba(255, 255, 255, 0.08);
+    --btnSecondaryHover: rgba(255, 255, 255, 0.14);
+    --btnInfo: rgba(14, 165, 233, 0.45);
+    --btnInfoHover: rgba(2, 132, 199, 0.62);
+    --btnDanger: rgba(225, 29, 72, 0.45);
+    --btnDangerHover: rgba(190, 18, 60, 0.62);
+    --btnWarning: rgba(217, 119, 6, 0.45);
+    --btnWarningHover: rgba(180, 83, 9, 0.62);
+    --btnSuccess: rgba(16, 185, 129, 0.45);
+    --scrollbarColor: rgba(69, 93, 254, 0.38);
+    --glass-dark-blur: var(--glass-dark-blur-radius, blur(8px) saturate(110%));
+    --glass-dark-outbox: 0 8px 24px rgba(0, 0, 0, 0.35), inset 1.5px 1.5px 1px rgba(255, 255, 255, 0.1), inset -1.5px -1.5px 2px rgba(0, 0, 0, 0.4);
+    --glass-dark-inbox: inset 0 2px 8px rgba(0, 0, 0, 0.4), inset 1.5px 1.5px 1px rgba(255, 255, 255, 0.08);
+}
+[data-theme="glass-dark"] .cbi-section,
+[data-theme="glass-dark"] .panel,
+[data-theme="glass-dark"] .modal,
+[data-theme="glass-dark"] .commandbox {
+    backdrop-filter: var(--glass-dark-blur);
+    -webkit-backdrop-filter: var(--glass-dark-blur);
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: var(--glass-dark-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+[data-theme="glass-dark"] .main-left {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--sectionbgColor) !important;
+    box-shadow: var(--glass-dark-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+[data-theme="glass-dark"] .navbar {
+    backdrop-filter: var(--glass-dark-blur);
+    -webkit-backdrop-filter: var(--glass-dark-blur);
+    box-shadow: var(--glass-dark-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.075) !important;
+}
+[data-theme="glass-dark"] .cbi-button,
+[data-theme="glass-dark"] .btn,
+[data-theme="glass-dark"] .ifacebadge,
+[data-theme="glass-dark"] .node-admin-status-routes #view table,
+[data-theme="glass-dark"] .node-admin-status-processes #view table,
+[data-theme="glass-dark"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    backdrop-filter: var(--glass-dark-blur);
+    -webkit-backdrop-filter: var(--glass-dark-blur);
+    box-shadow: var(--glass-dark-outbox) !important;
+    border: 1px solid rgba(255, 255, 255, 0.065) !important;
+}
+[data-theme="glass-dark"] .cbi-button:active,
+[data-theme="glass-dark"] .btn:active {
+    box-shadow: var(--glass-dark-inbox) !important;
+}
+[data-theme="glass-dark"] input,
+[data-theme="glass-dark"] select,
+[data-theme="glass-dark"] textarea {
+    backdrop-filter: var(--glass-dark-blur);
+    -webkit-backdrop-filter: var(--glass-dark-blur);
+    box-shadow: var(--glass-dark-inbox) !important;
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+}
+[data-theme="glass-dark"] header,
+[data-theme="glass-dark"] .showSide {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+[data-theme="neon"] {
+    --bg: #121526;
+    --mainbg: #1a1e36;
+    --bgwhite: #1a1e36;
+    --sectionbgColor: #1a1e36;
+    --sectionbgColor2: #222847;
+    --navbgColor: #797979;
+    --modelBackground: #1a1e36;
+    --mainleftbgColor: #1a1e36;
+    --tabmenubgColor: #1a1e36;
+    --tabbgColor: #1a1e36;
+    --inputbgColor: #121526;
+    --sectionBorder: 1px solid var(--activeColor);
+    --navBorder: 1px solid var(--activeColor);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.05);
+    --inputBorder: 1px solid var(--activeColor);
+    --badgebgColor: #222847;
+    --badgeBorder: 1px solid var(--activeColor);
+    --sectiontabBorder: 1px solid var(--activeColor);
+    --tabmenuBorderLR: 1px solid var(--activeColor);
+    --tabmenuBottom: 1px solid var(--activeColor);
+    --sectionnodeBorder: 1px solid var(--activeColor);
+    --codeBg: #222847;
+    --tableBorder: rgba(255, 255, 255, 0.05);
+    --textColor: #dbe1f0;
+    --logo_color: #ffffff;
+    --inputtextColor: #ffffff;
+    --activeColor: #f43f5e;
+    --activeBottom: #f43f5e 2px solid;
+    --focusColor: rgba(255, 255, 255, 0.15);
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --progressbarColor: rgba(244, 63, 94, 0.15);
+    --progressbar: var(--activeColor);
+    --btnPrimary: var(--activeColor);
+    --btnPrimaryHover: #0284c7;
+    --btnSecondary: #6a6bcd;
+    --btnSecondaryHover: #2c2d85;
+    --neon-shadow: 0 0 10px -3px var(--activeColor), inset 0 0 4px -2px var(--activeColor);
+}
+[data-theme="neon"] .main-left,
+[data-theme="neon"] .cbi-section,
+[data-theme="neon"] .panel,
+[data-theme="neon"] .modal,
+[data-theme="neon"] .commandbox,
+[data-theme="neon"] .navbar,
+[data-theme="neon"] .node-admin-status-routes #view table,
+[data-theme="neon"] .node-admin-status-processes #view table,
+[data-theme="neon"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    box-shadow: var(--neon-shadow) !important;
+    border: var(--sectionBorder) !important;
+    background-color: var(--sectionbgColor) !important;
+}
+[data-theme="neon"] input,
+[data-theme="neon"] select,
+[data-theme="neon"] textarea {
+    box-shadow: inset 0 0 4px rgba(var(--neon-rgb), 0.05) !important;
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+}
+[data-theme="rgb"] {
+    --bg: #090a0f;
+    --mainbg: #10121a;
+    --bgwhite: #161822;
+    --activeColor: #f43f5e;
+    --activeBottom: #f43f5e 2px solid;
+    --textColor: #cbd5e1;
+    --borderColor: rgba(255, 255, 255, 0.1);
+    --navbgColor: #161822;
+    --navBorder: 1px solid rgba(255, 255, 255, 0.05);
+    --sectionbgColor: #161822;
+    --sectionbgColor2: #1d202e;
+    --sectionShaddow: 0 0 0 transparent;
+    --sectionBorder: 1px solid transparent;
+    --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.1);
+    --tabmenuBorderLR: 1px solid rgba(255, 255, 255, 0.1);
+    --tabmenubgColor: #161822;
+    --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.1);
+    --sectionnodeBorder: 1px solid rgba(255, 255, 255, 0.1);
+    --cbilineColor: 1px solid rgba(255, 255, 255, 0.04);
+    --tabbgColor: #161822;
+    --inputbgColor: #090a0f;
+    --inputtextColor: #ffffff;
+    --inputBorder: 1px solid rgba(255, 255, 255, 0.1);
+    --mainleftbgColor: #161822;
+    --badgebgColor: #1d202e;
+    --badgeBorder: 1px solid rgba(255, 255, 255, 0.1);
+    --progressbarColor: rgba(244, 63, 94, 0.15);
+    --progressbar: var(--activeColor);
+    --progressbartxtColor: #f8fafc;
+    --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    --logo_color: #ffffff;
+    --alertBackground: #3b82f6;
+    --modelBackground: #161822;
+    --scrollbarColor: #3b82f6;
+    --focusColor: rgba(59, 130, 246, 0.2);
+    --codeBg: #1d202e;
+    --codeColor: #cbd5e1;
+    --btnPrimary: #3b82f6;
+    --btnPrimaryHover: #2563eb;
+    --btnSecondary: #475569;
+    --btnSecondaryHover: #334155;
+    --tableBorder: rgba(255, 255, 255, 0.04);
+}
+[data-theme="rgb"] .main-left,
+[data-theme="rgb"] .cbi-section,
+[data-theme="rgb"] .panel,
+[data-theme="rgb"] .modal,
+[data-theme="rgb"] .commandbox,
+[data-theme="rgb"] .navbar,
+[data-theme="rgb"] .node-admin-status-routes #view table,
+[data-theme="rgb"] .node-admin-status-processes #view table,
+[data-theme="rgb"] .node-admin-status-realtime-connections #view table[id*="connections"] {
+    background-color: var(--sectionbgColor) !important;
+    border: 1px solid transparent;
+    box-shadow: 0 0 0 transparent;
+    animation: soft-rgb-outbox 10s linear infinite !important;
+}
+[data-theme="rgb"] input,
+[data-theme="rgb"] select,
+[data-theme="rgb"] textarea {
+    background: var(--inputbgColor) !important;
+    border: var(--inputBorder) !important;
+}
+@keyframes soft-rgb-outbox {
+    0%, 100% {
+        border-color: rgba(244, 63, 94, 0.6);
+        box-shadow: 0 0 16px rgba(244, 63, 94, 0.35), inset 0 0 5px rgba(244, 63, 94, 0.15);
+    }
+    20% {
+        border-color: rgba(59, 130, 246, 0.6);
+        box-shadow: 0 0 16px rgba(59, 130, 246, 0.35), inset 0 0 5px rgba(59, 130, 246, 0.15);
+    }
+    40% {
+        border-color: rgba(16, 185, 129, 0.6);
+        box-shadow: 0 0 16px rgba(16, 185, 129, 0.35), inset 0 0 5px rgba(16, 185, 129, 0.15);
+    }
+    60% {
+        border-color: rgba(234, 179, 8, 0.6);
+        box-shadow: 0 0 16px rgba(234, 179, 8, 0.35), inset 0 0 5px rgba(234, 179, 8, 0.15);
+    }
+    80% {
+        border-color: rgba(168, 85, 247, 0.6);
+        box-shadow: 0 0 16px rgba(168, 85, 247, 0.35), inset 0 0 5px rgba(168, 85, 247, 0.15);
+    }
+}
+@media (prefers-color-scheme: dark) {
+    [data-theme="normal"]:not([data-force-scheme="light"]),
+    body[data-mode="normal"]:not([data-theme="light"]) {
+        --bg: #0f1115;
+        --mainbg: #15181d;
+        --bgwhite: #15181d;
+        --activeColor: #eab308;
+        --activeBottom: #eab308 2px solid;
+        --textColor: #ffffff;
+        --borderColor: rgba(255, 255, 255, 0.1);
+        --navbgColor: #797979;
+        --navBorder: 1px solid #797979;
+        --sectionbgColor: #15181d;
+        --sectionbgColor2: #1a1e24;
+        --sectionShaddow: 4px 4px 15px rgba(0, 0, 0, 0.2);
+        --sectionBorder: 1px solid #797979;
+        --sectiontabBorder: 1px solid #797979;
+        --tabmenuBorderLR: 1px solid #797979;
+        --tabmenubgColor: #15181d;
+        --tabmenuBottom: #797979 1px solid;
+        --sectionnodeBorder: #797979 1px solid;
+        --cbilineColor: #797979 1px solid;
+        --tabbgColor: #15181d;
+        --inputbgColor: #0f1115;
+        --inputtextColor: #ffffff;
+        --inputBorder: 1px solid #333842;
+        --mainleftbgColor: #15181d;
+        --badgebgColor: #1e222a;
+        --badgeBorder: #797979 1px solid;
+        --progressbarColor: rgba(234, 179, 8, 0.15);
+        --progressbar: var(--activeColor);
+        --progressbartxtColor: #111827;
+        --progressbartxtShadow: 0 1px 3px rgba(255, 255, 255, 0.85);
+        --logo_color: #ffffff;
+        --alertBackground: #d4af37;
+        --modelBackground: #15181d;
+        --scrollbarColor: #333842;
+        --focusColor: rgba(212, 175, 55, 0.25);
+        --codeBg: #15181d;
+        --codeColor: #cbd5e1;
+        --btnPrimary: #d4af37;
+        --btnPrimaryHover: #b8972e;
+        --btnSecondary: #333842;
+        --btnSecondaryHover: #474d5a;
+        --btnInfo: #0ea5e9;
+        --btnInfoHover: #0284c7;
+        --btnDanger: #e11d48;
+        --btnDangerHover: #be123c;
+        --btnWarning: #d97706;
+        --btnWarningHover: #b45309;
+        --btnSuccess: #10b981;
+        --tableBorder: #797979;
+    }
+    [data-theme="neo"]:not([data-force-scheme="light"]) {
+        --bg: #12141c;
+        --mainbg: #12141c;
+        --bgwhite: #171a23;
+        --sectionbgColor: #171a23;
+        --sectionbgColor2: #1f2330;
+        --navbgColor: rgba(23, 26, 35, 0.95);
+        --modelBackground: #171a23;
+        --mainleftbgColor: #171a23;
+        --tabmenubgColor: #171a23;
+        --tabbgColor: #171a23;
+        --inputbgColor: #12141c;
+        --sectionBorder: 1px solid rgba(226, 232, 240, 0.24);
+        --navBorder: 1px solid rgba(226, 232, 240, 0.24);
+        --cbilineColor: 1px solid rgba(226, 232, 240, 0.06);
+        --inputBorder: 1px solid rgba(226, 232, 240, 0.22);
+        --badgebgColor: #1f2330;
+        --badgeBorder: 1px solid rgba(226, 232, 240, 0.22);
+        --sectiontabBorder: 1px solid rgba(226, 232, 240, 0.22);
+        --tabmenuBorderLR: 1px solid rgba(226, 232, 240, 0.22);
+        --tabmenuBottom: 1px solid rgba(226, 232, 240, 0.22);
+        --sectionnodeBorder: 1px solid rgba(226, 232, 240, 0.22);
+        --codeBg: #1f2330;
+        --tableBorder: rgba(226, 232, 240, 0.08);
+        --textColor: #e5e7eb;
+        --logo_color: #f8fafc;
+        --inputtextColor: #f8fafc;
+        --activeColor: #e06b74;
+        --activeBottom: #e06b74 2px solid;
+        --focusColor: rgba(224, 107, 116, 0.18);
+        --progressbarColor: #1f2330;
+        --progressbar: var(--activeColor);
+        --progressbartxtColor: #f8fafc;
+        --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+        --btnPrimary: #e06b74;
+        --btnPrimaryHover: #cc5e66;
+        --neo-shadow: 4px 4px 0px rgba(0, 0, 0, 0.55);
+        --neo-inset: 2px 2px 0px rgba(0, 0, 0, 0.55);
+        --bttextColor: var(--textColor);
+    }
+    body[data-theme="neox"]:not([data-force-scheme="light"]) {
+        background-color: #1a1a24;
+    }
+    [data-theme="neox"]:not([data-force-scheme="light"]) {
+        --bg: #1a1a24;
+        --mainbg: #1a1a24;
+        --bgwhite: #1a1a24;
+        --sectionbgColor: #1a1a24;
+        --sectionbgColor2: #20202c;
+        --navbgColor: rgba(26, 26, 36, 0.95);
+        --modelBackground: #1a1a24;
+        --mainleftbgColor: #1a1a24;
+        --tabmenubgColor: #1a1a24;
+        --tabbgColor: #1a1a24;
+        --inputbgColor: #1a1a24;
+        --sectionBorder: 1px solid transparent;
+        --navBorder: 1px solid transparent;
+        --cbilineColor: 1px solid rgba(255, 255, 255, 0.03);
+        --inputBorder: 1px solid transparent;
+        --badgebgColor: #20202c;
+        --badgeBorder: 1px solid transparent;
+        --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.03);
+        --tabmenuBorderLR: 1px solid transparent;
+        --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.03);
+        --sectionnodeBorder: 1px solid transparent;
+        --codeBg: #121219;
+        --tableBorder: rgba(255, 255, 255, 0.03);
+        --textColor: #cbd5e1;
+        --logo_color: #f8fafc;
+        --inputtextColor: #f8fafc;
+        --activeColor: #eab308;
+        --activeBottom: #eab308 2px solid;
+        --focusColor: rgba(99, 102, 241, 0.15);
+        --progressbarColor: rgba(234, 179, 8, 0.15);
+        --progressbar: var(--activeColor);
+        --progressbartxtColor: #f8fafc;
+        --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+        --btnPrimary: #6366f1;
+        --btnPrimaryHover: #4f46e5;
+        --neox-shadow: 7px 7px 15px rgba(0, 0, 0, 0.5), -4px -4px 10px rgba(255, 255, 255, 0.025), inset 1px 1px 1px rgba(255, 255, 255, 0.035), inset -1px -1px 1px rgba(0, 0, 0, 0.42);
+        --neox-side-shadow: 5px 7px 14px rgba(0, 0, 0, 0.46), -2px -2px 6px rgba(255, 255, 255, 0.02), inset 1px 1px 1px rgba(255, 255, 255, 0.03), inset -1px -1px 1px rgba(0, 0, 0, 0.4);
+        --neox-nav-shadow: 4px 6px 12px rgba(0, 0, 0, 0.42), -2px -2px 5px rgba(255, 255, 255, 0.018), inset 1px 1px 1px rgba(255, 255, 255, 0.028), inset -1px -1px 1px rgba(0, 0, 0, 0.36);
+        --neox-inset: inset 5px 5px 10px rgba(0, 0, 0, 0.58), inset -5px -5px 10px rgba(255, 255, 255, 0.02);
+        --neox-header-shadow: 0 6px 16px rgba(0, 0, 0, 0.42);
+        --bttextColor: var(--textColor);
+    }
+    body[data-theme="glaze"]:not([data-force-scheme="light"]) {
+        background: linear-gradient(135deg, #0b1120 0%, #2a1b54 50%, #0f2e4a 100%) !important;
+        background-size: cover !important;
+        background-attachment: fixed !important;
+        background-position: center !important;
+    }
+    [data-theme="glaze"]:not([data-force-scheme="light"]) {
+        --bgwhite: rgba(16, 23, 39, 0.5);
+        --sectionbgColor: rgba(16, 23, 39, 0.5);
+        --sectionbgColor2: rgba(24, 34, 55, 0.34);
+        --navbgColor: rgba(16, 23, 39, 0.54);
+        --modelBackground: rgba(16, 23, 39, 0.64);
+        --mainleftbgColor: rgba(16, 23, 39, 0.52);
+        --tabmenubgColor: rgba(23, 31, 49, 0.34);
+        --tabbgColor: rgba(23, 31, 49, 0.34);
+        --inputbgColor: rgba(18, 24, 39, 0.5);
+        --sectionBorder: 1px solid rgba(255, 255, 255, 0.12);
+        --navBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --inputBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --badgeBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --textColor: #e9eefb;
+        --logo_color: #f4f7ff;
+        --inputtextColor: #f4f7ff;
+        --activeColor: #8b5cf6;
+        --activeBottom: #8b5cf6 2px solid;
+        --focusColor: rgba(95, 200, 255, 0.2);
+        --progressbarColor: rgba(139, 92, 246, 0.15);
+        --progressbar: var(--activeColor);
+        --progressbartxtColor: #f4f7ff;
+        --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        --codeBg: rgba(7, 11, 20, 0.45);
+        --tableBorder: rgba(255, 255, 255, 0.08);
+        --glaze-shadow: 3px 5px 10px rgba(0, 0, 0, 0.18), -1.5px -1.5px 5px rgba(255, 255, 255, 0.012), inset 0.8px 0.8px 1px rgba(255, 255, 255, 0.024), inset -0.8px -0.8px 1px rgba(0, 0, 0, 0.2);
+        --glaze-inset: inset 2.5px 2.5px 6px rgba(0, 0, 0, 0.2), inset -2.5px -2.5px 6px rgba(255, 255, 255, 0.012);
+    }
+    body[data-theme="onyx"]:not([data-force-scheme="light"]) {
+        background: radial-gradient(circle at 12% 16%, rgba(117, 88, 255, 0.24), transparent 30%), radial-gradient(circle at 86% 18%, rgba(34, 211, 238, 0.19), transparent 32%), radial-gradient(circle at 78% 86%, rgba(245, 75, 128, 0.14), transparent 30%), linear-gradient(135deg, #0d1424 0%, #121b30 46%, #0c1424 100%);
+        background-size: cover !important;
+        background-attachment: fixed !important;
+        background-position: center !important;
+    }
+    [data-theme="onyx"]:not([data-force-scheme="light"]) {
+        --bgwhite: rgba(16, 23, 39, 0.5);
+        --sectionbgColor: rgba(16, 23, 39, 0.5);
+        --sectionbgColor2: rgba(24, 34, 55, 0.34);
+        --navbgColor: rgba(16, 23, 39, 0.65);
+        --modelBackground: rgba(16, 23, 39, 0.64);
+        --mainleftbgColor: rgba(16, 23, 39, 0.52);
+        --tabmenubgColor: rgba(23, 31, 49, 0.34);
+        --tabbgColor: rgba(23, 31, 49, 0.34);
+        --inputbgColor: rgba(18, 24, 39, 0.5);
+        --sectionBorder: 1px solid rgba(255, 255, 255, 0.12);
+        --navBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --inputBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --badgeBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --textColor: #e9eefb;
+        --logo_color: #f4f7ff;
+        --inputtextColor: #f4f7ff;
+        --activeColor: #8b5cf6;
+        --activeBottom: #8b5cf6 2px solid;
+        --focusColor: rgba(95, 200, 255, 0.2);
+        --progressbarColor: rgba(139, 92, 246, 0.15);
+        --progressbar: var(--activeColor);
+        --progressbartxtColor: #f4f7ff;
+        --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+        --codeBg: rgba(7, 11, 20, 0.45);
+        --tableBorder: rgba(255, 255, 255, 0.08);
+        --onyx-shadow: 3px 5px 10px rgba(0, 0, 0, 0.18), -1.5px -1.5px 5px rgba(255, 255, 255, 0.012), inset 0.8px 0.8px 1px rgba(255, 255, 255, 0.024), inset -0.8px -0.8px 1px rgba(0, 0, 0, 0.2);
+        --onyx-inset: inset 2.5px 2.5px 6px rgba(0, 0, 0, 0.2), inset -2.5px -2.5px 6px rgba(255, 255, 255, 0.012);
+    }
+    [data-theme="glass-crystal"] {
+        --sectionBorder: 1px solid rgba(255, 255, 255, 0.14);
+        --navBorder: 1px solid rgba(255, 255, 255, 0.16);
+        --cbilineColor: 1px solid rgba(255, 255, 255, 0.08);
+        --inputBorder: 1px solid rgba(255, 255, 255, 0.12);
+        --badgeBorder: 1px solid rgba(255, 255, 255, 0.12);
+        --sectiontabBorder: 1px solid rgba(255, 255, 255, 0.1);
+        --tabmenuBorderLR: 1px solid rgba(255, 255, 255, 0.1);
+        --tabmenuBottom: 1px solid rgba(255, 255, 255, 0.1);
+        --sectionnodeBorder: 1px solid rgba(255, 255, 255, 0.1);
+        --tableBorder: rgba(255, 255, 255, 0.1);
+        --textColor: #f8fafc;
+        --logo_color: #f8fafc;
+        --inputtextColor: #f8fafc;
+        --activeColor: #38bdf8;
+        --activeBottom: #38bdf8 2px solid;
+        --focusColor: rgba(245, 75, 92, 0.18);
+        --progressbarColor: rgba(255, 255, 255, 0.15);
+        --progressbar: var(--activeColor);
+        --progressbartxtColor: #f8fafc;
+        --progressbartxtShadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+        --scrollbarColor: rgba(245, 75, 92, 0.28);
+        --glass-crystal-frame: 1px solid rgba(255, 255, 255, 0.14);
+        --glass-crystal-frame-soft: 1px solid rgba(255, 255, 255, 0.1);
+        --glass-crystal-line: rgba(255, 255, 255, 0.1);
+        --glass-crystal-hover: rgba(255, 255, 255, 0.045);
+    }
+}

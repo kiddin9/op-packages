@@ -1,0 +1,15 @@
+#!/bin/sh
+# Seed the VLAN working directories on first install.
+mkdir -p /etc/quickactions/vlan/templates
+mkdir -p /etc/quickactions/vlan/generated
+chmod 755 /etc/quickactions/vlan /etc/quickactions/vlan/templates /etc/quickactions/vlan/generated
+
+# Default config section
+have=$(uci -q get quickactions.vlan.tier)
+if [ -z "$have" ]; then
+    uci -q set quickactions.vlan=vlan
+    uci -q set quickactions.vlan.tier=auto
+    uci -q set quickactions.vlan.snapshot_keep=20
+    uci -q commit quickactions
+fi
+exit 0

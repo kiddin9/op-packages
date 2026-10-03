@@ -1,0 +1,19 @@
+{
+  "luci-app-cf-dns-speedtest": {
+    "description": "Cloudflare DNS speedtest configuration",
+    "read": {
+      "uci": [ "cf_dns_speedtest" ],
+      "file": {
+        "/var/lib/cf-dns-speedtest/status": [ "read" ],
+        "/var/lib/cf-dns-speedtest/best_ip": [ "read" ],
+        "/var/lib/cf-dns-speedtest/run.log": [ "read" ]
+      }
+    },
+    "write": {
+      "uci": [ "cf_dns_speedtest" ],
+      "file": {
+        "/usr/bin/cf-dns-speedtest": [ "exec" ]
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+#!/bin/sh
+# Flush conntrack when a watched WAN interface goes up or down.
+# Watched list = primary + backups from /etc/config/quickactions failover.
+
+[ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ] || exit 0
+
+. /lib/functions.sh
+config_load quickactions
+
+config_get WATCH   failover primary   ""
+config_get BACKUPS failover backups   ""
+
+IFACE="$INTERFACE"
+for i in $WATCH $BACKUPS; do
+    if [ "$i" = "$IFACE" ]; then
+        if [ -e /proc/net/nf_conntrack ]; then
+            echo f > /proc/net/nf_conntrack
+        elif [ -e /proc/net/ip_conntrack ]; then
+            echo f > /proc/net/ip_conntrack
+        fi
+        logger -t quickactions-hotplug "IFACE $IFACE $ACTION; conntrack flushed"
+        break
+    fi
+done
+exit 0

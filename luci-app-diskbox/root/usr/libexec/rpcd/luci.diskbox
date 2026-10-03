@@ -1,0 +1,1736 @@
+#!/bin/sh
+# LuCI RPCD Backend for luci-app-diskbox
+# Copyright (C) 2026 permails <https://github.com/permails/luci-app-diskbox>
+# Licensed under the GNU General Public License v3.0
+
+. /usr/share/libubox/jshn.sh
+
+# --- Per-process caches -----------------------------------------------------
+# rpcd runs every RPC in a fresh process, so a process-global cache is
+# inherently per-request: built on first use, never spanning calls. We cache
+# facts that are invariant within a single RPC (a device's fstype, its parent
+# disk, whether it is external) so the listing loop and the guard chain do not
+# each re-run blkid / get_parent_disk / is_external_device for the same device.
+# A stale entry can only ever surface in a single in-flight call after a
+# format, and the brick-critical guard decision is always made *before* any
+# format - so the cache never changes a protection outcome.
+# Entries are stored as |<key>=<value>|<key>=<value>... The "=" boundary keeps
+# a key from colliding with a value that happens to name the same device.
+_FS_CACHE=""     # "|<dev>=<fstype>|<dev>=<fstype>..."
+_PD_CACHE=""     # "|<bname>=<parent>|<bname>=<parent>..."
+_EXT_CACHE=""    # "|<bname>=0|<bname>=1..."
+
+# dev_fs_type <dev>: device filesystem type, cached per process (avoids a
+# redundant blkid when both the listing loop and the guard chain probe it).
+dev_fs_type() {
+	local d="$1"
+	d=${d#/dev/}
+	local found="" val=""
+	case "$_FS_CACHE" in
+		*"|$d="*) found=1; val=${_FS_CACHE#*|$d=}; val=${val%%|*} ;;
+	esac
+	[ -n "$found" ] && { printf '%s' "$val"; return; }
+	val=$(blkid -o value -s TYPE "/dev/$d" 2>/dev/null | head -n1)
+	_FS_CACHE="${_FS_CACHE}|${d}=${val}"
+	printf '%s' "$val"
+}
+
+# Helper: format bytes to human readable string (e.g. 1.23 GB)
+format_bytes() {
+	local bytes="$1"
+	[ -z "$bytes" ] && echo "-" && return
+	awk -v b="$bytes" 'BEGIN {
+		split("B KB MB GB TB PB", u, " ");
+		i = 1;
+		while (b >= 1024 && i < 6) {
+			b = b / 1024;
+			i++;
+		}
+		if (i == 1)
+			printf "%.0f %s", b, u[i];
+		else
+			printf "%.2f %s", b, u[i];
+	}'
+}
+
+# Helper: check if device or partition is in use (mounted, swap, raid)
+check_inuse() {
+	local dev="$1"
+	local bname=$(basename "$dev")
+	if grep -q "^/dev/${bname}[[:space:]]" /proc/mounts 2>/dev/null; then
+		echo "1"
+		return
+	fi
+	if grep -q "^/dev/${bname}[[:space:]]" /proc/swaps 2>/dev/null; then
+		echo "1"
+		return
+	fi
+	if [ -f /proc/mdstat ] && grep -q "${bname}" /proc/mdstat 2>/dev/null; then
+		echo "1"
+		return
+	fi
+	echo "0"
+}
+
+# Helper: get mount point for partition
+get_mount_point() {
+	local dev="$1"
+	local bname=$(basename "$dev")
+	local mnt=$(awk -v d="/dev/$bname" '$1==d {printf "%s ", $2}' /proc/mounts 2>/dev/null)
+	if [ -n "$mnt" ]; then
+		echo "$mnt" | sed 's/ $//'
+		return
+	fi
+	if grep -q "^/dev/${bname}[[:space:]]" /proc/swaps 2>/dev/null; then
+		echo "swap"
+		return
+	fi
+	if [ -f /proc/mdstat ]; then
+		local md=$(awk -v d="$bname" '$0 ~ d {gsub(/[[\]:]/,""); print $1}' /proc/mdstat 2>/dev/null | head -n1)
+		if [ -n "$md" ]; then
+			echo "Raid Member: $md"
+			return
+		fi
+	fi
+	echo "-"
+}
+
+# Helper: run smartctl with fallback device types
+run_smartctl() {
+	local dev="$1"
+	local opts="$2"
+	which smartctl >/dev/null 2>&1 || return
+	
+	local devtype=""
+	case "$dev" in
+		nvme*) devtype="nvme" ;;
+	esac
+	
+	if [ -n "$devtype" ]; then
+		smartctl -d "$devtype" $opts "/dev/$dev" 2>/dev/null && return
+	fi
+
+	for t in "" "sat" "scsi" "nvme"; do
+		local res=""
+		if [ -z "$t" ]; then
+			res=$(smartctl $opts "/dev/$dev" 2>&1)
+		else
+			res=$(smartctl -d "$t" $opts "/dev/$dev" 2>&1)
+		fi
+		if echo "$res" | grep -qE "START OF SMART DATA SECTION|START OF READ SMART DATA SECTION|NVMe Version:|SMART Health Status:|Device is in [A-Z]+ mode"; then
+			echo "$res"
+			return
+		fi
+	done
+	smartctl $opts "/dev/$dev" 2>&1
+}
+
+# Methods
+# ===== BEGIN SYSTEM-DISK GUARD v5 (hotpatch 2026-09-03) =====
+# v5.2: multi-signal system-partition classification (cross-SoC, FIT-robust)
+#   hard (code:2)  : live base system (mounted at / or /rom, squashfs) and
+#                    small firmware-label partitions on the root disk
+#   soft (code:3)  : mounted or filesystem-bearing partitions on internal
+#                    disks (incl. /overlay = factory-reset level warning);
+#                    unmounted small partitions on the root disk (A/B slots)
+#   data space     : ANY partition > 4GiB is user data, never "system"
+#                    (128G eMMC: 2G system + 126G data area, data is often
+#                    rootfs_data mounted at /overlay)
+#   system disk    : disk holding the root= partition (fallback: block device
+#                    backing / or /overlay*); mktable hard-blocked, create
+#                    allowed (unallocated space only), remove per-partition
+
+# is_external_device: returns 0 if external (USB), 1 if internal.
+# USB is detected via the sysfs device link, so x86 internal SATA (sd*)
+# and SoC internal NVMe are correctly treated as internal.
+is_external_device() {
+	local bname=$(basename "$1")
+	# Memoize per process: a disk's bus type is invariant within a call, and
+	# every partition on it re-asks the same question from the guard chain.
+	local found="" ext=""
+	case "$_EXT_CACHE" in
+		*"|$bname="*) found=1; ext=${_EXT_CACHE#*|$bname=}; ext=${ext%%|*} ;;
+	esac
+	if [ -n "$found" ]; then
+		[ "$ext" = "1" ] && return 0
+		return 1
+	fi
+	local link=$(readlink -f "/sys/block/$bname/device" 2>/dev/null)
+	case "$link" in
+		*usb*) ext=1 ;;
+		*) ext=0 ;;
+	esac
+	_EXT_CACHE="${_EXT_CACHE}|${bname}=${ext}"
+	[ "$ext" = "1" ] && return 0
+	return 1
+}
+
+# get_parent_disk: whole-disk name for a partition; the name itself for a disk.
+# A partition's sysfs dir contains a file named ".." holding the disk name -
+# works whether or not partitions are listed in /sys/block (MTK FIT images
+# list them only under the disk dir).
+get_parent_disk() {
+	local bname=$(basename "$1")
+	# Memoize per process: a partition's parent disk is invariant within a call,
+	# and the guard chain asks for the same parent up to three times per part.
+	local found="" val=""
+	case "$_PD_CACHE" in
+		*"|$bname="*) found=1; val=${_PD_CACHE#*|$bname=}; val=${val%%|*} ;;
+	esac
+	[ -n "$found" ] && { printf '%s' "$val"; return; }
+	if [ -f "/sys/block/$bname/.." ]; then
+		val=$(head -n1 "/sys/block/$bname/.." 2>/dev/null)
+		_PD_CACHE="${_PD_CACHE}|${bname}=${val}"
+		printf '%s' "$val"
+		return
+	fi
+	[ -e "/sys/block/$bname" ] && { _PD_CACHE="${_PD_CACHE}|${bname}=${bname}"; printf '%s' "$bname"; return; }
+	for d in /sys/block/*/; do
+		if [ -e "${d%/}/$bname" ]; then
+			val=$(basename "$d")
+			_PD_CACHE="${_PD_CACHE}|${bname}=${val}"
+			printf '%s' "$val"
+			return
+		fi
+	done
+	val=$(lsblk -no PKNAME "/dev/$bname" 2>/dev/null | head -n1)
+	_PD_CACHE="${_PD_CACHE}|${bname}=${val}"
+	printf '%s' "$val"
+}
+
+# get_root_disk: the system disk. Resolution order:
+#   1) root= cmdline device, if it is a real sd/mmcblk/nvme/vd disk
+#   2) block device backing / or /overlay*, if a real disk
+#   3) FIT fallback: the internal (non-usb) disk. On MTK FIT images
+#      root=/dev/fit0 is a virtual platform/fitblk device (not a block
+#      partition), so fall back to the physical internal disk it lives on.
+get_root_disk() {
+	# Invariant per process (one rpcd invocation = one process); cache the answer
+	# so per-partition callers (partition_is_boot / disk_is_root_disk) don't
+	# re-derive it every time.
+	[ -n "${_ROOT_DISK+x}" ] && { printf '%s' "$_ROOT_DISK"; return; }
+	_ROOT_DISK=$(get_root_disk_impl)
+	printf '%s' "$_ROOT_DISK"
+}
+
+get_root_disk_impl() {
+	local rootdev=$(grep -o 'root=/dev/[^ ]*' /proc/cmdline 2>/dev/null | sed 's|root=/dev/||' | head -n1)
+	if [ -n "$rootdev" ]; then
+		local rd=$(get_parent_disk "$rootdev")
+		case "$rd" in sd*|mmcblk*|nvme*|vd*) echo "$rd"; return ;; esac
+	fi
+	local dev=$(awk '$2=="/" || index($2, "/overlay")==1 { if (index($1, "/dev/")==1) { s=$1; sub(/^\/dev\//, "", s); print s; exit } }' /proc/mounts 2>/dev/null)
+	if [ -n "$dev" ]; then
+		local rd=$(get_parent_disk "$dev")
+		case "$rd" in sd*|mmcblk*|nvme*|vd*) echo "$rd"; return ;; esac
+	fi
+	# FIT fallback: the internal (non-usb) disk
+	for d in /sys/block/sd* /sys/block/mmcblk* /sys/block/nvme* /sys/block/vd*; do
+		[ -e "$d/device" ] || continue
+		local bn=$(basename "$d")
+		case "$bn" in *boot*) continue ;; esac
+		is_external_device "$bn" || { echo "$bn"; return; }
+	done
+}
+
+# is_live_root_mount: returns 0 if the device is the live base system,
+# i.e. mounted at / (real-fs root) or /rom (squashfs lower of overlayfs).
+# Wiping these bricks the device - size-independent, checked first.
+is_live_root_mount() {
+	local bname=$(basename "$1")
+	awk -v d="/dev/$bname" '$1==d && ($2=="/" || $2=="/rom") { found=1; exit } END { exit (found ? 0 : 1) }' /proc/mounts 2>/dev/null
+}
+
+# is_overlay_mount: returns 0 if the device is mounted at /overlay*
+# (rootfs_data: user data + config; wiping = factory reset, not brick)
+is_overlay_mount() {
+	local bname=$(basename "$1")
+	awk -v d="/dev/$bname" '$1==d && index($2, "/overlay")==1 { found=1; exit } END { exit (found ? 0 : 1) }' /proc/mounts 2>/dev/null
+}
+
+# part_large_enough: returns 0 if the block device exceeds 4 GiB (awk math, 32-bit safe)
+# Size file: top-level /sys/block/<part>/size, or under the parent disk dir
+# (/sys/block/<disk>/<part>/size) on layouts where partitions are not
+# listed in /sys/block (e.g. MTK FIT eMMC). sysfs size is always 512-byte sectors.
+part_large_enough() {
+	local bname=$(basename "$1")
+	local parent=$(get_parent_disk "$bname")
+	local szpath="/sys/block/$bname/size"
+	[ "$parent" != "$bname" ] && szpath="/sys/block/$parent/$bname/size"
+	[ -e "$szpath" ] || szpath="/sys/block/$bname/size"
+	local sec=$(cat "$szpath" 2>/dev/null || echo 0)
+	case "$sec" in ''|*[!0-9]*) sec=0 ;; esac
+	awk -v s="$sec" 'BEGIN { exit ((s*512 > 4294967296) ? 0 : 1) }'
+}
+
+# disk_is_root_disk: returns 0 if this is the system (root) disk
+disk_is_root_disk() {
+	local bname=$(basename "$1")
+	local rootdisk=$(get_root_disk)
+	[ -n "$rootdisk" ] && [ "$bname" = "$rootdisk" ]
+}
+
+# partition_is_boot: returns 0 if a system/firmware partition (hard-protected)
+# v5.2 ordering: brick-level signals first (size-independent), then the
+# 4GiB data-space rule, then small-on-system-disk = firmware.
+# Robust to absent GPT labels and MTK FIT images (root=/dev/fit0):
+# on a router the small partitions on the internal system disk are
+# firmware (kernel/rootfs/factory/A-B slots); the large one is user data.
+partition_is_boot() {
+	# Memoize per device: guard state is invariant during a single RPC (rpcd
+	# runs each call in a fresh process, so the cache never spans requests).
+	# partition_is_data re-enters this, so without caching the whole guard
+	# chain (get_parent_disk / is_external_device / is_live_root_mount /
+	# blkid / part_large_enough / get_root_disk) ran twice per partition.
+	local _bk
+	_bk=$(basename "$1")
+	case "$_BOOT_CACHE" in
+		*"|$_bk=1|"*) return 0 ;;
+		*"|$_bk=0|"*) return 1 ;;
+	esac
+	if _partition_is_boot_impl "$@"; then
+		_BOOT_CACHE="$_BOOT_CACHE|$_bk=1|"
+		return 0
+	fi
+	_BOOT_CACHE="$_BOOT_CACHE|$_bk=0|"
+	return 1
+}
+
+_partition_is_boot_impl() {
+	local bname=$(basename "$1")
+	local parent=$(get_parent_disk "$bname")
+	[ -n "$parent" ] || return 1
+	# (1) external disks never hold system partitions
+	is_external_device "$parent" && return 1
+	# (2) brick-level, size-independent: the live base system
+	is_live_root_mount "$bname" && return 0
+	# (2b) squashfs is always read-only firmware
+	local fstype=$(dev_fs_type "$bname")
+	[ "$fstype" = "squashfs" ] && return 0
+	# (3) a partition above 4GiB is user data space, never firmware
+	#     (e.g. 128G eMMC: 2G system + 126G data area; the data area may be
+	#     mounted anywhere - /overlay, /mnt/... - still user data, not system)
+	part_large_enough "$bname" && return 1
+	# (4) small partition on the system disk = firmware (label-independent)
+	local rootdisk=$(get_root_disk)
+	[ -n "$rootdisk" ] && [ "$parent" = "$rootdisk" ] && return 0
+	return 1
+}
+
+# partition_is_data: returns 0 if a mounted non-firmware partition on an internal disk
+partition_is_data() {
+	# Memoize per device (same reasoning as partition_is_boot above).
+	local _dk
+	_dk=$(basename "$1")
+	case "$_DATA_CACHE" in
+		*"|$_dk=1|"*) return 0 ;;
+		*"|$_dk=0|"*) return 1 ;;
+	esac
+	if _partition_is_data_impl "$@"; then
+		_DATA_CACHE="$_DATA_CACHE|$_dk=1|"
+		return 0
+	fi
+	_DATA_CACHE="$_DATA_CACHE|$_dk=0|"
+	return 1
+}
+
+_partition_is_data_impl() {
+	local bname=$(basename "$1")
+	local pm=$(get_mount_point "$bname")
+	[ "$pm" = "-" ] && return 1
+	local parent=$(get_parent_disk "$bname")
+	[ -n "$parent" ] || return 1
+	is_external_device "$parent" && return 1
+	partition_is_boot "$1" && return 1
+	return 0
+}
+
+# partition_needs_force: returns 0 if a format requires force=1
+partition_needs_force() {
+	local bname=$(basename "$1")
+	local parent=$(get_parent_disk "$bname")
+	[ -n "$parent" ] || return 1
+	is_external_device "$parent" && return 1
+	# mounted (in use) or existing filesystem - confirm before wiping
+	[ "$(get_mount_point "$bname")" != "-" ] && return 0
+	local fstype=$(dev_fs_type "$bname")
+	[ -n "$fstype" ] && return 0
+	# safety net: unmounted, no-fs, small partition on the root disk
+	# (possible A/B inactive firmware slot) - require explicit force
+	local rootdisk=$(get_root_disk)
+	[ -n "$rootdisk" ] && [ "$parent" = "$rootdisk" ] && ! part_large_enough "$bname" && return 0
+	return 1
+}
+
+# require_not_boot: hard block, no force override
+require_not_boot() {
+	local what="$1"
+	logger -t diskbox "BLOCKED(boot): $what"
+	echo '{"code": 2, "error": "Blocked: this is a boot/firmware partition."}'
+}
+
+# require_not_system_disk: hard block, no force override
+require_not_system_disk() {
+	local what="$1"
+	logger -t diskbox "BLOCKED(system-disk): $what"
+	echo '{"code": 2, "error": "Blocked: this operation targets the system disk (it holds the running system)."}'
+}
+
+# rescan_partitions: refresh the kernel's partition list after a GPT change.
+# On embedded eMMC (MTK FIT images) parted does not reliably trigger a kernel
+# rescan: the kernel keeps a stale partition list, so removed partitions'
+# device nodes survive and new partitions never appear (UI and kernel
+# disagree). Never rescan while a partition of this disk is mounted - a
+# rescan can drop kernel partitions, which would corrupt live I/O.
+rescan_partitions() {
+	local dev="$1"
+	local mounted=$(awk -v d="/dev/$dev" '$1 == d || index($1, d "p") == 1 { print $2; exit }' /proc/mounts 2>/dev/null)
+	if [ -n "$mounted" ]; then
+		logger -t diskbox "WARN(rescan): skipping /dev/$dev - $mounted is mounted"
+		return 1
+	fi
+	if which partprobe >/dev/null 2>&1; then
+		partprobe "/dev/$dev" >/dev/null 2>&1
+		logger -t diskbox "rescan: partprobe /dev/$dev rc=$?"
+	elif which blockdev >/dev/null 2>&1; then
+		blockdev --rereadpt "/dev/$dev" >/dev/null 2>&1
+		logger -t diskbox "rescan: blockdev --rereadpt /dev/$dev rc=$?"
+	fi
+	return 0
+}
+# ===== END SYSTEM-DISK GUARD v5 =====
+
+action_list_devices() {
+	json_init
+	json_add_object "devices"
+
+	for devpath in /sys/block/sd* /sys/block/mmcblk* /sys/block/nvme* /sys/block/vd* /sys/block/sata*; do
+		[ -e "$devpath" ] || continue
+		local bname=$(basename "$devpath")
+		case "$bname" in
+			*boot*|*rpmb*) continue ;;
+		esac
+
+		local size_sec=$(cat "$devpath/size" 2>/dev/null || echo 0)
+		local ss=$(cat "$devpath/queue/logical_block_size" 2>/dev/null || echo 512)
+		local size_bytes=$(awk -v s="$size_sec" -v b="$ss" 'BEGIN { printf "%.0f", s*b }')
+		local size_str=$(format_bytes "$size_bytes")
+		local model=$(cat "$devpath/device/model" 2>/dev/null | sed 's/^[ \t]*//;s/[ \t]*$//')
+		local sn=$(cat "$devpath/device/serial" 2>/dev/null | sed 's/^[ \t]*//;s/[ \t]*$//')
+		local temp="N/A"
+		local health="Normal"
+		local p_table="-"
+		local sata_ver="-"
+		local inuse=$(check_inuse "$bname")
+		local dmount=$(get_mount_point "$bname")
+		local dfstype=$(dev_fs_type "$bname")
+
+		# eMMC enhancement
+		if echo "$bname" | grep -q "^mmcblk"; then
+			local emmc_name=$(cat "$devpath/device/name" 2>/dev/null | sed 's/[[:space:]]//g')
+			local emmc_type=$(cat "$devpath/device/type" 2>/dev/null | sed 's/[[:space:]]//g')
+			if [ -n "$emmc_name" ]; then
+				model="${emmc_type:-eMMC} $emmc_name"
+			else
+				model="eMMC Flash Drive"
+			fi
+
+			if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
+				local tz=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+				if [ -n "$tz" ] && [ "$tz" -gt 0 ] 2>/dev/null; then
+					temp="$(awk -v t="$tz" 'BEGIN {printf "%.1f °C", t/1000}')"
+				fi
+			fi
+
+			local life=$(cat "$devpath/device/life_time" 2>/dev/null)
+			local eol=$(cat "$devpath/device/pre_eol_info" 2>/dev/null | sed 's/[[:space:]]//g')
+			if [ "$eol" = "0x02" ] || [ "$eol" = "2" ]; then
+				health="Warning (Consuming)"
+			elif [ "$eol" = "0x03" ] || [ "$eol" = "3" ]; then
+				health="Urgent (Replace)"
+			fi
+			if [ -n "$life" ]; then
+				local ta=$(echo "$life" | awk '{print $1}')
+				if [ -n "$ta" ]; then
+					local a_pct=$((ta * 10))
+					[ "$a_pct" -gt 100 ] && a_pct=100
+					health="$health (Used A:${a_pct}%)"
+				fi
+			fi
+		else
+			if which smartctl >/dev/null 2>&1; then
+				local s_out=$(run_smartctl "$bname" "-H -A -i -n standby -f brief")
+				local s_temp=$(echo "$s_out" | grep -iE "(Temperature_Celsius|Airflow_Temperature_Cel|Temperature)" | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+$/ && $i < 120 && $i > 0) val=$i} END {if(val) print val}')
+				[ -n "$s_temp" ] && temp="${s_temp} °C"
+				local s_health=$(echo "$s_out" | grep -iE "(overall-health|SMART Health Status)" | head -n1 | awk -F': ' '{print $2}')
+				[ -n "$s_health" ] && health="$s_health"
+				local s_sn=$(echo "$s_out" | grep -i "^Serial Number:" | head -n1 | awk -F': ' '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+				[ -n "$s_sn" ] && sn="$s_sn"
+				local s_sata=$(echo "$s_out" | grep -i "^SATA Version is:" | head -n1 | awk -F': ' '{print $2}')
+				[ -n "$s_sata" ] && sata_ver="$s_sata"
+				local s_model=$(echo "$s_out" | grep -iE "^(Device Model|Model Number):" | head -n1 | awk -F': ' '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+				[ -n "$s_model" ] && model="$s_model"
+			fi
+		fi
+
+		# Partition table type
+		if which parted >/dev/null 2>&1; then
+			local pt=$(parted "/dev/$bname" print 2>/dev/null | grep -i "^Partition Table:" | awk -F': ' '{print $2}' | tr 'a-z' 'A-Z')
+			[ "$pt" = "MSDOS" ] && pt="MBR"
+			[ -n "$pt" ] && p_table="$pt"
+		fi
+
+		json_add_object "$bname"
+		json_add_string "name" "$bname"
+		json_add_string "path" "/dev/$bname"
+		json_add_string "model" "${model:--}"
+		json_add_string "sn" "${sn:--}"
+		json_add_int "size" "$size_bytes"
+		json_add_string "size_formated" "$size_str"
+		json_add_string "temp" "$temp"
+		json_add_string "health_status" "$health"
+		json_add_string "p_table" "$p_table"
+		json_add_string "sata_ver" "$sata_ver"
+		json_add_boolean "inuse" "$inuse"
+		local ds=0
+		if disk_is_root_disk "$bname" >/dev/null 2>&1; then ds=1; fi
+		json_add_boolean "is_system" "$ds"
+		json_add_string "mount_point" "$dmount"
+		json_add_string "fstype" "${dfstype:-}"
+
+		# Partitions
+		json_add_array "partitions"
+		for partpath in /sys/block/$bname/$bname*; do
+			[ -e "$partpath" ] || continue
+			local pname=$(basename "$partpath")
+			local psize_sec=$(cat "$partpath/size" 2>/dev/null || echo 0)
+			local psize_bytes=$(awk -v s="$psize_sec" -v b="$ss" 'BEGIN { printf "%.0f", s*b }')
+			local psize_str=$(format_bytes "$psize_bytes")
+			local pmount=$(get_mount_point "$pname")
+			local pinuse=0
+			[ "$pmount" != "-" ] && pinuse=1
+			local pfstype=$(dev_fs_type "$pname")
+
+			json_add_object
+			json_add_string "name" "$pname"
+			json_add_string "path" "/dev/$pname"
+			json_add_int "size" "$psize_bytes"
+			json_add_string "size_formated" "$psize_str"
+			json_add_string "mount_point" "$pmount"
+			json_add_string "fstype" "${pfstype:-}"
+			json_add_boolean "inuse" "$pinuse"
+			local pb=0 pd=0
+			if partition_is_boot "$pname" >/dev/null 2>&1; then pb=1; fi
+			if partition_is_data "$pname" >/dev/null 2>&1; then pd=1; fi
+			json_add_boolean "is_boot" "$pb"
+			json_add_boolean "is_data" "$pd"
+			json_close_object
+		done
+		json_close_array
+
+		json_close_object
+	done
+
+	json_close_object
+	json_dump
+}
+
+action_get_disk_info() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null | sed 's|^/dev/||')
+	if [ -z "$dev" ]; then
+		echo '{"error": "Device not specified"}'
+		return
+	fi
+	if [ ! -e "/sys/block/$dev" ] && [ ! -e "/sys/class/block/$dev" ]; then
+		echo '{"error": "Device not found"}'
+		return
+	fi
+
+	local devpath="/sys/class/block/$dev"
+	local size_sec=$(cat "$devpath/size" 2>/dev/null || echo 0)
+	local logic_sec=$(cat "$devpath/queue/logical_block_size" 2>/dev/null || echo 512)
+	local phy_sec=$(cat "$devpath/queue/physical_block_size" 2>/dev/null || echo "$logic_sec")
+	local size_bytes=$(awk -v s="$size_sec" -v b="$logic_sec" 'BEGIN { printf "%.0f", s*b }')
+	local size_str=$(format_bytes "$size_bytes")
+	local model=$(cat "$devpath/device/model" 2>/dev/null | sed 's/^[ \t]*//;s/[ \t]*$//')
+	local sn=$(cat "$devpath/device/serial" 2>/dev/null | sed 's/^[ \t]*//;s/[ \t]*$//')
+	local p_table="-"
+	local temp="N/A"
+	local health="Normal"
+	local sata_ver="-"
+	local rota_rate="-"
+	local status="ACTIVE"
+
+	if which smartctl >/dev/null 2>&1; then
+		local s_out=$(run_smartctl "$dev" "-H -A -i -n standby -f brief")
+		local s_temp=$(echo "$s_out" | grep -iE "(Temperature_Celsius|Airflow_Temperature_Cel|Temperature)" | awk '{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+$/ && $i < 120 && $i > 0) val=$i} END {if(val) print val}')
+		[ -n "$s_temp" ] && temp="${s_temp} °C"
+		local s_health=$(echo "$s_out" | grep -iE "(overall-health|SMART Health Status)" | head -n1 | awk -F': ' '{print $2}')
+		[ -n "$s_health" ] && health="$s_health"
+		local s_sn=$(echo "$s_out" | grep -i "^Serial Number:" | head -n1 | awk -F': ' '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+		[ -n "$s_sn" ] && sn="$s_sn"
+		local s_sata=$(echo "$s_out" | grep -i "^SATA Version is:" | head -n1 | awk -F': ' '{print $2}')
+		[ -n "$s_sata" ] && sata_ver="$s_sata"
+		local s_model=$(echo "$s_out" | grep -iE "^(Device Model|Model Number):" | head -n1 | awk -F': ' '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+		[ -n "$s_model" ] && model="$s_model"
+		local s_rota=$(echo "$s_out" | grep -i "^Rotation Rate:" | head -n1 | awk -F': ' '{print $2}')
+		[ -n "$s_rota" ] && rota_rate="$s_rota"
+		local s_power=$(echo "$s_out" | grep -i "^Device is in" | head -n1 | awk '{print $4}')
+		[ -n "$s_power" ] && status="$s_power"
+	fi
+
+	if echo "$dev" | grep -q "^mmcblk"; then
+		local emmc_name=$(cat "$devpath/device/name" 2>/dev/null | sed 's/[[:space:]]//g')
+		local emmc_type=$(cat "$devpath/device/type" 2>/dev/null | sed 's/[[:space:]]//g')
+		model="${emmc_type:-eMMC} ${emmc_name:-Flash Drive}"
+		if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
+			local tz=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+			[ -n "$tz" ] && [ "$tz" -gt 0 ] 2>/dev/null && temp="$(awk -v t="$tz" 'BEGIN {printf "%.1f °C", t/1000}')"
+		fi
+	fi
+
+	json_init
+	json_add_string "name" "$dev"
+	json_add_string "path" "/dev/$dev"
+	json_add_string "model" "${model:--}"
+	json_add_string "sn" "${sn:--}"
+	json_add_int "size" "$size_bytes"
+	json_add_string "size_formated" "$size_str"
+	json_add_int "logic_sec" "$logic_sec"
+	json_add_int "phy_sec" "$phy_sec"
+	json_add_string "sec_size" "${logic_sec}/${phy_sec}"
+	json_add_string "temp" "$temp"
+	json_add_string "health" "$health"
+	json_add_string "health_status" "$health"
+	json_add_string "status" "$status"
+	json_add_string "sata_ver" "$sata_ver"
+	json_add_string "rota_rate" "$rota_rate"
+	json_add_string "type" "$dev"
+
+	# Parted parse
+	json_add_array "partitions"
+	if which parted >/dev/null 2>&1; then
+		local parted_out=$(parted -s -m "/dev/$dev" unit s print free 2>/dev/null)
+		local pt=$(echo "$parted_out" | grep "^/dev/$dev:" | awk -F: '{print $4}' | tr 'a-z' 'A-Z')
+		[ "$pt" = "MSDOS" ] && pt="MBR"
+		[ -n "$pt" ] && p_table="$pt"
+
+		# Kernel (sysfs) partition list, as "<name> <start> <end>" lines.
+		# Detects GPT/kernel desync: a region the GPT reports as "free" may
+		# still hold a live kernel partition (removed from the GPT but the
+		# kernel never rescanned - common on eMMC). Such a region must be
+		# presented as a real partition with its true mount/filesystem
+		# state, not as unallocated space the user could create over.
+		local kernel_parts=""
+		for kdev in "/sys/block/$dev/$dev"*; do
+			[ -d "$kdev" ] || continue
+			local kn=$(basename "$kdev")
+			[ "$kn" = "$dev" ] && continue
+			[ -e "$kdev/start" ] || continue
+			local kst=$(cat "$kdev/start" 2>/dev/null)
+			local ksz=$(cat "$kdev/size" 2>/dev/null)
+			case "$kst$ksz" in ''|*[!0-9]*) continue ;; esac
+			[ "$ksz" -gt 0 ] || continue
+			kernel_parts="${kernel_parts}${kn} ${kst} $(awk -v a="$kst" -v b="$ksz" 'BEGIN { printf "%.0f", a+b-1 }')
+"
+		done
+
+		local old_ifs="$IFS"
+		IFS='
+'
+		for line in $(echo "$parted_out" | grep "^[0-9-]*:"); do
+			IFS="$old_ifs"
+			# Split the machine-format row (num:start:end:size:fs:flags) with pure
+			# parameter expansion - no forked cut/sed/tr (was ~8 forks/row x N rows).
+			local _r
+			local pnum=${line%%:*}
+			_r=${line#*:}
+			local pstart=${_r%%:*}
+			pstart=${pstart%s}
+			_r=${_r#*:}
+			local pend=${_r%%:*}
+			pend=${pend%s}
+			_r=${_r#*:}
+			local psize=${_r%%:*}
+			psize=${psize%s}
+			_r=${_r#*:}
+			local pfs=${_r%%:*}
+			pfs=${pfs//;/}
+			local part_bytes=$(awk -v s="$psize" -v b="$logic_sec" 'BEGIN { printf "%.0f", s*b }')
+			local part_str=$(format_bytes "$part_bytes")
+			local part_name="-"
+			local part_mount="-"
+			local part_used=0
+			local part_free=0
+			local part_usage="-"
+			local part_type="primary"
+
+			if [ "$pfs" = "free" ]; then
+				# GPT says "free" here, but the kernel may still hold a live
+				# partition covering this region (GPT/kernel desync). If so,
+				# emit it as a real partition with its true state and skip the
+				# "free space" row so the user cannot create over live data.
+				local kmatch=$(printf '%s' "$kernel_parts" | awk -v fs="$pstart" -v fe="$pend" 'NF==3 && $2 >= fs+0 && $3 <= fe+0 { print; exit }')
+				if [ -n "$kmatch" ]; then
+					local kpn=$(echo "$kmatch" | awk '{print $1}')
+					local kps=$(echo "$kmatch" | awk '{print $2}')
+					local kpe=$(echo "$kmatch" | awk '{print $3}')
+					local kno="${kpn#$dev}"
+					kno="${kno#p}"
+					case "$kno" in ''|*[!0-9]*) kno=0 ;; esac
+					local kbytes=$(awk -v e="$kpe" -v s="$kps" -v b="$logic_sec" 'BEGIN { printf "%.0f", (e-s+1)*b }')
+					local kfs=$(dev_fs_type "$kpn")
+					[ -z "$kfs" ] && kfs=$(lsblk -no fstype "/dev/$kpn" 2>/dev/null)
+					[ -z "$kfs" ] && kfs="raw"
+					local kmount=$(get_mount_point "$kpn")
+					local kused=0 kfree=0 kusage="-"
+					if [ "$kmount" != "-" ]; then
+						local kdf=$(df -k "/dev/$kpn" 2>/dev/null | tail -n1)
+						if [ -n "$kdf" ]; then
+							kused=$(echo "$kdf" | awk '{printf "%.0f", $3*1024}')
+							kfree=$(echo "$kdf" | awk '{printf "%.0f", $4*1024}')
+							kusage=$(echo "$kdf" | awk '{print $5}')
+						fi
+					fi
+					local kpb=0 kpd=0
+					partition_is_boot "$kpn" >/dev/null 2>&1 && kpb=1
+					partition_is_data "$kpn" >/dev/null 2>&1 && kpd=1
+					json_add_object
+					json_add_int "number" "$kno"
+					json_add_string "name" "$kpn"
+						json_add_string "path" "/dev/$kpn"
+					json_add_string "sec_start" "$kps"
+					json_add_string "sec_end" "$kpe"
+					json_add_int "size" "$kbytes"
+					json_add_string "size_formated" "$(format_bytes $kbytes)"
+					json_add_string "fs" "$kfs"
+					json_add_string "type" "primary"
+					json_add_string "mount_point" "$kmount"
+					json_add_int "used" "$kused"
+					json_add_string "used_formated" "$(format_bytes $kused)"
+					json_add_int "free" "$kfree"
+					json_add_string "free_formated" "$(format_bytes $kfree)"
+					json_add_string "usage" "$kusage"
+					json_add_boolean "is_boot" "$kpb"
+					json_add_boolean "is_data" "$kpd"
+					json_close_object
+					continue
+				fi
+				pnum="-1"
+				pfs="Free Space"
+				part_type="free"
+			else
+				case "$dev" in
+					sd*|vd*|sata*) part_name="${dev}${pnum}" ;;
+					mmcblk*|nvme*|md*) part_name="${dev}p${pnum}" ;;
+				esac
+
+				if [ "$pt" = "MBR" ]; then
+					if [ "$pnum" -gt 4 ] 2>/dev/null; then
+						part_type="logical"
+					elif [ "$pnum" -gt 0 ] 2>/dev/null; then
+						local sys_sz=$(cat "/sys/block/$dev/$part_name/size" 2>/dev/null || echo 0)
+						local sys_bytes=$(awk -v s="$sys_sz" -v b="$logic_sec" 'BEGIN { printf "%.0f", s*b }')
+						if [ "$sys_bytes" -gt 0 ] && [ "$sys_bytes" -ne "$part_bytes" ]; then
+							part_type="extended"
+							pfs="-"
+							part_bytes="$sys_bytes"
+							part_str=$(format_bytes "$sys_bytes")
+						fi
+					fi
+				fi
+
+				if [ "$part_type" != "extended" ]; then
+					if [ -n "$part_name" ] && [ -z "$pfs" ] && which lsblk >/dev/null 2>&1; then
+						pfs=$(lsblk -no fstype "/dev/$part_name" 2>/dev/null)
+					fi
+					[ -z "$pfs" ] && pfs="raw"
+				fi
+
+				part_mount=$(get_mount_point "$part_name")
+				if [ "$part_mount" != "-" ]; then
+					local df_info=$(df -k "/dev/$part_name" 2>/dev/null | tail -n1)
+					if [ -n "$df_info" ]; then
+						local df_used=$(echo "$df_info" | awk '{print $3}')
+						local df_avail=$(echo "$df_info" | awk '{print $4}')
+						local df_pct=$(echo "$df_info" | awk '{print $5}')
+						part_used=$(awk -v u="$df_used" 'BEGIN { printf "%.0f", u*1024 }')
+						part_free=$(awk -v f="$df_avail" 'BEGIN { printf "%.0f", f*1024 }')
+						part_usage="$df_pct"
+					fi
+				fi
+			fi
+
+			local pb=0 pd=0
+			if [ "$pnum" != "-1" ] && [ -n "$part_name" ] && [ "$part_name" != "-" ]; then
+				partition_is_boot "$part_name" >/dev/null 2>&1 && pb=1
+				partition_is_data "$part_name" >/dev/null 2>&1 && pd=1
+			fi
+			json_add_object
+			json_add_int "number" "$pnum"
+			json_add_string "name" "$part_name"
+			json_add_string "path" "/dev/$part_name"
+			json_add_string "sec_start" "$pstart"
+			json_add_string "sec_end" "$pend"
+			json_add_int "size" "$part_bytes"
+			json_add_string "size_formated" "$part_str"
+			json_add_string "fs" "$pfs"
+			json_add_string "type" "$part_type"
+			json_add_string "mount_point" "$part_mount"
+			json_add_int "used" "$part_used"
+			json_add_string "used_formated" "$(format_bytes $part_used)"
+			json_add_int "free" "$part_free"
+			json_add_string "free_formated" "$(format_bytes $part_free)"
+			json_add_string "usage" "$part_usage"
+			json_add_boolean "is_boot" "$pb"
+			json_add_boolean "is_data" "$pd"
+			json_close_object
+		done
+		IFS="$old_ifs"
+	fi
+	json_close_array
+
+	json_add_string "p_table" "$p_table"
+	json_dump
+}
+
+action_get_smart_attr() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null | sed 's|^/dev/||')
+	if [ -z "$dev" ]; then
+		echo '[]'
+		return
+	fi
+
+	json_init
+	json_add_array "attributes"
+
+	if echo "$dev" | grep -q "^mmcblk"; then
+		local devpath="/sys/class/block/$dev"
+		[ ! -d "$devpath" ] && devpath="/sys/block/$dev"
+
+		local m_name=$(cat "$devpath/device/name" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_type=$(cat "$devpath/device/type" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_cid=$(cat "$devpath/device/cid" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_csd=$(cat "$devpath/device/csd" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_rev=$(cat "$devpath/device/rev" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_oemid=$(cat "$devpath/device/oemid" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_manfid=$(cat "$devpath/device/manfid" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_sn=$(cat "$devpath/device/serial" 2>/dev/null | sed 's/[[:space:]]//g')
+		local m_date=$(cat "$devpath/device/date" 2>/dev/null | sed 's/[[:space:]]//g')
+		local life=$(cat "$devpath/device/life_time" 2>/dev/null)
+		local eol=$(cat "$devpath/device/pre_eol_info" 2>/dev/null | sed 's/[[:space:]]//g')
+
+		local eol_str="Normal (0x01)"
+		[ "$eol" = "0x02" ] || [ "$eol" = "2" ] && eol_str="Warning (Consuming >80%)"
+		[ "$eol" = "0x03" ] || [ "$eol" = "3" ] && eol_str="Urgent (Replace)"
+
+		local life_a="Not Available"
+		local life_b="Not Available"
+		if [ -n "$life" ]; then
+			local ta=$(echo "$life" | awk '{print $1}')
+			local tb=$(echo "$life" | awk '{print $2}')
+			if [ -n "$ta" ]; then
+				local a_pct=$((ta * 10))
+				[ "$a_pct" -gt 100 ] && a_pct=100
+				life_a="Used ${a_pct}% (SLC Estimated)"
+			fi
+			if [ -n "$tb" ]; then
+				local b_pct=$((tb * 10))
+				[ "$b_pct" -gt 100 ] && b_pct=100
+				life_b="Used ${b_pct}% (MLC Estimated)"
+			fi
+		fi
+
+		json_add_object; json_add_string "key" "Storage Standard"; json_add_string "value" "JEDEC eMMC (EXT_CSD Protocol)"; json_close_object
+		json_add_object; json_add_string "key" "Device Type"; json_add_string "value" "${m_type:-eMMC}"; json_close_object
+		[ -n "$m_name" ] && { json_add_object; json_add_string "key" "Product Name"; json_add_string "value" "$m_name"; json_close_object; }
+		[ -n "$m_sn" ] && { json_add_object; json_add_string "key" "Serial Number"; json_add_string "value" "$m_sn"; json_close_object; }
+		[ -n "$m_date" ] && { json_add_object; json_add_string "key" "Manufacturing Date"; json_add_string "value" "$m_date"; json_close_object; }
+		[ -n "$m_rev" ] && { json_add_object; json_add_string "key" "Hardware Revision"; json_add_string "value" "$m_rev"; json_close_object; }
+		[ -n "$m_manfid" ] && { json_add_object; json_add_string "key" "Manufacturer ID"; json_add_string "value" "$m_manfid"; json_close_object; }
+		[ -n "$m_oemid" ] && { json_add_object; json_add_string "key" "OEM / Application ID"; json_add_string "value" "$m_oemid"; json_close_object; }
+		json_add_object; json_add_string "key" "Pre-EOL Health State"; json_add_string "value" "$eol_str"; json_close_object
+		json_add_object; json_add_string "key" "Device Life Time (Type A - SLC)"; json_add_string "value" "$life_a"; json_close_object
+		json_add_object; json_add_string "key" "Device Life Time (Type B - MLC)"; json_add_string "value" "$life_b"; json_close_object
+		if [ -f "/sys/class/thermal/thermal_zone0/temp" ]; then
+			local tz=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+			[ -n "$tz" ] && [ "$tz" -gt 0 ] 2>/dev/null && {
+				local tz_str="$(awk -v t="$tz" 'BEGIN {printf "%.1f °C", t/1000}')"
+				json_add_object; json_add_string "key" "Current Temperature"; json_add_string "value" "$tz_str"; json_close_object
+			}
+		fi
+		[ -n "$m_cid" ] && { json_add_object; json_add_string "key" "CID Register"; json_add_string "value" "$m_cid"; json_close_object; }
+		[ -n "$m_csd" ] && { json_add_object; json_add_string "key" "CSD Register"; json_add_string "value" "$m_csd"; json_close_object; }
+	else
+		local output=$(run_smartctl "$dev" "-H -A -i")
+		local old_ifs="$IFS"
+		IFS='
+'
+		if echo "$output" | grep -q "NVMe Version:"; then
+			for line in $output; do
+				IFS="$old_ifs"
+				local k=$(echo "$line" | awk -F': ' '{print $1}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+				local v=$(echo "$line" | awk -F': ' '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+				if [ -n "$k" ] && [ -n "$v" ]; then
+					json_add_object
+					json_add_string "key" "$k"
+					json_add_string "value" "$v"
+					json_close_object
+				fi
+		done
+		else
+			for line in $output; do
+				IFS="$old_ifs"
+				if echo "$line" | grep -qE '^[[:space:]]*[0-9]+[[:space:]]+[A-Za-z0-9_-]+'; then
+					local id=$(echo "$line" | awk '{printf "%02X", $1}')
+					local attr=$(echo "$line" | awk '{print $2}')
+					local flag=$(echo "$line" | awk '{print $3}')
+					local val=$(echo "$line" | awk '{print $4}')
+					local worst=$(echo "$line" | awk '{print $5}')
+					local thresh=$(echo "$line" | awk '{print $6}')
+					local type=$(echo "$line" | awk '{print $7}')
+					local updated=$(echo "$line" | awk '{print $8}')
+					local raw=$(echo "$line" | awk '{for(i=10;i<=NF;i++) printf "%s ", $i; if(NF>=10) print ""; else print $9}' | sed 's/[ \t]*$//')
+					
+					json_add_object
+					json_add_string "id" "$id"
+					json_add_string "attrbute" "$attr"
+					json_add_string "flag" "$flag"
+					json_add_string "value" "$val"
+					json_add_string "worst" "$worst"
+					json_add_string "thresh" "$thresh"
+					json_add_string "type" "$type"
+					json_add_string "updated" "$updated"
+					json_add_string "raw" "$raw"
+					json_close_object
+				fi
+			done
+		fi
+		IFS="$old_ifs"
+	fi
+
+	json_close_array
+	json_dump
+}
+
+action_get_format_cmd() {
+	json_init
+	json_add_object "formats"
+
+	which mkfs.ext2 >/dev/null 2>&1 && json_add_string "ext2" "mkfs.ext2 -F -E lazy_itable_init=1"
+	which mkfs.ext3 >/dev/null 2>&1 && json_add_string "ext3" "mkfs.ext3 -F -E lazy_itable_init=1"
+	which mkfs.ext4 >/dev/null 2>&1 && json_add_string "ext4" "mkfs.ext4 -F -E lazy_itable_init=1"
+	which mkfs.fat >/dev/null 2>&1 && json_add_string "fat32" "mkfs.fat -F 32"
+	which mkfs.vfat >/dev/null 2>&1 && [ ! $(which mkfs.fat) ] && json_add_string "fat32" "mkfs.vfat -F 32"
+	which mkfs.exfat >/dev/null 2>&1 && json_add_string "exfat" "mkfs.exfat"
+	which mkfs.ntfs >/dev/null 2>&1 && json_add_string "ntfs" "mkfs.ntfs -f"
+	which mkswap >/dev/null 2>&1 && json_add_string "swap" "mkswap"
+	which mkfs.btrfs >/dev/null 2>&1 && json_add_string "btrfs" "mkfs.btrfs -f"
+
+	json_close_object
+	json_dump
+}
+
+action_format_partition() {
+	read -r input
+	local part=$(echo "$input" | jsonfilter -e '@.partition' 2>/dev/null | sed 's|^/dev/||')
+	local fs=$(echo "$input" | jsonfilter -e '@.filesystem' 2>/dev/null)
+
+	if [ -z "$part" ] || [ ! -e "/dev/$part" ]; then
+		echo '{"code": 1, "error": "Partition not found"}'
+		return
+	fi
+
+	local cmd=""
+	# [guard v5] boot partition check
+	if partition_is_boot "$part" >/dev/null 2>&1; then
+		require_not_boot "format /dev/$part"; return
+	fi
+	# [guard v5.1] soft: in-use / filesystem-bearing / A/B-slot partition requires force=1
+	if partition_needs_force "$part" >/dev/null 2>&1; then
+		local force_fmt=$(echo "$input" | jsonfilter -e '@.force' 2>/dev/null)
+		if [ "$force_fmt" != "1" ]; then
+			local msg="Confirm required: this partition holds data. Re-send with force:1 to proceed."
+			if is_overlay_mount "$part" >/dev/null 2>&1; then
+				msg="Confirm required: this is the system data partition (overlay, config + user data). Formatting wipes it (factory reset). Re-send with force:1 to proceed."
+			fi
+			logger -t diskbox "CONFIRM-REQUIRED format /dev/$part (system data, no force flag)"
+			echo "{\"code\": 3, \"error\": \"$msg\"}"
+			return
+		fi
+	fi
+
+	case "$fs" in
+		ext2) cmd="mkfs.ext2 -F -E lazy_itable_init=1 /dev/$part" ;;
+		ext3) cmd="mkfs.ext3 -F -E lazy_itable_init=1 /dev/$part" ;;
+		ext4) cmd="mkfs.ext4 -F -E lazy_itable_init=1 /dev/$part" ;;
+		fat32) cmd="mkfs.fat -F 32 /dev/$part" ;;
+		exfat) cmd="mkfs.exfat /dev/$part" ;;
+		ntfs) cmd="mkfs.ntfs -f /dev/$part" ;;
+		swap) cmd="mkswap /dev/$part" ;;
+		btrfs) cmd="mkfs.btrfs -f /dev/$part" ;;
+		*) echo '{"code": 1, "error": "Unsupported filesystem"}'; return ;;
+	esac
+
+	local out=$($cmd 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_mk_partition_table() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null | sed 's|^/dev/||')
+	local tbl=$(echo "$input" | jsonfilter -e '@.table' 2>/dev/null | tr 'A-Z' 'a-z')
+
+	[ "$tbl" = "mbr" ] && tbl="msdos"
+	if [ "$tbl" != "gpt" ] && [ "$tbl" != "msdos" ]; then
+		echo '{"code": 1, "error": "Invalid table type, must be GPT or MBR"}'
+		return
+	fi
+
+	# [guard v5] system disk
+	if disk_is_root_disk "$dev" >/dev/null 2>&1; then
+		require_not_system_disk "mktable /dev/$dev"; return
+	fi
+
+	local out=$(parted -s "/dev/$dev" mktable "$tbl" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		rescan_partitions "$dev"
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_create_partition() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null | sed 's|^/dev/||')
+	local start_sec=$(echo "$input" | jsonfilter -e '@.start_sec' 2>/dev/null | sed 's/s$//')
+	local end_sec=$(echo "$input" | jsonfilter -e '@.end_sec' 2>/dev/null | sed 's/s$//')
+	local ptype=$(echo "$input" | jsonfilter -e '@.type' 2>/dev/null || echo "primary")
+	[ -z "$ptype" ] && ptype="primary"
+
+	if [ -z "$dev" ] || [ -z "$start_sec" ] || [ -z "$end_sec" ]; then
+		echo '{"code": 1, "error": "Missing parameters"}'
+		return
+	fi
+
+	# [guard v5.1] creating a partition only consumes unallocated space -
+	# safe on the system disk too (it cannot touch existing partitions),
+	# so no root-disk block here.
+
+	# Sector alignment: phy_sec / logic_sec, min 2048
+	local phy_sec=$(cat "/sys/class/block/$dev/queue/physical_block_size" 2>/dev/null || echo 512)
+	local logic_sec=$(cat "/sys/class/block/$dev/queue/logical_block_size" 2>/dev/null || echo 512)
+	local align=$(( phy_sec / logic_sec ))
+	[ "$align" -lt 2048 ] && align=2048
+
+	if [ "$start_sec" -lt 2048 ] 2>/dev/null; then
+		start_sec=2048
+	else
+		local rem=$(( start_sec % align ))
+		if [ "$rem" -ne 0 ]; then
+			start_sec=$(( start_sec + align - rem ))
+		fi
+	fi
+
+	# Check end_sec format (+size)
+	case "$end_sec" in
+		+*[bkmgtsBKMGTS])
+			local num=$(echo "$end_sec" | sed 's/^+//;s/[bkmgtsBKMGTS]$//')
+			local unit=$(echo "$end_sec" | grep -o '[bkmgtsBKMGTS]$' | tr 'a-z' 'A-Z')
+			local mult=1
+			case "$unit" in
+				B) mult=1 ;;
+				S) mult=512 ;;
+				K) mult=1024 ;;
+				M) mult=1048576 ;;
+				G) mult=1073741824 ;;
+				T) mult=1099511627776 ;;
+			esac
+			local added_sectors=$(awk -v n="$num" -v m="$mult" -v b="$logic_sec" 'BEGIN { printf "%.0f", (n*m)/b }')
+			end_sec=$(awk -v s="$start_sec" -v a="$added_sectors" 'BEGIN { printf "%.0f", s+a-1 }')
+			;;
+	esac
+
+	# GPT automatic fix
+	local pt_type=$(parted -s "/dev/$dev" print 2>/dev/null | grep -i "^Partition Table:" | awk -F': ' '{print $2}' | tr 'a-z' 'A-Z')
+	if [ "$pt_type" = "GPT" ]; then
+		printf "ok\nfix\n" | parted ---pretend-input-tty "/dev/$dev" print >/dev/null 2>&1
+	fi
+
+	local out=$(parted -s -a optimal "/dev/$dev" mkpart "$ptype" "${start_sec}s" "${end_sec}s" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		rescan_partitions "$dev"
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_remove_partition() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null | sed 's|^/dev/||')
+	local num=$(echo "$input" | jsonfilter -e '@.number' 2>/dev/null)
+
+	if [ -z "$dev" ] || [ -z "$num" ] || [ "$num" = "-1" ]; then
+		echo '{"code": 1, "error": "Invalid partition number"}'
+		return
+	fi
+
+	# [guard v5.1] on the system disk, only non-system partitions may be removed:
+	# resolve the partition by number and check it individually.
+	if disk_is_root_disk "$dev" >/dev/null 2>&1; then
+		# lsblk's PN column is missing on BusyBox variants
+		# ("lsblk: unknown column: PN"), which would leave the name empty
+		# and trip the conservative system-disk block below. Fall back to
+		# the conventional partition name ($dev p$num) verified against
+		# the device node / sysfs before trusting it.
+		local pname=$(lsblk -no NAME,PN "/dev/$dev" 2>/dev/null | awk -v n="$num" '$2==n { print $1; exit }')
+		if [ -z "$pname" ]; then
+			pname="${dev}p${num}"
+		fi
+		if [ ! -b "/dev/$pname" ] && [ ! -e "/sys/block/$dev/$pname" ]; then
+			require_not_system_disk "remove_partition /dev/$dev #$num (partition not resolved)"; return
+		fi
+		if partition_is_boot "$pname" >/dev/null 2>&1; then
+			require_not_boot "remove /dev/$pname"; return
+		fi
+	fi
+
+	local out=$(parted -s "/dev/$dev" rm "$num" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		rescan_partitions "$dev"
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_mount() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null)
+	local point=$(echo "$input" | jsonfilter -e '@.point' 2>/dev/null)
+	local fs=$(echo "$input" | jsonfilter -e '@.fs' 2>/dev/null)
+	local opts=$(echo "$input" | jsonfilter -e '@.options' 2>/dev/null)
+
+	if [ -z "$dev" ] || [ -z "$point" ]; then
+		echo '{"code": 1, "error": "Device and mount point required"}'
+		return
+	fi
+
+	mkdir -p "$point"
+	local cmd="mount"
+	[ -n "$fs" ] && [ "$fs" != "auto" ] && cmd="$cmd -t $fs"
+	[ -n "$opts" ] && cmd="$cmd -o $opts"
+	cmd="$cmd $dev $point"
+
+	local out=$($cmd 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_umount() {
+	read -r input
+	local point=$(echo "$input" | jsonfilter -e '@.point' 2>/dev/null)
+
+	if [ -z "$point" ]; then
+		echo '{"code": 1, "error": "Mount point required"}'
+		return
+	fi
+
+	# [guard] system mount points: unmounting /, /rom or /overlay* bricks or
+	# crashes the router (live base system / writable rootfs). Hard block.
+	case "$point" in
+		/|/rom|/overlay|/overlay/*)
+			logger -t diskbox "BLOCKED(system-mount): umount $point"
+			echo '{"code": 2, "error": "Blocked: this is a system mount point."}'
+			return
+			;;
+	esac
+
+	# [guard] is_boot partitions: unmounting firmware partitions (A/B slots,
+	# kernel, rootfs) can brick the device. Hard block. v5.2 classifies any
+	# partition > 4GiB as data space, so large data partitions (e.g. the
+	# 113G eMMC at /mnt/emmc0) are not affected.
+	local devmp=$(awk -v p="$point" '$2==p { print $1; exit }' /proc/mounts 2>/dev/null)
+	case "$devmp" in
+		/dev/sd*|/dev/mmcblk*|/dev/nvme*|/dev/vd*)
+			partition_is_boot "$devmp" && {
+				logger -t diskbox "BLOCKED(system-partition): umount $point on $devmp"
+				echo '{"code": 2, "error": "Blocked: this is a system partition."}'
+				return
+				}
+			;;
+	esac
+
+	local out=$(umount "$point" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_get_mount_points() {
+	json_init
+	json_add_array "mount_points"
+
+	local old_ifs="$IFS"
+	IFS='
+'
+	local m_lines=$(awk '$1 ~ /^\/dev\// {print $1 "|" $2 "|" $3 "|" $4 "|" $5 "|" $6}' /proc/mounts 2>/dev/null)
+	for line in $m_lines; do
+		IFS="|"
+		set -- $line
+		local dev="$1"
+		local mp="$2"
+		local fs="$3"
+		local opts="$4"
+		local dump="$5"
+		local pass="$6"
+		IFS="$old_ifs"
+		[ -n "$dev" ] || continue
+		json_add_object
+		json_add_string "device" "$dev"
+		json_add_string "mount_point" "$mp"
+		json_add_string "fs" "$fs"
+		json_add_string "mount_options" "$opts"
+		json_add_string "dump" "$dump"
+		json_add_string "pass" "$pass"
+		json_close_object
+	done
+	IFS="$old_ifs"
+
+	json_close_array
+	json_dump
+}
+
+action_eject_device() {
+	read -r input
+	local dev=$(echo "$input" | jsonfilter -e '@.device' 2>/dev/null | sed 's|^/dev/||')
+
+	if [ -z "$dev" ]; then
+		echo '{"code": 1, "error": "Device required"}'
+		return
+	fi
+
+	if echo "$dev" | grep -q "^md"; then
+		if which mdadm >/dev/null 2>&1; then
+			local members=$(awk -v d="$dev" '$0 ~ d {gsub(/[[\]:]/,""); for(i=5;i<=NF;i++) sub(/\[[0-9]+\]/, "", $i); for(i=5;i<=NF;i++) printf "/dev/%s ", $i}' /proc/mdstat 2>/dev/null)
+			mdadm --stop "/dev/$dev" >/dev/null 2>&1
+			mdadm --remove "/dev/$dev" >/dev/null 2>&1
+			for mbr in $members; do
+				mdadm --zero-superblock "$mbr" >/dev/null 2>&1
+			done
+			if which uci >/dev/null 2>&1 && [ -f /etc/config/mdadm ]; then
+				uci -q delete mdadm
+				uci commit mdadm
+				mdadm -D -s 2>/dev/null | while read -r line; do
+					local dev_item=$(echo "$line" | awk '{print $2}')
+					local uuid_item=$(echo "$line" | grep -o 'UUID=[^ ]*' | cut -d= -f2)
+					if [ -n "$dev_item" ] && [ -n "$uuid_item" ]; then
+						local s=$(uci add mdadm array)
+						uci set mdadm.$s.device="$dev_item"
+						uci set mdadm.$s.uuid="$uuid_item"
+					fi
+				done
+				uci commit mdadm
+			fi
+			echo '{"code": 0, "message": "RAID stopped and removed"}'
+			return
+		fi
+	fi
+
+	if [ -e "/sys/block/$dev/device/delete" ]; then
+		echo 1 > "/sys/block/$dev/device/delete"
+		echo '{"code": 0, "message": "Device ejected"}'
+	else
+		echo '{"code": 1, "error": "Cannot eject this device"}'
+	fi
+}
+
+action_rescan_disks() {
+	for host in /sys/class/scsi_host/host*/scan; do
+		[ -e "$host" ] && echo "- - -" > "$host" 2>/dev/null
+	done
+	which mdadm >/dev/null 2>&1 && mdadm --assemble --scan >/dev/null 2>&1
+	echo '{"code": 0, "message": "Scan completed"}'
+}
+
+action_list_raid_devices() {
+	json_init
+	json_add_object "raid_devices"
+
+	if [ -f /proc/mdstat ]; then
+		local old_ifs="$IFS"
+		IFS='
+'
+		local r_lines=$(awk '/^md[0-9]+ :/ {
+			md=$1;
+			active=$3;
+			level=$4;
+			members="";
+			for(i=5;i<=NF;i++) {
+				sub(/\[[0-9]+\]/, "", $i);
+				members=(members ? members ", " : "") "/dev/" $i;
+			}
+			print md "|" active "|" level "|" members;
+		}' /proc/mdstat 2>/dev/null)
+		for line in $r_lines; do
+			IFS="|"
+			set -- $line
+			local md="$1"
+			local act="$2"
+			local lvl="$3"
+			local mbrs="$4"
+			IFS="$old_ifs"
+			[ -n "$md" ] || continue
+
+			local sz=$(cat "/sys/class/block/$md/size" 2>/dev/null || echo 0)
+			local ss=$(cat "/sys/class/block/$md/queue/logical_block_size" 2>/dev/null || echo 512)
+			local size_bytes=$(awk -v s="$sz" -v b="$ss" 'BEGIN { printf "%.0f", s*b }')
+			local st="ACTIVE"
+			if which mdadm >/dev/null 2>&1; then
+				local state=$(mdadm --detail "/dev/$md" 2>/dev/null | grep -i "^[[:space:]]*State :" | awk -F': ' '{print $2}')
+				[ -n "$state" ] && st="$state"
+			fi
+
+			json_add_object "$md"
+			json_add_string "name" "$md"
+			json_add_string "path" "/dev/$md"
+			json_add_string "level" "$lvl"
+			json_add_string "active" "$(echo $act | tr 'a-z' 'A-Z')"
+			json_add_string "status" "$st"
+			json_add_string "members_str" "$mbrs"
+			json_add_int "size" "$size_bytes"
+			json_add_string "size_formated" "$(format_bytes $size_bytes)"
+			json_close_object
+		done
+		IFS="$old_ifs"
+	fi
+
+	json_close_object
+	json_dump
+}
+
+action_create_raid() {
+	read -r input
+	local name=$(echo "$input" | jsonfilter -e '@.name' 2>/dev/null)
+	local level=$(echo "$input" | jsonfilter -e '@.level' 2>/dev/null)
+	local members=$(echo "$input" | jsonfilter -e '@.members[@]' 2>/dev/null)
+
+	if [ -z "$name" ]; then
+		for n in $(seq 0 127); do
+			if [ ! -e "/dev/md$n" ]; then
+				name="/dev/md$n"
+				break
+			fi
+		done
+	fi
+	case "$name" in
+		/dev/*) ;;
+		*) name="/dev/$name" ;;
+	esac
+
+	local count=$(echo "$members" | wc -w)
+	if [ "$count" -lt 2 ]; then
+		echo '{"code": 1, "error": "At least 2 members required"}'
+		return
+	fi
+
+	local out=$(mdadm --create "$name" --run --assume-clean --homehost=any --level="$level" --raid-devices="$count" $members 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		if which uci >/dev/null 2>&1 && [ -f /etc/config/mdadm ]; then
+			uci -q delete mdadm
+			uci commit mdadm
+			mdadm -D -s 2>/dev/null | while read -r line; do
+				local dev_item=$(echo "$line" | awk '{print $2}')
+				local uuid_item=$(echo "$line" | grep -o 'UUID=[^ ]*' | cut -d= -f2)
+				if [ -n "$dev_item" ] && [ -n "$uuid_item" ]; then
+					local s=$(uci add mdadm array)
+					uci set mdadm.$s.device="$dev_item"
+					uci set mdadm.$s.uuid="$uuid_item"
+				fi
+			done
+			uci commit mdadm
+			/etc/init.d/mdadm enable 2>/dev/null
+		fi
+		echo '{"code": 0, "message": "RAID created successfully"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_list_btrfs_devices() {
+	json_init
+	json_add_object "btrfs_devices"
+
+	if which btrfs >/dev/null 2>&1; then
+		local old_ifs="$IFS"
+		IFS='
+'
+		local b_lines=$(btrfs filesystem show -d --raw 2>/dev/null | awk '
+		/^Label:/ {
+			lbl=$2; gsub(/'\''/, "", lbl);
+			uuid=$4;
+			cur_uuid=uuid;
+			labels[cur_uuid]=lbl;
+		}
+		/Total devices/ {
+			used[cur_uuid]=$NF;
+		}
+		/devid/ {
+			sz=$4;
+			path=$NF;
+			sizes[cur_uuid]+=sz;
+			members[cur_uuid]=(members[cur_uuid] ? members[cur_uuid] ", " : "") path;
+		}
+		END {
+			for (u in labels) {
+				print u "|" labels[u] "|" (sizes[u]+0) "|" (used[u]+0) "|" members[u];
+			}
+		}')
+		for line in $b_lines; do
+			IFS="|"
+			set -- $line
+			local uuid="$1"
+			local lbl="$2"
+			local sz="$3"
+			local used="$4"
+			local mbrs="$5"
+			IFS="$old_ifs"
+			[ -n "$uuid" ] || continue
+			json_add_object "$uuid"
+			json_add_string "uuid" "$uuid"
+			json_add_string "label" "$lbl"
+			json_add_int "size" "$sz"
+			json_add_string "size_formated" "$(format_bytes $sz)"
+			json_add_int "used" "$used"
+			json_add_string "used_formated" "$(format_bytes $used)"
+			json_add_string "members" "$mbrs"
+			json_close_object
+		done
+		IFS="$old_ifs"
+	fi
+
+	json_close_object
+	json_dump
+}
+
+action_get_btrfs_info() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	if [ -z "$uuid" ]; then
+		echo '{"error": "UUID required"}'
+		return
+	fi
+
+	local mnt="/tmp/.btrfs_tmp"
+	mkdir -p "$mnt"
+	umount "$mnt" >/dev/null 2>&1
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	json_init
+	if [ -d "$mnt" ]; then
+		local show=$(btrfs filesystem show --raw "$mnt" 2>/dev/null)
+		local usage_out=$(btrfs filesystem usage -b "$mnt" 2>/dev/null)
+		local label=$(echo "$show" | grep "^Label:" | head -n1 | awk '{print $2}' | sed "s/'//g")
+		local used=$(echo "$usage_out" | grep -i "^[[:space:]]*Used:" | head -n1 | awk '{print $2}')
+		local free=$(echo "$usage_out" | grep -i "^[[:space:]]*Free (estimated):" | head -n1 | awk '{print $3}')
+		local d_raid=$(echo "$usage_out" | grep -i "^Data," | head -n1 | awk '{print $2}')
+		local m_raid=$(echo "$usage_out" | grep -i "^Metadata," | head -n1 | awk '{print $2}')
+		local mbrs=$(echo "$show" | grep "path" | awk '{print $NF}' | tr '\n' ',' | sed 's/,$//;s/,/, /g')
+
+		local total=$(awk -v u="${used:-0}" -v f="${free:-0}" 'BEGIN { printf "%.0f", u+f }')
+		local pct="0%"
+		[ "$total" -gt 0 ] && pct="$(awk -v u="$used" -v t="$total" 'BEGIN {printf "%.2f%%", (u/t)*100}')"
+
+		json_add_string "uuid" "$uuid"
+		json_add_string "label" "${label:--}"
+		json_add_string "data_raid_level" "${d_raid:--}"
+		json_add_string "metadata_raid_level" "${m_raid:--}"
+		json_add_int "size" "$total"
+		json_add_string "size_formated" "$(format_bytes $total)"
+		json_add_int "used" "${used:-0}"
+		json_add_string "used_formated" "$(format_bytes ${used:-0})"
+		json_add_int "free" "${free:-0}"
+		json_add_string "free_formated" "$(format_bytes ${free:-0})"
+		json_add_string "usage" "$pct"
+		json_add_string "members" "$mbrs"
+	fi
+	json_dump
+}
+
+action_get_btrfs_subvolumes() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	local mnt="/tmp/.btrfs_tmp"
+	mkdir -p "$mnt"
+	umount "$mnt" >/dev/null 2>&1
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	json_init
+	json_add_array "subvolumes"
+
+	if which btrfs >/dev/null 2>&1 && [ -d "$mnt" ]; then
+		local def_id=$(btrfs subvolume get-default "$mnt" 2>/dev/null | awk '{print $2}')
+
+		local root_id="5"
+		json_add_object
+		json_add_string "id" "$root_id"
+		json_add_string "path" "/"
+		json_add_string "top_level" "0"
+		json_add_boolean "default_subvolume" $( [ "$def_id" = "$root_id" ] && echo 1 || echo 0 )
+		json_close_object
+
+		local old_ifs="$IFS"
+		IFS='
+'
+		local sv_lines=$(btrfs subvolume list -gcu "$mnt" 2>/dev/null)
+		for line in $sv_lines; do
+			IFS="$old_ifs"
+			local id=$(echo "$line" | awk '{print $2}')
+			local top=$(echo "$line" | awk '{print $8}')
+			local sv_uuid=$(echo "$line" | awk '{print $10}')
+			local p=$(echo "$line" | awk '{print $12}')
+
+			json_add_object
+			json_add_string "id" "$id"
+			json_add_string "path" "/$p"
+			json_add_string "top_level" "$top"
+			json_add_string "uuid" "$sv_uuid"
+			json_add_boolean "default_subvolume" $( [ "$def_id" = "$id" ] && echo 1 || echo 0 )
+			json_close_object
+		done
+		IFS="$old_ifs"
+	fi
+
+	json_close_array
+	json_dump
+}
+
+action_create_btrfs() {
+	read -r input
+	local label=$(echo "$input" | jsonfilter -e '@.label' 2>/dev/null)
+	local level=$(echo "$input" | jsonfilter -e '@.level' 2>/dev/null || echo "single")
+	local members=$(echo "$input" | jsonfilter -e '@.members[@]' 2>/dev/null)
+
+	local count=$(echo "$members" | wc -w)
+	if [ "$count" -lt 1 ]; then
+		echo '{"code": 1, "error": "Members required"}'
+		return
+	fi
+
+	local opt=""
+	[ -n "$label" ] && opt="-L $label"
+	local out=$(mkfs.btrfs -f $opt -d "$level" $members 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_btrfs_subvol_create() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	local path=$(echo "$input" | jsonfilter -e '@.path' 2>/dev/null)
+	local mnt="/tmp/.btrfs_tmp"
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	local out=$(btrfs subvolume create "$mnt$path" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_btrfs_subvol_delete() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	local path=$(echo "$input" | jsonfilter -e '@.path' 2>/dev/null)
+	local mnt="/tmp/.btrfs_tmp"
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	local out=$(btrfs subvolume delete "$mnt$path" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_btrfs_subvol_set_default() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	local path=$(echo "$input" | jsonfilter -e '@.path' 2>/dev/null)
+	local mnt="/tmp/.btrfs_tmp"
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	local out=$(btrfs subvolume set-default "$mnt$path" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_btrfs_set_label() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	local label=$(echo "$input" | jsonfilter -e '@.label' 2>/dev/null)
+	local mnt="/tmp/.btrfs_tmp"
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	local out=$(btrfs filesystem label "$mnt" "$label" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+action_btrfs_snapshot_create() {
+	read -r input
+	local uuid=$(echo "$input" | jsonfilter -e '@.uuid' 2>/dev/null)
+	local src=$(echo "$input" | jsonfilter -e '@.source' 2>/dev/null)
+	local dst=$(echo "$input" | jsonfilter -e '@.dest' 2>/dev/null)
+	local ro=$(echo "$input" | jsonfilter -e '@.readonly' 2>/dev/null)
+	local mnt="/tmp/.btrfs_tmp"
+	mount -t btrfs -o subvol=/ "UUID=$uuid" "$mnt" >/dev/null 2>&1
+
+	[ -z "$dst" ] && dst="/.snapshot${src}/$(date +%Y%m%d%H%M%S)"
+	mkdir -p "$(dirname "$mnt$dst")"
+
+	local opt=""
+	[ "$ro" = "1" ] || [ "$ro" = "true" ] && opt="-r"
+	local out=$(btrfs subvolume snapshot $opt "$mnt$src" "$mnt$dst" 2>&1)
+	local res=$?
+	if [ $res -eq 0 ]; then
+		echo '{"code": 0, "message": "OK"}'
+	else
+		json_init
+		json_add_int "code" "$res"
+		json_add_string "error" "$out"
+		json_dump
+	fi
+}
+
+# Main entry point
+case "$1" in
+	list)
+		echo '{
+			"list_devices": {},
+			"get_disk_info": {"device": "string"},
+			"get_smart_attr": {"device": "string"},
+			"get_format_cmd": {},
+			"format_partition": {"partition": "string", "filesystem": "string", "force": "int"},
+			"mk_partition_table": {"device": "string", "table": "string"},
+			"create_partition": {"device": "string", "start_sec": "string", "end_sec": "string", "type": "string"},
+			"remove_partition": {"device": "string", "number": "int"},
+			"mount": {"device": "string", "point": "string", "fs": "string", "options": "string"},
+			"umount": {"point": "string"},
+			"get_mount_points": {},
+			"eject_device": {"device": "string"},
+			"rescan_disks": {},
+			"list_raid_devices": {},
+			"create_raid": {"name": "string", "level": "string", "members": "array"},
+			"list_btrfs_devices": {},
+			"get_btrfs_info": {"uuid": "string"},
+			"get_btrfs_subvolumes": {"uuid": "string"},
+			"create_btrfs": {"label": "string", "level": "string", "members": "array"},
+			"btrfs_subvol_create": {"uuid": "string", "path": "string"},
+			"btrfs_subvol_delete": {"uuid": "string", "path": "string"},
+			"btrfs_subvol_set_default": {"uuid": "string", "path": "string"},
+			"btrfs_set_label": {"uuid": "string", "label": "string"},
+			"btrfs_snapshot_create": {"uuid": "string", "source": "string", "dest": "string", "readonly": "boolean"}
+		}'
+		;;
+	call)
+		case "$2" in
+			list_devices) action_list_devices ;;
+			get_disk_info) action_get_disk_info ;;
+			get_smart_attr) action_get_smart_attr ;;
+			get_format_cmd) action_get_format_cmd ;;
+			format_partition) action_format_partition ;;
+			mk_partition_table) action_mk_partition_table ;;
+			create_partition) action_create_partition ;;
+			remove_partition) action_remove_partition ;;
+			mount) action_mount ;;
+			umount) action_umount ;;
+			get_mount_points) action_get_mount_points ;;
+			eject_device) action_eject_device ;;
+			rescan_disks) action_rescan_disks ;;
+			list_raid_devices) action_list_raid_devices ;;
+			create_raid) action_create_raid ;;
+			list_btrfs_devices) action_list_btrfs_devices ;;
+			get_btrfs_info) action_get_btrfs_info ;;
+			get_btrfs_subvolumes) action_get_btrfs_subvolumes ;;
+			create_btrfs) action_create_btrfs ;;
+			btrfs_subvol_create) action_btrfs_subvol_create ;;
+			btrfs_subvol_delete) action_btrfs_subvol_delete ;;
+			btrfs_subvol_set_default) action_btrfs_subvol_set_default ;;
+			btrfs_set_label) action_btrfs_set_label ;;
+			btrfs_snapshot_create) action_btrfs_snapshot_create ;;
+			*) echo '{"error": "Method not found"}' ;;
+		esac
+		;;
+esac
