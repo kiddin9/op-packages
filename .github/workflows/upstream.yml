@@ -382,7 +382,6 @@ jobs:
         git_clone https://github.com/de-quenx/luci-theme-luxe
         git_clone https://github.com/anothaDev/luci-theme-vantage vantage;mv -f vantage/*vantage ./;rm -rf vantage
         git_clone https://github.com/xiaokeikei/luci-app-cf-dns-speedtest
-        git_clone https://github.com/Benya9669/luci-theme-rmm
         ) &
         (
         git_clone https://github.com/VolanticSystems/luci-app-appflow
