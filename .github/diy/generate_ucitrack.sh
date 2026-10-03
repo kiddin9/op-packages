@@ -12,6 +12,8 @@ done
 find . -type f \
     -not -path "*.github*" \
     -not -name "Makefile" \
+    -not -name "*.js" \
+	-not -name "*.lua" \
     | while read -r file; do
     
     if grep -q "add ucitrack" "$file"; then
@@ -49,15 +51,6 @@ find . -type f \
         echo "已处理文件: $file (ucitrack)"
         
     else
-        # 检查是否需要添加 reload_service
-    if (grep -q "stop_service\|service_stopped" "$file") && ! grep -q "reload_service" "$file"; then
-        echo >> "$file"
-        echo "reload_service() {" >> "$file"
-        echo -e "\trestart" >> "$file"
-        echo "}" >> "$file"
-        
-        echo "已添加 reload_service 到文件: $file"
-    fi
 
 if awk '/^USE_PROCD/{a=1} /start_service/{b=1} /config_load/{c=1} /service_triggers/{d=1} END{exit !(a&&b&&c&&!d)}' "$file"; then
         needs_service_triggers=1
