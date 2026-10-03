@@ -81,13 +81,9 @@
 	<tr class="cbi-section-table-row">
 		<td><input type="checkbox" class="sub-check" value="<%=luci.util.pcdata(it.id)%>"/></td>
 		<td>
-			<% if it.combo then %>
-			<span class="cbi-value-description" style="color:#0066aa">[<%:Combination%>]</span> <%=luci.util.pcdata(it.name or "")%>
-			<% else %>
 			<%=luci.util.pcdata(it.name or "")%>
-			<% end %>
 			<% if it.cron_enable == true or it.cron_enable == "1" then %>
-			<div class="cbi-value-description">定时: <%=luci.util.pcdata(it.cron_time or "")%></div>
+			<div class="cbi-value-description"><%:Schedule:%> <%=luci.util.pcdata(it.cron_time or "")%></div>
 			<% end %>
 		</td>
 		<td class="cbi-value-description" style="word-break:break-all"><%
@@ -96,7 +92,7 @@
 				if type(it.sources) == "table" then
 					for _, sid in ipairs(it.sources) do names[#names + 1] = name_by_id[sid] or sid end
 				end
-				%><span style="color:#808080"><%=luci.util.pcdata(table.concat(names, " + "))%></span><%
+				%><span style="color:#0066aa">[<%:Combination%>]</span> <span style="color:#808080"><%=luci.util.pcdata(table.concat(names, " + "))%></span><%
 			elseif it["local"] then
 				%><span style="color:#0066aa">[<%:Local%>]</span><%
 			else

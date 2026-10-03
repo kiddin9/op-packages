@@ -51,26 +51,26 @@
 			</div>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
-			<label style="display:inline-block;min-width:10em">启用规则</label>
+			<label style="display:inline-block;min-width:10em"><%:Enable rules%></label>
 			<input type="checkbox" name="rules_enable" value="1" <%=rules_enabled and "checked" or ""%>
 				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
-			<span class="cbi-value-description">按关键词包含 / 排除、去重规则筛选合并后的节点</span>
+			<span class="cbi-value-description"><%:When enabled, apply keyword include/exclude and dedup rules to the merged nodes%></span>
 		</div>
 		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em">关键词包含</label>
+				<label style="display:inline-block;min-width:10em"><%:Keyword include%></label>
 				<input type="text" name="keyword_include" value="<%=luci.util.pcdata(ki)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em">关键词排除</label>
+				<label style="display:inline-block;min-width:10em"><%:Keyword exclude%></label>
 				<input type="text" name="keyword_exclude" value="<%=luci.util.pcdata(ke)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em">去重</label>
+				<label style="display:inline-block;min-width:10em"><%:Dedup%></label>
 				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em;vertical-align:top">协议筛选</label>
+				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Protocol filter%></label>
 				<% for _, p in ipairs(core.RULE_PROTOS) do %>
 				<span style="white-space:nowrap;margin-right:0.75em">
 					<input type="checkbox" id="pf_<%=p%>" name="proto_filter_<%=p%>" value="1" style="vertical-align:text-top;margin:0" <%=proto_sel[p] and "checked" or ""%>/>
@@ -79,7 +79,7 @@
 				<% end %>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em;vertical-align:top">重命名</label>
+				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Rename%></label>
 				<textarea name="rename_map" rows="3" style="width:60%"><%=luci.util.pcdata(rm)%></textarea>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
