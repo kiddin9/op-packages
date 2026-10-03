@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.1-r1] - 许可证升级为 GPL-3.0-or-later，维护者邮箱更换
+
+**纯元数据变更，无代码改动**（`core.lua` 仅同步版本号）。
+
+### 变更
+
+- `LICENSE`：由 GPL-2.0-or-later 全文替换为 **GNU GPL v3**（2007-06-29）官方全文，
+  文件头版本声明同步改为 `GPL-3.0-or-later`
+- `Makefile`：`PKG_MAINTAINER` 邮箱由 `arthur97172@outlook.com` 改为
+  `Arthur97172@users.noreply.github.com`；文件头许可证注释同步为 v3
+- `README.md` / `README.en.md`：目录结构注释与许可证章节的 `GPL-2.0-or-later`
+  同步改为 `GPL-3.0-or-later`
+- 版本号同步：`Makefile` `PKG_VERSION` → 2.7.1、`core.lua` `M.version`、
+  `README.md` / `README.en.md` / `docs/INSTALL.md` 三处安装文档包名
+
+### 说明
+
+许可证由 v2-or-later 升为 v3-or-later 属**收紧**（GPL-3.0 不可再按 v2 分发），
+原 v2-or-later 授权下的已发布版本不受影响。项目自身版权归 Arthur97172 所有，
+故此次升级无第三方授权障碍。
+
 ## [2.7.0-r1] - ACL 设备实测通过（关闭 2.6.16-r1 遗留的「未实测」）
 
 **纯文档变更，无代码改动**（`core.lua` 仅同步版本号）。

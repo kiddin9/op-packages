@@ -84,20 +84,20 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.7.0-r1`).
+> [Makefile](Makefile) (currently `2.7.1-r1`).
 
 **Minimum supported: OpenWrt / ImmortalWrt 23.05** (older releases are out of scope).
 
 opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
 
 ```bash
-opkg install luci-app-substore-2.7.0-r1.ipk
+opkg install luci-app-substore-2.7.1-r1.ipk
 ```
 
 apk (OpenWrt / ImmortalWrt 25.12+):
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.7.0-r1.apk
+apk add --allow-untrusted luci-app-substore-2.7.1-r1.apk
 ```
 
 Then open LuCI: **Services → Subscriptions**.
@@ -160,7 +160,7 @@ oversight; the reasoning for each is in
 ```
 .
 ├── Makefile                      # OpenWrt package definition
-├── LICENSE                       # GPL-2.0-or-later
+├── LICENSE                       # GPL-3.0-or-later
 ├── root/                         # install payload
 │   ├── etc/
 │   │   ├── config/substore       # UCI placeholder
@@ -257,4 +257,4 @@ See [docs/SECURITY.md](docs/SECURITY.md).
 
 ## License
 
-[GPL-2.0-or-later](LICENSE) — see the [LICENSE](LICENSE) file.
+[GPL-3.0-or-later](LICENSE) — see the [LICENSE](LICENSE) file.

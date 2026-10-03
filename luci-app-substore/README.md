@@ -72,20 +72,20 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.7.0-r1`）。
+> （当前 `2.7.1-r1`）。
 
 **最低支持 OpenWrt / ImmortalWrt 23.05**（更早的版本不在支持范围内）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.7.0-r1.ipk
+opkg install luci-app-substore-2.7.1-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.7.0-r1.apk
+apk add --allow-untrusted luci-app-substore-2.7.1-r1.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
@@ -135,7 +135,7 @@ apk add --allow-untrusted luci-app-substore-2.7.0-r1.apk
 ```
 .
 ├── Makefile                      # OpenWrt 包定义
-├── LICENSE                       # GPL-2.0-or-later
+├── LICENSE                       # GPL-3.0-or-later
 ├── root/                         # 安装内容
 │   ├── etc/
 │   │   ├── config/substore       # UCI 占位
@@ -219,4 +219,4 @@ DNS rebinding 的 TOCTOU 窗口）；wget 后端没有等价手段，**直接拒
 
 ## 许可证
 
-[GPL-2.0-or-later](LICENSE) —— 见 [LICENSE](LICENSE) 文件。
+[GPL-3.0-or-later](LICENSE) —— 见 [LICENSE](LICENSE) 文件。
