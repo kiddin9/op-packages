@@ -56,74 +56,71 @@
 			<input type="text" id="url" name="url" value="<%=luci.util.pcdata(is_edit and it.url or "")%>" style="width:60%"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
-			<label style="display:inline-block;min-width:10em">订阅代理</label>
+			<label style="display:inline-block;min-width:10em"><%:Subscription proxy%></label>
 			<input type="checkbox" name="proxy_enable" value="1" <%=proxy_enabled and "checked" or ""%>
 				onchange="var r=document.getElementById('proxy_row');if(r)r.style.display=this.checked?'block':'none';"/>
 		</div>
 		<div id="proxy_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=proxy_enabled and "block" or "none"%>">
-			<label for="proxy" style="display:inline-block;min-width:10em">代理地址</label>
+			<label for="proxy" style="display:inline-block;min-width:10em"><%:Proxy address%></label>
 			<input type="text" id="proxy" name="proxy" value="<%=luci.util.pcdata(is_edit and it.proxy or "")%>" style="width:60%"/>
-			<div style="color:#808080;margin-top:0.25em">通过代理下载订阅（留空则不使用），支持 http:// 或 socks5:// 地址，如 socks5://192.168.5.1:1080</div>
+			<div style="color:#808080;margin-top:0.25em"><%:Download the subscription through a proxy (leave empty to disable); http:// and socks5:// addresses are supported, e.g. socks5://192.168.5.1:1080%></div>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
-			<label for="ua_preset" style="display:inline-block;min-width:10em">订阅客户端类型</label>
+			<label for="ua_preset" style="display:inline-block;min-width:10em"><%:Client type%></label>
 			<select id="ua_preset" name="ua_preset" onchange="var r=document.getElementById('ua_custom_row');if(r)r.style.display=this.value=='custom'?'block':'none';">
-				<option value="" <%=ua_preset == "" and "selected" or ""%>>默认（不设置）</option>
+				<option value="" <%=ua_preset == "" and "selected" or ""%>><%:Default (not set)%></option>
 				<% for _, p in ipairs(core.UA_PRESETS) do %>
 				<option value="<%=p.key%>" <%=ua_preset == p.key and "selected" or ""%>><%=p.label%></option>
 				<% end %>
-				<option value="custom" <%=ua_preset == "custom" and "selected" or ""%>>自定义</option>
+				<option value="custom" <%=ua_preset == "custom" and "selected" or ""%>><%:Custom%></option>
 			</select>
 			<div style="color:#808080;margin-top:0.25em">
-				部分机场按客户端类型下发节点：同一链接只有选对类型才解析得出真实节点，选错会得到「与您使用客户端不兼容」的占位节点。不确定就保持「默认」。<br/>
-				「自定义」用于预设里没有的客户端：填<b>要原样发送的 User-Agent 请求头</b>，格式与预设里的值同形，即
-				<code>客户端名/版本号</code>，例如 <code>clash-verge/v2.5.0</code>、<code>v2rayN/7.22.0</code>、
-				<code>mihomo.party/v2.0.0 (clash.meta)</code>。<br/>
-				可以含空格、括号、分号、下划线等可见字符（整串原样发送，不解析、不改写）；不能含换行等控制字符，
-				最长 256 字符。版本号填<b>机场要求的最低可用版本</b>，具体填什么以机场或客户端说明为准。
-				选「自定义」但留空 = 不发送 User-Agent（等同「默认」）。
+				<%:Some airports hand out nodes based on the client type: on the same link, only the right type parses into real nodes — the wrong one yields a placeholder node saying your client is incompatible. Keep “Default” if unsure.%><br/>
+				<%:“Custom” is for clients the presets do not cover: enter the User-Agent header to send verbatim, in the same shape as the preset values, i.e. client-name/version — for example clash-verge/v2.5.0, v2rayN/7.22.0, mihomo.party/v2.0.0 (clash.meta).%><br/>
+				<%:Visible characters such as spaces, parentheses, semicolons and underscores are allowed (the whole string is sent verbatim — not parsed or rewritten); control characters such as newlines are not. Maximum length is 256 characters. Set the version to the minimum version the airport accepts; check the airport or client documentation for the exact value.%>
+				<%:Selecting “Custom” but leaving it empty sends no User-Agent (same as “Default”).%>
 			</div>
 		</div>
 		<div id="ua_custom_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=ua_preset == "custom" and "block" or "none"%>">
-			<label for="ua_custom" style="display:inline-block;min-width:10em">自定义 User-Agent</label>
+			<label for="ua_custom" style="display:inline-block;min-width:10em"><%:Custom User-Agent%></label>
 			<input type="text" id="ua_custom" name="ua_custom" value="<%=luci.util.pcdata(ua_custom)%>" style="width:60%"/>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
-			<label style="display:inline-block;min-width:10em">启用定时更新</label>
+			<label style="display:inline-block;min-width:10em"><%:Enable scheduled update%></label>
 			<input type="checkbox" name="cron_enable" value="1" <%=cron_enabled and "checked" or ""%>
 				onchange="var r=document.getElementById('cron_time_row');if(r)r.style.display=this.checked?'block':'none';"/>
 		</div>
 		<div id="cron_time_row" class="cbi-section-descr" style="margin:0.5em 0;display:<%=cron_enabled and "block" or "none"%>">
-			<label style="display:inline-block;min-width:10em;vertical-align:middle">定时更新时间</label>
+			<label style="display:inline-block;min-width:10em;vertical-align:middle"><%:Scheduled update time%></label>
 			<span style="display:inline-flex;flex-wrap:wrap;gap:0.5em;vertical-align:middle">
-				<select name="cron_min"><% for i=0,59 do %><option value="<%=i%>" <%=tonumber(cm)==i and "selected" or ""%>><%=i%></option><% end %></select> 分钟
-				<select name="cron_hour"><% for i=0,23 do %><option value="<%=i%>" <%=tonumber(ch)==i and "selected" or ""%>><%=i%></option><% end %></select> 小时
-				<select name="cron_dom"><% for _,v in ipairs({"*","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"}) do %><option value="<%=v%>" <%=cdom==v and "selected" or ""%>><%=v%></option><% end %></select> 日
-				<select name="cron_mon"><% for _,v in ipairs({"*","1","2","3","4","5","6","7","8","9","10","11","12"}) do %><option value="<%=v%>" <%=cmon==v and "selected" or ""%>><%=v%></option><% end %></select> 月
-				<select name="cron_dow"><% for _,v in ipairs({"*","0","1","2","3","4","5","6"}) do %><option value="<%=v%>" <%=cdow==v and "selected" or ""%>><%=v%></option><% end %></select> 周
+				<select name="cron_min"><% for i=0,59 do %><option value="<%=i%>" <%=tonumber(cm)==i and "selected" or ""%>><%=i%></option><% end %></select> <%:Minute%>
+				<select name="cron_hour"><% for i=0,23 do %><option value="<%=i%>" <%=tonumber(ch)==i and "selected" or ""%>><%=i%></option><% end %></select> <%:Hour%>
+				<select name="cron_dom"><% for _,v in ipairs({"*","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31"}) do %><option value="<%=v%>" <%=cdom==v and "selected" or ""%>><%=v%></option><% end %></select> <%:Day%>
+				<select name="cron_mon"><% for _,v in ipairs({"*","1","2","3","4","5","6","7","8","9","10","11","12"}) do %><option value="<%=v%>" <%=cmon==v and "selected" or ""%>><%=v%></option><% end %></select> <%:Month%>
+				<select name="cron_dow"><% for _,v in ipairs({"*","0","1","2","3","4","5","6"}) do %><option value="<%=v%>" <%=cdow==v and "selected" or ""%>><%=v%></option><% end %></select> <%:Week%>
 			</span>
 		</div>
 		<div class="cbi-section-descr" style="margin:0.5em 0">
-			<label style="display:inline-block;min-width:10em">启用规则</label>
+			<label style="display:inline-block;min-width:10em"><%:Enable rules%></label>
 			<input type="checkbox" name="rules_enable" value="1" <%=rules_enabled and "checked" or ""%>
 				onchange="var r=document.getElementById('rules_row');if(r)r.style.display=this.checked?'block':'none';"/>
-			<span class="cbi-value-description">启用后，更新订阅时按关键词包含/排除、去重规则处理节点</span>
+			<span class="cbi-value-description"><%:When enabled, apply keyword include/exclude and dedup rules to nodes%></span>
 		</div>
 		<div id="rules_row" style="margin:0.5em 0;display:<%=rules_enabled and "block" or "none"%>">
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em">关键词包含</label>
+				<label style="display:inline-block;min-width:10em"><%:Keyword include%></label>
 				<input type="text" name="keyword_include" value="<%=luci.util.pcdata(ki)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em">关键词排除</label>
+				<label style="display:inline-block;min-width:10em"><%:Keyword exclude%></label>
 				<input type="text" name="keyword_exclude" value="<%=luci.util.pcdata(ke)%>" style="width:60%"/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em">去重</label>
+				<label style="display:inline-block;min-width:10em"><%:Dedup%></label>
 				<input type="checkbox" name="dedup" value="1" <%=dedup and "checked" or ""%>/>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em;vertical-align:top">协议筛选</label>
+				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Protocol filter%></label>
 				<% for _, p in ipairs(core.RULE_PROTOS) do %>
 				<span style="white-space:nowrap;margin-right:0.75em">
 					<input type="checkbox" id="pf_<%=p%>" name="proto_filter_<%=p%>" value="1" style="vertical-align:text-top;margin:0" <%=proto_sel[p] and "checked" or ""%>/>
@@ -132,7 +129,7 @@
 				<% end %>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">
-				<label style="display:inline-block;min-width:10em;vertical-align:top">重命名</label>
+				<label style="display:inline-block;min-width:10em;vertical-align:top"><%:Rename%></label>
 				<textarea name="rename_map" rows="3" style="width:60%"><%=luci.util.pcdata(rm)%></textarea>
 			</div>
 			<div class="cbi-section-descr" style="margin:0.25em 0">

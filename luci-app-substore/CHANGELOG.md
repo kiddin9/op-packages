@@ -2,6 +2,83 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.1-r5] - 订阅列表页组合订阅行的「[组合]」徽标移到「订阅地址」列
+
+**纯模板改动，无 Lua 逻辑改动**（`core.lua` `M.version` 不变，仍为 2.7.1）。
+
+### 变更
+
+- `subscriptions.htm`：组合订阅行的 `[组合]` 徽标从**名称**列移到**订阅地址**列，
+  放在来源订阅列表之前。
+  - 名称列此前渲染成 `[组合]Test123`，现在只显示名称 `Test123`；
+  - 订阅地址列显示 `[组合] Fatiao + Feijiyundu`，与同一列里 `[本地]` 徽标的呈现
+    方式一致（徽标同为 `<span style="color:#0066aa">`，来源列表用灰色 `#808080`）；
+  - 徽标是**移走**而非复制 —— 全页仍只出现一次。
+
+### 测试
+
+- 新增 `tests/subscriptions_combo_row_test.lua`（20 项断言），真实渲染模板后断言：
+  - 组合行名称列只含名称，且不含 `Combination`、不含任何 `[`；
+  - `[组合]` 徽标在订阅地址列，且位置在来源列表之前；
+  - 徽标全页只出现一次（`count_of` 计数，另配一条非空对照断言）；
+  - 回归：普通订阅行（名称 / URL / 无徽标）与本地订阅行（`[本地]` 徽标）不受影响；
+  - 反面对照：`save_combo` 改名后名称列跟随数据变化，渲染结果确实随数据变化。
+- 覆盖缺口：本文件新增前，渲染 `subscriptions.htm` 的三个测试
+  （`subscriptions_format_gate_test` / `subscriptions_bulk_delete_test` /
+  `view_i18n_test`）fixture 全是普通订阅，**组合行与本地行的渲染此前零覆盖**。
+- 全量 Lua 测试 54 个文件与 `tests/cron_result_test.sh`（14 项）全部通过。
+
+## [2.7.1-r4] - 修复英文界面下订阅表单仍显示中文（界面文本全部接入 i18n）
+
+**纯模板/翻译改动，无 Lua 逻辑改动**（`core.lua` `M.version` 不变，仍为 2.7.1）。
+
+### 修复
+
+- 系统语言为英文时，「添加订阅」页的「订阅代理」「订阅客户端类型」「启用定时更新」
+  「启用规则」及配套说明文字**原样显示中文**。
+- 根因：这些标签在模板里是**硬编码的中文字面量**，从不进入翻译表。LuCI 的
+  `<%:msgid%>` 按当前语言查 `.lmo`，查不到就回退显示 msgid（英文）；而直接写在
+  HTML 里的中文既没有 msgid 也没有 msgstr，任何语言下都只输出中文。
+  r3 只改了「重命名」提示块，这些标签没动。
+- 改法：全部改为 `<%:…%>`，msgid 复用 po 里已有的英文条目
+  （`Enable rules` / `Keyword include` / `Keyword exclude` / `Dedup` /
+  `Protocol filter` / `Rename`），缺的补英文 msgid + 中文译文。
+
+### 变更
+
+- `form.htm`：订阅代理（`Subscription proxy` / `Proxy address` + 说明）、
+  客户端类型（`Client type` / `Default (not set)` / `Custom` + 三段说明 /
+  `Custom User-Agent`）、定时更新（`Enable scheduled update` /
+  `Scheduled update time` / `Minute` `Hour` `Day` `Month` `Week`）、
+  规则区标签，共 17 处接入 i18n。
+- `combo.htm`：规则区 6 个标签接入 i18n；「启用规则」的说明改用与另两个表单
+  同构的 msgid `When enabled, apply keyword include/exclude and dedup rules to
+  the merged nodes`（作用范围措辞为「合并后的节点」）。
+- `subscriptions.htm`：订阅名下方的 `定时: ` 改为 `<%:Schedule:%>`。
+- **HTML 标记必须留在 `<%:…%>` 之外**：LuCI 把标签内的文本按 XML 规则转义
+  （`<` `>` `&` `'` `"` 全部变成数字实体），标记写在里面会当字面文本显示。
+  `form.htm` 的客户端类型说明原本用 `<code>` 强调示例值，为满足这条约束改为
+  整句一个 msgid、示例值直接写在句中。
+
+### 翻译
+
+- `po/zh-cn/substore.po`：新增 20 条 msgid 的中文译文（122 条，无重复、无缺 msgstr）。
+
+### 测试
+
+- 新增 `tests/view_i18n_test.lua`，三组断言：
+  - **A 真实渲染**：按 LuCI 的方式把模板重建成 Lua chunk，用**恒等 translate**
+    （= 英文界面，仓库只发布 zh-cn 一份 `.lmo`）渲染，输出里不得出现 CJK。
+    这条直接复现本缺陷 —— 中文字面量在输出里，`<%:…%>` 输出的是英文 msgid。
+  - **B po 覆盖**：模板里每个 msgid 都必须在 `po/zh-cn/substore.po` 有条目，
+    否则中文界面显示英文。
+  - **C 静态扫描**：抹掉 `<% %>` 代码块与 HTML 注释后，字面 HTML 里不得有 CJK，
+    补上 A 覆盖不到的模板（`nodes.htm` / `output.htm` 需要数据 fixture）。
+- 缺口说明：`p2_batch7_test.lua` L1 的「无中文 msgid」断言只扫 `<%:…%>` 与
+  `luci.i18n.translate("…")` 内部，**扫不到写在 HTML 里的中文字面量**，本缺陷
+  正是从这个缺口漏过去的。
+- 全量 Lua 测试 53 个文件与 `tests/cron_result_test.sh`（14 项）全部通过。
+
 ## [2.7.1-r3] - 重写「重命名」提示并统一三个表单的规则说明
 
 **纯模板/翻译改动，无 Lua 逻辑改动**（`core.lua` `M.version` 不变，仍为 2.7.1）。

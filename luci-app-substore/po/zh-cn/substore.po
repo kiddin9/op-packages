@@ -326,3 +326,68 @@ msgstr "更新并解析出节点后才能选择格式"
 # 节点表头 / 节点编辑表单里的字段标签
 msgid "Type"
 msgstr "类型"
+
+# 订阅表单：下载代理
+msgid "Subscription proxy"
+msgstr "订阅代理"
+
+msgid "Proxy address"
+msgstr "代理地址"
+
+msgid "Download the subscription through a proxy (leave empty to disable); http:// and socks5:// addresses are supported, e.g. socks5://192.168.5.1:1080"
+msgstr "通过代理下载订阅（留空则不使用），支持 http:// 或 socks5:// 地址，如 socks5://192.168.5.1:1080"
+
+# 订阅表单：客户端类型（User-Agent）
+msgid "Client type"
+msgstr "订阅客户端类型"
+
+msgid "Default (not set)"
+msgstr "默认（不设置）"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Some airports hand out nodes based on the client type: on the same link, only the right type parses into real nodes — the wrong one yields a placeholder node saying your client is incompatible. Keep “Default” if unsure."
+msgstr "部分机场按客户端类型下发节点：同一链接只有选对类型才解析得出真实节点，选错会得到「与您使用客户端不兼容」的占位节点。不确定就保持「默认」。"
+
+msgid "“Custom” is for clients the presets do not cover: enter the User-Agent header to send verbatim, in the same shape as the preset values, i.e. client-name/version — for example clash-verge/v2.5.0, v2rayN/7.22.0, mihomo.party/v2.0.0 (clash.meta)."
+msgstr "「自定义」用于预设里没有的客户端：填要原样发送的 User-Agent 请求头，格式与预设里的值同形，即 客户端名/版本号 —— 例如 clash-verge/v2.5.0、v2rayN/7.22.0、mihomo.party/v2.0.0 (clash.meta)。"
+
+msgid "Visible characters such as spaces, parentheses, semicolons and underscores are allowed (the whole string is sent verbatim — not parsed or rewritten); control characters such as newlines are not. Maximum length is 256 characters. Set the version to the minimum version the airport accepts; check the airport or client documentation for the exact value."
+msgstr "可以含空格、括号、分号、下划线等可见字符（整串原样发送，不解析、不改写）；不能含换行等控制字符，最长 256 字符。版本号填机场要求的最低可用版本，具体填什么以机场或客户端说明为准。"
+
+msgid "Selecting “Custom” but leaving it empty sends no User-Agent (same as “Default”)."
+msgstr "选「自定义」但留空 = 不发送 User-Agent（等同「默认」）。"
+
+msgid "Custom User-Agent"
+msgstr "自定义 User-Agent"
+
+# 订阅表单：定时更新
+msgid "Enable scheduled update"
+msgstr "启用定时更新"
+
+msgid "Scheduled update time"
+msgstr "定时更新时间"
+
+msgid "Minute"
+msgstr "分钟"
+
+msgid "Hour"
+msgstr "小时"
+
+msgid "Day"
+msgstr "日"
+
+msgid "Month"
+msgstr "月"
+
+msgid "Week"
+msgstr "周"
+
+# 组合订阅表单：规则说明（与另两个表单共用同一批 msgid，仅作用范围措辞不同）
+msgid "When enabled, apply keyword include/exclude and dedup rules to the merged nodes"
+msgstr "启用后，按关键词包含 / 排除、去重规则筛选合并后的节点"
+
+# 订阅列表：启用了定时更新的订阅，在名称下方显示 cron 表达式
+msgid "Schedule:"
+msgstr "定时:"

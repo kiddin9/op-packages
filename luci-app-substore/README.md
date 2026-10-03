@@ -72,20 +72,20 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.7.1-r3`）。
+> （当前 `2.7.1-r5`）。
 
 **最低支持 OpenWrt / ImmortalWrt 23.05**（更早的版本不在支持范围内）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.7.1-r3.ipk
+opkg install luci-app-substore-2.7.1-r5.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.7.1-r3.apk
+apk add --allow-untrusted luci-app-substore-2.7.1-r5.apk
 ```
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
