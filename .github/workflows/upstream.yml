@@ -378,6 +378,24 @@ jobs:
         git_clone https://github.com/rchen14b/luci-theme-glass
         git_clone https://github.com/zzsj0928/luci-theme-liquid
         git_clone https://github.com/rabbitrogi/luci-app-zerotier
+        git_clone https://github.com/arafatrahmanzami/luci-app-quickactions quickactions; mvdir quickactions
+        git_clone https://github.com/de-quenx/luci-theme-luxe
+        git_clone https://github.com/anothaDev/luci-theme-vantage vantage;mv -f vantage/*vantage ./;rm -rf vantage
+        git_clone https://github.com/xiaokeikei/luci-app-cf-dns-speedtest
+        git_clone https://github.com/Benya9669/luci-theme-rmm
+        ) &
+        (
+        git_clone https://github.com/VolanticSystems/luci-app-appflow
+        git_clone https://github.com/LazuliKao/luci-theme-fluent tfluent && mv -f tfluent/package/*fluent* ./;rm -rf tfluent
+        git_clone https://github.com/Benya9669/luci-theme-rmm trmm && mv -f trmm/packages/* ./;rm -rf trmm
+        git_clone https://github.com/permails/luci-app-secbox
+        git_clone https://github.com/permails/luci-app-diskbox
+        git_clone https://github.com/torguardvpn/luci-theme-privaterouter && mv -f luci-theme-privaterouter/{luci-mod-dashboard,luci-mod-simple,luci-theme-oat};rm -rf luci-theme-privaterouter
+        git_clone https://github.com/nooblk-98/luci-theme-noobwrt
+        git_clone https://github.com/Zerogiven-OpenWRT-Packages/luci-app-podman
+        git_clone https://github.com/akorshun/luci-theme-shadcnui shadcnui && mvdir shadcnui
+        git_clone https://github.com/Boos4721/luci-app-hermes
+        git_clone https://github.com/Antecer/luci-app-devgate devgate && mv -f devgate/luci-app-devgate ./;rm -rf devgate
         ) &
         (
         git_clone https://github.com/vad-b/luci-app-tailscale-ng
