@@ -80,6 +80,7 @@ function renderFilterChips(host, state, callbacks) {
 		const parsed = log.parseFilterValue(val);
 		if (!parsed.value) continue;
 		const negated = parsed.negate;
+		const invertLabel = String(negated ? _('Include instead') : _('Exclude instead'));
 		const kids = [];
 		const lead = chipLeadingSym(negated);
 		if (lead) kids.push(lead);
@@ -90,7 +91,7 @@ function renderFilterChips(host, state, callbacks) {
 				'span',
 				{
 					'class': 'fwlive-chip-invert-wrap',
-					'data-tip': negated ? _('Include instead') : _('Exclude instead')
+					'data-tip': invertLabel
 				},
 				[
 					E(
@@ -98,6 +99,7 @@ function renderFilterChips(host, state, callbacks) {
 						{
 							'type': 'button',
 							'class': 'fwlive-chip-invert',
+							'aria-label': invertLabel,
 							'click': function (ev) {
 								callbacks.onInvert(spec.key, ev);
 							}

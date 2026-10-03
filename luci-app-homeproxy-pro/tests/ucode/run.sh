@@ -379,7 +379,24 @@ rm -rf "$WORK/homeproxy-pro"
 mkdir -p "$WORK/homeproxy-pro"
 cp "$ROOT/root/etc/homeproxy-pro/scripts/homeproxy-pro.uc" "$WORK/homeproxy-pro/"
 cp "$ROOT/tests/ucode/test_homeproxy_utils.uc" "$WORK/homeproxy-pro/"
-if ( cd "$WORK/homeproxy-pro" && ucode test_homeproxy_utils.uc ); then
+
+# The fetch-layer guard runs against a stub, not against whatever fetcher this
+# host happens to have.  That is the whole point: the guard exists to catch
+# "an option the fetcher does not have", and while it ran against the host's
+# own binary it only ever checked the configuration that already worked - CI's
+# GNU wget, the maintainer's GNU wget.  The stub accepts exactly the option list
+# read off the applet on a device and rejects the rest, so the check means the
+# same thing everywhere and needs no network.
+#
+# On a target /bin/uclient-fetch really exists, so fetchBinary() returns it and
+# the same assertions run against the real applet.  Both directions are useful:
+# the stub catches "an option we invented", the target catches "an option the
+# real applet lacks".
+mkdir -p "$WORK/fetchbin"
+cp "$ROOT/tests/fixtures/uclient-fetch-stub" "$WORK/fetchbin/uclient-fetch"
+chmod +x "$WORK/fetchbin/uclient-fetch"
+
+if ( cd "$WORK/homeproxy-pro" && PATH="$WORK/fetchbin:$PATH" ucode test_homeproxy_utils.uc ); then
 	echo "PASS: executeCommand() regression tests"
 else
 	echo "FAIL: executeCommand() regression tests"

@@ -21,7 +21,7 @@
 
 'use strict';
 
-import { buildTLSObject, buildTransportObject, validateHomeProxyPath, validateCertificatePath, HP_DIR } from 'homeproxy-pro';
+import { buildTLSObject, buildTransportObject, rulePathRootsText, validateCertificatePath, validateHomeProxyPath, validateRuleSetPath, HP_DIR } from 'homeproxy-pro';
 
 let failures = 0,
     checks = 0;
@@ -99,6 +99,54 @@ expect('cert.paths empty rejected', validateCertificatePath(''), false);
  * rule-set path may not reach into /etc/ssl/, and a certificate does not need
  * /tmp/homeproxy_ (that root is for upload staging). */
 expect('rule-set path still rejects /etc/ssl', validateHomeProxyPath('/etc/ssl/certs/srv.pem'), false);
+
+/* 4c. Rule-set source files have a THIRD policy, and it is the narrowest of
+ *       the three.  validateHomeProxyPath() accepts everything under
+ *       /etc/homeproxy-pro/ and everything under /tmp/homeproxy_ - which is right
+ *       for a general "this path is inside the package" gate and wrong for a
+ *       rule-set, because a rule-set has exactly one home: the archive the
+ *       package creates (RULE_PATH_ROOTS, mirrored by HP_RULE_PATH_ROOTS and
+ *       locked across the JS/ucode boundary by guard 50).
+ *
+ *       The distinction that matters: validateHomeProxyPath() still answers
+ *       true for /etc/homeproxy-pro/ruleset/x.srs AND for /tmp/homeproxy_x/y.srs,
+ *       while validateRuleSetPath() answers true only for the first.  A
+ *       frontend built on the general gate would offer paths the generator
+ *       then refuses - the guard-29 failure mode, one policy over.
+ */
+expect('ruleset path accepts the archive',
+	validateRuleSetPath('/etc/homeproxy-pro/ruleset/example.srs'), true);
+expect('ruleset path rejects a bare root',
+	validateRuleSetPath('/etc/homeproxy-pro/ruleset/'), false);
+expect('ruleset path rejects /etc/passwd',
+	validateRuleSetPath('/etc/passwd'), false);
+expect('ruleset path rejects another path under /etc/homeproxy-pro',
+	validateRuleSetPath('/etc/homeproxy-pro/resources/china_ip4.json'), false);
+expect('ruleset path rejects the certs directory',
+	validateRuleSetPath('/etc/homeproxy-pro/certs/server_privatekey.pem'), false);
+expect('ruleset path rejects /tmp/homeproxy_ upload staging',
+	validateRuleSetPath('/tmp/homeproxy_ruleset_upload.tmp'), false);
+expect('ruleset path rejects /etc/ssl',
+	validateRuleSetPath('/etc/ssl/certs/srv.pem'), false);
+expect('ruleset path rejects a traversal out of the archive',
+	validateRuleSetPath('/etc/homeproxy-pro/ruleset/../../etc/shadow'), false);
+expect('ruleset path rejects a relative path',
+	validateRuleSetPath('etc/homeproxy-pro/ruleset/x.srs'), false);
+expect('ruleset path rejects null', validateRuleSetPath(null), false);
+expect('ruleset path rejects empty', validateRuleSetPath(''), false);
+expect('ruleset path rejects a non-string', validateRuleSetPath(42), false);
+
+/* And the general gate is unchanged: narrowing the rule-set policy must not
+ * have narrowed the one buildTLSObject() and the parser still rely on. */
+expect('general gate still accepts /etc/homeproxy-pro',
+	validateHomeProxyPath('/etc/homeproxy-pro/ruleset/example.srs'), true);
+expect('general gate still accepts /tmp/homeproxy_',
+	validateHomeProxyPath('/tmp/homeproxy_cert_server_publickey.tmp'), true);
+
+/* The diagnostic has to name the roots, or the user is left guessing where the
+ * file is supposed to go. */
+expect('the roots text lists the archive',
+	!!match(rulePathRootsText(), /\/etc\/homeproxy-pro\/ruleset\//), true);
 
 const sslCert = buildTLSObject({ enabled: '1', server_name: 's', cert_path: '/etc/ssl/certs/srv.pem' }, false);
 expect('client.cert_path /etc/ssl kept', sslCert.certificate_path, '/etc/ssl/certs/srv.pem');

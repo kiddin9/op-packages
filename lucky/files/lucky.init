@@ -1,15 +1,17 @@
 #!/bin/sh /etc/rc.common
 # Copyright (C) 2021-2024 daji <https://github.com/gdy666/lucky>
+# Enhanced by Dante <dante@seckv.com>
 
 START=99
 USE_PROCD=1
 
 PROG=/usr/bin/lucky
+RUNNER=/usr/libexec/lucky-runner
 DEFAULT_PRO_CONF='/etc/config/lucky.daji/'
 
 lucky_instance() {
     local cfg="$1"
-    local enabled configdir logger
+    local enabled configdir logger launcher
 
     config_get_bool enabled "$cfg" enabled 0
     config_get configdir "$cfg" configdir "$DEFAULT_PRO_CONF"
@@ -19,32 +21,58 @@ lucky_instance() {
 
     [ -d "$configdir" ] || mkdir -p "$configdir" 2>/dev/null
 
+    launcher="$PROG"
+    [ -x "$RUNNER" ] && launcher="$RUNNER"
+
     procd_open_instance "$cfg"
-    procd_set_param command "$PROG" -cd "$configdir"
-    procd_set_param respawn
+    procd_set_param command "$launcher" -cd "$configdir"
+    procd_set_param respawn 3600 3 0
     procd_set_param stdout "$logger"
     procd_set_param stderr "$logger"
     procd_close_instance
 }
 
 start_service() {
-    # 强制清理可能脱离 procd 管控的独立进程（如通过 Lucky 面板自行更新/重启产生的孤儿进程）
-    local pids=$(pidof /usr/bin/lucky)
-    [ -n "$pids" ] && kill -9 $pids >/dev/null 2>&1 || true
+    # 检查并清理残留的脱管孤儿进程，确保端口完全释放
+    local pids=$(pidof "$PROG")
+    if [ -n "$pids" ]; then
+        kill -TERM $pids >/dev/null 2>&1
+        local timeout=20
+        while [ $timeout -gt 0 ]; do
+            kill -0 $pids >/dev/null 2>&1 || break
+            usleep 100000 2>/dev/null || sleep 1
+            timeout=$((timeout - 1))
+        done
+        local remaining=$(pidof "$PROG")
+        [ -n "$remaining" ] && kill -9 $remaining >/dev/null 2>&1 || true
+    fi
 
     config_load lucky
     config_foreach lucky_instance lucky
 }
 
 stop_service() {
-    local pids=$(pidof /usr/bin/lucky)
-    [ -n "$pids" ] && kill -9 $pids >/dev/null 2>&1 || true
+    local pids=$(pidof "$PROG")
+    [ -z "$pids" ] && return 0
+
+    kill -TERM $pids >/dev/null 2>&1
+    local timeout=20
+    while [ $timeout -gt 0 ]; do
+        kill -0 $pids >/dev/null 2>&1 || break
+        usleep 100000 2>/dev/null || sleep 1
+        timeout=$((timeout - 1))
+    done
+
+    # 兜底清理未退出的孤儿脱管进程
+    local remaining=$(pidof "$PROG")
+    [ -n "$remaining" ] && kill -9 $remaining >/dev/null 2>&1 || true
+}
+
+reload_service() {
+    stop
+    start
 }
 
 service_triggers() {
     procd_add_reload_trigger "lucky"
-}
-
-reload_service() {
-	restart
 }

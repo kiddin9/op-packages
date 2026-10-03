@@ -55,6 +55,8 @@ function columnLabel(col) {
 	return labels[col] || col;
 }
 
+const EXPANSION_PANEL_ID = 'fwlive-expanded-message';
+
 function dirLabel(dir) {
 	const labels = {
 		'in': _('Inbound'),
@@ -144,6 +146,28 @@ function flowCell(row, state, callbacks) {
 	return E('span', { 'class': 'fwlive-flow' }, parts);
 }
 
+function rowExpandButton(row, state, callbacks) {
+	const expanded = state.expandedRowId === row.id;
+	const action = expanded ? _('Hide full message') : _('Show full message');
+	const button = E(
+		'button',
+		{
+			'type': 'button',
+			'class': 'fwlive-row-expand',
+			'aria-label': String(action),
+			'aria-expanded': expanded ? 'true' : 'false',
+			'aria-controls': expanded ? EXPANSION_PANEL_ID : null,
+			'click': function (ev) {
+				if (ev && ev.stopPropagation) ev.stopPropagation();
+				callbacks.onRowClick(row.id, ev);
+			}
+		},
+		[expanded ? '▾' : '▸']
+	);
+	button._fwliveRowId = String(row.id);
+	return button;
+}
+
 function buildColumnCell(col, row, state, callbacks) {
 	const onFilterClick = callbacks.onFilterClick;
 	const msgDisplay = log.formatMessageDisplay(row.message, state.messageLayout);
@@ -163,8 +187,12 @@ function buildColumnCell(col, row, state, callbacks) {
 					: log.formatTimestampLocal(row.timestamp)
 			]);
 		}
-		case 'action':
-			return E('td', { 'class': log.actionRowClass(row.action) }, [actionCell]);
+		case 'action': {
+			const actionChildren = [actionCell];
+			if (state.viewMode === 'simple')
+				actionChildren.push(' ', rowExpandButton(row, state, callbacks));
+			return E('td', { 'class': log.actionRowClass(row.action) }, actionChildren);
+		}
 		case 'rule':
 			return E('td', { 'class': columnCellClass(col) }, [
 				links.ruleAdminLink(row.rule_hint, row.rule_label, onFilterClick)
@@ -338,7 +366,7 @@ function buildExpansionRow(row, state, columns) {
 	const expansion = E('tr', { 'class': 'fwlive-msg-expand' }, [
 		E('td', { 'colspan': String(columns.length) }, [
 			E('div', { 'class': 'fwlive-msg-expand-label' }, [_('Message')]),
-			E('pre', { 'class': 'fwlive-msg-expand-body' }, [
+			E('pre', { 'id': EXPANSION_PANEL_ID, 'class': 'fwlive-msg-expand-body' }, [
 				/* oneline is uncapped; wrap ellipsizes at 240 */
 				log.formatMessageDisplay(row.message, 'oneline') || '—'
 			])

@@ -4,7 +4,7 @@
 #
 # Layer 1 adaptive poll cap. Sourced by rpcd/fwlive.
 # Always on unless test/triage override (no UCI / no product config):
-#   FWLIVE_ADAPTIVE=0|false|off|no
+#   FWLIVE_ADAPTIVE=0|false|off|no (case-insensitive words)
 #   or sentinel ${FWLIVE_ADAPTIVE_OFF_FILE:-<state-dir>/fwlive-adaptive-off}
 #   (default under /var/run next to state — not world-writable /tmp).
 #
@@ -64,7 +64,7 @@ fwlive_adaptive_off_path() {
 
 fwlive_adaptive_enabled() {
 	case "${FWLIVE_ADAPTIVE:-1}" in
-		0|false|off|no|FALSE|OFF|NO) return 1 ;;
+		0|[fF][aA][lL][sS][eE]|[oO][fF][fF]|[nN][oO]) return 1 ;;
 	esac
 	[ -e "$(fwlive_adaptive_off_path)" ] && return 1
 	return 0

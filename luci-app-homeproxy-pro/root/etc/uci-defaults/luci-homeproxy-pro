@@ -3,6 +3,30 @@
 [ -f "/www/luci-static/resources/icons/loading.gif" ] && \
 	sed -i "s,/loading.svg,/loading.gif,g" "/www/luci-static/resources/view/homeproxy-pro/status.js"
 
+# The rule-set archive, created at install time.
+#
+# /etc/homeproxy-pro/ruleset is where the LuCI rule-set form points, and it is the
+# only directory validateRuleSetPath() (homeproxy-pro.uc) admits for a local
+# rule-set's `path` or a remote rule-set's `initial_path`.  It used to be created
+# only by a custom-mode start that had already got far enough, which was after
+# the client configuration had been generated and `sing-box check`ed - so on a
+# fresh install the natural first rule-set could not be added at all, and the
+# only thing the user saw was "new client configuration is invalid, reload
+# aborted".  runtime/service.sh's hp_prepare_ruleset_dir() now creates it
+# before every generation as well; this is what makes it exist on a router
+# whose service has not started yet.
+#
+# Deliberately NOT a package conffile.  The directory holds the user's own
+# rule-set files, and conffiles are what the package manager overwrites on
+# upgrade (arch-guard 33/37 pin that list against both packaging paths).
+#
+# mkdir -p is idempotent and the chown is best-effort: on a fresh install the
+# sing-box user comes from a dependency, but a failure here must not abort the
+# whole uci-defaults run - the directory existing is what matters, and
+# hp_prepare_runtime_files hands ownership over on the first start anyway.
+mkdir -p /etc/homeproxy-pro/ruleset
+chown sing-box:sing-box /etc/homeproxy-pro/ruleset 2>"/dev/null"
+
 uci -q batch <<-EOF >"/dev/null"
 	delete firewall.homeproxy_pre
 

@@ -75,6 +75,77 @@ const ensureLogPoll = hp.statusPoller({
 	}
 });
 
+/* --- rule-set download failures ------------------------------------------
+ *
+ * With ruleset_safe_start on, a remote rule-set that cannot be downloaded no
+ * longer stops the service: sing-box reads the empty initial_path fallback,
+ * binds, and retries in the background.  The instance is healthy and the LAN is
+ * proxied - and the rule-set that keeps mainland traffic direct matches
+ * nothing, so all of it goes to `final`.
+ *
+ * That is the trade, and it is the reason this block exists: the degradation
+ * has no other symptom.  The health gate does not look at rule-sets at all
+ * (there is nothing in health.sh that could), so the service reports itself
+ * healthy while a rule-set is silently empty.
+ *
+ * sing-box-c.log is read rather than a new RPC: the ACL already grants the
+ * browser read on that file for the log viewer below, so this costs no
+ * permission and no new method to keep in step with the method table.
+ *
+ * Whether a fallback is actually in play is read from UCI rather than guessed:
+ * with the opt-in OFF, a failing rule-set means the instance would not have
+ * started at all, which is a different and much more visible problem - so the
+ * wording has to differ, not just the colour. */
+const ruleSetNode = E('div', { 'id': 'ruleset_status' },
+	E('img', {
+		'src': L.resource('icons/loading.svg'),
+		'alt': _('Loading'),
+		'style': 'vertical-align:middle'
+	}, _('Collecting data...'))
+);
+
+function renderRuleSetStatus() {
+	/* Same poller as the log views, so there is still one handler per view
+	 * no matter how often render() runs. */
+	ensureLogPoll();
+
+	fs.read_direct(`${hp_dir}/sing-box-c.log`, 'text')
+		.then((text) => {
+			const failures = hp.parseRuleSetFetchFailures(text);
+			const safeStart = (uci.get('homeproxy-pro', 'config', 'ruleset_safe_start') || '0') === '1';
+
+			if (!failures.length) {
+				dom.content(ruleSetNode, E('span', { 'style': 'color:green' },
+					[_('No rule-set download failures in the current log.')]));
+				return;
+			}
+
+			dom.content(ruleSetNode, E('div', [
+				E('p', { 'style': 'color:red' }, [
+					_('%d rule-set(s) cannot be downloaded.').format(failures.length)
+				]),
+				E('p', { 'style': 'color:gray' }, [
+					safeStart
+						? _('Startup fallback in use: these rule-sets are EMPTY, so the traffic they would have split falls through to the default route. The service is up, but the split is not in effect until the download succeeds.')
+						: _('Startup fallback is OFF, so a rule-set that cannot be downloaded prevents the service from starting at all. The service is running, so the log below is from an earlier attempt or the download has since recovered.')
+				]),
+				E('ul', {}, failures.map((f) => E('li', [
+					E('code', [ f.tag ]),
+					' — ',
+					/* Text nodes, never markup: the reason is a string
+					 * sing-box wrote, and it contains a URL. */
+					f.reason || _('(no reason recorded)'),
+					f.at ? E('small', { 'style': 'color:gray' }, [ ' — ' + f.at ]) : ''
+				])))
+			]));
+		})
+		.catch((err) => {
+			dom.content(ruleSetNode, E('span', { 'style': 'color:gray' }, [
+				_('Cannot read the sing-box client log (%s).').format(String(err))
+			]));
+		});
+}
+
 function getConnStat(o, site) {
 	o.default = E('div', { 'style': 'cbi-value-field' }, [
 		E('button', {
@@ -300,6 +371,20 @@ return view.extend({
 
 			return node;
 		}
+
+		s = m.section(form.NamedSection, 'config', 'homeproxy-pro', _('Rule sets'));
+		s.anonymous = true;
+
+		/* A dedicated section rather than a fourth log view: the question is
+		 * "is any rule-set currently broken", and the answer has to be a
+		 * verdict plus a per-tag reason, not a wall of log the user has to read
+		 * a timestamp out of. */
+		o = s.option(form.DummyValue, '_ruleset_status');
+		o.rawhtml = true;
+		o.render = function() {
+			renderRuleSetStatus();
+			return ruleSetNode;
+		};
 
 		s = m.section(form.NamedSection, 'config', 'homeproxy-pro');
 		s.anonymous = true;

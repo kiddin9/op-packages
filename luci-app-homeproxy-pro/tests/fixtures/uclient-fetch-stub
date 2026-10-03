@@ -1,0 +1,93 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# A stand-in for uclient-fetch that accepts ONLY the options the package is
+# allowed to use, and rejects everything else the way the real applet does.
+#
+# WHY THIS EXISTS
+#
+# The subscription fetch used to shell out to `wget` with GNU-only options
+# (-nv --user-agent --timeout=).  `wget` is whichever implementation the
+# firmware's buildroot compiled, and the two share almost no options, so on a
+# busybox-wget router wget exited 2 with "unrecognized option: n" BEFORE making
+# a single request: every subscription fetch failed, every resource-list update
+# failed, and the connectivity check reported a failed proxy.
+#
+# The suite already had a guard for exactly this shape ("the fetch must not
+# fail with a usage error") and it still did not catch it, because it ran
+# against whatever fetcher the host happened to have - GNU wget on CI, GNU
+# wget on the maintainer's own router.  The guard was pointed at the
+# configuration that already worked.
+#
+# This stub is what makes the guard mean something: the accepted option set is
+# pinned to the list read off the applet on a real device, so an option nobody
+# verified is rejected here the same way it would be rejected there, on any
+# host, with no network.
+#
+#   -O <file>            stdout is "-"
+#   -U <str> | --user-agent <str>
+#   -T N | --timeout=N   seconds
+#   -s | --spider        existence check only
+#   -q | --quiet
+#   -4 | -6
+#   --header=K: V        note the '=': the space-separated form is NOT accepted
+#
+# Behaviour that matters to the callers, copied from the real applet measured
+# on 192.168.1.1 (sing-box 1.14.2, ImmortalWrt 25.12.2):
+#
+#   * the requested URL IS echoed to stderr, query string and all, so the
+#     redaction in wGETVerbose() is exercised rather than assumed;
+#   * a connect failure is exit 4 and "Failed to send request: …";
+#   * an HTTP error is a non-zero exit and "HTTP error <code>";
+#   * a success is exit 0 with the body on stdout.
+
+url=""
+out=""
+spider=0
+quiet=0
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-O)            out="$2"; shift 2 ;;
+		-O?*)          out="${1#-O}"; shift ;;
+		-U|--user-agent) shift 2 ;;
+		--user-agent=*) shift ;;
+		-T)            shift 2 ;;
+		--timeout=*)   shift ;;
+		-s|--spider)   spider=1; shift ;;
+		-q|--quiet)    quiet=1; shift ;;
+		-4|-6)         shift ;;
+		--header=*)    shift ;;
+		-*)            # anything else is unverified: reject it, exactly as
+		               # the applet does, so the guard can see it.
+		               printf 'uclient-fetch: unrecognized option: %s\n' "$(printf '%s' "$1" | sed 's/^--*//')" >&2
+		               printf 'Usage: uclient-fetch [options] <URL>\nOptions: -4 -6 -O <file> --user-agent -T N --spider -q --header=...\n' >&2
+		               exit 1 ;;
+		*)             url="$1"; shift ;;
+	esac
+done
+
+[ -n "$url" ] || { printf 'uclient-fetch: no URL\n' >&2; exit 1; }
+
+say() { [ "$quiet" = 1 ] || printf '%s\n' "$*" >&2; }
+
+# The real applet announces the target on stderr before it reports anything
+# else. This is what puts a subscription token into the error text, and it is
+# why the redaction assertions below are worth anything.
+say "Downloading '$url'"
+
+case "$url" in
+*HP_T_STUB_HTTP_ERROR*)
+	say "HTTP error 404"
+	exit 8
+	;;
+*HP_T_STUB_BINARY*)
+	# A 200 with a binary body.  This is the shape that used to be reported
+	# as "fetch failed: … Download completed (34185 bytes)".
+	say "Download completed (14 bytes)"
+	printf 'SRS\002x\332b\000\014\000\000\001\000\001'
+	exit 0
+	;;
+esac
+
+say "Failed to send request: Operation not permitted"
+exit 4

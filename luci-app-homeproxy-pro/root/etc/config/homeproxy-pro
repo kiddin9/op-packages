@@ -42,6 +42,20 @@ config homeproxy-pro 'config'
 	option health_probe_name 'example.com'
 	option cn_ip_fallback '1'
 	option sniffer_advanced_mode '0'
+	# Start the client even when a remote rule-set cannot be downloaded.
+	#
+	# Off by default, and the default has to stay off: the mechanism points a
+	# remote rule-set at an EMPTY rule-set so that sing-box starts immediately
+	# instead of fetching during initialization, before the inbounds bind.  An
+	# empty rule-set matches nothing, so everything it would have split falls
+	# through to `final` - that is a routing change, not just a robustness
+	# tweak, and on bypass_mainland_china it means mainland destinations can be
+	# proxied until the download succeeds.
+	#
+	# With it off, a cold cache on a fresh install waits for
+	# raw.githubusercontent.com (through the selected node) before the instance
+	# will listen at all, and a failure there fails the whole start.
+	option ruleset_safe_start '0'
 	option tun_dns_mode ''
 	option udp_mapping ''
 	option udp_filtering ''

@@ -3,6 +3,7 @@
 'require rpc';
 'require uci';
 'require ui';
+'require dom';
 'require form';
 
 var callGetInfo = rpc.declare({ object: 'luci.lucky', method: 'get_info', expect: { } });
@@ -19,20 +20,43 @@ return view.extend({
 
 	handleUpdate: function(key, value) {
 		ui.showModal(null, [ E('p', { class: 'spinning' }, _('Updating configuration and restarting service...')) ]);
+		var self = this;
 		
 		return callSetConfig(key, value).then(function(res) {
 			if (res && res.ret === 0) {
 				return callService('restart').then(function() {
-					// Wait a bit for restart
-					setTimeout(function() {
-						ui.hideModal();
-						ui.addNotification(null, E('p', _('Configuration updated successfully')), 'info');
-						window.location.reload();
-					}, 2000);
+					var startTime = Date.now();
+					function waitForReady() {
+						if (Date.now() - startTime > 10000) {
+							ui.hideModal();
+							ui.addNotification(null, E('p', _('Configuration updated successfully')), 'info');
+							self.load().then(function(data) {
+								var node = self.render(data);
+								var map = document.querySelector('.cbi-map');
+								if (map && map.parentNode) dom.content(map.parentNode, node);
+							});
+							return;
+						}
+						callGetInfo().then(function(info) {
+							if (info && info.running) {
+								ui.hideModal();
+								ui.addNotification(null, E('p', _('Configuration updated successfully')), 'info');
+								self.load().then(function(data) {
+									var node = self.render(data);
+									var map = document.querySelector('.cbi-map');
+									if (map && map.parentNode) dom.content(map.parentNode, node);
+								});
+							} else {
+								setTimeout(waitForReady, 500);
+							}
+						});
+					}
+					setTimeout(waitForReady, 500);
 				});
 			} else {
 				ui.hideModal();
-				ui.addNotification(null, E('p', _('Update failed')), 'error');
+				var errMsg = (res && res.error) ? res.error : _('Update failed');
+				ui.addNotification(null, E('p', errMsg), 'error');
 			}
 		});
 	},
@@ -63,7 +87,7 @@ return view.extend({
 		o.rmempty = false;
 		o.placeholder = '/etc/config/lucky.daji';
 
-		// Admin Panel Settings - 使用同一个 TypedSection 追加虚拟选项
+		// Admin Panel Settings
 		s = m.section(form.TypedSection, 'lucky', _('Admin Panel Settings'));
 		s.anonymous = true;
 
@@ -72,8 +96,13 @@ return view.extend({
 		o.datatype = 'port';
 		o.load = function(section_id) { return baseConf.AdminWebListenPort || "16601"; };
 		o.write = function(section_id, value) {
-			callSetConfig('admin_http_port', value);
-			return this.super('write', [section_id, value]);
+			var self = this;
+			return callSetConfig('admin_http_port', value).then(function(res) {
+				if (res && res.ret !== 0 && res.error) {
+					ui.addNotification(null, E('p', res.error), 'error');
+				}
+				return self.super('write', [section_id, value]);
+			});
 		};
 		o.remove = function(section_id) {
 			return this.super('remove', [section_id]);
@@ -83,12 +112,19 @@ return view.extend({
 		o = s.option(form.Value, 'admin_safe_url', _('Admin Safe URL'));
 		o.load = function(section_id) { return baseConf.SafeURL || ""; };
 		o.write = function(section_id, value) {
-			callSetConfig('admin_safe_url', value);
-			return this.super('write', [section_id, value]);
+			var self = this;
+			return callSetConfig('admin_safe_url', value).then(function(res) {
+				if (res && res.ret !== 0 && res.error) {
+					ui.addNotification(null, E('p', res.error), 'error');
+				}
+				return self.super('write', [section_id, value]);
+			});
 		};
 		o.remove = function(section_id) {
-			callSetConfig('admin_safe_url', '');
-			return this.super('remove', [section_id]);
+			var self = this;
+			return callSetConfig('admin_safe_url', '').then(function() {
+				return self.super('remove', [section_id]);
+			});
 		};
 
 		// Allow Internet Access
@@ -97,12 +133,16 @@ return view.extend({
 			return baseConf.AllowInternetaccess ? '1' : '0';
 		};
 		o.write = function(section_id, value) {
-			callSetConfig('switch_Internetaccess', (value === '1'));
-			return this.super('write', [section_id, value]);
+			var self = this;
+			return callSetConfig('switch_Internetaccess', (value === '1')).then(function() {
+				return self.super('write', [section_id, value]);
+			});
 		};
 		o.remove = function(section_id) {
-			callSetConfig('switch_Internetaccess', false);
-			return this.super('remove', [section_id]);
+			var self = this;
+			return callSetConfig('switch_Internetaccess', false).then(function() {
+				return self.super('remove', [section_id]);
+			});
 		};
 
 		// Reset Auth

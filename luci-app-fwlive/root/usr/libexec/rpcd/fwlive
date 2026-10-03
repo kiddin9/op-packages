@@ -46,7 +46,7 @@ slug_key() {
 RULES_MAP_MAX_KEYS=512
 RULES_MAP_MAX_BYTES=65536
 # First-wins dups never increment _map_keys, so they would otherwise walk
-# the whole dump. Bound map_prefix_with_label calls independently.
+# the whole dump. Bound prepared prefix records independently.
 RULES_MAP_MAX_LINES=512
 
 # Append one already-escaped "key":"value" to OUT. Value may be empty.
@@ -74,16 +74,19 @@ map_add() {
 			;;
 	esac
 	esc_key=$(printf '%s' "$key" | json_escape)
-	# Global first-wins deduplication: skip if escaped key already present.
-	# Uses anchored pattern "\"<key>\":" to avoid substring false positives
-	# ("foo" vs "foobar") and value false positives ("see foo").
-	# Quoting "$esc_key" makes the match literal (no glob escaping needed).
-	# Callers apply UCI, then labeled (!fw4:) prefixes, then unlabeled
-	# cosmetics so first-wins prefers authoritative names.
+	esc_val=$(printf '%s' "$val" | json_escape)
+	map_add_escaped "$esc_key" "$esc_val"
+}
+
+# Prepared nft records contain JSON string content with no raw tab/newline.
+# Keep one global first-wins map and identical key/byte caps for both sources.
+map_add_escaped() {
+	esc_key="$1"
+	esc_val="$2"
+	[ -n "$esc_key" ] && [ -n "$esc_val" ] || return 0
 	case "$OUT" in
 		*"\"$esc_key\":"*) return 0 ;;
 	esac
-	esc_val=$(printf '%s' "$val" | json_escape)
 	_pair_len=$(( ${#esc_key} + ${#esc_val} + 5 ))
 	_next_len=$(( ${#OUT} + _pair_len ))
 	[ -n "$OUT" ] && _next_len=$((_next_len + 1))
@@ -150,40 +153,11 @@ is_uci_style_name() {
 	return 0
 }
 
-normalize_log_prefix() {
-	printf '%s' "$1" | sed 's/[[:space:]:]*$//'
-}
-
 read_rpc_input() {
 	if [ -n "$1" ]; then
 		printf '%s' "$1"
 	else
 		cat
-	fi
-}
-
-map_prefix_with_label() {
-	prefix="$1"
-	label="$2"
-	if [ "${_map_lines:-0}" -ge "$RULES_MAP_MAX_LINES" ]; then
-		_map_overflow=1
-		return 0
-	fi
-	_map_lines=$(( ${_map_lines:-0} + 1 ))
-	prefix=$(normalize_log_prefix "$prefix")
-	[ -n "$prefix" ] || return 0
-	slug=$(slug_key "$prefix")
-	if [ -n "$label" ]; then
-		map_add "$prefix" "$label"
-		if [ "$slug" != "$prefix" ]; then
-			map_add "$slug" "$label"
-		fi
-	else
-		cosmetic=$(printf '%s\n' "$prefix" | tr '-' ' ')
-		map_add "$prefix" "$cosmetic"
-		if [ "$slug" != "$prefix" ]; then
-			map_add "$slug" "$cosmetic"
-		fi
 	fi
 }
 
@@ -228,7 +202,7 @@ EOF
 # Raw tabs become \t and backslashes become \\ so the separator tab is
 # unique. Walk bytes: BusyBox awk ≥1.37 gsub cannot emit those sequences.
 nft_dump_fields() {
-	LC_ALL=C awk '
+	LC_ALL=C awk -v mode="${1:-raw}" -v tag="$FW4_TAG" -v max="$RULES_MAP_MAX_LINES" '
 	function last_at(s, needle,    p, i, found) {
 		found = 0
 		p = 1
@@ -253,6 +227,60 @@ nft_dump_fields() {
 				out = out c
 		}
 		return out
+	}
+	function json_string(s,    out, i, c) {
+		out = ""
+		for (i = 1; i <= length(s); i++) {
+			c = substr(s, i, 1)
+			if (c == "\\") out = out "\\\\"
+			else if (c == "\"") out = out "\\\""
+			else if (c == "\t") out = out "\\t"
+			else if (c == "\r") out = out "\\r"
+			else if (c == "\n") out = out "\\n"
+			else if (c in controls) out = out sprintf("\\u%04x", controls[c])
+			else out = out c
+		}
+		return out
+	}
+	function slug(s,    out, i, c) {
+		out = ""
+		for (i = 1; i <= length(s); i++) {
+			c = substr(s, i, 1)
+			out = out ((c == " " || c == "_") ? "-" : tolower(c))
+		}
+		return out
+	}
+	function cosmetic(s,    out, i, c) {
+		out = ""
+		for (i = 1; i <= length(s); i++) {
+			c = substr(s, i, 1)
+			out = out (c == "-" ? " " : c)
+		}
+		return out
+	}
+	function prepared(prefix, comment,    label, kind, alias, value) {
+		label = ""
+		if (index(comment, tag) == 1) {
+			label = substr(comment, length(tag) + 1)
+			if (label !~ /^[A-Za-z0-9_-]+$/) label = ""
+		}
+		if (prefix == "") {
+			if (label == "") return
+			prefix = label
+		}
+		kind = label == "" ? "unlabeled" : "labeled"
+		# Retain one excess record to signal the shell cap, but stop doing
+		# normalization/encoding for further records of either priority.
+		if (++prepared_count[kind] > max + 1) return
+		sub(/[[:space:]:]*$/, "", prefix)
+		alias = slug(prefix)
+		if (alias == prefix) alias = ""
+		value = label == "" ? cosmetic(prefix) : label
+		print kind "\t" json_string(prefix) "\t" json_string(alias) "\t" json_string(value)
+	}
+	BEGIN {
+		for (i = 1; i < 32; i++) controls[sprintf("%c", i)] = i
+		controls[sprintf("%c", 127)] = 127
 	}
 	function quoted_at(s, needle,    i, rest, out, c, n, esc, j) {
 		i = last_at(s, needle)
@@ -285,6 +313,10 @@ nft_dump_fields() {
 		comment = quoted_at($0, "comment \"")
 		if (prefix == "" && comment == "")
 			next
+		if (mode == "prepared") {
+			prepared(prefix, comment)
+			next
+		}
 		prefix = tsv_escape(prefix)
 		comment = tsv_escape(comment)
 		print prefix "\t" comment
@@ -329,49 +361,34 @@ _nft_tsv_unescape() {
 	_tsv_out="$_out"
 }
 
-# pass=labeled|unlabeled|all — labeled before unlabeled so !fw4: beats
-# an earlier cosmetic for the same prefix under first-wins.
-# Reads TSV from nft_dump_fields; stops once the map cap trips.
+# Labeled before unlabeled preserves authoritative fw4 names over cosmetics.
+# Each prepared record is kind<TAB>escaped-key<TAB>escaped-alias<TAB>escaped-value.
+# JSON escapes keep raw separator tabs out of fields. All per-prefix work is
+# done by the one awk dump stage; this loop uses shell builtins only.
 map_from_nft_stream() {
 	pass="${1:-all}"
 	_tab=$(printf '\t')
-	_esc_t=$(printf '\\t')
-	_esc_b=$(printf '\\\\')
-	# IFS= keeps a leading tab (empty prefix + comment-only !fw4: line).
 	while IFS= read -r line || [ -n "$line" ]; do
 		[ -n "$_map_overflow" ] && break
 		[ -n "$line" ] || continue
-		prefix="${line%%${_tab}*}"
-		case "$line" in
-			*"$_tab"*) comment="${line#*"$_tab"}" ;;
-			*) comment="" ;;
+		kind="${line%%${_tab}*}"
+		case "$pass" in
+			labeled|unlabeled) [ "$kind" = "$pass" ] || continue ;;
 		esac
-		_nft_tsv_unescape "$prefix"
-		prefix="$_tsv_out"
-		_nft_tsv_unescape "$comment"
-		comment="$_tsv_out"
-		label=''
-
-		case "$comment" in
-			"${FW4_TAG}"*)
-				suffix="${comment#"${FW4_TAG}"}"
-				if is_uci_style_name "$suffix"; then
-					label="$suffix"
-				fi
-				;;
-		esac
-
-		if [ -n "$prefix" ]; then
-			case "$pass" in
-				labeled) [ -n "$label" ] || continue ;;
-				unlabeled) [ -z "$label" ] || continue ;;
-			esac
-			map_prefix_with_label "$prefix" "$label"
-		elif [ -n "$label" ]; then
-			case "$pass" in
-				unlabeled) continue ;;
-			esac
-			map_prefix_with_label "$label" "$label"
+		if [ "${_map_lines:-0}" -ge "$RULES_MAP_MAX_LINES" ]; then
+			_map_overflow=1
+			break
+		fi
+		_map_lines=$(( ${_map_lines:-0} + 1 ))
+		_rest="${line#*"$_tab"}"
+		_key="${_rest%%${_tab}*}"
+		_rest="${_rest#*"$_tab"}"
+		_alias="${_rest%%${_tab}*}"
+		_value="${_rest#*"$_tab"}"
+		map_add_escaped "$_key" "$_value"
+		[ -n "$_map_overflow" ] && break
+		if [ -n "$_alias" ]; then
+			map_add_escaped "$_alias" "$_value"
 		fi
 	done
 }
@@ -425,6 +442,9 @@ _fwlive_tmp_cleanup() {
 		rm -f "$_nft_tsv"
 		_nft_tsv=
 	fi
+	# Closing these reserved descriptors releases anonymous dump/TSV files
+	# when no surviving helper still holds them. SIGKILL cannot run this trap.
+	command exec 7>&- 8>&-
 }
 # Same five traps as fwlive-log-filter.sh. The nft dump waits in the
 # background so a trapped SIGTERM is not deferred behind a foreground helper.
@@ -436,47 +456,53 @@ trap '_fwlive_tmp_cleanup; exit 143' 15
 
 enrich_rules_dump() {
 	_dump_prefix="$1"
-
 	_rules_dump=$(_fwlive_mktemp "$_dump_prefix") || _rules_dump=''
-	if [ -n "$_rules_dump" ]; then
-		# One dump serves detect + parse. Empty/failed dump is not nft
-		# (unknown/no_backend, same as a failed detect probe).
-		# Background + wait: dash defers trapped SIGTERM until a
-		# foreground child exits; wait is interruptible.
-		# Clear inherited traps so the child's EXIT cannot rm the dump.
-		( trap - 0 1 2 3 15; nft_list_ruleset >"$_rules_dump" 2>/dev/null ) &
-		_nft_wait=$!
-		if wait "$_nft_wait"; then
-			_nft_wait=
-			backend=nft
-			# Stream awk output to a second temp so a huge dump is
-			# not materialized in the rpcd worker's shell heap.
-			_nft_tsv=$(_fwlive_mktemp "fwlive-nft-tsv")
-			if [ -z "$_nft_tsv" ]; then
-				_enrich_error='mktemp_failed'
-			else
-				# awk under set -eu must not abort the plugin before JSON.
-				if nft_dump_fields <"$_rules_dump" >"$_nft_tsv"; then
-					map_from_nft_stream labeled <"$_nft_tsv"
-					if [ -z "$_map_overflow" ]; then
-						map_from_nft_stream unlabeled <"$_nft_tsv"
-					fi
-				else
-					_enrich_error='tsv_failed'
-				fi
-				rm -f "$_nft_tsv"
-				_nft_tsv=
-			fi
-		else
-			_nft_wait=
-		fi
-		rm -f "$_rules_dump"
-		_rules_dump=
-	else
-		# nft is on PATH (caller checked); skip enrichment without a dump.
+	# Open then unlink before starting long-running work. command removes
+	# exec special-builtin fatal-exit behavior if the open fails under dash.
+	if [ -z "$_rules_dump" ] || ! command exec 7<>"$_rules_dump"; then
 		_enrich_error='mktemp_failed'
 		backend=nft
+		_fwlive_tmp_cleanup
+		return 0
 	fi
+	if ! rm -f "$_rules_dump"; then
+		_enrich_error='mktemp_failed'
+		backend=nft
+		_fwlive_tmp_cleanup
+		return 0
+	fi
+	_rules_dump=''
+
+	# SIGKILL after unlink cannot leave a directory entry, but an orphan can
+	# retain this tmpfs inode through its fd. The setup window before unlink
+	# and accepted direct-helper lifetime/resource limits are unchanged.
+	( trap - 0 1 2 3 15; nft_list_ruleset >&7 2>/dev/null ) &
+	_nft_wait=$!
+	if wait "$_nft_wait"; then
+		_nft_wait=
+		backend=nft
+		_nft_tsv=$(_fwlive_mktemp "fwlive-nft-tsv") || _nft_tsv=''
+		if [ -z "$_nft_tsv" ] || ! command exec 8<>"$_nft_tsv"; then
+			_enrich_error='mktemp_failed'
+		elif ! rm -f "$_nft_tsv"; then
+			_enrich_error='mktemp_failed'
+		else
+			_nft_tsv=''
+			# Reopen via procfs for a fresh file offset. A direct fd dup would
+			# share the writer offset at EOF, including on the second TSV pass.
+			if nft_dump_fields prepared </proc/self/fd/7 >&8; then
+				map_from_nft_stream labeled </proc/self/fd/8
+				if [ -z "$_map_overflow" ]; then
+					map_from_nft_stream unlabeled </proc/self/fd/8
+				fi
+			else
+				_enrich_error='tsv_failed'
+			fi
+		fi
+	else
+		_nft_wait=
+	fi
+	_fwlive_tmp_cleanup
 }
 
 build_rules_map() {
@@ -664,8 +690,10 @@ fetch_firewall_logs() {
 		*) _filter_ok=0 ;;
 	esac
 	end_cs=$(fwlive_adaptive_clock_cs)
-	# Uptime wrap / skew: end < start — do not record as cold.
-	if [ "$_filter_ok" = 1 ] && [ "$end_cs" -ge "$start_cs" ]; then
+	# Missing uptime (zero) or wrap/skew is not a healthy cold sample.
+	# Equal nonzero samples remain a valid sub-centisecond duration.
+	if [ "$_filter_ok" = 1 ] && [ "$start_cs" -gt 0 ] && \
+		[ "$end_cs" -gt 0 ] && [ "$end_cs" -ge "$start_cs" ]; then
 		_dur=$(((end_cs - start_cs) * 10))
 		fwlive_adaptive_record "$_dur" "$lines"
 	fi
@@ -1128,7 +1156,7 @@ run_selftest() {
 		return 1
 	fi
 	# Tabbed prefix plus !fw4: label: map key is the full prefix.
-	got=$(printf '%s\n' "log prefix \"fwlive${_tab}tabbed\" comment \"!fw4: TabRule\"" | nft_dump_fields)
+	got=$(printf '%s\n' "log prefix \"fwlive${_tab}tabbed\" comment \"!fw4: TabRule\"" | nft_dump_fields prepared)
 	OUT=''
 	_map_keys=0
 	_map_lines=0
@@ -1146,6 +1174,7 @@ EOF
 		echo "comment-only TSV: expected leading tab + !fw4: GoodName got '$got'" >&2
 		return 1
 	fi
+	got=$(printf '%s\n' 'comment "!fw4: GoodName"' | nft_dump_fields prepared)
 	OUT=''
 	_map_keys=0
 	_map_lines=0
@@ -1268,7 +1297,9 @@ Address: 127.0.0.1:53")
 	# jshn failures must log a named cause; stdout stays the numeric default.
 	# logger() override is inherited by the $() subshell; command -v still finds
 	# the binary, so the unqualified logger call is what this intercepts.
-	_poll_log="/tmp/fwlive-poll-cause.$$"
+	# Root-run selftest uses the same checked sticky /tmp as rules dumps;
+	# caller-controlled TMPDIR must not choose an unsafe scratch directory.
+	_poll_log=$(_fwlive_mktemp "fwlive-poll-cause") || return 1
 	: > "$_poll_log"
 	logger() { printf '%s\n' "$*" >> "$_poll_log"; }
 

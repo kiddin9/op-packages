@@ -156,6 +156,39 @@ hp_clear_autoupdate_cron() {
 	/etc/init.d/cron restart >"/dev/null" 2>&1 || log "Warning: failed to restart cron."
 }
 
+# hp_prepare_ruleset_dir <hp-dir>
+# Create the rule-set archive, /etc/homeproxy-pro/ruleset.
+#
+# Called BEFORE the client configuration is generated, not only from
+# hp_prepare_runtime_files.  Generation runs `sing-box check` over the result
+# and check opens every local rule_set path, so on a fresh install the most
+# natural path - "switch to custom routing, add a local rule-set, point it at
+# /etc/homeproxy-pro/ruleset/example.srs" - was guaranteed to fail: hp_prepare_
+# runtime_files only created the directory for a custom-mode start that had
+# already got that far, and it runs after the generation, not before it.  The
+# user got sing-box's own
+#
+#   parse rule-set[0]: open /etc/homeproxy-pro/ruleset/example.srs: no such file
+#
+# and the reload reported only "new client configuration is invalid, reload
+# aborted" - with the directory the UI points at not existing yet.
+#
+# The directory is also created at install time (uci-defaults/luci-homeproxy-pro)
+# so a router that has never started the service still has it; this call is
+# what covers an upgrade from a version that predates that, and a user who
+# removed it by hand.
+#
+# Ownership is NOT done here.  The jailed client runs as the sing-box user and
+# has to read the files, but it starts after hp_prepare_runtime_files, which is
+# where the recursive chown lives; doing it here as well would only add a
+# second pass over the directory on every start.
+hp_prepare_ruleset_dir() {
+	local hp_dir="$1"
+
+	[ -d "$hp_dir/ruleset" ] || mkdir -p "$hp_dir/ruleset" \
+		|| log "Warning: failed to create ${hp_dir}/ruleset."
+}
+
 # hp_prepare_runtime_files <hp-dir> <run-dir> <routing-mode> <client> <server>
 # Create the mode-specific working files, truncate the instance logs and hand
 # every runtime file to the sing-box user.  <client>/<server> are "1"/"0".
@@ -229,13 +262,17 @@ hp_prepare_runtime_files() {
 	esac
 
 	if [ "$routing_mode" = "custom" ]; then
-		[ -d "$hp_dir/ruleset" ] || mkdir -p "$hp_dir/ruleset" \
-			|| log "Warning: failed to create ${hp_dir}/ruleset."
+		# The directory itself is created earlier - see hp_prepare_ruleset_dir()
+		# for why generation cannot wait for this function.  Re-running the
+		# idempotent mkdir here costs nothing and keeps this function
+		# self-contained for any caller that reaches it directly.
+		hp_prepare_ruleset_dir "$hp_dir"
 		# A local rule-set is opened by the client, which no longer runs as
 		# root now that the jail is on for this mode too, so the files have to
-		# be readable by the sing-box user.  Only the documented directory is
-		# claimed here; a rule-set placed elsewhere under HP_DIR has to be
-		# readable already.
+		# be readable by the sing-box user.  Only the documented archive is
+		# claimed here, and it is the only directory validateRuleSetPath()
+		# admits; a rule-set placed elsewhere under HP_DIR is not a rule-set
+		# the generator will emit any more.
 		chown -R sing-box:sing-box "$hp_dir/ruleset" 2>"/dev/null" \
 			|| log "Warning: failed to hand ${hp_dir}/ruleset to sing-box."
 	fi

@@ -790,6 +790,32 @@
 .fwlive-map[data-view="detailed"] .fwlive-grid-extra,
 .fwlive-map[data-view="detailed"] .fwlive-more-filters { display: contents; }
 .fwlive-row-clickable { cursor: pointer; }
+.fwlive-row-expand {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.5em;
+	min-width: 24px;
+	height: 24px;
+	padding: 0;
+	margin-left: 3px;
+	border: 1px solid var(--border-color-medium);
+	border-radius: 3px;
+	background: transparent;
+	color: var(--text-color-medium);
+	font: inherit;
+	line-height: 1;
+	vertical-align: middle;
+	cursor: pointer;
+}
+.fwlive-row-expand:hover {
+	color: var(--primary-color-high);
+	border-color: var(--primary-color-medium, var(--primary-color-high));
+}
+.fwlive-row-expand:focus-visible {
+	outline: 2px solid var(--primary-color-high);
+	outline-offset: 2px;
+}
 .fwlive-row-expanded td { border-bottom-color: transparent; }
 .fwlive-msg-expand td {
 	background: var(--background-color-low);

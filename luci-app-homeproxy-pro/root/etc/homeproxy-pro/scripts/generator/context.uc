@@ -138,6 +138,33 @@ export function build_context(dm, env) {
 		 * whole config.  Default false - an absent env must not turn into an
 		 * optimistic "assume the file is there". */
 		china_ip6_ready: (env?.china_ip6_ready === true),
+		/* Which enabled `type: local` rule-sets have a usable file on disk,
+		 * keyed by UCI section name: { '<section>': true }.
+		 *
+		 * Same shape of problem as china_ip6_ready and for the same reason it
+		 * lives in the CLI's env rather than under generator/ (guard 27): the
+		 * answer is a filesystem fact, and a `path` naming a file that is not
+		 * there makes `sing-box check` reject the whole configuration with
+		 * sing-box's own "parse rule-set[0]: open ...: no such file or
+		 * directory" - which names neither the rule-set the user created nor
+		 * the directory they are supposed to copy files into.  The generator
+		 * turns a missing entry into a message that names both (ruleset.uc).
+		 *
+		 * The default is pessimistic for the same reason: an env that forgot
+		 * the field (the server path, a future caller) must not turn "no file"
+		 * into "assume the file is there". */
+		ruleset_local_ready: (env?.ruleset_local_ready || {}),
+		/* What each rule-set's file actually is, keyed by UCI section name.
+		 *
+		 * Reaches the generator as an ordinary field for the same reason
+		 * china_ip6_ready does - and with the same pessimistic default, which
+		 * matters more here.  For china_ip6_ready a missing field meant "no
+		 * file"; here it means "no opinion about the content", and the
+		 * generator must read that as "leave the declared format alone".
+		 * Defaulting it to, say, 'source' would have every remote rule-set
+		 * with no initial_path silently declared as source JSON, and a binary
+		 * .srs fetched from a URL would then fail to parse at startup. */
+		ruleset_formats: (env?.ruleset_formats || {}),
 		self_mark, ntp_server, dns_port, mixed_port,
 		redirect_port, tproxy_port,
 		tun_name, tun_addr4, tun_addr6, tun_mtu,
@@ -229,6 +256,29 @@ export function build_context(dm, env) {
 		 * Default '0' preserves the
 		 * 300ms / default-list behaviour so an upgrade is invisible. */
 		sniffer_advanced_mode: dm.general.sniffer_advanced_mode || '0',
+		/* ruleset_safe_start: when '1' (opt-in), every enabled remote
+		 * rule-set that has no initial_path of its own gets one, pointing at
+		 * an EMPTY rule-set the generator writes before the config is
+		 * checked.  A remote rule-set with no initial file is fetched during
+		 * initialization, before the inbounds bind, so on a cold cache the
+		 * first start depends on the CDN being reachable - and on the node,
+		 * because the fetch goes through http_clients.
+		 *
+		 * The fallback is empty on purpose and that is the trade: a rule-set
+		 * with no rules matches nothing, so its traffic falls through to
+		 * `final`.  That is a routing change, not a robustness tweak, which
+		 * is why the default is '0' and why the whole repository stays
+		 * fail-loud by default.  Guard 52 pins the default, the way guard 39
+		 * pins sniffer_advanced_mode's. */
+		ruleset_safe_start: dm.general.ruleset_safe_start || '0',
+		/* Which empty startup fallbacks the CLI actually wrote, keyed by
+		 * rule_set tag.  Presence, not a path: the generator emits
+		 * `initial_path` only for tags it can point at, so a fallback that
+		 * could not be written leaves that rule-set on today's behaviour
+		 * rather than pointing at a file that is not there.  Pessimistic by
+		 * construction - an env that forgot the field (the server path) has
+		 * no fallbacks, and the server declares no remote rule-sets anyway. */
+		ruleset_initial: (env?.ruleset_initial || {}),
 		main_urltest_nodes: dm.general.main_urltest_nodes || [],
 		main_urltest_interval: dm.general.main_urltest_interval,
 		main_urltest_tolerance: dm.general.main_urltest_tolerance,

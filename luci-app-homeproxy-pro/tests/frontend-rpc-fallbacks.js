@@ -176,5 +176,95 @@ function makePoll() {
 	check('the registered handler calls read() when invoked', reads === 1, `${reads} reads`);
 }
 
+/* --- the rule-set degradation report ------------------------------------
+ *
+ * parseRuleSetFetchFailures() is the only thing that tells a user a rule-set
+ * is currently EMPTY, because with ruleset_safe_start on there is no other
+ * symptom: the instance is healthy, the health gate passes (nothing in
+ * health.sh looks at rule-sets), and the LAN is proxied.
+ *
+ * It parses a file sing-box is concurrently writing and that clean_log.sh
+ * truncates at 50 KB, so the cases below are about tolerance and about not
+ * lying: a missing timestamp must read as "no timestamp", never as a guess.
+ */
+const FAILURES = hp.parseRuleSetFetchFailures;
+
+/* The first two lines are VERBATIM from a real sing-box 1.14.2 run on the
+ * target (an isolated instance with the rule-set URLs pointed at an
+ * unreachable port), including the `+0800` UTC offset that precedes the date.
+ *
+ * That offset is the reason this case exists.  The first version of the
+ * timestamp pattern was anchored at the start of the line and matched a bare
+ * date, which parses fine against every hand-written sample and returns null
+ * for every line the device actually writes - so the panel would have shown
+ * the right tag and the right reason and no time on every real failure.  Only
+ * a real line catches that, and it is pinned here so it cannot come back. */
+const SAMPLE = [
+	'+0800 2026-10-03 09:29:34 INFO sing-box started (0.05s)',
+	'+0800 2026-10-03 09:29:34 ERROR router: fetch rule-set geoip-cn: Get "http://127.0.0.1:9/geoip-cn.srs": remote error: open connection to 127.0.0.1:9 using outbound/direct[direct]: dial tcp 127.0.0.1:9: connect: connection refused',
+	'+0800 2026-10-03 09:29:34 ERROR router: fetch rule-set geosite-cn: Get "http://127.0.0.1:9/geosite-cn.srs": remote error: open connection to 127.0.0.1:9 using outbound/direct[direct]: dial tcp 127.0.0.1:9: connect: connection refused',
+	''
+].join('\n');
+
+check('an empty log yields no failures', FAILURES('').length === 0);
+check('a log of blank lines yields no failures', FAILURES('\n\n').length === 0);
+check('a log with no fetch lines yields no failures',
+	FAILURES('2026-10-03 01:15:42 INFO router: loaded rule-set geoip-cn').length === 0);
+
+const sample = FAILURES(SAMPLE);
+check('both failing tags are reported', sample.length === 2, JSON.stringify(sample));
+check('the tag is captured without the surrounding prose',
+	sample.map((f) => f.tag).join(',') === 'geoip-cn,geosite-cn',
+	JSON.stringify(sample.map((f) => f.tag)));
+check('the reason is captured',
+	sample[0].reason.startsWith('Get "http://'), JSON.stringify(sample[0].reason));
+check('the timestamp is captured despite the +0800 offset before it',
+	sample[0].at === '2026-10-03 09:29:34', String(sample[0].at));
+check('the reason survives the full real line',
+	sample[1].reason.startsWith('Get "http://127.0.0.1:9/'), JSON.stringify(sample[1].reason));
+check('the reason keeps the nested colons and quotes',
+	sample[1].reason.includes('dial tcp 127.0.0.1:9: connect: connection refused'),
+	JSON.stringify(sample[1].reason));
+
+/* A negative UTC offset, and a build that omits the offset entirely, both have
+ * to keep working - the offset is optional in the pattern on purpose. */
+const westOfUTC = FAILURES('-0500 2026-12-31 20:00:00 ERROR router: fetch rule-set geoip-cn: timeout');
+check('a negative UTC offset still yields the time',
+	westOfUTC[0].at === '2026-12-31 20:00:00', String(westOfUTC[0].at));
+const noOffset = FAILURES('2026-12-31 20:00:00 ERROR router: fetch rule-set geoip-cn: timeout');
+check('a line with no offset at all still yields the time',
+	noOffset[0].at === '2026-12-31 20:00:00', String(noOffset[0].at));
+
+/* A rule-set that fails on every 24-hour refresh is in the log many times, and
+ * the file is truncated - so the most recent line has to win, or the panel
+ * shows a reason from yesterday as if it were current. */
+const REPEATED = [
+	'+0800 2026-10-01 01:00:00 ERROR router: fetch rule-set geoip-cn: old failure',
+	'+0800 2026-10-03 01:00:00 ERROR router: fetch rule-set geoip-cn: new failure'
+].join('\n');
+const repeated = FAILURES(REPEATED);
+check('a repeated tag is reported once', repeated.length === 1, JSON.stringify(repeated));
+check('the most recent failure wins for a repeated tag',
+	repeated[0].reason === 'new failure', JSON.stringify(repeated[0].reason));
+
+/* clean_log.sh can cut mid-line, and a truncated line must not become a
+ * failure with a nonsense reason - but it must still name its tag, or the
+ * panel would hide a rule-set that really is failing. */
+const truncated = FAILURES('+0800 2026-10-03 01:00:00 ERROR router: fetch rule-set geoip-cn: Get "https://exa');
+check('a truncated line still names its tag', truncated.length === 1, JSON.stringify(truncated));
+check('a truncated line keeps the timestamp it has',
+	truncated[0].at === '2026-10-03 01:00:00', String(truncated[0].at));
+
+/* The format is not assumed. A line with no timestamp is still reported, with
+ * the time simply absent - the panel omits it rather than inventing one. */
+const noTime = FAILURES('ERROR router: fetch rule-set geosite-cn: dial tcp: i/o timeout');
+check('a line without a timestamp is still reported', noTime.length === 1, JSON.stringify(noTime));
+check('a line without a timestamp reports no time', noTime[0].at === null, String(noTime[0].at));
+check('a line without a timestamp still yields the reason',
+	noTime[0].reason === 'dial tcp: i/o timeout', JSON.stringify(noTime[0].reason));
+
+check('the parser tolerates null', FAILURES(null).length === 0);
+check('the parser tolerates undefined', FAILURES(undefined).length === 0);
+
 console.log(`frontend rpc fallbacks: ${checks} checks, ${failures} failures`);
 process.exit(failures ? 1 : 0);

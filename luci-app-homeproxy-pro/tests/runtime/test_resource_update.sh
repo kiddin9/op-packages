@@ -15,7 +15,7 @@
 #   4. no local digest       -> NOT installed (fail closed)
 #   plus: already up to date -> no download at all
 #
-# Everything external is stubbed (wget, jsonfilter, ucode, uci, flock) and the
+# Everything external is stubbed (uclient-fetch, jsonfilter, ucode, uci, flock) and the
 # script's absolute paths are rewritten into a sandbox, so this is pure shell
 # and runs on a laptop, in CI and on a target. The ucode stub answers with a
 # fixed digest: what the *shipped* helper computes is
@@ -65,27 +65,49 @@ for anchor in "RESOURCES_DIR=\"$WORK/resources\"" "RUN_DIR=\"$WORK/run\""; do
 done
 
 # --- stubs ------------------------------------------------------------------
-# wget serves three shapes, chosen by the URL: the commit list, the contents
-# metadata, and the file itself. What the contents API reports and what the
-# file contains are control files, so each case can make them agree or not.
-cat > "$WORK/bin/wget" <<'EOF'
+# uclient-fetch serves three shapes, chosen by the URL: the commit list, the
+# contents metadata, and the file itself. What the contents API reports and what
+# the file contains are control files, so each case can make them agree or not.
+#
+# It replaced a wget stub, and the option handling is the point rather than an
+# afterthought: this is the only thing that would have noticed the real
+# regression, where the script passed GNU-only flags (--timeout= --spider)
+# that a busybox-wget target rejects outright. A permissive stub ("ignore what
+# you do not recognise") cannot catch that, so unknown options are a hard
+# failure here - the same way the applet behaves.
+cat > "$WORK/bin/uclient-fetch" <<'EOF'
 #!/bin/sh
 url=""
 out=""
 while [ $# -gt 0 ]; do
 	case "$1" in
 	-O) out="$2"; shift 2 ;;
-	-O-|--spider) shift ;;
-	--timeout=*|--header) shift 2 ;;
+	-O*) out="${1#-O}"; shift ;;
+	--user-agent=*) shift ;;
+	--header=*) shift ;;
+	--timeout=*) shift ;;
+	-T) shift 2 ;;
+	-s|--spider|-q|--quiet|-4|-6) shift ;;
+	-*) printf 'uclient-fetch: unrecognized option: %s\n' "${1#-}" >&2
+	    printf 'Usage: uclient-fetch [options] <URL>\n' >&2
+	    exit 1 ;;
 	*) url="$1"; shift ;;
 	esac
 done
-emit() { [ -n "$out" ] && printf '%s' "$1" > "$out" || printf '%s' "$1"; }
+# "-" means stdout, which is the applet's own convention - getting that wrong
+# writes the body to a file named "-" and leaves the parser reading nothing.
+emit() {
+	if [ -n "$out" ] && [ "$out" != "-" ]; then
+		printf '%s' "$1" > "$out"
+	else
+		printf '%s' "$1"
+	fi
+}
 case "$url" in
 *api.github.com/*/commits*) emit "$(cat "$HP_T_API_COMMITS")" ;;
 *api.github.com/*/contents*) emit "$(cat "$HP_T_API_CONTENTS")" ;;
 *)
-	if [ -n "${HP_T_WGET_FAIL:-}" ]; then exit 1; fi
+	if [ -n "${HP_T_FETCH_FAIL:-}" ]; then exit 1; fi
 	emit "$(cat "$HP_T_BODY")"
 	;;
 esac

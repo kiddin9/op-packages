@@ -61,7 +61,20 @@ pick_mirror() {
 		else
 			local probe_url="https://$base/gh/$listrepo@$list_sha/$listname"
 		fi
-		if wget --timeout=10 --spider -q "$probe_url" 2>"/dev/null"; then
+		# uclient-fetch, not wget.  wget is whichever implementation the
+		# buildroot compiled, and the two share almost no options: on a
+		# busybox-wget router every flag here is rejected with "unrecognized
+		# option" before a request is made, so the resource lists silently
+		# never updated - pick_mirror returns 1 and the caller carries on.
+		# uclient-fetch is the fetcher OpenWrt itself uses and its option set
+		# is fixed by the applet, not by the buildroot.  Read off the applet
+		# on the device: --spider checks existence only, --timeout=N is
+		# seconds.  -q because this probe's stderr goes nowhere anyway.
+		#
+		# Resolved through PATH rather than spelled /bin/..., exactly as this
+		# script used to spell a bare `wget`: it keeps the name overridable in
+		# the test sandbox, which is how the option list gets exercised at all.
+		if uclient-fetch -q -s --timeout=10 "$probe_url" 2>"/dev/null"; then
 			printf '%s\n' "$base"
 			return 0
 		fi
@@ -76,7 +89,7 @@ check_list_update() {
 	local listname="$4"
 	local lock="$RUN_DIR/update_resources-$listtype.lock"
 	local github_token="$(uci -q get homeproxy-pro.config.github_token)"
-	local wget="wget --timeout=10 -q"
+	local fetch="uclient-fetch -q --timeout=10"
 
 	# fd 9, not 200: POSIX only guarantees 0-9, and dash fails the whole
 	# `exec 200>"$lock"` with "exec: 200: not found". busybox ash and bash
@@ -90,21 +103,23 @@ check_list_update() {
 	fi
 
 	# The token travels in argv, which the previous form avoided by writing it
-	# to a 0600 file and passing --header-file - an option neither busybox nor
-	# GNU wget has, so it failed with "unrecognized option" and the version
-	# query never worked at all with a token configured. There is no
-	# file-based header option in either wget, so argv is the only way; on a
+	# to a 0600 file and passing --header-file - an option no fetch
+	# implementation has, so it failed with "unrecognized option" and the
+	# version query never worked at all with a token configured. uclient-fetch
+	# has no file-based header option either, so argv is the only way; on a
 	# single-user router that is the right trade for a feature that otherwise
-	# does not function. `wget` is invoked with the header only when a token
-	# is set, and nothing logs the command line.
+	# does not function.  The header is passed only when a token is set, and
+	# nothing logs the command line.
 	local github_header=""
 	[ -n "$github_token" ] && github_header="Authorization: Bearer $github_token"
 
-	local list_info="$($wget ${github_header:+--header "$github_header"} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
-	local wget_exit=$?
+	# --header takes '=': the space-separated form is rejected, and the value
+	# has to stay ONE argv element, which the quoting around it preserves.
+	local list_info="$($fetch ${github_header:+--header="$github_header"} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
+	local fetch_exit=$?
 
-	if [ $wget_exit -ne 0 ]; then
-		log "[$(to_upper "$listtype")] Failed to fetch version info (wget exit $wget_exit)."
+	if [ $fetch_exit -ne 0 ]; then
+		log "[$(to_upper "$listtype")] Failed to fetch version info (fetch exit $fetch_exit)."
 		return 1
 	fi
 	local list_sha="$(printf '%s' "$list_info" | jsonfilter -qe "@[0].sha")"
@@ -144,7 +159,7 @@ check_list_update() {
 	fi
 	log "[$(to_upper "$listtype")] Downloading from $mirror."
 
-	if ! $wget -O "$RUN_DIR/$listname" "$mirror_url" || [ ! -s "$RUN_DIR/$listname" ]; then
+	if ! $fetch -O "$RUN_DIR/$listname" "$mirror_url" || [ ! -s "$RUN_DIR/$listname" ]; then
 		rm -f "$RUN_DIR/$listname"
 		log "[$(to_upper "$listtype")] Download failed ($mirror)."
 		return 1
@@ -162,7 +177,7 @@ check_list_update() {
 	# resources before this check either; the alternative - installing bytes
 	# nobody vouched for - is the thing being fixed.
 	local api_blob local_blob
-	api_blob="$($wget ${github_header:+--header "$github_header"} -O- \
+	api_blob="$($fetch ${github_header:+--header="$github_header"} -O- \
 		"https://api.github.com/repos/$listrepo/contents/$listname?ref=$list_sha" \
 		| jsonfilter -qe '@.sha')"
 	if [ -z "$api_blob" ]; then
