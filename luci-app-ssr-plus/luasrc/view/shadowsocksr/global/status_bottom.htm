@@ -1,4 +1,9 @@
 <style>
+.pure-1-2 {
+    width: 50%;
+    display: inline-block;
+    letter-spacing: normal;
+}
 .pure-img {
     max-height: 100%;
     width: auto;
@@ -20,7 +25,7 @@
 }
 
 .status-bar .inner {
-    margin: 0.5em;
+    padding: 0.5em;
 }
 
 .status-bar .inner .flag {
@@ -39,17 +44,10 @@
     text-align: right;
 }
 
-.pure-u-1-2 {
-    width: 49%;
-    display: inline-block;
+#cbi-passwall+.cbi-page-actions.control-group.fixed {
+    bottom: 3.3rem;
 }
-
-@media screen and (max-width: 720px) {
-		.pure-u-1-2 {
-			width: 100%;
-		}
-	}
-
+ 
 @media screen and (max-width: 700px) {
 .status-bar .icon-con {
     height: 2.5em;
@@ -59,11 +57,11 @@
 <div class="status-bar">
     <div class="inner">
         <div class="pure-g">
-            <div class="pure-u-1-2">
+            <div class="pure-1-2">
                 <span class="flag"><img src="/luci-static/shadowsocksr/flags/loading.svg" class="pure-img"></span> <span
                     class="status-info">获取中...</span>
             </div>
-            <div class="pure-u-1-2">
+            <div class="pure-1-2">
                 <div class="icon-con">
                     <img src="/luci-static/shadowsocksr/img/site_icon1_01.png" class="pure-img i1">
                     <img src="/luci-static/shadowsocksr/img/site_icon1_02.png" class="pure-img i2">
@@ -79,13 +77,9 @@
 const _ASSETS = '/luci-static/shadowsocksr/';
 const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[shadowsocksr]], [[ip]])%>';
 
-let mainContent = document.getElementById("maincontent");
 let statusBar = document.querySelector(".status-bar");
 
 function resize() {
-    wW = window.innerWidth;
-    let lw = document.querySelector(".main-left, :root[data-layout='sidebar'] .fs-sidebar")?.offsetWidth ?? 5;
-    statusBar.style.width = (wW - lw) + 'px';
     let flagElement = statusBar.querySelector(".flag");
     flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
 
@@ -119,7 +113,7 @@ XHR.poll(5, CHECK_IP_URL, null,
     );
 
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout("resize()",100)
+    setTimeout("resize()",200)
     fetch(CHECK_IP_URL)
         .then(response => response.json())
         .then(data => {
@@ -129,7 +123,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener('resize', resize);
-if (mainContent && window.getComputedStyle(mainContent).getPropertyValue("contain")=== "paint") {
-document.body.appendChild(statusBar);
-}
 </script>

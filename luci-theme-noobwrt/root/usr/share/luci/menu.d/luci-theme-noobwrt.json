@@ -5,6 +5,17 @@
         "action": {
             "type": "view",
             "path": "noobwrt/settings"
-        }
+        },
+		"depends": {
+			"acl": [ "luci-theme-noobwrt" ],
+			"uci": {
+				"noobwrt": true,
+				"luci": {
+					"main": {
+						"mediaurlbase": "/luci-static/noobwrt"
+					}
+				}
+			}
+		}
     }
 }
