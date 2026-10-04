@@ -1,0 +1,55 @@
+--- a/luci-theme-noobwrt/root/usr/share/luci/menu.d/luci-theme-noobwrt.json
++++ b/luci-theme-noobwrt/root/usr/share/luci/menu.d/luci-theme-noobwrt.json
+@@ -5,6 +5,17 @@
+         "action": {
+             "type": "view",
+             "path": "noobwrt/settings"
+-        }
++        },
++		"depends": {
++			"acl": [ "luci-theme-noobwrt" ],
++			"uci": {
++				"noobwrt": true,
++				"luci": {
++					"main": {
++						"mediaurlbase": "/luci-static/noobwrt"
++					}
++				}
++			}
++		}
+     }
+ }
+
+--- a/luci-theme-noobwrt/root/etc/uci-defaults/30_luci-theme-noobwrt
++++ b/luci-theme-noobwrt/root/etc/uci-defaults/30_luci-theme-noobwrt
+@@ -17,7 +17,7 @@ touch /etc/config/noobwrt
+ uci get noobwrt.global >/dev/null 2>&1 || uci set noobwrt.global=global
+ 
+ # Set each global option only if not already present
+-uci get noobwrt.global.mode                  >/dev/null 2>&1 || uci set noobwrt.global.mode=normal
++uci get noobwrt.global.mode                  >/dev/null 2>&1 || uci set noobwrt.global.mode=dark
+ uci get noobwrt.global.primary               >/dev/null 2>&1 || uci set noobwrt.global.primary='#7689f4'
+ uci get noobwrt.global.dark_primary          >/dev/null 2>&1 || uci set noobwrt.global.dark_primary='#7c8ff5'
+ uci get noobwrt.global.blur                  >/dev/null 2>&1 || uci set noobwrt.global.blur=10
+@@ -42,16 +42,16 @@ seed_toolbar() {
+ }
+ 
+ seed_toolbar toolbar_home     'Home'        '/cgi-bin/luci/admin/status/overview'           home.png     1 1
+-seed_toolbar toolbar_status   'Status'      '/cgi-bin/luci/admin/modem/modemdata'           signal.png   1 2
++seed_toolbar toolbar_vpn      'Passwall'         '/cgi-bin/luci/admin/services/passwall'         vpn.png      1 2
++seed_toolbar toolbar_status   'Status'      '/cgi-bin/luci/admin/modem/modemdata'           signal.png   0 2
+ seed_toolbar toolbar_modem    'Modem'       '/cgi-bin/luci/admin/modem/qmodem'              cell.png     0 3
+-seed_toolbar toolbar_sms      'SMS'         '/cgi-bin/luci/admin/modem/luci-app-sms-tool-js' sms.png    1 4
+-seed_toolbar toolbar_data     'Data Usage'  '/cgi-bin/luci/admin/tools/netstat'             network.png  1 5
++seed_toolbar toolbar_sms      'SMS'         '/cgi-bin/luci/admin/modem/luci-app-sms-tool-js' sms.png    0 4
++seed_toolbar toolbar_data     'Data Usage'  '/cgi-bin/luci/admin/status/netstat'             network.png  0 5
+ seed_toolbar toolbar_nas      'NAS'         '/cgi-bin/luci/admin/services/samba4'           nas.png      0 6
+ seed_toolbar toolbar_wireless 'Wireless'    '/cgi-bin/luci/admin/network/wireless'          wifi.png     1 7
+ seed_toolbar toolbar_firewall 'Firewall'    '/cgi-bin/luci/admin/network/firewall'          firewall.png 0 8
+-seed_toolbar toolbar_log      'System Log'  '/cgi-bin/luci/admin/status/logs'               info.png     0 9
++seed_toolbar toolbar_log      'System Log'  '/cgi-bin/luci/admin/status/logs'               info.png     1 9
+ seed_toolbar toolbar_terminal 'Terminal'    '/cgi-bin/luci/admin/system/ttyd'             terminal.png 1 10
+-seed_toolbar toolbar_vpn      'VPN'         '/cgi-bin/luci/admin/services/passwall'         vpn.png      0 11
+ seed_toolbar toolbar_files    'Files'       '/cgi-bin/luci/admin/nas/tinyfilemanager'       files.png    1 12
+ seed_toolbar toolbar_system   'Settings'    '/cgi-bin/luci/admin/system/noobwrt'            settings.png 1 13
+ 
