@@ -1,3 +1,15 @@
+--- a/luci-mod-status/ucode/template/admin_status/index.ut
++++ b/luci-mod-status/ucode/template/admin_status/index.ut
+@@ -6,8 +6,6 @@
+ 
+ {% include('header') %}
+ 
+-<h2 name="content">{{ _('Status') }}</h2>
+-
+ <div id="view">
+ 	<div class="spinning">{{ _('Loading view…') }}</div>
+ </div>
+
 --- a/luci-mod-status/htdocs/luci-static/resources/view/status/index.js
 +++ b/luci-mod-status/htdocs/luci-static/resources/view/status/index.js
 @@ -2,6 +2,7 @@
