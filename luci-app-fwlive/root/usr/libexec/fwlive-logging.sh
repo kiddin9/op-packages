@@ -1029,6 +1029,12 @@ commit_wan_log_change() {
 report_wan_log_after_commit() {
 	_rc="$1"
 	zone_json="$2"
+	_drop_baseline=0
+	# The optional eighth argument opts in only when its value is exactly 1.
+	# Argument count alone must never authorize deleting recovery state.
+	if [ "${8:-0}" = 1 ]; then
+		_drop_baseline=1
+	fi
 	if [ "$_rc" -eq 1 ]; then
 		return 0
 	fi
@@ -1038,11 +1044,16 @@ report_wan_log_after_commit() {
 			wan_log_error_json "$zone_json" firewall_reload_failed
 			return 0
 		fi
+		if [ "$_drop_baseline" -eq 1 ]; then
+			drop_wan_log_baseline_after_disable "$zone" "$WAN_LOG_COMMIT_GENERATION"
+		fi
 		wan_log_error_json "$zone_json" firewall_commit_raced
 		return 0
 	fi
-	shift 2
-	reload_and_report_wan_log "$@" "$zone_json" "$WAN_LOG_COMMIT_GENERATION"
+	# Forward only the five documented operation fields plus an explicit flag;
+	# unrelated trailing caller arguments must not shift into the flag position.
+	reload_and_report_wan_log "$3" "$4" "$5" "$6" "$7" \
+		"$zone_json" "$WAN_LOG_COMMIT_GENERATION" "$_drop_baseline"
 }
 
 # Firewall reload + best-effort UCI rollback on reload failure. The reload
@@ -1065,6 +1076,10 @@ reload_and_report_wan_log() {
 	success_msg="$5"
 	zone_json="$6"
 	committed_generation="$7"
+	_drop_baseline=0
+	if [ "${8:-0}" = 1 ]; then
+		_drop_baseline=1
+	fi
 
 	if ! reload_firewall; then
 		# Re-acquire the logging lock so the rollback decision is atomic
@@ -1097,9 +1112,41 @@ reload_and_report_wan_log() {
 		wan_log_error_json "$zone_json" firewall_reload_failed
 		return 0
 	fi
+	if [ "$_drop_baseline" -eq 1 ]; then
+		drop_wan_log_baseline_after_disable "$zone" "$committed_generation"
+	fi
 	logger -t fwlive "$success_msg" 2>/dev/null || true
 	printf '{"ok":true,"changed":true,"wan_zone":%s}' "$zone_json"
 	return 0
+}
+
+# After a successful disable/reload, discard the uninstall marker unless a
+# later fwlive toggle has taken ownership again. Pending external UCI edits
+# are preserved by retiring the stale marker too; a valid `uci show` confirms
+# the config is readable before unlinking it.
+drop_wan_log_baseline_after_disable() {
+	drop_zone="$1"
+	drop_generation="$2"
+	_drop_path="$(wan_log_baseline_path)"
+	[ -f "$_drop_path" ] && [ ! -L "$_drop_path" ] || return 0
+	if ! acquire_wan_log_lock; then
+		return 0
+	fi
+	if ! uci -q show "firewall.${drop_zone}" >/dev/null 2>&1; then
+		release_wan_log_lock
+		return 0
+	fi
+	_drop_current_generation=$(wan_log_generation_read 2>/dev/null) || {
+		release_wan_log_lock
+		return 0
+	}
+	if [ -z "$drop_generation" ] || [ "$drop_generation" = unavailable ] \
+		|| [ "$_drop_current_generation" != "$drop_generation" ]; then
+		release_wan_log_lock
+		return 0
+	fi
+	rm -f "$_drop_path" 2>/dev/null || true
+	release_wan_log_lock
 }
 
 # $1=enable checks nf_log before the lock. Success leaves the lock held
@@ -1182,12 +1229,27 @@ disable_wan_logging() {
 
 	current=$(wan_zone_log_value "$zone")
 	if [ -z "$current" ] || ! wan_filter_log_enabled "$current"; then
-		if ! wan_log_generation_bump >/dev/null; then
+		_disable_generation=$(wan_log_generation_bump) || {
 			release_wan_log_lock
 			wan_log_tracking_failed_json "$zone_json"
 			return 0
+		}
+		_baseline_path="$(wan_log_baseline_path)"
+		if [ -f "$_baseline_path" ] && [ ! -L "$_baseline_path" ] \
+			&& firewall_changes_pending; then
+			release_wan_log_lock
+			wan_log_error_json "$zone_json" firewall_changes_pending
+			return 0
 		fi
 		release_wan_log_lock
+		if [ -f "$_baseline_path" ] && [ ! -L "$_baseline_path" ]; then
+			if ! reload_firewall; then
+				logger -t fwlive "Firewall reload failed after already-disabled request" 2>/dev/null || true
+				wan_log_error_json "$zone_json" firewall_reload_failed
+				return 0
+			fi
+			drop_wan_log_baseline_after_disable "$zone" "$_disable_generation"
+		fi
 		printf '{"ok":true,"changed":false,"wan_zone":%s}' "$zone_json"
 		return 0
 	fi
@@ -1203,7 +1265,7 @@ disable_wan_logging() {
 	report_wan_log_after_commit "$_commit_rc" "$zone_json" \
 		"$zone" "$current" "$target" \
 		'Firewall reload failed after disable; reverted UCI WAN log' \
-		'WAN zone logging disabled'
+		'WAN zone logging disabled' 1
 	return 0
 }
 
