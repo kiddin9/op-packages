@@ -1,3 +1,15 @@
+--- a/luci-theme-vantage/htdocs/luci-static/vantage/vantage.css
++++ b/luci-theme-vantage/htdocs/luci-static/vantage/vantage.css
+@@ -37,7 +37,7 @@
+ 	--r-lg: 8px;
+ 
+ 	--rail-w: 56px;
+-	--rail-w-pinned: 224px;
++	--rail-w-pinned: 204px;
+ 	--top-h: 52px;
+ 	--ctl-h: 32px;
+ 	--content-max: 1320px;
+
 --- a/luci-theme-vantage/Makefile
 +++ b/luci-theme-vantage/Makefile
 @@ -17,7 +17,7 @@ PKG_LICENSE:=GPL-3.0-or-later
