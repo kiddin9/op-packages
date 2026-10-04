@@ -1,0 +1,9 @@
+--- a/luci-app-netstat/files/usr/share/luci/menu.d/luci-app-netstat.json
++++ b/luci-app-netstat/files/usr/share/luci/menu.d/luci-app-netstat.json
+@@ -1,5 +1,5 @@
+ {
+-  "admin/tools/netstat": {
++  "admin/status/netstat": {
+     "title": "Netstat",
+     "order": 20,
+     "action": {
