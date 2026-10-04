@@ -1,0 +1,1627 @@
+From 067cac3f394d72e6d6acc2891687b38b00ef74bc Mon Sep 17 00:00:00 2001
+From: ntbowen <ntbowen@users.noreply.github.com>
+Date: Fri, 2 Oct 2026 20:50:25 +0800
+Subject: [PATCH] i18n: add Simplified Chinese (zh_Hans) translation
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Adds po/zh_Hans/quickactions.po covering all _() strings in the
+r11 tree — including the VLAN, Scripts, Failover and Wireless
+Quick Edit tabs. Dynamic messages use %s placeholders; no \n
+escapes inside msgstr (po2lmo does not decode them).
+
+Generated with [Devin](https://devin.ai)
+
+Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>
+---
+ .../po/zh_Hans/quickactions.po                | 1600 +++++++++++++++++
+ 1 file changed, 1600 insertions(+)
+ create mode 100644 luci-app-quickactions/po/zh_Hans/quickactions.po
+
+diff --git a/luci-app-quickactions/po/zh_Hans/quickactions.po b/luci-app-quickactions/po/zh_Hans/quickactions.po
+new file mode 100644
+index 0000000..bff256d
+--- /dev/null
++++ b/luci-app-quickactions/po/zh_Hans/quickactions.po
+@@ -0,0 +1,1600 @@
++msgid ""
++msgstr ""
++"Project-Id-Version: luci-app-quickactions 3.0.0\n"
++"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
++"PO-Revision-Date: 2026-10-02 12:00+0000\n"
++"Last-Translator: Devin <i18n@devin.ai>\n"
++"Language-Team: Chinese (Simplified) <i18n@devin.ai>\n"
++"Language: zh_Hans\n"
++"MIME-Version: 1.0\n"
++"Content-Type: text/plain; charset=UTF-8\n"
++"Content-Transfer-Encoding: 8bit\n"
++"Plural-Forms: nplurals=1; plural=0;\n"
++
++msgid "(no bridge-vlan entries yet)"
++msgstr "（暂无 bridge-vlan 条目）"
++
++msgid "(no recent log)"
++msgstr "（暂无近期日志）"
++
++msgid "(none)"
++msgstr "(无)"
++
++msgid "(not loaded)"
++msgstr "（未加载）"
++
++msgid "+ Create new script"
++msgstr "+ 新建脚本"
++
++msgid "."
++msgstr "."
++
++msgid ". Metadata in"
++msgstr "。元数据位于"
++
++msgid "..."
++msgstr "…"
++
++msgid "/etc/init.d/firewall restart"
++msgstr "例如：/etc/init.d/firewall restart"
++
++msgid "A VLAN (Virtual Local Area Network) divides one physical LAN into multiple logical networks. Devices on the same switch can be isolated into separate groups — as if they were on entirely different networks."
++msgstr "VLAN（虚拟局域网）把一个物理 LAN 划分为多个逻辑网络。同一交换机上的设备可以被隔离到不同的分组——如同处于完全不同的网络。"
++
++msgid "A user interface for easily creating and management isolated Wi-Fi networks for guests, each with its own access point, DHCP, and firewall rules."
++msgstr "一个方便创建和管理隔离的访客 Wi-Fi 网络的图形界面，每个网络都有独立的接入点、DHCP 和防火墙规则。"
++
++msgid "Accept one client then exit"
++msgstr "仅接受一个客户端后退出"
++
++msgid "Access port:"
++msgstr "接入端口（Access）："
++
++msgid "Actions"
++msgstr "操作"
++
++msgid "Add new guest network..."
++msgstr "添加新的访客网络..."
++
++msgid "Add to Cron"
++msgstr "添加到 Cron"
++
++msgid "All backend options. Save applies and restarts ttyd."
++msgstr "所有后端选项。保存后会应用并重启 ttyd。"
++
++msgid "Allow LAN → Guest (one-way): Network → Firewall → Zones → lan → Allow forward to guest_zone."
++msgstr "允许 LAN → Guest（单向）：网络 → 防火墙 → 区域 → lan → 允许转发到 guest_zone。"
++
++msgid "Allow URL args"
++msgstr "允许 URL 参数"
++
++msgid "Applied with rollback in 90s. Click Confirm in Safety subtab to keep."
++msgstr "已应用，90 秒后自动回滚。在\"安全\"子标签中点击\"确认\"以保留。"
++
++msgid "Apply this VLAN plan to the router? A snapshot will be taken first. Network will reload."
++msgstr "将此 VLAN 方案应用到路由器？会先自动快照，然后网络重载。"
++
++msgid "Apply to this router"
++msgstr "应用到本路由器"
++
++msgid "Apply with 90-second rollback? If you lose access, the network will auto-restore after 90 seconds."
++msgstr "应用并启用 90 秒回滚？如果失去连接，网络将在 90 秒后自动恢复。"
++
++msgid "Apply with 90s rollback"
++msgstr "应用（90 秒自动回滚）"
++
++msgid "April"
++msgstr "四月"
++
++msgid "Arguments (space-separated)"
++msgstr "参数（空格分隔）"
++
++msgid "Arguments — passed as $1 $2 on Run."
++msgstr "参数 — 运行时以 $1 $2 传入。"
++
++msgid "Arguments:"
++msgstr "参数："
++
++msgid "Attach an existing SSID to this VLAN interface"
++msgstr "将现有 SSID 绑定到此 VLAN 接口"
++
++msgid "Attach to network (VLAN interface)"
++msgstr "绑定到网络（VLAN 接口）"
++
++msgid "Attached network"
++msgstr "已绑定的网络"
++
++msgid "August"
++msgstr "八月"
++
++msgid "Avoid VLAN 0, 1 and 4095."
++msgstr "避免使用 VLAN 0、1 和 4095。"
++
++msgid "Back to settings"
++msgstr "返回设置"
++
++msgid "Backup interfaces (multi-select)"
++msgstr "备用接口（可多选）"
++
++msgid "Basic auth user:password"
++msgstr "基本认证 用户名:密码"
++
++msgid "Bind to UNIX domain socket instead of IP port"
++msgstr "绑定到 UNIX 域套接字而不是 IP 端口"
++
++msgid "Block cross-origin WebSocket"
++msgstr "阻止跨源 WebSocket"
++
++msgid "Blocks communication between clients on this guest network."
++msgstr "阻止此访客网络中客户端之间的互相通信。"
++
++msgid "Blocks guests from reaching each other on the same SSID. Enable \"Isolate clients\" in the wireless advanced settings, or use the SSID subtab in this tab."
++msgstr "阻止同一 SSID 下的客户端互访。可在无线高级设置中启用\"隔离客户端\"，或使用本页的 SSID 子标签。"
++
++msgid "Bridge VLAN table"
++msgstr "桥接 VLAN 表"
++
++msgid "Bridge-VLANs"
++msgstr "桥接 VLAN"
++
++msgid "Bridges"
++msgstr "网桥"
++
++msgid "Build a plan in the Wizard or Import first."
++msgstr "请先在\"向导\"或\"导入\"中构建方案。"
++
++msgid "CLI"
++msgstr "CLI"
++
++msgid "Cancel"
++msgstr "取消"
++
++msgid "Category"
++msgstr "分类"
++
++msgid "Category — failover / network / system / iot / custom (icon only)."
++msgstr "分类 — failover / network / system / iot / custom（仅用于图标）。"
++
++msgid "Category:"
++msgstr "分类："
++
++msgid "Change SSID, security, password, or attach a network interface — for every wireless interface on both radios (master / client / mesh / guest / iot)."
++msgstr "为每个无线接口修改 SSID、加密方式、密码或绑定网络接口——支持两个射频上的所有接口（master / client / mesh / guest / iot）。"
++
++msgid "Changes applied."
++msgstr "变更已应用。"
++
++msgid "Character types to use when generating a password."
++msgstr "生成密码时使用的字符类型。"
++
++msgid "Check origin"
++msgstr "检查来源"
++
++msgid "Check period (seconds)"
++msgstr "检查周期（秒）"
++
++msgid "Check the cron entry - it must contain time + command"
++msgstr "请检查 cron 条目 - 必须包含时间和命令"
++
++msgid "Choose \"this router\" to apply directly. Other targets generate a CLI script to paste into the external device."
++msgstr "选择\"本路由器\"直接应用。其他目标会生成 CLI 脚本，粘贴到外部设备执行。"
++
++msgid "Choose per-port mode. Leave ports on \"off\" if unused."
++msgstr "选择每个端口的模式。未使用的端口保持 \"off\"。"
++
++msgid "Cisco: switchport trunk allowed vlan 10,20 ; switchport trunk native vlan 1"
++msgstr "Cisco: switchport trunk allowed vlan 10,20 ; switchport trunk native vlan 1"
++
++msgid "Clear Log"
++msgstr "清除记录"
++
++msgid "Click Confirm to keep the changes, or do nothing to revert."
++msgstr "点击\"确认\"保留变更，不操作则自动回滚。"
++
++msgid "Client isolation"
++msgstr "客户端隔离"
++
++msgid "Client limit"
++msgstr "客户端数量限制"
++
++msgid "Client option"
++msgstr "客户端选项"
++
++msgid "Close"
++msgstr "关闭"
++
++msgid "Command"
++msgstr "命令"
++
++msgid "Command \"%s\" will run at"
++msgstr "命令“%s”将运行于"
++
++msgid "Command \"%s\" will run every minute."
++msgstr "命令“%s”将每分钟运行。"
++
++msgid "Command to execute:"
++msgstr "要执行的命令："
++
++msgid "Command to run in the shell"
++msgstr "要在 shell 中运行的命令"
++
++msgid "Commands to run"
++msgstr "要执行的命令"
++
++msgid "Confirm"
++msgstr "确认"
++
++msgid "Connectivity Monitors"
++msgstr "连通性监控"
++
++msgid "Consecutive failures before failover."
++msgstr "连续失败多少次后触发故障切换。"
++
++msgid "Consecutive successes before switching back."
++msgstr "连续成功多少次后切回。"
++
++msgid "Copied to clipboard."
++msgstr "已复制到剪贴板。"
++
++msgid "Copy"
++msgstr "复制"
++
++msgid "Cost efficiency: no extra switches or routers needed."
++msgstr "成本效益：无需额外的交换机或路由器。"
++
++msgid "Create / update firewall zone"
++msgstr "创建/更新防火墙区域"
++
++msgid "Create DHCP pool"
++msgstr "创建 DHCP 池"
++
++msgid "Create logical interface"
++msgstr "创建逻辑接口"
++
++msgid "Credential"
++msgstr "凭据"
++
++msgid "Cron-driven ping tests run once per minute through the primary interface."
++msgstr "cron 驱动的 ping 检测每分钟通过主接口执行一次。"
++
++msgid "Cross-VLAN ping"
++msgstr "跨 VLAN ping"
++
++msgid "Custom index.html path"
++msgstr "自定义 index.html 路径"
++
++msgid "DHCP client limit"
++msgstr "DHCP 客户端限制"
++
++msgid "DHCP lease time"
++msgstr "DHCP 租用时间"
++
++msgid "DHCP pools"
++msgstr "DHCP 池"
++
++msgid "DHCP range start"
++msgstr "DHCP 分配起始地址"
++
++msgid "DHCP rule ports"
++msgstr "DHCP 规则端口"
++
++msgid "DNS rule port"
++msgstr "DNS 规则端口"
++
++msgid "DSA bridge-vlan → MikroTik /interface bridge vlan add bridge=... vlan-ids=N tagged=... untagged=..."
++msgstr "DSA bridge-vlan → MikroTik /interface bridge vlan add bridge=... vlan-ids=N tagged=... untagged=..."
++
++msgid "Day"
++msgstr "天"
++
++msgid "Debug"
++msgstr "调试"
++
++msgid "December"
++msgstr "十二月"
++
++msgid "Delayed Start(seconds)"
++msgstr "延迟启动(秒)"
++
++msgid "Delete"
++msgstr "删除"
++
++msgid "Delete generated script \""
++msgstr "删除生成的脚本 \""
++
++msgid "Delete script \""
++msgstr "删除脚本 \""
++
++msgid "Delete template \""
++msgstr "删除模板 \""
++
++msgid "Deleted"
++msgstr "已删除"
++
++msgid "Deny client write access to TTY"
++msgstr "拒绝客户端对 TTY 的写入权限"
++
++msgid "Description"
++msgstr "描述"
++
++msgid "Description:"
++msgstr "描述："
++
++msgid "Detection has not run yet."
++msgstr "尚未运行检测。"
++
++msgid "Device"
++msgstr "设备"
++
++msgid "Device:"
++msgstr "设备："
++
++msgid "Diagnostics"
++msgstr "诊断"
++
++msgid "Diagnostics tools. Load on demand — nothing runs in the background."
++msgstr "诊断工具。按需加载——后台不运行任何内容。"
++
++msgid "Digits"
++msgstr "数字"
++
++msgid "Disable"
++msgstr "禁用"
++
++msgid "Discard All"
++msgstr "全部丢弃"
++
++msgid "Download Log"
++msgstr "下载日志"
++
++msgid "Download failed:"
++msgstr "下载失败："
++
++msgid "Downloading:"
++msgstr "正在下载："
++
++msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
++msgstr "例如 “1h”、“30m”、“12h”。最短为 “2m”。"
++
++msgid "Easy management: move a device without reconfiguring its network."
++msgstr "便于管理：移动设备无需重新配置网络。"
++
++msgid "EasyMesh bat0 devices"
++msgstr "EasyMesh bat0 设备"
++
++msgid "EdgeOS: set interfaces ethernet ethN vif <id> address <ip>"
++msgstr "EdgeOS: set interfaces ethernet ethN vif <id> address <ip>"
++
++msgid "Edit"
++msgstr "编辑"
++
++msgid "Edit Custom Script"
++msgstr "编辑自定义脚本"
++
++msgid "Edit Custom Script2"
++msgstr "编辑自定义脚本2"
++
++msgid "Edit SSID:"
++msgstr "编辑 SSID："
++
++msgid "Edit VLAN"
++msgstr "编辑 VLAN"
++
++msgid "Edit existing configuration. Every change is saved to memory; use the top-bar Save & Apply to commit."
++msgstr "编辑现有配置。每次修改先保存到内存，使用顶栏\"保存并应用\"提交。"
++
++msgid "Edit interface"
++msgstr "编辑接口"
++
++msgid "Edit wireless:"
++msgstr "编辑无线："
++
++msgid "Enable"
++msgstr "启用"
++
++msgid "Enable guest network."
++msgstr "启用访客网络。"
++
++msgid "Enabled"
++msgstr "启用"
++
++msgid "Enabled:"
++msgstr "已启用："
++
++msgid "Encryption"
++msgstr "加密"
++
++msgid "Enhanced Open"
++msgstr "增强型开放"
++
++msgid "Error"
++msgstr "错误"
++
++msgid "Error saving configuration:"
++msgstr "保存配置时出错："
++
++msgid "Every VLAN apply takes an automatic snapshot first. Restore if something goes wrong."
++msgstr "每次应用 VLAN 都会先自动快照。出错时可恢复。"
++
++msgid "Every wireless interface on every radio — attach any SSID to a VLAN network with one click."
++msgstr "每个射频上的每个无线接口——一键将任意 SSID 绑定到 VLAN 网络。"
++
++msgid "Execute commands when a logical interface goes up, down, or changes state."
++msgstr "当逻辑接口上线、下线或状态变化时执行命令。"
++
++msgid "Existing SSID"
++msgstr "现有 SSID"
++
++msgid "Failover — lightweight mwan3 alternative."
++msgstr "Failover — 轻量级 mwan3 替代品。"
++
++msgid "Failures before interface reset"
++msgstr "接口重置前的失败次数"
++
++msgid "Failures before reboot"
++msgstr "重启前的失败次数"
++
++msgid "February"
++msgstr "二月"
++
++msgid "Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an existing zone from the list or fill out the <em>-- custom --</em> field to enter one manually."
++msgstr "访客流量转发的防火墙区域（通常为 “wan”）。从列表中选择现有区域，或填写 <em>-- 自定义 --</em> 字段手动输入。"
++
++msgid "Firewall zones"
++msgstr "防火墙区域"
++
++msgid "Fixes stuck tailscale0 routes when the WAN IP changes."
++msgstr "修复 WAN IP 变化后 tailscale0 路由残留的问题。"
++
++msgid "Focus Terminal"
++msgstr "聚焦终端"
++
++msgid "Format"
++msgstr "格式"
++
++msgid "Forward"
++msgstr "转发"
++
++msgid "Forward to zone"
++msgstr "转发到区域"
++
++msgid "Forwarding destination zone"
++msgstr "转发目标区域"
++
++msgid "Friday"
++msgstr "星期五"
++
++msgid "Generate"
++msgstr "生成"
++
++msgid "Generate CLI"
++msgstr "生成 CLI"
++
++msgid "Generate CLI for"
++msgstr "生成 CLI 用于"
++
++msgid "Generate CLI for selected target"
++msgstr "为选定目标生成 CLI"
++
++msgid "Generate QR…"
++msgstr "生成二维码…"
++
++msgid "Generate guest WiFi QR…"
++msgstr "正在生成访客 Wi-Fi 二维码…"
++
++msgid "Generate password"
++msgstr "生成密码"
++
++msgid "Generated"
++msgstr "已生成"
++
++msgid "Generated CLI examples"
++msgstr "生成的 CLI 示例"
++
++msgid "Generated CLI for"
++msgstr "已生成的 CLI："
++
++msgid "Generated cron entry:"
++msgstr "生成的 cron 条目："
++
++msgid "Generated scripts"
++msgstr "已生成的脚本"
++
++msgid "Generates a QR code with the guest network data (SSID, encryption, password) so a client device can scan and connect."
++msgstr "生成包含访客网络数据(SSID、加密方式、密码)的二维码,以便客户端设备扫描并连接。"
++
++msgid "Generates ~1440 log lines per day. Leave off unless debugging."
++msgstr "每天约产生 1440 行日志。除调试外保持关闭。"
++
++msgid "Graphical Crontab Configurator"
++msgstr "图形化 Crontab 配置器"
++
++msgid "Group ID"
++msgstr "组 ID"
++
++msgid "Guest Wi-Fi"
++msgstr "访客 Wi-Fi"
++
++msgid "Guest WiFi configuration saved and applied."
++msgstr "访客 Wi-Fi 配置已保存并应用。"
++
++msgid "Guest networks"
++msgstr "访客网络"
++
++msgid "Guide"
++msgstr "指南"
++
++msgid "Health check"
++msgstr "健康检查"
++
++msgid "High"
++msgstr "高"
++
++msgid "Hostname:"
++msgstr "主机名："
++
++msgid "Hotplug Rules"
++msgstr "Hotplug 规则"
++
++msgid "Hour"
++msgstr "小时"
++
++msgid "Hour(0~23)"
++msgstr "小时(0~23)"
++
++msgid "IP"
++msgstr "IP"
++
++msgid "IP address"
++msgstr "IP 地址"
++
++msgid "IPv6"
++msgstr "IPv6"
++
++msgid "Import"
++msgstr "导入"
++
++msgid "Index"
++msgstr "首页"
++
++msgid "Info"
++msgstr "信息"
++
++msgid "Input"
++msgstr "输入"
++
++msgid "Install Failover-lite preset"
++msgstr "安装 Failover-lite 预设"
++
++msgid "Install Failover-lite preset? Adds an editable MWAN3-substitute script."
++msgstr "安装 Failover-lite 预设？将添加一个可编辑的 MWAN3 替代脚本。"
++
++msgid "Interface"
++msgstr "接口"
++
++msgid "Interface Events"
++msgstr "接口事件"
++
++msgid "Interface IP address"
++msgstr "接口IP地址"
++
++msgid "Interface changed"
++msgstr "接口已变更"
++
++msgid "Interface created"
++msgstr "接口已创建"
++
++msgid "Interface down"
++msgstr "接口离线"
++
++msgid "Interface name"
++msgstr "接口名"
++
++msgid "Interface received link"
++msgstr "接口已收到链路"
++
++msgid "Interface reload"
++msgstr "接口重载"
++
++msgid "Interface removed"
++msgstr "接口已移除"
++
++msgid "Interface stats"
++msgstr "接口统计"
++
++msgid "Interface up"
++msgstr "接口在线"
++
++msgid "Interface up failed"
++msgstr "接口上线失败"
++
++msgid "Interfaces"
++msgstr "接口"
++
++msgid "January"
++msgstr "一月"
++
++msgid "July"
++msgstr "七月"
++
++msgid "June"
++msgstr "六月"
++
++msgid "Kernel:"
++msgstr "内核："
++
++msgid "LAN IP Address Changed"
++msgstr "LAN IP 地址已更改"
++
++msgid "Last log line"
++msgstr "最后一行日志"
++
++msgid "Lease time"
++msgstr "租约时间"
++
++msgid "Library"
++msgstr "脚本库"
++
++msgid "Limit"
++msgstr "限制"
++
++msgid "Load"
++msgstr "加载"
++
++msgid "Load bridge vlan show"
++msgstr "载入 bridge vlan show 输出"
++
++msgid "Loading"
++msgstr "加载中"
++
++msgid "Loading scripts..."
++msgstr "正在加载脚本…"
++
++msgid "Loading..."
++msgstr "加载中…"
++
++msgid "Log Viewer"
++msgstr "日志查看器"
++
++msgid "Log every healthy check"
++msgstr "记录每次正常检查"
++
++msgid "Log level"
++msgstr "日志级别"
++
++msgid "Low"
++msgstr "低"
++
++msgid "Lowercase letters"
++msgstr "小写字母"
++
++msgid "Lowest leased address, as offset from the network address."
++msgstr "最低的租用地址，作为网络地址的偏移量。"
++
++msgid "MAC address"
++msgstr "MAC 地址"
++
++msgid "MAC-based: VLAN membership decided by MAC address."
++msgstr "基于 MAC：按 MAC 地址决定 VLAN 归属。"
++
++msgid "Make executable"
++msgstr "设为可执行"
++
++msgid "Manual restore:"
++msgstr "手动恢复："
++
++msgid "March"
++msgstr "三月"
++
++msgid "Max clients"
++msgstr "最大客户端数量"
++
++msgid "Maximum number of leased addresses."
++msgstr "最大地址分配数量。"
++
++msgid "May"
++msgstr "五月"
++
++msgid "Medium"
++msgstr "一般"
++
++msgid "Memory:"
++msgstr "内存："
++
++msgid "Minimum length is 8 characters, 13 characters recommended."
++msgstr "最小长度为8个字符,建议使用13个字符。"
++
++msgid "Minute"
++msgstr "分钟"
++
++msgid "Minute(0~59)"
++msgstr "分钟(0~59)"
++
++msgid "Mixed Mode"
++msgstr "Mixed 模式"
++
++msgid "Mode"
++msgstr "模式"
++
++msgid "Mode:"
++msgstr "模式："
++
++msgid "Monday"
++msgstr "星期一"
++
++msgid "Month"
++msgstr "月份"
++
++msgid "Month(0~11)"
++msgstr "月份(0~11)"
++
++msgid "More Characters"
++msgstr "过短"
++
++msgid "Name"
++msgstr "名称"
++
++msgid "Name *"
++msgstr "名称 *"
++
++msgid "Name — display name."
++msgstr "名称 — 显示名。"
++
++msgid "Name:"
++msgstr "名称："
++
++msgid "Netmask"
++msgstr "网络掩码"
++
++msgid "Network"
++msgstr "网络"
++
++msgid "Network interface"
++msgstr "网络接口"
++
++msgid "Network interface to bind (e.g. br-lan, lo)"
++msgstr "要绑定的网络接口（例如 br-lan、lo）"
++
++msgid "Network name (SSID)"
++msgstr "网络名称 (SSID)"
++
++msgid "Network → Interfaces → Devices with \"Bridge VLAN filtering\" = DSA (modern)."
++msgstr "\"网络 → 接口 → 设备\"中有\"桥接 VLAN 过滤\" = DSA（新式）。"
++
++msgid "Network → Switch menu = swconfig (legacy)."
++msgstr "\"网络 → 交换机\"菜单 = swconfig（旧式）。"
++
++msgid "Networks"
++msgstr "网络"
++
++msgid "Never apply VLAN changes over Wi-Fi or over the port you are changing."
++msgstr "切勿通过 Wi-Fi 或正在修改的端口应用 VLAN 变更。"
++
++msgid "New bridge name"
++msgstr "新桥接名称"
++
++msgid "No"
++msgstr "否"
++
++msgid "No encryption (open network)"
++msgstr "不加密（开放网络）"
++
++msgid "No generated scripts yet. Use Generate CLI in the Wizard."
++msgstr "还没有生成的脚本。请在向导中使用\"生成 CLI\"。"
++
++msgid "No scripts yet."
++msgstr "暂无脚本。"
++
++msgid "No snapshots yet."
++msgstr "暂无快照。"
++
++msgid "No templates yet. Save one from the Wizard after you build a plan."
++msgstr "暂无模板。在向导中构建方案后可保存为模板。"
++
++msgid "No wireless interfaces found."
++msgstr "未找到无线接口。"
++
++msgid "Note"
++msgstr "备注"
++
++msgid "Notes"
++msgstr "备注"
++
++msgid "Notice"
++msgstr "通知"
++
++msgid "November"
++msgstr "十一月"
++
++msgid "October"
++msgstr "十月"
++
++msgid "Once"
++msgstr "一次"
++
++msgid "Open backup page →"
++msgstr "打开备份页面 →"
++
++msgid "OpenWrt 21.02+ typically uses DSA. Some single-port travel routers do not support VLAN filtering at all."
++msgstr "OpenWrt 21.02+ 通常使用 DSA。部分单口旅行路由器完全不支持 VLAN 过滤。"
++
++msgid "Options"
++msgstr "选项"
++
++msgid "Output"
++msgstr "输出"
++
++msgid "Override URL in Terminal tab (for reverse proxy)"
++msgstr "在终端标签页中覆盖 URL（用于反向代理）"
++
++msgid "Override default MAC address - the range of usable addresses might be limited by the driver"
++msgstr "重设默认 MAC 地址 - 可用地址的范围可能受限于驱动"
++
++msgid "Overview"
++msgstr "概览"
++
++msgid "Parent bridge"
++msgstr "父网桥"
++
++msgid "Parse"
++msgstr "解析"
++
++msgid "Password"
++msgstr "密码"
++
++msgid "Password composition"
++msgstr "密码组成"
++
++msgid "Password length"
++msgstr "密码长度"
++
++msgid "Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
++msgstr "密码长度必须至少为 8 个字符 (WPA-PSK/WPA2-PSK/WPA3-SAE)。"
++
++msgid "Password strength"
++msgstr "密码强度"
++
++msgid "Paste a VLAN configuration from another platform. Parsers run in your browser — nothing is sent to the router until you click Apply."
++msgstr "粘贴其他平台的 VLAN 配置。解析在浏览器中完成——点击\"应用\"前不会发送到路由器。"
++
++msgid "Path:"
++msgstr "路径："
++
++msgid "Per-ping timeout in seconds."
++msgstr "每次 ping 的超时秒数。"
++
++msgid "Permissions:"
++msgstr "权限："
++
++msgid "Pick time units, type a command, preview the generated cron line, then add it."
++msgstr "选择时间单位，输入命令，预览生成的 cron 行，然后添加。"
++
++msgid "Ping interface"
++msgstr "Ping 接口"
++
++msgid "Ping test hosts through an interface. After consecutive failures, reset the interface or reboot."
++msgstr "通过接口对测试主机执行 Ping。连续失败达到阈值后，重置接口或重启。"
++
++msgid "Platform"
++msgstr "平台"
++
++msgid "Please enter the command"
++msgstr "请输入命令"
++
++msgid "Please use System → Backup / Flash Firmware to download a config backup."
++msgstr "请使用\"系统 → 备份/升级固件\"下载配置备份。"
++
++msgid "Port"
++msgstr "端口 "
++
++msgid "Port to listen (default: 7681, use 0 for random)"
++msgstr "监听端口（默认 7681，填 0 表示随机）"
++
++msgid "Port-based: one port = one VLAN."
++msgstr "基于端口：一个端口 = 一个 VLAN。"
++
++msgid "Ports"
++msgstr "端口"
++
++msgid "Ports (space-separated, use :t for tagged)"
++msgstr "端口（空格分隔，加 :t 表示 tagged）"
++
++msgid "Preset installed:"
++msgstr "预设已安装："
++
++msgid "Prevents the \"LAN access lost\" bug on some OpenWrt forks."
++msgstr "防止某些 OpenWrt 衍生版的\"LAN 失联\" bug。"
++
++msgid "Preview plan"
++msgstr "预览方案"
++
++msgid "Preview:"
++msgstr "预览："
++
++msgid "Primary (fastest) interface"
++msgstr "主接口（最快）"
++
++msgid "Proto"
++msgstr "协议"
++
++msgid "Protocol"
++msgstr "协议"
++
++msgid "Protocol-based: VLAN membership decided by packet protocol."
++msgstr "基于协议：按报文协议决定 VLAN 归属。"
++
++msgid "QR Code"
++msgstr "二维码"
++
++msgid "QR Error Correction Code Level"
++msgstr "二维码错误纠正级别"
++
++msgid "Quartile"
++msgstr "四分之一"
++
++msgid "Quick Actions"
++msgstr "快捷操作"
++
++msgid "Radio"
++msgstr "射频"
++
++msgid "Read-only"
++msgstr "只读"
++
++msgid "Refresh"
++msgstr "刷新"
++
++msgid "Remarks"
++msgstr "备注"
++
++msgid "Reset"
++msgstr "复位"
++
++msgid "Reset firewall on failover"
++msgstr "故障切换时重置防火墙"
++
++msgid "Resolved:"
++msgstr "已解析："
++
++msgid "Resource mode:"
++msgstr "资源模式："
++
++msgid "Restart Tailscale on failover and recovery"
++msgstr "故障切换及恢复时重启 Tailscale"
++
++msgid "Restore"
++msgstr "还原"
++
++msgid "Restore from"
++msgstr "从以下位置恢复"
++
++msgid "Restored."
++msgstr "已恢复。"
++
++msgid "Reusable VLAN schemes. Templates can be loaded back into the Wizard and applied on this or another router."
++msgstr "可复用的 VLAN 方案。模板可载入向导，应用于本机或其他路由器。"
++
++msgid "Reverse Order"
++msgstr "反向显示"
++
++msgid "Rollback cancelled."
++msgstr "回滚已取消。"
++
++msgid "Run"
++msgstr "运行"
++
++msgid "Run commands on network interface events or when connectivity monitors fail. Replaces luci-app-hotplug."
++msgstr "在网口事件或连通性监控失败时执行命令。替代 luci-app-hotplug。"
++
++msgid "Run ping"
++msgstr "运行 ping"
++
++msgid "Run watchdog"
++msgstr "运行看门狗"
++
++msgid "Running"
++msgstr "运行中"
++
++msgid "Runs at"
++msgstr "运行于"
++
++msgid "SSID"
++msgstr "SSID"
++
++msgid "SSID saved and applied."
++msgstr "SSID 已保存并应用。"
++
++msgid "SSL"
++msgstr "SSL"
++
++msgid "SSL CA"
++msgstr "SSL CA"
++
++msgid "SSL cert"
++msgstr "SSL 证书"
++
++msgid "SSL key"
++msgstr "SSL 密钥"
++
++msgid "Safety"
++msgstr "安全"
++
++msgid "Saturday"
++msgstr "星期六"
++
++msgid "Save"
++msgstr "保存"
++
++msgid "Save & Apply"
++msgstr "保存并应用"
++
++msgid "Save & Apply All"
++msgstr "保存并应用全部"
++
++msgid "Save & Apply all VLAN changes"
++msgstr "保存并应用所有 VLAN 变更"
++
++msgid "Save & Restart ttyd"
++msgstr "保存并重启 ttyd"
++
++msgid "Save Firmware Settings"
++msgstr "保存固件设置"
++
++msgid "Save WAN Settings (smart diff)"
++msgstr "保存 WAN 设置（智能差异）"
++
++msgid "Save Wireless"
++msgstr "保存无线设置"
++
++msgid "Save current plan as template"
++msgstr "将当前方案保存为模板"
++
++msgid "Save failed:"
++msgstr "保存失败："
++
++msgid "Saved"
++msgstr "已保存"
++
++msgid "Saved to memory."
++msgstr "已保存到内存。"
++
++msgid "Saved to memory. Use Save & Apply at the top to commit."
++msgstr "已保存到内存。使用顶部\"保存并应用\"提交。"
++
++msgid "Saved. Scroll to the top of the page and click \"Save & Apply\" to commit."
++msgstr "已保存。滚动到页面顶部点击\"保存并应用\"提交。"
++
++msgid "Scan this QR code with the client device."
++msgstr "用客户端设备扫描此二维码。"
++
++msgid "Scheduled Clearmem"
++msgstr "定时清理内存"
++
++msgid "Scheduled Closewan"
++msgstr "定时关闭WAN"
++
++msgid "Scheduled Customscript"
++msgstr "定时 自定义脚本"
++
++msgid "Scheduled Customscript2"
++msgstr "定时 自定义脚本2"
++
++msgid "Scheduled DisReconn"
++msgstr "定时断网重连"
++
++msgid "Scheduled DisRereboot"
++msgstr "定时断网重启"
++
++msgid "Scheduled Poweroff"
++msgstr "定时关机"
++
++msgid "Scheduled ReNetwork"
++msgstr "定时重启网络"
++
++msgid "Scheduled Reboot"
++msgstr "定时重启"
++
++msgid "Scheduled RestartSamba"
++msgstr "定时重启Samba"
++
++msgid "Scheduled Restartmwan3"
++msgstr "定时重启MWAN3"
++
++msgid "Scheduled Restartwan"
++msgstr "定时重启WAN"
++
++msgid "Scheduled Sysfree"
++msgstr "定时系统清理"
++
++msgid "Scheduled Tasks"
++msgstr "计划任务"
++
++msgid "Scheduled Type"
++msgstr "定时类型"
++
++msgid "Scheduled Wifidown"
++msgstr "定时关闭WiFi"
++
++msgid "Scheduled Wifiup"
++msgstr "定时开启WiFi"
++
++msgid "Scheduled and startup tasks. Presets include reboot, shutdown, network restart, memory cleanup, custom scripts."
++msgstr "定时任务与开机任务。预设包括重启、关机、网络重启、内存清理、自定义脚本等。"
++
++msgid "Script body *"
++msgstr "脚本内容 *"
++
++msgid "Script body — the actual shell script."
++msgstr "脚本内容 — 实际的 shell 脚本。"
++
++msgid "Script detail:"
++msgstr "脚本详情："
++
++msgid "Scripts"
++msgstr "脚本"
++
++msgid "Scripts execute as root. Only run scripts you trust."
++msgstr "脚本以 root 身份执行。只运行你信任的脚本。"
++
++msgid "Scripts live in /etc/quickactions/scripts/. Each script is a normal shell file."
++msgstr "脚本位于 /etc/quickactions/scripts/。每个脚本是普通 shell 文件。"
++
++msgid "Scripts — help"
++msgstr "脚本 — 帮助"
++
++msgid "Seconds between cron runs."
++msgstr "cron 运行间隔（秒）。"
++
++msgid "Section"
++msgstr "分区"
++
++msgid "Security"
++msgstr "安全"
++
++msgid "Security: keep sensitive devices (printers, NAS) separate from guest traffic."
++msgstr "安全：将敏感设备（打印机、NAS）与访客流量隔离。"
++
++msgid "Select password components..."
++msgstr "选择密码组成部分..."
++
++msgid "Send option to client"
++msgstr "发送选项到客户端"
++
++msgid "September"
++msgstr "九月"
++
++msgid "Shell commands for [Customscript2] task type"
++msgstr "【自定义脚本2】任务类型的Shell命令"
++
++msgid "Shell commands for [Customscript] task type"
++msgstr "【自定义脚本】任务类型的Shell命令"
++
++msgid "Show stats"
++msgstr "显示统计"
++
++msgid "Signal"
++msgstr "信号强度"
++
++msgid "Signal to send to command on exit (default: 1)"
++msgstr "命令退出时要发送的信号（默认 1）"
++
++msgid "Size"
++msgstr "大小"
++
++msgid "Size:"
++msgstr "大小："
++
++msgid "Snapshot / Restore"
++msgstr "快照 / 恢复"
++
++msgid "Snapshot note (optional):"
++msgstr "快照备注（可选）："
++
++msgid "Snapshot saved:"
++msgstr "快照已保存："
++
++msgid "Space-separated. Pings go out through the primary interface."
++msgstr "空格分隔。ping 经主接口发出。"
++
++msgid "Special characters"
++msgstr "特殊字符"
++
++msgid "Start"
++msgstr "启动"
++
++msgid "Start offset"
++msgstr "起始偏移"
++
++msgid "Startup Tasks"
++msgstr "开机启动任务"
++
++msgid "Startup Type"
++msgstr "启动类型"
++
++msgid "Status"
++msgstr "状态"
++
++msgid "Step 0 — Target platform"
++msgstr "步骤 0 — 目标平台"
++
++msgid "Step 1 — Enable VLAN filtering on the bridge:"
++msgstr "步骤 1 — 在网桥上启用 VLAN 过滤："
++
++msgid "Step 1 — VLAN ID and parent bridge"
++msgstr "步骤 1 — VLAN ID 与父网桥"
++
++msgid "Step 2 — Add VLAN 20: pick ports, mark them tagged or untagged."
++msgstr "步骤 2 — 添加 VLAN 20：选择端口，标记为 tagged 或 untagged。"
++
++msgid "Step 2 — Port assignment"
++msgstr "步骤 2 — 端口分配"
++
++msgid "Step 3 — Create the interface (protocol static, IP 192.168.20.1/24, device br-lan.20)."
++msgstr "步骤 3 — 创建接口（协议 static，IP 192.168.20.1/24，设备 br-lan.20）。"
++
++msgid "Step 3 — Logical interface"
++msgstr "步骤 3 — 逻辑接口"
++
++msgid "Step 4 — Create the firewall zone, then click Save & Apply."
++msgstr "步骤 4 — 创建防火墙区域，然后点击\"保存并应用\"。"
++
++msgid "Step 4 — DHCP server"
++msgstr "步骤 4 — DHCP 服务器"
++
++msgid "Step 5 — Firewall zone"
++msgstr "步骤 5 — 防火墙区域"
++
++msgid "Step 6 — Attach SSID (optional)"
++msgstr "步骤 6 — 绑定 SSID（可选）"
++
++msgid "Strong"
++msgstr "强"
++
++msgid "Sunday"
++msgstr "星期日"
++
++msgid "Tagged (802.1Q): one port carries multiple VLANs, each packet tagged."
++msgstr "Tagged（802.1Q）：一个端口承载多个 VLAN，每个报文带标签。"
++
++msgid "Tagged packet:"
++msgstr "带标签报文："
++
++msgid "Target"
++msgstr "目标"
++
++msgid "Target platform"
++msgstr "目标平台"
++
++msgid "Tasks to run after boot, with a delay in seconds."
++msgstr "开机后延迟指定秒数运行的任务。"
++
++msgid "Template loaded. Switch to Wizard to edit and apply."
++msgstr "模板已载入。切换到\"向导\"进行编辑和应用。"
++
++msgid "Template saved"
++msgstr "模板已保存"
++
++msgid "Templates"
++msgstr "模板"
++
++msgid "Terminal type"
++msgstr "终端类型"
++
++msgid "Test hosts"
++msgstr "测试主机"
++
++msgid "The Safety subtab above takes snapshots and supports a 90-second auto-rollback after every apply."
++msgstr "上方\"安全\"子标签支持快照，并在每次应用后提供 90 秒自动回滚。"
++
++msgid "The address %s is already in use and no free address is available in the 172.16.0.1 - 172.31.0.1 range."
++msgstr "地址 %s 已在使用中，且在 172.16.0.1 - 172.31.0.1 范围内没有可用的空闲地址。"
++
++msgid "The legacy download endpoint no longer works directly."
++msgstr "旧的下载接口已不再直接可用。"
++
++msgid "The logical interface to watch (e.g. wan, lan)"
++msgstr "要监视的逻辑接口（例如 wan、lan）"
++
++msgid "The radio on which the guest network will work."
++msgstr "访客网络将工作的无线射频。"
++
++msgid "The router is the gateway between VLANs. Traffic between them goes through the firewall zone forwarding rules."
++msgstr "路由器是 VLAN 之间的网关。VLAN 间流量经防火墙区域转发规则处理。"
++
++msgid "This entry already exists"
++msgstr "此条目已存在"
++
++msgid "This section is coming in a follow-up patch."
++msgstr "此部分将在后续补丁中提供。"
++
++msgid "This tab lets you view, create, and edit VLANs on this router. It can also generate matching configs for external switches (MikroTik, Cisco, EdgeOS)."
++msgstr "本页可查看、创建和编辑本路由器的 VLAN，并可为外部交换机（MikroTik、Cisco、EdgeOS）生成匹配配置。"
++
++msgid "Thursday"
++msgstr "星期四"
++
++msgid "Tier saved. Reload the tab to apply."
++msgstr "层级已保存。重新加载此标签页生效。"
++
++msgid "Timeout (s)"
++msgstr "超时（秒）"
++
++msgid "Timeout — seconds before the script is force-killed."
++msgstr "超时 — 脚本被强制终止前的秒数。"
++
++msgid "Timeout:"
++msgstr "超时："
++
++msgid "Timestamp"
++msgstr "时间戳"
++
++msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
++msgstr "从访客到路由器本身的流量（例如：LuCI、SSH）。"
++
++msgid "Traffic from the router itself to guests. ACCEPT is recommended so router services (DHCP, DNS) keep working."
++msgstr "从路由器本身到访客的流量。建议设为 接受(ACCEPT)，以确保路由器服务（DHCP、DNS）正常工作。"
++
++msgid "Traffic management: reduce broadcast traffic and improve speed."
++msgstr "流量管理：减少广播流量、提升速度。"
++
++msgid "Traffic passing between guests and other networks/zones (e.g. LAN). Keep this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow guests to reach other networks."
++msgstr "访客与其他网络/区域（如 LAN）之间通过的流量。请保持为 拒绝(REJECT) 或 丢弃(DROP) 以将访客与您的 LAN 隔离。设为 接受(ACCEPT) 将允许访客访问其他网络。"
++
++msgid "Traffic switches to whichever backup is up with the lowest route metric."
++msgstr "流量切换到可用且路由度量值最低的备用接口。"
++
++msgid "Traffic uses this interface whenever it is healthy."
++msgstr "健康时流量始终走此接口。"
++
++msgid "Trigger event"
++msgstr "触发事件"
++
++msgid "Trunk port:"
++msgstr "Trunk 端口："
++
++msgid "Tuesday"
++msgstr "星期二"
++
++msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
++msgstr "DHCP 流量的 UDP 端口范围，例如 “67-68”。"
++
++msgid "UNIX socket"
++msgstr "UNIX 套接字"
++
++msgid "URL override"
++msgstr "URL 重写"
++
++msgid "Uppercase letters"
++msgstr "大写字母"
++
++msgid "Use \"Install Failover-lite preset\" for an MWAN3 substitute on low-RAM routers."
++msgstr "低内存路由器可使用\"安装 Failover-lite 预设\"替代 MWAN3。"
++
++msgid "Use the SSID subtab above: pick the SSID, pick the VLAN interface, save."
++msgstr "使用上方 SSID 子标签：选择 SSID、选择 VLAN 接口、保存。"
++
++msgid "Use the Wizard subtab above to do all four steps in one flow."
++msgstr "使用上方\"向导\"子标签一次完成全部步骤。"
++
++msgid "User ID"
++msgstr "用户 ID"
++
++msgid "VLAN"
++msgstr "VLAN"
++
++msgid "VLAN Guide"
++msgstr "VLAN 指南"
++
++msgid "VLAN ID"
++msgstr "VLAN ID"
++
++msgid "VLAN ID (2–4094)"
++msgstr "VLAN ID（2–4094）"
++
++msgid "VLAN ID:"
++msgstr "VLAN ID："
++
++msgid "VLAN Management"
++msgstr "VLAN 管理"
++
++msgid "VLAN applied. Network reloaded."
++msgstr "VLAN 已应用，网络已重载。"
++
++msgid "VLAN filtering"
++msgstr "VLAN 过滤"
++
++msgid "VLANs"
++msgstr "VLAN"
++
++msgid "View, create, and edit VLANs on this router and generate matching configs for MikroTik, Cisco, and EdgeOS devices."
++msgstr "查看、创建和编辑本路由器的 VLAN，并生成 MikroTik、Cisco、EdgeOS 设备的匹配配置。"
++
++msgid "WAN Failover"
++msgstr "WAN 故障切换"
++
++msgid "WEP Open System"
++msgstr "WEP 开放式系统"
++
++msgid "WEP Shared Key"
++msgstr "WEP 共享密钥"
++
++msgid "WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
++msgstr "WEP 密钥必须是 5 或 13 个 ASCII 字符，或者是 10 或 26 个十六进制数字。"
++
++msgid "WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest security but requires WPA3-capable clients."
++msgstr "推荐大多数设备使用 WPA2-PSK。WPA3-SAE 提供了最强的安全性，但需要客户端支持 WPA3。"
++
++msgid "Warning"
++msgstr "警告"
++
++msgid "Weak"
++msgstr "弱"
++
++msgid "Wednesday"
++msgstr "星期三"
++
++msgid "Week Day(0~6)"
++msgstr "星期(0~6)"
++
++msgid "Weekday"
++msgstr "星期"
++
++msgid "Wireless"
++msgstr "无线"
++
++msgid "Wireless saved and applied. Reloading..."
++msgstr "无线配置已保存并应用。正在重载…"
++
++msgid "Wizard"
++msgstr "向导"
++
++msgid "Yes"
++msgstr "是"
++
++msgid "You do not tag the SSID directly — you attach the wireless interface to the VLAN's logical network."
++msgstr "不是直接给 SSID 打标签——而是把无线接口绑定到 VLAN 的逻辑网络。"
++
++msgid "Your APs currently have different passwords. Saving will overwrite every AP with the password entered above."
++msgstr "当前 AP 密码不一致。保存后将用上方输入的密码覆盖所有 AP。"
++
++msgid "Your router:"
++msgstr "你的路由器："
++
++msgid "Zone name"
++msgstr "区域名称"
++
++msgid "a port carrying multiple VLANs (tagged)."
++msgstr "承载多个 VLAN 的端口（tagged）。"
++
++msgid "a port dedicated to one VLAN."
++msgstr "专属于一个 VLAN 的端口。"
++
++msgid "accept"
++msgstr "接受"
++
++msgid "anonymous"
++msgstr "匿名"
++
++msgid "are available in the Wizard subtab once you build a plan and pick a target platform."
++msgstr "构建方案并选择目标平台后，可在\"向导\"子标签中使用。"
++
++msgid "carries a VLAN tag identifying its network."
++msgstr "携带标识其所属网络的 VLAN 标签。"
++
++msgid "day: %s"
++msgstr "日：%s"
++
++msgid "disabled"
++msgstr "已禁用"
++
++msgid "driver default"
++msgstr "驱动默认"
++
++msgid "drop"
++msgstr "丢弃"
++
++msgid "e.g. Restart firewall on WAN up"
++msgstr "例如：WAN 上线时重启防火墙"
++
++msgid "enabled"
++msgstr "已启用"
++
++msgid "hour: %s"
++msgstr "时：%s"
++
++msgid "minute: %s"
++msgstr "分：%s"
++
++msgid "month: %s"
++msgstr "月：%s"
++
++msgid "number 1–4094. Avoid 0, 1, 4095."
++msgstr "数字 1–4094。避免使用 0、1、4095。"
++
++msgid "randomly generated"
++msgstr "随机生成"
++
++msgid "reject"
++msgstr "拒绝"
++
++msgid "ttyd Configuration"
++msgstr "ttyd 配置"
++
++msgid "ttyd Configuration — full settings"
++msgstr "ttyd 配置 — 完整设置"
++
++msgid "ttyd Instance"
++msgstr "ttyd 实例"
++
++msgid "weekday: %s"
++msgstr "周：%s"
++
++msgid "— create, edit, run, and manage shell scripts. Files live in"
++msgstr "— 创建、编辑、运行和管理 shell 脚本。文件位于"
++
++msgid "— none —"
++msgstr "— 无 —"
++
++msgid "↗ Open in New Tab"
++msgstr "↗ 在新标签页打开"
++
++msgid "↻ Force Reconnect"
++msgstr "↻ 强制重连"
++
++msgid "↻ Refresh"
++msgstr "↻ 刷新"
++
++msgid "⚠️ Connect via a LAN port you will NOT modify."
++msgstr "⚠️ 请通过你不会修改的 LAN 口连接。"
++
++msgid "⚠️ Connect via a LAN port you will NOT modify. Never apply VLAN changes over Wi-Fi or over the port you are changing. You will lock yourself out."
++msgstr "⚠️ 请通过你不会修改的 LAN 口连接。切勿通过 Wi-Fi 或正在修改的端口应用 VLAN 变更，否则会把你自己锁在外面。"
++
++msgid "⚠️ Never enable Guest → LAN. That defeats the isolation."
++msgstr "⚠️ 切勿启用 Guest → LAN。那会破坏隔离。"
++
++msgid "⚠️ Pending auto-rollback in"
++msgstr "⚠️ 自动回滚倒计时"
++
++msgid "❔ Help"
++msgstr "❔ 帮助"
++
++msgid "🌐 Cross-platform notes"
++msgstr "🌐 跨平台说明"
++
++msgid "💻 OpenWrt DSA quick example — VLAN 20 for a Guest network"
++msgstr "💻 OpenWrt DSA 快速示例 — 为访客网络创建 VLAN 20"
++
++msgid "📂 Types of VLAN"
++msgstr "📂 VLAN 的类型"
++
++msgid "📖 Term definitions"
++msgstr "📖 术语定义"
++
++msgid "📘 What is a VLAN?"
++msgstr "📘 什么是 VLAN？"
++
++msgid "📶 Tagging a Wi-Fi SSID to a VLAN"
++msgstr "📶 将 Wi-Fi SSID 绑定到 VLAN"
++
++msgid "📸 Snapshot now"
++msgstr "📸 立即快照"
++
++msgid "🔍 First check: DSA or swconfig?"
++msgstr "🔍 先检查：DSA 还是 swconfig？"
++
++msgid "🔥 Zone Forwarding"
++msgstr "🔥 区域转发"
++
++msgid "🛟 Anti-lockout & rollback"
++msgstr "🛟 防锁死与回滚"
++
++msgid "🛠️ Why use VLAN?"
++msgstr "🛠️ 为什么使用 VLAN？"
++
++msgid "🛡️ Client Isolation"
++msgstr "🛡️ 客户端隔离"
++
++msgid "🪵 Inter-VLAN Routing (Router-on-a-Stick)"
++msgstr "🪵 VLAN 间路由（单臂路由）"
++
