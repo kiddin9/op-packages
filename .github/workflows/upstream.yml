@@ -563,7 +563,7 @@ jobs:
         sed -i \
           -e 's?include \.\./\.\./\(lang\|devel\)?include $(TOPDIR)/feeds/packages/\1?' \
           -e "s/\(\(^\| \|	\)\(PKG_HASH\|PKG_MD5SUM\|PKG_MIRROR_HASH\|HASH\):=\).*/\1skip/" \
-          -e 's?include .*/luci.mk*?include $(TOPDIR)/feeds/luci/luci.mk?' \
+          -e 's?include .*/luci.mk.*?include $(TOPDIR)/feeds/luci/luci.mk?' \
           -e 's/+libpcre\( \|$\)/+libpcre2 /' \
           */Makefile
         sed -i 's/+docker\( \|$\)/+docker +dockerd /' luci-app-!(docker*)/Makefile
