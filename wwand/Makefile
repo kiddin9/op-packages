@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.7.0_pre7
-PKG_RELEASE:=70
+PKG_VERSION:=1.7.0_pre9
+PKG_RELEASE:=71
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=4c6448277d5f587cd23d500f4b91c73d622ab5e8
+PKG_SOURCE_VERSION:=20a0dc501a67ef548b2d33dca4ab82fbfb46df9d
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -104,7 +104,7 @@ WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
 	simops.uc siminventory.uc sms.uc sms_pdu.uc telemetry_mbim.uc telemetry_ncm.uc \
 	telemetry_qmi.uc transport.uc ubus.uc version.uc wwandctl_fmt.uc
 WWAND_BASE_CODEC:=arfcn_bands.uc hex.uc qmux.uc tlv.uc
-WWAND_BASE_SCHEMA:=cat.uc ctl.uc dms.uc dsd.uc loc.uc loc_lazy.uc merge.uc nas.uc pdc.uc rat.uc \
+WWAND_BASE_SCHEMA:=cat.uc ctl.uc dms.uc dsd.uc merge.uc nas.uc pdc.uc rat.uc \
 	tmd.uc uim.uc wda.uc wds.uc wms.uc wms_lazy.uc
 
 # DEVELOPERS: set CONFIG_WWAND_UCODE_SOURCE to ship readable .uc source
@@ -554,6 +554,10 @@ define Package/wwand-gps/description
  GSV/GLL/VTG/ZDA from ANY talker, reported through `modem_gps` as numbers, with
  the satellites in view and their SNR, the fix type and the DOP values.
 
+ A modem WITHOUT an NMEA port gets the same NMEA over QMI LOC instead — on a
+ QMI modem natively, on an MBIM modem over the QMI passthrough. The port wins
+ where there is one. The LOC session is stopped before its client is released.
+
  ONE READER PER MODEM, so a two-modem router has two positions. `option
  gnss_set_time` hands the receiver's clock to wwand's own set_clock, which only
  ever steps a clock that is plainly unset and so never fights sysntpd.
@@ -568,6 +572,8 @@ define Package/wwand-gps/install
 	$(INSTALL_DIR) $(1)$(UCDIR)
 	$(INSTALL_DATA) $(WWAND_UCODE)/gps.uc $(1)$(UCDIR)/
 	$(INSTALL_DATA) $(WWAND_UCODE)/nmea.uc $(1)$(UCDIR)/
+	$(INSTALL_DIR) $(1)$(UCDIR)/codec/schema
+	$(INSTALL_DATA) $(WWAND_UCODE)/codec/schema/loc.uc $(1)$(UCDIR)/codec/schema/
 endef
 
 # ---------------------------------------------------------------------------
