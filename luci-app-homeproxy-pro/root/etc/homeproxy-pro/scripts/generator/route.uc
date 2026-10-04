@@ -26,9 +26,9 @@
 
 'use strict';
 
-import { isEmpty, strToInt, strToTime, strToBool, parse_port, ruleSetInitialFallback, HP_DIR } from '../homeproxy-pro.uc';
+import { isEmpty, strToInt, strToTime, strToBool, parse_port, HP_DIR } from '../homeproxy-pro.uc';
 
-import { BUILTIN_REMOTE_RULE_SETS, declaresBuiltinRemoteRuleSets, get_outbound, get_resolver, get_ruleset, get_direct_override } from './common.uc';
+import { declaresBuiltinRuleSets, get_outbound, get_resolver, get_ruleset, get_direct_override } from './common.uc';
 
 /* --- shared initial block (every routing mode) ------------------------- */
 
@@ -93,10 +93,10 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			outbound: 'direct-out'
 		});
 
-	/* Split by destination IP, in both directions.
+	/* Split by destination address, in both directions.
 	 *
-	 * sing-box does not match an IP-based rule set (geoip-cn) against a
-	 * domain destination unless it is resolved first, so an explicit resolve
+	 * sing-box does not match an address-based rule set against a domain
+	 * destination unless it is resolved first, so an explicit resolve
 	 * action comes first.  Which way the split points is the mode's default
 	 * policy (ctx.proxy_fallback):
 	 *
@@ -105,10 +105,17 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 	 *   proxy_mainland_china   mainland -> proxy, the rest falls through to
 	 *                          direct-out
 	 *
-	 * Using geoip-cn rather than the geosite-* domain lists is deliberate:
-	 * those mis-classify foreign domains (Google's gvt2.com beacons) as "cn"
-	 * and would send them direct to time out.  Keep the direct-domain
-	 * fast-path above for known direct domains. */
+	 * Using china-ip rather than a domain list is deliberate: those
+	 * mis-classify foreign domains (Google's gvt2.com beacons) as "cn" and
+	 * would send them direct to time out.  Keep the direct-domain fast-path
+	 * above for known direct domains.
+	 *
+	 * One list for both halves of the split: china-ip is generated from the
+	 * same china_ip4.txt the firewall renders homeproxy_mainland_addr_v4
+	 * from, so the kernel and the resolver cannot disagree about what counts
+	 * as mainland.  It used to be geoip-cn, with china-ip added later as a
+	 * correction for the two disagreeing - two rule-sets, one of them
+	 * redundant in this mode, neither able to see the other's data. */
 	if (ctx.routing_mode === 'bypass_mainland_china'
 		|| ctx.routing_mode === 'proxy_mainland_china') {
 		push(config.route.rules, {
@@ -116,37 +123,20 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			strategy: (ctx.ipv6_support !== '1') ? 'prefer_ipv4' : null
 		});
 		push(config.route.rules, {
-			rule_set: 'geoip-cn',
+			rule_set: 'china-ip',
 			action: 'route',
 			outbound: ctx.proxy_fallback ? 'direct-out' : 'main-out'
 		});
-	}
-	if (ctx.routing_mode === 'bypass_mainland_china') {
-		/* geoip-cn.srs is upstream's list; the firewall's mainland set is
-		 * built from our own china_ip4.txt (firewall_post.ut reads it
-		 * directly).  The two disagree - the bundled list has 8.152.0.0/13
-		 * (Alibaba Cloud) and geoip-cn.srs does not - so a connection into
-		 * that range passes the firewall as "not mainland" and would then be
-		 * sent direct by the rule above instead of to the proxy.  This local
-		 * rule-set is generated from the same china_ip4.txt, which is what
-		 * makes both sides decide from one list.  In
-		 * proxy_mainland_china it is not needed twice: the geoip-cn rule
-		 * already selects the mainland side for the proxy. */
-		push(config.route.rules, {
-			rule_set: 'china-ip',
-			action: 'route',
-			outbound: 'direct-out'
-		});
-
-		/* IPv6 half of the same split, and the reason a mainland site opened
-		 * over IPv6 used to go through the proxy even with IPv6 support on.
-		 * geoip-cn.srs carries no IPv6 and china_ip4.json is generated from an
-		 * IPv4 list, so a destination that resolved to an AAAA address matched
-		 * neither and fell through to `final` - which in this mode is main-out.
-		 * The rule is emitted in both mainland modes (unlike china-ip, which
-		 * proxy_mainland_china does not need twice because geoip-cn already
-		 * picks the mainland side there): with no IPv6 in geoip-cn there is
-		 * nothing left to pick it, so the side has to be named explicitly.
+		/* The IPv6 half of the same split, and the reason a mainland site
+		 * opened over IPv6 used to go through the proxy even with IPv6
+		 * support on.  china_ip4.json is generated from an IPv4 list, so a
+		 * destination that resolved to an AAAA address matched nothing and
+		 * fell through to `final` - which in bypass mode is main-out.  The
+		 * rule is emitted in both mainland modes for that reason.  Declared
+		 * only when china_ip6.json is actually there: a rule_set pointing at
+		 * a missing file takes the whole config down with it, and a router
+		 * whose v6 list is unusable must still start (the firewall has
+		 * already degraded to passing IPv6 through, with a warning).
 		 * `prefer_ipv4` on the resolve rule above is what lets both families
 		 * through - it biases, it does not filter. */
 		if (ctx.ipv6_support === '1' && ctx.china_ip6_ready) {
@@ -211,96 +201,54 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 			]
 		});
 
-	/* Both mainland modes split on geoip-cn, so both need it declared - it is
-	 * what the route rule added above matches.  `proxy_mainland_china` used
-	 * to reach this point without it and sing-box refused the whole config
-	 * with "initialize rule[3]: rule-set not found: geoip-cn", which the
-	 * health gate turned into a rollback and an unproxied network. */
-	if (declaresBuiltinRemoteRuleSets(ctx.routing_mode)) {
-		/*
-		 * Fetched straight from the upstream SagerNet repositories and
-		 * downloaded through the selected node. A direct fetch depends on
-		 * the CDN staying reachable from mainland China, where DNS pollution
-		 * makes it fail intermittently; the files total ~250 KB per
-		 * day, so proxying the download costs almost nothing.
-		 *
-		 * Both rule_sets are emitted, but they are consumed by different
-		 * blocks:
-		 *
-		 *   geoip-cn  - referenced by the route rule above to split
-		 *               destinations by IP: mainland -> direct-out in
-		 *               bypass_mainland_china, mainland -> main-out in
-		 *               proxy_mainland_china.
-		 *   geosite-cn - referenced only by the DNS rule in
-		 *               generator/dns.uc (rule_set: geosite-cn ->
-		 *               server: china-dns); the route layer never matches
-		 *               it. Sing-box still loads and keeps the rule-set in
-		 *               memory even when only one block references it, so
-		 *               removing it would also break the DNS split.
-		 *
-		 * History: a third geosite-noncn used to be declared here as well,
-		 * but no rule referenced it and sing-box still loaded and updated
-		 * it daily, so it was removed (the comment above was rewritten
-		 * during the 2026-09-29 review to clarify that geosite-cn is still
-		 * in use - the DNS side - just not from this block).
-		 *
-		 * The list itself lives in common.uc, because the CLI has to create
-		 * an "initial" fallback file for each of these before this generator
-		 * runs - see the note on BUILTIN_REMOTE_RULE_SETS.  That is the whole
-		 * reason this block is a loop: these two are the rule-sets a cold
-		 * install blocks on, so a change to them that only reached one of the
-		 * two readers would put the fallback out of step with the config
-		 * that points at it.
-		 */
-		for (let rs in BUILTIN_REMOTE_RULE_SETS) {
-			push(config.route.rule_set, {
-				type: 'remote',
-				tag: rs.tag,
-				format: rs.format,
-				url: rs.url,
-				update_interval: rs.update_interval,
-				/* Only with the opt-in on, and only for a fallback the CLI
-				 * actually wrote.  A remote rule-set with no initial_path is
-				 * fetched during initialization, before the inbounds bind, so
-				 * a cold cache makes the first start depend on the CDN - and
-				 * on the node, since these go through http_clients.  The
-				 * fallback is an EMPTY rule-set, which changes routing for
-				 * everything it would have matched, so it stays off unless
-				 * the user asks for it.
-				 *
-				 * These two are the rule-sets a fresh install blocks on, so
-				 * they are also the whole point of the feature: an earlier
-				 * version of this block only knew how to build the entries,
-				 * and the CLI had no idea they existed. */
-				initial_path: (ctx.ruleset_safe_start === '1' && ctx.ruleset_initial[rs.tag])
-					? ruleSetInitialFallback([ rs.tag ], rs.format, rs.url) : null,
-				download_detour: 'main-out'
-			});
-		}
-		/* Local, and not downloaded: it is generated from the same
-		 * china_ip4.txt the firewall renders homeproxy_mainland_addr_v4
-		 * from, so the two cannot drift apart.  `type: local` is watched by
-		 * sing-box with fswatch, so when the resource updater replaces the
-		 * file the running instance reloads it in place - no restart and,
-		 * more importantly, no second copy of the list to keep in sync. */
+	/* Both mainland modes split on the China address list, so both need it
+	 * declared - it is what the route rule added above matches.
+	 * `proxy_mainland_china` used to reach this point without a declaration and
+	 * sing-box refused the whole config with "initialize rule[3]: rule-set not
+	 * found: geoip-cn", which the health gate turned into a rollback and an
+	 * unproxied network.
+	 *
+	 * All three are `type: local` and none of them is downloaded.  Each is
+	 * generated by runtime/{china_ip,domain}_ruleset.uc from a list the resource
+	 * updater maintains, and sing-box watches the file with fswatch, so a new
+	 * list is picked up in place - no restart, and no second copy of the data to
+	 * keep in step with the firewall's nft set.
+	 *
+	 * Which ones are declared depends on what references them:
+	 *   china-ip      the route rule above, in both mainland modes
+	 *   china-ip6     the IPv6 route rule, when there is one
+	 *   china-domain  the DNS rule in generator/dns.uc, bypass mode only -
+	 *                proxy_mainland_china decides by address and leaves the
+	 *                resolver to the mode default, so declaring it there would
+	 *                load 111k suffixes for a rule that does not exist. */
+	if (declaresBuiltinRuleSets(ctx.routing_mode)) {
 		push(config.route.rule_set, {
 			type: 'local',
 			tag: 'china-ip',
 			path: HP_DIR + '/resources/china_ip4.json'
 		});
 
-		/* The IPv6 counterpart, from china_ip6.txt - the same list the
-		 * firewall renders homeproxy_mainland_addr_v6 from, and the only
-		 * IPv6 mainland data either side of the split has.  Declared only
-		 * when the file is actually there: a rule_set pointing at a missing
-		 * file takes the whole config down with it, and a router whose v6
-		 * list is unusable must still start (the firewall has already
+		/* Declared only when the file is actually there: a rule_set pointing
+		 * at a missing file takes the whole config down with it, and a router
+		 * whose v6 list is unusable must still start (the firewall has already
 		 * degraded to passing IPv6 through, with a warning). */
 		if (ctx.ipv6_support === '1' && ctx.china_ip6_ready) {
 			push(config.route.rule_set, {
 				type: 'local',
 				tag: 'china-ip6',
 				path: HP_DIR + '/resources/china_ip6.json'
+			});
+		}
+
+		/* The DNS half.  Same "only when it is there" rule as the v6 one
+		 * above, for the same reason: generate_client.uc's dns rule names this
+		 * tag, and a declaration whose file is missing fails the start rather
+		 * than degrading. */
+		if (ctx.routing_mode === 'bypass_mainland_china' && ctx.china_domain_ready) {
+			push(config.route.rule_set, {
+				type: 'local',
+				tag: 'china-domain',
+				path: HP_DIR + '/resources/china-domain.json'
 			});
 		}
 	}

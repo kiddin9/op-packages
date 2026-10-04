@@ -73,7 +73,7 @@ hp_dnsmasq_has_nftset() {
 	[ "$HP_DNSMASQ_NFTSET" = "1" ]
 }
 
-# hp_dnsmasq_render_snippets <stage-dir> <hp-dir> <routing-mode> <dns-port> <ipv6>
+# hp_dnsmasq_render_snippets <stage-dir> <hp-dir> <routing-mode> <dns-port> <ipv6> [run-dir]
 # Render the desired snippet set into <stage-dir>.  Writes nothing outside it,
 # restarts nothing: the caller decides whether the result differs from what is
 # already installed.
@@ -89,6 +89,7 @@ hp_dnsmasq_render_snippets() {
 	local routing_mode="$3"
 	local dns_port="$4"
 	local ipv6="$5"
+	local run_dir="${6:-/var/run/homeproxy-pro}"
 	local gfw_nftset_v6="" wan_nftset_v6=""
 	local nftset_ok=1
 
@@ -154,6 +155,33 @@ hp_dnsmasq_render_snippets() {
 				"$hp_dir/resources/proxy_list.txt" > "$stage/proxy_list.conf" || return 1
 		fi
 	fi
+
+	# Node server addresses, host-name form.
+	#
+	# This snippet carries no `server=`: the routing mode's own snippet above
+	# already decides which upstream answers, and in every proxied mode that is
+	# sing-box's dns-in.  The generator resolves the node through the WAN
+	# resolver either way (route.default_domain_resolver), so the address that
+	# comes back is the same one sing-box will dial - which is the point.  Only
+	# the `nftset=` is added here, and dnsmasq back-fills it from the answer it
+	# relays, forwarded or not.
+	#
+	# Without it, a LAN client opening a connection to the node's own address
+	# was redirected into sing-box, which dialled that same address through the
+	# tunnel to that same node.  sing-box's own outbound is already exempt
+	# (routing_mark / self_mark); this covers the LAN, which is not.
+	#
+	# The literal-address form cannot come from here - there is no name to
+	# resolve - so firewall_post.ut renders it into the same set directly.
+	if [ "$nftset_ok" = "1" ] && [ -s "$run_dir/node-addr-domains.txt" ]; then
+		local node_nftset_v6=""
+		[ "$ipv6" -eq "0" ] || node_nftset_v6=",6#inet#fw4#homeproxy_node_addr_v6"
+		sed -r -e '/^\s*$/d' \
+			-e "s/(.*)/nftset=\/.\1\/4#inet#fw4#homeproxy_node_addr_v4$node_nftset_v6/g" \
+			"$run_dir/node-addr-domains.txt" > "$stage/node_addr.conf" || return 1
+	elif [ -s "$run_dir/node-addr-domains.txt" ]; then
+		log "Warning: this dnsmasq has no nftset support; LAN connections to the node's address are not excluded from the proxy."
+	fi
 }
 
 # hp_dnsmasq_dir_differs <stage-dir> <live-dir>
@@ -179,7 +207,7 @@ hp_dnsmasq_dir_differs() {
 	return 1
 }
 
-# hp_dnsmasq_write_snippets <dns-dir> <hp-dir> <routing-mode>
+# hp_dnsmasq_write_snippets <dns-dir> <hp-dir> <routing-mode> [run-dir]
 # Write the include file plus the mode-specific snippet, then restart
 # dnsmasq.  Requires config_load (reads ipv6_support and dns_port).
 #
@@ -192,6 +220,7 @@ hp_dnsmasq_write_snippets() {
 	local dnsmasq_dir="$1"
 	local hp_dir="$2"
 	local routing_mode="$3"
+	local run_dir="${4:-/var/run/homeproxy-pro}"
 	local ipv6_support dns_port
 	local include="$dnsmasq_dir/../dnsmasq-homeproxy-pro.conf"
 	local stage changed=0
@@ -208,7 +237,7 @@ hp_dnsmasq_write_snippets() {
 	# installed snippet set untouched: the staged directory is discarded, so
 	# the caller keeps the snippets that are already in place instead of
 	# installing a truncated one.
-	if ! hp_dnsmasq_render_snippets "$stage" "$hp_dir" "$routing_mode" "$dns_port" "$ipv6_support"; then
+	if ! hp_dnsmasq_render_snippets "$stage" "$hp_dir" "$routing_mode" "$dns_port" "$ipv6_support" "$run_dir"; then
 		rm -rf "$stage"
 		return 1
 	fi

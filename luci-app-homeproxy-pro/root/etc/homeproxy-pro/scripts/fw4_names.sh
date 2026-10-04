@@ -44,5 +44,7 @@ HP_FW4_SETS="
 	homeproxy_wan_proxy_addr_v6
 	homeproxy_wan_direct_addr_v4
 	homeproxy_wan_direct_addr_v6
+	homeproxy_node_addr_v4
+	homeproxy_node_addr_v6
 	homeproxy_routing_port
 "

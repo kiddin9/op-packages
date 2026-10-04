@@ -1143,11 +1143,13 @@ enable_wan_logging() {
 
 	current=$(wan_zone_log_value "$zone")
 	if wan_filter_log_enabled "$current"; then
-		# Already-on with a lost baseline: reconstruct the usual first-enable
-		# snapshot (unset), not the current on-value. Recording "1" would make
-		# uninstall restore logging after disable. Skip-if-exists in
-		# the helper. Failure must not become baseline_snapshot_failed.
-		maybe_snapshot_wan_log_baseline "$zone" "" || true
+		# Already-on with a lost baseline: reconstruct the value before this
+		# package's owned filter-log bit was enabled. Preserve other log-mask
+		# bits so uninstall cannot erase unrelated logging settings. The helper
+		# skips an existing baseline. Failure stays best-effort and must not
+		# become baseline_snapshot_failed.
+		baseline=$(wan_filter_log_clear_value "$current")
+		maybe_snapshot_wan_log_baseline "$zone" "$baseline" || true
 		if ! wan_log_generation_bump >/dev/null; then
 			release_wan_log_lock
 			wan_log_tracking_failed_json "$zone_json"

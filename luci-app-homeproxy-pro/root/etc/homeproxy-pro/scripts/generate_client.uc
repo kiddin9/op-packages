@@ -29,8 +29,8 @@ import { lstat, mkdtemp, readfile, writefile } from 'fs';
 
 import { Loader } from './config/loader.uc';
 import { generate } from './generator/client.uc';
-import { BUILTIN_REMOTE_RULE_SETS, declaresBuiltinRemoteRuleSets, rule_set_tags } from './generator/common.uc';
-import { removeBlankAttrs, isEmpty, probeRuleSetFile, ruleSetFormatExtension, ruleSetFormatFromPath, ruleSetInitialFallback, RULESET_EMPTY_BINARY, RULESET_EMPTY_SOURCE, RULESET_INITIAL_DIR, shellQuote, validateRuleSetPath, HP_DIR, RUN_DIR, UCICONFIG_DIR } from './homeproxy-pro.uc';
+import { rule_set_tags } from './generator/common.uc';
+import { removeBlankAttrs, isEmpty, isValidCIDR, probeRuleSetFile, ruleSetFormatFromPath, shellQuote, validateRuleSetPath, validation, HP_DIR, RUN_DIR, UCICONFIG_DIR } from './homeproxy-pro.uc';
 
 /* Resolve the GenerationContext inputs. This is the only impure step on the
  * client generation path, and it is deliberately here rather than under
@@ -46,69 +46,87 @@ import { removeBlankAttrs, isEmpty, probeRuleSetFile, ruleSetFormatExtension, ru
  *
  * The extra parentheses around the ubus call keep the ?. chain guarded when
  * connect() returns null. */
-/* Write one EMPTY rule-set to <path>, in <format>.
+
+/* Normalise one server address into `host`, or return null when there is
+ * nothing usable.  WireGuard peers and the plain outbounds disagree on the
+ * field name and the IPv6 form, so this is the only place that knows both. */
+function node_host_of(v) {
+	if (isEmpty(v))
+		return null;
+
+	let host = trim(v);
+
+	/* `[fdfe::1]` is how an IPv6 literal arrives from a UCI value; the set
+	 * syntax wants the bare address. */
+	if (length(host) > 2 && substr(host, 0, 1) === '[' && substr(host, -1, 1) === ']')
+		host = substr(host, 1, -2);
+
+	return isEmpty(host) ? null : host;
+}
+
+/* Export the node server addresses, split by form, into two files the
+ * intercept layer reads:
  *
- * The fallback exists so that a remote rule-set with no initial file of the
- * user's own does not have to be downloaded before the inbounds bind - and on
- * a cold cache that is the difference between a router that comes up and one
- * that waits on raw.githubusercontent.com (through the node) before it will
- * listen at all.
+ *   RUN_DIR/node-addr-ips.txt      literal addresses, rendered straight into
+ *                                  the nft set by firewall_post.ut
+ *   RUN_DIR/node-addr-domains.txt  host names, handed to dnsmasq as
+ *                                  `server=` + `nftset=` so the addresses they
+ *                                  resolve to land in the same set
  *
- * binary is produced by compiling, not by writing bytes: a file produced by
- * the sing-box that is running cannot drift from it, and the compiler is
- * always there because the very next thing this script does is run it.  The
- * shipped 14-byte constant is the fallback for the fallback - a router where
- * the compile cannot run - and it is a file in the package rather than a byte
- * string in the source, so `hexdump -C` on a device can confirm it.
+ * Why the set exists at all: sing-box's own outbound already carries
+ * `routing_mark: self_mark` and every chain returns on that mark, so the
+ * tunnel's connection to the node is never re-intercepted.  The LAN's is not.
+ * A client opening a connection to the node's own address - the panel, an SSH
+ * session to the landing box, anything on a port the proxy covers - was
+ * redirected into sing-box, which then dialled the very address it was asked
+ * for through the tunnel to that same node: one extra hairpin hop, and the
+ * node sees the connection arriving from itself.
  *
- * Returns true when <path> holds a usable file afterwards.  A false return is
- * not fatal: the caller skips the initial_path, and the rule-set then behaves
- * exactly as it does today (fetched during initialization, blocking on
- * failure).  That is the point of the whole opt-in - it must never make a
- * situation worse than not having it. */
-function writeEmptyRuleSet(path, format) {
-	const ext = ruleSetFormatExtension(format);
+ * The generator is the only place that knows which nodes are actually in use
+ * (main_node, main_udp_node, urltest membership, custom-mode routing_nodes,
+ * wireguard endpoints), so it is the only place that can produce this list
+ * without the firewall template re-deriving that selection and drifting.
+ *
+ * Failure is not fatal.  A missing file means the set renders empty, which is
+ * exactly the behaviour before this existed. */
+function export_node_addresses(config) {
+	const addrs = [];
+	const domains = [];
 
-	if (!ext)
-		return false;
+	const add = (v) => {
+		const host = node_host_of(v);
+		if (host === null)
+			return;
+		if (isValidCIDR(host, 4) || isValidCIDR(host, 6))
+			push(addrs, host);
+		else if (validation('hostname', host))
+			push(domains, host);
+	};
 
-	system('mkdir -p ' + shellQuote(RULESET_INITIAL_DIR));
+	for (let ob in (config.outbounds || []))
+		add(ob.server);
 
-	if (format === 'source') {
-		/* No compile needed, and no temp file: the source form is the JSON
-		 * itself.  The shipped empty.source.json is the source of record, so
-		 * a missing one means the install is incomplete and the copy is the
-		 * thing that says so. */
-		if (system('cp -f ' + shellQuote(RULESET_EMPTY_SOURCE) + ' ' + shellQuote(path)) !== 0)
-			return false;
-	} else {
-		/* Compile into the destination directly.  A partial output is
-		 * possible if the compile dies, so the file is only accepted when the
-		 * compile succeeded AND something is there - sing-box opening a
-		 * truncated .srs would block startup, which is the outcome this is
-		 * all meant to prevent.
-		 *
-		 * `-o` rather than `--output`, because that is the form
-		 * tests/ucode/test_generators.sh already exercises against this
-		 * binary, and a flag spelling that only ever runs in production is a
-		 * flag spelling nobody has ever seen work. */
-		if (system('sing-box rule-set compile ' + shellQuote(RULESET_EMPTY_SOURCE)
-			+ ' -o ' + shellQuote(path) + ' >/dev/null 2>&1') !== 0) {
-			if (system('cp -f ' + shellQuote(RULESET_EMPTY_BINARY) + ' ' + shellQuote(path)) !== 0)
-				return false;
-		}
+	/* WireGuard moved from `outbounds` to `endpoints` in 1.13, and the peer
+	 * address is the node there. */
+	for (let ep in (config.endpoints || []))
+		for (let peer in (ep.peers || []))
+			add(peer.address);
 
-		const st = lstat(path);
-		if (!st || st.type !== 'file' || st.size <= 0)
-			return false;
-	}
+	const dump = (path, list) => {
+		if (isEmpty(list))
+			return;
+		/* ucode's join() takes the separator FIRST: join(sep, list).  With
+		 * the arguments the other way round it does not raise, it returns
+		 * null - and null + '\n' is the four-character string "null\n", so
+		 * the file comes out non-empty and every "is it there?" check on
+		 * it passes.  That is exactly how a released r41 ended up with
+		 * dnsmasq resolving a host literally named "null". */
+		if (writefile(path, join('\n', uniq(list)) + '\n') == null)
+			warn(sprintf('homeproxy-pro: could not write %s\n', path));
+	};
 
-	/* The jailed client reads this as the sing-box user.  writefile() has no
-	 * mode argument and cp preserves the source's, so the mode is set
-	 * explicitly rather than inherited from whatever umask was in force. */
-	system('chmod 644 ' + shellQuote(path));
-
-	return true;
+	dump(RUN_DIR + '/node-addr-ips.txt', addrs);
+	dump(RUN_DIR + '/node-addr-domains.txt', domains);
 }
 
 function resolve_env(dm) {
@@ -147,6 +165,11 @@ function resolve_env(dm) {
 		 * argument to get wrong - and because the neighbouring stderr-size
 		 * check in homeproxy-pro.uc already reads sizes through it. */
 		china_ip6_ready: lstat(HP_DIR + '/resources/china_ip6.json') !== null,
+		/* The DNS half of the same split: whether china-domain.json is
+		 * there.  Same reason, same lstat(), same one-sided default - a
+		 * missing file has to leave the DNS rule out rather than name a path
+		 * that does not exist and fail the whole start. */
+		china_domain_ready: lstat(HP_DIR + '/resources/china-domain.json') !== null,
 		/* Which enabled `type: local` rule-sets have a usable file on disk,
 		 * keyed by UCI section name.
 		 *
@@ -205,7 +228,6 @@ function resolve_env(dm) {
 		/* Which empty startup fallbacks are actually on disk, keyed by rule_set
 		 * tag: { '<tag>': true }.  Presence, not a path - see the block at the
 		 * end of this function. */
-		ruleset_initial: {}
 	};
 
 	if (routing_mode === 'custom') {
@@ -302,92 +324,6 @@ function resolve_env(dm) {
 		}
 	}
 
-	/* ruleset_safe_start: write the empty fallbacks.
-	 *
-	 * Recorded as PRESENCE, not as a path: env.ruleset_initial[tag] is true
-	 * only once a file for that tag is on disk and readable.  The generator
-	 * then emits `initial_path` for exactly the tags it can point at, which
-	 * is what keeps the two sides from disagreeing - a file that could not be
-	 * written is simply not offered, and that rule-set keeps today's
-	 * behaviour (fetched during initialization) instead of pointing at
-	 * something that is not there.  sing-box ignores a missing initial_path
-	 * and blocks startup exactly as if none had been configured, so this
-	 * cannot make a broken install worse - but the point of the opt-in is
-	 * that it helps, and a pointer to a nonexistent file helps nobody.
-	 *
-	 * Built-ins first, then the user's own.  Both come from the same helper
-	 * the generator uses, so the format the file was written in and the
-	 * format declared in the config are decided by one question asked once. */
-	if (dm.general.ruleset_safe_start === '1') {
-		if (declaresBuiltinRemoteRuleSets(routing_mode)) {
-			for (let rs in BUILTIN_REMOTE_RULE_SETS) {
-				const path = ruleSetInitialFallback([ rs.tag ], rs.format, rs.url);
-				if (path && writeEmptyRuleSet(path, rs.format))
-					env.ruleset_initial[rs.tag] = true;
-				else
-					warn(sprintf("homeproxy-pro: could not write the empty fallback for '%s'; this rule-set will be fetched during startup, as before.", rs.tag));
-			}
-		}
-
-		/* User rule-sets are custom-mode only - build_user_rulesets() is not
-		 * called in any other mode - so writing fallbacks for them anywhere
-		 * else would create files nothing ever points at.  A rule-set with an
-		 * initial file of its own is left completely alone. */
-		if (routing_mode === 'custom') {
-			for (let cfg in (dm.routing.rulesets || [])) {
-				if (!cfg.enabled || cfg.type !== 'remote' || !isEmpty(cfg.initial_path))
-					continue;
-
-				const format = cfg.format || ruleSetFormatFromPath(cfg.url);
-				const tags = rule_set_tags(cfg);
-				const template = ruleSetInitialFallback(tags, format, cfg.url);
-
-				if (!template) {
-					warn(sprintf("homeproxy-pro: rule-set '%s' has no usable format for the startup fallback (format '%s', url '%s'); it will be fetched during startup, as before.", cfg.name, cfg.format || '', cfg.url || ''));
-					continue;
-				}
-
-				for (let tag in tags) {
-					if (env.ruleset_initial[tag])
-						continue;
-
-					/* A single-tag rule-set's template IS the path; a
-					 * multi-tag one carries {tag} and needs one file each -
-					 * sing-box opens every tag's file, so a missing second
-					 * one blocks startup as surely as a missing first. */
-					const path = (length(tags) > 1) ? replace(template, '{tag}', tag) : template;
-
-					if (writeEmptyRuleSet(path, format))
-						env.ruleset_initial[tag] = true;
-					else
-						warn(sprintf("homeproxy-pro: could not write the empty fallback for rule-set '%s' (tag %s); it will be fetched during startup, as before.", cfg.name, tag));
-				}
-			}
-		}
-	}
-
-	/* One line naming what is running on an empty fallback.
-	 *
-	 * The CLI already warns per rule-set when a fallback could not be written,
-	 * but "which rule-sets are currently on an EMPTY one" is the fact a user
-	 * needs and nothing else records it: the running configuration is not
-	 * readable by the browser, the health gate does not look at rule-sets, and
-	 * sing-box's own log only says the download failed.  This line is the
-	 * durable answer, and it goes to homeproxy-pro.log, which the status page can
-	 * read with the permission it already has.
-	 *
-	 * Emitted only when the opt-in is on AND something actually got a
-	 * fallback, so the log does not gain a line on every generation of a
-	 * configuration that is not using the feature. */
-	if (dm.general.ruleset_safe_start === '1' && !isEmpty(env.ruleset_initial)) {
-		const tags = [];
-
-		for (let tag in env.ruleset_initial)
-			push(tags, tag);
-
-		warn(sprintf("homeproxy-pro: ruleset_safe_start is on; these rule-sets have an EMPTY initial file and match nothing until their download succeeds: %s.", join(', ', tags)));
-	}
-
 	if (routing_mode !== 'custom') {
 		const direct_list_raw = readfile(HP_DIR + '/resources/direct_list.txt');
 		env.direct_domain_list = direct_list_raw ? split(trim(direct_list_raw), /[\r\n]/) : [];
@@ -431,6 +367,11 @@ if (system('sing-box check --config ' + shellQuote(tmp)) !== 0) {
 	system('rm -rf ' + shellQuote(work_dir));
 	exit(1);
 }
+
+/* Only now, with a configuration sing-box has accepted: the firewall and the
+ * dnsmasq snippets read the exported list, and they must never be pointed at
+ * addresses from a configuration that does not start. */
+export_node_addresses(config);
 
 if (system('mv -f ' + shellQuote(tmp) + ' ' + shellQuote(RUN_DIR) + '/sing-box-c.json') !== 0) {
 	system('rm -rf ' + shellQuote(work_dir));

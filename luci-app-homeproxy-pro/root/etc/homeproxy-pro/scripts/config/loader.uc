@@ -404,7 +404,6 @@ export const Loader = {
 			 * configuration generated cleanly, `sing-box check` passed, and the
 			 * feature simply never turned on.  Guard 53 now compares the two
 			 * lists so that class cannot come back quietly. */
-			ruleset_safe_start: opt(uci, 'main', 'ruleset_safe_start'),
 			main_urltest_nodes: opt(uci, 'main', 'main_urltest_nodes') || [],
 			main_urltest_interval: opt(uci, 'main', 'main_urltest_interval'),
 			main_urltest_tolerance: opt(uci, 'main', 'main_urltest_tolerance'),

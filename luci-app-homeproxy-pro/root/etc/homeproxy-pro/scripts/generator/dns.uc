@@ -278,11 +278,22 @@ function append_proxy_dns(config, dm, ctx) {
 			server: 'default-dns'
 		});
 
-		push(config.dns.rules, {
-			rule_set: 'geosite-cn',
-			action: 'route',
-			server: 'china-dns'
-		});
+		/* The China domain list, generated from china_list.txt - the same
+		 * schedule and the same updater as the address list the route and
+		 * firewall halves read.  It replaced geosite-geolocation-cn.srs,
+		 * which had to be downloaded before the inbounds could bind.
+		 *
+		 * Only with the file there: a rule naming a tag nothing declares
+		 * fails the config, and a rule-set whose path is missing fails it
+		 * too, so both the declaration (route.uc) and this reference are
+		 * gated on the same lstat. */
+		if (ctx.china_domain_ready) {
+			push(config.dns.rules, {
+				rule_set: 'china-domain',
+				action: 'route',
+				server: 'china-dns'
+			});
+		}
 
 		/* sing-box 1.14: restore CN-IP fallback via evaluate/match_response (opt-in) */
 		if (ctx.cn_ip_fallback === '1') {
@@ -292,18 +303,17 @@ function append_proxy_dns(config, dm, ctx) {
 				tag: 'cn-fallback'
 			});
 			/* The response is matched by the addresses the upstream returned,
-			 * and geoip-cn has no IPv6 in it, so with IPv6 support on a
-			 * mainland domain that resolved to an AAAA address was never
-			 * recognised as mainland and its answer kept coming from the
-			 * proxy resolver.  Adding the v6 rule-set here is what makes the
-			 * DNS half of the split agree with the route half, which
-			 * classifies the same destinations through the same list
-			 * (route.uc: china-ip6).  Both tags have to be declared before
-			 * this rule runs, which is why the list is built here rather than
-			 * inlined: a rule_set naming an undeclared tag fails the config.
-			 * china-ip6 is only declared when its file exists, so it is only
-			 * named here under the same condition. */
-			const cn_fallback_sets = ['geoip-cn'];
+			 * and the address list has to be the one the route half uses for
+			 * the same decision to agree with it - so this names china-ip, not
+			 * a list of its own.  It is the same reason the declaration lives
+			 * in common.uc.
+			 *
+			 * china-ip6 is added only when it is declared: the rule_set list
+			 * has to name declared tags only, or the config is rejected.
+			 * Without it a mainland domain that resolved to an AAAA address
+			 * is never recognised as mainland and its answer keeps coming
+			 * from the proxy resolver. */
+			const cn_fallback_sets = ['china-ip'];
 			if (ctx.ipv6_support === '1' && ctx.china_ip6_ready)
 				push(cn_fallback_sets, 'china-ip6');
 			push(config.dns.rules, {

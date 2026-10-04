@@ -157,7 +157,7 @@ hp_rearm_intercept() {
 	[ -f "$RUN_DIR/intercept-released" ] || return 0
 	rm -f "$RUN_DIR/intercept-released"
 	log "Client is up again; reinstalling the intercept layer."
-	hp_dnsmasq_write_snippets "$DNSMASQ_DIR" "$HP_DIR" "$2"
+	hp_dnsmasq_write_snippets "$DNSMASQ_DIR" "$HP_DIR" "$2" "$RUN_DIR"
 	hp_net_setup "$1" "$2"
 	# hp_firewall_apply already writes $RUN_DIR/failed-firewall on its own
 	# failure, but the helper's caller is service_started, which only reads
@@ -265,6 +265,11 @@ start_service() {
 		config_get_bool auto_update "subscription" "auto_update" "0"
 		config_get auto_update_time "subscription" "auto_update_time" "2"
 		hp_sync_autoupdate_cron "$auto_update" "$auto_update_time"
+		# Unconditional, and independent of the switch above: the resource
+		# lists decide the firewall's mainland set, and that going stale is
+		# not something "update my subscriptions" should have been able to
+		# cause.
+		hp_sync_resource_cron
 
 		# The DNS snippets are the other half of the intercept layer: without
 		# them the LAN resolves through the ISP while the nft rules still send
@@ -273,7 +278,7 @@ start_service() {
 		# leaving an empty snippet behind; record it the same way a firewall
 		# failure is recorded, so the configuration is not promoted to
 		# known-good and the log names the real problem.
-		if ! hp_dnsmasq_write_snippets "$DNSMASQ_DIR" "$HP_DIR" "$routing_mode"; then
+		if ! hp_dnsmasq_write_snippets "$DNSMASQ_DIR" "$HP_DIR" "$routing_mode" "$RUN_DIR"; then
 			log "Error: the dnsmasq snippets were not installed; LAN DNS keeps using the previous configuration."
 			printf '%s\n' "dns" > "$RUN_DIR/failed-dns"
 		fi

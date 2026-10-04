@@ -26,7 +26,7 @@
 
 'use strict';
 
-import { isEmpty, rulePathRootsText, ruleSetFormatFromPath, ruleSetInitialFallback, strToTime, validateRuleSetPath } from '../homeproxy-pro.uc';
+import { isEmpty, rulePathRootsText, ruleSetFormatFromPath, strToTime, validateRuleSetPath } from '../homeproxy-pro.uc';
 
 import { get_outbound, isDirectOutboundTag, rule_set_tags } from './common.uc';
 
@@ -214,37 +214,6 @@ export function build_user_rulesets(rule_set_array, dm, ctx) {
 			if (!validateRuleSetPath(cfg.initial_path))
 				die(sprintf("homeproxy-pro: rule-set '%s' initial_path '%s' is outside the allowed rule-set roots (%s); move the file into one of them, or clear the field to let sing-box fetch the rule-set on its own.", cfg.name, cfg.initial_path, rulePathRootsText()));
 			ruleset.initial_path = cfg.initial_path;
-		} else if (cfg.type === 'remote' && ctx.ruleset_safe_start === '1') {
-			/* No initial file of the user's own, and the opt-in is on: point at
-			 * the empty fallback the CLI wrote before this generator ran.
-			 *
-			 * ctx.ruleset_initial records PRESENCE, not a path, and every tag
-			 * has to be present.  sing-box substitutes {tag} and opens every
-			 * resulting file, so a multi-tag rule-set whose second file is
-			 * missing blocks startup exactly as surely as one whose first is -
-			 * measured on 1.14.2, where a literal "{tag}.srs" on disk makes
-			 * it fall back to downloading and fail.  All-or-nothing is the
-			 * only correct answer here.
-			 *
-			 * Nothing is emitted when the answer is no: the rule-set then
-			 * behaves exactly as it does today, which is also what happens if
-			 * the CLI could not write the file. */
-			const fallback = ruleSetInitialFallback(all_tags, cfg.format, cfg.url);
-
-			if (fallback) {
-				let ready = true;
-
-				for (let t in all_tags)
-					if (!ctx.ruleset_initial[t]) {
-						ready = false;
-						break;
-					}
-
-				if (ready)
-					ruleset.initial_path = fallback;
-				else
-					warn(sprintf("homeproxy-pro: rule-set '%s' has no complete empty fallback, so it will be fetched during startup as before.", cfg.name));
-			}
 		}
 		push(rule_set_array, ruleset);
 	}

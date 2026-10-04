@@ -178,10 +178,10 @@ function makePoll() {
 
 /* --- the rule-set degradation report ------------------------------------
  *
- * parseRuleSetFetchFailures() is the only thing that tells a user a rule-set
- * is currently EMPTY, because with ruleset_safe_start on there is no other
- * symptom: the instance is healthy, the health gate passes (nothing in
- * health.sh looks at rule-sets), and the LAN is proxied.
+ * A remote rule-set is fetched before the service starts, so a failure there
+ * is a failed start and the running instance has nothing to show for it.  The
+ * reason is only ever written to a log, and a start that failed has no status
+ * page - so this parse is the only place it becomes legible without ssh.
  *
  * It parses a file sing-box is concurrently writing and that clean_log.sh
  * truncates at 50 KB, so the cases below are about tolerance and about not
