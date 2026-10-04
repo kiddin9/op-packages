@@ -1,5 +1,30 @@
---- a/luci-theme-vantage/ucode/template/themes/vantage/header.ut
-+++ b/luci-theme-vantage/ucode/template/themes/vantage/header.ut
+--- a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
++++ b/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
+@@ -1,5 +1,5 @@
+ {
+-	"admin/dashboard": {
++	"admin/status/dashboard": {
+ 		"title": "Dashboard",
+ 		"order": 1,
+ 		"action": {
+@@ -7,7 +7,15 @@
+ 			"path": "vantage/overview"
+ 		},
+ 		"depends": {
+-			"acl": [ "luci-app-vantage" ]
++			"acl": [ "luci-app-vantage" ],
++			"uci": {
++				"vantage": true,
++				"luci": {
++					"main": {
++						"mediaurlbase": "/luci-static/vantage"
++					}
++				}
++			}
+ 		}
+ 	}
+ }
+
 --- a/luci-theme-vantage/ucode/template/themes/vantage/header.ut
 +++ b/luci-theme-vantage/ucode/template/themes/vantage/header.ut
 @@ -12,6 +12,8 @@
