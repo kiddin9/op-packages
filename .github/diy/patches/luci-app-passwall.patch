@@ -251,7 +251,7 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-passwall/luasrc/view/passwall/global/status_bottom.htm
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,126 @@
 +<style>
 +.pure-1-2 {
 +    width: 50%;
@@ -302,10 +302,6 @@ index 000000000000..a00fff9c79b3
 +    bottom: 3.3rem;
 +}
 +
-+footer{
-+display:block !important;
-+}
-+    
 +@media screen and (max-width: 700px) {
 +.status-bar .icon-con {
 +    height: 2.5em;
