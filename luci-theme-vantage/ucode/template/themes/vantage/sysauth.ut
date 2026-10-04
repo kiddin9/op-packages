@@ -12,6 +12,8 @@
 	if (type(tls) == 'string')
 		tls = split(tls, /\s+/);
 	const tls_ports = uniq(filter(map(tls, e => +(match(e, /\d+$/)?.[0] ?? 0)), p => (p > 0 && p <= 65535)));
+	const boardinfo = ubus.call("system", "board");
+	const hostname = striptags(boardinfo?.hostname ?? '?');
 -%}
 <!DOCTYPE html>
 <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true">
@@ -37,9 +39,16 @@
 <main class="vt-login">
 	<div class="vt-login-card">
 		<div class="vt-login-head">
-			<svg class="vt-login-mark" viewBox="0 0 32 32" width="44" height="44" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"/><path d="M9 10.5 16 22" class="vt-brand-l"/><path d="M16 22 23 10.5" class="vt-brand-r"/><circle cx="23" cy="10.5" r="1.9" class="vt-brand-dot"/></svg>
+			<svg class="vt-login-mark" viewBox="0 0 32 32" width="44" height="44" aria-hidden="true">
+			<rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"></rect>
+			<path d="M10 10.5 10 21.5" class="vt-brand-l"></path>
+			<path d="M10 16 21.5 10.5" class="vt-brand-r"></path>
+			<path d="M10 16 21.5 21.5" class="vt-brand-r"></path>
+			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
+			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
+			</svg>
 			<div>
-				<h1 class="vt-login-title">Vantage</h1>
+				<h1 class="vt-login-title">{{ hostname }}</h1>
 				<p class="vt-login-sub"><span class="vt-live-dot" aria-hidden="true"></span>{{ entityencode(_('Authorization Required'), true) }}</p>
 			</div>
 		</div>
