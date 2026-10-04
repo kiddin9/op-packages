@@ -11,7 +11,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-vantage
 PKG_VERSION:=1.0.1
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage theme
@@ -53,6 +53,6 @@ endef
 
 # In the LuCI tree (themes/luci-theme-vantage) use ../../luci.mk; built from
 # an external feed, use the luci feed installed in the build tree.
-include $(TOPDIR)/feeds/luci/luci.mk)
+include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
