@@ -1,3 +1,15 @@
+--- a/luci-theme-vantage/Makefile
++++ b/luci-theme-vantage/Makefile
+@@ -17,7 +17,7 @@ PKG_LICENSE:=GPL-3.0-or-later
+ LUCI_TITLE:=Vantage theme
+ LUCI_DESCRIPTION:=A console-style LuCI theme: icon rail with flyouts, \
+ 	breadcrumb, page tabs, Ctrl+K command palette, light and dark modes.
+-LUCI_DEPENDS:=+luci-base
++LUCI_DEPENDS:=+luci-base +luci-app-vantage
+ LUCI_MAINTAINER:=anothaDev <10740588+anothaDev@users.noreply.github.com>
+ LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage
+
+
 --- a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
 +++ b/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
 @@ -1,5 +1,5 @@
