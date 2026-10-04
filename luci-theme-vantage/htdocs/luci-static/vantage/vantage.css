@@ -328,7 +328,7 @@ html[data-darkmode="true"] .vt-brand-tile { fill: #16181b; }
 	white-space: nowrap;
 }
 .vt-rail-link svg { flex: none; width: 20px; height: 20px; }
-.vt-rail-label { overflow: hidden; text-overflow: ellipsis; display: none; flex: 1 1 auto; }
+.vt-rail-label { overflow: hidden; text-overflow: ellipsis; display: none; flex: 1 1 auto; font-size: var(--fs-md) }
 .vt-rail-caret { display: none; width: 14px; height: 14px; color: var(--text-3); transition: transform .15s; }
 
 .vt-rail-link:hover, .vt-rail-item.is-open > .vt-rail-link { background: var(--s3); color: var(--text); }
@@ -371,7 +371,7 @@ html[data-rail="pinned"] .vt-frame { margin-left: var(--rail-w-pinned); }
 	padding: 5px 10px;
 	border-left: 1px solid var(--line-2);
 	color: var(--text-2);
-	font-size: var(--fs-sm);
+	font-size: var(--fs-base);
 	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 	text-decoration: none !important;
 }
