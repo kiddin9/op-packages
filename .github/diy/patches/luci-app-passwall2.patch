@@ -18,9 +18,9 @@
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Libev_Server:shadowsocks-libev-ss-server \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Client:shadowsocks-rust-sslocal \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadowsocks_Rust_Server:shadowsocks-rust-ssserver \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-local \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Client:shadowsocksr-libev-ssr-redir \
-+	+PACKAGE_$(PKG_NAME)_INCLUDE_ShadowsocksR_Libev_Server:shadowsocksr-libev-ssr-server \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_passwall2_Libev_Client:passwall2-libev-ssr-local \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_passwall2_Libev_Client:passwall2-libev-ssr-redir \
++	+PACKAGE_$(PKG_NAME)_INCLUDE_passwall2_Libev_Server:passwall2-libev-ssr-server \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_Simple_Obfs:simple-obfs-client \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_SingBox:sing-box \
 +	+PACKAGE_$(PKG_NAME)_INCLUDE_tuic_client:tuic-client \
@@ -123,13 +123,17 @@
  
  return api.return_map(m)
 
-diff --git a/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm b/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm
 new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
-+++ b/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm
-@@ -0,0 +1,135 @@
++++ b/luci-app-passwall2/luasrc/view/passwall/global/status_bottom.htm
+@@ -0,0 +1,126 @@
 +<style>
++.pure-1-2 {
++    width: 50%;
++    display: inline-block;
++    letter-spacing: normal;
++}
 +.pure-img {
 +    max-height: 100%;
 +    width: auto;
@@ -151,7 +155,7 @@ index 000000000000..a00fff9c79b3
 +}
 +
 +.status-bar .inner {
-+    margin: 0.5em;
++    padding: 0.5em;
 +}
 +
 +.status-bar .inner .flag {
@@ -170,17 +174,10 @@ index 000000000000..a00fff9c79b3
 +    text-align: right;
 +}
 +
-+.pure-u-1-2 {
-+    width: 50%;
-+    display: inline-block;
++#cbi-passwall+.cbi-page-actions.control-group.fixed {
++    bottom: 3.3rem;
 +}
-+
-+@media screen and (max-width: 720px) {
-+		.pure-u-1-2 {
-+			width: 100%;
-+		}
-+	}
-+
++ 
 +@media screen and (max-width: 700px) {
 +.status-bar .icon-con {
 +    height: 2.5em;
@@ -190,11 +187,11 @@ index 000000000000..a00fff9c79b3
 +<div class="status-bar">
 +    <div class="inner">
 +        <div class="pure-g">
-+            <div class="pure-u-1-2">
++            <div class="pure-1-2">
 +                <span class="flag"><img src="/luci-static/passwall2/flags/loading.svg" class="pure-img"></span> <span
 +                    class="status-info">获取中...</span>
 +            </div>
-+            <div class="pure-u-1-2">
++            <div class="pure-1-2">
 +                <div class="icon-con">
 +                    <img src="/luci-static/passwall2/img/site_icon1_01.png" class="pure-img i1">
 +                    <img src="/luci-static/passwall2/img/site_icon1_02.png" class="pure-img i2">
@@ -210,13 +207,9 @@ index 000000000000..a00fff9c79b3
 +const _ASSETS = '/luci-static/passwall2/';
 +const CHECK_IP_URL = '<%=url([[admin]], [[services]], [[passwall2]], [[ip]])%>';
 +
-+let mainContent = document.getElementById("maincontent");
 +let statusBar = document.querySelector(".status-bar");
 +
 +function resize() {
-+    wW = window.innerWidth;
-+    let lw = document.querySelector(".main-left, :root[data-layout='sidebar'] .fs-sidebar")?.offsetWidth ?? 5;
-+    statusBar.style.width = (wW - lw) + 'px';
 +    let flagElement = statusBar.querySelector(".flag");
 +    flagElement.style.width = (flagElement.offsetHeight / 3 * 4) + 'px';
 +
@@ -250,7 +243,7 @@ index 000000000000..a00fff9c79b3
 +    );
 +
 +document.addEventListener('DOMContentLoaded', function() {
-+    setTimeout("resize()",100)
++    setTimeout("resize()",200)
 +    fetch(CHECK_IP_URL)
 +        .then(response => response.json())
 +        .then(data => {
@@ -260,7 +253,4 @@ index 000000000000..a00fff9c79b3
 +});
 +
 +window.addEventListener('resize', resize);
-+if (mainContent && window.getComputedStyle(mainContent).getPropertyValue("contain")=== "paint") {
-+document.body.appendChild(statusBar);
-+}
 +</script>
