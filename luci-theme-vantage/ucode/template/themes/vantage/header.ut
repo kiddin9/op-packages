@@ -12,6 +12,8 @@
 	const authed = !!ctx.authsession;
 	const page_title = (authed && dispatched?.title) ? striptags(_(dispatched.title)) : 'LuCI';
 	const lang = entityencode(dispatcher.lang ?? 'en', true);
+	const boardinfo = ubus.call("system", "board");
+	const hostname = striptags(boardinfo?.hostname ?? '?');
 -%}
 <!DOCTYPE html>
 <html lang="{{ lang }}" data-darkmode="true">
@@ -22,8 +24,8 @@
 <title>{{ entityencode(page_title, true) }} · LuCI</title>
 <script>
 (function (r) {
-	var p = 'auto', rail = '';
-	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || ''; } catch (e) {}
+	var p = 'auto', rail = 'pinned';
+	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || 'pinned'; } catch (e) {}
 	var dark = (p === 'dark') || (p !== 'light' && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
 	r.setAttribute('data-darkmode', dark ? 'true' : 'false');
 	r.setAttribute('data-theme', p);
@@ -46,8 +48,15 @@
 {% if (authed): %}
 	<nav class="vt-rail" id="vt-rail" aria-label="{{ entityencode(_('Main navigation'), true) }}">
 		<a class="vt-brand" href="{{ dispatcher.build_url('admin') }}" aria-label="{{ entityencode(_('Home'), true) }}">
-			<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true"><rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"/><path d="M9 10.5 16 22" class="vt-brand-l"/><path d="M16 22 23 10.5" class="vt-brand-r"/><circle cx="23" cy="10.5" r="1.9" class="vt-brand-dot"/></svg>
-			<span class="vt-brand-word">Vantage</span>
+			<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+			<rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"></rect>
+			<path d="M10 10.5 10 21.5" class="vt-brand-l"></path>
+			<path d="M10 16 21.5 10.5" class="vt-brand-r"></path>
+			<path d="M10 16 21.5 21.5" class="vt-brand-r"></path>
+			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
+			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
+			</svg>
+			<span class="vt-brand-word">{{ hostname }}</span>
 		</a>
 		<ul class="vt-rail-list" id="vt-rail-list"></ul>
 		<div class="vt-rail-foot">
