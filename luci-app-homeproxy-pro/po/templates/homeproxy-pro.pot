@@ -441,6 +441,15 @@ msgstr ""
 msgid "Collecting data..."
 msgstr ""
 
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:408
+msgid ""
+"Collects system, dependency, routing, firewall and configuration "
+"state into one file. Credentials are masked by option name; public "
+"addresses and LAN topology are not. Read it before posting it "
+"anywhere."
+msgstr ""
+
+
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/routing.js:105
 msgid "Common ports only (bypass P2P traffic)"
 msgstr ""
@@ -460,6 +469,11 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:165
 msgid "Conservative"
 msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:415
+msgid "Could not build the report."
+msgstr ""
+
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:823
 msgid "Could not start subscription update: %s"
@@ -568,6 +582,12 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:40
 msgid "Default timeout per DNS query in seconds (sing-box default: 10)."
 msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:401
+msgid "Diagnostic report"
+msgstr "诊断报告"
+
+
 
 #: htdocs/luci-static/resources/homeproxy-pro.js:217
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/common.js:335
@@ -1047,6 +1067,11 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy-pro/server.js:582
 msgid "Generate"
 msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:429
+msgid "Generate and download"
+msgstr ""
+
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/status.js:357
 msgid "GitHub token"

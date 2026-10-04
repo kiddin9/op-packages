@@ -1,12 +1,14 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-only
 #
-# Copyright (C) 2023 ImmortalWrt.org
+# Subscription auto-update, run from the crontab entry that
+# runtime/service.sh installs when subscription.auto_update is on.
+#
+# The resource lists used to be refreshed from this same script. They are not
+# any more: they have their own entry (update_resources_cron.sh), because a
+# subscription switch had been deciding whether the firewall's mainland address
+# set was still current. See hp_sync_resource_cron() in runtime/service.sh.
 
 SCRIPTS_DIR="/etc/homeproxy-pro/scripts"
-
-for i in "china_ip4" "china_ip6" "gfw_list" "china_list"; do
-	"$SCRIPTS_DIR"/update_resources.sh "$i"
-done
 
 "$SCRIPTS_DIR"/update_subscriptions.uc

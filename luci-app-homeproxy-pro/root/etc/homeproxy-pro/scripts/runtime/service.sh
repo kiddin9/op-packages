@@ -87,8 +87,8 @@ hp_require_ucode() {
 	return 1
 }
 
-# hp_crontab_drop <crontab>
-# Remove the auto-update entry from <crontab>.
+# hp_crontab_drop <crontab> [marker]
+# Remove the cron entries tagged <marker> from <crontab>.
 #
 # Not `sed -i`: the bare `-i` form is a busybox/GNU extension, and on a host with
 # BSD sed it fails ("invalid command code"), which silently left the stale entry
@@ -96,11 +96,16 @@ hp_require_ucode() {
 # behaves identically on busybox, GNU and BSD sed, and it is what lets this
 # module be exercised off-target at all
 # (tests/runtime/test_runtime_extraction.sh stages and drives it).
+#
+# The marker is a parameter because there are two independent entries now: the
+# resource lists and the subscriptions.  A shared marker would let dropping one
+# take the other with it.
 hp_crontab_drop() {
 	local crontab="$1"
+	local marker="${2:-${CONF}_autosetup}"
 	local tmp="${crontab}.hp-new"
 
-	sed "/#${CONF}_autosetup/d" "$crontab" > "$tmp" 2>"/dev/null" || { rm -f "$tmp"; return 1; }
+	sed "/#${marker}/d" "$crontab" > "$tmp" 2>"/dev/null" || { rm -f "$tmp"; return 1; }
 	mv -f "$tmp" "$crontab" 2>"/dev/null" || { rm -f "$tmp"; return 1; }
 
 	# mv replaces the *file*, not its contents: the temporary was created by the
@@ -113,6 +118,36 @@ hp_crontab_drop() {
 	chmod 600 "$crontab" 2>"/dev/null"
 
 	return 0
+}
+
+# hp_sync_resource_cron <hour>
+# Install the resource-list update cron entry.  Unconditional.
+#
+# The resource lists were previously refreshed by the same cron line as the
+# subscription update, behind the *subscription's* auto_update switch.  Two
+# unrelated things behind one switch, and the consequence was silent: a router
+# with subscription auto-update off kept a months-old china_ip4.txt, and with it
+# a months-old `homeproxy_mainland_addr_v4` nft set - the firewall was deciding
+# "mainland or not" from a list nobody was maintaining.  The subscription switch
+# says nothing about the user wanting stale routing data, so the two are now
+# scheduled independently.
+#
+# The hour is a constant rather than a setting.  This is a maintenance job with
+# nothing to configure, and adding an option for it is exactly the kind of
+# switch that ends up defaulted and never touched.  Two hours earlier than the
+# subscription default (2) so the two runs of uclient-fetch do not collide.
+#
+# The entry runs update_resources_cron.sh, which reloads the service only when a
+# list actually changed - so a day where the upstream lists did not move costs
+# one round of requests and no interruption.
+HP_RESOURCE_CRON_HOUR=3
+hp_sync_resource_cron() {
+	hp_crontab_drop "/etc/crontabs/root" "${CONF}_resource_cron" \
+		|| log "Warning: failed to drop the previous resource-update cron entry."
+	printf '0 %s * * * %s/scripts/update_resources_cron.sh #%s_resource_cron\n' \
+		"$HP_RESOURCE_CRON_HOUR" "$HP_DIR" "$CONF" >> "/etc/crontabs/root" \
+		|| log "Warning: failed to install the resource-update cron entry."
+	/etc/init.d/cron restart >"/dev/null" 2>&1 || log "Warning: failed to restart cron."
 }
 
 # hp_sync_autoupdate_cron <enabled> <hour>
@@ -140,7 +175,7 @@ hp_sync_autoupdate_cron() {
 		return 1
 	fi
 
-	hp_crontab_drop "/etc/crontabs/root" \
+	hp_crontab_drop "/etc/crontabs/root" "${CONF}_autosetup" \
 		|| log "Warning: failed to drop the previous auto-update cron entry."
 	printf '0 %s * * * %s/scripts/update_crond.sh #%s_autosetup\n' \
 		"$auto_update_time" "$HP_DIR" "$CONF" >> "/etc/crontabs/root" \
@@ -149,10 +184,16 @@ hp_sync_autoupdate_cron() {
 }
 
 # hp_clear_autoupdate_cron
-# Drop the auto-update cron entry and restart cron.  Used by stop_service.
+# Drop both cron entries and restart cron.  Used by stop_service.
+#
+# Both markers: stop_service has to leave no homeproxy-pro cron entry behind, and
+# the resource entry is installed unconditionally, so dropping only the
+# subscription one would leak a daily job on every stop.
 hp_clear_autoupdate_cron() {
-	hp_crontab_drop "/etc/crontabs/root" \
-		|| log "Warning: failed to drop the auto-update cron entry."
+	hp_crontab_drop "/etc/crontabs/root" "${CONF}_autosetup" \
+		|| log "Warning: failed to drop the previous auto-update cron entry."
+	hp_crontab_drop "/etc/crontabs/root" "${CONF}_resource_cron" \
+		|| log "Warning: failed to drop the previous resource-update cron entry."
 	/etc/init.d/cron restart >"/dev/null" 2>&1 || log "Warning: failed to restart cron."
 }
 
@@ -249,6 +290,29 @@ hp_prepare_runtime_files() {
 	if [ "$ipv6_support" -eq 1 ] && [ "$cn_ipv6" -eq 0 ]; then
 		log "WARNING: IPv6 support is ON but ${hp_dir}/resources/china_ip6.txt has 0 usable prefixes."
 		log "WARNING: mainland IPv6 cannot be told apart from foreign IPv6, so IPv6 is passed through UNPROXIED (both sides of the split degrade). Run: ${hp_dir}/scripts/update_resources.sh china_ip6"
+	fi
+
+	# The DNS half of the China split, same arrangement as china_ip4.json above:
+	# the dns rule sends the list's domains to china-dns, and it reads
+	# china-domain.json rather than a remote geosite-geolocation-cn.srs so a
+	# cold start has nothing to download.  Generated here for the same reason -
+	# an install that predates the file, or a list replaced while the service
+	# was stopped, must still get one, or the client config names a file that
+	# does not exist and sing-box refuses to start.
+	#
+	# A missing china_list.txt is not an error: the generator then emits no
+	# DNS-side rule for it, and the split degrades to the resolver default
+	# rather than failing the start.
+	if [ "$client_enabled" = "1" ] && [ -f "$hp_dir/resources/china_list.txt" ]; then
+		if ucode -S "$hp_dir/scripts/runtime/domain_ruleset.uc" \
+			"$hp_dir/resources/china_list.txt" "$hp_dir/resources/china-domain.json" >>"$LOG_PATH" 2>&1; then
+			chown sing-box:sing-box "$hp_dir/resources/china-domain.json" 2>"/dev/null" \
+				|| log "Warning: failed to hand ${hp_dir}/resources/china-domain.json to sing-box."
+		else
+			# Same reasoning as the v6 branch above: the helper refuses to
+			# write an empty rule-set, and the previous one is still valid.
+			log "Warning: could not generate ${hp_dir}/resources/china-domain.json; the DNS side keeps the previous list."
+		fi
 	fi
 
 	# cache_file is enabled for bypass_mainland_china and custom alike

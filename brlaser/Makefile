@@ -9,18 +9,21 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=brlaser
-PKG_VERSION:=v3
-PKG_RELEASE:=1
+PKG_VERSION:=3
+PKG_RELEASE:=2
 
 PKG_SOURCE_URL:=https://github.com/pdewacht/brlaser.git
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_VERSION:=2a49e3287c70c254e7e3ac9dabe9d6a07218c3fa
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION)-$(PKG_SOURCE_VERSION).tar.gz
+PKG_MIRROR_HASH:=skip
 
 PKG_FIXUP:=autoreconf
-
 PKG_INSTALL:=1
+
+# Add CMAKE_POLICY_VERSION_MINIMUM to handle CMake 3.5+ compatibility
+CMAKE_OPTIONS += -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk

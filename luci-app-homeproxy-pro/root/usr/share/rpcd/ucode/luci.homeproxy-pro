@@ -12,6 +12,7 @@ import { cursor } from 'uci';
 
 import { fetchBinary, isBinary, isValidECHConfig, isValidPEM, shellQuote, executeCommand } from '/etc/homeproxy-pro/scripts/homeproxy-pro.uc';
 import { parse_uri } from '/etc/homeproxy-pro/scripts/parser/uri.uc';
+import { buildDebugReport, DEBUG_REPORT_PATH } from '/etc/homeproxy-pro/scripts/runtime/debug_report.uc';
 
 /* Kanged from ucode/luci - replaced by the imported shellQuote() so every shell
  * argument in this file goes through one helper. */
@@ -472,6 +473,46 @@ const methods = {
 			}
 
 			return { running, log_tail: tail };
+		}
+	},
+
+	/* Build a single self-contained diagnostic report and leave it where the
+	 * browser can read it.  The report is generated, not fetched: the ACL
+	 * grants the browser `read` on the output path and nothing else, so the
+	 * commands that produce it (nft, ip rule, the package queries) stay
+	 * behind this method rather than becoming browser-reachable ones.
+	 *
+	 * RUN_DIR is tmpfs, so the report does not survive a reboot and never
+	 * occupies flash - the reader downloads it, and the copy they keep is
+	 * the one that matters.  A fixed filename means the ACL grants exactly
+	 * one path and the button always reads the freshest report.
+	 *
+	 * The collector degrades per probe instead of aborting, so on a machine
+	 * without netfilter the report still renders the sections that do work.
+	 * The catch is here rather than inside buildDebugReport() so a bug in
+	 * the collector surfaces as a toast with the ucode error type instead
+	 * of an empty file the reader has to guess about. */
+	debug_report: {
+		call: function() {
+			const uci = cursor();
+
+			let report = null;
+			try {
+				report = buildDebugReport(uci);
+			} catch (e) {
+				return {
+					result: false,
+					error: sprintf('diagnostic report failed (%s): %s', e.type, e.message)
+				};
+			}
+
+			if (type(report) !== 'string' || report === '') {
+				return { result: false, error: 'the diagnostic report came back empty' };
+			}
+
+			writefile(DEBUG_REPORT_PATH, report);
+
+			return { result: true, path: DEBUG_REPORT_PATH, size: length(report) };
 		}
 	}
 };

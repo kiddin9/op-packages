@@ -224,9 +224,9 @@ check('certificate_write tolerates an empty request', threw == null, threw);
  * executed.  Four of these were referenced by no test at all. */
 const all_methods = [
 	'acllist_read', 'acllist_write', 'certificate_write', 'connection_check',
-	'log_clean', 'node_parse', 'resources_get_version', 'resources_update',
-	'singbox_generator', 'singbox_get_features', 'update_subscriptions',
-	'update_subscriptions_status'
+	'debug_report', 'log_clean', 'node_parse', 'resources_get_version',
+	'resources_update', 'singbox_generator', 'singbox_get_features',
+	'update_subscriptions', 'update_subscriptions_status'
 ];
 
 for (let m in all_methods) {
@@ -249,6 +249,78 @@ check('connection_check rejects an unknown site',
 check('log_clean rejects an unknown log type',
 	rpc.log_clean.call({ args: { type: '../etc/passwd' } }).status !== 0);
 
+/* --- debug_report -------------------------------------------------------
+ *
+ * This one is worth more than a shape check, because the property that
+ * makes it usable is the opposite of "works on my router": it has to
+ * produce a complete, readable report on a machine that has none of the
+ * runtime - no nft, no sing-box, no apk, no /etc/config/homeproxy-pro.  That is
+ * exactly this test host, so a regression that turns a failed probe into an
+ * exception, or drops a section when its command is missing, fails here
+ * rather than on a user's router where the report is the thing they are
+ * relying on. */
+import { isSecretKey } from '@@SCRIPTS@@/runtime/debug_report.uc';
+
+const dr = rpc.debug_report.call({ args: {} });
+check('debug_report succeeds where no runtime is installed', dr.result === true,
+	dr.error);
+check('debug_report names the file it wrote', type(dr.path) === 'string' && length(dr.path) > 0);
+check('debug_report reports a non-zero size', dr.size > 0);
+
+const dr_text = readfile(sprintf('%s/run/debug.log', WORK));
+check('the report was written where the ACL grants read', dr_text != null && length(dr_text) > 0);
+
+if (dr_text != null && length(dr_text) > 0) {
+	check('the report carries a title', index(dr_text, '# HomeProxy ') != -1);
+	check('the report carries a privacy notice', index(dr_text, '脱敏') != -1);
+
+	/* Every section header, checked as a literal substring rather than a
+	 * regex: the headers carry CJK and full-width brackets, and a probe that
+	 * throws would take the whole report down rather than leave one section
+	 * missing - so "the section is still there" is the property worth pinning. */
+	for (let h in ['## 1. ', '## 2. ', '## 3. ', '## 4. ', '## 5. ',
+	               '## 6. ', '## 7. ', '## 8. ', '## 9. ', '## 10. '])
+		check(sprintf('the report still has section %s', h), index(dr_text, h) != -1);
+
+	/* A missing command must be said out loud.  A report that silently omits
+	 * the firewall dump reads exactly like "the firewall is empty", which is
+	 * the opposite of what happened. */
+	check('an unavailable probe is labelled, not omitted',
+		index(dr_text, 'unavailable') != -1 || index(dr_text, '(no output)') != -1);
+}
+
+/* The redaction rule has no I/O to observe, so it is asserted directly: a
+ * key that quietly stops being recognised is a credential in an issue
+ * thread, and nothing else in this suite would notice. */
+for (let k in ['password', 'uuid', 'secret', 'token', 'private_key', 'url',
+               'urls', 'subscription_urls', 'address', 'tls_sni', 'username',
+               'hysteria_obfs_password', 'tls_reality_public_key',
+               'tls_reality_short_id', 'ws_path', 'hysteria_obfs_method',
+'auth'])
+	check(sprintf('the key %s is redacted', k), isSecretKey(k));
+
+/* ...and the other direction matters just as much: over-broad matching
+ * would blank out the very switches the report exists to show. */
+for (let k in ['proxy_mode', 'routing_mode', 'mixed_port', 'redirect_port',
+               'self_mark', 'tproxy_mark', 'log_level', 'ipv6_support',
+               'enabled', 'grouphash'])
+	check(sprintf('the key %s is left readable', k), !isSecretKey(k));
+
+/* The urltest lists are the reason `url` is anchored rather than a bare
+ * substring: `main_urltest_nodes` contains the letters u-r-l, so an
+ * unanchored pattern blanked the pool out of the report - and "is this node
+ * still in the test pool" is exactly what the report is read for.  These
+ * three were found by a canary run, not by inspection. */
+for (let k in ['main_urltest_nodes', 'main_urltest_tolerance',
+               'main_udp_urltest_nodes'])
+	check(sprintf('the key %s is left readable (urltest, not url)', k), !isSecretKey(k));
+
+/* grpc_servicename names the gRPC service, it is not a credential: masking
+	* it would hide which transport a node uses, which is worth reporting.
+	* Asserted on the readable side because the obvious guess is that anything
+	* shaped like a service identifier should be hidden. */
+	check('the key grpc_servicename is left readable', !isSecretKey('grpc_servicename'));
+
 printf('rpc methods: %d checks, %d failures\n', checks, failures);
 exit(failures ? 1 : 0);
 DRIVER
@@ -259,7 +331,8 @@ DRIVER
 # `methods` and the driver drives it in the same scope.  Nothing else about the
 # file changes.
 sed '$d' "$WORK/rpc.uc" > "$WORK/run.uc"
-sed -e "s#@@WORK@@#$WORK#" -e "s#@@STAGE@@#$WORK/tmp#" "$WORK/driver_body.uc" >> "$WORK/run.uc"
+sed -e "s#@@WORK@@#$WORK#" -e "s#@@STAGE@@#$WORK/tmp#" -e "s#@@SCRIPTS@@#$WORK/scripts#g" \
+	"$WORK/driver_body.uc" >> "$WORK/run.uc"
 
 if ucode -L "$WORK/scripts" -L "$WORK" "$WORK/run.uc"; then
 	echo "PASS: rpc method behaviour"

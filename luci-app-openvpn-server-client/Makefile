@@ -6,11 +6,11 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for OpenVPN Server
-LUCI_DEPENDS:=+openvpn-openssl +openvpn-easy-rsa
+LUCI_DEPENDS:=+openvpn-openssl +openvpn-easy-rsa +ip-full +resolveip
 LUCI_PKGARCH:=all
 PKG_NAME:=luci-app-openvpn-server-client
 PKG_VERSION:=6.0
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 MAINTAINER:=lunatickochiya <125438787@qq.com>
 
 include $(TOPDIR)/feeds/luci/luci.mk

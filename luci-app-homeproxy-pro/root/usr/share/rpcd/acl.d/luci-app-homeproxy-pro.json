@@ -5,7 +5,8 @@
 			"file": {
 				"/var/run/homeproxy-pro/homeproxy-pro.log": [ "read" ],
 				"/var/run/homeproxy-pro/sing-box-c.log": [ "read" ],
-				"/var/run/homeproxy-pro/sing-box-s.log": [ "read" ]
+				"/var/run/homeproxy-pro/sing-box-s.log": [ "read" ],
+				"/var/run/homeproxy-pro/debug.log": [ "read" ]
 			},
 			"ubus": {
 				"service": [ "list" ],
@@ -31,6 +32,7 @@
 				"luci.homeproxy-pro": [
 					"acllist_write",
 					"certificate_write",
+					"debug_report",
 					"log_clean",
 					"resources_update",
 					"singbox_generator",

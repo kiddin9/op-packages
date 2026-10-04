@@ -59,6 +59,49 @@ function resolve_ipv6(str) {
 		return ipv6.addr;
 }
 
+/* The node server addresses the generator exported (generate_client.uc's
+ * export_node_addresses()), as an nftables anonymous set - or null when there
+ * is nothing to protect.
+ *
+ * Only the literal-address form is rendered here.  A node configured with a
+ * host name reaches the same set at runtime: the dnsmasq snippet runtime/dns.sh
+ * writes resolves the name and back-fills the set through `nftset=`, so one
+ * mechanism covers both without this template needing a resolver of its own.
+ * A literal address has no name to resolve, so it can only come from here.
+ *
+ * readfile() rather than a UCI read on purpose: the generator is the only
+ * place that knows which nodes are actually in use (main_node, main_udp_node,
+ * urltest membership, custom-mode routing_nodes, wireguard endpoints), and a
+ * copy of that selection in this template is a copy that can drift.  A missing
+ * file renders null, which is the behaviour before this existed. */
+function node_addr_to_nftarr(run_dir, family) {
+	let raw = readfile(run_dir + '/node-addr-ips.txt');
+	if (isEmpty(raw))
+		return null;
+
+	let out = [];
+	for (let entry in split(trim(raw), /[\r\n]/)) {
+		let parsed = fw4.parse_subnet(entry)?.[0];
+		if (!parsed || parsed.family !== family)
+			continue;
+		push(out, (parsed.bits > -1) ? `${parsed.addr}/${parsed.bits}` : parsed.addr);
+	}
+
+	return isEmpty(out) ? null : array_to_nftarr(out);
+}
+
+/* Whether the node bypass has anything to protect at all.
+
+   Either export file counts.  The domains file is the one that matters most:
+   a host-name node - the common case, and the one the device this was written
+   for uses - appears only there, and its set has to exist before dnsmasq can
+   put anything in it.  Gating on the literal-address file instead is what left
+   the whole mechanism doing nothing. */
+function node_addr_protected(run_dir) {
+	return !isEmpty(readfile(run_dir + '/node-addr-ips.txt'))
+		|| !isEmpty(readfile(run_dir + '/node-addr-domains.txt'));
+}
+
 /* Normalize a list of IPv6 entries into an nftables anonymous set
    (or null when empty), so IPv6 ACLs match in a single set lookup
    instead of one rule per address. */
@@ -140,6 +183,26 @@ function dnsmasq_nftset() {
 
 /* Misc config */
 const resources_dir = '/etc/homeproxy-pro/resources';
+const run_dir = '/var/run/homeproxy-pro';
+
+/* Resolved here, in the ucode block, rather than with `{% set %}` in the
+ * template body below: utpl's `set` tag takes a plain expression and rejects a
+ * call outright - `{% set x = f(); %}` is a parse error ("Unexpected token,
+ * Expecting ';'").  A parse error kills the whole render, fw4_post.nft comes
+ * out empty, and the health gate silently keeps the previous ruleset, so a
+ * template that fails this way does not look broken at all.  r41 shipped
+ * `{% set node_addr_v4 = node_addr_to_nftarr(4); %}` and never rendered once.
+ *
+ * Both helpers take run_dir as a parameter rather than closing over it.  In
+ * this ucode a closure captures the block variables that already exist where
+ * the function is DEFINED, not where it is called: a function defined above
+ * `const run_dir` cannot see run_dir even when it is called far below, and
+ * the error is "Reference error: access to undeclared variable run_dir" -
+ * which reads as though run_dir were missing, when it is in fact declared 80
+ * lines above the call.  Passing it in is the only spelling that works. */
+const node_protect = node_addr_protected(run_dir);
+const node_addr_v4 = node_addr_to_nftarr(run_dir, 4);
+const node_addr_v6 = node_addr_to_nftarr(run_dir, 6);
 
 /* UCI config start */
 const cfgname = 'homeproxy-pro';
@@ -399,6 +462,42 @@ set homeproxy_routing_port {
 }
 {% endif %}
 
+{# Node server addresses.
+   Declared when the generator exported any node address at all - and NOT
+   only when there is a literal address to put in it.
+
+   That distinction is the whole point of the set existing.  A node configured
+   with a host name contributes no element here; dnsmasq resolves the name and
+   back-fills this set through the nftset= snippet runtime/dns.sh writes.  A
+   set that is declared only when it already has elements is therefore never
+   declared for a host-name node, the back-fill has nothing to land in, and the
+   return rules below - which are what actually exclude the address - are not
+   emitted either.  r41 gated both on the literal form and was inert for the
+   configuration it was written for.
+
+   An empty set is harmless: nft accepts one with no elements, and the cost is
+   one lookup per packet until the first answer back-fills it. #}
+{% if (node_protect): %}
+set homeproxy_node_addr_v4 {
+	type ipv4_addr
+	flags interval
+	auto-merge
+{% if (node_addr_v4): %}
+	elements = { {{ node_addr_v4 }} }
+{% endif %}
+}
+{% endif %}
+{% if (node_protect && v6_handled): %}
+set homeproxy_node_addr_v6 {
+	type ipv6_addr
+	flags interval
+	auto-merge
+{% if (node_addr_v6): %}
+	elements = { {{ node_addr_v6 }} }
+{% endif %}
+}
+{% endif /* node_addr_v6 */ %}
+
 {# DNS hijack & TCP redirect #}
 chain dstnat {
 {% if ((dns_redirect === '1') && (dns_hijacked !== '1')): %}
@@ -460,6 +559,13 @@ chain homeproxy_redirect_lanac {
 
 chain homeproxy_redirect {
 	meta mark {{ self_mark }} counter return
+
+	{% if (node_protect): %}
+	ip daddr @homeproxy_node_addr_v4 counter return comment "!{{ cfgname }}: node address"
+	{% endif %}
+	{% if (node_protect && v6_handled): %}
+	ip6 daddr @homeproxy_node_addr_v6 counter return comment "!{{ cfgname }}: node address"
+	{% endif %}
 
 	ip daddr @homeproxy_wan_proxy_addr_v4 counter goto homeproxy_redirect_proxy_port
 	{% if (v6_handled): %}
@@ -582,6 +688,13 @@ chain homeproxy_mangle_lanac {
 }
 
 chain homeproxy_mangle_prerouting {
+	{% if (node_protect): %}
+	ip daddr @homeproxy_node_addr_v4 counter return comment "!{{ cfgname }}: node address"
+	{% endif %}
+	{% if (node_protect && v6_handled): %}
+	ip6 daddr @homeproxy_node_addr_v6 counter return comment "!{{ cfgname }}: node address"
+	{% endif %}
+
 	ip daddr @homeproxy_wan_proxy_addr_v4 counter goto homeproxy_mangle_tproxy_port
 	{% if (v6_handled): %}
 	ip6 daddr @homeproxy_wan_proxy_addr_v6 counter goto homeproxy_mangle_tproxy_port
@@ -645,6 +758,13 @@ chain homeproxy_mangle_prerouting {
 
 chain homeproxy_mangle_output {
 	meta mark {{ self_mark }} counter return
+
+	{% if (node_protect): %}
+	ip daddr @homeproxy_node_addr_v4 counter return comment "!{{ cfgname }}: node address"
+	{% endif %}
+	{% if (node_protect && v6_handled): %}
+	ip6 daddr @homeproxy_node_addr_v6 counter return comment "!{{ cfgname }}: node address"
+	{% endif %}
 
 	ip daddr @homeproxy_wan_proxy_addr_v4 counter goto homeproxy_mangle_mark
 	{% if (v6_handled): %}

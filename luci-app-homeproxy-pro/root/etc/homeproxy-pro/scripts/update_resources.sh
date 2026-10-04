@@ -236,6 +236,23 @@ check_list_update() {
 				log "[$(to_upper "$listtype")] Warning: could not regenerate $listtype.json (list has no usable CIDR entry?); the route side keeps the previous list."
 			fi
 			;;
+		"china_list")
+			# The DNS half of the same split.  It reads this file rather than
+			# a remote geosite-geolocation-cn.srs for the same reasons
+			# china_ip4.json exists: one list with two readers, and nothing for
+			# a cold start to download before the inbounds bind.
+			#
+			# The sed above rewrote the file in place, so this runs after it
+			# and sees the cleaned list.  `full:` prefixes and anything with a
+			# colon are gone by now; what is left is what the helper accepts.
+			if ucode -S "$SCRIPT_DIR/runtime/domain_ruleset.uc" \
+				"$RESOURCES_DIR/$listtype.txt" "$RESOURCES_DIR/china-domain.json" >>"$LOG_PATH" 2>&1; then
+				log "[CHINA_LIST] DNS-side rule-set regenerated."
+				chown sing-box:sing-box "$RESOURCES_DIR/china-domain.json" 2>"/dev/null"
+			else
+				log "[CHINA_LIST] Warning: could not regenerate china-domain.json (list has no usable domain entry?); the DNS side keeps the previous list."
+			fi
+			;;
 		esac
 	else
 		rm -f "$RUN_DIR/$listname"

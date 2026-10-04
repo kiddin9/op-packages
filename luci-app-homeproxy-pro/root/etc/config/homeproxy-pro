@@ -55,7 +55,6 @@ config homeproxy-pro 'config'
 	# With it off, a cold cache on a fresh install waits for
 	# raw.githubusercontent.com (through the selected node) before the instance
 	# will listen at all, and a failure there fails the whole start.
-	option ruleset_safe_start '0'
 	option tun_dns_mode ''
 	option udp_mapping ''
 	option udp_filtering ''

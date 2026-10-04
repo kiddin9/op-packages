@@ -18,7 +18,7 @@
 
 'use strict';
 
-import { isEmpty } from '../homeproxy-pro.uc';
+import { isEmpty, HP_DIR } from '../homeproxy-pro.uc';
 
 import { ConfigQuery } from '../config/model.uc';
 
@@ -142,43 +142,42 @@ export function rule_set_tags(cfg) {
 	return tags;
 };
 
-/* BUILTIN_REMOTE_RULE_SETS - the remote rule-sets the generator declares
- * itself, in the modes that split on mainland China.
+/* The routing modes that split on mainland China, and the rule-sets they
+ * declare.
  *
- *   geoip-cn    referenced by the route rule to split destinations by IP
- *   geosite-cn  referenced only by the DNS rule (server: china-dns); the
- *               route layer never matches it, but sing-box still loads and
- *               keeps it, so removing it would break the DNS split
+ * The three of them - china-ip, china-ip6, china-domain - are local files the
+ * resource updater generates, one per list, and each is declared only when
+ * something references it and its file is on disk.  route.uc owns that
+ * decision because the conditions are per-tag (the address list in both
+ * mainland modes, the v6 half only with IPv6 on, the domain list only in
+ * bypass mode), so there is nothing here for a shared list to keep in step
+ * with.
  *
- * This list is shared with generate_client.uc, which has to create the
- * "do not block startup" fallback file for each of them before the generator
- * runs.  The two used to be independent: route.uc hard-coded the entries and
- * the CLI knew nothing about them, which is why a cold-cache first start
- * blocked on downloading them and why a change to either side could not be
- * checked against the other.  One list, two readers.
+ * They were `type: remote` entries pointing at SagerNet's sing-geoip and
+ * sing-geosite repositories, and two things followed from that which the local
+ * arrangement does not have:
  *
- * Not a conffile-order dependency - this is the generator's own declaration,
- * in the order the generated rule_set array must keep so the emitted bytes
- * stay stable. */
-export const BUILTIN_REMOTE_RULE_SETS = [
-	{
-		tag: 'geoip-cn',
-		format: 'binary',
-		url: 'https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs',
-		update_interval: '24h'
-	},
-	{
-		tag: 'geosite-cn',
-		format: 'binary',
-		url: 'https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-geolocation-cn.srs',
-		update_interval: '24h'
-	}
-];
-
-/* The routing modes that declare them.  Kept beside the list so the CLI can
- * decide whether it needs to create their fallbacks without repeating the
- * condition route.uc branches on - and so the two cannot drift. */
-export function declaresBuiltinRemoteRuleSets(routing_mode) {
+ *   - a cold start had to download them before the inbounds bind, over the
+ *     node (download_detour), so a first start - or a start after the cache
+ *     was cleared - depended on GitHub being reachable through the proxy it
+ *     was trying to bring up;
+ *   - the two halves of the same split read two different files.  The kernel's
+ *     came from china_ip4.txt and the resolver's from a .srs, and the route.uc
+ *     comment about them disagreeing is the scar of patching that instead of
+ *     fixing it.
+ *
+ * Now the nft set and the sing-box rule-set are both generated from the same
+ * list, on the same schedule, with nothing to download.
+ *
+ * Source JSON, not a compiled .srs: the updater writes the canonical form and
+ * sing-box watches the file, so a new list is picked up in place.  Compiling
+ * first was measured rather than assumed - 111k domain suffixes cost 3.7 MB of
+ * RSS in source form (44.9 MB baseline vs 48.7 MB loaded), which is not worth
+ * a second artifact and a second failure mode. */
+/* The routing modes that split on mainland China.  The China domain list is
+ * only meaningful where the split is by domain: proxy_mainland_china decides
+ * by address on the route side and leaves the resolver to the mode default. */
+export function declaresBuiltinRuleSets(routing_mode) {
 	return routing_mode === 'bypass_mainland_china' || routing_mode === 'proxy_mainland_china';
 };
 

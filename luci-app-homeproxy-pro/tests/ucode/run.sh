@@ -362,6 +362,12 @@ echo "== china ip rule-set generator =="
 # validation and its atomic write are both load-bearing.
 sh "$ROOT/tests/ucode/test_china_ip_ruleset.sh" "$ROOT" "$WORK/china_ip_ruleset" || FAILED=1
 
+# The DNS half of the same split.  Same failure mode and the same consequence
+# class - one bad entry in a list that is replaced unattended makes sing-box
+# reject the whole rule-set - plus one that is its own: the entry has to be a
+# suffix, or the split quietly stops matching anything under the listed names.
+sh "$ROOT/tests/ucode/test_domain_ruleset.sh" "$ROOT" "$WORK/domain_ruleset" || FAILED=1
+
 echo "== test doubles still match production =="
 # The mocks copy isEmpty/decodeBase64Str/parseURL/redactUrl from production and
 # their headers say to keep them in sync; nothing enforced it, and the fetcher's

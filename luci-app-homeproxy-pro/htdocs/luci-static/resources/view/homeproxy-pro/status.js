@@ -77,25 +77,19 @@ const ensureLogPoll = hp.statusPoller({
 
 /* --- rule-set download failures ------------------------------------------
  *
- * With ruleset_safe_start on, a remote rule-set that cannot be downloaded no
- * longer stops the service: sing-box reads the empty initial_path fallback,
- * binds, and retries in the background.  The instance is healthy and the LAN is
- * proxied - and the rule-set that keeps mainland traffic direct matches
- * nothing, so all of it goes to `final`.
- *
- * That is the trade, and it is the reason this block exists: the degradation
- * has no other symptom.  The health gate does not look at rule-sets at all
- * (there is nothing in health.sh that could), so the service reports itself
- * healthy while a rule-set is silently empty.
+ * A remote rule-set that cannot be downloaded stops the service: sing-box
+ * fetches it during initialization, before the inbounds bind, so a failure
+ * there is a failed start.  That makes it a loud problem, and this block is
+ * here to make it legible rather than to solve it - a start that failed leaves
+ * no instance, so sing-box-c.log is the only place the reason is written down.
  *
  * sing-box-c.log is read rather than a new RPC: the ACL already grants the
  * browser read on that file for the log viewer below, so this costs no
  * permission and no new method to keep in step with the method table.
  *
- * Whether a fallback is actually in play is read from UCI rather than guessed:
- * with the opt-in OFF, a failing rule-set means the instance would not have
- * started at all, which is a different and much more visible problem - so the
- * wording has to differ, not just the colour. */
+ * The built-in China split is not among the rule-sets this can be about: those
+ * are local files the resource updater maintains, generated from the same lists
+ * the nft sets are rendered from, and there is nothing to download. */
 const ruleSetNode = E('div', { 'id': 'ruleset_status' },
 	E('img', {
 		'src': L.resource('icons/loading.svg'),
@@ -112,7 +106,6 @@ function renderRuleSetStatus() {
 	fs.read_direct(`${hp_dir}/sing-box-c.log`, 'text')
 		.then((text) => {
 			const failures = hp.parseRuleSetFetchFailures(text);
-			const safeStart = (uci.get('homeproxy-pro', 'config', 'ruleset_safe_start') || '0') === '1';
 
 			if (!failures.length) {
 				dom.content(ruleSetNode, E('span', { 'style': 'color:green' },
@@ -125,9 +118,7 @@ function renderRuleSetStatus() {
 					_('%d rule-set(s) cannot be downloaded.').format(failures.length)
 				]),
 				E('p', { 'style': 'color:gray' }, [
-					safeStart
-						? _('Startup fallback in use: these rule-sets are EMPTY, so the traffic they would have split falls through to the default route. The service is up, but the split is not in effect until the download succeeds.')
-						: _('Startup fallback is OFF, so a rule-set that cannot be downloaded prevents the service from starting at all. The service is running, so the log below is from an earlier attempt or the download has since recovered.')
+					_('A remote rule-set is fetched before the service starts, so a rule-set that cannot be downloaded prevents the start. The service is running, so the log below is from an earlier attempt or the download has since recovered.')
 				]),
 				E('ul', {}, failures.map((f) => E('li', [
 					E('code', [ f.tag ]),
@@ -384,6 +375,50 @@ return view.extend({
 		o.render = function() {
 			renderRuleSetStatus();
 			return ruleSetNode;
+		};
+
+		/* A dedicated section rather than a fourth log view: the question this
+		 * answers is "collect everything someone would ask me to look at, in
+		 * one file", and the answer is a download rather than something to read
+		 * on the page.  The report is assembled by the backend because the
+		 * commands that fill it (nft, ip rule, the package queries) are not
+		 * browser-reachable; the ACL grants read on the output path only.
+		 *
+		 * The title is "Diagnostic report" and not the more natural
+		 * "Diagnostics" on purpose: a shipped zh-cn catalog somewhere in the
+		 * LuCI stack already renders a bare "Diagnostics" as 网络诊断, which
+		 * reads as a network diagnostic tool rather than a generated file.
+		 * A msgid this specific cannot collide with another package's. */
+		s = m.section(form.NamedSection, 'config', 'homeproxy-pro', _('Diagnostic report'));
+		s.anonymous = true;
+
+		o = s.option(form.DummyValue, '_debug_report');
+		o.rawhtml = true;
+		o.render = function() {
+			return E('div', { 'class': 'cbi-value' }, [
+				E('p', {}, _('Collects system, dependency, routing, firewall and configuration state into one file. Credentials are masked by option name; public addresses and LAN topology are not. Read it before posting it anywhere.')),
+				E('button', {
+					'class': 'cbi-button cbi-button-action',
+					'click': ui.createHandlerFn(this, () => {
+						return hp.rpcCall('debug_report', [], { expect: { '': {} } })
+							.then((res) => {
+								if (!res.result)
+									throw new Error(res.error || _('Could not build the report.'));
+								return fs.read_direct(res.path, 'blob');
+							})
+							.then((blob) => {
+								const url = window.URL.createObjectURL(blob, { type: 'text/markdown' });
+								const link = document.createElement('a');
+								link.href = url;
+								link.download = 'homeproxy-pro-debug.log';
+								document.body.appendChild(link);
+								link.click();
+								document.body.removeChild(link);
+								window.URL.revokeObjectURL(url);
+							});
+						})
+				}, [ _('Generate and download') ])
+			]);
 		};
 
 		s = m.section(form.NamedSection, 'config', 'homeproxy-pro');

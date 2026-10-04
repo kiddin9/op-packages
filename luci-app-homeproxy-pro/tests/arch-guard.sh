@@ -2223,9 +2223,9 @@ fi
 # proxy resolver even though the route side would now send it direct.
 cn_fb_block="$(sed -n '/cn_fallback/,/^		}/p' "$SCRIPTS/generator/dns.uc" || true)"
 if printf '%s' "$cn_fb_block" | grep -q "china-ip6"; then
-	pass "the cn-fallback response match covers china-ip6 as well as geoip-cn"
+	pass "the cn-fallback response match covers china-ip6 as well as china-ip"
 else
-	fail "cn-fallback still matches geoip-cn only; the DNS half of the IPv6 split"
+	fail "cn-fallback still matches china-ip only; the DNS half of the IPv6 split"
 	fail "is not in agreement with the route half"
 fi
 
@@ -2626,118 +2626,115 @@ else
 fi
 
 echo
-echo "== guard 52: the startup fallback stays opt-in, and the two sides stay in step =="
+echo "== guard 52: the China split is local, and both halves read one list =="
 
-# ruleset_safe_start points every remote rule-set that has no initial file of
-# its own at an EMPTY rule-set, so sing-box starts immediately instead of
-# fetching during initialization - before the inbounds bind.  On a cold cache
-# that is the difference between a router that comes up and one that waits on
-# raw.githubusercontent.com, through the node, before it will listen at all.
+# The split that keeps mainland traffic direct used to be fed by two remote
+# rule-sets downloaded from SagerNet's repositories: geoip-cn on the route
+# side, geosite-cn on the DNS side.  Three things were wrong with that and all
+# three are silent when they come back:
 #
-# It is opt-in because the fallback is empty on purpose: a rule-set with no
-# rules matches nothing, so everything it would have split falls through to
-# `final`.  On bypass_mainland_china that means mainland destinations can be
-# proxied until the download succeeds.  That is a routing change, so the
-# default must stay off, exactly as sniffer_advanced_mode's does.
+#   - a cold start had to fetch them before the inbounds bind, through the
+#     node, so the proxy's own start depended on the CDN being reachable
+#     through the proxy;
+#   - the kernel's half (homeproxy_mainland_addr_v4, from china_ip4.txt) and
+#     the resolver's half came from different files, and route.uc once carried
+#     a corrective rule plus a long comment because they disagreed;
+#   - every day of that, the resource lists behind the kernel's half were only
+#     refreshed if the user happened to have subscription auto-update on.
 #
-# The rest of the guard is about the mechanism being one mechanism: the CLI
-# writes the file and the generator points at it, and a disagreement between
-# them is silent and fatal (a wrong-format or missing initial file is ignored
-# by sing-box, which then blocks startup exactly as if none existed).
-SAFE_START="$(python3 - "$ROOT" "$SCRIPTS" <<'PY'
+# They are local files now, each generated from a list the resource updater
+# maintains, and the firewall renders its nft set from those same lists.  This
+# guard pins the arrangement rather than the feature it replaced: the tags the
+# two halves name have to be the same tags route.uc declares, they have to be
+# declared local, and nothing may reintroduce a remote download for them.
+CN_LOCAL="$(python3 - "$ROOT" "$SCRIPTS" <<'PY'
 import pathlib, re, sys
 
 root, scripts = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-config_uc = (root / 'root/etc/config/homeproxy-pro').read_text(encoding='utf-8')
-context_uc = (scripts / 'generator/context.uc').read_text(encoding='utf-8')
 route_uc = (scripts / 'generator/route.uc').read_text(encoding='utf-8')
-ruleset_uc = (scripts / 'generator/ruleset.uc').read_text(encoding='utf-8')
+dns_uc = (scripts / 'generator/dns.uc').read_text(encoding='utf-8')
 common_uc = (scripts / 'generator/common.uc').read_text(encoding='utf-8')
-homeproxy_uc = (scripts / 'homeproxy-pro.uc').read_text(encoding='utf-8')
 client_uc = (scripts / 'generate_client.uc').read_text(encoding='utf-8')
+service_sh = (scripts / 'runtime/service.sh').read_text(encoding='utf-8')
+update_sh = (scripts / 'update_resources.sh').read_text(encoding='utf-8')
+fw_ut = (scripts / 'firewall_post.ut').read_text(encoding='utf-8')
 problems = []
 
 def strip_comments(src):
     src = re.sub(r'/\*[\s\S]*?\*/', '', src)
     return '\n'.join(l for l in src.split('\n') if not l.lstrip().startswith(('#', '//', '*')))
 
-# (a) The default, in both places it is stated.  Same shape as guard 39.
-if "ruleset_safe_start: dm.general.ruleset_safe_start || '0'" not in context_uc:
-    problems.append("context.uc no longer falls back to '0' for ruleset_safe_start; a missing "
-                    "UCI value would have to mean something other than the safe default")
-if not re.search(r"^\toption ruleset_safe_start '0'$", config_uc, re.M):
-    problems.append("the package-shipped /etc/config/homeproxy-pro no longer ships ruleset_safe_start "
-                    "'0'; upgrading users would silently start routing with empty rule-sets")
+route, dns = strip_comments(route_uc), strip_comments(dns_uc)
 
-# (b) An initial_path may only be emitted for a fallback that exists.  Both
-#     sites, because one without the other is the silent failure.
-if "ctx.ruleset_initial" not in strip_comments(route_uc):
-    problems.append('route.uc emits initial_path without checking ctx.ruleset_initial; a built-in '
-                    'could be pointed at a file the CLI never wrote')
-if "ctx.ruleset_initial" not in strip_comments(ruleset_uc):
-    problems.append('ruleset.uc emits initial_path without checking ctx.ruleset_initial')
-if 'ruleset_initial' not in client_uc:
-    problems.append('generate_client.uc no longer writes the fallbacks, so ctx.ruleset_initial is '
-                    'always empty and the opt-in does nothing')
+# (a) None of the three may be a remote rule-set again.  A `type: 'remote'`
+#     in the built-in block brings back both the cold-start download and the
+#     second copy of the data.
+decl = re.search(r'if \(declaresBuiltinRuleSets.*?\n\t\}', route, re.S)
+if not decl:
+    problems.append('route.uc no longer declares the built-in rule-sets behind '
+                    'declaresBuiltinRuleSets(); the China split would have no data source')
+else:
+    block = decl.group(0)
+    for tag in ('china-ip', 'china-ip6', 'china-domain'):
+        if "tag: '%s'" % tag not in block:
+            problems.append("route.uc no longer declares '%s'; the rule that matches it "
+                            "would fail the whole configuration with rule-set not found" % tag)
+    if "type: 'remote'" in block:
+        problems.append("route.uc declares a built-in as type: 'remote' again; a cold start "
+                        "would have to download it before the inbounds bind")
 
-# (c) The built-ins come from the shared list.  route.uc hard-coding the tags
-#     is how the two readers drifted in the first place: the CLI had no idea
-#     these rule-sets existed.
-for tag in ('geoip-cn', 'geosite-cn'):
-    if re.search(r"tag:\s*'%s'" % re.escape(tag), strip_comments(route_uc)):
-        problems.append("route.uc hard-codes tag '%s' again; it must come from "
-                        "BUILTIN_REMOTE_RULE_SETS so the CLI can create its fallback" % tag)
-if 'BUILTIN_REMOTE_RULE_SETS' not in route_uc:
-    problems.append('route.uc no longer reads BUILTIN_REMOTE_RULE_SETS')
-if 'BUILTIN_REMOTE_RULE_SETS' not in client_uc:
-    problems.append('generate_client.uc no longer reads BUILTIN_REMOTE_RULE_SETS')
+# (b) The two halves must name the same tags.  This is the part that actually
+#     drifted before: the route rule named geoip-cn and the DNS rule named
+#     geosite-cn, and the fix was a second rule rather than one list.
+if re.search(r"rule_set:\s*'geoip-cn'", route + dns):
+    problems.append("a China rule names 'geoip-cn' again; the address list is china-ip, "
+                    "generated from the same china_ip4.txt the nft set is rendered from")
+if re.search(r"rule_set:\s*'geosite-cn'", route + dns):
+    problems.append("a China rule names 'geosite-cn' again; the domain list is china-domain, "
+                    "generated from china_list.txt")
+if "rule_set: 'china-domain'" not in dns:
+    problems.append('dns.uc no longer routes the China domain list; those domains would fall '
+                    'through to the mode default and resolve through the proxy')
 
-# (d) The shipped constant, byte for byte.  It is a binary artifact in the
-#     tree, and a corrupted one fails in the worst possible way: sing-box
-#     cannot parse the initial file, ignores it, and blocks startup - the
-#     exact failure the file exists to prevent.  Comparing the bytes here is
-#     the only thing standing between a bad `cp` and that.
-expected_srs = bytes([0x53, 0x52, 0x53, 0x02, 0x78, 0xDA, 0x62, 0x00,
-                      0x0C, 0x00, 0x00, 0x01, 0x00, 0x01])
-srs = root / 'root/etc/homeproxy-pro/ruleset/initial/empty.srs'
-src = root / 'root/etc/homeproxy-pro/ruleset/initial/empty.source.json'
-if not srs.is_file():
-    problems.append('the offline fallback %s is missing from the package payload' % srs)
-elif srs.read_bytes() != expected_srs:
-    problems.append('%s is %s, not the documented %s; it is the last-resort binary '
-                    'fallback and a corrupted one makes sing-box block startup'
-                    % (srs.name, srs.read_bytes().hex(' '), expected_srs.hex(' ')))
-if not src.is_file():
-    problems.append('the empty source %s is missing from the package payload' % src)
-elif src.read_bytes() != b'{"version":3,"rules":[]}':
-    problems.append('%s is %r, not the documented empty source' % (src.name, src.read_bytes()))
+# (c) The fallback tags have to be declared under the same condition they are
+#     referenced, or sing-box rejects the config with an undeclared tag.
+for name, src, tag in (('route', route, 'china-ip6'), ('dns', dns, 'china-ip6')):
+    if re.search(r"rule_set:\s*'china-ip6'", src) and 'china_ip6_ready' not in src:
+        problems.append('%s names china-ip6 without gating on china_ip6_ready; the declaration '
+                        'is conditional, so this is an undeclared tag' % name)
 
-# (e) The fallbacks live inside the rule-set archive, so the existing jail
-#     mount of HP_DIR and the existing path whitelist both already cover them.
-#     A directory outside the archive would need a whitelist change and a new
-#     jail mount, and neither exists.
-m = re.search(r"RULESET_INITIAL_DIR\s*=\s*HP_DIR \+ '([^']*)'", homeproxy_uc)
-if not m:
-    problems.append('RULESET_INITIAL_DIR is gone or no longer derived from HP_DIR')
-elif not m.group(1).startswith('/ruleset/'):
-    problems.append('RULESET_INITIAL_DIR is %r, outside the rule-set archive; the jail mount and '
-                    'the path whitelist would not cover it' % m.group(1))
-if 'RULESET_INITIAL_DIR' not in common_uc and 'BUILTIN_REMOTE_RULE_SETS' not in common_uc:
-    problems.append('common.uc no longer carries the shared built-in list')
+# (d) Both halves of each list have to be generated by something that runs.
+#     domain_ruleset.uc is the newest of the three and the only one with no
+#     long history pointing at it, so it is the one that can quietly go
+#     missing and leave china-domain.json absent - which degrades the DNS
+#     split with nothing in the log.
+for name, src in (('runtime/service.sh', service_sh), ('update_resources.sh', update_sh)):
+    if 'domain_ruleset.uc' not in src:
+        problems.append('%s no longer invokes domain_ruleset.uc; china-domain.json is only '
+                        'produced there, and a missing file silently drops the DNS half of '
+                        'the split' % name)
+if 'china_ip_ruleset.uc' not in service_sh:
+    problems.append('runtime/service.sh no longer invokes china_ip_ruleset.uc; a cold install '
+                    'would have no china_ip4.json and the route half would be missing too')
+
+# (e) The kernel's half has to keep coming from the same .txt the generator's
+#     half is made from.  This is the pair that disagreed once.
+if "resources_dir + '/china_ip4.txt'" not in fw_ut:
+    problems.append('firewall_post.ut no longer renders the mainland set from china_ip4.txt; '
+                    'the kernel and the resolver would decide "mainland" from two lists again')
 
 print('\n'.join(problems))
 PY
-)" || SAFE_START="__SCAN_FAILED__"
-if [ "$SAFE_START" = "__SCAN_FAILED__" ]; then
-	fail "the safe-start scan could not run - fix the guard before trusting a pass"
-elif [ -z "$SAFE_START" ]; then
-	pass "the startup fallback is opt-in, both sides read one shared list, and the"
-	pass "  shipped constant is byte-for-byte the documented one"
+)" || CN_LOCAL="__SCAN_FAILED__"
+if [ "$CN_LOCAL" = "__SCAN_FAILED__" ]; then
+	fail "the China-split scan could not run - fix the guard before trusting a pass"
+elif [ -z "$CN_LOCAL" ]; then
+	pass "the China split is three local files, the two halves name the same tags, and"
+	pass "  each half is generated by something that runs on start and on update"
 else
-	fail "the startup fallback has been broken or silently enabled:"
-	printf '      %s\n' "$SAFE_START"
+	fail "the China split has drifted off one list:"
+	printf '      %s\n' "$CN_LOCAL"
 fi
-
 echo
 echo "== guard 53: every dm.general field the generators read is one the Loader lists =="
 
@@ -2748,7 +2745,7 @@ echo "== guard 53: every dm.general field the generators read is one the Loader 
 # left the option off.
 #
 # That is not a hypothetical.  ruleset_safe_start was added to
-# /etc/config/homeproxy-pro and read in context.uc, and nothing said the key was
+# /etc/config/homeproxy-pro and read in context.uc (removed in r41), and nothing said the key was
 # missing: the configuration generated cleanly, `sing-box check` passed, every
 # test that did not look for the feature's effect was green, and the feature
 # was simply never on.  Only the e2e case that asserts an initial_path exists
@@ -2886,6 +2883,127 @@ elif [ -z "$FETCH_LAYER" ]; then
 else
 	fail "the fetch layer is not pinned to one fetcher:"
 	printf '      %s\n' "$FETCH_LAYER"
+fi
+
+# guard 55: every join() call passes the separator first.
+#
+# ucode's join(sep, list) does not validate its arguments.  Swapped, it
+# returns null rather than raising, and null + '\n' is the string "null\n" -
+# a non-empty file naming nothing.  That shipped in r41: the node-address
+# export wrote "null", dnsmasq rendered nftset=/.null/... and the node
+# bypass silently did nothing while every existence check stayed green.
+#
+# This is cheap to pin because every call is a literal, so an argument that
+# is a list literal or a call returning one is the tell.
+join_bad="$(python3 - "$SCRIPTS" "$RPC" <<'PY_JOIN'
+import re, sys, pathlib
+
+def strip_comments(src):
+    src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)
+    return re.sub(r"//[^\n]*", " ", src)
+
+def top_level_first(args):
+    """First argument, split on commas that are not inside quotes or parens -
+    the separator itself is routinely ', '."""
+    depth, j = 0, 0
+    while j < len(args):
+        c = args[j]
+        if c in "'\"":
+            k = j + 1
+            while k < len(args) and args[k] != c:
+                k += 1
+            j = k + 1; continue
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif c == "," and depth == 0:
+            return args[:j].strip()
+        j += 1
+    return args.strip()
+
+def join_args(src, i):
+    depth, j, out = 0, i, []
+    while j < len(src):
+        c = src[j]
+        if c in "'\"":
+            k = j + 1
+            while k < len(src) and src[k] != c:
+                k += 1
+            out.append(src[j:k + 1]); j = k + 1; continue
+        if c == "(":
+            depth += 1
+            if depth == 1:
+                j += 1; continue
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                return "".join(out), j
+        out.append(c); j += 1
+    return None, j
+
+bad = []
+for root in sys.argv[1:]:
+    p = pathlib.Path(root)
+    files = ([p] if p.is_file()
+             else sorted(p.rglob("*.uc")) + sorted(p.rglob("*.ut")))
+    for f in files:
+        src = strip_comments(f.read_text(errors="replace"))
+        for m in re.finditer(r"\bjoin\s*\(", src):
+            args, _ = join_args(src, m.end() - 1)
+            if args is None:
+                continue
+            first = top_level_first(args)
+            # A separator is a string literal.  Anything else in that slot -
+            # a call, a subscript, a bare identifier - is the swapped form,
+            # and ucode answers it with null instead of raising.
+            if not re.fullmatch(r"'[^']*'|\"[^\"]*\"", first):
+                bad.append("%s: join(%s, ...)" % (f.name, first))
+print("\n".join(sorted(set(bad))))
+PY_JOIN
+)"
+if [ -n "$join_bad" ]; then
+	fail "a join() call does not pass a string literal first (ucode takes join(sep, list), and"
+	fail "swapped it returns null silently instead of raising):"
+	printf '      %s\n' "$join_bad"
+else
+	pass "every join() call passes a string-literal separator first; swapped arguments would"
+	pass "  have returned null silently and shipped an empty-of-meaning export"
+fi
+
+# guard 56: no `{% set %}` tag assigns the result of a function call.
+#
+# utpl's set tag takes a plain expression and rejects a call outright:
+# `{% set x = f(); %}` is a parse error.  The damage is disproportionate to
+# the typo, because a parse error kills the whole render - firewall_post.ut
+# produces a zero-byte fw4_post.nft, fw4 has nothing new to load, and the
+# health gate quietly keeps the previous ruleset.  Nothing looks broken: the
+# service is up, the proxy works, and the template change is simply absent.
+# r41 shipped such a line and never rendered once; r43 fixed it.
+#
+# So the rule is mechanical and worth pinning: inside a set tag, no `(`.
+set_call="$(python3 - "$SCRIPTS" <<'PY_SET'
+import re, sys, pathlib
+bad = []
+for p in sorted(pathlib.Path(sys.argv[1]).rglob("*.ut")):
+    src = p.read_text(errors="replace")
+    # Comments quote the mistake on purpose; only real tags count.
+    src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)
+    for m in re.finditer(r"\{%-?\s*set\b([^%]*?)-?%\}", src, flags=re.S):
+        rhs = m.group(1)
+        # A call is any identifier immediately followed by "(".
+        if re.search(r"[A-Za-z_][A-Za-z0-9_.]*\s*\(", rhs):
+            bad.append("%s: {%% set%s%%}" % (p.name, rhs.strip()))
+print("\n".join(bad))
+PY_SET
+)"
+if [ -n "$set_call" ]; then
+	fail "a {% set %} tag assigns a function call; utpl rejects it, and the parse error"
+	fail "zeroes the whole render instead of failing visibly:"
+	printf '      %s\n' "$set_call"
+else
+	pass "no {% set %} tag calls a function (utpl would reject it and the whole render"
+	pass "  would silently collapse to an empty ruleset)"
 fi
 
 echo

@@ -92,17 +92,16 @@ return baseclass.extend({
 
 	/* Parse sing-box's rule-set download failures out of a log.
 	 *
-	 * With `ruleset_safe_start` on, a remote rule-set that cannot be
-	 * downloaded is no longer a failed start: sing-box reads the `initial_path`
-	 * fallback, comes up, and retries in the background, logging
+	 * A remote rule-set is fetched during initialization, before the inbounds
+	 * bind, so a failure there is a failed start:
 	 *
-	 *   2026-10-03 01:15:42 ERROR router: fetch rule-set geoip-cn: Get "https://…": dial tcp …
+	 *   2026-10-03 01:15:42 ERROR router: fetch rule-set example: Get "https://…": dial tcp …
 	 *
-	 * That is a good trade, and it is also invisible: the instance is healthy,
-	 * the health gate passes, the LAN is proxied - and the rule-set that is
-	 * supposed to keep mainland traffic direct matches NOTHING, so all of it
-	 * goes to `final`.  The status page is the only place a user looks without
-	 * ssh, so it has to show this.
+	 * That is loud - but only in a log, and only for the rule-sets a user
+	 * defined themselves (the built-in China split is local files, nothing to
+	 * download).  A start that failed leaves no running instance and no status
+	 * page, so the reason is readable only over ssh.  Surfacing it here is the
+	 * whole job.
 	 *
 	 * Two deliberate choices about the format:
 	 *

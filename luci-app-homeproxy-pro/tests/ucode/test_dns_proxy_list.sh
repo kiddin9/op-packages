@@ -83,6 +83,17 @@ stage_case() {
 		printf '{"version":3,"rules":[{"ip_cidr":["192.0.2.0/24"]}]}\n' > "$dir/resources/china_ip4.json"
 	fi
 
+	# The DNS half of the China split.  generate_client.uc reports it as
+	# ctx.china_domain_ready, an lstat on this file; absent, the domestic
+	# lookup rule is not emitted and the ordering this file asserts cannot be
+	# observed at all.  On a router hp_prepare_runtime_files generates it from
+	# china_list.txt by the same route as china_ip4.json above.
+	if ! ucode -S "$ROOT/root/etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc" \
+		"$ROOT/root/etc/homeproxy-pro/resources/china_list.txt" "$dir/resources/china-domain.json" \
+		>>"$dir/resources/china-domain.log" 2>&1; then
+		printf '{"version":3,"rules":[{"domain_suffix":["example.invalid"]}]}\n' > "$dir/resources/china-domain.json"
+	fi
+
 	VALIDATE_DATA="${HP_VALIDATE_DATA:-/sbin/validate_data}"
 	sed -e "s#^export const HP_DIR = '/etc/homeproxy-pro';#export const HP_DIR = '$dir';#" \
 	    -e "s#^export const RUN_DIR = '/var/run/homeproxy-pro';#export const RUN_DIR = '$dir/run';#" \
@@ -173,15 +184,15 @@ check_fallback_pair() {
 
 	echo "PASS: $label: route.final=$have_route and dns.final=$have_dns agree"
 
-	# Both mainland modes match destinations against geoip-cn, so both have to
-	# declare it.  proxy_mainland_china reached this point without the
-	# declaration once and sing-box refused the whole config with
-	# "initialize rule[3]: rule-set not found: geoip-cn"; the health gate then
+	# Both mainland modes match destinations against the local china-ip
+	# rule-set, so both have to declare it.  proxy_mainland_china reached this
+	# point without the declaration once and sing-box refused the whole config
+	# with "initialize rule[3]: rule-set not found"; the health gate then
 	# rolled the intercept layer back and the network went unproxied.
 	case "$label" in
 	bypass_mainland_china|proxy_mainland_china)
-		if ! grep -qF '"rule_set": "geoip-cn"' "$json" || ! grep -qF '"tag": "geoip-cn"' "$json"; then
-			echo "FAIL: $label: the route rule matches geoip-cn but the rule-set is not declared"
+		if ! grep -qF '"rule_set": "china-ip"' "$json" || ! grep -qF '"tag": "china-ip"' "$json"; then
+			echo "FAIL: $label: the route rule matches china-ip but the rule-set is not declared"
 			return 1
 		fi
 		;;
@@ -232,9 +243,9 @@ check_proxy_list() {
 	# In the one mode that has both, the domestic lookup still comes last.
 	case "$label" in
 	bypass_mainland_china*)
-		geosite_rule="$(grep -nF '"rule_set": "geosite-cn"' "$json" | head -1 | cut -d: -f1)"
-		if [ -z "$geosite_rule" ] || [ "$geosite_rule" -lt "$dns_rule" ]; then
-			echo "FAIL: $label: geosite-cn must come after proxy-domain (proxy=$dns_rule geosite=${geosite_rule:-none})"
+		china_domain_rule="$(grep -nF '"rule_set": "china-domain"' "$json" | head -1 | cut -d: -f1)"
+		if [ -z "$china_domain_rule" ] || [ "$china_domain_rule" -lt "$dns_rule" ]; then
+			echo "FAIL: $label: china-domain must come after proxy-domain (proxy=$dns_rule china-domain=${china_domain_rule:-none})"
 			return 1
 		fi
 		;;

@@ -454,6 +454,15 @@ msgstr "Cloudflare"
 msgid "Collecting data..."
 msgstr "正在收集数据中..."
 
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:408
+msgid ""
+"Collects system, dependency, routing, firewall and configuration "
+"state into one file. Credentials are masked by option name; public "
+"addresses and LAN topology are not. Read it before posting it "
+"anywhere."
+msgstr "将系统、依赖、路由、防火墙和配置状态汇总到一个文件。凭据按选项名脱敏，但公网地址和内网拓扑不会脱敏。发到任何地方之前请先阅读。"
+
+
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/routing.js:105
 msgid "Common ports only (bypass P2P traffic)"
 msgstr "仅常用端口（绕过 P2P 流量）"
@@ -473,6 +482,11 @@ msgstr "连接复用"
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:165
 msgid "Conservative"
 msgstr "保守"
+
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:415
+msgid "Could not build the report."
+msgstr "无法生成诊断报告。"
+
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:823
 msgid "Could not start subscription update: %s"
@@ -581,6 +595,12 @@ msgstr "默认服务器名称"
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/dns.js:40
 msgid "Default timeout per DNS query in seconds (sing-box default: 10)."
 msgstr "每次 DNS 查询的默认超时时间（秒，sing-box 默认为 10）。"
+
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:401
+msgid "Diagnostic report"
+msgstr "诊断报告"
+
+
 
 #: htdocs/luci-static/resources/homeproxy-pro.js:217
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/common.js:335
@@ -1076,6 +1096,11 @@ msgstr "Gecko（1.14）"
 #: htdocs/luci-static/resources/view/homeproxy-pro/server.js:582
 msgid "Generate"
 msgstr "生成"
+
+#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:429
+msgid "Generate and download"
+msgstr "生成并下载"
+
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/status.js:357
 msgid "GitHub token"
