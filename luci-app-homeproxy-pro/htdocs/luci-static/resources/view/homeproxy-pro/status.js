@@ -316,32 +316,68 @@ return view.extend({
 		s = m.section(form.NamedSection, 'config', 'homeproxy-pro', _('Diagnostic report'));
 		s.anonymous = true;
 
+		/* The button belongs on the title line, not parked under the
+		 * description where it reads as part of the paragraph.
+		 *
+		 * It cannot simply be passed in as part of the title: form.js builds
+		 * the heading with `E('h3', {}, this.title)` behind a
+		 * `typeof(this.title) == 'string'` guard, so a node here is dropped
+		 * and the heading disappears entirely.  The section's own render() is
+		 * the seam instead - it runs on every re-render and resolves with the
+		 * finished section element, so the button goes into the h3 that
+		 * render() has just built.  Nothing of LuCI's own rendering is
+		 * reproduced, which is what keeps this from silently drifting when
+		 * form.js changes. */
+		const reportButton = () => E('button', {
+			/* The same class triple as the "Clean log" button above, on
+			 * purpose: `btn` is what carries the button's font-size, so
+			 * matching it keeps the two the same size without this view
+			 * hard-coding a size of its own that the theme can change
+			 * under it. */
+			'class': 'btn cbi-button cbi-button-action',
+			'style': 'margin-left: 8px;',
+			/* createHandlerFn(ctx, fn) only uses ctx to resolve a string
+			 * method name and as the `this` for the call; fn is an arrow
+			 * function, so ctx is inert here.  The section is passed anyway
+			 * so the binding reads like the one it replaced. */
+			'click': ui.createHandlerFn(s, () => {
+				return hp.rpcCall('debug_report', [], { expect: { '': {} } })
+					.then((res) => {
+						if (!res.result)
+							throw new Error(res.error || _('Could not build the report.'));
+						return fs.read_direct(res.path, 'blob');
+					})
+					.then((blob) => {
+						const url = window.URL.createObjectURL(blob, { type: 'text/markdown' });
+						const link = document.createElement('a');
+						link.href = url;
+						link.download = 'homeproxy-pro-debug.log';
+						document.body.appendChild(link);
+						link.click();
+						document.body.removeChild(link);
+						window.URL.revokeObjectURL(url);
+					});
+			})
+		}, [ _('Generate and download') ]);
+
+		const renderDiagnosticSection = s.render.bind(s);
+		s.render = function() {
+			return renderDiagnosticSection().then((el) => {
+				/* The gap before the button is the stylesheet's
+				 * `margin-left`, not a text node - a spacer node would drag
+				 * `document` into the test environment for nothing. */
+				const heading = el.querySelector('h3');
+				if (heading)
+					dom.append(heading, reportButton());
+				return el;
+			});
+		};
+
 		o = s.option(form.DummyValue, '_debug_report');
 		o.rawhtml = true;
 		o.render = function() {
 			return E('div', { 'class': 'cbi-value' }, [
-				E('p', {}, _('Collects system, dependency, routing, firewall and configuration state into one file. Credentials are masked by option name; public addresses and LAN topology are not. Read it before posting it anywhere.')),
-				E('button', {
-					'class': 'cbi-button cbi-button-action',
-					'click': ui.createHandlerFn(this, () => {
-						return hp.rpcCall('debug_report', [], { expect: { '': {} } })
-							.then((res) => {
-								if (!res.result)
-									throw new Error(res.error || _('Could not build the report.'));
-								return fs.read_direct(res.path, 'blob');
-							})
-							.then((blob) => {
-								const url = window.URL.createObjectURL(blob, { type: 'text/markdown' });
-								const link = document.createElement('a');
-								link.href = url;
-								link.download = 'homeproxy-pro-debug.log';
-								document.body.appendChild(link);
-								link.click();
-								document.body.removeChild(link);
-								window.URL.revokeObjectURL(url);
-							});
-						})
-				}, [ _('Generate and download') ])
+				E('p', {}, _('Collects system, dependency, routing, firewall and configuration state into one file. Credentials are masked by option name; public addresses and LAN topology are not. Read it before posting it anywhere.'))
 			]);
 		};
 

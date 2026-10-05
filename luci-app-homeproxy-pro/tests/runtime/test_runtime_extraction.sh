@@ -862,6 +862,63 @@ else
 	echo "PASS: the dnsmasq snippets are gone after the client is switched off"
 fi
 
+# --- the rule-set mtime gate -------------------------------------------
+#
+# Regenerating china-domain.json measured 3540 ms on the target and the
+# source lists are replaced at most daily, so hp_prepare_runtime_files skips
+# the rebuild when the output is already up to date.  Asserted against the
+# function rather than through a scenario: every scenario in this file runs
+# against a sandbox that has no pre-existing rule-set, so the skip branch is
+# unreachable from a scenario and the regression it guards would be silent.
+#
+# The three conditions that must still rebuild are exactly the three the
+# unconditional version existed for - a fresh install, a truncated previous
+# run, and a list replaced while the service was stopped.  All four cases are
+# checked, because a gate that skips too eagerly is worse than the 3.5s it
+# saves: it would keep a rule-set the source has moved past.
+# `.` is a POSIX special builtin: sourcing a missing file terminates a
+# non-interactive shell outright, and `||` does not get a chance to run.  So
+# this names the real path and never guards it.
+. "$ROOT/root/etc/homeproxy-pro/scripts/runtime/service.sh"
+
+hp_rs_dir="$(mktemp -d "${TMPDIR:-/tmp}/hp-rule-set.XXXXXX")"
+hp_rs_src="$hp_rs_dir/src.txt"
+hp_rs_out="$hp_rs_dir/out.json"
+printf 'a.cn\n' > "$hp_rs_src"
+
+if hp_rule_set_current "$hp_rs_src" "$hp_rs_out"; then
+	echo "FAIL: a missing rule-set counted as current, so a fresh install would never get one"
+	exit 1
+else
+	echo "PASS: a missing rule-set is regenerated"
+fi
+
+: > "$hp_rs_out"
+if hp_rule_set_current "$hp_rs_src" "$hp_rs_out"; then
+	echo "FAIL: an empty rule-set counted as current; it would match nothing and invert the split"
+	exit 1
+else
+	echo "PASS: an empty rule-set is regenerated"
+fi
+
+printf '{"rules":[]}\n' > "$hp_rs_out"; sleep 1; touch "$hp_rs_src"
+if hp_rule_set_current "$hp_rs_src" "$hp_rs_out"; then
+	echo "FAIL: a rule-set older than its source counted as current"
+	exit 1
+else
+	echo "PASS: a rule-set older than its source is regenerated"
+fi
+
+sleep 1; touch "$hp_rs_out"
+if hp_rule_set_current "$hp_rs_src" "$hp_rs_out"; then
+	echo "PASS: an up-to-date rule-set is kept (the reload skip still works)"
+else
+	echo "FAIL: an up-to-date rule-set would be rebuilt; the reload-time skip regressed"
+	exit 1
+fi
+
+rm -rf "$hp_rs_dir"
+
 if cmp -s "$GOLDEN" "$TRACE.norm"; then
 	echo "PASS: runtime orchestration matches $(basename "$GOLDEN")"
 	# Counted from the golden rather than hardcoded: a scenario added without
