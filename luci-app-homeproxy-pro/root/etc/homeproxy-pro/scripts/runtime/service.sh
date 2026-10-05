@@ -230,6 +230,38 @@ hp_prepare_ruleset_dir() {
 		|| log "Warning: failed to create ${hp_dir}/ruleset."
 }
 
+# hp_rule_set_current <source> <output>
+# 0 when <output> is already the up-to-date rendering of <source>, 1 when it
+# has to be generated.
+#
+# Generating china-domain.json measured 3540 ms on the x86-64 target
+# (111,353 suffixes, 2.2 MB), and the source lists are replaced at most daily
+# by update_resources.sh.  Regenerating unconditionally therefore spent a
+# third of every reload - every Save & Apply, every node switch - rebuilding a
+# byte-identical file, which is the single largest cost in a reload.
+#
+# The three conditions below are exactly the cases the unconditional version
+# had to cover:
+#
+#   [ -f "$out" ]   a fresh install predates the file, or a previous run
+#                  produced nothing
+#   [ -s "$out" ]   the previous run was interrupted after truncating it; an
+#                  empty rule-set would make the route-side set match nothing,
+#                  which is the silent inversion this whole file exists to
+#                  prevent
+#   [ "$out" -nt "$src" ]  the list was replaced while the service was stopped
+#
+# A newer-but-corrupt output is deliberately NOT detected here.  It does not
+# need to be: the generated config names the file, a rule-set sing-box cannot
+# parse fails the start, and the health gate rolls back to the known-good
+# configuration.  The check is cheap (<1 ms) and cannot mask a real failure -
+# it can only skip work that would rebuild identical bytes.
+hp_rule_set_current() {
+	local src="$1" out="$2"
+
+	[ -f "$out" ] && [ -s "$out" ] && [ "$out" -nt "$src" ]
+}
+
 # hp_prepare_runtime_files <hp-dir> <run-dir> <routing-mode> <client> <server>
 # Create the mode-specific working files, truncate the instance logs and hand
 # every runtime file to the sing-box user.  <client>/<server> are "1"/"0".
@@ -249,7 +281,12 @@ hp_prepare_runtime_files() {
 	# file and sing-box would refuse to start.  A missing source list is not
 	# an error - the generator then emits no route-side rule at all.
 	if [ "$client_enabled" = "1" ] && [ -f "$hp_dir/resources/china_ip4.txt" ]; then
-		if ucode -S "$hp_dir/scripts/runtime/china_ip_ruleset.uc" \
+		if hp_rule_set_current "$hp_dir/resources/china_ip4.txt" "$hp_dir/resources/china_ip4.json"; then
+			# Unchanged source: keep the file, but re-assert ownership anyway -
+			# chown costs nothing and survives an install that reset it.
+			chown sing-box:sing-box "$hp_dir/resources/china_ip4.json" 2>"/dev/null" \
+				|| log "Warning: failed to hand ${hp_dir}/resources/china_ip4.json to sing-box."
+		elif ucode -S "$hp_dir/scripts/runtime/china_ip_ruleset.uc" \
 			"$hp_dir/resources/china_ip4.txt" "$hp_dir/resources/china_ip4.json" >>"$LOG_PATH" 2>&1; then
 			chown sing-box:sing-box "$hp_dir/resources/china_ip4.json" 2>"/dev/null" \
 				|| log "Warning: failed to hand ${hp_dir}/resources/china_ip4.json to sing-box."
@@ -275,7 +312,10 @@ hp_prepare_runtime_files() {
 		cn_ipv6="$(grep -cE '^[0-9a-fA-F:]+:[0-9a-fA-F:]*(/[0-9]{1,3})?[[:space:]]*$' \
 			"$hp_dir/resources/china_ip6.txt" 2>"/dev/null")"
 		[ -n "$cn_ipv6" ] || cn_ipv6=0
-		if [ "$cn_ipv6" -gt 0 ] && ucode -S "$hp_dir/scripts/runtime/china_ip_ruleset.uc" \
+		if [ "$cn_ipv6" -gt 0 ] && hp_rule_set_current "$hp_dir/resources/china_ip6.txt" "$hp_dir/resources/china_ip6.json"; then
+			chown sing-box:sing-box "$hp_dir/resources/china_ip6.json" 2>"/dev/null" \
+				|| log "Warning: failed to hand ${hp_dir}/resources/china_ip6.json to sing-box."
+		elif [ "$cn_ipv6" -gt 0 ] && ucode -S "$hp_dir/scripts/runtime/china_ip_ruleset.uc" \
 			"$hp_dir/resources/china_ip6.txt" "$hp_dir/resources/china_ip6.json" >>"$LOG_PATH" 2>&1; then
 			chown sing-box:sing-box "$hp_dir/resources/china_ip6.json" 2>"/dev/null" \
 				|| log "Warning: failed to hand ${hp_dir}/resources/china_ip6.json to sing-box."
@@ -304,7 +344,10 @@ hp_prepare_runtime_files() {
 	# DNS-side rule for it, and the split degrades to the resolver default
 	# rather than failing the start.
 	if [ "$client_enabled" = "1" ] && [ -f "$hp_dir/resources/china_list.txt" ]; then
-		if ucode -S "$hp_dir/scripts/runtime/domain_ruleset.uc" \
+		if hp_rule_set_current "$hp_dir/resources/china_list.txt" "$hp_dir/resources/china-domain.json"; then
+			chown sing-box:sing-box "$hp_dir/resources/china-domain.json" 2>"/dev/null" \
+				|| log "Warning: failed to hand ${hp_dir}/resources/china-domain.json to sing-box."
+		elif ucode -S "$hp_dir/scripts/runtime/domain_ruleset.uc" \
 			"$hp_dir/resources/china_list.txt" "$hp_dir/resources/china-domain.json" >>"$LOG_PATH" 2>&1; then
 			chown sing-box:sing-box "$hp_dir/resources/china-domain.json" 2>"/dev/null" \
 				|| log "Warning: failed to hand ${hp_dir}/resources/china-domain.json to sing-box."

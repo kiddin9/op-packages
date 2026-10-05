@@ -83,10 +83,22 @@ class MockOption {
 }
 
 class MockSection {
-	constructor(kind, name) {
+	constructor(kind, name, title) {
 		this.__kind = kind;
 		this.__name = name;
+		this.title = title;
 		this.options = [];
+	}
+	/* form.js NamedSection.render() resolves with the finished section
+	 * element, and status.js appends the report button into the h3 that
+	 * render() built - the title itself cannot carry it, because form.js
+	 * guards the heading with `typeof(this.title) == 'string'`.  The mock
+	 * reproduces exactly that much: a section element holding an h3. */
+	render() {
+		return Promise.resolve(E('div', {}, [
+			this.title != null && this.title !== '' ? E('h3', {}, this.title) : '',
+			...this.options.map((o) => E('div', { 'class': 'cbi-section-node' }, []))
+		]));
 	}
 	tab() {}
 	taboption(_tab, ...args) { return this.option(...args); }
@@ -120,8 +132,8 @@ function makeForm() {
 
 	form.Map = class {
 		constructor(title) { this.title = title; this.sections = []; }
-		section(kind, name) {
-			const section = new MockSection(kind && kind.__name__ ? kind.__name__ : String(kind), name);
+		section(kind, name, title) {
+			const section = new MockSection(kind && kind.__name__ ? kind.__name__ : String(kind), name, title);
 			this.sections.push(section);
 			return section;
 		}
@@ -268,16 +280,27 @@ function testAccessDomainLists() {
  * 3. status.js: each log view keeps its own basename
  * ====================================================================== */
 
-function E(tag, attrs, children) {
-	if (Array.isArray(tag) && attrs === undefined)
-		return { tag: null, attrs: {}, children: tag, appendChild() {} };
-
+/* A node carries the two DOM operations a view can perform on an element it
+ * did not create itself: appendChild, and a tag lookup.  The log views never
+ * need them - they build their own tree - but status.js reaches into the
+ * element the form layer returns in order to put the report button into the
+ * heading, so the mock has to offer the same two.  findTag is a hoisted
+ * function declaration, so it is in scope here. */
+function mockNode(tag, attrs, children) {
 	return {
 		tag,
 		attrs: attrs || {},
 		children: children === undefined ? [] : (Array.isArray(children) ? children : [ children ]),
-		appendChild() {}
+		appendChild(child) { this.children.push(child); return child; },
+		querySelector(t) { return findTag(this, t); }
 	};
+}
+
+function E(tag, attrs, children) {
+	if (Array.isArray(tag) && attrs === undefined)
+		return mockNode(null, {}, tag);
+
+	return mockNode(tag, attrs, children);
 }
 
 function findClickable(node) {
@@ -314,7 +337,13 @@ function testLogViewWiring() {
 		path.join(root, 'htdocs/luci-static/resources/view/homeproxy-pro/status.js'),
 		{
 			baseclass: {},
-			dom: { content: () => {} },
+			dom: {
+			content: () => {},
+			append: (parent, ...children) => {
+				for (const child of children)
+					parent.appendChild(child);
+			}
+		},
 			form,
 			fs: { read_direct: (p) => { reads.push(p); return Promise.resolve('log line'); } },
 			poll: { add: () => {} },
@@ -380,18 +409,47 @@ function testLogViewWiring() {
 	check('status.js: all three log views rendered', rendered === 3, String(rendered));
 	check('status.js: the log poll was registered', pollHandlers !== null && typeof pollHandlers.read === 'function');
 
-	if (!pollHandlers)
-		return Promise.resolve();
+	/* --- the report button lives on the title line -----------------------
+	 *
+	 * form.js builds the heading as `E('h3', {}, this.title)` behind a
+	 * `typeof(this.title) == 'string'` guard, so the button cannot be part of
+	 * the title.  status.js overrides the section's render() and appends the
+	 * button into the h3 that render() already built.  Assert on the h3's own
+	 * subtree: a check that walked the whole section would still pass if the
+	 * button fell back below the description, which is the exact regression
+	 * this replaced. */
+	const report_section = map.sections.find((s) =>
+		s.options.some((o) => o.__name === '_debug_report'));
+	check('status.js: the report section exists', report_section !== null,
+		String(map.sections.map((s) => s.__name).join(',')));
 
-	/* One tick reads one file per registered target, keyed by basename. */
-	return Promise.resolve(pollHandlers.read()).then(() => {
-		check('status.js: the poll reads each log by basename',
-			JSON.stringify(reads.slice().sort()) === JSON.stringify([
-				'/var/run/homeproxy-pro/homeproxy-pro.log',
-				'/var/run/homeproxy-pro/sing-box-c.log',
-				'/var/run/homeproxy-pro/sing-box-s.log'
-			].sort()),
-			JSON.stringify(reads));
+	return Promise.resolve(report_section ? report_section.render() : null).then((el) => {
+		const heading = el ? el.querySelector('h3') : null;
+		check('status.js: the report section renders a heading', heading !== null, String(el));
+
+		const in_heading = heading ? findClickable(heading) : null;
+		check('status.js: the download button sits inside the heading',
+			in_heading !== null, 'no clickable node under the h3');
+
+		/* And it must be gone from the body, or the page shows two of them. */
+		const body = findOption(report_section, '_debug_report');
+		const body_tree = body.render(0, 'cfg01', false);
+		check('status.js: the report body no longer holds the button',
+			findClickable(body_tree) === null, 'a button is still in the description block');
+
+		if (!pollHandlers)
+			return;
+
+		/* One tick reads one file per registered target, keyed by basename. */
+		return Promise.resolve(pollHandlers.read()).then(() => {
+			check('status.js: the poll reads each log by basename',
+				JSON.stringify(reads.slice().sort()) === JSON.stringify([
+					'/var/run/homeproxy-pro/homeproxy-pro.log',
+					'/var/run/homeproxy-pro/sing-box-c.log',
+					'/var/run/homeproxy-pro/sing-box-s.log'
+				].sort()),
+				JSON.stringify(reads));
+		});
 	});
 }
 
