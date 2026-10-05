@@ -163,6 +163,18 @@ similarity index 100%
 rename from luci-mod-status/htdocs/luci-static/resources/view/status/include/15_ports.js
 rename to luci-mod-status/htdocs/luci-static/resources/view/status/include/26_ports.js
 
+--- a/luci-mod-status/htdocs/luci-static/resources/view/status/include/08_stats.js
++++ b/luci-mod-status/htdocs/luci-static/resources/view/status/include/08_stats.js
+@@ -474,7 +474,7 @@ function maybeRefreshIp() {
+ 
+ // ─── Main baseclass ───────────────────────────────────────────────────────────
+ return baseclass.extend({
+-	title: _(''),
++	title: _('Status'),
+ 
+ 	load() {
+ 		// Use ?fast=1 to skip slow public-IP APIs — response is near-instant
+
 --- a/luci-mod-status/root/usr/lib/lua/luci/controller/netstat.lua
 +++ b/luci-mod-status/root/usr/lib/lua/luci/controller/netstat.lua
 @@ -3,9 +3,6 @@ local nixio = require("nixio")
@@ -175,15 +187,3 @@ rename to luci-mod-status/htdocs/luci-static/resources/view/status/include/26_po
      entry({"admin", "tools", "get_netdev_stats"}, call("getNetdevStats"), nil).sysauth = false
  end
  
-
---- a/luci-mod-status/htdocs/luci-static/resources/view/status/include/08_stats.js
-+++ b/luci-mod-status/htdocs/luci-static/resources/view/status/include/08_stats.js
-@@ -474,7 +474,7 @@ function maybeRefreshIp() {
- 
- // ─── Main baseclass ───────────────────────────────────────────────────────────
- return baseclass.extend({
--	title: _(''),
-+	title: _('Status'),
- 
- 	load() {
- 		// Use ?fast=1 to skip slow public-IP APIs — response is near-instant
