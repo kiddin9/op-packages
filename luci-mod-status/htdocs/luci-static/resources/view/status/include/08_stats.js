@@ -474,7 +474,7 @@ function maybeRefreshIp() {
 
 // ─── Main baseclass ───────────────────────────────────────────────────────────
 return baseclass.extend({
-	title: _(''),
+	title: _('Status'),
 
 	load() {
 		// Use ?fast=1 to skip slow public-IP APIs — response is near-instant
