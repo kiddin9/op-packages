@@ -232,7 +232,7 @@ jobs:
         git_clone https://github.com/Junatum/luci-app-smartsafehub
         git_clone https://github.com/dellzou/luci-app-dnsguard
         git_clone https://github.com/zow2023/luci-app-meow meow1 && rm -rf meow1/scripts && mvdir meow1
-        git_clone https://github.com/Andy7152/luci-app-minigate
+        git_clone https://github.com/tpxcer/minigate
         git_clone https://github.com/OneNAS-space/luci-app-adguardhome
         git_clone https://github.com/sakura-builder1/luci-app-dlna-player
         git_clone https://github.com/sakura-builder1/luci-app-wolplus
