@@ -64,7 +64,12 @@
 		<label><%:Type%>:
 			<select name="proto">
 				<option value=""><%:All%></option>
-				<% for _, p in ipairs({"vmess","vless","trojan","shadowsocks","ssr","hysteria2","tuic","hysteria","wireguard","socks"}) do %>
+				<%
+				-- 协议清单来自 node.PROTOS，不在这里另抄一份：抄一份就会漂移，
+				-- 症状是节点页的「类型」下拉永远选不到新协议（勾了没用、不报错）。
+				-- 另外三个表单模板早已统一用 core.RULE_PROTOS（= node.PROTOS）。
+				%>
+				<% for _, p in ipairs(node.PROTOS) do %>
 					<option value="<%=p%>" <%=proto==p and "selected" or ""%>><%=p%></option>
 				<% end %>
 			</select>

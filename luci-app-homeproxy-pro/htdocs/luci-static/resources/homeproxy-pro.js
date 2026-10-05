@@ -984,6 +984,52 @@ return baseclass.extend({
 			.replace(/[<>]/g, '');
 	},
 
+	/* Repair node references that point at a section which no longer exists.
+	 *
+	 * Deleting a node from the grid stages a plain `uci.remove`; nothing
+	 * rewrites `config.main_node` / `main_udp_node` / the urltest member lists,
+	 * and the generator then dies on every later run with
+	 *
+	 *   cannot build main-out: the node it refers to does not exist (it may
+	 *   have been deleted, or the reference is stale).
+	 *
+	 * so the reload aborts (the running configuration is kept) while the UI
+	 * reports the save as applied - measured on the device: generation exit 254
+	 * with exactly that message.  `nil` and `urltest` are not section names, and
+	 * a reference that still resolves is left alone.
+	 *
+	 * Takes the cursor as an argument so this is testable without a form;
+	 * returns the list of repairs it made.
+	 */
+	repairNodeRefs(uci, cfg) {
+		const repaired = [];
+
+		for (let opt of [ 'main_node', 'main_udp_node' ]) {
+			const ref = uci.get(cfg, 'config', opt);
+
+			if (ref && ref !== 'nil' && ref !== 'urltest' && uci.get(cfg, ref) == null) {
+				uci.set(cfg, 'config', opt, 'nil');
+				repaired.push(opt);
+			}
+		}
+
+		for (let opt of [ 'main_urltest_nodes', 'main_udp_urltest_nodes' ]) {
+			const list = uci.get(cfg, 'config', opt);
+
+			if (!Array.isArray(list) || !list.length)
+				continue;
+
+			const kept = list.filter((id) => uci.get(cfg, id) != null);
+
+			if (kept.length !== list.length) {
+				uci.set(cfg, 'config', opt, kept);
+				repaired.push(opt);
+			}
+		}
+
+		return repaired;
+	},
+
 	loadModalTitle(title, addtitle, uciconfig, ucisection) {
 		let label = uci.get(uciconfig, ucisection, 'label');
 		return label ? title + ' » ' + this.escapeTitleText(label) : addtitle;

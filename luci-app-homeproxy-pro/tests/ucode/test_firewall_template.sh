@@ -190,13 +190,23 @@ for chain in redirect mangle_prerouting mangle_output; do
 		FAILED=1
 	fi
 done
-v4_rules="$(grep -c 'ip daddr @homeproxy_node_addr_v4 counter return' "$TEMPLATE_SRC" || true)"
-if [ "$v4_rules" -eq 3 ]; then
-	echo "PASS: all three chains carry the node-address return rule"
-else
-	echo "FAIL: expected 3 'ip daddr @homeproxy_node_addr_v4 counter return' rules, found $v4_rules"
-	FAILED=1
-fi
+# Asserted per chain, not as a global count.  The global count is what this
+# check used to be ("expected 3"), and it is exactly how the missing rule went
+# unnoticed: the TUN chain needed one and the assertion counted the three that
+# already existed.  The four chains below are the ones that steer traffic into
+# the tunnel or the redirect/tproxy port - each must exempt the node's own
+# address once, so a new chain that starts steering traffic has to be added
+# here (and the operator reading the diff sees why).
+for chain in homeproxy_redirect homeproxy_mangle_prerouting homeproxy_mangle_output homeproxy_mangle_tun; do
+	body="$(awk -v c="$chain" 'index($0, "chain " c " {") == 1 { f = 1 } f { print } f && /^}/ { exit }' "$TEMPLATE_SRC")"
+	n="$(printf '%s\n' "$body" | grep -c 'ip daddr @homeproxy_node_addr_v4 counter return' || true)"
+	if [ "$n" -eq 1 ]; then
+		echo "PASS: $chain carries exactly one node-address return rule"
+	else
+		echo "FAIL: $chain carries $n node-address return rules (expected exactly 1)"
+		FAILED=1
+	fi
+done
 
 # Probe with ucode, not utpl: `utpl -e` is not an eval flag, it renders the
 # argument as template text and always succeeds.
@@ -221,12 +231,48 @@ if ! ucode -e 'require("fw4");' > "/dev/null" 2>&1; then
 	exit $FAILED
 fi
 
+# Where the render reads its UCI from.
+#
+#   * on a target: the real /etc/config - the render has to see the
+#     configuration that is actually deployed;
+#   * anywhere else (CI): tests/fixtures/firewall/render.uci, so this layer -
+#     the only one that turns the template into nft text - runs in CI instead
+#     of reporting NOT RUN.  That is T1's other half: the module it needs is
+#     staged by the toolchain (tests/toolchain/build-ucode-linux.sh) and the
+#     configuration it reads is staged here.
+#
+# HP_T_FW4_CONFIG_DIR overrides both, which is how the fixture path itself is
+# exercised on a device (real fw4, fixture config).
+FW4_CONFIG_DIR="${HP_T_FW4_CONFIG_DIR:-}"
+if [ -z "$FW4_CONFIG_DIR" ] && [ ! -f "/etc/config/homeproxy-pro" ]; then
+	FW4_CONFIG_DIR="$STAGE/cfg"
+	mkdir -p "$FW4_CONFIG_DIR"
+	cp "$ROOT/tests/fixtures/firewall/render.uci" "$FW4_CONFIG_DIR/homeproxy-pro"
+	cp "$ROOT/tests/fixtures/firewall/dhcp" "$FW4_CONFIG_DIR/dhcp"
+fi
+
 # The template is written for a device: it imports homeproxy-pro.uc through
 # /etc/homeproxy-pro/scripts/ and reads /etc/homeproxy-pro/resources. Neither exists
 # off-target, so render a staged copy with those prefixes rewritten to the
 # checkout - the same trick run.sh uses for the absolute import in
-# root/usr/share/rpcd/ucode/luci.homeproxy-pro.
-sed -e "s#'/etc/homeproxy-pro/#'$ROOT/root/etc/homeproxy-pro/#g" "$TEMPLATE_SRC" > "$STAGED"
+# root/usr/share/rpcd/ucode/luci.homeproxy-pro.  The cursor is rewritten too when
+# the UCI comes from the fixture rather than from /etc/config.
+if [ -n "$FW4_CONFIG_DIR" ]; then
+	sed -e "s#'/etc/homeproxy-pro/#'$ROOT/root/etc/homeproxy-pro/#g" \
+	    -e "s#^const uci = cursor();#const uci = cursor('$FW4_CONFIG_DIR');#" \
+	    "$TEMPLATE_SRC" > "$STAGED"
+else
+	sed -e "s#'/etc/homeproxy-pro/#'$ROOT/root/etc/homeproxy-pro/#g" "$TEMPLATE_SRC" > "$STAGED"
+fi
+
+# Hard guard: the cursor rewrite has to have matched, or the render silently
+# reads a configuration that is not there (and the assertions would be about a
+# ruleset nobody asked for).
+if [ -n "$FW4_CONFIG_DIR" ] && ! grep -qF "cursor('$FW4_CONFIG_DIR')" "$STAGED"; then
+	echo "FAIL: firewall_post.ut: could not point the render at $FW4_CONFIG_DIR"
+	echo "      (the 'const uci = cursor();' anchor no longer matches)"
+	exit 1
+fi
 
 # Hard guard: if the prefix ever changes, the sed silently no-ops and the
 # render fails for an unrelated reason, which would look like a template
@@ -264,6 +310,38 @@ fi
 if [ "$FAILED" -eq 0 ]; then
 	echo "PASS: firewall_post.ut renders homeproxy-pro objects as standalone nft statements"
 	echo "PASS: the gfwlist gate follows the dnsmasq nftset capability"
+fi
+
+# The wan guard (S4): with `listen_interfaces` empty the intercept layer has to
+# exclude the wan zone's devices.  Two ways this went wrong on the device and
+# both render *something*, which is why the assertion is not just "a guard is
+# there":
+#
+#   - r46 shipped a template whose guard silently disappeared: fw4 had no state
+#     in this process (`zones()` is null outside fw4's own render), the loop
+#     threw, the catch swallowed it, and the rendered chain had no iifname at
+#     all - the exact hole the guard was added to close;
+#   - resolving it from /var/run/fw4.state instead yields the LOGICAL names
+#     ("wan", "wan_6"), so `meta iifname { wan }` renders and can never match.
+#
+# Resolving zone devices needs ubus, so off-target runs report SKIP rather than
+# pretending: the render needs fw4's real zone data for this one.
+GUARD_IFACES="$(grep -oE 'meta iifname( !=)? \{[^}]*\}' "$OUT" | sort -u | tr '\n' ' ')"
+case "$GUARD_IFACES" in
+*'{ wan }'*|*'{ wan,'*|*'wan_6 }'*|*'wan_6,'*)
+	echo "FAIL: the wan guard rendered a logical network name, which never matches:"
+	echo "      $GUARD_IFACES"
+	FAILED=1
+	;;
+esac
+
+if grep -q 'not the WAN side' "$OUT"; then
+	echo "PASS: the wan guard is rendered (resolved devices: ${GUARD_IFACES:-none})"
+elif ubus -v list network.interface > "/dev/null" 2>&1; then
+	echo "FAIL: the wan guard is missing although fw4 could resolve zone devices"
+	FAILED=1
+else
+	echo "SKIP: the wan guard needs ubus to resolve zone devices (not available here)"
 fi
 
 exit $FAILED

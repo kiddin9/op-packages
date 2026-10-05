@@ -72,21 +72,32 @@
 ## 安装
 
 > 包名中的版本号必须与 [Makefile](Makefile) 的 `PKG_VERSION` / `PKG_RELEASE` 保持一致
-> （当前 `2.7.1-r5`）。
+> （当前 `2.7.2-r1`）。
 
 **最低支持 OpenWrt / ImmortalWrt 23.05**（更早的版本不在支持范围内）。
 
 opkg（OpenWrt / ImmortalWrt 24.10 及更早）：
 
 ```bash
-opkg install luci-app-substore-2.7.1-r5.ipk
+opkg install luci-app-substore-2.7.2-r1.ipk
 ```
 
 apk（OpenWrt / ImmortalWrt 25.12+）：
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.7.1-r5.apk
+apk add --allow-untrusted luci-app-substore-2.7.2-r1.apk
 ```
+
+简体中文界面需要**单独安装**翻译包 —— 主包不含译文，未装时界面为英文：
+
+```bash
+opkg install luci-i18n-substore-zh-cn_*.ipk                 # 24.10 及更早
+apk add --allow-untrusted luci-i18n-substore-zh-cn_*.apk    # 25.12+
+```
+
+> 翻译包的版本号由 `po/` 目录的提交时间推导（LuCI 的 `PKG_PO_VERSION`），
+> 与主包的 `2.7.2-r1` 不同名，按文件名通配安装即可。装好后 LuCI 语言设为
+> 「简体中文」即生效（该包的 uci-defaults 会自动把它加进 `luci.languages`）。
 
 然后在 LuCI 菜单打开：**服务 → 订阅**。
 
@@ -149,7 +160,7 @@ apk add --allow-untrusted luci-app-substore-2.7.1-r5.apk
 │   │       ├── luci/menu.d/luci-app-substore.json
 │   │       ├── rpcd/acl.d/luci-app-substore.json  # ACL 组（菜单 depends.acl 引用）
 │   │       └── substore/*.lua    # 核心逻辑（不依赖 luci.*）
-├── po/zh-cn/substore.po          # 简体中文翻译
+├── po/zh_Hans/substore.po        # 简体中文翻译（编译为独立包 luci-i18n-substore-zh-cn）
 ├── docs/                         # 设计与指南
 └── tests/                        # 自包含 Lua 5.1 单元测试
 ```
@@ -173,6 +184,8 @@ apk add --allow-untrusted luci-app-substore-2.7.1-r5.apk
 ```bash
 cp -r luci-app-substore <openwrt-tree>/package/
 make package/luci-app-substore/compile V=s
+# 简体中文翻译是独立包（luci.mk 按 po/zh_Hans/ 自动生成），需要单独编译：
+make package/luci-i18n-substore-zh-cn/compile V=s
 ```
 
 `.ipk`（或 apk 构建下的 `.apk`）生成于 `bin/packages/.../` 下。

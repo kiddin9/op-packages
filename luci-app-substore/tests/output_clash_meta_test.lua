@@ -133,7 +133,13 @@ check("ss type present", yaml_output and yaml_output:find("type: ss") ~= nil)
 check("skip-cert-verify present", yaml_output and yaml_output:find("skip%-cert%-verify") ~= nil)
 check("udp present", yaml_output and yaml_output:find("udp:") ~= nil)
 check("alpn present", yaml_output and yaml_output:find("alpn:") ~= nil)
-check("fp present", yaml_output and yaml_output:find("fp:") ~= nil)
+-- H14：uTLS 指纹的键名是 client-fingerprint，**不是** fp。
+-- mihomo 全仓库没有任何结构体声明 `proxy:"fp,..."`，而它的 proxy 解码器对未知键
+-- 是静默忽略的 —— 写 `fp:` 既不报错也不生效，配置看起来有指纹、实际用默认指纹。
+-- 这条断言此前锁的正是那个 bug（find("fp:")）。
+check("client-fingerprint present",
+	yaml_output and yaml_output:find("client%-fingerprint: chrome") ~= nil)
+check("no bogus fp key", yaml_output and yaml_output:find("    fp:") == nil)
 
 -- 检查 proxy-groups
 check("SELECT group present", yaml_output and yaml_output:find("type: select") ~= nil)
@@ -171,6 +177,21 @@ local nl_out = output_clash_meta.generate({ { proto = "vmess", name = "a\nb", se
 	port = 443, uuid = "u" } })
 check("newline name quoted and escaped", nl_out:find('name: "a\\nb"') ~= nil)
 check("newline name does not add a line", nl_out:find('name: a\nb') == nil)
+
+-- H14b：client-fingerprint 只对真正支持 uTLS 的协议输出。
+-- hysteria / hysteria2 / tuic 在 mihomo 里的同名字段叫 fingerprint，但那是
+-- 证书固定（SHA256 pin），与 uTLS 不是一回事；把模型的 fp 顶上去是语义错误，
+-- 而 mihomo 又会静默忽略未知键 —— 用户以为指纹生效了，其实没有。
+local hy2_fp = output_clash_meta.generate({ { proto = "hysteria2", name = "H2", server = "1.1.1.1",
+	port = 443, password = "p", fp = "chrome" } })
+check("hysteria2 drops fp (cert-pin semantics differ)", hy2_fp:find("fingerprint") == nil)
+local tuic_fp = output_clash_meta.generate({ { proto = "tuic", name = "T", server = "1.1.1.1",
+	port = 443, uuid = "u", password = "p", fp = "chrome" } })
+check("tuic drops fp", tuic_fp:find("fingerprint") == nil)
+-- ss 别名写法（未归一化的节点直接进输出模块）同样要认出来
+local ss_fp = output_clash_meta.generate({ { proto = "ss", name = "S", server = "1.1.1.1",
+	port = 8388, method = "aes-256-gcm", password = "p", fp = "chrome" } })
+check("ss alias emits client-fingerprint", ss_fp:find("client%-fingerprint: chrome") ~= nil)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

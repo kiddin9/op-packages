@@ -395,19 +395,65 @@ cp "$ROOT/tests/ucode/test_homeproxy_utils.uc" "$WORK/homeproxy-pro/"
 # same thing everywhere and needs no network.
 #
 # On a target /bin/uclient-fetch really exists, so fetchBinary() returns it and
-# the same assertions run against the real applet.  Both directions are useful:
-# the stub catches "an option we invented", the target catches "an option the
-# real applet lacks".
+# the assertions run against the real applet.  Both directions are useful: the
+# stub catches "an option we invented", the target catches "an option the real
+# applet lacks".
 mkdir -p "$WORK/fetchbin"
 cp "$ROOT/tests/fixtures/uclient-fetch-stub" "$WORK/fetchbin/uclient-fetch"
 chmod +x "$WORK/fetchbin/uclient-fetch"
 
-if ( cd "$WORK/homeproxy-pro" && PATH="$WORK/fetchbin:$PATH" ucode test_homeproxy_utils.uc ); then
+# The binary and HTTP-error shapes are something the fetcher has to PRODUCE, so
+# on a target the real applet can only produce them by talking to a real server
+# - the stub's magic URL paths mean nothing to it (they read as an ordinary URL
+# it fails to connect to, which is why those three assertions used to fail on
+# every real device).  So stand up a throwaway uhttpd over a temp docroot and
+# hand the test its base URL via HP_T_HTTP_BASE.
+#
+# It is a second uhttpd on a high port serving a temp directory, killed right
+# after the test and by the trap below: the running LuCI instance, /www and
+# port 80 are never touched.  If it cannot be started the test reports those
+# three as skipped, which is honest; they must never be made to read as a pass.
+HP_T_HTTP_BASE=""
+HP_T_HTTP_PID=""
+hp_http_stop() {
+	if [ -n "$HP_T_HTTP_PID" ]; then
+		kill "$HP_T_HTTP_PID" 2> /dev/null
+		wait "$HP_T_HTTP_PID" 2> /dev/null
+		HP_T_HTTP_PID=""
+	fi
+}
+trap hp_http_stop EXIT INT TERM
+
+if { [ -x /bin/uclient-fetch ] || [ -x /usr/bin/uclient-fetch ]; } &&
+   command -v uhttpd > /dev/null 2>&1; then
+	hp_docroot="$WORK/httproot"
+	rm -rf "$hp_docroot"
+	mkdir -p "$hp_docroot"
+	# A body executeCommand() must classify as binary: an .srs magic number
+	# with NUL bytes in it, the same shape the stub emits.
+	printf 'SRS\002x\332b\000\014\000\000\001\000\001' > "$hp_docroot/hp-binary.srs"
+
+	for hp_port in 18099 18100 18101 18102 18103 18104; do
+		uhttpd -f -p "127.0.0.1:$hp_port" -h "$hp_docroot" -x /cgi-bin -t 5 -T 5 &
+		HP_T_HTTP_PID=$!
+		# Integer sleep on purpose: busybox ash has no fractional wait, and
+		# uhttpd needs a moment to bind before the first fetch can reach it.
+		sleep 1
+		if kill -0 "$HP_T_HTTP_PID" 2> /dev/null; then
+			HP_T_HTTP_BASE="http://127.0.0.1:$hp_port"
+			break
+		fi
+		HP_T_HTTP_PID=""
+	done
+fi
+
+if ( cd "$WORK/homeproxy-pro" && PATH="$WORK/fetchbin:$PATH" HP_T_HTTP_BASE="$HP_T_HTTP_BASE" ucode test_homeproxy_utils.uc ); then
 	echo "PASS: executeCommand() regression tests"
 else
 	echo "FAIL: executeCommand() regression tests"
 	FAILED=1
 fi
+hp_http_stop
 
 echo "== TLS / transport builder tests =="
 rm -rf "$WORK/tls_transport"

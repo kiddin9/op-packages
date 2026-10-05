@@ -2,6 +2,10 @@
 -- luci-app-substore
 
 local util = require("substore.util")
+-- node.lua 只 require util，不反向依赖任何输出模块，因此这里不会形成循环依赖。
+-- 需要它是因为「哪些协议支持 uTLS 客户端指纹」必须只有一个来源（见
+-- node.CLIENT_FP_PROTOS 的说明），在输出模块里另抄一份必然漂移。
+local node_model = require("substore.node")
 
 local M = {}
 
@@ -88,11 +92,22 @@ local PROTOCOL_TYPE_MAP = {
 	socks = "socks5",
 	socks5 = "socks5",
 	ssr = "ssr",
+	-- anytls：mihomo 的 type 字面量就是 "anytls"（adapter/outbound/anytls.go 里
+	-- AnyTLSOption 的注册名）。Stash 与 mihomo 同源，共用这份映射。
+	anytls = "anytls",
 }
 
 local function get_clash_type(proto)
 	return PROTOCOL_TYPE_MAP[proto] or proto
 end
+
+-- 能写 `reality-opts` 的出站类型。mihomo 的 RealityOptions 只挂在
+-- vless / vmess / trojan 三个出站上（adapter/outbound/{vless,vmess,trojan}.go
+-- 都声明了 `RealityOpts RealityOptions \`proxy:"reality-opts,omitempty"\``）；
+-- anytls 的 AnyTLSOption 里**没有**任何 reality 字段，写了会被静默忽略
+-- （mihomo 的 proxy 解码器对未知键不报错），节点看起来配了 Reality 实际没配。
+-- 这里的键是 mihomo 的 type 字面量（get_clash_type 的输出），不是统一模型的 proto。
+local REALITY_CTYPES = { vless = true, vmess = true, trojan = true }
 
 -- SIP003 插件 → mihomo 的 plugin / plugin-opts。
 --
@@ -234,9 +249,13 @@ local function format_node(node, name)
 	-- 会同时填上两者（先 sni = p.sni or p.servername，随后的字段保留循环又原样复制了
 	-- servername），各写一行会让 YAML 出现重复键 —— 严格解析器直接报错，宽松解析器
 	-- 则取最后一个，行为不确定。
-	local is_hysteria = (ctype == "hysteria" or ctype == "hysteria2")
+	-- mihomo 里 vmess / vless / trojan 用 servername；hysteria / hysteria2 与 anytls
+	-- 用 sni。anytls 的 AnyTLSOption 结构体里**根本没有 servername 字段**（只有
+	-- sni），写了会被它的解码器静默忽略 —— SNI 丢失，客户端拿 IP 校验证书直接
+	-- 握手失败，与 hysteria 系列是同一个坑。anytls 的 sni 由下面的协议专属分支输出。
+	local uses_sni = (ctype == "hysteria" or ctype == "hysteria2" or ctype == "anytls")
 	local tls_name = node.sni or node.servername
-	if tls_name and not is_hysteria then
+	if tls_name and not uses_sni then
 		lines[#lines + 1] = "    servername: " .. esc_yaml(tls_name)
 	end
 
@@ -261,8 +280,14 @@ local function format_node(node, name)
 			lines[#lines + 1] = "      - " .. esc_yaml(v)
 		end
 	end
-	if node.fp then
-		lines[#lines + 1] = "    fp: " .. esc_yaml(node.fp)
+	-- uTLS 客户端指纹。键名是 client-fingerprint，**不是** fp —— 详见
+	-- node.CLIENT_FP_PROTOS 的说明：mihomo 全仓库没有任何结构体声明
+	-- `proxy:"fp,..."`，而它的解码器对未知键静默忽略，所以旧的 `fp:` 既不报错
+	-- 也不生效（配置看起来有指纹，实际用默认指纹）。
+	-- 同时只对真正支持 uTLS 的协议输出：hysteria / hysteria2 / tuic 上的
+	-- `fingerprint` 是证书固定（SHA256 pin），语义不同，不能拿 fp 顶上。
+	if node.fp and node_model.supports_client_fp(node.proto) then
+		lines[#lines + 1] = "    client-fingerprint: " .. esc_yaml(node.fp)
 	end
 
 	-- 协议特定字段
@@ -282,6 +307,24 @@ local function format_node(node, name)
 		-- 所以「Clash YAML → 导出 clashmeta」这条路径上 flow 会凭空消失。
 		if node.flow then
 			lines[#lines + 1] = "    flow: " .. esc_yaml(node.flow)
+		end
+	end
+
+	-- Reality：mihomo 的 RealityOptions 结构体是
+	-- `{public-key, short-id, support-x25519mlkem768}`，作为出站的 `reality-opts`
+	-- 子映射。缺 public-key 时 reality 握手无法建立，所以判据取「有没有 public-key」
+	-- 而不是 security == "reality" —— 与 output_formats / output_singbox 一致，
+	-- 也免得 security 写法不同（分享链接写 reality，Loon 的行只写 over-tls）
+	-- 导致同一节点在某个格式下漏掉 Reality 配置。
+	-- 能写这个子映射的类型见 REALITY_CTYPES；wireguard 顶层的 public-key 是
+	-- **对端公钥**，与 Reality 无关，绝不能落进这里。
+	-- uTLS 指纹**不在**这个子映射里 —— 它是代理顶层的 client-fingerprint，
+	-- 由上面的通用分支输出（两者是独立的键，别合并）。
+	if REALITY_CTYPES[ctype] and node["public-key"] then
+		lines[#lines + 1] = "    reality-opts:"
+		lines[#lines + 1] = "      public-key: " .. esc_yaml(node["public-key"])
+		if node["short-id"] then
+			lines[#lines + 1] = "      short-id: " .. esc_yaml(node["short-id"])
 		end
 	end
 
@@ -307,6 +350,14 @@ local function format_node(node, name)
 		end
 		if node.obfs and node.obfs ~= "" and node.obfs ~= "plain" then
 			lines[#lines + 1] = "    obfs: " .. esc_yaml(node.obfs)
+		end
+	end
+
+	if ctype == "anytls" then
+		-- 键名是 sni，不是 servername —— 见上面 uses_sni 的说明。
+		local sn = node.sni or node.servername
+		if sn then
+			lines[#lines + 1] = "    sni: " .. esc_yaml(sn)
 		end
 	end
 

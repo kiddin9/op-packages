@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# The UCI the firewall template render reads when there is no /etc/config on the
+# machine - i.e. in CI, where the render used to report NOT RUN because the only
+# thing it could read was a device's live configuration.
+#
+# Hand-maintained on purpose: it is the *minimum* a render needs (one section of
+# every kind the template reads, one node so the node-address sets have
+# something to export), not a copy of any device.  A field the template starts
+# reading but this file does not set renders as the template's own default, and
+# the assertions in tests/ucode/test_firewall_template.sh are written against the
+# statements the template declares unconditionally - so a missing field weakens
+# the render, it does not silently pass it.
+
+config homeproxy-pro 'config'
+	option routing_mode 'bypass_mainland_china'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '0'
+	option log_level 'error'
+	option main_node 'n_test'
+	option main_udp_node 'same'
+	option dns_server '223.5.5.5'
+
+config homeproxy-pro 'infra'
+	option self_mark '100'
+	option redirect_port '5331'
+	option tproxy_port '5332'
+	option tproxy_mark '101'
+	option tun_name 'singtun0'
+	option tun_mark '102'
+	option common_port '22,53,80,143,443,465,587,853,873,993,995,8080,8443,9418'
+
+config homeproxy-pro 'control'
+	option lan_proxy_mode 'all'
+
+config node 'n_test'
+	option label 'render-fixture-node'
+	option type 'vless'
+	option address 'example.com'
+	option port '443'
+	option uuid '11111111-1111-1111-1111-111111111111'
+	option tls_enabled '1'
+	option tls_server_name 'example.com'

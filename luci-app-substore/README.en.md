@@ -84,21 +84,34 @@ group them, then re-emit them in a format your client can consume.
 ## Installation
 
 > The version in the package name must match `PKG_VERSION` / `PKG_RELEASE` in the
-> [Makefile](Makefile) (currently `2.7.1-r5`).
+> [Makefile](Makefile) (currently `2.7.2-r1`).
 
 **Minimum supported: OpenWrt / ImmortalWrt 23.05** (older releases are out of scope).
 
 opkg (OpenWrt / ImmortalWrt 24.10 and earlier):
 
 ```bash
-opkg install luci-app-substore-2.7.1-r5.ipk
+opkg install luci-app-substore-2.7.2-r1.ipk
 ```
 
 apk (OpenWrt / ImmortalWrt 25.12+):
 
 ```bash
-apk add --allow-untrusted luci-app-substore-2.7.1-r5.apk
+apk add --allow-untrusted luci-app-substore-2.7.2-r1.apk
 ```
+
+The Simplified Chinese UI needs a **separately installed** translation package —
+the main package ships no translations, so the UI stays English without it:
+
+```bash
+opkg install luci-i18n-substore-zh-cn_*.ipk                 # 24.10 and earlier
+apk add --allow-untrusted luci-i18n-substore-zh-cn_*.apk    # 25.12+
+```
+
+> Its version comes from the `po/` commit time (LuCI's `PKG_PO_VERSION`), so it
+> does not share the main package's `2.7.2-r1`; install it by filename wildcard.
+> Set the LuCI language to Simplified Chinese afterwards — the package's
+> uci-defaults adds it to `luci.languages` automatically.
 
 Then open LuCI: **Services → Subscriptions**.
 
@@ -174,7 +187,7 @@ oversight; the reasoning for each is in
 │   │       ├── luci/menu.d/luci-app-substore.json
 │   │       ├── rpcd/acl.d/luci-app-substore.json  # ACL group (referenced by menu depends.acl)
 │   │       └── substore/*.lua    # core logic (no luci.* dependency)
-├── po/zh-cn/substore.po          # 简体中文 translations
+├── po/zh_Hans/substore.po        # Simplified Chinese (built as the separate luci-i18n-substore-zh-cn package)
 ├── docs/                         # design & guides
 └── tests/                        # self-contained Lua 5.1 unit tests
 ```
@@ -199,6 +212,9 @@ target firmware, then:
 ```bash
 cp -r luci-app-substore <openwrt-tree>/package/
 make package/luci-app-substore/compile V=s
+# Simplified Chinese is a separate package (luci.mk auto-generates it from
+# po/zh_Hans/), so it must be compiled on its own:
+make package/luci-i18n-substore-zh-cn/compile V=s
 ```
 
 The `.ipk` (or `.apk` on apk builds) is produced under `bin/packages/.../`.

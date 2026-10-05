@@ -164,6 +164,14 @@ function resolve_env(dm) {
 		 * lstat() is used because it is unambiguous - there is no second
 		 * argument to get wrong - and because the neighbouring stderr-size
 		 * check in homeproxy-pro.uc already reads sizes through it. */
+		/* The IPv4 half of the same split.  Declared (and referenced) only when the
+		 * file is there: the generator used to push china-ip unconditionally, which
+		 * made a fresh install - where hp_prepare_runtime_files only produced the
+		 * file *after* this ran - fail `sing-box check` with a missing rule-set and
+		 * never start.  The rule-set is now produced before generation
+		 * (hp_prepare_generated_inputs), and this flag keeps a failed generation
+		 * degrading to "no mainland address split" instead of a dead service. */
+		china_ip4_ready: lstat(HP_DIR + '/resources/china_ip4.json') !== null,
 		china_ip6_ready: lstat(HP_DIR + '/resources/china_ip6.json') !== null,
 		/* The DNS half of the same split: whether china-domain.json is
 		 * there.  Same reason, same lstat(), same one-sided default - a

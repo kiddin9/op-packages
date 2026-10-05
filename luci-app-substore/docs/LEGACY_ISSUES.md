@@ -641,6 +641,147 @@ crontab 里，`substore-cron.sh` 会拿着已不存在的 id 反复执行，每�
 
 ---
 
+# 七、2.7.2 审计新发现
+
+本节是给 AnyTLS + Reality 支持做代码级审计时**顺带确认**的问题。
+每条都给出**实测探针或上游文档依据**，无推测项。
+
+**状态**（决策已定，按轮次实施）：
+
+| # | 决策 | 状态 |
+|---|---|---|
+| 7.1 | A：引入 `FAMILY_CAPS` 按客户端能力表过滤 | 待实施（第二轮） |
+| 7.2 | A：真正实现 Egern YAML 生成器 | 待实施（第三轮） |
+| 7.3 | C：只对带 `public-key` 的 vmess / vless 分叉 `qx_tls` | 待实施（第二轮） |
+| 7.4 | A：Loon 位置参数化（并给 `public-key` 加双引号） | 待实施（第二轮） |
+| 7.5 | 修复 | **已修复**（第一轮，见下） |
+| 7.6 | 修复 | **已修复**（第一轮，见下） |
+| 7.7 | A：后端错误串 msgid 化 | 待实施（第四轮） |
+| 7.8 | A：删除 `age.lua` / `age_test.lua` | **已删除**（第一轮） |
+
+7.5 / 7.6 的修复见本节末尾「7.5 / 7.6 修复记录」。
+
+| # | 问题 | 位置 | 依据 | 影响 |
+|---|---|---|---|---|
+| 7.1 | Surge 格式会为 VLESS 节点生成代理行，而 Surge 的协议清单里没有 VLESS | `output_formats.surge_config` | Surge 手册（`manual.nssurge.com`）协议清单无 VLESS；探针见下 | 节点必然不可用（Surge 对「不认识的代理行」的处置**未获官方证实** —— 官方只说明过无法识别的 *section* 会原样保留且不报错；此处按「不输出客户端读不懂的东西」处理，与丢弃 wireguard / ssr 同一约定） |
+| 7.2 | Egern 格式输出的是 Surge 逗号行，而 Egern 的配置是 YAML | `output_formats.to_egern` | `egernapp.com/docs/configuration/proxies/`；探针见下 | 选 Egern 格式导出的内容 Egern 读不了 |
+| 7.3 | QX 的 vmess / vless 用 `tls-host=` + `tls-verification=true` 表示 TLS，官方 `sample.conf` 用 `obfs=over-tls` / `obfs=wss` + `obfs-host` | `output_formats.qx_tls` | `crossutility/Quantumult-X` 的 `sample.conf`；探针见下 | 见 7.3 的详细说明 —— **会让新加的 QX vmess/vless Reality 公钥不生效** |
+| 7.4 | Loon / Surfboard 的 trojan / vmess / vless 凭据在官方文档里是**位置参数**，本生成器一律写具名参数（只有 anytls 按 flavor 分对了） | `output_formats.surge_line` | `nsloon.app/docs/Node/` 的示例行 | Loon 是否同时接受具名写法**无文档依据**，待核实；若不接受则这几类节点导出到 Loon 后连不上 |
+| 7.5 | ~~`parser_surge` 的行拆分不是引号感知的（`rest:gmatch("[^,]+")`）~~ **已修复** | `parser_surge.lua` 的 `split_fields` | 代码级：位置参数里含逗号的值会被切断 | 别人给的 Loon / QX 配置里带逗号的密码被**静默截断**（生成端已有「含逗号就整条丢弃」的防护，解析端没有对应防护） |
+| 7.6 | ~~Loon 的 `transport=ws` 未映射到 `net`~~ **已修复** | `parser_surge.parse_surge_line` 的 `transport=` 分支 | 只认 `ws=true`（Surge 旧写法）与 `obfs=ws`（QX）；`nsloon.app/docs/Node/` 用 `transport=ws` + `path=` + `host=` | Loon 的 ws 节点导入后 `net=tcp`，`path` / `host` 全丢 → 导出到任何格式都按 tcp 连，握手失败**且不报错** |
+| 7.7 | 后端模块仍有 **113 处**硬编码中文字符串字面量（注释外） | `core.lua` 47 / `http.lua` 47 / `parser.lua` 9 / `util.lua` 5 / `output_wireguard_conf.lua` 3 / `node.lua` 2 | 扫描脚本（去注释后提取含 CJK / 全角的字符串字面量），见下 | 控制器文案已接入 i18n，但这些来自后端的失败原因经 `?err=` **原样**显示，英文界面下仍是中文 |
+| 7.8 | ~~`root/usr/share/substore/age.lua` 与 `tests/age_test.lua` 未被 git 跟踪，且 `age.lua` 未被任何模块 `require`~~ **已删除** | 仓库根 | `grep -rn require` 无引用 | 未随包发布；留在工作区会被后续审计反复重新评估 |
+
+### 7.7 的统计口径与例外（修复前必读）
+
+本节原先写的「约 103 处（`grep -c 'return nil, ".*[^ -~]'`）」**口径有误**：
+那条 grep 按行匹配，既会把中文注释算进去，又会漏掉「只含全角标点」的字面量
+（如 `"，"` 这类），逐文件数字也对不上。下面是重新核对的口径。
+
+**统计方法**：先去掉注释（`--` 行注释与 `--[[ ]]` 块注释），再提取字符串字面量
+（`"` 与 `'`），保留其中含 CJK / 全角字符的（UTF-8 首字节 `E3`–`E9` 或 `EF`）。
+结果 **113 处**：`core.lua` 47 / `http.lua` 47 / `parser.lua` 9 / `util.lua` 5 /
+`output_wireguard_conf.lua` 3 / `node.lua` 2。
+
+其中 **76 处**是直接的 `return nil, "…"` / `return false, "…"` 形式；另外 37 处是
+同一类文案经别的路径到达用户，例如：
+
+* `core.lua` 的 `M.save_meta(id, { error = "…" })` —— 同一个串既写进 meta
+  （列表页用 `it.error` 显示）又被 `return` 出去，**两处必须用同一个 msgid**；
+* `:format()` / `..` 拼接出来的串（如 `"HTTP 错误 "`、`"响应超过大小限制 ("`）；
+* 表项（`FORMAT_LABELS`）与视图直接渲染的标签（`human_duration`）。
+
+**三处不能照搬 msgid 化**：
+
+| 位置 | 内容 | 为什么特殊 |
+|---|---|---|
+| `node.lua:377` | `"[^,%s，]+"` | 这是**正则字符类**，全角逗号是模式的一部分，翻译会直接破坏关键词拆分 |
+| `util.lua:658` `M.human_duration` | `"已过期"` / `"%d天"` / `"%d小时"` / `"%d分钟"` / `"不足1分钟"` | 由**视图** `view/substore/form.htm:39` 直接渲染，不走 `?err=`；应在视图侧翻译（或 msgid 化后在视图 `_()`） |
+| `parser.lua:103` `FORMAT_LABELS` | `"URI 链接"` / `"Surge/Loon 配置"` | 是**格式显示名**，被插进「混用多种格式」的错误文案里 |
+
+**关键设计点**：`meta.error` 会被 `it.error` 原样显示，所以 msgid 必须**语言中立**
+（英文），翻译只发生在显示边界（视图 / 控制器），后端模块不得 `require("luci.i18n")`
+—— `substore-cron.sh` 会在独立的 lua 进程里跑 `core.sync`，那里没有 LuCI 环境。
+
+## 7.1 / 7.2 / 7.3 的实测探针
+
+```
+$ lua5.1 -e '... out.generate({vless节点}, "surge", {name="P"}) ...'
+[Proxy]
+V = vless, 1.2.3.4, 443, username=u, tls=true        ← Surge 协议清单里没有 vless
+
+$ lua5.1 -e '... out.generate({vmess节点}, "egern", {name="P"}) ...'
+[Proxy]
+M = vmess, 1.2.3.4, 443, username=u, tls=true        ← Egern 的配置是 YAML，不是逗号行
+
+$ lua5.1 -e '... out.generate({vmess+reality节点}, "qx", {name="P"}) ...'
+[server_local]
+vmess=1.2.3.4:443, method=none, password=u, tls-host=s.example.com,
+tls-verification=true, reality-base64-pubkey=PBK, reality-hex-shortid=SID, tag=R
+```
+
+## 7.3 详细说明（唯一一条会影响本次新功能的）
+
+`sample.conf` 的说明原文（`crossutility/Quantumult-X` 仓库，`[server_local]` 前）：
+
+> …if the corresponding line (socks5: `over-tls=true`, http: `over-tls=true`,
+> trojan: `over-tls=true` or `obfs=wss`, anytls: `over-tls=true`, … vmess:
+> `obfs=over-tls` or `obfs=wss`, vless: `obfs=over-tls` or `obfs=wss`) contains
+> the `reality-base64-pubkey` param, then the standard TLS will be replaced with
+> the Reality.
+
+即：QX 里 vmess / vless 的「TLS 标志」写作 `obfs=over-tls`（或 `obfs=wss`），
+trojan / anytls 才写 `over-tls=true`。而 `qx_tls()` 对所有协议统一输出
+`tls-host=` + `tls-verification=true`（探针第三段可见）—— 于是 vmess / vless 的
+`reality-base64-pubkey` **很可能被 QX 忽略**，节点退回普通 TLS。
+
+本次**没有**改 `qx_tls()`：它是既有实现，改动会让**所有** QX vmess / vless TLS
+节点的输出形态变化（不只是 Reality 节点），需要单独决策与回归；而且
+`tls-host` / `tls-verification` 在 QX 里是否对 vmess / vless 同样有效**没有找到
+官方依据**（`sample.conf` 里只用 `obfs=` 形式，但「未出现」不等于「无效」）。
+本次只保证：**只要 TLS 标志生效，公钥就已经写在那行上了**（`qx_reality()` 覆盖
+vmess / vless / trojan / anytls 四类，与 `sample.conf` 的 Reality 条目一致）。
+
+**处置候选**：A. 维持现状 + 本节记录；B. `qx_tls()` 按协议分叉（vmess / vless 走
+`obfs=over-tls` + `obfs-host`，trojan / anytls 维持现状），需要同步更新
+`parser_surge.parse_qx_line` 的读取端与 `tests/protocol_registry_test.lua`。
+
+## 第一轮修复记录（7.5 / 7.6 / 7.8）
+
+**7.5 引号感知切分** —— 新增 `parser_surge.split_fields()`（`parser_surge.lua`），
+`parse_surge_line` 与 `parse_qx_line` 的切分都改走它。规则：
+
+* 先数引号个数，**奇数则退回旧的 `gmatch("[^,]+")`**。订阅内容不可信，落单的
+  引号若被当成「开引号」，会把后面的 `sni=` / `over-tls=` 全吞进同一个字段，
+  比按逗号切更糟。
+* 偶数时按引号开合切分，引号内的逗号不再是分隔符；引号本身保留在字段里，
+  由既有的 `unquote()`（Loon 位置参数）或原样（QX kv 值）处理。
+* 无引号的输入与旧实现**逐字符等价**：同样按逗号切、同样丢弃空字段、同样 trim。
+
+**7.6 Loon 传输参数** —— `parse_surge_line` 增加 `transport=` / `path=` / `host=`
+三个映射（`transport=http` 按 Loon 文档「会按 WebSocket 处理」落成 `ws`），放在
+`ws=true` / `ws-path` / `ws-headers=Host:` 之后，同一行两种写法都出现时**以新写法为准**。
+
+**回归测试**：新增 `tests/parser_surge_fields_test.lua`（36 条断言），覆盖两个
+缺陷的修复点、旧写法回归、无引号输入的逐字符等价、空字段边界、奇数引号边界、
+以及「新写法优先」。文件头写明「修复前应当失败」。
+
+**反向验证**：把 `parser_surge.lua` stash 掉后跑该文件，得到 **12 条 FAIL**，症状
+与预测完全一致（`"pa` / `"p` / `"uu` 被截断的凭据、`net=tcp`、`path=nil`、
+`host=nil`、旧写法的 `/old` 与 `old.example.com` 胜出）；`git stash pop` 后
+**0 条 FAIL**。全套测试 58 个文件、0 失败。
+
+**7.8 删除** —— `root/usr/share/substore/age.lua` 与 `tests/age_test.lua` 已从工作区
+删除。审计复核发现它们并非「写完没人用」的死代码，而是**未完成的半成品**：
+`age.lua` 文件头声称实现了 sha256 / hmac-sha256 / hkdf / chacha20 / poly1305 /
+x25519 / bech32 / armor / STREAM，实际只写到 `M._hkdf_sha256` 就停了，末尾留着
+`-- @@NEXT@@` 续写标记（全仓库仅此一处）；`tests/age_test.lua` 引用的
+`tests/age_vectors/README.md` 根本不存在。两者都**未被 git 跟踪**，删除即不可恢复，
+因此删除前已在仓库外留了一份备份（`~/age-lua-wip-backup-2026-10-05/`，含
+`age.lua` 与 `tests/age_test.lua` 两个原文件）。后续若要继续这条线，从该备份恢复即可。
+
+---
+
 # 附：P2 修复范围（不含本文件所列项）
 
 P2 为审计表中**其余中危 / 低危**项中性质明确、无需另行决策的缺陷，例如

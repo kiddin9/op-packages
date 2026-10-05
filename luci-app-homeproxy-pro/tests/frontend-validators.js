@@ -24,6 +24,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 
 const { loadLuciModule } = require('./lib/luci-module.js');
 
@@ -65,10 +66,24 @@ function ss(method, password) {
 	return { type: 'shadowsocks', shadowsocks_encrypt_method: method, password: password };
 }
 
-/* The two forms pass different protocol sets; use the values from the call
- * sites rather than inventing a third list. */
-const CLIENT_TYPES = [ 'anytls', 'shadowsocks', 'shadowtls', 'snell', 'trojan' ];
-const SERVER_TYPES = [ 'anytls', 'http', 'mixed', 'naive', 'shadowsocks', 'snell', 'socks', 'trojan' ];
+/* The two forms pass different protocol sets.  These used to be hand-written
+ * copies of the call sites, which is exactly why the lists could drift: when
+ * hysteria2/tuic were added to the backend's REQUIRED_CREDENTIALS the
+ * validator's copies stayed behind, an empty password stayed saveable, and the
+ * whole side then died at generation time.  Read them from the production call
+ * sites instead, and let frontend-protocol-inventory.js cross-check them
+ * against the backend tables. */
+function callSiteTypes(rel) {
+	const src = fs.readFileSync(path.join(root, rel), 'utf8');
+	const m = src.match(/validatePassword\(\s*\[([^\]]+)\]/);
+	return m ? m[1].split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean) : [];
+}
+
+const CLIENT_TYPES = callSiteTypes('htdocs/luci-static/resources/view/homeproxy-pro/node.js');
+const SERVER_TYPES = callSiteTypes('htdocs/luci-static/resources/view/homeproxy-pro/server.js');
+
+check('client: the validator list is read from its call site', CLIENT_TYPES.length > 0, JSON.stringify(CLIENT_TYPES));
+check('server: the validator list is read from its call site', SERVER_TYPES.length > 0, JSON.stringify(SERVER_TYPES));
 
 for (const [label, types] of [['client', CLIENT_TYPES], ['server', SERVER_TYPES]]) {
 	const validate = hp.validatePassword(types);

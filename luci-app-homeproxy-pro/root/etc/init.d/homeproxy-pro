@@ -86,6 +86,14 @@ GOOD_DIR="$RUN_DIR/known-good"
 [ -f "$HP_DIR/scripts/runtime/net.sh" ] && . "$HP_DIR/scripts/runtime/net.sh"
 
 log() {
+	# The run directory lives in tmpfs and does not exist on a cold boot, but
+	# the first thing this script logs can be a refusal *before* start_service
+	# reaches its mkdir - the ucode/sing-box version gates and "neither client
+	# nor server is configured" all write here first.  Without this the operator
+	# got rc=1 and no reason at all: measured on the device, /var/run ->
+	# /tmp/run (tmpfs), and the gate lines were appended to a path that did not
+	# exist yet.
+	[ -d "$RUN_DIR" ] || mkdir -p "$RUN_DIR" 2>"/dev/null"
 	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
 }
 
@@ -255,6 +263,12 @@ start_service() {
 		# generator also refuses a rule-set whose file is absent, with a
 		# message that names the rule-set and the directory to copy into.
 		hp_prepare_ruleset_dir "$HP_DIR"
+
+		# Every rule-set the generated configuration references has to exist
+		# BEFORE the generator runs: `sing-box check` opens each local path, and
+		# a missing china_ip4.json used to fail the whole start on a fresh
+		# install (see hp_prepare_generated_inputs).
+		hp_prepare_generated_inputs "$HP_DIR" "1"
 
 		if ! hp_start_generated_config c "$HP_DIR" "$RUN_DIR" "$GOOD_DIR"; then
 			hp_release_stale_intercept
@@ -545,6 +559,12 @@ reload_service() {
 	HP_CANDIDATE_SERVER=0
 
 	if [ "$outbound_node" != "nil" ]; then
+		# Same reason as in start_service: the preflight runs `sing-box check`,
+		# which opens every local rule-set path.  Doing this here also means a
+		# reload after a resource-list update regenerate the files before they
+		# are validated, instead of failing on a missing china_ip4.json.
+		hp_prepare_generated_inputs "$HP_DIR" "1"
+
 		if ! ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"; then
 			log "Error: new client configuration is invalid, reload aborted; the running configuration is kept."
 			return 1

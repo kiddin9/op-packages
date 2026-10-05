@@ -5,8 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=rust-bindgen
-PKG_VERSION:=0.72.1
-PKG_RELEASE:=1
+PKG_VERSION:=0.73.2
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/rust-lang/rust-bindgen/tar.gz/v$(PKG_VERSION)?

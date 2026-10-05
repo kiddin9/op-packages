@@ -85,6 +85,41 @@ function tableKeys(file, name) {
 	return keys;
 }
 
+/* Protocols whose table entry names `password`, for tables whose depth-1
+ * entries are single lines (arrays in adapter.uc, objects in model.uc). */
+function tableKeysWith(file, name, field) {
+	const keys = tableKeys(file, name);
+	const lines = fs.readFileSync(file, 'utf8').split('\n');
+	const head = new RegExp('^export const ' + name + '\\s*=\\s*\\{');
+	const found = [];
+	let start = -1, depth = 0;
+
+	for (let i = 0; i < lines.length; i++)
+		if (head.test(lines[i])) { start = i; depth = 1; break; }
+	if (start === -1)
+		throw new Error('table ' + name + ' not found');
+
+	for (let i = start + 1; i < lines.length; i++) {
+		if (depth === 1) {
+			const m = /^\t([A-Za-z0-9_]+)\s*:/.exec(lines[i]);
+			if (m && keys.includes(m[1]) && new RegExp('(^|[^A-Za-z_])' + field + '([^A-Za-z_]|$)').test(lines[i]))
+				found.push(m[1]);
+		}
+		for (const ch of lines[i]) {
+			if (ch === '{') depth++;
+			else if (ch === '}') depth--;
+		}
+		if (depth <= 0) break;
+	}
+	return found;
+}
+
+function validatorTypes(file) {
+	const src = fs.readFileSync(file, 'utf8');
+	const m = src.match(/validatePassword\(\s*\[([^\]]+)\]/);
+	return m ? m[1].split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean) : [];
+}
+
 let checks = 0, failures = 0;
 function check(what, ok, detail) {
 	checks++;
@@ -181,6 +216,36 @@ const unmapped = [...new Set([...mapped, ...credentials, ...inboundCredentials])
 for (const type of unmapped) {
 	check(`unoffered protocol '${type}' is a documented decision`, type in DELIBERATE,
 		'models it in the backend but no form offers it');
+}
+
+/* --- the required-credential surface must be enforced before save ---------
+ *
+ * A protocol whose backend entry requires a password but whose form validator
+ * does not check it can be saved empty; generation then dies and the user sees
+ * "my setting did not take".  That is how hysteria2/tuic slipped through: the
+ * empty password was accepted at save time and OutboundFactory.create() die()d
+ * at generation time.  The validator lists live in the two view files, so they
+ * are compared against the backend tables here. */
+const clientNeedsPassword = new Set(tableKeysWith(path.join(scripts, 'config/adapter.uc'), 'REQUIRED_CREDENTIALS', 'password'));
+const serverNeedsPassword = new Set(tableKeysWith(path.join(scripts, 'config/model.uc'), 'INBOUND_CREDENTIALS', 'password'));
+const clientValidated = new Set(validatorTypes(path.join(root, 'htdocs/luci-static/resources/view/homeproxy-pro/node.js')));
+const serverValidated = new Set(validatorTypes(path.join(root, 'htdocs/luci-static/resources/view/homeproxy-pro/server.js')));
+
+check('adapter.uc REQUIRED_CREDENTIALS parsed for the password field', clientNeedsPassword.size > 0, [ ...clientNeedsPassword ].join(' '));
+check('model.uc INBOUND_CREDENTIALS parsed for the password field', serverNeedsPassword.size > 0, [ ...serverNeedsPassword ].join(' '));
+
+for (const type of clientList) {
+	if (!clientNeedsPassword.has(type))
+		continue;
+	check(`client form validates the password that ${type} requires`, clientValidated.has(type),
+		`${type} needs a password in adapter.uc but is missing from node.js's validatePassword list`);
+}
+
+for (const type of serverList) {
+	if (!serverNeedsPassword.has(type))
+		continue;
+	check(`server form validates the password that ${type} requires`, serverValidated.has(type),
+		`${type} needs a password in model.uc but is missing from server.js's validatePassword list`);
 }
 
 console.log(`frontend protocol inventory: ${checks} checks, ${failures} failures`);

@@ -170,6 +170,27 @@ cp "$LUCI_DIR"/modules/luci-base/ucode/*.uc "$PREFIX/share/ucode/luci/"
 cp -R "$LUCI_DIR"/modules/luci-base/ucode/controller "$PREFIX/share/ucode/luci/" 2>/dev/null || true
 cp -R "$LUCI_DIR"/modules/luci-base/ucode/template "$PREFIX/share/ucode/luci/" 2>/dev/null || true
 
+# firewall4's ucode module, for the one layer this toolchain could not reach:
+# rendering firewall_post.ut into nft text (tests/ucode/test_firewall_template.sh
+# reports NOT RUN without it).  It has to be the REAL module - a stub would mean
+# asserting on a ruleset the real fw4 never produced - and firewall4 is not part
+# of this toolchain's package set, so the single file the template requires is
+# taken from the firewall4 source at a pinned revision (FIREWALL4_REV overrides
+# it).  A failed fetch is deliberately not fatal: the render then reports NOT RUN
+# (or fails under HP_REQUIRE_FW4=1) exactly as it did before, so this can never
+# turn a missing module into a red build on its own.  fw4.uc's own requires -
+# fs, uci, ubus - are all built above.
+FIREWALL4_REV="${FIREWALL4_REV:-c2ae8c8940a89407da32fbd662d4010ee2c9bbe6}"
+if curl -fsSL \
+	"https://raw.githubusercontent.com/openwrt/firewall4/$FIREWALL4_REV/root/usr/share/ucode/fw4.uc" \
+	-o "$PREFIX/share/ucode/fw4.uc" >/dev/null 2>&1 \
+	&& [ -s "$PREFIX/share/ucode/fw4.uc" ]; then
+	echo "==> staged firewall4's fw4.uc ($FIREWALL4_REV), the template render can run"
+else
+	rm -f "$PREFIX/share/ucode/fw4.uc"
+	echo "==> firewall4's fw4.uc NOT staged; the template render will report NOT RUN"
+fi
+
 # sing-box is not built here, but the generator cases run `sing-box check` and
 # the package targets sing-box >= 1.14, so an older binary reports unknown
 # fields ("handshake_timeout", "certificate_provider") and fails the fixtures.

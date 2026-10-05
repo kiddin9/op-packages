@@ -57,6 +57,8 @@ local TYPE_MAP = {
 	socks = "socks",
 	socks5 = "socks",
 	http = "http",
+	-- anytls：sing-box 自 1.12.0 起支持（option/anytls.go，type 字面量 "anytls"）。
+	anytls = "anytls",
 }
 
 -- 该协议能否落到 sing-box outbound（SSR 无法表达，跳过）
@@ -89,6 +91,24 @@ local function build_tls(n)
 		tls.insecure = bool(n["skip-cert-verify"])
 	elseif n.skip_cert_verify ~= nil then
 		tls.insecure = bool(n.skip_cert_verify)
+	end
+	-- uTLS 指纹与 Reality。键名与 mihomo 完全不同：sing-box 用 snake_case 且
+	-- 都嵌在 tls 里（option/tls.go 的 OutboundUTLSOptions / OutboundRealityOptions）。
+	-- Reality 下 uTLS 是**强制**的：上游 common/tls/reality_client.go 里
+	-- `if options.UTLS == nil || !options.UTLS.Enabled { return nil,
+	-- E.New("uTLS is required by reality client") }` —— 只写 reality 不写 utls
+	-- 会让整份配置起不来。
+	if n.fp then
+		tls.utls = { enabled = true, fingerprint = n.fp }
+	end
+	if n.security == "reality" and n["public-key"] then
+		tls.reality = { enabled = true, public_key = n["public-key"] }
+		if n["short-id"] then tls.reality.short_id = n["short-id"] end
+		-- Reality 规范里 fp 不可省略（缺省 chrome）。节点没带 fp 时补默认值，
+		-- 否则上面那条 uTLS 强制检查会让 sing-box 拒绝加载整份配置。
+		if not tls.utls then
+			tls.utls = { enabled = true, fingerprint = "chrome" }
+		end
 	end
 	return tls
 end
@@ -179,6 +199,10 @@ function M.to_outbound(n, tag)
 		o.uuid = n.uuid or ""
 		o.password = n.password or ""
 		if n.congestion_control then o.congestion_control = n.congestion_control end
+	elseif stype == "anytls" then
+		-- anytls 出站的认证字段就是 password，TLS 走通用的 tls 块
+		-- （parse_anytls 已补 security="tls"，build_tls 因此会写出 tls 对象）。
+		o.password = n.password or ""
 	elseif stype == "wireguard" then
 		local pk = n["private-key"] or n.private_key
 		local ppk = n["peer-public-key"] or n.peer_public_key or n["public-key"] or n.public_key

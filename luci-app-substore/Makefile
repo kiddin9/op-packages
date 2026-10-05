@@ -9,8 +9,8 @@ include $(TOPDIR)/rules.mk
 PKG_NAME:=luci-app-substore
 # 版本约定：每次提交 PKG_RELEASE +1（2.1.2-r1 ~ r9）；
 # 达到 r10 时 PKG_VERSION 末位 +1（2.1.2 -> 2.1.3），PKG_RELEASE 重置为 1。
-PKG_VERSION:=2.7.1
-PKG_RELEASE:=18
+PKG_VERSION:=2.7.2
+PKG_RELEASE:=19
 
 LUCI_DEPENDS:=+luci-lua-runtime +luci-compat
 
@@ -78,9 +78,10 @@ define Package/luci-app-substore/install
 	$(INSTALL_DIR) $(1)/usr/share/rpcd/acl.d
 	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-substore.json $(1)/usr/share/rpcd/acl.d/luci-app-substore.json
 
-	# 简体中文翻译（运行时 zh-cn 时由 luci.template.parser 自动加载 *.zh-cn.lmo）
-	$(INSTALL_DIR) $(1)/usr/lib/lua/luci/i18n
-	po2lmo ./po/zh-cn/substore.po $(1)/usr/lib/lua/luci/i18n/substore.zh-cn.lmo
+	# 简体中文翻译**不打进本包**：luci.mk 会按 po/<lang>/ 目录自动生成独立的
+	# 翻译包 luci-i18n-substore-zh-cn（见文件末尾的说明）。
+	# 这里再 po2lmo 一份会把译文硬编译进 ipk/apk，与那个包安装同一个路径
+	# /usr/lib/lua/luci/i18n/substore.zh-cn.lmo，装两个包时互相覆盖。
 endef
 
 define Package/luci-app-substore/postinst
@@ -93,4 +94,17 @@ define Package/luci-app-substore/postinst
 }
 endef
 
+# 翻译包 luci-i18n-substore-zh-cn 由 luci.mk 自动生成，本文件不手写它的定义。
+# 机制（feeds/luci/luci.mk）：
+#   LUCI_LANGUAGES := po/ 下的目录名（去掉 templates）
+#   逐个 lang：定义了 LUCI_LANG.<lang> 才生成，语言码取
+#   $(firstword $(LUCI_LC_ALIAS.<lang>) <lang>)，包名 luci-i18n-<LUCI_BASENAME>-<语言码>
+#   （LUCI_BASENAME = luci-app-substore 去掉 luci-app- 前缀 = substore）。
+# 于是有两条硬约束：
+#   1) 目录名必须叫 zh_Hans —— 那是 LUCI_LANG 的键。叫 zh-cn 时
+#      LUCI_LANG.zh-cn 不存在，luci.mk 直接跳过，**不报错也不生成包**，
+#      译文会悄无声息地消失。
+#   2) 包名与 .lmo 文件名取的是别名 zh-cn（LUCI_LC_ALIAS.zh_Hans=zh-cn），
+#      即 luci-i18n-substore-zh-cn / substore.zh-cn.lmo，正好等于运行时
+#      luci.i18n 查找所用的语言代码，也等于改造前硬编译进主包的那份文件名。
 $(eval $(call BuildPackage,luci-app-substore))

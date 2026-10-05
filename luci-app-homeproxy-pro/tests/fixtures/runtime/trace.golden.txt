@@ -8,6 +8,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -168,6 +170,10 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+log WARNING: IPv6 support is ON but etc/homeproxy-pro/resources/china_ip6.txt has 0 usable prefixes.
+log WARNING: mainland IPv6 cannot be told apart from foreign IPv6, so IPv6 is passed through UNPROXIED (both sides of the split degrade). Run: etc/homeproxy-pro/scripts/update_resources.sh china_ip6
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -457,6 +463,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -528,6 +536,8 @@ log sing-box 1.14.0 started.
 prime start rc=0
 log Reloading service...
 config_load homeproxy-pro
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 var/run/homeproxy-pro/candidate/sing-box-c.json
 chmod 600 etc/crontabs/root
@@ -599,6 +609,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 log Activating the client configuration validated by the reload preflight.
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -914,6 +926,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 log Starting with the last known-good client configuration.
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -1080,6 +1094,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -1326,6 +1342,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -1614,6 +1632,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart
@@ -1771,6 +1791,8 @@ uname -r
 ip route show default
 ip -6 route show default
 ifstatus wan
+ucode -S etc/homeproxy-pro/scripts/runtime/domain_ruleset.uc etc/homeproxy-pro/resources/china_list.txt etc/homeproxy-pro/resources/china-domain.json
+chown sing-box:sing-box etc/homeproxy-pro/resources/china-domain.json
 ucode -S etc/homeproxy-pro/scripts/generate_client.uc
 chmod 600 etc/crontabs/root
 init.d/cron restart

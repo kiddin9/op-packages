@@ -15,6 +15,9 @@
  *   - a subscription node dropped from the cache is deleted
  *   - a new node in the cache but not in UCI is added under the
  *     md5(groupHash + label) section name
+ *   - a node whose label changed but whose content did not keeps its
+ *     section (and with it every reference to it), and is not re-added
+ *   - two stored sections with the same content: only one may claim it
  *
  * PR-03 changes the input contract: Repository now accepts
  * canonical Node objects (post- parser/normalize), and flattens
@@ -413,6 +416,149 @@ expect('scrub: clean state changes nothing', scrub2.changed, 0);
  *
  *   U+4E2D U+6587  ->  e4 b8 ad e6 96 87
  *   U+1F600        ->  f0 9f 98 80                                          */
+/* --- a renamed node keeps its section --------------------------------- */
+
+/* Section names are md5(grouphash + label), so a subscription that renames a
+ * node used to make the repository delete the old section and add an identical
+ * one under the new name - taking every reference to it (config.main_node,
+ * main_udp_node, the urltest member lists) with it.  Measured on the device
+ * before this: "Removing node: OLD-NAME." + "Adding node: NEW-NAME.", the
+ * section name changed, and main_node was switched to the new section.  The
+ * repository recognises the stored section by its *content* now: same server,
+ * same credentials, new label. */
+{
+	const uci3 = cursor(ARGV[0]);
+	uci3.load(CFG);
+
+	const groupR = 'groupRename';
+	const u_renamed = 'cfgRENAMED001';
+
+	uci3.set(CFG, u_renamed, TYPE);
+	uci3.set(CFG, u_renamed, 'label', 'old-name');
+	uci3.set(CFG, u_renamed, 'grouphash', groupR);
+	uci3.set(CFG, u_renamed, 'type', 'vless');
+	uci3.set(CFG, u_renamed, 'address', 'rename.example.com');
+	uci3.set(CFG, u_renamed, 'port', '443');
+	uci3.commit(CFG);
+	uci3.load(CFG);
+
+	const r_node = canonical_node({
+		grouphash: groupR,
+		label: 'new-name',
+		type: 'vless',
+		address: 'rename.example.com',
+		port: '443'
+	});
+	const r_cache = { [groupR]: { [md5(groupR + 'new-name')]: r_node } };
+
+	const r_result = Repository.apply_nodes(uci3, CFG, TYPE, r_cache, [[ r_node ]], LOG);
+
+	expect('rename: not counted as removed', r_result.removed, 0);
+	expect('rename: not counted as added',   r_result.added,   0);
+
+	uci3.commit(CFG);
+	uci3.load(CFG);
+
+	expect('rename: section kept under its old name',
+		'label' in uci3.get_all(CFG, u_renamed), true);
+	expect('rename: label updated in place',
+		uci3.get_all(CFG, u_renamed).label, 'new-name');
+	expect('rename: nothing added under the new name',
+		'label' in uci3.get_all(CFG, md5(groupR + 'new-name')), false);
+}
+
+/* Two stored sections with identical content must not both update themselves
+ * into the same node: the first one claims the content, the duplicate is
+ * pruned exactly as before. */
+{
+	const uci4 = cursor(ARGV[0]);
+	uci4.load(CFG);
+
+	const groupD = 'groupDuplicate';
+	const u_dup_a = 'cfgDUPA00001';
+	const u_dup_b = 'cfgDUPB00001';
+
+	for (let section in [ u_dup_a, u_dup_b ]) {
+		uci4.set(CFG, section, TYPE);
+		uci4.set(CFG, section, 'label', section);
+		uci4.set(CFG, section, 'grouphash', groupD);
+		uci4.set(CFG, section, 'type', 'vless');
+		uci4.set(CFG, section, 'address', 'dup.example.com');
+		uci4.set(CFG, section, 'port', '443');
+	}
+	uci4.commit(CFG);
+	uci4.load(CFG);
+
+	const d_node = canonical_node({
+		grouphash: groupD,
+		label: 'renamed-dup',
+		type: 'vless',
+		address: 'dup.example.com',
+		port: '443'
+	});
+	const d_cache = { [groupD]: { [md5(groupD + 'renamed-dup')]: d_node } };
+
+	const d_result = Repository.apply_nodes(uci4, CFG, TYPE, d_cache, [[ d_node ]], LOG);
+
+	expect('duplicate content: one section claims it', d_result.added, 0);
+	expect('duplicate content: the other is pruned', d_result.removed, 1);
+
+	uci4.commit(CFG);
+	uci4.load(CFG);
+
+	const survived = filter([ u_dup_a, u_dup_b ], (s) => ('label' in uci4.get_all(CFG, s)));
+	expect('duplicate content: exactly one section survives', length(survived), 1);
+	expect('duplicate content: it carries the new label',
+		uci4.get_all(CFG, survived[0]).label, 'renamed-dup');
+}
+
+/* --- the orchestrator's key is the section name ----------------------- */
+
+/* Two servers of one subscription can share a label - it is whatever the
+ * provider put after '#'.  The orchestrator keeps both and separates them by
+ * the content fingerprint, so the second node sits in the cache under a key
+ * that is NOT md5(grouphash + label).  The repository has to write that key as
+ * the section name, or both nodes end up in one section and one is lost. */
+{
+	const uci5 = cursor(ARGV[0]);
+	uci5.load(CFG);
+
+	const groupS = 'groupSharedLabel';
+	const s_first = canonical_node({
+		grouphash: groupS,
+		label: 'same-label',
+		type: 'vless',
+		address: 'first.example.com',
+		port: '443'
+	});
+	const s_second = canonical_node({
+		grouphash: groupS,
+		label: 'same-label',
+		type: 'vless',
+		address: 'second.example.com',
+		port: '443'
+	});
+	const disambiguated = md5(groupS + 'same-label' + chr(0x00) + 'different-content');
+	const s_cache = {
+		[groupS]: {
+			[md5(groupS + 'same-label')]: s_first,
+			[disambiguated]: s_second
+		}
+	};
+
+	const s_result = Repository.apply_nodes(uci5, CFG, TYPE, s_cache,
+		[[ s_first ], [ s_second ]], LOG);
+	expect('shared label: both nodes are added', s_result.added, 2);
+
+	uci5.commit(CFG);
+	uci5.load(CFG);
+
+	expect('shared label: the first is under md5(grouphash + label)',
+		uci5.get_all(CFG, md5(groupS + 'same-label')).address, 'first.example.com');
+	expect('shared label: the second is under the disambiguated key',
+		uci5.get_all(CFG, disambiguated).address, 'second.example.com');
+}
+
 const MD5_CJK = chr(0xe4) + chr(0xb8) + chr(0xad) + chr(0xe6) + chr(0x96) + chr(0x87);
 const MD5_EMOJI = chr(0xf0) + chr(0x9f) + chr(0x98) + chr(0x80);
 

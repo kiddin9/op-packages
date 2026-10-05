@@ -196,6 +196,13 @@ function release_lock() {
 
 function main() {
 	const node_cache = {};
+
+	/* Duplicate detection, kept apart from node_cache on purpose: node_cache
+	 * is keyed by *section name* now (the Repository uses that key as the
+	 * section it writes), so folding a content fingerprint into it would make
+	 * the fingerprint look like a section. */
+	const conf_seen = {};
+	const name_seen = {};
 	const node_result = [];
 
 	const ubus = connect();
@@ -217,6 +224,8 @@ function main() {
 		url = replace(url, /#.*$/, '');
 		const groupHash = md5(url);
 		node_cache[groupHash] = {};
+		conf_seen[groupHash] = {};
+		name_seen[groupHash] = {};
 
 		/* Keep the lock's mtime current for as long as this run is alive.
 		 * The stale window (LOCK_STALE) is what lets a later run reclaim a
@@ -250,7 +259,7 @@ function main() {
 
 			if (filter_check(flat.label, filter_mode, filter_keywords, log))
 				log(sprintf('Skipping blacklist node: %s.', flat.label));
-			else if (node_cache[groupHash][confHash] || node_cache[groupHash][nameHash])
+			else if (conf_seen[groupHash][confHash])
 				log(sprintf('Skipping duplicate node: %s.', flat.label));
 			else {
 				/* normalize() first: the canonical Node is the only
@@ -283,9 +292,28 @@ function main() {
 
 				apply_policy(node_canonical, { allow_insecure, packet_encoding });
 
+				/* Two different servers can carry the same label - it is
+				 * whatever the provider put after '#' - and section names
+				 * hash the label, so the second one used to be dropped
+				 * here ("Skipping duplicate node") and, even if it were
+				 * let through, would have been written into the first
+				 * one's section.  Disambiguate with the content
+				 * fingerprint: the first keeps md5(group + label) (so
+				 * existing sections and every reference to them survive
+				 * an upgrade), the collision gets a key of its own. */
+				let section_key = nameHash;
+
+				if (name_seen[groupHash][nameHash]) {
+					section_key = md5(groupHash + label + '\x00' + confHash);
+					log(sprintf('Two servers are labelled %s; keeping both (section %s).',
+						flat.label, section_key));
+				}
+
+				conf_seen[groupHash][confHash] = true;
+				name_seen[groupHash][nameHash] = true;
+
 				push(node_result, [ node_canonical ]);
-				node_cache[groupHash][confHash] = node_canonical;
-				node_cache[groupHash][nameHash] = node_canonical;
+				node_cache[groupHash][section_key] = node_canonical;
 
 				count++;
 			}
@@ -315,6 +343,17 @@ function main() {
 	);
 	const added = repository_result.added,
 	      removed = repository_result.removed;
+
+	/* A subscription URL the user deleted leaves its nodes without a cache
+	 * entry, which apply_nodes() treats as "the fetch failed, keep them" - so
+	 * they stayed in the configuration forever (still in the sing-box outbounds
+	 * and urltest pools, and shown in the Nodes tab like a user node).  The
+	 * configured URL set is the one thing that tells the two cases apart, and
+	 * this function has it; `node_cache` is keyed by every URL this run
+	 * processed, including the ones whose fetch failed. */
+	const orphaned = Repository.prune_orphan_nodes(
+		uci, uciconfig, ucinode, keys(node_cache), log
+	);
 
 	/* The 6 inline uci.set/commit sites
 	 * (main_urltest_nodes cleanup, main_node switch on missing
@@ -348,9 +387,41 @@ function main() {
 	 *
 	 * commit() returns true on success, so a failure is detected here rather
 	 * than by generating a configuration from a half-written file. */
+	const config_before_commit = readfile(CONFIG_FILE);
+
 	if (uci.commit(uciconfig) !== true) {
 		log('FAILED to commit the new configuration; the previous configuration is kept.');
 		return false;
+	}
+
+	/* Nothing changed: the commit rewrote the same bytes.  Every mutation was
+	 * a no-op - the subscription returned exactly the nodes that are already
+	 * stored, none was added, removed, renamed or updated, no reference
+	 * needed repairing.
+	 *
+	 * Reloading here means stop+start of both instances for a configuration
+	 * that is already running, and during that window stop_service keeps the
+	 * DNS layer pointing at sing-box's dns-in while the intercept layer is
+	 * gone - "a few seconds of failed lookups" in its own words - for
+	 * nothing.  Measured on the device: a client configuration that differs
+	 * only in `control.listen_interfaces`, `control.lan_direct_ipv4_ips` or
+	 * `control.wan_direct_ipv4_ips` renders byte-identical, so the generated
+	 * bytes are the strongest signal available here (they also catch an
+	 * option updated in place, which the added/removed counts cannot see).
+	 *
+	 * Not reloading is safe *because* nothing changed: this script's only
+	 * side effect is this file.  The rule-sets, the nft sets, the DNS
+	 * snippets and the crontab all derive from it, and the Repository staged
+	 * every mutation on the one cursor above - so there is nothing that
+	 * could have been left unapplied.  (The init script must NOT grow the
+	 * same shortcut: a reload also re-applies layers that do not reach the
+	 * generated file, so "bytes equal" is not a licence to skip it there.) */
+	if ((readfile(CONFIG_FILE) || '') === (config_before_commit || '')) {
+		log(sprintf('%s nodes added, %s removed, %s orphaned; nothing changed, the service was not reloaded.',
+			added, removed, orphaned));
+		log('Successfully updated subscriptions.');
+
+		return true;
 	}
 
 	/* Reload once, after the whole candidate set is committed
@@ -383,7 +454,7 @@ function main() {
 		 * sing-box check warning that was truncated out of view. */
 		log('Warning: reload stderr was truncated (>512 KiB); the captured output is incomplete.');
 
-	log(sprintf('%s nodes added, %s removed.', added, removed));
+	log(sprintf('%s nodes added, %s removed, %s orphaned.', added, removed, orphaned));
 	log('Successfully updated subscriptions.');
 }
 

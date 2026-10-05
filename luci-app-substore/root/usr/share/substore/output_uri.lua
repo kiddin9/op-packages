@@ -106,6 +106,12 @@ function M.to_share_uri(n)
 		if n.path then q[#q + 1] = "path=" .. url_encode(n.path) end
 		if n.host then q[#q + 1] = "host=" .. url_encode(n.host) end
 		if n.flow then q[#q + 1] = "flow=" .. url_encode(n.flow) end
+		-- Reality 参数：键名 pbk / sid / spx 来自 Xray 分享链接规范
+		-- （XTLS/Xray-core discussion #716），mihomo 与 v2rayN 都按它解析。
+		-- 不写出 pbk 的话，链接导入到任何客户端都得不到 Reality 配置，节点不可用。
+		if n["public-key"] then q[#q + 1] = "pbk=" .. url_encode(n["public-key"]) end
+		if n["short-id"] then q[#q + 1] = "sid=" .. url_encode(n["short-id"]) end
+		if n["spider-x"] then q[#q + 1] = "spx=" .. url_encode(n["spider-x"]) end
 		return "vless://" .. (n.uuid or "") .. "@" .. server .. ":" .. tostring(port)
 			.. "?" .. table.concat(q, "&") .. "#" .. name
 	end
@@ -118,6 +124,20 @@ function M.to_share_uri(n)
 		if n.fp then q[#q + 1] = "fp=" .. url_encode(n.fp) end
 		return "trojan://" .. url_encode(n.password or "") .. "@" .. server .. ":" .. tostring(port)
 			.. "?" .. table.concat(q, "&") .. "#" .. name
+	end
+
+	if proto == "anytls" then
+		-- anytls:// 分享链接（由 anytls-go 定义）：anytls://[auth@]host[:port]/?sni=..&insecure=..
+		-- 密码放在 userinfo（auth）位置，端口缺省 443。URI 规范只定义了 sni 与
+		-- insecure 两个查询参数，alpn 之类只存在于各家客户端的配置文件里 ——
+		-- 写进链接是非法参数（严格解析器会拒绝，宽松的会静默忽略）。
+		local q = {}
+		if n.sni then q[#q + 1] = "sni=" .. url_encode(n.sni) end
+		local ins = insecure_flag(n)
+		if ins ~= nil then q[#q + 1] = "insecure=" .. ins end
+		local suffix = #q > 0 and ("?" .. table.concat(q, "&")) or ""
+		return "anytls://" .. url_encode(n.password or "") .. "@" .. server .. ":" .. tostring(port)
+			.. suffix .. "#" .. name
 	end
 
 	if proto == "hysteria2" or proto == "hysteria" then

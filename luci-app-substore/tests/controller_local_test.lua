@@ -237,7 +237,10 @@ CORE_STUB.write_nodes = function() WRITE_CALLS = WRITE_CALLS + 1; return false e
 FORM = { token = "t", id = "s00000001", idx = "1", content = VALID_NODE }
 ctl.action_node_save()
 check("node_save write failure reports error", has_err())
-check("node_save write failure surfaced reason", URLENC[#URLENC] == "写入节点数据失败")
+-- 控制器文案已接入 i18n（msgid 是英文），本测试的 luci.i18n stub 是恒等翻译，
+-- 因此这里断言的是英文 msgid 原文；中文译文由 po/zh_Hans/substore.po 提供，
+-- 由 tests/view_i18n_test.lua 校验其完整性。
+check("node_save write failure surfaced reason", URLENC[#URLENC] == "Failed to write node data")
 
 -- 无 token：拒绝执行，但**必须回显**（见上面 M28 的说明）
 reset()

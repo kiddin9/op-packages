@@ -43,15 +43,37 @@ local function build_stream_settings(n)
 
 	-- 安全层
 	local security = n.security
-	if security and security ~= "none" then
-		ss.security = security
-		local sni = n.sni or n.servername
+	local sni = n.sni or n.servername
+	if security == "reality" and n["public-key"] then
+		-- Reality 必须写 realitySettings，**不是** tlsSettings。Xray 的 StreamConfig
+		-- 校验是 `case "reality": if c.REALITYSettings == nil { return nil,
+		-- errors.New(`REALITY: Empty "realitySettings".`) }` —— 写成 tlsSettings 的
+		-- reality 节点会被直接拒绝，一个节点废掉整份配置。
+		-- 客户端字段名取自 infra/conf/transport_security.go 的 REALITYConfig：
+		-- fingerprint / serverName / publicKey / shortId / spiderX（外加 show）。
+		-- 注意 publicKey 是**客户端**侧的键名（privateKey 只属于服务端），
+		-- spiderX 在 Xray 侧缺省为 "/"。
+		local rs = { show = false, fingerprint = n.fp or "chrome" }
+		if sni then rs.serverName = sni end
+		rs.publicKey = n["public-key"]
+		if n["short-id"] then rs.shortId = n["short-id"] end
+		if n["spider-x"] then rs.spiderX = n["spider-x"] end
+		ss.security = "reality"
+		ss.realitySettings = rs
+	elseif security and security ~= "none" then
+		-- security 声称 reality 却没有 public-key 时也走这里，但要把 security 降回
+		-- tls：REALITYConfig.Build() 在公钥为空时直接报错（客户端分支是
+		-- `empty "password"`，PublicKey 可由 Password 推导），而 StreamConfig 又要求
+		-- security == "reality" 必须配 realitySettings —— 照抄写出去会让 Xray
+		-- 拒绝加载**整份**配置。没有公钥就没有 Reality 可言，降级成普通 TLS
+		-- 至少配置能加载（与 sing-box / mihomo / QX 三个输出端的行为一致：
+		-- 它们同样只在有 public-key 时才写 Reality 配置）。
+		ss.security = (security == "reality") and "tls" or security
 		if sni then
 			ss.tlsSettings = { serverName = sni, allowInsecure = false }
 		end
 	elseif n.tls and n.tls ~= "none" and n.tls ~= false then
 		ss.security = "tls"
-		local sni = n.sni or n.servername
 		if sni then ss.tlsSettings = { serverName = sni } end
 	end
 

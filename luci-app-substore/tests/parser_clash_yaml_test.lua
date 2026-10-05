@@ -45,7 +45,7 @@ proxies:
     alpn:
       - h2
       - http/1.1
-    fp: chrome
+    client-fingerprint: chrome
   - name: TestTrojan
     type: trojan
     server: 3.3.3.3
@@ -115,7 +115,10 @@ if nodes and #nodes >= 2 then
 	check("vless uuid", n2.uuid == "vless-uuid-123")
 	check("vless sni", n2.sni == "example.org")
 	check("vless alpn", n2.alpn ~= nil)
-	check("vless fp", n2.fp == "chrome")
+	-- 键名必须是 mihomo 的 client-fingerprint（fixture 里就是它）。
+	-- 旧 fixture 用的是 `fp: chrome` —— 那是本项目自己输出端的错误键名，
+	-- 拿它当「标准」会让解析器读不到真正的 mihomo 配置（见下文的兼容性用例）。
+	check("vless client-fingerprint", n2.fp == "chrome")
 end
 
 if nodes and #nodes >= 3 then
@@ -297,6 +300,48 @@ local hash_plain = parser.parse("proxies:\n  - name: A\n    type: ss\n    server
 check("hash without space kept", hash_plain[1] ~= nil and hash_plain[1].password == "p#ss")
 local hash_quoted = parser.parse('proxies:\n  - name: A\n    type: ss\n    server: 1.1.1.1\n    port: 443\n    cipher: aes-128-gcm\n    password: "a # b"\n')
 check("hash inside quotes kept", hash_quoted[1] ~= nil and hash_quoted[1].password == "a # b")
+
+-- ---------- uTLS 指纹键名：client-fingerprint 为主，fp 为兼容兜底 ----------
+-- mihomo 的键是 client-fingerprint；`fp` 从来不是 mihomo 的键，它是本项目旧版本
+-- 自己输出时写错的键名（output_clash_meta 已改）。解析端两者都读：
+--   * 只读 fp  → 真正的 mihomo 配置导入后指纹全丢（本次修复的 bug）；
+--   * 只读 client-fingerprint → 用旧版本导出的配置导入后指纹全丢。
+local cfp = parser.parse([[
+proxies:
+  - name: A
+    type: vless
+    server: 1.1.1.1
+    port: 443
+    uuid: u
+    tls: true
+    client-fingerprint: chrome
+]])
+check("client-fingerprint parsed", cfp[1] ~= nil and cfp[1].fp == "chrome")
+
+local legacy_fp = parser.parse([[
+proxies:
+  - name: A
+    type: vless
+    server: 1.1.1.1
+    port: 443
+    uuid: u
+    tls: true
+    fp: firefox
+]])
+check("legacy fp still parsed", legacy_fp[1] ~= nil and legacy_fp[1].fp == "firefox")
+
+-- hysteria2 的 `fingerprint` 是证书固定（SHA256 pin），不是 uTLS 指纹，
+-- 不得映射到模型的 fp（语义不同，映射过去会让输出端写出一个错误的指纹）。
+local pin = parser.parse([[
+proxies:
+  - name: A
+    type: hysteria2
+    server: 1.1.1.1
+    port: 443
+    password: p
+    fingerprint: aa:bb:cc
+]])
+check("cert-pin fingerprint not mapped to fp", pin[1] ~= nil and pin[1].fp == nil)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -7,7 +7,7 @@ local parser = require("substore.parser")
 
 local M = {}
 
-M.version = "2.7.1"
+M.version = "2.7.2"
 M.DATA_DIR = "/etc/substore"
 M.LIST_FILE = M.DATA_DIR .. "/subscriptions.json"
 M.NODES_DIR = M.DATA_DIR .. "/nodes"
@@ -26,8 +26,10 @@ M.TIMEOUT = 20
 -- 一旦漂移，勾选框就会生成一个永远匹配不到任何节点的 proto_filter，
 -- 而症状是「勾了没用」—— 不会报错，最难查。
 -- 不含 socks5：解析阶段已把它归一成 socks（见 parser.lua 的说明）。
-M.RULE_PROTOS = { "vmess", "vless", "trojan", "shadowsocks", "ssr",
-	"hysteria2", "tuic", "hysteria", "wireguard", "socks" }
+-- 直接引用 node.PROTOS，而不是再写一份字面量：两份逐字相同的清单必然会漂移，
+-- 而漂移的症状是「勾了没用」且不报错（最难查的一类）。node.lua 只 require
+-- substore.util，不反向依赖 core，因此这里引用它不会形成循环依赖。
+M.RULE_PROTOS = require("substore.node").PROTOS
 
 -- 「订阅客户端类型」预设。部分机场（如 Allblue 加速器）按 User-Agent 区分客户端：
 -- 同一个订单链接，只有用**该订单绑定的客户端**的 UA 去请求才返回真实节点，

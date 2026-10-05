@@ -80,6 +80,16 @@ case "$url" in
 	say "HTTP error 404"
 	exit 8
 	;;
+*HP_T_STUB_TRUNCATED*)
+	# A response that declared more bytes than it delivered: part of the body
+	# IS on stdout, and the applet exits 4.  This is the shape the old pipeline
+	# (`uclient-fetch -O - | head -c N`) reported as a complete fetch, because
+	# system() returns head's status and the body was non-empty - measured on
+	# the device with a Content-Length of 244 and 80 bytes sent.
+	printf 'vless://11111111-1111-1111-1111-111111111111@a.example.com:443#PARTIAL'
+	say "Connection reset prematurely"
+	exit 4
+	;;
 *HP_T_STUB_BINARY*)
 	# A 200 with a binary body.  This is the shape that used to be reported
 	# as "fetch failed: … Download completed (34185 bytes)".

@@ -116,8 +116,9 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 	 * as mainland.  It used to be geoip-cn, with china-ip added later as a
 	 * correction for the two disagreeing - two rule-sets, one of them
 	 * redundant in this mode, neither able to see the other's data. */
-	if (ctx.routing_mode === 'bypass_mainland_china'
-		|| ctx.routing_mode === 'proxy_mainland_china') {
+	if (ctx.china_ip4_ready
+		&& (ctx.routing_mode === 'bypass_mainland_china'
+			|| ctx.routing_mode === 'proxy_mainland_china')) {
 		push(config.route.rules, {
 			action: 'resolve',
 			strategy: (ctx.ipv6_support !== '1') ? 'prefer_ipv4' : null
@@ -173,6 +174,14 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 	/* The route half of the mode's default policy - the other consumer of
 	 * ctx.proxy_fallback, and the reason dns.final and this line are
 	 * asserted together per mode. */
+	/* TUN mode carries no per-outbound `routing_mark` (self_mark is null there,
+	 * see context.uc), so sing-box's own dials - including the one to the node -
+	 * were unmarked and the firewall's TUN output chain captured them; the
+	 * node-address bypass existed for tproxy only.  `default_mark` stamps every
+	 * outbound socket with the same value the firewall's TUN chain exempts. */
+	if (match(ctx.proxy_mode, /tun/))
+		config.route.default_mark = strToInt(ctx.tun_self_mark);
+
 	config.route.final = ctx.proxy_fallback ? 'main-out' : 'direct-out';
 
 	/* --- proxy-mode rule_set block ----------------------------------- */
@@ -222,11 +231,19 @@ function build_route_proxy(config, dm, ctx, direct_overrides) {
 	 *                resolver to the mode default, so declaring it there would
 	 *                load 111k suffixes for a rule that does not exist. */
 	if (declaresBuiltinRuleSets(ctx.routing_mode)) {
-		push(config.route.rule_set, {
-			type: 'local',
-			tag: 'china-ip',
-			path: HP_DIR + '/resources/china_ip4.json'
-		});
+		/* Declared only when the file is actually there - the same rule the v6
+		 * and domain halves already follow, and the reason a fresh install no
+		 * longer dies: a `path` that does not exist fails `sing-box check` and
+		 * takes the whole configuration (and the service) with it.  The
+		 * rule-set is produced before generation now, so this is the
+		 * belt-and-braces case (a failed generation, a read-only fs). */
+		if (ctx.china_ip4_ready) {
+			push(config.route.rule_set, {
+				type: 'local',
+				tag: 'china-ip',
+				path: HP_DIR + '/resources/china_ip4.json'
+			});
+		}
 
 		/* Declared only when the file is actually there: a rule_set pointing
 		 * at a missing file takes the whole config down with it, and a router

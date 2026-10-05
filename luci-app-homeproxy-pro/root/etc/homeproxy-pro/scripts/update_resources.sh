@@ -115,7 +115,13 @@ check_list_update() {
 
 	# --header takes '=': the space-separated form is rejected, and the value
 	# has to stay ONE argv element, which the quoting around it preserves.
-	local list_info="$($fetch ${github_header:+--header="$github_header"} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
+	# `local x="$(...)"` returns the status of `local`, not of the command
+	# substitution - measured on the device: busybox ash gives 0 even when the
+	# fetch failed.  That made the branch below dead and reported a network
+	# failure as "Failed to get the latest version, please retry later", which
+	# loses the difference between "could not fetch" and "fetched, got nothing".
+	local list_info
+	list_info="$($fetch ${github_header:+--header="$github_header"} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
 	local fetch_exit=$?
 
 	if [ $fetch_exit -ne 0 ]; then
@@ -278,10 +284,27 @@ case "$1" in
 	# script is exercised off-device where a non-busybox sed fails it with
 	# "invalid command code".  Edit through a temp file, the way the crontab
 	# helper in runtime/service.sh does.
-	check_list_update "$1" "Loyalsoldier/v2ray-rules-dat" "release" "direct-list.txt" && \
-		sed -e "s/full://g" -e "/:/d" "$RESOURCES_DIR/china_list.txt" > "$RESOURCES_DIR/china_list.txt.hp-new" && \
-		mv -f "$RESOURCES_DIR/china_list.txt.hp-new" "$RESOURCES_DIR/china_list.txt" || \
-		rm -f "$RESOURCES_DIR/china_list.txt.hp-new"
+	# The status has to survive the post-processing.  As one &&...|| chain it
+	# did not: when check_list_update returned 3 ("already current") or 1
+	# (fetch failed) the chain short-circuited into `rm -f`, whose status 0
+	# became the script's - so update_resources_cron.sh counted "no change" as
+	# a change and reloaded the service every single day, and the LuCI button
+	# reported "Successfully updated." for a fetch that never happened.
+	# Measured on the device: china_list exited 0 for both the failure and the
+	# up-to-date case, while china_ip4 exited 1 / 3 correctly.
+	check_list_update "$1" "Loyalsoldier/v2ray-rules-dat" "release" "direct-list.txt"
+	rc=$?
+	[ "$rc" = "0" ] || exit "$rc"
+
+	# 0 means a new list was just installed; strip the `full:` prefixes and the
+	# colon-carrying entries before anything else reads it.
+	if sed -e "s/full://g" -e "/:/d" "$RESOURCES_DIR/china_list.txt" > "$RESOURCES_DIR/china_list.txt.hp-new" \
+		&& mv -f "$RESOURCES_DIR/china_list.txt.hp-new" "$RESOURCES_DIR/china_list.txt"; then
+		exit 0
+	fi
+	rm -f "$RESOURCES_DIR/china_list.txt.hp-new"
+	log "[CHINA_LIST] Failed to normalise the downloaded list; leaving it as downloaded."
+	exit 1
 	;;
 *)
 	printf '%s\n' "Usage: $0 <china_ip4 / china_ip6 / gfw_list / china_list>"

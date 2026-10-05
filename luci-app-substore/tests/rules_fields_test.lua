@@ -101,6 +101,23 @@ check("controller uses core.RULE_PROTOS", ctl:find("RULE_PROTOS", 1, true) ~= ni
 check("controller has no hardcoded proto list",
 	ctl:find('ipairs({"vmess"', 1, true) == nil)
 
+-- ---------- 静态：nodes.htm 的协议下拉不得另抄一份清单 ----------
+-- nodes.htm 是**节点筛选页**（GET 表单，单个 proto 下拉），不是规则表单：它没有
+-- rename_map / proto_filter_* 复选框，proto 块也不是 ipairs(core.RULE_PROTOS)。
+-- 因此它**不能**放进上面的 TEMPLATES —— 那组断言会要求它提交那两个字段并渲染
+-- proto_filter 复选框，加进去必然误报（这是本轮刻意不做的事）。
+--
+-- 但它曾经正是「协议清单的第 3 份拷贝」，而且长期没被发现，后果是节点页的
+-- 「类型」下拉永远选不到新协议（勾了没用、不报错）。所以单独断言它遍历共享清单、
+-- 且不再内联硬编码字面量（旧写法就是 `ipairs({"vmess","vless",...})`）。
+local NODES_VIEW = "root/usr/lib/lua/luci/view/substore/nodes.htm"
+local nv = util.read_file(NODES_VIEW) or ""
+check("nodes.htm iterates shared proto list", nv:find("ipairs(node.PROTOS)", 1, true) ~= nil)
+check("nodes.htm has no inline proto literal", nv:find('ipairs({"', 1, true) == nil)
+-- 「共享」必须是同一张表，而不是内容恰好相等的两份拷贝：
+-- 逐字相等仍然会漂移，同一张表不会。
+check("core.RULE_PROTOS is node.PROTOS", core.RULE_PROTOS == node.PROTOS)
+
 -- ---------- 行为：复刻控制器的收集逻辑，验证它真的能过滤 ----------
 -- 与 controller 的 read_rules_fields 保持一致：按 RULE_PROTOS 顺序遍历，
 -- 表单里出现即为勾选（未勾选的 checkbox 浏览器不会提交）。
