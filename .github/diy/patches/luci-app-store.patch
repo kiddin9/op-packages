@@ -1,18 +1,18 @@
---- a/luci-app-store/Makefile
-+++ b/luci-app-store/Makefile
-@@ -35,6 +35,12 @@ define Package/luci-app-store/conffiles
- /etc/config/istore
- endef
+--- a/luci-app-store/root/etc/uci-defaults/luci-app-store
++++ b/luci-app-store/root/etc/uci-defaults/luci-app-store
+@@ -2,6 +2,12 @@
  
-+define Build/Prepare
-+	$(call Build/Prepare/Default)
-+	$(SED) 's/class:"tabs"/class:"cbi-tabmenu"/g' \
-+		$(BUILD_DIR)/istore-ui-$(ISTORE_UI_VERSION)-$(ISTORE_UI_RELEASE)/app-store-ui/src/dist/luci-static/istore/index.js
-+endef
+ /etc/init.d/istore boot
+ 
++TARGET="/www/luci-static/istore/index.js"
 +
- include $(TOPDIR)/feeds/luci/luci.mk
- 
- # call BuildPackage - OpenWrt buildroot signature
++if [ -f "$TARGET" ]; then
++    sed -i 's/class:"tabs"/class:"cbi-tabmenu"/g' "$TARGET"
++fi
++
+ if [ -z "`uci -q get istore.istore.hide_docker`" ] && ! which docker >/dev/null; then
+     uci -q batch <<-EOF >/dev/null
+         set istore.istore.hide_docker=1
 
 --- a/luci-app-store/luasrc/controller/store.lua
 +++ b/luci-app-store/luasrc/controller/store.lua
