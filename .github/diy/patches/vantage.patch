@@ -40,6 +40,7 @@
  LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage
 
 
+diff --git a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
 rename from luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
 rename to luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
 index ad0a166..c58c860 100644
