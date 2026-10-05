@@ -1,3 +1,19 @@
+--- a/luci-app-store/Makefile
++++ b/luci-app-store/Makefile
+@@ -35,6 +35,12 @@ define Package/luci-app-store/conffiles
+ /etc/config/istore
+ endef
+ 
++define Build/Prepare
++	$(call Build/Prepare/Default)
++	$(SED) 's/class:"tabs"/class:"cbi-tabmenu"/g' \
++		$(BUILD_DIR)/istore-ui-$(ISTORE_UI_VERSION)-$(ISTORE_UI_RELEASE)/app-store-ui/src/dist/luci-static/istore/index.js
++endef
++
+ include $(TOPDIR)/feeds/luci/luci.mk
+ 
+ # call BuildPackage - OpenWrt buildroot signature
+
 --- a/luci-app-store/luasrc/controller/store.lua
 +++ b/luci-app-store/luasrc/controller/store.lua
 @@ -14,7 +14,8 @@ function index()
