@@ -12,7 +12,7 @@
 'use strict';
 
 import { lsdir } from 'fs';
-import { executeCommand, isValidCIDR, isValidPEM, redactReason, redactUrl, ruleSetFormatFromBytes,
+import { executeCommand, fetchBinary, isValidCIDR, isValidPEM, redactReason, redactUrl, ruleSetFormatFromBytes,
 	ruleSetFormatFromPath, RULESET_PROBE_BYTES, shellQuote, wGETVerbose } from 'homeproxy-pro';
 
 let failures = 0,
@@ -104,17 +104,66 @@ expect('fetch.not-a-usage-error',
 expect('fetch.reports-a-reason', length(fetch.error || '') > 0, true);
 expect('fetch.no-content-on-failure', fetch.content, null);
 
+/* The binary and HTTP-error shapes below have to be PRODUCED by the fetcher, so
+ * which fetcher is in play decides which URL can produce them.
+ *
+ * Off-target fetchBinary() resolves to the stub, which manufactures both shapes
+ * from a magic path in the URL.  On a target it returns the real applet, and a
+ * real applet only produces them by talking to a real server - a magic path
+ * just looks like an ordinary URL it fails to connect to, which is why these
+ * three used to fail there.  run.sh starts a throwaway uhttpd for exactly this
+ * and passes its base URL in HP_T_HTTP_BASE.
+ *
+ * A real applet with no server (no uhttpd, every candidate port taken) cannot
+ * be driven at all: report the three as skipped rather than failing, and never
+ * let them read as a pass. */
+const fetchBin = fetchBinary();
+const realApplet = substr(fetchBin, 0, 1) === '/';
+const httpBase = getenv('HP_T_HTTP_BASE') || '';
+const canDriveFetchShapes = httpBase || !realApplet;
+if (realApplet && !httpBase)
+	printf('SKIP: binary / HTTP-error fetch shapes (real applet, no local server)\n');
+
 /* A 200 whose body is binary.  executeCommand() nulls stdout for binary
  * content, and the "no content but stderr said something" branch then used to
  * report it as `fetch failed: … Download completed (34185 bytes)` - a message
  * that contradicts itself and sends the user after a network problem they do
  * not have.  Measured on a device against a real .srs. */
-const binfetch = wGETVerbose('http://127.0.0.1:1/HP_T_STUB_BINARY');
-expect('fetch.binary-is-not-a-failure',
-	match(binfetch.error || '', /fetch failed/) == null, true, binfetch.error);
-expect('fetch.binary-says-so',
-	match(binfetch.error || '', /binary/) != null, true, binfetch.error);
-expect('fetch.binary-has-no-content', binfetch.content, null);
+if (canDriveFetchShapes) {
+	const binURL = httpBase ? `${httpBase}/hp-binary.srs` : 'http://127.0.0.1:1/HP_T_STUB_BINARY';
+	const binfetch = wGETVerbose(binURL);
+	expect('fetch.binary-is-not-a-failure',
+		match(binfetch.error || '', /fetch failed/) == null, true, binfetch.error);
+	expect('fetch.binary-says-so',
+		match(binfetch.error || '', /binary/) != null, true, binfetch.error);
+	expect('fetch.binary-has-no-content', binfetch.content, null);
+}
+
+/* A truncated transfer must not look like a subscription.
+ *
+ * The fetch used to be `uclient-fetch -O - | head -c N`, and system() returns
+ * the last command's status - head's, always 0.  A response that declared 244
+ * bytes and delivered 80 therefore arrived as `{ content: <80 bytes>, error:
+ * null }`: a half-downloaded list would rewrite the node set and nothing
+ * anywhere said so.  wGETVerbose() now carries the fetcher's own status out of
+ * the pipeline through a file, and this is the shape that proves it.
+ *
+ * The stub is the only thing that can produce "non-empty body AND non-zero
+ * exit" (a real uhttpd sets Content-Length from the file it serves), so on a
+ * real-applet run this is skipped on purpose - the same path was measured by
+ * hand on the device with a truncated response: real uclient-fetch exits 4
+ * with "Connection reset prematurely" and wGETVerbose() reports
+ * `fetch exited with status 4: …`. */
+if (canDriveFetchShapes) {
+	if (realApplet) {
+		printf('SKIP: truncated-transfer shape (the real applet cannot be asked for a short body; device-verified by hand)\n');
+	} else {
+		const truncfetch = wGETVerbose('http://127.0.0.1:1/HP_T_STUB_TRUNCATED');
+		expect('fetch.truncated-is-not-a-success', truncfetch.content, null);
+		expect('fetch.truncated-reports-the-status',
+			match(truncfetch.error || '', /status 4/) != null, true, truncfetch.error);
+	}
+}
 
 /* Review H3: the fetcher announces the requested URL on stderr before it reports
  * anything else, query string and all, so this is what would reach the log.
@@ -136,11 +185,14 @@ expect('fetch.redacted-still-names-the-target',
 /* The HTTP-error shape is the one that leaks - "Downloading '<URL>'" followed
  * by "HTTP error 404" - and it is the common case for a subscription URL that
  * has expired. */
-const httpfetch = wGETVerbose('http://127.0.0.1:1/HP_T_STUB_HTTP_ERROR?token=secret');
-expect('fetch.http-error-token-not-in-error',
-	match(httpfetch.error || '', /token=secret/) == null, true);
-expect('fetch.http-error-keeps-the-status',
-	match(httpfetch.error || '', /HTTP error/) != null, true, httpfetch.error);
+if (canDriveFetchShapes) {
+	const errURL = httpBase ? `${httpBase}/hp-missing?token=secret` : 'http://127.0.0.1:1/HP_T_STUB_HTTP_ERROR?token=secret';
+	const httpfetch = wGETVerbose(errURL);
+	expect('fetch.http-error-token-not-in-error',
+		match(httpfetch.error || '', /token=secret/) == null, true);
+	expect('fetch.http-error-keeps-the-status',
+		match(httpfetch.error || '', /HTTP error/) != null, true, httpfetch.error);
+}
 
 /* redactReason(): central redaction that protects every wGETVerbose caller.
  * Tested in isolation so the assertion does not depend on any fetcher being

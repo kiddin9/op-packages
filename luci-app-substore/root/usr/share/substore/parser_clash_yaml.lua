@@ -25,6 +25,7 @@ local TYPE_MAP = {
 	wireguard = "wireguard",
 	ssr = "ssr",
 	http = "http",
+	anytls = "anytls",
 }
 
 -- 导出供 parser.lua 的简易 YAML 兜底解析复用（单一事实来源）
@@ -254,7 +255,13 @@ local function map_clash_node(p)
 		net = p.network or p.net,
 		sni = p.sni or p.servername,
 		tls = p.tls,
-		fp = p.fp,
+		-- uTLS 指纹：mihomo 的键是 client-fingerprint（全仓库没有任何结构体声明
+		-- `proxy:"fp,..."`，详见 node.CLIENT_FP_PROTOS 的说明）。只读 p.fp 的话，
+		-- 一份真正的 mihomo 配置导入后指纹全部丢失 —— 与输出端写 `fp:` 是同一个
+		-- 错误的另一半。仍然读 p.fp 是为了兼容本项目旧版本自己导出的配置。
+		-- 注意不要读 `fingerprint`：hysteria/hysteria2/tuic 上那是证书固定
+		-- （SHA256 pin），与 uTLS 语义不同，映射过来是错的。
+		fp = p["client-fingerprint"] or p.fp,
 	}
 	if p.alpn then n.alpn = p.alpn end
 	if p.udp ~= nil then n.udp = p.udp end

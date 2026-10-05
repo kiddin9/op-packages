@@ -78,6 +78,74 @@ import { flatten } from '../parser/flatten.uc';
  *
  * Returns the { added, removed } counts. No commit here: the caller's
  * single commit is the boundary of "this run wrote something". */
+/* --- content identity ---------------------------------------------------- */
+
+/* A fingerprint of a node's *content*: the same server with the same
+ * credentials and options, whatever it is called.
+ *
+ * Section names are md5(grouphash + label), so a subscription that renames a
+ * node used to make the repository delete the old section and create a new one
+ * - and every reference to it (`main_node`, `main_udp_node`, the urltest lists)
+ * was switched away or dropped along with it, silently.  The label is not part
+ * of a node's identity, so it is excluded here along with the section metadata
+ * and the group hash (the group is already the lookup key).
+ *
+ * Keys are sorted so the fingerprint cannot depend on insertion order, and the
+ * values are serialized with %J because UCI options can be lists. */
+function content_key(flat) {
+	const parts = [];
+
+	for (let k in sort(keys(flat))) {
+		if (k === 'label' || k === 'grouphash' || substr(k, 0, 1) === '.')
+			continue;
+		push(parts, k + '=' + sprintf('%J', flat[k]));
+	}
+
+	return md5(join('\n', parts));
+}
+
+/* The section name the orchestrator keyed this node under.
+ *
+ * Normally md5(grouphash + label).  When two servers of one subscription share
+ * a label the orchestrator disambiguates the key with the content fingerprint,
+ * and the section has to follow it - otherwise both nodes are written into the
+ * same section and one of them is lost.  Returns null for a node the caller did
+ * not put in the cache (the unit tests hand nodes in directly), which keeps the
+ * previous behaviour as the fallback. */
+function section_name_for(node, cache) {
+	if (!cache)
+		return null;
+
+	for (let key in keys(cache))
+		if (cache[key] === node)
+			return key;
+
+	return null;
+}
+
+/* group hash -> { content_key: canonical node }, built once and only when a
+ * section was not found by name: a run without renames pays nothing. */
+function build_content_index(node_cache) {
+	const index = {};
+
+	for (let group in keys(node_cache)) {
+		const group_index = index[group] = {};
+		const done = {};
+		const cache = node_cache[group];
+
+		for (let key in keys(cache)) {
+			const node = cache[key];
+
+			if (done[node])
+				continue;
+			done[node] = true;
+			group_index[content_key(flatten(node))] = node;
+		}
+	}
+
+	return index;
+}
+
 function apply_nodes(uci, uciconfig, ucinode, node_cache, node_result, log) {
 	let added = 0, removed = 0;
 	/* Mark the canonical Node objects the foreach loop above has
@@ -88,6 +156,9 @@ function apply_nodes(uci, uciconfig, ucinode, node_cache, node_result, log) {
 	 * Repository the same Node instances, and tying the marker to the
 	 * object means a stale string key cannot match a renamed node. */
 	const seen = {};
+
+	/* Built on the first section that is not found by name (see below). */
+	let content_index = null;
 
 	uci.foreach(uciconfig, ucinode, (cfg) => {
 		/* User-created nodes do not have a grouphash. The
@@ -103,7 +174,31 @@ function apply_nodes(uci, uciconfig, ucinode, node_cache, node_result, log) {
 		if (!node_cache[cfg.grouphash] || length(node_cache[cfg.grouphash]) === 0)
 			return null;
 
-		const incoming = node_cache[cfg.grouphash][cfg['.name']];
+		let incoming = node_cache[cfg.grouphash][cfg['.name']];
+
+		if (!incoming) {
+			/* Not found by section name: the node may simply have been
+			 * renamed upstream.  Section names hash the label, so without
+			 * this the repository would delete the section and add an
+			 * identical one under a new name, taking every reference to it
+			 * (`main_node`, `main_udp_node`, urltest members) with it - the
+			 * user's node selection silently moves to another server. */
+			if (content_index === null)
+				content_index = build_content_index(node_cache);
+
+			const key = content_key(cfg);
+
+			incoming = content_index[cfg.grouphash][key];
+
+			if (incoming) {
+				/* Claim it: two stored sections with the same content must
+				 * not both update themselves into the same node, or the
+				 * duplicate would never be pruned. */
+				delete content_index[cfg.grouphash][key];
+				log(sprintf('Node was renamed upstream: %s -> %s; keeping its section and every reference to it.',
+					cfg.label || cfg['.name'], incoming.label || incoming.name));
+			}
+		}
 
 		if (!incoming) {
 			uci.delete(uciconfig, cfg['.name']);
@@ -154,7 +249,12 @@ function apply_nodes(uci, uciconfig, ucinode, node_cache, node_result, log) {
 			 * identically - four nodes collapsed into one section mixing
 			 * several protocols' options. Accept either. */
 			const label = node.label || node.name;
-			const nameHash = md5(node.grouphash + label);
+
+			/* The orchestrator's key is the section name: identical to
+			 * md5(grouphash + label) for every node but the ones whose
+			 * label is shared by a different server. */
+			const nameHash = section_name_for(node, node_cache[node.grouphash])
+				|| md5(node.grouphash + label);
 
 			/* The one boundary where a canonical Node becomes UCI keys.
 			 *
@@ -324,8 +424,48 @@ function scrub_stale_urltest_refs(uci, uciconfig, log) {
 	return { changed };
 }
 
+/* Remove subscription nodes whose group is no longer configured at all.
+ *
+ * apply_nodes() deliberately leaves a group alone when the fetch produced
+ * nothing for it - that is the transient-blip protection (a failed fetch must
+ * not delete the user's nodes).  The same "no cache entry" state also arises
+ * when the user deletes the subscription URL from the configuration, and then
+ * the nodes stayed in /etc/config/homeproxy-pro forever, still compiled into the
+ * sing-box outbounds and urltest pools while the UI showed them as ordinary
+ * nodes.  Only the orchestrator knows which URLs are still configured, so the
+ * set is passed in explicitly: a group that is configured but produced no cache
+ * is kept (blip), a group that is not configured is pruned (subscription
+ * removed).
+ *
+ * A section without a grouphash is a user-created node and is never touched.
+ * Returns the number of pruned sections.
+ */
+function prune_orphan_nodes(uci, uciconfig, ucinode, configured_groups, log) {
+	let pruned = 0;
+	const configured = {};
+
+	for (let group in configured_groups)
+		configured[group] = true;
+
+	uci.foreach(uciconfig, ucinode, (cfg) => {
+		if (!cfg.grouphash)
+			return null;
+
+		if (configured[cfg.grouphash])
+			return null;
+
+		uci.delete(uciconfig, cfg['.name']);
+		pruned++;
+		log(sprintf('Removing node of a removed subscription: %s.', cfg.label || cfg['.name']));
+		return null;
+	});
+
+	return pruned;
+}
+
 export const Repository = {
 	apply_nodes,
 	apply_main_node_refs,
-	scrub_stale_urltest_refs
+	scrub_stale_urltest_refs,
+	prune_orphan_nodes
 };

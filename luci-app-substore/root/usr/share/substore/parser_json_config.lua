@@ -22,12 +22,13 @@ local proto_map = {
 	tuic = "tuic",
 	wireguard = "wireguard",
 	ssr = "ssr",
+	anytls = "anytls",
 }
 
 local SUPPORTED = {
 	vmess = true, vless = true, trojan = true, shadowsocks = true,
 	hysteria2 = true, hysteria = true, tuic = true, wireguard = true,
-	socks = true, http = true, ssr = true,
+	socks = true, http = true, ssr = true, anytls = true,
 }
 
 -- ---------- Sing-box JSON 解析 ----------
@@ -68,6 +69,8 @@ function M.parse_singbox_json(content)
 						node_data.uuid = outbound.uuid
 						node_data.password = outbound.password
 						if outbound.congestion_control then node_data.congestion_control = outbound.congestion_control end
+					elseif proto == "anytls" then
+						node_data.password = outbound.password
 					elseif proto == "wireguard" then
 						node_data["private-key"] = outbound["private-key"] or outbound.private_key
 						node_data["peer-public-key"] = outbound["peer-public-key"] or outbound.peer_public_key or outbound["public-key"] or outbound.public_key
@@ -123,6 +126,18 @@ function M.parse_singbox_json(content)
 						-- 同一条订阅走两条导入路径会得到不同的节点。
 						if type(outbound.tls.utls) == "table" and outbound.tls.utls.fingerprint then
 							node_data.fp = outbound.tls.utls.fingerprint
+						end
+						-- Reality：sing-box 的键是 tls.reality.{enabled, public_key, short_id}
+						-- （option/tls.go 的 OutboundRealityOptions）。这里必须把
+						-- security 覆写成 "reality" —— 上面那句 `if outbound.tls.enabled
+						-- ~= false then node_data.security = "tls"` 已经把它写成了 "tls"，
+						-- 不覆写的话导出到 mihomo / Xray 时 Reality 参数会连同 security
+						-- 一起丢掉，节点降级成普通 TLS 后连不上。
+						local rz = outbound.tls.reality
+						if type(rz) == "table" and rz.enabled ~= false and rz.public_key then
+							node_data.security = "reality"
+							node_data["public-key"] = rz.public_key
+							if rz.short_id then node_data["short-id"] = rz.short_id end
 						end
 					end
 
@@ -260,8 +275,20 @@ function M.parse_v2ray_json(content)
 							if ss2.tlsSettings and type(ss2.tlsSettings) == "table" then
 								if ss2.tlsSettings.serverName then node_data.sni = ss2.tlsSettings.serverName end
 							end
+							-- Reality：Xray 的 realitySettings 是 camelCase
+							-- （fingerprint / serverName / publicKey / shortId / spiderX）。
+							-- 原先只读 serverName，publicKey 等全部丢失 —— 导入一份
+							-- Xray Reality 配置后导出的节点根本连不上。
+							-- publicKey 是客户端键名；旧配置可能写成 password
+							-- （Xray 侧 `if c.Password != "" { c.PublicKey = c.Password }`）。
 							if ss2.realitySettings and type(ss2.realitySettings) == "table" then
-								if ss2.realitySettings.serverName then node_data.sni = ss2.realitySettings.serverName end
+								local rs = ss2.realitySettings
+								if rs.serverName then node_data.sni = rs.serverName end
+								if rs.fingerprint then node_data.fp = rs.fingerprint end
+								local pbk = rs.publicKey or rs.password
+								if pbk then node_data["public-key"] = pbk end
+								if rs.shortId then node_data["short-id"] = rs.shortId end
+								if rs.spiderX then node_data["spider-x"] = rs.spiderX end
 							end
 						end
 
@@ -312,6 +339,8 @@ function M.parse_clash_json(content)
 					elseif proto == "tuic" then
 						node_data.uuid = proxy.uuid
 						node_data.password = proxy.password
+					elseif proto == "anytls" then
+						node_data.password = proxy.password
 					elseif proto == "wireguard" then
 						node_data["private-key"] = proxy["private-key"] or proxy.private_key
 						node_data["peer-public-key"] = proxy["peer-public-key"] or proxy.peer_public_key or proxy["public-key"] or proxy.public_key
@@ -344,6 +373,18 @@ function M.parse_clash_json(content)
 						node_data.sni = proxy.sni
 					elseif proxy.servername then
 						node_data.sni = proxy.servername
+					end
+					-- uTLS 指纹与 Reality。键名与 parser_clash_yaml 完全一致
+					-- （client-fingerprint、reality-opts.{public-key, short-id}），
+					-- 两条 Clash 导入路径必须给出同样的节点，否则同一条订阅换个
+					-- 文件后缀就会导入出不同的结果。
+					-- 不读 `fingerprint`：hysteria/hysteria2/tuic 上那是证书固定
+					-- （SHA256 pin），语义与 uTLS 指纹不同。
+					node_data.fp = proxy["client-fingerprint"] or proxy.fp
+					if type(proxy["reality-opts"]) == "table" then
+						local ro = proxy["reality-opts"]
+						if ro["public-key"] then node_data["public-key"] = ro["public-key"] end
+						if ro["short-id"] then node_data["short-id"] = ro["short-id"] end
 					end
 					if proxy.tls then node_data.tls = proxy.tls end
 

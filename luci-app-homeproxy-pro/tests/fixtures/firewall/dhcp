@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Companion to render.uci: the template reads two dnsmasq options through the
+# same cursor (the DNS-hijack port and whether dnsmasq already redirects DNS).
+# Without this file those reads return null and the render takes a different
+# branch than a real device would.
+
+config dnsmasq
+	option port '53'
+	option dns_redirect '1'

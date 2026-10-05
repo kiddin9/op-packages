@@ -224,7 +224,10 @@ return view.extend({
 		o.depends('type', 'snell');
 		o.depends('type', 'trojan');
 		o.depends('type', 'tuic');
-		o.validate = hp.validatePassword([ 'anytls', 'http', 'mixed', 'naive', 'shadowsocks', 'snell', 'socks', 'trojan' ]);
+		/* Same list, same reason as the node form's: an empty password on
+		 * hysteria2/tuic makes InboundFactory.create() die() and the server side
+		 * never generates. */
+		o.validate = hp.validatePassword([ 'anytls', 'http', 'hysteria2', 'mixed', 'naive', 'shadowsocks', 'snell', 'socks', 'trojan', 'tuic' ]);
 		o.modalonly = true;
 
 		/* AnyTLS config */

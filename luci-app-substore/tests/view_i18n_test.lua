@@ -9,7 +9,7 @@
 --   A 真渲染：把模板按 LuCI 的方式重建成 Lua chunk，用恒等 translate 渲染一遍，
 --     输出里不得出现 CJK。这直接复现「英文界面显示中文」这个缺陷 ——
 --     中文字面量在输出里，而 <%:…%> 输出的是英文 msgid。
---   B po 覆盖：模板里每个 msgid 都必须在 po/zh-cn/substore.po 里有条目，
+--   B po 覆盖：模板里每个 msgid 都必须在 po/zh_Hans/substore.po 里有条目，
 --     否则中文界面会显示英文。
 --   C 字面文本：去掉 <% %> 代码块与 HTML 注释后，剩下的字面 HTML 里不得有 CJK。
 --     A 只覆盖能离线渲染的模板（需要数据 fixture 的 nodes.htm / output.htm 跳过），
@@ -182,7 +182,7 @@ for _, file in ipairs({ "form.htm", "combo.htm", "local_form.htm", "node_edit.ht
 end
 
 -- ---------- B：模板里的 msgid 必须都有 zh-cn 译文 ----------
-local po = util.read_file("po/zh-cn/substore.po") or ""
+local po = util.read_file("po/zh_Hans/substore.po") or ""
 local missing = {}
 for _, file in ipairs(VIEWS) do
 	local src = util.read_file(VIEW_DIR .. file) or ""
@@ -203,6 +203,26 @@ end
 check("every view msgid has a zh-cn translation", #missing == 0)
 if #missing > 0 then
 	for _, m in ipairs(missing) do print("      no po entry: " .. m) end
+end
+
+-- ---------- B2：控制器里 _("…") 的 msgid 同样必须有 zh-cn 译文 ----------
+-- 控制器的失败原因经 ?err= 带回页面显示，是用户可见文本。漏了 po 条目时
+-- translate 回退成 msgid，中文界面下就冒出英文（与模板漏条目是同一个缺陷，
+-- 只是入口不同）。控制器里的 msgid 一律写英文原文，见文件头的说明。
+local ctl_src = util.read_file("root/usr/lib/lua/luci/controller/admin/substore.lua") or ""
+local ctl_missing = {}
+for i, line in ipairs(lines_of(ctl_src)) do
+	if not line:match("^%s*%-%-") then
+		for id in line:gmatch('_%("(.-)"%)') do
+			if po:find('msgid "' .. id .. '"', 1, true) == nil then
+				ctl_missing[#ctl_missing + 1] = i .. " " .. id
+			end
+		end
+	end
+end
+check("every controller msgid has a zh-cn translation", #ctl_missing == 0)
+if #ctl_missing > 0 then
+	for _, m in ipairs(ctl_missing) do print("      no po entry: controller:" .. m) end
 end
 
 -- ---------- C：字面 HTML 文本里不得有 CJK ----------

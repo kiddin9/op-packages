@@ -563,10 +563,15 @@ assert_empty "no bare join(', ', split(routing_port,...)) call site remains" \
 # The four field families whose UCI surface area is the report's whole H1:
 # IPv4 addresses, MAC addresses, interface names, and ports.  Any one of
 # these landing verbatim in an nft expression closes a set and reloads the
-# whole fw4 stack.  Asserted positively: each helper must be used on every
-# field of its family, so a field the helper was meant to cover but the
-# template forgot is a guard failure rather than a silent omission.
-# (ipv6 is intentionally absent: it already had ipv6_to_nftarr before H1.)
+# whole fw4 stack.  Asserted positively: each helper must be applied to every
+# field of its family, at the one place the template now validates them.
+#
+# The validation moved from each call site to a single table (template:
+# NFTARR_FIELDS) because gating on the *raw* UCI value while interpolating the
+# helper rendered `ip daddr  counter return` - an nft syntax error that fails
+# the whole transaction - for a list that is non-empty but has no usable entry.
+# The guard follows the values: the field must be in the table with the right
+# helper, and no call site may interpolate the raw field any more.
 #
 # Field list is the exact set of control_info.<family> names used by the
 # template - if a new field of an existing family is added, this list grows
@@ -574,8 +579,8 @@ assert_empty "no bare join(', ', split(routing_port,...)) call site remains" \
 for f in wan_proxy_ipv4_ips wan_direct_ipv4_ips \
          lan_proxy_ipv4_ips lan_direct_ipv4_ips \
          lan_global_proxy_ipv4_ips lan_gaming_mode_ipv4_ips; do
-	if grep -qE "ipv4_to_nftarr\(control_info\.$f\b" "$TEMPLATE"; then
-		pass "ipv4_to_nftarr covers $f"
+	if grep -qE "(^|[[:space:],])$f: ipv4_to_nftarr," "$TEMPLATE"; then
+		pass "ipv4_to_nftarr validates $f (in NFTARR_FIELDS)"
 	else
 		fail "ipv4_to_nftarr is not applied to $f (closes a nft set on a bad value)"
 	fi
@@ -583,24 +588,55 @@ done
 
 for f in lan_proxy_mac_addrs lan_direct_mac_addrs \
          lan_global_proxy_mac_addrs lan_gaming_mode_mac_addrs; do
-	if grep -qE "mac_to_nftarr\(control_info\.$f\b" "$TEMPLATE"; then
-		pass "mac_to_nftarr covers $f"
+	if grep -qE "(^|[[:space:],])$f: mac_to_nftarr," "$TEMPLATE"; then
+		pass "mac_to_nftarr validates $f (in NFTARR_FIELDS)"
 	else
 		fail "mac_to_nftarr is not applied to $f (closes a nft set on a bad value)"
 	fi
 done
 
-if grep -qE "iface_to_nftarr\(control_info\.listen_interfaces\b" "$TEMPLATE"; then
-	pass "iface_to_nftarr covers listen_interfaces"
+if grep -qE "(^|[[:space:],])listen_interfaces: iface_to_nftarr," "$TEMPLATE"; then
+	pass "iface_to_nftarr validates listen_interfaces (in NFTARR_FIELDS)"
 else
 	fail "iface_to_nftarr is not applied to listen_interfaces"
 fi
 
-if grep -qE "ports_to_nftarr\(routing_port\b\)" "$TEMPLATE"; then
+if grep -qE "ports_to_nftarr\(routing_port\)" "$TEMPLATE"; then
 	pass "ports_to_nftarr covers routing_port"
 else
 	fail "ports_to_nftarr is not applied to routing_port"
 fi
+
+# The two derived values the call sites use outside the table.
+for derived in "nftarr.listen_interfaces_lo = iface_to_nftarr" "routing_port_set = routing_port ? ports_to_nftarr(routing_port)"; do
+	if grep -qF "$derived" "$TEMPLATE"; then
+		pass "derived value is validated: $derived"
+	else
+		fail "derived value lost its validator: $derived"
+	fi
+done
+
+# Nothing may interpolate or gate on a raw list field any more: that is exactly
+# the shape that rendered an empty expression.
+assert_empty "no helper is called on a raw control_info list at a call site" \
+	grep -nE '(ipv4|ipv6|mac|iface)_to_nftarr\(control_info\.' "$TEMPLATE"
+assert_empty "no rule/set gate tests a raw control_info list" \
+	grep -nE '\{% if \((!?isEmpty\()?control_info\.((lan_|wan_)[a-z0-9_]*_(ips|addrs)|listen_interfaces)\)' "$TEMPLATE"
+
+# Every nftarr.<field> the template reads must exist in the table (the closure
+# runs the other way too: a field the call sites use but the table forgot would
+# render `{{ nftarr.x }}` as an empty string, which is the same defect).
+for f in $(grep -oE 'nftarr\.[a-z0-9_]+' "$TEMPLATE" | sed 's/^nftarr\.//' | sort -u); do
+	case "$f" in
+	listen_interfaces_lo)
+		continue ;;
+	esac
+	if grep -qE "(^|[[:space:],{])$f: " "$TEMPLATE"; then
+		pass "nftarr.$f is declared in NFTARR_FIELDS"
+	else
+		fail "nftarr.$f is read by the template but not declared in NFTARR_FIELDS"
+	fi
+done
 
 echo
 echo "== guard 12: capabilities stay minimal =="

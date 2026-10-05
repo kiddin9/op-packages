@@ -295,12 +295,27 @@ function append_proxy_dns(config, dm, ctx) {
 			});
 		}
 
-		/* sing-box 1.14: restore CN-IP fallback via evaluate/match_response (opt-in) */
-		if (ctx.cn_ip_fallback === '1') {
+		/* sing-box 1.14: restore CN-IP fallback via evaluate/match_response (opt-in).
+		 * Gated on china_ip4_ready as well: the response-match rule below names
+		 * the china-ip tag, and a rule_set list may only name declared tags -
+		 * with the file absent the declaration is skipped too, so emitting the
+		 * reference would make sing-box reject the whole configuration. */
+		if (ctx.cn_ip_fallback === '1' && ctx.china_ip4_ready) {
+			/* The evaluate query goes through main-dns, i.e. through the
+			 * tunnel, and it sits on the cold path of every domain that is
+			 * not in the direct/proxy/china lists - so it is the one DNS step
+			 * that can add a whole round trip to a page load.  Emitted bare,
+			 * as it was, its timeout fell back to the 10 s DNS default and it
+			 * carried no ECS; the package's own reference notes call that out
+			 * ("拖慢首包").  A short bound plus the China ECS prefix keeps the
+			 * fallback cheap and lets the upstream answer with a domestic
+			 * address when it has one. */
 			push(config.dns.rules, {
 				action: 'evaluate',
 				server: 'main-dns',
-				tag: 'cn-fallback'
+				tag: 'cn-fallback',
+				timeout: '2s',
+				client_subnet: '223.5.5.0/24'
 			});
 			/* The response is matched by the addresses the upstream returned,
 			 * and the address list has to be the one the route half uses for

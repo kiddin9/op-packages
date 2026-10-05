@@ -84,7 +84,12 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.depends({'type': 'shadowtls', 'shadowtls_version': '2'});
 	o.depends({'type': 'shadowtls', 'shadowtls_version': '3'});
 	o.depends({'type': 'socks', 'socks_version': '5'});
-	o.validate = hp.validatePassword([ 'anytls', 'shadowsocks', 'shadowtls', 'snell', 'trojan' ]);
+	/* hysteria2 and tuic carry a password in REQUIRED_CREDENTIALS too, and
+	 * leaving them out here let an empty one be saved - after which the whole
+	 * side's generation dies (OutboundFactory.create() calls die() on it) and
+	 * the user only sees "my setting did not take".  Pinned against the
+	 * backend table by tests/frontend-protocol-inventory.js. */
+	o.validate = hp.validatePassword([ 'anytls', 'hysteria2', 'shadowsocks', 'shadowtls', 'snell', 'trojan', 'tuic' ]);
 	o.modalonly = true;
 
 	/* Direct config */
@@ -580,6 +585,22 @@ return view.extend({
 		}
 
 		m = new form.Map('homeproxy-pro', _('Edit nodes'));
+
+		/* Every save of this map can commit a node reference the grid's delete
+		 * button just made dangling - including the page footer's Save & Apply,
+		 * which calls map.save() itself and never passes through the buttons
+		 * below.  Repair first; see hp.repairNodeRefs(). */
+		const map_save = (typeof m.save === 'function') ? m.save.bind(m) : null;
+
+		if (map_save)
+			m.save = function() {
+				const repaired = hp.repairNodeRefs(uci, 'homeproxy-pro');
+
+				if (repaired.length)
+					console.warn('homeproxy-pro: repaired dangling node reference(s): ' + repaired.join(', '));
+
+				return map_save.apply(null, arguments);
+			};
 
 		s = m.section(form.NamedSection, 'subscription', 'homeproxy-pro');
 

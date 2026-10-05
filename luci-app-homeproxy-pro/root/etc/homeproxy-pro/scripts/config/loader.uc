@@ -277,6 +277,17 @@ function load_routing(uci) {
 /* access_control is two single sections: `control` (lan_proxy_mode,
  * wan_proxy_*_ips) and `subscription` (auto_update, filter, urls). */
 function load_access_control(uci) {
+	/* Normalised to an array.  uci.get() hands a single-value option over as a
+	 * *string* and a list as an array, and `for (let url in <string>)` iterates
+	 * zero times in ucode - so a URL written with `uci set` instead of
+	 * `add_list` (or carried over from an older config) made the whole
+	 * subscription update a silent no-op: exit 0, no log, nothing fetched.
+	 * Measured on the device: list -> array, one iteration; option -> string,
+	 * zero. */
+	const sub_urls_raw = uci.get(UCICONFIG, SECTION.subscription, 'subscription_url');
+	const sub_urls = sub_urls_raw == null ? []
+		: (type(sub_urls_raw) === 'array' ? sub_urls_raw : [ sub_urls_raw ]);
+
 	return {
 		control: load_settings(uci, SECTION.control, [
 			'bind_interface', 'lan_proxy_mode'
@@ -290,7 +301,13 @@ function load_access_control(uci) {
 			'packet_encoding', 'update_via_proxy',
 			'filter_nodes', 'user_agent'
 		]),
-		subscription_urls: uci.get(UCICONFIG, SECTION.subscription, 'subscription_url') || [],
+		/* Normalised to an array.  uci.get() hands a single-value option over as a
+		 * *string* and a list as an array, and `for (let url in <string>)` iterates
+		 * zero times in ucode - so a URL written with `uci set` instead of
+		 * `add_list` (or migrated from an older config) made the whole subscription
+		 * update a silent no-op: exit 0, no log, nothing fetched.  Measured on the
+		 * device: list -> array, one iteration; option -> string, zero. */
+		subscription_urls: sub_urls,
 		filter_keywords: uci.get(UCICONFIG, SECTION.subscription, 'filter_keywords') || []
 	};
 }

@@ -109,19 +109,39 @@ for _, p in ipairs(node.PROTOS) do
 	check("PROTO_FIELDS has " .. p, type(f) == "table" and #f > 0)
 end
 
--- 每个渲染出来的字段都要有标签，否则界面上直接显示英文键名
-local label_src = (util.read_file("root/usr/lib/lua/luci/view/substore/node_edit.htm") or "")
-local labels = {}
-for k in label_src:gmatch('"([%w%-]+)"%s*:') do labels[k] = true end
-local missing = {}
-for p, fields in pairs(node.PROTO_FIELDS) do
-	for _, k in ipairs(fields) do
-		if not labels[k] then missing[#missing + 1] = p .. "." .. k end
-	end
+-- 每个渲染出来的字段都要有标签，否则界面上直接显示英文键名。
+--
+-- 两份模板各有一份 FIELD_LABELS（node_edit.htm 编辑单个节点，local_form.htm
+-- 本地订阅的表单导入），此前只检查了 node_edit.htm —— 于是 local_form.htm
+-- 可以静默缺标签，症状是那个表单里直接显示英文键名。两份都要查。
+--
+-- 这里刻意**不做**「两份键集完全相等」的断言：标签是用 '"([%w%-]+)"%s*:' 从
+-- 模板文本里抠出来的，会连带抠到无关的 JS 字符串键（实测 local_form.htm 会多出
+-- `? "block" : "none"` 里的 "block"），做相等断言必然误报。真正要保证的不变量
+-- 是「每份模板都覆盖了全部字段」，逐个字段查即可。
+local LABEL_TEMPLATES = {
+	"root/usr/lib/lua/luci/view/substore/node_edit.htm",
+	"root/usr/lib/lua/luci/view/substore/local_form.htm",
+}
+local REQUIRED_FIELDS = {}
+for _, fields in pairs(node.PROTO_FIELDS) do
+	for _, k in ipairs(fields) do REQUIRED_FIELDS[k] = true end
 end
-table.sort(missing)
-check("every form field has a label" .. (#missing > 0 and (" (missing: " .. table.concat(missing, ",") .. ")") or ""),
-	#missing == 0)
+for _, k in ipairs(node.FORM_ALWAYS_FIELDS) do REQUIRED_FIELDS[k] = true end
+
+for _, path in ipairs(LABEL_TEMPLATES) do
+	local name = path:match("[^/]+$")
+	local src = util.read_file(path) or ""
+	local labels = {}
+	for k in src:gmatch('"([%w%-]+)"%s*:') do labels[k] = true end
+	local missing = {}
+	for k in pairs(REQUIRED_FIELDS) do
+		if not labels[k] then missing[#missing + 1] = k end
+	end
+	table.sort(missing)
+	check(name .. " labels every form field" .. (#missing > 0 and (" (missing: " .. table.concat(missing, ",") .. ")") or ""),
+		#missing == 0)
+end
 
 -- TLS 层字段必须出现在表单里，否则编辑一次就丢 TLS（vmess 的历史缺陷）
 for _, p in ipairs({ "vmess", "vless" }) do
@@ -130,11 +150,15 @@ for _, p in ipairs({ "vmess", "vless" }) do
 	check(p .. " form renders security", has)
 end
 
--- TLS-only 协议必须由 normalize 保证 security，而不是靠 URI 解析器各自补
-for _, p in ipairs({ "hysteria2", "hysteria", "tuic", "trojan" }) do
+-- TLS-only 协议必须由 normalize 保证 security，而不是靠 URI 解析器各自补。
+-- 清单直接读 node.TLS_ONLY（唯一来源）：在这里另写一份字面量的话，新增一个
+-- TLS-only 协议时本用例不会覆盖它，测试看着全绿其实漏测。
+for p in pairs(node.TLS_ONLY) do
 	check(p .. " normalize forces security=tls",
 		node.normalize({ proto = p, server = "h", port = 1 }).security == "tls")
 end
+-- TLS_ONLY 必须非空，否则上面的循环一条都不跑，静默通过
+check("TLS_ONLY non-empty", next(node.TLS_ONLY) ~= nil)
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

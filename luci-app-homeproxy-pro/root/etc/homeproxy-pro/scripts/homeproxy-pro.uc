@@ -594,9 +594,13 @@ export function wGETVerbose(url, ua) {
 	 * base64 inflation. Anything larger is almost certainly an attack or a
 	 * misconfiguration.
 	 *
-	 * The pipeline does cost the exit status: `system()` returns head's, which
-	 * is always 0. A fetch failure therefore arrives as an empty body plus the
-	 * fetcher's own message on stderr, and that is reported below. */
+	 * The pipeline costs the exit status - `system()` returns head's, which is
+	 * always 0 - so the fetcher's own status is carried out of it through a
+	 * file (see the command below).  Without that, a *truncated* transfer was
+	 * indistinguishable from a complete one: uclient-fetch exits 4 with
+	 * "Connection reset prematurely", and measured on the device a response
+	 * that declared 244 bytes and delivered 80 was handed to the parser as a
+	 * valid subscription body. */
 	/* The braces matter: executeCommand() appends `>out 2>err` to the command,
 	 * and in `a | b >out 2>err` those redirections bind to b only - the
 	 * fetcher's stderr would go to the caller's terminal and the failure
@@ -607,7 +611,16 @@ export function wGETVerbose(url, ua) {
 	 * being waved through on the grounds that it only ever returns a literal:
 	 * guard 25 exists to make "is this shell-safe" a mechanical check instead
 	 * of a judgement call, and a quoted constant costs nothing. */
-	const output = executeCommand(`{ ${shellQuote(fetchBinary())} -O - --user-agent=${shellQuote(ua)} --timeout=10 ${shellQuote(url)} | head -c ${HP_FETCH_CAP + 1}; }`) || {};
+	const dir = mkdtemp();
+	const rcpath = dir + '/rc';
+	const output = executeCommand(`{ { ${shellQuote(fetchBinary())} -O - --user-agent=${shellQuote(ua)} --timeout=10 ${shellQuote(url)}; echo $? >${shellQuote(rcpath)}; } | head -c ${HP_FETCH_CAP + 1}; }`) || {};
+
+	/* The fetcher's status, recovered from the file the pipeline wrote it to.
+	 * `head -c` closing the pipe makes the fetcher exit on SIGPIPE (141), which
+	 * is why the size check below runs first: a too-large body is reported as
+	 * too large, not as a signal. */
+	const fetch_rc = int(trim(read_capped(rcpath, 32))) || 0;
+	cleanup_exec_dir(dir, rcpath, dir + '/unused');
 	let reason = trim(output.stderr || '');
 	reason = reason ? replace(reason, /\s+/g, ' ') : '';
 	/* An HTTP-level failure prints the requested URL back into the message
@@ -623,11 +636,13 @@ export function wGETVerbose(url, ua) {
 	if (length(output.stdout || '') > HP_FETCH_CAP)
 		return { content: null, error: `response exceeds the ${HP_FETCH_CAP} byte limit` };
 
-	if (output.exitcode !== 0) {
+	const exitcode = (output.exitcode !== 0) ? output.exitcode : fetch_rc;
+
+	if (exitcode !== 0) {
 		if (length(reason) > 200)
 			reason = substr(reason, 0, 200) + '...';
 
-		return { content: null, error: `fetch exited with status ${output.exitcode}: ${reason || 'no error output'}` };
+		return { content: null, error: `fetch exited with status ${exitcode}: ${reason || 'no error output'}` };
 	}
 
 	/* A binary body is not a failed fetch.
@@ -645,7 +660,9 @@ export function wGETVerbose(url, ua) {
 	if (output.binary)
 		return { content: null, error: 'the fetch succeeded but the response is binary, not a subscription payload' };
 
-	/* head() masks the fetcher's status, so a failed fetch shows up here. */
+	/* Reached only when the fetcher exited 0 (the status is recovered above),
+	 * so an empty body here means a 200 with nothing in it - reported with the
+	 * fetcher's own message rather than as a parse failure. */
 	if (!length(trim(output.stdout)) && reason) {
 		if (length(reason) > 200)
 			reason = substr(reason, 0, 200) + '...';

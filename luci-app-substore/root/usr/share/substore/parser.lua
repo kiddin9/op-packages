@@ -18,6 +18,9 @@ local SUPPORTED = {
 	vmess = true, vless = true, trojan = true, ss = true, ssr = true,
 	hysteria = true, hysteria2 = true, tuic = true, wireguard = true,
 	socks = true, socks5 = true,
+	-- anytls 同样必须能进：output_uri 会生成 anytls:// 链接，缺了这一项
+	-- 「导出→导入」回环就把节点整行丢掉（H 系列的老问题）。
+	anytls = true,
 }
 
 local function split_lines(content)
@@ -344,6 +347,15 @@ local function parse_vless(uri, body)
 	if query.path then out.path = query.path end
 	if query.host then out.host = query.host end
 	if query.flow then out.flow = query.flow end
+	-- Reality（security=reality）参数。键名取自 Xray 分享链接规范
+	-- （XTLS/Xray-core discussion #716）：pbk = public-key、sid = short-id、
+	-- spx = spiderX。三者都必须回读，否则「导出→导入」回环会把 Reality 参数
+	-- 丢光 —— 缺 public-key 的 Reality 节点客户端根本连不上。
+	-- fp 上面已经回读：Reality 规范里 fp 不可省略（缺省 chrome），它同时就是
+	-- 这条连接的 uTLS 指纹。
+	if query.pbk then out["public-key"] = query.pbk end
+	if query.sid then out["short-id"] = query.sid end
+	if query.spx then out["spider-x"] = query.spx end
 	return out
 end
 
@@ -496,6 +508,53 @@ local function parse_hysteria2(uri, body)
 	-- 混淆参数回读，保证导出→导入回环不丢字段
 	if query.obfs then out.obfs = query.obfs end
 	if query["obfs-password"] then out["obfs-password"] = query["obfs-password"] end
+	return out
+end
+
+-- anytls://password@host:port/?sni=..&insecure=..#name
+-- 链接规范由 anytls-go 定义（mihomo 与 Shadowrocket 都按它解析）：密码放在
+-- userinfo（auth）位置，端口缺省 443，查询参数只有 sni 与 insecure 两个。
+local function parse_anytls(uri, body)
+	local name, rest = "", body
+	local hash = rest:find("#", 1, true)
+	if hash then
+		name = util.url_decode(rest:sub(hash + 1))
+		rest = rest:sub(1, hash - 1)
+	end
+	local query = {}
+	local qpos = rest:find("?", 1, true)
+	local hp = rest
+	if qpos then
+		hp = rest:sub(1, qpos - 1)
+		for k, v in rest:sub(qpos + 1):gmatch("([^&=]+)=([^&]*)") do
+			query[k] = util.url_decode(v)
+		end
+	end
+	-- 取最后一个 @（同 parse_socks / parse_hysteria2）：按第一个 @ 切会把密码里的
+	-- 裸 @ 当成 userinfo 分隔符，静默解析出 server="x@1.2.3.4" 这样的错节点。
+	local userinfo, hostport = hp:match("^(.*)@([^@]*)$")
+	if not userinfo then return nil, "bad anytls" end
+	local password = util.url_decode(userinfo)
+	local host, port = util.split_hostport(hostport)
+	-- 端口缺省 443：规范写的是 hostname[:port]，省略端口是合法写法。不补默认值
+	-- 会让 valid_hostport 判假，整条链接被丢弃。
+	if not port or port == "" then port = 443 end
+	if not valid_hostport(host, port) then return nil, "bad anytls" end
+	local out = node.normalize({
+		proto = "anytls", name = name, server = host, port = tonumber(port),
+		password = password, raw = uri,
+	})
+	if query.sni then out.sni = query.sni end
+	-- anytls 在 mihomo / sing-box / Surge 里都是 TLS-only（协议本身没有明文模式），
+	-- 而 anytls:// 不带 security 参数。不补上的话 output_singbox.build_tls 直接
+	-- 返回 nil，sni / insecure 全部丢失，生成的 outbound 不可用。
+	out.security = "tls"
+	-- insecure 是 URI 参数名，模型里的权威字段是 skip-cert-verify
+	-- （与 parse_hysteria2 的处理保持一致）。
+	if query.insecure ~= nil then
+		out.insecure = query.insecure
+		out["skip-cert-verify"] = not (query.insecure == "0" or query.insecure == "false")
+	end
 	return out
 end
 
@@ -862,6 +921,7 @@ function M.parse_uri(uri)
 	if proto == "hysteria2" then return parse_hysteria2(uri, body) end
 	if proto == "tuic" then return parse_tuic(uri, body) end
 	if proto == "wireguard" then return parse_wireguard(uri, body) end
+	if proto == "anytls" then return parse_anytls(uri, body) end
 	if proto == "socks" or proto == "socks5" then return parse_socks(uri, body) end
 	return nil, "unsupported"
 end

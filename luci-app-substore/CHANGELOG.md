@@ -2,6 +2,161 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.2-r2] - 修复 Surge 系 / Loon / QX 行解析的字段级缺陷（LEGACY_ISSUES 7.5 / 7.6）
+
+`docs/LEGACY_ISSUES.md` 第七节 2.7.2 审计新发现的**第一轮**修复。两项都在
+`parser_surge.lua`，即「导入别人的 Loon / Surge / QX 配置」这条路径上。
+
+### 修复 — 行拆分改为引号感知（7.5）
+
+Loon 把凭据写成双引号包裹的位置参数（`nsloon.app/docs/Node/`）：
+
+```
+Trojan = Trojan,trojan.example.com,443,"password",transport=tcp,...
+```
+
+密码里含逗号时，旧的 `rest:gmatch("[^,]+")` 会把它切成两段 ——
+`"pa,ss"` 静默变成 `"pa`（多一个引号、少掉后半段），用户拿到的不是他填的凭据，
+而且没有任何提示。生成端早就有「值里含逗号就整条丢弃」的防护
+（`output_formats.surge_line`），解析端此前没有对应处理。
+
+新增 `split_fields()`，`parse_surge_line` 与 `parse_qx_line` 的切分都改走它：
+
+- **引号个数为奇数时不做引号感知**，退回旧的按逗号切分。订阅内容不可信，落单的
+  引号若被当成「开引号」，会把后面的 `sni=` / `over-tls=` 全吞进同一个字段，
+  比按逗号切更糟。
+- 偶数时按引号开合切分，引号内的逗号不再是分隔符；引号本身保留在字段里，
+  由既有的 `unquote()`（Loon 位置参数）或原样（QX 的 kv 值）处理。
+- **无引号的输入与旧实现逐字符等价**：同样按逗号切、同样丢弃空字段、同样 trim。
+
+### 修复 — Loon 的 transport= / path= / host= 未映射（7.6）
+
+Loon 文档的传输写法是 `transport=<tcp|ws|http>` + `path=` + `host=`，旧参数
+`ws=true` / `ws-path` / `ws-headers=Host:` 只是兼容别名（`nsloon.app/docs/Node/`）。
+此前只认旧写法，于是别人给的 Loon ws 节点导入后 `net` 保持默认 `tcp`、
+`path` / `host` 全丢 —— 导出到任何格式都按 tcp 去连一个只开了 ws 的端口，
+**握手失败且不报错**。
+
+`parse_surge_line` 增加这三个映射（`transport=http` 按 Loon 文档「会按 WebSocket
+处理」落成 `ws`），放在旧写法之后：同一行两种写法都出现时**以新写法为准**。
+
+### 测试
+
+新增 `tests/parser_surge_fields_test.lua`（36 条断言）：两个缺陷的修复点、旧写法
+回归、无引号输入的逐字符等价、空字段边界、奇数引号边界、「新写法优先」，
+以及 Reality 参数不受影响的回归。
+
+**反向验证**：把 `parser_surge.lua` stash 掉后跑该文件得到 **12 条 FAIL**，症状与
+预测完全一致（被截断的凭据、`net=tcp`、`path` / `host` 为 nil、旧写法胜出）；
+恢复后 0 条 FAIL。全套 58 个文件、0 失败。
+
+### 文档 / 构建
+
+- **更正未经证实的结论**：`output_formats.lua`、`tests/anytls_reality_test.lua`
+  与 `LEGACY_ISSUES.md` 里写的「Surge 遇到无法解析的代理行会拒绝加载整份配置」
+  **没有官方依据** —— Surge 官方只说明过无法识别的 *section* 会原样保留且不报错。
+  相关注释改为「不输出客户端读不懂的东西」，与本仓库丢弃 wireguard / ssr 同一约定。
+- **CI 修复**：编译前写入 `CONFIG_LUCI_LANG_zh_Hans=y` 再 `make defconfig`。
+  `luci-i18n-substore-zh-cn` 是 HIDDEN 包（无 Kconfig prompt），luci.mk 给它的
+  唯一默认值是 `LUCI_LANG_zh_Hans||(ALL&&m)`，而 SDK 默认 `ALL=n` —— 不显式打开
+  这个符号，翻译包就不会被编译出来，`Collect artifact` 的守卫会失败。
+  （`CONFIG_PACKAGE_luci-i18n-substore-zh-cn=m` 对无 prompt 的符号是空操作。）
+- `docs/BUILD.md`：更正不存在的 `make package/luci-i18n-substore-zh-cn/compile`
+  目标（make 目标按**目录**生成），补上语言符号的说明。
+
+## [2.7.2-r1] - 新增 AnyTLS 与 Reality 支持；控制器文案接入 i18n；简体中文翻译拆成独立包
+
+`core.lua` `M.version` 由 2.7.1 升至 2.7.2。本节包含 2.7.1-r5 之后未发布的两批
+改动：上一批（uTLS 指纹键名与协议清单唯一来源）已在提交 `3651f67` 落地但未记入
+日志，一并补记。
+
+### 新功能 — AnyTLS
+
+- **解析**：`anytls://` 分享链接；Surge / Surfboard / Loon / QX 四种行格式；
+  Clash YAML 与 sing-box JSON 出站。
+- **输出**：clashmeta、sing-box、v2rayuri、QX、Surge 家族。AnyTLS 密码的位置
+  按各家文档分别输出 —— Surge / SurgeMac 具名 `password=`，Surfboard 端口后的
+  裸位置参数，Loon 端口后的带引号位置参数（`anytls, host, port, "pwd", …`）。
+- **表单**：`node.PROTO_FIELDS.anytls` 与 `nodeform.js` 的字段清单同步更新。
+
+### 新功能 — Reality（完整参数集 public-key / short-id / spider-x / fingerprint）
+
+- **解析**：`vless://…security=reality&pbk=&sid=&spx=&fp=`；Loon 节点行的
+  `public-key` / `short-id`；QX 的 `reality-base64-pubkey` / `reality-hex-shortid`；
+  sing-box 的 `tls.reality`；Clash 的 `reality-opts`。
+- **统一模型**：`node.REALITY_PROTOS = { vless, vmess, trojan, anytls }`；
+  `normalize` 见到 `public-key` 即把 `security` 置为 `reality`（判据是公钥而非
+  `security` 字段 —— Loon 的行只写 `over-tls=true` + `public-key`，没有
+  `security=reality`）。
+- **输出**：
+  - clashmeta：`reality-opts: {public-key, short-id}`，**仅** vless / vmess /
+    trojan 三个出站（mihomo 的 `RealityOptions` 只挂在这三个结构体上；
+    `AnyTLSOption` 里没有任何 reality 字段，写了会被静默忽略）。
+  - sing-box：`tls.reality`，并强制输出 `tls.utls`（sing-box 的
+    `newRealityClient` 在 utls 未启用时直接报 `uTLS is required by reality client`）。
+  - v2ray（Xray）：`realitySettings`（camelCase）。
+  - v2rayuri：`pbk` / `sid` / `spx`（仅 VLESS —— `anytls://` 链接规范没有
+    reality 参数）。
+  - QX：`reality-base64-pubkey` / `reality-hex-shortid`。
+  - Surge 家族：**只有 Loon** 输出 `public-key` / `short-id`（`REALITY_FLAVORS`）；
+    Surge / Surfboard / SurgeMac / Egern 写这两个键是「客户端不认识的参数」，
+    Surge 遇到无法解析的代理行会拒绝加载整份配置。
+
+### 修复（本轮代码级审计发现）
+
+- `output_clash_meta`：`reality-opts` 此前只写在 `vless` 分支。mihomo 的
+  `vmess.go` / `trojan.go` 出站同样声明了 `RealityOpts`，一并补上；`anytls` 不写
+  （见上）。
+- `output_v2ray`：`security == "reality"` 但没有 `public-key` 时，原样输出
+  `realitySettings` 会让 Xray **拒绝加载整份配置**（`REALITYConfig.Build()`
+  客户端分支在公钥为空时报 `empty "password"`，而 `StreamConfig` 又要求
+  `security == "reality"` 必须配 `realitySettings`）。改为降级成普通 TLS ——
+  与 sing-box / mihomo / QX 三个输出端「只在有 public-key 时才写 Reality」一致。
+- `node.PROTO_FIELDS.anytls`：补 `public-key` / `short-id`。`core.merge_form_node`
+  会把「在清单里但表单没提交」的字段当作清空处理，不列入的话用户在界面上编辑
+  一次就把 Reality 凭据抹掉。
+- `output_formats`（Loon / QX）：Loon 文档有 **VMess**-Reality 示例，QX 官方
+  `sample.conf` 的 Reality 条目覆盖 vmess / vless / trojan / anytls —— 此前
+  Loon 只给 vless / trojan / anytls 输出公钥，QX 只给 vless / anytls 输出，
+  vmess 与 QX-trojan 的 Reality 配置被静默丢弃。
+- 上一批（`3651f67`）：`output_clash_meta` 写出的 uTLS 指纹键名是 `fp`，而
+  mihomo 的键是 `client-fingerprint`（全仓库没有任何结构体声明 `proxy:"fp,…"`），
+  mihomo 对未知键静默忽略 —— 配置看起来有指纹、握手实际用默认指纹；
+  `parser_clash_yaml` 又只读 `p.fp`，而 mihomo 从不写 `fp`，指纹双向全断。
+  两端一并修正，解析端保留 `fp` 兜底以兼容旧版本导出的配置。同时收敛协议清单
+  为唯一来源（`node.PROTOS` / `node.TLS_ONLY`），`nodes.htm` 下拉不再内联第三份副本。
+
+### 变更 — i18n 与打包
+
+- **控制器文案接入翻译层**：`controller/admin/substore.lua` 里所有用户可见文案
+  （经 `?err=` 回显的失败原因等）改为 `_("English")`，msgid 一律英文，中文译文
+  放 `po/zh_Hans/substore.po`。此前这些是硬编码中文字面量，英文界面下原样显示中文。
+- **`po/zh-cn/` → `po/zh_Hans/`**：`luci.mk` 只对 `LUCI_LANG` 里有条目的目录名
+  生成翻译包。`LUCI_LANG.zh-cn` **不存在**（只有 `LUCI_LANG.zh_Hans`，经
+  `LUCI_LC_ALIAS.zh_Hans=zh-cn` 映射到语言码 `zh-cn`），所以目录叫 `zh-cn` 时
+  luci.mk 会**静默跳过**、不生成任何翻译包 —— 这正是此前译文被硬编译进主包的原因。
+- **简体中文翻译不再硬编译进主包**：删除 `Makefile` install 步骤里的
+  `po2lmo`（原先把 `substore.zh-cn.lmo` 直接塞进 `luci-app-substore` 的 ipk/apk），
+  改由 luci.mk 按 `po/zh_Hans/` 自动生成的独立包 `luci-i18n-substore-zh-cn` 提供。
+  该包自己调 `po2lmo`，并写 uci-defaults 把 `zh_cn` 加进 `luci.languages`。
+  翻译包的版本号取 LuCI 的 `PKG_PO_VERSION`（由 `po/` 的提交时间推导），与主包的
+  `2.7.2-r1` 不同名。
+- **CI**（`.github/workflows/build.yml`）：同时编译 `package/luci-i18n-substore-zh-cn/compile`，
+  产物收集通配 `luci-i18n-substore*`，Release 说明里注明该包为可选安装。
+
+### 测试
+
+- 新增 `tests/anytls_reality_test.lua`（110 项断言）：URI / 行格式解析、
+  `normalize` 的 Reality 推导与误判防护（wireguard 的顶层 `public-key` 是对端
+  公钥、与 Reality 无关）、各输出端逐格式断言、`PROTO_FIELDS` 与
+  `merge_form_node` 保留凭据、`surge_line` 的边界（未知协议 → `nil`；密码含逗号
+  → `nil`）。
+- `tests/view_i18n_test.lua` 新增 B2 段：控制器里 `_()` 包裹的每个 msgid 都必须在
+  `po/zh_Hans/substore.po` 有条目，防止 msgid 与译文表再次漂移。
+- `tests/controller_local_test.lua` 的断言改为英文 msgid（控制器文案已接入 i18n，
+  测试用的 `luci.i18n` stub 是恒等翻译）。
+- 全量 Lua 测试 56 个文件与 `tests/cron_result_test.sh` 全部通过。
+
 ## [2.7.1-r5] - 订阅列表页组合订阅行的「[组合]」徽标移到「订阅地址」列
 
 **纯模板改动，无 Lua 逻辑改动**（`core.lua` `M.version` 不变，仍为 2.7.1）。

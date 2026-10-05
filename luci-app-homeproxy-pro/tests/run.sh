@@ -91,6 +91,12 @@ echo "== frontend validators =="
 # with a fake form context instead.
 node "$ROOT/tests/frontend-validators.js" "$ROOT" || FAILED=1
 
+echo "== frontend node references =="
+# Deleting a node leaves config.main_node dangling and the generator then dies on
+# every run; repairNodeRefs() runs before each save of the node map. Pure helper,
+# fake cursor, no browser.
+node "$ROOT/tests/frontend-node-refs.js" "$ROOT" || FAILED=1
+
 echo "== package JSON and UCI assets =="
 # A malformed acl.d makes rpcd refuse the whole ACL, so every RPC is denied;
 # a menu.d action pointing at a renamed view drops the page from the menu.

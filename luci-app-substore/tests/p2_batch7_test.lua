@@ -72,7 +72,7 @@ if #bad_msgids > 0 then
 end
 
 -- 新英文 msgid 必须在 zh-cn 译文表里有条目，否则中文界面会显示英文
-local po = read("po/zh-cn/substore.po")
+local po = read("po/zh_Hans/substore.po")
 check("po has Operation failed", po:find('msgid "Operation failed"', 1, true) ~= nil)
 check("po has Pick a format msgid",
 	po:find("Pick a format to generate the subscription link", 1, true) ~= nil)

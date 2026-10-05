@@ -2,6 +2,16 @@
 
 module("luci.controller.admin.substore", package.seeall)
 
+-- 用户可见文案统一走 LuCI 的翻译层：msgid 一律写**英文**，译文放
+-- po/<lang>/substore.po（编译成 *.lmo 后由 luci.template.parser 按运行时语言加载）。
+--
+-- 这里显式取一份 local `_`，不依赖全局：module(..., package.seeall) 的环境里
+-- `_` 是否存在取决于 LuCI 版本（部分版本只在模板环境里注入），显式定义后
+-- 控制器在任何上下文里都能翻译，测试里也能用 stub 的 luci.i18n 跑起来。
+-- 注意必须定义在所有用到它的函数**之前** —— local 只被定义时已可见的闭包捕获。
+local i18n = require("luci.i18n")
+local function _(s) return i18n.translate(s) end
+
 -- 返回列表页。err 非空时把错误带到列表页显示（§18：失败必须让用户看见，
 -- 不能「失败了却看起来像成功」）。沿用 LuCI 既有的 query + 模板渲染，不引入新 framework。
 local function back_to_list(err)
@@ -85,14 +95,14 @@ local function post_ok()
 	local http = require("luci.http")
 	local tok = fv(http, "token")
 	if tok == nil then
-		post_fail_msg = "请求校验失败（缺少 token），请刷新页面后重试"
+		post_fail_msg = _("Request validation failed (missing token), please refresh the page and try again")
 		return false
 	end
 	local ok, authtoken = pcall(function()
 		return require("luci.dispatcher").context.authtoken
 	end)
 	if ok and type(authtoken) == "string" and authtoken ~= "" and tok ~= authtoken then
-		post_fail_msg = "请求校验失败（token 不匹配），请刷新页面后重试"
+		post_fail_msg = _("Request validation failed (token mismatch), please refresh the page and try again")
 		return false
 	end
 	post_fail_msg = nil
@@ -171,14 +181,14 @@ function action_create()
 		if proxy_enable ~= "1" then proxy_enable = "0" end
 		local proxy = (fv(http, "proxy") or ""):gsub("^%s+", ""):gsub("%s+$", "")
 		if name == "" or url == "" then
-			return back_to_list("名称和 URL 不能为空")
+			return back_to_list(_("Name and URL cannot be empty"))
 		end
 		local cron_enable, cron_time = read_cron_fields()
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
-		if not rules then return back_to_list(rules_err or "规则无效") end
+		if not rules then return back_to_list(rules_err or _("Invalid rules")) end
 		local user_agent, ua_err = read_ua_fields()
-		if user_agent == nil then return back_to_list(ua_err or "订阅客户端类型无效") end
+		if user_agent == nil then return back_to_list(ua_err or _("Invalid subscription client type")) end
 		local id, err = core.add(name, url, {
 			proxy_enable = proxy_enable, proxy = proxy, user_agent = user_agent,
 			cron_enable = cron_enable, cron_time = cron_time,
@@ -186,7 +196,7 @@ function action_create()
 			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
 			dedup = rules.dedup, rename_map = rules.rename_map,
 		})
-		if not id then return back_to_list(err or "创建订阅失败") end
+		if not id then return back_to_list(err or _("Failed to create subscription")) end
 		core.write_cron()
 	end
 	back_to_list(post_fail_msg)
@@ -202,16 +212,16 @@ function action_save()
 		local proxy_enable = fv(http, "proxy_enable") or "0"
 		if proxy_enable ~= "1" then proxy_enable = "0" end
 		local proxy = (fv(http, "proxy") or ""):gsub("^%s+", ""):gsub("%s+$", "")
-		if id == "" then return back_to_list("缺少订阅 ID") end
+		if id == "" then return back_to_list(_("Missing subscription ID")) end
 		if name == "" or url == "" then
-			return back_to_list("名称和 URL 不能为空")
+			return back_to_list(_("Name and URL cannot be empty"))
 		end
 		local cron_enable, cron_time = read_cron_fields()
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
-		if not rules then return back_to_list(rules_err or "规则无效") end
+		if not rules then return back_to_list(rules_err or _("Invalid rules")) end
 		local user_agent, ua_err = read_ua_fields()
-		if user_agent == nil then return back_to_list(ua_err or "订阅客户端类型无效") end
+		if user_agent == nil then return back_to_list(ua_err or _("Invalid subscription client type")) end
 		local ok, err = core.save_meta(id, {
 			name = name, url = url, proxy_enable = proxy_enable, proxy = proxy,
 			user_agent = user_agent,
@@ -220,7 +230,7 @@ function action_save()
 			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
 			dedup = rules.dedup, rename_map = rules.rename_map,
 		})
-		if not ok then return back_to_list(err or "保存失败") end
+		if not ok then return back_to_list(err or _("Save failed")) end
 		core.write_cron()
 	end
 	back_to_list(post_fail_msg)
@@ -235,10 +245,10 @@ function action_local_create()
 		local local_mode = fv(http, "local_mode") or "text"
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
-		if not rules then return back_to_list(rules_err or "规则无效") end
+		if not rules then return back_to_list(rules_err or _("Invalid rules")) end
 		-- §19：空名称 / 空内容必须明确报错，不能无声创建无效订阅
-		if name == "" then return back_to_list("名称不能为空") end
-		if content == "" then return back_to_list("订阅内容不能为空") end
+		if name == "" then return back_to_list(_("Name cannot be empty")) end
+		if content == "" then return back_to_list(_("Subscription content cannot be empty")) end
 		local id, err = core.add_local(name, content, local_mode, {
 			rules_enable = rules.rules_enable,
 			proto_filter = rules.proto_filter,
@@ -246,7 +256,7 @@ function action_local_create()
 			keyword_exclude = rules.keyword_exclude,
 			dedup = rules.dedup,
 		})
-		if not id then return back_to_list(err or "创建本地订阅失败") end
+		if not id then return back_to_list(err or _("Failed to create local subscription")) end
 	end
 	back_to_list(post_fail_msg)
 end
@@ -261,10 +271,10 @@ function action_local_save()
 		local local_mode = fv(http, "local_mode") or "text"
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
-		if not rules then return back_to_list(rules_err or "规则无效") end
-		if id == "" then return back_to_list("缺少订阅 ID") end
-		if name == "" then return back_to_list("名称不能为空") end
-		if content == "" then return back_to_list("订阅内容不能为空") end
+		if not rules then return back_to_list(rules_err or _("Invalid rules")) end
+		if id == "" then return back_to_list(_("Missing subscription ID")) end
+		if name == "" then return back_to_list(_("Name cannot be empty")) end
+		if content == "" then return back_to_list(_("Subscription content cannot be empty")) end
 		local ok, err = core.save_meta(id, {
 			name = name,
 			raw_content = content,
@@ -275,10 +285,10 @@ function action_local_save()
 			keyword_exclude = rules.keyword_exclude,
 			dedup = rules.dedup,
 		})
-		if not ok then return back_to_list(err or "保存失败") end
+		if not ok then return back_to_list(err or _("Save failed")) end
 		-- 解析失败会写进 meta.error（列表页 Status 列可见），此处再明确提示一次
 		local sok, serr = core.sync(id)
-		if not sok then return back_to_list(serr or "解析订阅内容失败") end
+		if not sok then return back_to_list(serr or _("Failed to parse subscription content")) end
 	end
 	back_to_list(post_fail_msg)
 end
@@ -298,7 +308,7 @@ function action_delete()
 		for s in tostring(fv(http, "id") or ""):gmatch("[^,%s]+") do
 			ids[#ids + 1] = s
 		end
-		if #ids == 0 then return back_to_list("未指定要删除的订阅") end
+		if #ids == 0 then return back_to_list(_("No subscription selected for deletion")) end
 		local removed, first_err = 0, nil
 		for _, id in ipairs(ids) do
 			local ok, err = core.remove(id)
@@ -318,9 +328,9 @@ function action_delete()
 		if removed > 0 then core.write_cron() end
 		if removed < #ids then
 			if removed == 0 then
-				return back_to_list(first_err or "删除失败：订阅不存在")
+				return back_to_list(first_err or _("Delete failed: subscription not found"))
 			end
-			return back_to_list(string.format("已删除 %d 个，另有 %d 个删除失败",
+			return back_to_list(string.format(_("Deleted %d, %d failed"),
 				removed, #ids - removed))
 		end
 	end
@@ -357,22 +367,22 @@ function action_node_save()
 		-- 原来只在成功分支里做事，其余情况一律静默重定向，
 		-- 用户提交了坏数据却看到「已保存」的样子。
 		if not idx or not nodes[idx] then
-			back_to_nodes(http, "节点不存在或下标无效")
+			back_to_nodes(http, _("Node not found or invalid index"))
 			return
 		end
 		if content == "" then
-			back_to_nodes(http, "提交内容为空")
+			back_to_nodes(http, _("Submitted content is empty"))
 			return
 		end
 		local res, perr = parser.parse_local(content, "form")
 		local newn = res and res.nodes and res.nodes[1]
 		if not newn then
-			back_to_nodes(http, perr or "表单数据解析失败")
+			back_to_nodes(http, perr or _("Failed to parse form data"))
 			return
 		end
 		nodes[idx] = core.merge_form_node(nodes[idx], newn)
 		if not core.write_nodes(id, nodes) then
-			back_to_nodes(http, "写入节点数据失败")
+			back_to_nodes(http, _("Failed to write node data"))
 			return
 		end
 		core.refresh_combos(id)
@@ -394,7 +404,7 @@ function action_node_delete()
 		end
 		-- §18：什么都没删掉时必须说清楚，不能静默跳回列表。
 		if #idxs == 0 then
-			back_to_nodes(http, "未指定要删除的节点")
+			back_to_nodes(http, _("No node selected for deletion"))
 			return
 		end
 		-- 倒序删除，避免 table.remove 后下标偏移
@@ -407,11 +417,11 @@ function action_node_delete()
 			end
 		end
 		if not removed then
-			back_to_nodes(http, "节点不存在或已被删除")
+			back_to_nodes(http, _("Node not found or already deleted"))
 			return
 		end
 		if not core.write_nodes(id, nodes) then
-			back_to_nodes(http, "写入节点数据失败")
+			back_to_nodes(http, _("Failed to write node data"))
 			return
 		end
 		core.save_meta(id, { node_count = #nodes })
@@ -465,10 +475,10 @@ function action_combo_save()
 		end
 		-- §18：此前名称留空、或一个来源都没勾选时，这里整段跳过、直接跳回列表 ——
 		-- 用户填了表单却什么都没发生，页面上也没有任何提示。
-		if name == "" then return back_to_list("名称不能为空") end
+		if name == "" then return back_to_list(_("Name cannot be empty")) end
 		-- 规则校验失败（如非法正则）必须回显，否则用户看到的是「规则没生效」
 		local rules, rules_err = read_rules_fields()
-		if not rules then return back_to_list(rules_err or "规则无效") end
+		if not rules then return back_to_list(rules_err or _("Invalid rules")) end
 		local o = {
 			rules_enable = rules.rules_enable, proto_filter = rules.proto_filter,
 			keyword_include = rules.keyword_include, keyword_exclude = rules.keyword_exclude,
@@ -482,7 +492,7 @@ function action_combo_save()
 		else
 			nid, err = core.save_combo(id, name, sources, o)
 		end
-		if not nid then return back_to_list(err or "保存组合订阅失败") end
+		if not nid then return back_to_list(err or _("Failed to save combination")) end
 	end
 	back_to_list(post_fail_msg)
 end
@@ -499,7 +509,7 @@ function action_update()
 		end
 		-- §18：订阅不存在（ID 拼错 / 已被删除）时此前静默跳回列表，
 		-- 用户点了「更新」却看不到任何反馈。
-		if not meta then return back_to_list("订阅不存在") end
+		if not meta then return back_to_list(_("Subscription not found")) end
 		-- pcall 只保证「不抛异常」；core.sync 的失败是「返回 nil, err」而非抛错，
 		-- 因此必须同时检查两层结果，否则失败永远不会写回列表状态。
 		local ok, res, err = pcall(core.sync, id)
@@ -508,7 +518,7 @@ function action_update()
 			core.save_meta(id, { error = tostring(res), last_update = os.time() })
 		elseif not res then
 			-- 正常返回但失败：第三个返回值是错误信息
-			core.save_meta(id, { error = tostring(err or "更新失败"), last_update = os.time() })
+			core.save_meta(id, { error = tostring(err or _("Update failed")), last_update = os.time() })
 		end
 	end
 	back_to_list(post_fail_msg)

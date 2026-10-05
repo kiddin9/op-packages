@@ -1,6 +1,10 @@
 # luci-app-substore 简体中文翻译
-# 运行时语言代码 zh-cn（LUCI_LC_ALIAS.zh_Hans=zh-cn），
-# 编译产物 substore.zh-cn.lmo 由 Makefile 的 install 步骤用 po2lmo 生成。
+#
+# 目录名是 zh_Hans（LUCI_LANG 的键），语言代码取别名 zh-cn
+# （LUCI_LC_ALIAS.zh_Hans=zh-cn）。luci.mk 据此自动生成独立的翻译包
+# luci-i18n-substore-zh-cn，由它自己调 po2lmo 编译出
+# /usr/lib/lua/luci/i18n/substore.zh-cn.lmo —— 该 .lmo 不再打进主包
+# luci-app-substore 的 ipk/apk。详见 Makefile 末尾的说明。
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -236,6 +240,19 @@ msgstr "私钥"
 msgid "Peer public key"
 msgstr "对端公钥"
 
+# Reality / AnyTLS 新增字段标签（模板里以 <%:...%> 包裹，故需要对应 msgid）
+msgid "Short ID"
+msgstr "Short ID"
+
+msgid "Spider X"
+msgstr "Spider X"
+
+msgid "ALPN"
+msgstr "ALPN"
+
+msgid "Fingerprint"
+msgstr "指纹"
+
 msgid "Default"
 msgstr "默认"
 
@@ -391,3 +408,77 @@ msgstr "启用后，按关键词包含 / 排除、去重规则筛选合并后的
 # 订阅列表：启用了定时更新的订阅，在名称下方显示 cron 表达式
 msgid "Schedule:"
 msgstr "定时:"
+
+# 控制器回显的失败原因（controller/admin/substore.lua 里经 _() 包裹后
+# 由 ?err= 带回页面显示）。msgid 是控制器里的英文原文。
+msgid "Request validation failed (missing token), please refresh the page and try again"
+msgstr "请求校验失败（缺少 token），请刷新页面后重试"
+
+msgid "Request validation failed (token mismatch), please refresh the page and try again"
+msgstr "请求校验失败（token 不匹配），请刷新页面后重试"
+
+msgid "Name and URL cannot be empty"
+msgstr "名称和 URL 不能为空"
+
+msgid "Invalid rules"
+msgstr "规则无效"
+
+msgid "Invalid subscription client type"
+msgstr "订阅客户端类型无效"
+
+msgid "Failed to create subscription"
+msgstr "创建订阅失败"
+
+msgid "Missing subscription ID"
+msgstr "缺少订阅 ID"
+
+msgid "Save failed"
+msgstr "保存失败"
+
+msgid "Name cannot be empty"
+msgstr "名称不能为空"
+
+msgid "Subscription content cannot be empty"
+msgstr "订阅内容不能为空"
+
+msgid "Failed to create local subscription"
+msgstr "创建本地订阅失败"
+
+msgid "Failed to parse subscription content"
+msgstr "解析订阅内容失败"
+
+msgid "No subscription selected for deletion"
+msgstr "未指定要删除的订阅"
+
+msgid "Delete failed: subscription not found"
+msgstr "删除失败：订阅不存在"
+
+msgid "Deleted %d, %d failed"
+msgstr "已删除 %d 个，另有 %d 个删除失败"
+
+msgid "Node not found or invalid index"
+msgstr "节点不存在或下标无效"
+
+msgid "Submitted content is empty"
+msgstr "提交内容为空"
+
+msgid "Failed to parse form data"
+msgstr "表单数据解析失败"
+
+msgid "Failed to write node data"
+msgstr "写入节点数据失败"
+
+msgid "No node selected for deletion"
+msgstr "未指定要删除的节点"
+
+msgid "Node not found or already deleted"
+msgstr "节点不存在或已被删除"
+
+msgid "Failed to save combination"
+msgstr "保存组合订阅失败"
+
+msgid "Subscription not found"
+msgstr "订阅不存在"
+
+msgid "Update failed"
+msgstr "更新失败"
