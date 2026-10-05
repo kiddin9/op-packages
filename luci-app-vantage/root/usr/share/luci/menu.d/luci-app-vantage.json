@@ -1,5 +1,5 @@
 {
-	"admin/dashboard": {
+	"admin/status/dashboard": {
 		"title": "Dashboard",
 		"order": 1,
 		"action": {
@@ -7,7 +7,15 @@
 			"path": "vantage/overview"
 		},
 		"depends": {
-			"acl": [ "luci-app-vantage" ]
+			"acl": [ "luci-app-vantage" ],
+			"uci": {
+				"vantage": true,
+				"luci": {
+					"main": {
+						"mediaurlbase": "/luci-static/vantage"
+					}
+				}
+			}
 		}
 	}
 }
