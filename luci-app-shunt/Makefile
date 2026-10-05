@@ -6,8 +6,8 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI support for shunt
 LUCI_DEPENDS:=+luci-base +shunt
 
-PKG_VERSION:=0.1.10
-PKG_RELEASE:=3
+PKG_VERSION:=0.1.11
+PKG_RELEASE:=4
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Dirk Brenken <dev@brenken.org>
 
