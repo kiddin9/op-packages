@@ -1,10 +1,6 @@
 msgid ""
 msgstr "Content-Type: text/plain; charset=UTF-8"
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:125
-msgid "%d rule-set(s) cannot be downloaded."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy-pro/status.js:302
 msgid "%s log"
 msgstr ""
@@ -23,10 +19,6 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/status.js:191
 msgid "(never updated on this device)"
-msgstr ""
-
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:137
-msgid "(no reason recorded)"
 msgstr ""
 
 #: htdocs/luci-static/resources/homeproxy-pro.js:1193
@@ -363,10 +355,6 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:610
 msgid "Cancel"
-msgstr ""
-
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:144
-msgid "Cannot read the sing-box client log (%s)."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:425
@@ -1797,10 +1785,6 @@ msgstr ""
 msgid "No additional encryption support: It's basically duplicate encryption."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:119
-msgid "No rule-set download failures in the current log."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy-pro/node.js:797
 msgid "No subscription available"
 msgstr ""
@@ -2364,10 +2348,6 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/subscription.js:91
 msgid "Rule set URL"
-msgstr ""
-
-#: htdocs/luci-static/resources/view/homeproxy-pro/status.js:375
-msgid "Rule sets"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy-pro/client/subscription.js:56

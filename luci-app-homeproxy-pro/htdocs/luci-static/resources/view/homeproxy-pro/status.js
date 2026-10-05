@@ -75,68 +75,6 @@ const ensureLogPoll = hp.statusPoller({
 	}
 });
 
-/* --- rule-set download failures ------------------------------------------
- *
- * A remote rule-set that cannot be downloaded stops the service: sing-box
- * fetches it during initialization, before the inbounds bind, so a failure
- * there is a failed start.  That makes it a loud problem, and this block is
- * here to make it legible rather than to solve it - a start that failed leaves
- * no instance, so sing-box-c.log is the only place the reason is written down.
- *
- * sing-box-c.log is read rather than a new RPC: the ACL already grants the
- * browser read on that file for the log viewer below, so this costs no
- * permission and no new method to keep in step with the method table.
- *
- * The built-in China split is not among the rule-sets this can be about: those
- * are local files the resource updater maintains, generated from the same lists
- * the nft sets are rendered from, and there is nothing to download. */
-const ruleSetNode = E('div', { 'id': 'ruleset_status' },
-	E('img', {
-		'src': L.resource('icons/loading.svg'),
-		'alt': _('Loading'),
-		'style': 'vertical-align:middle'
-	}, _('Collecting data...'))
-);
-
-function renderRuleSetStatus() {
-	/* Same poller as the log views, so there is still one handler per view
-	 * no matter how often render() runs. */
-	ensureLogPoll();
-
-	fs.read_direct(`${hp_dir}/sing-box-c.log`, 'text')
-		.then((text) => {
-			const failures = hp.parseRuleSetFetchFailures(text);
-
-			if (!failures.length) {
-				dom.content(ruleSetNode, E('span', { 'style': 'color:green' },
-					[_('No rule-set download failures in the current log.')]));
-				return;
-			}
-
-			dom.content(ruleSetNode, E('div', [
-				E('p', { 'style': 'color:red' }, [
-					_('%d rule-set(s) cannot be downloaded.').format(failures.length)
-				]),
-				E('p', { 'style': 'color:gray' }, [
-					_('A remote rule-set is fetched before the service starts, so a rule-set that cannot be downloaded prevents the start. The service is running, so the log below is from an earlier attempt or the download has since recovered.')
-				]),
-				E('ul', {}, failures.map((f) => E('li', [
-					E('code', [ f.tag ]),
-					' — ',
-					/* Text nodes, never markup: the reason is a string
-					 * sing-box wrote, and it contains a URL. */
-					f.reason || _('(no reason recorded)'),
-					f.at ? E('small', { 'style': 'color:gray' }, [ ' — ' + f.at ]) : ''
-				])))
-			]));
-		})
-		.catch((err) => {
-			dom.content(ruleSetNode, E('span', { 'style': 'color:gray' }, [
-				_('Cannot read the sing-box client log (%s).').format(String(err))
-			]));
-		});
-}
-
 function getConnStat(o, site) {
 	o.default = E('div', { 'style': 'cbi-value-field' }, [
 		E('button', {
@@ -362,20 +300,6 @@ return view.extend({
 
 			return node;
 		}
-
-		s = m.section(form.NamedSection, 'config', 'homeproxy-pro', _('Rule sets'));
-		s.anonymous = true;
-
-		/* A dedicated section rather than a fourth log view: the question is
-		 * "is any rule-set currently broken", and the answer has to be a
-		 * verdict plus a per-tag reason, not a wall of log the user has to read
-		 * a timestamp out of. */
-		o = s.option(form.DummyValue, '_ruleset_status');
-		o.rawhtml = true;
-		o.render = function() {
-			renderRuleSetStatus();
-			return ruleSetNode;
-		};
 
 		/* A dedicated section rather than a fourth log view: the question this
 		 * answers is "collect everything someone would ask me to look at, in
