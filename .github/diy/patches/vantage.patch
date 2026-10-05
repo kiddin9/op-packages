@@ -38,24 +38,41 @@
 +LUCI_DEPENDS:=+luci-base +luci-app-vantage
  LUCI_MAINTAINER:=anothaDev <10740588+anothaDev@users.noreply.github.com>
  LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage
-
-
-diff --git a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
-rename from luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
-rename to luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
-index ad0a166..c58c860 100644
-@@ -1,5 +1,5 @@
- {
+ 
+diff --git a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json b/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
+deleted file mode 100644
+index ad0a166..0000000
+--- a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
++++ /dev/null
+@@ -1,13 +0,0 @@
+-{
 -	"admin/dashboard": {
-+	"admin/status/dashboard": {
- 		"title": "Dashboard",
- 		"order": 1,
- 		"action": {
-@@ -7,7 +7,15 @@
- 			"path": "vantage/overview"
- 		},
- 		"depends": {
+-		"title": "Dashboard",
+-		"order": 1,
+-		"action": {
+-			"type": "view",
+-			"path": "vantage/overview"
+-		},
+-		"depends": {
 -			"acl": [ "luci-app-vantage" ]
+-		}
+-	}
+-}
+diff --git a/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
+new file mode 100644
+index 0000000..c2de6d4
+--- /dev/null
++++ b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
+@@ -0,0 +1,21 @@
++{
++	"admin/status/dashboard": {
++		"title": "Dashboard",
++		"order": 1,
++		"action": {
++			"type": "view",
++			"path": "vantage/overview"
++		},
++		"depends": {
 +			"acl": [ "luci-app-vantage" ],
 +			"uci": {
 +				"vantage": true,
@@ -65,9 +82,9 @@ index ad0a166..c58c860 100644
 +					}
 +				}
 +			}
- 		}
- 	}
- }
++		}
++	}
++}
 
 --- a/luci-theme-vantage/ucode/template/themes/vantage/header.ut
 +++ b/luci-theme-vantage/ucode/template/themes/vantage/header.ut
