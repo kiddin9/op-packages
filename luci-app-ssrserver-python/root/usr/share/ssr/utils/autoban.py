@@ -28,6 +28,7 @@ import os
 import re
 import sys
 import argparse
+import subprocess
 
 _VALID_IP_RE = re.compile(r'^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
 
@@ -50,7 +51,7 @@ if __name__ == '__main__':
                 ips[ip] += 1
             if ip not in banned and ips[ip] >= config.count and _VALID_IP_RE.match(ip):
                 banned.add(ip)
-                cmd = 'iptables -A INPUT -s %s -j DROP' % ip
-                print(cmd, file=sys.stderr)
+                cmd = ['iptables', '-A', 'INPUT', '-s', ip, '-j', 'DROP']
+                print(' '.join(cmd), file=sys.stderr)
                 sys.stderr.flush()
-                os.system(cmd)
+                subprocess.call(cmd)  # nosec B603 - cmd is a fixed list, ip validated by _VALID_IP_RE
