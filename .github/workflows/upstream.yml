@@ -400,7 +400,6 @@ jobs:
         git_clone https://github.com/vad-b/luci-app-tailscale-ng
         git_clone https://github.com/Kingwong55/luci-app-tailscale
         git_clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community tailscalec && mv -f tailscalec/luci-app* ./;rm -rf tailscalec
-        git_clone https://github.com/mgz0227/luci-app-ipsec-server
         git_clone https://github.com/szwjp/luci-app-ipsec-vpnd
         ) &
         (
@@ -471,7 +470,7 @@ jobs:
         modules/luci-base modules/luci-mod-network modules/luci-mod-status modules/luci-mod-system libs/rpcd-mod-luci protocols/luci-proto-openvpnc themes/luci-theme-design
         mv -n applications/* luciapp/; rm -rf applications
         git_sparse_clone master "https://github.com/coolsnowwolf/luci" libs/luci-lib-fs applications collections/luci-lib-docker
-        mv -n applications/* luciapp/; rm -rf applications
+        mv -n applications/!(luci-app-ipsec-server) luciapp/; rm -rf applications
 
         for ipk in $(ls -d luciapp/!(luci-app-rclone|luci-app-package-manager|luci-app-dockerman|luci-app-firewall|luci-app-smartdns|luci-app-3ginfo-lite|luci-app-ddns|luci-app-ksmbd|luci-app-samba4|luci-app-watchcat|luci-app-transmission)/); do
         	if [[ $(ls $ipk/po | wc -l) -gt 4 ]]; then
