@@ -27,6 +27,19 @@
  	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  	text-decoration: none !important;
  }
+@@ -716,6 +716,12 @@ html:has(.vt-tabs:not([hidden])) { --stick-top: calc(var(--top-h) + 41px); }
+ 	border-radius: 10px;
+ 	box-shadow: var(--v-shadow);
+ 	min-width: 0;
++	background-clip: padding-box;
++}
++.cbi-section > legend:first-child{
++    margin-left: 10px !important;
++    padding: 10px !important;
++    border: none !important;
+ }
+ /* card header row */
+ .cbi-section > h3:first-child, .cbi-section > legend:first-child, .cbi-section > .cbi-title:first-child,
 
 --- a/luci-theme-vantage/Makefile
 +++ b/luci-theme-vantage/Makefile
