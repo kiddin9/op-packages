@@ -43,7 +43,7 @@
 
 import { popen } from 'fs';
 
-import { HP_DIR, RUN_DIR, shellQuote } from '../homeproxy-pro.uc';
+import { HP_DIR, RUN_DIR, shellQuote, udp_transport_verdict } from '../homeproxy-pro.uc';
 
 export const DEBUG_REPORT_PATH = RUN_DIR + '/debug.log';
 
@@ -273,6 +273,18 @@ function configSummary(uci) {
 		out += sprintf('| `%s.%s` | %s |\n', sw[0], sw[1],
 			(v == null || v === '') ? '_(unset)_' : (isSecretKey(sw[1]) ? maskValue(v) : v));
 	}
+
+	/* The QUIC verdict, because it is the one conclusion in this report that
+	 * is derived rather than reported: the switches table shows
+	 * `main_udp_node`, and `main_udp_node` on its own does not say whether
+	 * QUIC was rejected by the firewall or why.  udp_transport_verdict() is
+	 * the same function firewall_post.ut gates the nft rule with, so this
+	 * line describes the rule that is actually loaded rather than a second
+	 * opinion about it. */
+	const udp = udp_transport_verdict('homeproxy-pro', uci);
+	out += sprintf('\n- UDP path: **%s** - %s\n',
+		udp.native ? 'UDP-native' : (udp.configured ? 'not UDP-native' : 'UDP not configured'),
+		udp.reason);
 
 	return out;
 };

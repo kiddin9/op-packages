@@ -290,6 +290,12 @@ echo "== subscription updater actually runs =="
 # URL points at a closed port, so main() fails before its reload call.
 sh "$ROOT/tests/ucode/test_subscription_updater_runs.sh" "$ROOT" "$WORK/updater_runs" || FAILED=1
 
+echo "== udp transport verdict =="
+# Decides whether QUIC is rejected in the fw4 ruleset. Its 'same' +
+# TCP-transport-main-node case is the regression: both UCI fields read
+# perfectly reasonable and the QUIC reject stayed off anyway.
+sh "$ROOT/tests/ucode/test_udp_transport.sh" "$ROOT" "$WORK/udp_transport" || FAILED=1
+
 echo "== rpcd method behaviour =="
 # The rpcd module used to be syntax-checked and never executed, which is how
 # certificate_write('client_ech_conf') stayed broken from the initial commit:

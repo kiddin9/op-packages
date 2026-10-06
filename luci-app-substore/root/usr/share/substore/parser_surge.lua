@@ -106,9 +106,38 @@ local function parse_surge_line(name, rest)
 	local data = {
 		proto = proto, name = util.trim(name), server = server, port = port,
 	}
+	-- 凭据在两种写法里的落点，与 output_formats.surge_line 的分叉一一对应：
+	--   shadowsocks : Surge 家族 `encrypt-method=…,password=…`；Loon `加密方式,"密码"`
+	--   ssr         : 同上，另有 protocol= / obfs= / obfs-param= / protocol-param=
+	--   vmess       : Surge 家族 `username=…`；Loon `加密方式,"UUID"`
+	--   vless       : Surge 家族 `username=…`；Loon `"UUID"`
+	--   trojan      : Surge 家族 `password=…`；Loon `"密码"`
+	--   hysteria2   : Surge 家族 `password=…`；Loon `"密码"`
+	--   anytls      : Surge 家族 `password=…`；Surfboard 裸位置参数；Loon `"密码"`
+	-- 位置参数（pos）只收集「不含 = 的字段」，具名写法完全不受影响，所以两种写法
+	-- 可以无条件并存 —— 本函数导入的既有 Surge / Loon 配置不会因此改变解析结果。
 	if proto == "shadowsocks" then
-		data.method = kv["encrypt-method"] or kv.cipher or kv.method
-		data.password = kv.password
+		data.method = kv["encrypt-method"] or kv.cipher or kv.method or pos[1]
+		data.password = kv.password or pos[2]
+	elseif proto == "ssr" then
+		-- SSR 此前**没有**取字段的分支：不管哪种写法导入，加密方式、密码、协议插件、
+		-- 混淆方式全是 nil，节点带着空凭据进入统一模型，导出时再被静默丢掉。
+		data.method = kv["encrypt-method"] or kv.cipher or kv.method or pos[1]
+		data.password = kv.password or pos[2]
+		if kv.protocol then data.protocol = kv.protocol end
+		if kv.obfs then data.obfs = kv.obfs end
+		-- 两种拼写都写一份：PROTO_FIELDS / DEFAULTS 用的是带连字符的规范写法
+		-- （表单据此渲染），而 parser.lua 与各输出模块读的是下划线别名
+		-- （`n.obfs_param or n["obfs-param"]`）—— 与 parser.lua 同时写
+		-- method / cipher 是同一个理由，只写一份就会在某条输出路径上丢失。
+		if kv["obfs-param"] then
+			data["obfs-param"] = kv["obfs-param"]
+			data.obfs_param = kv["obfs-param"]
+		end
+		if kv["protocol-param"] then
+			data["protocol-param"] = kv["protocol-param"]
+			data.protocol_param = kv["protocol-param"]
+		end
 	elseif proto == "vmess" or proto == "vless" then
 		-- Loon 的 VMess 位置参数是「加密方式, UUID」两个字段；VLESS 只有一个 UUID
 		if proto == "vmess" and pos[2] then
@@ -123,7 +152,8 @@ local function parse_surge_line(name, rest)
 	elseif proto == "anytls" then
 		data.password = kv.password or pos[1]
 	elseif proto == "hysteria2" or proto == "hysteria" then
-		data.password = kv.password
+		-- Loon 的 Hysteria2 把密码写在端口之后的位置参数上（`Hysteria2,h,p,"密码"`）
+		data.password = kv.password or pos[1]
 	end
 
 	-- Reality 参数。Loon 的 VLESS / VMess / Trojan / AnyTLS Reality 行共用

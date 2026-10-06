@@ -33,6 +33,25 @@ local LOON_VMESS_CIPHER = {
 	["chacha20-ietf-poly1305"] = "chacha20-ietf-poly1305",
 }
 
+-- Surge 家族的 VMess「加密方式」是**具名**参数 encrypt-method，与 Loon 把它放在
+-- 位置参数上不同（manual.nssurge.com/policies/vmess.html 原文：
+--   `Name = vmess, <host>, <port>, username=<UUID>[, parameter=value, ...]`
+--   encrypt-method 取值只有 aes-128-gcm / chacha20-ietf-poly1305，默认 aes-128-gcm；
+-- Surfboard 的 vmess 页同此）。
+--
+-- 只有模型的 chacha20-poly1305 需要写出来：它的拼写与客户端不同
+-- （chacha20-ietf-poly1305），不写这个参数 Surge 会按默认的 aes-128-gcm 去连，
+-- chacha20 的节点**静默用错算法**——握手失败或更糟。aes-128-gcm 是客户端默认值，
+-- 写与不写等价，这里仍写出来是为了让导出结果自解释。
+-- 其余取值（none / zero / auto / aes-128-cfb）不在客户端的清单里，映射不到就不写
+-- 该参数、由客户端取默认值；写一个客户端不认的取值是「写了读不懂的东西」，
+-- 与本文件丢弃 wireguard / ssr 同一约定。
+local SURGE_VMESS_CIPHER = {
+	["aes-128-gcm"] = "aes-128-gcm",
+	["chacha20-poly1305"] = "chacha20-ietf-poly1305",
+	["chacha20-ietf-poly1305"] = "chacha20-ietf-poly1305",
+}
+
 -- 支持 Reality 的目标格式。Reality 只在 Loon 的节点行里有官方文档：
 -- nsloon.app/docs/Node/ 给出 VLESS / VMess / Trojan / AnyTLS 的 Reality 示例，
 -- 统一用 public-key / short-id 两个具名参数。
@@ -91,6 +110,16 @@ function M.surge_line(n, flavor)
 	local e = {}
 	local tls = (n.security and n.security ~= "none") or (n.tls and n.tls ~= false and n.tls ~= "none")
 
+	-- TLS 开关的**参数名**各家不同：
+	--   Surge / Surfboard / SurgeMac：`tls=true`
+	--     （manual.nssurge.com/policies/vmess.html 与 .../vless.html 的 tls 参数）
+	--   Loon：`over-tls=true`
+	--     （nsloon.app/docs/Node/ 通篇用 over-tls；文档只为 ws 传输列过别名
+	--      「ws=true ↔ transport=ws」，从没把 tls 列为 over-tls 的别名）
+	-- 只换名字，不换语义：两边都是「本连接走 TLS」这一个布尔量。
+	local is_loon = (flavor == "loon")
+	local tls_flag = is_loon and "over-tls=true" or "tls=true"
+
 	-- Loon 的凭据写法：端口之后的**位置参数**且用双引号包起来
 	--   Trojan = Trojan,h,p,"密码"
 	--   VLESS  = VLESS,h,p,"UUID"
@@ -140,8 +169,22 @@ function M.surge_line(n, flavor)
 	end
 
 	if proto == "shadowsocks" then
-		e[#e + 1] = "encrypt-method=" .. (n.method or n.cipher or "aes-256-gcm")
-		e[#e + 1] = "password=" .. (n.password or "")
+		local cipher = n.method or n.cipher or "aes-256-gcm"
+		if is_loon then
+			-- Loon 的 Shadowsocks 把加密方式与密码都画在位置参数上，密码带双引号：
+			--   `Shadowsocks,服务器,端口,加密方式,"密码"`（nsloon.app/docs/Node/）
+			-- 加密方式是裸值，与 VMess 行的加密方式同形。
+			-- 此前写成具名的 encrypt-method= / password=，落在 Loon 的语法里就是
+			-- 第 4、5 个位置参数各拿到一串 `key=value` 文本 —— 加密方式解析不出来，
+			-- 密码也不再是密码，节点必然连不上。
+			local pw = loon_positional(n.password)
+			if not pw then return nil end
+			positional[#positional + 1] = cipher
+			positional[#positional + 1] = pw
+		else
+			e[#e + 1] = "encrypt-method=" .. cipher
+			e[#e + 1] = "password=" .. (n.password or "")
+		end
 	elseif proto == "vmess" then
 		if flavor == "loon" then
 			-- Loon 的 VMess 把加密方式与 UUID 都放在位置参数上（见 loon_positional）
@@ -152,8 +195,11 @@ function M.surge_line(n, flavor)
 			positional[#positional + 1] = id
 		else
 			e[#e + 1] = "username=" .. (n.uuid or "")
+			-- Surge 家族把加密方式写在具名参数 encrypt-method 上（见 SURGE_VMESS_CIPHER）
+			local sc = SURGE_VMESS_CIPHER[n.cipher]
+			if sc then e[#e + 1] = "encrypt-method=" .. sc end
 		end
-		if tls then e[#e + 1] = "tls=true" end
+		if tls then e[#e + 1] = tls_flag end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		-- VMess 的 Reality 与 VLESS 同形。Loon 文档的 VMess-Reality 示例：
 		-- `VMess = VMess,host,443,aes-128-gcm,"uuid",transport=tcp,alterId=0,`
@@ -172,7 +218,7 @@ function M.surge_line(n, flavor)
 		else
 			e[#e + 1] = "username=" .. (n.uuid or "")
 		end
-		if tls then e[#e + 1] = "tls=true" end
+		if tls then e[#e + 1] = tls_flag end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		if n.flow then e[#e + 1] = "flow=" .. n.flow end
 		add_reality()
@@ -186,7 +232,11 @@ function M.surge_line(n, flavor)
 		else
 			e[#e + 1] = "password=" .. (n.password or "")
 		end
-		e[#e + 1] = "tls=true"
+		-- Loon 的 Trojan 行**没有** TLS 开关：nsloon.app/docs/Node/ 的明文与 Reality
+		-- 两条示例都只写 `Trojan,服务器,端口,"密码",sni=…[,public-key=…,short-id=…]`，
+		-- 既没有 over-tls 也没有 tls。Trojan 本身就建立在 TLS 之上，Loon 不再要这个
+		-- 开关；写上去是客户端读不懂的参数。Surge 家族的 tls=true 相反是文档要求的。
+		if not is_loon then e[#e + 1] = "tls=true" end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		add_reality()
 	elseif proto == "anytls" then
@@ -205,9 +255,12 @@ function M.surge_line(n, flavor)
 		-- 其余 flavor（surge / surgemac）走上面的具名写法。
 		-- （Egern 已不在本文件里 —— 它的配置是 YAML，见 output_egern.lua。）
 		--
-		-- 这是本文件里唯一按 flavor 分叉的协议：trojan / vmess / vless 一律用具名
-		-- 参数，而 Loon / Surfboard 的文档同样把它们的凭据画在位置参数上 —— 那是
-		-- 既有实现，改动面大且不在本次范围内，所以只让 anytls 按文档写对。
+		-- 按 flavor 分叉的协议不止 anytls：Loon 的 vmess / vless / trojan /
+		-- shadowsocks / ssr / hysteria2 同样把凭据画在位置参数上，TLS 开关与 UDP
+		-- 参数的名字也和 Surge 家族不同 —— 那些分叉在各分支里就地处理（见
+		-- is_loon / tls_flag 与 loon_positional 上方的说明）。anytls 的特别之处
+		-- 只在于它的密码写法在**三家之间**都不同（Surge 具名 / Surfboard 裸位置
+		-- 参数 / Loon 带引号位置参数），所以只有它在这里写成了三分支。
 		if flavor == "surfboard" then
 			positional[#positional + 1] = n.password or ""
 		elseif flavor == "loon" then
@@ -220,8 +273,21 @@ function M.surge_line(n, flavor)
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		add_reality()
 	elseif proto == "ssr" then
-		e[#e + 1] = "encrypt-method=" .. (n.method or n.cipher or "aes-128-cfb")
-		e[#e + 1] = "password=" .. (n.password or "")
+		local cipher = n.method or n.cipher or "aes-128-cfb"
+		if is_loon then
+			-- Loon 的 ShadowsocksR 同样把加密方式与密码放在位置参数上（密码带引号），
+			-- 其余仍是具名参数：
+			--   `ShadowsocksR,服务器,端口,加密方式,"密码",protocol=…,obfs=…`
+			-- （nsloon.app/docs/Node/）。具名的 encrypt-method= / password= 在这里
+			-- 会各自占掉一个位置参数，加密方式与密码都解析不出来。
+			local pw = loon_positional(n.password)
+			if not pw then return nil end
+			positional[#positional + 1] = cipher
+			positional[#positional + 1] = pw
+		else
+			e[#e + 1] = "encrypt-method=" .. cipher
+			e[#e + 1] = "password=" .. (n.password or "")
+		end
 		e[#e + 1] = "protocol=" .. (n.protocol or "origin")
 		e[#e + 1] = "obfs=" .. (n.obfs or "plain")
 		local op = n.obfs_param or n["obfs-param"]
@@ -229,7 +295,15 @@ function M.surge_line(n, flavor)
 		if op and op ~= "" then e[#e + 1] = "obfs-param=" .. op end
 		if pp and pp ~= "" then e[#e + 1] = "protocol-param=" .. pp end
 	elseif proto == "hysteria2" or proto == "hysteria" then
-		e[#e + 1] = "password=" .. (n.password or "")
+		if is_loon then
+			-- Loon 的 Hysteria2 把密码放在位置参数上，带双引号：
+			--   `Hysteria2,服务器,端口,"密码",sni=…`（nsloon.app/docs/Node/）
+			local pw = loon_positional(n.password)
+			if not pw then return nil end
+			positional[#positional + 1] = pw
+		else
+			e[#e + 1] = "password=" .. (n.password or "")
+		end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 	elseif proto == "tuic" then
 		e[#e + 1] = "username=" .. (n.uuid or "")
@@ -266,7 +340,10 @@ function M.surge_line(n, flavor)
 	end
 
 	if n["skip-cert-verify"] then e[#e + 1] = "skip-cert-verify=1" end
-	if n.udp then e[#e + 1] = "udp-relay=true" end
+	-- UDP 转发的参数名同样各家不同：Surge 家族是 udp-relay=true，Loon 是 udp=true
+	-- （nsloon.app/docs/Node/ 的每个示例都写 udp=true，udp-relay 一次都没出现；
+	-- 相关的另外两个开关叫 udp-over-tcp / udp-port）。
+	if n.udp then e[#e + 1] = is_loon and "udp=true" or "udp-relay=true" end
 
 	-- 参数值里的逗号无法用这些格式表达，整条丢弃（返回 nil，由调用方剔除）。
 	-- [Proxy] 行与 QX 的 [server_local] 行都是逗号分隔的 `key=value` 序列，
