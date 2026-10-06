@@ -401,6 +401,7 @@ jobs:
         git_clone https://github.com/Kingwong55/luci-app-tailscale
         git_clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community tailscalec && mv -f tailscalec/luci-app* ./;rm -rf tailscalec
         git_clone https://github.com/mgz0227/luci-app-ipsec-server
+        git_clone https://github.com/szwjp/luci-app-ipsec-vpnd
         ) &
         (
         git_sparse_clone revision https://github.com/Self-Hosting-Group/luci applications/luci-app-upnp
