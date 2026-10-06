@@ -1,0 +1,13 @@
+#!/bin/sh
+# EasyMesh pairing handler
+# Invoked by /etc/rc.button/wps → /etc/rc.wps/* dispatcher
+# On WPS press: switch to pairing mode for 2 minutes.
+
+[ "$(uci -q get easymesh.config.enabled)" = "1" ] || exit 1
+
+logger -t easymesh-button "WPS pressed → pairing mode"
+
+/etc/init.d/easymesh pair >/tmp/easymesh-pair.log 2>&1 &
+
+# Return success so the dispatcher stops scanning further hooks
+exit 0

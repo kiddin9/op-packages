@@ -1,0 +1,14 @@
+#!/bin/sh
+[ -n "${IPKG_INSTROOT}" ] && exit 0
+
+# Add easymesh backup dir to sysupgrade backups
+uci -q add_list system.@system[0].backup_path='/etc/easymesh-backups'
+uci commit system
+
+# Ensure the backup dir exists
+mkdir -p /etc/easymesh-backups
+
+# Enable the mesh service
+/etc/init.d/easymesh enable 2>/dev/null
+
+exit 0

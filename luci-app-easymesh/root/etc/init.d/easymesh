@@ -1,0 +1,994 @@
+#!/bin/sh /etc/rc.common
+#
+# EasyMesh init script
+# Copyright (C) 2021 dz <dingzhong110@gmail.com>
+# Copyright (C) 2026 Arafat Rahman Zami Mondol <zamimondol@gmail.com>
+#
+# Modified from mobing8/luci-app-easymesh-dawn.
+# Additions: 90-second priority retry loop, second-pass catchup,
+#            optional cron fallback, hotplug integration,
+#            robust UCI handling (no escaped quotes), safe role sanitation.
+
+START=99
+STOP=70
+USE_PROCD=0
+
+# --- Custom subcommands -------------------------------------------------
+EXTRA_COMMANDS="backup restore detach_wired pair rollback_start rollback_confirm rollback_cancel priority"
+EXTRA_HELP="        backup            Save current config
+        restore           Restore from last backup
+        detach_wired      Remove wired backhaul
+        pair              Enter WPS pairing mode
+        rollback_start    Start rollback watchdog
+        rollback_confirm  Confirm pending changes
+        rollback_cancel   Revert immediately"
+
+# --- Constants ----------------------------------------------------------
+LOG_TAG="easymesh"
+BACKUP_DIR="/etc/easymesh-backups"
+MAX_BACKUPS=10
+PAIR_TIMEOUT=120
+PAIRING_MESH_ID="EasyMesh_PAIRING"
+RB_DIR="/tmp/easymesh-rollback"
+SAVED_PORTS_FILE="$BACKUP_DIR/original-ports.txt"
+
+log() { logger -t "$LOG_TAG" "$@"; echo "[$LOG_TAG] $*" >&2; }
+
+# =========================================================
+# Helpers
+# =========================================================
+list_radios() {
+    uci show wireless 2>/dev/null | \
+        sed -n 's/^wireless\.\(radio[0-9]*\)=wifi-device$/\1/p'
+}
+
+radio_band() { uci -q get "wireless.$1.band"; }
+
+find_radio_by_band() {
+    local r
+    for r in $(list_radios); do
+        [ "$(radio_band "$r")" = "$1" ] && { echo "$r"; return 0; }
+    done
+    return 1
+}
+
+check_prereqs() {
+    local ok=1
+    if ! lsmod 2>/dev/null | grep -q '^batman_adv'; then
+        log "ERROR: batman_adv module not loaded"
+        ok=0
+    fi
+    command -v batctl >/dev/null 2>&1 || { log "ERROR: batctl missing"; ok=0; }
+    [ "$ok" = "1" ]
+}
+
+find_lan_bridge() {
+    local dev
+    dev=$(uci -q get network.@device[0].name)
+    [ -n "$dev" ] && { echo "$dev"; return; }
+    echo "br-lan"
+}
+
+# =========================================================
+# Wait for mesh VIFs and attach to bat0
+# =========================================================
+wait_and_attach_mesh() {
+    # Wired-only: no VIFs to wait for
+    if [ "$BAND_MODE" = "none" ]; then
+        log "Wired-only mode — skipping mesh VIF wait"
+        ifup bat0
+        sleep 3
+        return 0
+    fi
+
+    # Determine expected VIF count from the base band (strip _wired)
+    local base=$(echo "$BAND_MODE" | sed 's/_wired$//')
+    local expected
+    case "$base" in
+        dual)   expected=2 ;;
+        custom) expected=1 ;;
+        *)      expected=1 ;;
+    esac
+
+    log "Waiting for mesh VIFs (expect $expected)..."
+    local tries=0
+
+    while [ $tries -lt 30 ]; do
+        local mesh_count=$(iw dev 2>/dev/null | grep -c "type mesh point")
+        [ "$mesh_count" -ge "$expected" ] && break
+        sleep 2
+        tries=$((tries + 1))
+    done
+    log "Mesh VIFs present: $(iw dev 2>/dev/null | grep -c 'type mesh point')/$expected"
+
+    ifup bat0
+    sleep 3
+
+    # Attach any mesh VIFs netifd missed
+    local iface
+    for iface in $(iw dev 2>/dev/null | awk '/Interface/{print $2}' | grep mesh); do
+        if ! batctl if 2>/dev/null | grep -q "^${iface}:"; then
+            log "Manually attaching $iface to bat0"
+            batctl if add "$iface" 2>/dev/null
+        fi
+    done
+    sleep 2
+}
+
+# =========================================================
+# Backup / restore
+# =========================================================
+backup_config() {
+    local ts=$(date +%Y%m%d-%H%M%S)
+    mkdir -p "$BACKUP_DIR"
+
+    for cfg in network wireless easymesh dhcp; do
+        [ -f "/etc/config/$cfg" ] && cp "/etc/config/$cfg" "$BACKUP_DIR/$cfg.$ts"
+    done
+    echo "$ts" > "$BACKUP_DIR/LAST"
+
+    ls -1t "$BACKUP_DIR"/network.*  2>/dev/null | tail -n +$((MAX_BACKUPS + 1)) | xargs -r rm -f
+    ls -1t "$BACKUP_DIR"/wireless.* 2>/dev/null | tail -n +$((MAX_BACKUPS + 1)) | xargs -r rm -f
+    ls -1t "$BACKUP_DIR"/easymesh.* 2>/dev/null | tail -n +$((MAX_BACKUPS + 1)) | xargs -r rm -f
+    ls -1t "$BACKUP_DIR"/dhcp.*     2>/dev/null | tail -n +$((MAX_BACKUPS + 1)) | xargs -r rm -f
+
+    log "Backup saved: ts=$ts"
+}
+
+restore_config() {
+    [ -f "$BACKUP_DIR/LAST" ] || { log "No backup found"; return 1; }
+    local ts=$(cat "$BACKUP_DIR/LAST")
+    for cfg in network wireless easymesh dhcp; do
+        [ -f "$BACKUP_DIR/$cfg.$ts" ] && cp "$BACKUP_DIR/$cfg.$ts" "/etc/config/$cfg"
+    done
+    uci commit
+    log "Restored from backup ts=$ts"
+}
+
+# =========================================================
+# Original bridge ports save / restore
+# =========================================================
+save_original_ports() {
+    [ -f "$SAVED_PORTS_FILE" ] && return 0
+    mkdir -p "$(dirname "$SAVED_PORTS_FILE")"
+
+    local idx=0 name ports
+    while name=$(uci -q get "network.@device[$idx].name"); do
+        ports=$(uci -q get "network.@device[$idx].ports")
+        [ -n "$ports" ] && echo "$name|$ports" >> "$SAVED_PORTS_FILE"
+        idx=$((idx + 1))
+    done
+    log "Saved original bridge ports"
+}
+
+restore_wired_port() {
+    uci -q delete network.nwi_mesh_wired 2>/dev/null
+    uci commit network
+
+    [ -f "$SAVED_PORTS_FILE" ] || {
+        log "No saved ports file — nothing to restore"
+        return 0
+    }
+
+    while IFS='|' read -r bridge ports; do
+        [ -z "$bridge" ] && continue
+        local idx=0 name
+        while name=$(uci -q get "network.@device[$idx].name"); do
+            if [ "$name" = "$bridge" ]; then
+                for p in $ports; do
+                    uci -q add_list "network.@device[$idx].ports=$p"
+                done
+                uci commit network
+                log "Restored $ports to bridge $bridge"
+                break
+            fi
+            idx=$((idx + 1))
+        done
+    done < "$SAVED_PORTS_FILE"
+
+    /etc/init.d/network reload
+}
+
+# =========================================================
+# Loop prevention
+# =========================================================
+prevent_wired_loop() {
+    local iface="$1"
+    [ -z "$iface" ] && return 0
+
+    local idx=0 name ports
+    while name=$(uci -q get "network.@device[$idx].name"); do
+        ports=$(uci -q get "network.@device[$idx].ports")
+        case " $ports " in
+            *" $iface "*)
+                log "PREVENT: $iface in bridge $name — removing to avoid loop"
+                uci -q del_list "network.@device[$idx].ports=$iface"
+                uci commit network
+                ;;
+        esac
+        idx=$((idx + 1))
+    done
+}
+
+# =========================================================
+# Role sanitation — server keeps wired_if (needed for wired backhaul)
+# =========================================================
+sanitize_for_role() {
+    case "$ROLE" in
+        server)
+            uci -q delete easymesh.config.ap_mode 2>/dev/null
+            uci -q delete easymesh.config.ip_mode 2>/dev/null
+            uci -q delete easymesh.config.ipaddr 2>/dev/null
+            uci -q delete easymesh.config.netmask 2>/dev/null
+            uci -q delete easymesh.config.gateway 2>/dev/null
+            uci -q delete easymesh.config.dns 2>/dev/null
+            uci commit easymesh
+            log "Sanitized: Server — removed AP mode (wired backhaul allowed)"
+            ;;
+        off)
+            uci -q delete easymesh.config.ap_mode 2>/dev/null
+            uci -q delete easymesh.config.wired_if 2>/dev/null
+            uci commit easymesh
+            ;;
+    esac
+}
+
+# =========================================================
+# Config loader
+# =========================================================
+load_config() {
+    ENABLED=$(uci -q get easymesh.config.enabled)
+    ROLE=$(uci -q get easymesh.config.role)
+    BAND_MODE=$(uci -q get easymesh.config.band_mode)
+    CUSTOM_RADIO=$(uci -q get easymesh.config.custom_radio)
+    MESH_ID=$(uci -q get easymesh.config.mesh_id)
+    ENCRYPTION=$(uci -q get easymesh.config.encryption)
+    KEY=$(uci -q get easymesh.config.key)
+    KVR=$(uci -q get easymesh.config.kvr)
+    MOBILITY_DOMAIN=$(uci -q get easymesh.config.mobility_domain)
+    WIRED_IF=$(uci -q get easymesh.config.wired_if)
+
+    AP_ENABLED_2G=$(uci -q get easymesh.config.ap_enabled_2g)
+    AP_SSID_2G=$(uci -q get easymesh.config.ap_ssid_2g)
+    AP_ENCRYPTION_2G=$(uci -q get easymesh.config.ap_encryption_2g)
+    AP_KEY_2G=$(uci -q get easymesh.config.ap_key_2g)
+
+    AP_ENABLED_5G=$(uci -q get easymesh.config.ap_enabled_5g)
+    AP_SSID_5G=$(uci -q get easymesh.config.ap_ssid_5g)
+    AP_ENCRYPTION_5G=$(uci -q get easymesh.config.ap_encryption_5g)
+    AP_KEY_5G=$(uci -q get easymesh.config.ap_key_5g)
+
+    AP_NETWORK=$(uci -q get easymesh.config.ap_network)
+    SAFE_APPLY=$(uci -q get easymesh.config.safe_apply)
+
+    AP_MODE=$(uci -q get easymesh.config.ap_mode)
+    IP_MODE=$(uci -q get easymesh.config.ip_mode)
+    IPADDR=$(uci -q get easymesh.config.ipaddr)
+    NETMASK=$(uci -q get easymesh.config.netmask)
+    GATEWAY=$(uci -q get easymesh.config.gateway)
+    DNS=$(uci -q get easymesh.config.dns)
+
+    # SAFETY: server never has AP mode
+    if [ "$ROLE" = "server" ] && [ "$AP_MODE" = "1" ]; then
+        log "SAFETY: role=server has ap_mode=1 — forcing off"
+        AP_MODE="0"
+        uci set easymesh.config.ap_mode=0
+        uci commit easymesh
+    fi
+
+    : "${MESH_ID:=EasyMesh_Dualband}"
+    : "${BAND_MODE:=single_5g}"
+    : "${MOBILITY_DOMAIN:=4f57}"
+    : "${AP_ENABLED_2G:=1}"
+    : "${AP_ENABLED_5G:=1}"
+    : "${AP_SSID_2G:=EasyMesh_WiFi}"
+    : "${AP_SSID_5G:=EasyMesh_WiFi_5G}"
+    : "${AP_ENCRYPTION_2G:=sae-mixed}"
+    : "${AP_ENCRYPTION_5G:=sae-mixed}"
+    : "${AP_NETWORK:=lan}"
+
+    # Priority weights (Kbit/s) + mesh VLANs
+    PRIORITY_WIRED=$(uci -q get easymesh.config.priority_wired)
+    PRIORITY_6G=$(uci -q get easymesh.config.priority_6g)
+    PRIORITY_5G=$(uci -q get easymesh.config.priority_5g)
+    PRIORITY_24G=$(uci -q get easymesh.config.priority_24g)
+    MESH_VLANS=$(uci -q get easymesh.config.mesh_vlans)
+
+    : "${PRIORITY_WIRED:=1000000}"
+    : "${PRIORITY_6G:=900000}"
+    : "${PRIORITY_5G:=600000}"
+    : "${PRIORITY_24G:=30000}"
+    : "${MESH_VLANS:=}"
+}
+
+# =========================================================
+# bat0
+# =========================================================
+setup_bat0() {
+    local gw_mode=off
+    case "$ROLE" in
+        server) gw_mode=server ;;
+        client) gw_mode=client ;;
+        node)   gw_mode=off ;;
+    esac
+
+    uci set network.bat0=interface
+    uci set network.bat0.proto=batadv
+    uci set network.bat0.routing_algo=BATMAN_IV
+    uci set network.bat0.gw_mode=$gw_mode
+    uci set network.bat0.aggregated_ogms=1
+    uci set network.bat0.bridge_loop_avoidance=1
+    uci set network.bat0.distributed_arp_table=1
+    uci set network.bat0.fragmentation=1
+    uci set network.bat0.hop_penalty=30
+    uci set network.bat0.orig_interval=500
+    uci set network.bat0.bonding=1
+    uci commit network
+    log "bat0 configured (gw_mode=$gw_mode, bonding=1)"
+}
+
+attach_bat0_to_lan() {
+    local brlan=$(find_lan_bridge)
+    if [ "$brlan" = "br-lan" ]; then
+        uci -q get network.@device[0].ports | grep -q bat0 || {
+            uci add_list network.@device[0].ports=bat0
+            uci commit network
+            log "Added bat0 to br-lan"
+        }
+
+        # Reduce bridge MAC aging for faster failover
+        local cur_ageing=$(uci -q get network.@device[0].ageing_time)
+        if [ "$cur_ageing" != "30" ]; then
+            uci set network.@device[0].ageing_time=30
+            uci commit network
+            log "Bridge ageing_time set to 30s (was ${cur_ageing:-300})"
+        fi
+    else
+        local lan=$(uci -q get network.lan.device)
+        case " $lan " in
+            *" bat0 "*) : ;;
+            *) uci set network.lan.device="$lan bat0"; uci commit network ;;
+        esac
+    fi
+}
+
+detach_bat0_from_lan() {
+    local brlan=$(find_lan_bridge)
+    if [ "$brlan" = "br-lan" ]; then
+        uci -q del_list network.@device[0].ports=bat0 2>/dev/null
+        uci commit network
+    else
+        local lan=$(uci -q get network.lan.device)
+        lan=$(echo "$lan" | sed 's/ bat0//; s/bat0 //; s/^bat0$//')
+        uci set network.lan.device="$lan"
+        uci commit network
+    fi
+}
+
+# =========================================================
+# Mesh iface (no quoted values — no escaped-quote bug)
+# =========================================================
+setup_mesh_iface() {
+    local radio="$1"
+    local meshname="mesh_${radio}"
+    local netname="nwi_mesh_${radio}"
+
+    uci -q delete "wireless.$meshname" 2>/dev/null
+    uci -q delete "network.$netname" 2>/dev/null
+
+    uci set "network.$netname=interface"
+    uci set "network.$netname.proto=batadv_hardif"
+    uci set "network.$netname.master=bat0"
+    uci set "network.$netname.mtu=1500"
+    uci commit network
+
+    uci set "wireless.$meshname=wifi-iface"
+    uci set "wireless.$meshname.device=$radio"
+    uci set "wireless.$meshname.network=$netname"
+    uci set "wireless.$meshname.mode=mesh"
+    uci set "wireless.$meshname.mesh_id=$MESH_ID"
+    uci set "wireless.$meshname.mesh_fwding=1"
+    uci set "wireless.$meshname.mesh_ttl=2"
+    uci set "wireless.$meshname.mcast_rate=24000"
+    uci set "wireless.$meshname.disabled=0"
+
+    if [ "$ENCRYPTION" = "1" ] && [ -n "$KEY" ]; then
+        uci set "wireless.$meshname.encryption=sae"
+        uci set "wireless.$meshname.key=$KEY"
+        uci set "wireless.$meshname.ieee80211w=2"
+        uci set "wireless.$meshname.sae_pwe=1"
+        log "Mesh iface $radio: WPA3-SAE"
+    else
+        uci set "wireless.$meshname.encryption=none"
+        uci -q delete "wireless.$meshname.key" 2>/dev/null
+        uci -q delete "wireless.$meshname.ieee80211w" 2>/dev/null
+        uci -q delete "wireless.$meshname.sae_pwe" 2>/dev/null
+        uci -q delete "wireless.$meshname.sae_anti_clogging_threshold" 2>/dev/null
+        log "Mesh iface $radio: OPEN"
+    fi
+
+    uci commit wireless
+}
+
+# =========================================================
+# K/V/R
+# =========================================================
+apply_kvr() {
+    [ "$KVR" != "1" ] && return 0
+    local r changed=0
+
+    for r in $(list_radios); do
+        uci -q get "wireless.default_$r" >/dev/null || continue
+        uci set "wireless.default_$r.ieee80211k=1"
+        uci set "wireless.default_$r.rrm_neighbor_report=1"
+        uci set "wireless.default_$r.rrm_beacon_report=1"
+        uci set "wireless.default_$r.ieee80211v=1"
+        uci set "wireless.default_$r.bss_transition=1"
+        uci set "wireless.default_$r.ieee80211r=1"
+        uci set "wireless.default_$r.mobility_domain=$MOBILITY_DOMAIN"
+        uci set "wireless.default_$r.ft_over_ds=1"
+        uci set "wireless.default_$r.ft_psk_generate_local=1"
+        changed=1
+    done
+
+    [ "$changed" = "1" ] && uci commit wireless && log "K/V/R applied"
+}
+
+# =========================================================
+# Client AP
+# =========================================================
+apply_client_ap() {
+    local r band iface enabled ssid enc key
+
+    for r in $(list_radios); do
+        iface="default_$r"
+        uci -q get "wireless.$iface" >/dev/null || continue
+
+        band=$(radio_band "$r")
+
+        case "$band" in
+            2g)
+                enabled="$AP_ENABLED_2G"
+                ssid="$AP_SSID_2G"
+                enc="$AP_ENCRYPTION_2G"
+                key="$AP_KEY_2G"
+                ;;
+            5g)
+                enabled="$AP_ENABLED_5G"
+                ssid="$AP_SSID_5G"
+                enc="$AP_ENCRYPTION_5G"
+                key="$AP_KEY_5G"
+                ;;
+            *)
+                continue
+                ;;
+        esac
+
+        # Only disable if EXPLICITLY set to 0. Empty = keep enabled.
+        if [ "$enabled" = "0" ]; then
+            uci set "wireless.$iface.disabled=1"
+            log "Client AP on $band ($r): disabled"
+            continue
+        fi
+
+        if [ -z "$ssid" ]; then
+            ssid=$(uci -q get "wireless.$iface.ssid")
+            log "Using existing SSID for $band: $ssid"
+        fi
+        [ -n "$ssid" ] && uci set "wireless.$iface.ssid=$ssid"
+
+        uci set "wireless.$iface.mode=ap"
+        uci set "wireless.$iface.network=$AP_NETWORK"
+        uci set "wireless.$iface.disabled=0"
+
+        case "$enc" in
+            none)
+                uci set "wireless.$iface.encryption=none"
+                uci -q delete "wireless.$iface.key" 2>/dev/null
+                uci -q delete "wireless.$iface.ieee80211w" 2>/dev/null
+                ;;
+            psk2+ccmp)
+                uci set "wireless.$iface.encryption=psk2+ccmp"
+                uci set "wireless.$iface.key=$key"
+                uci -q delete "wireless.$iface.ieee80211w" 2>/dev/null
+                ;;
+            sae)
+                uci set "wireless.$iface.encryption=sae"
+                uci set "wireless.$iface.key=$key"
+                uci set "wireless.$iface.ieee80211w=2"
+                ;;
+            sae-mixed|*)
+                uci set "wireless.$iface.encryption=sae-mixed"
+                uci set "wireless.$iface.key=$key"
+                uci set "wireless.$iface.ieee80211w=1"
+                ;;
+        esac
+
+        log "Client AP on $band ($r): ssid=$ssid enc=$enc"
+    done
+
+    uci commit wireless
+}
+
+# =========================================================
+# AP mode (with hard role guard)
+# =========================================================
+apply_ap_mode() {
+    if [ "$ROLE" = "server" ]; then
+        log "apply_ap_mode: skipped (role=server)"
+        return 0
+    fi
+
+    [ "$AP_MODE" = "1" ] || return 0
+    log "AP mode: ip_mode=$IP_MODE"
+
+    if [ "$IP_MODE" = "static" ] && [ -n "$IPADDR" ]; then
+        uci set network.lan.proto=static
+        uci set network.lan.ipaddr=$IPADDR
+        uci set network.lan.netmask=${NETMASK:-255.255.255.0}
+        [ -n "$GATEWAY" ] && uci set network.lan.gateway=$GATEWAY
+        uci -q delete network.lan.dns 2>/dev/null
+        [ -n "$DNS" ] && uci add_list network.lan.dns=$DNS
+    elif [ "$IP_MODE" = "dhcp" ]; then
+        uci set network.lan.proto=dhcp
+        uci -q delete network.lan.ipaddr 2>/dev/null
+        uci -q delete network.lan.netmask 2>/dev/null
+        uci -q delete network.lan.gateway 2>/dev/null
+        uci -q delete network.lan.dns 2>/dev/null
+    fi
+
+    uci set dhcp.lan.ignore=1
+    uci -q delete dhcp.lan.dhcpv6 2>/dev/null
+    uci -q delete dhcp.lan.ra 2>/dev/null
+    uci -q delete dhcp.lan.ra_management 2>/dev/null
+    uci commit network
+    uci commit dhcp
+}
+
+# =========================================================
+# Wired backhaul
+# =========================================================
+setup_wired() {
+    if [ -z "$WIRED_IF" ]; then
+        # Clean up any previously-configured wired hardif
+        if uci -q get network.nwi_mesh_wired >/dev/null 2>&1; then
+            log "Wired disabled — removing nwi_mesh_wired config"
+            uci -q delete network.nwi_mesh_wired
+            uci commit network
+            # Restore the port to its original bridge so LAN works again
+            restore_wired_port
+        fi
+        return 0
+    fi
+
+    prevent_wired_loop "$WIRED_IF"
+    save_original_ports
+
+    uci -q delete network.nwi_mesh_wired 2>/dev/null
+    uci set network.nwi_mesh_wired=interface
+    uci set network.nwi_mesh_wired.proto=batadv_hardif
+    uci set network.nwi_mesh_wired.master=bat0
+    uci set network.nwi_mesh_wired.mtu=1500
+    uci set network.nwi_mesh_wired.device=$WIRED_IF
+    uci commit network
+    log "Wired backhaul: $WIRED_IF"
+}
+
+
+# =========================================================
+# Mesh VLANs — extend guest/IoT over mesh via 802.1Q
+# =========================================================
+setup_mesh_vlans() {
+    # Remove any previous 8021q devices on bat0
+    local idx=0 name typ ifn
+    while name=$(uci -q get "network.@device[$idx].name"); do
+        typ=$(uci -q get "network.@device[$idx].type")
+        ifn=$(uci -q get "network.@device[$idx].device")
+        if [ "$typ" = "8021q" ] && [ "$ifn" = "bat0" ]; then
+            uci -q delete "network.@device[$idx]"
+            continue
+        fi
+        idx=$((idx + 1))
+    done
+
+    if [ -z "$MESH_VLANS" ]; then
+        uci commit network
+        return 0
+    fi
+
+    local vlan br_name
+    for vlan in $(echo "$MESH_VLANS" | tr ',' ' '); do
+        vlan=$(echo "$vlan" | tr -d ' ')
+        case "$vlan" in
+            ''|*[!0-9]*) log "Skipping invalid VLAN: $vlan"; continue ;;
+        esac
+
+        # Create bat0.<vid> as 802.1q device
+        uci add network device >/dev/null
+        uci set "network.@device[-1].name=bat0.$vlan"
+        uci set "network.@device[-1].type=8021q"
+        uci set "network.@device[-1].device=bat0"
+        uci set "network.@device[-1].vid=$vlan"
+        log "Mesh VLAN: bat0.$vlan created"
+
+        # Auto-add to matching bridge if it exists
+        for br_name in "br-$vlan" "br-lan$vlan" "br-vlan$vlan" "br-guest$vlan" "br-iot$vlan"; do
+            local bi=0 bn
+            while bn=$(uci -q get "network.@device[$bi].name"); do
+                if [ "$bn" = "$br_name" ]; then
+                    uci -q get "network.@device[$bi].ports" | grep -q "bat0.$vlan" || \
+                        uci add_list "network.@device[$bi].ports=bat0.$vlan"
+                    log "Mesh VLAN $vlan: attached to $br_name"
+                    bi=-1
+                    break
+                fi
+                bi=$((bi + 1))
+            done
+            [ "$bi" = "-1" ] && break
+        done
+    done
+
+    uci commit network
+}
+
+
+# =========================================================
+# Link priority (throughput_override in Kbit/s)
+# =========================================================
+apply_link_priority() {
+    local tries=0
+    local active=0
+    while [ $tries -lt 45 ]; do
+        active=$(batctl if 2>/dev/null | grep -c "active")
+        [ "$active" -gt 0 ] && break
+        sleep 2
+        tries=$((tries + 1))
+    done
+    log "apply_link_priority: found $active active hardif(s) after $((tries*2))s"
+
+    if [ "$active" = "0" ]; then
+        log "apply_link_priority: no hardifs — aborting"
+        return 1
+    fi
+
+    sleep 2
+
+    # Wired hardifs
+    local iface
+    for iface in $(batctl if 2>/dev/null | awk -F: '/active/ {print $1}'); do
+        case "$iface" in
+            eth*|lan*)
+                batctl hardif "$iface" throughput_override "$PRIORITY_WIRED" 2>/dev/null
+                log "Link priority: $iface = $PRIORITY_WIRED Kbit (wired)"
+                ;;
+        esac
+    done
+
+    # Wireless mesh — by frequency
+    for iface in $(batctl if 2>/dev/null | awk -F: '/active/ {print $1}'); do
+        case "$iface" in
+            phy*-mesh*)
+                local freq=$(iw dev "$iface" info 2>/dev/null | \
+                    sed -n 's/.*(\([0-9]*\) MHz).*/\1/p')
+                [ -z "$freq" ] && continue
+
+                if [ "$freq" -lt 2500 ]; then
+                    batctl hardif "$iface" throughput_override "$PRIORITY_24G" 2>/dev/null
+                    log "Link priority: $iface = $PRIORITY_24G Kbit (2.4 GHz, $freq MHz)"
+                elif [ "$freq" -lt 6000 ]; then
+                    batctl hardif "$iface" throughput_override "$PRIORITY_5G" 2>/dev/null
+                    log "Link priority: $iface = $PRIORITY_5G Kbit (5 GHz, $freq MHz)"
+                else
+                    batctl hardif "$iface" throughput_override "$PRIORITY_6G" 2>/dev/null
+                    log "Link priority: $iface = $PRIORITY_6G Kbit (6 GHz, $freq MHz)"
+                fi
+                ;;
+        esac
+    done
+}
+
+
+# =========================================================
+# Cron fallback toggle
+# =========================================================
+apply_cron_setting() {
+    local cron_file="/etc/crontabs/root"
+    local enabled=$(uci -q get easymesh.config.cron_fallback)
+
+    [ -f "$cron_file" ] || {
+        mkdir -p /etc/crontabs
+        touch "$cron_file"
+    }
+
+    # Remove any existing easymesh priority lines (active or commented)
+    sed -i '\|easymesh priority|d' "$cron_file"
+
+    if [ "$enabled" = "1" ]; then
+        echo "* * * * * /etc/init.d/easymesh priority >/dev/null 2>&1" >> "$cron_file"
+        log "Cron fallback: ENABLED (every minute)"
+    else
+        echo "#* * * * * /etc/init.d/easymesh priority >/dev/null 2>&1" >> "$cron_file"
+        log "Cron fallback: DISABLED (commented out)"
+    fi
+
+    /etc/init.d/cron restart 2>/dev/null || true
+}
+
+
+# =========================================================
+# Enable / disable
+# =========================================================
+enable_mesh() {
+    check_prereqs || { log "Prereq failed"; return 1; }
+
+    sanitize_for_role
+    load_config
+
+    log "Enabling mesh (role=$ROLE, band=$BAND_MODE)"
+
+    local r
+    for r in $(list_radios); do
+        uci set "wireless.$r.disabled=0"
+    done
+    uci commit wireless
+
+    setup_bat0
+    attach_bat0_to_lan
+
+    # Normalize band mode: strip the _wired suffix to select radio logic
+    local BASE_BAND=$(echo "$BAND_MODE" | sed 's/_wired$//')
+
+    case "$BASE_BAND" in
+        none)
+            log "Wired-only mode — skipping wireless mesh setup"
+            ;;
+        dual)
+            local r5 r2
+            r5=$(find_radio_by_band 5g)
+            r2=$(find_radio_by_band 2g)
+            [ -n "$r5" ] && setup_mesh_iface "$r5"
+            [ -n "$r2" ] && setup_mesh_iface "$r2"
+            ;;
+        single_2g)
+            local r2b; r2b=$(find_radio_by_band 2g)
+            [ -n "$r2b" ] && setup_mesh_iface "$r2b"
+            ;;
+        custom)
+            [ -n "$CUSTOM_RADIO" ] && setup_mesh_iface "$CUSTOM_RADIO"
+            ;;
+        single_5g|*)
+            local r5b; r5b=$(find_radio_by_band 5g)
+            [ -n "$r5b" ] && setup_mesh_iface "$r5b"
+            ;;
+    esac
+
+    setup_wired
+    setup_mesh_vlans
+    apply_kvr
+    apply_client_ap
+    apply_ap_mode
+
+    apply_cron_setting
+    log "UCI config complete"
+}
+
+disable_mesh() {
+    log "Disabling mesh"
+
+    local r
+    for r in $(list_radios); do
+        uci -q delete "wireless.mesh_$r" 2>/dev/null
+        uci -q delete "network.nwi_mesh_$r" 2>/dev/null
+    done
+    uci -q delete network.nwi_mesh_wired 2>/dev/null
+    uci -q delete network.bat0 2>/dev/null
+    uci commit wireless
+    uci commit network
+
+    detach_bat0_from_lan
+}
+
+# =========================================================
+# WPS pairing
+# =========================================================
+pair() {
+    log "Pairing mode ($PAIR_TIMEOUT sec)"
+
+    backup_config
+
+    local orig_id=$(uci -q get easymesh.config.mesh_id)
+    local orig_enc=$(uci -q get easymesh.config.encryption)
+    local orig_key=$(uci -q get easymesh.config.key)
+    echo "$orig_id|$orig_enc|$orig_key" > /tmp/easymesh-pair-orig
+
+    uci set easymesh.config.mesh_id=$PAIRING_MESH_ID
+    uci set easymesh.config.encryption=0
+    uci -q delete easymesh.config.key 2>/dev/null
+    uci commit easymesh
+
+    load_config
+    enable_mesh
+    wifi reload
+
+    wait_and_attach_mesh
+
+    local led=$(ls /sys/class/leds/ 2>/dev/null | grep -iE 'wlan|wifi|status' | head -1)
+    local start=$(date +%s)
+    local peer_found=0
+
+    while [ $(( $(date +%s) - start )) -lt $PAIR_TIMEOUT ]; do
+        if [ -d /sys/class/net/bat0 ]; then
+            local n=$(batctl n 2>/dev/null | tail -n +2 | \
+                grep -cE '([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}')
+            if [ "$n" -gt 0 ]; then
+                peer_found=1
+                break
+            fi
+        fi
+
+        if [ -n "$led" ]; then
+            echo 1 > /sys/class/leds/$led/brightness 2>/dev/null
+            sleep 1
+            echo 0 > /sys/class/leds/$led/brightness 2>/dev/null
+        fi
+        sleep 1
+    done
+
+    if [ "$peer_found" = "1" ]; then
+        log "Peer joined — pairing successful"
+        [ -n "$led" ] && echo 1 > /sys/class/leds/$led/brightness 2>/dev/null
+    else
+        log "Timed out — restoring"
+        IFS='|' read -r orig_id orig_enc orig_key < /tmp/easymesh-pair-orig
+        uci set easymesh.config.mesh_id=$orig_id
+        uci set easymesh.config.encryption=$orig_enc
+        [ -n "$orig_key" ] && uci set easymesh.config.key=$orig_key
+        uci commit easymesh
+
+        load_config
+        enable_mesh
+        wifi reload
+        wait_and_attach_mesh
+        log "Restored"
+    fi
+}
+
+# =========================================================
+# Rollback watchdog
+# =========================================================
+rollback_start() {
+    local delay="${1:-60}"
+    mkdir -p "$RB_DIR"
+    rm -f "$RB_DIR/confirmed" "$RB_DIR/running"
+    touch "$RB_DIR/running"
+
+    cp /etc/config/network  "$RB_DIR/network.before"
+    cp /etc/config/wireless "$RB_DIR/wireless.before"
+
+    log "Rollback watchdog: ${delay}s to confirm"
+
+    (
+        sleep "$delay"
+        [ -f "$RB_DIR/confirmed" ] && {
+            log "Rollback: confirmed"
+            rm -f "$RB_DIR/running"
+            exit 0
+        }
+        log "Rollback: no confirmation — restoring"
+        [ -f "$RB_DIR/network.before" ]  && cp "$RB_DIR/network.before"  /etc/config/network
+        [ -f "$RB_DIR/wireless.before" ] && cp "$RB_DIR/wireless.before" /etc/config/wireless
+        uci commit network
+        uci commit wireless
+        wifi reload
+        /etc/init.d/network reload
+        rm -f "$RB_DIR/running"
+    ) &
+}
+
+rollback_confirm() {
+    mkdir -p "$RB_DIR"
+    touch "$RB_DIR/confirmed"
+    rm -f "$RB_DIR/running"
+    log "Rollback: user confirmed"
+}
+
+rollback_cancel() {
+    mkdir -p "$RB_DIR"
+    log "Rollback: user cancelled"
+    if [ -f "$RB_DIR/network.before" ]; then
+        cp "$RB_DIR/network.before"  /etc/config/network
+        cp "$RB_DIR/wireless.before" /etc/config/wireless
+        uci commit network
+        uci commit wireless
+        wifi reload
+        /etc/init.d/network reload
+    fi
+    rm -f "$RB_DIR/running" "$RB_DIR/confirmed"
+}
+
+# =========================================================
+# Service entry points
+# =========================================================
+start() {
+    load_config
+    [ "$ENABLED" = "1" ] || { log "easymesh disabled"; return 0; }
+    enable_mesh
+    log "Reloading wireless..."
+    wifi reload
+
+    wait_and_attach_mesh
+
+    [ -d /sys/class/net/bat0 ] && log "bat0 UP" || log "bat0 missing"
+    apply_link_priority
+    apply_cron_setting
+
+    # Second pass 90s after boot to catch late-arriving hardifs
+    (
+        sleep 90
+        log "Priority: second pass (post-boot)"
+        apply_link_priority
+    ) </dev/null >/dev/null 2>&1 &
+}
+
+stop() {
+    log "Stopping mesh (config preserved)"
+    local r
+    for r in $(list_radios); do
+        ifdown "nwi_mesh_$r" 2>/dev/null
+    done
+    ifdown bat0 2>/dev/null
+}
+
+restart() {
+    load_config
+    [ "$ENABLED" = "1" ] || { log "easymesh disabled"; return 0; }
+    enable_mesh
+    wifi reload
+
+    wait_and_attach_mesh
+
+    [ -d /sys/class/net/bat0 ] && log "bat0 UP" || log "bat0 missing"
+    apply_link_priority
+    apply_cron_setting
+}
+
+reload() { restart; }
+
+backup() { backup_config; }
+
+restore() {
+    restore_config
+    wifi reload
+    /etc/init.d/network reload
+}
+
+detach_wired() {
+    log "Detaching wired backhaul"
+    restore_wired_port
+    uci -q delete easymesh.config.wired_if 2>/dev/null
+    uci -q delete easymesh.config.preferred_wired_port 2>/dev/null
+    uci commit easymesh
+    log "Wired backhaul removed"
+}
+
+status() {
+    if [ -d /sys/class/net/bat0 ]; then
+        local n=$(batctl n 2>/dev/null | tail -n +2 | wc -l)
+        local w=$(batctl if 2>/dev/null | grep -cE '^(eth|lan)')
+        echo "easymesh: running - bat0 up, $n wireless + $w wired link(s)"
+        return 0
+    fi
+    echo "easymesh: not running"
+    return 1
+}
+
+priority() {
+    load_config
+    apply_link_priority
+}
+
+service_triggers() {
+    procd_add_reload_trigger "easymesh"
+}
+
+# --- File ends here. ---

@@ -1,0 +1,16 @@
+# Editor backups
+*.bak
+*.swp
+*.tmp
+
+# Local test artifacts
+/tmp/
+/.config
+
+# Python
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
