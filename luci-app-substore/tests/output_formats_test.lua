@@ -153,5 +153,114 @@ local qx_ok = fmts.to_qx({ { proto = "trojan", name = "XY", server = "1.1.1.1", 
 check("qx newline name does not add lines", count_lines(qx_nl) == count_lines(qx_ok))
 check("qx newline name flattened", qx_nl:find("X Y", 1, true) ~= nil)
 
+-- ---------- 7.9：Loon 与 Surge 家族的参数名 / 写法分叉 ----------
+-- 依据：nsloon.app/docs/Node/（Loon 节点行）与 manual.nssurge.com/policies/*.html
+-- （Surge 家族）。两家语法在四处不同：TLS 开关名、UDP 开关名、VMess 加密方式的
+-- 落点、以及凭据是否写成端口之后的位置参数。写错任何一处都不会报错，只是节点
+-- 连不上 —— 所以每处分叉都钉一条断言。
+
+-- (a) TLS 开关名：Surge 家族 tls=true，Loon over-tls=true
+local vm_tls = { proto = "vmess", name = "V", server = "1.1.1.1", port = 443,
+	uuid = "u", security = "tls" }
+check("surge vmess tls=true", fmts.surge_line(vm_tls, "surge"):find("tls=true", 1, true) ~= nil)
+check("loon vmess over-tls=true", fmts.surge_line(vm_tls, "loon"):find("over-tls=true", 1, true) ~= nil)
+-- 具名参数之间是 ", " 分隔，所以独立的 tls 参数会以 ", tls=true" 出现；
+-- 直接找 "tls=true" 会命中 "over-tls=true" 的子串，必须带上前导分隔符。
+check("loon vmess no bare tls=true",
+	fmts.surge_line(vm_tls, "loon"):find(", tls=true", 1, true) == nil)
+
+local vl_tls = { proto = "vless", name = "L", server = "1.1.1.1", port = 443,
+	uuid = "u", security = "tls" }
+check("surge vless tls=true", fmts.surge_line(vl_tls, "surge"):find("tls=true", 1, true) ~= nil)
+check("loon vless over-tls=true", fmts.surge_line(vl_tls, "loon"):find("over-tls=true", 1, true) ~= nil)
+
+-- Trojan 是例外：Loon 文档的 Trojan 示例（明文与 Reality 两条）里根本没有 TLS 键
+-- —— Trojan 本身就建立在 TLS 之上，Loon 不再要这个开关。Surge 家族的 tls=true
+-- 则是文档要求的，不能跟着一起删。
+local tj_node = { proto = "trojan", name = "T", server = "1.1.1.1", port = 443, password = "p" }
+check("surge trojan tls=true", fmts.surge_line(tj_node, "surge"):find("tls=true", 1, true) ~= nil)
+local loon_tj = fmts.surge_line(tj_node, "loon")
+check("loon trojan has no tls key", loon_tj:find("tls", 1, true) == nil)
+check("loon trojan positional password", loon_tj:find('trojan, 1.1.1.1, 443, "p"', 1, true) ~= nil)
+
+-- (b) UDP 开关名：Surge 家族 udp-relay=true，Loon udp=true
+local udp_node = { proto = "trojan", name = "U", server = "1.1.1.1", port = 443,
+	password = "p", udp = true }
+check("surge udp-relay=true", fmts.surge_line(udp_node, "surge"):find("udp-relay=true", 1, true) ~= nil)
+local loon_udp = fmts.surge_line(udp_node, "loon")
+check("loon udp=true", loon_udp:find("udp=true", 1, true) ~= nil)
+check("loon has no udp-relay", loon_udp:find("udp-relay", 1, true) == nil)
+
+-- (c) Surge 家族的 VMess 加密方式写在具名参数 encrypt-method 上，取值只有
+-- aes-128-gcm / chacha20-ietf-poly1305（默认前者）。模型的 chacha20-poly1305
+-- 与客户端拼写不同，不写出来 Surge 会按默认的 aes-128-gcm 去连 —— 静默用错算法。
+local vm_chacha = { proto = "vmess", name = "C", server = "1.1.1.1", port = 443,
+	uuid = "u", cipher = "chacha20-poly1305" }
+check("surge vmess chacha mapped",
+	fmts.surge_line(vm_chacha, "surge"):find("encrypt-method=chacha20-ietf-poly1305", 1, true) ~= nil)
+local vm_gcm = { proto = "vmess", name = "C", server = "1.1.1.1", port = 443,
+	uuid = "u", cipher = "aes-128-gcm" }
+check("surge vmess aes-128-gcm",
+	fmts.surge_line(vm_gcm, "surge"):find("encrypt-method=aes-128-gcm", 1, true) ~= nil)
+-- 不在客户端清单里的取值（zero / none / auto / aes-128-cfb）不写该参数、节点保留：
+-- 写一个客户端读不懂的取值比不写更糟
+local vm_zero = { proto = "vmess", name = "C", server = "1.1.1.1", port = 443,
+	uuid = "u", cipher = "zero" }
+local zero_line = fmts.surge_line(vm_zero, "surge")
+check("surge vmess unmapped cipher omitted",
+	zero_line ~= nil and zero_line:find("encrypt-method", 1, true) == nil)
+-- Loon 把加密方式放在位置参数上，不该出现具名的 encrypt-method
+check("loon vmess no named encrypt-method",
+	fmts.surge_line(vm_chacha, "loon"):find("encrypt-method", 1, true) == nil)
+
+-- (d) Loon 的 shadowsocks / hysteria2 凭据同样是位置参数（密码带双引号）
+local ss_node = { proto = "shadowsocks", name = "S", server = "1.1.1.1", port = 8388,
+	method = "aes-256-gcm", password = "pw" }
+check("surge ss named", fmts.surge_line(ss_node, "surge"):find("encrypt-method=aes-256-gcm", 1, true) ~= nil)
+check("loon ss positional",
+	fmts.surge_line(ss_node, "loon"):find('shadowsocks, 1.1.1.1, 8388, aes-256-gcm, "pw"', 1, true) ~= nil)
+
+local hy_node = { proto = "hysteria2", name = "H", server = "1.1.1.1", port = 443, password = "pw" }
+check("surge hysteria2 named", fmts.surge_line(hy_node, "surge"):find("password=pw", 1, true) ~= nil)
+check("loon hysteria2 positional",
+	fmts.surge_line(hy_node, "loon"):find('hysteria2, 1.1.1.1, 443, "pw"', 1, true) ~= nil)
+
+-- (e) 值里含英文逗号：Loon 的引号按文档确实能保住逗号，本实现仍按「整条丢弃」
+-- 处理（具名参数不带引号，同一行混用两种约定会让「哪个值被包裹」变成依赖客户端
+-- 实现的行为）。这里钉住这个保守选择，避免日后被无意改成半截输出。
+local ss_comma = { proto = "shadowsocks", name = "S", server = "1.1.1.1", port = 8388,
+	method = "aes-256-gcm", password = "pa,ss" }
+check("loon comma password drops node", fmts.surge_line(ss_comma, "loon") == nil)
+
+-- ---------- Loon 输出 → 导入回环 ----------
+-- 生成端与解析端必须成对改动：只改生成端的话，导出的 Loon 配置再导入回来会静默
+-- 丢掉凭据（parser_surge 此前对 ssr 根本没有取字段的分支，对 shadowsocks /
+-- hysteria2 也不认位置参数）。
+local psurge = require("substore.parser_surge")
+local function loon_roundtrip(node)
+	return psurge.parse(fmts.to_loon({ node }, { name = "P" }))[1]
+end
+
+local rt_ss = loon_roundtrip(ss_node)
+check("loon rt ss method", rt_ss and rt_ss.method == "aes-256-gcm")
+check("loon rt ss password", rt_ss and rt_ss.password == "pw")
+
+local rt_hy = loon_roundtrip(hy_node)
+check("loon rt hysteria2 password", rt_hy and rt_hy.password == "pw")
+check("loon rt hysteria2 security", rt_hy and rt_hy.security == "tls")
+
+local rt_vm = loon_roundtrip(vm_tls)
+check("loon rt vmess uuid", rt_vm and rt_vm.uuid == "u")
+check("loon rt vmess security", rt_vm and rt_vm.security == "tls")
+
+local rt_vl = loon_roundtrip(vl_tls)
+check("loon rt vless uuid", rt_vl and rt_vl.uuid == "u")
+check("loon rt vless security", rt_vl and rt_vl.security == "tls")
+
+-- Trojan：Loon 行里不再有 TLS 开关，security 由 node.normalize 的 TLS_ONLY 补回
+local rt_tj = loon_roundtrip(tj_node)
+check("loon rt trojan password", rt_tj and rt_tj.password == "p")
+check("loon rt trojan security", rt_tj and rt_tj.security == "tls")
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

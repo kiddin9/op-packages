@@ -30,7 +30,7 @@ import { lstat, mkdtemp, readfile, writefile } from 'fs';
 import { Loader } from './config/loader.uc';
 import { generate } from './generator/client.uc';
 import { rule_set_tags } from './generator/common.uc';
-import { removeBlankAttrs, isEmpty, isValidCIDR, probeRuleSetFile, ruleSetFormatFromPath, shellQuote, validateRuleSetPath, validation, HP_DIR, RUN_DIR, UCICONFIG_DIR } from './homeproxy-pro.uc';
+import { removeBlankAttrs, isEmpty, isValidCIDR, probeRuleSetFile, ruleSetFormatFromPath, shellQuote, udp_transport_verdict, validateRuleSetPath, validation, HP_DIR, RUN_DIR, UCICONFIG_DIR } from './homeproxy-pro.uc';
 
 /* Resolve the GenerationContext inputs. This is the only impure step on the
  * client generation path, and it is deliberately here rather than under
@@ -127,6 +127,39 @@ function export_node_addresses(config) {
 
 	dump(RUN_DIR + '/node-addr-ips.txt', addrs);
 	dump(RUN_DIR + '/node-addr-domains.txt', domains);
+}
+
+/* Export the UDP transport verdict for the shell runtime to read.
+ *
+ * runtime/health.sh wants to say out loud why QUIC was or was not rejected,
+ * and it is a shell script: it cannot call into homeproxy-pro.uc, because that
+ * module imports luci.http and a plain `ucode -e` outside rpcd does not
+ * resolve it.  Re-implementing the judgement in shell would duplicate the
+ * UDP_NATIVE_PROTOCOLS set, and a duplicated set is a set that drifts - the
+ * firewall would reject QUIC on one list while the log explained another.
+ *
+ * So the verdict is computed once, here, and written out.  The consumer is
+ * a one-line read, and a stale file only costs a stale log line.
+ *
+ * Format is one token per line, deliberately not prose: the shell reads the
+ * flag with `read`, and the reason is a single line safe to print as-is. */
+function export_udp_transport() {
+	const v = udp_transport_verdict('homeproxy-pro');
+
+	/* join(sep, list), not list.join(sep): ucode will not let an array literal
+	 * be the receiver of a method call, and `['a'].join('\n')` fails to parse
+	 * as "call join on the literal" - it raises "left-hand side is not a
+	 * function" at the closing bracket.  The dump() helper above already
+	 * spells it the other way for the same reason. */
+	const body = join('\n', [
+		v.native ? '1' : '0',
+		v.configured ? '1' : '0',
+		v.protocol,
+		v.reason
+	]);
+
+	if (writefile(RUN_DIR + '/udp-transport.txt', body + '\n') == null)
+		warn(sprintf('homeproxy-pro: could not write %s\n', RUN_DIR + '/udp-transport.txt'));
 }
 
 function resolve_env(dm) {
@@ -380,6 +413,7 @@ if (system('sing-box check --config ' + shellQuote(tmp)) !== 0) {
  * dnsmasq snippets read the exported list, and they must never be pointed at
  * addresses from a configuration that does not start. */
 export_node_addresses(config);
+export_udp_transport();
 
 if (system('mv -f ' + shellQuote(tmp) + ' ' + shellQuote(RUN_DIR) + '/sing-box-c.json') !== 0) {
 	system('rm -rf ' + shellQuote(work_dir));

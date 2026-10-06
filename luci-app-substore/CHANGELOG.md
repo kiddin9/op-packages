@@ -2,6 +2,81 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.2-r6] - Loon / Surge 家族写法按官方文档对齐（LEGACY_ISSUES 7.9）
+
+`docs/LEGACY_ISSUES.md` 第七节 2.7.2 审计新发现的**第五轮**修复：(a)(b)(c)(d)
+全部实施，(e) 保持保守。改动集中在 `output_formats.surge_line`（生成端）与
+`parser_surge.parse_surge_line`（解析端）—— 两端必须成对，否则导出的配置再导入
+回来会**静默丢字段**。
+
+### 修复 — 7.9(a)：Loon 的 TLS 开关是 `over-tls`，Trojan 例外
+
+Loon 文档（`nsloon.app/docs/Node/`）通篇用 `over-tls=true`，从没把 `tls` 列为
+它的别名；本生成器此前对 Loon 也写 Surge 的 `tls=true`。若 Loon 忽略它，vmess /
+vless / trojan 会按明文连 —— 包括 Reality 节点（公钥写了、TLS 标志却没生效）。
+
+```lua
+local tls_flag = is_loon and "over-tls=true" or "tls=true"
+```
+
+**Trojan 反过来**：Loon 文档的明文与 Reality 两条示例都**没有**任何 TLS 键
+（Trojan 本身建立在 TLS 之上），所以 Loon 的 trojan 行整个不写 TLS 参数。
+Surge 家族的 `tls=true` 是文档要求的，保持不变。
+
+### 修复 — 7.9(b)：Loon 的 UDP 参数是 `udp`
+
+Loon 文档每个示例都写 `udp=true`，`udp-relay` 一次都没出现。Surge 家族仍用
+`udp-relay=true`。
+
+### 修复 — 7.9(c)：Surge 家族补上 vmess 的 `encrypt-method`
+
+Surge 手册的 vmess 页有具名参数 `encrypt-method`，取值只有 `aes-128-gcm`
+（默认）与 `chacha20-ietf-poly1305`。本生成器此前只写 `username=`，于是 cipher 是
+chacha20 的节点被 Surge 按默认的 `aes-128-gcm` 去连 —— **静默用错算法**。新增
+`SURGE_VMESS_CIPHER` 做拼写映射（模型写 `chacha20-poly1305`，客户端写
+`chacha20-ietf-poly1305`）。映射不到的取值（`zero` / `none` / `auto` /
+`aes-128-cfb`）不写该参数、节点保留。
+
+### 修复 — 7.9(d)：Loon 的 ss / ssr / hysteria2 凭据是位置参数
+
+```
+Shadowsocks,服务器,端口,加密方式,"密码"
+ShadowsocksR,服务器,端口,加密方式,"密码",protocol=…,obfs=…
+Hysteria2,服务器,端口,"密码"
+```
+
+此前一律写具名的 `encrypt-method=` / `password=` —— 落在 Loon 的语法里就是第 4、
+5 个位置参数各拿到一串 `key=value` 文本，加密方式解析不出来、密码也不再是密码，
+节点必然连不上。ssr 的 `protocol=` / `obfs=` 及其参数仍是具名。
+
+### 同步修改解析端（并修掉一个既有缺陷）
+
+`parse_surge_line` 补上位置参数提取，保住「Loon 输出 → 导入」回环。其中
+**SSR 此前根本没有取字段的分支** —— 不论哪种写法导入，加密方式、密码、协议插件、
+混淆方式全是 nil，节点带着空凭据进入统一模型，导出时再被静默丢掉。这是本轮顺带
+修掉的既有缺陷，不是 (d) 引入的。
+
+### 保持保守 — 7.9(e)
+
+值里含英文逗号时仍按「整条丢弃」处理。Loon 的引号按文档确实能保住逗号，但本行的
+具名参数一律不带引号，同一行混用两种约定会让「哪个值被包裹」变成依赖客户端实现的
+行为。已加断言钉住这个选择。
+
+### 测试
+
+* `tests/ssr_test.lua`：`loon encrypt-method` 一条改为断言位置参数写法，新增 9 条
+  Loon 输出 → 导入回环断言。
+* `tests/output_formats_test.lua`：新增 7.9 专节 24 条断言。
+* 反向验证：逐条把代码改回旧行为，确认测试变红（3 / 2 / 2 / 2 / 5 / 1 / 1 条 FAIL），
+  还原后全部 PASS。
+* 全套 **59 个测试文件、0 失败**。
+
+### 本轮新发现（未实施，记录在 LEGACY_ISSUES）
+
+(g) Loon 的节点类型清单里没有 Hysteria v1，本生成器仍会输出 `hysteria` 行；
+(h) `skip-cert-verify=1` 这个取值两家文档都没写；(i) 协议名大小写（Loon 文档用
+首字母大写，本生成器用小写）。三条都只记录、不动代码。
+
 ## [2.7.2-r5] - 后端错误串 msgid 化（LEGACY_ISSUES 7.7）
 
 `docs/LEGACY_ISSUES.md` 第七节 2.7.2 审计新发现的**第四轮**修复。

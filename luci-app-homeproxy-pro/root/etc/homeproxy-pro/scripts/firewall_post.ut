@@ -26,7 +26,7 @@
  */
 import { readfile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty, isValidCIDR } from '/etc/homeproxy-pro/scripts/homeproxy-pro.uc';
+import { isEmpty, isValidCIDR, udp_transport_verdict } from '/etc/homeproxy-pro/scripts/homeproxy-pro.uc';
 import {
 	ipv4_to_nftarr,
 	mac_to_nftarr,
@@ -288,15 +288,38 @@ if (match(proxy_mode, /redirect/)) {
 	self_mark = mark_value_or(uci.get(cfgname, 'infra', 'self_mark'), resolve_mark('100'));
 	redirect_port = port_or(uci.get(cfgname, 'infra', 'redirect_port'), '5331');
 }
-/* Whether UDP can actually be proxied in this configuration: there is a
- * UDP-capable node, or the user took the decision over with custom rules.
- * The UDP tproxy chain already uses exactly this condition, and the QUIC reject
- * has to agree with it - it keyed off `routing_mode !== 'custom'` only, so a
+/* Whether QUIC has to be rejected, and why.
+ *
+ * This used to ask "is there a UDP node?" and that question has been wrong in
+ * both directions.
+ *
+ * Wrong by too much: it keyed off `routing_mode !== 'custom'` alone, so a
  * router with `main_udp_node` set still rejected QUIC on UDP 443 (measured on
  * the device: 1722 QUIC packets rejected in one sample) and browsers that had
- * learned HTTP/3 fell back to TCP needlessly.  Now the reject is emitted only
- * when UDP really is not proxyable. */
-const udp_proxyable = (outbound_udp_node !== 'nil' || routing_mode === 'custom');
+ * already learned HTTP/3 fell back to TCP needlessly.
+ *
+ * Wrong by too little, which is what the current form is: "a UDP node exists"
+ * says nothing about what that node's transport is.  `main_udp_node = same`
+ * with a TCP-transport main node is the shape that slips through - the UI
+ * label reads "Same as main node" and nothing tells the user the consequence.
+ * The UDP is proxied, yes, but it is tunnelled over TCP, and QUIC over a TCP
+ * tunnel stalls: measured with both nodes on the SAME server and only the
+ * transport differing (anytls TCP:443 vs hysteria2 QUIC/UDP:50466), UDP came
+ * back at 174 ms +/- 1 ms through hysteria2 and produced a 568 ms spike with
+ * 37 ms jitter and outright loss through anytls.
+ *
+ * So the gate is now the transport, resolved by udp_transport_verdict() in
+ * homeproxy-pro.uc - one definition, shared with the diagnostic report so the log
+ * and the rule cannot disagree.
+ *
+ * NOTE the deliberate asymmetry with the tproxy chain below and in the UDP
+ * tproxy block: those still key off the plain "is there a UDP node" test,
+ * because they decide whether UDP is PROXIED at all.  This gate decides
+ * whether QUIC is WORTH proxying.  A TCP-transport UDP node still proxies
+ * games, voice and everything else; only QUIC is turned away, so the browser
+ * falls straight back to a TCP path that the same tunnel carries far better. */
+const udp_transport = udp_transport_verdict(cfgname, uci);
+const udp_quic_rejected = !udp_transport.native;
 
 if (match(proxy_mode, /tproxy/))
 	if (outbound_udp_node !== 'nil' || routing_mode === 'custom') {
@@ -1022,17 +1045,17 @@ chain homeproxy_mangle_tun {
 	{% if (v6_handled): %}
 	ip6 daddr != @homeproxy_gfw_list_v6 counter return
 	{% endif /* v6_handled */ %}
-	{% if (!udp_proxyable): %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
-	{% endif /* udp_proxyable */ %}
+	{% if (udp_quic_rejected): %}
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (UDP path is not UDP-native)"
+	{% endif /* udp_quic_rejected */ %}
 	{% elif (routing_mode === 'bypass_mainland_china' || bypass_cn_traffic === '1'): %}
 	ip daddr @homeproxy_mainland_addr_v4 counter return
 	{% if (v6_handled): %}
 	ip6 daddr @homeproxy_mainland_addr_v6 counter return
 	{% endif /* v6_handled */ %}
-	{% if (!udp_proxyable): %}
-	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (not proxyable)"
-	{% endif /* udp_proxyable */ %}
+	{% if (udp_quic_rejected): %}
+	udp dport { 80, 443 } counter reject comment "!{{ cfgname }}: Block QUIC (UDP path is not UDP-native)"
+	{% endif /* udp_quic_rejected */ %}
 	{% elif (routing_mode === 'proxy_mainland_china'): %}
 	ip daddr != @homeproxy_mainland_addr_v4 counter return
 	{% if (v6_handled): %}

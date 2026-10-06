@@ -75,8 +75,28 @@ check("shadowrocket has ssr", shr and util.base64_decode(shr):find("ssr://") ~= 
 -- ---------- Loon 保留 SSR，Surge 丢弃 ----------
 local loon = output.generate({ n }, "loon")
 check("loon has ssr", loon and loon:find("ssr, 127%.0%.0%.1, 8388") ~= nil)
-check("loon encrypt-method", loon and loon:find("encrypt%-method=aes%-128%-cfb") ~= nil)
+-- Loon 把加密方式与密码写成端口之后的**位置参数**（密码带双引号），不是具名参数：
+--   `ShadowsocksR,服务器,端口,加密方式,"密码",protocol=…,obfs=…`（nsloon.app/docs/Node/）
+-- 具名的 encrypt-method= / password= 在 Loon 的语法里会各自占掉一个位置参数，
+-- 加密方式与密码都解析不出来。
+check("loon cipher positional", loon and loon:find('ssr, 127%.0%.0%.1, 8388, aes%-128%-cfb, "test%-password"') ~= nil)
+check("loon no named encrypt-method", loon and loon:find("encrypt%-method=") == nil)
 check("loon protocol", loon and loon:find("protocol=auth_aes128_md5") ~= nil)
+
+-- ---------- Loon 输出 → 导入回环（位置参数写法） ----------
+-- 生成端与解析端必须成对：只改生成端的话，导出的 Loon 配置再导入回来会丢掉
+-- 加密方式与密码（parser_surge 此前对 ssr 根本没有取字段的分支）。
+local loon_parsed = require("substore.parser_surge").parse(loon)
+check("loon roundtrip count", #loon_parsed == 1)
+local lr = loon_parsed[1]
+check("loon roundtrip proto", lr and lr.proto == "ssr")
+check("loon roundtrip method", lr and lr.method == "aes-128-cfb")
+check("loon roundtrip password", lr and lr.password == "test-password")
+check("loon roundtrip protocol", lr and lr.protocol == "auth_aes128_md5")
+check("loon roundtrip obfs", lr and lr.obfs == "http_simple")
+check("loon roundtrip obfs_param", lr and (lr.obfs_param == "download.windowsupdate.com"
+	or lr["obfs-param"] == "download.windowsupdate.com"))
+check("loon roundtrip name", lr and lr.name == "测试节点")
 local surge = output.generate({ n }, "surge")
 check("surge drops ssr", surge and surge:find("127%.0%.0%.1") == nil)
 

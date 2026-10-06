@@ -339,6 +339,47 @@ hp_probe_tcp() {
 	return 1
 }
 
+# hp_report_udp_transport
+# Say out loud, on every start, whether QUIC is being rejected and why.
+#
+# This is a shell script and the judgement lives in ucode (udp_transport_verdict
+# in homeproxy-pro.uc), which this file cannot call into: homeproxy-pro.uc imports
+# luci.http, which a plain `ucode -e` outside rpcd does not resolve.  So the
+# generator computes it once and drops it in RUN_DIR, and this reads that file.
+# Re-implementing the rule here instead would duplicate the protocol set, and
+# the log would then explain a different decision from the one nft actually has.
+#
+# The file is written by generate_client.uc at every generation.  A missing
+# file means generation has not run yet, which is not this function's problem
+# to report - it stays silent rather than guessing.
+hp_report_udp_transport() {
+	# Same inline default as runtime/dns.sh uses for its run-dir arguments:
+	# this file is sourced by init.d/homeproxy-pro but is also exercised by
+	# tests/runtime/ without it.
+	local run_dir="${HP_RUN_DIR:-/var/run/homeproxy-pro}"
+	local f="${run_dir}/udp-transport.txt"
+	local native configured proto reason
+
+	[ -r "$f" ] || return 0
+
+	{
+		read -r native
+		read -r configured
+		read -r proto
+		read -r reason
+	} < "$f"
+
+	[ -n "$native" ] || return 0
+
+	if [ "$native" = "1" ]; then
+		log "UDP path is UDP-native (${proto}): QUIC is proxied as-is."
+	elif [ "$configured" = "1" ]; then
+		log "Warning: ${reason}. QUIC on UDP 80/443 is rejected so browsers fall back to TCP; every other UDP flow is still proxied."
+	else
+		log "UDP path: ${reason}. QUIC on UDP 80/443 is rejected."
+	fi
+}
+
 # hp_run_probes <label> <dns-port> <mixed-port>
 # Report the probe results for one side. Returns 1 only when a probe failed
 # AND HP_PROBE_STRICT=1; a probe that could not be performed never fails it.
@@ -367,6 +408,8 @@ hp_run_probes() {
 	2)
 		log "Warning: cannot probe the ${label} mixed inbound (no nc, or no mixed-in listener in the running configuration)." ;;
 	esac
+
+	hp_report_udp_transport
 
 	if [ "$failed" = "1" ] && [ "${HP_PROBE_STRICT:-0}" = "1" ]; then
 		log "Error: the ${label} functional probes failed and health_probe_strict is on."
