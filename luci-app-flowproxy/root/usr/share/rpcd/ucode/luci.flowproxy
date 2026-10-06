@@ -9,7 +9,6 @@ const STATE_FILE = '/var/run/flowproxy.running';
 const IP_CACHE = '/tmp/flowproxy/lan_ip.cache';
 const LOG_FILE = '/var/log/flowproxy.log';
 const NFT_TABLE = 'flowproxy';
-const DNS_DROPIN_FILE = '/tmp/dnsmasq.d/flowproxy.conf';
 
 // 辅助函数：安全 trim
 function safe_trim(str) {
@@ -19,10 +18,10 @@ function safe_trim(str) {
 const methods = {
     get_status: {
         call: function() {
-            // 1. 快速探测标记文件
+            // 1. 快速探测
             let is_running = access(STATE_FILE, 'f');
             
-            // 2. 自愈：检查内核状态 (nft 链与策略路由)
+            // 2. 自愈：检查内核状态并同步标记文件
             let tcp_active = (system('nft list chain inet ' + NFT_TABLE + ' LAN_MARKFLOW_TCP >/dev/null 2>&1') === 0);
             let udp_active = (system('nft list chain inet ' + NFT_TABLE + ' LAN_MARKFLOW_UDP >/dev/null 2>&1') === 0);
             let real_running = (tcp_active || udp_active);
@@ -41,6 +40,7 @@ const methods = {
                     if (ubus_conn) {
                         let ifaces = ubus_conn.call('network.interface', 'dump');
                         if (type(ifaces?.interface) === 'array') {
+                            // 优先寻找名为 'lan' 的接口，或者寻找拥有 ipv4 地址的第一个非回环接口
                             let fallback_ip = '';
                             for (let iface in ifaces.interface) {
                                 if (iface.interface === 'lan' && iface['ipv4-address']?.[0]?.address) {
@@ -64,8 +64,9 @@ const methods = {
             }
 
             let uci_cursor = cursor();
+
             let proxy_server_ip_addr = uci_cursor.get(UCI_CONFIG, 'global', 'proxy_server_ip_addr') || '';
-            let dns_running = access(DNS_DROPIN_FILE, 'f') ? 1 : 0;
+            let dns_running = (uci_cursor.get(UCI_CONFIG, 'dns_backup') ? 1 : 0);
             
             return {
                 running: real_running ? 1 : 0,
@@ -113,67 +114,6 @@ const methods = {
         }
     },
 
-    get_dataset_info: {
-        args: { file_path: 'string' },
-        call: function(request) {
-            let file_path = request.args?.file_path || '/usr/share/flowproxy/chnroute.txt';
-            if (!match(file_path, /^\/(usr\/share\/flowproxy|tmp\/flowproxy)\/[a-zA-Z0-9_.-]+$/)) {
-                return { error: 'Invalid path' };
-            }
-            if (!access(file_path, 'r')) {
-                return { exists: false, lines: 0, size: 0 };
-            }
-            let s = stat(file_path);
-            let lines = 0;
-            let fd = popen(sprintf("wc -l '%s' 2>/dev/null", file_path));
-            if (fd) {
-                let out = fd.read('all');
-                fd.close();
-                if (out) {
-                    let parts = split(trim(out), /\s+/);
-                    lines = int(parts[0]) || 0;
-                }
-            }
-            return { exists: true, lines: lines, size: s ? s.size : 0 };
-        }
-    },
-
-    update_dataset: {
-        args: { url: 'string', file_path: 'string' },
-        call: function(request) {
-            let url = request.args?.url;
-            let file_path = request.args?.file_path || '/usr/share/flowproxy/chnroute.txt';
-            if (!url || !match(url, /^https?:\/\/[A-Za-z0-9_.\/:~%#?&=+-]+$/)) {
-                return { success: false, error: 'Invalid URL' };
-            }
-            if (!match(file_path, /^\/(usr\/share\/flowproxy|tmp\/flowproxy)\/[a-zA-Z0-9_.-]+$/)) {
-                return { success: false, error: 'Invalid target file path' };
-            }
-            let tmp_file = file_path + '.tmp';
-            let cmd = sprintf("wget -q -O '%s' '%s' --timeout=15 --no-check-certificate 2>&1", tmp_file, url);
-            let rc = system(cmd);
-            if (rc === 0 && access(tmp_file, 'f')) {
-                let s = stat(tmp_file);
-                if (s && s.size > 0) {
-                    system(sprintf("mv -f '%s' '%s'", tmp_file, file_path));
-                    let lines = 0;
-                    let fd = popen(sprintf("wc -l '%s' 2>/dev/null", file_path));
-                    if (fd) {
-                        let out = fd.read('all');
-                        fd.close();
-                        if (out) {
-                            let parts = split(trim(out), /\s+/);
-                            lines = int(parts[0]) || 0;
-                        }
-                    }
-                    return { success: true, lines: lines };
-                }
-            }
-            system(sprintf("rm -f '%s'", tmp_file));
-            return { success: false, error: 'Download failed or file empty' };
-        }
-    },
-
     generate_nft_config: {
         call: function() {
             system('mkdir -p /tmp/flowproxy');
@@ -185,18 +125,19 @@ const methods = {
     get_runtime_config: {
         call: function() {
             let res_file = '/tmp/flowproxy/runtime.tmp';
+            let dns_file = '/tmp/flowproxy/dns_runtime.tmp';
+            
             system('mkdir -p /tmp/flowproxy');
             system('/usr/share/flowproxy/generate_nft.sh runtime > ' + res_file + ' 2>&1');
             let nft_runtime = readfile(res_file) || "(failed)";
             system('rm -f ' + res_file);
             
-            let dns_runtime = "\n--- [ DNSmasq Drop-in Runtime Configuration ] ---\n";
-            let dns_content = readfile(DNS_DROPIN_FILE);
-            if (dns_content) {
-                dns_runtime += dns_content;
-            } else {
-                dns_runtime += "(no active dnsmasq drop-in overrides)";
-            }
+            system('uci show dhcp.@dnsmasq[0] | grep -E "noresolv|dns_redirect|server" | sed -E "s/^dhcp\\.[^.]*\\.([^=]*)=(.*)/\\1: \\2/; s/\\x27//g; s/#/:/g" > ' + dns_file + ' 2>&1');
+            let dns_out = readfile(dns_file);
+            system('rm -f ' + dns_file);
+            
+            let dns_runtime = "\n--- [ DNSmasq Runtime Configuration ] ---\n";
+            dns_runtime += (dns_out || "(no active dnsmasq overrides)");
             
             return { runtime: safe_trim(nft_runtime + dns_runtime) };
         }
@@ -208,6 +149,7 @@ const methods = {
             try {
                 let ubus_conn = connect();
                 if (ubus_conn) {
+                    // 使用 network.device status 以获取所有物理设备 (包括 eth0 等 bridge 成员)
                     let dev_status = ubus_conn.call('network.device', 'status');
                     if (dev_status) {
                         for (let name in dev_status) {

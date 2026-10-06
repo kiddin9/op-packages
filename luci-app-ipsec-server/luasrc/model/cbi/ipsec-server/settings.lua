@@ -1,5 +1,3 @@
-local sys = require "luci.sys"
-
 m = Map("luci-app-ipsec-server", translate("IPSec VPN Server"))
 m.template = "ipsec-server/ipsec-server_status"
 
@@ -9,56 +7,53 @@ s.anonymous = true
 o = s:option(DummyValue, "ipsec-server_status", translate("Current Condition"))
 o.rawhtml = true
 o.cfgvalue = function(t, n)
-	return '<font class="ipsec-server_status"></font>'
+	return '<span class="ipsec-server-status is-loading" role="status" aria-live="polite">' .. translate("Checking...") .. '</span>'
 end
 
 enabled = s:option(Flag, "enabled", translate("Enable"))
-enabled.description = translate("Use a client that supports IPSec Xauth PSK (iOS or Android) to connect to this server.")
+enabled.description = translate("Enable IPsec access for IKEv2 PSK, IKEv1 XAuth PSK, and IKEv2 EAP clients.")
 enabled.default = 0
 enabled.rmempty = false
 
 clientip = s:option(Value, "clientip", translate("VPN Client IP"))
-clientip.description = translate("VPN Client reserved started IP addresses with the same subnet mask, such as: 192.168.100.10/24")
+clientip.description = translate("VPN client address pool in CIDR notation, such as: 10.0.10.0/24")
 clientip.datatype = "ip4addr"
 clientip.optional = false
 clientip.rmempty = false
+clientip.placeholder = "10.0.10.0/24"
+
+serverip = s:option(Value, "serverip", translate("VPN Server IP"))
+serverip.description = translate("VPN server address and subnet in CIDR notation, such as: 10.0.0.1/24")
+serverip.datatype = "ip4addr"
+serverip.optional = false
+serverip.rmempty = false
+serverip.placeholder = "10.0.0.1/24"
+
+domain = s:option(Value, "domain", translate("VPN Domain"))
+domain.description = translate("Domain name used for IKEv2 certificate and Remote ID, such as: ns.miaogongzi.cc")
+domain.datatype = "host"
+domain.optional = false
+domain.rmempty = false
+domain.placeholder = "ns.miaogongzi.cc"
+domain.default = "ns.miaogongzi.cc"
+
+certs_name = s:option(Value, "certs_name", translate("Certificate File Name"))
+certs_name.description = translate("Server certificate file name under /etc/ipsec.d/certs/, such as: server.pem")
+certs_name.optional = false
+certs_name.rmempty = false
+certs_name.placeholder = "server.pem"
+certs_name.default = "server.pem"
+
+private_key = s:option(Value, "private_key", translate("Private Key File Name"))
+private_key.description = translate("Server private key file name under /etc/ipsec.d/private/, such as: server_key.pem")
+private_key.optional = false
+private_key.rmempty = false
+private_key.placeholder = "server_key.pem"
+private_key.default = "server_key.pem"
 
 secret = s:option(Value, "secret", translate("Secret Pre-Shared Key"))
+secret.description = translate("Used by IKEv2 PSK and IKEv1 XAuth PSK clients.")
 secret.password = true
-
-if sys.call("command -v xl2tpd > /dev/null") == 0 then
-	o = s:option(DummyValue, "l2tp_status", "L2TP " .. translate("Current Condition"))
-	o.rawhtml = true
-	o.cfgvalue = function(t, n)
-		return '<font class="l2tp_status"></font>'
-	end
-
-	o = s:option(Flag, "l2tp_enable", "L2TP " .. translate("Enable"))
-	o.description = translate("Use a client that supports L2TP over IPSec PSK to connect to this server.")
-	o.default = 0
-	o.rmempty = false
-
-	o = s:option(Value, "l2tp_localip", "L2TP " .. translate("Server IP"))
-	o.description = translate("VPN Server IP address, such as: 192.168.101.1")
-	o.datatype = "ip4addr"
-	o.rmempty = true
-	o.default = "192.168.101.1"
-	o.placeholder = o.default
-
-	o = s:option(Value, "l2tp_remoteip", "L2TP " .. translate("Client IP"))
-	o.description = translate("VPN Client IP address range, such as: 192.168.101.10-20")
-	o.rmempty = true
-	o.default = "192.168.101.10-20"
-	o.placeholder = o.default
-
-	if sys.call("ls -L /usr/lib/ipsec/libipsec* 2>/dev/null >/dev/null") == 0 then 
-		o = s:option(DummyValue, "_o", " ")
-		o.rawhtml = true
-		o.cfgvalue = function(t, n)
-			return string.format('<a style="color: red">%s</a>', translate("L2TP/IPSec is not compatible with kernel-libipsec, which will disable this module."))
-		end
-		o:depends("l2tp_enable", true)
-	end
-end
+secret.rmempty = false
 
 return m

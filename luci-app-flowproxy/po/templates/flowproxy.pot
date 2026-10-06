@@ -118,7 +118,7 @@ msgstr ""
 msgid "Match Value"
 msgstr ""
 
-msgid "Proxy server interface"
+msgid "Network interface"
 msgstr ""
 
 msgid "Please set download_url first"
@@ -143,9 +143,6 @@ msgid "Refresh Status"
 msgstr ""
 
 msgid "Routing Table ID"
-msgstr ""
-
-msgid "Rule Priority"
 msgstr ""
 
 msgid "Rules"
@@ -229,49 +226,3 @@ msgstr ""
 msgid "this will delete ALL current %s rules and generate default templates. are you sure?"
 msgstr ""
 
-msgid "(file not found)"
-msgstr ""
-
-msgid "Download failed: %s"
-msgstr ""
-
-msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
-msgstr ""
-
-msgid "Invalid proxy server IP address."
-msgstr ""
-
-msgid "The proxy server IP address cannot be the local router IP (%s)."
-msgstr ""
-
-msgid "The proxy server IP address cannot be the network address or broadcast address."
-msgstr ""
-
-msgid "Traffic mark cannot be 0."
-msgstr ""
-
-msgid "Routing table ID %d is reserved by the system (0, 253, 254, 255). Please use another ID."
-msgstr ""
-
-msgid "Restart"
-msgstr ""
-
-msgid "Restarting FlowProxy service..."
-msgstr ""
-
-msgid "FlowProxy service restarted successfully."
-msgstr ""
-
-msgid "Failed to restart FlowProxy service."
-msgstr ""
-
-msgid "RPC error: %s"
-msgstr ""
-
-msgid "Proxy server IP address is required when FlowProxy is enabled."
-msgstr ""
-
-msgid "Invalid IPv4 address format"
-msgstr ""
-msgid "Auto (Detect automatically)"
-msgstr ""

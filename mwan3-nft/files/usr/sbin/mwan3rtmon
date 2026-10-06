@@ -5,7 +5,8 @@ import * as rtnl from "rtnl";
 import * as uloop from "uloop";
 import * as uci from "uci";
 import * as ubus from "ubus";
-import { open, readfile, popen, stat } from "fs";
+import { open, readfile, popen, stat, mkdir, rename, unlink } from "fs";
+import { log_open, log_verbose, log_msg as mlog, ucibool, is_default_equivalent } from 'mwan3.common';
 
 const RTM_NEWROUTE = rtnl.const.RTM_NEWROUTE;
 const RTM_DELROUTE = rtnl.const.RTM_DELROUTE;
@@ -32,6 +33,7 @@ let iface_list = [];        // [ { name, family, tid, enabled, has_tracking } ]
 let active_chains = {};     // { chain_name: true } cached from nft
 let connected_timer = null;       // debounce timer for connected set rebuilds
 let last_connected_fingerprint = ""; // sorted element list from last populate call
+let route_state_timer = null;     // debounce timer for ROUTE_STATUS refresh
 let ubus_conn;
 
 // ---------------------------------------------------------------------------
@@ -40,7 +42,7 @@ let ubus_conn;
 
 function log_msg(level, msg) {
 
-	warn(`mwan3rtmon[${family_name}] ${level}: ${msg}\n`);
+	mlog(level, `[${family_name}] ${msg}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -51,6 +53,10 @@ function load_config() {
 
 	let cur = uci.cursor();
 	cur.load("mwan3");
+
+	// Verbose logging gate
+
+	log_verbose(ucibool(cur.get("mwan3", "globals", "verbose_logging") ?? "0"));
 
 	// MMX mask
 
@@ -219,9 +225,17 @@ function nft_exec(cmd) {
 	return true;
 }
 
+// Run a list of nft commands as a single nft -f transaction. The batch
+// file is per-family: one mwan3rtmon instance runs per address family
+// and each instance is single-threaded, so the family suffix alone
+// keeps the two instances' batch files apart without locking. The file
+// is removed on every exit path after creation. nft runs through a
+// read-mode popen with stderr folded into stdout so the failure log
+// carries nft's own error text.
+
 function nft_batch(cmds) {
 
-	let tmpfile = "/var/run/mwan3/mwan3rtmon_nft_batch";
+	let tmpfile = "/var/run/mwan3/mwan3rtmon_nft_batch." + family_name;
 	let f = open(tmpfile, "w", 0600);
 	if (!f) {
 		log_msg("warn", "cannot open nft batch file");
@@ -232,10 +246,13 @@ function nft_batch(cmds) {
 	f.close();
 
 	let p = popen("nft -f " + tmpfile + " 2>&1");
-	if (!p)
+	if (!p) {
+		unlink(tmpfile);
 		return false;
+	}
 	let out = p.read("all");
 	let rc = p.close();
+	unlink(tmpfile);
 	if (rc != 0) {
 		log_msg("warn", "nft batch failed: " + (out ?? ""));
 		return false;
@@ -323,6 +340,126 @@ function is_linklocal_route(route) {
 	         match(route.dst, /^169\.254\./) != null));
 }
 
+// Does this interface's own routing table hold a usable default route?
+//
+// This is the datapath truth: the interface's fwmark ip rule looks up
+// exactly this table, so an interface whose table N holds no default route
+// black-holes the traffic mwan3 marks to it, even when the main table still
+// has a default via the same device. This mirrors the predicate the rpcd
+// backend uses for has_default and the one mwan3-manage-rules.uc check-route
+// uses. 'routes' is a single full route dump for this family (all tables).
+
+function table_has_default(routes, tid, dev) {
+
+	for (let r in routes)
+		if (r.table == tid && is_default_route(r) && r.oif == dev)
+			return true;
+	return false;
+}
+
+// The interfaces this rtmon instance is responsible for: enabled, tracked,
+// of this family, and currently bound to an l3 device. iface_list is built
+// by load_config() and already carries name, family, tid, enabled, and
+// has_tracking. The device comes from the same ubus network.interface dump
+// build_dev_table_map() uses. An interface with no l3_device yet is skipped;
+// it gets evaluated later when its device appears and routes change.
+
+function tracked_interfaces() {
+
+	let ifaces = [];
+	if (!ubus_conn)
+		return ifaces;
+	let dump = ubus_conn.call("network.interface", "dump");
+	if (!dump || !dump.interface)
+		return ifaces;
+
+	let dev_by_name = {};
+	for (let intf in dump.interface)
+		if (intf.l3_device)
+			dev_by_name[intf.interface] = intf.l3_device;
+
+	for (let iface in iface_list) {
+		if (iface.family != family_name || !iface.enabled || !iface.has_tracking)
+			continue;
+		let dev = dev_by_name[iface.name];
+		if (dev == null)
+			continue;
+		push(ifaces, { name: iface.name, tid: iface.tid, dev: dev });
+	}
+	return ifaces;
+}
+
+// Write the interface's ROUTE_STATUS file, only when the value changes, and
+// log the transition. The write is atomic (temp file + rename within the
+// same tmpfs directory) so the tracker never reads a torn value. The
+// tracker creates these directories, but rtmon may evaluate an interface
+// before its tracker has, so mkdir best-effort first; it fails harmlessly
+// if the directory already exists.
+
+function write_route_state(ifname, state) {
+
+	let path = MWAN3TRACK_STATUS_DIR + "/" + ifname + "/ROUTE_STATUS";
+	let cur = trim(readfile(path) ?? "");
+	if (cur == state)
+		return;
+
+	mkdir(MWAN3TRACK_STATUS_DIR, 0700);
+	mkdir(MWAN3TRACK_STATUS_DIR + "/" + ifname, 0755);
+
+	let tmp = path + ".tmp";
+	let f = open(tmp, "w", 0644);
+	if (!f) {
+		log_msg("warn", "cannot open ROUTE_STATUS for " + ifname);
+		return;
+	}
+	f.write(state + "\n");
+	f.close();
+
+	if (!rename(tmp, path)) {
+		unlink(tmp);
+		log_msg("warn", "cannot commit ROUTE_STATUS for " + ifname);
+		return;
+	}
+
+	// A missing default route is abnormal, not routine failover, so log the
+	// loss at warn and the return to normal at notice.
+
+	log_msg(state == "down" ? "warn" : "notice", ifname + " default route " + state);
+}
+
+// Recompute and persist every responsible interface's route state from one
+// route dump. The dump spans all tables for this family; table_has_default
+// filters to each interface's own table. Called at startup, on SIGHUP, and
+// debounced from the route-event handler.
+
+function refresh_route_states() {
+
+	let ifaces = tracked_interfaces();
+	if (length(ifaces) == 0)
+		return;
+
+	let routes = rtnl.request(RTM_GETROUTE, NLM_F_DUMP, { family: family_num }) ?? [];
+
+	for (let iface in ifaces)
+		write_route_state(iface.name,
+			table_has_default(routes, iface.tid, iface.dev) ? "up" : "down");
+}
+
+// Arm the debounced refresh. Bursts of route events (PD renewal, reconnects,
+// the boot-time route flood) collapse into a single sweep, exactly as the
+// connected-set rebuild is debounced.
+
+function arm_route_state_refresh() {
+
+	if (!route_state_timer)
+		route_state_timer = uloop.timer(DEBOUNCE_MS, () => {
+			refresh_route_states();
+			route_state_timer = null;
+		});
+	else
+		route_state_timer.set(DEBOUNCE_MS);
+}
+
 // Get all routes from main table (and extra lookup tables) via netlink
 
 function get_all_routes() {
@@ -370,8 +507,18 @@ function populate_connected_set() {
 
 	let seen = {};
 	let elements = [];
+
+	// Main-table routes only. get_all_routes() also returns the extra lookup
+	// tables for the per-interface mirroring, but their routes belong to
+	// mwan3_custom_v4/v6, which grants the identical bypass and is maintained
+	// on those tables' own route events. Sweeping them in here as well would
+	// strand them: extra-table events never arm this rebuild, so a route
+	// deleted from its table would stay in the connected set indefinitely.
+
 	for (let route in routes) {
-		if (is_cidr_route(route) && !is_default_route(route) && !is_linklocal_route(route) && !seen[route.dst]) {
+		if (route.table != RT_TABLE_MAIN)
+			continue;
+		if (is_cidr_route(route) && !is_default_equivalent(route) && !is_linklocal_route(route) && !seen[route.dst]) {
 			push(elements, route.dst);
 			seen[route.dst] = true;
 		}
@@ -456,7 +603,7 @@ function repopulate_custom_sets() {
 		if (!extra_table_set[r.table])
 			continue;
 		let dst = r.dst;
-		if (dst == null || is_default_route(r) || is_linklocal_route(r))
+		if (dst == null || is_default_equivalent(r) || is_linklocal_route(r))
 			continue;
 		if (!seen[dst]) {
 			push(cmds, "add element inet mwan3 " + setname + " { " + dst + " }");
@@ -478,7 +625,7 @@ function repopulate_custom_sets() {
 function handle_custom_set_event(route, is_new) {
 
 	let dst = route.dst;
-	if (dst == null || is_default_route(route) || is_linklocal_route(route))
+	if (dst == null || is_default_equivalent(route) || is_linklocal_route(route))
 		return;
 
 	let setname = (family_num == AF_INET) ? "mwan3_custom_v4" : "mwan3_custom_v6";
@@ -535,6 +682,10 @@ function handle_route_event(event) {
 		else
 			connected_timer.set(DEBOUNCE_MS);
 	}
+
+	// Re-evaluate every interface's default-route state on any routing change.
+
+	arm_route_state_refresh();
 
 	// -- Update per-interface routing tables --
 
@@ -594,6 +745,7 @@ function main() {
 	// Parse args
 
 	family_name = ARGV[0] ?? "ipv4";
+	log_open("mwan3rtmon");
 
 	if (family_name == "ipv6") {
 		if (stat("/proc/sys/net/ipv6") == null) {
@@ -610,6 +762,7 @@ function main() {
 	}
 
 	load_config();
+	log_msg("notice", "started");
 
 	// Connect to ubus
 
@@ -653,6 +806,9 @@ function main() {
 	log_msg("debug", "populating initial per-interface routes");
 	populate_iface_routes();
 
+	log_msg("debug", "initial route-state sweep");
+	refresh_route_states();
+
 	// Signal handlers for clean shutdown
 
 	uloop.signal("SIGTERM", () => {
@@ -669,7 +825,22 @@ function main() {
 		log_msg("debug", "received SIGHUP, reloading config");
 		load_config();
 		repopulate_custom_sets();
+		refresh_route_states();
 	});
+
+	// Slow periodic re-sweep as defense in depth: bounds recovery if a
+	// route-state change ever arrives without an accompanying main-table
+	// route event (a coalesced or missed netlink multicast). It is cheap
+	// and silent when nothing moves, since write_route_state only writes
+	// on an actual change.
+
+	function schedule_periodic_route_sweep() {
+		uloop.timer(20000, () => {
+			refresh_route_states();
+			schedule_periodic_route_sweep();
+		});
+	}
+	schedule_periodic_route_sweep();
 
 	log_msg("debug", "entering event loop");
 	uloop.run();

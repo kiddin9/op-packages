@@ -8,8 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mwan3-nft
-PKG_VERSION:=3.6.9
-PKG_RELEASE:=3
+PKG_VERSION:=3.6.12
+PKG_RELEASE:=4
 
 PKG_MAINTAINER:=Florian Eckert <fe@dev.tdt.de>
 PKG_LICENSE:=GPL-2.0
@@ -35,7 +35,8 @@ define Package/$(PKG_NAME)
      +ucode-mod-uci \
      +ucode-mod-ubus \
      +ucode-mod-fs \
-     +ucode-mod-socket
+     +ucode-mod-socket \
+     +ucode-mod-log
    CONFLICTS:=mwan3
    TITLE:=Multiwan hotplug script with connection tracking support (ucode rtmon)
    MAINTAINER:=Florian Eckert <fe@dev.tdt.de>
@@ -219,6 +220,10 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/share/rpcd/ucode/
 	$(INSTALL_BIN) ./files/usr/share/rpcd/ucode/mwan3 \
 		$(1)/usr/share/rpcd/ucode/
+
+	$(INSTALL_DIR) $(1)/usr/share/ucode/mwan3
+	$(INSTALL_DATA) ./files/usr/share/ucode/mwan3/common.uc \
+		$(1)/usr/share/ucode/mwan3/
 
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) ./files/usr/sbin/mwan3 \
