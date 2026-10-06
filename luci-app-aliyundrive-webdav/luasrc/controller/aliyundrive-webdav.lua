@@ -4,21 +4,12 @@ function index()
 	if not nixio.fs.access("/etc/config/aliyundrive-webdav") then
 		return
 	end
+	entry({"admin", "services", "aliyundrive-webdav"}, alias("admin", "services", "aliyundrive-webdav", "client"),_("AliyunDrive WebDAV"), 10).dependent = true  -- 首页
+	entry({"admin", "services", "aliyundrive-webdav", "client"}, cbi("aliyundrive-webdav/client"),_("Settings"), 10).leaf = true  -- 客户端配置
+	entry({"admin", "services", "aliyundrive-webdav", "log"}, form("aliyundrive-webdav/log"),_("Log"), 30).leaf = true -- 日志页面
 
-	local page
-	page = entry({ "admin", "services", "aliyundrive-webdav" }, alias("admin", "services", "aliyundrive-webdav", "client"),
-		_("AliyunDrive WebDAV"), 10) -- 首页
-	page.dependent = true
-	page.acl_depends = { "luci-app-aliyundrive-webdav" }
-
-	entry({ "admin", "services", "aliyundrive-webdav", "client" }, cbi("aliyundrive-webdav/client"), _("Settings"), 10).leaf = true -- 客户端配置
-	entry({ "admin", "services", "aliyundrive-webdav", "log" }, form("aliyundrive-webdav/log"), _("Log"), 30).leaf = true -- 日志页面
-
-	entry({ "admin", "services", "aliyundrive-webdav", "status" }, call("action_status")).leaf = true -- 运行状态
-	entry({ "admin", "services", "aliyundrive-webdav", "logtail" }, call("action_logtail")).leaf = true -- 日志采集
-	entry({ "admin", "services", "aliyundrive-webdav", "qrcode" }, call("action_generate_qrcode")).leaf = true -- 生成扫码登录二维码地址和参数
-	entry({ "admin", "services", "aliyundrive-webdav", "query" }, call("action_query_qrcode")).leaf = true -- 查询扫码登录结果
-	entry({ "admin", "services", "aliyundrive-webdav", "invalidate-cache" }, call("action_invalidate_cache")).leaf = true -- 清除缓存
+	entry({"admin", "services", "aliyundrive-webdav", "status"}, call("action_status")).leaf = true
+	entry({"admin", "services", "aliyundrive-webdav", "logtail"}, call("action_logtail")).leaf = true
 end
 
 function action_status()
@@ -39,28 +30,6 @@ function action_logtail()
 	else
 		e.log = ""
 	end
-	luci.http.prepare_content("application/json")
-	luci.http.write_json(e)
-end
-
-function action_generate_qrcode()
-	local output = luci.sys.exec("aliyundrive-webdav qr generate")
-	luci.http.prepare_content("application/json")
-	luci.http.write(output)
-end
-
-function action_query_qrcode()
-	local data = luci.http.formvalue()
-	local sid = data.sid
-	local output = {}
-	output.refresh_token = luci.sys.exec("aliyundrive-webdav qr query --sid " .. sid)
-	luci.http.prepare_content("application/json")
-	luci.http.write_json(output)
-end
-
-function action_invalidate_cache()
-	local e = {}
-	e.ok = luci.sys.call("kill -HUP `pidof aliyundrive-webdav`") == 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end
