@@ -27,19 +27,30 @@
  	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  	text-decoration: none !important;
  }
-@@ -716,6 +716,12 @@ html:has(.vt-tabs:not([hidden])) { --stick-top: calc(var(--top-h) + 41px); }
- 	border-radius: 10px;
- 	box-shadow: var(--v-shadow);
- 	min-width: 0;
-+	background-clip: padding-box;
-+}
-+.cbi-section > legend:first-child{
-+    margin-left: 10px !important;
-+    padding: 10px !important;
-+    border: none !important;
+@@ -1982,7 +1982,22 @@ html:not([data-darkmode="true"]) .vt-login-page {
+ 		linear-gradient(90deg, rgba(20, 23, 26, .04) 1px, transparent 1px) 0 0 / 32px 32px,
+ 		var(--bg);
  }
- /* card header row */
- .cbi-section > h3:first-child, .cbi-section > legend:first-child, .cbi-section > .cbi-title:first-child,
+-.vt-login { width: min(380px, 100%); }
++.vt-login {
++	width: min(380px, 100%);
++	z-index: 1;
++}
++.vt-login-page{
++	background:none !important;
++}
++.vt-login-page::before {
++	content: "";
++	position: absolute;
++	inset: 0;
++	background-image: url('/luci-static/vantage/pattern.svg');
++	background-size: 440px auto;
++	background-position: center;
++	opacity: 0.4;
++}
+ .vt-login-card {
+ 	padding: var(--sp-6);
+ 	background: var(--s1);
 
 --- a/luci-theme-vantage/Makefile
 +++ b/luci-theme-vantage/Makefile
