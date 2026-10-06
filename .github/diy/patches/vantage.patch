@@ -27,7 +27,20 @@
  	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  	text-decoration: none !important;
  }
-@@ -1982,7 +1982,22 @@ html:not([data-darkmode="true"]) .vt-login-page {
+@@ -716,6 +716,12 @@ html:has(.vt-tabs:not([hidden])) { --stick-top: calc(var(--top-h) + 41px); }
+ 	border-radius: 10px;
+ 	box-shadow: var(--v-shadow);
+ 	min-width: 0;
++	background-clip: padding-box;
++}
++.cbi-section > legend:first-child{
++    margin-left: 10px !important;
++    padding: 10px !important;
++    border: none !important;
+ }
+ /* card header row */
+ .cbi-section > h3:first-child, .cbi-section > legend:first-child, .cbi-section > .cbi-title:first-child,
+@@ -1982,7 +1988,22 @@ html:not([data-darkmode="true"]) .vt-login-page {
  		linear-gradient(90deg, rgba(20, 23, 26, .04) 1px, transparent 1px) 0 0 / 32px 32px,
  		var(--bg);
  }
