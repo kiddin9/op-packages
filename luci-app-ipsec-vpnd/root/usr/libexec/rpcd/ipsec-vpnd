@@ -1,0 +1,249 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# rpcd backend for luci-app-ipsec-vpnd.
+# Exposes one read-only ubus object method "sessions": parse `ipsec statusall`
+# (stroke), merge the currently-online IKEv1 SA set with a persisted history of
+# seen clients (router-side, survives browser/reboot), and return the combined
+# list with an "online" flag per entry.
+#
+# rpcd plugin protocol: argv[1] = "list" | "call", argv[2] = method name when
+# calling; the request JSON arrives on stdin. stdout carries one JSON document.
+#
+# Persisted state: one line per known client, TAB separated:
+#   key\tuser\tremote\tvip\tage\tlast_seen   (key = "user|remote")
+
+. /usr/share/libubox/jshn.sh
+
+STATE_FILE="/etc/luci-app-ipsec-vpnd-sessions.state"
+# Working copy for sessions(); kept in /tmp so an unchanged 5s poll doesn't keep
+# rewriting the persistent state file on flash. Never share this path with the
+# updown hook.
+SESSIONS_TMP="/tmp/.luci-app-ipsec-vpnd-sessions.tmp"
+LOCK_FILE="/tmp/.luci-app-ipsec-vpnd-sessions.lock"
+
+# Best-effort advisory lock: serialises the read/merge/write against the updown
+# hook. If flock is unavailable each writer still uses its own tmp, so the worst
+# case is a lost update in a tiny race window, never a corrupted file.
+flock_lock() {
+	command -v flock >/dev/null 2>&1 || return 0
+	exec 9>"$LOCK_FILE" 2>/dev/null || return 0
+	flock -w 5 9 2>/dev/null || return 0
+}
+flock_unlock() {
+	command -v flock >/dev/null 2>&1 || return 0
+	flock -u 9 2>/dev/null
+	exec 9>&- 2>/dev/null
+}
+
+list_methods() {
+	printf '%s\n' '{"sessions":{},"clear_history":{}}'
+}
+
+json_err() {
+	json_init
+	json_add_int code 1
+	json_add_string error "$1"
+	json_dump
+}
+
+# Parse `ipsec statusall` from stdin into TAB-separated online rows:
+#   key\tuser\tremote\tvip\tage
+parse_statusall() {
+	awk '
+function getsa(l) {
+	if (match(l, /^[ \t]*[A-Za-z0-9_.-]+\[[0-9]+\]:/)) {
+		s = substr(l, RSTART, RLENGTH - 1)
+		sub(/^[ \t]*/, "", s)
+		return s
+	}
+	return ""
+}
+function getts(s) {
+	if (match(s, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+/))
+		return substr(s, RSTART, RLENGTH)
+	return ""
+}
+BEGIN { n = 0; last = "" }
+{
+	line = $0
+
+	if (match(line, /^[ \t]*[A-Za-z0-9_.-]+\[[0-9]+\]: ESTABLISHED /)) {
+		sa = getsa(line)
+		if (!(sa in est)) {
+			est[sa] = 1
+			order[++n] = sa
+			last = sa
+
+			s = index(line, "ESTABLISHED ") + 12
+			e = index(line, " ago,")
+			age[sa] = (e > s) ? substr(line, s, e - s) : ""
+
+			rest = ""
+			i = index(line, "...")
+			if (i > 0) rest = substr(line, i + 3)
+			ip = ""
+			if (match(rest, /[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/))
+				ip = substr(rest, RSTART, RLENGTH)
+			if (ip == "") {
+				sub(/^[ \t]*/, "", rest)
+				j = index(rest, "[")
+				if (j > 0) rest = substr(rest, 1, j - 1)
+				ip = rest
+			}
+			remote[sa] = ip
+		}
+		next
+	}
+
+	if (line ~ /[Xx][Aa]uth/ && index(line, "identity:") > 0) {
+		sa = getsa(line)
+		if (sa != "" && (sa in est) && !(sa in user)) {
+			v = substr(line, index(line, "identity:") + 9)
+			gsub(/^[ \t"'"'"']+|[ \t"'"'"']+$/, "", v)
+			if (v != "") user[sa] = v
+		}
+		next
+	}
+
+	# CHILD_SA traffic selector carrying the assigned /32 client address;
+	# strongSwan 6.x puts the pool /32 on the RIGHT (remote) side here.
+	if (index(line, "===") > 0 && line ~ /\/[0-9]+/) {
+		i = index(line, "===")
+		l = getts(substr(line, 1, i - 1))
+		r = getts(substr(line, i + 3))
+		ip = ""
+		if (r ~ /\/32$/) ip = substr(r, 1, length(r) - 3)
+		else if (l ~ /\/32$/) ip = substr(l, 1, length(l) - 3)
+		if (ip != "") {
+			sa = getsa(line)
+			if (!(sa in est)) sa = last
+			if ((sa in est) && !(sa in vip)) vip[sa] = ip
+		}
+		next
+	}
+}
+END {
+	for (k = 1; k <= n; k++) {
+		sa = order[k]
+		u = user[sa]; r = remote[sa]; v = vip[sa]; a = age[sa]
+		if (u == "") u = "-"
+		if (r == "") r = "-"
+		printf "%s|%s\t%s\t%s\t%s\t%s\n", u, r, u, r, v, a
+	}
+}'
+}
+
+sessions() {
+	local now="$(date +%s)"
+	local online_tmp="/tmp/.luci-app-ipsec-vpnd-online.tsv"
+
+	# ensure the history file exists so awk can always read it as first input
+	[ -f "$STATE_FILE" ] || : > "$STATE_FILE"
+
+	# current online clients as TSV
+	/usr/sbin/ipsec statusall 2>/dev/null | parse_statusall > "$online_tmp"
+
+	# serialize read/merge/write with the updown hook
+	flock_lock
+
+	awk -F'\t' -v now="$now" -v state_tmp="$SESSIONS_TMP" -v state="$STATE_FILE" '
+function jesc(s) {
+	gsub(/\\/, "\\\\", s)
+	gsub(/"/, "\\\"", s)
+	return s
+}
+BEGIN { n = 0 }
+FILENAME == state {
+	# history rows: key user remote vip age last_seen
+	key = $1
+	if (key == "") next
+	if (!(key in seen)) { seen[key] = 1; order[++n] = key }
+	hu[key] = $2; hr[key] = $3; hv[key] = $4; ha[key] = $5; hl[key] = $6
+	next
+}
+{
+	# online rows: key user remote vip age
+	key = $1
+	if (key == "") next
+	active[key] = 1
+	if (!(key in seen)) { seen[key] = 1; order[++n] = key }
+	hu[key] = $2; hr[key] = $3; hv[key] = $4; ha[key] = $5; hl[key] = now
+}
+END {
+	# build output order: online first (kept), then offline by last_seen desc
+	nc = 0
+	for (i = 1; i <= n; i++)
+		if (active[order[i]]) out[++nc] = order[i]
+	oc = 0
+	for (i = 1; i <= n; i++)
+		if (!active[order[i]]) off[++oc] = order[i]
+	for (i = 1; i <= oc; i++)
+		for (j = i + 1; j <= oc; j++)
+			if ((hl[off[j]] + 0) > (hl[off[i]] + 0)) {
+				t = off[i]; off[i] = off[j]; off[j] = t
+			}
+	for (i = 1; i <= oc; i++) out[++nc] = off[i]
+
+	# JSON response
+	printf "{\"code\":0,\"sessions\":["
+	first = 1
+	for (i = 1; i <= nc; i++) {
+		k = out[i]
+		if (!first) printf ","
+		first = 0
+		printf "{\"user\":\"%s\",\"remote\":\"%s\",\"vip\":\"%s\",\"age\":\"%s\",\"online\":%s}",
+			jesc(hu[k]), jesc(hr[k]), jesc(hv[k]), jesc(ha[k]),
+			(active[k] ? "true" : "false")
+	}
+	printf "]}\n"
+
+	# rewrite persisted history (drop online flag; recomputed each call)
+	for (i = 1; i <= n; i++) {
+		k = order[i]
+		printf "%s\t%s\t%s\t%s\t%s\t%s\n", k, hu[k], hr[k], hv[k], ha[k], hl[k] > state_tmp
+	}
+}' "$STATE_FILE" "$online_tmp"
+
+	rc=$?
+	rm -f "$online_tmp"
+	# rewrite the persisted history only when it actually changed, so an idle
+	# 5s poll doesn't keep re-writing the state file on flash.
+	if [ -s "$SESSIONS_TMP" ] && ! cmp -s "$SESSIONS_TMP" "$STATE_FILE"; then
+		mv "$SESSIONS_TMP" "$STATE_FILE"
+	fi
+	rm -f "$SESSIONS_TMP"
+	flock_unlock
+	return $rc
+}
+
+clear_history() {
+	flock_lock
+	rm -f "$STATE_FILE" "$SESSIONS_TMP"
+	flock_unlock
+	json_init
+	json_add_int code 0
+	json_add_string message "cleared"
+	json_dump
+}
+
+main() {
+	case "$1" in
+		list)
+			list_methods
+			;;
+		call)
+			case "$2" in
+				sessions) sessions ;;
+				clear_history) clear_history ;;
+				*) json_err "unknown method" ;;
+			esac
+			;;
+		*)
+			printf '%s\n' '{}'
+			;;
+	esac
+}
+
+# source-able for offline parser testing
+[ -n "$IPSEC_VPND_SKIP_MAIN" ] || main "$@"

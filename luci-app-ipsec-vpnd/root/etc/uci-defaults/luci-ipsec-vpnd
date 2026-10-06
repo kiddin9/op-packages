@@ -1,16 +1,33 @@
 #!/bin/sh
 
+# 仅首次安装时执行初始化（停用系统 ipsec、重建 network/firewall、删除
+# strongswan 占位配置）。升级或重复执行时直接跳过，避免覆盖用户对网络、
+# 防火墙及 strongswan 的自定义配置。
+# 初始化标记记录在 /etc/config/ipsec-vpnd 的 initialized 选项里：该文件
+# 在 conffiles 中，包升级和 sysupgrade 都会保留，标记不会丢失。
+[ "$(uci -q get ipsec-vpnd.ipsec.initialized)" = "1" ] && exit 0
+
+# 禁用 strongswan 自带的 ipsec 服务，避免与 ipsec-vpnd 共用 charon 冲突
+[ -x /etc/init.d/ipsec ] && /etc/init.d/ipsec disable
+
 uci -q batch <<-EOF >/dev/null
 	delete firewall.ipsecd
 	commit firewall
 EOF
+
+# VPN 专用 /24 网段固定为 10.9.8.0/24（与出厂默认配置一致），不再按 LAN 推导。
+# 若你的 LAN 恰好在 10.9.8.0/24，请在初始化后手动改 network.VPN.ipaddr 与
+# ipsec-vpnd.ipsec 的 clientip/clientdns，避免与 LAN 重叠。
+VPN_NET="10.9.8"
+VPN_GW="$VPN_NET.1"
+VPN_POOL="$VPN_NET.10/24"
 
 uci -q batch <<-EOF >/dev/null
 	delete network.VPN
 	set network.VPN=interface
 	set network.VPN.device="ipsec0"
 	set network.VPN.proto="static"
-	set network.VPN.ipaddr="192.168.0.1"
+	set network.VPN.ipaddr="$VPN_GW"
 	set network.VPN.netmask="255.255.255.0"
 	commit network
 
@@ -50,7 +67,7 @@ uci -q batch <<-EOF >/dev/null
 
 	delete firewall.VPN
 	set firewall.VPN=zone
-	set firewall.VPN.name="VPN"
+	set firewall.VPN.name="ipsec-v"
 	set firewall.VPN.input="ACCEPT"
 	set firewall.VPN.forward="ACCEPT"
 	set firewall.VPN.output="ACCEPT"
@@ -58,14 +75,24 @@ uci -q batch <<-EOF >/dev/null
 
 	delete firewall.vpn
 	set firewall.vpn=forwarding
-	set firewall.vpn.name="vpn"
+	set firewall.vpn.name="ipsec-v"
 	set firewall.vpn.dest="wan"
-	set firewall.vpn.src="VPN"
+	set firewall.vpn.src="ipsec-v"
 
 	commit firewall
+
+	set ipsec-vpnd.ipsec.clientip="$VPN_POOL"
+	set ipsec-vpnd.ipsec.clientdns="$VPN_GW"
+	commit ipsec-vpnd
 EOF
 
-[ -f "/etc/config/ipsec" ] && mv "/etc/config/ipsec" "/etc/config/ipsec-vpnd"
+# strongswan 的 /etc/config/ipsec 只是占位配置，直接删除，
+# 避免改名后覆盖本包自带配置（默认 enabled=0）
+[ -f "/etc/config/ipsec" ] && rm -f "/etc/config/ipsec"
+
+# 记录初始化标记，避免升级时重复执行破坏性操作
+uci -q set ipsec-vpnd.ipsec.initialized='1'
+uci -q commit ipsec-vpnd
 
 rm -f /tmp/luci-indexcache
 exit 0
