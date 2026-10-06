@@ -1,0 +1,10 @@
+--- a/luci-app-easymesh/Makefile
++++ b/luci-app-easymesh/Makefile
+@@ -23,6 +23,7 @@ LUCI_DEPENDS:= \
+ 	+batctl-default \
+ 	+luci-compat \
+ 	+luci-lua-runtime \
++	+wpad-mbedtls \
+ 	+libiwinfo-lua 
+ 
+ # Client steering (works with or without usteer)
