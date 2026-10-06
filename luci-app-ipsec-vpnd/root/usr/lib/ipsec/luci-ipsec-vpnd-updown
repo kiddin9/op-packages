@@ -1,0 +1,86 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# strongSwan updown hook for luci-app-ipsec-vpnd.
+# Invoked by strongSwan on every IKEv1 SA up/down event; records the client in
+# the router-side history file so the LuCI client list shows it even when the
+# page is never opened. Online state is still determined live from
+# `ipsec statusall` by the rpcd backend; this hook only guarantees presence.
+#
+# Documented strongSwan variables used:
+#   PLUTO_VERB           up-client / down-client / up-host / down-host [...]
+#   PLUTO_XAUTH_ID       XAuth username
+#   PLUTO_PEER           peer (client) IP address
+#   PLUTO_PEER_SOURCEIP  virtual IP sent to the client (responder side)
+#   PLUTO_PEER_CLIENT    peer traffic selector (may carry the /32 VIP)
+#   PLUTO_MY_SOURCEIP    fallback virtual IP
+#
+# State file format (matches the rpcd backend):
+#   key\tuser\tremote\tvip\tage\tlast_seen      (key = "user|remote")
+
+STATE_FILE="/etc/luci-app-ipsec-vpnd-sessions.state"
+# Working copy for this hook; never share this tmp path with the rpcd backend.
+UP_TMP="/tmp/.luci-app-ipsec-vpnd-updown.tmp"
+LOCK_FILE="/tmp/.luci-app-ipsec-vpnd-sessions.lock"
+
+# Best-effort advisory lock (same rationale as the rpcd backend).
+flock_lock() {
+	command -v flock >/dev/null 2>&1 || return 0
+	exec 9>"$LOCK_FILE" 2>/dev/null || return 0
+	flock -w 5 9 2>/dev/null || return 0
+}
+flock_unlock() {
+	command -v flock >/dev/null 2>&1 || return 0
+	flock -u 9 2>/dev/null
+	exec 9>&- 2>/dev/null
+}
+
+[ -n "$PLUTO_VERB" ] || exit 0
+
+# 只对 VPN 的 ipsec0 接口开 proxy_arp，不开到所有接口（避免影响 LAN/WAN）。
+# 该接口在 strongSwan 建 SA 时才存在，所以放在这里；服务停止时接口随 charon 移除，
+# proxy_arp 也随之消失，无需在此清理。
+[ -d /proc/sys/net/ipv4/conf/ipsec0 ] && echo 1 > /proc/sys/net/ipv4/conf/ipsec0/proxy_arp 2>/dev/null
+
+now="$(date +%s)"
+
+user="${PLUTO_XAUTH_ID:-}"
+remote="${PLUTO_PEER:-}"
+
+# assigned client IP: the responder-sent virtual IP, then the /32 selector
+vip="${PLUTO_PEER_SOURCEIP%%/*}"
+[ -n "$vip" ] || vip="${PLUTO_MY_SOURCEIP%%/*}"
+[ -n "$vip" ] || vip="$(printf '%s' "${PLUTO_PEER_CLIENT%%/*}" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | head -n1)"
+[ -n "$vip" ] || vip=""
+
+[ -z "$remote" ] && exit 0
+[ -z "$user" ] && user="-"
+
+key="$user|$remote"
+
+[ -f "$STATE_FILE" ] || : > "$STATE_FILE"
+
+# serialize read/merge/write with the rpcd backend
+flock_lock
+
+awk -F'\t' -v key="$key" -v user="$user" -v remote="$remote" -v vip="$vip" -v now="$now" '
+{
+	k = $1
+	if (k == key) {
+		# refresh record, keep old vip/age if none supplied
+		printf "%s\t%s\t%s\t%s\t%s\t%s\n", key, user, remote,
+			(vip != "" ? vip : $4), $5, now
+		done = 1
+	} else {
+		print $0
+	}
+}
+END {
+	if (!done)
+		printf "%s\t%s\t%s\t%s\t%s\t%s\n", key, user, remote, vip, "", now
+}' "$STATE_FILE" > "$UP_TMP"
+
+[ -s "$UP_TMP" ] && mv "$UP_TMP" "$STATE_FILE"
+rm -f "$UP_TMP"
+flock_unlock
+exit 0

@@ -1,9 +1,12 @@
 
 config service 'ipsec'
-	option clientdns '192.168.0.1'
-	option account 'lean'
-	option secret 'myopenwrt'
+# VPN 网段固定为 10.9.8.0/24（首次安装的 uci-defaults 也按此写入，不再按 LAN 推导）。
+# 若 LAN 恰在 10.9.8.0/24，请手动改 clientip/clientdns。
+# 下面的账号密码仅为占位值，启用服务前请务必修改。
+	option clientdns '10.9.8.1'
+	option account 'vpnuser'
+	option secret 'changeme'
 	option enabled '0'
-	option password '12345678'
-	option clientip '192.168.0.10/24'
+	option password 'changeme'
+	option clientip '10.9.8.10/24'
 
