@@ -3,7 +3,7 @@ module("luci.controller.store", package.seeall)
 local myopkg = "is-opkg"
 local is_backup = "/usr/libexec/istore/backup"
 local is_overlay_backup = "/usr/libexec/istore/overlay-backup"
-local page_index = {"admin", "store", "pages"}
+local page_index = {"admin", "services", "store", "pages"}
 
 function index()
     local function store_api(action, onlypost)
@@ -16,7 +16,7 @@ function index()
 
     entry({"admin", "store"}, call("redirect_index"))
     entry({"admin", "services", "store"}, call("redirect_index"), _("iStore"), 31).dependent = true
-    entry({"admin", "store", "pages"}, call("store_index")).leaf = true
+    entry({"admin", "services", "store", "pages"}, call("store_index")).leaf = true
     if nixio.fs.access("/usr/lib/lua/luci/view/store/main_dev.htm") then
         entry({"admin", "store", "dev"}, call("store_dev")).leaf = true
     end
