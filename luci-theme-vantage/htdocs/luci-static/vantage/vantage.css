@@ -2004,6 +2004,9 @@ html:not([data-darkmode="true"]) .vt-login-page {
 	background-position: center;
 	opacity: 0.4;
 }
+html:not([data-darkmode="true"]) .vt-login-page::before {
+	opacity: 0.7;
+}
 .vt-login-card {
 	padding: var(--sp-6);
 	background: var(--s1);
