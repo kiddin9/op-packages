@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.2-r9] - Loon 引号包裹的位置参数放行逗号（LEGACY_ISSUES 7.9 e 修订）
+
+第五轮把 7.9(e) 判为「含英文逗号就整条丢弃」，理由里有一句是错的。本轮复核后
+只推翻其中的**位置参数**那一半。
+
+### 修复 — 7.9(e) 修订：Loon 引号包裹的位置参数放行逗号
+
+第五轮 `surge_line` 的注释写着「Loon 的那对引号只是标记，值里的逗号照样是分隔符」。
+Loon 官方文档（`nsloon.app/docs/Node/`）的原文是「**参数值中含有英文逗号时，请使用
+双引号包裹**」—— 这句话只在客户端解析是**引号感知**的前提下才成立，也就是说那对
+双引号**确实**能保住值里的逗号。原注释把引号当成了纯装饰，据此推出的「引号救不了
+逗号」不成立，整条丢弃的代价（极少见的「密码里带逗号」的节点在 Loon 上被丢弃）
+也就失去了依据。
+
+判据改成「这个值是不是引号完整包裹的」（`v:match('^".*"$')`），**不是** `is_loon`：
+
+* Loon 位置参数（`loon_positional` 无条件加引号）→ **放行**含逗号的值；
+* Loon 的裸位置参数（无引号，如加密方式）→ 仍丢弃（无引号语义）；
+* 具名参数（Surge 家族，以及 Loon 的 `sni=` / `ws-path=` 等）→ 仍丢弃：Surge 家族的
+  引号语义未获文档证据，且解析端不对具名值 unquote，加引号会直接断掉回环；
+* Surfboard 的裸位置参数（anytls）→ 仍丢弃。
+
+判据选「是否引号包裹」而非「是否 Loon」，让上述四种情形自动分开，不必再分叉一次。
+
+**安全性**来自 `loon_positional` 的两条既有保证：它无条件把 Loon 的位置凭据包成
+`"…"`（引号是 Loon 语法的一部分），且值里含 `"` 时直接返回 `nil`（整条丢弃，走不到
+这一行）—— 于是引号包裹的值内部不可能出现落单引号，
+`parser_surge.split_fields` 的「奇数引号回退」分支不会被本行的输出触发。
+
+具名参数检查原样不动。
+
+### 测试
+
+* `tests/output_formats_test.lua`：第五轮那条 `loon comma password drops node` 翻转成
+  `loon comma password kept (quoted positional)`，并补 `loon rt comma password` /
+  `loon rt comma method` 两条回环断言（放行的前提就是能原样回环）；`surge comma
+  password drops node` 保留为反向护栏。
+* `tests/anytls_reality_test.lua`：新增 `surge_line comma in quoted positional
+  password kept`、`loon comma password round-trips`、`surge_line comma in loon vless
+  uuid kept`；保留具名密码、裸位置密码两条护栏。
+* 断言先取 `local line = fmts.surge_line(...)` 再判 `type(line) == "string"`：直接在
+  `nil` 上调 `:find` 会抛错、吞掉同文件后续断言，反向验证就只剩「崩了」。
+* 反向验证：把谓词改回无条件丢弃 → **6 条 FAIL** 全部指向本轮改动，4 条护栏断言
+  始终绿；还原后全绿。
+* 全套 **59 个测试文件、0 失败**。
+
 ## [2.7.2-r8] - Surge / SurgeMac 一并丢弃 Hysteria v1（LEGACY_ISSUES 7.9 j）
 
 第六轮把 Loon 的 Hysteria v1 丢弃了，本轮把同一条证据链延伸到 Surge 家族。
