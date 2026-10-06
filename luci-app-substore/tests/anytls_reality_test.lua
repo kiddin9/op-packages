@@ -28,6 +28,7 @@ local node = require("substore.node")
 local parser = require("substore.parser")
 local output = require("substore.output")
 local fmts = require("substore.output_formats")
+local psurge = require("substore.parser_surge")
 
 local passed, failed = 0, 0
 
@@ -412,23 +413,31 @@ check("anytls form merge keeps reality creds",
 check("surge_line unknown proto -> nil",
 	fmts.surge_line({ proto = "snell", name = "S", server = "1.2.3.4", port = 443 }) == nil)
 
--- 参数值里的逗号无法用这些格式表达，会把凭据静默截断，整条丢弃。
--- 位置参数同理：Loon 文档确实说「参数值中含有英文逗号时请使用双引号包裹」，
--- 也就是说那对引号**能**保住逗号 —— 但本行的具名参数一律不带引号，同一行里
--- 两种约定混用会让行为依赖客户端实现，所以统一按「含逗号就丢弃」处理（保守）。
+-- 参数值里的逗号：**具名**写法无法表达，会把凭据静默截断，整条丢弃。
+-- 位置参数不同 —— Loon 文档明说「参数值中含有英文逗号时请使用双引号包裹」
+-- （nsloon.app/docs/Node/），那对引号**能**保住逗号，而 loon_positional 已经
+-- 无条件把凭据包成了 `"..."`。所以引号包裹的位置参数里的逗号原样保留。
+-- 裸位置参数（Surfboard 的 anytls）没有引号语义，仍按「含逗号就丢弃」处理。
 local bad_pw = node.normalize({ proto = "anytls", name = "Bad", server = "1.2.3.4", port = 443, password = "a,b" })
 check("surge_line comma in named password -> nil", fmts.surge_line(bad_pw, "surge") == nil)
-check("surge_line comma in quoted positional password -> nil", fmts.surge_line(bad_pw, "loon") == nil)
+check("surge_line comma in quoted positional password kept", fmts.surge_line(bad_pw, "loon") ~= nil)
 check("surge_line comma in bare positional password -> nil", fmts.surge_line(bad_pw, "surfboard") == nil)
+-- 放行的前提是「能原样回环」：导出的行重新导入必须拿到同一个密码
+-- （先取出字符串再拼接：surge_line 退回 nil 时 `.. nil` 会抛错、吞掉后续断言）
+local loon_comma_line = fmts.surge_line(bad_pw, "loon")
+local rt_pw = type(loon_comma_line) == "string"
+	and psurge.parse("[Proxy]\n" .. loon_comma_line .. "\n") or {}
+check("loon comma password round-trips", rt_pw[1] and rt_pw[1].password == "a,b")
 -- 值里含双引号时带引号的位置参数也表达不了（`"pa"ss"` 无法确定切法），同样丢弃
 local quote_pw = node.normalize({ proto = "anytls", name = "Q", server = "1.2.3.4", port = 443, password = 'pa"ss' })
 check("surge_line double-quote in loon positional password -> nil", fmts.surge_line(quote_pw, "loon") == nil)
 -- 同样的值在具名写法（Surge）下没有引号语义，仍按原样输出
 check("surge_line double-quote in named password kept",
 	fmts.surge_line(quote_pw, "surge") ~= nil)
--- Loon 的 vmess / vless 位置参数同样受这条约束
+-- Loon 的 vmess / vless 位置参数同样带引号，含逗号一样能保住
+-- （这里测的是**位置参数这条机制**，不是 uuid 的取值是否合理 —— uuid 实际不会含逗号）
 local bad_uuid = node.normalize({ proto = "vless", name = "BU", server = "1.2.3.4", port = 443, uuid = "a,b" })
-check("surge_line comma in loon vless uuid -> nil", fmts.surge_line(bad_uuid, "loon") == nil)
+check("surge_line comma in loon vless uuid kept", fmts.surge_line(bad_uuid, "loon") ~= nil)
 -- 具名写法（Surge 家族）没有引号语义，含逗号的 uuid 一样按「值里含逗号」丢弃
 check("surge_line comma in named vless uuid -> nil", fmts.surge_line(bad_uuid, "surfboard") == nil)
 -- 双引号则相反：具名写法原样保留，Loon 的带引号位置参数表达不了

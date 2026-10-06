@@ -658,13 +658,13 @@ crontab 里，`substore-cron.sh` 会拿着已不存在的 id 反复执行，每�
 | 7.6 | 修复 | **已修复**（第一轮，见下） |
 | 7.7 | A：后端错误串 msgid 化 | **已实施**（第四轮，见下） |
 | 7.8 | A：删除 `age.lua` / `age_test.lua` | **已删除**（第一轮） |
-| 7.9 | (a)(b)(c)(d) 全部实施；(e) 保持保守；(g)(h) 实施；(i) 保持现状；(j) 实施（Surge/SurgeMac） | **已实施**（第五、六、七轮，见下） |
+| 7.9 | (a)(b)(c)(d) 全部实施；(e) 具名保持保守、Loon 位置参数放行（第八轮修订）；(g)(h) 实施；(i) 保持现状；(j) 实施（Surge/SurgeMac） | **已实施**（第五～八轮，见下） |
 
 7.5 / 7.6 的修复见本节末尾「7.5 / 7.6 修复记录」，
 7.1 / 7.3 / 7.4 的实施见「第二轮修复记录」，
 7.2 的实施见「第三轮修复记录」，
 7.7 的实施见「第四轮修复记录」，
-7.9 的 (a)–(e) 见「第五轮修复记录」，(g)(h) 见「第六轮修复记录」，(j) 见「第七轮修复记录」。
+7.9 的 (a)–(e) 见「第五轮修复记录」，(g)(h) 见「第六轮修复记录」，(j) 见「第七轮修复记录」，(e) 的修订见「第八轮修复记录」。
 
 | # | 问题 | 位置 | 依据 | 影响 |
 |---|---|---|---|---|
@@ -676,7 +676,7 @@ crontab 里，`substore-cron.sh` 会拿着已不存在的 id 反复执行，每�
 | 7.6 | ~~Loon 的 `transport=ws` 未映射到 `net`~~ **已修复** | `parser_surge.parse_surge_line` 的 `transport=` 分支 | 只认 `ws=true`（Surge 旧写法）与 `obfs=ws`（QX）；`nsloon.app/docs/Node/` 用 `transport=ws` + `path=` + `host=` | Loon 的 ws 节点导入后 `net=tcp`，`path` / `host` 全丢 → 导出到任何格式都按 tcp 连，握手失败**且不报错** |
 | 7.7 | ~~后端模块仍有 **113 处**硬编码中文字符串字面量（注释外）~~ **已实施** | `core.lua` 47 / `http.lua` 47 / `parser.lua` 9 / `util.lua` 5 / `output_wireguard_conf.lua` 3 / `node.lua` 2 | 扫描脚本（去注释后提取含 CJK / 全角的字符串字面量），见下 | 控制器文案已接入 i18n，但这些来自后端的失败原因经 `?err=` **原样**显示，英文界面下仍是中文。**已按 A 实施**：全部改为语言中立的英文 msgid，组合消息用 `msg.lua` 的分隔符机制，翻译只在显示边界发生（详见「第四轮修复记录」） |
 | 7.8 | ~~`root/usr/share/substore/age.lua` 与 `tests/age_test.lua` 未被 git 跟踪，且 `age.lua` 未被任何模块 `require`~~ **已删除** | 仓库根 | `grep -rn require` 无引用 | 未随包发布；留在工作区会被后续审计反复重新评估 |
-| 7.9 | ~~Loon 的节点行仍有**多处**与官方文档不一致~~ **已实施** | `output_formats.surge_line` / `parser_surge.parse_surge_line` | `nsloon.app/docs/Node/`；`manual.nssurge.com`；`getsurfboard.com` | 逐条见下「7.9 的明细」。**已按 (a)(b)(c)(d) 全部实施、(e) 保持保守**：Loon 的 TLS 开关改 `over-tls`（Trojan 除外）、UDP 改 `udp`、Surge 家族补 `encrypt-method`、Loon 的 ss/ssr/hysteria2 改位置参数；解析端同步跟进以保住回环（详见「第五轮修复记录」）。实施中新发现三条待决策项，见下「第五轮新发现」；其中 (g)(h) 已于第六轮实施、(i) 决定保持现状，另发现 (j) Surge 家族同样没有 Hysteria v1，**已于第七轮实施**（Surge / SurgeMac 丢弃，Surfboard 因无证据保留） |
+| 7.9 | ~~Loon 的节点行仍有**多处**与官方文档不一致~~ **已实施** | `output_formats.surge_line` / `parser_surge.parse_surge_line` | `nsloon.app/docs/Node/`；`manual.nssurge.com`；`getsurfboard.com` | 逐条见下「7.9 的明细」。**已按 (a)(b)(c)(d) 全部实施、(e) 具名保持保守而 Loon 位置参数于第八轮改为放行**：Loon 的 TLS 开关改 `over-tls`（Trojan 除外）、UDP 改 `udp`、Surge 家族补 `encrypt-method`、Loon 的 ss/ssr/hysteria2 改位置参数；解析端同步跟进以保住回环（详见「第五轮修复记录」）。实施中新发现三条待决策项，见下「第五轮新发现」；其中 (g)(h) 已于第六轮实施、(i) 决定保持现状，另发现 (j) Surge 家族同样没有 Hysteria v1，**已于第七轮实施**（Surge / SurgeMac 丢弃，Surfboard 因无证据保留） |
 
 ### 7.7 的统计口径与例外（修复前必读）
 
@@ -715,7 +715,8 @@ crontab 里，`substore-cron.sh` 会拿着已不存在的 id 反复执行，每�
 Loon 与 Surge 家族的不一致远不止「凭据位置」。以下每条都对照官方文档原文，
 **没有推测项**；本轮按用户的轮次安排只做决策里点名的 7.4-A，其余记录在此待决策。
 **第五轮（2.7.2-r6）已按 (a)(b)(c)(d) 全部实施、(e) 保持保守**，各条下方的
-「→ 实施」注明落点。
+「→ 实施」注明落点；**(e) 已于第八轮（2.7.2-r9）部分修订**（具名参数保持保守、
+Loon 的引号包裹位置参数改为放行），见「第八轮修复记录」。
 
 **(a) Loon 的 TLS 开关写作 `over-tls`，本生成器写 `tls`** —— 影响最大的一条。
 Loon 文档的通用参数表与 Reality 示例都用 `over-tls=true`：
@@ -779,6 +780,13 @@ Loon 不再要这个开关，所以 Loon 的 Trojan 行整个不写 TLS 参数�
 （保守：本行的具名参数一律不带引号，两种约定混用会让行为依赖客户端实现），
 代价是极少见的「密码里带逗号」的节点在 Loon 上被丢弃。
 
+**→ 部分修订（第八轮，2.7.2-r9）**：既然引号**确实**能保住逗号，上述保守决策的
+依据（「引号救不了逗号」）就不成立。第八轮只推翻**位置参数那一半** —— Loon 的
+引号包裹位置参数放行含逗号的值；**具名参数仍按「含逗号就丢弃」**（Surge 家族的
+引号语义未获文档证据，且解析端不对具名值 unquote）。判据是「值是否被引号完整
+包裹」而非「是否 Loon」，Surfboard 的裸位置参数因此自动落在丢弃一侧。详见
+「第八轮修复记录」。
+
 **(f) 更正：Surfboard 的 trojan / vmess / vless 凭据是具名写法，不是位置参数** ——
 本节 7.4 行原先把 Surfboard 与 Loon 并列，是**误判**。复核 `getsurfboard.com` 的
 vmess 页：其 Format 模板写 `{username}` 位置，但**实际示例与参数表都是 `key=value`**
@@ -789,6 +797,11 @@ trojan 页同样写 `username=` / `password=`。所以 Surge / Surfboard / Surge
 **(e) 实施说明（第五轮）**：保持不变。生成端仍按「位置参数或具名值里含英文逗号
 就整条丢弃」处理，并在 `tests/output_formats_test.lua` 钉了一条断言防止日后被
 无意改成半截输出。
+
+**(e) 修订说明（第八轮）**：位置参数那一半被**部分推翻**。第五轮那条断言
+（`loon comma password drops node`）已按新行为翻转成 `loon comma password kept
+(quoted positional)`，并补了「导出 → 导入拿到同一个密码」的回环断言 —— 放行的
+前提就是能原样回环。具名参数那一半保持不变，护栏断言仍在。
 
 ### 第五轮新发现（(g)(h) 第六轮已实施，(i) 保持现状，(j) 第七轮已实施）
 
@@ -1276,7 +1289,8 @@ message"` 后跑 `tests/backend_i18n_test.lua`，得到 **1 条 FAIL**（`no po 
 
 ## 第五轮修复记录（7.9）
 
-**7.9 (a)(b)(c)(d) 按官方文档对齐 Loon / Surge 家族的写法**，(e) 保持保守。
+**7.9 (a)(b)(c)(d) 按官方文档对齐 Loon / Surge 家族的写法**，(e) 保持保守
+（**该保守决策已于第八轮部分修订**，见「第八轮修复记录」）。
 全部改动集中在 `root/usr/share/substore/output_formats.lua` 的 `M.surge_line`
 （生成端）与 `root/usr/share/substore/parser_surge.lua` 的 `parse_surge_line`
 （解析端）—— 两端必须成对，否则导出的配置再导入回来会静默丢字段。
@@ -1343,7 +1357,7 @@ trojan / vmess / vless 一律用具名参数」—— 7.4-A 之后就不成立�
 * `tests/ssr_test.lua`：`loon encrypt-method` 一条改为断言位置参数写法，并新增
   **9 条 Loon 输出 → 导入回环**断言。
 * `tests/output_formats_test.lua`：新增 **7.9 专节 24 条**（(a) 6 / (b) 3 / (c) 4 /
-  (d) 4 / (e) 1 / 回环 6）。
+  (d) 4 / (e) 1 / 回环 6）。**(e) 那 1 条已于第八轮随修订改写**，见「第八轮修复记录」。
 * **反向验证**（逐条把代码改回旧行为，确认测试变红）：`tls_flag` 写死 `tls=true`
   → 3 条 FAIL；UDP 写死 `udp-relay` → 2 条 FAIL；去掉 `encrypt-method` → 2 条 FAIL；
   Loon 的 ss / hysteria2 改回具名 → 2 条 FAIL；解析端 ssr 分支停用 → 5 条 FAIL；
@@ -1461,6 +1475,80 @@ if n["skip-cert-verify"] then e[#e + 1] = "skip-cert-verify=true" end
 
 无。这是 7.9 决策链的最后一条；实施完 (j) 后 7.9 的 (a)–(e)、(g)–(j) 全部结清
 （(f) 复核确认本来就对，(i) 决定保持现状）。
+
+**(e) 的例外**：(e) 当时按「保持保守」结清，但第八轮复核发现该保守决策建立在一个
+**错误的注释**上（详见「第八轮修复记录」），于是对**位置参数那一半**做了修订 ——
+具名参数仍保持保守。这是 7.9 唯一一处「结清后又修订」的条目。
+
+---
+
+## 第八轮修复记录（7.9 (e) 的修订）
+
+**7.9 (e) 的保守决策被部分推翻：Loon 引号包裹的位置参数放行含英文逗号的值。**
+
+### 起因
+
+第五轮把 (e) 判为「保持保守：位置参数或具名值里含英文逗号就整条丢弃」，
+并在 `surge_line` 里写下一段理由，其中一句是错的：
+
+> Loon 的那对引号只是标记，值里的逗号照样是分隔符。
+
+Loon 官方文档（`nsloon.app/docs/Node/`）原文是「**参数值中含有英文逗号时，请使用
+双引号包裹**」—— 这句话只有在**客户端解析是引号感知**的前提下才成立，也就是说那对
+双引号**确实**能保住值里的逗号。原注释把「引号」当成了纯粹的装饰，据此推出的
+「引号救不了逗号」不成立，整条丢弃的代价（极少见的「密码里带逗号」的节点在 Loon
+上被丢弃）也就失去了依据。
+
+### 精确范围（用户确认）
+
+只改 **Loon 的引号包裹位置参数**这一种情形，其余一律不动：
+
+| 情形 | 第五轮 | 第八轮 |
+|---|---|---|
+| Loon 位置参数，值被 `"…"` 完整包裹 | 丢弃 | **放行** |
+| Loon 位置参数，裸值（无引号，如加密方式） | 丢弃 | 丢弃（无引号语义） |
+| 具名参数（Surge 家族 + Loon 的 `sni=` / `ws-path=` 等） | 丢弃 | 丢弃（Surge 引号语义未获文档证据，且解析端不对具名值 unquote，加引号会断回环） |
+| Surfboard 的裸位置参数（anytls） | 丢弃 | 丢弃（无引号语义） |
+
+判据**不是** `is_loon` 而是「这个值是不是引号包裹的」（`v:match('^".*"$')`）：
+`loon_positional` 只在 Loon 分支被调用，Surfboard 的 anytls 走裸位置参数，
+两者由这个判据自动分开，不必再分叉一次。
+
+### 安全性依据
+
+放行不会让生成端产出解析端读不动的行，因为 `loon_positional` 有两条保证：
+
+1. 它**无条件**把 Loon 的位置凭据包成 `"…"`，所以引号是 Loon 语法的一部分；
+2. 值里含 `"` 时它直接返回 `nil`（整条丢弃，走不到这一行）—— 于是引号包裹的值
+   内部不可能出现落单引号，`parser_surge.split_fields` 的「奇数引号回退」分支
+   不会被本行的输出触发。
+
+### 改动
+
+* `root/usr/share/substore/output_formats.lua`：`surge_line` 的位置参数检查
+  `if v:find(",", 1, true) then return nil end` 改为
+  `if v:find(",", 1, true) and not v:match('^".*"$') then return nil end`；
+  上方注释整段重写（说明引号语义、判据选择与安全性依据）。
+* 具名参数检查（上一段 `for _, kv in ipairs(e)`）**原样不动**。
+
+### 测试
+
+* `tests/output_formats_test.lua`：第五轮那条 `loon comma password drops node`
+  改为 `loon comma password kept (quoted positional)`，并新增回环断言
+  `loon rt comma password` / `loon rt comma method`；同时保留
+  `surge comma password drops node` 作为反向护栏。
+* `tests/anytls_reality_test.lua`：新增 `surge_line comma in quoted positional
+  password kept`、`loon comma password round-trips`、`surge_line comma in loon
+  vless uuid kept`；保留 `surge_line comma in named password -> nil` 与
+  `surge_line comma in bare positional password -> nil` 两条护栏。
+* 断言一律先 `local line = fmts.surge_line(...)` 再判 `type(line) == "string"`：
+  直接在 `nil` 上调 `:find` 会抛错、把同文件后续断言全吞掉，反向验证就只能看到
+  「崩了」而看不到是哪条行为变了。
+* **反向验证**：把谓词改回 `if v:find(",", 1, true) then`（撤掉放行）→ **6 条 FAIL**
+  全部指向本轮改动（output_formats 3 条 + anytls 3 条），4 条护栏断言
+  （`surge comma password drops node`、具名密码、裸位置密码、具名 uuid）**始终绿**
+  → 说明断言确实指向改动，且没有误伤范围外的行为。还原后全绿。
+* 全套 **59 个测试文件、0 失败**。
 
 ---
 

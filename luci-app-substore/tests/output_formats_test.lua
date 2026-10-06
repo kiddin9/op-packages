@@ -225,12 +225,18 @@ check("surge hysteria2 named", fmts.surge_line(hy_node, "surge"):find("password=
 check("loon hysteria2 positional",
 	fmts.surge_line(hy_node, "loon"):find('hysteria2, 1.1.1.1, 443, "pw"', 1, true) ~= nil)
 
--- (e) 值里含英文逗号：Loon 的引号按文档确实能保住逗号，本实现仍按「整条丢弃」
--- 处理（具名参数不带引号，同一行混用两种约定会让「哪个值被包裹」变成依赖客户端
--- 实现的行为）。这里钉住这个保守选择，避免日后被无意改成半截输出。
+-- (e) 值里含英文逗号：Loon 的位置参数带双引号，而文档明说「参数值中含有英文逗号时
+-- 请使用双引号包裹」（nsloon.app/docs/Node/）—— 那对引号**能**保住逗号，所以
+-- 引号包裹的位置参数放行。具名参数（Surge 家族）没有引号语义，仍整条丢弃；
+-- Surfboard 的 anytls 是**裸**位置参数，同样丢弃（见 anytls_reality_test.lua）。
 local ss_comma = { proto = "shadowsocks", name = "S", server = "1.1.1.1", port = 8388,
 	method = "aes-256-gcm", password = "pa,ss" }
-check("loon comma password drops node", fmts.surge_line(ss_comma, "loon") == nil)
+local ss_comma_line = fmts.surge_line(ss_comma, "loon")
+-- 用 type() 兜一下再 :find：surge_line 退回 nil 时直接 :find 会抛错、把整个
+-- 文件后面的断言全吞掉 —— 那样反向验证只能看到「崩了」，看不到是哪条行为变了。
+check("loon comma password kept (quoted positional)",
+	type(ss_comma_line) == "string" and ss_comma_line:find('aes-256-gcm, "pa,ss"', 1, true) ~= nil)
+check("surge comma password drops node", fmts.surge_line(ss_comma, "surge") == nil)
 
 -- ---------- Loon 输出 → 导入回环 ----------
 -- 生成端与解析端必须成对改动：只改生成端的话，导出的 Loon 配置再导入回来会静默
@@ -244,6 +250,11 @@ end
 local rt_ss = loon_roundtrip(ss_node)
 check("loon rt ss method", rt_ss and rt_ss.method == "aes-256-gcm")
 check("loon rt ss password", rt_ss and rt_ss.password == "pw")
+
+-- 含逗号的密码同样要能原样回环 —— 这是「放行」的前提（见上面的 (e)）
+local rt_comma = loon_roundtrip(ss_comma)
+check("loon rt comma password", rt_comma and rt_comma.password == "pa,ss")
+check("loon rt comma method", rt_comma and rt_comma.method == "aes-256-gcm")
 
 local rt_hy = loon_roundtrip(hy_node)
 check("loon rt hysteria2 password", rt_hy and rt_hy.password == "pw")
