@@ -13,6 +13,10 @@ L2TP_OPTIONS_FILE=${L2TP_PATH}/options.xl2tpd
 L2TP_LOG_FILE=${L2TP_PATH}/xl2tpd.log
 
 vt_clientip=$(uci -q get ${CONFIG}.@service[0].clientip)
+vt_serverip=$(uci -q get ${CONFIG}.@service[0].serverip)
+certs_name=$(uci -q get ${CONFIG}.@service[0].certs_name)
+private_key=$(uci -q get ${CONFIG}.@service[0].private_key)
+vpn_domain=$(uci -q get ${CONFIG}.@service[0].domain)
 l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
 l2tp_localip=$(uci -q get ${CONFIG}.@service[0].l2tp_localip)
 
@@ -24,8 +28,8 @@ get_enabled_anonymous_secs() {
 
 ipt_rule() {
 	if [ "$1" = "add" ]; then
-		iptables -t nat -I POSTROUTING -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
-		iptables -I forwarding_rule -s ${vt_clientip} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
+		iptables -t nat -I POSTROUTING -s ${vt_serverip} -m comment --comment "${ipt_flag}" -j MASQUERADE 2>/dev/null
+		iptables -I forwarding_rule -s ${vt_serverip} -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir in --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I forwarding_rule -m policy --dir out --pol ipsec --proto esp -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
 		iptables -I INPUT -p udp -m multiport --dports 500,4500 -m comment --comment "${ipt_flag}" -j ACCEPT 2>/dev/null
@@ -70,9 +74,9 @@ gen_include() {
 
 start() {
 	local vt_enabled=$(uci -q get ${CONFIG}.@service[0].enabled)
-	[ "$vt_enabled" = 0 ] && return 1
+	[ "$vt_enabled" = 1 ] || return 0
 	
-	local vt_gateway="${vt_clientip%.*}.1"
+	local vt_gateway="${vt_serverip%.*}.1"
 	local vt_secret=$(uci -q get ${CONFIG}.@service[0].secret)
 	
 	local l2tp_enabled=$(uci -q get ${CONFIG}.@service[0].l2tp_enable)
@@ -185,8 +189,8 @@ start() {
 
 		conn Non-L2TP
 		  leftsubnet=0.0.0.0/0
-		  rightsubnet=${vt_clientip}
-		  rightsourceip=${vt_clientip}
+		  rightsubnet=${vt_serverip}
+		  rightsourceip=${vt_serverip}
 		  rightdns=${vt_gateway}
 		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
 		  esp=aes128-sha1,3des-sha1
@@ -198,6 +202,52 @@ start() {
 		  leftauth=psk
 		  rightauth=psk
 		  rightauth2=xauth
+		  
+		conn IKEv2-PSK
+		  keyexchange=ikev2
+		  auto=add
+		  left=%defaultroute
+		  leftauth=psk
+		  leftsubnet=0.0.0.0/0
+		  right=%any
+		  rightauth=psk
+		  rightsourceip=${vt_clientip}
+
+		  ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
+		  esp=aes128-sha1,3des-sha1
+		  dpdaction=clear
+		  dpddelay=30s
+		  rekey=no
+		  compress=no
+
+		conn ikev2-EAP
+		  keyexchange=ikev2
+		  auto=add
+		  fragmentation=yes
+		  forceencaps=yes
+
+		  left=%defaultroute
+		  leftid=@$vpn_domain
+		  leftauth=pubkey
+		  leftcert=${certs_name}
+		  leftsendcert=always
+		  leftsubnet=0.0.0.0/0
+
+		  right=%any
+		  rightid=%any
+		  rightauth=eap-mschapv2
+		  eap_identity=%identity
+		  rightsourceip=${vt_clientip}
+		  rightdns=10.0.0.1
+
+		  ike=aes256-sha256-modp1024,aes256-sha1-modp1024,aes128-sha256-modp1024,aes128-sha1-modp1024,aes256-sha256-modp2048,aes256-sha1-modp2048
+		  esp=aes256-sha256,aes128-sha256,aes256-sha1,aes128-sha1
+		  dpdaction=clear
+		  dpddelay=30s
+		  rekey=no
+		  compress=no
+
+
 
 		$ipsec_l2tp_config
 	EOF
@@ -205,6 +255,7 @@ start() {
 	cat > /etc/ipsec.secrets <<-EOF
 	# /etc/ipsec.secrets - strongSwan IPsec secrets file
 	: PSK "$vt_secret"
+	: RSA /etc/ipsec.d/private/$private_key
 	EOF
 	
 	local ipsec_users=$(get_enabled_anonymous_secs "@ipsec_users")
@@ -220,6 +271,7 @@ start() {
 			[ -n "${u_password}" ] || continue
 			
 			echo "${u_username} : XAUTH '${u_password}'" >> ${IPSEC_SECRETS_FILE}
+			echo "${u_username} : EAP '${u_password}'" >> ${IPSEC_SECRETS_FILE}
 		done
 	}
 	unset user
@@ -230,7 +282,7 @@ start() {
 	gen_include
 	
 	uci -q batch <<-EOF >/dev/null
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_server.ipaddr="${vt_serverip%.*}.1"
 		commit network
 	EOF
 	ifup ipsec_server > /dev/null 2>&1
@@ -254,7 +306,7 @@ gen_iface_and_firewall() {
 		set network.ipsec_server.device="ipsec0"
 		set network.ipsec_server.device="ipsec0"
 		set network.ipsec_server.proto="static"
-		set network.ipsec_server.ipaddr="${vt_clientip%.*}.1"
+		set network.ipsec_server.ipaddr="${vt_serverip%.*}.1"
 		set network.ipsec_server.netmask="255.255.255.0"
 		commit network
 		

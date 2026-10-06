@@ -7,6 +7,7 @@
 }
 EEOF
 }
+rm -f /usr/share/ucitrack/luci-app-luci-app-ipsec-server.json
 
 uci -q batch <<-EOF >/dev/null
 	delete firewall.luci_app_ipsec_server
@@ -14,6 +15,7 @@ uci -q batch <<-EOF >/dev/null
 	set firewall.luci_app_ipsec_server.type=script
 	set firewall.luci_app_ipsec_server.path=/var/etc/ipsecvpn.include
 	set firewall.luci_app_ipsec_server.reload=1
+	commit firewall
 EOF
 
 uci -q batch <<-EOF >/dev/null

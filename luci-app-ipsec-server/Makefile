@@ -6,13 +6,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-server
-PKG_VERSION:=20211223
-PKG_RELEASE:=1
+PKG_VERSION:=20260815
+PKG_RELEASE:=2
 
 PKG_MAINTAINER:=Lienol <lawlienol@gmail.com>
 
 LUCI_TITLE:=LuCI support for IPSec VPN Server
-LUCI_DEPENDS:=+kmod-tun +luci-lib-jsonc +strongswan +strongswan-minimal +strongswan-mod-kernel-libipsec +strongswan-mod-openssl +strongswan-mod-xauth-generic +xl2tpd
+LUCI_DEPENDS:=+kmod-tun +luci-lib-jsonc +strongswan +strongswan-minimal +strongswan-mod-kernel-libipsec +strongswan-mod-openssl +strongswan-mod-xauth-generic +strongswan-mod-eap-mschapv2 +strongswan-mod-eap-identity +strongswan-mod-pem +strongswan-mod-pkcs1 +strongswan-mod-pkcs8 +strongswan-mod-dhcp +strongswan-mod-farp
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/conffiles

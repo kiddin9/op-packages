@@ -1,10 +1,10 @@
 local d = require "luci.dispatcher"
-local sys = require "luci.sys"
+local fs = require "nixio.fs"
 
 m = Map("luci-app-ipsec-server", "L2TP/IPSec PSK " .. translate("Users Manager"))
 m.redirect = d.build_url("admin", "vpn", "ipsec-server", "users")
 
-if sys.call("command -v xl2tpd > /dev/null") == 0 then
+if fs.access("/usr/sbin/xl2tpd") then
 	s = m:section(NamedSection, arg[1], "l2tp_users", "")
 	s.addremove = false
 	s.anonymous = true
@@ -19,6 +19,7 @@ if sys.call("command -v xl2tpd > /dev/null") == 0 then
 
 	o = s:option(Value, "password", translate("Password"))
 	o.placeholder = translate("Password")
+	o.password = true
 	o.rmempty = false
 
 	o = s:option(Value, "ipaddress", translate("IP address"))

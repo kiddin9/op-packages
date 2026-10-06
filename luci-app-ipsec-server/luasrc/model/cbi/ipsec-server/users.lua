@@ -1,10 +1,10 @@
 local d = require "luci.dispatcher"
-local sys = require "luci.sys"
+local fs = require "nixio.fs"
 
 m = Map("luci-app-ipsec-server")
 
-s = m:section(TypedSection, "ipsec_users", "IPSec Xauth PSK " .. translate("Users Manager"))
-s.description = translate("Use a client that supports IPSec Xauth PSK (iOS or Android) to connect to this server.")
+s = m:section(TypedSection, "ipsec_users", "IPSec Xauth PSK/EAP " .. translate("Users Manager"))
+s.description = translate("Use a client that supports IPSec Xauth PSK or IPSec EAP (iOS, Android, macOS, or Windows) to connect to this server.")
 s.addremove = true
 s.anonymous = true
 s.template = "cbi/tblsection"
@@ -19,9 +19,10 @@ o.rmempty = false
 
 o = s:option(Value, "password", translate("Password"))
 o.placeholder = translate("Password")
+o.password = true
 o.rmempty = false
 
-if sys.call("command -v xl2tpd > /dev/null") == 0 then
+if fs.access("/usr/sbin/xl2tpd") then
 	s = m:section(TypedSection, "l2tp_users", "L2TP/IPSec PSK " .. translate("Users Manager"))
 	s.description = translate("Use a client that supports L2TP over IPSec PSK to connect to this server.")
 	s.addremove = true
@@ -31,7 +32,7 @@ if sys.call("command -v xl2tpd > /dev/null") == 0 then
 	function s.create(e, t)
 		t = TypedSection.create(e, t)
 		luci.http.redirect(e.extedit:format(t))
-    end
+	end
 
 	o = s:option(Flag, "enabled", translate("Enabled"))
 	o.default = 1
@@ -43,6 +44,7 @@ if sys.call("command -v xl2tpd > /dev/null") == 0 then
 
 	o = s:option(Value, "password", translate("Password"))
 	o.placeholder = translate("Password")
+	o.password = true
 	o.rmempty = false
 
 	o = s:option(Value, "ipaddress", translate("IP address"))

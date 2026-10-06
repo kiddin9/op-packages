@@ -13,6 +13,11 @@
 		},
 		"write": {
 			"uci": [ "flowproxy" ],
+			"file": {
+				"/usr/bin/wget": [ "exec" ],
+				"/usr/bin/wc": [ "exec" ],
+				"/usr/share/flowproxy/generate_nft.sh": [ "exec" ]
+			},
 			"ubus": {
 				"luci.flowproxy": [ "*" ]
 			}

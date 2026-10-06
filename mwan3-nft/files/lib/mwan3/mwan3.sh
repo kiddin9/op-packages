@@ -266,7 +266,8 @@ _mwan3_render_one_ipset()
 
 	set_decl="type ${addr_type}; flags interval"
 	[ "$timeout" -gt 0 ] && set_decl="$set_decl, timeout"
-	set_decl="$set_decl; auto-merge;"
+	set_decl="$set_decl;"
+	[ "$timeout" -eq 0 ] && set_decl="$set_decl auto-merge;"
 	[ "$counters" -eq 1 ] && set_decl="$set_decl counter;"
 	[ "$timeout" -gt 0 ] && set_decl="$set_decl timeout ${timeout}s;"
 	[ "$maxelem" -gt 0 ] && set_decl="$set_decl size ${maxelem};"
@@ -291,14 +292,35 @@ _mwan3_render_one_ipset()
 	fi
 
 	# Collect all elements (inline list + loadfile) before entering batch.
+	# Every element is validated against the nft set element grammar (IPv4 and
+	# IPv6 addresses, CIDR prefixes and hyphen ranges) so a crafted value
+	# cannot close the element braces early and inject nft statements into the
+	# batch that is later committed with nft -f. Anything carrying a character
+	# outside that class is dropped.
+
 	local elements="" line
-	_add_entry() { elements="${elements:+$elements, }$1"; }
+	_add_entry() {
+		case "$1" in
+			""|*[!0-9A-Fa-f:./-]*)
+				LOG warn "config ipset '$name': dropping invalid entry"
+				return 0
+				;;
+		esac
+		elements="${elements:+$elements, }$1"
+	}
 	config_list_foreach "$section" entry _add_entry
 	if [ -n "$loadfile" ] && [ -f "$loadfile" ]; then
 		while IFS= read -r line; do
 			line="${line%%#*}"
 			line=$(echo "$line" | xargs 2>/dev/null)
-			[ -n "$line" ] && elements="${elements:+$elements, }$line"
+			[ -n "$line" ] || continue
+			case "$line" in
+				*[!0-9A-Fa-f:./-]*)
+					LOG warn "config ipset '$name': dropping invalid loadfile element"
+					continue
+					;;
+			esac
+			elements="${elements:+$elements, }$line"
 		done < "$loadfile"
 	fi
 
@@ -464,6 +486,41 @@ mwan3_set_general_rules()
 		6 "$((MM_BLACKHOLE+MWAN3_FWMARK_RULE_BASE))" "$MMX_BLACKHOLE" \
 		  "$((MM_UNREACHABLE+MWAN3_FWMARK_RULE_BASE))" "$MMX_UNREACHABLE" \
 		  "$MMX_MASK"
+}
+
+# Install a static unreachable ip rule for every configured interface mark, in
+# the per-member unreachable priority band. These are created at service start
+# and reload and removed only at stop, so a packet carrying a member mark whose
+# fwmark rule is currently absent (the member is down, disabled, or briefly
+# between a delete and re-add) is rejected instead of leaking to the main
+# routing table. One rule per member is required because an fwmark rule matches
+# an exact value under the mask, not "any member mark"; the reserved last_resort
+# marks are never enumerated here, so last_resort behaviour is unaffected.
+
+mwan3_set_member_backstops()
+{
+	mwan3_add_backstop()
+	{
+		local id family fam
+
+		config_get family "$1" family ipv4
+		mwan3_get_iface_id id "$1"
+		[ -n "$id" ] || return 0
+
+		if [ "$family" = "ipv4" ]; then
+			fam=4
+		elif [ "$family" = "ipv6" ] && [ $NO_IPV6 -eq 0 ]; then
+			fam=6
+		else
+			return 0
+		fi
+
+		${MWAN3_MANAGE_RULES} add-backstop "$fam" \
+			"$((id+MWAN3_UNREACHABLE_RULE_BASE))" \
+			"$(mwan3_id2mask id MMX_MASK)" "$MMX_MASK"
+	}
+
+	config_foreach mwan3_add_backstop interface
 }
 
 mwan3_set_general_nft()
@@ -843,14 +900,110 @@ mwan3_delete_iface_map_entries()
 	# Sticky scheme: one set per (rule, family, iface_id) holding
 	# only saddrs (no value side). Removing an interface invalidates every
 	# such set whose name ends in "_<id>"; we flush rather than delete since
-	# rule chains may still reference the set name.
+	# rule chains may still reference the set name. The flush lines are pushed
+	# into the caller's open nft batch so they commit in the same transaction
+	# as the policy rebuild; the set enumeration reads committed kernel state
+	# and so stays outside the batch. Call only within an open nft batch.
 
 	for setname in $($NFT list sets inet 2>/dev/null | \
 			 awk '$1=="set" && $2 ~ /^mwan3_sticky_v[46]_/ { print $2 }'); do
 		case "$setname" in
-			*_"$id") $NFT flush set inet mwan3 "$setname" 2>/dev/null ;;
+			*_"$id") mwan3_nft_push "flush set inet mwan3 $setname" ;;
 		esac
 	done
+}
+
+mwan3_flush_worse_metric_sticky()
+{
+	# On recovery of a better-metric member, snap new flows off the worse-metric
+	# backups it is now preferred over. For each policy the recovered interface
+	# participates in, flush the per-rule sticky sets of that policy's same-family
+	# members whose metric is strictly worse, scoped to the rules that use the
+	# policy, so pinned sources re-evaluate to the recovered member on their next
+	# new flow while established flows ride their conntrack marks to completion
+	# undisturbed. The scope is per policy and per rule by construction: each set
+	# name is built from the rule name and the member id rather than flushing
+	# every set ending in an id, so a member that is also a deliberate-stickiness
+	# member of a separate load-balance policy keeps those pins.
+
+	local recovered="$1" recovered_id rec_family rec_fam_short
+	local _snap_pairs=""
+
+	mwan3_get_iface_id recovered_id "$recovered"
+	[ -n "$recovered_id" ] || return 0
+
+	# mwan3 runs an independent metric contest per address family, so only
+	# same-family members compete with the recovered one; resolve its family once
+	# and snap only that family's backups.
+
+	config_get rec_family "$recovered" family ipv4
+	if [ "$rec_family" = "ipv6" ]; then
+		rec_fam_short="v6"
+	else
+		rec_fam_short="v4"
+	fi
+
+	# Record one "policy=worse-id" pair per strictly-worse-metric same-family
+	# member of each policy the recovered interface is in. The recovered
+	# interface's own id is excluded so its own pins are never cleared.
+
+	_mwan3_snap_collect() {
+		local policy="$1" rec_metric=""
+
+		# The recovered interface's metric in this policy sets the threshold;
+		# take the lowest if it appears more than once.
+
+		_mwan3_snap_rec_metric() {
+			local m_iface m_metric
+			config_get m_iface "$1" interface
+			[ "$m_iface" = "$recovered" ] || return
+			config_get m_metric "$1" metric 1
+			{ [ -z "$rec_metric" ] || [ "$m_metric" -lt "$rec_metric" ]; } && rec_metric="$m_metric"
+		}
+		config_list_foreach "$policy" use_member _mwan3_snap_rec_metric
+
+		# Policy does not include the recovered interface: nothing to snap.
+
+		[ -n "$rec_metric" ] || return
+
+		_mwan3_snap_worse() {
+			local m_iface m_metric m_id m_family
+			config_get m_iface "$1" interface
+			[ -n "$m_iface" ] || return
+			config_get m_family "$m_iface" family ipv4
+			[ "$m_family" = "$rec_family" ] || return
+			config_get m_metric "$1" metric 1
+			[ "$m_metric" -gt "$rec_metric" ] || return
+			mwan3_get_iface_id m_id "$m_iface"
+			[ -n "$m_id" ] || return
+			[ "$m_id" = "$recovered_id" ] && return
+			case " $_snap_pairs " in
+				*" ${policy}=${m_id} "*) ;;
+				*) _snap_pairs="$_snap_pairs ${policy}=${m_id}" ;;
+			esac
+		}
+		config_list_foreach "$policy" use_member _mwan3_snap_worse
+	}
+	config_foreach _mwan3_snap_collect policy
+
+	[ -n "$_snap_pairs" ] || return 0
+
+	# For every rule, flush the worse-metric members' per-rule sticky sets of the
+	# policy that rule uses, in the recovered member's family. A set name that
+	# does not exist is a harmless no-op.
+
+	_mwan3_snap_flush() {
+		local r_policy pair p_name p_id
+		config_get r_policy "$1" use_policy
+		[ -n "$r_policy" ] || return
+		for pair in $_snap_pairs; do
+			p_name="${pair%=*}"
+			p_id="${pair##*=}"
+			[ "$p_name" = "$r_policy" ] || continue
+			$NFT flush set inet mwan3 "mwan3_sticky_${rec_fam_short}_${1}_${p_id}" 2>/dev/null
+		done
+	}
+	config_foreach _mwan3_snap_flush rule
 }
 
 mwan3_create_iface_route()
@@ -904,7 +1057,8 @@ mwan3_create_iface_rules()
 
 	$IP rule add pref $((id+MWAN3_IIF_RULE_BASE)) iif "$2" lookup "$id" 2>/dev/null
 	$IP rule add pref $((id+MWAN3_FWMARK_RULE_BASE)) fwmark "$(mwan3_id2mask id MMX_MASK)/$MMX_MASK" lookup "$id" 2>/dev/null
-	$IP rule add pref $((id+MWAN3_UNREACHABLE_RULE_BASE)) fwmark "$(mwan3_id2mask id MMX_MASK)/$MMX_MASK" unreachable 2>/dev/null
+	[ "$family" = "ipv4" ] && ${MWAN3_MANAGE_RULES} add-src "$2" "$id" \
+		"$((id + MWAN3_UNREACHABLE_RULE_BASE + MWAN3_INTERFACE_MAX + 1))"
 }
 
 mwan3_delete_iface_rules()
@@ -915,13 +1069,13 @@ mwan3_delete_iface_rules()
 	[ -n "$id" ] || return 0
 
 	${MWAN3_MANAGE_RULES} delete-iface "$id" \
-		"$MWAN3_IIF_RULE_BASE" "$MWAN3_FWMARK_RULE_BASE" \
-		"$MWAN3_UNREACHABLE_RULE_BASE" "$MMX_MASK"
+		"$MWAN3_IIF_RULE_BASE" "$MWAN3_FWMARK_RULE_BASE" "$MMX_MASK" \
+		"$((id + MWAN3_UNREACHABLE_RULE_BASE + MWAN3_INTERFACE_MAX + 1))"
 }
 
 mwan3_set_policy()
 {
-	local id iface family metric weight device is_lowest is_offline
+	local id iface family metric weight is_lowest is_offline
 
 	is_lowest=0
 	config_get iface "$1" interface
@@ -929,7 +1083,6 @@ mwan3_set_policy()
 	config_get weight "$1" weight 1
 
 	[ -n "$iface" ] || return 0
-	network_get_device device "$iface"
 	[ "$metric" -gt $DEFAULT_LOWEST_METRIC ] && LOG warn "Member interface $iface has >$DEFAULT_LOWEST_METRIC metric. Not appending to policy" && return 0
 
 	mwan3_get_iface_id id "$iface"
@@ -976,30 +1129,28 @@ mwan3_set_policy()
 
 	if [ $is_offline -eq 0 ]; then
 
-		# Accumulate members per family: "iface_name:id:weight" tuples
+		# Accumulate members per family: "iface_name:id:weight" tuples.
+		# The branches mirror the metric contest above, so a member only
+		# accumulates through its interface family's contest: an IPv6
+		# member is excluded on a kernel without IPv6, and an
+		# unrecognised family value is never accumulated.
 
 		if [ "$family" = "ipv4" ]; then
 			policy_members_v4="$policy_members_v4 $iface:$id:$weight"
-		else
+		elif [ "$family" = "ipv6" ] && [ $NO_IPV6 -eq 0 ]; then
 			policy_members_v6="$policy_members_v6 $iface:$id:$weight"
 		fi
-	elif [ -n "$device" ]; then
-
-		# Offline interface with device: record for fallback out-device rule
-
-		policy_offline_devices="$policy_offline_devices $iface:$device"
 	fi
 }
 
 mwan3_create_policies_nft()
 {
 	local last_resort lowest_metric_v4 lowest_metric_v6 total_weight_v4 total_weight_v6
-	local policy policy_members_v4 policy_members_v6 policy_offline_devices
+	local policy policy_members_v4 policy_members_v6
 
 	policy="$1"
 	policy_members_v4=""
 	policy_members_v6=""
-	policy_offline_devices=""
 
 	config_get last_resort "$1" last_resort unreachable
 
@@ -1094,22 +1245,6 @@ mwan3_create_policies_nft()
 					$nfproto_guard meta mark \& "$MMX_MASK" == 0 \
 					"numgen inc mod $_total_fam vmap { $map_entries }"
 			fi
-		done
-	fi
-
-	# Add offline device fallback rules
-
-	local dev_entry offline_iface offline_device
-
-	# Only add if no online members
-
-	if [ "$total_weight" -eq 0 ]; then
-		for dev_entry in $policy_offline_devices; do
-			offline_iface="${dev_entry%%:*}"
-			offline_device="${dev_entry#*:}"
-			mwan3_nft_exec add rule inet mwan3 "mwan3_policy_$policy" \
-				oifname "$offline_device" meta mark \& "$MMX_MASK" == 0 \
-				"$(mwan3_nft_mark_expr $MMX_DEFAULT $MMX_MASK)"
 		done
 	fi
 
@@ -1214,7 +1349,7 @@ mwan3_set_user_nft_rule()
 	local ipset_name ipset_src family proto policy src_ip src_port src_iface src_dev
 	local sticky dest_ip dest_port use_policy timeout policy
 	local global_logging rule_logging loglevel rule_policy rule ipv
-	local enabled fwmark fwmask _check_set _set_info
+	local enabled fwmark fwmask _check_set _set_info _fam_anchored
 
 	config_get_bool enabled "$1" enabled 1
 	[ "$enabled" -eq 1 ] || return
@@ -1262,18 +1397,30 @@ mwan3_set_user_nft_rule()
 	[ "$family" = "ipv4" ] && [ "$ipv" = "ipv6" ] && return
 	[ "$family" = "ipv6" ] && [ "$ipv" = "ipv4" ] && return
 
-	# family=any rules whose nft expression has no IP-version-specific element
-	# (no src_ip/dest_ip/ipset/ipset_src) generate identical output on both the
-	# ipv4 and ipv6 passes. Skip the ipv6 pass to avoid pushing a duplicate
-	# rule. The ipv4 pass output already matches IPv6 traffic at runtime
-	# because the match operates on family-agnostic fields (meta mark, l4proto,
-	# port, iifname). Exception: proto=icmp requires both passes because ICMP
-	# (protocol 1) and ICMPv6 (protocol 58) are distinct L4 protocols.
+	# A family-anchoring element (src_ip/dest_ip/ipset/ipset_src) ties the
+	# rendered expression to one address family per pass. This list must
+	# cover every matcher whose nft form differs by address family; the
+	# de-duplication guard and the sticky block both key on the flag.
+
+	_fam_anchored=0
+	if [ -n "$src_ip" ] || [ -n "$dest_ip" ] || \
+	   [ -n "$ipset_name" ] || [ -n "$ipset_src" ]; then
+		_fam_anchored=1
+	fi
+
+	# family=any rules with no family-anchoring element render once, on
+	# the ipv4 pass: the emitted line matches on family-agnostic fields
+	# (meta mark, l4proto, port, iifname, ether saddr) and carries no
+	# nfproto guard, so it covers both families at its config position,
+	# and the sticky block builds the per-rule chain complete for both
+	# families on that pass. Skip the ipv6 pass to avoid a duplicate
+	# line. Exception: proto=icmp requires both passes because ICMP
+	# (protocol 1) and ICMPv6 (protocol 58) are distinct L4 protocols;
+	# the ipv6 pass then emits its own line but must not rebuild the
+	# sticky chain.
 
 	if [ "$family" = "any" ] && [ "$ipv" = "ipv6" ] && \
-	   [ -z "$src_ip" ] && [ -z "$dest_ip" ] && \
-	   [ -z "$ipset_name" ] && [ -z "$ipset_src" ] && \
-	   [ "$proto" != "icmp" ]; then
+	   [ $_fam_anchored -eq 0 ] && [ "$proto" != "icmp" ]; then
 		return
 	fi
 
@@ -1300,7 +1447,13 @@ mwan3_set_user_nft_rule()
 	# the src_ip/dest_ip address validation above: a set of type ipv4_addr
 	# cannot appear in an "ip6 daddr @set" expression, and vice versa.
 
-	local _ipset_name_uci_type="" _ipset_src_uci_type=""
+	local _ipset_name_uci_type="" _ipset_src_uci_type="" _pass_addrtype
+	if [ "$ipv" = "ipv4" ]; then
+		_pass_addrtype="ipv4_addr"
+	else
+		_pass_addrtype="ipv6_addr"
+	fi
+
 	for _check_set in "$ipset_name" "$ipset_src"; do
 		[ -z "$_check_set" ] && continue
 		local _set_info
@@ -1339,6 +1492,25 @@ mwan3_set_user_nft_rule()
 				[ "$ipv" = "ipv6" ] && [ "$_uci_addrtype" = "ipv4_addr" ] && return
 				continue
 			fi
+
+			# An earlier rule in this render may already have pre-created
+			# the set into the open batch, which the kernel query above
+			# cannot see. Consult the render's own record instead: the
+			# first pre-creation establishes the set's type for the whole
+			# render, and every later reference is treated exactly as if
+			# the kernel held a set of that type.
+
+			case " $MWAN3_RENDER_SETS " in
+				*" ${_check_set}=${_pass_addrtype} "*)
+					continue
+					;;
+				*" ${_check_set}="*)
+					[ "$family" = "any" ] && return
+					LOG warn "Rule $rule: set '$_check_set' pre-created as the other address family by an earlier rule, incompatible with family $family"
+					return
+					;;
+			esac
+
 			# Not UCI-managed: apply existing guard for external sets.
 			# For family=any, skip the ipv6 pass; the ipv4 pass will pre-create
 			# the set as ipv4_addr until an external creator establishes its type.
@@ -1439,15 +1611,20 @@ mwan3_set_user_nft_rule()
 		# set is missing, which would kill ALL user rules.
 		# UCI-managed sets are already added to the batch by mwan3_render_config_ipsets;
 		# skip the kernel check and pre-creation for those.
+		# A set this render has already pre-created is in the record and is
+		# never added twice: two adds of one name in a batch are rejected
+		# when the types differ, and redundant when they match.
 
 		if [ -z "$_ipset_name_uci_type" ] && \
 		   ! $NFT list set inet mwan3 "$ipset_name" &>/dev/null; then
-			LOG notice "Creating missing nft set '$ipset_name' for rule $rule"
-			if [ "$ipv" = "ipv4" ]; then
-				mwan3_nft_push "add set inet mwan3 $ipset_name { type ipv4_addr; flags interval; auto-merge; }"
-			else
-				mwan3_nft_push "add set inet mwan3 $ipset_name { type ipv6_addr; flags interval; auto-merge; }"
-			fi
+			case " $MWAN3_RENDER_SETS " in
+				*" ${ipset_name}=${_pass_addrtype} "*) ;;
+				*)
+					LOG notice "Creating missing nft set '$ipset_name' for rule $rule"
+					mwan3_nft_push "add set inet mwan3 $ipset_name { type ${_pass_addrtype}; flags interval; auto-merge; }"
+					MWAN3_RENDER_SETS="$MWAN3_RENDER_SETS ${ipset_name}=${_pass_addrtype}"
+					;;
+			esac
 		fi
 		if [ "$ipv" = "ipv4" ]; then
 			nft_match="$nft_match ip daddr @$ipset_name"
@@ -1461,12 +1638,14 @@ mwan3_set_user_nft_rule()
 	if [ -n "$ipset_src" ]; then
 		if [ -z "$_ipset_src_uci_type" ] && \
 		   ! $NFT list set inet mwan3 "$ipset_src" &>/dev/null; then
-			LOG notice "Creating missing nft set '$ipset_src' for rule $rule"
-			if [ "$ipv" = "ipv4" ]; then
-				mwan3_nft_push "add set inet mwan3 $ipset_src { type ipv4_addr; flags interval; auto-merge; }"
-			else
-				mwan3_nft_push "add set inet mwan3 $ipset_src { type ipv6_addr; flags interval; auto-merge; }"
-			fi
+			case " $MWAN3_RENDER_SETS " in
+				*" ${ipset_src}=${_pass_addrtype} "*) ;;
+				*)
+					LOG notice "Creating missing nft set '$ipset_src' for rule $rule"
+					mwan3_nft_push "add set inet mwan3 $ipset_src { type ${_pass_addrtype}; flags interval; auto-merge; }"
+					MWAN3_RENDER_SETS="$MWAN3_RENDER_SETS ${ipset_src}=${_pass_addrtype}"
+					;;
+			esac
 		fi
 		if [ "$ipv" = "ipv4" ]; then
 			nft_match="$nft_match ip saddr @$ipset_src"
@@ -1509,7 +1688,7 @@ mwan3_set_user_nft_rule()
 	# like default_rule (family ipv4, no saddr/daddr) generates a bare
 	# "meta mark ... jump policy" that matches IPv6 traffic too.
 
-	if [ -z "$src_ip" ] && [ -z "$dest_ip" ] && [ -z "$ipset_name" ] && [ -z "$ipset_src" ]; then
+	if [ $_fam_anchored -eq 0 ]; then
 		if [ "$family" = "ipv4" ]; then
 			nft_match="${nft_match:+$nft_match }meta nfproto ipv4"
 		elif [ "$family" = "ipv6" ]; then
@@ -1549,49 +1728,86 @@ mwan3_set_user_nft_rule()
 		# bit. The save side mirrors this with per-member "update @set" rules
 		# guarded on (meta mark & MMX) == <member_mark>.
 
+		# The per-rule chain is shared by every mwan3_rules line that
+		# jumps to it, so it is built exactly once, complete for every
+		# family whose traffic can reach it. A family=any rule with no
+		# family-anchoring element serves both families from the single
+		# line emitted on the ipv4 pass, so that pass builds both
+		# families' arms; for proto=icmp the ipv6 pass also reaches this
+		# block and only points its own line at the finished chain. The
+		# layout is load-bearing: every lookup precedes the single
+		# fall-through, so a pinned source ORs its member mark into the
+		# packet before the fall-through can hand it to the policy, and
+		# the update rules follow.
+
 		local _policy_member_marks _entry _m_id _m_mark _setname
-		local _fam_short _saddr_kw _addr_type
-		if [ "$ipv" = "ipv4" ]; then
-			_fam_short="v4"; _saddr_kw="ip saddr"; _addr_type="ipv4_addr"
-		else
-			_fam_short="v6"; _saddr_kw="ip6 saddr"; _addr_type="ipv6_addr"
+		local _fam_short _saddr_kw _addr_type _sticky_families _sfam
+
+		_sticky_families="$ipv"
+		if [ "$family" = "any" ] && [ $_fam_anchored -eq 0 ]; then
+			if [ "$ipv" = "ipv6" ]; then
+				_sticky_families=""
+			elif [ $NO_IPV6 -eq 0 ]; then
+				_sticky_families="ipv4 ipv6"
+			fi
 		fi
 
-		mwan3_get_policy_members_for_family "$use_policy" "$ipv"
+		_sticky_fam_vars() {
+			if [ "$1" = "ipv4" ]; then
+				_fam_short="v4"; _saddr_kw="ip saddr"; _addr_type="ipv4_addr"
+			else
+				_fam_short="v6"; _saddr_kw="ip6 saddr"; _addr_type="ipv6_addr"
+			fi
+		}
 
-		# Create sticky rule chain if it doesn't exist yet. The chain was
-		# already flushed in the preamble of mwan3_set_user_rules, so both
-		# ipv4 and ipv6 passes can add their rules without interference.
+		if [ -n "$_sticky_families" ]; then
 
-		mwan3_nft_push "add chain inet mwan3 mwan3_rule_$1"
+			# Create sticky rule chain if it doesn't exist yet. The chain
+			# was already flushed in the preamble of mwan3_set_user_rules.
 
-		# Per-member sticky sets and lookup rules.
+			mwan3_nft_push "add chain inet mwan3 mwan3_rule_$1"
 
-		for _entry in $_policy_member_marks; do
-			_m_id="${_entry%%:*}"
-			_m_mark="${_entry##*:}"
-			_setname="mwan3_sticky_${_fam_short}_${rule}_${_m_id}"
+			# Per-member sticky sets and lookup rules, every served
+			# family's lookups ahead of the fall-through.
 
-			$NFT list set inet mwan3 "$_setname" &>/dev/null || \
-				mwan3_nft_push "add set inet mwan3 $_setname { type ${_addr_type}; flags timeout; timeout ${timeout}s; }"
+			for _sfam in $_sticky_families; do
+				_sticky_fam_vars "$_sfam"
+				mwan3_get_policy_members_for_family "$use_policy" "$_sfam"
 
-			mwan3_nft_push "add rule inet mwan3 mwan3_rule_$1 ${_saddr_kw} @${_setname} jump mwan3_or_meta_$(mwan3_or_chain_suffix "$_m_mark")"
-		done
+				for _entry in $_policy_member_marks; do
+					_m_id="${_entry%%:*}"
+					_m_mark="${_entry##*:}"
+					_setname="mwan3_sticky_${_fam_short}_${rule}_${_m_id}"
 
-		# Fall through to policy for new flows (no sticky entry hit -> mark still 0).
+					$NFT list set inet mwan3 "$_setname" &>/dev/null || \
+						mwan3_nft_push "add set inet mwan3 $_setname { type ${_addr_type}; flags timeout; timeout ${timeout}s; }"
 
-		mwan3_nft_push "add rule inet mwan3 mwan3_rule_$1 meta mark & $MMX_MASK == 0 jump mwan3_policy_$use_policy"
+					mwan3_nft_push "add rule inet mwan3 mwan3_rule_$1 ${_saddr_kw} @${_setname} jump mwan3_or_meta_$(mwan3_or_chain_suffix "$_m_mark")"
+				done
+			done
 
-		# After the policy assigns a mark, populate the matching per-member
-		# sticky set so subsequent packets from this saddr stay on the same WAN.
+			# Fall through to policy for new flows (no sticky entry hit ->
+			# mark still 0).
 
-		for _entry in $_policy_member_marks; do
-			_m_id="${_entry%%:*}"
-			_m_mark="${_entry##*:}"
-			_setname="mwan3_sticky_${_fam_short}_${rule}_${_m_id}"
+			mwan3_nft_push "add rule inet mwan3 mwan3_rule_$1 meta mark & $MMX_MASK == 0 jump mwan3_policy_$use_policy"
 
-			mwan3_nft_push "add rule inet mwan3 mwan3_rule_$1 meta mark & $MMX_MASK == $_m_mark update @${_setname} { ${_saddr_kw} timeout ${timeout}s }"
-		done
+			# After the policy assigns a mark, populate the matching
+			# per-member sticky set so subsequent packets from this saddr
+			# stay on the same WAN.
+
+			for _sfam in $_sticky_families; do
+				_sticky_fam_vars "$_sfam"
+				mwan3_get_policy_members_for_family "$use_policy" "$_sfam"
+
+				for _entry in $_policy_member_marks; do
+					_m_id="${_entry%%:*}"
+					_m_mark="${_entry##*:}"
+					_setname="mwan3_sticky_${_fam_short}_${rule}_${_m_id}"
+
+					mwan3_nft_push "add rule inet mwan3 mwan3_rule_$1 meta mark & $MMX_MASK == $_m_mark update @${_setname} { ${_saddr_kw} timeout ${timeout}s }"
+				done
+			done
+		fi
 
 		policy_action="jump mwan3_rule_$1"
 	fi
@@ -1638,14 +1854,21 @@ mwan3_set_user_iface_rules()
 
 mwan3_set_user_rules()
 {
-	local ipv
+	# Record of the external sets this render has pre-created into the
+	# batch, as space-delimited "name=addrtype" tokens, read and appended
+	# to by mwan3_set_user_nft_rule through dynamic scoping. Kernel
+	# queries inside an open batch see pre-batch state, so the renderer
+	# carries its own shadow of what the batch already holds. Reset per
+	# render, so repeated renders emit identical batches.
+
+	local MWAN3_RENDER_SETS=""
 
 	mwan3_nft_batch_start
 
 	mwan3_nft_push "flush chain inet mwan3 mwan3_rules"
 
 	# Pre-create and flush per-rule chains for all enabled UCI rules, before
-	# the per-family loop. Sourcing names from UCI (not the kernel) prevents
+	# the render pass. Sourcing names from UCI (not the kernel) prevents
 	# chains for deleted rules from being recreated after reload. "add chain"
 	# is idempotent: it recreates a chain deleted by mwan3_nft_reload_start or
 	# is a no-op if the chain already exists (hotplug path).
@@ -1659,10 +1882,22 @@ mwan3_set_user_rules()
 	}
 	config_foreach _init_rule_chain rule
 
-	for ipv in ipv4 ipv6; do
-		[ "$ipv" = "ipv6" ] && [ $NO_IPV6 -ne 0 ] && continue
-		config_foreach mwan3_set_user_nft_rule rule "$ipv"
-	done
+	# Render the rules in one pass over the config, in config order,
+	# emitting each rule's IPv4 and IPv6 variants at that rule's position.
+	# The chain is evaluated first-match, so a rule's position in the chain
+	# must equal its position in the config; rendering per family instead
+	# would place every IPv6-specific rule after every IPv4-pass rule,
+	# letting a family-agnostic rule shadow IPv6 rules the config places
+	# before it.
+
+	_render_rule() {
+		local _rr_ipv
+		for _rr_ipv in ipv4 ipv6; do
+			[ "$_rr_ipv" = "ipv6" ] && [ $NO_IPV6 -ne 0 ] && continue
+			mwan3_set_user_nft_rule "$1" "$_rr_ipv"
+		done
+	}
+	config_foreach _render_rule rule
 
 	mwan3_nft_batch_commit
 }
@@ -2018,12 +2253,13 @@ mwan3_flush_conntrack()
 		config_list_foreach "$interface" flush_conntrack handle_flush "$action"
 	fi
 
-	# On ifdown, selectively flush conntrack entries for this interface's mark.
-	# This forces flows that were using the failed WAN to immediately re-establish
-	# via the new policy rather than waiting for a TCP retransmit timeout.
-	# More targeted than the UCI flush_conntrack mechanism which flushes everything.
+	# On a teardown transition (a hard ifdown or a soft tracker disconnect),
+	# selectively flush conntrack entries carrying this interface's mark. This
+	# forces flows that were using the failed WAN to immediately re-establish via
+	# the new policy rather than waiting for a TCP retransmit timeout. More
+	# targeted than the UCI flush_conntrack mechanism which flushes everything.
 
-	if [ "$action" = "ifdown" ] && [ -e "$CONNTRACK_FILE" ]; then
+	if { [ "$action" = "ifdown" ] || [ "$action" = "disconnected" ]; } && [ -e "$CONNTRACK_FILE" ]; then
 		local iface_id iface_mark
 		mwan3_get_iface_id iface_id "$interface"
 		if [ -n "$iface_id" ]; then
