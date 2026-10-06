@@ -127,7 +127,7 @@ new file mode 100644
 index 000000000000..a00fff9c79b3
 --- /dev/null
 +++ b/luci-app-passwall2/luasrc/view/passwall2/global/status_bottom.htm
-@@ -0,0 +1,126 @@
+@@ -0,0 +1,125 @@
 +<style>
 +.pure-1-2 {
 +    width: 50%;
@@ -144,13 +144,12 @@ index 000000000000..a00fff9c79b3
 +    margin-top: -0.34rem;
 +}
 +.status-bar {
-+    position: fixed;
++    position: sticky;
 +    bottom: 0;
-+    right: 0;
 +    box-shadow: 0 0 2rem 0 rgba(136, 152, 170, .3);
 +    color: #525f7f;
 +    background: #fff;
-+    z-index: 999;
++    z-index: 99;
 +    box-sizing: border-box;
 +}
 +
