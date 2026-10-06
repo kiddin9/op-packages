@@ -6,7 +6,20 @@
 enabled=$(uci -q get flowproxy.global.enabled || echo 0)
 [ "$enabled" = "1" ] || exit 0
 
-target_iface=$(uci -q get flowproxy.global.interface || echo "br-lan")
+proxy_ip=$(uci -q get flowproxy.global.proxy_server_ip_addr)
+[ -n "$proxy_ip" ] || exit 0
+
+target_iface=""
+if [ -f "/var/run/flowproxy.mark" ]; then
+    target_iface=$(cut -d':' -f4 /var/run/flowproxy.mark 2>/dev/null)
+fi
+if [ -z "$target_iface" ]; then
+    target_iface=$(uci -q get flowproxy.global.interface)
+    if [ -z "$target_iface" ] || [ "$target_iface" = "auto" ]; then
+        target_iface=$(ip route get "$proxy_ip" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") {print $(i+1); exit}}')
+    fi
+fi
+target_iface="${target_iface:-br-lan}"
 
 if [ "$DEVICE" = "$target_iface" ] || [ "$INTERFACE" = "$target_iface" ]; then
     [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy add_route

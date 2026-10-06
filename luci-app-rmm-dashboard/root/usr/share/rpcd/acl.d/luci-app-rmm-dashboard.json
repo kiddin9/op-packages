@@ -1,6 +1,6 @@
 {
   "luci-app-rmm-dashboard": {
-    "description": "Read router and RMM agent status",
+    "description": "Router dashboard and client display names",
     "read": {
       "ubus": {
         "system": [
@@ -25,12 +25,23 @@
           "getDHCPLeases"
         ],
         "rmm.dashboard": [
-          "clients"
+          "clients",
+          "vendors"
+        ],
+        "network.rrdns": [
+          "lookup"
         ]
       },
       "uci": [
         "rmm-agent"
       ]
+    },
+    "write": {
+      "ubus": {
+        "rmm.dashboard": [
+          "set_name"
+        ]
+      }
     }
   }
 }

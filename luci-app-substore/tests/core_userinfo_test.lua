@@ -35,11 +35,20 @@ check("human_bytes bytes", util.human_bytes(512) == "512B")
 check("human_bytes negative", util.human_bytes(-5) == "0B")
 
 -- ---------- human_duration ----------
-check("human_duration 10天", util.human_duration(10 * 86400) == "10天")
-check("human_duration 8小时", util.human_duration(8 * 3600) == "8小时")
-check("human_duration 30分钟", util.human_duration(30 * 60) == "30分钟")
-check("human_duration expired", util.human_duration(-1) == "已过期")
-check("human_duration under minute", util.human_duration(30) == "不足1分钟")
+-- 返回的是**语言中立的组合消息**（数字 + 单位 msgid，见 msg.lua）：后端不能
+-- require("luci.i18n")，翻译由显示边界（view/substore/form.htm）逐段完成。
+local msg = require("substore.msg")
+local function S(s) return s end  -- 便于阅读：msgid 就是它自己
+check("human_duration 10 days", util.human_duration(10 * 86400) == msg.compose(10, S(" days")))
+check("human_duration 8 hours", util.human_duration(8 * 3600) == msg.compose(8, S(" hours")))
+check("human_duration 30 minutes", util.human_duration(30 * 60) == msg.compose(30, S(" minutes")))
+check("human_duration expired", util.human_duration(-1) == S("Expired"))
+check("human_duration under minute", util.human_duration(30) == S("Less than a minute"))
+-- 中文译文把单位 msgid 译成不带空格的 "天" —— 英文 "3 days" / 中文 "3天" 都成立
+check("human_duration 中文渲染 10天",
+	msg.translate(util.human_duration(10 * 86400), function(k)
+		return ({ [" days"] = "天", [" hours"] = "小时", [" minutes"] = "分钟" })[k] or k
+	end) == "10天")
 
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

@@ -4,6 +4,7 @@
 local util = require("substore.util")
 local http = require("substore.http")
 local parser = require("substore.parser")
+local msg = require("substore.msg")
 
 local M = {}
 
@@ -65,7 +66,7 @@ function M.resolve_user_agent(preset, custom)
 		if ua == "" then return "" end
 	else
 		ua = UA_BY_KEY[preset]
-		if not ua then return nil, "未知的订阅客户端类型: " .. preset end
+		if not ua then return nil, msg.join("Unknown subscription client type: ", preset) end
 	end
 	return http.validate_user_agent(ua)
 end
@@ -114,7 +115,7 @@ local function load()
 	if not raw or raw == "" then return 0, {} end
 	local data = util.json_decode(raw)
 	if type(data) ~= "table" then
-		return 0, {}, "订阅列表文件已损坏，无法解析：" .. M.LIST_FILE
+		return 0, {}, msg.join("Subscription list file is corrupted, cannot parse: ", M.LIST_FILE)
 	end
 	local seq = tonumber(data._seq) or 0
 	local items = type(data.items) == "table" and data.items or {}
@@ -134,7 +135,7 @@ local function load()
 		if type(meta) == "table" then clean[id] = meta else bad = true end
 	end
 	if bad then
-		return seq, clean, "订阅列表文件已损坏，存在非法条目：" .. M.LIST_FILE
+		return seq, clean, msg.join("Subscription list file is corrupted, contains an invalid entry: ", M.LIST_FILE)
 	end
 	return seq, items
 end
@@ -168,7 +169,7 @@ local function with_list_lock(f)
 	end
 	local lock_dir = M.DATA_DIR .. "/.lock"
 	if not util.lock_acquire(lock_dir, { stale = M.LOCK_STALE }) then
-		return nil, "订阅列表正被另一个进程修改，请稍后重试"
+		return nil, "Subscription list is being modified by another process, please retry later"
 	end
 	lock_depth = 1
 	local a, b = f()
@@ -213,7 +214,7 @@ function M.add(name, url, opts)
 	name = util.trim(name or "")
 	url = util.trim(url or "")
 	opts = opts or {}
-	if name == "" or url == "" then return nil, "名称/URL 不能为空" end
+	if name == "" or url == "" then return nil, "Name/URL must not be empty" end
 	local seq, items, lerr = load()
 	if lerr then return nil, lerr end
 	seq = seq + 1
@@ -239,7 +240,7 @@ function M.add(name, url, opts)
 		raw_content = "",
 		local_mode = "text",
 	}
-	if not save(seq, items) then return nil, "写入失败" end
+	if not save(seq, items) then return nil, "Write failed" end
 	return id
 end
 
@@ -248,7 +249,7 @@ function M.add_local(name, raw_content, local_mode, opts)
 	raw_content = util.trim(raw_content or "")
 	local_mode = local_mode or "text"
 	opts = opts or {}
-	if name == "" or raw_content == "" then return nil, "名称/内容 不能为空" end
+	if name == "" or raw_content == "" then return nil, "Name/Content must not be empty" end
 	local seq, items, lerr = load()
 	if lerr then return nil, lerr end
 	seq = seq + 1
@@ -269,7 +270,7 @@ function M.add_local(name, raw_content, local_mode, opts)
 		raw_content = raw_content,
 		local_mode = local_mode,
 	}
-	if not save(seq, items) then return nil, "写入失败" end
+	if not save(seq, items) then return nil, "Write failed" end
 	-- 立即解析一次
 	M.sync(id)
 	return id
@@ -289,7 +290,7 @@ function M.ensure_token(id)
 		-- 一个必然报「无效的订阅 token」的链接；而且内存表用完即弃，
 		-- 下一次调用会再生成一个**不同**的 token，链接还会跳来跳去。
 		-- 失败就返回 nil，由调用方按「拿不到 token」处理。
-		if not save(seq, items) then return nil, "写入失败" end
+		if not save(seq, items) then return nil, "Write failed" end
 		return tok
 	end
 	return meta.token
@@ -309,14 +310,14 @@ end
 function M.generate_link(token, target, opts)
 	opts = opts or {}
 	local id = id_by_token(token)
-	if not id then return nil, nil, nil, "无效的订阅 token" end
+	if not id then return nil, nil, nil, "Invalid subscription token" end
 	local meta = M.get(id)
 	local nodes = M.read_nodes(id)
-	if #nodes == 0 then return nil, nil, nil, "暂无可用的节点（请先更新订阅）" end
+	if #nodes == 0 then return nil, nil, nil, "No available nodes (update the subscription first)" end
 
 	local output = require("substore.output")
 	local content, err = output.generate(nodes, target, opts)
-	if not content then return nil, nil, nil, err or "无法生成目标格式" end
+	if not content then return nil, nil, nil, err or "Failed to generate the target format" end
 
 	local ct = opts.content_type or output.content_type_for(target) or "text/plain; charset=utf-8"
 	local ext = output.extension_for(target) or "txt"
@@ -331,11 +332,11 @@ end
 M.CLEAR = setmetatable({}, { __tostring = function() return "substore.CLEAR" end })
 
 function M.save_meta(id, patch)
-	if not id_is_valid(id) then return false, "非法 ID" end
+	if not id_is_valid(id) then return false, "Invalid ID" end
 	local seq, items, lerr = load()
 	if lerr then return false, lerr end
 	local meta = items[id]
-	if not meta then return false, "订阅不存在" end
+	if not meta then return false, "Subscription not found" end
 	for k, v in pairs(patch or {}) do
 		if v == nil or v == M.CLEAR then meta[k] = nil else meta[k] = v end
 	end
@@ -377,7 +378,7 @@ function M.remove(id)
 	-- 而调用方拿到 true，以为删成功了。
 	-- 组合的 sources 剪除同理：没落盘的改动不重算（重算只会从磁盘读回旧状态）。
 	local ok, serr = save(seq, items)
-	if not ok then return false, serr or "写入失败" end
+	if not ok then return false, serr or "Write failed" end
 	os.remove(M.nodes_file(id))
 	-- 组合的物化节点在 nodes/<combo>.json，只有 combo_refresh 会重写它。
 	-- 不在这里重算的话，组合的下载链接会继续吐已删订阅的节点，一直等到别的源
@@ -430,7 +431,7 @@ function M.sync(id)
 	local log = function(msg) os.execute("logger -t luci-app-substore " .. util.shq(msg)) end
 	log("Sync start id="..tostring(id))
 	local meta = M.get(id)
-	if not meta then log("Sync fail: subscription not found"); return nil, "订阅不存在" end
+	if not meta then log("Sync fail: subscription not found"); return nil, "Subscription not found" end
 	-- 组合订阅：无下载源，直接重算合并节点
 	if M.is_combo(meta) then
 		log("Sync combo refresh")
@@ -444,29 +445,29 @@ function M.sync(id)
 		local content = meta.raw_content or ""
 		if content == "" then
 			-- 失败路径一律不改 node_count：磁盘上的旧节点仍在，订阅链接仍在下发（§35）
-			M.save_meta(id, { error = "本地订阅内容为空", last_update = os.time() })
-			return nil, "本地订阅内容为空"
+			M.save_meta(id, { error = "Local subscription content is empty", last_update = os.time() })
+			return nil, "Local subscription content is empty"
 		end
 		local res, perr = parser.parse_local(content, meta.local_mode or "text")
 		if not res or not res.nodes then
 			log("Parse local fail: " .. tostring(perr))
-			M.save_meta(id, { error = perr or "本地解析失败", last_update = os.time() })
-			return nil, perr or "本地解析失败"
+			M.save_meta(id, { error = perr or "Failed to parse local content", last_update = os.time() })
+			return nil, perr or "Failed to parse local content"
 		end
 		log("Parse local ok nodes="..#res.nodes)
 		local nodes = M.apply_rules(res.nodes, meta)
 		if not M.write_nodes(id, nodes) then
-			M.save_meta(id, { error = "写入节点数据失败", last_update = os.time() })
-			return nil, "写入节点数据失败"
+			M.save_meta(id, { error = "Failed to write node data", last_update = os.time() })
+			return nil, "Failed to write node data"
 		end
 		local ok = M.save_meta(id, {
 			node_count = #nodes, format = res.format or "local", error = "", last_update = os.time(),
 		})
-		if not ok then return nil, "更新状态失败" end
+		if not ok then return nil, "Failed to update status" end
 		M.refresh_combos(id)
 		return #nodes
 	end
-	if not meta.url or meta.url == "" then log("Sync fail: no URL"); return nil, "无订阅 URL" end
+	if not meta.url or meta.url == "" then log("Sync fail: no URL"); return nil, "No subscription URL" end
 
 	-- 订阅代理：开启时代理地址必须有效。无效就明确失败——
 	-- 静默直连会让用户以为流量走了代理，属于必须避免的 silent fallback（§12）。
@@ -474,10 +475,10 @@ function M.sync(id)
 	if meta.proxy_enable == true or meta.proxy_enable == "1" then
 		local p, perr = http.parse_proxy(meta.proxy or "")
 		if not p or p == "" then
-			local msg = perr or "代理地址为空"
-			log("Proxy invalid: " .. tostring(msg))
-			M.save_meta(id, { error = "代理配置无效: " .. tostring(msg), last_update = os.time() })
-			return nil, "代理配置无效: " .. tostring(msg)
+			local perr_text = perr or "Proxy address is empty"
+			log("Proxy invalid: " .. tostring(perr_text))
+			M.save_meta(id, { error = msg.join("Invalid proxy config: ", perr_text), last_update = os.time() })
+			return nil, msg.join("Invalid proxy config: ", perr_text)
 		end
 		proxy = p
 	end
@@ -490,8 +491,8 @@ function M.sync(id)
 	local ua, uaerr = http.validate_user_agent(meta.user_agent)
 	if not ua then
 		log("User-Agent invalid: " .. tostring(uaerr))
-		M.save_meta(id, { error = "User-Agent 无效: " .. tostring(uaerr), last_update = os.time() })
-		return nil, "User-Agent 无效: " .. tostring(uaerr)
+		M.save_meta(id, { error = msg.join("Invalid User-Agent: ", uaerr), last_update = os.time() })
+		return nil, msg.join("Invalid User-Agent: ", uaerr)
 	end
 	if ua ~= "" then log("Using User-Agent " .. ua) end
 
@@ -499,7 +500,7 @@ function M.sync(id)
 		proxy = proxy, user_agent = ua })
 	if not content then
 		-- 下载工具的报错可能回显含凭据的 URL，写日志与入库前先抹掉（§39）
-		local safe_err = http.scrub_credentials(err or "下载失败")
+		local safe_err = http.scrub_credentials(err or "Download failed")
 		log("Download fail: " .. safe_err)
 		M.save_meta(id, { error = safe_err, last_update = os.time() })
 		return nil, safe_err
@@ -512,15 +513,15 @@ function M.sync(id)
 	local res, perr = parser.parse(content)
 	if not res or not res.nodes then
 		log("Parse fail: " .. tostring(perr))
-		M.save_meta(id, { error = perr or "解析失败", last_update = os.time() })
-		return nil, perr or "解析失败"
+		M.save_meta(id, { error = perr or "Parse failed", last_update = os.time() })
+		return nil, perr or "Parse failed"
 	end
 	log("Parse ok nodes="..#res.nodes)
 
 	local nodes = M.apply_rules(res.nodes, meta)
 	if not M.write_nodes(id, nodes) then
-		M.save_meta(id, { error = "写入节点数据失败", last_update = os.time() })
-		return nil, "写入节点数据失败"
+		M.save_meta(id, { error = "Failed to write node data", last_update = os.time() })
+		return nil, "Failed to write node data"
 	end
 
 	local ok = M.save_meta(id, {
@@ -532,7 +533,7 @@ function M.sync(id)
 		total = (ui and ui.total) or M.CLEAR,
 		expire = (ui and ui.expire) or M.CLEAR,
 	})
-	if not ok then return nil, "更新状态失败" end
+	if not ok then return nil, "Failed to update status" end
 	-- 源订阅更新后，刷新引用它的组合订阅
 	M.refresh_combos(id)
 	return #nodes
@@ -668,18 +669,18 @@ end
 
 -- 重新计算组合节点并落盘，更新状态。成功返回 node_count，失败返回 nil, err
 function M.combo_refresh(id)
-	if not id_is_valid(id) then return nil, "非法 ID" end
+	if not id_is_valid(id) then return nil, "Invalid ID" end
 	local meta = M.get(id)
-	if not meta then return nil, "订阅不存在" end
+	if not meta then return nil, "Subscription not found" end
 	local srcs = type(meta.sources) == "table" and meta.sources or {}
 	if #srcs == 0 then
-		M.save_meta(id, { error = "请选择至少一个订阅", node_count = 0, last_update = os.time() })
-		return nil, "请选择至少一个订阅"
+		M.save_meta(id, { error = "Select at least one subscription", node_count = 0, last_update = os.time() })
+		return nil, "Select at least one subscription"
 	end
 	local nodes = M.combo_nodes(meta)
 	if not M.write_nodes(id, nodes) then
-		M.save_meta(id, { error = "写入节点数据失败", last_update = os.time() })
-		return nil, "写入节点数据失败"
+		M.save_meta(id, { error = "Failed to write node data", last_update = os.time() })
+		return nil, "Failed to write node data"
 	end
 	M.save_meta(id, { node_count = #nodes, error = "", last_update = os.time() })
 	return #nodes
@@ -703,7 +704,7 @@ end
 function M.add_combo(name, sources, opts)
 	name = util.trim(name or "")
 	opts = opts or {}
-	if name == "" then return nil, "名称不能为空" end
+	if name == "" then return nil, "Name cannot be empty" end
 	local srcs = {}
 	if type(sources) == "table" then
 		for _, s in ipairs(sources) do
@@ -711,7 +712,7 @@ function M.add_combo(name, sources, opts)
 			if s ~= "" and id_is_valid(s) then srcs[#srcs + 1] = s end
 		end
 	end
-	if #srcs == 0 then return nil, "请选择至少一个订阅" end
+	if #srcs == 0 then return nil, "Select at least one subscription" end
 	local seq, items, lerr = load()
 	if lerr then return nil, lerr end
 	seq = seq + 1
@@ -729,16 +730,16 @@ function M.add_combo(name, sources, opts)
 		dedup = (opts.dedup == true or opts.dedup == "1") and "1" or "0",
 		rename_map = opts.rename_map or "",
 	}
-	if not save(seq, items) then return nil, "写入失败" end
+	if not save(seq, items) then return nil, "Write failed" end
 	M.combo_refresh(id)
 	return id
 end
 
 -- 编辑组合订阅：更新名称/来源/规则后重算物化节点。成功返回 node_count，失败返回 nil, err
 function M.save_combo(id, name, sources, opts)
-	if not id_is_valid(id) then return nil, "非法 ID" end
+	if not id_is_valid(id) then return nil, "Invalid ID" end
 	name = util.trim(name or "")
-	if name == "" then return nil, "名称不能为空" end
+	if name == "" then return nil, "Name cannot be empty" end
 	local srcs = {}
 	if type(sources) == "table" then
 		for _, s in ipairs(sources) do
@@ -746,7 +747,7 @@ function M.save_combo(id, name, sources, opts)
 			if s ~= "" and id_is_valid(s) and s ~= id then srcs[#srcs + 1] = s end
 		end
 	end
-	if #srcs == 0 then return nil, "请选择至少一个订阅" end
+	if #srcs == 0 then return nil, "Select at least one subscription" end
 	opts = opts or {}
 	M.save_meta(id, {
 		name = name, sources = srcs,

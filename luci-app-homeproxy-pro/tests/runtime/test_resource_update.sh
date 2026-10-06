@@ -79,6 +79,7 @@ cat > "$WORK/bin/uclient-fetch" <<'EOF'
 #!/bin/sh
 url=""
 out=""
+probe=0
 while [ $# -gt 0 ]; do
 	case "$1" in
 	-O) out="$2"; shift 2 ;;
@@ -87,7 +88,8 @@ while [ $# -gt 0 ]; do
 	--header=*) shift ;;
 	--timeout=*) shift ;;
 	-T) shift 2 ;;
-	-s|--spider|-q|--quiet|-4|-6) shift ;;
+	-s|--spider) probe=1; shift ;;
+	-q|--quiet|-4|-6) shift ;;
 	-*) printf 'uclient-fetch: unrecognized option: %s\n' "${1#-}" >&2
 	    printf 'Usage: uclient-fetch [options] <URL>\n' >&2
 	    exit 1 ;;
@@ -107,6 +109,11 @@ case "$url" in
 *api.github.com/*/commits*) emit "$(cat "$HP_T_API_COMMITS")" ;;
 *api.github.com/*/contents*) emit "$(cat "$HP_T_API_CONTENTS")" ;;
 *)
+	# A spider probe (-s) checks reachability only, and its stdout is captured
+	# by pick_mirror into $base - so emitting a body here would splice the body
+	# into the mirror name and every later URL would be nonsense.  The real
+	# applet prints nothing for a probe.
+	[ "$probe" = "0" ] || exit 0
 	if [ -n "${HP_T_FETCH_FAIL:-}" ]; then exit 1; fi
 	emit "$(cat "$HP_T_BODY")"
 	;;
@@ -135,10 +142,32 @@ EOF
 
 # ucode: the shipped helper's contract, answered from a control file. An empty
 # control file means "cannot compute" (the helper exits 1 and prints nothing).
+#
+# It has to tell the two callers apart, because the china_list case below is
+# about the ORDER they are called in: resource_blob_sha.uc prints a digest on
+# stdout, while the rule-set generators take <source> <destination> and write a
+# file.  A stub that answered both the same way could not observe whether the
+# generator was handed the raw download or the normalised list, which is the
+# whole point of that case.
 cat > "$WORK/bin/ucode" <<'EOF'
 #!/bin/sh
-[ -s "$HP_T_LOCAL_BLOB" ] || exit 1
-cat "$HP_T_LOCAL_BLOB"
+# -S <script> [args...]
+script="$2"
+case "$script" in
+*resource_blob_sha.uc)
+	[ -s "$HP_T_LOCAL_BLOB" ] || exit 1
+	cat "$HP_T_LOCAL_BLOB"
+	;;
+*)
+	# A rule-set generator.  Record the CONTENT of the source it was handed,
+	# not its path: the path is the same file in both the broken and the fixed
+	# order, so only the content can tell them apart.  Copy rather than record
+	# the name, because the generator runs after the file has been normalised
+	# and re-reading it later would see the normalised bytes either way.
+	cat "$3" > "$HP_T_SEEN_SOURCE" 2>/dev/null
+	exit 0
+	;;
+esac
 EOF
 
 # uci/flock are only reached for the token and the lock; both are no-ops here.
@@ -190,6 +219,20 @@ printf 'OLDVERSION' > "$WORK/resources/china_ip4.ver"
 export HP_T_API_COMMITS="$WORK/api-commits.json"
 export HP_T_API_CONTENTS="$WORK/api-contents.json"
 export HP_T_BODY="$WORK/body.txt"
+# Where the ucode stub records the source file a rule-set generator was given.
+# Not a constant inside the stub: the china_list case has to reset it between
+# runs, and a run in which the generator was never called has to be visible as
+# an absent file rather than as the previous run's leftover.
+export HP_T_SEEN_SOURCE="$WORK/seen-source"
+# The digest the ucode stub answers with.  Set here as well as inside run_case:
+# run_case is invoked in a command substitution, so its own exports die with
+# the subshell and any case that does not go through it would find the
+# variable unset - which the stub reads as "cannot compute a digest" and the
+# script reports as a refusal, i.e. a failure that has nothing to do with what
+# the case is testing.
+export HP_T_LOCAL_BLOB="$WORK/local-blob"
+printf '%s' "$LOCAL_SHA" > "$HP_T_LOCAL_BLOB"
+write_contents_json "$LOCAL_SHA"
 
 run_case() {
 	# run_case <local-blob-file-content> <contents-api-sha>
@@ -264,6 +307,71 @@ expect "the installed list is untouched" \
 	"$(cat "$WORK/resources/china_ip4.txt")" "stale-installed-copy"
 expect "it says so in the log" \
 	"$(grep -c 'already at the latest version' "$WORK/run/homeproxy-pro.log")" "1"
+
+echo "== case 6: china_list is normalised BEFORE the rule-set is generated =="
+# The regression this case exists for.  Upstream ships the list with `full:`
+# prefixes and the colon-carrying regexp:/keyword: forms still in it - 562 of
+# 111,361 lines in the release this was measured against - and
+# domain_ruleset.uc rejects every entry containing a colon.  The sed that
+# strips them used to live in the `case "china_list"` arm, i.e. AFTER
+# check_list_update had returned, so the generator was handed the raw download
+# and 554 real domains were skipped out of the DNS split.  The only trace was a
+# "skipped N malformed entries" line blaming a perfectly well-formed list.
+#
+# Asserting the CONTENT the generator received is the only version of this that
+# works: both the broken and the fixed order call the generator exactly once
+# and exit 0, so a "was it called" assertion passes either way.
+reset_state
+rm -f "$WORK/resources/china-domain.json" "$HP_T_SEEN_SOURCE"
+printf 'stale\n' > "$WORK/resources/china_list.txt"
+printf 'OLDVERSION' > "$WORK/resources/china_list.ver"
+cat > "$WORK/body.txt" <<'BODY'
+plain.example.com
+full:prefixed.example.com
+regexp:.+\.cn$
+keyword:ads
+BODY
+: > "$WORK/run/homeproxy-pro.log"
+rc="$("$RUN_SH" "$WORK/scripts/update_resources.sh" china_list > "$WORK/stdout" 2>&1; echo $?)"
+expect "exit status 0" "$rc" "0"
+expect "the installed list has no colon left" \
+	"$(grep -c ':' "$WORK/resources/china_list.txt" || true)" "0"
+expect "the bare name survived" \
+	"$(grep -c '^plain.example.com$' "$WORK/resources/china_list.txt" || true)" "1"
+expect "the full: prefix was stripped, not the line dropped" \
+	"$(grep -c '^prefixed.example.com$' "$WORK/resources/china_list.txt" || true)" "1"
+expect "the generator was given the NORMALISED list" \
+	"$(grep -c 'full:' "$HP_T_SEEN_SOURCE" 2>/dev/null)" "0"
+expect "and it was given the un-prefixed name" \
+	"$(grep -c '^prefixed.example.com$' "$HP_T_SEEN_SOURCE" 2>/dev/null)" "1"
+expect "the .ver advanced, so the next run short-circuits" \
+	"$(cat "$WORK/resources/china_list.ver")" "2026-01-02 $API_SHA"
+
+echo "== case 7: china_list surfaces the helper's failure, not success =="
+# The status has to survive: the LuCI button maps rc to a message and
+# update_resources_cron.sh reloads the service only on rc 0.  A run that
+# neither installed nor verified anything must not report either.
+reset_state
+# china_list has its own installed copy, and case 6 left a real one behind -
+# the fixture has to be put back or "untouched" is asserted against case 6's
+# output rather than against the pre-update state.
+printf 'stale\n' > "$WORK/resources/china_list.txt"
+printf 'OLDVERSION' > "$WORK/resources/china_list.ver"
+rm -f "$HP_T_SEEN_SOURCE"
+: > "$WORK/run/homeproxy-pro.log"
+# The digest has to be forced to a MISMATCH for this case: the baseline set
+# above matches by default, and a matching digest would install the list and
+# exit 0 - the case would then be asserting the happy path under a name that
+# says it is testing the refusal.
+printf '%s' "$OUTPUT_SHA" > "$HP_T_LOCAL_BLOB"
+write_contents_json "$LOCAL_SHA"
+expect "a digest mismatch exits non-zero" \
+	"$("$RUN_SH" "$WORK/scripts/update_resources.sh" china_list > "$WORK/stdout" 2>&1; echo $?)" "1"
+expect "the previous list is untouched" \
+	"$(cat "$WORK/resources/china_list.txt")" "stale"
+expect "the .ver is untouched" "$(cat "$WORK/resources/china_list.ver")" "OLDVERSION"
+expect "the generator was never called" \
+	"$([ -e "$HP_T_SEEN_SOURCE" ] && echo yes || echo no)" "no"
 
 printf '%d checks, %d failures\n' "$CHECKS" "$FAILURES"
 if [ "$FAILED" != "0" ]; then

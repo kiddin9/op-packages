@@ -1,8 +1,10 @@
--- output_formats.lua — Surge 系 / Loon / QX / Egern / Stash / Plain JSON 输出（纯 Lua）
+-- output_formats.lua — Surge 系 / Loon / QX / Stash / Plain JSON 输出（纯 Lua）
+-- （Egern 不在这里：它的配置是 YAML，见 output_egern.lua）
 -- luci-app-substore
 
 local util = require("substore.util")
 local clash_meta = require("substore.output_clash_meta")
+local msg = require("substore.msg")
 
 local M = {}
 
@@ -12,6 +14,24 @@ local function props(n)
 	if proto == "ss" then proto = "shadowsocks" end
 	return proto
 end
+
+-- Loon 的 VMess「加密方式」（位置参数的第 1 个）取值，取自
+-- nsloon.app/docs/Node/ 的 VMess 一行：none / auto / aes-128-cfb /
+-- aes-128-gcm / chacha20-ietf-poly1305。
+--
+-- 与统一模型的 VMESS_CIPHERS（node.lua：auto / none / zero / aes-128-gcm /
+-- chacha20-poly1305）有两处对不上，直接照抄会让节点在 Loon 上加载失败：
+--   * 同一个算法两种拼写：模型写 chacha20-poly1305，Loon 写 chacha20-ietf-poly1305；
+--   * 模型的 zero 是 Xray 专用的取值，Loon 的清单里没有。
+-- 所以做一次显式映射，未列出的取值退回 auto（Loon 与各家都认的默认值）。
+-- 只用于 Loon；Surge / Surfboard / SurgeMac 的 vmess 走具名 username=，
+-- 加密方式是另一个参数（encrypt-method），见 LEGACY_ISSUES 的 7.9。
+local LOON_VMESS_CIPHER = {
+	auto = "auto", none = "none",
+	["aes-128-gcm"] = "aes-128-gcm", ["aes-128-cfb"] = "aes-128-cfb",
+	["chacha20-poly1305"] = "chacha20-ietf-poly1305",
+	["chacha20-ietf-poly1305"] = "chacha20-ietf-poly1305",
+}
 
 -- 支持 Reality 的目标格式。Reality 只在 Loon 的节点行里有官方文档：
 -- nsloon.app/docs/Node/ 给出 VLESS / VMess / Trojan / AnyTLS 的 Reality 示例，
@@ -28,11 +48,37 @@ end
 -- 与 LEGACY_ISSUES 里写的「会拒绝加载整份配置」未经证实，已按此更正）。
 -- 所以这里的判据是「不写客户端读不懂的东西」，与本文件丢弃 wireguard / ssr 同一约定，
 -- 不依赖任何未经证实的「整份配置会被拒绝」前提。
--- Egern 确实有 Reality，但它的写法是 YAML 里的 reality 对象
--- （egernapp.com/docs/configuration/proxies/），与本文件输出的逗号行对不上。
+-- Egern 确实有 Reality，但它的写法是 YAML 里的 reality 对象，与本文件输出的逗号行
+-- 对不上 —— 那部分由 output_egern.lua 实现（7.2 已实施）。
 local REALITY_FLAVORS = { loon = true }
 
--- 生成 Surge 风格代理行（Surge / Surfboard / SurgeMac / Loon / Egern 通用）。
+-- 各 Surge 系客户端对「非通用协议」的支持情况。
+--
+-- 通用协议（shadowsocks / vmess / trojan / socks5 / http / hysteria2 / tuic /
+-- anytls）各家都认；各家**不一致**的只有 VLESS 与 SSR 两个，所以只记这两个。
+-- 用一张表而不是给每个调用点传布尔参数：此前是 `supports_ssr` 一个布尔量，
+-- 加一个维度就要再加一个参数，调用点一多必然漏传（漏传的默认值还是「支持」，
+-- 于是导出里多出客户端读不懂的行，且不报错）。
+--
+-- 依据（均为各客户端官方文档的协议清单）：
+--   * Surge / SurgeMac：manual.nssurge.com 的 Proxy Protocols 一节只列
+--     HTTP and HTTP/2、SOCKS5、Shadowsocks、Snell、VMess、Trojan、TUIC、
+--     Hysteria 2、MASQUE、AnyTLS、Trust Tunnel、SSH、WireGuard、Tailscale
+--     —— 没有 VLESS，也没有 ShadowsocksR。
+--   * Surfboard：getsurfboard.com 的 external-proxy 清单同样没有 VLESS / SSR。
+--   * Loon：nsloon.app/docs/Node/ 有独立的 VLESS 与 ShadowsocksR 两节，都支持。
+--
+-- Egern **不在**这张表里：它的配置是 YAML，已由 output_egern.lua 单独实现
+-- （7.2 已实施）。它的协议清单与 Surge 家族本就不同（有 VLESS 与 WireGuard，
+-- 没有 SSR 与 Hysteria v1），能力判定一并搬到了那个模块里。
+local FAMILY_CAPS = {
+	surge     = { vless = false, ssr = false },
+	surfboard = { vless = false, ssr = false },
+	surgemac  = { vless = false, ssr = false },
+	loon      = { vless = true,  ssr = true  },
+}
+
+-- 生成 Surge 风格代理行（Surge / Surfboard / SurgeMac / Loon 通用）。
 -- flavor 取目标格式名，只用于「各客户端写法确实不同」的参数 —— 目前是 AnyTLS
 -- 密码的位置与 Reality 是否支持；其余参数各家共用同一套 Surge 语法。
 function M.surge_line(n, flavor)
@@ -44,6 +90,22 @@ function M.surge_line(n, flavor)
 	local positional = {}
 	local e = {}
 	local tls = (n.security and n.security ~= "none") or (n.tls and n.tls ~= false and n.tls ~= "none")
+
+	-- Loon 的凭据写法：端口之后的**位置参数**且用双引号包起来
+	--   Trojan = Trojan,h,p,"密码"
+	--   VLESS  = VLESS,h,p,"UUID"
+	--   VMess  = VMess,h,p,加密方式,"UUID"
+	-- （nsloon.app/docs/Node/）。Surge / Surfboard / SurgeMac 沿用同一套语法的
+	-- 具名写法（password= / username=），所以只在 flavor == "loon" 时分叉。
+	--
+	-- 返回 nil 表示这个值用带引号的位置参数表达不了：值里本身含双引号时，
+	-- 包裹后的 `"pa"ss"` 该怎么切由客户端自行决定，没有文档依据 —— 调用方
+	-- 据此整条丢弃该节点（与「值里含逗号」同一约定，见函数末尾的检查）。
+	local function loon_positional(v)
+		v = v or ""
+		if v:find('"', 1, true) then return nil end
+		return '"' .. v .. '"'
+	end
 
 	-- ws 传输参数。vmess 与 vless 都要输出：这两个协议在 Surge 家族里共用同一套
 	-- 参数名，此前只有 vmess 分支写了，vless + ws 的节点导出后丢掉整个传输层，
@@ -68,7 +130,12 @@ function M.surge_line(n, flavor)
 		-- 只有 Loon 的节点行文档化了 Reality 参数（见 REALITY_FLAVORS 的说明）
 		if not REALITY_FLAVORS[flavor] then return end
 		if not n["public-key"] then return end
-		e[#e + 1] = "public-key=" .. n["public-key"]
+		-- Loon 文档把公钥画成带双引号的值，short-id 不带：
+		--   `public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d`
+		-- （nsloon.app/docs/Node/ 的 VLESS / VMess / Trojan / AnyTLS Reality 示例）。
+		-- Base64 字母表（A-Za-z0-9+/=）里没有双引号，加引号只是写法对齐，
+		-- 不会引入歧义，也不会与下面的逗号检查冲突。
+		e[#e + 1] = 'public-key="' .. n["public-key"] .. '"'
 		if n["short-id"] then e[#e + 1] = "short-id=" .. n["short-id"] end
 	end
 
@@ -76,7 +143,16 @@ function M.surge_line(n, flavor)
 		e[#e + 1] = "encrypt-method=" .. (n.method or n.cipher or "aes-256-gcm")
 		e[#e + 1] = "password=" .. (n.password or "")
 	elseif proto == "vmess" then
-		e[#e + 1] = "username=" .. (n.uuid or "")
+		if flavor == "loon" then
+			-- Loon 的 VMess 把加密方式与 UUID 都放在位置参数上（见 loon_positional）
+			local id = loon_positional(n.uuid)
+			if not id then return nil end
+			-- 加密方式取值按 Loon 的拼写映射（见 LOON_VMESS_CIPHER）
+			positional[#positional + 1] = LOON_VMESS_CIPHER[n.cipher] or "auto"
+			positional[#positional + 1] = id
+		else
+			e[#e + 1] = "username=" .. (n.uuid or "")
+		end
 		if tls then e[#e + 1] = "tls=true" end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		-- VMess 的 Reality 与 VLESS 同形。Loon 文档的 VMess-Reality 示例：
@@ -88,14 +164,28 @@ function M.surge_line(n, flavor)
 		add_reality()
 		add_ws()
 	elseif proto == "vless" then
-		e[#e + 1] = "username=" .. (n.uuid or "")
+		if flavor == "loon" then
+			-- Loon 的 VLESS 只有一个位置参数：UUID（见 loon_positional）
+			local id = loon_positional(n.uuid)
+			if not id then return nil end
+			positional[#positional + 1] = id
+		else
+			e[#e + 1] = "username=" .. (n.uuid or "")
+		end
 		if tls then e[#e + 1] = "tls=true" end
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		if n.flow then e[#e + 1] = "flow=" .. n.flow end
 		add_reality()
 		add_ws()
 	elseif proto == "trojan" then
-		e[#e + 1] = "password=" .. (n.password or "")
+		if flavor == "loon" then
+			-- Loon 的 Trojan 只有一个位置参数：密码（见 loon_positional）
+			local pw = loon_positional(n.password)
+			if not pw then return nil end
+			positional[#positional + 1] = pw
+		else
+			e[#e + 1] = "password=" .. (n.password or "")
+		end
 		e[#e + 1] = "tls=true"
 		if n.sni then e[#e + 1] = "sni=" .. n.sni end
 		add_reality()
@@ -112,7 +202,8 @@ function M.surge_line(n, flavor)
 		--     （getsurfboard.com/docs/profile-format/proxy/external-proxy/anytls/）
 		--   Loon：端口之后的位置参数，值用双引号包起来
 		--     `Name = AnyTLS,host,port,"password",sni=...`（nsloon.app/docs/Node/）
-		-- Egern 没有逗号行语法（配置是 YAML），这里沿用具名写法。
+		-- 其余 flavor（surge / surgemac）走上面的具名写法。
+		-- （Egern 已不在本文件里 —— 它的配置是 YAML，见 output_egern.lua。）
 		--
 		-- 这是本文件里唯一按 flavor 分叉的协议：trojan / vmess / vless 一律用具名
 		-- 参数，而 Loon / Surfboard 的文档同样把它们的凭据画在位置参数上 —— 那是
@@ -120,7 +211,9 @@ function M.surge_line(n, flavor)
 		if flavor == "surfboard" then
 			positional[#positional + 1] = n.password or ""
 		elseif flavor == "loon" then
-			positional[#positional + 1] = '"' .. (n.password or "") .. '"'
+			local pw = loon_positional(n.password)
+			if not pw then return nil end
+			positional[#positional + 1] = pw
 		else
 			e[#e + 1] = "password=" .. (n.password or "")
 		end
@@ -185,8 +278,13 @@ function M.surge_line(n, flavor)
 		local v = kv:match("^[^=]*=(.*)$")
 		if v and v:find(",", 1, true) then return nil end
 	end
-	-- 位置参数同样没有引号 / 转义机制（Loon 的那对引号只是标记，值里的逗号照样
-	-- 会被当成分隔符），判定条件与具名参数一致
+	-- 位置参数（Loon 的凭据写法）按官方文档是带双引号包裹的，而 Loon 文档明说
+	-- 「参数值中含有英文逗号时，请使用双引号包裹」（nsloon.app/docs/Node/）——
+	-- 也就是说那对引号**确实**能保住逗号。这里仍然按「值里含逗号就整条丢弃」
+	-- 处理，是刻意的保守选择：本行的具名参数（sni= / ws-path= / ws-headers=Host:）
+	-- 一律不带引号，同一行里两种约定混用会让「哪个值被包裹」变成依赖客户端实现
+	-- 的行为；统一丢弃最容易验证，代价只是极少见的「密码里带逗号」的节点。
+	-- （值里本身带双引号的情况已由 loon_positional 在构造时挡掉。）
 	for _, v in ipairs(positional) do
 		if v:find(",", 1, true) then return nil end
 	end
@@ -219,20 +317,23 @@ local function names_of(nodes)
 	return out
 end
 
--- Surge 家族配置（Surge / Surfboard / SurgeMac / Loon / Egern 通用）
--- supports_ssr：Loon / Egern 支持 SSR；Surge / Surfboard / SurgeMac 不支持，跳过 ssr 节点
--- flavor：目标格式名，原样交给 surge_line，用于按客户端分叉的少数参数
-local function surge_config(nodes, group_name, supports_ssr, flavor)
+-- Surge 家族配置（Surge / Surfboard / SurgeMac / Loon 通用）
+-- flavor：目标格式名。既决定 surge_line 里按客户端分叉的少数参数，也用来查
+-- FAMILY_CAPS —— 每个调用点不再各自传「支持什么」的布尔量（见 FAMILY_CAPS 的说明）。
+local function surge_config(nodes, group_name, flavor)
+	local caps = FAMILY_CAPS[flavor] or {}
 	local list = nodes or {}
 	-- 过滤 Surge 家族无法用单行 [Proxy] 表达的协议：
-	--   ssr：仅 Loon / Egern 支持（supports_ssr），Surge/Surfboard/SurgeMac 丢
+	--   vless / ssr：按 FAMILY_CAPS 分客户端（Surge/Surfboard/SurgeMac 两个都不认）
 	--   wireguard：Surge 需专用多段 [WireGuard] 配置，单行无法表达，统一丢弃（不输出损坏行）
 	local kept = {}
 	for _, n in ipairs(list) do
 		local p = (n.proto or ""):lower()
 		if p == "wireguard" then
 			-- drop
-		elseif not supports_ssr and p == "ssr" then
+		elseif p == "ssr" and not caps.ssr then
+			-- drop
+		elseif p == "vless" and not caps.vless then
 			-- drop
 		else
 			kept[#kept + 1] = n
@@ -263,29 +364,29 @@ end
 
 function M.to_surge(nodes, options)
 	options = options or {}
-	return surge_config(nodes, options.name or "PROXY", false, "surge")
+	return surge_config(nodes, options.name or "PROXY", "surge")
 end
 
 function M.to_surfboard(nodes, options)
 	options = options or {}
-	return surge_config(nodes, options.name or "PROXY", false, "surfboard")
+	return surge_config(nodes, options.name or "PROXY", "surfboard")
 end
 
 function M.to_surgemac(nodes, options)
 	options = options or {}
-	return surge_config(nodes, options.name or "PROXY", false, "surgemac")
+	return surge_config(nodes, options.name or "PROXY", "surgemac")
 end
 
--- Loon / Egern：Surge 兼容语法（支持 SSR）
+-- Loon：Surge 兼容语法（支持 VLESS 与 SSR）
 function M.to_loon(nodes, options)
 	options = options or {}
-	return surge_config(nodes, options.name or "PROXY", true, "loon")
+	return surge_config(nodes, options.name or "PROXY", "loon")
 end
 
-function M.to_egern(nodes, options)
-	options = options or {}
-	return surge_config(nodes, options.name or "PROXY", true, "egern")
-end
+-- Egern 不在本文件里：它的配置是 YAML，而不是这里的逗号行，所以由
+-- output_egern.lua 单独实现（LEGACY_ISSUES 的 7.2 已实施）。
+-- 此前这里是 `surge_config(nodes, name, "egern")` —— 导出的是 Surge 的逗号行，
+-- Egern 根本读不了。
 
 -- Stash：Clash 兼容 YAML
 function M.to_stash(nodes, options)
@@ -324,21 +425,53 @@ local function qx_transport(n, f)
 	end
 end
 
+-- 注意：带 Reality 公钥的 vmess / vless 不走这里，改走 qx_obfs_reality
+-- （QX 只认 obfs= 形式的 TLS 标志，见该函数的说明）。
 local function qx_tls(n, f)
 	if n.sni then f[#f + 1] = "tls-host=" .. n.sni end
 	if n.security and n.security ~= "none" then f[#f + 1] = "tls-verification=true" end
 end
 
--- QX 的 Reality 参数。官方 sample.conf（crossutility/Quantumult-X 仓库）的
--- [server_local] 里，vmess / vless / trojan / anytls 四类条目都用这两个键：
--- Base64 公钥 reality-base64-pubkey 与十六进制 reality-hex-shortid。
--- sample.conf 的注释写明「只要该行设置了 reality-base64-pubkey，标准 TLS 就会被
--- 换成 Reality TLS」。判据取「有没有 public-key」，与 surge_line 的 add_reality 一致。
+-- QX 的 vmess / vless **带 Reality 公钥**时的传输 / TLS 标志。
 --
--- 注意（已知差异，见 CHANGELOG）：sample.conf 的注释把「该行带 TLS 标志」列为
--- 生效前提，而 vmess / vless 的 TLS 标志在 QX 里写作 obfs=over-tls / obfs=wss
--- （trojan / anytls 才写 over-tls=true + tls-host=）。本函数只负责输出 Reality
--- 两个键，TLS 标志由上面的 qx_tls 输出；两者写法不一致时 QX 会忽略公钥。
+-- 官方 sample.conf（crossutility/Quantumult-X 仓库）的 [server_local] 前写明：
+--
+--   …if the corresponding line (socks5: over-tls=true, http: over-tls=true,
+--   trojan: over-tls=true or obfs=wss, anytls: over-tls=true, … vmess:
+--   obfs=over-tls or obfs=wss, vless: obfs=over-tls or obfs=wss) contains the
+--   reality-base64-pubkey param, then the standard TLS will be replaced with
+--   the Reality.
+--
+-- 即 vmess / vless 的「TLS 标志」在 QX 里是 obfs= 形式，而 qx_tls() 对所有协议
+-- 统一输出 tls-host= + tls-verification=。两者写法不一致时 QX 会忽略公钥，
+-- 节点静默退回普通 TLS（握手必失败）。所以带公钥的 vmess / vless 改走这里，
+-- 不带公钥的一律不动 —— qx_tls() 是既有实现，全量改写会让所有 QX vmess / vless
+-- TLS 节点的输出形态变化（`tls-host` / `tls-verification` 对 vmess / vless 是否
+-- 同样有效没有官方依据：sample.conf 里只用 obfs= 形式，但「未出现」≠「无效」）。
+--
+-- obfs 取值与 qx_transport 对齐：ws + TLS 写 wss，纯 TLS 写 over-tls。
+-- wss 下 obfs-host 同时充当 TLS 握手名与 Host 头（sample.conf 的注释），
+-- 所以 host 优先、退回 sni；over-tls 下 obfs-host 只是 SNI。
+local function qx_obfs_reality(n, f)
+	if n.net == "ws" then
+		f[#f + 1] = "obfs=wss"
+		if n.path then f[#f + 1] = "obfs-uri=" .. n.path end
+		local h = n.host or n.sni
+		if h then f[#f + 1] = "obfs-host=" .. h end
+	else
+		f[#f + 1] = "obfs=over-tls"
+		if n.sni then f[#f + 1] = "obfs-host=" .. n.sni end
+	end
+end
+
+-- QX 的 Reality 参数。官方 sample.conf 的 [server_local] 里，vmess / vless /
+-- trojan / anytls 四类条目都用这两个键：Base64 公钥 reality-base64-pubkey 与
+-- 十六进制 reality-hex-shortid。sample.conf 的注释写明「只要该行设置了
+-- reality-base64-pubkey，标准 TLS 就会被换成 Reality TLS」。判据取「有没有
+-- public-key」，与 surge_line 的 add_reality 一致。
+--
+-- TLS 标志由调用方负责：vmess / vless 走 qx_obfs_reality（obfs=over-tls / wss），
+-- trojan / anytls 走 over-tls=true + tls-host=。
 local function qx_reality(n, f)
 	if not n["public-key"] then return end
 	f[#f + 1] = "reality-base64-pubkey=" .. n["public-key"]
@@ -362,16 +495,16 @@ local function qx_server_line(n, tag)
 	elseif proto == "vmess" then
 		f[#f + 1] = "method=none"
 		f[#f + 1] = "password=" .. (n.uuid or "")
-		qx_transport(n, f)
-		qx_tls(n, f)
+		-- 带 Reality 公钥的 vmess 必须用 obfs= 形式的 TLS 标志，否则 QX 忽略公钥
+		-- （见 qx_obfs_reality 的说明）。不带公钥的维持既有写法。
+		if n["public-key"] then qx_obfs_reality(n, f) else qx_transport(n, f); qx_tls(n, f) end
 		-- sample.conf 有 vmess 的 Reality 条目（obfs=over-tls + reality-base64-pubkey
 		-- + reality-hex-shortid），此前只给 vless / anytls 输出了公钥。
 		qx_reality(n, f)
 	elseif proto == "vless" then
 		f[#f + 1] = "method=none"
 		f[#f + 1] = "password=" .. (n.uuid or "")
-		qx_transport(n, f)
-		qx_tls(n, f)
+		if n["public-key"] then qx_obfs_reality(n, f) else qx_transport(n, f); qx_tls(n, f) end
 		-- sample.conf 的 vless Reality 条目在公钥之外还带 vless-flow=xtls-rprx-vision
 		if n["public-key"] and n.flow then f[#f + 1] = "vless-flow=" .. n.flow end
 		qx_reality(n, f)
@@ -454,12 +587,12 @@ function M.generate(nodes, format, options)
 	if format == "surfboard" then return M.to_surfboard(nodes, options) end
 	if format == "surgemac" then return M.to_surgemac(nodes, options) end
 	if format == "loon" then return M.to_loon(nodes, options) end
-	if format == "egern" then return M.to_egern(nodes, options) end
+	-- egern 不在这里：见文件头的说明，它由 output_egern.lua 实现
 	if format == "qx" then return M.to_qx(nodes, options) end
 	if format == "stash" then return M.to_stash(nodes, options) end
 	if format == "clash" then return M.to_clash(nodes, options) end
 	if format == "plain" then return M.to_plain(nodes) end
-	return nil, "unsupported format: " .. tostring(format)
+	return nil, msg.join("Unsupported output format: ", tostring(format))
 end
 
 return M

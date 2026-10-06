@@ -1,0 +1,185 @@
+<% local history_url = luci.dispatcher.build_url("admin", "services", "minigate", "ddns_history") %>
+<style>
+.mg-ddns-history{--mh-surface:#fff;--mh-surface-muted:#f6f8fb;--mh-surface-alt:#f8fafc;--mh-hover:#eef4ff;--mh-control:#fff;--mh-text:#1f2937;--mh-muted:#5f6b7a;--mh-border:#d7dce3;--mh-border-soft:#e6eaf0;--mh-code:#e8edf6;--mh-info:#1971c2;--mh-success:#2f9e44;margin-top:18px;padding:0!important;border:1px solid var(--mh-border);border-radius:8px;background:var(--mh-surface);overflow:hidden}
+.mg-history-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-bottom:1px solid var(--mh-border)}
+.mg-history-title{margin:0;color:var(--mh-text);font-size:14px;font-weight:700;line-height:1.4}
+.mg-history-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mg-history-label{color:var(--mh-muted);font-size:12px;white-space:nowrap}
+.mg-history-select{height:32px;max-width:220px;border:1px solid var(--mh-border);border-radius:6px;background:var(--mh-control);color:var(--mh-text);padding:0 28px 0 9px;font-size:12px}
+.mg-history-refresh{min-width:64px;height:32px;border-radius:6px!important;font-size:12px!important;cursor:pointer}
+.mg-history-refresh:disabled{cursor:wait;opacity:.65}
+.mg-history-summary{padding:9px 16px;border-bottom:1px solid var(--mh-border-soft);background:var(--mh-surface-muted);color:var(--mh-muted);font-size:12px}
+.mg-history-table-wrap{overflow-x:auto}
+.mg-history-table{width:100%;min-width:820px;border-collapse:collapse}
+.mg-history-table th{padding:10px 12px;border-bottom:1px solid var(--mh-border);background:var(--mh-surface-muted);color:var(--mh-muted);font-size:11px;font-weight:600;text-align:left;white-space:nowrap}
+.mg-history-table td{padding:11px 12px;border-bottom:1px solid var(--mh-border-soft);color:var(--mh-text);font-size:12px;vertical-align:middle}
+.mg-history-table tbody tr:nth-child(even) td{background:var(--mh-surface-alt)}
+.mg-history-table tbody tr:hover td{background:var(--mh-hover)}
+.mg-history-table tbody tr:last-child td{border-bottom:0}
+.mg-history-domain{font-weight:600;word-break:break-all}
+.mg-history-family{display:inline-flex;align-items:center;min-width:42px;padding:2px 7px;border-radius:999px;background:rgba(25,113,194,.12);color:var(--mh-info);font-size:11px;font-weight:700;justify-content:center}
+.mg-history-family.ipv6{background:rgba(47,158,68,.12);color:var(--mh-success)}
+.mg-history-ip{display:inline-block;padding:3px 7px;border-radius:6px;background:var(--mh-code);color:var(--mh-text);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;white-space:nowrap}
+.mg-history-active{color:var(--mh-success);font-weight:600;white-space:nowrap}
+.mg-history-empty{padding:24px 16px;color:var(--mh-muted);font-size:12px;text-align:center}
+:root[data-darkmode="true"] .mg-ddns-history{--mh-surface:var(--background-color-medium,#171e26);--mh-surface-muted:var(--background-color-high,#131a22);--mh-surface-alt:var(--background-color-low,#19212a);--mh-hover:#202a34;--mh-control:var(--background-color-high,#111820);--mh-text:var(--text-color-high,#d5dbe3);--mh-muted:var(--text-color-medium,#9aa7b3);--mh-border:var(--border-color-medium,rgba(148,163,184,.18));--mh-border-soft:var(--border-color-low,rgba(148,163,184,.12));--mh-code:#253142;--mh-info:#7db7df;--mh-success:#78c98d}
+@media(prefers-color-scheme:dark){
+  :root:not([data-darkmode]) .mg-ddns-history{--mh-surface:#171e26;--mh-surface-muted:#131a22;--mh-surface-alt:#19212a;--mh-hover:#202a34;--mh-control:#111820;--mh-text:#d5dbe3;--mh-muted:#9aa7b3;--mh-border:rgba(148,163,184,.18);--mh-border-soft:rgba(148,163,184,.12);--mh-code:#253142;--mh-info:#7db7df;--mh-success:#78c98d}
+}
+@media(max-width:640px){
+  .mg-history-head{align-items:flex-start;flex-direction:column}
+  .mg-history-controls{width:100%}
+  .mg-history-select{min-width:0;max-width:none;flex:1}
+  .mg-history-table-wrap{overflow:visible}
+  .mg-history-table{min-width:0}
+  .mg-history-table thead{display:none}
+  .mg-history-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;padding:12px 14px;border-bottom:1px solid var(--mh-border-soft)}
+  .mg-history-table tbody tr:nth-child(even){background:var(--mh-surface-alt)}
+  .mg-history-table tbody tr:last-child{border-bottom:0}
+  .mg-history-table td{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0;border:0!important;background:transparent!important;min-width:0}
+  .mg-history-table td:nth-child(1){justify-content:flex-start;font-size:13px}
+  .mg-history-table td:nth-child(2){justify-content:flex-end}
+  .mg-history-table td:nth-child(n+3){grid-column:1/-1}
+  .mg-history-table td:nth-child(3){justify-content:flex-start;margin:2px 0 4px}
+  .mg-history-table td:nth-child(4):before{content:"开始时间";color:var(--mh-muted)}
+  .mg-history-table td:nth-child(5):before{content:"结束时间";color:var(--mh-muted)}
+  .mg-history-table td:nth-child(6):before{content:"持续时间";color:var(--mh-muted)}
+  .mg-history-ip{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+}
+</style>
+
+<div class="cbi-section mg-ddns-history" id="mg-ddns-history">
+  <div class="mg-history-head">
+    <h3 class="mg-history-title">最近一天 IP 变化明细</h3>
+    <div class="mg-history-controls">
+      <label class="mg-history-label" for="mg-history-filter">DDNS 记录</label>
+      <select class="mg-history-select" id="mg-history-filter">
+        <option value="">全部记录</option>
+      </select>
+      <button class="cbi-button cbi-button-neutral mg-history-refresh" id="mg-history-refresh" type="button">刷新</button>
+    </div>
+  </div>
+  <div class="mg-history-summary" id="mg-history-summary" aria-live="polite">正在读取...</div>
+  <div class="mg-history-table-wrap" id="mg-history-table-wrap" hidden>
+    <table class="mg-history-table" aria-label="最近一天 IP 变化明细">
+      <thead>
+        <tr>
+          <th>DDNS 记录</th>
+          <th>类型</th>
+          <th>IP 地址</th>
+          <th>开始时间</th>
+          <th>结束时间</th>
+          <th>持续时间</th>
+        </tr>
+      </thead>
+      <tbody id="mg-history-body"></tbody>
+    </table>
+  </div>
+  <div class="mg-history-empty" id="mg-history-empty" hidden>暂无 IP 变化记录</div>
+</div>
+
+<script type="text/javascript">
+(function(){
+    'use strict';
+    var endpoint='<%=history_url%>';
+    var records=[];
+    var filter=document.getElementById('mg-history-filter');
+    var refresh=document.getElementById('mg-history-refresh');
+    var summary=document.getElementById('mg-history-summary');
+    var tableWrap=document.getElementById('mg-history-table-wrap');
+    var body=document.getElementById('mg-history-body');
+    var empty=document.getElementById('mg-history-empty');
+
+    function asArray(value){
+        if(Array.isArray(value))return value;
+        if(value&&typeof value==='object'&&Object.keys(value).length===0)return [];
+        return null;
+    }
+
+    function formatTime(timestamp){
+        if(!timestamp)return '-';
+        return new Date(timestamp*1000).toLocaleString('zh-CN',{hour12:false});
+    }
+
+    function formatDuration(seconds){
+        seconds=Math.max(0,Number(seconds)||0);
+        var days=Math.floor(seconds/86400);
+        var hours=Math.floor((seconds%86400)/3600);
+        var minutes=Math.floor((seconds%3600)/60);
+        if(days>0)return days+'天 '+hours+'小时';
+        if(hours>0)return hours+'小时 '+minutes+'分钟';
+        if(minutes>0)return minutes+'分钟';
+        return Math.floor(seconds)+'秒';
+    }
+
+    function cell(row,text,className){
+        var td=document.createElement('td');
+        var value=document.createElement(className==='mg-history-ip'?'code':'span');
+        if(className)value.className=className;
+        value.textContent=text;
+        td.appendChild(value);
+        row.appendChild(td);
+    }
+
+    function render(){
+        var selected=filter.value;
+        var visible=records.filter(function(item){return !selected||item.section===selected});
+        body.textContent='';
+        visible.forEach(function(item){
+            var row=document.createElement('tr');
+            cell(row,item.domain,'mg-history-domain');
+            cell(row,item.family==='ipv6'?'IPv6':'IPv4','mg-history-family '+(item.family==='ipv6'?'ipv6':''));
+            cell(row,item.ip,'mg-history-ip');
+            cell(row,formatTime(item.start_time),'');
+            cell(row,item.active?'使用中':formatTime(item.end_time),item.active?'mg-history-active':'');
+            cell(row,formatDuration(item.duration),'');
+            body.appendChild(row);
+        });
+        summary.textContent='最近 24 小时 · '+visible.length+' 段 IP 记录';
+        tableWrap.hidden=visible.length===0;
+        empty.hidden=visible.length!==0;
+    }
+
+    function setSections(sections){
+        var selected=filter.value;
+        while(filter.options.length>1)filter.remove(1);
+        (sections||[]).forEach(function(section){
+            if(!section.enabled)return;
+            var option=document.createElement('option');
+            option.value=section.name;
+            option.textContent=section.domain;
+            filter.appendChild(option);
+        });
+        filter.value=selected;
+    }
+
+    function loadHistory(){
+        refresh.disabled=true;
+        refresh.textContent='读取中';
+        summary.textContent='正在读取...';
+        XHR.get(endpoint,null,function(xhr,data){
+            var nextRecords=asArray(data&&data.records);
+            var nextSections=asArray(data&&data.sections);
+            refresh.disabled=false;
+            refresh.textContent='刷新';
+            if(!data||data.success!==true||nextRecords===null){
+                records=[];
+                summary.textContent='读取失败，请稍后重试';
+                tableWrap.hidden=true;
+                empty.hidden=false;
+                empty.textContent='无法读取 IP 变化明细';
+                return;
+            }
+            empty.textContent='暂无 IP 变化记录';
+            records=nextRecords;
+            setSections(nextSections||[]);
+            render();
+        });
+    }
+
+    filter.addEventListener('change',render);
+    refresh.addEventListener('click',loadHistory);
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadHistory);
+    else loadHistory();
+})();
+</script>

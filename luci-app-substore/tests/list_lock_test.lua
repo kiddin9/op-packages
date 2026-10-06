@@ -92,7 +92,7 @@ os.execute("mkdir -p " .. string.format("%q", LOCK_DIR))
 local blocked_id, blocked_err = core.add("A", "https://example.com/a")
 check("add refused while lock held", blocked_id == nil)
 check("refusal names the conflict",
-	type(blocked_err) == "string" and blocked_err:find("另一个进程", 1, true) ~= nil)
+	type(blocked_err) == "string" and blocked_err:find("another process", 1, true) ~= nil)
 -- 关键：被挡住时**不得**落盘。改动前这里会写成功。
 check("refused add did not write the list", not exists(core.LIST_FILE))
 check("refused add left no subscription", #core.list() == 0)
@@ -119,7 +119,7 @@ check("lock released after validation failure", not exists(LOCK_DIR))
 -- (b) 列表文件损坏时提前 return
 util.atomic_write(core.LIST_FILE, "{ this is not json")
 local _, e2 = core.add("B", "https://example.com/b")
-check("corrupt list rejected", type(e2) == "string" and e2:find("损坏", 1, true) ~= nil)
+check("corrupt list rejected", type(e2) == "string" and e2:find("corrupted", 1, true) ~= nil)
 check("lock released after corruption error", not exists(LOCK_DIR))
 -- 损坏的文件不得被覆盖
 check("corrupt list left untouched",

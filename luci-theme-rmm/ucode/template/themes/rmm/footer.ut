@@ -6,9 +6,9 @@
 			<ul class="breadcrumb pull-right" id="modemenu" style="display:none"></ul>
 		</footer>
 		<script>L.require('menu-bootstrap')</script>
-		<script src="{{ media }}/navigation.js?v=0.9.0" defer></script>
-		<script src="{{ media }}/components.js?v=0.9.0" defer></script>
-		<script src="{{ media }}/search.js?v=0.9.0" defer></script>
+		<script src="{{ media }}/navigation.js?v=0.10.1" defer></script>
+		<script src="{{ media }}/components.js?v=0.10.1" defer></script>
+		<script src="{{ media }}/search.js?v=0.10.1" defer></script>
 {% endif %}
 	</body>
 </html>

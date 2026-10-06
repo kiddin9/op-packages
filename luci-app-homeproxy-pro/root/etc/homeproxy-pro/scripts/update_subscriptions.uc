@@ -77,10 +77,32 @@ import { Loader } from './config/loader.uc';
  * A2: the run performs exactly one uci.commit(). The Repository modules stage
  * mutations only.
  *
- * UCICONFIG_DIR (homeproxy-pro.uc) is the config *directory* Loader.load() takes,
- * and the sandboxed test points it at its own config instead of /etc/config
- * (tests/ucode/test_subscription_updater_runs.sh rewrites that line in
- * homeproxy-pro.uc and fails loudly if the rewrite did not apply). */
+ * UCICONFIG_DIR (homeproxy-pro.uc) is the config *directory* this script reads
+ * and writes, and the sandboxed test points it at its own config instead of
+ * /etc/config (tests/ucode/test_subscription_updater_runs.sh rewrites that
+ * line in homeproxy-pro.uc and fails loudly if the rewrite did not apply).
+ *
+ * That rewrite is only half the sandbox, and the half that was missing is the
+ * dangerous one.  `cursor()` with no argument is a cursor on the REAL
+ * /etc/config, not on UCICONFIG_DIR - the constant and the cursor were never
+ * connected.  Measured on the device:
+ *
+ *   cursor()            -> reads infra, config, control, subscription, and the
+ *                          four live node sections
+ *   cursor('/tmp/t8cfg') -> reads nothing
+ *
+ * So the updater was reading the live configuration whatever the test staged,
+ * and `uci.commit(uciconfig)` - the one commit this script performs, at the
+ * end of a successful run - would have written the LIVE /etc/config/homeproxy-pro.
+ * The committed test only ever drove a run whose fetch failed before that
+ * commit, which is why nothing had touched the device yet.  Any future case
+ * that lets a fetch succeed would have committed the test's sandbox nodes over
+ * the user's real configuration.
+ *
+ * Hence the same `dir` injection Loader.load() already uses (loader.uc:385):
+ * the cursor is built on UCICONFIG_DIR, so the constant the test already
+ * rewrites is finally the thing that decides where both the read and the write
+ * land.  Production is unchanged - UCICONFIG_DIR is /etc/config there. */
 const CONFIG_FILE = UCICONFIG_DIR + '/homeproxy-pro';
 const uciconfig = 'homeproxy-pro';
 
@@ -97,7 +119,10 @@ let uci, loaded, sub, routing_mode,
 /* Read everything the run needs, under the lock. Read-only: nothing here
  * mutates, so a failure cannot leave a partial state behind. */
 function load_locked_state() {
-	uci = cursor();
+	/* On UCICONFIG_DIR, not on the default.  See the note on CONFIG_FILE:
+	 * a bare cursor() here reads - and, at the end of a successful run,
+	 * commits - the live /etc/config, no matter what the test staged. */
+	uci = cursor(UCICONFIG_DIR);
 	uci.load(uciconfig);
 
 	/* The orchestrator used to hold its own

@@ -7,7 +7,7 @@
 --   F3  clashmeta 节点名与组名 / 保留名冲突时产生重复 name，mihomo 拒绝加载
 --   F4  clashmeta esc_yaml 未引用的标量以 % / ! / - 开头时是非法 YAML
 --   F5  QX         vless 节点丢掉 obfs / tls 参数
---   F6  surge      vless + ws 节点丢掉整个传输层
+--   F6  loon       vless + ws 节点丢掉整个传输层（surge 侧该节点已按 FAMILY_CAPS 整体丢弃）
 --   F7  surge/QX   参数值里的逗号把凭据静默截断
 --   F8  uri        IPv6 字面量地址未加方括号
 --   F9  clashmeta  amnezia-wg-option 子键未转义
@@ -171,14 +171,24 @@ check("F5 qx vless has obfs-host", qx_vless ~= nil and qx_vless:find("obfs-host=
 check("F5 qx vless has tls-verification",
 	qx_vless ~= nil and qx_vless:find("tls-verification=true", 1, true) ~= nil)
 
+-- F6 的传输层断言挂在 Loon 上：Surge / Surfboard / SurgeMac 的官方协议清单里
+-- 根本没有 VLESS（manual.nssurge.com 的 Proxy Protocols、getsurfboard.com 的
+-- external-proxy），surge_config 会按 FAMILY_CAPS 把整个节点丢掉 —— 于是
+-- 「vless 的 ws 参数写没写全」在 surge 输出里已经无从观察。Loon 支持 VLESS。
 local surge = formats.to_surge({ vless_ws })
-local surge_vless = line_with(surge, "VLWS = vless")
-check("F6 surge vless has ws=true",
-	surge_vless ~= nil and surge_vless:find("ws=true", 1, true) ~= nil)
-check("F6 surge vless has ws-path",
-	surge_vless ~= nil and surge_vless:find("ws-path=/p", 1, true) ~= nil)
-check("F6 surge vless has ws-headers",
-	surge_vless ~= nil and surge_vless:find("ws-headers=Host:h.com", 1, true) ~= nil)
+check("F6 surge drops vless node (no VLESS in Surge protocol list)",
+	line_with(surge, "VLWS") == nil and surge:find("vless", 1, true) == nil)
+check("F6 surge select excludes the dropped vless node",
+	line_with(surge, "= select") == "PROXY = select, DIRECT")
+
+local loon = formats.to_loon({ vless_ws })
+local loon_vless = line_with(loon, "VLWS = vless")
+check("F6 loon vless has ws=true",
+	loon_vless ~= nil and loon_vless:find("ws=true", 1, true) ~= nil)
+check("F6 loon vless has ws-path",
+	loon_vless ~= nil and loon_vless:find("ws-path=/p", 1, true) ~= nil)
+check("F6 loon vless has ws-headers",
+	loon_vless ~= nil and loon_vless:find("ws-headers=Host:h.com", 1, true) ~= nil)
 
 -- ---------- F7：值里的逗号不能静默截断 ----------
 -- `password=pa,ss` 在逗号分隔语法里会被读成 `password=pa` 加一个悬空字段。

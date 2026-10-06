@@ -126,10 +126,14 @@ apply_nft_rules() {
         FLOWPROXY_LOG_LEVEL="$conf_level" "$GENERATE_SCRIPT" >/dev/null 2> "$err_file"
         local ret=$?
         
-        # 将脚本的输出记录到日志
+        # 将脚本的输出记录到日志：成功时按 debug 输出，失败时按 error 输出
         if [ -s "$err_file" ]; then
             while read -r line; do
-                log_msg debug "Script: $line"
+                if [ $ret -eq 0 ]; then
+                    log_msg debug "Script: $line"
+                else
+                    log_msg error "Generator: $line"
+                fi
             done < "$err_file"
             rm -f "$err_file"
         fi
@@ -138,14 +142,16 @@ apply_nft_rules() {
             log_msg info "Applying nftables rules from $NFT_CONF"
             # 确保内核支持 inet 表
             nft delete table inet flowproxy 2>/dev/null
-            if nft -f "$NFT_CONF"; then
+            local nft_err
+            nft_err=$(nft -f "$NFT_CONF" 2>&1)
+            if [ $? -eq 0 ]; then
                 return 0
             else
-                log_msg error "nftables rules application failed (syntax error)"
+                log_msg error "nftables rules application failed: $nft_err"
                 return 1
             fi
         else
-            log_msg error "Failed to generate nftables config"
+            log_msg error "Failed to generate nftables config (exit code: $ret)"
             return 1
         fi
     else
@@ -154,12 +160,26 @@ apply_nft_rules() {
     fi
 }
 
+get_proxy_interface() {
+    local proxy_ip="$1"
+    local cfg_iface=$(uci -q get "$UCI_CONFIG.global.interface")
+    if [ -n "$cfg_iface" ] && [ "$cfg_iface" != "auto" ]; then
+        echo "$cfg_iface"
+        return
+    fi
+
+    local auto_dev=""
+    if [ -n "$proxy_ip" ]; then
+        auto_dev=$(ip route get "$proxy_ip" 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") {print $(i+1); exit}}')
+    fi
+    echo "${auto_dev:-br-lan}"
+}
+
 add_route() {
     check_config || return 1
 
     local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-    local interface=$(uci -q get "$UCI_CONFIG.global.interface")
-    interface="${interface:-br-lan}"
+    local interface=$(get_proxy_interface "$proxy_server_ip_addr")
     local traffic_mark=$(uci -q get "$UCI_CONFIG.global.traffic_mark")
     traffic_mark="${traffic_mark:-0x666}"
     local routing_table=$(uci -q get "$UCI_CONFIG.global.routing_table")
@@ -170,23 +190,30 @@ add_route() {
     # 1. 先尝试用旧记录清理一次，防止由于配置变更导致的残留
     delete_route "quiet"
 
-    log_msg info "Setting up routing table $routing_table and rule for mark $traffic_mark with priority $rule_priority..."
+    log_msg info "Setting up routing table $routing_table (dev: $interface) and rule for mark $traffic_mark with priority $rule_priority..."
     
-    # 2. 记录当前使用的标记值、路由表 ID 和优先级
-    echo "$traffic_mark:$routing_table:$rule_priority" > "/var/run/flowproxy.mark"
+    # 2. 记录当前使用的标记值、路由表 ID、优先级和实际出口网卡
+    echo "$traffic_mark:$routing_table:$rule_priority:$interface" > "/var/run/flowproxy.mark"
 
     # 3. 再次确保新标记和表的规则是干净的
     while ip rule del fwmark "$traffic_mark" lookup "$routing_table" 2>/dev/null; do :; done
     ip route flush table "$routing_table" 2>/dev/null
 
     # 4. 添加路由和策略
-    local err
-    ip route add default via "$proxy_server_ip_addr" dev "$interface" table "$routing_table" 2>/dev/null
-    err=$(ip rule add fwmark "$traffic_mark" lookup "$routing_table" priority "$rule_priority" 2>&1)
+    local route_err rule_err
+    route_err=$(ip route add default via "$proxy_server_ip_addr" dev "$interface" table "$routing_table" 2>&1)
+    if [ $? -ne 0 ]; then
+        log_msg error "Failed to add default route to table $routing_table via $proxy_server_ip_addr (dev: $interface): $route_err"
+        log_msg error "Proxy server IP $proxy_server_ip_addr is unreachable or has no valid route on interface $interface"
+        return 1
+    fi
+
+    rule_err=$(ip rule add fwmark "$traffic_mark" lookup "$routing_table" priority "$rule_priority" 2>&1)
     if [ $? -eq 0 ]; then
         log_msg info "Route added: via $proxy_server_ip_addr dev $interface table $routing_table for mark $traffic_mark with priority $rule_priority"
     else
-        log_msg error "Failed to add ip rule: $err"
+        log_msg error "Failed to add ip rule: $rule_err"
+        return 1
     fi
 
     # 5. 禁用目标网卡的 ICMP 重定向通告，防止客户端绕行或 TCP 连接挂起
@@ -201,12 +228,13 @@ delete_route() {
     local quiet="$1"
     
     # 1. 获取两组清理目标：旧值(记录文件) 和 新值(当前UCI)
-    local old_mark="" old_table="" old_prio=""
+    local old_mark="" old_table="" old_prio="" old_iface=""
     if [ -f "/var/run/flowproxy.mark" ]; then
         local saved_val=$(cat "/var/run/flowproxy.mark")
         old_mark=$(echo "$saved_val" | cut -d':' -f1)
         old_table=$(echo "$saved_val" | cut -d':' -f2)
         old_prio=$(echo "$saved_val" | cut -d':' -f3)
+        old_iface=$(echo "$saved_val" | cut -d':' -f4)
         [ "$quiet" != "quiet" ] && rm -f "/var/run/flowproxy.mark"
     fi
 
@@ -216,8 +244,7 @@ delete_route() {
     curr_table="${curr_table:-888}"
     local curr_prio=$(uci -q get "$UCI_CONFIG.global.rule_priority")
     curr_prio="${curr_prio:-1000}"
-    local curr_iface=$(uci -q get "$UCI_CONFIG.global.interface")
-    curr_iface="${curr_iface:-br-lan}"
+    local curr_iface=$(get_proxy_interface "$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")")
 
     [ "$quiet" != "quiet" ] && log_msg info "Cleaning up FlowProxy routes (Atomic Mode)..."
     
@@ -249,9 +276,10 @@ delete_route() {
         safe_del_rule "$curr_mark" "$curr_table" "$curr_prio"
 
     # 恢复 ICMP 重定向通告
-    if [ -d "/proc/sys/net/ipv4/conf/$curr_iface" ]; then
+    [ -n "$old_iface" ] && [ -d "/proc/sys/net/ipv4/conf/$old_iface" ] && \
+        sysctl -w "net.ipv4.conf.$old_iface.send_redirects=1" >/dev/null 2>&1
+    [ -n "$curr_iface" ] && [ "$curr_iface" != "$old_iface" ] && [ -d "/proc/sys/net/ipv4/conf/$curr_iface" ] && \
         sysctl -w "net.ipv4.conf.$curr_iface.send_redirects=1" >/dev/null 2>&1
-    fi
 }
 
 delete_nft() {
@@ -320,9 +348,13 @@ start_service() {
 
     if [ "$enabled" -eq 0 ]; then
         log_msg info "FlowProxy is disabled, ensuring service is stopped"
+        [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy disable 2>/dev/null
         stop_service
         return 0
     fi
+
+    # 状态自愈：当 enabled=1 时，确保服务已在 rc.d 中 enable，防止 luci-reload 因未启用而静默跳过执行
+    [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy enable 2>/dev/null
 
     log_msg info "Starting FlowProxy..."
 
@@ -331,11 +363,15 @@ start_service() {
 
     local proxy_server_ip_addr=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
     local proxy_server_dns_port=$(uci -q get "$UCI_CONFIG.global.proxy_server_dns_port" || echo 5353)
-    local interface=$(uci -q get "$UCI_CONFIG.global.interface" || echo "br-lan")
+    local interface=$(get_proxy_interface "$proxy_server_ip_addr")
     probe_proxy_server "$proxy_server_ip_addr" "$proxy_server_dns_port" "$interface"
 
     apply_nft_rules || return 1
-    add_route
+    if ! add_route; then
+        log_msg error "Routing setup failed, aborting and cleaning up service..."
+        stop_service
+        return 1
+    fi
     setup_dns
 
     touch "$STATE_FILE"
@@ -344,6 +380,10 @@ start_service() {
 
 stop_service() {
     log_msg info "Stopping FlowProxy..."
+    local enabled=$(uci -q get "$UCI_CONFIG.global.enabled" || echo 0)
+    if [ "$enabled" -eq 0 ]; then
+        [ -x /etc/init.d/flowproxy ] && /etc/init.d/flowproxy disable 2>/dev/null
+    fi
     # 强制先移除标记，防止状态误报
     rm -f "$STATE_FILE"
     delete_route
@@ -368,7 +408,11 @@ service_triggers() {
     procd_add_reload_trigger "$UCI_CONFIG"
     # 监听防火墙重载事件，防止规则被 fw4 清空后无法自动恢复
     procd_add_reload_trigger "firewall"
-    # 监听网络接口事件
-    local iface=$(uci -q get "$UCI_CONFIG.global.interface" || echo "br-lan")
-    procd_add_reload_interface_trigger "$iface"
+    # 监听网络接口事件（procd trigger 需接收 UCI 逻辑网络名，如 lan/wan）
+    local dev=$(get_proxy_interface "$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")")
+    local net_name=""
+    if command -v ubus >/dev/null 2>&1 && [ -n "$dev" ]; then
+        net_name=$(ubus call network.interface dump 2>/dev/null | jsonfilter -e "@.interface[@.device=\"$dev\"].interface" -e "@.interface[@.l3_device=\"$dev\"].interface" 2>/dev/null | head -n 1)
+    fi
+    procd_add_reload_interface_trigger "${net_name:-lan}"
 }

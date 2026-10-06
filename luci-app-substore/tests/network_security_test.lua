@@ -13,6 +13,7 @@ package.path = "./root/usr/share/?.lua;" .. package.path
 
 local util = require("substore.util")
 local http = require("substore.http")
+local msg = require("substore.msg")
 local probe = require("substore.probe")
 
 local passed, failed = 0, 0
@@ -44,7 +45,7 @@ local function restore_popen() io.popen = real_popen end
 -- SSRF 检查，而 curl 自己仍会把它解析到 127.0.0.1 并连上去。
 local ok10, reason10 = http.check_public("no-such-host.invalid")
 check("L10 unresolvable host rejected", ok10 == false)
-check("L10 unresolvable host reason", reason10 == "无法解析目标主机名")
+check("L10 unresolvable host reason", reason10 == "Cannot resolve the target hostname")
 
 -- 数值型内网地址仍然被拦（与 DNS 无关的分支，确保没有把检查整体关掉）
 check("L10 loopback still rejected", http.check_public("127.0.0.1") == false)
@@ -165,7 +166,7 @@ clear_tmp()
 spy_curl("302", "", "HTTP/1.1 302 Found\r\n")
 local body14b, _, err14b = http.download("http://1.1.1.1/sub")
 restore_popen()
-check("L14 no-Location reported", body14b == nil and err14b == "重定向无 Location")
+check("L14 no-Location reported", body14b == nil and err14b == "Redirect without a Location header")
 check("L14 no-Location removes .tmp", not exists(TMP .. ".tmp"))
 check("L14 no-Location removes .hdr", not exists(HDR))
 check("L14 no-Location removes .err", not exists(ERRF))
@@ -175,7 +176,7 @@ clear_tmp()
 spy_curl("500", "", "HTTP/1.1 500 Error\r\n")
 local body14c, _, err14c = http.download("http://1.1.1.1/sub")
 restore_popen()
-check("L14 http-error reported", body14c == nil and err14c == "HTTP 错误 500")
+check("L14 http-error reported", body14c == nil and err14c == msg.join("HTTP error ", "500"))
 check("L14 http-error removes .tmp", not exists(TMP .. ".tmp"))
 check("L14 http-error removes .hdr", not exists(HDR))
 check("L14 http-error removes .err", not exists(ERRF))

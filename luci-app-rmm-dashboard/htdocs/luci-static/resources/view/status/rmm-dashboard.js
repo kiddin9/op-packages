@@ -14,11 +14,67 @@ var callWifiDevices = rpc.declare({ object: 'iwinfo', method: 'devices', expect:
 var callWifiInfo = rpc.declare({ object: 'iwinfo', method: 'info', params: ['device'], expect: { '': {} } });
 var callWifiStations = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: ['device'], expect: { '': {} } });
 var callClients = rpc.declare({ object: 'rmm.dashboard', method: 'clients', expect: { '': {} } });
+var callVendors = rpc.declare({object:'rmm.dashboard',method:'vendors',params:['macs'],expect:{'':{}}});
+var callSetName = rpc.declare({object:'rmm.dashboard',method:'set_name',params:['mac','name','previous'],expect:{'':{}}});
+var callCanName = rpc.declare({object:'session',method:'access',params:['scope','object','function'],expect:{access:false}});
+var callDNS = rpc.declare({object:'network.rrdns',method:'lookup',params:['addrs','timeout','limit'],expect:{'':{}}});
 var callLeases = rpc.declare({ object: 'luci-rpc', method: 'getDHCPLeases', expect: { '': {} } });
 
 var callConfig = rpc.declare({ object: 'uci', method: 'get', params: [ 'config', 'section' ], expect: { values: {} } });
 
 var russian = {
+	"Vendor": "Производитель",
+	"Locally administered MAC": "Локально назначенный MAC",
+	"Unknown vendor": "Производитель неизвестен",
+	"Local vendor database unavailable": "Локальная база производителей недоступна",
+	"Client observation history": "История наблюдений клиентов",
+	"History covers this open page; a record does not prove an active connection.": "История собирается, пока открыта страница. Наличие записи не подтверждает подключение.",
+	"First observed": "Впервые замечен",
+	"Last observed": "Последнее наблюдение",
+	"First observation": "Первое наблюдение",
+	"Observed again": "Замечен снова",
+	"IP addresses changed": "Изменились IP-адреса",
+	"Connection path changed": "Изменился путь подключения",
+	"No longer reported": "Больше не отображается в источниках",
+	"Observation history": "История наблюдений",
+	"No observations yet": "Наблюдений пока нет",
+	"Client traffic": "Трафик клиента",
+	"Received / sent in accounting period": "Принято / отправлено за период учёта",
+	"Accounting average RX / TX": "Средняя скорость учёта RX / TX",
+	"nlbwmon not installed": "nlbwmon не установлен",
+	"nlbwmon is not running": "nlbwmon не запущен",
+	"Traffic accounting unavailable": "Учёт трафика недоступен",
+	"No traffic record": "Нет записи о трафике",
+	"Accounting may omit offloaded and bridged traffic.": "Учёт может не включать трафик аппаратного ускорения и мостов.",
+	"More clients": "Все клиенты",
+
+	"Edit display name": "Изменить имя",
+	"Display name": "Имя устройства",
+	"Manual name": "Ручное имя",
+	"Reverse DNS": "Обратный DNS",
+	"Name follows this MAC; DHCP and network settings are unchanged.": "Имя привязано к MAC. Настройки DHCP и сети не меняются.",
+	"Save name": "Сохранить имя",
+	"Use automatic name": "Использовать автоматическое имя",
+	"Saving name": "Сохранение имени…",
+	"Name saved": "Имя сохранено",
+	"Unable to save name": "Не удалось сохранить имя",
+	"Name storage unavailable": "Хранилище имён недоступно",
+	"Checking permission": "Проверка доступа…",
+	"Read-only access": "Доступ только для чтения",
+	"Invalid display name": "Недопустимое имя устройства",
+	"DNS names": "Имена из DNS",
+	"Resolve unnamed clients through the router DNS.": "Определять имена неизвестных клиентов через DNS роутера.",
+	"DNS disabled": "DNS выключен",
+	"Looking up DNS names": "Поиск имён в DNS…",
+	"DNS names unavailable": "Имена из DNS недоступны",
+	"DNS cache updated": "Кэш DNS обновлён",
+	"Name changed elsewhere; reopen the editor.": "Имя изменено в другой сессии. Откройте редактор заново.",
+
+	"+%s IP": "+%s IP",
+	"Name source": "Источник имени",
+	"Matched by": "Сопоставлено по",
+	"IPv6 neighbor record": "IPv6-запись NDP",
+
 	"No FDB observations": "Наблюдений FDB нет",
 	"FDB observations": "По данным FDB",
     "Ethernet path": "Через Ethernet",
@@ -368,22 +424,72 @@ function resultLine(label, result, parentError) {
 	return element('p', { 'class':'rmm-dashboard-source' }, [label + ': ' + state + ' · ' + tr('Last successful update') + ': ', element('time', {datetime:result.at ? new Date(result.at).toISOString() : ''}, clock(result.at))]);
 }
 function stationList(reply) { return reply && Array.isArray(reply.results) ? reply.results.filter(function(row) { return row && typeof row.mac === 'string' && /^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(row.mac); }) : []; }
-function leaseMap(reply) {
+function clientMac(value) {
+	return typeof value === 'string' && /^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(value) && !(parseInt(value.slice(0,2),16)&1) && !/^00:00:00:00:00:00$/.test(value) ? value.toUpperCase() : null;
+}
+// Canonical comparison keys handle compressed IPv6 and DHCP prefix suffixes.
+function addressKey(value) {
+	if (typeof value !== 'string') return null;
+	var parts=value.trim().split('/'), address=parts[0].toLowerCase(), ipv6=address.includes(':');
+	if (parts.length>2 || parts.length===2 && (!/^\d+$/.test(parts[1]) || Number(parts[1])>(ipv6?128:32))) return null;
+	if (!ipv6) return /^(?:\d{1,3}\.){3}\d{1,3}$/.test(address) && address.split('.').every(function(n) { return Number(n)<=255; }) ? address.split('.').map(Number).join('.') : null;
+	if (address.includes('.')) {
+		var tail=address.slice(address.lastIndexOf(':')+1), v4=addressKey(tail);
+		if (!v4 || v4.includes(':')) return null;
+		var octets=v4.split('.').map(Number);
+		address=address.slice(0,address.lastIndexOf(':')+1)+((octets[0]<<8)|octets[1]).toString(16)+':'+((octets[2]<<8)|octets[3]).toString(16);
+	}
+	var halves=address.split('::');
+	if (halves.length>2) return null;
+	var left=halves[0]?halves[0].split(':'):[], right=halves.length===2 && halves[1]?halves[1].split(':'):[];
+	if (!left.concat(right).every(function(n) { return /^[0-9a-f]{1,4}$/.test(n); })) return null;
+	var missing=8-left.length-right.length;
+	if (halves.length===1 && missing!==0 || halves.length===2 && missing<1) return null;
+	return left.concat(Array(halves.length===2?missing:0).fill('0'),right).map(function(n) { return n.padStart(4,'0'); }).join(':');
+}
+function addClientAddress(host,value) {
+	var key=addressKey(value);
+	if (key && !host.addresses.some(function(address) { return addressKey(address)===key; })) host.addresses.push(value.trim().split('/')[0]);
+}
+function clientAddressSummary(addresses, fallback) {
+	addresses=addresses || [];
+	var primary=addresses.find(function(address) { return !address.includes(':'); }) || addresses.find(function(address) { return !/^fe[89ab]/i.test(address); }) || addresses[0];
+	return primary ? primary + (addresses.length>1 ? ' · '+tr('+%s IP').format(addresses.length-1) : '') : tr(fallback);
+}
+function clientIdentityItems(host) {
+	return host.name ? [item(tr('Name source'),tr(host.nameSource)),item(tr('Matched by'),tr(host.matchMethod))] : [];
+}
+function leaseMap(reply, owners) {
 	var hosts = Object.create(null);
 	['dhcp_leases','dhcp6_leases'].forEach(function(key) {
-		(Array.isArray(reply[key]) ? reply[key] : []).forEach(function(lease) {
-			if (!lease || typeof lease.macaddr !== 'string' || !/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(lease.macaddr)) return;
-			var host = hosts[lease.macaddr.toUpperCase()] || (hosts[lease.macaddr.toUpperCase()] = {addresses:[]});
-			if (typeof lease.hostname === 'string' && lease.hostname.length && lease.hostname !== '*') host.name = lease.hostname;
-			[lease.ipaddr,lease.ip6addr].concat(Array.isArray(lease.ip6addrs) ? lease.ip6addrs : []).forEach(function(address) { if (typeof address === 'string' && address.length && !host.addresses.includes(address)) host.addresses.push(address); });
+		(Array.isArray(reply[key]) ? reply[key] : []).slice(0,1024).forEach(function(lease) {
+			if (!lease) return;
+			var addresses=[lease.ipaddr,lease.ip6addr].concat(Array.isArray(lease.ip6addrs) ? lease.ip6addrs : []), mac=clientMac(lease.macaddr), matched='MAC address';
+			// DUIDs and EUI-64 identifiers alone do not prove the current interface MAC.
+			if (!mac && key==='dhcp6_leases' && owners) {
+				var candidates=new Set(), ambiguous=false;
+				addresses.forEach(function(address) {
+					var ip=addressKey(address), owner=ip && ip.includes(':') && owners[ip];
+					if (!owner) return;
+					if (owner.macs.size!==1) ambiguous=true;
+					else if (owner.confirmed.size===1) candidates.add(Array.from(owner.confirmed)[0]);
+				});
+				if (!ambiguous && candidates.size===1) { mac=Array.from(candidates)[0];matched='IPv6 neighbor record'; }
+			}
+			if (!mac) return;
+			var host = hosts[mac] || (hosts[mac] = {addresses:[]});
+			if (!host.name && typeof lease.hostname==='string' && lease.hostname.trim() && lease.hostname.trim()!=='*') {
+				host.name=lease.hostname.trim();host.nameSource=key==='dhcp_leases'?'DHCPv4':'DHCPv6';host.matchMethod=matched;
+			}
+			addresses.forEach(function(address) { addClientAddress(host,address); });
 		});
 	});
 	return hosts;
 }
 
 // Only local interfaces can contribute client observations. Default-route uplinks are excluded.
-function clientMap(leases, observations, interfaces) {
-    var hosts=leaseMap(leases), local=new Set(), uplinks=new Set();
+function clientMap(leases, observations, interfaces, matchNeighbors) {
+    var hosts=Object.create(null), local=new Set(), uplinks=new Set();
     (Array.isArray(interfaces.interface)?interfaces.interface:[]).forEach(function(entry){
         if(!entry || typeof entry.l3_device!=='string')return;
         var wan=/^wan[0-9]*$/.test(entry.interface || '') || (entry.route || []).some(function(route){return route && (route.target==='0.0.0.0' || route.target==='::') && Number(route.mask)===0;});
@@ -391,7 +497,7 @@ function clientMap(leases, observations, interfaces) {
     });
     uplinks.forEach(function(name){local.delete(name);});
     function host(row){
-        if(!row || typeof row.mac!=='string' || !/^(?:[0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(row.mac) || (parseInt(row.mac.slice(0,2),16)&1) || /^00:00:00:00:00:00$/.test(row.mac))return null;
+        if(!row || !clientMac(row.mac))return null;
         var mac=row.mac.toUpperCase();return hosts[mac] || (hosts[mac]={addresses:[]});
     }
     (Array.isArray(observations.fdb)?observations.fdb:[]).slice(0,1024).forEach(function(row){
@@ -401,13 +507,44 @@ function clientMap(leases, observations, interfaces) {
         if(!value.paths.some(function(path){return path.port===row.port && path.bridge===row.bridge && path.vlan===row.vlan;}))value.paths.push(row);
     });
     (Array.isArray(observations.neighbors)?observations.neighbors:[]).slice(0,1024).forEach(function(row){
-        if(!row || !local.has(row.device) || typeof row.address!=='string' || !/^[0-9a-f:.]+$/i.test(row.address) || !['reachable','stale','delay','probe','permanent','failed','incomplete','unknown'].includes(row.state))return;
+        if(!row || !local.has(row.device) || !addressKey(row.address) || !['reachable','stale','delay','probe','permanent','failed','incomplete','unknown'].includes(row.state))return;
         var value=host(row);if(!value)return;
-        if(!value.addresses.includes(row.address))value.addresses.push(row.address);
+        addClientAddress(value,row.address);
         if(!value.neighbors)value.neighbors=[];
         value.neighbors.push(row);
     });
+    var owners=Object.create(null);
+    if (matchNeighbors) Object.keys(hosts).forEach(function(mac) {
+        (hosts[mac].neighbors || []).forEach(function(row) {
+            var ip=addressKey(row.address);if (!ip || !ip.includes(':')) return;
+            var owner=owners[ip] || (owners[ip]={macs:new Set(),confirmed:new Set()});
+            owner.macs.add(mac);if (row.state==='reachable' || row.state==='permanent') owner.confirmed.add(mac);
+        });
+    });
+    var leased=leaseMap(leases,matchNeighbors?owners:null);
+    Object.keys(leased).forEach(function(mac) {
+        var value=hosts[mac] || (hosts[mac]={addresses:[]}), lease=leased[mac];
+        // Prefer DHCP IPv4 addresses in the summary, retaining all observed IPv6.
+        var observed=value.addresses;value.addresses=lease.addresses.slice();observed.forEach(function(address) { addClientAddress(value,address); });
+        if (lease.name) { value.name=lease.name;value.nameSource=lease.nameSource;value.matchMethod=lease.matchMethod; }
+    });
     return hosts;
+}
+
+function validDisplayName(value) {
+    try { return typeof value === 'string' && !/[\x00-\x1f\x7f]/.test(value) && encodeURIComponent(value).replace(/%[A-F\d]{2}|./g,'x').length <= 256; } catch(err) { return false; }
+}
+function clientNames(reply) {
+    var result=Object.create(null), names=reply && reply.names;
+    if (!names || typeof names!=='object' || Array.isArray(names)) return result;
+    Object.keys(names).slice(0,512).forEach(function(mac) { if(clientMac(mac)===mac && validDisplayName(names[mac]) && names[mac].trim())result[mac]=names[mac]; });
+    return result;
+}
+function dnsAddress(value) {
+    var key=addressKey(value);
+    if (!key || /^fe[89ab]/i.test(key) || /^ff/i.test(key) || key==='0000:0000:0000:0000:0000:0000:0000:0000' || key==='0000:0000:0000:0000:0000:0000:0000:0001') return null;
+    if(value.indexOf(':')===-1 && (Number(value.split('.')[0])===0 || Number(value.split('.')[0])===127 || Number(value.split('.')[0])>=224 || /^169\.254\./.test(value)))return null;
+    return key;
 }
 
 return view.extend({
@@ -432,12 +569,16 @@ return view.extend({
 
 	render: function(data) {
 		if (!document.getElementById('rmm-dashboard-styles'))
-			document.head.appendChild(element('link', { id: 'rmm-dashboard-styles', rel: 'stylesheet', href: L.resource('view/status/rmm-dashboard.css') + '?v=0.9.0' }));
+			document.head.appendChild(element('link', { id: 'rmm-dashboard-styles', rel: 'stylesheet', href: L.resource('view/status/rmm-dashboard.css') + '?v=0.10.1' }));
 		this.sources = [];
 		this.history = { memory: [], devices: Object.create(null) };
 		this.slots = {};
 		this.preferences = this.readPreferences();
-		this.knownNodes = Object.create(null);
+		this.clientJournal=new Map();this.clientTraffic=new Map();this.vendorPrefixes=new Map();this.vendorRetryAt=0;
+        this.nameEditors=Object.create(null);this.nameSequence=0;
+        this.dnsCache=new Map();this.dnsGeneration=0;this.dnsRetryAt=0;
+        try { this.dnsEnabled=window.localStorage.getItem('rmm-dashboard-dns-v1')==='true'; } catch(err) { this.dnsEnabled=false; }
+        this.knownNodes = Object.create(null);
 		this.stationHistory = Object.create(null);
 		this.stationNodes = Object.create(null);
 		this.radioNodes = Object.create(null);
@@ -515,7 +656,16 @@ return view.extend({
 			field('rmm-client-search','Search clients',this.clientSearch),field('rmm-client-type','Connection type',this.clientType),field('rmm-client-band','Band',this.clientBand),field('rmm-client-signal','Signal',this.clientSignal),field('rmm-client-sort','Sort clients',this.clientSort),field('rmm-client-group','Group clients',this.clientGroup),
 			element('button',{type:'button','class':'btn',click:L.bind(function() { this.clientSearch.value='';this.clientBand.value='all';this.clientSignal.value='all';this.clientType.value='all';this.filterStations(); },this)},tr('Clear filters'))
 		]));
-		this.slots.wireless.appendChild(this.clientCount);
+		this.dnsToggle=element('input',{type:'checkbox',change:L.bind(function(){
+            this.dnsEnabled=this.dnsToggle.checked;this.dnsGeneration++;
+            try { window.localStorage.setItem('rmm-dashboard-dns-v1',String(this.dnsEnabled)); } catch(err) { this.preferenceNotice.hidden=false; }
+            this.dnsStatus.textContent=tr(this.dnsEnabled?'Loading':'DNS disabled');
+            this.update(this.root,this.sources,true);
+            if(this.dnsEnabled)this.lookupNames(this.clientHosts,Date.now());
+        },this)});this.dnsToggle.checked=this.dnsEnabled;
+        this.dnsStatus=element('span',{role:'status','aria-live':'polite','class':'rmm-dashboard-source'},tr(this.dnsEnabled?'Loading':'DNS disabled'));
+        this.slots.wireless.appendChild(element('div',{'class':'rmm-dashboard-name-options'},[element('label',{},[this.dnsToggle,tr('DNS names')]),element('span',{'class':'rmm-dashboard-note'},tr('Resolve unnamed clients through the router DNS.')),this.dnsStatus]));
+        this.slots.wireless.appendChild(this.clientCount);
 		this.slots.wireless.appendChild(this.clientEmpty);
 
 		this.slots.wireless.appendChild(element('div',{'class':'rmm-dashboard-client-heading','aria-hidden':'true'},[
@@ -523,7 +673,9 @@ return view.extend({
 		]));
 		this.slots.wireless.appendChild(this.wirelessContent);
 		this.slots.wireless.appendChild(element('p',{'class':'rmm-dashboard-note'},tr('DHCP clients may use wired or wireless links; a lease does not prove an active connection.')));
-		this.update(root, data);
+		this.journalList=element('ol',{'class':'rmm-dashboard-journal'});
+        this.slots.wireless.appendChild(element('details',{'class':'rmm-dashboard-disclosure'},[element('summary',{},tr('Client observation history')),element('p',{'class':'rmm-dashboard-note'},tr('History covers this open page; a record does not prove an active connection.')),this.journalList]));
+        this.update(root, data);
 		this.root = root;
 		poll.add(L.bind(this.refresh, this), 30);
 		return root;
@@ -580,7 +732,7 @@ return view.extend({
 		var used = finite(memory.total) && memory.total > 0 && finite(memory.available) && memory.available <= memory.total ? memory.total - memory.available : null;
 		var rebooted = !repaint && previousInfo && finite(previousInfo.value && previousInfo.value.uptime) && finite(info.uptime) && info.uptime < previousInfo.value.uptime;
 		var now = Date.now();
-		if (rebooted) { this.history = { memory: [], devices: Object.create(null) }; this.stationHistory = Object.create(null); }
+		if (rebooted) { this.clientTraffic.clear(); this.history = { memory: [], devices: Object.create(null) }; this.stationHistory = Object.create(null); }
 		var history = this.history;
 		if(!repaint) history.memory = remember(history.memory, { at: now, used: sourceFresh(sources[1], now) && used !== null ? used / memory.total * 100 : null }, now);
 		var load = Array.isArray(info.load) && info.load.every(finite) ? info.load.map(function(v) { return (v / 65536).toFixed(2); }).join(' / ') : tr('Unavailable');
@@ -628,7 +780,7 @@ return view.extend({
 		if (sources[6].error) wirelessRows.push(sourceLine('iwinfo.devices',6));
 		if (sources[7].error) wirelessRows.push(sourceLine('luci-rpc.getDHCPLeases',7));
 		var wireless = sources[6].value && sources[6].value.interfaces || [];
-		var hosts = clientMap(sources[7].value || {}, sources[8].value || {}, sources[2].value || {});
+		var hosts = clientMap(sources[7].value || {}, sources[8].value || {}, sources[2].value || {}, sourceFresh(sources[7],now) && sourceFresh(sources[8],now) && sourceFresh(sources[2],now));
 		if (sources[8].error || !sourceFresh(sources[8],now)) wirelessRows.push(resultLine('rmm.dashboard.clients',sources[8]));
 		if (sources[8].value && sources[8].value.truncated) wirelessRows.push(element('p',{'class':'rmm-dashboard-note'},tr('Client inventory truncated')));
 		var seenStations = Object.create(null);
@@ -656,7 +808,8 @@ return view.extend({
 			radioRows.push(radioNode);
 			if (entry.stations.value && entry.stations.value.results.length !== stations.length) wirelessRows.push(element('p',{'class':'rmm-dashboard-source rmm-dashboard-warning'},tr('Invalid station records') + ': ' + (entry.stations.value.results.length - stations.length)));
 			stations.forEach(function(station) {
-				var mac = station.mac.toUpperCase(), host = hosts[mac] || {}, key = entry.device + '/' + mac;
+				var mac = station.mac.toUpperCase(), host = hosts[mac] || (hosts[mac]={addresses:[]}), key = entry.device + '/' + mac;
+                self.decorateClient(mac,host,now);
 				seenStations[key] = true;
 				var previous = self.stationHistory[key], fresh = sourceFresh(sources[6],now) && sourceFresh(entry.stations,now);
 				if (previous && fresh && finite(station.connected_time) && finite(previous.connected) && station.connected_time < previous.connected) previous = null;
@@ -672,19 +825,21 @@ return view.extend({
 					self.stationNodes[key] = nodes;
 				}
 				nodes.title.textContent = host.name || mac;
-				nodes.address.textContent = host.addresses && host.addresses.length ? host.addresses.join(' / ') : tr('No local DHCP record');
+				nodes.address.textContent = clientAddressSummary(host.addresses,'No local DHCP record');
+				nodes.address.title=(host.addresses || []).join(' / ');
 				nodes.band.textContent = bandName(info);
 				nodes.link.setAttribute('data-label',tr('Link rate RX / TX'));
 				nodes.link.textContent = linkRate(station.rx) + ' / ' + linkRate(station.tx);
 				nodes.signal.textContent = signalText(station.signal) + (sources[6].error || entry.stations.error ? ' · ' + tr('Stale') : '');
 				nodes.summary.setAttribute('aria-label',tr('Station details') + ': ' + nodes.title.textContent);
 				nodes.metrics.replaceChildren.apply(nodes.metrics,[item(tr('MAC address'),mac),item(tr('IP address'),host.addresses && host.addresses.length ? host.addresses.join(' / ') : tr('No local DHCP record')),
-					item(tr('Signal'),signalText(station.signal)),item(tr('Link rate RX / TX'),linkRate(station.rx) + ' / ' + linkRate(station.tx)),item(tr('Connected time'),formatDuration(station.connected_time))]);
+					...clientIdentityItems(host),item(tr('Signal'),signalText(station.signal)),item(tr('Link rate RX / TX'),linkRate(station.rx) + ' / ' + linkRate(station.tx)),item(tr('Connected time'),formatDuration(station.connected_time))]);
 				nodes.body.replaceChildren(nodes.metrics,resultLine('iwinfo.assoclist',entry.stations,sources[6].error),resultLine('luci-rpc.getDHCPLeases',sources[7]),...(host.neighbors || host.paths ? [resultLine('rmm.dashboard.clients',sources[8])] : []),element('dl',{},[
 					item(tr('Interface'),entry.device),item(tr('Radio'),reportedText(info.phy)),item('SSID',reportedText(info.ssid)),item(tr('Band'),bandName(info)),
 					item(tr('Station noise'),signalText(station.noise)),item(tr('Station traffic'),tr('Unavailable'))
 				]),historyChart(tr('Signal history'),points.map(function(point) { return {at:point.at,used:point.signal === null ? null : point.signal + 127}; }),[{key:'used',label:tr('Signal')}],127,function(value) { return (value - 127).toFixed(0) + ' dBm'; },now,self.preferences.period));
-				self.clientRecords.push({type:'wifi',mac:mac,key:key,name:nodes.title.textContent,ssid:reportedText(info.ssid),node:nodes.root,band:bandName(info),signal:signalValue(station.signal),rate:station.rx && finite(station.rx.rate) || station.tx && finite(station.tx.rate) ? Math.max(station.rx && finite(station.rx.rate) ? station.rx.rate : 0,station.tx && finite(station.tx.rate) ? station.tx.rate : 0) : null,search:[host.name,mac,entry.device,info.ssid].concat(host.addresses || []).filter(function(value) { return typeof value === 'string'; }).join(' ').toLowerCase()});
+				nodes.body.appendChild(self.nameEditor('station/'+key,mac));
+                self.clientRecords.push({fresh:fresh && sourceFresh(entry.info,now),path:entry.device+(info.ssid?' / '+info.ssid:''),type:'wifi',mac:mac,key:key,name:nodes.title.textContent,ssid:reportedText(info.ssid),node:nodes.root,addresses:host.addresses || [],band:bandName(info),signal:signalValue(station.signal),rate:station.rx && finite(station.rx.rate) || station.tx && finite(station.tx.rate) ? Math.max(station.rx && finite(station.rx.rate) ? station.rx.rate : 0,station.tx && finite(station.tx.rate) ? station.tx.rate : 0) : null,search:[host.name,mac,entry.device,info.ssid].concat(host.addresses || []).filter(function(value) { return typeof value === 'string'; }).join(' ').toLowerCase()});
 				wirelessRows.push(nodes.root);
 			});
 			if (entry.stations.value && !entry.stations.value.results.length) wirelessRows.push(element('p',{'class':'rmm-dashboard-source'},tr('No associated stations')));
@@ -707,6 +862,8 @@ return view.extend({
 		this.wirelessContent.replaceChildren.apply(this.wirelessContent,wirelessRows);
 		if (focused && focused.isConnected && (this.wirelessContent.contains(focused) || this.radioContent.contains(focused)) && typeof focused.focus === 'function') focused.focus();
 		this.renderKnownClients(hosts,now);
+        this.updateClientInsights(now,repaint);
+        if(!repaint)this.lookupVendors(now);
 		this.filterStations();
 		this.renderRelationships();
 		var agentStatus = !sources[3].value ? failure(sources[3].error) : !agent ? tr('Not installed') : running ? tr('Running') : !sources[4].value ? failure(sources[4].error) : config.enabled === '1' ? tr('Stopped') : tr('Disabled');
@@ -768,8 +925,217 @@ return view.extend({
 				this.detailTitle.textContent=(record.label || record.title).textContent;
 			}
 		}
+		Object.keys(this.nameEditors).forEach(function(key){if(!self.clientRecords.some(function(record){return (record.type==='wifi'?'station/':'known/')+record.key===key;}) && !self.nameEditors[key].pending)delete self.nameEditors[key];});
+        this.clientHosts=hosts;
+        if (!repaint) this.lookupNames(hosts,now);
+        if (focused && focused.isConnected && this.detailContent.contains(focused) && typeof focused.focus==='function') focused.focus({preventScroll:true});
 		if (activeChart) Array.from((this.detailDialog.open ? this.detailDialog : root).querySelectorAll('svg[data-chart-title]')).some(function(svg) { if (svg.getAttribute('data-chart-title')!==activeChart) return false;svg.focus({preventScroll:true});return true; });
 	},
+
+
+    decorateClient: function(mac,host,now) {
+        var manual=clientNames(this.sources[8].value)[mac];
+        if(manual){host.name=manual;host.nameSource='Manual name';host.matchMethod='MAC address';return;}
+        if(!this.dnsEnabled || host.name)return;
+        (host.addresses || []).some(function(address){
+            var key=dnsAddress(address),record=key && this.dnsCache.get(mac+'/'+key);
+            if(!record || record.expires<=now || !record.name)return false;
+            host.name=record.name;host.nameSource='Reverse DNS';host.matchMethod='IP address';return true;
+        },this);
+    },
+
+    nameEditor: function(key,mac) {
+        var self=this, editor=this.nameEditors[key];
+        if(!editor){
+            var id='rmm-client-name-'+(++this.nameSequence);
+            editor={mac:mac,previous:'',dirty:false,pending:false,allowed:false};
+            editor.input=element('input',{id:id,type:'text',maxlength:256,input:function(){editor.dirty=true;}});
+            editor.notice=element('p',{role:'status','aria-live':'polite','class':'rmm-dashboard-note'});
+            editor.save=element('button',{type:'submit','class':'btn primary',disabled:''},tr('Save name'));
+            editor.reset=element('button',{type:'button','class':'btn',disabled:'',click:function(){return self.saveClientName(editor,'');}},tr('Use automatic name'));
+            editor.form=element('form',{hidden:'',submit:function(event){event.preventDefault();return self.saveClientName(editor,editor.input.value);}},[
+                element('label',{for:id},tr('Display name')),editor.input,
+                element('p',{'class':'rmm-dashboard-note'},tr('Name follows this MAC; DHCP and network settings are unchanged.')),
+                element('div',{'class':'rmm-dashboard-name-actions'},[editor.save,editor.reset]),editor.notice]);
+            editor.toggle=element('button',{type:'button','class':'btn','aria-controls':id+'-form','aria-expanded':'false',click:function(){
+                editor.form.hidden=!editor.form.hidden;editor.toggle.setAttribute('aria-expanded',String(!editor.form.hidden));
+                if(editor.form.hidden)return;
+                if(!editor.pending){editor.previous=clientNames(self.sources[8].value)[mac] || '';editor.input.value=editor.previous;editor.dirty=false;}
+                editor.notice.textContent=tr('Checking permission');editor.allowed=false;editor.save.disabled=true;editor.reset.disabled=true;
+                return callCanName('ubus','rmm.dashboard','set_name').then(function(access){
+                    editor.allowed=access===true;editor.notice.textContent=editor.allowed?'':tr('Read-only access');self.syncNameEditor(editor);editor.input.focus();
+                }).catch(function(){editor.allowed=false;editor.notice.textContent=tr('Read-only access');self.syncNameEditor(editor);});
+            }},tr('Edit display name'));
+            editor.form.id=id+'-form';editor.root=element('div',{'class':'rmm-dashboard-name-editor'},[editor.toggle,editor.form]);
+            this.nameEditors[key]=editor;
+        }
+        this.syncNameEditor(editor);
+        return editor.root;
+    },
+    syncNameEditor: function(editor) {
+        var source=this.sources[8], names=clientNames(source.value), current=names[editor.mac] || '';
+        var unavailable=!!(source.error || source.value && source.value.names_error || !sourceFresh(source,Date.now()));
+        if(!editor.dirty && !editor.pending && editor.form.hidden){editor.input.value=current;editor.previous=current;}
+        editor.save.disabled=editor.reset.disabled=editor.pending || !editor.allowed || unavailable;
+        editor.input.disabled=editor.pending || !editor.allowed;
+        if(unavailable)editor.notice.textContent=tr('Name storage unavailable');
+    },
+    saveClientName: function(editor,name) {
+        this.syncNameEditor(editor);
+        if(editor.pending || editor.save.disabled || !editor.allowed)return Promise.resolve();
+        try { if(!validDisplayName(name))throw new Error('Invalid display name'); }
+        catch(err){editor.notice.textContent=tr('Invalid display name');return Promise.resolve();}
+        editor.pending=true;editor.notice.textContent=tr('Saving name');this.syncNameEditor(editor);
+        var self=this;
+        return callSetName(editor.mac,name,editor.previous).then(function(reply){
+            if(!reply || reply.error || !reply.names || typeof reply.names!=='object' || Array.isArray(reply.names))throw new Error(reply && reply.error || 'Invalid response');
+            var names=clientNames(reply);
+            if((names[editor.mac] || '')!==name.trim())throw new Error('Invalid response');
+            self.sources[8].value.names=names;editor.previous=names[editor.mac] || '';editor.input.value=editor.previous;editor.dirty=false;
+            editor.notice.textContent=tr('Name saved');self.update(self.root,self.sources,true);
+        }).catch(function(err){editor.notice.textContent=/name changed/i.test(String(err.message || err))?tr('Name changed elsewhere; reopen the editor.'):tr('Unable to save name')+' · '+String(err.message || err);})
+          .finally(function(){editor.pending=false;self.syncNameEditor(editor);});
+    },
+
+    lookupNames: function(hosts,now) {
+        if(!this.dnsEnabled || this.dnsPending || now<this.dnsRetryAt)return;
+        // Only fresh local telemetry can schedule PTR queries. No scans or public DNS overrides.
+        if(![2,7,8].every(function(index){return sourceFresh(this.sources[index],now);},this))return;
+        var self=this,batch=[],owners=Object.create(null),manual=clientNames(this.sources[8].value);
+        this.dnsCache.forEach(function(record,key){if(record.expires<=now)self.dnsCache.delete(key);});
+        Object.keys(hosts || {}).sort().forEach(function(mac){
+            var host=hosts[mac];if(!clientMac(mac))return;
+            (host.addresses || []).forEach(function(address){
+                var key=dnsAddress(address);if(!key)return;
+                if(!owners[key])owners[key]=new Set();owners[key].add(mac);
+            });
+        });
+        var keys=Object.keys(owners).sort(),start=keys.findIndex(function(key){return key>(self.dnsCursor || '');});
+        if(start<0)start=0;
+        keys.slice(start).concat(keys.slice(0,start)).some(function(key){
+            if(owners[key].size!==1)return false;
+            var mac=Array.from(owners[key])[0],host=hosts[mac];
+            if(manual[mac] || host.name && host.nameSource!=='Reverse DNS' || self.dnsCache.has(mac+'/'+key))return false;
+            var address=(hosts[mac].addresses || []).find(function(value){return dnsAddress(value)===key;});
+            batch.push({mac:mac,key:key,address:address});return batch.length===8;
+        });
+        if(!batch.length){this.dnsStatus.textContent=tr('DNS cache updated');return;}
+        this.dnsCursor=batch[batch.length-1].key;
+        var generation=this.dnsGeneration;
+        this.dnsStatus.textContent=tr('Looking up DNS names');
+        this.dnsPending=callDNS(batch.map(function(entry){return entry.address;}),1000,8).then(function(reply){
+            if(!self.dnsEnabled || generation!==self.dnsGeneration)return;
+            if(!reply || typeof reply!=='object' || Array.isArray(reply) || reply.error)throw new Error('Invalid DNS response');
+            var answers=Object.create(null);
+            Object.keys(reply).forEach(function(address){
+                var key=dnsAddress(address),name=reply[address];
+                if(key && batch.some(function(entry){return entry.key===key;}) && typeof name==='string' && name.length<=253 && /^[a-z0-9_](?:[a-z0-9_.-]*[a-z0-9_.])?$/i.test(name) && !addressKey(name))answers[key]=name.replace(/\.$/,'');
+            });
+            batch.forEach(function(entry){var name=answers[entry.key] || '';self.dnsCache.set(entry.mac+'/'+entry.key,{name:name,expires:Date.now()+(name?600000:120000)});});
+            while(self.dnsCache.size>256)self.dnsCache.delete(self.dnsCache.keys().next().value);
+            self.dnsStatus.textContent=tr('DNS cache updated');self.update(self.root,self.sources,true);
+        }).catch(function(){if(generation===self.dnsGeneration){self.dnsRetryAt=Date.now()+30000;self.dnsStatus.textContent=tr('DNS names unavailable');}})
+          .finally(function(){self.dnsPending=null;});
+        return this.dnsPending;
+    },
+
+
+    vendorText: function(mac) {
+        if(parseInt(mac.slice(0,2),16)&2)return tr('Locally administered MAC');
+        var inventory=this.sources[8].value || {},vendor=inventory.vendors && inventory.vendors[mac] || this.vendorPrefixes.get(mac.slice(0,8));
+        return typeof vendor==='string' && vendor.length<=1024 && !/[\x00-\x1f\x7f]/.test(vendor)?vendor:tr(inventory.vendor_error || this.vendorError?'Local vendor database unavailable':'Unknown vendor');
+    },
+    lookupVendors: function(now) {
+        if(this.vendorPending || now<this.vendorRetryAt || !sourceFresh(this.sources[8],now))return;
+        var self=this,wanted=[],prefixes=new Set(),vendors=(this.sources[8].value || {}).vendors || {};
+        this.clientRecords.forEach(function(record){
+            var mac=clientMac(record.mac);if(!mac || parseInt(mac.slice(0,2),16)&2)return;
+            var prefix=mac.slice(0,8),value=vendors[mac];
+            if(typeof value==='string' && value.length<=1024)self.vendorPrefixes.set(prefix,value);
+            if(self.vendorPrefixes.has(prefix) || prefixes.has(prefix) || wanted.length>=64)return;
+            prefixes.add(prefix);wanted.push(mac);
+        });
+        if(!wanted.length)return;
+        this.vendorPending=callVendors(wanted).then(function(reply){
+            if(!reply || reply.error || reply.vendor_error || !reply.vendors || typeof reply.vendors!=='object' || Array.isArray(reply.vendors))throw new Error('Vendor database unavailable');
+            wanted.forEach(function(mac){var name=reply.vendors[mac];self.vendorPrefixes.set(mac.slice(0,8),typeof name==='string' && name.length<=1024 && !/[\x00-\x1f\x7f]/.test(name)?name:'');});
+            while(self.vendorPrefixes.size>1024)self.vendorPrefixes.delete(self.vendorPrefixes.keys().next().value);
+            self.vendorError=false;self.update(self.root,self.sources,true);
+        }).catch(function(){self.vendorError=true;self.vendorRetryAt=Date.now()+60000;self.update(self.root,self.sources,true);}).finally(function(){self.vendorPending=null;});
+        return this.vendorPending;
+    },
+    updateClientInsights: function(now,repaint) {
+        var self=this,grouped=new Map(),allFresh=[2,6,7,8].every(function(index){return sourceFresh(self.sources[index],now);}) && this.clientRecords.length<512 && !(this.sources[8].value || {}).truncated && !((this.sources[6].value || {}).interfaces || []).some(function(entry){return !sourceFresh(entry.stations,now) || !sourceFresh(entry.info,now) || !Array.isArray((entry.stations.value || {}).results) || stationList(entry.stations.value).length!==entry.stations.value.results.length;});
+        this.clientRecords.forEach(function(record){
+            if(!clientMac(record.mac))return;
+            var combined=grouped.get(record.mac) || {name:record.name,addresses:[],paths:[],fresh:true};
+            record.addresses.forEach(function(address){var key=addressKey(address);if(key && !combined.addresses.includes(key))combined.addresses.push(key);});
+            if(record.path && !combined.paths.includes(record.path))combined.paths.push(record.path);combined.fresh=combined.fresh && record.fresh;
+            grouped.set(record.mac,combined);
+        });
+        function event(entry,type,before,after) {entry.events.push({at:now,type:type,before:before || '',after:after || ''});if(entry.events.length>32)entry.events.shift();}
+        if(!repaint){
+            grouped.forEach(function(record,mac){
+                if(!record.fresh)return;
+                var entry=self.clientJournal.get(mac),addresses=record.addresses.sort().join(' / '),path=record.paths.sort().join(' / ');
+                if(!entry){entry={mac:mac,name:record.name,first:now,last:now,events:[],present:true,addresses:addresses,path:path};self.clientJournal.set(mac,entry);event(entry,'First observation');}
+                else {
+                    if(!entry.present)event(entry,'Observed again');
+                    if(entry.addresses!==addresses)event(entry,'IP addresses changed',entry.addresses,addresses);
+                    if(entry.path!==path)event(entry,'Connection path changed',entry.path,path);
+                    entry.name=record.name;entry.last=now;entry.present=true;entry.addresses=addresses;entry.path=path;
+                }
+            });
+            if(allFresh)this.clientJournal.forEach(function(entry,mac){if(!grouped.has(mac) && entry.present){entry.present=false;event(entry,'No longer reported');}});
+            if(this.clientJournal.size>512){var oldest=Array.from(this.clientJournal.values()).sort(function(a,b){return a.last-b.last;});oldest.slice(0,this.clientJournal.size-512).forEach(function(entry){self.clientJournal.delete(entry.mac);});}
+        }
+        var recent=[];
+        this.clientJournal.forEach(function(entry){entry.events.forEach(function(value){recent.push({entry:entry,event:value});});});
+        recent.sort(function(a,b){return b.event.at-a.event.at;});
+        this.journalList.replaceChildren.apply(this.journalList,recent.slice(0,30).map(function(record){return element('li',{},[
+            element('time',{datetime:new Date(record.event.at).toISOString()},clock(record.event.at)),element('strong',{},record.entry.name || record.entry.mac),
+            element('span',{},tr(record.event.type)),record.event.before || record.event.after ? element('span',{'class':'rmm-dashboard-technical'},record.event.before+' → '+record.event.after) : null]);}));
+        if(!recent.length)this.journalList.appendChild(element('li',{},tr('No observations yet')));
+        var traffic=(this.sources[8].value || {}).traffic || {status:'unavailable',reason:'Traffic accounting unavailable'},trafficAt=Number(traffic.at)*1000;
+        this.clientRecords.forEach(function(record){
+            var nodes=record.type==='wifi'?self.stationNodes[record.key]:self.knownNodes[record.key];if(!nodes)return;
+            var vendor=self.vendorText(record.mac),entry=self.clientJournal.get(record.mac),count=traffic.clients && traffic.clients[record.mac];
+            nodes.title.title=vendor;record.search+=' '+vendor.toLowerCase();
+            var valid=count && Number.isSafeInteger(count.rx_bytes) && Number.isSafeInteger(count.tx_bytes) && count.rx_bytes>=0 && count.tx_bytes>=0;
+            var fresh=sourceFresh(self.sources[8],now) && traffic.status==='current' && finite(trafficAt) && trafficAt<=now && now-trafficAt<=65000;
+            var previous=self.clientTraffic.get(record.mac),rates=valid && fresh && previous && previous.at===trafficAt?previous.rates:null;
+            if(valid && fresh && previous && previous.at<trafficAt && trafficAt-previous.at<=65000) {
+                var rx=byteRate(count.rx_bytes,previous.rx,(trafficAt-previous.at)/1000),tx=byteRate(count.tx_bytes,previous.tx,(trafficAt-previous.at)/1000);
+                if(rx!==null && tx!==null)rates=formatTraffic(rx)+'/s / '+formatTraffic(tx)+'/s';
+            }
+            if(!repaint){if(valid && fresh){if(!previous || previous.at!==trafficAt)self.clientTraffic.set(record.mac,{at:trafficAt,rx:count.rx_bytes,tx:count.tx_bytes,rates:rates});}else self.clientTraffic.delete(record.mac);}
+            var totals=valid && fresh?formatTraffic(count.rx_bytes)+' / '+formatTraffic(count.tx_bytes):tr(valid?'Stale':traffic.status==='current'?'No traffic record':traffic.reason || 'Traffic accounting unavailable');
+            var items=[item(tr('Vendor'),vendor),item(tr('Received / sent in accounting period'),totals),item(tr('Accounting average RX / TX'),rates || tr('Unavailable'))];
+            if(entry){items.push(item(tr('First observed'),new Date(entry.first).toLocaleString()),item(tr('Last observed'),new Date(entry.last).toLocaleString()));}
+            var events=entry ? entry.events.slice(-8).reverse().map(function(value){return element('li',{},[element('time',{datetime:new Date(value.at).toISOString()},clock(value.at)),element('span',{},tr(value.type)),value.before || value.after?element('span',{'class':'rmm-dashboard-technical'},value.before+' → '+value.after):null]);}) : [];
+            nodes.body.appendChild(element('section',{'class':'rmm-dashboard-client-insights'},[element('dl',{},items),element('p',{'class':'rmm-dashboard-note'},tr('Accounting may omit offloaded and bridged traffic.')),
+                events.length ? element('details',{'class':'rmm-dashboard-disclosure'},[element('summary',{},tr('Observation history')),element('ol',{'class':'rmm-dashboard-journal'},events)]) : null]));
+        });
+        this.clientTraffic.forEach(function(value,mac){if(!grouped.has(mac))self.clientTraffic.delete(mac);});
+    },
+    openClient: function(mac) {
+        var record=this.clientRecords.find(function(value){return value.mac===mac;});if(!record)return;
+        if(record.type==='wifi'){this.openStation(record.key);return;}
+        var nodes=this.knownNodes[record.key];
+        if(!this.openDetails('known/'+record.key,nodes.title.textContent,nodes.body,nodes.details,document.activeElement)){nodes.details.open=true;nodes.details.scrollIntoView({block:'nearest'});}
+    },
+    clientPreview: function(macs,label,device) {
+        var self=this,items=[];
+        Array.from(new Set(macs)).slice(0,3).forEach(function(mac){
+            var record=self.clientRecords.find(function(value){return value.mac===mac && (!device || value.key===device+'/'+mac);});if(!record)return;
+            var nodes=record.type==='wifi'?self.stationNodes[record.key]:self.knownNodes[record.key];
+            // A separate button avoids moving inspector contents into the diagram.
+            if(!nodes.previewButton)nodes.previewButton=element('button',{type:'button','class':'btn',click:function(){if(device)self.openStation(device+'/'+mac);else self.openClient(mac);}});
+            nodes.previewButton.textContent=record.name;nodes.previewButton.title=(record.addresses || []).join(' / ');nodes.previewButton.setAttribute('aria-label',tr('Details')+': '+record.name+' · '+mac);
+            items.push(element('li',{},nodes.previewButton));
+        });
+        return element('div',{'class':'rmm-dashboard-client-preview'},[label?element('span',{'class':'rmm-dashboard-technical'},label):null,element('ul',{'class':'rmm-dashboard-path-clients'},items)]);
+    },
 
 	readPreferences: function() {
 		var defaults={version:1,compact:false,period:300000,order:['topology','charts','wireless','clients','details'],visible:{topology:true,charts:true,wireless:true,clients:true,details:true}};
@@ -816,6 +1182,7 @@ return view.extend({
 		Object.keys(hosts).sort().slice(0,512).forEach(function(mac){
 			if(associated.has(mac))return;
 			var host=hosts[mac],key='dhcp/'+mac,nodes=self.knownNodes[key];seen.add(key);
+            self.decorateClient(mac,host,now);
 			if(!nodes){
 				nodes={root:element('div',{'class':'rmm-dashboard-station'}),summary:element('summary',{}),title:element('span',{'class':'rmm-dashboard-client-name'}),address:element('span',{'class':'rmm-dashboard-client-address'}),band:element('span',{'class':'rmm-dashboard-client-band'}),signal:element('span',{'class':'rmm-dashboard-client-signal'}),link:element('span',{'class':'rmm-dashboard-client-link'}),body:element('div',{})};
 				nodes.summary.append(nodes.title,nodes.address,nodes.band,nodes.signal,nodes.link);nodes.details=element('details',{'class':'rmm-dashboard-station-details'},[nodes.summary,nodes.body]);nodes.root.appendChild(nodes.details);
@@ -825,9 +1192,10 @@ return view.extend({
             var fresh=sourceFresh(self.sources[observed?8:7],now) && (!observed || sourceFresh(self.sources[2],now));
             var status=neighbors.some(function(row){return row.state==='reachable';})?tr('Recently reachable'):neighbors.length && neighbors.every(function(row){return row.state==='permanent';})?tr('Static neighbor'):neighbors.length && neighbors.every(function(row){return row.state==='failed' || row.state==='incomplete';})?tr('Neighbor unreachable'):observed?tr('Cached observation'):tr('Connection unconfirmed');
             if(paths.length && paths.every(function(path){return path.link_up===false;}))status=tr('Port link down');
-            nodes.title.textContent=host.name || mac;nodes.address.textContent=host.addresses.join(' / ') || tr('No address');nodes.band.textContent=tr(type==='wired'?'Ethernet path':type==='neighbor'?'Neighbor records':'DHCP records');nodes.signal.textContent=fresh?status:tr('Stale');nodes.link.textContent=ports.length===1?tr('Via %s').format(ports[0]):ports.length>1?tr('Port ambiguous'):nodes.band.textContent;nodes.link.setAttribute('data-label',tr('Connection evidence'));nodes.summary.setAttribute('aria-label',tr('Details')+': '+nodes.title.textContent);
-			nodes.body.replaceChildren(element('dl',{},[item(tr('MAC address'),mac),item(tr('IP address'),nodes.address.textContent),item(tr('Connection evidence'),tr(paths.length?'FDB path; direct cable connection unconfirmed':neighbors.length?'Neighbor records':'DHCP lease; connection unconfirmed')),paths.length?item(tr('Bridge / VLAN'),paths.map(function(path){return path.bridge+' / '+(path.vlan==null?'—':path.vlan)+' → '+path.port;}).join('; ')):null,neighbors.length?item(tr('Neighbor state'),neighbors.map(function(row){return row.address+' · '+row.state;}).join('; ')):null]),resultLine(observed?'rmm.dashboard.clients':'luci-rpc.getDHCPLeases',self.sources[observed?8:7]));
-			self.clientRecords.push({type:type,key:key,name:nodes.title.textContent,ssid:nodes.band.textContent,node:nodes.root,band:'dhcp',signal:null,rate:null,search:[host.name,mac].concat(host.addresses,ports).filter(Boolean).join(' ').toLowerCase()});
+            nodes.title.textContent=host.name || mac;nodes.address.textContent=clientAddressSummary(host.addresses,'No address');nodes.address.title=host.addresses.join(' / ');nodes.band.textContent=tr(type==='wired'?'Ethernet path':type==='neighbor'?'Neighbor records':'DHCP records');nodes.signal.textContent=fresh?status:tr('Stale');nodes.link.textContent=ports.length===1?tr('Via %s').format(ports[0]):ports.length>1?tr('Port ambiguous'):nodes.band.textContent;nodes.link.setAttribute('data-label',tr('Connection evidence'));nodes.summary.setAttribute('aria-label',tr('Details')+': '+nodes.title.textContent);
+			nodes.body.replaceChildren(element('dl',{},[item(tr('MAC address'),mac),item(tr('IP address'),host.addresses.join(' / ') || tr('No address')),...clientIdentityItems(host),item(tr('Connection evidence'),tr(paths.length?'FDB path; direct cable connection unconfirmed':neighbors.length?'Neighbor records':'DHCP lease; connection unconfirmed')),paths.length?item(tr('Bridge / VLAN'),paths.map(function(path){return path.bridge+' / '+(path.vlan==null?'—':path.vlan)+' → '+path.port;}).join('; ')):null,neighbors.length?item(tr('Neighbor state'),neighbors.map(function(row){return row.address+' · '+row.state;}).join('; ')):null]),resultLine(observed?'rmm.dashboard.clients':'luci-rpc.getDHCPLeases',self.sources[observed?8:7]),...(observed && /^DHCP/.test(host.nameSource || '') ? [resultLine('luci-rpc.getDHCPLeases',self.sources[7])] : []));
+			nodes.body.appendChild(self.nameEditor('known/'+key,mac));
+            self.clientRecords.push({fresh:fresh && sourceFresh(self.sources[7],now),path:ports.join(' / ') || type,type:type,mac:mac,key:key,name:nodes.title.textContent,ssid:nodes.band.textContent,node:nodes.root,addresses:host.addresses,band:'dhcp',signal:null,rate:null,search:[host.name,mac].concat(host.addresses,ports).filter(Boolean).join(' ').toLowerCase()});
 		});
 		Object.keys(this.knownNodes).forEach(function(key){if(!seen.has(key))delete self.knownNodes[key];});
 	},
@@ -921,7 +1289,8 @@ return view.extend({
 			var contents = [element('dl',{},[item(tr('Interface'),entry.device),item(tr('Radio'),reportedText(phy)),item(tr('Band'),bandName(info)),item(tr('Operating mode'),mode),item(tr('Channel'),finite(info.channel) && info.channel > 0 ? String(info.channel) : tr('Unavailable'))]),
 				stations.length ? element('ul',{'class':'rmm-dashboard-path-clients'},stations) : element('p',{'class':'rmm-dashboard-source'},entry.stations.error && !entry.stations.value ? failure(entry.stations.error) : entry.stations.value && entry.stations.value.results.length === 0 ? tr('No associated stations') : tr('Unavailable'))];
 			var subtitle = bandName(info) + ' · ' + (entry.stations.value ? String(stations.length) + ' · ' + tr('Wi-Fi clients') : failure(entry.stations.error));
-			branches.push(element('li',{'class':'rmm-dashboard-path-branch'},node('ssid/' + entry.device,reportedText(info.ssid),subtitle,contents,Array.from(new Set([state(entry.info,sources[6].error),state(entry.stations,sources[6].error)])).filter(function(value) { return value !== tr('Current'); }).join(' · '))));
+			var branch=node('ssid/' + entry.device,reportedText(info.ssid),subtitle,contents,Array.from(new Set([state(entry.info,sources[6].error),state(entry.stations,sources[6].error)])).filter(function(value) { return value !== tr('Current'); }).join(' · '));
+            branches.push(element('li',{'class':'rmm-dashboard-path-branch'},[branch,self.clientPreview(stationList(entry.stations.value).map(function(station){return station.mac.toUpperCase();}),null,entry.device)]));
 			metadata.push(resultLine('iwinfo.info',entry.info,sources[6].error),resultLine('iwinfo.assoclist',entry.stations,sources[6].error));
 		});
 		var radioRows = Object.keys(radios).map(function(key) { return element('div',{},[element('h3',{'class':'rmm-dashboard-topology-label'},tr('Radio') + ': ' + reportedText(radios[key].phy)),element('span',{'class':'rmm-dashboard-path-subtitle'},radios[key].bands.join(' / '))]); });
@@ -939,11 +1308,12 @@ return view.extend({
 			});
 		});
 		var portNames = Object.keys(ports).sort(), ethernetDetails = [element('p',{'class':'rmm-dashboard-note'},tr('FDB path; direct cable connection unconfirmed'))];
-		portNames.forEach(function(port) { ethernetDetails.push(element('dl',{},[item(tr('Device'),port),item('MAC',String(ports[port].size))])); });
+		portNames.forEach(function(port) { ethernetDetails.push(element('dl',{},[item(tr('Device'),port),item('MAC',String(ports[port].size))]),element('ul',{'class':'rmm-dashboard-path-clients'},Array.from(ports[port]).slice(0,512).map(function(mac){var record=self.clientRecords.find(function(value){return value.mac===mac;});return element('li',{},element('button',{type:'button','class':'btn',click:function(){self.openClient(mac);}},record?record.name:mac));}))); });
 		if (local.length) ethernetDetails.push(this.localBranches);
 		ethernetDetails.push(resultLine('rmm.dashboard.clients',sources[8]));
 		var ethernet = node('ethernet',tr('Ethernet path'),portNames.length ? portNames.map(function(port) { return port + ' · ' + ports[port].size + ' MAC'; }).join(' / ') : sources[8].value ? tr('No FDB observations') : failure(sources[8].error),ethernetDetails,state(sources[8]) === tr('Current') ? tr('FDB observations') : state(sources[8]));
-		branches.unshift(element('li',{'class':'rmm-dashboard-path-branch'},ethernet));
+		var previews=portNames.slice(0,8).map(function(port){return self.clientPreview(Array.from(ports[port]).filter(function(mac){return self.knownNodes['dhcp/'+mac];}),port);});
+        branches.unshift(element('li',{'class':'rmm-dashboard-path-branch'},[ethernet].concat(previews)));
 		if (!wireless.length) branches.push(element('li',{'class':'rmm-dashboard-path-branch rmm-dashboard-path-empty'},element('p',{'class':'rmm-dashboard-source'},sources[6].error ? failure(sources[6].error) : tr('No wireless interfaces reported'))));
 		if (!this.relationshipPath) {
 			this.relationshipLines = svgElement('svg',{'class':'rmm-dashboard-path-lines','aria-hidden':'true',focusable:'false'});
@@ -1013,7 +1383,7 @@ return view.extend({
 		var shown = 0, records = this.clientRecords || [];
 		records.forEach(function(record) {
 			var matchesSignal = signal === 'all' || signal === 'unknown' && record.signal === null || record.signal !== null && (signal === 'strong' && record.signal >= -67 || signal === 'medium' && record.signal < -67 && record.signal >= -75 || signal === 'weak' && record.signal < -75);
-			var visible = ((this.clientType.value || 'all') === 'all' || this.clientType.value === record.type) && (!query || record.search.includes(query)) && (band === 'all' || record.band === band) && matchesSignal;
+			var visible = ((this.clientType.value || 'all') === 'all' || this.clientType.value === record.type) && (!query || record.search.includes(query) || addressKey(query) && (record.addresses || []).some(function(address) { return addressKey(address)===addressKey(query); })) && (band === 'all' || record.band === band) && matchesSignal;
 			record.node.hidden = !visible;if (visible) shown++;
 		},this);
 		var focus=document.activeElement, order=this.clientSort.value || 'name', group=this.clientGroup.value==='ssid';

@@ -605,6 +605,27 @@ reload_service() {
 	# same way in the rollback path below.
 	export HP_CANDIDATE_CLIENT HP_CANDIDATE_SERVER
 
+	# Nothing to do?  The candidates are byte-identical to what is already
+	# running and the running instance is healthy, so the stop;start below
+	# would interrupt every connection to install a file that is already
+	# installed.  Checked AFTER the preflight, never before: the point is to
+	# skip a restart, not to skip the validation - a configuration that fails
+	# `sing-box check` has to be reported as such whether or not it would have
+	# been a no-op, and the candidate has to exist for anything to compare.
+	#
+	# Every "cannot prove it is a no-op" case falls through to the normal
+	# reload, so the worst outcome of this helper is the behaviour that
+	# existed before it.
+	#
+	# `HP_CANDIDATE_CLIENT` is the same flag the preflight set, so the two
+	# sides cannot disagree about which configuration is being activated.
+	if [ "$HP_CANDIDATE_CLIENT" = "1" ] || [ "$HP_CANDIDATE_SERVER" = "1" ]; then
+		if hp_reload_is_noop "$RUN_DIR" "$GOOD_DIR" "$HP_CANDIDATE_CLIENT" "$HP_CANDIDATE_SERVER"; then
+			log "Configuration is unchanged and the service is healthy; nothing to restart."
+			return 0
+		fi
+	fi
+
 	# Both configurations passed `sing-box check`; now it is safe to restart.
 	# start_service owns the rest of the transaction: it proves the instances
 	# came up and only then records the new known-good, so the previous one

@@ -2,6 +2,10 @@
 <%
 	local http = require("luci.http")
 	local core = require("substore.core")
+	-- meta.error / human_duration 返回的都是语言中立的 msgid（可能是组合消息），
+	-- 翻译在视图侧做 —— 后端模块不能 require("luci.i18n")，见 msg.lua 的文件头。
+	local msg = require("substore.msg")
+	local function tmsg(s) return msg.translate(s, luci.i18n.translate) end
 	local id = http.formvalue("id") or ""
 	local it = id ~= "" and core.get(id) or nil
 	local is_edit = it ~= nil
@@ -36,7 +40,7 @@
 			traffic_str = util.human_bytes(rem)
 		end
 		if it.expire then
-			time_str = util.human_duration((tonumber(it.expire) or 0) - os.time())
+			time_str = tmsg(util.human_duration((tonumber(it.expire) or 0) - os.time()))
 		end
 	end
 %>
@@ -149,7 +153,7 @@
 				<% if traffic_str then %> | <%:Remaining traffic:%> <%=traffic_str%><% end %>
 				<% if time_str then %> | <%:Remaining time:%> <%=time_str%><% end %>
 				 | <%:Last updated:%> <%=os.date("%Y-%m-%d %H:%M", it.last_update)%>
-				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=luci.util.pcdata(it.error)%></span><% end %>
+				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=luci.util.pcdata(tmsg(it.error))%></span><% end %>
 			</span>
 		</div>
 		<% end %>

@@ -54,8 +54,11 @@
 - 15 种输出格式：Plain JSON、Stash、Clash.Meta / Mihomo、Clash 原版、Surfboard、Surge、
   Surge Mac、Loon、Egern、Shadowrocket、Quantumult X、sing-box、V2Ray / Xray、
   V2Ray URI、WireGuard / AmneziaWG `.conf`
-- SSR（`ssr://`）只能原样输出到支持它的客户端（Mihomo、Stash、Loon、Egern、Shadowrocket），
-  其余目标会将其丢弃
+- SSR（`ssr://`）只能原样输出到支持它的客户端（Mihomo、Stash、Loon、Shadowrocket），
+  其余目标会将其丢弃；VLESS 同理，Surge / Surfboard / Surge Mac 的协议清单里没有它
+  （Surge 家族与 Loon 的清单见 `output_formats.lua` 的 `FAMILY_CAPS`；
+  Egern 的配置是 YAML，清单见 `output_egern.lua` 的 `EGERN_KEY` ——
+  它有 VLESS 与 WireGuard，没有 SSR 与 Hysteria v1）
 - **只输出目标客户端真正能加载的内容**：按目标能力过滤协议；数组字段按客户端要求的类型
   输出；策略组成员列表剔除会破坏语法的节点名
 - sing-box / V2Ray(Xray) 输出**完整可用配置**（含分流规则），可直接作为单文件配置启动

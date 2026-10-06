@@ -178,14 +178,63 @@ TCP_ENABLED=$(uci -q get "$CONFIG.global.tcp_enabled" || echo "1")
 UDP_ENABLED=$(uci -q get "$CONFIG.global.udp_enabled" || echo "1")
 TRAFFIC_MARK=$(uci -q get "$CONFIG.global.traffic_mark" || echo "0x666")
 PROXY_SERVER_IP_ADDR=$(uci -q get "$CONFIG.global.proxy_server_ip_addr")
-INTERFACE=$(uci -q get "$CONFIG.global.interface")
-[ -z "$INTERFACE" ] && INTERFACE="br-lan"
+get_lan_devices() {
+    local dev="" devs="" nets=""
+    local z_idx=0
+    while :; do
+        local z_name=$(uci -q get firewall.@zone[$z_idx].name)
+        [ -z "$z_name" ] && break
+        if [ "$z_name" = "lan" ]; then
+            nets=$(uci -q get firewall.@zone[$z_idx].network)
+            break
+        fi
+        z_idx=$((z_idx + 1))
+    done
+
+    [ -z "$nets" ] && nets="lan"
+
+    for net in $nets; do
+        dev=""
+        if command -v ubus >/dev/null 2>&1; then
+            dev=$(ubus call network.interface."$net" status 2>/dev/null | jsonfilter -e "@.l3_device" 2>/dev/null)
+            [ -z "$dev" ] && dev=$(ubus call network.interface."$net" status 2>/dev/null | jsonfilter -e "@.device" 2>/dev/null)
+        fi
+        [ -z "$dev" ] && dev=$(uci -q get network."$net".device || uci -q get network."$net".device)
+        if [ -n "$dev" ]; then
+            case " $devs " in
+                *" $dev "*) ;;
+                *) devs="${devs}${devs:+ }$dev" ;;
+            esac
+        fi
+    done
+
+    echo "${devs:-br-lan}"
+}
+
+render_nft_lan_filter() {
+    local devs="$1"
+    set -- $devs
+    local count=$#
+    if [ "$count" -le 1 ]; then
+        echo "        iifname != \"$1\" return"
+    else
+        local set_str=""
+        for d in "$@"; do
+            [ -n "$set_str" ] && set_str="${set_str}, "
+            set_str="${set_str}\"${d}\""
+        done
+        echo "        iifname != { $set_str } return"
+    fi
+}
+
+LAN_DEVICES=$(get_lan_devices)
+LAN_NFT_FILTER=$(render_nft_lan_filter "$LAN_DEVICES")
 
 if [ "$TCP_ENABLED" = "1" ]; then
     cat >> "$OUTPUT_FILE" << EOF
     chain LAN_MARKFLOW_TCP {
         type filter hook prerouting priority mangle; policy accept;
-        iifname != "$INTERFACE" return
+$LAN_NFT_FILTER
         fib daddr type { unspec, local, anycast, multicast } counter return
 EOF
     if [ -n "$PROXY_SERVER_IP_ADDR" ]; then
@@ -201,7 +250,7 @@ if [ "$UDP_ENABLED" = "1" ]; then
     cat >> "$OUTPUT_FILE" << EOF
     chain LAN_MARKFLOW_UDP {
         type filter hook prerouting priority mangle; policy accept;
-        iifname != "$INTERFACE" return
+$LAN_NFT_FILTER
         fib daddr type { unspec, local, anycast, multicast } counter return
 EOF
     if [ -n "$PROXY_SERVER_IP_ADDR" ]; then

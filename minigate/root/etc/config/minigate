@@ -1,0 +1,16 @@
+config global 'global'
+	option enabled '0'
+	option ipv6_listen '0'
+	option http_redirect '0'
+
+config acme 'acme'
+	option enabled '0'
+	option email ''
+	option staging '1'
+	option key_type 'ec-256'
+
+config login_guard 'login_guard'
+	option enabled '0'
+	option threshold '3'
+	option window '600'
+	option bantime '43200'

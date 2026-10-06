@@ -1,0 +1,79 @@
+#!/bin/sh /etc/rc.common
+START=99
+STOP=10
+
+# === 启动登录防护 watcher（独立子进程） ===
+start_login_guard() {
+    local lg_en=$(uci -q get minigate.login_guard.enabled)
+    [ "$lg_en" = "1" ] || return 0
+    # 已在跑则跳过
+    pgrep -f '/usr/lib/minigate/login_guard.sh run' >/dev/null 2>&1 && return 0
+    /bin/sh /usr/lib/minigate/login_guard.sh run >/dev/null 2>&1 &
+    logger -t minigate "登录防护已启动"
+}
+
+stop_login_guard() {
+    local pids
+    pids=$(pgrep -f '/usr/lib/minigate/login_guard.sh run' 2>/dev/null)
+    [ -n "$pids" ] && kill $pids >/dev/null 2>&1
+    sleep 1
+    pids=$(pgrep -f '/usr/lib/minigate/login_guard.sh run' 2>/dev/null)
+    [ -n "$pids" ] && kill -9 $pids >/dev/null 2>&1
+    # 移除 nft 中的 drop 规则（保留 set，让现有封禁继续生效到自然过期）
+    local handle=$(nft -a list chain inet fw4 input 2>/dev/null | grep "minigate-login-guard" | grep -oE 'handle [0-9]+' | awk '{print $2}')
+    [ -n "$handle" ] && nft delete rule inet fw4 input handle "$handle" 2>/dev/null
+    logger -t minigate "登录防护已停止"
+}
+
+start() {
+    # === 登录防护可独立启用，与 minigate 主开关无关 ===
+    start_login_guard
+
+    local en=$(uci -q get minigate.global.enabled)
+    [ "$en" = "1" ] || { logger -t minigate "主功能未启用（仅登录防护可能已运行）"; return 0; }
+    logger -t minigate "启动..."
+    /bin/sh /usr/lib/minigate/proxy.sh start
+    /bin/sh /usr/lib/minigate/ddns.sh force &
+    # 设置 cron
+    sed -i '/minigate/d' /etc/crontabs/root 2>/dev/null
+    echo "*/5 * * * * /bin/sh /usr/lib/minigate/ddns.sh" >> /etc/crontabs/root
+    echo "0 3 * * * /bin/sh /usr/lib/minigate/acme.sh renew" >> /etc/crontabs/root
+    echo "*/2 * * * * /bin/sh /usr/lib/minigate/geofence.sh scan" >> /etc/crontabs/root
+    /etc/init.d/cron restart 2>/dev/null
+    logger -t minigate "已启动"
+}
+
+stop() {
+    logger -t minigate "停止所有服务..."
+    # 停止反向代理
+    /bin/sh /usr/lib/minigate/proxy.sh stop
+    sleep 1
+    # 移除所有 cron 定时任务（DDNS + ACME）
+    sed -i '/minigate/d' /etc/crontabs/root 2>/dev/null
+    /etc/init.d/cron restart 2>/dev/null
+    # 清除 DDNS 运行状态
+    local sections=$(uci -q show minigate | grep '=ddns$' | cut -d. -f2 | cut -d= -f1)
+    for sec in $sections; do
+        uci -q set minigate.${sec}.status="stopped"
+        uci -q set minigate.${sec}.status_msg="已停止"
+        uci -q set minigate.${sec}.next_sync=""
+    done
+    uci commit minigate
+    # 停止登录防护
+    stop_login_guard
+    logger -t minigate "已停止（DDNS定时/ACME续期/反代/登录防护 全部关闭）"
+}
+
+restart() {
+    stop
+    sleep 1
+    start
+}
+
+reload() {
+    /bin/sh /usr/lib/minigate/proxy.sh reload
+    /bin/sh /usr/lib/minigate/ddns.sh force
+    # 登录防护配置改了也需要重启 watcher
+    stop_login_guard
+    start_login_guard
+}

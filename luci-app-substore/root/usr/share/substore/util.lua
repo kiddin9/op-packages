@@ -1,6 +1,8 @@
 -- util.lua — 通用工具（纯 Lua 5.1，无外部依赖）
 -- luci-app-substore
 
+local msg = require("substore.msg")
+
 local M = {}
 
 local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -654,17 +656,23 @@ function M.human_bytes(n)
 	return s .. units[i]
 end
 
--- 秒数 → 可读时长（天/小时/分钟），如 10天、8小时
+-- 秒数 → 可读时长（天/小时/分钟）。
+--
+-- 返回的是**语言中立的组合消息**（数字 + 单位 msgid），由显示边界逐段翻译
+-- （见 msg.lua）。本模块不能 require("luci.i18n")：substore-cron.sh 会在没有
+-- LuCI 环境的独立 lua 进程里跑 core.sync。
+-- 单位 msgid 带前导空格：英文得到 "3 days"，中文 msgstr 去掉那个空格即 "3天"，
+-- 两边都不必为对方将就。
 function M.human_duration(secs)
 	secs = tonumber(secs) or 0
-	if secs <= 0 then return "已过期" end
+	if secs <= 0 then return "Expired" end
 	local d = secs / 86400
-	if d >= 1 then return string.format("%d天", math.floor(d)) end
+	if d >= 1 then return msg.compose(math.floor(d), " days") end
 	local h = secs / 3600
-	if h >= 1 then return string.format("%d小时", math.floor(h)) end
+	if h >= 1 then return msg.compose(math.floor(h), " hours") end
 	local m = secs / 60
-	if m >= 1 then return string.format("%d分钟", math.floor(m)) end
-	return "不足1分钟"
+	if m >= 1 then return msg.compose(math.floor(m), " minutes") end
+	return "Less than a minute"
 end
 
 -- 为一组节点生成唯一 tag（供 sing-box / Xray 完整配置使用）。

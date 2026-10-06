@@ -17,7 +17,7 @@
 		<title>{{ striptags(`${boardinfo.hostname ?? '?'}${node?.title ? ` | ${_(node.title)}` : ''}`) }}</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta name="darkreader-lock">
-		<link rel="stylesheet" href="{{ media }}/cascade.css?v=0.9.0">
+		<link rel="stylesheet" href="{{ media }}/cascade.css?v=0.10.1">
 		<link rel="icon" href="/luci-static/bootstrap/logo.svg" sizes="any">
 		{% if (node?.css): %}
 		<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">
@@ -28,7 +28,7 @@
 		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
 		<script src="{{ resource }}/cbi.js"></script>
 	</head>
-	<body data-rmm-icons="{{ media }}/icons.svg?v=0.9.0" class="lang_{{ dispatcher.lang }}" data-rmm-route="{{ entityencode(dispatcher.build_url(...ctx.path), true) }}" data-page="{{ entityencode(join('-', length(ctx.request_path) ? ctx.request_path : ctx.path), true) }}">
+	<body data-rmm-icons="{{ media }}/icons.svg?v=0.10.1" class="lang_{{ dispatcher.lang }}" data-rmm-route="{{ entityencode(dispatcher.build_url(...ctx.path), true) }}" data-page="{{ entityencode(join('-', length(ctx.request_path) ? ctx.request_path : ctx.path), true) }}">
 		{% if (!blank_page): %}
 		<header>
 			<a class="brand" href="{{ dispatcher.build_url('admin') }}">RMM <span class="rmm-brand-separator">/</span> <span class="rmm-brand-host">{{ striptags(boardinfo.hostname ?? '?') }}</span></a>

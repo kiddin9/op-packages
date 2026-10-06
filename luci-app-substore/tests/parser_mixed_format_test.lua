@@ -142,20 +142,20 @@ local function mixed(name, content, want_a, want_b)
 	local res, err = parser.parse_local(content, "text")
 	check("B " .. name .. " rejected", res == nil)
 	check("B " .. name .. " error is explicit",
-		type(err) == "string" and err:find("混用了多种格式", 1, true) ~= nil)
+		type(err) == "string" and err:find("Mixed formats in one text", 1, true) ~= nil)
 	-- 错误信息必须点名两种格式，否则用户不知道要拆成哪两份
 	check("B " .. name .. " names both formats",
 		type(err) == "string" and err:find(want_a, 1, true) ~= nil
 			and err:find(want_b, 1, true) ~= nil)
 end
 
-mixed("uri + wireguard conf", URI .. "\n" .. WG_CONF, "URI 链接", "WireGuard .conf")
-mixed("wireguard conf + uri", WG_CONF .. "\n" .. URI, "URI 链接", "WireGuard .conf")
-mixed("uri + json object", URI .. "\n" .. JSON_OBJ, "URI 链接", "JSON")
-mixed("json object + uri", JSON_OBJ .. "\n" .. URI, "URI 链接", "JSON")
-mixed("uri + json array", URI .. "\n" .. JSON_ARRAY, "URI 链接", "JSON")
-mixed("uri + clash yaml", URI .. "\n" .. CLASH_YAML, "URI 链接", "Clash YAML")
-mixed("uri + surge", URI .. "\n" .. SURGE, "URI 链接", "Surge/Loon 配置")
+mixed("uri + wireguard conf", URI .. "\n" .. WG_CONF, "URI link", "WireGuard .conf")
+mixed("wireguard conf + uri", WG_CONF .. "\n" .. URI, "URI link", "WireGuard .conf")
+mixed("uri + json object", URI .. "\n" .. JSON_OBJ, "URI link", "JSON")
+mixed("json object + uri", JSON_OBJ .. "\n" .. URI, "URI link", "JSON")
+mixed("uri + json array", URI .. "\n" .. JSON_ARRAY, "URI link", "JSON")
+mixed("uri + clash yaml", URI .. "\n" .. CLASH_YAML, "URI link", "Clash YAML")
+mixed("uri + surge", URI .. "\n" .. SURGE, "URI link", "Surge/Loon config")
 
 -- 报错不能是「静默丢弃」的另一种说法：绝不能返回部分节点
 local resB = parser.parse_local(URI .. "\n" .. WG_CONF, "text")

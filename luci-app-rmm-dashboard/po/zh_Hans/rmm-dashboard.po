@@ -538,3 +538,150 @@ msgstr "没有 FDB 观测记录"
 
 msgid "FDB observations"
 msgstr "FDB 观测记录"
+
+msgid "+%s IP"
+msgstr "+%s IP"
+
+msgid "Name source"
+msgstr "名称来源"
+
+msgid "Matched by"
+msgstr "匹配依据"
+
+msgid "IPv6 neighbor record"
+msgstr "IPv6 邻居记录"
+
+msgid "Edit display name"
+msgstr "编辑显示名称"
+
+msgid "Display name"
+msgstr "设备名称"
+
+msgid "Manual name"
+msgstr "手动名称"
+
+msgid "Reverse DNS"
+msgstr "反向 DNS"
+
+msgid "Name follows this MAC; DHCP and network settings are unchanged."
+msgstr "名称绑定到此 MAC；DHCP 和网络设置保持不变。"
+
+msgid "Save name"
+msgstr "保存名称"
+
+msgid "Use automatic name"
+msgstr "使用自动名称"
+
+msgid "Saving name"
+msgstr "正在保存名称"
+
+msgid "Name saved"
+msgstr "名称已保存"
+
+msgid "Unable to save name"
+msgstr "无法保存名称"
+
+msgid "Name storage unavailable"
+msgstr "名称存储不可用"
+
+msgid "Checking permission"
+msgstr "正在检查权限"
+
+msgid "Read-only access"
+msgstr "只读权限"
+
+msgid "Invalid display name"
+msgstr "无效的设备名称"
+
+msgid "DNS names"
+msgstr "DNS 名称"
+
+msgid "Resolve unnamed clients through the router DNS."
+msgstr "通过路由器 DNS 解析未命名客户端。"
+
+msgid "DNS disabled"
+msgstr "DNS 已关闭"
+
+msgid "Looking up DNS names"
+msgstr "正在查询 DNS 名称"
+
+msgid "DNS names unavailable"
+msgstr "DNS 名称不可用"
+
+msgid "DNS cache updated"
+msgstr "DNS 缓存已更新"
+
+msgid "Name changed elsewhere; reopen the editor."
+msgstr "名称已在其他会话更改；请重新打开编辑器。"
+
+msgid "Vendor"
+msgstr "制造商"
+
+msgid "Locally administered MAC"
+msgstr "本地管理的 MAC"
+
+msgid "Unknown vendor"
+msgstr "未知制造商"
+
+msgid "Local vendor database unavailable"
+msgstr "本地制造商数据库不可用"
+
+msgid "Client observation history"
+msgstr "客户端观察历史"
+
+msgid "History covers this open page; a record does not prove an active connection."
+msgstr "历史仅涵盖当前打开的页面；记录不能证明连接活跃。"
+
+msgid "First observed"
+msgstr "首次观察"
+
+msgid "Last observed"
+msgstr "最后观察"
+
+msgid "First observation"
+msgstr "首次观察"
+
+msgid "Observed again"
+msgstr "再次观察到"
+
+msgid "IP addresses changed"
+msgstr "IP 地址已改变"
+
+msgid "Connection path changed"
+msgstr "连接路径已改变"
+
+msgid "No longer reported"
+msgstr "数据源不再报告"
+
+msgid "Observation history"
+msgstr "观察历史"
+
+msgid "No observations yet"
+msgstr "尚无观察"
+
+msgid "Client traffic"
+msgstr "客户端流量"
+
+msgid "Received / sent in accounting period"
+msgstr "统计周期接收 / 发送"
+
+msgid "Accounting average RX / TX"
+msgstr "统计平均 RX / TX"
+
+msgid "nlbwmon not installed"
+msgstr "未安装 nlbwmon"
+
+msgid "nlbwmon is not running"
+msgstr "nlbwmon 未运行"
+
+msgid "Traffic accounting unavailable"
+msgstr "流量统计不可用"
+
+msgid "No traffic record"
+msgstr "无流量记录"
+
+msgid "Accounting may omit offloaded and bridged traffic."
+msgstr "统计可能不包含硬件卸载和桥接流量。"
+
+msgid "More clients"
+msgstr "所有客户端"
