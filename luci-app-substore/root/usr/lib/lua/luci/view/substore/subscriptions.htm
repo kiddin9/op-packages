@@ -4,6 +4,7 @@
 <%
 	-- §18：控制器把失败原因放在 ?err= 上带回来，这里渲染成可见的提示。
 	-- pcdata 转义：err 可能包含用户提交的内容，不能直接当 HTML 输出。
+	-- 控制器已经翻译过 flash_err（它是 ?err= 这条链路的边界），这里不再翻。
 	local flash_err = require("luci.http").formvalue("err")
 	if flash_err and flash_err ~= "" then
 %>
@@ -48,6 +49,10 @@
 <%
 	local core = require("substore.core")
 	local output = require("substore.output")
+	-- meta.error 是**语言中立的 msgid**（可能还是 msg.compose 拼出来的组合消息），
+	-- 翻译在这里做 —— 后端模块不能 require("luci.i18n")，见 msg.lua 的文件头。
+	local msg = require("substore.msg")
+	local function tmsg(s) return msg.translate(s, luci.i18n.translate) end
 	local http_env = require("luci.http")
 	local items = core.list()
 	local base = luci.dispatcher.build_url("substore", "download")
@@ -63,7 +68,7 @@
 		local status_text = luci.i18n.translate("Pending")
 		if it.error and it.error ~= "" then
 			status_color = "#cc0000"
-			status_text = it.error
+			status_text = tmsg(it.error)
 		elseif it.node_count and it.node_count > 0 then
 			status_color = "#006600"
 			status_text = luci.i18n.translate("OK")

@@ -51,7 +51,8 @@ check("list returns empty array on corruption", type(arr) == "table" and #arr ==
 -- 关键：写入路径必须拒绝，而不是在空表上追加后整表写回
 local id2, aerr = core.add("订阅二", "http://example.com/b")
 check("add refuses on corruption", id2 == nil)
-check("add returns corruption error", aerr ~= nil and aerr:find("损坏", 1, true) ~= nil)
+check("add returns corruption error",
+	aerr ~= nil and aerr:find("corrupted", 1, true) ~= nil)
 
 local id3, lerr2 = core.add_local("本地订阅", "vmess://x")
 check("add_local refuses on corruption", id3 == nil and lerr2 ~= nil)

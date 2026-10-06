@@ -2,6 +2,10 @@
 <%
 	local http = require("luci.http")
 	local core = require("substore.core")
+	-- meta.error 是语言中立的 msgid（可能是组合消息），翻译在视图侧做 ——
+	-- 后端模块不能 require("luci.i18n")，见 msg.lua 的文件头。
+	local msg = require("substore.msg")
+	local function tmsg(s) return msg.translate(s, luci.i18n.translate) end
 	local id = http.formvalue("id") or ""
 	local it = id ~= "" and core.get(id) or nil
 	local is_edit = it ~= nil
@@ -113,7 +117,7 @@
 			<span style="color:#808080">
 				<%:Nodes:%> <%=it.node_count or 0%>
 				| <%:Last updated:%> <%=os.date("%Y-%m-%d %H:%M", it.last_update)%>
-				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=luci.util.pcdata(it.error)%></span><% end %>
+				<% if it.error and it.error ~= "" then %> | <span style="color:#cc0000"><%=luci.util.pcdata(tmsg(it.error))%></span><% end %>
 			</span>
 		</div>
 		<% end %>

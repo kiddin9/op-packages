@@ -532,3 +532,150 @@ msgstr "Наблюдений FDB нет"
 
 msgid "FDB observations"
 msgstr "По данным FDB"
+
+msgid "+%s IP"
+msgstr "+%s IP"
+
+msgid "Name source"
+msgstr "Источник имени"
+
+msgid "Matched by"
+msgstr "Сопоставлено по"
+
+msgid "IPv6 neighbor record"
+msgstr "IPv6-запись NDP"
+
+msgid "Edit display name"
+msgstr "Изменить имя"
+
+msgid "Display name"
+msgstr "Имя устройства"
+
+msgid "Manual name"
+msgstr "Ручное имя"
+
+msgid "Reverse DNS"
+msgstr "Обратный DNS"
+
+msgid "Name follows this MAC; DHCP and network settings are unchanged."
+msgstr "Имя привязано к MAC. Настройки DHCP и сети не меняются."
+
+msgid "Save name"
+msgstr "Сохранить имя"
+
+msgid "Use automatic name"
+msgstr "Использовать автоматическое имя"
+
+msgid "Saving name"
+msgstr "Сохранение имени…"
+
+msgid "Name saved"
+msgstr "Имя сохранено"
+
+msgid "Unable to save name"
+msgstr "Не удалось сохранить имя"
+
+msgid "Name storage unavailable"
+msgstr "Хранилище имён недоступно"
+
+msgid "Checking permission"
+msgstr "Проверка доступа…"
+
+msgid "Read-only access"
+msgstr "Доступ только для чтения"
+
+msgid "Invalid display name"
+msgstr "Недопустимое имя устройства"
+
+msgid "DNS names"
+msgstr "Имена из DNS"
+
+msgid "Resolve unnamed clients through the router DNS."
+msgstr "Определять имена неизвестных клиентов через DNS роутера."
+
+msgid "DNS disabled"
+msgstr "DNS выключен"
+
+msgid "Looking up DNS names"
+msgstr "Поиск имён в DNS…"
+
+msgid "DNS names unavailable"
+msgstr "Имена из DNS недоступны"
+
+msgid "DNS cache updated"
+msgstr "Кэш DNS обновлён"
+
+msgid "Name changed elsewhere; reopen the editor."
+msgstr "Имя изменено в другой сессии. Откройте редактор заново."
+
+msgid "Vendor"
+msgstr "Производитель"
+
+msgid "Locally administered MAC"
+msgstr "Локально назначенный MAC"
+
+msgid "Unknown vendor"
+msgstr "Производитель неизвестен"
+
+msgid "Local vendor database unavailable"
+msgstr "Локальная база производителей недоступна"
+
+msgid "Client observation history"
+msgstr "История наблюдений клиентов"
+
+msgid "History covers this open page; a record does not prove an active connection."
+msgstr "История собирается, пока открыта страница. Наличие записи не подтверждает подключение."
+
+msgid "First observed"
+msgstr "Впервые замечен"
+
+msgid "Last observed"
+msgstr "Последнее наблюдение"
+
+msgid "First observation"
+msgstr "Первое наблюдение"
+
+msgid "Observed again"
+msgstr "Замечен снова"
+
+msgid "IP addresses changed"
+msgstr "Изменились IP-адреса"
+
+msgid "Connection path changed"
+msgstr "Изменился путь подключения"
+
+msgid "No longer reported"
+msgstr "Больше не отображается в источниках"
+
+msgid "Observation history"
+msgstr "История наблюдений"
+
+msgid "No observations yet"
+msgstr "Наблюдений пока нет"
+
+msgid "Client traffic"
+msgstr "Трафик клиента"
+
+msgid "Received / sent in accounting period"
+msgstr "Принято / отправлено за период учёта"
+
+msgid "Accounting average RX / TX"
+msgstr "Средняя скорость учёта RX / TX"
+
+msgid "nlbwmon not installed"
+msgstr "nlbwmon не установлен"
+
+msgid "nlbwmon is not running"
+msgstr "nlbwmon не запущен"
+
+msgid "Traffic accounting unavailable"
+msgstr "Учёт трафика недоступен"
+
+msgid "No traffic record"
+msgstr "Нет записи о трафике"
+
+msgid "Accounting may omit offloaded and bridged traffic."
+msgstr "Учёт может не включать трафик аппаратного ускорения и мостов."
+
+msgid "More clients"
+msgstr "Все клиенты"

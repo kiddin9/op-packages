@@ -1045,7 +1045,7 @@ report_wan_log_after_commit() {
 			return 0
 		fi
 		if [ "$_drop_baseline" -eq 1 ]; then
-			drop_wan_log_baseline_after_disable "$zone" "$WAN_LOG_COMMIT_GENERATION"
+			drop_wan_log_baseline_after_disable "$3" "$WAN_LOG_COMMIT_GENERATION"
 		fi
 		wan_log_error_json "$zone_json" firewall_commit_raced
 		return 0

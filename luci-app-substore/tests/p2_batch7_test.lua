@@ -10,6 +10,7 @@ local util = require("substore.util")
 local node = require("substore.node")
 local output = require("substore.output")
 local probe = require("substore.probe")
+local msg = require("substore.msg")
 
 local passed, failed = 0, 0
 local function check(name, cond)
@@ -209,15 +210,19 @@ check("placeholder rule accepted", validate_rename_map("{server}_{port}_{proto}"
 
 local ok_bad, err_bad = validate_rename_map("[abc -> x")
 check("invalid regex rejected", ok_bad == false)
+-- 报错是 msg.compose 拼出来的**组合消息**（后端不能 require luci.i18n，见 msg.lua）：
+-- 行号是独立一段，整串直接 find 会跨不过分隔符。按显示边界的方式还原成用户看到的文案再断言。
+local function rendered(s) return msg.translate(s, function(k) return k end) end
 check("invalid regex error names the line",
-	type(err_bad) == "string" and err_bad:find("第 1 行", 1, true) ~= nil)
+	type(err_bad) == "string" and rendered(err_bad):find("line 1", 1, true) ~= nil)
 check("invalid regex error quotes the pattern",
 	type(err_bad) == "string" and err_bad:find("[abc", 1, true) ~= nil)
 
 -- 行号要指向真正出错的那一行，而不是恒为 1
 local ok_multi, err_multi = validate_rename_map("good -> ok\n[bad -> x\nlast -> y")
 check("line number points at the bad rule",
-	ok_multi == false and type(err_multi) == "string" and err_multi:find("第 2 行", 1, true) ~= nil)
+	ok_multi == false and type(err_multi) == "string"
+		and rendered(err_multi):find("line 2", 1, true) ~= nil)
 
 -- 校验必须覆盖**每一条**备选分支（split_alternatives 展开后的每一项）
 check("invalid alternative rejected", validate_rename_map("[a|b -> x") == false)

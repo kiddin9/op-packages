@@ -4,6 +4,10 @@
 	local core = require("substore.core")
 	local output = require("substore.output")
 	local util = require("substore.util")
+	-- output.generate 的 err 是语言中立的 msgid（可能是组合消息），翻译在视图侧做 ——
+	-- 后端模块不能 require("luci.i18n")，见 msg.lua 的文件头。
+	local msg = require("substore.msg")
+	local function tmsg(s) return msg.translate(s, luci.i18n.translate) end
 	local ctx = luci.dispatcher.context or {}
 	local q = ctx.query or {}
 	local id = http.formvalue("id") or q.id or ""
@@ -41,7 +45,7 @@
 </form>
 
 <% if err then %>
-<div style="color:#cc0000"><%=luci.util.pcdata(err)%></div>
+<div style="color:#cc0000"><%=luci.util.pcdata(tmsg(err))%></div>
 <% else %>
 <textarea id="out_text" readonly style="width:100%;height:300px;font-family:monospace"><%=luci.util.pcdata(out)%></textarea>
 <div style="margin-top:0.5em">

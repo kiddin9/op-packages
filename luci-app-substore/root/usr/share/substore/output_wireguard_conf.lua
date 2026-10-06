@@ -3,6 +3,7 @@
 -- 与 parser.parse_wireguard_conf 互为逆操作：导入解析 [Interface] / [Peer]，此处按同格式写回。
 
 local util = require("substore.util")
+local msg = require("substore.msg")
 
 local M = {}
 
@@ -140,12 +141,11 @@ function M.generate(nodes, options)
 	end
 	if #wg == 0 then
 		-- 明确报错优于返回空文件：用户能知道是"没有 WireGuard 节点"而非订阅坏了
-		return nil, "没有可导出的 WireGuard 节点"
+		return nil, "No WireGuard node to export"
 	end
 	if #wg > 1 then
-		return nil, string.format(
-			"WireGuard .conf 每个文件只能包含一条隧道，当前有 %d 个 WireGuard 节点；请只导出单个节点",
-			#wg)
+		return nil, msg.compose("A WireGuard .conf file can hold only one tunnel, but there are ", #wg,
+			" WireGuard nodes; export a single node instead")
 	end
 
 	local n = wg[1]
@@ -155,7 +155,7 @@ function M.generate(nodes, options)
 	-- 客户端更是无法导入。宁可不导出，也不要产出这种「看起来成功」的残缺文件。
 	local priv = n["private-key"] or n.private_key
 	if priv == nil or priv == "" then
-		return nil, "该 WireGuard 节点没有私钥 (private-key)，无法导出 .conf"
+		return nil, "This WireGuard node has no private key (private-key), cannot export .conf"
 	end
 
 	-- 注释行也必须压成单行：节点名来自订阅（不可信），含换行时会注入出真正的

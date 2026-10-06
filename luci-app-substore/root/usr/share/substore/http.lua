@@ -2,6 +2,7 @@
 -- luci-app-substore
 
 local util = require("substore.util")
+local msg = require("substore.msg")
 
 local M = {}
 
@@ -125,9 +126,9 @@ end
 function M.parse_url(url)
 	url = util.trim(url or "")
 	local scheme, rest = url:match("^([%w%+%-%.]+)://(.*)$")
-	if not scheme then return nil, "无效 URL" end
+	if not scheme then return nil, "Invalid URL" end
 	scheme = scheme:lower()
-	if scheme ~= "http" and scheme ~= "https" then return nil, "仅支持 http/https" end
+	if scheme ~= "http" and scheme ~= "https" then return nil, "Only http/https is supported" end
 	-- 主机部分到第一个 / ? # 为止（RFC 3986）。只剥 "/" 是不够的：
 	-- "http://127.0.0.1?a=1" 会剩下 "127.0.0.1?a=1"，它既不是合法主机名也不是
 	-- 数值型 IPv4，DNS 必然解析不出来，能不能拦住就全看本机有没有解析能力
@@ -147,7 +148,7 @@ function M.parse_url(url)
 	local host, port
 	if hostport:sub(1, 1) == "[" then
 		local close = hostport:find("]", 1, true)
-		if not close then return nil, "无效主机名" end
+		if not close then return nil, "Invalid hostname" end
 		host = hostport:sub(2, close - 1)
 		port = hostport:sub(close + 1):match("^:(%d+)$") or (scheme == "https" and "443" or "80")
 	else
@@ -158,13 +159,13 @@ function M.parse_url(url)
 			host, port = hostport, (scheme == "https" and "443" or "80")
 		end
 	end
-	if not host or host == "" then return nil, "无效主机名" end
+	if not host or host == "" then return nil, "Invalid hostname" end
 	-- 端口范围校验：`(%d+)` 只保证是数字，`http://host:99999/` 与 `:0` 都能通过，
 	-- 而这两个端口连不出去 —— 下载必然失败，却会先经过一轮 DNS/SSRF 检查，
 	-- 报出来的是「连接失败」这种指错方向的原因。parse_proxy 早已做了同样的校验，
 	-- 这里对齐。
 	local pn = tonumber(port)
-	if not pn or pn < 1 or pn > 65535 then return nil, "端口无效" end
+	if not pn or pn < 1 or pn > 65535 then return nil, "Invalid port" end
 	return { scheme = scheme, host = host, port = tostring(pn) }
 end
 
@@ -182,8 +183,8 @@ function M.validate_user_agent(ua)
 	if ua == nil then return "" end
 	local s = util.trim(tostring(ua))
 	if s == "" then return "" end
-	if #s > 256 then return nil, "User-Agent 过长（最多 256 字符）" end
-	if s:find("%c") then return nil, "User-Agent 不能包含控制字符" end
+	if #s > 256 then return nil, "User-Agent is too long (at most 256 characters)" end
+	if s:find("%c") then return nil, "User-Agent must not contain control characters" end
 	return s
 end
 
@@ -191,11 +192,11 @@ function M.parse_proxy(p)
 	local s = util.trim(p or "")
 	if s == "" then return "" end
 	local scheme, rest = s:match("^(%a[%w]*)://(.*)$")
-	if not scheme then return nil, "代理格式无效" end
+	if not scheme then return nil, "Invalid proxy format" end
 	scheme = scheme:lower()
 	if scheme ~= "http" and scheme ~= "https" and scheme ~= "socks4"
 		and scheme ~= "socks5" and scheme ~= "socks5h" then
-		return nil, "不支持的代理协议: " .. scheme
+		return nil, msg.join("Unsupported proxy protocol: ", scheme)
 	end
 	local userinfo, hostport = "", rest:gsub("/.*$", "")
 	local at = hostport:find("@", 1, true)
@@ -204,7 +205,7 @@ function M.parse_proxy(p)
 		hostport = hostport:sub(at + 1)
 	end
 	if userinfo ~= "" and not userinfo:match("^[%w%.%-_:]+$") then
-		return nil, "代理用户名/密码含非法字符"
+		return nil, "Proxy username/password contains invalid characters"
 	end
 	local host, port
 	local bracketed = hostport:sub(1, 1) == "["
@@ -216,18 +217,18 @@ function M.parse_proxy(p)
 		if h then host, port = h, prt else host = hostport end
 	end
 	if not host or host == "" or not host:match("^[%w%.%-%:]+$") then
-		return nil, "代理主机无效"
+		return nil, "Invalid proxy host"
 	end
 	-- 未加方括号的 IPv6 字面量：RFC 3986 要求 IPv6 主机必须写成 [addr]。
 	-- 没有方括号时 `::1:1080` 既可能是「地址 ::1 + 端口 1080」，也可能就是
 	-- 地址 `::1:1080` —— 无法判定。与其猜一个再拼出一条 curl -x 解析不了的
 	-- 代理串（静默失效），不如明确报错让用户补上方括号。
 	if not bracketed and select(2, host:gsub(":", "")) > 1 then
-		return nil, "IPv6 代理地址必须加方括号，例如 http://[::1]:1080"
+		return nil, "An IPv6 proxy address must be bracketed, e.g. http://[::1]:1080"
 	end
 	if port then
 		port = tonumber(port)
-		if not port or port < 1 or port > 65535 then return nil, "代理端口无效" end
+		if not port or port < 1 or port > 65535 then return nil, "Invalid proxy port" end
 	end
 	-- IPv6 字面量必须把方括号拼回去：上面为做主机校验把 [::1] 拆成了 ::1，
 	-- 直接拼会得到 `http://::1:1080` —— 冒号歧义，curl -x 与 http_proxy= 都
@@ -324,33 +325,33 @@ local LOOPBACK_NAMES = {
 --   调用方（下载层）据此在连接建立后强制复核对端地址，见 verify_peer_ip。
 function M.check_public(host)
 	host = util.trim(host or ""):lower()
-	if host == "" then return false, "空主机名" end
+	if host == "" then return false, "Empty hostname" end
 	-- userinfo 应已被 parse_url 剥掉；这里再挡一次。
 	-- "evil@127.0.0.1" 不是合法主机名，DNS 解析必然失败，而解析失败是放行的
 	-- （fail-open），于是会绕过检查 —— 实测该写法确实能连到 127.0.0.1。
-	if host:find("@", 1, true) then return false, "主机名含非法字符 @" end
+	if host:find("@", 1, true) then return false, "Hostname contains the invalid character @" end
 	-- 空白 / 百分号编码：主机名里都不合法（"127.0.0.1%00.example.com" 这类
 	-- 截断写法当前版本的 curl 会直接判 URL 非法，但不同版本行为不一，直接拒绝更稳）
-	if host:find("[%s%%]") then return false, "主机名含非法字符" end
+	if host:find("[%s%%]") then return false, "Hostname contains invalid characters" end
 	-- 去掉尾部点："localhost." 与 "localhost" 指向同一台机器，
 	-- 不归一会被当成普通域名交给 DNS，解析失败时即放行。
 	host = host:gsub("%.$", "")
-	if host == "" then return false, "空主机名" end
+	if host == "" then return false, "Empty hostname" end
 
 	if host:find(":", 1, true) then
-		if not looks_like_ipv6(host) then return false, "无效主机名" end
-		if is_private_ipv6(host) then return false, "目标为内网/保留地址" end
+		if not looks_like_ipv6(host) then return false, "Invalid hostname" end
+		if is_private_ipv6(host) then return false, "Target is a private/reserved address" end
 		return true
 	end
 
 	-- 数值型 IPv4（十进制 / 八进制 / 十六进制 / 短写）按 inet_aton 语义归一后再判私网
 	local norm = normalize_ipv4(host)
 	if norm then
-		if is_private_ipv4(norm) then return false, "目标为内网/保留地址" end
+		if is_private_ipv4(norm) then return false, "Target is a private/reserved address" end
 		return true
 	end
 
-	if LOOPBACK_NAMES[host] then return false, "目标为 localhost" end
+	if LOOPBACK_NAMES[host] then return false, "Target is localhost" end
 
 	local ips, have_resolver = resolve(host)
 	if not ips then
@@ -362,7 +363,7 @@ function M.check_public(host)
 			-- 只要本机这一刻解析不出来（解析器临时故障、超时），就绕过了上面
 			-- 全部检查被放行，而 curl 自己仍会把它解析到 127.0.0.1 并连上去。
 			-- 检查的强度不能低于被检查者。
-			return false, "无法解析目标主机名"
+			return false, "Cannot resolve the target hostname"
 		end
 		-- 本机连一个解析手段都没有（nixio 不可用，且没有 nslookup）。
 		--
@@ -376,12 +377,12 @@ function M.check_public(host)
 		-- 实际对端地址（见 verify_peer_ip）。那才是真正连上去的那个 IP，
 		-- 比预检更贴近事实，顺带免疫「预检时解析到公网、连接时解析到内网」的
 		-- DNS rebinding。
-		return true, "本机无 DNS 解析能力，改由连接时校验对端地址", true
+		return true, "No local DNS resolution; the peer address will be verified at connect time", true
 	end
 	for _, ip in ipairs(ips) do
 		if not is_private(ip) then return true end
 	end
-	return false, "目标仅解析到内网/保留地址"
+	return false, "Target resolves only to private/reserved addresses"
 end
 
 -- ---------- 下载 ----------
@@ -444,9 +445,9 @@ function M.validate_redirect_chain(base_url, log)
 	for _, loc in ipairs(locations_from_log(log)) do
 		local next_url = resolve_url(base_url, loc)
 		local np = M.parse_url(next_url)
-		if not np then return false, "重定向目标无效: " .. tostring(loc) end
+		if not np then return false, msg.join("Invalid redirect target: ", loc) end
 		local ok, re = M.check_public(np.host)
-		if not ok then return false, "重定向目标不安全: " .. (re or "") end
+		if not ok then return false, msg.join("Unsafe redirect target: ", re or "") end
 	end
 	return true
 end
@@ -480,13 +481,13 @@ local function verify_peer_ip(ip, proxy, unverified)
 			-- 预检时本机就没有解析能力（check_public 放行了），现在连对端地址
 			-- 也拿不到 —— 这个请求从头到尾没有任何一处校验过目标，
 			-- 必须拒绝，否则「无法校验」就等于「放行」。
-			return false, "无法校验目标地址（本机无 DNS 解析能力，且未取得对端 IP）"
+			return false, "Cannot verify the target address (no local DNS resolution and no peer IP obtained)"
 		end
 		-- 有解析能力时预检已经查过一轮，这里无从复核不额外拒绝。
 		return true
 	end
 	if is_private(ip) then
-		return false, "目标实际连接到内网/保留地址 (" .. ip .. ")"
+		return false, msg.compose("Target actually connects to a private/reserved address (", ip, ")")
 	end
 	return true
 end
@@ -533,9 +534,9 @@ local function fetch_curl(url, parsed, opts)
 		local code, peer = raw:match("^(%d+)%s*(%S*)$")
 		if not code then code = raw end
 		if code == "" or code == "000" then
-			local msg = util.trim(util.read_file(errf) or "下载失败")
+			local errtext = util.trim(util.read_file(errf) or "Download failed")
 			cleanup()
-			return nil, msg
+			return nil, errtext
 		end
 		-- 只把 2xx 当成功。写成 [23] 会把 3xx 也当成功，于是重定向响应体（通常是空的
 		-- 或一段 HTML）被当成订阅内容存下去：已存的节点被清空、node_count 归 0，
@@ -549,12 +550,12 @@ local function fetch_curl(url, parsed, opts)
 			local size = util.file_size(tmp)
 			if size > max then
 				cleanup()
-				return nil, "响应超过大小限制 (" .. max .. " 字节)"
+				return nil, msg.compose("Response exceeds the size limit (", max, " bytes)")
 			end
 			local content = util.read_file(tmp)
 			local headers = read_headers(hdr)
 			cleanup()
-			if not content then return nil, "读取响应失败" end
+			if not content then return nil, "Failed to read the response" end
 			return content, headers
 		end
 		if code:match("^3%d%d$") then
@@ -569,27 +570,27 @@ local function fetch_curl(url, parsed, opts)
 			local loc = location_from_headers(hdr)
 			if not loc then
 				cleanup()
-				return nil, "重定向无 Location"
+				return nil, "Redirect without a Location header"
 			end
 			local next_url = resolve_url(cur, loc)
 			local np = M.parse_url(next_url)
 			if not np then
 				cleanup()
-				return nil, "重定向目标无效"
+				return nil, "Invalid redirect target"
 			end
 			local ok, re = M.check_public(np.host)
 			if not ok then
 				cleanup()
-				return nil, "重定向目标不安全: " .. (re or "")
+				return nil, msg.join("Unsafe redirect target: ", re or "")
 			end
 			cleanup()
 			cur = next_url
 		else
 			cleanup()
-			return nil, "HTTP 错误 " .. code
+			return nil, msg.join("HTTP error ", code)
 		end
 	end
-	return nil, "重定向次数过多"
+	return nil, "Too many redirects"
 end
 
 -- wget 后端的代理环境变量。busybox wget 只能通过 http_proxy/https_proxy 环境变量
@@ -600,8 +601,8 @@ function M.wget_proxy_env(proxy)
 	local scheme = tostring(proxy):match("^(%a[%w]*)://")
 	scheme = scheme and scheme:lower() or ""
 	if scheme ~= "http" and scheme ~= "https" then
-		return nil, "当前下载后端 (wget) 不支持 " .. string.upper(scheme) ..
-			" 代理，请安装 curl 或改用 http 代理"
+		return nil, msg.compose("The current download backend (wget) does not support ", string.upper(scheme),
+			" proxies; install curl or use an http proxy")
 	end
 	return "http_proxy=" .. util.shq(proxy) .. " https_proxy=" .. util.shq(proxy) .. " "
 end
@@ -614,7 +615,7 @@ local function fetch_wget(url, parsed, opts)
 	-- 于是在这条路径上，「预检放行」之后不存在任何一处校验 —— 等于没有 SSRF 防护。
 	-- 与 verify_peer_ip 的处置保持一致：校验不了就拒绝，而不是放行。
 	if opts.unverified then
-		return nil, "本机无 DNS 解析能力，wget 后端无法校验目标地址，已拒绝下载（安装 curl 后重试）"
+		return nil, "No local DNS resolution: the wget backend cannot verify the target address and refused the download (install curl and retry)"
 	end
 	local max, t = opts.max_size, opts.timeout
 	local proxy_env, perr = M.wget_proxy_env(opts.proxy)
@@ -645,15 +646,15 @@ local function fetch_wget(url, parsed, opts)
 		return nil, reason
 	end
 	local size = util.file_size(tmp)
-	if size > max then os.remove(tmp); return nil, "响应超过大小限制 (" .. max .. " 字节)" end
+	if size > max then os.remove(tmp); return nil, msg.compose("Response exceeds the size limit (", max, " bytes)") end
 	if not exit_ok then
 		os.remove(tmp)
-		return nil, "下载失败（wget 退出码非 0）"
+		return nil, "Download failed (wget exit code is non-zero)"
 	end
-	if size == 0 then os.remove(tmp); return nil, "下载失败或内容为空" end
+	if size == 0 then os.remove(tmp); return nil, "Download failed or the content is empty" end
 	local content = util.read_file(tmp)
 	os.remove(tmp)
-	if not content then return nil, "读取响应失败" end
+	if not content then return nil, "Failed to read the response" end
 	return content, {} -- wget 不捕获响应头（无 subscription-userinfo）
 end
 
@@ -670,13 +671,13 @@ function M.download(url, opts)
 	local max_size = opts.max_size or M.DEFAULT_MAX_SIZE
 	local timeout = opts.timeout or M.DEFAULT_TIMEOUT
 	local parsed = M.parse_url(url)
-	if not parsed then return nil, nil, "无效 URL" end
+	if not parsed then return nil, nil, "Invalid URL" end
 	local ua, uaerr = M.validate_user_agent(opts.user_agent)
 	if not ua then return nil, nil, uaerr end
 	local ok, reason, unverified = M.check_public(parsed.host)
 	if not ok then return nil, nil, reason end
 	local tool = detect_tool()
-	if not tool then return nil, nil, "无可用下载工具 (curl/wget)" end
+	if not tool then return nil, nil, "No download tool available (curl/wget)" end
 	local body, headers = fetch(tool, url, parsed, { max_size = max_size, timeout = timeout, proxy = opts.proxy,
 		user_agent = ua, unverified = unverified })
 	if not body then return nil, nil, headers end

@@ -1,6 +1,12 @@
 'use strict';
 import * as rtnl from 'rtnl';
 import { access } from 'fs';
+import { read_names, save_name } from '../../ucode/rmm-dashboard/names.uc';
+
+const names_file='/etc/rmm-dashboard/client-names.json';
+
+import { vendors_for, traffic_snapshot } from '../../ucode/rmm-dashboard/insights.uc';
+
 import { inventory } from '../../ucode/rmm-dashboard/clients.uc';
 
 function dump(command, family) {
@@ -11,6 +17,20 @@ function dump(command, family) {
 
 return {
     'rmm.dashboard': {
+        vendors: {
+            args: {macs:[]},
+            call: function(request) {
+                if(type(request.args.macs)!='array' || length(request.args.macs)>512)return {error:'Invalid MAC list'};
+                return vendors_for(request.args.macs,'/usr/share/rmm-dashboard/vendors.tsv');
+            }
+        },
+        set_name: {
+            args: {mac:'',name:'',previous:''},
+            call: function(request) {
+                try { return {names:save_name(names_file,request.args.mac,request.args.name,request.args.previous)}; }
+                catch (err) { return {error:''+err}; }
+            }
+        },
         clients: {
             call: function() {
                 try {
@@ -20,8 +40,15 @@ return {
                         if (type(link.dev) == 'string' && !match(link.dev, /[\/]/))
                             wireless[link.dev] = access(`/sys/class/net/${link.dev}/phy80211`) || access(`/sys/class/net/${link.dev}/wireless`);
                     }
-                    return inventory(links, dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_BRIDGE),
+                    let result=inventory(links, dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_BRIDGE),
                         [ ...dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_INET), ...dump(rtnl.const.RTM_GETNEIGH, rtnl.const.AF_INET6) ], wireless);
+                    try { result.names=read_names(names_file); }
+                    catch (err) { result.names_error=''+err; }
+                    let macs=map([...result.fdb,...result.neighbors],row=>row.mac);
+                    let vendors=vendors_for(macs,'/usr/share/rmm-dashboard/vendors.tsv');
+                    for(let key,value in vendors)result[key]=value;
+                    result.traffic=traffic_snapshot();
+                    return result;
                 }
                 catch (err) { return { error: '' + err }; }
             }

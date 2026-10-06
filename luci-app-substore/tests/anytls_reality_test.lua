@@ -13,6 +13,12 @@
 --      （早期注释写的「Surge 会拒绝加载整份配置」**未经官方证实** ——
 --       官方只说明过无法识别的 *section* 会原样保留且不报错；判据是
 --       「不写客户端读不懂的东西」，见 output_formats.lua 的 REALITY_FLAVORS。）
+--   4. 客户端的**协议清单**差异（不只是参数差异）：VLESS 在 Surge / Surfboard /
+--      SurgeMac 的清单里根本没有（FAMILY_CAPS），SSR 在 Egern 的清单里没有
+--      （output_egern.lua 的 EGERN_KEY）—— 这些格式下整个节点被丢弃，
+--      不是「保留节点只丢参数」。Loon 的凭据写法是带引号的位置参数、
+--      QX 的 vmess/vless Reality 用 obfs= 形式的 TLS 标志、Egern 是 YAML 里的
+--      reality 对象（public_key / short_id，snake_case）。
 --
 -- 逐条依据见各处注释引用的官方文档 / 客户端源码。
 
@@ -288,9 +294,44 @@ local qx_t = gen(TROJAN, "qx")
 check("qx trojan over-tls + reality keys", has(qx_t, "over-tls=true")
 	and has(qx_t, "reality-base64-pubkey=PBK") and has(qx_t, "reality-hex-shortid=SID"))
 
+-- 7.3：带 Reality 公钥的 vmess / vless，TLS 标志必须写成 obfs= 形式。
+-- sample.conf 的注释把「该行带 TLS 标志」列为公钥生效前提，而 QX 里 vmess /
+-- vless 的 TLS 标志写作 obfs=over-tls（纯 TLS）/ obfs=wss（ws + TLS），
+-- trojan / anytls 才写 over-tls=true + tls-host=。此前一律走 qx_tls，QX 会
+-- 忽略公钥，节点静默退回普通 TLS。
+check("qx vless reality uses obfs=over-tls, no tls-verification",
+	has(qx_v, "obfs=over-tls") and has(qx_v, "obfs-host=www.example.com")
+	and not has(qx_v, "tls-verification=") and not has(qx_v, "tls-host="))
+check("qx vmess reality uses obfs=over-tls, no tls-verification",
+	has(qx_m, "obfs=over-tls") and has(qx_m, "obfs-host=www.example.com")
+	and not has(qx_m, "tls-verification=") and not has(qx_m, "tls-host="))
+-- ws + Reality：obfs=wss，且 obfs-host 同时充当握手名与 Host 头
+local VLESS_WSR = node.normalize({ proto = "vless", name = "VlWsR", server = "1.2.3.4", port = 443,
+	uuid = "u", net = "ws", path = "/p", host = "h.com", sni = "s.example.com",
+	["public-key"] = "PBK", ["short-id"] = "SID" })
+local qx_wsr = gen(VLESS_WSR, "qx")
+check("qx vless ws+reality uses obfs=wss + obfs-uri + obfs-host",
+	has(qx_wsr, "obfs=wss") and has(qx_wsr, "obfs-uri=/p") and has(qx_wsr, "obfs-host=h.com"))
+check("qx vless ws+reality has no tls-host/tls-verification",
+	not has(qx_wsr, "tls-host=") and not has(qx_wsr, "tls-verification="))
+-- 不带公钥的 vmess / vless 维持既有写法（qx_tls），分叉只针对 Reality 节点
+local qx_plain = gen(node.normalize({ proto = "vless", name = "VlPlain", server = "1.2.3.4",
+	port = 443, uuid = "u", sni = "www.example.com", security = "tls" }), "qx")
+check("qx non-reality vless keeps tls-host/tls-verification",
+	has(qx_plain, "tls-host=www.example.com") and has(qx_plain, "tls-verification=true")
+	and not has(qx_plain, "obfs=over-tls"))
+-- 往返：写出的 obfs=over-tls 必须能被自己的解析器读回来
+local qx_rt = parser.parse(qx_v)
+local qx_rtn = qx_rt.nodes and qx_rt.nodes[1]
+check("qx reality vless round-trips sni", qx_rtn ~= nil and qx_rtn.sni == "www.example.com")
+check("qx reality vless round-trips public-key", qx_rtn ~= nil and qx_rtn["public-key"] == "PBK")
+check("qx reality vless round-trips security", qx_rtn ~= nil and qx_rtn.security == "reality")
+
 -- --- Surge 家族：只有 Loon 的节点行文档化了 Reality（public-key / short-id）。
--- Surge / SurgeMac / Surfboard / Egern 写 public-key 是「客户端不认识的参数」，
--- Surge 遇到无法解析的代理行会拒绝加载整份配置。
+-- Surge / SurgeMac / Surfboard 写 public-key 是「客户端不认识的参数」。
+-- 判据是「不写客户端读不懂的东西」，与本文件丢弃 wireguard / ssr 同一约定 ——
+-- 不依赖「Surge 会拒绝加载整份配置」这个**未经官方证实**的前提（官方只说明过
+-- 无法识别的 *section* 会原样保留且不报错，代理行的情况未提及）。
 check("surge anytls named password, no reality",
 	has(gen(ANY, "surge"), "anytls, 1.2.3.4, 443, password=p") and not has(gen(ANY, "surge"), "public-key"))
 check("surgemac anytls named password, no reality",
@@ -299,26 +340,48 @@ check("surgemac anytls named password, no reality",
 check("surfboard anytls bare positional password",
 	has(gen(ANY, "surfboard"), "anytls, 1.2.3.4, 443, p,"))
 check("surfboard anytls no reality", not has(gen(ANY, "surfboard"), "public-key"))
--- Loon 的 anytls 密码是带引号的位置参数，且 Reality 参数写全
+-- Loon 的凭据一律是端口之后的带引号位置参数，Reality 参数写全。
+-- 公钥按文档带双引号、short-id 不带（nsloon.app/docs/Node/）。
 local lo_any = gen(ANY, "loon")
 check("loon anytls quoted positional password", has(lo_any, 'anytls, 1.2.3.4, 443, "p",'))
-check("loon anytls reality params", has(lo_any, "public-key=PBK") and has(lo_any, "short-id=SID"))
+check("loon anytls reality params",
+	has(lo_any, 'public-key="PBK"') and has(lo_any, "short-id=SID"))
 local lo_v = gen(VLESS, "loon")
-check("loon vless reality params", has(lo_v, "public-key=PBK") and has(lo_v, "short-id=SID"))
+check("loon vless quoted positional uuid", has(lo_v, 'vless, 1.2.3.4, 443, "u",'))
+check("loon vless reality params", has(lo_v, 'public-key="PBK"') and has(lo_v, "short-id=SID"))
 -- Loon 文档的 Reality 示例覆盖 VLESS / VMess / Trojan / AnyTLS 四种节点
 -- （nsloon.app/docs/Node/，原文：「public-key 和 short-id 用于 Reality」）。
+-- VMess 的位置参数是「加密方式, UUID」两个字段，UUID 带引号。
 local lo_m = gen(VMESS, "loon")
-check("loon vmess reality params", has(lo_m, "public-key=PBK") and has(lo_m, "short-id=SID"))
+check("loon vmess positional cipher + quoted uuid",
+	has(lo_m, 'vmess, 1.2.3.4, 443, auto, "u",'))
+check("loon vmess reality params", has(lo_m, 'public-key="PBK"') and has(lo_m, "short-id=SID"))
 local lo_t = gen(TROJAN, "loon")
-check("loon trojan reality params", has(lo_t, "public-key=PBK") and has(lo_t, "short-id=SID"))
-check("surge vless reality params dropped",
-	not has(gen(VLESS, "surge"), "public-key") and not has(gen(VLESS, "surge"), "short-id"))
+check("loon trojan quoted positional password", has(lo_t, 'trojan, 1.2.3.4, 443, "p",'))
+check("loon trojan reality params", has(lo_t, 'public-key="PBK"') and has(lo_t, "short-id=SID"))
+-- 非 Loon 的 Surge 家族：vless 在 Surge / Surfboard / SurgeMac 的协议清单里
+-- 根本没有，整个节点被丢弃（不是「保留节点只丢参数」）—— 见 FAMILY_CAPS。
+local surge_vless = gen(VLESS, "surge")
+check("surge drops vless node entirely",
+	not has(surge_vless, "vless") and not has(surge_vless, "VlX"))
+check("surfboard drops vless node entirely",
+	not has(gen(VLESS, "surfboard"), "vless"))
+check("surgemac drops vless node entirely",
+	not has(gen(VLESS, "surgemac"), "vless"))
 check("surge vmess reality params dropped",
 	not has(gen(VMESS, "surge"), "public-key") and not has(gen(VMESS, "surge"), "short-id"))
 check("surfboard trojan reality params dropped",
 	not has(gen(TROJAN, "surfboard"), "public-key"))
-check("egern anytls named password, no reality",
-	has(gen(ANY, "egern"), "password=p") and not has(gen(ANY, "egern"), "public-key"))
+-- Egern 的配置是 YAML（output_egern.lua），不是 Surge 的逗号行：字段名是
+-- snake_case 的 `password:`，Reality 是节点里的 reality 子对象，键名
+-- public_key / short_id（既不是统一模型的 public-key / short-id，也不是
+-- Clash 的 reality-opts）—— 官方示例 egernapp.com/docs/configuration/example/。
+local eg_any = gen(ANY, "egern")
+check("egern anytls YAML password", has(eg_any, "password: p"))
+check("egern anytls reality public_key/short_id",
+	has(eg_any, "public_key: PBK") and has(eg_any, "short_id: SID"))
+check("egern anytls reality is nested under a reality key",
+	has(eg_any, "reality:") and not has(eg_any, "reality-opts"))
 
 -- ============ 5. 表单字段清单 ============
 -- core.merge_form_node 会把「在 PROTO_FIELDS 里但表单没提交」的字段当作清空处理。
@@ -343,16 +406,80 @@ check("anytls form merge keeps reality creds",
 -- ============ 6. surge_line 的边界 ============
 
 -- 未知协议以前会一路掉到末尾，生成 `Name = snell, host, port` 这样的残行 ——
--- 客户端解析到不认识的类型会拒绝加载整份配置，必须整条剔除（返回 nil）。
+-- 客户端解析到不认识的类型，这个节点必然不可用，没有理由输出出去，必须整条剔除
+-- （返回 nil）。（客户端是跳过该节点还是拒绝加载整份配置，各家均未获官方证实；
+--   这里按「不输出客户端读不懂的东西」处理，见 output_formats.lua 的 REALITY_FLAVORS。）
 check("surge_line unknown proto -> nil",
 	fmts.surge_line({ proto = "snell", name = "S", server = "1.2.3.4", port = 443 }) == nil)
 
--- 参数值里的逗号没有引号 / 转义机制，会把凭据静默截断；位置参数同理
--- （Loon 的那对引号只是标记，值里的逗号照样是分隔符）。
+-- 参数值里的逗号无法用这些格式表达，会把凭据静默截断，整条丢弃。
+-- 位置参数同理：Loon 文档确实说「参数值中含有英文逗号时请使用双引号包裹」，
+-- 也就是说那对引号**能**保住逗号 —— 但本行的具名参数一律不带引号，同一行里
+-- 两种约定混用会让行为依赖客户端实现，所以统一按「含逗号就丢弃」处理（保守）。
 local bad_pw = node.normalize({ proto = "anytls", name = "Bad", server = "1.2.3.4", port = 443, password = "a,b" })
 check("surge_line comma in named password -> nil", fmts.surge_line(bad_pw, "surge") == nil)
 check("surge_line comma in quoted positional password -> nil", fmts.surge_line(bad_pw, "loon") == nil)
 check("surge_line comma in bare positional password -> nil", fmts.surge_line(bad_pw, "surfboard") == nil)
+-- 值里含双引号时带引号的位置参数也表达不了（`"pa"ss"` 无法确定切法），同样丢弃
+local quote_pw = node.normalize({ proto = "anytls", name = "Q", server = "1.2.3.4", port = 443, password = 'pa"ss' })
+check("surge_line double-quote in loon positional password -> nil", fmts.surge_line(quote_pw, "loon") == nil)
+-- 同样的值在具名写法（Surge）下没有引号语义，仍按原样输出
+check("surge_line double-quote in named password kept",
+	fmts.surge_line(quote_pw, "surge") ~= nil)
+-- Loon 的 vmess / vless 位置参数同样受这条约束
+local bad_uuid = node.normalize({ proto = "vless", name = "BU", server = "1.2.3.4", port = 443, uuid = "a,b" })
+check("surge_line comma in loon vless uuid -> nil", fmts.surge_line(bad_uuid, "loon") == nil)
+-- 具名写法（Surge 家族）没有引号语义，含逗号的 uuid 一样按「值里含逗号」丢弃
+check("surge_line comma in named vless uuid -> nil", fmts.surge_line(bad_uuid, "surfboard") == nil)
+-- 双引号则相反：具名写法原样保留，Loon 的带引号位置参数表达不了
+local quote_uuid = node.normalize({ proto = "vless", name = "QU", server = "1.2.3.4", port = 443, uuid = 'a"b' })
+check("surge_line double-quote in loon vless uuid -> nil", fmts.surge_line(quote_uuid, "loon") == nil)
+check("surge_line double-quote in named vless uuid kept",
+	fmts.surge_line(quote_uuid, "surfboard") ~= nil)
+
+-- ============ 7. Loon 往返：写出的行必须能被自己的解析器读回来 ============
+-- 7.4 把 Loon 的凭据从具名参数改成带引号的位置参数。写对了但读不回来是同一类
+-- 静默丢失（导入自己刚导出的配置就少凭据），所以这里做一次端到端往返。
+local loon_cfg = fmts.to_loon({ VMESS, VLESS, TROJAN, ANY }, { name = "P" })
+local loon_rt = parser.parse(loon_cfg)
+check("loon round-trip parses back as surge", loon_rt.format == "surge" and #loon_rt.nodes == 4)
+local lrt = {}
+for _, n in ipairs(loon_rt.nodes or {}) do lrt[n.name] = n end
+check("loon round-trip vmess uuid + cipher",
+	lrt["VmX"] ~= nil and lrt["VmX"].uuid == "u" and lrt["VmX"].cipher == "auto")
+check("loon round-trip vmess reality",
+	lrt["VmX"] ~= nil and lrt["VmX"].security == "reality"
+	and lrt["VmX"]["public-key"] == "PBK" and lrt["VmX"]["short-id"] == "SID")
+check("loon round-trip vless uuid + flow",
+	lrt["VlX"] ~= nil and lrt["VlX"].uuid == "u" and lrt["VlX"].flow == "xtls-rprx-vision")
+check("loon round-trip trojan password", lrt["TrX"] ~= nil and lrt["TrX"].password == "p")
+check("loon round-trip anytls password", lrt["AnyX"] ~= nil and lrt["AnyX"].password == "p")
+check("loon round-trip anytls reality",
+	lrt["AnyX"] ~= nil and lrt["AnyX"].security == "reality" and lrt["AnyX"]["public-key"] == "PBK")
+-- [Proxy Group] 段不得被当成节点解析出来
+check("loon round-trip ignores [Proxy Group] section", lrt["P"] == nil)
+
+-- Loon 的 VMess 加密方式拼写与统一模型不同（nsloon.app/docs/Node/ 的取值是
+-- none / auto / aes-128-cfb / aes-128-gcm / chacha20-ietf-poly1305）：
+-- 模型的 chacha20-poly1305 要写成 chacha20-ietf-poly1305，模型的 zero 是
+-- Xray 专用（Loon 清单里没有），一律退回 auto。照抄会让节点在 Loon 上加载失败。
+local function loon_vmess_cipher(c)
+	local n = node.normalize({ proto = "vmess", name = "C", server = "1.2.3.4", port = 443,
+		uuid = "u", cipher = c })
+	local l = fmts.surge_line(n, "loon")
+	return l and l:match("vmess, 1%.2%.3%.4, 443, ([^,]+),")
+end
+check("loon vmess cipher chacha20-poly1305 -> chacha20-ietf-poly1305",
+	loon_vmess_cipher("chacha20-poly1305") == "chacha20-ietf-poly1305")
+check("loon vmess cipher zero -> auto", loon_vmess_cipher("zero") == "auto")
+check("loon vmess cipher aes-128-gcm unchanged", loon_vmess_cipher("aes-128-gcm") == "aes-128-gcm")
+check("loon vmess cipher none unchanged", loon_vmess_cipher("none") == "none")
+check("loon vmess cipher nil -> auto", loon_vmess_cipher(nil) == "auto")
+-- 同一节点在 Surge 家族仍是具名 username=，不受 Loon 的位置参数影响
+local cm_node = node.normalize({ proto = "vmess", name = "C2", server = "1.2.3.4", port = 443,
+	uuid = "u", cipher = "chacha20-poly1305" })
+check("surge vmess stays named username",
+	fmts.surge_line(cm_node, "surge"):find("username=u", 1, true) ~= nil)
 
 -- ============ 结果 ============
 print(string.format("\n%d passed, %d failed", passed, failed))

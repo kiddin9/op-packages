@@ -26,6 +26,7 @@ package.path = "./root/usr/share/?.lua;" .. package.path
 
 local util = require("substore.util")
 local http = require("substore.http")
+local msg = require("substore.msg")
 
 local passed, failed = 0, 0
 local function check(name, cond)
@@ -67,7 +68,7 @@ restore()
 check("A nslookup fallback used", #spawned == 1)
 check("A nslookup command quotes host", spawned[1] == "nslookup 'intranet.example' 2>/dev/null")
 check("A domain resolving to private rejected", okA == false)
-check("A reason is private-address", rA == "目标仅解析到内网/保留地址")
+check("A reason is private-address", rA == "Target resolves only to private/reserved addresses")
 
 -- 应答段是公网地址 → 放行
 local NS_PUBLIC = "Server:\t\t192.168.1.1\nAddress:\t192.168.1.1:53\n\n" ..
@@ -91,7 +92,7 @@ local NS_V6 = "Server:\t\t192.168.1.1\nAddress:\t192.168.1.1:53\n\n" ..
 stub_nslookup(NS_V6)
 local okA4, rA4 = http.check_public("v6.example")
 restore()
-check("A ipv6 zone suffix stripped", okA4 == false and rA4 == "目标仅解析到内网/保留地址")
+check("A ipv6 zone suffix stripped", okA4 == false and rA4 == "Target resolves only to private/reserved addresses")
 
 -- ---------- B：Server 段的 Address 不是解析结果 ----------
 -- 解析失败时 busybox 只把错误写到 stderr，stdout 里只有 Server/Address 段。
@@ -102,13 +103,13 @@ stub_nslookup(NS_NXDOMAIN)
 local okB, rB = http.check_public("nope.invalid")
 restore()
 check("B server-block address not used as answer", okB == false)
-check("B empty answer is unresolvable", rB == "无法解析目标主机名")
+check("B empty answer is unresolvable", rB == "Cannot resolve the target hostname")
 
 -- 空输出（nslookup 不存在 / 立刻失败）同样算解析不出来
 stub_nslookup("")
 local okB2, rB2 = http.check_public("nope.invalid")
 restore()
-check("B empty output is unresolvable", okB2 == false and rB2 == "无法解析目标主机名")
+check("B empty output is unresolvable", okB2 == false and rB2 == "Cannot resolve the target hostname")
 
 -- ---------- C：有解析手段但解析失败 → fail-closed ----------
 -- 这是 [2.6.8-r1] 引入的行为，必须保留：127.0.0.1.nip.io 这类
@@ -118,7 +119,7 @@ stub_nslookup(NS_NXDOMAIN)
 local okC, rC, unC = http.check_public("127.0.0.1.nip.io")
 restore()
 check("C unresolvable with resolver rejected", okC == false)
-check("C unresolvable reason", rC == "无法解析目标主机名")
+check("C unresolvable reason", rC == "Cannot resolve the target hostname")
 check("C not marked unverified", unC == nil)
 
 -- ---------- D：本机完全无解析手段 → 放行 + unverified ----------
@@ -131,7 +132,7 @@ local okD, rD, unD = http.check_public("example.com")
 local spawnedD = #spawned
 restore()
 check("D no resolver allows", okD == true)
-check("D reason explains fallback", rD == "本机无 DNS 解析能力，改由连接时校验对端地址")
+check("D reason explains fallback", rD == "No local DNS resolution; the peer address will be verified at connect time")
 check("D marked unverified", unD == true)
 check("D spawns no resolver process", spawnedD == 0)
 
@@ -200,7 +201,7 @@ spy_curl("200 127.0.0.1")
 local bodyE2, _, errE2 = http.download("http://1.1.1.1/sub")
 restore()
 check("E2 private peer rejected", bodyE2 == nil)
-check("E2 reason names the peer ip", errE2 == "目标实际连接到内网/保留地址 (127.0.0.1)")
+check("E2 reason names the peer ip", errE2 == msg.compose("Target actually connects to a private/reserved address (", "127.0.0.1", ")"))
 check("E2 removes .tmp", not exists(TMP .. ".tmp"))
 check("E2 removes .hdr", not exists(HDR))
 check("E2 removes .err", not exists(ERRF))
@@ -212,7 +213,7 @@ spy_curl("302 192.168.1.1")
 local bodyE3, _, errE3 = http.download("http://1.1.1.1/sub")
 restore()
 check("E3 redirect hop private rejected", bodyE3 == nil)
-check("E3 reason names the peer ip", errE3 == "目标实际连接到内网/保留地址 (192.168.1.1)")
+check("E3 reason names the peer ip", errE3 == msg.compose("Target actually connects to a private/reserved address (", "192.168.1.1", ")"))
 
 -- E4：link-local 对端同样拦
 clear_tmp()
@@ -243,7 +244,7 @@ local bodyF, _, errF = http.download("http://example.com/sub")
 restore()
 check("F unverified without peer ip rejected", bodyF == nil)
 check("F reason explains missing peer ip",
-	errF == "无法校验目标地址（本机无 DNS 解析能力，且未取得对端 IP）")
+	errF == "Cannot verify the target address (no local DNS resolution and no peer IP obtained)")
 
 -- F2：有解析能力时拿不到对端 IP → 不额外拒绝（预检已经查过一轮）
 clear_tmp()
@@ -303,7 +304,7 @@ local bodyH, _, errH = http.download("http://example.com/sub")
 restore()
 check("H unverified wget rejected", bodyH == nil)
 check("H reason names the wget backend",
-	errH == "本机无 DNS 解析能力，wget 后端无法校验目标地址，已拒绝下载（安装 curl 后重试）")
+	errH == "No local DNS resolution: the wget backend cannot verify the target address and refused the download (install curl and retry)")
 local ran_wget = false
 for _, c in ipairs(execsH) do
 	if c:find("%-O ", 1) then ran_wget = true end

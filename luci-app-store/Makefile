@@ -35,12 +35,6 @@ define Package/luci-app-store/conffiles
 /etc/config/istore
 endef
 
-define Build/Prepare
-	$(call Build/Prepare/Default)
-	$(SED) 's/class:"tabs"/class:"cbi-tabmenu"/g' \
-		$(BUILD_DIR)/istore-ui-$(ISTORE_UI_VERSION)-$(ISTORE_UI_RELEASE)/app-store-ui/src/dist/luci-static/istore/index.js
-endef
-
 include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature

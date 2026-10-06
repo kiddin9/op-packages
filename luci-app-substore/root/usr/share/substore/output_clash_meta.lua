@@ -502,6 +502,11 @@ local function generate_groups(nodes, tags, options)
 	return table.concat(out, "\n")
 end
 
+-- YAML 标量转义。导出给 output_egern.lua 复用：Egern 的配置同样是给客户端解析的
+-- YAML，引号规则、控制字符、c-indicator 的处理必须与这里完全一致。另抄一份必然
+-- 漂移 —— 同一个「未加引号的 `password: %foo` 会让客户端拒绝整份配置」的坑。
+M.esc_yaml = esc_yaml
+
 function M.generate(nodes, options)
 	options = options or {}
 	nodes = nodes or {}

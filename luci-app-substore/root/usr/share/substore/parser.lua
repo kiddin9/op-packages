@@ -3,6 +3,7 @@
 
 local util = require("substore.util")
 local node = require("substore.node")
+local msg = require("substore.msg")
 local parser_clash_yaml = require("substore.parser_clash_yaml")
 local parser_json_config = require("substore.parser_json_config")
 local parser_surge = require("substore.parser_surge")
@@ -101,11 +102,11 @@ end
 
 -- 「混合格式」提示里各格式的显示名
 local FORMAT_LABELS = {
-	uri = "URI 链接",
+	uri = "URI link",
 	json = "JSON",
 	yaml = "Clash YAML",
 	["wireguard-conf"] = "WireGuard .conf",
-	surge = "Surge/Loon 配置",
+	surge = "Surge/Loon config",
 }
 
 -- 行首锚定，数出「整行就是一条节点链接」的行数。
@@ -801,7 +802,9 @@ local function parse_wireguard_conf(content)
 		end
 	end
 
-	if #peers == 0 then return nil, "bad wireguard conf: no [Peer]" end
+	-- 这条会一路传到用户（M.parse 里 `if not nodes then return nil, err end`），
+	-- 所以写成完整的英文 msgid，而不是 "bad wireguard conf: …" 那种内部诊断口吻。
+	if #peers == 0 then return nil, "A WireGuard .conf file has no [Peer] section" end
 
 	-- [Interface] 由各节点共享
 	local common = {
@@ -900,7 +903,7 @@ local function parse_wireguard_conf(content)
 	-- 一个可用 [Peer] 都没有时报错。此处 #peers > 0 已由上面保证，走到这里说明
 	-- 每个 [Peer] 都缺 Endpoint。不能返回空列表：空列表会被上层当成「解析成功但
 	-- 0 节点」，用户看到更新成功却一个节点都没有（H4/H5 的静默失败形态）。
-	if #nodes == 0 then return nil, "bad wireguard conf: no usable [Peer] endpoint" end
+	if #nodes == 0 then return nil, "A WireGuard .conf file has no [Peer] with a usable Endpoint" end
 
 	return nodes
 end
@@ -940,7 +943,7 @@ end
 
 local function parse_json_content(content)
 	local data = util.json_decode(content)
-	if type(data) ~= "table" then return nil, "JSON 解析失败" end
+	if type(data) ~= "table" then return nil, "Failed to parse JSON" end
 
 	-- 客户端配置文件分发：sing-box / V2Ray / Clash JSON
 	if type(data.outbounds) == "table" then
@@ -1545,7 +1548,7 @@ function M.parse(content)
 	elseif format == "base64" then
 		-- 兼容标准 base64 与 base64url（- _ 无 padding）：base64_url_decode 两者皆可
 		local decoded = util.base64_url_decode(content)
-		if decoded == "" then return nil, "Base64 解码失败" end
+		if decoded == "" then return nil, "Base64 decoding failed" end
 		-- 解出来的内容本身可能是 YAML / JSON：机场把整份 Clash 配置或 sing-box
 		-- 配置 base64 后直接下发是很常见的做法。原先一律按 URI 列表解析，这类
 		-- 订阅会得到 0 个节点且不报错（用户只看到「订阅为空」）。
@@ -1573,7 +1576,7 @@ function M.parse(content)
 		if not nodes then return nil, err end
 		return finish(nodes, "wireguard-conf")
 	end
-	return nil, "无法识别的订阅格式"
+	return nil, "Unrecognized subscription format"
 end
 
 -- 本地订阅解析：支持文本模式和表单模式
@@ -1583,7 +1586,7 @@ function M.parse_local(content, mode)
 	if mode == "form" then
 		-- 表单模式：content 为 JSON 数组
 		local data = util.json_decode(content)
-		if type(data) ~= "table" then return nil, "表单数据解析失败" end
+		if type(data) ~= "table" then return nil, "Failed to parse form data" end
 		local node_mod = require("substore.node")
 		local nodes = {}
 		for _, item in ipairs(data) do
@@ -1649,7 +1652,7 @@ function M.parse_local(content, mode)
 					else
 						local opt = util.json_decode(s)
 						if type(opt) ~= "table" then
-							return nil, "AmneziaWG 参数必须是合法的 JSON 对象"
+							return nil, "The AmneziaWG options must be a valid JSON object"
 						end
 						n["amnezia-wg-option"] = opt
 					end
@@ -1674,8 +1677,9 @@ function M.parse_local(content, mode)
 	if #formats > 1 then
 		local names = {}
 		for i, f in ipairs(formats) do names[i] = FORMAT_LABELS[f] or f end
-		return nil, "同一份文本里混用了多种格式（" .. table.concat(names, " + ") ..
-			"）：一次只能导入一种格式，请拆开后分次导入"
+		return nil, msg.compose("Mixed formats in one text (",
+			msg.compose_list(names, " + "),
+			"): only one format can be imported at a time; split the text and import the parts separately")
 	end
 	return M.parse(content)
 end

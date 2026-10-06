@@ -482,3 +482,264 @@ msgstr "订阅不存在"
 
 msgid "Update failed"
 msgstr "更新失败"
+
+# 后端模块（root/usr/share/substore/*.lua）返回的失败原因
+#
+# 这些 msgid 由后端**原样**返回（后端不能 require("luci.i18n")，见 msg.lua 的
+# 文件头），翻译发生在显示边界：控制器 back_to_list / back_to_nodes 负责 ?err=
+# 这条链路，视图里的 msg.translate 负责 meta.error 与 output.generate 的返回值。
+#
+# 带结尾冒号 / 左括号 / 前导空格的条目是 msg.compose 拼出来的**组合消息的片段**
+# （如 "Invalid proxy config: " .. reason）：显示边界按分隔符拆开后逐段查表，
+# 所以片段必须各自成条，且要与后端拼接时用的字符串逐字符一致。
+msgid "Unknown subscription client type: "
+msgstr "未知的订阅客户端类型: "
+
+msgid "Subscription list file is corrupted, cannot parse: "
+msgstr "订阅列表文件已损坏，无法解析："
+
+msgid "Subscription list file is corrupted, contains an invalid entry: "
+msgstr "订阅列表文件已损坏，存在非法条目："
+
+msgid "Subscription list is being modified by another process, please retry later"
+msgstr "订阅列表正被另一个进程修改，请稍后重试"
+
+msgid "Name/URL must not be empty"
+msgstr "名称/URL 不能为空"
+
+msgid "Name/Content must not be empty"
+msgstr "名称/内容 不能为空"
+
+msgid "Invalid subscription token"
+msgstr "无效的订阅 token"
+
+msgid "No available nodes (update the subscription first)"
+msgstr "暂无可用的节点（请先更新订阅）"
+
+msgid "Failed to generate the target format"
+msgstr "无法生成目标格式"
+
+msgid "Invalid ID"
+msgstr "非法 ID"
+
+msgid "Local subscription content is empty"
+msgstr "本地订阅内容为空"
+
+msgid "Failed to parse local content"
+msgstr "本地解析失败"
+
+msgid "Failed to update status"
+msgstr "更新状态失败"
+
+msgid "No subscription URL"
+msgstr "无订阅 URL"
+
+msgid "Write failed"
+msgstr "写入失败"
+
+msgid "Download failed"
+msgstr "下载失败"
+
+msgid "Parse failed"
+msgstr "解析失败"
+
+msgid "Select at least one subscription"
+msgstr "请选择至少一个订阅"
+
+msgid "Proxy address is empty"
+msgstr "代理地址为空"
+
+msgid "Invalid proxy config: "
+msgstr "代理配置无效: "
+
+msgid "Invalid User-Agent: "
+msgstr "User-Agent 无效: "
+
+msgid "Invalid URL"
+msgstr "无效 URL"
+
+msgid "Only http/https is supported"
+msgstr "仅支持 http/https"
+
+msgid "Invalid hostname"
+msgstr "无效主机名"
+
+msgid "Invalid port"
+msgstr "端口无效"
+
+msgid "User-Agent is too long (at most 256 characters)"
+msgstr "User-Agent 过长（最多 256 字符）"
+
+msgid "User-Agent must not contain control characters"
+msgstr "User-Agent 不能包含控制字符"
+
+msgid "Invalid proxy format"
+msgstr "代理格式无效"
+
+msgid "Unsupported proxy protocol: "
+msgstr "不支持的代理协议: "
+
+msgid "Proxy username/password contains invalid characters"
+msgstr "代理用户名/密码含非法字符"
+
+msgid "Invalid proxy host"
+msgstr "代理主机无效"
+
+msgid "An IPv6 proxy address must be bracketed, e.g. http://[::1]:1080"
+msgstr "IPv6 代理地址必须加方括号，例如 http://[::1]:1080"
+
+msgid "Invalid proxy port"
+msgstr "代理端口无效"
+
+msgid "Empty hostname"
+msgstr "空主机名"
+
+msgid "Hostname contains the invalid character @"
+msgstr "主机名含非法字符 @"
+
+msgid "Hostname contains invalid characters"
+msgstr "主机名含非法字符"
+
+msgid "Target is a private/reserved address"
+msgstr "目标为内网/保留地址"
+
+msgid "Target is localhost"
+msgstr "目标为 localhost"
+
+msgid "Cannot resolve the target hostname"
+msgstr "无法解析目标主机名"
+
+msgid "No local DNS resolution; the peer address will be verified at connect time"
+msgstr "本机无 DNS 解析能力，改由连接时校验对端地址"
+
+msgid "Target resolves only to private/reserved addresses"
+msgstr "目标仅解析到内网/保留地址"
+
+msgid "Invalid redirect target: "
+msgstr "重定向目标无效: "
+
+msgid "Unsafe redirect target: "
+msgstr "重定向目标不安全: "
+
+msgid "Cannot verify the target address (no local DNS resolution and no peer IP obtained)"
+msgstr "无法校验目标地址（本机无 DNS 解析能力，且未取得对端 IP）"
+
+msgid "Target actually connects to a private/reserved address ("
+msgstr "目标实际连接到内网/保留地址 ("
+
+msgid "Response exceeds the size limit ("
+msgstr "响应超过大小限制 ("
+
+msgid " bytes)"
+msgstr " 字节)"
+
+msgid "Failed to read the response"
+msgstr "读取响应失败"
+
+msgid "Redirect without a Location header"
+msgstr "重定向无 Location"
+
+msgid "Invalid redirect target"
+msgstr "重定向目标无效"
+
+msgid "Too many redirects"
+msgstr "重定向次数过多"
+
+msgid "HTTP error "
+msgstr "HTTP 错误 "
+
+msgid "The current download backend (wget) does not support "
+msgstr "当前下载后端 (wget) 不支持 "
+
+msgid " proxies; install curl or use an http proxy"
+msgstr " 代理，请安装 curl 或改用 http 代理"
+
+msgid "No local DNS resolution: the wget backend cannot verify the target address and refused the download (install curl and retry)"
+msgstr "本机无 DNS 解析能力，wget 后端无法校验目标地址，已拒绝下载（安装 curl 后重试）"
+
+msgid "Download failed (wget exit code is non-zero)"
+msgstr "下载失败（wget 退出码非 0）"
+
+msgid "Download failed or the content is empty"
+msgstr "下载失败或内容为空"
+
+msgid "No download tool available (curl/wget)"
+msgstr "无可用下载工具 (curl/wget)"
+
+msgid "Rename rule line "
+msgstr "重命名规则第 "
+
+msgid ": invalid regular expression ("
+msgstr " 行：正则表达式无效（"
+
+msgid "URI link"
+msgstr "URI 链接"
+
+msgid "Surge/Loon config"
+msgstr "Surge/Loon 配置"
+
+msgid "Failed to parse JSON"
+msgstr "JSON 解析失败"
+
+msgid "Base64 decoding failed"
+msgstr "Base64 解码失败"
+
+msgid "Unrecognized subscription format"
+msgstr "无法识别的订阅格式"
+
+msgid "The AmneziaWG options must be a valid JSON object"
+msgstr "AmneziaWG 参数必须是合法的 JSON 对象"
+
+msgid "Mixed formats in one text ("
+msgstr "同一份文本里混用了多种格式（"
+
+msgid " + "
+msgstr " + "
+
+msgid "): only one format can be imported at a time; split the text and import the parts separately"
+msgstr "）：一次只能导入一种格式，请拆开后分次导入"
+
+msgid "No WireGuard node to export"
+msgstr "没有可导出的 WireGuard 节点"
+
+msgid "A WireGuard .conf file can hold only one tunnel, but there are "
+msgstr "WireGuard .conf 每个文件只能包含一条隧道，当前有 "
+
+msgid " WireGuard nodes; export a single node instead"
+msgstr " 个 WireGuard 节点；请只导出单个节点"
+
+msgid "This WireGuard node has no private key (private-key), cannot export .conf"
+msgstr "该 WireGuard 节点没有私钥 (private-key)，无法导出 .conf"
+
+msgid "Expired"
+msgstr "已过期"
+
+msgid " days"
+msgstr "天"
+
+msgid " hours"
+msgstr "小时"
+
+msgid " minutes"
+msgstr "分钟"
+
+msgid "Less than a minute"
+msgstr "不足1分钟"
+
+msgid "Unsupported output format: "
+msgstr "不支持的输出格式："
+
+msgid "A WireGuard .conf file has no [Peer] section"
+msgstr "WireGuard .conf 文件里没有 [Peer] 段"
+
+msgid "A WireGuard .conf file has no [Peer] with a usable Endpoint"
+msgstr "WireGuard .conf 文件里没有任何带可用 Endpoint 的 [Peer]"
+
+msgid "JSON"
+msgstr "JSON"
+
+msgid "Clash YAML"
+msgstr "Clash YAML"
+
+msgid "WireGuard .conf"
+msgstr "WireGuard .conf"

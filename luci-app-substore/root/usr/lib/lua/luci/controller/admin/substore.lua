@@ -12,13 +12,22 @@ module("luci.controller.admin.substore", package.seeall)
 local i18n = require("luci.i18n")
 local function _(s) return i18n.translate(s) end
 
+-- 后端（substore.* 模块）返回的是**语言中立的英文 msgid** —— 它们不能
+-- require("luci.i18n")，因为 substore-cron.sh 会在没有 LuCI 环境的独立 lua
+-- 进程里跑 core.sync。翻译在这里做：控制器是 ?err= 这条回显链路的边界。
+--
+-- msg.translate 对**已经翻译过**的串是幂等的（见 msg.lua），所以下面那些
+-- `err or _("…")` 的 fallback 传进来也不会被二次翻译。
+local msg = require("substore.msg")
+local function tmsg(s) return msg.translate(s, _) end
+
 -- 返回列表页。err 非空时把错误带到列表页显示（§18：失败必须让用户看见，
 -- 不能「失败了却看起来像成功」）。沿用 LuCI 既有的 query + 模板渲染，不引入新 framework。
 local function back_to_list(err)
 	local http = require("luci.http")
 	local url = luci.dispatcher.build_url("admin", "services", "substore", "list")
 	if err ~= nil and tostring(err) ~= "" then
-		url = url .. "?err=" .. luci.util.urlencode(tostring(err))
+		url = url .. "?err=" .. luci.util.urlencode(tmsg(err))
 	end
 	http.redirect(url)
 end
@@ -348,7 +357,7 @@ local function back_to_nodes(http, err)
 		if v and v ~= "" then qs = qs .. "&" .. k .. "=" .. luci.util.urlencode(v) end
 	end
 	if err ~= nil and tostring(err) ~= "" then
-		qs = qs .. "&err=" .. luci.util.urlencode(tostring(err))
+		qs = qs .. "&err=" .. luci.util.urlencode(tmsg(err))
 	end
 	http.redirect(luci.dispatcher.build_url("admin", "services", "substore", "nodes") .. qs)
 end
@@ -518,7 +527,10 @@ function action_update()
 			core.save_meta(id, { error = tostring(res), last_update = os.time() })
 		elseif not res then
 			-- 正常返回但失败：第三个返回值是错误信息
-			core.save_meta(id, { error = tostring(err or _("Update failed")), last_update = os.time() })
+			-- 存进 meta.error 的必须是**语言中立的 msgid**（不是 _() 的结果）：
+			-- 它会一直留在列表文件里，而读它的页面未必是同一个语言环境。
+			-- 翻译交给读的那一端（视图里的 msg.translate）。
+			core.save_meta(id, { error = tostring(err or "Update failed"), last_update = os.time() })
 		end
 	end
 	back_to_list(post_fail_msg)

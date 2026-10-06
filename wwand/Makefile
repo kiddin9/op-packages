@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.7.0_pre11
-PKG_RELEASE:=73
+PKG_VERSION:=1.7.0_pre15
+PKG_RELEASE:=74
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=61f7cdf34dd060ba8e9f3fdb7271a9451a0cf82b
+PKG_SOURCE_VERSION:=9f0cf3ca83d54fec9fc0326d593fa1775ad8ef7c
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only

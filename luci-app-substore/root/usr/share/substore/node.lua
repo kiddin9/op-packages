@@ -3,6 +3,7 @@
 
 -- util 是叶子模块（自身不 require 任何 substore.*），所以这里不会形成循环依赖。
 local util = require("substore.util")
+local msg = require("substore.msg")
 
 local M = {}
 
@@ -766,8 +767,8 @@ function M.validate_rename_map(rule_str)
 				end
 			end)
 			if not ok then
-				return false, string.format("重命名规则第 %d 行：正则表达式无效（%s）",
-					r.line_no or 0, r.pattern or "")
+				return false, msg.compose("Rename rule line ", r.line_no or 0,
+					": invalid regular expression (", r.pattern or "", ")")
 			end
 		end
 	end

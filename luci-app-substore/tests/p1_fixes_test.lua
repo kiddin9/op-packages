@@ -255,7 +255,7 @@ fh:close()
 local arr, lerr = core.list()
 check("M12 list does not crash", type(arr) == "table")
 check("M12 good entry kept", #arr == 1 and arr[1].id == "good" and arr[1].name == "G")
-check("M12 corruption reported", type(lerr) == "string" and lerr:find("损坏") ~= nil)
+check("M12 corruption reported", type(lerr) == "string" and lerr:find("corrupted") ~= nil)
 
 -- 坏条目不能因为「静默过滤」而被当成正常列表：写路径必须拒绝落盘，
 -- 否则下一次 save 会把坏条目永久抹掉

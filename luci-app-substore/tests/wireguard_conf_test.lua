@@ -204,12 +204,12 @@ local _, multi_err = wgconf.generate({
 })
 check("wgconf multi node error is string", type(multi_err) == "string")
 check("wgconf multi node error names the count", multi_err:find("2", 1, true) ~= nil)
-check("wgconf multi node error mentions single tunnel", multi_err:find("一条隧道", 1, true) ~= nil)
+check("wgconf multi node error mentions single tunnel", multi_err:find("only one tunnel", 1, true) ~= nil)
 
 -- 无 WireGuard 节点：仍是「没有可导出节点」而非拼接
 local none, none_err = wgconf.generate({ { proto = "vmess", server = "x", port = 443 } })
 check("wgconf no wg node returns nil", none == nil)
-check("wgconf no wg node error", type(none_err) == "string" and none_err:find("没有可导出", 1, true) ~= nil)
+check("wgconf no wg node error", type(none_err) == "string" and none_err:find("No WireGuard node to export", 1, true) ~= nil)
 local empty, empty_err = wgconf.generate({})
 check("wgconf empty list returns nil", empty == nil)
 check("wgconf empty list error", type(empty_err) == "string")
