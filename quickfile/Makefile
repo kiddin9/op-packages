@@ -7,8 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=quickfile
-PKG_VERSION:=2.0.7
-PKG_RELEASE:=17
+PKG_VERSION:=2.0.8
+PKG_RELEASE:=18
 
 PKG_SOURCE:=quickfile-src-$(PKG_VERSION).tar.xz
 PKG_SOURCE_URL:=https://r2.cooluc.com/source
