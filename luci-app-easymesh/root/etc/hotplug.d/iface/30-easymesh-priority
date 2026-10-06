@@ -1,0 +1,29 @@
+#!/bin/sh
+# Reapply link priorities when a mesh or wired-backhaul interface comes up.
+# Runs once per interface event. Idempotent — safe to call repeatedly.
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+case "$INTERFACE" in
+    nwi_mesh_*|nwi_mesh_wired)
+        LOCK="/tmp/easymesh-priority.lock"
+
+        # Stale lock cleanup — if the lock is older than 5 minutes, remove it
+        if [ -d "$LOCK" ]; then
+            lock_age=$(($(date +%s) - $(date -r "$LOCK" +%s 2>/dev/null || echo 0)))
+            [ "$lock_age" -gt 300 ] && rmdir "$LOCK" 2>/dev/null
+        fi
+
+        # Atomic lock acquisition — only one priority run at a time
+        if mkdir "$LOCK" 2>/dev/null; then
+            (
+                sleep 5
+                [ -x /etc/init.d/easymesh ] && \
+                    /etc/init.d/easymesh priority >/dev/null 2>&1
+                rmdir "$LOCK" 2>/dev/null
+            ) </dev/null >/dev/null 2>&1 &
+        fi
+        ;;
+esac
+
+exit 0

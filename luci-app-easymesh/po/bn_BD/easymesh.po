@@ -1,0 +1,467 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-easymesh 2.4.1-r1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-09-19 12:00+0600\n"
+"PO-Revision-Date: 2026-09-19 12:00+0600\n"
+"Last-Translator: Arafat Rahman Zami Mondol <zamimondol@gmail.com>\n"
+"Language-Team: Bengali <bn@li.org>\n"
+"Language: bn\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# =========================================================
+# Main app title & description
+# =========================================================
+msgid "EasyMesh"
+msgstr "EasyMesh"
+
+msgid "Configure a Batman-adv mesh network."
+msgstr "একটি Batman-adv মেশ নেটওয়ার্ক কনফিগার করুন।"
+
+# =========================================================
+# Dashboard status
+# =========================================================
+msgid "Active mesh links"
+msgstr "সক্রিয় মেশ সংযোগ"
+
+msgid "Interface"
+msgstr "ইন্টারফেস"
+
+msgid "Neighbor MAC"
+msgstr "প্রতিবেশী MAC"
+
+msgid "Last seen"
+msgstr "সর্বশেষ দেখা"
+
+msgid "Latency"
+msgstr "লেটেন্সি"
+
+msgid "RX rate"
+msgstr "RX হার"
+
+msgid "TX rate"
+msgstr "TX হার"
+
+# =========================================================
+# Wired backhaul details
+# =========================================================
+msgid "Wired backhaul details"
+msgstr "তারযুক্ত ব্যাকহল বিস্তারিত"
+
+msgid "State"
+msgstr "অবস্থা"
+
+msgid "Cable"
+msgstr "কেবল"
+
+msgid "Link speed"
+msgstr "সংযোগ গতি"
+
+msgid "Priority weight"
+msgstr "অগ্রাধিকার ওজন"
+
+msgid "In LAN bridge"
+msgstr "LAN ব্রিজে"
+
+# =========================================================
+# Wired port picker
+# =========================================================
+msgid "Wired backhaul port"
+msgstr "তারযুক্ত ব্যাকহল পোর্ট"
+
+msgid "Preferred wired port"
+msgstr "পছন্দের তারযুক্ত পোর্ট"
+
+msgid "(none — wired presets will skip)"
+msgstr "(কোনোটি নয় — তারযুক্ত প্রিসেট এড়িয়ে যাবে)"
+
+# =========================================================
+# Boot-time reliability / Cron
+# =========================================================
+msgid "Boot-time reliability"
+msgstr "বুট-সময় নির্ভরযোগ্যতা"
+
+msgid "Enable cron fallback"
+msgstr "cron ফলব্যাক সক্রিয় করুন"
+
+# =========================================================
+# Link priority weights (new)
+# =========================================================
+msgid "Link priority weights"
+msgstr "সংযোগ অগ্রাধিকার ওজন"
+
+msgid "Wired (Kbit/s)"
+msgstr "তারযুক্ত (Kbit/s)"
+
+msgid "6 GHz wireless (Kbit/s)"
+msgstr "6 GHz বেতার (Kbit/s)"
+
+msgid "5 GHz wireless (Kbit/s)"
+msgstr "5 GHz বেতার (Kbit/s)"
+
+msgid "2.4 GHz wireless (Kbit/s)"
+msgstr "2.4 GHz বেতার (Kbit/s)"
+
+# =========================================================
+# Mesh VLANs (new)
+# =========================================================
+msgid "Mesh VLANs"
+msgstr "মেশ VLAN"
+
+msgid "VLAN IDs (comma-separated)"
+msgstr "VLAN ID (কমা-বিভক্ত)"
+
+# =========================================================
+# Quick Setup
+# =========================================================
+msgid "Quick Setup"
+msgstr "দ্রুত সেটআপ"
+
+msgid "1. Server — 5 GHz wireless only"
+msgstr "১. সার্ভার — শুধু 5 GHz বেতার"
+
+msgid "2. Server — 2.4 GHz wireless only"
+msgstr "২. সার্ভার — শুধু 2.4 GHz বেতার"
+
+msgid "3. Server — Dual-band wireless only"
+msgstr "৩. সার্ভার — শুধু দ্বি-ব্যান্ড বেতার"
+
+msgid "4. Server — Wired backhaul only"
+msgstr "৪. সার্ভার — শুধু তারযুক্ত ব্যাকহল"
+
+msgid "5. Server — 5 GHz + Wired"
+msgstr "৫. সার্ভার — 5 GHz + তারযুক্ত"
+
+msgid "6. Server — 2.4 GHz + Wired"
+msgstr "৬. সার্ভার — 2.4 GHz + তারযুক্ত"
+
+msgid "7. Server — Dual-band + Wired"
+msgstr "৭. সার্ভার — দ্বি-ব্যান্ড + তারযুক্ত"
+
+msgid "8. Client — 5 GHz wireless only"
+msgstr "৮. ক্লায়েন্ট — শুধু 5 GHz বেতার"
+
+msgid "9. Client — 2.4 GHz wireless only"
+msgstr "৯. ক্লায়েন্ট — শুধু 2.4 GHz বেতার"
+
+msgid "10. Client — Dual-band wireless only"
+msgstr "১০. ক্লায়েন্ট — শুধু দ্বি-ব্যান্ড বেতার"
+
+msgid "11. Client — Wired backhaul only"
+msgstr "১১. ক্লায়েন্ট — শুধু তারযুক্ত ব্যাকহল"
+
+msgid "12. Client — 5 GHz + Wired fallback"
+msgstr "১২. ক্লায়েন্ট — 5 GHz + তারযুক্ত ফলব্যাক"
+
+msgid "13. Client — 2.4 GHz + Wired fallback"
+msgstr "১৩. ক্লায়েন্ট — 2.4 GHz + তারযুক্ত ফলব্যাক"
+
+msgid "14. Client — Dual-band + Wired fallback"
+msgstr "১৪. ক্লায়েন্ট — দ্বি-ব্যান্ড + তারযুক্ত ফলব্যাক"
+
+msgid "15. Node — 5 GHz relay"
+msgstr "১৫. নোড — 5 GHz রিলে"
+
+msgid "16. Node — Dual-band relay"
+msgstr "১৬. নোড — দ্বি-ব্যান্ড রিলে"
+
+msgid "17. Node — Wired relay only"
+msgstr "১৭. নোড — শুধু তারযুক্ত রিলে"
+
+msgid "18. Detach wired backhaul"
+msgstr "১৮. তারযুক্ত ব্যাকহল বিচ্ছিন্ন করুন"
+
+msgid "19. Disable mesh"
+msgstr "১৯. মেশ বন্ধ করুন"
+
+# Preset descriptions
+msgid "[SERVER] Gateway. Extenders join via 5 GHz mesh only."
+msgstr "[সার্ভার] গেটওয়ে। এক্সটেন্ডারগুলি শুধু 5 GHz মেশ দিয়ে যুক্ত হবে।"
+
+msgid "[SERVER] Extenders join via 2.4 GHz (longer range)."
+msgstr "[সার্ভার] এক্সটেন্ডারগুলি 2.4 GHz দিয়ে যুক্ত হবে (দীর্ঘ পরিসর)।"
+
+msgid "[SERVER] Both radios carry backhaul."
+msgstr "[সার্ভার] উভয় রেডিও ব্যাকহল বহন করবে।"
+
+msgid "[SERVER] No wireless mesh — extenders connect by cable."
+msgstr "[সার্ভার] কোনো বেতার মেশ নেই — এক্সটেন্ডারগুলি কেবল দিয়ে যুক্ত হবে।"
+
+msgid "[SERVER] 5 GHz mesh primary, Ethernet parallel."
+msgstr "[সার্ভার] 5 GHz মেশ প্রাথমিক, ইথারনেট সমান্তরাল।"
+
+msgid "[SERVER] 2.4 GHz mesh plus Ethernet."
+msgstr "[সার্ভার] 2.4 GHz মেশ এবং ইথারনেট।"
+
+msgid "[SERVER] Maximum redundancy. Both radios + Ethernet."
+msgstr "[সার্ভার] সর্বোচ্চ রিডান্ডেন্সি। উভয় রেডিও + ইথারনেট।"
+
+msgid "[CLIENT] Extender via 5 GHz. No cable."
+msgstr "[ক্লায়েন্ট] 5 GHz দিয়ে এক্সটেন্ডার। কেবল নেই।"
+
+msgid "[CLIENT] Extender via 2.4 GHz."
+msgstr "[ক্লায়েন্ট] 2.4 GHz দিয়ে এক্সটেন্ডার।"
+
+msgid "[CLIENT] Extender via both radios."
+msgstr "[ক্লায়েন্ট] উভয় রেডিও দিয়ে এক্সটেন্ডার।"
+
+msgid "[CLIENT] Cable only, no wireless mesh."
+msgstr "[ক্লায়েন্ট] শুধু কেবল, কোনো বেতার মেশ নেই।"
+
+msgid "[CLIENT] 5 GHz primary, Ethernet fallback."
+msgstr "[ক্লায়েন্ট] 5 GHz প্রাথমিক, ইথারনেট ফলব্যাক।"
+
+msgid "[CLIENT] 2.4 GHz primary, Ethernet fallback."
+msgstr "[ক্লায়েন্ট] 2.4 GHz প্রাথমিক, ইথারনেট ফলব্যাক।"
+
+msgid "[CLIENT] Both radios + Ethernet. Maximum redundancy."
+msgstr "[ক্লায়েন্ট] উভয় রেডিও + ইথারনেট। সর্বোচ্চ রিডান্ডেন্সি।"
+
+msgid "[NODE] Relay only, 5 GHz. No client SSID."
+msgstr "[নোড] শুধু রিলে, 5 GHz। কোনো ক্লায়েন্ট SSID নেই।"
+
+msgid "[NODE] Relay only, both radios."
+msgstr "[নোড] শুধু রিলে, উভয় রেডিও।"
+
+msgid "[NODE] Relay via cable only. No wireless."
+msgstr "[নোড] শুধু কেবল দিয়ে রিলে। বেতার নেই।"
+
+msgid "Removes Ethernet backhaul, restores port to bridge."
+msgstr "ইথারনেট ব্যাকহল সরায়, পোর্ট ব্রিজে ফিরিয়ে দেয়।"
+
+msgid "Turns off mesh. Radios stay enabled."
+msgstr "মেশ বন্ধ করে। রেডিও চালু থাকে।"
+
+# =========================================================
+# Mesh settings
+# =========================================================
+msgid "Mesh settings"
+msgstr "মেশ সেটিংস"
+
+msgid "Enable EasyMesh"
+msgstr "EasyMesh সক্রিয় করুন"
+
+msgid "Mesh role"
+msgstr "মেশ ভূমিকা"
+
+msgid "Off"
+msgstr "বন্ধ"
+
+msgid "Server (gateway - has internet)"
+msgstr "সার্ভার (গেটওয়ে - ইন্টারনেট আছে)"
+
+msgid "Client (uses mesh internet)"
+msgstr "ক্লায়েন্ট (মেশ ইন্টারনেট ব্যবহার করে)"
+
+msgid "Node (relay only)"
+msgstr "নোড (শুধু রিলে)"
+
+msgid "Mesh mode"
+msgstr "মেশ মোড"
+
+msgid "5 GHz wireless only"
+msgstr "শুধু 5 GHz বেতার"
+
+msgid "2.4 GHz wireless only"
+msgstr "শুধু 2.4 GHz বেতার"
+
+msgid "Dual-band wireless only"
+msgstr "শুধু দ্বি-ব্যান্ড বেতার"
+
+msgid "5 GHz wireless + Wired backhaul"
+msgstr "5 GHz বেতার + তারযুক্ত ব্যাকহল"
+
+msgid "2.4 GHz wireless + Wired backhaul"
+msgstr "2.4 GHz বেতার + তারযুক্ত ব্যাকহল"
+
+msgid "Dual-band wireless + Wired backhaul"
+msgstr "দ্বি-ব্যান্ড বেতার + তারযুক্ত ব্যাকহল"
+
+msgid "Wired only (no wireless mesh)"
+msgstr "শুধু তারযুক্ত (কোনো বেতার মেশ নেই)"
+
+msgid "Custom radio"
+msgstr "কাস্টম রেডিও"
+
+msgid "Custom mesh radio"
+msgstr "কাস্টম মেশ রেডিও"
+
+msgid "Mesh ID"
+msgstr "মেশ ID"
+
+msgid "Require password (WPA3-SAE)"
+msgstr "পাসওয়ার্ড আবশ্যক (WPA3-SAE)"
+
+msgid "Mesh password"
+msgstr "মেশ পাসওয়ার্ড"
+
+msgid "Enable 802.11k/v/r fast roaming"
+msgstr "802.11k/v/r দ্রুত রোমিং সক্রিয় করুন"
+
+msgid "Mobility domain"
+msgstr "মোবিলিটি ডোমেইন"
+
+# =========================================================
+# Client WiFi
+# =========================================================
+msgid "Client WiFi — 2.4 GHz"
+msgstr "ক্লায়েন্ট WiFi — 2.4 GHz"
+
+msgid "Broadcast 2.4 GHz"
+msgstr "2.4 GHz সম্প্রচার করুন"
+
+msgid "2.4 GHz SSID"
+msgstr "2.4 GHz SSID"
+
+msgid "2.4 GHz security"
+msgstr "2.4 GHz নিরাপত্তা"
+
+msgid "None (open)"
+msgstr "কোনোটি নয় (খোলা)"
+
+msgid "WPA2-PSK"
+msgstr "WPA2-PSK"
+
+msgid "WPA3-SAE"
+msgstr "WPA3-SAE"
+
+msgid "WPA2/WPA3 transition"
+msgstr "WPA2/WPA3 ট্রানজিশন"
+
+msgid "2.4 GHz password"
+msgstr "2.4 GHz পাসওয়ার্ড"
+
+msgid "Client WiFi — 5 GHz"
+msgstr "ক্লায়েন্ট WiFi — 5 GHz"
+
+msgid "Broadcast 5 GHz"
+msgstr "5 GHz সম্প্রচার করুন"
+
+msgid "5 GHz SSID"
+msgstr "5 GHz SSID"
+
+msgid "5 GHz security"
+msgstr "5 GHz নিরাপত্তা"
+
+msgid "5 GHz password"
+msgstr "5 GHz পাসওয়ার্ড"
+
+msgid "Client WiFi — shared"
+msgstr "ক্লায়েন্ট WiFi — শেয়ার্ড"
+
+msgid "Attach client WiFi to network"
+msgstr "ক্লায়েন্ট WiFi নেটওয়ার্কে সংযুক্ত করুন"
+
+# =========================================================
+# AP Mode
+# =========================================================
+msgid "AP Mode (Dumb AP)"
+msgstr "AP মোড (Dumb AP)"
+
+msgid "Enable AP Mode (Dumb AP)"
+msgstr "AP মোড সক্রিয় করুন (Dumb AP)"
+
+msgid "IP mode"
+msgstr "IP মোড"
+
+msgid "DHCP (from Server)"
+msgstr "DHCP (সার্ভার থেকে)"
+
+msgid "Static IP"
+msgstr "স্থির IP"
+
+msgid "IP address"
+msgstr "IP ঠিকানা"
+
+msgid "Netmask"
+msgstr "নেটমাস্ক"
+
+msgid "Gateway"
+msgstr "গেটওয়ে"
+
+msgid "DNS server"
+msgstr "DNS সার্ভার"
+
+# =========================================================
+# Wired backhaul
+# =========================================================
+msgid "Wired backhaul"
+msgstr "তারযুক্ত ব্যাকহল"
+
+msgid "Wired backhaul interface"
+msgstr "তারযুক্ত ব্যাকহল ইন্টারফেস"
+
+msgid "Disabled"
+msgstr "নিষ্ক্রিয়"
+
+# =========================================================
+# Safety and actions
+# =========================================================
+msgid "Safety and actions"
+msgstr "নিরাপত্তা ও ক্রিয়া"
+
+msgid "Safe apply (60-second rollback)"
+msgstr "নিরাপদ প্রয়োগ (৬০-সেকেন্ড রোলব্যাক)"
+
+msgid "Reapply EasyMesh Settings"
+msgstr "EasyMesh সেটিংস পুনঃপ্রয়োগ করুন"
+
+msgid "Restore from last backup"
+msgstr "সর্বশেষ ব্যাকআপ থেকে পুনরুদ্ধার করুন"
+
+msgid "Pair with another router"
+msgstr "অন্য রাউটারের সাথে পেয়ার করুন"
+
+msgid "Enter pairing mode (2 minutes)"
+msgstr "পেয়ারিং মোডে প্রবেশ করুন (২ মিনিট)"
+
+# =========================================================
+# Long descriptions
+# =========================================================
+msgid "Optional. Adds a physical Ethernet port as a batman hardif. Required on BOTH sides for a wired link. The port is auto-removed from the LAN bridge on apply."
+msgstr "ঐচ্ছিক। একটি ফিজিক্যাল ইথারনেট পোর্ট batman hardif হিসেবে যোগ করে। তারযুক্ত সংযোগের জন্য উভয় পাশে প্রয়োজন। প্রয়োগের সময় পোর্ট স্বয়ংক্রিয়ভাবে LAN ব্রিজ থেকে সরানো হয়।"
+
+msgid "WPS-style pairing. Press the WPS button on both routers within 2 minutes. Auto-reverts on timeout."
+msgstr "WPS-স্টাইল পেয়ারিং। ২ মিনিটের মধ্যে উভয় রাউটারে WPS বোতাম চাপুন। সময় শেষ হলে স্বয়ংক্রিয়ভাবে ফিরে যায়।"
+
+msgid "Batman-adv throughput_override values in Kbit/s. Higher = preferred. Set to 0 to let batman auto-decide per link. Defaults: wired=1000000, 6G=900000, 5G=600000, 2.4G=30000. Changes apply on next Save & Apply (or 'Reapply EasyMesh Settings')."
+msgstr "Batman-adv throughput_override মান Kbit/s-এ। উচ্চতর = পছন্দের। প্রতিটি লিংকে batman-কে স্বয়ংক্রিয় সিদ্ধান্ত নিতে দিতে 0 সেট করুন। ডিফল্ট: তারযুক্ত=1000000, 6G=900000, 5G=600000, 2.4G=30000। পরিবর্তনগুলি পরবর্তী Save & Apply-এ (বা 'EasyMesh সেটিংস পুনঃপ্রয়োগ করুন') কার্যকর হয়।"
+
+msgid "Extend guest / IoT / hotspot networks across the mesh. Enter a comma-separated list of VLAN IDs (e.g. 10,20,30). The init script creates bat0.<vid> as an 8021q device for each ID. If a bridge named br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, or br-iot<vid> already exists, it is auto-added to that bridge. Otherwise, add the bat0.<vid> device manually in Network → Interfaces → Devices. Requires 802.1Q-capable switches on the physical wired backhaul."
+msgstr "মেশ জুড়ে অতিথি / IoT / হটস্পট নেটওয়ার্ক প্রসারিত করুন। কমা-বিভক্ত VLAN ID তালিকা লিখুন (যেমন 10,20,30)। init লিপি প্রতিটি ID-এর জন্য bat0.<vid> কে একটি 8021q ডিভাইস হিসেবে তৈরি করে। যদি br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, বা br-iot<vid> নামের একটি ব্রিজ ইতিমধ্যে বিদ্যমান থাকে, তবে সেটি স্বয়ংক্রিয়ভাবে সেই ব্রিজে যোগ করা হয়। অন্যথায়, Network → Interfaces → Devices-এ ম্যানুয়ালি bat0.<vid> ডিভাইস যোগ করুন। ফিজিক্যাল তারযুক্ত ব্যাকহলে 802.1Q-সক্ষম সুইচ প্রয়োজন।"
+
+msgid "The init script applies link priorities at boot and 90s later. On some hardware, mesh interfaces appear even later, leaving priority weight at 0. Enable cron fallback to reapply priority every minute. Safe (idempotent) but runs in the background. When disabled, the cron line is commented out in /etc/crontabs/root."
+msgstr "init লিপি বুটে এবং 90 সেকেন্ড পরে সংযোগ অগ্রাধিকার প্রয়োগ করে। কিছু হার্ডওয়্যারে, মেশ ইন্টারফেস আরও পরে দেখা দেয়, ফলে অগ্রাধিকার ওজন 0-এ থাকে। প্রতি মিনিটে অগ্রাধিকার পুনঃপ্রয়োগ করতে cron ফলব্যাক সক্রিয় করুন। নিরাপদ (idempotent) কিন্তু ব্যাকগ্রাউন্ডে চলে। নিষ্ক্রিয় থাকলে, /etc/crontabs/root-এ cron লাইনটি মন্তব্য করা থাকে।"
+
+msgid "Convenience selector. Mirrors 'Wired backhaul interface' below. Presets that use wired backhaul will remove this port from the LAN bridge. Pick a port NOT used by your uplink or modem. Leave empty to disable wired backhaul entirely."
+msgstr "সুবিধাজনক নির্বাচক। নিচের 'তারযুক্ত ব্যাকহল ইন্টারফেস' এর সাথে মিলে যায়। তারযুক্ত ব্যাকহল ব্যবহার করে এমন প্রিসেট এই পোর্টটি LAN ব্রিজ থেকে সরিয়ে দেবে। আপনার আপলিংক বা মডেম দ্বারা ব্যবহৃত নয় এমন একটি পোর্ট বাছুন। তারযুক্ত ব্যাকহল সম্পূর্ণভাবে নিষ্ক্রিয় করতে খালি রাখুন।"
+
+msgid "Must match on all nodes. Ignored in wired-only mode."
+msgstr "সমস্ত নোডে অবশ্যই মিলতে হবে। শুধু তারযুক্ত মোডে উপেক্ষা করা হয়।"
+
+msgid "Must match on all nodes. Only used when 'Require password' is enabled."
+msgstr "সমস্ত নোডে অবশ্যই মিলতে হবে। শুধু 'পাসওয়ার্ড আবশ্যক' সক্রিয় থাকলে ব্যবহৃত হয়।"
+
+msgid "Click a preset. A confirmation dialog will appear. Current config is backed up automatically before applying. Grouped by role: SERVER (has internet) → CLIENT (uses mesh) → NODE (relay only)."
+msgstr "একটি প্রিসেট ক্লিক করুন। একটি নিশ্চিতকরণ ডায়ালগ আসবে। প্রয়োগের আগে বর্তমান কনফিগার স্বয়ংক্রিয়ভাবে ব্যাকআপ করা হয়। ভূমিকা অনুযায়ী গোষ্ঠীভুক্ত: সার্ভার (ইন্টারনেট আছে) → ক্লায়েন্ট (মেশ ব্যবহার করে) → নোড (শুধু রিলে)।"
+
+msgid "Longer range, lower speed. Use a different SSID from 5 GHz."
+msgstr "দীর্ঘ পরিসর, কম গতি। 5 GHz থেকে একটি ভিন্ন SSID ব্যবহার করুন।"
+
+msgid "Shorter range, much faster. Use a different SSID from 2.4 GHz."
+msgstr "ছোট পরিসর, অনেক দ্রুত। 2.4 GHz থেকে একটি ভিন্ন SSID ব্যবহার করুন।"
+
+
+
+
+# =========================================================
+# Additional descriptions
+# =========================================================
+msgid "Combined wireless band + wired backhaul. Wired variants use the port selected above."
+msgstr "সম্মিলিত বেতার ব্যান্ড + তারযুক্ত ব্যাকহল। তারযুক্ত ভেরিয়েন্ট উপরে নির্বাচিত পোর্ট ব্যবহার করে।"
+
+msgid "Example: 10,20,30 — Leave empty to disable"
+msgstr "উদাহরণ: 10,20,30 — নিষ্ক্রিয় করতে খালি রাখুন"
