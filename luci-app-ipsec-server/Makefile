@@ -1,4 +1,4 @@
-# Copyright (C) 2018-2021 Lienol <lawlienol@gmail.com>
+# Copyright (C) 2018-2026 Lienol <lawlienol@gmail.com>
 #
 # This is free software, licensed under the Apache License, Version 2.0 .
 #
@@ -6,13 +6,17 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-ipsec-server
-PKG_VERSION:=20260815
-PKG_RELEASE:=2
+PKG_VERSION:=20260807
+PKG_RELEASE:=3
 
 PKG_MAINTAINER:=Lienol <lawlienol@gmail.com>
 
 LUCI_TITLE:=LuCI support for IPSec VPN Server
-LUCI_DEPENDS:=+kmod-tun +luci-lib-jsonc +strongswan +strongswan-minimal +strongswan-mod-kernel-libipsec +strongswan-mod-openssl +strongswan-mod-xauth-generic +strongswan-mod-eap-mschapv2 +strongswan-mod-eap-identity +strongswan-mod-pem +strongswan-mod-pkcs1 +strongswan-mod-pkcs8 +strongswan-mod-dhcp +strongswan-mod-farp
+LUCI_DEPENDS:=+kmod-tun +luci-lib-jsonc +xl2tpd +strongswan \
+  +PACKAGE_strongswan:strongswan-mod-kernel-libipsec \
+  +PACKAGE_strongswan:strongswan-mod-openssl \
+  +PACKAGE_strongswan:strongswan-mod-xauth-generic \
+  +(PACKAGE_strongswan-mod-kdf||PACKAGE_strongswan-mod-openssl||PACKAGE_strongswan-mod-wolfssl):strongswan-minimal
 LUCI_PKGARCH:=all
 
 define Package/$(PKG_NAME)/conffiles

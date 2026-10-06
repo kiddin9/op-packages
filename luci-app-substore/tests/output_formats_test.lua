@@ -262,5 +262,44 @@ local rt_tj = loon_roundtrip(tj_node)
 check("loon rt trojan password", rt_tj and rt_tj.password == "p")
 check("loon rt trojan security", rt_tj and rt_tj.security == "tls")
 
+-- ---------- 7.9(g)+(j)：Loon / Surge / SurgeMac 都没有 Hysteria v1 ----------
+-- Loon 的节点类型清单里只有 Hysteria2（nsloon.app/docs/Node/）。注意 hysteria
+-- **2** 是各家通用的，被丢的只有上一代 v1 —— 两者共用同一个输出分支，容易误伤。
+local hy1_node = { proto = "hysteria", name = "H1", server = "1.1.1.1", port = 443, password = "p" }
+local hy2_node = { proto = "hysteria2", name = "H2", server = "1.1.1.1", port = 443, password = "p" }
+local loon_hy = fmts.to_loon({ hy1_node, hy2_node }, { name = "P" })
+check("loon drops hysteria v1", loon_hy:find("hysteria, 1.1.1.1", 1, true) == nil)
+check("loon keeps hysteria2", loon_hy:find('hysteria2, 1.1.1.1, 443, "p"', 1, true) ~= nil)
+-- 被丢弃的节点也不能留在 [Proxy Group] 的成员列表里（否则组引用一个不存在的代理）
+check("loon group has no hysteria v1", loon_hy:find("H1", 1, true) == nil)
+check("loon group keeps hysteria2", loon_hy:find("H2", 1, true) ~= nil)
+
+-- (j)：Surge / SurgeMac 的手册协议清单写的也是 "Hysteria 2"，
+-- manual.nssurge.com/policies/hysteria.html 是 404 而 hysteria2.html 存在。
+-- Surfboard 未获证据（其文档 404），**不**跟着丢 —— 这条断言防止有人顺手扩大范围。
+local surge_hy = fmts.to_surge({ hy1_node, hy2_node }, { name = "P" })
+check("surge drops hysteria v1", surge_hy:find("hysteria, 1.1.1.1", 1, true) == nil)
+check("surge keeps hysteria2", surge_hy:find("hysteria2, 1.1.1.1", 1, true) ~= nil)
+check("surge group has no hysteria v1", surge_hy:find("H1", 1, true) == nil)
+local mac_hy = fmts.to_surgemac({ hy1_node }, { name = "P" })
+check("surgemac drops hysteria v1", mac_hy:find("hysteria, 1.1.1.1", 1, true) == nil)
+local sb_hy = fmts.to_surfboard({ hy1_node }, { name = "P" })
+check("surfboard keeps hysteria v1 (no evidence to drop)",
+	sb_hy:find("hysteria, 1.1.1.1", 1, true) ~= nil)
+
+-- ---------- 7.9(h)：skip-cert-verify 写 true/false ----------
+-- Loon 文档的示例是 skip-cert-verify=false；Surge 手册只写 "boolean"。
+-- 两家文档里都找不到 `1` 这个取值。
+local scv_node = { proto = "hysteria2", name = "S", server = "1.1.1.1", port = 443,
+	password = "p", ["skip-cert-verify"] = true }
+check("surge skip-cert-verify=true",
+	fmts.surge_line(scv_node, "surge"):find("skip-cert-verify=true", 1, true) ~= nil)
+check("loon skip-cert-verify=true",
+	fmts.surge_line(scv_node, "loon"):find("skip-cert-verify=true", 1, true) ~= nil)
+check("no skip-cert-verify=1",
+	fmts.surge_line(scv_node, "surge"):find("skip-cert-verify=1", 1, true) == nil)
+local rt_scv = loon_roundtrip(scv_node)
+check("loon rt skip-cert-verify", rt_scv and rt_scv["skip-cert-verify"] == true)
+
 print(string.format("\n%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

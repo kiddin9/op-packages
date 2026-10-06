@@ -658,13 +658,13 @@ crontab 里，`substore-cron.sh` 会拿着已不存在的 id 反复执行，每�
 | 7.6 | 修复 | **已修复**（第一轮，见下） |
 | 7.7 | A：后端错误串 msgid 化 | **已实施**（第四轮，见下） |
 | 7.8 | A：删除 `age.lua` / `age_test.lua` | **已删除**（第一轮） |
-| 7.9 | (a)(b)(c)(d) 全部实施；(e) 保持保守（含逗号整条丢弃） | **已实施**（第五轮，见下） |
+| 7.9 | (a)(b)(c)(d) 全部实施；(e) 保持保守；(g)(h) 实施；(i) 保持现状；(j) 实施（Surge/SurgeMac） | **已实施**（第五、六、七轮，见下） |
 
 7.5 / 7.6 的修复见本节末尾「7.5 / 7.6 修复记录」，
 7.1 / 7.3 / 7.4 的实施见「第二轮修复记录」，
 7.2 的实施见「第三轮修复记录」，
 7.7 的实施见「第四轮修复记录」，
-7.9 的实施见「第五轮修复记录」。
+7.9 的 (a)–(e) 见「第五轮修复记录」，(g)(h) 见「第六轮修复记录」，(j) 见「第七轮修复记录」。
 
 | # | 问题 | 位置 | 依据 | 影响 |
 |---|---|---|---|---|
@@ -676,7 +676,7 @@ crontab 里，`substore-cron.sh` 会拿着已不存在的 id 反复执行，每�
 | 7.6 | ~~Loon 的 `transport=ws` 未映射到 `net`~~ **已修复** | `parser_surge.parse_surge_line` 的 `transport=` 分支 | 只认 `ws=true`（Surge 旧写法）与 `obfs=ws`（QX）；`nsloon.app/docs/Node/` 用 `transport=ws` + `path=` + `host=` | Loon 的 ws 节点导入后 `net=tcp`，`path` / `host` 全丢 → 导出到任何格式都按 tcp 连，握手失败**且不报错** |
 | 7.7 | ~~后端模块仍有 **113 处**硬编码中文字符串字面量（注释外）~~ **已实施** | `core.lua` 47 / `http.lua` 47 / `parser.lua` 9 / `util.lua` 5 / `output_wireguard_conf.lua` 3 / `node.lua` 2 | 扫描脚本（去注释后提取含 CJK / 全角的字符串字面量），见下 | 控制器文案已接入 i18n，但这些来自后端的失败原因经 `?err=` **原样**显示，英文界面下仍是中文。**已按 A 实施**：全部改为语言中立的英文 msgid，组合消息用 `msg.lua` 的分隔符机制，翻译只在显示边界发生（详见「第四轮修复记录」） |
 | 7.8 | ~~`root/usr/share/substore/age.lua` 与 `tests/age_test.lua` 未被 git 跟踪，且 `age.lua` 未被任何模块 `require`~~ **已删除** | 仓库根 | `grep -rn require` 无引用 | 未随包发布；留在工作区会被后续审计反复重新评估 |
-| 7.9 | ~~Loon 的节点行仍有**多处**与官方文档不一致~~ **已实施** | `output_formats.surge_line` / `parser_surge.parse_surge_line` | `nsloon.app/docs/Node/`；`manual.nssurge.com`；`getsurfboard.com` | 逐条见下「7.9 的明细」。**已按 (a)(b)(c)(d) 全部实施、(e) 保持保守**：Loon 的 TLS 开关改 `over-tls`（Trojan 除外）、UDP 改 `udp`、Surge 家族补 `encrypt-method`、Loon 的 ss/ssr/hysteria2 改位置参数；解析端同步跟进以保住回环（详见「第五轮修复记录」）。实施中新发现三条待决策项，见下「第五轮新发现」 |
+| 7.9 | ~~Loon 的节点行仍有**多处**与官方文档不一致~~ **已实施** | `output_formats.surge_line` / `parser_surge.parse_surge_line` | `nsloon.app/docs/Node/`；`manual.nssurge.com`；`getsurfboard.com` | 逐条见下「7.9 的明细」。**已按 (a)(b)(c)(d) 全部实施、(e) 保持保守**：Loon 的 TLS 开关改 `over-tls`（Trojan 除外）、UDP 改 `udp`、Surge 家族补 `encrypt-method`、Loon 的 ss/ssr/hysteria2 改位置参数；解析端同步跟进以保住回环（详见「第五轮修复记录」）。实施中新发现三条待决策项，见下「第五轮新发现」；其中 (g)(h) 已于第六轮实施、(i) 决定保持现状，另发现 (j) Surge 家族同样没有 Hysteria v1，**已于第七轮实施**（Surge / SurgeMac 丢弃，Surfboard 因无证据保留） |
 
 ### 7.7 的统计口径与例外（修复前必读）
 
@@ -790,33 +790,76 @@ trojan 页同样写 `username=` / `password=`。所以 Surge / Surfboard / Surge
 就整条丢弃」处理，并在 `tests/output_formats_test.lua` 钉了一条断言防止日后被
 无意改成半截输出。
 
-### 第五轮新发现（**均未实施，待决策**）
+### 第五轮新发现（(g)(h) 第六轮已实施，(i) 保持现状，(j) 第七轮已实施）
 
 第五轮实施 (a)–(d) 时对照 `nsloon.app/docs/Node/` 全文复核，另发现三处不一致。
 每条都只陈述**文档写了什么**与**本实现写了什么**，不推测客户端的实际行为。
+第六轮按决策实施了 (g)(h)，(i) 决定保持现状，实施过程中又发现 (j)（第七轮已实施）。
 
 **(g) Loon 没有 Hysteria v1，本生成器会把 `hysteria` 行输出给它** —— Loon 文档的
 节点类型清单里只有 **Hysteria2**，没有 Hysteria（v1）。而 `FAMILY_CAPS` 只按
 vless / ssr 分客户端能力，`hysteria` 不在过滤表里，所以统一模型里的 hysteria v1
-节点会生成一条 Loon 读不懂的行。修法二选一：(i) 给 `FAMILY_CAPS.loon` 加
-`hysteria = false` 整条丢弃（与丢弃 wireguard / ssr 同一约定）；(ii) 保持现状。
-**未实施** —— 需要先确认「Loon 是否真的不认 `hysteria`」以及 hysteria v1 节点在
-用户订阅里的实际占比。
+节点会生成一条 Loon 读不懂的行。
+
+**→ 实施（第六轮）**：`FAMILY_CAPS.loon` 加 `hysteria = false`，整条丢弃
+（与丢弃 wireguard / ssr 同一约定）。同时把 `surge_config` 的过滤从逐协议写死的
+`elseif p == "ssr" and not caps.ssr` 改成数据驱动的 `elseif caps[p] == false` ——
+每加一个维度就要再加一条分支，漏掉的那条默认是「保留」，正是本条缺陷的成因。
+**注意 hysteria 2 是各家通用的**，被丢的只有上一代 v1。
 
 **(h) `skip-cert-verify` 写成 `1`，两家文档都没写这个取值** —— Loon 文档的示例
 一律写 `skip-cert-verify=false`；Surge 手册的 TLS 页只写「Optional, boolean,
 default: false」，**没有**列出可接受的字面量。本生成器一律写
 `skip-cert-verify=1`。`1` 是否被接受**无依据**。解析端两种都认（`parser_surge`
-把非 `0` / 非 `false` 都当 true），所以回环不受影响，改与不改都不会破坏导入。
-**未实施** —— 改成 `true` 会动到所有 Surge 系输出的既有断言，收益（若 `1` 本就被
-接受则为零）尚不明确。
+把非 `0` / 非 `false` 都当 true），所以回环不受影响。
+
+**→ 实施（第六轮）**：改写成 `skip-cert-verify=true`。判据是「Loon 自己的示例写了
+`false`，直接证明 `false` 是合法字面量、`true` 同理；而 `1` 在任何一家文档里都
+找不到」。既有测试里没有任何一条断言过**生成端**的 `skip-cert-verify=1`
+（`anytls_reality_test` 里那一处是把 `=1` 当**输入**喂给解析器，仍然有效）。
 
 **(i) 协议名大小写：Loon 文档一律首字母大写，本生成器一律小写** —— Loon 文档写
 `Hysteria2` / `VMess` / `VLESS` / `Shadowsocks` / `AnyTLS`；本生成器输出
 `hysteria2` / `vmess` / `vless` / `shadowsocks` / `anytls`。Loon 官方定位是
 「兼容 Surge 配置」，而 Surge 手册的语法行用的是小写（`Name = vmess, <host>, …`），
-所以小写**很可能**被接受，但**没有文档明说**。**未实施** —— 这是全协议面的写法，
-改动面大且依据不足；若日后确认大小写敏感，应改的是 Loon 分支的类型名映射。
+所以小写**很可能**被接受，但**没有文档明说**。
+
+**→ 决定：保持现状（第六轮）**。没有任何证据显示小写会失败，而改动面覆盖全部
+协议；若日后确认大小写敏感，应改的是 Loon 分支的类型名映射。
+
+### 第六轮新发现（(j) **第七轮已实施**）
+
+**(j) Surge 家族同样没有 Hysteria v1，本生成器仍会把 `hysteria` 行输出给它们** ——
+第五轮实施 (g) 时顺带复核了 Surge 的协议清单，发现与 Loon 是**同一个缺口**：
+
+* `manual.nssurge.com` 的 Proxy Protocols 一节列的是 **Hysteria 2**，没有 Hysteria；
+* 直接的页面探针：`manual.nssurge.com/policies/hysteria.html` → **HTTP 404**，
+  而 `manual.nssurge.com/policies/hysteria2.html` → **存在**（语法行
+  `Proxy-Hysteria = hysteria2, 192.168.20.6, 443, password=pwd, download-bandwidth=100`）。
+
+也就是说 Surge / SurgeMac 的 `hysteria`（v1）行同样是一条客户端读不懂的行。
+**(g) 的决策只点名了 Loon**，所以第六轮**没有**顺手改 Surge 家族 ——
+`tests/output_formats_test.lua` 里有一条断言如实钉住了当前行为
+（`surge still keeps hysteria v1 (finding j pending)`），实施 (j) 时要一并翻转。
+
+Surfboard 未获证据：`getsurfboard.com/docs/profile-format/proxy/external-proxy/`
+与其无斜杠形式本轮都返回 404，没能取到协议清单。
+
+修法：给 `FAMILY_CAPS` 的 surge / surfboard / surgemac 三行都加 `hysteria = false`
+（过滤逻辑第六轮已改成数据驱动，加一个键即可），或把 `hysteria` 与 `wireguard`
+一样无条件丢弃。
+
+**→ 实施（第七轮，2.7.2-r8）**：`FAMILY_CAPS.surge` / `FAMILY_CAPS.surgemac` 各加
+`hysteria = false`，整条丢弃。被丢的仍然只有上一代 v1 —— Hysteria 2 三家都支持，
+两者在 `surge_line` 里共用同一个输出分支，靠 `proto` 区分，容易误伤，测试里专门
+断言了「丢 v1、留 v2」。
+
+**没有**给 `surfboard` 加这一条：文档 404、证据不足，能力表对它保持沉默
+（`caps[p] == nil` 一律保留）。上面那条「三家都加」的修法**没有**采纳 ——
+第七轮的决策是「Surge + SurgeMac 一起丢」，Surfboard 维持现状。
+`tests/output_formats_test.lua` 里留了一条 `surfboard keeps hysteria v1
+(no evidence to drop)` 钉住这点，防止日后有人「顺手统一」。
+第六轮那条 `finding j pending` 的占位断言已按计划翻转成 `surge drops hysteria v1`。
 
 ## 7.1 / 7.2 / 7.3 的实测探针
 
@@ -1308,10 +1351,116 @@ trojan / vmess / vless 一律用具名参数」—— 7.4-A 之后就不成立�
 
 全套 **59 个测试文件、0 失败**。
 
-### 本轮新发现（未实施，见上文「第五轮新发现」）
+### 本轮新发现（见上文「第五轮新发现」）
 
 (g) Loon 没有 Hysteria v1；(h) `skip-cert-verify=1` 的取值无文档依据；
-(i) 协议名大小写。三条都只记录，不动代码。
+(i) 协议名大小写。三条当时只记录、不动代码；(g)(h) 已在第六轮实施，
+(i) 决定保持现状。
+
+---
+
+## 第六轮修复记录（7.9 的 g / h）
+
+第五轮新发现里经决策要实施的两条。(i) 决定保持现状，不动代码。
+
+### (g) Loon 丢弃 Hysteria v1
+
+```lua
+loon = { vless = true, ssr = true, hysteria = false },
+```
+
+判据：Loon 的节点类型清单里只有 **Hysteria2**（`nsloon.app/docs/Node/`）。
+**hysteria 2 是各家通用的**，被丢的只有上一代 v1 —— 两者共用同一个输出分支
+（`elseif proto == "hysteria2" or proto == "hysteria"`），最容易误伤。
+
+**顺带把过滤逻辑改成数据驱动**。此前是逐协议写死的：
+
+```lua
+elseif p == "ssr" and not caps.ssr then      -- 旧
+elseif p == "vless" and not caps.vless then  -- 旧
+```
+
+```lua
+elseif caps[p] == false then                 -- 新
+```
+
+每加一个维度就要再加一条分支，**漏掉的那条默认是「保留」** —— 这正是本条缺陷的
+成因（`hysteria` 从没进过这张表）。改成查表后，`FAMILY_CAPS` 里标一个 `false`
+即可，不会再有「忘了加分支」这种漏法。`caps[p]` 为 nil（表没表态）一律保留。
+
+### (h) `skip-cert-verify` 改写 `true`
+
+```lua
+if n["skip-cert-verify"] then e[#e + 1] = "skip-cert-verify=true" end
+```
+
+判据：Loon 文档的示例就是 `skip-cert-verify=false`，直接证明 `false` 是合法
+字面量、`true` 同理；而 `1` 在任何一家文档里都找不到（Surge 手册的 TLS 页只写
+「Optional, boolean, default: false」）。解析端两种都认，回环不受影响。
+
+**断言面审计**：全仓库只有 `output_formats.lua` 一处写这个串；既有测试里**没有**
+任何一条断言过生成端的 `skip-cert-verify=1` —— `anytls_reality_test.lua:151` 那处
+是把 `=1` 当**输入**喂给解析器，改写后仍然有效。
+
+### (i) 协议名大小写：保持现状
+
+无证据显示小写会失败（Loon 定位是兼容 Surge 配置，Surge 手册的语法行就是小写），
+改动面却覆盖全部协议。不改。
+
+### 测试
+
+* `tests/protocol_registry_test.lua`：`hysteria` 的丢弃表加 `loon` 一条。
+* `tests/output_formats_test.lua`：新增 (g) 5 条 / (h) 4 条断言，含回环。
+  其中一条如实钉住 **Surge 家族当前仍输出 hysteria v1**（发现 (j)，待决策），
+  实施 (j) 时要一并翻转。
+* 反向验证：`FAMILY_CAPS.loon.hysteria` 改回不设 / `skip-cert-verify` 改回 `=1`，
+  确认测试变红。
+* 全套 **59 个测试文件、0 失败**。
+
+### 本轮新发现（见上文「第六轮新发现」）
+
+(j) Surge 家族同样没有 Hysteria v1（`manual.nssurge.com/policies/hysteria.html`
+是 404、`hysteria2.html` 存在）。本轮**没有**顺手改 —— (g) 的决策只点名了 Loon。
+**→ 已于第七轮实施。**
+
+---
+
+## 第七轮修复记录（7.9 的 j）
+
+第六轮新发现 (j)：Surge 家族的手册协议清单里写的也是 **"Hysteria 2"**，
+`manual.nssurge.com/policies/hysteria.html` 是 404 而同目录的 `hysteria2.html`
+存在 —— 与 Loon 同一情形。本轮按决策把丢弃延伸到 Surge / SurgeMac。
+
+### 改动
+
+* `root/usr/share/substore/output_formats.lua`
+  * `FAMILY_CAPS.surge` / `FAMILY_CAPS.surgemac` 各加 `hysteria = false`。
+    **Surfboard 不加** —— 文档 404、证据不足（决策是「Surge + SurgeMac 一起丢」）。
+  * `FAMILY_CAPS` 上方的依据注释同步更新：Surge / SurgeMac 的清单补上「也没有
+    Hysteria v1」及其探针证据；Surfboard 一段写明「未获证据，故保留」。
+  * `surge_config` 的过滤注释补上 `hysteria` 一行，说明它同样按 `FAMILY_CAPS`
+    分客户端、Surfboard 因本表沉默而保留。
+  * 过滤**逻辑**本身不动：第六轮已改成数据驱动（`elseif caps[p] == false`），
+    本轮只是往表里加键 —— 这正是第六轮那次重构要买的东西。
+
+### 测试
+
+* `tests/protocol_registry_test.lua`：`hysteria` 的丢弃表加 `surge` / `surgemac`
+  两条，并注明 Surfboard 不在其中。
+* `tests/output_formats_test.lua`：(j) 新增 5 条断言 —— surge 丢 v1 / 留 v2 /
+  组不含 v1、surgemac 丢 v1、**surfboard 留 v1（无证据丢弃）**；第六轮那条
+  `surge still keeps hysteria v1 (finding j pending)` 占位断言已删除（被
+  `surge drops hysteria v1` 取代）。
+* 反向验证：把 `hysteria = false` 从 surge / surgemac 两行撤掉 → **4 条 FAIL**
+  （output_formats 3 条 + registry 1 条），而 `surfboard keeps hysteria v1`
+  那条**始终绿**（本轮没碰 Surfboard，它本就不该受影响）→ 说明断言确实指向
+  本轮改动，且没有误伤范围外的行为。还原后全绿。
+* 全套 **59 个测试文件、0 失败**。
+
+### 本轮新发现
+
+无。这是 7.9 决策链的最后一条；实施完 (j) 后 7.9 的 (a)–(e)、(g)–(j) 全部结清
+（(f) 复核确认本来就对，(i) 决定保持现状）。
 
 ---
 

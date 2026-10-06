@@ -2,6 +2,76 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.2-r8] - Surge / SurgeMac 一并丢弃 Hysteria v1（LEGACY_ISSUES 7.9 j）
+
+第六轮把 Loon 的 Hysteria v1 丢弃了，本轮把同一条证据链延伸到 Surge 家族。
+
+### 修复 — 7.9(j)：Surge / SurgeMac 丢弃 Hysteria v1
+
+第六轮新发现 (j)：Surge 家族的手册协议清单里写的也是 **"Hysteria 2"**，
+`manual.nssurge.com/policies/hysteria.html` 是 404 而同目录的 `hysteria2.html`
+存在 —— 与 Loon 同一情形，而本生成器仍会给这两家输出 `hysteria, ...` 行。
+
+`FAMILY_CAPS.surge` / `FAMILY_CAPS.surgemac` 各加 `hysteria = false`，整条丢弃。
+被丢的仍然只有上一代 **v1**：Hysteria 2 三家都支持，不受影响。
+
+**Surfboard 不在其中**：`getsurfboard.com` 的 `profile-format/proxy/external-proxy`
+一节及其无斜杠形式都返回 404，无法证实它读不懂 v1。既然没有证据，就不替它丢弃 ——
+能力表对 Surfboard 保持沉默（`caps[p] == nil` 一律保留）。测试里有一条断言钉住这点，
+防止日后有人「顺手统一」。
+
+### 测试
+
+* `tests/protocol_registry_test.lua`：`hysteria` 的丢弃表加 `surge` / `surgemac` 两条。
+* `tests/output_formats_test.lua`：(j) 新增 5 条断言（surge 丢/留、组不含 v1、
+  surgemac 丢、surfboard 留），并删去第六轮那条 `finding j pending` 的占位断言。
+* 反向验证：把 `hysteria = false` 从 surge / surgemac 撤掉，确认测试变红
+  （output_formats 3 条 + registry 1 条），且 surfboard 那条**始终绿**（本就无关）。
+* 全套 **59 个测试文件、0 失败**。
+
+## [2.7.2-r7] - Loon 丢弃 Hysteria v1、skip-cert-verify 改写 true（LEGACY_ISSUES 7.9 g/h）
+
+第五轮新发现里经决策要实施的两条。第三条（协议名大小写）决定保持现状。
+
+### 修复 — 7.9(g)：Loon 丢弃 Hysteria v1
+
+Loon 的节点类型清单里只有 **Hysteria2**（`nsloon.app/docs/Node/`），本生成器却会把
+统一模型里的 hysteria v1 节点也输出成一条 Loon 读不懂的行。现在
+`FAMILY_CAPS.loon` 加 `hysteria = false`，整条丢弃 —— 与丢弃 wireguard / ssr
+同一约定。**hysteria 2 是各家通用的**，被丢的只有上一代 v1。
+
+顺带把 `surge_config` 的过滤逻辑改成数据驱动：此前是逐协议写死的
+`elseif p == "ssr" and not caps.ssr` / `elseif p == "vless" and not caps.vless`，
+每加一个维度就要再加一条分支，**漏掉的那条默认是「保留」** —— 这正是本条缺陷的
+成因（`hysteria` 从没进过这张表）。现在是 `elseif caps[p] == false`，标一个键即可。
+
+### 修复 — 7.9(h)：`skip-cert-verify` 写 `true` 而不是 `1`
+
+Loon 文档的示例就是 `skip-cert-verify=false`，直接证明 `false` 是合法字面量、
+`true` 同理；而 Surge 手册的 TLS 页只写「Optional, boolean, default: false」，
+两家的文档里都找不到 `1` 这个取值。解析端两种都认，回环不受影响。
+
+### 保持现状 — 7.9(i)：协议名大小写
+
+Loon 文档写 `VMess` / `Hysteria2`（首字母大写），本生成器用小写。无证据显示小写会
+失败（Loon 定位是兼容 Surge 配置，Surge 手册的语法行就是小写），改动面却覆盖全部
+协议 —— 不改。
+
+### 测试
+
+* `tests/protocol_registry_test.lua`：`hysteria` 的丢弃表加 `loon` 一条。
+* `tests/output_formats_test.lua`：新增 (g) 5 条 / (h) 4 条断言（含回环）。
+* 反向验证：两条改动各自改回旧行为，确认测试变红。
+* 全套 **59 个测试文件、0 失败**。
+
+### 本轮新发现（未实施，记录在 LEGACY_ISSUES）
+
+(j) **Surge 家族同样没有 Hysteria v1** —— `manual.nssurge.com/policies/hysteria.html`
+返回 404 而 `hysteria2.html` 存在，手册的协议清单写的也是 "Hysteria 2"。也就是
+Surge / SurgeMac 的 `hysteria` 行同样读不懂。本轮**没有**顺手改 —— (g) 的决策只
+点名了 Loon。测试里有一条断言如实钉住当前行为，实施 (j) 时一并翻转。
+Surfboard 未获证据（其 external-proxy 文档页本轮返回 404）。
+
 ## [2.7.2-r6] - Loon / Surge 家族写法按官方文档对齐（LEGACY_ISSUES 7.9）
 
 `docs/LEGACY_ISSUES.md` 第七节 2.7.2 审计新发现的**第五轮**修复：(a)(b)(c)(d)

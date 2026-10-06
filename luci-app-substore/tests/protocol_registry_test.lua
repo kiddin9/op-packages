@@ -103,9 +103,17 @@ local DROPPED = {
 		v2ray = "V2RAY_PROTOS 无 hysteria2", wgconf = "wgconf 只收 wireguard" },
 	tuic        = { clash = "原版 Clash 无 tuic", qx = "to_qx 无 tuic",
 		v2ray = "V2RAY_PROTOS 无 tuic", wgconf = "wgconf 只收 wireguard" },
+	-- hysteria v1 的第二、三处：Loon 的节点类型清单里同样只有 Hysteria2
+	-- （nsloon.app/docs/Node/），Surge / SurgeMac 的手册协议清单写的也是
+	-- "Hysteria 2"（且 policies/hysteria.html 是 404、hysteria2.html 存在）——
+	-- 均由 FAMILY_CAPS.<flavor>.hysteria=false 整条丢弃。
+	-- Surfboard **不在**此列：其文档 404，无法证实它读不懂 v1，故保留。
 	hysteria    = { clash = "原版 Clash 无 hysteria", qx = "to_qx 无 hysteria",
 		v2ray = "V2RAY_PROTOS 无 hysteria", wgconf = "wgconf 只收 wireguard",
-		egern = "Egern 只有 Hysteria2，没有 Hysteria v1" },
+		egern = "Egern 只有 Hysteria2，没有 Hysteria v1",
+		loon = "Loon 只有 Hysteria2，没有 Hysteria v1",
+		surge = "Surge 只有 Hysteria2，没有 Hysteria v1",
+		surgemac = "SurgeMac 只有 Hysteria2，没有 Hysteria v1" },
 	-- wireguard：Surge 家族需要专用的多段 [WireGuard] 配置，单行 [Proxy] 表达不了，
 	-- surge_config 统一丢弃；原版 Clash / qx / v2ray 同样不支持。
 	-- Egern **不在**此列：它的配置是 YAML，WireGuard 有独立的协议块

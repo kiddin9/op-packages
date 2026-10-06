@@ -11,12 +11,14 @@ function index()
 	entry({"admin", "vpn", "ipsec-server", "settings"}, cbi("ipsec-server/settings"), _("General Settings"), 10).leaf = true
 	entry({"admin", "vpn", "ipsec-server", "users"}, cbi("ipsec-server/users"), _("Users Manager"), 20).leaf = true
 	entry({"admin", "vpn", "ipsec-server", "l2tp_user"}, cbi("ipsec-server/l2tp_user")).leaf = true
+	entry({"admin", "vpn", "ipsec-server", "online"}, cbi("ipsec-server/online"), _("Online Users"), 30).leaf = true
 	entry({"admin", "vpn", "ipsec-server", "status"}, call("act_status")).leaf = true
 end
 
 function act_status()
 	local e = {}
-	e["ipsec_status"] = luci.sys.call("pidof charon >/dev/null 2>&1") == 0
+	e["ipsec_status"] = luci.sys.call("/usr/bin/pgrep ipsec >/dev/null") == 0
+	e["l2tp_status"] = luci.sys.call("top -bn1 | grep -v grep | grep '/var/etc/xl2tpd' >/dev/null") == 0
 	luci.http.prepare_content("application/json")
 	luci.http.write_json(e)
 end

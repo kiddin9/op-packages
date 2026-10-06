@@ -74,7 +74,9 @@ local REALITY_FLAVORS = { loon = true }
 -- 各 Surge 系客户端对「非通用协议」的支持情况。
 --
 -- 通用协议（shadowsocks / vmess / trojan / socks5 / http / hysteria2 / tuic /
--- anytls）各家都认；各家**不一致**的只有 VLESS 与 SSR 两个，所以只记这两个。
+-- anytls）各家都认；各家**不一致**的是 VLESS、SSR 与 Hysteria（v1）三个，
+-- 所以只记这三个。注意 Hysteria **2** 是通用的，各家都支持；不一致的是它的
+-- 上一代 Hysteria v1。
 -- 用一张表而不是给每个调用点传布尔参数：此前是 `supports_ssr` 一个布尔量，
 -- 加一个维度就要再加一个参数，调用点一多必然漏传（漏传的默认值还是「支持」，
 -- 于是导出里多出客户端读不懂的行，且不报错）。
@@ -83,18 +85,32 @@ local REALITY_FLAVORS = { loon = true }
 --   * Surge / SurgeMac：manual.nssurge.com 的 Proxy Protocols 一节只列
 --     HTTP and HTTP/2、SOCKS5、Shadowsocks、Snell、VMess、Trojan、TUIC、
 --     Hysteria 2、MASQUE、AnyTLS、Trust Tunnel、SSH、WireGuard、Tailscale
---     —— 没有 VLESS，也没有 ShadowsocksR。
+--     —— 没有 VLESS、没有 ShadowsocksR，也没有 Hysteria（v1）。
+--     Hysteria v1 的证据：清单里写的是 "Hysteria 2"，且同目录下
+--     manual.nssurge.com/policies/hysteria2.html 存在而 hysteria.html 是 404。
 --   * Surfboard：getsurfboard.com 的 external-proxy 清单同样没有 VLESS / SSR。
---   * Loon：nsloon.app/docs/Node/ 有独立的 VLESS 与 ShadowsocksR 两节，都支持。
+--     （Surfboard 是否有 Hysteria v1 未获证据：该站文档的
+--     profile-format/proxy/external-proxy 一节及其无斜杠形式都返回 404。
+--     既然无法证实「读不懂」，就不替它丢弃 —— 见 LEGACY_ISSUES 的 (j)，
+--     该条已实施：Surge / SurgeMac 丢弃 Hysteria v1，Surfboard 按此保留。）
+--   * Loon：nsloon.app/docs/Node/ 有独立的 VLESS 与 ShadowsocksR 两节，都支持；
+--     但节点类型清单里**只有 Hysteria2**，没有 Hysteria（v1）—— 与 Surge 家族
+--     相反的两处之一（另一处是 VLESS / SSR）。
 --
 -- Egern **不在**这张表里：它的配置是 YAML，已由 output_egern.lua 单独实现
 -- （7.2 已实施）。它的协议清单与 Surge 家族本就不同（有 VLESS 与 WireGuard，
 -- 没有 SSR 与 Hysteria v1），能力判定一并搬到了那个模块里。
+--
+-- 注意 hysteria 指的是**上一代 v1**：Hysteria 2 是各家通用的，被丢的只有 v1
+-- （两者在 surge_line 里共用同一个输出分支，靠 proto 区分）。
 local FAMILY_CAPS = {
-	surge     = { vless = false, ssr = false },
+	surge     = { vless = false, ssr = false, hysteria = false },
 	surfboard = { vless = false, ssr = false },
-	surgemac  = { vless = false, ssr = false },
-	loon      = { vless = true,  ssr = true  },
+	surgemac  = { vless = false, ssr = false, hysteria = false },
+	-- Loon 支持 VLESS 与 SSR（与 Surge 家族相反），但没有 Hysteria v1
+	-- （节点类型清单里只有 Hysteria2）。标 false 即整条丢弃，与丢弃 wireguard
+	-- 同一约定：不输出客户端读不懂的东西。
+	loon      = { vless = true,  ssr = true, hysteria = false },
 }
 
 -- 生成 Surge 风格代理行（Surge / Surfboard / SurgeMac / Loon 通用）。
@@ -339,7 +355,12 @@ function M.surge_line(n, flavor)
 		return nil
 	end
 
-	if n["skip-cert-verify"] then e[#e + 1] = "skip-cert-verify=1" end
+	-- 取值写 true/false，不写 1：Loon 文档的示例就是 `skip-cert-verify=false`
+	-- （nsloon.app/docs/Node/ 的 Hysteria2 一行），直接证明 false 是合法字面量、
+	-- true 同理；而 Surge 手册的 TLS 页只写「Optional, boolean, default: false」，
+	-- 两家的文档里都找不到 `1` 这个取值。解析端两种都认
+	-- （parser_surge 把非 "0" / 非 "false" 都当 true），所以回环不受影响。
+	if n["skip-cert-verify"] then e[#e + 1] = "skip-cert-verify=true" end
 	-- UDP 转发的参数名同样各家不同：Surge 家族是 udp-relay=true，Loon 是 udp=true
 	-- （nsloon.app/docs/Node/ 的每个示例都写 udp=true，udp-relay 一次都没出现；
 	-- 相关的另外两个开关叫 udp-over-tcp / udp-port）。
@@ -402,16 +423,19 @@ local function surge_config(nodes, group_name, flavor)
 	local list = nodes or {}
 	-- 过滤 Surge 家族无法用单行 [Proxy] 表达的协议：
 	--   vless / ssr：按 FAMILY_CAPS 分客户端（Surge/Surfboard/SurgeMac 两个都不认）
+	--   hysteria：同样按 FAMILY_CAPS（Surge/SurgeMac 只有 Hysteria 2，没有 v1；
+	--     Surfboard 未获证据，本表没对它表态，故保留）
 	--   wireguard：Surge 需专用多段 [WireGuard] 配置，单行无法表达，统一丢弃（不输出损坏行）
 	local kept = {}
 	for _, n in ipairs(list) do
 		local p = (n.proto or ""):lower()
 		if p == "wireguard" then
 			-- drop
-		elseif p == "ssr" and not caps.ssr then
-			-- drop
-		elseif p == "vless" and not caps.vless then
-			-- drop
+		elseif caps[p] == false then
+			-- drop：能力表显式标了 false 的协议。写成数据驱动而不是逐个协议写
+			-- `elseif p == "ssr" and not caps.ssr`：每加一个维度就要再加一条分支，
+			-- 漏掉的那条默认是「保留」，于是导出里多出客户端读不懂的行且不报错。
+			-- （caps[p] 为 nil 表示「这张表没对它表态」，一律保留。）
 		else
 			kept[#kept + 1] = n
 		end

@@ -189,63 +189,64 @@ return L.view.extend({
         s.taboption('settings', form.Flag, 'dns_proxy_enabled', _('Force upstream DNS to proxy server')).rmempty = false;
 
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
-        o.datatype = 'ip4addr'; o.rmempty = false;
+        o.datatype = 'ip4addr'; o.rmempty = true;
         o.placeholder = '192.168.1.254';
-        o.validate = function(section_id, value) {
-            var ipInCidr = function(ipStr, cidrStr) {
-                if (!cidrStr || cidrStr.indexOf(':') !== -1 || !ipStr || ipStr.indexOf(':') !== -1) return false;
-                var parts = cidrStr.split('/');
-                var cidrIp = parts[0];
-                var maskBits = parseInt(parts[1] || '32', 10);
-                
-                var ipToNum = function(s) {
-                    var p = s.split('.');
-                    if (p.length !== 4) return 0;
-                    return (((parseInt(p[0], 10) << 24) |
-                             (parseInt(p[1], 10) << 16) |
-                             (parseInt(p[2], 10) << 8) |
-                             parseInt(p[3], 10)) >>> 0);
-                };
 
-                var ipNum = ipToNum(ipStr);
-                var cidrNum = ipToNum(cidrIp);
-                
-                if (maskBits === 0) return true;
-                
-                var mask = (0xffffffff << (32 - maskBits)) >>> 0;
-                return (ipNum & mask) === (cidrNum & mask);
-            };
+        m.save = function() {
+            var enabled = s.formvalue('global', 'enabled') || uci.get('flowproxy', 'global', 'enabled');
+            if (enabled === '1') {
+                var ipVal = s.formvalue('global', 'proxy_server_ip_addr') || uci.get('flowproxy', 'global', 'proxy_server_ip_addr');
+                var ifaceVal = s.formvalue('global', 'interface') || uci.get('flowproxy', 'global', 'interface');
 
-            var selected_interface = s.formvalue(section_id, 'interface');
-            if (!value || !selected_interface) return true;
+                if (ipVal && ifaceVal) {
+                    var ipInCidr = function(ipStr, cidrStr) {
+                        if (!cidrStr || cidrStr.indexOf(':') !== -1 || !ipStr || ipStr.indexOf(':') !== -1) return false;
+                        var parts = cidrStr.split('/');
+                        var cidrIp = parts[0];
+                        var maskBits = parseInt(parts[1] || '32', 10);
+                        var ipToNum = function(s) {
+                            var p = s.split('.');
+                            if (p.length !== 4) return 0;
+                            return (((parseInt(p[0], 10) << 24) |
+                                     (parseInt(p[1], 10) << 16) |
+                                     (parseInt(p[2], 10) << 8) |
+                                     parseInt(p[3], 10)) >>> 0);
+                        };
+                        var ipNum = ipToNum(ipStr);
+                        var cidrNum = ipToNum(cidrIp);
+                        if (maskBits === 0) return true;
+                        var mask = (0xffffffff << (32 - maskBits)) >>> 0;
+                        return (ipNum & mask) === (cidrNum & mask);
+                    };
 
-            var target_iface = null;
-            for (var i = 0; i < ifaces.length; i++) {
-                var dev = ifaces[i].getL3Device() || ifaces[i].getDevice();
-                if ((dev && dev.getName() === selected_interface) || ifaces[i].getName() === selected_interface) {
-                    target_iface = ifaces[i];
-                    break;
+                    var target_iface = null;
+                    for (var i = 0; i < ifaces.length; i++) {
+                        var dev = ifaces[i].getL3Device() || ifaces[i].getDevice();
+                        if ((dev && dev.getName() === ifaceVal) || ifaces[i].getName() === ifaceVal) {
+                            target_iface = ifaces[i];
+                            break;
+                        }
+                    }
+
+                    if (target_iface) {
+                        var ips = target_iface.getIPAddrs();
+                        if (ips && ips.length > 0) {
+                            var inSubnet = false;
+                            for (var j = 0; j < ips.length; j++) {
+                                if (ipInCidr(ipVal, ips[j])) {
+                                    inSubnet = true;
+                                    break;
+                                }
+                            }
+                            if (!inSubnet) {
+                                ui.addNotification(null, E('p', _('The proxy server IP address must be within the subnet of the selected interface (%s).').format(ips.join(', '))), 'danger');
+                                return Promise.reject(new Error('Proxy IP subnet mismatch'));
+                            }
+                        }
+                    }
                 }
             }
-
-            if (!target_iface) return true;
-
-            var ips = target_iface.getIPAddrs();
-            if (!ips || ips.length === 0) return true;
-
-            var inSubnet = false;
-            for (var j = 0; j < ips.length; j++) {
-                if (ipInCidr(value, ips[j])) {
-                    inSubnet = true;
-                    break;
-                }
-            }
-
-            if (!inSubnet) {
-                return _('The proxy server IP address must be within the subnet of the selected interface (%s).').format(ips.join(', '));
-            }
-
-            return true;
+            return form.Map.prototype.save.apply(m, arguments);
         };
 
         o = s.taboption('settings', form.Value, 'proxy_server_dns_port', _('Proxy server DNS port'));
