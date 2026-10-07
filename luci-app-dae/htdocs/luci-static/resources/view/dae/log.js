@@ -7,7 +7,7 @@
 'require view';
 
 return view.extend({
-	render: function() {
+	render() {
 		/* Thanks to luci-app-aria2 */
 		let css = '					\
 			#log_textarea {				\
@@ -60,7 +60,8 @@ return view.extend({
 			}, _('Scroll to tail', 'scroll to bottom (the tail) of the log file')
 		);
 		scrollDownButton.addEventListener('click', () => {
-			scrollUpButton.focus();
+			scrollUpButton.scrollIntoView();
+			scrollDownButton.blur();
 		});
 
 		const scrollUpButton = E('button', {
@@ -69,7 +70,8 @@ return view.extend({
 			}, _('Scroll to head', 'scroll to top (the head) of the log file')
 		);
 		scrollUpButton.addEventListener('click', () => {
-			scrollDownButton.focus();
+			scrollDownButton.scrollIntoView();
+			scrollUpButton.blur();
 		});
 
 		return E([

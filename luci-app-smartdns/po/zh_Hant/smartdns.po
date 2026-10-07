@@ -400,8 +400,7 @@ msgstr "包含配置檔案<br>/etc/smartdns/conf.d"
 msgid ""
 "Include other config files from /etc/smartdns/conf.d or custom path, can be "
 "downloaded from the download page."
-msgstr ""
-"包含來自 /etc/smartdns/conf.d 的配置檔案，或自訂路徑，可以從下載頁面下載。"
+msgstr "包含來自 /etc/smartdns/conf.d 的配置檔案，或自訂路徑，可以從下載頁面下載。"
 
 #: applications/luci-app-smartdns/htdocs/luci-static/resources/view/smartdns/smartdns.js:282
 msgid "Ipset name, Add domain result to ipset when speed check fails."
@@ -831,8 +830,8 @@ msgid ""
 "Upstream Servers, support UDP, TCP protocol. Please configure multiple DNS "
 "servers, including multiple foreign DNS servers."
 msgstr ""
-"上游伺服器，支援 UDP、TCP 協定。請配置多個上游 DNS 伺服器，包含多個國外伺服"
-"器。"
+"上游伺服器，支援 UDP、TCP 協定。請配置多個上游 DNS 伺服器，包含多個國外伺服器"
+"。"
 
 #: applications/luci-app-smartdns/htdocs/luci-static/resources/view/smartdns/smartdns.js:764
 msgid "Use Proxy"

@@ -387,11 +387,8 @@ msgid "Speed limit up enabled"
 msgstr "Aktivera hastighetsgräns för uppladdning"
 
 #: applications/luci-app-transmission/htdocs/luci-static/resources/view/transmission.js:179
-msgid ""
-"This is documented on <a href=\"https://www.irif.fr/~jch/software/bittorrent/"
-"tcp-congestion-control.html\" target=\"_blank\" rel=\"noreferrer "
-"noopener\">tcp-congestion-control</a>."
-msgstr ""
+msgid "This is documented on %s."
+msgstr "Detta dokumenteras på %s."
 
 #: applications/luci-app-transmission/root/usr/share/luci/menu.d/luci-app-transmission.json:3
 msgid "Transmission"
