@@ -1,4 +1,13 @@
 #!/bin/sh /etc/rc.common
+# rpcd's `rc list` parses only the first 11 lines of an init script for
+# USE_PROCD/START/STOP, and LuCI's Startup page then drops every entry that
+# came back without a `start`.  These three must stay at the top, ahead of the
+# design notes below, or HomeProxy silently disappears from that page.
+USE_PROCD=1
+
+START=99
+STOP=10
+
 # SPDX-License-Identifier: GPL-2.0-only
 #
 # Copyright (C) 2022-2023 ImmortalWrt.org
@@ -51,11 +60,6 @@
 # layer describing the new settings.  Rolling that back as well would mean
 # snapshotting UCI at promotion time; that is deliberately not attempted here,
 # which is why this paragraph exists rather than a note in a plan document.
-
-USE_PROCD=1
-
-START=99
-STOP=10
 
 CONF="homeproxy-pro"
 PROG="/usr/bin/sing-box"

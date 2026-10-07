@@ -14,9 +14,9 @@
 	color-scheme: light;
 
 	--font: system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
-	--mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "Cascadia Mono", Menlo, Consolas, monospace;
+	--mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "Cascadia Mono", system-ui, Menlo, Consolas, monospace;
 
-	--fs-micro: 10.5px;
+	--fs-micro: 11px;
 	--fs-sm: 12px;
 	--fs-base: 13px;
 	--fs-md: 14px;
@@ -2075,7 +2075,7 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 .cbi-section-table .ifacebox-body img { width: 18px; height: 18px; }
 [id$="-ifc-description"], .cbi-value-field > div[id$="-ifc-description"] {
 	display: flex; flex-wrap: wrap; align-items: flex-start;
-	gap: 10px 28px;
+	gap: 10px 40px;
 	max-width: 72rem;
 }
 [id$="-ifc-description"] > br { display: none; }
@@ -2086,7 +2086,7 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 }
 [id$="-ifc-description"] > .nowrap > strong, .td[data-name="_stat"] .nowrap > strong {
 	color: var(--text-3);
-	font: 600 10.5px/1.5 var(--font); letter-spacing: .06em; text-transform: uppercase;
+	font: 600 11.5px/1.5 var(--font); letter-spacing: .06em; text-transform: uppercase;
 }
 
 /* Network -> Wireless: radios as group headers, networks as rows */
