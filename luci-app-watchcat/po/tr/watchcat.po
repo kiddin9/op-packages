@@ -193,9 +193,9 @@ msgid ""
 msgstr ""
 "Ping Yeniden Başlatma: Belirtilen bir ana bilgisayara ping belirli bir süre "
 "boyunca başarısız olursa bu aygıtı yeniden başlat. <br /> Periyodik Yeniden "
-"Başlatma: Belirli bir zaman aralığından sonra bu aygıtı yeniden başlat. <br /"
-"> Arabirimi Yeniden Başlat: Belirtilen bir ana bilgisayara ping belirli bir "
-"süre boyunca başarısız olursa, bir ağ arabirimini yeniden başlat. <br /> "
+"Başlatma: Belirli bir zaman aralığından sonra bu aygıtı yeniden başlat. "
+"<br /> Arabirimi Yeniden Başlat: Belirtilen bir ana bilgisayara ping belirli "
+"bir süre boyunca başarısız olursa, bir ağ arabirimini yeniden başlat. <br /> "
 "Komut Dosyasını Çalıştır: Belirtilen bir ana bilgisayara ping belirli bir "
 "süre boyunca başarısız olursa bir komut dosyası çalıştır. <br />"
 
@@ -245,3 +245,9 @@ msgstr "Watchcat"
 #: applications/luci-app-watchcat/htdocs/luci-static/resources/view/watchcat.js:82
 msgid "Windows: 32 bytes"
 msgstr "Windows: 32 bayt"
+
+#~ msgid "Host To Check"
+#~ msgstr "Kontrol Edilecek Alan Adı"
+
+#~ msgid "IP address or hostname to ping."
+#~ msgstr "Ping için IP adresi veya ana bilgisayar adı."

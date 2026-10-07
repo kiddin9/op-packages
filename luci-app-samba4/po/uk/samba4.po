@@ -180,8 +180,8 @@ msgid ""
 msgstr ""
 "Це вміст файлу '/etc/samba/smb.conf.template', з якого буде створено "
 "конфігурацію samba.<br />Значення, укладені в символи каналу ('|'), не слід "
-"змінювати.<br />Вони отримують свої значення з вкладки «Загальні "
-"налаштування»."
+"змінювати.<br />Вони отримують свої значення з вкладки «Загальні налаштування"
+"»."
 
 #: applications/luci-app-samba4/htdocs/luci-static/resources/view/samba4.js:153
 msgid "Time-machine size in GB"
