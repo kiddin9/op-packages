@@ -17,35 +17,6 @@
  	}
  }
 
---- a/luci-app-argon-config/root/etc/config/argon
-+++ b/luci-app-argon-config/root/etc/config/argon
-@@ -5,6 +5,6 @@ config global
- 	option blur_dark '10'
- 	option transparency '0.5'
- 	option transparency_dark '0.5'
--	option mode 'normal'
--	option online_wallpaper 'bing'
-+	option mode 'dark'
-+	option online_wallpaper 'default'
- 
-
---- a/luci-app-argon-config/htdocs/luci-static/resources/view/argon-config.js
-+++ b/luci-app-argon-config/htdocs/luci-static/resources/view/argon-config.js
-@@ -50,11 +50,12 @@ return view.extend({
- 		s.anonymous = true;
- 
- 		o = s.option(form.ListValue, 'online_wallpaper', _('Wallpaper source'));
-+		o.value('default', _('Default'));
- 		o.value('none', _('Built-in'));
- 		o.value('bing', _('Bing'));
- 		o.value('unsplash', _('Unsplash'));
- 		o.value('wallhaven', _('Wallhaven'));
--		o.default = 'bing';
-+		o.default = 'default';
- 		o.rmempty = false;
- 
- 		o = s.option(form.ListValue, 'mode', _('Theme mode'));
-
 --- a/luci-theme-argon/ucode/template/themes/argon/header.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/header.ut
 @@ -47,7 +47,7 @@
@@ -100,13 +71,13 @@
  
 --- a/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
 +++ b/luci-theme-argon/ucode/template/themes/argon/footer_login.ut
-@@ -20,8 +20,6 @@
- <!-- added style="text-wrap: auto" but on this page it is still not the best solution. I will take it to consideration next time :) -->
- <footer style="text-wrap: auto">
- 	<div>
--		<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank">Powered by {{ version.luciname }} ({{ version.luciversion }})</a>
+@@ -23,8 +23,6 @@
+ %}
+ <footer>
+ 	<div title="{{ entityencode(luci_info + ' · ArgonTheme · ' + firmware_info, true) }}">
+-		<a class="luci-link" href="https://github.com/openwrt/luci" target="_blank" title="{{ entityencode(luci_info, true) }}"><span class="login-footer-detail">Powered by </span>{{ version.luciname }}<span class="login-footer-detail"> ({{ version.luciversion }})</span></a>
 -		<a href="https://github.com/jerrykuku/luci-theme-argon" target="_blank">ArgonTheme {# vPKG_VERSION #}</a>
- 		<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
+ 		<a class="luci-link" href="{{ version.disturl }}" target="_blank" title="{{ entityencode(firmware_info, true) }}">{{ version.distname }} {{ version.distversion }}<span class="login-footer-detail">-{{ version.distrevision }}</span></a>
  	</div>
  </footer>
 diff --git a/luci-theme-argon/htdocs/luci-static/argon/img/pattern.svg b/luci-theme-argon/htdocs/luci-static/argon/img/pattern.svg
