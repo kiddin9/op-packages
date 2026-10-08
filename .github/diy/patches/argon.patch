@@ -58,27 +58,6 @@
  <head>
  	{% include("themes/" + theme + "/head_meta", { hostname: hostname, node: node, bar_color: bar_color, media: media }) %}
 
---- a/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
-+++ b/luci-theme-argon/ucode/template/themes/argon/sysauth.ut
-@@ -63,7 +63,7 @@
- 		let mimeType = "";
- 
- 		if (fs.access("/etc/config/argon")) {
--			let online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? (cfg.get_first('argon', 'global', 'bing_background') == '1' ? 'bing' : null);
-+			online_wallpaper = cfg.get_first('argon', 'global', 'online_wallpaper') ?? (cfg.get_first('argon', 'global', 'bing_background') == '1' ? 'bing' : null);
- 			if (online_wallpaper && online_wallpaper != "none") {
- 				const picurl = ubus.call("luci.argon_wallpaper", "get_url") ?? {};
- 				if (type(picurl?.url) == 'string' && match(picurl.url, /^https:\/\/[^[:space:]"'<>]+$/)) {
-@@ -93,7 +93,7 @@
- 
- %}
- <!-- Login Page Start -->
--<div class="login-page">
-+<div class="login-page {{ online_wallpaper == 'default' ? ' defwallpaper' : '' }}">
- 	{% if ( bgArry.backgroundType == "Video" ): %}
- 	<!-- Video Player Start -->
- 	<div class="video">
-
 --- a/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
 +++ b/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
 @@ -124,6 +124,20 @@ body {
@@ -130,19 +109,6 @@
  		<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
  	</div>
  </footer>
-@@ -30,6 +28,12 @@
- 	<script>
- 		// thanks for Jo-Philipp Wich <jow@openwrt.org>
- 		var luciLocation = {{ ctx.path }};
-+  	const loginContainer = document.querySelector(
-+  	  'div[class="login-container"][style*="backdrop-filter: blur(0px)"]'
-+  	);
-+  	if (loginContainer) {
-+  	  loginContainer.style.margin = '0 auto';
-+  	}
- 	</script>
- </body>
- </html>
 diff --git a/luci-theme-argon/htdocs/luci-static/argon/img/pattern.svg b/luci-theme-argon/htdocs/luci-static/argon/img/pattern.svg
 new file mode 100644
 index 000000000..72eb03cdc
