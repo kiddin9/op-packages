@@ -24,10 +24,6 @@
  		procd_add_config_trigger "config.change" "$config" "$init" "$@"
  	fi
 
- --- a/luci-base/htdocs/luci-static/resources/network.js
- +++ b/luci-base/htdocs/luci-static/resources/network.js
- @@ -4376,4 +4376,10 @@ WifiNetwork = baseclass.extend(/** @lends LuCI.network.WifiNetwork.prototype */
-
 --- a/luci-base/htdocs/luci-static/resources/network.js
 +++ b/luci-base/htdocs/luci-static/resources/network.js
 @@ -4376,4 +4376,10 @@ WifiNetwork = baseclass.extend(/** @lends LuCI.network.WifiNetwork.prototype */
