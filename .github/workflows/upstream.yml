@@ -599,13 +599,11 @@ jobs:
           -e 's/data-page=admin-dashboard/data-page=admin-status-dashboard/g' \
           -e '$a\
         .modal>pre,.modal>textarea{color: #ccc}\
-        .main .main-right{background-color: transparent}\
         input[placeholder]::placeholder {color: #888888;opacity: 1}' \
           luci-theme-argon/htdocs/luci-static/argon/css/dark.css
         sed -i \
           -e 's/data-page=admin-dashboard/data-page=admin-status-dashboard/g' \
           -e '$a\
-        .main .main-right{background-color: transparent}\
         input[placeholder]::placeholder {color: #888888;opacity: 1}' \
           luci-theme-noobwrt/htdocs/luci-static/noobwrt/css/dark.css
         sed -i 's,https://raw.githubusercontent.com,https://v4.gh-proxy.org/https://raw.githubusercontent.com,g' \
