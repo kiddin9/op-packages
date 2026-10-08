@@ -2007,6 +2007,9 @@ html:not([data-darkmode="true"]) .vt-login-page {
 html:not([data-darkmode="true"]) .vt-login-page::before {
 	opacity: 0.7;
 }
+#packages {
+ width: 100% !important;
+}
 .vt-login-card {
 	padding: var(--sp-6);
 	background: var(--s1);
