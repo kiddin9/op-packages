@@ -57,9 +57,9 @@ pick_mirror() {
 			# GitHub raw serves paths from the repo root, not the
 			# /gh/<repo>@<sha>/<file> shape jsdelivr uses. The caller
 			# passes the suffix already split out, so we re-stitch it.
-			local probe_url="https://$base/$listrepo/$list_sha/$listname"
+			local probe_url="https://$base/$listrepo/$list_sha/$api_path"
 		else
-			local probe_url="https://$base/gh/$listrepo@$list_sha/$listname"
+			local probe_url="https://$base/gh/$listrepo@$list_sha/$api_path"
 		fi
 		# uclient-fetch, not wget.  wget is whichever implementation the
 		# buildroot compiled, and the two share almost no options: on a
@@ -82,11 +82,116 @@ pick_mirror() {
 	return 1
 }
 
+# Put a verified download in place as $listtype.<ext>.
+#
+# With a `family` set the upstream file is one combined list - cn.list carries
+# both address families - and each listtype is one half of it, so the bytes are
+# split rather than moved.  That also overrides the "<listtype>.<upstream
+# extension>" naming: cn.list would otherwise land as china_ip4.list, while
+# every reader - firewall_post.ut's nft set and china_ip_ruleset.uc's generated
+# rule-set - has always read .txt.  Splitting writes $listtype.txt directly, so
+# nothing downstream changes name or location.
+#
+# The split writes a sibling temp file and renames it, so a half-written list
+# can never become the installed one.  An empty half is refused: an empty
+# china_ip6.txt turns v6_handled off outright (see the comment on
+# cn_ipv6_ready in firewall_post.ut), and a router that silently stops proxying
+# IPv6 is worse than one that keeps the list it had.
+#
+# The family test is "does the address contain a colon", which is exactly what
+# separates an IPv6 CIDR from an IPv4 one, and it is what the rest of the
+# pipeline already keys off - see isValidCIDR() in homeproxy-pro.uc.
+install_download() {
+	local src="$1"
+	local listtype="$2"
+	local listname="$3"
+	local family="$4"
+
+	if [ -z "$family" ]; then
+		mv -f "$src" "$RESOURCES_DIR/$listtype.${listname##*.}"
+		return $?
+	fi
+
+	local dest="$RESOURCES_DIR/$listtype.txt"
+	if ! awk -v want="$family" '
+		NF == 0 { next }
+		{ if ((index($1, ":") > 0) == (want == "v6")) print }
+	' "$src" > "$dest.hp-new"; then
+		rm -f "$dest.hp-new"
+		return 1
+	fi
+	if [ ! -s "$dest.hp-new" ]; then
+		rm -f "$dest.hp-new"
+		log "[$(to_upper "$listtype")] Refusing to install: $listname carries no $family entries."
+		return 1
+	fi
+	mv -f "$dest.hp-new" "$dest"
+}
+
+# Re-render the firewall's mainland sets from the list that just changed.
+#
+# The route side goes live on its own - sing-box watches the generated
+# rule-set with fswatch - but homeproxy_mainland_addr_v4/v6 live in
+# fw4_post.nft, which firewall_post.ut renders and only a start or a restart
+# puts in place.  reload does not re-render it (measured on the device: the
+# command returns 0, the file's mtime does not move, the set keeps its old
+# elements).  So the two halves would read the same file on different days,
+# and the gap grows with every nightly update.
+#
+# The direction that matters is the one where the kernel is *ahead* of the
+# file: a segment the list has since dropped still matches the set, and
+# `ip daddr @homeproxy_mainland_addr_v4 counter return` returns before the
+# redirect - so the connection never reaches the route side that would have
+# corrected it.  The other direction (the set missing a newly added segment)
+# costs one extra hop into sing-box and still routes correctly.
+#
+# This mirrors hp_firewall_apply() in runtime/firewall.sh minus the pre-script
+# and the upnp restore: only the post-template carries these sets, and neither
+# of the other two has anything to do with a resource list.  It deliberately
+# does NOT test client_enabled the way start_service does - that check reads
+# a routing-mode-dependent helper, and duplicating it here would let the two
+# copies drift.  With no client the template renders what start would have
+# rendered, so re-rendering is a no-op rather than a risk.
+#
+# Every failure is non-fatal on purpose.  A list that is installed but not yet
+# in the firewall is the one state this script is allowed to leave behind:
+# the next nightly run, or the next service start, closes it.  Failing the
+# update instead would turn a cosmetic lag into a resource that can never
+# refresh.
+sync_firewall_sets() {
+	local dest="$RUN_DIR/fw4_post.nft"
+
+	if ! utpl -S "$SCRIPT_DIR/firewall_post.ut" > "$dest.new" 2>"/dev/null"; then
+		rm -f "$dest.new"
+		log "[$(to_upper "$listtype")] Warning: could not re-render fw4_post.nft; the firewall keeps its previous ruleset. Run /etc/init.d/homeproxy-pro restart to pick this list up."
+		return 1
+	fi
+	mv -f "$dest.new" "$dest"
+
+	if ! fw4 reload >"/dev/null" 2>&1; then
+		log "[$(to_upper "$listtype")] Warning: fw4 reload failed; the new set is rendered but the running ruleset was not updated. Run /etc/init.d/homeproxy-pro restart."
+		return 1
+	fi
+	log "[$(to_upper "$listtype")] Firewall mainland sets re-rendered."
+}
+
 check_list_update() {
 	local listtype="$1"
 	local listrepo="$2"
 	local listref="$3"
 	local listname="$4"
+	# v4 / v6 when the upstream file holds both families and has to be split;
+	# empty when it is already exactly what listtype wants.
+	local family="${5:-}"
+	# Where the file lives *inside* the repo, for the commits?path= filter.
+	# Equal to the file name for every root-level list, which is all of them
+	# used to be - that is why this went unnoticed until a source shipped its
+	# list in a subdirectory.  MetaCubeX keeps cn.list under geo/geoip/, and
+	# asking the API about "cn.list" there is not a narrower question, it is a
+	# different one: it matches no commit, returns [], and the update reports
+	# "Failed to get the latest version" on every run while the file itself is
+	# perfectly reachable.  Downloaded as $listname regardless.
+	local api_path="${6:-$listname}"
 	local lock="$RUN_DIR/update_resources-$listtype.lock"
 	local github_token="$(uci -q get homeproxy-pro.config.github_token)"
 	local fetch="uclient-fetch -q --timeout=10"
@@ -121,7 +226,7 @@ check_list_update() {
 	# failure as "Failed to get the latest version, please retry later", which
 	# loses the difference between "could not fetch" and "fetched, got nothing".
 	local list_info
-	list_info="$($fetch ${github_header:+--header="$github_header"} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
+	list_info="$($fetch ${github_header:+--header="$github_header"} -O- "https://api.github.com/repos/$listrepo/commits?sha=$listref&path=$api_path&per_page=1")"
 	local fetch_exit=$?
 
 	if [ $fetch_exit -ne 0 ]; then
@@ -159,9 +264,9 @@ check_list_update() {
 	fi
 	local mirror_url
 	if [ "$mirror" = "raw.githubusercontent.com" ]; then
-		mirror_url="https://raw.githubusercontent.com/$listrepo/$list_sha/$listname"
+		mirror_url="https://raw.githubusercontent.com/$listrepo/$list_sha/$api_path"
 	else
-		mirror_url="https://$mirror/gh/$listrepo@$list_sha/$listname"
+		mirror_url="https://$mirror/gh/$listrepo@$list_sha/$api_path"
 	fi
 	log "[$(to_upper "$listtype")] Downloading from $mirror."
 
@@ -184,7 +289,7 @@ check_list_update() {
 	# nobody vouched for - is the thing being fixed.
 	local api_blob local_blob
 	api_blob="$($fetch ${github_header:+--header="$github_header"} -O- \
-		"https://api.github.com/repos/$listrepo/contents/$listname?ref=$list_sha" \
+		"https://api.github.com/repos/$listrepo/contents/$api_path?ref=$list_sha" \
 		| jsonfilter -qe '@.sha')"
 	if [ -z "$api_blob" ]; then
 		rm -f "$RUN_DIR/$listname"
@@ -205,7 +310,11 @@ check_list_update() {
 		return 1
 	fi
 
-	if mv -f "$RUN_DIR/$listname" "$RESOURCES_DIR/$listtype.${listname##*.}"; then
+	if install_download "$RUN_DIR/$listname" "$listtype" "$listname" "$family"; then
+		# The split path reads the download and writes the halves, so the
+		# download itself is still lying in RUN_DIR; the plain move consumed
+		# it.  Either way nothing may be left there for the next run.
+		rm -f "$RUN_DIR/$listname"
 		printf '%s\n' "$list_ver" > "$RESOURCES_DIR/$listtype.ver"
 		# Review M7: persist the time *this router* last succeeded.
 		# $list_date is the upstream commit date and can be months old
@@ -241,6 +350,12 @@ check_list_update() {
 				# "mainland IPv6 goes through the proxy" inversion.
 				log "[$(to_upper "$listtype")] Warning: could not regenerate $listtype.json (list has no usable CIDR entry?); the route side keeps the previous list."
 			fi
+			# The kernel half.  Unconditional, and deliberately outside the
+			# if/else above: the nft set is rendered from the .txt, not from
+			# the .json, so it can be right even when the generator failed -
+			# and a failed generator is exactly when the list on disk is most
+			# likely to have changed.  See sync_firewall_sets().
+			sync_firewall_sets
 			;;
 		"china_list")
 			# The DNS half of the same split.  It reads this file rather than
@@ -288,7 +403,8 @@ check_list_update() {
 		esac
 	else
 		rm -f "$RUN_DIR/$listname"
-		log "[$(to_upper "$listtype")] Failed to install update (mv failed)."
+		rm -f "$RESOURCES_DIR/$listtype.txt.hp-new"
+		log "[$(to_upper "$listtype")] Failed to install update."
 		return 1
 	fi
 
@@ -296,11 +412,52 @@ check_list_update() {
 }
 
 case "$1" in
-"china_ip4")
-	check_list_update "$1" "1715173329/IPCIDR-CHINA" "master" "ipv4.txt"
-	;;
-"china_ip6")
-	check_list_update "$1" "1715173329/IPCIDR-CHINA" "master" "ipv6.txt"
+"china_ip4"|"china_ip6")
+	# Both come out of one upstream file and are split by address family - see
+	# install_download().  Upstream is MetaCubeX/meta-rules-dat's cn.list, pure
+	# CIDR text, which is what keeps the whole existing design intact: it is a
+	# file in a git repository, so the blob-id check above vouches for it the
+	# same way it vouches for every other list, and one text file feeds both the
+	# nft set and the generated route rule-set, so the two readers cannot drift.
+	#
+	# Why this source and not the 1715173329/IPCIDR-CHINA lists r46 shipped:
+	# the old pair missed 62,927,616 CN IPv4 addresses while cn.list misses
+	# 1,519,872.  The biggest of those gaps are 59.192.0.0/21 and
+	# 175.48.0.0/21, Beijing Telecom backbone ranges, so the cost was not
+	# theoretical: destinations resolving into them missed the mainland rule
+	# and went to the proxy.
+	#
+	# cn.list's precision is slightly looser than the old lists' (99.22% of the
+	# addresses it lists are CN, against 98.92% before - i.e. it is better on
+	# both axes), because it merges neighbouring blocks a little more coarsely
+	# than MaxMind does.  IPv6 goes from 1031 to 3446 entries, which also closes
+	# an overlap the old ipv6.txt had.
+	#
+	# CORRECTION (2026-10-08).  The two paragraphs this replaces measured both
+	# sources against the APNIC **delegated** statistics and called that the
+	# authority - "the registration data every other list is derived from".
+	# It is not.  That file's `cc` column is the registry's coarse summary and
+	# loses sub-allocations: it reports 8.128.0.0/10 as SG, while the registry's
+	# own RDAP object for that range says CN (ALICLOUD).  So the "0.44% missing"
+	# figure was measured against a yardstick that is itself wrong, and cannot
+	# be used to argue this source is accurate.  Against RDAP the two lists
+	# each have errors in OPPOSITE directions - of cn.list's 6163 IPv4 CIDRs,
+	# 1054 (about 100 million addresses) are CN per RDAP but absent here, while
+	# e.g. 117.134.222.0/23 is PK per RDAP and is wrongly listed as CN.
+	#
+	# What justifies this source is therefore narrower and more honest than the
+	# numbers it replaced: it measurably beats the r46 pair on both recall and
+	# precision, it is a file in a git repository so the blob-id check above
+	# vouches for it, and one text file feeds both readers so they cannot drift.
+	# The delegated statistics were evaluated as a *replacement* source and
+	# rejected - deriving the lists from them loses the ~100 million addresses
+	# above.  To re-judge any source here, measure against RDAP
+	# (https://rdap.apnic.net/ip/<address>), which is the registry database
+	# rather than a summary of it.
+	# $api_path, not $listname: the commits filter asks where the file is in
+	# the repo, which for this source is not the repo root.
+	check_list_update "$1" "MetaCubeX/meta-rules-dat" "meta" "cn.list" \
+		"$([ "$1" = "china_ip4" ] && echo v4 || echo v6)" "geo/geoip/cn.list"
 	;;
 "gfw_list")
 	check_list_update "$1" "Loyalsoldier/v2ray-rules-dat" "release" "gfw.txt"
