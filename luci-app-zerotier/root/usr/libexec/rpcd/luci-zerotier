@@ -145,6 +145,9 @@ case "$1" in
 			json_add_string "section" "string"
 			json_add_string "nwid" "string"
 		json_close_object
+		json_add_object "remote_network_list"
+			json_add_string "section" "string"
+		json_close_object
 		json_add_object "remote_peer_list"
 			json_add_string "section" "string"
 		json_close_object
@@ -820,7 +823,7 @@ case "$1" in
 				json_add_int "code" 0
 				json_dump
 				;;
-			remote_diagnose|remote_ctl_get|remote_member_list|remote_peer_list|remote_network_set|remote_network_del|remote_member_set|remote_moon_plan|remote_moon_apply)
+			remote_diagnose|remote_ctl_get|remote_member_list|remote_network_list|remote_peer_list|remote_network_set|remote_network_del|remote_member_set|remote_moon_plan|remote_moon_apply)
 				# Thin delegation to zerotier-remote.sh, which owns all SSH,
 				# tunnel and validation logic. Its stdout is already the JSON we
 				# return verbatim, so nothing is re-encoded here.
@@ -835,15 +838,16 @@ case "$1" in
 				unset input
 
 				case "$2" in
-					remote_diagnose)    _args="diagnose $_sect" ;;
-					remote_ctl_get)     _args="ctl-get $_sect $_path" ;;
-					remote_member_list) _args="member-list $_sect $_nwid" ;;
-					remote_peer_list)   _args="peer-list $_sect" ;;
-					remote_network_set) _args="ctl-network-set $_sect $_nwid $_body" ;;
-					remote_network_del) _args="ctl-network-del $_sect $_nwid" ;;
-					remote_member_set)  _args="ctl-member-set $_sect $_nwid $_mid $_body" ;;
-					remote_moon_plan)   _args="moon-plan $_sect" ;;
-					remote_moon_apply)  _args="moon-apply $_sect $_cf" ;;
+					remote_diagnose)    set -- diagnose "$_sect" ;;
+					remote_ctl_get)     set -- ctl-get "$_sect" "$_path" ;;
+					remote_member_list) set -- member-list "$_sect" "$_nwid" ;;
+					remote_network_list) set -- network-list "$_sect" ;;
+					remote_peer_list)   set -- peer-list "$_sect" ;;
+					remote_network_set) set -- ctl-network-set "$_sect" "$_nwid" "$_body" ;;
+					remote_network_del) set -- ctl-network-del "$_sect" "$_nwid" ;;
+					remote_member_set)  set -- ctl-member-set "$_sect" "$_nwid" "$_mid" "$_body" ;;
+					remote_moon_plan)   set -- moon-plan "$_sect" ;;
+					remote_moon_apply)  set -- moon-apply "$_sect" "$_cf" ;;
 				esac
 
 				if [ ! -x /usr/bin/zerotier-remote.sh ]; then
@@ -854,10 +858,13 @@ case "$1" in
 					return
 				fi
 
-				# Intentional word splitting: _args is a command line built
-				# from validated fields, and the helper re-validates each one.
-				# shellcheck disable=SC2086
-				_out=$(/usr/bin/zerotier-remote.sh $_args 2>/dev/null)
+				# "$@" not $_args: the body is free-form JSON from the browser,
+				# and a member or network name may contain spaces. Building a
+				# command string and letting the shell split it handed the
+				# helper only the first fragment, so its '{'*'}' check rejected
+				# the call and setting a name with a space in it always failed
+				# with "member body must be a JSON object".
+				_out=$(/usr/bin/zerotier-remote.sh "$@" 2>/dev/null)
 				_rc=$?
 				if [ -z "$_out" ]; then
 					json_init

@@ -104,11 +104,23 @@ expect "output carries a version" \
 # The list this ships with is what the firewall renders its nft set from; a
 # generator that mangles it would break both sides at once.
 expect "the bundled china_ip4.txt generates" \
-	"$(generate "$ROOT/root/etc/homeproxy-pro/resources/china_ip4.txt" "$WORK/real.json")" "4068 prefixes"
+	"$(generate "$ROOT/root/etc/homeproxy-pro/resources/china_ip4.txt" "$WORK/real.json")" "6163 prefixes"
 # 8.152.0.0/13 is the range geoip-cn.srs does *not* carry, and the one that
-# made segmentfault.com and ctrip.com resolve into the proxy path.
+# made segmentfault.com and ctrip.com resolve into the proxy path.  The list
+# changed source since, so this is now also the assertion that the new upstream
+# still carries it rather than having merged it away.
 expect "the bundled list carries 8.152.0.0/13" \
 	"$(grep -c '8\.152\.0\.0/13' "$WORK/real.json")" "1"
+
+# The v6 half, which used to be the untested one.  It matters for the same
+# reason: firewall_post.ut counts usable prefixes in china_ip6.txt and turns
+# v6_handled off entirely when the count is zero, which silently sends every
+# mainland IPv6 connection down the proxy.  A generator that emitted an empty
+# v6 rule-set would look identical from the config.
+expect "the bundled china_ip6.txt generates" \
+	"$(generate "$ROOT/root/etc/homeproxy-pro/resources/china_ip6.txt" "$WORK/real6.json")" "3446 prefixes"
+expect "the v6 rule-set carries no IPv4 entry" \
+	"$(grep -cE '"[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/' "$WORK/real6.json")" "0"
 
 # --- failure paths ----------------------------------------------------------
 

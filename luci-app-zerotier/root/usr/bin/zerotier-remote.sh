@@ -17,7 +17,7 @@
 #
 # So we forward a loopback port over SSH:
 #
-#     127.0.0.1:<local_port> --SSH--> 127.0.0.1:<controller_port>
+#     127.0.0.1:<per-invocation port> --SSH--> 127.0.0.1:<controller_port>
 #
 # The daemon sees a LOOPBACK peer, which OneService.cpp short-circuits to
 # allowed. The controller therefore needs NO configuration change and stays
@@ -132,20 +132,35 @@ r_load() {
 		*[!A-Za-z0-9_]*) r_die "invalid host section name" ;;
 	esac
 
+	# The browser supplies this name; only sections of type `remote` describe
+	# hosts. Without the check any zerotier.* section's options could be read
+	# as connection parameters.
+	[ "$(uci -q get "$ZT_UCI_CONFIG.$r_sect" 2>/dev/null)" = "remote" ] || r_die "not a remote host section"
+
 	r_name=$(rget "$r_sect" name "$r_sect")
 	r_host=$(rget "$r_sect" host)
 	r_user=$(rget "$r_sect" user root)
 	r_sport=$(rget "$r_sect" port 22)
-	r_lport=$(rget "$r_sect" local_port 19993)
 	r_cport=$(rget "$r_sect" controller_port 9993)
 	r_key=$(rget "$r_sect" key_path "/etc/zerotier/remote/$r_sect.key")
 
 	r_valid_host "$r_host" || r_die "invalid or empty host"
 	r_valid_user "$r_user" || r_die "invalid ssh user"
 	r_valid_port "$r_sport" || r_die "invalid ssh port"
-	r_valid_port "$r_lport" || r_die "invalid local_port"
 	r_valid_port "$r_cport" || r_die "invalid controller_port"
 	r_valid_path "$r_key" || r_die "invalid key_path"
+
+	# One local port per INVOCATION, not per host: load() and the members table
+	# both fire concurrent calls, and a shared port once let the loser borrow
+	# the winner's tunnel (measured: 2 of 6 runs). A per-invocation port is
+	# disjoint by construction. The uuid mixed in only makes the value harder
+	# to pre-bind for a local process chasing a forced retry -- since r40,
+	# readiness is our own ssh's stdout, so a pre-bound port costs one retry
+	# and nothing more. The entropy is defense in depth, not the fix.
+	_u=$(cat /proc/sys/kernel/random/uuid 2>/dev/null); _u=${_u%%-*}
+	[ -n "$_u" ] || _u=0
+	r_lport=$(( 20000 + ((0x$_u + $$) % 19000) ))
+	r_valid_port "$r_lport" || r_die "could not derive a local forwarding port"
 
 	# Without an explicit key, ssh would fall back to an agent and then to
 	# password prompts, which would hang the rpcd call instead of failing it.
@@ -258,28 +273,70 @@ r_tunnel_down() {
 		wait "$r_tpid" 2>/dev/null
 		r_tpid=""
 	fi
+	# r_hf holds the controller auth token; never leave it behind.
+	if [ -n "$r_hf" ]; then
+		rm -f "$r_hf" 2>/dev/null
+		r_hf=""
+	fi
 	return 0
 }
 
 # Forward 127.0.0.1:<lport> to the remote's loopback control plane. Bound
 # explicitly to loopback so the forwarded port is never reachable from the LAN.
 r_tunnel_up() {
-	( exec ssh -i "$r_key" -N $R_SSH_OPTS -o ExitOnForwardFailure=yes \
+	# Budget the whole function, not each try: eight twelve-poll tries
+	# against a black-holed host could burn ~96s -- three times the ~30s
+	# rpcd abandonment measured on-device -- turning a clean failure into a
+	# client timeout while the helper churns on after rpcd gave up.
+	_deadline=$(( $(date +%s) + R_SSH_TIMEOUT ))
+	# A SIGKILLed call leaves its header file behind -- its trap cannot run,
+	# and the file holds the controller token. The pid in the name says
+	# whether the call that made it still exists; /proc/<pid> is the whole
+	# test, so a live call's file is never touched.
+	for _stale in /tmp/zt_hf_*; do
+		[ -e "$_stale" ] || continue
+		_sp=${_stale#/tmp/zt_hf_}; _sp=${_sp%%_*}
+		[ -d "/proc/$_sp" ] || rm -f "$_stale"
+	done
+	_try=0
+	while [ "$_try" -lt 8 ]; do
+		# One connection carries the forward AND the token: the remote
+		# command prints the auth header, ssh lands it in r_hf, and ssh only
+		# runs commands after the forward is bound -- so a non-empty file
+		# means THIS tunnel is live. It replaces both the second ssh that
+		# read the token and the readiness probe, which trusted any listener
+		# on the port; a local process that pre-bound it could harvest the
+		# token. Our own ssh's stdout cannot be faked. The token read runs
+		# under sudo -n exactly as rrsh always ran it: the documented host
+		# precondition is passwordless sudo, and on production hosts the
+		# token is not readable by the ssh user. The trailing sleep
+		# bounds orphaned tunnels: r_tunnel_down kills this ssh on every
+		# normal path, but a SIGKILLed helper cannot, and `ssh -N` never
+		# exits on its own -- ten were found accumulated. No live call
+		# reaches 60s; the budget above sees to that.
+		r_hf=$(mktemp "/tmp/zt_hf_$$_XXXXXX") || return 1
+		( exec ssh -i "$r_key" $R_SSH_OPTS -o ExitOnForwardFailure=yes \
 		-L "127.0.0.1:$r_lport:127.0.0.1:$r_cport" \
-		-p "$r_sport" "$r_dest" ) >/dev/null 2>&1 &
-	r_tpid=$!
+		-p "$r_sport" "$r_dest" \
+		'printf "X-ZT1-Auth: "; sudo -n cat /var/lib/zerotier-one/authtoken.secret; sleep 60' ) > "$r_hf" 2>/dev/null &
+		r_tpid=$!
 
-	# Wait for the forward to accept. curl exit 7 is "couldn't connect", the
-	# expected state mid-handshake; any other status means the forward is up
-	# and the API itself answered (or refused on its own terms, which is a
-	# real answer, not a tunnel failure).
-	_i=0
-	while [ "$_i" -lt 12 ]; do
-		curl -s -o /dev/null --max-time 2 "http://127.0.0.1:$r_lport/controller" 2>/dev/null
-		[ "$?" -eq 7 ] || return 0
-		kill -0 "$r_tpid" 2>/dev/null || return 1
-		_i=$((_i + 1))
-		sleep 1
+		# A token that exists but cannot be read still arrives as the bare
+		# "X-ZT1-Auth: " prefix, so readiness fires and the controller
+		# answers 401 on first use: the call fails visibly, not silently.
+		_i=0
+		while [ "$_i" -lt 12 ]; do
+			[ -s "$r_hf" ] && return 0
+			kill -0 "$r_tpid" 2>/dev/null || break
+			[ "$(date +%s)" -lt "$_deadline" ] || break
+			_i=$((_i + 1))
+			sleep 1
+		done
+		r_tunnel_down
+		[ "$(date +%s)" -lt "$_deadline" ] || return 1
+		r_lport=$(( r_lport + 1 ))
+		[ "$r_lport" -ge 40000 ] && r_lport=20000
+		_try=$((_try + 1))
 	done
 	return 1
 }
@@ -290,31 +347,18 @@ r_tunnel_up() {
 # alongside the body and a command substitution would run this in a subshell
 # where a variable assignment cannot escape.
 rctl() {
-	_tok=$(rrsh cat /var/lib/zerotier-one/authtoken.secret 2>/dev/null)
-	[ -n "$_tok" ] || r_die "could not read the remote controller token over ssh"
-
 	if [ -n "$3" ]; then
 		_out=$(curl -s --max-time 20 -X "$1" \
-			-H "X-ZT1-Auth: $_tok" -H "Content-Type: application/json" \
+			-H @"$r_hf" -H "Content-Type: application/json" \
 			--data-binary "$3" -w '\n%{http_code}' \
 			"http://127.0.0.1:$r_lport$2" 2>/dev/null)
 	else
 		_out=$(curl -s --max-time 20 -X "$1" \
-			-H "X-ZT1-Auth: $_tok" -w '\n%{http_code}' \
+			-H @"$r_hf" -w '\n%{http_code}' \
 			"http://127.0.0.1:$r_lport$2" 2>/dev/null)
 	fi
 	r_ctl_code=$(printf '%s' "$_out" | tail -n1 | tr -dc '0-9')
 	r_ctl_body=$(printf '%s' "$_out" | sed '$d')
-}
-
-# rctl_tok -- the controller authtoken, read over the ssh channel. rctl
-# performs this same read internally on every call, which costs one ssh
-# handshake each; member-list needs the token for one map request plus N
-# member requests and pays that handshake exactly once, not N+1 times. Kept
-# as a separate helper instead of refactoring rctl to share it, so the
-# ctl-get path that shipped in r33 stays byte-for-byte what was proven.
-rctl_tok() {
-	rrsh cat /var/lib/zerotier-one/authtoken.secret 2>/dev/null
 }
 
 # rfetch <path> -- one authenticated GET through the ALREADY-OPEN tunnel,
@@ -327,13 +371,13 @@ rctl_tok() {
 # write path.
 rfetch() {
 	_out=$(curl -s --max-time 20 -X GET \
-		-H "X-ZT1-Auth: $_tok" -w '\n%{http_code}' \
+		-H @"$r_hf" -w '\n%{http_code}' \
 		"http://127.0.0.1:$r_lport$1" 2>/dev/null)
 	r_fetch_code=$(printf '%s' "$_out" | tail -n1 | tr -dc '0-9')
 	r_fetch_body=$(printf '%s' "$_out" | sed '$d')
 }
 
-# r_json_ok -- is $1 one COMPLETE JSON object? No JSON parser is guaranteed
+# r_json_ok -- is $1 one COMPLETE JSON value -- object or array? No JSON parser
 # in a root helper's environment (no jq on OpenWrt; jsonfilter belongs to
 # rpcd's process, not to this script), yet member-list embeds controller
 # bodies raw into a larger array, where one bad body would make every OTHER
@@ -362,10 +406,7 @@ r_json_ok() {
 				}
 				if (c == "\"") { s = 1; continue }
 				if (c == "{" || c == "[") {
-					if (st == "") {
-						if (c != "{") { bad = 1; exit }
-						ob_seen = 1
-					}
+					if (st == "") ob_seen = 1
 					st = st c
 				} else if (c == "}" || c == "]") {
 					l = substr(st, length(st), 1)
@@ -377,6 +418,20 @@ r_json_ok() {
 		}
 		END { if (bad == 1 || ob_seen != 1 || st != "" || s == 1 || e == 1) exit 1 }
 	'
+}
+
+# r_emit_val <body> <code> -- like r_emit, but a body that is not one complete
+# JSON value is embedded as a STRING instead of raw. ctl-get and peer-list
+# used to embed whatever the controller returned; a hostile or hijacked one
+# could close the envelope early and inject top-level fields (code, body,
+# error) into the page. An escaped string cannot add structure.
+r_emit_val() {
+	case "$1" in
+		'{'*'}'|'['*']')
+			if r_json_ok "$1"; then r_emit "$1" "$2"; else r_emit "\"$(r_esc "$1")\"" "$2"; fi
+			;;
+		*) r_emit "\"$(r_esc "$1")\"" "$2" ;;
+	esac
 }
 
 # Wrap a raw JSON body alongside a status code. The body is already JSON, so it
@@ -521,7 +576,7 @@ ctl-get)
 	_b=$r_ctl_body
 	_c=$r_ctl_code
 	r_tunnel_down
-	r_emit "$_b" "${_c:-0}"
+	r_emit_val "$_b" "${_c:-0}"
 	;;
 
 # peer-list <section> -- the controller's /peer endpoint, verbatim.
@@ -537,7 +592,7 @@ peer-list)
 	_b=$r_ctl_body
 	_c=$r_ctl_code
 	r_tunnel_down
-	r_emit "$_b" "${_c:-0}"
+	r_emit_val "$_b" "${_c:-0}"
 	;;
 
 # member-list <section> <nwid> -- every member of one network in TWO ssh
@@ -559,8 +614,6 @@ member-list)
 	r_load "$2"
 	r_valid_hex "$3" 16 || r_die "network id must be 16 hex digits"
 	r_tunnel_up || { r_tunnel_down; r_die "could not open the ssh tunnel to $r_dest"; }
-	_tok=$(rctl_tok)
-	[ -n "$_tok" ] || { r_tunnel_down; r_die "could not read the remote controller token over ssh"; }
 	rfetch "/controller/network/$3/member"
 	_code=$r_fetch_code
 	_map=$r_fetch_body
@@ -585,39 +638,143 @@ member-list)
 		# placed in a URL. This script runs as root and the extraction
 		# above is textual: URL safety rests on this validation, not on
 		# the regex upstream of it.
-		_arr=""
+		_d=$(mktemp -d /tmp/zt_ml_XXXXXX) || { r_tunnel_down; r_die "cannot stage member reads"; }
+		# Removed on every exit, not just the success path: r_die exits and rpcd
+		# abandons a call that runs long, so end-only cleanup leaves the
+		# directory behind in both cases.
+		trap 'rm -rf "$_d"' EXIT INT TERM
+		_ok_ids=""
 		for _mid in $_mids; do
 			r_valid_hex "$_mid" 10 || continue
-			rfetch "/controller/network/$3/member/$_mid"
-			# A failed member fetch is SKIPPED, not embedded: an error
-			# body or a truncated read would make the whole array
-			# unparseable and cost every other member its row. A
-			# missing row is recoverable; a broken table is not.
+			_ok_ids="$_ok_ids $_mid"
+			printf '%s\n' "$_mid" >> "$_d/ids"
+		done
+
+		# Six at a time. In sequence these cost N round trips: 15.2s for a
+		# 30-member production network, this page's slowest step by an order
+		# of magnitude. The cap is not about memory -- it stops one slow
+		# response from holding every other row behind it.
+		#
+		# Each pid is waited on by name. A bare `wait` also waits for the
+		# tunnel, which is a child of this shell and does not exit until
+		# r_tunnel_down kills it, so it blocked until the whole call timed
+		# out -- 30s and an empty body.
+		_pids=""
+		_n=0
+		for _mid in $_ok_ids; do
+			(
+				curl -s --max-time 20 -X GET -H @"$r_hf" \
+					-w '\n%{http_code}' \
+					"http://127.0.0.1:$r_lport/controller/network/$3/member/$_mid" \
+					> "$_d/$_mid" 2>/dev/null
+			) &
+			_pids="$_pids $!"
+			_n=$(( _n + 1 ))
+			if [ "$_n" -ge 6 ]; then
+				# shellcheck disable=SC2086
+				wait $_pids
+				_pids=""
+				_n=0
+			fi
+		done
+		# shellcheck disable=SC2086
+		[ -z "$_pids" ] || wait $_pids
+
+		_arr=""
+		_skip=""
+		while read -r _mid; do
+			[ -n "$_mid" ] || continue
+			_f=$(cat "$_d/$_mid" 2>/dev/null)
+			_body=$(printf '%s' "$_f" | sed '$d')
+			_rc=$(printf '%s' "$_f" | tail -n1 | tr -dc '0-9')
+			_ok=false
+			case "$_body" in
+				'{'*'}')
+					[ "$_rc" = "200" ] && r_json_ok "$_body" && _ok=true
+					;;
+			esac
+			# Recorded and skipped, not one or the other: an error body here
+			# would corrupt the array, but dropping it silently made a
+			# network whose reads all failed read as one with no members.
+			if [ "$_ok" != "true" ]; then
+				if [ -n "$_skip" ]; then
+					_skip="$_skip,\"$_mid\""
+				else
+					_skip="\"$_mid\""
+				fi
+				continue
+			fi
+			# Joined, never blindly concatenated: a comma goes
+			# between two ACCEPTED elements only, so no path
+			# yields a leading, trailing or doubled comma.
+			# Elements are embedded raw for the same reason
+			# r_emit embeds bodies raw -- each has passed the
+			# complete-object check, and a complete JSON
+			# value is self-delimiting: a '}' inside a
+			# string ends no object here any more than it
+			# does in the controller's own output.
+			if [ -n "$_arr" ]; then
+				_arr="$_arr,$_body"
+			else
+				_arr="$_body"
+			fi
+		done < "$_d/ids"
+		rm -rf "$_d"
+		r_tunnel_down
+		printf '{"code":%s,"body":[%s],"skipped":[%s]}\n' "$_code" "$_arr" "$_skip"
+	fi
+	;;
+
+# network-list <section> -- every network's full record in ONE ssh round trip.
+#
+# The controller's /controller/network returns only the id list, so the page used
+# to ask for one detail per network: one tunnel and one token read each, the
+# same N+1 member-list exists to avoid. Here the ids come from a single GET and
+# every detail is read through the same forwarded port, so the cost is one
+# handshake no matter how many networks the controller holds.
+network-list)
+	r_load "$2"
+	r_tunnel_up || { r_tunnel_down; r_die "could not open the ssh tunnel to $r_dest"; }
+	rfetch /controller/network
+	_code=$r_fetch_code
+	if [ "$_code" != "200" ]; then
+		r_tunnel_down
+		r_emit "" "${_code:-0}"
+	else
+		# A quoted 16-hex token with a closing quote cannot be a slice of a
+		# longer id, and every candidate is re-validated before it reaches a
+		# URL -- this script runs as root and the extraction is textual.
+_nids=$(printf '%s' "$r_fetch_body" | grep -oE '"[0-9a-fA-F]{16}"' | tr -d '"')
+		_arr=""
+		_skip=""
+		for _nid in $_nids; do
+			r_valid_hex "$_nid" 16 || continue
+			rfetch "/controller/network/$_nid"
 			_ok=false
 			case "$r_fetch_body" in
 				'{'*'}')
 					[ "$r_fetch_code" = "200" ] && r_json_ok "$r_fetch_body" && _ok=true
 					;;
 			esac
-			if [ "$_ok" = "true" ]; then
-				# Joined, never blindly concatenated: a comma goes
-				# between two ACCEPTED elements only, so no path
-				# yields a leading, trailing or doubled comma.
-				# Elements are embedded raw for the same reason
-				# r_emit embeds bodies raw -- each has passed the
-				# complete-object check, and a complete JSON
-				# value is self-delimiting: a '}' inside a
-				# string ends no object here any more than it
-				# does in the controller's own output.
-				if [ -n "$_arr" ]; then
-					_arr="$_arr,$r_fetch_body"
+			# Recorded and skipped, not one or the other: an error body
+			# here would corrupt the array, but dropping it silently made an
+			# unreadable network look like one that does not exist.
+			if [ "$_ok" != "true" ]; then
+				if [ -n "$_skip" ]; then
+					_skip="$_skip,\"$_nid\""
 				else
-					_arr="$r_fetch_body"
+					_skip="\"$_nid\""
 				fi
+				continue
+			fi
+			if [ -n "$_arr" ]; then
+				_arr="$_arr,$r_fetch_body"
+			else
+				_arr="$r_fetch_body"
 			fi
 		done
 		r_tunnel_down
-		r_emit "[$_arr]" "$_code"
+		printf '{"code":%s,"body":[%s],"skipped":[%s]}\n' "$_code" "$_arr" "$_skip"
 	fi
 	;;
 

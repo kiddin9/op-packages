@@ -106,7 +106,24 @@ emit() {
 	fi
 }
 case "$url" in
-*api.github.com/*/commits*) emit "$(cat "$HP_T_API_COMMITS")" ;;
+*api.github.com/*/commits*)
+	# Filtered by path, the way the real endpoint is.  Asking for a file
+	# that is not at that path is not a narrower question, it is a different
+	# one: it matches no commit and comes back [].  That is the whole reason
+	# the in-repo path is a separate argument from the file name, and it is
+	# what this branch can now catch - every list this project ships used to
+	# live in the repo root, so path= and the file name were the same string
+	# and nothing could tell them apart.
+	case "$url" in
+	*repos/MetaCubeX/*)
+		case "$url" in
+		*"path=geo/geoip/cn.list"*) emit "$(cat "$HP_T_API_COMMITS")" ;;
+		*) emit '[]' ;;
+		esac
+		;;
+	*) emit "$(cat "$HP_T_API_COMMITS")" ;;
+	esac
+	;;
 *api.github.com/*/contents*) emit "$(cat "$HP_T_API_CONTENTS")" ;;
 *)
 	# A spider probe (-s) checks reachability only, and its stdout is captured
@@ -115,6 +132,19 @@ case "$url" in
 	# applet prints nothing for a probe.
 	[ "$probe" = "0" ] || exit 0
 	if [ -n "${HP_T_FETCH_FAIL:-}" ]; then exit 1; fi
+	# The same wrong-path mistake reaches the download as a 404, and
+	# pick_mirror turns that into "all mirrors unreachable" - a second
+	# symptom of the one bug, reported as an unrelated-looking network
+	# failure.  Scoped to this source so the other lists, whose file name is
+	# their in-repo path, keep resolving.
+	case "$url" in
+	*MetaCubeX/meta-rules-dat*)
+		case "$url" in
+		*geo/geoip/cn.list*) ;;
+		*) exit 1 ;;
+		esac
+		;;
+	esac
 	emit "$(cat "$HP_T_BODY")"
 	;;
 esac
@@ -179,6 +209,21 @@ cat > "$WORK/bin/flock" <<'EOF'
 #!/bin/sh
 exit 0
 EOF
+# utpl renders firewall_post.ut into the file named by -O-less stdout; the stub
+# writes a marker line and honours a failure switch, which is all the two
+# cases below need.  fw4 records that it was called and honours its own.
+cat > "$WORK/bin/utpl" <<'EOF'
+#!/bin/sh
+[ -n "${HP_T_UTPL_FAIL:-}" ] && exit 1
+printf 'rendered-from-utpl\n'
+exit 0
+EOF
+cat > "$WORK/bin/fw4" <<'EOF'
+#!/bin/sh
+[ -n "$HP_T_FW4_CALLED" ] && printf 'called\n' >> "$HP_T_FW4_CALLED"
+[ -n "${HP_T_FW4_FAIL:-}" ] && exit 1
+exit 0
+EOF
 chmod +x "$WORK/bin/"*
 
 PATH="$WORK/bin:$PATH"
@@ -205,14 +250,20 @@ EOF
 
 write_contents_json() {
 	# write_contents_json <blob-sha-or-empty>
+	# The upstream file is cn.list, not ipv4.txt: it carries both address
+	# families and each listtype takes one half of it (install_download).
 	if [ -n "$1" ]; then
-		printf '{"name":"ipv4.txt","size":6,"sha":"%s"}' "$1" > "$WORK/api-contents.json"
+		printf '{"name":"cn.list","size":6,"sha":"%s"}' "$1" > "$WORK/api-contents.json"
 	else
-		printf '{"name":"ipv4.txt","size":6}' > "$WORK/api-contents.json"
+		printf '{"name":"cn.list","size":6}' > "$WORK/api-contents.json"
 	fi
 }
 
-printf 'fresh\n' > "$WORK/body.txt"
+# Mixed on purpose: china_ip4 must end up holding only the first line, and the
+# IPv6 line is what the china_ip6 cases below split out.  Keeping "fresh" as the
+# single IPv4 line means the cases that only care about the blob-id handshake
+# keep asserting on "fresh" unchanged.
+printf 'fresh\n2001:db8::/32\n' > "$WORK/body.txt"
 printf 'stale-installed-copy\n' > "$WORK/resources/china_ip4.txt"
 printf 'OLDVERSION' > "$WORK/resources/china_ip4.ver"
 
@@ -269,7 +320,7 @@ expect "the .ver is untouched" "$(cat "$WORK/resources/china_ip4.ver")" "OLDVERS
 expect "no .updated_at was written" "$([ -e "$WORK/resources/china_ip4.updated_at" ] && echo yes || echo no)" "no"
 expect "the refusal is logged with both ids" \
 	"$(grep -c "does not match the content of commit $API_SHA" "$WORK/run/homeproxy-pro.log")" "1"
-expect "the downloaded copy was discarded" "$([ -e "$WORK/run/ipv4.txt" ] && echo yes || echo no)" "no"
+expect "the downloaded copy was discarded" "$([ -e "$WORK/run/cn.list" ] && echo yes || echo no)" "no"
 
 echo "== case 3: no blob id from the API -> refused =="
 reset_state
@@ -372,6 +423,109 @@ expect "the previous list is untouched" \
 expect "the .ver is untouched" "$(cat "$WORK/resources/china_list.ver")" "OLDVERSION"
 expect "the generator was never called" \
 	"$([ -e "$HP_T_SEEN_SOURCE" ] && echo yes || echo no)" "no"
+
+echo "== case 8: cn.list is split by address family =="
+# Both IP lists come out of one upstream file now (MetaCubeX cn.list), so the
+# install step splits rather than moves.  What has to hold: each listtype ends
+# up at its own .txt name with only its own family in it, and the combined
+# download is not left lying in RUN_DIR for the next run to trip over.
+reset_state
+printf 'OLDVERSION' > "$WORK/resources/china_ip6.ver"
+rm -f "$WORK/resources/china_ip6.txt"
+# Set here rather than relying on the top-of-file fixture: case 6 overwrote
+# body.txt with its own domain lines.
+printf '1.0.0.0/24\n2001:db8::/32\n' > "$WORK/body.txt"
+: > "$WORK/run/homeproxy-pro.log"
+printf '%s' "$LOCAL_SHA" > "$HP_T_LOCAL_BLOB"
+rc="$("$RUN_SH" "$WORK/scripts/update_resources.sh" china_ip6 > "$WORK/stdout" 2>&1; echo $?)"
+expect "exit status 0" "$rc" "0"
+expect "china_ip6.txt was created by the split" \
+	"$(cat "$WORK/resources/china_ip6.txt" 2>/dev/null)" "2001:db8::/32"
+expect "it holds no IPv4 entry" \
+	"$(grep -cE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/' "$WORK/resources/china_ip6.txt" || true)" "0"
+expect "its .ver advanced like the v4 one" \
+	"$(cat "$WORK/resources/china_ip6.ver")" "2026-01-02 $API_SHA"
+expect "the combined download was cleaned out of RUN_DIR" \
+	"$([ -e "$WORK/run/cn.list" ] && echo yes || echo no)" "no"
+expect "no half-written temp file survived" \
+	"$([ -e "$WORK/resources/china_ip6.txt.hp-new" ] && echo yes || echo no)" "no"
+
+echo "== case 9: a family with no entries is refused, not installed empty =="
+# The failure this guards is silent: an empty china_ip6.txt makes
+# firewall_post.ut count zero usable prefixes and turn v6_handled off, after
+# which every mainland IPv6 connection goes to the proxy - with no error
+# anywhere.  Keeping the previous list is the only acceptable outcome.
+reset_state
+printf 'stale-v6-copy\n' > "$WORK/resources/china_ip6.txt"
+printf 'OLDVERSION' > "$WORK/resources/china_ip6.ver"
+printf 'only-v4-here/24\n' > "$WORK/body.txt"
+: > "$WORK/run/homeproxy-pro.log"
+printf '%s' "$LOCAL_SHA" > "$HP_T_LOCAL_BLOB"
+rc="$("$RUN_SH" "$WORK/scripts/update_resources.sh" china_ip6 > "$WORK/stdout" 2>&1; echo $?)"
+expect "exit status non-zero" "$rc" "1"
+expect "the previous v6 list is untouched" \
+	"$(cat "$WORK/resources/china_ip6.txt")" "stale-v6-copy"
+expect "its .ver is untouched" "$(cat "$WORK/resources/china_ip6.ver")" "OLDVERSION"
+expect "the reason is logged" \
+	"$(grep -c 'carries no v6 entries' "$WORK/run/homeproxy-pro.log")" "1"
+expect "no empty temp file survived" \
+	"$([ -e "$WORK/resources/china_ip6.txt.hp-new" ] && echo yes || echo no)" "no"
+
+echo "== case 10: a successful IP update re-renders the firewall sets =="
+# The two halves of the mainland split read the same file but go live on
+# different triggers: sing-box watches the generated rule-set, while the nft
+# set is rendered into fw4_post.nft and otherwise only a start/restart puts
+# it in place.  Without this step the kernel's copy silently ages past the
+# file's, and a segment the list has since dropped keeps matching
+# `ip daddr @homeproxy_mainland_addr_v4 counter return` - which returns before
+# the redirect, so the route side never gets to correct it.
+reset_state
+printf 'v4-here/24\n2001:db8::/32\n' > "$WORK/body.txt"
+printf 'stale-rendered-ruleset\n' > "$WORK/run/fw4_post.nft"
+rm -f "$WORK/run/fw4_post.nft.new"
+export HP_T_FW4_CALLED="$WORK/fw4-called"
+rm -f "$HP_T_FW4_CALLED"
+: > "$WORK/run/homeproxy-pro.log"
+rc="$("$RUN_SH" "$WORK/scripts/update_resources.sh" china_ip4 > "$WORK/stdout" 2>&1; echo $?)"
+expect "exit status 0" "$rc" "0"
+expect "fw4_post.nft was re-rendered from the new list" \
+	"$(cat "$WORK/run/fw4_post.nft" 2>/dev/null)" "rendered-from-utpl"
+expect "fw4 reload ran" \
+	"$(grep -c 'called' "$HP_T_FW4_CALLED" 2>/dev/null || echo 0)" "1"
+expect "no temp file left behind" \
+	"$([ -e "$WORK/run/fw4_post.nft.new" ] && echo yes || echo no)" "no"
+expect "the success is logged" \
+	"$(grep -c 'Firewall mainland sets re-rendered' "$WORK/run/homeproxy-pro.log")" "1"
+
+echo "== case 11: a failed render is warned about, not fatal =="
+# Failing the update would be worse than the lag it is reporting: the list on
+# disk is already the one the commit vouched for, and a resource that can
+# never refresh is a far bigger problem than one that is briefly not in the
+# firewall.  The previous ruleset has to survive, or a bad render takes the
+# whole intercept layer down with it.
+reset_state
+printf 'v4-here/24\n2001:db8::/32\n' > "$WORK/body.txt"
+printf 'known-good-ruleset\n' > "$WORK/run/fw4_post.nft"
+rm -f "$WORK/run/fw4_post.nft.new"
+export HP_T_UTPL_FAIL=1
+: > "$WORK/run/homeproxy-pro.log"
+# Cleared because the point of this case is that a failed render must not
+# reach fw4 at all - inheriting case 10's record would make the assertion
+# pass for the wrong reason if the branch started reloading anyway.
+rm -f "$HP_T_FW4_CALLED"
+rc="$("$RUN_SH" "$WORK/scripts/update_resources.sh" china_ip4 > "$WORK/stdout" 2>&1; echo $?)"
+unset HP_T_UTPL_FAIL
+expect "the update still succeeded" "$rc" "0"
+expect "the list was still installed" \
+	"$(cat "$WORK/resources/china_ip4.txt")" "v4-here/24"
+expect "the previous ruleset is untouched" \
+	"$(cat "$WORK/run/fw4_post.nft")" "known-good-ruleset"
+expect "no half-written temp file survived" \
+	"$([ -e "$WORK/run/fw4_post.nft.new" ] && echo yes || echo no)" "no"
+expect "fw4 was NOT reloaded" \
+	"$(grep -c 'called' "$HP_T_FW4_CALLED" 2>/dev/null || echo 0)" "0"
+expect "the warning names the manual recovery" \
+	"$(grep -c 'could not re-render fw4_post.nft' "$WORK/run/homeproxy-pro.log")" "1"
 
 printf '%d checks, %d failures\n' "$CHECKS" "$FAILURES"
 if [ "$FAILED" != "0" ]; then

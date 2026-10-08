@@ -49,6 +49,7 @@ The custom `luci-zerotier` RPC object provides these methods (no `luci.exec` nee
 | `remote_diagnose` | read | Read-only survey of a remote host over SSH |
 | `remote_ctl_get` | read | Authenticated controller API read through the SSH tunnel |
 | `remote_member_list` | read | Every member of one network in a single tunnel round trip |
+| `remote_network_list` | read | Every network's full record in a single tunnel round trip |
 | `remote_peer_list` | read | The controller's live `/peer` list (status, version, latency, paths) |
 | `remote_moon_plan` | read | The exact remote command a moon creation would run, plus a digest |
 | `remote_host_set` | write | Add/update a remote host; writes the private key to a `0600` file |
@@ -74,7 +75,8 @@ make package/luci-app-zerotier/compile
 ```
 htdocs/luci-static/resources/view/zerotier/
 ├── general.js          # Settings page (enable, NAT, networks, advanced)
-└── info.js             # Info page (identity, networks table, peers table, ping)
+├── info.js             # Info page (identity, networks table, peers table, ping)
+└── remote.js           # Remote Controller page (hosts, networks, member table)
 
 root/usr/libexec/rpcd/
 └── luci-zerotier       # RPC daemon (status, networks, identity, peers, ping)
@@ -86,6 +88,7 @@ root/etc/uci-defaults/
 └── luci-zerotier       # Install/upgrade migrations, defaults seeding, cleanup
 
 root/usr/bin/
+├── zerotier-remote.sh  # Remote Controller transport (SSH tunnel, controller API)
 └── zerotier-sync.sh    # Runtime-state persistence (mirror of daemon state dirs)
 
 root/etc/zerotier/
@@ -133,8 +136,12 @@ controller's **admin token on the wire in cleartext on every request**, from a
 residential IP that changes. So instead the router forwards a loopback port:
 
 ```
-127.0.0.1:<local_port>  --SSH-->  127.0.0.1:<controller_port>
+127.0.0.1:<per-invocation port>  --SSH-->  127.0.0.1:<controller_port>
 ```
+
+The local end is chosen per call rather than configured, so two requests to the
+same controller never contend for it (see the changelog for what that cost
+before).
 
 The daemon sees a loopback peer and short-circuits to allowed. The controller
 therefore needs **no configuration change at all** and stays firewalled to
@@ -202,6 +209,199 @@ stderr and continues. Two consequences are handled explicitly:
 - The controller **rules editor** is out of scope by design.
 
 ## Changelog
+
+### v2.2-r41
+
+**Three hardening items from the review, one honestly retired**
+
+- **ctl-get and peer-list embedded whatever the controller returned, raw.** A
+  hostile or hijacked controller could close the JSON envelope early and
+  inject top-level fields -- `code`, `body`, `error` -- into the page. Both now
+  route through `r_emit_val`: a body that is not one complete JSON value ships
+  as an escaped STRING, which cannot add structure. `r_json_ok` generalised
+  from object-only to object-or-array, because both are real controller
+  responses. Verified by an adversarial unit pass against the deployed
+  function: envelope breakout, trailing garbage, truncation, and
+  type-mismatched closers all rejected; strings that merely contain braces
+  pass untouched. One test in that pass initially failed because the "hostile"
+  body written for it, `{"]":1}`, is legal JSON -- the key IS the string
+  `"]"`. The function was right; the test was wrong.
+- **A browser-supplied section name could name any `zerotier.*` UCI section**,
+  and its options would be read as connection parameters. `r_load` now
+  requires the section's type to be `remote`, which uci reports directly.
+- **The forwarding port mixes a random uuid in with the pid.** Honest framing:
+  since r40, readiness is our own ssh's stdout, so a pre-bound port costs one
+  retry and nothing more -- the port-hijack finding from the review is already
+  dead by construction, not by this. The entropy is defence in depth against
+  a forced-retry nuisance.
+
+### v2.2-r40
+
+**One ssh connection per call**
+
+- **Every remote call used to open two ssh connections**: the tunnel, then a
+  second one to read the auth token. They are merged -- the tunnel's ssh now
+  runs `printf "X-ZT1-Auth: "; sudo -n cat authtoken.secret; sleep 60`, so the
+  token arrives on the same connection that carries the forward, and ssh only
+  runs commands after the forward is bound: a non-empty header file means THIS
+  tunnel is live. That replaces the second connection and the readiness probe
+  together. Measured on the production host: **2.39-2.81s down to 1.30-1.84s**
+  per call, and three concurrent calls -- which failed against the remote
+  sshd's `MaxStartups 10:30:100` when they meant six connections -- now pass
+  reliably at three.
+- **The probe this replaces trusted any listener on the port.** A local
+  process that pre-bound the pid-derived port could answer the readiness curl,
+  receive the `X-ZT1-Auth` token and feed crafted JSON into the page. The
+  stdout of our own ssh cannot be faked, so the interception finding from the
+  r38-r39 review is dead by construction rather than by patching.
+- The token now travels `ssh stdout -> 0600 mktemp file -> curl -H @file` and
+  never appears on a process command line (world-readable through `/proc`
+  before) nor in a shell variable.
+- The first attempt of this merge broke production, and reading the diff did
+  not catch it: the token read must run under `sudo -n` exactly as `rrsh`
+  always ran it, because on the production host the token is not readable by
+  the ssh user. The on-device re-test caught it -- plain `cat` worked against
+  the root-login test box and 401'd against production.
+- **Orphaned tunnels are bounded.** `ssh -N` never exits on its own, and a
+  helper killed outright cannot clean up after itself; ten orphans had
+  accumulated during earlier testing. The trailing `sleep 60` ends the session
+  on its own -- measured: a helper SIGKILLed mid-read left an orphan that
+  lived exactly 60s -- and the leaked header file (it holds the token) is
+  swept by the next call, which checks the pid embedded in the file's name
+  against `/proc`.
+
+### v2.2-r39
+
+**A failed member read used to look like success**
+
+- **A network whose every member read failed rendered as "No members have
+  joined this network yet."** `member-list` skipped unreadable members and
+  emitted an empty array with code 200, which the page could only read as an
+  empty network -- the exact failure `network-list` reports through its
+  `skipped` list. `member-list` now reports the same way, the table's counter
+  reads `shown / known` where known counts unreadable members, and a total
+  failure draws an error instead of an empty-network notice.
+- **The Refresh button could lie twice.** A failed refresh silently kept the
+  old rows -- correct -- but still moved the *updated* timestamp, presenting
+  stale data as fresh. The stamp now only moves when the member list actually
+  replaced the table, and a failed refresh says so instead of saying nothing.
+- **`r_tunnel_up` had no overall budget.** Eight retries of a twelve-poll loop
+  against a black-holed host could burn ~96s -- three times the ~30s rpcd
+  abandonment this project has measured on-device -- turning a clean failure
+  into a client timeout while the helper churned on after rpcd gave up. The
+  whole function is now bounded by `R_SSH_TIMEOUT`, checked while polling.
+- Documentation caught up with code: the RPC methods table gains the r38
+  `remote_network_list` row, the r36 changelog split turns out to have
+  *copied* its bullets into r36 instead of moving them (the r35 entry claimed
+  r36's work as its own -- now deduplicated), and the File Structure section
+  finally lists `remote.js` and `zerotier-remote.sh`, which it had omitted
+  since r33.
+
+### v2.2-r38
+
+**One tunnel per call, and members no longer read one at a time**
+
+- **Every remote call shared one local forwarding port.** `local_port` came from
+  UCI — a single value per host — while the page fires two calls at once for the
+  members table and one per network for the list. The loser's `ssh -L` died with
+  `Address in use`, but its readiness probe then reached the *winner's* tunnel
+  and reported success, so when the winner tore the tunnel down the loser read
+  an empty body: **2 of 6 concurrent runs** produced a members table that was
+  empty or missing entirely, with no error shown. Retrying another port cannot
+  fix that, because the borrow happens before any retry. The port is now derived
+  from the pid, which makes concurrent calls disjoint by construction, and
+  `r_tunnel_up` walks forward a port at a time if one is somehow taken. The
+  `local_port` UCI option is removed with it — nothing in the UI ever set it.
+- **The members table read its 30 members in 30 sequential requests.** Each read
+  is cheap; the round trips were not. Issued six at a time through the single
+  forwarded port, a 30-member production network went from **15.2s to 2.8s**,
+  and the page's slowest step became the same as its fastest. Output was
+  compared field by field against the controller's own records: no member
+  missing, none extra, no field differing.
+- **The network list asked for one detail per network**, each its own tunnel and
+  token read — the same N+1 `member-list` exists to avoid. A new `network-list`
+  subcommand fetches every detail through one tunnel, and a network whose read
+  fails is now **named on screen** instead of silently missing from the table.
+- A bare `wait` also waits for the tunnel, which is a child of the same shell
+  and does not exit until it is killed, so the first version of the parallel
+  read blocked until the call timed out — 30s and an empty body. Each curl is
+  now waited on by pid.
+- The staging directory the parallel read needs is removed by a trap rather than
+  at the end of the success path, because `r_die` exits and `rpcd` abandons a
+  call that runs long. Verified against a build with the trap removed, which
+  leaks on `SIGTERM`.
+- **Known ceiling, unchanged and pre-existing:** three concurrent calls (six SSH
+  connections) start failing against a host whose sshd has the default
+  `MaxStartups 10:30:100`. An A/B against the previous release fails equally at
+  that level, so this is the remote host's connection throttle, not the port
+  scheme. The page issues at most two at a time, where this release measures
+  zero failures over many rounds. Each call still opens two SSH connections
+  (tunnel, then the token read); folding those into one would halve the
+  pressure, at the cost of reworking how the token is fetched.
+
+### v2.2-r37
+
+**A name with a space in it could not be saved at all**
+
+- **The RPC layer built a command line as a string and let the shell split it
+  back into arguments.** `rpcd` collected the validated fields into `_args` and
+  invoked the helper as `zerotier-remote.sh $_args`, with an inline comment
+  asserting that the split was safe because every field had been validated. That
+  was true of the section name, the network id and the member id -- and false of
+  `body`, which is free-form JSON handed over by the browser. The moment a body
+  contained a space the shell split it in two, the helper's `'{'*'}'` guard saw
+  only the first fragment, and the call was rejected with *member body must be a
+  JSON object*. Nothing was written, and the message named the wrong culprit.
+  The arguments are now built with `set --` and passed as `"$@"`, so each one
+  reaches the helper intact.
+  This was not an edge case. Of the 29 named members on the production network,
+  **28 have a space in their name**; the only one that could be renamed was the
+  only one that had none. Every other rename has been failing this way, and the
+  reported symptom -- a rejected write -- is the mildest version of it.
+  `ctl-network-set` travels the same path, so network names with spaces were
+  broken identically.
+- **A failed rename left the rejected text sitting in the input**, which is
+  worse than the failure itself: the table showed the new name, so the edit
+  looked applied, and it was not. The value is now restored from the member
+  record when the write is rejected. The IP editor is deliberately left alone --
+  there an open editor holding your input for another attempt is the correct
+  behaviour, and Escape already reverts it.
+- Verified against a real controller rather than a stub: three names that all
+  broke the old path (a space, *consecutive* spaces, and an embedded escaped
+  quote) now read back byte-identical from the controller, while five malformed
+  bodies are still refused. The consecutive-space case is what rules out the
+  tempting one-line fix of rejoining the fragments with `$*` -- that would have
+  silently collapsed runs of spaces in a name.
+
+### v2.2-r36
+
+**Read back what changed, and wait for the address to actually arrive**
+
+- **Mutations re-read only the member that changed, and authorization is
+  special-cased because the address does not arrive with the response.**
+  Measured on a real 1.14.2 controller: the `authorized` flag flips within 1ms
+  and reads back immediately, but `ipAssignments` stays empty at +1s, +2s and
+  +4s and is populated at **+8s** -- the node has to re-fetch the network
+  configuration and come up before the controller assigns anything. Refetching
+  straight after the POST therefore always reads an empty list and looks like a
+  failure, so the row is marked *assigning address...* and re-read once after
+  11s. Revoking needs no wait: the state is already final, and the controller
+  keeps `ipAssignments` across a revoke/restore cycle untouched (verified on a
+  production member), so the address stays visible after de-authorizing, which
+  is what the reference UI shows too.
+- **The re-read is per member, not per table**, and that is a cost decision as
+  much as a UX one. Every remote call costs an SSH handshake of ~2.05s, and
+  that handshake -- not the member count -- is the cost: one member and 31
+  members both bottom out at ~2.05s, the extra 30 fetches adding ~0.6s
+  together. Re-reading one member alongside the peer list measures 2.06s with
+  almost no variance, against 2.59s (and 2.05-2.67s of jitter) for the full
+  list. Repainting a single row is also what keeps an input the user is typing
+  into, the filter text and the scroll position from being thrown away.
+- The members panel carries a manual **Refresh** and an *updated* timestamp.
+  The button deliberately does a full reload, unlike the per-member path: it
+  exists for the case where the same controller is being edited in another
+  tool, which is exactly why `ztncui` had to keep member names outside the
+  controller in the first place.
 
 ### v2.2-r35
 

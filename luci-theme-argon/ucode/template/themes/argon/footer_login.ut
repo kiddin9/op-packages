@@ -17,10 +17,13 @@
 -#}
 
 </div>
-<!-- added style="text-wrap: auto" but on this page it is still not the best solution. I will take it to consideration next time :) -->
-<footer style="text-wrap: auto">
-	<div>
-		<a class="luci-link" href="{{ version.disturl }}" target="_blank">{{ version.distname }} {{ version.distversion }}-{{ version.distrevision }}</a>
+{%
+	const luci_info = 'Powered by ' + version.luciname + ' (' + version.luciversion + ')';
+	const firmware_info = version.distname + ' ' + version.distversion + '-' + version.distrevision;
+%}
+<footer>
+	<div title="{{ entityencode(luci_info + ' · ArgonTheme · ' + firmware_info, true) }}">
+		<a class="luci-link" href="{{ version.disturl }}" target="_blank" title="{{ entityencode(firmware_info, true) }}">{{ version.distname }} {{ version.distversion }}<span class="login-footer-detail">-{{ version.distrevision }}</span></a>
 	</div>
 </footer>
 </div>
@@ -28,12 +31,6 @@
 	<script>
 		// thanks for Jo-Philipp Wich <jow@openwrt.org>
 		var luciLocation = {{ ctx.path }};
-  	const loginContainer = document.querySelector(
-  	  'div[class="login-container"][style*="backdrop-filter: blur(0px)"]'
-  	);
-  	if (loginContainer) {
-  	  loginContainer.style.margin = '0 auto';
-  	}
 	</script>
 </body>
 </html>
