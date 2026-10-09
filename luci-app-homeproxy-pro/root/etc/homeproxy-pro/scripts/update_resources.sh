@@ -136,7 +136,7 @@ install_download() {
 # puts in place.  reload does not re-render it (measured on the device: the
 # command returns 0, the file's mtime does not move, the set keeps its old
 # elements).  So the two halves would read the same file on different days,
-# and the gap grows with every nightly update.
+# and the gap grows with every update.
 #
 # The direction that matters is the one where the kernel is *ahead* of the
 # file: a segment the list has since dropped still matches the set, and
@@ -155,7 +155,7 @@ install_download() {
 #
 # Every failure is non-fatal on purpose.  A list that is installed but not yet
 # in the firewall is the one state this script is allowed to leave behind:
-# the next nightly run, or the next service start, closes it.  Failing the
+# the next scheduled run, or the next service start, closes it.  Failing the
 # update instead would turn a cosmetic lag into a resource that can never
 # refresh.
 sync_firewall_sets() {

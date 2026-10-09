@@ -86,7 +86,7 @@ let DEFAULTS = {
 	isolate:       '1',
 	macaddr:       '',
 	ip:            '172.16.0.1',
-	netmask:       '255.240.0.0',
+	netmask:       '255.255.255.0',
 	dhcpStart:     '100',
 	dhcpLimit:     '150',
 	dhcpLease:     '12h',

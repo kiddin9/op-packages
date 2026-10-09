@@ -1,0 +1,37 @@
+#!/bin/sh
+# r12: guestwifi + network shipped with /12 (255.240.0.0) from r9 through
+# r11. Conffile preservation kept the old value across upgrades, so the new
+# JS default in r12 never reaches existing users. Force /24 on any guest
+# still carrying /12. Idempotent; runs once then is deleted by uci-defaults.
+
+[ -f /etc/config/guestwifi ] || exit 0
+
+changed=0
+
+# guestwifi.@guest[*].netmask
+for sec in $(uci show guestwifi 2>/dev/null \
+        | sed -n "s/^guestwifi\.\(@guest\[[0-9]*\]\)\.netmask='255\.240\.0\.0'$/\1/p"); do
+    uci set "guestwifi.${sec}.netmask=255.255.255.0"
+    changed=1
+done
+
+# network.guest, network.guest_2, ... (any iface whose name starts with guest)
+for iface in $(uci show network 2>/dev/null \
+        | sed -n "s/^network\.\([A-Za-z0-9_]*\)\.netmask='255\.240\.0\.0'$/\1/p"); do
+    case "$iface" in
+        guest*)
+            uci set "network.${iface}.netmask=255.255.255.0"
+            changed=1
+            ;;
+    esac
+done
+
+if [ "$changed" = "1" ]; then
+    uci commit guestwifi
+    uci commit network
+    /etc/init.d/network reload
+    /etc/init.d/firewall reload
+    logger -t quickactions "guestwifi netmask migrated /12 -> /24"
+fi
+
+exit 0

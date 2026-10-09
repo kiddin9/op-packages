@@ -5,12 +5,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gn
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://gn.googlesource.com/gn.git
-PKG_SOURCE_DATE:=2026-09-02
-PKG_SOURCE_VERSION:=356ee8a865882bb3615422539ef262e32b102030
+PKG_SOURCE_DATE:=2026-06-27
+PKG_SOURCE_VERSION:=8d1b023dec36ab50138d427e807175fd99b5bb57
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=BSD 3-Clause
@@ -43,7 +43,7 @@ define Host/Configure
 endef
 
 define Host/Compile
-	+$(NINJA) -C $(HOST_BUILD_DIR)/out
+	+$(NINJA) -C $(HOST_BUILD_DIR)/out gn
 endef
 
 define Host/Install
