@@ -4,8 +4,9 @@
 # Refresh the four resource lists (china_ip4 / china_ip6 / gfw_list /
 # china_list) and reload the service only when one of them actually moved.
 #
-# Scheduled unconditionally - see hp_sync_resource_cron() in runtime/service.sh
-# for why this is not behind the subscription auto_update switch.
+# Scheduled unconditionally, weekly on Monday 03:00 - see
+# hp_sync_resource_cron() in runtime/service.sh for why this is not behind the
+# subscription auto_update switch, and why it is not daily.
 #
 # Why a reload is needed at all, when the sing-box side reloads itself: the
 # lists feed two consumers. update_resources.sh regenerates the sing-box
@@ -17,7 +18,7 @@
 # disagreed. That window is invisible: mainland traffic still works, it just
 # stops being mainland for whatever the new entries added.
 #
-# update_resources.sh exits 3 when a list is already current, so a day with no
+# update_resources.sh exits 3 when a list is already current, so a week with no
 # upstream movement costs one round of requests and no interruption.
 
 SCRIPTS_DIR="/etc/homeproxy-pro/scripts"

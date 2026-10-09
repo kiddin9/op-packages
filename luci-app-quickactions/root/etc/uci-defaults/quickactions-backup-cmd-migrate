@@ -1,0 +1,18 @@
+#!/bin/sh
+# r12: r11 shipped the new backup command but conffile preservation kept
+# the r9 '@download:/cgi-backup' value on upgrading devices. Rewrite it to
+# the sysupgrade -b form so those users get a working Download Config
+# Backup button without manual uci set.
+
+[ -f /etc/config/quickactions ] || exit 0
+
+cur=$(uci -q get quickactions.backup.command)
+case "$cur" in
+    *'@download:'*|*'cgi-backup'*)
+        uci set 'quickactions.backup.command=/sbin/sysupgrade -b /tmp/backup-$(date +%Y%m%d-%H%M%S).tar.gz && ls -la /tmp/backup-*.tar.gz | tail -1'
+        uci commit quickactions
+        logger -t quickactions "backup.command migrated off legacy @download: endpoint"
+        ;;
+esac
+
+exit 0

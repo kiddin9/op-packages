@@ -132,20 +132,38 @@ hp_crontab_drop() {
 # says nothing about the user wanting stale routing data, so the two are now
 # scheduled independently.
 #
-# The hour is a constant rather than a setting.  This is a maintenance job with
-# nothing to configure, and adding an option for it is exactly the kind of
-# switch that ends up defaulted and never touched.  Two hours earlier than the
-# subscription default (2) so the two runs of uclient-fetch do not collide.
+# The schedule is a constant rather than a setting.  This is a maintenance job
+# with nothing to configure, and adding an option for it is exactly the kind of
+# switch that ends up defaulted and never touched.
+#
+# Weekly (Monday 03:00), not daily, and the reason is the cost rather than the
+# freshness.  The upstream lists really do move most days - a Monday run on a
+# router whose last run was the previous Monday typically finds something new -
+# so a daily schedule meant a `fw4 reload` roughly every other day, and
+# `fw4 reload` rewrites the whole ruleset: every connection in flight is
+# dropped, and miniupnpd's mappings have to be reinstalled afterwards
+# (hp_restore_upnp_mappings).  Paying that once a week for routing data that
+# drifts by a few hundred CIDRs a day is the right trade; a user who wants a
+# fresher list can still press the update button in the LuCI status page, which
+# runs the same script.
+#
+# 03:00 rather than the hour-2 default the subscription update uses, so the two
+# runs of uclient-fetch do not land on the same minute.
 #
 # The entry runs update_resources_cron.sh, which reloads the service only when a
-# list actually changed - so a day where the upstream lists did not move costs
+# list actually changed - so a week where the upstream lists did not move costs
 # one round of requests and no interruption.
+#
+# cron fields, for the record: `0 3 * * 1` is minute 0, hour 3, any day of the
+# month, any month, day-of-week 1 = Monday.  Times are the router's local time,
+# which is the same clock the log lines above are stamped with.
 HP_RESOURCE_CRON_HOUR=3
+HP_RESOURCE_CRON_DOW=1
 hp_sync_resource_cron() {
 	hp_crontab_drop "/etc/crontabs/root" "${CONF}_resource_cron" \
 		|| log "Warning: failed to drop the previous resource-update cron entry."
-	printf '0 %s * * * %s/scripts/update_resources_cron.sh #%s_resource_cron\n' \
-		"$HP_RESOURCE_CRON_HOUR" "$HP_DIR" "$CONF" >> "/etc/crontabs/root" \
+	printf '0 %s * * %s %s/scripts/update_resources_cron.sh #%s_resource_cron\n' \
+		"$HP_RESOURCE_CRON_HOUR" "$HP_RESOURCE_CRON_DOW" "$HP_DIR" "$CONF" >> "/etc/crontabs/root" \
 		|| log "Warning: failed to install the resource-update cron entry."
 	/etc/init.d/cron restart >"/dev/null" 2>&1 || log "Warning: failed to restart cron."
 }
