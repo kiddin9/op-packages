@@ -1,3 +1,22 @@
+--- a/luci-app-passwall/root/etc/init.d/passwall
++++ b/luci-app-passwall/root/etc/init.d/passwall
+@@ -3,10 +3,11 @@
+ START=99
+ STOP=15
+ 
+-ROOT="${IPKG_INSTROOT:-}"
+-. "$ROOT/usr/share/passwall/utils.sh"
+-APP_FILE=${APP_PATH}/app.sh
+-LOCK_FILE=${LOCK_PATH}/${CONFIG}.lock
++if [ -z "$IPKG_INSTROOT" ] && [ -f /usr/share/passwall/utils.sh ]; then
++	. /usr/share/passwall/utils.sh
++	APP_FILE=${APP_PATH}/app.sh
++	LOCK_FILE=${LOCK_PATH}/${CONFIG}.lock
++fi
+ 
+ set_lock() {
+ 	mkdir -p "$LOCK_PATH" || return 1
+
 --- a/luci-app-passwall/Makefile
 +++ b/luci-app-passwall/Makefile
 @@ -35,7 +35,25 @@ LUCI_PKGARCH:=all
