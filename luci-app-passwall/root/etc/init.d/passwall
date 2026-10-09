@@ -3,10 +3,11 @@
 START=99
 STOP=15
 
-ROOT="${IPKG_INSTROOT:-}"
-. "$ROOT/usr/share/passwall/utils.sh"
-APP_FILE=${APP_PATH}/app.sh
-LOCK_FILE=${LOCK_PATH}/${CONFIG}.lock
+if [ -z "$IPKG_INSTROOT" ]; then
+	. /usr/share/passwall/utils.sh
+	APP_FILE=${APP_PATH}/app.sh
+	LOCK_FILE=${LOCK_PATH}/${CONFIG}.lock
+fi
 
 set_lock() {
 	mkdir -p "$LOCK_PATH" || return 1
