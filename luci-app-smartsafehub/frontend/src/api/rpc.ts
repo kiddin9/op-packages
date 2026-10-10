@@ -258,6 +258,7 @@ export async function callRpc<T>(
   options: RpcCallOptions = {},
 ): Promise<T> {
   const bootstrap = getBootstrap();
+  const startedAt = performance.now();
   const id = requestId++;
   const controller = new AbortController();
   const timeout = window.setTimeout(
@@ -315,6 +316,11 @@ export async function callRpc<T>(
     );
   } finally {
     window.clearTimeout(timeout);
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    // Development diagnostics only: never record parameters, tokens, or responses.
+    if (import.meta.env.DEV && elapsedMs >= 1000) {
+      console.warn(`[RPC slow] ${object}.${method}: ${elapsedMs}ms`);
+    }
   }
 }
 

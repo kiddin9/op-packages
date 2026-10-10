@@ -333,7 +333,7 @@ return view.extend({
 			 * handler anywhere in this package. role=button plus tabindex puts
 			 * the row in the tab order and makes it announce as activatable;
 			 * Enter and Space are the two keys a button is required to answer.
-			 * Raised by a code-review panel. */
+			 * Raised in code review. */
 			rows.push(E('tr', {
 				'class': 'tr af-row',
 				'title': _('Show per-device details'),
@@ -530,7 +530,7 @@ return view.extend({
 		 * active catalog says. With the English catalog that is a constant in
 		 * this file; the moment a translation is accepted it is third-party
 		 * content, which is exactly what the pending zh_Hans PR proposes. Raised
-		 * by a review panel over that PR, which was careful to note the submitted
+		 * by a review of that PR, which was careful to note the submitted
 		 * Chinese contains no markup: this is closing the trust distinction, not
 		 * fixing an exploit. */
 		ui.showModal([ _('Details') ], body, 'cbi-modal');

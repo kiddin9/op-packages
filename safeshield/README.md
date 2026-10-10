@@ -380,7 +380,6 @@ SafeShield keeps the rpcd registration entrypoint intentionally small and loads 
 ├── config.uc
 ├── refresh.uc
 ├── rules.uc
-├── license.uc
 └── statistics.uc
 ```
 
@@ -406,8 +405,6 @@ safeshield.refresh
 safeshield.rules_list
 safeshield.rule_add
 safeshield.rule_delete
-safeshield.license_get
-safeshield.license_update
 ```
 
 Read the current public configuration:
@@ -463,36 +460,30 @@ unconsumed values instead of reusing a sequence already observed by Hub. This
 distinction lets cloud ingestion reject duplicate or out-of-order snapshots
 without treating a process restart as a new dataset.
 
-When statistics are enabled, a separate uploader can synchronize the aggregate
-statistics with the SmartSafeHub Hub at `/api/v1/statistics`. Cloud upload is an
-entitlement-controlled feature: the Hub currently grants it to eligible PRO and
-ULTIMATE licenses in ACTIVE or TRIAL status and returns `statistics: null` for
-free, unlicensed, expired, or revoked devices. SafeShield treats that Hub response as the
-authoritative entitlement, disables network upload when it is absent, and keeps
-collecting local statistics normally. A device with no configured license key is
-blocked locally without making a statistics credential request.
+When statistics are enabled, a separate uploader can synchronize aggregate
+statistics with the SmartSafeHub Hub at `/api/v1/statistics`. Cloud upload is
+controlled entirely by the Hub response from `/api/v1/devices/sync`. SafeShield
+authenticates that sync with the SmartSafeHub device credential; it does not use
+or require a local license key. If the Hub omits statistics credentials, network
+upload is disabled while local statistics collection continues normally.
 
-For an entitled device, the uploader gets a device-scoped bearer credential from
-the existing `/api/v1/licenses/resolve` response and keeps that credential only
-under `/tmp/safeshield/statistics/`; it is never written to flash or included in
-status output. Routine uploads run every 30 minutes and contain a consistent
-two-hour projection of the local hourly data. A full retained snapshot is sent
-on initial synchronization, after a failed upload has recovered, and periodically
-(approximately every 12 hours) to reconcile any missed window.
+For an entitled device, the uploader stores the short-lived statistics bearer
+credential only under `/tmp/safeshield/statistics/`; it is never written to flash
+or included in status output. Routine uploads run every 30 minutes and contain a
+consistent two-hour projection of the local hourly data. A full retained snapshot
+is sent on initial synchronization, after a failed upload has recovered, and
+periodically (approximately every 12 hours) to reconcile any missed window.
 
 The uploader preserves the exact pending JSON across network retries. If the Hub
 committed a request but the HTTP acknowledgement was lost, retrying the same
 `generation_id` and `snapshot_seq` is therefore idempotent. An HTTP 401 clears
-the cached credential and resolves the license again. If the refreshed response
-no longer grants statistics upload, SafeShield discards the cloud pending payload
-and stops statistics POST requests. While a license key remains configured, a
-denied entitlement is rechecked at most once every 12 hours so a server-side
-reactivation can recover without waiting for the normal artifact refresh cycle.
-Changing or clearing the key through `license_update` immediately clears cached
-entitlement, credentials, pending payloads, and upload progress; the next granted
-entitlement therefore resumes with a full reconciliation. Local collection is
-independent of upload entitlement and upload success, so a free license, WAN
-outage, or Hub outage never interrupts on-router statistics.
+the cached statistics credential and performs device sync once before retrying.
+If the refreshed response no longer grants statistics upload, SafeShield discards
+the cloud pending payload and stops statistics POST requests. A denied entitlement
+is rechecked at most once every 12 hours, independent of plan or prior license-key
+state, so account/subscription changes can recover automatically. Local collection
+remains independent of upload entitlement and upload success, so WAN or Hub
+outages never interrupt on-router statistics.
 
 The collector implementation is split into focused AWK modules under
 `/usr/lib/safeshield/statistics/` for common helpers, recovery, client identity,
@@ -543,8 +534,9 @@ without installing an unsupported directive. The statistics source also exposes
 dnsmasq's `instance_id`, `transport_scope`, client-table capacity,
 tracked-client count, `untracked_queries`, and `untracked_blocked`. The OpenWrt 25.12 dnsmasq integration reports `transport_scope=udp+tcp`, so both UDP and TCP DNS requests are included in the cumulative SafeShield counters.
 
-Update writable configuration values. `enabled` and `license_key` are
-intentionally excluded and have dedicated methods:
+Update writable configuration values. `enabled` is intentionally excluded and
+has a dedicated method. Device/account authentication is managed by SmartSafeHub
+and is not writable through the SafeShield RPC API:
 
 ```sh
 ubus call safeshield config_update '{
@@ -621,28 +613,15 @@ ubus call safeshield rule_delete '{
 
 `rule_add` and `rule_delete` keep the public SafeShield API unchanged, but their automatic apply path no longer performs a full Hub artifact refresh. SafeShield retains the normalized Hub domains in `/tmp/safeshield/api.block.txt`, rebuilds only the local allow/block inputs, merges them atomically, restarts dnsmasq, and verifies runtime DNS. The local apply worker shares the normal refresh lock, so a rule edit made during a full refresh waits for that refresh and then reapplies the newest local state. If the cached Hub artifact is missing, SafeShield falls back to one normal full refresh.
 
-Read the raw license key only when an authenticated management client explicitly
-requests it. Normal `status`, `config` and `license_update` responses continue to
-return only masked license metadata.
-
-```sh
-ubus call safeshield license_get
-```
-
-Update or clear the license key. Passing an empty string removes the configured
-UCI option and immediately requests a SafeShield refresh so the device is resolved
-as unlicensed/free again. SafeShield intentionally treats an absent `license_key`
-option as the canonical unlicensed state; all runtime readers fall back to an empty
-key when the option is not present.
-
-```sh
-ubus call safeshield license_update '{"license_key":"YOUR-LICENSE-KEY"}'
-ubus call safeshield license_update '{"license_key":""}'
-```
+SafeShield does not store or manage a user-entered license key. SmartSafeHub owns
+the device credential and the Hub resolves the current account/subscription
+entitlement during `/api/v1/devices/sync`. SafeShield status may expose the
+resolved plan/status for presentation, but never exposes or accepts account
+credentials.
 
 The package also installs an rpcd ACL named `safeshield`. Read access covers
-`status`, `config` and `rules_list`; sensitive license access and mutating
-methods are declared as write access.
+`status`, `config` and `rules_list`; configuration, refresh, and local-rule
+mutations are declared as write access.
 
 ## Contributors
 

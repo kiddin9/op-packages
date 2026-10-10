@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 
-import { fetchWifiSummary, updateWifiNetwork } from '../api/smartsafehub';
+import { fetchWifiSummary, updateGuestWifi, updateWifiNetwork } from '../api/smartsafehub';
 import { RpcError } from '../api/rpc';
-import type { WifiUpdateInput } from '../types/wifi';
+import type { GuestWifiUpdateInput, WifiUpdateInput } from '../types/wifi';
 import { errorMessage } from '../utils/errors';
 import { useAsyncResource } from './useAsyncResource';
 
@@ -67,7 +67,7 @@ export function useWifi(active: boolean) {
 
       try {
         const result = await updateWifiNetwork(input);
-        resource.replaceData(result.summary);
+        resource.replaceData({ ...result.summary, guest: resource.data?.guest ?? null, guestError: resource.data?.guestError ?? false });
         setMutation({
           updatingSection: null,
           feedback: {
@@ -100,7 +100,42 @@ export function useWifi(active: boolean) {
         return false;
       }
     },
-    [refreshRuntimeAfterReload, resource.replaceData],
+    [refreshRuntimeAfterReload, resource.replaceData, resource.data],
+  );
+
+  const updateGuest = useCallback(
+    async (input: GuestWifiUpdateInput): Promise<boolean> => {
+      setMutation({ updatingSection: 'ssh_guest', feedback: null });
+      try {
+        const result = await updateGuestWifi(input);
+        await resource.refresh();
+        setMutation({
+          updatingSection: null,
+          feedback: {
+            kind: 'success',
+            message: result.changed
+              ? '게스트 Wi-Fi 설정이 저장되었습니다.'
+              : '변경된 게스트 Wi-Fi 설정이 없습니다.',
+          },
+        });
+        if (result.reloaded) void refreshRuntimeAfterReload();
+        return true;
+      } catch (error) {
+        const mayHaveDisconnected =
+          error instanceof RpcError && ['NETWORK_ERROR', 'RPC_TIMEOUT'].includes(error.code);
+        setMutation({
+          updatingSection: null,
+          feedback: {
+            kind: mayHaveDisconnected ? 'warning' : 'error',
+            message: mayHaveDisconnected
+              ? '무선 네트워크가 다시 시작되어 연결이 끊어졌을 수 있습니다. 다시 연결한 뒤 확인해 주세요.'
+              : errorMessage(error, '게스트 Wi-Fi 설정을 처리하지 못했습니다.'),
+          },
+        });
+        return false;
+      }
+    },
+    [resource.refresh, refreshRuntimeAfterReload],
   );
 
   const dismissFeedback = useCallback(() => {
@@ -111,6 +146,7 @@ export function useWifi(active: boolean) {
     ...resource,
     ...mutation,
     update,
+    updateGuest,
     dismissFeedback,
   };
 }

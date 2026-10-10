@@ -18,6 +18,8 @@ export SS_SPEC_ROOT
 # shellcheck disable=SC1091
 . "$SS_SPEC_ROOT/spec/support/blocklist_cases.sh"
 # shellcheck disable=SC1091
+. "$SS_SPEC_ROOT/spec/support/device_api_cases.sh"
+# shellcheck disable=SC1091
 . "$SS_SPEC_ROOT/spec/support/runtime_cases.sh"
 # shellcheck disable=SC1091
 . "$SS_SPEC_ROOT/spec/support/statistics_cases.sh"

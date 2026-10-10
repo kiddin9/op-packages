@@ -9,10 +9,6 @@ import type { HealthAccepted, HealthStatus } from '../types/health';
 import type { IptvSettings, IptvSettingsInput, IptvUpdateResult } from '../types/iptv';
 import type { LanSettings, LanSettingsInput, LanUpdateResult } from '../types/lan';
 import type {
-  SmartSafeHubLicenseActivationAccepted,
-  SmartSafeHubLicenseStatus,
-} from '../types/license';
-import type {
   FirmwareAccepted,
   FirmwareStatus,
 } from '../types/firmware';
@@ -32,6 +28,9 @@ import type {
   SoftwareUpdateStatus,
 } from '../types/updates';
 import type {
+  GuestWifiSummary,
+  GuestWifiUpdateInput,
+  GuestWifiUpdateResult,
   WifiSummary,
   WifiUpdateInput,
   WifiUpdateResult,
@@ -45,42 +44,15 @@ import type {
 import { callApi } from './rpc';
 
 const API_OBJECT = 'smartsafehub';
+const GUEST_API_OBJECT = 'smartsafehub_guest';
 const LAN_API_OBJECT = 'smartsafehub_network';
 
 export function fetchConnectedDevices(): Promise<ConnectedDevicesSummary> {
   return callApi(API_OBJECT, 'connected_devices');
 }
 
-interface SmartSafeHubStatusWithActivity extends SmartSafeHubStatus {
-  activityHistory?: ActivityHistory;
-}
-
-function emptyActivityHistory(): ActivityHistory {
-  return {
-    schema: 1,
-    scope: 'current_boot',
-    volatile: true,
-    maxEvents: 128,
-    cloud: {
-      enabled: false,
-      phase: 'preparing',
-      eligible: null,
-      plan: null,
-      retentionDays: 0,
-      pendingEvents: 0,
-      lastAttemptAt: 0,
-      lastSuccessAt: 0,
-      lastUploadedCount: 0,
-      lastErrorCode: null,
-      nextSyncAt: 0,
-    },
-    events: [],
-  };
-}
-
 export async function fetchActivityHistory(): Promise<ActivityHistory> {
-  const status = await callApi<SmartSafeHubStatusWithActivity>(API_OBJECT, 'status');
-  const activity = status.activityHistory ?? emptyActivityHistory();
+  const activity = await callApi<ActivityHistory>(API_OBJECT, 'activity_history');
 
   return {
     ...activity,
@@ -101,14 +73,30 @@ export function fetchStatus(): Promise<SmartSafeHubStatus> {
   return callApi(API_OBJECT, 'status');
 }
 
-export function fetchSmartSafeHubLicenseStatus(): Promise<SmartSafeHubLicenseStatus> {
-  return callApi(API_OBJECT, 'license_status', {}, { timeoutMs: 5000 });
+export interface DeviceRegistrationStatus {
+  schema: number;
+  component: 'device';
+  phase: string;
+  lastResult: string;
+  lastErrorCode: string | null;
+  accountRegistered: boolean | null;
+  plan: string | null;
+  pairingCode: string | null;
+  pairingExpiresAt: string | null;
+  nextSyncAt: number;
+  lastSuccessAt: number;
 }
 
-export function requestSmartSafeHubLicenseActivation(
-  licenseKey: string,
-): Promise<SmartSafeHubLicenseActivationAccepted> {
-  return callApi(API_OBJECT, 'license_activate', { license_key: licenseKey });
+export function fetchDeviceRegistrationStatus(): Promise<DeviceRegistrationStatus> {
+  return callApi(API_OBJECT, 'device_registration_status', {}, { timeoutMs: 5000 });
+}
+
+export function refreshDeviceRegistrationStatus(): Promise<DeviceRegistrationStatus> {
+  return callApi(API_OBJECT, 'device_registration_refresh', {}, { timeoutMs: 30000 });
+}
+
+export function requestDevicePairingCode(): Promise<DeviceRegistrationStatus> {
+  return callApi(API_OBJECT, 'device_pairing_refresh', {}, { timeoutMs: 15000 });
 }
 
 export function fetchHealthStatus(): Promise<HealthStatus> {
@@ -321,8 +309,30 @@ export function updateIptvSettings(
   );
 }
 
-export function fetchWifiSummary(): Promise<WifiSummary> {
-  return callApi(API_OBJECT, 'wifi_summary');
+export interface WifiQrCredentials {
+  ssid: string;
+  security: 'none' | 'psk2' | 'sae' | 'sae-mixed';
+  password: string;
+}
+
+export function fetchWifiQr(section: string): Promise<WifiQrCredentials> {
+  return callApi(API_OBJECT, 'wifi_qr', { section }, { timeoutMs: 8000 });
+}
+
+// A separate authenticated RPC, so guest credentials never enter summary responses.
+export function fetchGuestWifiQr(): Promise<WifiQrCredentials> {
+  return callApi(GUEST_API_OBJECT, 'wifi_guest_qr', {}, { timeoutMs: 8000 });
+}
+
+export async function fetchWifiSummary(): Promise<WifiSummary> {
+  // The optional guest RPC object must never break ordinary Wi-Fi management.
+  const summary = await callApi<Omit<WifiSummary, 'guest' | 'guestError'>>(API_OBJECT, 'wifi_summary');
+  try {
+    const guest = await callApi<GuestWifiSummary>(GUEST_API_OBJECT, 'wifi_guest_summary');
+    return { ...summary, guest, guestError: false };
+  } catch {
+    return { ...summary, guest: null, guestError: true };
+  }
 }
 
 export function updateWifiNetwork(
@@ -334,4 +344,8 @@ export function updateWifiNetwork(
     { ...input },
     { timeoutMs: 35_000 },
   );
+}
+
+export function updateGuestWifi(input: GuestWifiUpdateInput): Promise<GuestWifiUpdateResult> {
+  return callApi(GUEST_API_OBJECT, 'wifi_guest_update', { ...input }, { timeoutMs: 95_000 });
 }

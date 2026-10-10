@@ -37,6 +37,7 @@ function unavailableWifiSummary(): WifiSummary {
   return {
     networks: [],
     totalClients: 0,
+    guest: null,
   };
 }
 

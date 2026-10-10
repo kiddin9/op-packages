@@ -155,7 +155,7 @@ test_conservation() {
 	# A 38-flow event-socket capture had seen none, which at that rate has an
 	# expected count of 0.4 -- so the sample was far too small to support the
 	# "netifyd never does this" conclusion that was briefly drawn from it, and
-	# the review panel that reported the byte loss was right.
+	# the review that reported the byte loss was right.
 	#
 	# What is worth watching is the RATE. A sudden jump means netifyd's event
 	# contract has shifted; zero across a busy run means this path stopped

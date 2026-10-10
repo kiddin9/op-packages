@@ -9,6 +9,7 @@ import {
   DevicesIcon,
   GlobeIcon,
   HomeIcon,
+  KeyIcon,
   LogOutIcon,
   MenuIcon,
   MoonIcon,
@@ -25,6 +26,7 @@ import {
 } from './Icons';
 
 interface ProductNavigationProps {
+  accountRegistered: boolean | null;
   collapsed: boolean;
   loading: boolean;
   onRefresh: () => void;
@@ -44,7 +46,7 @@ const NAVIGATION_GROUPS: readonly {
   { label: 'Overview', routes: ['home', 'activity'] },
   { label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] },
   { label: 'Security', routes: ['safeshield', 'rules'] },
-  { label: 'System', routes: ['system', 'settings'] },
+  { label: 'System', routes: ['account', 'system', 'settings'] },
 ];
 
 function NavigationIcon({ route }: { route: AppRoute }) {
@@ -65,6 +67,8 @@ function NavigationIcon({ route }: { route: AppRoute }) {
       return <ShieldIcon class="size-5" />;
     case 'rules':
       return <UserIcon class="size-5" />;
+    case 'account':
+      return <KeyIcon class="size-5" />;
     case 'system':
       return <UpdateIcon class="size-5" />;
     case 'settings':
@@ -91,10 +95,12 @@ function navigationClass(active: boolean, collapsed = false): string {
 }
 
 function NavigationItems({
+  accountRegistered,
   collapsed = false,
   route,
   updateCount,
 }: {
+  accountRegistered: boolean | null;
   collapsed?: boolean;
   route: AppRoute;
   updateCount: number;
@@ -121,11 +127,15 @@ function NavigationItems({
               return (
                 <a
                   aria-current={active ? 'page' : undefined}
-                  aria-label={collapsed ? item.label : undefined}
+                  aria-label={routeName === 'account' && accountRegistered === false
+                    ? `${item.label} (계정 연결 필요)`
+                    : collapsed ? item.label : undefined}
                   class={navigationClass(active, collapsed)}
                   href={item.hash}
                   key={routeName}
-                  title={collapsed ? item.label : undefined}
+                  title={routeName === 'account' && accountRegistered === false
+                    ? 'SmartSafeHub 계정 연결 필요'
+                    : collapsed ? item.label : undefined}
                 >
                   <span
                     class={`grid size-9 shrink-0 place-items-center rounded-lg ${
@@ -151,6 +161,14 @@ function NavigationItems({
                     >
                       β
                     </span>
+                  ) : null}
+                  {routeName === 'account' && accountRegistered === false ? (
+                    <span
+                      aria-label="계정 연결 필요"
+                      class={`ssh-account-nav-dot ${collapsed ? 'ssh-account-nav-dot-collapsed' : ''}`}
+                      aria-hidden="true"
+                      title="계정 연결 필요"
+                    />
                   ) : null}
                   {routeName === 'system' && updateCount > 0 ? (
                     collapsed ? (
@@ -178,6 +196,7 @@ function NavigationItems({
 }
 
 export function ProductNavigation({
+  accountRegistered,
   collapsed,
   loading,
   onRefresh,
@@ -269,7 +288,7 @@ export function ProductNavigation({
 
         {mobileMenuOpen ? (
           <div class="ssh-mobile-menu border-t border-slate-100 py-4" id="smartsafehub-mobile-menu">
-            <NavigationItems route={route} updateCount={updateCount} />
+            <NavigationItems accountRegistered={accountRegistered} route={route} updateCount={updateCount} />
             <div class="mt-5 space-y-1 border-t border-slate-100 pt-4">
               <a
                 class={`${navigationClass(false)} text-rose-700 hover:bg-rose-50 hover:text-rose-800`}
@@ -338,7 +357,7 @@ export function ProductNavigation({
             class={`flex-1 overflow-y-auto py-5 ${collapsed ? 'px-2' : 'px-3'}`}
             id="smartsafehub-desktop-navigation"
           >
-            <NavigationItems collapsed={collapsed} route={route} updateCount={updateCount} />
+            <NavigationItems accountRegistered={accountRegistered} collapsed={collapsed} route={route} updateCount={updateCount} />
           </nav>
           <div class={`border-t border-slate-100 ${collapsed ? 'p-2' : 'p-3'}`}>
             <a

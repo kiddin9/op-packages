@@ -70,8 +70,8 @@ ss_status_reset_blocklist_fields() {
 }
 
 ss_status_reset_artifact_fields() {
-	ss_status_set license_plan ""
-	ss_status_set license_status ""
+	ss_status_set entitlement_plan ""
+	ss_status_set entitlement_status ""
 	ss_status_set physical_fingerprint ""
 	ss_status_set fingerprint_version ""
 	ss_status_set identity_provider ""

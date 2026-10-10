@@ -8,8 +8,6 @@ let built = config.build();
 assert(built.schema.name == 'safeshield.config', 'config schema name is preserved');
 assert(built.values.enabled == false, 'disabled state is normalized to boolean');
 assert(built.values.download_retry == 3, 'integer options are normalized');
-assert(built.license.configured == true, 'configured license is reported');
-assert(built.license.key_masked == 'abcd...wxyz', 'license key is masked');
 assert(built.device.memory_mb == 256, 'device memory is normalized to integer');
 
 let invalid_values = config.update({ args: { values: 'not-an-object' } });
@@ -27,8 +25,8 @@ assert(unknown.ok == false && unknown.error.code == 'unknown_option', 'unknown o
 let dedicated = config.update({ args: { values: { enabled: true } } });
 assert(dedicated.ok == false && dedicated.error.code == 'dedicated_method_required', 'enabled requires dedicated method');
 
-let dedicated_license = config.update({ args: { values: { license_key: 'new-key' } } });
-assert(dedicated_license.ok == false && dedicated_license.error.code == 'dedicated_method_required', 'license_key requires dedicated method');
+let retired_license_key = config.update({ args: { values: { license_key: 'new-key' } } });
+assert(retired_license_key.ok == false && retired_license_key.error.code == 'unknown_option', 'retired license_key is not a writable option');
 
 runtime.state.last_action = '';
 let statistics = config.update({ args: { values: { statistics_enabled: false } } });

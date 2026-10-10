@@ -5,7 +5,7 @@ set -eu
 ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 SYNC_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-activity-sync"
 EVENTS_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-events"
-LICENSE_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-license"
+DEVICE_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-device"
 SAFE_ADAPTER="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/safeshield-management.uc"
 HEALTH_BIN="$ROOT_DIR/root/usr/libexec/smartsafehub-health"
 ACTIVITY_RPC="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/activity.uc"
@@ -19,7 +19,7 @@ fail() {
   exit 1
 }
 
-for file in "$SYNC_BIN" "$EVENTS_BIN" "$LICENSE_BIN" "$SAFE_ADAPTER" "$ACTIVITY_RPC" "$CONFIG" "$INIT_SYNC"; do
+for file in "$SYNC_BIN" "$EVENTS_BIN" "$DEVICE_BIN" "$SAFE_ADAPTER" "$ACTIVITY_RPC" "$CONFIG" "$INIT_SYNC"; do
   [ -f "$file" ] || fail "missing activity producer/sync component: $file"
 done
 
@@ -44,7 +44,6 @@ grep -Fq 'RETRY_MAX_S=3600' "$SYNC_BIN" || fail 'Cloud activity retry backoff mu
 grep -Fq 'retry_backoff_active' "$SYNC_BIN" || fail 'new event wake markers must respect an active Cloud failure backoff'
 grep -Fq 'cloud_sync_enabled' "$SYNC_BIN" || fail 'activity sync must honor the user Cloud transfer preference before any network work'
 grep -Fq 'apply-config' "$SYNC_BIN" || fail 'activity sync must expose a runtime apply command for immediate toggle cleanup'
-grep -Fq 'activity_cloud_sync_enabled' "$LICENSE_BIN" || fail 'license status must not retain an activity credential while Cloud transfer is disabled'
 grep -Fq "option cloud_sync_enabled '0'" "$CONFIG" || fail 'fresh installs must default Cloud activity transfer to OFF'
 if grep -Fq 'activity-cloud-sync-upgrade-enable' "$ROOT_DIR/Makefile"; then
   fail 'package install scripts must not retain the retired pre-r19 implicit Cloud-sync migration marker'
@@ -55,21 +54,18 @@ fi
 grep -Fq "set smartsafehub.activity.cloud_sync_enabled='0'" "$INIT_SYNC" || fail 'dynamically created activity sections must default Cloud activity transfer to OFF'
 grep -Fq "1|true|on|yes) return 0" "$SYNC_BIN" || fail 'activity sync must enable Cloud upload only for explicit positive values'
 grep -Fq "1|true|on|yes) return 0" "$EVENTS_BIN" || fail 'event outbox creation must require an explicit positive Cloud preference'
-grep -Fq "1|true|on|yes) return 0" "$LICENSE_BIN" || fail 'license credential caching must require an explicit positive Cloud preference'
 grep -Fq "return bool_config(ctx.get('smartsafehub', 'activity', 'cloud_sync_enabled'), false);" "$ACTIVITY_RPC" || \
   fail 'activity RPC must interpret a missing Cloud preference as OFF'
 if grep -Fq '$base/licenses/status' "$SYNC_BIN" || grep -Fq '$base/licenses/resolve' "$SYNC_BIN" || grep -Fq 'post_json()' "$SYNC_BIN"; then
-  fail 'activity sync must not duplicate license API calls; smartsafehub-license owns license status and activity credential acquisition'
+  fail 'activity sync must not call license APIs; generic device sync owns entitlement and activity credentials'
 fi
-grep -Fq 'SMARTSAFEHUB_ACTIVITY_LICENSE_BIN' "$SYNC_BIN" || fail 'activity sync must consume the dedicated license helper boundary'
-grep -Fq '"$LICENSE_BIN" status-sync' "$SYNC_BIN" || fail 'missing/expired activity credentials must be refreshed through smartsafehub-license status-sync'
-grep -Fq 'store_activity_credential_from_status' "$LICENSE_BIN" || fail 'license helper must cache activity_history credentials from its authoritative status response'
-grep -Fq '$base/licenses/status' "$LICENSE_BIN" || fail 'license helper must remain the single owner of /licenses/status'
-grep -Fq '[ -e "$WAKE_FILE" ] && ! retry_backoff_active' "$SYNC_BIN" || fail 'event wake must not bypass Cloud failure backoff'
+grep -Fq 'SMARTSAFEHUB_ACTIVITY_DEVICE_BIN' "$SYNC_BIN" || fail 'activity sync must consume the generic device helper boundary'
+grep -Fq '"$DEVICE_BIN" status-sync' "$SYNC_BIN" || fail 'missing/expired activity credentials must be refreshed through smartsafehub-device status-sync'
+grep -Fq '[ "$wake_pending" -eq 1 ] && ! retry_backoff_active' "$SYNC_BIN" || fail 'event wake must not bypass Cloud failure backoff'
 if grep -Eq "tr ['\"]\[:(lower|upper):\]['\"]" "$SYNC_BIN"; then
   fail 'OpenWrt BusyBox tr 호환성을 위해 activity sync에서 POSIX 문자 클래스 대소문자 변환을 사용하면 안 됩니다.'
 fi
-grep -Fq 'ascii_lower' "$SYNC_BIN" || fail 'activity sync license token normalization must use the shared BusyBox-compatible ASCII helper'
+grep -Fq 'ascii_lower' "$SYNC_BIN" || fail 'activity sync entitlement token normalization must use the shared BusyBox-compatible ASCII helper'
 
 for contract in \
   'root/usr/share/rpcd/ucode/smartsafehub/system.uc:settings.scheduled_reboot.updated' \
@@ -91,13 +87,13 @@ OUTBOX="$TMP_DIR/outbox.jsonl"
 ACK_LOG="$TMP_DIR/ack.log"
 CLEAR_LOG="$TMP_DIR/clear.log"
 FETCH_LOG="$TMP_DIR/fetch.log"
-LICENSE_CALL_LOG="$TMP_DIR/license-calls.log"
-LICENSE_STATUS_FILE="$TMP_DIR/license-status.json"
+DEVICE_CALL_LOG="$TMP_DIR/device-calls.log"
+DEVICE_STATE_FILE="$TMP_DIR/device-state.json"
 mkdir -p "$MOCK_BIN" "$RUNTIME"
 : > "$ACK_LOG"
 : > "$CLEAR_LOG"
 : > "$FETCH_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 
 cat > "$MOCK_BIN/events" <<'EOF_EVENTS'
 #!/bin/sh
@@ -205,51 +201,51 @@ esac
 EOF_FETCH
 chmod +x "$MOCK_BIN/uclient-fetch"
 
-cat > "$MOCK_BIN/license" <<'EOF_LICENSE'
+cat > "$MOCK_BIN/device" <<'EOF_DEVICE'
 #!/bin/sh
 set -eu
 command="${1:-}"
-printf '%s
-' "$command" >> "$MOCK_LICENSE_CALL_LOG"
+printf '%s\n' "$command" >> "$MOCK_DEVICE_CALL_LOG"
 case "$command" in
   status-sync)
-    case "${MOCK_STATUS_MODE:-paid}" in
-      paid)
+    case "${MOCK_STATUS_MODE:-pro}" in
+      pro)
         cat > "$MOCK_ACTIVITY_CREDENTIAL_FILE" <<EOF_CREDENTIAL
-{"schema":1,"token":"activity-token","upload_url":"https://www.smartsafehub.com/api/v1/activity/events","expires_at":1800172800,"retention_days":90,"plan":"pro"}
+{"schema":1,"token":"activity-token-pro","upload_url":"https://www.smartsafehub.com/api/v1/activity/events","expires_at":1800172800,"retention_days":90,"plan":"pro"}
 EOF_CREDENTIAL
-        printf '%s
-' '{"schema":1,"component":"license","phase":"active","plan":"pro","licenseStatus":"active","activationStatus":"active","deviceAction":"none"}' > "$MOCK_LICENSE_STATUS_FILE"
-        exit 0
-        ;;
-      paid-missing|paid-null)
-        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
-        printf '%s
-' '{"schema":1,"component":"license","phase":"active","plan":"pro","licenseStatus":"active","activationStatus":"active","deviceAction":"none"}' > "$MOCK_LICENSE_STATUS_FILE"
-        exit 0
-        ;;
-      paid-missing-uppercase)
-        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
-        printf '%s
-' '{"schema":1,"component":"license","phase":"ACTIVE","plan":"PRO","licenseStatus":"ACTIVE","activationStatus":"ACTIVE","deviceAction":"NONE"}' > "$MOCK_LICENSE_STATUS_FILE"
-        exit 0
-        ;;
-      revoked)
-        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
-        printf '%s
-' '{"schema":1,"component":"license","phase":"cleared","plan":"pro","licenseStatus":"active","activationStatus":"revoked","deviceAction":"clear_license"}' > "$MOCK_LICENSE_STATUS_FILE"
+        printf '%s\n' '{"schema":1,"component":"device","phase":"registered","lastResult":"active","accountRegistered":true,"plan":"pro"}' > "$MOCK_DEVICE_STATE_FILE"
         exit 0
         ;;
       free)
+        cat > "$MOCK_ACTIVITY_CREDENTIAL_FILE" <<EOF_CREDENTIAL
+{"schema":1,"token":"activity-token-free","upload_url":"https://www.smartsafehub.com/api/v1/activity/events","expires_at":1800172800,"retention_days":7,"plan":"free"}
+EOF_CREDENTIAL
+        printf '%s\n' '{"schema":1,"component":"device","phase":"registered","lastResult":"active","accountRegistered":true,"plan":"free"}' > "$MOCK_DEVICE_STATE_FILE"
+        exit 0
+        ;;
+      connected-missing-free)
         rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
-        printf '%s
-' '{"schema":1,"component":"license","phase":"unconfigured","plan":null,"licenseStatus":"unlicensed","activationStatus":"not_found","deviceAction":"none"}' > "$MOCK_LICENSE_STATUS_FILE"
+        printf '%s\n' '{"schema":1,"component":"device","phase":"registered","lastResult":"active","accountRegistered":true,"plan":"free"}' > "$MOCK_DEVICE_STATE_FILE"
+        exit 0
+        ;;
+      connected-missing-pro)
+        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
+        printf '%s\n' '{"schema":1,"component":"device","phase":"registered","lastResult":"active","accountRegistered":true,"plan":"pro"}' > "$MOCK_DEVICE_STATE_FILE"
+        exit 0
+        ;;
+      connected-missing-uppercase)
+        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
+        printf '%s\n' '{"schema":1,"component":"device","phase":"REGISTERED","lastResult":"ACTIVE","accountRegistered":true,"plan":"PRO"}' > "$MOCK_DEVICE_STATE_FILE"
+        exit 0
+        ;;
+      disconnected)
+        rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
+        printf '%s\n' '{"schema":1,"component":"device","phase":"registered","lastResult":"active","accountRegistered":false,"plan":"free"}' > "$MOCK_DEVICE_STATE_FILE"
         exit 0
         ;;
       unknown)
         rm -f "$MOCK_ACTIVITY_CREDENTIAL_FILE"
-        printf '%s
-' '{"schema":1,"component":"license","phase":"error","plan":"pro","licenseStatus":"active","activationStatus":"active","deviceAction":"none"}' > "$MOCK_LICENSE_STATUS_FILE"
+        printf '%s\n' '{"schema":1,"component":"device","phase":"registered","lastResult":"failed","accountRegistered":true,"plan":"free"}' > "$MOCK_DEVICE_STATE_FILE"
         exit 0
         ;;
       unavailable) exit 1 ;;
@@ -257,12 +253,12 @@ EOF_CREDENTIAL
     esac
     ;;
   status)
-    cat "$MOCK_LICENSE_STATUS_FILE"
+    cat "$MOCK_DEVICE_STATE_FILE"
     ;;
   *) exit 2 ;;
 esac
-EOF_LICENSE
-chmod +x "$MOCK_BIN/license"
+EOF_DEVICE
+chmod +x "$MOCK_BIN/device"
 
 cat > "$MOCK_BIN/sleep" <<'EOF_SLEEP'
 #!/bin/sh
@@ -286,117 +282,106 @@ run_sync() {
     SMARTSAFEHUB_ACTIVITY_UCI_BIN="$MOCK_BIN/uci" \
         SMARTSAFEHUB_ACTIVITY_JSONFILTER_BIN="$MOCK_BIN/jsonfilter" \
     SMARTSAFEHUB_ACTIVITY_UCLIENT_FETCH_BIN="$MOCK_BIN/uclient-fetch" \
-    SMARTSAFEHUB_ACTIVITY_LICENSE_BIN="$MOCK_BIN/license" \
+    SMARTSAFEHUB_ACTIVITY_DEVICE_BIN="$MOCK_BIN/device" \
+    SMARTSAFEHUB_ACTIVITY_DEVICE_STATE_FILE="$DEVICE_STATE_FILE" \
     SMARTSAFEHUB_ACTIVITY_DATE_BIN="$MOCK_BIN/date" \
     SMARTSAFEHUB_ACTIVITY_SLEEP_BIN="$MOCK_BIN/sleep" \
     SMARTSAFEHUB_ACTIVITY_LOGGER_BIN="$MOCK_BIN/logger" \
     MOCK_OUTBOX="$OUTBOX" MOCK_ACK_LOG="$ACK_LOG" MOCK_CLEAR_LOG="$CLEAR_LOG" \
-    MOCK_FETCH_LOG="$FETCH_LOG" MOCK_LICENSE_CALL_LOG="$LICENSE_CALL_LOG" \
-    MOCK_LICENSE_STATUS_FILE="$LICENSE_STATUS_FILE" MOCK_ACTIVITY_CREDENTIAL_FILE="$RUNTIME/activity-sync-credential.json" \
+    MOCK_FETCH_LOG="$FETCH_LOG" MOCK_DEVICE_CALL_LOG="$DEVICE_CALL_LOG" \
+    MOCK_DEVICE_STATE_FILE="$DEVICE_STATE_FILE" MOCK_ACTIVITY_CREDENTIAL_FILE="$RUNTIME/activity-sync-credential.json" \
     MOCK_STATUS_MODE="$1" MOCK_CLOUD_SYNC_ENABLED="$cloud_sync_enabled" \
     "$SYNC_BIN" sync-once
 }
 
-# Explicit opt-out must be fully local: no license status refresh, no upload, no
+# Explicit opt-out must be fully local: no device sync refresh, no upload, no
 # retained Cloud credential, and the bounded Cloud-only outbox is discarded.
 rm -f "$RUNTIME/activity-sync-credential.json" "$RUNTIME/activity-sync.json"
 : > "$ACK_LOG"
 : > "$CLEAR_LOG"
 : > "$FETCH_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
 run_sync unavailable 0 || fail 'disabled Cloud activity sync must settle successfully without network access'
 [ ! -s "$OUTBOX" ] || fail 'disabling Cloud activity sync must clear the Cloud-only outbox'
 grep -Fq 'clear' "$CLEAR_LOG" || fail 'disabled Cloud activity sync must explicitly clear only the Cloud outbox'
 [ ! -e "$RUNTIME/activity-sync-credential.json" ] || fail 'disabled Cloud activity sync must remove the runtime upload credential'
-[ ! -s "$LICENSE_CALL_LOG" ] || fail 'disabled Cloud activity sync must not call license status-sync'
+[ ! -s "$DEVICE_CALL_LOG" ] || fail 'disabled Cloud activity sync must not call device status-sync'
 [ ! -s "$FETCH_LOG" ] || fail 'disabled Cloud activity sync must not perform Cloud HTTP requests'
 jq -e '.phase == "disabled" and .pendingEvents == 0 and .lastErrorCode == null' "$RUNTIME/activity-sync.json" >/dev/null || \
   fail 'disabled Cloud activity state must be explicit and non-error'
 
 write_outbox
-run_sync paid || fail 'paid activity batch must synchronize successfully'
-[ ! -s "$OUTBOX" ] || fail 'successful upload must ack only the snapshotted outbox events'
-[ "$(wc -l < "$ACK_LOG" | tr -d ' ')" -eq 2 ] || fail 'successful two-event upload must ack both event IDs'
+run_sync pro || fail 'Pro activity batch must synchronize successfully'
+[ ! -s "$OUTBOX" ] || fail 'successful Pro upload must ack only the snapshotted outbox events'
+[ "$(wc -l < "$ACK_LOG" | tr -d ' ')" -eq 2 ] || fail 'successful two-event Pro upload must ack both event IDs'
 jq -e '.eligible == true and .plan == "pro" and .retentionDays == 90 and .pendingEvents == 0 and .lastUploadedCount == 2 and .lastSuccessAt == 1800000000' "$RUNTIME/activity-sync.json" >/dev/null || \
-  fail 'paid synchronization state must expose entitlement, retention, pending count and success metadata'
-grep -Fxq 'status-sync' "$LICENSE_CALL_LOG" || fail 'missing credential must be refreshed through smartsafehub-license status-sync'
+  fail 'Pro synchronization state must expose 90-day retention and success metadata'
+grep -Fxq 'status-sync' "$DEVICE_CALL_LOG" || fail 'missing credential must be refreshed through smartsafehub-device status-sync'
 if grep -Eq '/licenses/(status|resolve)' "$FETCH_LOG"; then
   fail 'activity sync must never call license APIs directly'
 fi
 
-# Credentials issued by the previous /licenses/resolve implementation use the
-# same activity upload token format. A still-valid cached credential must remain
-# usable after upgrading the router and must not force an immediate status call.
+# Connected Free accounts use the same device credential flow but receive a
+# server-enforced seven-day retention policy.
+rm -f "$RUNTIME/activity-sync-credential.json" "$RUNTIME/activity-sync.json"
+: > "$ACK_LOG"
+: > "$CLEAR_LOG"
 : > "$FETCH_LOG"
-: > "$ACK_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
-run_sync unavailable || fail 'a still-valid cached activity credential must survive the status-endpoint migration'
-[ ! -s "$OUTBOX" ] || fail 'cached credential upload must ack the snapshotted events'
-if [ -s "$LICENSE_CALL_LOG" ]; then
-  fail 'valid cached activity credential must not trigger an unnecessary license status refresh'
-fi
-grep -Fq '/activity/events' "$FETCH_LOG" || fail 'valid cached credential must continue uploading activity events'
+run_sync free || fail 'connected Free activity batch must synchronize successfully'
+[ ! -s "$OUTBOX" ] || fail 'successful Free upload must ack only the snapshotted outbox events'
+jq -e '.eligible == true and .plan == "free" and .retentionDays == 7 and .pendingEvents == 0 and .lastUploadedCount == 2' "$RUNTIME/activity-sync.json" >/dev/null || \
+  fail 'connected Free synchronization state must expose seven-day Cloud retention'
+grep -Fxq 'status-sync' "$DEVICE_CALL_LOG" || fail 'Free activity credentials must be acquired through device status-sync'
 
+# If Hub says a connected account is eligible but omits the short-lived upload
+# credential, preserve the bounded outbox and retry for both Free and paid plans.
 rm -f "$RUNTIME/activity-sync-credential.json"
-: > "$ACK_LOG"
 : > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
-if run_sync paid-missing >/dev/null 2>&1; then
-  fail 'paid status without an activity credential must be retried as an error'
+if run_sync connected-missing-free >/dev/null 2>&1; then
+  fail 'connected Free status without an activity credential must be retried as an error'
 fi
-[ -s "$OUTBOX" ] || fail 'paid events must never be discarded when the backend omits the activity credential'
-[ ! -s "$CLEAR_LOG" ] || fail 'paid missing-credential response must not clear the Cloud outbox'
-jq -e '.phase == "error" and .lastErrorCode == "ACTIVITY_CREDENTIAL_UNAVAILABLE"' "$RUNTIME/activity-sync.json" >/dev/null || \
-  fail 'paid missing-credential response must surface a rollout-safe status error'
-
-rm -f "$RUNTIME/activity-sync-credential.json"
-: > "$ACK_LOG"
-: > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
-write_outbox
-if run_sync paid-missing-uppercase >/dev/null 2>&1; then
-  fail 'uppercase paid status without an activity credential must remain retryable'
-fi
-[ -s "$OUTBOX" ] || fail 'uppercase paid status must preserve the Cloud outbox while waiting for a credential'
+[ -s "$OUTBOX" ] || fail 'connected Free events must be preserved while waiting for an upload credential'
+[ ! -s "$CLEAR_LOG" ] || fail 'connected Free missing-credential response must not clear the Cloud outbox'
 jq -e '.phase == "error" and .eligible == true and .lastErrorCode == "ACTIVITY_CREDENTIAL_UNAVAILABLE"' "$RUNTIME/activity-sync.json" >/dev/null || \
-  fail 'uppercase ACTIVE/PRO/NONE license tokens must normalize to the paid missing-credential path'
+  fail 'connected Free missing-credential response must surface a retryable credential error'
 
 rm -f "$RUNTIME/activity-sync-credential.json"
-: > "$ACK_LOG"
 : > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
-if run_sync paid-null >/dev/null 2>&1; then
-  fail 'older paid status without activity credentials must remain retryable until the Hub activity API is deployed'
+if run_sync connected-missing-uppercase >/dev/null 2>&1; then
+  fail 'uppercase connected Pro status without an activity credential must remain retryable'
 fi
-[ -s "$OUTBOX" ] || fail 'older paid status must preserve the bounded Cloud outbox'
-[ ! -s "$CLEAR_LOG" ] || fail 'older paid status must never clear Cloud events before the activity API rollout'
+[ -s "$OUTBOX" ] || fail 'uppercase connected Pro status must preserve the Cloud outbox'
+jq -e '.phase == "error" and .eligible == true and .lastErrorCode == "ACTIVITY_CREDENTIAL_UNAVAILABLE"' "$RUNTIME/activity-sync.json" >/dev/null || \
+  fail 'uppercase registered/active/Pro tokens must normalize to the connected missing-credential path'
 
 rm -f "$RUNTIME/activity-sync-credential.json"
-: > "$ACK_LOG"
 : > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
 if run_sync unknown >/dev/null 2>&1; then
-  fail 'status responses with unknown entitlement must be retryable rather than treated as Free'
+  fail 'unknown device sync state must remain retryable'
 fi
-[ -s "$OUTBOX" ] || fail 'unknown/partial status response must preserve Cloud events'
-[ ! -s "$CLEAR_LOG" ] || fail 'unknown/partial status response must not clear the Cloud outbox'
+[ -s "$OUTBOX" ] || fail 'unknown device sync state must preserve Cloud events'
+[ ! -s "$CLEAR_LOG" ] || fail 'unknown device sync state must not clear the Cloud outbox'
 
 rm -f "$RUNTIME/activity-sync-credential.json" "$RUNTIME/activity-sync.json"
 : > "$ACK_LOG"
 : > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
 if run_sync unavailable >/dev/null 2>&1; then
-  fail 'unreachable Hub license status API must surface a retryable synchronization error'
+  fail 'unreachable Hub device sync API must surface a retryable synchronization error'
 fi
-[ -s "$OUTBOX" ] || fail 'Hub status API communication failure must preserve Cloud events for a later retry'
-[ ! -s "$CLEAR_LOG" ] || fail 'Hub status API communication failure must not clear the Cloud outbox'
-jq -e '.lastErrorCode == "ACTIVITY_LICENSE_STATUS_FAILED" and .nextSyncAt == 1800000900' "$RUNTIME/activity-sync.json" >/dev/null || \
+[ -s "$OUTBOX" ] || fail 'Hub device sync communication failure must preserve Cloud events for a later retry'
+[ ! -s "$CLEAR_LOG" ] || fail 'Hub device sync communication failure must not clear the Cloud outbox'
+jq -e '.lastErrorCode == "ACTIVITY_DEVICE_SYNC_FAILED" and .nextSyncAt == 1800000900' "$RUNTIME/activity-sync.json" >/dev/null || \
   fail 'first Cloud status failure must back off for 15 minutes instead of retrying after five minutes'
 if run_sync unavailable >/dev/null 2>&1; then
   fail 'repeated unavailable Hub status must remain retryable'
@@ -414,24 +399,17 @@ fi
 jq -e '.nextSyncAt == 1800003600' "$RUNTIME/activity-sync.json" >/dev/null || \
   fail 'Cloud status retry backoff must remain capped at one hour'
 
+# An unpaired device is the only plan-independent ineligible state. Clearing the
+# Cloud-only outbox does not affect the always-local Recent Activity history.
 rm -f "$RUNTIME/activity-sync-credential.json"
 : > "$ACK_LOG"
 : > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
+: > "$DEVICE_CALL_LOG"
 write_outbox
-run_sync revoked || fail 'revoked paid activation must settle as ineligible without a daemon failure'
-[ ! -s "$OUTBOX" ] || fail 'revoked paid activation must not retain a Cloud-only outbox indefinitely'
-grep -Fq 'clear' "$CLEAR_LOG" || fail 'revoked paid activation must explicitly clear only the Cloud outbox'
-
-rm -f "$RUNTIME/activity-sync-credential.json"
-: > "$ACK_LOG"
-: > "$CLEAR_LOG"
-: > "$LICENSE_CALL_LOG"
-write_outbox
-run_sync free || fail 'ineligible activity sync must settle without a daemon failure'
-[ ! -s "$OUTBOX" ] || fail 'Free/ineligible device must not retain a Cloud-only outbox indefinitely'
-grep -Fq 'clear' "$CLEAR_LOG" || fail 'ineligible status must explicitly clear only the Cloud outbox'
+run_sync disconnected || fail 'disconnected device must settle as ineligible without a daemon failure'
+[ ! -s "$OUTBOX" ] || fail 'disconnected device must not retain a Cloud-only outbox indefinitely'
+grep -Fq 'clear' "$CLEAR_LOG" || fail 'disconnected device must explicitly clear only the Cloud outbox'
 jq -e '.phase == "ineligible" and .eligible == false and .pendingEvents == 0' "$RUNTIME/activity-sync.json" >/dev/null || \
-  fail 'Free/ineligible synchronization state must be exposed to the router UI'
+  fail 'disconnected synchronization state must be exposed to the router UI'
 
-printf '%s\n' 'PASS: paid Cloud activity batching/ack, lightweight status credentials, rollout-safe retries, entitlement handling and direct-vs-observer event ownership are valid'
+printf '%s\n' 'PASS: account-based Free/Pro Cloud activity retention, batching/ack, retry handling and direct-vs-observer event ownership are valid'

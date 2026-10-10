@@ -59,7 +59,7 @@ require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-updater"
 require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-firmware"
 require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-maintenance"
 require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-health"
-require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-license"
+require_executable "$ROOT_DIR/root/etc/init.d/smartsafehub-device"
 require_file "$ROOT_DIR/root/usr/lib/smartsafehub/common.sh"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-events"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-activity-sync"
@@ -68,10 +68,13 @@ require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-updater"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-firmware"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-maintenance"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-health"
-require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-license"
+require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-device"
 require_executable "$ROOT_DIR/root/usr/libexec/smartsafehub-backup"
 [ ! -e "$ROOT_DIR/root/lib/upgrade/keep.d/smartsafehub" ] || fail "firmware.json must not be preserved through a SmartSafeHub keep.d rule"
+require_file "$ROOT_DIR/root/lib/upgrade/keep.d/smartsafehub-device"
+grep -Fxq '/etc/smartsafehub/device-credential.json' "$ROOT_DIR/root/lib/upgrade/keep.d/smartsafehub-device" || fail "device credential must be preserved across sysupgrade"
 require_executable "$ROOT_DIR/root/etc/uci-defaults/91-smartsafehub-firmware-identity"
+require_executable "$ROOT_DIR/root/etc/uci-defaults/92-smartsafehub-device"
 require_file "$ROOT_DIR/root/usr/libexec/smartsafehub-root-entry"
 require_executable "$ROOT_DIR/root/etc/uci-defaults/90-smartsafehub-system-defaults"
 require_executable "$ROOT_DIR/root/etc/uci-defaults/99-smartsafehub-root-entry"
@@ -85,6 +88,7 @@ require_executable "$ROOT_DIR/tests/test-updater.sh"
 require_executable "$ROOT_DIR/tests/test-firmware-updater.sh"
 require_executable "$ROOT_DIR/tests/test-firmware-identity.sh"
 require_executable "$ROOT_DIR/tests/test-package-contract.sh"
+require_executable "$ROOT_DIR/tests/test-guest-wifi-contract.sh"
 require_executable "$ROOT_DIR/tests/test-tailwind-shadow-dom.sh"
 require_executable "$ROOT_DIR/tests/test-document-ui-contract.sh"
 require_executable "$ROOT_DIR/tests/test-documentation-contract.sh"
@@ -95,7 +99,7 @@ require_executable "$ROOT_DIR/tests/test-system-time-contract.sh"
 require_executable "$ROOT_DIR/tests/test-system-defaults.sh"
 require_executable "$ROOT_DIR/tests/test-scheduled-reboot.sh"
 require_executable "$ROOT_DIR/tests/test-health.sh"
-require_executable "$ROOT_DIR/tests/test-license.sh"
+require_executable "$ROOT_DIR/tests/test-device-registration.sh"
 require_executable "$ROOT_DIR/tests/test-backup-restore.sh"
 require_executable "$ROOT_DIR/tests/test-initial-password-setup.sh"
 require_executable "$ROOT_DIR/tests/test-ucode-imports.sh"
@@ -216,6 +220,10 @@ printf '%s\n' "$postinst_block" | grep -Fq '[ -z "$${IPKG_INSTROOT}" ]' ||
 	fail 'package postinst must limit service enable to runtime installation'
 printf '%s\n' "$postinst_block" | grep -Fq 'mkdir -p /tmp/smartsafehub' ||
 	fail 'package postinst must create the SmartSafeHub runtime directory'
+grep -Fq '/etc/init.d/smartsafehub-device enable' "$ROOT_DIR/root/etc/uci-defaults/92-smartsafehub-device" ||
+	fail 'first-boot defaults must enable smartsafehub-device'
+grep -Fq '/etc/init.d/smartsafehub-device start' "$ROOT_DIR/root/etc/uci-defaults/92-smartsafehub-device" ||
+	fail 'first-boot defaults must start smartsafehub-device'
 printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-events enable' ||
 	fail 'package postinst must force-enable smartsafehub-events so boot events survive upgrades'
 printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-events restart' ||
@@ -233,10 +241,10 @@ printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-health enab
 	fail 'package postinst must force-enable smartsafehub-health'
 printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-health restart' ||
 	fail 'package postinst must start or restart smartsafehub-health immediately after installation'
-printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-license enable' ||
-	fail 'package postinst must force-enable smartsafehub-license'
-printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-license restart' ||
-	fail 'package postinst must start or restart smartsafehub-license immediately after installation'
+printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-device enable' ||
+	fail 'package postinst must force-enable smartsafehub-device'
+printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/smartsafehub-device restart' ||
+	fail 'package postinst must start or restart smartsafehub-device immediately after installation'
 printf '%s\n' "$postinst_block" | grep -Fq 'smartsafehub.iptv.enabled' ||
 	fail 'package postinst must reconcile igmpproxy enable state from SmartSafeHub IPTV config'
 printf '%s\n' "$postinst_block" | grep -Fq '/etc/init.d/igmpproxy stop' ||

@@ -12,8 +12,9 @@
           "firmware_status",
           "system_time_settings",
           "system_scheduled_reboot_settings",
-          "license_status",
-          "health_status"
+          "health_status",
+          "device_registration_status",
+          "activity_history"
         ],
         "safeshield": [
           "status",
@@ -25,6 +26,9 @@
           "wan_settings",
           "lan_settings",
           "iptv_settings"
+        ],
+        "smartsafehub_guest": [
+          "wifi_guest_summary"
         ]
       },
       "cgi-io": [
@@ -37,6 +41,7 @@
           "system_root_password_set",
           "system_root_password_change",
           "wifi_update",
+          "wifi_qr",
           "system_timezone_initialize",
           "system_timezone_update",
           "system_time_sync",
@@ -53,25 +58,23 @@
           "system_backup_validate",
           "system_backup_restore",
           "system_backup_discard",
-          "license_activate",
           "activity_cloud_sync_update",
           "health_run",
           "health_reporter_update",
+          "device_registration_refresh",
           "safeshield_set_enabled",
           "safeshield_refresh",
           "safeshield_statistics_update",
           "safeshield_rule_add",
           "safeshield_rule_delete",
-          "safeshield_license_update"
+          "device_pairing_refresh"
         ],
         "safeshield": [
           "set_enabled",
           "config_update",
           "refresh",
           "rule_add",
-          "rule_delete",
-          "license_get",
-          "license_update"
+          "rule_delete"
         ],
         "smartsafehub_network": [
           "wan_reconnect",
@@ -79,6 +82,10 @@
           "lan_update",
           "lan_auto_subnet",
           "iptv_update"
+        ],
+        "smartsafehub_guest": [
+          "wifi_guest_qr",
+          "wifi_guest_update"
         ]
       },
       "cgi-io": [

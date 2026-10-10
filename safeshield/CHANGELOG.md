@@ -1,5 +1,83 @@
 # Changelog
 
+## [0.3.25-r1] - 2026-10-10
+
+- Bump version for release.
+
+## [0.3.24-r6] - 2026-10-09
+
+### Fixed
+
+- Distinguish a stopped DNS protection service from a temporarily unavailable status check without changing existing running flags.
+
+### Improved
+
+- Reuse successful procd service lookup results for up to one second to reduce repeated RPC work; retry failed lookups on the next request.
+
+### Tests
+
+- Cover unknown service states, retry after lookup failure, and short-lived lookup reuse.
+
+## [0.3.24-r5] - 2026-10-08
+
+### Fixed
+
+- Prevent SafeShield status and statistics RPC requests from blocking rpcd on nested service lookups.
+- Limit service status checks to two seconds and return a safe stopped state when procd cannot respond.
+
+### Tests
+
+- Cover isolated, time-bounded service lookups and timeout fallback behavior.
+
+## [0.3.24-r4] - 2026-10-08
+
+### Changed
+
+- Rename the active Hub plan/status runtime fields from `license_*` to `entitlement_*` and expose them through `safeshield.status.entitlement`.
+- Keep subscription entitlement separate from the retired local SafeShield license-key concept so downstream consumers no longer need license-shaped status fields.
+
+### Tests
+
+- Update ucode and ShellSpec contracts for the `entitlement` status schema and prevent the retired `license` status object from returning.
+
+## [0.3.24-r3] - 2026-10-08
+
+### Removed
+
+- Remove the legacy SafeShield license-key RPC, UCI runtime handling, and masked/raw key exposure. Device/account authentication is owned by SmartSafeHub.
+- Remove the retired `license.uc` rpcd module and its host-side ucode tests.
+
+### Changed
+
+- Drive Cloud statistics eligibility exclusively from authenticated `/api/v1/devices/sync` responses instead of the presence of a local license key.
+- Recheck a denied statistics entitlement on the normal 12-hour cadence so account or subscription changes can recover without a legacy key transition.
+- Remove preserved legacy `safeshield.config.license_key` values during package upgrade or first boot.
+
+### Fixed
+
+- Keep the init-script runtime version synchronized with package version `0.3.24-r3`.
+
+### Tests
+
+- Add regression contracts that reject legacy license-key RPC/config paths and verify statistics entitlement recovery without `ss_license_key`.
+
+## [0.3.24-r2] - 2026-10-03
+
+### Added
+
+- Support authenticated Hub requests with the SmartSafeHub device credential managed by the device component.
+
+### Changed
+
+- Resolve protection data through `/api/v1/devices/sync` instead of the license-specific resolve endpoint.
+- Stop sending a license key when resolving protection data; account ownership and subscription entitlement are resolved by the Hub.
+- Wait for the SmartSafeHub device credential when device registration is still pending; keep the router, DNS service, and any previously applied protection data available while retrying later.
+- Refresh statistics upload credentials through `/api/v1/devices/sync` instead of the legacy license resolve API.
+
+### Tests
+
+- Added contract coverage for device-credential authentication, generic device sync, and removal of direct legacy license resolve calls from SafeShield.
+
 ## [0.3.24-r1] - 2026-09-19
 
 - Bump version for release.

@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+# SafeShield authentication is device-scoped. Remove the retired raw license
+# key from preserved configurations so obsolete secrets do not remain on flash.
+if uci -q get safeshield.config.license_key >/dev/null 2>&1; then
+	uci -q delete safeshield.config.license_key
+	uci -q commit safeshield
+fi
+
+exit 0

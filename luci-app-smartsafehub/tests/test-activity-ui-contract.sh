@@ -31,12 +31,8 @@ status_contract="$(sed -n '/^[[:space:]]*status:[[:space:]]*{/,/^[[:space:]]*},/
 if printf '%s\n' "$status_contract" | grep -Fq 'args:'; then
 	fail 'status RPC must remain argument-free for upgrade/session compatibility'
 fi
-if grep -Eq '^[[:space:]]*activity_history:[[:space:]]*\{' "$RPC_ENTRY"; then
-	fail 'recent activity must not add a standalone RPC method that requires a new session ACL'
-fi
-if jq -e '."luci-app-smartsafehub".read.ubus.smartsafehub | index("activity_history") != null' "$ACL" >/dev/null; then
-	fail 'recent activity must reuse the existing status ACL instead of adding a new ACL method'
-fi
+grep -Eq '^[[:space:]]*activity_history:[[:space:]]*\{' "$RPC_ENTRY" || fail 'activity history RPC missing'
+jq -e '."luci-app-smartsafehub".read.ubus.smartsafehub | index("activity_history") != null' "$ACL" >/dev/null || fail 'read ACL missing activity RPC'
 grep -Fq "import { read_activity_history } from './activity.uc';" "$SYSTEM_RPC" || \
 	fail 'system status module must compose the local activity history'
 grep -Fq 'const activity_result = read_activity_history();' "$SYSTEM_RPC" || \
@@ -94,12 +90,12 @@ grep -Fq "{ label: 'Overview', routes: ['home', 'activity'] }" "$NAVIGATION" || 
 	fail 'recent activity must sit directly below Dashboard in Overview'
 grep -Fq "case 'activity':" "$NAVIGATION" || fail 'recent activity navigation item must have its own icon'
 
-grep -Fq "const activity = useActivityHistory(route === 'home' || route === 'activity');" "$APP" || \
-	fail 'activity data must load on both Dashboard and the full recent-activity page'
+grep -Fq "const activity = useActivityHistory(route === 'activity');" "$APP" || \
+	fail 'full recent-activity page must load its activity history'
 grep -Fq '<ActivityPage' "$APP" || fail 'App must render the full recent-activity page'
-grep -Fq 'activity={activity.data}' "$APP" || fail 'Dashboard must receive local activity data'
-grep -Fq 'activity.refresh()' "$APP" || fail 'global/dashboard refresh must include recent activity'
-grep -Fq 'activity.refreshing ||' "$APP" || fail 'Dashboard refresh indicator must include recent activity'
+grep -Fq 'activity={status.data?.activityHistory ?? null}' "$APP" || fail 'Dashboard must reuse system status activity data'
+grep -Fq 'status.refresh()' "$APP" || fail 'dashboard refresh must include system status with recent activity'
+grep -Fq 'current.refreshing ||' "$APP" || fail 'Dashboard refresh indicator must include currently active system status'
 
 grep -Fq 'title="최근 활동"' "$HOME" || fail 'Dashboard must expose a recent activity section'
 grep -Fq 'href="#activity"' "$HOME" || fail 'Dashboard recent activity must link to the full page'
@@ -115,6 +111,8 @@ grep -Fq '직접 설정을 변경한 작업은 성공 시점에 즉시 기록하
 	fail 'full page must explain direct mutation event recording'
 grep -Fq '외부 상태를 확인해야 하는 항목은 실제 상태 변화가 관찰된 경우에만 추가합니다' "$PAGE" || \
 	fail 'full page must explain observer-owned transition recording'
+grep -Fq '업데이트, 계정 권한과 주요 설정' "$PAGE" || \
+	fail 'activity page must use account entitlement wording instead of license wording'
 grep -Fq '<ActivityTimeline events={data?.events ?? []} />' "$PAGE" || \
 	fail 'full page must render the complete local activity response'
 
@@ -154,8 +152,8 @@ grep -Fq "title: 'SafeShield 보호 활성화'" "$TIMELINE" || \
 	fail 'SafeShield enabled activity must use explicit activation wording'
 grep -Fq "title: 'SafeShield 보호 비활성화'" "$TIMELINE" || \
 	fail 'SafeShield disabled activity must use explicit deactivation wording'
-grep -Fq "title: '라이선스 연결 해제'" "$TIMELINE" || \
-	fail 'license clear activity must describe the router-license link instead of implying license deletion'
+grep -Fq "title: '계정 권한 해제'" "$TIMELINE" || \
+	fail 'legacy license-clear activity must render as current account entitlement wording'
 grep -Fq "title: '확인이 필요한 장치 상태 발견'" "$TIMELINE" || \
 	fail 'health issue activity must use user-facing device-state wording'
 grep -Fq "title: '확인이 필요한 장치 상태 변경'" "$TIMELINE" || \
@@ -194,15 +192,7 @@ grep -Fq "bg-slate-100 text-slate-600 ring-slate-200" "$TIMELINE" || \
 
 grep -Fq "export async function fetchActivityHistory(): Promise<ActivityHistory>" "$API" || \
 	fail 'frontend API must expose local Recent Activity'
-grep -Fq "callApi<SmartSafeHubStatusWithActivity>(API_OBJECT, 'status');" "$API" || \
-	fail 'frontend activity API must call the long-lived status RPC without new arguments'
-if grep -Fq 'include_activity_history' "$API" || grep -Fq 'activity_limit' "$API"; then
-	fail 'frontend activity request must not send upgrade-incompatible status arguments'
-fi
-grep -Fq 'activityHistory?: ActivityHistory;' "$API" || \
-	fail 'frontend must tolerate a pre-reload status response without activityHistory'
-grep -Fq 'const activity = status.activityHistory ?? emptyActivityHistory();' "$API" || \
-	fail 'frontend must render an empty activity state while an older in-memory RPC handler is draining'
+grep -Fq "callApi<ActivityHistory>(API_OBJECT, 'activity_history')" "$API" || fail 'activity page must use standalone RPC'
 grep -Fq 'enabled: activity.cloud.enabled ?? false' "$API" || \
 	fail 'activity responses without an explicit Cloud toggle must fail closed to OFF'
 grep -Fq 'const ACTIVITY_REFRESH_INTERVAL_MS = 60_000;' "$HOOK" || \
@@ -218,8 +208,12 @@ grep -Fq 'Cloud 전송 꺼짐' "$PAGE" || \
 	fail 'Cloud activity card must clearly explain the disabled state'
 grep -Fq '다시 켠 뒤 새로 발생한 활동부터 Cloud에 전송합니다.' "$PAGE" || \
 	fail 'Cloud activity opt-out copy must explain that disabled-period events are not uploaded later'
-grep -Fq 'Pro / Ultimate 전용' "$PAGE" || \
-	fail 'Cloud activity UI must clearly identify the paid entitlement boundary'
+grep -Fq '계정 연결 필요' "$PAGE" || \
+	fail 'Cloud activity UI must explain that account registration is required'
+grep -Fq 'Free는 최근 7일' "$PAGE" || \
+	fail 'Cloud activity UI must explain the Free 7-day retention policy'
+grep -Fq 'Pro와 Ultimate는 최근 90일' "$PAGE" || \
+	fail 'Cloud activity UI must explain the paid 90-day retention policy'
 grep -Fq '전송 대기' "$PAGE" || \
 	fail 'Cloud activity UI must show the pending outbox count'
 grep -Fq '마지막 동기화' "$PAGE" || \
@@ -232,8 +226,19 @@ grep -Fq 'export function update_activity_cloud_sync(request)' "$ACTIVITY_RPC" |
 	fail 'activity RPC must expose an explicit Cloud transfer preference mutation'
 grep -Fq "ctx.set('smartsafehub', 'activity', 'cloud_sync_enabled'" "$ACTIVITY_RPC" || \
 	fail 'Cloud transfer preference must persist in UCI'
+grep -Fq "const DEVICE_STATE_FILE = '/tmp/smartsafehub/device.json';" "$ACTIVITY_RPC" || \
+	fail 'Cloud activity eligibility must use the SmartSafeHub device registration state'
+grep -Fq 'function device_cloud_entitlement()' "$ACTIVITY_RPC" || \
+	fail 'Cloud activity RPC must derive eligibility from the device account state'
+grep -Fq "plan == 'free' || plan == 'pro' || plan == 'ultimate'" "$ACTIVITY_RPC" || \
+	fail 'connected Free, Pro and Ultimate plans must be eligible for Cloud activity history'
+grep -Fq 'state?.accountRegistered == true' "$ACTIVITY_RPC" || \
+	fail 'Cloud activity eligibility must require a connected SmartSafeHub account'
+if grep -Fq 'LICENSE_STATE_FILE' "$ACTIVITY_RPC" || grep -Fq 'license_cloud_entitlement' "$ACTIVITY_RPC"; then
+	fail 'Cloud activity eligibility must not depend on the retired license state'
+fi
 grep -Fq "'ACTIVITY_CLOUD_SYNC_NOT_ELIGIBLE'" "$ACTIVITY_RPC" || \
-	fail 'enabling Cloud activity must enforce paid entitlement on the router'
+	fail 'enabling Cloud activity must reject devices that are not connected to an account'
 grep -Fq 'activity_cloud_sync_update' "$RPC_ENTRY" || \
 	fail 'top-level RPC must expose the Cloud activity toggle mutation'
 jq -e '."luci-app-smartsafehub".write.ubus.smartsafehub | index("activity_cloud_sync_update") != null' "$ACL" >/dev/null || \
@@ -246,4 +251,4 @@ for event_type in settings.activity_cloud_sync.enabled settings.activity_cloud_s
 	grep -Fq "case '$event_type':" "$TIMELINE" || fail "UI renderer missing Cloud activity setting event: $event_type"
 done
 
-printf '%s\n' 'PASS: local recent activity, direct/observed copy, paid Cloud sync ON/OFF and argument-free status RPC contracts are valid'
+printf '%s\n' 'PASS: local recent activity, account-based Cloud sync retention, direct/observed copy and argument-free status RPC contracts are valid'

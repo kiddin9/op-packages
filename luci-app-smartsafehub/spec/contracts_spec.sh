@@ -8,10 +8,30 @@ Describe 'SmartSafeHub 셸 계약 테스트'
     The error should be blank
   End
 
+  It 'Preact 11 의존성과 JSX 타입 호환성을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-preact11-contract.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
   It '셸 파이프라인의 Broken pipe 회귀를 방지한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-shell-pipeline-safety.sh"
     The status should be success
     The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It '계정 상태와 캐시·업데이트 폴링 안정화 계약을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-stability-r16.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+  It '게스트 Wi-Fi 분리망과 관리 UI 보안 계약을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-guest-wifi-contract.sh"
+    The status should be success
+    The output should start with 'guest Wi-Fi security and UI contract: PASS'
     The error should be blank
   End
 
@@ -36,7 +56,7 @@ Describe 'SmartSafeHub 셸 계약 테스트'
     The error should be blank
   End
 
-  It '유료 Cloud 활동 동기화와 직접/관찰 이벤트 분리를 검증한다'
+  It '계정 기반 Cloud 활동 동기화와 직접/관찰 이벤트 분리를 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-activity-cloud-sync.sh"
     The status should be success
     The output should start with 'PASS:'
@@ -101,6 +121,13 @@ Describe 'SmartSafeHub 셸 계약 테스트'
 
   It '초기 관리자 비밀번호 설정 계약을 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-initial-password-setup.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It '대시보드 계정 미연결 안내 계약을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-dashboard-account-contract.sh"
     The status should be success
     The output should start with 'PASS:'
     The error should be blank
@@ -204,13 +231,6 @@ Describe 'SmartSafeHub 셸 계약 테스트'
     The error should be blank
   End
 
-  It 'SmartSafeHub 라이선스 daemon과 Hub 동기화 계약을 검증한다'
-    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-license.sh"
-    The status should be success
-    The output should start with 'PASS:'
-    The error should be blank
-  End
-
   It '설정 백업과 복원 계약을 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-backup-restore.sh"
     The status should be success
@@ -241,6 +261,13 @@ Describe 'SmartSafeHub 셸 계약 테스트'
 
   It '규칙 UI 계약을 검증한다'
     When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-rules-ui-contract.sh"
+    The status should be success
+    The output should start with 'PASS:'
+    The error should be blank
+  End
+
+  It 'SmartSafeHub 계정 UI 계약을 검증한다'
+    When run command sh "$SHELLSPEC_PROJECT_ROOT/tests/test-account-ui-contract.sh"
     The status should be success
     The output should start with 'PASS:'
     The error should be blank

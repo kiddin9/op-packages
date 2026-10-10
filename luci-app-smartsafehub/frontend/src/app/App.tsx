@@ -22,6 +22,8 @@ import { useStatus } from '../hooks/useStatus';
 import { useScheduledRebootSettings } from '../hooks/useScheduledRebootSettings';
 import { useSystemActions } from '../hooks/useSystemActions';
 import { useSystemTimeSettings } from '../hooks/useSystemTimeSettings';
+import { useDeviceRegistration } from '../hooks/useDeviceRegistration';
+import { useDashboardAccountStatus } from '../hooks/useDashboardAccountStatus';
 import { useWifi } from '../hooks/useWifi';
 import { ActivityPage } from '../pages/ActivityPage';
 import { ConnectedDevicesPage } from '../pages/ConnectedDevicesPage';
@@ -32,6 +34,7 @@ import { WanPage } from '../pages/WanPage';
 import { SafeShieldPage } from '../pages/SafeShieldPage';
 import { SafeShieldRulesPage } from '../pages/SafeShieldRulesPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { SmartSafeHubAccountPage } from '../pages/SmartSafeHubAccountPage';
 import { UpdatePage } from '../pages/UpdatePage';
 import { WifiPage } from '../pages/WifiPage';
 import { browserTimezone } from '../utils/timezone';
@@ -43,7 +46,7 @@ interface AppProps {
 export function App({ onAdministratorPasswordChanged }: AppProps) {
   const route = useHashRoute();
   const configurationBackup = useConfigurationBackup();
-  const activity = useActivityHistory(route === 'home' || route === 'activity');
+  const activity = useActivityHistory(route === 'activity');
   const status = useStatus(route === 'home' || route === 'settings');
   const updates = useSoftwareUpdates(true);
   const firmware = useFirmwareUpdates(true);
@@ -53,11 +56,17 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
   const wifi = useWifi(route === 'wifi');
   const dashboardDevices = useConnectedDevices(route === 'home', false);
   const devices = useConnectedDevices(route === 'devices');
-  const dashboardSafeShield = useSafeShieldStatus(route === 'home');
-  const dashboardSafeShieldStatistics = useSafeShieldStatistics(route === 'home', false);
-  const safeshield = useSafeShieldStatus(route === 'safeshield');
-  const safeshieldStatistics = useSafeShieldStatistics(route === 'safeshield');
+  // Both views consume the same resource: switching pages must not re-query RPC.
+  const safeshield = useSafeShieldStatus(route === 'home' || route === 'safeshield');
+  const safeshieldStatistics = useSafeShieldStatistics(route === 'home' || route === 'safeshield', route === 'safeshield');
+  const dashboardSafeShield = safeshield;
+  const dashboardSafeShieldStatistics = safeshieldStatistics;
   const rules = useSafeShieldRules(route === 'rules');
+  const deviceRegistration = useDeviceRegistration(route === 'account');
+  const dashboardAccountRegistered = useDashboardAccountStatus(
+    route === 'account',
+    deviceRegistration.data?.accountRegistered ?? null,
+  );
   const systemActions = useSystemActions(status.data);
   const health = useHealth(route === 'home' || route === 'settings');
   const scheduledReboot = useScheduledRebootSettings(route === 'settings');
@@ -102,9 +111,11 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
                 ? safeshield
                 : route === 'rules'
                   ? rules
-                  : route === 'system'
-                    ? updates
-                    : status;
+                  : route === 'account'
+                    ? deviceRegistration
+                    : route === 'system'
+                      ? updates
+                      : status;
 
   let content: ComponentChildren;
 
@@ -171,6 +182,7 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
           onDismissFeedback={wifi.dismissFeedback}
           onRetry={() => void wifi.refresh()}
           onUpdate={wifi.update}
+          onUpdateGuest={wifi.updateGuest}
           updatingSection={wifi.updatingSection}
         />
       );
@@ -198,6 +210,21 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
           error={devices.error}
           loading={devices.loading}
           onRetry={() => void devices.refresh()}
+        />
+      );
+      break;
+
+    case 'account':
+      content = (
+        <SmartSafeHubAccountPage
+          data={deviceRegistration.data}
+          error={deviceRegistration.error}
+          loading={deviceRegistration.loading}
+          pairingBusy={deviceRegistration.pairingBusy}
+          refreshing={deviceRegistration.refreshing}
+          syncError={deviceRegistration.syncError}
+          onRequestPairing={deviceRegistration.requestPairing}
+          onRetry={() => void deviceRegistration.refresh()}
         />
       );
       break;
@@ -295,7 +322,6 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
         <SafeShieldPage
           action={safeshieldActions.action}
           actionError={safeshieldActions.error}
-          actionFeedbackTarget={safeshieldActions.feedbackTarget}
           actionMessage={safeshieldActions.message}
           data={safeshield.data}
           error={safeshield.error}
@@ -305,16 +331,13 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
           statisticsLoading={safeshieldStatistics.loading}
           statisticsRefreshing={safeshieldStatistics.refreshing}
           onDismissFeedback={safeshieldActions.dismissFeedback}
-          onReadLicense={safeshieldActions.readLicense}
           onRefreshBlocklist={() => void safeshieldActions.refreshBlocklist()}
-          onRemoveLicense={safeshieldActions.removeLicense}
           onRetry={() => void safeshield.refresh()}
           onRetryStatistics={() => void safeshieldStatistics.refresh()}
           onSetEnabled={(enabled) => void safeshieldActions.setEnabled(enabled)}
           onSetStatisticsEnabled={(enabled) =>
             void safeshieldActions.setStatisticsEnabled(enabled)
           }
-          onUpdateLicense={safeshieldActions.updateLicense}
         />
       );
       break;
@@ -338,9 +361,10 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
     default:
       content = (
         <HomePage
-          activity={activity.data}
-          activityError={activity.error}
-          activityLoading={activity.loading}
+          accountRegistered={dashboardAccountRegistered}
+          activity={status.data?.activityHistory ?? null}
+          activityError={status.error}
+          activityLoading={status.loading}
           data={status.data}
           devices={dashboardDevices.data}
           devicesError={dashboardDevices.error}
@@ -358,11 +382,10 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
           loading={status.loading}
           onRetry={() =>
             void Promise.all([
-              activity.refresh(),
               status.refresh(),
               dashboardDevices.refresh(),
-              dashboardSafeShield.refresh(),
-              dashboardSafeShieldStatistics.refresh(),
+              safeshield.refresh(),
+              safeshieldStatistics.refresh(),
               updates.refresh(),
               firmware.refresh(),
               health.refresh(),
@@ -386,7 +409,6 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
   const refreshCurrent = () => {
     if (route === 'home') {
       void Promise.all([
-        activity.refresh(),
         status.refresh(),
         dashboardDevices.refresh(),
         dashboardSafeShield.refresh(),
@@ -435,6 +457,7 @@ export function App({ onAdministratorPasswordChanged }: AppProps) {
 
   return (
     <AppShell
+      accountRegistered={dashboardAccountRegistered}
       loading={route === 'network' ? wan.loading || lan.loading : current.loading}
       onRefresh={refreshCurrent}
       refreshing={

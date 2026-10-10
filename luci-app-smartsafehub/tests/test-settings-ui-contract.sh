@@ -108,7 +108,7 @@ grep -Fq '업로드 및 검증' "$SETTINGS_PAGE" || \
 	fail 'restore flow must upload and validate an archive before confirmation'
 grep -Fq '설정 복원 및 재부팅' "$SETTINGS_PAGE" || \
 	fail 'restore flow must clearly communicate the reboot side effect'
-grep -Fq 'Wi-Fi 비밀번호, 관리자 설정, VPN 키나 라이선스 정보' "$SETTINGS_PAGE" || \
+grep -Fq 'Wi-Fi 비밀번호, 관리자 설정, VPN 키나 기기 인증 정보' "$SETTINGS_PAGE" || \
 	fail 'backup UI must warn that preserved configuration can contain secrets'
 grep -Fq 'function ScheduledRebootSection(props:' "$SETTINGS_PAGE" || \
 	fail 'settings page must expose scheduled reboot management as an embedded section'

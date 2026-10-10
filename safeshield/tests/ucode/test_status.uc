@@ -1,9 +1,15 @@
 'use strict';
 
 let core = require('core');
+let runtime = require('runtime');
 let status = require('status');
 
 let ready = status.build();
+assert(ready.runtime.refreshd_state == 'running' && ready.runtime.dnsmasq_state == 'running' && ready.runtime.refreshd_lookup_ok == true, 'healthy status includes successful procd lookup details');
+runtime.state.lookup_ok = false;
+let unknown = status.build();
+assert(unknown.runtime.refreshd_state == 'unknown' && unknown.runtime.refreshd_lookup_ok == false && unknown.active == false, 'unknown service lookups do not claim running');
+runtime.state.lookup_ok = true;
 assert(ready.status == 'ready', 'status preserves ready state');
 assert(ready.summary.label == 'Ready' && ready.summary.severity == 'info', 'ready summary is generated');
 assert(index(ready.summary.message, '42000 rules active') >= 0, 'ready summary includes active rule count');
@@ -11,7 +17,8 @@ assert(ready.artifact.source_count == 2, 'status reports artifact source count')
 assert(ready.artifact.block_source_count == 1 && ready.artifact.allow_source_count == 1, 'status reports artifact action counts');
 assert(ready.sources.items[0].last_result == 'ok', 'healthy API source is reported ok');
 assert(ready.blocklist.installed == true && ready.blocklist.file_size_kb == 2048, 'blocklist state is normalized');
-assert(ready.license.configured == true && ready.license.key_masked == 'abcd...wxyz', 'license state is masked');
+assert(ready.entitlement.plan == 'pro' && ready.entitlement.status == 'active', 'Hub entitlement is exposed under the entitlement field');
+assert(ready.license == null, 'status does not expose the retired license status field');
 assert(ready.device.device_code == 'xiaomi-ax3000t', 'status exposes the canonical device code');
 assert(ready.device.device_code_source == 'smartsafehub_firmware', 'status exposes the device code source');
 assert(ready.health.overall == 'ok', 'healthy ready state reports overall ok');

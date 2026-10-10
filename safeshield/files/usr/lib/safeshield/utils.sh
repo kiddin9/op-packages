@@ -8,23 +8,6 @@ command_exists() {
 	command -v "$1" >/dev/null 2>&1
 }
 
-ss_mask_secret() {
-	local value="$1"
-	local len
-
-	[ -n "$value" ] || {
-		printf '%s' ''
-		return 0
-	}
-
-	len="${#value}"
-	if [ "$len" -le 8 ] 2>/dev/null; then
-		printf '%s' '********'
-	else
-		printf '%s****%s' "${value%${value#????}}" "${value#${value%????}}"
-	fi
-}
-
 is_valid_integer() {
 	case "$1" in
 		'' | *[!0-9]*) return 1 ;;

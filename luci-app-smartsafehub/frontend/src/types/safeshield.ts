@@ -21,9 +21,7 @@ export interface SafeShieldStatus {
     lastResult: string | null;
     lastErrorCode: string | null;
   };
-  license: {
-    configured: boolean;
-    keyMasked: string;
+  entitlement: {
     plan: string | null;
     status: string | null;
   };
@@ -81,24 +79,6 @@ export interface SafeShieldRefreshResult {
   accepted: boolean;
   reason: string;
   status: SafeShieldStatus;
-}
-
-export interface SafeShieldLicenseReadResult {
-  configured: boolean;
-  key: string;
-}
-
-export interface SafeShieldLicenseUpdateResult {
-  changed: boolean;
-  license: {
-    configured: boolean;
-    keyMasked: string;
-  };
-  refresh: {
-    requested: boolean;
-    accepted: boolean;
-    reason: string;
-  };
 }
 
 export interface SafeShieldStatisticsBucket {

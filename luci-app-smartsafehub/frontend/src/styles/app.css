@@ -1981,7 +1981,8 @@
 
 .ssh-safeshield-refresh {
   display: flex;
-  max-width: 48rem;
+  width: 27rem;
+  max-width: 100%;
   align-items: center;
   gap: 0.875rem;
   margin-top: 1rem;
@@ -2140,273 +2141,7 @@
 }
 
 
-.ssh-safeshield-license-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #ffffff, #f8fafc 62%, #f8fafc);
-  padding: 0.95rem 1rem;
-}
 
-.ssh-safeshield-license-summary-main {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.ssh-safeshield-license-summary-status {
-  color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.ssh-safeshield-license-key-mask {
-  color: #94a3b8;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-}
-
-.ssh-safeshield-license-editor {
-  display: grid;
-  gap: 0.9rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1rem;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  padding: 1rem;
-}
-
-.ssh-safeshield-license-editor-header {
-  display: grid;
-  gap: 0.24rem;
-}
-
-.ssh-safeshield-license-editor-label {
-  color: #334155;
-  font-size: 0.76rem;
-  font-weight: 900;
-}
-
-.ssh-safeshield-license-editor-hint {
-  color: #64748b;
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 1.35;
-}
-
-.ssh-safeshield-license-input-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-
-.ssh-safeshield-license-input {
-  min-height: 2.85rem;
-  min-width: 0;
-  flex: 1 1 auto;
-  border: 2px solid #cbd5e1;
-  border-radius: 0.95rem;
-  background: #ffffff;
-  padding: 0.72rem 0.95rem;
-  color: #0f172a;
-  font-size: 0.9rem;
-  font-weight: 700;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 43, 0.05);
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
-}
-
-.ssh-safeshield-license-input::placeholder {
-  color: #94a3b8;
-}
-
-.ssh-safeshield-license-input:focus {
-  border-color: #14b8a6;
-  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.14);
-}
-
-.ssh-safeshield-license-input:disabled {
-  cursor: not-allowed;
-  background: #f8fafc;
-}
-
-.ssh-safeshield-license-secondary-action,
-.ssh-safeshield-license-primary-action,
-.ssh-safeshield-license-danger-action {
-  display: inline-flex;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  border-radius: 0.95rem;
-  padding: 0.7rem 1rem;
-  font-size: 0.82rem;
-  font-weight: 900;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.ssh-safeshield-license-secondary-action {
-  flex: none;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
-  color: #334155;
-  box-shadow: 0 1px 2px rgba(15, 23, 43, 0.04);
-}
-
-.ssh-safeshield-license-secondary-action:hover {
-  border-color: #5eead4;
-  background: #f0fdfa;
-  color: #115e59;
-}
-
-.ssh-safeshield-license-primary-action {
-  border: 1px solid #0f766e;
-  background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.16);
-}
-
-.ssh-safeshield-license-primary-action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(13, 148, 136, 0.2);
-}
-
-.ssh-safeshield-license-danger-action {
-  border: 1px solid #fecaca;
-  background: #ffffff;
-  color: #b91c1c;
-}
-
-.ssh-safeshield-license-danger-action:hover {
-  border-color: #fca5a5;
-  background: #fef2f2;
-}
-
-.ssh-safeshield-license-actions {
-  display: grid;
-  gap: 0.6rem;
-}
-
-.ssh-safeshield-license-secondary-action:focus-visible,
-.ssh-safeshield-license-primary-action:focus-visible,
-.ssh-safeshield-license-danger-action:focus-visible {
-  outline: 3px solid rgba(20, 184, 166, 0.16);
-  outline-offset: 2px;
-}
-
-.ssh-safeshield-license-secondary-action:disabled,
-.ssh-safeshield-license-primary-action:disabled,
-.ssh-safeshield-license-danger-action:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  transform: none;
-  box-shadow: none;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-summary,
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-editor {
-  border-color: #1e293b;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.98));
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-summary-status,
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-editor-hint {
-  color: #94a3b8;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-key-mask {
-  color: #64748b;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-editor-label {
-  color: #e2e8f0;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-input {
-  border-color: #334155;
-  background: #020617;
-  color: #f8fafc;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-input::placeholder {
-  color: #64748b;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-input:focus {
-  border-color: #2dd4bf;
-  box-shadow: 0 0 0 4px rgba(45, 212, 191, 0.14);
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-input:disabled {
-  background: #0f172a;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-secondary-action {
-  border-color: #334155;
-  background: #0f172a;
-  color: #cbd5e1;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-secondary-action:hover {
-  border-color: #2dd4bf;
-  background: rgba(13, 148, 136, 0.16);
-  color: #ccfbf1;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-primary-action {
-  border-color: #14b8a6;
-  background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%);
-  box-shadow: 0 10px 22px rgba(20, 184, 166, 0.18);
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-danger-action {
-  border-color: rgba(239, 68, 68, 0.22);
-  background: rgba(127, 29, 29, 0.08);
-  color: #fca5a5;
-}
-
-.ssh-app[data-theme='dark'] .ssh-safeshield-license-danger-action:hover {
-  border-color: rgba(252, 165, 165, 0.28);
-  background: rgba(127, 29, 29, 0.14);
-}
-
-@media (max-width: 640px) {
-  .ssh-safeshield-license-summary {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .ssh-safeshield-license-key-mask {
-    max-width: 100%;
-    overflow-wrap: anywhere;
-  }
-
-}
-
-@media (min-width: 640px) {
-  .ssh-safeshield-license-input-row {
-    flex-direction: row;
-  }
-
-  .ssh-safeshield-license-secondary-action {
-    min-width: 9.5rem;
-  }
-
-  .ssh-safeshield-license-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 @keyframes ssh-safeshield-refresh-loader-rotate {
   to {
     transform: rotate(270deg);
@@ -2417,4 +2152,97 @@
   .ssh-safeshield-refresh-loader-svg {
     animation: none;
   }
+}
+
+/* Dashboard account notice: explicit colors for the ShadowRoot theme system.
+ * Avoid mixing Tailwind dark: variants with [data-theme] overrides. */
+.ssh-dashboard-account-banner {
+  border-color: #99e8df;
+  background: #f0fdfa;
+}
+
+.ssh-dashboard-account-banner-icon {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.ssh-dashboard-account-banner-title {
+  color: #0f172a;
+}
+
+.ssh-dashboard-account-banner-description {
+  color: #475569;
+}
+
+.ssh-dashboard-account-banner-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ssh-dashboard-account-banner-action {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.ssh-dashboard-account-banner-action:hover {
+  background: #115e59;
+  color: #ffffff;
+}
+
+.ssh-dashboard-account-banner-action:focus-visible {
+  outline-color: #0d9488;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner {
+  border-color: #115e59;
+  background: #102927;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner-icon {
+  background: #134e4a;
+  color: #99f6e4;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner-title {
+  color: #f1f5f9;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner-description {
+  color: #cbd5e1;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner-badge {
+  background: #78350f;
+  color: #fde68a;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner-action {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.ssh-app[data-theme='dark'] .ssh-dashboard-account-banner-action:hover {
+  background: #0d9488;
+}
+
+/* A compact action-required indicator, shared by desktop and mobile navigation. */
+.ssh-account-nav-dot {
+  display: block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  border-radius: 50%;
+  background-color: #d97706;
+  box-shadow: 0 0 0 2px var(--ssh-account-dot-ring, #fff);
+}
+.ssh-account-nav-dot-collapsed {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  margin-left: 0;
+}
+.ssh-app[data-theme='dark'] .ssh-account-nav-dot {
+  background-color: #fbbf24;
+  --ssh-account-dot-ring: #0f172a;
 }

@@ -6,6 +6,10 @@ umask 077
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
 [ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
 . "$COMMON_LIB"
+RUNTIME_LIB="${SMARTSAFEHUB_RUNTIME_LIB:-$(dirname "$0")/../lib/smartsafehub/runtime.sh}"
+[ -r "$RUNTIME_LIB" ] || exit 1
+. "$RUNTIME_LIB"
+ssh_runtime_init "activity-sync"
 
 RUNTIME_DIR="${SMARTSAFEHUB_ACTIVITY_RUNTIME_DIR:-/tmp/smartsafehub}"
 STATE_FILE="${SMARTSAFEHUB_ACTIVITY_STATE_FILE:-$RUNTIME_DIR/activity-sync.json}"
@@ -13,7 +17,8 @@ CREDENTIAL_FILE="${SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE:-$RUNTIME_DIR/activity-
 WAKE_FILE="${SMARTSAFEHUB_ACTIVITY_WAKE_FILE:-$RUNTIME_DIR/activity-sync.wake}"
 LOCK_DIR="${SMARTSAFEHUB_ACTIVITY_LOCK_DIR:-$RUNTIME_DIR/activity-sync.lock}"
 EVENTS_BIN="${SMARTSAFEHUB_ACTIVITY_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
-LICENSE_BIN="${SMARTSAFEHUB_ACTIVITY_LICENSE_BIN:-/usr/libexec/smartsafehub-license}"
+DEVICE_BIN="${SMARTSAFEHUB_ACTIVITY_DEVICE_BIN:-/usr/libexec/smartsafehub-device}"
+DEVICE_STATE_FILE="${SMARTSAFEHUB_ACTIVITY_DEVICE_STATE_FILE:-$RUNTIME_DIR/device.json}"
 UCI_BIN="${SMARTSAFEHUB_ACTIVITY_UCI_BIN:-uci}"
 JSONFILTER_BIN="${SMARTSAFEHUB_ACTIVITY_JSONFILTER_BIN:-jsonfilter}"
 UCLIENT_FETCH_BIN="${SMARTSAFEHUB_ACTIVITY_UCLIENT_FETCH_BIN:-uclient-fetch}"
@@ -23,6 +28,8 @@ LOGGER_BIN="${SMARTSAFEHUB_ACTIVITY_LOGGER_BIN:-logger}"
 DEFAULT_SYNC_INTERVAL_S=300
 DEFAULT_STARTUP_DELAY_S=45
 DAEMON_TICK_S=15
+# The wake marker remains responsive at every tick; periodic state/UCI checks are less frequent.
+DAEMON_SCHEDULE_CHECK_S=60
 REQUEST_TIMEOUT_S=15
 CREDENTIAL_REFRESH_MARGIN_S=600
 RETRY_INITIAL_S=900
@@ -30,14 +37,14 @@ RETRY_MAX_S=3600
 
 UPLOAD_BODY_FILE=''
 UPLOAD_RESPONSE_FILE=''
-LICENSE_STATUS_FILE=''
+DEVICE_STATUS_FILE=''
 STOP_REQUESTED=0
 WAIT_PID=''
 
 cleanup_files() {
 	[ -n "$UPLOAD_BODY_FILE" ] && rm -f "$UPLOAD_BODY_FILE"
 	[ -n "$UPLOAD_RESPONSE_FILE" ] && rm -f "$UPLOAD_RESPONSE_FILE"
-	[ -n "$LICENSE_STATUS_FILE" ] && rm -f "$LICENSE_STATUS_FILE"
+	[ -n "$DEVICE_STATUS_FILE" ] && rm -f "$DEVICE_STATUS_FILE"
 }
 
 request_stop() {
@@ -202,32 +209,31 @@ credential_valid() {
 	[ "$expires" -gt $((now + CREDENTIAL_REFRESH_MARGIN_S)) ] 2>/dev/null
 }
 
-refresh_credential_from_license() {
-	local phase plan action
-	[ -x "$LICENSE_BIN" ] || return 1
+refresh_credential_from_device() {
+	local phase result plan account_registered
+	[ -x "$DEVICE_BIN" ] || return 1
 
-	# /licenses/status is owned by the license component. It already has the
-	# authoritative device identity, reconciliation rules and proven request
-	# path. Refresh it once, then consume the activity credential it cached.
-	SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE="$CREDENTIAL_FILE" "$LICENSE_BIN" status-sync >/dev/null 2>&1 || return 1
+	# Device sync is the single source for account registration, plan and
+	# short-lived activity upload credentials.
+	SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE="$CREDENTIAL_FILE" "$DEVICE_BIN" status-sync >/dev/null 2>&1 || return 1
 	credential_valid && return 0
 
-	LICENSE_STATUS_FILE="$RUNTIME_DIR/activity-license-status.$$.json"
-	"$LICENSE_BIN" status > "$LICENSE_STATUS_FILE" 2>/dev/null || return 1
-	phase="$(ascii_lower "$(json_value "$LICENSE_STATUS_FILE" '@.phase')")"
-	plan="$(ascii_lower "$(json_value "$LICENSE_STATUS_FILE" '@.plan')")"
-	action="$(ascii_lower "$(json_value "$LICENSE_STATUS_FILE" '@.deviceAction')")"
+	DEVICE_STATUS_FILE="$DEVICE_STATE_FILE"
+	phase="$(ascii_lower "$(json_value "$DEVICE_STATUS_FILE" '@.phase')")"
+	result="$(ascii_lower "$(json_value "$DEVICE_STATUS_FILE" '@.lastResult')")"
+	plan="$(ascii_lower "$(json_value "$DEVICE_STATUS_FILE" '@.plan')")"
+	account_registered="$(ascii_lower "$(json_value "$DEVICE_STATUS_FILE" '@.accountRegistered')")"
 
-	case "$phase:$action:$plan" in
-		unconfigured:*:*|cleared:*:*|*:clear_license:*|*:*:free)
+	case "$phase:$result:$account_registered:$plan" in
+		registered:active:true:free|registered:active:true:pro|registered:active:true:ultimate)
+			# Connected Free and paid accounts are both eligible. If Hub did not
+			# publish a usable credential, preserve the bounded outbox and retry.
+			return 3
+			;;
+		registered:active:false:*)
 			rm -f "$CREDENTIAL_FILE"
 			"$EVENTS_BIN" clear-outbox >/dev/null 2>&1 || true
 			return 2
-			;;
-		active:none:pro|active:none:ultimate)
-			# The license API succeeded and the account is paid, but no usable
-			# activity credential was published. Preserve the bounded outbox.
-			return 3
 			;;
 		*) return 1 ;;
 	esac
@@ -256,7 +262,7 @@ sync_once() {
 
 	if ! credential_valid; then
 		credential_rc=0
-		refresh_credential_from_license || credential_rc=$?
+		refresh_credential_from_device || credential_rc=$?
 		case "$credential_rc" in
 			2)
 				pending="$(pending_count)"
@@ -271,7 +277,7 @@ sync_once() {
 				;;
 			*)
 				next_sync=$((now + retry_delay))
-				write_state error null '' 0 "$pending" "$now" "$previous_success" 0 ACTIVITY_LICENSE_STATUS_FAILED "$next_sync"
+				write_state error null '' 0 "$pending" "$now" "$previous_success" 0 ACTIVITY_DEVICE_SYNC_FAILED "$next_sync"
 				release_lock; trap cleanup_files EXIT; return 1
 				;;
 		esac
@@ -355,31 +361,47 @@ consume_wake_marker() {
 	return 1
 }
 
+# Evaluate the persisted schedule at most once per minute when no wake is pending.
+# The wake marker still gets checked every 15 seconds, without extra UCI/jsonfilter
+# calls on idle ticks. This bounds config-change latency to one minute.
 daemon_loop() {
-	local delay tick now next_sync
+	local delay tick now next_sync last_schedule_check wake_pending due
 	STOP_REQUESTED=0
 	delay="$(startup_delay_s)"
 	interruptible_sleep "$delay" || return 0
 	consume_wake_marker || true
-	sync_once || true
+	ssh_runtime_execute sync-once sync_once || true
 	tick="$(normalized_integer "$DAEMON_TICK_S" 15 5 60)"
+	last_schedule_check=0
 	while [ "$STOP_REQUESTED" -eq 0 ]; do
 		interruptible_sleep "$tick" || break
-		if ! cloud_sync_enabled; then
+		wake_pending=0
+		[ ! -e "$WAKE_FILE" ] || wake_pending=1
+		now="$(now_epoch)"
+		case "$now" in ''|*[!0-9]*) now=0 ;; esac
+		# Idle ticks only test the wake marker and current time. Re-read state
+		# periodically because it may be updated externally by sync-once.
+		if [ "$wake_pending" -eq 0 ] && [ "$last_schedule_check" -ne 0 ] &&
+			[ "$now" -ge "$last_schedule_check" ] &&
+			[ $((now - last_schedule_check)) -lt "$DAEMON_SCHEDULE_CHECK_S" ]; then
 			continue
 		fi
-		now="$(now_epoch)"
+		last_schedule_check="$now"
+		# Honour a disabled cloud setting even when a wake marker exists;
+		# leave that marker in place until cloud sync is enabled again.
+		cloud_sync_enabled || continue
 		next_sync="$(previous_state_number '@.nextSyncAt')"
-
-		if [ -e "$WAKE_FILE" ] && ! retry_backoff_active; then
-			# Healthy sync may react to a new event immediately. When the backend is
-			# unavailable, keep the marker and honor nextSyncAt so each new event does
-			# not bypass the retry backoff and cause another resolve request.
+		due=0
+		if [ "$next_sync" -le 0 ] 2>/dev/null || [ "$now" -ge "$next_sync" ] 2>/dev/null; then
+			due=1
+		elif [ "$wake_pending" -eq 1 ] && ! retry_backoff_active; then
+			due=1
+		fi
+		if [ "$due" -eq 1 ]; then
 			consume_wake_marker || true
-			sync_once || true
-		elif [ "$next_sync" -le 0 ] 2>/dev/null || [ "$now" -ge "$next_sync" ] 2>/dev/null; then
-			consume_wake_marker || true
-			sync_once || true
+			ssh_runtime_execute sync-once sync_once || true
+			# Restart periodic polling window after a completed sync.
+			last_schedule_check="$(now_epoch)"
 		fi
 	done
 }
@@ -390,17 +412,20 @@ Usage: smartsafehub-activity-sync <command>
 
 Commands:
   daemon
-  sync-once
+  sync-once (alias: run-once)
+  runtime-status
   apply-config
   status
 EOF_USAGE
 }
 
 mkdir -p "$RUNTIME_DIR" || exit 1
+ssh_runtime_debug_arg "${1:-}" "${2:-}" || { echo "invalid argument" >&2; exit 2; }
 case "${1:-}" in
 	daemon) daemon_loop ;;
-	sync-once) sync_once ;;
+	sync-once|run-once) ssh_runtime_execute sync-once sync_once ;;
 	apply-config) apply_configuration ;;
 	status) show_status ;;
+	runtime-status) ssh_runtime_status ;;
 	*) usage >&2; exit 2 ;;
 esac

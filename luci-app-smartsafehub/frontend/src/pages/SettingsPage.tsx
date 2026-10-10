@@ -428,9 +428,9 @@ function reporterLastReportLabel(reporter: HealthReporterStatus): string {
 
 function reporterMembershipLabel(reporter: HealthReporterStatus | undefined): string {
   const plan = reporter?.plan?.trim().toUpperCase();
-  const licenseStatus = reporter?.licenseStatus?.trim().toLowerCase();
+  const entitlementStatus = reporter?.entitlementStatus?.trim().toLowerCase();
 
-  if (plan && (licenseStatus === 'trial' || licenseStatus === 'trialing')) {
+  if (plan && (entitlementStatus === 'trial' || entitlementStatus === 'trialing')) {
     return `${plan} · 체험`;
   }
   return plan || '유료 · Trial';
@@ -790,7 +790,7 @@ function PasswordInputField(props: {
           name={props.name}
           onInput={(event) => props.onInput(event.currentTarget.value)}
           placeholder={props.placeholder}
-          type={visible ? 'text' : 'password'}
+          {...(visible ? { type: 'text' as const } : { type: 'password' as const })}
           value={props.value}
         />
         <button
@@ -1093,7 +1093,7 @@ function ConfigurationBackupCard(props: {
             {props.action === 'download' ? '백업 생성 중' : '설정 백업 다운로드'}
           </button>
           <p class="mt-3 mb-0 text-xs font-bold leading-5 text-amber-700">
-            백업에는 Wi-Fi 비밀번호, 관리자 설정, VPN 키나 라이선스 정보 같은 민감한 값이 포함될 수 있으므로 안전한 위치에 보관해 주세요.
+            백업에는 Wi-Fi 비밀번호, 관리자 설정, VPN 키나 기기 인증 정보 같은 민감한 값이 포함될 수 있으므로 안전한 위치에 보관해 주세요.
           </p>
         </div>
 

@@ -5,6 +5,10 @@ set -u
 COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
 [ -r "$COMMON_LIB" ] || { echo "SmartSafeHub common library not found: $COMMON_LIB" >&2; exit 1; }
 . "$COMMON_LIB"
+RUNTIME_LIB="${SMARTSAFEHUB_RUNTIME_LIB:-$(dirname "$0")/../lib/smartsafehub/runtime.sh}"
+[ -r "$RUNTIME_LIB" ] || exit 1
+. "$RUNTIME_LIB"
+ssh_runtime_init "health"
 
 RUNTIME_DIR="${SMARTSAFEHUB_HEALTH_RUNTIME_DIR:-/tmp/smartsafehub}"
 HEALTH_FILE="${SMARTSAFEHUB_HEALTH_FILE:-$RUNTIME_DIR/health.json}"
@@ -15,6 +19,9 @@ CPUINFO_FILE="${SMARTSAFEHUB_HEALTH_CPUINFO_FILE:-/proc/cpuinfo}"
 UPTIME_FILE="${SMARTSAFEHUB_HEALTH_UPTIME_FILE:-/proc/uptime}"
 UPDATER_STATE_FILE="${SMARTSAFEHUB_HEALTH_UPDATER_STATE_FILE:-$RUNTIME_DIR/updates.state}"
 FIRMWARE_STATE_FILE="${SMARTSAFEHUB_HEALTH_FIRMWARE_STATE_FILE:-$RUNTIME_DIR/firmware.state}"
+DEVICE_STATE_FILE="${SMARTSAFEHUB_HEALTH_DEVICE_STATE_FILE:-$RUNTIME_DIR/device.json}"
+DEVICE_CREDENTIAL_FILE="${SMARTSAFEHUB_HEALTH_DEVICE_CREDENTIAL_FILE:-/etc/smartsafehub/device-credential.json}"
+DEVICE_BIN="${SMARTSAFEHUB_HEALTH_DEVICE_BIN:-/usr/libexec/smartsafehub-device}"
 DNSMASQ_INIT="${SMARTSAFEHUB_HEALTH_DNSMASQ_INIT:-/etc/init.d/dnsmasq}"
 UCI_BIN="${SMARTSAFEHUB_HEALTH_UCI_BIN:-uci}"
 UBUS_BIN="${SMARTSAFEHUB_HEALTH_UBUS_BIN:-ubus}"
@@ -588,46 +595,28 @@ collect_health() {
 	record_activity_transitions
 }
 
-license_eligible() {
-	local status_file configured plan license_status normalized_plan normalized_status temporary
-	status_file="$SAFESHIELD_STATUS_FILE"
-	temporary=0
-	if [ -z "$status_file" ] || [ ! -f "$status_file" ]; then
-		status_file="$RUNTIME_DIR/health-license.$$.json"
-		temporary=1
-		if ! "$UBUS_BIN" call safeshield status > "$status_file" 2>/dev/null; then
-			rm -f "$status_file"
-			printf '%s\t%s\t%s' '0' '' ''
-			return
-		fi
+entitlement_eligible() {
+	local plan phase result normalized_plan
+	if [ ! -s "$DEVICE_STATE_FILE" ] && [ -x "$DEVICE_BIN" ]; then
+		"$DEVICE_BIN" status-sync >/dev/null 2>&1 || true
 	fi
-	configured="$(json_value "$status_file" '@.license.configured')"
-	plan="$(json_value "$status_file" '@.license.plan')"
-	license_status="$(json_value "$status_file" '@.license.status')"
-	[ "$temporary" -eq 0 ] || rm -f "$status_file"
+	plan="$(json_value "$DEVICE_STATE_FILE" '@.plan')"
+	phase="$(ascii_lower "$(json_value "$DEVICE_STATE_FILE" '@.phase')")"
+	result="$(ascii_lower "$(json_value "$DEVICE_STATE_FILE" '@.lastResult')")"
 	normalized_plan="$(ascii_upper "$plan")"
-	normalized_status="$(ascii_lower "$license_status")"
-
-	if [ "$configured" != 'true' ] && [ "$configured" != '1' ]; then
-		printf '%s\t%s\t%s' '0' "$normalized_plan" "$normalized_status"
-		return
-	fi
-	case "$normalized_status" in
-		trial|trialing)
-			printf '%s\t%s\t%s' '1' "$normalized_plan" "$normalized_status"
-			return
-			;;
-		active)
-			if [ -n "$normalized_plan" ] && [ "$normalized_plan" != 'FREE' ]; then
-				printf '%s\t%s\t%s' '1' "$normalized_plan" "$normalized_status"
+	if [ "$phase" = 'registered' ] && [ "$result" = 'active' ]; then
+		case "$normalized_plan" in
+			PRO|ULTIMATE)
+				printf '%s\t%s\t%s' '1' "$normalized_plan" 'active'
 				return
-			fi
-			;;
-	esac
-	printf '%s\t%s\t%s' '0' "$normalized_plan" "$normalized_status"
+				;;
+		esac
+	fi
+	printf '%s\t%s\t%s' '0' "$normalized_plan" "$result"
 }
+
 write_report_state() {
-	local enabled="$1" eligible="$2" plan="$3" license_status="$4" last_report_at="$5" last_result="$6" last_error="$7" fingerprint="$8"
+	local enabled="$1" eligible="$2" plan="$3" entitlement_status="$4" last_report_at="$5" last_result="$6" last_error="$7" fingerprint="$8"
 	local next_retry_at="${9:-}" tmp next_report interval
 	interval="$(report_interval_s)"
 	case "$last_report_at" in ''|*[!0-9]*) last_report_at=0 ;; esac
@@ -642,7 +631,7 @@ write_report_state() {
 		printf 'enabled\t%s\n' "$enabled"
 		printf 'eligible\t%s\n' "$eligible"
 		printf 'plan\t%s\n' "$(sanitize_code "$plan")"
-		printf 'license_status\t%s\n' "$(sanitize_code "$license_status")"
+		printf 'entitlement_status\t%s\n' "$(sanitize_code "$entitlement_status")"
 		printf 'last_report_at\t%s\n' "$last_report_at"
 		printf 'next_report_at\t%s\n' "$next_report"
 		printf 'next_retry_at\t%s\n' "$next_retry_at"
@@ -654,13 +643,13 @@ write_report_state() {
 }
 
 sync_reporter_state() {
-	local eligibility eligible plan license_status enabled last_at last_result last_error fingerprint next_retry_at
+	local eligibility eligible plan entitlement_status enabled last_at last_result last_error fingerprint next_retry_at
 	enabled=0
 	reporter_enabled && enabled=1
-	eligibility="$(license_eligible)"
+	eligibility="$(entitlement_eligible)"
 	eligible="$(printf '%s' "$eligibility" | cut -f1)"
 	plan="$(printf '%s' "$eligibility" | cut -f2)"
-	license_status="$(printf '%s' "$eligibility" | cut -f3)"
+	entitlement_status="$(printf '%s' "$eligibility" | cut -f3)"
 	last_at="$(state_value "$REPORT_STATE_FILE" last_report_at)"
 	last_result="$(state_value "$REPORT_STATE_FILE" last_result)"
 	last_error="$(state_value "$REPORT_STATE_FILE" last_error_code)"
@@ -681,24 +670,16 @@ sync_reporter_state() {
 		last_error=''
 		next_retry_at=0
 	fi
-	write_report_state "$enabled" "$eligible" "$plan" "$license_status" "$last_at" "$last_result" "$last_error" "$fingerprint" "$next_retry_at"
+	write_report_state "$enabled" "$eligible" "$plan" "$entitlement_status" "$last_at" "$last_result" "$last_error" "$fingerprint" "$next_retry_at"
 }
 
-read_license_key() {
-	local file key
-	file="$RUNTIME_DIR/health-license-key.$$.json"
-	if ! "$UBUS_BIN" call safeshield license_get > "$file" 2>/dev/null; then
-		rm -f "$file"
-		return 1
-	fi
-	# SafeShield license_get returns the sensitive value under .license.key.
-	# Keep the old top-level key only as a compatibility fallback for older
-	# development builds; current packages must use the nested contract.
-	key="$(json_value "$file" '@.license.key')"
-	[ -n "$key" ] || key="$(json_value "$file" '@.key')"
-	rm -f "$file"
-	[ -n "$key" ] || return 1
-	printf '%s' "$key"
+read_device_credential() {
+	local token
+	token="$(json_value "$DEVICE_CREDENTIAL_FILE" '@.token')"
+	case "$token" in
+		ssh_dev_*) printf '%s' "$token" ;;
+		*) return 1 ;;
+	esac
 }
 
 build_report_payload() {
@@ -714,28 +695,28 @@ EOF_REPORT
 }
 
 maybe_report() {
-	local eligibility eligible plan license_status enabled now last_at last_fingerprint next_retry_at interval due key base
+	local eligibility eligible plan entitlement_status enabled now last_at last_fingerprint next_retry_at interval due credential base
 	enabled=0
 	reporter_enabled && enabled=1
-	eligibility="$(license_eligible)"
+	eligibility="$(entitlement_eligible)"
 	eligible="$(printf '%s' "$eligibility" | cut -f1)"
 	plan="$(printf '%s' "$eligibility" | cut -f2)"
-	license_status="$(printf '%s' "$eligibility" | cut -f3)"
+	entitlement_status="$(printf '%s' "$eligibility" | cut -f3)"
 	now="$("$DATE_BIN" +%s 2>/dev/null || printf '0')"
 	last_at="$(state_value "$REPORT_STATE_FILE" last_report_at)"
 	last_fingerprint="$(state_value "$REPORT_STATE_FILE" fingerprint)"
 	case "$last_at" in ''|*[!0-9]*) last_at=0 ;; esac
 
 	if [ "$enabled" -ne 1 ]; then
-		write_report_state 0 "$eligible" "$plan" "$license_status" "$last_at" disabled '' "$last_fingerprint" 0
+		write_report_state 0 "$eligible" "$plan" "$entitlement_status" "$last_at" disabled '' "$last_fingerprint" 0
 		return 0
 	fi
 	if [ "$eligible" != '1' ]; then
-		write_report_state 1 0 "$plan" "$license_status" "$last_at" ineligible 'HEALTH_REPORTER_NOT_ELIGIBLE' "$last_fingerprint" 0
+		write_report_state 1 0 "$plan" "$entitlement_status" "$last_at" ineligible 'HEALTH_REPORTER_NOT_ELIGIBLE' "$last_fingerprint" 0
 		return 0
 	fi
 	if [ "$SAFESHIELD_INITIALIZING" -eq 1 ]; then
-		write_report_state 1 1 "$plan" "$license_status" "$last_at" initializing '' "$last_fingerprint" 0
+		write_report_state 1 1 "$plan" "$entitlement_status" "$last_at" initializing '' "$last_fingerprint" 0
 		return 0
 	fi
 
@@ -751,13 +732,13 @@ maybe_report() {
 	[ "$ISSUE_FINGERPRINT" != "$last_fingerprint" ] && due=1
 	[ "$now" -ge $((last_at + interval)) ] && due=1
 	if [ "$due" -ne 1 ]; then
-		write_report_state 1 1 "$plan" "$license_status" "$last_at" idle '' "$last_fingerprint"
+		write_report_state 1 1 "$plan" "$entitlement_status" "$last_at" idle '' "$last_fingerprint"
 		return 0
 	fi
 
-	key="$(read_license_key 2>/dev/null || true)"
-	if [ -z "$key" ]; then
-		write_report_state 1 1 "$plan" "$license_status" "$last_at" failed 'HEALTH_REPORTER_LICENSE_UNAVAILABLE' "$last_fingerprint" $((now + REPORT_RETRY_S))
+	credential="$(read_device_credential 2>/dev/null || true)"
+	if [ -z "$credential" ]; then
+		write_report_state 1 1 "$plan" "$entitlement_status" "$last_at" failed 'HEALTH_REPORTER_DEVICE_UNAVAILABLE' "$last_fingerprint" $((now + REPORT_RETRY_S))
 		return 1
 	fi
 	build_report_payload
@@ -766,29 +747,29 @@ maybe_report() {
 		--method=POST \
 		--body-file="$REPORT_PAYLOAD_FILE" \
 		--header='Content-Type: application/json' \
-		--header="X-SafeShield-License-Key: $key" \
+		--header="Authorization: Device $credential" \
 		-O /dev/null \
 		"$base/health/reports"; then
-		write_report_state 1 1 "$plan" "$license_status" "$now" reported '' "$ISSUE_FINGERPRINT" 0
+		write_report_state 1 1 "$plan" "$entitlement_status" "$now" reported '' "$ISSUE_FINGERPRINT" 0
 		return 0
 	fi
 
-	write_report_state 1 1 "$plan" "$license_status" "$last_at" failed 'HEALTH_REPORTER_UPLOAD_FAILED' "$last_fingerprint" $((now + REPORT_RETRY_S))
+	write_report_state 1 1 "$plan" "$entitlement_status" "$last_at" failed 'HEALTH_REPORTER_UPLOAD_FAILED' "$last_fingerprint" $((now + REPORT_RETRY_S))
 	log_message 'HEALTH_REPORTER_UPLOAD_FAILED: 원격 상태 보고를 전송하지 못했습니다.'
 	return 1
 }
 
 set_reporter() {
-	local requested="$1" eligibility eligible plan license_status
+	local requested="$1" eligibility eligible plan entitlement_status
 	case "$requested" in 0|1) ;; *) return 2 ;; esac
 	if [ "$requested" = '1' ]; then
 		collect_health || return 1
-		eligibility="$(license_eligible)"
+		eligibility="$(entitlement_eligible)"
 		eligible="$(printf '%s' "$eligibility" | cut -f1)"
 		plan="$(printf '%s' "$eligibility" | cut -f2)"
-		license_status="$(printf '%s' "$eligibility" | cut -f3)"
+		entitlement_status="$(printf '%s' "$eligibility" | cut -f3)"
 		if [ "$eligible" != '1' ]; then
-			write_report_state 0 0 "$plan" "$license_status" "$(state_value "$REPORT_STATE_FILE" last_report_at)" ineligible 'HEALTH_REPORTER_NOT_ELIGIBLE' "$(state_value "$REPORT_STATE_FILE" fingerprint)" 0
+			write_report_state 0 0 "$plan" "$entitlement_status" "$(state_value "$REPORT_STATE_FILE" last_report_at)" ineligible 'HEALTH_REPORTER_NOT_ELIGIBLE' "$(state_value "$REPORT_STATE_FILE" fingerprint)" 0
 			return 3
 		fi
 	fi
@@ -822,7 +803,7 @@ run_daemon() {
 		now="$("$DATE_BIN" +%s 2>/dev/null || printf '0')"
 		interval="$(check_interval_s)"
 		if [ "$last_check" -eq 0 ] || [ "$now" -ge $((last_check + interval)) ]; then
-			run_cycle || true
+			ssh_runtime_execute run-cycle run_cycle || true
 			if [ "$SAFESHIELD_INITIALIZING" -eq 1 ]; then
 				# During boot, recheck on the short daemon tick instead of leaving the
 				# UI in a transient state for the full regular health interval.
@@ -839,11 +820,14 @@ run_daemon() {
 
 mkdir -p "$RUNTIME_DIR" || exit 1
 
+if [ "${1:-}" != set-reporter ]; then ssh_runtime_debug_arg "${1:-}" "${2:-}" || { echo "invalid argument" >&2; exit 2; }; fi
 case "${1:-}" in
-	run-once) run_once ;;
-	run-cycle) run_cycle ;;
+	run-once) ssh_runtime_execute run-once run_once ;;
+	run-cycle) ssh_runtime_execute run-cycle run_cycle ;;
 	set-reporter) set_reporter "${2:-}" ;;
 	daemon) run_daemon ;;
+	runtime-status) ssh_runtime_status ;;
+	status) ssh_runtime_status ;;
 	*)
 		echo "usage: $0 {run-once|run-cycle|set-reporter 0|1|daemon}" >&2
 		exit 2

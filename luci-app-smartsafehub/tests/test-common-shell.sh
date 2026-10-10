@@ -32,7 +32,7 @@ for file in \
 	root/usr/libexec/smartsafehub-updater \
 	root/usr/libexec/smartsafehub-firmware \
 	root/usr/libexec/smartsafehub-health \
-	root/usr/libexec/smartsafehub-license \
+	root/usr/libexec/smartsafehub-device \
 	root/usr/libexec/smartsafehub-activity-sync; do
 	path="$ROOT_DIR/$file"
 	grep -Fq '../lib/smartsafehub/common.sh' "$path" || fail "$file 이 공통 shell library를 사용해야 합니다."

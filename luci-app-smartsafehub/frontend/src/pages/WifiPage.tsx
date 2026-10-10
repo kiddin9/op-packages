@@ -1,11 +1,14 @@
-import type { JSX } from 'preact';
+import type { TargetedSubmitEvent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 
 import { CustomSelect } from '../components/CustomSelect';
-import { AlertIcon, CheckCircleIcon, RouterIcon } from '../components/Icons';
+import { GuestWifiCard } from '../components/GuestWifiCard';
+import { WifiQrDialog } from '../components/WifiQrDialog';
+import { AlertIcon, CheckCircleIcon, QrCodeIcon, RouterIcon } from '../components/Icons';
 import { ErrorPanel, LoadingPanel } from '../components/StatePanels';
 import type { WifiFeedback } from '../hooks/useWifi';
 import type {
+  GuestWifiUpdateInput,
   WifiNetworkSummary,
   WifiSecurityChoice,
   WifiSummary,
@@ -21,6 +24,7 @@ interface WifiPageProps {
   onDismissFeedback: () => void;
   onRetry: () => void;
   onUpdate: (input: WifiUpdateInput) => Promise<boolean>;
+  onUpdateGuest: (input: GuestWifiUpdateInput) => Promise<boolean>;
 }
 
 const SECURITY_OPTIONS: ReadonlyArray<{
@@ -72,6 +76,7 @@ function WifiNetworkCard({
     network.security === 'custom' ? 'keep' : network.security,
   );
   const [password, setPassword] = useState('');
+  const [showQr, setShowQr] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -93,6 +98,12 @@ function WifiNetworkCard({
     enabled !== network.enabled ||
     security !== savedSecurity ||
     password.length > 0;
+  const qrDisabled =
+    busy ||
+    settingsDirty ||
+    network.security === 'custom' ||
+    !network.enabled ||
+    (network.security !== 'none' && !network.passwordConfigured);
   const securityOptions = [
     ...(network.security === 'custom'
       ? [
@@ -106,7 +117,7 @@ function WifiNetworkCard({
   ];
 
   const submit = async (
-    event: JSX.TargetedSubmitEvent<HTMLFormElement>,
+    event: TargetedSubmitEvent<HTMLFormElement>,
   ) => {
     event.preventDefault();
     const normalizedSsid = ssid.trim();
@@ -186,6 +197,16 @@ function WifiNetworkCard({
               저장되지 않음
             </span>
           ) : null}
+          <button
+            aria-label={`${network.bandLabel} Wi-Fi QR 코드 보기`}
+            class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm font-extrabold text-slate-800 shadow-sm transition hover:border-teal-300 hover:text-teal-700 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={qrDisabled}
+            onClick={() => setShowQr(true)}
+            type="button"
+          >
+            <QrCodeIcon class="size-4 shrink-0" />
+            QR 코드 보기
+          </button>
           <span
             class={`inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-xs font-extrabold ring-1 ring-inset ${
               network.runtimeUp
@@ -255,7 +276,7 @@ function WifiNetworkCard({
             value={password}
           />
           <span class="mt-2 block text-xs text-slate-500">
-            저장된 비밀번호는 화면이나 API로 다시 노출하지 않습니다.
+            저장된 비밀번호는 일반 설정 조회에 노출되지 않습니다. QR 코드에는 비밀번호가 포함됩니다.
           </span>
         </label>
       </div>
@@ -272,7 +293,7 @@ function WifiNetworkCard({
           이 Wi-Fi 사용
         </label>
         <button
-          class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-700 px-5 sm:w-auto py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 disabled:cursor-wait disabled:opacity-60"
+          class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
           disabled={busy || !settingsDirty}
           type="submit"
         >
@@ -281,6 +302,7 @@ function WifiNetworkCard({
         </button>
       </div>
 
+      {showQr ? <WifiQrDialog section={network.section} onClose={() => setShowQr(false)} /> : null}
       {validationError ? (
         <p class="mt-4 mb-0 rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
           {validationError}
@@ -330,6 +352,7 @@ export function WifiPage({
   onDismissFeedback,
   onRetry,
   onUpdate,
+  onUpdateGuest,
 }: WifiPageProps) {
   if (loading) {
     return <LoadingPanel />;
@@ -358,7 +381,7 @@ export function WifiPage({
         </h2>
         <p class="mt-2 mb-0 text-sm leading-6 text-amber-900/80">
           변경한 Wi-Fi 이름과 비밀번호로 다시 연결하면 SmartSafeHub를 계속 사용할 수
-          있습니다. VLAN, 게스트 네트워크와 고급 무선 옵션은 기존 LuCI에서 관리합니다.
+          있습니다. VLAN 등 고급 무선 옵션은 기존 LuCI에서 관리합니다.
         </p>
       </section>
 
@@ -383,6 +406,23 @@ export function WifiPage({
           <p class="mt-2 mb-0 text-sm leading-6 text-slate-600">
             기존 LuCI에서 AP 모드의 무선 네트워크를 먼저 구성해 주세요.
           </p>
+        </section>
+      )}
+      {data.guest && (
+        <>
+          <div role="separator" aria-label="기본 Wi-Fi와 게스트 Wi-Fi 구분" class="mt-5 w-full border-t border-slate-200" />
+          <GuestWifiCard
+            guest={data.guest}
+            busy={updatingSection !== null}
+            saving={updatingSection === 'ssh_guest'}
+            onUpdate={onUpdateGuest}
+          />
+        </>
+      )}
+      {data.guestError && (
+        <section class="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900" role="status">
+          게스트 Wi-Fi 정보를 불러오지 못했습니다. 패키지를 설치한 직후라면 로그아웃 후 다시 로그인해 주세요.
+          <button class="ml-3 underline font-bold" onClick={onRetry} type="button">다시 시도</button>
         </section>
       )}
     </>

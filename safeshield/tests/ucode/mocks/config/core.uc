@@ -5,7 +5,6 @@ let values = {
     debug: '0',
     download_retry: '3',
     statistics_enabled: '1',
-    license_key: 'abcd1234wxyz',
     device_vendor: 'Junatum',
     device_model: 'Test Router',
     device_arch: 'aarch64',
@@ -33,12 +32,6 @@ function to_int(v, def) {
     return type(n) == 'int' ? n : def;
 }
 
-function mask_secret(v) {
-    let s = sprintf('%s', v || '');
-    if (!length(s)) return '';
-    if (length(s) <= 8) return '********';
-    return sprintf('%s...%s', substr(s, 0, 4), substr(s, length(s) - 4));
-}
 
 function api_error(code, message, field) {
     let error = { code: code, message: message };
@@ -71,7 +64,6 @@ return {
     cfg: function(name, def) { return values[name] == null ? def : values[name]; },
     to_bool: to_bool,
     to_int: to_int,
-    mask_secret: mask_secret,
     api_error: api_error,
     uci_commit_option: uci_commit_option,
     bool_uci: function(v) { return v ? '1' : '0'; }

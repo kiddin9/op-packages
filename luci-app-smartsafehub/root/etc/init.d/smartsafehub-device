@@ -1,0 +1,15 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-3.0-or-later
+USE_PROCD=1
+START=97
+STOP=8
+PROG=/usr/libexec/smartsafehub-device
+start_service() {
+	mkdir -p /tmp/smartsafehub
+	"$PROG" prepare-credential >/dev/null 2>&1 || logger -t smartsafehub-device -- 'failed to prepare device credential during service start'
+	procd_open_instance
+	procd_set_param command "$PROG" daemon
+	procd_set_param respawn 3600 5 5
+	procd_set_param term_timeout 15
+	procd_close_instance
+}

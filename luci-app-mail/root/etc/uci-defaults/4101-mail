@@ -10,7 +10,7 @@ EEOF
 uci -q batch <<-EOF >/dev/null
 	delete ucitrack.@mail[-1]
 	add ucitrack mail
-	set ucitrack.@mail[-1].init=mail
+	set ucitrack.@mail[-1].init=msmtp
 	commit ucitrack
 EOF
 exit 0

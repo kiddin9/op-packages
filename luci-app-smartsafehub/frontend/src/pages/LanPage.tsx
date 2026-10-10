@@ -1,4 +1,4 @@
-import type { JSX } from 'preact';
+import type { TargetedSubmitEvent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 
 import { CustomSelect } from '../components/CustomSelect';
@@ -384,7 +384,7 @@ export function LanPage({
 
   const busy = action !== null;
 
-  const submit = async (event: JSX.TargetedSubmitEvent<HTMLFormElement>) => {
+  const submit = async (event: TargetedSubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!isIpv4(ipAddress)) {

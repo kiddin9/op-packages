@@ -10,8 +10,8 @@ FIRMWARE_HELPER="$ROOT_DIR/root/usr/libexec/smartsafehub-firmware"
 BACKUP_MODULE="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/backup.uc"
 BACKUP_HELPER="$ROOT_DIR/root/usr/libexec/smartsafehub-backup"
 SECURITY_MODULE="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/security.uc"
-LICENSE_MODULE="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/license.uc"
-LICENSE_HELPER="$ROOT_DIR/root/usr/libexec/smartsafehub-license"
+DEVICE_MODULE="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/device-registration.uc"
+DEVICE_HELPER="$ROOT_DIR/root/usr/libexec/smartsafehub-device"
 LAN_RPC_ENTRY="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub-network.uc"
 LAN_MODULE="$ROOT_DIR/root/usr/share/rpcd/ucode/smartsafehub/network-management.uc"
 UPDATER="$ROOT_DIR/root/usr/libexec/smartsafehub-updater"
@@ -51,7 +51,7 @@ for method in system_root_password_status system_root_password_set system_root_p
 	system_time_settings system_timezone_initialize system_timezone_update system_time_sync \
 	system_scheduled_reboot_settings system_scheduled_reboot_update \
 	health_status health_run health_reporter_update \
-	license_status license_activate \
+	device_registration_status device_pairing_refresh \
 	system_backup_validate system_backup_restore system_backup_discard; do
 	assert_rpc_method "$method"
 done
@@ -105,8 +105,8 @@ assert_acl_method write system_scheduled_reboot_update
 assert_acl_method read health_status
 assert_acl_method write health_run
 assert_acl_method write health_reporter_update
-assert_acl_method read license_status
-assert_acl_method write license_activate
+assert_acl_method read device_registration_status
+assert_acl_method write device_pairing_refresh
 for method in system_backup_validate system_backup_restore system_backup_discard; do
 	assert_acl_method write "$method"
 done
@@ -196,25 +196,16 @@ grep -Fq "'SYSTEM_ROOT_PASSWORD_CURRENT_INVALID'" "$SECURITY_MODULE" || \
 grep -Fq "'SYSTEM_ROOT_PASSWORD_REQUIRED'" "$RPC_ENTRY" || \
 	fail 'normal SmartSafeHub RPC methods must enforce the root password setup gate'
 
-grep -Fq "const LICENSE_HELPER = '/usr/libexec/smartsafehub-license';" "$LICENSE_MODULE" || \
-	fail 'license RPC must delegate Hub activation to the dedicated helper'
-if grep -Fq "safe_call('safeshield', 'status'" "$LICENSE_MODULE"; then
-	fail 'license activation RPC must not synchronously call SafeShield inside rpcd'
-fi
-grep -Fq 'write_private_request(license_key)' "$LICENSE_MODULE" || \
-	fail 'license activation RPC must persist only the key to the private helper request'
-grep -Fq 'build_activation_body()' "$LICENSE_HELPER" || \
-	fail 'license helper must build the Hub activate device payload outside rpcd'
-grep -Fq "'@.device.physical_fingerprint'" "$LICENSE_HELPER" || \
-	fail 'license helper must reuse SafeShield authoritative physical fingerprint'
-grep -Fq "LICENSE_HELPER + ' activate --request-file" "$LICENSE_MODULE" || \
-	fail 'license activation RPC must launch the helper with a request file instead of a key argument'
-grep -Fq 'activation_in_progress && return 0' "$LICENSE_HELPER" || \
-	fail 'periodic license status sync must not race an explicit activation'
-grep -Fq 'const ACTIVATION_STALE_S = 60;' "$LICENSE_MODULE" || \
-	fail 'license RPC must recover abandoned activation locks after a bounded interval'
-grep -Fq 'LICENSE_LOCAL_READ_FAILED' "$LICENSE_HELPER" || \
-	fail 'SafeShield license read failures must be distinguishable from an unconfigured license'
+grep -Fq "const HELPER = '/usr/libexec/smartsafehub-device';" "$DEVICE_MODULE" || \
+	fail 'device registration RPC must delegate pairing refresh to the dedicated helper'
+grep -Fq 'devices/sync' "$DEVICE_HELPER" || \
+	fail 'device helper must use the generic device sync endpoint'
+grep -Fq '/etc/smartsafehub/device-credential.json' "$DEVICE_HELPER" || \
+	fail 'device helper must persist the generic SmartSafeHub device credential'
+grep -Fq 'devices/credentials/rotate' "$DEVICE_HELPER" || \
+	fail 'device helper must rotate long-lived credentials through the generic device API'
+grep -Fq 'devices/pairing-sessions' "$DEVICE_HELPER" || \
+	fail 'device helper must refresh account pairing codes through the generic device API'
 
 grep -Fq "const BACKUP_HELPER = '/usr/libexec/smartsafehub-backup';" "$BACKUP_MODULE" || \
 	fail 'configuration restore RPC must delegate privileged work to the dedicated backup helper'

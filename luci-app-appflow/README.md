@@ -18,7 +18,7 @@ One file, every device. The package is `noarch` — only JavaScript and ucode
 inside — and the same `.apk` is verified installing on both aarch64 and
 arm_cortex-a15 hardware.
 
-    wget https://github.com/VolanticSystems/luci-app-appflow/releases/download/v1.1.2/luci-app-appflow-1.1.2-r1.apk
+    wget -O luci-app-appflow-1.1.2-r1.apk https://github.com/VolanticSystems/luci-app-appflow/releases/download/v1.1.2/luci-app-appflow-1.1.2-r1.apk
     apk add --allow-untrusted ./luci-app-appflow-1.1.2-r1.apk
     /etc/init.d/appflowd enable && /etc/init.d/appflowd start
 

@@ -64,6 +64,9 @@ ss_case_dead_code_contract() (
 	! grep -Eq '^ss_detect_primary_mac\\(\\)[[:space:]]*\\{' "$BLOCKLIST"
 	! grep -F 'ss_debug=' "$CONFIG"
 	! grep -F '/lib/functions/network.sh' "$INIT"
+	! grep -F 'ss_license_key' "$CONFIG"
+	! grep -F 'license_key:' "$INIT"
+	! grep -Eq '^ss_mask_secret\(\)[[:space:]]*\{' "$UTILS"
 
 	# Keep the replacement/runtime contracts that made the retired helpers obsolete.
 	ss_spec_assert_file_contains "$BLOCKLIST" 'ss_identity_ensure "$model" "$arch"'

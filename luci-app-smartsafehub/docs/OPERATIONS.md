@@ -88,57 +88,34 @@ safeshield.refresh
 safeshield.rules_list
 safeshield.rule_add
 safeshield.rule_delete
-safeshield.license_get
-safeshield.license_update
 ```
 
-`license_get`은 평문 라이선스 키를 반환하므로 브라우저의 일반 상태 조회에는 사용하지 않습니다. 사용자가 현재 키를 명시적으로 불러올 때 호출하며 LuCI ACL에서도 일반 read 권한과 분리합니다. 로컬 Health 진단, 진단 다운로드와 주기적 UI polling은 `safeshield.status`의 마스킹된 라이선스 정보만 사용합니다. 예외적으로 opt-in된 유료/Trial Health Reporter daemon은 실제 HTTPS 보고 직전에 서버 인증 헤더를 만들기 위해 평문 키를 일시적으로 조회하며, 키를 런타임 상태 파일이나 보고 payload에 기록하지 않습니다.
+### SmartSafeHub entitlement lifecycle
 
-SafeShield `license_get`의 현재 응답 계약은 `{ "license": { "configured": true, "key": "..." } }` 형태이며 Health Reporter와 라이선스 상태 동기화 daemon은 필요한 순간에만 `license.key`를 메모리에서 읽습니다. 이전 개발 빌드의 최상위 `key` 응답은 Health Reporter 호환 fallback으로만 허용합니다.
-
-### SmartSafeHub 라이선스 lifecycle
-
-Hub 계정과 장치의 라이선스 연결 lifecycle은 SafeShield 엔진이 아니라 SmartSafeHub 관리 계층이 소유합니다. SafeShield는 계속해서 실제 키 저장소와 장치 identity의 authoritative source 역할만 담당합니다.
+Hub 계정 연결과 플랜 권한은 SafeShield 라이선스 키가 아니라 SmartSafeHub Device credential을 기준으로 동기화합니다. Device credential은 `/etc/smartsafehub/device-credential.json`에 저장하고, 계정/플랜의 마지막 확인 상태는 `/tmp/smartsafehub/device.json`에서 확인합니다.
 
 ```text
-사용자가 라이선스 등록/변경
-  → smartsafehub.license_activate
-  → mode 0600 private request에 키만 기록
-  → detached /usr/libexec/smartsafehub-license activate 시작 후 RPC 즉시 반환
-  → helper가 safeshield.status에서 authoritative device identity 조회
-  → POST /api/v1/licenses/activate
-  → 성공한 경우에만 safeshield.license_update
+공유기 부팅 또는 주기 동기화
+  → smartsafehub-device status-sync
+  → Authorization: Device <credential>
+  → POST /api/v1/devices/sync
+      ├─ account.connected=true
+      │    ├─ 현재 entitlement plan/status 저장
+      │    └─ Activity 등 Cloud runtime credential 갱신
+      └─ account.connected=false
+           ├─ 로컬 계정 연결 상태 해제
+           ├─ Cloud runtime credential 정리
+           └─ SafeShield 보호 정보 재동기화
 
-smartsafehub-license daemon
-  → 기본 300초 주기
-  → safeshield.license_get으로 현재 키를 일시 조회
-  → safeshield.status에서 physical_fingerprint 조회
-  → POST /api/v1/licenses/status
-      ├─ device_action=none: 로컬 상태 유지
-      │    └─ Cloud 활동 ON일 때만 activity_history credential을 /tmp runtime cache에 저장
-      ├─ device_action=clear_license: safeshield.license_update { license_key: "" } + activity credential 제거
-      └─ 네트워크/API 실패: 오류만 기록하고 로컬 키/유효한 기존 credential 유지
-
-smartsafehub-activity-sync
-  ├─ Cloud 활동 OFF: outbox/wake/credential 정리 후 네트워크 작업 없이 disabled 유지
-  └─ Cloud 활동 ON
-       → 유효한 cached activity credential 사용
-       → credential 없음/만료 임박: smartsafehub-license status-sync 요청
-       → POST /api/v1/activity/events
-       → 성공한 snapshot event_id만 ack
+SafeShield refresh
+  → 같은 Device credential로 /api/v1/devices/sync
+  → entitlement.plan/status와 artifact 정보 수신
+  → safeshield.status.entitlement에 현재 권한 표시
 ```
 
-`smartsafehub-license`는 `daemon`, `activate`, `status-sync`, `status` 명령을 독립 subcommand로 제공합니다. `license_activate` RPC 자체는 SafeShield를 동기 호출하지 않으며, 장치 identity와 profile 구성은 detached `activate` subcommand 안에서 수행합니다. 이는 현재는 작은 독립 procd 서비스로 장애 범위와 디버깅 경계를 유지하면서, 향후 주기적인 Hub 동기화 작업이 늘어나면 명령 경계를 그대로 `smartsafehub-agent license ...` 모듈로 옮길 수 있도록 하기 위한 구조입니다. updater처럼 장시간 설치·재부팅 상태 머신을 가지는 기능은 별도 서비스로 유지하는 것을 전제로 합니다.
+Hub 연결 실패는 기존 로컬 DNS 보호나 마지막으로 적용된 차단 목록을 제거하지 않습니다. 웹사이트에서 등록 해제가 명시적으로 확인된 경우에만 계정 종속 Cloud 상태를 정리하며, Device credential 자체는 유지해 같은 기기를 다시 연결할 수 있습니다.
 
-daemon의 startup/check 대기는 foreground `sleep`이 아니라 interrupt 가능한 child wait로 처리합니다. SIGTERM/SIGINT를 받으면 대기 중인 sleep child를 깨우고 loop를 종료하므로 5분 상태 확인 주기 중에도 procd stop/restart가 오래 기다리지 않습니다. Hub 요청 자체는 10초 timeout을 사용하고 procd `term_timeout`은 15초로 두어, 요청 중 종료가 들어와도 정상 정리 시간을 확보한 뒤 강제 종료하도록 합니다.
-
-런타임 상태는 `/tmp/smartsafehub/license.json`에 atomic write하며 평문 라이선스 키를 저장하지 않습니다. 명시적 활성화와 주기 `status-sync`가 겹치면 activation single-flight lock이 우선하며, status-sync는 활성화 결과를 덮어쓰지 않고 다음 주기까지 건너뜁니다. SafeShield의 `license_get` 자체가 실패한 경우는 미설정 상태로 오인하지 않고 `LICENSE_LOCAL_READ_FAILED`로 기록합니다.
-
-운영 진단을 위해 상태 파일에는 `lastHttpStatus`, `lastActivationResult`, `lastActivationErrorCode`도 기록합니다. 정상 Hub JSON 응답은 현재 API 계약에 따라 HTTP 200으로 기록하며, `uclient-fetch`가 transport/HTTP 실패로 종료되어 실제 상태 코드를 신뢰할 수 없는 경우 `lastHttpStatus`는 `null`로 기록합니다. `lastActivationResult`와 `lastActivationErrorCode`는 이후의 주기 `status-sync`나 `unconfigured` 전환에서도 유지되어 마지막 명시적 activation 결과를 별도로 추적할 수 있습니다.
-
-### 라이선스 셸 계약 테스트
-
-`tests/test-license.sh`는 activate/status 동기화, stale activation lock 복구, activation 진단 필드 보존과 장기 sleep 중 SIGTERM 정상 종료를 검증합니다. 각 시나리오는 mock 환경을 명시적으로 초기화해 Linux `dash`와 macOS `/bin/sh`처럼 함수 앞 임시 환경 변수의 처리 차이가 있는 환경에서도 이전 실패 주기의 값이 다음 테스트에 누적되지 않도록 합니다.
+Health Reporter는 `smartsafehub-device`가 동기화한 현재 플랜을 기준으로 Pro/Ultimate에서만 활성화됩니다. 서버 보고 인증도 라이선스 키가 아니라 Device credential을 사용합니다.
 
 
 ## SmartSafeHub Reset Policy v1
@@ -187,7 +164,7 @@ logread | grep -Ei 'rpcd|ucode|smartsafehub|safeshield' | tail -200
 
 ### Cloud 활동 기록 재시도 정책
 
-Cloud 활동 기록 전송이 ON이고 Activity API 또는 license status/Cloud upload가 일시적으로 통신할 수 없는 경우 로컬 최근 활동과 Cloud outbox는 유지됩니다. credential 갱신 또는 upload 실패는 15분, 30분, 60분 순으로 backoff하며 이후 60분 상한을 유지합니다. backoff 중 새 이벤트가 발생해도 즉시 네트워크 재시도를 강제하지 않습니다. `smartsafehub-activity-sync sync-once`는 운영자가 배포 직후 즉시 동기화를 확인할 때 사용할 수 있습니다. Cloud 전송이 OFF이면 이 네트워크 재시도 경로 자체를 실행하지 않고 outbox도 만들지 않습니다. 공유기 웹사이트의 로컬 최근 활동은 Cloud 통신/전송 설정과 무관하게 최대 128건을 표시합니다.
+Cloud 활동 기록 전송이 ON이고 Activity API 또는 device sync/Cloud upload가 일시적으로 통신할 수 없는 경우 로컬 최근 활동과 Cloud outbox는 유지됩니다. credential 갱신 또는 upload 실패는 15분, 30분, 60분 순으로 backoff하며 이후 60분 상한을 유지합니다. backoff 중 새 이벤트가 발생해도 즉시 네트워크 재시도를 강제하지 않습니다. `smartsafehub-activity-sync sync-once`는 운영자가 배포 직후 즉시 동기화를 확인할 때 사용할 수 있습니다. Cloud 전송이 OFF이면 이 네트워크 재시도 경로 자체를 실행하지 않고 outbox도 만들지 않습니다. 공유기 웹사이트의 로컬 최근 활동은 Cloud 통신/전송 설정과 무관하게 최대 128건을 표시합니다.
 
 ## 프런트엔드 캐시 문제
 

@@ -22,9 +22,6 @@ assert(core.to_int('42', 7) == 42, 'to_int converts numeric strings');
 assert(core.to_int('', 7) == 7, 'to_int uses default for empty values');
 assert(core.to_int(null, 7) == 7, 'to_int uses default for null');
 
-assert(core.mask_secret('') == '', 'mask_secret keeps empty secrets empty');
-assert(core.mask_secret('short') == '********', 'mask_secret fully masks short secrets');
-assert(core.mask_secret('abcd1234wxyz') == 'abcd...wxyz', 'mask_secret partially masks long secrets');
 
 let error = core.api_error('invalid_value', 'Invalid value', 'field_name');
 assert(error.ok == false, 'api_error marks response as failed');

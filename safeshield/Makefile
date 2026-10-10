@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=safeshield
-PKG_VERSION:=0.3.24
-PKG_RELEASE:=3
+PKG_VERSION:=0.3.25
+PKG_RELEASE:=4
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -73,6 +73,7 @@ define Package/safeshield/install
 	$(INSTALL_CONF) ./files/etc/config/safeshield $(1)/etc/config/safeshield
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_BIN) ./files/etc/uci-defaults/90_safeshield_identity $(1)/etc/uci-defaults/90_safeshield_identity
+	$(INSTALL_BIN) ./files/etc/uci-defaults/91_safeshield_remove_legacy_license $(1)/etc/uci-defaults/91_safeshield_remove_legacy_license
 
 	$(INSTALL_DIR) $(1)/usr/lib/safeshield
 	$(INSTALL_BIN) ./files/usr/lib/safeshield/core.sh $(1)/usr/lib/safeshield/core.sh
@@ -110,6 +111,10 @@ export IPKG_INSTROOT
 PKG_NAME='safeshield'
 export PKG_NAME
 if [ -z "$${IPKG_INSTROOT}" ]; then
+	if [ -x /etc/uci-defaults/91_safeshield_remove_legacy_license ]; then
+		/etc/uci-defaults/91_safeshield_remove_legacy_license >/dev/null 2>&1 || true
+		rm -f /etc/uci-defaults/91_safeshield_remove_legacy_license
+	fi
 	mkdir -p /etc/safeshield
 	if [ -r /usr/lib/safeshield/identity.sh ]; then
 		(

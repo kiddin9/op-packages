@@ -105,7 +105,7 @@ function attach_reporter(document) {
 		enabled: read_reporter_enabled(),
 		eligible: bool_state(reporter.eligible),
 		plan: string_value(reporter.plan, null),
-		licenseStatus: string_value(reporter.license_status, null),
+		entitlementStatus: string_value(reporter.entitlement_status, null),
 		lastReportAt: integer_value(reporter.last_report_at),
 		nextReportAt: integer_value(reporter.next_report_at),
 		lastResult: string_value(reporter.last_result, 'never'),

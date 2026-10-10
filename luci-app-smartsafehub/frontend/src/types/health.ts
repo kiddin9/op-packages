@@ -29,7 +29,7 @@ export interface HealthReporterStatus {
   enabled: boolean;
   eligible: boolean;
   plan: string | null;
-  licenseStatus: string | null;
+  entitlementStatus: string | null;
   lastReportAt: number;
   nextReportAt: number;
   lastResult: string;

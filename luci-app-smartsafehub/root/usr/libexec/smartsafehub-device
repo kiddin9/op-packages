@@ -1,0 +1,309 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -u
+umask 077
+
+COMMON_LIB="${SMARTSAFEHUB_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || exit 1
+. "$COMMON_LIB"
+RUNTIME_LIB="${SMARTSAFEHUB_RUNTIME_LIB:-$(dirname "$0")/../lib/smartsafehub/runtime.sh}"
+[ -r "$RUNTIME_LIB" ] || exit 1
+. "$RUNTIME_LIB"
+ssh_runtime_init "device"
+RUNTIME_DIR="${SMARTSAFEHUB_DEVICE_RUNTIME_DIR:-/tmp/smartsafehub}"
+STATE_FILE="${SMARTSAFEHUB_DEVICE_STATE_FILE:-$RUNTIME_DIR/device.json}"
+CREDENTIAL_FILE="${SMARTSAFEHUB_DEVICE_CREDENTIAL_FILE:-/etc/smartsafehub/device-credential.json}"
+ACTIVITY_CREDENTIAL_FILE="${SMARTSAFEHUB_ACTIVITY_CREDENTIAL_FILE:-$RUNTIME_DIR/activity-sync-credential.json}"
+API_BASE_URL="${SMARTSAFEHUB_DEVICE_API_BASE_URL:-https://www.smartsafehub.com/api/v1}"
+UCLIENT_FETCH_BIN="${SMARTSAFEHUB_DEVICE_UCLIENT_FETCH_BIN:-uclient-fetch}"
+JSONFILTER_BIN="${SMARTSAFEHUB_DEVICE_JSONFILTER_BIN:-jsonfilter}"
+DATE_BIN="${SMARTSAFEHUB_DEVICE_DATE_BIN:-date}"
+SLEEP_BIN="${SMARTSAFEHUB_DEVICE_SLEEP_BIN:-sleep}"
+LOGGER_BIN="${SMARTSAFEHUB_DEVICE_LOGGER_BIN:-logger}"
+HEXDUMP_BIN="${SMARTSAFEHUB_DEVICE_HEXDUMP_BIN:-hexdump}"
+UBUS_BIN="${SMARTSAFEHUB_DEVICE_UBUS_BIN:-ubus}"
+REQUEST_TIMEOUT_S=10
+CHECK_INTERVAL_S=300
+STARTUP_DELAY_S=35
+MAX_RETRY_S=3600
+STOP_REQUESTED=0
+WAIT_PID=''
+
+log_message() { "$LOGGER_BIN" -t smartsafehub-device -- "$*" 2>/dev/null || true; }
+now_epoch() { "$DATE_BIN" +%s 2>/dev/null || printf '0'; }
+json_value() { [ -f "$1" ] && "$JSONFILTER_BIN" -i "$1" -e "$2" 2>/dev/null | head -n 1 || true; }
+json_string_or_null() { [ -n "$1" ] && printf '"%s"' "$(json_escape "$1")" || printf 'null'; }
+request_stop() { STOP_REQUESTED=1; [ -n "$WAIT_PID" ] && kill "$WAIT_PID" 2>/dev/null || true; }
+trap request_stop INT TERM
+
+credential_token() {
+ local token
+ token="$(json_value "$CREDENTIAL_FILE" '@.token')"
+ case "$token" in ssh_dev_*) printf '%s' "$token" ;; *) return 1 ;; esac
+}
+
+credential_device_uuid() {
+ local uuid
+ uuid="$(json_value "$CREDENTIAL_FILE" '@.device_uuid')"
+ case "$uuid" in ''|null) return 1 ;; *) printf '%s' "$uuid" ;; esac
+}
+
+generate_token() {
+ local raw
+ raw="$("$HEXDUMP_BIN" -n 32 -v -e '1/1 "%02x"' /dev/urandom 2>/dev/null)"
+ [ "${#raw}" -eq 64 ] || return 1
+ printf 'ssh_dev_%s' "$raw"
+}
+
+write_credential() {
+ local device_uuid="$1" token="$2" issued_at="$3" tmp dir device_uuid_json
+ dir="${CREDENTIAL_FILE%/*}"; mkdir -p "$dir" || return 1
+ if [ -n "$device_uuid" ]; then
+  device_uuid_json='"'"$(json_escape "$device_uuid")"'"'
+ else
+  device_uuid_json=null
+ fi
+ tmp="${CREDENTIAL_FILE}.tmp.$$"
+ cat > "$tmp" <<EOF
+{"schema":1,"device_uuid":$device_uuid_json,"token":"$(json_escape "$token")","issued_at":$issued_at}
+EOF
+ chmod 600 "$tmp" 2>/dev/null || true
+ mv "$tmp" "$CREDENTIAL_FILE"
+}
+
+ensure_local_credential() {
+ local token issued_at
+ if token="$(credential_token 2>/dev/null)"; then
+  printf '%s' "$token"
+  return 0
+ fi
+ token="$(generate_token)" || return 1
+ issued_at="$(now_epoch)"
+ write_credential '' "$token" "$issued_at" || return 1
+ printf '%s' "$token"
+}
+
+prepare_credential() {
+ if ! ensure_local_credential >/dev/null; then
+  log_message 'failed to prepare device credential'
+  return 1
+ fi
+ return 0
+}
+
+refresh_safeshield_after_entitlement_change() {
+ local out ok
+ out="$RUNTIME_DIR/device-safeshield-refresh.$$.json"
+ rm -f "$out"
+ if ! "$UBUS_BIN" call safeshield refresh '{}' > "$out" 2>/dev/null; then
+  rm -f "$out"
+  return 1
+ fi
+ ok="$(json_value "$out" '@.ok')"
+ rm -f "$out"
+ [ "$ok" != false ] || return 1
+ log_message 'requested SafeShield refresh after SmartSafeHub account or plan change'
+ return 0
+}
+
+write_state() {
+ local phase="$1" result="$2" error="$3" account_registered="$4" plan="$5" pairing_code="$6" pairing_expires_at="$7" next_sync="$8" last_success="$9" protection_refresh_pending="${10:-false}" registered_json refresh_pending_json tmp
+ case "$account_registered" in true|1) registered_json=true ;; false|0) registered_json=false ;; *) registered_json=null ;; esac
+ case "$protection_refresh_pending" in true|1) refresh_pending_json=true ;; *) refresh_pending_json=false ;; esac
+ mkdir -p "$RUNTIME_DIR" || return 1; tmp="${STATE_FILE}.tmp.$$"
+ cat > "$tmp" <<EOF
+{"schema":1,"component":"device","phase":"$(json_escape "$phase")","lastResult":"$(json_escape "$result")","lastErrorCode":$(json_string_or_null "$error"),"accountRegistered":$registered_json,"plan":$(json_string_or_null "$plan"),"pairingCode":$(json_string_or_null "$pairing_code"),"pairingExpiresAt":$(json_string_or_null "$pairing_expires_at"),"protectionRefreshPending":$refresh_pending_json,"nextSyncAt":$next_sync,"lastSuccessAt":$last_success}
+EOF
+ mv "$tmp" "$STATE_FILE"
+}
+
+post_json() {
+ local url="$1" body="$2" out="$3" auth="${4:-}" log="${out}.log" rc
+ rm -f "$out" "$log"
+ if command -v curl >/dev/null 2>&1; then
+  if [ -n "$auth" ]; then
+   curl -fsS --connect-timeout "$REQUEST_TIMEOUT_S" --max-time "$REQUEST_TIMEOUT_S" -H 'Content-Type: application/json' -H 'Accept: application/json' -H "Authorization: Device $auth" --data-binary "@$body" -o "$out" "$url" >/dev/null 2>"$log"
+  else
+   curl -fsS --connect-timeout "$REQUEST_TIMEOUT_S" --max-time "$REQUEST_TIMEOUT_S" -H 'Content-Type: application/json' -H 'Accept: application/json' --data-binary "@$body" -o "$out" "$url" >/dev/null 2>"$log"
+  fi
+  return $?
+ fi
+ if [ -n "$auth" ]; then
+  "$UCLIENT_FETCH_BIN" "$url" -O "$out" --timeout="$REQUEST_TIMEOUT_S" --header='Content-Type: application/json' --header='Accept: application/json' --header="Authorization: Device $auth" --post-file="$body" 2>"$log"
+ else
+  "$UCLIENT_FETCH_BIN" "$url" -O "$out" --timeout="$REQUEST_TIMEOUT_S" --header='Content-Type: application/json' --header='Accept: application/json' --post-file="$body" 2>"$log"
+ fi
+}
+
+read_device_payload() {
+ local out="$1" status fingerprint fpv provider source strength profile installation vendor model arch memory memory_json version code code_source
+ status="$RUNTIME_DIR/device-safeshield.$$.json"
+ "$UBUS_BIN" call safeshield status > "$status" 2>/dev/null || { rm -f "$status"; return 1; }
+ fingerprint="$(json_value "$status" '@.device.physical_fingerprint')"; [ "${#fingerprint}" -eq 64 ] || { rm -f "$status"; return 1; }
+ fpv="$(json_value "$status" '@.device.fingerprint_version')"; case "$fpv" in ''|*[!0-9]*) fpv=1 ;; esac
+ provider="$(json_value "$status" '@.device.identity_provider')"; source="$(json_value "$status" '@.device.identity_source')"; strength="$(json_value "$status" '@.device.identity_strength')"; profile="$(json_value "$status" '@.device.identity_profile')"; installation="$(json_value "$status" '@.device.installation_id')"
+ # SafeShield exposes detected hardware metadata below device.configured. Keep
+ # the former top-level paths as a compatibility fallback for older status
+ # implementations, but never require them for the current schema.
+ vendor="$(json_value "$status" '@.device.configured.vendor')"; [ -n "$vendor" ] || vendor="$(json_value "$status" '@.device.vendor')"
+ model="$(json_value "$status" '@.device.configured.model')"; [ -n "$model" ] || model="$(json_value "$status" '@.device.model')"
+ arch="$(json_value "$status" '@.device.configured.arch')"; [ -n "$arch" ] || arch="$(json_value "$status" '@.device.arch')"
+ memory="$(json_value "$status" '@.device.configured.memory_mb')"; [ -n "$memory" ] || memory="$(json_value "$status" '@.device.memory_mb')"
+ version="$(json_value "$status" '@.version')"; code="$(json_value "$status" '@.device.device_code')"; code_source="$(json_value "$status" '@.device.device_code_source')"
+ case "$memory" in ''|*[!0-9]*|0) memory_json=null ;; *) memory_json="$memory" ;; esac
+ cat > "$out" <<EOF
+{"physical_fingerprint":"$(json_escape "$fingerprint")","fingerprint_version":$fpv,"identity_provider":"$(json_escape "$provider")","identity_source":"$(json_escape "$source")","identity_strength":"$(json_escape "$strength")","identity_profile":"$(json_escape "$profile")","installation_id":$(json_string_or_null "$installation"),"vendor":"$(json_escape "$vendor")","model":"$(json_escape "$model")","arch":"$(json_escape "$arch")","memory_mb":$memory_json,"safeshield_version":"$(json_escape "$version")","device_code":"$(json_escape "$code")","device_code_source":"$(json_escape "$code_source")"}
+EOF
+ rm -f "$status"
+}
+
+bootstrap() {
+ local token device body out now uuid registered next issued_at
+ now="$(now_epoch)"; next=$((now + 60))
+ token="$(ensure_local_credential)" || return 1
+ device="$RUNTIME_DIR/device-bootstrap-device.$$.json"; body="$RUNTIME_DIR/device-bootstrap-request.$$.json"; out="$RUNTIME_DIR/device-bootstrap-response.$$.json"
+ if ! read_device_payload "$device"; then write_state pending failed DEVICE_IDENTITY_UNAVAILABLE unknown '' '' '' "$next" 0; rm -f "$device"; return 1; fi
+ printf '{"credential":"%s","device":' "$(json_escape "$token")" > "$body"; cat "$device" >> "$body"; printf '}\n' >> "$body"
+ if ! post_json "$API_BASE_URL/devices/bootstrap" "$body" "$out"; then write_state pending failed DEVICE_BOOTSTRAP_UNAVAILABLE unknown '' '' '' "$next" 0; rm -f "$device" "$body" "$out"; return 1; fi
+ uuid="$(json_value "$out" '@.device.uuid')"; [ -n "$uuid" ] || { write_state pending failed DEVICE_BOOTSTRAP_INVALID unknown '' '' '' "$next" 0; rm -f "$device" "$body" "$out"; return 1; }
+ issued_at="$(json_value "$CREDENTIAL_FILE" '@.issued_at')"; case "$issued_at" in ''|*[!0-9]*) issued_at="$now" ;; esac
+ write_credential "$uuid" "$token" "$issued_at" || { rm -f "$device" "$body" "$out"; return 1; }
+ registered="$(json_value "$out" '@.device.registered')"
+ write_state registered active '' "$registered" free '' '' $((now + CHECK_INTERVAL_S)) "$now"
+ rm -f "$device" "$body" "$out"
+}
+
+ensure_device_bootstrapped() {
+ credential_device_uuid >/dev/null 2>&1 && return 0
+ bootstrap
+}
+
+store_activity_credential() {
+ local response="$1" token url ttl retention plan now expires tmp
+ token="$(json_value "$response" '@.activity_history.token')"; url="$(json_value "$response" '@.activity_history.upload_url')"; ttl="$(json_value "$response" '@.activity_history.token_expires_in_s')"; retention="$(json_value "$response" '@.activity_history.retention_days')"; plan="$(ascii_lower "$(json_value "$response" '@.entitlement.plan')")"
+ [ -n "$token" ] || { rm -f "$ACTIVITY_CREDENTIAL_FILE"; return 0; }
+ case "$url" in https://*) ;; *) return 1 ;; esac
+ case "$ttl" in ''|*[!0-9]*|0) return 1 ;; esac
+ case "$retention" in ''|*[!0-9]*|0) return 1 ;; esac
+ case "$plan" in free|pro|ultimate) ;; *) return 1 ;; esac
+ now="$(now_epoch)"; expires=$((now + ttl)); tmp="${ACTIVITY_CREDENTIAL_FILE}.tmp.$$"
+ cat > "$tmp" <<EOF
+{"schema":1,"token":"$(json_escape "$token")","upload_url":"$(json_escape "$url")","expires_at":$expires,"retention_days":$retention,"plan":"$(json_escape "$plan")"}
+EOF
+ mv "$tmp" "$ACTIVITY_CREDENTIAL_FILE"
+}
+
+rotate_credential_if_due() {
+ local response="$1" current_token="$2" due body out new_token device_uuid issued tmp
+ due="$(json_value "$response" '@.credential.rotation_due')"; case "$due" in true|1) ;; *) return 0 ;; esac
+ new_token="$(generate_token)" || return 0
+ body="$RUNTIME_DIR/device-rotate-request.$$.json"; out="$RUNTIME_DIR/device-rotate-response.$$.json"; printf '{"credential":"%s"}\n' "$(json_escape "$new_token")" > "$body"
+ post_json "$API_BASE_URL/devices/credentials/rotate" "$body" "$out" "$current_token" || { rm -f "$body" "$out"; return 0; }
+ device_uuid="$(json_value "$CREDENTIAL_FILE" '@.device_uuid')"; issued="$(now_epoch)"; write_credential "$device_uuid" "$new_token" "$issued" || true
+ rm -f "$body" "$out"
+}
+
+status_sync() {
+ local token body out now registered previous_registered previous_plan plan last_success next code expires protection_refresh_pending
+ now="$(now_epoch)"; next=$((now + CHECK_INTERVAL_S))
+ ensure_device_bootstrapped || return 1
+ token="$(credential_token)" || return 1
+ body="$RUNTIME_DIR/device-sync-request.$$.json"; out="$RUNTIME_DIR/device-sync-response.$$.json"; printf '{}\n' > "$body"
+ if ! post_json "$API_BASE_URL/devices/sync" "$body" "$out" "$token"; then last_success="$(json_value "$STATE_FILE" '@.lastSuccessAt')"; case "$last_success" in ''|*[!0-9]*) last_success=0 ;; esac; protection_refresh_pending="$(json_value "$STATE_FILE" '@.protectionRefreshPending')"; write_state registered failed DEVICE_SYNC_UNAVAILABLE unknown '' "$(json_value "$STATE_FILE" '@.pairingCode')" "$(json_value "$STATE_FILE" '@.pairingExpiresAt')" "$next" "$last_success" "$protection_refresh_pending"; rm -f "$body" "$out"; return 1; fi
+ previous_registered="$(json_value "$STATE_FILE" '@.accountRegistered')"
+ previous_plan="$(ascii_lower "$(json_value "$STATE_FILE" '@.plan')")"
+ registered="$(json_value "$out" '@.account.connected')"; [ -n "$registered" ] || registered="$(json_value "$out" '@.device.registered')"
+ plan="$(ascii_lower "$(json_value "$out" '@.entitlement.plan')")"
+ # Never replace a confirmed entitlement with a malformed cloud response.
+ case "$plan" in free|pro|ultimate) ;; *) rm -f "$body" "$out"; return 1 ;; esac
+ code="$(json_value "$STATE_FILE" '@.pairingCode')"
+ expires="$(json_value "$STATE_FILE" '@.pairingExpiresAt')"
+ protection_refresh_pending="$(json_value "$STATE_FILE" '@.protectionRefreshPending')"
+ [ "$protection_refresh_pending" = true ] || protection_refresh_pending=false
+ case "$registered:$previous_registered" in
+  true:false|false:true) protection_refresh_pending=true ;;
+ esac
+ # A license may be assigned or removed without changing account ownership.
+ # Reconcile SafeShield on every actual plan transition, including after a
+ # temporary sync failure left the previously confirmed plan unknown.
+ if [ "$previous_plan" != "$plan" ]; then
+  protection_refresh_pending=true
+ fi
+ if [ "$registered" = true ]; then
+  if [ -n "$code" ]; then
+   protection_refresh_pending=true
+  fi
+  code=''
+  expires=''
+ elif [ "$registered" = false ] && [ "$previous_registered" = true ]; then
+  # A website-side disconnect is authoritative. Drop any stale pairing state;
+  # the user can request a fresh pairing session after this transition.
+  code=''
+  expires=''
+ fi
+ store_activity_credential "$out" || true
+ rotate_credential_if_due "$out" "$token"
+
+ # Persist the authoritative Hub account and plan before requesting a potentially
+ # slow SafeShield refresh. rpcd limits status-sync execution time, so waiting
+ # for protection refresh first can leave stale connected/disconnected state in
+ # the router UI even though Hub already accepted the ownership change.
+ write_state registered active '' "$registered" "$plan" "$code" "$expires" "$next" "$now" "$protection_refresh_pending"
+
+ if [ "$protection_refresh_pending" = true ]; then
+  if refresh_safeshield_after_entitlement_change; then
+   protection_refresh_pending=false
+   write_state registered active '' "$registered" "$plan" "$code" "$expires" "$next" "$now" "$protection_refresh_pending"
+  else
+   log_message 'SafeShield refresh after SmartSafeHub account or plan change will be retried on the next device sync'
+  fi
+ fi
+ rm -f "$body" "$out"
+ return 0
+}
+
+pairing_session() {
+ local token body out code expires registered now plan last_success next protection_refresh_pending
+ now="$(now_epoch)"; next=$((now + CHECK_INTERVAL_S))
+ ensure_device_bootstrapped || return 1
+ token="$(credential_token)" || return 1
+ body="$RUNTIME_DIR/device-pairing-request.$$.json"; out="$RUNTIME_DIR/device-pairing-response.$$.json"; printf '{}\n' > "$body"
+ if ! post_json "$API_BASE_URL/devices/pairing-sessions" "$body" "$out" "$token"; then write_state registered failed DEVICE_PAIRING_SESSION_FAILED unknown '' '' '' "$next" 0; rm -f "$body" "$out"; return 1; fi
+ code="$(json_value "$out" '@.pairing_session.code')"; expires="$(json_value "$out" '@.pairing_session.expires_at')"; registered="$(json_value "$out" '@.device.registered')"; plan="$(json_value "$STATE_FILE" '@.plan')"; last_success="$(json_value "$STATE_FILE" '@.lastSuccessAt')"; case "$last_success" in ''|*[!0-9]*) last_success=0 ;; esac
+ protection_refresh_pending="$(json_value "$STATE_FILE" '@.protectionRefreshPending')"; [ "$protection_refresh_pending" = true ] || protection_refresh_pending=false
+ write_state registered active '' "$registered" "$plan" "$code" "$expires" "$next" "$last_success" "$protection_refresh_pending"; rm -f "$body" "$out"
+}
+
+retry_delay() {
+ local failures="$1" base random random_hex jitter
+ case "$failures" in
+  0) base=60 ;;
+  1) base=300 ;;
+  2) base=900 ;;
+  3) base=1800 ;;
+  *) base="$MAX_RETRY_S" ;;
+ esac
+ if [ "$base" -ge "$MAX_RETRY_S" ]; then
+  random_hex="$("$HEXDUMP_BIN" -n 2 -v -e '1/1 "%02x"' /dev/urandom 2>/dev/null || true)"
+  case "$random_hex" in ''|*[!0-9a-fA-F]*|?????*) random=600 ;; *) random=$((0x$random_hex)) ;; esac
+  case "$random" in ''|*[!0-9]*) random=600 ;; esac
+  jitter=$((random % 1201 - 600))
+  base=$((base + jitter))
+  [ "$base" -ge 60 ] || base=60
+ fi
+ printf '%s\n' "$base"
+}
+wait_for() { local seconds="$1"; [ "$STOP_REQUESTED" -eq 1 ] && return 1; "$SLEEP_BIN" "$seconds" & WAIT_PID=$!; wait "$WAIT_PID" 2>/dev/null || true; WAIT_PID=''; [ "$STOP_REQUESTED" -eq 0 ]; }
+daemon() { local failures=0 delay; mkdir -p "$RUNTIME_DIR"; prepare_credential || true; wait_for "$STARTUP_DELAY_S" || return 0; while [ "$STOP_REQUESTED" -eq 0 ]; do if ssh_runtime_execute status-sync status_sync; then failures=0; delay="$CHECK_INTERVAL_S"; else delay="$(retry_delay "$failures")"; [ "$failures" -lt 4 ] && failures=$((failures + 1)); fi; wait_for "$delay" || break; done; }
+# Existing commands retain their behaviour; runtime-status is read-only.
+ssh_runtime_debug_arg "${1:-daemon}" "${2:-}" || { echo 'invalid argument' >&2; exit 2; }
+case "${1:-daemon}" in
+ prepare-credential) prepare_credential ;;
+ bootstrap) bootstrap ;;
+ status-sync|run-once) ssh_runtime_execute status-sync status_sync ;;
+ pairing-session) pairing_session ;;
+ status) [ -s "$STATE_FILE" ] && cat "$STATE_FILE" || printf '{}\n' ;;
+ runtime-status) ssh_runtime_status ;;
+ daemon) daemon ;;
+ *) echo "usage: $0 {prepare-credential|daemon|bootstrap|status-sync|run-once|pairing-session|status|runtime-status} [--debug]" >&2; exit 2 ;;
+esac

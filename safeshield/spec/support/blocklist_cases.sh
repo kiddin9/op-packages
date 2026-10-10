@@ -150,7 +150,6 @@ ss_case_multi_artifact() (
 	SS_RESOLVED_SOURCES="$SS_TMP_DIR/resolved-sources.tsv"
 	SS_ARTIFACT_CACHE_STATE="$SS_TMP_DIR/artifact-sources.state"
 	SS_MAX_ARTIFACT_SOURCES=16
-	ss_license_key='test-license'
 	ss_download_retry=1
 	ss_download_timeout=10
 	ss_max_blocklist_file_size_kb=1024
@@ -159,11 +158,13 @@ ss_case_multi_artifact() (
 	ss_status_set() { :; }
 	ss_status_add_error() { :; }
 	log_info() { :; }
+	log_warn() { :; }
 	log_error() { :; }
 	log_ok() { :; }
 	command_exists() { command -v "$1" >/dev/null 2>&1; }
 	# shellcheck disable=SC1091
 	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+	ss_device_credential_token() { printf '%s\n' 'test-device-credential'; }
 	ss_write_resolve_payload() { printf '{}\n' >"$1"; }
 	ss_http_post_json() { printf '{}\n' >"$3"; }
 	ss_json_get_file() {
@@ -184,8 +185,8 @@ ss_case_multi_artifact() (
 			'@.artifact.tier') printf '%s\n' 'pro' ;;
 			'@.artifact.version') printf '%s\n' '20260830T120000Z' ;;
 			'@.artifact.unique_domains' | '@.artifact.rules') printf '%s\n' '4' ;;
-			'@.license.plan') printf '%s\n' 'pro' ;;
-			'@.license.status') printf '%s\n' 'active' ;;
+			'@.entitlement.plan') printf '%s\n' 'pro' ;;
+			'@.entitlement.status') printf '%s\n' 'active' ;;
 			'@.device.profile') printf '%s\n' 'test-profile' ;;
 			*) : ;;
 		esac
@@ -277,7 +278,6 @@ ss_case_upgrade_required() (
 	SS_API_RESPONSE="$SS_TMP_DIR/resolve-response.json"
 	SS_RESOLVED_SOURCES="$SS_TMP_DIR/resolved-sources.tsv"
 	SS_ARTIFACT_CACHE_STATE="$SS_TMP_DIR/artifact-sources.state"
-	ss_license_key='test-license'
 	ss_download_retry=3
 	ss_download_timeout=10
 	ss_max_blocklist_file_size_kb=1024
@@ -287,12 +287,14 @@ ss_case_upgrade_required() (
 	ss_status_add_error() { :; }
 	ss_status_add_warning() { :; }
 	log_info() { :; }
+	log_warn() { :; }
 	log_error() { :; }
 	log_ok() { :; }
 	command_exists() { return 1; }
 	sleep() { printf 'sleep\n' >>"$TMP_DIR/sleep"; }
 	# shellcheck disable=SC1091
 	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+	ss_device_credential_token() { printf '%s\n' 'test-device-credential'; }
 	ss_write_resolve_payload() { printf '{}\n' >"$1"; }
 
 	printf '%s\n' 'HTTP error 426' >"$TMP_DIR/uclient.log"

@@ -212,6 +212,33 @@ stderr and continues. Two consequences are handled explicitly:
 
 ## Changelog
 
+### v2.2-r43
+
+**Sortable member columns**
+
+- **Every member column is sortable.** Click a header for ascending, click it
+  again for descending, click another column for ascending on that one. The
+  active column carries ▲/▼. Sorting reads the cached model, never the
+  controller -- the same rule as the filter, so no click costs an SSH
+  round-trip.
+- IP assignment sorts **numerically** (192.168.192.9 &lt; .30 &lt; .100), not
+  lexicographically. Names sort with the browser's `zh` collation, which puts
+  Han characters first in pinyin order and Latin after -- the first harness
+  draft asserted the opposite and the browser caught it; Node's full-ICU
+  agreed with the browser. Members with no name, no address, or no connection
+  always sort last, in both directions.
+- 已授权 / 主动桥接 ascending puts the unchecked first (0 before 1); peer
+  status orders CONTROLLER → ONLINE → OFFLINE; latency fastest-first.
+- The sort survives the filter and the manual Refresh; the per-member
+  read-back still repaints one row in place, so an edit never reflows the
+  table out from under the cursor.
+- Verified in a real browser driving the real view code over deliberately
+  scrambled fixture data: 10/10 assertions -- default id order, IP asc/desc,
+  name asc/desc, status, latency, bridge, authorized, and filter+sort
+  interplay. Two of the first failures were the harness's own wrong
+  expectations (zh collation order and stable-sort order); the code was
+  right, the expectations were corrected.
+
 ### v2.2-r42
 
 **Simplified Chinese, end to end**

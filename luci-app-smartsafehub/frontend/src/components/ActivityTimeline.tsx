@@ -64,7 +64,7 @@ function versionTransition(event: ActivityEvent): string | null {
   return null;
 }
 
-function licensePlan(value: string | null): string | null {
+function planLabel(value: string | null): string | null {
   if (!value) {
     return null;
   }
@@ -291,35 +291,35 @@ export function activityPresentation(event: ActivityEvent): ActivityPresentation
       };
 
     case 'license.activated': {
-      const plan = licensePlan(metadataString(event, 'to_plan'));
+      const plan = planLabel(metadataString(event, 'to_plan'));
       return {
-        title: '라이선스 활성화',
-        description: plan ? `${plan} 라이선스가 활성화되었습니다.` : '라이선스가 활성화되었습니다.',
+        title: '요금제 활성화',
+        description: plan ? `${plan} 요금제가 활성화되었습니다.` : '요금제가 활성화되었습니다.',
       };
     }
 
     case 'license.changed': {
-      const fromPlan = licensePlan(metadataString(event, 'from_plan'));
-      const toPlan = licensePlan(metadataString(event, 'to_plan'));
+      const fromPlan = planLabel(metadataString(event, 'from_plan'));
+      const toPlan = planLabel(metadataString(event, 'to_plan'));
       return {
-        title: '라이선스 변경',
+        title: '요금제 변경',
         description:
           fromPlan && toPlan
             ? `${fromPlan} → ${toPlan}`
             : toPlan
-              ? `${toPlan} 라이선스로 변경되었습니다.`
-              : '라이선스 상태가 변경되었습니다.',
+              ? `${toPlan} 요금제로 변경되었습니다.`
+              : '요금제 상태가 변경되었습니다.',
       };
     }
 
     case 'license.cleared': {
       const reason = metadataString(event, 'reason');
       return {
-        title: '라이선스 연결 해제',
+        title: '계정 권한 해제',
         description:
           reason === 'manual'
-            ? '이 공유기에서 라이선스 연결을 해제했습니다.'
-            : '서버의 라이선스 상태가 반영되어 이 공유기의 라이선스 연결이 해제되었습니다.',
+            ? '이 공유기에서 계정 권한 연결을 해제했습니다.'
+            : '서버의 계정 권한 상태가 반영되어 이 공유기의 권한 연결이 해제되었습니다.',
       };
     }
 

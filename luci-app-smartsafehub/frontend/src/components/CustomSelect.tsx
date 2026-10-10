@@ -1,5 +1,5 @@
 import { createPortal } from 'preact/compat';
-import type { JSX } from 'preact';
+import type { CSSProperties } from 'preact';
 import { useEffect, useId, useMemo, useRef, useState } from 'preact/hooks';
 
 import { ChevronDownIcon } from './Icons';
@@ -93,7 +93,7 @@ export function CustomSelect({
   );
   const [placement, setPlacement] = useState<MenuPlacement>('bottom');
   const [menuMaxHeight, setMenuMaxHeight] = useState(MENU_MAX_HEIGHT);
-  const [menuStyle, setMenuStyle] = useState<JSX.CSSProperties>({});
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const [portalRoot, setPortalRoot] = useState<Element | DocumentFragment | null>(
     null,
   );

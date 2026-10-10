@@ -529,7 +529,6 @@ EOF_CORE
 	MOCK_REFRESH_RESULT='allowed'
 	MOCK_DENIED_RECHECK_DUE='0'
 	SS_STATISTICS_UPLOAD_TOKEN=''
-	ss_license_key='paid-license-key'
 	ss_should_terminate=0
 	: >"$REFRESH_CALLS"
 	upload_sleep() {
@@ -625,14 +624,12 @@ EOF_CORE
 	upload_state_load
 	ss_spec_assert_eq "$upload_state_needs_full" '1'
 
-	# An unlicensed device is blocked locally without asking the Hub for a
-	# statistics credential. The long-lived uploader can remain idle so a later
-	# license update can re-enable it without restarting the collector.
-	MOCK_UPLOAD_ENTITLEMENT='allowed'
+	# Statistics eligibility comes only from device sync. A denied account/plan
+	# is rechecked on the normal entitlement cadence without any local license key.
+	MOCK_UPLOAD_ENTITLEMENT='denied'
 	MOCK_REFRESH_RESULT='allowed'
 	MOCK_DENIED_RECHECK_DUE='1'
-	SS_STATISTICS_UPLOAD_TOKEN='token-old'
-	ss_license_key=''
+	SS_STATISTICS_UPLOAD_TOKEN=''
 	ss_should_terminate=0
 	: >"$REFRESH_CALLS"
 	upload_sleep() {
@@ -640,9 +637,9 @@ EOF_CORE
 		return 1
 	}
 	main
-	ss_spec_assert_eq "$MOCK_UPLOAD_ENTITLEMENT" 'denied'
-	ss_spec_assert_eq "$(wc -l <"$REFRESH_CALLS" | tr -d ' ')" '0'
-	ss_spec_assert_eq "$SS_STATISTICS_UPLOAD_TOKEN" ''
+	ss_spec_assert_eq "$MOCK_UPLOAD_ENTITLEMENT" 'allowed'
+	ss_spec_assert_eq "$(wc -l <"$REFRESH_CALLS" | tr -d ' ')" '1'
+	ss_spec_assert_eq "$SS_STATISTICS_UPLOAD_TOKEN" 'token-new'
 )
 
 ss_case_statistics_upload_credentials() (

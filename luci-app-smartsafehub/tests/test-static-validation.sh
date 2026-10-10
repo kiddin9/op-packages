@@ -37,14 +37,14 @@ for script in \
 	root/etc/init.d/smartsafehub-firmware \
 	root/etc/init.d/smartsafehub-maintenance \
 	root/etc/init.d/smartsafehub-health \
-	root/etc/init.d/smartsafehub-license \
+	root/etc/init.d/smartsafehub-device \
 	root/usr/lib/smartsafehub/common.sh \
 	root/usr/libexec/smartsafehub-events \
 	root/usr/libexec/smartsafehub-updater \
 	root/usr/libexec/smartsafehub-firmware \
 	root/usr/libexec/smartsafehub-maintenance \
 	root/usr/libexec/smartsafehub-health \
-	root/usr/libexec/smartsafehub-license \
+	root/usr/libexec/smartsafehub-device \
 	root/usr/libexec/smartsafehub-backup \
 	spec/contracts_spec.sh \
 	tests/test-static-validation.sh \
@@ -72,7 +72,7 @@ for script in \
 	tests/test-system-time-contract.sh \
 	tests/test-scheduled-reboot.sh \
 	tests/test-health.sh \
-	tests/test-license.sh \
+	tests/test-device-registration.sh \
 	tests/test-backup-restore.sh \
 	tests/test-rpc-contract.sh \
 	tests/test-rules-ui-contract.sh \

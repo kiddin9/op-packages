@@ -2,7 +2,6 @@
 
 let core = require('core');
 let fs = require('fs');
-let ubus = require('ubus').connect();
 
 let PKG_NAME = core.PKG_NAME;
 let STATUS_FILE = core.STATUS_FILE;
@@ -12,43 +11,72 @@ let to_bool = core.to_bool;
 let reload_uci = core.reload_uci;
 let cfg = core.cfg;
 
-function service_running(name) {
-    let r = ubus.call('service', 'list', { name: name });
-    if (!r || !r[name] || !r[name].instances) {
-        return false;
+// Do not call ubus synchronously from an rpcd handler.  In particular,
+// service.list may require the same event loop currently serving the caller.
+// Use an independent ubus client with its built-in -t timeout (seconds).
+// BusyBox/OpenWrt installations do not necessarily provide coreutils timeout.
+// Only successful procd lookups are briefly reused. A failed lookup must not
+// poison subsequent requests or be mistaken for a stopped service.
+let service_cache = {};
+
+function service_status(name, use_cache) {
+    if (name != PKG_NAME && name != 'dnsmasq') {
+        return { state: 'unknown', running: false, lookup_ok: false };
     }
 
-    for (let inst_name, inst in r[name].instances) {
-        if (inst.running) {
-            return true;
+    let now = time();
+    let cached = service_cache[name];
+    if (use_cache && cached && cached.at == now) {
+        return cached.value;
+    }
+
+    let pipe = fs.popen(sprintf("ubus -t 2 call service list '{\"name\":\"%s\"}' 2>/dev/null", name), 'r');
+    if (!pipe) {
+        return { state: 'unknown', running: false, lookup_ok: false };
+    }
+
+    let output = pipe.read('all');
+    pipe.close();
+    if (!output) {
+        return { state: 'unknown', running: false, lookup_ok: false };
+    }
+
+    let result = json(output);
+    // procd returns an empty object when the named service is absent.
+    // That is a valid stopped response, not a transport failure.
+    if (type(result) != 'object') {
+        return { state: 'unknown', running: false, lookup_ok: false };
+    }
+
+    let instances = result[name] && result[name].instances;
+    let running = false;
+    if (type(instances) == 'object') {
+        for (let instance_name, instance in instances) {
+            if (instance && instance.running) {
+                running = true;
+                break;
+            }
         }
     }
 
-    return false;
+    let value = { state: running ? 'running' : 'stopped', running: running, lookup_ok: true, instances: instances || {} };
+    if (use_cache) {
+        service_cache[name] = { at: now, value: value };
+    }
+    return value;
+}
+
+function service_running(name) {
+    return service_status(name, false).running;
 }
 
 function service_instance_running(name, instance_name) {
-    let r = ubus.call('service', 'list', { name: name });
-    if (!r || !r[name] || !r[name].instances || !r[name].instances[instance_name]) {
-        return false;
-    }
-
-    return !!r[name].instances[instance_name].running;
+    let state = service_status(name, false);
+    return !!(state.instances && state.instances[instance_name] && state.instances[instance_name].running);
 }
 
 function dnsmasq_running() {
-    let r = ubus.call('service', 'list', { name: 'dnsmasq' });
-    if (!r || !r.dnsmasq || !r.dnsmasq.instances) {
-        return false;
-    }
-
-    for (let inst_name, inst in r.dnsmasq.instances) {
-        if (inst.running) {
-            return true;
-        }
-    }
-
-    return false;
+    return service_running('dnsmasq');
 }
 
 function run_service_action(action, timeout_ms) {
@@ -85,10 +113,11 @@ function start_refresh_async() {
         };
     }
 
-    if (!service_running(PKG_NAME)) {
+    let service = service_status(PKG_NAME, false);
+    if (!service.running) {
         return {
             accepted: false,
-            reason: 'service_stopped'
+            reason: service.lookup_ok ? 'service_stopped' : 'service_unavailable'
         };
     }
 
@@ -129,10 +158,11 @@ function start_local_apply_async() {
         };
     }
 
-    if (!service_running(PKG_NAME)) {
+    let service = service_status(PKG_NAME, false);
+    if (!service.running) {
         return {
             accepted: false,
-            reason: 'service_stopped'
+            reason: service.lookup_ok ? 'service_stopped' : 'service_unavailable'
         };
     }
 
@@ -155,6 +185,7 @@ function start_local_apply_async() {
 
 return {
     service_running: service_running,
+    service_status: service_status,
     service_instance_running: service_instance_running,
     dnsmasq_running: dnsmasq_running,
     run_service_action: run_service_action,

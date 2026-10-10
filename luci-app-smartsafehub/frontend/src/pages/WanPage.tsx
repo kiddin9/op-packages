@@ -1,4 +1,4 @@
-import type { JSX } from 'preact';
+import type { TargetedSubmitEvent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 
 import { CustomSelect } from '../components/CustomSelect';
@@ -339,7 +339,7 @@ export function WanPage({
     setValidationError(null);
   };
 
-  const submit = async (event: JSX.TargetedSubmitEvent<HTMLFormElement>) => {
+  const submit = async (event: TargetedSubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!isSupportedProtocol(form.protocol)) {
@@ -516,7 +516,7 @@ export function WanPage({
                       ? '변경할 때만 입력'
                       : 'PPPoE 비밀번호'
                   }
-                  type={showPassword ? 'text' : 'password'}
+                  {...(showPassword ? { type: 'text' as const } : { type: 'password' as const })}
                   value={form.pppoePassword}
                 />
                 <button

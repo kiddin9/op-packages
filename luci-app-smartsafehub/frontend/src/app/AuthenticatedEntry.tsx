@@ -49,8 +49,8 @@ export function AuthenticatedEntry({
   }
 
   return (
-    <main class="ssh-initial-setup-probe" role={phase === 'error' ? 'alert' : 'status'}>
-      <div class="ssh-initial-setup-probe-card">
+    <main class="ssh-initial-setup-probe">
+      <div class="ssh-initial-setup-probe-card" role={phase === 'error' ? 'alert' : 'status'}>
         {phase === 'checking' ? (
           <ReloadIcon class="ssh-login-probe-spinner" aria-hidden="true" />
         ) : (

@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-smartsafehub
-PKG_VERSION:=0.2.27
-PKG_RELEASE:=7
+PKG_VERSION:=0.2.28
+PKG_RELEASE:=8
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -17,11 +17,12 @@ LUCI_TITLE:=SmartSafeHub
 LUCI_URL:=https://github.com/Junatum/luci-app-smartsafehub
 LUCI_DESCRIPTION:=A modern, user-friendly OpenWrt management platform with Wi-Fi control, device management, system monitoring, and SafeShield DNS protection.
 LUCI_DEPENDS:=+luci-base +rpcd-mod-ucode +ucode +ucode-mod-ubus +ucode-mod-fs +ucode-mod-uci +procd +uclient-fetch +jsonfilter +igmpproxy +safeshield
-LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.24)
+LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.25)
 LUCI_PKGARCH:=all
 
 define Package/luci-app-smartsafehub/conffiles
 /etc/config/smartsafehub
+/etc/smartsafehub/device-credential.json
 endef
 
 define Package/luci-app-smartsafehub/preinst
@@ -74,9 +75,9 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 		/etc/init.d/smartsafehub-health enable
 		/etc/init.d/smartsafehub-health restart >/dev/null 2>&1 || true
 	fi
-	if [ -x /etc/init.d/smartsafehub-license ]; then
-		/etc/init.d/smartsafehub-license enable
-		/etc/init.d/smartsafehub-license restart >/dev/null 2>&1 || true
+	if [ -x /etc/init.d/smartsafehub-device ]; then
+		/etc/init.d/smartsafehub-device enable
+		/etc/init.d/smartsafehub-device restart >/dev/null 2>&1 || true
 	fi
 	if [ -x /etc/init.d/igmpproxy ]; then
 		if [ "$$(uci -q get smartsafehub.iptv.enabled 2>/dev/null)" = "1" ]; then

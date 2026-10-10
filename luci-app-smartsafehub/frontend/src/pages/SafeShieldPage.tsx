@@ -7,17 +7,13 @@ import {
   CheckCircleIcon,
   DatabaseIcon,
   DownloadIcon,
-  KeyIcon,
   ListIcon,
   PowerIcon,
   ShieldIcon,
 } from '../components/Icons';
 import { SafeShieldStatisticsPanel } from '../components/SafeShieldStatisticsPanel';
 import { ErrorPanel, LoadingPanel } from '../components/StatePanels';
-import type {
-  SafeShieldAction,
-  SafeShieldFeedbackTarget,
-} from '../hooks/useSafeShieldActions';
+import type { SafeShieldAction } from '../hooks/useSafeShieldActions';
 import type { SafeShieldStatistics, SafeShieldStatus } from '../types/safeshield';
 import {
   getSafeShieldRefreshErrorMessage,
@@ -36,7 +32,6 @@ const SMARTSAFEHUB_PRICING_URL = 'https://www.smartsafehub.com/pricing/';
 interface SafeShieldPageProps {
   action: SafeShieldAction | null;
   actionError: string | null;
-  actionFeedbackTarget: SafeShieldFeedbackTarget | null;
   actionMessage: string | null;
   data: SafeShieldStatus | null;
   error: string | null;
@@ -46,14 +41,11 @@ interface SafeShieldPageProps {
   statisticsLoading: boolean;
   statisticsRefreshing: boolean;
   onDismissFeedback: () => void;
-  onReadLicense: () => Promise<string | null>;
   onRefreshBlocklist: () => void;
-  onRemoveLicense: () => Promise<boolean>;
   onRetry: () => void;
   onRetryStatistics: () => void;
   onSetEnabled: (enabled: boolean) => void;
   onSetStatisticsEnabled: (enabled: boolean) => void;
-  onUpdateLicense: (licenseKey: string) => Promise<boolean>;
 }
 
 function BooleanState({
@@ -278,8 +270,8 @@ function RefreshDonut({
   total: number;
 }) {
   const loaderRadius = 17;
-  const loaderTrackWidth = 3;
-  const loaderArcWidth = 4;
+  const loaderTrackWidth = 2.5;
+  const loaderArcWidth = 3.5;
   const loaderCircumference = 2 * Math.PI * loaderRadius;
   const loaderArcLength = loaderCircumference * 0.22;
   const loaderGapLength = loaderCircumference - loaderArcLength;
@@ -585,7 +577,6 @@ function ActionFeedback({
 export function SafeShieldPage({
   action,
   actionError,
-  actionFeedbackTarget,
   actionMessage,
   data,
   error,
@@ -595,17 +586,12 @@ export function SafeShieldPage({
   statisticsLoading,
   statisticsRefreshing,
   onDismissFeedback,
-  onReadLicense,
   onRefreshBlocklist,
-  onRemoveLicense,
   onRetry,
   onRetryStatistics,
   onSetEnabled,
   onSetStatisticsEnabled,
-  onUpdateLicense,
 }: SafeShieldPageProps) {
-  const [licenseKey, setLicenseKey] = useState('');
-  const [licenseKeyLoaded, setLicenseKeyLoaded] = useState(false);
   const [lastKnownBlocklistCount, setLastKnownBlocklistCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -618,12 +604,7 @@ export function SafeShieldPage({
     }
   }, [data?.available, data?.blocklist.validLineCount, data?.stage, data?.status]);
 
-  useEffect(() => {
-    if (data?.license.configured === false) {
-      setLicenseKey('');
-      setLicenseKeyLoaded(false);
-    }
-  }, [data?.license.configured]);
+
 
   if (loading) {
     return <LoadingPanel />;
@@ -654,10 +635,14 @@ export function SafeShieldPage({
   }
 
   const enabled = data.enabled;
-  const planName = getSafeShieldPlanName(data.license.plan);
-  const refreshing = isSafeShieldRefreshTransition(data.status, data.stage);
+  const planName = getSafeShieldPlanName(data.entitlement.plan);
+  // A failed refresh keeps its last stage for diagnostics. Only an actively
+  // running refresh should disable protection and retry controls.
+  const refreshing = data.status === 'running';
   const actionBusy = action !== null;
-  const preserveBlocklistCount = refreshing || getProductProtectionState(data) === 'error';
+  const preserveBlocklistCount =
+    isSafeShieldRefreshTransition(data.status, data.stage) ||
+    getProductProtectionState(data) === 'error';
   const displayedBlocklistCount =
     preserveBlocklistCount &&
     data.blocklist.validLineCount === 0 &&
@@ -671,42 +656,6 @@ export function SafeShieldPage({
     : action === 'enable'
       ? '켜는 중…'
       : '보호 켜기';
-
-  async function handleLoadCurrentLicense(): Promise<void> {
-    if (licenseKey.length > 0) {
-      return;
-    }
-
-    const currentKey = await onReadLicense();
-
-    if (currentKey === null) {
-      return;
-    }
-
-    setLicenseKey(currentKey);
-    setLicenseKeyLoaded(true);
-  }
-
-  function resetLicenseEditor(): void {
-    setLicenseKey('');
-    setLicenseKeyLoaded(false);
-  }
-
-  function handleRemoveLicense(): void {
-    const confirmed = window.confirm(
-      '라이선스 키를 제거하면 SafeShield가 라이선스 없는 상태로 다시 확인하고 차단 목록을 갱신합니다. 계속하시겠습니까?',
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    void onRemoveLicense().then((removed) => {
-      if (removed) {
-        resetLicenseEditor();
-      }
-    });
-  }
 
   function handleToggle(): void {
     if (enabled) {
@@ -776,7 +725,9 @@ export function SafeShieldPage({
                 ? '시작 중…'
                 : refreshing
                   ? '갱신 중…'
-                  : '지금 갱신'}
+                  : data.status === 'error'
+                    ? '다시 갱신'
+                    : '지금 갱신'}
             </button>
           </div>
         </div>
@@ -796,8 +747,8 @@ export function SafeShieldPage({
       </section>
 
       <ActionFeedback
-        error={actionFeedbackTarget === 'license' ? null : actionError}
-        message={actionFeedbackTarget === 'license' ? null : actionMessage}
+        error={actionError}
+        message={actionMessage}
         onDismiss={onDismissFeedback}
       />
 
@@ -890,237 +841,110 @@ export function SafeShieldPage({
 
       <section class="mt-7">
         <SectionHeading
-          description="라이선스, 현재 적용 중인 SafeShield 보호 데이터와 사용자 규칙을 관리합니다."
+          description="현재 적용 중인 보호 데이터와 사용자 규칙을 관리합니다."
           eyebrow="Settings"
           title="SafeShield 설정"
         />
 
-        <div class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
-          <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5 sm:p-6">
+        <div class="grid gap-4 lg:grid-cols-2">
+          <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">
             <div class="flex items-start justify-between gap-4">
-              <div>
+              <div class="min-w-0">
                 <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
-                  License
+                  Protection data
                 </p>
-                <h3 class="mt-2 mb-0 text-lg font-black tracking-tight text-slate-950">
-                  라이선스
-                </h3>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <h3 class="m-0 text-lg font-black tracking-tight text-slate-950">
+                    보호 데이터
+                  </h3>
+                  <span
+                    aria-label={`보호 데이터 상태: ${
+                      data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
+                        ? '최신'
+                        : '확인 필요'
+                    }`}
+                    class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${
+                      data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    {data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk ? (
+                      <CheckCircleIcon class="size-3.5 shrink-0" />
+                    ) : (
+                      <AlertIcon class="size-3.5 shrink-0" />
+                    )}
+                    {data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
+                      ? '최신'
+                      : '확인 필요'}
+                  </span>
+                </div>
                 <p class="mt-2 mb-0 text-sm leading-6 text-slate-500">
-                  현재 플랜은 {planName}이며, 라이선스 키를 등록하거나 변경할 수 있습니다.
+                  SafeShield가 기기 성능에 맞춰 사용하는 보호 목록의 구성과 최신 상태를 확인합니다.
                 </p>
               </div>
               <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
-                <KeyIcon class="size-5" />
+                <DatabaseIcon class="size-5" />
               </span>
             </div>
 
-            <div class="ssh-safeshield-license-summary mt-5">
-              <div class="ssh-safeshield-license-summary-main">
-                <PlanBadge compact plan={planName} />
-                {!data.license.configured ? (
-                  <span class="ssh-safeshield-license-summary-status">라이선스 미설정</span>
-                ) : null}
+            <dl class="mt-5 mb-0 grid grid-cols-2 gap-3">
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <dt class="text-xs font-bold text-slate-500">기기 최적화</dt>
+                <dd class="mt-1 mb-0 text-sm font-extrabold text-slate-950">
+                  {getArtifactOptimizationLabel(data.artifact.tier)}
+                </dd>
               </div>
-              {data.license.configured && data.license.keyMasked ? (
-                <span class="ssh-safeshield-license-key-mask">{data.license.keyMasked}</span>
-              ) : null}
-            </div>
+              <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                <dt class="text-xs font-bold text-slate-500">마지막 업데이트</dt>
+                <dd class="mt-1 mb-0 text-sm font-extrabold leading-5 text-slate-950">
+                  {formatArtifactUpdatedAt(data.artifact.version)}
+                </dd>
+              </div>
+            </dl>
 
-            <form
-              class="ssh-safeshield-license-editor mt-5"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void onUpdateLicense(licenseKey).then((updated) => {
-                  if (updated) {
-                    resetLicenseEditor();
-                  }
-                });
-              }}
-            >
-              <div class="ssh-safeshield-license-editor-header">
-                <label class="ssh-safeshield-license-editor-label" for="safeshield-license-key">
-                  {data.license.configured ? '라이선스 키 확인 / 변경' : '라이선스 키 등록'}
-                </label>
-                <span class="ssh-safeshield-license-editor-hint">
-                  {data.license.configured
-                    ? '현재 키를 확인하거나 새 키로 교체할 수 있습니다.'
-                    : '새 라이선스 키를 등록해 프리미엄 기능을 준비하세요.'}
-                </span>
-              </div>
-              <div class="ssh-safeshield-license-input-row">
-                <input
-                  autocomplete="off"
-                  autocapitalize="none"
-                  class="ssh-safeshield-license-input"
-                  data-1p-ignore
-                  data-bwignore="true"
-                  data-lpignore="true"
-                  disabled={actionBusy}
-                  id="safeshield-license-key"
-                  onInput={(event) => {
-                    setLicenseKey(event.currentTarget.value);
-                    setLicenseKeyLoaded(false);
-                  }}
-                  placeholder={data.license.configured ? '새 라이선스 키 입력' : '라이선스 키 입력'}
-                  spellcheck={false}
-                  type="text"
-                  value={licenseKey}
+            <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+              <summary class="cursor-pointer text-sm font-extrabold text-slate-700">
+                세부 정보
+              </summary>
+              <dl class="mt-3 mb-0 grid gap-3 border-t border-slate-200 pt-3">
+                <DetailRow
+                  label="데이터 프로필"
+                  value={data.artifact.tier || '확인되지 않음'}
                 />
-                <button
-                  class="ssh-safeshield-license-secondary-action"
-                  disabled={actionBusy || licenseKey.length > 0 || !data.license.configured}
-                  onClick={() => void handleLoadCurrentLicense()}
-                  type="button"
-                >
-                  <DownloadIcon class="size-4" />
-                  {action === 'license-read'
-                    ? '불러오는 중…'
-                    : licenseKeyLoaded
-                      ? '현재 키 불러옴'
-                      : '현재 키 불러오기'}
-                </button>
-              </div>
-              <div class="ssh-safeshield-license-actions">
-                <button
-                  class="ssh-safeshield-license-primary-action"
-                  disabled={actionBusy || licenseKey.trim().length === 0}
-                  type="submit"
-                >
-                  {action === 'license-update'
-                    ? '저장 중…'
-                    : data.license.configured
-                      ? '라이선스 변경'
-                      : '라이선스 등록'}
-                </button>
-                {data.license.configured ? (
-                  <button
-                    class="ssh-safeshield-license-danger-action"
-                    disabled={actionBusy}
-                    onClick={handleRemoveLicense}
-                    type="button"
-                  >
-                    {action === 'license-remove' ? '제거 중…' : '라이선스 제거'}
-                  </button>
-                ) : null}
-              </div>
-              {action === 'license-update' ? (
-                <div
-                  aria-live="polite"
-                  class="mt-4 flex items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800"
-                  role="status"
-                >
-                  <span class="size-2 shrink-0 animate-pulse rounded-full bg-teal-500" />
-                  라이선스를 확인하고 이 기기에 적용하고 있습니다…
-                </div>
-              ) : null}
-              <ActionFeedback
-                error={actionFeedbackTarget === 'license' ? actionError : null}
-                message={actionFeedbackTarget === 'license' ? actionMessage : null}
-                onDismiss={onDismissFeedback}
-              />
-            </form>
+                <DetailRow
+                  label="데이터 버전"
+                  value={data.artifact.version || '확인되지 않음'}
+                />
+              </dl>
+            </details>
           </article>
 
-          <div class="grid gap-4">
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">
-              <div class="flex items-start justify-between gap-4">
-                <div class="min-w-0">
-                  <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
-                    Protection data
-                  </p>
-                  <div class="mt-2 flex flex-wrap items-center gap-2">
-                    <h3 class="m-0 text-lg font-black tracking-tight text-slate-950">
-                      보호 데이터
-                    </h3>
-                    <span
-                      aria-label={`보호 데이터 상태: ${
-                        data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
-                          ? '최신'
-                          : '확인 필요'
-                      }`}
-                      class={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-extrabold ${
-                        data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}
-                    >
-                      {data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk ? (
-                        <CheckCircleIcon class="size-3.5 shrink-0" />
-                      ) : (
-                        <AlertIcon class="size-3.5 shrink-0" />
-                      )}
-                      {data.artifact.resolved && data.blocklist.installed && data.blocklist.verificationOk
-                        ? '최신'
-                        : '확인 필요'}
-                    </span>
-                  </div>
-                  <p class="mt-2 mb-0 text-sm leading-6 text-slate-500">
-                    SafeShield가 기기 성능에 맞춰 사용하는 보호 목록의 구성과 최신 상태를 확인합니다.
-                  </p>
-                </div>
-                <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500">
-                  <DatabaseIcon class="size-5" />
-                </span>
-              </div>
-
-              <dl class="mt-5 mb-0 grid grid-cols-2 gap-3">
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                  <dt class="text-xs font-bold text-slate-500">기기 최적화</dt>
-                  <dd class="mt-1 mb-0 text-sm font-extrabold text-slate-950">
-                    {getArtifactOptimizationLabel(data.artifact.tier)}
-                  </dd>
-                </div>
-                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
-                  <dt class="text-xs font-bold text-slate-500">마지막 업데이트</dt>
-                  <dd class="mt-1 mb-0 text-sm font-extrabold leading-5 text-slate-950">
-                    {formatArtifactUpdatedAt(data.artifact.version)}
-                  </dd>
-                </div>
-              </dl>
-
-              <details class="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-                <summary class="cursor-pointer text-sm font-extrabold text-slate-700">
-                  세부 정보
-                </summary>
-                <dl class="mt-3 mb-0 grid gap-3 border-t border-slate-200 pt-3">
-                  <DetailRow
-                    label="데이터 프로필"
-                    value={data.artifact.tier || '확인되지 않음'}
-                  />
-                  <DetailRow
-                    label="데이터 버전"
-                    value={data.artifact.version || '확인되지 않음'}
-                  />
-                </dl>
-              </details>
-            </article>
-
-            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">
-              <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
-                Custom rules
-              </p>
-              <h3 class="mt-2 mb-0 text-lg font-black tracking-tight text-slate-950">
-                사용자 규칙
-              </h3>
-              <div class="mt-4">
-                <BooleanState
-                  falseLabel="비활성화"
-                  trueLabel="활성화"
-                  value={data.localOverrides.enabled}
-                />
-              </div>
-              <p class="mt-4 mb-0 text-sm font-semibold leading-6 text-slate-500">
-                허용하거나 차단할 도메인을 직접 관리해 SafeShield 보호 정책에 반영합니다.
-              </p>
-              <a
-                class="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-700 bg-teal-700 px-4 py-2 text-sm font-extrabold text-white no-underline shadow-sm transition hover:border-teal-800 hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100"
-                href="#rules"
-              >
-                <ListIcon class="size-4" />
-                사용자 규칙 관리
-              </a>
-            </article>
-          </div>
+          <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/5">
+            <p class="m-0 text-[0.68rem] font-black uppercase tracking-[0.16em] text-slate-400">
+              Custom rules
+            </p>
+            <h3 class="mt-2 mb-0 text-lg font-black tracking-tight text-slate-950">
+              사용자 규칙
+            </h3>
+            <div class="mt-4">
+              <BooleanState
+                falseLabel="비활성화"
+                trueLabel="활성화"
+                value={data.localOverrides.enabled}
+              />
+            </div>
+            <p class="mt-4 mb-0 text-sm font-semibold leading-6 text-slate-500">
+              허용하거나 차단할 도메인을 직접 관리해 SafeShield 보호 정책에 반영합니다.
+            </p>
+            <a
+              class="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-teal-700 bg-teal-700 px-4 py-2 text-sm font-extrabold text-white no-underline shadow-sm transition hover:border-teal-800 hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100"
+              href="#rules"
+            >
+              <ListIcon class="size-4" />
+              사용자 규칙 관리
+            </a>
+          </article>
         </div>
       </section>
     </>

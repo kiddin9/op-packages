@@ -11,6 +11,7 @@ import { ProductNavigation } from './ProductNavigation';
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'smartsafehub.sidebar.collapsed';
 
 interface AppShellProps {
+  accountRegistered: boolean | null;
   children: ComponentChildren;
   loading: boolean;
   onRefresh: () => void;
@@ -32,6 +33,7 @@ function readSidebarCollapsed(): boolean {
 }
 
 export function AppShell({
+  accountRegistered,
   children,
   loading,
   onRefresh,
@@ -69,6 +71,7 @@ export function AppShell({
       data-theme={theme}
     >
       <ProductNavigation
+        accountRegistered={accountRegistered}
         collapsed={sidebarCollapsed}
         loading={loading}
         onRefresh={onRefresh}

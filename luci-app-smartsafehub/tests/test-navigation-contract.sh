@@ -60,7 +60,7 @@ grep -Fq 'h-[4.5rem] min-h-[4.5rem] shrink-0 items-center border-b border-slate-
 	fail 'desktop sidebar brand area must use the shared 72px application-shell height'
 grep -Fq 'class="ssh-sidebar-toggle absolute right-0 top-[4.5rem] z-20 inline-flex size-7 translate-x-1/2 -translate-y-1/2' "$NAVIGATION" || \
 	fail 'sidebar toggle must stay centered on the shared 72px brand/header boundary'
-grep -Fq 'title={collapsed ? item.label : undefined}' "$NAVIGATION" || \
+grep -Fq 'collapsed ? item.label : undefined}' "$NAVIGATION" || \
 	fail 'collapsed navigation items must retain hover labels'
 grep -Fq 'aria-label="Beta 기능"' "$NAVIGATION" || \
 	fail 'collapsed IPTV navigation item must expose an accessible Beta badge'
@@ -146,8 +146,16 @@ grep -Fq "'#wan': 'network'" "$HASH_ROUTE" || \
 	fail 'legacy #wan hash must resolve to combined network settings'
 grep -Fq "'#lan': 'network'" "$HASH_ROUTE" || \
 	fail 'legacy #lan hash must resolve to combined network settings'
-grep -Fq "{ label: 'System', routes: ['system', 'settings'] }" "$NAVIGATION" || \
-	fail 'System navigation group must place settings directly below updates'
+grep -Fq "{ label: 'System', routes: ['account', 'system', 'settings'] }" "$NAVIGATION" || \
+	fail 'System navigation group must expose SmartSafeHub account before updates and settings'
+grep -Fq "route: 'account'" "$ROUTES" || \
+	fail 'SmartSafeHub account route must be registered'
+grep -Fq "hash: '#account'" "$ROUTES" || \
+	fail 'SmartSafeHub account route must expose the #account hash'
+grep -Fq "'#account': 'account'" "$HASH_ROUTE" || \
+	fail 'hash router must resolve #account'
+grep -Fq "case 'account':" "$NAVIGATION" || \
+	fail 'SmartSafeHub account navigation item must have a dedicated icon'
 grep -Fq "case 'settings':" "$NAVIGATION" || \
 	fail 'settings navigation item must have a dedicated icon'
 grep -Fq "route: 'settings'" "$ROUTES" || \

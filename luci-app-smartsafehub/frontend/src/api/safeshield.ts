@@ -5,8 +5,6 @@ import type {
 } from '../types/rules';
 import type {
   SafeShieldEnabledResult,
-  SafeShieldLicenseReadResult,
-  SafeShieldLicenseUpdateResult,
   SafeShieldRefreshResult,
   SafeShieldStatistics,
   SafeShieldStatisticsEnabledResult,
@@ -25,7 +23,7 @@ interface RawSafeShieldStatus {
   stage?: unknown;
   summary?: Record<string, unknown>;
   runtime?: Record<string, unknown>;
-  license?: Record<string, unknown>;
+  entitlement?: Record<string, unknown>;
   artifact?: Record<string, unknown>;
   local_overrides?: Record<string, unknown>;
   blocklist?: Record<string, unknown>;
@@ -80,7 +78,6 @@ interface RawSafeShieldMutation {
   added?: unknown;
   deleted?: unknown;
   refresh?: unknown;
-  license?: unknown;
   error?: unknown;
 }
 
@@ -262,9 +259,7 @@ function unavailableStatus(): SafeShieldStatus {
       lastResult: null,
       lastErrorCode: null,
     },
-    license: {
-      configured: false,
-      keyMasked: '',
+    entitlement: {
       plan: null,
       status: null,
     },
@@ -314,7 +309,7 @@ function normalizeStatus(sourceValue: RawSafeShieldStatus): SafeShieldStatus {
 
   const summary = objectValue(source.summary);
   const runtime = objectValue(source.runtime);
-  const license = objectValue(source.license);
+  const entitlement = objectValue(source.entitlement);
   const artifact = objectValue(source.artifact);
   const localOverrides = objectValue(source.local_overrides);
   const blocklist = objectValue(source.blocklist);
@@ -342,11 +337,9 @@ function normalizeStatus(sourceValue: RawSafeShieldStatus): SafeShieldStatus {
       lastResult: stringValue(runtime.last_result, null),
       lastErrorCode: stringValue(runtime.last_error_code, null),
     },
-    license: {
-      configured: boolValue(license.configured),
-      keyMasked: plainString(license.key_masked),
-      plan: stringValue(license.plan, null),
-      status: stringValue(license.status, null),
+    entitlement: {
+      plan: stringValue(entitlement.plan, null),
+      status: stringValue(entitlement.status, null),
     },
     artifact: {
       resolved: boolValue(artifact.resolved),
@@ -557,34 +550,4 @@ export function deleteSafeShieldRule(
   refresh = true,
 ): Promise<SafeShieldRuleMutationResult> {
   return mutateSafeShieldRule('rule_delete', action, domain, refresh);
-}
-
-export async function fetchSafeShieldLicense(): Promise<SafeShieldLicenseReadResult> {
-  const response = await callSafeShield<RawSafeShieldMutation>('license_get');
-  const license = objectValue(response.license);
-
-  return {
-    configured: boolValue(license.configured),
-    key: plainString(license.key),
-  };
-}
-
-export async function updateSafeShieldLicense(
-  licenseKey: string,
-): Promise<SafeShieldLicenseUpdateResult> {
-  const response = await callManagedSafeShield<RawSafeShieldMutation>(
-    'safeshield_license_update',
-    { license_key: licenseKey },
-    'license_update',
-  );
-  const license = objectValue(response.license);
-
-  return {
-    changed: boolValue(response.changed),
-    license: {
-      configured: boolValue(license.configured),
-      keyMasked: plainString(license.key_masked),
-    },
-    refresh: normalizeRefresh(response.refresh),
-  };
 }

@@ -5,7 +5,6 @@
 
 ss_enabled="0"
 ss_verbosity="2"
-ss_license_key=""
 ss_device_vendor=""
 ss_device_model=""
 ss_device_arch=""
@@ -105,7 +104,6 @@ ss_load_config() {
 
 	ss_enabled="$(ss_config_get config enabled 0)"
 	ss_verbosity="$(ss_config_get config verbosity 2)"
-	ss_license_key="$(ss_config_get config license_key '')"
 	ss_device_vendor="$(ss_config_get config device_vendor '')"
 	ss_device_model="$(ss_config_get config device_model '')"
 	ss_device_arch="$(ss_config_get config device_arch '')"

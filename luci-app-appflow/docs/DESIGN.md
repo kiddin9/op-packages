@@ -135,11 +135,11 @@ participate and throttling is impossible by construction.
   accountable byte counts for sub-interval flows.
 
   **CORRECTED 2026-08-25. The two paragraphs below understated this, and the
-  review panel was right.** Once `purge_only_rescued` was instrumented and left
+  reviewers were right.** Once `purge_only_rescued` was instrumented and left
   running against ordinary traffic, it reported **13 purge-only flows out of
   1,341 seen, 0.97%**. Flows purged without ever receiving a `flow_stats` DO
   occur on netifyd 4.4.7. Before the defensive path was added, every one of them
-  lost its entire byte count silently, which is exactly what three carriers
+  lost its entire byte count silently, which is exactly what three reviewers
   predicted and what this section briefly called refuted.
 
   The refutation was under-powered, not wrong-headed: a 38-flow capture at a
@@ -149,7 +149,7 @@ participate and throttling is impossible by construction.
   rate it claims to exclude. The event-level evidence below is still accurate
   about what it saw; it simply did not see enough.
 
-  **Re-tested at the EVENT level 2026-08-24, after an adversarial review panel
+  **Re-tested at the EVENT level 2026-08-24, after an adversarial review
   independently reached the same prediction three times.** The 2026-08-22 result
   above is outcome-based: it shows the bytes landed, not why. Tapping netifyd's
   export socket directly for 170 s (`flow`/`flow_stats`/`flow_purge` per digest,
@@ -355,7 +355,7 @@ purge:
 
 > **The rest of this subsection is HISTORICAL and describes the state before
 > the fix above. It is kept because the reasoning is what led to the fix, but
-> nothing below is an open problem.** A review panel reading this document cold
+> nothing below is an open problem.** A reviewer reading this document cold
 > reported it as a live double-count, having entered mid-section, so if you are
 > skimming, stop here and go to §3.3.
 
@@ -582,7 +582,7 @@ Depends (from `Makefile` `LUCI_DEPENDS`): `netifyd`, `luci-base`,
   `conntrack.at`, i.e. on having read recently rather than on having read
   recently *and* found something.
 - **Byte conservation is now instrumented, not just asserted** (2026-08-24,
-  suggested by a panel juror). `status.bytes` reports `reported` (what netifyd
+  suggested by a reviewer). `status.bytes` reports `reported` (what netifyd
   said moved, before any clamp or shadow decision), `attributed` (what reached
   an aggregate), `shadowed` (what was deliberately dropped as a NAT twin) and
   `leaked` (the residual, which should be 0). Both silent byte-loss defects this
@@ -602,7 +602,7 @@ Depends (from `Makefile` `LUCI_DEPENDS`): `netifyd`, `luci-base`,
   fixed without an established-flow dump upstream. Documented in the
   README rather than hidden.
 - ~~**reshadow() exempted the flows it existed to correct**~~, FOUND by an
-  adversarial panel and FIXED 2026-08-24. `reshadow()` returned early on
+  adversarial review and FIXED 2026-08-24. `reshadow()` returned early on
   `dev_key == "router"`, which is exactly how a WAN-side capture of a NAT-ed
   client flow is classified, because netifyd reports the post-translation
   identity (§3.2). The conntrack twin resolution added earlier that day went

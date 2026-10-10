@@ -13,6 +13,7 @@ const HASH_ROUTES: Readonly<Record<string, AppRoute>> = {
   '#devices': 'devices',
   '#safeshield': 'safeshield',
   '#rules': 'rules',
+  '#account': 'account',
   '#system': 'system',
   '#settings': 'settings',
 };

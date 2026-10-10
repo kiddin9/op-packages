@@ -187,22 +187,3 @@ export function mutate_safeshield_rule(request, method) {
 		reply_success(request, response);
 	});
 };
-
-export function update_safeshield_license(request) {
-	const license_key = request.args.license_key;
-	if (type(license_key) != 'string') {
-		return failure('SAFESHIELD_LICENSE_INVALID', '라이선스 키 형식이 올바르지 않습니다.');
-	}
-
-	return safeshield_call(request, 'license_update', { license_key: license_key }, function(response) {
-		if (response?.changed == true && !length(license_key)) {
-			emit_activity_event(
-				'license',
-				'license.cleared',
-				'info',
-				{ reason: 'manual', origin: 'direct' }
-			);
-		}
-		reply_success(request, response);
-	});
-};

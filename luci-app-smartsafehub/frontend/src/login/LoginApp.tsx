@@ -1,4 +1,4 @@
-import type { JSX } from 'preact';
+import type { JSX, TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import {
@@ -103,11 +103,11 @@ export function LoginApp({
     return () => window.clearTimeout(timeout);
   }, [initialNotice]);
 
-  const updateCapsLock = (event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
+  const updateCapsLock = (event: TargetedKeyboardEvent<HTMLInputElement>) => {
     setCapsLock(event.getModifierState?.('CapsLock') ?? false);
   };
 
-  const submit = async (event: JSX.TargetedSubmitEvent<HTMLFormElement>) => {
+  const submit = async (event: TargetedSubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const user = username.trim();
@@ -288,7 +288,7 @@ export function LoginApp({
                       onKeyUp={updateCapsLock}
                       placeholder="관리자 비밀번호"
                       ref={passwordInput}
-                      type={showPassword ? 'text' : 'password'}
+                      {...(showPassword ? { type: 'text' as const } : { type: 'password' as const })}
                       value={password}
                     />
                     <button

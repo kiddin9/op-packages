@@ -1,0 +1,9 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+if [ -x /etc/init.d/smartsafehub-device ]; then
+	/etc/init.d/smartsafehub-device enable >/dev/null 2>&1 || true
+	/etc/init.d/smartsafehub-device start >/dev/null 2>&1 || true
+fi
+
+exit 0

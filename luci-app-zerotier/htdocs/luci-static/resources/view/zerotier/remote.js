@@ -852,6 +852,61 @@ function networksPanel(section) {
 		return tr;
 		}
 
+		/* -------------------------------------------------------- sort state
+		 *
+		 * Click a header: sort ascending by it. Click it again: descending.
+		 * Click another column: that column, ascending. Sorting re-reads the
+		 * cached model, never the controller -- same rule as the filter. */
+		var sortKey = 'id', sortDir = 1;
+
+		function keyName(m) { var s = (m.name || '').trim(); return s || null; }
+		function keyIp(m) { return (m.ipAssignments || [])[0] || null; }
+		function keyStatus(m) {
+			if (m.id === controllerAddr) return 0;
+			if (!pok) return 3;
+			return isOnline(peerMap[m.id]) ? 1 : 2;
+		}
+		function keyLatency(m) {
+			var p = peerMap[m.id];
+			if (!pok || !isOnline(p) || !(p.latency > 0)) return null;
+			return p.latency;
+		}
+		function cmpIp(a, b) {
+			var pa = a.split('.'), pb = b.split('.'), i, d;
+			for (i = 0; i < 4; i++) { d = (parseInt(pa[i], 10) || 0) - (parseInt(pb[i], 10) || 0); if (d) return d; }
+			return 0;
+		}
+		var sortCols = {
+			name:        { key: keyName,   cmp: function(a, b) { return a.localeCompare(b, 'zh'); } },
+			id:          { key: function(m) { return m.id; }, cmp: function(a, b) { return a < b ? -1 : a > b ? 1 : 0; } },
+			authorized:  { key: function(m) { return m.authorized ? 1 : 0; }, cmp: function(a, b) { return a - b; } },
+			activeBridge:{ key: function(m) { return m.activeBridge ? 1 : 0; }, cmp: function(a, b) { return a - b; } },
+			ip:          { key: keyIp,     cmp: cmpIp },
+			status:      { key: keyStatus, cmp: function(a, b) { return a - b; } },
+			latency:     { key: keyLatency, cmp: function(a, b) { return a - b; } }
+		};
+
+		/* Empty keys sort last in BOTH directions: a member with no name or no
+		 * address must not jump to the top just because the column flipped. */
+		function sortedMembers() {
+			var col = sortCols[sortKey];
+			var arr = membersArr.slice();
+			arr.sort(function(a, b) {
+				var ka = col.key(a), kb = col.key(b);
+				if ((ka == null) !== (kb == null)) return ka == null ? 1 : -1;
+				if (ka == null) return 0;
+				return sortDir * col.cmp(ka, kb);
+			});
+			return arr;
+		}
+
+		function clickSort(key) {
+			if (sortKey === key) sortDir = -sortDir;
+			else { sortKey = key; sortDir = 1; }
+			paintSortInd();
+			drawRows();
+		}
+
 		function drawRows() {
 			while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
 			/* Clear the cell refs of the rows being replaced: a stale entry would
@@ -860,7 +915,7 @@ function networksPanel(section) {
 			rowRefs = {};
 			var q = filterI.value ? filterI.value.toLowerCase() : '';
 			var shown = 0;
-			membersArr.forEach(function(m) {
+			sortedMembers().forEach(function(m) {
 				var hay = ((m.name || '') + ' ' + m.id + ' ' + (m.ipAssignments || []).join(', ')).toLowerCase();
 				if (q && hay.indexOf(q) === -1) return;
 				shown++;
@@ -905,16 +960,31 @@ function networksPanel(section) {
 		var refreshBtn = E('button', { 'class': 'cbi-button cbi-button-action' }, [ _('Refresh') ]);
 		refreshBtn.addEventListener('click', refreshAll);
 
+		var sortInd = {};
+		function paintSortInd() {
+			for (var k in sortInd)
+				sortInd[k].textContent = (sortKey === k) ? (sortDir > 0 ? ' ▲' : ' ▼') : '';
+		}
+		function sortableTh(label, key, style) {
+			var ind = E('span', { 'style': 'font-size:0.8em; opacity:0.7;' });
+			sortInd[key] = ind;
+			return E('th', {
+				'style': style + ' cursor:pointer; user-select:none;',
+				'title': _('Sort by this column'),
+				'click': function() { clickSort(key); }
+			}, [ _(label), ind ]);
+		}
 		var hdr = E('tr', {}, [
 			E('th', { 'style': 'width:34px;' }, []),
-			E('th', { 'style': 'width:19%;' }, [_('Member name')]),
-			E('th', { 'style': 'width:12%;' }, [_('Member ID')]),
-			E('th', { 'style': 'width:9%; text-align:center;' }, [_('Authorized')]),
-			E('th', { 'style': 'width:9%; text-align:center;' }, [_('Active bridge')]),
-			E('th', { 'style': 'width:13%;' }, [_('IP assignment')]),
-			E('th', { 'style': 'width:12%;' }, [_('Peer status')]),
-			E('th', { 'style': 'width:26%;' }, [_('Peer address / latency')])
+			sortableTh('Member name', 'name', 'width:19%;'),
+			sortableTh('Member ID', 'id', 'width:12%;'),
+			sortableTh('Authorized', 'authorized', 'width:9%; text-align:center;'),
+			sortableTh('Active bridge', 'activeBridge', 'width:9%; text-align:center;'),
+			sortableTh('IP assignment', 'ip', 'width:13%;'),
+			sortableTh('Peer status', 'status', 'width:12%;'),
+			sortableTh('Peer address / latency', 'latency', 'width:26%;')
 		]);
+		paintSortInd();
 		into.appendChild(E('div', { 'style': 'display:flex; gap:8px; align-items:center; margin:6px 0;' },
 			[ filterI, counterHost, refreshBtn, stamp ]));
 		/* The scroll wrapper and min-width are load-bearing: table-layout:fixed

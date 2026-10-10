@@ -20,7 +20,6 @@ let file_size_kb = core.file_size_kb;
 let to_bool = core.to_bool;
 let to_optional_bool = core.to_optional_bool;
 let to_int = core.to_int;
-let mask_secret = core.mask_secret;
 let service_running = runtime.service_running;
 let dnsmasq_running = runtime.dnsmasq_running;
 
@@ -134,8 +133,6 @@ function build_status() {
     let refresh_interval_s = to_int(cfg('refresh_interval_s', '28800'), 28800);
     let boot_start_delay_s = to_int(cfg('boot_start_delay_s', '30'), 30);
 
-    let license_key = cfg('license_key', '');
-    let license_configured = !!license_key;
     let apply_local_overrides = to_bool(cfg('apply_local_overrides', '1'), true);
 
     let cfg_physical_fingerprint = identity_cfg('physical_fingerprint', '');
@@ -186,8 +183,8 @@ function build_status() {
     let artifact_block_source_count = to_int(data.artifact_block_source_count || (artifact_download_url_present ? 1 : 0), 0);
     let artifact_allow_source_count = to_int(data.artifact_allow_source_count || 0, 0);
 
-    let license_plan = data.license_plan || '';
-    let license_status = data.license_status || '';
+    let entitlement_plan = data.entitlement_plan || '';
+    let entitlement_status = data.entitlement_status || '';
     let physical_fingerprint = data.physical_fingerprint || cfg_physical_fingerprint || '';
     let fingerprint_version = to_int(data.fingerprint_version || cfg_fingerprint_version || 1, 1);
     let identity_provider = data.identity_provider || cfg_identity_provider || '';
@@ -217,8 +214,10 @@ function build_status() {
 
     let hub_source = build_api_source(data, enabled);
     let installed = blocklist_installed || file_exists(BLOCKLIST_FILE);
-    let refreshd_running = service_running(PKG_NAME);
-    let dns_running = dnsmasq_running();
+    let refresh_service = runtime.service_status(PKG_NAME, true);
+    let dns_service = runtime.service_status('dnsmasq', true);
+    let refreshd_running = refresh_service.running;
+    let dns_running = dns_service.running;
 
     let generated_at = time();
     let next_refresh_in_s = 0;
@@ -245,7 +244,11 @@ function build_status() {
 
         runtime: {
             refreshd_running: refreshd_running,
+            refreshd_state: refresh_service.state,
+            refreshd_lookup_ok: refresh_service.lookup_ok,
             dnsmasq_running: dns_running,
+            dnsmasq_state: dns_service.state,
+            dnsmasq_lookup_ok: dns_service.lookup_ok,
             dnsmasq_version: dnsmasq_version,
             dnsmasq_min_version: dnsmasq_min_version,
             dns_runtime_ok: health_dns_runtime || dns_running,
@@ -255,11 +258,9 @@ function build_status() {
             last_result: last_result,
             last_error_code: last_error_code
         },
-        license: {
-            configured: license_configured,
-            key_masked: mask_secret(license_key),
-            plan: license_plan,
-            status: license_status
+        entitlement: {
+            plan: entitlement_plan,
+            status: entitlement_status
         },
 
         device: {

@@ -124,7 +124,7 @@ function select_managed_wifi_sections(ctx) {
 	const selected = {};
 	const device_order = [];
 	const iterated = ctx.foreach('wireless', 'wifi-iface', function(section) {
-		if (section?.mode != 'ap') {
+		if (section?.mode != 'ap' || section?.['.name'] == 'ssh_guest') {
 			return;
 		}
 

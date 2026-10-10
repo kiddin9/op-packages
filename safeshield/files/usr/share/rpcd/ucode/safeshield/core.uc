@@ -149,20 +149,6 @@ function identity_cfg(name, def) {
     return (v == null) ? def : v;
 }
 
-function mask_secret(v) {
-    let s = sprintf('%s', v || '');
-    let n = length(s);
-
-    if (n == 0) {
-        return '';
-    }
-
-    if (n <= 8) {
-        return '********';
-    }
-
-    return sprintf('%s...%s', substr(s, 0, 4), substr(s, n - 4));
-}
 
 function api_error(code, message, field) {
     let error = {
@@ -242,7 +228,6 @@ return {
     reload_uci: reload_uci,
     cfg: cfg,
     identity_cfg: identity_cfg,
-    mask_secret: mask_secret,
     api_error: api_error,
     uci_commit_option: uci_commit_option,
     uci_delete_option: uci_delete_option,

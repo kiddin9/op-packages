@@ -1,6 +1,6 @@
-import type { ComponentChildren, JSX } from 'preact';
+import type { ComponentChildren, SVGAttributes } from 'preact';
 
-interface IconProps extends JSX.SVGAttributes<SVGSVGElement> {
+interface IconProps extends SVGAttributes<SVGSVGElement> {
   children?: ComponentChildren;
   title?: string;
 }
@@ -97,6 +97,16 @@ export function WifiIcon(props: IconProps) {
   );
 }
 
+export function QrCodeIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" />
+      <path d="M6.5 6.5h1M16.5 6.5h1M6.5 16.5h1" />
+      <path d="M14 14h2v2h-2zM18 14h2v2h-2zM16 16h2v2h-2zM18 18h2v2h-2zM14 18h1" />
+    </IconBase>
+  );
+}
+
 export function CableIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -184,6 +194,15 @@ export function KeyIcon(props: IconProps) {
     <IconBase {...props}>
       <circle cx="8" cy="15" r="4" />
       <path d="m11 12 8-8M15 8l2 2M17 6l2 2" />
+    </IconBase>
+  );
+}
+
+export function CopyIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect height="13" rx="2" width="13" x="8" y="8" />
+      <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
     </IconBase>
   );
 }

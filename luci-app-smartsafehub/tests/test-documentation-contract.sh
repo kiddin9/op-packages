@@ -41,6 +41,6 @@ grep -Fq '## 장치 대시보드' "$FEATURES" || fail 'FEATURES.md must contain 
 grep -Fq '## OpenWrt 패키지 빌드' "$DEVELOPMENT" || fail 'DEVELOPMENT.md must contain package build documentation'
 grep -Fq '## ucode 컴파일 검사' "$DEVELOPMENT" || fail 'DEVELOPMENT.md must contain ucode validation documentation'
 grep -Fq '## 설치 후 확인' "$OPERATIONS" || fail 'OPERATIONS.md must contain post-install checks'
-grep -Fq '### SmartSafeHub 라이선스 lifecycle' "$OPERATIONS" || fail 'OPERATIONS.md must contain license lifecycle documentation'
+grep -Fq '### SmartSafeHub entitlement lifecycle' "$OPERATIONS" || fail 'OPERATIONS.md must contain entitlement lifecycle documentation'
 
 printf 'PASS: README summary and detailed documentation split are consistent\n'

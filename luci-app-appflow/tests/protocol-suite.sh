@@ -794,7 +794,7 @@ test_hostile() {
 	feed_and_settle || return
 
 	# THIS RUNTIME CHECK BINDS NOTHING TODAY, AND THE STATIC ONE BELOW IS THE
-	# REAL GUARD. A review panel converged on this and it was right.
+	# REAL GUARD. Reviewers converged on this and they were right.
 	#
 	# The canary cannot be turned red by any edit that leaves appflowd doing
 	# what it does, because appflowd never invokes a shell. The only edits that

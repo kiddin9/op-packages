@@ -1,4 +1,4 @@
-import type { JSX } from 'preact';
+import type { TargetedKeyboardEvent, TargetedSubmitEvent } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 
 import { setInitialRootPassword } from '../api/initialSetup';
@@ -69,11 +69,11 @@ export function InitialPasswordSetupPage({
     return () => window.cancelAnimationFrame(frame);
   }, []);
 
-  const updateCapsLock = (event: JSX.TargetedKeyboardEvent<HTMLInputElement>) => {
+  const updateCapsLock = (event: TargetedKeyboardEvent<HTMLInputElement>) => {
     setCapsLock(event.getModifierState?.('CapsLock') ?? false);
   };
 
-  const submit = async (event: JSX.TargetedSubmitEvent<HTMLFormElement>) => {
+  const submit = async (event: TargetedSubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
@@ -205,7 +205,7 @@ export function InitialPasswordSetupPage({
                     onKeyUp={updateCapsLock}
                     placeholder="새 관리자 비밀번호"
                     ref={passwordInput}
-                    type={showPassword ? 'text' : 'password'}
+                    {...(showPassword ? { type: 'text' as const } : { type: 'password' as const })}
                     value={password}
                   />
                   <button
@@ -245,7 +245,7 @@ export function InitialPasswordSetupPage({
                     onKeyUp={updateCapsLock}
                     placeholder="새 관리자 비밀번호 다시 입력"
                     ref={confirmationInput}
-                    type={showPassword ? 'text' : 'password'}
+                    {...(showPassword ? { type: 'text' as const } : { type: 'password' as const })}
                     value={confirmation}
                   />
                 </span>

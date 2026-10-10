@@ -38,10 +38,10 @@ procd
 uclient-fetch
 jsonfilter
 igmpproxy
-safeshield (>= 0.3.24)
+safeshield (>= 0.3.24-r4)
 ```
 
-`LUCI_DEPENDS`의 `+igmpproxy`는 IPTV Beta의 멀티캐스트 proxy runtime을 함께 설치하고, `+safeshield`는 빌드 시 SafeShield 패키지 선택 관계를 유지합니다. `LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.24)`는 설치·업데이트 시 필요한 최소 SafeShield 버전을 강제합니다.
+`LUCI_DEPENDS`의 `+igmpproxy`는 IPTV Beta의 멀티캐스트 proxy runtime을 함께 설치하고, `+safeshield`는 빌드 시 SafeShield 패키지 선택 관계를 유지합니다. `LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.24-r4)`는 설치·업데이트 시 필요한 최소 SafeShield 버전을 강제합니다.
 
 프런트엔드 빌드에는 **Node.js 24 이상**이 필요합니다.
 
@@ -80,13 +80,13 @@ luci-app-smartsafehub/
 │   ├── etc/init.d/smartsafehub-updater
 │   ├── etc/init.d/smartsafehub-firmware
 │   ├── etc/init.d/smartsafehub-health
-│   ├── etc/init.d/smartsafehub-license
+│   ├── etc/init.d/smartsafehub-device
 │   ├── etc/init.d/smartsafehub-maintenance
 │   ├── usr/libexec/smartsafehub-events
 │   ├── usr/libexec/smartsafehub-updater
 │   ├── usr/libexec/smartsafehub-firmware
 │   ├── usr/libexec/smartsafehub-health
-│   ├── usr/libexec/smartsafehub-license
+│   ├── usr/libexec/smartsafehub-device
 │   ├── usr/libexec/smartsafehub-maintenance
 │   ├── etc/uci-defaults/91-smartsafehub-firmware-identity
 │   ├── usr/libexec/smartsafehub-backup

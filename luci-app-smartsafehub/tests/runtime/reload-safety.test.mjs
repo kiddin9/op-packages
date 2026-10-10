@@ -77,27 +77,15 @@ assert.equal(
 
 const effectStartMarker = '  useEffect(() => {';
 const effectEndMarker = '  }, [resource.data]);';
-let searchFrom = 0;
-let effectBody = null;
-
-while (searchFrom < updatesHook.length) {
-  const start = updatesHook.indexOf(effectStartMarker, searchFrom);
-  if (start < 0) {
-    break;
-  }
-
-  const bodyStart = start + effectStartMarker.length;
-  const end = updatesHook.indexOf(effectEndMarker, bodyStart);
-  assert.notEqual(end, -1, 'reload effect must have a resource.data dependency terminator');
-
-  const candidate = updatesHook.slice(bodyStart, end);
-  if (candidate.includes('window.location.reload();')) {
-    assert.equal(effectBody, null, 'self-update reload must exist in exactly one effect');
-    effectBody = candidate;
-  }
-
-  searchFrom = end + effectEndMarker.length;
-}
+// Find the closest enclosing effect to the reload call. Earlier effects can
+// have other dependency arrays and must not be captured in this test.
+const reloadSite = updatesHook.indexOf('window.location.reload();');
+assert.notEqual(reloadSite, -1, 'self-update reload call must exist');
+const effectStart = updatesHook.lastIndexOf(effectStartMarker, reloadSite);
+assert.notEqual(effectStart, -1, 'self-update reload effect must exist');
+const effectEnd = updatesHook.indexOf(effectEndMarker, reloadSite);
+assert.notEqual(effectEnd, -1, 'reload effect dependency terminator must exist');
+const effectBody = updatesHook.slice(effectStart + effectStartMarker.length, effectEnd);
 
 assert.notEqual(effectBody, null, 'self-update reload effect was not found');
 assert.equal(

@@ -53,12 +53,12 @@ rpcd ucode: smartsafehub       rpcd ucode: safeshield
        ├─ system / network           ├─ status / config
        ├─ wireless / hostapd         ├─ enable / refresh
        ├─ DHCP leases / ARP          ├─ local rules
-       ├─ reboot / wifi reload       ├─ license storage / identity
+       ├─ reboot / wifi reload       ├─ device identity / entitlement
        ├─ update status/settings     └─ DNS protection lifecycle
-       └─ license lifecycle
+       └─ device account lifecycle
               │
-              ├─ smartsafehub-license (procd)
-              │    └─ Hub activate / periodic status sync
+              ├─ smartsafehub-device (procd)
+              │    └─ Hub bootstrap / account / entitlement sync
               └─ smartsafehub-updater (procd)
                    └─ apk update / targeted package upgrade
 
@@ -101,7 +101,7 @@ root/usr/share/rpcd/acl.d/luci-app-smartsafehub.json
 - `smartsafehub.wifi_summary`
 - `smartsafehub.updates_status`
 - `smartsafehub.health_status`
-- `smartsafehub.license_status`
+- `smartsafehub.device_registration_status`
 - `safeshield.status`
 - `safeshield.config`
 - `safeshield.rules_list`
@@ -115,16 +115,13 @@ root/usr/share/rpcd/acl.d/luci-app-smartsafehub.json
 - `smartsafehub.updates_settings_update`
 - `smartsafehub.health_run`
 - `smartsafehub.health_reporter_update`
-- `smartsafehub.license_activate`
+- `smartsafehub.device_registration_refresh`
+- `smartsafehub.device_pairing_refresh`
 - `safeshield.set_enabled`
 - `safeshield.config_update` (통계 수집 설정에 한정)
 - `safeshield.refresh`
 - `safeshield.rule_add`
 - `safeshield.rule_delete`
-- `safeshield.license_get`
-- `safeshield.license_update`
-
-`license_get`은 동작 자체는 읽기이지만 평문 라이선스 키를 반환하는 민감 API이므로 일반 상태 조회 권한과 분리해 write ACL 그룹에 포함합니다. 브라우저의 주기적 상태 polling, 로컬 Health 진단과 진단 다운로드에서는 호출하지 않습니다. opt-in된 Health Reporter daemon만 실제 HTTPS 보고 시 서버 인증을 위해 일시적으로 호출하며 키를 파일이나 payload에 저장하지 않습니다.
 
 rpcd는 로그인 시점에 ACL 그룹을 세션 권한으로 확장하므로 패키지 업그레이드로 새 RPC 메서드가 추가되면 이미 로그인되어 있던 세션에는 새 메서드 권한이 아직 없을 수 있습니다. postinst는 `rpcd reload`로 새 ucode plugin/ACL을 즉시 로드하고, 프런트엔드는 `Access denied` 발생 시 오래전부터 존재한 `system_root_password_status`를 같은 session ID로 확인합니다. 이 control RPC도 거부될 때만 실제 세션 만료로 처리하고, control RPC가 성공하면 새 ACL만 부족한 유효 세션으로 간주해 전체 애플리케이션을 강제 로그아웃시키지 않습니다.
 
@@ -483,14 +480,14 @@ SafeShield가 소유하는 기능:
 - enable/disable lifecycle
 - 수동 refresh
 - local allow/block 규칙
-- 라이선스 키 저장·조회·제거와 장치 identity 제공
+- 장치 identity와 현재 entitlement 상태 제공
 - 규칙 파일, dnsmasq, procd와 refresh scheduling
 
 SmartSafeHub는 API 응답을 화면 모델로 정규화할 뿐 SafeShield의 UCI, `/etc/safeshield/*`, `/tmp/dnsmasq.d/*` 또는 `/etc/init.d/safeshield`를 직접 수정하지 않습니다. 통계 수집 ON/OFF는 SafeShield 공식 `safeshield.config_update`에 `statistics_enabled`만 전달해 변경하며, 그 외 일반 설정 편집에는 사용하지 않습니다. `set_enabled`는 비동기 요청이므로 mutation 응답으로 최종 상태를 추정하지 않고 `safeshield.status`를 다시 조회해 runtime 수렴을 확인합니다.
 
-라이선스 상태의 기본 화면 조회는 `safeshield.status`의 `configured`, `key_masked`, plan/status 정보만 사용합니다. 브라우저가 평문 키를 가져오는 것은 사용자가 **현재 키 불러오기**를 명시적으로 실행한 경우뿐입니다. 새 키 등록과 변경은 SmartSafeHub의 `license_activate` RPC가 SafeShield `status.device` identity를 사용해 Hub `/api/v1/licenses/activate`를 먼저 통과시킨 뒤 성공한 경우에만 `safeshield.license_update`로 저장합니다. 사용자의 로컬 제거는 기존처럼 `license_update`에 빈 키를 전달합니다.
+SafeShield 상태는 `safeshield.status.entitlement`의 `plan/status`로 현재 Hub 권한을 노출합니다. 로컬 라이선스 키를 저장하거나 브라우저에 제공하지 않으며, 계정 소유권과 구독 권한은 SmartSafeHub Device credential을 인증한 `/api/v1/devices/sync` 응답에서 결정됩니다.
 
-서버에서 해제한 라이선스의 로컬 수렴은 `/usr/libexec/smartsafehub-license` daemon이 담당합니다. 기본 300초마다 `license_get`으로 현재 키를 메모리에 일시 조회하고 `/api/v1/licenses/status`를 호출하며, 성공 응답이 명시적으로 `device_action=clear_license`를 지시한 경우에만 `safeshield.license_update`로 제거합니다. 서버/API 장애는 로컬 권한을 즉시 파괴하지 않는 fail-open 상태로 기록합니다. 명시적 activate와 status-sync는 activation lock으로 직렬화해 상태 파일과 키 갱신이 서로 덮어쓰지 않게 합니다. 로컬 Health 진단·진단 다운로드·일반 UI polling에는 평문 키가 포함되지 않습니다. opt-in된 유료/Trial Health Reporter daemon 역시 실제 서버 보고 직전에만 `safeshield.license_get`으로 키를 메모리에 조회해 HTTPS 인증 헤더에 사용하고 즉시 폐기합니다.
+`/usr/libexec/smartsafehub-device`는 기본 주기 동기화에서 계정 연결 상태와 현재 플랜을 `/tmp/smartsafehub/device.json`에 반영하고 필요한 Cloud runtime credential을 `/tmp`에만 저장합니다. 웹사이트에서 등록 해제가 확인되면 계정 종속 credential을 정리하고 SafeShield refresh를 한 번 요청합니다. Hub/API 장애만으로는 기존 로컬 DNS 보호나 적용된 차단 목록을 제거하지 않습니다. Health Reporter도 현재 device sync entitlement를 기준으로 eligibility를 판단하고 Device credential로 서버에 인증합니다.
 
 #### `system.uc`
 
@@ -531,15 +528,13 @@ SafeShield 기능은 아래 공식 API를 직접 소비합니다.
 | SafeShield API | 유형 | 설명 |
 |---|---|---|
 | `safeshield.status` | 읽기 | 상태, runtime, artifact, health |
-| `safeshield.config` | 읽기 | 공개 설정과 마스킹된 라이선스 상태 |
+| `safeshield.config` | 읽기 | 공개 설정 |
 | `safeshield.set_enabled` | 쓰기 | 비동기 enable/disable lifecycle 요청 |
 | `safeshield.config_update` | 쓰기 | `statistics_enabled` 통계 수집 설정 변경 |
 | `safeshield.refresh` | 쓰기 | 비동기 refresh 요청 |
 | `safeshield.rules_list` | 읽기 | 사용자 허용·차단 규칙 조회 |
 | `safeshield.rule_add` | 쓰기 | 사용자 규칙 추가 |
 | `safeshield.rule_delete` | 쓰기 | 사용자 규칙 삭제 |
-| `safeshield.license_get` | 민감 읽기 | 사용자가 요청한 경우 현재 평문 라이선스 키 조회 |
-| `safeshield.license_update` | 쓰기 | 라이선스 키 등록·변경, 빈 키로 제거 |
 
 ## 7. 주요 데이터 흐름
 
@@ -625,48 +620,34 @@ SafeShieldRulesPage
 
 SmartSafeHub는 규칙 입력 형식을 프런트엔드에서 1차 검증하지만, 규칙 파일과 적용 lifecycle의 authoritative source는 SafeShield입니다.
 
-### 7.7 SmartSafeHub / SafeShield 라이선스 lifecycle
+### 7.7 SmartSafeHub 계정 / entitlement lifecycle
 
 ```text
-기본 화면 상태 조회
-  → safeshield.status
-  → configured + key_masked만 사용
+공유기 초기화
+  → /etc/smartsafehub/device-credential.json 생성
+  → smartsafehub-device bootstrap
+  → Hub Device UUID 연결
 
-현재 키 불러오기
-  → 사용자 명시 동작
-  → safeshield.license_get
-  → 평문 키를 입력란에 채워 수정 가능
+계정 연결
+  → device_pairing_refresh
+  → Hub pairing code 발급
+  → 웹사이트에서 사용자 계정에 등록
+  → smartsafehub-device status-sync
+  → account.connected=true + entitlement plan/status 저장
 
-등록 / 변경
-  → smartsafehub.license_activate
-  → safeshield.status.device에서 authoritative identity 수집
-  → private /tmp request file 생성
-  → smartsafehub-license activate --request-file ...
-  → POST /api/v1/licenses/activate
-  → Hub 성공 시에만 safeshield.license_update { license_key: "..." }
+주기 동기화
+  → Authorization: Device <credential>
+  → POST /api/v1/devices/sync
+  → 현재 account/entitlement와 Cloud runtime credential 갱신
 
-주기적 서버 상태 수렴
-  → smartsafehub-license daemon (기본 300초)
-  → safeshield.license_get + safeshield.status.device.physical_fingerprint
-  → POST /api/v1/licenses/status
-      ├─ none + licensed: 유지
-      ├─ clear_license: safeshield.license_update { license_key: "" }
-      └─ 통신 실패/비정상 응답: 로컬 키 유지 + 진단 오류 기록
-
-사용자 로컬 제거
-  → 사용자 확인
-  → safeshield.license_update { license_key: "" }
+웹사이트에서 등록 해제
+  → 다음 device sync에서 account.connected=false 감지
+  → 계정 종속 Cloud credential 정리
+  → SafeShield refresh 1회 요청
+  → Device credential은 유지해 재등록 가능
 ```
 
-SafeShield는 키 저장과 device identity의 authoritative source이며 Hub 계정/장치 activation lifecycle은 SmartSafeHub가 소유합니다. SmartSafeHub는 SafeShield UCI를 직접 수정하지 않고 항상 공식 ubus API를 사용합니다. activate 요청의 평문 키는 command line이나 `/tmp/smartsafehub/license.json`에 기록하지 않고 mode 0600의 일시 request file로 helper에 넘긴 뒤 완료 시 제거합니다.
-
-`smartsafehub-license`는 `daemon`, `activate`, `status-sync`, `status` subcommand로 구성합니다. 이 명령 경계와 상태 모델은 향후 `smartsafehub-agent license ...`로 통합할 때 기능 코드를 큰 단일 loop로 합치지 않고 license 모듈 단위로 그대로 옮길 수 있게 의도한 것입니다. 현재는 독립 procd 서비스라 장애 격리와 `logread -e smartsafehub-license`, 수동 `status-sync` 같은 디버깅 경로를 유지합니다.
-
-daemon의 startup/check interval은 interrupt 가능한 child `sleep` + `wait` 경계로 구현합니다. SIGTERM/SIGINT 시 wait 중인 child를 종료하고 scheduler loop를 빠져나오므로 300초 대기 중 procd stop/restart가 SIGKILL까지 지연되지 않습니다. HTTP 요청은 최대 10초이므로 init script의 `term_timeout`은 15초로 두어 요청 중 종료에도 정상 정리 여유를 둡니다.
-
-`/tmp/smartsafehub/license.json`은 현재 동작 상태와 별도로 마지막 Hub/activation 진단을 유지합니다. `lastHttpStatus`는 성공한 Hub JSON API 요청에서 200을 기록하고 실제 HTTP 상태를 신뢰할 수 없는 fetch 실패에서는 `null`을 기록합니다. `lastActivationResult`와 `lastActivationErrorCode`는 마지막 명시적 activate의 성공/실패 결과이며, 이후 `status-sync`, 서버 revoke에 따른 clear, 로컬 unconfigured 전환이 발생해도 덮어쓰지 않습니다. 따라서 현재 상태(`phase`, `lastResult`)와 마지막 사용자 activation 결과를 독립적으로 진단할 수 있습니다.
-
-라이선스 입력란은 비밀번호 필드로 취급하지 않고 일반 텍스트 입력으로 사용합니다. 브라우저 비밀번호 관리자 대상이 되지 않도록 autocomplete 및 주요 password-manager ignore 속성을 적용합니다.
+SafeShield는 Hub 동기화 응답에서 받은 `entitlement.plan/status`와 artifact 정보를 `safeshield.status.entitlement`로 노출합니다. 로컬 라이선스 키 저장·조회 API는 사용하지 않습니다. Hub 장애만으로 기존 로컬 DNS 보호나 마지막으로 적용된 차단 목록을 제거하지 않습니다.
 
 ### 7.8 진단 파일
 
@@ -689,14 +670,12 @@ SettingsPage의 기존 system snapshot
           ├─ 30분 heartbeat
           ├─ 이상 fingerprint 변경 즉시 보고
           └─ 실패 시 5분 backoff
-              → license_get (일시 인증)
+              → Device credential 인증
               → privacy whitelist payload
               → POST /api/v1/health/reports
 ```
 
-Health Reporter가 서버 인증 헤더를 만들 때 사용하는 `safeshield.license_get` 응답은 `license.key`에 평문 키를 담는 중첩 구조를 사용합니다. Reporter는 이 실제 계약을 우선 읽고, 과거 개발 빌드의 최상위 `key`는 호환 fallback으로만 처리합니다. 키는 상태 파일이나 보고 payload에 저장하지 않습니다.
-
-Hub 수신 API는 라이선스/Trial eligibility를 서버에서도 독립적으로 검증해야 합니다. 공유기의 클라이언트 측 gating은 서버 권한 검사를 대신하지 않습니다.
+Health Reporter는 `/tmp/smartsafehub/device.json`의 현재 entitlement를 기준으로 Pro/Ultimate eligibility를 판단하고 `/etc/smartsafehub/device-credential.json`의 Device credential로 서버에 인증합니다. Hub 수신 API도 현재 계정 entitlement를 독립적으로 검증하므로 공유기의 클라이언트 측 gating은 서버 권한 검사를 대신하지 않습니다.
 
 ### 7.10 다크 테마 상태 패널
 
@@ -721,10 +700,9 @@ PKG_VERSION + PKG_RELEASE
 - 모든 원격 호출은 `/admin/ubus`를 통과합니다.
 - ACL에 등록하지 않은 메서드는 호출할 수 없습니다.
 - 읽기와 쓰기 메서드를 분리합니다.
-- 평문 라이선스 키를 반환하는 `license_get`은 일반 read ACL과 분리합니다. 브라우저에서는 사용자 명시 동작에서만 호출하고, opt-in된 Health Reporter daemon에서는 실제 서버 보고의 인증 순간에만 일시 사용합니다.
-- 진단 파일은 비밀번호와 라이선스 키를 요청하거나 저장하지 않습니다.
+- 진단 파일은 비밀번호나 Device credential 같은 인증 비밀을 요청하거나 저장하지 않습니다.
 - 진단 파일에 포함될 수 있는 호스트명, WAN IPv4와 Wi-Fi SSID를 사용자에게 사전 안내합니다.
-- Health Reporter payload는 별도 whitelist builder를 사용하며 네트워크 식별 정보, DNS 요청 내용, 로그 원문과 라이선스 키를 포함하지 않습니다.
+- Health Reporter payload는 별도 whitelist builder를 사용하며 네트워크 식별 정보, DNS 요청 내용, 로그 원문과 Device credential을 포함하지 않습니다.
 - Health Reporter는 기본 OFF이고 유료/Trial 사용자도 직접 opt-in해야 하며 OFF 이후 자동 보고 요청을 보내지 않습니다.
 
 ### 8.2 입력 검증
@@ -833,7 +811,7 @@ SmartSafeHub의 휘발성 런타임 파일은 `/tmp/smartsafehub/` 한 단계 �
 
 업데이트 기능은 rpcd와 실제 APK 작업을 분리합니다. `updates_check`와 `updates_install`은 요청을 검증한 뒤 `/usr/libexec/smartsafehub-updater`를 백그라운드에서 시작하고 즉시 반환합니다. updater는 `apk update`와 패키지 조회·설치를 수행하고 `/tmp/smartsafehub/updates.state`에 결과를 atomic write합니다. `updates_status`는 이 로컬 상태 파일과 UCI 설정만 읽으므로 저장소 응답 속도가 제품 UI API에 영향을 주지 않습니다.
 
-업데이트 감지 대상은 `luci-app-smartsafehub` 하나입니다. 새 버전이 확인되면 `apk add --upgrade luci-app-smartsafehub`만 실행합니다. Makefile은 `LUCI_DEPENDS:=... +safeshield`와 `LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.23)`를 함께 선언합니다. 따라서 빌드 시 SafeShield 선택 관계를 유지하면서, 설치·업데이트 시 APK dependency resolver가 최소 `0.3.23` 조건을 만족하도록 필요한 경우 SafeShield를 함께 갱신합니다.
+업데이트 감지 대상은 `luci-app-smartsafehub` 하나입니다. 새 버전이 확인되면 `apk add --upgrade luci-app-smartsafehub`만 실행합니다. Makefile은 `LUCI_DEPENDS:=... +safeshield`와 `LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.24-r4)`를 함께 선언합니다. 따라서 빌드 시 SafeShield 선택 관계를 유지하면서, 설치·업데이트 시 APK dependency resolver가 최소 `0.3.24-r4` 조건을 만족하도록 필요한 경우 SafeShield를 함께 갱신합니다.
 
 새 버전이 있으면 updater는 SmartSafeHub 전용 `/etc/apk/repositories.d/smartsafehub.list`의 APK repository URL에서 `https://repo.smartsafehub.com/<channel>` base를 유도하고 먼저 `releases/luci-app-smartsafehub/index.json`을 조회합니다. 다른 repository 파일은 release channel 결정에 사용하지 않습니다. index의 newest-first 순서를 이용해 현재 설치 버전 이후부터 APK가 제시한 최신 버전까지의 `<version>.json`만 내려받고 `/tmp/smartsafehub/release-notes.json` 하나의 bundle로 atomic cache합니다. rpcd는 bundle의 설치/최신 버전 범위, 각 릴리즈의 schema·package·version과 크기 제한을 검증한 뒤 `updates_status.releaseNotes`와 `releaseNotesComplete`로 노출합니다. index 또는 일부 릴리즈 노트를 가져오지 못한 경우에도 가능한 노트만 표시하며, 이 메타데이터는 signed APK metadata를 대체하지 않는 표시용 보조 정보이므로 다운로드·파싱 실패는 update check/install 결과에 영향을 주지 않습니다.
 
@@ -848,9 +826,3 @@ WAN 고정 IPv4의 주소, gateway와 DNS도 동일한 `Ipv4OctetInput` 컴포�
 ### Hash route 새로고침 보존
 
 SmartSafeHub는 현재 route를 별도 storage에 복제하지 않고 브라우저의 URL fragment를 직접 사용한다. uHTTPd exact-root handler가 `/`을 내부 rewrite하면 브라우저 navigation이 발생하지 않으므로 `/#settings`, `/#system` 같은 fragment는 일반 새로고침에서도 그대로 유지된다.
-
-### License activation RPC 경계
-
-`smartsafehub.license_activate`는 rpcd 실행 컨텍스트에서 `safeshield.status`를 다시 동기 호출하지 않습니다. RPC는 mode 0600 request 파일에 라이선스 키만 기록하고 detached `smartsafehub-license activate` helper를 시작한 뒤 즉시 반환합니다. helper가 별도 프로세스에서 SafeShield authoritative device identity/profile을 읽고 Hub `/api/v1/licenses/activate`를 호출하며, 성공한 경우에만 SafeShield `license_update`로 로컬 키를 저장합니다. 이 경계는 rpcd nested ubus 대기를 피하고 향후 `smartsafehub-agent license activate`로 이동할 때도 그대로 유지합니다.
-
-프런트엔드는 activation 상태를 1초 간격으로 확인하되 `license_status` RPC timeout을 5초로 제한하고 일시적인 timeout/네트워크 오류를 최대 2회 재시도합니다. 라이선스 관련 진행/성공/오류 피드백은 작업 위치인 라이선스 카드 안에서 표시합니다.

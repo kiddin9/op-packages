@@ -375,7 +375,7 @@ upload_send_pending() {
 						continue
 					fi
 					if [ "$refresh_rc" -eq 2 ]; then
-						log_info 'Cloud statistics upload is no longer enabled for the current license'
+						log_info 'Cloud statistics upload is no longer enabled for the current account entitlement'
 						upload_pending_clear
 						return 2
 					fi
@@ -433,14 +433,11 @@ main() {
 		fi
 
 		wait_s="$SS_STATS_UPLOAD_INTERVAL_S"
-		if [ -z "${ss_license_key:-}" ]; then
-			ss_statistics_upload_denied || ss_statistics_disable_cloud_upload >/dev/null 2>&1 || true
-		fi
 		if ss_statistics_upload_denied; then
 			upload_pending_clear
-			if [ -n "${ss_license_key:-}" ] && ss_statistics_upload_denied_recheck_due "$SS_STATS_UPLOAD_DENIED_RECHECK_S"; then
+			if ss_statistics_upload_denied_recheck_due "$SS_STATS_UPLOAD_DENIED_RECHECK_S"; then
 				log_info 'Rechecking Hub statistics upload entitlement'
-				# Stamp this attempt before network I/O so a failed resolve cannot
+				# Stamp this attempt before network I/O so a failed device sync cannot
 				# turn into a routine upload retry loop while entitlement is denied.
 				ss_statistics_set_upload_entitlement denied >/dev/null 2>&1 || true
 				entitlement_rc=0

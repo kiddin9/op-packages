@@ -232,7 +232,7 @@ var DEVICE_LABELS = {
  * normalised, and columnChart reads only p.dl/p.ul, so it drew an EMPTY framed
  * plot under a KPI row reporting megabytes. Worse, series.length was still 12,
  * so the honest "No time series available" branch never ran.
- * Found by a code-review panel, 2026-08-25. No daemon field is named dl or ul,
+ * Found in code review, 2026-08-25. No daemon field is named dl or ul,
  * so the aliases are inert against real payloads. */
 var A_DL   = [ 'download', 'bytes_down', 'rx_bytes', 'download_bytes', 'total_download', 'dl' ],
     A_UL   = [ 'upload', 'bytes_up', 'tx_bytes', 'upload_bytes', 'total_upload', 'ul' ],
@@ -485,7 +485,7 @@ return baseclass.extend({
 	 * bytes_down fell through to the byte counter and the Download KPI read
 	 * something like "12.4 GB/s" while nothing moved. Read with a -1 sentinel
 	 * and test presence instead, the way normTotals already does for its own
-	 * totals. Raised by a code-review panel, 2026-08-25.
+	 * totals. Raised in code review, 2026-08-25.
 	 *
 	 * Latent rather than live: the only caller is guarded by `summary.rates ?`,
 	 * and this daemon puts byte and rate counters together in `totals` and sends
@@ -752,7 +752,7 @@ return baseclass.extend({
 		 * A device named `constructor` then rendered style="background:undefined",
 		 * which the browser drops, leaving white tile text on a transparent
 		 * tile; in the doughnut the slice silently did not draw while its legend
-		 * still claimed a percentage. Found by a code-review panel, 2026-08-25. */
+		 * still claimed a percentage. Found in code review, 2026-08-25. */
 		if (Object.prototype.hasOwnProperty.call(CATEGORY_SLOT, s))
 			return PALETTE[CATEGORY_SLOT[s]];
 
@@ -1257,7 +1257,7 @@ return baseclass.extend({
 		     * `.af-donut > svg` also carried transform:rotate(-90deg) until
 		     * 2026-08-25, the two stacked, and the first slice actually began at
 		     * 9 o'clock -- so this comment asserted something the render did not
-		     * do. Found by a code-review panel. If you re-add a CSS rotation,
+		     * do. Found in code review. If you re-add a CSS rotation,
 		     * take this offset out. */
 		    off = 25,
 		    ring = [ this.svg('circle', {
@@ -1418,7 +1418,7 @@ return baseclass.extend({
 		     * It failed GREEN on the one indicator whose whole job is to tell the
 		     * operator the collector is down, which is also the most common reason
 		     * the page is empty. Absent evidence is not positive evidence; unknown
-		     * is its own state and is drawn neutral. Found by a code-review panel,
+		     * is its own state and is drawn neutral. Found in code review,
 		     * 2026-08-25. */
 		    known = (s.agent_connected != null) || (sock.connected != null),
 		    connected = known && (s.agent_connected !== false) && (sock.connected !== false),

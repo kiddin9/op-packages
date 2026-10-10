@@ -12,7 +12,6 @@ let reload_uci = core.reload_uci;
 let cfg = core.cfg;
 let to_bool = core.to_bool;
 let to_int = core.to_int;
-let mask_secret = core.mask_secret;
 let api_error = core.api_error;
 let uci_commit_option = core.uci_commit_option;
 let bool_uci = core.bool_uci;
@@ -46,10 +45,6 @@ function build_config() {
             version: CONFIG_SCHEMA_VERSION
         },
         values: values,
-        license: {
-            configured: !!cfg('license_key', ''),
-            key_masked: mask_secret(cfg('license_key', ''))
-        },
         device: {
             vendor: cfg('device_vendor', ''),
             model: cfg('device_model', ''),
@@ -67,9 +62,6 @@ function validate_config_value(name, value) {
             return api_error('dedicated_method_required', 'Use set_enabled to change enabled state', name);
         }
 
-        if (name == 'license_key') {
-            return api_error('dedicated_method_required', 'Use license_update to change the license key', name);
-        }
 
         return api_error('unknown_option', 'Unsupported SafeShield configuration option', name);
     }

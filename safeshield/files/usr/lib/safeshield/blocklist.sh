@@ -177,6 +177,17 @@ ss_read_installed_version() {
 	printf '%s' "$version"
 }
 
+ss_device_credential_path() {
+	printf '%s' "${SS_DEVICE_CREDENTIAL_FILE:-/etc/smartsafehub/device-credential.json}"
+}
+
+ss_device_credential_token() {
+	local path
+	path="$(ss_device_credential_path)"
+	[ -r "$path" ] || return 1
+	ss_json_get_file "$path" '@.token'
+}
+
 ss_write_resolve_payload() {
 	local out="$1"
 	local model vendor arch memory physical_fingerprint safeshield_version
@@ -202,7 +213,6 @@ ss_write_resolve_payload() {
 
 	cat >"$out" <<__SAFESHIELD_JSON__
 {
-  "license_key": $(ss_json_value "$ss_license_key"),
   "device": {
     "physical_fingerprint": $(ss_json_value "$physical_fingerprint"),
     "fingerprint_version": ${SS_FINGERPRINT_VERSION:-1},
@@ -494,22 +504,25 @@ ss_resolve_artifact_sources() {
 }
 
 ss_resolve_artifact() {
-	local url response payload retries ok statistics_entitlement_rc
+	local url response payload retries ok statistics_entitlement_rc device_credential
 
 	SS_RESOLVE_ERROR_CODE='api_resolve_failed'
-	url='https://www.smartsafehub.com/api/v1/licenses/resolve'
+	url='https://www.smartsafehub.com/api/v1/devices/sync'
 	payload="$SS_API_PAYLOAD"
 	response="$SS_API_RESPONSE"
 
 	ss_status_set artifact_download_url_present "0"
 
-	if [ -z "$ss_license_key" ]; then
-		log_info "license_key is empty; resolving SafeShield artifact as unlicensed/free device"
-		ss_status_set license_plan "free"
-		ss_status_set license_status "unlicensed"
-	fi
-
 	ss_write_resolve_payload "$payload" || return 1
+	device_credential="$(ss_device_credential_token 2>/dev/null || true)"
+	if [ -z "$device_credential" ]; then
+		log_warn "SmartSafeHub device credential is not available yet; retrying on the next refresh"
+		SS_RESOLVE_ERROR_CODE='device_registration_pending'
+		ss_status_set device_registration_status 'pending'
+		ss_status_set health_api_resolve "0"
+		return 1
+	fi
+	ss_status_set device_registration_status 'registered'
 
 	retries=1
 	ok=0
@@ -517,7 +530,7 @@ ss_resolve_artifact() {
 		ss_should_stop && return 130
 		log_info "Resolving SafeShield artifact via Hub API (try ${retries}/${ss_download_retry})"
 
-		if ss_http_post_json "$url" "$payload" "$response" && [ -s "$response" ]; then
+		if ss_http_post_json "$url" "$payload" "$response" "Device ${device_credential}" && [ -s "$response" ]; then
 			ok=1
 			break
 		fi
@@ -546,8 +559,8 @@ ss_resolve_artifact() {
 	ss_resolved_artifact_version="$(ss_json_get_file "$response" '@.artifact.version')"
 	ss_resolved_artifact_unique_domains="$(ss_json_get_file "$response" '@.artifact.unique_domains')"
 	ss_resolved_artifact_rules="$(ss_json_get_file "$response" '@.artifact.rules')"
-	ss_resolved_license_plan="$(ss_json_get_file "$response" '@.license.plan')"
-	ss_resolved_license_status="$(ss_json_get_file "$response" '@.license.status')"
+	ss_resolved_entitlement_plan="$(ss_json_get_file "$response" '@.entitlement.plan')"
+	ss_resolved_entitlement_status="$(ss_json_get_file "$response" '@.entitlement.status')"
 	ss_resolved_device_profile="$(ss_json_get_file "$response" '@.device.profile')"
 
 	if command -v ss_statistics_sync_upload_entitlement >/dev/null 2>&1; then
@@ -555,7 +568,7 @@ ss_resolve_artifact() {
 		ss_statistics_sync_upload_entitlement "$response" || statistics_entitlement_rc=$?
 		case "$statistics_entitlement_rc" in
 			0) ;;
-			2) log_info "Cloud statistics upload is not enabled for the current license" ;;
+			2) log_info "Cloud statistics upload is not enabled for the current plan" ;;
 			*) log_warn "Hub API response did not include usable statistics upload credentials" ;;
 		esac
 	fi
@@ -572,12 +585,12 @@ ss_resolve_artifact() {
 	ss_status_set artifact_version "$ss_resolved_artifact_version"
 	ss_status_set artifact_unique_domains "${ss_resolved_artifact_unique_domains:-0}"
 	ss_status_set artifact_rules "${ss_resolved_artifact_rules:-0}"
-	ss_status_set license_plan "${ss_resolved_license_plan:-free}"
-	ss_status_set license_status "${ss_resolved_license_status:-unlicensed}"
+	ss_status_set entitlement_plan "${ss_resolved_entitlement_plan:-free}"
+	ss_status_set entitlement_status "${ss_resolved_entitlement_status:-unlicensed}"
 	ss_status_set device_profile "$ss_resolved_device_profile"
 	SS_RESOLVE_ERROR_CODE=''
 
-	log_ok "Resolved ${ss_resolved_artifact_tier:-unknown}/${ss_resolved_artifact_version:-unknown} artifact sources for plan ${ss_resolved_license_plan:-free}"
+	log_ok "Resolved ${ss_resolved_artifact_tier:-unknown}/${ss_resolved_artifact_version:-unknown} artifact sources for plan ${ss_resolved_entitlement_plan:-free}"
 }
 
 ss_verify_artifact_sha256() {

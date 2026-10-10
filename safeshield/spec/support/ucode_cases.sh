@@ -34,7 +34,7 @@ ss_case_ucode() (
 		cp "$mock_dir"/*.uc "$test_modules/"
 		"$UCODE_BIN" -L "$test_modules" -D "TEST_TMP=\"$test_tmp\"" "$test_file" >/dev/null
 	}
-	for name in core config license refresh rules statistics status runtime; do
+	for name in core config refresh rules statistics status runtime; do
 		run_ucode_test "$name"
 	done
 

@@ -5,7 +5,7 @@
 // appflow browser-half suite.
 //
 // WHY THIS FILE EXISTS. Every defect this package's frontend has had was found
-// by a human or a review panel READING the code. Not one was found by a test,
+// by a reviewer READING the code. Not one was found by a test,
 // because until now no test could run any of it. The daemon has 54 checks
 // against it and the JavaScript had none, which is backwards: the daemon
 // mostly counts bytes, while the frontend is what decides whether an operator

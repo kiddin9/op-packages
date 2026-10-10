@@ -428,7 +428,7 @@ EOF2
 }
 
 perform_prepare_online() {
-	local update_available release_device release_channel download_url expected_sha expected_size expected_build filename part_size actual_sha
+	local update_available release_device release_channel download_url download_token expected_sha expected_size expected_build filename part_size actual_sha
 
 	acquire_lock || return 75
 	trap release_lock EXIT INT TERM
@@ -443,6 +443,7 @@ perform_prepare_online() {
 	release_device="$(json_value "$RESOLVE_FILE" '@.release.device_code')"
 	release_channel="$(json_value "$RESOLVE_FILE" '@.release.channel')"
 	download_url="$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.download_url')"
+	download_token="$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.download_token')"
 	expected_sha="$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.sha256' | tr 'A-F' 'a-f')"
 	expected_size="$(numeric_or_zero "$(json_value "$RESOLVE_FILE" '@.release.sysupgrade.size_bytes')")"
 	expected_build="$(json_value "$RESOLVE_FILE" '@.release.build_id')"
@@ -464,6 +465,25 @@ perform_prepare_online() {
 			return 1
 			;;
 	esac
+	# The Hub may supply a short-lived, signed download token separately.
+	# Never store it in persistent UCI settings or expose it in status/logs.
+	# A signed download_url already containing its token also works unchanged.
+	if [ -n "$download_token" ]; then
+		case "$download_token" in
+			*[!A-Za-z0-9._~-]* )
+				set_error 'FIRMWARE_DOWNLOAD_TOKEN_INVALID' '펌웨어 다운로드 인증 정보가 올바르지 않습니다.'
+				return 1
+				;;
+		esac
+		[ "${#download_token}" -le 2048 ] || {
+			set_error 'FIRMWARE_DOWNLOAD_TOKEN_INVALID' '펌웨어 다운로드 인증 정보가 올바르지 않습니다.'
+			return 1
+		}
+		case "$download_url" in
+			*\?*) download_url="${download_url}&token=${download_token}" ;;
+			*) download_url="${download_url}?token=${download_token}" ;;
+		esac
+	fi
 	case "$expected_sha" in
 		''|*[!0-9a-f]*)
 			set_error 'FIRMWARE_CHECKSUM_MISSING' '펌웨어 무결성 정보를 확인하지 못했습니다.'

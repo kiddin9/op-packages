@@ -91,7 +91,8 @@ function build_statistics() {
     let snapshot_interval_s = to_int(cfg('statistics_snapshot_interval_s', '60'), 60);
     let data = read_json_file(STATISTICS_FILE, {});
     let totals = (type(data.totals) == 'object') ? data.totals : {};
-    let collector_running = service_instance_running(PKG_NAME, 'statistics');
+    let collector_service = runtime.service_status(PKG_NAME, true);
+    let collector_running = !!(collector_service.instances && collector_service.instances.statistics && collector_service.instances.statistics.running);
     let effective_enabled = enabled && collector_running;
     let source = sanitize_source(data.source);
     if (!effective_enabled) {
@@ -106,6 +107,8 @@ function build_statistics() {
         effective_enabled: effective_enabled,
         available: !!data.schema,
         collector_running: collector_running,
+        collector_state: collector_service.lookup_ok ? (collector_running ? 'running' : 'stopped') : 'unknown',
+        collector_lookup_ok: collector_service.lookup_ok,
         volatile: to_bool(data.volatile, true),
         storage: sprintf('%s', data.storage || 'tmpfs'),
         persistent: to_bool(data.persistent, false),

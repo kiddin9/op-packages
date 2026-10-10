@@ -10,8 +10,8 @@ function cloudStatus(cloud: ActivityCloudSync): {
   if (!cloud.enabled) {
     if (cloud.eligible === false) {
       return {
-        label: 'Pro / Ultimate 전용',
-        description: '로컬 최근 활동은 계속 사용할 수 있으며, 유료 멤버십에서 Cloud 저장을 선택적으로 켤 수 있습니다.',
+        label: '계정 연결 필요',
+        description: 'SmartSafeHub 계정을 연결하면 Free에서도 Cloud 활동 기록을 사용할 수 있습니다.',
         tone: 'bg-slate-100 text-slate-600 ring-slate-200',
       };
     }
@@ -23,8 +23,8 @@ function cloudStatus(cloud: ActivityCloudSync): {
   }
   if (cloud.eligible === false || cloud.phase === 'ineligible') {
     return {
-      label: 'Pro / Ultimate 전용',
-      description: '유료 멤버십이 활성화되면 이후 발생하는 활동을 Cloud에 자동으로 동기화합니다.',
+      label: '계정 연결 필요',
+      description: 'SmartSafeHub 계정을 연결하면 이후 발생하는 활동을 Cloud에 자동으로 동기화할 수 있습니다.',
       tone: 'bg-slate-100 text-slate-600 ring-slate-200',
     };
   }
@@ -54,6 +54,21 @@ function cloudStatus(cloud: ActivityCloudSync): {
     description: 'Cloud 활동 기록 사용 가능 여부를 확인하고 있습니다.',
     tone: 'bg-slate-100 text-slate-600 ring-slate-200',
   };
+}
+
+function retentionLabel(cloud: ActivityCloudSync): string {
+  if (cloud.eligible !== true) return '—';
+  if (cloud.retentionDays > 0) return `${cloud.retentionDays}일`;
+
+  switch (cloud.plan?.toLowerCase()) {
+    case 'free':
+      return '7일';
+    case 'pro':
+    case 'ultimate':
+      return '90일';
+    default:
+      return '확인 중';
+  }
 }
 
 function CloudActivitySyncCard({
@@ -151,7 +166,7 @@ function CloudActivitySyncCard({
         <div class="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-inset ring-slate-200">
           <dt class="text-xs font-bold text-slate-500">Cloud 보관</dt>
           <dd class="mt-1 text-sm font-black text-slate-900">
-            {cloud.enabled && cloud.eligible === true && cloud.retentionDays > 0 ? `${cloud.retentionDays}일` : '—'}
+            {retentionLabel(cloud)}
           </dd>
         </div>
       </dl>
@@ -162,7 +177,7 @@ function CloudActivitySyncCard({
         </p>
       ) : null}
       <p class="mt-3 mb-0 text-xs leading-5 text-slate-500">
-        Cloud 전송은 Pro 또는 Ultimate 멤버십에서 선택적으로 사용할 수 있습니다. 끄면 전송 대기 데이터와 임시 인증 정보를 삭제하며, 다시 켠 뒤 새로 발생한 활동부터 Cloud에 전송합니다. 로컬 최근 활동은 항상 유지됩니다.
+        SmartSafeHub 계정에 연결된 Free는 최근 7일, Pro와 Ultimate는 최근 90일 동안 Cloud 활동 기록을 보관합니다. 끄면 전송 대기 데이터와 임시 인증 정보를 삭제하며, 다시 켠 뒤 새로 발생한 활동부터 Cloud에 전송합니다. 로컬 최근 활동은 항상 유지됩니다.
       </p>
     </section>
   );
@@ -204,7 +219,7 @@ export function ActivityPage({
               현재 부팅 이후의 최근 활동
             </h2>
             <p class="mt-2 mb-0 max-w-3xl text-sm leading-6 text-slate-500">
-              인터넷, SafeShield, 업데이트, 라이선스와 주요 설정에서 실제 상태가 변경된 시점만 기록합니다.
+              인터넷, SafeShield, 업데이트, 계정 권한과 주요 설정에서 실제 상태가 변경된 시점만 기록합니다.
             </p>
           </div>
           <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-600 ring-1 ring-inset ring-slate-200">

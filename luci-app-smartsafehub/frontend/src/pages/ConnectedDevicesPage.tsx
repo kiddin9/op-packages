@@ -1,4 +1,4 @@
-import type { ComponentChildren, JSX } from 'preact';
+import type { ComponentChildren, TargetedEvent } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 
 import {
@@ -309,7 +309,7 @@ export function ConnectedDevicesPage({
             </span>
             <input
               class="min-h-11 w-full rounded-xl border-2 border-slate-300 bg-slate-50 py-2.5 pr-4 pl-11 text-sm font-semibold text-slate-950 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-100"
-              onInput={(event: JSX.TargetedEvent<HTMLInputElement>) =>
+              onInput={(event: TargetedEvent<HTMLInputElement>) =>
                 setQuery(event.currentTarget.value)
               }
               placeholder="이름, IP, MAC 또는 SSID 검색"

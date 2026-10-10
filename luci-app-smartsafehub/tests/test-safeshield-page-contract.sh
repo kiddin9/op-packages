@@ -10,13 +10,14 @@ ASSET_JS="$ROOT_DIR/root/www/luci-static/smartsafehub/app.js"
 ASSET_CSS="$ROOT_DIR/root/www/luci-static/smartsafehub/app.css"
 SOURCE_CSS="$ROOT_DIR/frontend/src/styles/app.css"
 ACTIONS="$ROOT_DIR/frontend/src/hooks/useSafeShieldActions.ts"
+API="$ROOT_DIR/frontend/src/api/safeshield.ts"
 
 fail() {
 	echo "FAIL: $*" >&2
 	exit 1
 }
 
-for file in "$PAGE" "$PANEL" "$NAVIGATION" "$ACTIONS" "$ASSET_JS" "$ASSET_CSS" "$SOURCE_CSS"; do
+for file in "$PAGE" "$PANEL" "$NAVIGATION" "$ACTIONS" "$API" "$ASSET_JS" "$ASSET_CSS" "$SOURCE_CSS"; do
 	[ -f "$file" ] || fail "missing SafeShield product UI source: ${file#$ROOT_DIR/}"
 done
 
@@ -30,7 +31,21 @@ grep -Fq 'eyebrow="Settings"' "$PAGE" || \
 	fail 'SafeShield page must provide a dedicated settings section'
 grep -Fq 'title="SafeShield 설정"' "$PAGE" || \
 	fail 'SafeShield settings section must be clearly labeled'
-grep -Fq '라이선스' "$PAGE" || fail 'SafeShield settings must retain license management'
+if grep -Fq 'SmartSafeHub 계정' "$PAGE"; then fail 'SafeShield page must not own SmartSafeHub account connection UI'; fi
+if grep -Fq '계정 연결 코드' "$PAGE"; then fail 'SafeShield page must not render pairing codes'; fi
+if grep -Fq 'requestDevicePairingCode' "$PAGE"; then fail 'SafeShield page must not call device pairing APIs'; fi
+if grep -Fq '.ssh-safeshield-license-' "$SOURCE_CSS"; then
+	fail 'SafeShield source styles must not retain the removed account/license editor UI'
+fi
+if grep -Fq '.ssh-safeshield-pairing-' "$SOURCE_CSS"; then
+	fail 'SafeShield source styles must not retain pairing UI after account separation'
+fi
+if grep -Fq 'ssh-safeshield-license-input' "$PAGE"; then
+	fail 'SafeShield settings must not render a license key input'
+fi
+if grep -Fq '라이선스를 확인하고 이 기기에 적용하고 있습니다…' "$PAGE"; then
+	fail 'SafeShield settings must not expose the legacy license activation flow'
+fi
 grep -Fq 'Custom rules' "$PAGE" || fail 'SafeShield settings must expose product-facing custom rules'
 grep -Fq 'href="#rules"' "$PAGE" || fail 'SafeShield settings must link to the user rules page'
 if grep -Fq 'data.localOverrides.allowlistPath' "$PAGE" || grep -Fq 'data.localOverrides.blocklistPath' "$PAGE"; then
@@ -41,18 +56,6 @@ grep -Fq 'px-5 pb-5 sm:px-6 sm:pb-6' "$PAGE" || \
 	fail 'SafeShield summary facts must remain visually inside the protection card'
 grep -Fq 'class="bg-white px-5 py-4 sm:px-6"' "$PAGE" || \
 	fail 'SafeShield summary fact cells must use the protection card surface color'
-grep -Fq 'ssh-safeshield-license-summary' "$PAGE" || \
-	fail 'SafeShield settings must render the refined license summary container'
-grep -Fq 'ssh-safeshield-license-editor' "$PAGE" || \
-	fail 'SafeShield settings must render the refined license editor card'
-grep -Fq 'ssh-safeshield-license-input' "$PAGE" || \
-	fail 'SafeShield license key field must remain visually recognizable as an input'
-grep -Fq 'ssh-safeshield-license-secondary-action' "$PAGE" || \
-	fail 'SafeShield current license key action must remain recognizable as a button'
-grep -Fq "actionFeedbackTarget === 'license' ? actionError : null" "$PAGE" || \
-	fail 'SafeShield license action errors must render inside the license card'
-grep -Fq '라이선스를 확인하고 이 기기에 적용하고 있습니다…' "$PAGE" || \
-	fail 'SafeShield license card must expose activation progress near the input'
 grep -Fq 'border border-teal-700 bg-teal-700' "$PAGE" || \
 	fail 'SafeShield custom rules action must remain recognizable as a primary button'
 
@@ -95,8 +98,8 @@ if grep -Fq '<DetailRow label="Tier"' "$PAGE" || \
 	grep -Fq '<DetailRow label="Unique domains"' "$PAGE"; then
 	fail 'SafeShield protection data card must not expose raw English artifact fields in the default view'
 fi
-grep -Fq 'SafeShield 보호 데이터와 사용자 규칙을 관리합니다.' "$PAGE" || \
-	fail 'SafeShield settings description must use protection data instead of artifact terminology'
+grep -Fq '현재 적용 중인 보호 데이터와 사용자 규칙을 관리합니다.' "$PAGE" || \
+	fail 'SafeShield settings description must focus on protection data and custom rules'
 
 grep -Fq 'const DISPLAY_HOURS = 24;' "$PANEL" || \
 	fail 'SafeShield activity must continue to use 24 hourly buckets'
@@ -150,6 +153,12 @@ grep -Fq 'getSafeShieldRefreshErrorMessage' "$REFRESH_MODEL" || \
 
 grep -Fq 'function RefreshDonut' "$PAGE" || \
 	fail 'SafeShield page must render compact donut progress for refresh stages'
+grep -Fq "const refreshing = data.status === 'running';" "$PAGE" || \
+	fail 'SafeShield actions must unlock after a failed refresh with a retained stage'
+grep -Fq ": data.status === 'error'" "$PAGE" || \
+	fail 'SafeShield refresh action must recognize error state for a retry'
+grep -Fq "? '다시 갱신'" "$PAGE" || \
+	fail 'SafeShield retry action must be clear to users after failure'
 grep -Fq 'role="progressbar"' "$PAGE" || \
 	fail 'SafeShield refresh donut must expose accessible progress semantics'
 grep -Fq 'ssh-safeshield-refresh-loader-svg' "$PAGE" || \
@@ -158,16 +167,25 @@ grep -Fq 'ssh-safeshield-refresh-loader-arc' "$PAGE" || \
 	fail 'SafeShield refresh donut must render a rounded rotating arc over the loader track'
 grep -Fq 'const loaderArcLength = loaderCircumference * 0.22;' "$PAGE" || \
 	fail 'SafeShield round loader must keep a compact moving arc so rotation is visually obvious'
-grep -Fq 'const loaderTrackWidth = 3;' "$PAGE" || \
-	fail 'SafeShield refresh track must stay slim instead of inheriting a heavy ring treatment'
+grep -Fq 'const loaderTrackWidth = 2.5;' "$PAGE" || \
+	fail 'SafeShield refresh track should be slightly thinner than before'
 grep -Fq 'const loaderRadius = 17;' "$PAGE" || \
 	fail 'SafeShield refresh donut radius must stay slightly compact so the ring does not dominate the card'
-grep -Fq 'const loaderArcWidth = 4;' "$PAGE" || \
-	fail 'SafeShield refresh active arc must stay compact and only slightly heavier than the track'
+grep -Fq 'const loaderArcWidth = 3.5;' "$PAGE" || \
+	fail 'SafeShield refresh arc should stay only slightly heavier than the thinner track'
 grep -Fq 'strokeWidth={loaderTrackWidth}' "$PAGE" || \
 	fail 'SafeShield refresh track must use the dedicated slim stroke width'
 grep -Fq 'strokeWidth={loaderArcWidth}' "$PAGE" || \
 	fail 'SafeShield refresh arc must use the dedicated slim stroke width'
+REFRESH_CARD_LAYOUT="$(sed -n '/^\.ssh-safeshield-refresh {/,/^}/p' "$SOURCE_CSS")"
+printf '%s\n' "$REFRESH_CARD_LAYOUT" | grep -Fq '  width: 27rem;' || \
+	fail 'SafeShield refresh progress card should be 432px wide on desktop'
+printf '%s\n' "$REFRESH_CARD_LAYOUT" | grep -Fq '  max-width: 100%;' || \
+	fail 'SafeShield refresh progress card must fit narrow screens'
+if printf '%s\n' "$REFRESH_CARD_LAYOUT" | grep -Eq '(height|min-height):'; then
+	fail 'SafeShield refresh progress card height must remain content-driven'
+fi
+
 grep -Fq 'width: 3.35rem;' "$SOURCE_CSS" || \
 	fail 'SafeShield refresh donut container must remain slightly smaller than the original oversized treatment'
 
@@ -209,10 +227,8 @@ grep -Fq "planName === 'FREE' ? <FreePlanUpgrade /> : null" "$PAGE" || \
 	fail 'SafeShield pricing CTA must be shown only for the FREE plan'
 grep -Fq 'https://www.smartsafehub.com/pricing/' "$PAGE" || \
 	fail 'SafeShield FREE plan CTA must link to the SmartSafeHub pricing page'
-grep -Fq '라이선스 미설정' "$PAGE" || \
-	fail 'SafeShield license summary must provide a localized unconfigured label'
 if grep -Fq 'data.license.status ||' "$PAGE"; then
-	fail 'SafeShield license summary must not expose raw backend status strings directly'
+	fail 'SafeShield plan summary must not expose raw backend status strings directly'
 fi
 grep -Fq 'rel="noopener noreferrer"' "$PAGE" || \
 	fail 'SafeShield pricing link must isolate the new browsing context'
@@ -274,10 +290,6 @@ if grep -Fq '멤버십 활성' "$ASSET_JS"; then
 fi
 grep -Fq '.ssh-safeshield-upgrade-card' "$ASSET_CSS" || \
 	fail 'checked-in app.css must include the FREE upgrade CTA treatment'
-grep -Fq '.ssh-safeshield-license-summary' "$ASSET_CSS" || \
-	fail 'checked-in app.css must include the refined SafeShield license summary styles'
-grep -Fq 'ssh-safeshield-license-editor' "$ASSET_JS" || \
-	fail 'checked-in app.js must include the refined SafeShield license editor markup'
 grep -Fq '.ssh-safeshield-refresh-loader-svg' "$ASSET_CSS" || \
 	fail 'checked-in app.css must include the SafeShield round loader styles'
 grep -Fq '@keyframes ssh-safeshield-refresh-loader-rotate' "$ASSET_CSS" || \
@@ -300,7 +312,7 @@ if grep -Fq '차단 목록 갱신 작업을 시작했습니다.' "$ACTIONS" || \
 fi
 grep -Fq 'await requestSafeShieldRefresh();' "$ACTIONS" || \
 	fail 'SafeShield manual refresh must still request the backend refresh operation'
-grep -Fq 'setState({ action: null, error: null, feedbackTarget: null, message: null });' "$ACTIONS" || \
+grep -Fq 'setState({ action: null, error: null, message: null });' "$ACTIONS" || \
 	fail 'SafeShield manual refresh must clear action feedback after the request is accepted'
 if grep -Fq '차단 목록 갱신 작업을 시작했습니다.' "$ASSET_JS" || \
 	grep -Fq '차단 목록을 이미 갱신하고 있습니다.' "$ASSET_JS" || \
@@ -336,4 +348,9 @@ if ! grep -Eq '(^|[^0-9])4500([^0-9]|$)' "$ASSET_JS" && \
 	fail 'checked-in app.js must include the 4.5-second SafeShield success-feedback timeout policy'
 fi
 
-echo 'PASS: SafeShield product page hierarchy, refresh progress and switch contracts are present'
+grep -Fq 'data.entitlement.plan' "$PAGE" || fail 'SafeShield page must read the entitlement plan from SafeShield status'
+grep -Fq 'entitlement?: Record<string, unknown>' "$API" || fail 'SafeShield API must normalize the entitlement status object'
+! grep -Fq 'fetchSafeShieldLicense' "$API" || fail 'retired SafeShield license-key read API must stay removed'
+! grep -Fq 'updateSafeShieldLicense' "$API" || fail 'retired SafeShield license-key update API must stay removed'
+
+echo 'PASS: SafeShield product page hierarchy, refresh progress, entitlement and switch contracts are present'

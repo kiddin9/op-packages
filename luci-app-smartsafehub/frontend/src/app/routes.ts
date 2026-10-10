@@ -7,6 +7,7 @@ export type AppRoute =
   | 'devices'
   | 'safeshield'
   | 'rules'
+  | 'account'
   | 'system'
   | 'settings';
 
@@ -74,6 +75,13 @@ export const ROUTES: readonly RouteDefinition[] = [
     label: '사용자 규칙',
     title: '사용자 규칙',
     description: '직접 허용하거나 차단할 도메인을 관리합니다.',
+  },
+  {
+    route: 'account',
+    hash: '#account',
+    label: 'SmartSafeHub 계정',
+    title: 'SmartSafeHub 계정',
+    description: '이 기기의 SmartSafeHub 계정 연결 상태와 구독 플랜을 확인합니다.',
   },
   {
     route: 'system',

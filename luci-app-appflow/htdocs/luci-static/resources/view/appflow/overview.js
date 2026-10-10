@@ -300,7 +300,7 @@ return view.extend({
 		 * ordinary config change, so that was a hair trigger. paint() now drops
 		 * the buffer only when the gap exceeds the chart's own window, which is
 		 * the case where redrawing it really would mislead. Raised by a
-		 * code-review panel, 2026-08-25. */
+		 * code review, 2026-08-25. */
 		dom.content(this.downNode, appflow.notRunning(appflow.classifyFail(err), err));
 		this.liveNode.style.display = 'none';
 		this.downNode.style.display = '';
@@ -551,7 +551,7 @@ return view.extend({
 					 * caption reading "top, by cumulative bytes". The fallback
 					 * looked like belt-and-braces and was actually a silent unit
 					 * mix; a row with no bytes is filtered out below, which is
-					 * the honest outcome. Found by a code-review panel. */
+					 * the honest outcome. Found in code review. */
 					value: t.total
 				};
 			})

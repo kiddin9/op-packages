@@ -1,3 +1,4 @@
+import type { ActivityHistory } from './activity';
 export interface DeviceStatus {
   hostname: string;
   model: string;
@@ -35,6 +36,7 @@ export interface NetworkStatus {
 }
 
 export interface SmartSafeHubStatus {
+  activityHistory?: ActivityHistory;
   device: DeviceStatus;
   software: SoftwareStatus;
   runtime: RuntimeStatus;

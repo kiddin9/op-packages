@@ -21,8 +21,9 @@ const INSTALL_POLL_INTERVAL_MS = 3_000;
 const UPDATE_PACKAGE = 'luci-app-smartsafehub';
 
 export function useSoftwareUpdates(active = true) {
+  const [pollingPhase, setPollingPhase] = useState<SoftwareUpdateStatus['phase'] | null>(null);
   const resource = useAsyncResource({
-    active,
+    active: active || pollingPhase === 'checking' || pollingPhase === 'installing',
     fallbackError: '소프트웨어 업데이트 상태를 불러오지 못했습니다.',
     loader: fetchSoftwareUpdates,
     pollInterval: (data: SoftwareUpdateStatus | null) => {
@@ -35,7 +36,12 @@ export function useSoftwareUpdates(active = true) {
         : BACKGROUND_POLL_INTERVAL_MS;
     },
     refreshOnFocus: true,
+    refreshOnVisible: pollingPhase === 'checking' || pollingPhase === 'installing',
   });
+  useEffect(() => {
+    setPollingPhase(resource.data?.phase ?? null);
+  }, [resource.data?.phase]);
+
   const [action, setAction] = useState<SoftwareUpdateAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -92,6 +98,7 @@ export function useSoftwareUpdates(active = true) {
 
   const markPhase = useCallback(
     (phase: SoftwareUpdateStatus['phase']) => {
+      setPollingPhase(phase);
       if (!resource.data) {
         return;
       }

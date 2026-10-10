@@ -1,4 +1,4 @@
-import type { JSX } from 'preact';
+import type { TargetedEvent, TargetedSubmitEvent } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 
 import {
@@ -87,7 +87,7 @@ function RuleListCard({
   }, [rules, search]);
 
   async function handleSubmit(
-    event: JSX.TargetedSubmitEvent<HTMLFormElement>,
+    event: TargetedSubmitEvent<HTMLFormElement>,
   ): Promise<void> {
     event.preventDefault();
     const domain = normalizeDomain(input);
@@ -168,7 +168,7 @@ function RuleListCard({
               class="min-h-11 min-w-0 flex-1 rounded-xl border-2 border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-950 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-100 disabled:cursor-not-allowed disabled:bg-slate-100"
               disabled={busy}
               id={`${kind}-domain`}
-              onInput={(event: JSX.TargetedEvent<HTMLInputElement, InputEvent>) =>
+              onInput={(event: TargetedEvent<HTMLInputElement, InputEvent>) =>
                 setInput(event.currentTarget.value)
               }
               placeholder="example.com"
@@ -204,7 +204,7 @@ function RuleListCard({
           <input
             class="min-h-11 w-full rounded-xl border-2 border-slate-300 bg-slate-50 py-2.5 pr-4 pl-11 text-sm font-semibold text-slate-950 shadow-inner outline-none transition placeholder:text-slate-400 focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-100"
             id={`${kind}-search`}
-            onInput={(event: JSX.TargetedEvent<HTMLInputElement, InputEvent>) =>
+            onInput={(event: TargetedEvent<HTMLInputElement, InputEvent>) =>
               setSearch(event.currentTarget.value)
             }
             placeholder={`${theme.label} 검색`}

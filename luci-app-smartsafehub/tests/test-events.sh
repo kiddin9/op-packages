@@ -284,9 +284,6 @@ for contract in \
 	'root/usr/libexec/smartsafehub-updater:software.update.failed' \
 	'root/usr/libexec/smartsafehub-firmware:firmware.update.started' \
 	'root/usr/libexec/smartsafehub-firmware:firmware.update.failed' \
-	'root/usr/libexec/smartsafehub-license:license.activated' \
-	'root/usr/libexec/smartsafehub-license:license.changed' \
-	'root/usr/libexec/smartsafehub-license:license.cleared' \
 	'root/usr/libexec/smartsafehub-health:network.internet.disconnected' \
 	'root/usr/libexec/smartsafehub-health:network.internet.recovered' \
 	'root/usr/libexec/smartsafehub-events:safeshield.blocklist.updated' \

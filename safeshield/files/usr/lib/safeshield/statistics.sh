@@ -358,20 +358,22 @@ ss_statistics_load_upload_credentials() {
 }
 
 ss_statistics_refresh_upload_credentials() {
-	local request response resolve_url retries rc=1
+	local request response sync_url retries rc=1 device_credential
 
-	resolve_url='https://www.smartsafehub.com/api/v1/licenses/resolve'
-	request="${SS_STATISTICS_DIR:-/tmp/safeshield/statistics}/upload-resolve-request.json"
-	response="${SS_STATISTICS_DIR:-/tmp/safeshield/statistics}/upload-resolve-response.json"
+	sync_url='https://www.smartsafehub.com/api/v1/devices/sync'
+	request="${SS_STATISTICS_DIR:-/tmp/safeshield/statistics}/upload-sync-request.json"
+	response="${SS_STATISTICS_DIR:-/tmp/safeshield/statistics}/upload-sync-response.json"
 
 	ss_load_config || return 1
+	device_credential="$(ss_device_credential_token 2>/dev/null || true)"
+	[ -n "$device_credential" ] || return 1
 	mkdir -p "${request%/*}" || return 1
 	ss_refresh_lock_open_wait "${ss_download_timeout:-10}" || return $?
 
-	if ! ss_write_resolve_payload "$request"; then
+	printf '{}\n' >"$request" || {
 		ss_refresh_lock_close
 		return 1
-	fi
+	}
 
 	retries=1
 	while [ "$retries" -le "${ss_download_retry:-3}" ]; do
@@ -379,7 +381,7 @@ ss_statistics_refresh_upload_credentials() {
 			rc=130
 			break
 		}
-		if ss_http_post_json "$resolve_url" "$request" "$response" && [ -s "$response" ]; then
+		if ss_http_post_json "$sync_url" "$request" "$response" "Device ${device_credential}" && [ -s "$response" ]; then
 			rc=0
 			ss_statistics_sync_upload_entitlement "$response" || rc=$?
 			break

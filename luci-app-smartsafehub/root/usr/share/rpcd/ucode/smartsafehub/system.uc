@@ -625,40 +625,49 @@ function collect_system_status(done) {
 			return;
 		}
 
-		const info_request = defer_call('system', 'info', {}, function(info_code, info) {
-			if (info_code != 0 || type(info) != 'object') {
-				done(failure(
-					'SYSTEM_INFO_UNAVAILABLE',
-					'OpenWrt runtime information is unavailable'
-				));
+		// Runtime and WAN are independent. Query them in parallel rather than
+		// adding WAN latency to the system.info round trip.
+		let info_finished = false;
+		let wan_finished = false;
+		let completed = false;
+		let runtime_info = null;
+		let wan_info = {};
+		function finish() {
+			if (completed || !info_finished || !wan_finished)
+				return;
+			completed = true;
+			if (runtime_info == null) {
+				done(failure('SYSTEM_INFO_UNAVAILABLE', 'OpenWrt runtime information is unavailable'));
 				return;
 			}
+			done(success(system_status_payload(board, runtime_info, wan_info)));
+		}
 
-			const wan_request = defer_call(
-				'network.interface.wan',
-				'status',
-				{},
-				function(wan_code, wan) {
-					const wan_payload = wan_code == 0 && type(wan) == 'object'
-						? wan
-						: {};
-
-					done(success(system_status_payload(board, info, wan_payload)));
-				}
-			);
-
-			if (wan_request == null) {
-				// A WAN interface is optional. Keep valid board/runtime values and
-				// report the network portion as unavailable instead of failing all.
-				done(success(system_status_payload(board, info, {})));
-			}
+		const info_request = defer_call('system', 'info', {}, function(info_code, info) {
+			if (info_code == 0 && type(info) == 'object')
+				runtime_info = info;
+			info_finished = true;
+			finish();
 		});
-
 		if (info_request == null) {
-			done(failure(
-				'SYSTEM_INFO_REQUEST_FAILED',
-				'OpenWrt runtime information request could not be started'
-			));
+			info_finished = true;
+			// The required runtime request could not start. Reply immediately.
+			completed = true;
+			done(failure('SYSTEM_INFO_REQUEST_FAILED',
+				'OpenWrt runtime information request could not be started'));
+			return;
+		}
+
+		const wan_request = defer_call('network.interface.wan', 'status', {}, function(wan_code, wan) {
+			if (wan_code == 0 && type(wan) == 'object')
+				wan_info = wan;
+			wan_finished = true;
+			finish();
+		});
+		if (wan_request == null) {
+			// WAN is optional: a missing interface cannot stall the dashboard.
+			wan_finished = true;
+			finish();
 		}
 	});
 

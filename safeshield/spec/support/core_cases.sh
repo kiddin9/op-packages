@@ -10,9 +10,6 @@ ss_case_utils() (
 
 	command_exists sh
 	! command_exists safeshield-command-that-does-not-exist
-	ss_spec_assert_eq "$(ss_mask_secret '')" ''
-	ss_spec_assert_eq "$(ss_mask_secret '12345678')" '********'
-	ss_spec_assert_eq "$(ss_mask_secret 'abcd1234wxyz')" 'abcd****wxyz'
 	is_valid_integer 0
 	is_valid_integer 42
 	for value in '' -1 1.5 12x; do
@@ -303,7 +300,6 @@ ss_case_resolve_payload() (
 		esac
 	}
 	ss_status_set() { :; }
-	ss_license_key='test-license'
 	SS_VERSION_FILE="$TMP_DIR/version"
 	export SS_VERSION_FILE
 	printf '%s\n' '0.3.18-r1' >"$SS_VERSION_FILE"
@@ -311,7 +307,8 @@ ss_case_resolve_payload() (
 	ss_write_resolve_payload "$payload"
 	ss_spec_assert_file_contains "$payload" '    "safeshield_version": "0.3.18-r1"'
 	! grep -Eq '^  "safeshield_version"' "$payload"
-	ss_spec_assert_file_contains "$payload" '"license_key": "test-license"'
+	! grep -Fq '"credential"' "$payload"
+	! grep -Fq '"license_key"' "$payload"
 	ss_spec_assert_file_contains "$payload" '"physical_fingerprint": "test-fingerprint"'
 	ss_spec_assert_file_contains "$payload" '"fingerprint_version": 1'
 	ss_spec_assert_file_contains "$payload" '"identity_provider": "factory_mac"'
@@ -348,15 +345,20 @@ ss_case_rpcd_contract() (
 	[ -f "$ENTRY" ]
 	[ -f "$ACL" ]
 	ss_spec_assert_file_contains "$ENTRY" "unshift(REQUIRE_SEARCH_PATH, '/usr/share/rpcd/ucode/safeshield/*.uc');"
-	for module in status config refresh rules license statistics; do
+	for module in status config refresh rules statistics; do
 		ss_spec_assert_file_contains "$ENTRY" "let $module = require('$module');"
 	done
-	for method in status config statistics config_update set_enabled refresh rules_list rule_add rule_delete license_get license_update; do
+	for method in status config statistics config_update set_enabled refresh rules_list rule_add rule_delete; do
 		ss_spec_assert_file_contains "$ENTRY" "        $method: {"
 		ss_spec_assert_file_contains "$ACL" "\"$method\""
 	done
 	ss_spec_assert_file_contains "$MAKEFILE" './files/usr/share/rpcd/ucode/safeshield/*.uc'
 	ss_spec_assert_file_contains "$MAKEFILE" './files/usr/share/rpcd/acl.d/safeshield.json'
+	[ ! -e "$SS_SPEC_ROOT/files/usr/share/rpcd/ucode/safeshield/license.uc" ]
+	ss_spec_assert_file_not_contains "$ENTRY" 'license_get'
+	ss_spec_assert_file_not_contains "$ENTRY" 'license_update'
+	ss_spec_assert_file_not_contains "$ACL" 'license_get'
+	ss_spec_assert_file_not_contains "$ACL" 'license_update'
 	ss_spec_assert_file_contains "$STATISTICS_MODULE" 'effective_snapshot_interval_s: to_int(data.snapshot_interval_s, snapshot_interval_s)'
 )
 
@@ -413,7 +415,7 @@ ss_case_status_state() (
 	done
 	: >"$CALLS"
 	ss_status_reset_artifact_fields
-	for key in license_plan artifact_tier artifact_source_count artifact_allow_source_count; do
+	for key in entitlement_plan artifact_tier artifact_source_count artifact_allow_source_count; do
 		grep -F "$(printf 'set\t%s\t' "$key")" "$CALLS" >/dev/null
 	done
 	mkdir -p "$SS_DNSMASQ_DIR"
@@ -427,6 +429,29 @@ ss_case_status_state() (
 	rm -f "$SS_BLOCKLIST_FILE"
 	ss_restore_previous_blocklist
 	ss_spec_assert_eq "$(cat "$SS_BLOCKLIST_FILE")" 'address=/ads.example/#'
+)
+
+ss_case_legacy_license_cleanup() (
+	set -eu
+	TMP_DIR="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+	mkdir -p "$TMP_DIR/bin"
+	CALLS="$TMP_DIR/uci.calls"
+	export CALLS
+	cat >"$TMP_DIR/bin/uci" <<'EOF_UCI'
+#!/bin/sh
+printf '%s\n' "$*" >>"$CALLS"
+case "$*" in
+	'-q get safeshield.config.license_key') exit 0 ;;
+esac
+exit 0
+EOF_UCI
+	chmod 755 "$TMP_DIR/bin/uci"
+	PATH="$TMP_DIR/bin:$PATH" sh "$SS_SPEC_ROOT/files/etc/uci-defaults/91_safeshield_remove_legacy_license"
+	ss_spec_assert_file_contains "$CALLS" '-q get safeshield.config.license_key'
+	ss_spec_assert_file_contains "$CALLS" '-q delete safeshield.config.license_key'
+	ss_spec_assert_file_contains "$CALLS" '-q commit safeshield'
+	ss_spec_assert_file_contains "$SS_SPEC_ROOT/Makefile" './files/etc/uci-defaults/91_safeshield_remove_legacy_license'
 )
 
 ss_case_status_version() (

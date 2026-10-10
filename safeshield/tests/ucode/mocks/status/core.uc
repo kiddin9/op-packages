@@ -6,7 +6,6 @@ let config = {
     require_wan: '1',
     refresh_interval_s: '28800',
     boot_start_delay_s: '30',
-    license_key: 'abcd1234wxyz',
     apply_local_overrides: '1',
     device_vendor: 'Junatum',
     device_model: 'Test Router',
@@ -41,8 +40,8 @@ let state = {
         health_dns_runtime: '1',
         blocklist_installed: '1',
         blocklist_file_size_kb: '2048',
-        license_plan: 'pro',
-        license_status: 'active'
+        entitlement_plan: 'pro',
+        entitlement_status: 'active'
     },
     warnings: [],
     errors: []
@@ -67,12 +66,6 @@ function to_int(v, def) {
     return type(n) == 'int' ? n : def;
 }
 
-function mask_secret(v) {
-    let s = sprintf('%s', v || '');
-    if (!length(s)) return '';
-    if (length(s) <= 8) return '********';
-    return sprintf('%s...%s', substr(s, 0, 4), substr(s, length(s) - 4));
-}
 
 return {
     PKG_NAME: 'safeshield',
@@ -93,6 +86,5 @@ return {
     file_size_kb: function() { return 0; },
     to_bool: to_bool,
     to_optional_bool: to_optional_bool,
-    to_int: to_int,
-    mask_secret: mask_secret
+    to_int: to_int
 };

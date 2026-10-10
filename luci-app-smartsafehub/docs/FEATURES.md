@@ -100,17 +100,15 @@ README에는 제품을 빠르게 파악하는 데 필요한 핵심 기능만 유
 - 수동 갱신 요청의 성공 안내 배너는 유지하지 않고 실제 진행 상태를 보호 카드의 단계 UI로 표시하며, 실패한 경우에만 오류 피드백을 유지
 - 갱신 단계의 원형 progress ring은 track 3px / active arc 4px의 얇은 stroke와 절제된 shadow를 유지하면서, 전체 지름도 소폭 줄여 카드 본문 대비 존재감이 과해 보이지 않도록 조정했습니다. 라이트/다크 모드 모두에서 단계 숫자는 계속 선명하게 읽을 수 있습니다.
 - 갱신 데몬, dnsmasq와 DNS 런타임 상태 표시
-- 라이선스, 플랜, 아티팩트와 차단 목록 상태 표시
+- SmartSafeHub 계정의 entitlement 플랜, 아티팩트와 차단 목록 상태 표시
 - 유료 플랜은 PRO(teal), ULTIMATE(bronze), PLUS 등 기타 유료 플랜(blue)의 정적인 premium chip으로 구분합니다. 외부 glow와 shine 애니메이션은 사용하지 않고 얕은 그림자와 1px 테두리만 유지하며, FREE 플랜은 `https://www.smartsafehub.com/pricing/` 요금제 안내 CTA를 보호 카드에 표시
 - 로컬 DNS 요청·차단 수, 차단율과 최근 24시간 시간대별 차단 통계 표시
 - 대시보드와 SafeShield의 최근 24시간 통계에서는 제품이 실제로 처리한 결과인 `차단` 수치를 동일한 teal 강조색으로 표시하고, DNS 요청 수와 차단율은 기본 텍스트 색상으로 유지해 지표의 우선순위를 일관되게 표현
 - DHCP 식별 정보를 이용한 기기별 DNS 요청·차단 수·차단율과 IP/MAC 표시. 차단 수 기준 상위 3개 기기를 기본 미리보기로 보여주며 `차단 TOP 3` 배지와 `전체 N개 기기 중 차단 수 기준 상위 3개` 안내로 현재 표시 범위를 명확히 표현. 필요할 때 전체 목록을 펼쳐 10개 단위 페이지네이션으로 확인
 - 통계 RPC는 SafeShield 화면에서만 60초 간격으로 조회하며 숨겨진 브라우저 탭에서는 polling 중지
-- 새 라이선스 등록·변경은 `smartsafehub.license_activate`가 키만 private request로 넘기고 즉시 반환한 뒤 detached `smartsafehub-license activate` helper가 SafeShield 장치 identity를 조회해 Hub `/api/v1/licenses/activate`에서 검증합니다. Hub 성공 뒤에만 SafeShield 공식 `license_update` API로 로컬 저장하며 rpcd 안에서 nested ubus 호출을 수행하지 않습니다.
-- 라이선스 등록·조회·제거의 진행/성공/오류 피드백은 SafeShield 페이지 상단이 아니라 라이선스 입력 카드 안에 표시합니다. activation 상태 조회는 1초 간격, 5초 RPC timeout을 사용하고 일시적인 통신 오류를 제한적으로 재시도합니다.
-- `smartsafehub-license` daemon이 기본 5분마다 Hub `/api/v1/licenses/status`를 확인하고, 서버가 명시적으로 `clear_license`를 반환한 경우에만 SafeShield 공식 API로 로컬 키 제거
-- Hub 상태 확인 실패만으로는 로컬 라이선스를 제거하지 않는 fail-open 동작을 사용하며, 활성화와 주기 확인은 single-flight 경계로 직렬화
-- 현재 라이선스 키는 사용자가 `현재 키 불러오기`를 선택했을 때만 `safeshield.license_get`으로 평문 조회
+- SafeShield 상태는 로컬 라이선스 키가 아니라 `status.entitlement.plan/status`로 현재 계정 플랜과 권한 상태를 표시합니다.
+- 계정 연결과 플랜 동기화는 `smartsafehub-device`가 Device credential로 `/api/v1/devices/sync`를 호출해 담당하며, SafeShield는 동기화 응답의 entitlement와 보호 아티팩트 정보만 소비합니다.
+- 웹사이트에서 기기 등록을 해제하면 device sync가 미연결 상태를 감지하고 Cloud credential을 정리한 뒤 SafeShield 보호 정보를 다시 갱신합니다. 로컬 DNS 보호와 사용자 규칙은 계속 유지됩니다.
 - 사용자 허용 목록과 차단 목록 관리
 - 규칙 저장과 유효성 검사는 SafeShield 공식 API가 담당
 - 규칙 변경은 SafeShield 엔진의 cached-artifact local apply 경로로 즉시 반영
@@ -247,13 +245,13 @@ Health observer의 첫 주기는 WAN/Health 현재 상태를 baseline으로만 �
 
 공유기 웹사이트는 기존 로그인 세션과 RPC 시그니처를 그대로 유지하기 위해 인자 없는 read-only `smartsafehub.status` 응답에 최근 활동을 함께 포함해 읽고, 대시보드에는 최근 3건, `최근 활동` 전용 화면에는 최대 128건을 날짜별로 묶어 표시합니다. 대시보드의 compact 타임라인은 각 항목 사이에 작은 세로 간격을 두어 짧은 제목/설명이 연속해서 붙어 보이지 않도록 합니다. 저장된 원본에는 한국어 제목/설명을 넣지 않고 프론트엔드가 `event_type + metadata`를 렌더링합니다. 로컬 UI는 무료 장치 기능이며 **현재 부팅 이후의 휘발성 이력**을 제공합니다.
 
-Pro/Ultimate 장치에서는 공유기 `최근 활동` 화면에서 **Cloud 활동 기록 전송을 사용자가 직접 ON/OFF**할 수 있습니다. `smartsafehub.activity.cloud_sync_enabled=0`이 기본값이며, Cloud 전송은 사용자가 명시적으로 ON으로 저장한 경우에만 동작합니다. 옵션이 없거나 해석할 수 없는 값이면 OFF로 처리해 설정 누락만으로 활동 기록이 서버에 전송되지 않도록 합니다.
+SmartSafeHub 계정에 연결된 장치에서는 공유기 `최근 활동` 화면에서 **Cloud 활동 기록 전송을 사용자가 직접 ON/OFF**할 수 있습니다. Free는 최근 7일, Pro/Ultimate는 최근 90일 동안 Cloud에 보관합니다. `smartsafehub.activity.cloud_sync_enabled=0`이 기본값이며, Cloud 전송은 사용자가 명시적으로 ON으로 저장한 경우에만 동작합니다. 옵션이 없거나 해석할 수 없는 값이면 OFF로 처리해 설정 누락만으로 활동 기록이 서버에 전송되지 않도록 합니다.
 
-Cloud 전송이 ON일 때 `/usr/libexec/smartsafehub-activity-sync`가 같은 이벤트의 Cloud outbox를 `/api/v1/activity/events`로 batch 전송합니다. Hub 1.4.86부터 `activity_history` upload credential은 artifact resolve와 분리된 `/api/v1/licenses/status`에서 발급되지만, **license status API의 단일 소유자는 `/usr/libexec/smartsafehub-license`** 입니다. `smartsafehub-license status-sync`가 기존 라이선스 reconciliation과 함께 `activity_history` token/URL을 검증해 `/tmp/smartsafehub/activity-sync-credential.json`에 원자적으로 저장하고, `smartsafehub-activity-sync`는 이 runtime credential을 소비해 upload/ack만 담당합니다. 따라서 activity sync가 license key/device fingerprint를 다시 읽거나 `/licenses/status`와 `/licenses/resolve`를 별도로 호출하지 않습니다.
+Cloud 전송이 ON일 때 `/usr/libexec/smartsafehub-activity-sync`가 같은 이벤트의 Cloud outbox를 `/api/v1/activity/events`로 batch 전송합니다. `activity_history` upload credential은 `/usr/libexec/smartsafehub-device`가 `/api/v1/devices/sync`에서 현재 계정 연결 상태와 플랜을 확인할 때 함께 받아 `/tmp/smartsafehub/activity-sync-credential.json`에 원자적으로 저장합니다. `smartsafehub-activity-sync`는 이 짧은 수명의 runtime credential만 소비해 upload/ack을 담당하며 라이선스 API를 직접 호출하지 않습니다.
 
 Cloud 전송을 끄면 activity-sync daemon을 잠시 중지한 뒤 Cloud-only outbox, wake marker와 `/tmp` runtime credential을 정리하고 `disabled` 상태로 다시 시작합니다. 이후 이벤트 writer는 `activity-history.jsonl`에만 새 이벤트를 기록하므로 로컬 최근 활동은 계속 보이지만 서버 전송 대기 데이터는 생기지 않습니다. 다시 켜도 OFF 기간의 이벤트를 소급 업로드하지 않고 **ON 이후 새로 발생한 이벤트부터** Cloud outbox에 넣습니다. 서버에 이미 저장된 과거 Cloud 기록을 삭제하는 기능과 전송 OFF는 별개의 정책입니다.
 
-발급받은 credential은 flash가 아닌 `/tmp`에만 보관하며, 기존 token이 만료 10분 전보다 충분히 유효하면 그대로 재사용합니다. credential이 없거나 만료 임박한 경우에만 activity sync가 `smartsafehub-license status-sync`를 요청해 canonical license 경로를 갱신합니다. Cloud 전송 OFF에서는 license daemon이 라이선스 reconciliation 자체는 계속 수행하지만 optional activity credential을 로컬 runtime cache에 보관하지 않습니다. 유효한 Pro/Ultimate 상태인데 optional activity credential만 누락되면 `ACTIVITY_CREDENTIAL_UNAVAILABLE`로 최대 128건 Cloud outbox를 보존하고, license status 자체를 확인하지 못하면 `ACTIVITY_LICENSE_STATUS_FAILED`로 보존·재시도합니다. 서버가 명시적으로 라이선스를 해제하거나 미설정 상태가 확인된 경우에만 Cloud-only outbox를 정리합니다. `/licenses/resolve`로 fallback하지 않으므로 Cloud credential 확인이 artifact resolve/download token 발급이나 다운로드 감사 로그를 발생시키지 않습니다.
+발급받은 credential은 flash가 아닌 `/tmp`에만 보관하며, 기존 token이 만료 10분 전보다 충분히 유효하면 그대로 재사용합니다. credential이 없거나 만료 임박한 경우에만 activity sync가 `smartsafehub-device status-sync`를 요청합니다. 계정에 연결된 Free/Pro/Ultimate 기기인데 Hub가 activity credential을 제공하지 않으면 `ACTIVITY_CREDENTIAL_UNAVAILABLE`로 최대 128건 Cloud outbox를 보존하고, device sync 자체를 확인하지 못하면 `ACTIVITY_DEVICE_SYNC_FAILED`로 보존·재시도합니다. 계정 연결이 해제된 것이 명시적으로 확인된 경우에만 Cloud-only outbox를 정리합니다.
 
 전송 성공 응답의 `received == accepted + duplicates + expired`가 snapshot batch와 일치할 때 그 snapshot의 `event_id`만 ack하며, 업로드 실패나 불완전 응답에서는 ack하지 않습니다. 실패 주기는 15분 → 30분 → 60분으로 증가해 60분에서 상한을 유지하고, 새 이벤트 wake marker도 활성 backoff를 우회하지 않습니다. Cloud ack와 ON/OFF 전환은 로컬 `activity-history.jsonl`을 삭제하지 않습니다. 공유기 `최근 활동` 화면에서는 ON/OFF 스위치, entitlement, 전송 대기 건수, 마지막 성공 시각과 서버 retention을 함께 확인할 수 있습니다.
 

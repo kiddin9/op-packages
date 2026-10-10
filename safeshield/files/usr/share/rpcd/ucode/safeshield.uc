@@ -8,7 +8,6 @@ let status = require('status');
 let config = require('config');
 let refresh = require('refresh');
 let rules = require('rules');
-let license = require('license');
 let statistics = require('statistics');
 
 return {
@@ -66,17 +65,7 @@ return {
                 refresh: true
             },
             call: rules.delete
-        },
-
-        license_get: {
-            call: license.get
-        },
-
-        license_update: {
-            args: {
-                license_key: ''
-            },
-            call: license.update
         }
+
     }
 };

@@ -5,6 +5,7 @@ let statistics = require('statistics');
 let result = statistics.build();
 assert(result.schema.name == 'safeshield.statistics' && result.schema.version == 3, 'statistics schema is preserved');
 assert(result.enabled == true && result.effective_enabled == true && result.available == true, 'configured and effective statistics availability are reported');
+assert(result.collector_state == 'running' && result.collector_lookup_ok == true, 'collector lookup detail is exposed');
 assert(result.collector_running == true, 'statistics collector state is reported');
 assert(result.snapshot_interval_s == 30 && result.effective_snapshot_interval_s == 30 && result.retention_hours == 24, 'statistics config values are normalized');
 assert(result.generation_id == 'generation-test', 'statistics generation is preserved');

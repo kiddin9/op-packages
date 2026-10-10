@@ -5,7 +5,7 @@
 // functions can be tested without a browser.
 //
 // WHY THIS EXISTS. Every browser-side defect this package has had was found by
-// a human or a review panel reading the code. Not one was found by a test,
+// a reviewer reading the code. Not one was found by a test,
 // because no test could run any of it: LuCI view files are not CommonJS or ES
 // modules, they are evaluated by LuCI's own loader with the `'require x';`
 // directives intercepted. So the JavaScript half of a package whose entire
@@ -73,7 +73,7 @@ function stripRequires(src) {
 // run of a suite that asserted exactly those outputs. Loading the module a
 // second time with a marking translator makes the two observationally
 // different, and equality assertions become sound again rather than
-// coincidentally true. Raised by a review panel, 2026-08-30.
+// coincidentally true. Raised in review, 2026-08-30.
 function load(file, stubs, opts) {
 	const translate = (opts && opts.translate) || ((s) => s);
 	const src = fs.readFileSync(file, 'utf8');

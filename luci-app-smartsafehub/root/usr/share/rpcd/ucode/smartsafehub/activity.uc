@@ -14,7 +14,7 @@ import {
 const ACTIVITY_HISTORY_FILE = '/tmp/smartsafehub/activity-history.jsonl';
 const LEGACY_EVENTS_FILE = '/tmp/smartsafehub/events.jsonl';
 const ACTIVITY_SYNC_STATE_FILE = '/tmp/smartsafehub/activity-sync.json';
-const LICENSE_STATE_FILE = '/tmp/smartsafehub/license.json';
+const DEVICE_STATE_FILE = '/tmp/smartsafehub/device.json';
 const ACTIVITY_SYNC_HELPER = '/usr/libexec/smartsafehub-activity-sync';
 const ACTIVITY_SYNC_INIT = '/etc/init.d/smartsafehub-activity-sync';
 const MAX_ACTIVITY_EVENTS = 128;
@@ -106,18 +106,19 @@ function cloud_sync_enabled() {
 	return bool_config(ctx.get('smartsafehub', 'activity', 'cloud_sync_enabled'), false);
 }
 
-function license_cloud_entitlement() {
-	const state = read_json_document(LICENSE_STATE_FILE);
+function device_cloud_entitlement() {
+	const state = read_json_document(DEVICE_STATE_FILE);
 	if (state == null) {
 		return { eligible: null, plan: null };
 	}
 
 	const plan = type(state?.plan) == 'string' && length(state.plan) ? state.plan : null;
-	if (state?.phase == 'active' && state?.deviceAction == 'none' &&
-		(plan == 'pro' || plan == 'ultimate')) {
+	const supported_plan = plan == 'free' || plan == 'pro' || plan == 'ultimate';
+	if (state?.phase == 'registered' && state?.lastResult == 'active' &&
+		state?.accountRegistered == true && supported_plan) {
 		return { eligible: true, plan: plan };
 	}
-	if (state?.phase == 'unconfigured' || state?.phase == 'cleared' || plan == 'free') {
+	if (state?.accountRegistered == false) {
 		return { eligible: false, plan: plan };
 	}
 
@@ -141,7 +142,7 @@ function invalid_cloud_sync_state() {
 
 function read_cloud_sync() {
 	const enabled = cloud_sync_enabled();
-	const entitlement = license_cloud_entitlement();
+	const entitlement = device_cloud_entitlement();
 	const raw = fs.readfile(ACTIVITY_SYNC_STATE_FILE);
 	let cloud;
 
@@ -281,11 +282,11 @@ export function update_activity_cloud_sync(request) {
 
 	const current_enabled = cloud_sync_enabled();
 	if (enabled) {
-		const entitlement = license_cloud_entitlement();
+		const entitlement = device_cloud_entitlement();
 		if (entitlement.eligible != true) {
 			return failure(
 				'ACTIVITY_CLOUD_SYNC_NOT_ELIGIBLE',
-				'Cloud 활동 기록은 활성 Pro 또는 Ultimate 멤버십에서 사용할 수 있습니다.'
+				'Cloud 활동 기록은 SmartSafeHub 계정에 연결된 기기에서 사용할 수 있습니다.'
 			);
 		}
 	}
@@ -323,9 +324,9 @@ export function update_activity_cloud_sync(request) {
 	}
 
 	if (enabled) {
-		// Prime entitlement/credential state immediately instead of making the
+		// Prime account/credential state immediately instead of making the
 		// user wait for the normal daemon startup delay. This remains detached
-		// from rpcd because license status-sync performs HTTPS I/O.
+		// from rpcd because device status-sync performs HTTPS I/O.
 		run_command([
 			'/bin/sh',
 			'-c',

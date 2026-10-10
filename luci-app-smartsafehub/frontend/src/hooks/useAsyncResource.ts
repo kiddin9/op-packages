@@ -15,6 +15,8 @@ interface AsyncResourceOptions<T> {
   loader: () => Promise<T>;
   pollInterval?: number | ((data: T | null) => number | null);
   refreshOnFocus?: boolean;
+  refreshOnVisible?: boolean;
+  staleTimeMs?: number;
 }
 
 export function useAsyncResource<T>({
@@ -23,6 +25,8 @@ export function useAsyncResource<T>({
   loader,
   pollInterval,
   refreshOnFocus = false,
+  refreshOnVisible = false,
+  staleTimeMs = 30_000,
 }: AsyncResourceOptions<T>) {
   const [state, setState] = useState<AsyncResourceState<T>>({
     data: null,
@@ -33,7 +37,11 @@ export function useAsyncResource<T>({
   const requested = useRef(false);
   const mounted = useRef(true);
   const inFlight = useRef<Promise<void> | null>(null);
-  const lastRequestAt = useRef<number | null>(null);
+  const lastAttemptAt = useRef<number | null>(null);
+  const lastSuccessAt = useRef<number | null>(null);
+  const failureCount = useRef(0);
+  const RETRY_BASE_MS = 3_000;
+  const RETRY_MAX_MS = 30_000;
 
   useEffect(() => {
     mounted.current = true;
@@ -60,14 +68,17 @@ export function useAsyncResource<T>({
 
       let request: Promise<void>;
 
-      lastRequestAt.current = Date.now();
+      lastAttemptAt.current = Date.now();
       request = loader()
         .then((data) => {
+          lastSuccessAt.current = Date.now();
+          failureCount.current = 0;
           if (mounted.current) {
             setState({ data, error: null, loading: false, refreshing: false });
           }
         })
         .catch((error: unknown) => {
+          failureCount.current += 1;
           if (mounted.current) {
             setState((current) => ({
               ...current,
@@ -100,8 +111,10 @@ export function useAsyncResource<T>({
     }
 
     requested.current = true;
-    void load();
-  }, [active, load]);
+    const fresh = state.data !== null && lastSuccessAt.current !== null &&
+      Date.now() - lastSuccessAt.current < staleTimeMs;
+    if (!fresh) void load();
+  }, [active, load, staleTimeMs]);
 
   const interval =
     typeof pollInterval === 'function' ? pollInterval(state.data) : pollInterval;
@@ -122,11 +135,15 @@ export function useAsyncResource<T>({
     };
 
     const millisecondsUntilStale = () => {
-      if (lastRequestAt.current === null) {
-        return 0;
+      const now = Date.now();
+      // Success timestamps determine freshness; failed attempts only throttle
+      // retries so an unreachable router cannot cause a tight polling loop.
+      if (failureCount.current > 0 && lastAttemptAt.current !== null) {
+        const backoff = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** Math.min(failureCount.current - 1, 4));
+        return Math.max(0, lastAttemptAt.current + backoff - now);
       }
-
-      return Math.max(0, interval - (Date.now() - lastRequestAt.current));
+      if (lastSuccessAt.current === null) return 0;
+      return Math.max(0, lastSuccessAt.current + interval - now);
     };
 
     const schedule = () => {
@@ -174,7 +191,12 @@ export function useAsyncResource<T>({
         return;
       }
 
-      refreshIfStale();
+      if (refreshOnVisible) {
+        // Reconnect immediately after returning to an update in progress.
+        void load(false).finally(schedule);
+      } else {
+        refreshIfStale();
+      }
     };
 
     const handleFocus = () => {
@@ -195,7 +217,7 @@ export function useAsyncResource<T>({
         window.removeEventListener('focus', handleFocus);
       }
     };
-  }, [active, interval, load, refreshOnFocus]);
+  }, [active, interval, load, refreshOnFocus, refreshOnVisible]);
 
   const refresh = useCallback(() => load(true), [load]);
   const replaceData = useCallback((data: T) => {
@@ -203,6 +225,8 @@ export function useAsyncResource<T>({
       return;
     }
 
+    lastSuccessAt.current = Date.now();
+    failureCount.current = 0;
     setState((current) => ({
       ...current,
       data,

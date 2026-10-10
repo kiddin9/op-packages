@@ -126,7 +126,7 @@ case "$url" in
 		cp "$body" "${MOCK_REQUEST_CAPTURE:?}"
 		cp "${MOCK_RESOLVE_FILE:?}" "$output"
 		;;
-	*/firmware/download/99/)
+	*/firmware/download/99/|*/firmware/download/99/\?token=*)
 		cp "${MOCK_SERVER_IMAGE:?}" "$output"
 		;;
 	*) exit 1 ;;
@@ -215,6 +215,28 @@ assert_contains "$TMP/firmware.state" "allow_backup${TAB}1"
 assert_contains "$TMP/firmware.state" "target_build_id${TAB}20260913T070000Z-test1234"
 assert_contains "$TMP/ubus.log" 'call system validate_firmware_image'
 assert_contains "$TMP/sysupgrade.log" "--test $TMP/firmware.bin"
+
+# A short-lived token provided by the Hub can authenticate headless downloads.
+# It must not appear in the daemon state file or the UCI configuration.
+jq '.release.sysupgrade.download_token = "signed-token_ABC.123"' "$TMP/resolve.json" > "$TMP/resolve-token.json"
+MOCK_RESOLVE_FILE="$TMP/resolve-token.json" "$FIRMWARE" check
+"$FIRMWARE" prepare
+assert_contains "$TMP/fetch.log" 'https://www.smartsafehub.com/firmware/download/99/?token=signed-token_ABC.123'
+if grep -Fq 'signed-token_ABC.123' "$TMP/firmware.state"; then
+	fail 'short-lived firmware token must never appear in state information'
+fi
+
+# Reject unsafe tokens before any download is attempted.
+jq '.release.sysupgrade.download_token = "bad&parameter=evil"' "$TMP/resolve.json" > "$TMP/resolved.json"
+if "$FIRMWARE" prepare; then
+	fail 'unsafe token characters must be rejected'
+fi
+assert_contains "$TMP/firmware.state" "error_code${TAB}FIRMWARE_DOWNLOAD_TOKEN_INVALID"
+
+# A token included directly in the URL works without additional client fields.
+jq '.release.sysupgrade.download_url += "?token=from-hub"' "$TMP/resolve.json" > "$TMP/resolved.json"
+"$FIRMWARE" prepare
+assert_contains "$TMP/fetch.log" 'https://www.smartsafehub.com/firmware/download/99/?token=from-hub'
 
 # Installation re-checks the SHA-256 before starting sysupgrade.
 printf 'tampered' >> "$TMP/firmware.bin"

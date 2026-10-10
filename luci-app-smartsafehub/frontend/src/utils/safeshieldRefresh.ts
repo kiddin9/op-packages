@@ -90,8 +90,8 @@ export function getSafeShieldRefreshErrorMessage(
     return '현재 SafeShield 버전으로는 갱신을 계속할 수 없습니다. 시스템 업데이트에서 SafeShield를 최신 버전으로 업데이트해 주세요.';
   }
 
-  if (code.includes('license') || code.includes('unauthorized') || code.includes('forbidden')) {
-    return '차단 목록을 사용할 권한을 확인하지 못했습니다. SafeShield 라이선스 상태를 확인해 주세요.';
+  if (code.includes('entitlement') || code.includes('license') || code.includes('unauthorized') || code.includes('forbidden')) {
+    return '차단 목록을 사용할 권한을 확인하지 못했습니다. SmartSafeHub 계정과 요금제 상태를 확인해 주세요.';
   }
 
   if (
