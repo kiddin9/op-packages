@@ -4,7 +4,19 @@
 'require poll';
 'require rpc';
 
-var callLuciZerotierStatus = rpc.declare({
+
+/* This firmware ships no client-side i18n bridge: cbi.js's _() reads
+ * window.TR but nothing populates it, so JS views render English even with
+ * .lmo catalogs installed. Install our own catalog before the first string
+ * is needed; idempotent and harmless on firmware that does bridge. */
+var ZT_TR = /^zh/i.test(document.documentElement.lang || '')
+    ? new Promise(function(resolve) {
+        var s = document.createElement('script');
+        s.onload = s.onerror = function() { resolve(); };
+        s.src = L.env.resource + '/zerotier/tr-zh-cn.js';
+        document.head.appendChild(s);
+    })
+    : Promise.resolve();var callLuciZerotierStatus = rpc.declare({
 	object: 'luci-zerotier',
 	method: 'status'
 });
@@ -45,7 +57,7 @@ var callLuciZerotierSync = rpc.declare({
 
 return view.extend({
 	load: function() {
-		return Promise.resolve();
+		return ZT_TR;
 	},
 
 	render: function() {

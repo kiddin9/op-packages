@@ -32,31 +32,38 @@ function getServiceStatus() {
 }
 
 function renderStatus(status) {
-	let clientHTML = '';
-	let serverHTML = '';
-	let spanGreen = '<em><span style="color:green"><strong>%s (PID %d)</strong></span></em>';
-	let spanRed = '<em><span style="color:grey"><strong>%s</strong></span></em>';
+	let clientBadge = status.client
+		? E('em', {}, [
+			E('span', { 'style': 'color:green;' }, [
+				E('strong', {}, _('RUNNING') + ' (PID ' + status.client + ')')
+			])
+		  ])
+		: E('em', {}, [
+			E('span', { 'style': 'color:grey;' }, [
+				E('strong', {}, _('NOT RUNNING'))
+			])
+		  ]);
 
-	if (status.client) {
-		clientHTML = String.format(spanGreen, _('RUNNING'), status.client);
-	} else {
-		clientHTML = String.format(spanRed, _('NOT RUNNING'));
-	}
+	let serverBadge = status.server
+		? E('em', {}, [
+			E('span', { 'style': 'color:green;' }, [
+				E('strong', {}, _('RUNNING') + ' (PID ' + status.server + ')')
+			])
+		  ])
+		: E('em', {}, [
+			E('span', { 'style': 'color:grey;' }, [
+				E('strong', {}, _('NOT RUNNING'))
+			])
+		  ]);
 
-	if (status.server) {
-		serverHTML = String.format(spanGreen, _('RUNNING'), status.server);
-	} else {
-		serverHTML = String.format(spanRed, _('NOT RUNNING'));
-	}
-
-	return E('div', { class: 'cbi-map' },
-		E('fieldset', { class: 'cbi-section' }, [
+	return E('div', { 'class': 'cbi-map' },
+		E('fieldset', { 'class': 'cbi-section' }, [
 			E('p', {}, [
 				E('strong', {}, _('Client Daemon') + ': '),
-				E('span', {}, [clientHTML]),
-				E('span', { style: 'margin-left: 20px;' }, [
+				clientBadge,
+				E('span', { 'style': 'margin-left: 20px;' }, [
 					E('strong', {}, _('Server Daemon') + ': '),
-					E('span', {}, [serverHTML])
+					serverBadge
 				])
 			])
 		])
@@ -296,8 +303,8 @@ return view.extend({
 
 		o = s.taboption('general', form.ListValue, 'proto', _('Tunnel Protocol'),
 			_('Protocol to tunnel: TCP (standard KCP stream) or UDP (direct low-latency datagram forwarding, e.g. for DNS).'));
-		o.value('tcp', 'TCP (TCP-over-KCP)');
-		o.value('udp', 'UDP (Direct UDP Datagram)');
+		o.value('tcp', _('TCP (TCP-over-KCP)'));
+		o.value('udp', _('UDP (Direct UDP Datagram)'));
 		o.default = 'tcp';
 		o.rmempty = false;
 		o.modalonly = true;

@@ -1243,7 +1243,7 @@ mwan3_create_policies_nft()
 				done
 				mwan3_nft_exec add rule inet mwan3 "mwan3_policy_$policy" \
 					$nfproto_guard meta mark \& "$MMX_MASK" == 0 \
-					"numgen inc mod $_total_fam vmap { $map_entries }"
+					"numgen random mod $_total_fam vmap { $map_entries }"
 			fi
 		done
 	fi

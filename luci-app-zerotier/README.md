@@ -97,6 +97,8 @@ root/etc/zerotier/
 root/usr/share/rpcd/acl.d/     # ACL groups (UCI access + RPC methods)
 root/usr/share/ucitrack/       # Reload-on-apply registration
 root/lib/upgrade/keep.d/       # Sysupgrade backup list (/etc/zerotier*)
+po/zh_Hans/                    # Simplified Chinese translation + gen_tr.py (regenerates the client catalog)
+htdocs/luci-static/zerotier/   # Client-side translation catalog (generated, see po/zh_Hans/gen_tr.py)
 ```
 
 ## Firewall Rules (when NAT=1)
@@ -209,6 +211,43 @@ stderr and continues. Two consequences are handled explicitly:
 - The controller **rules editor** is out of scope by design.
 
 ## Changelog
+
+### v2.2-r42
+
+**Simplified Chinese, end to end**
+
+- **227 strings translated** (104 inherited from the original app's partial
+  catalog, 123 new -- the entire Remote Controller page had never been
+  translated). One po, two delivery paths, because on this firmware
+  translation reaches the user through two different mechanisms that were
+  both broken for this app.
+- **The server path**: the ucode dispatcher loads `<domain>.<lang>.lmo` from
+  `/usr/lib/lua/luci/i18n/` per request and translates menu titles with it.
+  This app had no `.lmo`, so its menu entries were the lone English items in
+  an otherwise Chinese menu. The `po2lmo` tool no longer exists at any
+  fetchable upstream path, so the binary format was reverse-engineered from
+  the firmware's own `base.zh-cn.lmo`: 16-byte big-endian index entries
+  `(hash, 1, offset, length)`, sorted by hash, plural expression at hash 0,
+  trailing u32 = index offset. Verified against six known pairs (Log in→登录,
+  Dismiss→忽略, …) before anything was built with it.
+- **The client path**: JS views translate through cbi.js's `_()`, which looks
+  up `window.TR[sfh(trimws(s))]` -- and on this firmware **nothing ever
+  populates window.TR**. Not the dispatcher, not the header templates, not
+  any theme asset; the login page is Chinese only because it renders
+  server-side. So the app now ships its own catalog (`tr-zh-cn.js`, keys in
+  the exact hex form cbi.js hashes) and installs it from each view before
+  the first string is needed, gated on the document's language. Idempotent
+  and harmless on firmware that grows a bridge.
+- Verified with the router's **real cbi.js `_()`/`sfh` code** run against
+  the generated catalog: 226 of 227 round-trip exactly (the 227th is
+  `Remove`/`Remove ` colliding under trimws -- same word, trailing space).
+  That harness is also what caught the first attempt shipping a broken
+  catalog: the keys were decimal where cbi.js hashes hex, and an empty
+  intermediate got deployed before the check existed. The check runs last
+  now, not first.
+- `po/zh_Hans/gen_tr.py` regenerates the client catalog from the po
+  (idempotent; committed so the next string addition does not need the
+  reverse-engineering again).
 
 ### v2.2-r41
 

@@ -363,3 +363,67 @@ msgstr "TCP (基于 KCP 可靠流)"
 
 msgid "UDP (Direct UDP Datagram)"
 msgstr "UDP (原生报文直传，适用于 DNS)"
+
+msgid "Add Fallback Tunnel"
+msgstr "添加回退隧道"
+
+msgid "Enable Client Daemon"
+msgstr "启用客户端守护进程"
+
+msgid "Enable Server Daemon"
+msgstr "启用服务端守护进程"
+
+msgid "Enable loss-driven AIMD send window adaptation. Default is disabled."
+msgstr "启用基于丢包驱动的 AIMD 发送窗口自适应调整。默认禁用。"
+
+msgid "Enable unified xkcptun client daemon."
+msgstr "启用统一 xkcptun 客户端守护进程。"
+
+msgid "Enable unified xkcptun server dynamic gateway daemon."
+msgstr "启用统一 xkcptun 服务端动态网关守护进程。"
+
+msgid "Frame all UDP datagrams with Reed-Solomon FEC header. Default is enabled."
+msgstr "为所有 UDP 数据报文添加 Reed-Solomon FEC 前向纠错头。默认启用。"
+
+msgid "Internal clock interval in milliseconds (10-5000). Default is 10ms."
+msgstr "内部协议循环时钟间隔，单位毫秒 (10-5000)。默认为 10ms。"
+
+msgid "Listen Interface"
+msgstr "监听接口"
+
+msgid "Listen Port"
+msgstr "监听端口"
+
+msgid "Listen Port (UDP)"
+msgstr "监听端口 (UDP)"
+
+msgid "Local port to listen for incoming application traffic (e.g. 9088)."
+msgstr "监听传入应用程序流量的本地端口（例如 9088）。"
+
+msgid "Max KCP segments per flush tick to smooth send bursts (0 = off). Default is 0."
+msgstr "每次 flush 周期允许发送的最大 KCP 分片数，平滑突发流量 (0 = 禁用)。默认 0。"
+
+msgid "Optional fallback static target rules for legacy clients that do not send dynamic destination headers. Modern dynamic clients do not require any server tunnels configured here."
+msgstr "适用于未发送动态目标头的旧版客户端的可选静态回退目标规则。现代动态客户端无需在此配置任何服务端隧道。"
+
+msgid "Server Fallback Tunnels (Optional)"
+msgstr "服务端回退隧道（可选）"
+
+msgid "Server Global Settings (Dynamic Gateway)"
+msgstr "服务端全局设置（动态网关）"
+
+msgid "Target host on the server to connect/forward to (default: 127.0.0.1)."
+msgstr "服务端连接/转发的目标主机（默认：127.0.0.1）。"
+
+msgid "Target port on the server to forward traffic to (e.g. 22, 53, 80, 443)."
+msgstr "服务端转发流量的目标端口（例如 22、53、80、443）。"
+
+msgid "UDP port to listen for incoming client KCP connections (default: 9089)."
+msgstr "监听客户端传入 KCP 连接的 UDP 端口（默认：9089）。"
+
+msgid "UDP socket receive/send buffer size in bytes. Default is 16777216 (16MB)."
+msgstr "UDP 套接字接收与发送缓冲区大小，单位字节。默认为 16777216 (16MB)。"
+
+msgid "Unified xkcptun server dynamic gateway. The server listens on a single UDP port and dynamically routes each client tunnel to its requested backend target."
+msgstr "统一 xkcptun 服务端动态网关。服务端在单个 UDP 端口上监听，并动态将每个客户端隧道路由到其请求的后端目标。"
+

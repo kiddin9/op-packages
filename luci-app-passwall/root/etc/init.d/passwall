@@ -3,7 +3,7 @@
 START=99
 STOP=15
 
-if [ -z "$IPKG_INSTROOT" ]; then
+if [ -z "$IPKG_INSTROOT" ] && [ -f /usr/share/passwall/utils.sh ]; then
 	. /usr/share/passwall/utils.sh
 	APP_FILE=${APP_PATH}/app.sh
 	LOCK_FILE=${LOCK_PATH}/${CONFIG}.lock
