@@ -3020,7 +3020,49 @@ select:not([multiple]):not(.cbi-dropdown select):not(.cbi-select select) option:
 }
 
 .cbi-dynlist .cbi-dynlist-remove {
+	/* 死规则保留：当前 LuCI(uidynlist) 已不生成该类，见下方 .item::after */
 	margin-left: 8px;
+}
+
+/* ===== DynamicList 的删除按钮 = .item::after（stock 机制，非 DOM 按钮）=====
+   ui.js handleClick 的热区算法：
+     const afterWidth = parseFloat(getComputedStyle(item,'::after').width) || 0;
+     if (rect.right - ev.clientX <= afterWidth) removeItem(...)
+   主题未定义该伪元素 → width=0、无可见 ✕ → 既看不见也点不到（用户反馈
+   "添加后没有删除按钮"）。补齐：
+   - float:right 把 ✕ 顶到条目右缘（热区按"条目右缘往左 afterWidth 像素"算，
+     必须落在右缘才点得到）；
+   - width:>0 且给足点击面积；text-align:center 让字形在热区里居中；
+   - hover/active 变主题红，提示可点。 */
+.cbi-dynlist .item::after {
+	content: '✕';
+	float: right;
+	width: 24px;
+	margin-left: 10px;
+	text-align: center;
+	cursor: pointer;
+	color: var(--text-color-medium);
+	border-radius: 8px;
+	line-height: 1.6;
+	transition: color .15s ease, background .15s ease;
+}
+
+.cbi-dynlist .item:hover::after {
+	color: var(--error-color-high);
+	background: rgba(var(--error-color-high-rgb), .12);
+}
+
+.cbi-dynlist .item::after:active {
+	transform: scale(.9);
+}
+
+/* 条目与右侧 ✕ 之间留出文字间距，避免长文本顶到按钮上 */
+.cbi-dynlist .item {
+	padding: 2px 0;
+}
+
+.cbi-dynlist .item > span {
+	margin-right: 6px;
 }
 
 .cbi-progressbar {
