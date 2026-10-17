@@ -1,0 +1,116 @@
+--- a/luci-mod-status/root/usr/lib/lua/luci/controller/netstat.lua
++++ b/luci-mod-status/root/usr/lib/lua/luci/controller/netstat.lua
+@@ -196,7 +196,9 @@
+ 
+     -- ── Disk space (root filesystem) ──────────────────────────────────────────
+     local disk_pct, disk_used_mb, disk_total_mb = 0, 0, 0
+-    local df = read_cmd("df -k / 2>/dev/null | awk 'NR==2{print $2,$3}'")
++    -- Use POSIX output (-P): busybox df wraps long device names onto a second
++    -- line without it, which breaks the NR==2 parse (e.g. LXC root device).
++    local df = read_cmd("df -kP / 2>/dev/null | awk 'NR==2{print $2,$3}'")
+     if df then
+         local dtotal, dused = df:match("^(%d+)%s+(%d+)$")
+         dtotal = tonumber(dtotal) or 0
+@@ -210,9 +212,42 @@
+ 
+     -- ── CPU temperature ───────────────────────────────────────────────────────
+     local cpu_temp = nil
+-    -- Scan all available thermal zones and pick the highest valid reading
+-    -- (avoids hardcoded zone numbers which vary per device)
++
++    -- Preferred source: CPU-specific hwmon sensors (k10temp/coretemp/zenpower/
++    -- ...).  ACPI thermal zones can be absent or bogus (e.g. inside LXC
++    -- containers the host ACPI zone is not the CPU sensor), while hwmon
++    -- reports the real package temperature on x86.
++    local cpu_hwmon = { k10temp = true, coretemp = true, zenpower = true, cpu_thermal = true, soc_thermal = true }
++    if nixio.fs.access("/sys/class/hwmon") then
++        for h in nixio.fs.dir("/sys/class/hwmon") do
++            local base = "/sys/class/hwmon/" .. h
++            local nf = io.open(base .. "/name", "r")
++            local name = nf and nf:read("*l") or nil
++            if nf then nf:close() end
++            if name and cpu_hwmon[name] then
++                for entry in nixio.fs.dir(base) do
++                    if entry:match("^temp%d+_input$") then
++                        local sf = io.open(base .. "/" .. entry, "r")
++                        local val = sf and sf:read("*l") or nil
++                        if sf then sf:close() end
++                        local t = tonumber(val)
++                        if t and t > 0 then
++                            if t > 1000 then t = t / 1000 end
++                            t = math.floor(t + 0.5)
++                            if cpu_temp == nil or t > cpu_temp then
++                                cpu_temp = t
++                            end
++                        end
++                    end
++                end
++            end
++        end
++    end
++
++    -- Fallback: scan all available thermal zones and pick the highest valid
++    -- reading (avoids hardcoded zone numbers which vary per device)
+     for zone = 0, 9 do
++        if cpu_temp ~= nil then break end
+         local path = "/sys/class/thermal/thermal_zone" .. zone .. "/temp"
+         local tf = io.open(path, "r")
+         if tf then
+--- a/luci-app-netstat/files/usr/lib/lua/luci/controller/netstat.lua
++++ b/luci-app-netstat/files/usr/lib/lua/luci/controller/netstat.lua
+@@ -199,7 +199,9 @@
+ 
+     -- ── Disk space (root filesystem) ──────────────────────────────────────────
+     local disk_pct, disk_used_mb, disk_total_mb = 0, 0, 0
+-    local df = read_cmd("df -k / 2>/dev/null | awk 'NR==2{print $2,$3}'")
++    -- Use POSIX output (-P): busybox df wraps long device names onto a second
++    -- line without it, which breaks the NR==2 parse (e.g. LXC root device).
++    local df = read_cmd("df -kP / 2>/dev/null | awk 'NR==2{print $2,$3}'")
+     if df then
+         local dtotal, dused = df:match("^(%d+)%s+(%d+)$")
+         dtotal = tonumber(dtotal) or 0
+@@ -213,9 +215,42 @@
+ 
+     -- ── CPU temperature ───────────────────────────────────────────────────────
+     local cpu_temp = nil
+-    -- Scan all available thermal zones and pick the highest valid reading
+-    -- (avoids hardcoded zone numbers which vary per device)
++
++    -- Preferred source: CPU-specific hwmon sensors (k10temp/coretemp/zenpower/
++    -- ...).  ACPI thermal zones can be absent or bogus (e.g. inside LXC
++    -- containers the host ACPI zone is not the CPU sensor), while hwmon
++    -- reports the real package temperature on x86.
++    local cpu_hwmon = { k10temp = true, coretemp = true, zenpower = true, cpu_thermal = true, soc_thermal = true }
++    if nixio.fs.access("/sys/class/hwmon") then
++        for h in nixio.fs.dir("/sys/class/hwmon") do
++            local base = "/sys/class/hwmon/" .. h
++            local nf = io.open(base .. "/name", "r")
++            local name = nf and nf:read("*l") or nil
++            if nf then nf:close() end
++            if name and cpu_hwmon[name] then
++                for entry in nixio.fs.dir(base) do
++                    if entry:match("^temp%d+_input$") then
++                        local sf = io.open(base .. "/" .. entry, "r")
++                        local val = sf and sf:read("*l") or nil
++                        if sf then sf:close() end
++                        local t = tonumber(val)
++                        if t and t > 0 then
++                            if t > 1000 then t = t / 1000 end
++                            t = math.floor(t + 0.5)
++                            if cpu_temp == nil or t > cpu_temp then
++                                cpu_temp = t
++                            end
++                        end
++                    end
++                end
++            end
++        end
++    end
++
++    -- Fallback: scan all available thermal zones and pick the highest valid
++    -- reading (avoids hardcoded zone numbers which vary per device)
+     for zone = 0, 9 do
++        if cpu_temp ~= nil then break end
+         local path = "/sys/class/thermal/thermal_zone" .. zone .. "/temp"
+         local tf = io.open(path, "r")
+         if tf then
