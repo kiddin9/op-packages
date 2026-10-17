@@ -1,0 +1,21 @@
+--- a/autocore/files/cpuinfo
++++ b/autocore/files/cpuinfo
+@@ -11,7 +11,17 @@
+ 
+ case "$DISTRIB_TARGET" in
+ "x86"/*)
+-	cpu_cores="$(grep "core id" "$CPUINFO_PATH" | sort -u | wc -l)C $(grep -c "processor" "$CPUINFO_PATH")T" ;;
++	procs="$(grep -c "processor" "$CPUINFO_PATH")"
++	sibs="$(awk -F ': *' '/^siblings/ {print $2; exit}' "$CPUINFO_PATH")"
++	case "$sibs" in ''|*[!0-9]*) sibs="" ;; esac
++	if [ -n "$sibs" ] && [ "$procs" -lt "$sibs" ]; then
++		# Partial CPU view (e.g. LXC container): host core ids leak
++		# through /proc/cpuinfo and can repeat - count the assigned
++		# CPUs as cores/threads
++		cpu_cores="${procs}C ${procs}T"
++	else
++		cpu_cores="$(grep "core id" "$CPUINFO_PATH" | sort -u | wc -l)C ${procs}T"
++	fi ;;
+ *)
+ 	cpu_cores="$(grep -c "processor" "$CPUINFO_PATH")" ;;
+ esac
