@@ -1,0 +1,78 @@
+--- a/my-default-settings/files/etc/profile.d/30-sysinfo.sh
++++ b/my-default-settings/files/etc/profile.d/30-sysinfo.sh
+@@ -57,7 +57,7 @@
+ function storage_info()
+ {
+ 	# storage info
+-	RootInfo=$(df -h /)
++	RootInfo=$(df -P -h /)
+ 	root_usage=$(awk '/\// {print $(NF-1)}' <<<${RootInfo} | sed 's/%//g')
+ 	root_total=$(awk '/\// {print $(NF-4)}' <<<${RootInfo})
+ } # storage_info
+@@ -68,32 +68,31 @@
+ storage_info
+ critical_load=$(( 1 + $(grep -c processor /proc/cpuinfo) / 2 ))
+ 
+-# get uptime, logged in users and load in one take
+-UptimeString=$(uptime | tr -d ',')
+-time=$(awk -F" " '{print $3" "$4}' <<<"${UptimeString}")
+-load="$(awk -F"average: " '{print $2}'<<<"${UptimeString}")"
+-case ${time} in
+-	1:*) # 1-2 hours
+-		time=$(awk -F" " '{print $3" 小时"}' <<<"${UptimeString}")
+-		;;
+-	*:*) # 2-24 hours
+-		time=$(awk -F" " '{print $3" 小时"}' <<<"${UptimeString}")
+-		;;
+-	*day) # days
+-		days=$(awk -F" " '{print $3"天"}' <<<"${UptimeString}")
+-		time=$(awk -F" " '{print $5}' <<<"${UptimeString}")
+-		time="$days "$(awk -F":" '{print $1"小时 "$2"分钟"}' <<<"${time}")
+-		;;
+-esac
+-
+-
+-# memory and swap
+-mem_info=$(LC_ALL=C free -w 2>/dev/null | grep "^Mem" || LC_ALL=C free | grep "^Mem")
+-memory_usage=$(awk '{printf("%.0f",(($2-($4+$6))/$2) * 100)}' <<<${mem_info})
+-memory_total=$(awk '{printf("%d",$2/1024)}' <<<${mem_info})
+-swap_info=$(LC_ALL=C free -m | grep "^Swap")
+-swap_usage=$( (awk '/Swap/ { printf("%3.0f", $3/$2*100) }' <<<${swap_info} 2>/dev/null || echo 0) | tr -c -d '[:digit:]')
+-swap_total=$(awk '{print $(2)}' <<<${swap_info})
++# uptime and load: read /proc directly - in LXC/LXCFS containers the
++# uptime/free commands are syscall-based and would show the host values.
++_secs=$(cut -d. -f1 /proc/uptime 2>/dev/null)
++case "$_secs" in *[!0-9]*|"") _secs=0 ;; esac
++_ud=$(( _secs / 86400 )); _uh=$(( _secs % 86400 / 3600 )); _um=$(( _secs % 3600 / 60 ))
++if [ "$_ud" -gt 0 ]; then
++	time="${_ud}天 $(printf '%02d:%02d' "$_uh" "$_um")"
++else
++	time="$(printf '%02d:%02d' "$_uh" "$_um")"
++fi
++load="$(awk '{print $1" "$2" "$3}' /proc/loadavg 2>/dev/null)"
++[ -n "$load" ] || load="0.00 0.00 0.00"
++
++
++# memory and swap: read /proc/meminfo directly (same reason as above)
++_mt=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
++_mf=$(awk '/^MemFree:/{print $2}' /proc/meminfo)
++_mb=$(awk '/^Buffers:/{print $2}' /proc/meminfo)
++_mc=$(awk '/^Cached:/{print $2}' /proc/meminfo)
++_st=$(awk '/^SwapTotal:/{print $2}' /proc/meminfo)
++_sf=$(awk '/^SwapFree:/{print $2}' /proc/meminfo)
++memory_usage=$(awk -v t="${_mt:-0}" -v f="${_mf:-0}" -v b="${_mb:-0}" -v c="${_mc:-0}" 'BEGIN{ if (t>0) printf "%.0f", (t-f-b-c)/t*100; else print 0 }')
++memory_total=$(( ${_mt:-0} / 1024 ))
++swap_usage=$(awk -v t="${_st:-0}" -v f="${_sf:-0}" 'BEGIN{ if (t>0) printf "%.0f", (t-f)/t*100; else print 0 }')
++swap_total=$(( ${_st:-0} / 1024 ))
+ 
+ c=0
+ while [ ! -n "$(get_ip_addresses)" ];do
+@@ -115,7 +114,7 @@
+ 
+ display "系统存储" "$root_usage" "90" "1" "%" " of $root_total"
+ if [ -x /sbin/cpuinfo ]; then
+-printf "CPU 信息: \x1B[92m%s\x1B[0m\t" "$(echo `/sbin/cpuinfo | cut -d ' ' -f -4`)"
++printf "CPU 信息: \x1B[92m%s\x1B[0m\t" "$(echo `/sbin/cpuinfo | cut -d ' ' -f 1-7`)"
+ fi
+ echo ""
+ echo ""
