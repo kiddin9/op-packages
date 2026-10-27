@@ -1,0 +1,29 @@
+#!/bin/sh /etc/rc.common
+# 开机时把已构建好的集合灌进 nftables。
+# 注意：开机不下载数据 —— 网络可能还没通，交给 cron 每日更新。
+
+START=95
+STOP=10
+
+start() {
+	(
+		i=0
+		while [ "$i" -lt 60 ]; do
+			if nft list table inet mwan3 >/dev/null 2>&1; then
+				/usr/sbin/isp-split apply
+
+				# mwan3_output 是 mwan3 重建的，我们插进去的 DNS 旁路规则
+				# 会随 mwan3 重启丢失。dns 子命令是幂等的，直接重放。
+				/usr/sbin/isp-split dns >/dev/null 2>&1
+				exit 0
+			fi
+			sleep 1
+			i=$((i + 1))
+		done
+		logger -t isp-split "开机等待 mwan3 超时，未应用运营商集合"
+	) &
+}
+
+stop() {
+	:
+}

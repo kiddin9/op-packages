@@ -1,0 +1,2122 @@
+#!/bin/sh
+# openwrt-isp-split - 按目标 IP 归属运营商做 mwan3 分流
+#
+# 依赖：mwan3-nft (>=3.6，原生 nftables 版)、nft、awk、sort
+#
+# 子命令：
+#   fetch      下载并重建运营商 IP 段（不改变线上流量）
+#   apply      把已构建的集合原子刷入 nftables（不断流、不重启 mwan3）
+#   wire       在 mwan3 中创建 nft 集合与分流规则，并插到正确位置
+#   sync       以上三步 + 重载 mwan3（首次安装用这个）
+#   status     查看各集合条目数、命中包数/字节数
+#   probe      分线实测各运营商出口速度，用来决定策略映射
+#   rollback   回滚到上一份数据并重新 apply
+#   install    注册开机自启与每日更新
+#   uninstall  卸载所有改动
+set -u
+ISP_VERSION="0.1.3"
+
+CONF=${ISP_SPLIT_CONF:-/etc/isp-split.conf}
+BASE=${ISP_SPLIT_BASE:-/etc/isp-split}
+DATA=$BASE/data
+WORK=$BASE/work
+LIB=${ISP_SPLIT_LIB:-/usr/lib/isp-split}
+CFG_MWAN3=${ISP_SPLIT_MWAN3:-/etc/config/mwan3}
+
+[ -f "$CONF" ] || { echo "缺少 $CONF" >&2; exit 1; }
+. "$CONF"
+
+ISP_ANCHOR=${ISP_ANCHOR:-'dest_port|src_port|default_rule|https|internet'}
+ISP_CRON=${ISP_CRON:-"17 4 * * *"}
+PROBE_BYTES=${PROBE_BYTES:-33554432}
+PROBE_TIME=${PROBE_TIME:-25}
+
+# mwan3 reload 是异步的：命令返回时 nft 链可能还在重建。
+# 轮询间隔与次数可被配置/测试覆盖；默认最多等 15 秒。
+MWAN3_READY_TRIES=${MWAN3_READY_TRIES:-15}
+MWAN3_READY_DELAY=${MWAN3_READY_DELAY:-1}
+DNS_RETRY_TRIES=${DNS_RETRY_TRIES:-15}
+DNS_RETRY_DELAY=${DNS_RETRY_DELAY:-1}
+
+log() {
+	logger -t isp-split -- "$*" 2>/dev/null
+	echo "[isp-split] $*"
+}
+
+die() {
+	log "错误: $*"
+	exit 1
+}
+
+need_nft() {
+	command -v nft >/dev/null 2>&1 || die "未找到 nft 命令"
+	nft list table inet mwan3 >/dev/null 2>&1 ||
+		die "table inet mwan3 不存在，请确认 mwan3-nft 已启动"
+}
+
+# 统计一个集合里的元素个数
+#
+# 坑：带 flags interval 的集合，nft list set 输出的是区间格式
+#     （1.48.0.0-1.50.255.255），不是 CIDR（1.48.0.0/15）。
+#     用 /前缀 正则去数会永远得到 0。这里按元素的逗号分隔来数。
+count_set_elements() {
+	nft list set inet "$1" "$2" 2>/dev/null | awk '
+		{
+			line = $0
+			# 用 index() 而不是正则匹配花括号：
+			# busybox awk 的 ERE 会拒绝 \{，报 "Invalid contents of {}" 并整段退出。
+			if (!inb && index(line, "elements = {")) {
+				inb = 1
+				line = substr(line, index(line, "elements = {") + 12)
+			}
+			if (inb) {
+				q = index(line, "}")
+				if (q) {
+					end = 1
+					line = substr(line, 1, q - 1)
+				}
+				if (line ~ /[0-9]/)
+					seen = 1
+				c += gsub(/,/, ",", line)
+				if (end)
+					inb = 0
+			}
+		}
+		END { printf "%d\n", (seen ? c + 1 : 0) }'
+}
+
+# 按 ISP_TABLE 顺序输出运营商源名
+priority_list() {
+	for row in $ISP_TABLE; do
+		printf '%s ' "${row%%:*}"
+	done
+}
+
+# 遍历启用的运营商，逐行回调：cb <源名> <集合名> <策略>
+foreach_enabled() {
+	_cb=$1
+	_old_ifs=$IFS
+	for row in $ISP_TABLE; do
+		IFS=':'
+		set -- $row
+		IFS=$_old_ifs
+		[ $# -ge 4 ] || continue
+		[ "$4" = "1" ] || continue
+		$_cb "$1" "$2" "$3"
+	done
+}
+
+fetch_one() {
+	_out=$2
+	if command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -q -T 30 -O "$_out" "$1"
+	elif command -v curl >/dev/null 2>&1; then
+		curl -fsS -m 30 -o "$_out" "$1"
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -T 30 -O "$_out" "$1"
+	else
+		die "没有可用的下载工具（uclient-fetch / curl / wget）"
+	fi
+}
+
+# ---------------------------------------------------------------- fetch
+
+cmd_fetch() {
+	mkdir -p "$WORK"
+	rm -rf "$WORK/raw.new" "$WORK/out.new"
+	mkdir -p "$WORK/raw.new"
+
+	for row in $ISP_TABLE; do
+		_src=${row%%:*}
+		log "下载 $_src"
+		fetch_one "$ISP_MIRROR/$_src.txt" "$WORK/raw.new/$_src.raw" ||
+			die "$_src 下载失败，保留现有数据不动"
+		_n=$(grep -c '[0-9]' "$WORK/raw.new/$_src.raw" 2>/dev/null)
+		_n=${_n:-0}
+		[ "$_n" -gt 5 ] || die "$_src 内容异常（仅 $_n 行），拒绝覆盖现有数据"
+
+		# 落盘后逐行跑 badcidr：一行 "1.2.3.4/abc" 会在 cidr2range 里
+		# 被当成 /0，直接把整个 IPv4 塞进第一个集合，必须在这里拒绝。
+		_bad=$(awk -f "$LIB/badcidr.awk" "$WORK/raw.new/$_src.raw" 2>/dev/null | head -5)
+		if [ -n "$_bad" ]; then
+			printf '%s\n' "$_bad" >&2
+			die "$_src 含非法 CIDR，拒绝本次更新（现有数据未改动）"
+		fi
+	done
+
+	log "构建集合（互斥化）"
+	ISP_SPLIT_LIB=$LIB sh "$LIB/build.sh" "$WORK/raw.new" "$WORK/out.new" \
+		"$(priority_list)" || die "构建失败，保留现有数据不动"
+
+	# 至少要有启用集合的非空产物，否则视为构建异常
+	_ok=0
+	_chk() { [ -s "$WORK/out.new/$1.txt" ] && _ok=1; }
+	foreach_enabled _chk
+	[ "$_ok" -eq 1 ] || die "构建产物为空，拒绝覆盖"
+
+	# 熔断：单个集合地址数超过 IPv4 总量 50% 时拒绝本次更新。
+	# 正常运营商数据远低于该比例；出现这种结果通常意味着坏 CIDR 或源被污染。
+	_fetch_guard() {
+		_gf=$WORK/out.new/$1.txt
+		[ -s "$_gf" ] || return 0
+		if ! awk '
+			{
+				split($0, p, "/")
+				if (p[2] !~ /^[0-9]+$/) next
+				t += 2 ^ (32 - (p[2] + 0))
+			}
+			END { exit (t > 2147483648 ? 1 : 0) }
+		' "$_gf"; then
+			die "集合 $2 地址数超过 IPv4 总量的 50%，拒绝本次更新"
+		fi
+	}
+	foreach_enabled _fetch_guard
+
+	mkdir -p "$BASE/.history"
+	if [ -d "$DATA" ]; then
+		_ts=$(date +%Y%m%d-%H%M%S)
+		cp -a "$DATA" "$BASE/.history/$_ts"
+		# 只保留最近 3 份历史快照
+		_cnt=$(ls -1d "$BASE/.history"/*/ 2>/dev/null | wc -l | tr -d ' ')
+		if [ "$_cnt" -gt 3 ]; then
+			ls -1d "$BASE/.history"/*/ 2>/dev/null | sort |
+				head -n $((_cnt - 3)) |
+				while read -r _d; do rm -rf "$_d"; done
+		fi
+	fi
+
+	mkdir -p "$DATA"
+	rm -f "$DATA"/*.txt
+	cp "$WORK/out.new"/*.txt "$DATA/"
+
+	date +%s > "$DATA/.stamp"
+	log "数据已更新：$(wc -l "$DATA"/*.txt | tail -1)"
+}
+
+# ---------------------------------------------------------------- apply
+
+# 把一个大集合分块写进 nft 批处理文件，避免单行过长
+_emit_elements() {
+	_set=$1
+	_file=$2
+	awk -v set="$_set" -v tbl="$TABLE" '
+		{
+			buf = (buf == "") ? $1 : buf ", " $1
+			n++
+			if (n % 400 == 0) {
+				printf "add element inet %s %s { %s }\n", tbl, set, buf
+				buf = ""
+			}
+		}
+		END {
+			if (buf != "")
+				printf "add element inet %s %s { %s }\n", tbl, set, buf
+		}
+	' "$_file"
+}
+
+_apply_one() {
+	_src=$1
+	_set=$2
+	_file=$DATA/$_src.txt
+
+	if [ "$TABLE" = "mwan3" ] && nft list set inet mwan3 "$_set" >/dev/null 2>&1; then
+		# 即使数据文件为空也必须 flush：否则上游当天把该运营商完全
+		# 覆盖（或源返回空）时，旧网段会永远留在 nft 里继续分流。
+		echo "flush set inet $TABLE $_set" >> "$BATCH"
+	else
+		[ "$TABLE" = "mwan3" ] && log "集合 $_set 不存在，创建"
+		# 按 mwan3 的声明方式创建，保证标志位一致，
+		# 否则下次 mwan3 reload 会判定标志不同而删掉重建。
+		echo "add set inet $TABLE $_set { type ipv4_addr; flags interval; auto-merge; counter; }" \
+			>> "$BATCH"
+	fi
+
+	if [ -s "$_file" ]; then
+		_emit_elements "$_set" "$_file" >> "$BATCH"
+	else
+		log "集合 $_set 无数据，已清空"
+	fi
+}
+
+# 生成 nft 批处理语句
+#   $1 输出文件；$2 表名（mwan3 或自检用的独立表）；$3=1 时先建表
+_gen_batch() {
+	_gen_out=$1
+	_gen_tbl=${2:-mwan3}
+	_gen_new=${3:-0}
+	: > "$_gen_out"
+	TABLE=$_gen_tbl
+	BATCH=$_gen_out
+	[ "$_gen_new" = "1" ] && echo "add table inet $_gen_tbl" >> "$_gen_out"
+	_apply_one_all() { _apply_one "$@"; }
+	foreach_enabled _apply_one_all
+}
+
+# 兜底流量计数器：插在本工具规则块之后、既有端口/兜底规则之前。
+# 命中集合的流量在前面的 jump 里已离开本链，能走到这条规则的
+# 必然是未命中任何启用集合的流量，从而可以量化"覆盖率"。
+# 判断某条链上规则是否已经是我们要的兜底计数规则。
+# nft list chain 会渲染 counter packets N bytes N，比较前先去掉，避免误判。
+_fallback_rule_ok() {
+	printf '%s\n' "$1" |
+		sed 's/ # handle [0-9][0-9]*$//; s/counter packets [0-9][0-9]* bytes [0-9][0-9]* //g' |
+		grep -qE 'meta nfproto ipv4 .*meta mark (&|and) 0x0*3f00 == 0x0+ .*counter name "isp_fallback"'
+}
+
+_fallback_counter() {
+	[ "$COUNT_FALLBACK" = "1" ] || return 0
+	nft list chain inet mwan3 mwan3_rules >/dev/null 2>&1 || return 0
+
+	if ! nft list counter inet mwan3 isp_fallback >/dev/null 2>&1; then
+		nft add counter inet mwan3 isp_fallback 2>/dev/null || return 0
+	fi
+
+	# 幂等：规则已存在且形状正确（mark==0、IPv4、命名计数器）就不动它。
+	# 旧版规则（无 mark 条件）会误计命中集合的新连接首包，需要重建。
+	_fb_lines=$(nft -a list chain inet mwan3 mwan3_rules 2>/dev/null |
+		grep 'counter name "isp_fallback"')
+	_fb_count=$(printf '%s\n' "$_fb_lines" | grep -c 'counter name "isp_fallback"' || true)
+	_fb_count=${_fb_count:-0}
+	if [ "$_fb_count" -eq 1 ] && _fallback_rule_ok "$_fb_lines"; then
+		return 0
+	fi
+
+	# 只在缺失/重复/形状不对时重建；删除循环加上限，避免 nft 删除
+	# 返回成功但规则实际仍在时无限循环。
+	_i=0
+	while [ "$_i" -lt 5 ]; do
+		_rh=$(nft -a list chain inet mwan3 mwan3_rules 2>/dev/null |
+			grep 'counter name "isp_fallback"' |
+			grep -oE '# handle [0-9]+' | grep -oE '[0-9]+' | head -1)
+		[ -n "$_rh" ] || break
+		nft delete rule inet mwan3 mwan3_rules handle "$_rh" 2>/dev/null || break
+		_i=$((_i + 1))
+	done
+
+	# 插入点：最后一条 daddr @isp_* 规则的下一条
+	_h=$(nft -a list chain inet mwan3 mwan3_rules 2>/dev/null |
+		sed -n '/chain mwan3_rules/,/^	}/p' |
+		awk '/daddr @isp_/ { seen = 1; next }
+		     seen && /# handle/    { print $NF; exit }')
+	_COND='meta nfproto ipv4 meta mark & 0x00003f00 == 0x00000000 counter name "isp_fallback"'
+	if [ -n "$_h" ]; then
+		nft insert rule inet mwan3 mwan3_rules position "$_h" \
+			"$_COND" 2>/dev/null && return 0
+	fi
+	# 没找到位置（本工具规则在链尾或版本差异）就追加到链尾
+	nft add rule inet mwan3 mwan3_rules "$_COND" 2>/dev/null || true
+}
+
+cmd_apply() {
+	need_nft
+	[ -f "$DATA/.stamp" ] || die "还没有数据，先执行: isp-split fetch"
+
+	# mwan3 reload 返回后 nft 链可能仍在重建：此时 flush/add element 与
+	# DNS 旁路都会落到旧链上，随后被 mwan3 的 batch flush 掉。
+	# 先等 mwan3_output 真正就绪，再动集合。
+	_ap_waited=0
+	if ! _mwan3_output_ready; then
+		_ap_waited=1
+		log "等待 mwan3 重建完成…"
+		_mwan3_wait_ready ||
+			die "mwan3 在 ${MWAN3_READY_TRIES}s 内未就绪（mwan3_output 缺少 hook output 或 jump mwan3_rules），请检查 mwan3 日志后重试 apply"
+		log "mwan3 已就绪，继续 apply"
+	fi
+
+	# 集合由 wire 写入的 config ipset 在 mwan3 reload 时建立。
+	# apply 的 batch 只 flush/add element，不含 add set——集合缺失时
+	# nft 的报错是模糊的"批量加载失败"，这里给出明确指引。
+	# 取第一个 enabled=1 的行，而不是无条件取第一行：用户禁用第一个
+	# 运营商后，wire 不会为它建集合，旧写法会让每日 refresh 永久失败。
+	_fs=""
+	for _row in $(_conf_val ISP_TABLE 2>/dev/null); do
+		_old_ifs=$IFS
+		IFS=':'
+		set -- $_row
+		IFS=$_old_ifs
+		[ $# -ge 4 ] || continue
+		[ "$4" = "1" ] || continue
+		_fs=$2
+		break
+	done
+	[ -n "$_fs" ] || die "ISP_TABLE 中没有启用的运营商（第 4 列为 1），请先修改 $CONF"
+	if ! nft list set inet mwan3 "$_fs" >/dev/null 2>&1; then
+		die "nft 中不存在集合 $_fs —— 集合由 wire 创建。先执行: isp-split wire（或 isp-split sync）"
+	fi
+	mkdir -p "$WORK"
+	_gen_batch "$WORK/batch.nft" mwan3
+	[ -s "$WORK/batch.nft" ] || die "没有可应用的集合"
+
+	# nft -f 对整份文件是一个事务：要么全成功，要么全不变。
+	nft -f "$WORK/batch.nft" || die "nft 批量加载失败，线上规则未改动"
+	_fallback_counter
+	# 任何一次 mwan3 reload 都会 flush mwan3_output，DNS 旁路规则会丢；
+	# apply/refresh 是日常最常跑的入口，这里也重放一次。
+	# 失败不能再只打警告：apply 必须让调用方看到非 0，否则 cron/LuCI
+	# 会以为 DNS 旁路已恢复。
+	_dns_bypass 1 "$_ap_waited" ||
+		die "DNS 旁路规则恢复失败（mwan3 未就绪或 DNS_TABLE 配置错误，见上方日志）"
+	log "已生效"
+}
+
+# 干跑校验：让 nft 完整解析并检查，但不提交任何改动。
+# 用来提前发现"某条元素非法导致整批被拒"这类失败模式。
+cmd_check() {
+	need_nft
+	[ -f "$DATA/.stamp" ] || die "还没有数据，先执行: isp-split fetch"
+	mkdir -p "$WORK"
+	_gen_batch "$WORK/batch.nft" mwan3
+	[ -s "$WORK/batch.nft" ] || die "没有可应用的集合"
+
+	if nft -c -f "$WORK/batch.nft" 2>"$WORK/check.err"; then
+		log "干跑校验通过：$(wc -l < "$WORK/batch.nft") 条语句，未提交任何改动"
+	else
+		log "干跑校验失败，未提交任何改动。"
+		echo "---- nft 报错（原始）----" >&2
+		head -6 "$WORK/check.err" >&2
+
+		# nft 对非法条目只会说 "Could not resolve hostname"，对用户毫无指向性。
+		# 这里再扫一遍数据文件，把具体哪一行有问题指出来。
+		echo "---- 数据文件自检 ----" >&2
+		_badfound=0
+		_bc() {
+			_src=$1
+			_set=$2
+			_f="$DATA/$_src.txt"
+			[ -s "$_f" ] || return 0
+			_o=$(awk -f "$LIB/badcidr.awk" "$_f" 2>/dev/null | head -5)
+			if [ -n "$_o" ]; then
+				echo "  $_f:" >&2
+				printf '%s\n' "$_o" | sed 's/^/    /' >&2
+				_badfound=1
+			fi
+		}
+		foreach_enabled _bc
+		if [ "$_badfound" = "0" ]; then
+			echo "  数据文件本身格式都合法，问题可能出在集合名或 nft 版本差异上。" >&2
+		fi
+		return 1
+	fi
+}
+
+# 实弹自检：在一张独立的临时表里真跑一遍，测完立刻删除。
+# inet mwan3 全程不受影响，也验证了真实加载耗时与元素数。
+cmd_selftest() {
+	need_nft
+	[ -f "$DATA/.stamp" ] || die "还没有数据，先执行: isp-split fetch"
+	mkdir -p "$WORK"
+	log "在独立表 inet isptest 中实测加载（inet mwan3 不受影响）"
+
+	nft delete table inet isptest 2>/dev/null
+	_gen_batch "$WORK/selftest.nft" isptest 1
+	_t0=$(date +%s)
+	if ! nft -f "$WORK/selftest.nft"; then
+		nft delete table inet isptest 2>/dev/null
+		die "自检加载失败，临时表已清理"
+	fi
+	_t1=$(date +%s)
+
+	_total=0
+	_cidr=0
+	_st() {
+		_n=$(count_set_elements isptest "$2")
+		_c=$(wc -l < "$DATA/$1.txt" 2>/dev/null | tr -d ' ')
+		printf '  %-14s 输入 %5s 条 CIDR -> 内核 %5s 个元素\n' "$2" "${_c:-0}" "$_n"
+		_total=$((_total + _n))
+		_cidr=$((_cidr + ${_c:-0}))
+	}
+	foreach_enabled _st
+	echo "  ----"
+	echo "  合计：输入 $_cidr 条 CIDR，内核合并为 $_total 个元素，加载耗时 $((_t1 - _t0)) 秒"
+	echo "  （元素数少于 CIDR 数是正常的：auto-merge 会把相邻网段合并成区间）"
+
+	nft delete table inet isptest 2>/dev/null
+	log "自检完成，临时表已删除"
+}
+
+
+# ---------------------------------------------------------------- wire
+
+_wire_ipset() {
+	_src=$1
+	_set=$2
+	_sec="ipset_$_set"
+	uci -q get "mwan3.$_sec" >/dev/null 2>&1 || uci set "mwan3.$_sec=ipset"
+	uci set "mwan3.$_sec.name=$_set"
+	uci set "mwan3.$_sec.family=ipv4"
+	uci set "mwan3.$_sec.counters=1"
+	uci set "mwan3.$_sec.loadfile=$DATA/$_src.txt"
+	uci set "mwan3.$_sec.enabled=1"
+	# 精确标记：rules-splice/uninstall 只按它识别本工具的段，
+	# 不再按 isp_ 前缀误伤用户自己的 rule。
+	uci set "mwan3.$_sec.isp_split=1"
+}
+
+_write_rule() {
+	_src=$1
+	_set=$2
+	_pol=$3
+	{
+		printf "config rule '%s'\n" "$_set"
+		printf "\toption ipset '%s'\n" "$_set"
+		printf "\toption use_policy '%s'\n" "$_pol"
+		printf "\toption family 'ipv4'\n"
+		printf "\toption enabled '%s'\n" "${RULE_ENABLED:-1}"
+		printf "\toption isp_split '1'\n"
+		printf "\n"
+	} >> "$WORK/rules.txt"
+}
+
+cmd_wire() {
+	need_nft
+	mkdir -p "$WORK"
+
+	# 1. 集合声明
+	_wire_all() { _wire_ipset "$1" "$2"; }
+	foreach_enabled _wire_all
+	uci -q commit mwan3
+
+	# 2. 规则片段
+	: > "$WORK/rules.txt"
+	_write_all() { _write_rule "$1" "$2" "$3"; }
+	foreach_enabled _write_all
+
+	# 校验策略是否存在，避免生成指向不存在策略的规则
+	for row in $ISP_TABLE; do
+		_old_ifs=$IFS
+		IFS=':'
+		set -- $row
+		IFS=$_old_ifs
+		[ $# -ge 4 ] && [ "$4" = "1" ] || continue
+		_pol=$3
+		if ! uci -q get "mwan3.$_pol" >/dev/null 2>&1; then
+			die "mwan3 中不存在策略 '$_pol'，请先在 MultiWAN 管理器里创建，或修改 $CONF"
+		fi
+	done
+
+	# 4. 插入到正确位置
+	cp "$CFG_MWAN3" "$WORK/mwan3.bak"
+	awk -v insert="$WORK/rules.txt" -v anchor="$ISP_ANCHOR" \
+		-f "$LIB/rules-splice.awk" "$WORK/mwan3.bak" > "$WORK/mwan3.new" ||
+		die "规则注入失败（锚点缺失或配置不可写），配置未改动"
+
+	# 冒烟检查：必须用新生成的 mwan3.new 做 uci 解析，而不是读旧的
+	# /etc/config/mwan3（旧写法永远通过，等于没检查）。把新文件放到临时
+	# 目录并命名为 mwan3，校验通过后才覆盖正式配置。
+	_ucitmp=$WORK/uci-check
+	rm -rf "$_ucitmp"
+	mkdir -p "$_ucitmp" || die "无法创建 uci 校验临时目录"
+	cp "$WORK/mwan3.new" "$_ucitmp/mwan3" || {
+		rm -rf "$_ucitmp"
+		die "无法复制待校验配置，已放弃（备份在 $WORK/mwan3.bak）"
+	}
+	if ! uci -q -c "$_ucitmp" show mwan3 >/dev/null 2>&1; then
+		rm -rf "$_ucitmp"
+		die "注入后的 mwan3 配置无法解析，已放弃（备份在 $WORK/mwan3.bak）"
+	fi
+	rm -rf "$_ucitmp"
+
+	cat "$WORK/mwan3.new" > "$CFG_MWAN3"
+	log "规则已注入（备份: $WORK/mwan3.bak）"
+	/etc/init.d/mwan3 reload
+	_fallback_counter
+	# reload 刚返回时 mwan3_output 往往还没重建完，这里必须等/重试；
+	# 恢复失败要让 wire 以非 0 退出，否则 sync/install 会误报成功。
+	_dns_bypass 1 1 ||
+		die "DNS 旁路规则恢复失败（mwan3 未就绪或 DNS_TABLE 配置错误，见上方日志）"
+}
+
+# 只刷新数据并原子刷入，不重写 mwan3 配置、不 reload mwan3。
+# 日常定时任务应该用它：规则结构没变，每天重写配置再 reload 是没必要的抖动。
+cmd_refresh() {
+	cmd_fetch
+	cmd_apply
+	log "数据已刷新（mwan3 配置未改动）。要改规则映射请用 wire / sync"
+}
+
+cmd_sync() {
+	cmd_fetch
+	cmd_wire
+	cmd_apply
+	log "同步完成，用 isp-split status 验证"
+}
+
+# ---------------------------------------------------------------- stage / enable / verify
+
+# 两阶段启用（dark launch）：
+#   第一次注入时把规则写成 enabled=0，mwan3 会完全跳过它们；
+#   若我们的配置有问题，也只会影响"这些新规则不生效"，
+#   不可能波及你原有的分流规则。确认 mwan3 仍健康后再翻正。
+cmd_stage() {
+	RULE_ENABLED=0
+	cmd_wire
+	echo
+	log "规则已注入但未启用（enabled=0），现有分流配置不受影响。"
+	echo "请先确认 mwan3 没被搞坏："
+	echo "  nft list chain inet mwan3 mwan3_rules"
+	echo "  mwan3 status"
+	echo "确认无误后执行: isp-split enable"
+}
+
+cmd_enable() {
+	RULE_ENABLED=1
+	cmd_wire
+	cmd_verify
+}
+
+cmd_verify() {
+	need_nft
+	echo "== mwan3_rules 链中的规则顺序（自上而下，命中即停）"
+	_body=$(_mwan3_rules_body)
+	_chain=$(printf '%s\n' "$_body" | sed 's/^[[:space:]]*/  /')
+	if [ -n "$_chain" ]; then
+		echo "$_chain"
+	else
+		echo "  ！链为空 —— 这是异常信号，请立刻检查 mwan3 日志"
+	fi
+
+	# 第一条 catch-all 的行号。只有真正无条件的兜底才算：
+	#   1) ip daddr 0.0.0.0/0（direct policy jump 与 mwan3 3.6 的
+	#      jump mwan3_rule_default_rule_v4 间接跳转都覆盖）；
+	#   2) mark==0 的 policy jump，且整行是“纯 mark 条件”（可带
+	#      meta nfproto ipv4 前缀），没有任何 ip saddr/daddr/tcp/udp 等
+	#      前置匹配条件。tcp dport 443 这类用户规则不是无条件兜底。
+	# 用户自己的 `ip saddr 192.168.50.9 ... jump mwan3_policy_balanced`（示例地址）
+	# 只匹配特定源地址，对其他源是 no-op，绝不能当成 catch-all。
+	_ca=$(printf '%s\n' "$_body" | awk '
+		/ip daddr 0\.0\.0\.0\/0/ { print NR; exit }
+		/^[[:space:]]*(meta nfproto ipv4[[:space:]]+)?meta mark (&|and) 0x0*3f00 == 0x0+/ &&
+		/(jump|goto) mwan3_policy_/ &&
+		!/ip (saddr|daddr)/ { print NR; exit }
+	')
+
+	echo
+	echo "== 本工具的运营商规则是否已渲染且在 catch-all 之前"
+	# mwan3-nft 3.6 不再为每条规则建独立子链，规则直接内联在 mwan3_rules 里，
+	# 形如：ip daddr @isp_tel meta mark & 0x3f00 == 0x0 jump mwan3_policy_wan_only
+	_vf() {
+		_ln=$(printf '%s\n' "$_body" | grep -n "@$2 " | head -1 | cut -d: -f1)
+		if [ -z "$_ln" ]; then
+			echo "  ✗ @$2 未出现在 mwan3_rules（enabled=0 或注入失败）"
+		elif [ -n "$_ca" ] && [ "$_ln" -ge "$_ca" ]; then
+			echo "  ✗ @$2 位于第一条 catch-all 之后（规则不会命中）"
+		else
+			echo "  ✓ @$2 -> $3"
+		fi
+	}
+	foreach_enabled _vf
+
+	echo
+	# 运行时规则自检：mwan3 重启会清掉 apply/dns 运行时插入的规则
+	if ! _dns_chain_ok && [ -n "${DNS_TABLE:-}" ]; then
+		echo "⚠ DNS 旁路规则缺失（mwan3 重启会清掉运行时插入的规则）"
+		echo "  恢复：isp-split dns   （或 isp-split wire）"
+	fi
+	if [ "$(nft list chain inet mwan3 mwan3_rules 2>/dev/null | grep -c "counter name")" -eq 0 ] &&
+	   [ -n "${DNS_TABLE:-}" ]; then
+		echo "⚠ 兜底计数规则缺失（同上）"
+		echo "  恢复：isp-split apply"
+	fi
+	echo
+	echo "== 策略成员状态"
+	mwan3 status 2>/dev/null | head -24 || echo "  (mwan3 status 不可用)"
+}
+
+
+# ---------------------------------------------------------------- plan (dry-run)
+
+# 只读预演：不写任何文件、不发任何 uci/nft 改动。
+cmd_plan() {
+	echo "== openwrt-isp-split 预演（不做任何改动）"
+	echo
+	printf '%-14s %-14s %-12s %8s %10s\n' "集合" "来源" "策略" "条目" "状态"
+	_p1() {
+		_src=$1
+		_set=$2
+		_pol=$3
+		_n="-"
+		if [ -s "$DATA/$_src.txt" ]; then
+			_n=$(wc -l < "$DATA/$_src.txt" | tr -d ' ')
+		else
+			_n="无数据"
+		fi
+		_st="待创建"
+		nft list set inet mwan3 "$_set" >/dev/null 2>&1 && _st="已存在"
+		printf '%-14s %-14s %-12s %8s %10s\n' "$_set" "$_src" "$_pol" "$_n" "$_st"
+	}
+	foreach_enabled _p1
+
+	echo
+	echo "未启用的运营商（其地址段不会被任何策略接管，落到兜底规则）:"
+	_dp_body=$(_mwan3_rules_body)
+	_dp_any=0
+	for row in $ISP_TABLE; do
+		_old_ifs=$IFS
+		IFS=':'
+		set -- $row
+		IFS=$_old_ifs
+		[ $# -ge 4 ] || continue
+		[ "$4" = "0" ] || continue
+		_dp_any=1
+		_dp_res=""
+		nft list set inet mwan3 "$2" >/dev/null 2>&1 && _dp_res="$_dp_res nft集合"
+		printf '%s\n' "$_dp_body" | grep -q "@$2 " && _dp_res="$_dp_res nft规则"
+		uci -q get "mwan3.ipset_$2" >/dev/null 2>&1 && _dp_res="$_dp_res mwan3配置段"
+		if [ -n "$_dp_res" ]; then
+			printf '  - %s（集合 %s）: 检测到残留 ->%s\n' "$1" "$2" "$_dp_res"
+		else
+			printf '  - %s（集合 %s）: 当前 nft/mwan3 中无残留\n' "$1" "$2"
+		fi
+	done
+	[ "$_dp_any" = "1" ] || echo "  （无）"
+	echo "  说明: 未启用项不会被 apply 写入；残留的 nft 规则会在下次 wire 重写规则块时移除，"
+	echo "        mwan3 ipset 配置段与对应 nft 集合会在 uninstall 时清理。"
+
+	echo
+	echo "dnsmasq confdir（多线路 DNS 片段写入位置）:"
+	# 只读探测：不写 UCI、不写文件。
+	_dns_confdir_detect >/dev/null
+	_cur=$(_dns_confdir_get)
+	_clean=$(_dns_confdir_clean "$_cur")
+	_confdir=$(_dns_confdir_first "$DNS_CONFDIR_DIRS")
+	case "$DNS_CONFDIR_SOURCE" in
+	runtime)
+		echo "  将写入 dnsmasq 实际加载目录: $_confdir"
+		echo "  探测自: $DNS_CONFDIR_DETAIL（运行配置优先于 UCI${_cur:+；UCI 当前值 $_cur}${_cur:-；UCI confdir 未设置}）"
+		if [ -z "$_cur" ]; then
+			echo "  说明: UCI confdir 未设置，dnsmasq 实际加载目录由运行配置决定"
+			echo "        （OpenClash 接管 DNS 时即为 /tmp/dnsmasq.<实例>.d）；不做改动。"
+		else
+			echo "  说明: 以运行配置为准，不改写 UCI confdir（避免 OpenClash 关闭后残留）。"
+		fi
+		;;
+	ps)
+		echo "  将写入 dnsmasq 实际加载目录: $_confdir"
+		echo "  探测自: 运行中的 dnsmasq 进程参数（--conf-dir，优先级高于 UCI）"
+		echo "  说明: 不改写 UCI confdir（UCI 当前值: ${_cur:-未设置}）。"
+		;;
+	uci)
+		echo "  当前值: ${_cur:-（未设置）}"
+		echo "  探测来源: UCI dhcp.@dnsmasq[0].confdir"
+		if [ "$_clean" != "$_cur" ]; then
+			echo "  将修改 confdir: ${_clean:-（删除该项，回到默认 $DNSMASQ_DEFAULT_DIR）}（移除旧版写入的 $DNSDIR）"
+		else
+			echo "  将修改 confdir: 否（片段写入 $_confdir，不覆盖原值）"
+		fi
+		;;
+	*)
+		echo "  当前值: 未设置；未发现 dnsmasq 实际运行配置"
+		echo "  将使用默认目录: $DNSMASQ_DEFAULT_DIR（不修改 UCI confdir）"
+		;;
+	esac
+
+	echo
+	echo "将会写入的 nft 集合声明（每个启用的运营商一个）:"
+	_p3() {
+		_src=$1
+		_set=$2
+		_pol=$3
+		echo "  add set inet mwan3 $_set { type ipv4_addr; flags interval; auto-merge; counter; }"
+		echo "  flush set inet mwan3 $_set   # 若已存在"
+		echo "  add element inet mwan3 $_set { ... $(wc -l < "$DATA/$_src.txt" 2>/dev/null || echo 0) 条 ... }"
+	}
+	foreach_enabled _p3
+
+	echo
+	echo "将会写入的 mwan3 规则（插在第一个匹配 '$ISP_ANCHOR' 的规则之前）:"
+	_tmp=$(mktemp)
+	: > "$_tmp"
+	_p4() {
+		_src=$1
+		_set=$2
+		_pol=$3
+		printf "  option ipset '%s'  ->  %s\n" "$_set" "$_pol" >> "$_tmp"
+	}
+	foreach_enabled _p4
+	sed 's/^/  /' "$_tmp"
+	rm -f "$_tmp"
+
+	echo
+	echo "注入后的规则匹配顺序（预演结果）:"
+	if [ -f "$CFG_MWAN3" ]; then
+		_rtmp=$(mktemp)
+		_wtmp=$(mktemp)
+		: > "$_wtmp"
+		_p5() {
+			_src=$1
+			_set=$2
+			_pol=$3
+			printf "config rule '%s'\n\toption ipset '%s'\n\toption use_policy '%s'\n\toption family 'ipv4'\n\toption isp_split '1'\n\n" \
+				"$_set" "$_set" "$_pol" >> "$_wtmp"
+		}
+		foreach_enabled _p5
+		awk -v insert="$_wtmp" -v anchor="$ISP_ANCHOR" \
+			-f "$LIB/rules-splice.awk" "$CFG_MWAN3" > "$_rtmp" 2>/dev/null &&
+			grep -oE "^config rule '[^']+'" "$_rtmp" |
+			sed "s/.*'\(.*\)'/\1/" | awk '{ printf "  %d. %s\n", NR, $0 }'
+		rm -f "$_rtmp" "$_wtmp"
+	else
+		echo "  (找不到 $CFG_MWAN3)"
+	fi
+
+	echo
+	echo "预演结束，未做任何改动。确认无误后执行: isp-split sync"
+}
+
+# ---------------------------------------------------------------- status
+
+_human() {
+	awk -v n="$1" 'BEGIN {
+		split("B KiB MiB GiB TiB", u, " ")
+		i = 1
+		while (n >= 1024 && i < 5) { n /= 1024; i++ }
+		printf "%.1f%s", n, u[i]
+	}'
+}
+
+# mwan3_rules 链正文（去表头/结尾括号），供 status/verify 复用
+_mwan3_rules_body() {
+	nft list chain inet mwan3 mwan3_rules 2>/dev/null |
+		sed -n '/chain mwan3_rules/,/^[[:space:]]*}/p' |
+		grep -vE '^[[:space:]]*(table|chain|type|})'
+}
+
+_status_one() {
+	_src=$1
+	_set=$2
+	_pol=$3
+	if ! nft list set inet mwan3 "$_set" >/dev/null 2>&1; then
+		printf '%-14s %-10s %10s %12s %10s  %s\n' "$_set" "$_src" "缺失" "-" "-" "$_pol"
+		return 0
+	fi
+	_out=$(nft list set inet mwan3 "$_set" 2>/dev/null)
+	_n=$(count_set_elements mwan3 "$_set")
+	_cnt=$(printf '%s\n' "$_out" | awk '
+		/counter packets/ {
+			for (i = 1; i <= NF; i++) {
+				if ($i == "packets") p += $(i + 1)
+				if ($i == "bytes") b += $(i + 1)
+			}
+		}
+		END { printf "%.0f %.0f", p, b }')
+	set -- $_cnt
+	printf '%-14s %-10s %10s %12s %10s  %s\n' \
+		"$_set" "$_src" "$_n" "$1" "$(_human "$2")" "$_pol"
+}
+
+# 机器可读输出，供 LuCI 渲染表格
+cmd_status_json() {
+	_first=1
+	printf '['
+	_sj() {
+		_src=$1
+		_set=$2
+		_pol=$3
+		_ex=false
+		nft list set inet mwan3 "$_set" >/dev/null 2>&1 && _ex=true
+		_n=0
+		_p=0
+		_b=0
+		if [ "$_ex" = "true" ]; then
+			_n=$(count_set_elements mwan3 "$_set")
+			_cnt=$(nft list set inet mwan3 "$_set" 2>/dev/null | awk '
+				/counter packets/ {
+					for (i = 1; i <= NF; i++) {
+						if ($i == "packets") p += $(i + 1)
+						if ($i == "bytes") b += $(i + 1)
+					}
+				}
+				END { printf "%.0f %.0f", p, b }')
+			set -- $_cnt
+			_p=${1:-0}
+			_b=${2:-0}
+		fi
+		[ "$_first" = "1" ] || printf ','
+		_first=0
+		printf '{"set":"%s","src":"%s","policy":"%s","exists":%s,"elements":%s,"packets":%s,"bytes":%s}' \
+			"$_set" "$_src" "$_pol" "$_ex" "${_n:-0}" "${_p:-0}" "${_b:-0}"
+	}
+	foreach_enabled _sj
+	if nft list counter inet mwan3 isp_fallback >/dev/null 2>&1; then
+		_fbp=$(nft list counter inet mwan3 isp_fallback 2>/dev/null |
+			grep -oE "packets [0-9]+" | grep -oE "[0-9]+")
+		_fbb=$(nft list counter inet mwan3 isp_fallback 2>/dev/null |
+			grep -oE "bytes [0-9]+" | grep -oE "[0-9]+")
+		[ "$_first" = "1" ] || printf ','
+		printf '{"set":"兜底","src":"-","policy":"未命中集合","exists":true,"elements":"","packets":%s,"bytes":%s}' \
+			"${_fbp:-0}" "${_fbb:-0}"
+	fi
+	printf ']'
+	echo
+}
+
+cmd_status() {
+	need_nft
+	if [ "${1:-}" = "--json" ]; then
+		cmd_status_json
+		return 0
+	fi
+	printf '%-14s %-10s %10s %12s %10s  %s\n' "集合" "来源" "条目" "命中包" "流量" "策略"
+	_st_all() { _status_one "$1" "$2" "$3"; }
+	foreach_enabled _st_all
+	# status 是只读命令：绝不在这里删除/重插 nft 规则。
+	# LuCI 每 10 秒轮询一次，自愈式重插会造成统计缺口和规则抖动。
+	if [ "$COUNT_FALLBACK" = "1" ] &&
+	   ! _mwan3_rules_body | grep -q 'counter name "isp_fallback"'; then
+		echo "提示: 兜底计数规则缺失（status 只读，不自动修复；运行 isp-split apply 恢复）"
+	fi
+	if nft list counter inet mwan3 isp_fallback >/dev/null 2>&1; then
+		_fb=$(nft list counter inet mwan3 isp_fallback 2>/dev/null |
+			grep -oE "packets [0-9]+ bytes [0-9]+" | head -1)
+		_fp=$(echo "$_fb" | awk '{print $2}')
+		_fb_b=$(echo "$_fb" | awk '{print $4}')
+		printf '%-14s %-10s %10s %12s %10s  %s\n' \
+			"兜底" "-" "-" "${_fp:-0}" "${_fb_b:-0}" "未命中集合"
+	fi
+	echo
+	echo "注: 命中包/流量为连接首包统计（后续包由 conntrack 恢复标记，不再经过规则链）。"
+	echo "    业务吞吐请看接口计数: cat /sys/class/net/pppoe-wan*/statistics/rx_bytes"
+	if [ -f "$DATA/.stamp" ]; then
+		echo "数据更新时间: $(date -d "@$(cat "$DATA/.stamp")" 2>/dev/null ||
+			date -r "$(cat "$DATA/.stamp")" 2>/dev/null || echo '未知')"
+	fi
+	# 兜底流量状态：先看 UCI 配置意图，再看链里实际渲染形状。
+	# mwan3-nft 3.6 对 rule 有两种渲染形态，必须都认：
+	#   直接： ip daddr 0.0.0.0/0 ... jump mwan3_policy_<default>
+	#   间接： ip daddr 0.0.0.0/0 ... jump mwan3_rule_default_rule_v4
+	#          （子链里才是 jump mwan3_policy_<default>）
+	# 旧逻辑只看链尾的 policy jump，间接形态会被误报为“渲染异常”。
+	_dr_exists=0
+	uci -q get mwan3.default_rule_v4 >/dev/null 2>&1 && _dr_exists=1
+	_dr_en=$(uci -q get mwan3.default_rule_v4.enabled 2>/dev/null)
+	if [ "$_dr_exists" = "0" ] && [ -z "${_dr_en:-}" ]; then
+		echo "提示: 未配置 mwan3 的 default_rule_v4（未命中集合的流量将走系统默认路由，不参与负载均衡）"
+	elif [ "${_dr_en:-}" = "0" ]; then
+		# enabled=0 是合法配置：沿用 BUG-2 的提示，不去查 mwan3 日志。
+		echo "提示: mwan3 的 default_rule_v4 已被禁用（enabled=0）"
+		echo "      未命中集合的流量将走系统默认路由（不参与负载均衡）。"
+		echo "      如需启用：uci set mwan3.default_rule_v4.enabled=1 && uci commit mwan3 && /etc/init.d/mwan3 reload"
+	else
+		_body=$(_mwan3_rules_body)
+		_dr=0
+		_dr_kind=""
+		_dr_child=""
+		_dr_direct=$(printf '%s\n' "$_body" | awk '
+			/ip daddr 0\.0\.0\.0\/0/ && /(jump|goto) mwan3_policy_/ { print; exit }
+			/^[[:space:]]*(meta nfproto ipv4[[:space:]]+)?meta mark (&|and) 0x0*3f00 == 0x0+/ &&
+			/(jump|goto) mwan3_policy_/ &&
+			!/ip (saddr|daddr)/ && !/@isp_/ { print; exit }
+		')
+		if [ -n "$_dr_direct" ]; then
+			_dr=1
+			_dr_kind=direct
+		else
+			_dr_indirect=$(printf '%s\n' "$_body" |
+				grep -E 'ip daddr 0\.0\.0\.0/0 .*(jump|goto) mwan3_rule_default_rule_v4' |
+				head -1)
+			if [ -n "$_dr_indirect" ]; then
+				_dr=1
+				_dr_kind=indirect
+				_dr_child=$(printf '%s\n' "$_dr_indirect" |
+					grep -oE '(jump|goto) mwan3_rule_[A-Za-z0-9_]+' |
+					awk '{print $2}' | head -1)
+			fi
+		fi
+		if [ "$_dr" -gt 0 ]; then
+			if [ "$_dr_kind" = "indirect" ]; then
+				# 存在间接跳转即视为 default 已渲染；能读到子链时再确认
+				# 里面确实有 policy jump，读不到只降级为警告，不再误报异常。
+				if [ -n "$_dr_child" ] &&
+				   nft list chain inet mwan3 "$_dr_child" 2>/dev/null |
+					grep -qE 'meta mark (&|and) 0x0*3f00 == 0x0+ .*(jump|goto) mwan3_policy_'; then
+					echo "兜底流量: 已参与负载均衡（default 规则已渲染：$_dr_child 子链内 jump mwan3_policy_*）"
+				else
+					echo "兜底流量: default 规则已渲染（间接跳转 ${_dr_child:-mwan3_rule_default_rule_v4}）"
+					echo "警告: 未能确认子链内的 mark==0 policy jump（可能渲染不完整，请检查 mwan3 日志）"
+				fi
+			else
+				echo "兜底流量: 已参与负载均衡（default 规则已渲染，走其 use_policy 指定的策略）"
+			fi
+		else
+			echo
+			echo "提示: mwan3 的 default 规则渲染异常（链中既没有 0.0.0.0/0 直连 policy jump，也没有 jump mwan3_rule_default_rule_v4）"
+			echo "      未命中集合的流量将走系统默认路由（不参与负载均衡）。"
+			echo "      请检查 mwan3.default_rule_v4 是否存在、enabled 是否为 1，并查看 mwan3 日志。"
+		fi
+	fi
+
+	echo "规则顺序:"
+	nft list chain inet mwan3 mwan3_rules 2>/dev/null |
+		sed -n '/chain mwan3_rules/,/^	}/p' |
+		grep -vE '^[[:space:]]*(table|chain|type|})' |
+		sed 's/^[[:space:]]*/  /'
+}
+
+# ---------------------------------------------------------------- probe
+
+cmd_probe() {
+	command -v curl >/dev/null 2>&1 || die "probe 需要 curl"
+	for url in $PROBE_URLS; do
+		echo "== $url"
+		printf '  %-16s %12s %12s\n' "接口" "速率" "建连耗时"
+		for ifc in $PROBE_IFACES; do
+			res=$(curl -sS -o /dev/null -m "$PROBE_TIME" \
+				-r "0-$PROBE_BYTES" --interface "$ifc" \
+				-w '%{speed_download} %{time_connect}' "$url" 2>/dev/null) || {
+				printf '  %-16s %12s\n' "$ifc" "失败"
+				continue
+			}
+			set -- $res
+			printf '  %-16s %9s MB/s %9s ms\n' "$ifc" \
+				"$(awk -v v="$1" 'BEGIN { printf "%.2f", v / 1048576 }')" \
+				"$(awk -v v="$2" 'BEGIN { printf "%.0f", v * 1000 }')"
+		done
+	done
+	echo
+	echo "按实测结果把 ISP_TABLE 里对应运营商的策略改成更快的那条线。"
+	echo "注意：目标站点的 CDN 分配会变，单次结果仅供参考，必要时用域名级覆盖兜底。"
+}
+
+# ---------------------------------------------------------------- dns
+
+DNSDIR=${DNSDIR:-/etc/isp-split/dnsmasq.d}
+# dnsmasq 未显式配置 confdir 时的默认目录。允许覆盖仅用于离线自检。
+DNSMASQ_DEFAULT_DIR=${DNSMASQ_DEFAULT_DIR:-/tmp/dnsmasq.d}
+# dnsmasq 实际运行配置的 glob（OpenWrt 为 /var/etc/dnsmasq.conf.<uci section>）。
+# 允许覆盖仅用于离线自检；生产环境不要设置。
+DNSMASQ_CONF_GLOB=${DNSMASQ_CONF_GLOB:-/var/etc/dnsmasq.conf.*}
+DNS_STATE=$BASE/state
+# 多线路 DNS 的出线方式：
+#   bind = server=/域名/IP@接口（dnsmasq 的 SO_BINDTODEVICE，只有 dnsmasq 支持）
+#   mark = server=/域名/IP + nft 给发往该 DNS 的 53 端口打对应策略的标
+#          不依赖 @接口，任何能按域名指定上游的解析器都适用；且在 OpenClash
+#          接管 DNS 的场景下更抗干扰（我们只看目标 IP，不管是谁发的包）
+DNS_MODE=${DNS_MODE:-bind}
+# 统计"未命中任何运营商集合"的兜底流量（isp_fallback 计数器，status 里显示）
+COUNT_FALLBACK=${COUNT_FALLBACK:-1}
+DOMAINDIR=${DOMAIN_LIST_DIR:-${DOMAINDIR:-/etc/isp-split/domains}}
+
+# ---- dnsmasq confdir：探测"实际加载目录"，绝不整体覆盖 ----
+# 历史版本曾把 dhcp.@dnsmasq[0].confdir 直接改成 $DNSDIR，导致
+# OpenClash/adblock 等放在 /tmp/dnsmasq.d 的片段全部失效。
+#
+# BUG-6：OpenClash 接管 DNS 时，UCI 的 confdir 可能为空，但 dnsmasq init
+# 生成的 /var/etc/dnsmasq.conf.cfgXXXX 里写着 conf-dir=/tmp/dnsmasq.cfgXXXX.d。
+# 只信 UCI 会把片段写进没人加载的 /tmp/dnsmasq.d，分线 DNS 静默失效。
+# 因此按以下优先级探测：
+#   a. /var/etc/dnsmasq.conf.* 里的 conf-dir= 行（权威源，可能有多个实例/目录）
+#   b. 运行中 dnsmasq 进程的 --conf-dir= 参数（busybox ps 取不到时跳过）
+#   c. UCI dhcp.@dnsmasq[0].confdir（兼容没有 /var/etc 的环境）
+#   d. 默认 $DNSMASQ_DEFAULT_DIR
+#
+# _dns_confdir_detect 设置三个全局变量并打印目录（每行一个）：
+#   DNS_CONFDIR_SOURCE = runtime | ps | uci | default
+#   DNS_CONFDIR_DETAIL = 来源细节（实际运行配置文件 / ps / uci）
+#   DNS_CONFDIR_DIRS   = 空格分隔的目录列表
+#
+# 重要：探测到 runtime/ps 目录时，dns 子命令不再改写 UCI confdir。
+# OpenClash 关闭后 UCI 里若残留一个"看起来合理"的 confdir，反而会改变
+# dnsmasq 的加载路径。UCI 只在它本身就是权威源时（有值且无运行配置）才处理。
+_dns_confdir_get() {
+	uci -q get dhcp.@dnsmasq[0].confdir 2>/dev/null || true
+}
+
+# 去掉旧版本写入的 $DNSDIR，其余目录原样保留。
+_dns_confdir_clean() {
+	_clean_in=${1:-}
+	_clean_out=""
+	for _clean_d in $_clean_in; do
+		[ "$_clean_d" = "$DNSDIR" ] && continue
+		_clean_out="${_clean_out:+$_clean_out }$_clean_d"
+	done
+	printf '%s\n' "$_clean_out"
+}
+
+# 解析一个 conf-dir= 的值：容忍尾斜杠、空格分隔的多个目录、逗号后的
+# 文件扩展名过滤（dnsmasq 的 conf-dir=<dir>[,<ext>...] 语法），并去重。
+_dns_confdir_parse() {
+	_parse_out=""
+	for _parse_tok in ${1:-}; do
+		_parse_dir=${_parse_tok%%,*}
+		case "$_parse_dir" in
+		\"*\") _parse_dir=${_parse_dir#\"}; _parse_dir=${_parse_dir%\"} ;;
+		\'*\') _parse_dir=${_parse_dir#\'}; _parse_dir=${_parse_dir%\'} ;;
+		esac
+		while [ "$_parse_dir" != "/" ] && [ "${_parse_dir%/}" != "$_parse_dir" ]; do
+			_parse_dir=${_parse_dir%/}
+		done
+		[ -n "$_parse_dir" ] || continue
+		case " $_parse_out " in
+		*" $_parse_dir "*) continue ;;
+		esac
+		_parse_out="${_parse_out:+$_parse_out }$_parse_dir"
+	done
+	printf '%s\n' "$_parse_out"
+}
+
+_dns_confdir_detect_emit() {
+	for _emit_d in ${DNS_CONFDIR_DIRS:-}; do
+		printf '%s\n' "$_emit_d"
+	done
+}
+
+_dns_confdir_detect() {
+	DNS_CONFDIR_SOURCE=""
+	DNS_CONFDIR_DETAIL=""
+	DNS_CONFDIR_DIRS=""
+
+	# a) 权威源：dnsmasq 实际运行配置。glob 可能匹配多个实例，逐个读。
+	_dcd_dirs=""
+	_dcd_files=""
+	for _dcd_f in $DNSMASQ_CONF_GLOB; do
+		[ -f "$_dcd_f" ] || continue
+		_dcd_file_used=0
+		while IFS= read -r _dcd_line || [ -n "$_dcd_line" ]; do
+			_dcd_line=$(printf '%s' "$_dcd_line" | tr -d '\r' |
+				sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+			case "$_dcd_line" in
+			conf-dir=*) _dcd_val=${_dcd_line#conf-dir=} ;;
+			*) continue ;;
+			esac
+			# 容忍行尾注释（目录名里出现 # 的极端情况不支持）。
+			_dcd_val=${_dcd_val%%#*}
+			_dcd_parsed=$(_dns_confdir_parse "$_dcd_val")
+			for _dcd_d in $_dcd_parsed; do
+				case " $_dcd_dirs " in
+				*" $_dcd_d "*) continue ;;
+				esac
+				_dcd_dirs="${_dcd_dirs:+$_dcd_dirs }$_dcd_d"
+				_dcd_file_used=1
+			done
+		done < "$_dcd_f"
+		[ "$_dcd_file_used" = "1" ] || continue
+		_dcd_files="${_dcd_files:+$_dcd_files }$_dcd_f"
+	done
+	if [ -n "$_dcd_dirs" ]; then
+		DNS_CONFDIR_SOURCE=runtime
+		DNS_CONFDIR_DETAIL=$_dcd_files
+		DNS_CONFDIR_DIRS=$_dcd_dirs
+		_dns_confdir_detect_emit
+		return 0
+	fi
+
+	# b) 兜底：运行中的 dnsmasq 进程参数。busybox ps 默认截断命令行，
+	#    "ps w" 在 OpenWrt 上能取到完整参数；取不到就继续往下走。
+	_dcd_ps=$(ps w 2>/dev/null || ps 2>/dev/null || true)
+	if [ -n "$_dcd_ps" ]; then
+		_dcd_ps_vals=$(printf '%s\n' "$_dcd_ps" | awk '
+			/dnsmasq/ {
+				for (i = 1; i <= NF; i++) {
+					if ($i ~ /^--conf-dir=/) print substr($i, 12)
+					else if ($i == "--conf-dir" && i < NF) print $(i + 1)
+				}
+			}')
+		_dcd_parsed=$(_dns_confdir_parse "$_dcd_ps_vals")
+		if [ -n "$_dcd_parsed" ]; then
+			DNS_CONFDIR_SOURCE=ps
+			DNS_CONFDIR_DETAIL="ps dnsmasq --conf-dir"
+			DNS_CONFDIR_DIRS=$_dcd_parsed
+			_dns_confdir_detect_emit
+			return 0
+		fi
+	fi
+
+	# c) UCI。注意：即使值里只有旧版的 $DNSDIR，也要让 source=uci，
+	#    这样 cmd_dns 能按现状逻辑把旧目录从 UCI 里摘掉（可能摘成空列表）。
+	_dcd_uci=$(_dns_confdir_get)
+	if [ -n "$_dcd_uci" ]; then
+		DNS_CONFDIR_SOURCE=uci
+		DNS_CONFDIR_DETAIL="uci dhcp.@dnsmasq[0].confdir"
+		DNS_CONFDIR_DIRS=$(_dns_confdir_clean "$_dcd_uci")
+		_dns_confdir_detect_emit
+		return 0
+	fi
+
+	# d) 都没有：dnsmasq 默认目录。
+	DNS_CONFDIR_SOURCE=default
+	DNS_CONFDIR_DETAIL="dnsmasq 默认目录"
+	DNS_CONFDIR_DIRS=$DNSMASQ_DEFAULT_DIR
+	_dns_confdir_detect_emit
+}
+
+# 探测结果里的第一个目录就是写入目标；列表为空时回落默认目录。
+_dns_confdir_first() {
+	_first_list=${1:-${DNS_CONFDIR_DIRS:-}}
+	for _first_d in $_first_list; do
+		printf '%s\n' "$_first_d"
+		return 0
+	done
+	printf '%s\n' "$DNSMASQ_DEFAULT_DIR"
+}
+
+# 兼容旧调用点：参数为目录列表，缺省用最近一次探测结果。
+_dns_confdir_target() {
+	_dns_confdir_first "${1:-}"
+}
+
+# 所有可能残留 isp-split.conf 的目录：探测结果 + UCI 当前值 + 默认目录
+# + 旧版目录。去重后输出。卸载/重写时用它做彻底清理。
+_dns_confdir_candidates() {
+	_cand_out=""
+	for _cand_d in ${DNS_CONFDIR_DIRS:-} $(_dns_confdir_get) \
+		"$DNSMASQ_DEFAULT_DIR" "$DNSDIR"; do
+		[ -n "$_cand_d" ] || continue
+		case " $_cand_out " in
+		*" $_cand_d "*) continue ;;
+		esac
+		_cand_out="${_cand_out:+$_cand_out }$_cand_d"
+	done
+	printf '%s\n' "$_cand_out"
+}
+
+_dns_confdir_set() {
+	if [ -n "${1:-}" ]; then
+		uci -q set "dhcp.@dnsmasq[0].confdir=$1" || return 1
+	else
+		uci -q delete dhcp.@dnsmasq[0].confdir 2>/dev/null || true
+	fi
+	uci -q commit dhcp
+}
+
+_restore_dns_confdir() {
+	_state=$DNS_STATE/dnsmasq.confdir.orig
+
+	# 无论有没有状态文件，都按探测结果把所有可能被 dnsmasq 加载的目录
+	# 清一遍。探测路径（OpenClash）下 cmd_dns 不再写状态文件，不能因为
+	# 状态文件不存在就跳过清理。
+	_dns_confdir_detect >/dev/null 2>&1
+	for _d in $(_dns_confdir_candidates); do
+		rm -f "$_d/isp-split.conf" 2>/dev/null || true
+	done
+
+	# 只有真的改过 UCI 才有状态文件；没改过就不碰 UCI。
+	[ -f "$_state" ] || return 0
+	_orig=$(cat "$_state" 2>/dev/null || true)
+	_cur=$(_dns_confdir_get)
+	if [ -n "$_orig" ]; then
+		if [ "$_cur" != "$_orig" ]; then
+			_dns_confdir_set "$_orig" && log "已恢复 dnsmasq confdir=$_orig"
+		fi
+	else
+		if [ -n "$_cur" ]; then
+			_dns_confdir_set "" && log "已恢复 dnsmasq confdir（默认 $DNSMASQ_DEFAULT_DIR）"
+		fi
+	fi
+	rm -f "$_state"
+}
+
+# 策略 -> 出接口设备名（策略取第一个成员）
+policy_device() {
+	_m=$(uci -q get "mwan3.$1.use_member" 2>/dev/null | awk '{print $1}')
+	[ -n "$_m" ] || return 0
+	_i=$(uci -q get "mwan3.$_m.interface" 2>/dev/null)
+	[ -n "$_i" ] || return 0
+	# pppoe 等虚拟接口的运行时设备取 l3_device（如 pppoe-wan1）；
+	# uci 的 device 字段可能是底层 VLAN（如 eth1.10），DNS 绑定会失败
+	_d=$(ifstatus "$_i" 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)
+	[ -z "$_d" ] && _d=$(uci -q get "network.$_i.device" 2>/dev/null)
+	[ -z "$_d" ] && _d=$(uci -q get "network.$_i.ifname" 2>/dev/null)
+	echo "$_d"
+}
+
+# 策略 -> 该线路的 DNS
+dns_of_policy() {
+	_old=$IFS
+	for _r in ${DNS_TABLE:-}; do
+		IFS=':'
+		set -- $_r
+		IFS=$_old
+		if [ "${1:-}" = "$_TARGET" ]; then echo "${2:-}"; return 0; fi
+	done
+	IFS=$_old
+	return 0
+}
+
+# 多线路 DNS：让不同线路的 DNS 查询从各自接口发出
+#
+# 依据：dnsmasq 的 server=/域名/IP@接口 语法会用 SO_BINDTODEVICE 绑定出接口，
+#      从而保证"从哪条线出去，就用哪条线的 DNS"，让 CDN 返回本运营商节点。
+#      这是补齐与爱快差距的关键一环（原理见 docs/DESIGN.md 的
+#      「与商业方案（iKuai）的对比」一节）。
+#
+# 同时要在 mwan3_output 链顶部给这些 DNS 服务器加 return，
+# 否则 mwan3 会按目标 IP 重新打标，把 DNS 查询抢到别的线路上。
+#
+# mwan3_output 是否已经重建完成：
+#   - 链存在
+#   - hook output 已挂上
+#   - 能看到 jump/goto mwan3_rules（mwan3 先建链、后填规则，只 list 成功不够）
+_mwan3_output_ready() {
+	_mo_out=$(nft list chain inet mwan3 mwan3_output 2>/dev/null) || return 1
+	printf '%s\n' "$_mo_out" | grep -q 'hook output' || return 1
+	printf '%s\n' "$_mo_out" |
+		grep -qE '(^|[[:space:]])(jump|goto)[[:space:]]+mwan3_rules([[:space:]]|$)' ||
+		return 1
+	return 0
+}
+
+# 轮询等待 mwan3 重建完成。0=就绪，1=超时。
+_mwan3_wait_ready() {
+	_mw_tries=${MWAN3_READY_TRIES:-15}
+	_mw_delay=${MWAN3_READY_DELAY:-1}
+	_mw_i=0
+	while [ "$_mw_i" -lt "$_mw_tries" ]; do
+		_mwan3_output_ready && return 0
+		_mw_i=$((_mw_i + 1))
+		[ "$_mw_i" -lt "$_mw_tries" ] && sleep "$_mw_delay"
+	done
+	return 1
+}
+
+# mwan3_output 中本工具 DNS 旁路规则条数（按唯一 comment 统计）
+_dns_rule_count() {
+	nft -a list chain inet mwan3 mwan3_output 2>/dev/null |
+		grep -c 'comment "isp-split-dns"' || true
+}
+
+# DNS 出线规则重放：mwan3 重建链后运行时插入的规则会丢失，
+# wire / apply / dns / init.d(开机) 都会调用本函数恢复。
+# bind 模式：return 旁路，出线由 dnsmasq 的 @接口 绑定决定
+# mark 模式：jump 到该 DNS 所属策略，由 mwan3 打标选路
+#
+# 参数：
+#   $1 = 1 时要求这次必须恢复成功（apply/wire 用）；0 时 mwan3 未运行可跳过（dns 用）
+#   $2 = 1 表示调用前刚经历 reload（成功时打印"已恢复"）
+# 返回：0 成功；1 mwan3 未就绪/重试耗尽；2 配置错误（重试无意义）
+_dns_bypass() {
+	_db_required=${1:-0}
+	_db_recovered=${2:-0}
+
+	# 先解析出去重后的条目并计算期望条数（每个条目 udp/tcp 各一条）。
+	_db_seen=" "
+	_db_expected=0
+	_db_rows=""
+	for _db_row in ${DNS_TABLE:-}; do
+		_db_pol=${_db_row%%:*}
+		_db_dns=${_db_row#*:}
+		[ -n "$_db_dns" ] || continue
+		case "$_db_seen" in
+		*" $_db_pol:$_db_dns "*) continue ;;
+		esac
+		_db_seen="$_db_seen $_db_pol:$_db_dns "
+		_db_expected=$((_db_expected + 2))
+		_db_rows="$_db_rows $_db_pol:$_db_dns"
+	done
+
+	# 配置错误重试也不会变好，必须在等待/插入前就明确报错。
+	case "${DNS_MODE:-bind}" in
+	bind | mark) ;;
+	*)
+		log "错误：DNS_MODE='${DNS_MODE:-}' 无效（只能是 bind 或 mark），未恢复 DNS 旁路规则"
+		return 2
+		;;
+	esac
+	for _db_kv in $_db_rows; do
+		_db_dns=${_db_kv#*:}
+		if ! _valid_ipv4 "$_db_dns"; then
+			log "错误：DNS_TABLE 中的 '$_db_dns' 不是合法 IPv4（配置错误，未重试）"
+			return 2
+		fi
+	done
+
+	if ! nft list table inet mwan3 >/dev/null 2>&1; then
+		[ "$_db_required" = "1" ] &&
+			log "错误：table inet mwan3 不存在，无法恢复 DNS 旁路规则"
+		[ "$_db_required" = "1" ] && return 1
+		return 0
+	fi
+
+	# 没有 DNS 条目时只需清理旧规则，不必等待 mwan3 重建。
+	if [ "$_db_expected" -eq 0 ]; then
+		if _mwan3_output_ready; then
+			_db_i=0
+			while [ "$_db_i" -lt 256 ]; do
+				_db_h=$(nft -a list chain inet mwan3 mwan3_output 2>/dev/null |
+					grep 'comment "isp-split-dns"' |
+					grep -oE '# handle [0-9]+' | head -1 | grep -oE '[0-9]+')
+				[ -n "$_db_h" ] || break
+				nft delete rule inet mwan3 mwan3_output handle "$_db_h" 2>/dev/null || break
+				_db_i=$((_db_i + 1))
+			done
+		fi
+		return 0
+	fi
+
+	_db_tries=${DNS_RETRY_TRIES:-15}
+	_db_delay=${DNS_RETRY_DELAY:-1}
+	_db_attempt=0
+	_db_waited=$_db_recovered
+	_db_lasterr="未知错误"
+
+	while [ "$_db_attempt" -lt "$_db_tries" ]; do
+		_db_attempt=$((_db_attempt + 1))
+
+		# 链是否已就绪。未就绪时 list 可能成功但 insert 会 EBUSY，
+		# 或 insert 成功后被紧接着的 flush 覆盖，所以必须轮询。
+		if ! _mwan3_output_ready; then
+			_db_waited=1
+			_db_lasterr="mwan3_output 未就绪（缺少 hook output 或 jump mwan3_rules）"
+			[ "$_db_attempt" -lt "$_db_tries" ] && sleep "$_db_delay"
+			continue
+		fi
+
+		# mark 模式依赖策略子链；链不存在是配置错误，不应重试。
+		if [ "${DNS_MODE:-bind}" = "mark" ]; then
+			_db_badpol=0
+			for _db_kv in $_db_rows; do
+				_db_pol=${_db_kv%%:*}
+				if ! nft list chain inet mwan3 "mwan3_policy_$_db_pol" >/dev/null 2>&1; then
+					log "错误：DNS 打标目标 mwan3_policy_$_db_pol 不存在（配置错误，未重试）"
+					_db_badpol=1
+					break
+				fi
+			done
+			[ "$_db_badpol" = "1" ] && return 2
+		fi
+
+		# 先按唯一 comment 删除所有旧规则：DNS_TABLE 改了策略/删了条目后，
+		# 旧规则不会残留；重试时也不会越插越多。
+		_db_i=0
+		_db_del_fail=0
+		while [ "$_db_i" -lt 256 ]; do
+			_db_h=$(nft -a list chain inet mwan3 mwan3_output 2>/dev/null |
+				grep 'comment "isp-split-dns"' |
+				grep -oE '# handle [0-9]+' | head -1 | grep -oE '[0-9]+')
+			[ -n "$_db_h" ] || break
+			if ! nft delete rule inet mwan3 mwan3_output handle "$_db_h" 2>/dev/null; then
+				_db_del_fail=1
+				break
+			fi
+			_db_i=$((_db_i + 1))
+		done
+		if [ "$_db_del_fail" = "1" ]; then
+			_db_waited=1
+			_db_lasterr="删除旧 DNS 旁路规则失败（链正在重建）"
+			[ "$_db_attempt" -lt "$_db_tries" ] && sleep "$_db_delay"
+			continue
+		fi
+
+		_db_fail=0
+		for _db_kv in $_db_rows; do
+			_db_pol=${_db_kv%%:*}
+			_db_dns=${_db_kv#*:}
+			for _db_proto in udp tcp; do
+				# nft 的 comment 是规则级属性，必须放在规则末尾（verdict 之后）。
+				# 写成 comment ... return 会被真 nft 拒绝：
+				#   Error: syntax error, unexpected return, expecting end of file
+				# 删除循环按 comment 子串匹配，comment 在行尾仍能命中。
+				if [ "${DNS_MODE:-bind}" = "mark" ]; then
+					_db_err=$(nft insert rule inet mwan3 mwan3_output \
+						ip daddr "$_db_dns" "$_db_proto" dport 53 counter \
+						jump "mwan3_policy_$_db_pol" comment "isp-split-dns" 2>&1)
+				else
+					_db_err=$(nft insert rule inet mwan3 mwan3_output \
+						ip daddr "$_db_dns" "$_db_proto" dport 53 counter \
+						return comment "isp-split-dns" 2>&1)
+				fi
+				_db_rc=$?
+				[ "$_db_rc" -eq 0 ] && continue
+				_db_lasterr=$_db_err
+				case "$_db_err" in
+				"" | *"Device or resource busy"* | *"Resource temporarily unavailable"* | \
+					*"No such file or directory"* | *"Interrupted system call"*)
+					_db_fail=1
+					;;
+				*)
+					log "错误：DNS 旁路规则 $_db_dns/$_db_proto 插入失败（配置错误，未重试）：$_db_err"
+					return 2
+					;;
+				esac
+				break 2
+			done
+		done
+
+		if [ "$_db_fail" = "1" ]; then
+			_db_waited=1
+			[ "$_db_attempt" -lt "$_db_tries" ] && sleep "$_db_delay"
+			continue
+		fi
+
+		# nft insert 返回 0 不代表规则最终还在：mwan3 可能正好在重建链，
+		# 前几条插进旧链后就随 flush 消失。必须回读校验条数。
+		_db_got=$(_dns_rule_count)
+		if [ "$_db_got" -eq "$_db_expected" ]; then
+			if [ "$_db_waited" = "1" ] || [ "$_db_attempt" -gt 1 ]; then
+				log "mwan3 重建后 DNS 旁路规则已恢复（$_db_expected 条，第 $_db_attempt 次尝试）"
+			fi
+			return 0
+		fi
+
+		_db_waited=1
+		_db_lasterr="插入后只看到 $_db_got/$_db_expected 条（链可能被 mwan3 重建覆盖）"
+		[ "$_db_attempt" -lt "$_db_tries" ] && sleep "$_db_delay"
+	done
+
+	log "错误：DNS 旁路规则未能恢复（已尝试 $_db_attempt 次：$_db_lasterr）"
+	return 1
+}
+
+# 检查 mwan3_output 里是否已有 DNS 旁路规则。
+# nft 实际渲染会插入 "counter packets N bytes N"，匹配时必须容忍。
+_dns_chain_ok() {
+	nft list chain inet mwan3 mwan3_output 2>/dev/null |
+		grep -qE 'dport 53 (counter packets [0-9]+ bytes [0-9]+ )?(return|jump mwan3_policy_)'
+}
+
+cmd_dns() {
+	need_nft
+	mkdir -p "$DNS_STATE" "$DOMAINDIR"
+
+	# 先探测 dnsmasq 真正加载的目录。runtime/ps 是权威源；只有落到 UCI
+	# 时才沿用"首次记录原值、迁移旧版 $DNSDIR"的现状逻辑。
+	_dns_confdir_detect >/dev/null
+	_cur=$(_dns_confdir_get)
+	_state=$DNS_STATE/dnsmasq.confdir.orig
+	_uci_note="未改写 UCI confdir"
+	case "$DNS_CONFDIR_SOURCE" in
+	uci)
+		_clean=$(_dns_confdir_clean "$_cur")
+		if [ "$_clean" != "$_cur" ]; then
+			# 只有真的要改 UCI 时才写状态文件；没改过就什么都不留，
+			# 卸载时也不会去碰 UCI。
+			_new_state=0
+			if [ ! -f "$_state" ]; then
+				printf '%s\n' "$_clean" > "$_state" ||
+					die "无法保存 dnsmasq confdir 状态"
+				_new_state=1
+			fi
+			if ! _dns_confdir_set "$_clean"; then
+				[ "$_new_state" = "0" ] || rm -f "$_state"
+				die "无法迁移 dnsmasq confdir"
+			fi
+			log "已从 confdir 移除旧版写入的 $DNSDIR（其余目录保留）"
+			_cur=$_clean
+			DNS_CONFDIR_DIRS=$_clean
+			_uci_note="已迁移 UCI confdir"
+		fi
+		;;
+	*)
+		# runtime/ps/default：OpenClash 等接管时 UCI 是摆设，
+		# 不改写它，也不为"未发生的修改"留状态文件。
+		;;
+	esac
+
+	_confdir=$(_dns_confdir_first "$DNS_CONFDIR_DIRS")
+	mkdir -p "$_confdir" 2>/dev/null || die "无法创建 dnsmasq confdir: $_confdir"
+	_out=$_confdir/isp-split.conf
+
+	# 旧版本可能把片段留在 /tmp/dnsmasq.d 或旧 $DNSDIR；换目录时清掉
+	# 所有候选位置里的旧片段，避免 dnsmasq 同时加载两份规则。
+	for _old_dir in $(_dns_confdir_candidates); do
+		[ "$_old_dir" = "$_confdir" ] && continue
+		rm -f "$_old_dir/isp-split.conf" 2>/dev/null || true
+	done
+
+	{
+		echo "# 本文件由 isp-split 生成，请勿手工修改"
+		echo "# 重新生成: isp-split dns"
+	} > "$_out"
+
+	_n=0
+	_skip=0
+
+	# 1) 内联域名配置：DOMAIN_SPLIT="域名:策略 ..."
+	for row in ${DOMAIN_SPLIT:-}; do
+		_dom=${row%%:*}
+		_pol=${row#*:}
+		[ -n "$_dom" ] && [ -n "$_pol" ] || continue
+		_TARGET=$_pol
+		_dns=$(dns_of_policy)
+		_dev=$(policy_device "$_pol")
+		_bind=""
+		[ "$DNS_MODE" = "bind" ] && _bind="@$_dev"
+		if [ -z "$_dns" ] || { [ "$DNS_MODE" = "bind" ] && [ -z "$_dev" ]; }; then
+			log "跳过 $_dom（策略 $_pol 缺少 DNS_TABLE 或设备名）"
+			_skip=$((_skip + 1))
+			continue
+		fi
+		echo "server=/$_dom/$_dns$_bind" >> "$_out"
+		_n=$((_n + 1))
+	done
+
+	# 2) 外部域名清单：$DOMAINDIR/<策略>.txt
+	#    每行一个域名；也兼容 felixonmars/dnsmasq-china-list 的
+	#    server=/domain/1.2.3.4 形式（只取域名，DNS 用本线路的）
+	for _f in "$DOMAINDIR"/*.txt; do
+		[ -f "$_f" ] || continue
+		_pol=${_f##*/}
+		_pol=${_pol%.txt}
+		_TARGET=$_pol
+		_dns=$(dns_of_policy)
+		_dev=$(policy_device "$_pol")
+		_bind=""
+		[ "$DNS_MODE" = "bind" ] && _bind="@$_dev"
+		if [ -z "$_dns" ] || { [ "$DNS_MODE" = "bind" ] && [ -z "$_dev" ]; }; then
+			log "跳过 $_f（策略 $_pol 缺少 DNS_TABLE 或设备名）"
+			_skip=$((_skip + 1))
+			continue
+		fi
+		_c=0
+		while IFS= read -r _line; do
+			_line=$(printf '%s' "$_line" | tr -d '\r')
+			case "$_line" in
+			""|"#"*) continue ;;
+			server=/*)
+				# server=/domain/1.2.3.4 -> domain
+				_d=${_line#server=/}
+				_d=${_d%%/*}
+				;;
+			*) _d=$_line ;;
+			esac
+			case "$_d" in
+			""|.*) continue ;;
+			esac
+			echo "server=/$_d/$_dns$_bind" >> "$_out"
+			_c=$((_c + 1))
+		done < "$_f"
+		[ "$_c" -gt 0 ] || continue
+		log "$_f: $_c 条域名 -> $_dns@$_dev"
+		_n=$((_n + _c))
+	done
+
+	# 3) 处理 DNS 查询的出线（幂等，mwan3 重启后重跑 wire/apply/dns 即恢复）
+	# dns 命令即使 mwan3 暂时未就绪也要把 dnsmasq 片段写出来，
+	# 所以 required=0；但配置错误必须立即失败，不能静默生成坏片段。
+	_dns_bypass 0
+	_db_rc=$?
+	if [ "$_db_rc" -eq 2 ]; then
+		# 配置错误时不要留下可能含坏 DNS 的 dnsmasq 片段
+		rm -f "$_out"
+		die "DNS 旁路规则配置错误，请修正 DNS_TABLE / DNS_MODE 后重试"
+	elif [ "$_db_rc" -ne 0 ]; then
+		log "警告：mwan3 尚未就绪，DNS 旁路规则未全部恢复；稍后执行 isp-split apply 可重试"
+	fi
+
+	if [ "$_n" -eq 0 ]; then
+		rm -f "$_out"
+		log "没有域名分流规则（DNS 旁路已按 DNS_TABLE 就位）"
+		log "要启用域名分流请配置 DOMAIN_SPLIT，或在 $DOMAINDIR/<策略>.txt 放入域名清单"
+		return 0
+	fi
+
+	# 4) 片段已经写进探测到的目录；runtime/ps 路径不改 UCI，避免覆盖
+	#    OpenClash/adblock 等接管配置。卸载时按同一探测结果清理。
+	/etc/init.d/dnsmasq restart >/dev/null 2>&1 || log "警告：dnsmasq 重启失败"
+
+	log "已生成 $_n 条域名 DNS 规则 -> $_out（confdir: $_confdir，来源: $DNS_CONFDIR_SOURCE，$_uci_note）"
+	[ "$_skip" -gt 0 ] && log "有 $_skip 组因缺配置被跳过"
+	echo
+	echo "生成的规则："
+	sed 's/^/  /' "$_out"
+}
+
+# ---------------------------------------------------------------- conf
+
+# 配置文件读写接口，供 LuCI 调用。
+#
+# 设计原则：文件解析/改写全部留在 shell 里做（这里已经被充分测试过），
+# LuCI 只负责渲染表单和把值传进来。绝不让前端直接拼配置文件。
+#
+# 输出用 TSV（制表符分隔）而不是 JSON：值里只有字母数字和 `:._`，
+# 不需要转义，前端 split 一下就能用。
+
+# 取配置项的原始值（支持 KEY="单行" 与 KEY="\n多行\n"）
+_conf_val() {
+	awk -v key="$1" '
+		{
+			if (inb) {
+				if ($0 ~ /^"[[:space:]]*$/) { inb = 0; next }
+				# 多行值的收尾引号也可能跟在最后一行末尾：KEY="a\nb"
+				if ($0 ~ /"[[:space:]]*$/) {
+					sub(/"[[:space:]]*$/, "", $0)
+					out = (out == "" ? "" : out "\n") $0
+					inb = 0
+					next
+				}
+				out = (out == "" ? "" : out "\n") $0
+				next
+			}
+			if (index($0, key "=\"") == 1) {
+				rest = substr($0, length(key) + 3)
+				if (rest ~ /"[[:space:]]*$/) {
+					sub(/"[[:space:]]*$/, "", rest)
+					out = rest
+					inb = 0
+				} else {
+					out = rest
+					inb = 1
+				}
+			}
+		}
+		END { print out }
+	' "$CONF"
+}
+
+conf_get() {
+	[ -f "$CONF" ] || die "找不到 $CONF"
+	printf 'dns_mode\t%s\n' "$(_conf_val DNS_MODE)"
+	printf 'policies\t%s\n' \
+		"$(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([^=]*\)=policy$/\1/p' | tr '\n' ' ')"
+	# 值支持两种书写格式：多行（每行一条）或单行空格分隔。
+	# 先把所有空白折叠成换行，再按冒号拆字段——两种格式统一处理。
+	_conf_val ISP_TABLE | tr -s ' \t' '\n' |
+		awk -F: 'NF >= 4 { printf "isp\t%s\t%s\t%s\t%s\n", $1, $2, $3, $4 }'
+	_conf_val DNS_TABLE | tr -s ' \t' '\n' |
+		awk -F: 'NF >= 2 { printf "dns\t%s\t%s\n", $1, $2 }'
+	_conf_val DOMAIN_SPLIT | tr -s ' \t' '\n' |
+		awk -F: 'NF >= 2 { printf "domain\t%s\t%s\n", $1, $2 }'
+}
+
+# ---- 配置字段白名单 ----
+# 配置文件会被 root source，sh -n 只查语法、不执行命令替换，不能当安全校验。
+# 因此每个字段在写入前都必须按白名单解析，绝不允许 $ ` " ' \ 空白 ; | 进入值里。
+_policy_list() {
+	uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=policy$/\1/p' | tr '\n' ' '
+}
+
+_valid_src() {
+	case "${1:-}" in "" | *[!A-Za-z0-9._-]*) return 1 ;; esac
+	return 0
+}
+
+_valid_name() {
+	case "${1:-}" in "" | *[!A-Za-z0-9_]*) return 1 ;; esac
+	[ "${#1}" -le 15 ]
+}
+
+_valid_domain() {
+	case "${1:-}" in "" | *[!A-Za-z0-9._-]* | .* | *. | *..*) return 1 ;; esac
+	return 0
+}
+
+_valid_policy() {
+	case "${1:-}" in "" | *[!A-Za-z0-9_-]*) return 1 ;; esac
+	return 0
+}
+
+_valid_ipv4() {
+	_ip=${1:-}
+	case "$_ip" in
+	"" | *[!0-9.]* | .* | *. | *..*) return 1 ;;
+	esac
+	_old_ifs=$IFS
+	IFS=.
+	set -- $_ip
+	IFS=$_old_ifs
+	[ $# -eq 4 ] || return 1
+	for _oct in "$@"; do
+		case "$_oct" in "" | *[!0-9]*) return 1 ;; esac
+		[ "${#_oct}" -le 3 ] || return 1
+		[ "$_oct" -le 255 ] || return 1
+	done
+	return 0
+}
+
+# 校验某个 KEY 的完整值；失败直接 die（不写文件）
+_conf_validate() {
+	_key=$1
+	_val=$2
+	case "$_val" in
+	*'$'* | *'`'* | *'"'* | *"'"* | *'\'* | *';'* | *'|'*)
+		die "配置值含不允许的字符（\$ \` \" ' \\ ; |）"
+		;;
+	esac
+
+	_POLS=" $(_policy_list) "
+	case "$_key" in
+	ISP_TABLE)
+		_seen=" "
+		_old_ifs=$IFS
+		for _line in $_val; do
+			IFS=':'
+			set -- $_line
+			IFS=$_old_ifs
+			[ $# -eq 4 ] || die "行格式必须是 运营商:集合名:策略:0或1 —— 出错行: $_line"
+			_valid_src "$1" || die "运营商源名 '$1' 只能包含 [A-Za-z0-9._-]（出错行: $_line）"
+			_valid_name "$2" || die "集合名 '$2' 只能包含 [A-Za-z0-9_] 且不超过 15 字符（出错行: $_line）"
+			case " $_seen " in
+			*" $2 "*) die "集合名 '$2' 重复（出错行: $_line）" ;;
+			esac
+			_seen="$_seen $2"
+			_valid_policy "$3" || die "策略名 '$3' 含非法字符（出错行: $_line）"
+			case "$_POLS" in
+			*" $3 "*) ;;
+			*) die "mwan3 里不存在策略 '$3'，请先在 MultiWAN 管理器创建（出错行: $_line）" ;;
+			esac
+			case "$4" in
+			0 | 1) ;;
+			*) die "最后一列只能是 0（禁用）或 1（启用）—— 出错行: $_line" ;;
+			esac
+		done
+		IFS=$_old_ifs
+		;;
+	DNS_TABLE)
+		_old_ifs=$IFS
+		for _line in $_val; do
+			IFS=':'
+			set -- $_line
+			IFS=$_old_ifs
+			[ $# -eq 2 ] || die "格式必须是 策略:DNS地址 —— 出错行: $_line"
+			_valid_policy "$1" || die "策略名 '$1' 含非法字符（出错行: $_line）"
+			case "$_POLS" in
+			*" $1 "*) ;;
+			*) die "mwan3 里不存在策略 '$1'（出错行: $_line）" ;;
+			esac
+			_valid_ipv4 "$2" || die "DNS 地址必须是严格 IPv4（出错行: $_line）"
+		done
+		IFS=$_old_ifs
+		;;
+	DOMAIN_SPLIT)
+		_old_ifs=$IFS
+		for _line in $_val; do
+			IFS=':'
+			set -- $_line
+			IFS=$_old_ifs
+			[ $# -eq 2 ] || die "格式必须是 域名:策略 —— 出错行: $_line"
+			_valid_domain "$1" || die "域名 '$1' 只能包含 [A-Za-z0-9._-]（出错行: $_line）"
+			_valid_policy "$2" || die "策略名 '$2' 含非法字符（出错行: $_line）"
+			case "$_POLS" in
+			*" $2 "*) ;;
+			*) die "mwan3 里不存在策略 '$2'（出错行: $_line）" ;;
+			esac
+		done
+		IFS=$_old_ifs
+		;;
+	DNS_MODE)
+		case "$_val" in
+		bind | mark) ;;
+		*) die "DNS_MODE 只能是 bind 或 mark" ;;
+		esac
+		;;
+	*)
+		die "未知配置项 '$_key'"
+		;;
+	esac
+}
+
+# 安全重写某个 KEY 的值：写前校验并备份、写后 sh -n 校验、失败自动回滚
+_conf_write() {
+	_key=$1
+	_val=$2
+	case "$_key" in
+	isp_table) _key=ISP_TABLE ;;
+	dns_table) _key=DNS_TABLE ;;
+	domain_split) _key=DOMAIN_SPLIT ;;
+	dns_mode) _key=DNS_MODE ;;
+	*) die "未知配置项 '$_key'，可选：isp_table / dns_table / domain_split / dns_mode" ;;
+	esac
+
+	# 写入前必须通过白名单校验；失败即 die，绝不落盘
+	_conf_validate "$_key" "$_val"
+
+	_backup=$CONF.bak.$$
+	cp -f "$CONF" "$_backup" || die "无法备份配置"
+	awk -v key="$_key" -v val="$_val" '
+		{
+			if (inb) {
+				if ($0 ~ /^"[[:space:]]*$/) { inb = 0 }
+				next
+			}
+			if (index($0, key "=\"") == 1) {
+				if ($0 ~ /"/ && substr($0, length(key) + 3) ~ /"[[:space:]]*$/) {
+					print key "=\"" val "\""
+					next
+				}
+				print key "=\""
+				n = split(val, L, "\n")
+				for (i = 1; i <= n; i++) if (L[i] != "") print L[i]
+				print "\""
+				inb = 1
+				next
+			}
+			print
+		}
+	' "$_backup" > "$CONF" || { cp -f "$_backup" "$CONF"; rm -f "$_backup"; die "写入失败，已回滚"; }
+
+	if ! sh -n "$CONF" 2>/dev/null; then
+		cp -f "$_backup" "$CONF"
+		rm -f "$_backup"
+		die "改动后的配置语法不合法，已回滚（原文件已恢复）"
+	fi
+	rm -f "$_backup"
+}
+
+conf_set() {
+	_key=${1:-}
+	_val=${2:-}
+	[ -n "$_key" ] || die "用法: isp-split conf set <isp_table|dns_table|domain_split|dns_mode> <值>"
+	[ -f "$CONF" ] || die "找不到 $CONF"
+
+	# 允许用 | 代替换行（前端传参更省事）
+	_val=$(printf '%s' "$_val" | tr '|' '\n')
+
+	# _conf_write 内部会先调用 _conf_validate 做白名单校验；
+	# 校验失败直接 die，不会留下半写入的配置。
+	# 显式传播非 0：校验函数将来若改成 return 而不是 exit，
+	# conf_set 也不能继续打印"已更新"并返回 0。
+	_conf_write "$_key" "$_val" || return $?
+
+	log "已更新 $_key。要让改动生效："
+	echo "  运营/策略映射 -> isp-split wire && isp-split apply"
+	echo "  DNS 相关      -> isp-split dns"
+}
+
+cmd_conf() {
+	_op=${1:-get}
+	case "$_op" in
+	get) conf_get ;;
+	set) shift; conf_set "$@" || return $? ;;
+	*) die "用法: isp-split conf [get | set <项> <值>]" ;;
+	esac
+}
+
+# ---------------------------------------------------------------- export
+
+# 把运营商集合导出成代理侧可直接消费的 rule-set 格式。
+#
+# 为什么要这个：isp-split 只能管"直连"流量（OpenClash 的 TPROXY 标记在更早的
+# ip rule 上，代理流量根本不经过 mwan3）。若想在代理侧也按运营商分流，
+# 需要把同一份数据交给 mihomo / sing-box。
+#
+#   mihomo / OpenClash : rule-provider，behavior=ipcidr，format=yaml
+#   sing-box           : rule_set，type=local，format=source（JSON 数组）
+cmd_export() {
+	_fmt=${1:-}
+	_dir=${2:-}
+	[ -n "$_fmt" ] || die "用法: isp-split export <mihomo|singbox|text> <输出目录>"
+	[ -n "$_dir" ] || die "用法: isp-split export <mihomo|singbox|text> <输出目录>"
+	mkdir -p "$_dir" || die "无法创建 $_dir"
+
+	_n=0
+	_old_ifs=$IFS
+	for row in $ISP_TABLE; do
+		IFS=':'
+		set -- $row
+		IFS=$_old_ifs
+		[ $# -ge 1 ] || continue
+		_src=$1
+		_f="$DATA/$_src.txt"
+		[ -s "$_f" ] || continue
+
+		case "$_fmt" in
+		mihomo)
+			_out="$_dir/isp-$_src.yaml"
+			{
+				echo "payload:"
+				sed 's/^/  - /' "$_f"
+			} > "$_out"
+			;;
+		singbox)
+			_out="$_dir/isp-$_src.json"
+			awk 'NR > 1 { printf ",\n" } { printf "\"%s\"", $0 } END { print "" }' "$_f" |
+				{ printf '[\n'; cat; printf '\n]\n'; } > "$_out"
+			;;
+		text)
+			_out="$_dir/isp-$_src.txt"
+			cp "$_f" "$_out"
+			;;
+		*)
+			die "未知格式 '$_fmt'，可选 mihomo / singbox / text"
+			;;
+		esac
+		printf '  %-34s %6s 条\n' "$_out" "$(wc -l < "$_f" | tr -d ' ')"
+		_n=$((_n + 1))
+	done
+
+	[ "$_n" -gt 0 ] || die "没有可导出的数据，先执行 isp-split fetch"
+
+	# 附一份可直接抄的示例配置
+	case "$_fmt" in
+	mihomo)
+		cat > "$_dir/README-mihomo.txt" <<'EOF'
+mihomo / OpenClash 用法：
+
+# 1) 放进 rule-provider（OpenClash 可在「规则集」里添加本地文件）
+rule-providers:
+  isp-telecom:
+    type: file
+    behavior: ipcidr
+    format: yaml
+    path: /etc/openclash/rule_provider/isp-chinatelecom.yaml
+  isp-unicom:
+    type: file
+    behavior: ipcidr
+    format: yaml
+    path: /etc/openclash/rule_provider/isp-unicom_cnc.yaml
+  isp-cmcc:
+    type: file
+    behavior: ipcidr
+    format: yaml
+    path: /etc/openclash/rule_provider/isp-cmcc.yaml
+
+# 2) 在 rules 里引用（放在 MATCH 之前）
+rules:
+  - RULE-SET,isp-telecom,电信节点组
+  - RULE-SET,isp-unicom,联通节点组
+  - RULE-SET,isp-cmcc,联通节点组
+  - MATCH,默认组
+
+# 3) 定时更新：cron 里跑 isp-split fetch 后再 export 到 OpenClash 目录
+EOF
+		;;
+	singbox)
+		cat > "$_dir/README-singbox.txt" <<'EOF'
+sing-box 用法：
+
+{
+  "rule_set": [
+    { "type": "local", "tag": "isp-telecom",
+      "format": "source", "path": "/etc/sing-box/ruleset/isp-chinatelecom.json" },
+    { "type": "local", "tag": "isp-unicom",
+      "format": "source", "path": "/etc/sing-box/ruleset/isp-unicom_cnc.json" },
+    { "type": "local", "tag": "isp-cmcc",
+      "format": "source", "path": "/etc/sing-box/ruleset/isp-cmcc.json" }
+  ],
+  "route": {
+    "rules": [
+      { "rule_set": ["isp-telecom"], "outbound": "电信节点" },
+      { "rule_set": ["isp-unicom"],  "outbound": "联通节点" },
+      { "rule_set": ["isp-cmcc"],    "outbound": "联通节点" }
+    ]
+  }
+}
+
+注意：sing-box 的 local source 规则集要求 JSON 字符串数组，
+本工具导出的正是该格式。
+EOF
+		;;
+	esac
+
+	log "已导出 $_n 个集合到 $_dir（格式: $_fmt）"
+}
+
+# ---------------------------------------------------------------- rollback
+
+cmd_rollback() {
+	_last=$(ls -1d "$BASE/.history"/*/ 2>/dev/null | sort | tail -1)
+	[ -n "$_last" ] || die "没有可回滚的历史数据"
+	log "回滚到 $_last"
+	rm -f "$DATA"/*.txt
+	cp "$_last"*.txt "$DATA/"
+	cmd_apply
+}
+
+# ---------------------------------------------------------------- install
+
+cmd_install() {
+	# crontab
+	mkdir -p /etc/crontabs
+	touch /etc/crontabs/root
+	grep -v 'isp-split' /etc/crontabs/root > /tmp/.ispcron 2>/dev/null || true
+	echo "$ISP_CRON /usr/sbin/isp-split refresh >/dev/null 2>&1 # isp-split" >> /tmp/.ispcron
+	mv /tmp/.ispcron /etc/crontabs/root
+	/etc/init.d/cron restart >/dev/null 2>&1 || true
+
+	/etc/init.d/isp-split enable >/dev/null 2>&1 || true
+	log "已注册：每日 $ISP_CRON 自动更新，开机自动应用"
+}
+
+cmd_uninstall() {
+	grep -v 'isp-split' /etc/crontabs/root > /tmp/.ispcron 2>/dev/null || true
+	mv /tmp/.ispcron /etc/crontabs/root 2>/dev/null || true
+	/etc/init.d/isp-split disable >/dev/null 2>&1 || true
+	/etc/init.d/isp-split stop >/dev/null 2>&1 || true
+
+	# 删规则：用空片段做一次注入即可移除（rules-splice 会删掉所有 isp_ 规则）
+	mkdir -p "$WORK"
+	: > "$WORK/rules.txt"
+	if [ -f "$CFG_MWAN3" ]; then
+		cp "$CFG_MWAN3" "$WORK/mwan3.bak"
+		awk -v insert="$WORK/rules.txt" -v anchor="$ISP_ANCHOR" \
+			-f "$LIB/rules-splice.awk" "$WORK/mwan3.bak" > "$WORK/mwan3.new" &&
+			cat "$WORK/mwan3.new" > "$CFG_MWAN3"
+	fi
+
+	for row in $ISP_TABLE; do
+		_old_ifs=$IFS
+		IFS=':'
+		set -- $row
+		IFS=$_old_ifs
+		uci -q delete "mwan3.ipset_$2" 2>/dev/null
+	done
+	uci -q commit mwan3
+	/etc/init.d/mwan3 reload >/dev/null 2>&1
+
+	# 恢复 dnsmasq confdir 原值（状态文件在 $BASE 里，必须先恢复再删目录）
+	_restore_dns_confdir
+
+	rm -rf "$BASE"
+	log "已卸载（nft 集合随 mwan3 reload 一并消失）"
+}
+
+# ---------------------------------------------------------------- main
+
+case "${1:-}" in
+--version | version)
+	echo "isp-split $ISP_VERSION"
+	exit 0
+	;;
+fetch) cmd_fetch ;;
+apply) cmd_apply ;;
+wire) cmd_wire ;;
+sync) cmd_sync ;;
+plan) cmd_plan ;;
+check) cmd_check ;;
+selftest) cmd_selftest ;;
+stage) cmd_stage ;;
+enable) cmd_enable ;;
+verify) cmd_verify ;;
+status) shift; cmd_status "$@" ;;
+probe) cmd_probe ;;
+rollback) cmd_rollback ;;
+dns) cmd_dns ;;
+conf) shift; cmd_conf "$@" ;;
+refresh) cmd_refresh ;;
+export) shift; cmd_export "$@" ;;
+install) cmd_install ;;
+uninstall) cmd_uninstall ;;
+*)
+	cat <<EOF
+用法: isp-split <命令>
+
+  —— 不改动任何东西 ——
+  plan       只读预演：打印将要做什么
+  check      nft 干跑校验（nft -c，不提交）
+  selftest   在独立临时表里实测加载 1.3 万条，测完删除
+
+  —— 数据 ——
+  fetch      下载并重建运营商 IP 段（不动线上流量）
+  rollback   回滚到上一份数据
+
+  —— 上线（建议分两步）——
+  stage      注入规则但保持 enabled=0，验证 mwan3 未被搞坏
+  enable     确认无误后真正启用
+  verify     检查规则链渲染结果与命中情况
+
+  —— 其他 ——
+  apply      原子刷入 nftables 集合（不断流、不重启 mwan3）
+  wire       建立 mwan3 集合与规则并插到正确位置
+  conf       读写配置：conf get | conf set <项> <值>
+  refresh    fetch + apply（只更新数据，不动 mwan3 配置）
+  sync       fetch + wire + apply
+  status     查看条目数与命中统计
+  probe      分线实测出口速度
+  dns        生成多线路 DNS 配置（域名按线路选 DNS）
+  export     导出给代理侧用：export mihomo|singbox|text <目录>
+  install    注册开机自启与每日更新
+  uninstall  卸载
+
+零风险验证顺序：
+  isp-split plan && isp-split check && isp-split selftest
+上线顺序：
+  isp-split sync && isp-split stage && isp-split enable
+EOF
+	exit 1
+	;;
+esac
+
+# 显式把最后一个命令的退出码作为进程退出码：conf set 等命令校验失败时，
+# 调用方（LuCI fs.exec、cron、shell）必须能拿到非 0，不能依赖隐式行为。
+exit $?

@@ -1,0 +1,26 @@
+#!/bin/sh
+# 首次启动初始化 —— 用于把本包直接编译进固件的情况
+#
+# 为什么需要：打进固件时，opkg/apk 的 postinst 在镜像构建阶段就被跳过
+# （IPKG_INSTROOT 非空），所以 /etc/rc.d 的自启软链不会自动建立。
+# OpenWrt 会在首次启动时执行 /etc/uci-defaults/ 下的脚本，就在这里补上。
+
+[ -x /usr/sbin/isp-split ] || exit 0
+
+/etc/init.d/isp-split enable >/dev/null 2>&1
+
+# 启用每日更新（只改数据，不重写 mwan3 配置）
+if [ -x /etc/init.d/cron ]; then
+	mkdir -p /etc/crontabs
+	touch /etc/crontabs/root
+	if ! grep -q 'isp-split' /etc/crontabs/root 2>/dev/null; then
+		echo "17 4 * * * /usr/sbin/isp-split refresh >/dev/null 2>&1 # isp-split" \
+			>> /etc/crontabs/root
+	fi
+	/etc/init.d/cron enable >/dev/null 2>&1
+	/etc/init.d/cron restart >/dev/null 2>&1
+fi
+
+logger -t isp-split "固件内置初始化完成：已开自启与每日更新；运行 isp-split plan 进行预演"
+
+exit 0

@@ -1,0 +1,29 @@
+{
+	"admin/network/isp-split": {
+		"title": "运营商分流",
+		"order": 62,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-isp-split" ],
+			"uci": { "mwan3": true }
+		}
+	},
+	"admin/network/isp-split/overview": {
+		"title": "状态",
+		"order": 1,
+		"action": {
+			"type": "view",
+			"path": "isp-split/overview"
+		}
+	},
+	"admin/network/isp-split/config": {
+		"title": "配置",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "isp-split/config"
+		}
+	}
+}
