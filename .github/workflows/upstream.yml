@@ -312,8 +312,8 @@ jobs:
         git_clone https://github.com/EkkoG/openwrt-natmap
         git_clone https://github.com/EkkoG/luci-app-natmap
         git_clone https://github.com/yichya/openwrt-hv-tools
+        git_clone https://github.com/ddimension/luci-app-wwand
         git_clone https://github.com/ddimension/openwrt-repo && mv -f openwrt-repo/*wwand* ./;rm -rf openwrt-repo
-        git_clone https://github.com/jerrykuku/luci-theme-argon && rm -rf luci-theme-argon/compat
         ) &
         (
         git_clone https://github.com/EasyTier/luci-app-easytier luci-app-easytier1 && mvdir luci-app-easytier1
@@ -383,6 +383,7 @@ jobs:
         git_clone https://github.com/xiaokeikei/luci-app-cf-dns-speedtest
         git_clone https://github.com/masmbit/luci-app-openvpn-plus
         git_clone https://github.com/xxi-arch/luci-app-device-manager
+        git_clone https://github.com/jerrykuku/luci-theme-argon && rm -rf luci-theme-argon/compat
         ) &
         (
         git_clone https://github.com/VolanticSystems/luci-app-appflow
