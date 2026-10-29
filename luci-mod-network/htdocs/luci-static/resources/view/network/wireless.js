@@ -307,6 +307,16 @@ function loadIwinfoInfoMap(force) {
 		return Promise.all(queryTargets.map((name) =>
 			L.resolveDefault(callIwinfoInfoCompat(name), null).then((info) => [ name, info ])
 		)).then(async (entries) => {
+			await Promise.all(entries.map(async ([ name, info ]) => {
+				const iface = uci.sections('wireless', 'wifi-iface').find((iface) =>
+					isQcaWifiHwtype(uci.get('wireless', iface.device, 'type')) &&
+					resolver.aliasMap[iface['.name']] == name);
+				if (!iface || info?.mode != 'Master' || !/^ath\d+(?:\.\d+)?$/.test(name))
+					return;
+				const output = await L.resolveDefault(fs.exec_direct('/usr/sbin/cfg80211tool',
+					[ name, 'get_maxrate' ]), '');
+				info.theoretical_bitrate = parseQcaMaxPhyRate(output);
+			}));
 			const phyQueries = {};
 			for (const [ name, info ] of entries) {
 				if (info?.hardware?.id?.[0] != 0x14c3 || !/^phy\d+$/.test(info?.phy || ''))
@@ -683,8 +693,6 @@ function getDisplayTxPower(radioNet) {
 
 		if (isPlausibleTxPowerValue(txpower, hwtype))
 			return txpower;
-		if (isPlausibleTxPowerValue(cfgvalue, hwtype))
-			return cfgvalue;
 		return null;
 	}
 
@@ -1008,8 +1016,9 @@ function calculateEhtCapabilityRate(info, phyInfo) {
 
 function getDisplayTheoreticalBitRate(radioNet) {
 	const device = radioNet.getWifiDeviceName();
-	if (uci.get('wireless', device, 'type') != 'mt_dbdc' ||
-	    !/^EHT/.test(uci.get('wireless', device, 'htmode') || ''))
+	const hwtype = uci.get('wireless', device, 'type');
+	if (!(isQcaWifiHwtype(hwtype) && radioNet.getMode() == 'ap') &&
+	    !(hwtype == 'mt_dbdc' && /^EHT/.test(uci.get('wireless', device, 'htmode') || '')))
 		return null;
 
 	for (const candidate of getIwinfoInfoCandidates(radioNet)) {
@@ -1020,7 +1029,19 @@ function getDisplayTheoreticalBitRate(radioNet) {
 	return null;
 }
 
+/* QSDK returns the running BSS PHY ceiling in kbit/s, including its
+ * bandwidth-dependent NSS mapping. Never infer it from client rates. */
+function parseQcaMaxPhyRate(output) {
+	const match = String(output || '').match(/\bget_maxrate:\s*(\d+)\s*$/m);
+	const rate = match ? +match[1] : 0;
+	return rate > 0 ? Math.round(rate / 100) / 10 : null;
+}
+
 function getDisplayBitRate(radioNet) {
+	if (isQcaWifiHwtype(uci.get('wireless', radioNet.getWifiDeviceName(), 'type')) &&
+	    radioNet.getMode() == 'ap')
+		return getDisplayTheoreticalBitRate(radioNet);
+
 	let rate = radioNet.getBitRate();
 	const hwmode = uci.get('wireless', radioNet.getWifiDeviceName(), 'hwmode') || '';
 	const htmode = uci.get('wireless', radioNet.getWifiDeviceName(), 'htmode') || '';
@@ -3011,14 +3032,18 @@ return view.extend({
 					o.wifiNetwork = radioNet;
 
 					if (ppeVpTarget) {
-						o = ss.taboption('advanced', form.Flag, 'ppe_vp', _('Enable wireless PPE acceleration'));
+						o = ss.taboption('advanced', form.Flag, 'ppe_vp', _('Enable wireless PPE acceleration'),
+							_('Direct Switch (DS): Wi-Fi exchanges packets with PPE directly, without passing them through the CPU.'));
 						o.ucisection = radioNet.getName();
-						o.enabled = 'active';
+						o.enabled = '3';
 						o.disabled = 'none';
 						o.rmempty = false;
+						/* Direct Switch is ppe_vp 3. Any other type, or none set (the
+						 * driver script then uses Active VP), shows as enabled, so saving
+						 * switches it to Direct Switch instead of writing 'none'. */
 						o.cfgvalue = function(section_id) {
 							const value = uci.get('wireless', this.ucisection ?? section_id, 'ppe_vp');
-							return (value == null || value === '') ? 'active' : value;
+							return (value === 'none' || value === '0') ? 'none' : '3';
 						};
 					}
 				}

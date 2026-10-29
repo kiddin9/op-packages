@@ -1,0 +1,10 @@
+{
+	"admin/network/isp-split/linecheck": {
+		"title": "线路体检",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "isp-split/linecheck"
+		}
+	}
+}

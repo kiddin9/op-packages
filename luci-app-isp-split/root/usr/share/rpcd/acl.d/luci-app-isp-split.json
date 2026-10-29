@@ -8,7 +8,8 @@
 			"file": {
 				"/etc/isp-split.conf": [ "read" ],
 				"/etc/isp-split": [ "read" ],
-				"/etc/isp-split/*": [ "read" ]
+				"/etc/isp-split/*": [ "read" ],
+				"/etc/isp-split/state/*": [ "read" ]
 			}
 		},
 		"write": {

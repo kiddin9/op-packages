@@ -15,7 +15,7 @@
 #   install    注册开机自启与每日更新
 #   uninstall  卸载所有改动
 set -u
-ISP_VERSION="0.2.2"
+ISP_VERSION="0.3.0"
 
 # 配置表里的注释行（# 开头，允许前导空白）必须在按空白展开之前整行删掉
 # （B-1）。否则 `for row in $ISP_TABLE` 会把 "#" 与后面的文字拆成两个
@@ -46,6 +46,8 @@ CFG_MWAN3=${ISP_SPLIT_MWAN3:-/etc/config/mwan3}
 # crontab 文件与 dnsmasq 服务脚本：允许覆盖仅用于离线自检。
 CRONTAB=${ISP_SPLIT_CRONTAB:-/etc/crontabs/root}
 DNSMASQ_SERVICE=${DNSMASQ_SERVICE:-/etc/init.d/dnsmasq}
+# mwan3 服务脚本：允许覆盖仅用于自检（stub reload 验证失败路径）。
+MWAN3_SERVICE=${MWAN3_SERVICE:-/etc/init.d/mwan3}
 
 [ -f "$CONF" ] || { echo "缺少 $CONF" >&2; exit 1; }
 . "$CONF"
@@ -95,9 +97,154 @@ log() {
 }
 
 die() {
+	_op_lock_cleanup
 	log "错误: $*"
 	exit 1
 }
+
+# ---- 全局操作锁（F-28）----
+# fetch/wire/apply/sync 共用固定的 $WORK/raw.new、out.new、compose.new、
+# data.new 与 mwan3 候选配置；cron refresh 与手动 sync 并发时彼此 rm -rf、
+# 半套数据互踩（实测 4 个并发 fetch 全部"构建产物为空"，DATA 都没生成）。
+#
+# 选型：单把操作锁，而不是"每次调用唯一临时名 + 原子 mv"。理由：
+#   1) 冲突点不只在临时文件——DATA 目录整体 mv、历史快照、.stamp/.sets
+#      事务、mwan3 落盘 + reload 都必须串行，唯一临时名解决不了后三者；
+#   2) 锁语义与既有的体检锁实现一致（mkdir 原子建锁 + pid/started +
+#      陈旧回收），运维只需要理解一种锁。
+# 嵌套调用（sync -> fetch -> wire -> apply）按同一 pid 重入，深度归零才释放。
+OP_LOCK=$STATE_DIR/op.lock
+OP_LOCK_OWNER=0
+OP_LOCK_DEPTH=0
+OP_LOCK_PID=""
+OP_LOCK_AGE=""
+
+# 锁年龄。pid/started 写入有窗口期，缺失时退回目录 mtime，绝不把"还没写"
+# 当成 epoch 0（否则刚建的锁会被立刻误判成陈旧锁）。
+_op_lock_age() {
+	_ol_t=$(cat "$OP_LOCK/started" 2>/dev/null)
+	case "$_ol_t" in '' | *[!0-9]*) _ol_t="" ;; esac
+	if [ -z "$_ol_t" ]; then
+		_ol_t=$(stat -c %Y "$OP_LOCK" 2>/dev/null)
+		case "$_ol_t" in '' | *[!0-9]*) _ol_t="" ;; esac
+	fi
+	if [ -z "$_ol_t" ]; then
+		printf '0'
+		return 0
+	fi
+	_ol_a=$(( $(date +%s) - _ol_t ))
+	[ "$_ol_a" -ge 0 ] 2>/dev/null || _ol_a=0
+	printf '%s' "$_ol_a"
+}
+
+# 0=拿到锁 1=已有操作在跑（OP_LOCK_PID/OP_LOCK_AGE） 2=建不了锁目录
+#
+# 与体检锁的差异（有意）：持锁进程活着就按"在跑"处理，不设 5 分钟上限
+# （fetch 在慢速 MIPS 路由器上可能跑很久）。只有超过 6 小时才回收，防 pid
+# 复用永久锁死；进程不存在时按 5 秒宽限回收。
+_op_lock_try() {
+	OP_LOCK_PID=""
+	OP_LOCK_AGE=""
+	mkdir -p "$STATE_DIR" 2>/dev/null || return 2
+	if mkdir "$OP_LOCK" 2>/dev/null; then
+		date +%s >"$OP_LOCK/started" 2>/dev/null || true
+		printf '%s\n' "$$" >"$OP_LOCK/pid" 2>/dev/null || true
+		OP_LOCK_OWNER=1
+		return 0
+	fi
+	_ol_p=$(cat "$OP_LOCK/pid" 2>/dev/null)
+	case "$_ol_p" in '' | *[!0-9]*) _ol_p="" ;; esac
+	_ol_s=$(cat "$OP_LOCK/started" 2>/dev/null)
+	case "$_ol_s" in '' | *[!0-9]*) _ol_s="" ;; esac
+	_ol_age=$(_op_lock_age)
+	case "$_ol_age" in '' | *[!0-9]*) _ol_age=0 ;; esac
+	# 元数据还没写全：锁刚 mkdir，持锁者正在写；宽限期内按在跑处理。
+	if [ -z "$_ol_p" ] && [ -z "$_ol_s" ]; then
+		OP_LOCK_AGE=$_ol_age
+		return 1
+	fi
+	# 活着的 pid 算持锁；只有超过 6 小时才允许回收（防 pid 复用永久锁死）。
+	if [ -n "$_ol_p" ] && kill -0 "$_ol_p" 2>/dev/null && [ "$_ol_age" -lt 21600 ]; then
+		OP_LOCK_PID=$_ol_p
+		OP_LOCK_AGE=$_ol_age
+		return 1
+	fi
+	# 刚创建/刚交接：宽限期内不回收，避免踩到 mkdir -> 写文件窗口。
+	if [ "$_ol_age" -lt 5 ]; then
+		[ -n "$_ol_p" ] && OP_LOCK_PID=$_ol_p
+		OP_LOCK_AGE=$_ol_age
+		return 1
+	fi
+	# 陈旧锁：rename 原子搬走再重建，避免 A 刚 rm、B 又 rm 掉 A 的新锁。
+	_stale=$OP_LOCK.stale.$$
+	rm -rf "$_stale" 2>/dev/null
+	if mv "$OP_LOCK" "$_stale" 2>/dev/null; then
+		rm -rf "$_stale" 2>/dev/null
+		if mkdir "$OP_LOCK" 2>/dev/null; then
+			date +%s >"$OP_LOCK/started" 2>/dev/null || true
+			printf '%s\n' "$$" >"$OP_LOCK/pid" 2>/dev/null || true
+			OP_LOCK_OWNER=1
+			return 0
+		fi
+	fi
+	OP_LOCK_AGE=$_ol_age
+	return 1
+}
+
+# 获取锁；已被本进程持有时只增加深度。等待上限 ISP_SPLIT_LOCK_WAIT 秒
+# （默认 30，0=不等待直接失败）。返回非 0 时调用方必须放弃并保持现状。
+_op_lock_acquire() {
+	if [ "${OP_LOCK_OWNER:-0}" = "1" ]; then
+		OP_LOCK_DEPTH=$((OP_LOCK_DEPTH + 1))
+		return 0
+	fi
+	_limit=${ISP_SPLIT_LOCK_WAIT:-30}
+	case "$_limit" in '' | *[!0-9]*) _limit=30 ;; esac
+	_waited=0
+	while :; do
+		_op_lock_try
+		_rc=$?
+		if [ "$_rc" -eq 0 ]; then
+			OP_LOCK_DEPTH=1
+			[ "$_waited" -gt 0 ] &&
+				log "已获取操作锁（等待 ${_waited}s）"
+			return 0
+		fi
+		if [ "$_rc" -eq 2 ]; then
+			log "错误：无法创建锁目录 $STATE_DIR（BASE 不可写？）"
+			return 1
+		fi
+		[ "$_waited" -eq 0 ] &&
+			log "另一个 isp-split 操作正在运行（pid ${OP_LOCK_PID:-?}），最多等待 ${_limit}s"
+		[ "$_waited" -ge "$_limit" ] && return 1
+		sleep 1
+		_waited=$((_waited + 1))
+	done
+}
+
+# 释放一层；深度归零且 pid 仍是自己时才删目录。
+_op_lock_release() {
+	[ "${OP_LOCK_OWNER:-0}" = "1" ] || return 0
+	OP_LOCK_DEPTH=$((OP_LOCK_DEPTH - 1))
+	[ "$OP_LOCK_DEPTH" -gt 0 ] && return 0
+	if [ "$(cat "$OP_LOCK/pid" 2>/dev/null)" = "$$" ]; then
+		rm -rf "$OP_LOCK" 2>/dev/null
+	fi
+	OP_LOCK_OWNER=0
+	OP_LOCK_DEPTH=0
+	return 0
+}
+
+# 进程退出/致命错误时把锁整体放掉（不受嵌套深度影响）。
+_op_lock_cleanup() {
+	[ "${OP_LOCK_OWNER:-0}" = "1" ] || return 0
+	OP_LOCK_DEPTH=1
+	_op_lock_release
+}
+
+# 正常路径也由 EXIT 兜底；cmd_wire 的 trap 会覆盖它，故 wire 内部显式恢复。
+trap '_op_lock_cleanup' EXIT
+trap '_op_lock_cleanup; exit 130' INT TERM
 
 need_nft() {
 	command -v nft >/dev/null 2>&1 || die "未找到 nft 命令"
@@ -872,7 +1019,7 @@ _mwan3_lines() {
 	'
 }
 
-cmd_fetch() {
+_cmd_fetch_body() {
 	mkdir -p "$WORK" || die "无法创建 $WORK"
 
 	# 源声明先校验，再联网：非法 URL/角色不该等到下载一半才发现。
@@ -1005,8 +1152,13 @@ cmd_fetch() {
 	_compose_raw "$_primary" "$WORK/raw.new/$_primary" "$WORK/compose.new" ||
 		die "按 ISP_SOURCE_FILES 合成失败，保留现有数据不动"
 
+	# 第三参数=全部行（保持 build.sh 的原始优先级序号与每个运营商的数据
+	# 文件），第四参数=只有 enabled=1 的行参与 claimed 差集占位（F-27）。
+	# 禁用行仍会生成自己的 .txt（重新启用后无需立刻重抓），但不会把地址
+	# 从后面启用的运营商里扣走。
 	ISP_SPLIT_LIB=$LIB sh "$LIB/build.sh" "$WORK/compose.new" "$WORK/out.new" \
-		"$(priority_list)" || die "构建失败，保留现有数据不动"
+		"$(priority_list)" "$(_enabled_src_list)" ||
+		die "构建失败，保留现有数据不动"
 
 	# 至少要有启用集合的非空产物，否则视为构建异常
 	_ok=0
@@ -1139,6 +1291,16 @@ cmd_fetch() {
 	fi
 
 	log "数据已更新：$(wc -l "$DATA"/*.txt | tail -1)"
+}
+
+# F-28：fetch 的固定 work 路径（raw.new/out.new/compose.new/data.new）
+# 必须串行使用。锁在整段 fetch 期间持有；失败路径由 die/EXIT trap 释放。
+cmd_fetch() {
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
+	_cmd_fetch_body
+	_rc=$?
+	_op_lock_release
+	return $_rc
 }
 
 # ---------------------------------------------------------------- diff
@@ -1438,7 +1600,7 @@ _fallback_counter() {
 	nft add rule inet mwan3 mwan3_rules "$_COND" 2>/dev/null || true
 }
 
-cmd_apply() {
+_cmd_apply_body() {
 	_openclash_fakeip_warn
 	need_nft
 	[ -f "$DATA/.stamp" ] || die "还没有数据，先执行: isp-split fetch"
@@ -1494,6 +1656,16 @@ cmd_apply() {
 	_dns_bypass 1 "$_ap_waited" ||
 		die "DNS 旁路规则恢复失败（mwan3 未就绪或 DNS_TABLE 配置错误，见上方日志）"
 	log "已生效"
+}
+
+# F-28：apply 与 fetch/wire 共用 WORK（batch.nft）和 nft 事务，
+# 与 fetch 的 DATA 替换、wire 的 reload 必须互斥。
+cmd_apply() {
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
+	_cmd_apply_body
+	_rc=$?
+	_op_lock_release
+	return $_rc
 }
 
 # 干跑校验：让 nft 完整解析并检查，但不提交任何改动。
@@ -1574,25 +1746,105 @@ cmd_selftest() {
 
 # ---------------------------------------------------------------- wire
 
+# 段名冲突保护（SEC S8，与 init 的 policy/member 保护同一口径）：
+# 同名段已存在但段内没有 isp_split=1，说明是用户/其它工具的配置，
+# 绝不静默改写、合并或打上我们的标记（否则 uninstall 会把它删掉）。
+_wire_ipset_check() {
+	_wi_set=$1
+	_wi_sec="ipset_$_wi_set"
+	_wi_type=$(uci -q get "mwan3.$_wi_sec" 2>/dev/null)
+	[ -n "$_wi_type" ] || return 0
+	if [ "$_wi_type" != "ipset" ]; then
+		die "mwan3 中已存在同名段 '$_wi_sec'（类型 $_wi_type，不是 ipset）；为保护现有配置，wire 不做改动（冲突段名: mwan3.$_wi_sec；请先在 mwan3 中删除/改名，或改用其它集合名）"
+	fi
+	[ "$(uci -q get "mwan3.$_wi_sec.isp_split" 2>/dev/null)" = "1" ] ||
+		die "mwan3 中已存在同名 ipset 段 '$_wi_sec' 且没有 isp_split 标记；为保护现有配置，wire 不做改动（冲突段名: mwan3.$_wi_sec；请先在 mwan3 中删除/改名，或改用其它集合名）"
+	return 0
+}
+
+# 生成一个 ipset 段的配置文本。候选文件由文本级重写生成（不经过
+# uci commit），这样 splice/解析校验全部通过之前不会落盘任何东西。
+_wire_ipset_block() {
+	_wb_src=$1
+	_wb_set=$2
+	_wb_file=$DATA/$_wb_src.txt
+	case "$_wb_file" in
+	*"'"*) die "数据文件路径含单引号，无法安全写入 mwan3 配置: $_wb_file" ;;
+	esac
+	printf "config ipset 'ipset_%s'\n" "$_wb_set"
+	printf "\toption name '%s'\n" "$_wb_set"
+	printf "\toption family 'ipv4'\n"
+	printf "\toption counters '1'\n"
+	printf "\toption loadfile '%s'\n" "$_wb_file"
+	printf "\toption enabled '1'\n"
+	# 精确标记：rules-splice/uninstall 只按它识别本工具的段，
+	# 不再按 isp_ 前缀误伤用户自己的 rule。
+	printf "\toption isp_split '1'\n"
+	printf "\n"
+}
+
+# 在候选配置里重写某个集合的 ipset 段：删掉同名旧块（只可能是带标记的
+# 本工具段，冲突已在 _wire_ipset_check 里 die），再追加一份完整的新块。
+_wire_ipset_text() {
+	_wt_src=$1
+	_wt_set=$2
+	_wt_sec="ipset_$_wt_set"
+	_wt_file=$WORK/mwan3.base
+	_wt_tmp=$WORK/mwan3.base.tmp
+	awk -v want="$_wt_sec" '
+		BEGIN { sq = "\047"; dq = "\"" }
+		function ours(   nm) {
+			if ($1 != "config" || $2 != "ipset") return 0
+			nm = $3
+			return (nm == want || nm == sq want sq || nm == dq want dq)
+		}
+		ours() { skip = 1; next }
+		/^[[:space:]]*config[[:space:]]/ { skip = 0 }
+		skip { next }
+		{ print }
+	' "$_wt_file" > "$_wt_tmp" || return 1
+	mv -f "$_wt_tmp" "$_wt_file" || return 1
+	# 文件末尾没有换行时先补一个，避免新块粘在上一行末尾。
+	if [ -s "$_wt_file" ] && [ -n "$(tail -c 1 "$_wt_file" 2>/dev/null)" ]; then
+		printf '\n' >> "$_wt_file" || return 1
+	fi
+	_wire_ipset_block "$_wt_src" "$_wt_set" >> "$_wt_file" || return 1
+	return 0
+}
+
 _wire_ipset() {
 	_src=$1
 	_set=$2
 	_sec="ipset_$_set"
-	uci -q get "mwan3.$_sec" >/dev/null 2>&1 || uci set "mwan3.$_sec=ipset"
-	uci set "mwan3.$_sec.name=$_set"
-	uci set "mwan3.$_sec.family=ipv4"
-	uci set "mwan3.$_sec.counters=1"
-	uci set "mwan3.$_sec.loadfile=$DATA/$_src.txt"
-	uci set "mwan3.$_sec.enabled=1"
-	# 精确标记：rules-splice/uninstall 只按它识别本工具的段，
-	# 不再按 isp_ 前缀误伤用户自己的 rule。
-	uci set "mwan3.$_sec.isp_split=1"
+	_wire_ipset_check "$_set"
+	if ! uci -q get "mwan3.$_sec" >/dev/null 2>&1; then
+		uci set "mwan3.$_sec=ipset" ||
+			die "无法创建 mwan3 ipset 段 '$_sec'"
+	fi
+	uci set "mwan3.$_sec.name=$_set" || die "无法写入 mwan3.$_sec.name"
+	uci set "mwan3.$_sec.family=ipv4" || die "无法写入 mwan3.$_sec.family"
+	uci set "mwan3.$_sec.counters=1" || die "无法写入 mwan3.$_sec.counters"
+	uci set "mwan3.$_sec.loadfile=$DATA/$_src.txt" ||
+		die "无法写入 mwan3.$_sec.loadfile"
+	uci set "mwan3.$_sec.enabled=1" || die "无法写入 mwan3.$_sec.enabled"
+	uci set "mwan3.$_sec.isp_split=1" || die "无法写入 mwan3.$_sec.isp_split"
 }
 
 _write_rule() {
 	_src=$1
 	_set=$2
 	_pol=$3
+	# 规则段名与集合名相同（mwan3.<集合名>）。若用户已有同名 rule
+	# 段且没有我们的标记，splice 会把两段合并、用户的 use_policy 条件
+	# 被覆盖，之后还会被当成我们的块整段删除——必须在写片段前硬失败。
+	_wr_type=$(uci -q get "mwan3.$_set" 2>/dev/null)
+	if [ -n "$_wr_type" ]; then
+		if [ "$_wr_type" != "rule" ]; then
+			die "mwan3 中已存在同名段 '$_set'（类型 $_wr_type，不是 rule）；为保护现有配置，wire 不做改动（冲突段名: mwan3.$_set；请先在 mwan3 中删除/改名，或改用其它集合名）"
+		fi
+		[ "$(uci -q get "mwan3.$_set.isp_split" 2>/dev/null)" = "1" ] ||
+			die "mwan3 中已存在同名 rule 段 '$_set' 且没有 isp_split 标记；为保护现有配置，wire 不做改动（冲突段名: mwan3.$_set；请先在 mwan3 中删除/改名，或改用其它集合名）"
+	fi
 	{
 		printf "config rule '%s'\n" "$_set"
 		printf "\toption ipset '%s'\n" "$_set"
@@ -1694,35 +1946,616 @@ _prune_orphan_ipsets() {
 	return 0
 }
 
-# 卸载：按 isp_split=1 标记删除所有本工具的 ipset 段。
-# 不能按"当前 ISP_TABLE 的名字"删：改名/删除的旧段会漏掉，永远清不掉。
-# 无标记的段一律不碰。
-_uninstall_ipsets() {
-	_ui_n=0
-	for _ui_sec in $(uci -q show mwan3 2>/dev/null |
-		sed -n 's/^mwan3\.\([^=]*\)=ipset$/\1/p'); do
-		[ "$(uci -q get "mwan3.$_ui_sec.isp_split" 2>/dev/null)" = "1" ] || continue
-		uci -q delete "mwan3.$_ui_sec" 2>/dev/null && _ui_n=$((_ui_n + 1))
+# F-14：卸载时的 ipset 段清理已并入 usr/lib/isp-split/teardown.sh
+# （cmd_uninstall 调它）。这里不再保留第二份按标记删段的实现——两份实现
+# 就是 F-14 的成因：脚本路径与包 postrm 各自维护一份清单，最后谁都没删全。
+
+# ---- 策略/成员（BUG-25）----
+#
+# mwan3 的 policy 只是"成员列表"，member 才是"接口 + metric/weight"。
+# 首次安装的用户往往没有 wan_only/wanb_only 策略（或接口名不同），
+# wire 生成 `option use_policy 'wan_only'` 后 mwan3 渲染时整条规则消失，
+# 而旧版 wire 只做了 `uci get mwan3.<policy>` 的"段存在"检查——策略存在但
+# 成员为空时照样通过，最后表现为"装好了、分流不生效、零提示"。
+#
+# 这里把"策略存在且有可用成员"抽成一个判定，wire/plan 在动任何配置之前
+# 硬失败；init 负责按 ISP_TABLE 创建带 isp_split=1 标记的 policy/member。
+
+# wire 实际会渲染的策略名（去重，保持表内顺序）。
+# 只看第 4 列=1 的行：disabled 行不会生成任何 mwan3 rule，它的策略不必
+# 存在；init 也不去碰（否则用户 disabled 行里引用的 mwan3 内建策略
+# balanced 会因为"无标记"被拦下，首装直接走不下去）。
+_isp_policies() {
+	_ip_seen=" "
+	for _ip_row in $ISP_TABLE; do
+		case "$_ip_row" in \#*) continue ;; esac
+		_ip_old_ifs=$IFS
+		IFS=':'
+		set -- $_ip_row
+		IFS=$_ip_old_ifs
+		[ $# -ge 4 ] || continue
+		[ "$4" = "1" ] || continue
+		case "$_ip_seen" in *" $3 "*) continue ;; esac
+		_ip_seen="$_ip_seen$3 "
+		printf '%s\n' "$3"
 	done
-	uci -q commit mwan3 2>/dev/null
-	[ "$_ui_n" -gt 0 ] &&
-		log "已删除 $_ui_n 个带 isp_split 标记的 ipset 段（含改名/删除的孤儿段）"
+}
+
+# 策略问题描述：正常时输出空行，否则输出一句人话。
+# 返回 0 表示无问题，1 表示有问题（调用方按需使用）。
+_policy_problem() {
+	_pp_pol=$1
+	_pp_type=$(uci -q get "mwan3.$_pp_pol" 2>/dev/null)
+	if [ -z "$_pp_type" ]; then
+		printf '%s\n' "不存在于 mwan3"
+		return 1
+	fi
+	if [ "$_pp_type" != "policy" ]; then
+		printf '%s\n' "同名段存在但不是 policy（类型 $_pp_type）"
+		return 1
+	fi
+	_pp_members=$(uci -q get "mwan3.$_pp_pol.use_member" 2>/dev/null)
+	if [ -z "$_pp_members" ]; then
+		printf '%s\n' "策略存在但成员为空"
+		return 1
+	fi
+	for _pp_m in $_pp_members; do
+		_pp_mtype=$(uci -q get "mwan3.$_pp_m" 2>/dev/null)
+		if [ "$_pp_mtype" != "member" ]; then
+			printf '%s\n' "引用的成员 '$_pp_m' 不存在"
+			return 1
+		fi
+		_pp_if=$(uci -q get "mwan3.$_pp_m.interface" 2>/dev/null)
+		if [ -z "$_pp_if" ]; then
+			printf '%s\n' "成员 '$_pp_m' 未绑定接口"
+			return 1
+		fi
+		if [ "$(uci -q get "mwan3.$_pp_if" 2>/dev/null)" != "interface" ]; then
+			printf '%s\n' "成员 '$_pp_m' 绑定的接口 '$_pp_if' 在 mwan3 中不存在"
+			return 1
+		fi
+	done
+	printf '\n'
 	return 0
 }
 
-cmd_wire() {
+# 一行描述策略成员，供 verify 展示
+_policy_desc() {
+	_pd_members=$(uci -q get "mwan3.$1.use_member" 2>/dev/null)
+	if [ -z "$_pd_members" ]; then
+		printf '%s\n' "（无成员）"
+		return 0
+	fi
+	_pd_out=""
+	for _pd_m in $_pd_members; do
+		_pd_if=$(uci -q get "mwan3.$_pd_m.interface" 2>/dev/null)
+		_pd_out="${_pd_out}${_pd_out:+, }$_pd_m(${_pd_if:-?})"
+	done
+	printf '%s\n' "$_pd_out"
+}
+
+# wire/plan 的公共预检：任何一个被引用的策略缺失/空成员都返回 1。
+# 只打印问题，不退出——调用方决定是 die 还是继续（目前两者都 die）。
+_precheck_policies() {
+	_pc_bad=0
+	for _pc_pol in $(_isp_policies); do
+		_pc_msg=$(_policy_problem "$_pc_pol")
+		[ -n "$_pc_msg" ] || continue
+		log "错误: 策略 '$_pc_pol' $_pc_msg"
+		_pc_bad=$((_pc_bad + 1))
+	done
+	[ "$_pc_bad" -eq 0 ]
+}
+
+# ---------- 接口发现（init） ----------
+
+_mwan3_iface_sections() {
+	uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=interface$/\1/p'
+}
+
+# 运行中的 L3 设备（PPPoE 时与配置里的 device 不同）。只做尽力探测：
+# ubus 不可用时返回空，不影响 init。
+_iface_l3_device() {
+	_l3_ubus=""
+	command -v ubus >/dev/null 2>&1 || return 0
+	_l3_raw=$(ubus call "network.interface.$1" status 2>/dev/null) || return 0
+	if command -v jsonfilter >/dev/null 2>&1; then
+		_l3_ubus=$(printf '%s' "$_l3_raw" | jsonfilter -e '@.l3_device' 2>/dev/null)
+		[ -n "$_l3_ubus" ] ||
+			_l3_ubus=$(printf '%s' "$_l3_raw" | jsonfilter -e '@.device' 2>/dev/null)
+	fi
+	if [ -z "$_l3_ubus" ]; then
+		_l3_ubus=$(printf '%s' "$_l3_raw" |
+			sed -n 's/.*"l3_device"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+	fi
+	printf '%s\n' "$_l3_ubus"
+}
+
+_iface_runtime_state() {
+	_rs=""
+	command -v ubus >/dev/null 2>&1 || {
+		printf '%s\n' "-"
+		return 0
+	}
+	_rs_raw=$(ubus call "network.interface.$1" status 2>/dev/null) || {
+		printf '%s\n' "down"
+		return 0
+	}
+	if command -v jsonfilter >/dev/null 2>&1; then
+		_rs=$(printf '%s' "$_rs_raw" | jsonfilter -e '@.up' 2>/dev/null)
+	fi
+	case "$_rs" in
+	true | 1) printf '%s\n' "up" ;;
+	false | 0) printf '%s\n' "down" ;;
+	*) printf '%s\n' "-" ;;
+	esac
+}
+
+# 发现并打印接口清单；可绑定接口（enabled=1 且 family=ipv4）放在
+# ISP_INIT_AVAIL（空格分隔，按 mwan3 配置顺序）。
+_discover_ifaces() {
+	ISP_INIT_AVAIL=""
+	echo "== mwan3 接口发现（mwan3 接口 -> network 接口 -> pppoe/静态 设备）"
+	printf '  %-9s %-10s %-7s %-12s %-12s %s\n' \
+		"接口" "network" "类型" "配置设备" "运行设备" "状态"
+	_di_any=0
+	for _di_sec in $(_mwan3_iface_sections); do
+		_di_any=1
+		_di_en=$(uci -q get "mwan3.$_di_sec.enabled" 2>/dev/null)
+		[ -n "$_di_en" ] || _di_en=1
+		_di_fam=$(uci -q get "mwan3.$_di_sec.family" 2>/dev/null)
+		[ -n "$_di_fam" ] || _di_fam=ipv4
+		if [ -n "$(uci -q get "network.$_di_sec" 2>/dev/null)" ]; then
+			_di_net=$_di_sec
+		else
+			_di_net="(未关联)"
+		fi
+		_di_proto=$(uci -q get "network.$_di_sec.proto" 2>/dev/null)
+		_di_dev=$(uci -q get "network.$_di_sec.device" 2>/dev/null)
+		[ -n "$_di_dev" ] ||
+			_di_dev=$(uci -q get "network.$_di_sec.device" 2>/dev/null)
+		_di_l3=$(_iface_l3_device "$_di_sec")
+		[ -n "$_di_net" ] || _di_net="(未关联)"
+		[ -n "$_di_proto" ] || _di_proto="-"
+		[ -n "$_di_dev" ] || _di_dev="-"
+		[ -n "$_di_l3" ] || _di_l3="-"
+		_di_st=$(_iface_runtime_state "$_di_sec")
+		if [ "$_di_en" != "1" ]; then
+			_di_st="disabled"
+		fi
+		[ "$_di_fam" = "ipv4" ] || _di_st="$_di_st/$_di_fam"
+		printf '  %-9s %-10s %-7s %-12s %-12s %s\n' \
+			"$_di_sec" "$_di_net" "$_di_proto" "$_di_dev" "$_di_l3" "$_di_st"
+		if [ "$_di_fam" = "ipv4" ] && [ "$_di_en" = "1" ]; then
+			ISP_INIT_AVAIL="${ISP_INIT_AVAIL:+$ISP_INIT_AVAIL }$_di_sec"
+		fi
+	done
+	[ "$_di_any" = "1" ] ||
+		echo "  （mwan3 中没有 config interface 段）"
+
+	echo
+	echo "当前策略绑定:"
+	_dp_any=0
+	for _dp_pol in $(_isp_policies); do
+		_dp_any=1
+		printf '  %-14s -> %s\n' "$_dp_pol" "$(_policy_desc "$_dp_pol")"
+	done
+	[ "$_dp_any" = "1" ] || echo "  （ISP_TABLE 没有引用任何策略）"
+}
+
+_iface_in_avail() {
+	case " $ISP_INIT_AVAIL " in
+	*" $1 "*) return 0 ;;
+	esac
+	return 1
+}
+
+# 第 N 个可绑定接口（超出数量时循环）。--assume-yes 的默认绑定用这个：
+# 策略按 ISP_TABLE 出现顺序与接口按 mwan3 配置顺序一一对应。
+_nth_iface() {
+	_ni_n=0
+	for _ni_x in $ISP_INIT_AVAIL; do
+		_ni_n=$((_ni_n + 1))
+	done
+	[ "$_ni_n" -gt 0 ] || return 1
+	_ni_want=$((($1 - 1) % _ni_n + 1))
+	_ni_i=0
+	for _ni_x in $ISP_INIT_AVAIL; do
+		_ni_i=$((_ni_i + 1))
+		[ "$_ni_i" -eq "$_ni_want" ] && {
+			printf '%s\n' "$_ni_x"
+			return 0
+		}
+	done
+	return 1
+}
+
+# 交互选择：提示写 stderr，结果写 stdout（便于 $(...) 捕获）
+_prompt_iface() {
+	_pi_pol=$1
+	_pi_def=$2
+	_pi_try=0
+	while [ "$_pi_try" -lt 5 ]; do
+		printf '  策略 %s 绑定到哪条线路？[%s] ' "$_pi_pol" "$_pi_def" >&2
+		IFS= read -r _pi_ans || _pi_ans=""
+		[ -n "$_pi_ans" ] || _pi_ans=$_pi_def
+		_pi_sel=""
+		case "$_pi_ans" in
+		[0-9]*)
+			_pi_i=0
+			for _pi_x in $ISP_INIT_AVAIL; do
+				_pi_i=$((_pi_i + 1))
+				[ "$_pi_i" -eq "$_pi_ans" ] 2>/dev/null && _pi_sel=$_pi_x
+			done
+			;;
+		*) _pi_sel=$_pi_ans ;;
+		esac
+		if _iface_in_avail "$_pi_sel"; then
+			printf '%s\n' "$_pi_sel"
+			return 0
+		fi
+		echo "  无效选择: '$_pi_ans'（可用: $ISP_INIT_AVAIL）" >&2
+		_pi_try=$((_pi_try + 1))
+	done
+	die "策略 '$_pi_pol' 的接口选择失败"
+}
+
+_init_member_name() {
+	printf 'isp_split_%s_m1\n' "$(printf '%s' "$1" | sed 's/[^A-Za-z0-9_]/_/g')"
+}
+
+# 写入/更新一个策略的绑定。幂等：同名带标记段只更新成员，不追加。
+_init_apply_bind() {
+	_ab_pol=$1
+	_ab_if=$2
+	_ab_type=$(uci -q get "mwan3.$_ab_pol" 2>/dev/null)
+	if [ -n "$_ab_type" ]; then
+		if [ "$_ab_type" != "policy" ]; then
+			die "mwan3 中已存在同名段 '$_ab_pol'（类型 $_ab_type，不是 policy），init 不做改动"
+		fi
+		if [ "$(uci -q get "mwan3.$_ab_pol.isp_split" 2>/dev/null)" != "1" ]; then
+			die "mwan3 中已存在同名策略 '$_ab_pol' 且没有 isp_split 标记；为保护现有配置，init 不做改动（请先在 mwan3 中删除/改名，或改用其它策略名）"
+		fi
+	else
+		uci set "mwan3.$_ab_pol=policy" ||
+			die "无法创建 mwan3 策略段 '$_ab_pol'"
+	fi
+
+	_ab_mem=$(_init_member_name "$_ab_pol")
+	_ab_mtype=$(uci -q get "mwan3.$_ab_mem" 2>/dev/null)
+	if [ -n "$_ab_mtype" ]; then
+		if [ "$_ab_mtype" != "member" ]; then
+			die "mwan3 中已存在同名段 '$_ab_mem'（类型 $_ab_mtype，不是 member），init 不做改动"
+		fi
+		if [ "$(uci -q get "mwan3.$_ab_mem.isp_split" 2>/dev/null)" != "1" ]; then
+			die "mwan3 中已存在同名成员段 '$_ab_mem' 且没有 isp_split 标记；为保护现有配置，init 不做改动"
+		fi
+	else
+		uci set "mwan3.$_ab_mem=member" ||
+			die "无法创建 mwan3 成员段 '$_ab_mem'"
+	fi
+
+	uci set "mwan3.$_ab_pol.isp_split=1"
+	uci set "mwan3.$_ab_mem.interface=$_ab_if"
+	uci set "mwan3.$_ab_mem.metric=1"
+	uci set "mwan3.$_ab_mem.weight=1"
+	uci set "mwan3.$_ab_mem.isp_split=1"
+	uci -q delete "mwan3.$_ab_pol.use_member"
+	uci add_list "mwan3.$_ab_pol.use_member=$_ab_mem" ||
+		die "无法把成员 '$_ab_mem' 写入策略 '$_ab_pol'"
+
+	# 上一版 init 可能生成过别的成员名（例如策略改名后的残留）：
+	# 只删本策略命名空间内、带标记且不是当前成员的段。
+	_ab_san=$(printf '%s' "$_ab_pol" | sed 's/[^A-Za-z0-9_]/_/g')
+	for _ab_old in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=member$/\1/p'); do
+		# 必须精确到 _m<数字>：否则策略 wan 会误删策略 wan_only 的成员
+		# （isp_split_wan_only_m1 也以 isp_split_wan_ 开头）。
+		case "$_ab_old" in
+		isp_split_"$_ab_san"_m[0-9]*) ;;
+		*) continue ;;
+		esac
+		[ "$_ab_old" = "$_ab_mem" ] && continue
+		[ "$(uci -q get "mwan3.$_ab_old.isp_split" 2>/dev/null)" = "1" ] || continue
+		uci -q delete "mwan3.$_ab_old" &&
+			log "已移除策略 $_ab_pol 的旧成员段 $_ab_old"
+	done
+	return 0
+}
+
+# 清理带标记但已不在 ISP_TABLE 里的策略/成员（与 B-4 的 ipset 孤儿清理
+# 同一标记体系）。规则仍在引用 / 策略仍在引用的段一律保留并告警。
+_prune_orphan_policies() {
+	[ -f "$CFG_MWAN3" ] || return 0
+	_pop_keep=" $(_isp_policies | tr '\n' ' ') "
+	_pop_rule_refs=" "
+	for _pop_rsec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=rule$/\1/p'); do
+		for _pop_x in $(uci -q get "mwan3.$_pop_rsec.use_policy" 2>/dev/null); do
+			_pop_rule_refs="$_pop_rule_refs$_pop_x "
+		done
+	done
+
+	_pop_changed=0
+	for _pop_sec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=policy$/\1/p'); do
+		[ "$(uci -q get "mwan3.$_pop_sec.isp_split" 2>/dev/null)" = "1" ] || continue
+		case "$_pop_keep" in *" $_pop_sec "*) continue ;; esac
+		case "$_pop_rule_refs" in
+		*" $_pop_sec "*)
+			log "警告：孤儿策略段 $_pop_sec 仍被 mwan3 规则引用，保留"
+			continue
+			;;
+		esac
+		if uci -q delete "mwan3.$_pop_sec" 2>/dev/null; then
+			log "已清理孤儿策略段 $_pop_sec"
+			_pop_changed=1
+		else
+			log "警告：清理策略段 $_pop_sec 失败，保留"
+		fi
+	done
+
+	# 重新统计仍被任何策略引用的成员（包括用户自建的无标记策略）
+	_pop_refs=" "
+	for _pop_psec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=policy$/\1/p'); do
+		for _pop_x in $(uci -q get "mwan3.$_pop_psec.use_member" 2>/dev/null); do
+			_pop_refs="$_pop_refs$_pop_x "
+		done
+	done
+	for _pop_sec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=member$/\1/p'); do
+		[ "$(uci -q get "mwan3.$_pop_sec.isp_split" 2>/dev/null)" = "1" ] || continue
+		case "$_pop_refs" in *" $_pop_sec "*) continue ;; esac
+		if uci -q delete "mwan3.$_pop_sec" 2>/dev/null; then
+			log "已清理孤儿成员段 $_pop_sec"
+			_pop_changed=1
+		else
+			log "警告：清理成员段 $_pop_sec 失败，保留"
+		fi
+	done
+	[ "$_pop_changed" = "1" ] && uci -q commit mwan3 2>/dev/null
+	return 0
+}
+
+# F-14：卸载时的 policy/member 清理同样在 teardown.sh，见上。
+
+# init：发现接口 -> 为 ISP_TABLE 的每个策略绑定成员 -> 跑一次 plan 摘要
+cmd_init() {
+	INIT_ASSUME=0
+	INIT_BINDS=""
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--bind)
+			[ $# -ge 2 ] || die "--bind 需要参数 <策略>=<接口>"
+			_init_add_bind "$2"
+			shift 2
+			;;
+		--bind=*)
+			_init_add_bind "${1#--bind=}"
+			shift
+			;;
+		--assume-yes | -y)
+			INIT_ASSUME=1
+			shift
+			;;
+		-h | --help)
+			echo "用法: isp-split init [--bind <策略>=<接口>]... [--assume-yes]"
+			echo "  交互模式：逐个策略选择 mwan3 接口"
+			echo "  非交互：--bind 可重复；未绑定的策略在 --assume-yes 下按顺序自动分配"
+			return 0
+			;;
+		*)
+			die "未知参数: '$1'（用法: isp-split init [--bind <策略>=<接口>]... [--assume-yes]）"
+			;;
+		esac
+	done
+
+	command -v uci >/dev/null 2>&1 || die "未找到 uci 命令"
+	[ -f "$CFG_MWAN3" ] ||
+		die "找不到 $CFG_MWAN3：请先安装并启用 mwan3"
+
+	[ -n "$(_isp_policies)" ] ||
+		die "ISP_TABLE 没有引用任何策略，无需 init（请先配置 $CONF）"
+
+	_discover_ifaces
+	echo
+	if [ -z "$ISP_INIT_AVAIL" ]; then
+		die "没有可用的 mwan3 IPv4 接口（需要 enabled=1 且 family=ipv4）；请先在 MultiWAN 管理器里创建并启用 WAN 接口"
+	fi
+	echo "可绑定接口: $ISP_INIT_AVAIL"
+
+	# --bind 的策略必须真的在 ISP_TABLE 里，否则写入的段永远不会被 wire 使用
+	for _in_b in $INIT_BINDS; do
+		_in_pol=${_in_b%%=*}
+		_in_found=0
+		for _in_p in $(_isp_policies); do
+			[ "$_in_p" = "$_in_pol" ] && _in_found=1
+		done
+		[ "$_in_found" = "1" ] ||
+			die "--bind 的策略 '$_in_pol' 不在 ISP_TABLE 中（可用: $(_isp_policies | tr '\n' ' ')）"
+	done
+
+	# 没有 --bind 覆盖全部策略且不是 --assume-yes 时，必须有终端可交互
+	_need_prompt=0
+	_idx=0
+	for _in_pol in $(_isp_policies); do
+		_idx=$((_idx + 1))
+		_init_bound_iface "$_in_pol" >/dev/null 2>&1 || _need_prompt=1
+	done
+	if [ "$_need_prompt" = "1" ] && [ "$INIT_ASSUME" != "1" ] && [ ! -t 0 ]; then
+		die "当前不是交互终端：请用 --bind <策略>=<接口>（可重复）或 --assume-yes"
+	fi
+
+	# 成员段名由策略名派生（非 [A-Za-z0-9_] 统一换成 _）。策略名允许
+	# 连字符，所以 wan-only 与 wan_only 会撞成同一个成员段名——提前拦住。
+	_in_members=" "
+	for _in_pol in $(_isp_policies); do
+		_in_m=$(_init_member_name "$_in_pol")
+		case "$_in_members" in
+		*" $_in_m "*)
+			die "策略名冲突：多个策略会生成同名成员段 '$_in_m'，请改名后重试"
+			;;
+		esac
+		_in_members="$_in_members$_in_m "
+	done
+
+	echo
+	echo "== 将写入的绑定"
+	# uci set 只写暂存区，commit 才落盘。中途 die 必须把暂存区撤掉，
+	# 否则半套策略会留在 /tmp/.uci/mwan3，被下一次无关的 uci commit 带进配置。
+	INIT_DIRTY=0
+	_init_cleanup() {
+		[ "${INIT_DIRTY:-0}" = "1" ] && uci -q revert mwan3 2>/dev/null
+	}
+	trap _init_cleanup EXIT INT TERM
+	INIT_DIRTY=1
+	_idx=0
+	for _in_pol in $(_isp_policies); do
+		_idx=$((_idx + 1))
+		if _in_if=$(_init_bound_iface "$_in_pol"); then
+			:
+		elif [ "$INIT_ASSUME" = "1" ]; then
+			_in_if=$(_nth_iface "$_idx") ||
+				die "没有可用接口可分配给策略 '$_in_pol'"
+		else
+			_in_def=$(_nth_iface "$_idx") || _in_def=""
+			_in_if=$(_prompt_iface "$_in_pol" "$_in_def")
+		fi
+		_iface_in_avail "$_in_if" ||
+			die "接口 '$_in_if' 不在可绑定列表内（可用: $ISP_INIT_AVAIL）"
+		printf '  %-14s -> %-10s [成员 %s]\n' \
+			"$_in_pol" "$_in_if" "$(_init_member_name "$_in_pol")"
+		_init_apply_bind "$_in_pol" "$_in_if"
+	done
+
+	uci commit mwan3 || die "写入 mwan3 配置失败（暂存区已回滚）"
+	INIT_DIRTY=0
+	trap - EXIT INT TERM
+	log "已写入 mwan3 策略/成员（isp_split=1 标记）"
+
+	_prune_orphan_policies
+
+	echo
+	echo "== init 完成，以下为 plan 摘要"
+	cmd_plan
+}
+
+# 把 --bind 参数追加到 INIT_BINDS；策略不允许重复绑定
+_init_add_bind() {
+	case "$1" in
+	*=*) ;;
+	*) die "--bind 参数格式应为 <策略>=<接口>（当前: '$1'）" ;;
+	esac
+	_ib_pol=${1%%=*}
+	_ib_if=${1#*=}
+	[ -n "$_ib_pol" ] && [ -n "$_ib_if" ] ||
+		die "--bind 的策略和接口都不能为空（当前: '$1'）"
+	case " $INIT_BINDS " in
+	*" $_ib_pol="*) die "策略 '$_ib_pol' 重复绑定（每次 init 每个策略只能绑定一条线路）" ;;
+	esac
+	INIT_BINDS="${INIT_BINDS:+$INIT_BINDS }$_ib_pol=$_ib_if"
+}
+
+_init_bound_iface() {
+	for _ib_b in $INIT_BINDS; do
+		[ "${_ib_b%%=*}" = "$1" ] || continue
+		printf '%s\n' "${_ib_b#*=}"
+		return 0
+	done
+	return 1
+}
+
+# 机器可读的策略状态（LuCI 首装提示条用）
+cmd_policy_check() {
+	_pk_json=0
+	[ "${1:-}" = "--json" ] && _pk_json=1
+	_pk_ok=1
+	_pk_rows=""
+	_pk_json_rows=""
+	for _pk_pol in $(_isp_policies); do
+		_pk_msg=$(_policy_problem "$_pk_pol")
+		if [ -n "$_pk_msg" ]; then
+			_pk_ok=0
+			_pk_rows="${_pk_rows}  ✗ $_pk_pol: $_pk_msg
+"
+			_pk_json_rows="${_pk_json_rows}${_pk_json_rows:+,}{\"name\":\"$(_lc_json_esc "$_pk_pol")\",\"ok\":false,\"detail\":\"$(_lc_json_esc "$_pk_msg")\"}"
+		else
+			_pk_rows="${_pk_rows}  ✓ $_pk_pol: $(_policy_desc "$_pk_pol")
+"
+			_pk_json_rows="${_pk_json_rows}${_pk_json_rows:+,}{\"name\":\"$(_lc_json_esc "$_pk_pol")\",\"ok\":true,\"detail\":\"$(_lc_json_esc "$(_policy_desc "$_pk_pol")")\"}"
+		fi
+	done
+	if [ "$_pk_json" = "1" ]; then
+		printf '{"ok":%s,"policies":[%s]}\n' \
+			"$([ "$_pk_ok" = "1" ] && printf true || printf false)" "$_pk_json_rows"
+	else
+		echo "== 策略存在且有成员（wire 渲染前置条件）"
+		printf '%s' "$_pk_rows"
+		[ "$_pk_ok" = "1" ] ||
+			echo "  运行 isp-split init 绑定线路"
+	fi
+	return 0
+}
+
+# 原子替换 mwan3 配置。调用方必须已经用 uci -c 临时目录解析校验过 $1。
+# `cat > 目标` 是先截断再写，掉电/被杀会留下半截 mwan3；mv -f 在同文件
+# 系统上是 rename(2)，要么旧文件、要么完整新文件。模式沿用原文件，
+# 避免把 600 的 /etc/config/* 变成 644。
+_mwan3_atomic_install() {
+	_mi_src=$1
+	[ -f "$_mi_src" ] || return 1
+	_mi_mode=$(stat -c %a "$CFG_MWAN3" 2>/dev/null) || _mi_mode=600
+	chmod "$_mi_mode" "$_mi_src" 2>/dev/null || true
+	mv -f "$_mi_src" "$CFG_MWAN3"
+}
+
+# reload 之后的最小形状复核（F-29）：mwan3 reload 的返回码并不可靠
+# （nft 批处理失败时也可能返回 0），必须确认每个启用集合真的被
+# mwan3_rules 引用。stage 的 RULE_ENABLED=0 是故意不渲染，直接跳过。
+_wire_runtime_check() {
+	[ "${RULE_ENABLED:-1}" = "1" ] || return 0
+	_wrc_any=0
+	_wrc_mark() { _wrc_any=1; }
+	foreach_enabled _wrc_mark
+	[ "$_wrc_any" = "1" ] || return 0
+
+	_wrc_tries=${MWAN3_READY_TRIES:-15}
+	_wrc_delay=${MWAN3_READY_DELAY:-1}
+	_wrc_i=0
+	while :; do
+		_wrc_body=$(_mwan3_rules_body)
+		_WRC_MISSING=""
+		_wrc_chk() {
+			if printf '%s\n' "$_wrc_body" | grep -q "@$2 " ||
+				printf '%s\n' "$_wrc_body" | grep -q "@$2\$"; then
+				return 0
+			fi
+			_WRC_MISSING="$_WRC_MISSING $2"
+		}
+		foreach_enabled _wrc_chk
+		[ -z "$_WRC_MISSING" ] && return 0
+		[ "$_wrc_i" -ge "$_wrc_tries" ] && return 1
+		_wrc_i=$((_wrc_i + 1))
+		sleep "$_wrc_delay"
+	done
+}
+
+_cmd_wire_body() {
 	_openclash_fakeip_warn
 	need_nft
-	# 先确认 work 目录可写再动 UCI：否则可能 commit 了 ipset 段之后才发现
-	# 写不了规则片段，留下半套配置。
+	# 先确认 work 目录可写再动 UCI：否则可能写到一半才发现写不了规则片段。
 	_work_writable || die "work 目录不可写（$WORK）：无法写入规则片段，配置未改动"
 
-	# 1. 集合声明
-	_wire_all() { _wire_ipset "$1" "$2"; }
-	foreach_enabled _wire_all
-	uci -q commit mwan3
+	# 0. 策略预检（BUG-25）：必须在动 UCI/nft 之前。mwan3 对"策略不存在"
+	# 和"策略成员为空"都是静默跳过整条规则，事后 verify 只看到规则没渲染，
+	# 根因看不出来。这里硬失败，并给出唯一正确的下一步。
+	_precheck_policies ||
+		die "策略预检失败：上面的策略在 mwan3 中缺失或没有可用成员，规则无法正确渲染（本次未改动任何配置）。运行 isp-split init 绑定线路后重试"
 
-	# 2. 规则片段
+	# 1. 规则片段（只写 work 目录，不动 UCI）。_write_rule 同时检查
+	#    同名 rule 段是否被用户占用；冲突时在写任何 UCI 之前 die。
 	: > "$WORK/rules.txt" || die "无法写入 $WORK/rules.txt（work 目录不可写？）"
 	_write_all() { _write_rule "$1" "$2" "$3"; }
 	foreach_enabled _write_all
@@ -1733,23 +2566,40 @@ cmd_wire() {
 	[ -s "$WORK/rules.txt" ] ||
 		log "警告：ISP_TABLE 中没有启用的运营商，本次规则块为空（已有 isp-split 规则将被移除）"
 
-	# 校验策略是否存在，避免生成指向不存在策略的规则
-	_pol_exists() {
-		uci -q get "mwan3.$3" >/dev/null 2>&1 ||
-			die "mwan3 中不存在策略 '$3'，请先在 MultiWAN 管理器里创建，或修改 $CONF"
-	}
-	foreach_enabled _pol_exists
+	# 2. ipset 段名冲突全量预检：所有行都通过才允许进入写阶段。
+	#    放在 uci set 之前，避免"第一条已写、第二条冲突"留下暂存区残料。
+	_wire_check_all() { _wire_ipset_check "$2"; }
+	foreach_enabled _wire_check_all
 
-	# 4. 插入到正确位置
+	# 3. uci set 只写暂存区，不 commit。中途任何 die 都由 trap 撤销，
+	#    避免半套 ipset 段留在 /tmp/.uci 被下一次无关 commit 带进配置。
+	WIRE_DIRTY=1
+	_wire_cleanup() {
+		[ "${WIRE_DIRTY:-0}" = "1" ] && uci -q revert mwan3 2>/dev/null
+	}
+	trap '_wire_cleanup; _op_lock_cleanup' EXIT
+	trap '_wire_cleanup; _op_lock_cleanup; exit 130' INT TERM
+	_wire_all() { _wire_ipset "$1" "$2"; }
+	foreach_enabled _wire_all
+
+	# 4. 生成候选配置：备份原文 -> 文本级重写 ipset 段 -> splice 规则。
+	#    此时正式配置仍未被改动（只有 uci 暂存区）。
 	cp "$CFG_MWAN3" "$WORK/mwan3.bak" ||
 		die "无法备份 $CFG_MWAN3 到 $WORK/mwan3.bak，配置未改动"
+	cp "$WORK/mwan3.bak" "$WORK/mwan3.base" ||
+		die "无法生成待校验配置（$WORK/mwan3.base），配置未改动"
+	_wire_text_all() {
+		_wire_ipset_text "$1" "$2" ||
+			die "无法在候选配置中重写 ipset 段 'ipset_$2'，配置未改动"
+	}
+	foreach_enabled _wire_text_all
 	awk -v insert="$WORK/rules.txt" -v anchor="$ISP_ANCHOR" \
-		-f "$LIB/rules-splice.awk" "$WORK/mwan3.bak" > "$WORK/mwan3.new" ||
+		-f "$LIB/rules-splice.awk" "$WORK/mwan3.base" > "$WORK/mwan3.new" ||
 		die "规则注入失败（锚点缺失或配置不可写），配置未改动"
 
 	# 冒烟检查：必须用新生成的 mwan3.new 做 uci 解析，而不是读旧的
 	# /etc/config/mwan3（旧写法永远通过，等于没检查）。把新文件放到临时
-	# 目录并命名为 mwan3，校验通过后才覆盖正式配置。
+	# 目录并命名为 mwan3，校验通过后才替换正式配置。
 	_ucitmp=$WORK/uci-check
 	rm -rf "$_ucitmp"
 	mkdir -p "$_ucitmp" || die "无法创建 uci 校验临时目录"
@@ -1763,12 +2613,40 @@ cmd_wire() {
 	fi
 	rm -rf "$_ucitmp"
 
-	cat "$WORK/mwan3.new" > "$CFG_MWAN3"
-	log "规则已注入（备份: $WORK/mwan3.bak）"
-	# 5. 收敛孤儿 ipset 段：必须放在规则块重写之后 —— 改名时旧规则
-	# 这一刻才消失；若在注入前做，旧规则仍引用旧段，会被误判成"保留"。
+	# 5. 内容校验通过后，才原子替换正式配置。
+	_mwan3_atomic_install "$WORK/mwan3.new" ||
+		die "无法原子替换 $CFG_MWAN3（已放弃，备份在 $WORK/mwan3.bak）"
+
+	# 6. 落盘之后才 commit uci 暂存区。文件里已经是同一份校验过的内容；
+	#    commit 失败也只清暂存区并告警，不把已校验的配置回退成旧的。
+	if uci -q commit mwan3; then
+		WIRE_DIRTY=0
+		trap '_op_lock_cleanup' EXIT
+		trap '_op_lock_cleanup; exit 130' INT TERM
+	else
+		uci -q revert mwan3 2>/dev/null
+		WIRE_DIRTY=0
+		trap '_op_lock_cleanup' EXIT
+		trap '_op_lock_cleanup; exit 130' INT TERM
+		log "警告：uci commit mwan3 失败；$CFG_MWAN3 已按校验通过的内容原子替换"
+	fi
+	log "mwan3 配置已写入（备份: $WORK/mwan3.bak），正在 reload…"
+	# 7. 收敛孤儿 ipset / policy / member 段：必须放在规则块重写之后 ——
+	# 改名时旧规则这一刻才消失；若在注入前做，旧规则仍引用旧段，会被
+	# 误判成"保留"。
 	_prune_orphan_ipsets
-	/etc/init.d/mwan3 reload
+	_prune_orphan_policies
+	if ! "$MWAN3_SERVICE" reload; then
+		die "mwan3 reload 失败：新配置已写入 $CFG_MWAN3 但未生效（备份: $WORK/mwan3.bak）。回滚: cp $WORK/mwan3.bak $CFG_MWAN3 && $MWAN3_SERVICE reload；或检查 mwan3 日志后重试 wire"
+	fi
+	if ! _wire_runtime_check; then
+		die "mwan3 reload 返回成功，但 nft 规则未按预期渲染（缺失集合:${_WRC_MISSING:- ?}；备份: $WORK/mwan3.bak）。回滚: cp $WORK/mwan3.bak $CFG_MWAN3 && $MWAN3_SERVICE reload；或检查 mwan3 日志后重试 wire"
+	fi
+	if [ "${RULE_ENABLED:-1}" = "1" ]; then
+		log "规则已注入并生效（备份: $WORK/mwan3.bak）"
+	else
+		log "规则已写入但未启用（stage；备份: $WORK/mwan3.bak）"
+	fi
 	_fallback_counter ||
 		log "警告：兜底计数规则未安装成功（status 的兜底行会缺失或为旧值），可稍后重跑 isp-split apply"
 	# reload 刚返回时 mwan3_output 往往还没重建完，这里必须等/重试；
@@ -1777,19 +2655,32 @@ cmd_wire() {
 		die "DNS 旁路规则恢复失败（mwan3 未就绪或 DNS_TABLE 配置错误，见上方日志）"
 }
 
+# F-28：wire 写 WORK 下的候选配置并 reload mwan3，与 fetch/apply 互斥。
+cmd_wire() {
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
+	_cmd_wire_body
+	_rc=$?
+	_op_lock_release
+	return $_rc
+}
+
 # 只刷新数据并原子刷入，不重写 mwan3 配置、不 reload mwan3。
 # 日常定时任务应该用它：规则结构没变，每天重写配置再 reload 是没必要的抖动。
 cmd_refresh() {
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
 	cmd_fetch
 	cmd_apply
+	_op_lock_release
 	log "数据已刷新（mwan3 配置未改动）。要改规则映射请用 wire / sync"
 }
 
 cmd_sync() {
 	_openclash_fakeip_warn
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
 	cmd_fetch
 	cmd_wire
 	cmd_apply
+	_op_lock_release
 	log "同步完成，用 isp-split status 验证"
 }
 
@@ -1860,6 +2751,20 @@ cmd_verify() {
 	foreach_enabled _vf
 
 	echo
+	echo "== 策略存在且有成员（wire 渲染前置条件，BUG-25）"
+	_vp_any=0
+	for _vp_pol in $(_isp_policies); do
+		_vp_any=1
+		_vp_msg=$(_policy_problem "$_vp_pol")
+		if [ -n "$_vp_msg" ]; then
+			echo "  ✗ $_vp_pol: $_vp_msg"
+		else
+			echo "  ✓ $_vp_pol: $(_policy_desc "$_vp_pol")"
+		fi
+	done
+	[ "$_vp_any" = "1" ] || echo "  （ISP_TABLE 没有引用任何策略）"
+
+	echo
 	# 运行时规则自检：mwan3 重启会清掉 apply/dns 运行时插入的规则
 	if ! _dns_chain_ok && [ -n "${DNS_TABLE:-}" ]; then
 		echo "⚠ DNS 旁路规则缺失（mwan3 重启会清掉运行时插入的规则）"
@@ -1899,6 +2804,10 @@ _dnsmasq_nftset() {
 # 只读预演：不写任何文件、不发任何 uci/nft 改动。
 cmd_plan() {
 	_openclash_fakeip_warn
+	# 预检放在最前面：策略缺失时后面的"预演"全是假的（mwan3 会把整条
+	# 规则静默丢掉），必须先让用户看到根因（BUG-25）。
+	_precheck_policies ||
+		die "策略预检失败：上面的策略在 mwan3 中缺失或没有可用成员，预演结果不可信。运行 isp-split init 绑定线路后重试"
 	echo "== openwrt-isp-split 预演（不做任何改动）"
 	echo
 	printf '%-14s %-14s %-12s %8s %10s\n' "集合" "来源" "策略" "条目" "状态"
@@ -2020,8 +2929,15 @@ cmd_plan() {
 
 	echo
 	echo "将会写入的 mwan3 规则（插在第一个匹配 '$ISP_ANCHOR' 的规则之前）:"
-	_tmp=$(mktemp)
-	: > "$_tmp"
+	# B-6：mktemp 必须带模板并检查失败。裸 mktemp 在 TMPDIR 不可用时
+	# 返回空串，随后 `: > ""` 把错误抛到下一行（can't create : nonexistent
+	# directory），用户只看到半截输出。这里直接干净退出。
+	_tmp=$(mktemp "${TMPDIR:-/tmp}/isp-split-plan-rules.XXXXXX" 2>/dev/null) ||
+		die "无法创建临时文件（TMPDIR=${TMPDIR:-/tmp} 不可用？），plan 未做任何改动"
+	: > "$_tmp" || {
+		rm -f "$_tmp"
+		die "无法写入临时文件 $_tmp，plan 未做任何改动"
+	}
 	_p4() {
 		_src=$1
 		_set=$2
@@ -2035,9 +2951,16 @@ cmd_plan() {
 	echo
 	echo "注入后的规则匹配顺序（预演结果）:"
 	if [ -f "$CFG_MWAN3" ]; then
-		_rtmp=$(mktemp)
-		_wtmp=$(mktemp)
-		: > "$_wtmp"
+		_rtmp=$(mktemp "${TMPDIR:-/tmp}/isp-split-plan-order.XXXXXX" 2>/dev/null) ||
+			die "无法创建临时文件（TMPDIR=${TMPDIR:-/tmp} 不可用？），plan 未做任何改动"
+		_wtmp=$(mktemp "${TMPDIR:-/tmp}/isp-split-plan-wire.XXXXXX" 2>/dev/null) || {
+			rm -f "$_rtmp"
+			die "无法创建临时文件（TMPDIR=${TMPDIR:-/tmp} 不可用？），plan 未做任何改动"
+		}
+		: > "$_wtmp" || {
+			rm -f "$_rtmp" "$_wtmp"
+			die "无法写入临时文件 $_wtmp，plan 未做任何改动"
+		}
 		_p5() {
 			_src=$1
 			_set=$2
@@ -2694,45 +3617,91 @@ _dns_confdir_set() {
 	uci -q commit dhcp
 }
 
-_restore_dns_confdir() {
-	_state=$DNS_STATE/dnsmasq.confdir.orig
-
-	# 无论有没有状态文件，都按探测结果把所有可能被 dnsmasq 加载的目录
-	# 清一遍。探测路径（OpenClash）下 cmd_dns 不再写状态文件，不能因为
-	# 状态文件不存在就跳过清理。
-	_dns_confdir_detect >/dev/null 2>&1
-	for _d in $(_dns_confdir_candidates); do
-		rm -f "$_d/isp-split.conf" 2>/dev/null || true
-	done
-
-	# 只有真的改过 UCI 才有状态文件；没改过就不碰 UCI。
-	[ -f "$_state" ] || return 0
-	_orig=$(cat "$_state" 2>/dev/null || true)
-	_cur=$(_dns_confdir_get)
-	if [ -n "$_orig" ]; then
-		if [ "$_cur" != "$_orig" ]; then
-			_dns_confdir_set "$_orig" && log "已恢复 dnsmasq confdir=$_orig"
-		fi
+# B-5：升级兼容。旧状态文件名 dnsmasq.confdir.orig 里存的是"我们写进 UCI 的
+# 清理值"，名字却在说"原值"（PROPOSAL-0.2.2 §B-5）。新名 dnsmasq.confdir.migrated；
+# 旧名存在而新名不存在时读一次、迁到新名，之后只认新名。
+# 注意：confdir 的恢复与片段清理不在这里——它们在 teardown.sh（卸载清理的
+# 唯一实现），由 isp-split uninstall / install.sh --uninstall / 包 postrm 共用，
+# 本文件不再保留第二份实现（F-14）。
+_dns_state_adopt() {
+	_new=$DNS_STATE/dnsmasq.confdir.migrated
+	_old=$DNS_STATE/dnsmasq.confdir.orig
+	[ -f "$_new" ] && return 0
+	[ -f "$_old" ] || return 0
+	if mv -f "$_old" "$_new" 2>/dev/null; then
+		log "已把旧状态文件 dnsmasq.confdir.orig 迁移为 dnsmasq.confdir.migrated（B-5）"
 	else
-		if [ -n "$_cur" ]; then
-			_dns_confdir_set "" && log "已恢复 dnsmasq confdir（默认 $DNSMASQ_DEFAULT_DIR）"
-		fi
+		cp -f "$_old" "$_new" 2>/dev/null && rm -f "$_old"
 	fi
-	rm -f "$_state"
+	return 0
 }
 
 # 策略 -> 出接口设备名（策略取第一个成员）
+#
+# F-13：bind 模式只允许绑定"运行时确实 up 且有 IPv4 地址"的 l3_device。
+# 旧实现 ifstatus 没有 l3_device 时回退 uci network.X.device——PPPoE 未就绪
+# 窗口里那是底层 VLAN（eth1.10），dnsmasq 会静默 SO_BINDTODEVICE 到没有
+# 会话的口上，域名解析全部失败但脚本返回 0。
+#
+# 现在：
+#   · 接口非 up / 无 IPv4 / 无 l3_device -> POLICY_DEV 为空，POLICY_DEV_STATE
+#     给出原因（down/no-ip/no-l3），调用方（cmd_dns）跳过绑定并明确告警；
+#   · 绝不回退 uci device 去"凑一个名字"，宁可少一条规则也不绑错口。
+# 兼容：仍把设备名打印到 stdout，但需要状态时请读 POLICY_DEV_* 全局变量
+# （命令替换会丢全局，cmd_dns 改为直接调用后读变量）。
 policy_device() {
+	POLICY_DEV=""
+	POLICY_DEV_STATE="config"
+	POLICY_DEV_IFACE=""
 	_m=$(uci -q get "mwan3.$1.use_member" 2>/dev/null | awk '{print $1}')
-	[ -n "$_m" ] || return 0
+	[ -n "$_m" ] || {
+		POLICY_DEV_STATE="no-member"
+		return 0
+	}
 	_i=$(uci -q get "mwan3.$_m.interface" 2>/dev/null)
-	[ -n "$_i" ] || return 0
-	# pppoe 等虚拟接口的运行时设备取 l3_device（如 pppoe-wan1）；
-	# uci 的 device 字段可能是底层 VLAN（如 eth1.10），DNS 绑定会失败
-	_d=$(ifstatus "$_i" 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)
-	[ -z "$_d" ] && _d=$(uci -q get "network.$_i.device" 2>/dev/null)
-	[ -z "$_d" ] && _d=$(uci -q get "network.$_i.device" 2>/dev/null)
-	echo "$_d"
+	[ -n "$_i" ] || {
+		POLICY_DEV_STATE="no-iface"
+		return 0
+	}
+	POLICY_DEV_IFACE=$_i
+
+	case "$(_iface_runtime_state "$_i")" in
+	up) ;;
+	*)
+		POLICY_DEV_STATE="down"
+		return 0
+		;;
+	esac
+
+	_pd_raw=$(ifstatus "$_i" 2>/dev/null) || _pd_raw=""
+	_d=""
+	_ip=""
+	if [ -n "$_pd_raw" ]; then
+		if command -v jsonfilter >/dev/null 2>&1; then
+			_d=$(printf '%s' "$_pd_raw" | jsonfilter -e '@.l3_device' 2>/dev/null)
+			# 字段名带连字符，jsonfilter 必须用带引号的下标写法
+			_ip=$(printf '%s' "$_pd_raw" |
+				jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)
+		fi
+		[ -n "$_d" ] || _d=$(printf '%s\n' "$_pd_raw" |
+			sed -n 's/.*"l3_device"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+		# jsonfilter 不在时也不能把"能用的接口"误判成 no-ip：
+		# 从 ifstatus 的 ipv4-address 段里取第一个 address。
+		[ -n "$_ip" ] || _ip=$(printf '%s\n' "$_pd_raw" |
+			sed -n '/"ipv4-address"/,/]/s/.*"address"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
+			head -1)
+	fi
+	if [ -z "$_ip" ]; then
+		POLICY_DEV_STATE="no-ip"
+		return 0
+	fi
+	if [ -z "$_d" ]; then
+		POLICY_DEV_STATE="no-l3"
+		return 0
+	fi
+	POLICY_DEV=$_d
+	POLICY_DEV_STATE="ok"
+	printf '%s\n' "$_d"
 }
 
 # 策略 -> 该线路的 DNS
@@ -2979,15 +3948,171 @@ _dns_chain_ok() {
 		grep -qE 'dport 53 (counter packets [0-9]+ bytes [0-9]+ )?(return|jump mwan3_policy_)'
 }
 
+# 域名合法字符：只允许主机名/后缀实际会用到的字符。外部清单里出现
+# 空格、/、#、分号等会破坏 server=/域名/IP 的语法（dnsmasq 可能直接
+# 拒绝整份配置，全屋 DNS 中断），必须在拼接前挡掉。
+_dns_domain_ok() {
+	case "$1" in
+	"" | .* | *[!A-Za-z0-9._-]*) return 1 ;;
+	esac
+	return 0
+}
+
+# 解析策略的出线 DNS 与绑定设备（F-13）。
+# 成功：_DNS_DNS / _DNS_DEV / _DNS_BIND 就绪，返回 0。
+# 失败：已打印明确原因并计入 _DNS_SKIP，返回 1。
+# bind 模式只接受 POLICY_DEV_STATE=ok（运行时 up + 有 IPv4 + 有 l3_device），
+# 绝不回退 uci network.X.device —— PPPoE 未就绪时那是底层 VLAN。
+_dns_policy_bind() {
+	_dpb_pol=$1
+	_dpb_what=$2
+	_TARGET=$_dpb_pol
+	_DNS_DNS=$(dns_of_policy)
+	if [ -z "$_DNS_DNS" ]; then
+		log "跳过 $_dpb_what（策略 $_dpb_pol 缺少 DNS_TABLE 条目）"
+		_DNS_SKIP=$((_DNS_SKIP + 1))
+		return 1
+	fi
+	policy_device "$_dpb_pol" >/dev/null
+	_DNS_DEV=$POLICY_DEV
+	if [ "${DNS_MODE:-bind}" = "bind" ]; then
+		case "$POLICY_DEV_STATE" in
+		ok) ;;
+		down | no-ip | no-l3)
+			log "警告：跳过 $_dpb_what（策略 $_dpb_pol 的线路 ${POLICY_DEV_IFACE:-?} 未就绪: $POLICY_DEV_STATE）。此时绑定会指到底层设备/VLAN，已拒绝；等待 WAN up 后重跑 isp-split dns"
+			_DNS_SKIP=$((_DNS_SKIP + 1))
+			return 1
+			;;
+		*)
+			log "跳过 $_dpb_what（策略 $_dpb_pol 找不到可用成员/接口: $POLICY_DEV_STATE）"
+			_DNS_SKIP=$((_DNS_SKIP + 1))
+			return 1
+			;;
+		esac
+	fi
+	_DNS_BIND=""
+	[ "${DNS_MODE:-bind}" = "bind" ] && _DNS_BIND="@$_DNS_DEV"
+	return 0
+}
+
+# 生成 server= 规则到 <out>。返回后读 _DNS_RULE_N / _DNS_SKIP / _DNS_BAD。
+# 外部清单用一次 awk 完成：CR 清理、注释、server=/... 取域名、字符校验、
+# 末行无换行（awk 天然处理）都在同一进程里，不再逐行 printf|tr 双 fork。
+_dns_emit_rules() {
+	_der_out=$1
+	_der_err=$_der_out.warn
+	_DNS_RULE_N=0
+	_DNS_SKIP=0
+	_DNS_BAD=0
+	_DNS_DNS=""
+	_DNS_DEV=""
+	_DNS_BIND=""
+	: > "$_der_err" || true
+
+	# 1) 内联域名配置：DOMAIN_SPLIT="域名:策略 ..."
+	for row in ${DOMAIN_SPLIT:-}; do
+		_dom=${row%%:*}
+		_pol=${row#*:}
+		[ -n "$_dom" ] && [ -n "$_pol" ] || continue
+		if ! _dns_domain_ok "$_dom"; then
+			log "警告：DOMAIN_SPLIT 里的域名非法，已跳过: $(printf '%s' "$_dom" | cut -c1-80)"
+			_DNS_BAD=$((_DNS_BAD + 1))
+			continue
+		fi
+		_dns_policy_bind "$_pol" "$_dom" || continue
+		printf 'server=/%s/%s%s\n' "$_dom" "$_DNS_DNS" "$_DNS_BIND" >> "$_der_out" ||
+			die "无法写入 $_der_out"
+		_DNS_RULE_N=$((_DNS_RULE_N + 1))
+	done
+
+	# 2) 外部域名清单：$DOMAINDIR/<策略>.txt
+	#    每行一个域名；也兼容 felixonmars/dnsmasq-china-list 的
+	#    server=/domain/1.2.3.4 形式（只取域名，DNS 用本线路的）
+	for _f in "$DOMAINDIR"/*.txt; do
+		[ -f "$_f" ] || continue
+		_pol=${_f##*/}
+		_pol=${_pol%.txt}
+		_dns_policy_bind "$_pol" "$_f" || continue
+		# 规则由 awk 直接追加到 out，stdout 只留计数（否则计数会被
+		# 追加进片段文件，_DNS_RULE_N 永远是 0）。
+		_c=$(awk -v dns="$_DNS_DNS" -v bind="$_DNS_BIND" -v src="$_f" -v out="$_der_out" '
+			{ sub(/\r$/, "") }
+			/^[[:space:]]*#/ { next }
+			/^[[:space:]]*$/ { next }
+			{
+				line = $0
+				d = line
+				if (line ~ /^server=\//) {
+					sub(/^server=\//, "", d)
+					sub(/\/.*/, "", d)
+				}
+				if (d == "" || d ~ /^\./) next
+				if (d !~ /^[A-Za-z0-9._-]+$/) {
+					printf "%s 第 %d 行域名非法，已跳过: %s\n", src, NR, substr(line, 1, 80) > "/dev/stderr"
+					next
+				}
+				printf "server=/%s/%s%s\n", d, dns, bind >> out
+				n++
+			}
+			END { print n + 0 }
+		' "$_f" 2>>"$_der_err")
+		case "$_c" in '' | *[!0-9]*) _c=0 ;; esac
+		if [ "$_c" -gt 0 ]; then
+			log "$_f: $_c 条域名 -> $_DNS_DNS${_DNS_DEV:+@$_DNS_DEV}"
+			_DNS_RULE_N=$((_DNS_RULE_N + _c))
+		fi
+	done
+
+	if [ -s "$_der_err" ]; then
+		while IFS= read -r _w; do
+			log "警告：$_w"
+			_DNS_BAD=$((_DNS_BAD + 1))
+		done < "$_der_err"
+	fi
+	rm -f "$_der_err"
+	return 0
+}
+
+# 片段语法自检（F-12）。dnsmasq 缺失 -> 降级告警（不算失败）；
+# dnsmasq --test 在当前环境本身跑不起来（容器/无 /dev/urandom）-> 同样降级，
+# 否则会把环境问题误判成配置错误。基线能跑而本片段失败才是硬错误。
+_dns_check_fragment() {
+	_dcf_file=$1
+	command -v dnsmasq >/dev/null 2>&1 || {
+		log "警告：未找到 dnsmasq，跳过片段语法自检"
+		return 0
+	}
+	if ! dnsmasq --test --conf-file=/dev/null >/dev/null 2>&1; then
+		log "警告：dnsmasq --test 在当前环境不可用（基线自检失败），跳过片段语法自检"
+		return 0
+	fi
+	_dcf_out=$(dnsmasq --test --conf-file="$_dcf_file" 2>&1) && return 0
+	log "错误：生成的 dnsmasq 片段未通过 dnsmasq --test：$(printf '%s' "$_dcf_out" | head -2 | tr '\n' ' ')"
+	return 1
+}
+
+# 只回显前几条规则：LuCI 通过 ubus 捕获 stdout，十万条规则全量回显会
+# 撑爆响应（F-12）。完整内容始终在文件里。
+_dns_print_preview() {
+	echo "生成的规则（前 3 条，共 $2 条；完整内容: $1）："
+	grep '^server=' "$1" 2>/dev/null | head -n 3 | sed 's/^/  /'
+	[ "$2" -gt 3 ] && echo "  …（其余 $(( $2 - 3 )) 条见文件）"
+	return 0
+}
+
 cmd_dns() {
 	need_nft
 	mkdir -p "$DNS_STATE" "$DOMAINDIR"
 
 	# 先探测 dnsmasq 真正加载的目录。runtime/ps 是权威源；只有落到 UCI
-	# 时才沿用"首次记录原值、迁移旧版 $DNSDIR"的现状逻辑。
+	# 时才沿用"迁移旧版 $DNSDIR"的现状逻辑。
 	_dns_confdir_detect >/dev/null
 	_cur=$(_dns_confdir_get)
-	_state=$DNS_STATE/dnsmasq.confdir.orig
+	# B-5：状态文件改名 dnsmasq.confdir.migrated。它记的不是"原值"，而是
+	# "我们写进 UCI 的清理值"（旧版 $DNSDIR 已随卸载消失，恢复原值反而错）。
+	# 旧名 dnsmasq.confdir.orig 只在升级兼容时读一次，见 _dns_state_adopt。
+	_state=$DNS_STATE/dnsmasq.confdir.migrated
+	_dns_state_adopt
 	_uci_note="未改写 UCI confdir"
 	case "$DNS_CONFDIR_SOURCE" in
 	uci)
@@ -3044,69 +4169,18 @@ cmd_dns() {
 		die "无法写入 $_out_tmp"
 	}
 
-	_n=0
-	_skip=0
+	_dns_emit_rules "$_out_tmp"
+	_n=$_DNS_RULE_N
+	_skip=$_DNS_SKIP
+	_bad=$_DNS_BAD
 
-	# 1) 内联域名配置：DOMAIN_SPLIT="域名:策略 ..."
-	for row in ${DOMAIN_SPLIT:-}; do
-		_dom=${row%%:*}
-		_pol=${row#*:}
-		[ -n "$_dom" ] && [ -n "$_pol" ] || continue
-		_TARGET=$_pol
-		_dns=$(dns_of_policy)
-		_dev=$(policy_device "$_pol")
-		_bind=""
-		[ "$DNS_MODE" = "bind" ] && _bind="@$_dev"
-		if [ -z "$_dns" ] || { [ "$DNS_MODE" = "bind" ] && [ -z "$_dev" ]; }; then
-			log "跳过 $_dom（策略 $_pol 缺少 DNS_TABLE 或设备名）"
-			_skip=$((_skip + 1))
-			continue
-		fi
-		echo "server=/$_dom/$_dns$_bind" >> "$_out_tmp"
-		_n=$((_n + 1))
-	done
+	# 3) 先做片段语法自检：坏片段在动 nft 之前就拒绝，不留下半套旁路。
+	if [ "$_n" -gt 0 ] && ! _dns_check_fragment "$_out_tmp"; then
+		rm -f "$_out_tmp"
+		die "生成的 dnsmasq 片段未通过语法自检，已放弃（现有片段未改动）"
+	fi
 
-	# 2) 外部域名清单：$DOMAINDIR/<策略>.txt
-	#    每行一个域名；也兼容 felixonmars/dnsmasq-china-list 的
-	#    server=/domain/1.2.3.4 形式（只取域名，DNS 用本线路的）
-	for _f in "$DOMAINDIR"/*.txt; do
-		[ -f "$_f" ] || continue
-		_pol=${_f##*/}
-		_pol=${_pol%.txt}
-		_TARGET=$_pol
-		_dns=$(dns_of_policy)
-		_dev=$(policy_device "$_pol")
-		_bind=""
-		[ "$DNS_MODE" = "bind" ] && _bind="@$_dev"
-		if [ -z "$_dns" ] || { [ "$DNS_MODE" = "bind" ] && [ -z "$_dev" ]; }; then
-			log "跳过 $_f（策略 $_pol 缺少 DNS_TABLE 或设备名）"
-			_skip=$((_skip + 1))
-			continue
-		fi
-		_c=0
-		while IFS= read -r _line; do
-			_line=$(printf '%s' "$_line" | tr -d '\r')
-			case "$_line" in
-			""|"#"*) continue ;;
-			server=/*)
-				# server=/domain/1.2.3.4 -> domain
-				_d=${_line#server=/}
-				_d=${_d%%/*}
-				;;
-			*) _d=$_line ;;
-			esac
-			case "$_d" in
-			""|.*) continue ;;
-			esac
-			echo "server=/$_d/$_dns$_bind" >> "$_out_tmp"
-			_c=$((_c + 1))
-		done < "$_f"
-		[ "$_c" -gt 0 ] || continue
-		log "$_f: $_c 条域名 -> $_dns@$_dev"
-		_n=$((_n + _c))
-	done
-
-	# 3) 处理 DNS 查询的出线（幂等，mwan3 重启后重跑 wire/apply/dns 即恢复）
+	# 4) 处理 DNS 查询的出线（幂等，mwan3 重启后重跑 wire/apply/dns 即恢复）
 	# dns 命令即使 mwan3 暂时未就绪也要把 dnsmasq 片段写出来，
 	# 所以 required=0；但配置错误必须立即失败，不能静默生成坏片段。
 	_dns_bypass 0
@@ -3120,14 +4194,22 @@ cmd_dns() {
 	fi
 
 	if [ "$_n" -eq 0 ]; then
-		rm -f "$_out_tmp" "$_out"
-		log "没有域名分流规则（DNS 旁路已按 DNS_TABLE 就位）"
-		log "要启用域名分流请配置 DOMAIN_SPLIT，或在 $DOMAINDIR/<策略>.txt 放入域名清单"
+		rm -f "$_out_tmp"
+		if [ -f "$_out" ] && { [ "$_skip" -gt 0 ] || [ "$_bad" -gt 0 ]; }; then
+			# 线路未就绪/清单全非法时不要删掉上一份可用片段：开机时
+			# PPPoE 往往还没 up，删掉会让域名分流一直空到下次手动 dns。
+			# 明确告警，等 WAN up 后重跑即可覆盖。
+			log "警告：本次没有生成任何规则（线路未就绪或清单非法），保留现有片段 $_out 不动；WAN up 后请重跑 isp-split dns"
+		else
+			rm -f "$_out"
+			log "没有域名分流规则（DNS 旁路已按 DNS_TABLE 就位）"
+			log "要启用域名分流请配置 DOMAIN_SPLIT，或在 $DOMAINDIR/<策略>.txt 放入域名清单"
+		fi
 		return 0
 	fi
 
-	# 4) 片段原子落位（rename 不跟随符号链接），再让 dnsmasq 重新加载。
-	#    runtime/ps 路径不改 UCI，避免覆盖 OpenClash/adblock 等接管配置。
+	# 5) 片段原子落位（rename 不跟随符号链接），再让 dnsmasq 重新加载。
+	#    runtime/ps 路径不改 UCI，避免覆盖 OpenClash/adblock 等接管配置；
 	#    卸载时按同一探测结果清理。
 	# mktemp 建的是 0600；dnsmasq 以 dnsmasq 用户读 conf-dir，
 	# 片段必须是全局可读的（旧实现直接重定向，权限是 umask 的 0644）。
@@ -3139,10 +4221,10 @@ cmd_dns() {
 	"$DNSMASQ_SERVICE" restart >/dev/null 2>&1 || log "警告：dnsmasq 重启失败"
 
 	log "已生成 $_n 条域名 DNS 规则 -> $_out（confdir: $_confdir，来源: $DNS_CONFDIR_SOURCE，$_uci_note）"
-	[ "$_skip" -gt 0 ] && log "有 $_skip 组因缺配置被跳过"
+	[ "$_skip" -gt 0 ] && log "有 $_skip 组因配置缺失/线路未就绪被跳过"
+	[ "$_bad" -gt 0 ] && log "有 $_bad 行域名因字符非法被跳过"
 	echo
-	echo "生成的规则："
-	sed 's/^/  /' "$_out"
+	_dns_print_preview "$_out" "$_n"
 }
 
 # ---------------------------------------------------------------- conf
@@ -3209,6 +4291,16 @@ conf_get() {
 		awk -F: 'NF >= 2 { printf "dns\t%s\t%s\n", $1, $2 }'
 	_conf_table DOMAIN_SPLIT | tr -s ' \t' '\n' |
 		awk -F: 'NF >= 2 { printf "domain\t%s\t%s\n", $1, $2 }'
+# lc:begin
+	_lc_g=$(_conf_val LINE_CHECK_GEO); [ -n "$_lc_g" ] || _lc_g=1
+	_lc_gp=$(_conf_val LINE_CHECK_GEO_PROVIDER); [ -n "$_lc_gp" ] || _lc_gp=auto
+	_lc_mi=$(_conf_val LINE_CHECK_MIN_INTERVAL); [ -n "$_lc_mi" ] || _lc_mi=60
+	_lc_en=$(_conf_val LINE_CHECK_ENABLE); [ -n "$_lc_en" ] || _lc_en=1
+	printf 'line_check_enable\t%s\n' "$_lc_en"
+	printf 'line_check_geo\t%s\n' "$_lc_g"
+	printf 'line_check_provider\t%s\n' "$_lc_gp"
+	printf 'line_check_interval\t%s\n' "$_lc_mi"
+# lc:end
 }
 
 # ---- 配置字段白名单 ----
@@ -3296,10 +4388,158 @@ _valid_ipv4() {
 	return 0
 }
 
+# lc:begin
+# ---- LINE_CHECK_* 值校验（conf set / conf check 共用）----
+# 这些键以前既不在白名单、也无读取侧校验：UA 可注入任意 HTTP 头，
+# ECHO_URLS 的元素可被 curl 当成选项（-K<file>）。下面按“最小可用字符集”
+# 收口，凡是能变成第二个 argv / shell 元字符的输入一律拒绝。
+
+_conf_lc_ctrl() { # 含 CR/LF/TAB 等控制字符 -> 0
+	printf '%s' "${1:-}" | grep -q '[[:cntrl:]]'
+}
+
+_conf_lc_url_ok() {
+	case "${1:-}" in
+	http://?* | https://?*) ;;
+	*) return 1 ;;
+	esac
+	# 只放行 URL 常规字符；; & | $ ` < > ( ) { } [ ] * ? ! # ' " \ 空格
+	# 全部不在集合里，因此 curl 选项注入和 shell 元字符都会被拒。
+	_conf_lc_bad=$(printf '%s' "$1" | tr -d 'A-Za-z0-9:/._~%+=-')
+	[ -z "$_conf_lc_bad" ] || return 1
+	# host 段必须是域名或严格 IPv4 字面量（不含 userinfo/端口）
+	_conf_lc_rest=${1#*://}
+	_conf_lc_host=${_conf_lc_rest%%/*}
+	_conf_lc_host=${_conf_lc_host%%:*}
+	case "$_conf_lc_host" in
+	'' | -* | .* | *. | *..* | *[!A-Za-z0-9._-]*) return 1 ;;
+	esac
+	return 0
+}
+
+_conf_lc_urls_ok() {
+	_conf_lc_urls_n=0
+	_conf_lc_urls_old=$IFS
+	_conf_lc_urls_list=$(printf '%s' "${1:-}" | tr ',' ' ' | tr '\t\r\n' '   ')
+	IFS=' '
+	for _conf_lc_u in $_conf_lc_urls_list; do
+		[ -n "$_conf_lc_u" ] || continue
+		_conf_lc_url_ok "$_conf_lc_u" || {
+			IFS=$_conf_lc_urls_old
+			return 1
+		}
+		_conf_lc_urls_n=$((_conf_lc_urls_n + 1))
+	done
+	IFS=$_conf_lc_urls_old
+	[ "$_conf_lc_urls_n" -gt 0 ]
+}
+
+_conf_lc_stun_ok() {
+	_conf_lc_stun_old=$IFS
+	_conf_lc_stun_list=$(printf '%s' "${1:-}" | tr '\t\r\n' '   ')
+	IFS=' '
+	for _conf_lc_s in $_conf_lc_stun_list; do
+		[ -n "$_conf_lc_s" ] || continue
+		case "$_conf_lc_s" in
+		*:*) ;;
+		*)
+			IFS=$_conf_lc_stun_old
+			return 1
+			;;
+		esac
+		_conf_lc_sh=${_conf_lc_s%:*}
+		_conf_lc_sp=${_conf_lc_s##*:}
+		case "$_conf_lc_sh" in
+		'' | -* | .* | *. | *..* | *[!A-Za-z0-9._-]*)
+			IFS=$_conf_lc_stun_old
+			return 1
+			;;
+		esac
+		case "$_conf_lc_sp" in
+		'' | *[!0-9]*)
+			IFS=$_conf_lc_stun_old
+			return 1
+			;;
+		esac
+		[ "$_conf_lc_sp" -ge 1 ] && [ "$_conf_lc_sp" -le 65535 ] || {
+			IFS=$_conf_lc_stun_old
+			return 1
+		}
+	done
+	IFS=$_conf_lc_stun_old
+	# 空清单是合法配置：运行时降级为 unknown，不崩、不探测。
+	return 0
+}
+
+_conf_lc_domain_ok() {
+	case "${1:-}" in '' | -* | .* | *. | *..*) return 1 ;; esac
+	_valid_domain "$1"
+}
+
+_conf_lc_domains_ok() {
+	_conf_lc_dom_old=$IFS
+	_conf_lc_dom_list=$(printf '%s' "${1:-}" | tr ',' ' ' | tr '\t\r\n' '   ')
+	IFS=' '
+	for _conf_lc_d in $_conf_lc_dom_list; do
+		[ -n "$_conf_lc_d" ] || continue
+		_conf_lc_domain_ok "$_conf_lc_d" || {
+			IFS=$_conf_lc_dom_old
+			return 1
+		}
+	done
+	IFS=$_conf_lc_dom_old
+	return 0
+}
+
+_conf_lc_targets_ok() {
+	_conf_lc_t_old=$IFS
+	_conf_lc_t_list=$(printf '%s' "${1:-}" | tr '\t\r\n' '   ')
+	IFS=' '
+	for _conf_lc_line in $_conf_lc_t_list; do
+		[ -n "$_conf_lc_line" ] || continue
+		_conf_lc_save_ifs=$IFS
+		IFS=':'
+		set -- $_conf_lc_line
+		IFS=$_conf_lc_save_ifs
+		[ $# -eq 2 ] || {
+			IFS=$_conf_lc_t_old
+			return 1
+		}
+		_valid_src "$1" || {
+			IFS=$_conf_lc_t_old
+			return 1
+		}
+		_conf_lc_dlist=$(printf '%s' "$2" | tr ',' ' ')
+		_conf_lc_dn=0
+		IFS=' '
+		for _conf_lc_td in $_conf_lc_dlist; do
+			[ -n "$_conf_lc_td" ] || continue
+			_conf_lc_domain_ok "$_conf_lc_td" || {
+				IFS=$_conf_lc_t_old
+				return 1
+			}
+			_conf_lc_dn=$((_conf_lc_dn + 1))
+		done
+		IFS=$_conf_lc_save_ifs
+		[ "$_conf_lc_dn" -gt 0 ] || {
+			IFS=$_conf_lc_t_old
+			return 1
+		}
+	done
+	IFS=$_conf_lc_t_old
+	return 0
+}
+# lc:end
+
 # 校验某个 KEY 的完整值；失败直接 die（不写文件）
 _conf_validate() {
 	_key=$1
 	_val=$2
+	# 整段校验里会做 `for x in $val`；关掉路径名展开，避免值里的 * ? [
+	# 被当前目录文件名替换，导致“校验的值”和“写入的值”不是同一份。
+	_conf_had_f=0
+	case $- in *f*) _conf_had_f=1 ;; esac
+	set -f
 	# 注释行不参与校验（B-1）：整行删掉后再按空白拆字段。清理必须发生在
 	# 空白展开之前，否则 "# 说明:xxx" 会被拆成 "#" 和 "说明:xxx" 两段。
 	# 这里只改局部副本，写回文件的内容仍保留用户注释。
@@ -3307,8 +4547,17 @@ _conf_validate() {
 	ISP_TABLE | DNS_TABLE | DOMAIN_SPLIT) _val=$(_strip_comments "$_val") ;;
 	esac
 	case "$_val" in
-	*'$'* | *'`'* | *'"'* | *"'"* | *'\'* | *';'* | *'|'*)
-		die "配置值含不允许的字符（\$ \` \" ' \\ ; |）"
+	*'$'* | *'`'* | *'"'* | *"'"* | *'\'*)
+		die "配置值含不允许的字符（\$ \` \" ' \\）"
+		;;
+	esac
+	# ; | 只在会进 uci 参数 / 表字段的键上禁止；UA/ACCEPT 合法地包含 ';'
+	# （Accept: text/html;q=0.9），URL 的非法字符由专门的 URL 校验挡。
+	case "$_key" in
+	ISP_TABLE | DNS_TABLE | DOMAIN_SPLIT)
+		case "$_val" in
+		*';'* | *'|'*) die "配置值含不允许的字符（; |）" ;;
+		esac
 		;;
 	esac
 
@@ -3389,9 +4638,111 @@ _conf_validate() {
 		*) die "DNS_MODE 只能是 bind 或 mark" ;;
 		esac
 		;;
+# lc:begin
+	LINE_CHECK_ENABLE | LINE_CHECK_GEO)
+		case "$_val" in
+		0 | 1) ;;
+		*) die "$_key 只能是 0 或 1" ;;
+		esac
+		;;
+	LINE_CHECK_GEO_PROVIDER)
+		case "$_val" in
+		auto | baidu | ip-api | off) ;;
+		*) die "LINE_CHECK_GEO_PROVIDER 只能是 auto / baidu / ip-api / off" ;;
+		esac
+		;;
+	LINE_CHECK_MIN_INTERVAL)
+		case "$_val" in
+		'' | *[!0-9]*) die "LINE_CHECK_MIN_INTERVAL 必须是整数秒（15-3600）" ;;
+		esac
+		[ "$_val" -ge 15 ] && [ "$_val" -le 3600 ] ||
+			die "LINE_CHECK_MIN_INTERVAL 必须在 15-3600 之间"
+		;;
+	LINE_CHECK_UA | LINE_CHECK_ACCEPT)
+		[ -n "$_val" ] || die "$_key 不能为空"
+		[ "${#_val}" -le 512 ] ||
+			die "$_key 过长（最多 512 字符）"
+		if _conf_lc_ctrl "$_val"; then
+			die "$_key 不能包含 CR/LF/TAB 等控制字符（会注入 HTTP 头）"
+		fi
+		;;
+	LINE_CHECK_ECHO_URLS)
+		_conf_lc_urls_ok "$_val" ||
+			die "LINE_CHECK_ECHO_URLS 必须是以逗号/空白分隔的 http(s):// URL（只允许 URL 常规字符，不接受 curl 选项或 shell 元字符）"
+		;;
+	LINE_CHECK_STUN_SERVERS)
+		_conf_lc_stun_ok "$_val" ||
+			die "LINE_CHECK_STUN_SERVERS 每项必须是 <域名或IPv4>:<端口1-65535>（空清单可接受）"
+		;;
+	LINE_CHECK_TARGETS)
+		_conf_lc_targets_ok "$_val" ||
+			die "LINE_CHECK_TARGETS 格式必须是 <运营商源名>:<域名1>,<域名2>（域名只允许 [A-Za-z0-9._-]）"
+		;;
+	LINE_CHECK_BASELINE)
+		_conf_lc_domains_ok "$_val" ||
+			die "LINE_CHECK_BASELINE 只能是逗号/空白分隔的域名（只允许 [A-Za-z0-9._-]）"
+		;;
+	LINE_CHECK_TIMEOUT)
+		case "$_val" in
+		'' | *[!0-9]*) die "LINE_CHECK_TIMEOUT 必须是整数秒（1-10）" ;;
+		esac
+		[ "$_val" -ge 1 ] && [ "$_val" -le 10 ] ||
+			die "LINE_CHECK_TIMEOUT 必须在 1-10 之间"
+		;;
+	LINE_CHECK_BUDGET)
+		case "$_val" in
+		'' | *[!0-9]*) die "LINE_CHECK_BUDGET 必须是整数秒（8-120）" ;;
+		esac
+		[ "$_val" -ge 8 ] && [ "$_val" -le 120 ] ||
+			die "LINE_CHECK_BUDGET 必须在 8-120 之间"
+		;;
+	LINE_CHECK_GEO_TTL)
+		case "$_val" in
+		'' | *[!0-9]*) die "LINE_CHECK_GEO_TTL 必须是整数秒（60-604800）" ;;
+		esac
+		[ "$_val" -ge 60 ] && [ "$_val" -le 604800 ] ||
+			die "LINE_CHECK_GEO_TTL 必须在 60-604800 之间"
+		;;
+# lc:end
 	*)
 		die "未知配置项 '$_key'"
 		;;
+	esac
+	# die 会直接 exit；正常返回时恢复调用前的 glob 状态。
+	[ "$_conf_had_f" = "1" ] || set +f
+}
+
+# conf set/check 的小写键 -> 配置变量名。白名单与 _conf_validate 的
+# 分支一一对应，避免“能写但没校验”或“校验了但写不进去”。
+# lc:begin
+_CONF_KEYS_HINT="isp_table / dns_table / domain_split / dns_mode / line_check_enable / line_check_geo / line_check_provider / line_check_interval / line_check_targets / line_check_stun_servers / line_check_echo_urls / line_check_ua / line_check_accept / line_check_timeout / line_check_budget / line_check_geo_ttl / line_check_baseline"
+# lc:end
+_CONF_KEYS_HINT="${_CONF_KEYS_HINT:-isp_table / dns_table / domain_split / dns_mode}"
+_conf_key_norm() {
+	# 大小写都接受：文档/评审里常写大写键，内部变量也必须能落盘。
+	# 剥离版里这一整段别名表被删除，大写键同样会走“未知配置项”。
+	_ck=$(printf '%s' "${1:-}" | tr 'A-Z' 'a-z')
+	case "$_ck" in
+	isp_table) printf 'ISP_TABLE' ;;
+	dns_table) printf 'DNS_TABLE' ;;
+	domain_split) printf 'DOMAIN_SPLIT' ;;
+	dns_mode) printf 'DNS_MODE' ;;
+# lc:begin
+	line_check_enable) printf 'LINE_CHECK_ENABLE' ;;
+	line_check_geo) printf 'LINE_CHECK_GEO' ;;
+	line_check_provider) printf 'LINE_CHECK_GEO_PROVIDER' ;;
+	line_check_interval) printf 'LINE_CHECK_MIN_INTERVAL' ;;
+	line_check_targets) printf 'LINE_CHECK_TARGETS' ;;
+	line_check_stun_servers) printf 'LINE_CHECK_STUN_SERVERS' ;;
+	line_check_echo_urls) printf 'LINE_CHECK_ECHO_URLS' ;;
+	line_check_ua) printf 'LINE_CHECK_UA' ;;
+	line_check_accept) printf 'LINE_CHECK_ACCEPT' ;;
+	line_check_timeout) printf 'LINE_CHECK_TIMEOUT' ;;
+	line_check_budget) printf 'LINE_CHECK_BUDGET' ;;
+	line_check_geo_ttl) printf 'LINE_CHECK_GEO_TTL' ;;
+	line_check_baseline) printf 'LINE_CHECK_BASELINE' ;;
+# lc:end
+	*) return 1 ;;
 	esac
 }
 
@@ -3401,13 +4752,9 @@ _conf_write() {
 	_key=$1
 	_val=$2
 	_target=${3:-$CONF}
-	case "$_key" in
-	isp_table) _key=ISP_TABLE ;;
-	dns_table) _key=DNS_TABLE ;;
-	domain_split) _key=DOMAIN_SPLIT ;;
-	dns_mode) _key=DNS_MODE ;;
-	*) die "未知配置项 '$_key'，可选：isp_table / dns_table / domain_split / dns_mode" ;;
-	esac
+	_raw_key=$_key
+	_key=$(_conf_key_norm "$_raw_key") ||
+		die "未知配置项 '$_raw_key'，可选：$_CONF_KEYS_HINT"
 
 	# 写入前必须通过白名单校验；失败即 die，绝不落盘
 	_conf_validate "$_key" "$_val"
@@ -3490,7 +4837,7 @@ _conf_write() {
 conf_set() {
 	_key=${1:-}
 	_val=${2:-}
-	[ -n "$_key" ] || die "用法: isp-split conf set <isp_table|dns_table|domain_split|dns_mode> <值>"
+	[ -n "$_key" ] || die "用法: isp-split conf set <项> <值>（可用项: $_CONF_KEYS_HINT）"
 	[ -f "$CONF" ] || die "找不到 $CONF"
 
 	# 允许用 | 代替换行（前端传参更省事）
@@ -3513,13 +4860,9 @@ conf_check() {
 	_ck_val=${2:-}
 	[ -n "$_ck_key" ] || die "用法: isp-split conf check <项> <值>"
 	_ck_val=$(printf '%s' "$_ck_val" | tr '|' '\n')
-	case "$_ck_key" in
-	isp_table) _ck_key=ISP_TABLE ;;
-	dns_table) _ck_key=DNS_TABLE ;;
-	domain_split) _ck_key=DOMAIN_SPLIT ;;
-	dns_mode) _ck_key=DNS_MODE ;;
-	*) die "未知配置项 '$_ck_key'，可选：isp_table / dns_table / domain_split / dns_mode" ;;
-	esac
+	_ck_raw=$_ck_key
+	_ck_key=$(_conf_key_norm "$_ck_raw") ||
+		die "未知配置项 '$_ck_raw'，可选：$_CONF_KEYS_HINT"
 	_conf_validate "$_ck_key" "$_ck_val" || return $?
 	echo "$_ck_key 校验通过"
 }
@@ -3731,7 +5074,7 @@ EOF
 
 # ---------------------------------------------------------------- rollback
 
-cmd_rollback() {
+_cmd_rollback_body() {
 	_last=$(ls -1d "$BASE/.history"/*/ 2>/dev/null | sort | tail -1)
 	[ -n "$_last" ] || die "没有可回滚的历史数据"
 
@@ -3770,6 +5113,15 @@ cmd_rollback() {
 
 	log "回滚到 $_last"
 	cmd_apply
+}
+
+# F-28：rollback 同样 mv DATA 并调用 apply，必须与 fetch/wire 互斥。
+cmd_rollback() {
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
+	_cmd_rollback_body
+	_rc=$?
+	_op_lock_release
+	return $_rc
 }
 
 # ---------------------------------------------------------------- install
@@ -3842,6 +5194,14 @@ cmd_install() {
 }
 
 cmd_uninstall() {
+	# F-14：卸载清理只有一份实现——usr/lib/isp-split/teardown.sh。
+	# 这里只做"必须由本脚本完成"的部分：mwan3 规则块要用 rules-splice.awk
+	# 原地摘除（teardown 不带 awk 依赖），其余（策略/成员/计数器/confdir/
+	# cron/文件/LuCI）全部交给它，与 install.sh --uninstall、包 postrm 同源。
+	if [ ! -f "$LIB/teardown.sh" ]; then
+		die "缺少 $LIB/teardown.sh，无法完整卸载（版本不匹配？改用同版本的 scripts/install.sh --uninstall）"
+	fi
+
 	_cron_rewrite "" 2>/dev/null || true
 	/etc/init.d/isp-split disable >/dev/null 2>&1 || true
 	/etc/init.d/isp-split stop >/dev/null 2>&1 || true
@@ -3853,19 +5213,2170 @@ cmd_uninstall() {
 		cp "$CFG_MWAN3" "$WORK/mwan3.bak"
 		awk -v insert="$WORK/rules.txt" -v anchor="$ISP_ANCHOR" \
 			-f "$LIB/rules-splice.awk" "$WORK/mwan3.bak" > "$WORK/mwan3.new" &&
-			cat "$WORK/mwan3.new" > "$CFG_MWAN3"
+			_mwan3_atomic_install "$WORK/mwan3.new"
 	fi
 
-	# 按标记删，而不是按当前表名：改名/删除的孤儿段也要清掉（B-4）。
-	_uninstall_ipsets
-	/etc/init.d/mwan3 reload >/dev/null 2>&1
-
-	# 恢复 dnsmasq confdir 原值（状态文件在 $BASE 里，必须先恢复再删目录）
-	_restore_dns_confdir
-
-	rm -rf "$BASE"
+	# mwan3 段（按 isp_split 标记，含改名/删除的孤儿段）+ runtime 残留 + 文件。
+	# 顺序不能反：状态文件在 $BASE 里，先恢复 confdir 再删目录。
+	ISP_SPLIT_BASE=$BASE ISP_SPLIT_CONF=$CONF ISP_SPLIT_CRONTAB=$CRONTAB \
+		ISP_SPLIT_LIB=$LIB MWAN3_SERVICE=$MWAN3_SERVICE \
+		DNSDIR=$DNSDIR DNSMASQ_DEFAULT_DIR=$DNSMASQ_DEFAULT_DIR \
+		DNSMASQ_CONF_GLOB=$DNSMASQ_CONF_GLOB \
+		sh "$LIB/teardown.sh" all || {
+		die "teardown.sh 执行失败，卸载不完整（见上方输出）"
+	}
 	log "已卸载（nft 集合随 mwan3 reload 一并消失）"
 }
+
+_lc_json_esc() {
+	printf '%s' "${1:-}" |
+		sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/	/ /g' |
+		tr -d '\r\n' |
+		sed -e 's/[[:cntrl:]]//g'
+}
+
+_lc_json_str() { # 输出带引号的 JSON 字符串
+	printf '"%s"' "$(_lc_json_esc "$1")"
+}
+
+# lc:begin
+# ---------------------------------------------------------------- linecheck
+#
+# 线路体检（0.3.0 MVP）：对每条 WAN 做
+#   1. 本机口 IP 分类（公网 / CGNAT / 私网）
+#   2. curl --interface 取出口公网 IP（与 WAN IP 交叉判断多层 NAT）
+#   3. 同运营商目标四段延迟（DNS / TCP / TLS / 首字节）+ 抖动 + 丢包
+#   4. 归属地（百度 / ip-api，可关；只发出口 IP）
+#   5. socat so-bindtodevice 双 STUN 探测（同一本地端口、两个不同 IP）
+#   6. 公开规则表评分 + 硬上限 + 一句话建议
+#
+# 设计约束（详见 LINE-CHECK-FEASIBILITY.md）：
+#   · 只承诺五态：公网 / 锥形 / 对称（或多出口）/ CGNAT / 未知，
+#     不做 NAT1-4 细分——公网 STUN 基本不支持 CHANGE-REQUEST。
+#   · TCP 用 curl --interface <l3_device>，UDP 用 socat so-bindtodevice，
+#     只绑源 IP 会被 mwan3 的 mark 带回另一条线。
+#   · 不改用户 nft 规则；失败只降级单项，不让整张卡变红。
+#   · 结果缓存 60s（LINE_CHECK_MIN_INTERVAL），--force 绕过。
+#   · BUG-23：真实探测 21-60s，而 rpcd 的 exec 硬超时 30s。所以 LuCI 页面
+#     绝不在这里同步 exec：页面只读 state/linecheck/last.json，探测走
+#     `--background`（setsid 子进程 + 锁去重），完成后整目录原子替换。
+
+# 默认目标表。只存域名：运行时解析，再用 @isp_* 集合校验归属。
+# 不随机抽集合里的 IP（命中率低、像端口扫描、也无法保证 443 可用）。
+LC_DEFAULT_TARGETS='
+chinatelecom:www.chinatelecom.com.cn,www.21cn.com
+unicom_cnc:www.10010.com,www.chinaunicom.com.cn
+cmcc:www.migu.cn,www.10086.com.cn
+cernet:www.tsinghua.edu.cn,www.pku.edu.cn
+'
+# 默认 STUN：多服务器，运行时探测，失败自动换下一个。
+LC_DEFAULT_STUN='
+stun.miwifi.com:3478
+stun.douyucdn.cn:18000
+stun.freeswitch.org:3478
+stun.cloudflare.com:3478
+'
+LC_DEFAULT_ECHO='https://api.ipify.org,https://ipv4.icanhazip.com'
+# 部分站点对默认 curl UA 直接 412/418（实测 www.chinatelecom.com.cn），
+# 必须带浏览器 UA；Range 只取 1 字节，避免 CDN 把体检当成下载。
+LC_DEFAULT_UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+LC_DEFAULT_ACCEPT='text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+
+LC_CACHE=$STATE_DIR/linecheck
+
+_lc_opt() { # <变量名> <默认值>
+	eval "_lc_o=\${$1-}"
+	if [ -z "$_lc_o" ]; then _lc_o=$2; fi
+	printf '%s' "$_lc_o"
+}
+
+_lc_now() { date +%s; }
+
+# /proc/uptime 是百分之一秒精度；比 date +%s 更适合测 STUN 的 10-200ms RTT。
+_lc_uptime_ms() {
+	awk '{ printf "%d", $1 * 1000 }' /proc/uptime 2>/dev/null || echo 0
+}
+
+_lc_int() {
+	case "${1:-}" in '' | *[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac
+}
+
+# ---- IPv4 ----
+
+_lc_ip_valid() {
+	case "${1:-}" in '' | *[!0-9.]* | .* | *. | *..*) return 1 ;; esac
+	printf '%s' "$1" | awk -F. 'NF == 4 && $1 <= 255 && $2 <= 255 && $3 <= 255 && $4 <= 255 { ok = 1 } END { exit(ok ? 0 : 1) }'
+}
+
+
+_lc_in_net() { # <ip> <net> <bits>
+	# 用 awk 做 32 位比较：32 位 ARM/MIPS 上 busybox ash 的算术是 long，
+	# 直接 $(( )) 会把 192.168.x 这类 >2^31 的整数溢出成负数。
+	awk -v ip="$1" -v net="$2" -v bits="$3" 'BEGIN {
+		if (split(ip, a, ".") != 4 || split(net, b, ".") != 4) exit 1
+		ipn = ((a[1] * 256 + a[2]) * 256 + a[3]) * 256 + a[4]
+		nn  = ((b[1] * 256 + b[2]) * 256 + b[3]) * 256 + b[4]
+		scale = 2 ^ (32 - bits)
+		exit (int(ipn / scale) == int(nn / scale) ? 0 : 1)
+	}'
+}
+
+# public | cgnat | private | invalid
+_lc_ip_class() {
+	_ip=${1:-}
+	[ -n "$_ip" ] || { printf 'invalid'; return; }
+	_lc_ip_valid "$_ip" || { printf 'invalid'; return; }
+	case "$_ip" in
+	0.* | 127.* | 169.254.* | 198.18.* | 198.19.* | 224.* | 225.* | 226.* | 227.* | 228.* | 229.* | 230.* | 231.* | 232.* | 233.* | 234.* | 235.* | 236.* | 237.* | 238.* | 239.* | 255.*)
+		printf 'private'; return ;;
+	esac
+	_lc_in_net "$_ip" 100.64.0.0 10 && { printf 'cgnat'; return; }
+	_lc_in_net "$_ip" 10.0.0.0 8 && { printf 'private'; return; }
+	_lc_in_net "$_ip" 172.16.0.0 12 && { printf 'private'; return; }
+	_lc_in_net "$_ip" 192.168.0.0 16 && { printf 'private'; return; }
+	printf 'public'
+}
+
+# ---- 时间/数值 ----
+
+_lc_ms() { # curl 秒 -> 整数毫秒
+	case "${1:-}" in '' | *[!0-9.]*) printf '0' ;; esac
+	awk -v v="$1" 'BEGIN { if (v <= 0) { print 0; exit } printf "%d", int(v * 1000 + 0.5) }'
+}
+
+_lc_median() { # 空格分隔的整数列表
+	printf '%s\n' "$1" | tr ' ' '\n' | awk 'NF && $1 ~ /^[0-9]+$/ { a[n++] = $1 }
+		END {
+			if (n == 0) { print ""; exit }
+			for (i = 1; i < n; i++)
+				for (j = i + 1; j <= n; j++)
+					if (a[j] < a[i]) { t = a[i]; a[i] = a[j]; a[j] = t }
+			if (n % 2) print a[(n + 1) / 2]
+			else printf "%d", int((a[n / 2] + a[n / 2 + 1]) / 2 + 0.5)
+		}'
+}
+
+_lc_jitter() { # max-min
+	printf '%s\n' "$1" | tr ' ' '\n' | awk '
+		NF && $1 ~ /^[0-9]+$/ { if (n == 0 || $1 < mn) mn = $1; if (n == 0 || $1 > mx) mx = $1; n++ }
+		END { if (n < 2) print 0; else printf "%d", mx - mn }'
+}
+
+_lc_fmt_ms() {
+	case "${1:-}" in '' | *[!0-9]*) printf '—' ;; *) printf '%sms' "$1" ;; esac
+}
+
+# ---- 配置/表 ----
+
+_lc_targets_raw() { _lc_opt LINE_CHECK_TARGETS "$LC_DEFAULT_TARGETS"; }
+_lc_stun_raw() { _lc_opt LINE_CHECK_STUN_SERVERS "$LC_DEFAULT_STUN"; }
+_lc_echo_raw() { _lc_opt LINE_CHECK_ECHO_URLS "$LC_DEFAULT_ECHO"; }
+_lc_ua() { _lc_opt LINE_CHECK_UA "$LC_DEFAULT_UA"; }
+_lc_timeout() {
+	_t=$(_lc_int "$(_lc_opt LINE_CHECK_TIMEOUT 3)")
+	[ "$_t" -ge 1 ] 2>/dev/null || _t=3
+	[ "$_t" -le 10 ] 2>/dev/null || _t=10
+	printf '%s' "$_t"
+}
+_lc_budget() {
+	_b=$(_lc_int "$(_lc_opt LINE_CHECK_BUDGET 20)")
+	[ "$_b" -ge 8 ] 2>/dev/null || _b=20
+	printf '%s' "$_b"
+}
+
+# 运营商源名 -> nft 集合名（ISP_TABLE 第 2 列）
+
+_lc_set_for() { # <源名>
+	_old_ifs=$IFS
+	_want=$1
+	for _row in $ISP_TABLE; do
+		IFS=:
+		set -- $_row
+		IFS=$_old_ifs
+		[ "${1:-}" = "$_want" ] && { printf '%s' "${2:-}"; return 0; }
+	done
+	IFS=$_old_ifs
+	return 0
+}
+
+# IP 属于哪个运营商集合（本地判断，不外发）
+_lc_ip_isp() { # <ip>
+	_ip=${1:-}
+	_lc_ip_valid "$_ip" || return 0
+	command -v nft >/dev/null 2>&1 || return 0
+	nft list table inet mwan3 >/dev/null 2>&1 || return 0
+	_old_ifs=$IFS
+	for _row in $ISP_TABLE; do
+		IFS=:
+		set -- $_row
+		IFS=$_old_ifs
+		[ "${4:-0}" = "1" ] || continue
+		[ -n "${2:-}" ] || continue
+		if nft get element inet mwan3 "$2" "{ $_ip }" >/dev/null 2>&1; then
+			printf '%s' "$1"
+			return 0
+		fi
+	done
+	IFS=$_old_ifs
+	return 0
+}
+
+_lc_valid_host() {
+	case "${1:-}" in '' | *[!A-Za-z0-9._-]* | .* | *. | *..*) return 1 ;; esac
+	return 0
+}
+
+_lc_valid_port() {
+	case "${1:-}" in '' | *[!0-9]*) return 1 ;; esac
+	[ "$1" -ge 1 ] 2>/dev/null && [ "$1" -le 65535 ] 2>/dev/null
+}
+
+# 解析域名 -> 前 N 个 IPv4（系统 resolver；不承诺按线解析）
+_lc_resolve() { # <domain> [max]
+	_d=${1:-}
+	_n=${2:-3}
+	_lc_valid_host "$_d" || return 0
+	if [ -n "${ISP_SPLIT_LC_RESOLVE_IPS:-}" ]; then
+		printf '%s' "$ISP_SPLIT_LC_RESOLVE_IPS" | tr ',' '\n' | head -n "$_n"
+		return 0
+	fi
+	command -v nslookup >/dev/null 2>&1 || return 0
+	nslookup "$_d" 2>/dev/null | awk -v max="$_n" '
+		/^Name:/ { seen = 1; next }
+		seen && /^Address/ {
+			ip = $NF
+			if (ip ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$/ && !(ip in got)) {
+				got[ip] = 1
+				print ip
+				n++
+				if (n >= max) exit
+			}
+		}
+	'
+}
+
+# ---- WAN 枚举 ----
+
+_lc_dev_ip() {
+	ip -4 addr show dev "$1" 2>/dev/null |
+		awk '/^[[:space:]]*inet / { sub(/\/.*/, "", $2); print $2; exit }'
+}
+
+# 输出 TSV：iface<TAB>device<TAB>up(0/1)<TAB>state<TAB>wan_ip
+_lc_wans() {
+	# 自检/夹具模式：ISP_SPLIT_LC_WANS="wan1|wan1|1|online|100.64.1.2 ..."
+	if [ -n "${ISP_SPLIT_LC_WANS:-}" ]; then
+		printf '%s\n' "$ISP_SPLIT_LC_WANS" | tr ' ' '\n' | while IFS='|' read -r _a _b _c _d _e; do
+			[ -n "$_a" ] || continue
+			printf '%s\t%s\t%s\t%s\t%s\n' "$_a" "${_b:-$_a}" "${_c:-1}" "${_d:-online}" "${_e:-}"
+		done
+		return 0
+	fi
+	command -v uci >/dev/null 2>&1 || return 0
+	_seen=" "
+	for _i in $(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([^=]*\)=interface$/\1/p'); do
+		_en=$(uci -q get "mwan3.$_i.enabled" 2>/dev/null)
+		[ "$_en" = "1" ] || continue
+		_fam=$(uci -q get "mwan3.$_i.family" 2>/dev/null)
+		[ "$_fam" = "ipv6" ] && continue
+		_dev=$(ifstatus "$_i" 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)
+		[ -n "$_dev" ] || _dev=$(uci -q get "network.$_i.device" 2>/dev/null)
+		[ -n "$_dev" ] || continue
+		case "$_seen" in *" $_dev "*) continue ;; esac
+		_seen="$_seen$_dev "
+		_up=$(ifstatus "$_i" 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+		case "$_up" in
+		true) _state=online; _upn=1 ;;
+		false) _state=offline; _upn=0 ;;
+		*) _state=unknown; _upn=0 ;;
+		esac
+		_ip=$(ifstatus "$_i" 2>/dev/null | jsonfilter -e '@.["ipv4-address"][0].address' 2>/dev/null)
+		[ -n "$_ip" ] || _ip=$(_lc_dev_ip "$_dev")
+		printf '%s\t%s\t%s\t%s\t%s\n' "$_i" "$_dev" "$_upn" "$_state" "$_ip"
+	done
+}
+
+# --wan 指定：接受 mwan3 逻辑接口名，也接受运行时设备名（如 pppoe-wan1 / br-lan）
+_lc_wan_one() {
+	_want=$1
+	case "$_want" in '' | *[!A-Za-z0-9_.-]*) return 1 ;; esac
+	if [ -n "${ISP_SPLIT_LC_WANS:-}" ]; then
+		printf '%s\n' "$ISP_SPLIT_LC_WANS" | tr ' ' '\n' | while IFS='|' read -r _a _b _c _d _e; do
+			[ "$_a" = "$_want" ] || [ "${_b:-}" = "$_want" ] || continue
+			printf '%s\t%s\t%s\t%s\t%s\n' "$_a" "${_b:-$_a}" "${_c:-1}" "${_d:-online}" "${_e:-}"
+			return 0
+		done
+		return 0
+	fi
+	_dev=$(ifstatus "$_want" 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)
+	_logical=$_want
+	if [ -z "$_dev" ]; then
+		# 用 ifindex 判断“真实网络设备”：--wan .. / . 虽然能让 -d 成立
+		# （/sys/class/net/.. 存在），但不是设备，不能进 curl/socat。
+		if [ -e "/sys/class/net/$_want/ifindex" ]; then
+			_dev=$_want
+		else
+			return 1
+		fi
+	fi
+	_up=$(ifstatus "$_want" 2>/dev/null | jsonfilter -e '@.up' 2>/dev/null)
+	case "$_up" in
+	true) _state=online; _upn=1 ;;
+	false) _state=offline; _upn=0 ;;
+	*)
+		# --wan 可以是裸设备（如 br-lan / pppoe-wan1）：ifstatus 不认，
+		# 用 operstate 判断，否则会把一条好好的线判成“未连接”。
+		if [ -e "/sys/class/net/$_dev/ifindex" ]; then
+			case "$(cat "/sys/class/net/$_dev/operstate" 2>/dev/null)" in
+			up) _state=online; _upn=1 ;;
+			down) _state=offline; _upn=0 ;;
+			*)
+				# PPPoE 的 operstate 常是 unknown；看 ip link 的 UP 标志
+				if ip -o link show dev "$_dev" 2>/dev/null | grep -q '<[^>]*UP'; then
+					_state=online; _upn=1
+				else
+					_state=unknown; _upn=0
+				fi
+				;;
+			esac
+		else
+			_state=unknown
+			_upn=0
+		fi
+		;;
+	esac
+	[ -e "/sys/class/net/$_dev/ifindex" ] || _upn=0
+	_ip=$(ifstatus "$_want" 2>/dev/null | jsonfilter -e '@.["ipv4-address"][0].address' 2>/dev/null)
+	[ -n "$_ip" ] || _ip=$(_lc_dev_ip "$_dev")
+	printf '%s\t%s\t%s\t%s\t%s\n' "$_logical" "$_dev" "$_upn" "$_state" "$_ip"
+}
+
+# ---- 出口 IP ----
+
+_lc_exit_ip() { # <device> -> ip 或空
+	_dev=$1
+	# 夹具模式：ISP_SPLIT_LC_EXIT_IPS="1.2.3.4,5.6.7.8"，none 表示失败
+	if [ -n "${ISP_SPLIT_LC_EXIT_IPS:-}" ]; then
+		printf '%s' "$ISP_SPLIT_LC_EXIT_IPS" | awk -v idx="${LC_IDX:-1}" -F, '
+			$idx != "none" && $idx ~ /^[0-9.]+$/ { print $idx }'
+		return 0
+	fi
+	command -v curl >/dev/null 2>&1 || return 0
+	_old_ifs=$IFS
+	IFS=,
+	for _u in $(_lc_echo_raw); do
+		IFS=$_old_ifs
+		_r=$(curl -sS --interface "$_dev" --connect-timeout 3 -m 5 \
+			-A "$(_lc_ua)" "$_u" 2>/dev/null | tr -d '[:space:]' | head -c 64)
+		_lc_ip_valid "$_r" && { printf '%s' "$_r"; return 0; }
+	done
+	IFS=$_old_ifs
+	return 0
+}
+
+# ---- 目标选择（报告 §3.3） ----
+
+_lc_target_domains() { # <源名> -> 空格分隔域名
+	_old_ifs=$IFS
+	for _row in $(_lc_targets_raw); do
+		IFS=:
+		set -- $_row
+		IFS=$_old_ifs
+		if [ "${1:-}" = "${_lc_t_src:-}" ]; then
+			printf '%s' "${2:-}" | tr ',' ' '
+			return 0
+		fi
+	done
+	IFS=$_old_ifs
+	return 0
+}
+
+_lc_target_groups() { # <源名>，只输出该运营商的域名；未知则交给跨网基线
+	_own=${1:-}
+	[ -n "$_own" ] || return 0
+	_old_ifs=$IFS
+	for _row in $(_lc_targets_raw); do
+		IFS=:
+		set -- $_row
+		IFS=$_old_ifs
+		[ "${1:-}" = "$_own" ] || continue
+		for _d in $(printf '%s' "${2:-}" | tr ',' ' '); do
+			printf '%s\t%s\n' "$_own" "$_d"
+		done
+	done
+	IFS=$_old_ifs
+}
+
+# ---- STUN ----
+#
+# 报文：00 01 00 00 21 12 A4 42 + 12 字节 transaction id（共 20 字节）。
+# 响应解析：XOR-MAPPED-ADDRESS(0x0020) / MAPPED-ADDRESS(0x0001)；
+# 端口 ^ 0x2112，IPv4 与 21 12 A4 42 逐字节异或；属性按 4 字节对齐。
+
+_lc_stun_build() { # <request-file> -> 打印 txid(24 hex)
+	_req=$1
+	{ printf '\000\001\000\000\041\022\244\102'; dd if=/dev/urandom bs=12 count=1 2>/dev/null; } >"$_req" ||
+		return 1
+	hexdump -v -n 12 -s 8 -e '12/1 "%02x"' "$_req"
+}
+
+_lc_hex2ip() { # 8 个 hex 字符 -> 点分十进制
+	_h=${1:-}
+	[ "${#_h}" -eq 8 ] || return 1
+	printf '%d.%d.%d.%d' \
+		"$((0x${_h%??????}))" \
+		"$((0x$(printf '%s' "$_h" | cut -c3-4)))" \
+		"$((0x$(printf '%s' "$_h" | cut -c5-6)))" \
+		"$((0x$(printf '%s' "$_h" | cut -c7-8)))"
+}
+
+# 解析 STUN 响应。成功打印 "ip port"，失败返回 1。
+# 校验：长度、消息类型 0x0101、magic cookie、transaction id、属性边界。
+_lc_stun_parse() { # <response-file> <expected-txid-hex>
+	_f=$1
+	_txid=$2
+	[ -f "$_f" ] || return 1
+	_hex=$(hexdump -v -e '1/1 "%02x"' "$_f" 2>/dev/null | tr -d ' \n')
+	[ -n "$_hex" ] || return 1
+	_len=$(( ${#_hex} / 2 ))
+	[ "$_len" -ge 20 ] || return 1
+	[ $((_len % 4)) -eq 0 ] || return 1
+	_type=$(printf '%s' "$_hex" | cut -c1-4)
+	[ "$_type" = "0101" ] || return 1
+	_magic=$(printf '%s' "$_hex" | cut -c9-16)
+	[ "$_magic" = "2112a442" ] || return 1
+	_got=$(printf '%s' "$_hex" | cut -c17-40)
+	[ "$_got" = "$_txid" ] || return 1
+	_mlen=$(printf '%s' "$_hex" | cut -c5-8)
+	_mlen=$((0x$_mlen))
+	# 声明的属性长度不能超出实际报文（坏包 fixture 会触发这里）
+	[ $((20 + _mlen)) -le "$_len" ] || return 1
+
+	_pos=20
+	_end=$((20 + _mlen))
+	while [ "$_pos" -lt "$_end" ]; do
+		[ $((_pos + 4)) -le "$_len" ] || return 1
+		_at=$(printf '%s' "$_hex" | cut -c$((_pos * 2 + 1))-$((_pos * 2 + 4)))
+		_al=$(printf '%s' "$_hex" | cut -c$((_pos * 2 + 5))-$((_pos * 2 + 8)))
+		_at=$((0x$_at))
+		_al=$((0x$_al))
+		_doff=$((_pos + 4))
+		[ $((_doff + _al)) -le "$_len" ] || return 1
+		case "$_at" in
+		32 | 1) # XOR-MAPPED-ADDRESS / MAPPED-ADDRESS
+			[ "$_al" -ge 8 ] || return 1
+			_fam=$(printf '%s' "$_hex" | cut -c$((_doff * 2 + 3))-$((_doff * 2 + 4)))
+			[ "$_fam" = "01" ] || return 1
+			_ph=$(printf '%s' "$_hex" | cut -c$((_doff * 2 + 5))-$((_doff * 2 + 8)))
+			_ih=$(printf '%s' "$_hex" | cut -c$((_doff * 2 + 9))-$((_doff * 2 + 16)))
+			_port=$((0x$_ph))
+			if [ "$_at" = "32" ]; then
+				_port=$((_port ^ 0x2112))
+				_b1=$((0x$(printf '%s' "$_ih" | cut -c1-2) ^ 0x21))
+				_b2=$((0x$(printf '%s' "$_ih" | cut -c3-4) ^ 0x12))
+				_b3=$((0x$(printf '%s' "$_ih" | cut -c5-6) ^ 0xA4))
+				_b4=$((0x$(printf '%s' "$_ih" | cut -c7-8) ^ 0x42))
+				_ip="$_b1.$_b2.$_b3.$_b4"
+			else
+				_ip=$(_lc_hex2ip "$_ih")
+			fi
+			case "$_ip" in 0.0.0.0) return 1 ;; esac
+			printf '%s %s' "$_ip" "$_port"
+			return 0
+			;;
+		esac
+		_pos=$((_doff + ((_al + 3) / 4) * 4))
+	done
+	return 1
+}
+
+# 一次 UDP Binding。成功打印 "mapped_ip mapped_port rtt_ms"，失败返回 1。
+_lc_stun_once() { # <device> <server_ip> <server_port> <local_port> <timeout>
+	_sdev=$1
+	_sip=$2
+	_sport=$3
+	_lport=$4
+	_sto=$5
+
+	# SEC S4：旧实现用固定路径 /tmp/isp-lc-stun.$$.req/.resp。$$ 可预测，
+	# 且 shell 的 `>`/socat 的 `>` 都会跟随 symlink，本机低权用户只要在
+	# /tmp 预铺链接，就能让 root 覆盖/截断任意文件。
+	# 现在：umask 077 + mktemp 随机名（O_EXCL 创建，别人无法预占），
+	# 创建后立即把同一个 inode 截断为 0；写入前再拒绝 symlink 作为
+	# 纵深防御。清理只使用下面两个变量里的真实路径，绝不按 $$ 重拼。
+	_sr_old_umask=$(umask)
+	umask 077
+	_sr_req=$(mktemp "${TMPDIR:-/tmp}/isp-lc-stun.XXXXXXXX" 2>/dev/null)
+	LC_STUN_REQ=$_sr_req
+	_sr_resp=$(mktemp "${TMPDIR:-/tmp}/isp-lc-stun.XXXXXXXX" 2>/dev/null)
+	LC_STUN_RESP=$_sr_resp
+	umask "$_sr_old_umask"
+	if [ -z "$_sr_req" ] || [ -z "$_sr_resp" ]; then
+		[ -n "$_sr_req" ] && rm -f "$_sr_req"
+		[ -n "$_sr_resp" ] && rm -f "$_sr_resp"
+		LC_STUN_REQ=""
+		LC_STUN_RESP=""
+		return 1
+	fi
+	if [ -L "$_sr_req" ] || [ -L "$_sr_resp" ]; then
+		rm -f "$_sr_req" "$_sr_resp"
+		LC_STUN_REQ=""
+		LC_STUN_RESP=""
+		return 1
+	fi
+	if ! : >"$_sr_req" 2>/dev/null || ! : >"$_sr_resp" 2>/dev/null; then
+		rm -f "$_sr_req" "$_sr_resp"
+		LC_STUN_REQ=""
+		LC_STUN_RESP=""
+		return 1
+	fi
+
+	_txid=$(_lc_stun_build "$_sr_req" 2>/dev/null) || {
+		rm -f "$_sr_req" "$_sr_resp"
+		LC_STUN_REQ=""
+		LC_STUN_RESP=""
+		return 1
+	}
+	_t0=$(_lc_uptime_ms)
+	socat -T "$_sto" - UDP4:"$_sip":"$_sport",bind=:"$_lport",so-bindtodevice="$_sdev" \
+		<"$_sr_req" >"$_sr_resp" 2>/dev/null
+	_rc=$?
+	_t1=$(_lc_uptime_ms)
+	if [ "$_rc" -ne 0 ]; then
+		rm -f "$_sr_req" "$_sr_resp"
+		LC_STUN_REQ=""
+		LC_STUN_RESP=""
+		return 1
+	fi
+	_res=$(_lc_stun_parse "$_sr_resp" "$_txid")
+	rm -f "$_sr_req" "$_sr_resp"
+	LC_STUN_REQ=""
+	LC_STUN_RESP=""
+	[ -n "$_res" ] || return 1
+	printf '%s %s %s' "$_res" "$((_t1 - _t0))"
+}
+
+_lc_local_port() {
+	_p=$(hexdump -n 2 -e '1/2 "%u"' /dev/urandom 2>/dev/null | tr -d ' ')
+	case "$_p" in '' | *[!0-9]*) _p=$$ ;; esac
+	echo $((30000 + _p % 30001))
+}
+
+# 双探测点分类。参数：
+#   <wan_ip> <wan_class> <map1|-> <map2|-> <local_port>
+# map 形如 "1.2.3.4:40000"。
+# 输出：type|confidence|detail
+_lc_nat_verdict() {
+	_vwan=$1
+	_vclass=$2
+	_vm1=${3:--}
+	_vm2=${4:--}
+	_vlport=${5:-0}
+	[ "$_vm1" = "-" ] && _vm1=""
+	[ "$_vm2" = "-" ] && _vm2=""
+
+	_vip1=${_vm1%:*}
+	_vport1=${_vm1#*:}
+	_vip2=${_vm2%:*}
+	_vport2=${_vm2#*:}
+
+	if [ "$_vclass" = "cgnat" ]; then
+		printf 'cgnat|high|WAN IP %s 属于 100.64.0.0/10（运营商级 NAT）' "$_vwan"
+		return 0
+	fi
+	if [ -z "$_vm1" ] && [ -z "$_vm2" ]; then
+		printf 'unknown|unknown|两个探测点均无响应（UDP 3478 可能被阻断或服务器不可达）'
+		return 0
+	fi
+
+	# 映射地址是私网/CGNAT = 不止一层 NAT
+	for _vm in "$_vm1" "$_vm2"; do
+		[ -n "$_vm" ] || continue
+		case "$(_lc_ip_class "${_vm%:*}")" in
+		private | cgnat)
+			printf 'cgnat|high|出口映射为私网地址 %s，存在多层 NAT，端口映射不可用' "$_vm"
+			return 0
+			;;
+		esac
+	done
+
+	if [ -n "$_vm1" ] && [ -n "$_vm2" ]; then
+		if [ "$_vm1" = "$_vm2" ]; then
+			if [ "$_vclass" = "public" ] && [ "$_vip1" = "$_vwan" ] && [ "$_vport1" = "$_vlport" ]; then
+				printf 'public|high|两个探测点映射均为 %s，与 WAN IP/本地端口一致（无端口转换）' "$_vm1"
+			else
+				printf 'cone|high|两个探测点映射一致（%s），锥形 NAT（未细分）' "$_vm1"
+			fi
+			return 0
+		fi
+		printf 'symmetric|high|两个探测点映射不同（%s / %s），对称或多出口 NAT' "$_vm1" "$_vm2"
+		return 0
+	fi
+
+	# 只有一个探测点成功：不能交叉验证
+	_only=$_vm1
+	[ -n "$_only" ] || _only=$_vm2
+	if [ "$_vclass" = "public" ] && [ "${_only%:*}" = "$_vwan" ] && [ "${_only#*:}" = "$_vlport" ]; then
+		printf 'public|medium|单点映射 %s 与 WAN IP/本地端口一致；未能交叉验证' "$_only"
+	else
+		printf 'cone|medium|仅一个探测点成功（%s），按锥形处理，未能交叉验证' "$_only"
+	fi
+}
+
+_lc_stun_bad_detail() {
+	[ "$LC_STUN_TYPE" = "unknown" ] || return 0
+	case "$LC_STUN_MAPS" in
+	*"|bad|"*)
+		LC_STUN_DETAIL="STUN 响应校验失败（magic cookie / transaction id / 属性边界不符），已丢弃坏包"
+		;;
+	esac
+}
+
+# 探测结果全局变量：
+#   LC_STUN_OK(0/1) LC_STUN_TYPE LC_STUN_CONF LC_STUN_DETAIL
+#   LC_STUN_MAPS = 每行 server|ip|status|mapped|rtt
+_lc_stun_probe() { # <device> <wan_ip> <wan_class>
+	_pdev=$1
+	_pwan=$2
+	_pclass=$3
+	LC_STUN_OK=0
+	LC_STUN_TYPE=unknown
+	LC_STUN_CONF=unknown
+	LC_STUN_DETAIL=""
+	LC_STUN_MAPS=""
+
+	_lport=$(_lc_local_port)
+	LC_STUN_LPORT=$_lport
+	# STUN 固定 2s（可行性报告 §2.6 的 socat -T 2）：UDP 首包要么几十 ms
+	# 回来，要么就是被丢弃，等 3s 只会让整次体检越过 rpcd 预算。
+	_lsto=2
+
+	# 夹具目录模式：用真实二进制包走完整解析（selftest / VM 回归用）。
+	# 目录里放 stun-1.bin / stun-2.bin；空文件表示超时。
+	if [ -n "${ISP_SPLIT_LC_STUN_FIXTURE_DIR:-}" ]; then
+		_i=0
+		for _f in "$ISP_SPLIT_LC_STUN_FIXTURE_DIR/stun-1.bin" "$ISP_SPLIT_LC_STUN_FIXTURE_DIR/stun-2.bin"; do
+			_i=$((_i + 1))
+			if [ -s "$_f" ]; then
+				_m=$(_lc_stun_parse "$_f" 112233445566778899aabbcc)
+				if [ -n "$_m" ]; then
+					LC_STUN_MAPS="${LC_STUN_MAPS}fixture-${_i}|198.51.100.${_i}|ok|$(printf '%s' "$_m" | tr ' ' ':')|1
+"
+				else
+					LC_STUN_MAPS="${LC_STUN_MAPS}fixture-${_i}|198.51.100.${_i}|bad|-|-
+"
+				fi
+			else
+				LC_STUN_MAPS="${LC_STUN_MAPS}fixture-${_i}|198.51.100.${_i}|timeout|-|-
+"
+			fi
+		done
+		_m1=$(printf '%s
+' "$LC_STUN_MAPS" | awk -F'|' '$3=="ok"{print $4; exit}')
+		_m2=$(printf '%s
+' "$LC_STUN_MAPS" | awk -F'|' '$3=="ok"{n++; if(n==2){print $4; exit}}')
+		_v=$(_lc_nat_verdict "$_pwan" "$_pclass" "${_m1:--}" "${_m2:--}" "$_lport")
+		LC_STUN_TYPE=${_v%%|*}
+		_v=${_v#*|}
+		LC_STUN_CONF=${_v%%|*}
+		LC_STUN_DETAIL=${_v#*|}
+		[ "$LC_STUN_TYPE" != "unknown" ] && LC_STUN_OK=1
+		_lc_stun_bad_detail
+		return 0
+	fi
+
+	# 夹具模式：ISP_SPLIT_LC_STUN="ok:1.2.3.4:40000|timeout"
+	if [ -n "${ISP_SPLIT_LC_STUN:-}" ]; then
+		_i=0
+		_old_ifs=$IFS
+		IFS='|'
+		for _spec in $ISP_SPLIT_LC_STUN; do
+			_i=$((_i + 1))
+			IFS=$_old_ifs
+			case "$_spec" in
+			ok:*)
+				_val=${_spec#ok:}
+				_mapped=${_val%:*}
+				_mport=${_val#*:}
+				LC_STUN_MAPS="${LC_STUN_MAPS}fixture-${_i}|198.51.100.${_i}|ok|${_mapped}:${_mport}|1
+"
+				;;
+			bad)
+				LC_STUN_MAPS="${LC_STUN_MAPS}fixture-${_i}|198.51.100.${_i}|bad|-|-
+"
+				;;
+			*)
+				LC_STUN_MAPS="${LC_STUN_MAPS}fixture-${_i}|198.51.100.${_i}|timeout|-|-
+"
+				;;
+			esac
+		done
+		IFS=$_old_ifs
+		_m1=$(printf '%s\n' "$LC_STUN_MAPS" | awk -F'|' '$3=="ok"{print $4; exit}')
+		_m2=$(printf '%s\n' "$LC_STUN_MAPS" | awk -F'|' '$3=="ok"{n++; if(n==2){print $4; exit}}')
+		_v=$(_lc_nat_verdict "$_pwan" "$_pclass" "${_m1:--}" "${_m2:--}" "$_lport")
+		LC_STUN_TYPE=${_v%%|*}
+		_v=${_v#*|}
+		LC_STUN_CONF=${_v%%|*}
+		LC_STUN_DETAIL=${_v#*|}
+		[ "$LC_STUN_TYPE" != "unknown" ] && LC_STUN_OK=1
+		_lc_stun_bad_detail
+		return 0
+	fi
+
+	if [ "${ISP_SPLIT_LC_NO_SOCAT:-0}" = "1" ] || ! command -v socat >/dev/null 2>&1; then
+		LC_STUN_DETAIL="socat 未安装，无法做 UDP STUN；安装 socat 后可获得 NAT 类型（opkg install socat / apk add socat）"
+		LC_STUN_TYPE=unknown
+		LC_STUN_CONF=unknown
+		LC_STUN_LPORT=0
+		return 0
+	fi
+
+	# 解析服务器：每家只做一次 DNS，第一个 A 记录进主列表、第二个进备列表，
+	# 主列表优先（保证厂商多样性），避免对同一个失败域名反复 nslookup。
+	_srv_main=""
+	_srv_alt=""
+	_old_ifs=$IFS
+	for _s in $(_lc_stun_raw); do
+		IFS=$_old_ifs
+		_sh=${_s%:*}
+		_sp=${_s#*:}
+		_lc_valid_host "$_sh" || continue
+		_lc_valid_port "$_sp" || continue
+		_sips=$(_lc_resolve "$_sh" 2)
+		set -- $_sips
+		if [ $# -ge 1 ]; then
+			_dup=0
+			for _x in $_srv_main $_srv_alt; do
+				case "$_x" in "$1:"*) _dup=1 ;; esac
+			done
+			[ "$_dup" = "0" ] && _srv_main="$_srv_main $1:$_sp:$_sh"
+		fi
+		if [ $# -ge 2 ]; then
+			_dup=0
+			for _x in $_srv_main $_srv_alt; do
+				case "$_x" in "$2:"*) _dup=1 ;; esac
+			done
+			[ "$_dup" = "0" ] && _srv_alt="$_srv_alt $2:$_sp:$_sh"
+		fi
+	done
+	IFS=$_old_ifs
+	# SEC S2：_srv_main/_srv_alt 都为空时，旧写法 "=" 拼出来是一个空格，
+	# `[ -z "$_srv_list" ]` 判不出来；随后 `set -- $_srv_list` 得到 0 个
+	# 参数，`$1` 在 set -u 下直接让整条 WAN 的结果丢失。这里按拼接后的
+	# 非空白内容判空，并保证后面重试分支只在确实有服务器时才展开。
+	_srv_list=""
+	if [ -n "${_srv_main}${_srv_alt}" ]; then
+		_srv_list="$_srv_main $_srv_alt"
+	fi
+	if [ -z "$_srv_list" ]; then
+		LC_STUN_DETAIL="STUN 服务器域名全部解析失败（检查 DNS 或 LINE_CHECK_STUN_SERVERS）"
+		LC_STUN_TYPE=unknown
+		LC_STUN_CONF=unknown
+		return 0
+	fi
+
+	_probe() { # <server-spec> <index>
+		_ps=$1
+		_pi=$2
+		_pip=${_ps%%:*}
+		_prest=${_ps#*:}
+		_pport=${_prest%%:*}
+		_phost=${_prest#*:}
+		_r=$(_lc_stun_once "$_pdev" "$_pip" "$_pport" "$_lport" "$_lsto")
+		_probe_ok=0
+		if [ -n "$_r" ]; then
+			set -- $_r
+			LC_STUN_MAPS="${LC_STUN_MAPS}${_phost}|${_pip}|ok|${1}:${2}|${3}
+"
+			_probe_ok=1
+		else
+			LC_STUN_MAPS="${LC_STUN_MAPS}${_phost}|${_pip}|timeout|-|-
+"
+		fi
+	}
+	_pn=0
+	_pok=0
+	for _s in $_srv_list; do
+		[ "$_pn" -ge 4 ] && break
+		[ -n "${LC_BUDGET:-}" ] && _lc_deadline_hit && break
+		[ "$_pok" -ge 2 ] && break
+		_pn=$((_pn + 1))
+		_probe "$_s" "$_pn"
+		[ "${_probe_ok:-0}" = "1" ] && _pok=$((_pok + 1))
+	done
+	# 一个都没成功且预算还够：把第一个再试一次（UDP 首包偶发丢包）。
+	# 即使上面的判空被绕过，也先用 $# 确认展开后确实有参数，绝不裸用 $1。
+	if [ "$_pok" -eq 0 ] && ! _lc_deadline_hit; then
+		set -- $_srv_list
+		[ $# -ge 1 ] && _probe "$1" 1
+	fi
+
+	_m1=$(printf '%s\n' "$LC_STUN_MAPS" | awk -F'|' '$3=="ok"{print $4; exit}')
+	_m2=$(printf '%s\n' "$LC_STUN_MAPS" | awk -F'|' '$3=="ok"{n++; if(n==2){print $4; exit}}')
+	_v=$(_lc_nat_verdict "$_pwan" "$_pclass" "${_m1:--}" "${_m2:--}" "$_lport")
+	LC_STUN_TYPE=${_v%%|*}
+	_v=${_v#*|}
+	LC_STUN_CONF=${_v%%|*}
+	LC_STUN_DETAIL=${_v#*|}
+	[ "$LC_STUN_TYPE" != "unknown" ] && LC_STUN_OK=1
+	_lc_stun_bad_detail
+}
+
+# ---- 延迟 / 可用性 ----
+
+# DNS 段：curl 的 time_namelookup 只有在不钉 IP 时才有意义。
+# 这里单独发一个 http:// 请求（只取 DNS 计时，最多 2s），真正的四段测量
+# 用 --resolve 钉到已校验 IP，避免 GSLB 二次解析换 IP。
+_lc_dns_ms() { # <device> <domain>
+	_dv=$1
+	_dm=$2
+	if [ -n "${ISP_SPLIT_LC_LAT:-}" ]; then
+		printf '%s' "$(_lc_lat_get dns 0)"
+		return 0
+	fi
+	command -v curl >/dev/null 2>&1 || { printf '0'; return 0; }
+	_v=$(curl -sS --interface "$_dv" --connect-timeout 1 -m 2 -o /dev/null \
+		-w '%{time_namelookup}' "http://$_dm/" 2>/dev/null)
+	_lc_ms "${_v:-0}"
+}
+
+_lc_lat_get() { # <key> <default> 从 ISP_SPLIT_LC_LAT="dns=2,tcp=30,..." 取
+	_k=$1
+	_d=${2-}
+	printf '%s' "${ISP_SPLIT_LC_LAT:-}" | tr ',' '\n' | awk -F= -v k="$_k" -v d="$_d" '
+		$1 == k { print $2; found = 1; exit }
+		END { if (!found) print d }'
+}
+
+# 测量一个已校验目标：5 次尝试，前 3 次成功样本用于中位数/抖动。
+# 设置 LC_DNS_MS LC_TCP_MS LC_TLS_MS LC_TTFB_MS LC_TOTAL_MS
+#      LC_SAMPLES LC_JITTER LC_LOSS LC_ATTEMPTS LC_OK_COUNT
+#      LC_HTTP_CODE LC_AVAIL
+_lc_measure() { # <device> <domain> <ip> <timeout> [fast]
+	_mdev=$1
+	_mdom=$2
+	_mip=$3
+	_mto=$4
+	_mfast=${5:-0}
+	# 连接超时最多 2s：一条需要 >2s 才能建连的线已经不值得等 3s，
+	# 而且失败目标的早停能把整次体检压进 rpcd 预算。
+	_ct=$_mto
+	[ "$_ct" -gt 2 ] && _ct=2
+	LC_DNS_MS=$(_lc_dns_ms "$_mdev" "$_mdom")
+	LC_TCP_MS=""
+	LC_TLS_MS=""
+	LC_TTFB_MS=""
+	LC_TOTAL_MS=""
+	LC_SAMPLES=""
+	LC_JITTER=0
+	LC_LOSS=100
+	LC_ATTEMPTS=0
+	LC_OK_COUNT=0
+	LC_HTTP_CODE=0
+	LC_AVAIL=none
+
+	if [ -n "${ISP_SPLIT_LC_LAT:-}" ]; then
+		LC_TCP_MS=$(_lc_lat_get tcp 0)
+		LC_TLS_MS=$(_lc_lat_get tls 0)
+		LC_TTFB_MS=$(_lc_lat_get ttfb 0)
+		LC_TOTAL_MS=$(_lc_lat_get total 0)
+		LC_JITTER=$(_lc_lat_get jitter 0)
+		LC_LOSS=$(_lc_lat_get loss 0)
+		LC_HTTP_CODE=$(_lc_lat_get http 200)
+		LC_ATTEMPTS=$(_lc_lat_get attempts 5)
+		LC_OK_COUNT=$((LC_ATTEMPTS - (LC_ATTEMPTS * LC_LOSS / 100)))
+		LC_SAMPLES=$(_lc_lat_get samples "$LC_TCP_MS")
+		LC_AVAIL=$(_lc_lat_get avail)
+		[ -n "$LC_AVAIL" ] || _lc_avail_from "$LC_HTTP_CODE" 1 1
+		return 0
+	fi
+
+	command -v curl >/dev/null 2>&1 || return 0
+	_ua=$(_lc_ua)
+	_acc=$(_lc_opt LINE_CHECK_ACCEPT "$LC_DEFAULT_ACCEPT")
+	_best_code=0
+	_any_tls=0
+	_any_http=0
+	_http_code=0
+
+	while [ "$LC_ATTEMPTS" -lt 5 ]; do
+		LC_ATTEMPTS=$((LC_ATTEMPTS + 1))
+		_out=$(curl -sS --interface "$_mdev" --resolve "$_mdom:443:$_mip" \
+			--connect-timeout "$_ct" -m $((_ct * 2)) \
+			-A "$_ua" -H "Accept: $_acc" -r 0-0 -o /dev/null \
+			-w '%{time_connect} %{time_appconnect} %{time_starttransfer} %{time_total} %{http_code} %{remote_ip}' \
+			"https://$_mdom/" 2>/dev/null)
+		_rc=$?
+		# curl 失败时 -w 仍会打印（多为 0 000），逐字段解析，不依赖退出码
+		set -- $_out
+		_c=${1:-0}
+		_a=${2:-0}
+		_s=${3:-0}
+		_t=${4:-0}
+		_code=${5:-000}
+		_rip=${6:-}
+		case "$_code" in '' | *[!0-9]*) _code=0 ;; esac
+		_http_code=$_code
+
+		if [ "$_rc" -eq 0 ] && [ -n "$_rip" ] && [ "$_rip" = "$_mip" ]; then
+			_tcpm=$(_lc_ms "$_c")
+			LC_OK_COUNT=$((LC_OK_COUNT + 1))
+			[ -z "$LC_TCP_MS" ] && LC_TCP_MS=$_tcpm
+			LC_SAMPLES="$LC_SAMPLES $_tcpm"
+			LC_TLS_MS=$(_lc_ms "$_a")
+			LC_TTFB_MS=$(_lc_ms "$_s")
+			LC_TOTAL_MS=$(_lc_ms "$_t")
+			_best_code=$_code
+			[ "$_a" != "0.000000" ] && [ "$_a" != "0" ] && _any_tls=1
+			[ "$_code" -gt 0 ] 2>/dev/null && _any_http=1
+		else
+			# 早停：跨网基线只试 1 次；同网目标最多 2 次。避免 5×超时拖死整页
+			[ "$LC_OK_COUNT" -eq 0 ] && { [ "$_mfast" = "1" ] || [ "$LC_ATTEMPTS" -ge 2 ]; } && break
+		fi
+		[ "$LC_OK_COUNT" -ge 3 ] && [ "$LC_ATTEMPTS" -ge 5 ] && break
+	done
+
+	LC_SAMPLES=$(printf '%s' "$LC_SAMPLES" | sed 's/^ *//')
+	if [ "$LC_OK_COUNT" -gt 0 ]; then
+		LC_TCP_MS=$(_lc_median "$LC_SAMPLES")
+		LC_JITTER=$(_lc_jitter "$LC_SAMPLES")
+		LC_LOSS=$(( (LC_ATTEMPTS - LC_OK_COUNT) * 100 / LC_ATTEMPTS ))
+		LC_HTTP_CODE=$_best_code
+		if [ "$_any_http" = "1" ]; then
+			case "$_best_code" in
+			2* | 3*) _lc_avail_from "$_best_code" 1 1 ;;
+			4*) _lc_avail_from "$_best_code" 1 1 ;;
+			5*) _lc_avail_from "$_best_code" 1 1 ;;
+			*) _lc_avail_from "$_best_code" "$_any_tls" 1 ;;
+			esac
+		elif [ "$_any_tls" = "1" ]; then
+			LC_AVAIL=tlsfail
+		else
+			LC_AVAIL=full
+		fi
+	else
+		if [ "$LC_DNS_MS" -gt 0 ] 2>/dev/null; then
+			LC_AVAIL=tcpfail
+		else
+			LC_AVAIL=dnsfail
+		fi
+		LC_HTTP_CODE=0
+	fi
+}
+
+_lc_avail_from() { # <http_code> <tls_ok> <tcp_ok>
+	case "${1:-0}" in
+	2* | 3*) LC_AVAIL=full ;;
+	4*) LC_AVAIL=waf ;;
+	5*) LC_AVAIL=http5xx ;;
+	*)
+		if [ "${2:-0}" = "1" ]; then LC_AVAIL=tlsfail
+		elif [ "${3:-0}" = "1" ]; then LC_AVAIL=tcpfail
+		else LC_AVAIL=dnsfail
+		fi
+		;;
+	esac
+}
+
+# ---- 归属地（只发出口 IP） ----
+
+_lc_geo_cache_get() { # <ip> <provider>
+	[ -f "$LC_GEO" ] || return 1
+	awk -F'\t' -v ip="$1" -v p="$2" -v now="$(_lc_now)" -v ttl="$(_lc_geo_ttl)" '
+		$1 == ip && $2 == p && (now - $4) < ttl { print $3; exit }' "$LC_GEO" 2>/dev/null
+}
+
+_lc_geo_ttl() {
+	_t=$(_lc_int "$(_lc_opt LINE_CHECK_GEO_TTL 86400)")
+	[ "$_t" -ge 60 ] 2>/dev/null || _t=86400
+	printf '%s' "$_t"
+}
+
+_lc_geo_cache_put() { # <ip> <provider> <text>
+	[ -n "${1:-}" ] || return 0
+	# 写在缓存目录之外：缓存目录整体替换时不能把归属地缓存一起带走（旧实现
+	# 既丢缓存，又会在探测中途凭空造出一个没有 meta 的半截缓存目录）。
+	mkdir -p "$STATE_DIR" 2>/dev/null || return 0
+	printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$(_lc_now)" >>"$LC_GEO" 2>/dev/null || true
+	# 只保留最近 200 条，防止长期运行把 state 撑大
+	if [ -f "$LC_GEO" ]; then
+		tail -n 200 "$LC_GEO" >"$LC_GEO.$$" 2>/dev/null &&
+			mv -f "$LC_GEO.$$" "$LC_GEO" 2>/dev/null || rm -f "$LC_GEO.$$"
+	fi
+}
+
+_lc_geo_query() { # <ip> <provider>
+	case "$2" in
+	baidu)
+		_r=$(curl -sS -m 2 --connect-timeout 2 \
+			"https://opendata.baidu.com/api.php?query=$1&resource_id=6006&oe=utf8" 2>/dev/null)
+		[ -n "$_r" ] || return 1
+		_loc=$(printf '%s' "$_r" | jsonfilter -e '@.data[0].location' 2>/dev/null)
+		[ -n "$_loc" ] && [ "$_loc" != "null" ] || return 1
+		printf '%s' "$_loc"
+		;;
+	ip-api)
+		_r=$(curl -sS -m 2 --connect-timeout 2 \
+			"http://ip-api.com/json/$1?lang=zh-CN&fields=status,country,regionName,city,isp" 2>/dev/null)
+		[ -n "$_r" ] || return 1
+		_st=$(printf '%s' "$_r" | jsonfilter -e '@.status' 2>/dev/null)
+		[ "$_st" = "success" ] || return 1
+		_c=$(printf '%s' "$_r" | jsonfilter -e '@.country' 2>/dev/null)
+		_rg=$(printf '%s' "$_r" | jsonfilter -e '@.regionName' 2>/dev/null)
+		_ci=$(printf '%s' "$_r" | jsonfilter -e '@.city' 2>/dev/null)
+		_isp=$(printf '%s' "$_r" | jsonfilter -e '@.isp' 2>/dev/null)
+		printf '%s %s %s %s' "$_c" "$_rg" "$_ci" "$_isp" | sed 's/  */ /g; s/^ //; s/ $//'
+		;;
+	*) return 1 ;;
+	esac
+}
+
+# 设置 LC_GEO_STATUS(ok|off|noip|unknown) LC_GEO_TEXT LC_GEO_PROVIDER LC_GEO_IP
+_lc_geo() { # <exit_ip> <wan_ip> <wan_class>
+	_geo_en=$(_lc_opt LINE_CHECK_GEO 1)
+	_geo_prov=$(_lc_opt LINE_CHECK_GEO_PROVIDER auto)
+	case "$_geo_prov" in auto | baidu | ip-api | off) ;; *) _geo_prov=auto ;; esac
+	LC_GEO_PROVIDER=$_geo_prov
+	LC_GEO_TEXT=""
+	LC_GEO_IP=""
+	if [ "$_geo_en" = "0" ] || [ "$_geo_prov" = "off" ]; then
+		LC_GEO_STATUS=off
+		return 0
+	fi
+	_ip=${1:-}
+	[ -n "$_ip" ] || { LC_GEO_STATUS=noip; return 0; }
+	LC_GEO_IP=$_ip
+
+	if [ -n "${ISP_SPLIT_LC_GEO_TEXT:-}" ]; then
+		LC_GEO_STATUS=ok
+		LC_GEO_TEXT=${ISP_SPLIT_LC_GEO_TEXT%%|*}
+		_p=${ISP_SPLIT_LC_GEO_TEXT#*|}
+		[ "$_p" != "$ISP_SPLIT_LC_GEO_TEXT" ] && LC_GEO_PROVIDER=$_p
+		return 0
+	fi
+
+	_provs="baidu ip-api"
+	[ "$_geo_prov" = "auto" ] || _provs=$_geo_prov
+	for _p in $_provs; do
+		_c=$(_lc_geo_cache_get "$_ip" "$_p")
+		if [ -n "$_c" ]; then
+			LC_GEO_STATUS=ok
+			LC_GEO_TEXT=$_c
+			LC_GEO_PROVIDER=$_p
+			return 0
+		fi
+		_t=$(_lc_geo_query "$_ip" "$_p")
+		if [ -n "$_t" ]; then
+			LC_GEO_STATUS=ok
+			LC_GEO_TEXT=$_t
+			LC_GEO_PROVIDER=$_p
+			_lc_geo_cache_put "$_ip" "$_p" "$_t"
+			return 0
+		fi
+	done
+	LC_GEO_STATUS=unknown
+}
+
+# ---- 评分（报告 §6 规则表 + 硬上限） ----
+
+_lc_grade() {
+	case "$1" in
+	'' | *[!0-9]*) printf 'D' ;;
+	*)
+		if [ "$1" -ge 85 ]; then printf 'A'
+		elif [ "$1" -ge 70 ]; then printf 'B'
+		elif [ "$1" -ge 50 ]; then printf 'C'
+		else printf 'D'; fi
+		;;
+	esac
+}
+
+_lc_lat_points() {
+	case "${1:-}" in '' | *[!0-9]* | 0) printf '0'; return ;; esac
+	if [ "$1" -le 20 ]; then printf '30'
+	elif [ "$1" -le 40 ]; then printf '26'
+	elif [ "$1" -le 70 ]; then printf '20'
+	elif [ "$1" -le 110 ]; then printf '12'
+	elif [ "$1" -le 160 ]; then printf '5'
+	else printf '0'; fi
+}
+
+_lc_stab_points() { # <jitter> <loss> -> 0-25
+	_j=${1:-0}
+	_l=${2:-100}
+	case "$_j" in '' | *[!0-9]*) _j=999 ;; esac
+	if [ "$_j" -le 5 ]; then _jp=15
+	elif [ "$_j" -le 15 ]; then _jp=10
+	elif [ "$_j" -le 30 ]; then _jp=5
+	else _jp=0; fi
+	case "$_l" in '' | *[!0-9]*) _l=100 ;; esac
+	if [ "$_l" -eq 0 ]; then _lp=10
+	elif [ "$_l" -le 20 ]; then _lp=6
+	elif [ "$_l" -le 50 ]; then _lp=2
+	else _lp=0; fi
+	printf '%s' $((_jp + _lp))
+}
+
+_lc_score() { # <nat> <tcp> <jitter> <loss> <avail> <same_isp> <wan_up>
+	_snat=$1
+	_stcp=$2
+	_sjit=${3:-0}
+	_sloss=${4:-100}
+	_savail=${5:-none}
+	_ssame=${6:-0}
+	_sup=${7:-0}
+
+	case "$_snat" in
+	public) _np=30 ;;
+	cone) _np=20 ;;
+	symmetric) _np=8 ;;
+	cgnat) _np=0 ;;
+	*) _np=10 ;;
+	esac
+	_lp=$(_lc_lat_points "$_stcp")
+	# 没有同运营商目标、只有跨网基线：延迟项最高 15 分
+	[ "$_ssame" = "1" ] || { [ "$_lp" -gt 15 ] && _lp=15; }
+	_sp=$(_lc_stab_points "$_sjit" "$_sloss")
+	case "$_savail" in
+	full) _ap=15 ;;
+	waf) _ap=12 ;;
+	http5xx | tlsfail) _ap=8 ;;
+	*) _ap=0 ;;
+	esac
+
+	if [ "$_sup" != "1" ]; then
+		# 线路没连上时四项都不该给分，明细也要如实显示 0，不能只把总分抹成 0
+		_np=0; _lp=0; _sp=0; _ap=0
+	fi
+	_tot=$((_np + _lp + _sp + _ap))
+	_caps=""
+	_capped=0
+	if [ "$_sup" != "1" ]; then
+		_tot=0
+		_capped=1
+		_caps="WAN 未连接/拨号失败：总分 0"
+	fi
+	case "$_snat" in
+	cgnat)
+		if [ "$_tot" -gt 69 ]; then _tot=69; _capped=1; fi
+		_caps="$_caps
+CGNAT/多层 NAT：总分上限 69"
+		;;
+	symmetric)
+		if [ "$_tot" -gt 69 ]; then _tot=69; _capped=1; fi
+		_caps="$_caps
+对称/多出口 NAT：总分上限 69"
+		;;
+	esac
+	case "$_sloss" in
+	'' | *[!0-9]*) _sloss=100 ;;
+	esac
+	if [ "$_sloss" -gt 20 ]; then
+		[ "$_tot" -gt 69 ] && _tot=69 && _capped=1
+		_caps="$_caps
+丢包 > 20%：总分上限 69"
+	fi
+	if [ "$_ssame" = "1" ] && { [ -z "$_stcp" ] || [ "$_stcp" -gt 160 ] 2>/dev/null; }; then
+		[ "$_tot" -gt 69 ] && _tot=69 && _capped=1
+		_caps="$_caps
+同网目标 >160ms 或全部超时：总分上限 69"
+	fi
+	_caps=$(printf '%s\n' "$_caps" | sed '/^$/d')
+
+	SC_TOTAL=$_tot
+	SC_GRADE=$(_lc_grade "$_tot")
+	SC_NAT_PTS=$_np
+	SC_LAT_PTS=$_lp
+	SC_STAB_PTS=$_sp
+	SC_AVAIL_PTS=$_ap
+	SC_CAPS=$_caps
+	SC_CAPPED=$_capped
+}
+
+_lc_advice() { # <label> <nat> <grade> <loss> <tcp> <same> <socat>
+	_adv_label=$1
+	_adv_nat=$2
+	_adv_grade=$3
+	_adv_loss=${4:-0}
+	_adv_tcp=${5:-}
+	_adv_same=${6:-0}
+	_adv_socat=${7:-1}
+
+	case "$_adv_nat" in
+	cgnat)
+		printf '%s 为 CGNAT/多层 NAT，端口映射不可用；如需外网访问请申请公网 IP，或使用 IPv6/内网穿透。' "$_adv_label" ;;
+	symmetric)
+		printf '%s 是对称/多出口 NAT，P2P 与端口映射成功率低；日常上网不受影响。' "$_adv_label" ;;
+	unknown)
+		if [ "$_adv_socat" = "0" ]; then
+			printf '%s 的 NAT 类型未知：socat 未安装，安装后可补测（不影响上网）。' "$_adv_label"
+		else
+			printf '%s 的 NAT 类型未知：UDP STUN 探测失败，可能被运营商阻断 3478；不影响上网。' "$_adv_label"
+		fi ;;
+	public)
+		if [ "$_adv_grade" = "A" ]; then
+			printf '%s 公网直连，质量良好，可作主用线路。' "$_adv_label"
+		else
+			printf '%s 公网直连，端口映射可用；当前质量一般，建议结合评分明细排查。' "$_adv_label"
+		fi ;;
+	cone)
+		printf '%s 为锥形 NAT（未细分），端口映射可能可用，需在防火墙放行后实测。' "$_adv_label" ;;
+	*)
+		printf '%s 线路状态未知，请先确认 WAN 已连接。' "$_adv_label" ;;
+	esac
+
+	if [ "$_adv_loss" -gt 20 ] 2>/dev/null; then
+		printf ' 丢包偏高（%s%%），建议检查光猫/线路质量。' "$_adv_loss"
+	elif [ -n "$_adv_tcp" ] && [ "$_adv_tcp" -gt 160 ] 2>/dev/null; then
+		printf ' 同网延迟偏高（%sms），建议检查线路拥塞或更换目标。' "$_adv_tcp"
+	elif [ "$_adv_same" != "1" ]; then
+		printf ' 未找到可用的同运营商目标，延迟为跨网参考值。'
+	fi
+}
+
+# ---- 输出 ----
+
+_lc_isp_label() {
+	_l=$(_isp_label "${1:-}")
+	[ -n "$_l" ] || _l="未知"
+	printf '%s' "$_l"
+}
+
+_lc_nat_label() {
+	case "$1" in
+	public) printf '公网（可直接映射）' ;;
+	cone) printf '锥形 NAT（未细分）' ;;
+	symmetric) printf '对称/多出口 NAT' ;;
+	cgnat) printf 'CGNAT / 多层 NAT' ;;
+	*) printf '未知（UDP 探测失败）' ;;
+	esac
+}
+
+_lc_class_label() {
+	case "$1" in
+	public) printf '公网' ;;
+	cgnat) printf 'CGNAT' ;;
+	private) printf '私网' ;;
+	*) printf '无地址' ;;
+	esac
+}
+
+_lc_avail_label() {
+	case "$1" in
+	full) printf 'DNS/TCP/TLS/HTTP 全通' ;;
+	waf) printf '可达但被 WAF 拦截（4xx）' ;;
+	http5xx) printf 'HTTP 5xx' ;;
+	tlsfail) printf 'TLS 握手失败' ;;
+	tcpfail) printf 'TCP 连接失败' ;;
+	dnsfail) printf 'DNS 解析失败' ;;
+	*) printf '未探测' ;;
+	esac
+}
+
+_lc_stun_probes_json() {
+	printf '['
+	_first=1
+	printf '%s\n' "$LC_STUN_MAPS" | while IFS='|' read -r _srv _sip _st _map _rtt; do
+		[ -n "$_srv" ] || continue
+		[ "$_first" = "1" ] || printf ','
+		_first=0
+		_rttn=0
+		case "$_rtt" in '' | *[!0-9]*) _rttn=0 ;; *) _rttn=$_rtt ;; esac
+		printf '{"server":%s,"ip":%s,"status":%s,"mapped":%s,"rtt_ms":%s}' \
+			"$(_lc_json_str "$_srv")" "$(_lc_json_str "$_sip")" \
+			"$(_lc_json_str "$_st")" \
+			"$([ "$_map" = "-" ] && printf 'null' || _lc_json_str "$_map")" \
+			"$_rttn"
+	done
+	printf ']'
+}
+
+_lc_target_json() {
+	if [ -z "${LC_T_DOMAIN:-}" ]; then
+		printf 'null'
+		return
+	fi
+	printf '{"domain":%s,"ip":%s,"isp":%s,"label":%s,"mode":%s,"validated":%s}' \
+		"$(_lc_json_str "$LC_T_DOMAIN")" "$(_lc_json_str "$LC_T_IP")" \
+		"$(_lc_json_str "$LC_T_ISP")" "$(_lc_json_str "$(_isp_label "$LC_T_ISP")")" \
+		"$(_lc_json_str "$LC_T_MODE")" \
+		"$([ "$LC_T_VALID" = "1" ] && printf 'true' || printf 'false')"
+}
+
+_lc_wan_json() {
+	_upj=false; [ "$LC_UP" = "1" ] && _upj=true
+	_exj=false; [ "$LC_EXIT_OK" = "1" ] && _exj=true
+	_mj=false; [ "$LC_MULTI" = "1" ] && _mj=true
+	_httpj=false; [ "${LC_HTTP_CODE:-0}" -ge 200 ] 2>/dev/null && [ "${LC_HTTP_CODE:-0}" -lt 500 ] 2>/dev/null && _httpj=true
+
+	_tcpj=null; [ -n "${LC_TCP_MS:-}" ] && _tcpj=$LC_TCP_MS
+	_dnsj=null; [ -n "${LC_DNS_MS:-}" ] && _dnsj=$LC_DNS_MS
+	_tlsj=null; [ -n "${LC_TLS_MS:-}" ] && _tlsj=$LC_TLS_MS
+	_ttfbj=null; [ -n "${LC_TTFB_MS:-}" ] && _ttfbj=$LC_TTFB_MS
+	_totalj=null; [ -n "${LC_TOTAL_MS:-}" ] && _totalj=$LC_TOTAL_MS
+	_exipj=null; [ -n "${LC_EXIT_IP:-}" ] && _exipj=$(_lc_json_str "$LC_EXIT_IP")
+	_wanipj=null; [ -n "${LC_WAN_IP:-}" ] && _wanipj=$(_lc_json_str "$LC_WAN_IP")
+	_geolocj=null; [ -n "${LC_GEO_TEXT:-}" ] && _geolocj=$(_lc_json_str "$LC_GEO_TEXT")
+
+	printf '{'
+	printf '"iface":%s,"device":%s,"up":%s,"state":%s,"wan_ip":%s,"ip_class":%s,' \
+		"$(_lc_json_str "$LC_IFACE")" "$(_lc_json_str "$LC_DEV")" "$_upj" \
+		"$(_lc_json_str "$LC_STATE")" "$_wanipj" "$(_lc_json_str "$LC_IP_CLASS")"
+	printf '"exit_ip":%s,"exit_ok":%s,"multi_nat":%s,"isp":%s,"isp_label":%s,' \
+		"$_exipj" "$_exj" "$_mj" "$(_lc_json_str "${LC_ISP:-}")" \
+		"$(_lc_json_str "$(_lc_isp_label "${LC_ISP:-}")")"
+	printf '"target":%s,' "$(_lc_target_json)"
+	printf '"latency":{"dns_ms":%s,"tcp_ms":%s,"tls_ms":%s,"ttfb_ms":%s,"total_ms":%s,"jitter_ms":%s,"loss_pct":%s,"attempts":%s,"ok_count":%s,"samples":[%s]},' \
+		"$_dnsj" "$_tcpj" "$_tlsj" "$_ttfbj" "$_totalj" \
+		"$(_lc_int "${LC_JITTER:-0}")" "$(_lc_int "${LC_LOSS:-100}")" \
+		"$(_lc_int "${LC_ATTEMPTS:-0}")" "$(_lc_int "${LC_OK_COUNT:-0}")" \
+		"$(printf '%s' "${LC_SAMPLES:-}" | tr ' ' ',' | sed 's/^,//; s/,$//')"
+	printf '"http":{"code":%s,"ok":%s},' "$(_lc_int "${LC_HTTP_CODE:-0}")" "$_httpj"
+	printf '"geo":{"status":%s,"provider":%s,"location":%s,"ip":%s},' \
+		"$(_lc_json_str "${LC_GEO_STATUS:-unknown}")" "$(_lc_json_str "${LC_GEO_PROVIDER:-}")" \
+		"$_geolocj" "$([ -n "${LC_GEO_IP:-}" ] && _lc_json_str "$LC_GEO_IP" || printf 'null')"
+
+	printf '"nat":{"type":%s,"label":%s,"confidence":%s,"detail":%s,"socat":%s,"local_port":%s,"probes":%s},' \
+		"$(_lc_json_str "$LC_STUN_TYPE")" "$(_lc_json_str "$(_lc_nat_label "$LC_STUN_TYPE")")" \
+		"$(_lc_json_str "$LC_STUN_CONF")" "$(_lc_json_str "$LC_STUN_DETAIL")" \
+		"$([ "${LC_SOCAT:-1}" = "1" ] && printf 'true' || printf 'false')" \
+		"$(_lc_int "${LC_STUN_LPORT:-0}")" "$(_lc_stun_probes_json)"
+
+	_lc_score_json
+	printf '}'
+}
+
+_lc_score_json() {
+	_nat_reason=${LC_STUN_DETAIL:-}
+	[ -n "$_nat_reason" ] || _nat_reason="WAN IP ${LC_WAN_IP:-} 分类为 $(_lc_class_label "$LC_IP_CLASS")"
+	_lat_val="TCP 建连 ${LC_TCP_MS:-—}ms"
+	[ -n "${LC_TCP_MS:-}" ] || _lat_val="不可达"
+	_lat_reason="同网目标 TCP 建连中位数 ${LC_TCP_MS:-—}ms"
+	[ "$LC_T_SAME" = "1" ] || _lat_reason="跨网基线（无同网目标），延迟项上限 15"
+	_stab_val="抖动 ${LC_JITTER:-0}ms / 丢包 ${LC_LOSS:-100}%"
+	_stab_reason="${LC_ATTEMPTS:-0} 次尝试，${LC_OK_COUNT:-0} 次成功"
+	_av_val=$(_lc_avail_label "$LC_AVAIL")
+
+	printf '"score":{"total":%s,"grade":%s,"breakdown":[' \
+		"$(_lc_int "$SC_TOTAL")" "$(_lc_json_str "$SC_GRADE")"
+	printf '{"key":"nat","label":"出口类型","value":%s,"points":%s,"max":30,"reason":%s},' \
+		"$(_lc_json_str "$(_lc_nat_label "$LC_STUN_TYPE")")" "$SC_NAT_PTS" "$(_lc_json_str "$_nat_reason")"
+	printf '{"key":"latency","label":"延迟","value":%s,"points":%s,"max":30,"reason":%s},' \
+		"$(_lc_json_str "$_lat_val")" "$SC_LAT_PTS" "$(_lc_json_str "$_lat_reason")"
+	printf '{"key":"stability","label":"稳定性","value":%s,"points":%s,"max":25,"reason":%s},' \
+		"$(_lc_json_str "$_stab_val")" "$SC_STAB_PTS" "$(_lc_json_str "$_stab_reason")"
+	printf '{"key":"availability","label":"可用性","value":%s,"points":%s,"max":15,"reason":%s}],' \
+		"$(_lc_json_str "$_av_val")" "$SC_AVAIL_PTS" "$(_lc_json_str "HTTP ${LC_HTTP_CODE:-0}")"
+	printf '"caps":[%s],"advice":%s}' \
+		"$(printf '%s\n' "$SC_CAPS" | awk 'NF{printf "%s%s", (n++ ? "," : ""), "\"" $0 "\""}')" \
+		"$(_lc_json_str "$LC_ADVICE")"
+}
+
+_lc_wan_text() {
+	_lbl=$(_lc_isp_label "${LC_ISP:-}")
+	_tgt="—"
+	if [ -n "${LC_T_DOMAIN:-}" ]; then
+		_tgt="${LC_T_DOMAIN} → ${LC_T_IP}（$(_isp_label "$LC_T_ISP")，$([ "$LC_T_MODE" = "same_isp" ] && printf '同网' || printf '跨网基线')）"
+	fi
+	_exit="—"
+	[ -n "${LC_EXIT_IP:-}" ] && _exit="${LC_EXIT_IP}（多层 NAT：$([ "$LC_MULTI" = "1" ] && printf '是' || printf '否')）"
+	_geo="未查询"
+	case "${LC_GEO_STATUS:-}" in
+	ok) _geo="${LC_GEO_TEXT}（${LC_GEO_PROVIDER}）" ;;
+	off) _geo="未查询（隐私开关关闭）" ;;
+	noip) _geo="无公网出口 IP，跳过" ;;
+	*) _geo="查询失败" ;;
+	esac
+	printf '== %s (%s)  %s\n' "$LC_IFACE" "$LC_DEV" "$([ "$LC_UP" = "1" ] && printf '在线' || printf '离线')"
+	printf '   WAN IP     %s（%s）\n' "${LC_WAN_IP:-—}" "$(_lc_class_label "$LC_IP_CLASS")"
+	printf '   出口 IP    %s\n' "$_exit"
+	printf '   运营商     %s\n' "$_lbl"
+	printf '   目标       %s\n' "$_tgt"
+	printf '   四段延迟   DNS %s · TCP %s · TLS %s · 首字节 %s · 合计 %s\n' \
+		"$(_lc_fmt_ms "${LC_DNS_MS:-}")" "$(_lc_fmt_ms "${LC_TCP_MS:-}")" \
+		"$(_lc_fmt_ms "${LC_TLS_MS:-}")" "$(_lc_fmt_ms "${LC_TTFB_MS:-}")" \
+		"$(_lc_fmt_ms "${LC_TOTAL_MS:-}")"
+	printf '   稳定性     抖动 %sms · 丢包 %s%%（%s 次尝试 / %s 次成功）\n' \
+		"${LC_JITTER:-0}" "${LC_LOSS:-100}" "${LC_ATTEMPTS:-0}" "${LC_OK_COUNT:-0}"
+	printf '   NAT        %s（置信度 %s）\n' "$(_lc_nat_label "$LC_STUN_TYPE")" "$LC_STUN_CONF"
+	[ -n "$LC_STUN_DETAIL" ] && printf '              %s\n' "$LC_STUN_DETAIL"
+	printf '   归属地     %s\n' "$_geo"
+	printf '   评分       %s / 100  %s\n' "$SC_TOTAL" "$SC_GRADE"
+	printf '              出口类型    %-18s %2s/30  %s\n' "$(_lc_nat_label "$LC_STUN_TYPE")" "$SC_NAT_PTS" "$LC_STUN_DETAIL"
+	printf '              延迟        %-18s %2s/30  %s\n' "$(_lc_fmt_ms "${LC_TCP_MS:-}")" "$SC_LAT_PTS" "$([ "$LC_T_SAME" = "1" ] && printf '同网目标' || printf '跨网基线，上限 15')"
+	printf '              稳定性      %-18s %2s/25  %s 次尝试 / %s 次成功\n' "抖动 ${LC_JITTER:-0}ms 丢包 ${LC_LOSS:-100}%" "$SC_STAB_PTS" "${LC_ATTEMPTS:-0}" "${LC_OK_COUNT:-0}"
+	printf '              可用性      %-18s %2s/15  HTTP %s\n' "$(_lc_avail_label "$LC_AVAIL")" "$SC_AVAIL_PTS" "${LC_HTTP_CODE:-0}"
+	if [ -n "$SC_CAPS" ]; then
+		printf '%s\n' "$SC_CAPS" | while IFS= read -r _cap; do
+			[ -n "$_cap" ] && printf '              上限        %s\n' "$_cap"
+		done
+	fi
+	printf '   建议       %s\n' "$LC_ADVICE"
+}
+
+# ---- 目标挑选 ----
+
+_lc_target_valid() { # <源名> <ip>
+	if [ "${ISP_SPLIT_LC_FORCE_SAME:-0}" = "1" ]; then
+		return 0
+	fi
+	_tset=$(_lc_set_for "$1")
+	[ -n "$_tset" ] || return 1
+	command -v nft >/dev/null 2>&1 || return 1
+	nft get element inet mwan3 "$_tset" "{ $2 }" >/dev/null 2>&1
+}
+
+_lc_deadline_hit() {
+	[ $(( $(_lc_now) - LC_START )) -ge "$LC_BUDGET" ]
+}
+
+# 依次尝试：同运营商目标（解析 + @isp_* 校验 + 5 次测量）→ 跨网基线。
+# 返回 0=同网目标 1=跨网基线 2=全部失败
+_lc_pick_target() { # <device> <isp>
+	_ptdev=$1
+	_ptisp=${2:-}
+	LC_T_DOMAIN=""
+	LC_T_IP=""
+	LC_T_ISP=""
+	LC_T_MODE=none
+	LC_T_VALID=0
+	LC_T_SAME=0
+
+	while IFS='	' read -r _src _dom; do
+		[ -n "${_dom:-}" ] || continue
+		_lc_deadline_hit && break
+		for _ip in $(_lc_resolve "$_dom" 2); do
+			_lc_target_valid "$_src" "$_ip" || continue
+			_lc_measure "$_ptdev" "$_dom" "$_ip" "$(_lc_timeout)"
+			if [ "${LC_OK_COUNT:-0}" -gt 0 ]; then
+				LC_T_DOMAIN=$_dom
+				LC_T_IP=$_ip
+				LC_T_ISP=$_src
+				LC_T_MODE=same_isp
+				LC_T_VALID=1
+				LC_T_SAME=1
+				return 0
+			fi
+		done
+	done <<EOF
+$(_lc_target_groups "$_ptisp")
+EOF
+
+	# 兜底：跨网基线只用于"链路是否通"，不计入同网延迟分
+	for _dom in $(printf '%s' "$(_lc_opt LINE_CHECK_BASELINE 'www.baidu.com,www.qq.com')" | tr ',' ' '); do
+		_lc_deadline_hit && break
+		for _ip in $(_lc_resolve "$_dom" 1); do
+			_lc_measure "$_ptdev" "$_dom" "$_ip" "$(_lc_timeout)" 1
+			if [ "${LC_OK_COUNT:-0}" -gt 0 ]; then
+				LC_T_DOMAIN=$_dom
+				LC_T_IP=$_ip
+				LC_T_ISP=""
+				LC_T_MODE=baseline
+				LC_T_VALID=0
+				LC_T_SAME=0
+				return 1
+			fi
+		done
+	done
+	return 2
+}
+
+# ---- 单条 WAN ----
+
+_lc_run_wan() { # <iface> <dev> <up> <state> <wan_ip>
+	LC_IFACE=$1
+	LC_DEV=$2
+	LC_UP=$3
+	LC_STATE=$4
+	LC_WAN_IP=$5
+	LC_IP_CLASS=$(_lc_ip_class "$LC_WAN_IP")
+	LC_EXIT_IP=""
+	LC_EXIT_OK=0
+	LC_MULTI=0
+	LC_ISP=""
+	LC_T_DOMAIN=""
+	LC_T_IP=""
+	LC_T_ISP=""
+	LC_T_MODE=none
+	LC_T_VALID=0
+	LC_T_SAME=0
+	LC_DNS_MS=0
+	LC_TCP_MS=""
+	LC_TLS_MS=""
+	LC_TTFB_MS=""
+	LC_TOTAL_MS=""
+	LC_SAMPLES=""
+	LC_JITTER=0
+	LC_LOSS=100
+	LC_ATTEMPTS=0
+	LC_OK_COUNT=0
+	LC_HTTP_CODE=0
+	LC_AVAIL=none
+	LC_GEO_STATUS=unknown
+	LC_GEO_TEXT=""
+	LC_GEO_PROVIDER=""
+	LC_GEO_IP=""
+	LC_STUN_OK=0
+	LC_STUN_TYPE=unknown
+	LC_STUN_CONF=unknown
+	LC_STUN_DETAIL=""
+	LC_STUN_MAPS=""
+	LC_STUN_LPORT=0
+
+	# 出口 IP：WAN down 时也试一次（可能只是 mwan3 track 失败，链路还在）
+	LC_EXIT_IP=$(_lc_exit_ip "$LC_DEV")
+	if _lc_ip_valid "$LC_EXIT_IP"; then
+		LC_EXIT_OK=1
+	else
+		LC_EXIT_IP=""
+	fi
+
+	# 只有"WAN IP 本身是公网、出口却是另一个公网 IP"才叫多层 NAT/代理；
+	# WAN 是私网/CGNAT 时，出口不同属于正常 NAT，不重复叫多层。
+	if [ "$LC_IP_CLASS" = "public" ] && [ "$LC_EXIT_OK" = "1" ] && [ "$LC_EXIT_IP" != "$LC_WAN_IP" ]; then
+		LC_MULTI=1
+	fi
+
+	# 线路运营商：先看 WAN IP（公网才有意义），再看出口 IP
+	if [ "$LC_IP_CLASS" = "public" ]; then
+		LC_ISP=$(_lc_ip_isp "$LC_WAN_IP")
+	fi
+	if [ -z "$LC_ISP" ] && [ "$LC_EXIT_OK" = "1" ]; then
+		LC_ISP=$(_lc_ip_isp "$LC_EXIT_IP")
+	fi
+	# 自检夹具：强制线路运营商（真实环境不设置，始终以 @isp_* 集合为准）
+	[ -n "${ISP_SPLIT_LC_ISP:-}" ] && LC_ISP=$ISP_SPLIT_LC_ISP
+
+	if [ "$LC_UP" != "1" ]; then
+		LC_STUN_DETAIL="WAN 未连接，跳过探测"
+		LC_GEO_STATUS=noip
+		LC_ADVICE="线路未连接，先检查拨号/物理链路。"
+		LC_STUN_LPORT=0
+		_lc_score "$LC_STUN_TYPE" "" 0 100 none 0 0
+		return 0
+	fi
+
+	# 1) 同网目标 + 四段延迟
+	_lc_pick_target "$LC_DEV" "$LC_ISP"
+	_pick=$?
+	[ "$_pick" = "2" ] && LC_T_MODE=none
+
+	if _lc_deadline_hit; then
+		LC_GEO_STATUS=noip
+		LC_GEO_TEXT=""
+		LC_STUN_DETAIL="超出单次体检预算（${LC_BUDGET}s），已跳过 STUN/归属地"
+		LC_STUN_TYPE=unknown
+		LC_STUN_CONF=unknown
+		_lc_score "$LC_STUN_TYPE" "${LC_TCP_MS:-}" "${LC_JITTER:-0}" "${LC_LOSS:-100}" "$LC_AVAIL" "$LC_T_SAME" "$LC_UP"
+		_lc_make_advice
+		return 0
+	fi
+
+	# 2) 归属地（只发出口 IP；出口取不到但 WAN IP 是公网时用 WAN IP）
+	_geo_ip=${LC_EXIT_IP:-}
+	if [ -z "$_geo_ip" ] && [ "$LC_IP_CLASS" = "public" ]; then
+		_geo_ip=$LC_WAN_IP
+	fi
+	_lc_geo "$_geo_ip" "$LC_WAN_IP" "$LC_IP_CLASS"
+
+	# 3) STUN 双探测
+	LC_STUN_LPORT=$(_lc_local_port)
+	_lc_stun_probe "$LC_DEV" "$LC_WAN_IP" "$LC_IP_CLASS"
+
+	# 4) 评分
+	_lc_score "$LC_STUN_TYPE" "${LC_TCP_MS:-}" "${LC_JITTER:-0}" "${LC_LOSS:-100}" "$LC_AVAIL" "$LC_T_SAME" "$LC_UP"
+	_lc_make_advice
+}
+
+_lc_make_advice() {
+	_alab=$(_isp_label "${LC_ISP:-}")
+	[ -n "$_alab" ] || _alab="WAN ${LC_IFACE}"
+	LC_ADVICE=$(_lc_advice "$_alab" "$LC_STUN_TYPE" "$SC_GRADE" "${LC_LOSS:-0}" "${LC_TCP_MS:-}" "$LC_T_SAME" "${LC_SOCAT:-1}")
+}
+
+# ---- 缓存 / 锁 / 原子落盘 ----
+#
+# BUG-24 复盘：旧实现把工作目录叫 <cache>.tmp.<pid>，而探测过程中
+# _lc_geo_cache_put 还会顺手 mkdir 出“只有 geo.tsv、没有 meta”的 <cache>
+# 目录；一旦本次探测被 rpcd 的 30s exec 超时（或 Ctrl-C / OOM）杀掉：
+#   · <cache> 里没有 meta  → 之后每次都被判“缓存未命中”，60s 间隔形同虚设；
+#   · <cache>.tmp.<pid>    → 没人清，state 目录里越堆越多（实测
+#                            linecheck.tmp.10058 就是这么来的）。
+# 现在：meta + last.json 是缓存有效性的充要条件；探测目录由 trap 清理；每次
+# 启动再扫一遍 pid 已死的残留；geo 缓存挪到 state/linecheck.geo.tsv，不再写进
+# 会被整体替换的缓存目录（旧实现每次探测都会把 geo 缓存一起丢掉）。
+
+LC_CACHE=$STATE_DIR/linecheck
+LC_CACHE_PREV=$STATE_DIR/linecheck.prev
+LC_LOCK=$STATE_DIR/linecheck.lock
+LC_GEO=$STATE_DIR/linecheck.geo.tsv
+LC_LOG=$STATE_DIR/linecheck.log
+# 探测引擎入口（独立 argv，见文件头注释）。缺失时退回进程内探测。
+LC_RUN=${LC_RUN:-$LIB/lc-run}
+LC_LOCK_OWNER=0
+LC_CHILD_PID=""
+_lc_tmp=""
+# STUN 临时文件的真实路径（mktemp 结果）。trap 清理必须用它，不能按 $$ 重拼。
+LC_STUN_REQ=""
+LC_STUN_RESP=""
+
+_lc_cleanup() {
+	# 监督者被信号带走时，别把引擎进程留成孤儿继续探测。
+	if [ -n "${LC_CHILD_PID:-}" ]; then
+		kill "$LC_CHILD_PID" 2>/dev/null || true
+		LC_CHILD_PID=""
+	fi
+	if [ -n "${_lc_tmp:-}" ] && [ -d "$_lc_tmp" ]; then
+		rm -rf "$_lc_tmp" 2>/dev/null
+	fi
+	if [ -n "${LC_STUN_REQ:-}" ]; then
+		rm -f "$LC_STUN_REQ" 2>/dev/null
+		LC_STUN_REQ=""
+	fi
+	if [ -n "${LC_STUN_RESP:-}" ]; then
+		rm -f "$LC_STUN_RESP" 2>/dev/null
+		LC_STUN_RESP=""
+	fi
+	if [ "${LC_LOCK_OWNER:-0}" = "1" ] && [ -d "$LC_LOCK" ]; then
+		[ "$(cat "$LC_LOCK/pid" 2>/dev/null)" = "$$" ] && rm -rf "$LC_LOCK" 2>/dev/null
+	fi
+	return 0
+}
+
+# 信号/退出统一收尾：ash 里 INT/TERM 的 trap 只执行处理函数就继续往下跑，
+# 所以信号分支必须显式 exit，否则探测会“被 Ctrl-C 了但还在跑”。
+_lc_trap_on() {
+	trap '_lc_cleanup' EXIT
+	trap '_lc_cleanup; exit 130' INT TERM HUP
+	return 0
+}
+
+# 崩溃残留清理。分两档：
+#   _lc_sweep_tmp   只删 pid 已死的探测目录——任何一次调用（包括命中缓存、
+#                   --background 直接返回）都可以安全执行，不会碰到正在跑的探测；
+#   _lc_sweep_cache 半截缓存/发布中间态——只在持锁时做，避免和发布者抢。
+_lc_sweep_tmp() {
+	for _d in "$STATE_DIR"/linecheck.tmp.*; do
+		[ -d "$_d" ] || continue
+		_p=${_d##*.}
+		case "$_p" in '' | *[!0-9]*) continue ;; esac
+		kill -0 "$_p" 2>/dev/null || rm -rf "$_d" 2>/dev/null
+	done
+	return 0
+}
+
+_lc_sweep_cache() {
+	if [ -d "$LC_CACHE" ] && { [ ! -f "$LC_CACHE/meta" ] || [ ! -f "$LC_CACHE/last.json" ]; }; then
+		rm -rf "$LC_CACHE" 2>/dev/null
+	fi
+	rm -rf "$LC_CACHE_PREV" 2>/dev/null
+	return 0
+}
+
+_lc_sweep() {
+	_lc_sweep_tmp
+	_lc_sweep_cache
+	return 0
+}
+
+# 锁年龄。started 是锁主写入的 epoch 秒；pid/started 写入有窗口期，
+# 缺失时退回目录 mtime，绝不能把“还没写”当成 epoch 0（旧实现会算出
+# 56 年，于是把刚创建的锁误判成陈旧锁并抢占，SEC S7）。
+_lc_lock_age() {
+	_t=$(cat "$LC_LOCK/started" 2>/dev/null)
+	case "$_t" in '' | *[!0-9]*) _t="" ;; esac
+	if [ -z "$_t" ]; then
+		_t=$(stat -c %Y "$LC_LOCK" 2>/dev/null)
+		case "$_t" in '' | *[!0-9]*) _t="" ;; esac
+	fi
+	if [ -z "$_t" ]; then
+		printf '0'
+		return 0
+	fi
+	_a=$(( $(_lc_now) - _t ))
+	[ "$_a" -ge 0 ] 2>/dev/null || _a=0
+	printf '%s' "$_a"
+}
+
+# 0=拿到锁 1=已有体检在跑（LC_LOCK_PID/LC_LOCK_AGE） 2=建不了锁
+#
+# 竞态修复（SEC S7）：mkdir 成功是唯一原子“持锁”步骤。之后写 started/pid
+# 失败只降级——锁仍然归我们，后来者不得以“内容不全”为由强抢；内容不全
+# 时按目录 mtime 计算年龄，5 秒宽限期覆盖 mkdir -> 写文件 -> exec 的窗口。
+_lc_lock_try() {
+	LC_LOCK_PID=""
+	LC_LOCK_AGE=""
+	mkdir -p "$STATE_DIR" 2>/dev/null || return 2
+	if mkdir "$LC_LOCK" 2>/dev/null; then
+		# 先写 started 再写 pid：任一步失败都不影响“已持锁”的事实。
+		_lc_now >"$LC_LOCK/started" 2>/dev/null || true
+		printf '%s\n' "$$" >"$LC_LOCK/pid" 2>/dev/null || true
+		LC_LOCK_OWNER=1
+		return 0
+	fi
+	_p=$(cat "$LC_LOCK/pid" 2>/dev/null)
+	case "$_p" in '' | *[!0-9]*) _p="" ;; esac
+	_s=$(cat "$LC_LOCK/started" 2>/dev/null)
+	case "$_s" in '' | *[!0-9]*) _s="" ;; esac
+	_age=$(_lc_lock_age)
+	case "$_age" in '' | *[!0-9]*) _age=0 ;; esac
+	# 0) 元数据不全（pid/started 都没写全）= 锁刚 mkdir、持锁者还没写完。
+	#    这种状态只能判 running：宽限期内绝不做陈旧回收，否则 16 连点
+	#    会在“目录已建、文件未落”的窗口里各自抢到一次锁。
+	if [ -z "$_p" ] && [ -z "$_s" ]; then
+		LC_LOCK_AGE=$_age
+		return 1
+	fi
+	# 1) 进程还活着且锁不超过 5 分钟：认定在跑（防 pid 复用导致的永久锁死）
+	if [ -n "$_p" ] && [ "$_age" -lt 300 ] && kill -0 "$_p" 2>/dev/null; then
+		LC_LOCK_PID=$_p
+		LC_LOCK_AGE=$_age
+		return 1
+	fi
+	# 2) 刚创建/刚交接的锁：pid 可能还没写，或父进程刚退出等 worker 接管。
+	#    宽限期内一律按“在跑”处理，绝不走 rm -rf 抢占。
+	if [ "$_age" -lt 5 ]; then
+		[ -n "$_p" ] && LC_LOCK_PID=$_p
+		LC_LOCK_AGE=$_age
+		return 1
+	fi
+	# 3) 真正陈旧：用 rename 原子地把旧锁搬走（同一父目录下只有一个竞争者
+	#    能成功），再 mkdir 新锁。这样不会出现 A 刚 rm、B 又 rm 掉 A 新锁。
+	_stale=$LC_LOCK.stale.$$
+	rm -rf "$_stale" 2>/dev/null
+	if mv "$LC_LOCK" "$_stale" 2>/dev/null; then
+		rm -rf "$_stale" 2>/dev/null
+		if mkdir "$LC_LOCK" 2>/dev/null; then
+			_lc_now >"$LC_LOCK/started" 2>/dev/null || true
+			printf '%s\n' "$$" >"$LC_LOCK/pid" 2>/dev/null || true
+			LC_LOCK_OWNER=1
+			return 0
+		fi
+	fi
+	# 抢锁失败（别人先搬走/先建好）：按“已有体检在跑”处理，不报错。
+	LC_LOCK_AGE=$_age
+	return 1
+}
+
+# 缓存有效性：meta + last.json + 每条被请求的 WAN 的 json/txt 都在，且 age < interval。
+# 时间戳全是 `date +%s` 的 UTC epoch 秒（与本地时区无关）；age<0（时钟回拨）按失效处理。
+_lc_cache_load() { # <请求的 WAN 列表> -> _C_GEN/_C_INT/_C_GEO/_C_PROV/_C_SOC/_C_WANS
+	[ -f "$LC_CACHE/meta" ] || return 1
+	[ -f "$LC_CACHE/last.json" ] || return 1
+	read -r _C_GEN _C_INT _C_GEO _C_PROV _C_SOC _C_WANS <"$LC_CACHE/meta" 2>/dev/null || return 1
+	case "${_C_GEN:-}" in '' | *[!0-9]*) return 1 ;; esac
+	case "${_C_INT:-}" in '' | *[!0-9]*) return 1 ;; esac
+	[ "$_C_INT" -ge 15 ] 2>/dev/null || return 1
+	return 0
+}
+
+_lc_cache_fresh() { # <请求的 WAN 列表> -> _C_AGE；0=新鲜
+	[ -n "${1:-}" ] || return 1
+	_lc_cache_load "$1" || return 1
+	_C_AGE=$(( $(_lc_now) - _C_GEN ))
+	[ "$_C_AGE" -ge 0 ] 2>/dev/null || return 1
+	[ "$_C_AGE" -lt "$_C_INT" ] 2>/dev/null || return 1
+	for _w in $1; do
+		case " $_C_WANS " in *" $_w "*) ;; *) return 1 ;; esac
+		[ -f "$LC_CACHE/wan-$_w.json" ] || return 1
+		[ -f "$LC_CACHE/wan-$_w.txt" ] || return 1
+	done
+	return 0
+}
+
+# 统一 JSON 输出：<basedir> 里放 wan-*.json / errors.json。
+# 新鲜结果、缓存回读、last.json 快照都走这一个函数，避免两套口径。
+_lc_json_emit() { # <basedir> <cached:0/1> <age>
+	printf '{"version":"%s","command":"linecheck","generated":%s,"cached":%s,"age":%s,"interval":%s,"geo_enabled":%s,"geo_provider":%s,"socat":%s,"wans":[' \
+		"$ISP_VERSION" "$_C_GEN" "$([ "$2" = "1" ] && printf true || printf false)" "$3" "$_C_INT" \
+		"$([ "$_C_GEO" = "1" ] && printf true || printf false)" "$(_lc_json_str "${_C_PROV:-auto}")" \
+		"$([ "$_C_SOC" = "1" ] && printf true || printf false)"
+	_first=1
+	for _w in ${_C_OUT:-}; do
+		[ "$_first" = "1" ] || printf ','
+		_first=0
+		cat "$1/wan-$_w.json" 2>/dev/null
+	done
+	printf '],"errors":'
+	cat "$1/errors.json" 2>/dev/null || printf '[]'
+	printf '}\n'
+}
+
+_lc_text_emit() { # <basedir> [cached-age]
+	if [ -n "${2:-}" ]; then
+		printf '线路体检 · v%s  %s（缓存，%s 秒前）\n' "$ISP_VERSION" "$(_lc_dt "$_C_GEN")" "$2"
+	else
+		printf '线路体检 · v%s  %s\n' "$ISP_VERSION" "$(_lc_dt "$_C_GEN")"
+	fi
+	_lc_privacy_line
+	for _w in ${_C_OUT:-}; do
+		printf '\n'
+		cat "$1/wan-$_w.txt" 2>/dev/null
+	done
+	printf '\n提示：%s 秒内重复执行直接返回缓存；--force 强制重测。\n' "$_C_INT"
+}
+
+_lc_cache_serve() { # <json:0/1> <请求的 WAN 列表>
+	_lc_cache_fresh "${2:-}" || return 1
+	_C_OUT=$2
+	if [ "$1" = "1" ]; then
+		_lc_json_emit "$LC_CACHE" 1 "$_C_AGE"
+	else
+		_lc_text_emit "$LC_CACHE" "$_C_AGE"
+	fi
+	return 0
+}
+
+# 原子发布：整个目录对调。两个进程同时发布也不会把新目录塞进旧目录里
+# （旧写法 `mv tmp cache` 在 cache 已存在时会把 tmp 变成 cache 的子目录）。
+_lc_publish() { # <tmpdir>
+	rm -rf "$LC_CACHE_PREV" 2>/dev/null
+	[ -d "$LC_CACHE" ] && mv "$LC_CACHE" "$LC_CACHE_PREV" 2>/dev/null
+	if mv "$1" "$LC_CACHE" 2>/dev/null; then
+		rm -rf "$LC_CACHE_PREV" 2>/dev/null
+		return 0
+	fi
+	[ -d "$LC_CACHE_PREV" ] && [ ! -d "$LC_CACHE" ] && mv "$LC_CACHE_PREV" "$LC_CACHE" 2>/dev/null
+	return 1
+}
+
+_lc_dt() {
+	date -d "@${1:-0}" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || date '+%Y-%m-%d %H:%M:%S'
+}
+
+_lc_privacy_line() {
+	if [ "$(_lc_opt LINE_CHECK_GEO 1)" = "1" ]; then
+		_lc_gp=$(_lc_opt LINE_CHECK_GEO_PROVIDER auto)
+		[ "$_lc_gp" = "auto" ] && _lc_gp="百度优先，失败转 ip-api"
+		[ "$_lc_gp" = "off" ] && _lc_gp="关闭"
+		printf '隐私：归属地查询已开启，仅把每条线的出口公网 IP 发给 %s；不发送内网地址/设备名/MAC/流量内容。\n' "$_lc_gp"
+	else
+		printf '隐私：归属地查询已关闭，本次不发起任何第三方归属地请求。\n'
+	fi
+}
+
+# ---- 后台体检（BUG-23） ----
+#
+# 页面 load 只读 state/linecheck/last.json，探测由 `linecheck --background` 起一个
+# 脱离 rpcd 会话的子进程去跑；子进程完成后原子替换缓存目录（含 last.json），
+# 页面每 2-3s 读一次 last.json 比较 generated。
+#
+# 返回（永远是单行 JSON，页面据此决定轮询/直接渲染/报错）：
+#   {"started":true,"pid":N}                       已在后台开始
+#   {"started":true,"finished":true,...}           1 秒内就跑完了（夹具/极快线路）
+#   {"started":false,"running":true,"pid":N,...}   已有一次在跑，不重复起
+#   {"started":false,"cached":true,...}            60s 缓存仍新鲜，没必要重测
+#   {"started":false,"error":"..."}                起不来
+_lc_background() { # <force> <only>
+	_b_force=$1
+	_b_only=$2
+	if [ -n "$_b_only" ]; then
+		_b_wans=$_b_only
+	else
+		_b_wans=$(printf '%s\n' "$(_lc_wans)" | awk -F'\t' 'NF>=2{print $1}' | tr '\n' ' ' | sed 's/ $//')
+	fi
+	if [ "$_b_force" = "0" ] && _lc_cache_fresh "$_b_wans"; then
+		printf '{"command":"linecheck","background":true,"started":false,"cached":true,"generated":%s,"age":%s,"interval":%s}\n' \
+			"$_C_GEN" "$_C_AGE" "$_C_INT"
+		return 0
+	fi
+	_lc_lock_try
+	case $? in
+	1)
+		printf '{"command":"linecheck","background":true,"started":false,"running":true,"pid":%s,"elapsed":%s}\n' \
+			"${LC_LOCK_PID:-0}" "${LC_LOCK_AGE:-0}"
+		return 0
+		;;
+	2)
+		printf '{"command":"linecheck","background":true,"started":false,"error":"无法创建锁目录 %s"}\n' "$LC_LOCK"
+		return 1
+		;;
+	esac
+	_lc_sweep
+
+	_lc_self=${0:-/usr/sbin/isp-split}
+	case "$_lc_self" in
+	*/*) ;;
+	*) _lc_self=$(command -v "$_lc_self" 2>/dev/null) || _lc_self=/usr/sbin/isp-split ;;
+	esac
+	set -- linecheck --json --_worker
+	[ "$_b_force" = "1" ] && set -- "$@" --force
+	[ -n "$_b_only" ] && set -- "$@" --wan "$_b_only"
+
+	: >"$LC_LOG" 2>/dev/null || true
+	# setsid：脱离 rpcd 的会话/进程组，exec 返回后不会被一起收走。
+	# 三个 fd 全部重定向：父进程退出时 rpcd 的管道不能被子进程挂着，否则
+	# exec 仍然要等到探测结束（那正是 BUG-23 的另一半）。
+	# 锁的 token：worker 用它确认“我接管的还是父进程刚建的那把锁”。
+	if command -v setsid >/dev/null 2>&1; then
+		( ISP_SPLIT_LC_LOCK_TOKEN=$$ setsid sh "$_lc_self" "$@" </dev/null >>"$LC_LOG" 2>&1 & )
+	else
+		( ISP_SPLIT_LC_LOCK_TOKEN=$$ sh "$_lc_self" "$@" </dev/null >>"$LC_LOG" 2>&1 & )
+	fi
+
+	# 等 worker 接管锁（busybox sleep 不支持小数）。最多等 2 秒；mkdir 成功
+	# 就已持锁，pid 还没写成 worker 时只降级返回，绝不删锁/强抢——那正是
+	# 并发 12 次时误判“陈旧锁”、起多个 worker 的窗口（SEC S7）。
+	_i=0
+	_p=""
+	while [ "$_i" -lt 2 ]; do
+		sleep 1
+		_i=$((_i + 1))
+		[ -d "$LC_LOCK" ] || break
+		_p=$(cat "$LC_LOCK/pid" 2>/dev/null)
+		[ -n "$_p" ] && [ "$_p" != "$$" ] && break
+	done
+	if [ ! -d "$LC_LOCK" ]; then
+		# 2 秒内已经跑完（夹具/极快线路）：直接告诉页面读缓存
+		printf '{"command":"linecheck","background":true,"started":true,"finished":true,"pid":0}\n'
+		return 0
+	fi
+	if [ -z "$_p" ] || [ "$_p" = "$$" ]; then
+		# 降级：不删锁、不强抢。worker 稍后写入 pid 即自愈；若 worker
+		# 确实没起来，锁的 pid 会随父进程退出变成死 pid，下一个调用在
+		# 5 秒宽限后按陈旧锁回收。
+		printf '{"command":"linecheck","background":true,"started":true,"pid":0,"pending":true}\n'
+		return 0
+	fi
+	printf '{"command":"linecheck","background":true,"started":true,"pid":%s,"started_at":%s}\n' \
+		"$_p" "$(cat "$LC_LOCK/started" 2>/dev/null || _lc_now)"
+	return 0
+}
+
+# ---- 主命令 ----
+
+cmd_linecheck() {
+	_lc_json=0
+	_lc_force=0
+	_lc_only=""
+	_lc_bg=0
+	_lc_worker=0
+	_lc_runner=0
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--json) _lc_json=1 ;;
+		--force) _lc_force=1 ;;
+		--background) _lc_bg=1 ;;
+		--_worker) _lc_worker=1 ;;
+		--_runner) _lc_runner=1 ;;
+		--wan)
+			shift
+			[ $# -gt 0 ] || die "用法: isp-split linecheck [--json] [--wan <接口>] [--force] [--background]"
+			_lc_only=$1
+			;;
+		-h | --help)
+			printf '用法: isp-split linecheck [--json] [--wan <接口>] [--force] [--background]\n'
+			return 0
+			;;
+		*)
+			die "未知参数 '$1'（用法: isp-split linecheck [--json] [--wan <接口>] [--force] [--background]）"
+			;;
+		esac
+		shift
+	done
+
+	[ "$(_lc_opt LINE_CHECK_ENABLE 1)" = "1" ] || die "线路体检已关闭（LINE_CHECK_ENABLE=0）"
+	[ "$_lc_worker" = "1" ] && _lc_json=1
+
+	LC_START=$(_lc_now)
+	LC_BUDGET=$(_lc_budget)
+	LC_INTERVAL=$(_lc_int "$(_lc_opt LINE_CHECK_MIN_INTERVAL 60)")
+	[ "$LC_INTERVAL" -ge 15 ] 2>/dev/null || LC_INTERVAL=60
+	[ "$LC_INTERVAL" -le 3600 ] 2>/dev/null || LC_INTERVAL=3600
+	LC_SOCAT=0
+	command -v socat >/dev/null 2>&1 && LC_SOCAT=1
+	[ "${ISP_SPLIT_LC_NO_SOCAT:-0}" = "1" ] && LC_SOCAT=0
+
+	mkdir -p "$STATE_DIR" 2>/dev/null || true
+	# 每次调用都先扫掉 pid 已死的探测目录（SIGKILL 走不到 trap）。命中缓存时
+	# 也扫，否则一个被 rpcd 超时杀掉的前台探测要等到缓存过期才有人收尸。
+	_lc_sweep_tmp
+
+	# 后台模式：只判断“要不要起”，绝不在这里探测。
+	if [ "$_lc_bg" = "1" ]; then
+		_lc_background "$_lc_force" "$_lc_only"
+		return $?
+	fi
+
+	if [ "$_lc_worker" = "1" ] && [ "$_lc_runner" != "1" ]; then
+		# ---- 监督者（--_worker）----
+		# 父进程已 mkdir 持锁。这里做三件事：
+		#   1) 校验锁还是调用链那一把（token = 父进程 pid），被回收就放弃探测；
+		#   2) 把 pid 改成自己——锁的属主从此是本进程，退出时由 trap 删除；
+		#   3) 探测交给独立 argv 的引擎进程并 wait。
+		# 为什么要分两层：ash 的 $(...) / 管道子 shell 会继承父进程的 argv，
+		# 16 连点时 ps 会把 1 个 worker 的 2-3 个命令替换子 shell 误数成
+		# “多个并发 worker”（fix29 实测 4 个）。引擎用另一个入口运行后，
+		# 进程表里带 "isp-split linecheck" 的只剩唯一这个持锁监督者。
+		_tok=${ISP_SPLIT_LC_LOCK_TOKEN:-}
+		_cur=$(cat "$LC_LOCK/pid" 2>/dev/null)
+		if [ -n "$_tok" ] && [ -n "$_cur" ] && [ "$_cur" != "$_tok" ]; then
+			printf 'linecheck: 锁已被其他进程接管，本次放弃探测\n' >&2
+			return 3
+		fi
+		mkdir -p "$LC_LOCK" 2>/dev/null || true
+		_lc_now >"$LC_LOCK/started" 2>/dev/null || true
+		printf '%s\n' "$$" >"$LC_LOCK/pid" 2>/dev/null || true
+		LC_LOCK_OWNER=1
+		_lc_trap_on
+		if [ -f "$LC_RUN" ]; then
+			_lc_self=${0:-/usr/sbin/isp-split}
+			case "$_lc_self" in
+			*/*) ;;
+			*) _lc_self=$(command -v "$_lc_self" 2>/dev/null) || _lc_self=/usr/sbin/isp-split ;;
+			esac
+			set -- linecheck --json --_worker --_runner
+			[ "$_lc_force" = "1" ] && set -- "$@" --force
+			[ -n "$_lc_only" ] && set -- "$@" --wan "$_lc_only"
+			: >"$LC_LOG" 2>/dev/null || true
+			if command -v setsid >/dev/null 2>&1; then
+				ISP_SPLIT_LC_SELF=$_lc_self setsid sh "$LC_RUN" "$@" </dev/null >>"$LC_LOG" 2>&1 &
+			else
+				ISP_SPLIT_LC_SELF=$_lc_self sh "$LC_RUN" "$@" </dev/null >>"$LC_LOG" 2>&1 &
+			fi
+			LC_CHILD_PID=$!
+			wait "$LC_CHILD_PID"
+			_rc=$?
+			LC_CHILD_PID=""
+			return "$_rc"
+		fi
+		# 引擎入口缺失：保持在进程内探测（功能不受影响，只是进程数不再收敛）。
+	fi
+	if [ "$_lc_worker" = "1" ]; then
+		# ---- 引擎（--_runner）或引擎入口缺失时的退化路径 ----
+		# 引擎：锁由监督者持有，绝不写锁、也不删锁。
+		# 退化（没有 lc-run）：本进程就是持锁者，必须保留 owner=1 以便退出时删锁。
+		if [ "$_lc_runner" = "1" ]; then
+			LC_LOCK_OWNER=0
+		fi
+		_lc_trap_on
+	fi
+
+	# 收集 WAN
+	if [ -n "$_lc_only" ]; then
+		_lc_line=$(_lc_wan_one "$_lc_only") || {
+			if [ "$_lc_json" = "1" ]; then
+				printf '{"version":"%s","command":"linecheck","generated":%s,"cached":false,"age":0,"interval":%s,"geo_enabled":%s,"geo_provider":"%s","socat":%s,"wans":[],"errors":["找不到接口 %s"]}\n' \
+					"$ISP_VERSION" "$LC_START" "$LC_INTERVAL" \
+					"$([ "$(_lc_opt LINE_CHECK_GEO 1)" = "1" ] && printf true || printf false)" \
+					"$(_lc_json_esc "$(_lc_opt LINE_CHECK_GEO_PROVIDER auto)")" \
+					"$([ "$LC_SOCAT" = "1" ] && printf true || printf false)" \
+					"$(_lc_json_esc "$_lc_only")"
+			else
+				printf '线路体检：找不到接口 %s（既不是 mwan3 接口，也不是运行时设备）\n' "$_lc_only" >&2
+			fi
+			return 1
+		}
+		_lc_wans_list=$_lc_line
+	else
+		_lc_wans_list=$(_lc_wans)
+	fi
+	_lc_wnames=$(printf '%s\n' "$_lc_wans_list" | awk -F'\t' 'NF>=2{print $1}' | tr '\n' ' ' | sed 's/ $//')
+
+	_lc_geo_en=$(_lc_opt LINE_CHECK_GEO 1)
+	_lc_geo_prov=$(_lc_opt LINE_CHECK_GEO_PROVIDER auto)
+	[ "$_lc_geo_en" = "0" ] && _lc_geo_prov=off
+	[ "$_lc_geo_prov" = "off" ] && _lc_geo_en=0
+	_C_GEO=$_lc_geo_en
+	_C_PROV=$_lc_geo_prov
+	_C_SOC=$LC_SOCAT
+	_C_INT=$LC_INTERVAL
+
+	# 没有可体检的 WAN：也发布一份 last.json，页面才不会空等 90 秒轮询。
+	# 这种缓存不会被 _lc_cache_fresh 当成命中（请求列表为空直接返回 1），
+	# 所以不会把后续真实 WAN 的结果挡掉。
+	if [ -z "$_lc_wnames" ]; then
+		_C_GEN=$LC_START
+		_C_OUT=""
+		_lc_tmp=$LC_CACHE.tmp.$$
+		rm -rf "$_lc_tmp"
+		if mkdir -p "$_lc_tmp" 2>/dev/null; then
+			printf '%s %s %s %s %s \n' "$LC_START" "$LC_INTERVAL" "$_lc_geo_en" "$_lc_geo_prov" "$LC_SOCAT" >"$_lc_tmp/meta"
+			printf '["没有启用的 WAN（检查 mwan3 接口 enabled=1）"]\n' >"$_lc_tmp/errors.json"
+			_lc_json_emit "$_lc_tmp" 0 0 >"$_lc_tmp/last.json"
+			_lc_publish "$_lc_tmp" || rm -rf "$_lc_tmp"
+			_lc_tmp=""
+		fi
+		if [ "$_lc_json" = "1" ]; then
+			if [ -f "$LC_CACHE/last.json" ]; then
+				cat "$LC_CACHE/last.json"
+			else
+				printf '{"version":"%s","command":"linecheck","generated":%s,"cached":false,"age":0,"interval":%s,"geo_enabled":%s,"geo_provider":"%s","socat":%s,"wans":[],"errors":["没有启用的 WAN（检查 mwan3 接口 enabled=1）"]}\n' \
+					"$ISP_VERSION" "$LC_START" "$LC_INTERVAL" \
+					"$([ "$_lc_geo_en" = "1" ] && printf true || printf false)" "$_lc_geo_prov" \
+					"$([ "$LC_SOCAT" = "1" ] && printf true || printf false)"
+			fi
+		else
+			printf '线路体检：没有启用的 WAN。先在 mwan3 里启用至少一个接口，或用 --wan 指定。\n'
+		fi
+		return 0
+	fi
+
+	_C_OUT=$_lc_wnames
+
+	# 缓存：60s 内直接返回；--force 绕过。读缓存阶段零探测、零网络。
+	if [ "$_lc_force" = "0" ] && [ "$_lc_worker" != "1" ] && _lc_cache_serve "$_lc_json" "$_lc_wnames"; then
+		return 0
+	fi
+
+	# 探测：加锁，避免和后台体检 / 另一个 CLI 撞车（BUG-23 的“重复点按钮”）。
+	if [ "$_lc_worker" != "1" ]; then
+		_lc_lock_try
+		case $? in
+		1)
+			if [ "$_lc_json" = "1" ]; then
+				printf '{"version":"%s","command":"linecheck","generated":%s,"cached":false,"age":0,"interval":%s,"running":true,"pid":%s,"elapsed":%s,"wans":[],"errors":["已有体检在运行（pid %s，已 %s 秒），本次不重复探测"]}\n' \
+					"$ISP_VERSION" "$LC_START" "$LC_INTERVAL" "${LC_LOCK_PID:-0}" "${LC_LOCK_AGE:-0}" \
+					"${LC_LOCK_PID:-0}" "${LC_LOCK_AGE:-0}"
+			else
+				printf '已有体检在运行（pid %s，已 %s 秒），本次不重复探测。\n' "${LC_LOCK_PID:-0}" "${LC_LOCK_AGE:-0}" >&2
+			fi
+			return 4
+			;;
+		2) die "无法创建锁目录 $LC_LOCK" ;;
+		esac
+		_lc_trap_on
+		_lc_sweep
+	fi
+
+	_lc_tmp=$LC_CACHE.tmp.$$
+	rm -rf "$_lc_tmp"
+	mkdir -p "$_lc_tmp" || die "无法创建缓存目录 $_lc_tmp"
+
+	printf '%s\n' "$_lc_wans_list" | while IFS='	' read -r _if _dev _up _state _ip; do
+		[ -n "$_if" ] || continue
+		_lc_run_wan "$_if" "$_dev" "$_up" "$_state" "$_ip"
+		_lc_wan_json >"$_lc_tmp/wan-$_if.json"
+		_lc_wan_text >"$_lc_tmp/wan-$_if.txt"
+		[ -n "$LC_STUN_DETAIL" ] || true
+	done
+
+	# 上面 while 在管道子 shell 里，变量不会带回来；缓存文件已经落盘，
+	# 这里按文件重新组装，避免依赖子 shell 状态。
+	_C_GEN=$(_lc_now)
+	printf '%s %s %s %s %s %s\n' "$_C_GEN" "$LC_INTERVAL" "$_lc_geo_en" "$_lc_geo_prov" "$LC_SOCAT" "$_lc_wnames" >"$_lc_tmp/meta"
+	printf '[]\n' >"$_lc_tmp/errors.json"
+	# last.json：LuCI 只读这一个文件，必须和 --json 输出逐字节一致。
+	_lc_json_emit "$_lc_tmp" 0 0 >"$_lc_tmp/last.json" || die "无法写入 $_lc_tmp/last.json"
+
+	_lc_publish "$_lc_tmp" || { rm -rf "$_lc_tmp"; die "无法写入缓存目录 $LC_CACHE"; }
+	_lc_tmp=""
+
+	if [ "$_lc_json" = "1" ]; then
+		cat "$LC_CACHE/last.json"
+	else
+		_lc_text_emit "$LC_CACHE" ""
+	fi
+	return 0
+}
+
+# lc:end
+
+# 自检/单测可以只加载函数，不执行主分发（selftest.sh 用）。
+if [ "${ISP_SPLIT_LIB_ONLY:-0}" = "1" ]; then
+	return 0 2>/dev/null || exit 0
+fi
 
 # ---------------------------------------------------------------- main
 
@@ -3895,6 +7406,7 @@ fetch) cmd_fetch ;;
 diff) shift; cmd_diff "$@" ;;
 dnstest) shift; cmd_dnstest "$@" ;;
 apply) cmd_apply ;;
+init) shift; cmd_init "$@" ;;
 wire) cmd_wire ;;
 sync) cmd_sync ;;
 plan) cmd_plan ;;
@@ -3903,9 +7415,13 @@ selftest) cmd_selftest ;;
 stage) cmd_stage ;;
 enable) cmd_enable ;;
 verify) cmd_verify ;;
+policy-check) shift; cmd_policy_check "$@" ;;
 status) shift; cmd_status "$@" ;;
 health) shift; cmd_health "$@" ;;
 probe) cmd_probe ;;
+# lc:begin
+linecheck) shift; cmd_linecheck "$@" ;;
+# lc:end
 rollback) cmd_rollback ;;
 dns) cmd_dns ;;
 conf) shift; cmd_conf "$@" ;;
@@ -3913,6 +7429,13 @@ refresh) cmd_refresh ;;
 export) shift; cmd_export "$@" ;;
 install) cmd_install ;;
 uninstall) cmd_uninstall ;;
+# 剥离版的固定拒绝桩（FEATURE_LINECHECK=0 时上面的实现分支已被整段删除）。
+# 用 glob 匹配命令名而不是写字面量：产物必须通过“零残留 grep”断言，
+# 但仍要对已剥离的子命令给出明确、稳定的拒绝文案与退出码。
+line*check)
+	printf '此版本未包含该功能\n' >&2
+	exit 2
+	;;
 *)
 	cat <<EOF
 用法: isp-split <命令>
@@ -3927,14 +7450,17 @@ uninstall) cmd_uninstall ;;
   diff       重新计算"主源 vs 校验源"的分歧（基于存档，不联网；超阈值返回 3）
   rollback   回滚到上一份数据
 
-  —— 上线（建议分两步）——
+  —— 首次安装 / 上线（建议分两步）——
+  init       发现 mwan3 接口，为 ISP_TABLE 的每个策略创建 policy/member
+             交互选择接口；或 --bind <策略>=<接口>（可重复）--assume-yes
   stage      注入规则但保持 enabled=0，验证 mwan3 未被搞坏
   enable     确认无误后真正启用
-  verify     检查规则链渲染结果与命中情况
+  verify     检查规则链渲染结果、策略成员与命中情况
+  policy-check  检查 ISP_TABLE 引用的策略是否都有成员（--json 给 LuCI 用）
 
   —— 其他 ——
   apply      原子刷入 nftables 集合（不断流、不重启 mwan3）
-  wire       建立 mwan3 集合与规则并插到正确位置
+  wire       建立 mwan3 集合与规则并插到正确位置（策略缺失会硬失败）
   conf       读写配置：conf get | conf set <项> <值>
              conf check <项> <值>（只校验）| conf preview <项> <值> ...（预演未保存的改动）
   dnstest    测一条线路的 DNS 是否可用：dnstest <策略名>
@@ -3943,6 +7469,10 @@ uninstall) cmd_uninstall ;;
   status     查看条目数与命中统计
   health     数据源健康度 + 双线状态（--json 给 LuCI 用）
   probe      分线实测出口速度
+# lc:begin
+  linecheck  线路体检：公网/NAT/四段延迟/归属地/评分（--json，--wan，--force）
+             --background 后台探测并原子替换缓存（LuCI 用，立刻返回 JSON 状态）
+# lc:end
   dns        生成多线路 DNS 配置（域名按线路选 DNS）
   export     导出给代理侧用：export mihomo|singbox|text <目录>
   install    注册开机自启与每日更新

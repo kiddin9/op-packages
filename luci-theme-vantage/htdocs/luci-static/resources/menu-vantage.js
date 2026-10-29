@@ -769,6 +769,24 @@ return baseclass.extend({
 			});
 			sync();
 		}
+
+		/* phones: the bar scrolls sideways, and each page load (or switch to
+		   the bottom bar) starts it at its first entry */
+		this.fitRailActive();
+		if (this.mqMobile.addEventListener) this.mqMobile.addEventListener('change', () => this.fitRailActive());
+	},
+
+	/* a clipped active entry is brought to the middle of the bar, at once,
+	   and only the bar moves: scrollIntoView() would scroll the page too */
+	fitRailActive() {
+		const list = document.getElementById('vt-rail-list');
+		const li = list && list.querySelector('.vt-rail-item.is-active');
+		if (!li || !this.mqMobile.matches || list.scrollWidth <= list.clientWidth) return;
+
+		const l = list.getBoundingClientRect(), r = li.getBoundingClientRect();
+		if (r.left >= l.left - 1 && r.right <= l.right + 1) return;
+
+		list.scrollLeft += (r.left + r.right - l.left - l.right) / 2;
 	},
 
 	handleRailClick(ev, cat, li, link) {

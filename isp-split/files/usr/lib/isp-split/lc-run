@@ -1,0 +1,12 @@
+#!/bin/sh
+# 后台探测引擎入口（仅 --background 模式使用）。
+#
+# ash 的命令替换 / 管道会 fork 出继承父进程 argv 的子 shell。如果探测直接
+# 在持锁 worker 里跑，进程表会把那些子 shell 也数成额外 worker（fix29 实测
+# 1 个真 worker + 3 个子 shell = 4）。这里用独立 argv 的入口运行主脚本，
+# 进程表里带 "isp-split 子命令" 的只剩唯一那个持锁监督者。
+#
+# 参数原样透传：lc-run <子命令> <参数...>
+# 被加载的主脚本路径由监督者通过 ISP_SPLIT_LC_SELF 传入（argv 里不带路径，
+# 否则又会命中 "isp-split <子命令>" 的进程计数）。
+. "${ISP_SPLIT_LC_SELF:-/usr/sbin/isp-split}"

@@ -37,6 +37,83 @@
 	box-sizing: border-box;
 }
 
+/* ---------------------------------------------------------------- 首装提示条（BUG-25） */
+
+.isp-banner-wrap {
+	display: block;
+}
+
+.isp-banner {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px 18px;
+	margin: 0 0 16px 0;
+	padding: 14px 16px;
+	border: 1px solid var(--isp-border-strong);
+	border-left: 5px solid var(--isp-warn);
+	border-radius: var(--isp-radius);
+	background: var(--background-color-high, rgba(128, 128, 128, 0.08));
+	box-shadow: var(--isp-shadow);
+}
+
+.isp-banner.is-warn {
+	border-left-color: var(--warn-color-high, #d9822b);
+	background: var(--background-color-high, rgba(128, 128, 128, 0.08));
+}
+
+.isp-banner-msg {
+	flex: 1 1 360px;
+	min-width: 240px;
+	color: var(--isp-text);
+	font-size: 0.92rem;
+	line-height: 1.5;
+}
+
+.isp-banner-msg strong {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 1rem;
+	color: var(--warn-color-high, #b35c00);
+}
+
+.isp-banner-hint {
+	margin-top: 6px;
+	color: var(--isp-muted);
+	font-size: 0.84rem;
+}
+
+.isp-banner-hint code {
+	padding: 1px 5px;
+	border-radius: 4px;
+	background: var(--isp-card-bg-2);
+	font-size: 0.84rem;
+}
+
+.isp-banner-btn {
+	flex: 0 0 auto;
+	align-self: center;
+	white-space: nowrap;
+}
+
+.isp-banner-err {
+	margin-top: 6px;
+	color: var(--isp-bad);
+	font-size: 0.84rem;
+	line-height: 1.45;
+}
+
+.isp-banner-err:empty {
+	display: none;
+}
+
+@media (max-width: 600px) {
+	.isp-banner-btn {
+		width: 100%;
+	}
+}
+
 /* ---------------------------------------------------------------- 头部 */
 
 .isp-hero {
@@ -721,3 +798,441 @@
 		margin-bottom: 2px;
 	}
 }
+
+/* lc:begin */
+/* ---------------------------------------------------------------- 线路体检（0.3.0）
+   本段到文件末尾全部是 .lc-* 样式（体检页 / 配置页开关区），
+   FEATURE_LINECHECK=0 时整段物理删除。
+   教训（F7）：标记必须包住样式体；只包一行标题注释，规则会裸奔进 0.2.3 包。 */
+.lc-cards {
+	grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.lc-card {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 14px 16px;
+	border-top: 3px solid var(--lc-accent, var(--isp-border-strong));
+	position: relative;
+}
+
+.lc-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 10px;
+}
+
+.lc-title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 8px;
+	min-width: 0;
+}
+
+.lc-name {
+	font-size: 1.08rem;
+	font-weight: 650;
+	color: var(--isp-text);
+	letter-spacing: 0.01em;
+}
+
+.lc-dev {
+	font-size: 0.78rem;
+	color: var(--isp-muted);
+	background: var(--isp-card-bg-2);
+	border-radius: 999px;
+	padding: 1px 8px;
+}
+
+.lc-state {
+	font-size: 0.76rem;
+	color: var(--isp-muted);
+}
+
+.lc-state.is-on::before,
+.lc-state.is-off::before {
+	content: "";
+	display: inline-block;
+	width: 7px;
+	height: 7px;
+	margin-right: 4px;
+	border-radius: 50%;
+	background: var(--isp-ok);
+	vertical-align: 1px;
+}
+
+.lc-state.is-off::before {
+	background: var(--isp-bad);
+}
+
+.lc-score {
+	display: flex;
+	align-items: baseline;
+	gap: 3px;
+	white-space: nowrap;
+}
+
+.lc-total {
+	font-size: 1.5rem;
+	font-weight: 700;
+	color: var(--isp-text);
+	line-height: 1;
+}
+
+.lc-max {
+	font-size: 0.75rem;
+	color: var(--isp-muted);
+}
+
+/* 评分徽标：A/B/C/D 四档，颜色只在徽标上，不铺满整张卡 */
+.lc-grade {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 30px;
+	height: 30px;
+	margin-right: 6px;
+	border-radius: 9px;
+	font-size: 1rem;
+	font-weight: 700;
+	color: #fff;
+	background: var(--isp-muted);
+}
+
+.lc-grade.is-a { background: var(--isp-ok); }
+.lc-grade.is-b { background: var(--isp-primary); }
+.lc-grade.is-c { background: var(--isp-warn); }
+.lc-grade.is-d { background: var(--isp-bad); }
+
+.lc-kv {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	padding: 9px 10px;
+	border-radius: 10px;
+	background: var(--isp-card-bg-2);
+}
+
+.lc-row {
+	display: flex;
+	gap: 10px;
+	align-items: baseline;
+	font-size: 0.86rem;
+	line-height: 1.45;
+}
+
+.lc-key {
+	flex: 0 0 4.9em;
+	color: var(--isp-muted);
+}
+
+.lc-val {
+	flex: 1 1 auto;
+	min-width: 0;
+	color: var(--isp-text);
+	word-break: break-word;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: baseline;
+}
+
+.lc-sub {
+	font-size: 0.76rem;
+	color: var(--isp-muted);
+}
+
+.lc-tag {
+	display: inline-block;
+	padding: 0 7px;
+	border-radius: 999px;
+	border: 1px solid var(--isp-border);
+	font-size: 0.72rem;
+	line-height: 1.6;
+	color: var(--isp-muted);
+	background: var(--isp-card-bg);
+}
+
+.lc-tag.is-ok { color: var(--isp-ok); border-color: currentColor; }
+.lc-tag.is-warn { color: var(--isp-warn); border-color: currentColor; }
+.lc-tag.is-bad { color: var(--isp-bad); border-color: currentColor; }
+.lc-tag.is-muted { color: var(--isp-muted); }
+
+/* 四段延迟：等宽四格，窄屏两列 */
+.lc-segs {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 6px;
+}
+
+.lc-seg {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding: 7px 8px;
+	border: 1px solid var(--isp-border);
+	border-radius: 9px;
+	background: var(--isp-card-bg);
+	min-width: 0;
+}
+
+.lc-seg-label {
+	font-size: 0.7rem;
+	color: var(--isp-muted);
+	letter-spacing: 0.02em;
+}
+
+.lc-seg-value {
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: var(--isp-text);
+	font-variant-numeric: tabular-nums;
+}
+
+.lc-line2 {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px 12px;
+	font-size: 0.78rem;
+	color: var(--isp-muted);
+}
+
+.lc-advice {
+	display: flex;
+	gap: 7px;
+	align-items: flex-start;
+	padding: 8px 10px;
+	border-radius: 9px;
+	border-left: 3px solid var(--lc-accent, var(--isp-border-strong));
+	background: var(--isp-card-bg-2);
+	font-size: 0.84rem;
+	line-height: 1.5;
+	color: var(--isp-text);
+}
+
+.lc-advice .isp-ico {
+	flex: 0 0 auto;
+	margin-top: 2px;
+	color: var(--lc-accent, var(--isp-muted));
+}
+
+.lc-advice.is-bad {
+	border-left-color: var(--isp-bad);
+}
+
+.lc-toggle {
+	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 2px 0;
+	border: 0;
+	background: none;
+	color: var(--isp-primary);
+	font-size: 0.8rem;
+	cursor: pointer;
+}
+
+.lc-toggle .isp-ico {
+	transition: transform 0.15s ease;
+}
+
+.lc-toggle.is-open .isp-ico {
+	transform: rotate(180deg);
+}
+
+.lc-detail {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding-top: 8px;
+	border-top: 1px dashed var(--isp-border);
+}
+
+.lc-detail[hidden] {
+	display: none !important;
+}
+
+.lc-detail h4 {
+	margin: 2px 0 0 0;
+	font-size: 0.8rem;
+	font-weight: 600;
+	color: var(--isp-muted);
+}
+
+.lc-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.78rem;
+}
+
+.lc-table th,
+.lc-table td {
+	text-align: left;
+	padding: 4px 6px;
+	border-bottom: 1px solid var(--isp-border);
+	vertical-align: top;
+	word-break: break-word;
+}
+
+.lc-table th {
+	color: var(--isp-muted);
+	font-weight: 500;
+	white-space: nowrap;
+}
+
+.lc-table td:nth-child(3) {
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.lc-caps {
+	margin: 0;
+	padding-left: 1.2em;
+	font-size: 0.78rem;
+	color: var(--isp-warn);
+}
+
+.lc-raw {
+	font-size: 0.74rem;
+	color: var(--isp-muted);
+	line-height: 1.5;
+	word-break: break-word;
+}
+
+.lc-meta {
+	font-size: 0.78rem;
+	color: var(--isp-muted);
+	margin: 0 0 10px 0;
+	line-height: 1.5;
+}
+
+.lc-privacy {
+	display: flex;
+	gap: 7px;
+	align-items: flex-start;
+	margin: 0 0 12px 0;
+	padding: 8px 10px;
+	border: 1px solid var(--isp-border);
+	border-radius: 10px;
+	background: var(--isp-card-bg);
+	font-size: 0.78rem;
+	color: var(--isp-muted);
+	line-height: 1.5;
+}
+
+.lc-privacy .isp-ico {
+	flex: 0 0 auto;
+	margin-top: 1px;
+}
+
+.lc-msg {
+	font-size: 0.82rem;
+	margin: 0 0 10px 0;
+	color: var(--isp-muted);
+}
+
+.lc-msg.is-info { color: var(--isp-primary); }
+.lc-msg.is-ok { color: var(--isp-ok); }
+.lc-msg.is-bad { color: var(--isp-bad); }
+
+.lc-run:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+/* 尚未体检时的占位卡（BUG-23：没缓存也必须有一个能看的页面，不能白屏） */
+.lc-placeholder {
+	grid-column: 1 / -1;
+	display: block;
+	padding: 18px 20px;
+}
+
+.lc-ph-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+	font-size: 0.95rem;
+	color: var(--isp-text);
+}
+
+.lc-ph-head .isp-ico {
+	color: var(--isp-primary);
+}
+
+.lc-ph-text {
+	margin: 0 0 8px 0;
+	font-size: 0.84rem;
+	line-height: 1.65;
+	color: var(--isp-muted);
+}
+
+.lc-ph-note {
+	margin: 0;
+	font-size: 0.78rem;
+	line-height: 1.6;
+	color: var(--isp-muted);
+	opacity: 0.85;
+}
+
+@media (max-width: 520px) {
+	.lc-cards {
+		grid-template-columns: 1fr;
+	}
+
+	.lc-segs {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.lc-table thead {
+		display: none;
+	}
+
+	.lc-table tr {
+		display: block;
+		padding: 4px 0;
+		border-bottom: 1px solid var(--isp-border);
+	}
+
+	.lc-table td {
+		display: flex;
+		gap: 8px;
+		border: 0;
+		padding: 1px 0;
+	}
+
+	.lc-table td::before {
+		content: attr(data-th);
+		flex: 0 0 4.5em;
+		color: var(--isp-muted);
+	}
+}
+
+/* 配置页：线路体检开关区的小字/行内控件 */
+.lc-hint {
+	font-size: 0.74rem;
+	color: var(--isp-muted);
+	line-height: 1.4;
+	margin-top: 2px;
+}
+
+.lc-inline {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.lc-inline input[type="number"] {
+	max-width: 7em;
+}
+
+.lc-privacy-note {
+	border-left: 3px solid var(--isp-primary);
+	padding-left: 10px;
+}
+
+/* lc:end */

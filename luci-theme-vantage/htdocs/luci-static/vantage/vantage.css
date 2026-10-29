@@ -2082,6 +2082,10 @@ body.modal-overlay-active #modal_overlay { display: block; }
    heading first (25.12 wraps it in .cbi-title): it keeps the header row's
    bleed, which the rule above would replace */
 #view > .cbi-section > h3:first-child { margin: calc(-1 * var(--card-py)) calc(-1 * var(--card-px)) var(--card-py); }
+/* Table cells supply the spacing below a card header. */
+#view .cbi-section > .cbi-title:has(+ div > .table:first-child),
+#view > .cbi-section > h3:first-child:has(+ div > .table:first-child),
+#view .cbi-section:not(.cbi-tblsection, .cbi-section .cbi-section) > h3:first-child:has(+ .table) { margin-bottom: 0; }
 #view > h2:not(:first-child), #view > h3:not(:first-child) { margin-top: var(--sp-6); }
 .cbi-section > .table + h3, .cbi-section > .table + .cbi-title, .cbi-section > div + h3 { margin-top: var(--sp-6); }
 .includes { margin-top: var(--sp-4); }
@@ -2963,10 +2967,14 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 	}
 	.vt-rail > .vt-brand, .vt-rail-foot { display: none; }
 	body.vt-auth .vt-shell::before { display: none; }
+	/* a swipe past either end must not swipe the page. The hairline
+	   scrollbar stays: in a narrow desktop window it is the mouse's way to
+	   the entries past the edge */
 	.vt-rail-list {
 		flex-direction: row; justify-content: flex-start;
 		gap: 0; padding: 0 var(--sp-1);
 		overflow-x: auto; overflow-y: hidden;
+		overscroll-behavior-x: contain;
 	}
 	/* the buttons stay a centred group on wider screens. Centred with auto
 	   margins, not justify-content: center, which would push an overflowing
