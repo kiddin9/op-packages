@@ -1,20 +1,24 @@
-/* netstat-usage.css */
+/* netstat-usage.css
+ *
+ * Layout only. Backgrounds, borders and text colours all come from the
+ * active LuCI theme (the pages sit inside its standard cbi-section and use
+ * its cbi-tabmenu tabs), so they follow the theme switcher, light or dark.
+ */
 .netstat-dashboard {
-    border: 1px solid #dfe3eb;
-    border-radius: 10px;
-    background: #fff;
-    padding: 16px 18px;
+    --ns-muted: 0.7;
+}
+
+.netstat-intro {
+    margin: 0 0 12px;
+    font-size: 13px;
+    opacity: var(--ns-muted);
 }
 
 .netstat-summary {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     flex-wrap: wrap;
     margin-bottom: 16px;
-    padding: 10px 14px;
-    background: #f7f9fc;
-    border: 1px solid #dfe3eb;
-    border-radius: 8px;
     font-size: 13px;
 }
 
@@ -23,7 +27,6 @@
     align-items: center;
     gap: 6px;
     font-weight: 600;
-    color: #374151;
 }
 
 .netstat-summary-dot {
@@ -37,7 +40,7 @@
 .netstat-summary-dot.tx { background: #d97706; }
 
 .netstat-summary-label {
-    color: #6b7280;
+    opacity: var(--ns-muted);
     font-weight: 400;
     margin-right: 2px;
 }
@@ -46,48 +49,36 @@
     margin-left: auto;
 }
 
-.netstat-chart-wrap {
-    border: 1px solid #dfe4ea;
-    border-radius: 8px;
-    padding: 14px;
-    background: #fff;
-    overflow: hidden;
-}
-
 .netstat-chart-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 8px;
     margin-bottom: 10px;
     flex-wrap: wrap;
-    gap: 6px;
 }
 
 .netstat-chart-title {
-    margin: 0;
     font-size: 15px;
     font-weight: 600;
-    color: #1f2937;
 }
 
 .netstat-chart-badge {
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 999px;
-    background: #e0f2fe;
-    color: #0369a1;
+    font-size: 12px;
+    opacity: var(--ns-muted);
 }
 
-.netstat-chart-canvas {
+.netstat-chart-badge::before { content: "("; }
+.netstat-chart-badge::after  { content: ")"; }
+
+.netstat-chart-box {
+    position: relative;
     width: 100%;
-    display: block;
+    min-width: 0;
 }
 
 .netstat-empty {
     padding: 32px;
     text-align: center;
-    color: #6b7280;
     font-size: 14px;
 }
 
@@ -100,11 +91,5 @@
 .netstat-hint {
     margin-top: 6px;
     font-size: 12px;
-    color: #9ca3af;
-}
-
-@media (max-width: 640px) {
-    .netstat-dashboard  { padding: 12px; }
-    .netstat-summary    { gap: 8px; }
-    .netstat-chart-wrap { padding: 10px; }
+    opacity: var(--ns-muted);
 }

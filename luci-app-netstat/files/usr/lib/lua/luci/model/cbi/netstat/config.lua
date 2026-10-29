@@ -1,6 +1,7 @@
 local net = require "luci.model.network"
 local sys = require "luci.sys"
 local http = require "luci.http"
+local nsu = require "luci.netstat"
 
 local m = Map("netstats", translate("Netstat"),
     translate("Configure traffic monitoring and view usage history from a single page.")
@@ -22,8 +23,10 @@ if active_tab == "settings" then
     backend:value("normal", translate("Normal (Real-time)"))
     backend:value("vnstat", translate("vnStat (Historical, Delayed)"))
     backend.description = translate(
-        "Normal reads live counters from /proc/net/dev. " ..
-        "vnStat reads the vnStat database which updates on its own schedule."
+        "Live download/upload rates always come from /proc/net/dev. " ..
+        "With Normal the downloaded/uploaded totals count since boot; " ..
+        "with vnStat they show this month's totals from the vnStat database, " ..
+        "which vnStat updates every few minutes."
     )
 
     -- View mode
@@ -36,33 +39,66 @@ if active_tab == "settings" then
     -- Interface preference
     local iface = s:option(ListValue, "prefer", translate("Preferred Interface"))
     iface.description = translate(
-        "WAN interface to track. Leave blank for auto-detection.<br>" ..
-        "<strong>Tip:</strong> If your WAN uses a dynamic name (e.g. wwan0_1) " ..
-        "it will be detected automatically when left blank."
+        "Interface to track. Leave on auto-detection to follow the device " ..
+        "that holds the default route, whatever it is called on this router.<br>" ..
+        "Logical interfaces (e.g. wan) are resolved to their current device."
     )
     iface:value("", translate("Auto detect"))
 
-    local netm = net.init()
-    for _, dev in ipairs(netm:get_interfaces()) do
-        local name = dev:shortname()
-        if name and not name:match("^lo$") and not name:match("^br%-") then
-            iface:value(name)
+    -- Logical netifd interfaces, live netdevs and anything vnStat already
+    -- has history for. Nothing is hard-coded.
+    local seen = { [""] = true, lo = true, loopback = true }
+    local function add_choice(name, label)
+        if name and not seen[name] and nsu.safe_name(name) then
+            seen[name] = true
+            iface:value(name, label or name)
         end
+    end
+
+    local netm = net.init()
+    for _, n in ipairs(netm:get_networks()) do
+        add_choice(n:name(), n:name() .. " (" .. translate("logical interface") .. ")")
+    end
+    for _, dev in ipairs(netm:get_interfaces()) do
+        add_choice(dev:shortname())
+    end
+    for _, name in ipairs((nsu.db_interfaces())) do
+        add_choice(name, name .. " (" .. translate("vnStat history") .. ")")
     end
 
     -- Data retention info
     local info = s:option(DummyValue, "_info", translate("vnStat Database"))
     info.rawhtml  = true
     info.cfgvalue = function()
-        -- Show current database size if available
-        local size_out = sys.exec("du -sh /etc/vnstat/ 2>/dev/null | cut -f1") or ""
+        if not nsu.vnstat_installed() then
+            return '<span style="font-size:12px;color:#b91c1c;">' ..
+                translate("vnStat is not installed. Install the vnstat2 package.") ..
+                '</span>'
+        end
+
+        local dir = nsu.vnstat_dbdir()
+        local size_out = sys.exec("du -sh '" .. dir:gsub("'", "") .. "' 2>/dev/null | cut -f1") or ""
         size_out = size_out:match("^%s*(.-)%s*$") or ""
         local db_size = size_out ~= "" and (" — " .. size_out) or ""
-        return string.format(
-            '<span style="font-size:12px;color:#6b7280;">%s%s</span>',
-            translate("Location: /etc/vnstat/"),
-            db_size
+
+        local tracked = table.concat((nsu.db_interfaces()), ", ")
+        if tracked == "" then tracked = translate("none yet") end
+
+        local html = string.format(
+            '<span style="font-size:12px;opacity:0.75;">%s %s%s<br>%s %s</span>',
+            translate("Location:"), dir, db_size,
+            translate("Tracked interfaces:"), tracked
         )
+
+        -- /var is a tmpfs on OpenWrt, so the default location loses history
+        -- on every reboot.
+        if dir:match("^/var/") or dir:match("^/tmp/") or dir == "/var" or dir == "/tmp" then
+            html = html .. '<br><span style="font-size:12px;color:#b45309;">' ..
+                translate("This directory is in RAM, so history is lost on reboot. " ..
+                    "Set DatabaseDir in /etc/vnstat.conf to persistent storage to keep it.") ..
+                '</span>'
+        end
+        return html
     end
 
     -- Reset button with inline JS confirmation
@@ -93,19 +129,16 @@ if active_tab == "settings" then
     end
 
     function reset.write(self, section)
-        sys.call("/etc/init.d/vnstat stop 2>/dev/null")
-        sys.call("rm -f /etc/vnstat/* 2>/dev/null")
-
-        -- Re-initialise only interfaces that currently exist
-        local netm2 = net.init()
-        for _, dev in ipairs(netm2:get_interfaces()) do
-            local name = dev:shortname()
-            if name and not name:match("^lo$") and not name:match("^br%-") then
-                sys.call("vnstat -u -i " .. name .. " >/dev/null 2>&1")
-            end
+        -- vnStat 2 keeps everything in one SQLite database, so drop and
+        -- re-create each interface's entry instead of deleting files.
+        local ifaces = nsu.db_interfaces()
+        sys.call("/etc/init.d/vnstat stop >/dev/null 2>&1")
+        for _, name in ipairs(ifaces) do
+            sys.call(nsu.VNSTAT .. " --remove --force -i " .. name .. " >/dev/null 2>&1")
+            sys.call(nsu.VNSTAT .. " --add --force -i " .. name .. " >/dev/null 2>&1")
         end
-
-        sys.call("/etc/init.d/vnstat start 2>/dev/null")
+        sys.call("rm -f /tmp/luci-netstat-vnstat-month")
+        sys.call("/etc/init.d/vnstat start >/dev/null 2>&1")
         m.message = translate("vnStat database has been reset successfully for all interfaces.")
     end
 

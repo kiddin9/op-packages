@@ -1,0 +1,58 @@
+#!/bin/sh
+# Make vnStat track this router's network devices without any hard-coded
+# names: every netifd interface that is up (WAN, LAN, modem, VPN, ...) gets
+# its L3 device added to the "interface" list in /etc/config/vnstat, which
+# the vnstat2 init script feeds to "vnstat --add".
+#
+#   netstat-vnstat-track            add the devices of all interfaces that are up
+#   netstat-vnstat-track <dev>...   add the given devices
+#
+# Set "option vnstat_autoadd '0'" in /etc/config/netstats to turn this off.
+
+[ -x /usr/bin/vnstat ] || exit 0
+[ "$(uci -q get netstats.@config[0].vnstat_autoadd)" = "0" ] && exit 0
+
+valid_name() {
+	case "$1" in
+		""|lo|*[!A-Za-z0-9._-]*) return 1 ;;
+	esac
+	return 0
+}
+
+discover() {
+	ubus call network.interface dump 2>/dev/null | \
+		jsonfilter -e '@.interface[@.up=true].l3_device' 2>/dev/null
+}
+
+[ $# -gt 0 ] && devices="$*" || devices="$(discover)"
+[ -n "$devices" ] || exit 0
+
+lock /var/lock/netstat-vnstat-track
+
+# vnstat2 ships "config vnstat" in /etc/config/vnstat; recreate it if missing.
+touch /etc/config/vnstat
+uci -q get vnstat.@vnstat[0] >/dev/null || uci -q add vnstat vnstat >/dev/null
+
+tracked=" $(uci -q get vnstat.@vnstat[0].interface) "
+changed=0
+for dev in $devices; do
+	valid_name "$dev" || continue
+	case "$tracked" in *" $dev "*) continue ;; esac
+	uci -q add_list vnstat.@vnstat[0].interface="$dev"
+	tracked="$tracked$dev "
+	changed=1
+done
+
+if [ "$changed" = 1 ]; then
+	uci -q commit vnstat
+	# reload runs "vnstat --add" for the list and sends SIGHUP so vnstatd
+	# picks the new entries up straight away.
+	if /etc/init.d/vnstat running 2>/dev/null; then
+		/etc/init.d/vnstat reload >/dev/null 2>&1
+	elif /etc/init.d/vnstat enabled 2>/dev/null; then
+		/etc/init.d/vnstat start >/dev/null 2>&1
+	fi
+fi
+
+lock -u /var/lock/netstat-vnstat-track
+exit 0

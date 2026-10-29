@@ -1,0 +1,9 @@
+# Start vnStat tracking for interfaces as they come up (modems, PPPoE and
+# VPNs often only get their device name at this point).
+[ "$ACTION" = ifup ] || exit 0
+[ "$INTERFACE" = loopback ] && exit 0
+[ -x /usr/libexec/netstat-vnstat-track ] || exit 0
+
+dev="$DEVICE"
+[ -n "$dev" ] || dev="$(ubus call network.interface."$INTERFACE" status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null)"
+[ -n "$dev" ] && /usr/libexec/netstat-vnstat-track "$dev"

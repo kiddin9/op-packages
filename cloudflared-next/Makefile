@@ -5,8 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=cloudflared-next
-PKG_VERSION:=2026.10.5
-PKG_RELEASE:=8
+PKG_VERSION:=2026.10.6
+PKG_RELEASE:=9
 
 # Architecture mapping for pre-built binaries
 ifeq ($(ARCH),x86_64)

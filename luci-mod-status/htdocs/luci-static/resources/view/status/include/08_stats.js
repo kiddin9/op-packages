@@ -77,17 +77,50 @@ function parseNetdev(raw) {
 	return stats;
 }
 
+// The backend resolves the tracked device (Settings choice or default-route
+// device). Without one, fall back to the busiest non-loopback interface
+// rather than guessing names.
 function getBestWAN(stats, preferred) {
 	for (const i of preferred) if (stats[i]) return i;
 
-	const dynamic = Object.keys(stats).find(i =>
-		/^(wwan|usb|ppp|lte|qmi|modem)/.test(i) && i.includes('_'));
-	if (dynamic) return dynamic;
+	let best = '', bestBytes = -1;
+	for (const k of Object.keys(stats)) {
+		if (k === 'lo') continue;
+		const bytes = (parseInt(stats[k].rx) || 0) + (parseInt(stats[k].tx) || 0);
+		if (bytes > bestBytes) { best = k; bestBytes = bytes; }
+	}
+	return best;
+}
 
-	for (const i of ['pppoe-wan','lte0','usb0','wan','eth1','tun0','wg0'])
-		if (stats[i]) return i;
+// Totals for the downloaded/uploaded boxes: this month from vnStat when the
+// vnStat backend is selected, otherwise the since-boot kernel counters.
+function getTotals(data, curr) {
+	const v = data.vnstat_total;
+	if (v && typeof v === 'object')
+		return { rx: parseInt(v.rx) || 0, tx: parseInt(v.tx) || 0 };
+	return curr;
+}
 
-	return Object.keys(stats).find(k => k !== 'lo') || '';
+const STATS_URL = L.url('admin/tools/get_netdev_stats');
+
+// Normalise one backend response into the shape render()/updateContainer() use.
+function toData(r, ip) {
+	return {
+		stats:        (r && r.stats)       || {},
+		ip:           ip,
+		status:       (r && r.status)      || 'Disconnected',
+		uptime:       (r && r.uptime)      || 0,
+		cpu_pct:      (r && r.cpu_pct)     || 0,
+		cpu_temp:     (r && r.cpu_temp)    != null ? r.cpu_temp : null,
+		mem_pct:      (r && r.mem_pct)     || 0,
+		mem_used:     (r && r.mem_used)    || 0,
+		mem_total:    (r && r.mem_total)   || 0,
+		disk_pct:     (r && r.disk_pct)    || 0,
+		disk_used:    (r && r.disk_used)   || 0,
+		disk_total:   (r && r.disk_total)  || 0,
+		preferred:    (r && r.prefer_iface) ? [r.prefer_iface] : [],
+		vnstat_total: (r && r.vnstat_total) || null
+	};
 }
 
 function formatRate(bps) {
@@ -381,8 +414,9 @@ function updateContainer(container, data, dt) {
 
 	const rxRate  = formatRate(rxSpeed * 8);
 	const txRate  = formatRate(txSpeed * 8);
-	const totalRx = formatBytes(curr.rx).split(' ');
-	const totalTx = formatBytes(curr.tx).split(' ');
+	const sums    = getTotals(data, curr);
+	const totalRx = formatBytes(sums.rx).split(' ');
+	const totalTx = formatBytes(sums.tx).split(' ');
 	const peakRxFmt = formatRate(peakRx * 8);
 	const peakTxFmt = formatRate(peakTx * 8);
 
@@ -457,18 +491,34 @@ function updateContainer(container, data, dt) {
 	return true;
 }
 
-// ─── Cached public IP (refreshed every 60 s, not on every 2 s poll) ──────────
-let _cachedIp        = 'N/A';
+// ─── Cached public IP (refreshed every 5 min, not on every 2 s poll) ─────────
+// The public IP (as seen through any proxy such as Passwall) is shown once
+// known; the tracked device's local address is only a fallback until then,
+// so the 2 s fast polls must never overwrite it.
+let _publicIp        = null;
+let _localIp         = 'N/A';
 let _lastIpFetch     = 0;
 const IP_REFRESH_MS  = 300000;
+const IP_RETRY_MS    = 30000;
+
+function shownIp() {
+	return _publicIp || _localIp;
+}
+
+function noteLocalIp(r) {
+	if (r && r.ip && r.ip !== 'N/A') _localIp = r.ip;
+}
 
 function maybeRefreshIp() {
 	const now = Date.now();
-	if (now - _lastIpFetch < IP_REFRESH_MS) return;
+	if (now - _lastIpFetch < (_publicIp ? IP_REFRESH_MS : IP_RETRY_MS)) return;
 	_lastIpFetch = now;
 	// Full fetch (no ?fast=1) to get public IP; update cache on success
-	fetchWithTimeout('/cgi-bin/luci/admin/tools/get_netdev_stats', 8000)
-		.then(r => { if (r && r.ip && r.ip !== 'N/A') _cachedIp = r.ip; })
+	fetchWithTimeout(STATS_URL, 8000)
+		.then(r => {
+			if (r && r.ip_source === 'public' && r.ip && r.ip !== 'N/A')
+				_publicIp = r.ip;
+		})
 		.catch(() => {});
 }
 
@@ -478,29 +528,13 @@ return baseclass.extend({
 
 	load() {
 		// Use ?fast=1 to skip slow public-IP APIs — response is near-instant
-		return fetchWithTimeout('/cgi-bin/luci/admin/tools/get_netdev_stats?fast=1', 5000)
+		return fetchWithTimeout(STATS_URL + '?fast=1', 5000)
 			.then(r => {
-				// Seed the cached IP from the local WAN address on first load
-				if (r && r.ip && r.ip !== 'N/A') _cachedIp = r.ip;
-				return {
-					stats:      (r && r.stats)       || {},
-					ip:         _cachedIp,
-					status:     (r && r.status)      || 'Disconnected',
-					uptime:     (r && r.uptime)      || 0,
-					cpu_pct:    (r && r.cpu_pct)     || 0,
-					cpu_temp:   (r && r.cpu_temp)    != null ? r.cpu_temp : null,
-					mem_pct:    (r && r.mem_pct)     || 0,
-					mem_used:   (r && r.mem_used)    || 0,
-					mem_total:  (r && r.mem_total)   || 0,
-					disk_pct:   (r && r.disk_pct)    || 0,
-					disk_used:  (r && r.disk_used)   || 0,
-					disk_total: (r && r.disk_total)  || 0,
-					preferred:  (r && r.prefer_iface) ? [r.prefer_iface] : []
-				};
+				// Show the local WAN address until the public IP arrives
+				noteLocalIp(r);
+				return toData(r, shownIp());
 			})
-			.catch(() => ({ stats: {}, ip: 'N/A', status: 'Disconnected',
-			                uptime: 0, cpu_pct: 0, cpu_temp: null, mem_pct: 0, mem_used: 0, mem_total: 0,
-			                disk_pct: 0, disk_used: 0, disk_total: 0, preferred: [] }));
+			.catch(() => toData(null, 'N/A'));
 	},
 
 	render(data) {
@@ -538,8 +572,9 @@ return baseclass.extend({
 
 		const rxRate  = formatRate(rxSpeed * 8);
 		const txRate  = formatRate(txSpeed * 8);
-		const totalRx = formatBytes(curr.rx).split(' ');
-		const totalTx = formatBytes(curr.tx).split(' ');
+		const sums    = getTotals(data, curr);
+		const totalRx = formatBytes(sums.rx).split(' ');
+		const totalTx = formatBytes(sums.tx).split(' ');
 
 		// Build download box manually to inject trend badge
 		const dlBox = createRateBox(_('download'), rxRate.number, rxRate.unit,
@@ -573,31 +608,17 @@ return baseclass.extend({
 			L.Poll.add(() => {
 				// Periodically refresh the public IP in the background (non-blocking)
 				maybeRefreshIp();
-				return fetchWithTimeout('/cgi-bin/luci/admin/tools/get_netdev_stats?fast=1', 5000)
+				return fetchWithTimeout(STATS_URL + '?fast=1', 5000)
 					.then(r => {
 						const now2 = Date.now();
 						const dt2  = Math.max(0.1, (now2 - last_time) / 1000);
 						last_time  = now2;
 
-						// Update cached IP from local WAN if we got a valid one
-						if (r && r.ip && r.ip !== 'N/A') _cachedIp = r.ip;
+						// Keep the local address current as a fallback only
+						noteLocalIp(r);
 
 						if (_container && _container.isConnected) {
-							updateContainer(_container, {
-								stats:      (r && r.stats)       || {},
-								ip:         _cachedIp,
-								status:     (r && r.status)      || 'Disconnected',
-								uptime:     (r && r.uptime)      || 0,
-								cpu_pct:    (r && r.cpu_pct)     || 0,
-								cpu_temp:   (r && r.cpu_temp)    != null ? r.cpu_temp : null,
-								mem_pct:    (r && r.mem_pct)     || 0,
-								mem_used:   (r && r.mem_used)    || 0,
-								mem_total:  (r && r.mem_total)   || 0,
-								disk_pct:   (r && r.disk_pct)    || 0,
-								disk_used:  (r && r.disk_used)   || 0,
-								disk_total: (r && r.disk_total)  || 0,
-								preferred:  (r && r.prefer_iface) ? [r.prefer_iface] : []
-							}, dt2);
+							updateContainer(_container, toData(r, shownIp()), dt2);
 						}
 					})
 					.catch(() => {});

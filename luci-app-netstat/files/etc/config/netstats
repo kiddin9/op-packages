@@ -1,5 +1,6 @@
 
 config config
-	option prefer 'wwan0_1'
+	option prefer ''
 	option backend 'normal'
-
+	option mode 'daily'
+	option vnstat_autoadd '1'

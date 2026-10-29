@@ -1,214 +1,116 @@
 <%
-local sys  = require "luci.sys"
-local http = require "luci.http"
-local uci  = require "luci.model.uci".cursor()
+local http  = require "luci.http"
+local uci   = require "luci.model.uci".cursor()
+local jsonc = require "luci.jsonc"
+local nsu   = require "luci.netstat"
 
-local function to_bytes(value, unit)
-    local m = { KiB=1024, MiB=1048576, GiB=1073741824, TiB=1099511627776 }
-    return tonumber(value) * (m[unit] or 1)
-end
+local have_vnstat = nsu.vnstat_installed()
+local ifaces, db  = nsu.db_interfaces()
+local saved_mode  = uci:get("netstats", "@config[0]", "mode") or "daily"
 
-local function format_date(date_str)
-    local months = {"Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec"}
-    local mo, d, y = date_str:match("(%d%d)/(%d%d)/(%d%d)")
-    if mo and d and y then
-        return string.format("%02d %s %02d", tonumber(d), months[tonumber(mo)], tonumber(y))
-    end
-    return date_str
-end
+-- Requested interface, then the Settings choice / default-route device, as
+-- long as vnStat has a database entry for it; else the first one it has.
+local cur_iface = nsu.resolve_device(http.formvalue("iface"), db)
+               or nsu.wan_device(db)
+               or ifaces[1] or ""
 
-local function today_label()    return os.date("%d %b %y") end
-local function curmonth_label() return os.date("%b '%y")   end
-
-local function ensure_today(stats)
-    local lbl = today_label()
-    for _, s in ipairs(stats) do if s.date == lbl then return stats end end
-    table.insert(stats, { date=lbl, rx=0, tx=0 })
-    return stats
-end
-
-local function ensure_curmonth(stats)
-    local lbl = curmonth_label()
-    for _, s in ipairs(stats) do if s.month == lbl then return stats end end
-    table.insert(stats, { month=lbl, rx=0, tx=0 })
-    return stats
-end
-
-local function get_interfaces()
-    local ifaces = {}
-    local p = io.popen("ls /etc/vnstat/ 2>/dev/null | grep -v '.conf$' | grep -v '.old$'")
-    if p then
-        for iface in p:lines() do
-            iface = iface:match("^%s*(.-)%s*$")
-            if iface ~= "" then table.insert(ifaces, iface) end
-        end
-        p:close()
-    end
-    table.sort(ifaces)
-    return ifaces
-end
-
-local function get_daily_stats(iface)
-    local stats = {}
-    local out = sys.exec("vnstat -i " .. iface .. " --days 2>/dev/null") or ""
-    for date, rx_v, rx_u, tx_v, tx_u in
-        out:gmatch("(%d%d/%d%d/%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
-        table.insert(stats, {
-            date = format_date(date),
-            rx   = to_bytes(rx_v, rx_u),
-            tx   = to_bytes(tx_v, tx_u)
-        })
-    end
-    return ensure_today(stats)
-end
-
-local function get_monthly_stats(iface)
-    local stats = {}
-    local out = sys.exec("vnstat -i " .. iface .. " --months 2>/dev/null") or ""
-    for month, rx_v, rx_u, tx_v, tx_u in
-        out:gmatch("(%a+%s+'%d%d)%s+([%d%.]+)%s+([KMGT]iB)%s+|%s+([%d%.]+)%s+([KMGT]iB)") do
-        table.insert(stats, {
-            month = month,
-            rx    = to_bytes(rx_v, rx_u),
-            tx    = to_bytes(tx_v, tx_u)
-        })
-    end
-    return ensure_curmonth(stats)
-end
-
-local function fmt_bytes(v)
-    if     v >= 1099511627776 then return string.format("%.2f TB", v/1099511627776)
-    elseif v >= 1073741824    then return string.format("%.2f GB", v/1073741824)
-    elseif v >= 1048576       then return string.format("%.2f MB", v/1048576)
-    elseif v >= 1024          then return string.format("%.2f KB", v/1024)
-    end
-    return tostring(v) .. " B"
-end
-
-local ifaces      = get_interfaces()
-local saved_iface = uci:get("netstats", "@config[0]", "prefer") or ""
-local saved_mode  = uci:get("netstats", "@config[0]", "mode")   or "daily"
-
-local function has_db(name)
-    for _, i in ipairs(ifaces) do if i == name then return true end end
-    return false
-end
-
--- Accepts a vnStat netdev name (e.g. "wwan0") or a logical interface name
--- (e.g. "wan") resolved to its l3_device. Returns nil if it has no database.
-local function resolve_iface(name)
-    if not name or name == "" or not name:match("^[%w%-%._]+$") then return nil end
-    if has_db(name) then return name end
-    local l3 = sys.exec("ubus call network.interface." .. name ..
-        " status 2>/dev/null | jsonfilter -e '@.l3_device' 2>/dev/null") or ""
-    l3 = l3:match("^%s*(.-)%s*$")
-    if l3 ~= "" and has_db(l3) then return l3 end
-    return nil
-end
-
--- Auto detect: the default-route device is the real uplink.
-local function default_route_iface()
-    local out = sys.exec("ip route show default 2>/dev/null") or ""
-    for dev in out:gmatch("dev%s+(%S+)") do
-        if has_db(dev) then return dev end
-    end
-    return nil
-end
-
-local cur_iface   = resolve_iface(http.formvalue("iface"))
-                 or resolve_iface(saved_iface)
-                 or default_route_iface()
-                 or ifaces[1] or ""
-local view_mode   = http.formvalue("mode")  or saved_mode
+local view_mode = http.formvalue("mode") or saved_mode
 if view_mode ~= "daily" and view_mode ~= "monthly" then view_mode = "daily" end
 
-local stats, title = {}, ""
-if cur_iface ~= "" then
-    if view_mode == "monthly" then
-        stats = get_monthly_stats(cur_iface)
-        title = translate("Monthly")
-    else
-        stats = get_daily_stats(cur_iface)
-        title = translate("Daily")
-    end
-end
+local title = view_mode == "monthly" and translate("Monthly") or translate("Daily")
 
-local total_rx, total_tx = 0, 0
-for _, s in ipairs(stats) do
-    total_rx = total_rx + (s.rx or 0)
-    total_tx = total_tx + (s.tx or 0)
+-- Raw vnStat JSON, parsed in the browser by netstat/vnstat-parse.js.
+local raw = ""
+if cur_iface ~= "" then
+    raw = nsu.vnstat_json_raw(view_mode == "monthly" and "m" or "d",
+                              view_mode == "monthly" and 12 or 30, cur_iface) or ""
 end
+local raw_js = (jsonc.stringify(raw) or '""'):gsub("</", "<\\/")
 %>
 
 <link rel="stylesheet" href="/luci-static/resources/netstat/netstat-usage.css" />
 
 <div class="netstat-dashboard">
-    <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">
+    <p class="netstat-intro">
         <%:Usage is displayed using the Interface and View Mode selected in the Settings tab.%>
     </p>
 
-<% if cur_iface ~= "" and #stats > 0 then %>
+<% if have_vnstat and cur_iface ~= "" then %>
 
+    <div id="netstat-usage-data" style="display:none">
     <div class="netstat-summary">
         <div class="netstat-summary-item">
             <span class="netstat-summary-dot rx"></span>
             <span class="netstat-summary-label"><%:Download%>:</span>
-            <strong><%=fmt_bytes(total_rx)%></strong>
+            <strong id="netstat-total-rx">-</strong>
         </div>
         <div class="netstat-summary-item">
             <span class="netstat-summary-dot tx"></span>
             <span class="netstat-summary-label"><%:Upload%>:</span>
-            <strong><%=fmt_bytes(total_tx)%></strong>
+            <strong id="netstat-total-tx">-</strong>
         </div>
         <div class="netstat-summary-item netstat-summary-total">
             <span class="netstat-summary-label"><%:Total%>:</span>
-            <strong><%=fmt_bytes(total_rx + total_tx)%></strong>
+            <strong id="netstat-total-all">-</strong>
         </div>
     </div>
 
     <div class="netstat-chart-wrap">
         <div class="netstat-chart-header">
-            <h3 class="netstat-chart-title"><%=title%> <%:Usage%></h3>
+            <span class="netstat-chart-title"><%=title%> <%:Usage%></span>
             <span class="netstat-chart-badge"><%=cur_iface%></span>
         </div>
-        <canvas id="trafficChart" class="netstat-chart-canvas"></canvas>
+        <div class="netstat-chart-box"><canvas id="trafficChart"></canvas></div>
+    </div>
+    </div>
+
+    <div id="netstat-usage-empty" class="netstat-empty" style="display:none">
+        <span class="netstat-empty-icon">&#128202;</span>
+        <%:No data available for%> <strong><%=cur_iface%></strong>
+        <div class="netstat-hint">
+            <%:vnStat may still be collecting its first data. It saves to its database every few minutes, try again shortly.%>
+        </div>
     </div>
 
     <script src="/luci-static/resources/netstat/chart.js"></script>
     <script src="/luci-static/resources/netstat/chartjs-plugin-datalabels"></script>
+    <script src="/luci-static/resources/netstat/vnstat-parse.js"></script>
     <script>
     (function () {
-        var isDark    = window._netstatDark || false;
-        var textColor = isDark ? '#f3f4f6' : '#1f2937';
-        var gridColor = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.08)';
+        // Chart text follows the theme's own text colour, so it is readable
+        // on light and dark themes alike; grid lines are translucent grey.
+        var dashboard = document.querySelector('.netstat-dashboard');
+        function themeTextColor() {
+            return getComputedStyle(dashboard).color || '#888';
+        }
+        var textColor = themeTextColor();
+        var gridColor = 'rgba(128,128,128,0.2)';
 
-        var labels = [
-            <% for i, stat in ipairs(stats) do
-                local lbl = view_mode == "daily" and stat.date or stat.month
-            %>"<%=lbl%>"<% if i < #stats then %>,<% end %>
-            <% end %>
-        ];
-        var rxData = [
-            <% for i, stat in ipairs(stats) do
-            %><%= math.floor(stat.rx) %><% if i < #stats then %>,<% end %>
-            <% end %>
-        ];
-        var txData = [
-            <% for i, stat in ipairs(stats) do
-            %><%= math.floor(stat.tx) %><% if i < #stats then %>,<% end %>
-            <% end %>
-        ];
+        var usage = window.netstatVnstat.series(<%=raw_js%>, '<%=cur_iface%>', '<%=view_mode%>');
+        if (!usage.entries) {
+            document.getElementById('netstat-usage-empty').style.display = '';
+            return;
+        }
+        document.getElementById('netstat-usage-data').style.display = '';
 
+        var labels = usage.labels;
+        var rxData = usage.rx;
+        var txData = usage.tx;
+
+        // Height follows the number of rows; width follows the container
+        // (Chart.js responsive mode), so the chart never overflows when the
+        // theme's sidebar appears or the window is resized.
         var BAR_H  = 48;
         var canvas = document.getElementById('trafficChart');
-        canvas.height = Math.min(Math.max(labels.length * BAR_H, 280), 700);
-        canvas.width  = canvas.offsetWidth || canvas.parentElement.clientWidth;
+        canvas.parentElement.style.height =
+            Math.min(Math.max(labels.length * BAR_H, 280), 700) + 'px';
 
         var ctx = canvas.getContext('2d');
 
-        function rxGradient() {
-            var g = ctx.createLinearGradient(0, 0, canvas.width || 600, 0);
+        function rxGradient(c) {
+            var area = c.chart.chartArea;
+            if (!area) return '#4ade80';
+            var g = c.chart.ctx.createLinearGradient(area.left, 0, area.right, 0);
             g.addColorStop(0, '#86efac');
             g.addColorStop(1, '#15803d');
             return g;
@@ -222,9 +124,13 @@ end
             return v + ' B';
         }
 
+        document.getElementById('netstat-total-rx').textContent  = fmtBytes(usage.totalRx);
+        document.getElementById('netstat-total-tx').textContent  = fmtBytes(usage.totalTx);
+        document.getElementById('netstat-total-all').textContent = fmtBytes(usage.totalRx + usage.totalTx);
+
         var maxVal = Math.max.apply(null, rxData.concat(txData).concat([1]));
 
-        new Chart(ctx, {
+        var chart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -232,7 +138,7 @@ end
                     {
                         label: '<%:Download (RX)%>',
                         data: rxData,
-                        backgroundColor: rxData.map(function() { return rxGradient(); }),
+                        backgroundColor: rxGradient,
                         borderRadius: 4,
                         borderSkipped: false,
                         datalabels: {
@@ -267,7 +173,7 @@ end
             },
             options: {
                 indexAxis: 'y',
-                responsive: false,
+                responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 400 },
                 plugins: {
@@ -303,20 +209,51 @@ end
             },
             plugins: [ChartDataLabels]
         });
+
+        // Recolour when the theme switches between light and dark without a
+        // page reload (themes toggle a class or inline style on <html>/<body>).
+        function recolour() {
+            var c = themeTextColor();
+            if (c === textColor) return;
+            textColor = c;
+            chart.options.plugins.legend.labels.color = c;
+            chart.options.scales.x.ticks.color = c;
+            chart.options.scales.y.ticks.color = c;
+            chart.data.datasets[1].datalabels.color = c;
+            chart.update('none');
+        }
+        // Themes may animate the colour change (e.g. "transition: all 0.2s"),
+        // so check again once it has settled and whenever a colour
+        // transition finishes.
+        function recolourSoon() {
+            setTimeout(recolour, 50);
+            setTimeout(recolour, 500);
+        }
+        document.addEventListener('transitionend', function (ev) {
+            if (ev.propertyName === 'color') recolour();
+        });
+        if (window.MutationObserver) {
+            var mo = new MutationObserver(recolourSoon);
+            [document.documentElement, document.body].forEach(function (el) {
+                mo.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'data-theme', 'data-darkmode'] });
+            });
+            var darkStyle = document.getElementById('dark-theme-style');
+            if (darkStyle) mo.observe(darkStyle, { childList: true, characterData: true, subtree: true });
+        }
     })();
     </script>
 
-<% elseif #ifaces == 0 then %>
+<% elseif not have_vnstat then %>
     <div class="netstat-empty">
         <span class="netstat-empty-icon">&#128225;</span>
-        <%:No vnStat interfaces were found. Make sure vnStat has been initialized.%>
+        <%:vnStat is not installed. Install the vnstat2 package to record traffic history.%>
     </div>
 <% else %>
     <div class="netstat-empty">
-        <span class="netstat-empty-icon">&#128202;</span>
-        <%:No data available for%> <strong><%=cur_iface%></strong>
+        <span class="netstat-empty-icon">&#128225;</span>
+        <%:vnStat is not tracking any interface yet.%>
         <div class="netstat-hint">
-            <%:vnStat may still be collecting its first data. Try again in a few minutes.%>
+            <%:Interfaces are added automatically when they come up. You can also run "/usr/libexec/netstat-vnstat-track" on the router.%>
         </div>
     </div>
 <% end %>

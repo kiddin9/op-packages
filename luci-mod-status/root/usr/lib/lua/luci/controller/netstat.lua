@@ -1,6 +1,8 @@
 module("luci.controller.netstat", package.seeall)
 local nixio = require("nixio")
+local nfs   = require("nixio.fs")
 local uci   = require("luci.model.uci").cursor()
+local nsu   = require("luci.netstat")
 
 function index()
     entry({"admin", "tools", "get_netdev_stats"}, call("getNetdevStats"), nil).sysauth = false
@@ -31,19 +33,7 @@ function getNetdevStats()
         end
     end
 
-    -- Quick connectivity check
-    local status = "Disconnected"
-    for iface, data in pairs(stats) do
-        if iface ~= "lo" and (data.rx > 0 or data.tx > 0) then
-            status = "Connected"
-            break
-        end
-    end
-
-    -- ── IP detection ─────────────────────────────────────────────────────────
-    -- Strategy: try a single fast HTTP call first (2 s timeout), then fall
-    -- back to local ubus/ifstatus which is instant.  The old code tried 11
-    -- commands with 4 s timeouts each – worst-case 44 s of blocking.
+    local status = #nsu.default_route_devices() > 0 and "Connected" or "Disconnected"
 
     local function read_cmd(cmd)
         local p = io.popen(cmd)
@@ -55,38 +45,11 @@ function getNetdevStats()
         return line ~= "" and line or nil
     end
 
-    -- ── Preferred interface resolution ──────────────────────────────────────
-    -- The "Preferred Interface" setting may hold either a real netdev name
-    -- (e.g. "eth2", "wwan0_1") or a logical/config interface name (e.g.
-    -- "modem", "wan") that has no matching key in /proc/net/dev. In the
-    -- latter case resolve it to its actual l3_device via ubus so traffic
-    -- stats can be found.
-    local prefer_iface = ""
-    do
-        local prefer = uci:get_first("netstats", "config", "prefer") or ""
-        -- Only allow safe characters before using it in a shell command.
-        if prefer ~= "" and prefer:match("^[%w%-%._]+$") then
-            if stats[prefer] then
-                prefer_iface = prefer
-            else
-                local l3 = read_cmd(
-                    "ubus call network.interface." .. prefer ..
-                    " status 2>/dev/null | jsonfilter -e '@.l3_device'"
-                )
-                if l3 and stats[l3] then
-                    prefer_iface = l3
-                end
-            end
-        end
-        -- Nothing configured (or unresolvable): use the default-route device
-        -- so idle interfaces named "wan"/"eth1" don't win over the real uplink.
-        if prefer_iface == "" then
-            local dev = read_cmd("ip route show default 2>/dev/null | awk '{for(i=1;i<NF;i++) if($i==\"dev\"){print $(i+1); exit}}'")
-            if dev and dev:match("^[%w%-%._]+$") and stats[dev] then
-                prefer_iface = dev
-            end
-        end
-    end
+    -- ── Tracked device ──────────────────────────────────────────────────────
+    -- The "Preferred Interface" setting (netdev or logical name such as
+    -- "wan"), otherwise the default-route device. Both are resolved
+    -- generically; no interface names are assumed.
+    local prefer_iface = nsu.wan_device(stats) or ""
 
     local function is_valid_ip(v)
         if not v then return false end
@@ -100,6 +63,7 @@ function getNetdevStats()
     end
 
     local ip = "N/A"
+    local ip_source = "none"
 
     -- Determine whether the caller wants a public IP (slow, requires network)
     -- or just the fast local WAN address.  The JS frontend sends ?fast=1 for
@@ -109,30 +73,29 @@ function getNetdevStats()
     -- 1. Try public-IP APIs (only when not in fast mode)
     if want_public then
         local public_cmds = {
-            "curl -fsS --max-time 1 'https://api.ipify.org' 2>/dev/null",
-            "curl -fsS --max-time 1 'http://api.ipify.org' 2>/dev/null",
-            "uclient-fetch -qO- --timeout=1 'https://api.ipify.org' 2>/dev/null",
+            "curl -fsS --max-time 2 'https://api.ipify.org' 2>/dev/null",
+            "curl -fsS --max-time 2 'http://api.ipify.org' 2>/dev/null",
+            "uclient-fetch -qO- --timeout=2 'https://api.ipify.org' 2>/dev/null",
         }
         for _, cmd in ipairs(public_cmds) do
             local v = read_cmd(cmd)
-            if is_valid_ip(v) then ip = v; break end
+            if is_valid_ip(v) then ip = v; ip_source = "public"; break end
         end
     end
 
-    -- 2. Fall back to local WAN address (instant, no network needed)
-    if ip == "N/A" then
-        local local_cmds = {
-            -- wan IPv4
-            "ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@[\"ipv4-address\"][0].address'",
-            "ifstatus wan 2>/dev/null | jsonfilter -e '@[\"ipv4-address\"][0].address'",
-            -- wan IPv6
-            "ubus call network.interface.wan status 2>/dev/null | jsonfilter -e '@[\"ipv6-address\"][0].address'",
-            "ubus call network.interface.wan6 status 2>/dev/null | jsonfilter -e '@[\"ipv6-address\"][0].address'",
-        }
-        for _, cmd in ipairs(local_cmds) do
-            local v = read_cmd(cmd)
-            if is_valid_ip(v) then ip = v; break end
-        end
+    -- 2. Fall back to the local address of the tracked device
+    if ip == "N/A" and prefer_iface ~= "" then
+        local v = nsu.device_ipaddr(prefer_iface)
+        if is_valid_ip(v) then ip = v; ip_source = "local" end
+    end
+
+    -- ── vnStat totals (only with the vnStat backend) ────────────────────────
+    -- Live rates always come from /proc/net/dev; the vnStat backend swaps the
+    -- "downloaded/uploaded" boxes to this month's totals from its database.
+    local vnstat_total = nil
+    if prefer_iface ~= "" and
+       (uci:get_first("netstats", "config", "backend") or "normal") == "vnstat" then
+        vnstat_total = nsu.vnstat_month_total(prefer_iface)
     end
 
     -- ── System uptime ─────────────────────────────────────────────────────────
@@ -196,9 +159,7 @@ function getNetdevStats()
 
     -- ── Disk space (root filesystem) ──────────────────────────────────────────
     local disk_pct, disk_used_mb, disk_total_mb = 0, 0, 0
-    -- Use POSIX output (-P): busybox df wraps long device names onto a second
-    -- line without it, which breaks the NR==2 parse (e.g. LXC root device).
-    local df = read_cmd("df -kP / 2>/dev/null | awk 'NR==2{print $2,$3}'")
+    local df = read_cmd("df -k / 2>/dev/null | awk 'NR==2{print $2,$3}'")
     if df then
         local dtotal, dused = df:match("^(%d+)%s+(%d+)$")
         dtotal = tonumber(dtotal) or 0
@@ -212,43 +173,9 @@ function getNetdevStats()
 
     -- ── CPU temperature ───────────────────────────────────────────────────────
     local cpu_temp = nil
-
-    -- Preferred source: CPU-specific hwmon sensors (k10temp/coretemp/zenpower/
-    -- ...).  ACPI thermal zones can be absent or bogus (e.g. inside LXC
-    -- containers the host ACPI zone is not the CPU sensor), while hwmon
-    -- reports the real package temperature on x86.
-    local cpu_hwmon = { k10temp = true, coretemp = true, zenpower = true, cpu_thermal = true, soc_thermal = true }
-    if nixio.fs.access("/sys/class/hwmon") then
-        for h in nixio.fs.dir("/sys/class/hwmon") do
-            local base = "/sys/class/hwmon/" .. h
-            local nf = io.open(base .. "/name", "r")
-            local name = nf and nf:read("*l") or nil
-            if nf then nf:close() end
-            if name and cpu_hwmon[name] then
-                for entry in nixio.fs.dir(base) do
-                    if entry:match("^temp%d+_input$") then
-                        local sf = io.open(base .. "/" .. entry, "r")
-                        local val = sf and sf:read("*l") or nil
-                        if sf then sf:close() end
-                        local t = tonumber(val)
-                        if t and t > 0 then
-                            if t > 1000 then t = t / 1000 end
-                            t = math.floor(t + 0.5)
-                            if cpu_temp == nil or t > cpu_temp then
-                                cpu_temp = t
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end
-
-    -- Fallback: scan all available thermal zones and pick the highest valid
-    -- reading (avoids hardcoded zone numbers which vary per device)
-    for zone = 0, 9 do
-        if cpu_temp ~= nil then break end
-        local path = "/sys/class/thermal/thermal_zone" .. zone .. "/temp"
+    -- Scan all available thermal zones and pick the highest valid reading
+    -- (avoids hardcoded zone numbers which vary per device)
+    for path in (nfs.glob("/sys/class/thermal/thermal_zone*/temp") or function() end) do
         local tf = io.open(path, "r")
         if tf then
             local val = tf:read("*l")
@@ -267,8 +194,10 @@ function getNetdevStats()
     end
 
     luci.http.prepare_content("application/json")
-    luci.http.write_json({ stats = stats, ip = ip, status = status,
+    luci.http.write_json({ stats = stats, ip = ip, ip_source = ip_source,
+                           status = status,
                            prefer_iface = prefer_iface,
+                           vnstat_total = vnstat_total,
                            uptime      = uptime_sec,
                            cpu_pct     = cpu_pct,
                            cpu_temp    = cpu_temp,

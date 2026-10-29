@@ -1,6 +1,6 @@
 <div class="netstat-about-card">
-    <h3 style="margin:0 0 4px;"><%:LuCI Netstat%></h3>
-    <p style="margin:0 0 16px;font-size:13px;color:#6b7280;">
+    <strong class="netstat-about-title"><%:LuCI Netstat%></strong>
+    <p class="netstat-about-sub">
         <%:Frontend for traffic monitoring and usage charts on OpenWrt.%>
     </p>
 
@@ -40,22 +40,21 @@
         </div>
     </div>
 
-    <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0 12px;">
-    <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
+    <hr class="netstat-about-sep">
+    <p class="netstat-about-foot">
         <%:Made with%> ♥ <%:for the OpenWrt community%>
     </p>
 </div>
 
 <style>
-.netstat-about-card {
-    border: 1px solid #dfe3eb;
-    border-radius: 10px;
-    background: #fff;
-    padding: 20px 22px;
-    max-width: 520px;
-}
+/* Layout only: colours and backgrounds come from the active LuCI theme. */
+.netstat-about-card  { max-width: 520px; }
+.netstat-about-title { display: block; margin: 0 0 4px; font-size: 15px; }
+.netstat-about-sub   { margin: 0 0 16px; font-size: 13px; opacity: 0.7; }
+.netstat-about-sep   { border: none; border-top: 1px solid rgba(128, 128, 128, 0.3); margin: 16px 0 12px; }
+.netstat-about-foot  { margin: 0; font-size: 12px; opacity: 0.7; text-align: center; }
 
-.netstat-about-grid   { display: flex; flex-direction: column; gap: 10px; }
+.netstat-about-grid  { display: flex; flex-direction: column; gap: 10px; }
 
 .netstat-about-row {
     display: flex;
@@ -68,15 +67,9 @@
 .netstat-about-label {
     min-width: 110px;
     flex-shrink: 0;
-    color: #6b7280;
+    opacity: 0.7;
     font-weight: 500;
 }
-
-.netstat-about-row a {
-    color: #2563eb;
-    text-decoration: none;
-}
-.netstat-about-row a:hover { text-decoration: underline; }
 
 @media (max-width: 480px) {
     .netstat-about-row { flex-direction: column; gap: 2px; }

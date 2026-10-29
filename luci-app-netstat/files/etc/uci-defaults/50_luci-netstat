@@ -1,0 +1,16 @@
+#!/bin/sh
+# First install / first boot: make sure the settings section exists and let
+# vnStat start tracking whatever interfaces are already up. On a fresh boot
+# netifd is not running yet; the iface hotplug hook adds devices as they
+# come up instead.
+
+touch /etc/config/netstats
+uci -q get netstats.@config[0] >/dev/null || uci -q add netstats config >/dev/null
+uci -q get netstats.@config[0].backend >/dev/null || uci -q set netstats.@config[0].backend='normal'
+uci -q get netstats.@config[0].vnstat_autoadd >/dev/null || uci -q set netstats.@config[0].vnstat_autoadd='1'
+uci -q commit netstats
+
+[ -x /usr/libexec/netstat-vnstat-track ] && /usr/libexec/netstat-vnstat-track
+
+rm -f /tmp/luci-indexcache* /tmp/luci-netstat-vnstat-month
+exit 0

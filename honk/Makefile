@@ -4,7 +4,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=honk
 PKG_VERSION:=0.1.0_beta3
-PKG_RELEASE:=23
+PKG_RELEASE:=24
 
 # Raw upstream release tag. It keeps the dots in qualifiers (e.g. v0.0.1.beta.49)
 # because that is what the GitHub release asset name uses.
@@ -12,8 +12,8 @@ HONK_RELEASE_TAG:=v0.1.0-beta.3
 HONK_ASSET_TAG:=v0.1.0-beta.3
 
 # SHA256 of each release tarball, kept in sync by scripts/update_honk_version.sh.
-HONK_HASH_X86_64:=c839b648a443abde8b9bbc8290ebc3c6cd6a5c3e579f391a79016304820354ff
-HONK_HASH_AARCH64:=216ace91ba157f909fca2ecf1f3b33015251b9481382609542fc6907dd521602
+HONK_HASH_X86_64:=259836292247434ee1ced18f8239c4486697c4855ac124195ee6f4c80e0df697
+HONK_HASH_AARCH64:=97e49b43c8efc4618f77a9ccb8a1b015e07e5e942728fd466a2d118cd82db169
 
 PKG_LICENSE:=AGPL-3.0-only
 PKG_LICENSE_FILE:=LICENSE
@@ -27,9 +27,9 @@ else ifeq ($(ARCH),aarch64)
   HONK_HASH:=$(HONK_HASH_AARCH64)
 endif
 
-# Default to the stock-malloc build: lower RSS high-water on small gateways.
-# Use an empty suffix to switch back to the mimalloc build (faster QUIC).
-HONK_SUFFIX:=-stock
+# mimalloc build: faster QUIC. honk.init sets MIMALLOC_ARENA_RESERVE=0 so the
+# 1 GiB arena reservation stays out of VmSize. Use "-stock" to go back.
+HONK_SUFFIX:=
 # Upstream feature variant: -native-api (recommended for OpenWrt gateway), -full, or empty for legacy releases.
 HONK_VARIANT:=-native-api
 HONK_ASSET:=honk-core-$(HONK_ASSET_TAG)-$(HONK_TARGET)$(HONK_SUFFIX)$(HONK_VARIANT).tar.gz
