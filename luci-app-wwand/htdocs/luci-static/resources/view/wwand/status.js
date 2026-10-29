@@ -983,7 +983,7 @@ function renderLive(name, modem, graphs, board) {
 				'%d / %d'.format(lc.tac, lc.global_cell_id) ]);
 			var enb = fmt.fmtEnodeb(lc.global_cell_id);
 			if (enb)
-				srvRows.push([ term(_('eNodeB / Sector'), _('The Cell ID split into the base station (eNodeB ID = Cell ID / 256) and its cell, often one sector of the site (Cell ID % 256). Cells with the same eNodeB ID are on the same site')),
+				srvRows.push([ term(_('eNB / Sector'), _('The Cell ID split into the base station (eNB = eNodeB, ID = Cell ID / 256) and its cell, often one sector of the site (Cell ID % 256). Cells with the same eNB ID belong to the same base station, which may drive radios at more than one site')),
 					enb ]);
 		}
 		var nc = cells.nr5g_cell, sn = (cells.serving||{}).nr;

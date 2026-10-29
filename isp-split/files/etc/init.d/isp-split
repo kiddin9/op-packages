@@ -7,6 +7,11 @@ STOP=10
 
 start() {
 	(
+		# A-14：体检/状态缓存属主为 root，目录 700、文件 600。开机路径
+		# 只做幂等收紧，不主动创建敏感文件。
+		umask 077
+		mkdir -p /etc/isp-split/state 2>/dev/null || true
+		chmod 700 /etc/isp-split/state 2>/dev/null || true
 		i=0
 		while [ "$i" -lt 60 ]; do
 			if nft list table inet mwan3 >/dev/null 2>&1; then

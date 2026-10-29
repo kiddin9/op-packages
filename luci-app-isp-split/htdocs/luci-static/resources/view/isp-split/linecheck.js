@@ -33,8 +33,50 @@ var ICONS = {
 	refresh: '<path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 4v7h-7"/>',
 	pulse: '<path d="M2 12h4l2.5-6 3.5 12 2.5-6H22"/>',
 	chevron: '<path d="M6 9l6 6 6-6"/>',
-	shield: '<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>'
+	shield: '<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>',
+	/* 运营商兜底 glyph：wan 卡映射不到品牌 logo 时用它们占位
+	   （与状态页同一套 24 格线稿；视图之间不共享模块，故此处自带一份） */
+	tel: '<path d="M12 9v12"/><circle cx="12" cy="5" r="2"/><path d="M8.6 8.4a5 5 0 0 1 6.8 0"/><path d="M6 5.8a8.4 8.4 0 0 1 12 0"/>',
+	uni: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8"/><path d="M7 8l4 8"/><path d="M17 8l-4 8"/>',
+	cmcc: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+	cernet: '<path d="M3 9.5 12 5l9 4.5-9 4.5z"/><path d="M7 11.5V16c0 1.2 2.2 2.2 5 2.2s5-1 5-2.2v-4.5"/>',
+	other: '<circle cx="12" cy="12" r="7"/><path d="M12 5v14"/>'
 };
+
+/* wan 卡的 isp 源码 → glyph（与状态页 GLYPH_FOR 同源） */
+var GLYPH_FOR = {
+	chinatelecom: 'tel', chinanet: 'tel', telecom: 'tel',
+	unicom_cnc: 'uni', unicom: 'uni',
+	cmcc: 'cmcc', mobile: 'cmcc',
+	cernet: 'cernet'
+};
+
+/* 品牌 logo：与状态页用的是同一组 PNG（同一路径、同一文件名）。
+   wan 卡按 linecheck JSON 里的 isp 字段归属映射；映射不到就走 GLYPH_FOR/占位。 */
+var BRAND_LOGO = {
+	chinatelecom: 'logo-chinatelecom.png',
+	chinanet: 'logo-chinatelecom.png',
+	telecom: 'logo-chinatelecom.png',
+	unicom_cnc: 'logo-unicom.png',
+	unicom: 'logo-unicom.png',
+	cmcc: 'logo-mobile.png',
+	mobile: 'logo-mobile.png'
+};
+
+var HEAD_ICO = 44;
+
+function brandLogo(src, size) {
+	var file = BRAND_LOGO[src];
+	if (!file)
+		return null;
+	var img = document.createElement('img');
+	img.src = L.resource('isp-split/logos/' + file);
+	img.alt = src;
+	img.width = size || HEAD_ICO;
+	img.height = size || HEAD_ICO;
+	img.className = 'isp-brand-logo';
+	return img;
+}
 
 function svgIcon(name, size) {
 	var span = document.createElement('span');
@@ -68,8 +110,12 @@ function fmtAge(sec) {
 }
 
 function fmtMs(v) {
-	if (v === null || v === undefined || v === '' || v === 0)
+	/* F-24b：null = 未测/失败，显示“—”；"<1" 与历史 0 都显示 "<1ms"。
+	   0 不再作为“没测到”的哨兵（亚毫秒 DNS 曾经被四舍五入成 0）。 */
+	if (v === null || v === undefined || v === '')
 		return '—';
+	if (v === 0 || v === '<1')
+		return '<1ms';
 	return v + 'ms';
 }
 
@@ -427,6 +473,14 @@ return view.extend({
 		var lat = w.latency || {};
 		var geo = w.geo || {};
 		var http = w.http || {};
+		/* F-23：exit_probe 是 shell 侧逐 URL 记录的探测明细。有明细但
+		   exit_ip 为空 => 回显源不可达/返回格式不符；连明细都没有 =>
+		   没有发起探测（curl 缺失/未配置），文案保持“可能未真正出网”。
+		   所有 JSON 字段只作为 E() 的文本子项，绝不拼进 HTML 解析路径。 */
+		var ep = Array.isArray(w.exit_probe) ? w.exit_probe : [];
+		var exitText = w.exit_ip || (ep.length
+			? _('回显源不可达（建议更换 LINE_CHECK_ECHO_URLS）')
+			: _('未取到（可能未真正出网）'));
 		var detail = E('div', { 'class': 'lc-detail', 'hidden': '' });
 
 		var toggle = E('button', {
@@ -457,6 +511,12 @@ return view.extend({
 				sc.grade === 'C' ? 'var(--isp-warn)' : 'var(--isp-bad)')
 		}, [
 			E('div', { 'class': 'lc-head' }, [
+				/* D2：与状态页同一套卡头——44px 左置。
+				   wan 卡按 isp 归属取品牌 logo；自定义 ISP / 未识别（isp 为空）
+				   走 GLYPH_FOR 的线稿 glyph，同一 44px 盒子，卡头高度不变。 */
+				E('span', { 'class': 'lc-head-ico' }, [
+					brandLogo(w.isp) || svgIcon(GLYPH_FOR[w.isp] || 'pulse', HEAD_ICO)
+				]),
 				E('div', { 'class': 'lc-title' }, [
 					E('span', { 'class': 'lc-name' }, [ w.iface || '?' ]),
 					E('span', { 'class': 'lc-dev' }, [ w.device || '' ]),
@@ -477,7 +537,7 @@ return view.extend({
 					E('span', { 'class': 'lc-tag is-muted' }, [ classText(w.ip_class) ])
 				]),
 				row(_('出口 IP'), [
-					E('span', {}, [ w.exit_ip || _('未取到（可能未真正出网）') ]),
+					E('span', {}, [ exitText ]),
 					multi
 				]),
 				row(_('运营商'), [ w.isp_label || _('未知') ]),

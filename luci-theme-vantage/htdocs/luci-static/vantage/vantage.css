@@ -979,12 +979,11 @@ input, select, textarea, button { font: inherit; color: inherit; }
 	line-height: 20px;
 	transition: border-color .12s, box-shadow .12s;
 }
-.vt-main textarea, .cbi-input-textarea, .modal textarea { max-width: calc(2 * var(--field-max)); min-height: 88px; font-family: var(--mono); font-size: var(--fs-sm); resize: vertical; }
+.vt-main textarea, .cbi-input-textarea, .modal textarea { max-width: 100%; min-height: 88px; font-family: var(--mono); font-size: var(--fs-sm); resize: vertical; }
 /* read-only text (System and Kernel log) is a viewer, not a field: full width */
 .vt-main textarea[readonly] { max-width: none; }
-/* a short free-text option (System -> Notes: no rows set) is as wide as the
-   fields beside it; editors that set their rows (Scheduled Tasks) stay wide */
-.cbi-value-field textarea.cbi-input-textarea:not([rows]) { max-width: var(--field-max); }
+/* System notes follow the neighbouring single-line fields. */
+body[data-page="admin-system-system"] .cbi-value[data-name="notes"] textarea { max-width: var(--field-max); }
 .vt-main select, .cbi-input-select, .modal select {
 	appearance: none; -webkit-appearance: none;
 	padding-right: 30px;
@@ -1209,7 +1208,8 @@ input[type="button"], input[type="reset"], input[type="submit"]) {
 	border-radius: var(--r);
 	box-shadow: var(--shadow-pop);
 	overflow-x: hidden; overflow-y: auto;
-	transition: max-height .12s ease-out;
+	/* LuCI focuses the selected item on transitionend; avoid animating its scroll range. */
+	transition: max-height .001s;
 }
 .cbi-dropdown[open] > ul.dropdown[style*="bottom"] { top: auto; }
 .cbi-dropdown[open] > ul.dropdown > li {
@@ -1952,6 +1952,8 @@ body.modal-overlay-active #modal_overlay { display: block; }
 	font-size: var(--fs-lg);
 }
 #modal_overlay > .modal.cbi-modal { width: min(960px, 100%); }
+#modal_overlay > .modal:has(> textarea[readonly]) { width: min(1080px, 100%); }
+#modal_overlay > .modal > textarea[readonly] { max-width: 100%; }
 #modal_overlay > .modal .cbi-section { background: none; border: 0; padding: 0; margin: 0; box-shadow: none; }
 /* a modal's sections have no card padding, so nothing in them bleeds out
    by it: tables keep the modal's width (a bleed scrolled the section
@@ -2067,7 +2069,7 @@ body.modal-overlay-active #modal_overlay { display: block; }
 .assoclist .td { vertical-align: middle; }
 /* free-standing tables (no section around them) become a card; clip, not
    hidden: a scroll container would capture the sticky header */
-#view > .table, #view > div > .table, .cbi-map > .table, #view > div > div > [data-tab-title]:not(.cbi-section) > .table {
+#view > .table, #view > div:not(.cbi-section) > .table, .cbi-map > .table, #view > div > div > [data-tab-title]:not(.cbi-section) > .table {
 	margin: 0 0 var(--sp-4);
 	background: var(--s1);
 	border: 1px solid var(--line);
@@ -2075,8 +2077,8 @@ body.modal-overlay-active #modal_overlay { display: block; }
 	box-shadow: var(--v-shadow);
 	overflow: clip;
 }
-:is(#view, #view > div, .cbi-map, [data-tab-title]:not(.cbi-section)) > .table .tr > :is(.th, .td):first-child { padding-left: var(--card-px); }
-:is(#view, #view > div, .cbi-map, [data-tab-title]:not(.cbi-section)) > .table .tr > :is(.th, .td):last-child { padding-right: var(--card-px); }
+:is(#view, #view > div:not(.cbi-section), .cbi-map, [data-tab-title]:not(.cbi-section)) > .table .tr > :is(.th, .td):first-child { padding-left: var(--card-px); }
+:is(#view, #view > div:not(.cbi-section), .cbi-map, [data-tab-title]:not(.cbi-section)) > .table .tr > :is(.th, .td):last-child { padding-right: var(--card-px); }
 #view > h3, #view > div > h3 { margin: var(--sp-6) 0 var(--sp-3); font-size: var(--fs-md); }
 /* LuCI 24.10: Status -> Overview's sections are #view's children with the
    heading first (25.12 wraps it in .cbi-title): it keeps the header row's
@@ -2459,19 +2461,27 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 .cbi-section-table-row:has(> .td[data-name="_stat"] big):first-child > .td { border-top: 0; }
 .cbi-section-table-row:not(:has(big)) > .td[data-name="_badge"] { padding-left: calc(var(--card-px) + 16px); }
 
-/* progress bars: thin track, value text outside the fill */
+/* progress bars: thin track, value text above it and in flow, so larger
+   browser fonts cannot run into the heading */
 .cbi-progressbar {
-	height: 6px; margin: 20px 0 2px;
-	background: var(--s3);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	grid-template-rows: auto 6px;
+	gap: 5px;
+	height: auto; margin: 0 0 2px;
+	background: none;
 	border: 0; border-radius: 3px;
 	overflow: visible;
 }
-.cbi-progressbar > div { border-radius: 3px; background: var(--accent-text); }
+.cbi-progressbar > div { grid-area: 2 / 1; height: 6px; z-index: 1; border-radius: 3px; background: var(--accent-text); }
 .cbi-progressbar::before {
-	inset: auto 0 calc(100% + 5px) 0; padding: 0;
+	position: static; inset: auto; padding: 0;
+	display: block;
 	color: var(--text-2);
 	font: 500 var(--fs-micro)/1.2 var(--mono);
+	white-space: normal; overflow-wrap: anywhere;
 }
+.cbi-progressbar::after { content: ""; grid-area: 2 / 1; height: 6px; border-radius: 3px; background: var(--s3); }
 
 /* fused memory / storage meters (built by menu-vantage.js) */
 .v-src-hidden { display: none !important; }
@@ -2517,15 +2527,23 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 .v-meter-row > .v-meter-val b { color: var(--text); font-weight: 600; }
 .v-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* wide tables scroll inside their card, never the page. Sticky headers need
-   a non-scrolling ancestor, so status tables only scroll when narrow. The
-   card is as tall as its content, so it has nothing to scroll down to; a
-   few pixels of overflow (Firefox on a scaled display) made it scroll */
-.cbi-tblsection, .cbi-section:has(> .cbi-tblsection) { overflow-x: auto; overflow-y: hidden; }
+/* Share the widest table's intrinsic width with its headings and dividers. */
+@media (width > 720px) {
+	.cbi-tblsection { display: grid; grid-template-columns: minmax(min-content, 1fr); }
+	.cbi-section.cbi-tblsection > .table { width: auto !important; }
+	.cbi-section:has(.cbi-tblsection) > .cbi-section-node { display: table; width: 100%; }
+	.cbi-value:has(> .table) { display: block; }
+}
+
+/* Table sections can sit below form wrappers; their outer card scrolls too.
+   Other status cards only scroll when narrow so their headers can stick.
+   Vertical overflow is clipped to prevent spurious scrolling on scaled
+   Firefox displays. */
+.cbi-tblsection, .cbi-section:has(.cbi-tblsection), .cbi-section:has(> :where(#packages)) { overflow-x: auto; overflow-y: hidden; }
 /* overlay scrollbars show nothing until touched: a shade on the side with
    more table says it scrolls. The covers move with the content and hide
    the shade at either end, so a card that fits looks as before. */
-.vt-main .cbi-tblsection, .vt-main .cbi-section:has(> .cbi-tblsection) {
+.vt-main .cbi-tblsection, .vt-main .cbi-section:has(.cbi-tblsection), .vt-main .cbi-section:has(> :where(#packages)) {
 	background-image:
 		linear-gradient(to right, var(--s1) 50%, transparent), linear-gradient(to left, var(--s1) 50%, transparent),
 		linear-gradient(to right, var(--line-2), transparent), linear-gradient(to left, var(--line-2), transparent);
@@ -2547,11 +2565,11 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 	   section to scroll in: the card itself scrolls, its rows held in one
 	   table box (LuCI puts every row, titles too, in the tbody, so the
 	   columns stay aligned), its header static as in sections */
-	:is(#view, #view > div, .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:not(:has(> thead)) {
+	:is(#view, #view > div:not(.cbi-section), .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:not(:has(> thead)) {
 		display: block; overflow-x: auto;
 	}
 	/* and says so with the same shade as the table cards (Processes) */
-	.vt-main :is(#view, #view > div, .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:not(:has(> thead)) {
+	.vt-main :is(#view, #view > div:not(.cbi-section), .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:not(:has(> thead)) {
 		background-image:
 			linear-gradient(to right, var(--s1) 50%, transparent), linear-gradient(to left, var(--s1) 50%, transparent),
 			linear-gradient(to right, var(--line-2), transparent), linear-gradient(to left, var(--line-2), transparent);
@@ -2560,15 +2578,15 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 		background-repeat: no-repeat;
 		background-attachment: local, local, scroll, scroll;
 	}
-	:is(#view, #view > div, .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:not(:has(> thead)) > tbody { display: table; width: 100%; }
-	:is(#view, #view > div, .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:has(.cbi-dropdown[open]) { overflow: visible; }
-	:is(#view, #view > div, .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table .tr > .th.th { position: static; }
+	:is(#view, #view > div:not(.cbi-section), .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:not(:has(> thead)) > tbody { display: table; width: 100%; }
+	:is(#view, #view > div:not(.cbi-section), .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table:has(.cbi-dropdown[open]) { overflow: visible; }
+	:is(#view, #view > div:not(.cbi-section), .cbi-map, #view > div > div > [data-tab-title]:not(.cbi-section)) > .table .tr > .th.th { position: static; }
 }
 
 
 /* a sticky header inside a horizontal scroller would stick relative to that
    scroller (pushed down by --stick-top over the rows): keep those static */
-.cbi-tblsection .table .tr > .th.th, .cbi-section:has(> .cbi-tblsection) .table .tr > .th.th { position: static; }
+.cbi-tblsection .table .tr > .th.th, .cbi-section:has(.cbi-tblsection) .table .tr > .th.th, #packages .tr > .th.th { position: static; }
 @media (max-width: 1180px) { .cbi-section .table .tr > .th.th { position: static; } }
 
 /* add-ons: adblock and banIP inject status palettes keyed on the OS
@@ -2887,6 +2905,8 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 
 /* Network -> Diagnostics: the three tools in equal columns, top aligned */
 .table:has(.diag-action) { table-layout: fixed; }
+/* LuCI measures the scroll parent before opening a diagnostic menu. */
+#view .cbi-map > .table:has(.diag-action .cbi-dropdown) { overflow: visible; }
 .table:has(.diag-action) .tr > .td { width: calc(100% / 3); vertical-align: top; }
 .table:has(.diag-action) .td > input { max-width: none; }   /* fields fill them: even gaps */
 
@@ -3042,7 +3062,7 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 		white-space: normal; text-align: center; line-height: 1.15;
 	}
 	.cbi-section { overflow-x: visible; }
-	.cbi-tblsection, .cbi-section:has(> .cbi-tblsection) { overflow-x: visible; }
+	.cbi-tblsection, .cbi-section:has(.cbi-tblsection), .cbi-section:has(> :where(#packages)) { overflow: visible; }
 	.network-status-table .ifacebox-head, .network-status-table .ifacebox-body { padding-left: 12px; padding-right: 12px; }
 	:is(.ifacebox-body, .ifacebadge) > span:has(> .nowrap) { column-gap: 10px; }
 	.v-meter-sub { margin-left: 0; flex-basis: 100%; }
@@ -3114,6 +3134,7 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 	:is(.vt-main, .modal) .table .tr > .td[data-title]:not(:only-child) { flex-basis: 50%; }
 	:is(.vt-main, .modal) .table .tr > .td[data-title]:last-child:nth-child(odd) { flex-basis: 100%; }
 	:is(.vt-main, .modal) .table .tr > .td.cbi-section-actions { flex-basis: 100%; text-align: left !important; }
+	:is(.vt-main, .modal) .table .tr > .td:not(.cbi-value-field) { white-space: normal; overflow-wrap: anywhere; }
 	/* a named grid section's name cell heads its card */
 	:is(.vt-main, .modal) .table .tr > .td.cbi-section-table-titles { flex-basis: 100%; color: var(--text); font-weight: 600; }
 	:is(.vt-main, .modal) .table .tr > .td:is([data-name="_ifacebox"], [data-name="_ifacestat"]) { flex-basis: 100%; }
@@ -3226,7 +3247,7 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 	.spinning::before { animation-duration: 1.6s !important; animation-iteration-count: infinite !important; }
 	.alert-message { transition-duration: .01s; }
 	/* ui.Dropdown moves focus on transitionend: keep a (near-instant) transition */
-	.cbi-dropdown[open] > ul.dropdown { transition-duration: .01s; }
+	.cbi-dropdown[open] > ul.dropdown { transition-duration: .001s; }
 	.cbi-progressbar > div { transition: none; }
 	.vt-crumb-switch > svg, .vt-rail-caret, .vt-rail-pin svg { transition: none; }
 	.v-nft-card > summary::before, .v-nft-jump::after { transition: none; }

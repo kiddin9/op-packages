@@ -91,7 +91,7 @@ const TXT = {
 		tls_key_server: _('Master Server Secret Key'),
 		tls_key_client: _('Client Key'),
 		title_main: _('OpenVPN Instance Key Generator'),
-		add_server_instance: ('Add OpenVPN Server Instance'),
+		add_server_instance: _('Add OpenVPN Server Instance'),
 		unknown_asset: _('Unknown Asset'),
 		unknown_structure: _('Unknown Structure'),
 		use_unique_name_for_each_office: _('Important: Use a unique name for each office to configure the network routing correctly.'),
@@ -231,8 +231,8 @@ const getKeyMeta = async function (keyfile, luci_app_openvpn_plus_callback) {
 	if (!res || res.length === 0) {
 		return result;
 	}
-	res = res.toUpperCase();
-	if (res.startsWith('ERROR') || res.indexOf('ERROR') !== -1 || res.startsWith('INVALID')) {
+	const resUpper = res.toUpperCase();
+	if (resUpper.startsWith('ERROR') || resUpper.indexOf('ERROR') !== -1 || resUpper.startsWith('INVALID')) {
 		return result;
 	}
 

@@ -1,6 +1,6 @@
 {
 	"luci-app-isp-split": {
-		"description": "Grant access to ISP split status and control",
+		"description": "Grant access to ISP split status and control. WARNING: write = execute ANY isp-split subcommand as root (wire/apply/conf set/uninstall); grant only to fully trusted admins. read = conf + whole state tree (public IP/geo/STUN).",
 		"read": {
 			"ubus": {
 				"file": [ "read", "stat" ]

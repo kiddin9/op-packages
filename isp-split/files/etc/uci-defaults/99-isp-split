@@ -9,6 +9,10 @@
 
 /etc/init.d/isp-split enable >/dev/null 2>&1
 
+# A-14：state 首次创建就 700；旧版本留下的 755 也在这里纠正。
+mkdir -p /etc/isp-split/state 2>/dev/null || true
+chmod 700 /etc/isp-split/state 2>/dev/null || true
+
 # 启用每日更新（只改数据，不重写 mwan3 配置）
 if [ -x /etc/init.d/cron ]; then
 	mkdir -p /etc/crontabs

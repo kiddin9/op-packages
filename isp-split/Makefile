@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=isp-split
-PKG_VERSION:=0.3.0
-PKG_RELEASE:=4
+PKG_VERSION:=0.3.2
+PKG_RELEASE:=5
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=jihebube <jihebube@users.noreply.github.com>

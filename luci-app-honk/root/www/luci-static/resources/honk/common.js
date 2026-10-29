@@ -334,7 +334,8 @@ function ensureEditorStyles() {
 		'.cm-format-btn { margin: 0 !important; cursor: pointer !important; }',
 		'.cbi-value:has(.CodeMirror) { align-items: flex-start !important; }',
 		'.cbi-value:has(.CodeMirror) > .cbi-value-title { padding-top: 5px !important; flex-grow: 0 !important; }',
-		'.cbi-value:has(.CodeMirror) .cbi-value-field { flex: 1 1 0% !important; min-width: 0 !important; width: auto !important; }',
+		// 26rem basis: when the row is narrower, the editor wraps under its title instead of being squeezed beside it
+		'.cbi-value:has(.CodeMirror) .cbi-value-field { flex: 1 1 26rem !important; min-width: 0 !important; width: auto !important; }',
 		'.CodeMirror {',
 		'	border: 1px solid var(--border, var(--hairline, var(--border-color-medium, #ccc))) !important;',
 		'	border-radius: var(--radius-base, 4px);',

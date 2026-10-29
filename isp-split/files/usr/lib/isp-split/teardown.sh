@@ -24,6 +24,9 @@
 #   sh teardown.sh --list     # 打印清单（selftest 与 postrm 漂移断言用），不动作
 # 选项：
 #   --keep-conf-bak           # 保留 /etc/isp-split.conf.bak.*（默认删除并逐条打印）
+#   --i-know-what-im-doing    # 显式确认非默认 BASE（默认只允许 /etc/isp-split
+#                             # 或 ISP_SPLIT_DESTDIR 下的沙箱路径）。系统目录
+#                             # （/、/etc、/usr、/var、/bin、/sbin、/lib…）永远拒绝
 #
 # 为什么默认删 .conf.bak.*：它们是安装脚本每次覆盖安装都会新生成的副本，
 # 不是用户手写的备份。留着等于"卸载"留下一批与工具同名同前缀的孤儿文件，
@@ -54,6 +57,12 @@ case "$DESTDIR" in
 esac
 
 BASE=${ISP_SPLIT_BASE:-$DESTDIR/etc/isp-split}
+# 归一化尾部斜杠（含多个）：`/etc//` 与 `/etc` 必须落到同一条拒绝分支；
+# 根路径保持 `/`，否则空串会绕过下面的空值检查。
+if [ "$BASE" != "/" ]; then
+	BASE=$(printf '%s' "$BASE" | sed 's#/*$##')
+	[ -n "$BASE" ] || BASE=/
+fi
 CONF=${ISP_SPLIT_CONF:-$DESTDIR/etc/isp-split.conf}
 CRONTAB=${ISP_SPLIT_CRONTAB:-$DESTDIR/etc/crontabs/root}
 LIB=${ISP_SPLIT_LIB:-$DESTDIR/usr/lib/isp-split}
@@ -69,9 +78,56 @@ CRON_SERVICE=${CRON_SERVICE:-$DESTDIR/etc/init.d/cron}
 RPCD_SERVICE=${RPCD_SERVICE:-$DESTDIR/etc/init.d/rpcd}
 
 KEEP_CONF_BAK=0
+IWKD=0
 SCOPE=""
 
 say() { printf '[teardown] %s\n' "$*"; }
+
+# A-10：BASE 是 `rm -rf "$BASE"` 的唯一根，必须在任何删除之前过白名单。
+# 真实事故：ISP_SPLIT_BASE=/etc 时，旧 cmd_files 直接 rm -rf /etc，
+# 而固定清单还会按 DESTDIR 删真实安装文件（附录 C）。
+# 规则：
+#   1) 永远拒绝空、/、相对路径、含 ..、以及系统目录本身；
+#   2) 真实根（DESTDIR 为空）只接受默认 /etc/isp-split，其它路径必须显式
+#      --i-know-what-im-doing；
+#   3) 沙箱（DESTDIR 非空）只接受 DESTDIR 子树（防止演练误删宿主 /etc）。
+validate_base() {
+	case "$BASE" in
+	"" | "/" | "." | ".." | *..*)
+		echo "ISP_SPLIT_BASE 非法: '$BASE'（拒绝空、/、相对路径与 ..）" >&2
+		return 1
+		;;
+	/*) ;;
+	*)
+		echo "ISP_SPLIT_BASE 必须是绝对路径: '$BASE'" >&2
+		return 1
+		;;
+	esac
+	case "$BASE" in
+	/etc | /usr | /var | /bin | /sbin | /lib | /lib64 | /boot | /dev | /proc | /sys | /www | /root | /home | /tmp | /mnt | /opt)
+		echo "ISP_SPLIT_BASE 指向系统目录，拒绝执行: '$BASE'" >&2
+		return 1
+		;;
+	esac
+
+	# 沙箱：BASE 必须在 DESTDIR 里面；否则演练会删到宿主路径。
+	if [ -n "$DESTDIR" ]; then
+		case "$BASE" in
+		"$DESTDIR"/*) return 0 ;;
+		*)
+			echo "ISP_SPLIT_BASE 必须在 ISP_SPLIT_DESTDIR ($DESTDIR) 子树内: '$BASE'" >&2
+			return 1
+			;;
+		esac
+	fi
+
+	# 真实根：默认路径直接放行；其它路径必须显式确认。
+	[ "$BASE" = "/etc/isp-split" ] && return 0
+	[ "$IWKD" = "1" ] && return 0
+	echo "ISP_SPLIT_BASE 不是默认的 /etc/isp-split: '$BASE'" >&2
+	echo "  如确需操作该目录，请加 --i-know-what-im-doing；系统目录永远不会被接受。" >&2
+	return 1
+}
 have() { command -v "$1" >/dev/null 2>&1; }
 
 # 只有真实根（DESTDIR 为空）才动服务：沙箱演练里重启服务既没意义，也会误伤宿主。
@@ -86,13 +142,13 @@ svc_restart() {
 
 # 文件/目录清单（相对 DESTDIR）。--list 与 files 段共用，杜绝两处漂移。
 files_list() {
-	cat <<'EOF'
+	cat <<EOF
 path usr/sbin/isp-split
 path etc/init.d/isp-split
 dir usr/lib/isp-split
 path etc/isp-split.conf
 glob etc/isp-split.conf.bak.*
-dir etc/isp-split
+base $BASE
 path etc/uci-defaults/99-isp-split
 dir www/luci-static/resources/view/isp-split
 dir www/luci-static/resources/isp-split
@@ -139,6 +195,7 @@ print_list() {
 		case "$_k" in
 		path) echo "  $_v" ;;
 		dir) echo "  $_v/（目录）" ;;
+		base) echo "  $_v/（数据目录，随 ISP_SPLIT_BASE 推导）" ;;
 		glob) echo "  $_v（历史备份，默认删除；--keep-conf-bak 保留）" ;;
 		esac
 	done
@@ -229,6 +286,31 @@ _state_read() {
 	return 0
 }
 
+# A-05：DNSDIR 白名单（与 isp-split 主脚本同一口径）。只允许 $BASE 子树
+# 或 /tmp/dnsmasq*.d 形态；/etc、/、.. 一律不参与删除。
+_dnsdir_ok() {
+	_ddo=${1:-}
+	case "$_ddo" in "" | "/" | "." | ".." | *..*) return 1 ;; esac
+	case "$_ddo" in /*) ;; *) return 1 ;; esac
+	while [ "$_ddo" != "/" ] && [ "${_ddo%/}" != "$_ddo" ]; do
+		_ddo=${_ddo%/}
+	done
+	case "$_ddo" in
+	"$BASE"/*) return 0 ;;
+	/tmp/dnsmasq*.d | /tmp/*/dnsmasq*.d) return 0 ;;
+	esac
+	return 1
+}
+
+# 删除片段的根目录限制：绝不 rm -f /isp-split.conf 或 /etc/isp-split.conf。
+_frag_delete_ok() {
+	_fdo=${1:-}
+	case "$_fdo" in "" | "/" | "/etc" | "." | ".." | *..*) return 1 ;; esac
+	case "$_fdo" in /*) ;; *) return 1 ;; esac
+	[ -d "$_fdo" ] || return 1
+	return 0
+}
+
 # 片段可能残留的目录：运行配置里的 conf-dir=（权威源）+ UCI 当前值 +
 # 状态文件记录值 + 默认目录 + 旧版目录，去重后逐行输出。
 _frag_dirs() {
@@ -238,7 +320,8 @@ _frag_dirs() {
 			sed -n 's/^[[:space:]]*conf-dir=//p' "$_fd_f" 2>/dev/null
 		done
 		printf '%s\n' "${_frag_uci:-}" "${_frag_state:-}" \
-			"$DNSMASQ_DEFAULT_DIR" "$DNSDIR"
+			"$DNSMASQ_DEFAULT_DIR"
+		_dnsdir_ok "$DNSDIR" && printf '%s\n' "$DNSDIR"
 	} | tr ' ' '\n' |
 		sed -e 's/,.*$//' -e 's/^"//' -e 's/"$//' -e 's:/*$::' |
 		awk 'NF && !seen[$0]++'
@@ -272,6 +355,7 @@ cmd_runtime() {
 	# 2) 清片段。探测来源优先，但不依赖探测是否成功——目录列表是并集。
 	_n=0
 	for _d in $(_frag_dirs); do
+		_frag_delete_ok "$_d" || continue
 		[ -f "$_d/isp-split.conf" ] || continue
 		rm -f "$_d/isp-split.conf" 2>/dev/null && _n=$((_n + 1))
 	done
@@ -313,6 +397,19 @@ cmd_files() {
 	_err=0
 	while read -r _k _p; do
 		case "$_k" in
+		base)
+			# A-10：数据目录不再写死 etc/isp-split，而是跟随 BASE。
+			# 默认路径与自定义路径走同一条删除分支，避免“清单删默认、
+			# BASE 再删一次”的双路径。
+			[ -n "$BASE" ] || continue
+			[ -e "$BASE" ] || [ -L "$BASE" ] || continue
+			if rm -rf "$BASE"; then
+				_del=$((_del + 1))
+			else
+				say "错误：删不掉 $BASE"
+				_err=1
+			fi
+			;;
 		path)
 			[ -e "$DESTDIR/$_p" ] || [ -L "$DESTDIR/$_p" ] || continue
 			if rm -f "$DESTDIR/$_p"; then
@@ -358,17 +455,9 @@ cmd_files() {
 $(files_list)
 EOF
 
-	# BASE 可被 ISP_SPLIT_BASE 改名（自检沙箱），清单里的是默认路径，这里补上
-	# 真实值。ISP_SPLIT_LIB 故意不参与删除：它只用于离线自检，可能指到源码树，
-	# 删它会把仓库自己的 usr/lib/isp-split 抹掉。
-	if [ "$BASE" != "$DESTDIR/etc/isp-split" ] && [ -d "$BASE" ]; then
-		if rm -rf "$BASE"; then
-			_del=$((_del + 1))
-		else
-			say "错误：删不掉 $BASE"
-			_err=1
-		fi
-	fi
+	# ISP_SPLIT_LIB 故意不参与删除：它只用于离线自检，可能指到源码树，
+	# 删它会把仓库自己的 usr/lib/isp-split 抹掉。数据目录已在上面的
+	# base 分支随 BASE 推导删除（A-10）。
 
 	if [ "$_del" -gt 0 ]; then
 		say "已删除 $_del 项文件/目录"
@@ -387,6 +476,7 @@ EOF
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--keep-conf-bak) KEEP_CONF_BAK=1 ;;
+	--i-know-what-im-doing) IWKD=1 ;;
 	--list) SCOPE=list ;;
 	all | mwan3 | runtime | files) SCOPE=$1 ;;
 	-h | --help)
@@ -402,9 +492,12 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$SCOPE" ]; then
-	echo "用法: sh teardown.sh all|mwan3|runtime|files|--list [--keep-conf-bak]" >&2
+	echo "用法: sh teardown.sh all|mwan3|runtime|files|--list [--keep-conf-bak] [--i-know-what-im-doing]" >&2
 	exit 2
 fi
+
+# A-10：任何实际动作（含 --list 之外的删除）之前先验证 BASE。
+validate_base || exit 1
 
 case "$SCOPE" in
 list) print_list ;;

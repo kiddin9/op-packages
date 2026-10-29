@@ -196,7 +196,7 @@ internal_checkpath() {
 			# Characters are safely escaped with a backslash to protect the shell syntax.
 			return 1
 			;;
-		*$'\t'*|$'\n'*|$'\r'*)
+		*$'\t'*|*$'\n'*|*$'\r'*)
 			# Block control characters like tabs, newlines, and carriage returns natively
 			return 1
 			;;
@@ -738,36 +738,36 @@ symlink() {
 		return 1
 	fi
 
-	local ovpn_instance="$1"
-	local action="$2"
+	local ovpn_instance="${1}"
+	local action="${2}"
 	local raw_display_name="${3:-}"
 
 	# Check if instance name is valid
-	if ! internal_checkname "$ovpn_instance"; then
+	if ! internal_checkname "${ovpn_instance}"; then
 		printf "%s\n" "ERROR: Invalid character format in instance name." >&2
 		return 1
 	fi
 
 	local export_static_path="/etc/openvpn/luci/${ovpn_instance}.ovpn"
 	local lan_ip=""
-	local link_filename=""
+	local download_filename=""
 	local ram_link_dir="/tmp/luci-ovpn-plus"
 	local www_link_dir="/www/ovpn-downloads"
 
 	# Check if display name is valid
-	if [ -n "$raw_display_name" ]; then
-		if ! internal_checkname "$raw_display_name"; then
+	if [ -n "${raw_display_name}" ]; then
+		if ! internal_checkname "${raw_display_name}"; then
 			printf "%s\n" "ERROR: Invalid character format in display name." >&2
 			return 1
 		fi
-		link_filename="$raw_display_name"
+		download_filename="${raw_display_name}"
 	else
-		link_filename="$ovpn_instance"
+		download_filename="${ovpn_instance}"
 	fi
 
-	case "$action" in
+	case "${action}" in
 		create)
-			if [ ! -f "$export_static_path" ]; then
+			if [ ! -f "${export_static_path}" ]; then
 				printf "%s\n" "ERROR: Profile file missing." >&2
 				return 1
 			fi
@@ -775,36 +775,47 @@ symlink() {
 			# Create a 9-byte random secret token as hex safely
 			local secret_token
 			secret_token=$(dd if=/dev/urandom bs=9 count=1 2>/dev/null | hexdump -e '"%02x"')
-			if [ -z "$secret_token" ]; then
+			if [ -z "${secret_token}" ]; then
 				printf "%s\n" "ERROR: Failed to generate secure token." >&2
 				return 1
 			fi
 
-			local session_dir="${ram_link_dir}/ovpn-tmp-${secret_token}-${link_filename}"
-			mkdir -p "$session_dir"
+			local session_dir="${ram_link_dir}/ovpn-tmp-${secret_token}-${ovpn_instance}"
+			mkdir -p "${session_dir}"
 
 			# Define file path and copy profile with safe webserver permissions
-			local token_protected_file="${session_dir}/${link_filename}.ovpn"
-			cp -f "$export_static_path" "$token_protected_file" 2>/dev/null
-			chmod 644 "$token_protected_file"
+			local token_protected_file="${session_dir}/${download_filename}.ovpn"
+			cp -f "${export_static_path}" "${token_protected_file}" 2>/dev/null
+			chmod 644 "${token_protected_file}"
 
-			# Create webserver shortcut to the RAM folder securely
-			if [ ! -L "$www_link_dir" ] && [ ! -d "$www_link_dir" ]; then
-				ln -s "$ram_link_dir" "$www_link_dir"
+			# Create directory with restricted access and block directory listing with index.html redirect
+			if [ ! -d "${www_link_dir}" ]; then
+				mkdir -p "${www_link_dir}"
+				# Enforce ultra-strict permissions so only root/webserver can see the folder structure
+				chmod 700 "${www_link_dir}"
+				# create index.html with redirect users back to the server root (/)
+				printf '%s\n' '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;URL=/" /></head><body></body></html>' > "${www_link_dir}/index.html"
 			fi
 
-			if [ -f "$token_protected_file" ]; then
+			local symlink_dir="${www_link_dir}/ovpn-tmp-${secret_token}-${ovpn_instance}"
+
+			# Link the specific session directory
+			if [ ! -L "${symlink_dir}" ]; then
+				ln -s "${session_dir}" "${symlink_dir}"
+			fi
+
+			if [ -f "${token_protected_file}" ]; then
 				# Get lan ip with internal lanip function
 				lan_ip=$(lanip "lanip")
-				[ -z "$lan_ip" ] && lan_ip="localhost"
+				[ -z "${lan_ip}" ] && lan_ip="localhost"
 
 				# If the IP contains a colon (:), it is an IPv6 address and needs brackets []
-				case "$lan_ip" in
+				case "${lan_ip}" in
 					*:*)
 						lan_ip="[${lan_ip}]"
 						;;
 				esac
-				printf "SUCCESS: http://%s/ovpn-downloads/ovpn-tmp-%s-%s/%s.ovpn\n" "$lan_ip" "$secret_token" "$link_filename" "$link_filename"
+				printf "SUCCESS: http://%s/ovpn-downloads/ovpn-tmp-%s-%s/%s.ovpn\n" "${lan_ip}" "${secret_token}" "${ovpn_instance}" "${download_filename}"
 			else
 				printf "%s\n" "ERROR: Failed to create web export file." >&2
 				return 1
@@ -813,14 +824,35 @@ symlink() {
 
 		delete)
 			# Safe deletion inside RAM directory only. Absolute path structure guaranteed.
-			if [ -d "$ram_link_dir" ]; then
-				rm -rf "${ram_link_dir}/ovpn-tmp-*-${link_filename}"
+			if [ -d "${ram_link_dir}" ]; then
+				# Find and remove the specific symlink from the webroot before cleaning up RAM
+				local target_link
+				for target_link in "${www_link_dir}"/ovpn-tmp-*-"${ovpn_instance}"; do
+					[ -L "${target_link}" ] && rm -f "${target_link}"
+				done
 
-				# Remove RAM base directory and the web symlink if it was the last file
-				rmdir "$ram_link_dir" 2>/dev/null
-				if [ ! -d "$ram_link_dir" ] && [ -L "$www_link_dir" ]; then
-					rm -f "$www_link_dir"
-				fi
+				# Remove the temporary session files for this instance from RAM
+				rm -rf "${ram_link_dir}"/ovpn-tmp-*-"${ovpn_instance}"
+
+				# Remove RAM base directory if it has become completely empty
+				rmdir "${ram_link_dir}" 2>/dev/null
+			
+				# Smart Web-Folder Cleanup: Check if files other than index.html exist
+				if [ -d "${www_link_dir}" ]; then
+					local has_profiles="0"
+					local check_link					
+					# If a real symlink or folder matching the pattern exists, has_profiles becomes 1
+					for check_link in "${www_link_dir}"/ovpn-tmp-*-*; do
+						if [ -e "${check_link}" ] || [ -L "${check_link}" ]; then
+							has_profiles="1"
+							break
+						fi
+					done
+					# Remove the web folder if no active profile links are left
+					if [ "${has_profiles}" = "0" ]; then
+						rm -rf "${www_link_dir}"
+					fi
+				fi				
 
 				printf "%s\n" "SUCCESS: Link directory and static profile deleted from RAM."
 			else
@@ -836,6 +868,7 @@ symlink() {
 	esac
 	return 0
 }
+
 
 # Helper to prevent routing loops for IPv4 and IPv6 subnets
 internal_checkloopback() {
@@ -1878,69 +1911,108 @@ ucisortovpn() {
 	return 0
 }
 
-# Delete configuration and key files of deleted VPN instances
+# Universal function: deletes all files, folders or symlinks if the instance is not active
+internal_cleaninst() {
+	# internal (no shift)
+	local active_instances="${1}"
+	local file_pattern="${2}"
+	local f
+	local fname
+	local instname
+
+	# Loop through all files, folders or links that match the pattern
+	for f in $file_pattern; do
+		# Skip if it does not exist AND is not a symlink (handles dead links safely)
+		if [ ! -e "${f}" ] && [ ! -L "${f}" ]; then
+			continue
+		fi
+
+		# a) Get the pure filename or folder name without the path
+		fname="${f##*/}"
+		# b) Keep only the word "instance" and everything after it
+		instname="instance${fname#*instance}"
+		# c) Remove the extension starting from the first dot (.key, .nft, .status)
+		instname="${instname%%.*}"
+
+		# Compare the extracted name with our active list in RAM using strict space boundaries
+		case " ${active_instances} " in
+			*" ${instname} "*)
+				# Instance is active, keep the file
+				;;
+			*)
+				# SECURITY GUARD: To avoid rm manipulation, check the name before the deletion
+				if internal_checkname "${instname}"; then
+					# Safely remove files, dead symlinks or directories
+					rm -rf "${f}"
+					logger -t openvpn-luci "Cleanup: Removed orphaned item '${f}'."
+				fi
+				;;
+		esac
+	done
+}
+
 cleanup() {
 	# no argument (no shift)
 	local conf_file
 	local instname
+	local active_list=""
 	local conf_dir="/etc/openvpn/luci"
 	local key_dir="/etc/openvpn/keys"
+	local run_dir="/var/run"
 	local ram_link_dir="/tmp/luci-ovpn-plus"
 	local www_link_dir="/www/ovpn-downloads"
 
-	# Step 1: Stop here if there are no instance config files on the router
-	ls /etc/openvpn/luci/instance*.conf >/dev/null 2>&1 || return 0
-
-	# Step 2: Loop through all existing instance configuration files
-	for conf_file in "$conf_dir"/instance*.conf; do
-		if [ -f "$conf_file" ]; then
+	# Step 1: Build the list of ACTIVE instances from the instance*.conf files
+	for conf_file in "${conf_dir}"/instance*.conf; do
+		if [ -f "${conf_file}" ]; then
 			instname="${conf_file##*/}"
 			instname="${instname%.conf}"
 
-			# CRITICAL SECURITY GUARD: Validate the instance name before any file operation.
-			# This completely neutralizes dangerous path traversal attacks via rm -rf!
-			if ! internal_checkname "$instname"; then
-				continue
-			fi
-
-			# Step 3: If the UCI section does not exist, delete files and crypto keys
-			if ! uci -q get openvpn."$instname" >/dev/null; then
-				rm -f "$conf_file"
-				rm -f "$conf_dir/${instname}.nft"
-				rm -f "$conf_dir/${instname}.jmp.nft"
-				rm -f "$conf_dir/${instname}.s2s.nft"
-				rm -f "$key_dir/ca_${instname}.crt"
-				rm -f "$key_dir/dh_${instname}.pem"
-				rm -f "$key_dir/server_${instname}.crt"
-				rm -f "$key_dir/client_${instname}.crt"
-				rm -f "$key_dir/server_${instname}.key"
-				rm -f "$key_dir/client_${instname}.key"
-				rm -f "$key_dir/server_${instname}.tls2.key"
-				rm -f "$key_dir/client_${instname}.tls2.key"
-
-				# Delete the static .ovpn file for this specific deleted instance
-				rm -f "$conf_dir/${instname}.ovpn"
-
-				# remove ddns status file for this instance
-				rm -f "/var/run/openvpn-ddns-${instname}.status"
-
-				# Clean up the specific RAM files for this deleted instance
-				if [ -d "$ram_link_dir" ]; then
-					rm -rf "${ram_link_dir}"/ovpn-tmp-*-*"${instname}"
-				fi
+			if internal_checkname "${instname}"; then
+				# Enforce space separation to prevent partial substring matches later
+				active_list="${active_list} ${instname}"
 			fi
 		fi
 	done
 
-	# Step 4: Safely clean up the empty base directories and the web symlink
-	if [ -d "$ram_link_dir" ]; then
-		# Removes the RAM base folder ONLY if it is completely empty
-		rmdir "$ram_link_dir" 2>/dev/null
-	fi
-	# Clean up the web shortcut if the RAM directory does not exist anymore
-	if [ ! -d "$ram_link_dir" ] && [ -L "$www_link_dir" ]; then
-		rm -f "$www_link_dir"
-	fi
+	# Step 2: Remove orphan instance files
+	internal_cleaninst "${active_list}" "${conf_dir}/instance*.conf"
+	internal_cleaninst "${active_list}" "${conf_dir}/instance*.nft"
+	internal_cleaninst "${active_list}" "${conf_dir}/instance*.jmp.nft"
+	internal_cleaninst "${active_list}" "${conf_dir}/instance*.s2s.nft"
+	internal_cleaninst "${active_list}" "${conf_dir}/instance*.ovpn"
+	internal_cleaninst "${active_list}" "${key_dir}/ca_instance*.crt"
+	internal_cleaninst "${active_list}" "${key_dir}/dh_instance*.pem"
+	internal_cleaninst "${active_list}" "${key_dir}/server_instance*.crt"
+	internal_cleaninst "${active_list}" "${key_dir}/client_instance*.crt"
+	internal_cleaninst "${active_list}" "${key_dir}/server_instance*.key"
+	internal_cleaninst "${active_list}" "${key_dir}/client_instance*.key"
+	internal_cleaninst "${active_list}" "${key_dir}/server_instance*.tls2.key"
+	internal_cleaninst "${active_list}" "${key_dir}/client_instance*.tls2.key"
+	internal_cleaninst "${active_list}" "${run_dir}/openvpn-ddns-instance*.status"
+
+	# Step 3: Remove orphan symlink files
+	internal_cleaninst "${active_list}" "${www_link_dir}/ovpn-tmp-*-*"
+	internal_cleaninst "${active_list}" "${ram_link_dir}/ovpn-tmp-*-*"
+
+	# Remove the temporary RAM directory ONLY if it is completely empty
+	[ -d "${ram_link_dir}" ] && rmdir "${ram_link_dir}" 2>/dev/null
+	# Smart Web-Folder Cleanup: Check if files other than index.html exist
+	if [ -d "${www_link_dir}" ]; then
+		local has_profiles="0"
+		local check_link					
+		# If a real symlink or folder matching the pattern exists, has_profiles becomes 1
+		for check_link in "${www_link_dir}"/ovpn-tmp-*-*; do
+			if [ -e "${check_link}" ] || [ -L "${check_link}" ]; then
+				has_profiles="1"
+				break
+			fi
+		done
+		# Remove the web folder if no active profile links are left
+		if [ "${has_profiles}" = "0" ]; then
+			rm -rf "${www_link_dir}"
+		fi
+	fi	
 
 	return 0
 }

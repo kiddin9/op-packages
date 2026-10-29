@@ -2852,9 +2852,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:986
 msgid ""
-"The Cell ID split into the base station (eNodeB ID = Cell ID / 256) and its "
-"cell, often one sector of the site (Cell ID % 256). Cells with the same "
-"eNodeB ID are on the same site"
+"The Cell ID split into the base station (eNB = eNodeB, ID = Cell ID / 256) "
+"and its cell, often one sector of the site (Cell ID % 256). Cells with the "
+"same eNB ID belong to the same base station, which may drive radios at more "
+"than one site"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:936
@@ -3573,7 +3574,7 @@ msgid "disabled (SIM boots without PIN)"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:986
-msgid "eNodeB / Sector"
+msgid "eNB / Sector"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/sims.js:94

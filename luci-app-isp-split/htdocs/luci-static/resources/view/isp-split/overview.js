@@ -35,7 +35,13 @@ var ICONS = {
 	uni: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8"/><path d="M7 8l4 8"/><path d="M17 8l-4 8"/>',
 	cmcc: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
 	cernet: '<path d="M3 9.5 12 5l9 4.5-9 4.5z"/><path d="M7 11.5V16c0 1.2 2.2 2.2 5 2.2s5-1 5-2.2v-4.5"/>',
-	other: '<circle cx="12" cy="12" r="7"/><path d="M12 5v14"/>'
+	other: '<circle cx="12" cy="12" r="7"/><path d="M12 5v14"/>',
+	/* 兜底流量卡的身份 glyph：地球 + 经纬线（"未归属任何运营商"的那部分流量）。
+	   与上面一族同为 24 格 stroke 线稿（stroke-width 1.8、round 收口），
+	   44px 下线条不会糊；颜色走 currentColor，深浅主题都不用另做一套。 */
+	net: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/>' +
+		'<path d="M12 3.5c2.4 2.4 3.8 5.4 3.8 8.5s-1.4 6.1-3.8 8.5"/>' +
+		'<path d="M12 3.5C9.6 5.9 8.2 8.9 8.2 12s1.4 6.1 3.8 8.5"/>'
 };
 
 var GLYPH_FOR = {
@@ -45,16 +51,21 @@ var GLYPH_FOR = {
 	cernet: 'cernet'
 };
 
-/* 品牌 logo（运营商官方标志，fill 型多色 SVG，静态文件按请求加载） */
+/* 品牌 logo（运营商官方风格标志，192×192 透明底 PNG，静态文件按请求加载）。
+   0.3.1 起换图不换名：文件名仍是 logo-<运营商>，只把扩展名从 .svg 改成 .png。
+   PNG 是位图，深浅两个主题共用一份即可（透明底天然跟随背景）。 */
 var BRAND_LOGO = {
-	chinatelecom: 'logo-chinatelecom.svg',
-	chinanet: 'logo-chinatelecom.svg',
-	telecom: 'logo-chinatelecom.svg',
-	unicom_cnc: 'logo-unicom.svg',
-	unicom: 'logo-unicom.svg',
-	cmcc: 'logo-mobile.svg',
-	mobile: 'logo-mobile.svg'
+	chinatelecom: 'logo-chinatelecom.png',
+	chinanet: 'logo-chinatelecom.png',
+	telecom: 'logo-chinatelecom.png',
+	unicom_cnc: 'logo-unicom.png',
+	unicom: 'logo-unicom.png',
+	cmcc: 'logo-mobile.png',
+	mobile: 'logo-mobile.png'
 };
+
+/* 卡头图标统一 44px：logo 与「无 logo 的 glyph 占位」同尺寸，视觉同构 */
+var HEAD_ICO = 44;
 
 function brandLogo(src, size) {
 	var file = BRAND_LOGO[src];
@@ -63,8 +74,8 @@ function brandLogo(src, size) {
 	var img = document.createElement('img');
 	img.src = L.resource('isp-split/logos/' + file);
 	img.alt = src;
-	img.width = size || 20;
-	img.height = size || 20;
+	img.width = size || HEAD_ICO;
+	img.height = size || HEAD_ICO;
 	img.className = 'isp-brand-logo';
 	return img;
 }
@@ -360,6 +371,14 @@ return view.extend({
 				return false;
 			if (/^\s*#/.test(String(r.set || '')) || /^\s*#/.test(String(r.src || '')))
 				return false;
+			/* D1-3：教育网（cernet）退出状态页，纯 UI 退场。
+			   后端数据行照旧保留（status --json / 诊断 / 导出都不受影响），
+			   只是这一版不把它算进运营商网格：cernet 用户量小，指标常年为空，
+			   混在电信/联通/移动里只会稀释「一眼看三家」的信息密度。
+			   set 名与 src 一起判：ISP_TABLE 里 cernet 的集合名可以改，
+			   src 改不了。 */
+			if (r.src === 'cernet' || r.set === 'isp_cernet')
+				return false;
 			return true;
 		});
 
@@ -369,7 +388,6 @@ return view.extend({
 					? _('读取状态失败：') + this.statusError
 					: _('没有启用的运营商。检查 /etc/isp-split.conf 里的 ISP_TABLE。')
 			]));
-			return;
 		}
 
 		var maxPackets = 0;
@@ -401,8 +419,13 @@ return view.extend({
 				'style': '--isp-accent: ' + accent
 			}, [
 				E('div', { 'class': 'isp-card-head' }, [
-					E('span', { 'class': 'isp-op-name' }, [ r.label || r.src ]),
-					E('span', { 'class': 'isp-op-ico' }, [ brandLogo(r.src, 20) || svgIcon(GLYPH_FOR[r.src] || 'other', 20) ])
+					/* 方案 B：logo 44px 左置 + 运营商名。
+					   没有品牌 logo 的来源（自定义源 / other）走同一尺寸的 glyph 占位，
+					   两张卡并排时卡头高度与基线一致，不会一张高一卡矮。 */
+					E('span', { 'class': 'isp-op-ico' }, [
+						brandLogo(r.src) || svgIcon(GLYPH_FOR[r.src] || 'other', HEAD_ICO)
+					]),
+					E('span', { 'class': 'isp-op-name' }, [ r.label || r.src ])
 				]),
 				E('div', {}, [
 					E('span', { 'class': 'isp-big' }, [ r.exists ? fmtNum(packets) : '—' ]),
@@ -430,6 +453,22 @@ return view.extend({
 					}, [ '—' ])
 			]));
 		});
+
+		/* D1-4：兜底流量并入同一张运营商网格，成为「第 4 张卡」。
+		   桌面四列（.isp-cards 是 repeat(4)）：三家运营商 + 兜底正好一行四格；
+		   ISP_TABLE 多开运营商时按四列继续换行，兜底始终排在最后，不会被挤到
+		   另一行只剩一半宽。卡头与运营商卡同构：44px glyph + 名称。
+		   内容由 paintFallback() 写进 #isp-fallback（paintOps 之后调用）。 */
+		box.appendChild(E('article', {
+			'class': 'isp-card isp-card-op isp-card-fb',
+			'style': '--isp-accent: var(--isp-accent-other)'
+		}, [
+			E('div', { 'class': 'isp-card-head' }, [
+				E('span', { 'class': 'isp-op-ico' }, [ svgIcon('net', HEAD_ICO) ]),
+				E('span', { 'class': 'isp-op-name' }, [ _('兜底流量') ])
+			]),
+			E('div', { 'id': 'isp-fallback' })
+		]));
 	},
 
 	/* ---------------- 双线健康 ---------------- */
@@ -485,7 +524,11 @@ return view.extend({
 		box.appendChild(list);
 	},
 
-	/* ---------------- 兜底流量 ---------------- */
+	/* ---------------- 兜底流量（第 4 张运营商卡的主体） ----------------
+	   口径与 0.3.0 完全一致：未命中任何运营商集合的连接数（首包）与流量。
+	   卡头在 paintOps() 里画（44px glyph + 名称），这里只负责主体，
+	   字号/间距与运营商卡的 isp-big / isp-op-sub 同一套类名，因此
+	   两张卡的数字基线和单位位置自然对齐。 */
 
 	paintFallback: function() {
 		var box = document.getElementById('isp-fallback');
@@ -714,18 +757,15 @@ return view.extend({
 			E('div', { 'id': 'isp-load-error', 'class': 'isp-err', 'style': 'display:none' }),
 			E('div', { 'id': 'isp-cards', 'class': 'isp-cards' }),
 
-			E('div', { 'class': 'isp-grid-2' }, [
+			/* 兜底流量不再是独立大卡：它已经并入顶部运营商网格的第 4 格
+			   （见 paintOps）。这里腾出来的位置让双线健康 / 数据源健康度 /
+			   数据时间排成一行三格（isp-grid-3，断点 1100→2 列、820→1 列），
+			   页面从「2+2+2」变成「4 张运营商 + 3 张明细」，视线更顺。 */
+			E('div', { 'class': 'isp-grid-3' }, [
 				E('section', { 'class': 'isp-card' }, [
 					E('h3', {}, [ _('双线健康') ]),
 					E('div', { 'id': 'isp-lines' })
 				]),
-				E('section', { 'class': 'isp-card' }, [
-					E('h3', {}, [ _('兜底流量') ]),
-					E('div', { 'id': 'isp-fallback' })
-				])
-			]),
-
-			E('div', { 'class': 'isp-grid-2' }, [
 				E('section', { 'class': 'isp-card' }, [
 					E('h3', {}, [ _('数据源健康度') ]),
 					E('div', { 'id': 'isp-sources' })

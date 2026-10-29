@@ -46,6 +46,10 @@ msgstr "添加客户端实例"
 msgid "Add Office"
 msgstr "添加办公室"
 
+#: root/www/luci-static/resources/view/vpn/openvpn-keygen.js:94
+msgid "Add OpenVPN Server Instance"
+msgstr "添加 OpenVPN 服务器实例"
+
 #: root/www/luci-static/resources/view/vpn/openvpn.js:64
 msgid "Add Server Instance"
 msgstr "添加服务器实例"
@@ -1529,4 +1533,3 @@ msgstr "当前正在"
 #: root/www/luci-static/resources/view/vpn/openvpn.js:136
 msgid "packets"
 msgstr "数据包"
-

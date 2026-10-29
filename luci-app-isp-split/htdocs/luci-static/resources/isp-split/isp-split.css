@@ -254,25 +254,74 @@
 	background: var(--isp-accent, var(--isp-accent-other));
 }
 
+/* 卡头（方案 B，0.3.1）：44px 图标左置 + 名称右排。
+   0.3.0 是「名称左、20px 图标右」，运营商多起来时右角的小图标很难认，
+   且各家 SVG 的视觉重心不一致；改成左置大图后，卡片读起来像一张名片：
+   先认标志，再看名字，最后看数字。 */
 .isp-card-head {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 8px;
-	margin-bottom: 6px;
+	justify-content: flex-start;
+	gap: 10px;
+	margin-bottom: 10px;
 }
 
 .isp-op-name {
-	font-size: 0.98rem;
+	font-size: 1rem;
 	font-weight: 600;
 	color: var(--isp-text);
 	letter-spacing: 0.02em;
+	/* 四列布局下内容宽 ~218px：44px 图标 + 10px 间距后，
+	   长运营商名（ISP_TABLE 自定义标签）不要顶破卡片 */
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
+/* 图标位：logo 与「无 logo 的 glyph 占位」共用 44×44 的盒子，
+   两者视觉同构——卡片并排时卡头高度、名称基线完全对齐。 */
 .isp-op-ico {
 	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 44px;
+	width: 44px;
+	height: 44px;
 	color: var(--isp-accent, var(--isp-accent-other));
-	opacity: 0.9;
+	opacity: 0.95;
+}
+
+/* 品牌 PNG（192×192 透明底）：按盒子缩放，不拉伸、不裁切 */
+.isp-brand-logo {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+
+/* 深色主题的 logo 提亮（实测，不是"看着差不多"）：
+   电信官方蓝 #004080 的 luminance 太低，直接贴到深色卡面 (#222) 上对比度只有
+   1.55:1——44px 下像蒙了一层灰。只提亮不改色相（brightness/saturate）：
+     电信 1.55:1 → 3.31:1      联通 2.47:1 → 3.84:1      移动 2.46:1 → 5.31:1
+   （前一列按 PNG 原色对 #222 算，后一列从深色截图里采 logo 像素实测。）
+   浅色主题不动：白底上三家分别是 10.27 / 6.44 / 6.48:1，提亮反而失真。
+   LuCI 的 bootstrap 主题用 :root[data-darkmode="true"] 切整套变量，这里跟随
+   同一个属性——用户点顶栏开关或跟系统深色，都会命中。 */
+[data-darkmode="true"] .isp-brand-logo {
+	filter: brightness(1.55) saturate(1.05);
+}
+
+/* 兜底卡：与运营商卡同构（顶部色条 + 44px 卡头 + 大数字）。
+   它是「未归属任何运营商」的那一格，所以身份色用中性灰而不是某家的品牌色。 */
+.isp-card-fb {
+	--isp-accent: var(--isp-accent-other);
+}
+
+/* 网格里只有一条「没有启用的运营商」提示时，让它横跨整行，
+   否则会被 repeat(4) 挤成 1/4 宽的一条细缝 */
+.isp-cards > .isp-empty {
+	grid-column: 1 / -1;
 }
 
 .isp-big {
@@ -819,9 +868,20 @@
 
 .lc-head {
 	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
+	align-items: center;
+	justify-content: flex-start;
 	gap: 10px;
+}
+
+/* 与状态页同一个卡头语言（0.3.1）：44px logo/glyph 左置。
+   映射不到运营商的 wan（isp 为空、自定义源）用线稿 glyph 占位，盒子同尺寸。 */
+.lc-head-ico {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 44px;
+	width: 44px;
+	height: 44px;
 }
 
 .lc-title {
@@ -830,6 +890,8 @@
 	align-items: baseline;
 	gap: 8px;
 	min-width: 0;
+	/* 加了 44px 图标后，标题占中间的剩余宽度，评分仍然贴右 */
+	flex: 1 1 auto;
 }
 
 .lc-name {
