@@ -6,7 +6,7 @@
        }
 +    setTimeout(() => {
 +  	  document.querySelectorAll('.item_container .item').forEach(el => {
-+  	  if (el.textContent.trim() === '软件源配置') {
++  	  if (el.textContent.trim() === '软件源配置' || el.textContent.trim() === '系统维护') {
 +  	  el.remove(); // 或 el.style.display = 'none';
 +  	  }
 +  	  });
