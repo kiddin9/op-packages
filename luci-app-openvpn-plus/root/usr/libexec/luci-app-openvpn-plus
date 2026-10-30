@@ -836,11 +836,11 @@ symlink() {
 
 				# Remove RAM base directory if it has become completely empty
 				rmdir "${ram_link_dir}" 2>/dev/null
-			
+
 				# Smart Web-Folder Cleanup: Check if files other than index.html exist
 				if [ -d "${www_link_dir}" ]; then
 					local has_profiles="0"
-					local check_link					
+					local check_link
 					# If a real symlink or folder matching the pattern exists, has_profiles becomes 1
 					for check_link in "${www_link_dir}"/ovpn-tmp-*-*; do
 						if [ -e "${check_link}" ] || [ -L "${check_link}" ]; then
@@ -852,7 +852,7 @@ symlink() {
 					if [ "${has_profiles}" = "0" ]; then
 						rm -rf "${www_link_dir}"
 					fi
-				fi				
+				fi
 
 				printf "%s\n" "SUCCESS: Link directory and static profile deleted from RAM."
 			else
@@ -1955,6 +1955,7 @@ cleanup() {
 	# no argument (no shift)
 	local conf_file
 	local instname
+	local raw_list=""
 	local active_list=""
 	local conf_dir="/etc/openvpn/luci"
 	local key_dir="/etc/openvpn/keys"
@@ -1962,24 +1963,19 @@ cleanup() {
 	local ram_link_dir="/tmp/luci-ovpn-plus"
 	local www_link_dir="/www/ovpn-downloads"
 
-	# Step 1: Build the list of ACTIVE instances from the instance*.conf files
-	for conf_file in "${conf_dir}"/instance*.conf; do
-		if [ -f "${conf_file}" ]; then
-			instname="${conf_file##*/}"
-			instname="${instname%.conf}"
+	# Step 1: Get all active OpenVPN instances directly from UCI config
+	raw_list=$(uci -q show openvpn | grep "=openvpn" | awk -F'[.=]' '{print $2}' 2>/dev/null)
 
-			if internal_checkname "${instname}"; then
-				# Enforce space separation to prevent partial substring matches later
-				active_list="${active_list} ${instname}"
-			fi
+	# Validate every instance name from UCI before adding it to the official list
+	for instname in ${raw_list}; do
+		if internal_checkname "${instname}"; then
+			active_list="${active_list} ${instname}"
 		fi
 	done
 
 	# Step 2: Remove orphan instance files
 	internal_cleaninst "${active_list}" "${conf_dir}/instance*.conf"
 	internal_cleaninst "${active_list}" "${conf_dir}/instance*.nft"
-	internal_cleaninst "${active_list}" "${conf_dir}/instance*.jmp.nft"
-	internal_cleaninst "${active_list}" "${conf_dir}/instance*.s2s.nft"
 	internal_cleaninst "${active_list}" "${conf_dir}/instance*.ovpn"
 	internal_cleaninst "${active_list}" "${key_dir}/ca_instance*.crt"
 	internal_cleaninst "${active_list}" "${key_dir}/dh_instance*.pem"
@@ -1987,8 +1983,6 @@ cleanup() {
 	internal_cleaninst "${active_list}" "${key_dir}/client_instance*.crt"
 	internal_cleaninst "${active_list}" "${key_dir}/server_instance*.key"
 	internal_cleaninst "${active_list}" "${key_dir}/client_instance*.key"
-	internal_cleaninst "${active_list}" "${key_dir}/server_instance*.tls2.key"
-	internal_cleaninst "${active_list}" "${key_dir}/client_instance*.tls2.key"
 	internal_cleaninst "${active_list}" "${run_dir}/openvpn-ddns-instance*.status"
 
 	# Step 3: Remove orphan symlink files
@@ -1997,22 +1991,17 @@ cleanup() {
 
 	# Remove the temporary RAM directory ONLY if it is completely empty
 	[ -d "${ram_link_dir}" ] && rmdir "${ram_link_dir}" 2>/dev/null
+
 	# Smart Web-Folder Cleanup: Check if files other than index.html exist
 	if [ -d "${www_link_dir}" ]; then
-		local has_profiles="0"
-		local check_link					
-		# If a real symlink or folder matching the pattern exists, has_profiles becomes 1
-		for check_link in "${www_link_dir}"/ovpn-tmp-*-*; do
-			if [ -e "${check_link}" ] || [ -L "${check_link}" ]; then
-				has_profiles="1"
-				break
-			fi
-		done
-		# Remove the web folder if no active profile links are left
-		if [ "${has_profiles}" = "0" ]; then
+		local found_profiles
+		found_profiles="${www_link_dir}/ovpn-tmp-"*-*
+
+		# If the text still has a '*', no active profiles were found
+		if [ "${found_profiles}" = "${www_link_dir}/ovpn-tmp-*-*" ]; then
 			rm -rf "${www_link_dir}"
 		fi
-	fi	
+	fi
 
 	return 0
 }

@@ -18,6 +18,29 @@ const callGetFirewallStatus = rpc.declare({ object: 'tailscale', method: 'get_fi
 let map;
 let lastDevicesStatus;
 
+// ui.addTimeLimitedNotification only exists since OpenWrt 24.10. Older
+// releases, 23.05 included, only have addNotification and would throw on every
+// call, so fade the notice out ourselves there.
+function notifyTimed(title, children, timeout, ...classes) {
+	if (typeof ui.addTimeLimitedNotification == 'function')
+		return ui.addTimeLimitedNotification(title, children, timeout, ...classes);
+
+	const msg = ui.addNotification(title, children, ...classes);
+
+	if (typeof timeout == 'number' && timeout > 0 && msg) {
+		window.setTimeout(function() {
+			msg.classList.add('fade-out');
+			msg.classList.remove('fade-in');
+			window.setTimeout(function() {
+				if (msg.parentNode)
+					msg.parentNode.removeChild(msg);
+			}, 250);
+		}, timeout);
+	}
+
+	return msg;
+}
+
 // uci.changes() returns an object keyed by config name; count the entries so
 // the firewall button can warn about unsaved work.
 function countPending(changes) {
@@ -111,6 +134,43 @@ function getRunningStatus() {
 	});
 }
 
+// Map.save() re-renders the form after every save, so registering the status
+// poller from s.render would add another 10 second get_status loop per save and
+// never remove the previous ones. The poller is therefore module level and
+// guarded by a flag; the flag is the only dedup mechanism on purpose, the
+// poller function reference is never compared.
+let statusPollerRegistered = false;
+
+function pollRunningStatus() {
+	return getRunningStatus().then(function (res) {
+		const view = document.getElementById("service_status_display");
+		if (view) {
+			const content = renderStatus(res);
+			view.replaceChildren(content);
+		}
+
+		lastDevicesStatus = res;
+		const devicesTbody = document.getElementById("tailscale_devices_tbody");
+		if (devicesTbody) {
+			const filterInput = document.getElementById("tailscale_devices_filter");
+			const currentQuery = filterInput ? filterInput.value : '';
+			devicesTbody.replaceChildren(...renderPeerRows(res, currentQuery));
+		}
+
+		// login button only available when logged out
+		const login_btn=document.getElementsByClassName('cbi-button cbi-button-apply')[0];
+		if(login_btn) { login_btn.disabled=(res.status != 'logout'); }
+	});
+}
+
+function ensureStatusPoller() {
+	if (statusPollerRegistered)
+		return;
+
+	statusPollerRegistered = true;
+	L.Poll.add(function () { return pollRunningStatus(); }, 10);
+}
+
 // Poll the background firewall job until it finishes. A poll that fails
 // (network reloading, the connection dropped for a moment) is expected and is
 // simply retried on the next tick instead of being reported as an error.
@@ -156,7 +216,7 @@ function pollFirewallJob(runId, timeoutSec) {
 
 				if (state === 'done') {
 					if (stop())
-						ui.addTimeLimitedNotification(null, [ E('p', _('Firewall configuration applied.')) ], 5000, 'info');
+						notifyTimed(null, [ E('p', _('Firewall configuration applied.')) ], 5000, 'info');
 					resolve(res);
 					return;
 				}
@@ -174,7 +234,7 @@ function pollFirewallJob(runId, timeoutSec) {
 				if (state !== lastState) {
 					lastState = state;
 					if (state === 'running' && res?.step === 'firewall')
-						ui.addTimeLimitedNotification(null, [ E('p', _('Reloading firewall...')) ], 3000, 'info');
+						notifyTimed(null, [ E('p', _('Reloading firewall...')) ], 3000, 'info');
 				}
 			});
 		}
@@ -242,7 +302,7 @@ async function initializeRegionMap() {
 			}
 		}
 	} catch (e) {
-		ui.addTimeLimitedNotification(null, [ E('p', _('Error reading cached DERP region map: %s').format(e.message || _('Unknown error'))) ], 7000, 'error');
+		notifyTimed(null, [ E('p', _('Error reading cached DERP region map: %s').format(e.message || _('Unknown error'))) ], 7000, 'error');
 	}
 
 	// If no valid cache, fetch from the network
@@ -269,10 +329,10 @@ async function initializeRegionMap() {
 			};
 			localStorage.setItem(cacheKey, JSON.stringify(itemToCache));
 		} catch (e) {
-			ui.addTimeLimitedNotification(null, [ E('p', _('Error caching DERP region map: %s').format(e.message || _('Unknown error'))) ], 7000, 'error');
+			notifyTimed(null, [ E('p', _('Error caching DERP region map: %s').format(e.message || _('Unknown error'))) ], 7000, 'error');
 		}
 	} catch (error) {
-		ui.addTimeLimitedNotification(null, [ E('p', _('Error fetching DERP region map: %s').format(error.message || _('Unknown error'))) ], 7000, 'error');
+		notifyTimed(null, [ E('p', _('Error fetching DERP region map: %s').format(error.message || _('Unknown error'))) ], 7000, 'error');
 	}
 }
 
@@ -564,28 +624,8 @@ return view.extend({
 		s = map.section(form.NamedSection, '_status');
 		s.anonymous = true;
 		s.render = function (section_id) {
-			L.Poll.add(
-				function () {
-					return getRunningStatus().then(function (res) {
-						const view = document.getElementById("service_status_display");
-						if (view) {
-							const content = renderStatus(res);
-							view.replaceChildren(content);
-						}
-
-						lastDevicesStatus = res;
-						const devicesTbody = document.getElementById("tailscale_devices_tbody");
-						if (devicesTbody) {
-							const filterInput = document.getElementById("tailscale_devices_filter");
-							const currentQuery = filterInput ? filterInput.value : '';
-							devicesTbody.replaceChildren(...renderPeerRows(res, currentQuery));
-						}
-
-						// login button only available when logged out
-						const login_btn=document.getElementsByClassName('cbi-button cbi-button-apply')[0];
-						if(login_btn) { login_btn.disabled=(res.status != 'logout'); }
-					});
-				}, 10);
+			// Registering is idempotent and must not affect what is rendered.
+			ensureStatusPoller();
 
 			return E('div', { 'id': 'service_status_display', 'class': 'cbi-value' },
 				_('Collecting data ...')
@@ -677,7 +717,7 @@ return view.extend({
 					return null;
 				}
 
-				ui.addTimeLimitedNotification(null, [ E('p', _('Configuration committed, reloading network and firewall. This can take a moment.')) ], 5000, 'info');
+				notifyTimed(null, [ E('p', _('Configuration committed, reloading network and firewall. This can take a moment.')) ], 5000, 'info');
 				return pollFirewallJob(res.run_id);
 			}).catch(function(err) {
 				ui.addNotification(null, E('p', {}, _('Failed to configure firewall: %s').format(err?.message || err?.error || err || _('Unknown error'))), 'error');
@@ -759,7 +799,7 @@ return view.extend({
 			const customServerAuth = customserverAuthInput ? customserverAuthInput.value : '';
 			const loginWindow = window.open('', '_blank');
 			if (!loginWindow) {
-				ui.addTimeLimitedNotification(null, [ E('p', _('Could not open a new tab. Please check if your browser or an extension blocked the pop-up.')) ], 10000, 'error');
+				notifyTimed(null, [ E('p', _('Could not open a new tab. Please check if your browser or an extension blocked the pop-up.')) ], 10000, 'error');
 				return;
 			}
 			// Display a prompt message in the new window
@@ -786,11 +826,11 @@ return view.extend({
 					doc.body.innerHTML =
 						'<h2>' + _('Error') + '</h2>' +
 						'<p>' + _('Failed to get login URL. You may close this tab.') + '</p>';
-					ui.addTimeLimitedNotification(null, [ E('p', _('Failed to get login URL: %s').format(res?.error || _('Invalid response from server.'))) ], 7000, 'error');
+					notifyTimed(null, [ E('p', _('Failed to get login URL: %s').format(res?.error || _('Invalid response from server.'))) ], 7000, 'error');
 				}
 			}).catch(function(err) {
 				ui.hideModal();
-				ui.addTimeLimitedNotification(null, [ E('p', _('Failed to get login URL: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
+				notifyTimed(null, [ E('p', _('Failed to get login URL: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
 			});
 		};
 
@@ -814,10 +854,10 @@ return view.extend({
 							return callDoLogout().then(function(res) {
 								unwrapRpc(res, _('Logout'));
 								ui.hideModal();
-								ui.addTimeLimitedNotification(null, [ E('p', _('Successfully logged out.')) ], 5000, 'info');
+								notifyTimed(null, [ E('p', _('Successfully logged out.')) ], 5000, 'info');
 							}).catch(function(err) {
 								ui.hideModal();
-								ui.addTimeLimitedNotification(null, [ E('p', _('Logout failed: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
+								notifyTimed(null, [ E('p', _('Logout failed: %s').format(err.message || _('Unknown error'))) ], 7000, 'error');
 							});
 						}
 					}, _('Logout'))
@@ -872,13 +912,16 @@ return view.extend({
 	// standard OpenWrt apply mechanism, which triggers /etc/init.d/tailscale-settings
 	// and provides automatic rollback protection if the device becomes unreachable.
 	handleSaveApply(ev, mode) {
-		// Read the submitted value before map.save() consumes the staged delta.
-		// uci.get() prefers the staged change over the saved value, and the
-		// staged delta is only populated once the form has been parsed, which
-		// map.save() guarantees here.
-		const wantEnabled = uci.get('tailscale', 'settings', 'service_enabled');
+		// The submitted value only reaches the uci model while map.save() parses
+		// the form, so reading it before map.save() returns the previously saved
+		// value: switching the service off then passed '1' and never armed the
+		// stop request. Read it in the save callback, which runs right after the
+		// form was parsed and before the staged changes are sent to the device.
+		let wantEnabled;
 
-		return map.save().then(function () {
+		return map.save(function () {
+			wantEnabled = uci.get('tailscale', 'settings', 'service_enabled');
+		}).then(function () {
 			// Only records the disable request; the reload handler performs
 			// the stop after the commit, so a LuCI rollback still finds a
 			// running daemon. One concurrency slot on purpose: an overlapping
@@ -886,7 +929,10 @@ return view.extend({
 			// Fail-open on purpose: an install whose rpcd ACL cache predates
 			// this method would otherwise be unable to apply anything. The
 			// worst case is that the stop is skipped for this apply.
-			return callSetServiceEnabled({ enabled: wantEnabled === '0' ? '0' : '1' })
+			// The declaration maps positional arguments to its params, so pass
+			// the value itself: { enabled: ... } reached ubus as the value of
+			// enabled and was rejected as an invalid argument.
+			return callSetServiceEnabled(wantEnabled === '0' ? '0' : '1')
 				.catch(function(err) {
 					console.warn('set_service_enabled failed: %s', err);
 					return null;
