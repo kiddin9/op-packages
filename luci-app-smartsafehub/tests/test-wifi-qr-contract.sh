@@ -21,4 +21,4 @@ grep -q 'QR 코드 다운로드' frontend/src/components/WifiQrDialog.tsx
 grep -q '카메라로 스캔해 Wi-Fi에 연결하세요' frontend/src/components/WifiQrDialog.tsx
 grep -q 'QR 코드에는 비밀번호가 포함됩니다' frontend/src/components/WifiQrDialog.tsx
 [ "$(grep -c 'span class="block"' frontend/src/components/WifiQrDialog.tsx)" -ge 2 ]
-printf 'wifi QR contract: PASS\n'
+printf 'PASS: wifi QR authentication and sensitive data protection\n'

@@ -176,3 +176,20 @@ rm -f /tmp/luci-indexcache
 ```
 
 브라우저에서는 강력 새로고침을 수행하거나 기존 SmartSafeHub 탭을 닫고 다시 접속합니다. 통합 진입 템플릿의 `app.js?v=...`와 Shadow DOM용 `app.css?v=...`에는 현재 패키지의 `PKG_VERSION-rPKG_RELEASE` 값이 사용되므로 패키지 릴리스 변경 시 브라우저 캐시가 함께 무효화됩니다.
+
+### 공유기 웹사이트 RPC 로딩 지연 확인
+
+사용자 규칙 등 화면이 간헐적으로 느릴 때 공유기 웹사이트에 로그인한 브라우저의
+개발자 도구(F12 → Console)에서 아래 명령어를 실행합니다. 느려지는 상황을 재현한
+후 실행하면 가장 오래 걸린 RPC와 실패 요청을 구분할 수 있습니다.
+
+```js
+window.__SMARTHUB_RPC_DIAGNOSTICS__?.snapshot()
+// 처음부터 다시 측정할 때
+window.__SMARTHUB_RPC_DIAGNOSTICS__?.reset()
+```
+
+- `summary`: 메서드별 호출 수(`calls`), 느린 호출(`slow`), 오류(`errors`), 마지막/최대/평균 처리 시간(ms).
+- `recent`: **1.5초 이상 걸린 요청** 또는 실패한 요청 최근 최대 60건. `responseMs`는 응답 헤더까지 걸린 시간, `decodeMs`는 본문 JSON 처리 시간입니다.
+- 기록은 현재 브라우저 탭의 메모리에만 유지되며 새로고침 시 사라집니다. 서버 업로드나 영구 저장은 하지 않으며, 세션 ID·도메인 규칙·호출 인자·응답 내용·오류 메시지는 기록하지 않습니다.
+- `responseMs`가 긴 경우 네트워크/uhttpd/rpcd 경로를, `decodeMs`가 긴 경우 큰 응답 또는 브라우저 메인 스레드 부하를 우선 확인합니다. 수치만으로 원인을 단정할 수는 없습니다.

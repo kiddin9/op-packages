@@ -1,0 +1,74 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Durable outbox for authenticated successful user installs and updates.
+# Never affects APK transactions; send only app, release, kind and receipt ID.
+set -eu
+umask 077
+QUEUE="${SMARTSAFEHUB_APPS_METRICS_DIR:-/etc/smartsafehub/apps-metrics-pending}"
+CREDENTIAL="${SMARTSAFEHUB_APPS_METRICS_CREDENTIAL:-/etc/smartsafehub/device-credential.json}"
+JSONFILTER="${SMARTSAFEHUB_APPS_JSONFILTER_BIN:-jsonfilter}"
+FETCH="${SMARTSAFEHUB_APPS_METRICS_FETCH_BIN:-uclient-fetch}"
+URL="${SMARTSAFEHUB_APPS_METRICS_URL:-https://www.smartsafehub.com/api/v1/app-store/installs}"
+MAX_PENDING=500
+MAX_FLUSH=3
+
+json_field() { "$JSONFILTER" -i "$1" -e "$2" 2>/dev/null | head -n 1; }
+valid_id() { case "$1" in ''|*[!a-z0-9-]*|-*|*-) return 1;; esac; [ "${#1}" -le 80 ]; }
+valid_version() { case "$1" in ''|*[!a-zA-Z0-9._+~:-]*|[-.+~:]*) return 1;; esac; [ "${#1}" -le 64 ]; }
+valid_event() {
+ # Timestamp, process ID and 64-bit random component (no user data).
+ printf '%s\n' "$1" | grep -Eq '^[0-9]{10}-[0-9]+-[0-9a-f]{16}$' && [ "${#1}" -le 64 ]
+}
+enqueue() {
+ [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || exit 2
+ valid_id "$1" && valid_version "$2" && valid_event "$3" || exit 2
+ kind="${4:-install}"
+ case "$kind" in install|update) ;; *) exit 2;; esac
+ mkdir -p "$QUEUE" || exit 1
+ [ -d "$QUEUE" ] && [ ! -L "$QUEUE" ] || exit 1
+ file="$QUEUE/$3.json"
+ [ ! -e "$file" ] || return 0
+ # Bounded flash use. A full outbox never blocks installations.
+ count="$(find "$QUEUE" -maxdepth 1 -type f -name '*.json' | wc -l | tr -d ' ')"
+ [ "$count" -lt "$MAX_PENDING" ] || exit 1
+ tmp="$(mktemp "$QUEUE/.pending.XXXXXXXX")" || exit 1
+ if ! printf '{"app_id":"%s","version":"%s","event_id":"%s","kind":"%s"}\n' "$1" "$2" "$3" "$kind" > "$tmp"; then
+  rm -f "$tmp"; exit 1
+ fi
+ mv -f "$tmp" "$file"
+}
+flush() {
+ [ -d "$QUEUE" ] || return 0
+ [ -f "$CREDENTIAL" ] && [ ! -L "$CREDENTIAL" ] || return 0
+ token="$(json_field "$CREDENTIAL" '@.token')"
+ case "$token" in ssh_dev_*) ;; *) return 0;; esac
+ [ "${#token}" -eq 72 ] || return 0
+ # Only lower-case hex credentials can enter HTTP headers.
+ case "${token#ssh_dev_}" in *[!0-9a-f]*|'') return 0;; esac
+ mkdir "$QUEUE/.flush.lock" 2>/dev/null || return 0
+ trap 'rmdir "$QUEUE/.flush.lock" 2>/dev/null || :' EXIT HUP INT TERM
+ n=0; failed=0
+ for file in "$QUEUE"/*.json; do
+  [ -f "$file" ] && [ ! -L "$file" ] || continue
+  event="${file##*/}"; event="${event%.json}"
+  valid_event "$event" || continue
+  [ "$(json_field "$file" '@.event_id')" = "$event" ] || continue
+  response="$(mktemp "$QUEUE/.response.XXXXXXXX")" || return 1
+  if "$FETCH" -q -T 8 -O "$response" \
+    --header='Content-Type: application/json' \
+    --header="Authorization: Device $token" --post-file="$file" "$URL" >/dev/null 2>&1; then
+   accepted="$(json_field "$response" '@.status')"
+   case "$accepted" in recorded|duplicate) rm -f "$file";; *) failed=1;; esac
+  else
+   failed=1
+  fi
+  rm -f "$response"
+  n=$((n + 1)); [ "$n" -lt "$MAX_FLUSH" ] || break
+ done
+ [ "$failed" -eq 0 ]
+}
+case "${1:-}" in
+ enqueue) shift; enqueue "$@";;
+ flush) [ "$#" -eq 1 ] || exit 2; flush;;
+ *) exit 2;;
+esac

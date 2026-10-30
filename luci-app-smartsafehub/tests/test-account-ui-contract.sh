@@ -32,8 +32,8 @@ grep -Fq 'void refresh();' "$HOOK" || fail 'page entry must refresh Hub state in
 grep -Fq 'if (loading && !data) return <LoadingPanel />;' "$PAGE" || fail 'account page must render cached local state without waiting for Hub'
 grep -Fq '최신 상태 확인이 지연되고 있습니다. 마지막으로 확인된 연결 상태를 표시합니다.' "$PAGE" || fail 'connected devices must present cloud delay as freshness information, not a connection warning'
 grep -Fq '>마지막 확인</dt>' "$PAGE" || fail 'account status must label the timestamp as the last confirmed state'
-grep -Fq "timeoutMs: 30000" "$API" || fail 'background account synchronization must allow the router helper enough time to complete'
-grep -Fq "status-sync' ], 25000" "$RPC" || fail 'rpcd must allow status-sync to finish before the frontend timeout'
+grep -Fq "timeoutMs: 6000" "$API" || fail 'RPC account sync must promptly return an accepted job'
+grep -Fq "ensure_job('device-sync')" "$RPC" || fail 'RPC account sync must use detached worker'
 
 grep -Fq 'const connected = status?.accountRegistered === true;' "$PAGE" || fail 'page must derive explicit account connection state'
 grep -Fq 'const pairingCode = !connected && !expired ? status?.pairingCode : null;' "$PAGE" || fail 'connected devices must never display a stale pairing code'

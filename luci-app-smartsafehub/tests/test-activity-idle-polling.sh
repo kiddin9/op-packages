@@ -17,5 +17,5 @@ assert loop.index('cloud_sync_enabled') < loop.index("previous_state_number '@.n
 assert 'retry_backoff_active' in loop
 assert 'consume_wake_marker || true' in loop
 assert 'ssh_runtime_execute sync-once sync_once' in loop
-print('activity idle polling contract: OK')
+print('PASS: activity idle polling contract')
 PY

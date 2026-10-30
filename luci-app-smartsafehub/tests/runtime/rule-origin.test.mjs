@@ -19,7 +19,7 @@ test('허용 목록의 수동 규칙과 추천 규칙을 로컬 소유 정보로
   assert.match(rpc, /recommended-rules\.state/);
   assert.match(rpc, /domains: domains/);
   assert.match(helper, /grep -Fxq "\$domain" "\$OWNED"/);
-  assert.match(page, /const cloudManaged = isAllow && recommendedKnown && recommendedDomains\.includes\(domain\);/);
+  assert.match(page, /const cloudManaged = isAllow && recommendedKnown && recommendedDomainSet\.has\(domain\);/);
   assert.match(page, /cloudManaged \? '추천 규칙' : '직접 추가'/);
   assert.match(page, /disabled=\{busy \|\| cloudManaged\}/);
 });
@@ -50,7 +50,7 @@ test('추천 규칙 수동 동기화와 적용 확인 상태는 데모 API를 �
   assert.match(acl, /"device_recommended_rules_refresh"/);
   assert.match(device, /write_recommended_sync_status failed/);
   assert.match(device, /write_recommended_sync_status confirmed/);
-  assert.match(rpc, /const syncStatus = sync\?\.status == 'pending'/);
+  assert.match(rpc, /const syncStatus = operationRunning \|\| sync\?\.status == 'pending'/);
   assert.match(rpc, /const syncWarning = confirmed &&/);
   assert.match(rpc, /const confirmed = revision != null && receipt\?\.status == 'confirmed'/);
   assert.doesNotMatch(page, /from ['"]\.\.\/api\//);
@@ -78,9 +78,9 @@ test('추천 규칙 상태는 화면을 새로고침하지 않아도 주기적�
 
 test('갱신 실패 후에도 추천 규칙의 소유권을 유지하고 확인서가 없으면 재조회한다', () => {
   const device = readFileSync(resolve(root, 'root/usr/libexec/smartsafehub-device'), 'utf8');
-  assert.match(helper, /Keep the ownership claim until the final SafeShield read confirms/);
-  assert.match(helper, /Only after successful reconciliation may we forget ownership/);
-  assert.match(helper, /ownership intent before creating the allow entry/);
+  assert.match(helper, /Retire ownership only after final verification/);
+  assert.match(helper, /persist "\$revision"/);
+  assert.match(helper, /Record intent before rule_add/);
   assert.match(device, /A state revision alone is not proof that SafeShield applied the rules/);
   assert.match(device, /json_value "\$RECOMMENDED_RECEIPT" '@\.revision'/);
 });
@@ -102,7 +102,7 @@ test('해제 요청 시간 초과 후에도 로컬 적용 확인을 반복하고
 });
 
 test('백그라운드 규칙 변경을 감지하면 SafeShield 목록을 다시 읽는다', () => {
-  assert.match(page, /previousStatusSignature\.current !== signature/);
+  assert.match(page, /previousStatusSignature\.current !== null/);
   assert.match(page, /onRetryRef\.current\(\)/);
   assert.match(page, /window\.setInterval\(updateStatus, 15_000\)/);
   assert.match(page, /window\.addEventListener\('focus', onFocus\)/);

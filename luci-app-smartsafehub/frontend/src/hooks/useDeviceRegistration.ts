@@ -157,7 +157,8 @@ export function useDeviceRegistration(enabled: boolean) {
 
   useEffect(() => () => { mounted.current = false; }, []);
 
-  const shouldPoll = useMemo(() => pairingStillValid(data), [data]);
+  const shouldPoll = useMemo(() => pairingStillValid(data) ||
+    data?.pairingOperation?.phase === 'starting' || data?.pairingOperation?.phase === 'running', [data]);
 
   useEffect(() => {
     if (!enabled || !shouldPoll) {
@@ -168,10 +169,10 @@ export function useDeviceRegistration(enabled: boolean) {
     let timer = 0;
 
     const poll = async () => {
-      await refresh();
-      if (active) {
-        timer = window.setTimeout(() => void poll(), PAIRING_POLL_INTERVAL_MS);
-      }
+      const generation = ++requestGeneration.current;
+      const status = await fetchDeviceRegistrationStatus().catch(() => null);
+      if (active && status) commitStatus(status, generation);
+      if (active) timer = window.setTimeout(() => void poll(), PAIRING_POLL_INTERVAL_MS);
     };
 
     timer = window.setTimeout(() => void poll(), PAIRING_POLL_INTERVAL_MS);
@@ -179,7 +180,7 @@ export function useDeviceRegistration(enabled: boolean) {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [enabled, refresh, shouldPoll]);
+  }, [enabled, commitStatus, shouldPoll]);
 
   return {
     data,

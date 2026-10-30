@@ -14,10 +14,10 @@ fail() {
 }
 
 # npm ci requires the manifest and lockfile to describe the same exact version.
-jq -e '.dependencies.preact == "11.0.1" and .devDependencies["@preact/preset-vite"] == "2.10.6"' \
-  "$PACKAGE_JSON" >/dev/null || fail 'Preact 11.0.1 and the supported Vite preset must be pinned'
-jq -e '.lockfileVersion == 3 and .packages[""].dependencies.preact == "11.0.1" and .packages["node_modules/preact"].version == "11.0.1" and .packages["node_modules/preact"].resolved == "https://registry.npmjs.org/preact/-/preact-11.0.1.tgz"' \
-  "$LOCK_JSON" >/dev/null || fail 'the lockfile must resolve the same Preact 11.0.1 tarball'
+jq -e '.dependencies.preact == "11.1.0" and .devDependencies["@preact/preset-vite"] == "2.10.6"' \
+  "$PACKAGE_JSON" >/dev/null || fail 'Preact 11.1.0 and the supported Vite preset must be pinned'
+jq -e '.lockfileVersion == 3 and .packages[""].dependencies.preact == "11.1.0" and .packages["node_modules/preact"].version == "11.1.0" and .packages["node_modules/preact"].resolved == "https://registry.npmjs.org/preact/-/preact-11.1.0.tgz"' \
+  "$LOCK_JSON" >/dev/null || fail 'the lockfile must resolve the same Preact 11.1.0 tarball'
 jq -e '.compilerOptions.jsx == "react-jsx" and .compilerOptions.jsxImportSource == "preact"' \
   "$TS_CONFIG" >/dev/null || fail 'the Preact JSX transform must remain enabled'
 

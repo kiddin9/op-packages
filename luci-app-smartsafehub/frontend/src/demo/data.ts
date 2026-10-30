@@ -10,9 +10,99 @@ import type { LanSettings } from '../types/lan';
 import type { SafeShieldStatistics, SafeShieldStatus } from '../types/safeshield';
 import type { SmartSafeHubStatus } from '../types/status';
 import type { SoftwareUpdateStatus } from '../types/updates';
+import type { DeviceRegistrationStatus } from '../api/smartsafehub';
+import type { AppsCatalog, AppsInstallStatus, AppsMetrics } from '../types/apps';
 
 const now = Math.floor(Date.now() / 1000);
 const hour = 3600;
+
+// Demo-only account status: no user, device credential, pairing token or live Hub session.
+export const demoAccount: DeviceRegistrationStatus = {
+  schema: 1,
+  component: 'device',
+  phase: 'registered',
+  lastResult: 'success',
+  lastErrorCode: null,
+  accountRegistered: true,
+  plan: 'free',
+  pairingCode: null,
+  pairingExpiresAt: null,
+  nextSyncAt: 0,
+  lastSuccessAt: now - 300,
+};
+
+// Demo-only catalog. No APK URLs or authenticated API responses are used.
+export const demoApps: AppsCatalog = {
+  schema: 1,
+  deviceCode: 'iptime-ax3000sm',
+  firmwareBuildId: 'demo-build',
+  channel: 'stable',
+  apps: [
+    {
+      id: 'retro-arcade',
+      name: '레트로 아케이드',
+      summary: '브라우저에서 레트로 게임을 즐기는 엔터테인먼트 앱입니다.',
+      description: '사용자가 직접 준비한 게임 파일로 즐기는 레트로 아케이드입니다.',
+      category: 'entertainment',
+      version: '1.1.0-r5',
+      webUi: { type: 'static', path: '/retro-arcade/' },
+    },
+    {
+      id: 'network-usage-monitor',
+      name: '네트워크 사용량 모니터',
+      summary: '기기별 네트워크 사용량과 통계를 확인하는 앱입니다.',
+      description: '네트워크 트래픽을 모니터링합니다.',
+      category: 'network',
+      version: '2025.06.02~29236be6-r1',
+      webUi: null,
+    },
+    {
+      id: 'wake-on-lan',
+      name: 'Wake-on-LAN',
+      summary: '공유기에서 PC와 홈서버의 전원을 켤 수 있는 도구입니다.',
+      description: 'Wake-on-LAN 지원 컴퓨터를 네트워크에서 깨우는 앱입니다.',
+      category: 'utilities',
+      version: '26.288.56989~75a306d',
+      webUi: null, // Public demo must never link to an actual LuCI control page.
+    },
+  ],
+};
+
+export const demoAppsStatus: AppsInstallStatus = {
+  job: { phase: 'idle', action: '', appId: '', code: 'NONE' },
+  installed: {
+    'retro-arcade': {
+      installed: true,
+      partial: false,
+      managed: true,
+      updateAvailable: true,
+      installedVersion: '1.0.0-r1',
+      webUiReady: true,
+    },
+    'network-usage-monitor': {
+      installed: true,
+      partial: false,
+      managed: true,
+      updateAvailable: false,
+      installedVersion: '2025.06.02~29236be6-r1',
+      webUiReady: false,
+    },
+    'wake-on-lan': {
+      installed: false,
+      partial: false,
+      managed: false,
+      updateAvailable: false,
+      installedVersion: null,
+      webUiReady: false,
+    },
+  },
+};
+
+export const demoAppsMetrics: AppsMetrics = {
+  storage: { mount: '/overlay', totalBytes: 256 * 1024 * 1024, availableBytes: 185 * 1024 * 1024 },
+  // Installed APK metadata; neither app cache nor runtime data is included.
+  installedSizes: { 'retro-arcade': 1394688, 'network-usage-monitor': 117760 },
+};
 
 export const demoDevices: ConnectedDevicesSummary = {
   generatedAt: now,
@@ -37,7 +127,7 @@ export const demoActivity: ActivityHistory = {
 export const demoStatus: SmartSafeHubStatus = {
   device: { hostname: 'SmartRouter', model: 'ipTIME AX3000SM', boardName: 'iptime,ax3000sm' },
   software: { distribution: 'OpenWrt', version: '25.12', revision: 'demo', kernel: '6.12' },
-  runtime: { uptime: 86400, localtime: now, load: [0.08, 0.12, 0.05], memory: { total: 268435456, free: 83886080, shared: 4194304, buffered: 41943040, available: 171966464, cached: 41943040 } },
+  runtime: { uptime: 86400, localtime: now, load: [0.08, 0.12, 0.05], memory: { total: 268435456, free: 83886080, shared: 4194304, buffered: 41943040, available: 171966464, cached: 41943040 }, storage: demoAppsMetrics.storage },
   network: { available: true, up: true, protocol: 'dhcp', ipv4Address: '198.51.100.20' },
   activityHistory: demoActivity,
 };

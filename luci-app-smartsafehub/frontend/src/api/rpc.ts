@@ -4,6 +4,8 @@ import {
 } from '../auth/sessionEvents';
 import type { SmartSafeHubBootstrap } from '../types/bootstrap';
 import type { ApiResponse } from '../types/status';
+import { ensureRpcDiagnostics, recordRpcTiming } from './rpcDiagnostics';
+import { acquireRpcSlot, type RpcPriority } from './rpcScheduler';
 
 const UBUS_STATUS_TEXT: Readonly<Record<number, string>> = {
   1: '잘못된 명령입니다.',
@@ -27,6 +29,8 @@ let requestId = 1;
 
 export interface RpcCallOptions {
   timeoutMs?: number;
+  signal?: AbortSignal;
+  priority?: RpcPriority;
 }
 
 export class RpcError extends Error {
@@ -258,15 +262,25 @@ export async function callRpc<T>(
   options: RpcCallOptions = {},
 ): Promise<T> {
   const bootstrap = getBootstrap();
+  ensureRpcDiagnostics();
   const startedAt = performance.now();
+  let responseMs: number | null = null;
+  let decodeMs: number | null = null;
+  let resultCode = 'ok';
   const id = requestId++;
+  // Cancellation while queued never occupies a network slot. Start the
+  // response timeout only after a slot is acquired, not while waiting.
+  let release: (() => void) | null = null;
+  let timeout: number | null = null;
   const controller = new AbortController();
-  const timeout = window.setTimeout(
-    () => controller.abort(),
-    normalizedTimeout(options.timeoutMs),
-  );
+  let cancelled = false;
+  const cancel = () => { cancelled = true; controller.abort(); };
+  options.signal?.addEventListener('abort', cancel, { once: true });
 
   try {
+    release = await acquireRpcSlot(options.priority ?? 'normal', options.signal);
+    if (cancelled || options.signal?.aborted) throw new RpcError('RPC_CANCELLED', '요청이 취소되었습니다.');
+    timeout = window.setTimeout(() => controller.abort(), normalizedTimeout(options.timeoutMs));
     const response = await fetch(bootstrap.rpcUrl, {
       method: 'POST',
       credentials: 'same-origin',
@@ -281,6 +295,7 @@ export async function callRpc<T>(
       }),
       signal: controller.signal,
     });
+    responseMs = performance.now() - startedAt;
 
     if (!response.ok) {
       throw new RpcError(
@@ -293,33 +308,52 @@ export async function callRpc<T>(
 
     try {
       payload = await response.json();
+      decodeMs = performance.now() - startedAt - (responseMs ?? 0);
     } catch {
       throw invalidResponse();
     }
 
     return parseJsonRpcResponse<T>(payload, id);
   } catch (error) {
+    if (cancelled || options.signal?.aborted) {
+      resultCode = 'RPC_CANCELLED';
+      throw new RpcError('RPC_CANCELLED', '요청이 취소되었습니다.');
+    }
     if (controller.signal.aborted) {
+      resultCode = 'RPC_TIMEOUT';
       throw new RpcError(
         'RPC_TIMEOUT',
         '장치 응답 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
       );
     }
 
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      resultCode = 'RPC_CANCELLED';
+      throw new RpcError('RPC_CANCELLED', '요청이 취소되었습니다.');
+    }
     if (error instanceof RpcError) {
-      throw await sessionExpiryError(error, bootstrap);
+      const resolved = await sessionExpiryError(error, bootstrap);
+      resultCode = resolved.code;
+      throw resolved;
     }
 
+    resultCode = 'NETWORK_ERROR';
     throw new RpcError(
       'NETWORK_ERROR',
       '공유기와 통신할 수 없습니다. 네트워크 연결을 확인해 주세요.',
     );
   } finally {
-    window.clearTimeout(timeout);
+    if (timeout !== null) window.clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', cancel);
+    release?.();
     const elapsedMs = Math.round(performance.now() - startedAt);
-    // Development diagnostics only: never record parameters, tokens, or responses.
-    if (import.meta.env.DEV && elapsedMs >= 1000) {
-      console.warn(`[RPC slow] ${object}.${method}: ${elapsedMs}ms`);
+    const slow = recordRpcTiming({
+      object, method, elapsedMs, responseMs, decodeMs, result: resultCode,
+    });
+    // One concise warning only for a slow call or a timeout; full bounded
+    // timings are available in DevTools even on a production router.
+    if (slow || resultCode === 'RPC_TIMEOUT') {
+      console.warn(`[SmartSafeHub RPC] ${object}.${method}: ${elapsedMs}ms (${resultCode})`);
     }
   }
 }

@@ -15,6 +15,12 @@ assert "useFirmwareUpdates(true)" in app  # sidebar firmware badge stays current
 assert 'if (loading && !data)' in home
 assert "let info_finished = false" in server and "let wan_finished = false" in server
 assert server.index("const info_request = defer_call('system', 'info'") < server.index("const wan_request = defer_call('network.interface.wan'")
+assert "storage: dashboard_writable_storage(info?.root)" in server
+assert "storage: dashboard_writable_storage(info?.root)" in server[server.index('function system_status_payload('):server.index('function collect_system_status(')]
+assert "const from_root = from_system_root(root)" in server, 'procd root counters must be the fast path'
+fallback = server[server.index('function dashboard_writable_storage(root)'):server.index('function system_status_payload(')]
+assert "from_statvfs(fs.statvfs(mount), mount)" in fallback, 'local statvfs should recover missing root counters'
+assert "run_command" not in fallback and "defer_call" not in fallback, 'extra process or ubus call not allowed for storage'
 for hook in ('useSoftwareUpdates', 'useFirmwareUpdates'):
     source = Path(f'frontend/src/hooks/{hook}.ts').read_text()
     assert 'const [pollingPhase, setPollingPhase]' in source

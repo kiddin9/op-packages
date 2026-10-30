@@ -4,6 +4,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { AppShell } from '../components/AppShell';
 import { DEMO_ROUTES } from '../app/routes';
 import { ActivityPage } from '../pages/ActivityPage';
+import { AppsPage } from '../pages/AppsPage';
+import { SmartSafeHubAccountPage } from '../pages/SmartSafeHubAccountPage';
 import { WanPage } from '../pages/WanPage';
 import { LanPage } from '../pages/LanPage';
 import { WifiPage } from '../pages/WifiPage';
@@ -19,6 +21,7 @@ import {
   demoActivity, demoDevices, demoFirmware, demoHealth, demoLan,
   demoSafeShield, demoStatistics, demoStatus, demoUpdates,
   demoWan, demoWifi, demoRules, demoWifiQr, demoGuestWifiQr,
+  demoAccount, demoApps, demoAppsStatus, demoAppsMetrics,
 } from './data';
 import '../styles/app.css';
 
@@ -36,7 +39,7 @@ function DemoApp() {
       setNotice('해당 기능은 현재 데모에서 제공하지 않습니다.');
     }
   }, [currentRoute]);
-  const readonlyNotice = () => setNotice('데모에서는 실제 공유기 설정을 변경할 수 없습니다.');
+  const readonlyNotice = () => setNotice('체험 모드에서는 실제 계정 연결, 앱 설치·제거·실행 및 공유기 설정 변경을 수행하지 않습니다.');
   const dismiss = () => setNotice('');
   const reset = () => setNotice('예시 데이터가 표시되고 있습니다. 실제 공유기에는 연결되지 않습니다.');
 
@@ -54,6 +57,20 @@ function DemoApp() {
 
   let content;
   switch (route) {
+    case 'account':
+      content = <SmartSafeHubAccountPage data={demoAccount} error={null} loading={false}
+        pairingBusy={false} refreshing={false} syncError={null} demo
+        onDemoAction={readonlyNotice} onRequestPairing={async () => { readonlyNotice(); return null; }}
+        onRetry={reset} />;
+      break;
+    case 'apps':
+      content = <AppsPage data={demoApps} error={null} loading={false} refreshing={false}
+        installStatus={demoAppsStatus} metrics={demoAppsMetrics} statusError={null}
+        demo onDemoAction={readonlyNotice} onRefreshStatus={reset} onRetry={reset}
+        onInstall={async () => { readonlyNotice(); }}
+        onRemove={async () => { readonlyNotice(); }}
+        onUpdate={async () => { readonlyNotice(); }} />;
+      break;
     case 'activity':
       content = <ActivityPage actionError={null} actionMessage={null} data={demoActivity}
         error={null} loading={false} onDismissActionFeedback={dismiss} onRetry={reset}
@@ -109,7 +126,7 @@ function DemoApp() {
     default:
       content = (
         <HomePage
-          accountRegistered={false} activity={demoActivity} activityError={null} activityLoading={false}
+          accountRegistered={demoAccount.accountRegistered} activity={demoActivity} activityError={null} activityLoading={false}
           data={demoStatus} devices={demoDevices} devicesError={null} devicesLoading={false}
           error={null} firmware={demoFirmware} firmwareError={null} firmwareLoading={false}
           health={demoHealth} healthError={null} healthLoading={false}
@@ -122,7 +139,7 @@ function DemoApp() {
   }
 
   return (
-    <AppShell accountRegistered={false} demo loading={false} onRefresh={reset} refreshing={false} route={route} updateCount={0}>
+    <AppShell accountRegistered={demoAccount.accountRegistered} demo loading={false} onRefresh={reset} refreshing={false} route={route} updateCount={0}>
       <div role="status" class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-semibold text-teal-800">
         <span>체험 모드 · 표시되는 기기와 보호 통계는 모두 예시입니다.</span>
         <a class="font-extrabold underline" href="/devices/">지원 기기 살펴보기 →</a>

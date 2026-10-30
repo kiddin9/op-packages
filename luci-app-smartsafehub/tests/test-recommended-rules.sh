@@ -52,6 +52,7 @@ if (method==='status') {
   process.exit(0);
 }
 if (method==='rules_list') {
+  fs.appendFileSync(path.join(dir,'lists.log'),'rules_list\n');
   console.log(process.env.BROKEN_LIST==='1' ? '{"ok":true}' : JSON.stringify({ok:true,allow:rules,block:[]}));
   process.exit(0);
 }
@@ -172,13 +173,67 @@ receipt=json.load(open(sys.argv[1]))
 assert receipt['status']=='confirmed'
 assert {d['domain']:d['source'] for d in receipt['domains']} == {'manual.example.org':'manual','tv.example.org':'managed'}
 PY_CHECK
-# Stable revisions must not call refresh again.
+# Stable revisions must not call refresh again or perform a second list read.
 count="$(wc -l < "$TMP/calls.log")"
+list_count="$(wc -l < "$TMP/lists.log")"
 "$HELPER" "$TMP/response.json"
 [ "$count" -eq "$(wc -l < "$TMP/calls.log")" ]
+[ "$((list_count + 1))" -eq "$(wc -l < "$TMP/lists.log")" ] || {
+  echo 'FAIL: unchanged recommendations must read SafeShield once, not twice' >&2; exit 1;
+}
+# Even with the same revision, defer verification when SafeShield refreshes.
+# A prior successful confirmation must survive that deferral unchanged.
+list_count="$(wc -l < "$TMP/lists.log")"
+if MOCK_SAFE_REFRESHING=1 "$HELPER" "$TMP/response.json"; then
+  echo 'FAIL: refresh must defer a matching revision too' >&2; exit 1
+else
+  [ "$?" -eq 75 ] || exit 1
+fi
+[ "$list_count" -eq "$(wc -l < "$TMP/lists.log")" ]
+[ -f "$TMP/etc/receipt.json" ]
 # Removing one recommendation must only remove the locally owned entry.
 response '[]'; "$HELPER" "$TMP/response.json"
 assert_rules '["manual.example.org"]'
+TEST_STAGE='규칙 변경 없는 새 추천 리비전'
+# A recommendation pointing only to a user-created allow entry changes the
+# revision but needs no mutation, refresh, or second full rules_list query.
+response '["manual.example.org"]'
+count="$(wc -l < "$TMP/calls.log")"
+list_count="$(wc -l < "$TMP/lists.log")"
+"$HELPER" "$TMP/response.json"
+[ "$count" -eq "$(wc -l < "$TMP/calls.log")" ]
+[ "$((list_count + 1))" -eq "$(wc -l < "$TMP/lists.log")" ]
+python3 - "$TMP/etc/receipt.json" <<'PY_EXISTING'
+import json,sys
+receipt=json.load(open(sys.argv[1]))
+assert receipt['domains'] == [{'domain':'manual.example.org','source':'manual'}], receipt
+PY_EXISTING
+TEST_STAGE='대량 규칙 일괄 검증'
+# A full 100-domain recommendation made entirely of pre-existing manual rules
+# should be a single SafeShield read, with no refresh, deletion or claim.
+python3 - "$TMP/rules.json" "$TMP/response.json" <<'PY_BULK'
+import json,hashlib,sys
+entries=['manual.example.org'] + [f'allowed{i}.example.org' for i in range(99)]
+json.dump(entries,open(sys.argv[1],'w'))
+revision=hashlib.sha256('\n'.join(sorted(entries)).encode()).hexdigest()
+json.dump({'recommended_rules':{'revision':revision,'domains':entries}},open(sys.argv[2],'w'))
+PY_BULK
+count="$(wc -l < "$TMP/calls.log")"
+list_count="$(wc -l < "$TMP/lists.log")"
+"$HELPER" "$TMP/response.json"
+[ "$count" -eq "$(wc -l < "$TMP/calls.log")" ]
+[ "$((list_count + 1))" -eq "$(wc -l < "$TMP/lists.log")" ]
+[ "$(wc -l < "$TMP/etc/state")" -eq 1 ] || exit 1
+python3 - "$TMP/etc/receipt.json" <<'PY_BULK_RECEIPT'
+import json,sys
+receipt=json.load(open(sys.argv[1]))
+assert len(receipt['domains']) == 100
+assert all(rule['source'] == 'manual' for rule in receipt['domains'])
+PY_BULK_RECEIPT
+# Restore the original manual allow entry for later failure/recovery cases.
+printf '["manual.example.org"]\n' > "$TMP/rules.json"
+response '["manual.example.org"]'
+"$HELPER" "$TMP/response.json"
 TEST_STAGE='잘못된 SafeShield 응답 방어'
 # Broken responses must not be interpreted as an empty rules list.
 response '["tv.example.org"]'
@@ -278,6 +333,13 @@ awk '
 # Keep the shared rules page independent from executable API imports so that
 # the public router demo does not inherit authenticated RPC dependencies.
 grep -Fq 'onLoadRecommendedRulesStatus' "$PAGE"
+# Only a confirmed change of actual recommendation content may re-read the
+# full SafeShield rules list. Progress and status-only transitions are cheap.
+grep -Fq 'const signature = JSON.stringify([status.revision, status.domains]);' "$PAGE"
+grep -Fq "status.syncStatus === 'confirmed' && lastConfirmedSignature.current !== signature" "$PAGE"
+grep -Fq "if (status.syncStatus === 'confirmed' && !reloaded) onRetry();" "$PAGE"
+grep -Fq 'cmp -s "$STATE" "$temp"' "$HELPER"
+! grep -Fq "data?.allow.join('\\n')" "$PAGE"
 ! grep -Fq "from '../api/" "$PAGE"
 ! grep -Fq 'from "../api/' "$PAGE"
 grep -Fq 'onLoadRecommendedRulesStatus={fetchRecommendedRulesStatus}' "$ROOT/frontend/src/app/App.tsx"
@@ -286,7 +348,7 @@ grep -Fq "cloudManaged ? '추천 규칙' : '직접 추가'" "$PAGE"
 # Group allow entries by who controls them without repeating the domains.
 grep -Fq 'aria-label="직접 추가한 허용 규칙"' "$PAGE"
 grep -Fq 'aria-label="웹사이트 추천 규칙"' "$PAGE"
-grep -Fq 'recommendedDomains.includes(domain)' "$PAGE"
+grep -Fq 'recommendedDomainSet.has(domain)' "$PAGE"
 grep -Fq 'aria-expanded={showRecommended}' "$PAGE"
 grep -Fq 'const showRecommended = searching ||' "$PAGE"
 grep -Fq 'max-h-[20rem]' "$PAGE"
@@ -433,7 +495,21 @@ grep -Fq 'RECOMMENDED_POLL_INTERVAL_S=30' "$DEVICE"
 grep -Fq 'next_fast=' "$DEVICE"
 grep -Fq 'next_full=' "$DEVICE"
 grep -Fq "recommended-sync) recommended_fast_sync" "$DEVICE"
-grep -Fq "[ HELPER, 'recommended-sync' ]" "$ROOT/root/usr/share/rpcd/ucode/smartsafehub/device-registration.uc"
+# r39 queues the Hub sync in a separate worker; the RPC must only accept
+# a request, not block rpcd while it runs the helper in the foreground.
+RECOMMENDED_RPC="$ROOT/root/usr/share/rpcd/ucode/smartsafehub/device-registration.uc"
+grep -Fq "request_job('recommended-sync')" "$RECOMMENDED_RPC" || {
+  echo 'FAIL: recommended sync must enqueue the background worker' >&2
+  exit 1
+}
+grep -Fq "return read_recommended_rules_status(request);" "$RECOMMENDED_RPC" || {
+  echo 'FAIL: recommended sync must report the local status after enqueue' >&2
+  exit 1
+}
+if grep -Fq "[ HELPER, 'recommended-sync' ]" "$RECOMMENDED_RPC"; then
+  echo 'FAIL: recommended sync must not run the slow device helper in rpcd' >&2
+  exit 1
+fi
 # With exactOptionalPropertyTypes, omit an optional callback rather than pass undefined.
 # The block card does not need a revoke callback; only recommended allow rules do.
 if grep -Fq 'onRequestRevoke={onRevokeRecommendedRule ? setRevokeTarget : undefined}' "$PAGE"; then

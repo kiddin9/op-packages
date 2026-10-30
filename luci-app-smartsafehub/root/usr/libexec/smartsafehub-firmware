@@ -21,6 +21,7 @@ SHA256SUM_BIN="${SMARTSAFEHUB_FIRMWARE_SHA256SUM_BIN:-sha256sum}"
 UBUS_BIN="${SMARTSAFEHUB_FIRMWARE_UBUS_BIN:-ubus}"
 SYSUPGRADE_BIN="${SMARTSAFEHUB_FIRMWARE_SYSUPGRADE_BIN:-/sbin/sysupgrade}"
 EVENTS_BIN="${SMARTSAFEHUB_FIRMWARE_EVENTS_BIN:-/usr/libexec/smartsafehub-events}"
+APPS_RESTORE_BIN="${SMARTSAFEHUB_APPS_RESTORE_BIN:-/usr/libexec/smartsafehub-apps-restore}"
 DEFAULT_API_BASE_URL="https://www.smartsafehub.com/api/v1"
 CHECK_TIMEOUT_S=20
 DOWNLOAD_TIMEOUT_S=180
@@ -702,8 +703,18 @@ periodic_check_if_due() {
 	fi
 }
 
+# The existing firmware daemon schedules an independent, finite restore job
+# once at boot. There is no new procd service, respawn loop or idle process.
+# Restore worker itself checks the preserved ownership manifest before I/O.
+start_apps_restore_once() {
+	[ -x "$APPS_RESTORE_BIN" ] || return 0
+	[ -d "${SMARTSAFEHUB_APPS_OWNED_DIR:-/etc/smartsafehub/apps-installed}" ] || return 0
+	"$APPS_RESTORE_BIN" run </dev/null >/dev/null 2>&1 &
+}
+
 run_daemon() {
 	sync_firmware_identity
+	start_apps_restore_once
 	load_daemon_settings
 	sleep "$DAEMON_INITIAL_DELAY_S"
 	boot_check_with_retry || true

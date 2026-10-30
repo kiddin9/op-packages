@@ -35,15 +35,6 @@ for file in \
 	[ -f "$file" ] || fail "missing reload-safety input: ${file#$ROOT_DIR/}"
 done
 
-command -v node >/dev/null 2>&1 || fail 'node is required for reload-safety behavioral tests'
-
-node_major="$(node -p 'process.versions.node.split(".")[0]')"
-case "$node_major" in
-	''|*[!0-9]*) fail 'unable to determine node major version' ;;
-esac
-[ "$node_major" -ge 22 ] || \
-	fail 'Node.js 22 or newer is required to execute TypeScript session regression tests'
-
 # A network, authentication, polling, or generic error path must never own a full-document reload.
 for file in "$ASYNC_RESOURCE" "$RPC" "$SESSION" "$MAIN"; do
 	if grep -Eq 'location\.(reload|replace|assign)[[:space:]]*\(|location\.href[[:space:]]*=' "$file"; then
@@ -64,18 +55,6 @@ built_reload_count="$(grep -o 'location\.reload(' "$BUILT_JS" | wc -l | tr -d '[
 [ "$built_reload_count" = '2' ] || \
 	fail "built frontend must contain exactly two guarded reload sites (found $built_reload_count)"
 
-# Execute the actual source body of the self-update effect across the historical failure scenarios.
-run_node_typescript() {
-	if node --help 2>/dev/null | grep -Fq -- '--experimental-strip-types'; then
-		node --experimental-strip-types --no-warnings "$1"
-	else
-		node "$1"
-	fi
-}
-
-run_node_typescript "$RELOAD_RUNTIME_TEST"
-run_node_typescript "$SESSION_RUNTIME_TEST"
-run_node_typescript "$SESSION_RESPONSE_TEST"
-run_node_typescript "$RPC_SESSION_TEST"
-
+# Behavioral session, RPC and reload tests are run together in the frontend
+# CI job via tests/runtime/*.test.mjs; do not execute them twice in ShellSpec.
 printf 'PASS: reload/navigation safety and session-expiry regression guards are enforced\n'

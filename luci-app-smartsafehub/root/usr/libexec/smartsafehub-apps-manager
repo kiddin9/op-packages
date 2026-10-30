@@ -1,0 +1,776 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Privileged, opt-in APK adapter for SmartSafeHub Apps fixed-release protocol.
+# No caller-supplied package, URL, shell command or repository is accepted.
+set -eu
+
+SELF="${SMARTSAFEHUB_APPS_MANAGER_BIN:-/usr/libexec/smartsafehub-apps-manager}"
+CATALOG_HELPER="${SMARTSAFEHUB_APPS_HELPER_BIN:-/usr/libexec/smartsafehub-apps}"
+RUNTIME="${SMARTSAFEHUB_APPS_RUNTIME_DIR:-/tmp/smartsafehub}"
+OWNED="${SMARTSAFEHUB_APPS_OWNED_DIR:-/etc/smartsafehub/apps-installed}"
+# Fixed first-party host. Only the Hub-approved channel/architecture determine
+# the repository path; callers cannot submit a repository URL.
+REPO_BASE="${SMARTSAFEHUB_APPS_REPO_BASE:-https://repo.smartsafehub.com}"
+UCLIENT="${SMARTSAFEHUB_APPS_UCLIENT_BIN:-uclient-fetch}"
+OVERLAY="${SMARTSAFEHUB_APPS_OVERLAY_PATH:-/overlay}"
+# OpenWrt uses /proc/meminfo; tests on non-Linux hosts supply a fixture.
+MEMINFO="${SMARTSAFEHUB_APPS_MEMINFO_PATH:-/proc/meminfo}"
+JSONFILTER="${SMARTSAFEHUB_APPS_JSONFILTER_BIN:-jsonfilter}"
+APK="${SMARTSAFEHUB_APPS_APK_BIN:-apk}"
+ARCH_FILE="${SMARTSAFEHUB_APPS_ARCH_FILE:-/etc/apk/arch}"
+SHA256="${SMARTSAFEHUB_APPS_SHA256_BIN:-sha256sum}"
+DAEMON="${SMARTSAFEHUB_APPS_DAEMON_BIN:-start-stop-daemon}"
+METRICS="${SMARTSAFEHUB_APPS_METRICS_BIN:-/usr/libexec/smartsafehub-apps-metrics}"
+LUCI_INDEX_CACHE="${SMARTSAFEHUB_APPS_LUCI_INDEX_CACHE:-/tmp/luci-indexcache}"
+LOCK="$RUNTIME/apps-operation.lock"
+STATE="$RUNTIME/apps-operation.state"
+CATALOG="$RUNTIME/apps-catalog.json"
+
+field() { "$JSONFILTER" -i "$1" -e "$2" 2>/dev/null | head -n 1; }
+# A wildcard expression returns multiple app IDs. Scalar fields above must
+# remain single-valued, but catalog iteration must not truncate the results.
+catalog_ids() { "$JSONFILTER" -i "$CATALOG" -e '@.apps[*].id' 2>/dev/null; }
+valid_id() { case "$1" in ''|*[!a-z0-9-]*|-*|*-) return 1;; esac; [ "${#1}" -le 80 ]; }
+valid_package() {
+ case "$1" in ''|*[!a-zA-Z0-9_.+-]*|[-.+]*|*[-.+]) return 1;; esac
+ [ "${#1}" -le 100 ]
+}
+valid_version() {
+ case "$1" in ''|*[!a-zA-Z0-9._+~-]*|[-.+~]*|*[-.+~]) return 1;; esac
+ [ "${#1}" -le 100 ]
+}
+valid_sha() {
+ case "$1" in *[!a-f0-9]*|'') return 1;; esac
+ [ "${#1}" -eq 64 ]
+}
+protected_package() {
+ case "$1" in
+  base-files|busybox|apk|procd|netifd|dnsmasq*|firewall*|odhcp*|dropbear|ubus*|rpcd*|uhttpd*|safeshield*|luci-app-smartsafehub|kernel|kmod-*) return 0;;
+ esac
+ return 1
+}
+write_state() {
+ phase="$1"; action="$2"; app="$3"; code="$4"; operation_id="$5"; source="${6:-user}"
+ tmp="$(mktemp "$RUNTIME/apps-state.XXXXXXXX")" || return 1
+ printf 'phase\t%s\naction\t%s\napp_id\t%s\ncode\t%s\noperation_id\t%s\nsource\t%s\n' "$phase" "$action" "$app" "$code" "$operation_id" "$source" > "$tmp"
+ mv -f "$tmp" "$STATE"
+}
+# Persist *ownership*, not merely an installed flag, so removal never deletes
+# unrelated packages installed through LuCI, ssh or another app.
+owned_manifest() { printf '%s/%s' "$OWNED" "$1"; }
+
+# Dump only simple validated package pins. Indexed JSON filter expressions are
+# created exclusively from a numeric index resolved from the approved catalog.
+app_index() {
+ id="$1"; n=0
+ for candidate in $(catalog_ids); do
+  if [ "$candidate" = "$id" ]; then printf '%s\n' "$n"; return 0; fi
+  n=$((n + 1))
+  [ "$n" -le 100 ] || break
+ done
+ return 1
+}
+extract_pins() {
+ index="$1"; out="$2"
+ : > "$out"; n=0
+ while :; do
+  name="$(field "$CATALOG" "@.apps[$index].packages[$n].name")"
+  [ -n "$name" ] || break
+  version="$(field "$CATALOG" "@.apps[$index].packages[$n].version")"
+  hash="$(field "$CATALOG" "@.apps[$index].packages[$n].sha256")"
+  valid_package "$name" && valid_version "$version" && valid_sha "$hash" || return 1
+  protected_package "$name" && return 1
+  grep -Fq "$(printf '%s\t' "$name")" "$out" && return 1
+  printf '%s\t%s\t%s\n' "$name" "$version" "$hash" >> "$out"
+  n=$((n + 1))
+  [ "$n" -le 32 ] || return 1
+ done
+ [ "$n" -gt 0 ]
+}
+# A dry-run may install only explicitly reviewed packages. Never allow any
+# upgrades, downgrades, removals or automatic dependency additions. Missing
+# prerequisites cause a safe failure.
+review_install_plan() {
+ plan="$1"; allow="$2"
+ awk -v allowed="$allow" '
+  BEGIN { split(allowed, names, " "); for (i in names) if (names[i] != "") ok[names[i]]=1 }
+  {
+   line=$0
+   sub(/^\([0-9]+\/[0-9]+\) /, "", line)
+   if (line ~ /^(Installing|Upgrading|Downgrading|Purging|Removing) /) {
+    split(line, fields, " ")
+    if (fields[1] != "Installing" || !(fields[2] in ok) || ++seen[fields[2]] != 1) bad=1
+   }
+  }
+  END {
+   for (name in ok) if (seen[name] != 1) bad=1
+   exit bad ? 1 : 0
+  }
+ ' "$plan"
+}
+
+# Only explicitly approved, already-owned APKs may be upgraded. Never let
+# apk upgrade the firmware, pull new dependencies, remove packages or downgrade.
+review_update_plan() {
+ plan="$1"; allow="$2"
+ awk -v allowed="$allow" '
+  BEGIN { split(allowed, names, " "); for (i in names) if (names[i] != "") ok[names[i]]=1 }
+  {
+   line=$0
+   sub(/^\([0-9]+\/[0-9]+\) /, "", line)
+   if (line ~ /^(Installing|Upgrading|Downgrading|Purging|Removing|Replacing) /) {
+    split(line, fields, " ")
+    if (fields[1] != "Upgrading" || !(fields[2] in ok) || ++seen[fields[2]] != 1) bad=1
+   }
+  }
+  END {
+   for (name in ok) if (seen[name] != 1) bad=1
+   exit bad ? 1 : 0
+  }
+ ' "$plan"
+}
+
+# Likewise, removal may touch only package names in the Apps-owned manifest.
+# Shared dependencies, manually installed packages and system packages must
+# remain untouched even if apk considers them orphaned.
+review_remove_plan() {
+ plan="$1"; allow="$2"
+ awk -v allowed="$allow" '
+  BEGIN { split(allowed, names, " "); for (i in names) if (names[i] != "") ok[names[i]]=1 }
+  {
+   line=$0
+   sub(/^\([0-9]+\/[0-9]+\) /, "", line)
+   if (line ~ /^(Purging|Removing|Upgrading|Downgrading) /) {
+    split(line, fields, " ")
+    if ((fields[1] != "Purging" && fields[1] != "Removing") || !(fields[2] in ok)) bad=1
+   }
+  }
+  END { exit bad ? 1 : 0 }
+ ' "$plan"
+}
+
+# Preserve recovery of partial operations: an owned manifest may contain a
+# not-yet-installed package, but must never adopt a package that was present
+# before this transaction. A later retry can finish it safely.
+append_owned_pin() {
+ name="$1"; version="$2"; hash="$3"
+ manifest="$(owned_manifest "$app")"
+ mkdir -p "$OWNED" || return 1
+ if [ -e "$manifest" ] && grep -Fqx "$(printf '%s\t%s\t%s' "$name" "$version" "$hash")" "$manifest"; then
+  return 0
+ fi
+ tmp_manifest="$stage/owned-next"
+ if [ -e "$manifest" ]; then cp "$manifest" "$tmp_manifest" || return 1; else : > "$tmp_manifest"; fi
+ printf '%s\t%s\t%s\n' "$name" "$version" "$hash" >> "$tmp_manifest"
+ cp "$tmp_manifest" "$manifest.new" && mv -f "$manifest.new" "$manifest"
+}
+
+installed() { "$APK" info -e "$1" >/dev/null 2>&1; }
+# apk info -e verifies only the name. Version checks must use the installed
+# database or an old, manually changed APK could be mistaken for our release.
+installed_version() {
+ "$APK" list -I "$1" 2>/dev/null | awk -v prefix="$1-" '
+  index($1, prefix) == 1 { print substr($1, length(prefix) + 1); exit }
+ '
+}
+# Use APK's installed-size metadata, not archive/download size or a slow
+# recursive scan of /overlay. apk versions may put the number on the same
+# line as the "installed size" heading or on the next line. Do not guess
+# missing metadata, and do not accept a size from a different package.
+parse_installed_apk_size() {
+ awk -v name="$1" -v expected="$2" '
+  function number_of_bytes(value, parts, count, factor, bytes) {
+   gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+   # Accept the standard "123 KiB" and compact "123KiB" forms.
+   sub(/(B|KiB|MiB|GiB)$/, " &", value)
+   count=split(value, parts, /[[:space:]]+/)
+   if (count != 2 || parts[1] !~ /^[0-9]+([.][0-9]+)?$/) return -1
+   if (parts[2] == "B") factor=1
+   else if (parts[2] == "KiB") factor=1024
+   else if (parts[2] == "MiB") factor=1048576
+   else if (parts[2] == "GiB") factor=1073741824
+   else return -1
+   bytes=parts[1]*factor
+   if (bytes < 0 || bytes > 1099511627776) return -1
+   return bytes
+  }
+  # apk v3 may print the exact same installed-size record more than once
+  # (for instance, when package names are returned from multiple indexes).
+  # Accept only consistent repetitions; never sum duplicate records.
+  function record_size(value, version, parsed_bytes) {
+   parsed_bytes=number_of_bytes(value)
+   # An APK upgrade can leave multiple versions in index-derived info.
+   # Prefer the exact locally installed release over older/newer entries.
+   if (expected != "" && version == expected) {
+    matched=1
+    if (parsed_bytes < 0 || (selected && parsed_bytes != selected_bytes)) {
+     selected_invalid=1
+     return
+    }
+    selected_bytes=parsed_bytes
+    selected=1
+    return
+   }
+   if (parsed_bytes < 0 || (parsed && parsed_bytes != bytes)) {
+    invalid=1
+    return
+   }
+   bytes=parsed_bytes
+   parsed=1
+  }
+  {
+   line=$0
+   sub(/\r$/, "", line)
+   heading=" installed size:"
+   marker=index(line, heading)
+   if (marker > 0 && (substr(line, 1, length(name) + 1) == name "-" ||
+       substr(line, 1, length(name) + length(heading)) == name heading)) {
+    if (waiting) {
+     if (expected != "" && pending_version == expected) selected_invalid=1
+     else invalid=1
+    }
+    seen++
+    prefix=substr(line, 1, marker-1)
+    version=prefix == name ? "" : substr(prefix, length(name)+2)
+    value=substr(line, marker+length(heading))
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+    waiting=0
+    if (value == "") {
+     waiting=1
+     pending_version=version
+    } else record_size(value, version)
+    next
+   }
+   if (waiting) {
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+    if (line == "") next
+    record_size(line, pending_version)
+    waiting=0
+   }
+  }
+  END {
+   if (waiting) {
+    if (expected != "" && pending_version == expected) selected_invalid=1
+    else invalid=1
+   }
+   if (matched) {
+    if (!selected_invalid && selected)
+     printf "%.0f\n", selected_bytes
+    else exit 1
+   } else if (!invalid && seen > 0 && parsed == 1) {
+    # Keep supporting APK variants without exact version records.
+    printf "%.0f\n", bytes
+   } else exit 1
+  }
+ '
+}
+installed_size_bytes() {
+ [ "$#" -eq 1 ] || return 1
+ name="$1"
+ # Match the package release actually installed, not a stale APK index hit.
+ current_version="$(installed_version "$name" || :)"
+ valid_version "$current_version" || current_version=''
+ # Try APK's size-only view first; fall back to its full information view.
+ # Do not attempt a potentially expensive recursive disk scan.
+ bytes="$("$APK" info -s "$name" 2>/dev/null | parse_installed_apk_size "$name" "$current_version")" || {
+  bytes="$("$APK" info "$name" 2>/dev/null | parse_installed_apk_size "$name" "$current_version")" || return 1
+ }
+ case "$bytes" in ''|*[!0-9]*) return 1;; esac
+ printf '%s\n' "$bytes"
+}
+# Refuse a downgrade, a same-version rebuild with a different digest, any
+# package-set change, or an APK that no longer matches our ownership record.
+# The approved replacement must be strictly newer according to apk itself.
+select_upgrades() {
+ old_manifest="$1"; approved_pins="$2"; changed_pins="$3"
+ [ -s "$old_manifest" ] || return 1
+ : > "$changed_pins"
+ old_count=0
+ while IFS="$(printf '\t')" read -r name old_version old_hash; do
+  valid_package "$name" && valid_version "$old_version" && valid_sha "$old_hash" || return 1
+  protected_package "$name" && return 1
+  new_version="$(awk -F '\t' -v name="$name" '$1 == name { print $2; exit }' "$approved_pins")"
+  new_hash="$(awk -F '\t' -v name="$name" '$1 == name { print $3; exit }' "$approved_pins")"
+  [ -n "$new_version" ] && valid_sha "$new_hash" || return 1
+  [ "$(installed_version "$name")" = "$old_version" ] || return 1
+  if [ "$old_version" = "$new_version" ]; then
+   [ "$old_hash" = "$new_hash" ] || return 1
+  else
+   [ "$("$APK" version -t "$old_version" "$new_version" 2>/dev/null)" = '<' ] || return 1
+   printf '%s\t%s\t%s\n' "$name" "$new_version" "$new_hash" >> "$changed_pins"
+  fi
+  old_count=$((old_count + 1))
+  [ "$old_count" -le 32 ] || return 1
+ done < "$old_manifest"
+ [ "$old_count" -gt 0 ] || return 1
+ [ "$old_count" -eq "$(wc -l < "$approved_pins" | tr -d ' ')" ] || return 1
+ [ -s "$changed_pins" ]
+}
+# Prefer OpenWrt's configured apk architecture. Some package-manager builds
+# do not support --print-arch consistently. Never guess based on the CPU type,
+# device name, or the channel: the Hub approval must match an exact native arch.
+local_package_arch() {
+ native=''
+ if [ -r "$ARCH_FILE" ]; then
+  native="$(awk '$1 ~ /^(aarch64_cortex-a53|mipsel_24kc|x86_64)$/ {print $1; exit}' "$ARCH_FILE" 2>/dev/null)"
+ fi
+ if [ -z "$native" ]; then
+  native="$("$APK" --print-arch 2>/dev/null || :)"
+ fi
+ case "$native" in aarch64_cortex-a53|mipsel_24kc|x86_64) printf '%s\n' "$native";; esac
+}
+
+# Web UI is never considered ready based only on the daemon package.
+# Network usage is explicitly known to require a separate LuCI package.
+# Other apps opt in via an approved web_ui.package that is also in their
+# approved package list, preventing an unrelated local app from being opened.
+web_ui_package() {
+ id="$1"; idx="$2"
+ if [ "$id" = network-usage-monitor ]; then
+  printf '%s\n' luci-app-nlbwmon
+  return 0
+ fi
+ if [ "$id" = wake-on-lan ]; then
+  # The approved app has exactly one LuCI entry point. Do not mistake the
+  # backend etherwake package (or a different LuCI page) for that UI.
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.type")" = luci ] || return 1
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.path")" = /cgi-bin/luci/admin/services/wol ] || return 1
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.package")" = luci-app-wol ] || return 1
+ fi
+ if [ "$id" = retro-arcade ]; then
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.type")" = static ] || return 1
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.path")" = /retro-arcade/ ] || return 1
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.package")" = smartsafehub-app-retro-arcade ] || return 1
+ else
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.type")" = luci ] || return 1
+ fi
+ name="$(field "$CATALOG" "@.apps[$idx].web_ui.package")"
+ valid_package "$name" || return 1
+ p=0
+ while [ "$p" -le 32 ]; do
+  candidate="$(field "$CATALOG" "@.apps[$idx].packages[$p].name")"
+  [ -n "$candidate" ] || break
+  if [ "$candidate" = "$name" ]; then printf '%s\n' "$name"; return 0; fi
+  p=$((p + 1))
+ done
+ return 1
+}
+
+status() {
+ tmp="$(mktemp "$RUNTIME/apps-status.XXXXXXXX")" || return 1
+ {
+ # A disconnected device can still report its local installation state.
+ if [ ! -r "$CATALOG" ]; then : > "$tmp"; mv -f "$tmp" "$RUNTIME/apps-status.tsv"; return 0; fi
+ # Snapshot approved IDs once. Both catalog membership and local ownership
+ # checks below refer to the same on-disk approved generation.
+ approved_ids="$(catalog_ids)"
+ n=0
+ for id in $approved_ids; do
+  valid_id "$id" || continue
+  idx="$n"; n=$((n + 1))
+  [ "$n" -le 100 ] || break
+  total=0; present=0; p=0; primary_package=''
+  while :; do
+   name="$(field "$CATALOG" "@.apps[$idx].packages[$p].name")"
+   [ -n "$name" ] || break
+   valid_package "$name" || break
+   [ -n "$primary_package" ] || primary_package="$name"
+   total=$((total + 1)); installed "$name" && present=$((present + 1))
+   p=$((p + 1)); [ "$p" -le 32 ] || break
+  done
+  # WOL's public release version belongs to its LuCI APK, not the
+  # etherwake backend. Avoid showing a false installed/offered mismatch.
+  if [ "$id" = wake-on-lan ] && [ "$total" -eq 2 ]; then
+   primary_package=luci-app-wol
+  fi
+  managed=0
+  [ -f "$(owned_manifest "$id")" ] && managed=1
+  ui_ready=0
+  ui_package="$(web_ui_package "$id" "$idx" || :)"
+  if [ -n "$ui_package" ] && installed "$ui_package"; then
+   if [ "$id" != retro-arcade ] || [ -r "${SMARTSAFEHUB_APPS_WEB_ROOT:-/www}/retro-arcade/index.html" ]; then
+    ui_ready=1
+   fi
+  fi
+  # Update availability requires a complete Apps-owned install and a newer
+  # Hub-approved exact package set; it never uses an untrusted URL or version.
+  update_ready=0
+  if [ "$managed" -eq 1 ] && [ "$total" -gt 0 ] && [ "$total" -eq "$present" ]; then
+   status_pins="$(mktemp "$RUNTIME/apps-status-pins.XXXXXXXX")" || return 1
+   status_changes="$(mktemp "$RUNTIME/apps-status-changes.XXXXXXXX")" || { rm -f "$status_pins"; return 1; }
+   if extract_pins "$idx" "$status_pins" && select_upgrades "$(owned_manifest "$id")" "$status_pins" "$status_changes"; then
+    update_ready=1
+   fi
+   rm -f "$status_pins" "$status_changes"
+  fi
+  # The catalog version is the latest approved release, not the APK
+  # currently installed. Read the actual version of the first approved
+  # package as a representative version; never infer it from the catalog.
+  # Use a fixed APK command and validate the field before putting it in TSV.
+  installed_release=''
+  if [ -n "$primary_package" ] && installed "$primary_package"; then
+   installed_release="$(installed_version "$primary_package" || :)"
+   valid_version "$installed_release" || installed_release=''
+  fi
+  if [ "$total" -gt 0 ] && [ "$total" -eq "$present" ]; then full=1; else full=0; fi
+  if [ "$present" -gt 0 ]; then partial=1; else partial=0; fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$full" "$partial" "$managed" "$ui_ready" "$update_ready" "$installed_release"
+ done
+ # Removed approvals must be proven by a valid Apps-owned manifest, not
+ # inferred from racing UI/catalog RPC responses. Manual apk add does not
+ # write an Apps manifest and therefore must never appear as retired.
+ retired_count=0
+ for manifest in "$OWNED"/*; do
+  [ -f "$manifest" ] || continue
+  id="${manifest##*/}"
+  valid_id "$id" || continue
+  printf '%s\n' "$approved_ids" | grep -Fxq "$id" && continue
+  retired_count=$((retired_count + 1))
+  [ "$retired_count" -le 100 ] || break
+  count=0; present=0; valid=1
+  while IFS="$(printf '\t')" read -r name version hash; do
+   valid_package "$name" && valid_version "$version" && valid_sha "$hash" || { valid=0; break; }
+   protected_package "$name" && { valid=0; break; }
+   count=$((count + 1))
+   [ "$count" -le 32 ] || { valid=0; break; }
+   installed "$name" && present=$((present + 1))
+  done < "$manifest"
+  [ "$valid" -eq 1 ] && [ "$count" -gt 0 ] && [ "$present" -gt 0 ] || continue
+  # Eighth column explicitly marks the verified retired ownership record.
+  printf '%s\t0\t1\t1\t0\t0\t\t1\n' "$id"
+ done
+ } > "$tmp"
+ mv -f "$tmp" "$RUNTIME/apps-status.tsv"
+}
+
+# Optional read-only sizes. Consult the *last known installed* status and
+# approved catalog. For incomplete metadata, omit the total rather than show
+# a misleading partial sum.
+sizes() {
+ tmp="$(mktemp "$RUNTIME/apps-size.XXXXXXXX")" || return 1
+ {
+ if [ -r "$CATALOG" ] && [ -r "$RUNTIME/apps-status.tsv" ]; then
+  for id in $(awk -F '\t' '$2 == "1" {print $1}' "$RUNTIME/apps-status.tsv"); do
+   valid_id "$id" || continue
+   idx="$(app_index "$id")" || continue
+   set --
+   p=0
+   while :; do
+    name="$(field "$CATALOG" "@.apps[$idx].packages[$p].name")"
+    [ -n "$name" ] || break
+    valid_package "$name" || break
+    set -- "$@" "$name"
+    p=$((p + 1)); [ "$p" -le 32 ] || break
+   done
+   [ "$#" -gt 0 ] || continue
+   complete=1; total_bytes=0
+   for name in "$@"; do
+    bytes="$(installed_size_bytes "$name" || :)"
+    case "$bytes" in
+     ''|*[!0-9]*)
+      complete=0;;
+     *)
+      # Never overflow signed shell arithmetic or report an impossible total.
+      if [ "${#bytes}" -gt 13 ] || [ "$bytes" -gt 1099511627776 ] ||
+         [ "$total_bytes" -gt $((1099511627776 - bytes)) ]; then
+       complete=0
+      else
+       total_bytes=$((total_bytes + bytes))
+      fi;;
+    esac
+   done
+   [ "$complete" -eq 1 ] || continue
+   printf '%s\t%s\n' "$id" "$total_bytes"
+  done
+ fi
+ } > "$tmp"
+ mv -f "$tmp" "$RUNTIME/apps-size.tsv"
+}
+# Release names from the Hub have zero command authority. We cross-check the
+# fresh exact-build approval, locally trusted immutable index, architecture and
+# resource requirements before invoking the fixed APK binary.
+preflight_install() {
+ "$CATALOG_HELPER" || return 21
+ index="$(app_index "$app")" || return 22
+ [ "$(field "$CATALOG" "@.apps[$index].runtime")" = router ] || return 23
+ [ "$(field "$CATALOG" "@.apps[$index].installer")" = apk ] || return 23
+ arch="$(field "$CATALOG" "@.apps[$index].package_arch")"
+ native_arch="$(local_package_arch)"
+ if [ -z "$arch" ] || [ "$arch" != "$native_arch" ]; then
+  # E24 is an approval mismatch, not a generic download failure. Keep a
+  # non-sensitive diagnostic for devices with different apk CLI behaviors.
+  command -v logger >/dev/null 2>&1 && logger -t smartsafehub-apps "E24: approved=${arch:-missing} local=${native_arch:-unknown}" || :
+  return 24
+ fi
+ approved_hash="$(field "$CATALOG" "@.apps[$index].repository_index_sha256")"
+ valid_sha "$approved_hash" || return 25
+ # Build an allowlisted repository URL from immutable local firmware identity
+ # and the approved catalog response. The Hub pins the exact index digest.
+ channel="$(field "$CATALOG" '@.channel')"
+ case "$channel" in stable|beta) ;; *) return 25;; esac
+ case "$arch" in aarch64_cortex-a53|mipsel_24kc|x86_64) ;; *) return 24;; esac
+ publication="$(field "$CATALOG" "@.apps[$index].repository_release_id")"
+ printf '%s\n' "$publication" | grep -Eq '^[0-9]{8}T[0-9]{6}([0-9]{1,6})?$' || return 25
+ repo_url="$REPO_BASE/$channel/packages/$arch/smartsafehub/$publication"
+ index_url="$repo_url/packages.adb"
+ # Always fetch the current published index. If a channel is republished after
+ # review, fail closed until Hub has reviewed the new index hash.
+ "$UCLIENT" -q -T 15 -O "$stage/packages.adb" "$index_url" > "$stage/index-fetch.log" 2>&1 || return 25
+ [ -s "$stage/packages.adb" ] || return 25
+ index_bytes="$(wc -c < "$stage/packages.adb" | tr -d ' ')"
+ [ "$index_bytes" -le 8388608 ] || return 25
+ actual_hash="$("$SHA256" "$stage/packages.adb" | cut -d ' ' -f 1)"
+ [ "$approved_hash" = "$actual_hash" ] || return 25
+ memory="$(field "$CATALOG" "@.apps[$index].requirements.min_memory_mb")"
+ storage="$(field "$CATALOG" "@.apps[$index].requirements.min_storage_mb")"
+ case "$memory" in ''|*[!0-9]*) return 26;; esac
+ case "$storage" in ''|*[!0-9]*) return 26;; esac
+ [ "$memory" -le 131072 ] && [ "$storage" -le 131072 ] || return 26
+ available_memory="$(awk '/^MemTotal:/ {print int($2/1024); exit}' "$MEMINFO" 2>/dev/null)"
+ available_storage="$(df -Pk "$OVERLAY" 2>/dev/null | awk 'END {print int($4/1024)}')"
+ [ -n "$available_memory" ] && [ "$available_memory" -ge "$memory" ] || return 26
+ [ -n "$available_storage" ] && [ "$available_storage" -ge "$storage" ] || return 26
+ extract_pins "$index" "$pins" || return 27
+ if [ "$app" = network-usage-monitor ]; then
+  [ "$(wc -l < "$pins" | tr -d ' ')" -eq 3 ] || return 27
+  for required in nlbwmon luci-app-nlbwmon luci-lib-chartjs; do
+   grep -q "^${required}$(printf '\t')" "$pins" || return 27
+  done
+ elif [ "$app" = wake-on-lan ]; then
+  # WOL always requires both the signal sender and its LuCI user interface.
+  # Never install extra packages just because a catalog lists them.
+  [ "$(wc -l < "$pins" | tr -d ' ')" -eq 2 ] || return 27
+  for required in etherwake luci-app-wol; do
+   grep -q "^${required}$(printf '\t')" "$pins" || return 27
+  done
+ elif [ "$app" = retro-arcade ]; then
+  # The approved first-party game app owns exactly one APK. Keep the
+  # package name fixed without freezing its future upgrade versions.
+  [ "$(wc -l < "$pins" | tr -d ' ')" -eq 1 ] || return 27
+  grep -q "^smartsafehub-app-retro-arcade$(printf '\t')" "$pins" || return 27
+ fi
+ return 0
+}
+
+# Download and hash-check all approved archives prior to any APK mutation.
+# Both initial installation and a selected-app update use this same check.
+fetch_approved_archives() {
+ mkdir -p "$stage/packages" || return 30
+ while IFS="$(printf '\t')" read -r name version hash; do
+  archive="$stage/packages/$name-$version.apk"
+  "$UCLIENT" -q -T 30 -O "$archive" "$repo_url/$name-$version.apk" > "$stage/fetch.log" 2>&1 || return 31
+  [ -s "$archive" ] && [ ! -L "$archive" ] || return 32
+  archive_bytes="$(wc -c < "$archive" | tr -d ' ')"
+  [ "$archive_bytes" -le 33554432 ] || return 32
+  [ "$("$SHA256" "$archive" | cut -d ' ' -f 1)" = "$hash" ] || return 33
+ done < "$pins"
+}
+prepare_signed_index() {
+ cp "$stage/packages.adb" "$stage/packages/packages.adb" || return 34
+ [ "$("$SHA256" "$stage/packages/packages.adb" | cut -d ' ' -f 1)" = "$approved_hash" ] || return 34
+ local_index="file://$stage/packages/packages.adb"
+ "$APK" --repositories-file /dev/null -X "$local_index" update > "$stage/repo-update.log" 2>&1 || return 34
+}
+
+# All packages come from one SmartSafeHub-signed immutable release.
+install_app() {
+ preflight_install || return $?
+ manifest="$(owned_manifest "$app")"
+ # Existing app ownership must match the reviewed pins.
+ if [ -e "$manifest" ]; then
+  [ -s "$manifest" ] || return 28
+  while IFS="$(printf '\t')" read -r name version hash; do
+   valid_package "$name" && valid_version "$version" && valid_sha "$hash" || return 28
+   pin="$(printf '%s\t%s\t%s' "$name" "$version" "$hash")"
+   grep -Fqx "$pin" "$pins" || return 28
+  done < "$manifest"
+ fi
+ need_install=0
+ # Never adopt a package previously installed outside SmartSafeHub Apps.
+ while IFS="$(printf '\t')" read -r name version hash; do
+  pin="$(printf '%s\t%s\t%s' "$name" "$version" "$hash")"
+  if [ -e "$manifest" ] && grep -Fqx "$pin" "$manifest"; then
+   installed "$name" || need_install=1
+  elif installed "$name"; then
+   return 29
+  else
+   need_install=1
+  fi
+ done < "$pins"
+ [ "$need_install" -eq 1 ] || return 28
+ fetch_approved_archives || return $?
+ # Only missing packages enter the single signed repository transaction.
+ set --; base_names=''
+ while IFS="$(printf '\t')" read -r name version hash; do
+  if ! installed "$name"; then set -- "$@" "$name=$version"; base_names="${base_names:+$base_names }$name"; fi
+ done < "$pins"
+ if [ "$#" -gt 0 ]; then
+  # Only the verified immutable index can supply packages.
+  prepare_signed_index || return $?
+  "$APK" --repositories-file /dev/null -X "$local_index" add --simulate "$@" > "$stage/plan.log" 2>&1 || return 34
+  review_install_plan "$stage/plan.log" "$base_names" || return 34
+  # Write ownership immediately before modifying packages. If APK partially
+  # succeeds, the UI offers repair/removal without adopting unrelated packages.
+  while IFS="$(printf '\t')" read -r name version hash; do
+   if ! installed "$name"; then append_owned_pin "$name" "$version" "$hash" || return 36; fi
+  done < "$pins"
+  "$APK" --repositories-file /dev/null -X "$local_index" add "$@" > "$stage/install.log" 2>&1 || return 35
+ fi
+ # A failed or incomplete add never counts as a successful application.
+ while IFS="$(printf '\t')" read -r name version hash; do
+  installed "$name" || return 35
+ done < "$pins"
+ return 0
+}
+
+# Upgrade only packages already owned by this app, and only when the newly
+# approved version is strictly newer. Re-fetch approval at click time, use a
+# signed immutable repository, and reject any unrelated solver action.
+update_app() {
+ preflight_install || return $?
+ manifest="$(owned_manifest "$app")"
+ [ -s "$manifest" ] || return 51
+ changes="$stage/changes"
+ select_upgrades "$manifest" "$pins" "$changes" || return 52
+ # No package installation has been changed at this point. Keep the previous
+ # manifest intact until every targeted APK has been upgraded and verified.
+ fetch_approved_archives || return $?
+ prepare_signed_index || return $?
+ set --; update_names=''
+ while IFS="$(printf '\t')" read -r name version hash; do
+  set -- "$@" "$name=$version"
+  update_names="${update_names:+$update_names }$name"
+ done < "$changes"
+ [ "$#" -gt 0 ] || return 52
+ "$APK" --repositories-file /dev/null -X "$local_index" add --upgrade --simulate "$@" > "$stage/plan.log" 2>&1 || return 53
+ review_update_plan "$stage/plan.log" "$update_names" || return 53
+ "$APK" --repositories-file /dev/null -X "$local_index" add --upgrade "$@" > "$stage/install.log" 2>&1 || return 54
+ while IFS="$(printf '\t')" read -r name version hash; do
+  [ "$(installed_version "$name")" = "$version" ] || return 54
+ done < "$pins"
+ # Preserve ownership atomically; future removal and firmware restore now use
+ # the new pins. Never record an update as a first-time download receipt.
+ cp "$pins" "$manifest.new" || return 55
+ mv -f "$manifest.new" "$manifest" || return 55
+ return 0
+}
+
+remove_app() {
+ manifest="$(owned_manifest "$app")"
+ [ -f "$manifest" ] || return 41
+ set --; count=0
+ while IFS="$(printf '\t')" read -r name version hash; do
+  valid_package "$name" && valid_version "$version" && valid_sha "$hash" || return 42
+  protected_package "$name" && return 42
+  # Reject packages owned by any other Apps installation.
+  for other in "$OWNED"/*; do
+   [ -f "$other" ] || continue
+   [ "$other" = "$manifest" ] && continue
+   grep -Fq "${name}$(printf '\t')" "$other" && return 43
+  done
+  # A failed transaction may have recorded ownership before apk completed.
+  # Only pass actually installed packages to apk del; still clear the
+  # manifest once all remaining owned packages are safely removed.
+  installed "$name" && set -- "$@" "$name"
+  count=$((count + 1)); [ "$count" -le 32 ] || return 42
+ done < "$manifest"
+ [ "$count" -gt 0 ] || return 42
+ any_installed=0
+ for name in "$@"; do installed "$name" && any_installed=1; done
+ if [ "$any_installed" -eq 1 ]; then
+  "$APK" del --simulate "$@" > "$stage/plan.log" 2>&1 || return 44
+  # Removing an optional app must never implicitly remove system/network,
+  # SafeShield or firmware kernel-module packages.
+  if grep -Ei '(Purging|Removing|Upgrading|Downgrading) (base-files|busybox|apk|procd|netifd|dnsmasq[^ ]*|firewall[^ ]*|odhcp[^ ]*|dropbear|ubus[^ ]*|rpcd[^ ]*|uhttpd[^ ]*|safeshield[^ ]*|luci-app-smartsafehub|kernel|kmod-[^ ]*) ' "$stage/plan.log" >/dev/null; then
+   return 44
+  fi
+  review_remove_plan "$stage/plan.log" "$*" || return 44
+  "$APK" del "$@" > "$stage/remove.log" 2>&1 || return 45
+ fi
+ rm -f "$manifest"
+ return 0
+}
+
+worker() {
+ action="$1"; app="$2"
+ # Keep the ID from the queued job across running/success/failed states.
+ # The browser uses it to distinguish a new failure from a dismissed one.
+ operation_id="$(awk -F '\t' '$1 == "operation_id" { print $2; exit }' "$STATE" 2>/dev/null || :)"
+ source="$(awk -F '\t' '$1 == "source" { print $2; exit }' "$STATE" 2>/dev/null || :)"
+ case "$source" in user|restore) ;; *) source=user ;; esac
+ trap 'rm -rf "$stage"; rmdir "$LOCK" 2>/dev/null || true' EXIT HUP INT TERM
+ stage="$(mktemp -d "$RUNTIME/apps-work.XXXXXXXX")" || exit 1
+ pins="$stage/pins"
+ # Never expose error text from a previous install as the current result.
+ rm -f "$RUNTIME/apps-last-error.log"
+ write_state running "$action" "$app" NONE "$operation_id" "$source"
+ rc=0
+ case "$action" in
+  install) install_app || rc=$?;;
+  update) update_app || rc=$?;;
+  remove) remove_app || rc=$?;;
+ esac
+ if [ "$rc" -eq 0 ]; then
+  # The LuCI menu tree may be cached before an optional UI is installed.
+  # Invalidate the cache only after a successful package transaction.
+  if [ "$app" = wake-on-lan ]; then
+   rm -f "$LUCI_INDEX_CACHE"
+  fi
+  write_state success "$action" "$app" NONE "$operation_id" "$source"
+  # Count successful user installs and updates separately. Restores,
+  # removals and failed/no-op operations never become receipts. Telemetry
+  # must not affect the success of an APK transaction.
+  if [ "$source" = user ] && { [ "$action" = install ] || [ "$action" = update ]; }; then
+   version="$(field "$CATALOG" "@.apps[$index].version")"
+   "$METRICS" enqueue "$app" "$version" "$operation_id" "$action" >/dev/null 2>&1 || :
+  fi
+ else
+  # Keep only the latest package-manager diagnostic after the workspace is
+  # removed. Never record an auth token, catalog JSON, or package contents.
+  for log in "$stage/repo-update.log" "$stage/plan.log" "$stage/install.log" "$stage/remove.log"; do
+   if [ -s "$log" ]; then
+    tail -c 4096 "$log" > "$RUNTIME/apps-last-error.log" 2>/dev/null || :
+   fi
+  done
+  write_state failed "$action" "$app" "E$rc" "$operation_id" "$source"
+ fi
+}
+
+start() {
+ action="$1"; app="$2"; source="${3:-user}"
+ case "$source" in user|restore) ;; *) exit 2;; esac
+ [ "$action" = install ] || [ "$source" = user ] || exit 2
+ case "$action" in install|update|remove) ;; *) exit 2;; esac
+ valid_id "$app" || exit 2
+ mkdir -p "$RUNTIME" || exit 1
+ mkdir "$LOCK" 2>/dev/null || exit 3
+ # The ID is unique to each invocation, even if the same error repeats.
+ # OpenWrt's default BusyBox image does not include the od applet.
+ # dd and sha256sum are available; hash 8 random bytes into a 16-hex nonce.
+ # Fail closed if the entropy read fails rather than reusing a fixed ID.
+ random_file="$(mktemp "$RUNTIME/apps-random.XXXXXXXX")" || { rmdir "$LOCK" 2>/dev/null || :; exit 1; }
+ if ! dd if=/dev/urandom of="$random_file" bs=8 count=1 2>/dev/null ||
+    [ "$(wc -c < "$random_file" | tr -d ' ')" -ne 8 ]; then
+  rm -f "$random_file"
+  rmdir "$LOCK" 2>/dev/null || :
+  exit 1
+ fi
+ random="$("$SHA256" "$random_file" | cut -c 1-16)"
+ rm -f "$random_file"
+ [ "${#random}" -eq 16 ] || { rmdir "$LOCK" 2>/dev/null || :; exit 1; }
+ operation_id="$(date +%s)-$$-$random"
+ write_state starting "$action" "$app" NONE "$operation_id" "$source"
+ if ! "$DAEMON" -S -b -x "$SELF" -- worker "$action" "$app" >/dev/null 2>&1; then
+  write_state failed "$action" "$app" LAUNCH "$operation_id" "$source"
+  rmdir "$LOCK" 2>/dev/null || true
+  exit 1
+ fi
+}
+
+case "${1:-}" in
+ status) mkdir -p "$RUNTIME"; status;;
+ sizes) mkdir -p "$RUNTIME"; sizes;;
+ start) [ "$#" -ge 3 ] && [ "$#" -le 4 ] || exit 2; start "$2" "$3" "${4:-user}";;
+ worker) [ "$#" -eq 3 ] || exit 2; worker "$2" "$3";;
+ *) exit 2;;
+esac

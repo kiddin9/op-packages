@@ -12,7 +12,7 @@ export interface AsyncResourceState<T> {
 interface AsyncResourceOptions<T> {
   active?: boolean;
   fallbackError: string;
-  loader: () => Promise<T>;
+  loader: (signal?: AbortSignal) => Promise<T>;
   pollInterval?: number | ((data: T | null) => number | null);
   refreshOnFocus?: boolean;
   refreshOnVisible?: boolean;
@@ -37,6 +37,8 @@ export function useAsyncResource<T>({
   const requested = useRef(false);
   const mounted = useRef(true);
   const inFlight = useRef<Promise<void> | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const generation = useRef(0);
   const lastAttemptAt = useRef<number | null>(null);
   const lastSuccessAt = useRef<number | null>(null);
   const failureCount = useRef(0);
@@ -48,6 +50,8 @@ export function useAsyncResource<T>({
 
     return () => {
       mounted.current = false;
+      generation.current += 1;
+      controller.current?.abort();
     };
   }, []);
 
@@ -67,10 +71,14 @@ export function useAsyncResource<T>({
       }
 
       let request: Promise<void>;
+      const sequence = ++generation.current;
+      const activeController = new AbortController();
+      controller.current = activeController;
 
       lastAttemptAt.current = Date.now();
-      request = loader()
+      request = loader(activeController.signal)
         .then((data) => {
+          if (sequence !== generation.current || activeController.signal.aborted) return;
           lastSuccessAt.current = Date.now();
           failureCount.current = 0;
           if (mounted.current) {
@@ -78,6 +86,7 @@ export function useAsyncResource<T>({
           }
         })
         .catch((error: unknown) => {
+          if (sequence !== generation.current || activeController.signal.aborted) return;
           failureCount.current += 1;
           if (mounted.current) {
             setState((current) => ({
@@ -89,9 +98,8 @@ export function useAsyncResource<T>({
           }
         })
         .finally(() => {
-          if (inFlight.current === request) {
-            inFlight.current = null;
-          }
+          if (inFlight.current === request) inFlight.current = null;
+          if (controller.current === activeController) controller.current = null;
         });
 
       inFlight.current = request;
@@ -103,6 +111,10 @@ export function useAsyncResource<T>({
   useEffect(() => {
     if (!active) {
       requested.current = false;
+      generation.current += 1;
+      controller.current?.abort();
+      controller.current = null;
+      inFlight.current = null;
       return;
     }
 

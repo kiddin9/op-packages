@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   ClockIcon,
   DevicesIcon,
+  DatabaseIcon,
   GlobeIcon,
   MemoryIcon,
   RouterIcon,
@@ -26,6 +27,7 @@ import type { SafeShieldStatistics, SafeShieldStatus } from '../types/safeshield
 import type { SmartSafeHubStatus } from '../types/status';
 import type { SoftwareUpdateStatus } from '../types/updates';
 import { isSoftwareUpdateCheckStale } from '../utils/softwareUpdates';
+import { summarizeAppsStorage } from '../utils/appsStorage';
 import {
   formatBootTime,
   formatBytes,
@@ -36,6 +38,9 @@ import {
   formatUptime,
   getMemoryUsage,
 } from '../app/format';
+
+// Keep the dashboard ring geometry identical to AppsStorageCard (96px SVG, r=39).
+const DISK_RING_CIRCUMFERENCE = 2 * Math.PI * 39;
 
 interface HomePageProps {
   accountRegistered: boolean | null;
@@ -514,6 +519,8 @@ export function HomePage({
   }
 
   const memoryPercent = memory ? Math.round(memory.percent) : 0;
+  const disk = summarizeAppsStorage(data.runtime.storage);
+  const diskAvailableArc = disk ? (disk.availableRatio * DISK_RING_CIRCUMFERENCE).toFixed(2) : '0';
   const safeShieldSummary = safeShieldOverview(
     safeshield,
     safeshieldLoading,
@@ -857,7 +864,7 @@ export function HomePage({
 
       <section aria-labelledby="dashboard-system-title">
         <SectionHeading
-          description="메모리, 시스템 부하와 장치 정보를 빠르게 점검합니다."
+          description="메모리, 디스크, 시스템 부하와 장치 정보를 빠르게 점검합니다."
           eyebrow="System"
           id="dashboard-system-title"
           title="시스템 상태"
@@ -885,57 +892,97 @@ export function HomePage({
               </span>
             </div>
 
-            <div class="mt-5 grid gap-3 sm:grid-cols-3">
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div class="mt-5 grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div class="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                 <div class="flex items-center gap-2 text-slate-500">
                   <MemoryIcon class="size-4" />
                   <span class="text-xs font-extrabold">메모리</span>
                 </div>
-                <p class="mt-2 mb-0 text-xl font-black text-slate-950">{memoryPercent}%</p>
-                <p class="mt-1 mb-0 text-xs font-semibold text-slate-500">
-                  {memory ? formatBytes(memory.used) : '-'} /{' '}
-                  {formatBytes(data.runtime.memory.total)}
-                </p>
-                <div
-                  aria-label={`메모리 사용률 ${memoryPercent}%`}
-                  class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={memoryPercent}
-                >
+                <div class="flex min-h-0 flex-1 flex-col justify-center py-1">
+                  <p class="mt-2 mb-0 text-xl font-black text-slate-950">{memoryPercent}%</p>
+                  <p class="mt-1 mb-0 text-xs font-semibold text-slate-500">
+                    {memory ? formatBytes(memory.used) : '-'} /{' '}
+                    {formatBytes(data.runtime.memory.total)}
+                  </p>
                   <div
-                    class={`h-full rounded-full transition-[width] duration-300 ${
-                      memoryPercent >= 90 ? 'bg-amber-500' : 'bg-teal-600'
-                    }`}
-                    style={{ width: `${Math.min(100, memoryPercent)}%` }}
-                  />
+                    aria-label={`메모리 사용률 ${memoryPercent}%`}
+                    class="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={memoryPercent}
+                  >
+                    <div
+                      class={`h-full rounded-full transition-[width] duration-300 ${
+                        memoryPercent >= 90 ? 'bg-amber-500' : 'bg-teal-600'
+                      }`}
+                      style={{ width: `${Math.min(100, memoryPercent)}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div class="ssh-dashboard-storage-card flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4" data-level={disk?.level ?? 'unavailable'}>
+                <div class="flex items-center gap-2 text-slate-500">
+                  <DatabaseIcon class="size-4" />
+                  <span class="text-xs font-extrabold">디스크</span>
+                </div>
+                <div
+                  class="mt-1 flex justify-center"
+                  role="img"
+                  aria-label={disk
+                    ? `디스크 여유 공간 ${disk.availablePercent}%, ${disk.availableText} 남음, 사용 ${disk.usedText} / 전체 ${disk.totalText}`
+                    : '디스크 저장 공간 확인 불가'}
+                >
+                  <div class="ssh-apps-storage-ring relative grid size-[76px] shrink-0 place-items-center" data-level={disk?.level ?? 'unavailable'}>
+                    <svg aria-hidden="true" class="size-[76px]" viewBox="0 0 96 96">
+                      <circle class="ssh-apps-storage-track" cx="48" cy="48" r="39" />
+                      {disk && disk.availableRatio > 0 ? (
+                        <circle class="ssh-apps-storage-free" cx="48" cy="48" r="39"
+                          stroke-dasharray={`${diskAvailableArc} ${DISK_RING_CIRCUMFERENCE.toFixed(2)}`} />
+                      ) : null}
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center text-center">
+                      <strong class="text-base leading-none font-black text-slate-950">{disk ? `${disk.availablePercent}%` : '—'}</strong>
+                    </div>
+                  </div>
+                </div>
+                <p class="ssh-apps-storage-available mt-1 mb-0 text-center text-xs font-extrabold text-teal-700">
+                  {disk ? `${disk.availableText} 남음` : '저장 공간 확인 불가'}
+                </p>
+                {disk ? (
+                  <p class="mt-1 mb-0 text-center text-[11px] leading-4 font-semibold text-slate-500" title="앱 설치 가능 공간을 기준으로 계산하며 파일시스템 예약 공간이 사용량에 포함될 수 있습니다.">
+                    사용 {disk.usedText} / 전체 {disk.totalText}
+                  </p>
+                ) : null}
+              </div>
+              <div class="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                 <div class="flex items-center gap-2 text-slate-500">
                   <RouterIcon class="size-4" />
                   <span class="text-xs font-extrabold">시스템 부하</span>
                 </div>
-                <p class="mt-2 mb-0 text-xl font-black text-slate-950">
-                  {formatLoadAverage(data.runtime.load[0])}
-                </p>
-                <p class="mt-1 mb-0 text-xs font-semibold text-slate-500">
-                  5분 {formatLoadAverage(data.runtime.load[1])} · 15분{' '}
-                  {formatLoadAverage(data.runtime.load[2])}
-                </p>
+                <div class="flex min-h-0 flex-1 flex-col justify-center py-1">
+                  <p class="mt-2 mb-0 text-xl font-black text-slate-950">
+                    {formatLoadAverage(data.runtime.load[0])}
+                  </p>
+                  <p class="mt-1 mb-0 text-xs font-semibold text-slate-500">
+                    5분 {formatLoadAverage(data.runtime.load[1])} · 15분{' '}
+                    {formatLoadAverage(data.runtime.load[2])}
+                  </p>
+                </div>
               </div>
-              <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div class="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
                 <div class="flex items-center gap-2 text-slate-500">
                   <ClockIcon class="size-4" />
                   <span class="text-xs font-extrabold">실행 시간</span>
                 </div>
-                <p class="mt-2 mb-0 text-xl font-black text-slate-950">
-                  {formatUptime(data.runtime.uptime)}
-                </p>
-                <p class="mt-1 mb-0 text-xs font-semibold text-slate-500">
-                  부팅 {formatBootTime(data.runtime.localtime, data.runtime.uptime)}
-                </p>
+                <div class="flex min-h-0 flex-1 flex-col justify-center py-1">
+                  <p class="mt-2 mb-0 text-xl font-black text-slate-950">
+                    {formatUptime(data.runtime.uptime)}
+                  </p>
+                  <p class="mt-1 mb-0 text-xs font-semibold text-slate-500">
+                    부팅 {formatBootTime(data.runtime.localtime, data.runtime.uptime)}
+                  </p>
+                </div>
               </div>
             </div>
 

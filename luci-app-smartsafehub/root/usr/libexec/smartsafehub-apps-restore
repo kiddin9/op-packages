@@ -1,0 +1,165 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Reconcile sysupgrade-preserved Apps ownership with the new firmware's APK DB.
+# The privileged Apps manager alone decides which signed packages may be added.
+set -eu
+
+MANAGER="${SMARTSAFEHUB_APPS_MANAGER_BIN:-/usr/libexec/smartsafehub-apps-manager}"
+OWNED="${SMARTSAFEHUB_APPS_OWNED_DIR:-/etc/smartsafehub/apps-installed}"
+RUNTIME="${SMARTSAFEHUB_APPS_RUNTIME_DIR:-/tmp/smartsafehub}"
+APK="${SMARTSAFEHUB_APPS_APK_BIN:-apk}"
+SLEEP="${SMARTSAFEHUB_APPS_RESTORE_SLEEP_BIN:-sleep}"
+START_DELAY="${SMARTSAFEHUB_APPS_RESTORE_START_DELAY:-30}"
+RETRY_DELAY="${SMARTSAFEHUB_APPS_RESTORE_RETRY_DELAY:-120}"
+RETRIES="${SMARTSAFEHUB_APPS_RESTORE_RETRIES:-12}"
+POLL_INTERVAL="${SMARTSAFEHUB_APPS_RESTORE_POLL_INTERVAL:-2}"
+POLL_LIMIT="${SMARTSAFEHUB_APPS_RESTORE_POLL_LIMIT:-240}"
+STATE="$RUNTIME/apps-restore.state"
+JOB="$RUNTIME/apps-operation.state"
+LOCK="$RUNTIME/apps-restore.lock"
+
+valid_id() {
+ case "$1" in ''|*[!a-z0-9-]*|-*|*-) return 1;; esac
+ [ "${#1}" -le 80 ]
+}
+valid_package() {
+ case "$1" in ''|*[!a-zA-Z0-9_.+-]*|[-.+]*|*[-.+]) return 1;; esac
+ [ "${#1}" -le 100 ]
+}
+valid_sha() {
+ case "$1" in ''|*[!a-f0-9]*) return 1;; esac
+ [ "${#1}" -eq 64 ]
+}
+write_state() {
+ phase="$1"; id="$2"; code="$3"
+ state_tmp="$(mktemp "$RUNTIME/apps-restore-state.XXXXXXXX")" || return 1
+ printf 'phase\t%s\napp_id\t%s\ncode\t%s\n' "$phase" "$id" "$code" > "$state_tmp"
+ mv -f "$state_tmp" "$STATE"
+}
+log() {
+ command -v logger >/dev/null 2>&1 && logger -t smartsafehub-apps-restore "$*" || :
+}
+# A corrupt manifest must NOT grant an arbitrary app installation right.
+# Existing packages are never replaced merely because an old manifest exists.
+needs_restore() {
+ manifest="$1"; count=0; missing=0
+ [ -f "$manifest" ] && [ ! -L "$manifest" ] && [ -s "$manifest" ] || return 2
+ while IFS="$(printf '\t')" read -r name version hash; do
+  valid_package "$name" && [ -n "$version" ] && valid_sha "$hash" || return 2
+  count=$((count + 1))
+  [ "$count" -le 32 ] || return 2
+  "$APK" info -e "$name" >/dev/null 2>&1 || missing=1
+ done < "$manifest"
+ [ "$count" -gt 0 ] || return 2
+ [ "$missing" -eq 1 ]
+}
+job_field() {
+ [ -r "$JOB" ] || return 0
+ awk -F '\t' -v key="$1" '$1 == key {print $2; exit}' "$JOB"
+}
+# Starts exactly the same preflight/ownership/signature/plan checks as a user
+# clicking Install. Never calls apk add directly, never reuses cached catalogs.
+run_job() {
+ id="$1"; n=0
+ if ! "$MANAGER" start install "$id" restore >/dev/null 2>&1; then
+  RESULT=BUSY
+  return 1
+ fi
+ while [ "$n" -lt "$POLL_LIMIT" ]; do
+  phase="$(job_field phase)"; current="$(job_field app_id)"
+  if [ "$current" = "$id" ]; then
+   case "$phase" in
+    success) RESULT=NONE; return 0;;
+    failed) RESULT="$(job_field code)"; [ -n "$RESULT" ] || RESULT=UNKNOWN; return 1;;
+   esac
+  fi
+  "$SLEEP" "$POLL_INTERVAL"
+  n=$((n + 1))
+ done
+ RESULT=TIMEOUT
+ return 1
+}
+restore_one() {
+ id="$1"; attempt=1
+ while [ "$attempt" -le "$RETRIES" ]; do
+  # User removal while waiting takes precedence; never reinstall a removed app.
+  [ -f "$OWNED/$id" ] || return 0
+  if needs_restore "$OWNED/$id"; then :; else
+   result=$?
+   [ "$result" -eq 1 ] && return 0
+   RESULT=INVALID_MANIFEST
+   return 1
+  fi
+  write_state running "$id" NONE
+  if run_job "$id"; then
+   # Successful APK transaction may still have omitted an owned package.
+   if needs_restore "$OWNED/$id"; then
+    RESULT=INCOMPLETE
+   else
+    result=$?
+    [ "$result" -eq 1 ] && return 0
+    RESULT=INVALID_MANIFEST
+   fi
+  fi
+  # Only networking failures or a concurrent manual operation are retried.
+  # Changed approval pins, revoked apps, bad signatures and unsafe dependency
+  # plans are never bypassed or retried indefinitely.
+  case "$RESULT" in BUSY|E21|E25|E31|E35) ;; *) return 1;; esac
+  [ "$attempt" -lt "$RETRIES" ] || return 1
+  "$SLEEP" "$RETRY_DELAY"
+  attempt=$((attempt + 1))
+ done
+ return 1
+}
+restore() {
+ mkdir -p "$RUNTIME" || exit 1
+ # procd only starts one instance, but an operator may invoke run manually.
+ mkdir "$LOCK" 2>/dev/null || exit 0
+ trap 'rmdir "$LOCK" 2>/dev/null || :' EXIT
+ write_state idle '' NONE
+ # No persistent ownership means never install anything on a fresh router.
+ [ -d "$OWNED" ] || return 0
+ pending=0
+ for manifest in "$OWNED"/*; do
+  [ -f "$manifest" ] || continue
+  id="${manifest##*/}"
+  valid_id "$id" || continue
+  if needs_restore "$manifest"; then pending=1; break; else
+   result=$?; [ "$result" -eq 2 ] && { pending=1; break; }
+  fi
+ done
+ [ "$pending" -eq 1 ] || return 0
+ write_state starting '' NONE
+ "$SLEEP" "$START_DELAY"
+ failed=0; last_app=''; last_code=NONE
+ for manifest in "$OWNED"/*; do
+  [ -f "$manifest" ] || continue
+  id="${manifest##*/}"
+  valid_id "$id" || continue
+  if needs_restore "$manifest"; then
+   RESULT=NONE
+   if restore_one "$id"; then
+    log "restored $id"
+   else
+    failed=1; last_app="$id"; last_code="$RESULT"
+    log "restore blocked for $id ($RESULT)"
+   fi
+  else
+   result=$?
+   if [ "$result" -eq 2 ]; then
+    failed=1; last_app="$id"; last_code=INVALID_MANIFEST
+    log "invalid owned manifest for $id"
+   fi
+  fi
+ done
+ if [ "$failed" -eq 1 ]; then
+  write_state failed "$last_app" "$last_code"
+ else
+  write_state success '' NONE
+ fi
+}
+
+case "${1:-}" in
+ run) [ "$#" -eq 1 ] || exit 2; restore;;
+ *) exit 2;;
+esac

@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Resume a bounded restore after a late WAN reconnection, not on LAN churn.
+[ "${ACTION:-}" = ifup ] || exit 0
+case "${INTERFACE:-}" in wan|wan6) ;; *) exit 0;; esac
+[ -d /etc/smartsafehub/apps-installed ] || exit 0
+# A live restore already retries transient connectivity failures.
+[ ! -d /tmp/smartsafehub/apps-restore.lock ] || exit 0
+[ -r /tmp/smartsafehub/apps-restore.state ] || exit 0
+# Never auto-repeat compatibility, integrity, or signing failures.
+grep -Eq '^code[[:space:]]+(E21|E25|E31|E35|BUSY)$' \
+ /tmp/smartsafehub/apps-restore.state || exit 0
+# Network retries run a finite worker, never launch another service.
+RUNNER=/usr/libexec/smartsafehub-apps-restore
+[ -x "$RUNNER" ] || exit 0
+"$RUNNER" run </dev/null >/dev/null 2>&1 &

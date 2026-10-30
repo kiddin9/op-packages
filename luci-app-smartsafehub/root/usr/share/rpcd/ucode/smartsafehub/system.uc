@@ -4,6 +4,7 @@
 import * as fs from 'fs';
 
 import { read_activity_history } from './activity.uc';
+import { from_system_root, from_statvfs } from './apps-storage.uc';
 
 import {
 	defer_call,
@@ -563,6 +564,27 @@ export function reboot_system(request) {
 	});
 };
 
+// The dashboard already has system.info; some firmware images omit its root
+// counters. Reuse Apps' statvfs fallback instead of displaying an empty donut.
+// No extra ubus request or spawned process is required.
+function dashboard_writable_storage(root) {
+	const from_root = from_system_root(root);
+	if (from_root != null)
+		return from_root;
+
+	for (let mount in [ '/overlay', '/' ]) {
+		try {
+			const storage = from_statvfs(fs.statvfs(mount), mount);
+			if (storage != null)
+				return storage;
+		}
+		catch (e) {
+			// Try the next known writable root; failure is optional.
+		}
+	}
+	return null;
+}
+
 function system_status_payload(board, info, wan) {
 	const release = board?.release ?? {};
 	const memory = info?.memory ?? {};
@@ -585,6 +607,8 @@ function system_status_payload(board, info, wan) {
 		runtime: {
 			uptime: number_value(info?.uptime),
 			localtime: number_value(info?.localtime),
+			// Reuse the same writable root counters as Apps; no extra RPC or APK scan.
+			storage: dashboard_writable_storage(info?.root),
 			load: [
 				number_value(load?.[0]),
 				number_value(load?.[1]),

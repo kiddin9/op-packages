@@ -1,0 +1,98 @@
+# OpenWrt 25.12 BusyBox default applets, with explicitly installed OpenWrt base
+# commands. Source for BusyBox default y/n:
+# https://github.com/openwrt/openwrt/blob/openwrt-25.12/package/utils/busybox/Config-defaults.in
+# This is an *allowlist* of supported router commands, not host Ubuntu commands.
+# Non-BusyBox commands are documented separately below. Never add a command just
+# to silence a failure; verify that each supported firmware image supplies it.
+# BusyBox 25.12 default applets needed by SmartSafeHub shell runtime:
+awk
+basename
+cat
+chmod
+chown
+cp
+cut
+cmp
+date
+dd
+df
+flock
+dirname
+dmesg
+du
+echo
+env
+expr
+find
+grep
+hexdump
+head
+id
+kill
+killall
+ln
+logger
+ls
+md5sum
+mkdir
+mkfifo
+mknod
+mktemp
+mount
+mv
+pidof
+passwd
+ping
+printf
+ps
+readlink
+reboot
+rm
+rmdir
+sed
+seq
+sha256sum
+sleep
+sort
+start-stop-daemon
+strings
+sync
+tail
+tar
+tee
+test
+time
+touch
+tr
+true
+uname
+uniq
+uptime
+wc
+xargs
+yes
+# Guaranteed OpenWrt base/required-package commands (not BusyBox applets):
+# apk: firmware package manager (OpenWrt 25.12)
+apk
+# ubus / uci: base system
+ubus
+uci
+# jsonfilter: base/explicit LuCI and SafeShield dependency
+jsonfilter
+# uclient-fetch: LUCI_DEPENDS +uclient-fetch
+uclient-fetch
+# procd: LUCI_DEPENDS +procd
+procd
+# networking tools included by OpenWrt base system / firmware
+ip
+ifstatus
+ifup
+ifdown
+wifi
+# fw4 and nft: firewall packages in stock OpenWrt router
+fw4
+nft
+# system services and init tooling
+# factoryreset: OpenWrt 25.12 base-files reset utility
+
+factoryreset

@@ -69,6 +69,59 @@ export function UserIcon(props: IconProps) {
   );
 }
 
+/** App modules icon; distinct from firmware update and system settings. */
+export function AppsIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <path d="M17.5 14v7M14 17.5h7" />
+    </IconBase>
+  );
+}
+
+/** Connected nodes for network-monitoring Apps. */
+export function NetworkNodesIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="2.5" y="3.5" width="7" height="6" rx="1.5" />
+      <rect x="14.5" y="3.5" width="7" height="6" rx="1.5" />
+      <rect x="8.5" y="15" width="7" height="6" rx="1.5" />
+      <path d="M6 9.5v2.5h12V9.5M12 12v3" />
+    </IconBase>
+  );
+}
+
+/** Controller outline for games and entertainment Apps. */
+export function GamepadIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M7.5 7h9a5 5 0 0 1 4.9 4l.8 5a2.5 2.5 0 0 1-4 2.3L15.5 16h-7l-2.7 2.3a2.5 2.5 0 0 1-4-2.3l.8-5A5 5 0 0 1 7.5 7Z" />
+      <path d="M6.5 11v4M4.5 13h4M16 11.5h.01M18.5 13.5h.01" />
+    </IconBase>
+  );
+}
+
+/** Tools and utilities: a wrench is distinct from the power control. */
+export function WrenchIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.287l-7.91 7.91a2.121 2.121 0 0 1-3-3l7.91-7.91a6 6 0 0 1 7.287-8.259c.438.12.54.662.218.984z" />
+    </IconBase>
+  );
+}
+
+/** Other/unknown Apps: a simple ellipsis, distinct from network nodes. */
+export function CircleEllipsisIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M8 12h.01M12 12h.01M16 12h.01" />
+    </IconBase>
+  );
+}
+
 export function UpdateIcon(props: IconProps) {
   return (
     <IconBase {...props}>

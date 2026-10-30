@@ -1,0 +1,49 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Read-only, firmware-pinned SmartSafeHub Apps catalog fetch.
+set -eu
+
+RUNTIME_DIR="${SMARTSAFEHUB_APPS_RUNTIME_DIR:-/tmp/smartsafehub}"
+ROM_METADATA="${SMARTSAFEHUB_APPS_ROM_METADATA:-/rom/usr/share/smartsafehub/firmware.json}"
+FIRMWARE_METADATA="${SMARTSAFEHUB_APPS_METADATA:-/usr/share/smartsafehub/firmware.json}"
+JSONFILTER="${SMARTSAFEHUB_APPS_JSONFILTER_BIN:-jsonfilter}"
+UCLIENT="${SMARTSAFEHUB_APPS_UCLIENT_BIN:-uclient-fetch}"
+CATALOG_URL='https://www.smartsafehub.com/api/v1/app-store/catalog'
+
+json_field() { "$JSONFILTER" -i "$1" -e "$2" 2>/dev/null | head -n 1; }
+
+# The ROM image is authoritative when available. Do not accept a device code,
+# build ID or catalog URL from RPC/browser input (or from an untrusted feed).
+metadata="$ROM_METADATA"
+[ -s "$metadata" ] || metadata="$FIRMWARE_METADATA"
+[ -s "$metadata" ] || exit 2
+
+device_code="$(json_field "$metadata" '@.device_code')"
+build_id="$(json_field "$metadata" '@.build_id')"
+channel="$(json_field "$metadata" '@.channel')"
+case "$device_code" in
+ iptime-ax3000sm|iptime-ax3000se|iptime-a3004t|gl-mt300n-v2|xiaomi-ax3000t) ;;
+ *) exit 2 ;;
+esac
+case "$build_id" in
+ ''|[!a-zA-Z0-9]*|*[!a-zA-Z0-9._-]*) exit 2 ;;
+esac
+[ "${#build_id}" -le 64 ] || exit 2
+case "$channel" in stable|beta) ;; *) channel=stable ;; esac
+
+mkdir -p "$RUNTIME_DIR" || exit 1
+umask 077
+tmp="$(mktemp "$RUNTIME_DIR/apps-catalog.XXXXXXXX")" || exit 1
+trap 'rm -f "$tmp"' EXIT HUP INT TERM
+url="$CATALOG_URL?schema=1&device_code=$device_code&firmware_build_id=$build_id&channel=$channel"
+"$UCLIENT" -q -T 8 -O "$tmp" "$url" >/dev/null 2>&1 || exit 1
+bytes="$(wc -c < "$tmp" | tr -d ' ')"
+[ "$bytes" -gt 1 ] && [ "$bytes" -le 131072 ] || exit 1
+[ "$(json_field "$tmp" '@.schema')" = 1 ] || exit 1
+[ "$(json_field "$tmp" '@.device_code')" = "$device_code" ] || exit 1
+[ "$(json_field "$tmp" '@.firmware_build_id')" = "$build_id" ] || exit 1
+[ "$(json_field "$tmp" '@.channel')" = "$channel" ] || exit 1
+# Atomically replace the previous (display-only) snapshot. If the network is
+# unavailable, rpcd rejects this invocation; no stale approval is returned.
+mv -f "$tmp" "$RUNTIME_DIR/apps-catalog.json"
+exit 0

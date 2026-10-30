@@ -29,6 +29,7 @@ LOGGER_BIN="${SMARTSAFEHUB_DEVICE_LOGGER_BIN:-logger}"
 HEXDUMP_BIN="${SMARTSAFEHUB_DEVICE_HEXDUMP_BIN:-hexdump}"
 UBUS_BIN="${SMARTSAFEHUB_DEVICE_UBUS_BIN:-ubus}"
 REQUEST_TIMEOUT_S=10
+APPS_METRICS="${SMARTSAFEHUB_APPS_METRICS_BIN:-/usr/libexec/smartsafehub-apps-metrics}"
 CHECK_INTERVAL_S=300
 RECOMMENDED_POLL_INTERVAL_S=30
 RECOMMENDED_POLL_MAX_RETRY_S=300
@@ -498,6 +499,8 @@ daemon() {
     delay="$(retry_delay "$failures")"
     [ "$failures" -lt 4 ] && failures=$((failures + 1))
    fi
+   # Backlogged Apps receipts are retried independently of account sync.
+   [ ! -x "$APPS_METRICS" ] || "$APPS_METRICS" flush >/dev/null 2>&1 || :
    now="$(now_epoch)"
    next_full=$((now + delay))
    # Full sync already handled the recommended payload.

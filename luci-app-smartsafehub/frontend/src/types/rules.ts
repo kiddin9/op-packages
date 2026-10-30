@@ -57,4 +57,6 @@ export interface RecommendedRulesStatus {
   lastDeviceSyncAt: number;
   nextDeviceSyncAt: number;
   accountRegistered: boolean;
+  operation?: { phase: string; code: string; updatedAt: number };
+  revokeOperation?: { phase: string; code: string; argument: string; updatedAt: number };
 }

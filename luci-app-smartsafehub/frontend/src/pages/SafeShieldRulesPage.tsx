@@ -1,5 +1,6 @@
 import { SectionHeading } from '../components/SectionHeading';
 import type { TargetedEvent, TargetedSubmitEvent } from 'preact';
+import { memo } from 'preact/compat';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 
 import { RelativeTimestamp } from '../components/RelativeTimestamp';
@@ -16,6 +17,12 @@ import {
 import { ErrorPanel, LoadingPanel } from '../components/StatePanels';
 import type { SafeShieldRulesAction } from '../hooks/useSafeShieldRules';
 import type { RecommendedRuleAssignment, RecommendedRulesStatus, SafeShieldRuleAction, SafeShieldRules } from '../types/rules';
+import { filterRecommendedAssignments, filterRuleGroups, sameRecommendationContent } from '../utils/ruleLists';
+
+// Stable fallbacks keep memoized rule cards from rebuilding while the first
+// recommendation status request is still pending.
+const EMPTY_RECOMMENDED_DOMAINS: string[] = [];
+const EMPTY_RECOMMENDED_RULES: RecommendedRuleAssignment[] = [];
 
 interface SafeShieldRulesPageProps {
   action: SafeShieldRulesAction | null;
@@ -53,7 +60,7 @@ interface RuleListCardProps {
     domain: string,
   ) => Promise<boolean>;
   rules: string[];
-  recommendedDomains: string[];
+  recommendedDomainSet: ReadonlySet<string>;
   recommendedKnown: boolean;
   recommendedRules: RecommendedRuleAssignment[];
   onRequestRevoke?: (rule: RecommendedRuleAssignment) => void;
@@ -81,13 +88,13 @@ function isValidDomain(value: string): boolean {
   );
 }
 
-function RuleListCard({
+const RuleListCard = memo(function RuleListCard({
   action,
   kind,
   onAddRule,
   onDeleteRule,
   rules,
-  recommendedDomains,
+  recommendedDomainSet,
   recommendedKnown,
   recommendedRules,
   onRequestRevoke,
@@ -102,22 +109,18 @@ function RuleListCard({
   const [recommendedExpanded, setRecommendedExpanded] = useState<boolean | null>(null);
   const isAllow = kind === 'allow';
   const busy = action !== null;
-  const filteredRules = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return query ? rules.filter((domain) => domain.includes(query)) : rules;
-  }, [rules, search]);
-  const searching = search.trim().length > 0;
-  // Reconciler-owned domains remain separate from user-managed manual entries.
-  const managedRules = isAllow && recommendedKnown
-    ? filteredRules.filter((domain) => recommendedDomains.includes(domain))
-    : [];
-  const manualRules = isAllow && recommendedKnown
-    ? filteredRules.filter((domain) => !recommendedDomains.includes(domain))
-    : filteredRules;
-  const visibleRecommendedRules = isAllow ? recommendedRules.filter((rule) =>
-    !searching || rule.title.toLowerCase().includes(search.trim().toLowerCase()) ||
-    rule.domains.some((domain) => domain.includes(search.trim().toLowerCase()))
-  ) : [];
+  const query = useMemo(() => search.trim().toLowerCase(), [search]);
+  const searching = query.length > 0;
+  // Filter and partition once per actual list/search/ownership change. Set
+  // membership avoids a quadratic scan across the recommended domains.
+  const { filteredRules, manualRules, managedRules } = useMemo(
+    () => filterRuleGroups(rules, query, isAllow && recommendedKnown, recommendedDomainSet),
+    [rules, query, isAllow, recommendedKnown, recommendedDomainSet],
+  );
+  const visibleRecommendedRules = useMemo(
+    () => isAllow ? filterRecommendedAssignments(recommendedRules, query) : [],
+    [isAllow, recommendedRules, query],
+  );
   const showRecommended = searching || (recommendedExpanded ?? (recommendedRules.length || managedRules.length) <= 3);
   const showManual = searching || manualExpanded;
 
@@ -156,7 +159,7 @@ function RuleListCard({
   function renderRule(domain: string) {
     // A manual entry that happens to match a cloud recommendation must
     // remain deletable. Only entries actually owned by the reconciler lock.
-    const cloudManaged = isAllow && recommendedKnown && recommendedDomains.includes(domain);
+    const cloudManaged = isAllow && recommendedKnown && recommendedDomainSet.has(domain);
     const ruleOrigin = !isAllow || recommendedKnown
       ? (cloudManaged ? '추천 규칙' : '직접 추가')
       : null;
@@ -319,7 +322,7 @@ function RuleListCard({
       </div>
     </article>
   );
-}
+});
 
 export function SafeShieldRulesPage({
   action,
@@ -344,30 +347,54 @@ export function SafeShieldRulesPage({
   const [revokeConfirmationDelayed, setRevokeConfirmationDelayed] = useState(false);
   const pendingRevokeId = useRef<number | null>(null);
   const previousStatusSignature = useRef<string | null>(null);
+  const lastConfirmedSignature = useRef<string | null>(null);
   const onRetryRef = useRef(onRetry);
   onRetryRef.current = onRetry;
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const recommendedDomains = recommendedStatus?.domains ?? [];
-  const recommendedRules = recommendedStatus?.rules ?? [];
+  const recommendedDomains = recommendedStatus?.domains ?? EMPTY_RECOMMENDED_DOMAINS;
+  const recommendedRules = recommendedStatus?.rules ?? EMPTY_RECOMMENDED_RULES;
+  const recommendedDomainSet = useMemo(() => new Set(recommendedDomains), [recommendedDomains]);
 
   // A revoke can reach Hub even if rpcd times out while SafeShield is applying
   // the new rules. Only a confirmed local read can settle its final outcome.
   // The local SafeShield list also needs a refresh when a background poll
   // observes a new recommendation revision, without reloading the whole page.
-  const acceptRecommendedStatus = useCallback((status: RecommendedRulesStatus): void => {
-    setRecommendedStatus(status);
+  const acceptRecommendedStatus = useCallback((status: RecommendedRulesStatus): boolean => {
+    setRecommendedStatus((previous) => {
+      if (!previous) return status;
+      // Poll responses are newly deserialized objects. Reuse unchanged list
+      // references so both memoized cards skip work on progress-only updates.
+      const { domains, rules } = sameRecommendationContent(previous, status);
+      return { ...status, domains, rules };
+    });
     setRecommendedKnown(true);
-    const signature = JSON.stringify([
-      status.revision, status.domains, status.rules.map((rule) => rule.id),
-      status.syncStatus,
-    ]);
-    if (previousStatusSignature.current !== null && previousStatusSignature.current !== signature) {
-      onRetryRef.current();
+    // Progress/status/metadata changes must not re-read the whole SafeShield
+    // rules list. After a completed reconcile, reload only once per actual
+    // recommendation revision/ownership change. The first pending -> confirmed
+    // transition also refreshes a list fetched while SafeShield was applying.
+    const signature = JSON.stringify([status.revision, status.domains]);
+    let reloaded = false;
+    if (status.syncStatus === 'confirmed' && lastConfirmedSignature.current !== signature) {
+      if (previousStatusSignature.current !== null) {
+        onRetryRef.current();
+        reloaded = true;
+      }
+      lastConfirmedSignature.current = signature;
     }
     previousStatusSignature.current = signature;
 
-    if (status.syncStatus === 'confirmed' && pendingRevokeId.current === null) {
+    // A worker failure is not a successful revoke. Keep the previous rule
+    // visible and let the user retry instead of waiting indefinitely.
+    if (pendingRevokeId.current !== null && status.revokeOperation?.phase === 'failed' &&
+        status.revokeOperation.argument === String(pendingRevokeId.current)) {
+      pendingRevokeId.current = null;
+      setRevokeConfirming(false);
+      setRevokeConfirmationDelayed(false);
+      setSyncError('추천 규칙 적용 해제를 완료하지 못했습니다. 연결 상태를 확인하고 다시 시도해 주세요.');
+    }
+    if (status.syncStatus === 'confirmed' && pendingRevokeId.current === null &&
+        status.revokeOperation?.phase !== 'failed') {
       setSyncError(null);
     }
     if (
@@ -381,6 +408,7 @@ export function SafeShieldRulesPage({
       setSyncError(null);
       setSyncMessage('추천 규칙 적용 해제를 확인했습니다.');
     }
+    return reloaded;
   }, []);
 
   useEffect(() => {
@@ -415,7 +443,7 @@ export function SafeShieldRulesPage({
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [data?.allow.join('\n'), onLoadRecommendedRulesStatus, syncing, revokeBusy, acceptRecommendedStatus]);
+  }, [onLoadRecommendedRulesStatus, syncing, revokeBusy, acceptRecommendedStatus]);
 
   // An RPC timeout cannot prove whether Hub accepted the removal. After a
   // minute, explain the delay but continue watching for eventual confirmation.
@@ -432,11 +460,13 @@ export function SafeShieldRulesPage({
     setSyncMessage(null);
     try {
       const status = await onSyncRecommendedRules();
-      acceptRecommendedStatus(status);
+      const reloaded = acceptRecommendedStatus(status);
       setSyncMessage(status.syncStatus === 'confirmed'
         ? '서버에서 규칙을 가져와 SafeShield 허용 목록을 확인했습니다.'
         : '추천 규칙 상태를 확인 중입니다. 진행 결과는 자동으로 갱신됩니다.');
-      onRetry(); // Reload the actual SafeShield allow list after reconciliation.
+      // The user explicitly requested synchronization, so allow one manual
+      // refresh after confirmation but never queue a duplicate full RPC.
+      if (status.syncStatus === 'confirmed' && !reloaded) onRetry();
     } catch {
       setSyncError('추천 규칙을 동기화하지 못했습니다. 서버 연결 및 기기 등록 상태를 확인해 주세요.');
     } finally {
@@ -460,7 +490,8 @@ export function SafeShieldRulesPage({
       if (pendingRevokeId.current !== null) {
         setSyncMessage('적용 해제 요청을 처리했습니다. 공유기의 허용 목록을 확인하고 있습니다.');
       }
-      onRetryRef.current();
+      // A pending revoke is not yet a changed SafeShield rule list. The
+      // confirmed status poll refreshes once the local apply is complete.
     } catch {
       // Hub may have removed the assignment before the local SafeShield apply
       // timed out. Keep checking instead of permanently displaying a failure.
@@ -677,7 +708,7 @@ export function SafeShieldRulesPage({
           onAddRule={onAddRule}
           onDeleteRule={onDeleteRule}
           rules={data.allow}
-          recommendedDomains={recommendedDomains}
+          recommendedDomainSet={recommendedDomainSet}
           recommendedKnown={recommendedKnown}
           recommendedRules={recommendedRules}
           {...(onRevokeRecommendedRule ? { onRequestRevoke: setRevokeTarget } : {})}
@@ -689,7 +720,7 @@ export function SafeShieldRulesPage({
           onAddRule={onAddRule}
           onDeleteRule={onDeleteRule}
           rules={data.block}
-          recommendedDomains={recommendedDomains}
+          recommendedDomainSet={recommendedDomainSet}
           recommendedKnown={recommendedKnown}
           recommendedRules={recommendedRules}
           revokeBusy={revokeBusy}

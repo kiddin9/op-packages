@@ -1,0 +1,121 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Bounded, single-flight subprocesses for slow read-only scans / Hub calls.
+# RPC callers accept a job and read snapshots. No user-provided command/URL.
+set -eu
+umask 077
+RUNTIME="${SMARTSAFEHUB_RPC_JOBS_RUNTIME:-/tmp/smartsafehub/rpc-jobs}"
+DAEMON="${SMARTSAFEHUB_RPC_JOBS_DAEMON:-start-stop-daemon}"
+SELF="${SMARTSAFEHUB_RPC_JOBS_SELF:-/usr/libexec/smartsafehub-rpc-jobs}"
+CATALOG="${SMARTSAFEHUB_RPC_JOBS_CATALOG:-/usr/libexec/smartsafehub-apps}"
+MANAGER="${SMARTSAFEHUB_RPC_JOBS_MANAGER:-/usr/libexec/smartsafehub-apps-manager}"
+DEVICE="${SMARTSAFEHUB_RPC_JOBS_DEVICE:-/usr/libexec/smartsafehub-device}"
+
+valid_job() {
+ case "$1" in catalog|status|sizes|device-sync|pairing|recommended-sync|recommended-revoke) return 0;; esac
+ return 1
+}
+valid_arg() {
+ case "$1" in ''|0|*[!0-9]*) return 1;; esac
+ [ "${#1}" -le 10 ]
+}
+state_path() { printf '%s/%s.state' "$RUNTIME" "$1"; }
+lock_path() { printf '%s/%s.lock' "$RUNTIME" "$1"; }
+# All fields come from fixed enums, epoch seconds and validated digits.
+write_state() {
+ job="$1"; phase="$2"; code="$3"; argument="$4"; started="$5"
+ tmp="$(mktemp "$RUNTIME/$job.XXXXXXXX")" || return 1
+ printf 'phase\t%s\ncode\t%s\nargument\t%s\nstarted\t%s\nupdated\t%s\n' \
+  "$phase" "$code" "$argument" "$started" "$(date +%s)" > "$tmp"
+ mv -f "$tmp" "$(state_path "$job")"
+}
+read_field() { [ -r "$1" ] && sed -n "s/^$2$(printf '\t')//p" "$1" | head -n 1 || :; }
+
+ensure() {
+ job="$1"; mode="$2"; argument="$3"
+ now="$(date +%s)"
+ state="$(state_path "$job")"; lock="$(lock_path "$job")"
+ ttl=0
+ case "$job" in
+  catalog) ttl=600;; status) ttl=15;; sizes) ttl=120;; device-sync) ttl=30;;
+  *) ttl=0;;
+ esac
+ if [ "$mode" = auto ]; then
+  # Suppress redundant requests and short retry storms after errors.
+  stamp="$(read_field "$state" updated)"
+  case "$stamp" in ''|*[!0-9]*) stamp=0;; esac
+  if [ $((now - stamp)) -ge 0 ] && [ $((now - stamp)) -lt "$ttl" ]; then
+   exit 0
+  fi
+  if [ "$ttl" -eq 0 ]; then exit 2; fi
+ fi
+ if ! mkdir "$lock" 2>/dev/null; then
+  # Keep a live worker. Recover only an abandoned lock, not a slow worker.
+  pid="$(read_field "$lock/pid" pid)"
+  stamp="$(read_field "$state" started)"
+  case "$stamp" in ''|*[!0-9]*) stamp="$now";; esac
+  if [ "$((now - stamp))" -gt 180 ] && { [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; }; then
+   rm -f "$lock/pid"
+   rmdir "$lock" 2>/dev/null || exit 0
+   mkdir "$lock" 2>/dev/null || exit 0
+  else
+   # Explicit duplicate actions are not silently counted as completed.
+   [ "$mode" = auto ] && exit 0
+   existing="$(read_field "$state" argument)"
+   [ "$argument" = "$existing" ] && exit 0
+   exit 3
+  fi
+ fi
+ write_state "$job" starting NONE "$argument" "$now"
+ if ! "$DAEMON" -S -b -x "$SELF" -- worker "$job" "$argument" >/dev/null 2>&1; then
+  write_state "$job" failed LAUNCH "$argument" "$now"
+  rmdir "$lock" 2>/dev/null || :
+  exit 1
+ fi
+}
+worker_cleanup() {
+ if [ "${finished:-0}" -ne 1 ]; then
+  write_state "$job" failed E70 "$argument" "$started" || :
+ fi
+ rm -f "$lock/pid"
+ rmdir "$lock" 2>/dev/null || :
+}
+worker() {
+ job="$1"; argument="$2"
+ lock="$(lock_path "$job")"
+ started="$(read_field "$(state_path "$job")" started)"
+ case "$started" in ''|*[!0-9]*) started="$(date +%s)";; esac
+ finished=0
+ trap 'worker_cleanup' EXIT
+ trap 'exit 70' HUP INT TERM
+ printf 'pid\t%s\n' "$$" > "$lock/pid"
+ write_state "$job" running NONE "$argument" "$started"
+ rc=0
+ case "$job" in
+  catalog) "$CATALOG" || rc=$?;;
+  status) "$MANAGER" status || rc=$?;;
+  sizes) "$MANAGER" sizes || rc=$?;;
+  device-sync) "$DEVICE" status-sync || rc=$?;;
+  pairing) "$DEVICE" pairing-session || rc=$?;;
+  recommended-sync) "$DEVICE" recommended-sync || rc=$?;;
+  recommended-revoke) "$DEVICE" recommended-revoke "$argument" || rc=$?;;
+ esac
+ if [ "$rc" -eq 0 ]; then
+  write_state "$job" success NONE "$argument" "$started"
+ else
+  write_state "$job" failed "E$rc" "$argument" "$started"
+ fi
+ finished=1
+}
+[ "$#" -ge 2 ] && [ "$#" -le 3 ] || exit 2
+mode="$1"; job="$2"; argument="${3:-}"
+valid_job "$job" || exit 2
+if [ "$job" = recommended-revoke ]; then valid_arg "$argument" || exit 2
+else [ -z "$argument" ] || exit 2; fi
+mkdir -p "$RUNTIME" || exit 1
+case "$mode" in
+ ensure) ensure "$job" auto "$argument";;
+ request) ensure "$job" explicit "$argument";;
+ worker) worker "$job" "$argument";;
+ *) exit 2;;
+esac

@@ -23,7 +23,7 @@ test('추천 규칙 상태를 단계별로 보여주고 UI의 오류를 중복 �
   const rpc = source('root/usr/share/rpcd/ucode/smartsafehub/device-registration.uc');
   const page = source('frontend/src/pages/SafeShieldRulesPage.tsx');
   const types = source('frontend/src/types/rules.ts');
-  assert.match(rpc, /syncStage: sync\?\.stage/);
+  assert.match(rpc, /syncStage: operationRunning \? 'server_sync' : \(sync\?\.stage/);
   assert.match(rpc, /syncReason: sync\?\.reason/);
   assert.match(types, /syncStage: string \| null/);
   for (const stage of ['server_sync', 'safeshield_refreshing', 'applying', 'verifying']) {

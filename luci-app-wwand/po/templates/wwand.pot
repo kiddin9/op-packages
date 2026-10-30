@@ -329,6 +329,10 @@ msgstr ""
 msgid "All"
 msgstr ""
 
+#: htdocs/luci-static/resources/wwand/modemopts.js:715
+msgid "All sentences"
+msgstr ""
+
 #: htdocs/luci-static/resources/view/wwand/status.js:611
 msgid ""
 "An environmental limit the modem reports (temperature, voltage or charge "
@@ -400,7 +404,7 @@ msgstr ""
 msgid "Authentication type"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:705
+#: htdocs/luci-static/resources/wwand/modemopts.js:720
 msgid "Auto-correct modem config"
 msgstr ""
 
@@ -931,6 +935,10 @@ msgstr ""
 msgid "Fix age"
 msgstr ""
 
+#: htdocs/luci-static/resources/wwand/modemopts.js:714
+msgid "Fix only (less CPU)"
+msgstr ""
+
 #: htdocs/luci-static/resources/view/wwand/settings.js:680
 msgid "Forbidden"
 msgstr ""
@@ -958,6 +966,10 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/status.js:323
 msgid "GNSS"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:711
+msgid "GNSS NMEA output"
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:694
@@ -1212,10 +1224,11 @@ msgid ""
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:178
+#: htdocs/luci-static/resources/wwand/modemopts.js:713
 msgid "Leave modem setting unchanged"
 msgstr ""
 
-#: htdocs/luci-static/resources/wwand/modemopts.js:706
+#: htdocs/luci-static/resources/wwand/modemopts.js:721
 msgid ""
 "Let wwand reprogram mismatched modem-side settings (attach profile, etc.) "
 "when it detects them."
@@ -2017,6 +2030,18 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/wwand/modems.js:143
 msgid "QRTR node"
+msgstr ""
+
+#: htdocs/luci-static/resources/wwand/modemopts.js:712
+msgid ""
+"Quectel and ASR modems: which NMEA sentences the receiver streams. Written "
+"when wwand starts the receiver; saving a change restarts this modem's bring-"
+"up, so its connection drops briefly. <em>Fix only</em> is GPS position, time "
+"and DOP (GGA, RMC, GSA) with the other constellations' sentences off — far "
+"less for wwand-gps to parse, the same fix, but no satellites-in-view list "
+"and only GPS satellites counted as used. The modem keeps what was written "
+"last: leaving this unset does not undo <em>Fix only</em>, choose <em>All "
+"sentences</em> for that."
 msgstr ""
 
 #: htdocs/luci-static/resources/wwand/modemopts.js:177

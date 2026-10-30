@@ -702,6 +702,21 @@ return baseclass.extend({
 		o.depends('gnss', '1');
 		bind(o);
 
+		/* '' is not "back to full": the modem stores the masks, so unsetting
+		   the option changes nothing on it (wwand reference.md, gnss_nmea) —
+		   the labels have to say so, or "unchanged" reads as "default". It is
+		   written only in start_gnss (modem_common.uc, once per bring-up); a
+		   saved change gets there because gnss_nmea is in the daemon's modem
+		   reload signature, which restarts the modem. */
+		o = s.taboption(tab, form.ListValue, 'gnss_nmea', _('GNSS NMEA output'),
+			_('Quectel and ASR modems: which NMEA sentences the receiver streams. Written when wwand starts the receiver; saving a change restarts this modem\'s bring-up, so its connection drops briefly. <em>Fix only</em> is GPS position, time and DOP (GGA, RMC, GSA) with the other constellations\' sentences off — far less for wwand-gps to parse, the same fix, but no satellites-in-view list and only GPS satellites counted as used. The modem keeps what was written last: leaving this unset does not undo <em>Fix only</em>, choose <em>All sentences</em> for that.'));
+		o.value('', _('Leave modem setting unchanged'));
+		o.value('fix', _('Fix only (less CPU)'));
+		o.value('full', _('All sentences'));
+		o.optional = true;
+		o.depends('gnss', '1');
+		bind(o);
+
 		o = s.taboption(tab, form.Flag, 'auto_correct_config', _('Auto-correct modem config'),
 			_('Let wwand reprogram mismatched modem-side settings (attach profile, etc.) when it detects them.'));
 		o.default = '0';

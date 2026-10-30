@@ -125,8 +125,9 @@ function apiError(response: Record<string, unknown>): RpcError {
 async function callSafeShield<T>(
   method: string,
   params: Record<string, unknown> = {},
+  signal?: AbortSignal,
 ): Promise<T> {
-  const response = await callRpc<unknown>(API_OBJECT, method, params);
+  const response = await callRpc<unknown>(API_OBJECT, method, params, { ...(signal ? { signal } : {}), priority: signal ? 'low' : 'normal' });
   const object = objectValue(response);
 
   if (object.ok === false) {
@@ -455,8 +456,8 @@ export async function fetchSafeShieldStatus(): Promise<SafeShieldStatus> {
   }
 }
 
-async function fetchSafeShieldRuleConfig(): Promise<SafeShieldRuleConfig> {
-  const response = await callSafeShield<RawSafeShieldConfig>('config');
+async function fetchSafeShieldRuleConfig(signal?: AbortSignal): Promise<SafeShieldRuleConfig> {
+  const response = await callSafeShield<RawSafeShieldConfig>('config', {}, signal);
   return normalizeRuleConfig(response);
 }
 
@@ -491,10 +492,10 @@ export async function requestSafeShieldRefresh(): Promise<SafeShieldRefreshResul
   };
 }
 
-export async function fetchSafeShieldRules(): Promise<SafeShieldRules> {
+export async function fetchSafeShieldRules(signal?: AbortSignal): Promise<SafeShieldRules> {
   const [rulesResponse, config] = await Promise.all([
-    callSafeShield<RawSafeShieldRules>('rules_list'),
-    fetchSafeShieldRuleConfig(),
+    callSafeShield<RawSafeShieldRules>('rules_list', {}, signal),
+    fetchSafeShieldRuleConfig(signal),
   ]);
   const allow = stringArray(rulesResponse.allow);
   const block = stringArray(rulesResponse.block);

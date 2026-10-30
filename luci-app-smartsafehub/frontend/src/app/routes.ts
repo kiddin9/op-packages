@@ -8,6 +8,7 @@ export type AppRoute =
   | 'safeshield'
   | 'rules'
   | 'account'
+  | 'apps'
   | 'system'
   | 'settings';
 
@@ -84,6 +85,13 @@ export const ROUTES: readonly RouteDefinition[] = [
     description: '이 기기의 SmartSafeHub 계정 연결 상태와 구독 플랜을 확인합니다.',
   },
   {
+    route: 'apps',
+    hash: '#apps',
+    label: 'Apps',
+    title: 'SmartSafeHub Apps',
+    description: 'SmartSafeHub에서 검증한 앱과 확장 기능을 살펴봅니다.',
+  },
+  {
     route: 'system',
     hash: '#system',
     label: '업데이트',
@@ -105,5 +113,5 @@ export const ROUTE_BY_NAME = Object.fromEntries(
 
 // Public demo exposes only these read-only, fixture-backed screens.
 export const DEMO_ROUTES: readonly AppRoute[] = [
-  'home', 'activity', 'network', 'wifi', 'devices', 'safeshield', 'rules', 'system',
+  'home', 'activity', 'network', 'wifi', 'devices', 'safeshield', 'rules', 'account', 'apps', 'system',
 ];

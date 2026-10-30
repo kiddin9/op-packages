@@ -2,6 +2,8 @@
 'use strict';
 
 import { failure } from './smartsafehub/core.uc';
+import { read_apps_catalog } from './smartsafehub/apps.uc';
+import { read_apps_status, read_apps_metrics, install_app, update_app, remove_app } from './smartsafehub/apps-manager.uc';
 import { read_connected_devices } from './smartsafehub/devices.uc';
 import {
 	discard_uploaded_backup,
@@ -171,6 +173,42 @@ const methods = {
 		},
 		call: require_root_password(function(request) {
 			return update_update_settings(request);
+		}),
+	},
+	apps_catalog: {
+		args: { refresh: false },
+		call: require_root_password(function(request) {
+			return read_apps_catalog(request);
+		}),
+	},
+	apps_status: {
+		args: { refresh: false },
+		call: require_root_password(function(request) {
+			return read_apps_status(request);
+		}),
+	},
+	apps_metrics: {
+		args: { refresh: false },
+		call: require_root_password(function(request) {
+			return read_apps_metrics(request);
+		}),
+	},
+	apps_install: {
+		args: { app_id: '' },
+		call: require_root_password(function(request) {
+			return install_app(request);
+		}),
+	},
+	apps_update: {
+		args: { app_id: '' },
+		call: require_root_password(function(request) {
+			return update_app(request);
+		}),
+	},
+	apps_remove: {
+		args: { app_id: '' },
+		call: require_root_password(function(request) {
+			return remove_app(request);
 		}),
 	},
 	firmware_status: {

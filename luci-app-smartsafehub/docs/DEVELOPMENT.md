@@ -239,7 +239,29 @@ Health 계약 테스트의 mock 환경은 각 시나리오를 subshell에서 실
 sh tests/test-lan-settings.sh
 SMARTSAFEHUB_REQUIRE_UCODE=1 sh tests/test-ucode-syntax.sh
 shellspec spec/contracts_spec.sh
+# 새 테스트 파일이 ShellSpec 실행 목록에 누락되지 않았는지 확인
+sh tests/test-suite-integrity.sh
+# 브라우저 동작 테스트 전체 (Node.js 24+)
+node --experimental-strip-types --test tests/runtime/*.test.mjs
 ```
+
+### OpenWrt 25.12 셸 명령 성능 검사
+
+`sh tests/test-openwrt-commands.sh`는 BusyBox 기본 명령의 존재 여부와 함께 공유기에 배포하는 셸 스크립트의 고비용 패턴을 검사합니다. `root/`의 새 셸 진입점도 자동 포함되고 Backend CI 및 ShellSpec에서 동일한 검사기가 실행됩니다. 다음 패턴은 실패합니다.
+
+- `find /`, `du /` 또는 `du -a`로 전체 파일시스템/파일 목록을 순회
+- 재귀적 `grep -r/-R/--recursive`, `ls -R`로 넓은 범위를 반복 검색
+- `dd if=/dev/zero` 또는 `dd if=/dev/urandom`에 `count=`가 없는 무제한 읽기
+- `xargs -P0` 또는 `xargs -P 0`의 무제한 병렬 작업
+- `sleep 0`, 명시적 대기·종료 경로가 없는 `while true`/`while :` 무한 루프
+
+`grep`, `awk`, `find`, `sort` 자체를 금지하지 않습니다. 가능한 한 처리 디렉터리와 파일 크기, 반복 횟수, 병렬도에 상한을 두세요. 위험 동작이 실제로 필요한 경우 무조건 허용 목록에 넣기보다는 호출 범위를 제한하도록 코드를 수정하고 회귀 테스트를 추가합니다. 이 검사는 *정적 안티패턴 게이트*이며 변수로 전달된 경로, 런타임 실행 빈도, BusyBox 명령 옵션, 실제 CPU/메모리 부하까지 보증하지 않으므로 실기기 프로파일링을 대체하지 않습니다.
+
+셸 테스트(`tests/**/*.sh`)는 `spec/*_spec.sh`에 각각 한 번씩 등록해야 합니다. GitHub Actions의 Backend 작업은 ShellSpec과 ucode를 설치하기 **전에** `test-suite-integrity.sh`를 독립적으로 실행하므로, 등록되지 않은 테스트가 있으면 즉시 실패합니다. 동일한 파일을 중복 등록하거나 이미 삭제한 테스트를 참조해도 실패합니다. CI가 `shellspec` 전체 실행을 제거하거나 조건부 실행/실패 무시로 변경해도 검사합니다.
+
+브라우저 동작 테스트는 `tests/runtime/*.test.mjs` 이름으로 추가하면 Frontend CI에서 자동 실행됩니다. CI는 고정된 테스트 파일 목록을 사용하지 않으며, 자동 검색되지 않는 다른 확장자(`*.test.js`, `*.test.ts` 등)나 중첩 폴더에 테스트를 추가하면 누락 검사에서 실패합니다. 새로운 테스트 실행 형식이 필요하면 CI 실행 규칙과 검사기를 함께 수정해야 합니다. 변경하지 않은 배포 파일을 새로 생성하지 않고도 런타임 테스트를 로컬에서 실행할 수 있습니다.
+
+누락 검사 자체에도 **미등록/중복/삭제된 테스트 참조, 잘못된 파일 확장자, CI 실행 단계 제거·조건부 실행·실패 무시**를 실제로 재현하는 회귀 검증을 포함했습니다. 화면 소스의 특정 공백이나 Tailwind 클래스 이름만 고정하는 일회성 테스트보다는 **보안 경계, 설정 보존, 버전 비교, RPC 계약, 사용자 동작**을 확인하는 테스트를 우선합니다.
 
 ```bash
 cd frontend

@@ -43,4 +43,4 @@ for service in device health activity-sync; do
  grep -Fq 'ssh_runtime_execute' "$script"
 done
 grep -Eq '^PKG_RELEASE:=[0-9]+$' "$ROOT/Makefile"
-echo 'daemon runtime checks: OK'
+echo 'PASS: daemon runtime checks'

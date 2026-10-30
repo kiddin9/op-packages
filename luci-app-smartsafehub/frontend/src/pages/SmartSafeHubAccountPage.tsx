@@ -80,6 +80,9 @@ interface SmartSafeHubAccountPageProps {
   syncError: string | null;
   onRequestPairing: () => Promise<DeviceRegistrationStatus | null>;
   onRetry: () => void;
+  /** Public router demo never navigates to a real device account console. */
+  demo?: boolean;
+  onDemoAction?: () => void;
 }
 
 export function SmartSafeHubAccountPage({
@@ -91,6 +94,8 @@ export function SmartSafeHubAccountPage({
   syncError,
   onRequestPairing,
   onRetry,
+  demo = false,
+  onDemoAction,
 }: SmartSafeHubAccountPageProps) {
   const [pairingError, setPairingError] = useState<string | null>(null);
   const [pairingCopied, setPairingCopied] = useState(false);
@@ -109,6 +114,8 @@ export function SmartSafeHubAccountPage({
   const currentPlan = planLabel(status?.plan ?? null);
   const expired = status ? pairingExpired(status) : false;
   const pairingCode = !connected && !expired ? status?.pairingCode : null;
+  const issuingCode = pairingBusy || status?.pairingOperation?.phase === 'starting' ||
+    status?.pairingOperation?.phase === 'running';
 
   async function requestPairing(): Promise<void> {
     setPairingError(null);
@@ -154,14 +161,20 @@ export function SmartSafeHubAccountPage({
                 <p class="mt-1 mb-0 text-sm leading-6 text-slate-600">이 기기가 계정과 정상적으로 연결되어 있습니다. 연결 코드는 더 이상 필요하지 않습니다.</p>
               </div>
             </div>
-            <a
-              class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-700 px-4 py-2 text-sm font-extrabold text-white no-underline transition hover:bg-emerald-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100"
-              href={DEVICE_CONSOLE_URL}
-              rel="noopener noreferrer"
-              target="_blank"
-            >
-              웹사이트에서 기기 관리
-            </a>
+            {demo ? (
+              <button
+                class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-700 px-4 py-2 text-sm font-extrabold text-white transition hover:bg-emerald-800"
+                onClick={onDemoAction}
+                type="button"
+              >웹사이트에서 기기 관리</button>
+            ) : (
+              <a
+                class="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl border border-emerald-700 bg-emerald-700 px-4 py-2 text-sm font-extrabold text-white no-underline transition hover:bg-emerald-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100"
+                href={DEVICE_CONSOLE_URL}
+                rel="noopener noreferrer"
+                target="_blank"
+              >웹사이트에서 기기 관리</a>
+            )}
             <p class="mt-4 mb-0 border-t border-slate-100 pt-4 text-xs font-semibold leading-5 text-slate-500">
               웹사이트에서 기기 등록을 해제하면 공유기도 다음 계정 상태 동기화에서 자동으로 연결 해제를 반영합니다.
             </p>
@@ -205,13 +218,16 @@ export function SmartSafeHubAccountPage({
 
             <button
               class="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-teal-700 bg-teal-700 px-4 py-2 text-sm font-black text-white transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-100 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={pairingBusy}
+              disabled={issuingCode}
               onClick={() => void requestPairing()}
               type="button"
             >
-              {pairingBusy ? <ReloadIcon class="size-4 animate-spin" /> : null}
-              {pairingBusy ? '발급 중…' : pairingCode ? '새 코드 발급' : '연결 코드 발급'}
+              {issuingCode ? <ReloadIcon class="size-4 animate-spin" /> : null}
+              {issuingCode ? '발급 중…' : pairingCode ? '새 코드 발급' : '연결 코드 발급'}
             </button>
+            {status?.pairingOperation?.phase === 'failed' ? (
+              <p class="mt-3 mb-0 text-sm font-semibold text-red-700">연결 코드 발급에 실패했습니다. 다시 시도해 주세요.</p>
+            ) : null}
             {pairingError ? <p class="mt-3 mb-0 text-sm font-semibold text-red-700">{pairingError}</p> : null}
           </div>
         )}

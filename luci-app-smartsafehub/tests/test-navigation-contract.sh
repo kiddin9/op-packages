@@ -146,8 +146,41 @@ grep -Fq "'#wan': 'network'" "$HASH_ROUTE" || \
 	fail 'legacy #wan hash must resolve to combined network settings'
 grep -Fq "'#lan': 'network'" "$HASH_ROUTE" || \
 	fail 'legacy #lan hash must resolve to combined network settings'
+grep -Fq "{ label: 'Explore', routes: ['apps'] }" "$NAVIGATION" || \
+	fail 'Apps navigation must be promoted into its own Explore group'
 grep -Fq "{ label: 'System', routes: ['account', 'system', 'settings'] }" "$NAVIGATION" || \
-	fail 'System navigation group must expose SmartSafeHub account before updates and settings'
+	fail 'System navigation group must keep account, updates and settings after the Apps section'
+grep -Fq "return '앱으로 확장하기';" "$NAVIGATION" || \
+	fail 'Apps navigation item must show the short helper copy'
+# Dedicated surface colors avoid rendering a pale grey overlay in dark mode.
+# The active route keeps the shared teal selection style; only unselected Apps
+# receives the subtle theme-specific expansion treatment.
+python3 - "$NAVIGATION" "$STYLES" <<'PY_APPS_NAV' || fail 'Apps sidebar theme contract failed'
+from pathlib import Path
+import re
+import sys
+
+nav, css = (Path(p).read_text(encoding='utf-8') for p in sys.argv[1:])
+assert "return '앱으로 확장하기';" in nav
+assert '<AppsIcon class="size-5" />' in nav
+assert "class={navigationClass(active, collapsed, routeName)}" in nav
+assert 'ssh-apps-nav-link relative flex' in nav
+assert 'ssh-apps-nav-description mt-0.5' in nav
+assert "collapsed ? null : (" in nav
+assert 'bg-teal-50/40' not in nav
+
+selectors = {
+    ".ssh-apps-nav-link:not([aria-current='page'])": ('background-color: #f0fdfa;', 'border: 1px solid #99f6e4;'),
+    ".ssh-app[data-theme='dark'] .ssh-apps-nav-link:not([aria-current='page'])": ('background-color: rgb(20 184 166 / 0.09);', 'border-color: #134e4a;'),
+    ".ssh-app[data-theme='dark'] .ssh-apps-nav-link:not([aria-current='page']):hover": ('background-color: rgb(20 184 166 / 0.16);',),
+    ".ssh-app[data-theme='dark'] .ssh-apps-nav-description": ('color: #5eead4;',),
+}
+for selector, expected in selectors.items():
+    match = re.search(re.escape(selector) + r'\s*\{([^}]*)\}', css)
+    assert match is not None, f'Missing selector: {selector}'
+    for declaration in expected:
+        assert declaration in match.group(1), f'{selector}: expected {declaration}'
+PY_APPS_NAV
 grep -Fq "route: 'account'" "$ROUTES" || \
 	fail 'SmartSafeHub account route must be registered'
 grep -Fq "hash: '#account'" "$ROUTES" || \

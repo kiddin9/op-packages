@@ -1,4 +1,5 @@
 import type { ActivityHistory } from './activity';
+import type { AppsStorage } from './apps';
 export interface DeviceStatus {
   hostname: string;
   model: string;
@@ -26,6 +27,8 @@ export interface RuntimeStatus {
   localtime: number;
   load: [number, number, number];
   memory: RuntimeMemory;
+  /** Writable root, using the same units and definition as Apps. Missing on older firmware. */
+  storage?: AppsStorage | null;
 }
 
 export interface NetworkStatus {

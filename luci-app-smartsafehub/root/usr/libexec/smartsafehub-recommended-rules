@@ -30,7 +30,9 @@ SNAPSHOT="$RUNTIME/recommended-snapshot.$$"
 REPLY="$RUNTIME/recommended-reply.$$"
 ALLOW="$RUNTIME/recommended-allow.$$"
 VERIFY="$RUNTIME/recommended-verify.$$"
-cleanup() { rm -f "$DESIRED" "$OWNED" "$SNAPSHOT" "$REPLY" "$ALLOW" "$VERIFY" "$LOCK/pid"; rmdir "$LOCK" 2>/dev/null || true; }
+ADD="$RUNTIME/recommended-add.$$"
+REMOVE="$RUNTIME/recommended-remove.$$"
+cleanup() { rm -f "$DESIRED" "$OWNED" "$SNAPSHOT" "$REPLY" "$ALLOW" "$VERIFY" "$ADD" "$REMOVE" "$LOCK/pid"; rmdir "$LOCK" 2>/dev/null || true; }
 trap cleanup EXIT
 trap 'exit 1' HUP INT TERM
 
@@ -48,16 +50,18 @@ extract_array() {
     [ "$status" -eq 1 ] && [ ! -s "$output" ]
   fi
 }
-valid_domain() {
-  [ -n "$1" ] && [ "${#1}" -le 253 ] || return 1
-  printf '%s\n' "$1" | LC_ALL=C grep -Eq '^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$' || return 1
-  ! printf '%s\n' "$1" | LC_ALL=C grep -Eq '\.[0-9]+$' || return 1
-  rest="$1"
-  while [ -n "$rest" ]; do
-    label="${rest%%.*}"
-    [ "${#label}" -le 63 ] || return 1
-    case "$rest" in *.*) rest="${rest#*.}" ;; *) break ;; esac
-  done
+# Validate whole sorted domain lists in one awk process. Per-domain grep and
+# subshell creation previously scaled with every saved SafeShield allow entry.
+valid_domains_file() {
+  LC_ALL=C awk '
+    length($0) == 0 || length($0) > 253 { exit 1 }
+    $0 !~ /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/ { exit 1 }
+    $0 ~ /\.[0-9]+$/ { exit 1 }
+    {
+      count = split($0, labels, /\./)
+      for (i = 1; i <= count; i++) if (length(labels[i]) > 63) exit 1
+    }
+  ' "$1"
 }
 
 revision="$(field "$RESPONSE" '@.recommended_rules.revision')"
@@ -68,7 +72,7 @@ revision="$(field "$RESPONSE" '@.recommended_rules.revision')"
 valid_hash "$revision" || exit 1
 extract_array "$RESPONSE" '@.recommended_rules.domains' "$DESIRED" || exit 1
 [ "$(wc -l < "$DESIRED")" -le 100 ] || exit 1
-while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$DESIRED"
+valid_domains_file "$DESIRED" || exit 1
 sort -u "$DESIRED" -o "$DESIRED"
 
 previous=''
@@ -78,14 +82,19 @@ if [ -e "$STATE" ]; then
   previous="$(sed -n '1p' "$STATE")"
   [ "$previous" = '-' ] || valid_hash "$previous" || exit 1
   sed '1d' "$STATE" > "$OWNED"
-  while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$OWNED"
+  valid_domains_file "$OWNED" || exit 1
   sort -u "$OWNED" -o "$OWNED"
 fi
 persist() {
   temp="${STATE}.tmp.$$"
   { printf '%s\n' "$1"; sort -u "$OWNED"; } > "$temp"
   chmod 600 "$temp"
-  mv -f "$temp" "$STATE"
+  # Avoid extra flash writes on a successful metadata-only reconciliation.
+  if [ -f "$STATE" ] && cmp -s "$STATE" "$temp"; then
+    rm -f "$temp"
+  else
+    mv -f "$temp" "$STATE"
+  fi
 }
 
 # Report progress from the worker itself. The parent daemon only commits a
@@ -111,9 +120,11 @@ safeshield_refreshing() {
   [ "$status_value" = running ]
 }
 
-# Defer a different desired revision before calling potentially busy SafeShield
-# rules_list, which can itself be delayed during a long refresh.
-if [ "$previous" != "$revision" ] && safeshield_refreshing; then
+# Always defer a reconciliation during SafeShield's full-list refresh. Even
+# a matching revision may need recovery if a prior apply lost its receipt.
+# Check before dropping the old receipt so interrupted refreshes are not
+# mistaken for failed or unverified rules.
+if safeshield_refreshing; then
   phase safeshield_refreshing
   exit 75
 fi
@@ -129,26 +140,41 @@ fi
 # A broken or truncated rules_list must never be mistaken for an empty list.
 LC_ALL=C grep -Eq '"allow"[[:space:]]*:[[:space:]]*\[' "$REPLY" || exit 1
 extract_array "$REPLY" '@.allow' "$ALLOW" || exit 1
-while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$ALLOW"
+valid_domains_file "$ALLOW" || exit 1
 sort -u "$ALLOW" -o "$ALLOW"
 
 # Do not mutate overrides while a full protection refresh is already running.
 # Retain ownership and let the 30-second poll retry when SafeShield settles.
+# Build the two mutation sets once. Owned entries absent from SafeShield do
+# not need a delete, but their claims remain until final verification.
+: > "$ADD"
+: > "$REMOVE"
+LC_ALL=C awk -v add_file="$ADD" -v remove_file="$REMOVE" '
+  FILENAME == ARGV[1] { if ($0 != "") desired[$0] = 1; next }
+  FILENAME == ARGV[2] { if ($0 != "") allowed[$0] = 1; next }
+  FILENAME == ARGV[3] {
+    if ($0 != "" && !($0 in desired) && ($0 in allowed)) print $0 > remove_file
+    next
+  }
+  END {
+    for (domain in desired) if (!(domain in allowed)) print domain > add_file
+  }
+' "$DESIRED" "$ALLOW" "$OWNED" || exit 1
+sort -u "$ADD" -o "$ADD"
+sort -u "$REMOVE" -o "$REMOVE"
 changes_needed=0
-[ "$previous" = '-' ] && changes_needed=1
-while IFS= read -r domain; do
-  [ -n "$domain" ] || continue
-  if ! grep -Fxq "$domain" "$ALLOW"; then changes_needed=1; fi
-done < "$DESIRED"
-while IFS= read -r domain; do
-  [ -n "$domain" ] || continue
-  if ! grep -Fxq "$domain" "$DESIRED" && grep -Fxq "$domain" "$ALLOW"; then changes_needed=1; fi
-done < "$OWNED"
+if [ "$previous" = '-' ] || [ -s "$ADD" ] || [ -s "$REMOVE" ]; then changes_needed=1; fi
 if [ "$changes_needed" -eq 1 ] && safeshield_refreshing; then
   phase safeshield_refreshing
   exit 75
 fi
-if [ "$changes_needed" -eq 1 ]; then phase applying; fi
+if [ "$changes_needed" -eq 1 ]; then
+  phase applying
+  # Mark the entire transaction unconfirmed once, before touching any rule.
+  # Keeping all ownership claims prevents a partial deletion from becoming a
+  # future manual-allow exemption after interruption.
+  persist '-'
+fi
 
 mutate() {
   method="$1"; domain="$2"
@@ -159,36 +185,24 @@ mutate() {
 # Refresh is retried after a partial or unsuccessful reconciliation.
 need_refresh=0
 [ "$previous" = '-' ] && need_refresh=1
-cp "$OWNED" "$SNAPSHOT"
 while IFS= read -r domain; do
   [ -n "$domain" ] || continue
-  if ! grep -Fxq "$domain" "$DESIRED"; then
-    if grep -Fxq "$domain" "$ALLOW"; then
-      mutate rule_delete "$domain" || exit 1
-      need_refresh=1
-    fi
-    # Keep the ownership claim until the final SafeShield read confirms the
-    # domain is gone. A refresh failure must not turn a leftover cloud entry
-    # into an apparently user-created allow rule on the next assignment.
-    persist '-'
-  fi
-done < "$SNAPSHOT"
+  mutate rule_delete "$domain" || exit 1
+  need_refresh=1
+  # Ownership remains in the pending state until final verification.
+done < "$REMOVE"
 
 while IFS= read -r domain; do
   [ -n "$domain" ] || continue
-  if ! grep -Fxq "$domain" "$ALLOW"; then
-    # Write the ownership intent before creating the allow entry. If the
-    # process is interrupted after rule_add, the retry must still recognize
-    # the entry as cloud-managed rather than silently treating it as manual.
-    if ! grep -Fxq "$domain" "$OWNED"; then
-      printf '%s\n' "$domain" >> "$OWNED"
-      persist '-'
-    fi
-    mutate rule_add "$domain" || exit 1
-    need_refresh=1
+  # Record intent before rule_add so a crash cannot reclassify a managed rule
+  # as a manual allow entry. Preserve ownership on partial refresh failures.
+  if ! grep -Fxq "$domain" "$OWNED"; then
+    printf '%s\n' "$domain" >> "$OWNED"
     persist '-'
   fi
-done < "$DESIRED"
+  mutate rule_add "$domain" || exit 1
+  need_refresh=1
+done < "$ADD"
 
 if [ "$need_refresh" -eq 1 ]; then
   phase safeshield_refreshing
@@ -201,54 +215,55 @@ if [ "$need_refresh" -eq 1 ]; then
     exit 1
   fi
 fi
-# Read the actual SafeShield rule list again rather than trusting rule_add results.
+# Verify with a second RPC only when a mutation/refresh was requested.
+# Otherwise the first rules_list response is already an authoritative read.
 if [ "$changes_needed" -eq 1 ] || [ "$previous" != "$revision" ]; then phase verifying; fi
-if ! "$UBUS" call safeshield rules_list '{}' > "$REPLY"; then
-  if safeshield_refreshing; then phase safeshield_refreshing; exit 75; fi
-  exit 1
-fi
-[ "$(field "$REPLY" '@.ok')" != false ] || exit 1
-LC_ALL=C grep -Eq '"allow"[[:space:]]*:[[:space:]]*\[' "$REPLY" || exit 1
-extract_array "$REPLY" '@.allow' "$VERIFY" || exit 1
-while IFS= read -r domain || [ -n "$domain" ]; do valid_domain "$domain" || exit 1; done < "$VERIFY"
-sort -u "$VERIFY" -o "$VERIFY"
-while IFS= read -r domain; do
-  [ -n "$domain" ] || continue
-  grep -Fxq "$domain" "$VERIFY" || exit 1
-done < "$DESIRED"
-# Do not retire ownership if a previously managed, now-unassigned domain is
-# still present in SafeShield. It may reappear during a failed refresh or an
-# overlapping request, and a subsequent recommendation must not adopt it as a
-# manual rule. Retry the deletion while the ownership marker remains intact.
-while IFS= read -r domain; do
-  [ -n "$domain" ] || continue
-  if ! grep -Fxq "$domain" "$DESIRED" && grep -Fxq "$domain" "$VERIFY"; then
+if [ "$need_refresh" -eq 1 ]; then
+  if ! "$UBUS" call safeshield rules_list '{}' > "$REPLY"; then
+    if safeshield_refreshing; then phase safeshield_refreshing; exit 75; fi
     exit 1
   fi
-done < "$OWNED"
-# Only after successful reconciliation may we forget ownership of removed
-# domains. The preserved marker survives a failed refresh and a reassignment.
-cp "$OWNED" "$SNAPSHOT"
-: > "$OWNED"
-while IFS= read -r domain; do
-  [ -n "$domain" ] || continue
-  if grep -Fxq "$domain" "$DESIRED"; then
-    printf '%s\n' "$domain" >> "$OWNED"
-  fi
-done < "$SNAPSHOT"
+  [ "$(field "$REPLY" '@.ok')" != false ] || exit 1
+  LC_ALL=C grep -Eq '"allow"[[:space:]]*:[[:space:]]*\[' "$REPLY" || exit 1
+  extract_array "$REPLY" '@.allow' "$VERIFY" || exit 1
+  valid_domains_file "$VERIFY" || exit 1
+  sort -u "$VERIFY" -o "$VERIFY"
+else
+  cp "$ALLOW" "$VERIFY"
+fi
+# Check desired presence and pending managed deletions with one process.
+LC_ALL=C awk '
+  FILENAME == ARGV[1] { if ($0 != "") desired[$0] = 1; next }
+  FILENAME == ARGV[2] { if ($0 != "") verified[$0] = 1; next }
+  FILENAME == ARGV[3] {
+    if ($0 != "" && !($0 in desired) && ($0 in verified)) invalid = 1
+    next
+  }
+  END {
+    for (domain in desired) if (!(domain in verified)) invalid = 1
+    exit invalid
+  }
+' "$DESIRED" "$VERIFY" "$OWNED" || exit 1
+# Retire ownership only after final verification, never on a failed refresh.
+LC_ALL=C awk '
+  FILENAME == ARGV[1] { if ($0 != "") desired[$0] = 1; next }
+  ($0 in desired) { print }
+' "$DESIRED" "$OWNED" > "$SNAPSHOT" || exit 1
+sort -u "$SNAPSHOT" -o "$SNAPSHOT"
+cp "$SNAPSHOT" "$OWNED"
 # The receipt describes *allow-list presence*, not proven DNS query results.
 # Domains not in OWNED existed before this recommendation (manual configuration).
 receipt_tmp="${RECEIPT}.tmp.$$"
 {
   printf '{"revision":"%s","status":"confirmed","domains":[' "$revision"
-  first=1
-  while IFS= read -r domain; do
-    [ -n "$domain" ] || continue
-    if grep -Fxq "$domain" "$OWNED"; then source=managed; else source=manual; fi
-    [ "$first" -eq 1 ] || printf ','
-    printf '{"domain":"%s","source":"%s"}' "$domain" "$source"
-    first=0
-  done < "$DESIRED"
+  LC_ALL=C awk '
+    FILENAME == ARGV[1] { if ($0 != "") owned[$0] = 1; next }
+    FILENAME == ARGV[2] {
+      if ($0 == "") next
+      if (count++) printf ","
+      printf "{\"domain\":\"%s\",\"source\":\"%s\"}", $0, (($0 in owned) ? "managed" : "manual")
+    }
+  ' "$OWNED" "$DESIRED"
   printf ']}\n'
 } > "$receipt_tmp"
 chmod 600 "$receipt_tmp"

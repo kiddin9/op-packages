@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 'use strict';
 import * as fs from 'fs';
-import { failure, run_command, success } from './core.uc';
+import { failure, success } from './core.uc';
+import { ensure_job, job_state, request_job } from './rpc-jobs.uc';
 const STATE_FILE = '/tmp/smartsafehub/device.json';
 const HELPER = '/usr/libexec/smartsafehub-device';
 function read_state() {
@@ -48,7 +49,11 @@ export function read_recommended_rules_status(request) {
  // A busy SafeShield refresh is pending work, not an application failure.
  // Keep an older verified receipt for its revision without treating a newer
  // in-progress operation as already complete.
- const syncStatus = sync?.status == 'pending' ? 'pending' :
+ const syncOperation = job_state('recommended-sync');
+ const revokeOperation = job_state('recommended-revoke');
+ const operationRunning = syncOperation.phase == 'starting' || syncOperation.phase == 'running' ||
+  revokeOperation.phase == 'starting' || revokeOperation.phase == 'running';
+ const syncStatus = operationRunning || sync?.status == 'pending' ? 'pending' :
   confirmed ? 'confirmed' : sync?.status == 'delayed' ? 'delayed' :
   sync?.status == 'failed' ? 'failed' : 'pending';
  const syncWarning = confirmed && (sync?.status == 'failed' || sync?.status == 'delayed');
@@ -60,32 +65,45 @@ export function read_recommended_rules_status(request) {
   confirmedDomains: confirmedDomains,
   syncStatus: syncStatus,
   syncWarning: syncWarning,
-  syncStage: sync?.stage ?? null,
+  syncStage: operationRunning ? 'server_sync' : (sync?.stage ?? null),
   syncReason: sync?.reason ?? null,
   lastCheckedAt: sync?.checkedAt ?? 0,
   lastDeviceSyncAt: device?.lastSuccessAt ?? 0,
   nextDeviceSyncAt: device?.nextSyncAt ?? 0,
-  accountRegistered: device?.accountRegistered ?? false
+  accountRegistered: device?.accountRegistered ?? false,
+  operation: syncOperation,
+  revokeOperation: revokeOperation
  });
 };
+// A request means "accepted", never "the remote rule has been applied".
+// The local receipt and operation phase remain separate authoritative fields.
 export function refresh_recommended_rules_status(request) {
- // The blocklist download and the Hub device sync are different operations.
- // Reuse the authenticated device sync, never the SafeShield blocklist refresh.
- if (!run_command([ HELPER, 'recommended-sync' ], 25000)) {
-  const latest = read_json_file(RECOMMENDED_SYNC_STATUS);
-  if (latest?.status != 'pending' && latest?.status != 'delayed')
-   return failure('RECOMMENDED_SYNC_UNAVAILABLE', 'SmartSafeHub 서버와 동기화하지 못했습니다. 잠시 후 다시 시도해 주세요.');
- }
+ if (!request_job('recommended-sync'))
+  return failure('RECOMMENDED_SYNC_BUSY', '이미 다른 추천 규칙 동기화 작업이 진행 중입니다.');
  return read_recommended_rules_status(request);
 };
 export function revoke_recommended_rule(request) {
  const rule_id = request?.args?.rule_id;
  if (rule_id == null || match(sprintf('%s', rule_id), /^[1-9][0-9]{0,9}$/) == null)
   return failure('INVALID_RULE_ID', '적용 해제할 추천 규칙을 선택해 주세요.');
- if (!run_command([ HELPER, 'recommended-revoke', sprintf('%s', rule_id) ], 25000))
-  return failure('RECOMMENDED_REVOKE_FAILED', '규칙 해제 또는 SafeShield 반영에 실패했습니다. 서버 변경은 다음 동기화에서 반영될 수 있습니다.');
+ if (!request_job('recommended-revoke', rule_id))
+  return failure('RECOMMENDED_REVOKE_BUSY', '이미 추천 규칙 해제 작업이 진행 중입니다.');
  return read_recommended_rules_status(request);
 };
-export function read_device_registration_status(request) { const state = read_state(); return state != null ? success(state) : failure('DEVICE_STATE_INVALID', '기기 등록 상태를 읽지 못했습니다.'); };
-export function refresh_device_registration_status(request) { if (!run_command([ HELPER, 'status-sync' ], 25000)) return failure('DEVICE_SYNC_FAILED', 'SmartSafeHub 계정 연결 상태를 확인하지 못했습니다.'); const state = read_state(); return state != null ? success(state) : failure('DEVICE_STATE_INVALID', '기기 등록 상태를 읽지 못했습니다.'); };
-export function refresh_device_pairing(request) { if (!run_command([ HELPER, 'pairing-session' ], 15000)) return failure('DEVICE_PAIRING_FAILED', 'SmartSafeHub 계정 연결 코드를 발급하지 못했습니다.'); const state = read_state(); return state != null ? success(state) : failure('DEVICE_STATE_INVALID', '기기 등록 상태를 읽지 못했습니다.'); };
+export function read_device_registration_status(request) {
+ const state = read_state();
+ if (state == null) return failure('DEVICE_STATE_INVALID', '기기 등록 상태를 읽지 못했습니다.');
+ state.operation = job_state('device-sync');
+ state.pairingOperation = job_state('pairing');
+ return success(state);
+};
+export function refresh_device_registration_status(request) {
+ if (!ensure_job('device-sync'))
+  return failure('DEVICE_SYNC_LAUNCH_FAILED', '서버 상태 확인을 시작하지 못했습니다.');
+ return read_device_registration_status(request);
+};
+export function refresh_device_pairing(request) {
+ if (!request_job('pairing'))
+  return failure('DEVICE_PAIRING_BUSY', '연결 코드 발급을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+ return read_device_registration_status(request);
+};

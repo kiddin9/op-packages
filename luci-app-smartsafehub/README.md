@@ -7,6 +7,8 @@
 SmartSafeHub는 OpenWrt 공유기를 위한 통합 홈 게이트웨이 관리 UI입니다.
 네트워크, Wi-Fi, 연결 기기, SafeShield 보안, 업데이트와 시스템 상태를 하나의 사용자 친화적인 인터페이스에서 관리할 수 있습니다.
 
+**[SmartSafeHub 공유기 체험하기](https://www.smartsafehub.com/router-demo/)**
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/dashboard-dark.png">
   <source media="(prefers-color-scheme: light)" srcset="docs/assets/dashboard-light.png">
