@@ -1,6 +1,6 @@
 # dns.dae
 dns {
-    bind: 'tcp+udp://[::]:53530'
+    #bind: 'tcp+udp://[::]:53530'
     client_subnet: auto
     max_cache_size: 50000
     #ipversion_prefer: 4
