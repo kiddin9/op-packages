@@ -573,26 +573,70 @@ const sha256sum = async function (textToHash) {
 };
 
 /**
+ * Validate and clean any given IPv4 or IPv6 address string safely
+ */
+const checkIp = function (rawIp) {
+	if (!rawIp) {
+		return null;
+	}
+
+	// Delete all spaces, tabs and hidden lines from the text (tr -d ' \t\r\n')
+	const ip = rawIp.replace(/[\s\t\r\n]/g, '').trim();
+	if (ip === '') {
+		return null;
+	}
+
+	const ipv4Regex = /^([0-9]{1,3}\.){3}[0-9]{1,3}$/;
+	const ipv6Regex = /^([\da-fA-F]{1,4}:|:){1,7}([\da-fA-F]{1,4}|:)$/;
+
+	// Case 1: Check if the text is a valid IPv4 address (numbers 0 to 255)
+	if (ipv4Regex.test(ip)) {
+		const segments = ip.split('.');
+		if (parseInt(segments[0], 10) <= 255 &&
+			parseInt(segments, 10) <= 255 &&
+			parseInt(segments, 10) <= 255 &&
+			parseInt(segments, 10) <= 255) {
+			return { ip: ip, isV6: false };
+		}
+	}
+
+	// Case 2: Check if the text is a syntactically valid IPv6 address. Extra check for triple colons (:::) to keep the regex small
+	if (ipv6Regex.test(ip) && ip.indexOf(':') !== -1 && ip.indexOf(':::') === -1) {
+		return { ip: ip.toLowerCase(), isV6: true };
+	}
+
+	return null;
+};
+
+/**
  * Global helper function to determine the fallback IP and mask from browser or UCI config.
  */
 const getHostnameFallback = function (returnMask) {
-	// Basic regex patterns to check for valid IPv4 or IPv6 layouts
-	const ipv4Pattern = /^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$/;
-	const ipv6Pattern = /^(([0-9a-fA-F]{1,4}:){1,7}|:)(:[0-9a-fA-F]{1,4}){1,7}$|^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-
 	// Get the address string from the browser URL bar and remove IPv6 brackets
-	let ip = (window.location.hostname || "").trim().replace(/^\[|\]$/g, '');
+	let browserIp = (window.location.hostname || "").trim().replace(/^\[|\]$/g, '');
+	let ip = '';
 	let mask = '255.255.255.0';
 
-	// If browser URL is text (like openwrt.lan), fallback to configured UCI IPs
-	if (!ipv4Pattern.test(ip) && !ipv6Pattern.test(ip)) {
-		ip = L.uci.get('network', 'lan', 'ipaddr') || L.uci.get('network', 'lan', 'ip6addr') || '192.168.1.1';
+	// Use our solid validation function to check the browser IP
+	let checked = checkIp(browserIp);
+
+	if (checked) {
+		ip = checked.ip;
+	} else {
+		// If browser URL is a hostname (like openwrt.lan), fallback to configured UCI IPs
+		let uciIp = L.uci.get('network', 'lan', 'ipaddr') || L.uci.get('network', 'lan', 'ip6addr') || '192.168.1.1';
+
+		// Remove any trailing subnet mask from UCI strings (like /64) safely
+		ip = uciIp.split('/')[0].trim();
+
+		// Re-validate the UCI fallback IP to know its family (v4 or v6)
+		checked = checkIp(ip);
 	}
 
 	// Set the matching subnet mask format based on the detected IP family
-	if (ipv4Pattern.test(ip)) {
+	if (checked && checked.isV6 === false) {
 		mask = L.uci.get('network', 'lan', 'netmask') || OPENVPN.IPv4.MASK24;
-	} else if (ipv6Pattern.test(ip)) {
+	} else if (checked && checked.isV6 === true) {
 		mask = L.uci.get('network', 'lan', 'ip6assign') || '64';
 	}
 
@@ -965,7 +1009,7 @@ const checkNetworkStructure = function (appData) {
 						gatewayIp = gw4;
 					}
 
-					// Check WAN IPv4 addresses for Double NAT and extract WAN net-boundaries securely [sh]
+					// Check WAN IPv4 addresses for Double NAT and extract WAN net-boundaries securely
 					const ipaddrs = net.getIPAddrs ? net.getIPAddrs() : [];
 					let deviceMask = (net.getNetmask && net.getNetmask()) ? net.getNetmask() : (net.data && net.data.netmask) ? net.data.netmask : null;
 					if (deviceMask === null || deviceMask === undefined || deviceMask === '') {
@@ -977,7 +1021,7 @@ const checkNetworkStructure = function (appData) {
 						const wanIpStr = String(rawWanIp);
 						const ip = wanIpStr.split('/')[0];
 
-						// If the WAN IP is private, we have a Double NAT [sh]
+						// If the WAN IP is private, we have a Double NAT
 						if (privateIpRegex.test(ip)) {
 							isDoubleNat = true;
 						}
@@ -1004,7 +1048,7 @@ const checkNetworkStructure = function (appData) {
 					gatewayIp = OPENVPN.IPv4.ZERO;
 				}
 
-				// Set values to global object (Fixed: changed 'gateway' to 'gatewayIp')
+				// Set values to global object
 				networkStructure.doubleNat = isDoubleNat;
 				networkStructure.apMode = isApMode;
 				networkStructure.gateway = gatewayIp;
@@ -1038,6 +1082,7 @@ const checkNetworkStructure = function (appData) {
  */
 const networkCallbacks = ({
 	sha256sum: sha256sum,
+	checkIp: checkIp,
 	getLanIp: getLanIp,
 	queryPublicIp: queryPublicIp,
 	getDdnsOrPublicIp: getDdnsOrPublicIp,
@@ -2785,7 +2830,7 @@ const openSiteToSiteExportModal = function (instance_id, nextId, serverAssets, a
 	selectDropdown.appendChild(E('option', { 'disabled': true }, ['- - -']));
 	selectDropdown.appendChild(E('option', { 'value': 'backup_server_profile' }, [ICON.BACKUP + TXT.MSG.backup_server_profile + ': ' + displayId]));
 
-	const subnetInputs = appData.wizardClass.renderSubnetInputs();
+	const subnetInputs = appData.wizardClass.renderSubnetInputs(networkCallbacks.checkIp);
 
 	// Creates a hidden yellowish warning message box for network conflicts or duplicate names
 	const errorDisplayNode = E('div', {
@@ -4789,7 +4834,7 @@ const generate_s2s_nft_file = async function (deviceName, localSubnet, remoteSub
 
 	let lanDevice = 'br-lan';
 	const res = await luci_app_openvpn_plus([CFG.LIBEXEC.getl3dev]);
-	if (res && res !='' && !res.includes("ERROR:")) {
+	if (res && res != '' && !res.includes("ERROR:")) {
 		lanDevice = res;
 	}
 

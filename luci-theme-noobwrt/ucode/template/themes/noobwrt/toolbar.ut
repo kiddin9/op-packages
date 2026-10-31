@@ -28,6 +28,7 @@
 	/* Build sorted list of enabled toolbar items from UCI config */
 	let toolbar_items = [];
 	let auto_dark_mode = false;
+	let amoled_mode = false;
 	if (access('/etc/config/noobwrt')) {
 		const tcfg = cursor();
 		tcfg.foreach('noobwrt', 'toolbar_item', function(s) {
@@ -42,6 +43,7 @@
 		sort(toolbar_items, (a, b) => a.order - b.order);
 		const adm = tcfg.get_first('noobwrt', 'global', 'auto_dark_mode');
 		auto_dark_mode = (adm !== '0');
+		amoled_mode = (tcfg.get_first('noobwrt', 'global', 'mode') == 'amoled');
 	}
 	if (length(toolbar_items) == 0) toolbar_items = default_toolbar;
 -%}
@@ -94,13 +96,13 @@
 }
 
 body.dark-theme .toolbar-pull-tab {
-	background: rgba(20, 20, 25, 0.98);
+	background: var(--dark-toolbar-bg, rgba(20, 20, 25, 0.98));
 	border-color: rgba(255, 255, 255, 0.85);
 	box-shadow: -2px 0 10px rgba(0, 0, 0, 0.6);
 }
 
 body.dark-theme .toolbar-pull-tab:hover {
-	background: color-mix(in srgb, var(--dark-primary) 25%, rgba(20, 20, 25, 0.98));
+	background: color-mix(in srgb, var(--dark-primary) 25%, var(--dark-toolbar-bg, rgba(20, 20, 25, 0.98)));
 }
 
 .toolbar-pull-tab svg {
@@ -137,7 +139,7 @@ body.dark-theme .toolbar-pull-tab svg {
 }
 
 body.dark-theme .toolbar-container {
-	background: rgba(20, 20, 25, 0.98);
+	background: var(--dark-toolbar-bg, rgba(20, 20, 25, 0.98));
 	border-color: rgba(255, 255, 255, 0.85);
 	box-shadow: -2px 0 16px rgba(0, 0, 0, 0.7);
 }
@@ -326,6 +328,7 @@ body.dark-theme .theme-toggle svg {
 <script type="text/javascript">//<![CDATA[
 (function() {
 	const AUTO_DARK_MODE = {% if (auto_dark_mode): %}true{% else %}false{% endif %};
+	const AMOLED_MODE = {% if (amoled_mode): %}true{% else %}false{% endif %};
 
 	const themeToggle = document.getElementById('theme-toggle');
 	const sunIcon = themeToggle.querySelector('.sun-icon');
@@ -356,6 +359,7 @@ body.dark-theme .theme-toggle svg {
 	}
 
 	function loadDarkCSS(savePreference) {
+		document.body.classList.toggle('amoled-theme', AMOLED_MODE);
 		if (darkThemeStyle.textContent) {
 			document.body.classList.add('dark-theme');
 			setIcons(true);
@@ -381,6 +385,7 @@ body.dark-theme .theme-toggle svg {
 	function removeDarkCSS(savePreference) {
 		darkThemeStyle.textContent = '';
 		document.body.classList.remove('dark-theme');
+		document.body.classList.remove('amoled-theme');
 		setIcons(false);
 		if (savePreference) localStorage.setItem('luci-theme', 'light');
 	}

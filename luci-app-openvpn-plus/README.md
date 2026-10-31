@@ -51,15 +51,15 @@ Even though the traffic has to pass through **Double-NAT** and simple port forwa
 
 ## Screenshots
 
-| 01 - Server/Client View | 02 - Status View |
+| Server/Client View | Status View |
 | :---: | :---: |
-| <img width="1200" alt="01" src="https://github.com/user-attachments/assets/b5f13132-0414-4490-9c80-9a361e1bda40" /> | <img width="1200" alt="02" src="https://github.com/user-attachments/assets/7635f2bd-4839-45e4-9804-d01ce38bde7b" /> 
-| <img width="2398" alt="03" src="https://github.com/user-attachments/assets/0170376e-3dfe-4ca3-8f03-d450cc7ed0e4" /> | <img width="2430" alt="15" src="https://github.com/user-attachments/assets/1710419c-4f14-4594-a3a4-d8147ec1fe50" />
-| <img width="1796" alt="09" src="https://github.com/user-attachments/assets/1c77aefe-197d-4e64-ab87-898ff50faab1" /> | <img width="1798" alt="10" src="https://github.com/user-attachments/assets/f37365a6-4090-443b-89fe-05a5cd92e714" />
-| <img width="1798" alt="13" src="https://github.com/user-attachments/assets/147250df-079c-4f77-9c5c-00819b4b495c" /> | <img width="1800" alt="11" src="https://github.com/user-attachments/assets/814bbeb0-a0b8-4b38-93b8-03a978d75692" /> 
-| <img width="1798" alt="12" src="https://github.com/user-attachments/assets/57726ec2-c18d-4531-96ec-0d58a818648a" /> | <img width="2384" alt="04" src="https://github.com/user-attachments/assets/8470fa8c-b4a4-4369-b9c5-bfbd8e27526d" />
-| <img width="2382" alt="05" src="https://github.com/user-attachments/assets/1ef91c41-675c-40d8-a9da-644370ac2fdf" /> | <img width="2394" alt="06" src="https://github.com/user-attachments/assets/95fbdf13-142f-4f67-9117-15eef266e304" />
-
+| ![Server/Client View](screenshots/server.png) | ![Status View](screenshots/status-dark.png) |
+| ![Client View](screenshots/client.png) | ![QR Export](screenshots/qr-client-export.png) |
+| ![Wizard Mobile Start](screenshots/wizard-mobile-server-01.png) | ![Wizard Mobile Tunnel](screenshots/wizard-mobile-server-02.png) |
+| ![Wizard Mobile IP Setup](screenshots/wizard-mobile-server-03.png) | ![Wizard DDNS Setup](screenshots/wizard-mobile-server-04.png) |
+| ![Wizard Site-To-Site Start](screenshots/wizard-main-office-01.png) | ![Wizard Site-To-Site Routing](screenshots/wizard-main-office-02.png) |
+| ![Wizard Port Forwarding](screenshots/port-forward.png) | ![Wizard Add Instance](screenshots/add-instance.png) |
+| ![Wizard Key View](screenshots/keyview.png) | ![Wizard KeyGen](screenshots/keygen.png)
 
 ## Configuration Layout
 
@@ -84,6 +84,7 @@ luci-app-openvpn-plus/
 │   │   └── luci-app-openvpn-plus.po
 │   ├── zh-cn/
 │   │   └── luci-app-openvpn-plus.po
+├── screenshots/
 └── root/
 	├── etc/
 	│   ├── config/

@@ -32,7 +32,7 @@
 		blur_opacity = cfg.get_first('noobwrt', 'global', 'transparency');
 		blur_opacity_dark = cfg.get_first('noobwrt', 'global', 'transparency_dark');
 		mode = cfg.get_first('noobwrt', 'global', 'mode');
-		bar_color = (mode == 'dark') ? dark_primary : primary;
+		bar_color = (mode == 'dark' || mode == 'amoled') ? dark_primary : primary;
 	}
 
 -%}
@@ -79,7 +79,7 @@
 
 	<link rel="stylesheet" href="{{ media }}/css/cascade.css?v={{ version.luciversion }}">
 	<style title="text/css">
-		{% if (mode == 'dark'): %}
+		{% if (mode == 'dark' || mode == 'amoled'): %}
 			{{ dark_css }}
 		{% endif -%}
 		{% if (access('/etc/config/noobwrt')): %}
@@ -104,4 +104,4 @@
 
 </head>
 
-<body>
+<body class="{% if (mode == 'dark' || mode == 'amoled'): %}dark-theme{% endif %}{% if (mode == 'amoled'): %} amoled-theme{% endif %}">

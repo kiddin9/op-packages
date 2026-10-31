@@ -66,9 +66,11 @@ return view.extend({
 
         o = s.taboption('appearance', form.ListValue, 'mode',
             _('Default Theme Mode'),
-            _('Theme applied on page load when Automatic mode is disabled. Users can also toggle it manually using the toolbar sun/moon button.'));
+            _('Theme applied on page load when Automatic mode is disabled. Users can also toggle it manually using the toolbar sun/moon button.') + ' ' +
+            _('AMOLED Black uses pure black backgrounds and replaces Dark mode in the automatic schedule and toolbar toggle when selected.'));
         o.value('normal', _('Light'));
         o.value('dark',   _('Dark'));
+        o.value('amoled', _('AMOLED Black'));
 
         o = s.taboption('appearance', form.Value, 'primary',
             _('Accent Color — Light Mode'),

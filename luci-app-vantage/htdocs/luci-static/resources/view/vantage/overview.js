@@ -35,6 +35,7 @@ var callDevs = rpc.declare({ object: 'network.device', method: 'status', expect:
 /* luci.vantage is the app's own rpcd ucode plugin: network.wireless status
    without keys or RADIUS secrets, and the validated alias write */
 var callWifi = rpc.declare({ object: 'luci.vantage', method: 'wireless', expect: { '': {} } });
+var callThermal = rpc.declare({ object: 'luci.vantage', method: 'thermal', expect: { zones: [] } });
 var callHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 var callIwInfo = rpc.declare({ object: 'iwinfo', method: 'info', params: [ 'device' ], expect: { '': {} } });
 var callAssoc = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: [ 'device' ], expect: { results: [] } });
@@ -482,7 +483,8 @@ return view.extend({
 			L.resolveDefault(callDevs(), {}),
 			/* null when the call fails: no answer is not "no radios" */
 			L.resolveDefault(callWifi(), null),
-			L.resolveDefault(callHints(), {})
+			L.resolveDefault(callHints(), {}),
+			L.resolveDefault(callThermal(), [])
 		]).then(function(r) {
 			var wifiDevs = (r[4] && typeof r[4] === 'object') ? r[4] : null;
 			var ifnames = [];
@@ -510,7 +512,7 @@ return view.extend({
 					else if (p[0] === 'hapdStatus') hapdStatus[p[1]] = p[2];
 					else iwinfo[p[1]] = p[2];
 				});
-				return { info: r[0] || {}, stat: r[1] || '', ifaces: r[2] || [], devs: r[3] || {}, wifi: wifiDevs, hints: r[5] || {},
+				return { info: r[0] || {}, stat: r[1] || '', ifaces: r[2] || [], devs: r[3] || {}, wifi: wifiDevs, hints: r[5] || {}, thermal: r[6] || [],
 					assoc: assoc, hapd: hapd, hapdStatus: hapdStatus, iwinfo: iwinfo, at: Date.now(), started: started };
 			});
 		});
@@ -579,6 +581,7 @@ return view.extend({
 			if (cpu) { st.cpu = cpu; series.push(st.hist.cpu, [ at, cpu.pct ], WINDOW_MS, HIST_MAX); }
 			if (!st.stat || stat.all.total !== st.stat.all.total) st.stat = stat;
 		}
+		st.temps = model.temps(raw.thermal);
 
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
@@ -649,7 +652,7 @@ return view.extend({
 
 		this.stickyGen(m);
 		m.clients.forEach(function(c) { c.exp = insight.experience(c); c.firstSeen = p.state.firstSeen[c.mac]; c.isNew = !!p.isNew[c.mac]; });
-		st.health = insight.health(m, { cpu: st.cpu, uplinkRate: st.uplinkRate });
+		st.health = insight.health(m, { cpu: st.cpu, uplinkRate: st.uplinkRate, temps: st.temps });
 		st.summary = insight.summary(st.health);
 		st.radioInsights = insight.radioInsights(m.radios, st.radioRates);
 		st.talkers = insight.topTalkers(m.clients, st.staRates, TALKERS);
@@ -744,7 +747,7 @@ return view.extend({
 		this.stickyGen(m);
 		m.clients.forEach(function(c) { c.exp = insight.experience(c); c.firstSeen = st.presence && st.presence.firstSeen[c.mac]; c.isNew = !!st.isNew[c.mac]; });
 		st.talkers = insight.topTalkers(m.clients, st.staRates, TALKERS);
-		st.health = insight.health(m, { cpu: st.cpu, uplinkRate: st.uplinkRate });
+		st.health = insight.health(m, { cpu: st.cpu, uplinkRate: st.uplinkRate, temps: st.temps });
 		st.summary = insight.summary(st.health);
 		this.m = m;
 		this.paint();
@@ -1724,6 +1727,7 @@ return view.extend({
 		el.cpuCores = E('div', { 'class': 'vt-cores' });
 		el.cpuSpark = E('div', { 'class': 'vt-spark-slot' });
 		el.cpuLoad = E('span', { 'class': 'vt-hint vt-tn', 'title': _('Load average over 1, 5 and 15 minutes') });
+		el.cpuTemp = E('span', { 'class': 'vt-hint vt-tn' });
 		el.memHead = E('div', { 'class': 'vt-mem-head' });
 		el.memBar = E('div', { 'class': 'vt-seg', 'role': 'img' });
 		el.memLegend = E('div', { 'class': 'vt-legend' });
@@ -1736,7 +1740,8 @@ return view.extend({
 				E('div', { 'class': 'vt-sys-cpu-l' }, [
 					E('span', { 'class': 'vt-label' }, [ _('CPU', 'vantage') ]),
 					el.cpuVal,
-					el.cpuLoad
+					el.cpuLoad,
+					el.cpuTemp
 				]),
 				E('div', { 'class': 'vt-sys-cpu-r' }, [
 					E('div', { 'class': 'vt-spark-box' }, [ el.cpuSpark, E('span', { 'class': 'vt-cap' }, [ _('last 5 min') ]) ]),
@@ -1758,6 +1763,11 @@ return view.extend({
 		txt(el.cpuVal, cpu ? Math.round(cpu.pct) + '%' : fmt.DASH);
 		el.cpuVal.className = 'vt-big vt-tn' + (cpu && cpu.pct >= 90 ? ' vt-t-err' : cpu && cpu.pct >= 70 ? ' vt-t-warn' : '');
 		txt(el.cpuLoad, _('Load avg %s').format(d.load.map(fmt.load).join(' · ')));
+		/* the hottest sensor; each one in the tooltip */
+		var temps = this.st.temps || [];
+		el.cpuTemp.hidden = !temps.length;
+		txt(el.cpuTemp, temps.length ? _('Temperature %s').format(fmt.celsius(temps[0].celsius)) : '');
+		setTitle(el.cpuTemp, temps.map(function(t) { return t.name + ' ' + fmt.celsius(t.celsius); }).join('\n'));
 		patch(el.cpuSpark, [ sparkline(this.st.hist.cpu, [ 1 ], 100, 'vt-spark-cpu', { scale: function() { return '100%'; } }) ]);
 		patch(el.cpuCores, (cpu ? cpu.cores : []).map(function(p, i) {
 			var fill = E('span', { 'class': 'vt-core-fill' });
@@ -2790,6 +2800,9 @@ return view.extend({
 
 	handleKey: function(ev) {
 		var t = ev.target, typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+		/* Escape in an open chart style list (a select whose list the page
+		   draws, focus on an option) closes the list, not Customize */
+		if (ev.key === 'Escape' && t && t.tagName === 'OPTION') return;
 		if (ev.key === 'Escape' && this.ui.drawer && !document.body.classList.contains('modal-overlay-active')) {
 			this.closeDrawer();
 			return;

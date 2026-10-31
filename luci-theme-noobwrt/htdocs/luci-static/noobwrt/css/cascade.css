@@ -4050,20 +4050,20 @@ pre.command-output {
 .node-status-processes > .main .table .tr .td:nth-child(3) {
   white-space: normal;
 }
-div[style*="display:grid;grid-template-columns:repeat"] {
+div[style*="display:grid;grid-template-columns:repeat(auto-fit, minmax(70px"] {
   display: flex !important;
   justify-content: space-evenly !important;
   flex-wrap: wrap;
 }
-div[style*="display:grid;grid-template-columns:repeat"] .ifacebox {
+div[style*="display:grid;grid-template-columns:repeat(auto-fit, minmax(70px"] .ifacebox {
   text-align: center;
   flex-basis: 100px;
 }
-div[style*="display:grid;grid-template-columns:repeat"] .ifacebox .ifacebox-body {
+div[style*="display:grid;grid-template-columns:repeat(auto-fit, minmax(70px"] .ifacebox .ifacebox-body {
   font-size: 0.7rem;
   padding: 0.875rem;
 }
-div[style*="display:grid;grid-template-columns:repeat"] .ifacebox .ifacebox-body .cbi-tooltip-container {
+div[style*="display:grid;grid-template-columns:repeat(auto-fit, minmax(70px"] .ifacebox .ifacebox-body .cbi-tooltip-container {
   font-size: inherit !important;
 }
 /* firewall */
@@ -4492,10 +4492,10 @@ div[style*="display:grid;grid-template-columns:repeat"] .ifacebox .ifacebox-body
   .mobile-hide {
     display: none;
   }
-  div[style*="display:grid;grid-template-columns:repeat"] .ifacebox {
+  div[style*="display:grid;grid-template-columns:repeat(auto-fit, minmax(70px"] .ifacebox {
     flex-basis: 80px;
   }
-  div[style*="display:grid;grid-template-columns:repeat"] .ifacebox .ifacebox-body {
+  div[style*="display:grid;grid-template-columns:repeat(auto-fit, minmax(70px"] .ifacebox .ifacebox-body {
     padding: 0.875rem 0.5rem;
     font-size: 0.6rem;
   }

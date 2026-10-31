@@ -25,6 +25,7 @@ const callWirelessDevices = rpc.declare({ object: 'luci-rpc', method: 'getWirele
 
 const THEME_KEY = 'vantage.theme';
 const RAIL_KEY = 'vantage.rail';
+const LOGIN_KEY = 'vantage.login';      /* read by the login page's login.js */
 
 /* 24px stroke icons, drawn for this theme: constant [tag, attributes] lists,
    built with createElementNS (no markup parsing, no user data) */
@@ -193,6 +194,65 @@ function headingKey(text) {
 function repeatsTrail(key, tag, trail) {
 	if (!key) return false;
 	return (tag === 'H2' ? trail.all : trail.page).has(key);
+}
+
+/* Does help text carry a warning? LuCI writes them as a paragraph that
+   opens with a short label and a colon ("Note:", "Warning:", "注意：",
+   "Uwaga:"), whatever the language, and sometimes in bold. Line breaks
+   end a paragraph. */
+function helpWarns(desc) {
+	if (desc.querySelector('strong, b, .warning, .alert-message')) return true;
+	let text = '';
+	(function walk(node) {
+		node.childNodes.forEach(n => {
+			if (n.nodeType === 3) text += n.data;
+			else if (n.nodeName === 'BR') text += '\n';
+			else if (n.nodeType === 1 && !n.classList.contains('vt-help')) walk(n);
+		});
+	})(desc);
+	return text.split('\n').some(p => /^\s*[^\s\d:：]{1,16}(?:\s[^\s\d:：]{1,16})?\s*[:：]/u.test(p));
+}
+
+/* Where a folded help line ends cleanly: after its first sentence, or at
+   LuCI's first line break, when that falls on the first line. Returns the
+   offset in px from the text's left edge, or null when the line has to
+   fade out instead. A full stop ends a sentence only after two characters
+   that are not dots, so "e.g." does not; the stop is the match's last
+   character (no lookbehind: Safari before 16.4 rejects the whole file). */
+const SENTENCE_END = /[。！？]|[^\s.]{2}[.!?](?=\s|$)/u;
+
+function helpCut(desc, cs, line) {
+	const walker = document.createTreeWalker(desc, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+		acceptNode: n => n.nodeType === 1 && n.classList.contains('vt-help') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+	});
+	let end = null, last = null;
+	for (let n = walker.nextNode(); n && !end; n = walker.nextNode()) {
+		if (n.nodeName === 'BR') { end = last; break; }
+		if (n.nodeType !== 3) continue;
+		const m = SENTENCE_END.exec(n.data);
+		if (m) end = [ n, m.index + m[0].length - 1 ];
+		else if (/\S/.test(n.data)) last = [ n, n.data.search(/\s*$/) - 1 ];
+	}
+	if (!end) return null;
+	const range = document.createRange();
+	range.setStart(end[0], end[1]);
+	range.setEnd(end[0], end[1] + 1);
+	const rects = range.getClientRects(), r = rects[rects.length - 1];
+	const box = desc.getBoundingClientRect();
+	if (!r || r.bottom > box.top + (parseFloat(cs.paddingTop) || 0) + line + 1) return null;
+	return Math.ceil(r.right - box.left) + 1;
+}
+
+/* Where the text of a folded help line ends: a line that wraps early (a
+   long word next, a narrow phone) ends well short of the box, so the fade
+   is placed there. Offset in px from the text's left edge, or null. */
+function helpLineEnd(desc, cs, line) {
+	const range = document.createRange();
+	range.selectNodeContents(desc);
+	const box = desc.getBoundingClientRect(), limit = box.top + (parseFloat(cs.paddingTop) || 0) + line + 1;
+	let right = 0;
+	for (const r of range.getClientRects()) if (r.width && r.bottom <= limit) right = Math.max(right, r.right);
+	return right ? Math.ceil(right - box.left) : null;
 }
 
 /* ---------------------------------------------------------------------------
@@ -1121,6 +1181,9 @@ return baseclass.extend({
 		if (pref !== 'dark') list.push({ title: _('Use dark theme'), path: _('Appearance', 'vantage-theme'), icon: 'moon', run: () => this.setTheme('dark') });
 		if (pref !== 'light') list.push({ title: _('Use light theme'), path: _('Appearance', 'vantage-theme'), icon: 'sun', run: () => this.setTheme('light') });
 		if (pref !== 'auto') list.push({ title: _('Follow system theme'), path: _('Appearance', 'vantage-theme'), icon: 'auto', run: () => this.setTheme('auto') });
+		const login = this.loginPref(), names = this.loginNames();
+		for (const k of [ 'grid', 'stars', 'none' ])
+			if (k !== login) list.push({ title: '%s: %s'.format(_('Login background'), names[k]), path: _('Appearance', 'vantage-theme'), icon: 'page', run: () => this.setLoginPref(k) });
 		list.push({ title: _('Log out'), path: _('Session'), icon: 'logout', segs: [ 'admin', 'logout' ] });
 		list.forEach(a => { a.hay = a.path + ' › ' + a.title; a.group = _('Actions'); });
 		return list;
@@ -1128,8 +1191,11 @@ return baseclass.extend({
 
 	openPalette() {
 		if (this.pal) return;
-		/* a row menu left open would take the palette's Escape */
+		/* a row menu, Appearance or a pinned help box left open would take
+		   the palette's Escape */
 		this.closeActMenu(false);
+		this.closeAppearance(false);
+		this.closeHelp(false);
 		/* focus inside the flyout goes back to what opened the flyout, since
 		   closing it hides the element that had focus */
 		const from = document.activeElement;
@@ -1260,6 +1326,16 @@ return baseclass.extend({
 		const btn = document.getElementById('vt-search-btn');
 		if (btn) btn.addEventListener('click', () => this.openPalette());
 
+		/* a select whose list the page draws (customizable select) closes it
+		   on Escape; the modal under it (ui.cancelModal on #modal_overlay)
+		   must not take the same Escape and dismiss the dialog. Capture, as
+		   for the row menu. */
+		const openList = CSS.supports('selector(:open)') ? 'select:open' : null;
+		document.addEventListener('keydown', ev => {
+			if (openList && ev.key === 'Escape' && ev.target.closest && ev.target.closest(openList))
+				ev.stopPropagation();
+		}, true);
+
 		document.addEventListener('keydown', ev => {
 			if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 'k' || ev.key === 'K')) {
 				ev.preventDefault();
@@ -1301,23 +1377,127 @@ return baseclass.extend({
 
 		const btn = document.getElementById('vt-theme');
 		if (btn) {
-			const names = { auto: _('Auto', 'vantage-theme'), light: _('Light', 'vantage-theme'), dark: _('Dark', 'vantage-theme') };
-			const label = '%s: %s'.format(_('Colour theme'), names[pref]) + (pref === 'auto' ? ' (%s)'.format(dark ? names.dark : names.light) : '');
 			btn.textContent = '';
 			btn.appendChild(svg(pref === 'auto' ? 'auto' : (pref === 'dark' ? 'moon' : 'sun'), 18));
-			btn.setAttribute('aria-label', label);
-			btn.setAttribute('title', label);
 		}
+		this.syncAppearance();
+	},
+
+	/* the login page's backdrop (login.js): grid packets unless set */
+	loginPref() {
+		const p = storageGet(LOGIN_KEY);
+		return (p === 'stars' || p === 'none') ? p : 'grid';
+	},
+
+	loginNames() {
+		return { grid: _('Grid packets'), stars: _('Starfield'), none: _('None', 'vantage-theme') };
+	},
+
+	setLoginPref(pref) {
+		storageSet(LOGIN_KEY, pref === 'grid' ? null : pref);
+		this.syncAppearance();
 	},
 
 	setupTheme() {
 		const btn = document.getElementById('vt-theme');
-		const order = { auto: 'light', light: 'dark', dark: 'auto' };
-		if (btn) btn.addEventListener('click', () => this.setTheme(order[this.themePref()]));
+		if (btn) {
+			btn.addEventListener('click', () => {
+				if (this.appearBtn) this.closeAppearance(false);
+				else this.openAppearance(btn);
+			});
+			btn.addEventListener('keydown', ev => {
+				if (ev.key !== 'ArrowDown' || this.appearBtn) return;
+				ev.preventDefault();
+				this.openAppearance(btn);
+			});
+		}
 		const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
 		if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (this.themePref() === 'auto') this.applyTheme(); });
-		window.addEventListener('storage', ev => { if (ev.key === THEME_KEY) this.applyTheme(); });
+		window.addEventListener('storage', ev => {
+			if (ev.key === THEME_KEY) this.applyTheme();
+			else if (ev.key === LOGIN_KEY) this.syncAppearance();
+		});
 		this.applyTheme();
+	},
+
+	/* Appearance, under the colour-theme button: the colour theme and the
+	   login background, each a native radio group (the arrow keys move
+	   within it) drawn as segments. Choices apply at once and stay open;
+	   Escape, Tab out of either end, a click outside, resizing or
+	   scrolling the page close it. */
+	appearanceEl() {
+		if (this.appear) return this.appear;
+		const group = (name, legend, opts, set) => E('fieldset', { 'class': 'vt-appear-set' }, [
+			E('legend', {}, [ legend ]),
+			E('div', { 'class': 'vt-appear-track' }, opts.map(o => {
+				const input = E('input', { 'type': 'radio', 'name': name, 'value': o[0] });
+				input.addEventListener('change', () => { if (input.checked) set(o[0]); });
+				return E('label', { 'class': 'vt-appear-opt' }, [ input ].concat(o[2] ? [ svg(o[2], 16) ] : [], [ E('span', {}, [ o[1] ]) ]));
+			}))
+		]);
+		const login = this.loginNames();
+		const box = E('div', { 'id': 'vt-appearance', 'class': 'vt-appearance', 'role': 'dialog', 'aria-label': _('Appearance', 'vantage-theme'), 'hidden': 'hidden' }, [
+			group('vt-colour', _('Colour theme'), [
+				[ 'auto', _('Auto', 'vantage-theme'), 'auto' ], [ 'light', _('Light', 'vantage-theme'), 'sun' ], [ 'dark', _('Dark', 'vantage-theme'), 'moon' ]
+			], v => this.setTheme(v)),
+			group('vt-login', _('Login background'), [ [ 'grid', login.grid ], [ 'stars', login.stars ], [ 'none', login.none ] ], v => this.setLoginPref(v))
+		]);
+		box.addEventListener('keydown', ev => {
+			if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.closeAppearance(true); }
+			else if (ev.key === 'Tab') {
+				const sets = box.querySelectorAll('fieldset');
+				const edge = ev.shiftKey ? sets[0] : sets[sets.length - 1];
+				if (edge.contains(ev.target)) { ev.preventDefault(); this.closeAppearance(true); }
+			}
+		});
+		document.addEventListener('keydown', ev => {
+			if (!this.appearBtn || box.contains(ev.target)) return;
+			if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.closeAppearance(true); }
+		}, true);
+		document.addEventListener('pointerdown', ev => {
+			if (this.appearBtn && !box.contains(ev.target) && !this.appearBtn.contains(ev.target)) this.closeAppearance(false);
+		}, true);
+		window.addEventListener('resize', () => this.closeAppearance(false));
+		window.addEventListener('scroll', ev => { if (!box.contains(ev.target)) this.closeAppearance(false); }, true);
+		document.body.appendChild(box);
+		return (this.appear = box);
+	},
+
+	syncAppearance() {
+		if (!this.appear) return;
+		const now = { 'vt-colour': this.themePref(), 'vt-login': this.loginPref() };
+		Array.prototype.forEach.call(this.appear.querySelectorAll('input[type="radio"]'), r => { r.checked = (now[r.name] === r.value); });
+	},
+
+	openAppearance(btn) {
+		this.closeActMenu(false);
+		this.closeHelp(false);
+		const box = this.appearanceEl();
+		this.syncAppearance();
+		box.style.maxHeight = '';
+		box.hidden = false;
+		/* below the button, right edges aligned, above the phone's bottom bar */
+		const r = btn.getBoundingClientRect(), w = box.offsetWidth;
+		const rail = this.mqMobile && this.mqMobile.matches ? document.querySelector('.vt-rail') : null;
+		const floor = rail ? rail.getBoundingClientRect().top : window.innerHeight;
+		const top = r.bottom + 6;
+		if (box.offsetHeight > floor - 8 - top) box.style.maxHeight = Math.max(0, floor - 8 - top).toFixed(0) + 'px';
+		box.style.top = top.toFixed(0) + 'px';
+		box.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)).toFixed(0) + 'px';
+		btn.setAttribute('aria-controls', 'vt-appearance');
+		btn.setAttribute('aria-expanded', 'true');
+		this.appearBtn = btn;
+		const on = box.querySelector('input:checked');
+		if (on) on.focus();
+	},
+
+	closeAppearance(refocus) {
+		const btn = this.appearBtn;
+		if (!btn) return;
+		this.appearBtn = null;
+		this.appear.hidden = true;
+		btn.setAttribute('aria-expanded', 'false');
+		if (refocus && btn.isConnected) btn.focus();
 	},
 
 	/* --------------------------------------------------- host chip */
@@ -1665,69 +1845,79 @@ return baseclass.extend({
 		if (refocus && btn.isConnected) btn.focus();
 	},
 
-	/* Help text shows its first line; (i) unfolds the rest. LuCI also puts
-	   warnings here, so none is hidden whole: its start stays visible.
+	/* Help text that fits on one line shows as it is. Longer text folds to
+	   one line, which ends after the first sentence or fades out, and (i)
+	   shows all of it in a box over the page. LuCI also puts warnings here,
+	   as a paragraph that opens with a label ("Note:", "注意："), so text
+	   with one of those never folds.
 	   Field help: the button sits in the label column, after the field,
 	   because LuCI's label click handler finds the widget through
 	   nextElementSibling. */
 	addFieldHelp(desc) {
 		const row = desc.parentNode.parentNode;
 		const title = row.querySelector(':scope > .cbi-value-title');
-		row.appendChild(this.helpToggle(desc, row, _('Show full help: %s').format(title.textContent.trim()), _('Show full help')));
+		row.appendChild(this.helpToggle(desc, row, _('Show full help: %s').format(title.textContent.trim())));
 	},
 
 	/* Page and section intros: the button leads the first line, inside the
 	   description, since nothing may stand between LuCI's siblings (ui.tabs
 	   finds a tab menu as its pane group's previous sibling). The fold needs
 	   the button, so a view that rewrote the text would show it whole until
-	   the next pass adds the button again. The cut-off line unfolds on a
-	   click too, a bigger target on touch than the icon. */
+	   the next pass adds the button again. The folded line opens the box on
+	   a click too, a bigger target on touch than the icon. */
 	addIntroHelp(desc) {
 		if (desc.closest('.vt-app') || !desc.textContent.trim()) return;
-		desc.insertBefore(this.helpToggle(desc, desc, _('Show full description'), _('Show full description')), desc.firstChild);
+		desc.insertBefore(this.helpToggle(desc, desc, _('Show full description')), desc.firstChild);
 		if (desc._vtIntroClick) return;
 		desc._vtIntroClick = true;
 		desc.addEventListener('click', ev => {
 			const btn = desc.querySelector(':scope > .vt-help');
-			if (!btn || btn.hidden || desc.getAttribute('data-v-help') !== 'closed') return;
-			if (ev.target.closest('a, button') || String(window.getSelection())) return;
-			btn.click();
+			if (!btn || btn.hidden || btn.contains(ev.target) || ev.target.closest('a')) return;
+			if (String(window.getSelection())) return;
+			if (this.helpBtn === btn && this.helpPinned) this.closeHelp(false);
+			else this.openHelp(btn, desc, true, false);
 		});
 	},
 
-	/* The (i) button for desc. Its state lives on holder (the field row, or
-	   the intro itself) as data-v-help, which the CSS folds by. */
-	helpToggle(desc, holder, label, title) {
-		const state = holder.getAttribute('data-v-help') || 'closed';
-		holder.setAttribute('data-v-help', state);
+	/* The (i) button for desc. Whether desc folds lives on holder (the field
+	   row, or the intro itself) as data-v-help, which the CSS folds by. The
+	   box opens on hover and on keyboard focus, and a click or tap pins it. */
+	helpToggle(desc, holder, label) {
+		holder.setAttribute('data-v-help', this.helpSizes ? 'fold' : 'show');
 		desc.classList.add('vt-help-text');
 		if (!desc.id) desc.id = 'vt-help-' + (++this.helpSeq);
 		const btn = E('button', {
 			'class': 'vt-help', 'type': 'button', 'hidden': '',
-			'aria-expanded': String(state === 'open'), 'aria-controls': desc.id,
-			'aria-label': label, 'title': title,
-			'click': () => {
-				const open = holder.getAttribute('data-v-help') !== 'open';
-				holder.setAttribute('data-v-help', open ? 'open' : 'closed');
-				btn.setAttribute('aria-expanded', String(open));
-				this.fitHelp(desc);
+			'aria-expanded': 'false', 'aria-controls': 'vt-help-pop', 'aria-describedby': desc.id,
+			'aria-label': label,
+			'click': ev => {
+				if (this.helpBtn === btn && this.helpPinned) this.closeHelp(false);
+				else this.openHelp(btn, desc, true, ev.detail === 0);
+			},
+			'mouseenter': () => this.hoverHelp(btn, desc),
+			'mouseleave': () => this.leaveHelp(),
+			'focus': () => { if (!this.helpRefocus && btn.matches(':focus-visible')) this.openHelp(btn, desc, false, false); },
+			'blur': ev => {
+				if (!this.helpPinned && this.helpBtn === btn && !(this.helpPop && this.helpPop.contains(ev.relatedTarget)))
+					this.closeHelp(false);
 			}
 		}, [ svg('info', 16) ]);
 		desc._vtHelp = { btn: btn, holder: holder };
 		if (this.helpSizes) this.helpSizes.observe(desc);
-		else btn.hidden = false;
 		return btn;
 	},
 
-	/* (i) shows only while the one-line clamp cuts the text. Text that is
-	   not displayed (another tab, an unmet dependency) measures 0 and waits
-	   for the next resize notification. */
+	/* (i) shows, and the text folds to a line, while the text needs more
+	   than one line. Text that is not displayed (another tab, an unmet
+	   dependency) measures 0 and waits for the next resize notification. */
 	fitHelp(desc) {
 		this.fitHelps([ desc ]);
 	},
 
 	/* all sizes are read before any button changes: a write between two
-	   reads forced a layout per field (66 when the Wireless modal opened) */
+	   reads forced a layout per field (66 when the Wireless modal opened).
+	   Folded, the text still measures its full height. The line's end is
+	   set as data-v-end ("cut" at --vt-cut, or "fade"), which the CSS reads. */
 	fitHelps(descs) {
 		const fits = [];
 		for (const desc of descs) {
@@ -1736,12 +1926,152 @@ return baseclass.extend({
 				continue;
 			}
 			const h = desc._vtHelp;
-			if (!h || !h.btn.isConnected || !desc.clientHeight) continue;
-			fits.push([ h, desc.scrollHeight > desc.clientHeight + 1 ]);
+			if (!h || !h.btn.isConnected || !desc.clientWidth) continue;
+			const cs = window.getComputedStyle(desc);
+			const line = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.6;
+			const text = desc.scrollHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+			const fold = text > line * 1.5 && !helpWarns(desc);
+			const cut = fold ? helpCut(desc, cs, line) : null;
+			fits.push([ h, desc, fold, cut, line, fold && cut === null ? helpLineEnd(desc, cs, line) : null ]);
 		}
-		for (const [ h, cut ] of fits) {
-			const hide = !cut && h.holder.getAttribute('data-v-help') !== 'open';
-			if (h.btn.hidden !== hide) h.btn.hidden = hide;
+		/* an intro's (i) sits in its line, so showing it moves the text:
+		   that line is measured again once laid out */
+		const again = [];
+		for (const [ h, desc, fold, cut, line, end ] of fits) {
+			const state = fold ? 'fold' : 'show';
+			if (h.holder.getAttribute('data-v-help') !== state) h.holder.setAttribute('data-v-help', state);
+			if (h.btn.hidden === fold) {
+				h.btn.hidden = !fold;
+				if (fold && h.holder === desc) again.push(desc);
+			}
+			if (!fold) {
+				desc.removeAttribute('data-v-end');
+				if (this.helpBtn === h.btn) this.closeHelp(false);
+				continue;
+			}
+			desc.setAttribute('data-v-end', cut === null ? 'fade' : 'cut');
+			if (cut !== null || end !== null) desc.style.setProperty('--vt-cut', (cut !== null ? cut : end).toFixed(0) + 'px');
+			else desc.style.removeProperty('--vt-cut');
+			desc.style.setProperty('--vt-line', line.toFixed(2) + 'px');
+		}
+		if (again.length) window.requestAnimationFrame(() => this.fitHelps(again));
+	},
+
+	/* the box (i) opens: one for the page, filled with a copy of the
+	   description's nodes, so LuCI's own stay where they are */
+	helpPopEl() {
+		if (this.helpPop) return this.helpPop;
+		const pop = E('div', { 'id': 'vt-help-pop', 'class': 'vt-help-pop', 'hidden': 'hidden' });
+		pop.addEventListener('mouseenter', () => window.clearTimeout(this.helpTimer));
+		pop.addEventListener('mouseleave', () => this.leaveHelp());
+		/* opened from the keyboard, focus is in the box: Tab past either end
+		   goes back on (i) first, so it goes on from the field, not from the
+		   box at the end of the page */
+		pop.addEventListener('keydown', ev => {
+			if (ev.key !== 'Tab') return;
+			const stops = pop.querySelectorAll('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+			const i = Array.prototype.indexOf.call(stops, document.activeElement);
+			if (ev.shiftKey ? i <= 0 : i === stops.length - 1) this.closeHelp(true);
+		});
+		pop.addEventListener('focusout', ev => {
+			if (this.helpBtn && !pop.contains(ev.relatedTarget) && ev.relatedTarget !== this.helpBtn) this.closeHelp(false);
+		});
+		/* capture, so a modal under it does not take the same Escape; an
+		   open list takes its own first. Focus goes back to (i) only from
+		   the box or (i), not from a field typed in under a hover box. */
+		const openList = CSS.supports('selector(:open)') ? 'select:open, .cbi-dropdown[open]' : '.cbi-dropdown[open]';
+		document.addEventListener('keydown', ev => {
+			if (!this.helpBtn || ev.key !== 'Escape' || (ev.target.closest && ev.target.closest(openList))) return;
+			ev.preventDefault();
+			ev.stopPropagation();
+			const from = document.activeElement;
+			this.closeHelp(pop.contains(from) || from === this.helpBtn);
+		}, true);
+		/* a click on an intro's folded line toggles the box itself */
+		document.addEventListener('pointerdown', ev => {
+			if (!this.helpBtn || pop.contains(ev.target) || this.helpBtn.contains(ev.target)) return;
+			const intro = this.helpBtn.parentNode;
+			if (intro.matches('.cbi-map-descr, .cbi-section-descr') && intro.contains(ev.target)) return;
+			this.closeHelp(false);
+		}, true);
+		window.addEventListener('resize', () => this.closeHelp(false));
+		window.addEventListener('scroll', ev => { if (!pop.contains(ev.target)) this.closeHelp(false); }, true);
+		document.body.appendChild(pop);
+		return (this.helpPop = pop);
+	},
+
+	hoverHelp(btn, desc) {
+		if (this.helpPinned) return;
+		window.clearTimeout(this.helpTimer);
+		this.helpTimer = window.setTimeout(() => this.openHelp(btn, desc, false, false), this.helpBtn ? 0 : 120);
+	},
+
+	leaveHelp() {
+		if (this.helpPinned) return;
+		window.clearTimeout(this.helpTimer);
+		this.helpTimer = window.setTimeout(() => this.closeHelp(false), 160);
+	},
+
+	openHelp(btn, desc, pinned, focusIn) {
+		window.clearTimeout(this.helpTimer);
+		const pop = this.helpPopEl();
+		const enter = () => {
+			const link = focusIn && pop.querySelector('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+			if (link) link.focus();
+		};
+		/* open already (on hover or keyboard focus): a click pins it, Enter
+		   also moves into it */
+		if (this.helpBtn === btn) {
+			this.helpPinned = this.helpPinned || pinned;
+			enter();
+			return;
+		}
+		this.closeHelp(false);
+		const copy = [];
+		desc.childNodes.forEach(n => {
+			if (n === btn) return;
+			const c = n.cloneNode(true);
+			if (c.nodeType === 1) {
+				c.removeAttribute('id');
+				c.querySelectorAll('[id]').forEach(m => m.removeAttribute('id'));
+			}
+			copy.push(c);
+		});
+		pop.replaceChildren.apply(pop, copy);
+		pop.style.maxHeight = '';
+		pop.hidden = false;
+		/* under (i), or above it when the screen (or the phone's bottom bar)
+		   leaves no room; the roomier side scrolls when neither fits */
+		const r = btn.getBoundingClientRect(), w = pop.offsetWidth, ht = pop.offsetHeight;
+		const rail = this.mqMobile && this.mqMobile.matches ? document.querySelector('.vt-rail') : null;
+		const floor = rail ? rail.getBoundingClientRect().top : window.innerHeight;
+		const below = floor - 8 - (r.bottom + 6), above = r.top - 6 - 8;
+		const down = ht <= below || (ht > above && below >= above);
+		const room = down ? below : above;
+		if (ht > room) pop.style.maxHeight = Math.max(0, room).toFixed(0) + 'px';
+		const top = down ? r.bottom + 6 : r.top - 6 - Math.min(ht, room);
+		const left = Math.max(8, Math.min(r.left - 8, window.innerWidth - w - 8));
+		pop.style.top = top.toFixed(0) + 'px';
+		pop.style.left = left.toFixed(0) + 'px';
+		btn.setAttribute('aria-expanded', 'true');
+		this.helpBtn = btn;
+		this.helpPinned = pinned;
+		enter();
+	},
+
+	closeHelp(refocus) {
+		window.clearTimeout(this.helpTimer);
+		const btn = this.helpBtn;
+		if (!btn) return;
+		this.helpBtn = null;
+		this.helpPinned = false;
+		this.helpPop.hidden = true;
+		this.helpPop.textContent = '';
+		btn.setAttribute('aria-expanded', 'false');
+		if (refocus && btn.isConnected) {
+			this.helpRefocus = true;
+			btn.focus();
+			this.helpRefocus = false;
 		}
 	},
 

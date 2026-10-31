@@ -31,7 +31,8 @@ return baseclass.extend({
 
 	/* ------------------------------------------------------------ health */
 
-	/* model + { cpu: { pct, cores } | null, uplinkRate: { rx, tx } | null }
+	/* model + { cpu: { pct, cores } | null, uplinkRate: { rx, tx } | null,
+	   temps: model.temps() | null }
 	   (model.wired: no Wi-Fi checks)
 	   -> [ { id, level, title, value, reason, detail, page } ]
 	   value and reason are short enough for a health chip; detail is the
@@ -65,10 +66,13 @@ return baseclass.extend({
 		/* CPU */
 		var cpu = live.cpu && finite(live.cpu.pct) ? live.cpu.pct : null, cores = (live.cpu && live.cpu.cores && live.cpu.cores.length) || 1;
 		var load = (dev.load || [])[0];
+		/* the hottest sensor, when the device has any */
+		var hot = live.temps && live.temps[0] ? fmt.celsius(live.temps[0].celsius) : null;
 		if (cpu == null) out.push({ id: 'cpu', level: 'info', title: _('CPU', 'vantage'), value: fmt.DASH, reason: _('Measuring…'), detail: _('Measuring over the next poll'), page: PAGES.processes });
 		else out.push({ id: 'cpu', level: cpu >= 90 ? 'err' : cpu >= 70 ? 'warn' : 'ok', title: _('CPU', 'vantage'), value: fmt.pct(cpu),
-			reason: cpu >= 70 ? _('Busy · load %s').format(fmt.load(load)) : _('Load %s · %d cores').format(fmt.load(load), cores),
-			detail: cpu >= 70 ? _('Busy; load %s on %d cores; see the busiest processes').format(fmt.load(load), cores) : _('Load %s on %d cores').format(fmt.load(load), cores),
+			reason: (cpu >= 70 ? _('Busy · load %s').format(fmt.load(load)) : _('Load %s · %d cores').format(fmt.load(load), cores)) + (hot ? ' · ' + hot : ''),
+			detail: (cpu >= 70 ? _('Busy; load %s on %d cores; see the busiest processes').format(fmt.load(load), cores) : _('Load %s on %d cores').format(fmt.load(load), cores)) +
+				(hot ? ' · ' + _('Temperature %s').format(hot) : ''),
 			page: PAGES.processes });
 
 		/* memory, framed as available (as in the System tile) */

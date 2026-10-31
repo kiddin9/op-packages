@@ -543,6 +543,34 @@ return baseclass.extend({
 		o.value('cdma', 'CDMA');
 		bind(o);
 
+		/* the names are config_check / nas.uc RAT_ORDER_IDS; the daemon drops
+		   an unknown or repeated one with a warning, so it is refused here
+		   before it gets that far */
+		o = s.taboption(tab, form.Value, 'rat_order', _('RAT priority'),
+			_('QMI and MBIM modems: the order in which the modem searches the radio technologies, most preferred first, e.g. <code>nr5g,lte</code>. wwand writes it at every start when the modem holds a different one. A technology missing from the list may never be searched for, even when "Radio technology" allows it. Empty = leave the modem\'s order unchanged. Saving a change restarts this modem\'s bring-up, so its connection drops briefly. The current order is shown, and can be changed live, under Modem Tools.'));
+		o.value('nr5g,lte', 'NR5G, LTE');
+		o.value('nr5g,lte,umts', 'NR5G, LTE, UMTS');
+		o.value('lte,nr5g', 'LTE, NR5G');
+		o.value('lte,umts,gsm', 'LTE, UMTS, GSM');
+		o.optional = true;
+		o.validate = function(section_id, value) {
+			if (!value) return true;
+			var known = [ 'gsm', 'umts', 'lte', 'nr5g', 'td-scdma', 'cdma1x', 'evdo' ], seen = {};
+			/* 5gnr: libqmi's spelling, which the daemon takes for nr5g (nas.uc
+			   RAT_ORDER_ALIASES) — mapped first so "nr5g,5gnr" is a repeat */
+			var names = value.toLowerCase().split(/[, ]+/).filter(function(n) { return n; })
+				.map(function(n) { return n == '5gnr' ? 'nr5g' : n; });
+			for (var i = 0; i < names.length; i++) {
+				if (known.indexOf(names[i]) < 0)
+					return _('Unknown technology "%s" — use %s').format(names[i], known.join(', '));
+				if (seen[names[i]])
+					return _('"%s" is listed twice').format(names[i]);
+				seen[names[i]] = true;
+			}
+			return true;
+		};
+		bind(o);
+
 		o = s.taboption(tab, form.Value, 'mcc', _('MCC'),
 			_('Mobile Country Code for manual network selection.'));
 		o.datatype = 'uinteger';

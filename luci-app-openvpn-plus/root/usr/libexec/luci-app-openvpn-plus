@@ -730,6 +730,33 @@ openssldgst() {
 	return 0
 }
 
+# Clean up empty symlink folder
+internal_cleansymlink() {
+	# internal function (no shift)
+	local ram_link_dir="${1}"
+	local www_link_dir="${2}"
+
+	# Remove the temporary RAM directory ONLY if it is completely empty
+	[ -d "${ram_link_dir}" ] && rmdir "${ram_link_dir}" 2>/dev/null
+
+	# Smart Web-Folder Cleanup: Check if files other than index.html exist
+	if [ -d "${www_link_dir}" ]; then
+		local has_profiles="0"
+		local check_link
+		# If a real symlink or folder matching the pattern exists, has_profiles becomes 1
+		for check_link in "${www_link_dir}"/ovpn-tmp-*-*; do
+			if [ -e "${check_link}" ] || [ -L "${check_link}" ]; then
+				has_profiles="1"
+				break
+			fi
+		done
+		# Remove the web folder if no active profile links are left
+		if [ "${has_profiles}" = "0" ]; then
+			rm -rf "${www_link_dir}"
+		fi
+	fi
+}
+
 # Manage temporary download links for mobile profiles [create|delete]
 symlink() {
 	shift # Remove "symlink" from the arguments list
@@ -834,25 +861,8 @@ symlink() {
 				# Remove the temporary session files for this instance from RAM
 				rm -rf "${ram_link_dir}"/ovpn-tmp-*-"${ovpn_instance}"
 
-				# Remove RAM base directory if it has become completely empty
-				rmdir "${ram_link_dir}" 2>/dev/null
-
-				# Smart Web-Folder Cleanup: Check if files other than index.html exist
-				if [ -d "${www_link_dir}" ]; then
-					local has_profiles="0"
-					local check_link
-					# If a real symlink or folder matching the pattern exists, has_profiles becomes 1
-					for check_link in "${www_link_dir}"/ovpn-tmp-*-*; do
-						if [ -e "${check_link}" ] || [ -L "${check_link}" ]; then
-							has_profiles="1"
-							break
-						fi
-					done
-					# Remove the web folder if no active profile links are left
-					if [ "${has_profiles}" = "0" ]; then
-						rm -rf "${www_link_dir}"
-					fi
-				fi
+				# Clean up empty symlink folder
+				internal_cleansymlink "${ram_link_dir}" "${www_link_dir}"
 
 				printf "%s\n" "SUCCESS: Link directory and static profile deleted from RAM."
 			else
@@ -868,7 +878,6 @@ symlink() {
 	esac
 	return 0
 }
-
 
 # Helper to prevent routing loops for IPv4 and IPv6 subnets
 internal_checkloopback() {
@@ -1944,7 +1953,6 @@ internal_cleaninst() {
 				if internal_checkname "${instname}"; then
 					# Safely remove files, dead symlinks or directories
 					rm -rf "${f}"
-					logger -t openvpn-luci "Cleanup: Removed orphaned item '${f}'."
 				fi
 				;;
 		esac
@@ -1988,20 +1996,7 @@ cleanup() {
 	# Step 3: Remove orphan symlink files
 	internal_cleaninst "${active_list}" "${www_link_dir}/ovpn-tmp-*-*"
 	internal_cleaninst "${active_list}" "${ram_link_dir}/ovpn-tmp-*-*"
-
-	# Remove the temporary RAM directory ONLY if it is completely empty
-	[ -d "${ram_link_dir}" ] && rmdir "${ram_link_dir}" 2>/dev/null
-
-	# Smart Web-Folder Cleanup: Check if files other than index.html exist
-	if [ -d "${www_link_dir}" ]; then
-		local found_profiles
-		found_profiles="${www_link_dir}/ovpn-tmp-"*-*
-
-		# If the text still has a '*', no active profiles were found
-		if [ "${found_profiles}" = "${www_link_dir}/ovpn-tmp-*-*" ]; then
-			rm -rf "${www_link_dir}"
-		fi
-	fi
+	internal_cleansymlink "${ram_link_dir}" "${www_link_dir}"
 
 	return 0
 }

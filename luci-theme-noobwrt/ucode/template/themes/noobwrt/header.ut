@@ -39,7 +39,8 @@
 		blur_opacity_dark = cfg.get_first('noobwrt', 'global', 'transparency_dark') ?? blur_opacity_dark;
 		mode              = cfg.get_first('noobwrt', 'global', 'mode')              ?? mode;
 	}
-	const bar_color = (mode == 'dark') ? dark_primary : primary;
+	const is_dark = (mode == 'dark' || mode == 'amoled');
+	const bar_color = is_dark ? dark_primary : primary;
 
 -%}
 <!DOCTYPE html>
@@ -84,7 +85,7 @@
 	<link rel="manifest" href="{{ media }}/icon/manifest.json" crossorigin="use-credentials">
 
 	<link rel="stylesheet" href="{{ media }}/css/cascade.css?v={{ version.luciversion }}">
-	{% if (mode == 'dark'): %}
+	{% if (is_dark): %}
 	<style id="dark-theme-style">{{ dark_css }}</style>
 	{% endif -%}
 	<style>
@@ -112,7 +113,7 @@
 </head>
 
 <body
-	class="lang_{{ dispatcher.lang }} {% if (ctx.authsession): %}logged-in{% endif %}{% if (mode == 'dark'): %} server-dark dark-theme{% endif %}"
+	class="lang_{{ dispatcher.lang }} {% if (ctx.authsession): %}logged-in{% endif %}{% if (is_dark): %} server-dark dark-theme{% endif %}{% if (mode == 'amoled'): %} amoled-theme{% endif %}"
 	data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
 
 	<div class="main">

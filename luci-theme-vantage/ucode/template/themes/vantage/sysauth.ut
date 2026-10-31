@@ -88,5 +88,6 @@
 	});
 })(document.querySelector('form.vt-login-form'));
 </script>
+<script src="{{ media }}/login.js"></script>
 </body>
 </html>

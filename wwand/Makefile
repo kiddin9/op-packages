@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.8.0_pre36
-PKG_RELEASE:=86
+PKG_VERSION:=1.8.0_pre48
+PKG_RELEASE:=87
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=d13826e8e19f0e4118d3246fdb021ca04b9ca05e
+PKG_SOURCE_VERSION:=f2c804f06ff028088ad262bf86683b2519b1b127
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -98,6 +98,7 @@ UCDIR:=/usr/share/ucode/wwand
 WWAND_BASE_UC:=apndb.uc atcmd.uc atcmd_parse.uc atport.uc backend.uc board.uc \
 	carrier_config.uc client.uc config.uc config_check.uc context_common.uc \
 	context_monitor_qmi.uc ctx_settings.uc daemon.uc deps.uc discovery.uc \
+	fcc_fibocom.uc \
 	hwops.uc log.uc modem_common.uc modem_datapath_qmi.uc modem_init_qmi.uc plugins.uc \
 	modem_quirks.uc modeswitch.uc ncm_vendors.uc netlink.uc netsel_ops.uc \
 	protocol_switch.uc reconnect.uc recovery.uc regdetail.uc sim.uc sim_plmn.uc \
@@ -386,7 +387,9 @@ define Package/wwand-mbim
   # conditional for the same reason as wwand-qmi: the ucode side is
   # transport-neutral, and on MHI the transport is kmod-mhi-wwan-mbim, which
   # wwand-mhi already pulls
-  DEPENDS:=+wwand-qmi +USB_SUPPORT:kmod-usb-net-cdc-mbim
+  # +ucode-mod-digest: the Fibocom FM350 FCC unlock (fcc_fibocom.uc) hashes the
+  # GTFCCLOCK challenge with sha256, injected from here (modem_mbim.uc)
+  DEPENDS:=+wwand-qmi +ucode-mod-digest +USB_SUPPORT:kmod-usb-net-cdc-mbim
   # coexists with the stock OpenWrt MBIM stack (netifd `mbim` proto, package
   # umbim): wwand manages a cdc_mbim modem only once its interface has been
   # migrated to `proto wwand` (LuCI modem list / migrate CLI), so both stacks can

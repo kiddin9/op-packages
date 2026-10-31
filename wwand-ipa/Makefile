@@ -14,11 +14,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand-ipa
 PKG_VERSION:=0.2.0
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand-ipa.git
-PKG_SOURCE_VERSION:=8f552c18a66b996a0f84e755bde93fc5e128b7b3
+PKG_SOURCE_VERSION:=ccf6d0f3310d8caa298c2b0c18ef2e720e3c0ef5
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only

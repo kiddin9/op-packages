@@ -356,6 +356,8 @@ html[data-darkmode="true"] .vt-app {
 	background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px, 5px 5px;
 }
 .vt-app .vt-select:hover { border-color: var(--vt-text-3); }
+/* focused or open: the ring of the app's other fields (filter, rename) */
+.vt-app .vt-select:focus { outline: none; border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
 /* the open list: browsers that can style it (customizable select) draw
    it like the theme's dropdowns; others keep their own */
 @supports (appearance: base-select) {
@@ -373,8 +375,17 @@ html[data-darkmode="true"] .vt-app {
 		min-height: 32px; padding: 0 10px; gap: 8px;
 		border-radius: var(--vt-r-sm); font-size: var(--vt-fs-base); cursor: pointer;
 	}
-	/* the option under the pointer or keyboard, as the theme's dropdowns mark it */
-	.vt-app .vt-select option:is(:hover, :focus, :focus-visible) { background: var(--vt-surface-3); box-shadow: inset 2px 0 0 var(--vt-accent-text); outline: none; }
+	.vt-app .vt-select:open { outline: none; border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
+	/* below the field when it fits, as the theme's dropdowns open; the
+	   browser's default opens toward the larger space, often upward */
+	.vt-app .vt-select::picker(select) { position-try-order: normal; }
+	/* the option under the pointer gets the fill, the keyboard's the fill
+	   and the accent bar, as the theme's dropdowns mark them. Opened with
+	   the pointer, the chosen option has :focus without :focus-visible:
+	   unmarked, so it no longer looks like a second row under the pointer */
+	.vt-app .vt-select option:is(:hover, :focus-visible) { background: var(--vt-surface-3); }
+	.vt-app .vt-select option:focus-visible { box-shadow: inset 2px 0 0 var(--vt-accent-text); }
+	.vt-app .vt-select option:focus { outline: none; }
 	.vt-app .vt-select option:checked { font-weight: 600; }
 	.vt-app .vt-select option::checkmark { color: var(--vt-accent-text); }
 }
@@ -1158,7 +1169,7 @@ h2, h3{
 .vt-app .vt-rename .vt-rename-input {
 	height: var(--vt-ctl); width: 100%; padding: 0 10px; margin: 0;
 	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl); background: var(--vt-surface);
-	color: var(--vt-text); font: inherit; font-size: var(--vt-fs-md); box-shadow: none;
+	color: var(--vt-text); font: inherit; font-size: var(--vt-fs-md); font-weight: 400; box-shadow: none;   /* the label around it is semibold */
 }
 .vt-app .vt-rename .vt-rename-input:focus { outline: none; border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
 .vt-app .vt-icon-picks { display: flex; flex-wrap: wrap; gap: 4px; }

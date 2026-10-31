@@ -87,7 +87,7 @@
 				<div id="indicators" class="vt-indicators" aria-live="polite"></div>
 {% if (authed): %}
 				<span class="vt-host" id="vt-host" hidden></span>
-				<button type="button" class="vt-icon-btn" id="vt-theme" aria-label="{{ entityencode(_('Colour theme'), true) }}" title="{{ entityencode(_('Colour theme'), true) }}">
+				<button type="button" class="vt-icon-btn" id="vt-theme" aria-haspopup="dialog" aria-expanded="false" aria-label="{{ entityencode(_('Appearance', 'vantage-theme'), true) }}" title="{{ entityencode(_('Appearance', 'vantage-theme'), true) }}">
 					<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" class="vt-fill"/></svg>
 				</button>
 				<a class="vt-icon-btn" href="{{ dispatcher.build_url('admin/logout') }}" aria-label="{{ entityencode(_('Log out'), true) }}" title="{{ entityencode(_('Log out'), true) }}">

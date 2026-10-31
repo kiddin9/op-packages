@@ -774,10 +774,11 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 	if (optionalShowBtnCancel !== true) {
 		styleHide = ' display:none !important;';
 	}
+	const backupHide = (wizardParams && wizardParams.isServerBackup) ? '' : styleHide;
 
 	const yesBtn = E('button', { 'class': 'btn cbi-button cbi-button-action important', 'style': 'margin-right:10px;' }, TXT.KEY.generate_unique_keys);
 	const noBtn = E('button', { 'class': 'btn cbi-button cbi-button-neutral', 'style': 'margin-right:10px;' }, TXT.KEY.clone_default_keys);
-	const backupBtn = E('button', { 'class': 'btn cbi-button cbi-button-positive important', 'style': 'margin-right:10px;' }, TXT.BTN.backup);
+	const backupBtn = E('button', { 'class': 'btn cbi-button cbi-button-positive important', 'style': 'margin-right:10px;' + backupHide }, TXT.BTN.backup);
 	const cancelBtn = E('button', { 'class': 'btn cbi-button cbi-button-neutral', 'style': 'margin-right:10px;' + styleHide }, TXT.BTN.cancel);
 	const closeBtn = E('button', { 'class': 'cbi-button cbi-button-action important', 'style': 'display:none;' }, TXT.BTN.close);
 
@@ -904,7 +905,14 @@ const openAutomatedPostKeyGenModal = async function (newInstanceItem, appData, w
 		callbacks.uciSaveApplyRestart(instance_id);
 	});
 
-	L.ui.showModal(TXT.KEY.add_server_instance + ' (' + instance_id + ')', [
+	let displayName;
+	if (cnName) {
+		displayName = ': ' + cnName;
+	} else {
+		displayName = ' (' + instance_id + ')';
+	}
+
+	L.ui.showModal(TXT.KEY.add_server_instance + displayName, [
 		E('div', { 'class': 'cbi-map' }, [
 			E('div', { 'class': 'cbi-section' }, [
 				promptMessageNode,

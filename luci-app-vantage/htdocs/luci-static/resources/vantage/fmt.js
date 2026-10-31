@@ -103,6 +103,12 @@ return baseclass.extend({
 		return v == null ? DASH : (v / 65536).toFixed(2);
 	},
 
+	/* degrees Celsius, whole: 77.8 -> '78 °C' (no-break space) */
+	celsius: function(c) {
+		c = num(c);
+		return c == null ? DASH : Math.round(c) + '\u00a0°C';
+	},
+
 	/* upper-case, colon separated; anything else is returned unchanged */
 	mac: function(mac) {
 		var s = String(mac == null ? '' : mac).trim();

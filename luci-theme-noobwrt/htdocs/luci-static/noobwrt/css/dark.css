@@ -27,21 +27,21 @@
  *  Licensed to the public under the Apache License 2.0
  */
 body {
-  background: #1e1e1e;
+  background: var(--dark-bg, #1e1e1e);
   color: #cccccc;
 }
 .spinning::before {
   filter: invert(1);
 }
 .login-page .login-container .login-form .login-card {
-  background-color: rgba(18, 18, 28, 0.92);
+  background-color: var(--dark-login-bg, rgba(18, 18, 28, 0.92));
   -webkit-backdrop-filter: blur(var(--blur-radius-dark)) brightness(0.9);
   backdrop-filter: blur(var(--blur-radius-dark)) brightness(0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
 }
 .login-page .login-container .login-form .login-card .login-hero {
-  background: linear-gradient(135deg, rgba(33, 33, 44, 0.95), rgba(26, 27, 40, 0.95));
+  background: var(--dark-login-hero, linear-gradient(135deg, rgba(33, 33, 44, 0.95), rgba(26, 27, 40, 0.95)));
 }
 .login-page .login-container .login-form .login-card .login-hero .hero-particles span {
   background: rgba(124, 118, 255, 0.4);
@@ -71,7 +71,7 @@ body {
   color: #a1a8b8;
 }
 .login-page .login-container .login-form .form-login .input-group input {
-  background-color: rgba(30, 30, 40, 0.9) !important;
+  background-color: var(--dark-login-input-bg, rgba(30, 30, 40, 0.9)) !important;
   color: #e5e7eb;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 999px !important;
@@ -79,7 +79,7 @@ body {
 }
 .login-page .login-container .login-form .form-login .input-group input:focus {
   border-color: rgba(99, 102, 241, 0.65) !important;
-  background-color: rgba(36, 36, 48, 0.95) !important;
+  background-color: var(--dark-hover, rgba(36, 36, 48, 0.95)) !important;
   box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
 }
 .login-page .login-container .login-form .form-login .input-group input::placeholder {
@@ -93,10 +93,10 @@ body {
   opacity: 0.95;
 }
 header::after {
-  background-color: #1e1e1e !important;
+  background-color: var(--dark-bg, #1e1e1e) !important;
 }
 .main .main-left {
-  background-color: #333333 !important;
+  background-color: var(--dark-surface, #333333) !important;
   box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.15);
 }
 .main .main-left .sidenav-header .brand {
@@ -137,22 +137,22 @@ header::after {
   color: #ffffff !important;
 }
 .main .main-left::-webkit-scrollbar-thumb {
-  background-color: #252526 !important;
+  background-color: var(--dark-raised, #252526) !important;
 }
 .main .main-left::-webkit-scrollbar-track {
-  background-color: #333;
+  background-color: var(--dark-surface, #333);
 }
 .main .main-right {
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 h2 {
   color: #ccc;
-  background: #333333;
+  background: var(--dark-surface, #333333);
 }
 h3 {
   color: #ccc;
   border-bottom: 0;
-  background: #333333;
+  background: var(--dark-surface, #333333);
 }
 h4 {
   color: #8C6900;
@@ -166,7 +166,7 @@ a:active {
   color: #a5b2ff;
 }
 input:-webkit-autofill {
-  background-color: #3c3c3c !important;
+  background-color: var(--dark-raised, #3c3c3c) !important;
 }
 #channel_graph {
   background-color: transparent !important;
@@ -184,7 +184,7 @@ input:-webkit-autofill {
   color: #ccc;
 }
 header.bg-primary {
-  background-color: #1e1e1e !important;
+  background-color: var(--dark-bg, #1e1e1e) !important;
 }
 .cbi-map-descr {
   color: #ccc;
@@ -195,11 +195,11 @@ header.bg-primary {
 }
 .panel-title {
   color: #ccc;
-  background-color: #333333;
+  background-color: var(--dark-surface, #333333);
 }
 div > table > tbody > tr:nth-of-type(2n),
 div > .table > .tr:nth-of-type(2n) {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 table > tbody > tr > td,
 table > tfoot > tr > td,
@@ -207,7 +207,7 @@ table > thead > tr > td {
   color: #cccccc;
 }
 fieldset > table > tbody > tr:nth-of-type(2n) {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 table > tbody > tr > td,
 table > tfoot > tr > td,
@@ -243,12 +243,12 @@ table > thead > tr > td {
 table > tbody > tr > th,
 table > tfoot > tr > th,
 table > thead > tr > th {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
   border-bottom: black 1px solid !important;
 }
 .tr[data-title]::before,
 .tr.cbi-section-table-titles.named::before {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 tr > td,
 tr > th,
@@ -259,10 +259,10 @@ tr > th,
   border-top: 0;
 }
 .cbi-rowstyle-2 {
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 .cbi-rowstyle-1 {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 .cbi-rowstyle-2 .cbi-button-up,
 .cbi-rowstyle-2 .cbi-button-down,
@@ -275,16 +275,16 @@ h3 {
   color: #ccc;
 }
 h4 {
-  background-color: #1e1e1f;
+  background-color: var(--dark-bg, #1e1e1f);
 }
 .cbi-progressbar {
-  background: #282a2c;
+  background: var(--dark-raised, #282a2c);
 }
 .cbi-progressbar div {
   background-color: var(--dark-primary) !important;
 }
 .cbi-section-table .cbi-section-table-titles .cbi-section-table-cell {
-  background-color: #1e1e1f;
+  background-color: var(--dark-bg, #1e1e1f);
 }
 .cbi-button {
   color: #ffffff !important;
@@ -299,24 +299,24 @@ abbr {
 }
 div > table > tbody > tr:nth-of-type(2n),
 div > .table > .tbody > .tr:nth-of-type(2n) {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 #content_syslog {
   box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.35);
 }
 #syslog {
   color: #ccc;
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 #iwsvg,
 #iwsvg2,
 #bwsvg {
   overflow: hidden;
   box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.35);
-  background-color: #1e1e1e !important;
+  background-color: var(--dark-bg, #1e1e1e) !important;
 }
 .tabs {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 .tabs li[class~="active"],
 .tabs li:hover {
@@ -335,7 +335,7 @@ div > .table > .tbody > .tr:nth-of-type(2n) {
   border-bottom: 0.18751rem solid #483d8b;
   border-bottom: 0.18751rem solid var(--dark-primary);
   color: var(--dark-primary) !important;
-  background-color: #181819;
+  background-color: var(--dark-hover, #181819);
 }
 .cbi-tabmenu > li > a,
 .tabs > li > a {
@@ -346,22 +346,22 @@ div > .table > .tbody > .tr:nth-of-type(2n) {
   color: #ccc;
 }
 .cbi-tabmenu > li {
-  background: #2d2d2d;
+  background: var(--dark-raised, #2d2d2d);
 }
 .cbi-tabmenu li[class~="cbi-tab"] a {
   color: #ccc;
 }
 .cbi-tabmenu > li:hover {
   color: #ccc;
-  background: #2d2d2d;
+  background: var(--dark-raised, #2d2d2d);
   border-bottom: 0.18751rem solid var(--dark-primary) !important;
 }
 .cbi-tabmenu > li[class~="cbi-tab"] {
-  background-color: #181819;
+  background-color: var(--dark-hover, #181819);
   border-bottom: 0.18751rem solid var(--dark-primary) !important;
 }
 .cbi-tabcontainer > .cbi-value:nth-of-type(2n) {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
 }
 .cbi-value-title {
   color: #ccc;
@@ -386,7 +386,7 @@ input:not(.cbi-button):focus,
   border-color: var(--dark-primary) !important;
 }
 select {
-  background-color: #1e1e1e !important;
+  background-color: var(--dark-bg, #1e1e1e) !important;
 }
 #cbi-dropbear h2,
 #cbi-dropbear .cbi-map-descr,
@@ -402,13 +402,13 @@ select {
   color: #ccc !important;
 }
 .cbi-value-field > ul > li .ifacebadge {
-  background-color: #3c3c3c;
+  background-color: var(--dark-raised, #3c3c3c);
 }
 .cbi-section-descr {
   color: #ccc;
 }
 .cbi-input-textarea {
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
   color: #ccc;
   border: 1px solid #3c3c3c !important;
 }
@@ -417,11 +417,11 @@ textarea:focus-visible {
 }
 .cbi-section-remove:nth-of-type(2n),
 .cbi-section-node:nth-of-type(2n) {
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 .cbi-section[id] .cbi-section-remove:nth-of-type(4n+3),
 .cbi-section[id] .cbi-section-node:nth-of-type(4n+4) {
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 .node-system-packages > .main table tr td:nth-last-child(1) {
   color: #ccc;
@@ -439,13 +439,13 @@ textarea:focus-visible {
   background: #666;
 }
 .ifacebox-body {
-  background-color: #333;
+  background-color: var(--dark-surface, #333);
 }
 .zonebadge strong {
   color: #333;
 }
 .zonebadge > .ifacebadge {
-  background-color: #3c3c3c;
+  background-color: var(--dark-raised, #3c3c3c);
 }
 div.cbi-value var,
 td.cbi-value-field var {
@@ -453,10 +453,10 @@ td.cbi-value-field var {
 }
 #diag-rc-output > pre {
   color: #ccc;
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 .node-services-vssr .block {
-  background-color: #3c3c3c !important;
+  background-color: var(--dark-raised, #3c3c3c) !important;
   box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.35);
 }
 .node-services-vssr .block h4 {
@@ -465,11 +465,11 @@ td.cbi-value-field var {
 .node-services-vssr .status-bar {
   color: #ccc;
   box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.35);
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 .node-services-vssr .cbi-section-table-row {
   color: #ccc;
-  background-color: #3c3c3c !important;
+  background-color: var(--dark-raised, #3c3c3c) !important;
   box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.35);
 }
 .node-services-vssr .cbi-section-table-row.fast {
@@ -533,11 +533,11 @@ td.cbi-value-field var {
   background-color: darkorange !important;
 }
 fieldset[id^="cbi-apply-"] {
-  background-color: #333333;
+  background-color: var(--dark-surface, #333333);
 }
 #detail-bubble > div {
   border: 1px solid #ccc;
-  background: #252525;
+  background: var(--dark-raised, #252525);
 }
 .ifacebox-head.active {
   background-color: var(--dark-primary) !important;
@@ -552,11 +552,11 @@ header .fill .status span[data-style="active"] {
 [data-page="admin-network-diagnostics"] .tr > .td,
 .tr.table-titles > .th,
 .tr.cbi-section-table-titles > .th {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
   border-bottom: black 1px solid !important;
 }
 .network-status-table .ifacebox-body .ifacebadge {
-  background-color: #252526;
+  background-color: var(--dark-raised, #252526);
   border-bottom: 0;
   box-shadow: none;
 }
@@ -569,7 +569,7 @@ td > .ifacebadge,
 }
 .alert,
 .alert-message {
-  background-color: #333;
+  background-color: var(--dark-surface, #333);
 }
 .alert-message.warning {
   background-color: #986400 !important;
@@ -596,7 +596,7 @@ td > .ifacebadge,
   background-color: #896565;
 }
 .uci-dialog .cbi-section .uci-change-legend .uci-change-legend-label > var {
-  background-color: #333;
+  background-color: var(--dark-surface, #333);
   border-color: #666;
 }
 .uci-dialog .cbi-section .uci-change-legend .uci-change-legend-label > var ins {
@@ -606,7 +606,7 @@ td > .ifacebadge,
   background-color: #896565;
 }
 .uci-dialog .cbi-section .uci-change-list > var {
-  background-color: #333;
+  background-color: var(--dark-surface, #333);
   border-color: #666;
 }
 .uci-dialog .cbi-section .uci-change-list > var del {
@@ -651,7 +651,7 @@ td > .ifacebadge,
 [data-tab-title],
 [data-page^="admin-system-admin"]:not(.node-main-login) .cbi-map:not(#cbi-dropbear),
 [data-page="admin-system-opkg"] #maincontent > .container {
-  background: #1e1e1e !important;
+  background: var(--dark-bg, #1e1e1e) !important;
   box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.35);
 }
 div[style="width:100%;height:300px;border:1px solid #000;background:#fff"] {
@@ -695,10 +695,10 @@ input,
   color: #ccc;
 }
 .cbi-section-table-row {
-  background-color: #1e1e1e !important;
+  background-color: var(--dark-bg, #1e1e1e) !important;
 }
 .modal {
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 .cbi-button-positive {
   color: #fff !important;
@@ -715,7 +715,7 @@ input,
   border-color: var(--dark-primary) !important;
 }
 .cbi-dropdown[open] > ul.dropdown {
-  background: #252526 !important;
+  background: var(--dark-raised, #252526) !important;
   color: #ffffff !important;
   box-shadow: none;
   border: 1px solid #3c3c3c !important;
@@ -735,7 +735,7 @@ input,
   outline: none;
 }
 .ifacebadge {
-  background-color: #333333;
+  background-color: var(--dark-surface, #333333);
 }
 .cbi-dynlist > .item > span {
   border: 1px solid #3c3c3c !important;
@@ -785,7 +785,7 @@ input,
   background-color: transparent;
 }
 #view > .spinning {
-  background: #333333 !important;
+  background: var(--dark-surface, #333333) !important;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.03) !important;
 }
 @media screen and (min-width: 600px) {
@@ -801,7 +801,7 @@ input,
 }
 @media screen and (max-width: 480px) {
   .node-status-iptables > .main div > .cbi-map > form {
-    background-color: #1e1e1e;
+    background-color: var(--dark-bg, #1e1e1e);
     box-shadow: 0 0 0.5rem 0 rgba(0, 0, 0, 0.35);
   }
 }
@@ -819,7 +819,7 @@ input,
 }
 [data-page=""] .main-right > #maincontent .Dashboard .dashboard-bg,
 [data-page="admin-dashboard"] .main-right > #maincontent .Dashboard .dashboard-bg {
-  background-color: #333333;
+  background-color: var(--dark-surface, #333333);
 }
 [data-page=""] .main-right > #maincontent .Dashboard img.svgmonochrome,
 [data-page="admin-dashboard"] .main-right > #maincontent .Dashboard img.svgmonochrome {
@@ -840,17 +840,17 @@ input,
   filter: invert(0.7);
 }
 [data-page="admin-system-fileassistant"] div#list-content table.cbi-section-table tbody tr:nth-child(1) td.parent-icon {
-  background: #1e1e1e !important;
+  background: var(--dark-bg, #1e1e1e) !important;
 }
 [data-page^="admin-services-openclash"] .oc {
-  --bg-light: #1e1e1e !important;
-  --bg-gray: #1e1e1e !important;
+  --bg-light: var(--dark-bg, #1e1e1e) !important;
+  --bg-gray: var(--dark-bg, #1e1e1e) !important;
 }
 [data-page^="admin-services-openclash"] .oc .developer-container {
   background: transparent !important;
 }
 [data-page^="admin-services-openclash"] .config-upload-content {
-  background: #1e1e1e !important;
+  background: var(--dark-bg, #1e1e1e) !important;
 }
 [data-page^="admin-services-openclash"] .cbi-tabmenu::-webkit-scrollbar-thumb {
   background-color: #5b5b5b;
@@ -865,7 +865,7 @@ input,
 [data-page^="admin-services-openclash"] #dns-rc-output > pre {
   color: #ccc;
   border: 1px solid #3c3c3c !important;
-  background-color: #1e1e1e;
+  background-color: var(--dark-bg, #1e1e1e);
 }
 [data-page^="admin-services-openclash"] img[src$="arrow-clockwise-light.svg"],
 [data-page^="admin-services-openclash"] img[src$="wrench-light.svg"],
@@ -873,7 +873,7 @@ input,
   filter: invert(0.9);
 }
 [data-page="admin-network-diagnostics"] .cbi-section {
-  background: #252526 !important;
+  background: var(--dark-raised, #252526) !important;
 }
 [data-page="admin-network-diagnostics"] textarea {
   background: transparent;
@@ -882,7 +882,7 @@ input,
   border: 1px solid #3c3c3c !important;
 }
 [data-page="admin-network-diagnostics"] .tr > .td {
-  background-color: #252526 !important;
+  background-color: var(--dark-raised, #252526) !important;
 }
 [data-page="admin-network-network"] .ifacebox-head[style*="--zone-color-rgb: 144, 240, 144"] {
   background-color: #497e49 !important;
@@ -919,7 +919,7 @@ input,
   color: #ccc !important;
 }
 [data-page="admin-network-firewall-rules"] #cbi-firewall-rule > table > .cbi-section-table-row[data-title]::before {
-  background-color: #252526 !important;
+  background-color: var(--dark-raised, #252526) !important;
 }
 [data-page="admin-network-network"] .cbi-dropdown .zonebadge[style*="--zone-color-rgb:240, 144, 144;"],
 [data-page="admin-network-firewall-rules"] .cbi-dropdown .zonebadge[style*="--zone-color-rgb:240, 144, 144;"] {
@@ -954,11 +954,24 @@ input,
 [data-page="admin-system-commands"] .commandbox,
 [data-page="admin-system-commands-dashboard"] .commandbox {
   border-bottom: thin solid #333;
-  background: #252526;
+  background: var(--dark-raised, #252526);
   box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.2), 0 1px 2px rgba(255, 255, 255, 0.05);
 }
 .btn {
   background-color: #707070;
   color: #fff;
+}
+body.amoled-theme {
+  color-scheme: dark;
+  --dark-bg: #000;
+  --dark-surface: #000;
+  --dark-raised: #0b0b0b;
+  --dark-hover: #141414;
+  --dark-toolbar-bg: #000;
+  --dark-login-bg: #000;
+  --dark-login-hero: #000;
+  --dark-login-input-bg: #0b0b0b;
+  --color-bg-1: #000;
+  --color-border: #3c3c3c;
 }
 input[placeholder]::placeholder {color: #888888;opacity: 1}

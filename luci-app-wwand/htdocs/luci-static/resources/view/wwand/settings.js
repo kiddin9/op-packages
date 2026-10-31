@@ -215,6 +215,66 @@ function bandPicker(known, selected) {
 	return node;
 }
 
+/* The RAT acquisition order (modem_get_settings `rat_order`, most preferred
+   first): one row per technology with a tick for "searched at all" and
+   up/down to reorder. Offered are the RATs the order holds plus those the
+   mode boxes can enable, because a RAT that is allowed but missing from the
+   order may never be searched for (ddimension/wwand#75) — that is the row a
+   user has to be able to tick. `_collect()` returns the ticked names in row
+   order; a value the daemon could not name goes back as the number it came
+   as, which the daemon takes, so editing the other rows keeps it. */
+var RAT_ORDER_LABELS = { gsm: 'GSM', umts: 'UMTS', lte: 'LTE', nr5g: 'NR5G',
+	'td-scdma': 'TD-SCDMA', cdma1x: 'CDMA 1x', evdo: 'EVDO' };
+
+function ratOrderPicker(current, writable) {
+	/* slots QMI cannot name (a BG96's eMTC/NB-IoT, read as 0): the daemon
+	   refuses to rewrite such an order, so it is shown, not offered */
+	if (!writable)
+		return E('div', {}, [
+			E('div', {}, current.map(function(n) {
+				return RAT_ORDER_LABELS[n] || ((n === 0 || n === -1) ? _('(slot without a name)') : String(n));
+			}).join(' → ')),
+			E('em', {}, _('Read only: the list has entries this interface cannot name (IoT technologies). Change it with the modem vendor\'s command.'))
+		]);
+
+	var names = current.slice();
+	[ 'nr5g', 'lte', 'umts', 'gsm' ].forEach(function(n) {
+		if (names.indexOf(n) < 0) names.push(n);
+	});
+
+	var list = E('div', {});
+	var mkRow = function(n) {
+		var cb = E('input', { 'type': 'checkbox', 'data-rat': n,
+			'checked': (current.indexOf(n) >= 0) ? '' : null });
+		var row = E('div', { 'style': 'display:flex;align-items:center;gap:6px;margin:2px 0' }, [
+			E('button', { 'class': 'btn cbi-button', 'title': _('Earlier'),
+				'click': function(ev) {
+					ev.preventDefault();
+					if (row.previousElementSibling) list.insertBefore(row, row.previousElementSibling);
+				} }, '↑'),
+			E('button', { 'class': 'btn cbi-button', 'title': _('Later'),
+				'click': function(ev) {
+					ev.preventDefault();
+					if (row.nextElementSibling) list.insertBefore(row.nextElementSibling, row);
+				} }, '↓'),
+			E('label', { 'style': 'font-weight:normal' }, [ cb, ' ' + (RAT_ORDER_LABELS[n] || String(n)) ]),
+		]);
+		return row;
+	};
+	names.forEach(function(n) { list.appendChild(mkRow(n)); });
+
+	list._collect = function() {
+		var out = [];
+		list.querySelectorAll('input[data-rat]').forEach(function(cb) {
+			if (!cb.checked) return;
+			var v = cb.getAttribute('data-rat');
+			out.push(/^-?\d+$/.test(v) ? +v : v);
+		});
+		return out;
+	};
+	return list;
+}
+
 function lteKnownBands() {
 	return bands.LTE_BANDS.map(function(b) { return { num: b[0], label: 'B' + b[0] }; });
 }
@@ -756,9 +816,15 @@ return view.extend({
 			   before `deferred`, which the same answer may also carry */
 			else if (res && res.ok && res.partial) {
 				ui.addNotification(null, E('p', {}, [ _('Applied, except the band settings — the modem refused them (%s).').format((res.refused || []).join(', ')) ]), 'warning');
+				if ((res.not_applied || []).indexOf('rat_order') >= 0)
+					ui.addNotification(null, E('p', _('The RAT priority did not take either: the modem accepted it and kept its own order.')), 'warning');
 				if (res.deferred)
 					notifyDeferred(modem);
 			}
+			/* the firmware acknowledged the RAT priority and kept its own
+			   (read back by the daemon) — success would be a false claim */
+			else if (res && res.ok && (res.not_applied || []).indexOf('rat_order') >= 0)
+				ui.addNotification(null, E('p', _('Applied, except the RAT priority: the modem accepted it and kept its own order. Its firmware does not take a priority this way.')), 'warning');
 			else if (res && res.ok && res.deferred)
 				notifyDeferred(modem);
 			else if (res && res.ok)
@@ -1129,6 +1195,11 @@ return view.extend({
 		var ltePicker = bandPicker(only(lteKnownBands(), sup.lte_bands), s.lte_bands || []);
 		var saPicker  = bandPicker(only(nrKnownBands(), sup.nr_bands), s.nr5g_sa_bands || []);
 		var nsaPicker = bandPicker(only(nrKnownBands(), sup.nr_bands), s.nr5g_nsa_bands || []);
+		/* only when the modem reports its order (QMI, MBIM through the
+		   passthrough): with nothing read there is nothing to reorder */
+		var ratOrder = Array.isArray(s.rat_order) ? s.rat_order : null;
+		var orderWritable = ratOrder && s.rat_order_writable !== false;
+		var orderPicker = ratOrder ? ratOrderPicker(ratOrder, orderWritable) : null;
 
 		var collect = function() {
 			// start from the bits we do not render, so they survive the save
@@ -1148,6 +1219,13 @@ return view.extend({
 			if (can('nr5g_sa_bands')) out.nr5g_sa_bands = saPicker._collect();
 			if (can('nr5g_nsa_bands'))
 				out.nr5g_nsa_bands = sharedNr ? saPicker._collect() : nsaPicker._collect();
+			/* sent only when edited: Apply also carries the band and RAT
+			   boxes, and an untouched order has nothing to say to the modem */
+			if (orderPicker && orderWritable) {
+				var ro = orderPicker._collect();
+				if (ro.join(',') != ratOrder.join(','))
+					out.rat_order = ro;
+			}
 			return out;
 		};
 
@@ -1214,6 +1292,8 @@ return view.extend({
 					can('mode_preference')
 						? _('Which generations the modem may use. Unchecking one stops it being used at all — a modem restricted to 5G will not fall back to LTE where 5G is absent, so leave everything the network offers checked unless you are deliberately pinning a technology.')
 						: _('Shown, not set: this modem picks its technologies with its own RAT setting, and a band edit keeps it as it is.')),
+				orderPicker ? row(_('RAT priority'), orderPicker,
+					_('The order in which the modem searches the radio technologies, first row first. Only ticked ones are searched: a technology allowed above but unticked here may never be used — a modem with 5G enabled and NR5G missing from this list may never try 5G standalone. Applying a change re-attaches the modem, so its connections drop briefly. Kept in the modem\'s own memory; to have wwand restore it on every start, set "RAT priority" on the modem page.')) : '',
 				can('usage_preference') ? row(_('UE usage'), usageSel,
 					_('The 3GPP usage setting the modem reports to the network: whether this device is here for data or for voice. It is a preference, not a command — what the network then does about voice continuity is its decision. Data centric is what a router wants.')) : '',
 				can('roaming_preference') ? row(_('Roaming'), roamSel,

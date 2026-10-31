@@ -14,6 +14,8 @@ var WIRELESS_NAME = /^(wlan\d|phy[0-9a-z]*-|ath\d|wl\d|ra\d|rai\d|rax\d|mld\d)/;
 
 /* above any real link: a rate this high means a bad sample, not traffic */
 var MAX_BPS = 400e9;
+/* netifd protocols that tunnel IPv4 over an IPv6 uplink */
+var SOFTWIRE = /^(dslite|map|464xlat)$/;
 
 function num(v) { v = +v; return isFinite(v) ? v : 0; }
 function finite(v) { return typeof v === 'number' && isFinite(v); }
@@ -57,6 +59,18 @@ return baseclass.extend({
 		var self = this, pct = this.cpuPercent(prev.all, cur.all);
 		if (pct == null) return null;
 		return { pct: pct, cores: cur.cores.map(function(c, i) { return self.cpuPercent(prev.cores[i], c); }) };
+	},
+
+	/* luci.vantage thermal zones [ { zone, type, temp } ] (temp in
+	   millidegrees) -> [ { name, celsius } ], the hottest first; an
+	   implausible reading is left out */
+	temps: function(zones) {
+		return arr(zones).map(function(z) {
+			var c = z && typeof z.temp === 'number' && isFinite(z.temp) ? z.temp / 1000 : NaN;
+			if (!(c >= -40 && c <= 150)) return null;
+			var name = typeof z.type === 'string' && z.type ? z.type : typeof z.zone === 'string' ? z.zone : '';
+			return { name: fmt.safeText(name, 32), celsius: c };
+		}).filter(Boolean).sort(function(a, b) { return b.celsius - a.celsius; });
 	},
 
 	/* ---------------------------------------------------------- memory */
@@ -174,9 +188,13 @@ return baseclass.extend({
 
 	/* Pick the interface carrying traffic in/out of this device, and the
 	   physical device its counters live on. Prefer interfaces with a default
-	   route, keeping wan/wan6/*wan* priority within that set. Fall back to
-	   WAN names, then the first up interface. A bridge is followed to its
-	   wired member (wireless members skipped; netifd 'ethernet' preferred); DSA with
+	   route in the main table, as the kernel picks among them: IPv4 before IPv6, then the
+	   lowest metric (multi-WAN: the backup uplink has the higher one), with
+	   wan/wan6/*wan* priority only on a tie. A softwire (DS-Lite, MAP-E,
+	   464XLAT) carries IPv4 over the IPv6 uplink, so it ranks after IPv6:
+	   the uplink shown is the line, not the tunnel. Fall back to WAN names, then
+	   the first up interface. A bridge is followed to its wired member
+	   (wireless members skipped; netifd 'ethernet' preferred); DSA with
 	   hardware offload uses the conduit's counters. */
 	resolveUplink: function(ifaces, devs, wirelessNames) {
 		var self = this;
@@ -190,15 +208,39 @@ return baseclass.extend({
 		function preferredWan(list) {
 			return named(list, /^wan$/) || named(list, /^wan6$/) || named(list, /wan/i);
 		}
+		function wanRank(i) {
+			return /^wan$/.test(i.interface) ? 0 : /^wan6$/.test(i.interface) ? 1 : /wan/i.test(i.interface) ? 2 : 3;
+		}
+		/* netifd lists a route's metric only when the route sets one; the
+		   interface's metric applies otherwise. The kernel stores an IPv6
+		   metric of 0 as 1024. */
+		function metric(i, r) {
+			var m = r.metric != null ? +r.metric : +i.metric;
+			m = isFinite(m) ? m : 0;
+			return r.target === '::' && m === 0 ? 1024 : m;
+		}
+		/* a default in another table (policy routing: a VPN's own table) is
+		   not the one ordinary traffic takes */
+		function mainTable(i, r) {
+			var t = r.table != null ? r.table : i[r.target === '::' ? 'ip6table' : 'ip4table'];
+			return t == null || t === '' || t === 'main' || +t === 254;
+		}
 		function defRoute(i) {
 			return arr(i.route).filter(function(r) {
-				return r && +r.mask === 0 && (r.target === '0.0.0.0' || r.target === '::');
+				return r && +r.mask === 0 && (r.target === '0.0.0.0' || r.target === '::') && mainTable(i, r);
+			}).sort(function(a, b) {
+				return (a.target === '::') - (b.target === '::') || metric(i, a) - metric(i, b);
 			})[0] || null;
 		}
 
 		/* An AP may retain an up, unmanaged WAN port without any routes. */
-		var routed = up.filter(defRoute);
-		var pick = preferredWan(routed) || routed[0] || preferredWan(up) || up[0];
+		var routed = up.map(function(i, n) {
+			var r = defRoute(i);
+			return r ? { i: i, family: SOFTWIRE.test(i.proto) ? 2 : r.target === '::' ? 1 : 0, metric: metric(i, r), wan: wanRank(i), n: n } : null;
+		}).filter(Boolean).sort(function(a, b) {
+			return a.family - b.family || a.metric - b.metric || a.wan - b.wan || a.n - b.n;
+		});
+		var pick = routed.length ? routed[0].i : preferredWan(up) || up[0];
 		if (!pick) return null;
 
 		var l3 = pick.l3_device || pick.device, dev = l3, d = devs[dev];
