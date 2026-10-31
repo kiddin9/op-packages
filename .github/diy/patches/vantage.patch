@@ -78,8 +78,8 @@
  /* Card padding supplies the space after the final paragraph. */
  .cbi-section > p:last-child { margin-bottom: 0; }
 @@ -1982,7 +1988,28 @@ html:not([data-darkmode="true"]) .vt-login-page {
- 	}
- 	/* the starfield (login.js), between the grid and the card */
+ }
+ /* the starfield (login.js), between the grid and the card */
  .vt-login-sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 -.vt-login { position: relative; width: min(380px, 100%); }
 +.vt-login {
