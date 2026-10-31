@@ -6,8 +6,8 @@
  START=99
 +STOP=10
  
- extra_command "uciadd" "<interface> <device> <zone> Add docker bridge configuration to network and firewall uci config"
- extra_command "ucidel" "<interface> <device> <zone> Delete docker bridge configuration from network and firewall uci config"
+ extra_command "uciadd" "<ignored> <device> <zone> Add docker bridge configuration to firewall uci config"
+ extra_command "ucidel" "<ignored> <device> <zone> Delete docker bridge configuration from firewall uci config"
 @@ -238,6 +239,8 @@ start_service() {
  		procd_set_param command /usr/bin/dockerd --config-file="${DOCKERD_CONF}"
  	fi
