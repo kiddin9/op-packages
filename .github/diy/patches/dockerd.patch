@@ -1,5 +1,5 @@
---- a/dockerd/Makefile
-+++ b/dockerd/Makefile
+--- a/dockerd/files/dockerd.init
++++ b/dockerd/files/dockerd.init
 @@ -2,6 +2,7 @@
  
  USE_PROCD=1
