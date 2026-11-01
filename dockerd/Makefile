@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dockerd
 PKG_VERSION:=29.6.1
-PKG_RELEASE:=9
+PKG_RELEASE:=10
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:mobyproject:moby
@@ -126,9 +126,6 @@ define Package/dockerd/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bundles/binary-daemon/docker-proxy $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/opt/docker/
-
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_DATA) ./files/dockerd.uci-defaults $(1)/etc/uci-defaults/dockerd
 
   ifeq ($(CONFIG_DOCKER_CHECK_CONFIG),y)
 	$(INSTALL_DIR) $(1)/usr/share/docker/
