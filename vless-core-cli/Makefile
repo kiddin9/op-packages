@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=vless-core-cli
-PKG_VERSION:=1.1.4
-PKG_RELEASE:=1
+PKG_VERSION:=2.0.0
+PKG_RELEASE:=2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/notfence/vless-core-cli/tar.gz/v$(PKG_VERSION)?
@@ -11,7 +11,7 @@ PKG_HASH:=skip
 PKG_MAINTAINER:=Konstantine Shevlakov <kosnt.shell@gmail.com>
 PKG_LICENSE_FILES:=THIRD_PARTY_LICENSES.txt
 
-PKG_BUILD_PARALLEL:=1
+PKG_BUILD_FLAGS:=gc-sections
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -19,14 +19,15 @@ define Package/vless-core-cli
   SECTION:=net
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
-  TITLE:=Standalone C VLESS client with local SOCKS5
+  TITLE:=Standalone C proxy client (VLESS/Trojan/VMess/SS) with local SOCKS5
   URL:=https://github.com/notfence/vless-core-cli
   DEPENDS:=+libopenssl
 endef
 
 define Package/vless-core-cli/description
-  Standalone C client for VLESS (TCP/XHTTP/gRPC/WS, Reality/TLS) and SOCKS5
-  upstreams. Listens on a local SOCKS5 port on 127.0.0.1.
+  Standalone C client for VLESS, Trojan, VMess, Shadowsocks and SOCKS5
+  upstreams (TCP/WS/gRPC/XHTTP/HTTPUpgrade, TLS/Reality).
+  Listens on a local SOCKS5 port on 127.0.0.1.
 endef
 
 define Package/vless-core-cli/conffiles
@@ -34,11 +35,10 @@ define Package/vless-core-cli/conffiles
 endef
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) linux \
-		CC="$(TARGET_CC)" \
-		COMMON_CFLAGS="$(TARGET_CFLAGS) $(TARGET_CPPFLAGS) -std=c11 -Wall" \
-		LDFLAGS="$(TARGET_LDFLAGS)" \
-		BIN_LINUX=vless-core
+	$(TARGET_CC) $(TARGET_CFLAGS) $(TARGET_CPPFLAGS) -std=c11 -Wall \
+		-I$(PKG_BUILD_DIR)/include $(PKG_BUILD_DIR)/src/*.c \
+		-o $(PKG_BUILD_DIR)/vless-core \
+		$(TARGET_LDFLAGS) -lssl -lcrypto -lpthread
 endef
 
 define Package/vless-core-cli/install

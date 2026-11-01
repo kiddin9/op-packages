@@ -1,5 +1,6 @@
-# SPDX-License-Identifier: GPL-2.0-only
+# SPDX-License-Identifier: GPL-3.0-or-later
 
+PKG_LICENSE:=GPL-3.0-or-later
 include $(TOPDIR)/rules.mk
 
 LUCI_NAME:=luci-app-adguardhome
