@@ -231,9 +231,11 @@ function ratOrderPicker(current, writable) {
 	   refuses to rewrite such an order, so it is shown, not offered */
 	if (!writable)
 		return E('div', {}, [
-			E('div', {}, current.map(function(n) {
+			/* in an array: the slots are the modem's values, and a bare
+			   string child goes in as innerHTML (luci.js:1394-96) */
+			E('div', {}, [ current.map(function(n) {
 				return RAT_ORDER_LABELS[n] || ((n === 0 || n === -1) ? _('(slot without a name)') : String(n));
-			}).join(' → ')),
+			}).join(' → ') ]),
 			E('em', {}, _('Read only: the list has entries this interface cannot name (IoT technologies). Change it with the modem vendor\'s command.'))
 		]);
 
