@@ -10,8 +10,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-vantage
-PKG_VERSION:=1.0.11
-PKG_RELEASE:=18
+PKG_VERSION:=1.0.12
+PKG_RELEASE:=19
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage dashboard
@@ -26,7 +26,7 @@ LUCI_DESCRIPTION:=Live network dashboard (landing page under admin/dashboard): d
 # Optional at runtime, degrade when absent: rpcd-mod-rrdns (reverse DNS
 # names), umdns (mDNS names), hostapd ubus objects (WPS names, client
 # capabilities).
-LUCI_DEPENDS:=+luci-base +rpcd +rpcd-mod-iwinfo +rpcd-mod-ucode +ucode-mod-uci +ucode-mod-ubus +ucode-mod-fs
+LUCI_DEPENDS:=+luci-base +rpcd +rpcd-mod-iwinfo +rpcd-mod-ucode +ucode-mod-uci +ucode-mod-ubus +ucode-mod-fs +ucode-mod-rtnl
 LUCI_PKGARCH:=all
 LUCI_MAINTAINER:=anothaDev <10740588+anothaDev@users.noreply.github.com>
 LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage

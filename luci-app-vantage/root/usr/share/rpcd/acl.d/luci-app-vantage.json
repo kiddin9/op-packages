@@ -1,6 +1,6 @@
 {
 	"luci-app-vantage": {
-		"description": "Vantage dashboard: read-only status of the device, uplink, radios and stations (wireless configuration without keys, through luci.vantage wireless) and its temperature sensors (luci.vantage thermal)",
+		"description": "Vantage dashboard: read-only status of the device, uplink, radios and stations (wireless configuration without keys, through luci.vantage wireless), its temperature sensors (luci.vantage thermal) and the wired hosts its bridges have learned (luci.vantage wired: MAC, port and when last heard)",
 		"read": {
 			"file": {
 				"/proc/stat": [ "read" ]
@@ -11,7 +11,7 @@
 				"network.interface": [ "dump" ],
 				"network.device": [ "status" ],
 				"luci-rpc": [ "getHostHints" ],
-				"luci.vantage": [ "thermal", "wireless" ],
+				"luci.vantage": [ "thermal", "wired", "wireless" ],
 				"iwinfo": [ "assoclist", "info" ],
 				"hostapd.*": [ "get_clients", "get_status" ],
 				"umdns": [ "hosts" ],

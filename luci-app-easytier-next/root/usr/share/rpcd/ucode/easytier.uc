@@ -16,9 +16,11 @@ function exec(cmd) {
 	return { code: code, stdout: out };
 }
 
+const _trim = trim;
+
 function trim(s) {
 	if (s == null) return '';
-	return replace('' + s, /^[\s\r\n]+|[\s\r\n]+$/g, '');
+	return _trim('' + s);
 }
 
 function get_procd_status(instance_name) {

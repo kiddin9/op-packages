@@ -1,29 +1,32 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dockerd
-PKG_FLAGS:=hold
-PKG_VERSION:=27.3.1
-PKG_RELEASE:=8
+PKG_VERSION:=29.6.1
+PKG_RELEASE:=9
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
+PKG_CPE_ID:=cpe:/a:mobyproject:moby
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_GIT_URL:=github.com/moby/moby
-PKG_GIT_REF:=v$(PKG_VERSION)
+PKG_GIT_REF:=docker-v$(PKG_VERSION)
 PKG_SOURCE_URL:=https://codeload.$(PKG_GIT_URL)/tar.gz/$(PKG_GIT_REF)?
 PKG_HASH:=skip
-PKG_GIT_SHORT_COMMIT:=41ca978 # SHA1 used within the docker executables
+PKG_GIT_SHORT_COMMIT:=8ec5ab3 # SHA1 used within the docker executables
 
 PKG_MAINTAINER:=Gerard Ryan <G.M0N3Y.2503@gmail.com>
 
 PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
-PKG_BUILD_FLAGS:=no-mips16
 
 GO_PKG:=github.com/docker/docker
 
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+
+EMPTY:=
+SPACE:=$(EMPTY) $(EMPTY)
+ARCH_DEPENDS:=@($(subst $(SPACE),||,$(strip $(filter-out mips mips64 mipsel mips64el,$(subst ||,$(SPACE),$(patsubst @(%),%,$(GO_ARCH_DEPENDS)))))))
 
 define Package/dockerd/config
   source "$(SOURCE)/Config.in"
@@ -34,8 +37,7 @@ define Package/dockerd
   CATEGORY:=Utilities
   TITLE:=Docker Community Edition Daemon
   URL:=https://www.docker.com/
-  DEPENDS:=$(GO_ARCH_DEPENDS) \
-    +jsonfilter \
+  DEPENDS:=$(ARCH_DEPENDS) \
     +ca-certificates \
     +containerd \
     +iptables \
@@ -48,10 +50,9 @@ define Package/dockerd
     +kmod-nf-ipvs \
     +kmod-veth \
     +tini \
-    +uci-firewall \
     +fuse-overlayfs \
     +kmod-vxlan +kmod-macvlan +kmod-dummy +kmod-crypto-gcm +kmod-crypto-seqiv +kmod-crypto-ghash +kmod-ipsec +kmod-nf-nathelper +kmod-nf-nathelper-extra +btrfs-progs \
-    @!(mips||mips64||mipsel)
+    +uci-firewall
   USERID:=docker:docker
   MENU:=1
 endef
@@ -61,65 +62,45 @@ define Package/dockerd/conffiles
 endef
 
 define Package/dockerd/description
-The Docker CE Engine.
+  The Docker CE Engine.
 endef
 
 TAR_OPTIONS:=--strip-components 1 $(TAR_OPTIONS)
 TAR_CMD=$(HOST_TAR) -C $(1) $(TAR_OPTIONS)
 TARGET_LDFLAGS += $(if $(CONFIG_USE_GLIBC),-lc -lgcc_eh)
 
-# $(1) = path to dependent package 'Makefile'
-# $(2) = relevant dependency '.installer' file
+# $(1) = OpenWrt dependent PKG_NAME
 define EnsureVendoredVersion
-	( \
-		DEP_VER=$$$$( grep --only-matching --perl-regexp '(?<=PKG_VERSION:=)(.*)' "$(1)" ); \
-		VEN_VER=$$$$( grep --only-matching --perl-regexp '(?<=_VERSION:=v)(.*)(?=})' "$(PKG_BUILD_DIR)/hack/dockerfile/install/$(2)" ); \
-		if [ "$$$${VEN_VER}" != "$$$${DEP_VER}" ]; then \
-			echo "ERROR: $(PKG_NAME) Expected 'PKG_VERSION:=$$$${VEN_VER}' in '$(1)', found 'PKG_VERSION:=$$$${DEP_VER}'"; \
-			exit 1; \
-		fi \
-	)
-endef
-
-# $(1) = path to dependent package 'Makefile'
-# $(2) = relevant dependency '.installer' file
-define EnsureVendoredCommit
-	( \
-		DEP_VER=$$$$( grep --only-matching --perl-regexp '(?<=PKG_SOURCE_VERSION:=)(.*)' "$(1)" ); \
-		VEN_VER=$$$$( grep --only-matching --perl-regexp '(?<=_COMMIT:=)(.*)(?=})' "$(PKG_BUILD_DIR)/hack/dockerfile/install/$(2)" ); \
-		if [ "$$$${VEN_VER}" != "$$$${DEP_VER}" ]; then \
-			echo "ERROR: Expected 'PKG_SOURCE_VERSION:=$$$${VEN_VER}' in '$(1)', found 'PKG_SOURCE_VERSION:=$$$${DEP_VER}'"; \
-			exit 1; \
-		fi \
-	)
+	DEP_VER=$$$$( grep --only-matching --perl-regexp '(?<=PKG_VERSION:=)(.*)' "../../packages/utils/$(1)/Makefile" ); \
+	VEN_VER=$$$$( grep --only-matching --perl-regexp '(?<=$(call toupper,$(1))_VERSION=v)(.*)' "$(PKG_BUILD_DIR)/Dockerfile" ); \
+	if [ "$$$${VEN_VER}" != "$$$${DEP_VER}" ]; then \
+		echo "ERROR: $(PKG_NAME) Expected 'PKG_VERSION:=$$$${VEN_VER}' in '$(1)', found 'PKG_VERSION:=$$$${DEP_VER}'"; \
+		exit 1; \
+	fi
 endef
 
 define Build/Prepare
 	$(Build/Prepare/Default)
 
 	# Verify dependencies are the vendored version
-	$(call EnsureVendoredVersion,../../packages/utils/containerd/Makefile,containerd.installer)
-	$(call EnsureVendoredVersion,../../packages/utils/runc/Makefile,runc.installer)
-	$(call EnsureVendoredVersion,../../packages/utils/tini/Makefile,tini.installer)
+	$(call EnsureVendoredVersion,containerd)
+	$(call EnsureVendoredVersion,runc)
+	$(call EnsureVendoredVersion,tini)
 
 	# Verify CLI is the same version
-	( \
-		CLI_MAKEFILE="../../packages/utils/docker/Makefile"; \
-		CLI_VERSION=$$$$( grep --only-matching --perl-regexp '(?<=PKG_VERSION:=)(.*)' "$$$${CLI_MAKEFILE}" ); \
-		if [ "$$$${CLI_VERSION}" != "$(PKG_VERSION)" ]; then \
-			echo "ERROR: Expected 'PKG_VERSION:=$(PKG_VERSION)' in '$$$${CLI_MAKEFILE}', found 'PKG_VERSION:=$$$${CLI_VERSION}'"; \
-			exit 1; \
-		fi \
-	)
+	CLI_MAKEFILE="../../packages/utils/docker/Makefile"; \
+	CLI_VERSION=$$$$( grep --only-matching --perl-regexp '(?<=PKG_VERSION:=)(.*)' "$$$${CLI_MAKEFILE}" ); \
+	if [ "$$$${CLI_VERSION}" != "$(PKG_VERSION)" ]; then \
+		echo "ERROR: Expected 'PKG_VERSION:=$(PKG_VERSION)' in '$$$${CLI_MAKEFILE}', found 'PKG_VERSION:=$$$${CLI_VERSION}'"; \
+		exit 1; \
+	fi
 
 	# Verify PKG_GIT_SHORT_COMMIT
-	( \
-		EXPECTED_PKG_GIT_SHORT_COMMIT=$$$$( $(CURDIR)/git-short-commit.sh '$(PKG_GIT_URL)' '$(PKG_GIT_REF)' '$(TMP_DIR)/git-short-commit/$(PKG_NAME)-$(PKG_VERSION)' ); \
-		if [ "$$$${EXPECTED_PKG_GIT_SHORT_COMMIT}" != "$(strip $(PKG_GIT_SHORT_COMMIT))" ]; then \
-			echo "ERROR: Expected 'PKG_GIT_SHORT_COMMIT:=$$$${EXPECTED_PKG_GIT_SHORT_COMMIT}', found 'PKG_GIT_SHORT_COMMIT:=$(strip $(PKG_GIT_SHORT_COMMIT))'"; \
-			exit 1; \
-		fi \
-	)
+	EXPECTED_PKG_GIT_SHORT_COMMIT=$$$$( $(CURDIR)/git-short-commit.sh '$(PKG_GIT_URL)' '$(PKG_GIT_REF)' '$(TMP_DIR)/git-short-commit/$(PKG_NAME)-$(PKG_VERSION)' ); \
+	if [ "$$$${EXPECTED_PKG_GIT_SHORT_COMMIT}" != "$(strip $(PKG_GIT_SHORT_COMMIT))" ]; then \
+		echo "ERROR: Expected 'PKG_GIT_SHORT_COMMIT:=$$$${EXPECTED_PKG_GIT_SHORT_COMMIT}', found 'PKG_GIT_SHORT_COMMIT:=$(strip $(PKG_GIT_SHORT_COMMIT))'"; \
+		exit 1; \
+	fi
 endef
 
 BUILDTAGS:=
@@ -131,14 +112,12 @@ BUILDTAGS += selinux
 endif
 
 define Build/Compile
-	( \
-		cd $(PKG_BUILD_DIR); \
-		$(GO_PKG_VARS) \
-		DOCKER_GITCOMMIT=$(PKG_GIT_SHORT_COMMIT) \
-		DOCKER_BUILDTAGS='$(BUILDTAGS)' \
-		VERSION=$(PKG_VERSION) \
-		./hack/make.sh binary; \
-	)
+	cd $(PKG_BUILD_DIR); \
+	$(GO_PKG_VARS) \
+	DOCKER_GITCOMMIT=$(PKG_GIT_SHORT_COMMIT) \
+	DOCKER_BUILDTAGS='$(BUILDTAGS)' \
+	VERSION=$(PKG_VERSION) \
+	./hack/make.sh binary
 endef
 
 define Package/dockerd/install
@@ -146,10 +125,10 @@ define Package/dockerd/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bundles/binary-daemon/dockerd $(1)/usr/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bundles/binary-daemon/docker-proxy $(1)/usr/bin/
 
+	$(INSTALL_DIR) $(1)/opt/docker/
+
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
 	$(INSTALL_DATA) ./files/dockerd.uci-defaults $(1)/etc/uci-defaults/dockerd
-
-	$(INSTALL_DIR) $(1)/opt/docker/
 
   ifeq ($(CONFIG_DOCKER_CHECK_CONFIG),y)
 	$(INSTALL_DIR) $(1)/usr/share/docker/
@@ -162,19 +141,10 @@ define Package/dockerd/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/dockerd $(1)/etc/config/dockerd
 
-	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
-	$(INSTALL_DATA) ./files/etc/hotplug.d/net/br-netfilter \
-		$(1)/etc/hotplug.d/net/10-docker-br-netfilter
-
-	$(INSTALL_DIR) $(1)/etc/uci-defaults
-	$(INSTALL_DATA) ./files/etc/uci-defaults/16_docker-netifd-migrate2 \
-		$(1)/etc/uci-defaults/16_docker-netifd-migrate2
-	$(INSTALL_DATA) ./files/etc/uci-defaults/17_docker-fw4 \
-		$(1)/etc/uci-defaults/17_docker-fw4
-
-	$(INSTALL_DIR) $(1)/lib/fstab.d
-	$(INSTALL_DATA) ./files/lib/fstab.d/dockerd.sh $(1)/lib/fstab.d/dockerd.sh
-
+	# Must be after systcl 11-br-netfilter.conf from kmod-br-netfilter
+	$(INSTALL_DIR) $(1)/etc/sysctl.d
+	$(INSTALL_DATA) ./files/etc/sysctl.d/sysctl-br-netfilter-ip.conf \
+		$(1)/etc/sysctl.d/12-br-netfilter-ip.conf
 endef
 
 define Package/dockerd/postinst

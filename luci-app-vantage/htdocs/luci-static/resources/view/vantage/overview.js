@@ -12,6 +12,7 @@
 'require vantage.series as series';
 'require vantage.layout as layout';
 'require vantage.wires as wires';
+'require vantage.backdrop as backdrop';
 
 /* Vantage dashboard (luci-app-vantage): a live, read-only overview of the
    device, its uplink, radios, SSIDs and stations. The only write is the
@@ -36,6 +37,8 @@ var callDevs = rpc.declare({ object: 'network.device', method: 'status', expect:
    without keys or RADIUS secrets, and the validated alias write */
 var callWifi = rpc.declare({ object: 'luci.vantage', method: 'wireless', expect: { '': {} } });
 var callThermal = rpc.declare({ object: 'luci.vantage', method: 'thermal', expect: { zones: [] } });
+/* { hosts, crowded }: crowded when a bridge holds too many entries to list */
+var callWired = rpc.declare({ object: 'luci.vantage', method: 'wired', expect: { '': {} } });
 var callHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 var callIwInfo = rpc.declare({ object: 'iwinfo', method: 'info', params: [ 'device' ], expect: { '': {} } });
 var callAssoc = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: [ 'device' ], expect: { results: [] } });
@@ -75,6 +78,7 @@ function reducedMotion() {
 /* ------------------------------------------------------------- SVG kit */
 
 var ICONS = {
+	filter: [ 'M4 5.5h16l-6.2 7.3v5.2l-3.6 1.8v-7Z' ],
 	globe: [ 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18Z', 'M3.4 9.2h17.2M3.4 14.8h17.2', 'M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9s1.2-6.5 3.6-9Z' ],
 	ap: [ 'M4.5 15h15a1.5 1.5 0 0 1 1.5 1.5v1.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18v-1.5A1.5 1.5 0 0 1 4.5 15Z', 'M7 17.25h.01', 'M8.6 10.6a4.8 4.8 0 0 1 6.8 0', 'M6.1 8.1a8.4 8.4 0 0 1 11.8 0', 'M11.3 12.9a1 1 0 0 1 1.4 0' ],
 	radio: [ 'M12 12.5v8', 'M8.5 20.5h7', 'M9.2 8.7a4 4 0 0 0 0 5.6', 'M14.8 8.7a4 4 0 0 1 0 5.6', 'M6.4 5.9a8 8 0 0 0 0 11.2', 'M17.6 5.9a8 8 0 0 1 0 11.2', 'M12 10.3a1.2 1.2 0 1 1 0 2.4a1.2 1.2 0 1 1 0-2.4Z' ],
@@ -438,6 +442,23 @@ function writeChartStyle(v) {
 	} catch (e) {}
 }
 
+/* The network path's backdrop the viewer picked (backdrop.STYLES), in
+   this browser */
+var BACKDROP_KEY = 'vantage.backdrop.v1';
+
+function readBackdrop() {
+	var v = null;
+	try { v = window.localStorage.getItem(BACKDROP_KEY); } catch (e) { v = null; }
+	return backdrop.STYLES.indexOf(v) >= 0 ? v : backdrop.STYLES[0];
+}
+
+function writeBackdrop(v) {
+	try {
+		if (v === backdrop.STYLES[0]) window.localStorage.removeItem(BACKDROP_KEY);
+		else window.localStorage.setItem(BACKDROP_KEY, v);
+	} catch (e) {}
+}
+
 /* ================================================================= view */
 
 return view.extend({
@@ -484,9 +505,11 @@ return view.extend({
 			/* null when the call fails: no answer is not "no radios" */
 			L.resolveDefault(callWifi(), null),
 			L.resolveDefault(callHints(), {}),
-			L.resolveDefault(callThermal(), [])
+			L.resolveDefault(callThermal(), []),
+			L.resolveDefault(callWired(), {})
 		]).then(function(r) {
 			var wifiDevs = (r[4] && typeof r[4] === 'object') ? r[4] : null;
+			var wiredReply = (r[7] && typeof r[7] === 'object') ? r[7] : {};
 			var ifnames = [];
 			Object.keys(wifiDevs || {}).forEach(function(rn) {
 				var ifs = (wifiDevs[rn] && Array.isArray(wifiDevs[rn].interfaces)) ? wifiDevs[rn].interfaces : [];
@@ -513,6 +536,7 @@ return view.extend({
 					else iwinfo[p[1]] = p[2];
 				});
 				return { info: r[0] || {}, stat: r[1] || '', ifaces: r[2] || [], devs: r[3] || {}, wifi: wifiDevs, hints: r[5] || {}, thermal: r[6] || [],
+					fdb: Array.isArray(wiredReply.hosts) ? wiredReply.hosts : [], fdbCrowded: wiredReply.crowded === true,
 					assoc: assoc, hapd: hapd, hapdStatus: hapdStatus, iwinfo: iwinfo, at: Date.now(), started: started };
 			});
 		});
@@ -548,12 +572,13 @@ return view.extend({
 			wireless: null,
 			lastOk: 0, lastErr: null, paused: false
 		};
-		this.ui = { sort: 'live', dir: -1, filter: '', chip: 'all', drawer: null, editing: null, hover: null };
+		this.ui = { sorts: { wifi: { key: 'live', dir: -1 }, wired: { key: 'seen', dir: 1 } }, kind: 'wifi', filter: '', chip: 'all', drawer: null, editing: null, hover: null };
 		this.folds = readFolds();
 		this.foldEls = {};
 		this.foldBtns = {};
 		this.layouts = readLayouts();
 		this.chartStyle = readChartStyle();
+		this.backdropStyle = readBackdrop();
 		this.editing = false;
 		this.drag = null;
 		this.applyMdns(data.mdns);
@@ -585,7 +610,7 @@ return view.extend({
 
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
-			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints,
+			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints, fdb: raw.fdb,
 			aliases: this.aliases, rdns: st.rdns, mdns: st.mdns,
 			vendor: st.oui ? function(k) { return k ? st.oui.lookup(k) : null; } : null
 		});
@@ -692,18 +717,19 @@ return view.extend({
 	},
 
 	/* names beyond what one poll carries: reverse DNS once per new
-	   address, mDNS every minute when present, the vendor table once */
+	   address, mDNS every minute when present, the vendor table once;
+	   for Wi-Fi clients and wired hosts alike */
 	resolveMore: function(m) {
 		var st = this.st, self = this;
-		var ips = [];
+		var ips = [], all = m.clients.concat(m.wiredHosts || []);
 		/* answers are kept for the session, but only for addresses still
 		   in use once there are many */
 		if (Object.keys(st.rdns).length > 1024) {
 			var keep = Object.create(null);
-			m.clients.forEach(function(c) { c.ips.forEach(function(ip) { if (ip in st.rdns) keep[ip] = st.rdns[ip]; }); });
+			all.forEach(function(c) { c.ips.forEach(function(ip) { if (ip in st.rdns) keep[ip] = st.rdns[ip]; }); });
 			st.rdns = keep;
 		}
-		m.clients.forEach(function(c) {
+		all.forEach(function(c) {
 			c.ips.forEach(function(ip) { if (!(ip in st.rdns) && ips.indexOf(ip) < 0 && ips.length < 64) ips.push(ip); });
 		});
 		if (ips.length && !st.rdnsBusy && !st.rdnsOff) {
@@ -726,7 +752,7 @@ return view.extend({
 			st.mdnsAt = Date.now();
 			L.resolveDefault(callMdns(), null).then(function(r) { self.applyMdns(r); });
 		}
-		var wantVendor = m.clients.some(function(c) { return c.nameSource === 'mac'; });
+		var wantVendor = all.some(function(c) { return c.nameSource === 'mac'; });
 		if (wantVendor && !st.oui && !st.ouiLoading) {
 			st.ouiLoading = true;
 			L.require('vantage.oui').then(function(mod) { st.oui = mod; self.rerender(); }).catch(function() {});
@@ -739,7 +765,7 @@ return view.extend({
 		var st = this.st, raw = this.lastRaw;
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
-			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints,
+			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints, fdb: raw.fdb,
 			aliases: this.aliases, rdns: st.rdns, mdns: st.mdns,
 			vendor: st.oui ? function(k) { return k ? st.oui.lookup(k) : null; } : null
 		});
@@ -1049,6 +1075,22 @@ return view.extend({
 		return E('div', { 'class': 'vt-edit-field' }, [ E('label', { 'for': 'vt-chart-style' }, [ _('Throughput chart') ]), pick ]);
 	},
 
+	/* the network path's backdrop, picked under Customize */
+	buildBackdropPick: function() {
+		var self = this, names = { 'grid': _('Grid packets'), 'stars': _('Starfield'), 'none': _('None') };
+		var pick = E('select', { 'class': 'vt-select', 'id': 'vt-backdrop-style', 'change': function(ev) { self.setBackdrop(ev.target.value); } },
+			backdrop.STYLES.map(function(k) { return E('option', { 'value': k }, [ names[k] ]); }));
+		pick.value = this.backdropStyle;
+		return E('div', { 'class': 'vt-edit-field' }, [ E('label', { 'for': 'vt-backdrop-style' }, [ _('Network path background') ]), pick ]);
+	},
+
+	setBackdrop: function(v) {
+		if (backdrop.STYLES.indexOf(v) < 0 || v === this.backdropStyle) return;
+		this.backdropStyle = v;
+		writeBackdrop(v);
+		if (this.backdrop) this.backdrop.style(v);
+	},
+
 	setChartStyle: function(v) {
 		if (series.CHART_STYLES.indexOf(v) < 0 || v === this.chartStyle) return;
 		this.chartStyle = v;
@@ -1065,7 +1107,7 @@ return view.extend({
 		el.editBar = E('div', { 'class': 'vt-editbar', 'role': 'region', 'aria-label': _('Customize the dashboard'), 'hidden': 'hidden' }, [
 			E('div', { 'class': 'vt-editbar-text' }, [ E('strong', {}, [ _('Customize the dashboard') ]), el.editHint ]),
 			el.editHidden,
-			this.buildChartPick(),
+			E('div', { 'class': 'vt-edit-picks' }, [ this.buildChartPick(), this.buildBackdropPick() ]),
 			E('div', { 'class': 'vt-editbar-actions' }, [
 				E('button', { 'type': 'button', 'class': 'vt-btn', 'click': function() {
 					var l = self.lay;
@@ -1316,11 +1358,14 @@ return view.extend({
 		this.wireMap = Object.create(null);
 		this.hero = null;
 		el.kpis = E('div', { 'class': 'vt-kpis vt-fold-keep' });
-		return this.foldable('hero', E('section', { 'class': 'vt-tile vt-hero', 'aria-label': _('Network path') }, [
+		var tile = this.foldable('hero', E('section', { 'class': 'vt-tile vt-hero', 'aria-label': _('Network path') }, [
 			tileHead('pulse', _('Network path'), [ E('span', { 'class': 'vt-hint vt-hint-wide' }, [ _('Click any node for details') ]), this.foldButton('hero', _('Show or hide the network path')) ]),
 			el.path,
 			el.kpis
 		]));
+		/* packets or stars behind the path, moved by the uplink's rate */
+		this.backdrop = backdrop.mount(tile, el.path, this.backdropStyle);
+		return tile;
 	},
 
 	/* the nodes the path shows: rebuilt only when this changes (a radio,
@@ -1330,7 +1375,28 @@ return view.extend({
 		if (m.wired) return 'w\n' + m.networks.filter(function(n) { return n.up; }).slice(0, 8).map(function(n) { return n.name; }).join('\n');
 		return 'r\n' + m.radios.map(function(r) {
 			return r.id + '=' + m.ssids.filter(function(s) { return s.radio === r.id; }).map(function(s) { return s.id; }).join(',');
-		}).join('\n');
+		}).join('\n') + '\nwired=' + this.wiredPorts().join(',');
+	},
+
+	/* the ports with wired hosts downstream of this device, at most 8:
+	   hosts on the uplink's port are the way to the gateway, not clients
+	   (on a bridge with several ports whose gateway port is unknown, only
+	   the gateway is left out) */
+	wiredPorts: function() {
+		var m = this.m, up = m.uplink, out = [];
+		(m.wiredHosts || []).forEach(function(c) {
+			if (c.gateway || (up && up.port && c.port === up.port)) return;
+			if (out.indexOf(c.port) < 0) out.push(c.port);
+		});
+		return out.sort().slice(0, 8);
+	},
+
+	/* the Clients tile on its wired list, on one port's hosts or all */
+	showWired: function(port) {
+		this.ui.kind = 'wired';
+		this.ui.chip = port ? 'port:' + port : 'all';
+		this.setFilter('');
+		this.el.clients.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
 	},
 
 	paintHero: function() {
@@ -1407,6 +1473,26 @@ return view.extend({
 				h.radios.push(b);
 			});
 			if (!h.radios.length) h.branches.appendChild(E('div', { 'class': 'vt-empty-inline' }, [ _('No radios reported') ]));
+			/* wired hosts downstream: one branch beside the radios, a node
+			   per port */
+			var ports = this.wiredPorts();
+			if (ports.length) {
+				var wb = { id: 'wired', wired: true, ssids: [], title: span('vt-node-title vt-tn'), sub: span('vt-node-sub vt-tn') };
+				wb.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-radio', 'click': function() { self.showWired(null); } }, [
+					E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-kicker' }, [ _('Wired') ]), wb.title, wb.sub ])
+				]);
+				var wcol = E('div', { 'class': 'vt-branch-ssids' });
+				ports.forEach(function(p) {
+					var sn = { id: 'port:' + p, port: p, name: E('span'), count: span('vt-tn') };
+					sn.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-ssid', 'click': function() { self.showWired(p); } }, [
+						E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-title vt-ssid-name' }, [ sn.name ]), E('span', { 'class': 'vt-node-sub' }, [ sn.count ]) ])
+					]);
+					wb.ssids.push(sn);
+					wcol.appendChild(sn.el);
+				});
+				wb.wrap = E('div', { 'class': 'vt-branch' }, [ wb.el, wcol ]);
+				h.radios.push(wb);
+			}
 		}
 		h.radios.forEach(function(b) {
 			h.branches.appendChild(b.wrap);
@@ -1429,9 +1515,13 @@ return view.extend({
 	/* this poll's text, classes and flow state on the nodes in place */
 	updateHero: function() {
 		var self = this, m = this.m, st = this.st, h = this.hero, up = m.uplink, upR = st.uplinkRate, d = m.device;
+		/* a gateway the bridge hears (an access point's router) shows its
+		   name once one is known beyond its vendor */
+		var gwHost = (m.wiredHosts || []).filter(function(c) { return c.gateway; })[0];
+		var gwName = gwHost && /^(alias|dhcp|mdns|dns)$/.test(gwHost.nameSource) ? gwHost.name : null;
 		txt(h.gwKicker, up && up.isWan ? _('Internet') : _('Gateway'));
-		txt(h.gwTitle, up && up.gateway ? up.gateway : up && up.defaultRoute ? up.l3dev : _('No default route', 'vantage'));
-		txt(h.gwSub, up && up.dns.length ? _('DNS %s').format(up.dns[0]) : _('Reachability not probed'));
+		txt(h.gwTitle, gwName || (up && up.gateway ? up.gateway : up && up.defaultRoute ? up.l3dev : _('No default route', 'vantage')));
+		txt(h.gwSub, gwName ? up.gateway : up && up.dns.length ? _('DNS %s').format(up.dns[0]) : _('Reachability not probed'));
 
 		txt(h.dnVal, upR ? fmt.bitsParts(upR.rx).v : fmt.DASH);
 		txt(h.dnUnit, upR ? fmt.bitsParts(upR.rx).u : '');
@@ -1445,6 +1535,7 @@ return view.extend({
 		txt(h.apUp, d.uptime != null ? _('up %s').format(fmt.duration(d.uptime)) : '');
 		h.upActive = !!(upR && upR.rx + upR.tx > 50e3);
 		h.upRate = upR ? upR.rx + upR.tx : 0;
+		if (this.backdrop) this.backdrop.update({ down: upR ? upR.rx : null, up: upR ? upR.tx : null, origin: h.ap });
 
 		if (m.wired) {
 			var nets = Object.create(null);
@@ -1468,6 +1559,7 @@ return view.extend({
 		m.radios.forEach(function(r) { radios[r.id] = r; });
 		m.ssids.forEach(function(s) { ssids[s.id] = s; });
 		h.radios.forEach(function(b) {
+			if (b.wired) { self.updateWiredBranch(b); return; }
 			var r = radios[b.id], rr = st.radioRates[b.id];
 			if (!r) return;
 			setClass(b.el, 'vt-node vt-node-radio' + (r.up ? '' : ' vt-node-off'));
@@ -1505,6 +1597,26 @@ return view.extend({
 		});
 	},
 
+	/* the Wired branch of the path: its hosts, and per port the one host
+	   with its link speed or how many share the port */
+	updateWiredBranch: function(b) {
+		var st = this.st, hosts = this.m.wiredHosts || [], n = 0, rx = 0, tx = 0, seen = false;
+		b.ssids.forEach(function(sn) {
+			var on = hosts.filter(function(c) { return c.port === sn.port; }), r = st.devRates[sn.port], one = on.length === 1 ? on[0] : null;
+			n += on.length;
+			if (r) { rx += r.rx; tx += r.tx; seen = true; }
+			setClass(sn.el, 'vt-node vt-node-ssid' + (on.length ? '' : ' vt-node-idle'));
+			setTitle(sn.el, _('Show the devices on %s').format(sn.port));
+			txt(sn.name, one ? sn.port + ' · ' + one.name : sn.port);
+			txt(sn.count, one ? (one.speed ? fmt.phyRate(one.speed.mbps * 1000) : fmt.DASH) : on.length === 1 ? _('1 device') : _('%d devices').format(on.length));
+			sn.active = !!(r && r.rx + r.tx > 50e3);
+		});
+		txt(b.title, n === 1 ? _('1 device') : _('%d devices').format(n));
+		txt(b.sub, seen ? '↓ ' + fmt.bits(tx) : fmt.DASH);
+		b.active = !!(seen && rx + tx > 50e3);
+		b.rate = seen ? rx + tx : 0;
+	},
+
 	/* four numbers under the path: who is here, what flows, where, and
 	   who is worst off. The cells stay; only a change of shape (tone, or
 	   whether a cell links somewhere) rebuilds them. */
@@ -1536,11 +1648,14 @@ return view.extend({
 		var byBand = {};
 		m.clients.forEach(function(c) { byBand[c.band] = (byBand[c.band] || 0) + 1; });
 		var bandText = Object.keys(byBand).sort().map(function(b) { return _('%d on %s').format(byBand[b], wifi.bandLabel(b)); }).join(' · ');
+		/* wired hosts downstream count as clients too */
+		var ports = this.wiredPorts(), wiredN = (m.wiredHosts || []).filter(function(c) { return ports.indexOf(c.port) >= 0; }).length;
+		if (wiredN) bandText = [ bandText, _('%d wired').format(wiredN) ].filter(Boolean).join(' · ');
 		var busiest = null;
 		m.radios.forEach(function(r) { var i = st.radioInsights[r.id]; if (i && i.busiest) busiest = { r: r, share: i.share }; });
 		var weakest = m.clients.filter(function(c) { return c.signal != null; }).sort(function(a, b) { return a.signal - b.signal; })[0];
 		return [
-			{ label: _('Clients'), value: String(m.clients.length), sub: bandText || _('none connected'), tone: 'plain',
+			{ label: _('Clients'), value: String(m.clients.length + wiredN), sub: bandText || _('none connected'), tone: 'plain',
 				act: function() { self.el.clients.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }); } },
 			{ label: _('Traffic now'), value: up ? '↓ ' + fmt.bits(up.rx) : fmt.DASH, sub: up ? _('↑ %s · via %s').format(fmt.bits(up.tx), m.uplink ? m.uplink.dev : '') : _('measuring'), tone: 'plain',
 				act: function() { self.openDrawer('uplink', 'uplink'); } },
@@ -2128,28 +2243,67 @@ return view.extend({
 	/* ----------------------------------------------------------- clients */
 
 	buildClients: function() {
-		var self = this, el = this.el;
+		var self = this, el = this.el, ui = this.ui;
 		el.filter = E('input', { 'type': 'text', 'class': 'vt-filter-input', 'placeholder': _('Filter by name, address, SSID…'),
 			'aria-label': _('Filter clients'), 'autocomplete': 'off', 'spellcheck': 'false',
 			'input': function(ev) { self.ui.filter = ev.target.value; self.paintClients(); } });
 		el.filterClear = E('button', { 'type': 'button', 'class': 'vt-filter-clear', 'aria-label': _('Clear filter', 'vantage'), 'hidden': 'hidden',
 			'click': function() { self.setFilter(''); el.filter.focus(); } }, [ icon('close') ]);
-		el.chips = E('div', { 'class': 'vt-fchips', 'role': 'group', 'aria-label': _('Quick filters') });
+		/* the quick filters sit in a menu at the end of the search box; the
+		   one in force shows as a tag in the box, so none is ever hidden */
+		el.filterTag = E('button', { 'type': 'button', 'class': 'vt-ftag', 'hidden': 'hidden',
+			'click': function(ev) { ev.preventDefault(); ui.chip = 'all'; self.paintClients(); el.filter.focus(); } });
+		el.filterBtn = E('button', { 'type': 'button', 'class': 'vt-filter-btn', 'aria-haspopup': 'true', 'aria-expanded': 'false',
+			'aria-label': _('Quick filters'), 'title': _('Quick filters'),
+			'click': function(ev) { ev.preventDefault(); self.filterMenu(); } }, [ icon('filter') ]);
+		el.filterMenu = E('div', { 'class': 'vt-fmenu', 'role': 'menu', 'aria-label': _('Quick filters'), 'hidden': 'hidden',
+			'keydown': function(ev) { self.filterMenuKey(ev); } });
+		/* Wi-Fi or wired clients, on a device that has both */
+		el.kinds = E('div', { 'class': 'vt-kinds', 'role': 'group', 'aria-label': _('Kind of client'), 'hidden': 'hidden' });
 		el.count = E('span', { 'class': 'vt-count vt-tn' });
 		el.thead = E('thead');
 		el.tbody = E('tbody');
 		el.clientsEmpty = E('div', { 'class': 'vt-empty', 'hidden': 'hidden' });
 		this.rowMap = new Map();
 		el.clients = E('section', { 'class': 'vt-tile vt-clients', 'id': 'vt-clients', 'aria-label': _('Clients') }, [
-			tileHead('users', _('Clients'), [ el.count ]),
+			tileHead('users', _('Clients'), [ el.kinds, el.count ]),
 			E('div', { 'class': 'vt-toolbar' }, [
-				E('label', { 'class': 'vt-filter' }, [ icon('search'), el.filter, E('kbd', { 'class': 'vt-key-hint' }, [ 'F' ]), el.filterClear ]),
-				el.chips
+				E('div', { 'class': 'vt-filter-wrap' }, [
+					E('label', { 'class': 'vt-filter' }, [ icon('search'), el.filterTag, el.filter, E('kbd', { 'class': 'vt-key-hint' }, [ 'F' ]), el.filterClear, el.filterBtn ]),
+					el.filterMenu
+				])
 			]),
 			E('div', { 'class': 'vt-table-wrap' }, [ E('table', { 'class': 'vt-ctable' }, [ el.thead, el.tbody ]) ]),
 			el.clientsEmpty
 		]);
+		document.addEventListener('click', function(ev) {
+			if (!el.filterMenu.hidden && !el.filterMenu.contains(ev.target) && !el.filterBtn.contains(ev.target)) self.filterMenu(false);
+		});
 		return el.clients;
+	},
+
+	/* open (true), close (false) or toggle the quick filter menu */
+	filterMenu: function(open) {
+		var el = this.el;
+		if (open == null) open = el.filterMenu.hidden;
+		el.filterMenu.hidden = !open;
+		el.filterBtn.setAttribute('aria-expanded', String(!!open));
+		if (open) {
+			var on = el.filterMenu.querySelector('[aria-checked="true"]') || el.filterMenu.querySelector('button');
+			if (on) on.focus();
+		}
+	},
+
+	filterMenuKey: function(ev) {
+		var items = Array.prototype.slice.call(this.el.filterMenu.querySelectorAll('button')), n = items.length, i = items.indexOf(document.activeElement);
+		if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.filterMenu(false); this.el.filterBtn.focus(); }
+		else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && n) {
+			ev.preventDefault();
+			if (i < 0) i = ev.key === 'ArrowDown' ? n - 1 : 0;
+			items[(i + (ev.key === 'ArrowDown' ? 1 : n - 1)) % n].focus();
+		}
+		else if ((ev.key === 'Home' || ev.key === 'End') && n) { ev.preventDefault(); items[ev.key === 'Home' ? 0 : n - 1].focus(); }
+		else if (ev.key === 'Tab') this.filterMenu(false);
 	},
 
 	setFilter: function(v) {
@@ -2159,13 +2313,19 @@ return view.extend({
 	},
 
 	filterSsid: function(ssid, band) {
+		this.ui.kind = 'wifi';
 		this.ui.chip = 'all';
 		this.setFilter(ssid);
 		this.el.clients.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
 	},
 
+	/* a wired host's traffic: its port's, when it has the port to itself */
+	portRate: function(c) {
+		return c.shared ? null : this.st.devRates[c.port] || null;
+	},
+
 	sortValue: function(c, key) {
-		var r = this.st.staRates[c.mac];
+		var r = typeof c.port === 'string' ? this.portRate(c) : this.st.staRates[c.mac];
 		switch (key) {
 		case 'name': return String(c.name).toLowerCase();
 		case 'signal': return c.signal == null ? -999 : c.signal;
@@ -2173,77 +2333,154 @@ return view.extend({
 		case 'rate': return Math.max(c.tx && c.tx.rate || 0, c.rx && c.rx.rate || 0);
 		case 'exp': return c.exp ? c.exp.score : -1;
 		case 'time': return c.connected || 0;
+		case 'link': return c.shared || !c.speed ? -1 : c.speed.mbps;
+		case 'net': return ((c.network || c.bridge || '') + ' ' + (c.vlan == null ? '' : c.vlan)).toLowerCase();
+		case 'seen': return c.seen == null ? Infinity : c.seen;
 		default: return r ? r.rx + r.tx : -1;
 		}
 	},
 
+	/* a client (Wi-Fi station or wired host, which has a port) in the
+	   list as filtered */
 	matches: function(c) {
-		var chip = this.ui.chip, q = String(this.ui.filter || '').trim().toLowerCase();
-		if (chip === 'weak' && !(c.signal != null && c.signal < insight.WEAK_DBM)) return false;
-		if (chip === 'new' && !c.isNew) return false;
-		if (chip === 'active' && !(this.st.staRates[c.mac] && this.st.staRates[c.mac].rx + this.st.staRates[c.mac].tx > 8000)) return false;
-		if (/^band:/.test(chip) && c.band !== chip.slice(5)) return false;
+		var chip = this.ui.chip, q = String(this.ui.filter || '').trim().toLowerCase(), hay;
+		if (typeof c.port === 'string') {
+			if (/^port:/.test(chip) && c.port !== chip.slice(5)) return false;
+			hay = [ c.name, c.macLabel, c.mac, c.vendor, c.port, c.network, c.nameSourceLabel ];
+		}
+		else {
+			if (chip === 'weak' && !(c.signal != null && c.signal < insight.WEAK_DBM)) return false;
+			if (chip === 'new' && !c.isNew) return false;
+			if (chip === 'active' && !(this.st.staRates[c.mac] && this.st.staRates[c.mac].rx + this.st.staRates[c.mac].tx > 8000)) return false;
+			if (/^band:/.test(chip) && c.band !== chip.slice(5)) return false;
+			hay = [ c.name, c.macLabel, c.mac, c.ssid, c.bandLabel, c.gen, c.vendor, c.wps, c.nameSourceLabel ];
+		}
 		if (!q) return true;
-		var hay = [ c.name, c.macLabel, c.mac, c.ssid, c.bandLabel, c.gen, c.vendor, c.wps, c.nameSourceLabel ].concat(c.ips || []).join(' ').toLowerCase();
+		hay = hay.concat(c.ips || []).join(' ').toLowerCase();
 		return q.split(/\s+/).every(function(w) { return hay.indexOf(w) >= 0; });
+	},
+
+	/* the quick filters of the list shown: [ id, label, count, warn ] */
+	filterDefs: function() {
+		var m = this.m, st = this.st, out;
+		if (this.ui.kind === 'wired') {
+			var hosts = m.wiredHosts, ports = [];
+			out = [ [ 'all', _('All'), hosts.length ] ];
+			hosts.forEach(function(h) { if (ports.indexOf(h.port) < 0) ports.push(h.port); });
+			if (ports.length > 1) ports.sort().forEach(function(p) { out.push([ 'port:' + p, p, hosts.filter(function(h) { return h.port === p; }).length ]); });
+			return out;
+		}
+		var bands = [];
+		out = [ [ 'all', _('All'), m.clients.length ] ];
+		m.clients.forEach(function(c) { if (c.band && bands.indexOf(c.band) < 0) bands.push(c.band); });
+		bands.sort().forEach(function(b) { out.push([ 'band:' + b, wifi.bandLabel(b), m.clients.filter(function(c) { return c.band === b; }).length ]); });
+		out.push([ 'active', _('Active'), m.clients.filter(function(c) { var r = st.staRates[c.mac]; return r && r.rx + r.tx > 8000; }).length ]);
+		out.push([ 'weak', _('Weak signal'), m.clients.filter(function(c) { return c.signal != null && c.signal < insight.WEAK_DBM; }).length, true ]);
+		out.push([ 'new', _('New', 'vantage'), m.clients.filter(function(c) { return c.isNew; }).length ]);
+		return out;
+	},
+
+	/* the quick filter menu, its button and the tag of the one in force */
+	paintFilters: function(defs) {
+		var self = this, el = this.el, ui = this.ui;
+		var on = defs.filter(function(d) { return d[0] === ui.chip; })[0];
+		el.filterBtn.hidden = defs.length < 2;
+		if (el.filterBtn.hidden && !el.filterMenu.hidden) this.filterMenu(false);
+		el.filterTag.hidden = !on || on[0] === 'all';
+		el.filterBtn.classList.toggle('vt-filter-btn-on', !el.filterTag.hidden);
+		var tag = el.filterTag.hidden ? '' : on[1];
+		if (this.tagSig !== tag) {
+			this.tagSig = tag;
+			dom.content(el.filterTag, tag ? [ E('span', {}, [ tag ]), icon('close') ] : []);
+			el.filterTag.setAttribute('aria-label', tag ? _('Remove filter: %s').format(tag) : '');
+		}
+		/* new counts go into the open menu in place: rebuilding it would
+		   take the focus away */
+		var ids = defs.map(function(d) { return d[0]; }).concat(ui.chip).join('\n'), items = el.filterMenu.children;
+		if (this.filterIds === ids) {
+			defs.forEach(function(d, i) {
+				if (!items[i]) return;
+				txt(items[i].querySelector('.vt-fmenu-n'), d[2]);
+				items[i].classList.toggle('vt-fmenu-warn', !!(d[3] && d[2]));
+			});
+			return;
+		}
+		this.filterIds = ids;
+		dom.content(el.filterMenu, defs.map(function(d) {
+			var sel = ui.chip === d[0];
+			return E('button', { 'type': 'button', 'role': 'menuitemradio', 'aria-checked': String(sel), 'class': 'vt-fmenu-item' + (d[3] && d[2] ? ' vt-fmenu-warn' : ''),
+				'click': function() { ui.chip = d[0]; self.filterMenu(false); self.paintClients(); el.filterBtn.focus(); } }, [
+				E('span', { 'class': 'vt-fmenu-check', 'aria-hidden': 'true' }, [ sel ? icon('check') : '' ]),
+				E('span', { 'class': 'vt-fmenu-label' }, [ d[1] ]),
+				E('span', { 'class': 'vt-fmenu-n vt-tn' }, [ String(d[2]) ])
+			]);
+		}));
 	},
 
 	paintClients: function() {
 		var self = this, m = this.m, st = this.st, el = this.el, ui = this.ui;
 
-		/* quick filter chips: all / bands present / weak / new / active */
-		var chipDefs = [ [ 'all', _('All'), m.clients.length ] ];
-		var bands = [];
-		m.clients.forEach(function(c) { if (c.band && bands.indexOf(c.band) < 0) bands.push(c.band); });
-		bands.sort().forEach(function(b) { chipDefs.push([ 'band:' + b, wifi.bandLabel(b), m.clients.filter(function(c) { return c.band === b; }).length ]); });
-		chipDefs.push([ 'active', _('Active'), m.clients.filter(function(c) { var r = st.staRates[c.mac]; return r && r.rx + r.tx > 8000; }).length ]);
-		chipDefs.push([ 'weak', _('Weak signal'), m.clients.filter(function(c) { return c.signal != null && c.signal < insight.WEAK_DBM; }).length ]);
-		chipDefs.push([ 'new', _('New', 'vantage'), m.clients.filter(function(c) { return c.isNew; }).length ]);
-		if (!chipDefs.some(function(d) { return d[0] === ui.chip; })) ui.chip = 'all';
-		/* chips and headings change with the counts or the sort, not with every poll */
-		var chipSig = JSON.stringify([ ui.chip, chipDefs ]);
-		if (this.chipSig !== chipSig) dom.content(el.chips, chipDefs.map(function(d) {
-			return E('button', { 'type': 'button', 'class': 'vt-fchip' + (ui.chip === d[0] ? ' vt-fchip-on' : '') + (d[0] === 'weak' && d[2] ? ' vt-fchip-warn' : ''),
-				'aria-pressed': String(ui.chip === d[0]), 'click': function() { ui.chip = d[0]; self.paintClients(); } }, [
-				E('span', {}, [ d[1] ]), E('span', { 'class': 'vt-fchip-n vt-tn' }, [ String(d[2]) ])
-			]);
-		}));
-		this.chipSig = chipSig;
+		/* Wi-Fi or wired: the switch shows where there are both; a device
+		   without radios lists its wired hosts only */
+		var hosts = m.wiredHosts || [], both = !!(hosts.length && !m.wired);
+		if (!both) ui.kind = m.wired ? 'wired' : 'wifi';
+		var wired = ui.kind === 'wired', all = wired ? hosts : m.clients;
+		el.kinds.hidden = !both;
+		var kindSig = both ? [ ui.kind, m.clients.length, hosts.length ].join(' ') : '';
+		if (this.kindSig !== kindSig) {
+			this.kindSig = kindSig;
+			dom.content(el.kinds, !both ? [] : [ [ 'wifi', _('Wi-Fi'), m.clients.length ], [ 'wired', _('Wired'), hosts.length ] ].map(function(k) {
+				return E('button', { 'type': 'button', 'class': 'vt-kind' + (ui.kind === k[0] ? ' vt-kind-on' : ''), 'aria-pressed': String(ui.kind === k[0]),
+					'click': function() { if (ui.kind !== k[0]) { ui.kind = k[0]; ui.chip = 'all'; self.paintClients(); } } }, [
+					E('span', {}, [ k[1] ]), E('span', { 'class': 'vt-kind-n vt-tn' }, [ String(k[2]) ])
+				]);
+			}));
+		}
+		var hint = wired ? _('Filter by name, address, port…') : _('Filter by name, address, SSID…');
+		if (el.filter.getAttribute('placeholder') !== hint) el.filter.setAttribute('placeholder', hint);
+
+		var defs = this.filterDefs();
+		if (!defs.some(function(d) { return d[0] === ui.chip; })) ui.chip = 'all';
+		this.paintFilters(defs);
 		el.filterClear.hidden = !ui.filter;
 
-		/* header with sort buttons */
-		var cols = [ [ 'name', _('Device') ], [ 'signal', _('Signal') ], [ 'ssid', _('Network') ], [ 'rate', _('Link rate') ], [ 'live', _('Live') ], [ 'exp', _('Experience') ], [ 'time', _('Online', 'vantage') ] ];
-		var headSig = ui.sort + ' ' + ui.dir;
+		/* header with sort buttons; wired hosts have a link and when the
+		   bridge last heard from them instead of radio figures */
+		var cols = wired ? [ [ 'name', _('Device') ], [ 'link', _('Link', 'vantage') ], [ 'net', _('Network') ], [ 'live', _('Live') ],
+			[ 'seen', _('Last heard'), _('The bridge forgets a device after about five minutes without traffic') ] ]
+			: [ [ 'name', _('Device') ], [ 'signal', _('Signal') ], [ 'ssid', _('Network') ], [ 'rate', _('Link rate') ], [ 'live', _('Live') ], [ 'exp', _('Experience') ], [ 'time', _('Online', 'vantage') ] ];
+		var so = ui.sorts[ui.kind];
+		var headSig = ui.kind + ' ' + so.key + ' ' + so.dir;
 		if (this.headSig !== headSig) dom.content(el.thead, [ E('tr', {}, cols.map(function(c) {
-			var on = ui.sort === c[0];
-			return E('th', { 'class': 'vt-th-' + c[0], 'scope': 'col', 'aria-sort': on ? (ui.dir > 0 ? 'ascending' : 'descending') : 'none' }, [
-				E('button', { 'type': 'button', 'class': 'vt-sort' + (on ? ' vt-sort-on' : ''), 'click': function() {
-					if (ui.sort === c[0]) ui.dir = -ui.dir; else { ui.sort = c[0]; ui.dir = (c[0] === 'name' || c[0] === 'ssid') ? 1 : -1; }
-					self.paintClients();
-				} }, [ E('span', {}, [ c[1] ]), E('span', { 'class': 'vt-sort-ind', 'aria-hidden': 'true' }, [ on ? (ui.dir > 0 ? '↑' : '↓') : '' ]) ])
-			]);
+			var on = so.key === c[0];
+			var btn = E('button', { 'type': 'button', 'class': 'vt-sort' + (on ? ' vt-sort-on' : ''), 'click': function() {
+				if (so.key === c[0]) so.dir = -so.dir; else { so.key = c[0]; so.dir = (c[0] === 'name' || c[0] === 'ssid' || c[0] === 'net' || c[0] === 'seen') ? 1 : -1; }
+				self.paintClients();
+			} }, [ E('span', {}, [ c[1] ]), E('span', { 'class': 'vt-sort-ind', 'aria-hidden': 'true' }, [ on ? (so.dir > 0 ? '↑' : '↓') : '' ]) ]);
+			if (c[2]) btn.setAttribute('title', c[2]);
+			return E('th', { 'class': 'vt-th-' + c[0], 'scope': 'col', 'aria-sort': on ? (so.dir > 0 ? 'ascending' : 'descending') : 'none' }, [ btn ]);
 		})) ]);
 		this.headSig = headSig;
 
-		var list = m.clients.filter(L.bind(this.matches, this));
+		var list = all.filter(L.bind(this.matches, this));
 		list.sort(function(a, b) {
-			var va = self.sortValue(a, ui.sort), vb = self.sortValue(b, ui.sort);
-			if (va < vb) return -ui.dir;
-			if (va > vb) return ui.dir;
+			var va = self.sortValue(a, so.key), vb = self.sortValue(b, so.key);
+			if (va < vb) return -so.dir;
+			if (va > vb) return so.dir;
 			return a.mac < b.mac ? -1 : 1;
 		});
-		var gone = (ui.chip === 'all' || ui.chip === 'new') ? st.gone.map(function(g) { return Object.assign({}, g.client, { gone: true, goneAt: g.at }); }).filter(function(c) {
+		var gone = !wired && (ui.chip === 'all' || ui.chip === 'new') ? st.gone.map(function(g) { return Object.assign({}, g.client, { gone: true, goneAt: g.at }); }).filter(function(c) {
 			return !ui.filter || self.matches(Object.assign({}, c, { isNew: false }));
 		}) : [];
 		if (ui.chip === 'new') gone = [];
 
 		var maxRate = 0;
-		m.clients.forEach(function(c) { var r = st.staRates[c.mac]; if (r && r.rx + r.tx > maxRate) maxRate = r.rx + r.tx; });
+		all.forEach(function(c) { var r = wired ? self.portRate(c) : st.staRates[c.mac]; if (r && r.rx + r.tx > maxRate) maxRate = r.rx + r.tx; });
 
 		var keep = new Set(), at = 0;
 		this.rowSig = this.rowSig || new Map();
 		list.concat(gone).forEach(function(c) {
-			var key = (c.gone ? 'gone:' : '') + c.mac;
+			var key = (wired ? 'wired:' : '') + (c.gone ? 'gone:' : '') + c.mac;
 			keep.add(key);
 			var tr = self.rowMap.get(key);
 			if (!tr) {
@@ -2258,7 +2495,7 @@ return view.extend({
 			tr.setAttribute('aria-label', _('Open details of %s').format(c.name));
 			/* a row that would come out the same keeps its cells, and rows
 			   already in order stay where they are */
-			var cells = self.clientCells(c, maxRate), sig = treeSig(cells);
+			var cells = wired ? self.wiredCells(c, maxRate) : self.clientCells(c, maxRate), sig = treeSig(cells);
 			if (self.rowSig.get(key) !== sig) { dom.content(tr, cells); self.rowSig.set(key, sig); }
 			if (el.tbody.children[at] !== tr) el.tbody.insertBefore(tr, el.tbody.children[at] || null);
 			at++;
@@ -2271,19 +2508,77 @@ return view.extend({
 		});
 		window.setTimeout(function() { self.rowMap.forEach(function(tr) { tr.classList.remove('vt-row-enter'); }); }, 600);
 
-		var total = m.clients.length;
-		txt(el.count, list.length === total ? (total === 1 ? _('1 connected') : _('%d connected').format(total)) : _('%d of %d').format(list.length, total));
+		var total = all.length;
+		txt(el.count, list.length !== total ? _('%d of %d').format(list.length, total)
+			: wired ? (total === 1 ? _('1 device') : _('%d devices').format(total))
+			: (total === 1 ? _('1 connected') : _('%d connected').format(total)));
+		el.count.hidden = both && list.length === total;
 
 		el.clientsEmpty.hidden = list.length + gone.length > 0;
 		if (!el.clientsEmpty.hidden) {
-			dom.content(el.clientsEmpty, !total ? [
-				icon('wifi'), E('p', { 'class': 'vt-empty-title' }, [ _('No clients connected') ]),
-				E('p', {}, [ _('Stations appear here as soon as they associate with one of the SSIDs.') ])
-			] : [
+			dom.content(el.clientsEmpty, total ? [
 				icon('search'), E('p', { 'class': 'vt-empty-title' }, [ ui.filter ? _('No clients match “%s”').format(fmt.safeText(ui.filter, 40)) : _('No clients in this view') ]),
 				E('button', { 'type': 'button', 'class': 'vt-btn', 'click': function() { ui.chip = 'all'; self.setFilter(''); } }, [ _('Show all clients') ])
+			] : wired && this.lastRaw && this.lastRaw.fdbCrowded ? [
+				icon('router'), E('p', { 'class': 'vt-empty-title' }, [ _('Too many devices to list') ]),
+				E('p', {}, [ _('The bridges have learned so many addresses that listing them here would strain this device.') ])
+			] : wired ? [
+				icon('router'), E('p', { 'class': 'vt-empty-title' }, [ _('No wired devices heard') ]),
+				E('p', {}, [ _('Devices on the Ethernet ports appear here once they send traffic; the bridge forgets quiet ones after about five minutes.') ])
+			] : [
+				icon('wifi'), E('p', { 'class': 'vt-empty-title' }, [ _('No clients connected') ]),
+				E('p', {}, [ _('Stations appear here as soon as they associate with one of the SSIDs.') ])
 			]);
 		}
+	},
+
+	/* the device cell of a client row: avatar, name, where the name comes
+	   from, tags and the address */
+	whoCell: function(c, tags) {
+		return E('td', { 'class': 'vt-td-name', 'data-title': _('Device') }, [
+			E('div', { 'class': 'vt-who' }, [
+				avatar(c),
+				E('div', { 'class': 'vt-who-text' }, [
+					E('div', { 'class': 'vt-who-label', 'title': c.name }, [ c.name ]),
+					E('div', { 'class': 'vt-who-sub' }, [ E('span', { 'class': 'vt-src vt-src-' + c.nameSource, 'title': _('Name from: %s').format(this.sourceText(c)) }, [ c.nameSourceLabel ]) ].concat(tags, [ E('span', { 'class': 'vt-mono vt-who-id' }, [ c.secondary ]) ]))
+				])
+			])
+		]);
+	},
+
+	/* a wired host's row. Its link is its port's when it has the port to
+	   itself; on a shared port (a switch or another access point behind
+	   it) neither the speed nor the traffic is its own */
+	wiredCells: function(c, maxRate) {
+		var r = this.portRate(c), total = r ? r.rx + r.tx : 0;
+		var bar = E('span', { 'class': 'vt-mini-fill' });
+		setW(bar, maxRate > 0 ? total / maxRate * 100 : 0);
+		var tags = [];
+		var up = this.m && this.m.uplink;
+		if (c.gateway) tags.push(pill(_('Gateway'), 'accent', _('The router this device sends its traffic to')));
+		else if (up && up.port && c.port === up.port) tags.push(pill(_('Upstream'), 'muted', _('Reached through the uplink port %s, not connected to this device').format(c.port)));
+		if (c.vlan != null) tags.push(pill(_('VLAN %d').format(c.vlan), 'muted'));
+		var speed = c.speed ? fmt.phyRate(c.speed.mbps * 1000) : fmt.DASH;
+		var link = E('td', { 'class': 'vt-td-link', 'data-title': _('Link', 'vantage') }, [
+			E('div', { 'class': 'vt-phy vt-tn' }, [ E('b', { 'class': c.carrier === false ? 'vt-t-warn' : '' }, [ c.carrier === false ? _('down') : c.shared ? _('Shared port') : speed ]) ]),
+			E('div', { 'class': 'vt-phy vt-phy-up vt-tn' }, [ c.shared ? _('%s · %d devices').format(c.port, c.peers) : c.port ])
+		]);
+		link.setAttribute('title', c.shared ? _('%s is shared by %d devices (a switch or another access point behind it); its %s link is not theirs').format(c.port, c.peers, speed) : _('Port %s').format(c.port));
+		return [
+			this.whoCell(c, tags),
+			link,
+			E('td', { 'class': 'vt-td-net', 'data-title': _('Network') }, [ E('div', { 'class': 'vt-net' }, [ E('span', { 'class': 'vt-net-ssid' }, [ c.network || c.bridge || fmt.DASH ]) ]) ]),
+			E('td', { 'class': 'vt-td-live', 'data-title': _('Live') }, c.shared ? [
+				E('span', { 'class': 'vt-muted', 'title': _('Not counted per device on a shared port') }, [ fmt.DASH ])
+			] : [
+				E('div', { 'class': 'vt-live-cell' }, [
+					E('span', { 'class': 'vt-tn vt-live-total' }, [ r ? fmt.bits(total) : fmt.DASH ]),
+					E('span', { 'class': 'vt-mini' }, [ bar ]),
+					E('span', { 'class': 'vt-live-split vt-tn', 'title': r ? _('To device %s, from device %s').format(fmt.bits(r.tx), fmt.bits(r.rx)) : '' }, [ r ? '↓ ' + fmt.bitsShort(r.tx) + '  ↑ ' + fmt.bitsShort(r.rx) : '' ])
+				])
+			]),
+			E('td', { 'class': 'vt-td-seen vt-tn', 'data-title': _('Last heard') }, [ c.seen == null ? _('static entry') : fmt.ago(c.seen * 1000) ])
+		];
 	},
 
 	clientCells: function(c, maxRate) {
@@ -2298,15 +2593,7 @@ return view.extend({
 		var exp = c.exp || { score: 0, level: 'muted', grade: fmt.DASH, reason: '' };
 
 		return [
-			E('td', { 'class': 'vt-td-name', 'data-title': _('Device') }, [
-				E('div', { 'class': 'vt-who' }, [
-					avatar(c),
-					E('div', { 'class': 'vt-who-text' }, [
-						E('div', { 'class': 'vt-who-label', 'title': c.name }, [ c.name ]),
-						E('div', { 'class': 'vt-who-sub' }, [ E('span', { 'class': 'vt-src vt-src-' + c.nameSource, 'title': _('Name from: %s').format(this.sourceText(c)) }, [ c.nameSourceLabel ]) ].concat(tags, [ E('span', { 'class': 'vt-mono vt-who-id' }, [ c.secondary ]) ]))
-					])
-				])
-			]),
+			this.whoCell(c, tags),
 			E('td', { 'class': 'vt-td-signal', 'data-title': _('Signal') }, c.gone ? [ E('span', { 'class': 'vt-muted' }, [ fmt.DASH ]) ] : [
 				E('span', { 'class': 'vt-signal', 'title': c.level.word }, [ signalGlyph(c.level), E('span', { 'class': 'vt-tn' }, [ fmt.dbm(c.signal) ]) ])
 			]),
@@ -2501,6 +2788,8 @@ return view.extend({
 		this.m.clients.forEach(function(x) { if (x.mac === mac) c = x; });
 		if (!c) st.gone.forEach(function(g) { if (g.client.mac === mac) gone = g; });
 		if (!c && gone) c = Object.assign({}, gone.client, { gone: true, goneAt: gone.at });
+		if (!c) (this.m.wiredHosts || []).forEach(function(x) { if (x.mac === mac) c = x; });
+		if (c && typeof c.port === 'string') return this.drawerWired(c);
 		if (!c) return {
 			title: [ E('span', { 'class': 'vt-drawer-name' }, [ names.normMac(mac) ? fmt.mac(mac) : _('Unknown device', 'vantage') ]) ],
 			body: [ E('div', { 'class': 'vt-empty' }, [ icon('wifi'), E('p', { 'class': 'vt-empty-title' }, [ _('Not connected') ]), E('p', {}, [ _('This station is not associated right now.') ]) ]) ]
@@ -2582,6 +2871,41 @@ return view.extend({
 				kv(_('IP addresses'), c.ips && c.ips.length ? c.ips.join('\n') : E('span', { 'class': 'vt-muted' }, [ _('not known to this AP') ]), true),
 				kv(_('Name from'), this.sourceText(c)),
 				c.wps && c.nameSource !== 'wps' ? kv(_('WPS device name'), c.wps) : ''
+			]) ])
+		];
+		return { title: title, body: body };
+	},
+
+	drawerWired: function(c) {
+		var self = this, r = this.portRate(c);
+		var title = [
+			avatar(c),
+			E('div', { 'class': 'vt-drawer-titles' }, [
+				E('div', { 'class': 'vt-drawer-name', 'id': 'vt-drawer-name' }, [ c.name ]),
+				E('div', { 'class': 'vt-drawer-sub' }, [
+					E('span', { 'class': 'vt-src vt-src-' + c.nameSource }, [ c.nameSourceLabel ]),
+					E('span', { 'class': 'vt-mono' }, [ c.secondary ])
+				])
+			])
+		];
+		var rename = this.canWrite ? E('button', { 'type': 'button', 'class': 'vt-btn vt-btn-ghost', 'click': function() { self.startRename(c); } }, [ icon('pencil'), E('span', {}, [ c.alias ? _('Rename', 'vantage') : _('Name this device') ]) ]) : '';
+		var speed = c.speed ? model.speedLabel(c.speed) : fmt.DASH;
+		var body = [
+			E('div', { 'class': 'vt-dactions' }, [ rename, pageLink(insight.PAGES.network, _('Interfaces')) ]),
+			this.el.renameSlot = E('div', { 'class': 'vt-rename-slot' }),
+			this.section(_('Connection'), [ E('dl', { 'class': 'vt-kvs' }, [
+				kv(_('Port'), c.port, true),
+				kv(_('Link', 'vantage'), c.carrier === false ? _('down') : c.shared ? [ _('Shared by %d devices').format(c.peers), E('small', {}, [ _('the port: %s').format(speed) ]) ] : speed),
+				kv(_('Traffic'), c.shared ? E('span', { 'class': 'vt-muted' }, [ _('Not counted per device on a shared port') ])
+					: r ? '↓ ' + fmt.bits(r.tx) + ' · ↑ ' + fmt.bits(r.rx) : _('measuring')),
+				kv(_('Network'), [ c.network || c.bridge || fmt.DASH, c.vlan != null ? E('small', {}, [ _('VLAN %d').format(c.vlan) ]) : '' ]),
+				kv(_('Last heard'), c.seen == null ? _('static entry') : fmt.ago(c.seen * 1000))
+			]) ]),
+			this.section(_('Identity'), [ E('dl', { 'class': 'vt-kvs' }, [
+				kv(_('MAC address'), c.macLabel, true),
+				kv(_('Address type'), c.isPrivate ? _('Private address (randomised by the device)') : (c.vendor ? _('Globally unique · %s').format(c.vendor) : _('Globally unique'))),
+				kv(_('IP addresses'), c.ips && c.ips.length ? c.ips.join('\n') : E('span', { 'class': 'vt-muted' }, [ _('not known to this device') ]), true),
+				kv(_('Name from'), this.sourceText(c))
 			]) ])
 		];
 		return { title: title, body: body };
@@ -2812,7 +3136,7 @@ return view.extend({
 			return;
 		}
 		/* 'f' focuses the client filter; '/' and Ctrl+K belong to the theme */
-		if ((ev.key === 'f' || ev.key === 'F') && !typing && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !this.ui.drawer && !this.m.wired) {
+		if ((ev.key === 'f' || ev.key === 'F') && !typing && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !this.ui.drawer) {
 			ev.preventDefault();
 			this.el.filter.focus();
 			this.el.filter.select();

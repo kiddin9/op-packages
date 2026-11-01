@@ -5,10 +5,21 @@
 //
 //   wireless   network.wireless status reduced to the fields the dashboard
 //              reads: no key, sae_password, RADIUS or 802.11r secrets, no
-//              EAP credentials. Read group luci-app-vantage.
+//              EAP credentials. Where netifd has no network.wireless object
+//              (vendor drivers that bypass it, such as MediaTek's mtkwifi),
+//              the same fields from /etc/config/wireless instead. Read group
+//              luci-app-vantage.
 //   thermal    the temperature of each thermal zone in /sys/class/thermal
 //              (millidegrees Celsius) with its type; nothing else is read.
 //              Read group luci-app-vantage.
+//   wired      the hosts the Linux bridges have learned on their ports:
+//              MAC, port, bridge, VLAN and seconds since last heard, from a
+//              read-only netlink dump of the forwarding database; at most
+//              128 per port and 512 in all. Not dumped (crowded: true)
+//              when the bridges hold FDB_LIMIT entries or more between
+//              them, counted first through sysfs without reading further: a flood of
+//              made-up addresses must not make rpcd build the whole
+//              table. Read group luci-app-vantage.
 //   set_alias  { mac, name, icon }: name one station, or remove its name
 //              with name ''. Validated here, whatever the browser did, and
 //              written to /etc/config/vantage only. Write group
@@ -23,14 +34,21 @@
 import { cursor } from 'uci';
 import { connect } from 'ubus';
 import { lsdir, readfile } from 'fs';
+import * as rtnl from 'rtnl';
 
 const CONFIG = 'vantage';
+const WIRELESS = 'wireless';      // read only, by wireless_from_config()
 const NAME_MAX = 48;              // code points, after collapsing spaces
 const NAME_MAX_UNITS = NAME_MAX * 8; // raw input cap, in UTF-16 code units (as names.js)
 const MAX_ALIASES = 512;          // client sections; bounds /etc/config/vantage
 const ICONS = [ 'phone', 'laptop', 'tablet', 'desktop', 'tv', 'speaker', 'printer', 'camera', 'console', 'watch', 'iot', 'router', 'device' ];
 const THERMAL = '/sys/class/thermal';
 const MAX_ZONES = 16;
+const MAX_HOSTS = 512;            // wired hosts per reply
+const MAX_PER_PORT = 128;         // of them on one port (the uplink's would take them all)
+const NET = '/sys/class/net';
+const FDB_LIMIT = 4096;           // forwarding entries, all bridges together, before wired() lists none
+const FDB_ENTRY = 16;             // sizeof(struct __fdb_entry), brforward's record
 
 /* ------------------------------------------------------------ helpers */
 
@@ -170,6 +188,12 @@ function short_string(v, max) {
 	return (type(v) == 'string' && length(v) <= max) ? v : null;
 }
 
+// a boolean option that is on, read as the init scripts read it
+// (config_get_bool; netifd takes '1' and 'true')
+function uci_true(v) {
+	return v in [ '1', 'on', 'true', 'yes', 'enabled' ];
+}
+
 /* ----------------------------------------------------------- wireless */
 
 // the encryption mode ('sae-mixed+ccmp', 'psk2', 'none', ...): its leading
@@ -227,6 +251,46 @@ function reduce_radio(r) {
 		},
 		interfaces: ifaces
 	};
+}
+
+// The same reply from /etc/config/wireless, for firmware whose driver
+// bypasses netifd. Only enabled interfaces that name their ifname, since
+// the view can look nothing else up; the first section to claim a name
+// wins. Run state stays unknown here: iwinfo is served by rpcd itself, so
+// asking it from a plugin would wait on rpcd. No txpower either: vendor
+// drivers do not configure it in dBm (mtkwifi: per cent).
+function wireless_from_config() {
+	let wl = cursor();
+	let radios = {}, taken = {}, out = {};
+
+	if (!wl.load(WIRELESS))
+		return out;
+
+	wl.foreach(WIRELESS, 'wifi-device', (s) => {
+		if (match(s['.name'], /^[A-Za-z0-9_.-]{1,64}$/))
+			radios[s['.name']] = { disabled: uci_true(s.disabled), config: { ...s, txpower: null }, interfaces: [] };
+	});
+
+	wl.foreach(WIRELESS, 'wifi-iface', (s) => {
+		let r = (type(s.device) == 'string') ? radios[s.device] : null;
+		let ifname = s.ifname;
+
+		if (type(r) != 'object' || uci_true(s.disabled) || type(ifname) != 'string' ||
+		    !match(ifname, /^[A-Za-z0-9_.-]{1,64}$/) || taken[ifname])
+			return;
+
+		taken[ifname] = true;
+		push(r.interfaces, {
+			ifname,
+			section: s['.name'],
+			config: { ...s, network: (type(s.network) == 'string') ? filter(split(s.network, /\s+/), (n) => n != '') : s.network }
+		});
+	});
+
+	for (let name, r in radios)
+		out[name] = { ...reduce_radio(r), source: 'config' };
+
+	return out;
 }
 
 /* ---------------------------------------------------------- set_alias */
@@ -338,6 +402,72 @@ function thermal() {
 	return out;
 }
 
+/* -------------------------------------------------------------- wired */
+
+function netdev(v) {
+	return type(v) == 'string' && match(v, /^[A-Za-z0-9_.-]{1,15}$/) ? v : null;
+}
+
+// true when the bridges hold FDB_LIMIT forwarding entries or more
+// between them (one dump returns them all): each sysfs brforward lists
+// its bridge's as FDB_ENTRY-byte records, and the kernel fills only as
+// many as asked for, so no more than the budget left is read
+function crowded() {
+	let left = FDB_LIMIT * FDB_ENTRY;
+
+	for (let n in (lsdir(NET) ?? [])) {
+		let b = netdev(n) ? readfile(NET + '/' + n + '/brforward', left) : null;
+
+		if (type(b) == 'string')
+			left -= length(b);
+
+		if (left <= 0)
+			return true;
+	}
+
+	return false;
+}
+
+// [ { mac, port, bridge, vlan, seen } ] in dump order, at most MAX_HOSTS
+// and MAX_PER_PORT a port: what the bridges learned from their ports.
+// Left out: the bridges' own addresses (permanent), the switch drivers'
+// copies (self, no master) and group addresses. seen: seconds since the
+// bridge last heard from the host (the kernel counts in 1/100 s), null
+// for a static entry. null when a bridge is crowded.
+function wired() {
+	if (crowded())
+		return null;
+
+	let fdb = rtnl.request(rtnl.const.RTM_GETNEIGH, rtnl.const.NLM_F_DUMP, { family: rtnl.const.AF_BRIDGE });
+	let out = [], per = {};
+
+	for (let n in ((type(fdb) == 'array') ? fdb : [])) {
+		if (length(out) >= MAX_HOSTS)
+			break;
+
+		let mac = (type(n) == 'object') ? norm_mac(n.lladdr) : null;
+
+		if (!mac || is_multicast(mac) || type(n.state) != 'int' || (n.state & rtnl.const.NUD_PERMANENT) ||
+		    (type(n.flags) == 'int' && (n.flags & rtnl.const.NTF_SELF)) || !netdev(n.master) || !netdev(n.dev) ||
+		    (per[n.dev] ?? 0) >= MAX_PER_PORT)
+			continue;
+
+		per[n.dev] = (per[n.dev] ?? 0) + 1;
+
+		let upd = n.cacheinfo?.updated;
+
+		push(out, {
+			mac,
+			port: n.dev,
+			bridge: n.master,
+			vlan: (type(n.vlan) == 'int' && n.vlan > 0 && n.vlan < 4095) ? n.vlan : null,
+			seen: (!(n.state & rtnl.const.NUD_NOARP) && type(upd) == 'int' && upd >= 0) ? int(upd / 100) : null
+		});
+	}
+
+	return out;
+}
+
 /* ------------------------------------------------------------ methods */
 
 const methods = {
@@ -346,8 +476,10 @@ const methods = {
 			let reply = connect()?.call('network.wireless', 'status');
 			let out = {};
 
-			if (type(reply) != 'object')
-				return out;
+			// no object, or one that skipped every radio (netifd has no
+			// handler for the vendor's driver type): the config instead
+			if (type(reply) != 'object' || !length(reply))
+				return wireless_from_config();
 
 			for (let name, r in reply)
 				if (type(r) == 'object' && match(name, /^[A-Za-z0-9_.-]{1,64}$/))
@@ -360,6 +492,14 @@ const methods = {
 	thermal: {
 		call: function() {
 			return { zones: thermal() };
+		}
+	},
+
+	wired: {
+		call: function() {
+			let hosts = wired();
+
+			return (hosts == null) ? { hosts: [], crowded: true } : { hosts };
 		}
 	},
 

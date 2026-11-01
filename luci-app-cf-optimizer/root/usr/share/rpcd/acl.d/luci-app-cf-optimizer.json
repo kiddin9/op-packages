@@ -1,0 +1,28 @@
+{
+	"luci-app-cf-optimizer": {
+		"description": "Grant access to cf-optimizer LuCI procedures",
+		"read": {
+			"ubus": {
+				"luci.cf-optimizer": [
+					"get_status",
+					"get_logs"
+				]
+			},
+			"uci": [
+				"cf-optimizer"
+			]
+		},
+		"write": {
+			"ubus": {
+				"luci.cf-optimizer": [
+					"run_once",
+					"clear_logs",
+					"service_action"
+				]
+			},
+			"uci": [
+				"cf-optimizer"
+			]
+		}
+	}
+}

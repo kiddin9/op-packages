@@ -1,0 +1,37 @@
+{
+	"admin/services/cf-optimizer": {
+		"title": "Cloudflare 优选加速",
+		"order": 65,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-cf-optimizer" ],
+			"uci": { "cf-optimizer": true }
+		}
+	},
+	"admin/services/cf-optimizer/overview": {
+		"title": "状态概览",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "cf-optimizer/overview"
+		}
+	},
+	"admin/services/cf-optimizer/settings": {
+		"title": "参数配置",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "cf-optimizer/settings"
+		}
+	},
+	"admin/services/cf-optimizer/log": {
+		"title": "运行日志",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "cf-optimizer/log"
+		}
+	}
+}

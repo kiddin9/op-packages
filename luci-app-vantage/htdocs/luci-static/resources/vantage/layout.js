@@ -13,8 +13,8 @@
 
 var TILES = [ 'hero', 'chart', 'radios', 'clients', 'sys', 'talk', 'ssids' ];
 
-/* tiles that only exist with Wi-Fi */
-var WIFI = { radios: true, clients: true, talk: true, ssids: true };
+/* tiles that only exist with Wi-Fi (Clients lists wired hosts too) */
+var WIFI = { radios: true, talk: true, ssids: true };
 
 var COLS = { wide: 4, mid: 2, narrow: 1 };
 
@@ -37,9 +37,9 @@ var DEFAULTS = {
 	narrow: [ [ 'clients', 0, 1 ], [ 'talk', 0, 1 ], [ 'radios', 0, 1 ], [ 'hero', 0, 1 ], [ 'ssids', 0, 1 ], [ 'chart', 0, 1 ], [ 'sys', 0, 1 ] ]
 };
 var DEFAULTS_WIRED = {
-	wide: [ [ 'hero', 0, 4 ], [ 'chart', 0, 3 ], [ 'sys', 3, 1 ] ],
-	mid: [ [ 'hero', 0, 2 ], [ 'chart', 0, 2 ], [ 'sys', 0, 2 ] ],
-	narrow: [ [ 'hero', 0, 1 ], [ 'chart', 0, 1 ], [ 'sys', 0, 1 ] ]
+	wide: [ [ 'hero', 0, 4 ], [ 'chart', 0, 3 ], [ 'sys', 3, 1 ], [ 'clients', 0, 4 ] ],
+	mid: [ [ 'hero', 0, 2 ], [ 'chart', 0, 2 ], [ 'sys', 0, 2 ], [ 'clients', 0, 2 ] ],
+	narrow: [ [ 'hero', 0, 1 ], [ 'clients', 0, 1 ], [ 'chart', 0, 1 ], [ 'sys', 0, 1 ] ]
 };
 
 function own(o, k) { return o != null && Object.prototype.hasOwnProperty.call(o, k); }

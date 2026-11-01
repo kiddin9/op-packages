@@ -338,12 +338,17 @@ html[data-darkmode="true"] .vt-app {
 .vt-app .vt-edit-hidden:empty { display: none; }
 .vt-app .vt-edit-hidden .vt-fchip .vt-ico { width: 13px; height: 13px; }
 .vt-app .vt-editbar-actions { display: flex; gap: 8px; margin-left: auto; }
+/* the chart and network path picks wrap as one group */
+.vt-app .vt-edit-picks { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; min-width: 0; }
 .vt-app .vt-edit-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .vt-app .vt-edit-field label { font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; }
-/* narrow: the label above, the select across the bar, so a long choice
-   ("Mirrored, scale per direction") is not cut */
+/* narrow: the two picks side by side, each label above its select, so
+   the sticky bar stays short */
 @container vt (max-width: 699px) {
-	.vt-app .vt-edit-field { flex: 1 1 100%; flex-direction: column; align-items: stretch; gap: 4px; }
+	.vt-app .vt-edit-picks { flex: 1 1 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+	.vt-app .vt-edit-field { flex-direction: column; align-items: stretch; gap: 4px; }
+	.vt-app .vt-edit-field label { white-space: normal; }
+	.vt-app .vt-edit-field > .vt-select { width: 100%; min-width: 0; }
 }
 .vt-app .vt-select {
 	appearance: none; -webkit-appearance: none; min-width: 0; max-width: 100%;
@@ -622,7 +627,7 @@ h2, h3{
 .vt-app .vt-kpi + .vt-kpi { box-shadow: -1px 0 0 var(--vt-line); border-radius: 0 var(--vt-r-sm) var(--vt-r-sm) 0; }
 .vt-app .vt-kpi-label { font-size: var(--vt-fs-micro); font-weight: 650; color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .05em; }
 .vt-app .vt-kpi-value { font-size: var(--vt-fs-xl); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; white-space: nowrap; }
-.vt-app .vt-kpi-sub { font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-kpi-sub { max-width: 100%; font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vt-app .vt-kpi-warn .vt-kpi-value { color: var(--vt-warn); }
 @container vthero (max-width: 700px) {
 	.vt-app .vt-kpis { grid-template-columns: 1fr 1fr; }
@@ -635,6 +640,10 @@ h2, h3{
 	-webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 85%);
 	mask-image: linear-gradient(180deg, rgba(0,0,0,.55), transparent 85%);
 }
+/* the backdrop (vantage/backdrop.js): a canvas over the dot grid and
+   under the wires and nodes, drawing over the path's height only */
+.vt-app .vt-backdrop { position: absolute; left: 0; top: 0; pointer-events: none; border-radius: inherit; }
+.vt-app .vt-backdrop[hidden] { display: none; }
 .vt-app .vt-path {
 	position: relative;
 	display: grid;
@@ -725,7 +734,8 @@ h2, h3{
 .vt-app .vt-link-up { font-size: var(--vt-fs-sm); }
 .vt-app .vt-link-up b { font-size: var(--vt-fs-base); font-weight: 650; color: var(--vt-text-2); }
 .vt-app .vt-link-up .vt-ico { color: var(--vt-text-3); }
-.vt-app .vt-link-meta { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-family: var(--vt-mono); white-space: nowrap; margin-top: 2px; }
+.vt-app .vt-link-meta { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-family: var(--vt-mono); white-space: nowrap; margin-top: 2px;
+	padding: 0 6px; border-radius: 6px; background: var(--vt-surface); }
 
 /* the branches spread over the height the tile gets from its row, so a
    tall neighbour leaves no empty band above or below the diagram */
@@ -933,6 +943,9 @@ h2, h3{
 /* ----------------------------------------------------------- 9. clients */
 
 .vt-app .vt-clients { padding-bottom: 8px; }
+/* a jump to a tile (the path's SSID, Wired and port nodes) stops below
+   the sticky top bar */
+.vt-app .vt-tile { scroll-margin-top: calc(var(--v-stick-top, 48px) + 12px); }
 .vt-app .vt-count { font-size: var(--vt-fs-sm); color: var(--vt-text-3); font-weight: 560; }
 .vt-app .vt-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
 .vt-app .vt-filter {
@@ -957,17 +970,60 @@ h2, h3{
 }
 .vt-app .vt-filter-clear:hover { background: var(--vt-surface-3); color: var(--vt-text); }
 .vt-app .vt-filter-clear .vt-ico { width: 14px; height: 14px; }
-.vt-app .vt-fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+/* Wi-Fi or wired, in the tile head */
+.vt-app .vt-kinds { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--vt-line); border-radius: 999px; background: var(--vt-surface-2); }
+.vt-app .vt-kind {
+	display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; margin: 0; min-width: 0;
+	border: 0; border-radius: 999px; background: transparent; box-shadow: none; text-transform: none;
+	color: var(--vt-text-2); font-size: var(--vt-fs-sm); font-weight: 600; cursor: pointer;
+}
+.vt-app .vt-kind:hover { color: var(--vt-text); }
+.vt-app .vt-kind.vt-kind-on { background: var(--vt-surface); color: var(--vt-text); box-shadow: var(--vt-shadow); }
+.vt-app .vt-kind-n { font-size: var(--vt-fs-micro); color: var(--vt-text-3); }
+/* quick filters: a button at the end of the search box, a menu under it,
+   and the filter in force as a tag in the box */
+.vt-app .vt-filter-wrap { position: relative; display: flex; flex: 1 1 260px; max-width: 380px; min-width: 0; }
+.vt-app .vt-filter-wrap > .vt-filter { flex: 1 1 auto; max-width: none; min-width: 0; }
+.vt-app .vt-filter-btn {
+	position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+	width: calc(var(--vt-ctl) - 10px); height: calc(var(--vt-ctl) - 10px); padding: 0; margin: 0 -2px 0 0; min-width: 0;
+	border: 0; border-radius: var(--vt-r-ctl); background: transparent; box-shadow: none; color: var(--vt-text-3); cursor: pointer;
+}
+.vt-app .vt-filter-btn:hover, .vt-app .vt-filter-btn[aria-expanded="true"] { background: var(--vt-surface-3); color: var(--vt-text); }
+.vt-app .vt-filter-btn.vt-filter-btn-on { color: var(--vt-accent); }
+.vt-app .vt-filter-btn .vt-ico { width: 16px; height: 16px; }
+.vt-app .vt-ftag {
+	display: inline-flex; align-items: center; gap: 4px; flex: none; max-width: 45%; height: 24px; padding: 0 6px 0 9px; margin: 0; min-width: 0;
+	border: 0; border-radius: 999px; background: var(--vt-accent-soft); box-shadow: none; text-transform: none;
+	color: var(--vt-text); font-size: var(--vt-fs-sm); font-weight: 600; cursor: pointer;
+}
+.vt-app .vt-ftag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-app .vt-ftag .vt-ico { width: 12px; height: 12px; flex: none; color: var(--vt-text-3); }
+.vt-app .vt-ftag:hover .vt-ico { color: var(--vt-text); }
+.vt-app .vt-fmenu {
+	position: absolute; top: calc(100% + 6px); right: 0; z-index: 6;
+	display: flex; flex-direction: column; min-width: 210px; padding: 5px;
+	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r); background: var(--vt-surface); box-shadow: var(--vt-shadow-pop);
+}
+.vt-app .vt-fmenu[hidden] { display: none; }
+.vt-app .vt-fmenu-item {
+	display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 8px;
+	height: 34px; padding: 0 10px 0 8px; margin: 0; min-width: 0; width: 100%;
+	border: 0; border-radius: var(--vt-r-ctl); background: transparent; box-shadow: none; text-align: left; text-transform: none;
+	color: var(--vt-text); font-size: var(--vt-fs-sm); font-weight: 560; cursor: pointer;
+}
+.vt-app .vt-fmenu-item:hover, .vt-app .vt-fmenu-item:focus-visible { background: var(--vt-surface-2); outline: none; }
+.vt-app .vt-fmenu-check { display: inline-flex; color: var(--vt-accent); }
+.vt-app .vt-fmenu-check .vt-ico { width: 14px; height: 14px; }
+.vt-app .vt-fmenu-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-app .vt-fmenu-n { color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: 600; }
+.vt-app .vt-fmenu-warn .vt-fmenu-n { color: var(--vt-warn); }
 .vt-app .vt-fchip {
 	display: inline-flex; align-items: center; gap: 6px; height: var(--vt-ctl); padding: 0 12px; margin: 0;
 	border: 1px solid var(--vt-line); border-radius: 999px; background: var(--vt-surface);
 	color: var(--vt-text-2); font-size: var(--vt-fs-sm); font-weight: 600; cursor: pointer; box-shadow: none; min-width: 0; text-transform: none;
 }
 .vt-app .vt-fchip:hover { border-color: var(--vt-line-2); color: var(--vt-text); background: var(--vt-surface-2); }
-.vt-app .vt-fchip-n { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: 600; }
-.vt-app .vt-fchip-warn .vt-fchip-n { color: var(--vt-warn); }
-.vt-app .vt-fchip.vt-fchip-on { background: var(--vt-text); border-color: var(--vt-text); color: var(--vt-surface); }
-.vt-app .vt-fchip.vt-fchip-on .vt-fchip-n { color: color-mix(in oklab, var(--vt-surface) 70%, transparent); }
 
 .vt-app .vt-table-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
 .vt-app .vt-ctable { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: auto; min-width: 800px; }
@@ -1038,7 +1094,9 @@ h2, h3{
 	font-size: var(--vt-fs-micro); line-height: 1.35; color: var(--vt-text-3); max-width: 170px;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.vt-app .vt-td-time { white-space: nowrap; color: var(--vt-text-2); }
+.vt-app .vt-td-time, .vt-app .vt-td-seen { white-space: nowrap; color: var(--vt-text-2); }
+.vt-app .vt-td-link { white-space: nowrap; }
+.vt-app .vt-td-link .vt-phy-up { padding-left: 0; }
 /* the Graphite shell tags numeric-looking cells with .vt-num (monospace);
    the dashboard sets its own type */
 .vt-app td.vt-num { font-family: inherit; font-size: inherit; letter-spacing: inherit; }
@@ -1253,8 +1311,7 @@ h2, h3{
 	.vt-app .vt-tile { padding: 14px 14px 16px; }
 	.vt-app .vt-filter { max-width: none; flex-basis: 100%; }
 	.vt-app .vt-key-hint { display: none; }
-	.vt-app .vt-fchips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -14px; padding: 0 14px; }
-	.vt-app .vt-fchip { flex: none; }
+	.vt-app .vt-filter-wrap { max-width: none; flex-basis: 100%; }
 	.vt-app .vt-head { gap: 10px; }
 	.vt-app .vt-headline { font-size: var(--vt-fs-lg); }
 	.vt-app .vt-orb { width: 32px; height: 32px; }
@@ -1297,13 +1354,14 @@ h2, h3{
 	.vt-app .vt-row:hover { background: var(--vt-surface-2); }
 	.vt-app .vt-ctable tr.vt-row-sel { background: var(--vt-accent-soft); border-color: var(--vt-accent-line); }
 	.vt-app .vt-ctable td.vt-td-name { grid-column: 1; grid-row: 1; min-width: 0; box-shadow: none !important; }
-	.vt-app .vt-ctable td.vt-td-signal { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; padding-top: 2px; }
+	.vt-app .vt-ctable td.vt-td-signal, .vt-app .vt-ctable td.vt-td-link { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; padding-top: 2px; text-align: right; }
 	.vt-app .vt-ctable td.vt-td-net { grid-column: 1; grid-row: 2; padding-left: 44px; }
 	.vt-app .vt-net { flex-direction: row; align-items: center; gap: 6px; flex-wrap: wrap; }
 	.vt-app .vt-ctable td.vt-td-live { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; }
 	.vt-app .vt-live-cell { min-width: 0; }
 	.vt-app .vt-live-cell .vt-mini, .vt-app .vt-live-split { display: none; }
-	.vt-app .vt-ctable td.vt-td-exp { grid-column: 1 / -1; grid-row: 3; padding-left: 44px; }
+	.vt-app .vt-ctable td.vt-td-exp, .vt-app .vt-ctable td.vt-td-seen { grid-column: 1 / -1; grid-row: 3; padding-left: 44px; }
+	.vt-app .vt-ctable td.vt-td-seen { font-size: var(--vt-fs-sm); color: var(--vt-text-3); }
 	.vt-app .vt-exp-text span { max-width: none; -webkit-line-clamp: 1; }
 	.vt-app .vt-exp { gap: 8px; }
 	.vt-app .vt-exp-text { flex-direction: row; align-items: baseline; gap: 6px; min-width: 0; }

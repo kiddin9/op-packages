@@ -1,0 +1,290 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8\n"
+
+msgid "Cloudflare 优选加速"
+msgstr "Cloudflare 优选加速"
+
+msgid "状态概览"
+msgstr "状态概览"
+
+msgid "参数配置"
+msgstr "参数配置"
+
+msgid "运行日志"
+msgstr "运行日志"
+
+msgid "监控当前生效的 Cloudflare 优选节点状态，展示各代理域名定向情况与最新测速排行榜。"
+msgstr "监控当前生效的 Cloudflare 优选节点状态，展示各代理域名定向情况与最新测速排行榜。"
+
+msgid "配置待优选的 Cloudflare 代理域名、测速周期及采样算法参数。"
+msgstr "配置待优选的 Cloudflare 代理域名、测速周期及采样算法参数。"
+
+msgid "查看后台优选测速与 hosts 重载的实时运行记录。"
+msgstr "查看后台优选测速与 hosts 重载的实时运行记录。"
+
+msgid "服务状态"
+msgstr "服务状态"
+
+msgid "运行中"
+msgstr "运行中"
+
+msgid "已停止"
+msgstr "已停止"
+
+msgid "立即执行优选"
+msgstr "立即执行优选"
+
+msgid "重启服务"
+msgstr "重启服务"
+
+msgid "上次更新时间"
+msgstr "上次更新时间"
+
+msgid "生效优选 IP"
+msgstr "生效优选 IP"
+
+msgid "数据中心"
+msgstr "数据中心"
+
+msgid "测速延迟"
+msgstr "测速延迟"
+
+msgid "域名定向列表"
+msgstr "域名定向列表"
+
+msgid "目标域名"
+msgstr "目标域名"
+
+msgid "TCP 延迟"
+msgstr "TCP 延迟"
+
+msgid "TLS 延迟"
+msgstr "TLS 延迟"
+
+msgid "状态"
+msgstr "状态"
+
+msgid "正常"
+msgstr "正常"
+
+msgid "当前优选候选排行榜 (Top 5)"
+msgstr "当前优选候选排行榜 (Top 5)"
+
+msgid "排名"
+msgstr "排名"
+
+msgid "候选 IP"
+msgstr "候选 IP"
+
+msgid "平均延迟"
+msgstr "平均延迟"
+
+msgid "时延范围"
+msgstr "时延范围"
+
+msgid "丢包率"
+msgstr "丢包率"
+
+msgid "基础设置"
+msgstr "基础设置"
+
+msgid "启用服务"
+msgstr "启用服务"
+
+msgid "开启后守护进程将按设定周期自动执行优选测速，并通过 dnsmasq 内存级重载生效。"
+msgstr "开启后守护进程将按设定周期自动执行优选测速，并通过 dnsmasq 内存级重载生效。"
+
+msgid "加速域名列表"
+msgstr "加速域名列表"
+
+msgid "填入需要优选加速的域名，支持 Cloudflare Tunnel 穿透域名和小黄云代理域名。"
+msgstr "填入需要优选加速的域名，支持 Cloudflare Tunnel 穿透域名和小黄云代理域名。"
+
+msgid "自动优选周期"
+msgstr "自动优选周期"
+
+msgid "两次自动测速优选之间的休眠间隔时间。"
+msgstr "两次自动测速优选之间的休眠间隔时间。"
+
+msgid "高级探测参数"
+msgstr "高级探测参数"
+
+msgid "采样探测次数"
+msgstr "采样探测次数"
+
+msgid "初筛后对候选节点进行连续采样的次数，用于计算平均时延与丢包率，推荐范围 3-10 次。"
+msgstr "初筛后对候选节点进行连续采样的次数，用于计算平均时延与丢包率，推荐范围 3-10 次。"
+
+msgid "防震荡迟滞阈值"
+msgstr "防震荡迟滞阈值"
+
+msgid "新节点平均延迟相比在用节点必须降低超过此绝对时延（毫秒）才触发切换，避免网络微小波动导致局域网长连接频繁重连。"
+msgstr "新节点平均延迟相比在用节点必须降低超过此绝对时延（毫秒）才触发切换，避免网络微小波动导致局域网长连接频繁重连。"
+
+msgid "关闭 (任意优化均切换)"
+msgstr "关闭 (任意优化均切换)"
+
+msgid "正在下发配置并同步 hosts 域名定向，请稍候..."
+msgstr "正在下发配置并同步 hosts 域名定向，请稍候..."
+
+msgid "初筛并发数"
+msgstr "初筛并发数"
+
+msgid "初筛阶段并发探测的进程数量，推荐范围 5-20。"
+msgstr "初筛阶段并发探测的进程数量，推荐范围 5-20。"
+
+msgid "候选 IP 来源"
+msgstr "候选 IP 来源"
+
+msgid "选择优选测速的候选节点 IP 来源。"
+msgstr "选择优选测速的候选节点 IP 来源。"
+
+msgid "内置优选 IP 池"
+msgstr "内置优选 IP 池"
+
+msgid "自定义 IP 或网段"
+msgstr "自定义 IP 或网段"
+
+msgid "混合模式"
+msgstr "混合模式"
+
+msgid "自定义候选 IP 列表"
+msgstr "自定义候选 IP 列表"
+
+msgid "填入自定义的 Cloudflare Anycast IP 地址或网段。"
+msgstr "填入自定义的 Cloudflare Anycast IP 地址或网段。"
+
+msgid "清空日志"
+msgstr "清空日志"
+
+msgid "日志已清空"
+msgstr "日志已清空"
+
+msgid "次优备选 IP"
+msgstr "次优备选 IP"
+
+msgid "暂无备选"
+msgstr "暂无备选"
+
+msgid "健康看门狗"
+msgstr "健康看门狗"
+
+msgid "未运行"
+msgstr "未运行"
+
+msgid "故障快速倒换"
+msgstr "故障快速倒换"
+
+msgid "启用快速故障倒换"
+msgstr "启用快速故障倒换"
+
+msgid "开启后短周期看门狗将持续监控在用节点健康度，发生严重丢包或阻断时自动秒级倒换至次优备选节点。"
+msgstr "开启后短周期看门狗将持续监控在用节点健康度，发生严重丢包或阻断时自动秒级倒换至次优备选节点。"
+
+msgid "健康巡检间隔"
+msgstr "健康巡检间隔"
+
+msgid "看门狗对在用节点执行极轻量 HTTP 探活的间隔时间。"
+msgstr "看门狗对在用节点执行极轻量 HTTP 探活的间隔时间。"
+
+msgid "30 秒"
+msgstr "30 秒"
+
+msgid "60 秒"
+msgstr "60 秒"
+
+msgid "120 秒"
+msgstr "120 秒"
+
+msgid "连续故障判定阈值"
+msgstr "连续故障判定阈值"
+
+msgid "探活连续失败达到指定次数后触发次优节点核验与自动倒换，推荐设置为 2 次以避免偶发网络抖动误切换。"
+msgstr "探活连续失败达到指定次数后触发次优节点核验与自动倒换，推荐设置为 2 次以避免偶发网络抖动误切换。"
+
+msgid "已倒换"
+msgstr "已倒换"
+
+msgid "延迟劣化容忍倍数"
+msgstr "延迟劣化容忍倍数"
+
+msgid "当在用节点实测延迟超过基线延迟指定倍数且绝对恶化超过 50ms 时判定为信道拥塞，连续触发将倒换至次优节点。"
+msgstr "当在用节点实测延迟超过基线延迟指定倍数且绝对恶化超过 50ms 时判定为信道拥塞，连续触发将倒换至次优节点。"
+
+msgid "1.5 倍"
+msgstr "1.5 倍"
+
+msgid "2.0 倍"
+msgstr "2.0 倍"
+
+msgid "3.0 倍"
+msgstr "3.0 倍"
+
+msgid "禁用"
+msgstr "禁用"
+
+msgid "机房区域过滤"
+msgstr "机房区域过滤"
+
+msgid "区域过滤模式"
+msgstr "区域过滤模式"
+
+msgid "设置对 Cloudflare 数据中心机房的筛选策略。"
+msgstr "设置对 Cloudflare 数据中心机房的筛选策略。"
+
+msgid "不限制"
+msgstr "不限制"
+
+msgid "排除指定机房"
+msgstr "排除指定机房"
+
+msgid "仅限指定机房"
+msgstr "仅限指定机房"
+
+msgid "目标机房列表"
+msgstr "目标机房列表"
+
+msgid "选择需要排除或仅保留的 Cloudflare 常用数据中心机房。"
+msgstr "选择需要排除或仅保留的 Cloudflare 常用数据中心机房。"
+
+msgid "新加坡 SIN"
+msgstr "新加坡 SIN"
+
+msgid "香港 HKG"
+msgstr "香港 HKG"
+
+msgid "台北 TPE"
+msgstr "台北 TPE"
+
+msgid "东京 NRT"
+msgstr "东京 NRT"
+
+msgid "大阪 KIX"
+msgstr "大阪 KIX"
+
+msgid "首尔 ICN"
+msgstr "首尔 ICN"
+
+msgid "吉隆坡 KUL"
+msgstr "吉隆坡 KUL"
+
+msgid "曼谷 BKK"
+msgstr "曼谷 BKK"
+
+msgid "圣何塞 SJC"
+msgstr "圣何塞 SJC"
+
+msgid "洛杉矶 LAX"
+msgstr "洛杉矶 LAX"
+
+msgid "法兰克福 FRA"
+msgstr "法兰克福 FRA"
+
+msgid "伦敦 LHR"
+msgstr "伦敦 LHR"
+
+msgid "自定义机房代码"
+msgstr "自定义机房代码"
+
+msgid "填入其他三位大写机场代码，例如 SFO、SEA 等。"
+msgstr "填入其他三位大写机场代码，例如 SFO、SEA 等。"
