@@ -50,6 +50,8 @@ define Package/dockerd
     +kmod-nf-ipvs \
     +kmod-veth \
     +tini \
+    +fuse-overlayfs \
+    +kmod-vxlan +kmod-macvlan +kmod-dummy +kmod-crypto-gcm +kmod-crypto-seqiv +kmod-crypto-ghash +kmod-ipsec +kmod-nf-nathelper +kmod-nf-nathelper-extra +btrfs-progs \
     +uci-firewall
   USERID:=docker:docker
   MENU:=1
@@ -86,7 +88,7 @@ define Build/Prepare
 	$(call EnsureVendoredVersion,tini)
 
 	# Verify CLI is the same version
-	CLI_MAKEFILE="../docker/Makefile"; \
+	CLI_MAKEFILE="../../packages/utils/docker/Makefile"; \
 	CLI_VERSION=$$$$( grep --only-matching --perl-regexp '(?<=PKG_VERSION:=)(.*)' "$$$${CLI_MAKEFILE}" ); \
 	if [ "$$$${CLI_VERSION}" != "$(PKG_VERSION)" ]; then \
 		echo "ERROR: Expected 'PKG_VERSION:=$(PKG_VERSION)' in '$$$${CLI_MAKEFILE}', found 'PKG_VERSION:=$$$${CLI_VERSION}'"; \
@@ -124,6 +126,9 @@ define Package/dockerd/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/bundles/binary-daemon/docker-proxy $(1)/usr/bin/
 
 	$(INSTALL_DIR) $(1)/opt/docker/
+
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_DATA) ./files/dockerd.uci-defaults $(1)/etc/uci-defaults/dockerd
 
   ifeq ($(CONFIG_DOCKER_CHECK_CONFIG),y)
 	$(INSTALL_DIR) $(1)/usr/share/docker/
