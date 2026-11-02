@@ -36,18 +36,23 @@
 
 --- a/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json
 +++ b/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json
-@@ -1,7 +1,7 @@
+@@ -1,9 +1,11 @@
  {
 -	"admin/services/dockerman": {
 -		"title": "Dockerman JS",
 -		"order": "60",
 +	"admin/dockerman": {
 +		"title": "Docker",
-+		"order": "40",
++		"order": 40,
  		"action": {
- 			"type": "firstchild"
+-			"type": "firstchild"
++			"type": "firstchild",
++			"preferred": "overview",
++			"recurse": true
  		},
-@@ -15,7 +15,7 @@
+ 		"depends": {
+ 			"acl": [ "luci-app-dockerman" ],
+@@ -15,7 +17,7 @@
  		}
  	},
  
@@ -56,7 +61,7 @@
  		"title": "Overview",
  		"order": 1,
  		"action": {
-@@ -27,7 +27,7 @@
+@@ -27,7 +29,7 @@
  		}
  	},
  
@@ -65,7 +70,7 @@
  		"title": "Configuration",
  		"order": 2,
  		"action": {
-@@ -39,17 +39,17 @@
+@@ -39,17 +41,17 @@
  		}
  	},
  
@@ -86,7 +91,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -64,7 +64,7 @@
+@@ -64,7 +66,7 @@
  		}
  	},
  
@@ -95,7 +100,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -79,7 +79,7 @@
+@@ -79,7 +81,7 @@
  		}
  	},
  
@@ -104,7 +109,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -94,7 +94,7 @@
+@@ -94,7 +96,7 @@
  		}
  	},
  
@@ -113,7 +118,7 @@
  		"title_hide": "Container",
  		"action": {
  			"type": "view",
-@@ -105,7 +105,7 @@
+@@ -105,7 +107,7 @@
  		}
  	},
  
@@ -122,7 +127,7 @@
  		"title": "Containers",
  		"order": 3,
  		"action": {
-@@ -117,7 +117,7 @@
+@@ -117,7 +119,7 @@
  		}
  	},
  
@@ -131,7 +136,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -133,17 +133,17 @@
+@@ -133,17 +135,17 @@
  		}
  	},
  
@@ -152,7 +157,7 @@
  		"title_hide": "Container",
  		"action": {
  			"type": "view",
-@@ -154,7 +154,7 @@
+@@ -154,7 +156,7 @@
  		}
  	},
  
@@ -161,7 +166,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -170,7 +170,7 @@
+@@ -170,7 +172,7 @@
  		}
  	},
  
@@ -170,7 +175,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -186,7 +186,7 @@
+@@ -186,7 +188,7 @@
  		}
  	},
  
@@ -179,7 +184,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -201,7 +201,7 @@
+@@ -201,7 +203,7 @@
  		}
  	},
  
@@ -188,7 +193,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -217,7 +217,7 @@
+@@ -217,7 +219,7 @@
  		}
  	},
  
@@ -197,7 +202,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -233,7 +233,7 @@
+@@ -233,7 +235,7 @@
  		}
  	},
  
@@ -206,7 +211,7 @@
  		"title": "Images",
  		"order": 4,
  		"action": {
-@@ -242,7 +242,7 @@
+@@ -242,7 +244,7 @@
  		}
  	},
  
@@ -215,7 +220,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -258,7 +258,7 @@
+@@ -258,7 +260,7 @@
  		}
  	},
  
@@ -224,7 +229,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -274,17 +274,17 @@
+@@ -274,17 +276,17 @@
  		}
  	},
  
@@ -245,7 +250,7 @@
  		"title_hide": "Network",
  		"action": {
  			"type": "view",
-@@ -295,7 +295,7 @@
+@@ -295,7 +297,7 @@
  		}
  	},
  
@@ -254,7 +259,7 @@
  		"title": "Networks",
  		"order": 5,
  		"action": {
-@@ -307,7 +307,7 @@
+@@ -307,7 +309,7 @@
  		}
  	},
  
@@ -263,7 +268,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -323,7 +323,7 @@
+@@ -323,7 +325,7 @@
  		}
  	},
  
@@ -272,7 +277,7 @@
  		"title_hide": "Network",
  		"action": {
  			"type": "view",
-@@ -334,17 +334,17 @@
+@@ -334,17 +336,17 @@
  		}
  	},
  
@@ -293,7 +298,7 @@
  		"title": "Volumes",
  		"order": 6,
  		"action": {
-@@ -356,7 +356,7 @@
+@@ -356,7 +358,7 @@
  		}
  	},
  
@@ -302,7 +307,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -372,7 +372,7 @@
+@@ -372,7 +374,7 @@
  		}
  	},
  
@@ -311,7 +316,7 @@
  		"action": {
  			"type": "function",
  			"module": "luci.controller.docker",
-@@ -388,7 +388,7 @@
+@@ -388,7 +390,7 @@
  		}
  	},
  
