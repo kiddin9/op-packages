@@ -30,6 +30,16 @@ function device_bucket_key(key, bucket) {
 
 function prune_buckets(now,    cutoff, bucket, composite, parts) {
 	cutoff = hour_start(now) - ((retention_hours - 1) * 3600)
+	# Existing snapshots only add counters to the active hour. Repeating the
+	# full expired-bucket sweep every minute does no work until the cutoff
+	# advances. A collector restart starts with an empty cache and prunes once.
+	if (cutoff == last_prune_cutoff) {
+		return
+	}
+	last_prune_cutoff = cutoff
+	# A new retention window can invalidate cached totals even without DNS
+	# traffic; the full aggregate is rebuilt at the next snapshot.
+	aggregate_dirty = 1
 	for (bucket in queries) {
 		if ((bucket + 0) < cutoff) {
 			delete queries[bucket]
@@ -136,6 +146,7 @@ function register_device(key, mac, ip, hostname, client_id, duid,    selected, o
 		# device record structurally complete, this avoids passing a missing awk
 		# associative-array element to helper functions during serialization.
 		device_seen[selected] = 1
+		aggregate_dirty = 1
 		device_mac[selected] = ""
 		device_ip[selected] = ""
 		device_hostname[selected] = ""

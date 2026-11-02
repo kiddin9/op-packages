@@ -282,6 +282,7 @@ function migrate_device(from_key, to_key, mac, ip, hostname, client_id, duid,   
 	if (!journal_replaying) {
 		journal_deleted_device[from_key] = 1
 	}
+	aggregate_dirty = 1
 	remove_device_metadata(from_key)
 	selected = register_device(to_key, mac, ip, hostname, client_id, duid)
 	if (selected == "") {
@@ -533,6 +534,7 @@ function record_device(ip, query_delta, blocked_delta, now,    key, bucket, comp
 
 	bucket = hour_start(now)
 	composite = device_bucket_key(key, bucket)
+	aggregate_dirty = 1
 	device_hour_queries[composite] += 0
 	device_hour_blocked[composite] += 0
 	if (query_delta > 0) {

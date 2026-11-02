@@ -48,6 +48,21 @@ ss_case_ucode() (
 	out="$("$UCODE_BIN" "$STATUS_STORE" "$status_file" set stage running)"
 	printf '%s\n' "$out" >"$status_file"
 	printf '%s\n' "$out" | grep -F '"stage":"running"' >/dev/null
+	# One invocation must update every pair without dropping existing status.
+	out="$("$UCODE_BIN" "$STATUS_STORE" "$status_file" set_many status ready stage 'done' count 0 optional '')"
+	printf '%s\n' "$out" >"$status_file"
+	printf '%s\n' "$out" | grep -F '"status":"ready"' >/dev/null
+	printf '%s\n' "$out" | grep -F '"stage":"done"' >/dev/null
+	printf '%s\n' "$out" | grep -F '"count":"0"' >/dev/null
+	printf '%s\n' "$out" | grep -F '"optional":""' >/dev/null
+	printf '%s\n' "$out" | grep -F '"stage":"running"' >/dev/null && return 1
+	# Reject malformed pair lists, never serialize partial changes.
+	if "$UCODE_BIN" "$STATUS_STORE" "$status_file" set_many incomplete >/dev/null 2>&1; then
+		return 1
+	fi
+	if "$UCODE_BIN" "$STATUS_STORE" "$status_file" set_many '' value >/dev/null 2>&1; then
+		return 1
+	fi
 	out="$("$UCODE_BIN" "$STATUS_STORE" "$status_file" add_warning dnsmasq_warning)"
 	printf '%s\n' "$out" >"$status_file"
 	printf '%s\n' "$out" | grep -F '"code":"dnsmasq_warning"' >/dev/null

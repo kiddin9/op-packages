@@ -16,6 +16,8 @@ export SS_SPEC_ROOT
 # shellcheck disable=SC1091
 . "$SS_SPEC_ROOT/spec/support/lifecycle_cases.sh"
 # shellcheck disable=SC1091
+. "$SS_SPEC_ROOT/spec/support/locking_cases.sh"
+# shellcheck disable=SC1091
 . "$SS_SPEC_ROOT/spec/support/blocklist_cases.sh"
 # shellcheck disable=SC1091
 . "$SS_SPEC_ROOT/spec/support/device_api_cases.sh"

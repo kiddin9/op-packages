@@ -399,6 +399,7 @@ Available methods:
 safeshield.status
 safeshield.config
 safeshield.statistics
+safeshield.statistics_summary
 safeshield.config_update
 safeshield.set_enabled
 safeshield.refresh
@@ -419,6 +420,18 @@ Read lightweight local DNS statistics:
 ubus call safeshield statistics
 /etc/init.d/safeshield statistics
 ```
+
+For dashboards that need collector health and aggregate counters only, use:
+
+```sh
+ubus call safeshield statistics_summary
+```
+
+The summary retains configuration, service health, source details and totals,
+but omits the potentially large `hourly` and `devices` arrays. The original
+`statistics` response remains unchanged (schema v3). Both methods read the
+current statistics snapshot; the summary specifically reduces RPC-side array
+normalization and JSON response size, not the snapshot file read itself.
 
 Statistics are collected from dnsmasq cumulative SafeShield UBus counters. Raw queried domains
 are never written to the statistics state. Loopback (`127.0.0.0/8` and `::1`)

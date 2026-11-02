@@ -50,6 +50,13 @@ Describe 'SafeShield core shell behavior'
 		The error should equal ''
 	End
 
+	It 'updates status fields in batches rather than one process per key'
+		When call ss_case_status_batch_writes
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
 	It 'removes preserved legacy license keys during upgrade'
 		When call ss_case_legacy_license_cleanup
 		The status should be success

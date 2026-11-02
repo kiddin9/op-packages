@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dockerd
 PKG_VERSION:=29.6.1
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 PKG_LICENSE:=Apache-2.0
 PKG_LICENSE_FILES:=LICENSE
 PKG_CPE_ID:=cpe:/a:mobyproject:moby
@@ -138,10 +138,18 @@ define Package/dockerd/install
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/dockerd $(1)/etc/config/dockerd
 
-	# Must be after systcl 11-br-netfilter.conf from kmod-br-netfilter
-	$(INSTALL_DIR) $(1)/etc/sysctl.d
-	$(INSTALL_DATA) ./files/etc/sysctl.d/sysctl-br-netfilter-ip.conf \
-		$(1)/etc/sysctl.d/12-br-netfilter-ip.conf
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
+	$(INSTALL_DATA) ./files/etc/hotplug.d/net/br-netfilter \
+		$(1)/etc/hotplug.d/net/10-docker-br-netfilter
+
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_DATA) ./files/etc/uci-defaults/16_docker-netifd-migrate2 \
+		$(1)/etc/uci-defaults/16_docker-netifd-migrate2
+	$(INSTALL_DATA) ./files/etc/uci-defaults/17_docker-fw4 \
+		$(1)/etc/uci-defaults/17_docker-fw4
+
+	$(INSTALL_DIR) $(1)/lib/fstab.d
+	$(INSTALL_DATA) ./files/lib/fstab.d/dockerd.sh $(1)/lib/fstab.d/dockerd.sh
 endef
 
 define Package/dockerd/postinst

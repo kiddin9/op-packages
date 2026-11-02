@@ -548,6 +548,13 @@ return baseclass.extend({
 		   before it gets that far */
 		o = s.taboption(tab, form.Value, 'rat_order', _('RAT priority'),
 			_('QMI and MBIM modems: the order in which the modem searches the radio technologies, most preferred first, e.g. <code>nr5g,lte</code>. wwand writes it at every start when the modem holds a different one. A technology missing from the list may never be searched for, even when "Radio technology" allows it. Empty = leave the modem\'s order unchanged. Saving a change restarts this modem\'s bring-up, so its connection drops briefly. The current order is shown, and can be changed live, under Modem Tools.'));
+		/* an explicit empty entry, like "Modem default" above, rather than the
+		   optional placeholder: ui.js adds that placeholder only when no '' item
+		   exists (ui.js:1180), and Footstrap hides a placeholder while the list
+		   is open (Footstrap cascade.css:829, `:not([open])`), so
+		   the open box had no text and the row, aligned on the baseline, moved
+		   its label down to the box's bottom edge (luci-app-wwand#17) */
+		o.value('', _('Keep the modem\'s order'));
 		o.value('nr5g,lte', 'NR5G, LTE');
 		o.value('nr5g,lte,umts', 'NR5G, LTE, UMTS');
 		o.value('lte,nr5g', 'LTE, NR5G');

@@ -115,6 +115,7 @@ EOF_IP
 	PATH="$TMP/bin:$PATH" \
 		SS_STATSD_FUNCTIONS_LIB="$TMP/functions.sh" \
 		SS_STATSD_CORE_LIB="$TMP/core.sh" \
+		SS_STATSD_LOCK_LIB="$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh" \
 		SS_STATSD_AWK_DIR="$SS_SPEC_ROOT/files/usr/lib/safeshield/statistics" \
 		SS_STATSD_POLL_COMMAND="$TMP/bin/stats-poll" \
 		SS_STATSD_GENERATION_ID='runtime-generation' \
@@ -580,6 +581,7 @@ EOF_CORE
 	write_payload "$SS_STATISTICS_UPLOAD_JSON_FILE" 7
 	upload_pending_create
 	ss_spec_assert_file_contains "$SS_STATISTICS_UPLOAD_PENDING_META_FILE" "$(printf 'recent\tgeneration-upload\t7')"
+	ss_should_terminate=0
 	MOCK_HTTP_MODE='stale'
 	export MOCK_HTTP_MODE
 	upload_send_pending

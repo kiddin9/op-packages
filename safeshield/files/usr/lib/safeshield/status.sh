@@ -10,26 +10,19 @@ ss_status_exec() {
 }
 
 ss_status_apply() {
-	local tmp="${RUNNING_STATUS_FILE}.tmp"
+	local tmp="${RUNNING_STATUS_FILE}.tmp.$$" rc=0
 
 	mkdir -p "${RUNNING_STATUS_FILE%/*}" || return 1
+	json_lock_open || return 1
 
-	ss_status_exec "$@" >"${tmp}" || {
-		rm -f "${tmp}"
-		return 1
-	}
-
-	[ -s "${tmp}" ] || {
-		rm -f "${tmp}"
-		return 1
-	}
-
-	mv -f "${tmp}" "${RUNNING_STATUS_FILE}" || {
-		rm -f "${tmp}"
-		return 1
-	}
-
-	return 0
+	ss_status_exec "$@" >"$tmp" || rc=1
+	[ "$rc" -eq 0 ] && [ -s "$tmp" ] || rc=1
+	if [ "$rc" -eq 0 ]; then
+		mv -f "$tmp" "$RUNNING_STATUS_FILE" || rc=1
+	fi
+	[ "$rc" -eq 0 ] || rm -f "$tmp"
+	json_lock_close
+	return "$rc"
 }
 
 ss_now() {
@@ -40,66 +33,77 @@ ss_status_set_now() {
 	ss_status_set "$1" "$(ss_now)"
 }
 
+# A single status-store invocation updates all pairs while holding the same
+# JSON lock. This avoids spawning ucode once per field during a refresh reset.
+ss_status_set_many() {
+	[ "$#" -gt 0 ] || return 0
+	ss_status_apply set_many "$@" >/dev/null 2>&1 || true
+}
+
 ss_status_reset_health_fields() {
-	ss_status_set health_dnsmasq_binary ""
-	ss_status_set health_dnsmasq_version ""
-	ss_status_set health_dnsmasq_features ""
-	ss_status_set health_dnsmasq_confdir ""
-	ss_status_set health_dnsmasq_initial_restart ""
-	ss_status_set health_dnsmasq_final_restart ""
-	ss_status_set health_dns_runtime ""
-	ss_status_set health_blocklist_verify ""
-	ss_status_set health_min_valid_line_count ""
-	ss_status_set health_max_file_size ""
-	ss_status_set health_api_resolve ""
-	ss_status_set health_artifact_download ""
-	ss_status_set health_artifact_sha256 ""
-	ss_status_set dnsmasq_version ""
-	ss_status_set dnsmasq_min_version "${SS_MIN_DNSMASQ_VERSION:-2.93}"
+	ss_status_set_many \
+		health_dnsmasq_binary "" \
+		health_dnsmasq_version "" \
+		health_dnsmasq_features "" \
+		health_dnsmasq_confdir "" \
+		health_dnsmasq_initial_restart "" \
+		health_dnsmasq_final_restart "" \
+		health_dns_runtime "" \
+		health_blocklist_verify "" \
+		health_min_valid_line_count "" \
+		health_max_file_size "" \
+		health_api_resolve "" \
+		health_artifact_download "" \
+		health_artifact_sha256 "" \
+		dnsmasq_version "" \
+		dnsmasq_min_version "${SS_MIN_DNSMASQ_VERSION:-2.93}"
 }
 
 ss_status_reset_blocklist_fields() {
-	ss_status_set blocklist_installed "0"
-	ss_status_set blocklist_file_size_kb "0"
-	ss_status_set blocklist_verification_ok "0"
-	ss_status_set blocklist_test_domain ""
-	ss_status_set blocklist_test_domain_sample_count "0"
-	ss_status_set blocklist_test_domain_success_count "0"
-	ss_status_set blocklist_test_domains ""
-	ss_status_set blocklist_backup_available "0"
+	ss_status_set_many \
+		blocklist_installed "0" \
+		blocklist_file_size_kb "0" \
+		blocklist_verification_ok "0" \
+		blocklist_test_domain "" \
+		blocklist_test_domain_sample_count "0" \
+		blocklist_test_domain_success_count "0" \
+		blocklist_test_domains "" \
+		blocklist_backup_available "0"
 }
 
 ss_status_reset_artifact_fields() {
-	ss_status_set entitlement_plan ""
-	ss_status_set entitlement_status ""
-	ss_status_set physical_fingerprint ""
-	ss_status_set fingerprint_version ""
-	ss_status_set identity_provider ""
-	ss_status_set identity_source ""
-	ss_status_set identity_strength ""
-	ss_status_set identity_profile ""
-	ss_status_set device_code ""
-	ss_status_set device_code_source ""
-	ss_status_set installation_id ""
-	ss_status_set device_profile ""
-	ss_status_set artifact_tier ""
-	ss_status_set artifact_version ""
-	ss_status_set artifact_sha256 ""
-	ss_status_set artifact_unique_domains "0"
-	ss_status_set artifact_rules "0"
-	ss_status_set artifact_download_url_present "0"
-	ss_status_set artifact_source_count "0"
-	ss_status_set artifact_block_source_count "0"
-	ss_status_set artifact_allow_source_count "0"
+	ss_status_set_many \
+		entitlement_plan "" \
+		entitlement_status "" \
+		physical_fingerprint "" \
+		fingerprint_version "" \
+		identity_provider "" \
+		identity_source "" \
+		identity_strength "" \
+		identity_profile "" \
+		device_code "" \
+		device_code_source "" \
+		installation_id "" \
+		device_profile "" \
+		artifact_tier "" \
+		artifact_version "" \
+		artifact_sha256 "" \
+		artifact_unique_domains "0" \
+		artifact_rules "0" \
+		artifact_download_url_present "0" \
+		artifact_source_count "0" \
+		artifact_block_source_count "0" \
+		artifact_allow_source_count "0"
 }
 
 ss_status_mark_failure() {
 	local code="$1"
 
-	ss_status_set status "error"
-	ss_status_set_now last_failure
-	ss_status_set last_result "error"
-	ss_status_set last_error_code "$code"
+	ss_status_set_many \
+		status "error" \
+		last_failure "$(ss_now)" \
+		last_result "error" \
+		last_error_code "$code"
 	ss_status_add_error "$code"
 }
 
@@ -109,14 +113,15 @@ ss_status_mark_success() {
 
 	now="$(ss_now)"
 	ss_status_apply clear_messages >/dev/null 2>&1 || true
-	ss_status_set status "ready"
-	ss_status_set stage "done"
-	ss_status_set last_success "$now"
-	ss_status_set last_result "success"
-	ss_status_set last_error_code ""
-
 	if is_valid_integer "$interval" && [ "$interval" -gt 0 ] 2>/dev/null; then
-		ss_status_set next_refresh_at "$((now + interval))"
+		ss_status_set_many \
+			status "ready" stage "done" last_success "$now" \
+			last_result "success" last_error_code "" \
+			next_refresh_at "$((now + interval))"
+	else
+		ss_status_set_many \
+			status "ready" stage "done" last_success "$now" \
+			last_result "success" last_error_code ""
 	fi
 }
 
@@ -131,9 +136,10 @@ ss_status_prepare_refresh() {
 	is_valid_integer "$last_local_apply_failure" || last_local_apply_failure=0
 
 	ss_status_reset
-	ss_status_set last_success "$last_success"
-	ss_status_set last_local_apply "$last_local_apply"
-	ss_status_set last_local_apply_failure "$last_local_apply_failure"
+	ss_status_set_many \
+		last_success "$last_success" \
+		last_local_apply "$last_local_apply" \
+		last_local_apply_failure "$last_local_apply_failure"
 }
 
 ss_status_set() {
@@ -159,22 +165,14 @@ ss_status_add_warning() {
 }
 
 ss_status_reset() {
-	rm -f "${RUNNING_STATUS_FILE}" "${RUNNING_STATUS_FILE}.tmp"
-
 	ss_status_apply reset >/dev/null 2>&1 || return 1
 
-	ss_status_set status "idle"
-	ss_status_set stage ""
-	ss_status_set valid_line_count "0"
-
-	ss_status_set last_result "idle"
-	ss_status_set last_error_code ""
-	ss_status_set last_attempt "0"
-	ss_status_set last_success "0"
-	ss_status_set last_failure "0"
-	ss_status_set last_local_apply "0"
-	ss_status_set last_local_apply_failure "0"
-	ss_status_set next_refresh_at "0"
+	ss_status_set_many \
+		status "idle" stage "" valid_line_count "0" \
+		last_result "idle" last_error_code "" \
+		last_attempt "0" last_success "0" last_failure "0" \
+		last_local_apply "0" last_local_apply_failure "0" \
+		next_refresh_at "0"
 
 	ss_status_reset_health_fields
 	ss_status_reset_blocklist_fields
@@ -262,41 +260,15 @@ ss_restore_previous_blocklist() {
 }
 
 ss_refresh_lock_open() {
-	mkdir -p "${SS_REFRESH_LOCK%/*}" || return 1
-	eval "exec ${SS_REFRESH_LOCK_FD}>\"${SS_REFRESH_LOCK}\"" || return 1
-	flock -n "${SS_REFRESH_LOCK_FD}" || {
-		eval "exec ${SS_REFRESH_LOCK_FD}>&-"
-		return 1
-	}
+	ss_lock_try "${SS_REFRESH_LOCK}.d"
 }
 
 ss_refresh_lock_open_wait() {
 	local timeout="${1:-120}"
-	local waited=0
-
 	is_valid_integer "$timeout" || timeout=120
-	mkdir -p "${SS_REFRESH_LOCK%/*}" || return 1
-	eval "exec ${SS_REFRESH_LOCK_FD}>\"${SS_REFRESH_LOCK}\"" || return 1
-
-	while ! flock -n "${SS_REFRESH_LOCK_FD}"; do
-		if [ "$waited" -ge "$timeout" ] 2>/dev/null; then
-			eval "exec ${SS_REFRESH_LOCK_FD}>&-" 2>/dev/null || true
-			return 1
-		fi
-
-		ss_should_stop && {
-			eval "exec ${SS_REFRESH_LOCK_FD}>&-" 2>/dev/null || true
-			return 130
-		}
-
-		sleep 1
-		waited=$((waited + 1))
-	done
-
-	return 0
+	ss_lock_wait "${SS_REFRESH_LOCK}.d" "$timeout" ss_should_stop
 }
 
 ss_refresh_lock_close() {
-	flock -u "${SS_REFRESH_LOCK_FD}" 2>/dev/null || true
-	eval "exec ${SS_REFRESH_LOCK_FD}>&-" 2>/dev/null || true
+	ss_lock_release "${SS_REFRESH_LOCK}.d"
 }

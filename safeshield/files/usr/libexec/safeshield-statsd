@@ -7,6 +7,7 @@ LC_ALL=C
 export LC_ALL
 umask 077
 
+SS_STATSD_LOCK_LIB="${SS_STATSD_LOCK_LIB:-/usr/lib/safeshield/locking.sh}"
 SS_STATSD_FUNCTIONS_LIB="${SS_STATSD_FUNCTIONS_LIB:-/lib/functions.sh}"
 SS_STATSD_CORE_LIB="${SS_STATSD_CORE_LIB:-/usr/lib/safeshield/core.sh}"
 SS_STATSD_AWK_DIR="${SS_STATSD_AWK_DIR:-/usr/lib/safeshield/statistics}"
@@ -24,6 +25,8 @@ SS_STATSD_PERSISTENT_COMPACT_INTERVAL_S="${SS_STATSD_PERSISTENT_COMPACT_INTERVAL
 . "$SS_STATSD_FUNCTIONS_LIB"
 # shellcheck disable=SC1090
 . "$SS_STATSD_CORE_LIB"
+# shellcheck disable=SC1090
+. "$SS_STATSD_LOCK_LIB"
 
 stats_poller_pid=''
 stats_awk_pid=''
@@ -74,7 +77,8 @@ stats_cleanup() {
 	[ -n "$stats_fifo" ] && rm -f "$stats_fifo"
 
 	if [ "$stats_lock_owned" -eq 1 ] && [ -n "$stats_lock_dir" ]; then
-		rm -rf "$stats_lock_dir"
+		ss_lock_release "$stats_lock_dir" || true
+		stats_lock_owned=0
 	fi
 }
 
@@ -85,30 +89,12 @@ stats_terminate() {
 }
 
 stats_acquire_lock() {
-	local owner_pid=''
-
 	stats_lock_dir="${SS_STATISTICS_DIR}/collector.lock"
-
-	if mkdir "$stats_lock_dir" 2>/dev/null; then
-		stats_lock_owned=1
-		printf '%s\n' "$$" >"${stats_lock_dir}/pid"
-		return 0
-	fi
-
-	if [ -r "${stats_lock_dir}/pid" ]; then
-		owner_pid="$(cat "${stats_lock_dir}/pid" 2>/dev/null || true)"
-	fi
-
-	if stats_process_running "$owner_pid"; then
-		log_warn "Statistics collector is already running (pid=${owner_pid})"
+	if ! ss_lock_try "$stats_lock_dir"; then
+		log_warn 'Statistics collector lock is already held or unavailable'
 		return 1
 	fi
-
-	log_warn 'Removing stale statistics collector lock'
-	rm -rf "$stats_lock_dir" || return 1
-	mkdir "$stats_lock_dir" || return 1
 	stats_lock_owned=1
-	printf '%s\n' "$$" >"${stats_lock_dir}/pid"
 	return 0
 }
 

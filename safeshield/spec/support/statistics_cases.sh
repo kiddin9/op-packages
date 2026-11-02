@@ -1272,3 +1272,37 @@ DATA
 	! grep -F '"bucket_start":1787950800' "$UPLOAD" >/dev/null
 	ss_spec_assert_eq "$(sed -n 's/.*"snapshot_seq":\([0-9][0-9]*\).*/\1/p' "$UPLOAD")" "$(sed -n 's/.*"snapshot_seq":\([0-9][0-9]*\).*/\1/p' "$JSON")"
 )
+
+# Verifies that caching the retention sweep never leaves expired history in
+# the local JSON, the persisted state, or the short cloud upload projection.
+ss_case_statistics_retention_cache() (
+	set -eu
+	TMP="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP"' EXIT HUP INT TERM
+	STATE="$TMP/state.tsv"
+	JSON="$TMP/statistics.json"
+	UPLOAD="$TMP/upload.json"
+	INPUT="$TMP/input.log"
+	LEASES="$TMP/dhcp.leases"
+	: >"$LEASES"
+	cat >"$INPUT" <<'DATA'
+daemon.info dnsmasq[1]: query[A] one.example from 192.168.1.1
+daemon.info dnsmasq[1]: query[A] two.example from 192.168.1.1
+daemon.info dnsmasq[1]: query[A] three.example from 192.168.1.1
+DATA
+	ss_statistics_awk \
+		-v state_file="$STATE" -v json_file="$JSON" \
+		-v upload_json_file="$UPLOAD" -v lease_file="$LEASES" \
+		-v snapshot_interval=1 -v retention_hours=2 \
+		-v upload_window_hours=1 -v provisional_retention_hours=2 \
+		-v generation_seed='retention-test' \
+		-v fixed_now=1787950800 -v fixed_step=3600 <"$INPUT"
+
+	# The final event is in the third hour. The two-hour retention window
+	# contains exactly the second and third events.
+	ss_spec_assert_file_contains "$JSON" '"totals":{"queries":2,"blocked":0}'
+	ss_spec_assert_file_contains "$JSON" '"retention_hours":2'
+	ss_spec_assert_file_contains "$UPLOAD" '"totals":{"queries":1,"blocked":0}'
+	! grep -F 'bucket' "$STATE" | grep -F '1787950800' >/dev/null
+	ss_spec_assert_file_contains "$STATE" "$(printf 'bucket\t1787958000\t1\t0')"
+)

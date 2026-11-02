@@ -84,7 +84,7 @@ function sanitize_source(item) {
     };
 }
 
-function build_statistics() {
+function build_statistics(include_detail) {
     reload_uci();
     let enabled = to_bool(cfg('statistics_enabled', '1'), true);
     let retention_hours = to_int(cfg('statistics_retention_hours', '168'), 168);
@@ -98,7 +98,7 @@ function build_statistics() {
     if (!effective_enabled) {
         source.available = false;
     }
-    return {
+    let result = {
         schema: {
             name: STATISTICS_SCHEMA_NAME,
             version: STATISTICS_SCHEMA_VERSION
@@ -133,13 +133,26 @@ function build_statistics() {
         totals: {
             queries: to_int(totals.queries, 0),
             blocked: to_int(totals.blocked, 0)
-        },
-        hourly: sanitize_hourly(data.hourly),
-        device_limit: to_int(data.device_limit, 128),
-        devices_truncated: to_bool(data.devices_truncated, false),
-        devices: sanitize_devices(data.devices)
+        }
     };
+    // Preserve the legacy detailed RPC field insertion order as well as
+    // names/values: totals -> hourly -> device_limit -> devices_truncated ->
+    // devices. Summary callers omit only the two large detail arrays.
+    if (include_detail !== false) {
+        result.hourly = sanitize_hourly(data.hourly);
+    }
+    result.device_limit = to_int(data.device_limit, 128);
+    result.devices_truncated = to_bool(data.devices_truncated, false);
+    if (include_detail !== false) {
+        result.devices = sanitize_devices(data.devices);
+    }
+    return result;
+}
+
+function build_statistics_summary() {
+    return build_statistics(false);
 }
 return {
-    build: build_statistics
+    build: build_statistics,
+    summary: build_statistics_summary
 };

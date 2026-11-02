@@ -876,7 +876,80 @@ ss_merge_sorted_api_sources() {
 	sort -m -u "$@" >"$out"
 }
 
+# Build the final blocked-rule stream without two full-sized domain copies.
+# Keep the ancestor/equal precedence used by ss_filter_domains_shadowed_by_ancestors:
+# local allow > local block > Hub allow > Hub block.
+ss_write_effective_block_rules() {
+	local shadow_file="$1"
+	local local_blocks="$2"
+	local api_blocks="$3"
+	local output="$4"
+	local prefix="$5"
+	local suffix="$6"
+
+	# With no effective allow rules there is nothing to shadow the Hub blocks.
+	# Avoid building an AWK lookup table and splitting every domain, but keep
+	# the same local-first ordering and input validation as the normal path.
+	if [ ! -s "$shadow_file" ]; then
+		awk -v local_blocks="$local_blocks" -v prefix="$prefix" -v suffix="$suffix" '
+			FILENAME == local_blocks {
+				if ($0 != "") print prefix $0 suffix
+				next
+			}
+			/^[a-z0-9._-]+$/ { print prefix $0 suffix }
+		' "$local_blocks" "$api_blocks" >"$output"
+		return $?
+	fi
+
+	awk -v shadow_file="$shadow_file" -v local_blocks="$local_blocks" \
+		-v prefix="$prefix" -v suffix="$suffix" '
+		FILENAME == shadow_file {
+			if ($0 != "") shadow[$0] = 1
+			next
+		}
+		FILENAME == local_blocks {
+			if ($0 != "") print prefix $0 suffix
+			next
+		}
+		/^[a-z0-9._-]+$/ {
+			if ($0 in shadow) next
+			n = split($0, labels, ".")
+			ancestor = labels[n]
+			for (i = n - 1; i >= 1; i--) {
+				ancestor = labels[i] "." ancestor
+				if (ancestor in shadow) next
+			}
+			print prefix $0 suffix
+		}
+	' "$shadow_file" "$local_blocks" "$api_blocks" >"$output"
+}
+
+# Merge scratch files live on tmpfs.  API shards and local lists are retained
+# for refresh retry/reuse, but these derived copies are never reused.
+ss_cleanup_merge_scratch() {
+	rm -f \
+		"${SS_TMP_DIR}/api-blocks.domains" \
+		"${SS_TMP_DIR}/api-allows.domains" \
+		"${SS_TMP_DIR}/effective-local-blocks.domains" \
+		"${SS_TMP_DIR}/effective-api-allows.domains" \
+		"${SS_TMP_DIR}/effective-allows.domains" \
+		"${SS_TMP_DIR}/effective-api-blocks.domains" \
+		"${SS_TMP_DIR}/final-blocks.domains"
+}
+
+# Always release derived tmpfs storage, including when validation fails.
 ss_merge_lists() {
+	local result=0
+	# Firmware refresh uses the C locale.  Enforce it here too so direct
+	# calls (including CI) retain the exact same bytewise domain order.
+	local LC_ALL=C
+	export LC_ALL
+	ss_merge_lists_inner "$@" || result=$?
+	ss_cleanup_merge_scratch
+	return "$result"
+}
+
+ss_merge_lists_inner() {
 	local final
 	local api_blocks="${SS_TMP_DIR}/api-blocks.domains"
 	local api_allows="${SS_TMP_DIR}/api-allows.domains"
@@ -885,10 +958,9 @@ ss_merge_lists() {
 	local effective_local_blocks="${SS_TMP_DIR}/effective-local-blocks.domains"
 	local effective_api_allows="${SS_TMP_DIR}/effective-api-allows.domains"
 	local effective_allows="${SS_TMP_DIR}/effective-allows.domains"
-	local effective_api_blocks="${SS_TMP_DIR}/effective-api-blocks.domains"
-	local final_blocks="${SS_TMP_DIR}/final-blocks.domains"
 	local final_size_kb
 	local valid_count
+	local rule_prefix rule_suffix
 
 	final="$(ss_blocklist_tmp_path)" || return 1
 	: >"$final" || return 1
@@ -929,39 +1001,39 @@ ss_merge_lists() {
 		rm -f "$final"
 		return 1
 	}
-	ss_filter_domains_shadowed_by_ancestors "$effective_allows" "$api_blocks" "$effective_api_blocks" || {
+	# Produce final rule lines directly rather than materializing both a full
+	# filtered API blocklist and a second combined domain list.  The input API
+	# shards were already merged and sorted above; the final sort preserves the
+	# exact dnsmasq rule order/deduplication of the old pipeline.
+	if ss_dnsmasq_safeshield_block_supported; then
+		rule_prefix='safeshield-block=/'
+		rule_suffix='/'
+	else
+		rule_prefix='address=/'
+		rule_suffix='/#'
+	fi
+	ss_write_effective_block_rules \
+		"$effective_allows" "$effective_local_blocks" "$api_blocks" \
+		"$final" "$rule_prefix" "$rule_suffix" || {
 		rm -f "$final"
 		return 1
 	}
-	{
-		[ -f "$effective_local_blocks" ] && cat "$effective_local_blocks"
-		[ -f "$effective_api_blocks" ] && cat "$effective_api_blocks"
-	} | sort -u >"$final_blocks" || {
+	# Sort by the domain field (between slashes), not the whole dnsmasq rule.
+	# Sorting full rules changes legacy ordering for domain-prefix pairs such
+	# as foo and foo-bar, causing otherwise identical refreshes to differ.
+	# The domain field cannot contain '/' after normalization.  -o keeps the
+	# output in-place without allocating a second full-size domain copy.
+	# Bound GNU sort's in-memory buffer on low-memory routers.  External sort
+	# runs may use more temporary disk space; the final order is unchanged.
+	sort -S 1M -u -t/ -k2,2 -o "$final" "$final" || {
 		rm -f "$final"
 		return 1
 	}
-
+	# Preserve the cancellation point from the original merge pipeline.
 	ss_should_stop && {
 		rm -f "$final"
 		return 130
 	}
-
-	if [ -s "$final_blocks" ]; then
-		if ss_dnsmasq_safeshield_block_supported; then
-			awk '{ print "safeshield-block=/" $0 "/" }' "$final_blocks" >"$final" || {
-				rm -f "$final"
-				return 1
-			}
-		else
-			# Stock dnsmasq does not understand the SafeShield extension. Preserve
-			# protection with the standard address rule and leave statistics off.
-			awk '{ print "address=/" $0 "/#" }' "$final_blocks" >"$final" || {
-				rm -f "$final"
-				return 1
-			}
-		fi
-	fi
-
 	if [ -s "$effective_allows" ]; then
 		awk '{ print "server=/" $0 "/#" }' "$effective_allows" >>"$final" || {
 			rm -f "$final"

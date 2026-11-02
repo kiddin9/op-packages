@@ -24,6 +24,10 @@ return {
             call: statistics.build
         },
 
+        statistics_summary: {
+            call: statistics.summary
+        },
+
         config_update: {
             args: {
                 values: {}

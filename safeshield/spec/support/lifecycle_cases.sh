@@ -138,6 +138,7 @@ ss_case_refresh_state_machine() (
 			ss_spec_assert_file_line "$CALLS" 'restore_and_restart'
 		else
 			! grep -Fx 'restore_and_restart' "$CALLS" >/dev/null
+			! grep -F 'dnsmasq_restart ' "$CALLS" >/dev/null
 		fi
 	}
 
@@ -157,7 +158,10 @@ ss_case_refresh_state_machine() (
 	ss_spec_assert_file_line "$CALLS" 'lock_close'
 	! grep -Fx 'restore_and_restart' "$CALLS" >/dev/null
 
-	assert_refresh_failure merge merge_failed 1
+	assert_refresh_failure merge merge_failed 0
+	assert_refresh_failure resolve artifact_resolve_failed 0
+	assert_refresh_failure download artifact_download_failed 0
+	assert_refresh_failure local_rules allowlist_build_failed 0
 	assert_refresh_failure install install_failed 1
 	assert_refresh_failure restart dnsmasq_restart_failed 1
 	assert_refresh_failure runtime dns_runtime_check_failed 1
@@ -313,7 +317,12 @@ ss_case_local_apply_state_machine() (
 			verify) code='local_blocklist_verification_failed' ;;
 		esac
 		ss_spec_assert_file_line "$CALLS" "local_failure $code"
-		ss_spec_assert_file_line "$CALLS" 'restore_and_restart'
+		if [ "$scenario" = 'merge' ]; then
+			! grep -Fx 'restore_and_restart' "$CALLS" >/dev/null
+			! grep -Fx 'dnsmasq_restart' "$CALLS" >/dev/null
+		else
+			ss_spec_assert_file_line "$CALLS" 'restore_and_restart'
+		fi
 		ss_spec_assert_file_line "$CALLS" 'lock_close'
 	done
 
@@ -333,54 +342,42 @@ ss_case_refresh_locking() (
 	set -eu
 	TMP="$(ss_spec_tmpdir)"
 	trap 'rm -rf "$TMP"' EXIT HUP INT TERM
-	RUNNING_STATUS_FILE="$TMP/status.json"
 	SS_REFRESH_LOCK="$TMP/safeshield-refresh.lock"
-	SS_REFRESH_LOCK_FD=9
-	MOCK_FLOCK_DIR="$TMP/mock-flock.lock"
-
-	# Keep this regression test portable on development hosts such as macOS,
-	# where flock(1) is not installed by default. The production code still
-	# invokes flock -n/-u; this shim emulates those operations with atomic
-	# mkdir/rmdir so contention, release, timeout, and termination paths are
-	# exercised without depending on a host-specific flock binary.
-	flock() {
-		case "${1:-}" in
-			-n)
-				mkdir "$MOCK_FLOCK_DIR" 2>/dev/null
-				;;
-			-u)
-				rmdir "$MOCK_FLOCK_DIR" 2>/dev/null || true
-				return 0
-				;;
-			*)
-				return 2
-				;;
-		esac
-	}
-
-	# shellcheck disable=SC1091
+	# shellcheck disable=SC1090
+	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh"
+	# shellcheck disable=SC1090
 	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/status.sh"
 	is_valid_integer() { case "$1" in '' | *[!0-9]*) return 1 ;; *) return 0 ;; esac }
 	ss_should_stop() { return 1; }
 
-	mkdir "$MOCK_FLOCK_DIR"
+	ss_refresh_lock_open
+	ss_spec_assert_eq "$(cat "${SS_REFRESH_LOCK}.d/pid")" "$$"
+	# A separate shell must not acquire or release our live lock.
+	! sh -c '. "$1"; ss_lock_try "$2"' sh "$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh" "${SS_REFRESH_LOCK}.d"
+	ss_refresh_lock_close
+	ss_spec_assert_not_exists "${SS_REFRESH_LOCK}.d"
+
+	# Simulate an owner which crashed after writing pid.
+	mkdir "${SS_REFRESH_LOCK}.d"
+	printf '99999999\n' >"${SS_REFRESH_LOCK}.d/pid"
+	ss_refresh_lock_open
+	ss_refresh_lock_close
+
+	# A freshly-created empty lock must not be stolen while the owner writes pid.
+	mkdir "${SS_REFRESH_LOCK}.d"
 	! ss_refresh_lock_open
 	! ss_refresh_lock_open_wait 0
-	rmdir "$MOCK_FLOCK_DIR"
+	rmdir "${SS_REFRESH_LOCK}.d"
 
-	ss_refresh_lock_open
-	ss_spec_assert_exists "$MOCK_FLOCK_DIR"
-	ss_refresh_lock_close
-	ss_spec_assert_not_exists "$MOCK_FLOCK_DIR"
-
-	mkdir "$MOCK_FLOCK_DIR"
 	ss_should_stop() { return 0; }
+	mkdir "${SS_REFRESH_LOCK}.d"
+	printf '%s\n' "$$" >"${SS_REFRESH_LOCK}.d/pid"
 	set +e
 	ss_refresh_lock_open_wait 10
 	rc=$?
 	set -e
-	rmdir "$MOCK_FLOCK_DIR"
 	ss_spec_assert_eq "$rc" '130'
+	ss_refresh_lock_close
 )
 
 ss_case_service_lifecycle() (

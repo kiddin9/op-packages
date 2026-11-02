@@ -140,6 +140,203 @@ sample-two.example'
 	ss_spec_assert_eq "$DNS_CHECK_COUNT" '2'
 )
 
+# A larger, overlapping fixture exercises sorted streaming, tmpfs cleanup and
+# precedence without downloading any external artifact.
+ss_case_blocklist_tmpfs() (
+	set -eu
+	TMP_DIR="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+	SS_TMP_DIR="$TMP_DIR/tmp"
+	SS_DNSMASQ_DIR="$TMP_DIR/dnsmasq.d"
+	SS_BLOCKLIST_FILE="$SS_DNSMASQ_DIR/safeshield.blocklist"
+	ss_min_valid_line_count=1
+	ss_max_blocklist_file_size_kb=1024
+	ss_dnsmasq_sanity_check=0
+	mkdir -p "$SS_TMP_DIR" "$SS_DNSMASQ_DIR"
+	ss_should_stop() { [ "${STOP_NOW:-0}" = 1 ]; }
+	ss_status_set() { :; }
+	ss_status_add_error() { :; }
+	log_info() { :; }
+	log_error() { :; }
+	ss_blocklist_tmp_path() { printf '%s/.safeshield.blocklist.tmp.%s\n' "$SS_DNSMASQ_DIR" "$$"; }
+	ss_install_blocklist_atomic() { mv -f "$1" "$2"; }
+	DNSMASQ_PATCHED=1
+	ss_dnsmasq_safeshield_block_supported() { [ "$DNSMASQ_PATCHED" = '1' ]; }
+	# shellcheck disable=SC1091
+	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+
+	awk 'BEGIN { for (i = 1; i <= 6000; i++) printf "ads%05d.example\n", i }' >"$SS_TMP_DIR/api.0.block.txt"
+	awk 'BEGIN { for (i = 4000; i <= 10000; i++) printf "ads%05d.example\n", i }' >"$SS_TMP_DIR/api.1.block.txt"
+	printf '%s\n' 'ads00042.example' 'hub-allow.example' >"$SS_TMP_DIR/api.2.allow.txt"
+	printf '%s\n' 'hub-allow.example' 'local.example' >"$SS_TMP_DIR/local.block.txt"
+	printf '%s\n' 'local.example' 'ads00042.example' >"$SS_TMP_DIR/local.allow.txt"
+
+	# Prior implementations left 7 merge scratch files on tmpfs. Even stale
+	# files from a previous run must be released after this refresh.
+	printf 'stale\n' >"$SS_TMP_DIR/effective-api-blocks.domains"
+	printf 'stale\n' >"$SS_TMP_DIR/final-blocks.domains"
+	ss_merge_lists
+	ss_spec_assert_eq "$(grep -c '^safeshield-block=/' "$SS_BLOCKLIST_FILE")" '10000'
+	ss_spec_assert_eq "$(grep -c '^server=/' "$SS_BLOCKLIST_FILE")" '2'
+	ss_spec_assert_file_contains "$SS_BLOCKLIST_FILE" 'safeshield-block=/hub-allow.example/'
+	ss_spec_assert_file_not_contains "$SS_BLOCKLIST_FILE" 'safeshield-block=/ads00042.example/'
+	ss_spec_assert_file_line "$SS_BLOCKLIST_FILE" 'server=/ads00042.example/#'
+	ss_spec_assert_file_line "$SS_BLOCKLIST_FILE" 'server=/local.example/#'
+	# Cached source shards and local rules must not be deleted by cleanup.
+	ss_spec_assert_exists "$SS_TMP_DIR/api.0.block.txt"
+	ss_spec_assert_exists "$SS_TMP_DIR/local.block.txt"
+	for derived in \
+		api-blocks.domains api-allows.domains \
+		effective-local-blocks.domains effective-api-allows.domains \
+		effective-allows.domains effective-api-blocks.domains final-blocks.domains; do
+		ss_spec_assert_not_exists "$SS_TMP_DIR/$derived"
+	done
+
+	# Stock dnsmasq rules retain identical precedence and order.
+	DNSMASQ_PATCHED=0
+	ss_merge_lists
+	ss_spec_assert_eq "$(grep -c '^address=/' "$SS_BLOCKLIST_FILE")" '10000'
+	ss_spec_assert_file_line "$SS_BLOCKLIST_FILE" 'address=/hub-allow.example/#'
+	ss_spec_assert_file_not_contains "$SS_BLOCKLIST_FILE" 'address=/ads00042.example/#'
+	for derived in api-blocks.domains effective-api-blocks.domains final-blocks.domains; do
+		ss_spec_assert_not_exists "$SS_TMP_DIR/$derived"
+	done
+
+	# A cancelled refresh must not install partial rules or retain scratch.
+	before="$(cksum "$SS_BLOCKLIST_FILE")"
+	STOP_NOW=1
+	result=0
+	ss_merge_lists || result=$?
+	ss_spec_assert_eq "$result" '130'
+	ss_spec_assert_eq "$(cksum "$SS_BLOCKLIST_FILE")" "$before"
+	ss_spec_assert_not_exists "$SS_TMP_DIR/api-blocks.domains"
+	ss_spec_assert_not_exists "$SS_TMP_DIR/effective-api-blocks.domains"
+)
+
+# Print an actionable diff if this ordering contract regresses in CI.
+ss_assert_legacy_blocklist_order() (
+	# Use a subshell to keep these variables scoped under POSIX sh.
+	expected="$1"
+	actual_file="$2"
+	expected_file="${actual_file}.expected.$$"
+
+	printf '%s\n' "$expected" >"$expected_file"
+	if ! cmp -s "$expected_file" "$actual_file"; then
+		diff -u "$expected_file" "$actual_file" >&2 || :
+		rm -f "$expected_file"
+		return 1
+	fi
+	rm -f "$expected_file"
+)
+
+# Ordering is part of our byte-for-byte legacy blocklist compatibility.
+# Sorting decorated dnsmasq rule strings changes prefix ordering ("foo" vs
+# "foo-bar" / "foo.bar"); always compare by the undressed domain field.
+ss_case_blocklist_legacy_order() (
+	set -eu
+	TMP_DIR="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+	SS_TMP_DIR="$TMP_DIR/tmp"
+	SS_DNSMASQ_DIR="$TMP_DIR/dnsmasq.d"
+	SS_BLOCKLIST_FILE="$SS_DNSMASQ_DIR/safeshield.blocklist"
+	ss_min_valid_line_count=0
+	ss_max_blocklist_file_size_kb=1024
+	ss_dnsmasq_sanity_check=0
+	mkdir -p "$SS_TMP_DIR" "$SS_DNSMASQ_DIR"
+	ss_should_stop() { return 1; }
+	ss_status_set() { :; }
+	ss_status_add_error() { :; }
+	log_info() { :; }
+	log_error() { :; }
+	ss_blocklist_tmp_path() { printf '%s/.safeshield.blocklist.tmp.%s\n' "$SS_DNSMASQ_DIR" "$$"; }
+	ss_install_blocklist_atomic() { mv -f "$1" "$2"; }
+	DNSMASQ_PATCHED=1
+	ss_dnsmasq_safeshield_block_supported() { [ "$DNSMASQ_PATCHED" = '1' ]; }
+	# shellcheck disable=SC1091
+	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+	# API shards are pre-sorted by ss_download_api_artifacts().  Keep this
+	# fixture representative of the actual -m (merge) precondition.
+	printf '%s\n' 'abc.test' 'foo' 'foo-bar' 'foo.bar' 'foo_bar' |
+		LC_ALL=C sort -u >"$SS_TMP_DIR/api.0.block.txt"
+	printf '%s\n' 'abc.test-more' 'abc.test.uk' |
+		LC_ALL=C sort -u >"$SS_TMP_DIR/api.1.block.txt"
+	ss_merge_lists
+	expected='safeshield-block=/abc.test/
+safeshield-block=/abc.test-more/
+safeshield-block=/abc.test.uk/
+safeshield-block=/foo/
+safeshield-block=/foo-bar/
+safeshield-block=/foo.bar/
+safeshield-block=/foo_bar/'
+	ss_assert_legacy_blocklist_order "$expected" "$SS_BLOCKLIST_FILE"
+	DNSMASQ_PATCHED=0
+	ss_merge_lists
+	expected='address=/abc.test/#
+address=/abc.test-more/#
+address=/abc.test.uk/#
+address=/foo/#
+address=/foo-bar/#
+address=/foo.bar/#
+address=/foo_bar/#'
+	ss_assert_legacy_blocklist_order "$expected" "$SS_BLOCKLIST_FILE"
+)
+
+# Both low-memory filtering paths must retain the legacy allow precedence and
+# the original local-block-first rule stream. The final merge sorts afterwards.
+ss_case_blocklist_low_memory() (
+	set -eu
+	TMP_DIR="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+	mkdir -p "$TMP_DIR"
+	SS_TMP_DIR="$TMP_DIR"
+	# shellcheck disable=SC1091
+	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+	cat >"$TMP_DIR/blocks" <<'DATA'
+ads.example
+foo
+foo-bar
+sub.ads.example
+invalid/path
+CAPS.example
+valid.example
+DATA
+	printf '%s\n' 'local.example' >"$TMP_DIR/local"
+	: >"$TMP_DIR/shadow"
+	ss_write_effective_block_rules \
+		"$TMP_DIR/shadow" "$TMP_DIR/local" "$TMP_DIR/blocks" \
+		"$TMP_DIR/result" 'safeshield-block=/' '/'
+	expected='safeshield-block=/local.example/
+safeshield-block=/ads.example/
+safeshield-block=/foo/
+safeshield-block=/foo-bar/
+safeshield-block=/sub.ads.example/
+safeshield-block=/valid.example/'
+	ss_spec_assert_eq "$(cat "$TMP_DIR/result")" "$expected"
+
+	# A present allow shadows the matching Hub block and its descendants, but
+	# does not remove an explicit local block or unrelated Hub domains.
+	printf '%s\n' 'foo' 'ads.example' >"$TMP_DIR/shadow"
+	ss_write_effective_block_rules \
+		"$TMP_DIR/shadow" "$TMP_DIR/local" "$TMP_DIR/blocks" \
+		"$TMP_DIR/result" 'address=/' '/#'
+	expected='address=/local.example/#
+address=/foo-bar/#
+address=/valid.example/#'
+	ss_spec_assert_eq "$(cat "$TMP_DIR/result")" "$expected"
+
+	# When the local list is empty, the no-allow fast path must still process
+	# Hub block records (including the first record of the second input file).
+	: >"$TMP_DIR/local"
+	: >"$TMP_DIR/shadow"
+	ss_write_effective_block_rules \
+		"$TMP_DIR/shadow" "$TMP_DIR/local" "$TMP_DIR/blocks" \
+		"$TMP_DIR/result" 'address=/' '/#'
+	ss_spec_assert_eq "$(head -n 1 "$TMP_DIR/result")" 'address=/ads.example/#'
+	ss_spec_assert_eq "$(grep -c '^address=/' "$TMP_DIR/result")" '5'
+	BLOCKLIST="$SS_SPEC_ROOT/files/usr/lib/safeshield/blocklist.sh"
+	ss_spec_assert_file_contains "$BLOCKLIST" 'sort -S 1M -u -t/ -k2,2 -o "$final" "$final"'
+)
+
 ss_case_multi_artifact() (
 	set -eu
 	TMP_DIR="$(ss_spec_tmpdir)"

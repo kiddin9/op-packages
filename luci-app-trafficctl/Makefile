@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-trafficctl
-PKG_VERSION:=1.25.2
-PKG_RELEASE:=18
+PKG_VERSION:=1.25.4
+PKG_RELEASE:=19
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Denis Iusupov <yusdyr@gmail.com>

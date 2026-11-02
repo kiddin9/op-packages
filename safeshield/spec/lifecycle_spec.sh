@@ -1,7 +1,7 @@
 # shellcheck shell=sh
 
 Describe 'SafeShield lifecycle and refresh state machines'
-	It 'rolls back full refresh failures while preserving the active blocklist for upgrade-required responses'
+	It 'keeps DNS running before installation failures and rolls back post-install failures'
 		When call ss_case_refresh_state_machine
 		The status should be success
 		The output should equal ''

@@ -14,20 +14,26 @@ export IPKG_INSTROOT
 . /usr/lib/safeshield/core.sh
 
 readonly SS_REFRESHD_LOCK='/var/lock/safeshield-refreshd.lock'
-readonly SS_REFRESHD_LOCK_FD=308
+refreshd_owned=0
 
 ss_should_terminate=0
 ss_sleep_pid=''
 
 refreshd_lock() {
-	mkdir -p "${SS_REFRESHD_LOCK%/*}" || return 1
-	eval "exec ${SS_REFRESHD_LOCK_FD}>\"${SS_REFRESHD_LOCK}\"" || return 1
-	flock -n "${SS_REFRESHD_LOCK_FD}" || return 1
+	ss_lock_try "${SS_REFRESHD_LOCK}.d" || return 1
+	refreshd_owned=1
 }
 
 refreshd_unlock() {
-	flock -u "${SS_REFRESHD_LOCK_FD}" 2>/dev/null || true
-	eval "exec ${SS_REFRESHD_LOCK_FD}>&-" 2>/dev/null || true
+	[ "${refreshd_owned:-0}" -eq 1 ] || return 0
+	ss_lock_release "${SS_REFRESHD_LOCK}.d"
+	refreshd_owned=0
+}
+
+refreshd_cleanup() {
+	[ "${refreshd_owned:-0}" -eq 1 ] || return 0
+	clear_next_refresh_at
+	refreshd_unlock
 }
 
 handle_term() {
@@ -253,6 +259,6 @@ main() {
 }
 
 trap "handle_term" TERM INT
-trap "refreshd_unlock; clear_next_refresh_at" EXIT
+trap "refreshd_cleanup" EXIT
 
 main "$@"

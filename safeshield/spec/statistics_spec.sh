@@ -119,6 +119,13 @@ Describe 'SafeShield statistics behavior'
 		The error should equal ''
 	End
 
+	It 'prunes expired statistics while preserving the short upload window'
+		When call ss_case_statistics_retention_cache
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
 	It 'loads the statistics collector from focused awk modules'
 		When call ss_case_statistics_modules
 		The status should be success

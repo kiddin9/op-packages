@@ -6,6 +6,7 @@ ss_case_utils() (
 	PKG_NAME='safeshield-test'
 	export PKG_NAME
 	# shellcheck disable=SC1091
+	SS_LOCKING_LIB="$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh"
 	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/utils.sh"
 
 	command_exists sh
@@ -25,6 +26,7 @@ ss_case_config_validation() (
 	PKG_NAME='safeshield-test'
 	export PKG_NAME
 	# shellcheck disable=SC1091
+	SS_LOCKING_LIB="$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh"
 	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/utils.sh"
 
 	WARNINGS=''
@@ -121,6 +123,7 @@ ss_case_dnsmasq_version() (
 	PKG_NAME='safeshield'
 	export PKG_NAME
 	# shellcheck disable=SC1091
+	SS_LOCKING_LIB="$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh"
 	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/utils.sh"
 	DNSMASQ_FEATURE_HEALTH=''
 	ss_status_set() {
@@ -378,6 +381,15 @@ ss_case_status_state() (
 	record() { printf '%s\t%s\t%s\n' "$1" "${2:-}" "${3:-}" >>"$CALLS"; }
 	ss_status_set() { record set "$1" "$2"; }
 	ss_status_add_error() { record error "$1"; }
+	# Capture each value for existing state assertions while recording that a
+	# whole group is now committed through one locked status-store operation.
+	ss_status_set_many() {
+		record batch set_many "$#"
+		while [ "$#" -ge 2 ]; do
+			record set "$1" "$2"
+			shift 2
+		done
+	}
 	ss_status_apply() {
 		record apply "$1" "${2:-}"
 		return 0
@@ -388,6 +400,7 @@ ss_case_status_state() (
 		[ "$1" -ge 0 ] 2>/dev/null
 	}
 	ss_status_mark_failure 'artifact_download_failed'
+	ss_spec_assert_eq "$(grep -c "$(printf 'batch\tset_many')" "$CALLS")" '1'
 	grep -F "$(printf 'set\tstatus\terror')" "$CALLS" >/dev/null
 	grep -F "$(printf 'set\tlast_failure\t1000')" "$CALLS" >/dev/null
 	grep -F "$(printf 'set\tlast_result\terror')" "$CALLS" >/dev/null
@@ -405,6 +418,7 @@ ss_case_status_state() (
 	! grep -F "$(printf 'set\tnext_refresh_at')" "$CALLS" >/dev/null
 	: >"$CALLS"
 	ss_status_reset_health_fields
+	ss_spec_assert_eq "$(grep -c "$(printf 'batch\tset_many')" "$CALLS")" '1'
 	for key in health_dnsmasq_binary health_dns_runtime health_artifact_download dnsmasq_min_version; do
 		grep -F "$(printf 'set\t%s\t' "$key")" "$CALLS" >/dev/null
 	done
@@ -467,8 +481,45 @@ ss_case_status_version() (
 	ss_spec_assert_file_contains "$SS_SPEC_ROOT/Makefile" "echo '\$(PKG_VERSION)-r\$(PKG_RELEASE)' > \$(1)/usr/lib/safeshield/version"
 	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/share/rpcd/ucode/safeshield/core.uc" 'fs.readfile(`/usr/lib/${PKG_NAME}/version`)'
 	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/share/rpcd/ucode/safeshield/status.uc" 'version: PKG_VERSION,'
-	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/lib/safeshield/core.sh" 'safeshield_upgrade_required'
 	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/lib/safeshield/core.sh" 'failure_code="$(ss_resolve_error_code)"'
 	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/lib/safeshield/core.sh" 'failure_code="$(ss_artifact_download_error_code)"'
-	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/lib/safeshield/core.sh" 'if [ "$failure_code" != "safeshield_upgrade_required" ]; then'
+	ss_spec_assert_file_contains "$SS_SPEC_ROOT/files/usr/lib/safeshield/core.sh" 'No blocklist replacement has happened'
+)
+
+# The legacy refresh reset used one ucode process + one locked JSON rewrite
+# per key. Grouping related updates keeps the same values with fewer writes.
+ss_case_status_batch_writes() (
+	set -eu
+	TMP_DIR="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP_DIR"' EXIT HUP INT TERM
+	RUNNING_STATUS_FILE="$TMP_DIR/status.json"
+	# shellcheck disable=SC1091
+	. "$SS_SPEC_ROOT/files/usr/lib/safeshield/status.sh"
+	CALLS="$TMP_DIR/calls"
+	: >"$CALLS"
+	ss_status_apply() {
+		printf '%s\n' "$1" >>"$CALLS"
+		return 0
+	}
+	ss_now() { printf '%s\n' 1000; }
+	is_valid_integer() {
+		case "$1" in '' | *[!0-9]*) return 1 ;; esac
+		return 0
+	}
+
+	ss_status_reset
+	ss_spec_assert_eq "$(wc -l <"$CALLS" | tr -d '[:space:]')" '6'
+	ss_spec_assert_eq "$(grep -c '^set_many$' "$CALLS")" '4'
+	ss_spec_assert_eq "$(grep -c '^reset$' "$CALLS")" '1'
+	ss_spec_assert_eq "$(grep -c '^clear_messages$' "$CALLS")" '1'
+
+	: >"$CALLS"
+	ss_status_mark_success 300
+	ss_spec_assert_eq "$(wc -l <"$CALLS" | tr -d '[:space:]')" '2'
+	ss_spec_assert_file_line "$CALLS" 'set_many'
+
+	: >"$CALLS"
+	ss_status_mark_failure artifact_download_failed
+	ss_spec_assert_eq "$(wc -l <"$CALLS" | tr -d '[:space:]')" '2'
+	ss_spec_assert_file_line "$CALLS" 'add_error'
 )

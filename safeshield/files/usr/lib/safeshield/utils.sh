@@ -1,7 +1,9 @@
 # shellcheck shell=ash
 
-readonly LOCK_FD=309
-readonly RUNNING_STATUS_LOCK="/var/lock/${PKG_NAME}.lock"
+readonly RUNNING_STATUS_LOCK="/var/lock/${PKG_NAME}.lock.d"
+
+# shellcheck disable=SC1090
+. "${SS_LOCKING_LIB:-${IPKG_INSTROOT:-}/usr/lib/safeshield/locking.sh}"
 readonly RUNNING_STATUS_FILE="/dev/shm/${PKG_NAME}.status.json"
 
 command_exists() {
@@ -21,17 +23,23 @@ is_greater_equal() {
 }
 
 json_lock_open() {
-	mkdir -p "${RUNNING_STATUS_LOCK%/*}" || return 1
-	eval "exec ${LOCK_FD}>\"${RUNNING_STATUS_LOCK}\"" || return 1
-	flock -x "${LOCK_FD}" || {
-		eval "exec ${LOCK_FD}>&-"
-		return 1
-	}
+	ss_lock_wait "$RUNNING_STATUS_LOCK" 10
 }
 
 json_lock_close() {
-	flock -u "${LOCK_FD}" 2>/dev/null || true
-	eval "exec ${LOCK_FD}>&-" 2>/dev/null || true
+	ss_lock_release "$RUNNING_STATUS_LOCK"
+}
+
+_json_commit() {
+	local tmp="${RUNNING_STATUS_FILE}.tmp.$$"
+	json_dump >"$tmp" || {
+		rm -f "$tmp"
+		return 1
+	}
+	mv -f "$tmp" "$RUNNING_STATUS_FILE" || {
+		rm -f "$tmp"
+		return 1
+	}
 }
 
 _json_init_data_object() {
@@ -62,7 +70,7 @@ _json_set() {
 
 	json_add_string "$key" "$value"
 	json_select .. 2>/dev/null || true
-	json_dump >"${RUNNING_STATUS_FILE}"
+	_json_commit
 }
 
 _json_add_message() {
@@ -82,7 +90,7 @@ _json_add_message() {
 	json_add_string info "$value"
 	json_close_object
 	json_select .. 2>/dev/null || true
-	json_dump >"${RUNNING_STATUS_FILE}"
+	_json_commit
 }
 
 json() {

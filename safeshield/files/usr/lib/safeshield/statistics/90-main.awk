@@ -9,6 +9,7 @@ function record_event(query_delta, blocked_delta, client_ip,    now, bucket) {
 	now = current_time()
 	bucket = hour_start(now)
 	snapshot_dirty = 1
+	aggregate_dirty = 1
 	queries[bucket] += 0
 	blocked[bucket] += 0
 
@@ -110,6 +111,7 @@ function apply_source_snapshot(    now, bucket, had_source, same_epoch, query_de
 	}
 
 	if (query_delta > 0 || blocked_delta > 0) {
+		aggregate_dirty = 1
 		queries[bucket] += 0
 		blocked[bucket] += 0
 		queries[bucket] += query_delta
@@ -184,6 +186,9 @@ BEGIN {
 	}
 	event_index = 0
 	snapshot_dirty = 0
+	# BEGIN restores state and reconciles device identities before the first
+	# snapshot, so never trust persisted aggregates as an in-memory cache.
+	aggregate_dirty = 1
 	device_count = 0
 	devices_truncated = 0
 	last_lease_refresh = 0

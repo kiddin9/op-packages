@@ -12,6 +12,8 @@ ss_case_tooling() (
 	[ -f "$SS_SPEC_ROOT/spec/statistics_spec.sh" ]
 	[ -f "$SS_SPEC_ROOT/spec/ucode_spec.sh" ]
 	[ -f "$SS_SPEC_ROOT/spec/tooling_spec.sh" ]
+	[ -f "$SS_SPEC_ROOT/spec/locking_spec.sh" ]
+	[ -f "$SS_SPEC_ROOT/files/usr/lib/safeshield/locking.sh" ]
 	[ -f "$SS_SPEC_ROOT/scripts/lint.sh" ]
 	[ -f "$SS_SPEC_ROOT/.github/workflows/lint-shell.yml" ]
 	ss_spec_assert_file_contains "$SS_SPEC_ROOT/.pre-commit-config.yaml" 'entry: sh scripts/lint.sh'

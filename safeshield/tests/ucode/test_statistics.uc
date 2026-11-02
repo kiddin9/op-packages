@@ -28,3 +28,15 @@ assert(result.devices[0].identified == true, 'device identified flag is normaliz
 assert(result.devices[0].queries == 50 && result.devices[0].blocked == 5, 'device counters are normalized');
 
 print('ucode statistics tests: ok\n');
+
+// Summary is deliberately opt-in. It must not duplicate large per-device
+// arrays while preserving the health/totals metadata used by lightweight UIs.
+let summary = statistics.summary();
+assert(summary.schema.name == result.schema.name && summary.schema.version == result.schema.version, 'summary preserves schema');
+assert(summary.snapshot_seq == result.snapshot_seq && summary.generation_id == result.generation_id, 'summary preserves freshness');
+assert(summary.enabled == result.enabled && summary.collector_running == result.collector_running, 'summary preserves service status');
+assert(summary.source.backend == result.source.backend && summary.source.tracked_clients == result.source.tracked_clients, 'summary preserves source health');
+assert(summary.totals.queries == result.totals.queries && summary.totals.blocked == result.totals.blocked, 'summary preserves totals');
+assert(summary.device_limit == result.device_limit && summary.devices_truncated == result.devices_truncated, 'summary preserves device capacity metadata');
+assert(summary.hourly == null && summary.devices == null, 'summary omits detailed arrays');
+assert(length(result.hourly) == 2 && length(result.devices) == 1, 'full statistics remains unchanged after summary');

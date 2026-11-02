@@ -53,6 +53,12 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 		if (!is_unknown_output_device(key)) {
 			continue
 		}
+		# An upload contains only a short recent window. Ignore provisional
+		# devices whose retained buckets fall completely outside that window.
+		if ((device_last_bucket[key] + 0) < first_hour ||
+			(device_first_bucket[key] + 0) > last_hour) {
+			continue
+		}
 		for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
 			composite = device_bucket_key(key, bucket)
 			if (!((composite in device_hour_queries) || (composite in device_hour_blocked))) {
@@ -228,9 +234,16 @@ function save_snapshot(now, force_persistent, force_snapshot,    serialize_snaps
 	serialize_snapshot = snapshot_dirty || force_snapshot || (force_persistent && persistence_configured)
 	if (serialize_snapshot) {
 		prune_buckets(now)
-		recompute_totals()
+		# Error-only and unchanged UBus snapshots still refresh source metadata
+		# but do not change retained counters. Avoid reaggregating 128 devices
+		# across up to 168 hours unless counters, identities, or cutoff changed.
+		if (aggregate_dirty) {
+			recompute_totals()
+			aggregate_dirty = 0
+		}
 		if (compact_stale_provisional_devices(now) > 0) {
 			recompute_totals()
+			aggregate_dirty = 0
 		}
 		updated_at = now
 		if (!ensure_snapshot_sequence_reservation(now)) {

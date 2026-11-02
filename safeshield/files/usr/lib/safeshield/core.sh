@@ -46,7 +46,6 @@ readonly SS_MAX_ARTIFACT_SOURCES=16
 readonly SS_PREV_BLOCKLIST_GZ="/tmp/safeshield.prev.blocklist.gz"
 readonly SS_RUNTIME_OUT="${SS_TMP_DIR}/runtime.out"
 readonly SS_REFRESH_LOCK='/var/lock/safeshield-refresh.lock'
-readonly SS_REFRESH_LOCK_FD=307
 readonly SS_LOCAL_APPLY_STATE="${SS_TMP_DIR}/local-apply.state"
 readonly SS_STATISTICS_DIR="${SS_TMP_DIR}/statistics"
 readonly SS_STATISTICS_STATE_FILE="${SS_STATISTICS_DIR}/state.tsv"
@@ -444,7 +443,6 @@ safeshield_apply_local_rules() {
 		*)
 			log_error "Failed to merge cached Hub artifact with local rules"
 			ss_mark_local_apply_failure "local_merge_failed"
-			ss_restore_and_restart
 			ss_refresh_lock_close
 			return 1
 			;;
@@ -647,9 +645,7 @@ safeshield_force_download() {
 		*)
 			failure_code="$(ss_resolve_error_code)"
 			ss_status_mark_failure "$failure_code"
-			if [ "$failure_code" != "safeshield_upgrade_required" ]; then
-				ss_restore_and_restart
-			fi
+			# No blocklist replacement has happened; keep the running DNS service.
 			ss_refresh_lock_close
 			return 1
 			;;
@@ -672,9 +668,7 @@ safeshield_force_download() {
 		*)
 			failure_code="$(ss_artifact_download_error_code)"
 			ss_status_mark_failure "$failure_code"
-			if [ "$failure_code" != "safeshield_upgrade_required" ]; then
-				ss_restore_and_restart
-			fi
+			# No blocklist replacement has happened; keep the running DNS service.
 			ss_refresh_lock_close
 			return 1
 			;;
@@ -689,7 +683,6 @@ safeshield_force_download() {
 	ss_prepare_local_rule_files || {
 		log_error "Failed to build allowlist"
 		ss_status_mark_failure "allowlist_build_failed"
-		ss_restore_and_restart
 		ss_refresh_lock_close
 		return 1
 	}
@@ -711,7 +704,6 @@ safeshield_force_download() {
 		*)
 			log_error "Failed to merge API artifact with local overrides"
 			ss_status_mark_failure "merge_failed"
-			ss_restore_and_restart
 			ss_refresh_lock_close
 			return 1
 			;;

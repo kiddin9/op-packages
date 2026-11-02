@@ -246,13 +246,23 @@ return view.extend({
 			   Delete — and LuCI's actions column does not wrap, so on a modem
 			   that offered them all the row ran off the right edge of the table
 			   (field report with a screenshot, RUTM11). Everything from Tools on
-			   now lives in one dropdown (below), which leaves four. The wrapping
-			   flex row stays as the backstop for a narrow column: the buttons
-			   keep their theme styling and stay right-aligned, they just fold
-			   onto a second line rather than overflowing. */
-			box.style.display = 'flex';
-			box.style.flexWrap = 'wrap';
-			box.style.justifyContent = 'flex-end';
+			   now lives in one dropdown (below), which leaves four, laid out
+			   as a fixed two-by-two grid.
+
+			   Not a wrapping flex row: a button that grows reflows one of
+			   those, and a button DOES grow while its action runs: Config is
+			   a createHandlerFn button (form.js:3238), which marks it
+			   `spinning` (ui.js:5683), and Footstrap draws that spinner as a
+			   ::before in front of the label (cascade.css:265). A click on
+			   Config then moved every button in the cell for the moment
+			   before the modal opened (luci-app-wwand#18). In a grid the
+			   wider button only widens its column. Each keeps its own width
+			   (justify-items), or Bootstrap's wide Actions dropdown would
+			   stretch Config above it to the same size. */
+			box.style.display = 'grid';
+			box.style.gridTemplateColumns = 'repeat(2, auto)';
+			box.style.justifyContent = 'end';
+			box.style.justifyItems = 'end';
 			box.style.gap = '.25em';
 
 			var jump = function(label, title, url) {

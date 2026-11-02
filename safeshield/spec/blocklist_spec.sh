@@ -8,6 +8,27 @@ Describe 'SafeShield blocklist behavior'
 		The error should equal ''
 	End
 
+	It 'builds large lists with bounded merge scratch files and preserves precedence'
+		When call ss_case_blocklist_tmpfs
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
+	It 'preserves the exact legacy domain order for both dnsmasq modes'
+		When call ss_case_blocklist_legacy_order
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
+	It 'filters block rules with bounded-memory lookup and no-allow fast path'
+		When call ss_case_blocklist_low_memory
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
 	It 'resolves and downloads multiple Hub artifact sources'
 		When call ss_case_multi_artifact
 		The status should be success

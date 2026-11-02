@@ -62,6 +62,19 @@ else if (cmd == 'set') {
 
 	obj.data[key] = value;
 }
+else if (cmd == 'set_many') {
+	// Reject incomplete input before modifying any field; one JSON write is
+	// committed only after every key/value pair has been validated.
+	if (length(ARGV) < 4 || (length(ARGV) - 2) % 2 != 0)
+		exit(2);
+
+	for (let i = 2; i < length(ARGV); i += 2) {
+		if (!ARGV[i])
+			exit(2);
+	}
+	for (let i = 2; i < length(ARGV); i += 2)
+		obj.data[ARGV[i]] = ARGV[i + 1];
+}
 else if (cmd == 'add_error') {
 	let code = ARGV[2];
 
