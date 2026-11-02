@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 'use strict';
 
+import * as fs from 'fs';
+
 import { connect } from 'ubus';
 import { cursor } from 'uci';
 
@@ -58,6 +60,37 @@ export function failure(code, message) {
 
 export function string_value(value, fallback) {
 	return type(value) == 'string' && length(value) ? value : fallback;
+};
+
+// Shared parser for RPC fields. Unlike number_value (already numeric-only),
+// this accepts numeric UCI strings; invalid values and NaN use the fallback.
+export function integer_value(value, fallback) {
+	// int(null) and int('') may coerce to zero; absent values are not zero.
+	if (value === null || (type(value) == 'string' && !length(value))) {
+		return fallback;
+	}
+	const parsed = int(value);
+	const kind = type(parsed);
+	// ucode's loose equality coerces NaN, so use strict equality here.
+	return (kind == 'int' || kind == 'double') && parsed === parsed
+		? parsed
+		: fallback;
+};
+
+// Small local JSON objects only. Callers choose an optional byte limit.
+export function read_json_object(path, max_bytes) {
+	const raw = fs.readfile(path);
+	if (type(raw) != 'string' || !length(raw) ||
+		(max_bytes != null && length(raw) > max_bytes)) {
+		return null;
+	}
+	try {
+		const document = json(raw);
+		return type(document) == 'object' && type(document) != 'array' ? document : null;
+	}
+	catch (e) {
+		return null;
+	}
 };
 
 export function number_value(value) {

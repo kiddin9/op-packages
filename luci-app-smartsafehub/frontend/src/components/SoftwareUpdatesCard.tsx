@@ -234,6 +234,13 @@ export function SoftwareUpdatesCard({
   const firmwareBundledVersion = firmware?.updateAvailable
     ? firmware.release?.bundledSoftware?.smartsafehub
     : null;
+  const latestReleaseNoteOnly = Boolean(
+    data &&
+    !data.releaseNotesComplete &&
+    data.releaseNotes.length === 1 &&
+    currentPackage?.name === UPDATE_PACKAGE &&
+    data.releaseNotes[0]?.version === currentPackage.availableVersion
+  );
   const softwareIncludedInFirmware =
     Boolean(data?.lastCheckAt && data.updateCount === 0 && !updateCheckStale && currentPackage?.name === UPDATE_PACKAGE) &&
     compareBundledVersion(firmwareBundledVersion, currentPackage?.installedVersion) === 'same';
@@ -752,14 +759,18 @@ export function SoftwareUpdatesCard({
                   </p>
                   <h3 class="mt-2 mb-0 text-lg font-black text-slate-950">업데이트 내용</h3>
                   <p class="mt-2 mb-0 text-sm leading-6 text-slate-500">
-                    현재 설치된 버전 이후 포함되는 주요 변경 사항입니다.
+                    {latestReleaseNoteOnly
+                      ? '릴리즈 내역이 많거나 일부 내역을 가져올 수 없어 최신 버전의 변경 사항만 표시합니다.'
+                      : '현재 설치된 버전 이후 포함되는 주요 변경 사항입니다.'}
                   </p>
                 </div>
                 {data.releaseNotes.length ? (
                   <span class="shrink-0 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-600">
-                    {data.releaseNotes.length === 1
-                      ? '1개 릴리즈'
-                      : `${data.releaseNotes.length}개 릴리즈`}
+                    {latestReleaseNoteOnly
+                      ? '최신 릴리즈 노트'
+                      : data.releaseNotes.length === 1
+                        ? '1개 릴리즈'
+                        : `${data.releaseNotes.length}개 릴리즈`}
                   </span>
                 ) : null}
               </div>
@@ -819,7 +830,9 @@ export function SoftwareUpdatesCard({
 
                   {!data.releaseNotesComplete ? (
                     <p class="m-0 rounded-xl bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">
-                      일부 릴리즈 노트를 불러오지 못했습니다. 업데이트 확인과 설치는 계속 사용할 수 있습니다.
+                      {latestReleaseNoteOnly
+                        ? '최신 버전의 릴리즈 노트만 표시합니다. 이전 버전의 변경 사항은 생략되었을 수 있습니다.'
+                        : '일부 릴리즈 노트를 불러오지 못했습니다. 업데이트 확인과 설치는 계속 사용할 수 있습니다.'}
                     </p>
                   ) : null}
                 </div>

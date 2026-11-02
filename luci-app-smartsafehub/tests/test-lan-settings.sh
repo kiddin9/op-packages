@@ -12,9 +12,6 @@ HOOK="$ROOT_DIR/frontend/src/hooks/useLan.ts"
 PAGE="$ROOT_DIR/frontend/src/pages/LanPage.tsx"
 IPV4_INPUT="$ROOT_DIR/frontend/src/components/Ipv4OctetInput.tsx"
 APP_STYLE="$ROOT_DIR/frontend/src/styles/app.css"
-ROUTES="$ROOT_DIR/frontend/src/app/routes.ts"
-HASH_ROUTE="$ROOT_DIR/frontend/src/hooks/useHashRoute.ts"
-NAVIGATION="$ROOT_DIR/frontend/src/components/ProductNavigation.tsx"
 APP="$ROOT_DIR/frontend/src/app/App.tsx"
 
 fail() {
@@ -60,7 +57,7 @@ assert_ucode_export_terminated() {
 	fi
 }
 
-for file in "$RPC_ENTRY" "$LAN_RPC_ENTRY" "$LAN_MODULE" "$ACL" "$API" "$HOOK" "$PAGE" "$IPV4_INPUT" "$ROUTES" "$HASH_ROUTE" "$NAVIGATION" "$APP"; do
+for file in "$RPC_ENTRY" "$LAN_RPC_ENTRY" "$LAN_MODULE" "$ACL" "$API" "$HOOK" "$PAGE" "$IPV4_INPUT" "$APP"; do
 	[ -f "$file" ] || fail "LAN 설정 계약 파일이 없습니다: ${file#$ROOT_DIR/}"
 done
 
@@ -163,11 +160,7 @@ grep -Fq "export function useLan(active: boolean)" "$HOOK" || \
 grep -Fq 'newAddress: result.newAddress ?? result.settings.lan.address' "$HOOK" || \
 	fail 'LAN IP 변경 뒤 새 관리 주소를 사용자에게 전달해야 합니다.'
 
-grep -Fq "route: 'network'" "$ROUTES" || fail 'WAN과 LAN을 통합한 네트워크 설정 route가 등록되어야 합니다.'
-grep -Fq "hash: '#network'" "$ROUTES" || fail '네트워크 설정 route는 #network hash를 사용해야 합니다.'
-grep -Fq "'#lan': 'network'" "$HASH_ROUTE" || fail '기존 #lan hash는 통합 네트워크 설정으로 연결되어야 합니다.'
-grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-	fail 'Network 메뉴에서 통합 네트워크 설정이 Wi-Fi와 연결된 기기보다 먼저 표시되어야 합니다.'
+# Shared route/hash/navigation registration is tested in test-navigation-contract.sh.
 grep -Fq "case 'network':" "$APP" || fail 'App이 통합 네트워크 설정 화면을 렌더링해야 합니다.'
 grep -Fq '<LanPage' "$APP" || fail '통합 네트워크 설정 화면에 LAN 영역이 포함되어야 합니다.'
 grep -Fq "const lan = useLan(route === 'home' || route === 'network');" "$APP" || \

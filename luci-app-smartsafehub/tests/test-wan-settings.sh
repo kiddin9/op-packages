@@ -12,9 +12,6 @@ PAGE="$ROOT_DIR/frontend/src/pages/WanPage.tsx"
 IPV4_INPUT="$ROOT_DIR/frontend/src/components/Ipv4OctetInput.tsx"
 LAN_PAGE="$ROOT_DIR/frontend/src/pages/LanPage.tsx"
 TYPES="$ROOT_DIR/frontend/src/types/wan.ts"
-ROUTES="$ROOT_DIR/frontend/src/app/routes.ts"
-HASH_ROUTE="$ROOT_DIR/frontend/src/hooks/useHashRoute.ts"
-NAVIGATION="$ROOT_DIR/frontend/src/components/ProductNavigation.tsx"
 APP="$ROOT_DIR/frontend/src/app/App.tsx"
 ACTIVITY="$ROOT_DIR/frontend/src/components/ActivityTimeline.tsx"
 
@@ -23,7 +20,7 @@ fail() {
 	exit 1
 }
 
-for file in "$NETWORK_RPC" "$NETWORK_MODULE" "$ACL" "$API" "$HOOK" "$PAGE" "$IPV4_INPUT" "$LAN_PAGE" "$TYPES" "$ROUTES" "$HASH_ROUTE" "$NAVIGATION" "$APP" "$ACTIVITY"; do
+for file in "$NETWORK_RPC" "$NETWORK_MODULE" "$ACL" "$API" "$HOOK" "$PAGE" "$IPV4_INPUT" "$LAN_PAGE" "$TYPES" "$APP" "$ACTIVITY"; do
 	[ -f "$file" ] || fail "WAN 설정 계약 파일이 없습니다: ${file#$ROOT_DIR/}"
 done
 
@@ -94,11 +91,7 @@ grep -Fq 'inputMode="numeric"' "$IPV4_INPUT" || fail '공용 IPv4 octet 입력�
 grep -Fq "octets.every((octet) => octet === '') ? '' : octets.join('.')" "$IPV4_INPUT" || fail '선택 IPv4 입력은 모든 octet을 지우면 빈 값으로 복원되어야 합니다.'
 grep -Fq "from '../components/Ipv4OctetInput'" "$LAN_PAGE" || fail 'LAN도 WAN과 동일한 공용 IPv4 octet 입력을 재사용해야 합니다.'
 grep -Fq 'onReconnect={reconnect}' "$PAGE" || fail 'WAN 화면에 수동 재연결 기능이 있어야 합니다.'
-grep -Fq "route: 'network'" "$ROUTES" || fail 'WAN과 LAN을 통합한 네트워크 설정 route가 필요합니다.'
-grep -Fq "hash: '#network'" "$ROUTES" || fail '네트워크 설정 route는 #network hash를 사용해야 합니다.'
-grep -Fq "'#wan': 'network'" "$HASH_ROUTE" || fail '기존 #wan hash는 통합 네트워크 설정으로 연결되어야 합니다.'
-grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-	fail 'Network 메뉴는 통합 네트워크 설정을 Wi-Fi보다 먼저 노출해야 합니다.'
+# Shared route/hash/navigation registration is tested in test-navigation-contract.sh.
 grep -Fq "case 'network':" "$APP" || fail 'App이 통합 네트워크 설정 화면을 렌더링해야 합니다.'
 grep -Fq '<WanPage' "$APP" || fail '통합 네트워크 설정 화면에 WAN 영역이 포함되어야 합니다.'
 grep -Fq "case 'settings.wan.updated':" "$ACTIVITY" || fail '최근 활동이 WAN 설정 변경 이벤트를 설명해야 합니다.'

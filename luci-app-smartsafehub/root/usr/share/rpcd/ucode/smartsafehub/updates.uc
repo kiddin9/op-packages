@@ -3,6 +3,7 @@
 
 import * as fs from 'fs';
 import {
+	integer_value,
 	emit_activity_event,
 	failure,
 	new_uci_cursor,
@@ -33,12 +34,6 @@ function boolean_option(value, fallback) {
 	return fallback;
 }
 
-function integer_value(value, fallback) {
-	const parsed = int(value);
-	const parsed_type = type(parsed);
-
-	return parsed_type == 'int' || parsed_type == 'double' ? parsed : fallback;
-}
 
 function read_update_channel() {
 	const raw = fs.readfile(UPDATE_REPOSITORY_FILE);

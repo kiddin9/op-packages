@@ -12,6 +12,7 @@ import type { SmartSafeHubStatus } from '../types/status';
 import type { SoftwareUpdateStatus } from '../types/updates';
 import type { DeviceRegistrationStatus } from '../api/smartsafehub';
 import type { AppsCatalog, AppsInstallStatus, AppsMetrics } from '../types/apps';
+import type { NetwatchStatus } from '../types/netwatch';
 
 const now = Math.floor(Date.now() / 1000);
 const hour = 3600;
@@ -31,7 +32,8 @@ export const demoAccount: DeviceRegistrationStatus = {
   lastSuccessAt: now - 300,
 };
 
-// Demo-only catalog. No APK URLs or authenticated API responses are used.
+// Demo-only catalog. Versions are representative release examples, not live Hub approvals.
+// No APK URLs or authenticated API responses are used.
 export const demoApps: AppsCatalog = {
   schema: 1,
   deviceCode: 'iptime-ax3000sm',
@@ -44,7 +46,8 @@ export const demoApps: AppsCatalog = {
       summary: '브라우저에서 레트로 게임을 즐기는 엔터테인먼트 앱입니다.',
       description: '사용자가 직접 준비한 게임 파일로 즐기는 레트로 아케이드입니다.',
       category: 'entertainment',
-      version: '1.1.0-r5',
+      publisherType: 'first_party',
+      version: '1.2.0-r4',
       webUi: { type: 'static', path: '/retro-arcade/' },
     },
     {
@@ -53,8 +56,19 @@ export const demoApps: AppsCatalog = {
       summary: '기기별 네트워크 사용량과 통계를 확인하는 앱입니다.',
       description: '네트워크 트래픽을 모니터링합니다.',
       category: 'network',
+      publisherType: 'third_party',
       version: '2025.06.02~29236be6-r1',
       webUi: null,
+    },
+    {
+      id: 'travelmate',
+      name: 'Travelmate',
+      summary: '호텔·카페 Wi-Fi를 공유기에서 연결하고 관리합니다.',
+      description: '다른 Wi-Fi에 연결하고 저장된 Wi-Fi에 자동으로 재연결합니다. 설치 후 연결 설정이 필요합니다.',
+      category: 'network',
+      publisherType: 'third_party',
+      version: '2.4.9-r6',
+      webUi: null, // Demo never exposes actual LuCI administration routes.
     },
     {
       id: 'wake-on-lan',
@@ -62,6 +76,7 @@ export const demoApps: AppsCatalog = {
       summary: '공유기에서 PC와 홈서버의 전원을 켤 수 있는 도구입니다.',
       description: 'Wake-on-LAN 지원 컴퓨터를 네트워크에서 깨우는 앱입니다.',
       category: 'utilities',
+      publisherType: 'third_party',
       version: '26.288.56989~75a306d',
       webUi: null, // Public demo must never link to an actual LuCI control page.
     },
@@ -85,6 +100,14 @@ export const demoAppsStatus: AppsInstallStatus = {
       managed: true,
       updateAvailable: false,
       installedVersion: '2025.06.02~29236be6-r1',
+      webUiReady: false,
+    },
+    'travelmate': {
+      installed: false,
+      partial: false,
+      managed: false,
+      updateAvailable: false,
+      installedVersion: null,
       webUiReady: false,
     },
     'wake-on-lan': {
@@ -119,6 +142,7 @@ export const demoActivity: ActivityHistory = {
   schema: 1, scope: 'current_boot', volatile: true, maxEvents: 100,
   cloud: { enabled: false, phase: 'disabled', eligible: false, plan: 'free', retentionDays: 0, pendingEvents: 0, lastAttemptAt: 0, lastSuccessAt: 0, lastUploadedCount: 0, lastErrorCode: null, nextSyncAt: 0 },
   events: [
+    { schema: 1, eventId: 'demo-network-warning', eventType: 'network_watch.anomaly.warning', severity: 'warning', occurredAt: now - 900, deviceUuid: null, source: 'network_watch', metadata: { source_ip: '192.0.2.101', connections: 128, destinations: 42 } },
     { schema: 1, eventId: 'demo-event-1', eventType: 'safeshield.blocklist.updated', severity: 'success', occurredAt: now - 7200, deviceUuid: null, source: 'safeshield', metadata: {} },
     { schema: 1, eventId: 'demo-event-2', eventType: 'system.boot', severity: 'info', occurredAt: now - 86400, deviceUuid: null, source: 'system', metadata: {} },
   ],
@@ -140,7 +164,7 @@ export const demoLan: LanSettings = {
 };
 
 export const demoSafeShield: SafeShieldStatus = {
-  available: true, version: '0.3.25', enabled: true, active: true, status: 'idle', stage: null,
+  available: true, version: '0.3.26', enabled: true, active: true, status: 'idle', stage: null,
   summary: { label: '보호 중', message: 'DNS 보호가 정상적으로 동작하고 있습니다.', severity: 'info' },
   runtime: { refreshdRunning: true, dnsmasqRunning: true, dnsRuntimeOk: true, lastResult: 'success', lastErrorCode: null },
   entitlement: { plan: 'free', status: 'active' },
@@ -270,3 +294,15 @@ export const demoWifiQr = async (section: string): Promise<WifiQrCredentials> =>
 export const demoGuestWifiQr = async (): Promise<WifiQrCredentials> => ({
   ssid: 'SmartSafeHub-Guest', security: 'sae-mixed', password: 'guest-demo-only-2026',
 });
+
+// Fictional conntrack statistics, never loaded from a real router.
+export const demoNetwatch: NetwatchStatus = {
+  schema: 1, enabled: true, phase: 'ready', sampledAt: now - 35,
+  intervalSeconds: 60, source: 'conntrack', ipv4Only: true, limited: false,
+  totalConnections: 54, totalDevices: 3, alert: null,
+  devices: [
+    { ip: '192.0.2.101', connections: 28, destinations: 14 },
+    { ip: '192.0.2.102', connections: 19, destinations: 11 },
+    { ip: '192.0.2.103', connections: 7, destinations: 3 },
+  ],
+};

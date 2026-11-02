@@ -10,6 +10,26 @@ SELF="${SMARTSAFEHUB_RPC_JOBS_SELF:-/usr/libexec/smartsafehub-rpc-jobs}"
 CATALOG="${SMARTSAFEHUB_RPC_JOBS_CATALOG:-/usr/libexec/smartsafehub-apps}"
 MANAGER="${SMARTSAFEHUB_RPC_JOBS_MANAGER:-/usr/libexec/smartsafehub-apps-manager}"
 DEVICE="${SMARTSAFEHUB_RPC_JOBS_DEVICE:-/usr/libexec/smartsafehub-device}"
+# Match the Apps fetcher's trusted ROM-first firmware identity source.
+ROM_METADATA="${SMARTSAFEHUB_APPS_ROM_METADATA:-/rom/usr/share/smartsafehub/firmware.json}"
+FIRMWARE_METADATA="${SMARTSAFEHUB_APPS_METADATA:-/usr/share/smartsafehub/firmware.json}"
+CATALOG_CACHE="${SMARTSAFEHUB_RPC_JOBS_CATALOG_CACHE:-/tmp/smartsafehub/apps-catalog.json}"
+fingerprint=''
+failures=0
+# First failure plus three 60-second retries; then pause for 20 minutes.
+CATALOG_RETRY_LIMIT=4
+CATALOG_RETRY_SECONDS=60
+CATALOG_COOLDOWN_SECONDS=1200
+
+catalog_fingerprint() {
+ metadata="$ROM_METADATA"
+ [ -s "$metadata" ] || metadata="$FIRMWARE_METADATA"
+ [ -s "$metadata" ] || { printf 'missing'; return; }
+ # sha256sum is included in OpenWrt 25.12 BusyBox; cksum is not.
+ # This fingerprint only gates refreshes. The fetcher validates firmware IDs.
+ checksum="$(sha256sum "$metadata" 2>/dev/null)" || { printf 'missing'; return; }
+ printf '%s' "${checksum%% *}"
+}
 
 valid_job() {
  case "$1" in catalog|status|sizes|device-sync|pairing|recommended-sync|recommended-revoke) return 0;; esac
@@ -25,11 +45,16 @@ lock_path() { printf '%s/%s.lock' "$RUNTIME" "$1"; }
 write_state() {
  job="$1"; phase="$2"; code="$3"; argument="$4"; started="$5"
  tmp="$(mktemp "$RUNTIME/$job.XXXXXXXX")" || return 1
- printf 'phase\t%s\ncode\t%s\nargument\t%s\nstarted\t%s\nupdated\t%s\n' \
-  "$phase" "$code" "$argument" "$started" "$(date +%s)" > "$tmp"
+ printf 'phase\t%s\ncode\t%s\nargument\t%s\nstarted\t%s\nupdated\t%s\nfirmware\t%s\nfailures\t%s\n' \
+  "$phase" "$code" "$argument" "$started" "$(date +%s)" "$fingerprint" "$failures" > "$tmp"
  mv -f "$tmp" "$(state_path "$job")"
 }
 read_field() { [ -r "$1" ] && sed -n "s/^$2$(printf '\t')//p" "$1" | head -n 1 || :; }
+# Older state files have no failures field; reject invalid counters safely.
+read_failures() {
+ value="$(read_field "$1" failures)"
+ case "$value" in ''|*[!0-9]*) printf '0';; *) printf '%s' "$value";; esac
+}
 
 ensure() {
  job="$1"; mode="$2"; argument="$3"
@@ -40,14 +65,35 @@ ensure() {
   catalog) ttl=600;; status) ttl=15;; sizes) ttl=120;; device-sync) ttl=30;;
   *) ttl=0;;
  esac
+ if [ "$job" = catalog ]; then
+  fingerprint="$(catalog_fingerprint)"
+ fi
  if [ "$mode" = auto ]; then
   # Suppress redundant requests and short retry storms after errors.
   stamp="$(read_field "$state" updated)"
   case "$stamp" in ''|*[!0-9]*) stamp=0;; esac
+  # A failed fetch gets a bounded 60s retry, not the 10-minute success TTL.
+  # A new firmware identity or missing catalog snapshot bypasses either TTL.
+  if [ "$job" = catalog ]; then
+   phase="$(read_field "$state" phase)"
+   previous="$(read_field "$state" firmware)"
+   if [ "$previous" != "$fingerprint" ]; then
+    ttl=0
+   elif [ "$phase" = failed ]; then
+    failures="$(read_failures "$state")"
+    if [ "$failures" -ge "$CATALOG_RETRY_LIMIT" ]; then
+     ttl="$CATALOG_COOLDOWN_SECONDS"
+    else
+     ttl="$CATALOG_RETRY_SECONDS"
+    fi
+   elif [ ! -s "$CATALOG_CACHE" ]; then
+    ttl=0
+   fi
+  fi
   if [ $((now - stamp)) -ge 0 ] && [ $((now - stamp)) -lt "$ttl" ]; then
    exit 0
   fi
-  if [ "$ttl" -eq 0 ]; then exit 2; fi
+  if [ "$ttl" -eq 0 ] && [ "$job" != catalog ]; then exit 2; fi
  fi
  if ! mkdir "$lock" 2>/dev/null; then
   # Keep a live worker. Recover only an abandoned lock, not a slow worker.
@@ -66,8 +112,18 @@ ensure() {
    exit 3
   fi
  fi
+ if [ "$job" = catalog ]; then
+  # Only a new firmware, an explicit refresh, or an expired cooldown
+  # starts a fresh retry cycle. Page reloads cannot reset the counter.
+  previous="$(read_field "$state" firmware)"
+  failures="$(read_failures "$state")"
+  if [ "$mode" = explicit ] || [ "$previous" != "$fingerprint" ] || [ "$failures" -ge "$CATALOG_RETRY_LIMIT" ]; then
+   failures=0
+  fi
+ fi
  write_state "$job" starting NONE "$argument" "$now"
  if ! "$DAEMON" -S -b -x "$SELF" -- worker "$job" "$argument" >/dev/null 2>&1; then
+  [ "$job" != catalog ] || failures=$((failures + 1))
   write_state "$job" failed LAUNCH "$argument" "$now"
   rmdir "$lock" 2>/dev/null || :
   exit 1
@@ -75,6 +131,7 @@ ensure() {
 }
 worker_cleanup() {
  if [ "${finished:-0}" -ne 1 ]; then
+  [ "$job" != catalog ] || failures=$((failures + 1))
   write_state "$job" failed E70 "$argument" "$started" || :
  fi
  rm -f "$lock/pid"
@@ -84,6 +141,10 @@ worker() {
  job="$1"; argument="$2"
  lock="$(lock_path "$job")"
  started="$(read_field "$(state_path "$job")" started)"
+ if [ "$job" = catalog ]; then
+  fingerprint="$(read_field "$(state_path "$job")" firmware)"
+  failures="$(read_failures "$(state_path "$job")")"
+ fi
  case "$started" in ''|*[!0-9]*) started="$(date +%s)";; esac
  finished=0
  trap 'worker_cleanup' EXIT
@@ -101,8 +162,10 @@ worker() {
   recommended-revoke) "$DEVICE" recommended-revoke "$argument" || rc=$?;;
  esac
  if [ "$rc" -eq 0 ]; then
+  [ "$job" != catalog ] || failures=0
   write_state "$job" success NONE "$argument" "$started"
  else
+  [ "$job" != catalog ] || failures=$((failures + 1))
   write_state "$job" failed "E$rc" "$argument" "$started"
  fi
  finished=1

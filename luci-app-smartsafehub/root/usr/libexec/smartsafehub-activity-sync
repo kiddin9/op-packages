@@ -55,7 +55,7 @@ trap cleanup_files EXIT
 trap request_stop INT TERM
 
 log_message() { "$LOGGER_BIN" -t smartsafehub-activity-sync -- "$*" 2>/dev/null || true; }
-uci_get() { "$UCI_BIN" -q get "smartsafehub.activity.$1" 2>/dev/null || true; }
+uci_get() { ssh_uci_get "$UCI_BIN" "smartsafehub.activity.$1"; }
 
 cloud_sync_enabled() {
 	local value
@@ -82,9 +82,7 @@ now_epoch() {
 	printf '%s' "$value"
 }
 json_value() {
-	local file="$1" expression="$2"
-	[ -s "$file" ] || return 0
-	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+ ssh_json_value "$JSONFILTER_BIN" "$1" "$2" nonempty
 }
 json_string_or_null() {
 	if [ -n "$1" ]; then printf '"%s"' "$(json_escape "$1")"; else printf 'null'; fi
@@ -93,15 +91,10 @@ sanitize_code() { printf '%s' "$1" | tr -cd 'A-Za-z0-9_.:-' | cut -c 1-120; }
 number_value() { case "$1" in ''|*[!0-9]*) printf '0' ;; *) printf '%s' "$1" ;; esac; }
 
 acquire_lock() {
-	local owner
-	if mkdir "$LOCK_DIR" 2>/dev/null; then printf '%s\n' "$$" > "$LOCK_DIR/pid"; return 0; fi
-	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then return 1; fi
-	rm -rf "$LOCK_DIR" 2>/dev/null || return 1
-	mkdir "$LOCK_DIR" 2>/dev/null || return 1
-	printf '%s\n' "$$" > "$LOCK_DIR/pid"
+ ssh_lock_acquire "$LOCK_DIR" 40 0.05 sleep 1
 }
-release_lock() { rm -rf "$LOCK_DIR" 2>/dev/null || true; }
+
+release_lock() { ssh_lock_release "$LOCK_DIR"; }
 
 pending_count() {
 	local file count

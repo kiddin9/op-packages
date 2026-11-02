@@ -5,6 +5,8 @@ export interface VerifiedApp {
   summary: string;
   description: string;
   category: string;
+  /** Approved Hub publishing relationship; absent on older catalogs. */
+  publisherType?: 'first_party' | 'third_party';
   version: string;
   /** Approved same-origin LuCI page or first-party static app; never a remote URL. */
   webUi?: { type: 'luci' | 'static'; path: string } | null;

@@ -4,6 +4,8 @@
 import * as fs from 'fs';
 
 import {
+	read_json_object,
+	integer_value,
 	emit_activity_event,
 	failure,
 	new_uci_cursor,
@@ -20,14 +22,6 @@ const ACTIVITY_SYNC_INIT = '/etc/init.d/smartsafehub-activity-sync';
 const MAX_ACTIVITY_EVENTS = 128;
 const MAX_ACTIVITY_FILE_BYTES = 1048576;
 
-function integer_value(value, fallback) {
-	const parsed = int(value);
-	const parsed_type = type(parsed);
-
-	return (parsed_type == 'int' || parsed_type == 'double') && parsed == parsed
-		? parsed
-		: fallback;
-}
 
 function valid_severity(value) {
 	return value == 'info' || value == 'success' || value == 'warning' || value == 'error';
@@ -73,21 +67,6 @@ function normalize_event(document) {
 }
 
 
-function read_json_document(path) {
-	const raw = fs.readfile(path);
-	if (type(raw) != 'string' || !length(raw)) {
-		return null;
-	}
-
-	try {
-		const document = json(raw);
-		return type(document) == 'object' && type(document) != 'array' ? document : null;
-	}
-	catch (e) {
-		return null;
-	}
-}
-
 function bool_config(value, fallback) {
 	if (value == null || value == '') {
 		return fallback;
@@ -107,7 +86,7 @@ function cloud_sync_enabled() {
 }
 
 function device_cloud_entitlement() {
-	const state = read_json_document(DEVICE_STATE_FILE);
+	const state = read_json_object(DEVICE_STATE_FILE);
 	if (state == null) {
 		return { eligible: null, plan: null };
 	}

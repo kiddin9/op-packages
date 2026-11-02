@@ -5,9 +5,6 @@ set -eu
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 CHECKER="$ROOT_DIR/tools/check_openwrt_commands.py"
 POLICY="$ROOT_DIR/tools/openwrt-25.12-commands.txt"
-TMP="$(mktemp -d)"
-trap 'rm -rf "$TMP"' EXIT INT TERM
-
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 
 # Never silently enlarge the allowlist to hide a build failure. These applets
@@ -22,6 +19,17 @@ for applet in dd sha256sum hexdump cmp; do
 done
 
 python3 "$CHECKER" >/dev/null || fail 'current router sources violate the OpenWrt 25.12 command policy'
+
+# ShellSpec checks real router sources on every run. CI separately executes the
+# slower mutation suite once, before installing dependencies.
+case "${1:-}" in
+    '') printf 'PASS: OpenWrt 25.12 BusyBox and performance source audit\n'; exit 0 ;;
+    --self-test) ;;
+    *) fail "unknown test mode: $1" ;;
+esac
+[ "$#" -le 1 ] || fail 'too many test arguments'
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT INT TERM
 
 mkdir -p "$TMP/root/usr/libexec" "$TMP/root/etc/init.d"
 FILE="$TMP/root/usr/libexec/smartsafehub-fixture"
@@ -247,4 +255,4 @@ done
 EOF
 check_allowed
 
-printf 'PASS: OpenWrt 25.12 BusyBox and performance command audit\n'
+printf 'PASS: OpenWrt 25.12 BusyBox and performance command audit (mutation tests)\n'

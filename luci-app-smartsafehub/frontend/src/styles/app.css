@@ -628,6 +628,14 @@
   border-color: #334155;
 }
 
+/* Tailwind v4's divide-y/divide-slate-* rules style the LIST CHILDREN,
+ * not the list container. Override that same child border in dark mode.
+ * A border-color on the parent alone leaves the light separator visible. */
+.ssh-app[data-theme='dark'] [class~='divide-slate-100'] > :not(:last-child),
+.ssh-app[data-theme='dark'] [class~='divide-slate-200'] > :not(:last-child) {
+  border-color: #1e293b;
+}
+
 .ssh-app[data-theme='dark'] [class~='border-white/80'] {
   border-color: #334155;
 }
@@ -671,6 +679,7 @@
   color: #7dd3fc;
 }
 
+.ssh-app[data-theme='dark'] [class~='border-sky-100'],
 .ssh-app[data-theme='dark'] [class~='border-sky-200'] {
   border-color: #075985;
 }
@@ -756,6 +765,7 @@
   --tw-ring-color: #7f1d1d;
 }
 
+.ssh-app[data-theme='dark'] [class~='bg-rose-100'],
 .ssh-app[data-theme='dark'] [class~='bg-rose-50'] {
   background-color: rgb(244 63 94 / 0.12);
 }
@@ -795,6 +805,80 @@
 
 .ssh-app[data-theme='dark'] .hover\:bg-slate-50:hover {
   background-color: #1e293b;
+}
+
+/* Only pale hover surfaces need remapping: filled action buttons use their
+ * own darker hover shades and must remain untouched. */
+.ssh-app[data-theme='dark'] .hover\:bg-slate-100:hover {
+  background-color: #334155;
+}
+
+.ssh-app[data-theme='dark'] .hover\:bg-teal-50:hover,
+.ssh-app[data-theme='dark'] .hover\:bg-teal-100:hover {
+  background-color: rgb(13 148 136 / 0.24);
+}
+
+.ssh-app[data-theme='dark'] .hover\:bg-amber-50:hover,
+.ssh-app[data-theme='dark'] .hover\:bg-amber-100:hover {
+  background-color: rgb(245 158 11 / 0.22);
+}
+
+.ssh-app[data-theme='dark'] .hover\:bg-rose-100:hover {
+  background-color: rgb(244 63 94 / 0.22);
+}
+
+/* Keep pale state utilities dark too. Base bg/border/ring mappings do not
+ * override state variants, which Tailwind applies on the focused/hovered node. */
+.ssh-app[data-theme='dark'] .focus\:bg-white:focus {
+  background-color: #0f172a;
+}
+
+.ssh-app[data-theme='dark'] .disabled\:bg-slate-100:disabled {
+  background-color: #1e293b;
+}
+
+.ssh-app[data-theme='dark'] .focus\:ring-teal-100:focus,
+.ssh-app[data-theme='dark'] .focus-visible\:ring-teal-100:focus-visible,
+.ssh-app[data-theme='dark'] .focus-visible\:ring-teal-200:focus-visible {
+  --tw-ring-color: #134e4a;
+}
+
+.ssh-app[data-theme='dark'] .focus-visible\:ring-amber-100:focus-visible,
+.ssh-app[data-theme='dark'] .focus-visible\:ring-amber-200:focus-visible {
+  --tw-ring-color: #78350f;
+}
+
+.ssh-app[data-theme='dark'] .focus-visible\:ring-emerald-100:focus-visible {
+  --tw-ring-color: #064e3b;
+}
+
+.ssh-app[data-theme='dark'] .focus-visible\:ring-red-100:focus-visible,
+.ssh-app[data-theme='dark'] .focus-visible\:ring-red-200:focus-visible {
+  --tw-ring-color: #7f1d1d;
+}
+
+.ssh-app[data-theme='dark'] .hover\:border-red-200:hover,
+.ssh-app[data-theme='dark'] .hover\:border-red-300:hover {
+  border-color: #991b1b;
+}
+
+.ssh-app[data-theme='dark'] .hover\:border-teal-200:hover,
+.ssh-app[data-theme='dark'] .hover\:border-teal-300:hover {
+  border-color: #115e59;
+}
+
+.ssh-app[data-theme='dark'] .hover\:text-teal-700:hover,
+.ssh-app[data-theme='dark'] .hover\:text-teal-800:hover,
+.ssh-app[data-theme='dark'] .hover\:text-teal-900:hover {
+  color: #5eead4;
+}
+
+.ssh-app[data-theme='dark'] .hover\:text-slate-800:hover {
+  color: #e2e8f0;
+}
+
+.ssh-app[data-theme='dark'] .hover\:text-red-700:hover {
+  color: #fca5a5;
 }
 
 /* Apps removal stays understated at rest; dark mode uses a muted red hover. */
@@ -2350,6 +2434,18 @@
 .ssh-app[data-theme='dark'] .ssh-dashboard-storage-card[data-level='warning'] .ssh-apps-storage-available { color: #fbbf24; }
 .ssh-app[data-theme='dark'] .ssh-apps-storage-card[data-level='critical'] .ssh-apps-storage-available,
 .ssh-app[data-theme='dark'] .ssh-dashboard-storage-card[data-level='critical'] .ssh-apps-storage-available { color: #fb7185; }
+
+/* First-party publishing is distinct from the verification shared by all approved Apps. */
+.ssh-apps-official-badge {
+  border-color: #99f6e4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+.ssh-app[data-theme='dark'] .ssh-apps-official-badge {
+  border-color: #115e59;
+  background: #042f2e;
+  color: #5eead4;
+}
 
 /* Apps cards: installed is a quiet state, updates are an amber action. */
 .ssh-apps-installed-badge {

@@ -173,6 +173,19 @@ export function activityPresentation(event: ActivityEvent): ActivityPresentation
       };
     }
 
+    case 'network_watch.anomaly.warning': {
+      const ip = metadataString(event, 'source_ip');
+      const connections = metadataNumber(event, 'connections');
+      return {
+        title: 'Network Watch 통신 증가 감지',
+        description: `${ip ? `${ip} 기기에서 ` : '연결된 기기에서 '}외부 연결이 연속해서 높은 수준으로 관찰되었습니다${connections !== null ? ` (동시 연결 ${formatNumber(connections)}개)` : ''}. 악성 통신으로 확정된 것은 아닙니다.`,
+      };
+    }
+    case 'settings.netwatch.enabled':
+      return { title: 'Network Watch 켜짐', description: '네트워크 연결 관찰 기능을 활성화했습니다.' };
+    case 'settings.netwatch.disabled':
+      return { title: 'Network Watch 꺼짐', description: '네트워크 연결 관찰 기능을 비활성화했습니다.' };
+
     case 'settings.scheduled_reboot.updated': {
       const enabled = metadataBoolean(event, 'enabled');
       return {

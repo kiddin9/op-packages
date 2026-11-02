@@ -94,8 +94,7 @@ fi
 grep -Fq "route: 'iptv'" "$ROUTES" || fail 'IPTV route가 필요합니다.'
 grep -Fq "hash: '#iptv'" "$ROUTES" || fail 'IPTV route는 #iptv hash를 사용해야 합니다.'
 grep -Fq "'#iptv': 'iptv'" "$HASH_ROUTE" || fail '#iptv hash router 연결이 필요합니다.'
-grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-  fail 'IPTV 메뉴는 Network 그룹에서 네트워크 설정과 Wi-Fi 다음에 표시되어야 합니다.'
+# Shared sidebar placement is tested in test-navigation-contract.sh.
 grep -Fq "routeName === 'iptv'" "$NAVIGATION" || fail 'IPTV 메뉴에 Beta badge 조건이 필요합니다.'
 grep -Fq 'Beta' "$NAVIGATION" || fail 'IPTV 메뉴에 Beta 표시가 필요합니다.'
 grep -Fq 'class="absolute right-0.5 top-0.5 inline-flex size-5' "$NAVIGATION" || \

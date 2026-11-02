@@ -36,6 +36,7 @@ SAFESHIELD_SLEEP_BIN="${SMARTSAFEHUB_EVENTS_SAFESHIELD_SLEEP_BIN:-sleep}"
 SAFESHIELD_POLL_INTERVAL_S="${SMARTSAFEHUB_EVENTS_SAFESHIELD_POLL_INTERVAL_S:-60}"
 SAFESHIELD_WATCH_INTERVAL_S="${SMARTSAFEHUB_EVENTS_SAFESHIELD_WATCH_INTERVAL_S:-1}"
 SAFESHIELD_WATCH_TIMEOUT_S="${SMARTSAFEHUB_EVENTS_SAFESHIELD_WATCH_TIMEOUT_S:-180}"
+NETWATCH_HELPER="${SMARTSAFEHUB_EVENTS_NETWATCH_HELPER:-/usr/libexec/smartsafehub-netwatch}"
 
 STOP_REQUESTED=0
 WAIT_PID=''
@@ -85,99 +86,15 @@ normalized_limit() {
 	fi
 }
 
-lock_owner_pid() {
-	local lock_dir="$1" owner
-	owner="$(cat "$lock_dir/pid" 2>/dev/null || true)"
-	case "$owner" in
-		''|*[!0-9]*) printf '%s' '' ;;
-		*) printf '%s' "$owner" ;;
-	esac
-}
-
-try_acquire_dir_lock() {
-	local lock_dir="$1"
-	if ! mkdir "$lock_dir" 2>/dev/null; then
-		return 1
-	fi
-
-	# mkdir() is the lock acquisition. A contender may observe the directory
-	# before this pid file is written, so a missing owner must be treated as
-	# "initializing/busy", never as stale.
-	if ! printf '%s\n' "$$" > "$lock_dir/pid" 2>/dev/null; then
-		rm -rf "$lock_dir" 2>/dev/null || true
-		return 1
-	fi
-	return 0
-}
-
-reclaim_stale_dir_lock() {
-	local lock_dir="$1" reclaim_dir="$2" allow_pidless="${3:-0}" owner
-	[ -d "$lock_dir" ] || return 0
-	mkdir "$reclaim_dir" 2>/dev/null || return 1
-
-	owner="$(lock_owner_pid "$lock_dir")"
-	if [ -n "$owner" ]; then
-		if ! kill -0 "$owner" 2>/dev/null; then
-			rm -rf "$lock_dir" 2>/dev/null || true
-		fi
-	elif [ "$allow_pidless" = '1' ]; then
-		# A pid-less lock is only reclaimed after the full bounded wait. This
-		# closes the mkdir -> pid write race while still recovering from a process
-		# killed in that tiny initialization window.
-		rm -rf "$lock_dir" 2>/dev/null || true
-	fi
-
-	rm -rf "$reclaim_dir" 2>/dev/null || true
-	return 0
-}
-
-acquire_dir_lock() {
-	local lock_dir="$1" reclaim_dir="$2" attempts=0 max_attempts delay owner
-	max_attempts="$LOCK_RETRY_COUNT"
-	case "$max_attempts" in ''|*[!0-9]*) max_attempts=40 ;; esac
-	if [ "$max_attempts" -lt 1 ] 2>/dev/null || [ "$max_attempts" -gt 200 ] 2>/dev/null; then
-		max_attempts=40
-	fi
-	delay="$LOCK_RETRY_DELAY_S"
-	[ -n "$delay" ] || delay='0.05'
-
-	while [ "$attempts" -lt "$max_attempts" ]; do
-		try_acquire_dir_lock "$lock_dir" && return 0
-		owner="$(lock_owner_pid "$lock_dir")"
-		if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null; then
-			reclaim_stale_dir_lock "$lock_dir" "$reclaim_dir" 0 || true
-		fi
-		attempts=$((attempts + 1))
-		[ "$attempts" -lt "$max_attempts" ] || break
-		"$LOCK_SLEEP_BIN" "$delay" 2>/dev/null || true
-	done
-
-	# If the creator died after mkdir() but before writing pid, only reclaim it
-	# after waiting the complete bounded interval. A live owner has had ample
-	# time to publish its pid by this point.
-	reclaim_stale_dir_lock "$lock_dir" "$reclaim_dir" 1 || true
-	try_acquire_dir_lock "$lock_dir" && return 0
-	return 1
-}
-
-release_dir_lock() {
-	local lock_dir="$1" owner
-	owner="$(lock_owner_pid "$lock_dir")"
-	[ "$owner" = "$$" ] || return 0
-	rm -rf "$lock_dir" 2>/dev/null || true
-}
-
 acquire_lock() {
-	if acquire_dir_lock "$LOCK_DIR" "${LOCK_DIR}.reclaim"; then
-		return 0
-	fi
-	log_message "event store lock remained busy after bounded wait"
-	return 1
+ if ssh_lock_acquire "$LOCK_DIR" "$LOCK_RETRY_COUNT" "$LOCK_RETRY_DELAY_S" "$LOCK_SLEEP_BIN"; then
+  return 0
+ fi
+ log_message "event store lock remained busy after bounded wait"
+ return 1
 }
 
-release_lock() {
-	release_dir_lock "$LOCK_DIR"
-}
+release_lock() { ssh_lock_release "$LOCK_DIR"; }
 
 metadata_is_valid() {
 	local metadata="$1" file size compact
@@ -411,11 +328,11 @@ safeshield_state_value() {
 }
 
 safeshield_acquire_lock() {
-	acquire_dir_lock "$SAFESHIELD_LOCK_DIR" "${SAFESHIELD_LOCK_DIR}.reclaim"
+	ssh_lock_acquire "$SAFESHIELD_LOCK_DIR" "$LOCK_RETRY_COUNT" "$LOCK_RETRY_DELAY_S" "$LOCK_SLEEP_BIN"
 }
 
 safeshield_release_lock() {
-	release_dir_lock "$SAFESHIELD_LOCK_DIR"
+	ssh_lock_release "$SAFESHIELD_LOCK_DIR"
 }
 
 safeshield_write_state() {
@@ -566,15 +483,22 @@ interruptible_sleep() {
 	[ "$STOP_REQUESTED" -eq 0 ]
 }
 
+netwatch_observe_detached() {
+	[ -x "$NETWATCH_HELPER" ] || return 0
+	( "$NETWATCH_HELPER" sample >/dev/null 2>&1 || true ) </dev/null >/dev/null 2>&1 &
+}
+
 events_daemon_loop() {
 	local interval
 	STOP_REQUESTED=0
 	trap request_stop INT TERM
 	safeshield_observe_once || true
+	netwatch_observe_detached
 	interval="$(normalized_integer "$SAFESHIELD_POLL_INTERVAL_S" 60 15 3600)"
 	while [ "$STOP_REQUESTED" -eq 0 ]; do
 		interruptible_sleep "$interval" || break
 		safeshield_observe_once || true
+		netwatch_observe_detached
 	done
 	trap - INT TERM
 }

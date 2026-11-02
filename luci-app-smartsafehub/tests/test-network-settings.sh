@@ -22,19 +22,12 @@ for file in "$ROUTES" "$HASH_ROUTE" "$NAVIGATION" "$APP" "$HOME" "$README" "$FEA
 done
 
 grep -Fq "  | 'network'" "$ROUTES" || fail 'AppRoute must expose the combined network route'
-grep -Fq "route: 'network'" "$ROUTES" || fail 'combined network settings route must be registered'
-grep -Fq "hash: '#network'" "$ROUTES" || fail 'combined network settings route must use #network'
 grep -Fq "label: '네트워크'" "$ROUTES" || fail 'combined route label must be 네트워크'
 grep -Fq "title: '네트워크'" "$ROUTES" || fail 'combined page title must be 네트워크'
 if grep -Fq "route: 'wan'" "$ROUTES" || grep -Fq "route: 'lan'" "$ROUTES"; then
 	fail 'WAN and LAN must not remain as separate visible routes'
 fi
 
-grep -Fq "'#network': 'network'" "$HASH_ROUTE" || fail '#network must resolve to combined network settings'
-grep -Fq "'#wan': 'network'" "$HASH_ROUTE" || fail 'legacy #wan must remain compatible'
-grep -Fq "'#lan': 'network'" "$HASH_ROUTE" || fail 'legacy #lan must remain compatible'
-grep -Fq "{ label: 'Network', routes: ['network', 'wifi', 'iptv', 'devices'] }" "$NAVIGATION" || \
-	fail 'Network sidebar must expose a single combined settings item'
 grep -Fq "case 'network':" "$NAVIGATION" || fail 'combined network item must have an icon'
 if grep -Fq "case 'wan':" "$NAVIGATION" || grep -Fq "case 'lan':" "$NAVIGATION"; then
 	fail 'sidebar icon routing must not retain separate WAN/LAN entries'

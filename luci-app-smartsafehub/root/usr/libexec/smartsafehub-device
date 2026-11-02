@@ -21,6 +21,7 @@ RECOMMENDED_SYNC_STATUS="${SMARTSAFEHUB_RECOMMENDED_SYNC_STATUS_FILE:-$RUNTIME_D
 RECOMMENDED_CATALOG="${SMARTSAFEHUB_RECOMMENDED_CATALOG_FILE:-$RUNTIME_DIR/recommended-rules.catalog.json}"
 RECOMMENDED_ACK_STATE="${SMARTSAFEHUB_RECOMMENDED_ACK_STATE_FILE:-$RUNTIME_DIR/recommended-rules.reported}"
 API_BASE_URL="${SMARTSAFEHUB_DEVICE_API_BASE_URL:-https://www.smartsafehub.com/api/v1}"
+SAFESHIELD_VERSION_FILE="${SMARTSAFEHUB_SAFESHIELD_VERSION_FILE:-/usr/lib/safeshield/version}"
 UCLIENT_FETCH_BIN="${SMARTSAFEHUB_DEVICE_UCLIENT_FETCH_BIN:-uclient-fetch}"
 JSONFILTER_BIN="${SMARTSAFEHUB_DEVICE_JSONFILTER_BIN:-jsonfilter}"
 DATE_BIN="${SMARTSAFEHUB_DEVICE_DATE_BIN:-date}"
@@ -242,22 +243,38 @@ reconcile_recommended_response() {
  esac
 }
 
+build_sync_request() {
+ local out="$1" version=''
+ # Skip the field if SafeShield is temporarily absent; never send an empty
+ # value that could replace a valid version in Hub.
+ if [ -r "$SAFESHIELD_VERSION_FILE" ]; then
+  IFS= read -r version < "$SAFESHIELD_VERSION_FILE" || [ -n "$version" ] || true
+ fi
+ case "$version" in ''|*[!0123456789.r-]*) version='' ;; esac
+ if [ -n "$version" ]; then
+  printf '{"safeshield_version":"%s"' "$(json_escape "$version")" > "$out"
+ else
+  printf '{' > "$out"
+ fi
+ # Keep existing authenticated recommended-rule acknowledgment together with
+ # the optional version in one JSON object.
+ if [ -f "$RECOMMENDED_RECEIPT" ] && [ ! -L "$RECOMMENDED_RECEIPT" ] && [ "$(wc -c < "$RECOMMENDED_RECEIPT")" -le 40000 ]; then
+  [ -z "$version" ] || printf ',' >> "$out"
+  printf '"recommended_rules_ack":' >> "$out"
+  cat "$RECOMMENDED_RECEIPT" >> "$out"
+ fi
+ printf '}\n' >> "$out"
+}
+
 status_sync() {
  local token body out now registered previous_registered previous_plan plan last_success next code expires protection_refresh_pending
  now="$(now_epoch)"; next=$((now + CHECK_INTERVAL_S))
  ensure_device_bootstrapped || return 1
  token="$(credential_token)" || return 1
  body="$RUNTIME_DIR/device-sync-request.$$.json"; out="$RUNTIME_DIR/device-sync-response.$$.json"
- # A receipt is written by the reconciler only after verifying the allow list.
- # It is authenticated using the existing device credential. Send the prior
- # receipt here; the latest reconciliation is delivered on the next sync.
- if [ -f "$RECOMMENDED_RECEIPT" ] && [ ! -L "$RECOMMENDED_RECEIPT" ] && [ "$(wc -c < "$RECOMMENDED_RECEIPT")" -le 40000 ]; then
-  printf '{"recommended_rules_ack":' > "$body"
-  cat "$RECOMMENDED_RECEIPT" >> "$body"
-  printf '}\n' >> "$body"
- else
-  printf '{}\n' > "$body"
- fi
+ # Send the installed version on each sync, without delaying the request if
+ # the local SafeShield version file is temporarily unavailable.
+ build_sync_request "$body"
  if ! post_json "$API_BASE_URL/devices/sync" "$body" "$out" "$token"; then last_success="$(json_value "$STATE_FILE" '@.lastSuccessAt')"; case "$last_success" in ''|*[!0-9]*) last_success=0 ;; esac; protection_refresh_pending="$(json_value "$STATE_FILE" '@.protectionRefreshPending')"; write_state registered failed DEVICE_SYNC_UNAVAILABLE unknown '' "$(json_value "$STATE_FILE" '@.pairingCode')" "$(json_value "$STATE_FILE" '@.pairingExpiresAt')" "$next" "$last_success" "$protection_refresh_pending"; rm -f "$body" "$out"; return 1; fi
  previous_registered="$(json_value "$STATE_FILE" '@.accountRegistered')"
  previous_plan="$(ascii_lower "$(json_value "$STATE_FILE" '@.plan')")"

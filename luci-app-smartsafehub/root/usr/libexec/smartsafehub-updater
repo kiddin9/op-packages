@@ -18,6 +18,7 @@ REPOSITORY_DIR="${SMARTSAFEHUB_UPDATER_REPOSITORY_DIR:-/etc/apk/repositories.d}"
 REPOSITORY_FILE="${SMARTSAFEHUB_UPDATER_REPOSITORY_FILE:-$REPOSITORY_DIR/smartsafehub.list}"
 APK_BIN="${SMARTSAFEHUB_UPDATER_APK_BIN:-apk}"
 UCLIENT_FETCH_BIN="${SMARTSAFEHUB_UPDATER_UCLIENT_FETCH_BIN:-uclient-fetch}"
+JSONFILTER_BIN="${SMARTSAFEHUB_UPDATER_JSONFILTER_BIN:-jsonfilter}"
 UCI_BIN="${SMARTSAFEHUB_UPDATER_UCI_BIN:-uci}"
 RPCD_INIT="${SMARTSAFEHUB_UPDATER_RPCD_INIT:-/etc/init.d/rpcd}"
 LUCI_INDEX_CACHE="${SMARTSAFEHUB_UPDATER_LUCI_INDEX_CACHE:-/tmp/luci-indexcache}"
@@ -30,7 +31,9 @@ RELEASE_NOTE_TIMEOUT_S=10
 RELEASE_INDEX_MAX_BYTES=65536
 RELEASE_NOTE_MAX_BYTES=65536
 RELEASE_NOTES_MAX_BYTES=1048576
-RELEASE_NOTES_MAX_COUNT=32
+# Fetch at most eight individual notes; longer upgrade paths use latest-only.
+# Avoid dozens of sequential HTTP timeouts on low-power routers.
+RELEASE_NOTES_MAX_COUNT=8
 DEFAULT_CHECK_INTERVAL_S=21600
 MIN_CHECK_INTERVAL_S=900
 MAX_CHECK_INTERVAL_S=604800
@@ -59,7 +62,7 @@ emit_update_event() {
 }
 
 uci_get() {
-	"$UCI_BIN" -q get "smartsafehub.updates.$1" 2>/dev/null || true
+	ssh_uci_get "$UCI_BIN" "smartsafehub.updates.$1"
 }
 
 default_auto_install() {
@@ -188,26 +191,10 @@ set_phase() {
 }
 
 acquire_lock() {
-	local owner
-	if mkdir "$LOCK_DIR" 2>/dev/null; then
-		printf '%s\n' "$$" > "$LOCK_DIR/pid"
-		return 0
-	fi
-
-	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
-		return 1
-	fi
-
-	rm -rf "$LOCK_DIR" 2>/dev/null || return 1
-	mkdir "$LOCK_DIR" 2>/dev/null || return 1
-	printf '%s\n' "$$" > "$LOCK_DIR/pid"
-	return 0
+ ssh_lock_acquire "$LOCK_DIR" 40 0.05 sleep 1
 }
 
-release_lock() {
-	rm -rf "$LOCK_DIR" 2>/dev/null || true
-}
+release_lock() { ssh_lock_release "$LOCK_DIR"; }
 
 repository_is_configured() {
 	local file line
@@ -266,6 +253,16 @@ file_size_is_valid() {
 		''|*[!0-9]*) size=0 ;;
 	esac
 	[ "$size" -gt 0 ] && [ "$size" -le "$max_bytes" ]
+}
+
+release_note_is_valid() {
+	local file="$1" version="$2"
+
+	file_size_is_valid "$file" "$RELEASE_NOTE_MAX_BYTES" || return 1
+	# jsonfilter is already a required OpenWrt dependency. Unlike a raw grep,
+	# this validates compact JSON, escaped text and exact package/version values.
+	[ "$("$JSONFILTER_BIN" -i "$file" -e '@.package' 2>/dev/null)" = "$UPDATE_PACKAGE" ] || return 1
+	[ "$("$JSONFILTER_BIN" -i "$file" -e '@.version' 2>/dev/null)" = "$version" ]
 }
 
 release_notes_cache_matches_range() {
@@ -337,9 +334,15 @@ select_release_versions() {
 	rm -f "$versions_file"
 
 	if [ "$started" -eq 1 ] && [ "$found_installed" -eq 1 ] && [ -s "$candidate_file" ]; then
-		mv "$candidate_file" "$output_file"
-		[ "$truncated" -eq 0 ]
-		return
+		if [ "$truncated" -eq 0 ]; then
+			mv "$candidate_file" "$output_file"
+			return 0
+		fi
+		# A long update history should not require many network requests just
+		# to show a change log. Show the available version's note instead.
+		rm -f "$candidate_file"
+		printf '%s\n' "$available" > "$output_file"
+		return 1
 	fi
 
 	rm -f "$candidate_file"
@@ -418,15 +421,26 @@ refresh_release_notes() {
 			rm -f "$note_file"
 			complete=false
 			log_message "release note unavailable for $version"
+			if [ "$version" = "$available" ]; then
+				# Without the newest note, keep a valid cache rather than showing
+				# a misleading list of older releases.
+				rm -rf "$work_dir"
+				preserve_release_notes_cache_or_remove "$installed" "$available" 'latest release note unavailable'
+				return 0
+			fi
 			continue
 		fi
 
-		if ! file_size_is_valid "$note_file" "$RELEASE_NOTE_MAX_BYTES" \
-			|| ! grep -Fq "\"package\": \"$UPDATE_PACKAGE\"" "$note_file" \
-			|| ! grep -Fq "\"version\": \"$version\"" "$note_file"; then
+		if ! release_note_is_valid "$note_file" "$version"; then
 			rm -f "$note_file"
 			complete=false
 			log_message "release note rejected for $version"
+			if [ "$version" = "$available" ]; then
+				# Never label an older, partial release as the newest note.
+				rm -rf "$work_dir"
+				preserve_release_notes_cache_or_remove "$installed" "$available" 'latest release note invalid'
+				return 0
+			fi
 			continue
 		fi
 

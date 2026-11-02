@@ -1,3 +1,4 @@
+import { saveButtonCursor } from '../utils/saveButtonCursor';
 import { SectionHeading } from '../components/SectionHeading';
 import type { TargetedSubmitEvent } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
@@ -603,7 +604,7 @@ export function LanPage({
             주소가 바뀌면 현재 관리 페이지 연결이 종료되며 새 IP를 받아 다시 접속해야 합니다.
           </p>
           <button
-            class="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border-0 bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+            class={`inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border-0 bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${saveButtonCursor(busy)} disabled:opacity-60 sm:w-auto`}
             disabled={busy || !settingsDirty}
             type="submit"
           >

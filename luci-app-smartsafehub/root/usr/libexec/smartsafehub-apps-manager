@@ -79,7 +79,9 @@ extract_pins() {
   version="$(field "$CATALOG" "@.apps[$index].packages[$n].version")"
   hash="$(field "$CATALOG" "@.apps[$index].packages[$n].sha256")"
   valid_package "$name" && valid_version "$version" && valid_sha "$hash" || return 1
-  protected_package "$name" && return 1
+  if protected_package "$name"; then
+   [ "$app" = travelmate ] && [ "$name" = rpcd-mod-rpcsys ] || return 1
+  fi
   grep -Fq "$(printf '%s\t' "$name")" "$out" && return 1
   printf '%s\t%s\t%s\n' "$name" "$version" "$hash" >> "$out"
   n=$((n + 1))
@@ -165,6 +167,39 @@ append_owned_pin() {
  cp "$tmp_manifest" "$manifest.new" && mv -f "$manifest.new" "$manifest"
 }
 
+# Hub publishes the same reviewed set per OpenWrt package architecture.
+# Do not infer package architecture from `apk --print-arch` (which may say
+# just "mipsel"); preflight validates the exact native feed architecture.
+travelmate_required_packages() {
+ case "$1" in
+  aarch64_cortex-a53|x86_64)
+   printf '%s\n' 'travelmate luci-app-travelmate curl libcurl4 libnghttp2-14 iwinfo rpcd-mod-rpcsys libopenssl3';;
+  mipsel_24kc)
+   printf '%s\n' 'travelmate luci-app-travelmate curl libcurl4 libnghttp2-14 iwinfo rpcd-mod-rpcsys libopenssl3 libatomic1';;
+  *) return 1;;
+ esac
+}
+
+# extract_pins has already checked formatting and uniqueness. This check
+# rejects missing/extra approved names, including a MIPS-only libatomic1 on
+# another architecture. Do not issue any apk commands on invalid metadata.
+travelmate_pins_match_arch() {
+ tm_check_names="$(travelmate_required_packages "$1")" || return 1
+ tm_check_count=0
+ for tm_check_name in $tm_check_names; do
+  grep -q "^${tm_check_name}$(printf '\t')" "$2" || return 1
+  tm_check_count=$((tm_check_count + 1))
+ done
+ [ "$(wc -l < "$2" | tr -d ' ')" -eq "$tm_check_count" ]
+}
+
+# These are independent OpenWrt packages, never Apps-owned. They must never
+# be upgraded or uninstalled by the app manager, even after Travelmate removal.
+shared_travelmate_dep() {
+ [ "$app" = travelmate ] || return 1
+ case "$1" in curl|libcurl4|libnghttp2-14|iwinfo|rpcd-mod-rpcsys|libopenssl3|libatomic1) return 0;; esac
+ return 1
+}
 installed() { "$APK" info -e "$1" >/dev/null 2>&1; }
 # apk info -e verifies only the name. Version checks must use the installed
 # database or an old, manually changed APK could be mistaken for our release.
@@ -303,7 +338,18 @@ select_upgrades() {
   [ "$old_count" -le 32 ] || return 1
  done < "$old_manifest"
  [ "$old_count" -gt 0 ] || return 1
- [ "$old_count" -eq "$(wc -l < "$approved_pins" | tr -d ' ')" ] || return 1
+ if [ "$app" = travelmate ]; then
+  [ "$old_count" -eq 2 ] || return 1
+  # Shared prerequisites must match the approved versions. libatomic1 is
+  # permitted only if it is explicitly pinned for the MIPS build.
+  for name in curl libcurl4 libnghttp2-14 iwinfo rpcd-mod-rpcsys libopenssl3 libatomic1; do
+   version="$(awk -F '\t' -v n="$name" '$1==n {print $2; exit}' "$approved_pins")"
+   [ "$name" = libatomic1 ] && [ -z "$version" ] && continue
+   [ -n "$version" ] && [ "$(installed_version "$name")" = "$version" ] || return 1
+  done
+ else
+  [ "$old_count" -eq "$(wc -l < "$approved_pins" | tr -d ' ')" ] || return 1
+ fi
  [ -s "$changed_pins" ]
 }
 # Prefer OpenWrt's configured apk architecture. Some package-manager builds
@@ -329,6 +375,12 @@ web_ui_package() {
  if [ "$id" = network-usage-monitor ]; then
   printf '%s\n' luci-app-nlbwmon
   return 0
+ fi
+ if [ "$id" = travelmate ]; then
+  # Only the reviewed Travelmate LuCI route may be launched.
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.type")" = luci ] || return 1
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.path")" = /cgi-bin/luci/admin/services/travelmate ] || return 1
+  [ "$(field "$CATALOG" "@.apps[$idx].web_ui.package")" = luci-app-travelmate ] || return 1
  fi
  if [ "$id" = wake-on-lan ]; then
   # The approved app has exactly one LuCI entry point. Do not mistake the
@@ -367,6 +419,7 @@ status() {
  n=0
  for id in $approved_ids; do
   valid_id "$id" || continue
+  app="$id" # Status checks use the same app-specific protected-package policy.
   idx="$n"; n=$((n + 1))
   [ "$n" -le 100 ] || break
   total=0; present=0; p=0; primary_package=''
@@ -382,6 +435,15 @@ status() {
   # etherwake backend. Avoid showing a false installed/offered mismatch.
   if [ "$id" = wake-on-lan ] && [ "$total" -eq 2 ]; then
    primary_package=luci-app-wol
+  elif [ "$id" = travelmate ]; then
+   # Public app version belongs to LuCI; MIPS needs an additional library.
+   reviewed_arch="$(field "$CATALOG" "@.apps[$idx].package_arch")"
+   expected_names="$(travelmate_required_packages "$reviewed_arch" || :)"
+   expected_count=0
+   for expected_name in $expected_names; do expected_count=$((expected_count + 1)); done
+   if [ "$expected_count" -gt 0 ] && [ "$total" -eq "$expected_count" ]; then
+    primary_package=luci-app-travelmate
+   fi
   fi
   managed=0
   [ -f "$(owned_manifest "$id")" ] && managed=1
@@ -414,6 +476,14 @@ status() {
   fi
   if [ "$total" -gt 0 ] && [ "$total" -eq "$present" ]; then full=1; else full=0; fi
   if [ "$present" -gt 0 ]; then partial=1; else partial=0; fi
+  # Travelmate's shared dependencies survive removal on purpose. Without
+  # either application APK or an Apps-owned recovery manifest, those system
+  # libraries do not mean that Travelmate is partially installed. Keep real
+  # interrupted installs and manually installed app components visible.
+  if [ "$id" = travelmate ] && [ "$managed" -eq 0 ] &&
+     ! installed travelmate && ! installed luci-app-travelmate; then
+   partial=0
+  fi
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$id" "$full" "$partial" "$managed" "$ui_ready" "$update_ready" "$installed_release"
  done
  # Removed approvals must be proven by a valid Apps-owned manifest, not
@@ -536,6 +606,10 @@ preflight_install() {
   for required in nlbwmon luci-app-nlbwmon luci-lib-chartjs; do
    grep -q "^${required}$(printf '\t')" "$pins" || return 27
   done
+ elif [ "$app" = travelmate ]; then
+  # Exact architecture-specific contract: 8 reviewed APKs for aarch64/x86,
+  # 9 for MIPS (libatomic1). Never accept extra or unreviewed dependencies.
+  travelmate_pins_match_arch "$arch" "$pins" || return 27
  elif [ "$app" = wake-on-lan ]; then
   # WOL always requires both the signal sender and its LuCI user interface.
   # Never install extra packages just because a catalog lists them.
@@ -591,6 +665,10 @@ install_app() {
   pin="$(printf '%s\t%s\t%s' "$name" "$version" "$hash")"
   if [ -e "$manifest" ] && grep -Fqx "$pin" "$manifest"; then
    installed "$name" || need_install=1
+  elif shared_travelmate_dep "$name" && installed "$name"; then
+   # A system package was already present. Never adopt it or silently
+   # replace it with a different build of the same release name.
+   [ "$(installed_version "$name")" = "$version" ] || return 34
   elif installed "$name"; then
    return 29
   else
@@ -612,7 +690,9 @@ install_app() {
   # Write ownership immediately before modifying packages. If APK partially
   # succeeds, the UI offers repair/removal without adopting unrelated packages.
   while IFS="$(printf '\t')" read -r name version hash; do
-   if ! installed "$name"; then append_owned_pin "$name" "$version" "$hash" || return 36; fi
+   if ! installed "$name" && ! shared_travelmate_dep "$name"; then
+    append_owned_pin "$name" "$version" "$hash" || return 36
+   fi
   done < "$pins"
   "$APK" --repositories-file /dev/null -X "$local_index" add "$@" > "$stage/install.log" 2>&1 || return 35
  fi
@@ -650,7 +730,11 @@ update_app() {
  done < "$pins"
  # Preserve ownership atomically; future removal and firmware restore now use
  # the new pins. Never record an update as a first-time download receipt.
- cp "$pins" "$manifest.new" || return 55
+ if [ "$app" = travelmate ]; then
+  awk -F '\t' '$1=="travelmate" || $1=="luci-app-travelmate"' "$pins" > "$manifest.new" || return 55
+ else
+  cp "$pins" "$manifest.new" || return 55
+ fi
  mv -f "$manifest.new" "$manifest" || return 55
  return 0
 }
@@ -662,6 +746,7 @@ remove_app() {
  while IFS="$(printf '\t')" read -r name version hash; do
   valid_package "$name" && valid_version "$version" && valid_sha "$hash" || return 42
   protected_package "$name" && return 42
+  shared_travelmate_dep "$name" && return 42
   # Reject packages owned by any other Apps installation.
   for other in "$OWNED"/*; do
    [ -f "$other" ] || continue
@@ -713,7 +798,7 @@ worker() {
  if [ "$rc" -eq 0 ]; then
   # The LuCI menu tree may be cached before an optional UI is installed.
   # Invalidate the cache only after a successful package transaction.
-  if [ "$app" = wake-on-lan ]; then
+  if [ "$app" = wake-on-lan ] || [ "$app" = travelmate ]; then
    rm -f "$LUCI_INDEX_CACHE"
   fi
   write_state success "$action" "$app" NONE "$operation_id" "$source"

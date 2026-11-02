@@ -33,3 +33,6 @@ config health 'health'
 config iptv 'iptv'
 	option enabled '0'
 	option provider 'skb'
+
+config netwatch 'netwatch'
+	option enabled '1'

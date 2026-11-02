@@ -15,6 +15,7 @@ const HASH_ROUTES: Readonly<Record<string, AppRoute>> = {
   '#devices': 'devices',
   '#safeshield': 'safeshield',
   '#rules': 'rules',
+  '#netwatch': 'netwatch',
   '#account': 'account',
   '#apps': 'apps',
   '#system': 'system',

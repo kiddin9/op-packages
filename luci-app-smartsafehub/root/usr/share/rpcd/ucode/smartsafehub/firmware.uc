@@ -3,6 +3,8 @@
 
 import * as fs from 'fs';
 import {
+	read_json_object,
+	integer_value,
 	failure,
 	new_uci_cursor,
 	run_command,
@@ -19,11 +21,6 @@ const OPENWRT_RELEASE_FILE = '/etc/openwrt_release';
 const FIRMWARE_HELPER = '/usr/libexec/smartsafehub-firmware';
 const DEFAULT_API_BASE_URL = 'https://www.smartsafehub.com/api/v1';
 
-function integer_value(value, fallback) {
-	const parsed = int(value);
-	const parsed_type = type(parsed);
-	return parsed_type == 'int' || parsed_type == 'double' ? parsed : fallback;
-}
 
 function timestamp_value(value) {
 	const parsed = integer_value(value, 0);
@@ -37,24 +34,10 @@ function limited_string(value, max_length) {
 	return substr(value, 0, max_length);
 }
 
-function read_json_file(path, max_bytes) {
-	const raw = fs.readfile(path);
-	if (type(raw) != 'string' || !length(raw) || length(raw) > max_bytes) {
-		return null;
-	}
-
-	try {
-		const document = json(raw);
-		return type(document) == 'object' ? document : null;
-	}
-	catch (e) {
-		return null;
-	}
-}
 
 function read_firmware_metadata() {
-	return read_json_file(ROM_FIRMWARE_METADATA_FILE, 65536) ??
-		read_json_file(FIRMWARE_METADATA_FILE, 65536) ?? {};
+	return read_json_object(ROM_FIRMWARE_METADATA_FILE, 65536) ??
+		read_json_object(FIRMWARE_METADATA_FILE, 65536) ?? {};
 }
 
 function read_state() {
@@ -338,7 +321,7 @@ function sanitize_release(document, current) {
 export function read_firmware_status() {
 	const current = read_current_firmware();
 	const state = read_state();
-	const resolved = sanitize_release(read_json_file(FIRMWARE_RESOLVE_FILE, 262144), current);
+	const resolved = sanitize_release(read_json_object(FIRMWARE_RESOLVE_FILE, 262144), current);
 
 	current.releaseVersion = resolved.currentVersion;
 	state.current = current;

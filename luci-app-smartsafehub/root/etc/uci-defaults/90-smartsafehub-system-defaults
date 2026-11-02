@@ -48,4 +48,12 @@ if [ -z "$(uci_get system.ntp.server)" ]; then
 fi
 
 uci -q commit system || exit 1
+
+# Sysupgrade may preserve the previous /etc/config/smartsafehub conffile.
+# Fill only a missing Network Watch section; never override an opt-out.
+if [ -z "$(uci_get smartsafehub.netwatch)" ]; then
+	uci -q set smartsafehub.netwatch='netwatch' || exit 1
+	uci -q set smartsafehub.netwatch.enabled='1' || exit 1
+	uci -q commit smartsafehub || exit 1
+fi
 exit 0

@@ -18,7 +18,8 @@
           "health_status",
           "device_registration_status",
           "device_recommended_rules_status",
-          "activity_history"
+          "activity_history",
+          "netwatch_status"
         ],
         "safeshield": [
           "status",
@@ -66,6 +67,7 @@
           "system_backup_restore",
           "system_backup_discard",
           "activity_cloud_sync_update",
+          "netwatch_enabled_update",
           "health_run",
           "health_reporter_update",
           "device_registration_refresh",

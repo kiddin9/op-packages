@@ -85,7 +85,7 @@ log_message() {
 }
 
 uci_get() {
-	"$UCI_BIN" -q get "smartsafehub.health.$1" 2>/dev/null || true
+	ssh_uci_get "$UCI_BIN" "smartsafehub.health.$1"
 }
 
 normalized_integer() {
@@ -164,9 +164,7 @@ json_string_or_null() {
 }
 
 json_value() {
-	local file="$1" expression="$2"
-	[ -f "$file" ] || return 0
-	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+ ssh_json_value "$JSONFILTER_BIN" "$1" "$2"
 }
 
 state_value() {

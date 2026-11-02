@@ -3,6 +3,7 @@
 
 import * as fs from 'fs';
 import {
+	integer_value,
 	emit_activity_event,
 	failure,
 	new_uci_cursor,
@@ -32,12 +33,6 @@ const SAFE_LAN_CANDIDATES = [
 	'10.20.20.1',
 ];
 
-function integer_value(value, fallback) {
-	const parsed = int(value);
-	const parsed_type = type(parsed);
-
-	return parsed_type == 'int' || parsed_type == 'double' ? parsed : fallback;
-}
 
 function pow2(exponent) {
 	let value = 1;

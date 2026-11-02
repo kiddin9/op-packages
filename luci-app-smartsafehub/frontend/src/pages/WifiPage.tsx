@@ -1,3 +1,4 @@
+import { saveButtonCursor } from '../utils/saveButtonCursor';
 import { SectionHeading } from '../components/SectionHeading';
 import type { TargetedSubmitEvent } from 'preact';
 import { useCallback, useEffect, useState } from 'preact/hooks';
@@ -300,7 +301,7 @@ function WifiNetworkCard({
           이 Wi-Fi 사용
         </label>
         <button
-          class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 disabled:cursor-wait disabled:opacity-60 sm:w-auto"
+          class={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-teal-800 focus:outline-none focus-visible:ring-4 focus-visible:ring-teal-200 ${saveButtonCursor(busy)} disabled:opacity-60 sm:w-auto`}
           disabled={busy || !settingsDirty}
           type="submit"
         >

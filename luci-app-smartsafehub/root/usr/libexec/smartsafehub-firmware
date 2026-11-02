@@ -146,28 +146,13 @@ set_error() {
 }
 
 acquire_lock() {
-	local owner
-	if mkdir "$LOCK_DIR" 2>/dev/null; then
-		printf '%s\n' "$$" > "$LOCK_DIR/pid"
-		return 0
-	fi
-
-	owner="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-	if [ -n "$owner" ] && kill -0 "$owner" 2>/dev/null; then
-		return 1
-	fi
-
-	rm -rf "$LOCK_DIR" 2>/dev/null || return 1
-	mkdir "$LOCK_DIR" 2>/dev/null || return 1
-	printf '%s\n' "$$" > "$LOCK_DIR/pid"
+ ssh_lock_acquire "$LOCK_DIR" 40 0.05 sleep 1
 }
 
-release_lock() {
-	rm -rf "$LOCK_DIR" 2>/dev/null || true
-}
+release_lock() { ssh_lock_release "$LOCK_DIR"; }
 
 uci_get() {
-	"$UCI_BIN" -q get "smartsafehub.firmware.$1" 2>/dev/null || true
+	ssh_uci_get "$UCI_BIN" "smartsafehub.firmware.$1"
 }
 
 load_daemon_settings() {
@@ -184,9 +169,7 @@ load_daemon_settings() {
 }
 
 json_value() {
-	local file="$1" expression="$2"
-	[ -f "$file" ] || return 0
-	"$JSONFILTER_BIN" -i "$file" -e "$expression" 2>/dev/null || true
+ ssh_json_value "$JSONFILTER_BIN" "$1" "$2"
 }
 
 firmware_metadata_value() {

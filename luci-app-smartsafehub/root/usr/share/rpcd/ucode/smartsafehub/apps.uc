@@ -79,7 +79,13 @@ export function read_apps_catalog(request) {
 		// Backward-compatible route for the already approved nlbwmon catalog.
 		// The page is only launchable if its UI package is actually installed.
 		let path = '';
-		if (id == 'wake-on-lan') {
+		if (id == 'travelmate') {
+			if (item?.web_ui?.type == 'luci' &&
+				item?.web_ui?.path == '/cgi-bin/luci/admin/services/travelmate' &&
+				item?.web_ui?.package == 'luci-app-travelmate')
+				path = '/cgi-bin/luci/admin/services/travelmate';
+		}
+		else if (id == 'wake-on-lan') {
 			if (item?.web_ui?.type == 'luci' &&
 				item?.web_ui?.path == '/cgi-bin/luci/admin/services/wol' &&
 				item?.web_ui?.package == 'luci-app-wol')
@@ -102,6 +108,8 @@ export function read_apps_catalog(request) {
 			summary: text(item?.summary, 320),
 			description: text(item?.description, 2000),
 			category: text(item?.category, 64),
+			// An older or unexpected catalog must never imply first-party ownership.
+			publisherType: item?.publisher_type == 'first_party' ? 'first_party' : 'third_party',
 			version: text(item?.version, 64),
 			webUi: length(path) ? { type: id == 'retro-arcade' && path == '/retro-arcade/' ? 'static' : 'luci', path: path } : null,
 		});

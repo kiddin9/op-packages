@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=isp-split
-PKG_VERSION:=0.3.2
-PKG_RELEASE:=5
+PKG_VERSION:=0.4.0
+PKG_RELEASE:=6
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=jihebube <jihebube@users.noreply.github.com>
@@ -155,6 +155,9 @@ define Package/isp-split/install
 	# scripts/install.sh --uninstall 都调它；postrm 在二进制先被删掉时
 	# 用内联等价清单兜底（锚点由 selftest 第 21 节双向核对）。
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/files/usr/lib/isp-split/teardown.sh $(1)/usr/lib/isp-split/teardown.sh
+	# 环境体检的判据实现（doctor 子命令与 tools/router-preflight.sh 共用一份）。
+	# 与 teardown.sh 同理：漏装 = 设备上 `isp-split doctor` 直接拒绝运行。
+	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/usr/lib/isp-split/doctor.sh $(1)/usr/lib/isp-split/doctor.sh
 
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/usr/lib/isp-split/cidr2range.awk $(1)/usr/lib/isp-split/cidr2range.awk
 	$(INSTALL_DATA) $(PKG_BUILD_DIR)/files/usr/lib/isp-split/merge.awk $(1)/usr/lib/isp-split/merge.awk

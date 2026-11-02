@@ -22,6 +22,20 @@
 var CMD = '/usr/sbin/isp-split';
 var REFRESH_SEC = 10;
 
+/*
+ * 环境横幅（0.3.3）：页面顶部一条 doctor 结论。
+ *
+ * 为什么带缓存：`doctor` 不是零成本——它要读 nft 规则表、ubus、/proc，在
+ * 小闪存机器上要几百毫秒到几秒。而状态页每 10 秒刷新一次，跟着刷等于拿
+ * 路由器当体检机用。所以结果按 10 分钟缓存：内存一份（页面内切来切去不重跑）
+ * + localStorage 一份（刷新页面也不重跑）。用户点「重新体检」才强制重跑。
+ *
+ * 颜色规矩（W2）：fail 红且不能关（TUN 劫持 / DNS 53 这类问题会静默吃掉分流，
+ * 关掉就等于藏了个定时炸弹）；warn 橙、可折叠；全绿只留一行，不占地方。
+ */
+var DOCTOR_TTL_MS = 600 * 1000;
+var DOCTOR_CACHE_KEY = 'isp-split.doctor.v1';
+
 /* ---------------------------------------------------------------- 图标（内联 SVG，无外链） */
 
 var ICONS = {
@@ -244,6 +258,187 @@ return view.extend({
 					('退出码 ' + res.code));
 			return data;
 		});
+	},
+
+	/* ---------------- 环境横幅（doctor） ----------------
+	   doctor 的退出码有语义（0 全绿 / 1 有保留 / 2 会静默失效），所以这里不看
+	   退出码，只看 stdout 里有没有一份能解析的 JSON。 */
+
+	doctorCacheGet: function() {
+		try {
+			var raw = window.localStorage.getItem(DOCTOR_CACHE_KEY);
+			var o = raw ? JSON.parse(raw) : null;
+			if (o && o.t && o.d && (Date.now() - o.t) < DOCTOR_TTL_MS)
+				return { data: o.d, at: +o.t };
+		} catch (e) { /* 隐私模式 / 配额满：退化成只在内存里缓存 */ }
+		return null;
+	},
+
+	doctorCachePut: function(data) {
+		try {
+			window.localStorage.setItem(DOCTOR_CACHE_KEY,
+				JSON.stringify({ t: Date.now(), d: data }));
+		} catch (e) { /* 同上：缓存写不进去不影响功能 */ }
+	},
+
+	refreshDoctor: function(force) {
+		var self = this;
+
+		if (this._doctorInflight)
+			return this._doctorInflight;
+
+		if (!force) {
+			var c = this.doctorCacheGet();
+			if (c) {
+				this.doctor = c.data;
+				this.doctorAt = c.at;
+				this.paintDoctor();
+				return Promise.resolve();
+			}
+		}
+
+		this.doctorErr = null;
+		this._doctorInflight = fs.exec(CMD, ['doctor', '--json']).then(function(res) {
+			var d = parseJson(res);
+			if (!d)
+				throw new Error((((res && res.stdout) || '') + ((res && res.stderr) || '')).trim() ||
+					('退出码 ' + ((res && res.code) != null ? res.code : '?')));
+			self.doctor = d;
+			self.doctorAt = Date.now();
+			self.doctorCachePut(d);
+		}).catch(function(err) {
+			self.doctorErr = String(err);
+		}).then(function() {
+			self._doctorInflight = null;
+			self.paintDoctor();
+		});
+
+		return this._doctorInflight;
+	},
+
+	paintDoctor: function() {
+		var box = document.getElementById('isp-doctor');
+		if (!box)
+			return;
+
+		while (box.firstChild)
+			box.removeChild(box.firstChild);
+
+		var self = this;
+
+		if (this.doctorErr) {
+			box.appendChild(E('div', { 'class': 'isp-banner is-warn' }, [
+				E('div', { 'class': 'isp-banner-msg' }, [
+					E('strong', {}, [ _('环境体检不可用') ]),
+					E('div', {}, [ this.doctorErr ]),
+					E('div', { 'class': 'isp-banner-hint' }, [
+						_('不影响下方的运行状态；多半是 rpcd 权限或 isp-split 版本不匹配。')
+					])
+				]),
+				E('button', {
+					'class': 'cbi-button isp-banner-btn',
+					'click': function() { self.refreshDoctor(true); }
+				}, [ _('重试') ])
+			]));
+			return;
+		}
+
+		if (!this.doctor) {
+			box.appendChild(E('div', { 'class': 'isp-env-wait' }, [ _('正在做环境体检（doctor）…') ]));
+			return;
+		}
+
+		var d = this.doctor;
+		var checks = d.checks || [];
+		var sum = d.summary || {};
+		var fails = checks.filter(function(c) { return c.status === 'fail'; });
+		var warns = checks.filter(function(c) { return c.status === 'warn'; });
+		var ageMin = this.doctorAt ? Math.max(0, Math.round((Date.now() - this.doctorAt) / 60000)) : 0;
+		var cacheHint = _('（结果缓存 ') + ageMin + _(' 分钟，10 分钟内不重跑探针）');
+
+		var retryBtn = E('button', {
+			'class': 'cbi-button isp-banner-btn',
+			'title': _('立即重跑 doctor（会跳过 10 分钟缓存）'),
+			'click': function() {
+				retryBtn.disabled = true;
+				self.refreshDoctor(true);
+			}
+		}, [ _('重新体检') ]);
+
+		/* fail：红条，不能关，建议直接摊开 */
+		if (fails.length) {
+			var list = E('div', { 'class': 'isp-env-list' });
+			fails.forEach(function(c) {
+				list.appendChild(E('div', { 'class': 'isp-env-item' }, [
+					E('span', { 'class': 'isp-env-title' }, [ c.title || c.id ]),
+					E('span', { 'class': 'isp-env-adv' }, [ c.advice || '' ])
+				]));
+			});
+			box.appendChild(E('div', { 'class': 'isp-banner is-bad' }, [
+				E('div', { 'class': 'isp-banner-msg' }, [
+					E('strong', {}, [
+						_('环境体检：') + fails.length + _(' 项会让分流静默失效')
+					]),
+					E('div', {}, [ sum.headline || _('按下面的建议处理后再看状态指标。') ]),
+					list,
+					E('div', { 'class': 'isp-banner-hint' }, [
+						_('这条横幅在有 fail 项时不能关闭。') + cacheHint
+					])
+				]),
+				retryBtn
+			]));
+			return;
+		}
+
+		/* warn：橙条，可折叠 */
+		if (warns.length) {
+			var detail = E('div', { 'class': 'isp-env-list', 'hidden': '' });
+			warns.forEach(function(c) {
+				detail.appendChild(E('div', { 'class': 'isp-env-item' }, [
+					E('span', { 'class': 'isp-env-title' }, [ c.title || c.id ]),
+					E('span', { 'class': 'isp-env-adv' }, [ c.advice || '' ])
+				]));
+			});
+
+			var toggle = E('button', {
+				'class': 'cbi-button isp-banner-btn',
+				'click': function() {
+					if (detail.hasAttribute('hidden')) {
+						detail.removeAttribute('hidden');
+						toggle.textContent = _('收起建议');
+					} else {
+						detail.setAttribute('hidden', '');
+						toggle.textContent = _('查看建议');
+					}
+				}
+			}, [ _('查看建议') ]);
+
+			box.appendChild(E('div', { 'class': 'isp-banner is-warn' }, [
+				E('div', { 'class': 'isp-banner-msg' }, [
+					E('strong', {}, [ _('环境体检：') + warns.length + _(' 项有保留') ]),
+					E('div', {}, [ sum.headline || '' ]),
+					detail,
+					E('div', { 'class': 'isp-banner-hint' }, [ cacheHint ])
+				]),
+				E('div', { 'class': 'isp-banner-actions' }, [ toggle, retryBtn ])
+			]));
+			return;
+		}
+
+		/* 全绿：一行，不抢版面 */
+		box.appendChild(E('div', { 'class': 'isp-env-ok' }, [
+			E('span', { 'class': 'isp-dot' }),
+			E('span', {}, [ _('环境体检正常（') + checks.length + _(' 项）') ]),
+			E('span', { 'class': 'isp-env-sub' }, [
+				sum.worst && sum.worst !== 'ok'
+					? _('最差项：') + sum.worst + _(' · ') + (sum.headline || '')
+					: cacheHint
+			]),
+			E('button', {
+				'class': 'cbi-button isp-banner-btn',
+				'click': function() { self.refreshDoctor(true); }
+			}, [ _('重新体检') ])
+		]));
 	},
 
 	setOut: function(text) {
@@ -691,6 +886,10 @@ return view.extend({
 		this.paused = false;
 		this.busy = false;
 		this._inflight = null;
+		this.doctor = null;
+		this.doctorAt = 0;
+		this.doctorErr = null;
+		this._doctorInflight = null;
 
 		var pauseLabel = E('span', {}, [_('暂停刷新')]);
 		var pauseBtn = E('button', {
@@ -754,6 +953,7 @@ return view.extend({
 				E('div', { 'class': 'isp-toolbar' }, [ statePill, pauseBtn ])
 			]),
 
+			E('div', { 'id': 'isp-doctor', 'class': 'isp-doctor' }),
 			E('div', { 'id': 'isp-load-error', 'class': 'isp-err', 'style': 'display:none' }),
 			E('div', { 'id': 'isp-cards', 'class': 'isp-cards' }),
 
@@ -782,6 +982,8 @@ return view.extend({
 		]);
 
 		this.refresh();
+		/* 环境体检单独走自己的 10 分钟缓存：失败/成功都不影响下面的状态刷新 */
+		this.refreshDoctor(false);
 
 		/* 自带定时器替代 LuCI 的 poll（见文件头注释）：暂停即停，页面被换走即收摊。 */
 		this.timer = window.setInterval(function() {

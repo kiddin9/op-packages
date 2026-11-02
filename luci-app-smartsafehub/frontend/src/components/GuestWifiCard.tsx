@@ -1,3 +1,4 @@
+import { saveButtonCursor } from '../utils/saveButtonCursor';
 import type { TargetedSubmitEvent } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 
@@ -160,7 +161,7 @@ export function GuestWifiCard({
               게스트 Wi-Fi 사용
             </label>
             <button
-              class="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:opacity-60 sm:w-auto"
+              class={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-extrabold text-white transition hover:bg-teal-800 disabled:opacity-60 sm:w-auto ${saveButtonCursor(busy)}`}
               disabled={busy || !dirty}
               type="submit"
             >

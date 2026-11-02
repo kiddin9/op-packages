@@ -9,6 +9,7 @@ import type { AppsCatalog, AppsInstallStatus, AppsMetrics, VerifiedApp } from '.
 import { errorMessage } from '../utils/errors';
 import { approvedAppPath } from '../utils/appsWebUi';
 import { formatStorageBytes } from '../utils/appsStorage';
+import { isFirstPartyPublisher } from '../utils/appsPublisher';
 import { appsJobNoticeKey, readDismissedAppsJob, saveDismissedAppsJob } from '../utils/appsJobNotice';
 
 interface AppsPageProps {
@@ -203,6 +204,11 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
             <p class="mt-2 text-xs leading-5 text-slate-600">
               앱에서 제공하던 기능을 더 이상 사용할 수 없습니다. 제거하는 동안 공유기를 재부팅하지 마세요.
             </p>
+            {removeTarget.id === 'travelmate' ? (
+              <p class="mt-2 text-xs leading-5 text-slate-600">
+                다른 공유기 기능에서도 사용하는 공용 패키지는 안전을 위해 유지됩니다.
+              </p>
+            ) : null}
             <div class="mt-5 flex justify-end gap-2">
               <button
                 class="min-h-10 rounded-lg border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
@@ -368,7 +374,13 @@ export function AppsPage({ data, error, loading, refreshing, onRetry, installSta
                       </div>
                       <p class="mt-4 mb-4 min-h-10 break-words text-sm leading-5 text-slate-600">{app.summary}</p>
                       <div class="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
-                        <span class="text-xs font-bold text-teal-700">✓ 검증된 앱</span>
+                        {isFirstPartyPublisher(app.publisherType) ? (
+                          <span class="ssh-apps-official-badge inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-bold" title="SmartSafeHub가 직접 개발하고 제공하는 앱입니다.">
+                            <span aria-hidden="true">✦</span> SmartSafeHub 공식
+                          </span>
+                        ) : (
+                          <span class="text-xs font-bold text-slate-500">✓ 검증된 앱</span>
+                        )}
                         {activeAction ? <OperationIndicator action={activeAction} /> : (
                           <span class="flex flex-wrap items-center gap-2">
                             {managed && state?.partial && !installed ? (

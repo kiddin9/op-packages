@@ -2,6 +2,7 @@
 'use strict';
 
 import { failure } from './smartsafehub/core.uc';
+import { read_netwatch_status, update_netwatch_enabled } from './smartsafehub/netwatch.uc';
 import { read_apps_catalog } from './smartsafehub/apps.uc';
 import { read_apps_status, read_apps_metrics, install_app, update_app, remove_app } from './smartsafehub/apps-manager.uc';
 import { read_connected_devices } from './smartsafehub/devices.uc';
@@ -391,6 +392,17 @@ const methods = {
 		}),
 	},
 
+	netwatch_status: {
+		call: require_root_password(function(request) {
+			return read_netwatch_status(request);
+		}),
+	},
+	netwatch_enabled_update: {
+		args: { enabled: true },
+		call: require_root_password(function(request) {
+			return update_netwatch_enabled(request);
+		}),
+	},
 	activity_history: {
 		call: require_root_password(function(request) {
 			return read_activity_history();

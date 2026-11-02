@@ -31,62 +31,10 @@ if grep -Fq '  .ssh-safeshield-license-summary,' "$APP_STYLE"; then
 	fail 'mobile license styles must not duplicate SafeShield upgrade-card alignment'
 fi
 
-for script in \
-	root/etc/init.d/smartsafehub-events \
-	root/etc/init.d/smartsafehub-updater \
-	root/etc/init.d/smartsafehub-firmware \
-	root/etc/init.d/smartsafehub-maintenance \
-	root/etc/init.d/smartsafehub-health \
-	root/etc/init.d/smartsafehub-device \
-	root/usr/lib/smartsafehub/common.sh \
-	root/usr/libexec/smartsafehub-events \
-	root/usr/libexec/smartsafehub-updater \
-	root/usr/libexec/smartsafehub-firmware \
-	root/usr/libexec/smartsafehub-maintenance \
-	root/usr/libexec/smartsafehub-health \
-	root/usr/libexec/smartsafehub-device \
-	root/usr/libexec/smartsafehub-backup \
-	spec/contracts_spec.sh \
-	tests/test-static-validation.sh \
-	tests/test-shell-pipeline-safety.sh \
-	tests/test-package-contract.sh \
-	tests/test-events.sh \
-	tests/test-activity-ui-contract.sh \
-	tests/test-activity-cloud-sync.sh \
-	tests/test-common-shell.sh \
-	tests/test-navigation-contract.sh \
-	tests/test-tailwind-shadow-dom.sh \
-	tests/test-document-ui-contract.sh \
-	tests/test-login-ui-contract.sh \
-	tests/test-initial-password-setup.sh \
-	tests/test-dashboard-ui-contract.sh \
-	tests/test-network-input-contract.sh \
-	tests/test-lan-settings.sh \
-	tests/test-lan-uci-runtime.sh \
-	tests/test-wan-settings.sh \
-	tests/test-wan-uci-runtime.sh \
-	tests/test-iptv.sh \
-	tests/test-update-ui-contract.sh \
-	tests/test-relative-time-contract.sh \
-	tests/test-reload-safety.sh \
-	tests/test-settings-ui-contract.sh \
-	tests/test-section-layout.sh \
-	tests/test-system-time-contract.sh \
-	tests/test-scheduled-reboot.sh \
-	tests/test-health.sh \
-	tests/test-device-registration.sh \
-	tests/test-backup-restore.sh \
-	tests/test-rpc-contract.sh \
-	tests/test-rules-ui-contract.sh \
-	tests/test-safeshield-page-contract.sh \
-	tests/test-statistics-ui-contract.sh \
-	tests/test-ucode-syntax.sh \
-	tests/test-ucode-imports.sh \
-	tests/test-updater.sh \
-	tests/test-firmware-updater.sh \
-	tests/test-firmware-identity.sh; do
-	sh -n "$ROOT_DIR/$script"
-done
+# Discover shell tests and shipped router entry points automatically.
+# A new test or daemon is validated without editing this script.
+sh "$ROOT_DIR/tools/check_shell_syntax.sh" "$ROOT_DIR" || \
+    fail 'shell syntax validation failed'
 
 # 실제 ucode 컴파일은 test-ucode-syntax.sh가 OpenWrt 전용 모듈 stub과
 # target module search path를 구성한 뒤 단일 진입점으로 수행해야 합니다.

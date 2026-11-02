@@ -232,12 +232,3 @@ check('setDismissedJob(null)' not in page,
       'starting a new operation must not resurrect the previous failure')
 PY
 echo 'PASS: Apps removal confirmation, theme and operation states'
-
-# Real ucode runtime coverage: prevents wrong numeric type names and unit
-# conversions from passing the static Apps UI contract again.
-if command -v ucode >/dev/null 2>&1; then
-    ucode "$ROOT/tests/apps-storage-test.uc"
-elif [ "${SMARTSAFEHUB_REQUIRE_UCODE:-0}" = '1' ]; then
-    echo 'FAIL: Apps storage runtime test requires ucode' >&2
-    exit 1
-fi

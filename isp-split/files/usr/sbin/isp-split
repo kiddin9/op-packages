@@ -15,7 +15,7 @@
 #   install    注册开机自启与每日更新
 #   uninstall  卸载所有改动
 set -u
-ISP_VERSION="0.3.2"
+ISP_VERSION="0.4.0"
 
 # 配置表里的注释行（# 开头，允许前导空白）必须在按空白展开之前整行删掉
 # （B-1）。否则 `for row in $ISP_TABLE` 会把 "#" 与后面的文字拆成两个
@@ -2438,6 +2438,536 @@ _prune_orphan_policies() {
 }
 
 # F-14：卸载时的 policy/member 清理同样在 teardown.sh，见上。
+# ---------------------------------------------------------------- bootstrap
+#
+# 净机一键骨架：只保证「mwan3 里有 interface / member / policy 骨架」，
+# 让 `init --bind` 能跑、`wire` 的预检能过。
+#
+# 职责边界（与 init / wire 不打架）：
+#   bootstrap  只补骨架（interface + member + policy），不碰 network/firewall
+#   init       只决定「哪个策略的成员指向哪个接口」
+#   wire       只写集合/规则；预检策略缺失仍然硬失败
+#
+# 红线（PLAN §1.4，全部"跳过并报告"，不做"自动修正"）：
+#   1. 已存在的 mwan3.<name> 段（任何类型/任何 enabled 值）一律不动；
+#   2. 已存在的 globals / network.* / firewall.* 只读；
+#   3. 同名段没有 isp_split=1 标记 → 认为是用户的，跳过；
+#   4. mwan3 不是 nft 版 / 未安装 → 直接拒绝，一个字节都不写。
+#
+# 事务（A-02 教训）：**不做 uci 全局 revert**。所有写入都发生在
+# $WORK/boot-uci.<pid> 这个私有 confdir 里（uci -c），校验通过后用
+# _mwan3_atomic_install 做 rename(2) 原子替换。任何一步失败，正式配置
+# 一个字节都没动过，因此也就不存在"回滚掉别人的段"的可能。
+#
+# 灰度（用户 2026-10-30 拍板）：--apply 之后不自动 init、不 wire、不
+# reload mwan3，只打印下一步。是否生效由用户显式决定。
+
+# track_ip 默认两个跨 AS 的 anycast。不要用运营商 DNS：那会把"DNS 挂了"
+# 误判成"线路 down"（PLAN §1.3）。
+BOOT_TRACK_DEFAULT="1.0.0.1 1.1.1.1"
+
+_bt_proto_ok() {
+	case "${1:-}" in
+	pppoe | dhcp | static) return 0 ;;
+	esac
+	return 1
+}
+
+# network 里所有 interface 段的段名
+_bt_net_sections() {
+	uci -q show network 2>/dev/null |
+		sed -n 's/^network\.\([^=]*\)=interface$/\1/p'
+}
+
+# lan 的 device（br-lan 之类）：落在它上面的段一律不是 WAN
+_bt_lan_dev() {
+	_bt_ld=""
+	_bt_ld=$(uci -q get network.lan.device 2>/dev/null) || _bt_ld=""
+	[ -n "$_bt_ld" ] || _bt_ld=$(uci -q get network.lan.device 2>/dev/null) || _bt_ld=""
+	printf '%s' "$_bt_ld"
+}
+
+# ubus 里的 IPv4 地址（拿不到就输出空：只用于展示，不参与判据）
+_bt_iface_ipv4() {
+	_bt_i4_raw=""
+	command -v ubus >/dev/null 2>&1 || return 0
+	_bt_i4_raw=$(ubus call "network.interface.$1" status 2>/dev/null) || return 0
+	if command -v jsonfilter >/dev/null 2>&1; then
+		printf '%s' "$_bt_i4_raw" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null
+		return 0
+	fi
+	printf '%s' "$_bt_i4_raw" |
+		sed -n 's/.*"ipv4-address"[^]]*"address"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' |
+		head -1
+}
+
+# 发现候选 WAN（全程只读）。结果：
+#   BT_CAND   空格分隔的候选段名（按 network 配置顺序）
+#   BT_SKIP_DISCOVER  形如 "name=原因;name=原因" 的跳过清单
+_bt_discover() {
+	BT_CAND=""
+	BT_SKIP_DISCOVER=""
+	_bt_lan=$(_bt_lan_dev)
+	for _bt_sec in $(_bt_net_sections); do
+		_bt_proto=$(uci -q get "network.$_bt_sec.proto" 2>/dev/null) || _bt_proto=""
+		case "$_bt_sec" in
+		lan | loopback)
+			BT_SKIP_DISCOVER="${BT_SKIP_DISCOVER}${BT_SKIP_DISCOVER:+;}$_bt_sec=管理口/回环"
+			continue
+			;;
+		esac
+		if ! _bt_proto_ok "$_bt_proto"; then
+			BT_SKIP_DISCOVER="${BT_SKIP_DISCOVER}${BT_SKIP_DISCOVER:+;}$_bt_sec=proto=${_bt_proto:-空}（只认 pppoe/dhcp/static）"
+			continue
+		fi
+		_bt_dev=$(uci -q get "network.$_bt_sec.device" 2>/dev/null) || _bt_dev=""
+		[ -n "$_bt_dev" ] || _bt_dev=$(uci -q get "network.$_bt_sec.device" 2>/dev/null) || _bt_dev=""
+		if [ -n "${_bt_lan:-}" ] && [ "${_bt_dev:-}" = "$_bt_lan" ]; then
+			BT_SKIP_DISCOVER="${BT_SKIP_DISCOVER}${BT_SKIP_DISCOVER:+;}$_bt_sec=设备是 LAN 桥 $_bt_lan"
+			continue
+		fi
+		# static 的纯 v6 段（只有 ip6addr、没有 ipaddr）不是 IPv4 WAN
+		if [ "$_bt_proto" = "static" ]; then
+			_bt_v4=$(uci -q get "network.$_bt_sec.ipaddr" 2>/dev/null) || _bt_v4=""
+			_bt_v6=$(uci -q get "network.$_bt_sec.ip6addr" 2>/dev/null) || _bt_v6=""
+			if [ -z "${_bt_v4:-}" ] && [ -n "${_bt_v6:-}" ]; then
+				BT_SKIP_DISCOVER="${BT_SKIP_DISCOVER}${BT_SKIP_DISCOVER:+;}$_bt_sec=只有 IPv6 地址"
+				continue
+			fi
+		fi
+		BT_CAND="${BT_CAND:+$BT_CAND }$_bt_sec"
+	done
+}
+
+# mwan3 里是否已有同名段（任何类型都算"已存在"）
+_bt_mwan3_exists() {
+	_bt_me=$(uci -q get "mwan3.$1" 2>/dev/null) || _bt_me=""
+	[ -n "${_bt_me:-}" ]
+}
+
+# 已启用的 IPv4 WAN 段数量（判断"mwan3 已配置"的门槛）
+_bt_enabled_wan_count() {
+	_bt_ew=0
+	for _bt_ews in $(_mwan3_iface_sections); do
+		_bt_ew_en=$(uci -q get "mwan3.$_bt_ews.enabled" 2>/dev/null) || _bt_ew_en=1
+		[ -n "${_bt_ew_en:-}" ] || _bt_ew_en=1
+		_bt_ew_fam=$(uci -q get "mwan3.$_bt_ews.family" 2>/dev/null) || _bt_ew_fam=ipv4
+		[ -n "${_bt_ew_fam:-}" ] || _bt_ew_fam=ipv4
+		[ "$_bt_ew_en" = "1" ] || continue
+		[ "$_bt_ew_fam" = "ipv4" ] || continue
+		_bt_ew=$((_bt_ew + 1))
+	done
+	printf '%s' "$_bt_ew"
+}
+
+_bt_member_name() {
+	printf '%s_m1_w1\n' "$(printf '%s' "$1" | sed 's/[^A-Za-z0-9_]/_/g')"
+}
+
+# 计划：BT_CREATE 每行 "type|段名|附属参数"，BT_SKIP / BT_REUSE 为展示清单。
+# 只做计算，不写任何东西（dry-run 与 apply 共用同一份计划）。
+_bt_build_plan() {
+	BT_CREATE=""
+	BT_SKIP=""
+	BT_REUSE=""
+	BT_MEMBERS=""
+	BT_NEW_IFACES=""
+	_bt_n=0
+	for _bt_if in $BT_CAND; do
+		_bt_n=$((_bt_n + 1))
+		if _bt_mwan3_exists "$_bt_if"; then
+			BT_SKIP="${BT_SKIP}${BT_SKIP:+
+}  interface $_bt_if  （已存在，跳过）"
+			# 已存在的接口段仍可作为成员/策略的绑定目标
+			_bt_type=$(uci -q get "mwan3.$_bt_if" 2>/dev/null)
+			if [ "$_bt_type" = "interface" ]; then
+				BT_MEMBERS="${BT_MEMBERS:+$BT_MEMBERS }$_bt_if"
+			fi
+			continue
+		fi
+		BT_CREATE="${BT_CREATE}${BT_CREATE:+
+}interface|$_bt_if|$_bt_if"
+		BT_NEW_IFACES="${BT_NEW_IFACES:+$BT_NEW_IFACES }$_bt_if"
+		BT_MEMBERS="${BT_MEMBERS:+$BT_MEMBERS }$_bt_if"
+	done
+
+	# 每条新接口一个成员（<iface>_m1_w1，与 MultiWAN 管理器命名习惯一致）
+	for _bt_if in $BT_NEW_IFACES; do
+		_bt_m=$(_bt_member_name "$_bt_if")
+		if _bt_mwan3_exists "$_bt_m"; then
+			BT_SKIP="${BT_SKIP}${BT_SKIP:+
+}  member $_bt_m  （已存在，跳过）"
+			continue
+		fi
+		BT_CREATE="${BT_CREATE}${BT_CREATE:+
+}member|$_bt_m|$_bt_if"
+	done
+
+	# ISP_TABLE 引用的策略：缺失才补。balanced 用全部成员，其它按顺序一一对应。
+	_bt_j=0
+	_bt_mem_n=0
+	for _bt_x in $BT_MEMBERS; do
+		_bt_mem_n=$((_bt_mem_n + 1))
+	done
+	for _bt_pol in $(_isp_policies); do
+		_bt_j=$((_bt_j + 1))
+		_bt_ptype=$(uci -q get "mwan3.$_bt_pol" 2>/dev/null) || _bt_ptype=""
+		if [ -n "${_bt_ptype:-}" ]; then
+			BT_SKIP="${BT_SKIP}${BT_SKIP:+
+}  policy $_bt_pol  （已存在，跳过）"
+			BT_REUSE="${BT_REUSE}${BT_REUSE:+
+}  policy $_bt_pol  -> $(_policy_desc "$_bt_pol")"
+			continue
+		fi
+		[ "$_bt_mem_n" -gt 0 ] || {
+			BT_SKIP="${BT_SKIP}${BT_SKIP:+
+}  policy $_bt_pol  （没有可用成员，跳过）"
+			continue
+		}
+		if [ "$_bt_pol" = "balanced" ]; then
+			_bt_use=""
+			for _bt_x in $BT_MEMBERS; do
+				_bt_use="${_bt_use:+$_bt_use }$(_bt_member_name "$_bt_x")"
+			done
+		else
+			_bt_want=$(((_bt_j - 1) % _bt_mem_n + 1))
+			_bt_i=0
+			_bt_use=""
+			for _bt_x in $BT_MEMBERS; do
+				_bt_i=$((_bt_i + 1))
+				[ "$_bt_i" -eq "$_bt_want" ] && _bt_use=$(_bt_member_name "$_bt_x")
+			done
+		fi
+		BT_CREATE="${BT_CREATE}${BT_CREATE:+
+}policy|$_bt_pol|$_bt_use"
+	done
+}
+
+# 打印计划（dry-run 与 apply 共用；apply 之后再打一次"已写入"）
+_bt_print_plan() {
+	_bt_title=$1
+	echo
+	echo "== 发现（只读）"
+	printf '  %-10s %-8s %-6s %-12s %s\n' "接口" "类型" "状态" "运行设备" "IPv4"
+	for _bt_if in $BT_CAND; do
+		_bt_p=$(uci -q get "network.$_bt_if.proto" 2>/dev/null) || _bt_p="-"
+		_bt_st=$(_iface_runtime_state "$_bt_if")
+		_bt_l3=$(_iface_l3_device "$_bt_if")
+		_bt_ip=$(_bt_iface_ipv4 "$_bt_if")
+		printf '  %-10s %-8s %-6s %-12s %s\n' \
+			"$_bt_if" "${_bt_p:--}" "$_bt_st" "${_bt_l3:--}" "${_bt_ip:--}"
+	done
+	[ -n "$BT_CAND" ] || echo "  （没有候选 WAN）"
+	if [ -n "${BT_SKIP_DISCOVER:-}" ]; then
+		echo
+		echo "== 未纳入的 network 段"
+		printf '%s\n' "$BT_SKIP_DISCOVER" | tr ';' '\n' | sed 's/^/  · /'
+	fi
+
+	echo
+	echo "== $_bt_title"
+	if [ -n "$BT_CREATE" ]; then
+		printf '%s\n' "$BT_CREATE" | while IFS='|' read -r _bt_t _bt_nm _bt_arg; do
+			[ -n "${_bt_t:-}" ] || continue
+			case "$_bt_t" in
+			interface)
+				printf '  + interface %-12s enabled=1 family=ipv4 track_ip="%s" track_method=ping initial_state=online isp_split=1\n' \
+					"$_bt_nm" "$BT_TRACK"
+				;;
+			member)
+				printf '  + member    %-12s interface=%s metric=1 weight=1 isp_split=1\n' "$_bt_nm" "$_bt_arg"
+				;;
+			policy)
+				printf '  + policy    %-12s use_member="%s" isp_split=1\n' "$_bt_nm" "$_bt_arg"
+				;;
+			esac
+		done
+	else
+		echo "  （没有需要新建的段）"
+	fi
+	[ -n "$BT_SKIP" ] && {
+		echo "  = 跳过（已存在/不可用，绝不覆盖）"
+		printf '%s\n' "$BT_SKIP"
+	}
+	[ -n "$BT_REUSE" ] && {
+		echo "  = 复用（已存在，未改动）"
+		printf '%s\n' "$BT_REUSE"
+	}
+	echo "  · network.* / firewall.* / nft / mwan3.globals 一律只读，不产生任何改动"
+}
+
+# 事务写入：私有 confdir 里改 -> commit -> 解析校验 -> rename 原子替换
+_bt_apply() {
+	_bt_tmp=$WORK/boot-uci.$$
+	rm -rf "$_bt_tmp"
+	mkdir -p "$_bt_tmp" || die "无法创建事务目录 $_bt_tmp（配置未改动）"
+	cp "$CFG_MWAN3" "$_bt_tmp/mwan3" || {
+		rm -rf "$_bt_tmp"
+		die "无法复制 $CFG_MWAN3 到事务目录（配置未改动）"
+	}
+	_bt_cleanup() { rm -rf "$_bt_tmp"; }
+	# 备份（只作留档；回滚走 isp_split 标记，不靠备份覆盖用户改动）
+	mkdir -p "$STATE_DIR" 2>/dev/null || true
+	_bt_ts=$(date +%s)
+	cp "$CFG_MWAN3" "$STATE_DIR/mwan3.bootstrap.$_bt_ts.bak" 2>/dev/null ||
+		log "警告：无法写入备份 $STATE_DIR/mwan3.bootstrap.$_bt_ts.bak（继续）"
+
+	# 1) 写入（只在私有 confdir 里）
+	_bt_wr() {
+		_bt_t=$1
+		_bt_nm=$2
+		_bt_arg=$3
+		uci -c "$_bt_tmp" set "mwan3.$_bt_nm=$_bt_t" ||
+			return 1
+		case "$_bt_t" in
+		interface)
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.enabled=1" || return 1
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.family=ipv4" || return 1
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.track_method=ping" || return 1
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.initial_state=online" || return 1
+			uci -c "$_bt_tmp" -q delete "mwan3.$_bt_nm.track_ip" 2>/dev/null || true
+			for _bt_tip in $BT_TRACK; do
+				uci -c "$_bt_tmp" add_list "mwan3.$_bt_nm.track_ip=$_bt_tip" || return 1
+			done
+			;;
+		member)
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.interface=$_bt_arg" || return 1
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.metric=1" || return 1
+			uci -c "$_bt_tmp" set "mwan3.$_bt_nm.weight=1" || return 1
+			;;
+		policy)
+			uci -c "$_bt_tmp" -q delete "mwan3.$_bt_nm.use_member" 2>/dev/null || true
+			for _bt_mm in $_bt_arg; do
+				uci -c "$_bt_tmp" add_list "mwan3.$_bt_nm.use_member=$_bt_mm" || return 1
+			done
+			;;
+		esac
+		uci -c "$_bt_tmp" set "mwan3.$_bt_nm.isp_split=1" || return 1
+		return 0
+	}
+
+	_bt_lines=""
+	_bt_ok=1
+	while IFS='|' read -r _bt_t _bt_nm _bt_arg; do
+		[ -n "${_bt_t:-}" ] || continue
+		_bt_wr "$_bt_t" "$_bt_nm" "$_bt_arg" || _bt_ok=0
+		[ "$_bt_ok" = "1" ] || break
+		_bt_lines="${_bt_lines}${_bt_lines:+
+}$_bt_t $_bt_nm"
+	done <<BOOTPLAN
+$BT_CREATE
+BOOTPLAN
+	if [ "$_bt_ok" != "1" ]; then
+		_bt_cleanup
+		die "写入段 '$_bt_nm' 失败：正式配置未改动（事务目录已丢弃）"
+	fi
+
+	# 2) commit 到事务目录 + 解析校验（旧写法永远通过，所以必须校验新文件）
+	if ! uci -c "$_bt_tmp" commit mwan3; then
+		_bt_cleanup
+		die "事务 commit 失败：正式配置未改动"
+	fi
+	if ! uci -c "$_bt_tmp" show mwan3 >/dev/null 2>&1; then
+		_bt_cleanup
+		die "生成的 mwan3 配置无法解析：正式配置未改动"
+	fi
+
+	# 3) 复核：每个计划段都在、类型对、带标记（防止 uci 把同名段合并掉）
+	while IFS='|' read -r _bt_t _bt_nm _bt_arg; do
+		[ -n "${_bt_t:-}" ] || continue
+		_bt_got=$(uci -c "$_bt_tmp" get "mwan3.$_bt_nm" 2>/dev/null) || _bt_got=""
+		_bt_mark=$(uci -c "$_bt_tmp" get "mwan3.$_bt_nm.isp_split" 2>/dev/null) || _bt_mark=""
+		if [ "$_bt_got" != "$_bt_t" ] || [ "$_bt_mark" != "1" ]; then
+			_bt_cleanup
+			die "校验失败：$_bt_t '$_bt_nm' 未按预期落盘（type=${_bt_got:-空} mark=${_bt_mark:-空}）：正式配置未改动"
+		fi
+	done <<BOOTPLAN
+$BT_CREATE
+BOOTPLAN
+
+	# 4) 原子替换（rename），模式沿用原文件
+	if ! _mwan3_atomic_install "$_bt_tmp/mwan3"; then
+		_bt_cleanup
+		die "无法原子替换 $CFG_MWAN3：正式配置未改动（备份 $STATE_DIR/mwan3.bootstrap.$_bt_ts.bak）"
+	fi
+
+	# 5) 记录本次新建的段（供 --rollback 展示；真正删除仍以 isp_split 标记为准）
+	{
+		printf '# %s bootstrap %s\n' "$(_ts_text "$(date +%s)")" "$BT_TRACK"
+		printf '%s\n' "$_bt_lines"
+	} >>"$STATE_DIR/bootstrap.created" 2>/dev/null || true
+	_bt_cleanup
+	log "已写入 mwan3 骨架（$(printf '%s\n' "$_bt_lines" | grep -c . ) 个段，全部带 isp_split=1 标记）"
+	log "备份: $STATE_DIR/mwan3.bootstrap.$_bt_ts.bak；本次未 reload mwan3（灰度）"
+}
+
+# 列出全部 isp_split=1 的 mwan3 段（rollback 预览与"删干净了没有"的复核共用）
+_bt_marked_segments() {
+	for _bt_ms in ipset interface member policy rule; do
+		for _bt_sec in $(uci -q show mwan3 2>/dev/null |
+			sed -n "s/^mwan3\.\([^=]*\)=$_bt_ms\$/\1/p"); do
+			[ "$(uci -q get "mwan3.$_bt_sec.isp_split" 2>/dev/null)" = "1" ] || continue
+			printf '%s %s\n' "$_bt_ms" "$_bt_sec"
+		done
+	done
+}
+
+cmd_bootstrap() {
+	_op_lock_acquire || die "另一个 isp-split 操作正在运行（锁: $OP_LOCK），本次未做任何改动；稍后重试"
+	_cmd_bootstrap_body "$@"
+	_rc=$?
+	_op_lock_release
+	return $_rc
+}
+
+_cmd_bootstrap_body() {
+	BT_APPLY=0
+	BT_ROLLBACK=0
+	BT_FORCE=0
+	BT_YES=0
+	BT_TRACK=$BOOT_TRACK_DEFAULT
+	while [ $# -gt 0 ]; do
+		case "$1" in
+		--apply) BT_APPLY=1 ;;
+		--dry-run) BT_APPLY=0 ;;
+		--rollback) BT_ROLLBACK=1 ;;
+		--force) BT_FORCE=1 ;;
+		--yes | -y) BT_YES=1 ;;
+		--track-ip)
+			[ $# -ge 2 ] || die "--track-ip 需要参数 \"<ip> [<ip>...]\""
+			BT_TRACK=$2
+			shift
+			;;
+		--track-ip=*) BT_TRACK=${1#--track-ip=} ;;
+		-h | --help)
+			cat <<'BOOTHELP'
+用法: isp-split bootstrap [--apply] [--force] [--track-ip "<ip> [<ip>]"]
+      isp-split bootstrap --rollback [--yes]
+
+  净机一键骨架：从 network 发现 WAN，补出 mwan3 的 interface/member/policy。
+  · 默认 dry-run，只打印将创建/跳过/复用的段，不写任何东西
+  · --apply 才写；写入走私有 confdir + 校验 + rename 原子替换
+  · 已存在的 mwan3 段（无论 enabled）一律不覆盖、不重命名
+  · 已配置的 mwan3（>=2 个启用的 IPv4 接口）默认拒绝补段，需要 --force
+  · 不自动 init / wire / reload mwan3（灰度）；结束后打印下一步
+  · --rollback 删除全部 isp_split=1 的段（= uninstall 的 bootstrap 部分）
+BOOTHELP
+			return 0
+			;;
+		*)
+			die "未知参数: '$1'（用法: isp-split bootstrap [--apply] [--force] [--track-ip ...] | --rollback）"
+			;;
+		esac
+		shift
+	done
+
+	command -v uci >/dev/null 2>&1 || die "未找到 uci 命令"
+	[ -f "$CFG_MWAN3" ] || die "找不到 $CFG_MWAN3：请先安装 nft 版 mwan3（>= 3.6）"
+
+	# ---------------- rollback ----------------
+	if [ "$BT_ROLLBACK" = "1" ]; then
+		_bt_list=$(_bt_marked_segments)
+		if [ -z "$_bt_list" ]; then
+			log "没有 isp_split=1 的段，无需回滚"
+			return 0
+		fi
+		echo "== 将删除以下带 isp_split=1 标记的 mwan3 段（手配段一个都不动）"
+		printf '%s\n' "$_bt_list" | sed 's/^/  - /'
+		echo "  · 仍被其它策略引用的成员段会保留（删了 mwan3 会渲染失败）"
+		if [ "$BT_YES" != "1" ]; then
+			if [ ! -t 0 ]; then
+				die "非交互环境：确认要删除请加 --yes（本次未做任何改动）"
+			fi
+			printf '确认删除？[y/N] '
+			IFS= read -r _bt_ans || _bt_ans=""
+			case "$_bt_ans" in
+			y | Y | yes | YES) ;;
+			*) log "已取消，未做任何改动"; return 1 ;;
+			esac
+		fi
+		[ -f "$LIB/teardown.sh" ] ||
+			die "缺少 $LIB/teardown.sh，无法回滚（版本不匹配？）"
+		# --i-know-what-im-doing：BASE 可能被 ISP_SPLIT_BASE 覆盖（自检/沙箱），
+		# 而 mwan3 作用域只删 UCI 段、从不删 BASE 下的文件，所以这里的显式确认
+		# 不比 uninstall（会 rm -rf BASE）的风险高。
+		ISP_SPLIT_BASE=$BASE ISP_SPLIT_CONF=$CONF ISP_SPLIT_CRONTAB=$CRONTAB \
+			ISP_SPLIT_LIB=$LIB MWAN3_SERVICE=$MWAN3_SERVICE \
+			DNSDIR=$DNSDIR DNSMASQ_DEFAULT_DIR=$DNSMASQ_DEFAULT_DIR \
+			DNSMASQ_CONF_GLOB=$DNSMASQ_CONF_GLOB \
+			sh "$LIB/teardown.sh" mwan3 --i-know-what-im-doing ||
+			die "回滚失败（见上方输出）"
+		_bt_left=$(_bt_marked_segments)
+		if [ -n "$_bt_left" ]; then
+			log "回滚后仍残留（被其它策略引用，已保留）："
+			printf '%s\n' "$_bt_left" | sed 's/^/  · /'
+		else
+			log "回滚完成：isp_split=1 的段已全部删除"
+		fi
+		return 0
+	fi
+
+	# ---------------- 发现 + 预检 ----------------
+	if ! grep -q render_config_ipsets /lib/mwan3/mwan3.sh 2>/dev/null; then
+		die "mwan3 不是 nftables 版（/lib/mwan3/mwan3.sh 里没有 render_config_ipsets）：本项目不支持，未做任何改动。请换用 nft 版 mwan3 (>= 3.6.0)"
+	fi
+
+	_bt_discover
+	_bt_n=0
+	for _bt_x in $BT_CAND; do
+		_bt_n=$((_bt_n + 1))
+	done
+	if [ "$_bt_n" -eq 0 ]; then
+		echo "错误: 没有发现可用的 WAN 接口段（network 里没有 proto=pppoe/dhcp/static 的接口）" >&2
+		[ -n "${BT_SKIP_DISCOVER:-}" ] && {
+			echo "已排除的段：" >&2
+			printf '%s\n' "$BT_SKIP_DISCOVER" | tr ';' '\n' | sed 's/^/  · /' >&2
+		}
+		echo "下一步：" >&2
+		echo "  1) LuCI → 网络 → 接口：添加/启用 WAN（PPPoE 或 DHCP），确认它不是 lan" >&2
+		echo "  2) 确认 mwan3（nft 版）已安装并至少启动过一次" >&2
+		echo "  3) 重跑 isp-split bootstrap（先看不带 --apply 的预演）" >&2
+		exit 1
+	fi
+
+	_bt_ew=$(_bt_enabled_wan_count)
+	if [ "$_bt_ew" -ge 2 ] && [ "$BT_FORCE" != "1" ]; then
+		die "mwan3 已配置（$_bt_ew 个启用的 IPv4 接口）：bootstrap 只补缺失骨架，不覆盖既有配置。
+若确认要补建缺失段，请加 --force：
+  isp-split bootstrap --force            # 预演
+  isp-split bootstrap --force --apply    # 写入
+（已存在的 interface/member/policy 仍然一律跳过，不会被改名或覆盖）"
+	fi
+
+	_bt_build_plan
+	_bt_print_plan "将创建（$([ "$BT_APPLY" = "1" ] && printf 'apply' || printf 'dry-run，加 --apply 才写入')）"
+
+	if [ "$BT_APPLY" != "1" ]; then
+		echo
+		echo "== 下一步（dry-run 未写入任何东西）"
+		echo "  isp-split bootstrap --apply    # 真正写入骨架"
+		echo "  isp-split init --bind <策略>=<接口> ..."
+		echo "  isp-split wire && isp-split sync"
+		return 0
+	fi
+
+	if [ -z "$BT_CREATE" ]; then
+		echo
+		log "没有需要新建的段（骨架已完整），配置一个字节都没改"
+	else
+		_work_writable || die "work 目录不可写（$WORK）：本次未做任何改动"
+		_bt_apply
+	fi
+
+	echo
+	echo "== 下一步（灰度：本次没有 init / wire / reload mwan3）"
+	echo "  1) 绑定线路（写 member 的 interface 指向）："
+	echo "       isp-split init --bind <策略>=<接口> [--bind ...] --assume-yes"
+	echo "     当前策略: $(uci -q show mwan3 2>/dev/null | sed -n 's/^mwan3\.\([^=]*\)=policy$/\1/p' | tr '\n' ' ')"
+	echo "     当前接口: $(_mwan3_iface_sections | tr '\n' ' ')"
+	echo "  2) 写规则：isp-split wire"
+	echo "  3) 生效：  isp-split sync（会 reload mwan3，短暂断流 1-3 秒）"
+	echo "  撤销本步： isp-split bootstrap --rollback（只删带 isp_split=1 的段）"
+}
 
 # init：发现接口 -> 为 ISP_TABLE 的每个策略绑定成员 -> 跑一次 plan 摘要
 # A-02：与 fetch/wire/apply/sync 共用同一把操作锁，避免与 cmd_wire 的
@@ -2593,6 +3123,21 @@ _init_bound_iface() {
 		return 0
 	done
 	return 1
+}
+
+# ---------------------------------------------------------------- doctor
+#
+# 环境体检。判据（探针 P1–P11 + 兼容矩阵六项 + 主机前提五项）只有一份实现：
+# usr/lib/isp-split/doctor.sh，tools/router-preflight.sh 也 source 它。
+# 这里只负责装配与退出码，绝不重复写判据——两套判据必然漂移（F7 的教训）。
+#
+# 只读、零副作用、不进 op.lock（不改任何东西，不需要和 wire/fetch 互斥）。
+cmd_doctor() {
+	[ -f "$LIB/doctor.sh" ] ||
+		die "缺少 $LIB/doctor.sh：环境体检的判据实现不在设备上（版本不匹配？）
+重装同版本包，或从同版本源码 cp files/usr/lib/isp-split/doctor.sh /usr/lib/isp-split/"
+	. "$LIB/doctor.sh"
+	doc_main "$@"
 }
 
 # 机器可读的策略状态（LuCI 首装提示条用）
@@ -8029,6 +8574,8 @@ diff) shift; cmd_diff "$@" ;;
 dnstest) shift; cmd_dnstest "$@" ;;
 apply) cmd_apply ;;
 init) shift; cmd_init "$@" ;;
+bootstrap) shift; cmd_bootstrap "$@" ;;
+doctor) shift; cmd_doctor "$@" ;;
 wire) cmd_wire ;;
 sync) cmd_sync ;;
 plan) cmd_plan ;;
@@ -8073,6 +8620,10 @@ line*check)
   rollback   回滚到上一份数据
 
   —— 首次安装 / 上线（建议分两步）——
+  bootstrap  净机一键骨架：从 network 发现 WAN，补出 mwan3 的
+             interface/member/policy（默认 dry-run，--apply 才写；
+             只补缺失、绝不覆盖已有段；不自动 wire/reload）
+  doctor     环境体检：六项兼容矩阵 + 主机前提（--json 给 LuCI 用）
   init       发现 mwan3 接口，为 ISP_TABLE 的每个策略创建 policy/member
              交互选择接口；或 --bind <策略>=<接口>（可重复）--assume-yes
   stage      注入规则但保持 enabled=0，验证 mwan3 未被搞坏

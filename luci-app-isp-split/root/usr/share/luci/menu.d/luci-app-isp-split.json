@@ -10,6 +10,14 @@
 			"uci": { "mwan3": true }
 		}
 	},
+	"admin/network/isp-split/wizard": {
+		"title": "引导",
+		"order": 0,
+		"action": {
+			"type": "view",
+			"path": "isp-split/wizard"
+		}
+	},
 	"admin/network/isp-split/overview": {
 		"title": "状态",
 		"order": 1,

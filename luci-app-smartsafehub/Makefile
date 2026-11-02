@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-smartsafehub
-PKG_VERSION:=0.2.31
-PKG_RELEASE:=11
+PKG_VERSION:=0.2.32
+PKG_RELEASE:=12
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later
@@ -16,8 +16,8 @@ PKG_LICENSE_FILES:=LICENSE
 LUCI_TITLE:=SmartSafeHub
 LUCI_URL:=https://github.com/Junatum/luci-app-smartsafehub
 LUCI_DESCRIPTION:=A modern, user-friendly OpenWrt management platform with Wi-Fi control, device management, system monitoring, and SafeShield DNS protection.
-LUCI_DEPENDS:=+luci-base +rpcd-mod-ucode +ucode +ucode-mod-ubus +ucode-mod-fs +ucode-mod-uci +procd +uclient-fetch +jsonfilter +igmpproxy +safeshield
-LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.25)
+LUCI_DEPENDS:=+luci-base +rpcd-mod-ucode +ucode +ucode-mod-ubus +ucode-mod-fs +ucode-mod-uci +procd +uclient-fetch +jsonfilter +igmpproxy +safeshield +conntrack
+LUCI_EXTRA_DEPENDS:=safeshield (>=0.3.26)
 LUCI_PKGARCH:=all
 
 define Package/luci-app-smartsafehub/conffiles
@@ -49,6 +49,11 @@ if [ -z "$${IPKG_INSTROOT}" ]; then
 	# Drop the temporary diagnostic created by older Apps size queries.
 	rm -f /tmp/smartsafehub/apps-size-diagnostics.tsv
 	uci -q delete smartsafehub.firmware.check_enabled >/dev/null 2>&1 || true
+	# Existing conffiles are retained during upgrades: add the new section safely.
+	if ! uci -q get smartsafehub.netwatch >/dev/null 2>&1; then
+		uci -q set smartsafehub.netwatch=netwatch >/dev/null 2>&1 || true
+		uci -q set smartsafehub.netwatch.enabled=1 >/dev/null 2>&1 || true
+	fi
 	uci -q commit smartsafehub >/dev/null 2>&1 || true
 	if [ -x /etc/init.d/smartsafehub-events ]; then
 		/etc/init.d/smartsafehub-events enable

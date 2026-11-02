@@ -289,3 +289,25 @@ Cloud 전송을 끄면 activity-sync daemon을 잠시 중지한 뒤 Cloud-only o
 - SafeShield 기능은 별도 `safeshield` 패키지와 공식 ubus API 계약에 의존하며, SmartSafeHub는 SafeShield의 상태 파일이나 init script를 직접 다루지 않습니다.
 - 프런트엔드 개발 서버만으로는 LuCI ACL과 실제 ubus 동작을 완전히 재현할 수 없습니다.
 - ucode module 문법은 JavaScript·TypeScript와 차이가 있으므로 실제 `ucode -c` 검사가 필요합니다.
+
+## Network Watch (경량 IPv4 연결 관찰)
+
+SmartSafeHub 기본 기능으로 `#netwatch`에서 켜거나 끌 수 있습니다. 기존
+`smartsafehub-events` 주기(기본 60초)를 재사용하며 별도 데몬이나 앱 설치는 필요 없습니다.
+관찰기는 `/proc/net/nf_conntrack`를 우선 읽고, 사용할 수 없는 경우
+OpenWrt `conntrack` 도구를 이용합니다. `conntrack`은 패키지 의존성으로 포함됩니다.
+
+- 현재 살아 있는 IPv4 사설 주소 → 공인 IPv4 연결을 **스냅샷**으로 집계합니다.
+- 내부 IP별 연결 수와 외부 목적지 IP 수를 보여줍니다.
+- 같은 기기에서 두 관찰 주기 연속으로 동시 연결이 120개 이상이거나
+  외부 목적지가 40곳 이상인 경우 주의 이벤트를 기록합니다(전체 30분 재알림 제한).
+- 원시 패킷/페이로드를 수집하지 않고 `/tmp/smartsafehub/netwatch/`에
+  직전 관찰 요약만 저장합니다. 재부팅하면 사라집니다. 단, **최근 활동의
+  Cloud 동기화를 사용자가 켰다면** 경고 이벤트의 내부 IP·연결 개수 등
+  요약 메타데이터는 기존 활동 동기화 정책에 따라 전송될 수 있습니다.
+- 한 번에 최대 2,048개 엔트리/32대 장치까지만 처리하며, 한도 초과 시
+  탐지 판단을 생략합니다. UI에서는 최대 12대까지 표시합니다.
+- **주의 이벤트는 악성 트래픽의 확정 판정이 아니며 자동 차단하지 않습니다.**
+- IPv6, 짧은 연결, 비표준/공인 LAN 구성, 하드웨어 오프로딩 및 Cloud
+  연동은 이번 초기 버전의 감시 대상/보증 범위에 포함되지 않습니다.
+- 설정은 `smartsafehub.netwatch.enabled`이며 기본값은 `1`입니다.

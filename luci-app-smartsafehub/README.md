@@ -18,7 +18,7 @@ SmartSafeHub는 OpenWrt 공유기를 위한 통합 홈 게이트웨이 관리 UI
 - OpenWrt: **25.12 버전 이상**
 - 백엔드: rpcd ucode 모듈
 - 프런트엔드: Preact, TypeScript, Vite, Tailwind CSS
-- SafeShield: **safeshield (>= 0.3.25)**
+- SafeShield: **safeshield (>= 0.3.26)**
 - 라이선스: **GPL-3.0-or-later**
 
 변경 내역은 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.
@@ -31,6 +31,7 @@ SmartSafeHub는 OpenWrt 공유기를 위한 통합 홈 게이트웨이 관리 UI
 - **Wi-Fi 관리**: SSID, 사용 여부와 WPA2/WPA3 보안 설정을 관리하고 실패 시 설정을 롤백합니다.
 - **연결 기기**: DHCP, ARP와 무선 정보를 결합해 현재 연결된 기기를 보여줍니다.
 - **SafeShield 통합**: DNS 보호 상태, 차단 통계, 사용자 Allow/Block 규칙과 차단 목록 갱신을 관리합니다.
+- **Network Watch**: 별도 앱 없이 기기별 외부 연결 현황과 연결 급증 주의 신호를 관찰합니다(자동 차단 없음).
 - **SmartSafeHub 계정 연결**: 공유기를 계정에 연결해 Cloud 기능을 사용하며, 웹사이트에서 등록을 해제하면 공유기도 백그라운드 동기화로 자동 반영합니다.
 - **업데이트 관리**: SmartSafeHub 관리 소프트웨어와 펌웨어 업데이트를 확인하고 적용합니다.
 - **장치 진단**: 로컬 진단, 진단 정보 다운로드와 사용자가 동의한 원격 Health Reporter를 제공합니다.

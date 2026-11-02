@@ -84,7 +84,7 @@ fi
 
 grep -Fq "const ROM_FIRMWARE_METADATA_FILE = '/rom/usr/share/smartsafehub/firmware.json';" "$RPC_MODULE" || \
 	fail 'firmware RPC must read immutable ROM metadata before overlay metadata'
-grep -Fq 'read_json_file(ROM_FIRMWARE_METADATA_FILE, 65536)' "$RPC_MODULE" || \
+grep -Fq 'read_json_object(ROM_FIRMWARE_METADATA_FILE, 65536)' "$RPC_MODULE" || \
 	fail 'firmware RPC metadata reader must prefer the ROM file'
 grep -Fq 'resolved_build_id != current.buildId' "$RPC_MODULE" || \
 	fail 'firmware RPC must reject resolve data generated for a different installed build'

@@ -38,6 +38,14 @@ grep -Fq 'storage: demoAppsMetrics.storage' "$FIXTURES" || {
   exit 1
 }
 grep -Fq "demoApps" "$FIXTURES"
+# Keep the public demo's Network Watch, first-party label and sample releases visible.
+grep -Fq "case 'netwatch':" "$DEMO"
+grep -Fq '<NetworkWatchPage data={demoNetwatch} devices={demoDevices} activity={demoActivity}' "$DEMO"
+grep -Fq "'safeshield', 'netwatch', 'rules'" "$ROOT/frontend/src/components/ProductNavigation.tsx"
+grep -Fq 'Network Watch' "$ROOT/docs/ROUTER_DEMO.md"
+grep -Fq '실제 네트워크를 관찰하거나 차단하지 않으며' "$ROOT/docs/ROUTER_DEMO.md"
+grep -Fq "version: '1.2.0-r4'" "$FIXTURES"
+grep -Fq "version: '2.4.9-r6'" "$FIXTURES"
 grep -Fq "demo={demo}" "$ROOT/frontend/src/components/AppShell.tsx"
 grep -Fq "!demo ?" "$ROOT/frontend/src/components/ProductNavigation.tsx"
 grep -Fq "base: '/static/router-demo/'" "$CONFIG"

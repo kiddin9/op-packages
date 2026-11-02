@@ -17,11 +17,12 @@ import { PageTabs } from '../components/PageTabs';
 import { ConnectedDevicesPage } from '../pages/ConnectedDevicesPage';
 import { HomePage } from '../pages/HomePage';
 import { SafeShieldPage } from '../pages/SafeShieldPage';
+import { NetworkWatchPage } from '../pages/NetworkWatchPage';
 import {
   demoActivity, demoDevices, demoFirmware, demoHealth, demoLan,
   demoSafeShield, demoStatistics, demoStatus, demoUpdates,
   demoWan, demoWifi, demoRules, demoWifiQr, demoGuestWifiQr,
-  demoAccount, demoApps, demoAppsStatus, demoAppsMetrics,
+  demoAccount, demoApps, demoAppsStatus, demoAppsMetrics, demoNetwatch,
 } from './data';
 import '../styles/app.css';
 
@@ -57,6 +58,10 @@ function DemoApp() {
 
   let content;
   switch (route) {
+    case 'netwatch':
+      content = <NetworkWatchPage data={demoNetwatch} devices={demoDevices} activity={demoActivity} error={null} loading={false} onRetry={reset}
+        onSetEnabled={async () => { readonlyNotice(); }} demo onDemoAction={readonlyNotice} />;
+      break;
     case 'account':
       content = <SmartSafeHubAccountPage data={demoAccount} error={null} loading={false}
         pairingBusy={false} refreshing={false} syncError={null} demo

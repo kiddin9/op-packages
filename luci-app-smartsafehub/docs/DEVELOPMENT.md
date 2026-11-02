@@ -247,7 +247,7 @@ node --experimental-strip-types --test tests/runtime/*.test.mjs
 
 ### OpenWrt 25.12 셸 명령 성능 검사
 
-`sh tests/test-openwrt-commands.sh`는 BusyBox 기본 명령의 존재 여부와 함께 공유기에 배포하는 셸 스크립트의 고비용 패턴을 검사합니다. `root/`의 새 셸 진입점도 자동 포함되고 Backend CI 및 ShellSpec에서 동일한 검사기가 실행됩니다. 다음 패턴은 실패합니다.
+`sh tests/test-openwrt-commands.sh`는 BusyBox 명령 정책과 공유기 소스의 고비용 패턴을 검사합니다. CI는 의존성 설치 전에 `sh tests/test-openwrt-commands.sh --self-test`로 탐지 우회 여부까지 검증하고, ShellSpec은 빠른 소스 검사만 한 번 더 수행합니다. `root/`의 새 셸 진입점도 자동 포함됩니다. 다음 패턴은 실패합니다.
 
 - `find /`, `du /` 또는 `du -a`로 전체 파일시스템/파일 목록을 순회
 - 재귀적 `grep -r/-R/--recursive`, `ls -R`로 넓은 범위를 반복 검색
@@ -257,7 +257,11 @@ node --experimental-strip-types --test tests/runtime/*.test.mjs
 
 `grep`, `awk`, `find`, `sort` 자체를 금지하지 않습니다. 가능한 한 처리 디렉터리와 파일 크기, 반복 횟수, 병렬도에 상한을 두세요. 위험 동작이 실제로 필요한 경우 무조건 허용 목록에 넣기보다는 호출 범위를 제한하도록 코드를 수정하고 회귀 테스트를 추가합니다. 이 검사는 *정적 안티패턴 게이트*이며 변수로 전달된 경로, 런타임 실행 빈도, BusyBox 명령 옵션, 실제 CPU/메모리 부하까지 보증하지 않으므로 실기기 프로파일링을 대체하지 않습니다.
 
+새 셸 테스트, `root/usr/libexec` 명령 및 `root/etc/init.d` 스크립트는 자동 문법 검사 대상입니다. `tests/test-shell-syntax-discovery.sh`는 새 파일의 문법 오류도 잡히는지 검증합니다.
+
 셸 테스트(`tests/**/*.sh`)는 `spec/*_spec.sh`에 각각 한 번씩 등록해야 합니다. GitHub Actions의 Backend 작업은 ShellSpec과 ucode를 설치하기 **전에** `test-suite-integrity.sh`를 독립적으로 실행하므로, 등록되지 않은 테스트가 있으면 즉시 실패합니다. 동일한 파일을 중복 등록하거나 이미 삭제한 테스트를 참조해도 실패합니다. CI가 `shellspec` 전체 실행을 제거하거나 조건부 실행/실패 무시로 변경해도 검사합니다.
+
+네트워크 공통 경로의 실제 등록 값과 고유성은 `tests/runtime/navigation-routes.test.mjs`에서 검사하며, 화면 연결 확인은 내비게이션 Shell 계약이 담당합니다. WAN·LAN·IPTV 테스트는 각자의 설정 적용 및 보안 동작에 집중합니다.
 
 브라우저 동작 테스트는 `tests/runtime/*.test.mjs` 이름으로 추가하면 Frontend CI에서 자동 실행됩니다. CI는 고정된 테스트 파일 목록을 사용하지 않으며, 자동 검색되지 않는 다른 확장자(`*.test.js`, `*.test.ts` 등)나 중첩 폴더에 테스트를 추가하면 누락 검사에서 실패합니다. 새로운 테스트 실행 형식이 필요하면 CI 실행 규칙과 검사기를 함께 수정해야 합니다. 변경하지 않은 배포 파일을 새로 생성하지 않고도 런타임 테스트를 로컬에서 실행할 수 있습니다.
 

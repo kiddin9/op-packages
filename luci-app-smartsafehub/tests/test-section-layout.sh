@@ -13,6 +13,20 @@ grep -Fq 'ssh-section-heading mb-4 min-w-0' "$COMP/SectionHeading.tsx" || fail '
 grep -Fq '<h2 class=' "$COMP/SectionHeading.tsx" || fail 'Accessible section title missing'
 grep -Fq '{action ?' "$COMP/SectionHeading.tsx" || fail 'Shared heading action slot missing'
 
+# Tall toggle/status controls must not increase the vertical gap between
+# eyebrow, title and description (SafeShield statistics, Network Watch).
+grep -Fq "sm:grid-cols-[minmax(0,1fr)_auto]" "$COMP/SectionHeading.tsx" || \
+  fail 'SectionHeading must keep the action in a separate desktop grid column'
+grep -Fq 'h2 class="mt-2 mb-0' "$COMP/SectionHeading.tsx" || \
+  fail 'SectionHeading title must follow the eyebrow without action-driven vertical centering'
+grep -Fq 'p class="mt-2 mb-0 text-sm leading-6' "$COMP/SectionHeading.tsx" || \
+  fail 'SectionHeading description must keep the same title gap'
+grep -Fq 'sm:mt-3 sm:justify-self-end' "$COMP/SectionHeading.tsx" || \
+  fail 'SectionHeading action must align independently without stretching the title row'
+if grep -Fq 'flex min-w-0 flex-wrap items-center justify-between' "$COMP/SectionHeading.tsx"; then
+  fail 'SectionHeading must not vertically center titles against tall actions'
+fi
+
 for name in HomePage SafeShieldPage ActivityPage ConnectedDevicesPage WanPage LanPage WifiPage IptvPage SmartSafeHubAccountPage SafeShieldRulesPage UpdatePage SettingsPage; do
   grep -Fq 'SectionHeading' "$PAGE/$name.tsx" || fail "$name does not use common section style"
 done

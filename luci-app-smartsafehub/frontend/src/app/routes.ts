@@ -6,6 +6,7 @@ export type AppRoute =
   | 'iptv'
   | 'devices'
   | 'safeshield'
+  | 'netwatch'
   | 'rules'
   | 'account'
   | 'apps'
@@ -71,6 +72,13 @@ export const ROUTES: readonly RouteDefinition[] = [
     description: 'DNS 보호 상태를 확인하고 차단 목록을 관리합니다.',
   },
   {
+    route: 'netwatch',
+    hash: '#netwatch',
+    label: 'Network Watch',
+    title: 'Network Watch',
+    description: '연결된 기기의 외부 통신 변화를 가볍게 관찰하고 주의 신호를 확인합니다.',
+  },
+  {
     route: 'rules',
     hash: '#rules',
     label: '사용자 규칙',
@@ -113,5 +121,5 @@ export const ROUTE_BY_NAME = Object.fromEntries(
 
 // Public demo exposes only these read-only, fixture-backed screens.
 export const DEMO_ROUTES: readonly AppRoute[] = [
-  'home', 'activity', 'network', 'wifi', 'devices', 'safeshield', 'rules', 'account', 'apps', 'system',
+  'home', 'activity', 'network', 'wifi', 'devices', 'safeshield', 'netwatch', 'rules', 'account', 'apps', 'system',
 ];

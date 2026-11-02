@@ -101,6 +101,16 @@ if grep -Fq 'SmartSafeHub 관리 화면과 관련 소프트웨어의 새 버전�
 	fail 'management software card must not keep the long wrapping description'
 fi
 
+# The newest note must be labeled honestly when older notes are unavailable.
+grep -Fq 'const latestReleaseNoteOnly = Boolean(' "$UPDATES_CARD" || \
+  fail 'release notes must distinguish a newest-only fallback from complete history'
+grep -Fq 'data.releaseNotes[0]?.version === currentPackage.availableVersion' "$UPDATES_CARD" || \
+  fail 'newest-only release note label must match the actual available version'
+grep -Fq '최신 릴리즈 노트' "$UPDATES_CARD" || \
+  fail 'release note fallback must label the newest entry'
+grep -Fq '이전 버전의 변경 사항은 생략되었을 수 있습니다.' "$UPDATES_CARD" || \
+  fail 'newest-only release note must disclose omitted prior changes'
+
 # Manual firmware safety guidance should use the full card width on desktop and avoid an orphaned second line.
 grep -Fq 'class="mt-0 mb-4 text-xs leading-5 text-slate-500 lg:whitespace-nowrap"' "$FIRMWARE_CARD" || \
 	fail 'manual firmware safety guidance must stay on one line in the desktop layout'

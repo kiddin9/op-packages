@@ -114,8 +114,9 @@ test('demo showcases verified Apps versions, upgrade badge, and installed sizes 
 
   assert.ok(catalog.indexOf("id: 'retro-arcade'") < catalog.indexOf("id: 'network-usage-monitor'"),
     'demo card ordering should match the actual Apps page');
-  assert.match(catalog, /id: 'retro-arcade',[\s\S]*?version: '1\.1\.0-r5'/);
+  assert.match(catalog, /id: 'retro-arcade',[\s\S]*?publisherType: 'first_party',[\s\S]*?version: '1\.2\.0-r4'/);
   assert.match(catalog, /id: 'network-usage-monitor',[\s\S]*?version: '2025\.06\.02~29236be6-r1'/);
+  assert.match(catalog, /id: 'travelmate',[\s\S]*?publisherType: 'third_party',[\s\S]*?version: '2\.4\.9-r6'/);
   assert.match(catalog, /id: 'wake-on-lan',[\s\S]*?category: 'utilities',[\s\S]*?version: '26\.288\.56989~75a306d'/);
   assert.ok(catalog.indexOf("id: 'network-usage-monitor'") < catalog.indexOf("id: 'wake-on-lan'"));
   assert.match(status, /'wake-on-lan': \{\s*installed: false,\s*partial: false,\s*managed: false/);
@@ -170,6 +171,23 @@ test('public demo actions never install APKs, pair an account, or open a live ap
   assert.match(account, /onClick=\{onDemoAction\}/);
   assert.match(account, /href=\{DEVICE_CONSOLE_URL\}/);
   assert.doesNotMatch(demo, /import .*from ['"]\.\.\/api\//);
+});
+
+test('Network Watch 안내 문서와 데모 연결은 함께 유지된다', () => {
+  const routes = readFileSync(resolve(root, 'app/routes.ts'), 'utf8');
+  const app = readFileSync(resolve(root, 'demo/main.tsx'), 'utf8');
+  const sidebar = readFileSync(resolve(root, 'components/ProductNavigation.tsx'), 'utf8');
+  const fixtures = readFileSync(resolve(root, 'demo/data.ts'), 'utf8');
+  const docs = readFileSync(resolve(root, '../../docs/ROUTER_DEMO.md'), 'utf8');
+  assert.match(routes, /'netwatch'/);
+  assert.match(sidebar, /routes: \['safeshield', 'netwatch', 'rules'\]/);
+  assert.match(app, /case 'netwatch':/);
+  assert.match(app, /<NetworkWatchPage data=\{demoNetwatch\} devices=\{demoDevices\} activity=\{demoActivity\}/);
+  assert.match(fixtures, /export const demoNetwatch: NetwatchStatus = \{/);
+  assert.match(fixtures, /eventType: 'network_watch\.anomaly\.warning'/);
+  assert.match(docs, /Network Watch/);
+  assert.match(docs, /실제 네트워크를 관찰하거나 차단하지 않으며/);
+  assert.match(docs, /실제 설치 가능한 버전은 기기·채널별 Hub 승인 목록/);
 });
 
 test('README links to the public router demo', () => {

@@ -4,6 +4,8 @@
 import * as fs from 'fs';
 
 import {
+	read_json_object,
+	integer_value,
 	emit_activity_event,
 	failure,
 	new_uci_cursor,
@@ -16,20 +18,6 @@ const HEALTH_FILE = '/tmp/smartsafehub/health.json';
 const REPORT_STATE_FILE = '/tmp/smartsafehub/health-reporter.state';
 const HEALTH_HELPER = '/usr/libexec/smartsafehub-health';
 
-function read_json_file(path) {
-	const raw = fs.readfile(path);
-	if (raw == null || length(raw) == 0) {
-		return null;
-	}
-
-	try {
-		const document = json(raw);
-		return type(document) == 'object' ? document : null;
-	}
-	catch (e) {
-		return null;
-	}
-}
 
 function state_map(path) {
 	const result = {};
@@ -45,10 +33,6 @@ function state_map(path) {
 	return result;
 }
 
-function integer_value(value) {
-	const parsed = int(value);
-	return parsed == null ? 0 : parsed;
-}
 
 function bool_state(value) {
 	return value == '1' || value == 'true';
@@ -106,8 +90,8 @@ function attach_reporter(document) {
 		eligible: bool_state(reporter.eligible),
 		plan: string_value(reporter.plan, null),
 		entitlementStatus: string_value(reporter.entitlement_status, null),
-		lastReportAt: integer_value(reporter.last_report_at),
-		nextReportAt: integer_value(reporter.next_report_at),
+		lastReportAt: integer_value(reporter.last_report_at, 0),
+		nextReportAt: integer_value(reporter.next_report_at, 0),
 		lastResult: string_value(reporter.last_result, 'never'),
 		lastErrorCode: string_value(reporter.last_error_code, null),
 	};
@@ -116,7 +100,7 @@ function attach_reporter(document) {
 }
 
 function health_payload() {
-	let document = read_json_file(HEALTH_FILE);
+	let document = read_json_object(HEALTH_FILE);
 
 	if (document == null) {
 		// Return a stable pending document immediately, then populate the cache in

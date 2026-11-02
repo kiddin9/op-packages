@@ -3,6 +3,7 @@
 
 import * as fs from 'fs';
 import {
+	integer_value,
 	emit_activity_event,
 	failure,
 	new_uci_cursor,
@@ -20,12 +21,6 @@ const IGMPPROXY_INIT = '/etc/init.d/igmpproxy';
 const PREVIOUS_UNSET = '__unset__';
 const SUPPORTED_PROVIDERS = [ 'skb', 'lgu' ];
 
-function integer_value(value, fallback) {
-	const parsed = int(value);
-	const parsed_type = type(parsed);
-
-	return parsed_type == 'int' || parsed_type == 'double' ? parsed : fallback;
-}
 
 function provider_supported(provider) {
 	for (let candidate in SUPPORTED_PROVIDERS) {

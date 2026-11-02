@@ -1,0 +1,201 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SmartSafeHub Network Watch: lightweight, read-only connection observations.
+set -u
+umask 077
+COMMON_LIB="${SMARTSAFEHUB_NETWATCH_COMMON_LIB:-$(dirname "$0")/../lib/smartsafehub/common.sh}"
+[ -r "$COMMON_LIB" ] || { echo 'Network Watch common library unavailable' >&2; exit 1; }
+. "$COMMON_LIB"
+
+RUNTIME="${SMARTSAFEHUB_NETWATCH_RUNTIME_DIR:-/tmp/smartsafehub/netwatch}"
+PROC="${SMARTSAFEHUB_NETWATCH_PROC:-/proc/net/nf_conntrack}"
+PARSER="${SMARTSAFEHUB_NETWATCH_PARSER:-/usr/lib/smartsafehub/netwatch.awk}"
+EVENTS="${SMARTSAFEHUB_NETWATCH_EVENTS:-/usr/libexec/smartsafehub-events}"
+UCI="${SMARTSAFEHUB_NETWATCH_UCI:-uci}"
+DATE="${SMARTSAFEHUB_NETWATCH_DATE:-date}"
+CONNTRACK="${SMARTSAFEHUB_NETWATCH_CONNTRACK:-conntrack}"
+AWK="${SMARTSAFEHUB_NETWATCH_AWK:-awk}"
+STATUS="$RUNTIME/status.json"
+SNAPSHOT="$RUNTIME/previous.tsv"
+STAMPS="$RUNTIME/alerts.tsv"
+# The previous revision used sample.lock as a symlink, potentially with a
+# stranded sample.lock.reclaim guard. Start a fresh shared-helper mutex name.
+LOCK="$RUNTIME/sample.lock.d"
+LEGACY_LOCK="$RUNTIME/sample.lock"
+
+cleanup() {
+    rm -f "$RUNTIME"/*.tmp."$$"
+    ssh_lock_release "$LOCK"
+}
+
+# Kill -9 skips traps. Reclaim only known temporary files whose PID is gone.
+# A small per-sample bound keeps directory cleanup predictable on tiny routers.
+cleanup_orphan_temps() {
+    local file pid seen=0
+    for file in "$RUNTIME"/status.tmp.* "$RUNTIME"/previous.tmp.* \
+        "$RUNTIME"/candidate.tmp.* "$RUNTIME"/conntrack.tmp.* \
+        "$RUNTIME"/conntrack-rc.tmp.* "$RUNTIME"/conntrack-pid.tmp.* "$RUNTIME"/alerts.tmp.*; do
+        [ -f "$file" ] || continue
+        pid="${file##*.}"
+        case "$pid" in ''|0*|*[!0-9]*) continue ;; esac
+        [ "$pid" = "$$" ] && continue
+        if ! kill -0 "$pid" 2>/dev/null; then
+            rm -f "$file" 2>/dev/null || true
+        fi
+        seen=$((seen + 1))
+        [ "$seen" -lt 64 ] || break
+    done
+}
+
+# Respect an in-flight sampler from an earlier release during an upgrade;
+# leave old-style stale locks out of the new shared lock namespace.
+legacy_sampler_running() {
+    local owner
+    [ -L "$LEGACY_LOCK" ] || return 1
+    owner="$(readlink "$LEGACY_LOCK" 2>/dev/null || true)"
+    case "$owner" in ''|0*|*[!0-9]*) return 1 ;; esac
+    kill -0 "$owner" 2>/dev/null
+}
+
+write_status() {
+    [ "$1" = 'unavailable' ] && rm -f "$SNAPSHOT"
+    printf '{"schema":1,"phase":"%s","sampledAt":0,"intervalSeconds":60,"source":"conntrack","ipv4Only":true,"limited":false,"totalConnections":0,"totalDevices":0,"devices":[],"alert":null}\n' "$1" > "$RUNTIME/status.tmp.$$" &&
+        mv -f "$RUNTIME/status.tmp.$$" "$STATUS"
+}
+
+# Keep at most 64 recent per-device alert timestamps in tmpfs. These expire
+# automatically, and emit failures never consume a device's cooldown.
+alert_if_due() {
+    local now="$1" candidates="$2" tmp="$RUNTIME/alerts.tmp.$$"
+    local ip recorded_at connections destinations existing_ip existing_at seen=0 busy
+    : > "$tmp" || return 1
+    if [ -r "$STAMPS" ]; then
+        while IFS="$(printf '\t')" read -r ip recorded_at; do
+            case "$ip" in ''|*[!0-9.]*) continue ;; esac
+            case "$recorded_at" in ''|*[!0-9]*) continue ;; esac
+            if [ "$recorded_at" -le "$now" ] 2>/dev/null &&
+                [ "$now" -lt "$((recorded_at + 1800))" ] 2>/dev/null; then
+                printf '%s\t%s\n' "$ip" "$recorded_at" >> "$tmp"
+                seen=$((seen + 1))
+                [ "$seen" -lt 64 ] || break
+            fi
+        done < "$STAMPS"
+    fi
+    # Emit at most one event per sample; suppressed devices do not prevent a
+    # different device from being reported on the next available sample.
+    while IFS="$(printf '\t')" read -r ip connections destinations; do
+        case "$ip" in ''|*[!0-9.]*) continue ;; esac
+        case "$connections:$destinations" in *[!0-9:]*|:*) continue ;; esac
+        busy=0
+        while IFS="$(printf '\t')" read -r existing_ip existing_at; do
+            if [ "$existing_ip" = "$ip" ]; then busy=1; break; fi
+        done < "$tmp"
+        [ "$busy" -eq 0 ] || continue
+        if "$EVENTS" emit-quiet network_watch network_watch.anomaly.warning warning \
+            "{\"source_ip\":\"$ip\",\"connections\":$connections,\"destinations\":$destinations}" >/dev/null 2>&1; then
+            printf '%s\t%s\n' "$ip" "$now" >> "$tmp"
+        fi
+        break
+    done < "$candidates"
+    mv -f "$tmp" "$STAMPS"
+}
+
+# Stream at most 2049 lines to tmpfs. A shell-script producer may ignore a
+# failed printf after SIGPIPE and keep generating records even after head exits.
+# Explicitly terminate the producer at the cap rather than trusting SIGPIPE.
+# The producer's exit status remains available for short/failed snapshots.
+read_conntrack_bounded() {
+    local output="$1" result="$2" pidfile="$3" rc lines producer_pid
+    (
+        "$CONNTRACK" -L -f ipv4 2>/dev/null &
+        producer_pid=$!
+        printf '%s\n' "$producer_pid" > "$pidfile" || exit 1
+        # The watchdog must not retain the producer's stdout pipe: a live
+        # sleep child would otherwise delay EOF on a successful short read.
+        (
+            sleep 5
+            kill -TERM "$producer_pid" 2>/dev/null || true
+            sleep 1
+            kill -KILL "$producer_pid" 2>/dev/null || true
+        ) >/dev/null 2>&1 &
+        watchdog_pid=$!
+        wait "$producer_pid" 2>/dev/null
+        producer_rc=$?
+        kill "$watchdog_pid" 2>/dev/null || true
+        wait "$watchdog_pid" 2>/dev/null || true
+        printf '%s\n' "$producer_rc" > "$result"
+    ) | (
+        head -n 2049 > "$output" || exit 1
+        lines="$(wc -l < "$output")"
+        if [ "$lines" -ge 2049 ]; then
+            producer_pid="$(cat "$pidfile" 2>/dev/null || true)"
+            case "$producer_pid" in
+                ''|0*|*[!0-9]*) return 1 ;;
+            esac
+            kill -TERM "$producer_pid" 2>/dev/null || true
+        fi
+    ) || return 1
+    rc="$(cat "$result" 2>/dev/null || true)"
+    lines="$(wc -l < "$output")"
+    if [ "$lines" -ge 2049 ]; then
+        # A truncated sample is never used as a baseline or to raise alerts.
+        # Producer may exit due to SIGPIPE, SIGTERM, or the natural last line.
+        return 0
+    fi
+    [ "$rc" = 0 ]
+}
+
+sample() {
+    local enabled now source tmp_status tmp_snapshot tmp_candidate raw_tmp rc_tmp pid_tmp
+    mkdir -p "$RUNTIME" || return 1
+    legacy_sampler_running && return 0
+    ssh_lock_acquire "$LOCK" 3 0.05 sleep 1 || return 0
+    trap 'cleanup' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    cleanup_orphan_temps
+    # Retire obsolete tmpfs state from the symlink/flock-based revisions.
+    rm -f "$LEGACY_LOCK" "$RUNTIME/alert.stamp" 2>/dev/null || true
+    rmdir "$RUNTIME/sample.lock.reclaim" 2>/dev/null || true
+    enabled="$("$UCI" -q get smartsafehub.netwatch.enabled 2>/dev/null || true)"
+    if [ "$enabled" = '0' ]; then
+        rm -f "$SNAPSHOT" "$STAMPS"
+        write_status disabled
+        return 0
+    fi
+    now="$("$DATE" +%s 2>/dev/null || true)"
+    case "$now" in ''|*[!0-9]*) write_status unavailable; return 0 ;; esac
+    tmp_status="$RUNTIME/status.tmp.$$"
+    tmp_snapshot="$RUNTIME/previous.tmp.$$"
+    tmp_candidate="$RUNTIME/candidate.tmp.$$"
+    raw_tmp="$RUNTIME/conntrack.tmp.$$"
+    rc_tmp="$RUNTIME/conntrack-rc.tmp.$$"
+    pid_tmp="$RUNTIME/conntrack-pid.tmp.$$"
+    : > "$tmp_candidate" || return 1
+    if [ -r "$PROC" ]; then
+        source="$PROC"
+    else
+        # Bounded producer/consumer pipeline, not an unbounded conntrack -L
+        # output file. Cap tmpfs and refuse failed/partial failed reads.
+        if ! (ulimit -f 1024 2>/dev/null || true; read_conntrack_bounded "$raw_tmp" "$rc_tmp" "$pid_tmp"); then
+            write_status unavailable
+            return 0
+        fi
+        source="$raw_tmp"
+    fi
+    if ! "$AWK" -v previous="$SNAPSHOT" -v snapshot="$tmp_snapshot" \
+        -v candidate="$tmp_candidate" -v status="$tmp_status" -v now="$now" \
+        -f "$PARSER" "$source"; then
+        write_status unavailable
+        return 0
+    fi
+    [ -s "$tmp_status" ] || { write_status unavailable; return 0; }
+    mv -f "$tmp_snapshot" "$SNAPSHOT" || return 1
+    mv -f "$tmp_status" "$STATUS" || return 1
+    alert_if_due "$now" "$tmp_candidate"
+}
+
+case "${1:-}" in
+    sample) sample ;;
+    *) echo 'Usage: smartsafehub-netwatch sample' >&2; exit 2 ;;
+esac

@@ -18,7 +18,7 @@
 #
 # 用法：
 #   sh teardown.sh all        # mwan3 段 + runtime 残留 + 文件
-#   sh teardown.sh mwan3      # 只删 mwan3 里 isp_split=1 的 ipset/policy/member
+#   sh teardown.sh mwan3      # 只删 mwan3 里 isp_split=1 的 ipset/rule/policy/member/interface
 #   sh teardown.sh runtime    # cron 行 / isp_fallback 计数器 / dnsmasq confdir 与片段 / LuCI 缓存
 #   sh teardown.sh files      # 本工具安装的文件（含 /etc/isp-split 数据目录）
 #   sh teardown.sh --list     # 打印清单（selftest 与 postrm 漂移断言用），不动作
@@ -181,9 +181,11 @@ print_list() {
 	echo "== 卸载清单（唯一实现：teardown.sh）=="
 	echo "-- mwan3（UCI 段 + 服务重载）--"
 	echo "  带 isp_split=1 标记的 ipset 段（含改名/删除的孤儿段）"
+	echo "  带 isp_split=1 标记的 rule 段（wire 生成的 isp_ 规则；不依赖 rules-splice 也能清）"
 	echo "  带 isp_split=1 标记的 policy 段"
 	echo "  带 isp_split=1 标记的 member 段（仍被其它策略引用的保留）"
-	echo "  nft 规则块由 isp-split uninstall 的 rules-splice 摘除"
+	echo "  带 isp_split=1 标记的 mwan3 interface 段（bootstrap 建的；仍被成员引用的保留）"
+	echo "  nft 规则块由 isp-split uninstall 的 rules-splice 摘除（teardown 自身只删 UCI 段）"
 	echo "-- runtime 残留 --"
 	echo "  crontab 里的 isp-split 行"
 	echo "  nft 命名计数器 isp_fallback"
@@ -220,6 +222,17 @@ cmd_mwan3() {
 		uci -q delete "mwan3.$_mw_sec" 2>/dev/null && _mw_n=$((_mw_n + 1))
 	done
 
+	# rule 段：wire 生成的 isp_ 规则也带 isp_split=1。uninstall 的正常路径会先用
+	# rules-splice 摘掉它们，但 `bootstrap --rollback` 与 install.sh 的 teardown
+	# 兜底路径不经过 splice——不在这里删，"只删带标记的段"这句承诺就是假的。
+	# 顺序：先规则，再策略（规则引用策略，先删引用方永远不会让 mwan3 渲染失败）。
+	_mw_nr=0
+	for _mw_sec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=rule$/\1/p'); do
+		[ "$(uci -q get "mwan3.$_mw_sec.isp_split" 2>/dev/null)" = "1" ] || continue
+		uci -q delete "mwan3.$_mw_sec" 2>/dev/null && _mw_nr=$((_mw_nr + 1))
+	done
+
 	_mw_np=0
 	for _mw_sec in $(uci -q show mwan3 2>/dev/null |
 		sed -n 's/^mwan3\.\([^=]*\)=policy$/\1/p'); do
@@ -247,14 +260,40 @@ cmd_mwan3() {
 		esac
 		uci -q delete "mwan3.$_mw_sec" 2>/dev/null && _mw_nm=$((_mw_nm + 1))
 	done
+	# interface 段：bootstrap 建的那些（isp_split=1）。判据只有标记，绝不按
+	# "名字看起来像 wan" 猜——用户手配的 wan/wanb 没有标记，必须原样保留。
+	# 仍被任何成员引用的接口保留：删了 mwan3 会渲染失败（比"残留"更糟）。
+	_mw_ifrefs=" "
+	for _mw_isec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=member$/\1/p'); do
+		for _mw_y in $(uci -q get "mwan3.$_mw_isec.interface" 2>/dev/null); do
+			_mw_ifrefs="$_mw_ifrefs$_mw_y "
+		done
+	done
+	_mw_ni=0
+	for _mw_sec in $(uci -q show mwan3 2>/dev/null |
+		sed -n 's/^mwan3\.\([^=]*\)=interface$/\1/p'); do
+		[ "$(uci -q get "mwan3.$_mw_sec.isp_split" 2>/dev/null)" = "1" ] || continue
+		case "$_mw_ifrefs" in
+		*" $_mw_sec "*)
+			say "警告：接口段 $_mw_sec 仍被成员引用，保留"
+			continue
+			;;
+		esac
+		uci -q delete "mwan3.$_mw_sec" 2>/dev/null && _mw_ni=$((_mw_ni + 1))
+	done
 	uci -q commit mwan3 2>/dev/null || true
 
 	[ "$_mw_n" -gt 0 ] &&
 		say "已删除 $_mw_n 个带 isp_split 标记的 ipset 段（含改名/删除的孤儿段）"
+	[ "$_mw_nr" -gt 0 ] &&
+		say "已删除 $_mw_nr 个带 isp_split 标记的 mwan3 rule 段"
 	[ "$_mw_np" -gt 0 ] || [ "$_mw_nm" -gt 0 ] &&
 		say "已删除 $_mw_np 个带 isp_split 标记的策略段、$_mw_nm 个成员段"
+	[ "$_mw_ni" -gt 0 ] &&
+		say "已删除 $_mw_ni 个带 isp_split 标记的 mwan3 interface 段（bootstrap 建的骨架）"
 
-	# 规则已由 rules-splice 摘掉，这里 reload 让集合/策略随之消失。
+	# 规则块在 uninstall 路径已被 rules-splice 摘掉；这里 reload 让集合/策略随之消失。
 	if [ -x "$MWAN3_SERVICE" ]; then
 		"$MWAN3_SERVICE" reload >/dev/null 2>&1 || true
 	fi
