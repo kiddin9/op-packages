@@ -2556,9 +2556,6 @@ html:not([data-darkmode="true"]) .vt-login-page {
 	position: relative; width: min(380px, 100%);
 	z-index: 1;
 }
-.vt-login-page{
-	background:none !important;
-}
 .vt-login-page::before {
 	content: "";
 	position: absolute;
@@ -2569,7 +2566,7 @@ html:not([data-darkmode="true"]) .vt-login-page {
 	opacity: 0.4;
 }
 html:not([data-darkmode="true"]) .vt-login-page::before {
-	opacity: 0.7;
+	opacity: 0.6;
 }
 #packages {
  width: 100% !important;

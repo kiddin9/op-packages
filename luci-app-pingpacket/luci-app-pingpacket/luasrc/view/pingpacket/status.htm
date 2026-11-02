@@ -51,6 +51,7 @@
 .pp-toggle-panel {
 	min-width: 240px;
 	padding: 16px 18px;
+	box-sizing: border-box;
 	border-radius: 16px;
 	background: rgba(255, 255, 255, 0.12);
 	backdrop-filter: blur(6px);
@@ -523,12 +524,261 @@
 	color: #d13d38;
 }
 
+.pp-chart-panel {
+	margin-bottom: 18px;
+}
+
+.pp-range-group {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px;
+	border-radius: 13px;
+	background: #eef4fc;
+	border: 1px solid #dde8f6;
+	flex: 0 0 auto;
+}
+
+.pp-range-btn {
+	min-width: 54px;
+	height: 32px;
+	padding: 0 12px;
+	border: none;
+	border-radius: 9px;
+	background: transparent;
+	color: #4a5f78;
+	font-size: 13px;
+	font-weight: 600;
+	white-space: nowrap;
+	cursor: pointer;
+	transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pp-range-btn:hover {
+	background: #e2edfb;
+}
+
+.pp-range-btn.active {
+	background: #fff;
+	color: #1256b4;
+	box-shadow: 0 4px 12px rgba(18, 86, 180, 0.16);
+}
+
+.pp-custom-range {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+	flex-wrap: wrap;
+	margin-bottom: 14px;
+	padding: 14px 16px;
+	border-radius: 14px;
+	background: #f5f9ff;
+	border: 1px solid #e5eef8;
+}
+
+.pp-custom-range.hidden {
+	display: none;
+}
+
+.pp-custom-field {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	font-size: 12px;
+	color: #6d7d92;
+}
+
+.pp-custom-field input {
+	height: 38px;
+	padding: 0 10px;
+	border: 1px solid #cedbeb;
+	border-radius: 10px;
+	background: #fff;
+	font-size: 13px;
+	color: #24364d;
+	font-family: inherit;
+}
+
+.pp-custom-field input:focus {
+	outline: none;
+	border-color: #1d71e8;
+	box-shadow: 0 0 0 4px rgba(29, 113, 232, 0.12);
+}
+
+.pp-custom-apply {
+	height: 38px;
+	padding: 0 18px;
+	border: none;
+	border-radius: 10px;
+	background: linear-gradient(135deg, #1d71e8, #1256b4);
+	color: #fff;
+	font-size: 13px;
+	font-weight: 600;
+	cursor: pointer;
+	transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.pp-custom-apply:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 8px 18px rgba(18, 86, 180, 0.2);
+}
+
+.pp-chart-msg {
+	font-size: 12px;
+	line-height: 38px;
+	color: #d13d38;
+}
+
+.pp-chart-summary {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 12px;
+	margin-bottom: 16px;
+}
+
+.pp-chart-chip {
+	padding: 12px 14px;
+	border-radius: 13px;
+	background: #f5f9ff;
+	border: 1px solid #e5eef8;
+	min-width: 0;
+}
+
+.pp-chart-chip-label {
+	display: block;
+	margin-bottom: 6px;
+	font-size: 12px;
+	color: #70839b;
+}
+
+.pp-chart-chip-value {
+	font-size: 17px;
+	font-weight: 700;
+	color: #1f3147;
+	font-variant-numeric: tabular-nums;
+	font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.pp-chart-chip-value.domestic {
+	color: #1d71e8;
+}
+
+.pp-chart-chip-value.foreign {
+	color: #ea580c;
+}
+
+.pp-chart-chip-value.range-text {
+	font-size: 13px;
+	line-height: 1.45;
+	white-space: normal;
+	word-break: break-all;
+}
+
+.pp-chart-wrap {
+	position: relative;
+	width: 100%;
+	border-radius: 14px;
+	background: linear-gradient(180deg, #fbfdff, #f7fbff);
+	border: 1px solid #e8f0fa;
+	padding: 6px 4px 2px;
+	box-sizing: border-box;
+	overflow: hidden;
+}
+
+.pp-chart-svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.pp-chart-tip {
+	position: absolute;
+	left: 0;
+	top: 0;
+	padding: 8px 11px;
+	border-radius: 10px;
+	background: rgba(16, 32, 51, 0.94);
+	color: #eaf3ff;
+	font-size: 12px;
+	line-height: 1.6;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transform: translate(-50%, -100%);
+	transition: opacity 0.12s ease;
+	box-shadow: 0 12px 26px rgba(9, 22, 38, 0.28);
+	z-index: 5;
+}
+
+.pp-chart-tip.visible {
+	opacity: 1;
+}
+
+.pp-chart-empty {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0 16px;
+	text-align: center;
+	font-size: 13px;
+	color: #8b9cb0;
+}
+
+.pp-chart-empty.hidden {
+	display: none;
+}
+
+.pp-legend {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex-wrap: wrap;
+	margin-top: 12px;
+	font-size: 12px;
+	color: #5c6f86;
+}
+
+.pp-legend-item {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.pp-legend-swatch {
+	width: 12px;
+	height: 12px;
+	border-radius: 4px;
+	flex: 0 0 auto;
+}
+
+.pp-legend-swatch.domestic {
+	background: linear-gradient(135deg, #4d95f0, #1d71e8);
+}
+
+.pp-legend-swatch.foreign {
+	background: linear-gradient(135deg, #fba05a, #ea580c);
+}
+
 @media (max-width: 860px) {
 	.pp-hero,
 	.pp-panel-head,
 	.pp-actions {
 		flex-direction: column;
 		align-items: stretch;
+	}
+
+	.pp-range-group {
+		width: 100%;
+		justify-content: space-between;
+	}
+
+	.pp-range-btn {
+		flex: 1 1 auto;
 	}
 
 	.pp-toggle-panel {
@@ -558,6 +808,19 @@
 	.pp-cards,
 	.pp-form-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.pp-chart-summary {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.pp-custom-field {
+		flex: 1 1 100%;
+	}
+
+	.pp-custom-field input {
+		width: 100%;
+		box-sizing: border-box;
 	}
 
 	.pp-page {
@@ -730,6 +993,65 @@
 		</div>
 	</div>
 
+	<div class="pp-panel pp-chart-panel">
+		<div class="pp-panel-head">
+			<div>
+				<h3 class="pp-panel-title">丢包与时间的关系</h3>
+				<div class="pp-panel-note">按分钟聚合探测结果，展示国内与国外目标各自的丢包率变化趋势。可切换日、周、月或自定义时间范围，鼠标悬浮可查看具体时段的样本数与丢包情况。</div>
+			</div>
+			<div class="pp-range-group" id="rangeGroup">
+				<button type="button" class="pp-range-btn active" data-range="day">日</button>
+				<button type="button" class="pp-range-btn" data-range="week">周</button>
+				<button type="button" class="pp-range-btn" data-range="month">月</button>
+				<button type="button" class="pp-range-btn" data-range="custom">自定义</button>
+			</div>
+		</div>
+
+		<div class="pp-custom-range hidden" id="customRange">
+			<label class="pp-custom-field">
+				<span>开始时间</span>
+				<input type="datetime-local" id="chartFrom">
+			</label>
+			<label class="pp-custom-field">
+				<span>结束时间</span>
+				<input type="datetime-local" id="chartTo">
+			</label>
+			<button type="button" class="pp-custom-apply" id="chartApply">应用范围</button>
+			<span class="pp-chart-msg" id="chartMsg"></span>
+		</div>
+
+		<div class="pp-chart-summary">
+			<div class="pp-chart-chip">
+				<span class="pp-chart-chip-label">国内平均丢包率</span>
+				<div class="pp-chart-chip-value domestic" id="chartDomesticRate">--</div>
+			</div>
+			<div class="pp-chart-chip">
+				<span class="pp-chart-chip-label">国外平均丢包率</span>
+				<div class="pp-chart-chip-value foreign" id="chartForeignRate">--</div>
+			</div>
+			<div class="pp-chart-chip">
+				<span class="pp-chart-chip-label">区间峰值丢包率</span>
+				<div class="pp-chart-chip-value" id="chartPeak">--</div>
+			</div>
+			<div class="pp-chart-chip">
+				<span class="pp-chart-chip-label">统计区间</span>
+				<div class="pp-chart-chip-value range-text" id="chartRange">--</div>
+			</div>
+		</div>
+
+		<div class="pp-chart-wrap" id="chartWrap">
+			<svg class="pp-chart-svg" id="chartSvg" viewBox="0 0 800 300" preserveAspectRatio="xMidYMid meet"></svg>
+			<div class="pp-chart-empty hidden" id="chartEmpty">暂无历史数据，启用监控后会自动开始记录。</div>
+			<div class="pp-chart-tip" id="chartTip"></div>
+		</div>
+
+		<div class="pp-legend">
+			<span class="pp-legend-item"><span class="pp-legend-swatch domestic"></span>国内丢包率</span>
+			<span class="pp-legend-item"><span class="pp-legend-swatch foreign"></span>国外丢包率</span>
+			<span class="pp-legend-item" id="chartBucketNote"></span>
+		</div>
+	</div>
+
 	<div class="pp-panel">
 		<div class="pp-panel-head">
 			<div>
@@ -795,6 +1117,7 @@
 	var apiBase = '<%=url("admin/status/pingpacket")%>';
 	var formToken = (window.L && L.env && L.env.token) ? L.env.token : '<%=token%>';
 	var dataUrl = apiBase + '/get_data';
+	var historyUrl = apiBase + '/get_history';
 	var saveUrl = apiBase + '/save_config';
 	var restartUrl = apiBase + '/restart_service';
 	var pollTimer = null;
@@ -1310,6 +1633,503 @@
 		);
 	};
 
+	/* ---------------- 丢包与时间的关系图表 ---------------- */
+
+	var CHART_PAD = { left: 48, right: 18, top: 16, bottom: 28 };
+	var CHART_COLORS = { domestic: '#1d71e8', foreign: '#ea580c' };
+	var chartState = {
+		range: 'day',
+		payload: null,
+		loading: false,
+		layout: null,
+		resizeTimer: null
+	};
+
+	function pad2(value) {
+		return String(value).padStart(2, '0');
+	}
+
+	function formatDateTimeInput(date) {
+		return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate()) +
+			'T' + pad2(date.getHours()) + ':' + pad2(date.getMinutes());
+	}
+
+	function setChartMessage(text) {
+		var node = $('chartMsg');
+		if (node) {
+			node.textContent = text || '';
+		}
+	}
+
+	function formatRateText(value) {
+		if (typeof value !== 'number' || value < 0) {
+			return '--';
+		}
+
+		return value.toFixed(1) + '%';
+	}
+
+	function updateChartSummary(payload) {
+		var domestic = (payload.summary && payload.summary.domestic) || {};
+		var foreign = (payload.summary && payload.summary.foreign) || {};
+		var peak = Math.max(
+			typeof domestic.peak === 'number' ? domestic.peak : -1,
+			typeof foreign.peak === 'number' ? foreign.peak : -1
+		);
+		var bucket = Number(payload.bucket_minutes) || 0;
+		var bucketText = bucket >= 60 ? (bucket / 60) + ' 小时' : bucket + ' 分钟';
+		var totalPoints = (payload.points || []).length;
+
+		$('chartDomesticRate').textContent = formatRateText(domestic.rate);
+		$('chartForeignRate').textContent = formatRateText(foreign.rate);
+		$('chartPeak').textContent = peak < 0 ? '--' : peak.toFixed(1) + '%';
+
+		var fromText = String(payload.from || '--').replace(/^\d{4}-/, '');
+		var toText = String(payload.to || '--').replace(/^\d{4}-/, '');
+		var rangeNode = $('chartRange');
+
+		rangeNode.textContent = fromText + ' ~ ' + toText;
+		rangeNode.title = (payload.from || '--') + ' ~ ' + (payload.to || '--');
+		$('chartBucketNote').textContent = '聚合粒度 ' + bucketText + '，共 ' + totalPoints + ' 个数据点';
+	}
+
+	function niceAxisMax(value) {
+		if (!(value > 0)) {
+			return 1;
+		}
+
+		var steps = [0.5, 1, 2, 5, 10, 20, 25, 50, 100];
+
+		for (var i = 0; i < steps.length; i++) {
+			if (value <= steps[i]) {
+				return steps[i];
+			}
+		}
+
+		return 100;
+	}
+
+	function formatAxisTick(value) {
+		if (value >= 10 || value % 1 === 0) {
+			return value.toFixed(0) + '%';
+		}
+
+		return value.toFixed(1) + '%';
+	}
+
+	function buildChartSeries(points, key, xOf, yOf, baseY) {
+		var segments = [];
+		var current = null;
+
+		for (var i = 0; i < points.length; i++) {
+			var value = points[i][key];
+
+			if (typeof value !== 'number' || value < 0) {
+				if (current) {
+					segments.push(current);
+					current = null;
+				}
+				continue;
+			}
+
+			if (!current) {
+				current = [];
+			}
+
+			current.push({ x: xOf(i), y: yOf(value) });
+		}
+
+		if (current) {
+			segments.push(current);
+		}
+
+		var line = '';
+		var area = '';
+
+		for (var s = 0; s < segments.length; s++) {
+			var segment = segments[s];
+
+			for (var p = 0; p < segment.length; p++) {
+				line += (p === 0 ? 'M' : 'L') + segment[p].x.toFixed(1) + ' ' + segment[p].y.toFixed(1);
+			}
+
+			area += 'M' + segment[0].x.toFixed(1) + ' ' + baseY.toFixed(1);
+			for (var q = 0; q < segment.length; q++) {
+				area += 'L' + segment[q].x.toFixed(1) + ' ' + segment[q].y.toFixed(1);
+			}
+			area += 'L' + segment[segment.length - 1].x.toFixed(1) + ' ' + baseY.toFixed(1) + 'Z';
+		}
+
+		return { line: line, area: area };
+	}
+
+	function renderChart() {
+		var payload = chartState.payload;
+		var wrap = $('chartWrap');
+		var svg = $('chartSvg');
+		var empty = $('chartEmpty');
+
+		if (!wrap || !svg || !empty) {
+			return;
+		}
+
+		var points = (payload && payload.points) || [];
+		var hasData = false;
+
+		for (var i = 0; i < points.length; i++) {
+			if (points[i].ds > 0 || points[i].fs > 0) {
+				hasData = true;
+				break;
+			}
+		}
+
+		if (!hasData) {
+			svg.innerHTML = '';
+			empty.className = 'pp-chart-empty';
+			chartState.layout = null;
+			return;
+		}
+
+		empty.className = 'pp-chart-empty hidden';
+
+		var width = Math.max(320, Math.round(wrap.clientWidth || 800));
+		var height = width < 560 ? 220 : 300;
+		var pad = CHART_PAD;
+		var innerW = width - pad.left - pad.right;
+		var innerH = height - pad.top - pad.bottom;
+		var count = points.length;
+		var step = count > 1 ? innerW / (count - 1) : 0;
+		var baseY = pad.top + innerH;
+
+		var maxRate = 0;
+		for (var j = 0; j < count; j++) {
+			if (points[j].d_rate > maxRate) {
+				maxRate = points[j].d_rate;
+			}
+			if (points[j].f_rate > maxRate) {
+				maxRate = points[j].f_rate;
+			}
+		}
+
+		var yMax = niceAxisMax(maxRate);
+
+		function xOf(index) {
+			return count > 1 ? pad.left + (index * step) : pad.left + (innerW / 2);
+		}
+
+		function yOf(value) {
+			return pad.top + innerH - (Math.min(value, yMax) / yMax) * innerH;
+		}
+
+		var parts = [];
+
+		parts.push(
+			'<defs>' +
+			'<linearGradient id="ppDomesticFill" x1="0" y1="0" x2="0" y2="1">' +
+			'<stop offset="0%" stop-color="' + CHART_COLORS.domestic + '" stop-opacity="0.26"/>' +
+			'<stop offset="100%" stop-color="' + CHART_COLORS.domestic + '" stop-opacity="0.02"/>' +
+			'</linearGradient>' +
+			'<linearGradient id="ppForeignFill" x1="0" y1="0" x2="0" y2="1">' +
+			'<stop offset="0%" stop-color="' + CHART_COLORS.foreign + '" stop-opacity="0.22"/>' +
+			'<stop offset="100%" stop-color="' + CHART_COLORS.foreign + '" stop-opacity="0.02"/>' +
+			'</linearGradient>' +
+			'</defs>'
+		);
+
+		for (var g = 0; g <= 4; g++) {
+			var tickValue = (yMax * g) / 4;
+			var tickY = yOf(tickValue);
+
+			parts.push('<line x1="' + pad.left + '" y1="' + tickY.toFixed(1) + '" x2="' + (width - pad.right) +
+				'" y2="' + tickY.toFixed(1) + '" stroke="' + (g === 0 ? '#d9e5f3' : '#eaf1fa') + '" stroke-width="1"/>');
+			parts.push('<text x="' + (pad.left - 10) + '" y="' + (tickY + 3.5).toFixed(1) +
+				'" text-anchor="end" font-size="10" fill="#94a5ba">' + formatAxisTick(tickValue) + '</text>');
+		}
+
+		var labelEvery = Math.max(1, Math.ceil(count / 7));
+		for (var k = 0; k < count; k += labelEvery) {
+			parts.push('<text x="' + xOf(k).toFixed(1) + '" y="' + (height - 8) +
+				'" text-anchor="middle" font-size="10" fill="#94a5ba">' + points[k].label + '</text>');
+		}
+
+		if ((count - 1) % labelEvery !== 0) {
+			parts.push('<text x="' + xOf(count - 1).toFixed(1) + '" y="' + (height - 8) +
+				'" text-anchor="middle" font-size="10" fill="#94a5ba">' + points[count - 1].label + '</text>');
+		}
+
+		var domestic = buildChartSeries(points, 'd_rate', xOf, yOf, baseY);
+		var foreign = buildChartSeries(points, 'f_rate', xOf, yOf, baseY);
+
+		if (foreign.area) {
+			parts.push('<path d="' + foreign.area + '" fill="url(#ppForeignFill)" stroke="none"/>');
+		}
+
+		if (domestic.area) {
+			parts.push('<path d="' + domestic.area + '" fill="url(#ppDomesticFill)" stroke="none"/>');
+		}
+
+		if (foreign.line) {
+			parts.push('<path d="' + foreign.line + '" fill="none" stroke="' + CHART_COLORS.foreign +
+				'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+		}
+
+		if (domestic.line) {
+			parts.push('<path d="' + domestic.line + '" fill="none" stroke="' + CHART_COLORS.domestic +
+				'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+		}
+
+		parts.push('<line id="chartHoverLine" x1="0" y1="' + pad.top + '" x2="0" y2="' + baseY +
+			'" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>');
+		parts.push('<circle id="chartHoverDomestic" r="4" fill="' + CHART_COLORS.domestic +
+			'" stroke="#fff" stroke-width="2" opacity="0"/>');
+		parts.push('<circle id="chartHoverForeign" r="4" fill="' + CHART_COLORS.foreign +
+			'" stroke="#fff" stroke-width="2" opacity="0"/>');
+
+		svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+		svg.setAttribute('width', width);
+		svg.setAttribute('height', height);
+		svg.innerHTML = parts.join('');
+
+		chartState.layout = {
+			pad: pad,
+			width: width,
+			count: count,
+			step: step,
+			points: points,
+			xOf: xOf,
+			yOf: yOf
+		};
+	}
+
+	function hideChartTip() {
+		var tip = $('chartTip');
+		var hoverLine = $('chartHoverLine');
+		var domesticDot = $('chartHoverDomestic');
+		var foreignDot = $('chartHoverForeign');
+
+		if (tip) {
+			tip.className = 'pp-chart-tip';
+		}
+		if (hoverLine) {
+			hoverLine.setAttribute('opacity', '0');
+		}
+		if (domesticDot) {
+			domesticDot.setAttribute('opacity', '0');
+		}
+		if (foreignDot) {
+			foreignDot.setAttribute('opacity', '0');
+		}
+	}
+
+	function showChartTip(event) {
+		var layout = chartState.layout;
+		var wrap = $('chartWrap');
+		var tip = $('chartTip');
+
+		if (!layout || !wrap || !tip) {
+			return;
+		}
+
+		var rect = wrap.getBoundingClientRect();
+		var offsetX = event.clientX - rect.left;
+		var offsetY = event.clientY - rect.top;
+		var index = layout.count > 1 ? Math.round((offsetX - layout.pad.left) / layout.step) : 0;
+
+		if (index < 0) {
+			index = 0;
+		}
+		if (index > layout.count - 1) {
+			index = layout.count - 1;
+		}
+
+		var point = layout.points[index];
+		var pointX = layout.xOf(index);
+		var hoverLine = $('chartHoverLine');
+		var domesticDot = $('chartHoverDomestic');
+		var foreignDot = $('chartHoverForeign');
+
+		if (hoverLine) {
+			hoverLine.setAttribute('x1', pointX.toFixed(1));
+			hoverLine.setAttribute('x2', pointX.toFixed(1));
+			hoverLine.setAttribute('opacity', '1');
+		}
+
+		if (domesticDot) {
+			if (point.d_rate >= 0) {
+				domesticDot.setAttribute('cx', pointX.toFixed(1));
+				domesticDot.setAttribute('cy', layout.yOf(point.d_rate).toFixed(1));
+				domesticDot.setAttribute('opacity', '1');
+			} else {
+				domesticDot.setAttribute('opacity', '0');
+			}
+		}
+
+		if (foreignDot) {
+			if (point.f_rate >= 0) {
+				foreignDot.setAttribute('cx', pointX.toFixed(1));
+				foreignDot.setAttribute('cy', layout.yOf(point.f_rate).toFixed(1));
+				foreignDot.setAttribute('opacity', '1');
+			} else {
+				foreignDot.setAttribute('opacity', '0');
+			}
+		}
+
+		tip.innerHTML =
+			'<div style="font-weight:600;margin-bottom:4px;">' + point.label + '</div>' +
+			'<div>国内 ' + (point.d_rate >= 0 ? point.d_rate.toFixed(1) + '%' : '无数据') +
+			' · 样本 ' + point.ds + ' · 丢包 ' + point.dl + '</div>' +
+			'<div>国外 ' + (point.f_rate >= 0 ? point.f_rate.toFixed(1) + '%' : '无数据') +
+			' · 样本 ' + point.fs + ' · 丢包 ' + point.fl + '</div>';
+
+		var tipLeft = Math.min(Math.max(pointX, 80), layout.width - 80);
+		var tipTop = Math.max(offsetY - 10, 46);
+
+		tip.style.left = tipLeft + 'px';
+		tip.style.top = tipTop + 'px';
+		tip.className = 'pp-chart-tip visible';
+	}
+
+	function fetchHistory() {
+		if (chartState.loading) {
+			return;
+		}
+
+		var url = historyUrl + '?range=' + encodeURIComponent(chartState.range) + '&_=' + Date.now();
+
+		if (chartState.range === 'custom') {
+			var fromValue = $('chartFrom').value;
+			var toValue = $('chartTo').value;
+			var fromTime = fromValue ? new Date(fromValue).getTime() : NaN;
+			var toTime = toValue ? new Date(toValue).getTime() : NaN;
+
+			if (!isFinite(fromTime) || !isFinite(toTime)) {
+				setChartMessage('请选择完整的开始时间和结束时间。');
+				return;
+			}
+
+			if (toTime <= fromTime) {
+				setChartMessage('结束时间必须晚于开始时间。');
+				return;
+			}
+
+			if (toTime - fromTime > 90 * 24 * 3600 * 1000) {
+				setChartMessage('自定义时间范围最多支持 90 天。');
+				return;
+			}
+
+			url += '&from=' + Math.floor(fromTime / 1000) + '&to=' + Math.floor(toTime / 1000);
+		}
+
+		chartState.loading = true;
+		setChartMessage('');
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+		xhr.onload = function() {
+			var response = null;
+
+			if (xhr.status === 200) {
+				try {
+					response = JSON.parse(xhr.responseText);
+				} catch (e) {}
+			}
+
+			chartState.loading = false;
+
+			if (response && response.success) {
+				chartState.payload = response;
+				updateChartSummary(response);
+				renderChart();
+			} else {
+				setChartMessage((response && response.message) || '历史数据加载失败，请稍后重试。');
+			}
+		};
+		xhr.onerror = function() {
+			chartState.loading = false;
+			setChartMessage('历史数据加载失败，请检查网络后重试。');
+		};
+		xhr.send();
+	}
+
+	function setChartRange(range) {
+		chartState.range = range;
+
+		var buttons = $('rangeGroup').getElementsByTagName('button');
+
+		for (var i = 0; i < buttons.length; i++) {
+			buttons[i].className = buttons[i].getAttribute('data-range') === range ? 'pp-range-btn active' : 'pp-range-btn';
+		}
+
+		if (range === 'custom') {
+			$('customRange').className = 'pp-custom-range';
+
+			if (!$('chartFrom').value || !$('chartTo').value) {
+				var now = new Date();
+				$('chartTo').value = formatDateTimeInput(now);
+				$('chartFrom').value = formatDateTimeInput(new Date(now.getTime() - 24 * 3600 * 1000));
+			}
+		} else {
+			$('customRange').className = 'pp-custom-range hidden';
+		}
+
+		setChartMessage('');
+		fetchHistory();
+	}
+
+	function initChart() {
+		var buttons = $('rangeGroup').getElementsByTagName('button');
+
+		for (var i = 0; i < buttons.length; i++) {
+			buttons[i].addEventListener('click', function() {
+				setChartRange(this.getAttribute('data-range'));
+			});
+		}
+
+		$('chartApply').addEventListener('click', function() {
+			if (chartState.range !== 'custom') {
+				setChartRange('custom');
+				return;
+			}
+
+			fetchHistory();
+		});
+
+		$('chartWrap').addEventListener('mousemove', showChartTip);
+		$('chartWrap').addEventListener('mouseleave', hideChartTip);
+
+		window.addEventListener('resize', function() {
+			if (chartState.resizeTimer) {
+				clearTimeout(chartState.resizeTimer);
+			}
+
+			chartState.resizeTimer = setTimeout(function() {
+				if (chartState.payload) {
+					renderChart();
+				}
+			}, 180);
+		});
+
+		var chartTick = 0;
+
+		setInterval(function() {
+			chartTick += 1;
+
+			if (document.hidden || chartState.loading) {
+				return;
+			}
+
+			// 日视图每分钟刷新，周/月视图数据变化慢，每 5 分钟刷新一次以降低路由器压力
+			if (chartTick % (chartState.range === 'day' ? 1 : 5) !== 0) {
+				return;
+			}
+
+			fetchHistory();
+		}, 60000);
+
+		fetchHistory();
+	}
+
 	$('domesticInput').addEventListener('input', function() {
 		inputDirty.domestic = true;
 	});
@@ -1369,6 +2189,7 @@
 	});
 
 	fetchData();
+	initChart();
 })();
 </script>
 

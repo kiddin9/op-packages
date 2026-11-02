@@ -51,6 +51,7 @@
 .pp-log-summary {
 	min-width: 250px;
 	padding: 16px 18px;
+	box-sizing: border-box;
 	border-radius: 16px;
 	background: rgba(255, 255, 255, 0.12);
 	backdrop-filter: blur(6px);
@@ -348,14 +349,18 @@
 	function updateView(payload) {
 		var content = payload.content || '';
 		var output = $('logContent');
+		var displayText = content || '当前暂无日志记录。';
 
-		output.textContent = content || '当前暂无日志记录。';
+		if (output.textContent !== displayText) {
+			output.textContent = displayText;
+			if ($('autoRefresh').checked) {
+				output.scrollTop = output.scrollHeight;
+			}
+		}
+
 		$('logUpdatedAt').textContent = payload.updated_at || '--';
 		$('logLineCount').textContent = String(countLines(content));
 		$('logSize').textContent = formatBytes(payload.size || 0);
-		if ($('autoRefresh').checked) {
-			output.scrollTop = output.scrollHeight;
-		}
 	}
 
 	function fetchLogs() {
@@ -368,7 +373,8 @@
 
 		fetchInFlight = true;
 		xhr = new XMLHttpRequest();
-		xhr.open('GET', logsUrl, true);
+		xhr.open('GET', logsUrl + '?_=' + Date.now(), true);
+		xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 		xhr.onload = function() {
 			var response = null;
 

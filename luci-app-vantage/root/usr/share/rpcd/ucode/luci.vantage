@@ -19,7 +19,13 @@
 //              when the bridges hold FDB_LIMIT entries or more between
 //              them, counted first through sysfs without reading further: a flood of
 //              made-up addresses must not make rpcd build the whole
-//              table. Read group luci-app-vantage.
+//              table. Where a port is a VLAN on a swconfig switch
+//              (eth1.1), also which switch ports that VLAN has
+//              (switches): from /etc/board.json (the CPU port's network
+//              device, the ports' roles) and the switch_vlan sections of
+//              /etc/config/network (device, vlan, vid and ports, nothing
+//              else), or board.json's roles for a switch those give no
+//              VLAN. Read group luci-app-vantage.
 //   set_alias  { mac, name, icon }: name one station, or remove its name
 //              with name ''. Validated here, whatever the browser did, and
 //              written to /etc/config/vantage only. Write group
@@ -49,6 +55,10 @@ const MAX_PER_PORT = 128;         // of them on one port (the uplink's would tak
 const NET = '/sys/class/net';
 const FDB_LIMIT = 4096;           // forwarding entries, all bridges together, before wired() lists none
 const FDB_ENTRY = 16;             // sizeof(struct __fdb_entry), brforward's record
+const NETWORK = 'network';        // read only, by switches(): switch_vlan sections
+const BOARD = '/etc/board.json';
+const BOARD_MAX = 65536;          // bytes read of it
+const MAX_SWITCH_VLANS = 64;
 
 /* ------------------------------------------------------------ helpers */
 
@@ -468,6 +478,120 @@ function wired() {
 	return out;
 }
 
+// a switch port's number (0..63), or null
+function switch_port(v) {
+	return (type(v) == 'int' && v >= 0 && v < 64) ? v : null;
+}
+
+// the network devices a switch VLAN reaches this device as (each CPU
+// port's device in it, with .vid where that port is tagged) and its other
+// ports, from a port list such as '0 1 2 3 5t'; null without a CPU port
+function vlan_ports(sw, list, vid) {
+	let devs = [], members = [];
+
+	for (let t in split(list, /\s+/)) {
+		let m = match(t, /^([0-9]{1,2})([t*]?)$/);
+		let num = m ? switch_port(+m[1]) : null;
+
+		if (num == null || length(members) >= 64)
+			continue;
+
+		if (sw.cpu[num] != null) {
+			let dev = netdev((m[2] == 't') ? sw.cpu[num] + '.' + vid : sw.cpu[num]);
+
+			if (dev && index(devs, dev) < 0)
+				push(devs, dev);
+		}
+		else
+			push(members, sw.ports[num] ?? { num, role: null, index: null });
+	}
+
+	return length(devs) ? { devs, members } : null;
+}
+
+// { 'eth1.1': { name: 'switch0', vlan: 1, ports: [ { num, role, index } ] } }
+// for each VLAN of a swconfig switch: the network device it reaches this
+// device as and its other ports, as LuCI's switch page lays them out.
+// From the switch_vlan sections of the network config, or for a switch
+// they give no VLAN, from the roles board.json gives it (the first boot's
+// layout). Only switches /etc/board.json describes; {} without one, so a
+// device whose ports are all Linux ports (DSA) loads no network config.
+function switches() {
+	let board = null, known = {}, used = {}, out = {}, n = 0;
+
+	try { board = json(readfile(BOARD, BOARD_MAX) ?? 'null'); }
+	catch (e) { return out; }
+
+	for (let name, sw in ((type(board?.switch) == 'object') ? board.switch : {})) {
+		if (!match(name, /^[A-Za-z0-9_.-]{1,32}$/) || type(sw?.ports) != 'array')
+			continue;
+
+		let ports = {}, cpu = {};
+
+		for (let p in sw.ports) {
+			let num = switch_port(p?.num);
+
+			if (num == null)
+				continue;
+
+			if (netdev(p.device))
+				cpu[num] = p.device;
+			else
+				ports[num] = {
+					num,
+					role: (type(p.role) == 'string' && match(p.role, /^[a-z0-9]{1,16}$/)) ? p.role : null,
+					index: (type(p.index) == 'int' && p.index >= 0 && p.index < 100) ? p.index : null
+				};
+		}
+
+		if (length(cpu))
+			known[name] = { ports, cpu, roles: (type(sw.roles) == 'array') ? slice(sw.roles, 0, 16) : [] };
+	}
+
+	if (!length(known))
+		return out;
+
+	let nw = cursor();
+
+	if (nw.load(NETWORK))
+		nw.foreach(NETWORK, 'switch_vlan', (s) => {
+			let sw = (type(s.device) == 'string') ? known[s.device] : null;
+			let id = s.vid ?? s.vlan;
+			let vid = (type(id) == 'string' && match(id, /^[0-9]{1,4}$/)) ? +id : null;
+
+			if (!sw || vid == null || vid > 4094 || type(s.ports) != 'string')
+				return;
+
+			if (++n > MAX_SWITCH_VLANS)
+				return false;
+
+			let v = vlan_ports(sw, s.ports, vid);
+
+			for (let dev in (v?.devs ?? [])) {
+				if (!out[dev])
+					out[dev] = { name: s.device, vlan: vid, ports: v.members };
+
+				used[s.device] = true;
+			}
+		});
+
+	for (let name, sw in known) {
+		if (used[name])
+			continue;
+
+		for (let r in sw.roles) {
+			let m = (type(r?.device) == 'string' && type(r.ports) == 'string') ? match(r.device, /^[A-Za-z0-9_-]{1,10}\.([0-9]{1,4})$/) : null;
+			let vid = m ? +m[1] : null;
+			let v = (vid != null && vid <= 4094) ? vlan_ports(sw, r.ports, vid) : null;
+
+			if (v && index(v.devs, r.device) >= 0 && !out[r.device])
+				out[r.device] = { name, vlan: vid, ports: v.members };
+		}
+	}
+
+	return out;
+}
+
 /* ------------------------------------------------------------ methods */
 
 const methods = {
@@ -497,9 +621,13 @@ const methods = {
 
 	wired: {
 		call: function() {
-			let hosts = wired();
+			let hosts = wired(), sw = switches();
+			let reply = (hosts == null) ? { hosts: [], crowded: true } : { hosts };
 
-			return (hosts == null) ? { hosts: [], crowded: true } : { hosts };
+			if (length(sw))
+				reply.switches = sw;
+
+			return reply;
 		}
 	},
 

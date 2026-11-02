@@ -24,6 +24,7 @@ var WINDOW_MS = 5 * 60 * 1000;        /* throughput history shown */
 var HIST_MAX = 90;
 var GONE_KEEP_MS = 5 * 60 * 1000;     /* disconnected stations stay listed */
 var TALKERS = 3;                      /* top talkers shown; the tile keeps room for all */
+var SWITCH_MS = 30 * 1000;            /* LuCI runs swconfig for each switch's link state: at most this often */
 var STORE_KEY = 'vantage.hist.v1';
 var SVGNS = 'http://www.w3.org/2000/svg';
 var HOSTAPD_OBJ = /^[A-Za-z0-9_.-]{1,64}$/;
@@ -37,8 +38,13 @@ var callDevs = rpc.declare({ object: 'network.device', method: 'status', expect:
    without keys or RADIUS secrets, and the validated alias write */
 var callWifi = rpc.declare({ object: 'luci.vantage', method: 'wireless', expect: { '': {} } });
 var callThermal = rpc.declare({ object: 'luci.vantage', method: 'thermal', expect: { zones: [] } });
-/* { hosts, crowded }: crowded when a bridge holds too many entries to list */
+/* { hosts, crowded, switches }: crowded when a bridge holds too many
+   entries to list; switches, the swconfig switch ports behind a port */
 var callWired = rpc.declare({ object: 'luci.vantage', method: 'wired', expect: { '': {} } });
+/* LuCI's own (its switch page's): link and speed of a switch's ports, in
+   result. The whole reply, and a failed call rejected: a default [] would
+   read as every port down */
+var callSwitchPorts = rpc.declare({ object: 'luci', method: 'getSwconfigPortState', params: [ 'switch' ], expect: { '': {} }, reject: true });
 var callHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect: { '': {} } });
 var callIwInfo = rpc.declare({ object: 'iwinfo', method: 'info', params: [ 'device' ], expect: { '': {} } });
 var callAssoc = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: [ 'device' ], expect: { results: [] } });
@@ -327,6 +333,17 @@ function rateLine(down, up, cls) {
 	]);
 }
 
+/* a switch VLAN's ports, a line each: "LAN 2 · 2.5 Gbit/s" (model.switchOf) */
+function switchLines(sw) {
+	return sw.ports.map(function(p) {
+		return p.label + ' · ' + (p.link === null ? fmt.DASH : !p.link ? _('down') : p.speed ? fmt.phyRate(p.speed.mbps * 1000) : _('link up'));
+	});
+}
+
+function switchNote(sw) {
+	return _('Switch ports of VLAN %d on %s: %s').format(sw.vlan, sw.name, switchLines(sw).join(', '));
+}
+
 function kv(label, value, mono) {
 	return E('div', { 'class': 'vt-kv' }, [
 		E('dt', {}, [ label ]),
@@ -496,7 +513,7 @@ return view.extend({
 
 	/* one poll's worth of raw replies; missing pieces degrade to {} */
 	fetch: function() {
-		var started = Date.now();
+		var started = Date.now(), self = this;
 		return Promise.all([
 			L.resolveDefault(callInfo(), {}),
 			L.resolveDefault(callRead('/proc/stat'), ''),
@@ -521,6 +538,26 @@ return view.extend({
 			   and SSID for each network (luci.vantage wireless carries
 			   configuration only) */
 			var per = [];
+			/* the link state of a switch with hosts behind it, every
+			   SWITCH_MS: each answer runs swconfig on the device. Asked
+			   on the side, so a slow switch holds up no poll; the answer
+			   shows from the next one */
+			var switches = (wiredReply.switches && typeof wiredReply.switches === 'object' && !Array.isArray(wiredReply.switches)) ? wiredReply.switches : {};
+			var swState = self.swState || (self.swState = Object.create(null));
+			var hostPorts = (Array.isArray(wiredReply.hosts) ? wiredReply.hosts : []).map(function(h) { return h && h.port; });
+			var due = [], asked = Date.now();
+			Object.keys(switches).forEach(function(dev) {
+				var n = switches[dev] && switches[dev].name;
+				if (typeof n === 'string' && /^[A-Za-z0-9_.-]{1,32}$/.test(n) && hostPorts.indexOf(dev) >= 0 && due.indexOf(n) < 0 &&
+				    !(swState[n] && asked - swState[n].at < SWITCH_MS)) due.push(n);
+			});
+			due.slice(0, 4).forEach(function(n) {
+				swState[n] = { at: asked, ports: swState[n] ? swState[n].ports : null };
+				L.resolveDefault(callSwitchPorts(n), null).then(function(v) {
+					/* no ports (an error, an unknown switch): not known, not down */
+					swState[n] = { at: asked, ports: v && Array.isArray(v.result) && v.result.length ? v.result : null };
+				});
+			});
 			ifnames.forEach(function(ifn) {
 				per.push(L.resolveDefault(callAssoc(ifn), []).then(function(v) { return [ 'assoc', ifn, v ]; }));
 				per.push(hostapd(ifn, 'get_clients').then(function(v) { return [ 'hapd', ifn, v ]; }));
@@ -535,8 +572,10 @@ return view.extend({
 					else if (p[0] === 'hapdStatus') hapdStatus[p[1]] = p[2];
 					else iwinfo[p[1]] = p[2];
 				});
+				var switchState = Object.create(null);
+				Object.keys(swState).forEach(function(n) { switchState[n] = swState[n].ports; });
 				return { info: r[0] || {}, stat: r[1] || '', ifaces: r[2] || [], devs: r[3] || {}, wifi: wifiDevs, hints: r[5] || {}, thermal: r[6] || [],
-					fdb: Array.isArray(wiredReply.hosts) ? wiredReply.hosts : [], fdbCrowded: wiredReply.crowded === true,
+					fdb: Array.isArray(wiredReply.hosts) ? wiredReply.hosts : [], fdbCrowded: wiredReply.crowded === true, switches: switches, switchState: switchState,
 					assoc: assoc, hapd: hapd, hapdStatus: hapdStatus, iwinfo: iwinfo, at: Date.now(), started: started };
 			});
 		});
@@ -611,6 +650,7 @@ return view.extend({
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
 			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints, fdb: raw.fdb,
+			switches: raw.switches, switchState: raw.switchState,
 			aliases: this.aliases, rdns: st.rdns, mdns: st.mdns,
 			vendor: st.oui ? function(k) { return k ? st.oui.lookup(k) : null; } : null
 		});
@@ -766,6 +806,7 @@ return view.extend({
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
 			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints, fdb: raw.fdb,
+			switches: raw.switches, switchState: raw.switchState,
 			aliases: this.aliases, rdns: st.rdns, mdns: st.mdns,
 			vendor: st.oui ? function(k) { return k ? st.oui.lookup(k) : null; } : null
 		});
@@ -1483,9 +1524,9 @@ return view.extend({
 				]);
 				var wcol = E('div', { 'class': 'vt-branch-ssids' });
 				ports.forEach(function(p) {
-					var sn = { id: 'port:' + p, port: p, name: E('span'), count: span('vt-tn') };
+					var sn = { id: 'port:' + p, port: p, name: E('span'), count: span('vt-tn'), rate: span('vt-node-sub vt-tn') };
 					sn.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-ssid', 'click': function() { self.showWired(p); } }, [
-						E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-title vt-ssid-name' }, [ sn.name ]), E('span', { 'class': 'vt-node-sub' }, [ sn.count ]) ])
+						E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-title vt-ssid-name' }, [ sn.name ]), E('span', { 'class': 'vt-node-sub' }, [ sn.count ]), sn.rate ])
 					]);
 					wb.ssids.push(sn);
 					wcol.appendChild(sn.el);
@@ -1598,17 +1639,21 @@ return view.extend({
 	},
 
 	/* the Wired branch of the path: its hosts, and per port the one host
-	   with its link speed or how many share the port */
+	   with its link speed or how many share the port, and the port's
+	   traffic: all of its hosts' together, never split between them */
 	updateWiredBranch: function(b) {
 		var st = this.st, hosts = this.m.wiredHosts || [], n = 0, rx = 0, tx = 0, seen = false;
 		b.ssids.forEach(function(sn) {
 			var on = hosts.filter(function(c) { return c.port === sn.port; }), r = st.devRates[sn.port], one = on.length === 1 ? on[0] : null;
+			var sw = on.length ? on[0].switch : null;
 			n += on.length;
 			if (r) { rx += r.rx; tx += r.tx; seen = true; }
 			setClass(sn.el, 'vt-node vt-node-ssid' + (on.length ? '' : ' vt-node-idle'));
-			setTitle(sn.el, _('Show the devices on %s').format(sn.port));
+			setTitle(sn.el, _('Show the devices on %s').format(sn.port) + (r ? '\n' + _('Port total: %s').format('↓ ' + fmt.bits(r.tx) + ' · ↑ ' + fmt.bits(r.rx)) : '') +
+				(sw ? '\n' + switchNote(sw) : ''));
 			txt(sn.name, one ? sn.port + ' · ' + one.name : sn.port);
 			txt(sn.count, one ? (one.speed ? fmt.phyRate(one.speed.mbps * 1000) : fmt.DASH) : on.length === 1 ? _('1 device') : _('%d devices').format(on.length));
+			txt(sn.rate, r ? '↓ ' + fmt.bitsShort(r.tx) + '  ↑ ' + fmt.bitsShort(r.rx) : fmt.DASH);
 			sn.active = !!(r && r.rx + r.tx > 50e3);
 		});
 		txt(b.title, n === 1 ? _('1 device') : _('%d devices').format(n));
@@ -2561,9 +2606,11 @@ return view.extend({
 		var speed = c.speed ? fmt.phyRate(c.speed.mbps * 1000) : fmt.DASH;
 		var link = E('td', { 'class': 'vt-td-link', 'data-title': _('Link', 'vantage') }, [
 			E('div', { 'class': 'vt-phy vt-tn' }, [ E('b', { 'class': c.carrier === false ? 'vt-t-warn' : '' }, [ c.carrier === false ? _('down') : c.shared ? _('Shared port') : speed ]) ]),
-			E('div', { 'class': 'vt-phy vt-phy-up vt-tn' }, [ c.shared ? _('%s · %d devices').format(c.port, c.peers) : c.port ])
+			E('div', { 'class': 'vt-phy vt-phy-up vt-tn' }, [ c.shared ? _('%s · %d devices').format(c.port, c.peers) : c.switchPort ? c.port + ' · ' + c.switchPort : c.port ])
 		]);
-		link.setAttribute('title', c.shared ? _('%s is shared by %d devices (a switch or another access point behind it); its %s link is not theirs').format(c.port, c.peers, speed) : _('Port %s').format(c.port));
+		link.setAttribute('title', (c.shared ? (c.switch ? _('%s is shared by %d devices behind the switch').format(c.port, c.peers)
+			: _('%s is shared by %d devices (a switch or another access point behind it); its %s link is not theirs').format(c.port, c.peers, speed)) : _('Port %s').format(c.port)) +
+			(c.switch ? '\n' + switchNote(c.switch) : ''));
 		return [
 			this.whoCell(c, tags),
 			link,
@@ -2877,7 +2924,7 @@ return view.extend({
 	},
 
 	drawerWired: function(c) {
-		var self = this, r = this.portRate(c);
+		var self = this, r = this.portRate(c), shared = c.shared ? this.st.devRates[c.port] : null;
 		var title = [
 			avatar(c),
 			E('div', { 'class': 'vt-drawer-titles' }, [
@@ -2895,9 +2942,14 @@ return view.extend({
 			this.el.renameSlot = E('div', { 'class': 'vt-rename-slot' }),
 			this.section(_('Connection'), [ E('dl', { 'class': 'vt-kvs' }, [
 				kv(_('Port'), c.port, true),
-				kv(_('Link', 'vantage'), c.carrier === false ? _('down') : c.shared ? [ _('Shared by %d devices').format(c.peers), E('small', {}, [ _('the port: %s').format(speed) ]) ] : speed),
-				kv(_('Traffic'), c.shared ? E('span', { 'class': 'vt-muted' }, [ _('Not counted per device on a shared port') ])
-					: r ? '↓ ' + fmt.bits(r.tx) + ' · ↑ ' + fmt.bits(r.rx) : _('measuring')),
+				kv(_('Link', 'vantage'), c.carrier === false ? _('down') : c.shared ? [ _('Shared by %d devices').format(c.peers),
+					E('small', {}, [ c.switch ? _('behind %s, VLAN %d').format(c.switch.name, c.switch.vlan) : _('the port: %s').format(speed) ]) ]
+					: c.switchPort ? [ speed, E('small', {}, [ _('switch port %s').format(c.switchPort) ]) ] : speed),
+				c.switch ? kv(_('Switch ports'), switchLines(c.switch).map(function(l) { return E('div', {}, [ l ]); })) : '',
+				kv(_('Traffic'), c.shared ? [
+					E('span', { 'class': 'vt-muted' }, [ _('Not counted per device on a shared port') ]),
+					shared ? E('small', {}, [ _('the port in total: %s').format('↓ ' + fmt.bits(shared.tx) + ' · ↑ ' + fmt.bits(shared.rx)) ]) : ''
+				] : r ?'↓ ' + fmt.bits(r.tx) + ' · ↑ ' + fmt.bits(r.rx) : _('measuring')),
 				kv(_('Network'), [ c.network || c.bridge || fmt.DASH, c.vlan != null ? E('small', {}, [ _('VLAN %d').format(c.vlan) ]) : '' ]),
 				kv(_('Last heard'), c.seen == null ? _('static entry') : fmt.ago(c.seen * 1000))
 			]) ]),

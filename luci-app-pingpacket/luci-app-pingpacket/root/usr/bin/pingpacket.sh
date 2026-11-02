@@ -6,7 +6,14 @@ LOG_FILE="/tmp/pingpacket.log"
 LOG_MAX_LINES=500
 RUN_DIR="/var/run/pingpacket"
 START_TIME_FILE="$RUN_DIR/start_time"
+HIST_DIR="/etc/pingpacket/history"
+HIST_RETENTION_DAYS=35
+
 child_pids=""
+probe_seq=0
+log_line_count=0
+current_minute=""
+
 domestic_fail_count=0
 foreign_fail_count=0
 domestic_fault_open=0
@@ -25,15 +32,25 @@ domestic_max_rtt=""
 foreign_max_rtt=""
 domestic_last_probe_at=0
 foreign_last_probe_at=0
-domestic_last_fault_probe_at=0
-foreign_last_fault_probe_at=0
-domestic_last_stats_probe_at=0
-foreign_last_stats_probe_at=0
+domestic_last_fault_seq=0
+foreign_last_fault_seq=0
+domestic_last_stats_seq=0
+foreign_last_stats_seq=0
+
+hist_bucket_key=""
+hist_flush_count=0
+hist_d_samples=0
+hist_d_loss=0
+hist_d_rtt_sum="0"
+hist_f_samples=0
+hist_f_loss=0
+hist_f_rtt_sum="0"
 
 log_rotate() {
 	[ -f "$LOG_FILE" ] || return 0
 	tail -n "$LOG_MAX_LINES" "$LOG_FILE" > "${LOG_FILE}.tmp" 2>/dev/null && \
 		mv -f "${LOG_FILE}.tmp" "$LOG_FILE"
+	log_line_count="$LOG_MAX_LINES"
 }
 
 log_event() {
@@ -42,13 +59,95 @@ log_event() {
 	local message="$3"
 	local timestamp
 
+	# 日志被页面手动清除后，行数计数需要重新开始
+	if [ ! -f "$LOG_FILE" ]; then
+		log_line_count=0
+	fi
+
 	timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
 	if [ -n "$scope" ]; then
 		printf '[%s] [%s] [%s] %s\n' "$timestamp" "$event_type" "$scope" "$message" >> "$LOG_FILE"
 	else
 		printf '[%s] [%s] %s\n' "$timestamp" "$event_type" "$message" >> "$LOG_FILE"
 	fi
-	log_rotate
+
+	log_line_count=$((log_line_count + 1))
+	if [ "$log_line_count" -gt "$LOG_MAX_LINES" ]; then
+		log_rotate
+	fi
+}
+
+prune_history() {
+	[ -d "$HIST_DIR" ] || return 0
+
+	find "$HIST_DIR" -type f -name '*.tsv' -mtime +"$HIST_RETENTION_DAYS" 2>/dev/null | while IFS= read -r stale_file; do
+		rm -f "$stale_file" 2>/dev/null
+	done
+}
+
+flush_history_bucket() {
+	[ -n "$hist_bucket_key" ] || return 0
+
+	if [ "$hist_d_samples" -le 0 ] && [ "$hist_f_samples" -le 0 ]; then
+		hist_bucket_key=""
+		return 0
+	fi
+
+	local bucket_day="${hist_bucket_key% *}"
+	local bucket_clock="${hist_bucket_key#* }"
+
+	mkdir -p "$HIST_DIR" 2>/dev/null
+	printf '%s\t%d\t%d\t%s\t%d\t%d\t%s\n' \
+		"$bucket_clock" \
+		"$hist_d_samples" "$hist_d_loss" "$hist_d_rtt_sum" \
+		"$hist_f_samples" "$hist_f_loss" "$hist_f_rtt_sum" \
+		>> "$HIST_DIR/${bucket_day}.tsv" 2>/dev/null
+
+	hist_bucket_key=""
+	hist_d_samples=0
+	hist_d_loss=0
+	hist_d_rtt_sum="0"
+	hist_f_samples=0
+	hist_f_loss=0
+	hist_f_rtt_sum="0"
+
+	hist_flush_count=$((hist_flush_count + 1))
+	if [ "$hist_flush_count" -ge 60 ]; then
+		hist_flush_count=0
+		prune_history
+	fi
+}
+
+accumulate_history() {
+	local name="$1"
+	local success="$2"
+	local rtt="${3:-0}"
+
+	[ -n "$current_minute" ] || return 0
+
+	if [ "$hist_bucket_key" != "$current_minute" ]; then
+		flush_history_bucket
+		hist_bucket_key="$current_minute"
+	fi
+
+	case "$name" in
+		domestic)
+			hist_d_samples=$((hist_d_samples + 1))
+			if [ "$success" = "1" ]; then
+				hist_d_rtt_sum="$(awk -v sum="$hist_d_rtt_sum" -v value="$rtt" 'BEGIN { printf "%.3f", (sum + 0) + (value + 0) }')"
+			else
+				hist_d_loss=$((hist_d_loss + 1))
+			fi
+			;;
+		foreign)
+			hist_f_samples=$((hist_f_samples + 1))
+			if [ "$success" = "1" ]; then
+				hist_f_rtt_sum="$(awk -v sum="$hist_f_rtt_sum" -v value="$rtt" 'BEGIN { printf "%.3f", (sum + 0) + (value + 0) }')"
+			else
+				hist_f_loss=$((hist_f_loss + 1))
+			fi
+			;;
+	esac
 }
 
 kill_children() {
@@ -59,6 +158,7 @@ kill_children() {
 }
 
 cleanup() {
+	flush_history_bucket
 	kill_children
 	exit 0
 }
@@ -68,17 +168,26 @@ trap cleanup INT TERM
 mkdir -p "$RUN_DIR"
 date '+%Y-%m-%d %H:%M:%S' > "$START_TIME_FILE"
 
+if [ -f "$LOG_FILE" ]; then
+	log_line_count="$(wc -l < "$LOG_FILE" 2>/dev/null | tr -d ' ')"
+	case "$log_line_count" in
+		""|*[!0-9]*) log_line_count=0 ;;
+	esac
+fi
+
 write_result_file() {
 	local path="$1"
 	local success="$2"
 	local rtt="$3"
 	local detail="$4"
 	local probe_at="$5"
+	local seq="$6"
 
 	[ -n "$probe_at" ] || probe_at="$(date '+%s' 2>/dev/null || echo 0)"
+	[ -n "$seq" ] || seq="0"
 
 	mkdir -p "$(dirname "$path")"
-	printf '%s\n%s\n%s\n%s\n' "$success" "$rtt" "$detail" "$probe_at" > "$path"
+	printf '%s\n%s\n%s\n%s\n%s\n' "$success" "$rtt" "$detail" "$probe_at" "$seq" > "$path"
 }
 
 normalize_foreign_url() {
@@ -264,6 +373,7 @@ resolve_target_ip() {
 do_ping() {
 	local target="$1"
 	local name="$2"
+	local seq="$3"
 	local result_file="$RUN_DIR/${name}_last_result"
 	local ping_target
 	local result
@@ -273,9 +383,9 @@ do_ping() {
 	result="$(ping -n -c 1 -W 2 "$ping_target" 2>/dev/null)"
 	if echo "$result" | grep -q "bytes from"; then
 		rtt="$(echo "$result" | sed -n 's/.*time=\([0-9.]*\).*/\1/p')"
-		write_result_file "$result_file" "1" "${rtt:-0}" ""
+		write_result_file "$result_file" "1" "${rtt:-0}" "" "" "$seq"
 	else
-		write_result_file "$result_file" "0" "" "ping 无响应"
+		write_result_file "$result_file" "0" "" "ping 无响应" "" "$seq"
 	fi
 }
 
@@ -285,6 +395,7 @@ do_proxy_curl() {
 	local proxy_host="${3:-127.0.0.1}"
 	local proxy_port="$4"
 	local name="$5"
+	local seq="$6"
 	local result_file="$RUN_DIR/${name}_last_result"
 	local error_file="$RUN_DIR/${name}_curl_error"
 	local url
@@ -297,12 +408,12 @@ do_proxy_curl() {
 	local rc
 
 	if ! command -v curl >/dev/null 2>&1; then
-		write_result_file "$result_file" "0" "" "系统未安装 curl"
+		write_result_file "$result_file" "0" "" "系统未安装 curl" "" "$seq"
 		return 0
 	fi
 
 	if [ -z "$proxy_port" ]; then
-		write_result_file "$result_file" "0" "" "代理端口未配置"
+		write_result_file "$result_file" "0" "" "代理端口未配置" "" "$seq"
 		return 0
 	fi
 
@@ -323,11 +434,11 @@ do_proxy_curl() {
 
 	if [ "$rc" -eq 0 ] && [ -n "$http_code" ] && [ -n "$time_pretransfer" ] && { [ "$http_code" = "200" ] || [ "$http_code" = "204" ]; }; then
 		rtt_ms="$(awk -v sec="$time_pretransfer" 'BEGIN { printf "%.1f", (sec + 0) * 1000 }')"
-		write_result_file "$result_file" "1" "$rtt_ms" "curl 连接探测成功，HTTP ${http_code}"
+		write_result_file "$result_file" "1" "$rtt_ms" "curl 连接探测成功，HTTP ${http_code}" "" "$seq"
 	else
 		detail="$(sed -n '1p' "$error_file" 2>/dev/null)"
 		[ -n "$detail" ] || detail="curl 退出码 ${rc}，HTTP ${http_code:-000}"
-		write_result_file "$result_file" "0" "" "$detail"
+		write_result_file "$result_file" "0" "" "$detail" "" "$seq"
 	fi
 
 	rm -f "$error_file"
@@ -369,46 +480,46 @@ set_target_state() {
 	esac
 }
 
-get_processed_probe_at() {
+get_processed_seq() {
 	local name="$1"
 	local kind="$2"
 
 	case "${name}:${kind}" in
 		domestic:fault)
-			processed_probe_at="$domestic_last_fault_probe_at"
+			processed_seq="$domestic_last_fault_seq"
 			;;
 		foreign:fault)
-			processed_probe_at="$foreign_last_fault_probe_at"
+			processed_seq="$foreign_last_fault_seq"
 			;;
 		domestic:stats)
-			processed_probe_at="$domestic_last_stats_probe_at"
+			processed_seq="$domestic_last_stats_seq"
 			;;
 		foreign:stats)
-			processed_probe_at="$foreign_last_stats_probe_at"
+			processed_seq="$foreign_last_stats_seq"
 			;;
 		*)
-			processed_probe_at=0
+			processed_seq=0
 			;;
 	esac
 }
 
-set_processed_probe_at() {
+set_processed_seq() {
 	local name="$1"
 	local kind="$2"
 	local value="${3:-0}"
 
 	case "${name}:${kind}" in
 		domestic:fault)
-			domestic_last_fault_probe_at="$value"
+			domestic_last_fault_seq="$value"
 			;;
 		foreign:fault)
-			foreign_last_fault_probe_at="$value"
+			foreign_last_fault_seq="$value"
 			;;
 		domestic:stats)
-			domestic_last_stats_probe_at="$value"
+			domestic_last_stats_seq="$value"
 			;;
 		foreign:stats)
-			foreign_last_stats_probe_at="$value"
+			foreign_last_stats_seq="$value"
 			;;
 	esac
 }
@@ -418,8 +529,8 @@ reset_target_state() {
 
 	rm -f "$RUN_DIR/${name}_last_result"
 	set_target_state "$name" 0 0
-	set_processed_probe_at "$name" "fault" 0
-	set_processed_probe_at "$name" "stats" 0
+	set_processed_seq "$name" "fault" 0
+	set_processed_seq "$name" "stats" 0
 }
 
 update_target_faults() {
@@ -430,7 +541,7 @@ update_target_faults() {
 	local success="0"
 	local rtt=""
 	local detail=""
-	local probe_at=""
+	local seq=""
 
 	[ -n "$target" ] || {
 		reset_target_state "$name"
@@ -443,11 +554,13 @@ update_target_faults() {
 		success="$(sed -n '1p' "$result_file" 2>/dev/null)"
 		rtt="$(sed -n '2p' "$result_file" 2>/dev/null)"
 		detail="$(sed -n '3p' "$result_file" 2>/dev/null)"
-		probe_at="$(sed -n '4p' "$result_file" 2>/dev/null)"
+		seq="$(sed -n '5p' "$result_file" 2>/dev/null)"
 	fi
 
-	get_processed_probe_at "$name" "fault"
-	if [ -n "$probe_at" ] && [ "$probe_at" = "$processed_probe_at" ]; then
+	[ -n "$seq" ] || return 0
+
+	get_processed_seq "$name" "fault"
+	if [ "$seq" = "$processed_seq" ]; then
 		return 0
 	fi
 
@@ -457,7 +570,7 @@ update_target_faults() {
 		fi
 
 		set_target_state "$name" 0 0
-		set_processed_probe_at "$name" "fault" "${probe_at:-0}"
+		set_processed_seq "$name" "fault" "$seq"
 		return 0
 	fi
 
@@ -470,7 +583,7 @@ update_target_faults() {
 	fault_open=1
 
 	set_target_state "$name" "$fail_count" "$fault_open"
-	set_processed_probe_at "$name" "fault" "${probe_at:-0}"
+	set_processed_seq "$name" "fault" "$seq"
 }
 
 calc_stats() {
@@ -525,7 +638,7 @@ update_cumulative_stats() {
 	local result_file="$RUN_DIR/${name}_last_result"
 	local success="0"
 	local rtt=""
-	local probe_at=""
+	local seq=""
 	local total_samples=0
 	local success_count=0
 	local loss_count=0
@@ -534,6 +647,19 @@ update_cumulative_stats() {
 	local max_rtt=""
 
 	[ -n "$target" ] || return 0
+
+	if [ -f "$result_file" ]; then
+		success="$(sed -n '1p' "$result_file" 2>/dev/null)"
+		rtt="$(sed -n '2p' "$result_file" 2>/dev/null)"
+		seq="$(sed -n '5p' "$result_file" 2>/dev/null)"
+	fi
+
+	[ -n "$seq" ] || return 0
+
+	get_processed_seq "$name" "stats"
+	if [ "$seq" = "$processed_seq" ]; then
+		return 0
+	fi
 
 	case "$name" in
 		domestic)
@@ -555,17 +681,6 @@ update_cumulative_stats() {
 	esac
 
 	total_samples=$((total_samples + 1))
-
-	if [ -f "$result_file" ]; then
-		success="$(sed -n '1p' "$result_file" 2>/dev/null)"
-		rtt="$(sed -n '2p' "$result_file" 2>/dev/null)"
-		probe_at="$(sed -n '4p' "$result_file" 2>/dev/null)"
-	fi
-
-	get_processed_probe_at "$name" "stats"
-	if [ -n "$probe_at" ] && [ "$probe_at" = "$processed_probe_at" ]; then
-		return 0
-	fi
 
 	if [ "$success" = "1" ]; then
 		rtt="${rtt:-0}"
@@ -606,7 +721,13 @@ update_cumulative_stats() {
 			;;
 	esac
 
-	set_processed_probe_at "$name" "stats" "${probe_at:-0}"
+	set_processed_seq "$name" "stats" "$seq"
+
+	if [ "$success" = "1" ]; then
+		accumulate_history "$name" "1" "${rtt:-0}"
+	else
+		accumulate_history "$name" "0" ""
+	fi
 }
 
 while true; do
@@ -614,6 +735,7 @@ while true; do
 	START_TIME="$(cat "$START_TIME_FILE" 2>/dev/null || echo "")"
 	UPDATED_AT="$(date '+%Y-%m-%d %H:%M:%S')"
 	NOW_TS="$(date '+%s' 2>/dev/null || echo 0)"
+	current_minute="$(date '+%Y-%m-%d %H:%M')"
 	DOMESTIC_TARGET=""
 	FOREIGN_TARGET=""
 	FOREIGN_PROXY_TYPE="socks5h"
@@ -642,7 +764,8 @@ while true; do
 	child_pids=""
 	if [ -n "$DOMESTIC_TARGET" ]; then
 		if should_probe_now "$domestic_last_probe_at" "$DOMESTIC_INTERVAL" "$NOW_TS"; then
-			do_ping "$DOMESTIC_TARGET" "domestic" &
+			probe_seq=$((probe_seq + 1))
+			do_ping "$DOMESTIC_TARGET" "domestic" "$probe_seq" &
 			child_pids="$!"
 			domestic_last_probe_at="$NOW_TS"
 		fi
@@ -653,7 +776,8 @@ while true; do
 
 	if [ -n "$FOREIGN_TARGET" ]; then
 		if should_probe_now "$foreign_last_probe_at" "$FOREIGN_INTERVAL" "$NOW_TS"; then
-			do_proxy_curl "$FOREIGN_TARGET" "$FOREIGN_PROXY_TYPE" "$FOREIGN_PROXY_HOST" "$FOREIGN_PROXY_PORT" "foreign" &
+			probe_seq=$((probe_seq + 1))
+			do_proxy_curl "$FOREIGN_TARGET" "$FOREIGN_PROXY_TYPE" "$FOREIGN_PROXY_HOST" "$FOREIGN_PROXY_PORT" "foreign" "$probe_seq" &
 			child_pids="${child_pids:+$child_pids }$!"
 			foreign_last_probe_at="$NOW_TS"
 		fi
@@ -679,4 +803,3 @@ while true; do
 
 	sleep 1
 done
-

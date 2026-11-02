@@ -92,6 +92,119 @@ local function read_start_time()
 	return value
 end
 
+local HISTORY_DIR = "/etc/pingpacket/history"
+local HISTORY_MAX_SPAN = 90 * 86400
+local HISTORY_BUCKET_STEPS = { 1, 2, 5, 10, 15, 30, 60, 120, 180, 240, 360, 720, 1440 }
+
+local function day_start(timestamp)
+	local parts = os.date("*t", timestamp)
+
+	return os.time({
+		year = parts.year,
+		month = parts.month,
+		day = parts.day,
+		hour = 0,
+		min = 0,
+		sec = 0
+	})
+end
+
+local function next_day_start(timestamp)
+	local parts = os.date("*t", timestamp)
+
+	return os.time({
+		year = parts.year,
+		month = parts.month,
+		day = parts.day + 1,
+		hour = 0,
+		min = 0,
+		sec = 0
+	})
+end
+
+local function pick_bucket_minutes(span_seconds, target_points)
+	local ideal = (span_seconds / 60) / (target_points or 160)
+
+	for _, step in ipairs(HISTORY_BUCKET_STEPS) do
+		if step >= ideal then
+			return step
+		end
+	end
+
+	return 1440
+end
+
+local function round1(value)
+	return tonumber(string.format("%.1f", value)) or 0
+end
+
+local function bucket_label(timestamp, bucket_minutes, span_seconds)
+	if bucket_minutes >= 1440 then
+		return os.date("%m-%d", timestamp)
+	end
+
+	if span_seconds > 2 * 86400 then
+		return os.date("%m-%d %H:%M", timestamp)
+	end
+
+	return os.date("%H:%M", timestamp)
+end
+
+local function collect_history(from_ts, to_ts, bucket_minutes)
+	local bucket_seconds = bucket_minutes * 60
+	local total = math.floor((to_ts - from_ts) / bucket_seconds) + 1
+	local buckets = {}
+
+	for index = 1, total do
+		buckets[index] = { ds = 0, dl = 0, dr = 0, fs = 0, fl = 0, fr = 0 }
+	end
+
+	local day_ts = day_start(from_ts)
+	local guard = 0
+
+	while day_ts <= to_ts and guard < 400 do
+		guard = guard + 1
+
+		local handle = io.open(string.format("%s/%s.tsv", HISTORY_DIR, os.date("%Y-%m-%d", day_ts)), "r")
+
+		if handle then
+			for line in handle:lines() do
+				local clock, ds, dl, dr, fs, fl, fr = line:match("^(%d%d:%d%d)%s+(%d+)%s+(%d+)%s+([%d%.]+)%s+(%d+)%s+(%d+)%s+([%d%.]+)")
+
+				if clock then
+					local hour, minute = clock:match("^(%d%d):(%d%d)")
+					local probe_ts = day_ts + (tonumber(hour) * 3600) + (tonumber(minute) * 60)
+
+					if probe_ts >= from_ts and probe_ts <= to_ts then
+						local index = math.floor((probe_ts - from_ts) / bucket_seconds) + 1
+						local bucket = buckets[index]
+
+						if bucket then
+							bucket.ds = bucket.ds + (tonumber(ds) or 0)
+							bucket.dl = bucket.dl + (tonumber(dl) or 0)
+							bucket.dr = bucket.dr + (tonumber(dr) or 0)
+							bucket.fs = bucket.fs + (tonumber(fs) or 0)
+							bucket.fl = bucket.fl + (tonumber(fl) or 0)
+							bucket.fr = bucket.fr + (tonumber(fr) or 0)
+						end
+					end
+				end
+			end
+
+			handle:close()
+		end
+
+		local following = next_day_start(day_ts)
+		if following <= day_ts then
+			break
+		end
+
+		day_ts = following
+	end
+
+	return buckets, total
+end
+
 local function should_require_target(request_source, enabled)
 	if request_source == "save" then
 		return true
@@ -312,10 +425,158 @@ function index()
 	entry({"admin", "status", "pingpacket", "logs"}, template("pingpacket/logs"), "日志", 2).leaf = true
 	entry({"admin", "status", "pingpacket", "status"}, alias("admin", "status", "pingpacket", "monitor")).leaf = true
 	entry({"admin", "status", "pingpacket", "get_data"}, call("action_get_data")).leaf = true
+	entry({"admin", "status", "pingpacket", "get_history"}, call("action_get_history")).leaf = true
 	entry({"admin", "status", "pingpacket", "get_logs"}, call("action_get_logs")).leaf = true
 	entry({"admin", "status", "pingpacket", "clear_logs"}, call("action_clear_logs")).leaf = true
 	entry({"admin", "status", "pingpacket", "save_config"}, call("action_save_config")).leaf = true
 	entry({"admin", "status", "pingpacket", "restart_service"}, call("action_restart_service")).leaf = true
+end
+
+function action_get_history()
+	local http = require("luci.http")
+	local range = trim(http.formvalue("range"))
+	local now = os.time()
+	local from_ts
+	local to_ts
+	local bucket_minutes
+
+	if range ~= "day" and range ~= "week" and range ~= "month" and range ~= "custom" then
+		range = "day"
+	end
+
+	if range == "custom" then
+		from_ts = tonumber(http.formvalue("from"))
+		to_ts = tonumber(http.formvalue("to"))
+
+		if not from_ts or not to_ts then
+			write_json({ success = false, message = "自定义时间范围无效。" })
+			return
+		end
+
+		from_ts = math.floor(from_ts)
+		to_ts = math.floor(to_ts)
+
+		if to_ts <= from_ts then
+			write_json({ success = false, message = "结束时间必须晚于开始时间。" })
+			return
+		end
+
+		if to_ts - from_ts > HISTORY_MAX_SPAN then
+			write_json({ success = false, message = "自定义时间范围最多支持 90 天。" })
+			return
+		end
+
+		if to_ts > now then
+			to_ts = now
+		end
+
+		if to_ts <= from_ts then
+			write_json({ success = false, message = "所选时间范围内没有可展示的数据。" })
+			return
+		end
+
+		bucket_minutes = pick_bucket_minutes(to_ts - from_ts, 160)
+	else
+		to_ts = now
+
+		if range == "week" then
+			from_ts = now - (7 * 86400)
+			bucket_minutes = 60
+		elseif range == "month" then
+			from_ts = now - (30 * 86400)
+			bucket_minutes = 360
+		else
+			from_ts = now - 86400
+			bucket_minutes = 10
+		end
+	end
+
+	local bucket_seconds = bucket_minutes * 60
+
+	-- 将起点对齐到聚合桶边界，使图表刻度落在整点或整十分钟上
+	from_ts = from_ts - (from_ts % bucket_seconds)
+
+	local buckets, total = collect_history(from_ts, to_ts, bucket_minutes)
+	local span = to_ts - from_ts
+	local points = {}
+	local sum_ds, sum_dl, sum_fs, sum_fl = 0, 0, 0, 0
+	local sum_dr, sum_fr = 0, 0
+	local peak_d, peak_f = -1, -1
+
+	for index = 1, total do
+		local bucket = buckets[index]
+		local timestamp = from_ts + ((index - 1) * bucket_minutes * 60)
+		local d_rate, f_rate = -1, -1
+		local d_avg, f_avg = -1, -1
+
+		if bucket.ds > 0 then
+			d_rate = round1(bucket.dl * 100 / bucket.ds)
+			sum_ds = sum_ds + bucket.ds
+			sum_dl = sum_dl + bucket.dl
+
+			if bucket.dr > 0 and bucket.ds > bucket.dl then
+				d_avg = round1(bucket.dr / (bucket.ds - bucket.dl))
+				sum_dr = sum_dr + bucket.dr
+			end
+
+			if d_rate > peak_d then
+				peak_d = d_rate
+			end
+		end
+
+		if bucket.fs > 0 then
+			f_rate = round1(bucket.fl * 100 / bucket.fs)
+			sum_fs = sum_fs + bucket.fs
+			sum_fl = sum_fl + bucket.fl
+
+			if bucket.fr > 0 and bucket.fs > bucket.fl then
+				f_avg = round1(bucket.fr / (bucket.fs - bucket.fl))
+				sum_fr = sum_fr + bucket.fr
+			end
+
+			if f_rate > peak_f then
+				peak_f = f_rate
+			end
+		end
+
+		points[index] = {
+			t = timestamp,
+			label = bucket_label(timestamp, bucket_minutes, span),
+			ds = bucket.ds,
+			dl = bucket.dl,
+			fs = bucket.fs,
+			fl = bucket.fl,
+			d_rate = d_rate,
+			f_rate = f_rate,
+			d_avg = d_avg,
+			f_avg = f_avg
+		}
+	end
+
+	write_json({
+		success = true,
+		range = range,
+		from = os.date("%Y-%m-%d %H:%M", from_ts),
+		to = os.date("%Y-%m-%d %H:%M", to_ts),
+		bucket_minutes = bucket_minutes,
+		points = points,
+		summary = {
+			domestic = {
+				samples = sum_ds,
+				loss = sum_dl,
+				rate = (sum_ds > 0) and round1(sum_dl * 100 / sum_ds) or -1,
+				avg = (sum_ds > sum_dl) and round1(sum_dr / (sum_ds - sum_dl)) or -1,
+				peak = peak_d
+			},
+			foreign = {
+				samples = sum_fs,
+				loss = sum_fl,
+				rate = (sum_fs > 0) and round1(sum_fl * 100 / sum_fs) or -1,
+				avg = (sum_fs > sum_fl) and round1(sum_fr / (sum_fs - sum_fl)) or -1,
+				peak = peak_f
+			}
+		}
+	})
 end
 
 function action_get_data()

@@ -180,6 +180,33 @@ return baseclass.extend({
 		return { mbps: +m[1], duplex: m[2] === 'H' ? 'half' : (m[2] === 'F' ? 'full' : null) };
 	},
 
+	/* The switch ports behind a port that is a VLAN on a swconfig switch
+	   (eth1.1): `map` is luci.vantage wired's switches, `states` LuCI's
+	   getSwconfigPortState replies by switch name. { name, vlan, ports:
+	   [ { num, label, link, speed } ], up } or null; link and speed stay
+	   null while the switch has not answered. */
+	switchOf: function(map, states, port) {
+		var sw = typeof port === 'string' && own(map, port) ? obj(map[port]) : null;
+		if (!sw || typeof sw.name !== 'string' || !/^[A-Za-z0-9_.-]{1,32}$/.test(sw.name) || !finite(sw.vlan)) return null;
+		var state = own(states, sw.name) ? states[sw.name] : null, byNum = Object.create(null);
+		arr(state).slice(0, 64).forEach(function(p) { p = obj(p); if (finite(p.port)) byNum[p.port] = p; });
+		var known = Array.isArray(state) && state.length > 0, up = 0;
+		var ports = arr(sw.ports).slice(0, 64).map(obj).filter(function(p) { return finite(p.num) && p.num >= 0 && p.num < 64; }).map(function(p) {
+			var s = byNum[p.num], role = typeof p.role === 'string' && /^[a-z0-9]{1,16}$/.test(p.role) ? p.role.toUpperCase() : null;
+			var link = known ? !!(s && s.link === true) : null;
+			if (link) up++;
+			return {
+				num: p.num,
+				/* "LAN 2" where board.json numbers the ports by role, else
+				   swconfig's own number: four "LAN" would tell them apart */
+				label: role && finite(p.index) ? role + ' ' + p.index : _('Port %d').format(p.num),
+				link: link,
+				speed: link && finite(s.speed) && s.speed > 0 ? { mbps: s.speed, duplex: s.duplex === true ? 'full' : s.duplex === false ? 'half' : null } : null
+			};
+		});
+		return { name: sw.name, vlan: sw.vlan, ports: ports, up: known ? up : null };
+	},
+
 	speedLabel: function(sp) {
 		if (!sp) return fmt.DASH;
 		var v = sp.mbps >= 1000 ? _('%s Gbit/s').format(sp.mbps / 1000) : _('%s Mbit/s').format(sp.mbps);
@@ -587,6 +614,10 @@ return baseclass.extend({
 		wiredMacs.forEach(function(mac) { var p = fdb[mac].port; perPort[p] = (perPort[p] || 0) + 1; });
 		var wired = wiredMacs.map(function(mac) {
 			var h = fdb[mac], d = devs[h.port], hint = hintOf(mac), ips = self.hintAddrs(hint, wiredSubnets(mac));
+			/* behind a switch VLAN the port's own link is the CPU's: the
+			   host's is a switch port's, known when only one has a link */
+			var sw = self.switchOf(raw.switches, raw.switchState, h.port);
+			var lit = sw && sw.up === 1 ? sw.ports.filter(function(p) { return p.link; })[0] : null;
 			var alias = raw.aliases && raw.aliases[mac];
 			var vendor = typeof raw.vendor === 'function' ? raw.vendor(names.ouiKey(mac)) : null;
 			var nm = names.resolve({ mac: mac, alias: alias, ips: ips, rdns: raw.rdns, mdns: mdns, hint: hint, wps: null, vendor: vendor });
@@ -610,8 +641,10 @@ return baseclass.extend({
 				seen: h.seen,
 				peers: perPort[h.port],
 				shared: perPort[h.port] > 1,
-				speed: d ? self.parseSpeed(d.speed) : null,
-				carrier: d ? d.carrier !== false : null,
+				speed: sw ? (lit ? lit.speed : null) : d ? self.parseSpeed(d.speed) : null,
+				carrier: sw && sw.up != null ? sw.up > 0 : d ? d.carrier !== false : null,
+				switch: sw,
+				switchPort: lit ? lit.label : null,
 				gateway: mac === gwMac
 			};
 		});
