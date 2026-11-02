@@ -137,6 +137,19 @@ define Package/dockerd/install
 
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/etc/config/dockerd $(1)/etc/config/dockerd
+
+	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
+	$(INSTALL_DATA) ./files/etc/hotplug.d/net/br-netfilter \
+		$(1)/etc/hotplug.d/net/10-docker-br-netfilter
+
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(INSTALL_DATA) ./files/etc/uci-defaults/16_docker-netifd-migrate2 \
+		$(1)/etc/uci-defaults/16_docker-netifd-migrate2
+	$(INSTALL_DATA) ./files/etc/uci-defaults/17_docker-fw4 \
+		$(1)/etc/uci-defaults/17_docker-fw4
+
+	$(INSTALL_DIR) $(1)/lib/fstab.d
+	$(INSTALL_DATA) ./files/lib/fstab.d/dockerd.sh $(1)/lib/fstab.d/dockerd.sh
 endef
 
 define Package/dockerd/postinst
