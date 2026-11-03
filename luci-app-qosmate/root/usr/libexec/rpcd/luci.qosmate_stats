@@ -1,0 +1,491 @@
+#!/bin/sh
+
+# QoSmate Statistics Backend for LuCI
+# shellcheck disable=SC2039,SC3043,SC2155,SC3057,SC1091
+
+. /lib/functions.sh
+
+# Set to 1 to enable debug logging, 0 to disable
+DEBUG=0
+
+# Debug logging function
+debug_log() {
+    if [ "$DEBUG" -eq 1 ]; then
+        echo "$1" >> /tmp/qosmate_debug.log
+    fi
+}
+
+# Return a safe unsigned integer for JSON number fields
+json_uint_or_zero() {
+    case "$1" in
+        ''|*[!0-9]*) printf '0' ;;
+        *) printf '%s' "$1" ;;
+    esac
+}
+
+# Function to safely get JSON from tc command
+get_tc_json() {
+    local output
+    # Fix HFSC options format by completely replacing the options object
+    output=$("$@" 2>/dev/null) || echo "[]"
+    
+    # Check if output is empty
+    if [ -z "$output" ]; then
+        echo "[]"
+        return
+    fi
+    
+    # Fix the HFSC options format by replacing the entire options object with a simple default value
+    echo "$output" | sed 's/\("kind":"hfsc",[^{]*"options":\){[^}]*}/\1{"default":13}/g'
+}
+
+# Function to filter statistics to only include QoSmate relevant qdiscs
+filter_qosmate_qdiscs() {
+    local stats="$1"
+    local wan_interface="$2"
+    local ifb_interface="$3"
+    
+    # Filter to only include qdiscs related to QoSmate (on wan_interface and ifb_interface)
+    echo "$stats" | jq -c "[.[] | select(.dev == \"$wan_interface\" or .dev == \"$ifb_interface\")]" 2>/dev/null || echo "[]"
+}
+
+# Function to get the statistics based on root qdisc
+get_stats() {
+    # Get basic statistics for all qdiscs
+    local basic_stats
+    basic_stats=$(get_tc_json tc -s -j qdisc show)
+    
+    debug_log "Basic stats: $basic_stats"
+
+    # Get root qdisc type
+    local root_qdisc
+    root_qdisc=$(uci -q get qosmate.settings.ROOT_QDISC || echo "hfsc")
+
+    # Get interface names
+    local wan_interface
+    wan_interface=$(uci -q get qosmate.settings.WAN || echo "eth1")
+    
+    local ifb_interface
+    ifb_interface="ifb-$wan_interface"
+    
+    # Filter basic stats to only include QoSmate relevant qdiscs
+    local filtered_stats
+    filtered_stats=$(filter_qosmate_qdiscs "$basic_stats" "$wan_interface" "$ifb_interface")
+    debug_log "Filtered stats: $filtered_stats"
+
+    # Process statistics based on qdisc type
+    local result
+    if [ "$root_qdisc" = "cake" ]; then
+        # Extract CAKE statistics for both egress and ingress
+        local cake_egress_stats
+        cake_egress_stats=$(echo "$filtered_stats" | jq -c "[.[] | select(.kind == \"cake\" and .dev == \"$wan_interface\")]" 2>/dev/null || echo "[]")
+        debug_log "Cake egress stats: $cake_egress_stats"
+
+        local cake_ingress_stats
+        cake_ingress_stats=$(echo "$filtered_stats" | jq -c "[.[] | select(.kind == \"cake\" and .dev == \"$ifb_interface\")]" 2>/dev/null || echo "[]")
+        debug_log "Cake ingress stats: $cake_ingress_stats"
+
+        # Get the priority queue type (diffserv3/4/8)
+        local priority_queue_ingress
+        priority_queue_ingress=$(uci -q get qosmate.cake.PRIORITY_QUEUE_INGRESS || echo "diffserv4")
+        local priority_queue_egress
+        priority_queue_egress=$(uci -q get qosmate.cake.PRIORITY_QUEUE_EGRESS || echo "diffserv4")
+
+        # Extract the actual cake qdisc stats for UI compatibility
+        local cake_egress
+        cake_egress=$(echo "$cake_egress_stats" | jq -c '.[0] // {}' 2>/dev/null || echo "{}")
+        local cake_ingress
+        cake_ingress=$(echo "$cake_ingress_stats" | jq -c '.[0] // {}' 2>/dev/null || echo "{}")
+
+        # Create final JSON output using jq to ensure proper escaping
+        result=$(jq -n \
+            --arg rq "$root_qdisc" \
+            --arg wi "$wan_interface" \
+            --arg ii "$ifb_interface" \
+            --arg pqi "$priority_queue_ingress" \
+            --arg pqe "$priority_queue_egress" \
+            --argjson fs "$filtered_stats" \
+            --argjson ce "$cake_egress" \
+            --argjson ci "$cake_ingress" \
+            '{
+                root_qdisc: $rq,
+                wan_interface: $wi,
+                ifb_interface: $ii,
+                priority_queue_ingress: $pqi,
+                priority_queue_egress: $pqe,
+                qdisc_stats: $fs,
+                cake_egress: $ce,
+                cake_ingress: $ci
+            }' 2>/dev/null)
+    elif [ "$root_qdisc" = "hfsc" ] || [ "$root_qdisc" = "hybrid" ]; then
+        # Extract HFSC root qdiscs and classes (hybrid uses HFSC root)
+        local hfsc_egress_qdisc
+        hfsc_egress_qdisc=$(get_tc_json tc -s -j qdisc show dev "$wan_interface" | jq -c "[.[] | select(.kind == \"hfsc\")]" 2>/dev/null || echo "[]")
+        debug_log "HFSC egress qdisc: $hfsc_egress_qdisc"
+        
+        local hfsc_egress_classes
+        hfsc_egress_classes=$(get_tc_json tc -s -j class show dev "$wan_interface")
+        debug_log "HFSC egress classes: $hfsc_egress_classes"
+        
+        # Process the output to ensure it's valid JSON
+        hfsc_egress_classes=$(echo "$hfsc_egress_classes" | jq -c '.' 2>/dev/null || echo "[]")
+
+        local hfsc_ingress_qdisc
+        hfsc_ingress_qdisc=$(get_tc_json tc -s -j qdisc show dev "$ifb_interface" | jq -c "[.[] | select(.kind == \"hfsc\")]" 2>/dev/null || echo "[]")
+        debug_log "HFSC ingress qdisc: $hfsc_ingress_qdisc"
+        
+        local hfsc_ingress_classes
+        hfsc_ingress_classes=$(get_tc_json tc -s -j class show dev "$ifb_interface")
+        debug_log "HFSC ingress classes: $hfsc_ingress_classes"
+        
+        # Process the output to ensure it's valid JSON
+        hfsc_ingress_classes=$(echo "$hfsc_ingress_classes" | jq -c '.' 2>/dev/null || echo "[]")
+
+        # Get leaf qdisc statistics
+        local egress_leaf_qdiscs
+        egress_leaf_qdiscs=$(get_tc_json tc -s -j qdisc show dev "$wan_interface")
+        debug_log "Egress leaf qdiscs: $egress_leaf_qdiscs"
+        
+        # Process the output to ensure it's valid JSON and filter non-HFSC qdiscs
+        egress_leaf_qdiscs=$(echo "$egress_leaf_qdiscs" | jq -c '[.[] | select(.kind != "hfsc" and .parent != null)]' 2>/dev/null || echo "[]")
+
+        local ingress_leaf_qdiscs
+        ingress_leaf_qdiscs=$(get_tc_json tc -s -j qdisc show dev "$ifb_interface")
+        debug_log "Ingress leaf qdiscs: $ingress_leaf_qdiscs"
+        
+        # Process the output to ensure it's valid JSON and filter non-HFSC qdiscs
+        ingress_leaf_qdiscs=$(echo "$ingress_leaf_qdiscs" | jq -c '[.[] | select(.kind != "hfsc" and .parent != null)]' 2>/dev/null || echo "[]")
+
+        # Get game qdisc type (used by both HFSC and hybrid)
+        local gameqdisc
+        gameqdisc=$(uci -q get qosmate.hfsc.gameqdisc || echo "pfifo")
+
+        # Extract the main HFSC qdisc objects for UI compatibility
+        local hfsc_egress
+        hfsc_egress=$(echo "$hfsc_egress_qdisc" | jq -c '.[0] // {}' 2>/dev/null || echo "{}")
+        local hfsc_ingress
+        hfsc_ingress=$(echo "$hfsc_ingress_qdisc" | jq -c '.[0] // {}' 2>/dev/null || echo "{}")
+
+        # For hybrid mode, also extract CAKE statistics from the 1:13 classes
+        local hybrid_cake_egress="{}"
+        local hybrid_cake_ingress="{}"
+        if [ "$root_qdisc" = "hybrid" ]; then
+            # Get CAKE stats from the 1:13 parent classes
+            hybrid_cake_egress=$(echo "$egress_leaf_qdiscs" | jq -c '[.[] | select(.kind == "cake" and (.parent == "1:13" or .parent == "1:13:"))] | .[0] // {}' 2>/dev/null || echo "{}")
+            hybrid_cake_ingress=$(echo "$ingress_leaf_qdiscs" | jq -c '[.[] | select(.kind == "cake" and (.parent == "1:13" or .parent == "1:13:"))] | .[0] // {}' 2>/dev/null || echo "{}")
+            debug_log "Hybrid CAKE egress: $hybrid_cake_egress"
+            debug_log "Hybrid CAKE ingress: $hybrid_cake_ingress"
+        fi
+
+        # Create final JSON output using jq to ensure proper escaping
+        result=$(jq -n \
+            --arg rq "$root_qdisc" \
+            --arg wi "$wan_interface" \
+            --arg ii "$ifb_interface" \
+            --arg gq "$gameqdisc" \
+            --argjson fs "$filtered_stats" \
+            --argjson he "$hfsc_egress" \
+            --argjson hi "$hfsc_ingress" \
+            --argjson hec "$hfsc_egress_classes" \
+            --argjson hic "$hfsc_ingress_classes" \
+            --argjson elq "$egress_leaf_qdiscs" \
+            --argjson ilq "$ingress_leaf_qdiscs" \
+            --argjson hce "$hybrid_cake_egress" \
+            --argjson hci "$hybrid_cake_ingress" \
+            '{
+                root_qdisc: $rq,
+                wan_interface: $wi,
+                ifb_interface: $ii,
+                gameqdisc: $gq,
+                qdisc_stats: $fs,
+                hfsc_egress: $he,
+                hfsc_ingress: $hi,
+                hfsc_egress_classes: $hec,
+                hfsc_ingress_classes: $hic,
+                egress_leaf_qdiscs: $elq,
+                ingress_leaf_qdiscs: $ilq,
+                hybrid_cake_egress: $hce,
+                hybrid_cake_ingress: $hci
+            }' 2>/dev/null)
+    elif [ "$root_qdisc" = "htb" ]; then
+        local htb_egress_qdisc
+        htb_egress_qdisc=$(get_tc_json tc -s -j qdisc show dev "$wan_interface" | jq -c "[.[] | select(.kind == \"htb\")]" 2>/dev/null || echo "[]")
+        debug_log "HTB egress qdisc: $htb_egress_qdisc"
+        
+        local htb_egress_classes
+        htb_egress_classes=$(get_tc_json tc -s -j class show dev "$wan_interface")
+        debug_log "HTB egress classes: $htb_egress_classes"
+        htb_egress_classes=$(echo "$htb_egress_classes" | jq -c '.' 2>/dev/null || echo "[]")
+        
+        local htb_ingress_qdisc
+        htb_ingress_qdisc=$(get_tc_json tc -s -j qdisc show dev "$ifb_interface" | jq -c "[.[] | select(.kind == \"htb\")]" 2>/dev/null || echo "[]")
+        debug_log "HTB ingress qdisc: $htb_ingress_qdisc"
+        
+        local htb_ingress_classes
+        htb_ingress_classes=$(get_tc_json tc -s -j class show dev "$ifb_interface")
+        debug_log "HTB ingress classes: $htb_ingress_classes"
+        htb_ingress_classes=$(echo "$htb_ingress_classes" | jq -c '.' 2>/dev/null || echo "[]")
+        
+        local egress_leaf_qdiscs
+        egress_leaf_qdiscs=$(get_tc_json tc -s -j qdisc show dev "$wan_interface")
+        debug_log "Egress leaf qdiscs: $egress_leaf_qdiscs"
+        egress_leaf_qdiscs=$(echo "$egress_leaf_qdiscs" | jq -c '[.[] | select(.kind != "htb" and .parent != null)]' 2>/dev/null || echo "[]")
+        
+        local ingress_leaf_qdiscs
+        ingress_leaf_qdiscs=$(get_tc_json tc -s -j qdisc show dev "$ifb_interface")
+        debug_log "Ingress leaf qdiscs: $ingress_leaf_qdiscs"
+        ingress_leaf_qdiscs=$(echo "$ingress_leaf_qdiscs" | jq -c '[.[] | select(.kind != "htb" and .parent != null)]' 2>/dev/null || echo "[]")
+        
+        local htb_egress
+        htb_egress=$(echo "$htb_egress_qdisc" | jq -c '.[0] // {}' 2>/dev/null || echo "{}")
+        local htb_ingress
+        htb_ingress=$(echo "$htb_ingress_qdisc" | jq -c '.[0] // {}' 2>/dev/null || echo "{}")
+        
+        result=$(jq -n \
+            --arg rq "$root_qdisc" \
+            --arg wi "$wan_interface" \
+            --arg ii "$ifb_interface" \
+            --argjson fs "$filtered_stats" \
+            --argjson he "$htb_egress" \
+            --argjson hi "$htb_ingress" \
+            --argjson hec "$htb_egress_classes" \
+            --argjson hic "$htb_ingress_classes" \
+            --argjson elq "$egress_leaf_qdiscs" \
+            --argjson ilq "$ingress_leaf_qdiscs" \
+            '{
+                root_qdisc: $rq,
+                wan_interface: $wi,
+                ifb_interface: $ii,
+                qdisc_stats: $fs,
+                htb_egress: $he,
+                htb_ingress: $hi,
+                htb_egress_classes: $hec,
+                htb_ingress_classes: $hic,
+                egress_leaf_qdiscs: $elq,
+                ingress_leaf_qdiscs: $ilq
+            }' 2>/dev/null)
+    fi
+
+    echo "$result"
+}
+
+# Function to get historical statistics
+get_historical_stats() {
+    # Note: This is currently a placeholder function for future implementation
+    # In the future, this could provide historical QoS statistics from a database or log files
+    # Currently returns an empty JSON object as no history is being saved
+    local history_file="/tmp/qosmate_stats_history.json"
+    
+    if [ -f "$history_file" ]; then
+        cat "$history_file"
+    else
+        echo "{}"
+    fi
+}
+
+# Function to get RRD data if available
+get_rrd_data() {
+    # Note: This is currently a placeholder function for future implementation
+    # In the future, this could provide Round Robin Database data for generating time-series charts
+    # Currently only checks if the RRD directory exists but doesn't actually process any data
+    # Check if RRD data is available for QoS
+    if [ -d "/tmp/rrd" ]; then
+        echo "{\"rrd_available\": true}"
+    else
+        echo "{\"rrd_available\": false}"
+    fi
+}
+
+# Function to get autorate statistics (current state + config + history)
+get_autorate_stats() {
+    config_load qosmate
+    
+    local enabled
+    config_get enabled autorate enabled "0"
+    
+    if [ "$enabled" != "1" ]; then
+        echo '{"autorate_enabled":false}'
+        return
+    fi
+    
+    # Read current state from daemon's state file
+    local current='{"ul_rate":0,"dl_rate":0,"achieved_ul":0,"achieved_dl":0,"latency":0,"baseline":0,"ul_load_pct":0,"dl_load_pct":0}'
+    if [ -f "/tmp/qosmate-autorate-state" ]; then
+        local _ar_ul=0 _ar_dl=0 _ar_aul=0 _ar_adl=0 _ar_lat=0 _ar_bl=0 _ar_ulp=0 _ar_dlp=0
+        local _key _val
+        while IFS='=' read -r _key _val; do
+            case "$_key" in
+                ul_rate) _ar_ul="$_val" ;;
+                dl_rate) _ar_dl="$_val" ;;
+                achieved_ul) _ar_aul="$_val" ;;
+                achieved_dl) _ar_adl="$_val" ;;
+                latency) _ar_lat="$_val" ;;
+                baseline) _ar_bl="$_val" ;;
+                ul_load_pct) _ar_ulp="$_val" ;;
+                dl_load_pct) _ar_dlp="$_val" ;;
+            esac
+        done < "/tmp/qosmate-autorate-state"
+        _ar_ul=$(json_uint_or_zero "$_ar_ul")
+        _ar_dl=$(json_uint_or_zero "$_ar_dl")
+        _ar_aul=$(json_uint_or_zero "$_ar_aul")
+        _ar_adl=$(json_uint_or_zero "$_ar_adl")
+        _ar_lat=$(json_uint_or_zero "$_ar_lat")
+        _ar_bl=$(json_uint_or_zero "$_ar_bl")
+        _ar_ulp=$(json_uint_or_zero "$_ar_ulp")
+        _ar_dlp=$(json_uint_or_zero "$_ar_dlp")
+        current=$(printf '{"ul_rate":%s,"dl_rate":%s,"achieved_ul":%s,"achieved_dl":%s,"latency":%s,"baseline":%s,"ul_load_pct":%s,"dl_load_pct":%s}' \
+            "$_ar_ul" "$_ar_dl" "$_ar_aul" "$_ar_adl" "$_ar_lat" "$_ar_bl" "$_ar_ulp" "$_ar_dlp")
+    fi
+    
+    # Read config values (replicate defaults from autorate daemon)
+    local uprate downrate
+    config_get uprate settings UPRATE "0"
+    config_get downrate settings DOWNRATE "0"
+    
+    local base_ul base_dl min_ul min_dl max_ul max_dl dec_thr inc_thr
+    config_get base_ul autorate base_ul_rate ""
+    config_get base_dl autorate base_dl_rate ""
+    config_get min_ul autorate min_ul_rate ""
+    config_get min_dl autorate min_dl_rate ""
+    config_get max_ul autorate max_ul_rate ""
+    config_get max_dl autorate max_dl_rate ""
+    config_get dec_thr autorate latency_decrease_threshold "10"
+    config_get inc_thr autorate latency_increase_threshold "5"
+    
+    : "${base_ul:=$uprate}"
+    : "${base_dl:=$downrate}"
+    : "${min_ul:=$((uprate * 25 / 100))}"
+    : "${min_dl:=$((downrate * 25 / 100))}"
+    : "${max_ul:=$((uprate * 105 / 100))}"
+    : "${max_dl:=$((downrate * 105 / 100))}"
+    
+    # Convert thresholds to tenths of ms (matching daemon's internal format)
+    dec_thr=$((dec_thr * 10))
+    inc_thr=$((inc_thr * 10))
+
+    base_ul=$(json_uint_or_zero "$base_ul")
+    base_dl=$(json_uint_or_zero "$base_dl")
+    min_ul=$(json_uint_or_zero "$min_ul")
+    min_dl=$(json_uint_or_zero "$min_dl")
+    max_ul=$(json_uint_or_zero "$max_ul")
+    max_dl=$(json_uint_or_zero "$max_dl")
+    dec_thr=$(json_uint_or_zero "$dec_thr")
+    inc_thr=$(json_uint_or_zero "$inc_thr")
+    
+    local config
+    config=$(printf '{"base_ul":%s,"base_dl":%s,"min_ul":%s,"min_dl":%s,"max_ul":%s,"max_dl":%s,"decrease_threshold":%s,"increase_threshold":%s}' \
+        "$base_ul" "$base_dl" "$min_ul" "$min_dl" "$max_ul" "$max_dl" "$dec_thr" "$inc_thr")
+    
+    # Convert RAM CSV history to compact JSON arrays (60 min, 2s resolution)
+    # Format: [[ts,ul,dl,a_ul,a_dl,lat,bl,ulp,dlp], ...]
+    local history="[]"
+    if [ -f "/tmp/qosmate-autorate-history" ] && [ -s "/tmp/qosmate-autorate-history" ]; then
+        history=$(awk -F',' '{
+            for(i=1; i<=9; i++) {
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
+                if($i !~ /^[0-9]+$/) $i=0
+            }
+            if(NR>1) printf ","
+            printf "[%s,%s,%s,%s,%s,%s,%s,%s,%s]",$1,$2,$3,$4,$5,$6,$7,$8,$9
+        }' "/tmp/qosmate-autorate-history")
+        history="[${history}]"
+    fi
+    
+    # Convert Flash CSV history to JSON (30 days, 10-min bucket summaries)
+    # Format: [[ts,avg_ul,avg_dl,avg_a_ul,avg_a_dl,avg_lat,max_lat,avg_bl,avg_ulp,avg_dlp], ...]
+    local flash_history="[]"
+    if [ -f "/etc/qosmate.d/autorate_hourly.csv" ] && [ -s "/etc/qosmate.d/autorate_hourly.csv" ]; then
+        flash_history=$(awk -F',' '{
+            for(i=1; i<=10; i++) {
+                gsub(/^[[:space:]]+|[[:space:]]+$/, "", $i)
+                if($i !~ /^[0-9]+$/) $i=0
+            }
+            if(NR>1) printf ","
+            printf "[%s,%s,%s,%s,%s,%s,%s,%s,%s,%s]",$1,$2,$3,$4,$5,$6,$7,$8,$9,$10
+        }' "/etc/qosmate.d/autorate_hourly.csv")
+        flash_history="[${flash_history}]"
+    fi
+    
+    printf '{"autorate_enabled":true,"current":%s,"config":%s,"history":%s,"flash_history":%s}\n' \
+        "$current" "$config" "$history" "$flash_history"
+}
+
+# Function to get nftables rule counters for active rules
+get_rule_counters() {
+    local nft_output rules_json
+    nft_output=$(nft -j list table inet dscptag 2>/dev/null || echo '{"nftables":[]}')
+    
+    # Parse and aggregate rule counters by name (combine IPv4/IPv6)
+    rules_json=$(echo "$nft_output" | jq -c '
+        [.nftables[] | 
+         select(.rule != null and .rule.table == "dscptag") |
+         select(.rule.comment != null) |
+         select(.rule.comment | startswith("ipv4_") or startswith("ipv6_")) |
+         select(.rule.expr[]?.counter != null) |
+         .rule |
+         {
+             rule_name: (if .comment | startswith("ipv4_") then .comment[5:] elif .comment | startswith("ipv6_") then .comment[5:] else .comment end),
+             total_packets: (.expr[] | select(.counter != null) | .counter.packets // 0),
+             total_bytes: (.expr[] | select(.counter != null) | .counter.bytes // 0),
+             ipv4_packets: (if .comment | startswith("ipv4_") then (.expr[] | select(.counter != null) | .counter.packets // 0) else 0 end),
+             ipv6_packets: (if .comment | startswith("ipv6_") then (.expr[] | select(.counter != null) | .counter.packets // 0) else 0 end)
+         }] |
+        group_by(.rule_name) |
+        map({
+            rule_name: .[0].rule_name,
+            total_packets: (map(.total_packets) | add),
+            total_bytes: (map(.total_bytes) | add),
+            ipv4_packets: (map(.ipv4_packets) | add // 0),
+            ipv6_packets: (map(.ipv6_packets) | add // 0)
+        })
+    ' 2>/dev/null || echo "[]")
+    
+    jq -n --argjson rules "$rules_json" '{rule_counters: $rules}' 2>/dev/null || echo '{"rule_counters":[]}'
+}
+
+# Function to handle the call command
+handle_call() {
+    local method="$1"
+    
+    # Read and discard input JSON (unused for current methods)
+    cat > /dev/null
+    
+    # Default to getStats if no method specified  
+    [ -z "$method" ] && method="getStats"
+    
+    # Process based on method
+    case "$method" in
+        getStats)
+            get_stats
+            ;;
+        getHistoricalStats)
+            get_historical_stats
+            ;;
+        getRrdData)
+            get_rrd_data
+            ;;
+        getRuleCounters)
+            get_rule_counters
+            ;;
+        getAutorateStats)
+            get_autorate_stats
+            ;;
+        *)
+            echo '{"error": "Method not found"}'
+            ;;
+    esac
+}
+
+# Main function to handle RPC calls
+case "$1" in
+    list)
+        # List available methods
+        echo '{"getStats": {}, "getHistoricalStats": {}, "getRrdData": {}, "getRuleCounters": {}, "getAutorateStats": {}}'
+        ;;
+    call)
+        handle_call "$2"
+        ;;
+    *)
+        echo '{"error": "Invalid call"}'
+        ;;
+esac

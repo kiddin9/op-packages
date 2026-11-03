@@ -1,0 +1,19 @@
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+Makefile text eol=lf
+
+*.apk binary
+*.ipk binary
+*.bin binary
+*.img binary
+*.gz binary
+*.zst binary
+*.pem text eol=lf
+
+# Shared scripts vendored from repo-templates: kept out of the language stats.
+scripts/check-readme.sh linguist-vendored
+scripts/release-notes.sh linguist-vendored

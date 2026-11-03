@@ -1,0 +1,12 @@
+{
+	"luci-app-wrqr": {
+		"description": "Read active Wi-Fi access points for the Status Overview QR widget",
+		"read": {
+			"ubus": {
+				"luci-rpc": [ "getWirelessDevices" ],
+				"uci": [ "get" ]
+			},
+			"uci": [ "wireless" ]
+		}
+	}
+}
