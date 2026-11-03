@@ -1799,14 +1799,23 @@ body:not(.liquid-login) p.luci a:hover {
    水平居中自然是"页脚宽度内"（left:236px → 右缘），不是全屏居中。
    非更新态 8s 自动消失（比 pushbot 多 4s）+ 点卡片跳作者仓库；
    更新态不自动消失，按钮操作。 */
+/* 挂载方式（r22）：改为 body 直接子级 + position:fixed + z-index:1500，
+   由 main.js 按页脚实际高度写 bottom。原因：此前 overlay 是 fixed 页脚
+   (backdrop-filter 玻璃) 的子元素、卡片伸出页脚盒子之外，iOS WebKit 的
+   合成会把后面同样带 backdrop-filter 的玻璃卡片绘制层压在伸出部分之上
+   （布局/命中测试显示卡片在上、绘制却在下 → 看着"上半部分被内容盖住"，
+   Chrome 不复现、大屏横布局不重叠也不复现）。根层 fixed + z1500 后
+   绘制顺序在任何引擎里都平凡正确（高于内容/ifacebox:hover 的1001，
+   低于 modal 2000）。 */
 .liquid-ver-overlay {
-	position: absolute;
+	position: fixed;
 	left: 0;
 	right: 0;
-	/* 紧贴页脚上沿向上展开：卡片浮在页脚上方滑出，不遮盖页脚横幅 */
-	bottom: 100%;
+	/* 紧贴页脚上沿向上展开：卡片浮在页脚上方滑出，不遮盖页脚横幅
+	   （40px 为兜底，main.js 会用页脚实际高度覆盖） */
+	bottom: 40px;
 	height: 160px;
-	z-index: 30;
+	z-index: 1500;
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;

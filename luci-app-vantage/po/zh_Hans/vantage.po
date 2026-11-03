@@ -12,7 +12,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3097
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3113
 msgid "%d MHz (%d–%d MHz)"
 msgstr "%d MHz（%d–%d MHz）"
 
@@ -33,28 +33,28 @@ msgid "%d SSIDs · %d idle"
 msgstr "%d 个 SSID · %d 个空闲"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1349
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1628
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2232
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1644
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2248
 msgid "%d clients"
 msgstr "%d 个客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2559
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2575
 msgid "%d connected"
 msgstr "已连接 %d 个"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1655
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1659
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2558
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1671
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1675
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2574
 msgid "%d devices"
 msgstr "%d 台设备"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:105
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1731
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1747
 msgid "%d down"
 msgstr "%d 个已关闭"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3141
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3142
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3157
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3158
 msgid "%d errors"
 msgstr "%d 个错误"
 
@@ -63,7 +63,7 @@ msgctxt "vantage"
 msgid "%d h ago"
 msgstr "%d 小时前"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3143
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3159
 msgid "%d in · %d out"
 msgstr "%d 入 · %d 出"
 
@@ -78,7 +78,7 @@ msgctxt "vantage"
 msgid "%d min ago"
 msgstr "%d 分钟前"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2557
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2573
 msgid "%d of %d"
 msgstr "%d/%d"
 
@@ -90,11 +90,11 @@ msgstr "%d/%d 列"
 msgid "%d off"
 msgstr "%d 个关闭"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:247
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:250
 msgid "%d older devices (Wi-Fi 4 or earlier) slow airtime"
 msgstr "%d 台旧设备（Wi-Fi 4 或更早）占用更多空口时间"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1695
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1711
 msgid "%d on %s"
 msgstr "%d 个在 %s"
 
@@ -102,7 +102,7 @@ msgstr "%d 个在 %s"
 msgid "%d on this router, %d into your network"
 msgstr "路由器上 %d 项，进入你的网络 %d 项"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2224
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2240
 msgid "%d radios"
 msgstr "%d 个射频"
 
@@ -117,11 +117,11 @@ msgctxt "vantage"
 msgid "%d s ago"
 msgstr "%d 秒前"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2913
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2929
 msgid "%d sent · %s retried · %s failed"
 msgstr "发送 %d · 重传 %s · 失败 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:132
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:135
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/firewall.js:213
 msgid "%d things need attention"
 msgstr "%d 项需要关注"
@@ -134,11 +134,11 @@ msgstr "%d 个已启用"
 msgid "%d weak"
 msgstr "%d 个信号弱"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1698
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1714
 msgid "%d wired"
 msgstr "%d 个有线"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2243
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2259
 msgid "%d–%d MHz of the %d–%d MHz band"
 msgstr "%d–%d MHz 属于 %d–%d MHz 频段"
 
@@ -156,7 +156,7 @@ msgstr "%s（%s）已启用但未上线"
 msgid "%s (IPv%d)"
 msgstr "%s（IPv%d）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2908
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2924
 msgid "%s (new this session)"
 msgstr "%s（本次新增）"
 
@@ -167,10 +167,10 @@ msgstr "%s Gbit/s"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/fmt.js:137
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/wifi.js:103
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2250
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2264
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2653
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3090
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2266
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2280
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2669
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3106
 msgid "%s MHz"
 msgstr "%s MHz"
 
@@ -184,7 +184,7 @@ msgstr "%s Mbit/s"
 msgid "%s accepts every connection"
 msgstr "%s 接受所有连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2907
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2923
 msgctxt "vantage"
 msgid "%s ago"
 msgstr "%s 前"
@@ -194,13 +194,13 @@ msgid "%s at %s; below %s roaming and throughput suffer"
 msgstr "%s（%s）；低于 %s 时漫游和吞吐量会受影响"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:82
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1942
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1958
 msgctxt "vantage"
 msgid "%s available"
 msgstr "可用 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2269
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3098
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2285
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3114
 msgid "%s dBm"
 msgstr "%s dBm"
 
@@ -208,11 +208,11 @@ msgstr "%s dBm"
 msgid "%s device"
 msgstr "%s 设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:163
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:166
 msgid "%s device on a newer radio; uses more airtime per byte"
 msgstr "%s 设备连接在较新的射频上，每字节占用更多空口时间"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2875
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2891
 msgid "%s experience"
 msgstr "%s 体验"
 
@@ -252,14 +252,14 @@ msgstr "%s 已变窄"
 msgid "%s is not up"
 msgstr "%s 未上线"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2612
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2628
 msgid ""
 "%s is shared by %d devices (a switch or another access point behind it); its "
 "%s link is not theirs"
 msgstr ""
 "%s 由 %d 台设备共用（其后接有交换机或另一个接入点）；%s 的链路不属于这些设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2611
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2627
 msgid "%s is shared by %d devices behind the switch"
 msgstr "%s 由交换机后的 %d 台设备共用"
 
@@ -308,9 +308,9 @@ msgid "%s negotiated only %d Mbit/s; a cable pair or port may be faulty"
 msgstr "%s 仅协商到 %d Mbit/s；网线线对或端口可能有故障"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:83
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1943
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1966
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3169
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1959
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1982
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3185
 msgid "%s of %s"
 msgstr "%s / %s"
 
@@ -318,28 +318,28 @@ msgstr "%s / %s"
 msgid "%s of %s available (%s in use)"
 msgstr "可用 %s / 共 %s（已用 %s）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1707
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1723
 msgid "%s of Wi-Fi traffic"
 msgstr "占 Wi-Fi 流量的 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:158
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:159
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:161
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:162
 msgid "%s of frames fail"
 msgstr "帧失败率：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:159
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:162
 msgid "%s of frames to the device fail"
 msgstr "发往设备的帧失败率：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:158
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:161
 msgid "%s of frames to the device fail; interference likely"
 msgstr "发往设备的帧失败率：%s，可能存在干扰"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3167
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3183
 msgid "%s over %d cores"
 msgstr "%s / %d 核"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2028
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2044
 msgid "%s radio"
 msgstr "%s 射频"
 
@@ -359,11 +359,11 @@ msgstr "%s 已连接，速率 %s"
 msgid "%s used"
 msgstr "已用 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1974
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1990
 msgid "%s used of %s"
 msgstr "已用 %s / 共 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2609
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2625
 msgid "%s · %d devices"
 msgstr "%s · %d 台设备"
 
@@ -371,7 +371,7 @@ msgstr "%s · %d 台设备"
 msgid "%s · %s"
 msgstr "%s · %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2905
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2921
 msgid "%s · channel %d · %d MHz"
 msgstr "%s · 信道 %d · %d MHz"
 
@@ -387,40 +387,40 @@ msgstr "%s · 链路较慢"
 msgid "%s: no carrier"
 msgstr "%s：无载波"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3098
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3114
 msgid "(configured %d dBm, limited by regulatory rules)"
 msgstr "（配置 %d dBm，受管制规则限制）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1627
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2744
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1643
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2760
 msgid "(hidden)"
 msgstr "（隐藏）"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1349
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1628
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2232
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1644
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2248
 msgid "1 client"
 msgstr "1 个客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2559
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2575
 msgid "1 connected"
 msgstr "已连接 1 个"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1655
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1659
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2558
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1671
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1675
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2574
 msgid "1 device"
 msgstr "1 台设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:247
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:250
 msgid "1 older device (Wi-Fi 4 or earlier) slows airtime"
 msgstr "1 台旧设备（Wi-Fi 4 或更早）占用更多空口时间"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2224
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2240
 msgid "1 radio"
 msgstr "1 个射频"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:132
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:135
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/firewall.js:213
 msgid "1 thing needs attention"
 msgstr "1 项需要关注"
@@ -444,20 +444,20 @@ msgstr "6 GHz"
 msgid "60 GHz"
 msgstr "60 GHz"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2422
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2438
 msgid "Active"
 msgstr "活跃"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2917
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2958
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2933
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2974
 msgid "Address type"
 msgstr "地址类型"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3134
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3150
 msgid "Addresses"
 msgstr "地址"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2271
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2287
 msgid "Airtime"
 msgstr "空口时间"
 
@@ -466,20 +466,20 @@ msgctxt "vantage"
 msgid "Alias"
 msgstr "别名"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2413
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2419
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2429
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2435
 msgid "All"
 msgstr "全部"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:122
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:125
 msgid "All %d clients above %s"
 msgstr "全部 %d 个客户端高于 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:121
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:124
 msgid "All above %s"
 msgstr "全部高于 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:121
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:124
 msgid "All good"
 msgstr "全部正常"
 
@@ -504,21 +504,21 @@ msgctxt "vantage"
 msgid "B"
 msgstr "B"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1732
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1733
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1748
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1749
 msgid "Busiest network"
 msgstr "最繁忙网络"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1707
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1709
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1723
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1725
 msgid "Busiest radio"
 msgstr "最繁忙射频"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:246
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:249
 msgid "Busiest radio: %s of Wi-Fi traffic"
 msgstr "最繁忙射频：占 Wi-Fi 流量的 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1908
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1924
 msgid "Busy share of each CPU core"
 msgstr "每个 CPU 核心的繁忙占比"
 
@@ -532,8 +532,8 @@ msgstr "繁忙；负载 %s（%d 核）；查看最繁忙进程"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:71
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:72
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1901
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3167
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1917
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3183
 msgctxt "vantage"
 msgid "CPU"
 msgstr "CPU"
@@ -542,41 +542,41 @@ msgstr "CPU"
 msgid "Cache (reclaimable)"
 msgstr "缓存（可回收）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3033
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3049
 msgid "Cancel"
 msgstr "取消"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2900
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2916
 msgctxt "vantage"
 msgid "Capabilities"
 msgstr "能力"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3129
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3145
 msgid "Carrier"
 msgstr "链路状态"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3097
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3113
 msgid "Centre frequency"
 msgstr "中心频率"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2263
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2279
 msgid "Ch %d"
 msgstr "信道 %d"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1610
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2231
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1626
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2247
 msgid "Ch %d · %d MHz"
 msgstr "信道 %d · %d MHz"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3090
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3106
 msgid "Channel"
 msgstr "信道"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1610
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1626
 msgid "Channel —"
 msgstr "信道 —"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2295
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2311
 msgctxt "vantage"
 msgid "Clear filter"
 msgstr "清除筛选"
@@ -586,40 +586,40 @@ msgid "Click any node for details"
 msgstr "点击任意节点查看详情"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:955
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1703
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2268
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2313
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2314
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1719
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2284
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2329
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2330
 msgid "Clients"
 msgstr "客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3102
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3118
 msgid "Clients on this radio"
 msgstr "此射频上的客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2761
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2777
 msgid "Close"
 msgstr "关闭"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2668
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2684
 msgid "Connected"
 msgstr "已连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2638
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2654
 msgid "Connected after you opened this page"
 msgstr "打开本页面后连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1730
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2906
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1746
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2922
 msgid "Connected for"
 msgstr "已连接时长"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2903
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2943
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2919
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2959
 msgid "Connection"
 msgstr "连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1935
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1951
 msgid "Core %d: %s"
 msgstr "核心 %d：%s"
 
@@ -627,15 +627,15 @@ msgstr "核心 %d：%s"
 msgid "Could not read the firewall configuration"
 msgstr "无法读取防火墙配置"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3016
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3032
 msgid "Could not save the name (no permission or the device refused it)."
 msgstr "无法保存名称（无权限或设备拒绝）。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3140
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3156
 msgid "Counters since boot"
 msgstr "自启动以来的计数器"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3100
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3116
 msgid "Country"
 msgstr "国家"
 
@@ -658,16 +658,16 @@ msgstr "自定义仪表盘"
 msgid "DHCP"
 msgstr "DHCP"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2971
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2987
 msgid "DHCP hostname"
 msgstr "DHCP 主机名"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/names.js:42
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3138
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3154
 msgid "DNS"
 msgstr "DNS"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1565
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1581
 msgid "DNS %s"
 msgstr "DNS %s"
 
@@ -676,36 +676,36 @@ msgid "Dashboard"
 msgstr "仪表盘"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/names.js:268
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2494
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2583
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3158
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2510
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2599
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3174
 msgid "Device"
 msgstr "设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3000
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3016
 msgid "Device name"
 msgstr "设备名"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3029
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3045
 msgid "Device type"
 msgstr "设备类型"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2572
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2588
 msgid ""
 "Devices on the Ethernet ports appear here once they send traffic; the bridge "
 "forgets quiet ones after about five minutes."
 msgstr ""
 "以太网端口上的设备发送流量后会显示在这里；网桥会在约五分钟无流量后忘记它们。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1611
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2233
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2258
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3095
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1627
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2249
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2274
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3111
 msgid "Disabled"
 msgstr "已禁用"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2869
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2885
 msgid "Disconnected %s; shown from the last sample."
 msgstr "断开于 %s；显示最后一次采样的数据。"
 
@@ -715,17 +715,17 @@ msgid "Done"
 msgstr "完成"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:46
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1611
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2233
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2258
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3095
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1627
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2249
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2274
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3111
 msgctxt "vantage"
 msgid "Down"
 msgstr "已下线"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2007
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2093
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2166
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2023
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2109
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2182
 msgid "Download"
 msgstr "下载"
 
@@ -733,7 +733,7 @@ msgstr "下载"
 msgid "Download (to clients)"
 msgstr "下载（到客户端）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2911
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2927
 msgctxt "vantage"
 msgid "Downloaded"
 msgstr "已下载"
@@ -760,12 +760,12 @@ msgstr "拖动卡片手柄或使用其按钮移动。宽屏布局保存在此浏
 msgid "Drag to move"
 msgstr "拖动以移动"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3143
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3159
 msgctxt "vantage"
 msgid "Dropped"
 msgstr "已丢弃"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2724
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2740
 msgid "Edit"
 msgstr "编辑"
 
@@ -773,49 +773,49 @@ msgstr "编辑"
 msgid "Enhanced Open (OWE)"
 msgstr "增强开放 (OWE)"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:132
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:135
 msgid "Everything looks healthy"
 msgstr "一切正常"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:168
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:171
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/wifi.js:117
 msgctxt "vantage"
 msgid "Excellent"
 msgstr "极好"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2662
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2678
 msgid "Experience"
 msgstr "体验"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:168
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:171
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/wifi.js:119
 msgctxt "vantage"
 msgid "Fair"
 msgstr "一般"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:147
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:150
 msgid "Fair signal"
 msgstr "信号一般"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:147
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:150
 msgid "Fair signal %s; lower rates at range"
 msgstr "信号一般 %s；远距离速率较低"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2292
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2484
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2308
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2500
 msgid "Filter by name, address, SSID…"
 msgstr "按名称、地址、SSID…筛选"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2484
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2500
 msgid "Filter by name, address, port…"
 msgstr "按名称、地址、端口…筛选"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2293
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2309
 msgid "Filter clients"
 msgstr "筛选客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3161
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3177
 msgctxt "vantage"
 msgid "Firmware"
 msgstr "固件"
@@ -828,7 +828,7 @@ msgstr "从 %s 转发到 %s"
 msgid "Forwarding is accepted by default"
 msgstr "默认接受转发"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2913
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2929
 msgid "Frames to device"
 msgstr "发往设备的帧"
 
@@ -837,15 +837,15 @@ msgctxt "vantage"
 msgid "Free"
 msgstr "空闲"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2898
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2914
 msgid "From device"
 msgstr "来自设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2651
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2667
 msgid "From device: %s"
 msgstr "来自设备：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3124
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3140
 msgid "From network"
 msgstr "来自网络"
 
@@ -855,9 +855,9 @@ msgid ""
 "files are not shown."
 msgstr "内容来自防火墙配置。由 UPnP 或自定义规则文件开放的端口不会显示。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1563
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2603
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3137
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1579
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2619
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3153
 msgid "Gateway"
 msgstr "网关"
 
@@ -870,7 +870,7 @@ msgstr "Gbit/s"
 msgid "General Settings"
 msgstr "基本设置"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2899
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2915
 msgctxt "vantage"
 msgid "Generation"
 msgstr "代际"
@@ -880,27 +880,27 @@ msgctxt "vantage"
 msgid "GiB"
 msgstr "GiB"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2917
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2958
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2933
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2974
 msgid "Globally unique"
 msgstr "全局唯一"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2917
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2958
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2933
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2974
 msgid "Globally unique · %s"
 msgstr "全局唯一 · %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:168
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:171
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/wifi.js:118
 msgctxt "vantage"
 msgid "Good"
 msgstr "良好"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:148
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:151
 msgid "Good signal"
 msgstr "信号良好"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:148
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:151
 msgid "Good signal %s"
 msgstr "信号良好 %s"
 
@@ -918,7 +918,7 @@ msgid "Health checks"
 msgstr "健康检查"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1239
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2744
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2760
 msgctxt "vantage"
 msgid "Hidden"
 msgstr "隐藏"
@@ -927,21 +927,21 @@ msgstr "隐藏"
 msgid "Hide %s"
 msgstr "隐藏 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2918
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2959
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2934
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2975
 msgid "IP addresses"
 msgstr "IP 地址"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3135
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3151
 msgid "IPv4"
 msgstr "IPv4"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3136
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3152
 msgid "IPv6"
 msgstr "IPv6"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2915
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2956
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2931
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2972
 msgid "Identity"
 msgstr "身份"
 
@@ -959,20 +959,20 @@ msgctxt "vantage"
 msgid "Input"
 msgstr "入站数据"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1589
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1605
 msgid "Interface"
 msgstr "接口"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3132
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3148
 msgid "Interface up for"
 msgstr "接口已启用时长"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2941
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3122
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2957
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3138
 msgid "Interfaces"
 msgstr "接口"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1563
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1579
 msgid "Internet"
 msgstr "互联网"
 
@@ -1002,11 +1002,11 @@ msgstr ""
 "它将来自互联网上任何地址的 SSH 或网页端口转发到 %s。无法读取接口列表，因此本"
 "页无法判断该地址是否为路由器本身。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3162
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3178
 msgid "Kernel"
 msgstr "内核"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1980
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1996
 msgid "Kernel %s"
 msgstr "内核 %s"
 
@@ -1015,18 +1015,18 @@ msgctxt "vantage"
 msgid "KiB"
 msgstr "KiB"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2307
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2323
 msgid "Kind of client"
 msgstr "客户端类型"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2907
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2923
 msgctxt "vantage"
 msgid "Last activity"
 msgstr "最后活动"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2495
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2627
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2954
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2511
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2643
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2970
 msgid "Last heard"
 msgstr "最后活动"
 
@@ -1034,39 +1034,39 @@ msgstr "最后活动"
 msgid "Layout reset"
 msgstr "布局已重置"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2637
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2653
 msgid "Left %s"
 msgstr "离开于 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:163
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2639
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:166
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2655
 msgctxt "vantage"
 msgid "Legacy"
 msgstr "旧版"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2494
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2607
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2896
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2945
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3128
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2510
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2623
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2912
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2961
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3144
 msgctxt "vantage"
 msgid "Link"
 msgstr "链路"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2650
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2666
 msgid "Link rate"
 msgstr "链路速率"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1357
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2494
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2618
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2655
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2510
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2634
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2671
 msgid "Live"
 msgstr "实时"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3166
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3182
 msgid "Load"
 msgstr "负载"
 
@@ -1078,28 +1078,28 @@ msgstr "负载 %s（%d 核）"
 msgid "Load %s · %d cores"
 msgstr "负载 %s · %d 核"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3168
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3184
 msgctxt "vantage"
 msgid "Load average"
 msgstr "平均负载"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1889
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1905
 msgid "Load average over 1, 5 and 15 minutes"
 msgstr "1、5、15 分钟平均负载"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1925
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1941
 msgid "Load avg %s"
 msgstr "平均负载 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3164
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3180
 msgid "Local time"
 msgstr "本地时间"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:153
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:156
 msgid "Low link rate %s despite good signal; interference or an old device"
 msgstr "信号良好但链路速率仅 %s；可能存在干扰或设备较旧"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:153
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:156
 msgid "Low link rate for its signal"
 msgstr "链路速率低于信号预期"
 
@@ -1107,8 +1107,8 @@ msgstr "链路速率低于信号预期"
 msgid "MAC"
 msgstr "MAC"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2916
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2957
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2932
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2973
 msgid "MAC address"
 msgstr "MAC 地址"
 
@@ -1124,7 +1124,7 @@ msgstr "使 %s 变窄"
 msgid "Make %s wider"
 msgstr "使 %s 加宽"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2973
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2989
 msgid "Manufacturer of the network adapter"
 msgstr "网卡制造商"
 
@@ -1141,11 +1141,11 @@ msgid "Measuring…"
 msgstr "测量中…"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:82
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1912
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1928
 msgid "Memory"
 msgstr "内存"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3169
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3185
 msgid "Memory in use"
 msgstr "已用内存"
 
@@ -1162,11 +1162,11 @@ msgstr "镜像"
 msgid "Mirrored, scale per direction"
 msgstr "镜像，每个方向单独刻度"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3096
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3112
 msgid "Mode"
 msgstr "模式"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3159
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3175
 msgid "Model"
 msgstr "型号"
 
@@ -1190,27 +1190,27 @@ msgstr "上移 %s"
 msgid "Move %s: drag, or use the arrow keys"
 msgstr "移动 %s：拖动或使用方向键"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3028
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3044
 msgid "Name"
 msgstr "名称"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/names.js:134
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3068
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3084
 msgid "Name contains invisible or control characters"
 msgstr "名称包含不可见或控制字符"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2919
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2960
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2935
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2976
 msgid "Name from"
 msgstr "名称来源"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2588
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2604
 msgid "Name from: %s"
 msgstr "名称来源：%s"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/names.js:132
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/names.js:137
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3069
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3085
 msgid "Name is longer than %d characters"
 msgstr "名称超过 %d 个字符"
 
@@ -1218,17 +1218,17 @@ msgstr "名称超过 %d 个字符"
 msgid "Name must be text"
 msgstr "名称必须是文本"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2860
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2938
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2876
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2954
 msgid "Name this device"
 msgstr "命名此设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2494
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2617
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2647
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2904
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2953
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2510
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2633
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2663
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2920
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2969
 msgid "Network"
 msgstr "网络"
 
@@ -1242,7 +1242,7 @@ msgstr "网络路径"
 msgid "Network path background"
 msgstr "网络路径背景"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1731
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1747
 msgid "Networks"
 msgstr "网络"
 
@@ -1250,13 +1250,13 @@ msgstr "网络"
 msgid "Networks: %s"
 msgstr "网络：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2424
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2638
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2440
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2654
 msgctxt "vantage"
 msgid "New"
 msgstr "新增"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1528
 msgid "No SSIDs"
 msgstr "无 SSID"
 
@@ -1264,31 +1264,31 @@ msgstr "无 SSID"
 msgid "No clients"
 msgstr "无客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2574
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2590
 msgid "No clients connected"
 msgstr "无客户端连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2699
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2715
 msgid "No clients connected."
 msgstr "没有客户端连接。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2565
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2581
 msgid "No clients in this view"
 msgstr "此视图中没有客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2565
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2581
 msgid "No clients match “%s”"
 msgstr "没有匹配“%s”的客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3107
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3123
 msgid "No clients; an idle radio is fine."
 msgstr "无客户端；射频空闲属正常。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:249
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:252
 msgid "No clients; idle radios are fine"
 msgstr "无客户端；射频空闲属正常"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1564
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1580
 msgctxt "vantage"
 msgid "No default route"
 msgstr "无默认路由"
@@ -1297,7 +1297,7 @@ msgstr "无默认路由"
 msgid "No interface with a route"
 msgstr "没有带路由的接口"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3114
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3130
 msgid "No interface with a route is up."
 msgstr "没有带路由的接口处于启用状态。"
 
@@ -1306,7 +1306,7 @@ msgid "No internet-facing zone found"
 msgstr "未找到面向互联网的区域"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:48
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3129
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3145
 msgid "No link"
 msgstr "无链路"
 
@@ -1314,17 +1314,17 @@ msgstr "无链路"
 msgid "No network interface with a route is up"
 msgstr "没有带路由的网络接口处于启用状态"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1493
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1509
 msgid "No other interfaces are up"
 msgstr "没有其他接口处于启用状态"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:172
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:174
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:175
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:177
 msgid "No problems detected"
 msgstr "未检测到问题"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:104
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1516
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1532
 msgid "No radios reported"
 msgstr "未报告射频"
 
@@ -1341,16 +1341,16 @@ msgstr "无信号"
 msgid "No stations are associated right now"
 msgstr "当前没有站点关联"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2571
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2587
 msgid "No wired devices heard"
 msgstr "未发现有线设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2733
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2749
 msgctxt "vantage"
 msgid "No wireless networks configured."
 msgstr "未配置无线网络。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2238
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2254
 msgid "No wireless radios are reported by this device."
 msgstr "此设备未报告任何无线射频。"
 
@@ -1371,23 +1371,23 @@ msgstr "尚未配置区域。"
 msgid "Nobody associated"
 msgstr "无关联站点"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2699
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2715
 msgid "Nobody is moving data right now."
 msgstr "当前没有设备在传输数据。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2270
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2286
 msgid "Noise"
 msgstr "噪声"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2901
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2917
 msgid "Noise / SNR"
 msgstr "噪声 / 信噪比"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3099
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3115
 msgid "Noise floor"
 msgstr "底噪"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:248
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:251
 msgid "Noise floor not reported by the driver"
 msgstr "驱动未报告底噪"
 
@@ -1397,16 +1397,16 @@ msgid "None"
 msgstr "无"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/names.js:150
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3067
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3083
 msgid "Not a station MAC address"
 msgstr "不是站点 MAC 地址"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2842
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2858
 msgid "Not connected"
 msgstr "未连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2619
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2950
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2635
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2966
 msgid "Not counted per device on a shared port"
 msgstr "共用端口不按设备统计"
 
@@ -1414,15 +1414,15 @@ msgstr "共用端口不按设备统计"
 msgid "Not in effect"
 msgstr "未生效"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1960
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1976
 msgid "Not reported"
 msgstr "未报告"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2976
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2992
 msgid "Nothing better known"
 msgstr "无更多信息"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2974
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2990
 msgid "Nothing better known; the address is randomised"
 msgstr "无更多信息；地址已随机化"
 
@@ -1439,11 +1439,11 @@ msgctxt "vantage"
 msgid "OWE"
 msgstr "OWE"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:164
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:167
 msgid "Older %s device"
 msgstr "较旧的 %s 设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2639
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2655
 msgid "Older Wi-Fi generation than the radio; uses more airtime"
 msgstr "比射频支持的 Wi-Fi 代际更旧；占用更多空口时间"
 
@@ -1451,7 +1451,7 @@ msgstr "比射频支持的 Wi-Fi 代际更旧；占用更多空口时间"
 msgid "On this router"
 msgstr "在此路由器上"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
 msgctxt "vantage"
 msgid "Online"
 msgstr "在线"
@@ -1467,7 +1467,7 @@ msgctxt "vantage"
 msgid "Open"
 msgstr "开放"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2540
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2556
 msgid "Open details of %s"
 msgstr "打开 %s 的详情"
 
@@ -1507,7 +1507,7 @@ msgstr "叠加，对数刻度"
 msgid "Overview"
 msgstr "概览"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2900
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2916
 msgid "PMF"
 msgstr "PMF"
 
@@ -1527,17 +1527,17 @@ msgstr ""
 "Ping 和其他控制消息、组播、DHCP 续租以及转发到你网络的 IPsec：每台路由器都会"
 "放行的流量。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3160
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3176
 msgctxt "vantage"
 msgid "Platform"
 msgstr "平台"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:168
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:171
 msgctxt "vantage"
 msgid "Poor"
 msgstr "较差"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2944
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2960
 msgid "Port"
 msgstr "端口"
 
@@ -1545,11 +1545,11 @@ msgstr "端口"
 msgid "Port %d"
 msgstr "端口 %d"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2612
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2628
 msgid "Port %s"
 msgstr "端口 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1652
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1668
 msgid "Port total: %s"
 msgstr "端口合计：%s"
 
@@ -1557,11 +1557,11 @@ msgstr "端口合计：%s"
 msgid "Private"
 msgstr "私有"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2917
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2933
 msgid "Private Wi-Fi address (randomised by the device)"
 msgstr "私有 Wi-Fi 地址（设备随机化）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2958
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2974
 msgid "Private address (randomised by the device)"
 msgstr "私有地址（设备随机化）"
 
@@ -1569,61 +1569,61 @@ msgstr "私有地址（设备随机化）"
 msgid "Private device"
 msgstr "私有设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3157
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3173
 msgid "Processes"
 msgstr "进程"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3131
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3147
 msgid "Protocol"
 msgstr "协议"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2302
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2304
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2318
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2320
 msgid "Quick filters"
 msgstr "快速筛选"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2905
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3094
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2921
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3110
 msgctxt "vantage"
 msgid "Radio"
 msgstr "射频"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2259
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2275
 msgid "Radio details"
 msgstr "射频详情"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:244
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:247
 msgid "Radio is disabled"
 msgstr "射频已禁用"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:245
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:248
 msgid "Radio is enabled but not up"
 msgstr "射频已启用但未上线"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2282
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3088
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2298
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3104
 msgid "Radio settings"
 msgstr "射频设置"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:955
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2211
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2213
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2227
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2229
 msgid "Radios"
 msgstr "射频"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1565
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1581
 msgid "Reachability not probed"
 msgstr "未探测可达性"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2604
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2620
 msgid "Reached through the uplink port %s, not connected to this device"
 msgstr "经由上行端口 %s 到达，并未连接到本设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3122
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3138
 msgid "Realtime graphs"
 msgstr "实时图表"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3141
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3157
 msgctxt "vantage"
 msgid "Received"
 msgstr "已接收"
@@ -1633,16 +1633,16 @@ msgctxt "vantage"
 msgid "Reconnecting…"
 msgstr "重新连接中…"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2440
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2456
 msgid "Remove filter: %s"
 msgstr "移除筛选：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3034
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3050
 msgid "Remove name"
 msgstr "移除名称"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2860
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2938
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2876
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2954
 msgctxt "vantage"
 msgid "Rename"
 msgstr "重命名"
@@ -1651,7 +1651,7 @@ msgstr "重命名"
 msgid "Reset"
 msgstr "重置"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2969
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2985
 msgid "Reverse DNS of its address"
 msgstr "其地址的反向 DNS"
 
@@ -1670,15 +1670,15 @@ msgid ""
 msgstr ""
 "SSH 或网页管理界面会响应互联网上的任何地址。请将此规则限制为你使用的地址。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3026
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3042
 msgid "Save"
 msgstr "保存"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2908
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2924
 msgid "Seen since"
 msgstr "首次出现"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3142
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3158
 msgctxt "vantage"
 msgid "Sent"
 msgstr "已发送"
@@ -1691,11 +1691,11 @@ msgstr "分开显示"
 msgid "Settings to check"
 msgstr "待检查的设置"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2945
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2961
 msgid "Shared by %d devices"
 msgstr "%d 台设备共用"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2608
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2624
 msgid "Shared port"
 msgstr "共用端口"
 
@@ -1703,11 +1703,11 @@ msgstr "共用端口"
 msgid "Show %s"
 msgstr "显示 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2566
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2582
 msgid "Show all clients"
 msgstr "显示全部客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1898
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1914
 msgid "Show or hide system details"
 msgstr "显示/隐藏系统详情"
 
@@ -1715,41 +1715,41 @@ msgstr "显示/隐藏系统详情"
 msgid "Show or hide the network path"
 msgstr "显示/隐藏网络路径"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2214
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2230
 msgid "Show or hide the radio details"
 msgstr "显示/隐藏射频详情"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2010
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2026
 msgid "Show or hide the throughput chart"
 msgstr "显示/隐藏吞吐量图表"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2724
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2740
 msgid "Show or hide the wireless networks"
 msgstr "显示/隐藏无线网络"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1626
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2740
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1642
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2756
 msgid "Show the clients of %s"
 msgstr "显示 %s 的客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1652
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1668
 msgid "Show the devices on %s"
 msgstr "显示 %s 上的设备"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:117
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:118
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:121
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2496
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2644
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2884
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:124
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2512
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2660
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2900
 msgid "Signal"
 msgstr "信号强度"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:144
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:147
 msgid "Signal not reported"
 msgstr "未报告信号"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3130
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3146
 msgctxt "vantage"
 msgid "Speed"
 msgstr "速率"
@@ -1763,41 +1763,41 @@ msgstr[0] "标准常规规则：%d 条"
 msgid "Starfield"
 msgstr "星空"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2575
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2591
 msgid "Stations appear here as soon as they associate with one of the SSIDs."
 msgstr "站点一旦关联到任一 SSID 便会显示在这里。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3095
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3111
 msgid "Status"
 msgstr "状态"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:92
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1915
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1931
 msgid "Storage"
 msgstr "存储"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3035
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3051
 msgid "Stored on this device in /etc/config/vantage"
 msgstr "保存在本设备 /etc/config/vantage 中"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:174
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:177
 msgid "Strong signal"
 msgstr "信号强"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:172
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:175
 msgid "Strong signal %s, %s link"
 msgstr "信号强 %s，链路 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:174
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:177
 msgid "Strong signal, %s"
 msgstr "信号强，%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1965
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1981
 msgctxt "vantage"
 msgid "Swap"
 msgstr "交换分区"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2948
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2964
 msgid "Switch ports"
 msgstr "交换机端口"
 
@@ -1810,12 +1810,12 @@ msgid "Switched off"
 msgstr "已关闭"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:956
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1897
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1898
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1913
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1914
 msgid "System"
 msgstr "系统"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3157
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3173
 msgid "System settings"
 msgstr "系统设置"
 
@@ -1824,7 +1824,7 @@ msgid "Tbit/s"
 msgstr "Tbit/s"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:75
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1929
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1945
 msgid "Temperature %s"
 msgstr "温度 %s"
 
@@ -1832,11 +1832,11 @@ msgstr "温度 %s"
 msgid "Temporary (RAM)"
 msgstr "临时（RAM）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2495
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2511
 msgid "The bridge forgets a device after about five minutes without traffic"
 msgstr "设备约五分钟无流量后，网桥会将其遗忘"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2569
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2585
 msgid ""
 "The bridges have learned so many addresses that listing them here would "
 "strain this device."
@@ -1851,11 +1851,11 @@ msgstr ""
 "该处适用默认入站数据策略且为接受，因此互联网上的任何主机都能访问路由器本身。"
 "请将其加入 wan 区域，或在基本设置中将入站数据设为拒绝。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3072
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3088
 msgid "The device could not write /etc/config/vantage."
 msgstr "设备无法写入 /etc/config/vantage。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2270
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2286
 msgid ""
 "The driver reports a placeholder value, so no noise floor or SNR is shown"
 msgstr "驱动报告的是占位值，不显示底噪与信噪比"
@@ -1872,11 +1872,11 @@ msgstr ""
 "无法读取接口列表，且默认入站数据策略为接受：不属于任何区域的上行接口将会开"
 "放。请在基本设置中将入站数据设为拒绝。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2972
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2988
 msgid "The name the device announces (WPS)"
 msgstr "设备广播的名称（WPS）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2603
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2619
 msgid "The router this device sends its traffic to"
 msgstr "此设备发送流量所经的路由器"
 
@@ -1892,7 +1892,7 @@ msgstr "保存的名称包含无效的配置节 ID"
 msgid "The uplinks could not be checked"
 msgstr "无法检查上行接口"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1573
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1589
 msgid "This access point"
 msgstr "此接入点"
 
@@ -1900,11 +1900,11 @@ msgstr "此接入点"
 msgid "This address family is in no zone: the default policies apply."
 msgstr "此地址族不属于任何区域：适用默认策略。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1573
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1589
 msgid "This device"
 msgstr "此设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3071
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3087
 msgid "This device already stores %d names; remove some first."
 msgstr "此设备已存储 %d 个名称；请先移除部分。"
 
@@ -1918,7 +1918,7 @@ msgid ""
 "the firewall pages."
 msgstr "本页无法判断开放了哪些内容。请重新加载；如果仍无效，请检查防火墙页面。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3079
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3095
 msgid "This radio is not reported any more."
 msgstr "驱动不再报告此射频。"
 
@@ -1926,14 +1926,14 @@ msgstr "驱动不再报告此射频。"
 msgid "This setup is beyond what this overview checks"
 msgstr "此配置超出本概览的检查范围"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2842
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2858
 msgid "This station is not associated right now."
 msgstr "此站点当前未关联。"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:955
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2002
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2004
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2890
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2018
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2020
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2906
 msgctxt "vantage"
 msgid "Throughput"
 msgstr "吞吐量"
@@ -1942,7 +1942,7 @@ msgstr "吞吐量"
 msgid "Throughput chart"
 msgstr "吞吐量图表"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1995
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2011
 msgid "Throughput per link; arrow keys read the values over time"
 msgstr "每条链路的吞吐量；方向键可查看历史值"
 
@@ -1951,38 +1951,38 @@ msgctxt "vantage"
 msgid "TiB"
 msgstr "TiB"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2897
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2913
 msgid "To device"
 msgstr "到设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2624
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2659
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2712
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2640
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2675
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2728
 msgid "To device %s, from device %s"
 msgstr "到设备 %s，来自设备 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2651
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2667
 msgid "To device: %s"
 msgstr "到设备：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3125
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3141
 msgid "To network"
 msgstr "发往网络"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2568
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2584
 msgid "Too many devices to list"
 msgstr "设备过多，无法列出"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:956
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2676
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2677
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2692
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2693
 msgctxt "vantage"
 msgid "Top talkers"
 msgstr "流量大户"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2910
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2949
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3091
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2926
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2965
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3107
 msgid "Traffic"
 msgstr "流量"
 
@@ -2000,13 +2000,13 @@ msgstr ""
 "未被任何转发覆盖的互联网流量仍会到达你的其他网络。请在基本设置中将转发设为拒"
 "绝。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1705
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1729
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1721
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1745
 msgid "Traffic now"
 msgstr "当前流量"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2269
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3098
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2285
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3114
 msgid "Tx power"
 msgstr "发射功率"
 
@@ -2017,16 +2017,16 @@ msgid ""
 msgstr ""
 "已安装 UPnP：它运行时，你网络中的设备可以自行开放端口，这些端口不会在此列出。"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2841
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2857
 msgctxt "vantage"
 msgid "Unknown device"
 msgstr "未知设备"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3070
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3086
 msgid "Unknown device type"
 msgstr "未知设备类型"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3079
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3095
 msgid "Unknown radio"
 msgstr "未知射频"
 
@@ -2041,14 +2041,14 @@ msgid "Unnamed rule"
 msgstr "未命名的规则"
 
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:58
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2258
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3095
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3129
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2274
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3111
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3145
 msgctxt "vantage"
 msgid "Up"
 msgstr "已上线"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1922
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1938
 msgid "Up %s"
 msgstr "已运行 %s"
 
@@ -2057,23 +2057,23 @@ msgstr "已运行 %s"
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:50
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:52
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:58
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2027
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3114
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2043
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3130
 msgctxt "vantage"
 msgid "Uplink"
 msgstr "上行链路"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2027
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2043
 msgid "Uplink %s"
 msgstr "上行链路 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3118
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3134
 msgid "Uplink · %s"
 msgstr "上行链路 · %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2008
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2095
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2167
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2024
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2111
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2183
 msgid "Upload"
 msgstr "上传"
 
@@ -2081,21 +2081,21 @@ msgstr "上传"
 msgid "Upload (from clients)"
 msgstr "上传（来自客户端）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2912
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2928
 msgctxt "vantage"
 msgid "Uploaded"
 msgstr "已上传"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2604
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2620
 msgid "Upstream"
 msgstr "上游"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3163
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3179
 msgid "Uptime"
 msgstr "运行时间"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2605
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2953
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2621
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2969
 msgid "VLAN %d"
 msgstr "VLAN %d"
 
@@ -2129,11 +2129,11 @@ msgstr ""
 msgid "Vendor"
 msgstr "供应商"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:145
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:148
 msgid "Very weak signal %s; expect drops"
 msgstr "信号极弱 %s；可能频繁断连"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:145
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:148
 msgid "Very weak signal; expect drops"
 msgstr "信号极弱；可能频繁断连"
 
@@ -2233,7 +2233,7 @@ msgstr "WPA3 个人版"
 msgid "WPS"
 msgstr "WPS"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2920
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2936
 msgid "WPS device name"
 msgstr "WPS 设备名称"
 
@@ -2246,17 +2246,17 @@ msgstr "警告"
 msgid "Weak"
 msgstr "弱"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:146
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2423
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:149
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2439
 msgid "Weak signal"
 msgstr "信号弱"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:146
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:149
 msgid "Weak signal %s; may roam poorly"
 msgstr "信号弱 %s；漫游可能不佳"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1710
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1712
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1726
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1728
 msgid "Weakest signal"
 msgstr "最弱信号"
 
@@ -2270,27 +2270,27 @@ msgstr "开放内容取决于 firewall4 如何处理 %s，本页无法跟踪。�
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:105
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:107
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:109
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2477
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2493
 msgid "Wi-Fi"
 msgstr "Wi-Fi"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1523
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2477
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1539
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2493
 msgid "Wired"
 msgstr "有线"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:956
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2723
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2724
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2739
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2740
 msgctxt "vantage"
 msgid "Wireless networks"
 msgstr "无线网络"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2870
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2886
 msgid "Wireless settings"
 msgstr "无线设置"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2968
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2984
 msgid "Your name for this device"
 msgstr "你为此设备设置的名称"
 
@@ -2315,7 +2315,7 @@ msgstr "除 %s 以外的所有端口"
 msgid "all protocols"
 msgstr "所有协议"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1731
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1747
 msgid "all up"
 msgstr "全部启用"
 
@@ -2332,15 +2332,15 @@ msgstr "任意区域"
 msgid "any zone (default policy)"
 msgstr "任意区域（默认策略）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2264
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2280
 msgid "auto"
 msgstr "自动"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2908
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2924
 msgid "before this page opened"
 msgstr "打开本页之前"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2946
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2962
 msgid "behind %s, VLAN %d"
 msgstr "位于 %s 之后，VLAN %d"
 
@@ -2349,16 +2349,16 @@ msgctxt "vantage"
 msgid "bit/s"
 msgstr "bit/s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2124
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2140
 msgid "collecting · %s of data"
 msgstr "采集中 · 已采集 %s 数据"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2124
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2140
 msgid "collecting · first samples"
 msgstr "采集中 · 首个样本"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:228
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2104
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2120
 msgid "collecting…"
 msgstr "采集中…"
 
@@ -2371,8 +2371,8 @@ msgid "dBm"
 msgstr "dBm"
 
 #: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:339
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2608
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2945
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2624
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2961
 msgid "down"
 msgstr "已断开"
 
@@ -2381,7 +2381,7 @@ msgctxt "vantage"
 msgid "drop"
 msgstr "丢弃"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3000
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3016
 msgctxt "vantage"
 msgid "e.g. Living room TV"
 msgstr "例如：客厅电视"
@@ -2419,7 +2419,7 @@ msgstr "网关 %s"
 msgid "half duplex"
 msgstr "半双工"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2749
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2765
 msgid "idle"
 msgstr "空闲"
 
@@ -2461,14 +2461,14 @@ msgctxt "vantage"
 msgid "kbit/s"
 msgstr "kbit/s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1907
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2123
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1923
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2139
 msgid "last 5 min"
 msgstr "最近 5 分钟"
 
-#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:164
+#: luci-app-vantage/htdocs/luci-static/resources/vantage/insight.js:167
 #: luci-app-vantage/htdocs/luci-static/resources/vantage/wifi.js:104
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2653
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2669
 msgid "legacy"
 msgstr "旧版"
 
@@ -2480,71 +2480,71 @@ msgstr "已连接"
 msgid "mDNS"
 msgstr "mDNS"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2970
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2986
 msgid "mDNS announcement"
 msgstr "mDNS 广播"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1705
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1729
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2892
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2952
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1721
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1745
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2908
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2968
 msgid "measuring"
 msgstr "测量中"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2099
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2115
 msgid "measuring…"
 msgstr "测量中…"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1709
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1725
 msgid "no Wi-Fi traffic yet"
 msgstr "尚无 Wi-Fi 流量"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1712
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1728
 msgid "no clients"
 msgstr "无客户端"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2083
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2099
 msgctxt "vantage"
 msgid "no data"
 msgstr "无数据"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1733
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1749
 msgid "no traffic yet"
 msgstr "尚无流量"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1571
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1730
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1587
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1746
 msgid "no uplink"
 msgstr "无上行链路"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1703
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1719
 msgid "none connected"
 msgstr "无连接"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2918
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2934
 msgid "not known to this AP"
 msgstr "此 AP 未识别"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2959
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2975
 msgid "not known to this device"
 msgstr "此设备未识别"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2270
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2271
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3099
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2286
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2287
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3115
 msgid "not reported"
 msgstr "未报告"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3099
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3115
 msgid "not reported (driver placeholder %s)"
 msgstr "未报告（驱动占位值 %s）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2901
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2917
 msgid "not reported by the driver"
 msgstr "驱动未报告"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2120
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2907
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2136
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2923
 msgctxt "vantage"
 msgid "now"
 msgstr "现在"
@@ -2553,16 +2553,16 @@ msgstr "现在"
 msgid "now %s down, %s up"
 msgstr "当前下行 %s，上行 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2899
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2915
 msgid "older than the radio (%s)"
 msgstr "比射频支持的标准更旧（%s）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2098
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2114
 msgctxt "vantage"
 msgid "peak"
 msgstr "峰值"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1908
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1924
 msgid "per core"
 msgstr "每核"
 
@@ -2571,11 +2571,11 @@ msgctxt "vantage"
 msgid "port forward"
 msgstr "端口转发"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2886
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2902
 msgid "range %s … %s"
 msgstr "范围 %s … %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3124
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3140
 msgid "received on %s"
 msgstr "在 %s 上接收"
 
@@ -2588,7 +2588,7 @@ msgstr "拒绝"
 msgid "router port %s"
 msgstr "路由器端口 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3125
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:3141
 msgid "sent on %s"
 msgstr "在 %s 上发送"
 
@@ -2596,12 +2596,12 @@ msgstr "在 %s 上发送"
 msgid "short GI"
 msgstr "短 GI"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2627
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2954
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2643
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2970
 msgid "static entry"
 msgstr "静态条目"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2947
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2963
 msgid "switch port %s"
 msgstr "交换机端口 %s"
 
@@ -2613,11 +2613,11 @@ msgstr "已关闭"
 msgid "the covered subnets of zone %s"
 msgstr "区域 %s 覆盖的子网"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2951
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2967
 msgid "the port in total: %s"
 msgstr "该端口合计：%s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2946
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2962
 msgid "the port: %s"
 msgstr "端口：%s"
 
@@ -2633,11 +2633,11 @@ msgstr "此路由器"
 msgid "traffic rule"
 msgstr "通信规则"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1576
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1592
 msgid "up %s"
 msgstr "已运行 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2677
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2693
 msgid "who uses the bandwidth"
 msgstr "带宽使用者"
 
@@ -2654,12 +2654,12 @@ msgstr "区域转发"
 msgid "zones %s and %s if they share a device"
 msgstr "区域 %s 和 %s（若两者共用设备）"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1705
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1729
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1721
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:1745
 msgid "↑ %s · via %s"
 msgstr "↑ %s · 经 %s"
 
-#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2117
+#: luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js:2133
 msgid "−%d min"
 msgstr "−%d 分钟"
 

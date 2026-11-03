@@ -27,11 +27,11 @@ var callIfDump = rpc.declare({ object: 'network.interface', method: 'dump', reje
 
 function isObject(v) { return v != null && typeof v === 'object' && !Array.isArray(v); }
 
-/* the dashboard's sheet, revalidated on every load (see overview.js) */
+/* the dashboard's sheet, versioned as LuCI versions its scripts (see overview.js) */
 var cssPromise = null;
 function loadCss() {
 	if (cssPromise) return cssPromise;
-	cssPromise = fetch(L.resource('vantage/app.css'), { cache: 'no-cache' }).then(function(r) { return r.ok ? r.text() : ''; }).then(function(text) {
+	cssPromise = fetch(L.resource('vantage/app.css') + '?v=' + L.env.resource_version).then(function(r) { return r.ok ? r.text() : ''; }).then(function(text) {
 		if (!text || !('adoptedStyleSheets' in document) || typeof CSSStyleSheet !== 'function') return;
 		var sheet = new CSSStyleSheet();
 		sheet.replaceSync(text);

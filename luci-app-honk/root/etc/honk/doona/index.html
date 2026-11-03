@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant" dir="ltr" data-warm="pending">
 <head>
-<meta name="doona-build" content="33deb150aebd50e3">
+<meta name="doona-build" content="99fcca42805aac47">
 <script>// Normalize appearance before first paint. The build fills the palette list and default from src/shell/palettes.ts, the
 // language locales and reference locale from src/i18n/languages.ts, and the right-to-left scripts from src/i18n/direction.ts.
 (function () {
@@ -36,7 +36,7 @@
   // Only the Glass palettes load Glass's stylesheet, and only Halloween loads its own. Written by the parser, it holds
   // the first paint as the main one does, and it lands before the main one, where src/shell/paletteSheet.ts links it
   // for a palette picked later.
-  var sheets = {"glass":"./assets/glass-BaA-OKzR.css","halloween":"./assets/halloween-e3DfiasY.css"};
+  var sheets = {"glass":"./assets/glass-piYllnzE.css","halloween":"./assets/halloween-e3DfiasY.css"};
   var sheet = sheets[parts[0]];
   if (sheet) document.write('<link rel="stylesheet" data-' + parts[0] + ' href="' + sheet + '">');
   d.dataset.wordmark = read('doona-wordmark') === 'plain' ? 'plain' : 'gradient';
@@ -76,7 +76,7 @@
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-X3dhh/NllVM59fQS2Zy5tsOhqy3BzM7mQ8l5Vj0d0TI='; connect-src 'self' http: https: ws: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ieCj0Bd4bZrG7QbiwuvrQEMSFeuTrqbTWFddYtPmiLw='; connect-src 'self' http: https: ws: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self'">
 <title>doona</title>
 <meta name="description" content="Static web UI for the daeuniverse native API.">
 <link rel="icon" href="./logo.svg">
@@ -84,14 +84,16 @@
 <!-- Default Rose Pine Dawn (light) and Moon (dark) colours: src/ui/styles/palettes/rose-pine.css. -->
 <meta name="theme-color" content="#faf4ed" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#232136" media="(prefers-color-scheme: dark)">
+<!-- doona draws its own light and dark themes; Dark Reader would otherwise judge the page before the theme loads and recolour it. -->
+<meta name="darkreader-lock">
 <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="doona">
-  <script type="module" crossorigin src="./assets/index-DFPUSiWe.js"></script>
+  <script type="module" crossorigin src="./assets/index-CUHkLMAp.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/_commonjsHelpers-CXUWDbkB.js">
   <link rel="modulepreload" crossorigin href="./assets/vendor-react-64fcanlc.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-BnzLYrTn.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-DhY2A0CV.css">
 </head>
 <body><div id="root"></div><div class="rp-popover-band" aria-hidden="true"></div></body>
 </html>

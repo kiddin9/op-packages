@@ -117,7 +117,10 @@ return baseclass.extend({
 		if (!clients.length) out.push({ id: 'signal', level: 'info', title: _('Signal'), value: _('No clients'), reason: _('Nobody associated'), detail: _('No stations are associated right now'), page: PAGES.wireless });
 		else if (weak.length) out.push({ id: 'signal', level: 'warn', title: _('Signal'), value: _('%d weak').format(weak.length),
 			reason: _('%s · %s').format(weak[0].name, fmt.dbm(weak[0].signal)),
-			detail: _('%s at %s; below %s roaming and throughput suffer').format(weak[0].name, fmt.dbm(weak[0].signal), fmt.dbm(WEAK_DBM)), page: PAGES.wireless, client: weak[0].mac });
+			detail: _('%s at %s; below %s roaming and throughput suffer').format(weak[0].name, fmt.dbm(weak[0].signal), fmt.dbm(WEAK_DBM)), page: PAGES.wireless,
+			/* one weak client opens its details, several the list of them
+			   (the weakest's details where the layout hides that list) */
+			client: weak[0].mac, list: weak.length > 1 ? 'weak' : null });
 		else out.push({ id: 'signal', level: 'ok', title: _('Signal'), value: _('All good'), reason: _('All above %s').format(fmt.dbm(WEAK_DBM)),
 			detail: _('All %d clients above %s').format(clients.length, fmt.dbm(WEAK_DBM)), page: PAGES.wireless });
 	},

@@ -1518,8 +1518,15 @@
 			var badge = document.querySelector('p.luci-foot a.liquid-version-link');
 			var footer = badge ? badge.closest('p.luci') : null;
 			var card = inCard ? document.querySelector('p.luci-foot .liquid-ver-toast.is-update') : null;
-			var parent = card || footer;
-			if (!parent) return null;
+			/* r22：非卡片内提示 → 挂 body（fixed 根层），不再挂页脚。原因：
+			   页脚带 backdrop-filter，卡片(子元素)伸出其盒子时 iOS WebKit 的
+			   合成会把后面同为 backdrop-filter 的玻璃卡片绘制层压在伸出部分之上
+			   ——布局/命中测试说它在上、绘制却在下（实测 hit=benka、z>30=none、
+			   锚点正确，但肉眼被盖；所有页面都发生、固定高度处出现剪裁边界，
+			   正是某层玻璃/页脚固定高度带的边）。根层 fixed + z1500 后绘制顺序
+			   在任何引擎里平凡正确（>内容/ifacebox:hover 1001，<modal 2000）。 */
+			if (!footer && !card) return null;
+			var parent = card || document.body;
 			var ov = document.createElement('div');
 			ov.className = 'liquid-ver-overlay' + (card ? ' card-centered' : '');
 			var toast = document.createElement('div');
@@ -1555,8 +1562,17 @@
 			}
 			ov.appendChild(toast);
 			parent.appendChild(ov);
+			var syncBottom = null;
+			if (!card && footer) {
+				syncBottom = function() {
+					ov.style.bottom = (footer.offsetHeight || 34) + 'px';
+				};
+				syncBottom();
+				setTimeout(syncBottom, 20);
+				window.addEventListener('resize', syncBottom);
+			}
 			setTimeout(function() { ov.classList.add('show'); }, 20);
-			var autoId = null;
+var autoId = null;
 			if (autoMs > 0) {
 				autoId = setTimeout(function() { res.dismiss(); }, autoMs);
 			}
@@ -1564,6 +1580,7 @@
 				ov: ov,
 				dismiss: function() {
 					if (autoId) { clearTimeout(autoId); autoId = null; }
+					if (syncBottom) window.removeEventListener('resize', syncBottom);
 					ov.classList.remove('show');
 					setTimeout(function() { ov.remove(); }, 550);
 				}

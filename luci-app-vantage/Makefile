@@ -10,8 +10,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-vantage
-PKG_VERSION:=1.0.13
-PKG_RELEASE:=20
+PKG_VERSION:=1.0.14
+PKG_RELEASE:=21
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage dashboard

@@ -1,1 +1,0 @@
-import{l as s}from"./paletteSheet-Vc0PGoNW.js";import{l as r}from"./wallpaper-CEC7gitM.js";import"./vendor-react-64fcanlc.js";import"./_commonjsHelpers-CXUWDbkB.js";const e=""+new URL("glass-BaA-OKzR.css",import.meta.url).href,o=()=>s("glass",e);r();export{o as linkStylesheet};

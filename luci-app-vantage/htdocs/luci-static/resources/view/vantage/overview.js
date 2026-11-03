@@ -62,13 +62,13 @@ function hostapd(ifname, method) {
 	return L.resolveDefault(hostapdCalls[key](), null);
 }
 
-/* revalidated on every load (a 304 when unchanged): LuCI versions its own
-   scripts, not this sheet, so after an upgrade a browser could pair the
-   new view with a cached app.css */
+/* versioned as LuCI versions its scripts (LuCI's version and the time
+   packages last changed, from its script tag): kept by the browser until
+   a package changes, so the new view never meets a cached app.css */
 var cssPromise = null;
 function loadCss() {
 	if (cssPromise) return cssPromise;
-	cssPromise = fetch(L.resource('vantage/app.css'), { cache: 'no-cache' }).then(function(r) { return r.ok ? r.text() : ''; }).then(function(text) {
+	cssPromise = fetch(L.resource('vantage/app.css') + '?v=' + L.env.resource_version).then(function(r) { return r.ok ? r.text() : ''; }).then(function(text) {
 		if (!text || !('adoptedStyleSheets' in document) || typeof CSSStyleSheet !== 'function') return;
 		var sheet = new CSSStyleSheet();
 		sheet.replaceSync(text);
@@ -1365,7 +1365,7 @@ return view.extend({
 	paintHealth: function() {
 		var self = this;
 		/* the same checks as last poll: leave the chips alone */
-		var sig = JSON.stringify(this.st.health.map(function(c) { return [ c.level, c.title, c.value, c.reason, c.detail, c.client, c.page ]; }));
+		var sig = JSON.stringify(this.st.health.map(function(c) { return [ c.level, c.title, c.value, c.reason, c.detail, c.client, c.list, c.page ]; }));
 		if (sig === this.healthSig) return;
 		this.healthSig = sig;
 		dom.content(this.el.health, this.st.health.map(function(c) {
@@ -1377,9 +1377,9 @@ return view.extend({
 					E('span', { 'class': 'vt-chip-reason' }, [ c.reason ])
 				])
 			];
-			if (c.client)
+			if (c.client || c.list)
 				return E('button', { 'type': 'button', 'class': 'vt-chip vt-chip-' + c.level, 'role': 'listitem', 'title': c.detail || c.reason,
-					'click': function() { self.openDrawer('client', c.client); } }, body);
+					'click': function() { self.openCheck(c); } }, body);
 			/* without its page (no block-mount), a check links to the status overview */
 			var to = hasPage(c.page) ? c.page : [ 'admin', 'status', 'overview' ];
 			return E('a', { 'class': 'vt-chip vt-chip-' + c.level, 'role': 'listitem', 'title': c.detail || c.reason, 'href': L.url.apply(L, to) }, body);
@@ -1436,6 +1436,22 @@ return view.extend({
 	showWired: function(port) {
 		this.ui.kind = 'wired';
 		this.ui.chip = port ? 'port:' + port : 'all';
+		this.setFilter('');
+		this.el.clients.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+	},
+
+	/* a health check about clients: several open their list, unless the
+	   layout hides the Clients tile; one (or a hidden list) its details */
+	openCheck: function(c) {
+		var tile = this.el.clients;
+		if (c.list && tile && tile.getClientRects().length) this.showClients(c.list);
+		else if (c.client) this.openDrawer('client', c.client);
+	},
+
+	/* the Clients tile on its Wi-Fi list, on one quick filter (weak signal) */
+	showClients: function(chip) {
+		this.ui.kind = 'wifi';
+		this.ui.chip = chip;
 		this.setFilter('');
 		this.el.clients.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
 	},

@@ -1663,6 +1663,10 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .td > span:has(> span + br + span) > br { display: none; }
 .td > span:has(> span + br + span) > span { white-space: nowrap; font: var(--fs-sm)/1.5 var(--mono); }
 .td > span:has(> span + br + span) > span:not(:first-child) { color: var(--text-3); font-size: var(--fs-micro); }
+/* Wireless's stations: a rate line ("576.4 Mbit/s, 160 MHz, EHT-MCS 3,
+   EHT-NSS 2") breaks at its commas when the columns run short, which
+   kept the table wider than its card */
+.assoclist .td > span:has(> span + br + span) > span { white-space: normal; }
 
 /* badges inside cells are content, not pills: icon + text (a badge that
    is a tooltip, Interfaces' device details, keeps the tooltip's box) */
@@ -2206,9 +2210,24 @@ body.modal-overlay-active #modal_overlay { display: block; }
 #modal_overlay > .modal.alert-message.warning::after { background: var(--warn); }
 #modal_overlay > .modal.alert-message.error::after, #modal_overlay > .modal.alert-message.danger::after { background: var(--err); }
 #modal_overlay > .modal.alert-message.spinning::before { flex: none; width: 18px; height: 18px; margin: 0; }
+/* LuCI shows each step of the apply countdown through showModal(), which
+   resets the dialog's class to "modal" and lays it out before "spinning"
+   is back: the spinner, a ::before of .spinning, was dropped and started
+   over at 0° every second. The dialog keeps that ::before, empty, with
+   the same animation paused in between, so the spinner turns on. */
+#modal_overlay > .modal:not(.spinning)::before {
+	content: ""; position: absolute; width: 0; height: 0; border: 0;
+	animation: vt-spin .8s linear infinite paused;
+}
 #modal_overlay > .modal.alert-message > * { margin: 0; }
 #modal_overlay > .modal.alert-message .right, #modal_overlay > .modal.alert-message .button-row { margin: 0 0 0 auto; padding: 0; border: 0; background: none; }
 #modal_overlay > .modal.alert-message:has(> .right) { flex-wrap: wrap; }
+/* a warning with a title or buttons ("Connectivity change", "Configuration
+   changes have been rolled back!", "Device unreachable!" on 25.12, whose
+   buttons sit in a .button-row) stacks them, its buttons on the right;
+   side by side the text was a narrow column between title and buttons.
+   The one-line status keeps its spinner beside the text. */
+#modal_overlay > .modal.alert-message:has(> h4, > .button-row) { flex-direction: column; align-items: stretch; }
 
 /* changes dialog */
 .uci-dialog .uci-change-legend {
@@ -2760,12 +2779,14 @@ body[data-page="admin-statistics-graphs"] p.controls > .nowrap > .cbi-button { m
 /* Table sections can sit below form wrappers; their outer card scrolls too.
    Other status cards only scroll when narrow so their headers can stick.
    Vertical overflow is clipped to prevent spurious scrolling on scaled
-   Firefox displays. */
-.cbi-tblsection, .cbi-section:has(.cbi-tblsection), .cbi-section:has(> :where(#packages)) { overflow-x: auto; overflow-y: hidden; }
+   Firefox displays. LuCI 25.12 puts Wireless's station list in a section
+   of its own (cbi-section around the heading and table); its rates and
+   network badges don't wrap, and the table ran past the card. */
+.cbi-tblsection, .cbi-section:has(.cbi-tblsection), .cbi-section:has(> :where(#packages)), .cbi-section:has(> .table.assoclist) { overflow-x: auto; overflow-y: hidden; }
 /* overlay scrollbars show nothing until touched: a shade on the side with
    more table says it scrolls. The covers move with the content and hide
    the shade at either end, so a card that fits looks as before. */
-.vt-main .cbi-tblsection, .vt-main .cbi-section:has(.cbi-tblsection), .vt-main .cbi-section:has(> :where(#packages)) {
+.vt-main .cbi-tblsection, .vt-main .cbi-section:has(.cbi-tblsection), .vt-main .cbi-section:has(> :where(#packages)), .vt-main .cbi-section:has(> .table.assoclist) {
 	background-image:
 		linear-gradient(to right, var(--s1) 50%, transparent), linear-gradient(to left, var(--s1) 50%, transparent),
 		linear-gradient(to right, var(--line-2), transparent), linear-gradient(to left, var(--line-2), transparent);
@@ -2808,7 +2829,7 @@ body[data-page="admin-statistics-graphs"] p.controls > .nowrap > .cbi-button { m
 
 /* a sticky header inside a horizontal scroller would stick relative to that
    scroller (pushed down by --stick-top over the rows): keep those static */
-.cbi-tblsection .table .tr > .th.th, .cbi-section:has(.cbi-tblsection) .table .tr > .th.th, #packages .tr > .th.th { position: static; }
+.cbi-tblsection .table .tr > .th.th, .cbi-section:has(.cbi-tblsection) .table .tr > .th.th, #packages .tr > .th.th, .cbi-section > .table.assoclist .tr > .th.th { position: static; }
 @media (max-width: 1180px) { .cbi-section .table .tr > .th.th { position: static; } }
 
 /* add-ons: adblock and banIP inject status palettes keyed on the OS
@@ -3284,7 +3305,7 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 		white-space: normal; text-align: center; line-height: 1.15;
 	}
 	.cbi-section { overflow-x: visible; }
-	.cbi-tblsection, .cbi-section:has(.cbi-tblsection), .cbi-section:has(> :where(#packages)) { overflow: visible; }
+	.cbi-tblsection, .cbi-section:has(.cbi-tblsection), .cbi-section:has(> :where(#packages)), .cbi-section:has(> .table.assoclist) { overflow: visible; }
 	.network-status-table .ifacebox-head, .network-status-table .ifacebox-body { padding-left: 12px; padding-right: 12px; }
 	:is(.ifacebox-body, .ifacebadge) > span:has(> .nowrap) { column-gap: 10px; }
 	.v-meter-sub { margin-left: 0; flex-basis: 100%; }
@@ -3458,7 +3479,18 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 	.v-meter-row { grid-template-areas: "label" "bar" "val"; row-gap: 6px; }
 	.v-meter-row > .v-meter-val { text-align: left; white-space: normal; }
 	.v-meter-row > .v-meter-label small { display: inline; margin-left: 6px; }
+	/* Software: "Actions" is one group of three buttons; it ran past the
+	   card and widened the page. Groups of buttons only wrap here. */
+	:is(#view > .controls, #view > .cbi-section > .controls) > div > .control-group:not(:has(> input, > select, > .cbi-dropdown)) { flex-wrap: wrap; gap: var(--sp-2); }
+	:is(#view > .controls, #view > .cbi-section > .controls) > div > .control-group:not(:has(> input, > select, > .cbi-dropdown)) > * { flex: 1 1 auto; margin-left: 0 !important; border-radius: var(--r-sm) !important; }
+	/* a package's dependency tree: less indent per level */
+	#modal_overlay ul.deps { padding-left: var(--sp-2); }
 }
+/* Software, a package's details: a dependency line (name, size, status)
+   doesn't wrap in LuCI's own stylesheet; a few levels deep it ran past the
+   dialog and left the ↳ alone on its line */
+#modal_overlay ul.deps li > span { white-space: normal; overflow-wrap: anywhere; }
+#modal_overlay ul.deps li > span > .label { white-space: nowrap; }
 
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after {
@@ -3466,7 +3498,7 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 		animation-iteration-count: 1 !important;
 		scroll-behavior: auto !important;
 	}
-	.spinning::before { animation-duration: 1.6s !important; animation-iteration-count: infinite !important; }
+	.spinning::before, #modal_overlay > .modal::before { animation-duration: 1.6s !important; animation-iteration-count: infinite !important; }
 	.alert-message { transition-duration: .01s; }
 	/* ui.Dropdown moves focus on transitionend: keep a (near-instant) transition */
 	.cbi-dropdown[open] > ul.dropdown { transition-duration: .001s; }

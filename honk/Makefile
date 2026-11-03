@@ -1,44 +1,23 @@
 # SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2026 QiuSimons <https://github.com/QiuSimons>
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=honk
-PKG_VERSION:=415.3_pre1
-PKG_RELEASE:=26
+PKG_VERSION:=2026.11.03~77176ff
+PKG_RELEASE:=27
 
-# Raw upstream release tag. It keeps the dots in qualifiers (e.g. v0.0.1.beta.49)
-# because that is what the GitHub release asset name uses.
-HONK_RELEASE_TAG:=debug-diag.issue-415.3
-HONK_ASSET_TAG:=debug
-
-# SHA256 of each release tarball, kept in sync by scripts/update_honk_version.sh.
-HONK_HASH_X86_64:=a40ff27b4a1d9b5aa8a76ed05c9def01f2e5612dde506f912dc9da6df8ccc1ca
-HONK_HASH_AARCH64:=8ffd3327d7039a430e0370a917fc4eaa75d85bb256f3d23753da0e1d06e57d72
+HONK_SRC_URL:=https://github.com/daeuniverse/honk.git
+HONK_SRC_VERSION:=77176ff8e8cc2b75385a7030dc376536c382574a
 
 PKG_LICENSE:=AGPL-3.0-only
-PKG_LICENSE_FILE:=LICENSE
-PKG_MAINTAINER:=luci-app-honk maintainers
-
-ifeq ($(ARCH),x86_64)
-  HONK_TARGET:=x86_64-unknown-linux-musl
-  HONK_HASH:=$(HONK_HASH_X86_64)
-else ifeq ($(ARCH),aarch64)
-  HONK_TARGET:=aarch64-unknown-linux-musl
-  HONK_HASH:=$(HONK_HASH_AARCH64)
-endif
-
-# mimalloc build: faster QUIC. honk.init sets MIMALLOC_ARENA_RESERVE=0 so the
-# 1 GiB arena reservation stays out of VmSize. Use "-stock" to go back.
-HONK_SUFFIX:=
-# Upstream feature variant: -native-api (recommended for OpenWrt gateway), -full, or empty for legacy releases.
-HONK_VARIANT:=-native-api
-HONK_ASSET:=honk-core-$(HONK_ASSET_TAG)-$(HONK_TARGET)$(HONK_SUFFIX)$(HONK_VARIANT).tar.gz
-
-PKG_SOURCE:=$(HONK_ASSET)
-PKG_SOURCE_URL:=https://github.com/daeuniverse/honk/releases/download/$(HONK_RELEASE_TAG)/
-PKG_HASH:=skip
+PKG_LICENSE_FILES:=LICENSE
+PKG_MAINTAINER:=QiuSimons <https://github.com/QiuSimons>
 
 include $(INCLUDE_DIR)/package.mk
+
+HONK_RUST_ARCH_DEPENDS:=@(aarch64||x86_64)
 
 define Package/honk
   SECTION:=net
@@ -46,11 +25,10 @@ define Package/honk
   SUBMENU:=Web Servers/Proxies
   TITLE:=honk - eBPF transparent proxy engine (dae-compatible)
   URL:=https://github.com/daeuniverse/honk
-  DEPENDS:=@(x86_64||aarch64) \
-    +ca-bundle +ip-full \
+  DEPENDS:=$(HONK_RUST_ARCH_DEPENDS) \
+    +ca-bundle \
     +kmod-sched-core +kmod-sched-bpf +kmod-veth +kmod-nft-queue \
     +v2ray-geoip +v2ray-geosite \
-    +@KERNEL_XDP_SOCKETS \
     +HONK_USE_VMLINUX_BTF:vmlinux-btf
 endef
 
@@ -78,16 +56,22 @@ endef
 
 define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
-	$(TAR) -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR) --strip-components=1
 endef
 
 define Build/Compile
-	true
+	@if [ -f $(CURDIR)/files/honk-core.bin ]; then \
+		$(INSTALL_DIR) $(PKG_INSTALL_DIR)/bin; \
+		$(INSTALL_BIN) $(CURDIR)/files/honk-core.bin $(PKG_INSTALL_DIR)/bin/honk-core; \
+	else \
+		echo "ERROR: $(CURDIR)/files/honk-core.bin missing!" >&2; \
+		echo "Compile it first via: ./scripts/build_honk_core.sh <arch>" >&2; \
+		exit 1; \
+	fi
 endef
 
 define Package/honk/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/honk-core $(1)/usr/bin/honk-core
+	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/bin/honk-core $(1)/usr/bin/honk-core
 
 	$(INSTALL_DIR) $(1)/etc/honk/config.d
 	$(INSTALL_CONF) $(CURDIR)/files/config.dae $(1)/etc/honk/config.dae
