@@ -595,7 +595,7 @@ jobs:
         sed -i -e 's/icon!=="baby"/icon!==""/' -e "s,admin/store,admin/services/store," luci-app-quickstart/htdocs/luci-static/quickstart/index.js
         
         sed -i 's/+php8-cgi /+php8-cgi +php8-fpm /' luci-theme-spectra/Makefile
-        sed -i 's/+luci-base/+luci-base +luci-app-oui +luci-mod-dashboard/' luci-mod-status/Makefile
+        sed -i 's/+luci-base/+luci-base +luci-app-oui +luci-app-vantage/' luci-mod-status/Makefile
         sed -i \
           -e 's/data-page=admin-dashboard/data-page=admin-status-dashboard/g' \
           -e '$a\
