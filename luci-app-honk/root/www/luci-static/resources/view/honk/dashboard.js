@@ -17,9 +17,6 @@ return view.extend({
 	},
 
 	render: function() {
-		if (honk && honk.applyTabVisibility) {
-			honk.applyTabVisibility();
-		}
 		var sec = (uci.sections('honk', 'honk')[0] || {});
 		var sid = sec['.name'] || 'config';
 		var dashType = uci.get('honk', sid, 'dashboard') || 'none';
@@ -43,7 +40,11 @@ return view.extend({
 							return;
 						}
 
-						window.location.reload();
+						// The switch changes the stored settings, and the reloaded page has
+						// to paint the tabs that apply to the new dashboard.
+						honk.refreshTabVisibility().then(function() {
+							window.location.reload();
+						});
 					}).catch(function(err) {
 						sel.disabled = false;
 						honk.showNotification(null, E('p', _('Failed to switch dashboard:') + ' ' + (err.message || err)), 'error');

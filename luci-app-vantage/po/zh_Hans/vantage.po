@@ -671,7 +671,8 @@ msgstr "DNS"
 msgid "DNS %s"
 msgstr "DNS %s"
 
-#: luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json:3
+#: luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json:3
+#: luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json:14
 msgid "Dashboard"
 msgstr "仪表盘"
 
@@ -1503,7 +1504,7 @@ msgstr "叠加"
 msgid "Overlaid, log scale"
 msgstr "叠加，对数刻度"
 
-#: luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json:14
+#: luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json:26
 msgid "Overview"
 msgstr "概览"
 

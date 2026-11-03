@@ -659,7 +659,8 @@ msgstr ""
 msgid "DNS %s"
 msgstr ""
 
-#: luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json:3
+#: luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json:3
+#: luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json:14
 msgid "Dashboard"
 msgstr ""
 
@@ -1483,7 +1484,7 @@ msgstr ""
 msgid "Overlaid, log scale"
 msgstr ""
 
-#: luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json:14
+#: luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json:26
 msgid "Overview"
 msgstr ""
 

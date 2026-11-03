@@ -14,10 +14,6 @@ return view.extend({
 	handleReset: null,
 
 	render: function() {
-		if (honk && honk.applyTabVisibility) {
-			honk.applyTabVisibility();
-		}
-
 		var scrolled = false;
 
 		var logTextarea = E('textarea', {

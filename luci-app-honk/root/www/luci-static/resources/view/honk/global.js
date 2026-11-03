@@ -63,6 +63,10 @@ return view.extend({
 		return this.handleSave(ev).then(function() {
 			var newDash = uci.get('honk', sid, 'dashboard') || 'none';
 
+			// The menu the reloaded page paints from has to match the new settings,
+			// and LuCI reloads before the view renders again.
+			honk.applyTabVisibility();
+
 			var pre = (newDash !== oldDash) ? honk.switchDashboardAndWait(newDash).then(function(res) {
 				if (res && res.pending)
 					honk.showNotification(null, E('p', _('Saved, but the panel files are not installed yet — download the panel first.')), 'warning');
