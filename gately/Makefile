@@ -5,8 +5,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gately
-PKG_VERSION:=0.6.3
-PKG_RELEASE:=23
+PKG_VERSION:=0.6.3.5
+PKG_RELEASE:=24
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/wangwanjie/gately/tar.gz/v$(PKG_VERSION)?

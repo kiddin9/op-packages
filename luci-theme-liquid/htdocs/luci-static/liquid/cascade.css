@@ -5290,3 +5290,24 @@ body:is([data-page="admin-system-startup"], [data-page="admin/system/startup"])
 	min-width: min(420px, 75vw);
 	max-width: 75vw;
 }
+
+/* ===== 登录页防页脚遮挡（几何触发，仅重叠的设备生效）=====
+   #liquid-login 是 fixed 全屏 + flex 垂直居中；页脚 p.luci 是 fixed bottom:4
+   z-index:2001 —— 矮视口（折叠机外屏）或 iOS 工具栏展开时，卡片下半截（登录
+   按钮）被页脚文字压住，内屏（大屏）轻微覆盖。
+   main.js 实测"整个 stack（顶部胶囊+卡片）相对视口与页脚"重叠才加类：
+     · clear → 给页脚留 72px 净空（卡片上移，解决轻微覆盖）
+     · fit   → 仍不行则整栈 zoom 等比缩小（小屏不滚动、页脚固定可见、
+               顶部胶囊不被裁——用户要求：缩小登录页所有元素比例）
+   其它平台视口够高 → 不重叠 → 不加类 → 渲染完全不变。
+   注：不靠 UA/分辨率猜设备（iOS UA 无机型信息），靠几何测量。 */
+body.liquid-login.liquid-login-clear #liquid-login {
+	padding-bottom: 72px;
+}
+
+/* 第二级：整栈等比缩小（zoom 由 main.js 按几何计算后写入 inline style）。
+   目的是"小屏不滚动、页脚固定可见"（用户要求：缩小登录页所有元素比例），
+   同时保证顶部胶囊（暗黑模式/颜色选择）不被裁掉。 */
+body.liquid-login.liquid-login-fit #liquid-login .liquid-login-stack {
+	/* zoom 在 inline style 上；此处只留调试标记用的 class，无强制样式 */
+}
