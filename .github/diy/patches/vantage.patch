@@ -125,20 +125,6 @@
  LUCI_MAINTAINER:=anothaDev <10740588+anothaDev@users.noreply.github.com>
  LUCI_URL:=https://github.com/anothaDev/luci-theme-vantage
  
-diff --git a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
-similarity index 85%
-rename from luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
-rename to luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
-index ad0a166..c58c860 100644
---- a/luci-app-vantage/root/usr/share/luci/menu.d/luci-app-vantage.json
-+++ b/luci-app-vantage/root/usr/share/luci/menu.d/z-luci-app-vantage.json
-@@ -1,5 +1,5 @@
- {
--	"admin/dashboard": {
-+	"admin/status/dashboard": {
- 		"title": "Dashboard",
- 		"order": 1,
- 		"action": {
 
 --- a/luci-theme-vantage/ucode/template/themes/vantage/header.ut
 +++ b/luci-theme-vantage/ucode/template/themes/vantage/header.ut
