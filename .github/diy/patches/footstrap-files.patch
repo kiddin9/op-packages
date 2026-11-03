@@ -1,0 +1,20 @@
+--- a/luci-app-footstrap-files/htdocs/luci-static/resources/view/footstrap-files/browser.js
++++ b/luci-app-footstrap-files/htdocs/luci-static/resources/view/footstrap-files/browser.js
+@@ -693,7 +693,7 @@ return view.extend({
+ 			 * SOURCE — there is nothing there to pick up — and it carries no `data-path`, so the
+ 			 * rubber band and the selection never see it. */
+ 			const up = E('tr', { class: 'tr fsf-row cbi-rowstyle-1' }, [
+-				E('td', { class: 'td fsf-name col-10', 'data-title': _('Name') }, [
++				E('td', { class: 'td fsf-name', 'data-title': _('Name') }, [
+ 					E('span', { class: 'fsf-nameline' }, [
+ 						ICON.dir(ICON_LIST), E('a', { href: this.href(parent(this.path)) }, '..'),
+ 					]),
+@@ -734,7 +734,7 @@ return view.extend({
+ 				 * rather than the cell itself: `display: flex` on a `.td` takes it out of the table's
+ 				 * own row layout, and the name then sits a few pixels above every other cell in the
+ 				 * row — measured at 1280, the name riding over the row above it. */
+-				E('td', { class: 'td fsf-name col-10', 'data-title': _('Name') }, [
++				E('td', { class: 'td fsf-name', 'data-title': _('Name') }, [
+ 					E('span', { class: 'fsf-nameline' }, [
+ 						/* The tick is drawn only while selecting. A checkbox in every row on every
+ 						 * visit is the shape this page had, and it is the one the phone has no room
