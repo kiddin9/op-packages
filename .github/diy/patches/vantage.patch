@@ -1,3 +1,13 @@
+--- a/luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json
++++ b/luci-app-vantage/root/usr/share/luci/menu.d/zz-luci-app-vantage.json
+@@ -1,5 +1,5 @@
+ {
+-	"admin/dashboard": {
++	"admin/status/dashboard": {
+ 		"title": "Dashboard",
+ 		"order": 1,
+ 		"action": {
+
 --- a/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
 +++ b/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
 @@ -156,6 +156,8 @@ html[data-darkmode="true"] .vt-app {
