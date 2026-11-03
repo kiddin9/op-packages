@@ -6,7 +6,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=honk
 PKG_VERSION:=2026.11.03~77176ff
-PKG_RELEASE:=27
+PKG_RELEASE:=28
 
 HONK_SRC_URL:=https://github.com/daeuniverse/honk.git
 HONK_SRC_VERSION:=77176ff8e8cc2b75385a7030dc376536c382574a
@@ -55,36 +55,31 @@ define Package/honk/conffiles
 endef
 
 define Build/Prepare
-	mkdir -p $(PKG_BUILD_DIR)
+	mkdir -p "$(PKG_BUILD_DIR)"
 endef
 
 define Build/Compile
-	@if [ -f $(CURDIR)/files/honk-core.bin ]; then \
-		$(INSTALL_DIR) $(PKG_INSTALL_DIR)/bin; \
-		$(INSTALL_BIN) $(CURDIR)/files/honk-core.bin $(PKG_INSTALL_DIR)/bin/honk-core; \
-	else \
-		echo "ERROR: $(CURDIR)/files/honk-core.bin missing!" >&2; \
-		echo "Compile it first via: ./scripts/build_honk_core.sh <arch>" >&2; \
-		exit 1; \
-	fi
+	"$(CURDIR)/build_honk_core.sh" --if-needed "$(ARCH)" "$(CURDIR)/files/honk-core.bin"
+	$(INSTALL_DIR) "$(PKG_INSTALL_DIR)/bin"
+	$(INSTALL_BIN) "$(CURDIR)/files/honk-core.bin" "$(PKG_INSTALL_DIR)/bin/honk-core"
 endef
 
 define Package/honk/install
-	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/bin/honk-core $(1)/usr/bin/honk-core
+	$(INSTALL_DIR) "$(1)/usr/bin"
+	$(INSTALL_BIN) "$(PKG_INSTALL_DIR)/bin/honk-core" "$(1)/usr/bin/honk-core"
 
-	$(INSTALL_DIR) $(1)/etc/honk/config.d
-	$(INSTALL_CONF) $(CURDIR)/files/config.dae $(1)/etc/honk/config.dae
-	$(INSTALL_CONF) $(CURDIR)/files/config.d/node.dae $(1)/etc/honk/config.d/node.dae
-	$(INSTALL_CONF) $(CURDIR)/files/config.d/route.dae $(1)/etc/honk/config.d/route.dae
-	$(INSTALL_CONF) $(CURDIR)/files/config.d/dns.dae $(1)/etc/honk/config.d/dns.dae
-	$(INSTALL_CONF) $(CURDIR)/files/config.d/api.dae $(1)/etc/honk/config.d/api.dae
+	$(INSTALL_DIR) "$(1)/etc/honk/config.d"
+	$(INSTALL_CONF) "$(CURDIR)/files/config.dae" "$(1)/etc/honk/config.dae"
+	$(INSTALL_CONF) "$(CURDIR)/files/config.d/node.dae" "$(1)/etc/honk/config.d/node.dae"
+	$(INSTALL_CONF) "$(CURDIR)/files/config.d/route.dae" "$(1)/etc/honk/config.d/route.dae"
+	$(INSTALL_CONF) "$(CURDIR)/files/config.d/dns.dae" "$(1)/etc/honk/config.d/dns.dae"
+	$(INSTALL_CONF) "$(CURDIR)/files/config.d/api.dae" "$(1)/etc/honk/config.d/api.dae"
 
-	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_CONF) $(CURDIR)/files/honk.config $(1)/etc/config/honk
+	$(INSTALL_DIR) "$(1)/etc/config"
+	$(INSTALL_CONF) "$(CURDIR)/files/honk.config" "$(1)/etc/config/honk"
 
-	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) $(CURDIR)/files/honk.init $(1)/etc/init.d/honk
+	$(INSTALL_DIR) "$(1)/etc/init.d"
+	$(INSTALL_BIN) "$(CURDIR)/files/honk.init" "$(1)/etc/init.d/honk"
 endef
 
 $(eval $(call BuildPackage,honk))
