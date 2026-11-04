@@ -8,11 +8,11 @@ Hardens the LuCI page, replaces update_url with update_source, and shows
 a new-core-version hint with a one-click path to the Core Update tab.
 The Service Status pill doubles as the Enable switch, next to the version.
 ---
- .../resources/view/adguardhome/config.js      | 1207 +++++++++++++++--
- 1 file changed, 1076 insertions(+), 131 deletions(-)
+ .../resources/view/adguardhome/config.js      | 1210 +++++++++++++++--
+ 1 file changed, 1079 insertions(+), 131 deletions(-)
 
 diff --git a/htdocs/luci-static/resources/view/adguardhome/config.js b/htdocs/luci-static/resources/view/adguardhome/config.js
-index 6dc2d45..07aa5cc 100644
+index 6dc2d45..25c03d4 100644
 --- a/htdocs/luci-static/resources/view/adguardhome/config.js
 +++ b/htdocs/luci-static/resources/view/adguardhome/config.js
 @@ -5,6 +5,7 @@
@@ -23,7 +23,7 @@ index 6dc2d45..07aa5cc 100644
  'require view';
  
  const DEFAULT_CONFIG_FILE = '/etc/adguardhome/adguardhome.yaml';
-@@ -18,12 +19,292 @@ const DEFAULT_GOMEMLIMIT = '0';
+@@ -18,12 +19,293 @@ const DEFAULT_GOMEMLIMIT = '0';
  
  const PATH_REGEX = new RegExp('^/etc(/[^/]+)?/?$');
  
@@ -253,7 +253,8 @@ index 6dc2d45..07aa5cc 100644
 +	':root[data-argon-mode="dark"] .agh-head, :root[data-darkmode="true"] .agh-head { --agh-on-fg:#7ee2a0; --agh-on-bg:rgba(46,160,67,.22); --agh-warn-fg:#e3b341; --agh-warn-bg:rgba(187,128,9,.22); --agh-off-fg:#ffa9ae; --agh-off-bg:rgba(248,81,73,.18); }' +
 +	'.agh-head-row { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 2rem; }' +
 +	'.agh-head-item { display:inline-flex; align-items:center; flex-wrap:wrap; gap:.25rem .75rem; line-height:1.5; }' +
-+	'.agh-head-note { line-height:1.5; }' +
++	'.agh-head-note { display:flex; align-items:flex-start; gap:.5rem; line-height:1.5; padding:.45rem .75rem; border-left:4px solid var(--error-color-high, #d9534f); border-radius:4px; background:rgba(217,83,79,.12); color:var(--error-color-high, #d9534f); font-weight:600; }' +
++	'.agh-head-note-icon { flex:none; font-size:1.15em; line-height:1.3; }' +
 +	'.agh-switch { display:inline-flex; align-items:center; gap:.4rem; height:auto; min-height:0; line-height:1.4; padding:.25rem .8rem; margin:0; border-radius:999px; font-weight:600; font-size:.9rem; border:0; box-shadow:none; cursor:pointer; transition:filter .15s; }' +
 +	'.agh-switch:hover { filter:brightness(.95); }' +
 +	'.agh-switch::before { content:""; width:.55rem; height:.55rem; border-radius:50%; background:currentColor; }' +
@@ -318,7 +319,7 @@ index 6dc2d45..07aa5cc 100644
  
  function getServiceInfo(name) {
  	const fn = rpc.declare({
-@@ -32,7 +313,9 @@ function getServiceInfo(name) {
+@@ -32,7 +314,9 @@ function getServiceInfo(name) {
  		params: ['name'],
  		expect: { [name]: { instances: { [name]: {} }}},
  	});
@@ -329,7 +330,7 @@ index 6dc2d45..07aa5cc 100644
  }
  
  const getAGHServiceInfo = getServiceInfo('adguardhome');
-@@ -40,18 +323,14 @@ const getAGHServiceInfo = getServiceInfo('adguardhome');
+@@ -40,18 +324,14 @@ const getAGHServiceInfo = getServiceInfo('adguardhome');
  async function getStatus() {
  	try {
  		const res = await getAGHServiceInfo();
@@ -350,7 +351,7 @@ index 6dc2d45..07aa5cc 100644
  async function getVersion() {
  	try {
  		const res = await fs.exec('/usr/bin/AdGuardHome', ['--version']);
-@@ -61,26 +340,30 @@ async function getVersion() {
+@@ -61,26 +341,30 @@ async function getVersion() {
  		return version;
  	} catch (e) {
  		console.error(e);
@@ -392,7 +393,7 @@ index 6dc2d45..07aa5cc 100644
  	}
  	if (value.endsWith('/')) {
  		return _('Path must not end with a slash.');
-@@ -95,167 +378,829 @@ function validateWorkDir(_unused, value) {
+@@ -95,167 +379,831 @@ function validateWorkDir(_unused, value) {
  	if (value == null || value === '') {
  		return true;
  	}
@@ -906,8 +907,10 @@ index 6dc2d45..07aa5cc 100644
 +				])
 +			];
 +			if (!coreExists) {
-+				headRows.push(E('div', { 'class': 'agh-head-note', 'style': 'color: var(--error-color-high); font-weight: bold;' },
-+					_('Core binary not found. Enable the service to trigger an automatic download.')));
++				headRows.push(E('div', { 'class': 'agh-head-note', 'role': 'alert' }, [
++					E('span', { 'class': 'agh-head-note-icon', 'aria-hidden': 'true' }, '\u26a0\ufe0e'),
++					E('span', {}, _('Core binary not found. Enable the service to trigger an automatic download.'))
++				]));
 +			}
 +			head = E('div', { 'class': 'agh-head' }, headRows);
 +

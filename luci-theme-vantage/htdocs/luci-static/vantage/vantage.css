@@ -3189,6 +3189,19 @@ select[id^="widget.cbid.firewall."] > option { color: var(--text); font-weight: 
 }
 [id^="cbi-firewall-"] .table:has(.cbi-section-table-titles.named[data-title]) .cbi-section-table-row[data-title]:has(input[data-widget-id$=".enabled"]:not(:checked))::before { color: var(--text-3); }
 
+/* File Manager (luci-app-filemanager) injects a light palette of its own: a
+   #f9f9f9 status bar, #f0f0f0 row hover and editor gutter, #ccc rules. On the
+   dark scheme that is a white band under the theme's light ink; repaint those
+   surfaces with the theme's, and let the table's own hover show through the
+   app's !important row fill. */
+body[data-page="admin-system-filemanager"] #status-bar { background: var(--s1); border-color: var(--line); }
+body[data-page="admin-system-filemanager"] #status-bar .cbi-progressbar { background: none; }
+body[data-page="admin-system-filemanager"] :is(#file-list-container, #content-help) { border-color: var(--line); }
+body[data-page="admin-system-filemanager"] #file-table :is(th, td) { border-right-color: var(--line); }
+body[data-page="admin-system-filemanager"] #file-table tr:hover { background: none !important; }
+body[data-page="admin-system-filemanager"] .line-numbers { background: var(--s3); border-right-color: var(--line); }
+body[data-page="admin-system-filemanager"] .sort-button { border-color: var(--line-2); }
+
 /* ----------------------------------------------------- responsive */
 
 @media (max-width: 1100px) {

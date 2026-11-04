@@ -35,8 +35,6 @@ const DANGEROUS_RW_PATHS = ['/', '/etc', '/root', '/usr', '/bin', '/sbin', '/lib
 
 const POLL_INTERVAL = 5;
 
-const RUNNING_SPAN = `<span style="color: green; font-weight: bold">${_('Running')}</span>`;
-const NOT_RUNNING_SPAN = `<span style="color: red; font-weight: bold">${_('Not running')}</span>`;
 
 const STORAGE_KEY = 'luci-app-adguardhome';
 const STORAGE_KEY_CORE = 'luci-app-adguardhome_core_update';
@@ -213,35 +211,71 @@ async function getLatestRelease(channel, force) {
 	}
 }
 
-// Hint appended to the "Current Version" row; onUpdate runs when "Update" is clicked.
-// Built from DOM nodes only (no HTML strings).
+// Hint appended to the "Current Version" row. The whole text is the button: a click
+// runs onUpdate (go to the Core Update tab). A span, not a link, so the theme's link
+// colour / underline never applies. Built from DOM nodes only (no HTML strings).
 function buildVersionHint(release, onUpdate) {
-	return E('span', { 'id': 'agh-version-hint', 'style': 'margin-left: 12px;' }, [
-		E('strong', { 'style': 'color: var(--warn-color-high, #d9822b);' },
-			'→ ' + _('New version %s available').replace('%s', release.tag)),
-		' ',
-		E('a', { 'href': release.url, 'target': '_blank', 'rel': 'noopener noreferrer' }, _('Release notes')),
-		' | ',
-		E('a', {
-			'href': '#',
-			'click': function(ev) {
+	return E('span', {
+		'id': 'agh-version-hint',
+		'role': 'button',
+		'tabindex': '0',
+		'title': _('Go to Core Update'),
+		'style': 'margin-left: 12px; cursor: pointer;',
+		'click': function(ev) {
+			ev.preventDefault();
+			onUpdate();
+		},
+		'keydown': function(ev) {
+			if (ev.key === 'Enter' || ev.key === ' ') {
 				ev.preventDefault();
 				onUpdate();
 			}
-		}, _('Update'))
-	]);
+		}
+	}, E('strong', { 'style': 'color: var(--warn-color-high, #d9822b);' },
+		'\u2192 ' + _('New version %s available').replace('%s', release.tag)));
 }
 
-// Tighter spacing for the "Current Version" / "Service Status" rows. The themes
-// give every row a lot of padding; !important is needed to win over them.
-const STATUS_COMPACT_CSS =
-	'.agh-status-row { margin: 0 !important; padding-top: 2px !important; padding-bottom: 2px !important; min-height: 0 !important; }' +
-	'.agh-status-row .cbi-value-title, .agh-status-row .cbi-value-field { margin: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; min-height: 0 !important; line-height: 1.5 !important; }';
+// Header card above the settings: one line with the Service Status pill (which is also
+// the Enable switch) and the Current Version. The pill follows the style of the Main
+// Switch of luci-app-bypass.
+const HEAD_CSS =
+	'.agh-head { --agh-on-fg:#1a7f37; --agh-on-bg:#dafbe1; --agh-warn-fg:#9a6700; --agh-warn-bg:#fff8c5; --agh-off-fg:#82071e; --agh-off-bg:#ffebe9; display:flex; flex-direction:column; gap:.5rem; margin:.5rem 0 1rem; padding:.7rem 1rem; border-radius:var(--radius-card, 6px); background:var(--surface-raised, rgba(128,128,128,.06)); box-shadow:0 4px 8px rgba(0,0,0,.03); }' +
+	':root[data-argon-mode="dark"] .agh-head, :root[data-darkmode="true"] .agh-head { --agh-on-fg:#7ee2a0; --agh-on-bg:rgba(46,160,67,.22); --agh-warn-fg:#e3b341; --agh-warn-bg:rgba(187,128,9,.22); --agh-off-fg:#ffa9ae; --agh-off-bg:rgba(248,81,73,.18); }' +
+	'.agh-head-row { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 2rem; }' +
+	'.agh-head-item { display:inline-flex; align-items:center; flex-wrap:wrap; gap:.25rem .75rem; line-height:1.5; }' +
+	'.agh-head-note { display:flex; align-items:flex-start; gap:.5rem; line-height:1.5; padding:.45rem .75rem; border-left:4px solid var(--error-color-high, #d9534f); border-radius:4px; background:rgba(217,83,79,.12); color:var(--error-color-high, #d9534f); font-weight:600; }' +
+	'.agh-head-note-icon { flex:none; font-size:1.15em; line-height:1.3; }' +
+	'.agh-switch { display:inline-flex; align-items:center; gap:.4rem; height:auto; min-height:0; line-height:1.4; padding:.25rem .8rem; margin:0; border-radius:999px; font-weight:600; font-size:.9rem; border:0; box-shadow:none; cursor:pointer; transition:filter .15s; }' +
+	'.agh-switch:hover { filter:brightness(.95); }' +
+	'.agh-switch::before { content:""; width:.55rem; height:.55rem; border-radius:50%; background:currentColor; }' +
+	'.agh-switch.on { color:var(--agh-on-fg); background:var(--agh-on-bg); }' +
+	'.agh-switch.warn { color:var(--agh-warn-fg); background:var(--agh-warn-bg); }' +
+	'.agh-switch.off { color:var(--agh-off-fg); background:var(--agh-off-bg); }';
 
+// The clickable <a> of the Core Update tab in the tab menu (not the tab pane, which
+// carries the same data-tab value).
 function findCoreUpdateTabLink(root) {
-	return root.querySelector('a[href="#cbi-tab-adguardhome-core_update"]') ||
-	       root.querySelector('a[href="#core_update"]') ||
-	       root.querySelector('[data-tab="core_update"]');
+	return root.querySelector('.cbi-tabmenu li[data-tab="core_update"] a') ||
+	       root.querySelector('li[data-tab="core_update"] a') ||
+	       root.querySelector('a[href="#cbi-tab-adguardhome-core_update"]') ||
+	       root.querySelector('a[href="#core_update"]');
+}
+
+// Click the tab as soon as it exists and is visible; the tab menu is built and
+// shown/hidden (depends) shortly after render, so retry for a couple of seconds.
+function activateCoreUpdateTab(root, tries) {
+	const link = findCoreUpdateTabLink(root);
+	const li = link ? link.parentNode : null;
+	// LuCI marks every inactive tab 'cbi-tab-disabled', so that class means nothing here;
+	// a tab that is not available (no visible option yet) has display:none.
+	const hidden = li && li.style.display === 'none';
+	if (link && !hidden) {
+		link.click();
+		return;
+	}
+	if ((tries || 0) < 40) {
+		window.setTimeout(function() { activateCoreUpdateTab(root, (tries || 0) + 1); }, 50);
+	}
 }
 
 // The Core Update tab only exists while "Core Update" is ticked in General Settings.
@@ -260,9 +294,8 @@ function isCoreUpdateTabEnabled(root) {
 // tab is created and selected on the next load.
 function goToCoreUpdateTab(root) {
 	if (isCoreUpdateTabEnabled(root)) {
-		const link = findCoreUpdateTabLink(root);
-		if (link) {
-			link.click();
+		if (findCoreUpdateTabLink(root)) {
+			activateCoreUpdateTab(root, 0);
 			return;
 		}
 	}
@@ -299,10 +332,6 @@ async function getStatus() {
 	}
 }
 
-function getStatusValue(isRunning) {
-	return isRunning ? RUNNING_SPAN : NOT_RUNNING_SPAN;
-}
-
 async function getVersion() {
 	try {
 		const res = await fs.exec('/usr/bin/AdGuardHome', ['--version']);
@@ -314,16 +343,6 @@ async function getVersion() {
 		console.error(e);
 		return '';
 	}
-}
-
-function updateStatus(node) {
-	const output = node ? node.querySelector('output') : null;
-	return output
-		? async function() {
-			const isRunning = await getStatus();
-			dom.content(output, getStatusValue(isRunning));
-		}
-		: function() {};
 }
 
 function validateAbsolutePath(value) {
@@ -465,22 +484,6 @@ return view.extend({
 
 		const map = new form.Map('adguardhome', _('AdGuard Home'));
 
-		const statusSect = map.section(form.TypedSection, 'status');
-		statusSect.anonymous = true;
-		statusSect.cfgsections = function() { return ['status_section']; };
-
-		const versionOpt = statusSect.option(form.DummyValue, '_version', _('Current Version'));
-		versionOpt.cfgvalue = function() {
-			return version
-				? esc(version)
-				: '<span style="color: var(--error-color-high); font-weight: bold;">' + esc(_('Not installed')) + '</span>';
-		};
-		versionOpt.rawhtml = true;
-
-		const statusOpt = statusSect.option(form.DummyValue, '_status', _('Service Status'));
-		statusOpt.rawhtml = true;
-		statusOpt.cfgvalue = function() { return getStatusValue(isRunning); };
-
 		const mainSect = map.section(form.TypedSection, 'adguardhome');
 		mainSect.anonymous = true;
 
@@ -493,9 +496,6 @@ return view.extend({
 		const enabledOpt = mainSect.taboption('general', form.Flag, 'enabled', _('Enable'));
 		enabledOpt.default = '0';
 		enabledOpt.rmempty = false;
-		if (!coreExists) {
-			enabledOpt.description = '<span style="color: var(--error-color-high); font-weight: bold;">' + esc(_('Core binary not found. Enable the service to trigger an automatic download.')) + '</span>';
-		}
 
 		const configFileOpt = mainSect.taboption('general', form.Value, 'config_file', _('Configuration file'));
 		configFileOpt.placeholder = DEFAULT_CONFIG_FILE;
@@ -672,21 +672,146 @@ return view.extend({
 		if (sessionStorage.getItem('agh_active_tab') === 'core_update') {
 			sessionStorage.removeItem('agh_active_tab');
 			window.location.hash = 'core_update';
-			window.setTimeout(function() {
-				const tabLink = findCoreUpdateTabLink(rendered);
-				if (tabLink) tabLink.click();
-			}, 50);
+			activateCoreUpdateTab(rendered, 0);
 		}
 
-		// Compact "Current Version" / "Service Status" rows.
-		const versionRow = map.findElement('data-field', versionOpt.cbid('status_section'));
-		const statusRow = map.findElement('data-field', statusOpt.cbid('status_section'));
-		if (versionRow) versionRow.classList.add('agh-status-row');
-		if (statusRow) statusRow.classList.add('agh-status-row');
-		rendered.appendChild(E('style', {}, STATUS_COMPACT_CSS));
+		// ---- Header: Service Status pill (= Enable switch) + Current Version -----------
+		// The pill drives the (hidden) "Enable" checkbox of the form, so saving and applying
+		// work exactly as before. LuCI re-renders the whole form after "Save" and throws away
+		// everything we added, so decorate() builds the header again after every render.
+		const enableSecId = sections.length > 0 ? sections[0]['.name'] : null;
 
-		const statusNode = map.findElement('data-field', statusOpt.cbid('status_section'));
-		poll.add(updateStatus(statusNode), POLL_INTERVAL);
+		function readEnabled() {
+			const el = enableSecId ? enabledOpt.getUIElement(enableSecId) : null;
+			if (el) {
+				return el.getValue() === '1';
+			}
+			return sections.length > 0 && sections[0].enabled === '1';
+		}
+
+		// The pill shows the live service state and, when clicked, flips the Enable setting.
+		let running = Boolean(isRunning);
+		let enableSwitch = null;
+		let versionField = null;
+		let head = null;
+
+		function paintEnableSwitch() {
+			if (!enableSwitch) {
+				return;
+			}
+			const enabled = readEnabled();
+			let cls, text, hint;
+
+			if (running && enabled) {
+				cls = 'on';
+				text = _('Running');
+				hint = _('Click to disable');
+			} else if (running) {
+				cls = 'warn';
+				text = _('Running') + ' \u00b7 ' + _('Disabled');
+				hint = _('Will stop after "Save & Apply". Click to keep it enabled.');
+			} else if (enabled) {
+				cls = 'warn';
+				text = _('Not running');
+				hint = _('Enabled but not running. Click "Save & Apply" to start it, or click to disable.');
+			} else {
+				cls = 'off';
+				text = _('Disabled');
+				hint = _('Click to enable');
+			}
+			enableSwitch.className = 'agh-switch ' + cls;
+			dom.content(enableSwitch, text);
+			enableSwitch.title = hint + ' - ' + _('Apply with "Save & Apply"');
+		}
+
+		// Line the "Service Status" label up with the text of the first tab ("General
+		// Settings") below. The offset depends on the theme, so measure it once the page
+		// is laid out (and again when the window is resized).
+		function alignHead(tries) {
+			const box = head;
+			const tab = rendered.querySelector('.cbi-tabmenu li a');
+			let left = 0;
+			if (!box) {
+				return;
+			}
+			if (tab && tab.getBoundingClientRect().width > 0) {
+				const range = document.createRange();
+				range.selectNodeContents(tab);
+				left = range.getBoundingClientRect().left;
+			}
+			if (left > 0 && box.getBoundingClientRect().width > 0) {
+				box.style.paddingLeft = '0px';
+				const pad = left - box.getBoundingClientRect().left;
+				box.style.paddingLeft = Math.max(0, Math.round(pad)) + 'px';
+			} else if (tries < 40) {
+				window.setTimeout(function() { if (box === head) alignHead(tries + 1); }, 50);
+			}
+		}
+
+		function decorate() {
+			const enableRow = enableSecId ? map.findElement('data-field', enabledOpt.cbid(enableSecId)) : null;
+			if (enableRow) {
+				enableRow.style.display = 'none';
+			}
+
+			enableSwitch = E('button', {
+				'type': 'button',
+				'click': function(ev) {
+					ev.preventDefault();
+					const el = enableSecId ? enabledOpt.getUIElement(enableSecId) : null;
+					if (el) {
+						el.setValue(readEnabled() ? '0' : '1');
+					}
+					paintEnableSwitch();
+				}
+			});
+			paintEnableSwitch();
+
+			versionField = E('span', {},
+				coreExists
+					? version
+					: E('span', { 'style': 'color: var(--error-color-high); font-weight: bold;' }, _('Not installed')));
+
+			const headRows = [
+				E('div', { 'class': 'agh-head-row' }, [
+					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Service Status')), enableSwitch ]),
+					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Current Version')), versionField ])
+				])
+			];
+			if (!coreExists) {
+				headRows.push(E('div', { 'class': 'agh-head-note', 'role': 'alert' }, [
+					E('span', { 'class': 'agh-head-note-icon', 'aria-hidden': 'true' }, '\u26a0\ufe0e'),
+					E('span', {}, _('Core binary not found. Enable the service to trigger an automatic download.'))
+				]));
+			}
+			head = E('div', { 'class': 'agh-head' }, headRows);
+
+			const title = rendered.querySelector('h2');
+			rendered.insertBefore(head, title ? title.nextSibling : rendered.firstChild);
+			rendered.appendChild(E('style', {}, HEAD_CSS));
+			alignHead(0);
+		}
+
+		decorate();
+		window.addEventListener('resize', function() { alignHead(40); });
+
+		// After "Save" LuCI renders the form again into the same root element: add the
+		// header back and bring the (also re-created) update controls up to date.
+		let afterRerender = null;
+		const origRenderContents = map.renderContents;
+		map.renderContents = function() {
+			return Promise.resolve(origRenderContents.apply(this, arguments)).then(function(res) {
+				if (afterRerender) {
+					afterRerender();
+				}
+				return res;
+			});
+		};
+
+		poll.add(async function() {
+			running = Boolean(await getStatus());
+			paintEnableSwitch();
+		}, POLL_INTERVAL);
 
 		let updatePollId = null;
 		let currentState = 'init';
@@ -749,12 +874,7 @@ return view.extend({
 
 		// Show (release) or remove (null) the new-version hint after the version number.
 		function setVersionHint(release) {
-			const field = versionRow
-				? (versionRow.querySelector('output') || versionRow.querySelector('.cbi-value-field'))
-				: null;
-			if (!field) {
-				return;
-			}
+			const field = versionField;
 			const old = field.querySelector('#agh-version-hint');
 			if (old) {
 				old.remove();
@@ -1059,6 +1179,15 @@ return view.extend({
 		// Background check for a newer release: it runs after the page is shown, never
 		// delays it, and stays silent if GitHub cannot be reached.
 		detectNewRelease(detectedChannel);
+
+		afterRerender = function() {
+			decorate();
+			if (currentState !== 'updating') {
+				currentState = 'init';
+				detectedChannel = currentChannel();
+				detectNewRelease(detectedChannel);
+			}
+		};
 
 		// Changing the Core Branch dropdown invalidates what the Action button shows.
 		rendered.addEventListener('change', function() {
