@@ -66,8 +66,8 @@ elif [ -f "$OLD_CONFIG_FILE" ] && [ "$OLD_CONFIG_FILE" != "$NEW_CONFIG_FILE" ]; 
 	cert_path=$(grep certificate_path: "$CUR_CONFIG_FILE" \
 		| awk -F':' '{gsub(/"/, "", $2); gsub(/^ +| +$/, "", $2); print $2}')
 	if [ -n "$cert_path" ]; then
-		echo "Found custom 'certificate_path' pointing to '$cert_path'." \
-			+ "Ensure configured service user '$USER' can access it."
+		echo "Found custom 'certificate_path' pointing to '$cert_path'."
+		echo "Ensure configured service user '$USER' can access it."
 
 		stop_service
 
@@ -79,8 +79,8 @@ elif [ -f "$OLD_CONFIG_FILE" ] && [ "$OLD_CONFIG_FILE" != "$NEW_CONFIG_FILE" ]; 
 	private_key_path=$(grep private_key_path: "$CUR_CONFIG_FILE" \
 		| awk -F':' '{gsub(/"/, "", $2); gsub(/^ +| +$/, "", $2); print $2}')
 	if [ -n "$private_key_path" ]; then
-		echo "Found custom 'private_key_path' pointing to '$private_key_path'." \
-			+ "Ensure configured service user '$USER' can access it."
+		echo "Found custom 'private_key_path' pointing to '$private_key_path'."
+		echo "Ensure configured service user '$USER' can access it."
 
 		stop_service
 
@@ -106,4 +106,29 @@ elif [ -z "$OLD_CONFIG_NEW_OPT_FILE" ] && [ "$OLD_CONFIG_FILE" != "$NEW_CONFIG_F
 
 else
 	echo "AdGuard Home config is in its default path '$NEW_CONFIG_FILE'"
+fi
+
+# Migrate the core-update settings: the old 'update_url' option stored a full
+# download URL; it is replaced by 'update_source' (official|github), which
+# update_core.sh maps to a fixed URL. The old URL is only classified by its
+# host and is never used for downloading. Independent of the migration above.
+if OLD_UPDATE_URL=$(uci -q get adguardhome.config.update_url); then
+	if [ -z "$(uci -q get adguardhome.config.update_source)" ]; then
+		case "$OLD_UPDATE_URL" in
+		https://github.com/*)
+			NEW_UPDATE_SOURCE=github
+			;;
+		https://static.adtidy.org/*)
+			NEW_UPDATE_SOURCE=official
+			;;
+		*)
+			NEW_UPDATE_SOURCE=official
+			echo "Custom 'update_url' is no longer supported; using the official mirror."
+			;;
+		esac
+		uci set adguardhome.config.update_source="$NEW_UPDATE_SOURCE"
+		echo "Core update source set to '$NEW_UPDATE_SOURCE'"
+	fi
+	uci -q delete adguardhome.config.update_url
+	uci commit adguardhome
 fi

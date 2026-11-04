@@ -70,6 +70,210 @@ function hasDotDotSegment(value) {
 	return value.split('/').indexOf('..') !== -1;
 }
 
+// ---- BEGIN new-release notice ------------------------------------------------
+// AdGuard Home's own /control/version.json needs HTTP basic auth (this page only
+// ever holds the password hash) and is served on another port, so the page asks
+// GitHub directly: the same source as the "Check update" button and update_core.sh.
+// The answer is cached in localStorage so opening the page does not cost an API
+// request every time (GitHub allows only 60 unauthenticated requests per hour).
+const STORAGE_KEY_LATEST = 'luci-app-adguardhome_latest_release';
+const RELEASE_CACHE_TTL = 6 * 60 * 60 * 1000;   // after a successful check
+const RELEASE_RETRY_DELAY = 30 * 60 * 1000;     // after a failed check
+const RELEASE_FETCH_TIMEOUT = 8000;
+
+function storageGet(key) {
+	try {
+		return window.localStorage.getItem(key);
+	} catch (e) {
+		return null;
+	}
+}
+
+function storageSet(key, value) {
+	try {
+		window.localStorage.setItem(key, value);
+	} catch (e) {}
+}
+
+// "v0.107.57-b.2" -> { nums: [0, 107, 57], pre: ['b', '2'] }, or null
+function parseVersion(str) {
+	const m = /v?(\d+)\.(\d+)\.(\d+)(?:-([A-Za-z0-9.]+))?/.exec(String(str || ''));
+	if (!m) {
+		return null;
+	}
+	return { nums: [+m[1], +m[2], +m[3]], pre: m[4] ? m[4].split('.') : [] };
+}
+
+function formatVersion(v) {
+	return 'v' + v.nums.join('.') + (v.pre.length ? '-' + v.pre.join('.') : '');
+}
+
+// Comparator result (<0, 0, >0). A pre-release sorts below its release.
+function compareVersions(a, b) {
+	for (let i = 0; i < 3; i++) {
+		if (a.nums[i] !== b.nums[i]) {
+			return a.nums[i] - b.nums[i];
+		}
+	}
+	if (!a.pre.length && !b.pre.length) {
+		return 0;
+	}
+	if (!a.pre.length) {
+		return 1;
+	}
+	if (!b.pre.length) {
+		return -1;
+	}
+	const n = Math.max(a.pre.length, b.pre.length);
+	for (let i = 0; i < n; i++) {
+		const x = a.pre[i];
+		const y = b.pre[i];
+		if (x === undefined) {
+			return -1;
+		}
+		if (y === undefined) {
+			return 1;
+		}
+		if (x === y) {
+			continue;
+		}
+		const xNum = /^\d+$/.test(x);
+		const yNum = /^\d+$/.test(y);
+		if (xNum && yNum) {
+			return +x - +y;
+		}
+		if (xNum) {
+			return -1;
+		}
+		if (yNum) {
+			return 1;
+		}
+		return x < y ? -1 : 1;
+	}
+	return 0;
+}
+
+// Newest release of the channel ('latest' or 'beta') as { tag, url }, cached.
+// "force" ignores the cache (used by the manual "Check update" button).
+// Rejects when GitHub cannot be reached or the answer is not what we expect.
+async function getLatestRelease(channel, force) {
+	const cacheKey = STORAGE_KEY_LATEST + '_' + channel;
+	const now = Date.now();
+	let cached = null;
+	try {
+		cached = JSON.parse(storageGet(cacheKey) || 'null');
+	} catch (e) {
+		cached = null;
+	}
+
+	if (!force && cached && typeof cached.time === 'number') {
+		if (cached.failed) {
+			if (now - cached.time < RELEASE_RETRY_DELAY) {
+				throw new Error('Recent check failed');
+			}
+		} else if (now - cached.time < RELEASE_CACHE_TTL &&
+		           VERSION_TAG_REGEX.test(cached.tag) &&
+		           GITHUB_RELEASE_URL_REGEX.test(cached.url)) {
+			return cached;
+		}
+	}
+
+	try {
+		const api = 'https://api.github.com/repos/AdguardTeam/AdGuardHome/releases' +
+			(channel === 'beta' ? '?per_page=1' : '/latest');
+		const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
+		const timer = ctrl ? window.setTimeout(function() { ctrl.abort(); }, RELEASE_FETCH_TIMEOUT) : null;
+		let res;
+		try {
+			res = await fetch(api, ctrl ? { signal: ctrl.signal } : undefined);
+		} finally {
+			if (timer) {
+				window.clearTimeout(timer);
+			}
+		}
+		if (!res.ok) {
+			throw new Error('HTTP ' + res.status);
+		}
+		let data = await res.json();
+		if (Array.isArray(data)) {
+			data = data[0];
+		}
+		if (!data || typeof data.tag_name !== 'string' || !VERSION_TAG_REGEX.test(data.tag_name)) {
+			throw new Error('Invalid version data');
+		}
+		const url = (typeof data.html_url === 'string' && GITHUB_RELEASE_URL_REGEX.test(data.html_url))
+			? data.html_url
+			: 'https://github.com/AdguardTeam/AdGuardHome/releases/tag/' + data.tag_name;
+		const entry = { tag: data.tag_name, url: url, time: now };
+		storageSet(cacheKey, JSON.stringify(entry));
+		return entry;
+	} catch (e) {
+		storageSet(cacheKey, JSON.stringify({ failed: true, time: now }));
+		throw e;
+	}
+}
+
+// Hint appended to the "Current Version" row; onUpdate runs when "Update" is clicked.
+// Built from DOM nodes only (no HTML strings).
+function buildVersionHint(release, onUpdate) {
+	return E('span', { 'id': 'agh-version-hint', 'style': 'margin-left: 12px;' }, [
+		E('strong', { 'style': 'color: var(--warn-color-high, #d9822b);' },
+			'→ ' + _('New version %s available').replace('%s', release.tag)),
+		' ',
+		E('a', { 'href': release.url, 'target': '_blank', 'rel': 'noopener noreferrer' }, _('Release notes')),
+		' | ',
+		E('a', {
+			'href': '#',
+			'click': function(ev) {
+				ev.preventDefault();
+				onUpdate();
+			}
+		}, _('Update'))
+	]);
+}
+
+// Tighter spacing for the "Current Version" / "Service Status" rows. The themes
+// give every row a lot of padding; !important is needed to win over them.
+const STATUS_COMPACT_CSS =
+	'.agh-status-row { margin: 0 !important; padding-top: 2px !important; padding-bottom: 2px !important; min-height: 0 !important; }' +
+	'.agh-status-row .cbi-value-title, .agh-status-row .cbi-value-field { margin: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; min-height: 0 !important; line-height: 1.5 !important; }';
+
+function findCoreUpdateTabLink(root) {
+	return root.querySelector('a[href="#cbi-tab-adguardhome-core_update"]') ||
+	       root.querySelector('a[href="#core_update"]') ||
+	       root.querySelector('[data-tab="core_update"]');
+}
+
+// The Core Update tab only exists while "Core Update" is ticked in General Settings.
+function isCoreUpdateTabEnabled(root) {
+	const boxes = root.querySelectorAll('input[type="checkbox"]');
+	for (let i = 0; i < boxes.length; i++) {
+		if (boxes[i].id && boxes[i].id.endsWith('.enable_core_update')) {
+			return boxes[i].checked;
+		}
+	}
+	return false;
+}
+
+// Show the Core Update tab. If the tab is already available just switch to it;
+// otherwise switch the toggle on (it lives in sessionStorage) and reload, so the
+// tab is created and selected on the next load.
+function goToCoreUpdateTab(root) {
+	if (isCoreUpdateTabEnabled(root)) {
+		const link = findCoreUpdateTabLink(root);
+		if (link) {
+			link.click();
+			return;
+		}
+	}
+	try {
+		sessionStorage.setItem(STORAGE_KEY_CORE, '1');
+		sessionStorage.setItem('agh_active_tab', 'core_update');
+	} catch (e) {}
+	window.location.reload();
+}
+// ---- END new-release notice --------------------------------------------------
+
 function getServiceInfo(name) {
 	const fn = rpc.declare({
 		object: 'service',
@@ -244,6 +448,7 @@ return view.extend({
 		const yamlContent = data[2];
 
 		const coreExists = Boolean(version);
+		const installed = parseVersion(version);
 		let dnsPort = '53';
 		if (yamlContent) {
 			const portMatches = yamlContent.match(/port:\s*(\d+)/g);
@@ -256,6 +461,7 @@ return view.extend({
 		}
 
 		const sections = uci.sections('adguardhome', 'adguardhome');
+		const savedChannel = (sections.length > 0 && sections[0].core_version === 'beta') ? 'beta' : 'latest';
 
 		const map = new form.Map('adguardhome', _('AdGuard Home'));
 
@@ -263,7 +469,7 @@ return view.extend({
 		statusSect.anonymous = true;
 		statusSect.cfgsections = function() { return ['status_section']; };
 
-		const versionOpt = statusSect.option(form.DummyValue, '_version', _('Version'));
+		const versionOpt = statusSect.option(form.DummyValue, '_version', _('Current Version'));
 		versionOpt.cfgvalue = function() {
 			return version
 				? esc(version)
@@ -457,16 +663,27 @@ return view.extend({
 
 		const rendered = await map.render();
 
+		// Look elements up inside our own tree: it may not be attached to the document
+		// yet when the background release check finishes.
+		const byId = function(id) {
+			return rendered.querySelector('#' + id);
+		};
+
 		if (sessionStorage.getItem('agh_active_tab') === 'core_update') {
 			sessionStorage.removeItem('agh_active_tab');
 			window.location.hash = 'core_update';
 			window.setTimeout(function() {
-				const tabLink = rendered.querySelector('a[href="#cbi-tab-adguardhome-core_update"]') ||
-				                rendered.querySelector('a[href="#core_update"]') ||
-				                rendered.querySelector('[data-tab="core_update"]');
+				const tabLink = findCoreUpdateTabLink(rendered);
 				if (tabLink) tabLink.click();
 			}, 50);
 		}
+
+		// Compact "Current Version" / "Service Status" rows.
+		const versionRow = map.findElement('data-field', versionOpt.cbid('status_section'));
+		const statusRow = map.findElement('data-field', statusOpt.cbid('status_section'));
+		if (versionRow) versionRow.classList.add('agh-status-row');
+		if (statusRow) statusRow.classList.add('agh-status-row');
+		rendered.appendChild(E('style', {}, STATUS_COMPACT_CSS));
 
 		const statusNode = map.findElement('data-field', statusOpt.cbid('status_section'));
 		poll.add(updateStatus(statusNode), POLL_INTERVAL);
@@ -474,11 +691,101 @@ return view.extend({
 		let updatePollId = null;
 		let currentState = 'init';
 
+		// Channel ('latest' or 'beta') the Action button / version hint currently refer to.
+		let detectedChannel = savedChannel;
+
 		function setDetail(node) {
-			const detail = document.getElementById('btn-agh-detail');
+			const detail = byId('btn-agh-detail');
 			if (detail) {
 				dom.content(detail, node || '');
 			}
+		}
+
+		// The channel selected in the Core Branch dropdown right now (saved one as fallback).
+		function currentChannel() {
+			try {
+				const secId = sections.length > 0 ? sections[0]['.name'] : null;
+				const v = secId ? coreVersionOpt.formvalue(secId) : null;
+				if (CORE_VERSIONS.indexOf(v) !== -1) {
+					return v;
+				}
+			} catch (err) {}
+			return savedChannel;
+		}
+
+		// "Click to update" state, shared by the manual and the background check.
+		// release.url is always a github.com/AdguardTeam/AdGuardHome/releases URL (see getLatestRelease).
+		function showUpdatable(release) {
+			const btnAction = byId('btn-agh-action');
+			const btnForce = byId('btn-agh-force');
+
+			currentState = 'updatable';
+			if (btnAction) {
+				btnAction.value = _('Click to update');
+				btnAction.disabled = false;
+			}
+			if (btnForce) {
+				btnForce.style.display = 'none';
+			}
+			setDetail(E('a', { 'href': release.url, 'target': '_blank', 'rel': 'noopener noreferrer' },
+				E('em', { 'style': 'color: red;' }, release.tag)));
+		}
+
+		// Back to the initial "Check update" state.
+		function resetToCheck() {
+			const btnAction = byId('btn-agh-action');
+			const btnForce = byId('btn-agh-force');
+
+			currentState = 'init';
+			if (btnAction) {
+				btnAction.value = _('Check update');
+				btnAction.disabled = false;
+			}
+			if (btnForce) {
+				btnForce.style.display = 'none';
+			}
+			setDetail('');
+		}
+
+		// Show (release) or remove (null) the new-version hint after the version number.
+		function setVersionHint(release) {
+			const field = versionRow
+				? (versionRow.querySelector('output') || versionRow.querySelector('.cbi-value-field'))
+				: null;
+			if (!field) {
+				return;
+			}
+			const old = field.querySelector('#agh-version-hint');
+			if (old) {
+				old.remove();
+			}
+			if (release) {
+				field.appendChild(buildVersionHint(release, function() {
+					goToCoreUpdateTab(rendered);
+				}));
+			}
+		}
+
+		// Background check: if a newer release exists, show the hint and, while the Action
+		// button is still untouched, go straight to "Click to update".
+		function detectNewRelease(channel) {
+			if (!coreExists || !installed) {
+				return;
+			}
+			getLatestRelease(channel).then(function(release) {
+				if (channel !== detectedChannel) {
+					return;
+				}
+				const latest = parseVersion(release.tag);
+				if (!latest || compareVersions(latest, installed) <= 0) {
+					setVersionHint(null);
+					return;
+				}
+				setVersionHint(release);
+				if (currentState === 'init') {
+					showUpdatable(release);
+				}
+			}).catch(function() {});
 		}
 
 		function startLogPolling() {
@@ -492,8 +799,8 @@ return view.extend({
 			let targetPercent = 0;
 
 			const pollAction = function() {
-				const btnAction = document.getElementById('btn-agh-action');
-				const btnForce = document.getElementById('btn-agh-force');
+				const btnAction = byId('btn-agh-action');
+				const btnForce = byId('btn-agh-force');
 
 				if (currentState === 'updating') {
 					if (displayPercent < targetPercent) {
@@ -588,8 +895,8 @@ return view.extend({
 		}
 
 		function triggerCheck() {
-			const btnAction = document.getElementById('btn-agh-action');
-			const btnForce = document.getElementById('btn-agh-force');
+			const btnAction = byId('btn-agh-action');
+			const btnForce = byId('btn-agh-force');
 
 			currentState = 'checking';
 			if (btnAction) {
@@ -598,66 +905,43 @@ return view.extend({
 			}
 			setDetail('');
 
-			fetch('https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest')
-				.then(function(res) {
-					if (!res.ok) {
-						throw new Error('HTTP ' + res.status);
-					}
-					return res.json();
-				})
-				.then(function(data) {
-					const remoteVersion = (data && typeof data.tag_name === 'string') ? data.tag_name : null;
-					if (!remoteVersion || !VERSION_TAG_REGEX.test(remoteVersion)) {
-						throw new Error('Invalid version data');
-					}
-					const cleanLocal = coreExists ? version.replace(/^v/, '') : '';
-					const cleanRemote = remoteVersion.replace(/^v/, '');
+			const channel = currentChannel();
+			getLatestRelease(channel, true).then(function(release) {
+				detectedChannel = channel;
+				const latest = parseVersion(release.tag);
 
-					if (!coreExists || cleanLocal !== cleanRemote) {
-						currentState = 'updatable';
-						if (btnAction) {
-							btnAction.value = _('Click to update');
-							btnAction.disabled = false;
-						}
-						if (btnForce) {
-							btnForce.style.display = 'none';
-						}
-
-						// Text only; link only if it points at the project's own releases.
-						let node = E('em', { 'style': 'color: red;' }, remoteVersion);
-						if (typeof data.html_url === 'string' && GITHUB_RELEASE_URL_REGEX.test(data.html_url)) {
-							node = E('a', { 'href': data.html_url, 'target': '_blank', 'rel': 'noopener noreferrer' }, node);
-						}
-						setDetail(node);
-					} else {
-						currentState = 'latest';
-						if (btnAction) {
-							btnAction.value = _('It is the latest version');
-							btnAction.disabled = true;
-						}
-						if (btnForce) {
-							btnForce.style.display = 'inline-block';
-							btnForce.disabled = false;
-						}
-						setDetail('');
-					}
-				})
-				.catch(function() {
-					currentState = 'check_failed';
+				if (!coreExists || !installed || !latest || compareVersions(latest, installed) > 0) {
+					showUpdatable(release);
+					setVersionHint(coreExists ? release : null);
+				} else {
+					currentState = 'latest';
 					if (btnAction) {
-						btnAction.value = _('Retry');
-						btnAction.disabled = false;
+						btnAction.value = _('It is the latest version');
+						btnAction.disabled = true;
 					}
 					if (btnForce) {
-						btnForce.style.display = 'none';
+						btnForce.style.display = 'inline-block';
+						btnForce.disabled = false;
 					}
-					setDetail(E('em', { 'style': 'color: red;' }, _('Check failed')));
-				});
+					setDetail('');
+					setVersionHint(null);
+				}
+			}).catch(function() {
+				currentState = 'check_failed';
+				if (btnAction) {
+					btnAction.value = _('Retry');
+					btnAction.disabled = false;
+				}
+				if (btnForce) {
+					btnForce.style.display = 'none';
+				}
+				setDetail(E('em', { 'style': 'color: red;' }, _('Check failed')));
+			});
 		}
 
 		function triggerUpdate(isForce) {
-			const btnAction = document.getElementById('btn-agh-action');
-			const btnForce = document.getElementById('btn-agh-force');
+			const btnAction = byId('btn-agh-action');
+			const btnForce = byId('btn-agh-force');
 
 			currentState = 'updating';
 			if (btnAction) {
@@ -762,7 +1046,7 @@ return view.extend({
 			const isCore = results[0];
 			const isError = results[1];
 			if (isCore || isError) {
-				const btnAction = document.getElementById('btn-agh-action');
+				const btnAction = byId('btn-agh-action');
 				currentState = 'updating';
 				if (btnAction) {
 					btnAction.value = _('Updating...') + ' 0%';
@@ -770,6 +1054,25 @@ return view.extend({
 				}
 				startLogPolling();
 			}
+		});
+
+		// Background check for a newer release: it runs after the page is shown, never
+		// delays it, and stays silent if GitHub cannot be reached.
+		detectNewRelease(detectedChannel);
+
+		// Changing the Core Branch dropdown invalidates what the Action button shows.
+		rendered.addEventListener('change', function() {
+			if (['init', 'updatable', 'latest', 'check_failed'].indexOf(currentState) === -1) {
+				return;
+			}
+			const channel = currentChannel();
+			if (channel === detectedChannel) {
+				return;
+			}
+			detectedChannel = channel;
+			resetToCheck();
+			setVersionHint(null);
+			detectNewRelease(channel);
 		});
 
 		return rendered;

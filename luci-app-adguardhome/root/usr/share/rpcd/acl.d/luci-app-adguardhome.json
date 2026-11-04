@@ -5,6 +5,7 @@
 			"file": {
 				"/tmp/AdGuardHome_update.log": [ "read" ],
 				"/var/run/update_core": [ "stat" ],
+				"/var/run/update_core_done": [ "stat" ],
 				"/var/run/update_core_error": [ "stat" ],
 				"/var/run/AdGredir": [ "read" ],
 				"/var/run/AdGserverdis": [ "read" ],
@@ -17,7 +18,8 @@
 		},
 		"write": {
 			"file": {
-				"/usr/share/AdGuardHome/update_core.sh": [ "exec" ]
+				"/usr/share/AdGuardHome/update_core.sh": [ "exec" ],
+				"/var/run/update_core_done": [ "write" ]
 			},
 			"uci": [ "adguardhome" ]
 		}

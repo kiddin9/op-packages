@@ -1,54 +1,39 @@
-From 883995b0d027fcd32fb9ba4ff24d607e9c176ee2 Mon Sep 17 00:00:00 2001
-From: Jackie264 <125248570+Jackie264@users.noreply.github.com>
-Date: Thu, 28 May 2026 10:14:54 +0800
-Subject: [PATCH] Update luci-app-adguardhome.json
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Jackie Han <jackie.han@gmail.com>
+Date: Wed, 4 Nov 2026 10:22:07 +0800
+Subject: [PATCH] luci-app-adguardhome: ACL for the core update flow
 
+Allow the update log, the update flag files and update_core.sh, including
+update_core_done (stat to detect completion, write to remove it).
 ---
- .../rpcd/acl.d/luci-app-adguardhome.json      | 36 +++++++++++--------
- 1 file changed, 21 insertions(+), 15 deletions(-)
+ root/usr/share/rpcd/acl.d/luci-app-adguardhome.json | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
 diff --git a/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json b/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json
-index 748778a..33ba1fd 100644
+index 748778a..33862ec 100644
 --- a/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json
 +++ b/root/usr/share/rpcd/acl.d/luci-app-adguardhome.json
-@@ -1,17 +1,25 @@
- {
--	"luci-app-adguardhome": {
--		"description": "Grant permissions for the AdGuard Home LuCI app",
--		"read": {
--			"file": {
--				"/usr/bin/AdGuardHome --version": [ "exec" ]
--			},
--			"ubus": {
--				"service": [ "list" ]
--			},
--			"uci": [ "adguardhome" ]
--		},
--		"write": {
--			"uci": [ "adguardhome" ]
--		}
--	}
-+	"luci-app-adguardhome": {
-+		"description": "Grant permissions for the AdGuard Home LuCI app",
-+		"read": {
-+			"file": {
+@@ -3,6 +3,12 @@
+ 		"description": "Grant permissions for the AdGuard Home LuCI app",
+ 		"read": {
+ 			"file": {
 +				"/tmp/AdGuardHome_update.log": [ "read" ],
 +				"/var/run/update_core": [ "stat" ],
++				"/var/run/update_core_done": [ "stat" ],
 +				"/var/run/update_core_error": [ "stat" ],
 +				"/var/run/AdGredir": [ "read" ],
 +				"/var/run/AdGserverdis": [ "read" ],
-+				"/usr/bin/AdGuardHome --version": [ "exec" ]
-+			},
-+			"ubus": {
-+				"service": [ "list" ]
-+			},
-+			"uci": [ "adguardhome" ]
-+		},
-+		"write": {
+ 				"/usr/bin/AdGuardHome --version": [ "exec" ]
+ 			},
+ 			"ubus": {
+@@ -11,6 +17,10 @@
+ 			"uci": [ "adguardhome" ]
+ 		},
+ 		"write": {
 +			"file": {
-+				"/usr/share/AdGuardHome/update_core.sh": [ "exec" ]
++				"/usr/share/AdGuardHome/update_core.sh": [ "exec" ],
++				"/var/run/update_core_done": [ "write" ]
 +			},
-+			"uci": [ "adguardhome" ]
-+		}
-+	}
- }
+ 			"uci": [ "adguardhome" ]
+ 		}
+ 	}

@@ -1,15 +1,18 @@
-From e0b6eccaf56a0b15a09c002e868f153032af5420 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Jackie Han <jackie.han@gmail.com>
-Date: Sun, 25 Oct 2026 15:05:05 +0800
-Subject: [PATCH] Enhance config.js with validation and UI improvements
+Date: Wed, 4 Nov 2026 10:13:35 +0800
+Subject: [PATCH] luci-app-adguardhome: config.js hardening, update_source and
+ new-version hint
 
-Added validation functions for paths and passwords, improved error handling, and updated UI elements for better user experience.
+Hardens the LuCI page, replaces update_url with update_source, and shows
+a new-core-version hint with a one-click path to the Core Update tab.
+The Service Status pill doubles as the Enable switch, next to the version.
 ---
- .../resources/view/adguardhome/config.js      | 744 +++++++++++++++---
- 1 file changed, 630 insertions(+), 114 deletions(-)
+ .../resources/view/adguardhome/config.js      | 1207 +++++++++++++++--
+ 1 file changed, 1076 insertions(+), 131 deletions(-)
 
 diff --git a/htdocs/luci-static/resources/view/adguardhome/config.js b/htdocs/luci-static/resources/view/adguardhome/config.js
-index 6dc2d45..b0f0e06 100644
+index 6dc2d45..07aa5cc 100644
 --- a/htdocs/luci-static/resources/view/adguardhome/config.js
 +++ b/htdocs/luci-static/resources/view/adguardhome/config.js
 @@ -5,6 +5,7 @@
@@ -20,7 +23,7 @@ index 6dc2d45..b0f0e06 100644
  'require view';
  
  const DEFAULT_CONFIG_FILE = '/etc/adguardhome/adguardhome.yaml';
-@@ -18,12 +19,56 @@ const DEFAULT_GOMEMLIMIT = '0';
+@@ -18,12 +19,292 @@ const DEFAULT_GOMEMLIMIT = '0';
  
  const PATH_REGEX = new RegExp('^/etc(/[^/]+)?/?$');
  
@@ -42,8 +45,6 @@ index 6dc2d45..b0f0e06 100644
  
 -const RUNNING_SPAN = `<span style="color: var(--success-color-high); font-weight: bold">${_('Running')}</span>`;
 -const NOT_RUNNING_SPAN = `<span style="color: var(--error-color-high); font-weight: bold">${_('Not running')}</span>`;
-+const RUNNING_SPAN = `<span style="color: green; font-weight: bold">${_('Running')}</span>`;
-+const NOT_RUNNING_SPAN = `<span style="color: red; font-weight: bold">${_('Not running')}</span>`;
  
  const STORAGE_KEY = 'luci-app-adguardhome';
 +const STORAGE_KEY_CORE = 'luci-app-adguardhome_core_update';
@@ -76,10 +77,248 @@ index 6dc2d45..b0f0e06 100644
 +function hasDotDotSegment(value) {
 +	return value.split('/').indexOf('..') !== -1;
 +}
++
++// ---- BEGIN new-release notice ------------------------------------------------
++// AdGuard Home's own /control/version.json needs HTTP basic auth (this page only
++// ever holds the password hash) and is served on another port, so the page asks
++// GitHub directly: the same source as the "Check update" button and update_core.sh.
++// The answer is cached in localStorage so opening the page does not cost an API
++// request every time (GitHub allows only 60 unauthenticated requests per hour).
++const STORAGE_KEY_LATEST = 'luci-app-adguardhome_latest_release';
++const RELEASE_CACHE_TTL = 6 * 60 * 60 * 1000;   // after a successful check
++const RELEASE_RETRY_DELAY = 30 * 60 * 1000;     // after a failed check
++const RELEASE_FETCH_TIMEOUT = 8000;
++
++function storageGet(key) {
++	try {
++		return window.localStorage.getItem(key);
++	} catch (e) {
++		return null;
++	}
++}
++
++function storageSet(key, value) {
++	try {
++		window.localStorage.setItem(key, value);
++	} catch (e) {}
++}
++
++// "v0.107.57-b.2" -> { nums: [0, 107, 57], pre: ['b', '2'] }, or null
++function parseVersion(str) {
++	const m = /v?(\d+)\.(\d+)\.(\d+)(?:-([A-Za-z0-9.]+))?/.exec(String(str || ''));
++	if (!m) {
++		return null;
++	}
++	return { nums: [+m[1], +m[2], +m[3]], pre: m[4] ? m[4].split('.') : [] };
++}
++
++function formatVersion(v) {
++	return 'v' + v.nums.join('.') + (v.pre.length ? '-' + v.pre.join('.') : '');
++}
++
++// Comparator result (<0, 0, >0). A pre-release sorts below its release.
++function compareVersions(a, b) {
++	for (let i = 0; i < 3; i++) {
++		if (a.nums[i] !== b.nums[i]) {
++			return a.nums[i] - b.nums[i];
++		}
++	}
++	if (!a.pre.length && !b.pre.length) {
++		return 0;
++	}
++	if (!a.pre.length) {
++		return 1;
++	}
++	if (!b.pre.length) {
++		return -1;
++	}
++	const n = Math.max(a.pre.length, b.pre.length);
++	for (let i = 0; i < n; i++) {
++		const x = a.pre[i];
++		const y = b.pre[i];
++		if (x === undefined) {
++			return -1;
++		}
++		if (y === undefined) {
++			return 1;
++		}
++		if (x === y) {
++			continue;
++		}
++		const xNum = /^\d+$/.test(x);
++		const yNum = /^\d+$/.test(y);
++		if (xNum && yNum) {
++			return +x - +y;
++		}
++		if (xNum) {
++			return -1;
++		}
++		if (yNum) {
++			return 1;
++		}
++		return x < y ? -1 : 1;
++	}
++	return 0;
++}
++
++// Newest release of the channel ('latest' or 'beta') as { tag, url }, cached.
++// "force" ignores the cache (used by the manual "Check update" button).
++// Rejects when GitHub cannot be reached or the answer is not what we expect.
++async function getLatestRelease(channel, force) {
++	const cacheKey = STORAGE_KEY_LATEST + '_' + channel;
++	const now = Date.now();
++	let cached = null;
++	try {
++		cached = JSON.parse(storageGet(cacheKey) || 'null');
++	} catch (e) {
++		cached = null;
++	}
++
++	if (!force && cached && typeof cached.time === 'number') {
++		if (cached.failed) {
++			if (now - cached.time < RELEASE_RETRY_DELAY) {
++				throw new Error('Recent check failed');
++			}
++		} else if (now - cached.time < RELEASE_CACHE_TTL &&
++		           VERSION_TAG_REGEX.test(cached.tag) &&
++		           GITHUB_RELEASE_URL_REGEX.test(cached.url)) {
++			return cached;
++		}
++	}
++
++	try {
++		const api = 'https://api.github.com/repos/AdguardTeam/AdGuardHome/releases' +
++			(channel === 'beta' ? '?per_page=1' : '/latest');
++		const ctrl = (typeof AbortController === 'function') ? new AbortController() : null;
++		const timer = ctrl ? window.setTimeout(function() { ctrl.abort(); }, RELEASE_FETCH_TIMEOUT) : null;
++		let res;
++		try {
++			res = await fetch(api, ctrl ? { signal: ctrl.signal } : undefined);
++		} finally {
++			if (timer) {
++				window.clearTimeout(timer);
++			}
++		}
++		if (!res.ok) {
++			throw new Error('HTTP ' + res.status);
++		}
++		let data = await res.json();
++		if (Array.isArray(data)) {
++			data = data[0];
++		}
++		if (!data || typeof data.tag_name !== 'string' || !VERSION_TAG_REGEX.test(data.tag_name)) {
++			throw new Error('Invalid version data');
++		}
++		const url = (typeof data.html_url === 'string' && GITHUB_RELEASE_URL_REGEX.test(data.html_url))
++			? data.html_url
++			: 'https://github.com/AdguardTeam/AdGuardHome/releases/tag/' + data.tag_name;
++		const entry = { tag: data.tag_name, url: url, time: now };
++		storageSet(cacheKey, JSON.stringify(entry));
++		return entry;
++	} catch (e) {
++		storageSet(cacheKey, JSON.stringify({ failed: true, time: now }));
++		throw e;
++	}
++}
++
++// Hint appended to the "Current Version" row. The whole text is the button: a click
++// runs onUpdate (go to the Core Update tab). A span, not a link, so the theme's link
++// colour / underline never applies. Built from DOM nodes only (no HTML strings).
++function buildVersionHint(release, onUpdate) {
++	return E('span', {
++		'id': 'agh-version-hint',
++		'role': 'button',
++		'tabindex': '0',
++		'title': _('Go to Core Update'),
++		'style': 'margin-left: 12px; cursor: pointer;',
++		'click': function(ev) {
++			ev.preventDefault();
++			onUpdate();
++		},
++		'keydown': function(ev) {
++			if (ev.key === 'Enter' || ev.key === ' ') {
++				ev.preventDefault();
++				onUpdate();
++			}
++		}
++	}, E('strong', { 'style': 'color: var(--warn-color-high, #d9822b);' },
++		'\u2192 ' + _('New version %s available').replace('%s', release.tag)));
++}
++
++// Header card above the settings: one line with the Service Status pill (which is also
++// the Enable switch) and the Current Version. The pill follows the style of the Main
++// Switch of luci-app-bypass.
++const HEAD_CSS =
++	'.agh-head { --agh-on-fg:#1a7f37; --agh-on-bg:#dafbe1; --agh-warn-fg:#9a6700; --agh-warn-bg:#fff8c5; --agh-off-fg:#82071e; --agh-off-bg:#ffebe9; display:flex; flex-direction:column; gap:.5rem; margin:.5rem 0 1rem; padding:.7rem 1rem; border-radius:var(--radius-card, 6px); background:var(--surface-raised, rgba(128,128,128,.06)); box-shadow:0 4px 8px rgba(0,0,0,.03); }' +
++	':root[data-argon-mode="dark"] .agh-head, :root[data-darkmode="true"] .agh-head { --agh-on-fg:#7ee2a0; --agh-on-bg:rgba(46,160,67,.22); --agh-warn-fg:#e3b341; --agh-warn-bg:rgba(187,128,9,.22); --agh-off-fg:#ffa9ae; --agh-off-bg:rgba(248,81,73,.18); }' +
++	'.agh-head-row { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem 2rem; }' +
++	'.agh-head-item { display:inline-flex; align-items:center; flex-wrap:wrap; gap:.25rem .75rem; line-height:1.5; }' +
++	'.agh-head-note { line-height:1.5; }' +
++	'.agh-switch { display:inline-flex; align-items:center; gap:.4rem; height:auto; min-height:0; line-height:1.4; padding:.25rem .8rem; margin:0; border-radius:999px; font-weight:600; font-size:.9rem; border:0; box-shadow:none; cursor:pointer; transition:filter .15s; }' +
++	'.agh-switch:hover { filter:brightness(.95); }' +
++	'.agh-switch::before { content:""; width:.55rem; height:.55rem; border-radius:50%; background:currentColor; }' +
++	'.agh-switch.on { color:var(--agh-on-fg); background:var(--agh-on-bg); }' +
++	'.agh-switch.warn { color:var(--agh-warn-fg); background:var(--agh-warn-bg); }' +
++	'.agh-switch.off { color:var(--agh-off-fg); background:var(--agh-off-bg); }';
++
++// The clickable <a> of the Core Update tab in the tab menu (not the tab pane, which
++// carries the same data-tab value).
++function findCoreUpdateTabLink(root) {
++	return root.querySelector('.cbi-tabmenu li[data-tab="core_update"] a') ||
++	       root.querySelector('li[data-tab="core_update"] a') ||
++	       root.querySelector('a[href="#cbi-tab-adguardhome-core_update"]') ||
++	       root.querySelector('a[href="#core_update"]');
++}
++
++// Click the tab as soon as it exists and is visible; the tab menu is built and
++// shown/hidden (depends) shortly after render, so retry for a couple of seconds.
++function activateCoreUpdateTab(root, tries) {
++	const link = findCoreUpdateTabLink(root);
++	const li = link ? link.parentNode : null;
++	// LuCI marks every inactive tab 'cbi-tab-disabled', so that class means nothing here;
++	// a tab that is not available (no visible option yet) has display:none.
++	const hidden = li && li.style.display === 'none';
++	if (link && !hidden) {
++		link.click();
++		return;
++	}
++	if ((tries || 0) < 40) {
++		window.setTimeout(function() { activateCoreUpdateTab(root, (tries || 0) + 1); }, 50);
++	}
++}
++
++// The Core Update tab only exists while "Core Update" is ticked in General Settings.
++function isCoreUpdateTabEnabled(root) {
++	const boxes = root.querySelectorAll('input[type="checkbox"]');
++	for (let i = 0; i < boxes.length; i++) {
++		if (boxes[i].id && boxes[i].id.endsWith('.enable_core_update')) {
++			return boxes[i].checked;
++		}
++	}
++	return false;
++}
++
++// Show the Core Update tab. If the tab is already available just switch to it;
++// otherwise switch the toggle on (it lives in sessionStorage) and reload, so the
++// tab is created and selected on the next load.
++function goToCoreUpdateTab(root) {
++	if (isCoreUpdateTabEnabled(root)) {
++		if (findCoreUpdateTabLink(root)) {
++			activateCoreUpdateTab(root, 0);
++			return;
++		}
++	}
++	try {
++		sessionStorage.setItem(STORAGE_KEY_CORE, '1');
++		sessionStorage.setItem('agh_active_tab', 'core_update');
++	} catch (e) {}
++	window.location.reload();
++}
++// ---- END new-release notice --------------------------------------------------
  
  function getServiceInfo(name) {
  	const fn = rpc.declare({
-@@ -32,7 +77,9 @@ function getServiceInfo(name) {
+@@ -32,7 +313,9 @@ function getServiceInfo(name) {
  		params: ['name'],
  		expect: { [name]: { instances: { [name]: {} }}},
  	});
@@ -90,7 +329,7 @@ index 6dc2d45..b0f0e06 100644
  }
  
  const getAGHServiceInfo = getServiceInfo('adguardhome');
-@@ -40,8 +87,8 @@ const getAGHServiceInfo = getServiceInfo('adguardhome');
+@@ -40,18 +323,14 @@ const getAGHServiceInfo = getServiceInfo('adguardhome');
  async function getStatus() {
  	try {
  		const res = await getAGHServiceInfo();
@@ -101,7 +340,17 @@ index 6dc2d45..b0f0e06 100644
  	} catch (e) {
  		console.error(e);
  		return false;
-@@ -61,26 +108,40 @@ async function getVersion() {
+ 	}
+ }
+ 
+-function getStatusValue(isRunning) {
+-	return isRunning ? RUNNING_SPAN : NOT_RUNNING_SPAN;
+-}
+-
+ async function getVersion() {
+ 	try {
+ 		const res = await fs.exec('/usr/bin/AdGuardHome', ['--version']);
+@@ -61,26 +340,30 @@ async function getVersion() {
  		return version;
  	} catch (e) {
  		console.error(e);
@@ -110,19 +359,14 @@ index 6dc2d45..b0f0e06 100644
  	}
  }
  
- function updateStatus(node) {
+-function updateStatus(node) {
 -	const output = node?.querySelector('output');
-+	const output = node ? node.querySelector('output') : null;
- 	return output
+-	return output
 -		? async () => {
-+		? async function() {
- 			const isRunning = await getStatus();
- 			dom.content(output, getStatusValue(isRunning));
- 		}
+-			const isRunning = await getStatus();
+-			dom.content(output, getStatusValue(isRunning));
+-		}
 -		: () => {};
-+		: function() {};
-+}
-+
 +function validateAbsolutePath(value) {
 +	if (!value.startsWith('/')) {
 +		return _('Path must be absolute.');
@@ -148,7 +392,7 @@ index 6dc2d45..b0f0e06 100644
  	}
  	if (value.endsWith('/')) {
  		return _('Path must not end with a slash.');
-@@ -95,167 +156,622 @@ function validateWorkDir(_unused, value) {
+@@ -95,167 +378,829 @@ function validateWorkDir(_unused, value) {
  	if (value == null || value === '') {
  		return true;
  	}
@@ -238,12 +482,17 @@ index 6dc2d45..b0f0e06 100644
  	},
  
 -	async render([isRunning, version]) {
+-		const map = new form.Map('adguardhome', _('AdGuard Home'));
 +	render: async function(data) {
 +		const isRunning = data[0];
 +		const version = data[1];
 +		const yamlContent = data[2];
-+
+ 
+-		const statusSect = map.section(form.TypedSection, 'status');
+-		statusSect.anonymous = true;
+-		statusSect.cfgsections = () => ['status_section'];
 +		const coreExists = Boolean(version);
++		const installed = parseVersion(version);
 +		let dnsPort = '53';
 +		if (yamlContent) {
 +			const portMatches = yamlContent.match(/port:\s*(\d+)/g);
@@ -254,29 +503,16 @@ index 6dc2d45..b0f0e06 100644
 +				}
 +			}
 +		}
-+
-+		const sections = uci.sections('adguardhome', 'adguardhome');
-+
- 		const map = new form.Map('adguardhome', _('AdGuard Home'));
  
- 		const statusSect = map.section(form.TypedSection, 'status');
- 		statusSect.anonymous = true;
--		statusSect.cfgsections = () => ['status_section'];
-+		statusSect.cfgsections = function() { return ['status_section']; };
- 
- 		const versionOpt = statusSect.option(form.DummyValue, '_version', _('Version'));
+-		const versionOpt = statusSect.option(form.DummyValue, '_version', _('Version'));
 -		versionOpt.cfgvalue = () => version;
-+		versionOpt.cfgvalue = function() {
-+			return version
-+				? esc(version)
-+				: '<span style="color: var(--error-color-high); font-weight: bold;">' + esc(_('Not installed')) + '</span>';
-+		};
-+		versionOpt.rawhtml = true;
++		const sections = uci.sections('adguardhome', 'adguardhome');
++		const savedChannel = (sections.length > 0 && sections[0].core_version === 'beta') ? 'beta' : 'latest';
  
- 		const statusOpt = statusSect.option(form.DummyValue, '_status', _('Service Status'));
- 		statusOpt.rawhtml = true;
+-		const statusOpt = statusSect.option(form.DummyValue, '_status', _('Service Status'));
+-		statusOpt.rawhtml = true;
 -		statusOpt.cfgvalue = () => getStatusValue(isRunning);
-+		statusOpt.cfgvalue = function() { return getStatusValue(isRunning); };
++		const map = new form.Map('adguardhome', _('AdGuard Home'));
  
  		const mainSect = map.section(form.TypedSection, 'adguardhome');
  		mainSect.anonymous = true;
@@ -311,9 +547,6 @@ index 6dc2d45..b0f0e06 100644
 +		const enabledOpt = mainSect.taboption('general', form.Flag, 'enabled', _('Enable'));
 +		enabledOpt.default = '0';
 +		enabledOpt.rmempty = false;
-+		if (!coreExists) {
-+			enabledOpt.description = '<span style="color: var(--error-color-high); font-weight: bold;">' + esc(_('Core binary not found. Enable the service to trigger an automatic download.')) + '</span>';
-+		}
 +
 +		const configFileOpt = mainSect.taboption('general', form.Value, 'config_file', _('Configuration file'));
  		configFileOpt.placeholder = DEFAULT_CONFIG_FILE;
@@ -555,28 +788,249 @@ index 6dc2d45..b0f0e06 100644
 +
  		const rendered = await map.render();
  
+-		const statusNode = map.findElement('data-field', statusOpt.cbid('status_section'));
+-		poll.add(updateStatus(statusNode), POLL_INTERVAL);
++		// Look elements up inside our own tree: it may not be attached to the document
++		// yet when the background release check finishes.
++		const byId = function(id) {
++			return rendered.querySelector('#' + id);
++		};
++
 +		if (sessionStorage.getItem('agh_active_tab') === 'core_update') {
 +			sessionStorage.removeItem('agh_active_tab');
 +			window.location.hash = 'core_update';
-+			window.setTimeout(function() {
-+				const tabLink = rendered.querySelector('a[href="#cbi-tab-adguardhome-core_update"]') ||
-+				                rendered.querySelector('a[href="#core_update"]') ||
-+				                rendered.querySelector('[data-tab="core_update"]');
-+				if (tabLink) tabLink.click();
-+			}, 50);
++			activateCoreUpdateTab(rendered, 0);
 +		}
 +
- 		const statusNode = map.findElement('data-field', statusOpt.cbid('status_section'));
- 		poll.add(updateStatus(statusNode), POLL_INTERVAL);
- 
++		// ---- Header: Service Status pill (= Enable switch) + Current Version -----------
++		// The pill drives the (hidden) "Enable" checkbox of the form, so saving and applying
++		// work exactly as before. LuCI re-renders the whole form after "Save" and throws away
++		// everything we added, so decorate() builds the header again after every render.
++		const enableSecId = sections.length > 0 ? sections[0]['.name'] : null;
++
++		function readEnabled() {
++			const el = enableSecId ? enabledOpt.getUIElement(enableSecId) : null;
++			if (el) {
++				return el.getValue() === '1';
++			}
++			return sections.length > 0 && sections[0].enabled === '1';
++		}
++
++		// The pill shows the live service state and, when clicked, flips the Enable setting.
++		let running = Boolean(isRunning);
++		let enableSwitch = null;
++		let versionField = null;
++		let head = null;
++
++		function paintEnableSwitch() {
++			if (!enableSwitch) {
++				return;
++			}
++			const enabled = readEnabled();
++			let cls, text, hint;
++
++			if (running && enabled) {
++				cls = 'on';
++				text = _('Running');
++				hint = _('Click to disable');
++			} else if (running) {
++				cls = 'warn';
++				text = _('Running') + ' \u00b7 ' + _('Disabled');
++				hint = _('Will stop after "Save & Apply". Click to keep it enabled.');
++			} else if (enabled) {
++				cls = 'warn';
++				text = _('Not running');
++				hint = _('Enabled but not running. Click "Save & Apply" to start it, or click to disable.');
++			} else {
++				cls = 'off';
++				text = _('Disabled');
++				hint = _('Click to enable');
++			}
++			enableSwitch.className = 'agh-switch ' + cls;
++			dom.content(enableSwitch, text);
++			enableSwitch.title = hint + ' - ' + _('Apply with "Save & Apply"');
++		}
++
++		// Line the "Service Status" label up with the text of the first tab ("General
++		// Settings") below. The offset depends on the theme, so measure it once the page
++		// is laid out (and again when the window is resized).
++		function alignHead(tries) {
++			const box = head;
++			const tab = rendered.querySelector('.cbi-tabmenu li a');
++			let left = 0;
++			if (!box) {
++				return;
++			}
++			if (tab && tab.getBoundingClientRect().width > 0) {
++				const range = document.createRange();
++				range.selectNodeContents(tab);
++				left = range.getBoundingClientRect().left;
++			}
++			if (left > 0 && box.getBoundingClientRect().width > 0) {
++				box.style.paddingLeft = '0px';
++				const pad = left - box.getBoundingClientRect().left;
++				box.style.paddingLeft = Math.max(0, Math.round(pad)) + 'px';
++			} else if (tries < 40) {
++				window.setTimeout(function() { if (box === head) alignHead(tries + 1); }, 50);
++			}
++		}
++
++		function decorate() {
++			const enableRow = enableSecId ? map.findElement('data-field', enabledOpt.cbid(enableSecId)) : null;
++			if (enableRow) {
++				enableRow.style.display = 'none';
++			}
++
++			enableSwitch = E('button', {
++				'type': 'button',
++				'click': function(ev) {
++					ev.preventDefault();
++					const el = enableSecId ? enabledOpt.getUIElement(enableSecId) : null;
++					if (el) {
++						el.setValue(readEnabled() ? '0' : '1');
++					}
++					paintEnableSwitch();
++				}
++			});
++			paintEnableSwitch();
++
++			versionField = E('span', {},
++				coreExists
++					? version
++					: E('span', { 'style': 'color: var(--error-color-high); font-weight: bold;' }, _('Not installed')));
++
++			const headRows = [
++				E('div', { 'class': 'agh-head-row' }, [
++					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Service Status')), enableSwitch ]),
++					E('span', { 'class': 'agh-head-item' }, [ E('span', {}, _('Current Version')), versionField ])
++				])
++			];
++			if (!coreExists) {
++				headRows.push(E('div', { 'class': 'agh-head-note', 'style': 'color: var(--error-color-high); font-weight: bold;' },
++					_('Core binary not found. Enable the service to trigger an automatic download.')));
++			}
++			head = E('div', { 'class': 'agh-head' }, headRows);
++
++			const title = rendered.querySelector('h2');
++			rendered.insertBefore(head, title ? title.nextSibling : rendered.firstChild);
++			rendered.appendChild(E('style', {}, HEAD_CSS));
++			alignHead(0);
++		}
++
++		decorate();
++		window.addEventListener('resize', function() { alignHead(40); });
++
++		// After "Save" LuCI renders the form again into the same root element: add the
++		// header back and bring the (also re-created) update controls up to date.
++		let afterRerender = null;
++		const origRenderContents = map.renderContents;
++		map.renderContents = function() {
++			return Promise.resolve(origRenderContents.apply(this, arguments)).then(function(res) {
++				if (afterRerender) {
++					afterRerender();
++				}
++				return res;
++			});
++		};
++
++		poll.add(async function() {
++			running = Boolean(await getStatus());
++			paintEnableSwitch();
++		}, POLL_INTERVAL);
++
 +		let updatePollId = null;
 +		let currentState = 'init';
 +
++		// Channel ('latest' or 'beta') the Action button / version hint currently refer to.
++		let detectedChannel = savedChannel;
++
 +		function setDetail(node) {
-+			const detail = document.getElementById('btn-agh-detail');
++			const detail = byId('btn-agh-detail');
 +			if (detail) {
 +				dom.content(detail, node || '');
 +			}
++		}
++
++		// The channel selected in the Core Branch dropdown right now (saved one as fallback).
++		function currentChannel() {
++			try {
++				const secId = sections.length > 0 ? sections[0]['.name'] : null;
++				const v = secId ? coreVersionOpt.formvalue(secId) : null;
++				if (CORE_VERSIONS.indexOf(v) !== -1) {
++					return v;
++				}
++			} catch (err) {}
++			return savedChannel;
++		}
++
++		// "Click to update" state, shared by the manual and the background check.
++		// release.url is always a github.com/AdguardTeam/AdGuardHome/releases URL (see getLatestRelease).
++		function showUpdatable(release) {
++			const btnAction = byId('btn-agh-action');
++			const btnForce = byId('btn-agh-force');
++
++			currentState = 'updatable';
++			if (btnAction) {
++				btnAction.value = _('Click to update');
++				btnAction.disabled = false;
++			}
++			if (btnForce) {
++				btnForce.style.display = 'none';
++			}
++			setDetail(E('a', { 'href': release.url, 'target': '_blank', 'rel': 'noopener noreferrer' },
++				E('em', { 'style': 'color: red;' }, release.tag)));
++		}
++
++		// Back to the initial "Check update" state.
++		function resetToCheck() {
++			const btnAction = byId('btn-agh-action');
++			const btnForce = byId('btn-agh-force');
++
++			currentState = 'init';
++			if (btnAction) {
++				btnAction.value = _('Check update');
++				btnAction.disabled = false;
++			}
++			if (btnForce) {
++				btnForce.style.display = 'none';
++			}
++			setDetail('');
++		}
++
++		// Show (release) or remove (null) the new-version hint after the version number.
++		function setVersionHint(release) {
++			const field = versionField;
++			const old = field.querySelector('#agh-version-hint');
++			if (old) {
++				old.remove();
++			}
++			if (release) {
++				field.appendChild(buildVersionHint(release, function() {
++					goToCoreUpdateTab(rendered);
++				}));
++			}
++		}
++
++		// Background check: if a newer release exists, show the hint and, while the Action
++		// button is still untouched, go straight to "Click to update".
++		function detectNewRelease(channel) {
++			if (!coreExists || !installed) {
++				return;
++			}
++			getLatestRelease(channel).then(function(release) {
++				if (channel !== detectedChannel) {
++					return;
++				}
++				const latest = parseVersion(release.tag);
++				if (!latest || compareVersions(latest, installed) <= 0) {
++					setVersionHint(null);
++					return;
++				}
++				setVersionHint(release);
++				if (currentState === 'init') {
++					showUpdatable(release);
++				}
++			}).catch(function() {});
 +		}
 +
 +		function startLogPolling() {
@@ -590,8 +1044,8 @@ index 6dc2d45..b0f0e06 100644
 +			let targetPercent = 0;
 +
 +			const pollAction = function() {
-+				const btnAction = document.getElementById('btn-agh-action');
-+				const btnForce = document.getElementById('btn-agh-force');
++				const btnAction = byId('btn-agh-action');
++				const btnForce = byId('btn-agh-force');
 +
 +				if (currentState === 'updating') {
 +					if (displayPercent < targetPercent) {
@@ -686,8 +1140,8 @@ index 6dc2d45..b0f0e06 100644
 +		}
 +
 +		function triggerCheck() {
-+			const btnAction = document.getElementById('btn-agh-action');
-+			const btnForce = document.getElementById('btn-agh-force');
++			const btnAction = byId('btn-agh-action');
++			const btnForce = byId('btn-agh-force');
 +
 +			currentState = 'checking';
 +			if (btnAction) {
@@ -696,66 +1150,43 @@ index 6dc2d45..b0f0e06 100644
 +			}
 +			setDetail('');
 +
-+			fetch('https://api.github.com/repos/AdguardTeam/AdGuardHome/releases/latest')
-+				.then(function(res) {
-+					if (!res.ok) {
-+						throw new Error('HTTP ' + res.status);
-+					}
-+					return res.json();
-+				})
-+				.then(function(data) {
-+					const remoteVersion = (data && typeof data.tag_name === 'string') ? data.tag_name : null;
-+					if (!remoteVersion || !VERSION_TAG_REGEX.test(remoteVersion)) {
-+						throw new Error('Invalid version data');
-+					}
-+					const cleanLocal = coreExists ? version.replace(/^v/, '') : '';
-+					const cleanRemote = remoteVersion.replace(/^v/, '');
++			const channel = currentChannel();
++			getLatestRelease(channel, true).then(function(release) {
++				detectedChannel = channel;
++				const latest = parseVersion(release.tag);
 +
-+					if (!coreExists || cleanLocal !== cleanRemote) {
-+						currentState = 'updatable';
-+						if (btnAction) {
-+							btnAction.value = _('Click to update');
-+							btnAction.disabled = false;
-+						}
-+						if (btnForce) {
-+							btnForce.style.display = 'none';
-+						}
-+
-+						// Text only; link only if it points at the project's own releases.
-+						let node = E('em', { 'style': 'color: red;' }, remoteVersion);
-+						if (typeof data.html_url === 'string' && GITHUB_RELEASE_URL_REGEX.test(data.html_url)) {
-+							node = E('a', { 'href': data.html_url, 'target': '_blank', 'rel': 'noopener noreferrer' }, node);
-+						}
-+						setDetail(node);
-+					} else {
-+						currentState = 'latest';
-+						if (btnAction) {
-+							btnAction.value = _('It is the latest version');
-+							btnAction.disabled = true;
-+						}
-+						if (btnForce) {
-+							btnForce.style.display = 'inline-block';
-+							btnForce.disabled = false;
-+						}
-+						setDetail('');
-+					}
-+				})
-+				.catch(function() {
-+					currentState = 'check_failed';
++				if (!coreExists || !installed || !latest || compareVersions(latest, installed) > 0) {
++					showUpdatable(release);
++					setVersionHint(coreExists ? release : null);
++				} else {
++					currentState = 'latest';
 +					if (btnAction) {
-+						btnAction.value = _('Retry');
-+						btnAction.disabled = false;
++						btnAction.value = _('It is the latest version');
++						btnAction.disabled = true;
 +					}
 +					if (btnForce) {
-+						btnForce.style.display = 'none';
++						btnForce.style.display = 'inline-block';
++						btnForce.disabled = false;
 +					}
-+					setDetail(E('em', { 'style': 'color: red;' }, _('Check failed')));
-+				});
++					setDetail('');
++					setVersionHint(null);
++				}
++			}).catch(function() {
++				currentState = 'check_failed';
++				if (btnAction) {
++					btnAction.value = _('Retry');
++					btnAction.disabled = false;
++				}
++				if (btnForce) {
++					btnForce.style.display = 'none';
++				}
++				setDetail(E('em', { 'style': 'color: red;' }, _('Check failed')));
++			});
 +		}
 +
 +		function triggerUpdate(isForce) {
-+			const btnAction = document.getElementById('btn-agh-action');
-+			const btnForce = document.getElementById('btn-agh-force');
++			const btnAction = byId('btn-agh-action');
++			const btnForce = byId('btn-agh-force');
 +
 +			currentState = 'updating';
 +			if (btnAction) {
@@ -860,7 +1291,7 @@ index 6dc2d45..b0f0e06 100644
 +			const isCore = results[0];
 +			const isError = results[1];
 +			if (isCore || isError) {
-+				const btnAction = document.getElementById('btn-agh-action');
++				const btnAction = byId('btn-agh-action');
 +				currentState = 'updating';
 +				if (btnAction) {
 +					btnAction.value = _('Updating...') + ' 0%';
@@ -870,6 +1301,34 @@ index 6dc2d45..b0f0e06 100644
 +			}
 +		});
 +
++		// Background check for a newer release: it runs after the page is shown, never
++		// delays it, and stays silent if GitHub cannot be reached.
++		detectNewRelease(detectedChannel);
++
++		afterRerender = function() {
++			decorate();
++			if (currentState !== 'updating') {
++				currentState = 'init';
++				detectedChannel = currentChannel();
++				detectNewRelease(detectedChannel);
++			}
++		};
++
++		// Changing the Core Branch dropdown invalidates what the Action button shows.
++		rendered.addEventListener('change', function() {
++			if (['init', 'updatable', 'latest', 'check_failed'].indexOf(currentState) === -1) {
++				return;
++			}
++			const channel = currentChannel();
++			if (channel === detectedChannel) {
++				return;
++			}
++			detectedChannel = channel;
++			resetToCheck();
++			setVersionHint(null);
++			detectNewRelease(channel);
++		});
+ 
  		return rendered;
 -	},
 +	}
