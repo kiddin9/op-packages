@@ -8,8 +8,9 @@
  * name ("Qualcomm Technologies, Inc. IPQ5332/RDP442/AP-MI01.3") rather than
  * the product. In that case (or when the model is missing) the product name
  * is derived from board_name ("zyxel,nwa50be" -> "Zyxel NWA50BE"): vendor
- * capitalised (or its usual spelling), model upper-cased. Pure functions,
- * no DOM, unit tested in tests/host.test.js.
+ * capitalised (or its usual spelling), model upper-cased. The chip leaves
+ * out a name the other one contains. Pure functions, no DOM, unit tested
+ * in tests/host.test.js.
  */
 
 /* SoC vendors, reference boards and placeholders: not a product name.
@@ -52,6 +53,22 @@ function fromBoardName(boardName) {
 	return vendorName(vendor) + ' ' + model.replace(/,/g, ' ').toUpperCase();
 }
 
+/* names compared for repeats: case, spaces and punctuation don't count
+   ("cudy-wr-3000" and "Cudy WR3000" are one name) */
+function nameKey(s) {
+	return clean(s).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+/* the host chip's names, hostname first: a name the other one contains
+   only repeats it and is left out (the product, when they are the same) */
+function chipNames(hostname, product) {
+	const h = clean(hostname), p = clean(product);
+	const hk = nameKey(h), pk = nameKey(p);
+	if (!p || (h && pk && hk.indexOf(pk) >= 0)) return h ? [ h ] : [];
+	if (!h || (hk && pk.indexOf(hk) >= 0)) return [ p ];
+	return [ h, p ];
+}
+
 /* product name for a `system board` reply, '' when nothing usable */
 function productName(board) {
 	if (!board || typeof board !== 'object') return '';
@@ -62,6 +79,7 @@ function productName(board) {
 
 return baseclass.extend({
 	productName,
+	chipNames,
 	fromBoardName,
 	looksLikeReference
 });

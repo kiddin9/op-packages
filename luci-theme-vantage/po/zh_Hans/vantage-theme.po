@@ -21,6 +21,12 @@ msgid "%d more chain at this hook"
 msgid_plural "%d more chains at this hook"
 msgstr[0] "此钩子还有 %d 条链"
 
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1350
+msgctxt "vantage-theme"
+msgid "%d result"
+msgid_plural "%d results"
+msgstr[0] "%d 个结果"
+
 #: luci-theme-vantage/htdocs/luci-static/resources/vantage-theme/nftflow.js:345
 msgctxt "vantage-theme"
 msgid "%d rule"
@@ -56,7 +62,7 @@ msgctxt "vantage-theme"
 msgid "Accept"
 msgstr "接受"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1188
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1270
 msgid "Actions"
 msgstr "操作"
 
@@ -65,21 +71,22 @@ msgctxt "nft match any traffic"
 msgid "Any packet"
 msgstr "任意数据包"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1181
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1182
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1183
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1186
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1439
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:81
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1258
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1259
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1260
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1263
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1267
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1533
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:84
 msgctxt "vantage-theme"
 msgid "Appearance"
 msgstr "外观"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:43
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:41
 msgid "Authorization Required"
 msgstr "需要授权"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1441
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1535
 msgctxt "vantage-theme"
 msgid "Auto"
 msgstr "自动"
@@ -94,7 +101,7 @@ msgctxt "vantage-theme"
 msgid "Back to the calling chain"
 msgstr "返回调用链"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:69
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:72
 msgctxt "vantage-theme"
 msgid "Breadcrumb"
 msgstr "面包屑"
@@ -112,17 +119,17 @@ msgctxt "vantage-theme"
 msgid "Bridged between ports"
 msgstr "端口间桥接"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:338
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:409
 msgid "Buffered"
 msgstr "已缓冲"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:349
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:359
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:363
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:420
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:430
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:434
 msgid "Cache"
 msgstr "缓存"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:338
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:409
 msgid "Cached"
 msgstr "已缓存"
 
@@ -141,19 +148,19 @@ msgctxt "vantage-theme"
 msgid "Chains no rule jumps to directly"
 msgstr "没有规则直接跳转到的链"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:419
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:491
 msgid "Channel"
 msgstr "信道"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:818
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:897
 msgid "Collapse navigation"
 msgstr "收起导航"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1440
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1534
 msgid "Colour theme"
 msgstr "颜色主题"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1212
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1294
 msgid "Command palette"
 msgstr "命令面板"
 
@@ -172,7 +179,7 @@ msgctxt "vantage-theme"
 msgid "Continues in %s, then comes back here"
 msgstr "转入 %s，随后返回此处"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1441
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1535
 msgctxt "vantage-theme"
 msgid "Dark"
 msgstr "深色"
@@ -196,8 +203,8 @@ msgstr "丢弃未匹配流量"
 msgid "Egress"
 msgstr "出口"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:818
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:54
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:897
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:57
 msgid "Expand navigation"
 msgstr "展开导航"
 
@@ -216,7 +223,7 @@ msgstr ""
 "流量卸载已开启：一条转发连接建立后，它的数据包可以跳过 prerouting、forward "
 "和 postrouting，因此这些链和它们的计数器只会看到该连接最初的数据包。"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1183
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1260
 msgid "Follow system theme"
 msgstr "跟随系统主题"
 
@@ -237,17 +244,17 @@ msgstr ""
 "达 input、forward 或 output 链，这里也没有桥接链会过滤它们。（启用 "
 "br_netfilter 时内核可以把它们交给 IP 链；规则集不体现这一点。）"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:350
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:364
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:421
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:435
 msgctxt "vantage-theme"
 msgid "Free"
 msgstr "空闲"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1393
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1458
 msgid "Grid packets"
 msgstr "网格数据包"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:48
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:52
 msgctxt "vantage-theme"
 msgid "Home"
 msgstr "首页"
@@ -264,9 +271,9 @@ msgstr "IPv4/IPv6 流量表 \"%h\""
 msgid "IPv6 traffic table \"%h\""
 msgstr "IPv6 流量表 \"%h\""
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:349
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:358
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:362
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:420
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:429
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:433
 msgctxt "vantage-theme"
 msgid "In use"
 msgstr "已用"
@@ -280,11 +287,11 @@ msgctxt "vantage-theme"
 msgid "Input"
 msgstr "输入"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:48
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:45
 msgid "Invalid username and/or password! Please try again."
 msgstr "用户名或密码错误，请重试。"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1208
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1290
 msgid "Jump to a page or action…"
 msgstr "跳转到页面或操作…"
 
@@ -293,27 +300,27 @@ msgctxt "vantage-theme"
 msgid "Leaves unmatched unchanged"
 msgstr "未匹配流量保持原样"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1441
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1535
 msgctxt "vantage-theme"
 msgid "Light"
 msgstr "浅色"
 
 #: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:23
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:60
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:57
 msgid "Log in"
 msgstr "登录"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1187
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:84
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1269
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:87
 msgid "Log out"
 msgstr "退出登录"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1186
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1443
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1263
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1537
 msgid "Login background"
 msgstr "登录背景"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:47
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:51
 msgctxt "vantage-theme"
 msgid "Main navigation"
 msgstr "主导航"
@@ -323,13 +330,13 @@ msgctxt "vantage-theme"
 msgid "Masquerade"
 msgstr "伪装（NAT）"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:333
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:348
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:404
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:419
 msgid "Memory"
 msgstr "内存"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1713
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1730
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1806
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1823
 msgctxt "vantage-theme"
 msgid "More actions"
 msgstr "更多操作"
@@ -347,12 +354,17 @@ msgstr "网络"
 msgid "Network device table \"%h\""
 msgstr "网络设备表 \"%h\""
 
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1267
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1526
+msgid "Network path background"
+msgstr "网络路径背景"
+
 #: luci-theme-vantage/htdocs/luci-static/resources/vantage-theme/nftflow.js:162
 msgctxt "vantage-theme"
 msgid "Next rule"
 msgstr "下一条规则"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1283
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1348
 msgid "No matching pages"
 msgstr "没有匹配的页面"
 
@@ -366,12 +378,17 @@ msgctxt "vantage-theme"
 msgid "No rules: %s"
 msgstr "无规则：%s"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1393
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1458
 msgctxt "vantage-theme"
 msgid "None"
 msgstr "无"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1111
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1165
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:17
+msgid "Not found"
+msgstr "未找到"
+
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1185
 msgid "Other pages in %s"
 msgstr "%s 中的其他页面"
 
@@ -385,7 +402,7 @@ msgctxt "vantage-theme"
 msgid "Packet path"
 msgstr "数据包路径"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:90
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:93
 msgid "Page tabs"
 msgstr "页面标签页"
 
@@ -399,7 +416,7 @@ msgctxt "vantage-theme"
 msgid "Passes unmatched"
 msgstr "放行未匹配流量"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:57
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:54
 msgid "Password"
 msgstr "密码"
 
@@ -412,11 +429,6 @@ msgstr "路由后"
 msgctxt "vantage-theme"
 msgid "Prerouting"
 msgstr "路由前"
-
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:985
-msgctxt "vantage-theme"
-msgid "Press"
-msgstr "按"
 
 #: luci-theme-vantage/htdocs/luci-static/resources/vantage-theme/nftflow.js:158
 msgctxt "vantage-theme"
@@ -433,7 +445,7 @@ msgctxt "vantage-theme"
 msgid "Reject"
 msgstr "拒绝"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1210
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1292
 msgctxt "vantage-theme"
 msgid "Results"
 msgstr "结果"
@@ -453,13 +465,13 @@ msgctxt "vantage-theme"
 msgid "Rules table"
 msgstr "规则表"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1208
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:72
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:74
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1290
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:75
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:77
 msgid "Search pages"
 msgstr "搜索页面"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1187
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1269
 msgid "Session"
 msgstr "会话"
 
@@ -469,33 +481,33 @@ msgid "Show %d more rule"
 msgid_plural "Show %d more rules"
 msgstr[0] "再显示 %d 条规则"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1870
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1963
 msgid "Show full description"
 msgstr "显示完整描述"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1859
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1952
 msgid "Show full help: %s"
 msgstr "显示完整帮助：%s"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:44
+#: luci-theme-vantage/ucode/template/themes/vantage/header.ut:48
 msgid "Skip to content"
 msgstr "跳至正文"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1393
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1458
 msgid "Starfield"
 msgstr "星空"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:385
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:456
 msgid "Storage"
 msgstr "存储"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:371
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:373
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:442
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:444
 msgctxt "vantage-theme"
 msgid "Swap"
 msgstr "交换空间"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:338
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:409
 msgid "Swap free"
 msgstr "空闲交换空间"
 
@@ -504,12 +516,12 @@ msgctxt "vantage-theme"
 msgid "This device"
 msgstr "本设备"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:350
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:421
 msgctxt "vantage-theme"
 msgid "Total"
 msgstr "总计"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:337
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:408
 msgid "Total Available"
 msgstr "总可用"
 
@@ -523,19 +535,19 @@ msgctxt "vantage-theme"
 msgid "Unchanged"
 msgstr "不变"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1181
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1258
 msgid "Use dark theme"
 msgstr "使用深色主题"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1182
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1259
 msgid "Use light theme"
 msgstr "使用浅色主题"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:337
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:408
 msgid "Used"
 msgstr "已用"
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:53
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:50
 msgid "Username"
 msgstr "用户名"
 
@@ -549,16 +561,16 @@ msgctxt "vantage-theme"
 msgid "View"
 msgstr "视图"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:412
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:484
 msgid "Wireless"
 msgstr "无线"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:354
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:425
 msgctxt "vantage-theme"
 msgid "available"
 msgstr "可用"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1218
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1300
 msgid "close"
 msgstr "关闭"
 
@@ -572,17 +584,12 @@ msgctxt "vantage-theme"
 msgid "drops unmatched %s"
 msgstr "丢弃未匹配的 %s"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:400
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:403
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:471
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:475
 msgid "free"
 msgstr "空闲"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1285
-msgctxt "vantage-theme"
-msgid "items"
-msgstr "条"
-
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1216
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1298
 msgid "navigate"
 msgstr "移动"
 
@@ -601,29 +608,19 @@ msgctxt "vantage-theme"
 msgid "on %s"
 msgstr "接口 %s"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1217
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1299
 msgctxt "vantage-theme"
 msgid "open"
 msgstr "打开"
-
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:965
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1039
-msgid "page"
-msgstr "页"
-
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:965
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1039
-msgid "pages"
-msgstr "页"
 
 #: luci-theme-vantage/htdocs/luci-static/resources/vantage-theme/nftflow.js:340
 msgctxt "vantage-theme"
 msgid "priority %d"
 msgstr "优先级 %d"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:349
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:359
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:363
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:420
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:430
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:434
 msgid "reclaimable"
 msgstr "可回收"
 
@@ -632,14 +629,32 @@ msgctxt "vantage-theme"
 msgid "rules drop some"
 msgstr "部分规则会丢弃"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:985
-msgid "to search all pages"
-msgstr "搜索所有页面"
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:471
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:475
+msgid "total"
+msgstr "总计"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:400
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:403
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:471
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:475
 msgid "used"
 msgstr "已用"
+
+#~ msgctxt "vantage-theme"
+#~ msgid "Press"
+#~ msgstr "按"
+
+#~ msgctxt "vantage-theme"
+#~ msgid "items"
+#~ msgstr "条"
+
+#~ msgid "page"
+#~ msgstr "页"
+
+#~ msgid "pages"
+#~ msgstr "页"
+
+#~ msgid "to search all pages"
+#~ msgstr "搜索所有页面"
 
 #~ msgid "Show full help"
 #~ msgstr "显示完整帮助"

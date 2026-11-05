@@ -245,11 +245,6 @@ function ipBytes(a) {
 	return out.concat(tail);
 }
 
-function ipFamily(a) {
-	var b = ipBytes(a);
-	return b ? (b.length === 4 ? 4 : 6) : 0;
-}
-
 /* the leading one bits of a mask, -1 when they are not contiguous */
 function maskBits(m) {
 	var bits = 0, zero = false;
@@ -782,9 +777,10 @@ return baseclass.extend({
 				families: fams
 			};
 		};
+		/* the admin ports (ADMIN_PORTS) it opens to any address, [] for none */
 		var admin = function(item, ports) {
-			return item.from.anywhere && (item.proto[0] === 'all' || item.proto.indexOf('tcp') >= 0) &&
-				ADMIN_PORTS.some(function(p) { return hasPort(ports, p); });
+			if (!item.from.anywhere || !(item.proto[0] === 'all' || item.proto.indexOf('tcp') >= 0)) return [];
+			return ADMIN_PORTS.filter(function(p) { return hasPort(ports, p); });
 		};
 		/* standard housekeeping: ping and other control messages, multicast
 		   membership, DHCP client replies, IPsec passed on to a host */
@@ -848,8 +844,9 @@ return baseclass.extend({
 				return;
 			}
 			open.push(item);
-			if (admin(item, item.ports))
-				warnFor(s, { level: 'warn', code: 'admin-open', kind: 'rule', name: item.name, ports: item.portText });
+			var a = admin(item, item.ports);
+			if (a.length)
+				warnFor(s, { level: 'warn', code: 'admin-open', kind: 'rule', name: item.name, ports: item.portText, admin: a });
 		});
 
 		of('redirect').forEach(function(s) {
@@ -881,16 +878,17 @@ return baseclass.extend({
 			var first = function(f) { return r.dest_ip.addrs.filter(function(a) { return a.family === f; })[0]; };
 			item.local = !r.dest_ip ? true : (!own || !r.dest_ip.addrs) ? null
 				: item.families.some(function(f) { var a = first(f); return !a || isOwn(a); });
+			var a = admin(item, inner);
 			if (item.local === null) {
 				fwd.push(item);
-				if (admin(item, inner))
-					warnFor(s, { level: 'warn', code: 'admin-unsure', kind: 'redirect', name: item.name, host: item.host, ports: item.portText });
+				if (a.length)
+					warnFor(s, { level: 'warn', code: 'admin-unsure', kind: 'redirect', name: item.name, host: item.host, ports: item.portText, admin: a });
 				return;
 			}
 			if (!item.local) { fwd.push(item); return; }
 			open.push(item);
-			if (admin(item, inner))
-				warnFor(s, { level: 'warn', code: 'admin-open', kind: 'redirect', name: item.name, ports: item.portText });
+			if (a.length)
+				warnFor(s, { level: 'warn', code: 'admin-open', kind: 'redirect', name: item.name, ports: item.portText, admin: a });
 		});
 
 		/* custom rules: files the firewall config names, whose rules this

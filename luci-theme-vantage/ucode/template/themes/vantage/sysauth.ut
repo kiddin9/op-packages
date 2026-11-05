@@ -12,8 +12,6 @@
 	if (type(tls) == 'string')
 		tls = split(tls, /\s+/);
 	const tls_ports = uniq(filter(map(tls, e => +(match(e, /\d+$/)?.[0] ?? 0)), p => (p > 0 && p <= 65535)));
-	const boardinfo = ubus.call("system", "board");
-	const hostname = striptags(boardinfo?.hostname ?? '?');
 -%}
 <!DOCTYPE html>
 <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true">
@@ -47,10 +45,7 @@
 			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
 			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
 			</svg>
-			<div>
-				<h1 class="vt-login-title">{{ hostname }}</h1>
-				<p class="vt-login-sub"><span class="vt-login-dot" aria-hidden="true"></span>{{ entityencode(_('Authorization Required'), true) }}</p>
-			</div>
+			<h1 class="vt-login-title">{{ entityencode(_('Authorization Required'), true) }}</h1>
 		</div>
 
 {% if (fuser): %}

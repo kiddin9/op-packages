@@ -20,7 +20,7 @@
      wps     the device name the station sends in its WPS element
      vendor  manufacturer from the OUI of a globally unique MAC
      private "Private device" for a locally administered MAC
-     mac     "Device" as the last resort
+     mac     "Unknown device" as the last resort
 
    Pure functions; names are untrusted and only ever rendered as text. */
 
@@ -238,7 +238,11 @@ return baseclass.extend({
 	/* Resolve the display name of one station.
 	   s: { mac, alias: { name, icon }, ips: [..], rdns: { ip: name },
 	        mdns: { ip: name }, hint: { name }, wps, vendor }
-	   -> { name, source, sourceLabel, icon, secondary, isPrivate } */
+	   -> { name, plain, source, sourceLabel, icon, secondary, isPrivate }
+	   Without a name (vendor, private, mac) name is the one-line label,
+	   which carries the MAC's last two octets ("Private device 53:0F"),
+	   and plain the same without them, for where the MAC sits beside
+	   it; otherwise both are the name. */
 	resolve: function(s) {
 		s = s || {};
 		var self = this, mac = this.normMac(s.mac) || str(s.mac);
@@ -261,16 +265,18 @@ return baseclass.extend({
 		if (!name && (name = fromIps(s.mdns))) source = 'mdns';
 		if (!name && s.wps && (name = fmt.safeText(str(s.wps).trim(), NAME_MAX) || null)) source = 'wps';
 
-		var tail = fmt.macTail(mac);
+		var plain = name, tail = fmt.macTail(mac);
 		if (!name) {
-			if (priv) { name = _('Private device') + ' · ' + tail; source = 'private'; }
-			else if (s.vendor) { name = _('%s device').format(fmt.safeText(s.vendor, 32)) + ' · ' + tail; source = 'vendor'; }
-			else { name = _('Device') + ' · ' + tail; source = 'mac'; }
+			if (priv) { plain = _('Private device'); source = 'private'; }
+			else if (s.vendor) { plain = _('%s device').format(fmt.safeText(s.vendor, 32)); source = 'vendor'; }
+			else { plain = _('Unknown device', 'vantage'); source = 'mac'; }
+			name = tail ? plain + ' ' + tail : plain;
 		}
 
 		var icon = (s.alias && this.validIcon(s.alias.icon)) || this.guessIcon(source === 'vendor' ? s.vendor : name) || 'device';
 		return {
 			name: name,
+			plain: plain,
 			source: source,
 			sourceLabel: SOURCES[source],
 			icon: icon,

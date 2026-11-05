@@ -45,7 +45,6 @@ var ICONS = {
 	globe: [ 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18Z', 'M3.4 9.2h17.2M3.4 14.8h17.2', 'M12 3c2.4 2.5 3.6 5.5 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.5-3.6-9s1.2-6.5 3.6-9Z' ],
 	zones: [ 'M4 5.5h6.5v6.5H4zM13.5 5.5H20v6.5h-6.5zM8.75 15.5h6.5V22h-6.5z', 'M7.25 12v1.75h9.5V12M12 13.75v1.75' ],
 	off: [ 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17Z', 'M6 6l12 12' ],
-	check: [ 'M5 12.5l4.5 4.5L19 7.5' ],
 	warn: [ 'M10.3 4.6 3 17.5A2 2 0 0 0 4.7 20.5h14.6A2 2 0 0 0 21 17.5L13.7 4.6a2 2 0 0 0-3.4 0Z', 'M12 9.5v4.5', 'M12 17h.01' ],
 	err: [ 'M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17Z', 'M9 9l6 6M15 9l-6 6' ],
 	chevron: [ 'M9.5 6l6 6-6 6' ],
@@ -116,9 +115,16 @@ function named(item) {
 	return item.kind === 'redirect' ? _('Unnamed port forward') : _('Unnamed rule', 'vantage');
 }
 
+/* a zone's input policy: neutral, whatever it is, except an internet
+   zone that accepts */
 function polBadge(p, risky) {
-	var cls = risky ? 'is-risk' : p === 'ACCEPT' ? 'is-accept' : 'is-stop';
-	return E('span', { 'class': 'vt-fg-pol ' + cls }, [ p === 'ACCEPT' ? _('accept', 'vantage') : p === 'DROP' ? _('drop', 'vantage') : _('reject', 'vantage') ]);
+	return E('span', { 'class': 'vt-fg-pol' + (risky ? ' is-risk' : '') }, [ p === 'ACCEPT' ? _('accept', 'vantage') : p === 'DROP' ? _('drop', 'vantage') : _('reject', 'vantage') ]);
+}
+
+/* the admin ports a warning names (fwglance ADMIN_PORTS), by service */
+function adminServices(ports) {
+	var names = { 22: _('SSH (port 22)'), 23: _('Telnet (port 23)'), 80: _('HTTP (port 80)'), 443: _('HTTPS (port 443)') };
+	return (ports || []).map(function(p) { return names[p] || String(p); }).join(', ');
 }
 
 /* a setup fwglance does not follow (its complex) */
@@ -138,6 +144,17 @@ function ignoredWhy(i) {
 		return _('ignored: zone %s does not exist or is switched off').format(i[i.bad]);
 	return _('ignored: option %s has a value firewall4 refuses').format(i.bad);
 }
+
+/* N_() with English's rule where no catalogue has the string (as
+   vantage.fmt's, which this view doesn't load) */
+var tr = {
+	N_: function(n, singular, plural, ctx) {
+		var t = N_(n, singular, plural, ctx);
+		if (n !== 1 && t === singular) return plural;
+		if (n === 1 && t === plural) return singular;
+		return t;
+	}
+};
 
 return view.extend({
 	handleSave: null,
@@ -219,7 +236,7 @@ return view.extend({
 		}
 		else {
 			head = _('Nothing is open in your firewall rules');
-			sub = fw.standard.length ? N_(fw.standard.length, 'Only standard housekeeping (ping, DHCP renewals and the like): %d rule', 'Only standard housekeeping (ping, DHCP renewals and the like): %d rules').format(fw.standard.length) : _('Internet-facing: %s').format(facing);
+			sub = fw.standard.length ? tr.N_(fw.standard.length, 'Only standard housekeeping (ping, DHCP renewals and the like): %d rule', 'Only standard housekeeping (ping, DHCP renewals and the like): %d rules').format(fw.standard.length) : _('Internet-facing: %s').format(facing);
 		}
 		return this.head(fw.level, head, sub);
 	},
@@ -257,12 +274,12 @@ return view.extend({
 		}
 		else if (w.code === 'admin-unsure') {
 			title = _('%s may open the router\'s admin').format(w.name || w.ports);
-			reason = _('It forwards SSH or web ports from any address on the internet to %s. The interface list could not be read, so this page cannot tell whether that is the router itself.').format(w.host);
+			reason = _('It forwards %s from any address on the internet to %s. The interface list could not be read, so this page cannot tell whether that is the router itself.').format(adminServices(w.admin), w.host);
 			tab = 'forwards';
 		}
 		else {
 			title = _('Router admin open: %s').format(w.name || w.ports);
-			reason = _('SSH or the web interface answers any address on the internet. Limit the rule to the addresses you use.');
+			reason = _('The firewall lets any address on the internet reach %s. Limit the rule to the addresses you use.').format(adminServices(w.admin));
 			tab = w.kind === 'redirect' ? 'forwards' : 'rules';
 		}
 		return E('a', { 'class': 'vt-chip vt-chip-' + w.level, 'role': 'listitem', 'href': page(tab) }, [
@@ -316,7 +333,7 @@ return view.extend({
 				: _('Nothing is open in your firewall rules.') ]));
 		if (fw.standard.length)
 			body.push(E('details', { 'class': 'vt-fg-std' }, [
-				E('summary', {}, [ N_(fw.standard.length, 'Standard housekeeping: %d rule', 'Standard housekeeping: %d rules').format(fw.standard.length) ]),
+				E('summary', {}, [ tr.N_(fw.standard.length, 'Standard housekeeping: %d rule', 'Standard housekeeping: %d rules').format(fw.standard.length) ]),
 				E('p', { 'class': 'vt-hint' }, [ _('Ping and other control messages, multicast, DHCP renewals and IPsec passed on to your network: what every router lets in.') ]),
 				E('div', { 'class': 'vt-fg-rows' }, fw.standard.map(function(i) {
 					return self.row(page('rules'), named(i), [ what(i) ]);

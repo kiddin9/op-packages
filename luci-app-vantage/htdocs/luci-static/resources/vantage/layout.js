@@ -25,7 +25,7 @@ var MIN = {
 };
 
 /* tiles whose content grows to fill a taller slot */
-var FLEX = { chart: true };
+var FLEX = { chart: true, radios: true };
 
 /* how far a tile stretches to line up with the tile below it */
 var SNAP = 48;

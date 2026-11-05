@@ -49,3 +49,7 @@ opkg install ./luci-app-cf-dns-speedtest_1.1.0-1_x86_64.ipk
 [XIU2/CloudflareSpeedTest v2.3.5](https://github.com/XIU2/CloudflareSpeedTest/releases/tag/v2.3.5)，
 该项目同样采用 GPL-3.0。Cloudflare、OpenWrt、iStoreOS、mosdns 和
 CloudflareSpeedTest 均为其各自权利人的项目或商标，本项目与其不存在官方隶属关系。
+
+## OpenWrt 25.12 APK
+
+MU300 / U30 Air 的 APK v3 包及构建、安装说明见 [APK 安装指南](docs/APK.md)。

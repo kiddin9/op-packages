@@ -3,3 +3,7 @@
 SHA256SUMS
 .DS_Store
 Thumbs.db
+
+dist/
+*.apk
+.ipkbuild/

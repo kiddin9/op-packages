@@ -15,7 +15,6 @@
 /* ------------------------------------------------------------ 1. tokens */
 
 .vt-app {
-	--vt-bg: var(--v-bg, #f3f4f6);
 	--vt-surface: var(--v-surface, #ffffff);
 	--vt-surface-2: var(--v-surface-2, #f6f7f9);
 	--vt-surface-3: var(--v-surface-3, #eceef1);
@@ -44,26 +43,63 @@
 	--vt-fs-lg: var(--v-fs-lg, 16px);
 	--vt-fs-xl: var(--v-fs-xl, 20px);
 	--vt-fs-2xl: var(--v-fs-2xl, 24px);
+	--vt-fw-regular: var(--v-fw-regular, 400);   /* four weights only */
+	--vt-fw-medium: var(--v-fw-medium, 500);
+	--vt-fw-semibold: var(--v-fw-semibold, 600);
+	--vt-fw-bold: var(--v-fw-bold, 700);
+	--vt-r-xs: var(--v-r-xs, 2px);        /* bars */
 	--vt-r-sm: var(--v-r-sm, 6px);
 	--vt-r: var(--v-r, 10px);
 	--vt-r-lg: var(--v-r-lg, 14px);
+	--vt-r-xl: var(--v-r-xl, 12px);       /* large icon tiles (drawer) */
 	--vt-ctl: var(--v-ctl-h, 36px);       /* every control: buttons, fields, chips */
 	--vt-r-ctl: var(--v-r, 6px);          /* their corners, as the theme's controls */
+	--vt-sp-0-5: var(--v-sp-0-5, 2px);    /* spacing: the theme's scale */
+	--vt-sp-1: var(--v-sp-1, 4px);
+	--vt-sp-1-5: var(--v-sp-1-5, 6px);
+	--vt-sp-2: var(--v-sp-2, 8px);
+	--vt-sp-3: var(--v-sp-3, 12px);
+	--vt-sp-4: var(--v-sp-4, 16px);
+	--vt-sp-5: var(--v-sp-5, 20px);
+	--vt-sp-6: var(--v-sp-6, 24px);
+	--vt-sp-8: var(--v-sp-8, 32px);
+	--vt-card-px: var(--v-card-px, 18px); /* a tile's insides, as the theme's cards */
+	--vt-card-py: var(--v-card-py, 16px);
 	--vt-shadow: var(--v-shadow, 0 1px 2px rgba(16, 20, 24, .05), 0 1px 1px rgba(16, 20, 24, .03));
+	--vt-shadow-raise: var(--v-shadow-raise, 0 6px 16px rgba(12, 14, 17, .08));
 	--vt-shadow-pop: var(--v-shadow-pop, 0 12px 32px rgba(16, 20, 24, .16), 0 2px 6px rgba(16, 20, 24, .08));
 
-	/* derived: readable accent for text/strokes on surfaces (a lime or
-	   vermilion accent is a fill colour, not a text colour) */
-	--vt-accent-text: color-mix(in oklab, var(--vt-accent) 58%, var(--vt-text));
-	--vt-accent-line: color-mix(in oklab, var(--vt-accent) 78%, var(--vt-text));
+	/* the accent by role. Other themes give one accent; a lime or
+	   vermilion one is a fill colour, not a text colour, so the text and
+	   line fall back to it mixed toward the text */
+	--vt-accent-text: var(--v-accent-text, color-mix(in oklab, var(--vt-accent) 58%, var(--vt-text)));
+	--vt-accent-line: var(--v-accent-line, color-mix(in oklab, var(--vt-accent) 78%, var(--vt-text)));
+	--vt-accent-fill: var(--v-accent-fill, var(--vt-accent));         /* primary buttons, pressed picks */
+	--vt-accent-fill-hover: var(--v-accent-fill-hover, color-mix(in oklab, var(--vt-accent-fill) 90%, #000000));
+	--vt-accent-fill-ink: var(--v-accent-fill-ink, var(--vt-accent-ink));
+	/* status colours as text on their soft fills */
+	--vt-ok-text: var(--v-ok-text, color-mix(in oklab, var(--vt-ok) 72%, var(--vt-text)));
+	--vt-warn-text: var(--v-warn-text, color-mix(in oklab, var(--vt-warn) 65%, var(--vt-text)));
+	--vt-err-text: var(--v-err-text, color-mix(in oklab, var(--vt-err) 80%, var(--vt-text)));
+	--vt-info-text: var(--v-info-text, color-mix(in oklab, var(--vt-info) 80%, var(--vt-text)));
+	/* focused fields: the border and a 1px ring in --vt-focus, the soft halo */
+	--vt-focus: var(--v-focus, var(--vt-accent-line));
+	--vt-focus-ring: 0 0 0 1px var(--vt-focus), 0 0 0 4px var(--vt-accent-soft);
+	/* segmented control (the Wi-Fi/Wired switch): track, selected segment, its ring */
+	--vt-seg-bg: var(--v-seg-bg, var(--vt-surface-2));
+	--vt-seg-on: var(--v-seg-on, var(--vt-surface));
+	--vt-seg-on-ring: var(--v-seg-on-ring, inset 0 0 0 1px var(--vt-accent-line));
+	/* a hovered row; menus and tooltips open on --vt-pop, their items hover --vt-pop-hover */
+	--vt-hover: var(--v-hover, var(--vt-surface-2));
+	--vt-pop: var(--v-surface-2, #ffffff);
+	--vt-pop-hover: var(--v-surface-4, var(--vt-surface-3));
 	/* charts: the theme's categorical chart palette (--v-chart-*), in
-	   fixed order: uplink, 2.4 GHz, 5 GHz, 6 GHz, CPU, spare */
+	   fixed order: uplink, 2.4 GHz, 5 GHz, 6 GHz, CPU */
 	--vt-chart-1: var(--v-chart-1, #6f9c00);
 	--vt-chart-2: var(--v-chart-2, #2a78d6);
 	--vt-chart-3: var(--v-chart-3, #e0632f);
 	--vt-chart-4: var(--v-chart-4, #0f9fb0);
 	--vt-chart-5: var(--v-chart-5, #8b5cf6);
-	--vt-chart-6: var(--v-chart-6, #d55181);
 	--vt-chart-grid: var(--v-chart-grid, color-mix(in srgb, var(--vt-text) 8%, transparent));
 	--vt-chart-axis: var(--v-chart-axis, var(--vt-text-3));
 	--vt-fill-op: var(--v-chart-fill-opacity, .22);
@@ -78,13 +114,19 @@
 	   takes one that no band uses */
 	--vt-dir-dn: var(--vt-chart-1);
 	--vt-dir-up: var(--vt-chart-5);
-	--vt-mem: var(--vt-info);
-	--vt-hover: color-mix(in srgb, var(--vt-surface-2) 70%, var(--vt-surface-3));
+	/* meters (memory, storage, shares): blue, as the theme's */
+	--vt-meter: var(--v-meter, var(--vt-info));
 	--vt-av-l: 92%;
 	--vt-av-s: 55%;
 	--vt-av-ink-l: 34%;
-	--vt-scrim: rgba(12, 14, 17, .32);
+	--vt-scrim: var(--v-scrim, rgba(12, 14, 17, .32));
 	--vt-sheet-shadow: -18px 0 48px rgba(12, 14, 17, .16), -2px 0 8px rgba(12, 14, 17, .06);
+	/* layers: inside the dashboard, then the drawer over the page's shell */
+	--vt-z-raised: 1;      /* nodes, labels over the path's wires */
+	--vt-z-over: 4;        /* chart tooltip, the arranging overlay */
+	--vt-z-float: 6;       /* the sticky edit bar, the filter menu */
+	--vt-z-drag: 8;        /* a tile being dragged */
+	--vt-z-drawer: var(--v-z-drawer, 890);
 }
 
 /* touch: controls follow the pointer, not the width (the theme sets
@@ -94,7 +136,6 @@
 }
 
 html[data-darkmode="true"] .vt-app {
-	--vt-bg: var(--v-bg, #0f1113);
 	--vt-surface: var(--v-surface, #171a1d);
 	--vt-surface-2: var(--v-surface-2, #1d2024);
 	--vt-surface-3: var(--v-surface-3, #262a2f);
@@ -115,22 +156,31 @@ html[data-darkmode="true"] .vt-app {
 	--vt-info: var(--v-info, #6aa8ff);
 	--vt-info-soft: var(--v-info-soft, rgba(106, 168, 255, .14));
 	--vt-shadow: var(--v-shadow, 0 1px 0 rgba(255, 255, 255, .03) inset, 0 1px 2px rgba(0, 0, 0, .3));
+	--vt-shadow-raise: var(--v-shadow-raise, 0 6px 16px rgba(0, 0, 0, .4));
 	--vt-shadow-pop: var(--v-shadow-pop, 0 16px 40px rgba(0, 0, 0, .55));
-	--vt-accent-text: color-mix(in oklab, var(--vt-accent) 72%, var(--vt-text));
-	--vt-accent-line: var(--vt-accent);
+	--vt-accent-text: var(--v-accent-text, color-mix(in oklab, var(--vt-accent) 72%, var(--vt-text)));
+	--vt-accent-line: var(--v-accent-line, var(--vt-accent));
+	--vt-accent-fill-hover: var(--v-accent-fill-hover, color-mix(in oklab, var(--vt-accent-fill) 88%, #ffffff));
+	--vt-ok-text: var(--v-ok-text, color-mix(in oklab, var(--vt-ok) 72%, var(--vt-text)));
+	--vt-warn-text: var(--v-warn-text, color-mix(in oklab, var(--vt-warn) 65%, var(--vt-text)));
+	--vt-err-text: var(--v-err-text, color-mix(in oklab, var(--vt-err) 80%, var(--vt-text)));
+	--vt-info-text: var(--v-info-text, color-mix(in oklab, var(--vt-info) 80%, var(--vt-text)));
+	/* the selected segment lighter than its track, as the theme's */
+	--vt-seg-bg: var(--v-seg-bg, #0f1113);
+	--vt-seg-on: var(--v-seg-on, var(--vt-surface-3));
+	--vt-pop: var(--v-surface-2, #171a1d);
 	--vt-chart-1: var(--v-chart-1, #c8f031);
 	--vt-chart-2: var(--v-chart-2, #3f8fe8);
 	--vt-chart-3: var(--v-chart-3, #de6d33);
 	--vt-chart-4: var(--v-chart-4, #1aa6b8);
 	--vt-chart-5: var(--v-chart-5, #9a7cf2);
-	--vt-chart-6: var(--v-chart-6, #d9588c);
 	--vt-chart-grid: var(--v-chart-grid, color-mix(in srgb, var(--vt-text) 7%, transparent));
 	--vt-fill-op: var(--v-chart-fill-opacity, .2);
 	--vt-band-ink: 78%;
 	--vt-av-l: 24%;
 	--vt-av-s: 30%;
 	--vt-av-ink-l: 76%;
-	--vt-scrim: rgba(0, 0, 0, .5);
+	--vt-scrim: var(--v-scrim, rgba(0, 0, 0, .5));
 	--vt-sheet-shadow: -18px 0 48px rgba(0, 0, 0, .5);
 }
 
@@ -158,8 +208,6 @@ html[data-darkmode="true"] .vt-app {
 	position: static; z-index: auto; display: block; overflow: visible;
 	margin: 0; padding: 0; border: 0; border-radius: 0;
 	background: none; box-shadow: none; color: inherit; text-shadow: none;
-	width: 100%;
-    flex-direction: unset;
 }
 .vt-app :where(header, footer) :where(p, a, span) { line-height: inherit; text-shadow: none; }
 .vt-app :where(header) :where(a) { color: inherit; }
@@ -178,8 +226,8 @@ html[data-darkmode="true"] .vt-app {
 .vt-app .vt-hint { color: var(--vt-text-3); font-size: var(--vt-fs-sm); }
 .vt-app .vt-t-warn { color: var(--vt-warn); }
 .vt-app .vt-t-err { color: var(--vt-err); }
-.vt-app .vt-label { display: block; color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.vt-app .vt-big { font-size: var(--vt-fs-2xl); font-weight: 680; letter-spacing: -.02em; line-height: 1.05; }
+.vt-app .vt-label { display: block; color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); letter-spacing: .08em; text-transform: uppercase; }
+.vt-app .vt-big { font-size: var(--vt-fs-2xl); font-weight: var(--vt-fw-bold); letter-spacing: -.02em; line-height: 1.05; }
 
 .vt-app .vt-ico {
 	width: 18px; height: 18px; flex: none;
@@ -188,7 +236,7 @@ html[data-darkmode="true"] .vt-app {
 .vt-app .vt-ico-sm { width: 14px; height: 14px; }
 
 .vt-app :focus-visible {
-	outline: 2px solid var(--vt-accent-line);
+	outline: 2px solid var(--vt-focus);
 	outline-offset: 2px;
 }
 
@@ -198,20 +246,21 @@ html[data-darkmode="true"] .vt-app {
 	height: var(--vt-ctl); padding: 0 12px;
 	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl);
 	background: var(--vt-surface); color: var(--vt-text);
-	font-size: var(--vt-fs-base); font-weight: 560; line-height: 1;
+	font-size: var(--vt-fs-base); font-weight: var(--vt-fw-medium); line-height: 1;
 	cursor: pointer; box-shadow: none; text-transform: none; min-width: 0;
 	transition: background .15s, border-color .15s;
 }
 .vt-app .vt-btn:hover { background: var(--vt-surface-2); border-color: var(--vt-text-3); }
 .vt-app .vt-btn[disabled] { opacity: .55; cursor: progress; }
-.vt-app .vt-btn.vt-btn-primary { background: var(--vt-accent); border-color: var(--vt-accent); color: var(--vt-accent-ink); }
-.vt-app .vt-btn.vt-btn-primary:hover { filter: brightness(1.05); }
+/* primary: the accent fill with its ink, as the theme's Save & Apply */
+.vt-app .vt-btn.vt-btn-primary { background: var(--vt-accent-fill); border-color: var(--vt-accent-line); color: var(--vt-accent-fill-ink); font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-btn.vt-btn-primary:hover { background: var(--vt-accent-fill-hover); border-color: var(--vt-accent-line); }
 .vt-app .vt-btn.vt-btn-ghost { border-color: transparent; background: transparent; color: var(--vt-text-2); padding: 0 8px; }
 .vt-app .vt-btn.vt-btn-ghost:hover { background: var(--vt-surface-3); color: var(--vt-text); }
 
 .vt-app .vt-link {
 	display: inline-flex; align-items: center; gap: 2px;
-	color: var(--vt-accent-text); font-size: var(--vt-fs-sm); font-weight: 600; text-decoration: none; white-space: nowrap;
+	color: var(--vt-accent-text); font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); text-decoration: none; white-space: nowrap;
 }
 .vt-app .vt-link .vt-ico { width: 14px; height: 14px; transition: transform .15s; }
 .vt-app .vt-link:hover { text-decoration: none; color: var(--vt-text); }
@@ -219,15 +268,17 @@ html[data-darkmode="true"] .vt-app {
 
 .vt-app .vt-pill {
 	display: inline-flex; align-items: center; height: 18px; padding: 0 6px;
-	border-radius: 999px; font-size: var(--vt-fs-micro); font-weight: 650; letter-spacing: .02em; white-space: nowrap;
+	border-radius: 999px; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); letter-spacing: .02em; white-space: nowrap;
 	background: var(--vt-surface-3); color: var(--vt-text-2);
 }
-.vt-app .vt-pill-accent { background: var(--vt-accent); color: var(--vt-accent-ink); }
-.vt-app .vt-pill-warn { background: var(--vt-warn-soft); color: var(--vt-warn); }
+.vt-app .vt-pill-accent { background: var(--vt-accent-fill); color: var(--vt-accent-fill-ink); }
+.vt-app .vt-pill-warn { background: var(--vt-warn-soft); color: var(--vt-warn-text); }
 
 .vt-app .vt-band {
 	display: inline-flex; align-items: center; height: 18px; padding: 0 6px;
-	border-radius: 5px; font-size: var(--vt-fs-micro); font-weight: 700; letter-spacing: .01em; white-space: nowrap;
+	border-radius: 4px; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-bold); letter-spacing: .01em; white-space: nowrap;
+	/* "2.4 GHz" keeps its case inside an upper-case label (the path's kickers) */
+	text-transform: none;
 	--vt-bc: var(--vt-b60);
 	background: color-mix(in oklab, var(--vt-bc) 14%, transparent);
 	color: color-mix(in oklab, var(--vt-bc) var(--vt-band-ink), var(--vt-text));
@@ -240,7 +291,7 @@ html[data-darkmode="true"] .vt-app {
 
 .vt-app .vt-src {
 	display: inline-flex; align-items: center; height: 16px; padding: 0 5px;
-	border-radius: 4px; font-size: var(--vt-fs-micro); font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+	border-radius: 4px; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-bold); letter-spacing: .06em; text-transform: none;
 	background: var(--vt-surface-3); color: var(--vt-text-3); white-space: nowrap;
 }
 .vt-app .vt-src-alias { background: var(--vt-accent-soft); color: var(--vt-accent-text); }
@@ -248,12 +299,12 @@ html[data-darkmode="true"] .vt-app {
 /* avatar: hue from the MAC, icon from the device type */
 .vt-app .vt-av {
 	display: inline-flex; align-items: center; justify-content: center; flex: none;
-	width: 34px; height: 34px; border-radius: 10px;
+	width: 34px; height: 34px; border-radius: 8px;
 	background: hsl(var(--vt-h, 210) var(--vt-av-s) var(--vt-av-l));
 	color: hsl(var(--vt-h, 210) 42% var(--vt-av-ink-l));
 }
-.vt-app .vt-av .vt-ico { width: 19px; height: 19px; }
-.vt-app .vt-av-sm { width: 24px; height: 24px; border-radius: 7px; }
+.vt-app .vt-av .vt-ico { width: 20px; height: 20px; }
+.vt-app .vt-av-sm { width: 24px; height: 24px; border-radius: 8px; }
 .vt-app .vt-av-sm .vt-ico { width: 14px; height: 14px; }
 .vt-app .vt-av-gone { filter: grayscale(1); opacity: .6; }
 
@@ -306,7 +357,7 @@ html[data-darkmode="true"] .vt-app {
    column (--c), width in columns (--w) and top (--y), and the grid's
    column count (--cols) and height. Widths and columns follow the grid
    width here, so only heights wait for script. */
-.vt-app .vt-grid { --vt-gap: 14px; --cols: 1; position: relative; min-height: 200px; }
+.vt-app .vt-grid { --vt-gap: var(--vt-sp-4); --cols: 1; position: relative; min-height: 200px; }
 .vt-app .vt-grid-wait { visibility: hidden; }
 .vt-app .vt-grid > .vt-cell, .vt-app .vt-grid > .vt-drop-ghost {
 	--c: 0; --w: 1; --y: 0px; --vt-cw: calc((100% - (var(--cols) - 1) * var(--vt-gap)) / var(--cols));
@@ -326,17 +377,17 @@ html[data-darkmode="true"] .vt-app {
 @container vt (max-width: 699px) { .vt-app .vt-layout-btn span { display: none; } }
 
 .vt-app .vt-editbar {
-	position: sticky; top: calc(var(--v-stick-top, 48px) + 8px); z-index: 6;
+	position: sticky; top: calc(var(--v-stick-top, 48px) + 8px); z-index: var(--vt-z-float);
 	display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
-	margin: 0 0 14px; padding: 12px 14px; border-radius: var(--vt-r-lg);
+	margin: 0 0 var(--vt-sp-4); padding: 12px 14px; border-radius: var(--vt-r-lg);
 	border: 1px solid var(--vt-accent-line); background: var(--vt-surface); box-shadow: var(--vt-shadow);
 }
 .vt-app .vt-editbar[hidden] { display: none; }
 .vt-app .vt-editbar-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; min-width: 0; }
-.vt-app .vt-editbar-text strong { font-size: var(--vt-fs-base); font-weight: 650; }
+.vt-app .vt-editbar-text strong { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-edit-hidden { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .vt-app .vt-edit-hidden:empty { display: none; }
-.vt-app .vt-edit-hidden .vt-fchip .vt-ico { width: 13px; height: 13px; }
+.vt-app .vt-edit-hidden .vt-fchip .vt-ico { width: 12px; height: 12px; }
 .vt-app .vt-editbar-actions { display: flex; gap: 8px; margin-left: auto; }
 /* the chart and network path picks wrap as one group */
 .vt-app .vt-edit-picks { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 16px; min-width: 0; }
@@ -361,8 +412,8 @@ html[data-darkmode="true"] .vt-app {
 	background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px, 5px 5px;
 }
 .vt-app .vt-select:hover { border-color: var(--vt-text-3); }
-/* focused or open: the ring of the app's other fields (filter, rename) */
-.vt-app .vt-select:focus { outline: none; border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
+/* focused or open: the theme's field focus, as the app's other fields (filter, rename) */
+.vt-app .vt-select:focus { outline: none; border-color: var(--vt-focus); box-shadow: var(--vt-focus-ring); }
 /* the open list: browsers that can style it (customizable select) draw
    it like the theme's dropdowns; others keep their own */
 @supports (appearance: base-select) {
@@ -372,15 +423,15 @@ html[data-darkmode="true"] .vt-app {
 	.vt-app .vt-select { display: inline-flex; align-items: center; min-width: 16em; }
 	.vt-app .vt-select::picker-icon { display: none; }
 	.vt-app .vt-select::picker(select) {
-		margin: 4px 0; padding: 4px;
+		margin: 4px 0; padding: var(--vt-sp-1);
 		border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl);
-		background: var(--vt-surface); color: var(--vt-text); box-shadow: var(--vt-shadow-pop);
+		background: var(--vt-pop); color: var(--vt-text); box-shadow: var(--vt-shadow-pop);
 	}
 	.vt-app .vt-select option {
-		min-height: 32px; padding: 0 10px; gap: 8px;
-		border-radius: var(--vt-r-sm); font-size: var(--vt-fs-base); cursor: pointer;
+		min-height: calc(var(--vt-ctl) - 4px); padding: 4px 8px; gap: 8px;
+		border-radius: var(--vt-r-sm); font-size: var(--vt-fs-base); font-weight: var(--vt-fw-regular); cursor: pointer;
 	}
-	.vt-app .vt-select:open { outline: none; border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
+	.vt-app .vt-select:open { outline: none; border-color: var(--vt-focus); box-shadow: var(--vt-focus-ring); }
 	/* below the field when it fits, as the theme's dropdowns open; the
 	   browser's default opens toward the larger space, often upward */
 	.vt-app .vt-select::picker(select) { position-try-order: normal; }
@@ -388,11 +439,11 @@ html[data-darkmode="true"] .vt-app {
 	   and the accent bar, as the theme's dropdowns mark them. Opened with
 	   the pointer, the chosen option has :focus without :focus-visible:
 	   unmarked, so it no longer looks like a second row under the pointer */
-	.vt-app .vt-select option:is(:hover, :focus-visible) { background: var(--vt-surface-3); }
+	.vt-app .vt-select option:checked { color: var(--vt-accent-text); font-weight: var(--vt-fw-semibold); background: var(--vt-accent-soft); }
+	.vt-app .vt-select option:is(:hover, :focus-visible) { background: var(--vt-pop-hover); color: var(--vt-text); }
 	.vt-app .vt-select option:focus-visible { box-shadow: inset 2px 0 0 var(--vt-accent-text); }
 	.vt-app .vt-select option:focus { outline: none; }
-	.vt-app .vt-select option:checked { font-weight: 600; }
-	.vt-app .vt-select option::checkmark { color: var(--vt-accent-text); }
+	.vt-app .vt-select option::checkmark { display: none; }
 }
 @container vt (max-width: 699px) {
 	.vt-app .vt-editbar { padding: 8px 8px 8px 12px; gap: 8px; }
@@ -407,7 +458,7 @@ html[data-darkmode="true"] .vt-app {
 .vt-app.vt-editing .vt-cell { padding-top: calc(var(--vt-ovh, 50px) + 16px); }
 .vt-app.vt-editing .vt-cell > .vt-tile-head { display: none; }
 .vt-app.vt-editing .vt-ov {
-	display: block; position: absolute; inset: 0; z-index: 4;
+	display: block; position: absolute; inset: 0; z-index: var(--vt-z-over);
 	border: 2px dashed var(--vt-accent-line); border-radius: var(--vt-r-lg);
 	background: color-mix(in oklab, var(--vt-surface) 55%, transparent);
 }
@@ -416,7 +467,7 @@ html[data-darkmode="true"] .vt-app {
 	margin: 8px; padding: 6px; border-radius: var(--vt-r-sm);
 	background: var(--vt-surface); border: 1px solid var(--vt-line-2); box-shadow: var(--vt-shadow);
 }
-.vt-app .vt-ov-name { flex: 1 1 auto; min-width: 0; font-weight: 650; font-size: var(--vt-fs-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-ov-name { flex: 1 1 auto; min-width: 0; font-weight: var(--vt-fw-semibold); font-size: var(--vt-fs-base); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vt-app .vt-ov-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; }
 .vt-app .vt-ov-grip, .vt-app .vt-ov-btn {
 	display: inline-flex; align-items: center; justify-content: center; flex: none;
@@ -430,7 +481,7 @@ html[data-darkmode="true"] .vt-app {
 .vt-app .vt-ov-grip .vt-ico { stroke-width: 3.2; }
 .vt-app .vt-ov-flip .vt-ico { transform: scaleX(-1); }
 .vt-app .vt-ov-hide { margin-left: 4px; }
-.vt-app .vt-ov-size { min-width: 26px; text-align: center; font-size: var(--vt-fs-micro); font-weight: 650; color: var(--vt-text-2); }
+.vt-app .vt-ov-size { min-width: 26px; text-align: center; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app.vt-edit-1col .vt-ov-col { display: none; }
 /* a narrow tile's bar: two rows at most (the name, then the controls),
    not three; no ‹ ›, drag and the arrow keys on the grip still move it */
@@ -439,7 +490,7 @@ html[data-darkmode="true"] .vt-app {
 @container vtcell (max-width: 340px) { .vt-app .vt-ov-lr { display: none; } }
 
 .vt-app.vt-editing .vt-cell { transition: top .2s ease, left .2s ease; }
-.vt-app .vt-cell.vt-dragging { z-index: 8; transition: none; opacity: .92; box-shadow: 0 18px 40px rgba(0, 0, 0, .28); }
+.vt-app .vt-cell.vt-dragging { z-index: var(--vt-z-drag); transition: none; opacity: .92; box-shadow: var(--vt-shadow-pop); }
 .vt-app .vt-dragging .vt-ov-grip { cursor: grabbing; }
 .vt-app.vt-drag-on { user-select: none; -webkit-user-select: none; }
 
@@ -450,7 +501,7 @@ html[data-darkmode="true"] .vt-app {
 	border: 1px solid var(--vt-line);
 	border-radius: var(--vt-r-lg);
 	box-shadow: var(--vt-shadow);
-	padding: 16px 18px 18px;
+	padding: var(--vt-card-py) var(--vt-card-px);
 }
 .vt-app .vt-tile-head {
 	display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
@@ -458,10 +509,10 @@ html[data-darkmode="true"] .vt-app {
 }
 .vt-app .vt-tile-title {
 	display: inline-flex; align-items: center; gap: 8px; min-width: 0;
-	font-size: var(--vt-fs-base); font-weight: 650; letter-spacing: .005em; color: var(--vt-text);
+	font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); letter-spacing: .005em; color: var(--vt-text);
 	white-space: nowrap;
 }
-.vt-app .vt-tile-title .vt-ico { color: var(--vt-text-3); width: 17px; height: 17px; }
+.vt-app .vt-tile-title .vt-ico { color: var(--vt-text-3); width: 16px; height: 16px; }
 .vt-app .vt-tile-extra { display: flex; align-items: center; gap: 8px; min-width: 0; }
 
 /* folding: phones only; wider layouts show everything and ignore the state */
@@ -478,8 +529,6 @@ html[data-darkmode="true"] .vt-app {
 	.vt-app .vt-folded > :not(.vt-tile-head):not(.vt-fold-keep) { display: none !important; }
 	.vt-app .vt-folded > .vt-tile-head { margin-bottom: 0; }
 	.vt-app .vt-folded.vt-hero > .vt-tile-head { margin-bottom: 2px; }
-	.vt-app .vt-folded.vt-hero .vt-kpis { margin-top: 4px; }
-	.vt-app .vt-hint-wide { display: none; }
 
 	/* radios become one tile: a head, then condensed rows or flat cards */
 	.vt-app .vt-radios {
@@ -495,11 +544,11 @@ html[data-darkmode="true"] .vt-app {
 .vt-app .vt-rsum {
 	display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 2px; margin: 0;
 	border: 0; border-top: 1px solid var(--vt-line); border-radius: 0; background: transparent; box-shadow: none;
-	color: var(--vt-text); text-align: left; cursor: pointer; font-weight: 400;
+	color: var(--vt-text); text-align: left; cursor: pointer; font-weight: var(--vt-fw-regular);
 }
-.vt-app .vt-rsum:hover { background: var(--vt-surface-2); }
+.vt-app .vt-rsum:hover { background: var(--vt-hover); }
 .vt-app .vt-rsum .vt-status { margin: 0; }
-.vt-app .vt-rsum-main { font-weight: 650; font-size: var(--vt-fs-base); white-space: nowrap; }
+.vt-app .vt-rsum-main { font-weight: var(--vt-fw-semibold); font-size: var(--vt-fs-base); white-space: nowrap; }
 .vt-app .vt-rsum-sub { font-size: var(--vt-fs-sm); color: var(--vt-text-3); white-space: nowrap; }
 .vt-app .vt-rsum-rate { margin-left: auto; font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; }
 .vt-app .vt-rsum > .vt-ico { color: var(--vt-text-3); }
@@ -508,8 +557,8 @@ html[data-darkmode="true"] .vt-app {
 	display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
 	padding: 32px 16px; text-align: center; color: var(--vt-text-3);
 }
-.vt-app .vt-empty > .vt-ico { width: 28px; height: 28px; stroke-width: 1.4; margin-bottom: 4px; }
-.vt-app .vt-empty-title { color: var(--vt-text); font-weight: 620; font-size: var(--vt-fs-md); }
+.vt-app .vt-empty > .vt-ico { width: 28px; height: 28px; stroke-width: 1.7; margin-bottom: 4px; }
+.vt-app .vt-empty-title { color: var(--vt-text); font-weight: var(--vt-fw-semibold); font-size: var(--vt-fs-md); }
 .vt-app .vt-empty .vt-btn { margin-top: 8px; }
 .vt-app .vt-empty-inline { color: var(--vt-text-3); font-size: var(--vt-fs-sm); padding: 4px 0; }
 
@@ -517,7 +566,7 @@ html[data-darkmode="true"] .vt-app {
 
 .vt-app .vt-head {
 	display: flex; align-items: center; gap: 14px;
-	margin: 2px 0 14px;
+	margin: 2px 0 var(--vt-sp-4);
 }
 header::after {
 	height:0 !important;	
@@ -532,11 +581,12 @@ h2, h3{
 	--vt-oc: var(--vt-ok);
 	background: color-mix(in oklab, var(--vt-oc) 16%, transparent);
 }
+/* the ring pulses only while something needs attention */
 .vt-app .vt-orb::after {
 	content: ""; position: absolute; inset: 0; border-radius: 50%;
 	border: 2px solid var(--vt-oc); opacity: .35;
-	animation: vt-ring 2.6s ease-out infinite;
 }
+.vt-app .vt-orb-warn::after, .vt-app .vt-orb-err::after { animation: vt-ring 2.6s ease-out infinite; }
 .vt-app .vt-orb-core { width: 14px; height: 14px; border-radius: 50%; background: var(--vt-oc); box-shadow: 0 0 0 4px color-mix(in oklab, var(--vt-oc) 22%, transparent); }
 .vt-app .vt-orb-warn { --vt-oc: var(--vt-warn); }
 .vt-app .vt-orb-err { --vt-oc: var(--vt-err); }
@@ -544,7 +594,7 @@ h2, h3{
 
 .vt-app .vt-head-text { min-width: 0; flex: 1; }
 .vt-app .vt-headline {
-	font-size: var(--vt-fs-xl); font-weight: 680; letter-spacing: -.015em; line-height: 1.2; color: var(--vt-text);
+	font-size: var(--vt-fs-xl); font-weight: var(--vt-fw-bold); letter-spacing: -.015em; line-height: 1.2; color: var(--vt-text);
 	margin: 0; padding: 0; border: 0; text-transform: none;
 }
 .vt-app .vt-subline { color: var(--vt-text-3); font-size: var(--vt-fs-sm); margin-top: 2px; }
@@ -553,26 +603,26 @@ h2, h3{
 	flex: none; display: inline-flex; align-items: center; gap: 8px; isolation: isolate;
 	height: 30px; padding: 0 12px 0 10px; border-radius: 999px;
 	border: 1px solid var(--vt-line); background: var(--vt-surface);
-	font-size: var(--vt-fs-sm); font-weight: 560; color: var(--vt-text-2); white-space: nowrap;
+	font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-medium); color: var(--vt-text-2); white-space: nowrap;
 }
 .vt-app .vt-live-beat { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--vt-beat-c, var(--vt-ok)); }
 /* the beat is a ring that scales and fades (compositor only; an animated
-   box-shadow repainted every frame). It sits behind the dot (z-index -1 in
-   the pill's stacking context) so the dot keeps its colour, and it is
-   transparent unless the animation runs: nothing shows without motion. */
+   box-shadow repainted every frame), only while reconnecting: a live page
+   keeps a still dot. It sits behind the dot (z-index -1 in the pill's
+   stacking context) so the dot keeps its colour, and it is transparent
+   unless the animation runs: nothing shows without motion. */
 .vt-app .vt-live-beat::after {
 	content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 50%;
 	background: color-mix(in oklab, var(--vt-beat-c, var(--vt-ok)) 45%, transparent);
 	opacity: 0;
-	animation: vt-beat 2s ease-out infinite;
 }
 .vt-app .vt-live-paused .vt-live-beat { --vt-beat-c: var(--vt-text-3); }
-.vt-app .vt-live-paused .vt-live-beat::after { animation: none; }
 .vt-app .vt-live-err .vt-live-beat { --vt-beat-c: var(--vt-warn); }
+.vt-app .vt-live-err .vt-live-beat::after { animation: vt-beat 2s ease-out infinite; }
 @keyframes vt-beat { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(2.75); opacity: 0; } }
 
 .vt-app .vt-health {
-	display: grid; gap: 10px; margin-bottom: 14px;
+	display: grid; gap: 10px; margin-bottom: var(--vt-sp-4);
 	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 @container vt (min-width: 700px) { .vt-app .vt-health { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
@@ -593,16 +643,66 @@ h2, h3{
 .vt-app .vt-chip-warn { --vt-cc: var(--vt-warn); background: color-mix(in oklab, var(--vt-warn) 7%, var(--vt-surface)); border-color: color-mix(in oklab, var(--vt-warn) 35%, var(--vt-line)); }
 .vt-app .vt-chip-err { --vt-cc: var(--vt-err); background: color-mix(in oklab, var(--vt-err) 7%, var(--vt-surface)); border-color: color-mix(in oklab, var(--vt-err) 35%, var(--vt-line)); }
 .vt-app .vt-chip-info { --vt-cc: var(--vt-text-3); }
+/* the check's own icon, in the card's top right corner so the text
+   runs from its left edge: plain while all is well, in the level's
+   colour when it needs attention */
 .vt-app .vt-chip-ico {
-	flex: none; width: 26px; height: 26px; border-radius: 8px;
+	flex: none; width: 26px; height: 26px; border-radius: var(--vt-r);
 	display: inline-flex; align-items: center; justify-content: center;
-	background: color-mix(in oklab, var(--vt-cc) 15%, transparent); color: var(--vt-cc);
+	background: var(--vt-surface-2); color: var(--vt-text-3);
 }
-.vt-app .vt-chip-ico .vt-ico { width: 15px; height: 15px; stroke-width: 2.1; }
-.vt-app .vt-chip-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+/* (the health cards only: Firewall -> Overview's warnings share .vt-chip
+   and keep their icon before the title) */
+.vt-app .vt-health .vt-chip-ico { position: absolute; top: 10px; right: 10px; }
+.vt-app .vt-health .vt-chip-top { padding-right: 30px; }
+.vt-app :is(.vt-chip-warn, .vt-chip-err) .vt-chip-ico { background: color-mix(in oklab, var(--vt-cc) 15%, transparent); color: var(--vt-cc); }
+.vt-app .vt-chip-ico .vt-ico { width: 16px; height: 16px; stroke-width: 1.7; }
+.vt-app .vt-health .vt-chip { align-self: stretch; position: relative; overflow: hidden; }
+.vt-app .vt-chip-main { display: flex; flex-direction: column; min-width: 0; flex: 1; align-self: stretch; }
+/* The picture is part of the card, on its bottom edge from border to
+   border: an area for what moves (uplink, CPU), under room the card
+   keeps for it, and a 3 px line for what fills (memory, storage, the
+   clients' signals). Each radio's airtime stays in the text, labelled. */
+.vt-app .vt-chip-viz { position: absolute; left: 0; right: 0; bottom: 0; display: block; pointer-events: none; }
+.vt-app .vt-chip-viz:empty { display: none; }
+.vt-app .vt-chip:is(.vt-chip-k-uplink, .vt-chip-k-cpu) { padding-bottom: 40px; }
+.vt-app .vt-chip-viz .vt-sk { height: 34px; }
+.vt-app .vt-chip-viz .vt-spark { height: 34px; }
+.vt-app .vt-chip-viz .vt-spark-line { stroke-width: 1.5; }
+.vt-app .vt-chip-viz .vt-sk { --vt-fill-op: .22; }
+.vt-app .vt-chip-k-radios .vt-chip-viz:has(.vt-chip-radios) { position: static; margin-top: auto; padding-top: 10px; }
+.vt-app .vt-chip-band.vt-band-2g { background: var(--vt-b2); }
+.vt-app .vt-chip-band.vt-band-5g { background: var(--vt-b5); }
+.vt-app .vt-chip-band.vt-band-6g { background: var(--vt-b6); }
+.vt-app .vt-chip-band { background: var(--vt-text-3); }
+.vt-app .vt-chip-bar, .vt-app .vt-bar.vt-chip-bar { display: block; height: 3px; border-radius: 0; }
+.vt-app .vt-chip-k-radios .vt-chip-bar.vt-bar { height: 4px; border-radius: var(--vt-r-xs); }
+.vt-app .vt-chip-k-radios .vt-chip-bar .vt-bar-fill { border-radius: var(--vt-r-xs); }
+.vt-app :is(.vt-chip-k-memory, .vt-chip-k-storage) .vt-chip-bar { background: color-mix(in oklab, var(--vt-line) 70%, transparent); }
+.vt-app :is(.vt-chip-k-memory, .vt-chip-k-storage) .vt-chip-bar .vt-bar-fill { border-radius: 0; }
+.vt-app .vt-chip-mem { display: flex; gap: 1px; overflow: hidden; }
+.vt-app .vt-chip-mem > span { display: block; height: 100%; }
+.vt-app .vt-chip-mem-used { background: var(--vt-meter); }
+.vt-app .vt-chip-mem-cache { background: color-mix(in oklab, var(--vt-meter) 35%, var(--vt-surface-3)); }
+.vt-app .vt-chip-mem-warn .vt-chip-mem-used { background: var(--vt-warn); }
+.vt-app .vt-chip-mem-err .vt-chip-mem-used { background: var(--vt-err); }
+/* two to a row: up to two radios stay one line, four make two */
+.vt-app .vt-chip-radios { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px 8px; }
+.vt-app .vt-chip-radio { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.vt-app .vt-chip-radio-top { display: flex; flex-wrap: wrap; justify-content: space-between; column-gap: 4px; font-size: var(--vt-fs-micro); line-height: 1.2; color: var(--vt-text-3); white-space: nowrap; }
+.vt-app .vt-chip-radio-top b { color: var(--vt-text-2); font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-chip-radio.vt-band-2g .vt-bar-fill { background: var(--vt-b2); }
+.vt-app .vt-chip-radio.vt-band-5g .vt-bar-fill { background: var(--vt-b5); }
+.vt-app .vt-chip-radio.vt-band-6g .vt-bar-fill { background: var(--vt-b6); }
+.vt-app .vt-chip-dist { display: flex; gap: 2px; height: 3px; }
+.vt-app .vt-chip-dist > span { flex: 0 1 auto; min-width: 4px; }
+.vt-app .vt-dist-4 { background: var(--vt-ok); }
+.vt-app .vt-dist-3 { background: color-mix(in oklab, var(--vt-ok) 55%, var(--vt-surface-3)); }
+.vt-app .vt-dist-2 { background: var(--vt-warn); }
+.vt-app .vt-dist-1 { background: var(--vt-err); }
 .vt-app .vt-chip-top { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-.vt-app .vt-chip-title { font-size: var(--vt-fs-micro); line-height: 1.3; font-weight: 650; color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .05em; }
-.vt-app .vt-chip-value { font-size: var(--vt-fs-md); font-weight: 700; letter-spacing: -.01em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.vt-app .vt-chip-title { font-size: var(--vt-fs-micro); line-height: 1.3; font-weight: var(--vt-fw-semibold); color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .08em; }
+.vt-app .vt-chip-value { font-size: var(--vt-fs-md); font-weight: var(--vt-fw-bold); letter-spacing: -.01em; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .vt-app .vt-chip-reason {
 	font-size: var(--vt-fs-sm); color: var(--vt-text-2); margin-top: 2px;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -612,27 +712,6 @@ h2, h3{
 
 .vt-app .vt-hero { container: vthero vtcell / inline-size; overflow: hidden; display: flex; flex-direction: column; }
 
-.vt-app .vt-kpis {
-	position: relative; z-index: 1;
-	display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
-	margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--vt-line);
-}
-.vt-app .vt-kpi {
-	display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0;
-	padding: 6px 10px; margin: 0; border: 0; border-radius: var(--vt-r-sm);
-	background: transparent; color: var(--vt-text); text-align: left; box-shadow: none; height: auto; text-transform: none; font-weight: 400;
-}
-.vt-app button.vt-kpi { cursor: pointer; }
-.vt-app button.vt-kpi:hover { background: var(--vt-surface-2); }
-.vt-app .vt-kpi + .vt-kpi { box-shadow: -1px 0 0 var(--vt-line); border-radius: 0 var(--vt-r-sm) var(--vt-r-sm) 0; }
-.vt-app .vt-kpi-label { font-size: var(--vt-fs-micro); font-weight: 650; color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .05em; }
-.vt-app .vt-kpi-value { font-size: var(--vt-fs-xl); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; white-space: nowrap; }
-.vt-app .vt-kpi-sub { max-width: 100%; font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vt-app .vt-kpi-warn .vt-kpi-value { color: var(--vt-warn); }
-@container vthero (max-width: 700px) {
-	.vt-app .vt-kpis { grid-template-columns: 1fr 1fr; }
-	.vt-app .vt-kpi:nth-child(3) { box-shadow: none; }
-}
 .vt-app .vt-hero::before {
 	content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
 	background:
@@ -673,51 +752,54 @@ h2, h3{
 .vt-app .vt-fwire-3 .vt-fdot { left: -2.25px; top: -1.5px; width: 4.5px; height: 3px; border-radius: 1.5px; }
 
 .vt-app .vt-node {
-	position: relative; z-index: 1;
+	position: relative; z-index: var(--vt-z-raised);
 	display: flex; align-items: center; gap: 10px; min-width: 0;
-	padding: 9px 11px; margin: 0;
+	padding: 8px 12px; margin: 0;
 	border: 1px solid var(--vt-line); border-radius: var(--vt-r);
 	background: var(--vt-surface); color: var(--vt-text);
 	box-shadow: var(--vt-shadow);
-	text-align: left; cursor: pointer; height: auto; line-height: 1.3; text-transform: none; font-weight: 400;
+	text-align: left; cursor: pointer; height: auto; line-height: 1.3; text-transform: none; font-weight: var(--vt-fw-regular);
 	transition: border-color .15s, transform .15s, box-shadow .15s;
 }
-.vt-app .vt-node:hover { border-color: color-mix(in oklab, var(--vt-accent-line) 60%, var(--vt-line)); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(12, 14, 17, .08); background: var(--vt-surface); }
+.vt-app .vt-node:hover { border-color: color-mix(in oklab, var(--vt-accent-line) 60%, var(--vt-line)); transform: translateY(-1px); box-shadow: var(--vt-shadow-raise); background: var(--vt-surface); }
 .vt-app .vt-node-body { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
-.vt-app .vt-node-kicker { display: flex; align-items: center; gap: 6px; font-size: var(--vt-fs-micro); font-weight: 600; color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
-.vt-app .vt-node-title { font-size: var(--vt-fs-base); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-node-kicker { display: flex; align-items: center; gap: 6px; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.vt-app .vt-node-title { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vt-app .vt-node-sub { display: flex; align-items: center; gap: 6px; font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* text alone (the gateway's DNS): a block, so the ellipsis can show */
 .vt-app .vt-node-sub:not(:has(> *)) { display: block; }
 .vt-app .vt-node-ico {
-	flex: none; width: 32px; height: 32px; border-radius: 9px;
+	flex: none; width: 32px; height: 32px; border-radius: 8px;
 	display: inline-flex; align-items: center; justify-content: center;
 	background: var(--vt-surface-3); color: var(--vt-text-2);
 }
 .vt-app .vt-node-ico .vt-ico { width: 20px; height: 20px; }
 .vt-app .vt-node-gw { justify-self: stretch; align-self: center; }
-.vt-app .vt-node-ap { justify-self: stretch; align-self: center; padding: 12px 13px; border-color: color-mix(in oklab, var(--vt-accent-line) 40%, var(--vt-line)); }
-.vt-app .vt-node-ap .vt-node-ico { background: var(--vt-accent); color: var(--vt-accent-ink); }
+.vt-app .vt-node-ap { justify-self: stretch; align-self: center; padding: 12px; border-color: color-mix(in oklab, var(--vt-accent-line) 40%, var(--vt-line)); }
+.vt-app .vt-node-ap .vt-node-ico { background: var(--vt-accent-fill); color: var(--vt-accent-fill-ink); }
 .vt-app .vt-node-ap .vt-node-title { font-size: var(--vt-fs-md); }
-.vt-app .vt-node-gen { text-transform: none; letter-spacing: 0; font-weight: 560; }
-.vt-app .vt-node-radio { padding: 8px 11px; }
+.vt-app .vt-node-gen { text-transform: none; letter-spacing: 0; font-weight: var(--vt-fw-medium); }
+.vt-app .vt-node-radio { padding: 8px 12px; }
 .vt-app .vt-node-net, .vt-app .vt-node-net:hover { text-decoration: none; color: var(--vt-text); }
-.vt-app .vt-node-ssid { padding: 7px 10px; }
+.vt-app .vt-node-ssid { padding: 6px 10px; }
 .vt-app .vt-node-ssid .vt-node-title { display: flex; align-items: center; gap: 6px; font-size: var(--vt-fs-base); }
-.vt-app .vt-node-ssid .vt-node-title .vt-ico { color: var(--vt-text-3); }
+/* only an open or weak network carries a lock */
+.vt-app .vt-node-ssid .vt-node-title .vt-ico { color: var(--vt-warn); }
 .vt-app .vt-ssid-name span { overflow: hidden; text-overflow: ellipsis; }
 .vt-app .vt-node-idle { background: var(--vt-surface-2); box-shadow: none; }
-.vt-app .vt-node-idle .vt-node-title { color: var(--vt-text-2); font-weight: 600; }
+.vt-app .vt-node-idle .vt-node-title { color: var(--vt-text-2); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-node-off { opacity: .6; border-style: dashed; }
 
 .vt-app .vt-dots { display: inline-flex; gap: 3px; }
+/* no clients, no dots: the count starts where the name does */
+.vt-app .vt-dots:empty { display: none; }
 .vt-app .vt-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--vt-text-3); }
 .vt-app .vt-dot.vt-lvl-ok { background: var(--vt-ok); }
 .vt-app .vt-dot.vt-lvl-warn { background: var(--vt-warn); }
 .vt-app .vt-dot.vt-lvl-crit { background: var(--vt-err); }
 
 .vt-app .vt-link-label {
-	position: relative; z-index: 1;
+	position: relative; z-index: var(--vt-z-raised);
 	display: grid; grid-template-rows: minmax(0, 1fr) 14px minmax(0, 1fr); justify-items: center;
 	align-self: stretch; padding: 0 6px; text-align: center;
 }
@@ -726,13 +808,13 @@ h2, h3{
 	display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap;
 	padding: 0 6px; border-radius: 6px; background: var(--vt-surface);
 }
-.vt-app .vt-link-rate .vt-ico { width: 13px; height: 13px; align-self: center; stroke-width: 2.2; }
-.vt-app .vt-link-rate b { font-size: var(--vt-fs-lg); font-weight: 700; letter-spacing: -.01em; }
-.vt-app .vt-link-rate small { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: 600; }
+.vt-app .vt-link-rate .vt-ico { width: 12px; height: 12px; align-self: center; stroke-width: 2; }
+.vt-app .vt-link-rate b { font-size: var(--vt-fs-lg); font-weight: var(--vt-fw-bold); letter-spacing: -.01em; }
+.vt-app .vt-link-rate small { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-link-down { grid-row: 1; align-self: end; }
 .vt-app .vt-link-down .vt-ico { color: var(--vt-accent-text); }
 .vt-app .vt-link-up { font-size: var(--vt-fs-sm); }
-.vt-app .vt-link-up b { font-size: var(--vt-fs-base); font-weight: 650; color: var(--vt-text-2); }
+.vt-app .vt-link-up b { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app .vt-link-up .vt-ico { color: var(--vt-text-3); }
 .vt-app .vt-link-meta { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-family: var(--vt-mono); white-space: nowrap; margin-top: 2px;
 	padding: 0 6px; border-radius: 6px; background: var(--vt-surface); }
@@ -741,7 +823,7 @@ h2, h3{
    tall neighbour leaves no empty band above or below the diagram */
 .vt-app .vt-branches { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; padding: 2px 0 2px 34px; min-width: 0; }
 .vt-app .vt-branch { display: grid; grid-template-columns: minmax(136px, 172px) minmax(0, 1fr); column-gap: 34px; align-items: center; min-width: 0; }
-.vt-app .vt-branch-ssids { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.vt-app .vt-branch-ssids { display: flex; flex-direction: column; gap: var(--vt-sp-2); min-width: 0; }
 .vt-app .vt-branch-ssids .vt-node { max-width: 260px; }
 
 @container vthero (max-width: 700px) {
@@ -770,41 +852,47 @@ h2, h3{
 .vt-app .vt-spark-box .vt-spark { height: 38px; }
 .vt-app .vt-cores-box { display: flex; flex-direction: column; align-items: center; flex: none; cursor: help; }
 .vt-app .vt-cores { display: flex; gap: 3px; height: 38px; align-items: flex-end; }
-.vt-app .vt-core { position: relative; width: 6px; height: 100%; border-radius: 3px; background: var(--vt-surface-3); overflow: hidden; }
-.vt-app .vt-core-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px; background: var(--vt-chart-5); }
+.vt-app .vt-core { position: relative; width: 6px; height: 100%; border-radius: var(--vt-r-xs); background: var(--vt-surface-3); overflow: hidden; }
+.vt-app .vt-core-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: var(--vt-r-xs); background: var(--vt-chart-5); }
 
 .vt-app .vt-sys-mem { display: flex; flex-direction: column; gap: 7px; }
 .vt-app .vt-mem-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.vt-app .vt-mem-avail { font-size: var(--vt-fs-lg); font-weight: 680; }
-.vt-app .vt-mem-of { font-size: var(--vt-fs-sm); color: var(--vt-text-3); }
-.vt-app .vt-seg { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--vt-surface-3); gap: 2px; }
+/* the meters as the theme's (Status -> Overview): a squared bar with a
+   hairline ring, segments split by a line of the card, blue fills; the
+   share in tabular sans, the amounts in monospace */
+.vt-app .vt-mem-avail { font-size: var(--vt-fs-lg); font-weight: var(--vt-fw-bold); }
+.vt-app .vt-mem-of { font-family: var(--vt-mono); font-size: var(--vt-fs-sm); color: var(--vt-text-2); white-space: nowrap; }
+.vt-app .vt-seg { display: flex; height: 12px; border-radius: var(--vt-r-xs); overflow: hidden; background: var(--vt-surface-3); box-shadow: inset 0 0 0 1px var(--vt-line); }
 /* width animates only for a visible change (the view sets .vt-seg-move):
    a width transition lays out every frame, and memory moves by fractions
    of a percent on most polls */
 .vt-app .vt-seg-part { height: 100%; min-width: 0; }
+.vt-app .vt-seg-part + .vt-seg-part { box-shadow: inset 1px 0 0 var(--vt-surface); }
 .vt-app .vt-seg-move .vt-seg-part { transition: width .7s cubic-bezier(.2, .7, .2, 1); }
-.vt-app .vt-seg-used { background: var(--vt-mem); border-radius: 6px 2px 2px 6px; }
+.vt-app .vt-seg-used { background: var(--vt-meter); }
 .vt-app .vt-seg-cache {
 	background:
-		repeating-linear-gradient(135deg, color-mix(in oklab, var(--vt-mem) 42%, transparent) 0 3px, color-mix(in oklab, var(--vt-mem) 24%, transparent) 3px 6px);
-	border-radius: 2px;
+		repeating-linear-gradient(-45deg, color-mix(in srgb, var(--vt-meter) 55%, transparent) 0 3px, color-mix(in srgb, var(--vt-meter) 25%, transparent) 3px 6px);
 }
 .vt-app .vt-seg-free { background: transparent; }
 .vt-app .vt-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--vt-fs-sm); color: var(--vt-text-2); }
 .vt-app .vt-legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.vt-app .vt-legend-item b { font-weight: 650; color: var(--vt-text); }
-.vt-app .vt-key { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.vt-app .vt-legend-item b { font-family: var(--vt-mono); font-weight: var(--vt-fw-semibold); color: var(--vt-text); }
+.vt-app .vt-key { width: 10px; height: 10px; border-radius: var(--vt-r-xs); flex: none; }
 .vt-app .vt-key.vt-seg-free { background: var(--vt-surface-3); box-shadow: inset 0 0 0 1px var(--vt-line-2); }
 .vt-app .vt-swap { display: flex; align-items: center; gap: 8px; font-size: var(--vt-fs-sm); }
 .vt-app .vt-swap:empty { display: none; }
-.vt-app .vt-thin { flex: 1; height: 4px; border-radius: 2px; background: var(--vt-surface-3); overflow: hidden; }
-.vt-app .vt-thin-fill { display: block; height: 100%; background: var(--vt-mem); }
+.vt-app .vt-thin { flex: 1; height: 4px; border-radius: var(--vt-r-xs); background: var(--vt-surface-3); overflow: hidden; box-shadow: inset 0 0 0 1px var(--vt-line); }
+.vt-app .vt-thin-fill { display: block; height: 100%; background: var(--vt-meter); }
 
 .vt-app .vt-sys-store { display: flex; flex-direction: column; gap: 8px; }
 .vt-app .vt-storage { display: flex; flex-direction: column; gap: 8px; }
-.vt-app .vt-mount-top { display: flex; justify-content: space-between; gap: 8px; font-size: var(--vt-fs-sm); margin-bottom: 4px; }
-.vt-app .vt-bar { height: 6px; border-radius: 3px; background: var(--vt-surface-3); overflow: hidden; }
-.vt-app .vt-bar-fill { display: block; height: 100%; border-radius: 3px; background: var(--vt-mem); }
+/* a narrow tile puts the amounts on a line of their own, whole */
+.vt-app .vt-mount-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; font-size: var(--vt-fs-sm); margin-bottom: 4px; }
+.vt-app .vt-mount-top .vt-hint { margin-left: auto; font-family: var(--vt-mono); color: var(--vt-text-2); white-space: nowrap; }
+.vt-app .vt-bar { height: 6px; border-radius: var(--vt-r-xs); background: var(--vt-surface-3); overflow: hidden; }
+.vt-app .vt-storage .vt-bar { box-shadow: inset 0 0 0 1px var(--vt-line); }
+.vt-app .vt-bar-fill { display: block; height: 100%; background: var(--vt-meter); }
 .vt-app .vt-bg-warn { background: var(--vt-warn); }
 .vt-app .vt-bg-err { background: var(--vt-err); }
 .vt-app .vt-fw { display: flex; flex-direction: column; gap: 1px; margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--vt-line); font-size: var(--vt-fs-sm); color: var(--vt-text-2); }
@@ -815,13 +903,13 @@ h2, h3{
    a shared time axis and one crosshair across all rows */
 .vt-app .vt-chart { display: flex; flex-direction: column; --vt-mh: 136px; --vt-mg: 16px; }
 .vt-app .vt-chart .vt-tile-title { flex-wrap: wrap; row-gap: 0; }
-.vt-app .vt-chart-sub { font-size: var(--vt-fs-sm); font-weight: 500; color: var(--vt-text-3); }
+.vt-app .vt-chart-sub { font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-medium); color: var(--vt-text-3); }
 .vt-app .vt-chart-sub::before { content: "·"; margin: 0 6px 0 0; }
-.vt-app .vt-lg-key { width: 12px; height: 3px; border-radius: 2px; background: var(--vt-sc); flex: none; }
+.vt-app .vt-lg-key { width: 12px; height: 3px; border-radius: var(--vt-r-xs); background: var(--vt-sc); flex: none; }
 /* one colour per direction in every row (series, gradients, dots, keys) */
 .vt-app .vt-chart, .vt-app .vt-chart .vt-k-dn { --vt-sc: var(--vt-dir-dn); }
 .vt-app .vt-chart .vt-dir-up, .vt-app .vt-chart .vt-k-up { --vt-sc: var(--vt-dir-up); }
-.vt-app .vt-arr { font-weight: 700; }
+.vt-app .vt-arr { font-weight: var(--vt-fw-bold); }
 .vt-app .vt-arr-dn { color: color-mix(in oklab, var(--vt-dir-dn) 70%, var(--vt-text)); }
 .vt-app .vt-arr-up { color: color-mix(in oklab, var(--vt-dir-up) 70%, var(--vt-text)); }
 .vt-app .vt-dir-legend { font-size: var(--vt-fs-micro); gap: 4px 12px; }
@@ -834,12 +922,12 @@ h2, h3{
 }
 .vt-app .vt-mult:first-child { border-top: 0; padding-top: 2px; }
 .vt-app .vt-mult-head { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-width: 0; }
-.vt-app .vt-mult-name { font-size: var(--vt-fs-micro); font-weight: 600; color: var(--vt-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vt-app .vt-mult-now { display: flex; align-items: center; gap: 6px; font-size: var(--vt-fs-lg); font-weight: 700; letter-spacing: -.01em; line-height: 1.25; white-space: nowrap; }
+.vt-app .vt-mult-name { font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-mult-now { display: flex; align-items: center; gap: 6px; font-size: var(--vt-fs-lg); font-weight: var(--vt-fw-bold); letter-spacing: -.01em; line-height: 1.25; white-space: nowrap; }
 .vt-app .vt-mult-now b { font-weight: inherit; }
-.vt-app .vt-mult-now-up { font-size: var(--vt-fs-base); font-weight: 650; line-height: 1.3; color: var(--vt-text-2); }
+.vt-app .vt-mult-now-up { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); line-height: 1.3; color: var(--vt-text-2); }
 .vt-app .vt-mult-stats { display: flex; flex-wrap: wrap; gap: 0 8px; font-size: var(--vt-fs-micro); color: var(--vt-text-3); white-space: nowrap; }
-.vt-app .vt-mult-stats b { font-weight: 600; color: var(--vt-text-2); }
+.vt-app .vt-mult-stats b { font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app .vt-mult-plot { position: relative; min-height: 72px; margin: 12px 0; --vt-sc: inherit; }
 .vt-app .vt-mult-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .vt-app .vt-chart-grid { fill: none; stroke: var(--vt-chart-grid); stroke-width: 1; vector-effect: non-scaling-stroke; }
@@ -857,11 +945,11 @@ h2, h3{
 /* a stretch without samples: hatched, named when there's room */
 .vt-app .vt-mult-gap {
 	position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; overflow: hidden;
-	border-radius: 3px; pointer-events: none;
+	border-radius: var(--vt-r-xs); pointer-events: none;
 	background: repeating-linear-gradient(135deg, var(--vt-chart-grid) 0 2px, transparent 2px 6px);
 	font-size: var(--vt-fs-micro); line-height: 1; color: var(--vt-chart-axis); white-space: nowrap;
 }
-.vt-app .vt-mult-gap span { padding: 2px 4px; border-radius: 3px; background: var(--vt-surface); }
+.vt-app .vt-mult-gap span { padding: 2px 4px; border-radius: var(--vt-r-xs); background: var(--vt-surface); }
 /* a band too narrow for its label shows the hatching alone */
 .vt-app .vt-mult-gap { container-type: inline-size; }
 @container (max-width: 60px) { .vt-app .vt-mult-gap span { display: none; } }
@@ -877,17 +965,17 @@ h2, h3{
 .vt-app .vt-mult-wrap { cursor: crosshair; touch-action: pan-y; }
 .vt-app .vt-cursor { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid color-mix(in oklab, var(--vt-text) 45%, transparent); pointer-events: none; }
 .vt-app .vt-tip {
-	position: absolute; top: 4px; z-index: 4;
-	width: max-content; min-width: 180px; padding: 8px 10px 7px; border-radius: var(--vt-r);
-	background: var(--vt-surface); border: 1px solid var(--vt-line-2);
-	box-shadow: 0 10px 28px rgba(12, 14, 17, .16), 0 2px 6px rgba(12, 14, 17, .06);
+	position: absolute; top: 4px; z-index: var(--vt-z-over);
+	width: max-content; min-width: 180px; padding: 8px 10px; border-radius: var(--vt-r);
+	background: var(--vt-pop); border: 1px solid var(--vt-line-2);
+	box-shadow: var(--vt-shadow-pop);
 	font-size: var(--vt-fs-sm); pointer-events: none;
 }
 .vt-app .vt-tip-time { display: flex; justify-content: space-between; gap: 12px; color: var(--vt-text-3); font-size: var(--vt-fs-micro); margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid var(--vt-line); }
 .vt-app .vt-tip-link + .vt-tip-link { margin-top: 5px; }
 .vt-app .vt-tip-label { color: var(--vt-text-3); font-size: var(--vt-fs-micro); white-space: nowrap; }
 .vt-app .vt-tip-row { display: grid; grid-template-columns: 12px auto minmax(0, 1fr); align-items: center; column-gap: 8px; line-height: 1.6; color: var(--vt-text-2); }
-.vt-app .vt-tip-row b { font-weight: 700; color: var(--vt-text); white-space: nowrap; text-align: right; }
+.vt-app .vt-tip-row b { font-weight: var(--vt-fw-bold); color: var(--vt-text); white-space: nowrap; text-align: right; }
 
 /* ------------------------------------------------------------ 8. radios */
 
@@ -900,8 +988,8 @@ h2, h3{
 .vt-app .vt-radio::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--vt-bc); opacity: .85; }
 .vt-app .vt-radio-off { opacity: .75; }
 .vt-app .vt-radio-head { display: flex; align-items: center; gap: 8px; }
-.vt-app .vt-radio-name { font-weight: 650; font-size: var(--vt-fs-base); }
-.vt-app .vt-status { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: var(--vt-fs-micro); font-weight: 600; color: var(--vt-text-2); }
+.vt-app .vt-radio-name { font-weight: var(--vt-fw-semibold); font-size: var(--vt-fs-base); }
+.vt-app .vt-status { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app .vt-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--vt-ok); }
 .vt-app .vt-status-warn::before { background: var(--vt-warn); }
 .vt-app .vt-status-err::before { background: var(--vt-err); }
@@ -912,22 +1000,22 @@ h2, h3{
 }
 .vt-app .vt-icon-action:hover { background: var(--vt-surface-3); color: var(--vt-text); }
 .vt-app .vt-radio-chan { display: flex; align-items: baseline; gap: 8px; }
-.vt-app .vt-radio-width { font-size: var(--vt-fs-md); font-weight: 600; color: var(--vt-text-2); }
+.vt-app .vt-radio-width { font-size: var(--vt-fs-md); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app .vt-spectrum { position: relative; height: 8px; border-radius: 4px; background: var(--vt-surface-3); margin-bottom: 12px; }
-.vt-app .vt-spectrum-blk { position: absolute; top: -2px; bottom: -2px; border-radius: 3px; background: var(--vt-bc); box-shadow: 0 0 0 2px var(--vt-surface); }
+.vt-app .vt-spectrum-blk { position: absolute; top: -2px; bottom: -2px; border-radius: var(--vt-r-xs); background: var(--vt-bc); box-shadow: 0 0 0 2px var(--vt-surface); }
 .vt-app .vt-spectrum-lo, .vt-app .vt-spectrum-hi { position: absolute; top: 11px; font-size: var(--vt-fs-micro); color: var(--vt-text-3); }
 .vt-app .vt-spectrum-lo { left: 0; }
 .vt-app .vt-spectrum-hi { right: 0; }
 .vt-app .vt-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
-.vt-app .vt-kv dt { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.vt-app .vt-kv dd { font-size: var(--vt-fs-base); font-weight: 600; margin: 1px 0 0; }
-.vt-app .vt-kv dd .vt-muted { font-weight: 500; font-size: var(--vt-fs-sm); }
+.vt-app .vt-kv dt { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: var(--vt-fw-semibold); text-transform: uppercase; letter-spacing: .08em; }
+.vt-app .vt-kv dd { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); margin: 1px 0 0; }
+.vt-app .vt-kv dd .vt-muted { font-weight: var(--vt-fw-medium); font-size: var(--vt-fs-sm); }
 .vt-app .vt-radio-live { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 8px 10px; border-radius: var(--vt-r-sm); background: var(--vt-surface-2); }
 .vt-app .vt-radio-live .vt-spark { height: 30px; }
 .vt-app .vt-rates { display: flex; flex-direction: column; gap: 1px; }
-.vt-app .vt-rate { display: inline-flex; align-items: center; gap: 4px; font-size: var(--vt-fs-sm); font-weight: 650; white-space: nowrap; }
-.vt-app .vt-rate .vt-ico { width: 12px; height: 12px; stroke-width: 2.3; color: var(--vt-text-3); }
-.vt-app .vt-rate-up { font-weight: 500; color: var(--vt-text-2); }
+.vt-app .vt-rate { display: inline-flex; align-items: center; gap: 4px; font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); white-space: nowrap; }
+.vt-app .vt-rate .vt-ico { width: 12px; height: 12px; stroke-width: 2; color: var(--vt-text-3); }
+.vt-app .vt-rate-up { font-weight: var(--vt-fw-medium); color: var(--vt-text-2); }
 .vt-app .vt-notes { display: flex; flex-direction: column; gap: 4px; }
 .vt-app .vt-note { display: flex; align-items: flex-start; gap: 6px; font-size: var(--vt-fs-sm); color: var(--vt-text-2); }
 .vt-app .vt-note .vt-ico { margin-top: 2px; color: var(--vt-text-3); }
@@ -946,7 +1034,7 @@ h2, h3{
 /* a jump to a tile (the path's SSID, Wired and port nodes) stops below
    the sticky top bar */
 .vt-app .vt-tile { scroll-margin-top: calc(var(--v-stick-top, 48px) + 12px); }
-.vt-app .vt-count { font-size: var(--vt-fs-sm); color: var(--vt-text-3); font-weight: 560; }
+.vt-app .vt-count { font-size: var(--vt-fs-sm); color: var(--vt-text-3); font-weight: var(--vt-fw-medium); }
 .vt-app .vt-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
 .vt-app .vt-filter {
 	position: relative; display: flex; align-items: center; flex: 1 1 260px; max-width: 380px;
@@ -954,7 +1042,7 @@ h2, h3{
 	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl); background: var(--vt-surface);
 	color: var(--vt-text-3); cursor: text;
 }
-.vt-app .vt-filter:focus-within { border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
+.vt-app .vt-filter:focus-within { border-color: var(--vt-focus); box-shadow: var(--vt-focus-ring); }
 .vt-app .vt-filter .vt-ico { width: 16px; height: 16px; }
 .vt-app .vt-filter .vt-filter-input {
 	flex: 1; min-width: 0; width: auto; height: calc(var(--vt-ctl) - 2px); padding: 0; margin: 0;
@@ -962,7 +1050,13 @@ h2, h3{
 	color: var(--vt-text); font: inherit; font-size: var(--vt-fs-base);
 }
 .vt-app .vt-filter .vt-filter-input::placeholder { color: var(--vt-text-3); opacity: 1; }
-.vt-app .vt-key-hint { font: 600 var(--vt-fs-micro)/1 var(--vt-mono); padding: 3px 5px; border-radius: 4px; border: 1px solid var(--vt-line-2); color: var(--vt-text-3); background: var(--vt-surface-2); }
+/* the theme's keycap (.vt-kbd), as by its search box */
+.vt-app .vt-key-hint {
+	display: inline-flex; align-items: center; flex: none; height: 20px; padding: 0 6px;
+	border: 1px solid var(--vt-line-2); border-bottom-width: 2px; border-radius: 4px;
+	background: var(--vt-surface-3); color: var(--vt-text-2);
+	font: var(--vt-fw-medium) var(--vt-fs-micro)/1 var(--vt-mono); letter-spacing: .02em;
+}
 .vt-app .vt-filter:focus-within .vt-key-hint { display: none; }
 .vt-app .vt-filter-clear {
 	display: inline-flex; align-items: center; justify-content: center; width: calc(var(--vt-ctl) - 10px); height: calc(var(--vt-ctl) - 10px); padding: 0; margin: 0;
@@ -970,18 +1064,27 @@ h2, h3{
 }
 .vt-app .vt-filter-clear:hover { background: var(--vt-surface-3); color: var(--vt-text); }
 .vt-app .vt-filter-clear .vt-ico { width: 14px; height: 14px; }
-/* Wi-Fi or wired, in the tile head */
-.vt-app .vt-kinds { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--vt-line); border-radius: 999px; background: var(--vt-surface-2); }
+/* Wi-Fi or wired, in the tile head: the theme's segmented control (its
+   tabs). Each segment is a control high; the 3px between the track's edge
+   and the drawn segment is the segment's own transparent border */
+.vt-app .vt-kinds {
+	display: inline-flex; padding: 0; gap: 0; border: 0;
+	border-radius: var(--vt-r-lg); background: var(--vt-seg-bg); box-shadow: inset 0 0 0 1px var(--vt-line);
+}
 .vt-app .vt-kind {
-	display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; margin: 0; min-width: 0;
-	border: 0; border-radius: 999px; background: transparent; box-shadow: none; text-transform: none;
-	color: var(--vt-text-2); font-size: var(--vt-fs-sm); font-weight: 600; cursor: pointer;
+	display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--vt-ctl); padding: 0 10px; margin: 0; min-width: 0;
+	border: 3px solid transparent; background-clip: padding-box; border-radius: calc(var(--vt-r-ctl) + 3px);
+	background-color: transparent; box-shadow: none; text-transform: none;
+	color: var(--vt-text-2); font-size: var(--vt-fs-base); font-weight: var(--vt-fw-medium); cursor: pointer;
 }
 .vt-app .vt-kind:hover { color: var(--vt-text); }
-.vt-app .vt-kind.vt-kind-on { background: var(--vt-surface); color: var(--vt-text); box-shadow: var(--vt-shadow); }
-.vt-app .vt-kind-n { font-size: var(--vt-fs-micro); color: var(--vt-text-3); }
-/* quick filters: a button at the end of the search box, a menu under it,
-   and the filter in force as a tag in the box */
+.vt-app .vt-kind:focus-visible { outline-offset: -1px; }
+.vt-app .vt-kind.vt-kind-on, .vt-app .vt-kind.vt-kind-on:hover { background-color: var(--vt-seg-on); color: var(--vt-accent-text); font-weight: var(--vt-fw-semibold); box-shadow: var(--vt-seg-on-ring); }
+.vt-app .vt-kind-n { font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-medium); color: var(--vt-text-3); }
+/* quick filters: a button at the end of the search box, a menu under it
+   (the theme's dropdown list: items on --vt-pop-hover under the pointer,
+   the keyboard's with the accent bar too), and the filter in force as a
+   tag in the box */
 .vt-app .vt-filter-wrap { position: relative; display: flex; flex: 1 1 260px; max-width: 380px; min-width: 0; }
 .vt-app .vt-filter-wrap > .vt-filter { flex: 1 1 auto; max-width: none; min-width: 0; }
 .vt-app .vt-filter-btn {
@@ -990,65 +1093,67 @@ h2, h3{
 	border: 0; border-radius: var(--vt-r-ctl); background: transparent; box-shadow: none; color: var(--vt-text-3); cursor: pointer;
 }
 .vt-app .vt-filter-btn:hover, .vt-app .vt-filter-btn[aria-expanded="true"] { background: var(--vt-surface-3); color: var(--vt-text); }
-.vt-app .vt-filter-btn.vt-filter-btn-on { color: var(--vt-accent); }
+.vt-app .vt-filter-btn.vt-filter-btn-on { color: var(--vt-accent-text); }
 .vt-app .vt-filter-btn .vt-ico { width: 16px; height: 16px; }
 .vt-app .vt-ftag {
 	display: inline-flex; align-items: center; gap: 4px; flex: none; max-width: 45%; height: 24px; padding: 0 6px 0 9px; margin: 0; min-width: 0;
 	border: 0; border-radius: 999px; background: var(--vt-accent-soft); box-shadow: none; text-transform: none;
-	color: var(--vt-text); font-size: var(--vt-fs-sm); font-weight: 600; cursor: pointer;
+	color: var(--vt-text); font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); cursor: pointer;
 }
 .vt-app .vt-ftag span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vt-app .vt-ftag .vt-ico { width: 12px; height: 12px; flex: none; color: var(--vt-text-3); }
 .vt-app .vt-ftag:hover .vt-ico { color: var(--vt-text); }
 .vt-app .vt-fmenu {
-	position: absolute; top: calc(100% + 6px); right: 0; z-index: 6;
-	display: flex; flex-direction: column; min-width: 210px; padding: 5px;
-	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r); background: var(--vt-surface); box-shadow: var(--vt-shadow-pop);
+	position: absolute; top: calc(100% + 4px); right: 0; z-index: var(--vt-z-float);
+	display: flex; flex-direction: column; min-width: 210px; padding: var(--vt-sp-1);
+	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl); background: var(--vt-pop); box-shadow: var(--vt-shadow-pop);
 }
 .vt-app .vt-fmenu[hidden] { display: none; }
 .vt-app .vt-fmenu-item {
 	display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 8px;
-	height: 34px; padding: 0 10px 0 8px; margin: 0; min-width: 0; width: 100%;
-	border: 0; border-radius: var(--vt-r-ctl); background: transparent; box-shadow: none; text-align: left; text-transform: none;
-	color: var(--vt-text); font-size: var(--vt-fs-sm); font-weight: 560; cursor: pointer;
+	min-height: calc(var(--vt-ctl) - 4px); padding: 4px 8px; margin: 0; min-width: 0; width: 100%;
+	border: 0; border-radius: var(--vt-r-sm); background: transparent; box-shadow: none; text-align: left; text-transform: none;
+	color: var(--vt-text); font-size: var(--vt-fs-base); font-weight: var(--vt-fw-regular); cursor: pointer;
 }
-.vt-app .vt-fmenu-item:hover, .vt-app .vt-fmenu-item:focus-visible { background: var(--vt-surface-2); outline: none; }
-.vt-app .vt-fmenu-check { display: inline-flex; color: var(--vt-accent); }
+.vt-app .vt-fmenu-item:hover, .vt-app .vt-fmenu-item:focus-visible { background: var(--vt-pop-hover); outline: none; }
+.vt-app .vt-fmenu-item:focus-visible { box-shadow: inset 2px 0 0 var(--vt-accent-text); }
+.vt-app .vt-fmenu-check { display: inline-flex; color: var(--vt-accent-text); }
 .vt-app .vt-fmenu-check .vt-ico { width: 14px; height: 14px; }
 .vt-app .vt-fmenu-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vt-app .vt-fmenu-n { color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: 600; }
+.vt-app .vt-fmenu-n { color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-fmenu-warn .vt-fmenu-n { color: var(--vt-warn); }
 .vt-app .vt-fchip {
 	display: inline-flex; align-items: center; gap: 6px; height: var(--vt-ctl); padding: 0 12px; margin: 0;
 	border: 1px solid var(--vt-line); border-radius: 999px; background: var(--vt-surface);
-	color: var(--vt-text-2); font-size: var(--vt-fs-sm); font-weight: 600; cursor: pointer; box-shadow: none; min-width: 0; text-transform: none;
+	color: var(--vt-text-2); font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); cursor: pointer; box-shadow: none; min-width: 0; text-transform: none;
 }
 .vt-app .vt-fchip:hover { border-color: var(--vt-line-2); color: var(--vt-text); background: var(--vt-surface-2); }
 
-.vt-app .vt-table-wrap { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+.vt-app .vt-table-wrap { overflow-x: auto; margin: 0 calc(-1 * var(--vt-card-px)); padding: 0 var(--vt-card-px); }
 .vt-app .vt-ctable { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: auto; min-width: 800px; }
 .vt-app .vt-ctable th {
 	position: sticky; top: 0; z-index: 1;
 	padding: 0 10px; height: var(--vt-ctl); text-align: left; white-space: nowrap; letter-spacing: normal; text-transform: none;
-	background: var(--vt-surface); border-bottom: 1px solid var(--vt-line);
-	font-weight: 400;
+	background: var(--vt-surface); border-bottom: 1px solid var(--vt-line-2);
+	font-weight: var(--vt-fw-regular);
 }
 .vt-app .vt-sort {
 	display: inline-flex; align-items: center; gap: 4px; height: var(--vt-ctl); padding: 0 4px; margin: 0 -4px;
 	border: 0; border-radius: var(--vt-r-ctl); background: transparent; box-shadow: none; min-width: 0;
-	color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
+	color: var(--vt-text-3); font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
 }
-.vt-app .vt-sort:hover { color: var(--vt-text); background: var(--vt-surface-2); }
-.vt-app .vt-sort-on { color: var(--vt-text); }
-.vt-app .vt-sort-ind { font-size: var(--vt-fs-micro); width: 8px; }
+/* as the theme's sortable headers: the label lights up under the pointer,
+   the sorted one shows its arrow in the accent */
+.vt-app .vt-sort:hover { color: var(--vt-text); }
+.vt-app .vt-sort-ind { font-size: var(--vt-fs-micro); width: 8px; color: var(--vt-accent-text); }
 .vt-app .vt-ctable td {
 	height: auto; line-height: 1.4; overflow-wrap: normal; text-align: left;
-	padding: 9px 8px; vertical-align: middle;
+	padding: 9px 10px; vertical-align: middle;
 	border-bottom: 1px solid var(--vt-line);
 }
 .vt-app .vt-ctable tr:last-child td { border-bottom: 0; }
 .vt-app .vt-row { cursor: pointer; transition: background .15s; }
-.vt-app .vt-row:hover td { background: var(--vt-surface-2); }
+.vt-app .vt-row:hover td { background: var(--vt-hover); }
 .vt-app .vt-row:focus-visible { outline: none; }
 .vt-app .vt-row:focus-visible td { background: var(--vt-accent-soft); }
 .vt-app .vt-row-sel td { background: var(--vt-accent-soft); }
@@ -1062,34 +1167,34 @@ h2, h3{
 .vt-app .vt-who-text { min-width: 0; }
 /* names get two lines before they are cut; the full name is the title */
 .vt-app .vt-who-label {
-	font-weight: 640; font-size: var(--vt-fs-base); line-height: 1.3; max-width: 280px; overflow-wrap: anywhere;
+	font-weight: var(--vt-fw-semibold); font-size: var(--vt-fs-base); line-height: 1.3; max-width: 280px; overflow-wrap: anywhere;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .vt-app .vt-who-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-top: 3px; color: var(--vt-text-3); font-size: var(--vt-fs-micro); }
 .vt-app .vt-who-id { white-space: nowrap; }
 .vt-app .vt-td-name { min-width: 250px; }
 .vt-app .vt-net { display: flex; flex-direction: column; gap: 3px; }
-.vt-app .vt-net-ssid { font-weight: 560; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.vt-app .vt-net-ssid { font-weight: var(--vt-fw-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
 .vt-app .vt-net-badges { display: flex; align-items: center; gap: 6px; }
 .vt-app .vt-phy { display: flex; align-items: center; gap: 4px; font-size: var(--vt-fs-sm); white-space: nowrap; }
-.vt-app .vt-phy b { font-weight: 620; }
-.vt-app .vt-phy .vt-ico { color: var(--vt-text-3); stroke-width: 2.2; width: 12px; height: 12px; }
+.vt-app .vt-phy b { font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-phy .vt-ico { color: var(--vt-text-3); stroke-width: 2; width: 12px; height: 12px; }
 .vt-app .vt-phy-up { color: var(--vt-text-3); font-size: var(--vt-fs-micro); padding-left: 16px; }
 .vt-app .vt-live-cell { display: grid; grid-template-columns: auto; gap: 3px; min-width: 96px; }
-.vt-app .vt-live-total { font-weight: 650; }
-.vt-app .vt-mini { display: block; height: 4px; border-radius: 2px; background: var(--vt-surface-3); overflow: hidden; }
-.vt-app .vt-mini-fill { display: block; height: 100%; background: var(--vt-info); border-radius: 2px; }
+.vt-app .vt-live-total { font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-mini { display: block; height: 4px; border-radius: var(--vt-r-xs); background: var(--vt-surface-3); overflow: hidden; }
+.vt-app .vt-mini-fill { display: block; height: 100%; background: var(--vt-meter); }
 .vt-app .vt-live-split { font-size: var(--vt-fs-micro); color: var(--vt-text-3); white-space: nowrap; }
 .vt-app .vt-exp { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .vt-app .vt-score {
 	flex: none; display: inline-flex; align-items: center; justify-content: center;
-	width: 32px; height: 26px; border-radius: 7px; font-size: var(--vt-fs-sm); font-weight: 700;
-	--vt-xc: var(--vt-ok); background: color-mix(in oklab, var(--vt-xc) 15%, transparent); color: color-mix(in oklab, var(--vt-xc) 85%, var(--vt-text));
+	width: 32px; height: 26px; border-radius: 8px; font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-bold);
+	--vt-xc: var(--vt-ok); --vt-xt: var(--vt-ok-text); background: color-mix(in oklab, var(--vt-xc) 15%, transparent); color: var(--vt-xt);
 }
-.vt-app .vt-score-warn { --vt-xc: var(--vt-warn); }
-.vt-app .vt-score-err { --vt-xc: var(--vt-err); }
+.vt-app .vt-score-warn { --vt-xc: var(--vt-warn); --vt-xt: var(--vt-warn-text); }
+.vt-app .vt-score-err { --vt-xc: var(--vt-err); --vt-xt: var(--vt-err-text); }
 .vt-app .vt-exp-text { display: flex; flex-direction: column; min-width: 0; }
-.vt-app .vt-exp-text b { font-size: var(--vt-fs-sm); font-weight: 650; }
+.vt-app .vt-exp-text b { font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-exp-text span {
 	font-size: var(--vt-fs-micro); line-height: 1.35; color: var(--vt-text-3); max-width: 170px;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
@@ -1112,40 +1217,39 @@ h2, h3{
 	display: flex; align-items: center; gap: 10px; width: 100%;
 	padding: 8px;
 	border: 0; border-radius: var(--vt-r-sm); background: transparent; box-shadow: none;
-	text-align: left; cursor: pointer; color: var(--vt-text); height: auto; min-width: 0; text-transform: none; font-weight: 400;
+	text-align: left; cursor: pointer; color: var(--vt-text); height: auto; min-width: 0; text-transform: none; font-weight: var(--vt-fw-regular);
 }
-.vt-app .vt-talk-row:hover, .vt-app .vt-ssid:hover, .vt-app .vt-dlist-row:hover { background: var(--vt-surface-2); }
-.vt-app .vt-talk-rank { width: 14px; font-size: var(--vt-fs-sm); color: var(--vt-text-3); font-weight: 650; text-align: center; flex: none; }
+.vt-app .vt-talk-row:hover, .vt-app .vt-ssid:hover, .vt-app .vt-dlist-row:hover { background: var(--vt-hover); }
+.vt-app .vt-talk-rank { width: 14px; font-size: var(--vt-fs-sm); color: var(--vt-text-3); font-weight: var(--vt-fw-semibold); text-align: center; flex: none; }
 .vt-app .vt-talk-main { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .vt-app .vt-talk-top { display: flex; justify-content: space-between; gap: 10px; }
-.vt-app .vt-talk-name { font-weight: 600; line-height: 1.3; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vt-app .vt-talk-share { font-size: var(--vt-fs-sm); font-weight: 650; color: var(--vt-text-2); white-space: nowrap; }
-.vt-app .vt-talk-sub b { color: var(--vt-text); font-weight: 650; }
-.vt-app .vt-talk-bar { height: 5px; border-radius: 3px; background: var(--vt-surface-3); overflow: hidden; }
-.vt-app .vt-talk-fill { display: block; height: 100%; border-radius: 3px; background: var(--vt-info); }
-.vt-app .vt-talk-sub { display: flex; gap: 8px; align-items: baseline; font-size: var(--vt-fs-micro); color: var(--vt-text-3); white-space: nowrap; overflow: hidden; }
+.vt-app .vt-talk-name { font-weight: var(--vt-fw-semibold); line-height: 1.3; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-talk-share { font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); white-space: nowrap; }
+.vt-app .vt-talk-sub b { color: var(--vt-text); font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-talk-bar { height: 5px; border-radius: var(--vt-r-xs); background: var(--vt-surface-3); overflow: hidden; }
+.vt-app .vt-talk-fill { display: block; height: 100%; background: var(--vt-meter); }
+.vt-app .vt-talk-sub { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; font-size: var(--vt-fs-micro); color: var(--vt-text-3); white-space: nowrap; min-width: 0; }
 
 .vt-app .vt-ssids { display: flex; flex-direction: column; gap: 2px; }
-.vt-app .vt-ssid-ico { flex: none; width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: var(--vt-surface-3); color: var(--vt-text-2); }
-.vt-app .vt-ssid-ico .vt-ico { width: 16px; height: 16px; }
-.vt-app .vt-ssid-ico.vt-t-warn { background: var(--vt-warn-soft); color: var(--vt-warn); }
 .vt-app .vt-ssid-main { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
 .vt-app .vt-ssid-top { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.vt-app .vt-ssid-name { font-weight: 640; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-ssid-name { font-weight: var(--vt-fw-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vt-app .vt-ssid-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-.vt-app .vt-sec { font-size: var(--vt-fs-micro); font-weight: 600; color: var(--vt-text-2); }
+.vt-app .vt-sec { display: inline-flex; align-items: center; gap: 3px; font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
+.vt-app .vt-sec.vt-t-warn { color: var(--vt-warn-text); }
+.vt-app .vt-sec .vt-ico { width: 12px; height: 12px; stroke-width: 2; }
 .vt-app .vt-ssid-side { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
-.vt-app .vt-ssid-n { font-size: var(--vt-fs-lg); font-weight: 700; line-height: 1.1; }
+.vt-app .vt-ssid-n { font-size: var(--vt-fs-lg); font-weight: var(--vt-fw-bold); line-height: 1.1; }
 .vt-app .vt-ssid-idle .vt-ssid-n { color: var(--vt-text-3); }
 
 /* ------------------------------------------------------------ 11. drawer */
 
 .vt-app .vt-drawer-back {
-	position: fixed; inset: 0; z-index: 880;
+	position: fixed; inset: 0; z-index: calc(var(--vt-z-drawer) - 1);
 	background: var(--vt-scrim); opacity: 0; transition: opacity .25s ease;
 }
 .vt-app .vt-drawer {
-	position: fixed; z-index: 890; top: 0; right: 0; bottom: 0;
+	position: fixed; z-index: var(--vt-z-drawer); top: 0; right: 0; bottom: 0;
 	width: min(460px, 100vw);
 	display: flex; flex-direction: column;
 	background: var(--vt-surface); color: var(--vt-text);
@@ -1163,12 +1267,12 @@ h2, h3{
 	padding: 16px 16px 14px 20px; border-bottom: 1px solid var(--vt-line);
 }
 .vt-app .vt-drawer-title { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-.vt-app .vt-drawer-title .vt-av { width: 44px; height: 44px; border-radius: 12px; }
+.vt-app .vt-drawer-title .vt-av { width: 44px; height: 44px; border-radius: var(--vt-r-xl); }
 .vt-app .vt-drawer-title .vt-av .vt-ico { width: 24px; height: 24px; }
-.vt-app .vt-drawer-ico { width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; background: var(--vt-surface-3); color: var(--vt-text-2); flex: none; }
-.vt-app .vt-drawer-ico .vt-ico { width: 22px; height: 22px; }
+.vt-app .vt-drawer-ico { width: 44px; height: 44px; border-radius: var(--vt-r-xl); display: inline-flex; align-items: center; justify-content: center; background: var(--vt-surface-3); color: var(--vt-text-2); flex: none; }
+.vt-app .vt-drawer-ico .vt-ico { width: 24px; height: 24px; }
 .vt-app .vt-drawer-titles { min-width: 0; }
-.vt-app .vt-drawer-name { font-size: var(--vt-fs-lg); font-weight: 680; letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
+.vt-app .vt-drawer-name { font-size: var(--vt-fs-lg); font-weight: var(--vt-fw-bold); letter-spacing: -.01em; line-height: 1.25; overflow-wrap: anywhere; }
 .vt-app .vt-drawer-sub { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; color: var(--vt-text-3); font-size: var(--vt-fs-sm); margin-top: 3px; }
 .vt-app .vt-drawer-close {
 	display: inline-flex; align-items: center; justify-content: center; flex: none;
@@ -1195,41 +1299,41 @@ h2, h3{
 .vt-app .vt-ring-svg { width: 58px; height: 58px; transform: rotate(-90deg); }
 .vt-app .vt-ring-track { fill: none; stroke: color-mix(in oklab, var(--vt-xc) 18%, transparent); stroke-width: 3.5; }
 .vt-app .vt-ring-arc { fill: none; stroke: var(--vt-xc); stroke-width: 3.5; stroke-linecap: round; }
-.vt-app .vt-ring-n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--vt-fs-lg); font-weight: 720; }
-.vt-app .vt-expcard-grade { font-weight: 680; font-size: var(--vt-fs-md); }
+.vt-app .vt-ring-n { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: var(--vt-fs-lg); font-weight: var(--vt-fw-bold); }
+.vt-app .vt-expcard-grade { font-weight: var(--vt-fw-bold); font-size: var(--vt-fs-md); }
 .vt-app .vt-expcard-reason { font-size: var(--vt-fs-sm); color: var(--vt-text-2); margin-top: 1px; }
 .vt-app .vt-factors { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; font-size: var(--vt-fs-micro); color: var(--vt-text-3); }
 .vt-app .vt-factors li { display: flex; gap: 6px; }
-.vt-app .vt-factors li .vt-tn { width: 26px; flex: none; color: var(--vt-text-2); font-weight: 650; }
+.vt-app .vt-factors li .vt-tn { width: 26px; flex: none; color: var(--vt-text-2); font-weight: var(--vt-fw-semibold); }
 
 .vt-app .vt-dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .vt-app .vt-dcard { display: flex; flex-direction: column; gap: 1px; padding: 12px; border-radius: var(--vt-r); background: var(--vt-surface-2); border: 1px solid var(--vt-line); min-width: 0; }
-.vt-app .vt-dcard-label { font-size: var(--vt-fs-micro); font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--vt-text-3); }
-.vt-app .vt-dcard-value { font-size: var(--vt-fs-xl); font-weight: 700; letter-spacing: -.01em; white-space: nowrap; }
+.vt-app .vt-dcard-label { font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); text-transform: uppercase; letter-spacing: .08em; color: var(--vt-text-3); }
+.vt-app .vt-dcard-value { font-size: var(--vt-fs-xl); font-weight: var(--vt-fw-bold); letter-spacing: -.01em; white-space: nowrap; }
 .vt-app .vt-dcard-sub { font-size: var(--vt-fs-micro); line-height: 1.35; color: var(--vt-text-3); min-height: 16px; }
 .vt-app .vt-dcard .vt-sk { margin-top: auto; padding-top: 18px; }
 .vt-app .vt-dcard .vt-sk-max { top: 16px; }
 .vt-app .vt-dcard .vt-spark { height: 36px; }
 .vt-app .vt-dspark { padding-top: 14px; }
 .vt-app .vt-dspark .vt-spark { height: 48px; }
-.vt-app .vt-dsec-title { font-size: var(--vt-fs-micro); font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--vt-text-3); margin: 0 0 6px; padding: 0; border: 0; }
+.vt-app .vt-dsec-title { font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); text-transform: uppercase; letter-spacing: .08em; color: var(--vt-text-3); margin: 0 0 6px; padding: 0; border: 0; }
 .vt-app .vt-kvs { display: flex; flex-direction: column; }
 .vt-app .vt-kvs .vt-kv { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--vt-line); }
 .vt-app .vt-kvs .vt-kv:last-child { border-bottom: 0; }
-.vt-app .vt-kvs .vt-kv dt { font-size: var(--vt-fs-sm); text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--vt-text-3); }
-.vt-app .vt-kvs .vt-kv dd { font-size: var(--vt-fs-base); font-weight: 520; margin: 0; white-space: pre-line; overflow-wrap: anywhere; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
-.vt-app .vt-kvs .vt-kv dd small { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: 400; }
+.vt-app .vt-kvs .vt-kv dt { font-size: var(--vt-fs-sm); text-transform: none; letter-spacing: 0; font-weight: var(--vt-fw-medium); color: var(--vt-text-3); }
+.vt-app .vt-kvs .vt-kv dd { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-medium); margin: 0; white-space: pre-line; overflow-wrap: anywhere; display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.vt-app .vt-kvs .vt-kv dd small { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-weight: var(--vt-fw-regular); }
 .vt-app .vt-dlist { display: flex; flex-direction: column; }
-.vt-app .vt-dlist-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vt-app .vt-dlist-name { flex: 1; min-width: 0; font-weight: var(--vt-fw-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .vt-app .vt-rename { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--vt-r); background: var(--vt-surface-2); border: 1px solid var(--vt-line); }
-.vt-app .vt-rename-label { display: flex; flex-direction: column; gap: 5px; font-size: var(--vt-fs-sm); font-weight: 600; color: var(--vt-text-2); }
+.vt-app .vt-rename-label { display: flex; flex-direction: column; gap: 5px; font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app .vt-rename .vt-rename-input {
 	height: var(--vt-ctl); width: 100%; padding: 0 10px; margin: 0;
 	border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-ctl); background: var(--vt-surface);
-	color: var(--vt-text); font: inherit; font-size: var(--vt-fs-md); font-weight: 400; box-shadow: none;   /* the label around it is semibold */
+	color: var(--vt-text); font: inherit; font-size: var(--vt-fs-md); font-weight: var(--vt-fw-regular); box-shadow: none;   /* the label around it is semibold */
 }
-.vt-app .vt-rename .vt-rename-input:focus { outline: none; border-color: var(--vt-accent-line); box-shadow: 0 0 0 3px var(--vt-accent-soft); }
+.vt-app .vt-rename .vt-rename-input:focus { outline: none; border-color: var(--vt-focus); box-shadow: var(--vt-focus-ring); }
 .vt-app .vt-icon-picks { display: flex; flex-wrap: wrap; gap: 4px; }
 .vt-app .vt-icon-pick {
 	display: inline-flex; align-items: center; justify-content: center; width: var(--vt-ctl); height: var(--vt-ctl); padding: 0; margin: 0;
@@ -1237,7 +1341,7 @@ h2, h3{
 	cursor: pointer; box-shadow: none; min-width: 0;
 }
 .vt-app .vt-icon-pick:hover { border-color: var(--vt-line-2); color: var(--vt-text); }
-.vt-app .vt-icon-pick[aria-pressed="true"] { background: var(--vt-accent); border-color: var(--vt-accent); color: var(--vt-accent-ink); }
+.vt-app .vt-icon-pick[aria-pressed="true"] { background: var(--vt-accent-fill); border-color: var(--vt-accent-line); color: var(--vt-accent-fill-ink); }
 .vt-app .vt-rename-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .vt-app .vt-rename-actions .vt-hint { flex-basis: 100%; font-size: var(--vt-fs-micro); }
 .vt-app .vt-form-err { color: var(--vt-err); font-size: var(--vt-fs-sm); }
@@ -1247,14 +1351,14 @@ h2, h3{
    the internet, the zones and what is switched off */
 /* no internet-facing zone: the page cannot tell, neither green nor a warning */
 .vt-app .vt-orb-unknown { --vt-oc: var(--vt-text-3); }
-.vt-app .vt-fg-warns { display: grid; gap: 10px; margin-bottom: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.vt-app .vt-fg-warns { display: grid; gap: 10px; margin-bottom: var(--vt-sp-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
 /* a warning's title is a sentence, not the dashboard's small caps label */
-.vt-app .vt-fg-warns .vt-chip-title { text-transform: none; letter-spacing: 0; font-size: var(--vt-fs-base); font-weight: 650; color: var(--vt-text); }
-.vt-app .vt-fg-warns .vt-chip-reason { margin-top: 2px; }
-.vt-app .vt-fg-grid { display: grid; gap: 14px; align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); }
+.vt-app .vt-fg-warns .vt-chip-title { text-transform: none; letter-spacing: 0; font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); color: var(--vt-text); }
+.vt-app .vt-fg-warns .vt-chip-reason { margin-top: 2px; display: block; -webkit-line-clamp: unset; overflow: visible; }
+.vt-app .vt-fg-grid { display: grid; gap: var(--vt-sp-4); align-items: start; grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); }
 .vt-app .vt-fg-group {
 	margin: 2px 0 4px; color: var(--vt-text-3);
-	font-size: var(--vt-fs-micro); font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+	font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold); letter-spacing: .08em; text-transform: uppercase;
 }
 .vt-app .vt-fg-rows + .vt-fg-group { margin-top: 14px; }
 .vt-app .vt-fg-rows { display: flex; flex-direction: column; }
@@ -1264,14 +1368,15 @@ h2, h3{
 	border-radius: var(--vt-r-sm); color: var(--vt-text); text-decoration: none;
 }
 .vt-app .vt-fg-row + .vt-fg-row { box-shadow: inset 0 1px 0 var(--vt-line); }
-.vt-app .vt-fg-row:hover { background: var(--vt-surface-2); text-decoration: none; }
+.vt-app .vt-fg-row:hover { background: var(--vt-hover); text-decoration: none; }
 .vt-app .vt-fg-row-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
-.vt-app .vt-fg-row-name { font-size: var(--vt-fs-base); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-app .vt-fg-row-name { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vt-app .vt-fg-row-sub { color: var(--vt-text-3); font-size: var(--vt-fs-sm); }
 .vt-app .vt-fg-anywhere { color: var(--vt-text-2); }
 .vt-app .vt-fg-to { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 45%; color: var(--vt-text-2); font-size: var(--vt-fs-sm); }
-.vt-app .vt-fg-to > .vt-mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vt-app .vt-fg-to .vt-ico, .vt-app .vt-fg-zone-to > .vt-ico { flex: none; width: 15px; height: 15px; color: var(--vt-text-3); }
+/* a long address breaks rather than hide its port at the end */
+.vt-app .vt-fg-to > .vt-mono { min-width: 0; overflow-wrap: anywhere; }
+.vt-app .vt-fg-to .vt-ico, .vt-app .vt-fg-zone-to > .vt-ico { flex: none; width: 16px; height: 16px; color: var(--vt-text-3); }
 .vt-app .vt-fg-std { margin-top: 12px; }
 .vt-app .vt-fg-std > summary { cursor: pointer; padding: 4px 0; color: var(--vt-text-2); font-size: var(--vt-fs-sm); }
 .vt-app .vt-fg-std > .vt-hint { margin: 2px 0 6px; }
@@ -1280,20 +1385,21 @@ h2, h3{
 .vt-app .vt-fg-zone:first-child { padding-top: 0; }
 .vt-app .vt-fg-zone + .vt-fg-zone { border-top: 1px solid var(--vt-line); }
 .vt-app .vt-fg-zone-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.vt-app .vt-fg-zone-name { font-size: var(--vt-fs-md); font-weight: 650; }
+.vt-app .vt-fg-zone-name { font-size: var(--vt-fs-md); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-fg-tag {
 	padding: 1px 7px; border-radius: 999px;
-	background: var(--vt-info-soft); color: color-mix(in oklab, var(--vt-info) 80%, var(--vt-text));
-	font-size: var(--vt-fs-micro); font-weight: 600;
+	background: var(--vt-info-soft); color: var(--vt-info-text);
+	font-size: var(--vt-fs-micro); font-weight: var(--vt-fw-semibold);
 }
 .vt-app .vt-fg-zone-in { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--vt-text-3); font-size: var(--vt-fs-sm); }
-.vt-app .vt-fg-pol { padding: 1px 8px; border-radius: var(--vt-r-sm); font-size: var(--vt-fs-sm); font-weight: 600; }
-.vt-app .vt-fg-pol.is-accept { background: var(--vt-ok-soft); color: color-mix(in oklab, var(--vt-ok) 72%, var(--vt-text)); }
-.vt-app .vt-fg-pol.is-stop { background: var(--vt-err-soft); color: color-mix(in oklab, var(--vt-err) 80%, var(--vt-text)); }
-.vt-app .vt-fg-pol.is-risk { background: var(--vt-warn-soft); color: color-mix(in oklab, var(--vt-warn) 65%, var(--vt-text)); box-shadow: inset 0 0 0 1px var(--vt-warn); }
+/* an input policy is neutral (reject and drop are the safe values);
+   only an internet zone that accepts is an error, in the status colours
+   the theme's verdict badges use on the other Firewall tabs */
+.vt-app .vt-fg-pol { padding: 1px 8px; border-radius: var(--vt-r-sm); font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); background: var(--vt-surface-3); color: var(--vt-text-2); }
+.vt-app .vt-fg-pol.is-risk { background: var(--vt-err-soft); color: var(--vt-err-text); box-shadow: inset 0 0 0 1px var(--vt-err); }
 .vt-app .vt-fg-zone-to { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .vt-app .vt-fg-dests { display: flex; flex-wrap: wrap; gap: 6px; }
-.vt-app .vt-fg-dest { padding: 1px 8px; border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-sm); font-size: var(--vt-fs-sm); font-weight: 600; }
+.vt-app .vt-fg-dest { padding: 1px 8px; border: 1px solid var(--vt-line-2); border-radius: var(--vt-r-sm); font-size: var(--vt-fs-sm); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-fg-dest.is-risk { border-color: var(--vt-warn); background: var(--vt-warn-soft); }
 .vt-app .vt-fg-nets { margin-top: 4px; }
 .vt-app .vt-fg-note {
@@ -1302,7 +1408,7 @@ h2, h3{
 	font-size: var(--vt-fs-sm); text-decoration: none;
 }
 .vt-app a.vt-fg-note:hover { color: var(--vt-text); text-decoration: none; }
-.vt-app .vt-fg-note > .vt-ico { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--vt-info); }
+.vt-app .vt-fg-note > .vt-ico { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--vt-info); }
 .vt-app .vt-fg-foot { margin: 12px 0 0; }
 
 /* ------------------------------------------------ 12. small screens, motion */
@@ -1315,7 +1421,7 @@ h2, h3{
 	.vt-app .vt-head { gap: 10px; }
 	.vt-app .vt-headline { font-size: var(--vt-fs-lg); }
 	.vt-app .vt-orb { width: 32px; height: 32px; }
-	/* phones: a live connection is just the pulsing dot; paused or
+	/* phones: a live connection is just the dot; paused or
 	   reconnecting still says so in words */
 	.vt-app .vt-live-ok { padding: 0 11px; }
 	.vt-app .vt-live-ok .vt-live-text { display: none; }
@@ -1334,6 +1440,9 @@ h2, h3{
 	.vt-app .vt-mult-now { font-size: var(--vt-fs-md); }
 	.vt-app .vt-mx-odd { display: none; }
 	.vt-app .vt-tip { min-width: 160px; }
+	/* firewall rows: where it goes sits under the description, whole */
+	.vt-app .vt-fg-row { flex-wrap: wrap; row-gap: 2px; }
+	.vt-app .vt-fg-to { max-width: 100%; flex-basis: 100%; }
 }
 
 /* clients as cards when the tile is too narrow for the table: one
@@ -1347,11 +1456,11 @@ h2, h3{
 	.vt-app .vt-ctable tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
 	.vt-app .vt-ctable tr.vt-row {
 		display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; align-content: start;
-		padding: 11px 12px; border: 1px solid var(--vt-line); border-radius: var(--vt-r);
+		padding: 12px; border: 1px solid var(--vt-line); border-radius: var(--vt-r);
 		background: var(--vt-surface);
 	}
 	.vt-app .vt-ctable td { display: block; padding: 0; border: 0; background: transparent !important; }
-	.vt-app .vt-row:hover { background: var(--vt-surface-2); }
+	.vt-app .vt-row:hover { background: var(--vt-hover); }
 	.vt-app .vt-ctable tr.vt-row-sel { background: var(--vt-accent-soft); border-color: var(--vt-accent-line); }
 	.vt-app .vt-ctable td.vt-td-name { grid-column: 1; grid-row: 1; min-width: 0; box-shadow: none !important; }
 	.vt-app .vt-ctable td.vt-td-signal, .vt-app .vt-ctable td.vt-td-link { grid-column: 2; grid-row: 1; justify-self: end; align-self: start; padding-top: 2px; text-align: right; }
@@ -1373,16 +1482,19 @@ h2, h3{
 	.vt-app .vt-net-ssid { font-size: var(--vt-fs-base); max-width: none; }
 }
 
-@media (max-width: 640px) {
+/* phones: a bottom sheet, where the theme turns its flyouts into sheets
+   and with their metrics (corners, grip, timing) */
+@media (max-width: 720px) {
 	.vt-app .vt-drawer {
 		top: auto; left: 0; right: 0; bottom: 0; width: auto;
 		max-height: 88vh; max-height: 88dvh; height: 88vh; height: 88dvh;
-		border-left: 0; border-top: 1px solid var(--vt-line);
-		border-radius: 18px 18px 0 0;
+		border-left: 0; border-top: 1px solid var(--vt-line-2);
+		border-radius: var(--vt-r-lg) var(--vt-r-lg) 0 0;
 		transform: translateY(104%);
-		box-shadow: 0 -18px 48px rgba(12, 14, 17, .22);
+		transition: transform .18s ease-out;
+		box-shadow: var(--vt-shadow-pop);
 	}
-	.vt-app .vt-drawer-grip { display: block; width: 38px; height: 4px; border-radius: 2px; background: var(--vt-line-2); margin: 8px auto 0; flex: none; }
+	.vt-app .vt-drawer-grip { display: block; width: 36px; height: 4px; border-radius: var(--vt-r-xs); background: var(--vt-line-2); margin: 6px auto 0; flex: none; }
 	.vt-app .vt-drawer-head { padding: 10px 12px 12px 16px; }
 	.vt-app .vt-drawer-body { padding: 12px 16px calc(24px + env(safe-area-inset-bottom)); }
 	.vt-app .vt-kvs .vt-kv { grid-template-columns: 112px minmax(0, 1fr); }
@@ -1391,6 +1503,8 @@ h2, h3{
 /* touch: 16px text in fields (iOS zooms into anything smaller) */
 @media (pointer: coarse) {
 	.vt-app .vt-filter .vt-filter-input, .vt-app .vt-rename .vt-rename-input { font-size: 16px; }
+	/* menu items are touch targets, as the theme's dropdown choices */
+	.vt-app .vt-fmenu-item, .vt-app .vt-select option { min-height: var(--vt-ctl); }
 }
 
 @media (prefers-reduced-motion: reduce) {

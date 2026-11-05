@@ -37,14 +37,6 @@ return baseclass.extend({
 		return out.length > maxLen ? out.slice(out.length - maxLen) : out;
 	},
 
-	/* a round axis maximum >= v: 1, 2, 2.5, 5 x 10^n */
-	niceMax: function(v) {
-		if (!finite(v) || v <= 0) return 1;
-		var e = Math.pow(10, Math.floor(Math.log10(v))), f = v / e;
-		var n = f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10;
-		return n * e;
-	},
-
 	/* a round axis maximum >= v with finer steps (1, 1.5, 2, 2.5, 3, 4,
 	   5, 6, 8, 10 x 10^n), so a 374 Mbit/s peak gets a 400 axis, not 500 */
 	niceCeil: function(v) {

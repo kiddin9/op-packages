@@ -15,7 +15,7 @@
 #   install    注册开机自启与每日更新
 #   uninstall  卸载所有改动
 set -u
-ISP_VERSION="0.4.0"
+ISP_VERSION="0.4.1"
 
 # 配置表里的注释行（# 开头，允许前导空白）必须在按空白展开之前整行删掉
 # （B-1）。否则 `for row in $ISP_TABLE` 会把 "#" 与后面的文字拆成两个

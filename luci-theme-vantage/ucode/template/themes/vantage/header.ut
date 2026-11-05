@@ -10,7 +10,11 @@
 -#}
 {%
 	const authed = !!ctx.authsession;
-	const page_title = (authed && dispatched?.title) ? striptags(_(dispatched.title)) : 'LuCI';
+	/* LuCI renders its 404 with the deepest node it resolved: a category
+	   (firstchild) or a node without an action, whose title is not the
+	   page asked for. Visitors who are not logged in get no title at all. */
+	const found = !!dispatched?.action?.type && dispatched.action.type != 'firstchild';
+	const page_title = !authed ? null : !found ? _('Not found') : dispatched?.title ? striptags(_(dispatched.title)) : null;
 	const lang = entityencode(dispatcher.lang ?? 'en', true);
 	const boardinfo = ubus.call("system", "board");
 	const hostname = striptags(boardinfo?.hostname ?? '?');
@@ -21,7 +25,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
-<title>{{ entityencode(page_title, true) }} · LuCI</title>
+<title>{{ page_title ? entityencode(page_title, true) + ' · ' : '' }}LuCI</title>
 <script>
 (function (r) {
 	var p = 'auto', rail = 'pinned';
@@ -75,7 +79,7 @@
 				<svg viewBox="0 0 32 32" width="28" height="28"><rect x="1" y="1" width="30" height="30" rx="7" class="vt-brand-tile"/><path d="M9 10.5 16 22" class="vt-brand-l"/><path d="M16 22 23 10.5" class="vt-brand-r"/><circle cx="23" cy="10.5" r="1.9" class="vt-brand-dot"/></svg>
 			</span>
 {% endif %}
-			<nav class="vt-crumbs" id="vt-crumbs" aria-label="{{ entityencode(_('Breadcrumb', 'vantage-theme'), true) }}"><span class="vt-crumb vt-crumb-current">{{ entityencode(page_title, true) }}</span></nav>
+			<nav class="vt-crumbs" id="vt-crumbs" aria-label="{{ entityencode(_('Breadcrumb', 'vantage-theme'), true) }}"><span class="vt-crumb vt-crumb-current">{{ entityencode(page_title ?? 'LuCI', true) }}</span></nav>
 			<div class="vt-top-actions">
 {% if (authed): %}
 				<button type="button" class="vt-search" id="vt-search-btn" aria-haspopup="dialog" aria-keyshortcuts="Control+K /" aria-label="{{ entityencode(_('Search pages'), true) }}">

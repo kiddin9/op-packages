@@ -26,6 +26,10 @@ const callWirelessDevices = rpc.declare({ object: 'luci-rpc', method: 'getWirele
 const THEME_KEY = 'vantage.theme';
 const RAIL_KEY = 'vantage.rail';
 const LOGIN_KEY = 'vantage.login';      /* read by the login page's login.js */
+/* the dashboard's network path backdrop (luci-app-vantage view/vantage/overview.js),
+   picked here when the dashboard is installed; the dashboard listens for BACKDROP_EVENT */
+const BACKDROP_KEY = 'vantage.backdrop.v1';
+const BACKDROP_EVENT = 'vantage:backdrop';
 
 /* 24px stroke icons, drawn for this theme: constant [tag, attributes] lists,
    built with createElementNS (no markup parsing, no user data) */
@@ -41,13 +45,12 @@ const ICONS = {
 	generic: [ [ 'circle', { cx: '12', cy: '12', r: '8' } ], [ 'circle', { cx: '12', cy: '12', r: '2.2' } ] ],
 	page: [ [ 'path', { d: 'M7 3.5h6.5l4.5 4.5v12.5H7z' } ], [ 'path', { d: 'M13.5 3.5V8H18' } ] ],
 	caret: [ [ 'path', { d: 'm9 6 6 6-6 6' } ] ],
-	enter: [ [ 'path', { d: 'M19 5v6a3 3 0 0 1-3 3H6M10 10l-4 4 4 4' } ] ],
+	down: [ [ 'path', { d: 'm6 9 6 6 6-6' } ] ],
 	search: [ [ 'circle', { cx: '11', cy: '11', r: '6.5' } ], [ 'path', { d: 'm16 16 4.5 4.5' } ] ],
 	sun: [ [ 'circle', { cx: '12', cy: '12', r: '4' } ], [ 'path', { d: 'M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4' } ] ],
 	moon: [ [ 'path', { d: 'M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z' } ] ],
 	auto: [ [ 'circle', { cx: '12', cy: '12', r: '8' } ], [ 'path', { d: 'M12 4a8 8 0 0 1 0 16z', 'class': 'vt-fill' } ] ],
 	logout: [ [ 'path', { d: 'M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14' } ], [ 'path', { d: 'M10 8l-4 4 4 4M6 12h10' } ] ],
-	pin: [ [ 'path', { d: 'M4 5v14M9 12h11M15 7l5 5-5 5' } ] ],
 	info: [ [ 'circle', { cx: '12', cy: '12', r: '8.5' } ], [ 'path', { d: 'M12 11v5.5' } ], [ 'circle', { cx: '12', cy: '7.75', r: '.6' } ] ],
 	more: [ [ 'circle', { cx: '5.5', cy: '12', r: '.9' } ], [ 'circle', { cx: '12', cy: '12', r: '.9' } ], [ 'circle', { cx: '18.5', cy: '12', r: '.9' } ] ]
 };
@@ -174,6 +177,54 @@ function highlight(text, idx) {
 	return out;
 }
 
+/* A path ("Network › Firewall") matches only on what it says: the query
+   as a substring, or each of its words starting a word of the path. Not
+   as letters scattered across it ("wire" in "Network › Firewall").
+   null = no match. */
+function pathScore(query, path) {
+	const q = query.toLowerCase().trim().replace(/\s+/g, ' ');
+	const t = String(path || '').toLowerCase();
+	if (!q || !t) return null;
+	const at = t.indexOf(q);
+	if (at >= 0) return (at === 0 || /[\s\/›\-_(.]/.test(t[at - 1])) ? 10 : 6;
+	const words = t.split(/[\s\/›\-_(.]+/).filter(Boolean);
+	return q.split(' ').every(w => words.some(x => x.startsWith(w))) ? 4 : null;
+}
+
+/* Palette results for a query, best first: entries whose title matches,
+   or only when no title does, those whose path does. Equal scores go to
+   the shallower entry (Network › Wireless before a Wireless tab). */
+function rankPalette(query, pool) {
+	const onTitle = [], onPath = [];
+	for (const e of pool) {
+		const t = fuzzy(query, e.title);
+		if (t) { onTitle.push({ e, score: t.score, idx: t.idx }); continue; }
+		const p = pathScore(query, e.path);
+		if (p != null) onPath.push({ e, score: p, idx: [] });
+	}
+	const depth = r => (r.e.segs || []).length;
+	return (onTitle.length ? onTitle : onPath).sort((a, b) => (b.score - a.score) || (depth(a) - depth(b)));
+}
+
+/* The palette without a query: rows under their category's header, which
+   a category of one row goes without. Under a header a row's path leaves
+   the category out (a tab shows its page only); a row without one keeps
+   its whole path. results: [ { e } ] in index order -> [ { r, head, path } ] */
+function paletteLayout(results) {
+	const size = new Map();
+	for (const r of results) size.set(r.e.group, (size.get(r.e.group) || 0) + 1);
+	let prev = null;
+	return results.map(r => {
+		const g = r.e.group, headed = size.get(g) > 1;
+		const head = (headed && g !== prev) ? g : null;
+		prev = g;
+		let path = r.e.path || '';
+		if (headed && path === g) path = '';
+		else if (headed && path.startsWith(g + ' › ')) path = path.slice(g.length + 3);
+		return { r, head, path };
+	});
+}
+
 /* cells holding only addresses, counters, rates or durations get the mono stack */
 const UNITS = /(?<![A-Za-z])(?:[kKMGTP]?i?B(?:\/s)?|[kMG]?bit\/s|[kMG]?bps|dBm|dB|[kMG]?Hz|ms|us|MCS|NSS|EHT|HE|VHT|HT|pkts?|packets|bytes|min|d|h|m|s)(?![A-Za-z])/g;
 function technical(text) {
@@ -194,6 +245,26 @@ function headingKey(text) {
 function repeatsTrail(key, tag, trail) {
 	if (!key) return false;
 	return (tag === 'H2' ? trail.all : trail.page).has(key);
+}
+
+/* The crumbs as shown: one that only repeats the crumb before it
+   ("System › System", a page and its tab of the same name) takes that
+   crumb's place, with its own (deeper) link and level. */
+function mergeCrumbs(parts) {
+	const out = [];
+	for (const p of parts) {
+		if (out.length && headingKey(out[out.length - 1].title) === headingKey(p.title)) out[out.length - 1] = p;
+		else out.push(p);
+	}
+	return out;
+}
+
+/* LuCI renders its 404 with the deepest node it resolved (L.env.nodespec):
+   a category (firstchild) or a node without an action */
+function notFound(spec) {
+	if (!spec || typeof spec !== 'object') return false;
+	const type = spec.action && typeof spec.action === 'object' ? spec.action.type : null;
+	return !type || type === 'firstchild';
 }
 
 /* Does help text carry a warning? LuCI writes them as a paragraph that
@@ -380,7 +451,7 @@ function enhanceMemory() {
 	});
 }
 
-/* Storage: one thin bar per mount, "used · free of total" beside it */
+/* Storage: one thin bar per mount, "used · free · total" beside it */
 function enhanceStorage() {
 	statusSections(_('Storage')).forEach(section => {
 		const table = pendingTable(section);
@@ -397,10 +468,11 @@ function enhanceStorage() {
 			return E('div', { 'class': 'v-meter-row' }, [
 				label,
 				E('div', { 'class': 'v-meter-bar is-thin', 'role': 'img',
-				           'aria-label': '%s: %s %s, %s %s'.format(r.label, fmtBytes(used), _('used'), fmtBytes(size - used), _('free')) },
+				           'aria-label': '%s: %s %s, %s %s, %s %s'.format(r.label, fmtBytes(used), _('used'), fmtBytes(size - used), _('free'), fmtBytes(size), _('total')) },
 					segment('v-seg-used' + (p >= 95 ? ' is-crit' : p >= 80 ? ' is-warn' : ''), used, size)),
 				E('span', { 'class': 'v-meter-val' }, [
-					E('b', {}, [ fmtBytes(used) ]), ' ' + _('used') + ' · ' + fmtBytes(size - used) + ' ' + _('free') + ' · ' + fmtBytes(size)
+					/* a figure and its word stay on one line */
+					E('b', {}, [ fmtBytes(used) ]), '\u00a0' + _('used') + ' · ' + fmtBytes(size - used) + '\u00a0' + _('free') + ' · ' + fmtBytes(size) + '\u00a0' + _('total')
 				])
 			]);
 		})));
@@ -700,7 +772,14 @@ return baseclass.extend({
 		if (!admin) return;
 
 		this.admin = admin;
+		/* Appearance opened before the menu came in lacks the network
+		   path's group (hasDashboard): add it now */
+		if (this.appear && this.hasDashboard() && !this.appear.querySelector('input[name="vt-backdrop"]')) {
+			this.appear.appendChild(this.backdropGroup());
+			this.syncAppearance();
+		}
 		this.dp = (L.env.dispatchpath || []).slice();
+		this.missing = notFound(L.env.nodespec);
 
 		this.cats = ui.menu.getChildren(admin)
 			.filter(c => c.name !== 'logout')
@@ -958,18 +1037,14 @@ return baseclass.extend({
 		this.endSwitch();
 		if (fly.getAttribute('data-cat') !== cat.name || fly.hidden) {
 			fly.textContent = '';
-			const total = cat.pages.length;
 			fly.appendChild(E('div', { 'class': 'vt-fly-head' }, [
-				svg(cat.icon, 18),
-				E('span', { 'class': 'vt-fly-title', 'id': 'vt-fly-title' }, [ cat.title ]),
-				E('span', { 'class': 'vt-fly-count' }, [ '%d %s'.format(total, total === 1 ? _('page') : _('pages')) ])
+				E('span', { 'class': 'vt-fly-title', 'id': 'vt-fly-title' }, [ cat.title ])
 			]));
 			const ul = E('ul', { 'class': 'vt-fly-list', 'role': 'list' });
 			for (const p of cat.pages) {
 				const cur = this.dp[1] === cat.name && this.dp[2] === p.name;
 				const item = E('li', {}, E('a', { 'class': 'vt-fly-link', 'href': L.url('admin', cat.name, p.name), 'aria-current': cur ? 'page' : null }, [
-					E('span', {}, [ p.title ]),
-					p.subs.length ? E('span', { 'class': 'vt-fly-meta' }, [ String(p.subs.length) ]) : ''
+					E('span', {}, [ p.title ])
 				]));
 				if (p.subs.length > 1) {
 					const sub = E('ul', { 'class': 'vt-fly-sub' });
@@ -982,7 +1057,6 @@ return baseclass.extend({
 				ul.appendChild(item);
 			}
 			fly.appendChild(ul);
-			fly.appendChild(E('div', { 'class': 'vt-fly-foot' }, [ _('Press', 'vantage-theme'), ' ', E('kbd', {}, [ 'Ctrl K' ]), ' ', _('to search all pages') ]));
 			fly.setAttribute('data-cat', cat.name);
 			fly.setAttribute('role', 'region');
 			fly.setAttribute('aria-labelledby', 'vt-fly-title');
@@ -1032,11 +1106,8 @@ return baseclass.extend({
 		this.openTimer = null;
 		this.closeFlyout(false);
 		fly.textContent = '';
-		const total = page.subs.length;
 		fly.appendChild(E('div', { 'class': 'vt-fly-head' }, [
-			svg(cat.icon, 18),
-			E('span', { 'class': 'vt-fly-title', 'id': 'vt-fly-title' }, [ page.title ]),
-			E('span', { 'class': 'vt-fly-count' }, [ '%d %s'.format(total, total === 1 ? _('page') : _('pages')) ])
+			E('span', { 'class': 'vt-fly-title', 'id': 'vt-fly-title' }, [ page.title ])
 		]));
 		const ul = E('ul', { 'class': 'vt-fly-list', 'role': 'list' });
 		for (const s of page.subs)
@@ -1088,28 +1159,31 @@ return baseclass.extend({
 		for (let i = 1; i < this.dp.length && i <= 3; i++) {
 			node = node && node.children ? node.children[this.dp[i]] : null;
 			if (!node || !node.title) break;
-			parts.push({ title: _(node.title), segs: [ 'admin' ].concat(this.dp.slice(1, i + 1)) });
+			parts.push({ title: _(node.title), segs: [ 'admin' ].concat(this.dp.slice(1, i + 1)), level: i });
 		}
+		/* a 404: the crumbs lead to the category LuCI resolved, then say so */
+		if (this.missing) parts.push({ title: _('Not found'), segs: null, level: 0 });
 		if (!parts.length) return;
 
 		/* a page with page tabs: its current crumb switches between them,
 		   from the top bar, which stays in view while the tabs scroll away */
 		const cat = this.cats.find(c => c.name === this.dp[1]);
-		const page = cat && this.dp.length > 3 ? cat.pages.find(p => p.name === this.dp[2]) : null;
+		const page = cat && !this.missing && this.dp.length > 3 ? cat.pages.find(p => p.name === this.dp[2]) : null;
 		const siblings = page && page.subs.length > 1 ? page : null;
 
+		const crumbs = mergeCrumbs(parts);
 		nav.textContent = '';
-		parts.forEach((p, i) => {
-			const last = i === parts.length - 1;
+		crumbs.forEach((p, i) => {
+			const last = i === crumbs.length - 1;
 			if (i) nav.appendChild(E('span', { 'class': 'vt-crumb-sep', 'aria-hidden': 'true' }, [ '›' ]));
-			if (last && siblings && parts.length === 3) {
+			if (last && siblings && p.level === 3) {
 				/* a disclosure (aria-expanded + aria-controls): the panel is a
 				   region of links, not a menu, so no aria-haspopup */
 				const btn = E('button', {
 					'type': 'button', 'class': 'vt-crumb vt-crumb-current vt-crumb-switch', 'aria-current': 'page',
 					'aria-expanded': 'false', 'aria-controls': 'vt-flyout',
 					'title': _('Other pages in %s').format(siblings.title)
-				}, [ E('span', {}, [ p.title ]), svg('caret', 14) ]);
+				}, [ E('span', {}, [ p.title ]), svg('down', 14) ]);
 				btn.addEventListener('click', ev => {
 					if (this.switchOpen()) this.closeFlyout(true);
 					else this.openSwitch(cat, siblings, btn, ev.detail === 0);
@@ -1134,7 +1208,7 @@ return baseclass.extend({
 
 	renderTabs() {
 		const bar = document.getElementById('vt-tabs');
-		if (!bar || this.dp.length < 3) return;
+		if (!bar || this.missing || this.dp.length < 3) return;
 		const cat = this.admin.children[this.dp[1]];
 		const page = cat && cat.children ? cat.children[this.dp[2]] : null;
 		if (!page) return;
@@ -1161,16 +1235,19 @@ return baseclass.extend({
 			const key = e.segs.join('/') + '|' + e.title;
 			if (seen.has(key)) return;
 			seen.add(key);
-			e.hay = (e.path ? e.path + ' › ' : '') + e.title;
 			this.entries.push(e);
 		};
+		/* pages carry no icon: their category heads them, and only actions
+		   have one. A tab named like its page (System Log's "System Log")
+		   is that page's entry already. */
 		for (const c of this.cats) {
-			if (c.leaf) add({ title: c.title, path: '', group: c.title, segs: [ 'admin', c.name ], icon: c.icon });
+			if (c.leaf) add({ title: c.title, path: '', group: c.title, segs: [ 'admin', c.name ] });
 			for (const p of c.pages) {
-				add({ title: p.title, path: c.title, group: c.title, segs: [ 'admin', c.name, p.name ], icon: c.icon });
+				add({ title: p.title, path: c.title, group: c.title, segs: [ 'admin', c.name, p.name ] });
 				if (p.subs.length > 1)
 					for (const s of p.subs)
-						add({ title: s.title, path: c.title + ' › ' + p.title, group: c.title, segs: [ 'admin', c.name, p.name, s.name ], icon: 'page' });
+						if (headingKey(s.title) !== headingKey(p.title))
+							add({ title: s.title, path: c.title + ' › ' + p.title, group: c.title, segs: [ 'admin', c.name, p.name, s.name ] });
 			}
 		}
 	},
@@ -1184,8 +1261,13 @@ return baseclass.extend({
 		const login = this.loginPref(), names = this.loginNames();
 		for (const k of [ 'grid', 'stars', 'none' ])
 			if (k !== login) list.push({ title: '%s: %s'.format(_('Login background'), names[k]), path: _('Appearance', 'vantage-theme'), icon: 'page', run: () => this.setLoginPref(k) });
+		if (this.hasDashboard()) {
+			const bd = this.backdropPref();
+			for (const k of [ 'grid', 'stars', 'none' ])
+				if (k !== bd) list.push({ title: '%s: %s'.format(_('Network path background'), names[k]), path: _('Appearance', 'vantage-theme'), icon: 'page', run: () => this.setBackdropPref(k) });
+		}
 		list.push({ title: _('Log out'), path: _('Session'), icon: 'logout', segs: [ 'admin', 'logout' ] });
-		list.forEach(a => { a.hay = a.path + ' › ' + a.title; a.group = _('Actions'); });
+		list.forEach(a => { a.group = _('Actions'); });
 		return list;
 	},
 
@@ -1210,7 +1292,7 @@ return baseclass.extend({
 		const list = E('ul', { 'class': 'vt-pal-list', 'id': 'vt-pal-list', 'role': 'listbox', 'aria-label': _('Results', 'vantage-theme') });
 		const count = E('span', { 'class': 'vt-pal-count' });
 		const box = E('div', { 'class': 'vt-pal', 'role': 'dialog', 'aria-modal': 'true', 'aria-label': _('Command palette') }, [
-			E('div', { 'class': 'vt-pal-field' }, [ svg('search', 18), input, E('kbd', {}, [ 'Esc' ]) ]),
+			E('div', { 'class': 'vt-pal-field' }, [ svg('search', 18), input ]),
 			list,
 			E('div', { 'class': 'vt-pal-foot' }, [
 				E('span', {}, [ E('kbd', {}, [ '↑' ]), E('kbd', {}, [ '↓' ]), _('navigate') ]),
@@ -1242,35 +1324,18 @@ return baseclass.extend({
 		const pal = this.pal;
 		const q = pal.input.value.trim();
 		const pool = this.entries.concat(this.actions());
-		let results;
-
-		if (!q) {
-			results = pool.map(e => ({ e, idx: [] }));
-		}
-		else {
-			results = [];
-			for (const e of pool) {
-				const onTitle = fuzzy(q, e.title);
-				const onPath = onTitle ? null : fuzzy(q, e.hay);
-				if (onTitle) results.push({ e, score: onTitle.score + 6, idx: onTitle.idx });
-				else if (onPath) results.push({ e, score: onPath.score * .6, idx: [] });
-			}
-			results.sort((a, b) => b.score - a.score);
-			results = results.slice(0, 40);
-		}
+		const found = q ? rankPalette(q, pool) : null;
+		const results = q ? found.slice(0, 40) : pool.map(e => ({ e, idx: [] }));
+		const rows = q ? results.map(r => ({ r, head: null, path: r.e.path })) : paletteLayout(results);
 
 		pal.list.textContent = '';
 		pal.items = [];
-		let group = null;
-		results.forEach((r, n) => {
-			if (!q && r.e.group !== group) {
-				group = r.e.group;
-				pal.list.appendChild(E('li', { 'class': 'vt-pal-group', 'role': 'presentation' }, [ group ]));
-			}
+		rows.forEach(({ r, head, path }, n) => {
+			if (head) pal.list.appendChild(E('li', { 'class': 'vt-pal-group', 'role': 'presentation' }, [ head ]));
 			const li = E('li', { 'class': 'vt-pal-item', 'role': 'option', 'id': 'vt-pal-opt-' + n, 'aria-selected': 'false' }, [
-				svg(r.e.icon, 18),
+				r.e.icon ? svg(r.e.icon, 18) : '',
 				highlight(r.e.title, r.idx),
-				r.e.path ? E('span', { 'class': 'vt-pal-path' }, [ r.e.path ]) : '',
+				path ? E('span', { 'class': 'vt-pal-path' }, [ path ]) : '',
 				E('kbd', { 'class': 'vt-pal-enter' }, [ '↵' ])
 			]);
 			li.addEventListener('mousemove', () => this.setPaletteActive(n, false));
@@ -1282,7 +1347,7 @@ return baseclass.extend({
 		if (!results.length)
 			pal.list.appendChild(E('li', { 'class': 'vt-pal-empty', 'role': 'presentation' }, [ _('No matching pages') ]));
 
-		pal.count.textContent = q ? '%d / %d'.format(results.length, pool.length) : '%d %s'.format(pool.length, _('items', 'vantage-theme'));
+		pal.count.textContent = q ? N_(found.length, '%d result', '%d results', 'vantage-theme').format(found.length) : '';
 		this.setPaletteActive(0, true);
 	},
 
@@ -1398,6 +1463,23 @@ return baseclass.extend({
 		this.syncAppearance();
 	},
 
+	/* Vantage's dashboard, where this user may open it: its network path
+	   takes the same backdrops as the login page */
+	hasDashboard() {
+		return !!(this.admin && ui.menu.getChildren(this.admin).some(c => c.name === 'dashboard' && c.action && c.action.path === 'vantage/overview'));
+	},
+
+	backdropPref() {
+		const p = storageGet(BACKDROP_KEY);
+		return (p === 'stars' || p === 'none') ? p : 'grid';
+	},
+
+	setBackdropPref(pref) {
+		storageSet(BACKDROP_KEY, pref === 'grid' ? null : pref);
+		window.dispatchEvent(new CustomEvent(BACKDROP_EVENT));
+		this.syncAppearance();
+	},
+
 	setupTheme() {
 		const btn = document.getElementById('vt-theme');
 		if (btn) {
@@ -1415,19 +1497,20 @@ return baseclass.extend({
 		if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (this.themePref() === 'auto') this.applyTheme(); });
 		window.addEventListener('storage', ev => {
 			if (ev.key === THEME_KEY) this.applyTheme();
-			else if (ev.key === LOGIN_KEY) this.syncAppearance();
+			else if (ev.key === LOGIN_KEY || ev.key === BACKDROP_KEY) this.syncAppearance();
 		});
 		this.applyTheme();
 	},
 
-	/* Appearance, under the colour-theme button: the colour theme and the
-	   login background, each a native radio group (the arrow keys move
+	/* Appearance, under the colour-theme button: the colour theme, the
+	   login background and, with the dashboard, the network path's
+	   background, each a native radio group (the arrow keys move
 	   within it) drawn as segments. Choices apply at once and stay open;
 	   Escape, Tab out of either end, a click outside, resizing or
 	   scrolling the page close it. */
-	appearanceEl() {
-		if (this.appear) return this.appear;
-		const group = (name, legend, opts, set) => E('fieldset', { 'class': 'vt-appear-set' }, [
+	/* one of Appearance's radio groups */
+	appearGroup(name, legend, opts, set) {
+		return E('fieldset', { 'class': 'vt-appear-set' }, [
 			E('legend', {}, [ legend ]),
 			E('div', { 'class': 'vt-appear-track' }, opts.map(o => {
 				const input = E('input', { 'type': 'radio', 'name': name, 'value': o[0] });
@@ -1435,13 +1518,24 @@ return baseclass.extend({
 				return E('label', { 'class': 'vt-appear-opt' }, [ input ].concat(o[2] ? [ svg(o[2], 16) ] : [], [ E('span', {}, [ o[1] ]) ]));
 			}))
 		]);
+	},
+
+	/* the network path's group, once the menu says the dashboard is here */
+	backdropGroup() {
+		const n = this.loginNames();
+		return this.appearGroup('vt-backdrop', _('Network path background'), [ [ 'grid', n.grid ], [ 'stars', n.stars ], [ 'none', n.none ] ], v => this.setBackdropPref(v));
+	},
+
+	appearanceEl() {
+		if (this.appear) return this.appear;
+		const group = (name, legend, opts, set) => this.appearGroup(name, legend, opts, set);
 		const login = this.loginNames();
 		const box = E('div', { 'id': 'vt-appearance', 'class': 'vt-appearance', 'role': 'dialog', 'aria-label': _('Appearance', 'vantage-theme'), 'hidden': 'hidden' }, [
 			group('vt-colour', _('Colour theme'), [
 				[ 'auto', _('Auto', 'vantage-theme'), 'auto' ], [ 'light', _('Light', 'vantage-theme'), 'sun' ], [ 'dark', _('Dark', 'vantage-theme'), 'moon' ]
 			], v => this.setTheme(v)),
 			group('vt-login', _('Login background'), [ [ 'grid', login.grid ], [ 'stars', login.stars ], [ 'none', login.none ] ], v => this.setLoginPref(v))
-		]);
+		].concat(this.hasDashboard() ? [ this.backdropGroup() ] : []));
 		box.addEventListener('keydown', ev => {
 			if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.closeAppearance(true); }
 			else if (ev.key === 'Tab') {
@@ -1465,7 +1559,7 @@ return baseclass.extend({
 
 	syncAppearance() {
 		if (!this.appear) return;
-		const now = { 'vt-colour': this.themePref(), 'vt-login': this.loginPref() };
+		const now = { 'vt-colour': this.themePref(), 'vt-login': this.loginPref(), 'vt-backdrop': this.backdropPref() };
 		Array.prototype.forEach.call(this.appear.querySelectorAll('input[type="radio"]'), r => { r.checked = (now[r.name] === r.value); });
 	},
 
@@ -1513,11 +1607,10 @@ return baseclass.extend({
 			chip.textContent = '';
 			/* device strings go in as text nodes (E() would parse a string as HTML) */
 			const text = v => [ document.createTextNode(String(v)) ];
-			chip.appendChild(E('b', {}, text(board.hostname)));
-			if (product) {
-				chip.appendChild(E('span', { 'class': 'vt-host-sep', 'aria-hidden': 'true' }, text('·')));
-				chip.appendChild(E('span', {}, text(product)));
-			}
+			host.chipNames(board.hostname, product).forEach((name, i) => {
+				if (i) chip.appendChild(E('span', { 'class': 'vt-host-sep', 'aria-hidden': 'true' }, text('·')));
+				chip.appendChild(i ? E('span', {}, text(name)) : E('b', {}, text(name)));
+			});
 			const rel = board.release && board.release.description;
 			chip.setAttribute('title', [ board.hostname, product, rel ].filter(Boolean).join('\n'));
 			chip.hidden = false;
@@ -1909,12 +2002,8 @@ return baseclass.extend({
 
 	/* (i) shows, and the text folds to a line, while the text needs more
 	   than one line. Text that is not displayed (another tab, an unmet
-	   dependency) measures 0 and waits for the next resize notification. */
-	fitHelp(desc) {
-		this.fitHelps([ desc ]);
-	},
-
-	/* all sizes are read before any button changes: a write between two
+	   dependency) measures 0 and waits for the next resize notification.
+	   All sizes are read before any button changes: a write between two
 	   reads forced a layout per field (66 when the Wireless modal opened).
 	   Folded, the text still measures its full height. The line's end is
 	   set as data-v-end ("cut" at --vt-cut, or "fade"), which the CSS reads. */

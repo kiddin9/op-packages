@@ -138,7 +138,7 @@ echo "==> Building honk-core for $RUST_TARGET..."
 cargo build --release --locked \
   -p honk-core \
   --no-default-features \
-  --features ebpf,rprx,clash-api,native-api,mimalloc \
+  --features ebpf,rprx,clash-api,native-api,jemalloc \
   --target "$RUST_TARGET"
 
 BUILT_BIN="$SRC_DIR/target/$RUST_TARGET/release/honk-core"
