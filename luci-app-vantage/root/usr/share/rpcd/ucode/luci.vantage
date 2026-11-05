@@ -26,6 +26,18 @@
 //              /etc/config/network (device, vlan, vid and ports, nothing
 //              else), or board.json's roles for a switch those give no
 //              VLAN. Read group luci-app-vantage.
+//   routes     the route the kernel takes to the internet, IPv4 and IPv6:
+//              a read-only lookup of each family (as `ip route get
+//              fibmatch`) of a documentation address no network uses, so
+//              the answer is the default route ordinary traffic takes.
+//              For each family whose answer is a unicast default route in
+//              the main table: its family (4 or 6), the device it leaves by
+//              (null over several next hops) and its metric; no gateways.
+//              netifd lists the routes it asked for; of two with the same
+//              metric the kernel keeps the one added last. routes is null
+//              when a lookup could not be sent. One lookup a family, so
+//              the work does not grow with the routing table. Read group
+//              luci-app-vantage.
 //   set_alias  { mac, name, icon }: name one station, or remove its name
 //              with name ''. Validated here, whatever the browser did, and
 //              written to /etc/config/vantage only. Write group
@@ -52,6 +64,8 @@ const THERMAL = '/sys/class/thermal';
 const MAX_ZONES = 16;
 const MAX_HOSTS = 512;            // wired hosts per reply
 const MAX_PER_PORT = 128;         // of them on one port (the uplink's would take them all)
+const PROBE4 = '198.51.100.1';    // routes: looked up, never sent to (documentation ranges)
+const PROBE6 = '2001:db8::1';
 const NET = '/sys/class/net';
 const FDB_LIMIT = 4096;           // forwarding entries, all bridges together, before wired() lists none
 const FDB_ENTRY = 16;             // sizeof(struct __fdb_entry), brforward's record
@@ -478,6 +492,31 @@ function wired() {
 	return out;
 }
 
+// [ { family, dev, metric } ] for the families whose lookup answers with
+// a unicast default route in the main table (no dst), IPv4 then IPv6; dev
+// null over several next hops (multipath, no single oif). null when a
+// lookup could not be sent; false is the kernel's error, for a lookup that
+// there is no route (ENETUNREACH), so that family is left out.
+function routes() {
+	let out = [];
+
+	for (let q in [ { family: rtnl.const.AF_INET, dst: PROBE4 }, { family: rtnl.const.AF_INET6, dst: PROBE6 } ]) {
+		let r = rtnl.request(rtnl.const.RTM_GETROUTE, 0, { family: q.family, dst: q.dst, flags: rtnl.const.RTM_F_FIB_MATCH });
+
+		if (r === null)
+			return null;
+
+		if (type(r) != 'object' || r.family != q.family || r.dst != null || r.table != rtnl.const.RT_TABLE_MAIN || r.type != rtnl.const.RTN_UNICAST)
+			continue;
+
+		let m = r.priority ?? 0;
+
+		push(out, { family: (q.family == rtnl.const.AF_INET) ? 4 : 6, dev: netdev(r.oif), metric: (type(m) == 'int' && m >= 0) ? m : 0 });
+	}
+
+	return out;
+}
+
 // a switch port's number (0..63), or null
 function switch_port(v) {
 	return (type(v) == 'int' && v >= 0 && v < 64) ? v : null;
@@ -628,6 +667,12 @@ const methods = {
 				reply.switches = sw;
 
 			return reply;
+		}
+	},
+
+	routes: {
+		call: function() {
+			return { routes: routes() };
 		}
 	},
 

@@ -110,6 +110,7 @@
 	--vt-b60: var(--vt-text-2);
 	--vt-band-ink: 60%;   /* band colour in a chip's text: 4.5:1 on light surfaces */
 	--vt-series-up: var(--vt-chart-1);
+	--vt-tunnel: var(--vt-chart-4);  /* a VPN's pipe on the line: apart from the accent, which the packets in it keep */
 	/* throughput directions: download keeps the uplink colour, upload
 	   takes one that no band uses */
 	--vt-dir-dn: var(--vt-chart-1);
@@ -818,6 +819,44 @@ h2, h3{
 .vt-app .vt-link-up .vt-ico { color: var(--vt-text-3); }
 .vt-app .vt-link-meta { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-family: var(--vt-mono); white-space: nowrap; margin-top: 2px;
 	padding: 0 6px; border-radius: 6px; background: var(--vt-surface); }
+/* a full-tunnel VPN over the main line: its wire drawn as a pipe in its
+   own colour around the traffic, the tunnel named under the line's rates */
+.vt-app .vt-wire-tunnel { stroke-width: 9; stroke-linecap: round; stroke: color-mix(in oklab, var(--vt-tunnel) 24%, transparent); }
+.vt-app .vt-wire-tunnel.vt-wire-on { stroke: color-mix(in oklab, var(--vt-tunnel) 36%, transparent); }
+.vt-app .vt-link-tunnel {
+	display: inline-flex; align-items: center; gap: 4px; max-width: 100%; margin-top: 4px; padding: 1px 6px;
+	border: 1px solid color-mix(in oklab, var(--vt-tunnel) 60%, var(--vt-line)); border-radius: 6px;
+	background: var(--vt-surface); color: var(--vt-text-2); font-size: var(--vt-fs-micro); white-space: nowrap;
+}
+.vt-app .vt-link-tunnel[hidden] { display: none; }
+.vt-app .vt-link-tunnel .vt-ico { width: 11px; height: 11px; flex: none; color: var(--vt-tunnel); stroke-width: 2; }
+.vt-app .vt-link-tunnel-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-weight: var(--vt-fw-semibold); }
+.vt-app .vt-link-tunnel-proto { flex: none; color: var(--vt-text-3); text-transform: uppercase; letter-spacing: .04em; }
+.vt-app .vt-link-tunnel-proto:empty { display: none; }
+
+/* more than one line to the internet (failover, mwan3): the main line,
+   its rates and the device in one row as with one, the other lines
+   under the main one, each wired into the device's bottom edge
+   (wires.line). The branches span every row; the rows above and below
+   take what a tall branch column leaves, so the lines stay together. */
+.vt-app .vt-path-lines { grid-template-rows: 1fr auto auto 1fr; }
+.vt-app .vt-path-lines > .vt-node-gw { grid-area: 2 / 1; }
+.vt-app .vt-path-lines > .vt-link-label { grid-area: 2 / 2; }
+.vt-app .vt-path-lines > .vt-node-ap { grid-area: 2 / 3; }
+.vt-app .vt-path-lines > .vt-branches { grid-area: 1 / 4 / -1 / 5; }
+.vt-app .vt-lines { grid-area: 3 / 1; align-self: start; display: flex; flex-direction: column; gap: 12px; padding: 14px 0 6px; min-width: 0; }
+.vt-app .vt-lines > .vt-node { align-self: stretch; }
+.vt-app .vt-node-rates { flex-wrap: wrap; column-gap: .3em; row-gap: 0; }
+.vt-app .vt-node-rates > span:empty { display: none; }
+/* a line's name ellipsized; the tag goes under it when they don't fit */
+.vt-app .vt-node-kicker-tag { flex-wrap: wrap; row-gap: 2px; }
+.vt-app .vt-node-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* the main line among others: the default route the kernel takes */
+.vt-app .vt-node-tag {
+	display: inline-flex; align-items: center; height: 16px; padding: 0 5px; border-radius: 4px;
+	text-transform: none; letter-spacing: 0; font-weight: var(--vt-fw-medium);
+	background: var(--vt-accent-soft); color: var(--vt-accent-text);
+}
 
 /* the branches spread over the height the tile gets from its row, so a
    tall neighbour leaves no empty band above or below the diagram */
@@ -836,6 +875,13 @@ h2, h3{
 	.vt-app .vt-branch > .vt-node { justify-self: start; min-width: 200px; }
 	.vt-app .vt-branch-ssids { padding-left: 34px; }
 	.vt-app .vt-branch-ssids .vt-node { max-width: none; align-self: stretch; }
+	/* one column: the main line, its rates, the other lines set in (their
+	   wires join the main line's drop into the device), the device */
+	.vt-app .vt-path-lines { grid-template-rows: none; }
+	.vt-app .vt-path-lines > .vt-node-gw, .vt-app .vt-path-lines > .vt-link-label, .vt-app .vt-path-lines > .vt-node-ap,
+	.vt-app .vt-path-lines > .vt-branches, .vt-app .vt-lines { grid-area: auto; }
+	.vt-app .vt-lines { gap: 8px; padding: 0 0 0 34px; }
+	.vt-app .vt-lines > .vt-node { align-self: flex-start; min-width: 200px; max-width: 100%; }
 }
 
 /* ------------------------------------------------------------ 6. system */

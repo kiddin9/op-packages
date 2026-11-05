@@ -1,6 +1,6 @@
 {
 	"luci-app-vantage": {
-		"description": "Vantage dashboard: read-only status of the device, uplink, radios and stations (wireless configuration without keys, through luci.vantage wireless), its temperature sensors (luci.vantage thermal), the wired hosts its bridges have learned (luci.vantage wired: MAC, port and when last heard, and which switch ports a port's VLAN has) and the link state of those switch ports (luci getSwconfigPortState)",
+		"description": "Vantage dashboard: read-only status of the device, uplink, radios and stations (wireless configuration without keys, through luci.vantage wireless), its temperature sensors (luci.vantage thermal), the wired hosts its bridges have learned (luci.vantage wired: MAC, port and when last heard, and which switch ports a port's VLAN has), the link state of those switch ports (luci getSwconfigPortState) and the default route the kernel takes to the internet (luci.vantage routes: family, device and metric, no gateways)",
 		"read": {
 			"file": {
 				"/proc/stat": [ "read" ]
@@ -12,7 +12,7 @@
 				"network.device": [ "status" ],
 				"luci-rpc": [ "getHostHints" ],
 				"luci": [ "getSwconfigPortState" ],
-				"luci.vantage": [ "thermal", "wired", "wireless" ],
+				"luci.vantage": [ "routes", "thermal", "wired", "wireless" ],
 				"iwinfo": [ "assoclist", "info" ],
 				"hostapd.*": [ "get_clients", "get_status" ],
 				"umdns": [ "hosts" ],

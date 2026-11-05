@@ -47,6 +47,9 @@ var callThermal = rpc.declare({ object: 'luci.vantage', method: 'thermal', expec
 /* { hosts, crowded, switches }: crowded when a bridge holds too many
    entries to list; switches, the swconfig switch ports behind a port */
 var callWired = rpc.declare({ object: 'luci.vantage', method: 'wired', expect: { '': {} } });
+/* the route the kernel takes to the internet: which one it kept of two
+   with one metric; { routes: null } when it could not be asked */
+var callRoutes = rpc.declare({ object: 'luci.vantage', method: 'routes', expect: { '': {} } });
 /* LuCI's own (its switch page's): link and speed of a switch's ports, in
    result. The whole reply, and a failed call rejected: a default [] would
    read as every port down */
@@ -296,6 +299,12 @@ var CHECK_ICONS = { uplink: 'port', cpu: 'cpu', memory: 'memory', radios: 'wifi'
 function txt(el, s) { s = (s == null ? '' : String(s)); if (el.textContent !== s) el.textContent = s; return el; }
 function setClass(el, c) { if (el.getAttribute('class') !== c) el.setAttribute('class', c); }
 function setTitle(el, v) { if (el.getAttribute('title') !== v) el.setAttribute('title', v); }
+/* the throughput history of a line to the internet, the main one too,
+   by its interface: a failover starts the new main line's own history
+   instead of continuing the old one's. ':' keeps it apart from a radio's
+   (a uci section name). */
+function lineKey(x) { return 'up:' + x.iface; }
+function histMax(key) { return key.indexOf('up:') === 0 ? HIST_FAST : HIST_MAX; }
 
 /* an element's own tag and attributes, or a text node's text */
 function nodeSig(n) {
@@ -616,7 +625,9 @@ return view.extend({
 			L.resolveDefault(callWifi(), null),
 			L.resolveDefault(callHints(), {}),
 			L.resolveDefault(callThermal(), []),
-			L.resolveDefault(callWired(), {})
+			L.resolveDefault(callWired(), {}),
+			/* null when the call fails (an older plugin): netifd's metrics decide */
+			L.resolveDefault(callRoutes(), null)
 		]).then(function(r) {
 			var wifiDevs = (r[4] && typeof r[4] === 'object') ? r[4] : null;
 			var wiredReply = (r[7] && typeof r[7] === 'object') ? r[7] : {};
@@ -669,6 +680,9 @@ return view.extend({
 				Object.keys(swState).forEach(function(n) { switchState[n] = swState[n].ports; });
 				return { info: r[0] || {}, stat: r[1] || '', ifaces: r[2] || [], devs: r[3] || {}, wifi: wifiDevs, hints: r[5] || {}, thermal: r[6] || [],
 					fdb: Array.isArray(wiredReply.hosts) ? wiredReply.hosts : [], fdbCrowded: wiredReply.crowded === true, switches: switches, switchState: switchState,
+					/* no answer (an older plugin, a lookup not sent, a failed call)
+					   keeps the last one: no tunnel blinking off */
+					routes: r[8] && Array.isArray(r[8].routes) ? (self.kernelRoutes = r[8].routes) : (self.kernelRoutes || null),
 					assoc: assoc, hapd: hapd, hapdStatus: hapdStatus, iwinfo: iwinfo, at: Date.now(), started: started };
 			});
 		});
@@ -682,7 +696,8 @@ return view.extend({
 		var net = Object.create(null);
 		if (stored.net && typeof stored.net === 'object')
 			Object.keys(stored.net).forEach(function(k) {
-				if (/^[A-Za-z0-9_.:-]{1,40}$/.test(k)) net[k] = series.valid(stored.net[k], 3, k === 'uplink' ? HIST_FAST : HIST_MAX, now, model.MAX_BPS);
+				/* 'uplink' (before #88) belongs to an interface nobody noted */
+				if (/^[A-Za-z0-9_.:-]{1,40}$/.test(k) && k !== 'uplink') net[k] = series.valid(stored.net[k], 3, histMax(k), now, model.MAX_BPS);
 			});
 		var clientHist = Object.create(null);
 		if (stored.clients && typeof stored.clients === 'object')
@@ -757,7 +772,7 @@ return view.extend({
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
 			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints, fdb: raw.fdb,
-			switches: raw.switches, switchState: raw.switchState,
+			switches: raw.switches, switchState: raw.switchState, routes: raw.routes,
 			aliases: this.aliases, rdns: st.rdns, mdns: st.mdns,
 			vendor: st.oui ? function(k) { return k ? st.oui.lookup(k) : null; } : null
 		});
@@ -790,7 +805,16 @@ return view.extend({
 		st.uplinkRate = upRate || null;
 
 		/* throughput history (only for ticks that produced a rate) */
-		if (upRate && !upFast) this.pushNet('uplink', at, upRate);
+		if (upRate && !upFast) this.pushNet(lineKey(m.uplink), at, upRate);
+		/* the other lines to the internet: this poll's (the fast lane
+		   samples the main one only) */
+		this.extraLines(m).forEach(function(x) { var r = st.devRates[x.statsDev]; if (r) self.pushNet(lineKey(x), at, r); });
+		/* a line gone for longer than the chart shows leaves no history */
+		var lineKeys = m.uplinks.map(lineKey);
+		Object.keys(st.hist.net).forEach(function(k) {
+			var h = st.hist.net[k];
+			if (/^up:/.test(k) && lineKeys.indexOf(k) < 0 && !(h.length && h[h.length - 1][0] > at - WINDOW_MS)) delete st.hist.net[k];
+		});
 		m.radios.forEach(function(r) { if (st.radioRates[r.id]) self.pushNet(r.id, at, st.radioRates[r.id]); });
 
 		/* station counters, per-station history */
@@ -863,7 +887,7 @@ return view.extend({
 
 	pushNet: function(key, at, r) {
 		var h = this.st.hist.net[key] || (this.st.hist.net[key] = []);
-		series.push(h, [ at, r.rx, r.tx ], WINDOW_MS, key === 'uplink' ? HIST_FAST : HIST_MAX);
+		series.push(h, [ at, r.rx, r.tx ], WINDOW_MS, histMax(key));
 	},
 
 	/* ------------------------------------------------------- fast lane */
@@ -901,7 +925,7 @@ return view.extend({
 			if (dev && s) counters[dev] = { rx: s.rx_bytes, tx: s.tx_bytes };
 			var dr = model.rates(st.fastPrev, counters, now);
 			st.fastPrev = dr.next;
-			if (dev && dr.rates[dev]) { st.uplinkRate = dr.rates[dev]; self.pushNet('uplink', at, st.uplinkRate); changed = true; }
+			if (dev && dr.rates[dev]) { st.uplinkRate = dr.rates[dev]; self.pushNet(lineKey(up), at, st.uplinkRate); changed = true; }
 			/* both answered: the full poll leaves CPU and the uplink to this lane */
 			if (stat && (!dev || s)) st.fastAt = now;
 			if (changed) self.paintFast();
@@ -972,7 +996,7 @@ return view.extend({
 		var m = model.build({
 			board: this.board, info: raw.info, ifaces: raw.ifaces, devs: raw.devs, wifi: raw.wifi, iwinfo: raw.iwinfo,
 			assoc: raw.assoc, hapd: raw.hapd, hapdStatus: raw.hapdStatus, hints: raw.hints, fdb: raw.fdb,
-			switches: raw.switches, switchState: raw.switchState,
+			switches: raw.switches, switchState: raw.switchState, routes: raw.routes,
 			aliases: this.aliases, rdns: st.rdns, mdns: st.mdns,
 			vendor: st.oui ? function(k) { return k ? st.oui.lookup(k) : null; } : null
 		});
@@ -1608,7 +1632,7 @@ return view.extend({
 		   the card's bottom edge; CPU scaled to at least 20 % so a quiet
 		   device still shows its shape */
 		case 'uplink':
-			return [ sparkline(st.hist.net.uplink || [], [ 1 ], 0, 'vt-spark-up', { min: 1000, quiet: true, bare: true }) ];
+			return [ sparkline((this.m && this.m.uplink && st.hist.net[lineKey(this.m.uplink)]) || [], [ 1 ], 0, 'vt-spark-up', { min: 1000, quiet: true, bare: true }) ];
 		case 'cpu':
 			return [ sparkline(st.hist.cpu || [], [ 1 ], 0, 'vt-spark-cpu', { min: 20, quiet: true, bare: true }) ];
 		case 'memory':
@@ -1698,24 +1722,36 @@ return view.extend({
 	/* the nodes the path shows: rebuilt only when this changes (a radio,
 	   SSID or network comes or goes); a poll updates text in place */
 	heroKey: function() {
-		var m = this.m;
-		if (m.wired) return 'w\n' + m.networks.filter(function(n) { return n.up; }).slice(0, 8).map(function(n) { return n.name; }).join('\n');
+		var m = this.m, lines = '\nlines=' + this.extraLines().map(function(x) { return x.iface; }).join(',');
+		if (m.wired) return 'w\n' + m.networks.filter(function(n) { return n.up; }).slice(0, 8).map(function(n) { return n.name; }).join('\n') + lines;
 		return 'r\n' + m.radios.map(function(r) {
 			return r.id + '=' + m.ssids.filter(function(s) { return s.radio === r.id; }).map(function(s) { return s.id; }).join(',');
-		}).join('\n') + '\nwired=' + this.wiredPorts().join(',');
+		}).join('\n') + '\nwired=' + this.wiredPorts().join(',') + lines;
+	},
+
+	/* the lines to the internet beside the main one (failover, mwan3;
+	   at most model.MAX_LINES) */
+	extraLines: function(m) {
+		m = m || this.m;
+		return ((m && m.uplinks) || []).slice(1);
 	},
 
 	/* the ports with wired hosts downstream of this device, at most 8:
-	   hosts on the uplink's port are the way to the gateway, not clients
+	   hosts on a line's port are the way to its gateway, not clients
 	   (on a bridge with several ports whose gateway port is unknown, only
 	   the gateway is left out) */
 	wiredPorts: function() {
-		var m = this.m, up = m.uplink, out = [];
+		var m = this.m, out = [], self = this;
 		(m.wiredHosts || []).forEach(function(c) {
-			if (c.gateway || (up && up.port && c.port === up.port)) return;
+			if (c.gateway || self.linePort(c.port)) return;
 			if (out.indexOf(c.port) < 0) out.push(c.port);
 		});
 		return out.sort().slice(0, 8);
+	},
+
+	/* the port is one a line to the internet leaves through */
+	linePort: function(port) {
+		return ((this.m && this.m.uplinks) || []).some(function(x) { return x.port && x.port === port; });
 	},
 
 	/* the Clients tile on its wired list, on one port's hosts or all */
@@ -1759,18 +1795,40 @@ return view.extend({
 			if (c !== self.el.wires && c !== self.el.flows) path.removeChild(c);
 		});
 
-		h.gwKicker = span('vt-node-kicker'); h.gwTitle = span('vt-node-title'); h.gwSub = span('vt-node-sub');
-		h.gw = E('button', { 'type': 'button', 'class': 'vt-node vt-node-gw', 'click': function() { self.openDrawer('uplink', 'uplink'); } }, [
+		/* more than one line to the internet: each by its interface, the
+		   main one (the default route the kernel takes) marked */
+		var extra = this.extraLines();
+		h.gwKicker = span(extra.length ? 'vt-node-name' : 'vt-node-kicker'); h.gwTitle = span('vt-node-title'); h.gwSub = span('vt-node-sub');
+		h.gwTag = extra.length ? E('span', { 'class': 'vt-node-tag' }, [ _('default route') ]) : null;
+		h.gw = E('button', { 'type': 'button', 'class': 'vt-node vt-node-gw', 'click': function() { self.openDrawer('uplink', ''); } }, [
 			E('span', { 'class': 'vt-node-ico' }, [ icon('globe') ]),
-			E('span', { 'class': 'vt-node-body' }, [ h.gwKicker, h.gwTitle, h.gwSub ])
+			E('span', { 'class': 'vt-node-body' }, [
+				h.gwTag ? E('span', { 'class': 'vt-node-kicker vt-node-kicker-tag' }, [ h.gwKicker, h.gwTag ]) : h.gwKicker,
+				h.gwTitle, h.gwSub
+			])
 		]);
+		h.lines = extra.map(function(x) {
+			/* its rates as two items, so a narrow node wraps them rather than cut them */
+			var ln = { id: x.iface, kicker: span('vt-node-name'), title: span('vt-node-title'), dn: E('span'), up: E('span') };
+			ln.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-gw vt-node-line', 'click': function() { self.openDrawer('uplink', ln.id); } }, [
+				E('span', { 'class': 'vt-node-ico' }, [ icon('globe') ]),
+				E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-kicker' }, [ ln.kicker ]), ln.title, E('span', { 'class': 'vt-node-sub vt-node-rates vt-tn' }, [ ln.dn, ln.up ]) ])
+			]);
+			return ln;
+		});
+		h.linesEl = extra.length ? E('div', { 'class': 'vt-lines' }, h.lines.map(function(ln) { return ln.el; })) : null;
+		setClass(path, 'vt-path' + (extra.length ? ' vt-path-lines' : ''));
 
 		h.dnVal = E('b'); h.dnUnit = E('small'); h.upVal = E('b'); h.upUnit = E('small'); h.linkMeta = span('vt-link-meta');
+		/* a full-tunnel VPN over the line: named on the link it runs through */
+		h.tunName = span('vt-link-tunnel-name'); h.tunProto = span('vt-link-tunnel-proto');
+		h.tunnel = E('span', { 'class': 'vt-link-tunnel', 'hidden': '' }, [ icon('lock'), h.tunName, h.tunProto ]);
 		h.link = E('div', { 'class': 'vt-link-label' }, [
 			E('span', { 'class': 'vt-link-rate vt-link-down' }, [ icon('down'), h.dnVal, h.dnUnit ]),
 			E('span', { 'class': 'vt-link-below' }, [
 				E('span', { 'class': 'vt-link-rate vt-link-up' }, [ icon('up'), h.upVal, h.upUnit ]),
-				h.linkMeta
+				h.linkMeta,
+				h.tunnel
 			])
 		]);
 
@@ -1782,6 +1840,7 @@ return view.extend({
 
 		h.branches = E('div', { 'class': 'vt-branches' });
 		h.watch = [ path, h.gw, h.link, h.ap, h.branches ];
+		h.lines.forEach(function(ln) { h.watch.push(ln.el); });
 		if (m.wired) {
 			m.networks.filter(function(n) { return n.up; }).slice(0, 8).forEach(function(n) {
 				var b = { id: n.name, ssids: [], kicker: span('vt-node-kicker'), title: span('vt-node-title'), addr: span('vt-node-sub vt-mono'), sub: span('vt-node-sub vt-tn') };
@@ -1844,6 +1903,8 @@ return view.extend({
 
 		path.insertBefore(h.gw, this.el.wires);
 		path.insertBefore(h.link, this.el.wires);
+		/* after the main line's rates: on a phone they stay with it */
+		if (h.linesEl) path.insertBefore(h.linesEl, this.el.wires);
 		path.insertBefore(h.ap, this.el.wires);
 		path.insertBefore(h.branches, this.el.wires);
 		this.hero = h;
@@ -1861,7 +1922,7 @@ return view.extend({
 		   name once one is known beyond its vendor */
 		var gwHost = (m.wiredHosts || []).filter(function(c) { return c.gateway; })[0];
 		var gwName = gwHost && /^(alias|dhcp|mdns|dns)$/.test(gwHost.nameSource) ? gwHost.name : null;
-		txt(h.gwKicker, up && up.isWan ? _('Internet') : _('Gateway'));
+		txt(h.gwKicker, h.lines.length && up ? up.iface : up && up.isWan ? _('Internet') : _('Gateway'));
 		txt(h.gwTitle, gwName || (up && up.gateway ? up.gateway : up && up.defaultRoute ? up.l3dev : _('No default route', 'vantage')));
 		txt(h.gwSub, gwName ? up.gateway : up && up.dns.length ? _('DNS %s').format(up.dns[0]) : _('Reachability not probed'));
 
@@ -1870,6 +1931,13 @@ return view.extend({
 		txt(h.upVal, upR ? fmt.bitsParts(upR.tx).v : fmt.DASH);
 		txt(h.upUnit, upR ? fmt.bitsParts(upR.tx).u : '');
 		txt(h.linkMeta, up ? [ up.dev, up.speed ? (up.speed.mbps >= 1000 ? (up.speed.mbps / 1000) + 'G' : up.speed.mbps + 'M') + (up.speed.duplex === 'full' ? ' FD' : up.speed.duplex === 'half' ? ' HD' : '') : null ].filter(Boolean).join(' · ') : _('no uplink'));
+		var tun = up && up.tunnel, tunR = tun ? st.devRates[tun.dev] : null;
+		if (h.tunnel.hidden !== !tun) h.tunnel.hidden = !tun;
+		txt(h.tunName, tun ? tun.iface : '');
+		txt(h.tunProto, tun && tun.proto ? tun.proto : '');
+		setTitle(h.tunnel, tun ? _('Traffic to the internet goes through %s, a tunnel over this line').format(tun.iface) +
+			(tunR ? ' · ↓ ' + fmt.bits(tunR.rx) + ' · ↑ ' + fmt.bits(tunR.tx) : '') : '');
+		if (h.gwTag) txt(h.gwTag, tun ? _('default route via %s').format(tun.iface) : _('default route'));
 
 		txt(h.apKicker, m.wired ? _('This device') : _('This access point'));
 		txt(h.apTitle, d.model);
@@ -1878,6 +1946,22 @@ return view.extend({
 		h.upActive = !!(upR && upR.rx + upR.tx > 50e3);
 		h.upRate = upR ? upR.rx + upR.tx : 0;
 		if (this.backdrop) this.backdrop.update({ down: upR ? upR.rx : null, up: upR ? upR.tx : null, origin: h.ap });
+
+		var lines = Object.create(null);
+		this.extraLines().forEach(function(x) { lines[x.iface] = x; });
+		h.lines.forEach(function(ln) {
+			var x = lines[ln.id], r = x ? st.devRates[x.statsDev] : null;
+			if (!x) return;
+			setTitle(ln.el, [ x.iface, x.dev, x.speed ? model.speedLabel(x.speed) : null ].filter(Boolean).join(' · '));
+			setClass(ln.el, 'vt-node vt-node-gw vt-node-line' + (x.carrier === false ? ' vt-node-off' : ''));
+			txt(ln.kicker, x.iface);
+			txt(ln.title, x.gateway || x.l3dev);
+			var p = r && !(r.rx === 0 && r.tx === 0) ? fmt.rateParts(r.rx, r.tx) : null;
+			txt(ln.dn, p ? '↓ ' + p.dn : r ? _('idle') : fmt.DASH);
+			txt(ln.up, p ? '↑ ' + p.up + (p.unit ? ' ' + p.unit : '') : '');
+			ln.active = !!(r && r.rx + r.tx > 50e3);
+			ln.rate = r ? r.rx + r.tx : 0;
+		});
 
 		if (m.wired) {
 			var nets = Object.create(null);
@@ -1976,7 +2060,8 @@ return view.extend({
 	wireList: function() {
 		var h = this.hero, out = [];
 		if (!h) return out;
-		out.push({ key: 'gw', from: h.gw, to: h.ap, active: h.upActive, speed: wires.speed(h.upRate), main: true });
+		out.push({ key: 'gw', from: h.gw, to: h.ap, active: h.upActive, speed: wires.speed(h.upRate), main: true, tunnel: !!(this.m && this.m.uplink && this.m.uplink.tunnel) });
+		h.lines.forEach(function(ln, k) { out.push({ key: 'l:' + ln.id, from: ln.el, to: h.ap, active: ln.active, speed: wires.speed(ln.rate), line: k }); });
 		h.radios.forEach(function(b) {
 			out.push({ key: 'r:' + b.id, from: h.ap, to: b.el, active: b.active, speed: wires.speed(b.rate) });
 			b.ssids.forEach(function(sn) { out.push({ key: 's:' + b.id + ':' + sn.id, from: b.el, to: sn.el, active: sn.active, speed: 1 }); });
@@ -2023,7 +2108,7 @@ return view.extend({
 				svg.appendChild(g.flow);
 				self.el.flows.appendChild(g.fw);
 			}
-			var c = wires.curve(rect(w.from), rect(w.to));
+			var c = w.line != null ? wires.line(rect(w.from), rect(w.to), w.line) : wires.curve(rect(w.from), rect(w.to));
 			if (g.d !== c.d) {
 				g.base.setAttribute('d', c.d);
 				g.flow.setAttribute('d', c.d);
@@ -2052,7 +2137,7 @@ return view.extend({
 		this.wireList().forEach(function(w) {
 			var g = map[w.key];
 			if (!g) return;
-			setClass(g.base, 'vt-wire' + (w.main ? ' vt-wire-main' : '') + (w.active ? ' vt-wire-on' : ''));
+			setClass(g.base, 'vt-wire' + (w.main ? ' vt-wire-main' : '') + (w.tunnel ? ' vt-wire-tunnel' : '') + (w.active ? ' vt-wire-on' : ''));
 			setClass(g.flow, 'vt-flow vt-flow-' + w.speed + (w.active ? ' vt-flow-on' : ''));
 			self.syncFlow(g, !!(w.active && !still && g.d), w.speed);
 		});
@@ -2253,7 +2338,8 @@ return view.extend({
 		]));
 	},
 
-	/* one small multiple per link: the uplink, then each radio, each with
+	/* one small multiple per link: the uplink, the other lines to the
+	   internet, then each radio, each with
 	   its own y scale (a busy uplink would flatten an idle radio), on a
 	   shared time axis and crosshair. Download (towards the clients) and
 	   upload each keep their direction's colour; how they share the plot
@@ -2262,7 +2348,8 @@ return view.extend({
 	   download, a radio sends it. */
 	chartSeries: function() {
 		var m = this.m;
-		var list = [ { key: 'uplink', label: m.uplink ? _('Uplink %s').format(m.uplink.dev) : _('Uplink', 'vantage'), dn: 1, up: 2 } ];
+		var list = [ { key: m.uplink ? lineKey(m.uplink) : 'uplink', label: m.uplink ? _('Uplink %s').format(m.uplink.dev) : _('Uplink', 'vantage'), dn: 1, up: 2 } ];
+		this.extraLines().forEach(function(x) { list.push({ key: lineKey(x), label: _('Uplink %s').format(x.dev), dn: 1, up: 2 }); });
 		m.radios.forEach(function(r) { list.push({ key: r.id, label: _('%s radio').format(r.bandLabel), dn: 2, up: 1 }); });
 		return list;
 	},
@@ -2278,7 +2365,10 @@ return view.extend({
 		   start part way across and the minute labels stay where they are
 		   (a span that grew with the history moved them every poll, #71) */
 		var dm = series.domain(list.map(function(s) { return net[s.key]; }), now, WINDOW_MS, WINDOW_MS);
-		dm.full = dm.age >= WINDOW_MS - 1000;
+		/* history keeps only samples newer than the window, so its oldest is
+		   up to one poll short of five minutes: allow two polls, or the
+		   subtitle flips to "collecting" with a full history */
+		dm.full = dm.age >= WINDOW_MS - POLL_S * 2000;
 		var ticks = [];
 		for (var k = 1; k * 60000 < dm.span - 20000; k++) ticks.push(k);
 		var rows = [], samples = 0;
@@ -2857,9 +2947,8 @@ return view.extend({
 		var bar = E('span', { 'class': 'vt-mini-fill' });
 		setW(bar, maxRate > 0 ? total / maxRate * 100 : 0);
 		var tags = [];
-		var up = this.m && this.m.uplink;
 		if (c.gateway) tags.push(pill(_('Gateway'), 'accent', _('The router this device sends its traffic to')));
-		else if (up && up.port && c.port === up.port) tags.push(pill(_('Upstream'), 'muted', _('Reached through the uplink port %s, not connected to this device').format(c.port)));
+		else if (this.linePort(c.port)) tags.push(pill(_('Upstream'), 'muted', _('Reached through the uplink port %s, not connected to this device').format(c.port)));
 		if (c.vlan != null) tags.push(pill(_('VLAN %d').format(c.vlan), 'muted'));
 		var speed = c.speed ? fmt.phyRate(c.speed.mbps * 1000) : fmt.DASH;
 		var link = E('td', { 'class': 'vt-td-link', 'data-title': _('Link', 'vantage') }, [
@@ -3033,7 +3122,7 @@ return view.extend({
 		this.ui.editing = null;
 		/* the address names what is shown, also when the open drawer
 		   moves on (from a radio to one of its clients) */
-		try { history.replaceState(null, '', '#' + kind + '=' + encodeURIComponent(id)); } catch (e) {}
+		try { history.replaceState(null, '', '#' + kind + (kind === 'uplink' && !id ? '' : '=' + encodeURIComponent(id))); } catch (e) {}
 		if (!el.drawer.hidden) { this.paintDrawer(); this.paintClients(); return; }
 		this.lastFocus = document.activeElement;
 		el.drawer.hidden = false;
@@ -3056,16 +3145,19 @@ return view.extend({
 	},
 
 	/* A deep link names an existing thing or nothing: a client by a
-	   station MAC, a radio this device reports; uplink and device take no
-	   id. Anything else is dropped from the address bar, so a crafted link
-	   cannot put its own text in the drawer title. */
+	   station MAC, a radio this device reports, a line to the internet by
+	   its interface (#uplink alone: the main one, whichever it is); the
+	   device takes no id. Anything else is dropped from the address bar,
+	   so a crafted link cannot put its own text in the drawer title. */
 	openFromHash: function() {
 		var hash = location.hash || '', m = /^#(client|radio|uplink|device)=(.{1,128})$/.exec(hash), id = null;
+		if (hash === '#uplink') { this.openDrawer('uplink', ''); return; }
 		if (m) {
 			try { id = decodeURIComponent(m[2]); } catch (e) { id = null; }
 			if (id == null) { /* malformed escape */ }
 			else if (m[1] === 'client') id = names.normMac(id);
 			else if (m[1] === 'radio') id = this.m && this.m.radios.some(function(r) { return r.id === id; }) ? id : null;
+			else if (m[1] === 'uplink') id = ((this.m && this.m.uplinks) || []).some(function(x) { return x.iface === id; }) ? id : '';
 			else id = m[1];
 		}
 		if (id != null) { this.openDrawer(m[1], id); return; }
@@ -3081,7 +3173,7 @@ return view.extend({
 		var content;
 		if (d.kind === 'client') content = this.drawerClient(d.id);
 		else if (d.kind === 'radio') content = this.drawerRadio(d.id);
-		else if (d.kind === 'uplink') content = this.drawerUplink();
+		else if (d.kind === 'uplink') content = this.drawerUplink(d.id);
 		else content = this.drawerDevice();
 		dom.content(el.drawerTitle, content.title);
 		dom.content(el.drawerBody, content.body);
@@ -3368,9 +3460,26 @@ return view.extend({
 		};
 	},
 
-	drawerUplink: function() {
-		var up = this.m.uplink, r = this.st.uplinkRate;
+	/* the main line (id ''), whichever interface it is, or one line by
+	   its interface: still that one after a failover makes it the main
+	   line, and said to be down when it is no line any more (never
+	   another interface under its name) */
+	drawerUplink: function(id) {
+		var m = this.m, st = this.st, lines = m.uplinks || [];
+		var up = id ? lines.filter(function(x) { return x.iface === id; })[0] : m.uplink;
+		var r = up && up === m.uplink ? st.uplinkRate : up ? st.devRates[up.statsDev] || null : null;
+		var hist = up ? st.hist.net[lineKey(up)] : null, several = lines.length > 1;
+		var tunR = up && up.tunnel ? st.devRates[up.tunnel.dev] || null : null;
 		function errors(n) { return fmt.N_(n, '%s error', '%s errors').format(fmt.count(n)); }
+		if (id && !up) return {
+			title: [ E('span', { 'class': 'vt-drawer-ico' }, [ icon('globe') ]), E('div', { 'class': 'vt-drawer-titles' }, [
+				E('div', { 'class': 'vt-drawer-name' }, [ _('Uplink · %s').format(id) ])
+			]) ],
+			body: [
+				E('div', { 'class': 'vt-dactions' }, [ pageLink(insight.PAGES.network, _('Interfaces')) ]),
+				E('p', { 'class': 'vt-empty-inline' }, [ _('This line is down or has no default route now.') ])
+			]
+		};
 		if (!up) return { title: [ E('span', { 'class': 'vt-drawer-name' }, [ _('Uplink', 'vantage') ]) ], body: [ E('p', { 'class': 'vt-empty-inline' }, [ _('No interface with a route is up.') ]) ] };
 		var s = up.stats || {};
 		return {
@@ -3384,17 +3493,22 @@ return view.extend({
 					E('div', { 'class': 'vt-dcard' }, [ E('div', { 'class': 'vt-dcard-label' }, [ _('From network') ]), E('div', { 'class': 'vt-dcard-value' }, [ r ? fmt.bits(r.rx) : fmt.DASH ]), E('div', { 'class': 'vt-dcard-sub' }, [ _('received on %s').format(up.dev) ]) ]),
 					E('div', { 'class': 'vt-dcard' }, [ E('div', { 'class': 'vt-dcard-label' }, [ _('To network') ]), E('div', { 'class': 'vt-dcard-value' }, [ r ? fmt.bits(r.tx) : fmt.DASH ]), E('div', { 'class': 'vt-dcard-sub' }, [ _('sent on %s').format(up.dev) ]) ])
 				]),
-				E('div', { 'class': 'vt-dspark' }, [ sparkline(this.st.hist.net.uplink || [], [ 1, 2 ], 0, 'vt-spark-up', { min: 1000, scale: bitsLabel }) ]),
+				E('div', { 'class': 'vt-dspark' }, [ sparkline(hist || [], [ 1, 2 ], 0, 'vt-spark-up', { min: 1000, scale: bitsLabel }) ]),
 				this.section(_('Link', 'vantage'), [ E('dl', { 'class': 'vt-kvs' }, [
 					kv(_('Carrier'), up.carrier === false ? _('No link') : _('Up', 'vantage')),
 					kv(_('Speed', 'vantage'), model.speedLabel(up.speed)),
 					kv(_('Protocol'), up.proto || fmt.DASH),
-					kv(_('Interface up for'), up.uptime != null ? fmt.duration(up.uptime) : fmt.DASH)
+					kv(_('Interface up for'), up.uptime != null ? fmt.duration(up.uptime) : fmt.DASH),
+					/* a full-tunnel VPN over this line: ordinary traffic goes through it */
+					up.tunnel ? kv(_('Tunnel'), up.tunnel.iface + (up.tunnel.proto ? ' · ' + up.tunnel.proto : '')) : '',
+					up.tunnel ? kv(_('In the tunnel'), tunR ? '↓ ' + fmt.bits(tunR.rx) + ' · ↑ ' + fmt.bits(tunR.tx) : fmt.DASH) : ''
 				]) ]),
 				this.section(_('Addresses'), [ E('dl', { 'class': 'vt-kvs' }, [
 					kv(_('IPv4'), up.ipv4.join('\n') || fmt.DASH, true),
 					kv(_('IPv6'), up.ipv6.join('\n') || fmt.DASH, true),
 					kv(_('Gateway'), up.gateway || fmt.DASH, true),
+					/* beside other lines, the metric says which one the kernel takes */
+					several ? kv(_('Route metric'), up.metric != null ? String(up.metric) : fmt.DASH, true) : '',
 					kv(_('DNS'), up.dns.join('\n') || fmt.DASH, true)
 				]) ]),
 				this.section(_('Counters since boot'), [ E('dl', { 'class': 'vt-kvs' }, [

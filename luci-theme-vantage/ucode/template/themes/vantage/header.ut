@@ -60,7 +60,7 @@
 			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
 			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
 			</svg>
-			<span class="vt-brand-word">{{ hostname }}</span>
+			<h3 class="vt-brand-word">{{ hostname }}</h3>
 		</a>
 		<ul class="vt-rail-list" id="vt-rail-list"></ul>
 		<div class="vt-rail-foot">
