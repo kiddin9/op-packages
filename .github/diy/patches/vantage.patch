@@ -97,7 +97,7 @@
  }
  /* Card padding supplies the space after the final paragraph. */
  .cbi-section > p:last-child { margin-bottom: 0; }
-@@ -1982,7 +1988,25 @@ html:not([data-darkmode="true"]) .vt-login-page {
+@@ -1982,7 +1988,28 @@ html:not([data-darkmode="true"]) .vt-login-page {
  }
  /* the backdrop (login.js: packets or starfield), between the grid and the card */
  .vt-login-sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -120,6 +120,9 @@
 +}
 +#packages {
 + width: 100% !important;
++}
++vt-brand-word {
++ margin:0;
 +}
  .vt-login-card {
  	padding: var(--sp-6);
@@ -181,7 +184,7 @@
 +			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
 +			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
 +			</svg>
-+			<span class="vt-brand-word">{{ hostname }}</span>
++			<h3 class="vt-brand-word">{{ hostname }}</h3>
  		</a>
  		<ul class="vt-rail-list" id="vt-rail-list"></ul>
  		<div class="vt-rail-foot">
