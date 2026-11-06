@@ -781,6 +781,8 @@ h2, h3{
 .vt-app .vt-node-ap { justify-self: stretch; align-self: center; padding: 12px; border-color: color-mix(in oklab, var(--vt-accent-line) 40%, var(--vt-line)); }
 .vt-app .vt-node-ap .vt-node-ico { background: var(--vt-accent-fill); color: var(--vt-accent-fill-ink); }
 .vt-app .vt-node-ap .vt-node-title { font-size: var(--vt-fs-md); }
+/* plain text, unlike a radio's: a wider font or language stays inside */
+.vt-app .vt-node-ap .vt-node-kicker { display: block; overflow: hidden; text-overflow: ellipsis; }
 .vt-app .vt-node-gen { text-transform: none; letter-spacing: 0; font-weight: var(--vt-fw-medium); }
 .vt-app .vt-node-radio { padding: 8px 12px; }
 .vt-app .vt-node-net, .vt-app .vt-node-net:hover { text-decoration: none; color: var(--vt-text); }
@@ -866,10 +868,17 @@ h2, h3{
 .vt-app .vt-branch { display: grid; grid-template-columns: minmax(136px, 172px) minmax(0, 1fr); column-gap: 34px; align-items: center; min-width: 0; }
 .vt-app .vt-branch-ssids { display: flex; flex-direction: column; gap: var(--vt-sp-2); min-width: 0; }
 .vt-app .vt-branch-ssids .vt-node { max-width: 260px; }
+/* a network has no second column: its rates take that room */
+.vt-app .vt-branch > .vt-node-net { grid-column: 1 / -1; justify-self: start; width: 100%; max-width: 260px; }
 
-/* medium widths: the rates need their column, and the branches have room to give */
+/* medium widths: the rates need their column, and the branches have room
+   to give; what a radio or the Wired node leads to goes under it, too
+   narrow beside it */
 @container vthero (max-width: 1020px) {
-	.vt-app .vt-path { grid-template-columns: minmax(150px, 1.05fr) minmax(136px, .9fr) minmax(170px, 1.1fr) minmax(204px, 2fr); }
+	.vt-app .vt-path { grid-template-columns: minmax(150px, 1.05fr) minmax(136px, .9fr) minmax(190px, 1.1fr) minmax(204px, 2fr); }
+	.vt-app .vt-branch { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+	.vt-app .vt-branch > .vt-node { justify-self: start; min-width: min(200px, 100%); }
+	.vt-app .vt-branch-ssids { padding-left: 34px; }
 }
 @container vthero (max-width: 700px) {
 	.vt-app .vt-path { grid-template-columns: minmax(0, 1fr); gap: 12px; min-height: 0; }
@@ -877,9 +886,6 @@ h2, h3{
 	.vt-app .vt-link-label { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; justify-content: flex-start; padding: 0 0 0 44px; }
 	.vt-app .vt-link-label > * { align-self: center; }
 	.vt-app .vt-branches { padding-left: 34px; gap: 12px; }
-	.vt-app .vt-branch { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
-	.vt-app .vt-branch > .vt-node { justify-self: start; min-width: 200px; }
-	.vt-app .vt-branch-ssids { padding-left: 34px; }
 	.vt-app .vt-branch-ssids .vt-node { max-width: none; align-self: stretch; }
 	/* one column: the main line, its rates, the other lines set in (their
 	   wires join the main line's drop into the device), the device */

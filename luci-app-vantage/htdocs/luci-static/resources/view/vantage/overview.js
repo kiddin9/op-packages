@@ -1846,13 +1846,14 @@ return view.extend({
 	},
 
 	/* the nodes the path shows: rebuilt only when this changes (a radio,
-	   SSID or network comes or goes); a poll updates text in place */
+	   SSID, network or wired port comes or goes); a poll updates text in
+	   place */
 	heroKey: function() {
-		var m = this.m, lines = '\nlines=' + this.extraLines().map(function(x) { return x.iface; }).join(',');
-		if (m.wired) return 'w\n' + m.networks.filter(function(n) { return n.up; }).slice(0, 8).map(function(n) { return n.name; }).join('\n') + lines;
+		var m = this.m, tail = '\nwired=' + this.wiredPorts().join(',') + '\nlines=' + this.extraLines().map(function(x) { return x.iface; }).join(',');
+		if (m.wired) return 'w\n' + m.networks.filter(function(n) { return n.up; }).slice(0, 8).map(function(n) { return n.name; }).join('\n') + tail;
 		return 'r\n' + m.radios.map(function(r) {
 			return r.id + '=' + m.ssids.filter(function(s) { return s.radio === r.id; }).map(function(s) { return s.id; }).join(',');
-		}).join('\n') + '\nwired=' + this.wiredPorts().join(',') + lines;
+		}).join('\n') + tail;
 	},
 
 	/* the lines to the internet beside the main one (failover, mwan3;
@@ -2000,26 +2001,26 @@ return view.extend({
 				h.radios.push(b);
 			});
 			if (!h.radios.length) h.branches.appendChild(E('div', { 'class': 'vt-empty-inline' }, [ _('No radios reported') ]));
-			/* wired hosts downstream: one branch beside the radios, a node
-			   per port */
-			var ports = this.wiredPorts();
-			if (ports.length) {
-				var wb = { id: 'wired', wired: true, ssids: [], title: span('vt-node-title vt-tn'), sub: span('vt-node-sub vt-tn') };
-				wb.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-radio', 'click': function() { self.showWired(null); } }, [
-					E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-kicker' }, [ _('Wired') ]), wb.title, wb.sub ])
+		}
+		/* wired hosts downstream: one branch beside the radios or the
+		   networks, a node per port; its id is no interface's name */
+		var ports = this.wiredPorts();
+		if (ports.length) {
+			var wb = { id: ':wired', wired: true, ssids: [], title: span('vt-node-title vt-tn'), sub: span('vt-node-sub vt-tn') };
+			wb.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-radio', 'click': function() { self.showWired(null); } }, [
+				E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-kicker' }, [ _('Wired') ]), wb.title, wb.sub ])
+			]);
+			var wcol = E('div', { 'class': 'vt-branch-ssids' });
+			ports.forEach(function(p) {
+				var sn = { id: 'port:' + p, port: p, name: E('span'), count: span('vt-tn'), rate: span('vt-node-sub vt-tn') };
+				sn.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-ssid', 'click': function() { self.showWired(p); } }, [
+					E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-title vt-ssid-name' }, [ sn.name ]), E('span', { 'class': 'vt-node-sub' }, [ sn.count ]), sn.rate ])
 				]);
-				var wcol = E('div', { 'class': 'vt-branch-ssids' });
-				ports.forEach(function(p) {
-					var sn = { id: 'port:' + p, port: p, name: E('span'), count: span('vt-tn'), rate: span('vt-node-sub vt-tn') };
-					sn.el = E('button', { 'type': 'button', 'class': 'vt-node vt-node-ssid', 'click': function() { self.showWired(p); } }, [
-						E('span', { 'class': 'vt-node-body' }, [ E('span', { 'class': 'vt-node-title vt-ssid-name' }, [ sn.name ]), E('span', { 'class': 'vt-node-sub' }, [ sn.count ]), sn.rate ])
-					]);
-					wb.ssids.push(sn);
-					wcol.appendChild(sn.el);
-				});
-				wb.wrap = E('div', { 'class': 'vt-branch' }, [ wb.el, wcol ]);
-				h.radios.push(wb);
-			}
+				wb.ssids.push(sn);
+				wcol.appendChild(sn.el);
+			});
+			wb.wrap = E('div', { 'class': 'vt-branch' }, [ wb.el, wcol ]);
+			h.radios.push(wb);
 		}
 		h.radios.forEach(function(b) {
 			h.branches.appendChild(b.wrap);
@@ -2093,6 +2094,7 @@ return view.extend({
 			var nets = Object.create(null);
 			m.networks.forEach(function(n) { if (n.up && !nets[n.name]) nets[n.name] = n; });
 			h.radios.forEach(function(b) {
+				if (b.wired) { self.updateWiredBranch(b); return; }
 				var n = nets[b.id];
 				if (!n) return;
 				var r = n.dev ? st.devRates[n.dev] : null;
