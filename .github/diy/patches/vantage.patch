@@ -165,23 +165,21 @@
 
 --- a/luci-theme-vantage/ucode/template/themes/vantage/header.ut
 +++ b/luci-theme-vantage/ucode/template/themes/vantage/header.ut
-@@ -16,6 +16,8 @@
- 	const found = !!dispatched?.action?.type && dispatched.action.type != 'firstchild';
- 	const page_title = !authed ? null : !found ? _('Not found') : dispatched?.title ? striptags(_(dispatched.title)) : null;
- 	const lang = entityencode(dispatcher.lang ?? 'en', true);
-+	const boardinfo = ubus.call("system", "board");
-+	const hostname = striptags(boardinfo?.hostname ?? '?');
+@@ -53,6 +53,8 @@
+ 		});
+ 		return would ? 'relogin' : 'no';
+ 	})();
++const boardinfo = ubus.call("system", "board");
++const hostname = striptags(boardinfo?.hostname ?? '?');
  -%}
  <!DOCTYPE html>
- <html lang="{{ lang }}" data-darkmode="true">
-@@ -26,8 +28,8 @@
- <title>{{ page_title ? entityencode(page_title, true) + ' · ' : '' }}LuCI</title>
- <script>
- (function (r) {
--	var p = 'auto', rail = '';
--	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || ''; } catch (e) {}
-+	var p = 'auto', rail = 'pinned';
-+	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || 'pinned'; } catch (e) {}
+ <html lang="{{ lang }}" data-darkmode="true" data-vt-look-theme="{{ look_theme }}" data-vt-look-login="{{ look_login }}" data-vt-look-backdrop="{{ look_backdrop }}" data-vt-look-chart="{{ look_chart }}" data-vt-look-layout="{{ look_layout }}" data-vt-look-save="{{ look_save }}">
+@@ -73,7 +75,7 @@
+ 		return ok[0];
+ 	}
+ 	var p = look('theme', 'vantage.theme.own', 'vantage.theme', [ 'auto', 'light', 'dark' ]), rail = '';
+-	try { rail = localStorage.getItem('vantage.rail') || ''; } catch (e) {}
++	try { rail = localStorage.getItem('vantage.rail') || 'pinned'; } catch (e) {}
  	var dark = (p === 'dark') || (p !== 'light' && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
  	r.setAttribute('data-darkmode', dark ? 'true' : 'false');
  	r.setAttribute('data-theme', p);
