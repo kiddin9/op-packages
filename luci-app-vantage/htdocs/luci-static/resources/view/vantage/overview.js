@@ -583,8 +583,8 @@ return view.extend({
 	asidePage: function(media, themeHere, hasLuciDashboard, hasOverview) {
 		var theme = (typeof media === 'string') ? media.replace(/\/+$/, '').replace(/^.*\//, '') : '';
 		if (!theme || theme === 'vantage' || themeHere !== true) return null;
-		if (hasLuciDashboard === true) return LUCI_DASHBOARD.slice();
-		return hasOverview === false ? null : LUCI_OVERVIEW.slice();
+		// if (hasLuciDashboard === true) return LUCI_DASHBOARD.slice();
+		// return hasOverview === false ? null : LUCI_OVERVIEW.slice();
 	},
 
 	/* before load() asks for anything. Under Vantage (or an unnamed theme)
