@@ -203,15 +203,15 @@
 
 --- a/luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut
 +++ b/luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut
-@@ -12,6 +12,8 @@
- 	if (type(tls) == 'string')
- 		tls = split(tls, /\s+/);
- 	const tls_ports = uniq(filter(map(tls, e => +(match(e, /\d+$/)?.[0] ?? 0)), p => (p > 0 && p <= 65535)));
+@@ -17,6 +17,8 @@
+ 	const look = (opt, ok) => { const v = uci.get('vantage_theme', 'appearance', opt); return (type(v) == 'string' && index(ok, v) >= 0) ? v : ''; };
+ 	const look_theme = look('theme', [ 'auto', 'light', 'dark' ]);
+ 	const look_login = look('login', [ 'grid', 'stars', 'none' ]);
 +	const boardinfo = ubus.call("system", "board");
 +	const hostname = striptags(boardinfo?.hostname ?? '?');
  -%}
  <!DOCTYPE html>
- <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true">
+ <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true" data-vt-look-theme="{{ look_theme }}" data-vt-look-login="{{ look_login }}">
 @@ -37,8 +39,18 @@
  <main class="vt-login">
  	<div class="vt-login-card">
