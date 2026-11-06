@@ -4,8 +4,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=lucky
-PKG_VERSION:=2.27.2
-PKG_RELEASE:=4
+PKG_VERSION:=3.5.0
+PKG_RELEASE:=5
 PKGARCH:=all 
 LUCKY_CONF_DIR := /etc/config/lucky.daji
 LUCKY_TMP_BACKUP := /tmp/luckyconfdir
