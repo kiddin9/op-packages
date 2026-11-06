@@ -490,8 +490,25 @@ function writeFolds(v) {
 	try { window.localStorage.setItem(FOLD_KEY, JSON.stringify(v)); } catch (e) {}
 }
 
-/* Tile layouts the viewer arranged, per screen class, in this browser;
-   vantage.layout validates whatever comes back */
+/* What the Vantage theme's template hands over (data-vt-look-*): under it
+   the router keeps the layouts and the chart style with the Appearance */
+function lookAttr(name) {
+	var root = typeof document !== 'undefined' ? document.documentElement : null;
+	return (root && root.getAttribute ? root.getAttribute(name) : null) || '';
+}
+
+function lookSaves() { return lookAttr('data-vt-look-save') === 'yes'; }
+
+/* Done hands the theme what changed; true if it took it (a login that may
+   save). Without it, or for any other login, it stays in this browser. */
+function offerView(values, done) {
+	var ev = null;
+	try { ev = new CustomEvent('vantage:view-save', { detail: { values: values, done: done }, cancelable: true }); } catch (e) { ev = null; }
+	return !!ev && typeof window.dispatchEvent === 'function' && !window.dispatchEvent(ev);
+}
+
+/* Tile layouts the viewer arranged, per screen class, this browser's copy
+   of them and the router's; vantage.layout validates whatever comes back */
 var LAYOUT_KEY = 'vantage.layout.v1';
 
 function readLayouts() {
@@ -500,7 +517,7 @@ function readLayouts() {
 	var out = Object.create(null);
 	if (v && typeof v === 'object' && !Array.isArray(v))
 		Object.keys(v).forEach(function(k) { if (/^(wide|mid|narrow)(-wired)?$/.test(k) && Array.isArray(v[k])) out[k] = v[k]; });
-	return out;
+	return layout.merge(out, layout.decode(lookAttr('data-vt-look-layout')), lookSaves());
 }
 
 function writeLayouts(v) {
@@ -511,33 +528,42 @@ function writeLayouts(v) {
 }
 
 /* The throughput chart style the viewer picked (series.CHART_STYLES),
-   in this browser */
+   this browser's copy of it and the router's */
 var CHART_KEY = 'vantage.chart.v1';
 
 function readChartStyle() {
 	var v = null;
 	try { v = window.localStorage.getItem(CHART_KEY); } catch (e) { v = null; }
-	return series.CHART_STYLES.indexOf(v) >= 0 ? v : series.CHART_STYLES[0];
+	return series.chartPick(lookAttr('data-vt-look-chart'), v, lookSaves());
 }
 
 function writeChartStyle(v) {
 	try {
-		if (v === series.CHART_STYLES[0]) window.localStorage.removeItem(CHART_KEY);
+		/* the default needs no entry, unless the router has another */
+		if (v === series.CHART_STYLES[0] && !lookAttr('data-vt-look-chart')) window.localStorage.removeItem(CHART_KEY);
 		else window.localStorage.setItem(CHART_KEY, v);
 	} catch (e) {}
 }
 
-/* The network path's backdrop the viewer picked (backdrop.STYLES), in
-   this browser */
+/* The network path's backdrop the viewer picked (backdrop.STYLES). Under
+   the Vantage theme its Appearance decides (saved for every browser on
+   the router where the viewer may) and keeps the one in force in
+   data-vt-backdrop; elsewhere this browser keeps it. */
 var BACKDROP_KEY = 'vantage.backdrop.v1';
 
 function readBackdrop() {
-	var v = null;
+	var root = typeof document !== 'undefined' ? document.documentElement : null;
+	var v = root && root.getAttribute ? root.getAttribute('data-vt-backdrop') : null;
+	if (backdrop.STYLES.indexOf(v) >= 0) return v;
 	try { v = window.localStorage.getItem(BACKDROP_KEY); } catch (e) { v = null; }
 	return backdrop.STYLES.indexOf(v) >= 0 ? v : backdrop.STYLES[0];
 }
 
 function writeBackdrop(v) {
+	/* the theme takes it (and cancels the event) */
+	var ev = null;
+	try { ev = new CustomEvent('vantage:backdrop-set', { detail: v, cancelable: true }); } catch (e) { ev = null; }
+	if (ev && typeof window.dispatchEvent === 'function' && !window.dispatchEvent(ev)) return;
 	try {
 		if (v === backdrop.STYLES[0]) window.localStorage.removeItem(BACKDROP_KEY);
 		else window.localStorage.setItem(BACKDROP_KEY, v);
@@ -728,7 +754,7 @@ return view.extend({
 		this.backdropStyle = readBackdrop();
 		/* picked under the theme's Appearance (menu-vantage.js), here or
 		   in another tab */
-		var self = this, follow = function() { self.setBackdrop(readBackdrop()); };
+		var self = this, follow = function() { self.showBackdrop(readBackdrop()); };
 		if (window.addEventListener) {
 			window.addEventListener('vantage:backdrop', follow);
 			window.addEventListener('storage', function(ev) { if (ev.key === BACKDROP_KEY) follow(); });
@@ -1283,6 +1309,7 @@ return view.extend({
 	},
 
 	setEditing: function(on) {
+		if (!on && this.editing && this.saveView()) return;
 		this.editing = !!on;
 		this.el.root.classList.toggle('vt-editing', this.editing);
 		this.el.layoutBtn.setAttribute('aria-pressed', String(this.editing));
@@ -1291,8 +1318,46 @@ return view.extend({
 		   at once, nothing held from the other mode */
 		this.held = Object.create(null);
 		this.doLayout();
-		if (this.editing) this.el.editDone.focus();
+		if (this.editing) {
+			this.viewStart = this.viewValues();
+			this.editNote(lookAttr('data-vt-look-save') === 'relogin' ? _('Log in again to save this for every browser.') : '');
+			this.el.editDone.focus();
+		}
 		else this.el.layoutBtn.focus();
+	},
+
+	editNote: function(text) {
+		this.el.editNote.hidden = !text;
+		txt(this.el.editNote, text);
+	},
+
+	/* the options of /etc/config/vantage_theme this dashboard stands for */
+	viewValues: function() {
+		var self = this, out = { chart: this.chartStyle };
+		[ 'wide', 'mid', 'narrow' ].forEach(function(tier) {
+			[ false, true ].forEach(function(wired) {
+				var k = layout.key(tier, wired);
+				out[layout.option(k)] = self.layouts[k] ? layout.encode(self.layouts[k]) : 'default';
+			});
+		});
+		return out;
+	},
+
+	/* Done: what changed goes to the theme in one write. True while that
+	   runs: Customize closes when it is saved, and stays open with a note
+	   if it was not, so the pick can be saved again. */
+	saveView: function() {
+		var self = this, now = this.viewValues(), then = this.viewStart || {}, out = {};
+		if (this.viewSaving) return true;
+		Object.keys(now).forEach(function(k) { if (now[k] !== then[k]) out[k] = now[k]; });
+		if (!Object.keys(out).length) return false;
+		this.viewSaving = offerView(out, function(ok) {
+			self.viewSaving = false;
+			if (!ok) { self.editNote(_('Could not save this for every browser. Try again.')); return; }
+			self.viewStart = now;
+			self.setEditing(false);
+		});
+		return this.viewSaving;
 	},
 
 	/* the throughput chart style, picked under Customize */
@@ -1322,10 +1387,18 @@ return view.extend({
 		return E('div', { 'class': 'vt-edit-field' }, [ E('label', { 'for': 'vt-backdrop-style' }, [ _('Network path background') ]), pick ]);
 	},
 
+	/* picked here (Customize): saved, and shown */
 	setBackdrop: function(v) {
 		if (backdrop.STYLES.indexOf(v) < 0 || v === this.backdropStyle) return;
-		this.backdropStyle = v;
 		writeBackdrop(v);
+		this.showBackdrop(v);
+	},
+
+	/* picked elsewhere (the theme's Appearance, another tab): shown only,
+	   never saved back */
+	showBackdrop: function(v) {
+		if (backdrop.STYLES.indexOf(v) < 0 || v === this.backdropStyle) return;
+		this.backdropStyle = v;
 		if (this.backdrop) this.backdrop.style(v);
 		if (this.backdropPick && this.backdropPick.value !== v) this.backdropPick.value = v;
 	},
@@ -1341,10 +1414,11 @@ return view.extend({
 	buildEditBar: function() {
 		var self = this, el = this.el;
 		el.editHint = E('span', { 'class': 'vt-hint' });
+		el.editNote = E('span', { 'class': 'vt-hint', 'role': 'status', 'hidden': 'hidden' });
 		el.editHidden = E('div', { 'class': 'vt-edit-hidden' });
 		el.editSay = E('span', { 'class': 'vt-sr', 'role': 'status', 'aria-live': 'polite' });
 		el.editBar = E('div', { 'class': 'vt-editbar', 'role': 'region', 'aria-label': _('Customize the dashboard'), 'hidden': 'hidden' }, [
-			E('div', { 'class': 'vt-editbar-text' }, [ E('strong', {}, [ _('Customize the dashboard') ]), el.editHint ]),
+			E('div', { 'class': 'vt-editbar-text' }, [ E('strong', {}, [ _('Customize the dashboard') ]), el.editHint, el.editNote ]),
 			el.editHidden,
 			E('div', { 'class': 'vt-edit-picks' }, [ this.buildChartPick(), this.buildBackdropPick() ]),
 			E('div', { 'class': 'vt-editbar-actions' }, [
@@ -1417,9 +1491,10 @@ return view.extend({
 		var self = this, l = this.lay;
 		if (!l) return;
 		var shown = l.list.filter(function(e) { return !e.hide; });
-		txt(this.el.editHint, l.tier === 'wide' ? _('Drag a tile by its handle or use its buttons. Saved in this browser for wide screens.')
-			: l.tier === 'mid' ? _('Drag a tile by its handle or use its buttons. Saved in this browser for medium screens.')
-			: _('Drag a tile by its handle or use its buttons. Saved in this browser for narrow screens.'));
+		var every = lookSaves();
+		txt(this.el.editHint, l.tier === 'wide' ? (every ? _('Drag a tile by its handle or use its buttons. Done saves it for wide screens in every browser.') : _('Drag a tile by its handle or use its buttons. Saved in this browser for wide screens.'))
+			: l.tier === 'mid' ? (every ? _('Drag a tile by its handle or use its buttons. Done saves it for medium screens in every browser.') : _('Drag a tile by its handle or use its buttons. Saved in this browser for medium screens.'))
+			: every ? _('Drag a tile by its handle or use its buttons. Done saves it for narrow screens in every browser.') : _('Drag a tile by its handle or use its buttons. Saved in this browser for narrow screens.'));
 		this.el.root.classList.toggle('vt-edit-1col', l.cols === 1);
 		shown.forEach(function(e, i) {
 			var o = self.ov[e.id];

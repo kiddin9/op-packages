@@ -123,6 +123,14 @@ return baseclass.extend({
 	   Linear scales never go below CHART_FLOOR, so an idle link stays a
 	   flat line, and round up with niceCeil. */
 	CHART_STYLES: [ 'overlay', 'log', 'mirror', 'mirror-split', 'lanes' ],
+
+	/* the style in force: the router's first for a login that may save
+	   there, for any other only where this browser has none */
+	chartPick: function(saved, mine, first) {
+		var ok = this.CHART_STYLES;
+		if (ok.indexOf(saved) >= 0 && (first || ok.indexOf(mine) < 0)) return saved;
+		return ok.indexOf(mine) >= 0 ? mine : ok[0];
+	},
 	CHART_FLOOR: 1e4,
 
 	chartGeom: function(style, peakDn, peakUp) {

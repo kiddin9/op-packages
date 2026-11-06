@@ -11,7 +11,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-vantage
 PKG_VERSION:=1.0.15
-PKG_RELEASE:=33
+PKG_RELEASE:=34
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage theme
@@ -33,6 +33,11 @@ LUCI_MINIFY_CSS:=0
 # them the package version instead of one derived from git history.
 LUCI_BASENAME:=vantage-theme
 PKG_PO_VERSION:=$(PKG_VERSION)-r$(PKG_RELEASE)
+
+# Appearance for every browser (Appearance under the colour-theme button)
+define Package/luci-theme-vantage/conffiles
+/etc/config/vantage_theme
+endef
 
 define Package/luci-theme-vantage/postrm
 #!/bin/sh

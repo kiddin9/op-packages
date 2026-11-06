@@ -30,6 +30,35 @@ const LOGIN_KEY = 'vantage.login';      /* read by the login page's login.js */
    picked here when the dashboard is installed; the dashboard listens for BACKDROP_EVENT */
 const BACKDROP_KEY = 'vantage.backdrop.v1';
 const BACKDROP_EVENT = 'vantage:backdrop';
+/* Appearance for every browser: saved on the router, in
+   /etc/config/vantage_theme (section appearance), by whoever may (rpcd
+   group luci-theme-vantage); header.ut and sysauth.ut hand its values over
+   as data-vt-look-<name>, and data-vt-look-save says whether this login
+   may save: 'yes', 'relogin' (it would at a new login: one from before
+   the group existed) or 'no'. A pick made without that right stays in
+   this browser (the own key) and wins here, but not for a login that may
+   save (those keys are dropped then); this browser's last pick (the old
+   key, also what the dashboard reads under another theme) counts until
+   the router has one. */
+const LOOK = {
+	theme: { own: 'vantage.theme.own', before: THEME_KEY, ok: [ 'auto', 'light', 'dark' ] },
+	login: { own: 'vantage.login.own', before: LOGIN_KEY, ok: [ 'grid', 'stars', 'none' ] },
+	backdrop: { own: 'vantage.backdrop.own', before: BACKDROP_KEY, ok: [ 'grid', 'stars', 'none' ] }
+};
+const LOOK_SYNC = 'vantage.look';         /* another tab saved one: { name, value } */
+const LOOK_SET_EVENT = 'vantage:backdrop-set';   /* the dashboard's own picker hands its pick over */
+/* The dashboard's Customize saves its chart style and layouts with the
+   Appearance, in one write when it is done: { values, done(ok) }. The
+   template reads them back with these same rules. */
+const VIEW_SAVE_EVENT = 'vantage:view-save';
+const VIEW_CHARTS = [ 'overlay', 'log', 'mirror', 'mirror-split', 'lanes' ];
+const VIEW_LAYOUT = /^(default|[a-z]{1,8}:[0-3]:[1-4](:h)?( [a-z]{1,8}:[0-3]:[1-4](:h)?){0,7})$/;
+const callLookSet = rpc.declare({ object: 'uci', method: 'set', params: [ 'config', 'section', 'values' ], reject: true });
+const callLookCommit = rpc.declare({ object: 'uci', method: 'commit', params: [ 'config' ], reject: true });
+/* While an apply awaits its rollback, rpcd refuses commit and revert alike, but not set: a pick set
+   then could not be taken back, and would go out unseen with the next Save & Apply. So a save starts
+   with this revert, which has nothing to undo and is refused in just that case. */
+const callLookRevert = rpc.declare({ object: 'uci', method: 'revert', params: [ 'config' ], reject: true });
 
 /* 24px stroke icons, drawn for this theme: constant [tag, attributes] lists,
    built with createElementNS (no markup parsing, no user data) */
@@ -124,6 +153,30 @@ function svg(name, size) {
 }
 
 function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+/* the value in force, from [ pending, own, router, before ]: the first
+   the theme knows, else the first choice (the default); the templates'
+   inline scripts and login.js do the same without the pending one */
+function lookValue(ok, list) {
+	for (const v of list) if (ok.indexOf(v) >= 0) return v;
+	return ok[0];
+}
+function lookWrite(values) {
+	return callLookRevert('vantage_theme')
+		.then(() => callLookSet('vantage_theme', 'appearance', values))
+		.then(() => callLookCommit('vantage_theme').catch(e => callLookRevert('vantage_theme').then(() => { throw e; }, () => { throw e; })));
+}
+function viewValue(name, value) {
+	if (name === 'chart') return VIEW_CHARTS.indexOf(value) >= 0;
+	return /^layout_(wide|mid|narrow)(_wired)?$/.test(name) && typeof value === 'string' && VIEW_LAYOUT.test(value);
+}
+
+/* the router's value of one, as the templates set it (literal names) */
+function setLookAttr(root, name, value) {
+	if (name === 'theme') root.setAttribute('data-vt-look-theme', value);
+	else if (name === 'login') root.setAttribute('data-vt-look-login', value);
+	else if (name === 'backdrop') root.setAttribute('data-vt-look-backdrop', value);
+}
 function storageSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
 
 function isTyping(el) {
@@ -775,7 +828,7 @@ return baseclass.extend({
 		/* Appearance opened before the menu came in lacks the network
 		   path's group (hasDashboard): add it now */
 		if (this.appear && this.hasDashboard() && !this.appear.querySelector('input[name="vt-backdrop"]')) {
-			this.appear.appendChild(this.backdropGroup());
+			this.appear.insertBefore(this.backdropGroup(), this.appearNote);
 			this.syncAppearance();
 		}
 		this.dp = (L.env.dispatchpath || []).slice();
@@ -1423,14 +1476,56 @@ return baseclass.extend({
 
 	/* -------------------------------------------------------- theme */
 
+	/* may this login save Appearance for every browser (header.ut): yes, relogin or no */
+	lookState() {
+		const v = this.root.getAttribute('data-vt-look-save');
+		return v === 'yes' || v === 'relogin' ? v : 'no';
+	},
+
+	/* one Appearance setting (LOOK), the value in force */
+	lookPref(name) {
+		const k = LOOK[name], mine = this.lookState() === 'yes' ? null : storageGet(k.own);
+		return lookValue(k.ok, [ (this.lookPending || {})[name], mine, this.root.getAttribute('data-vt-look-' + name), storageGet(k.before) ]);
+	},
+
+	/* Save one for every browser where this login may, else for this
+	   browser. Saves queue in order and only the latest pick of each is
+	   written; `apply` shows it at once and again when done. A save that
+	   fails leaves the pick shown on this page, with a note. */
+	setLook(name, value, apply) {
+		const k = LOOK[name];
+		const pending = this.lookPending || (this.lookPending = {});
+		if (k.ok.indexOf(value) < 0 || pending[name] === value) return;
+		if (this.lookState() !== 'yes') {
+			storageSet(k.own, value);
+			storageSet(k.before, value);
+			apply();
+			return;
+		}
+		const seqs = this.lookSeqs || (this.lookSeqs = {}), seq = seqs[name] = (seqs[name] || 0) + 1;
+		pending[name] = value;
+		this.lookFailed = false;
+		apply();
+		const latest = () => seqs[name] === seq;
+		this.lookChain = (this.lookChain || Promise.resolve()).then(() => {
+			if (!latest()) return;
+			return lookWrite({ [name]: value })
+				.then(() => {
+					/* the router's value first, so other tabs never see a gap */
+					setLookAttr(this.root, name, value);
+					storageSet(LOOK_SYNC, JSON.stringify({ name: name, value: value, at: Date.now() }));
+					storageSet(k.before, value);
+					if (latest()) delete pending[name];
+				}, () => { if (latest()) this.lookFailed = true; });
+		}).then(apply);
+	},
+
 	themePref() {
-		const p = storageGet(THEME_KEY);
-		return (p === 'light' || p === 'dark') ? p : 'auto';
+		return this.lookPref('theme');
 	},
 
 	setTheme(pref) {
-		storageSet(THEME_KEY, pref === 'auto' ? null : pref);
-		this.applyTheme();
+		this.setLook('theme', pref, () => this.applyTheme());
 	},
 
 	applyTheme() {
@@ -1450,8 +1545,7 @@ return baseclass.extend({
 
 	/* the login page's backdrop (login.js): grid packets unless set */
 	loginPref() {
-		const p = storageGet(LOGIN_KEY);
-		return (p === 'stars' || p === 'none') ? p : 'grid';
+		return this.lookPref('login');
 	},
 
 	loginNames() {
@@ -1459,8 +1553,7 @@ return baseclass.extend({
 	},
 
 	setLoginPref(pref) {
-		storageSet(LOGIN_KEY, pref === 'grid' ? null : pref);
-		this.syncAppearance();
+		this.setLook('login', pref, () => this.syncAppearance());
 	},
 
 	/* Vantage's dashboard, where this user may open it: its network path
@@ -1470,13 +1563,20 @@ return baseclass.extend({
 	},
 
 	backdropPref() {
-		const p = storageGet(BACKDROP_KEY);
-		return (p === 'stars' || p === 'none') ? p : 'grid';
+		return this.lookPref('backdrop');
 	},
 
 	setBackdropPref(pref) {
-		storageSet(BACKDROP_KEY, pref === 'grid' ? null : pref);
-		window.dispatchEvent(new CustomEvent(BACKDROP_EVENT));
+		this.setLook('backdrop', pref, () => this.applyBackdrop());
+	},
+
+	/* the dashboard reads the one in force from data-vt-backdrop */
+	applyBackdrop() {
+		const v = this.backdropPref();
+		if (this.root.getAttribute('data-vt-backdrop') !== v) {
+			this.root.setAttribute('data-vt-backdrop', v);
+			window.dispatchEvent(new CustomEvent(BACKDROP_EVENT));
+		}
 		this.syncAppearance();
 	},
 
@@ -1495,11 +1595,42 @@ return baseclass.extend({
 		}
 		const mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
 		if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (this.themePref() === 'auto') this.applyTheme(); });
+		/* a login that may save: this browser's private picks no longer count */
+		if (this.lookState() === 'yes') Object.keys(LOOK).forEach(n => storageSet(LOOK[n].own, null));
+		/* another tab of this browser changed one, or saved one on the router */
+		const keys = [ LOOK_SYNC ];
+		Object.keys(LOOK).forEach(n => keys.push(LOOK[n].own, LOOK[n].before));
 		window.addEventListener('storage', ev => {
-			if (ev.key === THEME_KEY) this.applyTheme();
-			else if (ev.key === LOGIN_KEY || ev.key === BACKDROP_KEY) this.syncAppearance();
+			if (keys.indexOf(ev.key) < 0) return;
+			if (ev.key === LOOK_SYNC) {
+				let m = null;
+				try { m = JSON.parse(ev.newValue); } catch (e) {}
+				if (m && Object.prototype.hasOwnProperty.call(LOOK, m.name) && LOOK[m.name].ok.indexOf(m.value) >= 0)
+					setLookAttr(this.root, m.name, m.value);
+			}
+			this.applyTheme();
+			this.applyBackdrop();
+		});
+		/* the dashboard's own picker (Customize), saved as Appearance's */
+		window.addEventListener(LOOK_SET_EVENT, ev => {
+			if (ev.detail && LOOK.backdrop.ok.indexOf(ev.detail) >= 0) {
+				ev.preventDefault();
+				this.setBackdropPref(ev.detail);
+			}
+		});
+		/* Customize's Done, for a login that may save; for any other it
+		   stays in that browser, which the dashboard says */
+		window.addEventListener(VIEW_SAVE_EVENT, ev => {
+			const d = ev.detail, values = {};
+			if (this.lookState() !== 'yes' || !d || !d.values || typeof d.done !== 'function') return;
+			Object.keys(d.values).forEach(n => { if (viewValue(n, d.values[n])) values[n] = d.values[n]; });
+			if (!Object.keys(values).length) return;
+			ev.preventDefault();
+			this.lookChain = (this.lookChain || Promise.resolve()).then(() => lookWrite(values))
+				.then(() => d.done(true), () => d.done(false)).catch(() => {});
 		});
 		this.applyTheme();
+		this.applyBackdrop();
 	},
 
 	/* Appearance, under the colour-theme button: the colour theme, the
@@ -1535,7 +1666,10 @@ return baseclass.extend({
 				[ 'auto', _('Auto', 'vantage-theme'), 'auto' ], [ 'light', _('Light', 'vantage-theme'), 'sun' ], [ 'dark', _('Dark', 'vantage-theme'), 'moon' ]
 			], v => this.setTheme(v)),
 			group('vt-login', _('Login background'), [ [ 'grid', login.grid ], [ 'stars', login.stars ], [ 'none', login.none ] ], v => this.setLoginPref(v))
-		].concat(this.hasDashboard() ? [ this.backdropGroup() ] : []));
+		].concat(this.hasDashboard() ? [ this.backdropGroup() ] : [], [
+			/* where the picks are kept, when not for every browser (syncAppearance) */
+			(this.appearNote = E('p', { 'class': 'vt-appear-note', 'role': 'status', 'hidden': 'hidden' }))
+		]));
 		box.addEventListener('keydown', ev => {
 			if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.closeAppearance(true); }
 			else if (ev.key === 'Tab') {
@@ -1561,6 +1695,14 @@ return baseclass.extend({
 		if (!this.appear) return;
 		const now = { 'vt-colour': this.themePref(), 'vt-login': this.loginPref(), 'vt-backdrop': this.backdropPref() };
 		Array.prototype.forEach.call(this.appear.querySelectorAll('input[type="radio"]'), r => { r.checked = (now[r.name] === r.value); });
+		const state = this.lookState();
+		const note = state === 'relogin' ? _('Log in again to save Appearance for every browser.')
+			: state !== 'yes' ? _('Saved in this browser only.')
+			: this.lookFailed ? _('Could not save this for every browser. Try again.') : '';
+		if (this.appearNote) {
+			if (this.appearNote.textContent !== note) this.appearNote.textContent = note;
+			this.appearNote.hidden = !note;
+		}
 	},
 
 	openAppearance(btn) {

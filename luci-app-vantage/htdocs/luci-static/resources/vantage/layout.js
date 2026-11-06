@@ -106,6 +106,45 @@ return baseclass.extend({
 		return out;
 	},
 
+	/* the option of a layout in /etc/config/vantage_theme */
+	option: function(key) { return 'layout_' + key.replace('-', '_'); },
+
+	/* a layout as that option's value: 'hero:0:4 chart:0:2:h' */
+	encode: function(list) {
+		return list.map(function(e) { return e.id + ':' + e.c + ':' + e.w + (e.hide ? ':h' : ''); }).join(' ');
+	},
+
+	/* the template's data-vt-look-layout, 'wide=hero:0:4 chart:0:2:h;mid=default',
+	   as { wide: [ ... ], mid: null }: null is the default layout. Lists go
+	   through normalize like any stored layout. */
+	decode: function(text) {
+		var out = Object.create(null);
+		String(text || '').split(';').forEach(function(part) {
+			var m = /^(wide|mid|narrow)(_wired)?=(.+)$/.exec(part);
+			if (!m) return;
+			out[m[1] + (m[2] ? '-wired' : '')] = m[3] === 'default' ? null : m[3].split(' ').map(function(t) {
+				var f = t.split(':'), e = { id: f[0], c: int(f[1], 0), w: int(f[2], 1) };
+				if (f[3] === 'h') e.hide = true;
+				return e;
+			});
+		});
+		return out;
+	},
+
+	/* this browser's layouts with the router's (decode): the router's
+	   first for a login that may save there, for any other only where
+	   this browser has none */
+	merge: function(mine, saved, first) {
+		var out = Object.create(null);
+		Object.keys(mine).forEach(function(k) { out[k] = mine[k]; });
+		Object.keys(saved).forEach(function(k) {
+			if (!first && own(out, k)) return;
+			if (saved[k]) out[k] = saved[k];
+			else delete out[k];
+		});
+		return out;
+	},
+
 	/* what is worth storing */
 	compact: function(list) {
 		return list.map(function(e) { var o = { id: e.id, c: e.c, w: e.w }; if (e.hide) o.hide = true; return o; });

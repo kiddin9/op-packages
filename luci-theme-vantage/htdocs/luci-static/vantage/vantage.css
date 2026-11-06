@@ -623,6 +623,9 @@ a.vt-crumb:hover { color: var(--text); }
 }
 .vt-appearance[hidden] { display: none; }
 .vt-appear-set { min-width: 0; margin: 0; padding: 0; border: 0; }
+/* where the picks are kept, when not for every browser */
+.vt-appear-note { max-width: 32ch; margin: 0; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+.vt-appear-note[hidden] { display: none; }
 .vt-appear-set > legend { margin: 0 0 6px; padding: 0; color: var(--text-3); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .vt-appear-track { display: flex; background: var(--seg-bg); border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line); }
 .vt-appear-opt {

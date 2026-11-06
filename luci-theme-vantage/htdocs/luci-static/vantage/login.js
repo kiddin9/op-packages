@@ -1,16 +1,19 @@
 /*
  * Vantage theme - login page backdrop, over the page grid: packets running
  * along the grid lines (the default) or a starfield flown through, as
- * picked under Appearance (localStorage vantage.login, per browser: unset,
- * "stars" or "none"). One canvas, no libraries: a frame is a handful of
- * batched draws, at most about 60 a second, and nothing runs while the
+ * picked under Appearance: saved for every browser on the router
+ * (sysauth.ut's data-vt-look-login), else in this browser (localStorage
+ * vantage.login.own for one who may not save it for everyone, vantage.login
+ * from before; menu-vantage.js lookValue). One canvas, no libraries: a
+ * frame is a handful of batched draws, at most about 60 a second, and nothing runs while the
  * window is in the background. With reduced motion it draws one still
  * frame. Logging in speeds it up while the form posts.
  */
 (function () {
 	'use strict';
-	var pick = null;
-	try { pick = localStorage.getItem('vantage.login'); } catch (e) {}
+	var v = [ null, document.documentElement.getAttribute('data-vt-look-login'), null ], ok = [ 'grid', 'stars', 'none' ], pick = 'grid', i;
+	try { v[0] = localStorage.getItem('vantage.login.own'); v[2] = localStorage.getItem('vantage.login'); } catch (e) {}
+	for (i = 2; i >= 0; i--) if (ok.indexOf(v[i]) >= 0) pick = v[i];
 	if (pick === 'none') return;
 	var cv = document.createElement('canvas'), ctx = cv.getContext && cv.getContext('2d');
 	if (!ctx || typeof Path2D !== 'function') return;

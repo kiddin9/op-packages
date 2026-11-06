@@ -16,11 +16,48 @@
 	const found = !!dispatched?.action?.type && dispatched.action.type != 'firstchild';
 	const page_title = !authed ? null : !found ? _('Not found') : dispatched?.title ? striptags(_(dispatched.title)) : null;
 	const lang = entityencode(dispatcher.lang ?? 'en', true);
-	const boardinfo = ubus.call("system", "board");
-	const hostname = striptags(boardinfo?.hostname ?? '?');
+	/* Appearance for every browser (/etc/config/vantage_theme): a value the
+	   theme knows, else '' (each browser keeps its own pick). Logged in only:
+	   nothing is read for an anonymous 404 or CSRF page */
+	const look = (opt, ok) => { const v = authed ? uci.get('vantage_theme', 'appearance', opt) : null; return (type(v) == 'string' && index(ok, v) >= 0) ? v : ''; };
+	const look_theme = look('theme', [ 'auto', 'light', 'dark' ]);
+	const look_login = look('login', [ 'grid', 'stars', 'none' ]);
+	const look_backdrop = look('backdrop', [ 'grid', 'stars', 'none' ]);
+	/* The dashboard's chart style and layouts, saved with it. A layout passes
+	   only in the form vantage.layout reads, 'wide=hero:0:4 chart:0:2:h;mid=default' */
+	const look_chart = look('chart', [ 'overlay', 'log', 'mirror', 'mirror-split', 'lanes' ]);
+	const look_layout = (() => {
+		let out = [];
+		if (authed)
+			for (let k in [ 'wide', 'mid', 'narrow', 'wide_wired', 'mid_wired', 'narrow_wired' ]) {
+				const v = uci.get('vantage_theme', 'appearance', 'layout_' + k);
+				if (type(v) == 'string' && match(v, /^(default|[a-z]{1,8}:[0-3]:[1-4](:h)?( [a-z]{1,8}:[0-3]:[1-4](:h)?){0,7})$/))
+					push(out, k + '=' + v);
+			}
+		return join(';', out);
+	})();
+	/* May this login save it for every browser? 'yes'; 'relogin' when rpcd
+	   would grant the theme's group at a new login and no reload of rpcd
+	   has given it to this one yet (the install's reload reaches open
+	   logins); 'no' otherwise, and without the config's section. Only the
+	   word reaches the page. */
+	const look_save = (() => {
+		if (!authed || type(uci.get_all('vantage_theme', 'appearance')) != 'object') return 'no';
+		const held = ctx.authacl?.['access-group']?.['luci-theme-vantage'];
+		if (type(held) == 'array' && index(held, 'write') >= 0) return 'yes';
+		let would = false;
+		uci.foreach('rpcd', 'login', s => {
+			if (s.username !== ctx.authuser) return;
+			for (let p in (type(s.write) == 'array' ? s.write : [ s.write ]))
+				if (type(p) == 'string' && wildcard('luci-theme-vantage', p)) would = true;
+		});
+		return would ? 'relogin' : 'no';
+	})();
+const boardinfo = ubus.call("system", "board");
+const hostname = striptags(boardinfo?.hostname ?? '?');
 -%}
 <!DOCTYPE html>
-<html lang="{{ lang }}" data-darkmode="true">
+<html lang="{{ lang }}" data-darkmode="true" data-vt-look-theme="{{ look_theme }}" data-vt-look-login="{{ look_login }}" data-vt-look-backdrop="{{ look_backdrop }}" data-vt-look-chart="{{ look_chart }}" data-vt-look-layout="{{ look_layout }}" data-vt-look-save="{{ look_save }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -28,11 +65,22 @@
 <title>{{ page_title ? entityencode(page_title, true) + ' · ' : '' }}LuCI</title>
 <script>
 (function (r) {
-	var p = 'auto', rail = 'pinned';
-	try { p = localStorage.getItem('vantage.theme') || 'auto'; rail = localStorage.getItem('vantage.rail') || 'pinned'; } catch (e) {}
+	/* a pick made without the right to save it for everyone (not for a
+	   login that may), the router's, this browser's from before, the
+	   default (lookValue in the theme's menu) */
+	function look(name, own, before, ok) {
+		var v = [ null, r.getAttribute('data-vt-look-' + name), null ], i;
+		try { v[0] = r.getAttribute('data-vt-look-save') === 'yes' ? null : localStorage.getItem(own); v[2] = localStorage.getItem(before); } catch (e) {}
+		for (i = 0; i < 3; i++) if (ok.indexOf(v[i]) >= 0) return v[i];
+		return ok[0];
+	}
+	var p = look('theme', 'vantage.theme.own', 'vantage.theme', [ 'auto', 'light', 'dark' ]), rail = '';
+	try { rail = localStorage.getItem('vantage.rail') || 'pinned'; } catch (e) {}
 	var dark = (p === 'dark') || (p !== 'light' && !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches));
 	r.setAttribute('data-darkmode', dark ? 'true' : 'false');
 	r.setAttribute('data-theme', p);
+	/* the dashboard's network path background, read by luci-app-vantage */
+	r.setAttribute('data-vt-backdrop', look('backdrop', 'vantage.backdrop.own', 'vantage.backdrop.v1', [ 'grid', 'stars', 'none' ]));
 	if (rail === 'pinned') r.setAttribute('data-rail', 'pinned');
 })(document.documentElement);
 </script>
