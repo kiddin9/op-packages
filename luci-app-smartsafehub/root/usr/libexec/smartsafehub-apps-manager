@@ -45,7 +45,7 @@ valid_sha() {
 }
 protected_package() {
  case "$1" in
-  base-files|busybox|apk|procd|netifd|dnsmasq*|firewall*|odhcp*|dropbear|ubus*|rpcd*|uhttpd*|safeshield*|luci-app-smartsafehub|kernel|kmod-*) return 0;;
+  base-files|busybox|apk|procd|netifd|conntrack|dnsmasq*|firewall*|odhcp*|dropbear|ubus*|rpcd*|uhttpd*|safeshield*|luci-app-smartsafehub|kernel|kmod-*) return 0;;
  esac
  return 1
 }
@@ -650,20 +650,45 @@ prepare_signed_index() {
 install_app() {
  preflight_install || return $?
  manifest="$(owned_manifest "$app")"
- # Existing app ownership must match the reviewed pins.
- if [ -e "$manifest" ]; then
-  [ -s "$manifest" ] || return 28
+ # Old sysupgrade ownership proves which package *names* Apps managed,
+ # not which version/hash a newly published firmware has approved. A restore
+ # may re-pin missing owned APKs only after validating the exact new catalog.
+ # A user install and every already-installed APK remain strict: no adoption,
+ # implicit upgrade, downgrade or replacement of existing system packages.
+ owned_repin=0
+ owned_approved="$stage/owned-approved"
+ : > "$owned_approved"
+ if [ -e "$manifest" ] || [ -L "$manifest" ]; then
+  [ -f "$manifest" ] && [ ! -L "$manifest" ] && [ -s "$manifest" ] || return 28
+  owned_count=0
   while IFS="$(printf '\t')" read -r name version hash; do
    valid_package "$name" && valid_version "$version" && valid_sha "$hash" || return 28
+   protected_package "$name" && return 28
+   shared_travelmate_dep "$name" && return 28
+   # Duplicate or unapproved ownership must not authorize even a missing APK.
+   awk -F '\t' -v name="$name" '$1 == name { found=1 } END { exit !found }' "$owned_approved" && return 28
+   reviewed_pin="$(awk -F '\t' -v name="$name" '$1 == name {print; exit}' "$pins")"
+   [ -n "$reviewed_pin" ] || return 28
    pin="$(printf '%s\t%s\t%s' "$name" "$version" "$hash")"
-   grep -Fqx "$pin" "$pins" || return 28
+   if [ "$pin" != "$reviewed_pin" ]; then
+    [ "$source" = restore ] || return 28
+    # An old installed version must never be silently upgraded or adopted.
+    installed "$name" && return 28
+    owned_repin=1
+   fi
+   printf '%s\n' "$reviewed_pin" >> "$owned_approved"
+   owned_count=$((owned_count + 1)); [ "$owned_count" -le 32 ] || return 28
   done < "$manifest"
+  # read skips an unterminated last line; reject truncated ownership instead
+  # of treating it as permission for a different approved package set.
+  [ "$owned_count" -gt 0 ] &&
+   [ "$owned_count" -eq "$(awk 'END {print NR+0}' "$manifest")" ] || return 28
  fi
  need_install=0
  # Never adopt a package previously installed outside SmartSafeHub Apps.
  while IFS="$(printf '\t')" read -r name version hash; do
   pin="$(printf '%s\t%s\t%s' "$name" "$version" "$hash")"
-  if [ -e "$manifest" ] && grep -Fqx "$pin" "$manifest"; then
+  if [ -e "$manifest" ] && grep -Fqx "$pin" "$owned_approved"; then
    installed "$name" || need_install=1
   elif shared_travelmate_dep "$name" && installed "$name"; then
    # A system package was already present. Never adopt it or silently
@@ -687,6 +712,11 @@ install_app() {
   prepare_signed_index || return $?
   "$APK" --repositories-file /dev/null -X "$local_index" add --simulate "$@" > "$stage/plan.log" 2>&1 || return 34
   review_install_plan "$stage/plan.log" "$base_names" || return 34
+  # Only after index, archive hash and simulated install are validated may
+  # missing packages be re-pinned. Keep the change atomic and retry-safe.
+  if [ "$owned_repin" -eq 1 ]; then
+   cp "$owned_approved" "$manifest.new" && mv -f "$manifest.new" "$manifest" || return 36
+  fi
   # Write ownership immediately before modifying packages. If APK partially
   # succeeds, the UI offers repair/removal without adopting unrelated packages.
   while IFS="$(printf '\t')" read -r name version hash; do
@@ -766,7 +796,7 @@ remove_app() {
   "$APK" del --simulate "$@" > "$stage/plan.log" 2>&1 || return 44
   # Removing an optional app must never implicitly remove system/network,
   # SafeShield or firmware kernel-module packages.
-  if grep -Ei '(Purging|Removing|Upgrading|Downgrading) (base-files|busybox|apk|procd|netifd|dnsmasq[^ ]*|firewall[^ ]*|odhcp[^ ]*|dropbear|ubus[^ ]*|rpcd[^ ]*|uhttpd[^ ]*|safeshield[^ ]*|luci-app-smartsafehub|kernel|kmod-[^ ]*) ' "$stage/plan.log" >/dev/null; then
+  if grep -Ei '(Purging|Removing|Upgrading|Downgrading) (base-files|busybox|apk|procd|netifd|conntrack|dnsmasq[^ ]*|firewall[^ ]*|odhcp[^ ]*|dropbear|ubus[^ ]*|rpcd[^ ]*|uhttpd[^ ]*|safeshield[^ ]*|luci-app-smartsafehub|kernel|kmod-[^ ]*) ' "$stage/plan.log" >/dev/null; then
    return 44
   fi
   review_remove_plan "$stage/plan.log" "$*" || return 44

@@ -2,6 +2,17 @@
 
 . /usr/share/libubox/jshn.sh
 
+http_fetch() {
+	local url="$1"
+	if command -v curl >/dev/null 2>&1; then
+		curl -s --connect-timeout 10 --max-time 30 "$url" 2>/dev/null
+	elif command -v uclient-fetch >/dev/null 2>&1; then
+		uclient-fetch -q -O - --timeout=10 "$url" 2>/dev/null
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -O - -T 10 "$url" 2>/dev/null
+	fi
+}
+
 case "$1" in
 	list)
 		json_init
@@ -79,7 +90,7 @@ case "$1" in
 				# Try multiple location APIs for better reliability
 				
 				# First try ipapi.co (HTTPS, more reliable)
-				result=$(curl -s --connect-timeout 10 --max-time 30 "https://ipapi.co/json" 2>/dev/null)
+				result=$(http_fetch "https://ipapi.co/json")
 				
 				if [ $? -eq 0 ] && [ -n "$result" ]; then
 					# Check if we got valid latitude/longitude
@@ -99,7 +110,7 @@ case "$1" in
 				fi
 				
 				# If first API failed, try ipinfo.io as backup
-				result=$(curl -s --connect-timeout 10 --max-time 30 "http://ipinfo.io/json" 2>/dev/null)
+				result=$(http_fetch "http://ipinfo.io/json")
 				
 				if [ $? -eq 0 ] && [ -n "$result" ]; then
 					# Extract lat,lon from loc field (format: "lat,lon")

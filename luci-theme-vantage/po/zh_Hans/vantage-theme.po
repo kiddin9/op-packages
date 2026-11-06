@@ -76,7 +76,7 @@ msgstr "任意数据包"
 #: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1313
 #: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1316
 #: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1320
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1664
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1677
 #: luci-theme-vantage/ucode/template/themes/vantage/header.ut:132
 msgctxt "vantage-theme"
 msgid "Appearance"
@@ -86,7 +86,7 @@ msgstr "外观"
 msgid "Authorization Required"
 msgstr "需要授权"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1666
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1679
 msgctxt "vantage-theme"
 msgid "Auto"
 msgstr "自动"
@@ -156,7 +156,7 @@ msgstr "信道"
 msgid "Collapse navigation"
 msgstr "收起导航"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1665
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1678
 msgid "Colour theme"
 msgstr "颜色主题"
 
@@ -179,11 +179,11 @@ msgctxt "vantage-theme"
 msgid "Continues in %s, then comes back here"
 msgstr "转入 %s，随后返回此处"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1701
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1714
 msgid "Could not save this for every browser. Try again."
 msgstr "无法为所有浏览器保存此设置，请重试。"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1666
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1679
 msgctxt "vantage-theme"
 msgid "Dark"
 msgstr "深色"
@@ -254,7 +254,7 @@ msgctxt "vantage-theme"
 msgid "Free"
 msgstr "空闲"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1552
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1558
 msgid "Grid packets"
 msgstr "网格数据包"
 
@@ -304,7 +304,7 @@ msgctxt "vantage-theme"
 msgid "Leaves unmatched unchanged"
 msgstr "未匹配流量保持原样"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1666
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1679
 msgctxt "vantage-theme"
 msgid "Light"
 msgstr "浅色"
@@ -314,7 +314,7 @@ msgstr "浅色"
 msgid "Log in"
 msgstr "登录"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1699
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1712
 msgid "Log in again to save Appearance for every browser."
 msgstr "重新登录后即可为所有浏览器保存外观设置。"
 
@@ -324,7 +324,7 @@ msgid "Log out"
 msgstr "退出登录"
 
 #: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1316
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1668
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1681
 msgid "Login background"
 msgstr "登录背景"
 
@@ -343,8 +343,8 @@ msgstr "伪装（NAT）"
 msgid "Memory"
 msgstr "内存"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1948
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1965
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1961
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1978
 msgctxt "vantage-theme"
 msgid "More actions"
 msgstr "更多操作"
@@ -363,7 +363,7 @@ msgid "Network device table \"%h\""
 msgstr "网络设备表 \"%h\""
 
 #: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1320
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1657
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1670
 msgid "Network path background"
 msgstr "网络路径背景"
 
@@ -386,7 +386,7 @@ msgctxt "vantage-theme"
 msgid "No rules: %s"
 msgstr "无规则：%s"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1552
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1558
 msgctxt "vantage-theme"
 msgid "None"
 msgstr "无"
@@ -473,7 +473,7 @@ msgctxt "vantage-theme"
 msgid "Rules table"
 msgstr "规则表"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1700
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1713
 msgid "Saved in this browser only."
 msgstr "仅保存在此浏览器中。"
 
@@ -493,11 +493,11 @@ msgid "Show %d more rule"
 msgid_plural "Show %d more rules"
 msgstr[0] "再显示 %d 条规则"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:2105
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:2118
 msgid "Show full description"
 msgstr "显示完整描述"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:2094
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:2107
 msgid "Show full help: %s"
 msgstr "显示完整帮助：%s"
 
@@ -505,7 +505,7 @@ msgstr "显示完整帮助：%s"
 msgid "Skip to content"
 msgstr "跳至正文"
 
-#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1552
+#: luci-theme-vantage/htdocs/luci-static/resources/menu-vantage.js:1558
 msgid "Starfield"
 msgstr "星空"
 
@@ -568,7 +568,9 @@ msgid ""
 "Vantage theme: save its Appearance (colour mode, login and network path "
 "backgrounds) and the dashboard's chart style and layouts for every browser, "
 "in /etc/config/vantage_theme only"
-msgstr "Vantage 主题：为所有浏览器保存其外观设置（颜色模式、登录页与网络路径背景）以及仪表盘的图表样式和布局，仅写入 /etc/config/vantage_theme"
+msgstr ""
+"Vantage 主题：为所有浏览器保存其外观设置（颜色模式、登录页与网络路径背景）以"
+"及仪表盘的图表样式和布局，仅写入 /etc/config/vantage_theme"
 
 #: luci-theme-vantage/htdocs/luci-static/resources/vantage-theme/nftflow.js:454
 msgctxt "vantage-theme"

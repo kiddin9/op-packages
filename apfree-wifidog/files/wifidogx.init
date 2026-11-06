@@ -19,6 +19,7 @@ handle_gateway() {
 	config_get gateway_channel "$section" gateway_channel
 	config_get gateway_id "$section" gateway_id
 	config_get gateway_auth_enabled "$section" gateway_auth_enabled 1
+	config_get gateway_subnetv4 "$section" gateway_subnetv4
 
 
 	if [ -z "$gateway_name" ] || [ -z "$gateway_channel" ] ; then
@@ -36,23 +37,26 @@ handle_gateway() {
 		uci set wifidogx."$section".gateway_id="$gateway_id"
 		uci commit wifidogx
 	fi
-	# according to the gateway_name to get the subnetv4
-	local gateway_ipv4=$(ifconfig "$gateway_name" | awk '/inet addr:/ {print $2}' | cut -d: -f2)
-	local gateway_maskv4=$(ifconfig "$gateway_name" | awk '/Mask:/ {print $4}' | cut -d: -f2)
-	[ -z "$gateway_ipv4" ] && echo "Failed to get gateway_ipv4 for $gateway_name" >&2 && return
-	[ -z "$gateway_maskv4" ] && echo "Failed to get gateway_maskv4 for $gateway_name" >&2 && return
 
-	# change the gateway_ip4/gateway_maskv4 to CIDR format
-	local mask_bits=0
-	local mask_value=$(printf '%d' "0x$(echo $gateway_maskv4 | tr '.' ' ' | awk '{printf "%02x%02x%02x%02x",$1,$2,$3,$4}')")
-	while [ $mask_value -ne 0 ]; do
-		mask_bits=$((mask_bits + (mask_value & 1)))
-		mask_value=$((mask_value >> 1))
-	done
-	gateway_subnetv4="$gateway_ipv4/$mask_bits"
-	
-	uci set wifidogx."$section".gateway_subnetv4="$gateway_subnetv4"
-	uci commit wifidogx
+	# If gateway_subnetv4 is not configured in UCI, detect it from interface
+	if [ -z "$gateway_subnetv4" ]; then
+		local gateway_ipv4=$(ifconfig "$gateway_name" | awk '/inet addr:/ {print $2}' | cut -d: -f2)
+		local gateway_maskv4=$(ifconfig "$gateway_name" | awk '/Mask:/ {print $4}' | cut -d: -f2)
+		[ -z "$gateway_ipv4" ] && echo "Failed to get gateway_ipv4 for $gateway_name" >&2 && return
+		[ -z "$gateway_maskv4" ] && echo "Failed to get gateway_maskv4 for $gateway_name" >&2 && return
+
+		# change the gateway_ip4/gateway_maskv4 to CIDR format
+		local mask_bits=0
+		local mask_value=$(printf '%d' "0x$(echo $gateway_maskv4 | tr '.' ' ' | awk '{printf "%02x%02x%02x%02x",$1,$2,$3,$4}')")
+		while [ $mask_value -ne 0 ]; do
+			mask_bits=$((mask_bits + (mask_value & 1)))
+			mask_value=$((mask_value >> 1))
+		done
+		gateway_subnetv4="$gateway_ipv4/$mask_bits"
+		
+		uci set wifidogx."$section".gateway_subnetv4="$gateway_subnetv4"
+		uci commit wifidogx
+	fi
 
 	printf "GatewaySetting {\n\tGatewayAuthEnabled %s\n\tGatewayInterface %s\n\tGatewayChannel %s\n\tGatewayID %s\n\tGatewaySubnetV4 %s\n}\n" \
 		 "${gateway_auth_enabled}" "${gateway_name}" "${gateway_channel}" "${gateway_id}" "${gateway_subnetv4}" >> "$CONFIGFILE"
@@ -141,8 +145,13 @@ prepare_auth_server_settings() {
 	fi
 	
 	case "$auth_server_mode" in
-	cloud|bypass)
+	cloud)
 		printf "AuthServerMode 0\n" >> "$CONFIGFILE"
+		printf "DeviceID %s\nAuthServer {\n\tHostname %s\n\tHTTPPort %s\n\tPath %s\n}\n" \
+			"$device_id" "$auth_server_hostname" "$auth_server_port" "$auth_server_path" >> "$CONFIGFILE"
+		;;
+	bypass)
+		printf "AuthServerMode 1\n" >> "$CONFIGFILE"
 		printf "DeviceID %s\nAuthServer {\n\tHostname %s\n\tHTTPPort %s\n\tPath %s\n}\n" \
 			"$device_id" "$auth_server_hostname" "$auth_server_port" "$auth_server_path" >> "$CONFIGFILE"
 		;;
@@ -155,6 +164,7 @@ prepare_auth_server_settings() {
 	esac
 
 	[ -n "$internet_offline_file" ] && printf "InternetOfflineFile %s\n" "$internet_offline_file" >> "$CONFIGFILE"
+	return 0
 }
 
 prepare_longconn_settings() {
@@ -266,11 +276,12 @@ prepare_wifidog_conf() {
 	[ -n "$wildcard_white_list" ] && add_white_list_entries "wildcard_white_list" "wildcard_domain" "trusted_wildcard_domains"
 
 	prepare_external_interface
-	prepare_auth_server_settings
+	prepare_auth_server_settings || return 1
 	prepare_longconn_settings
 	prepare_device_info
 	config_foreach handle_gateway gateway
 	prepare_common_settings
+	return 0
 }
 
 service_triggers() {
@@ -280,7 +291,7 @@ service_triggers() {
 start_service() {
 	config_load "$NAME"
 
-	prepare_wifidog_conf
+	prepare_wifidog_conf || return 1
 
 	if [ "$enabled" -eq 0 ]; then
 		echo "wifidogx is disabled, exit..." >&2

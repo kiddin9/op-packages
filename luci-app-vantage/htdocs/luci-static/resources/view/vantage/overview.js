@@ -499,6 +499,25 @@ function lookAttr(name) {
 
 function lookSaves() { return lookAttr('data-vt-look-save') === 'yes'; }
 
+/* What Customize changed and the router doesn't have yet, as the options
+   it's saved in. Kept across a failed save or a reload, so Done sends
+   this and nothing else: a browser's earlier picks stay its own until
+   someone changes them. */
+var UNSAVED_KEY = 'vantage.view.unsaved';
+
+function readUnsaved() {
+	var v = null;
+	try { v = JSON.parse(window.localStorage.getItem(UNSAVED_KEY) || 'null'); } catch (e) { v = null; }
+	return Array.isArray(v) ? v.filter(function(k) { return /^(chart|layout_(wide|mid|narrow)(_wired)?)$/.test(k); }) : [];
+}
+
+function writeUnsaved(list) {
+	try {
+		if (list.length) window.localStorage.setItem(UNSAVED_KEY, JSON.stringify(list));
+		else window.localStorage.removeItem(UNSAVED_KEY);
+	} catch (e) {}
+}
+
 /* Done hands the theme what changed; true if it took it (a login that may
    save). Without it, or for any other login, it stays in this browser. */
 function offerView(values, done) {
@@ -517,12 +536,21 @@ function readLayouts() {
 	var out = Object.create(null);
 	if (v && typeof v === 'object' && !Array.isArray(v))
 		Object.keys(v).forEach(function(k) { if (/^(wide|mid|narrow)(-wired)?$/.test(k) && Array.isArray(v[k])) out[k] = v[k]; });
-	return layout.merge(out, layout.decode(lookAttr('data-vt-look-layout')), lookSaves());
+	/* changed here and not saved yet: this browser's stands, until Done sends it */
+	var saved = layout.decode(lookAttr('data-vt-look-layout')), unsaved = readUnsaved();
+	Object.keys(saved).forEach(function(k) { if (unsaved.indexOf(layout.option(k)) >= 0) delete saved[k]; });
+	return layout.merge(out, saved, lookSaves());
 }
 
+/* a login that can't save follows the router: what is the router's isn't
+   this browser's to keep */
 function writeLayouts(v) {
+	var saved = lookSaves() ? null : layout.decode(lookAttr('data-vt-look-layout')), out = {};
+	Object.keys(v).forEach(function(k) {
+		if (!saved || !saved[k] || layout.encode(saved[k]) !== layout.encode(v[k])) out[k] = v[k];
+	});
 	try {
-		if (Object.keys(v).length) window.localStorage.setItem(LAYOUT_KEY, JSON.stringify(v));
+		if (Object.keys(out).length) window.localStorage.setItem(LAYOUT_KEY, JSON.stringify(out));
 		else window.localStorage.removeItem(LAYOUT_KEY);
 	} catch (e) {}
 }
@@ -534,7 +562,7 @@ var CHART_KEY = 'vantage.chart.v1';
 function readChartStyle() {
 	var v = null;
 	try { v = window.localStorage.getItem(CHART_KEY); } catch (e) { v = null; }
-	return series.chartPick(lookAttr('data-vt-look-chart'), v, lookSaves());
+	return series.chartPick(lookAttr('data-vt-look-chart'), v, lookSaves() && readUnsaved().indexOf('chart') < 0);
 }
 
 function writeChartStyle(v) {
@@ -1286,11 +1314,20 @@ return view.extend({
 		var l = this.lay;
 		if (!l) return;
 		var k = layout.key(l.tier, l.wired);
-		if (layout.same(list, layout.defaults(l.tier, l.wired))) delete this.layouts[k];
+		if (layout.same(list, layout.defaults(l.tier, l.wired))) this.clearLayout(k);
 		else this.layouts[k] = layout.compact(list);
 		writeLayouts(this.layouts);
+		this.viewChanged(layout.option(k));
 		this.held = Object.create(null);
 		this.doLayout();
+	},
+
+	/* back to the default. The router's layout would come back on reload
+	   (for a login that can't save, or before Done), so this browser keeps
+	   an empty one of its own, which normalize reads as the default. */
+	clearLayout: function(k) {
+		if (k in layout.decode(lookAttr('data-vt-look-layout'))) this.layouts[k] = [];
+		else delete this.layouts[k];
 	},
 
 	editTile: function(id, fn, say) {
@@ -1308,8 +1345,10 @@ return view.extend({
 		window.setTimeout(function() { txt(s, text); }, 30);
 	},
 
-	setEditing: function(on) {
-		if (!on && this.editing && this.saveView()) return;
+	/* leave: close without saving (Esc or the Customize button after a
+	   failed save; Done tries again) */
+	setEditing: function(on, leave) {
+		if (!on && this.editing && !leave && this.saveView()) return;
 		this.editing = !!on;
 		this.el.root.classList.toggle('vt-editing', this.editing);
 		this.el.layoutBtn.setAttribute('aria-pressed', String(this.editing));
@@ -1319,7 +1358,7 @@ return view.extend({
 		this.held = Object.create(null);
 		this.doLayout();
 		if (this.editing) {
-			this.viewStart = this.viewValues();
+			this.viewFailed = false;
 			this.editNote(lookAttr('data-vt-look-save') === 'relogin' ? _('Log in again to save this for every browser.') : '');
 			this.el.editDone.focus();
 		}
@@ -1337,24 +1376,34 @@ return view.extend({
 		[ 'wide', 'mid', 'narrow' ].forEach(function(tier) {
 			[ false, true ].forEach(function(wired) {
 				var k = layout.key(tier, wired);
-				out[layout.option(k)] = self.layouts[k] ? layout.encode(self.layouts[k]) : 'default';
+				out[layout.option(k)] = self.layouts[k] && self.layouts[k].length ? layout.encode(self.layouts[k]) : 'default';
 			});
 		});
 		return out;
+	},
+
+	/* this option changed under Customize, for a login that may save it */
+	viewChanged: function(opt) {
+		if (!lookSaves()) return;
+		var list = readUnsaved();
+		if (list.indexOf(opt) < 0) writeUnsaved(list.concat(opt));
 	},
 
 	/* Done: what changed goes to the theme in one write. True while that
 	   runs: Customize closes when it is saved, and stays open with a note
 	   if it was not, so the pick can be saved again. */
 	saveView: function() {
-		var self = this, now = this.viewValues(), then = this.viewStart || {}, out = {};
+		var self = this, now = this.viewValues(), out = {};
 		if (this.viewSaving) return true;
-		Object.keys(now).forEach(function(k) { if (now[k] !== then[k]) out[k] = now[k]; });
+		readUnsaved().forEach(function(k) { out[k] = now[k]; });
 		if (!Object.keys(out).length) return false;
 		this.viewSaving = offerView(out, function(ok) {
 			self.viewSaving = false;
+			self.viewFailed = !ok;
 			if (!ok) { self.editNote(_('Could not save this for every browser. Try again.')); return; }
-			self.viewStart = now;
+			/* anything changed since it was sent goes out on this close */
+			var then = self.viewValues();
+			writeUnsaved(readUnsaved().filter(function(k) { return then[k] !== out[k]; }));
 			self.setEditing(false);
 		});
 		return this.viewSaving;
@@ -1407,6 +1456,7 @@ return view.extend({
 		if (series.CHART_STYLES.indexOf(v) < 0 || v === this.chartStyle) return;
 		this.chartStyle = v;
 		writeChartStyle(v);
+		this.viewChanged('chart');
 		this.chartHide();
 		this.paintChart();
 	},
@@ -1414,7 +1464,7 @@ return view.extend({
 	buildEditBar: function() {
 		var self = this, el = this.el;
 		el.editHint = E('span', { 'class': 'vt-hint' });
-		el.editNote = E('span', { 'class': 'vt-hint', 'role': 'status', 'hidden': 'hidden' });
+		el.editNote = E('span', { 'class': 'vt-edit-note', 'role': 'status', 'hidden': 'hidden' });
 		el.editHidden = E('div', { 'class': 'vt-edit-hidden' });
 		el.editSay = E('span', { 'class': 'vt-sr', 'role': 'status', 'aria-live': 'polite' });
 		el.editBar = E('div', { 'class': 'vt-editbar', 'role': 'region', 'aria-label': _('Customize the dashboard'), 'hidden': 'hidden' }, [
@@ -1425,8 +1475,9 @@ return view.extend({
 				E('button', { 'type': 'button', 'class': 'vt-btn', 'click': function() {
 					var l = self.lay;
 					if (!l) return;
-					delete self.layouts[layout.key(l.tier, l.wired)];
+					self.clearLayout(layout.key(l.tier, l.wired));
 					writeLayouts(self.layouts);
+					self.viewChanged(layout.option(layout.key(l.tier, l.wired)));
 					self.held = Object.create(null);
 					self.doLayout();
 					self.announce(_('Layout reset'));
@@ -1607,7 +1658,7 @@ return view.extend({
 				el.liveText = E('span', { 'class': 'vt-live-text' })
 			]),
 			el.layoutBtn = E('button', { 'type': 'button', 'class': 'vt-btn vt-btn-ghost vt-layout-btn', 'aria-pressed': 'false',
-				'title': _('Customize the dashboard'), 'click': L.bind(function() { this.setEditing(!this.editing); }, this) }, [
+				'title': _('Customize the dashboard'), 'click': L.bind(function() { this.setEditing(!this.editing, this.viewFailed); }, this) }, [
 				icon('layout'), E('span', {}, [ _('Customize') ])
 			])
 		]);
@@ -3633,7 +3684,7 @@ return view.extend({
 			return;
 		}
 		if (ev.key === 'Escape' && this.editing && !this.drag) {
-			this.setEditing(false);
+			this.setEditing(false, this.viewFailed);
 			return;
 		}
 		/* 'f' focuses the client filter; '/' and Ctrl+K belong to the theme */

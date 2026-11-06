@@ -153,7 +153,7 @@ def self_test() -> None:
         workflow_path = root / '.github/workflows/ci.yml'
         workflow_base = '''jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Guard
         run: sh tests/test-suite-integrity.sh
@@ -162,7 +162,7 @@ def self_test() -> None:
       - name: OpenWrt BusyBox
         run: sh tests/test-openwrt-commands.sh --self-test
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Test
         run: node --experimental-strip-types --test ../tests/runtime/*.test.mjs

@@ -111,7 +111,8 @@ return baseclass.extend({
 
 	/* a layout as that option's value: 'hero:0:4 chart:0:2:h' */
 	encode: function(list) {
-		return list.map(function(e) { return e.id + ':' + e.c + ':' + e.w + (e.hide ? ':h' : ''); }).join(' ');
+		return list.filter(function(e) { return e && typeof e === 'object'; })
+			.map(function(e) { return e.id + ':' + e.c + ':' + e.w + (e.hide ? ':h' : ''); }).join(' ');
 	},
 
 	/* the template's data-vt-look-layout, 'wide=hero:0:4 chart:0:2:h;mid=default',

@@ -556,6 +556,93 @@ grep -Fq "$(printf 'retro-arcade\t1\t1\t0\t0\t')" "$TMP/runtime/apps-status.tsv"
 grep -Fqx "$(printf 'code\tE29')" "$TMP/runtime/apps-operation.state" || fail 'second app did not reach manual ownership check'
 printf 'PASS: multi-app lookup, E22 regression and manual package protection\n'
 
+# Firmware sysupgrade drops optional APKs but keeps Apps ownership. A newer
+# firmware may approve a different APK version/hash for the same owned name.
+# Only the privileged restore path may reconcile missing owned packages.
+: > "$APPS_TEST_INSTALLED"
+: > "$APPS_TEST_VERSION_DB"
+rm -f "$TMP/owned/retro-arcade" "$TMP/owned/network-usage-monitor"
+printf 'new signed Retro payload\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk"
+RESTORE_NEW_SHA="$(sha256sum "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk" | cut -d ' ' -f 1)"
+cat > "$TMP/catalog.json" <<EOF_RESTORE_NEW
+{"schema":1,"device_code":"iptime-ax3000sm","firmware_build_id":"mock-new-firmware","channel":"stable","apps":[{"id":"retro-arcade","version":"1.1.0-r1","runtime":"router","installer":"apk","package_arch":"aarch64_cortex-a53","repository_release_id":"20261027T123000","repository_index_sha256":"$INDEX_SHA","packages":[{"name":"smartsafehub-app-retro-arcade","version":"1.1.0-r1","sha256":"$RESTORE_NEW_SHA"}],"requirements":{"min_memory_mb":1,"min_storage_mb":1}}]}
+EOF_RESTORE_NEW
+printf 'smartsafehub-app-retro-arcade\t1.0.0-r1\t%s\n' "$RETROSHA" > "$TMP/owned/retro-arcade"
+RESTORE_OLD_MANIFEST="$(cat "$TMP/owned/retro-arcade")"
+RESTORE_RECEIPTS="$(wc -l < "$APPS_TEST_METRICS_LOG" | tr -d ' ')"
+"$MANAGER" start install retro-arcade || fail 'manual install with old ownership did not queue'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'ordinary install bypassed version ownership check'
+[ "$(cat "$TMP/owned/retro-arcade")" = "$RESTORE_OLD_MANIFEST" ] || fail 'failed manual install rewrote ownership'
+# A different release that is still installed is not safe to replace.
+printf 'smartsafehub-app-retro-arcade\n' > "$APPS_TEST_INSTALLED"
+"$MANAGER" start install retro-arcade restore || fail 'installed old release restore did not queue'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'restore silently replaced a present release'
+[ "$(cat "$TMP/owned/retro-arcade")" = "$RESTORE_OLD_MANIFEST" ] || fail 'present package changed ownership'
+: > "$APPS_TEST_INSTALLED"
+# Missing dependencies and a tampered APK must fail before re-pinning records.
+export APPS_TEST_MISSING_DEP=1
+"$MANAGER" start install retro-arcade restore || fail 'dependency simulation failure did not queue'
+grep -Fqx "$(printf 'code\tE34')" "$TMP/runtime/apps-operation.state" || fail 'restore bypassed solver guard'
+[ "$(cat "$TMP/owned/retro-arcade")" = "$RESTORE_OLD_MANIFEST" ] || fail 'failed solver changed ownership'
+unset APPS_TEST_MISSING_DEP
+printf 'tampered new Retro payload\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk"
+"$MANAGER" start install retro-arcade restore || fail 'tampered restore did not queue'
+grep -Fqx "$(printf 'code\tE33')" "$TMP/runtime/apps-operation.state" || fail 'tampered new APK passed restore'
+[ "$(cat "$TMP/owned/retro-arcade")" = "$RESTORE_OLD_MANIFEST" ] || fail 'tampered APK re-pinned ownership'
+printf 'new signed Retro payload\n' > "$TMP/repo/smartsafehub-app-retro-arcade-1.1.0-r1.apk"
+# A package omitted from a new approval cannot be rescued by stale ownership.
+printf 'unapproved-old-package\t1.0.0-r1\t%s\n' "$RETROSHA" >> "$TMP/owned/retro-arcade"
+"$MANAGER" start install retro-arcade restore || fail 'unapproved old owner check did not queue'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'unapproved old package re-pinned'
+printf '%s\n' "$RESTORE_OLD_MANIFEST" > "$TMP/owned/retro-arcade"
+printf '%s\n' "$RESTORE_OLD_MANIFEST" >> "$TMP/owned/retro-arcade"
+"$MANAGER" start install retro-arcade restore || fail 'duplicate ownership check did not queue'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'duplicate ownership authorized restore'
+printf '%s\n' "$RESTORE_OLD_MANIFEST" > "$TMP/owned/retro-arcade"
+# An unterminated or empty ownership record cannot authorize restoration.
+printf '%s' "$RESTORE_OLD_MANIFEST" > "$TMP/owned/retro-arcade"
+"$MANAGER" start install retro-arcade restore || fail 'truncated ownership check did not queue'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'truncated ownership authorized restore'
+printf '%s\n' "$RESTORE_OLD_MANIFEST" > "$TMP/owned/retro-arcade"
+# A preinstalled system conntrack package must remain independent of Apps.
+printf 'conntrack\n' > "$APPS_TEST_INSTALLED"
+"$MANAGER" start install retro-arcade restore || fail 'approved new firmware restore not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'new approved release was not restored'
+grep -Fqx "$(printf 'smartsafehub-app-retro-arcade\t1.1.0-r1\t%s' "$RESTORE_NEW_SHA")" "$TMP/owned/retro-arcade" || fail 'ownership was not updated to newly approved version'
+grep -Fqx conntrack "$APPS_TEST_INSTALLED" || fail 'restore removed preinstalled conntrack'
+[ "$(wc -l < "$APPS_TEST_INSTALLED" | tr -d ' ')" -eq 2 ] || fail 'restore installed unrelated packages'
+[ "$(wc -l < "$APPS_TEST_METRICS_LOG" | tr -d ' ')" -eq "$RESTORE_RECEIPTS" ] || fail 'automatic restore counted as user install'
+"$MANAGER" start install retro-arcade restore || fail 'second restore not queued'
+grep -Fqx "$(printf 'code\tE28')" "$TMP/runtime/apps-operation.state" || fail 'already restored app was installed twice'
+# Ownership files cannot turn conntrack into a removable Apps package.
+printf 'conntrack\t1.0-r1\t%s\n' "$RETROSHA" > "$TMP/owned/retro-arcade"
+"$MANAGER" start remove retro-arcade || fail 'protected package remove did not queue'
+grep -Fqx "$(printf 'code\tE42')" "$TMP/runtime/apps-operation.state" || fail 'conntrack was not protected during removal'
+grep -Fqx conntrack "$APPS_TEST_INSTALLED" || fail 'protected conntrack was removed'
+rm -f "$TMP/owned/retro-arcade"
+# Multi-package restore must preserve existing ownership even when package
+# records appear in a different order. It may re-pin the one missing APK but
+# must never reinstall the other two or claim the system conntrack package.
+cat > "$TMP/catalog.json" <<EOF_RESTORE_MULTI
+{"schema":1,"device_code":"iptime-ax3000sm","firmware_build_id":"mock-new-firmware","channel":"stable","apps":[{"id":"network-usage-monitor","version":"2025.06.02-r1","runtime":"router","installer":"apk","package_arch":"aarch64_cortex-a53","repository_release_id":"20261027T123000","repository_index_sha256":"$INDEX_SHA","packages":[{"name":"nlbwmon","version":"2025.06.02~29236be6-r1","sha256":"$ARCHIVE_SHA"},{"name":"luci-app-nlbwmon","version":"26.288.56989~75a306d","sha256":"$LUCISH"},{"name":"luci-lib-chartjs","version":"26.288.56989~75a306d","sha256":"$CHARTSHA"}],"requirements":{"min_memory_mb":1,"min_storage_mb":1}}]}
+EOF_RESTORE_MULTI
+printf 'luci-app-nlbwmon\n' >> "$APPS_TEST_INSTALLED"
+printf 'nlbwmon\n' >> "$APPS_TEST_INSTALLED"
+cat > "$TMP/owned/network-usage-monitor" <<EOF_RESTORE_OWNED
+luci-app-nlbwmon	26.288.56989~75a306d	$LUCISH
+nlbwmon	2025.06.02~29236be6-r1	$ARCHIVE_SHA
+luci-lib-chartjs	26.288.56989~75a306d	$RETROSHA
+EOF_RESTORE_OWNED
+"$MANAGER" start install network-usage-monitor restore || fail 'partial multi-package restore not queued'
+grep -Fqx "$(printf 'phase\tsuccess')" "$TMP/runtime/apps-operation.state" || fail 'partial multi-package restore failed'
+[ "$(wc -l < "$TMP/owned/network-usage-monitor" | tr -d ' ')" -eq 3 ] || fail 'partial restore duplicated owned packages'
+grep -Fqx "$(printf 'luci-lib-chartjs\t26.288.56989~75a306d\t%s' "$CHARTSHA")" "$TMP/owned/network-usage-monitor" || fail 'partial restore did not re-pin missing chart package'
+[ "$(wc -l < "$APPS_TEST_INSTALLED" | tr -d ' ')" -eq 5 ] || fail 'partial restore modified present packages'
+grep -Fqx conntrack "$APPS_TEST_INSTALLED" || fail 'partial restore modified conntrack'
+[ "$(wc -l < "$APPS_TEST_METRICS_LOG" | tr -d ' ')" -eq "$RESTORE_RECEIPTS" ] || fail 'partial restore counted as new user install'
+rm -f "$TMP/owned/network-usage-monitor"
+printf 'PASS: new-firmware Apps re-pinning, signed restore, no adoption, and conntrack protection\n'
+
 # An Apps-owned app can update to a newer approved, signed package without
 # reinstalling, touching system packages or generating a new install receipt.
 : > "$APPS_TEST_INSTALLED"

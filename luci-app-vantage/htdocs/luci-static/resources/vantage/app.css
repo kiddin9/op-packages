@@ -385,6 +385,8 @@ html[data-darkmode="true"] .vt-app {
 }
 .vt-app .vt-editbar[hidden] { display: none; }
 .vt-app .vt-editbar-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 260px; min-width: 0; }
+.vt-app .vt-edit-note { font-size: var(--vt-fs-sm); color: var(--vt-text-2); }
+.vt-app .vt-edit-note[hidden] { display: none; }
 .vt-app .vt-editbar-text strong { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); }
 .vt-app .vt-edit-hidden { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .vt-app .vt-edit-hidden:empty { display: none; }
@@ -801,10 +803,10 @@ h2, h3{
 
 .vt-app .vt-link-label {
 	position: relative; z-index: var(--vt-z-raised);
-	display: grid; grid-template-rows: minmax(0, 1fr) 14px minmax(0, 1fr); justify-items: center;
+	display: grid; grid-template-rows: minmax(0, 1fr) 14px minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); justify-items: center;
 	align-self: stretch; padding: 0 6px; text-align: center;
 }
-.vt-app .vt-link-below { grid-row: 3; align-self: start; display: flex; flex-direction: column; align-items: center; }
+.vt-app .vt-link-below { grid-row: 3; align-self: start; display: flex; flex-direction: column; align-items: center; max-width: 100%; min-width: 0; }
 .vt-app .vt-link-rate {
 	display: inline-flex; align-items: baseline; gap: 3px; white-space: nowrap;
 	padding: 0 6px; border-radius: 6px; background: var(--vt-surface);
@@ -817,14 +819,14 @@ h2, h3{
 .vt-app .vt-link-up { font-size: var(--vt-fs-sm); }
 .vt-app .vt-link-up b { font-size: var(--vt-fs-base); font-weight: var(--vt-fw-semibold); color: var(--vt-text-2); }
 .vt-app .vt-link-up .vt-ico { color: var(--vt-text-3); }
-.vt-app .vt-link-meta { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-family: var(--vt-mono); white-space: nowrap; margin-top: 2px;
+.vt-app .vt-link-meta { font-size: var(--vt-fs-micro); color: var(--vt-text-3); font-family: var(--vt-mono); white-space: nowrap; margin-top: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 	padding: 0 6px; border-radius: 6px; background: var(--vt-surface); }
 /* a full-tunnel VPN over the main line: its wire drawn as a pipe in its
    own colour around the traffic, the tunnel named under the line's rates */
 .vt-app .vt-wire-tunnel { stroke-width: 9; stroke-linecap: round; stroke: color-mix(in oklab, var(--vt-tunnel) 24%, transparent); }
 .vt-app .vt-wire-tunnel.vt-wire-on { stroke: color-mix(in oklab, var(--vt-tunnel) 36%, transparent); }
 .vt-app .vt-link-tunnel {
-	display: inline-flex; align-items: center; gap: 4px; max-width: 100%; margin-top: 4px; padding: 1px 6px;
+	display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; margin-top: 4px; padding: 1px 6px;
 	border: 1px solid color-mix(in oklab, var(--vt-tunnel) 60%, var(--vt-line)); border-radius: 6px;
 	background: var(--vt-surface); color: var(--vt-text-2); font-size: var(--vt-fs-micro); white-space: nowrap;
 }
@@ -853,8 +855,8 @@ h2, h3{
 .vt-app .vt-node-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* the main line among others: the default route the kernel takes */
 .vt-app .vt-node-tag {
-	display: inline-flex; align-items: center; height: 16px; padding: 0 5px; border-radius: 4px;
-	text-transform: none; letter-spacing: 0; font-weight: var(--vt-fw-medium);
+	display: inline-block; height: 16px; line-height: 16px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+	padding: 0 5px; border-radius: 4px; text-transform: none; letter-spacing: 0; font-weight: var(--vt-fw-medium);
 	background: var(--vt-accent-soft); color: var(--vt-accent-text);
 }
 
@@ -865,6 +867,10 @@ h2, h3{
 .vt-app .vt-branch-ssids { display: flex; flex-direction: column; gap: var(--vt-sp-2); min-width: 0; }
 .vt-app .vt-branch-ssids .vt-node { max-width: 260px; }
 
+/* medium widths: the rates need their column, and the branches have room to give */
+@container vthero (max-width: 1020px) {
+	.vt-app .vt-path { grid-template-columns: minmax(150px, 1.05fr) minmax(136px, .9fr) minmax(170px, 1.1fr) minmax(204px, 2fr); }
+}
 @container vthero (max-width: 700px) {
 	.vt-app .vt-path { grid-template-columns: minmax(0, 1fr); gap: 12px; min-height: 0; }
 	.vt-app .vt-node-gw, .vt-app .vt-node-ap { justify-self: start; min-width: 220px; }

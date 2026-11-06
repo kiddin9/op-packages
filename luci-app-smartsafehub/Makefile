@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-smartsafehub
-PKG_VERSION:=0.2.32
-PKG_RELEASE:=12
+PKG_VERSION:=0.2.33
+PKG_RELEASE:=13
 
 PKG_MAINTAINER:=Beomjun Kang <kals323@gmail.com>
 PKG_LICENSE:=GPL-3.0-or-later

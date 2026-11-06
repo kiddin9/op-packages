@@ -10,8 +10,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-vantage
-PKG_VERSION:=1.0.15
-PKG_RELEASE:=34
+PKG_VERSION:=1.0.16
+PKG_RELEASE:=35
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage theme

@@ -1430,7 +1430,7 @@ return baseclass.extend({
 			ev.preventDefault();
 			if (pal.items[pal.active]) this.runEntry(pal.items[pal.active].e);
 			break;
-		case 'Escape': ev.preventDefault(); this.closePalette(); break;
+		case 'Escape': ev.preventDefault(); ev.stopPropagation(); this.closePalette(); break;
 		case 'Tab': ev.preventDefault(); break;
 		}
 	},
@@ -1495,7 +1495,8 @@ return baseclass.extend({
 	setLook(name, value, apply) {
 		const k = LOOK[name];
 		const pending = this.lookPending || (this.lookPending = {});
-		if (k.ok.indexOf(value) < 0 || pending[name] === value) return;
+		const failed = this.lookFailed || (this.lookFailed = {});
+		if (k.ok.indexOf(value) < 0 || (pending[name] === value && !failed[name])) return;
 		if (this.lookState() !== 'yes') {
 			storageSet(k.own, value);
 			storageSet(k.before, value);
@@ -1504,7 +1505,7 @@ return baseclass.extend({
 		}
 		const seqs = this.lookSeqs || (this.lookSeqs = {}), seq = seqs[name] = (seqs[name] || 0) + 1;
 		pending[name] = value;
-		this.lookFailed = false;
+		delete failed[name];
 		apply();
 		const latest = () => seqs[name] === seq;
 		this.lookChain = (this.lookChain || Promise.resolve()).then(() => {
@@ -1516,8 +1517,13 @@ return baseclass.extend({
 					storageSet(LOOK_SYNC, JSON.stringify({ name: name, value: value, at: Date.now() }));
 					storageSet(k.before, value);
 					if (latest()) delete pending[name];
-				}, () => { if (latest()) this.lookFailed = true; });
+				}, () => { if (latest()) failed[name] = true; });
 		}).then(apply);
+	},
+
+	/* a save that failed and wasn't done again: its pick stays shown, with a note */
+	lookFailing() {
+		return Object.keys(this.lookFailed || {}).length > 0;
 	},
 
 	themePref() {
@@ -1605,8 +1611,12 @@ return baseclass.extend({
 			if (ev.key === LOOK_SYNC) {
 				let m = null;
 				try { m = JSON.parse(ev.newValue); } catch (e) {}
-				if (m && Object.prototype.hasOwnProperty.call(LOOK, m.name) && LOOK[m.name].ok.indexOf(m.value) >= 0)
+				if (m && Object.prototype.hasOwnProperty.call(LOOK, m.name) && LOOK[m.name].ok.indexOf(m.value) >= 0) {
 					setLookAttr(this.root, m.name, m.value);
+					/* saved there: a pick that failed here is over */
+					if (this.lookPending) delete this.lookPending[m.name];
+					if (this.lookFailed) delete this.lookFailed[m.name];
+				}
 			}
 			this.applyTheme();
 			this.applyBackdrop();
@@ -1641,11 +1651,14 @@ return baseclass.extend({
 	   scrolling the page close it. */
 	/* one of Appearance's radio groups */
 	appearGroup(name, legend, opts, set) {
+		const look = { 'vt-colour': 'theme', 'vt-login': 'login', 'vt-backdrop': 'backdrop' }[name];
 		return E('fieldset', { 'class': 'vt-appear-set' }, [
 			E('legend', {}, [ legend ]),
 			E('div', { 'class': 'vt-appear-track' }, opts.map(o => {
 				const input = E('input', { 'type': 'radio', 'name': name, 'value': o[0] });
 				input.addEventListener('change', () => { if (input.checked) set(o[0]); });
+				/* the checked option fires no change: after a failed save, this is the retry */
+				input.addEventListener('click', () => { if (input.checked && (this.lookFailed || {})[look]) set(o[0]); });
 				return E('label', { 'class': 'vt-appear-opt' }, [ input ].concat(o[2] ? [ svg(o[2], 16) ] : [], [ E('span', {}, [ o[1] ]) ]));
 			}))
 		]);
@@ -1698,7 +1711,7 @@ return baseclass.extend({
 		const state = this.lookState();
 		const note = state === 'relogin' ? _('Log in again to save Appearance for every browser.')
 			: state !== 'yes' ? _('Saved in this browser only.')
-			: this.lookFailed ? _('Could not save this for every browser. Try again.') : '';
+			: this.lookFailing() ? _('Could not save this for every browser. Try again.') : '';
 		if (this.appearNote) {
 			if (this.appearNote.textContent !== note) this.appearNote.textContent = note;
 			this.appearNote.hidden = !note;
