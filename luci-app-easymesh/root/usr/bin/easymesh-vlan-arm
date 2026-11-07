@@ -1,0 +1,35 @@
+#!/bin/sh
+# easymesh-vlan-arm — arm the auto-rollback watchdog after applying VLAN changes
+
+DELAY="${1:-90}"
+
+# Respect the UI toggle
+if [ "$(uci -q get easymesh.config.vlan_safe_apply)" != "1" ]; then
+    logger -t easymesh-vlan "safe apply disabled — not arming"
+    exit 0
+fi
+
+# Snapshot the working config
+/usr/bin/easymesh-vlan-backup || exit 1
+
+# Kill any previous watchdog
+if [ -f /tmp/easymesh-vlan-rollback.pid ]; then
+    kill "$(cat /tmp/easymesh-vlan-rollback.pid)" 2>/dev/null
+fi
+
+touch /tmp/easymesh-vlan-rollback.pending
+
+(
+    sleep "$DELAY"
+    if [ -f /tmp/easymesh-vlan-rollback.pending ]; then
+        logger -t easymesh-vlan "auto-rollback triggered after ${DELAY}s"
+        /usr/bin/easymesh-vlan-restore
+        rm -f /tmp/easymesh-vlan-rollback.pending
+    else
+        logger -t easymesh-vlan "auto-rollback cancelled"
+    fi
+) &
+
+echo $! > /tmp/easymesh-vlan-rollback.pid
+logger -t easymesh-vlan "armed auto-rollback (${DELAY}s)"
+exit 0

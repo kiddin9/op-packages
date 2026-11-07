@@ -1,0 +1,16 @@
+#!/bin/sh
+# easymesh-vlan-restore — restore network config from the last backup
+
+BKFILE=/etc/easymesh/network.bak
+
+if [ ! -f "$BKFILE" ]; then
+    logger -t easymesh-vlan "no backup at $BKFILE — nothing to restore"
+    exit 1
+fi
+
+cp "$BKFILE" /etc/config/network
+logger -t easymesh-vlan "restored network from $BKFILE, reloading"
+
+# Reload network in the background so the current shell/SSH isn't killed
+( /etc/init.d/network reload ) &
+exit 0

@@ -181,7 +181,7 @@ return view.extend({
 				o.placeholder = '30';
 				o.rmempty = false;
 				o.retain = true;
-				o.depends('offloading_type', '2');
+				o.depends('offloading_type', hasMediatekHNAT ? '3' : '2');
 			}
 		}
 

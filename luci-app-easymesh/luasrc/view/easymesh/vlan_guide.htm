@@ -1,0 +1,458 @@
+<details style="margin-top: 16px; border: 1px solid #ccc; border-radius: 4px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2; font-size: 1.05em; padding: 8px;">
+    📘 <%:VLAN Guide — click to expand%>
+</summary>
+
+<div style="padding: 12px;">
+
+<p><%:VLAN (Virtual Local Area Network) divides one physical LAN into multiple logical networks. Devices on the same switch can be isolated into separate groups — as if they were on entirely different networks.%></p>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🛠️ <%:Why use VLAN?%></summary>
+<ul style="margin-top: 6px;">
+    <li><strong><%:Security:%></strong> <%:Keep sensitive departments (Finance, HR) separate from the general network.%></li>
+    <li><strong><%:Traffic management:%></strong> <%:Reduce broadcast traffic and improve speed.%></li>
+    <li><strong><%:Easy management:%></strong> <%:Move a device without reconfiguring its network.%></li>
+    <li><strong><%:Cost efficiency:%></strong> <%:No extra switches or routers needed for separate networks.%></li>
+</ul>
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">⚙️ <%:How does it work?%></summary>
+<p style="margin-top: 6px;"><%:A normal switch broadcasts to every port. With VLANs configured, the switch groups ports by VLAN ID. A device in VLAN 10 can only talk to other devices in VLAN 10 — even on the same physical switch.%></p>
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🔍 <%:First check: DSA or swconfig?%></summary>
+<p style="margin-top: 6px;"><%:OpenWrt has two switch architectures. The VLAN steps below only apply to DSA.%></p>
+<ul style="margin-top: 6px;">
+    <li><%:If your menu shows%> <strong>Network → Switch</strong> — <%:your router uses the older swconfig.%></li>
+    <li><%:If your menu shows%> <strong>Network → Interfaces → Devices</strong> <%:with "Bridge VLAN filtering" — your router uses DSA.%></li>
+</ul>
+<p><%:OpenWrt 21.02 and later (e.g. 23.05) typically use DSA and replace swconfig, but some devices still ship with swconfig. Check before proceeding.%></p>
+<p><%:Note: some single-port travel routers do not support VLAN filtering at all.%></p>
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">📂 <%:Types of VLAN (detailed)%></summary>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;">1. <%:Port-based VLAN%></summary>
+<p style="margin-top: 4px;"><%:The simplest and most common type. Physical switch ports are grouped into VLAN IDs.%></p>
+<p><strong><%:How it works:%></strong> <%:Suppose ports 1–5 belong to VLAN 10 (IT) and ports 6–10 belong to VLAN 20 (HR). A computer on port 1 can only reach devices on ports 1–5. It cannot reach anything on ports 6–10.%></p>
+<p><strong><%:Benefit:%></strong> <%:Simple and predictable. Every port has a fixed VLAN.%></p>
+<p><strong><%:Limitation:%></strong> <%:If a user moves their computer to a different port, the VLAN changes. This is the main drawback.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;">2. <%:Tagged VLAN (802.1Q)%></summary>
+<p style="margin-top: 4px;"><%:Used when multiple VLANs must share one physical cable — typically between two switches, or between a switch and a router. That shared link is called a "Trunk port".%></p>
+<p><strong><%:How it works:%></strong> <%:Per IEEE 802.1Q, every packet carries a small tag in its header showing its VLAN ID (e.g. 10 or 20). The receiving switch reads the tag and forwards the packet to the right VLAN.%></p>
+<p><strong><%:Benefit:%></strong> <%:One cable carries traffic for many VLANs, saving switch ports and cabling.%></p>
+<p><strong><%:Limitation:%></strong> <%:Both ends must support 802.1Q tagging. Unmanaged switches typically strip tags and break trunk links.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;">3. <%:MAC-based VLAN%></summary>
+<p style="margin-top: 4px;"><%:The VLAN is assigned by the device's MAC address instead of by port.%></p>
+<p><strong><%:Benefit:%></strong> <%:Whatever port the laptop plugs into, the switch recognizes its MAC address and puts it on the correct VLAN automatically.%></p>
+<p><strong><%:Limitation:%></strong> <%:Requires managing a MAC-to-VLAN table. Impractical for networks with many devices or BYOD users.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;">4. <%:Protocol-based VLAN%></summary>
+<p style="margin-top: 4px;"><%:The VLAN is assigned based on the network protocol of the traffic — IPv4, IPv6, IPX, and so on. Each protocol travels over its own VLAN.%></p>
+<p><strong><%:Use case:%></strong> <%:Legacy enterprise networks separating IP traffic from non-IP protocols.%></p>
+<p><strong><%:Limitation:%></strong> <%:Rarely used today. Modern networks route by subnet instead.%></p>
+</details>
+
+</details>
+
+<!-- CUT #1 -->
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">💻 <%:OpenWrt Configuration Steps%></summary>
+
+<p style="margin-top: 6px;"><%:Example: create VLAN 20 for a Guest / IoT network.%></p>
+
+<div style="padding: 8px; background: #fff3cd; border-left: 4px solid #ffc107; margin: 8px 0;">
+<strong>⚠️ <%:Before you start:%></strong>
+<%:Connect via a LAN port you will NOT modify. Never apply VLAN changes over Wi-Fi or over the port you are changing — you will lock yourself out.%>
+</div>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 1 — Enable VLAN filtering on the bridge%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Go to%> <strong>Network → Interfaces → Devices</strong>.</li>
+    <li><%:Find%> <code>br-lan</code> <%:and click%> <strong>Configure</strong>.</li>
+    <li><%:Open the%> <strong>Bridge VLAN filtering</strong> <%:tab and tick%> <strong>Enable VLAN filtering</strong>.</li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 2 — Assign ports%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Click%> <strong>Add</strong>.</li>
+    <li><strong>VLAN ID:</strong> <%:enter the ID (e.g.%> <code>20</code>).</li>
+    <li><strong>Local:</strong> <%:tick — attaches the router's CPU to this VLAN.%></li>
+    <li><strong>Ports Configuration:</strong>
+        <ul>
+            <li><strong><%:Untagged (Access port):%></strong> <%:select%> <code>egress untagged</code> <%:and tick%> <strong>PVID</strong>.</li>
+            <li><strong><%:Tagged (Trunk):%></strong> <%:select%> <code>egress tagged</code>.</li>
+        </ul>
+    </li>
+</ol>
+<p style="margin-top: 6px;"><strong>⚠️ <%:Default VLAN 1:%></strong> <%:When you enable filtering, VLAN 1 covers every port. To fully isolate a port into VLAN 20, you must set that port's VLAN 1 to%> <code>off</code>. <%:Otherwise the port still belongs to VLAN 1.%></p>
+<p><strong>ℹ️ <%:Optional — CPU on VLAN 1:%></strong> <%:If you do not want the router reachable on VLAN 1, set the CPU port's VLAN 1 to%> <code>off</code> <%:as well.%></p>
+<p><%:Click%> <strong>Save</strong>.</p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 3 — Create interface and IP%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Go to%> <strong>Interfaces → Add new interface</strong>.</li>
+    <li><strong>Name:</strong> <%:e.g.%> <code>GUEST</code>.</li>
+    <li><strong>Protocol:</strong> <code>Static address</code>.</li>
+    <li><strong>Device:</strong> <%:select the VLAN device. Usually%> <code>br-lan.20</code>, <%:but it will match your bridge name (e.g.%> <code>br-guest.20</code>).</li>
+    <li><%:Click%> <strong>Create interface</strong>.</li>
+    <li><%:Set an IP block (e.g.%> <code>192.168.20.1 / 255.255.255.0</code>).</li>
+    <li><%:Open the%> <strong>DHCP Server</strong> <%:tab and click%> <strong>Setup DHCP Server</strong>.</li>
+    <li><%:Verify the DHCP range, lease time, and that the interface is not ignored.%></li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 3.5 — Test the VLAN before continuing%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Connect a laptop to an untagged VLAN 20 port.%></li>
+    <li><%:Check its IP — should be in the%> <code>192.168.20.x</code> <%:range.%></li>
+    <li><%:If it gets%> <code>192.168.1.x</code> <%:instead, your untagged/PVID settings need fixing.%></li>
+</ol>
+<p><%:Only after this test passes, proceed to firewall zone configuration.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 4 — Firewall zone (with DHCP/DNS fix)%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Inside the interface config, open%> <strong>Firewall Settings</strong>.</li>
+    <li><%:Create a zone named%> <code>guest_zone</code>.</li>
+    <li><%:Set%> <strong>Input</strong> <%:to%> <code>REJECT</code>, <strong>Output</strong> <%:to%> <code>ACCEPT</code>, <strong>Forward</strong> <%:to%> <code>REJECT</code>.</li>
+    <li><%:In%> <strong>Allow forward to destination zones</strong>, <%:tick only%> <code>wan</code>. <strong><%:Never tick%></strong> <code>lan</code>.</li>
+</ol>
+<p style="margin-top: 6px;"><strong>⚠️ <%:If Input is REJECT, guests get no DHCP/DNS.%></strong> <%:Add two Traffic Rules with these exact fields:%></p>
+<ul>
+    <li><strong><%:Rule 1 (DHCP):%></strong> Source zone <code>guest_zone</code>, Destination zone <code>Device (input)</code>, Protocol <code>UDP</code>, Destination port <code>67-68</code>, Action <code>accept</code>.</li>
+    <li><strong><%:Rule 2 (DNS):%></strong> Source zone <code>guest_zone</code>, Destination zone <code>Device (input)</code>, Protocol <code>TCP+UDP</code>, Destination port <code>53</code>, Action <code>accept</code>.</li>
+</ul>
+<p><%:Without%> <code>Device (input)</code> <%:as the destination zone, the rule will not match traffic addressed to the router itself.%></p>
+<p><%:Alternatively, set Input to%> <code>ACCEPT</code> <%:— simpler but less secure.%></p>
+<p><%:Ensure the WAN zone has%> <strong>Masquerading</strong> <%:and%> <strong>MSS clamping</strong> <%:enabled.%></p>
+<p><%:Click%> <strong>Save &amp; Apply</strong>.</p>
+</details>
+
+<div style="margin-top: 12px; padding: 10px; background: #ffebee; border-left: 4px solid #f44336;">
+<strong>⚠️ <%:Lockout warning:%></strong>
+<%:Never assign the port you are connected through to a Tagged or different VLAN. You will lock yourself out.%>
+</div>
+
+</details>
+
+<!-- CUT #2 -->
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">📶 <%:Tagging a Wi-Fi SSID to a VLAN%></summary>
+
+<div style="padding: 8px; background: #fff3cd; border-left: 4px solid #ffc107; margin: 8px 0;">
+<strong>⚠️ <%:Do this over a wired LAN connection%></strong> <%:— not the Wi-Fi you are modifying. Otherwise you disconnect yourself mid-configuration.%>
+</div>
+
+<p style="margin-top: 6px;"><%:You do not tag the SSID directly. You attach the wireless interface to the VLAN's network interface.%></p>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 1 — Create a new Wi-Fi interface%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Go to%> <strong>Network → Wireless</strong>.</li>
+    <li><%:Click%> <strong>Add</strong> <%:next to the radio.%></li>
+    <li><strong>Mode:</strong> <code>Access Point</code>.</li>
+    <li><strong>ESSID:</strong> <%:e.g.%> <code>My-Guest-WiFi</code>.</li>
+    <li><%:Set a password (WPA2-PSK or WPA3-SAE).%></li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 2 — Attach Wi-Fi to the VLAN interface%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Before saving, open%> <strong>Interface Configuration → Interface Settings</strong>.</li>
+    <li><%:Untick%> <code>lan</code>.</li>
+    <li><%:Tick your VLAN interface (e.g.%> <code>GUEST</code>).</li>
+    <li><%:Click%> <strong>Save</strong>.</li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 3 — Apply and test%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Click%> <strong>Save &amp; Apply</strong>.</li>
+    <li><%:Connect a phone or laptop to the new Wi-Fi.%></li>
+    <li><%:Check its IP. If it comes from the VLAN block (e.g.%> <code>192.168.20.X</code>), <%:tagging worked.%></li>
+</ol>
+</details>
+
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🛡️ <%:Client Isolation (Guest Wi-Fi security)%></summary>
+
+<p style="margin-top: 6px;"><%:Prevents devices on the same Guest Wi-Fi from reaching each other. Blocks malware spread between guests.%></p>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 1 — Wi-Fi: isolate clients%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Go to%> <strong>Network → Wireless</strong>.</li>
+    <li><%:Edit the Guest SSID.%></li>
+    <li><%:Open%> <strong>Advanced Settings</strong>.</li>
+    <li><%:Tick%> <strong>Isolate clients</strong>.</li>
+    <li><%:Click%> <strong>Save</strong>.</li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 2 — Isolate Ethernet ports (if any)%></summary>
+<p style="margin-top: 4px;"><%:Isolation for Wi-Fi clients is handled by the Wi-Fi setting above. Bridge port isolation applies only to Ethernet ports inside the same bridge.%></p>
+<p><%:If you have Guest Ethernet ports, isolate them in the Guest bridge (not%> <code>br-lan</code>):</p>
+<ol>
+    <li><%:Go to%> <strong>Network → Interfaces → Devices</strong>.</li>
+    <li><%:Configure the guest bridge.%></li>
+    <li><%:Open the%> <strong>Bridge ports</strong> <%:tab and click the gear next to each guest Ethernet port.%></li>
+    <li><%:Tick%> <strong>Isolate</strong>.</li>
+    <li><%:Click%> <strong>Save</strong>.</li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Step 3 — Apply and test%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:Click%> <strong>Save &amp; Apply</strong>.</li>
+    <li><%:Connect two devices to Guest Wi-Fi.%></li>
+    <li><%:From the second device, try%> <code>ping</code> <%:or%> <code>arp -a</code> <%:to the first.%></li>
+    <li><%:A failed ping usually means isolation works. Some devices block ping by their own firewall — check with a real connection instead.%></li>
+</ol>
+</details>
+
+</details>
+
+<!-- CUT #3 -->
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">📖 <%:Term definitions for new users%></summary>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;">VLAN ID</summary>
+<p style="margin-top: 4px;"><%:A number from 1 to 4094 identifying which virtual network a device belongs to.%></p>
+<p><strong><%:Reserved values:%></strong> <%:VLAN 0 and VLAN 4095 are reserved. Avoid VLAN 1 for user or guest networks.%></p>
+<p><strong><%:Analogy:%></strong> <%:Room numbers in a school — Class 5, Class 6, Class 7.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Access Port%></summary>
+<p style="margin-top: 4px;"><%:A switch port dedicated to a single VLAN. Anything plugged in joins that VLAN only.%></p>
+<p><strong><%:Analogy:%></strong> <%:One classroom's door — you enter and you are in that room.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Trunk Port%></summary>
+<p style="margin-top: 4px;"><%:A port carrying multiple VLANs over one link. Used for switch-to-switch or switch-to-router connections.%></p>
+<p><strong><%:Analogy:%></strong> <%:A highway shared by traffic from several cities.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Tagged VLAN%></summary>
+<p style="margin-top: 4px;"><%:When multiple VLANs share a trunk, each packet carries a digital tag identifying its VLAN.%></p>
+<p><strong><%:Analogy:%></strong> <%:Courier parcels labelled Dhaka / Chittagong / Sylhet.%></p>
+</details>
+
+<p style="margin-top: 12px;"><strong><%:Comparison table%></strong></p>
+<table style="width: 100%; border-collapse: collapse; margin-top: 6px;">
+    <tr style="background: #e3f2fd;">
+        <th style="text-align: left; padding: 6px; border: 1px solid #ccc;"><%:Term%></th>
+        <th style="text-align: left; padding: 6px; border: 1px solid #ccc;"><%:Analogy%></th>
+        <th style="text-align: left; padding: 6px; border: 1px solid #ccc;"><%:Main function%></th>
+    </tr>
+    <tr>
+        <td style="padding: 6px; border: 1px solid #ccc;">VLAN ID</td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Classroom number%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Gives the network a separate identity%></td>
+    </tr>
+    <tr>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Access Port%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:One classroom door%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Connects a single VLAN device%></td>
+    </tr>
+    <tr>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Trunk Port%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:School main gate / highway%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Carries multiple VLANs over one cable%></td>
+    </tr>
+    <tr>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Tagged VLAN%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Parcel address sticker%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Marks which VLAN a packet belongs to%></td>
+    </tr>
+</table>
+
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🪵 <%:Inter-VLAN Routing (Router-on-a-Stick)%></summary>
+
+<p style="margin-top: 6px;"><%:Inter-VLAN routing lets devices on different VLANs (e.g. VLAN 10 and VLAN 20) reach each other, with the router acting as the gateway between them.%></p>
+
+<div style="padding: 8px; background: #e3f2fd; border-left: 4px solid #2196f3; margin: 8px 0;">
+<strong>ℹ️ <%:OpenWrt vs Cisco:%></strong>
+<%:On OpenWrt, inter-VLAN routing happens automatically through firewall zone forwarding. You do NOT create sub-interfaces like%> <code>gigabitethernet 0/1.10</code> <%:as you would on Cisco. The Cisco example below is educational only.%>
+</div>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Why the name "Router-on-a-Stick"?%></summary>
+<p style="margin-top: 4px;"><%:Normally, connecting two separate networks would need two router ports and two cables. This approach uses only one physical cable — a "stick" — between the router and the switch. Inside the router, that one cable is split into multiple virtual sub-interfaces, one per VLAN. Visually, it looks like a router sitting on the end of a single stick.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:How it works — step by step%></summary>
+<ol style="margin-top: 4px;">
+    <li><%:A PC on VLAN 10 wants to send data to a PC on VLAN 20.%></li>
+    <li><%:The switch sees the destination is in another VLAN. It tags the packet with VLAN 10 and sends it over the trunk port.%></li>
+    <li><%:The router receives the packet on its VLAN 10 sub-interface.%></li>
+    <li><%:The router checks its routing table and decides to send it to VLAN 20.%></li>
+    <li><%:The router strips the old tag and applies a new VLAN 20 tag. It sends the packet back over the same cable.%></li>
+    <li><%:The switch reads the new tag and delivers the packet to the VLAN 20 PC.%></li>
+</ol>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Cisco configuration example%></summary>
+<p style="margin-top: 4px;"><strong><%:Switch side — make the router-facing port a trunk:%></strong></p>
+<pre style="background: #263238; color: #e0e0e0; padding: 8px; border-radius: 4px;">Switch(config)# interface gigabitethernet 0/1
+Switch(config-if)# switchport trunk encapsulation dot1q
+Switch(config-if)# switchport mode trunk
+Switch(config-if)# exit</pre>
+<p><strong><%:Router side — create sub-interfaces:%></strong></p>
+<pre style="background: #263238; color: #e0e0e0; padding: 8px; border-radius: 4px;">Router(config)# interface gigabitethernet 0/1
+Router(config-if)# no shutdown
+Router(config-if)# exit
+
+Router(config)# interface gigabitethernet 0/1.10
+Router(config-subif)# encapsulation dot1Q 10
+Router(config-subif)# ip address 192.168.10.1 255.255.255.0
+Router(config-subif)# exit
+
+Router(config)# interface gigabitethernet 0/1.20
+Router(config-subif)# encapsulation dot1Q 20
+Router(config-subif)# ip address 192.168.20.1 255.255.255.0
+Router(config-subif)# exit</pre>
+<p><strong><%:End devices:%></strong> <%:set their default gateway to the matching sub-interface IP (e.g.%> <code>192.168.10.1</code> <%:for VLAN 10,%> <code>192.168.20.1</code> <%:for VLAN 20).%></p>
+<p><%:On older switches you may need%> <code>switchport trunk encapsulation dot1q</code> <%:before%> <code>switchport mode trunk</code>. <%:All referenced VLANs must already exist on the switch.%></p>
+</details>
+
+<details style="margin-top: 8px; margin-left: 12px;">
+<summary style="cursor: pointer; color: #1976d2;"><%:Pros and cons%></summary>
+<table style="width: 100%; border-collapse: collapse; margin-top: 4px;">
+    <tr style="background: #e8f5e9;">
+        <th style="text-align: left; padding: 6px; border: 1px solid #ccc;"><%:Pros%></th>
+        <th style="text-align: left; padding: 6px; border: 1px solid #ccc;"><%:Cons%></th>
+    </tr>
+    <tr>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Lower cost — one router port, one cable.%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Bandwidth bottleneck — all VLANs share the same cable.%></td>
+    </tr>
+    <tr>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Easy setup for small and medium networks.%></td>
+        <td style="padding: 6px; border: 1px solid #ccc;"><%:Single point of failure — a broken cable or port stops all inter-VLAN traffic.%></td>
+    </tr>
+</table>
+</details>
+
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🔥 <%:Zone Forwarding — LAN to Guest (one-way)%></summary>
+
+<p style="margin-top: 6px;"><%:Allow the LAN to reach the Guest network, but not vice versa.%></p>
+
+<ol style="margin-top: 6px;">
+    <li><%:Go to%> <strong>Network → Firewall → Zones</strong>.</li>
+    <li><%:Click%> <strong>Edit</strong> <%:on the%> <code>lan</code> <%:zone.%></li>
+    <li><%:Scroll to%> <strong>Inter-Zone Forwarding</strong>.</li>
+    <li><%:In%> <strong>Allow forward to destination zones</strong>, <%:tick%> <code>guest_zone</code>.</li>
+    <li><%:Click%> <strong>Save &amp; Apply</strong>.</li>
+</ol>
+<p style="margin-top: 6px;"><strong>⚠️ <%:Never enable Guest → LAN.%></strong> <%:Leaving it disabled keeps the main network protected.%></p>
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🎯 <%:Allow only one Guest device (Traffic Rules)%></summary>
+
+<p style="margin-top: 6px;"><%:Instead of opening the whole Guest zone, allow only a specific device such as a shared printer.%></p>
+
+<ol style="margin-top: 6px;">
+    <li><%:Go to%> <strong>Network → Firewall → Traffic Rules</strong>.</li>
+    <li><%:Click%> <strong>Add new forward rule</strong>.</li>
+    <li><strong>Name:</strong> <%:e.g.%> <code>Allow-LAN-to-Guest-Printer</code>.</li>
+    <li><strong>Protocol:</strong> <code>TCP</code>.</li>
+    <li><strong>Source zone:</strong> <code>lan</code>.</li>
+    <li><strong>Destination zone:</strong> <code>guest_zone</code>.</li>
+    <li><strong>Destination IP:</strong> <%:the printer's IP (e.g.%> <code>192.168.20.50</code>).</li>
+    <li><strong>Destination port:</strong> <code>9100</code>.</li>
+    <li><strong>Action:</strong> <code>accept</code>.</li>
+    <li><%:Click%> <strong>Save &amp; Apply</strong>.</li>
+</ol>
+
+<div style="padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; margin-top: 10px;">
+<strong>⚠️ <%:Check for conflicts:%></strong>
+<%:If you already enabled zone-level%> <code>lan → guest_zone</code>, <%:this traffic rule is redundant. Untick the zone-level forward first.%>
+</div>
+
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">📌 <%:Static Lease (IP reservation)%></summary>
+
+<p style="margin-top: 6px;"><%:If a device's IP changes, firewall rules targeting it stop working. Reserve its IP so it stays fixed.%></p>
+
+<ol style="margin-top: 6px;">
+    <li><%:Go to%> <strong>Network → DHCP and DNS → Static Leases</strong>.</li>
+    <li><%:Click%> <strong>Add</strong>.</li>
+    <li><strong>Hostname:</strong> <%:e.g.%> <code>Guest-Printer</code>.</li>
+    <li><strong>MAC-Address:</strong> <%:pick from the dropdown.%></li>
+    <li><strong>IPv4-Address:</strong> <%:the fixed IP (must be inside the VLAN's subnet and outside the dynamic DHCP pool, e.g.%> <code>192.168.20.50</code>).</li>
+    <li><strong>Lease time:</strong> <%:leave empty or set%> <code>infinite</code>.</li>
+    <li><%:Click%> <strong>Save &amp; Apply</strong>.</li>
+</ol>
+
+<p style="margin-top: 6px;"><strong><%:Pro tip:%></strong> <%:Restart the device (or reconnect it) so it requests a fresh lease and picks up the reserved IP.%></p>
+
+</details>
+
+<details style="margin-top: 10px;">
+<summary style="cursor: pointer; font-weight: bold; color: #1976d2;">🛟 <%:Anti-lockout & rollback%></summary>
+
+<p style="margin-top: 6px;"><%:If a VLAN change locks you out, use these tools.%></p>
+
+<ol style="margin-top: 6px;">
+    <li><%:LuCI shows a confirmation countdown after applying network changes. If you lose access, do nothing — after about 90 seconds it reverts automatically.%></li>
+    <li><%:This app has its own safety toggle.%> <strong><%:Safe apply%></strong> <%:above snapshots the network config before every apply, so you can restore with one click.%></li>
+    <li><%:If you get locked out mid-config, connect via serial console or another VLAN and run the restore command.%></li>
+</ol>
+
+<p style="margin-top: 6px;"><strong><%:Restore command:%></strong></p>
+<pre style="background: #263238; color: #e0e0e0; padding: 8px; border-radius: 4px;">cp /etc/easymesh/network.bak /etc/config/network
+/etc/init.d/network reload</pre>
+
+<p style="margin-top: 6px;"><%:Note: The path%> <code>/etc/easymesh/network.bak</code> <%:is specific to this app. On a plain OpenWrt system with a manual backup, use your own path (e.g.%> <code>/etc/config/network.bak</code>).</p>
+
+<p><%:If reload does not restore access, reboot.%></p>
+
+</details>
+
+</div>
+</details>

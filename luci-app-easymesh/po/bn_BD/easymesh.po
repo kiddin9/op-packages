@@ -16,10 +16,13 @@ msgstr ""
 # Main app title & description
 # =========================================================
 msgid "EasyMesh"
-msgstr "EasyMesh"
+msgstr "ইজিমেশ"
 
 msgid "Configure a Batman-adv mesh network."
-msgstr "একটি Batman-adv মেশ নেটওয়ার্ক কনফিগার করুন।"
+msgstr "একটি Batman-adv মেশ সংযোগ বিন্যস্ত করুন।"
+
+msgid "configure"
+msgstr "বিন্যস্ত"
 
 # =========================================================
 # Dashboard status
@@ -28,7 +31,7 @@ msgid "Active mesh links"
 msgstr "সক্রিয় মেশ সংযোগ"
 
 msgid "Interface"
-msgstr "ইন্টারফেস"
+msgstr "সংযোগ বিন্দু"
 
 msgid "Neighbor MAC"
 msgstr "প্রতিবেশী MAC"
@@ -37,7 +40,7 @@ msgid "Last seen"
 msgstr "সর্বশেষ দেখা"
 
 msgid "Latency"
-msgstr "লেটেন্সি"
+msgstr "বিলম্বকাল"
 
 msgid "RX rate"
 msgstr "RX হার"
@@ -49,7 +52,7 @@ msgstr "TX হার"
 # Wired backhaul details
 # =========================================================
 msgid "Wired backhaul details"
-msgstr "তারযুক্ত ব্যাকহল বিস্তারিত"
+msgstr "তারযুক্ত সংযোগ-ভিত্তি বিস্তারিত"
 
 msgid "State"
 msgstr "অবস্থা"
@@ -61,37 +64,37 @@ msgid "Link speed"
 msgstr "সংযোগ গতি"
 
 msgid "Priority weight"
-msgstr "অগ্রাধিকার ওজন"
+msgstr "অগ্রাধিকার ওজন সমন্বয়"
 
 msgid "In LAN bridge"
-msgstr "LAN ব্রিজে"
+msgstr "LAN সংযোগসেতু"
 
 # =========================================================
 # Wired port picker
 # =========================================================
 msgid "Wired backhaul port"
-msgstr "তারযুক্ত ব্যাকহল পোর্ট"
+msgstr "তারযুক্ত সংযোগ-ভিত্তি পোর্ট"
 
 msgid "Preferred wired port"
 msgstr "পছন্দের তারযুক্ত পোর্ট"
 
 msgid "(none — wired presets will skip)"
-msgstr "(কোনোটি নয় — তারযুক্ত প্রিসেট এড়িয়ে যাবে)"
+msgstr "(কোনোটি নয় — তারযুক্ত পূর্ববিন্যাস এড়িয়ে যাবে)"
 
 # =========================================================
 # Boot-time reliability / Cron
 # =========================================================
 msgid "Boot-time reliability"
-msgstr "বুট-সময় নির্ভরযোগ্যতা"
+msgstr "চালু-র সময় নির্ভরযোগ্যতা"
 
 msgid "Enable cron fallback"
-msgstr "cron ফলব্যাক সক্রিয় করুন"
+msgstr "সঙ্কল্পিত কাজ পিছু হটা সক্রিয় করুন"
 
 # =========================================================
-# Link priority weights (new)
+# Link priority weights
 # =========================================================
 msgid "Link priority weights"
-msgstr "সংযোগ অগ্রাধিকার ওজন"
+msgstr "সংযোগ অগ্রাধিকার ওজন সমন্বয়"
 
 msgid "Wired (Kbit/s)"
 msgstr "তারযুক্ত (Kbit/s)"
@@ -106,13 +109,13 @@ msgid "2.4 GHz wireless (Kbit/s)"
 msgstr "2.4 GHz বেতার (Kbit/s)"
 
 # =========================================================
-# Mesh VLANs (new)
+# Mesh VLANs
 # =========================================================
 msgid "Mesh VLANs"
-msgstr "মেশ VLAN"
+msgstr "মেশ VLAN-আভাসী স্থানীয় সংযোগ"
 
 msgid "VLAN IDs (comma-separated)"
-msgstr "VLAN ID (কমা-বিভক্ত)"
+msgstr "VLAN ID-আভাসী স্থানীয় সংযোগ শনাক্তকারী (কমা-বিভক্ত)"
 
 # =========================================================
 # Quick Setup
@@ -121,116 +124,116 @@ msgid "Quick Setup"
 msgstr "দ্রুত সেটআপ"
 
 msgid "1. Server — 5 GHz wireless only"
-msgstr "১. সার্ভার — শুধু 5 GHz বেতার"
+msgstr "১. প্রদানকারী — শুধু 5 GHz বেতার"
 
 msgid "2. Server — 2.4 GHz wireless only"
-msgstr "২. সার্ভার — শুধু 2.4 GHz বেতার"
+msgstr "২. প্রদানকারী — শুধু 2.4 GHz বেতার"
 
 msgid "3. Server — Dual-band wireless only"
-msgstr "৩. সার্ভার — শুধু দ্বি-ব্যান্ড বেতার"
+msgstr "৩. প্রদানকারী — শুধু দ্বি তরঙ্গ বেতার"
 
 msgid "4. Server — Wired backhaul only"
-msgstr "৪. সার্ভার — শুধু তারযুক্ত ব্যাকহল"
+msgstr "৪. প্রদানকারী — শুধু তারযুক্ত সংযোগ-ভিত্তি"
 
 msgid "5. Server — 5 GHz + Wired"
-msgstr "৫. সার্ভার — 5 GHz + তারযুক্ত"
+msgstr "৫. প্রদানকারী — 5 GHz + তারযুক্ত"
 
 msgid "6. Server — 2.4 GHz + Wired"
-msgstr "৬. সার্ভার — 2.4 GHz + তারযুক্ত"
+msgstr "৬. প্রদানকারী — 2.4 GHz + তারযুক্ত"
 
 msgid "7. Server — Dual-band + Wired"
-msgstr "৭. সার্ভার — দ্বি-ব্যান্ড + তারযুক্ত"
+msgstr "৭. প্রদানকারী — দ্বি তরঙ্গ + তারযুক্ত"
 
 msgid "8. Client — 5 GHz wireless only"
-msgstr "৮. ক্লায়েন্ট — শুধু 5 GHz বেতার"
+msgstr "৮. গ্রাহক — শুধু 5 GHz বেতার"
 
 msgid "9. Client — 2.4 GHz wireless only"
-msgstr "৯. ক্লায়েন্ট — শুধু 2.4 GHz বেতার"
+msgstr "৯. গ্রাহক — শুধু 2.4 GHz বেতার"
 
 msgid "10. Client — Dual-band wireless only"
-msgstr "১০. ক্লায়েন্ট — শুধু দ্বি-ব্যান্ড বেতার"
+msgstr "১০. গ্রাহক — শুধু দ্বি তরঙ্গ বেতার"
 
 msgid "11. Client — Wired backhaul only"
-msgstr "১১. ক্লায়েন্ট — শুধু তারযুক্ত ব্যাকহল"
+msgstr "১১. গ্রাহক — শুধু তারযুক্ত সংযোগ-ভিত্তি"
 
 msgid "12. Client — 5 GHz + Wired fallback"
-msgstr "১২. ক্লায়েন্ট — 5 GHz + তারযুক্ত ফলব্যাক"
+msgstr "১২. গ্রাহক — 5 GHz + তারযুক্ত ফলব্যাক"
 
 msgid "13. Client — 2.4 GHz + Wired fallback"
-msgstr "১৩. ক্লায়েন্ট — 2.4 GHz + তারযুক্ত ফলব্যাক"
+msgstr "১৩. গ্রাহক — 2.4 GHz + তারযুক্ত ফলব্যাক"
 
 msgid "14. Client — Dual-band + Wired fallback"
-msgstr "১৪. ক্লায়েন্ট — দ্বি-ব্যান্ড + তারযুক্ত ফলব্যাক"
+msgstr "১৪. গ্রাহক — দ্বি তরঙ্গ + তারযুক্ত ফলব্যাক"
 
 msgid "15. Node — 5 GHz relay"
-msgstr "১৫. নোড — 5 GHz রিলে"
+msgstr "১৫. মধ্যবর্তী-সংযোগ — 5 GHz পুনর্প্রেরণ"
 
 msgid "16. Node — Dual-band relay"
-msgstr "১৬. নোড — দ্বি-ব্যান্ড রিলে"
+msgstr "১৬. মধ্যবর্তী-সংযোগ — দ্বি তরঙ্গ পুনর্প্রেরণ"
 
 msgid "17. Node — Wired relay only"
-msgstr "১৭. নোড — শুধু তারযুক্ত রিলে"
+msgstr "১৭. মধ্যবর্তী-সংযোগ — শুধু তারযুক্ত পুনর্প্রেরণ"
 
 msgid "18. Detach wired backhaul"
-msgstr "১৮. তারযুক্ত ব্যাকহল বিচ্ছিন্ন করুন"
+msgstr "১৮. তারযুক্ত সংযোগ-ভিত্তি বিচ্ছিন্ন করুন"
 
 msgid "19. Disable mesh"
 msgstr "১৯. মেশ বন্ধ করুন"
 
 # Preset descriptions
 msgid "[SERVER] Gateway. Extenders join via 5 GHz mesh only."
-msgstr "[সার্ভার] গেটওয়ে। এক্সটেন্ডারগুলি শুধু 5 GHz মেশ দিয়ে যুক্ত হবে।"
+msgstr "[প্রদানকারী] গেটওয়ে। এক্সটেন্ডারগুলি শুধু 5 GHz মেশ দিয়ে যুক্ত হবে।"
 
 msgid "[SERVER] Extenders join via 2.4 GHz (longer range)."
-msgstr "[সার্ভার] এক্সটেন্ডারগুলি 2.4 GHz দিয়ে যুক্ত হবে (দীর্ঘ পরিসর)।"
+msgstr "[প্রদানকারী] এক্সটেন্ডারগুলি 2.4 GHz দিয়ে যুক্ত হবে (দীর্ঘ পরিসর)।"
 
 msgid "[SERVER] Both radios carry backhaul."
-msgstr "[সার্ভার] উভয় রেডিও ব্যাকহল বহন করবে।"
+msgstr "[প্রদানকারী] উভয় রেডিও সংযোগ-ভিত্তি বহন করবে।"
 
 msgid "[SERVER] No wireless mesh — extenders connect by cable."
-msgstr "[সার্ভার] কোনো বেতার মেশ নেই — এক্সটেন্ডারগুলি কেবল দিয়ে যুক্ত হবে।"
+msgstr "[প্রদানকারী] কোনো বেতার মেশ নেই — এক্সটেন্ডারগুলি কেবল দিয়ে যুক্ত হবে।"
 
 msgid "[SERVER] 5 GHz mesh primary, Ethernet parallel."
-msgstr "[সার্ভার] 5 GHz মেশ প্রাথমিক, ইথারনেট সমান্তরাল।"
+msgstr "[প্রদানকারী] 5 GHz মেশ প্রাথমিক, ইথারনেট সমান্তরাল।"
 
 msgid "[SERVER] 2.4 GHz mesh plus Ethernet."
-msgstr "[সার্ভার] 2.4 GHz মেশ এবং ইথারনেট।"
+msgstr "[প্রদানকারী] 2.4 GHz মেশ এবং ইথারনেট।"
 
 msgid "[SERVER] Maximum redundancy. Both radios + Ethernet."
-msgstr "[সার্ভার] সর্বোচ্চ রিডান্ডেন্সি। উভয় রেডিও + ইথারনেট।"
+msgstr "[প্রদানকারী] সর্বোচ্চ উদ্বৃত্ততা । উভয় রেডিও + ইথারনেট।"
 
 msgid "[CLIENT] Extender via 5 GHz. No cable."
-msgstr "[ক্লায়েন্ট] 5 GHz দিয়ে এক্সটেন্ডার। কেবল নেই।"
+msgstr "[গ্রাহক] 5 GHz দিয়ে এক্সটেন্ডার। কেবল নেই।"
 
 msgid "[CLIENT] Extender via 2.4 GHz."
-msgstr "[ক্লায়েন্ট] 2.4 GHz দিয়ে এক্সটেন্ডার।"
+msgstr "[গ্রাহক] 2.4 GHz দিয়ে এক্সটেন্ডার।"
 
 msgid "[CLIENT] Extender via both radios."
-msgstr "[ক্লায়েন্ট] উভয় রেডিও দিয়ে এক্সটেন্ডার।"
+msgstr "[গ্রাহক] উভয় রেডিও দিয়ে এক্সটেন্ডার।"
 
 msgid "[CLIENT] Cable only, no wireless mesh."
-msgstr "[ক্লায়েন্ট] শুধু কেবল, কোনো বেতার মেশ নেই।"
+msgstr "[গ্রাহক] শুধু কেবল, কোনো বেতার মেশ নেই।"
 
 msgid "[CLIENT] 5 GHz primary, Ethernet fallback."
-msgstr "[ক্লায়েন্ট] 5 GHz প্রাথমিক, ইথারনেট ফলব্যাক।"
+msgstr "[গ্রাহক] 5 GHz প্রাথমিক, ইথারনেট ফলব্যাক।"
 
 msgid "[CLIENT] 2.4 GHz primary, Ethernet fallback."
-msgstr "[ক্লায়েন্ট] 2.4 GHz প্রাথমিক, ইথারনেট ফলব্যাক।"
+msgstr "[গ্রাহক] 2.4 GHz প্রাথমিক, ইথারনেট ফলব্যাক।"
 
 msgid "[CLIENT] Both radios + Ethernet. Maximum redundancy."
-msgstr "[ক্লায়েন্ট] উভয় রেডিও + ইথারনেট। সর্বোচ্চ রিডান্ডেন্সি।"
+msgstr "[গ্রাহক] উভয় রেডিও + ইথারনেট। সর্বোচ্চ রিডান্ডেন্সি।"
 
 msgid "[NODE] Relay only, 5 GHz. No client SSID."
-msgstr "[নোড] শুধু রিলে, 5 GHz। কোনো ক্লায়েন্ট SSID নেই।"
+msgstr "[মধ্যবর্তী-সংযোগ] শুধু পুনর্প্রেরণ, 5 GHz। কোনো গ্রাহক SSID-বেতার নাম নেই।"
 
 msgid "[NODE] Relay only, both radios."
-msgstr "[নোড] শুধু রিলে, উভয় রেডিও।"
+msgstr "[মধ্যবর্তী-সংযোগ] শুধু পুনর্প্রেরণ, উভয় রেডিও।"
 
 msgid "[NODE] Relay via cable only. No wireless."
-msgstr "[নোড] শুধু কেবল দিয়ে রিলে। বেতার নেই।"
+msgstr "[মধ্যবর্তী-সংযোগ] শুধু কেবল দিয়ে পুনর্প্রেরণ। বেতার নেই।"
 
 msgid "Removes Ethernet backhaul, restores port to bridge."
-msgstr "ইথারনেট ব্যাকহল সরায়, পোর্ট ব্রিজে ফিরিয়ে দেয়।"
+msgstr "ইথারনেট সংযোগ-ভিত্তি সরায়, পোর্ট ব্রিজে ফিরিয়ে দেয়।"
 
 msgid "Turns off mesh. Radios stay enabled."
 msgstr "মেশ বন্ধ করে। রেডিও চালু থাকে।"
@@ -239,10 +242,13 @@ msgstr "মেশ বন্ধ করে। রেডিও চালু থা�
 # Mesh settings
 # =========================================================
 msgid "Mesh settings"
-msgstr "মেশ সেটিংস"
+msgstr "মেশ পছন্দসমূহ"
+
+msgid "Dual-band wireless"
+msgstr "দ্বি-তরঙ্গ বেতার"
 
 msgid "Enable EasyMesh"
-msgstr "EasyMesh সক্রিয় করুন"
+msgstr "ইজিমেশ সক্রিয় করুন"
 
 msgid "Mesh role"
 msgstr "মেশ ভূমিকা"
@@ -251,16 +257,16 @@ msgid "Off"
 msgstr "বন্ধ"
 
 msgid "Server (gateway - has internet)"
-msgstr "সার্ভার (গেটওয়ে - ইন্টারনেট আছে)"
+msgstr "প্রদানকারী (গেটওয়ে - ইন্টারনেট আছে)"
 
 msgid "Client (uses mesh internet)"
-msgstr "ক্লায়েন্ট (মেশ ইন্টারনেট ব্যবহার করে)"
+msgstr "গ্রাহক (মেশ ইন্টারনেট ব্যবহার করে)"
 
 msgid "Node (relay only)"
-msgstr "নোড (শুধু রিলে)"
+msgstr "মধ্যবর্তী-সংযোগ (শুধু পুনর্প্রেরণ)"
 
 msgid "Mesh mode"
-msgstr "মেশ মোড"
+msgstr "মেশ কার্যপদ্ধতি"
 
 msgid "5 GHz wireless only"
 msgstr "শুধু 5 GHz বেতার"
@@ -269,106 +275,103 @@ msgid "2.4 GHz wireless only"
 msgstr "শুধু 2.4 GHz বেতার"
 
 msgid "Dual-band wireless only"
-msgstr "শুধু দ্বি-ব্যান্ড বেতার"
+msgstr "শুধু দ্বি তরঙ্গ বেতার"
 
 msgid "5 GHz wireless + Wired backhaul"
-msgstr "5 GHz বেতার + তারযুক্ত ব্যাকহল"
+msgstr "5 GHz বেতার + তারযুক্ত সংযোগ-ভিত্তি"
 
 msgid "2.4 GHz wireless + Wired backhaul"
-msgstr "2.4 GHz বেতার + তারযুক্ত ব্যাকহল"
+msgstr "2.4 GHz বেতার + তারযুক্ত সংযোগ-ভিত্তি"
 
 msgid "Dual-band wireless + Wired backhaul"
-msgstr "দ্বি-ব্যান্ড বেতার + তারযুক্ত ব্যাকহল"
+msgstr "দ্বি তরঙ্গ বেতার + তারযুক্ত সংযোগ-ভিত্তি"
 
 msgid "Wired only (no wireless mesh)"
 msgstr "শুধু তারযুক্ত (কোনো বেতার মেশ নেই)"
 
 msgid "Custom radio"
-msgstr "কাস্টম রেডিও"
+msgstr "স্বকীয় বেতার"
 
 msgid "Custom mesh radio"
-msgstr "কাস্টম মেশ রেডিও"
+msgstr "স্বকীয় মেশ-বেতার"
 
 msgid "Mesh ID"
 msgstr "মেশ ID"
 
 msgid "Require password (WPA3-SAE)"
-msgstr "পাসওয়ার্ড আবশ্যক (WPA3-SAE)"
+msgstr "গুপ্তশব্দ আবশ্যক (WPA3-SAE)"
 
 msgid "Mesh password"
-msgstr "মেশ পাসওয়ার্ড"
+msgstr "মেশ গুপ্তশব্দ"
 
 msgid "Enable 802.11k/v/r fast roaming"
-msgstr "802.11k/v/r দ্রুত রোমিং সক্রিয় করুন"
+msgstr "802.11k/v/r দ্রুত ভ্রমণশীলতা সক্রিয় করুন"
 
 msgid "Mobility domain"
-msgstr "মোবিলিটি ডোমেইন"
+msgstr "গতিশীলতা-ক্ষেত্র"
+
+msgid "settings"
+msgstr "পছন্দসমূহ"
 
 # =========================================================
 # Client WiFi
 # =========================================================
 msgid "Client WiFi — 2.4 GHz"
-msgstr "ক্লায়েন্ট WiFi — 2.4 GHz"
+msgstr "গ্রাহক WiFi — 2.4 GHz"
 
 msgid "Broadcast 2.4 GHz"
 msgstr "2.4 GHz সম্প্রচার করুন"
 
 msgid "2.4 GHz SSID"
-msgstr "2.4 GHz SSID"
+msgstr "2.4 GHz SSID-বেতার নাম"
 
 msgid "2.4 GHz security"
 msgstr "2.4 GHz নিরাপত্তা"
 
 msgid "None (open)"
-msgstr "কোনোটি নয় (খোলা)"
-
-msgid "WPA2-PSK"
-msgstr "WPA2-PSK"
-
-msgid "WPA3-SAE"
-msgstr "WPA3-SAE"
+msgstr "কোনোটিই নয় (খোলা)"
 
 msgid "WPA2/WPA3 transition"
-msgstr "WPA2/WPA3 ট্রানজিশন"
+msgstr "WPA2/WPA3 পরিবর্তনকাল"
 
 msgid "2.4 GHz password"
-msgstr "2.4 GHz পাসওয়ার্ড"
+msgstr "2.4 GHz গুপ্তশব্দ"
 
 msgid "Client WiFi — 5 GHz"
-msgstr "ক্লায়েন্ট WiFi — 5 GHz"
+msgstr "গ্রাহক WiFi — 5 GHz"
 
 msgid "Broadcast 5 GHz"
 msgstr "5 GHz সম্প্রচার করুন"
 
 msgid "5 GHz SSID"
-msgstr "5 GHz SSID"
+msgstr "5 GHz SSID-বেতার নাম"
 
 msgid "5 GHz security"
 msgstr "5 GHz নিরাপত্তা"
 
 msgid "5 GHz password"
-msgstr "5 GHz পাসওয়ার্ড"
+msgstr "5 GHz গুপ্তশব্দ"
 
 msgid "Client WiFi — shared"
-msgstr "ক্লায়েন্ট WiFi — শেয়ার্ড"
+msgstr "গ্রাহক WiFi — শেয়ার্ড"
 
 msgid "Attach client WiFi to network"
-msgstr "ক্লায়েন্ট WiFi নেটওয়ার্কে সংযুক্ত করুন"
+msgstr "গ্রাহক WiFi নেটওয়ার্কে যুক্ত করুন"
 
 # =========================================================
 # AP Mode
 # =========================================================
 msgid "AP Mode (Dumb AP)"
-msgstr "AP মোড (Dumb AP)"
+msgstr "AP কার্যপদ্ধতি (নিষ্ক্রিয় AP)"
 
 msgid "Enable AP Mode (Dumb AP)"
-msgstr "AP মোড সক্রিয় করুন (Dumb AP)"
+msgstr "AP কার্যপদ্ধতি সক্রিয় করুন (নিষ্ক্রিয় AP)"
 
 msgid "IP mode"
-msgstr "IP মোড"
+msgstr "IP কার্যপদ্ধতি"
 
 msgid "DHCP (from Server)"
-msgstr "DHCP (সার্ভার থেকে)"
+msgstr "DHCP (প্রদানকারী থেকে)"
 
 msgid "Static IP"
 msgstr "স্থির IP"
@@ -383,40 +386,43 @@ msgid "Gateway"
 msgstr "গেটওয়ে"
 
 msgid "DNS server"
-msgstr "DNS সার্ভার"
+msgstr "DNS প্রদানকারী"
+
+msgid "server"
+msgstr "প্রদানকারী"
 
 # =========================================================
 # Wired backhaul
 # =========================================================
 msgid "Wired backhaul"
-msgstr "তারযুক্ত ব্যাকহল"
+msgstr "তারযুক্ত সংযোগ-ভিত্তি"
 
 msgid "Wired backhaul interface"
-msgstr "তারযুক্ত ব্যাকহল ইন্টারফেস"
+msgstr "তারযুক্ত সংযোগ-ভিত্তি ইন্টারফেস"
 
 msgid "Disabled"
 msgstr "নিষ্ক্রিয়"
 
+msgid "backhaul"
+msgstr "সংযোগ-ভিত্তি"
+
 # =========================================================
 # Safety and actions
 # =========================================================
-msgid "Safety and actions"
-msgstr "নিরাপত্তা ও ক্রিয়া"
-
 msgid "Safe apply (60-second rollback)"
 msgstr "নিরাপদ প্রয়োগ (৬০-সেকেন্ড রোলব্যাক)"
 
 msgid "Reapply EasyMesh Settings"
-msgstr "EasyMesh সেটিংস পুনঃপ্রয়োগ করুন"
+msgstr "ইজিমেশ পছন্দসমূহ পুনঃপ্রয়োগ করুন"
 
 msgid "Restore from last backup"
-msgstr "সর্বশেষ ব্যাকআপ থেকে পুনরুদ্ধার করুন"
+msgstr "সর্বশেষ বিকল্প ব্যবস্থা থেকে পুনরুদ্ধার করুন"
 
 msgid "Pair with another router"
-msgstr "অন্য রাউটারের সাথে পেয়ার করুন"
+msgstr "অন্য রাউটারের সাথে যুগলবন্দী করুন"
 
 msgid "Enter pairing mode (2 minutes)"
-msgstr "পেয়ারিং মোডে প্রবেশ করুন (২ মিনিট)"
+msgstr "যুগলবন্দীকরণ কার্যপদ্ধতি-তে প্রবেশ করুন (২ মিনিট)"
 
 # =========================================================
 # Long descriptions
@@ -428,40 +434,1004 @@ msgid "WPS-style pairing. Press the WPS button on both routers within 2 minutes.
 msgstr "WPS-স্টাইল পেয়ারিং। ২ মিনিটের মধ্যে উভয় রাউটারে WPS বোতাম চাপুন। সময় শেষ হলে স্বয়ংক্রিয়ভাবে ফিরে যায়।"
 
 msgid "Batman-adv throughput_override values in Kbit/s. Higher = preferred. Set to 0 to let batman auto-decide per link. Defaults: wired=1000000, 6G=900000, 5G=600000, 2.4G=30000. Changes apply on next Save & Apply (or 'Reapply EasyMesh Settings')."
-msgstr "Batman-adv throughput_override মান Kbit/s-এ। উচ্চতর = পছন্দের। প্রতিটি লিংকে batman-কে স্বয়ংক্রিয় সিদ্ধান্ত নিতে দিতে 0 সেট করুন। ডিফল্ট: তারযুক্ত=1000000, 6G=900000, 5G=600000, 2.4G=30000। পরিবর্তনগুলি পরবর্তী Save & Apply-এ (বা 'EasyMesh সেটিংস পুনঃপ্রয়োগ করুন') কার্যকর হয়।"
+msgstr "Batman-adv throughput_override মান Kbit/s-এ। উচ্চতর = পছন্দের। প্রতিটি লিংকে batman-কে স্বয়ংক্রিয় সিদ্ধান্ত নিতে দিতে 0 সেট করুন। ডিফল্ট: তারযুক্ত=1000000, 6G=900000, 5G=600000, 2.4G=30000। পরিবর্তনগুলি পরবর্তী Save & Apply-এ (বা 'ইজিমেশ পছন্দসমূহ পুনঃপ্রয়োগ করুন') কার্যকর হয়।"
 
 msgid "Extend guest / IoT / hotspot networks across the mesh. Enter a comma-separated list of VLAN IDs (e.g. 10,20,30). The init script creates bat0.<vid> as an 8021q device for each ID. If a bridge named br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, or br-iot<vid> already exists, it is auto-added to that bridge. Otherwise, add the bat0.<vid> device manually in Network → Interfaces → Devices. Requires 802.1Q-capable switches on the physical wired backhaul."
-msgstr "মেশ জুড়ে অতিথি / IoT / হটস্পট নেটওয়ার্ক প্রসারিত করুন। কমা-বিভক্ত VLAN ID তালিকা লিখুন (যেমন 10,20,30)। init লিপি প্রতিটি ID-এর জন্য bat0.<vid> কে একটি 8021q ডিভাইস হিসেবে তৈরি করে। যদি br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, বা br-iot<vid> নামের একটি ব্রিজ ইতিমধ্যে বিদ্যমান থাকে, তবে সেটি স্বয়ংক্রিয়ভাবে সেই ব্রিজে যোগ করা হয়। অন্যথায়, Network → Interfaces → Devices-এ ম্যানুয়ালি bat0.<vid> ডিভাইস যোগ করুন। ফিজিক্যাল তারযুক্ত ব্যাকহলে 802.1Q-সক্ষম সুইচ প্রয়োজন।"
+msgstr "মেশ জুড়ে অতিথি / IoT-যুক্ত যন্ত্রপাতির ইন্টারনেট / সন্ধিবিন্দু পারস্পরিক-সংযোগ-গুলি প্রসারিত করুন। কমা-বিভক্ত VLAN ID-VLAN ID-আভাসী স্থানীয় সংযোগ শনাক্তকারী তালিকা লিখুন (যেমন 10,20,30)। init লিপি প্রতিটি ID-এর জন্য bat0.<vid> কে একটি 8021q ডিভাইস হিসেবে তৈরি করে। যদি br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, বা br-iot<vid> নামের একটি ব্রিজ ইতিমধ্যে বিদ্যমান থাকে, তবে সেটি স্বয়ংক্রিয়ভাবে সেই ব্রিজে যোগ করা হয়। অন্যথায়, Network → Interfaces → Devices-এ ম্যানুয়ালি bat0.<vid> ডিভাইস যোগ করুন। ফিজিক্যাল তারযুক্ত সংযোগ-ভিত্তিতে 802.1Q-সক্ষম সুইচ প্রয়োজন।"
 
 msgid "The init script applies link priorities at boot and 90s later. On some hardware, mesh interfaces appear even later, leaving priority weight at 0. Enable cron fallback to reapply priority every minute. Safe (idempotent) but runs in the background. When disabled, the cron line is commented out in /etc/crontabs/root."
-msgstr "init লিপি বুটে এবং 90 সেকেন্ড পরে সংযোগ অগ্রাধিকার প্রয়োগ করে। কিছু হার্ডওয়্যারে, মেশ ইন্টারফেস আরও পরে দেখা দেয়, ফলে অগ্রাধিকার ওজন 0-এ থাকে। প্রতি মিনিটে অগ্রাধিকার পুনঃপ্রয়োগ করতে cron ফলব্যাক সক্রিয় করুন। নিরাপদ (idempotent) কিন্তু ব্যাকগ্রাউন্ডে চলে। নিষ্ক্রিয় থাকলে, /etc/crontabs/root-এ cron লাইনটি মন্তব্য করা থাকে।"
+msgstr "init লিপি বুটে এবং 90 সেকেন্ড পরে সংযোগ অগ্রাধিকার প্রয়োগ করে। কিছু হার্ডওয়্যারে, মেশ ইন্টারফেস আরও পরে দেখা দেয়, ফলে অগ্রাধিকার ওজন সমন্বয় 0-এ থাকে। প্রতি মিনিটে অগ্রাধিকার পুনঃপ্রয়োগ করতে cron ফলব্যাক সক্রিয় করুন। নিরাপদ (idempotent) কিন্তু ব্যাকগ্রাউন্ডে চলে। নিষ্ক্রিয় থাকলে, /etc/crontabs/root-এ cron লাইনটি মন্তব্য করা থাকে।"
 
 msgid "Convenience selector. Mirrors 'Wired backhaul interface' below. Presets that use wired backhaul will remove this port from the LAN bridge. Pick a port NOT used by your uplink or modem. Leave empty to disable wired backhaul entirely."
-msgstr "সুবিধাজনক নির্বাচক। নিচের 'তারযুক্ত ব্যাকহল ইন্টারফেস' এর সাথে মিলে যায়। তারযুক্ত ব্যাকহল ব্যবহার করে এমন প্রিসেট এই পোর্টটি LAN ব্রিজ থেকে সরিয়ে দেবে। আপনার আপলিংক বা মডেম দ্বারা ব্যবহৃত নয় এমন একটি পোর্ট বাছুন। তারযুক্ত ব্যাকহল সম্পূর্ণভাবে নিষ্ক্রিয় করতে খালি রাখুন।"
+msgstr "সুবিধাজনক নির্বাচক। নিচের 'তারযুক্ত সংযোগ-ভিত্তি ইন্টারফেস' এর সাথে মিলে যায়। তারযুক্ত সংযোগ-ভিত্তি ব্যবহার করে এমন পূর্ববিন্যাস এই পোর্টটি LAN ব্রিজ থেকে সরিয়ে দেবে। আপনার আপলিংক বা মডেম দ্বারা ব্যবহৃত নয় এমন একটি পোর্ট বাছুন। তারযুক্ত সংযোগ-ভিত্তি সম্পূর্ণভাবে নিষ্ক্রিয় করতে খালি রাখুন।"
 
 msgid "Must match on all nodes. Ignored in wired-only mode."
-msgstr "সমস্ত নোডে অবশ্যই মিলতে হবে। শুধু তারযুক্ত মোডে উপেক্ষা করা হয়।"
+msgstr "সমস্ত মধ্যবর্তী-সংযোগ-এ অবশ্যই মিলতে হবে। শুধু তারযুক্ত কার্যপদ্ধতি-তে উপেক্ষা করা হয়।"
 
 msgid "Must match on all nodes. Only used when 'Require password' is enabled."
-msgstr "সমস্ত নোডে অবশ্যই মিলতে হবে। শুধু 'পাসওয়ার্ড আবশ্যক' সক্রিয় থাকলে ব্যবহৃত হয়।"
+msgstr "সমস্ত মধ্যবর্তী-সংযোগ-এ অবশ্যই মিলতে হবে। শুধু 'গুপ্তশব্দ আবশ্যক' সক্রিয় থাকলে ব্যবহৃত হয়।"
 
 msgid "Click a preset. A confirmation dialog will appear. Current config is backed up automatically before applying. Grouped by role: SERVER (has internet) → CLIENT (uses mesh) → NODE (relay only)."
-msgstr "একটি প্রিসেট ক্লিক করুন। একটি নিশ্চিতকরণ ডায়ালগ আসবে। প্রয়োগের আগে বর্তমান কনফিগার স্বয়ংক্রিয়ভাবে ব্যাকআপ করা হয়। ভূমিকা অনুযায়ী গোষ্ঠীভুক্ত: সার্ভার (ইন্টারনেট আছে) → ক্লায়েন্ট (মেশ ব্যবহার করে) → নোড (শুধু রিলে)।"
+msgstr "একটি পূর্ববিন্যাস ক্লিক করুন। একটি নিশ্চিতকরণ ডায়ালগ আসবে। প্রয়োগের আগে বর্তমান বিন্যাসকরণ স্বয়ংক্রিয়ভাবে বিকল্প ব্যবস্থা করা হয়। ভূমিকা অনুযায়ী গোষ্ঠীভুক্ত: প্রদানকারী (ইন্টারনেট আছে) → গ্রাহক (মেশ ব্যবহার করে) → মধ্যবর্তী-সংযোগ (শুধু পুনর্প্রেরণ)।"
 
 msgid "Longer range, lower speed. Use a different SSID from 5 GHz."
-msgstr "দীর্ঘ পরিসর, কম গতি। 5 GHz থেকে একটি ভিন্ন SSID ব্যবহার করুন।"
+msgstr "দীর্ঘ পরিসর, কম গতি। 5 GHz থেকে একটি ভিন্ন SSID-বেতার নাম ব্যবহার করুন।"
 
 msgid "Shorter range, much faster. Use a different SSID from 2.4 GHz."
-msgstr "ছোট পরিসর, অনেক দ্রুত। 2.4 GHz থেকে একটি ভিন্ন SSID ব্যবহার করুন।"
-
-
-
+msgstr "ছোট পরিসর, অনেক দ্রুত। 2.4 GHz থেকে একটি ভিন্ন SSID-বেতার নাম  ব্যবহার করুন।"
 
 # =========================================================
 # Additional descriptions
 # =========================================================
 msgid "Combined wireless band + wired backhaul. Wired variants use the port selected above."
-msgstr "সম্মিলিত বেতার ব্যান্ড + তারযুক্ত ব্যাকহল। তারযুক্ত ভেরিয়েন্ট উপরে নির্বাচিত পোর্ট ব্যবহার করে।"
+msgstr "সম্মিলিত বেতার তরঙ্গ + তারযুক্ত সংযোগ-ভিত্তি। তারযুক্ত ভেরিয়েন্ট উপরে নির্বাচিত পোর্ট ব্যবহার করে।"
 
 msgid "Example: 10,20,30 — Leave empty to disable"
 msgstr "উদাহরণ: 10,20,30 — নিষ্ক্রিয় করতে খালি রাখুন"
+
+# =========================================================
+# Safety notice
+# =========================================================
+msgid "Safety"
+msgstr "নিরাপত্তা"
+
+msgid "Avoid these characters in SSIDs/passwords:"
+msgstr "SSID-বেতার নাম /গুপ্তশব্দ-তে এই অক্ষরগুলি এড়িয়ে চলুন:"
+
+msgid "✅ Do"
+msgstr "✅ করুন"
+
+msgid "❌ Don't"
+msgstr "❌ করবেন না"
+
+msgid "Click for full safety rules"
+msgstr "বিস্তারিত নিরাপত্তা নিয়ম দেখতে ক্লিক করুন"
+
+msgid "Use only letters, numbers, hyphens, and underscores in SSIDs."
+msgstr "SSID-বেতার নাম-এ শুধুমাত্র অক্ষর, সংখ্যা, হাইফেন এবং আন্ডারস্কোর ব্যবহার করুন।"
+
+msgid "Keep SSIDs 32 characters or fewer."
+msgstr "SSID-বেতার নাম ৩২ অক্ষর বা কম রাখুন।"
+
+msgid "Use ASCII characters if SSID sync is enabled."
+msgstr "SSID-বেতার নাম সামঞ্জস্যকরণ সক্রিয় থাকলে ASCII অক্ষর ব্যবহার করুন।"
+
+msgid "Back up config before every change."
+msgstr "প্রতিটি পরিবর্তনের আগে বিন্যাসকরণ এর বিকল্প ব্যবস্থা করুন।"
+
+msgid "Test one client node at a time when changing settings."
+msgstr "পছন্দ পরিবর্তনের সময় একবারে একটি গ্রাহক মধ্যবর্তী-সংযোগ পরীক্ষা করুন।"
+
+msgid "Never use quotes, backticks, dollar signs, or backslashes in SSIDs/passwords."
+msgstr "SSID-বেতার নাম /গুপ্তশব্দ-তে কখনও উদ্ধৃতিচিহ্ন, বিপরীত উদ্ধৃতিচিহ্ন, ডলার চিহ্ন বা বিপরীত হেলানো রেখা ব্যবহার করবেন না।"
+
+msgid "Never change SSID while client nodes are offline."
+msgstr "গ্রাহক মধ্যবর্তী-সংযোগ অফলাইন থাকলে SSID-বেতার নাম পরিবর্তন করবেন না।"
+
+msgid "Never edit a synced node's SSID manually."
+msgstr "সামঞ্জস্যকরণ করা মধ্যবর্তী-সংযোগ-এর SSID-বেতার নাম ম্যানুয়ালি সম্পাদনা করবেন না।"
+
+msgid "Never run luci-app-easymesh alongside meshd (OMM)."
+msgstr "luci-app-easymesh এবং meshd (OMM-OpenWrt মেশ পরিচালক) একই সাথে চালাবেন না।"
+
+msgid "Never set sync interval below 10 seconds."
+msgstr "সামঞ্জস্যকরণ অন্তরকাল ১০ মুহূর্ত-এর নিচে নির্ধারণ করবেন না।"
+
+msgid "Field-by-field safety reference"
+msgstr "ক্ষেত্রভিত্তিক নিরাপত্তা উদ্ধৃতি"
+
+msgid "Field"
+msgstr "ক্ষেত্র"
+
+msgid "Safe"
+msgstr "নিরাপদ"
+
+msgid "Unsafe"
+msgstr "অনিরাপদ"
+
+msgid "Password"
+msgstr "গুপ্তশব্দ"
+
+msgid "SSID"
+msgstr "SSID-বেতার নাম"
+
+msgid "VLAN IDs"
+msgstr "VLAN ID-আভাসী স্থানীয় সংযোগ শনাক্তকারী"
+
+msgid "everything else"
+msgstr "অন্য সব"
+
+msgid "Why these limits? A compiled daemon like meshd (6 MB) never passes user input through a shell. Lua and shell scripts necessarily do — the sync protocol uses nc, openssl, and uci as external commands."
+msgstr "কেন এই সীমাবদ্ধতা? meshd (৬ MB) এর মতো একটি কম্পাইল করা ডেমন কখনও শেলের মাধ্যমে ব্যবহারকারীর ইনপুট পাঠায় না। Lua এবং শেল স্ক্রিপ্ট অবশ্যই পাঠায় — সামঞ্জস্যকরণ নীতিমালা বাহ্যিক আদেশ হিসেবে nc, openssl, এবং uci ব্যবহার করে।"
+
+msgid "Enable rollback before risky changes. Reapply or restore from the last automatic backup if something breaks."
+msgstr "ঝুঁকিপূর্ণ পরিবর্তনের আগে রোলব্যাক সক্রিয় করুন। কিছু ভেঙে গেলে পুনঃপ্রয়োগ করুন বা শেষ স্বয়ংক্রিয় বিকল্প ব্যবস্থা থেকে পুনরুদ্ধার করুন।"
+
+# =========================================================
+# AP Mode role-gate notice
+# =========================================================
+msgid "AP Mode is not available for this role"
+msgstr "এই ভূমিকার জন্য AP (সংযোগস্থল) কার্যপদ্ধতি উপলব্ধ নয়"
+
+msgid "Current mesh role:"
+msgstr "বর্তমান মেশ ভূমিকা:"
+
+msgid "The Server runs DHCP and routing, so it must not become a Dumb AP."
+msgstr "প্রদানকারী DHCP এবং রাউটিং চালায়, তাই এটি Dumb AP হওয়া উচিত নয়।"
+
+msgid "Server"
+msgstr "প্রদানকারী"
+
+msgid "Client"
+msgstr "গ্রাহক"
+
+msgid "Node"
+msgstr "মধ্যবর্তী-সংযোগ"
+
+msgid "Save & Apply"
+msgstr "সংরক্ষণ ও প্রয়োগ করুন"
+
+# =========================================================
+# New tab headers + descriptions
+# =========================================================
+msgid "EasyMesh — Dashboard"
+msgstr "ইজিমেশ — তথ্যফলক"
+
+msgid "EasyMesh — Settings"
+msgstr "ইজিমেশ — পছন্দসমূহ"
+
+msgid "EasyMesh — AP Mode (Dumb AP)"
+msgstr "ইজিমেশ — AP কার্যপদ্ধতি (নিষ্ক্রিয় AP)"
+
+msgid "EasyMesh — Client WiFi"
+msgstr "ইজিমেশ — গ্রাহক WiFi"
+
+msgid "EasyMesh — Quick Setup"
+msgstr "ইজিমেশ — দ্রুত সেটআপ"
+
+msgid "EasyMesh — VLANs"
+msgstr "ইজিমেশ — VLAN-আভাসী স্থানীয় সংযোগ"
+
+msgid "Live mesh status. Refreshes on every page load. Bandwidth is sampled over 1 second; latency is cached for 30 seconds."
+msgstr "লাইভ মেশ অবস্থা। প্রতিবার পাতা চালুর সময় নবায়ন হয়। আদান-প্রদানের গতি ১ সেকেন্ডের উপর নমুনা করা হয়; লেটেন্সি ৩০ সেকেন্ডের জন্য সাময়িক-সংরক্ষণ করা হয়।"
+
+msgid "Mesh role, backhaul interface, link priorities and recovery."
+msgstr "মেশ ভূমিকা, সংযোগ-ভিত্তি ইন্টারফেস, সংযোগ অগ্রাধিকার এবং পুনরুদ্ধার।"
+
+msgid "A Dumb AP broadcasts the client WiFi network without running its own DHCP or firewall. Use this on satellite nodes so clients on any node get an IP from the master server."
+msgstr "Dumb AP নিজস্ব DHCP বা ফায়ারওয়াল না চালিয়ে গ্রাহক WiFi নেটওয়ার্ক সম্প্রচার করে। স্যাটেলাইট নোডে এটি ব্যবহার করুন যাতে যেকোনো মধ্যবর্তী-সংযোগ-এর গ্রাহকরা মূল প্রদানকারী থেকে IP পায়।"
+
+msgid "SSIDs broadcast by client nodes so end devices can join the mesh. Use different SSIDs for 2.4 GHz and 5 GHz to prevent sticky-client behaviour."
+msgstr "শেষ ডিভাইসগুলি মেশে যোগ দিতে পারে এই জন্য গ্রাহক মধ্যবর্তী-সংযোগ-গুলি SSID-বেতার নাম সম্প্রচার করে। স্টিকি-গ্রাহক আচরণ প্রতিরোধ করতে 2.4 GHz এবং 5 GHz এর জন্য আলাদা SSID-বেতার নাম ব্যবহার করুন।"
+
+msgid "Pick a preset for your router's role. Current config is backed up automatically before applying."
+msgstr "আপনার রাউটারের ভূমিকার জন্য একটি পূর্ববিন্যাস বাছুন। প্রয়োগের আগে বর্তমান বিন্যাসকরণ এ স্বয়ংক্রিয়ভাবে বিকল্প ব্যবস্থা করা হয়।"
+
+msgid "Extend guest / IoT / hotspot networks across the mesh. The init script creates bat0.<vid> as an 8021q device for each ID."
+msgstr "মেশ জুড়ে অতিথি / IoT-যুক্ত যন্ত্রপাতির ইন্টারনেট / সন্ধিবিন্দু পারস্পরিক-সংযোগ-গুলি প্রসারিত করুন। init লিপি প্রতিটি ID-এর জন্য bat0.<vid> কে একটি 8021q ডিভাইস হিসেবে তৈরি করে।"
+
+# =========================================================
+# Section headers + descriptions
+# =========================================================
+msgid "Combined wireless band + wired backhaul."
+msgstr "সম্মিলিত বেতার তরঙ্গ + তারযুক্ত সংযোগ-ভিত্তি।"
+
+msgid "Longer range, lower speed."
+msgstr "দীর্ঘ পরিসর, কম গতি।"
+
+msgid "Shorter range, much faster."
+msgstr "ছোট পরিসর, অনেক দ্রুত।"
+
+msgid "Shared"
+msgstr "শেয়ার্ড"
+
+msgid "Presets with wired backhaul will remove this port from the LAN bridge. Pick a port NOT used by your uplink or modem. Leave empty to disable wired backhaul entirely."
+msgstr "তারযুক্ত সংযোগ-ভিত্তি সহ পূর্ববিন্যাস গুলি এই পোর্টটি LAN ব্রিজ থেকে সরিয়ে দেবে। আপনার আপলিংক বা মডেম দ্বারা ব্যবহৃত নয় এমন একটি পোর্ট বাছুন। তারযুক্ত সংযোগ-ভিত্তি সম্পূর্ণভাবে নিষ্ক্রিয় করতে খালি রাখুন।"
+
+msgid "Enter a comma-separated list of VLAN IDs (e.g. 10,20,30). If a bridge named br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, or br-iot<vid> already exists, it is auto-added to that bridge. Otherwise, add the bat0.<vid> device manually in Network → Interfaces → Devices. Requires 802.1Q-capable switches on the physical wired backhaul."
+msgstr "কমা-বিভক্ত VLAN ID-আভাসী স্থানীয় সংযোগ শনাক্তকারী তালিকা লিখুন (যেমন 10,20,30)। যদি br-<vid>, br-lan<vid>, br-vlan<vid>, br-guest<vid>, বা br-iot<vid> নামের একটি ব্রিজ ইতিমধ্যে বিদ্যমান থাকে, তবে সেটি স্বয়ংক্রিয়ভাবে সেই ব্রিজে যোগ করা হয়। অন্যথায়, Network → Interfaces → Devices-এ ম্যানুয়ালি bat0.<vid> ডিভাইস যোগ করুন। ফিজিক্যাল তারযুক্ত সংযোগ-ভিত্তিতে 802.1Q-সক্ষম সুইচ প্রয়োজন।"
+
+# =========================================================
+# Quick Setup group headers
+# =========================================================
+msgid "SERVER presets — has internet (1–7)"
+msgstr "প্রদানকারী পূর্ববিন্যাস — ইন্টারনেট আছে (১–৭)"
+
+msgid "CLIENT presets — uses mesh internet (8–14)"
+msgstr "গ্রাহক পূর্ববিন্যাস — মেশ ইন্টারনেট ব্যবহার করে (৮–১৪)"
+
+msgid "NODE presets — relay only (15–17)"
+msgstr "মধ্যবর্তী-সংযোগ পূর্ববিন্যাস — শুধু পুনর্প্রেরণ (১৫–১৭)"
+
+msgid "Recovery — detach wired backhaul (18)"
+msgstr "পুনরুদ্ধার — তারযুক্ত সংযোগ-ভিত্তি বিচ্ছিন্ন করুন (১৮)"
+
+msgid "Disable — turn off mesh (19)"
+msgstr "নিষ্ক্রিয় — মেশ বন্ধ করুন (১৯)"
+
+# =========================================================
+# Controller tab labels
+# =========================================================
+msgid "Dashboard"
+msgstr "তথ্যফলক"
+
+msgid "Settings"
+msgstr "পছন্দসমূহ"
+
+msgid "AP Mode"
+msgstr "AP কার্যপদ্ধতি"
+
+msgid "Client WiFi"
+msgstr "গ্রাহক WiFi"
+
+msgid "VLANs"
+msgstr "VLAN-আভাসী স্থানীয় সংযোগ"
+
+# =========================================================
+# Dashboard short labels
+# =========================================================
+msgid "stale"
+msgstr "পুরাতন"
+
+# =========================================================
+# Safety notice — full sentence
+# =========================================================
+msgid "— plus newlines and em/en dashes (—, –). They break this shell-based app's sync."
+msgstr "— এবং নিউলাইন, বড় হাইফেন (—, –)। এগুলি শেল-ভিত্তিক সামঞ্জস্যকরণ ভেঙে দেয়।"
+
+# =========================================================
+# AP Mode gate (full sentences)
+# =========================================================
+msgid "To configure AP Mode:"
+msgstr "AP কার্যপদ্ধতি বিন্যাসকরণ করতে:"
+
+msgid "Go to the Settings tab."
+msgstr "পছন্দসমূহ পত্রক-এ যান।"
+
+msgid "Set Mesh role to Client or Node."
+msgstr "মেশ ভূমিকা গ্রাহক বা মধ্যবর্তী-সংযোগ নির্ধারণ করুন।"
+
+msgid "Click Save & Apply."
+msgstr "সংরক্ষণ ও প্রয়োগ করুন ক্লিক করুন।"
+
+msgid "Return to this tab."
+msgstr "এই পত্রকে ফিরে যান।"
+
+# =========================================================
+# Client WiFi gate (full sentences)
+# =========================================================
+msgid "EasyMesh is not enabled"
+msgstr "ইজিমেশ সক্রিয় নয়"
+
+msgid "Client WiFi settings only apply when EasyMesh is enabled. It is currently off."
+msgstr "গ্রাহক WiFi পছন্দসমূহ শুধুমাত্র ইজিমেশ সক্রিয় থাকলে প্রযোজ্য। এটি বর্তমানে বন্ধ।"
+
+msgid "To configure Client WiFi:"
+msgstr "গ্রাহক WiFi বিন্যাসকরণ করতে:"
+
+msgid "Enable EasyMesh."
+msgstr "ইজিমেশ সক্রিয় করুন।"
+
+msgid "Set Mesh role to Server, Client, or Node."
+msgstr "মেশ ভূমিকা প্রদানকারী, গ্রাহক, বা মধ্যবর্তী-সংযোগ নির্ধারণ করুন।"
+
+msgid "Tip: Quick Setup presets enable EasyMesh and set the role in one click."
+msgstr "টিপ: দ্রুত সপ্রস্তুতকরণ পূর্ববিন্যাস এক ক্লিকে ইজিমেশ সক্রিয় করে এবং ভূমিকা সেট করে।"
+
+# =========================================================
+# VLAN Guide + Anti-lockout (2.5.0)
+# =========================================================
+
+msgid "VLAN Safety & Rollback"
+msgstr "VLAN নিরাপত্তা ও রোলব্যাক"
+
+msgid "Applying VLAN changes can lock you out if a port or bridge is misconfigured. With Safe Apply enabled, the previous network config is snapshotted and auto-restored after 90 seconds unless you click 'Confirm VLAN Change' first."
+msgstr "VLAN পরিবর্তন প্রয়োগ করলে পোর্ট বা ব্রিজ ভুলভাবে কনফিগার থাকলে আপনি লকআউট হয়ে যেতে পারেন। Safe Apply সক্রিয় থাকলে পূর্বের নেটওয়ার্ক বিন্যাসকরণ স্ন্যাপশট নেওয়া হয় এবং ৯০ সেকেন্ড পরে স্বয়ংক্রিয়ভাবে পুনরুদ্ধার হয় — যদি না আপনি আগে 'Confirm VLAN Change' ক্লিক করেন।"
+
+msgid "Safe apply (90-second rollback)"
+msgstr "নিরাপদ প্রয়োগ (৯০-সেকেন্ড রোলব্যাক)"
+
+msgid "Backup network config now"
+msgstr "এখনই নেটওয়ার্ক বিন্যাসকরণ ব্যাকআপ করুন"
+
+msgid "Manually snapshot /etc/config/network to /etc/easymesh/network.bak."
+msgstr "ম্যানুয়ালি /etc/config/network কে /etc/easymesh/network.bak-এ স্ন্যাপশট করুন।"
+
+msgid "Confirm VLAN Change"
+msgstr "VLAN পরিবর্তন নিশ্চিত করুন"
+
+msgid "Cancel the pending auto-rollback. Click within 90 seconds of applying to keep your changes."
+msgstr "অপেক্ষমাণ স্বয়ংক্রিয় রোলব্যাক বাতিল করুন। পরিবর্তন ধরে রাখতে প্রয়োগের ৯০ সেকেন্ডের মধ্যে ক্লিক করুন।"
+
+msgid "Restore last working network config"
+msgstr "সর্বশেষ কার্যকর নেটওয়ার্ক বিন্যাসকরণ পুনরুদ্ধার করুন"
+
+msgid "Emergency restore. Reverts /etc/config/network to the last snapshot and reloads the network."
+msgstr "জরুরি পুনরুদ্ধার। /etc/config/network কে শেষ স্ন্যাপশটে ফিরিয়ে দেয় এবং নেটওয়ার্ক রিলোড করে।"
+
+msgid "Auto-rollback is armed"
+msgstr "স্বয়ংক্রিয় রোলব্যাক সক্রিয় আছে"
+
+msgid "A VLAN change was just applied. If you do not click"
+msgstr "একটি VLAN পরিবর্তন এইমাত্র প্রয়োগ করা হয়েছে। যদি আপনি ক্লিক না করেন"
+
+msgid "within 90 seconds, the previous network config will be restored."
+msgstr "৯০ সেকেন্ডের মধ্যে, পূর্বের নেটওয়ার্ক বিন্যাসকরণ পুনরুদ্ধার করা হবে।"
+
+msgid "Network backup available:"
+msgstr "নেটওয়ার্ক ব্যাকআপ উপলব্ধ:"
+
+msgid "No network backup yet. A snapshot is taken automatically on the next Save & Apply."
+msgstr "এখনও কোনো নেটওয়ার্ক ব্যাকআপ নেই। পরবর্তী Save & Apply-এ স্বয়ংক্রিয়ভাবে স্ন্যাপশট নেওয়া হবে।"
+
+msgid "VLAN Guide — click to expand"
+msgstr "VLAN গাইড — দেখতে ক্লিক করুন"
+
+msgid "VLAN (Virtual Local Area Network) divides one physical LAN into multiple logical networks. Devices on the same switch can be isolated into separate groups — as if they were on entirely different networks."
+msgstr "VLAN (Virtual Local Area Network) একটি ফিজিক্যাল LAN-কে একাধিক লজিক্যাল নেটওয়ার্কে বিভক্ত করে। একই সুইচের ডিভাইসগুলিকে আলাদা গোষ্ঠীতে বিচ্ছিন্ন করা যায় — যেন তারা সম্পূর্ণ ভিন্ন নেটওয়ার্কে আছে।"
+
+msgid "Why use VLAN?"
+msgstr "VLAN কেন ব্যবহার করবেন?"
+
+msgid "Security:"
+msgstr "নিরাপত্তা:"
+
+msgid "Keep sensitive departments (Finance, HR) separate from the general network."
+msgstr "সংবেদনশীল বিভাগ (ফাইন্যান্স, এইচআর) সাধারণ নেটওয়ার্ক থেকে আলাদা রাখুন।"
+
+msgid "Traffic management:"
+msgstr "ট্র্যাফিক ব্যবস্থাপনা:"
+
+msgid "Reduce broadcast traffic and improve speed."
+msgstr "ব্রডকাস্ট ট্র্যাফিক কমিয়ে গতি বৃদ্ধি করুন।"
+
+msgid "Easy management:"
+msgstr "সহজ ব্যবস্থাপনা:"
+
+msgid "Move a device without reconfiguring its network."
+msgstr "নেটওয়ার্ক পুনঃকনফিগার না করে ডিভাইস সরান।"
+
+msgid "Cost efficiency:"
+msgstr "খরচ সাশ্রয়:"
+
+msgid "No extra switches or routers needed for separate networks."
+msgstr "আলাদা নেটওয়ার্কের জন্য অতিরিক্ত সুইচ বা রাউটার প্রয়োজন নেই।"
+
+msgid "How does it work?"
+msgstr "এটি কীভাবে কাজ করে?"
+
+msgid "A normal switch broadcasts to every port. With VLANs configured, the switch groups ports by VLAN ID. A device in VLAN 10 can only talk to other devices in VLAN 10 — even on the same physical switch."
+msgstr "সাধারণ সুইচ প্রতিটি পোর্টে ব্রডকাস্ট করে। VLAN কনফিগার করা থাকলে, সুইচ পোর্টগুলিকে VLAN ID অনুযায়ী গোষ্ঠীবদ্ধ করে। VLAN 10-এর একটি ডিভাইস কেবল VLAN 10-এর ডিভাইসের সাথে কথা বলতে পারে — একই ফিজিক্যাল সুইচে থাকলেও।"
+
+msgid "First check: DSA or swconfig?"
+msgstr "প্রথমে যাচাই: DSA নাকি swconfig?"
+
+msgid "OpenWrt has two switch architectures. The VLAN steps below only apply to DSA."
+msgstr "OpenWrt-এ দুটি সুইচ আর্কিটেকচার আছে। নিচের VLAN ধাপগুলি শুধুমাত্র DSA-এর জন্য প্রযোজ্য।"
+
+msgid "If your menu shows"
+msgstr "আপনার মেনুতে যদি দেখায়"
+
+msgid "— your router uses the older swconfig."
+msgstr "— আপনার রাউটার পুরানো swconfig ব্যবহার করে।"
+
+msgid "with \"Bridge VLAN filtering\" — your router uses DSA."
+msgstr "\"Bridge VLAN filtering\" সহ — আপনার রাউটার DSA ব্যবহার করে।"
+
+msgid "OpenWrt 21.02 and later (e.g. 23.05) typically use DSA and replace swconfig, but some devices still ship with swconfig. Check before proceeding."
+msgstr "OpenWrt 21.02 এবং পরবর্তী (যেমন 23.05) সাধারণত DSA ব্যবহার করে এবং swconfig প্রতিস্থাপন করে, তবে কিছু ডিভাইস এখনও swconfig সহ আসে। এগিয়ে যাওয়ার আগে যাচাই করুন।"
+
+msgid "Note: some single-port travel routers do not support VLAN filtering at all."
+msgstr "দ্রষ্টব্য: কিছু একক-পোর্ট ট্রাভেল রাউটার VLAN ফিল্টারিং সমর্থন করে না।"
+
+msgid "Types of VLAN (detailed)"
+msgstr "VLAN-এর প্রকারভেদ (বিস্তারিত)"
+
+msgid "1. Port-based VLAN"
+msgstr "১. পোর্ট-ভিত্তিক VLAN"
+
+msgid "The simplest and most common type. Physical switch ports are grouped into VLAN IDs."
+msgstr "সবচেয়ে সাধারণ এবং সহজ প্রকার। ফিজিক্যাল সুইচ পোর্টগুলি VLAN ID-তে গোষ্ঠীবদ্ধ করা হয়।"
+
+msgid "How it works:"
+msgstr "কীভাবে কাজ করে:"
+
+msgid "Suppose ports 1–5 belong to VLAN 10 (IT) and ports 6–10 belong to VLAN 20 (HR). A computer on port 1 can only reach devices on ports 1–5. It cannot reach anything on ports 6–10."
+msgstr "ধরুন পোর্ট ১–৫ VLAN 10 (IT) এবং পোর্ট ৬–১০ VLAN 20 (HR)। পোর্ট ১-এর কম্পিউটার কেবল পোর্ট ১–৫-এর ডিভাইসে পৌঁছাতে পারে। পোর্ট ৬–১০-এ কিছুই পৌঁছাতে পারে না।"
+
+msgid "Benefit:"
+msgstr "সুবিধা:"
+
+msgid "Simple and predictable. Every port has a fixed VLAN."
+msgstr "সহজ এবং পূর্বানুমেয়। প্রতিটি পোর্টের একটি নির্দিষ্ট VLAN আছে।"
+
+msgid "Limitation:"
+msgstr "সীমাবদ্ধতা:"
+
+msgid "If a user moves their computer to a different port, the VLAN changes. This is the main drawback."
+msgstr "ব্যবহারকারী তার কম্পিউটার অন্য পোর্টে সরালে VLAN পরিবর্তন হয়ে যায়। এটি প্রধান অসুবিধা।"
+
+msgid "2. Tagged VLAN (802.1Q)"
+msgstr "২. ট্যাগড VLAN (802.1Q)"
+
+msgid "Used when multiple VLANs must share one physical cable — typically between two switches, or between a switch and a router. That shared link is called a \"Trunk port\"."
+msgstr "যখন একাধিক VLAN-কে একটি ফিজিক্যাল কেবল শেয়ার করতে হয় — সাধারণত দুটি সুইচের মধ্যে, বা সুইচ ও রাউটারের মধ্যে। সেই শেয়ার করা সংযোগকে \"Trunk port\" বলে।"
+
+msgid "Per IEEE 802.1Q, every packet carries a small tag in its header showing its VLAN ID (e.g. 10 or 20). The receiving switch reads the tag and forwards the packet to the right VLAN."
+msgstr "IEEE 802.1Q অনুযায়ী, প্রতিটি প্যাকেট তার হেডারে একটি ছোট ট্যাগ বহন করে যা VLAN ID দেখায় (যেমন 10 বা 20)। প্রাপক সুইচ ট্যাগ পড়ে সঠিক VLAN-এ প্যাকেট পাঠায়।"
+
+msgid "One cable carries traffic for many VLANs, saving switch ports and cabling."
+msgstr "একটি কেবল অনেক VLAN-এর ট্র্যাফিক বহন করে, সুইচ পোর্ট ও কেবল সাশ্রয় করে।"
+
+msgid "Both ends must support 802.1Q tagging. Unmanaged switches typically strip tags and break trunk links."
+msgstr "উভয় প্রান্তে 802.1Q ট্যাগিং সমর্থন থাকতে হবে। আনম্যানেজড সুইচ সাধারণত ট্যাগ সরিয়ে দেয় এবং ট্রাঙ্ক সংযোগ ভেঙে দেয়।"
+
+msgid "3. MAC-based VLAN"
+msgstr "৩. MAC-ভিত্তিক VLAN"
+
+msgid "The VLAN is assigned by the device's MAC address instead of by port."
+msgstr "VLAN পোর্টের পরিবর্তে ডিভাইসের MAC ঠিকানা দ্বারা নির্ধারিত হয়।"
+
+msgid "Whatever port the laptop plugs into, the switch recognizes its MAC address and puts it on the correct VLAN automatically."
+msgstr "ল্যাপটপ যে পোর্টেই যুক্ত হোক, সুইচ তার MAC ঠিকানা চিনে স্বয়ংক্রিয়ভাবে সঠিক VLAN-এ রাখে।"
+
+msgid "Requires managing a MAC-to-VLAN table. Impractical for networks with many devices or BYOD users."
+msgstr "একটি MAC-থেকে-VLAN টেবিল পরিচালনার প্রয়োজন। অনেক ডিভাইস বা BYOD ব্যবহারকারীর নেটওয়ার্কের জন্য অবাস্তব।"
+
+msgid "4. Protocol-based VLAN"
+msgstr "৪. প্রোটোকল-ভিত্তিক VLAN"
+
+msgid "The VLAN is assigned based on the network protocol of the traffic — IPv4, IPv6, IPX, and so on. Each protocol travels over its own VLAN."
+msgstr "VLAN ট্র্যাফিকের নেটওয়ার্ক প্রোটোকলের ভিত্তিতে নির্ধারিত হয় — IPv4, IPv6, IPX ইত্যাদি। প্রতিটি প্রোটোকল নিজস্ব VLAN-এর উপর দিয়ে যায়।"
+
+msgid "Use case:"
+msgstr "ব্যবহারের ক্ষেত্র:"
+
+msgid "Legacy enterprise networks separating IP traffic from non-IP protocols."
+msgstr "IP ট্র্যাফিককে অ-IP প্রোটোকল থেকে আলাদা করা লিগ্যাসি এন্টারপ্রাইজ নেটওয়ার্ক।"
+
+msgid "Rarely used today. Modern networks route by subnet instead."
+msgstr "আজকাল বিরল। আধুনিক নেটওয়ার্ক সাবনেট দ্বারা রাউটিং করে।"
+
+msgid "OpenWrt Configuration Steps"
+msgstr "OpenWrt কনফিগারেশনের ধাপ"
+
+msgid "Example: create VLAN 20 for a Guest / IoT network."
+msgstr "উদাহরণ: অতিথি / IoT-যুক্ত যন্ত্রপাতির ইন্টারনেট নেটওয়ার্কের জন্য VLAN 20 তৈরি করুন।"
+
+msgid "Before you start:"
+msgstr "শুরু করার আগে:"
+
+msgid "Connect via a LAN port you will NOT modify. Never apply VLAN changes over Wi-Fi or over the port you are changing — you will lock yourself out."
+msgstr "এমন একটি LAN পোর্ট দিয়ে সংযোগ করুন যা আপনি পরিবর্তন করবেন না। কখনও Wi-Fi-এর উপর বা যে পোর্ট পরিবর্তন করছেন তার উপর VLAN পরিবর্তন প্রয়োগ করবেন না — আপনি লকআউট হয়ে যাবেন।"
+
+msgid "Step 1 — Enable VLAN filtering on the bridge"
+msgstr "ধাপ ১ — ব্রিজে VLAN ফিল্টারিং সক্রিয় করুন"
+
+msgid "Go to"
+msgstr "যান"
+
+msgid "Find"
+msgstr "খুঁজুন"
+
+msgid "and click"
+msgstr "এবং ক্লিক করুন"
+
+msgid "Configure"
+msgstr "কনফিগার করুন"
+
+msgid "Open the"
+msgstr "খুলুন"
+
+msgid "Bridge VLAN filtering"
+msgstr "Bridge VLAN ফিল্টারিং"
+
+msgid "tab and tick"
+msgstr "ট্যাব এবং টিক দিন"
+
+msgid "Enable VLAN filtering"
+msgstr "VLAN ফিল্টারিং সক্রিয় করুন"
+
+msgid "Step 2 — Assign ports"
+msgstr "ধাপ ২ — পোর্ট বরাদ্দ করুন"
+
+msgid "Click"
+msgstr "ক্লিক করুন"
+
+msgid "enter the ID (e.g."
+msgstr "ID লিখুন (যেমন"
+
+msgid "tick — attaches the router's CPU to this VLAN."
+msgstr "টিক দিন — রাউটারের CPU এই VLAN-এ সংযুক্ত করে।"
+
+msgid "Ports Configuration:"
+msgstr "পোর্ট কনফিগারেশন:"
+
+msgid "Untagged (Access port):"
+msgstr "Untagged (অ্যাক্সেস পোর্ট):"
+
+msgid "select"
+msgstr "নির্বাচন করুন"
+
+msgid "and tick"
+msgstr "এবং টিক দিন"
+
+msgid "Tagged (Trunk):"
+msgstr "Tagged (ট্রাঙ্ক):"
+
+msgid "Default VLAN 1:"
+msgstr "ডিফল্ট VLAN 1:"
+
+msgid "When you enable filtering, VLAN 1 covers every port. To fully isolate a port into VLAN 20, you must set that port's VLAN 1 to"
+msgstr "ফিল্টারিং সক্রিয় করলে, VLAN 1 প্রতিটি পোর্টে থাকে। একটি পোর্টকে সম্পূর্ণভাবে VLAN 20-এ বিচ্ছিন্ন করতে, সেই পোর্টের VLAN 1 সেট করতে হবে"
+
+msgid "Otherwise the port still belongs to VLAN 1."
+msgstr "অন্যথায় পোর্টটি এখনও VLAN 1-এর অন্তর্ভুক্ত থাকবে।"
+
+msgid "Optional — CPU on VLAN 1:"
+msgstr "ঐচ্ছিক — VLAN 1-এ CPU:"
+
+msgid "If you do not want the router reachable on VLAN 1, set the CPU port's VLAN 1 to"
+msgstr "VLAN 1-এ রাউটার পৌঁছনীয় না চাইলে, CPU পোর্টের VLAN 1 সেট করুন"
+
+msgid "as well."
+msgstr "-এও।"
+
+msgid "Save"
+msgstr "সংরক্ষণ করুন"
+
+msgid "Step 3 — Create interface and IP"
+msgstr "ধাপ ৩ — ইন্টারফেস এবং IP তৈরি করুন"
+
+msgid "e.g."
+msgstr "যেমন"
+
+msgid "select the VLAN device. Usually"
+msgstr "VLAN ডিভাইস নির্বাচন করুন। সাধারণত"
+
+msgid "but it will match your bridge name (e.g."
+msgstr "তবে এটি আপনার ব্রিজ নামের সাথে মিলবে (যেমন"
+
+msgid ")."
+msgstr ")।"
+
+msgid "Set an IP block (e.g."
+msgstr "IP ব্লক সেট করুন (যেমন"
+
+msgid "DHCP Server"
+msgstr "DHCP সার্ভার"
+
+msgid "Setup DHCP Server"
+msgstr "DHCP সার্ভার সেটআপ করুন"
+
+msgid "Verify the DHCP range, lease time, and that the interface is not ignored."
+msgstr "DHCP রেঞ্জ, লিজ সময় এবং ইন্টারফেস উপেক্ষিত না হয়েছে তা যাচাই করুন।"
+
+msgid "Step 3.5 — Test the VLAN before continuing"
+msgstr "ধাপ ৩.৫ — এগিয়ে যাওয়ার আগে VLAN পরীক্ষা করুন"
+
+msgid "Connect a laptop to an untagged VLAN 20 port."
+msgstr "একটি ল্যাপটপ untagged VLAN 20 পোর্টে সংযুক্ত করুন।"
+
+msgid "Check its IP — should be in the"
+msgstr "এর IP পরীক্ষা করুন — থাকা উচিত"
+
+msgid "range."
+msgstr "রেঞ্জে।"
+
+msgid "If it gets"
+msgstr "যদি এটি পায়"
+
+msgid "instead, your untagged/PVID settings need fixing."
+msgstr "পরিবর্তে, আপনার untagged/PVID সেটিংস ঠিক করতে হবে।"
+
+msgid "Only after this test passes, proceed to firewall zone configuration."
+msgstr "এই পরীক্ষা পাস হওয়ার পরেই, ফায়ারওয়াল জোন কনফিগারেশনে এগিয়ে যান।"
+
+msgid "Step 4 — Firewall zone (with DHCP/DNS fix)"
+msgstr "ধাপ ৪ — ফায়ারওয়াল জোন (DHCP/DNS সংশোধন সহ)"
+
+msgid "Firewall Settings"
+msgstr "ফায়ারওয়াল সেটিংস"
+
+msgid "Create a zone named"
+msgstr "নামে একটি জোন তৈরি করুন"
+
+msgid "Set"
+msgstr "সেট করুন"
+
+msgid "to"
+msgstr "হলো"
+
+msgid "tick only"
+msgstr "শুধুমাত্র টিক দিন"
+
+msgid "Never tick"
+msgstr "কখনও টিক দেবেন না"
+
+msgid "If Input is REJECT, guests get no DHCP/DNS."
+msgstr "Input REJECT থাকলে, অতিথিরা DHCP/DNS পায় না।"
+
+msgid "Add two Traffic Rules with these exact fields:"
+msgstr "এই সঠিক ক্ষেত্রগুলি সহ দুটি Traffic Rule যোগ করুন:"
+
+msgid "Rule 1 (DHCP):"
+msgstr "নিয়ম ১ (DHCP):"
+
+msgid "Rule 2 (DNS):"
+msgstr "নিয়ম ২ (DNS):"
+
+msgid "Without"
+msgstr "ছাড়া"
+
+msgid "as the destination zone, the rule will not match traffic addressed to the router itself."
+msgstr "গন্তব্য জোন হিসেবে, রাউটার নিজেই সম্বোধন করা ট্র্যাফিকের সাথে নিয়মটি মিলবে না।"
+
+msgid "Alternatively, set Input to"
+msgstr "বিকল্পভাবে, Input সেট করুন"
+
+msgid "— simpler but less secure."
+msgstr "-এ — সহজ কিন্তু কম নিরাপদ।"
+
+msgid "Ensure the WAN zone has"
+msgstr "নিশ্চিত করুন WAN জোনে আছে"
+
+msgid "and"
+msgstr "এবং"
+
+msgid "enabled."
+msgstr "সক্রিয়।"
+
+msgid "Lockout warning:"
+msgstr "লকআউট সতর্কতা:"
+
+msgid "Never assign the port you are connected through to a Tagged or different VLAN. You will lock yourself out."
+msgstr "যে পোর্ট দিয়ে আপনি সংযুক্ত সেই পোর্ট কখনও Tagged বা ভিন্ন VLAN-এ বরাদ্দ করবেন না। আপনি লকআউট হয়ে যাবেন।"
+
+msgid "Tagging a Wi-Fi SSID to a VLAN"
+msgstr "একটি Wi-Fi SSID-কে VLAN-এ ট্যাগ করা"
+
+msgid "Do this over a wired LAN connection"
+msgstr "এটি একটি তারযুক্ত LAN সংযোগের উপর করুন"
+
+msgid "— not the Wi-Fi you are modifying. Otherwise you disconnect yourself mid-configuration."
+msgstr "— যে Wi-Fi পরিবর্তন করছেন সেটি নয়। অন্যথায় কনফিগারেশনের মাঝখানে আপনি নিজেই সংযোগ বিচ্ছিন্ন হবেন।"
+
+msgid "You do not tag the SSID directly. You attach the wireless interface to the VLAN's network interface."
+msgstr "আপনি সরাসরি SSID ট্যাগ করেন না। আপনি ওয়্যারলেস ইন্টারফেসকে VLAN-এর নেটওয়ার্ক ইন্টারফেসে সংযুক্ত করেন।"
+
+msgid "Step 1 — Create a new Wi-Fi interface"
+msgstr "ধাপ ১ — একটি নতুন Wi-Fi ইন্টারফেস তৈরি করুন"
+
+msgid "next to the radio."
+msgstr "রেডিওর পাশে।"
+
+msgid "Set a password (WPA2-PSK or WPA3-SAE)."
+msgstr "একটি পাসওয়ার্ড সেট করুন (WPA2-PSK বা WPA3-SAE)।"
+
+msgid "Step 2 — Attach Wi-Fi to the VLAN interface"
+msgstr "ধাপ ২ — Wi-Fi কে VLAN ইন্টারফেসে সংযুক্ত করুন"
+
+msgid "Before saving, open"
+msgstr "সংরক্ষণের আগে, খুলুন"
+
+msgid "Untick"
+msgstr "আনটিক করুন"
+
+msgid "Tick your VLAN interface (e.g."
+msgstr "আপনার VLAN ইন্টারফেস টিক করুন (যেমন"
+
+msgid "Step 3 — Apply and test"
+msgstr "ধাপ ৩ — প্রয়োগ এবং পরীক্ষা"
+
+msgid "Connect a phone or laptop to the new Wi-Fi."
+msgstr "একটি ফোন বা ল্যাপটপ নতুন Wi-Fi-এ সংযুক্ত করুন।"
+
+msgid "Check its IP. If it comes from the VLAN block (e.g."
+msgstr "এর IP পরীক্ষা করুন। যদি VLAN ব্লক থেকে আসে (যেমন"
+
+msgid "tagging worked."
+msgstr "ট্যাগিং কাজ করেছে।"
+
+msgid "Client Isolation (Guest Wi-Fi security)"
+msgstr "Client Isolation (অতিথি Wi-Fi নিরাপত্তা)"
+
+msgid "Prevents devices on the same Guest Wi-Fi from reaching each other. Blocks malware spread between guests."
+msgstr "একই অতিথি Wi-Fi-এর ডিভাইসগুলিকে একে অপরের কাছে পৌঁছাতে বাধা দেয়। অতিথিদের মধ্যে ম্যালওয়্যার বিস্তার ব্লক করে।"
+
+msgid "Step 1 — Wi-Fi: isolate clients"
+msgstr "ধাপ ১ — Wi-Fi: ক্লায়েন্ট বিচ্ছিন্ন করুন"
+
+msgid "Edit the Guest SSID."
+msgstr "অতিথি SSID সম্পাদনা করুন।"
+
+msgid "Step 2 — Isolate Ethernet ports (if any)"
+msgstr "ধাপ ২ — ইথারনেট পোর্ট বিচ্ছিন্ন করুন (যদি থাকে)"
+
+msgid "Isolation for Wi-Fi clients is handled by the Wi-Fi setting above. Bridge port isolation applies only to Ethernet ports inside the same bridge."
+msgstr "Wi-Fi ক্লায়েন্টদের জন্য বিচ্ছিন্নতা উপরের Wi-Fi সেটিং দ্বারা পরিচালিত হয়। ব্রিজ পোর্ট বিচ্ছিন্নতা শুধুমাত্র একই ব্রিজের ভিতরের ইথারনেট পোর্টে প্রযোজ্য।"
+
+msgid "If you have Guest Ethernet ports, isolate them in the Guest bridge (not"
+msgstr "আপনার অতিথি ইথারনেট পোর্ট থাকলে, সেগুলি অতিথি ব্রিজে বিচ্ছিন্ন করুন (নয়"
+
+msgid "Configure the guest bridge."
+msgstr "অতিথি ব্রিজ কনফিগার করুন।"
+
+msgid "tab and click the gear next to each guest Ethernet port."
+msgstr "ট্যাব এবং প্রতিটি অতিথি ইথারনেট পোর্টের পাশের গিয়ারে ক্লিক করুন।"
+
+msgid "Connect two devices to Guest Wi-Fi."
+msgstr "দুটি ডিভাইস অতিথি Wi-Fi-এ সংযুক্ত করুন।"
+
+msgid "From the second device, try"
+msgstr "দ্বিতীয় ডিভাইস থেকে চেষ্টা করুন"
+
+msgid "to the first."
+msgstr "প্রথমটির সাথে।"
+
+msgid "A failed ping usually means isolation works. Some devices block ping by their own firewall — check with a real connection instead."
+msgstr "একটি ব্যর্থ পিং সাধারণত বিচ্ছিন্নতা কাজ করছে বোঝায়। কিছু ডিভাইস নিজেদের ফায়ারওয়াল দিয়ে পিং ব্লক করে — পরিবর্তে একটি আসল সংযোগ দিয়ে পরীক্ষা করুন।"
+
+msgid "Term definitions for new users"
+msgstr "নতুন ব্যবহারকারীদের জন্য পদ সংজ্ঞা"
+
+msgid "A number from 1 to 4094 identifying which virtual network a device belongs to."
+msgstr "১ থেকে ৪০৯৪ পর্যন্ত একটি সংখ্যা যা চিহ্নিত করে কোন ভার্চুয়াল নেটওয়ার্কে একটি ডিভাইস অন্তর্ভুক্ত।"
+
+msgid "Reserved values:"
+msgstr "সংরক্ষিত মান:"
+
+msgid "VLAN 0 and VLAN 4095 are reserved. Avoid VLAN 1 for user or guest networks."
+msgstr "VLAN 0 এবং VLAN 4095 সংরক্ষিত। ব্যবহারকারী বা অতিথি নেটওয়ার্কের জন্য VLAN 1 এড়িয়ে চলুন।"
+
+msgid "Analogy:"
+msgstr "উপমা:"
+
+msgid "Room numbers in a school — Class 5, Class 6, Class 7."
+msgstr "স্কুলে ক্লাসরুমের নম্বর — ক্লাস ৫, ক্লাস ৬, ক্লাস ৭।"
+
+msgid "A switch port dedicated to a single VLAN. Anything plugged in joins that VLAN only."
+msgstr "একটি সুইচ পোর্ট যা কেবল একটি VLAN-এর জন্য বরাদ্দ। যা-ই যুক্ত হোক না কেন, কেবল সেই VLAN-এ যোগ দেয়।"
+
+msgid "One classroom's door — you enter and you are in that room."
+msgstr "একটি ক্লাসরুমের দরজা — আপনি ঢোকেন এবং সেই ঘরে থাকেন।"
+
+msgid "A port carrying multiple VLANs over one link. Used for switch-to-switch or switch-to-router connections."
+msgstr "একটি পোর্ট যা একটি লিংকের উপর একাধিক VLAN বহন করে। সুইচ-থেকে-সুইচ বা সুইচ-থেকে-রাউটার সংযোগের জন্য ব্যবহৃত।"
+
+msgid "A highway shared by traffic from several cities."
+msgstr "একটি মহাসড়ক যা কয়েকটি শহরের ট্র্যাফিক শেয়ার করে।"
+
+msgid "When multiple VLANs share a trunk, each packet carries a digital tag identifying its VLAN."
+msgstr "একাধিক VLAN একটি ট্রাঙ্ক শেয়ার করলে, প্রতিটি প্যাকেট তার VLAN চিহ্নিত করে একটি ডিজিটাল ট্যাগ বহন করে।"
+
+msgid "Courier parcels labelled Dhaka / Chittagong / Sylhet."
+msgstr "কুরিয়ার পার্সেল যাতে ঢাকা / চট্টগ্রাম / সিলেট লেবেল লাগানো।"
+
+msgid "Comparison table"
+msgstr "তুলনা টেবিল"
+
+msgid "Term"
+msgstr "পদ"
+
+msgid "Analogy"
+msgstr "উপমা"
+
+msgid "Main function"
+msgstr "মূল কাজ"
+
+msgid "Classroom number"
+msgstr "ক্লাসরুম নম্বর"
+
+msgid "Gives the network a separate identity"
+msgstr "নেটওয়ার্ককে আলাদা পরিচয় দেয়"
+
+msgid "One classroom door"
+msgstr "একটি ক্লাসরুমের দরজা"
+
+msgid "Connects a single VLAN device"
+msgstr "একটি একক VLAN ডিভাইস সংযুক্ত করে"
+
+msgid "School main gate / highway"
+msgstr "স্কুলের প্রধান গেট / মহাসড়ক"
+
+msgid "Carries multiple VLANs over one cable"
+msgstr "একটি কেবলের উপর একাধিক VLAN বহন করে"
+
+msgid "Parcel address sticker"
+msgstr "পার্সেল ঠিকানার স্টিকার"
+
+msgid "Marks which VLAN a packet belongs to"
+msgstr "চিহ্নিত করে কোন VLAN-এ একটি প্যাকেট অন্তর্ভুক্ত"
+
+msgid "Inter-VLAN routing lets devices on different VLANs (e.g. VLAN 10 and VLAN 20) reach each other, with the router acting as the gateway between them."
+msgstr "Inter-VLAN রাউটিং বিভিন্ন VLAN-এর ডিভাইসগুলিকে (যেমন VLAN 10 এবং VLAN 20) একে অপরের কাছে পৌঁছাতে দেয়, রাউটার তাদের মধ্যে গেটওয়ে হিসেবে কাজ করে।"
+
+msgid "OpenWrt vs Cisco:"
+msgstr "OpenWrt বনাম Cisco:"
+
+msgid "On OpenWrt, inter-VLAN routing happens automatically through firewall zone forwarding. You do NOT create sub-interfaces like"
+msgstr "OpenWrt-এ, ইন্টার-VLAN রাউটিং ফায়ারওয়াল জোন ফরওয়ার্ডিংয়ের মাধ্যমে স্বয়ংক্রিয়ভাবে ঘটে। আপনি সাব-ইন্টারফেস তৈরি করবেন না যেমন"
+
+msgid "as you would on Cisco. The Cisco example below is educational only."
+msgstr "যেমন আপনি Cisco-তে করতেন। নিচের Cisco উদাহরণ শুধুমাত্র শিক্ষামূলক।"
+
+msgid "Why the name \"Router-on-a-Stick\"?"
+msgstr "\"Router-on-a-Stick\" নাম কেন?"
+
+msgid "Normally, connecting two separate networks would need two router ports and two cables. This approach uses only one physical cable — a \"stick\" — between the router and the switch. Inside the router, that one cable is split into multiple virtual sub-interfaces, one per VLAN. Visually, it looks like a router sitting on the end of a single stick."
+msgstr "সাধারণত, দুটি আলাদা নেটওয়ার্ক সংযুক্ত করতে দুটি রাউটার পোর্ট এবং দুটি কেবল লাগত। এই পদ্ধতিতে রাউটার এবং সুইচের মধ্যে শুধুমাত্র একটি ফিজিক্যাল কেবল — একটি \"লাঠি\" — ব্যবহৃত হয়। রাউটারের ভিতরে, সেই এক কেবলকে একাধিক ভার্চুয়াল সাব-ইন্টারফেসে ভাগ করা হয়, প্রতিটি VLAN-এর জন্য একটি। দেখতে একটি লাঠির মাথায় রাউটার বসে আছে বলে মনে হয়।"
+
+msgid "How it works — step by step"
+msgstr "এটি কীভাবে কাজ করে — ধাপে ধাপে"
+
+msgid "A PC on VLAN 10 wants to send data to a PC on VLAN 20."
+msgstr "VLAN 10-এর একটি PC VLAN 20-এর একটি PC-তে ডেটা পাঠাতে চায়।"
+
+msgid "The switch sees the destination is in another VLAN. It tags the packet with VLAN 10 and sends it over the trunk port."
+msgstr "সুইচ দেখে গন্তব্য অন্য VLAN-এ। এটি প্যাকেটকে VLAN 10 দিয়ে ট্যাগ করে এবং ট্রাঙ্ক পোর্টের উপর পাঠায়।"
+
+msgid "The router receives the packet on its VLAN 10 sub-interface."
+msgstr "রাউটার তার VLAN 10 সাব-ইন্টারফেসে প্যাকেট গ্রহণ করে।"
+
+msgid "The router checks its routing table and decides to send it to VLAN 20."
+msgstr "রাউটার তার রাউটিং টেবিল চেক করে এবং VLAN 20-এ পাঠানোর সিদ্ধান্ত নেয়।"
+
+msgid "The router strips the old tag and applies a new VLAN 20 tag. It sends the packet back over the same cable."
+msgstr "রাউটার পুরানো ট্যাগ সরিয়ে একটি নতুন VLAN 20 ট্যাগ লাগায়। এটি একই কেবলের উপর প্যাকেট ফেরত পাঠায়।"
+
+msgid "The switch reads the new tag and delivers the packet to the VLAN 20 PC."
+msgstr "সুইচ নতুন ট্যাগ পড়ে এবং VLAN 20 PC-তে প্যাকেট পৌঁছে দেয়।"
+
+msgid "Cisco configuration example"
+msgstr "Cisco কনফিগারেশনের উদাহরণ"
+
+msgid "Switch side — make the router-facing port a trunk:"
+msgstr "সুইচ দিক — রাউটার-মুখী পোর্টকে ট্রাঙ্ক করুন:"
+
+msgid "Router side — create sub-interfaces:"
+msgstr "রাউটার দিক — সাব-ইন্টারফেস তৈরি করুন:"
+
+msgid "End devices:"
+msgstr "শেষ ডিভাইসগুলি:"
+
+msgid "set their default gateway to the matching sub-interface IP (e.g."
+msgstr "সেগুলির ডিফল্ট গেটওয়ে মিলিত সাব-ইন্টারফেস IP-এ সেট করুন (যেমন"
+
+msgid "for VLAN 10,"
+msgstr "VLAN 10-এর জন্য,"
+
+msgid "for VLAN 20)."
+msgstr "VLAN 20-এর জন্য)।"
+
+msgid "On older switches you may need"
+msgstr "পুরানো সুইচে প্রয়োজন হতে পারে"
+
+msgid "before"
+msgstr "আগে"
+
+msgid "All referenced VLANs must already exist on the switch."
+msgstr "সমস্ত উল্লিখিত VLAN ইতিমধ্যে সুইচে থাকতে হবে।"
+
+msgid "Pros and cons"
+msgstr "সুবিধা এবং অসুবিধা"
+
+msgid "Pros"
+msgstr "সুবিধা"
+
+msgid "Cons"
+msgstr "অসুবিধা"
+
+msgid "Lower cost — one router port, one cable."
+msgstr "কম খরচ — একটি রাউটার পোর্ট, একটি কেবল।"
+
+msgid "Bandwidth bottleneck — all VLANs share the same cable."
+msgstr "ব্যান্ডউইথ বাধা — সমস্ত VLAN একই কেবল শেয়ার করে।"
+
+msgid "Easy setup for small and medium networks."
+msgstr "ছোট এবং মাঝারি নেটওয়ার্কের জন্য সহজ সেটআপ।"
+
+msgid "Single point of failure — a broken cable or port stops all inter-VLAN traffic."
+msgstr "একক ব্যর্থতার বিন্দু — একটি ভাঙা কেবল বা পোর্ট সমস্ত ইন্টার-VLAN ট্র্যাফিক বন্ধ করে দেয়।"
+
+msgid "Zone Forwarding — LAN to Guest (one-way)"
+msgstr "জোন ফরওয়ার্ডিং — LAN থেকে অতিথি (একমুখী)"
+
+msgid "Allow the LAN to reach the Guest network, but not vice versa."
+msgstr "LAN-কে অতিথি নেটওয়ার্কে পৌঁছাতে দিন, কিন্তু উল্টোটা নয়।"
+
+msgid "on the"
+msgstr "-এ"
+
+msgid "zone."
+msgstr "জোন।"
+
+msgid "Scroll to"
+msgstr "স্ক্রল করুন"
+
+msgid "Inter-Zone Forwarding"
+msgstr "ইন্টার-জোন ফরওয়ার্ডিং"
+
+msgid "tick"
+msgstr "টিক দিন"
+
+msgid "Never enable Guest → LAN."
+msgstr "কখনও অতিথি → LAN সক্রিয় করবেন না।"
+
+msgid "Leaving it disabled keeps the main network protected."
+msgstr "এটি নিষ্ক্রিয় রাখলে মূল নেটওয়ার্ক সুরক্ষিত থাকে।"
+
+msgid "Allow only one Guest device (Traffic Rules)"
+msgstr "শুধুমাত্র একটি অতিথি ডিভাইস অনুমোদন করুন (Traffic Rules)"
+
+msgid "Instead of opening the whole Guest zone, allow only a specific device such as a shared printer."
+msgstr "সম্পূর্ণ অতিথি জোন খোলার পরিবর্তে, একটি নির্দিষ্ট ডিভাইস (যেমন একটি শেয়ার্ড প্রিন্টার) অনুমোদন করুন।"
+
+msgid "Add new forward rule"
+msgstr "নতুন forward rule যোগ করুন"
+
+msgid "the printer's IP (e.g."
+msgstr "প্রিন্টারের IP (যেমন"
+
+msgid "Check for conflicts:"
+msgstr "দ্বন্দ্ব যাচাই করুন:"
+
+msgid "If you already enabled zone-level"
+msgstr "যদি আপনি ইতিমধ্যে জোন-স্তরে সক্রিয় করে থাকেন"
+
+msgid ", this traffic rule is redundant. Untick the zone-level forward first."
+msgstr ", তবে এই traffic rule অপ্রয়োজনীয়। প্রথমে জোন-স্তরের forward আনটিক করুন।"
+
+msgid "Static Lease (IP reservation)"
+msgstr "Static Lease (IP সংরক্ষণ)"
+
+msgid "If a device's IP changes, firewall rules targeting it stop working. Reserve its IP so it stays fixed."
+msgstr "ডিভাইসের IP পরিবর্তন হলে, এটিকে লক্ষ্য করে ফায়ারওয়াল নিয়ম কাজ করা বন্ধ করে। এর IP সংরক্ষণ করুন যাতে এটি স্থির থাকে।"
+
+msgid "pick from the dropdown."
+msgstr "ড্রপডাউন থেকে বাছুন।"
+
+msgid "the fixed IP (must be inside the VLAN's subnet and outside the dynamic DHCP pool, e.g."
+msgstr "নির্দিষ্ট IP (VLAN-এর সাবনেটের ভিতরে এবং গতিশীল DHCP পুলের বাইরে হতে হবে, যেমন"
+
+msgid "leave empty or set"
+msgstr "খালি রাখুন বা সেট করুন"
+
+msgid "Pro tip:"
+msgstr "প্রো টিপ:"
+
+msgid "Restart the device (or reconnect it) so it requests a fresh lease and picks up the reserved IP."
+msgstr "ডিভাইসটি রিস্টার্ট করুন (বা পুনঃসংযুক্ত করুন) যাতে এটি একটি নতুন লিজ চায় এবং সংরক্ষিত IP পায়।"
+
+msgid "Anti-lockout & rollback"
+msgstr "অ্যান্টি-লকআউট ও রোলব্যাক"
+
+msgid "If a VLAN change locks you out, use these tools."
+msgstr "একটি VLAN পরিবর্তন আপনাকে লকআউট করলে, এই সরঞ্জামগুলি ব্যবহার করুন।"
+
+msgid "LuCI shows a confirmation countdown after applying network changes. If you lose access, do nothing — after about 90 seconds it reverts automatically."
+msgstr "নেটওয়ার্ক পরিবর্তন প্রয়োগের পর LuCI একটি নিশ্চিতকরণ কাউন্টডাউন দেখায়। অ্যাক্সেস হারালে, কিছু করবেন না — প্রায় ৯০ সেকেন্ড পরে স্বয়ংক্রিয়ভাবে ফিরে যায়।"
+
+msgid "This app has its own safety toggle."
+msgstr "এই অ্যাপের নিজস্ব নিরাপত্তা টগল আছে।"
+
+msgid "Safe apply"
+msgstr "নিরাপদ প্রয়োগ"
+
+msgid "above snapshots the network config before every apply, so you can restore with one click."
+msgstr "উপরে প্রতিটি প্রয়োগের আগে নেটওয়ার্ক বিন্যাসকরণের স্ন্যাপশট নেয়, তাই এক ক্লিকে পুনরুদ্ধার করা যায়।"
+
+msgid "If you get locked out mid-config, connect via serial console or another VLAN and run the restore command."
+msgstr "কনফিগারেশনের মাঝখানে লকআউট হলে, সিরিয়াল কনসোল বা অন্য VLAN দিয়ে সংযুক্ত হন এবং পুনরুদ্ধার আদেশ চালান।"
+
+msgid "Restore command:"
+msgstr "পুনরুদ্ধার আদেশ:"
+
+msgid "Note: The path"
+msgstr "দ্রষ্টব্য: পথটি"
+
+msgid "is specific to this app. On a plain OpenWrt system with a manual backup, use your own path (e.g."
+msgstr "এই অ্যাপের জন্য নির্দিষ্ট। ম্যানুয়াল ব্যাকআপ সহ একটি সাধারণ OpenWrt সিস্টেমে, আপনার নিজের পথ ব্যবহার করুন (যেমন"
+
+msgid "If reload does not restore access, reboot."
+msgstr "রিলোড অ্যাক্সেস পুনরুদ্ধার না করলে, রিবুট করুন।"

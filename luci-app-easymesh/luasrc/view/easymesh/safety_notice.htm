@@ -1,0 +1,81 @@
+<div class="cbi-section" style="margin-bottom: 0;">
+    <h3><%:Safety%></h3>
+
+    <div class="alert-message warning"
+         style="padding: 8px 12px;
+                background: var(--warning-bg, rgba(255, 193, 7, 0.15));
+                border-left: 3px solid var(--warning, #ffc107);
+                color: currentColor;
+                margin-bottom: 8px;
+                border-radius: 0 4px 4px 0;">
+        ⚠️
+        <strong><%:Avoid these characters in SSIDs/passwords:%></strong>
+        <code>"</code> <code>'</code> <code>`</code> <code>$</code> <code>\</code> <code>|</code>
+        <%:— plus newlines and em/en dashes:%>
+        (<code>—</code>, <code>–</code>).
+        <%:They break this shell-based app's sync.%>
+    </div>
+
+    <details>
+        <summary style="cursor: pointer; font-weight: bold; padding: 4px 0; color: var(--primary, #1976d2);">
+            <%:Click for full safety rules%>
+        </summary>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px;">
+            <div style="border-left: 3px solid var(--success, #4caf50); padding-left: 12px;">
+                <strong style="color: var(--success, #4caf50);"><%:✅ Do%></strong>
+                <ul style="margin-top: 6px; padding-left: 18px;">
+                    <li><%:Use only letters, numbers, hyphens, and underscores in SSIDs.%></li>
+                    <li><%:Keep SSIDs 32 characters or fewer.%></li>
+                    <li><%:Use ASCII characters if SSID sync is enabled.%></li>
+                    <li><%:Back up config before every change.%></li>
+                    <li><%:Test one client node at a time when changing settings.%></li>
+                </ul>
+            </div>
+
+            <div style="border-left: 3px solid var(--error, #f44336); padding-left: 12px;">
+                <strong style="color: var(--error, #f44336);"><%:❌ Don't%></strong>
+                <ul style="margin-top: 6px; padding-left: 18px;">
+                    <li><%:Never use quotes, backticks, dollar signs, or backslashes in SSIDs/passwords.%></li>
+                    <li><%:Never change SSID while client nodes are offline.%></li>
+                    <li><%:Never edit a synced node's SSID manually.%></li>
+                    <li><%:Never run luci-app-easymesh alongside meshd (OMM).%></li>
+                    <li><%:Never set sync interval below 10 seconds.%></li>
+                </ul>
+            </div>
+        </div>
+
+        <details style="margin-top: 12px;">
+            <summary style="cursor: pointer; font-weight: bold;">
+                <%:Field-by-field safety reference%>
+            </summary>
+            <table class="table" style="margin-top: 8px;">
+                <tr><th><%:Field%></th><th><%:Safe%></th><th><%:Unsafe%></th></tr>
+                <tr>
+                    <td><%:Mesh ID%></td>
+                    <td><code>A-Z a-z 0-9 _ -</code></td>
+                    <td><code>" ' ` $ \ |</code></td>
+                </tr>
+                <tr>
+                    <td><%:Password%></td>
+                    <td><code>A-Z a-z 0-9 ! @ # % ^ &amp; * _ - + =</code></td>
+                    <td><code>" ' ` $ \ |</code> + newline</td>
+                </tr>
+                <tr>
+                    <td><%:SSID%></td>
+                    <td><code>A-Z a-z 0-9 _ - space</code></td>
+                    <td><code>" ' ` $ \ |</code></td>
+                </tr>
+                <tr>
+                    <td><%:VLAN IDs%></td>
+                    <td><code>0-9 ,</code></td>
+                    <td><%:everything else%></td>
+                </tr>
+            </table>
+        </details>
+
+        <div style="margin-top: 12px; font-size: 90%; opacity: 0.75;">
+            <%:Why these limits? A compiled daemon like meshd (6 MB) never passes user input through a shell. Lua and shell scripts necessarily do — the sync protocol uses nc, openssl, and uci as external commands.%>
+        </div>
+    </details>
+</div>

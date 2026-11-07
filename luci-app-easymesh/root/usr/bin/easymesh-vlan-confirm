@@ -1,0 +1,10 @@
+#!/bin/sh
+# easymesh-vlan-confirm — cancel the pending auto-rollback
+
+if [ -f /tmp/easymesh-vlan-rollback.pid ]; then
+    kill "$(cat /tmp/easymesh-vlan-rollback.pid)" 2>/dev/null
+fi
+
+rm -f /tmp/easymesh-vlan-rollback.pending /tmp/easymesh-vlan-rollback.pid
+logger -t easymesh-vlan "auto-rollback cancelled by user"
+exit 0

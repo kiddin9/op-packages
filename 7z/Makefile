@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=7z
-PKG_VERSION:=26.05
-PKG_RELEASE:=6
+PKG_VERSION:=26.06
+PKG_RELEASE:=7
 
 PKG_SOURCE:=$(PKG_NAME)$(subst .,,$(PKG_VERSION))-src.tar.xz
 PKG_SOURCE_URL:=https://github.com/ip7z/7zip/releases/download/$(PKG_VERSION)/

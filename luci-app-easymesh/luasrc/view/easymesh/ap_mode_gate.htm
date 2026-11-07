@@ -1,0 +1,33 @@
+<%
+local role = self.data.role or "off"
+local role_label = role
+if role == "server" then role_label = "Server" end
+if role == "off"    then role_label = "Off"   end
+%>
+
+<div class="cbi-section">
+    <h3><%:AP Mode is not available for this role%></h3>
+
+    <div class="alert-message warning"
+         style="padding: 12px;
+                background: var(--warning-bg, rgba(255, 193, 7, 0.15));
+                border-left: 3px solid var(--warning, #ffc107);
+                color: currentColor;
+                margin: 12px 0;
+                border-radius: 0 4px 4px 0;">
+        <p style="margin: 0;">
+            <%:Current mesh role:%> <strong><%= role_label %></strong>
+        </p>
+        <p style="margin: 8px 0 0 0;">
+            <%:AP Mode (Dumb AP) only applies to the Client and Node roles. The Server runs DHCP and routing, so it must not become a Dumb AP.%>
+        </p>
+    </div>
+
+    <p><%:To configure AP Mode:%></p>
+    <ol>
+        <li><%:Go to the Settings tab.%></li>
+        <li><%:Set Mesh role to Client or Node.%></li>
+        <li><%:Click Save &amp; Apply.%></li>
+        <li><%:Return to this tab.%></li>
+    </ol>
+</div>

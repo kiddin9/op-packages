@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-easymesh
 PKG_VERSION:=2.4.1
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 
 PKG_LICENSE:=GPL-2.0
 PKG_MAINTAINER:=Arafat Rahman Zami Mondol <zamimondol@gmail.com>

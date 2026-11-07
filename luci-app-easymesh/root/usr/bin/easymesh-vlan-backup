@@ -1,0 +1,18 @@
+#!/bin/sh
+# easymesh-vlan-backup — snapshot /etc/config/network before VLAN changes
+
+BKDIR=/etc/easymesh
+BKFILE="$BKDIR/network.bak"
+
+mkdir -p "$BKDIR"
+
+if [ ! -f /etc/config/network ]; then
+    logger -t easymesh-vlan "no /etc/config/network found, skipping backup"
+    exit 1
+fi
+
+cp /etc/config/network "$BKFILE"
+date +%s > "$BKFILE.timestamp"
+
+logger -t easymesh-vlan "backed up network config to $BKFILE"
+exit 0

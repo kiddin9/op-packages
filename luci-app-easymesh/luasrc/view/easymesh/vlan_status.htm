@@ -1,0 +1,36 @@
+<%
+local data = self.data or {}
+local has_backup       = data.has_backup
+local rollback_pending = data.rollback_pending
+
+local backup_ts = ""
+if has_backup then
+    local f = io.open("/etc/easymesh/network.bak.timestamp", "r")
+    if f then
+        local t = tonumber(f:read("*l") or "0")
+        f:close()
+        if t and t > 0 then
+            backup_ts = os.date("%Y-%m-%d %H:%M:%S", t)
+        end
+    end
+end
+%>
+
+<% if rollback_pending then %>
+<div style="padding: 12px; background: rgba(255, 193, 7, 0.15); border-left: 4px solid #ffc107; color: currentColor; margin-bottom: 12px;">
+    <strong>⚠️ <%:Auto-rollback is armed%></strong><br>
+    <%:A VLAN change was just applied. If you do not click%>
+    <strong><%:Confirm VLAN Change%></strong>
+    <%:within 90 seconds, the previous network config will be restored.%>
+</div>
+<% end %>
+
+<% if has_backup then %>
+<div style="padding: 8px 12px; background: rgba(76, 175, 80, 0.15); border-left: 4px solid #4caf50; color: currentColor; margin-bottom: 12px; font-size: 90%;">
+    <%:Network backup available:%> <code><%= backup_ts %></code>
+</div>
+<% else %>
+<div style="padding: 8px 12px; background: rgba(158, 158, 158, 0.15); border-left: 4px solid #9e9e9e; color: currentColor; margin-bottom: 12px; font-size: 90%;">
+    <%:No network backup yet. A snapshot is taken automatically on the next Save & Apply.%>
+</div>
+<% end %>
