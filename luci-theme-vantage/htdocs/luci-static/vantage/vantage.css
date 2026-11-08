@@ -2646,9 +2646,6 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 #packages {
  width: 100% !important;
 }
-vt-brand-word {
- margin:0;
-}
 .vt-login-card {
 	padding: var(--sp-6);
 	background: var(--s1);
