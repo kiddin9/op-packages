@@ -235,7 +235,7 @@ function mount(host, band, style) {
 	var cv = document.createElement('canvas'), ctx = cv.getContext && cv.getContext('2d');
 	var env = { w: 0, h: 0, box: { t: 0, b: 0 }, origin: { x: 0, y: 0 }, count: 2, speed: packetSpeed(0), share: 0.7, frame: frameMs(0), colour: '#7a9a3a', muted: '#8a9099' };
 	var down = null, up = null, originEl = null;
-	var scene = null, cur = 'none', raf = 0, timer = 0, last = 0, dpr = 1, inView = true, hidden = false, still = false, mq = null;
+	var scene = null, cur = 'none', raf = 0, timer = 0, last = 0, dpr = 1, inView = true, hidden = false, still = false, paused = false, mq = null;
 	var focused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;
 	var ro = null, io = null, onMq = null, stillRated = false, mo = null, scheme = null, onScheme = null;
 
@@ -339,7 +339,7 @@ function mount(host, band, style) {
 	}
 	function again() { timer = 0; if (running() && !raf) raf = requestAnimationFrame(tick); }
 
-	function running() { return !!scene && !still && !hidden && focused && inView && usable(); }
+	function running() { return !!scene && !still && !paused && !hidden && focused && inView && usable(); }
 	function halt() {
 		if (raf) cancelAnimationFrame(raf);
 		if (timer) clearTimeout(timer);
@@ -407,6 +407,8 @@ function mount(host, band, style) {
 			run();
 		},
 		running: running,
+		/* the page's refresh is paused: the last frame stays */
+		pause: function(on) { paused = !!on; run(); },
 		stop: function() {
 			halt(); scene = null;
 			if (ro) ro.disconnect();

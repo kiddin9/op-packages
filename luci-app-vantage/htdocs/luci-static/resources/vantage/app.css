@@ -584,16 +584,21 @@ h2, h3{
 	--vt-oc: var(--vt-ok);
 	background: color-mix(in oklab, var(--vt-oc) 16%, transparent);
 }
-/* the ring pulses only while something needs attention */
+/* the ring always pulses, or it reads as stuck: slowly and softly while
+   all is fine, at the full rate when something needs attention */
 .vt-app .vt-orb::after {
 	content: ""; position: absolute; inset: 0; border-radius: 50%;
 	border: 2px solid var(--vt-oc); opacity: .35;
+	animation: vt-ring-soft 5s ease-out infinite;
 }
 .vt-app .vt-orb-warn::after, .vt-app .vt-orb-err::after { animation: vt-ring 2.6s ease-out infinite; }
+/* paused (overview.js setMotion): the ring stands still */
+.vt-app.vt-still .vt-orb::after { animation: none; }
 .vt-app .vt-orb-core { width: 14px; height: 14px; border-radius: 50%; background: var(--vt-oc); box-shadow: 0 0 0 4px color-mix(in oklab, var(--vt-oc) 22%, transparent); }
 .vt-app .vt-orb-warn { --vt-oc: var(--vt-warn); }
 .vt-app .vt-orb-err { --vt-oc: var(--vt-err); }
 @keyframes vt-ring { 0% { transform: scale(.7); opacity: .5; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes vt-ring-soft { 0% { transform: scale(.85); opacity: .35; } 100% { transform: scale(1.3); opacity: 0; } }
 
 .vt-app .vt-head-text { min-width: 0; flex: 1; }
 .vt-app .vt-headline {
@@ -610,8 +615,8 @@ h2, h3{
 }
 .vt-app .vt-live-beat { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--vt-beat-c, var(--vt-ok)); }
 /* the beat is a ring that scales and fades (compositor only; an animated
-   box-shadow repainted every frame), only while reconnecting: a live page
-   keeps a still dot. It sits behind the dot (z-index -1 in the pill's
+   box-shadow repainted every frame): slowly while live, at the full rate
+   while reconnecting, not at all while paused. It sits behind the dot (z-index -1 in the pill's
    stacking context) so the dot keeps its colour, and it is transparent
    unless the animation runs: nothing shows without motion. */
 .vt-app .vt-live-beat::after {
@@ -621,8 +626,10 @@ h2, h3{
 }
 .vt-app .vt-live-paused .vt-live-beat { --vt-beat-c: var(--vt-text-3); }
 .vt-app .vt-live-err .vt-live-beat { --vt-beat-c: var(--vt-warn); }
+.vt-app .vt-live-ok .vt-live-beat::after { animation: vt-beat-soft 5s ease-out infinite; }
 .vt-app .vt-live-err .vt-live-beat::after { animation: vt-beat 2s ease-out infinite; }
 @keyframes vt-beat { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(2.75); opacity: 0; } }
+@keyframes vt-beat-soft { 0% { transform: scale(1); opacity: .6; } 70%, 100% { transform: scale(2.2); opacity: 0; } }
 
 .vt-app .vt-health {
 	display: grid; gap: 10px; margin-bottom: var(--vt-sp-4);

@@ -101,9 +101,14 @@ Download the latest `.apk` package from [Releases](https://github.com/vad-b/luci
 apk add --allow-untrusted --upgrade /tmp/luci-app-tailscale-ng_*.apk
 ```
 
+Simplified Chinese translation is also available as a separate `luci-i18n-tailscale-ng-zh-cn` package in both `.apk` and `.ipk` formats in [Releases](https://github.com/vad-b/luci-app-tailscale-ng/releases).
+
+For local development builds and testing, see [Local package builds](docs/local-build.md).
+
 ## Credits
 
 - [asvow/luci-app-tailscale](https://github.com/asvow/luci-app-tailscale) - the project that inspired this work
+- [GFander](https://github.com/GFander) - Simplified Chinese translation
 
 ## License
 

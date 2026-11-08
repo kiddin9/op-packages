@@ -9,8 +9,11 @@ LUCI_TITLE:=LuCI for Tailscale (NG)
 LUCI_DEPENDS:=+tailscale
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=0.1.1
-PKG_RELEASE:=3
+PKG_VERSION:=0.1.2
+
+# match the i18n pkg version to the main pkg version
+PKG_RELEASE:=4
+PKG_PO_VERSION:=$(PKG_VERSION)-r$(PKG_RELEASE)
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

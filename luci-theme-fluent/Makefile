@@ -2,11 +2,11 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-fluent
 PKG_VERSION:=1.0.9
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 PKG_LICENSE:=Apache-2.0
 
 LUCI_TITLE:=Fluent Theme for LuCI
-LUCI_DEPENDS:=+luci-base
+LUCI_DEPENDS:=+luci-base +flock
 LUCI_MINIFY_CSS:=0
 define Package/$(PKG_NAME)/conffiles
 /etc/config/fluent

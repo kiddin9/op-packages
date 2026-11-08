@@ -393,6 +393,15 @@ html[data-darkmode="true"] .vt-brand-tile { fill: #16181b; }
 	text-decoration: none !important;
 }
 .vt-brand svg { flex: none; }
+/* Appearance "Next to the logo" (menu-vantage.js applyBrand): beside the
+   logo while the rail is pinned open, else first in the top bar, as
+   "name / page"; not on phones, where the logo isn't shown either */
+.vt-brand-name { display: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+html[data-rail="pinned"] .vt-brand-name:not([hidden]) { display: block; }
+.vt-top-name { flex: none; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); font-weight: 600; }
+.vt-top-name[hidden], html[data-rail="pinned"] .vt-top-name { display: none; }
+.vt-top-name + .vt-crumbs::before { content: "/"; flex: none; margin-inline-end: 4px; color: var(--text-3); font-family: var(--mono); font-size: var(--fs-sm); }
+.vt-top-name[hidden] + .vt-crumbs::before, html[data-rail="pinned"] .vt-top-name + .vt-crumbs::before { content: none; }
 
 .vt-rail-list {
 	list-style: none; margin: 0; padding: var(--sp-2) 0;
@@ -626,6 +635,12 @@ a.vt-crumb:hover { color: var(--text); }
 /* where the picks are kept, when not for every browser */
 .vt-appear-note { max-width: 32ch; margin: 0; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
 .vt-appear-note[hidden] { display: none; }
+.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); }
+.vt-appear-num { font-family: var(--mono); }
+.vt-appear-check { margin: 0; padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.vt-appear-check[aria-disabled="true"] { color: var(--text-3); cursor: default; text-decoration: none; }
+.vt-appear-update { display: block; margin-top: 4px; color: var(--text-2); }
+.vt-appear-update[hidden] { display: none; }
 .vt-appear-set > legend { margin: 0 0 6px; padding: 0; color: var(--text-3); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .vt-appear-track { display: flex; background: var(--seg-bg); border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line); }
 .vt-appear-opt {
@@ -672,12 +687,38 @@ a.vt-crumb:hover { color: var(--text); }
 }
 #indicators > span[data-clickable] { cursor: pointer; }
 #indicators > span[data-clickable]:hover { border-color: var(--text-3); color: var(--text); }
-/* auto-refresh on: a still dot (the label says it, a pulse only
-   distracted); paused: a square */
+/* auto-refresh on: a dot with a slow, soft ring (#100); fast while the
+   dashboard reports a problem: amber while it reconnects or warns, red for
+   an error (luci-app-vantage sets html[data-vt-live] and [data-vt-alert]);
+   paused: a still square. The ring scales and fades on the compositor,
+   behind the dot (z-index -1 in the pill's own stack), and is transparent
+   unless it runs, so reduced motion shows none. */
+#indicators > span[data-indicator="poll-status"][data-style="active"] { position: relative; isolation: isolate; }
 #indicators > span[data-indicator="poll-status"][data-style="active"]::before {
 	content: ""; width: 7px; height: 7px; border-radius: 50%;
 	background: var(--ok);
 }
+#indicators > span[data-indicator="poll-status"][data-style="active"]::after {
+	content: ""; position: absolute; z-index: -1; left: 10px; top: calc(50% - 3.5px);
+	width: 7px; height: 7px; border-radius: 50%;
+	background: color-mix(in oklab, var(--ok) 50%, transparent);
+	opacity: 0; pointer-events: none;
+	animation: vt-live-soft 5s ease-out infinite;
+}
+html[data-vt-live="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::after, html[data-vt-alert="warn"] #indicators > span[data-indicator="poll-status"][data-style="active"]::after {
+	background: color-mix(in oklab, var(--warn) 50%, transparent);
+	animation: vt-live 2s ease-out infinite;
+}
+html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::after {
+	background: color-mix(in oklab, var(--err) 50%, transparent);
+	animation: vt-live 2s ease-out infinite;
+}
+@media (width > 900px) {
+	html[data-vt-live="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::before, html[data-vt-alert="warn"] #indicators > span[data-indicator="poll-status"][data-style="active"]::before { background: var(--warn); }
+	html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::before { background: var(--err); }
+}
+@keyframes vt-live-soft { 0% { transform: scale(1); opacity: .6; } 70%, 100% { transform: scale(2.2); opacity: 0; } }
+@keyframes vt-live { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(2.7); opacity: 0; } }
 #indicators > span[data-indicator="poll-status"][data-style="inactive"]::before {
 	content: ""; width: 7px; height: 7px; border-radius: 1px; background: var(--text-3);
 }
@@ -1717,6 +1758,14 @@ table { border-collapse: separate; border-spacing: 0; width: 100%; }
 .cbi-section-table-descr > .th { font-weight: 400; text-transform: none; letter-spacing: 0; font-size: var(--fs-sm); }
 .cbi-section-table-cell, .cbi-section-table-row > .td { vertical-align: middle; }
 .td.cbi-value-field .cbi-dropdown, .td.cbi-value-field input:not([type="checkbox"]), .td.cbi-value-field select { max-width: 220px; }
+/* A text field is width:100%, which an auto table layout counts as 0 wide, so
+   a column with a short header (Name and Path in Services > Network Shares)
+   shrank to a sliver and hid its value. Give the field a floor: 7em, which a
+   wide table (Samba's shares) still nearly fits beside; not on a phone,
+   where each row is a card of fixed columns and a floor overflows it. */
+@media (width > 720px) {
+	.td.cbi-value-field input[type="text"], .td.cbi-value-field input:not([type]) { min-width: 7em; }
+}
 
 /* key/value tables (status pages): quiet label column */
 .table:not(:has(.table-titles)) .tr > .td:first-child:nth-last-child(2) {
@@ -3212,14 +3261,18 @@ body[data-page="admin-system-filemanager"] .sort-button { border-color: var(--li
 	.vt-search { width: 36px; padding: 0; justify-content: center; }
 	.vt-search-label, .vt-search .vt-kbd { display: none; }
 	.vt-host { max-width: 180px; }
+	/* the name next to the logo crowded the host chip, which says it too */
+	.vt-top-name, .vt-top-name + .vt-crumbs::before { display: none !important; }
 }
 
 @media (max-width: 900px) {
 	.vt-host { display: none !important; }
+	.vt-top-name, .vt-top-name + .vt-crumbs::before { display: none !important; }
 	/* indicators go compact (a sign, a count) before the crumbs get cut;
 	   the label stays as text for screen readers and as the title */
 	#indicators > span[data-indicator] { height: 28px; padding: 0 8px; }
 	#indicators > span[data-indicator="poll-status"] { font-size: 0; gap: 0; width: 28px; justify-content: center; padding: 0; }
+	#indicators > span[data-indicator="poll-status"][data-style="active"]::after { left: calc(50% - 3.5px); }
 	/* without its label the pill is the pause / resume button: a pause
 	   sign while it refreshes, a play sign while paused */
 	#indicators > span[data-indicator="poll-status"][data-style="active"]::before {

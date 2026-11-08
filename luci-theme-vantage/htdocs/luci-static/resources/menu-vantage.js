@@ -40,10 +40,20 @@ const BACKDROP_EVENT = 'vantage:backdrop';
    save (those keys are dropped then); this browser's last pick (the old
    key, also what the dashboard reads under another theme) counts until
    the router has one. */
+/* this package's version, as its Makefile has it (tests/version.test.js) */
+const VERSION = '1.0.17';
+/* Check for updates (Appearance): when asked, never on its own, the browser
+   reads the project's 24.10 package list on GitHub Pages (the same release
+   as 25.12's), without cookies or a referrer. Only a version number passes;
+   the link is a constant, to the latest release. */
+const UPDATE_INDEX = 'https://anothadev.github.io/luci-theme-vantage/24.10/Packages';
+
 const LOOK = {
 	theme: { own: 'vantage.theme.own', before: THEME_KEY, ok: [ 'auto', 'light', 'dark' ] },
 	login: { own: 'vantage.login.own', before: LOGIN_KEY, ok: [ 'grid', 'stars', 'none' ] },
-	backdrop: { own: 'vantage.backdrop.own', before: BACKDROP_KEY, ok: [ 'grid', 'stars', 'none' ] }
+	backdrop: { own: 'vantage.backdrop.own', before: BACKDROP_KEY, ok: [ 'grid', 'stars', 'none' ] },
+	/* what shows next to the logo; the hostname and model come from system board */
+	brand: { own: 'vantage.brand.own', before: 'vantage.brand', ok: [ 'none', 'hostname', 'model' ] }
 };
 const LOOK_SYNC = 'vantage.look';         /* another tab saved one: { name, value } */
 const LOOK_SET_EVENT = 'vantage:backdrop-set';   /* the dashboard's own picker hands its pick over */
@@ -154,6 +164,23 @@ function svg(name, size) {
 
 function storageGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
+/* '1.0.16' or '1.0.16-r1' -> [ 1, 0, 16 ]; null for anything else */
+function versionParts(v) {
+	const m = /^(\d{1,4}(?:\.\d{1,4}){1,3})(?:-r\d{1,4})?$/.exec(String(v == null ? '' : v));
+	return m ? m[1].split('.').map(Number) : null;
+}
+function newerVersion(a, b) {
+	for (let i = 0; i < Math.max(a.length, b.length); i++)
+		if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) > (b[i] || 0);
+	return false;
+}
+/* the theme's version in an opkg package list, without its release */
+function listedVersion(text) {
+	const block = String(text || '').split(/\n\s*\n/).find(b => /^Package: luci-theme-vantage$/m.test(b));
+	const m = block && /^Version: (\S+)$/m.exec(block);
+	return m && versionParts(m[1]) ? m[1].replace(/-r\d+$/, '') : null;
+}
+
 /* the value in force, from [ pending, own, router, before ]: the first
    the theme knows, else the first choice (the default); the templates'
    inline scripts and login.js do the same without the pending one */
@@ -176,6 +203,7 @@ function setLookAttr(root, name, value) {
 	if (name === 'theme') root.setAttribute('data-vt-look-theme', value);
 	else if (name === 'login') root.setAttribute('data-vt-look-login', value);
 	else if (name === 'backdrop') root.setAttribute('data-vt-look-backdrop', value);
+	else if (name === 'brand') root.setAttribute('data-vt-look-brand', value);
 }
 function storageSet(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
 
@@ -452,20 +480,33 @@ function replaceTable(table, block) {
 }
 
 /* Memory: one bar. in use = total - available; cache (reclaimable) =
-   available - free; free = total - LuCI's "Used" (which is total - free). */
+   available - free; free = total - LuCI's "Used" (which is total - free).
+   A table without "Total Available" (Kwrt's luci-mod-status, #103) is read
+   its own way, below. */
 function enhanceMemory() {
 	statusSections(_('Memory')).forEach(section => {
 		const table = pendingTable(section);
 		if (!table) return;
 		const rows = barRows(table), get = l => (rows.find(r => r.label === l) || {}).pair;
 		const avail = get(_('Total Available')), used = get(_('Used')),
-		      buffered = get(_('Buffered')), cached = get(_('Cached')), swap = get(_('Swap free'));
+		      buffered = get(_('Buffered')), cached = get(_('Cached')),
+		      swapFree = get(_('Swap free')), swapUsed = get(_('Swap used'));
 		const total = (used || avail || {}).total;
 		if (!total || !used) return;
 
-		const free = Math.max(0, total - used.value);
-		let available = avail ? avail.value : free + (buffered ? buffered.value : 0) + (cached ? cached.value : 0);
-		available = Math.min(total, Math.max(available, free));
+		let free, available;
+		/* the row decides, not its value: LuCI shows "?" when it has none */
+		if (rows.some(r => r.label === _('Total Available'))) {
+			free = Math.max(0, total - used.value);
+			available = avail ? avail.value : free + (buffered ? buffered.value : 0) + (cached ? cached.value : 0);
+			available = Math.min(total, Math.max(available, free));
+		}
+		else {
+			/* Kwrt: "Used" is total - MemAvailable. MemFree isn't shown, so the
+			   cache stands for what is reclaimable and Free is an estimate. */
+			available = Math.min(total, Math.max(0, total - used.value));
+			free = Math.max(0, available - (cached ? cached.value : 0));
+		}
 		const inuse = total - available, reclaim = available - free;
 		const usedPct = pctOf(inuse, total);
 
@@ -489,14 +530,16 @@ function enhanceMemory() {
 			])
 		];
 
+		/* "Swap free" in LuCI's table, "Swap used" in Kwrt's */
+		const swap = swapFree ? { used: Math.max(0, swapFree.total - swapFree.value), total: swapFree.total }
+			: swapUsed ? { used: swapUsed.value, total: swapUsed.total } : null;
 		if (swap) {
-			const swapUsed = swap.total - swap.value;
 			children.push(E('div', { 'class': 'v-meter-rows v-meter-swap' }, E('div', { 'class': 'v-meter-row' }, [
 				E('span', { 'class': 'v-meter-label' }, [ _('Swap', 'vantage-theme') ]),
 				E('div', { 'class': 'v-meter-bar is-thin', 'role': 'img',
-				           'aria-label': '%s: %s / %s'.format(_('Swap', 'vantage-theme'), fmtBytes(swapUsed), fmtBytes(swap.total)) },
-					segment('v-seg-used', swapUsed, swap.total)),
-				E('span', { 'class': 'v-meter-val' }, [ E('b', {}, [ fmtBytes(swapUsed) ]), ' / ' + fmtBytes(swap.total) ])
+				           'aria-label': '%s: %s / %s'.format(_('Swap', 'vantage-theme'), fmtBytes(swap.used), fmtBytes(swap.total)) },
+					segment('v-seg-used', swap.used, swap.total)),
+				E('span', { 'class': 'v-meter-val' }, [ E('b', {}, [ fmtBytes(swap.used) ]), ' / ' + fmtBytes(swap.total) ])
 			])));
 		}
 
@@ -1549,6 +1592,29 @@ return baseclass.extend({
 		this.syncAppearance();
 	},
 
+	/* next to the logo: nothing unless set. In the rail when it is pinned
+	   open, else first in the top bar (vantage.css); text only */
+	brandPref() {
+		return this.lookPref('brand');
+	},
+
+	setBrandPref(pref) {
+		this.setLook('brand', pref, () => this.applyBrand());
+	},
+
+	applyBrand() {
+		const v = this.brandPref(), b = this.board;
+		const name = !b ? '' : v === 'hostname' ? (host.chipNames(b.hostname, '')[0] || '') : v === 'model' ? host.productName(b) : '';
+		[ 'vt-brand-name', 'vt-top-name' ].forEach(id => {
+			const el = document.getElementById(id);
+			if (!el) return;
+			if (el.textContent !== name) el.textContent = name;
+			el.title = name;
+			el.hidden = !name;
+		});
+		this.syncAppearance();
+	},
+
 	/* the login page's backdrop (login.js): grid packets unless set */
 	loginPref() {
 		return this.lookPref('login');
@@ -1620,6 +1686,7 @@ return baseclass.extend({
 			}
 			this.applyTheme();
 			this.applyBackdrop();
+			this.applyBrand();
 		});
 		/* the dashboard's own picker (Customize), saved as Appearance's */
 		window.addEventListener(LOOK_SET_EVENT, ev => {
@@ -1641,6 +1708,7 @@ return baseclass.extend({
 		});
 		this.applyTheme();
 		this.applyBackdrop();
+		this.applyBrand();
 	},
 
 	/* Appearance, under the colour-theme button: the colour theme, the
@@ -1651,7 +1719,7 @@ return baseclass.extend({
 	   scrolling the page close it. */
 	/* one of Appearance's radio groups */
 	appearGroup(name, legend, opts, set) {
-		const look = { 'vt-colour': 'theme', 'vt-login': 'login', 'vt-backdrop': 'backdrop' }[name];
+		const look = { 'vt-colour': 'theme', 'vt-logo-name': 'brand', 'vt-login': 'login', 'vt-backdrop': 'backdrop' }[name];
 		return E('fieldset', { 'class': 'vt-appear-set' }, [
 			E('legend', {}, [ legend ]),
 			E('div', { 'class': 'vt-appear-track' }, opts.map(o => {
@@ -1678,16 +1746,22 @@ return baseclass.extend({
 			group('vt-colour', _('Colour theme'), [
 				[ 'auto', _('Auto', 'vantage-theme'), 'auto' ], [ 'light', _('Light', 'vantage-theme'), 'sun' ], [ 'dark', _('Dark', 'vantage-theme'), 'moon' ]
 			], v => this.setTheme(v)),
+			group('vt-logo-name', _('Next to the logo'), [
+				[ 'none', _('Logo only') ], [ 'hostname', _('Hostname') ], [ 'model', _('Model') ]
+			], v => this.setBrandPref(v)),
 			group('vt-login', _('Login background'), [ [ 'grid', login.grid ], [ 'stars', login.stars ], [ 'none', login.none ] ], v => this.setLoginPref(v))
 		].concat(this.hasDashboard() ? [ this.backdropGroup() ] : [], [
 			/* where the picks are kept, when not for every browser (syncAppearance) */
-			(this.appearNote = E('p', { 'class': 'vt-appear-note', 'role': 'status', 'hidden': 'hidden' }))
+			(this.appearNote = E('p', { 'class': 'vt-appear-note', 'role': 'status', 'hidden': 'hidden' })),
+			this.versionEl()
 		]));
 		box.addEventListener('keydown', ev => {
 			if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); this.closeAppearance(true); }
 			else if (ev.key === 'Tab') {
 				const sets = box.querySelectorAll('fieldset');
-				const edge = ev.shiftKey ? sets[0] : sets[sets.length - 1];
+				/* forward, the panel ends at the update check's link when it has one */
+				const last = Array.prototype.slice.call(box.querySelectorAll('.vt-appear-ver button, .vt-appear-ver a[href]')).pop();
+				const edge = ev.shiftKey ? sets[0] : (last || sets[sets.length - 1]);
 				if (edge.contains(ev.target)) { ev.preventDefault(); this.closeAppearance(true); }
 			}
 		});
@@ -1704,9 +1778,51 @@ return baseclass.extend({
 		return (this.appear = box);
 	},
 
+	/* "Vantage 1.0.16 · Check for updates", and what the check found */
+	versionEl() {
+		const btn = E('button', { 'type': 'button', 'class': 'vt-appear-check' }, [ _('Check for updates') ]);
+		const out = E('span', { 'class': 'vt-appear-update', 'role': 'status', 'hidden': 'hidden' });
+		btn.addEventListener('click', () => this.checkUpdates(btn, out));
+		return E('p', { 'class': 'vt-appear-ver' }, [ E('span', { 'class': 'vt-appear-num' }, [ 'Vantage ' + VERSION ]), ' · ', btn, out ]);
+	},
+
+	releaseLink(label) {
+		return E('a', { 'href': 'https://github.com/anothaDev/luci-theme-vantage/releases/latest', 'target': '_blank', 'rel': 'noopener noreferrer' }, [ label ]);
+	},
+
+	checkUpdates(btn, out) {
+		/* aria-disabled, not disabled: a disabled button drops the focus,
+		   and with it the panel's keys */
+		if (btn.getAttribute('aria-disabled') === 'true') return;
+		btn.setAttribute('aria-disabled', 'true');
+		out.textContent = _('Checking…');
+		out.hidden = false;
+		const ctl = window.AbortController ? new AbortController() : null;
+		const timer = ctl ? setTimeout(() => ctl.abort(), 10000) : 0;
+		fetch(UPDATE_INDEX, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: ctl ? ctl.signal : undefined })
+			.then(r => r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)))
+			.then(text => {
+				const latest = listedVersion(text);
+				if (!latest) throw new Error('no version');
+				out.textContent = '';
+				if (newerVersion(versionParts(latest), versionParts(VERSION))) {
+					out.appendChild(document.createTextNode(_('Version %s is available.').format(latest) + ' '));
+					out.appendChild(this.releaseLink(_('What\'s new')));
+				}
+				else out.textContent = _('Up to date');
+			})
+			/* offline, or a router whose pages forbid the request (a
+			   Content-Security-Policy): the release page still opens */
+			.catch(() => {
+				out.textContent = _('Could not check for updates.') + ' ';
+				out.appendChild(this.releaseLink(_('See the latest release')));
+			})
+			.then(() => { clearTimeout(timer); btn.removeAttribute('aria-disabled'); });
+	},
+
 	syncAppearance() {
 		if (!this.appear) return;
-		const now = { 'vt-colour': this.themePref(), 'vt-login': this.loginPref(), 'vt-backdrop': this.backdropPref() };
+		const now = { 'vt-colour': this.themePref(), 'vt-logo-name': this.brandPref(), 'vt-login': this.loginPref(), 'vt-backdrop': this.backdropPref() };
 		Array.prototype.forEach.call(this.appear.querySelectorAll('input[type="radio"]'), r => { r.checked = (now[r.name] === r.value); });
 		const state = this.lookState();
 		const note = state === 'relogin' ? _('Log in again to save Appearance for every browser.')
@@ -1757,7 +1873,9 @@ return baseclass.extend({
 			if (!board || !board.hostname) return;
 			const product = host.productName(board);
 			this.hostname = board.hostname;
+			this.board = board;
 			this.updateTitle();
+			this.applyBrand();
 			if (!chip) return;
 			chip.textContent = '';
 			/* device strings go in as text nodes (E() would parse a string as HTML) */

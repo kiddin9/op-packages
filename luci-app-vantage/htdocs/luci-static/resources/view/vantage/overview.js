@@ -31,6 +31,7 @@ var GONE_KEEP_MS = 5 * 60 * 1000;     /* disconnected stations stay listed */
 var TALKERS = 3;                      /* top talkers shown; the tile keeps room for all */
 var SWITCH_MS = 30 * 1000;            /* LuCI runs swconfig for each switch's link state: at most this often */
 var STORE_KEY = 'vantage.hist.v1';
+var VERSION = '1.0.17';               /* this package's, as its Makefile has it (tests/version.test.js) */
 var SVGNS = 'http://www.w3.org/2000/svg';
 var HOSTAPD_OBJ = /^[A-Za-z0-9_.-]{1,64}$/;
 
@@ -458,8 +459,17 @@ function spanShort(ms) {
 	return s >= 60 ? _('%d min', 'vantage').format(Math.floor(s / 60)) : _('%d s', 'vantage').format(s);
 }
 
+/* the history belongs to one login: the next one in this tab starts empty,
+   under any theme. Vantage's login page also deletes it (login.js). */
+function storeOwner() {
+	return String(L.env.sessionid || '').slice(-8);
+}
+
 function readStore() {
-	try { return JSON.parse(window.sessionStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; }
+	try {
+		var v = JSON.parse(window.sessionStorage.getItem(STORE_KEY) || 'null');
+		return v && (v.sid || '') === storeOwner() ? v : null;
+	} catch (e) { return null; }
 }
 
 function writeStore(v) {
@@ -901,7 +911,7 @@ return view.extend({
 		Object.keys(st.clientHist).slice(0, 32).forEach(function(mac) {
 			keepClients[mac] = st.clientHist[mac].slice(-60).filter(function(p) { return p.every(function(v) { return isFinite(v); }); });
 		});
-		writeStore({ net: st.hist.net, cpu: st.hist.cpu, mem: st.hist.mem, clients: keepClients });
+		writeStore({ sid: storeOwner(), net: st.hist.net, cpu: st.hist.cpu, mem: st.hist.mem, clients: keepClients });
 
 		this.stickyGen(m);
 		m.clients.forEach(function(c) { c.exp = insight.experience(c); c.firstSeen = p.state.firstSeen[c.mac]; c.isNew = !!p.isNew[c.mac]; });
@@ -1113,9 +1123,13 @@ return view.extend({
 		poll.add(L.bind(this.refresh, this), POLL_S);
 		poll.add(L.bind(this.refreshFast, this), FAST_S);
 		document.addEventListener('visibilitychange', function() {
-			if (!document.hidden && self.st.paused) self.refresh();
+			if (!document.hidden && self.st.paused && poll.active()) self.refresh();
 			else self.paintLive();
 		});
+		/* LuCI's refresh paused or resumed from its indicator; on resume
+		   CPU starts over, rather than read as the average over the pause */
+		document.addEventListener('poll-stop', function() { window.setTimeout(function() { self.paintLive(); }, 0); });
+		document.addEventListener('poll-start', function() { self.st.stat = null; self.paintLive(); });
 		document.addEventListener('keydown', L.bind(this.handleKey, this));
 		window.setInterval(function() { self.paintLive(); }, 1000);
 		if (window.ResizeObserver) {
@@ -1668,6 +1682,9 @@ return view.extend({
 	paintHead: function() {
 		var s = this.st.summary, clients = this.m.clients.length;
 		this.el.orb.className = 'vt-orb vt-orb-' + s.level;
+		/* the Vantage theme's refresh dot pulses fast in the same colour
+		   while something needs attention (vantage.css) */
+		document.documentElement.setAttribute('data-vt-alert', s.level === 'warn' || s.level === 'err' ? s.level : '');
 		txt(this.el.headline, s.headline);
 		txt(this.el.subline, this.identity(this.m.device).concat(
 			this.m.wired ? [] : [ clients === 1 ? _('1 client') : _('%d clients').format(clients) ]).join('  ·  '));
@@ -1688,15 +1705,36 @@ return view.extend({
 	paintLive: function() {
 		if (!this.el || !this.el.live) return;
 		var st = this.st, state, label;
-		if (st.paused || document.hidden) { state = 'paused'; label = _('Paused while hidden'); }
+		/* LuCI's own refresh can be paused (its indicator in the header) */
+		var stopped = typeof poll.active === 'function' && !poll.active();
+		if (st.paused || document.hidden || stopped) { state = 'paused'; label = stopped && !document.hidden ? _('Paused') : _('Paused while hidden'); }
 		else if (st.lastErr) { state = 'err'; label = _('Reconnecting…', 'vantage'); }
 		else { state = 'ok'; label = _('Live') + ' · ' + fmt.ago(Date.now() - st.lastOk); }
 		this.el.live.className = 'vt-livepill vt-live-' + state;
+		/* the Vantage theme's refresh dot pulses fast and amber while this
+		   reconnects (vantage.css) */
+		document.documentElement.setAttribute('data-vt-live', state);
 		/* the Vantage theme's poll indicator already says the page is
-		   live: then this pill shows only when it is not */
-		this.el.live.hidden = state === 'ok' && vantageTheme();
+		   live, or that its refresh is paused: then this pill shows only
+		   when neither */
+		this.el.live.hidden = (state === 'ok' || stopped) && vantageTheme();
 		this.el.live.setAttribute('title', label);
 		txt(this.el.liveText, label);
+		this.setMotion(state !== 'paused');
+	},
+
+	/* Nothing moves while the page is paused: the status circle's ring
+	   (app.css, .vt-still), the flow dots stay where they are and the
+	   backdrop keeps its last frame. */
+	setMotion: function(on) {
+		if (this.motionOn === on) return;
+		this.motionOn = on;
+		if (this.el && this.el.root) this.el.root.classList.toggle('vt-still', !on);
+		var map = this.wireMap || {};
+		Object.keys(map).forEach(function(k) {
+			map[k].anims.forEach(function(a) { if (on) a.play(); else a.pause(); });
+		});
+		if (this.backdrop) this.backdrop.pause(!on);
 	},
 
 	/* ----------------------------------------------------------- health */
@@ -2302,6 +2340,7 @@ return view.extend({
 			/* every dot takes the whole trip, started i/n of the way along */
 			var a = dot.animate(wires.keyframes(g.samples), { duration: dur, delay: -dur * i / n, iterations: Infinity, easing: 'linear' });
 			a.playbackRate = rate;
+			if (this.motionOn === false) a.pause();
 			g.dots.push(dot);
 			g.anims.push(a);
 		}
@@ -2428,7 +2467,8 @@ return view.extend({
 		}));
 		patch(el.fw, [
 			E('span', {}, [ d.firmware || '' ]),
-			d.kernel ? E('span', { 'class': 'vt-hint' }, [ _('Kernel %s').format(d.kernel) ]) : ''
+			d.kernel ? E('span', { 'class': 'vt-hint' }, [ _('Kernel %s').format(d.kernel) ]) : '',
+			E('span', { 'class': 'vt-hint' }, [ 'Vantage ' + VERSION ])
 		]);
 	},
 

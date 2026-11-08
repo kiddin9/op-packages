@@ -1,7 +1,8 @@
 {#
  Vantage theme - login page.
- Rendered with { duser, fuser } for visitors who are not logged in, so it
- shows nothing about the device: no hostname, model or firmware version.
+ Rendered with { duser, fuser } for visitors who are not logged in. Of the
+ device it shows the hostname only, as the heading (LuCI's Bootstrap shows
+ it too): no model or firmware version.
  fuser is attacker-controlled (formvalue also reads the query string): it is
  only tested, never echoed; the error is generic. The form posts back to the
  requested URL (no action attribute). The inline script is data-free: the
@@ -17,8 +18,7 @@
 	const look = (opt, ok) => { const v = uci.get('vantage_theme', 'appearance', opt); return (type(v) == 'string' && index(ok, v) >= 0) ? v : ''; };
 	const look_theme = look('theme', [ 'auto', 'light', 'dark' ]);
 	const look_login = look('login', [ 'grid', 'stars', 'none' ]);
-	const boardinfo = ubus.call("system", "board");
-	const hostname = striptags(boardinfo?.hostname ?? '?');
+	const host = (() => { const h = uci.get_first('system', 'system', 'hostname'); return (type(h) == 'string' && length(h)) ? substr(h, 0, 63) : null; })();
 -%}
 <!DOCTYPE html>
 <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true" data-vt-look-theme="{{ look_theme }}" data-vt-look-login="{{ look_login }}">
@@ -54,10 +54,7 @@
 			<circle cx="21.5" cy="10.5" r="1.9" class="vt-brand-dot"></circle>
 			<circle cx="21.5" cy="21.5" r="1.9" class="vt-brand-dot"></circle>
 			</svg>
-			<div>
-				<h1 class="vt-login-title">{{ hostname }}</h1>
-				<p class="vt-login-sub"><span class="vt-login-dot" aria-hidden="true"></span>{{ entityencode(_('Authorization Required'), true) }}</p>
-			</div>
+			<h1 class="vt-login-title">{{ entityencode(host ?? _('Authorization Required'), true) }}</h1>
 		</div>
 
 {% if (fuser): %}
