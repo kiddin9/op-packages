@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-trafficctl
-PKG_VERSION:=1.28.2
-PKG_RELEASE:=24
+PKG_VERSION:=1.29.0
+PKG_RELEASE:=25
 
 PKG_LICENSE:=Apache-2.0
 PKG_MAINTAINER:=Denis Iusupov <yusdyr@gmail.com>
@@ -66,3 +66,5 @@ endef
 # No explicit $(eval $(call BuildPackage,...)) here: luci.mk already calls it
 # for the main package, so the explicit call was a duplicate. Spotted by
 # @ntbowen in #73.
+
+# call BuildPackage - OpenWrt buildroot signature

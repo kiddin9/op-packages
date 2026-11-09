@@ -13,3 +13,4 @@
 # the same with _wired), which are best changed there.
 
 config appearance 'appearance'
+	option brand 'hostname'
