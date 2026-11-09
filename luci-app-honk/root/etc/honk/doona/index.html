@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="zh-Hant" dir="ltr" data-warm="pending">
 <head>
-<meta name="doona-build" content="99fcca42805aac47">
+<meta name="doona-build" content="e85fc6a59ad04821">
 <script>// Normalize appearance before first paint. The build fills the palette list and default from src/shell/palettes.ts, the
 // language locales and reference locale from src/i18n/languages.ts, and the right-to-left scripts from src/i18n/direction.ts.
 (function () {
@@ -33,10 +33,10 @@
   d.dataset.scheme = dark ? 'dark' : 'light';
   d.dataset.family = parts[0];
   d.dataset.flavour = parts[1];
-  // Only the Glass palettes load Glass's stylesheet, and only Halloween loads its own. Written by the parser, it holds
-  // the first paint as the main one does, and it lands before the main one, where src/shell/paletteSheet.ts links it
-  // for a palette picked later.
-  var sheets = {"glass":"./assets/glass-piYllnzE.css","halloween":"./assets/halloween-e3DfiasY.css"};
+  // Every family but the default's has its own stylesheet, which only its palettes load. Written by the parser, it
+  // holds the first paint as the main one does, and it lands before the main one, where src/shell/paletteSheet.ts links
+  // it for a palette picked later.
+  var sheets = {"catppuccin":"./assets/catppuccin-CFfx8ddQ.css","arco":"./assets/arco-DnDQV30N.css","semi":"./assets/semi-DGpddBEP.css","glass":"./assets/glass-piYllnzE.css","nord":"./assets/nord-BE7QITf9.css","kary":"./assets/kary-pGa0AxYi.css","antd":"./assets/antd-BTVob2XE.css","qiangguo":"./assets/qiangguo-CTOUSOCk.css","halloween":"./assets/halloween-e3DfiasY.css"};
   var sheet = sheets[parts[0]];
   if (sheet) document.write('<link rel="stylesheet" data-' + parts[0] + ' href="' + sheet + '">');
   d.dataset.wordmark = read('doona-wordmark') === 'plain' ? 'plain' : 'gradient';
@@ -76,7 +76,7 @@
 </script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-ieCj0Bd4bZrG7QbiwuvrQEMSFeuTrqbTWFddYtPmiLw='; connect-src 'self' http: https: ws: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-NH2ed5fEG1WtErwUhz8UGrWK4rwa36B9AIopkxRHWno='; connect-src 'self' http: https: ws: wss:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self'">
 <title>doona</title>
 <meta name="description" content="Static web UI for the daeuniverse native API.">
 <link rel="icon" href="./logo.svg">
@@ -90,10 +90,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="doona">
-  <script type="module" crossorigin src="./assets/index-CUHkLMAp.js"></script>
+  <script type="module" crossorigin src="./assets/index-C06va4Yw.js"></script>
   <link rel="modulepreload" crossorigin href="./assets/_commonjsHelpers-CXUWDbkB.js">
   <link rel="modulepreload" crossorigin href="./assets/vendor-react-64fcanlc.js">
-  <link rel="stylesheet" crossorigin href="./assets/index-DhY2A0CV.css">
+  <link rel="stylesheet" crossorigin href="./assets/index-DdIDwpAM.css">
 </head>
 <body><div id="root"></div><div class="rp-popover-band" aria-hidden="true"></div></body>
 </html>

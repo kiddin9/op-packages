@@ -1,1 +1,0 @@
-import{j as r,r as s}from"./vendor-react-64fcanlc.js";import{u as e}from"./index-CUHkLMAp.js";import{D as t}from"./logs-C6Kb44nw.js";function n({texts:n}){const o=e();return n?.length?r.jsx(t,{flush:!0,title:o("config.backendText"),children:n.map((e,t)=>r.jsxs(s.Fragment,{children:[t>0&&r.jsx("br",{}),r.jsx("code",{children:e})]},t))}):null}export{n as B};
