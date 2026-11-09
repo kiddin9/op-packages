@@ -9,9 +9,9 @@ LUCI_TITLE:=LuCI support for sunpanel
 LUCI_DEPENDS:=+sunpanel
 LUCI_PKGARCH:=all
 
-PKG_VERSION:=1.3.1-r2
+PKG_VERSION:=1.8.1-r1
 # PKG_RELEASE MUST be empty for luci.mk
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 LUCI_MINIFY_CSS:=0
 LUCI_MINIFY_JS:=0
@@ -19,4 +19,3 @@ LUCI_MINIFY_JS:=0
 include $(TOPDIR)/feeds/luci/luci.mk
 
 # call BuildPackage - OpenWrt buildroot signature
-

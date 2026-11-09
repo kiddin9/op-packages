@@ -1,0 +1,702 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-safeshield\n"
+"PO-Revision-Date: 2026-08-26 00:00+0000\n"
+"Last-Translator: ZagWrt Translators\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Action"
+msgstr "操作"
+
+msgid "Actions"
+msgstr "操作"
+
+msgid "Active"
+msgstr "活跃"
+
+msgid "Add allow rule"
+msgstr "添加放行规则"
+
+msgid "Add block rule"
+msgstr "添加拦截规则"
+
+msgid "allow"
+msgstr "放行"
+
+msgid "Allow list"
+msgstr "放行列表"
+
+msgid "Allowlist path"
+msgstr "放行列表路径"
+
+msgid "Apply local allow/block rules"
+msgstr "应用本地放行/拦截规则"
+
+msgid "Apply local rules on top of the cached Hub artifact. Rule files are managed through the SafeShield rule API."
+msgstr "在已缓存的 Hub 产物基础上应用本地规则。规则文件通过 SafeShield 规则 API 管理。"
+
+msgid "Architecture"
+msgstr "架构"
+
+msgid "Artifact and runtime safety"
+msgstr "产物和运行时安全"
+
+msgid "Artifact download"
+msgstr "产物下载"
+
+msgid "Artifact metadata resolve"
+msgstr "产物元数据解析"
+
+msgid "Artifact SHA-256"
+msgstr "产物 SHA-256"
+
+msgid "A SafeShield refresh is already running."
+msgstr "SafeShield 刷新已在运行中。"
+
+msgid "block"
+msgstr "拦截"
+
+msgid "Block list"
+msgstr "拦截列表"
+
+msgid "Blocklist"
+msgstr "拦截列表"
+
+msgid "Blocklist path"
+msgstr "拦截列表路径"
+
+msgid "Blocklist verify"
+msgstr "拦截列表校验"
+
+msgid "Boot start delay"
+msgstr "启动延迟"
+
+msgid "Clear license"
+msgstr "清除许可证"
+
+msgid "Clear the configured SafeShield license key?"
+msgstr "确定要清除已配置的 SafeShield 许可证密钥？"
+
+msgid "Compress blocklist"
+msgstr "压缩拦截列表"
+
+msgid "Compressed"
+msgstr "已压缩"
+
+msgid "Config loaded"
+msgstr "配置已加载"
+
+msgid "Configured"
+msgstr "已配置"
+
+msgid "Configured physical fingerprint"
+msgstr "已配置的物理指纹"
+
+msgid "Configured state"
+msgstr "配置状态"
+
+msgid "Current stage"
+msgstr "当前阶段"
+
+msgid "Current status"
+msgstr "当前状态"
+
+msgid "Debug"
+msgstr "调试"
+
+msgid "Delay before SafeShield performs boot-time work."
+msgstr "SafeShield 执行启动任务前的延迟。"
+
+msgid "Delete"
+msgstr "删除"
+
+msgid "Delete %s from the %s list?"
+msgstr "确定从 %s 列表中删除 %s？"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Device identity and profile fields are owned by SafeShield and are not editable from LuCI."
+msgstr "设备身份和配置文件字段由 SafeShield 管理，不能通过 LuCI 编辑。"
+
+msgid "Device (read only)"
+msgstr "设备（只读）"
+
+msgid "Diagnostics"
+msgstr "诊断"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Disable request accepted."
+msgstr "禁用请求已接受。"
+
+msgid "Disable request accepted. Runtime convergence is asynchronous; check Overview for the live state."
+msgstr "禁用请求已接受。运行时状态收敛是异步的，请在概览页查看实时状态。"
+
+msgid "Disable SafeShield"
+msgstr "禁用 SafeShield"
+
+msgid "dnsmasq binary"
+msgstr "dnsmasq 可执行文件"
+
+msgid "dnsmasq confdir"
+msgstr "dnsmasq 配置目录"
+
+msgid "dnsmasq running"
+msgstr "dnsmasq 运行中"
+
+msgid "DNS runtime"
+msgstr "DNS 运行时"
+
+msgid "DNS runtime OK"
+msgstr "DNS 运行时正常"
+
+msgid "Domain"
+msgstr "域名"
+
+msgid "Domains in this list are always added to the final SafeShield blocklist."
+msgstr "此列表中的域名将始终添加到最终的 SafeShield 拦截列表中。"
+
+msgid "Domains in this list are removed from the final SafeShield blocklist."
+msgstr "此列表中的域名将从最终的 SafeShield 拦截列表中移除。"
+
+msgid "Domains / lines"
+msgstr "域名 / 行数"
+
+msgid "Download retries"
+msgstr "下载重试次数"
+
+msgid "Download timeout"
+msgstr "下载超时"
+
+msgid "Download URL present"
+msgstr "下载 URL 存在"
+
+msgid "Enable additional debug output for troubleshooting."
+msgstr "启用额外的调试输出用于故障排查。"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Enable debug logging"
+msgstr "启用调试日志"
+
+msgid "Enable/disable and refresh actions use the public SafeShield ubus API. Enable/disable convergence is asynchronous and is verified through safeshield.status."
+msgstr "启用/禁用和刷新操作使用公共 SafeShield ubus API。启用/禁用状态收敛是异步的，通过 safeshield.status 验证。"
+
+msgid "Enable request accepted."
+msgstr "启用请求已接受。"
+
+msgid "Enable request accepted. Runtime convergence is asynchronous; check Overview for the live state."
+msgstr "启用请求已接受。运行时状态收敛是异步的，请在概览页查看实时状态。"
+
+msgid "Enable SafeShield"
+msgstr "启用 SafeShield"
+
+msgid "Enter a domain name first."
+msgstr "请先输入域名。"
+
+msgid "Enter a license key first. Use Clear license to remove the current key."
+msgstr "请先输入许可证密钥。使用“清除许可证”可移除当前密钥。"
+
+msgid "Enter a new key to replace the configured key"
+msgstr "输入新密钥以替换已配置的密钥"
+
+msgid "Enter license key"
+msgstr "输入许可证密钥"
+
+msgid "Errors"
+msgstr "错误"
+
+msgid "Errors only"
+msgstr "仅错误"
+
+msgid "File size"
+msgstr "文件大小"
+
+msgid "Final dnsmasq restart"
+msgstr "最终 dnsmasq 重启"
+
+msgid "General"
+msgstr "常规"
+
+msgid "Generated at"
+msgstr "生成时间"
+
+msgid "Health"
+msgstr "健康状态"
+
+msgid "Health checks"
+msgstr "健康检查"
+
+msgid "Hub artifact"
+msgstr "Hub 产物"
+
+msgid "Info"
+msgstr "信息"
+
+msgid "Initial dnsmasq restart"
+msgstr "初始 dnsmasq 重启"
+
+msgid "Installed"
+msgstr "已安装"
+
+msgid "Interval between successful Hub artifact refreshes."
+msgstr "成功刷新 Hub 产物之间的间隔。"
+
+msgid "KB"
+msgstr "KB"
+
+msgid "Keep disabled unless the SafeShield runtime explicitly supports compressed dnsmasq blocklists."
+msgstr "除非 SafeShield 运行时明确支持压缩的 dnsmasq 拦截列表，否则请保持禁用。"
+
+msgid "Last attempt"
+msgstr "上次尝试"
+
+msgid "Last error code"
+msgstr "上次错误代码"
+
+msgid "Last failure"
+msgstr "上次失败"
+
+msgid "Last local apply"
+msgstr "上次本地应用"
+
+msgid "Last local apply failure"
+msgstr "上次本地应用失败"
+
+msgid "Last result"
+msgstr "上次结果"
+
+msgid "Last success"
+msgstr "上次成功"
+
+msgid "License"
+msgstr "许可证"
+
+msgid "License key cleared. SafeShield will use the unlicensed/free artifact path."
+msgstr "许可证密钥已清除。SafeShield 将使用免费/无授权的产物路径。"
+
+msgid "License key updated. SafeShield requested an artifact refresh."
+msgstr "许可证密钥已更新。SafeShield 已请求刷新产物。"
+
+msgid "Local allow and block rules are managed through the public SafeShield rule API. LuCI never edits /etc/safeshield files directly."
+msgstr "本地放行和拦截规则通过公共 SafeShield 规则 API 管理。LuCI 不会直接编辑 /etc/safeshield 文件。"
+
+msgid "Local apply status"
+msgstr "本地应用状态"
+
+msgid "Local overrides"
+msgstr "本地覆盖"
+
+msgid "Local overrides enabled"
+msgstr "本地覆盖已启用"
+
+msgid "Local rules"
+msgstr "本地规则"
+
+msgid "Local Rules"
+msgstr "本地规则"
+
+msgid "Log verbosity"
+msgstr "日志详细程度"
+
+msgid "Masked key"
+msgstr "掩码密钥"
+
+msgid "Maximum accepted final blocklist size."
+msgstr "最终拦截列表允许的最大大小。"
+
+msgid "Maximum blocklist size"
+msgstr "拦截列表最大大小"
+
+msgid "Maximum duration used by the SafeShield pause command."
+msgstr "SafeShield 暂停命令使用的最大持续时间。"
+
+msgid "Maximum file size"
+msgstr "最大文件大小"
+
+msgid "Maximum retry count for artifact downloads."
+msgstr "产物下载的最大重试次数。"
+
+msgid "Memory"
+msgstr "内存"
+
+msgid "Minimum valid rule count"
+msgstr "最少有效规则数"
+
+msgid "Mode / action"
+msgstr "模式 / 动作"
+
+msgid "Model"
+msgstr "型号"
+
+msgid "Name"
+msgstr "名称"
+
+msgid "New license key"
+msgstr "新许可证密钥"
+
+msgid "Next refresh"
+msgstr "下次刷新"
+
+msgid "Next refresh in"
+msgstr "距下次刷新"
+
+msgid "No"
+msgstr "否"
+
+msgid "No local rules in this list."
+msgstr "此列表中没有本地规则。"
+
+msgid "No SafeShield settings changed."
+msgstr "SafeShield 设置未更改。"
+
+msgid "No sources reported by SafeShield."
+msgstr "SafeShield 未报告任何源。"
+
+msgid "Path"
+msgstr "路径"
+
+msgid "Pause timeout"
+msgstr "暂停超时"
+
+msgid "Physical fingerprint"
+msgstr "物理指纹"
+
+msgid "Plan"
+msgstr "方案"
+
+msgid "Previous backup available"
+msgstr "上一备份可用"
+
+msgid "Refresh daemon running"
+msgstr "刷新守护进程运行中"
+
+msgid "Refresh interval"
+msgstr "刷新间隔"
+
+msgid "Refresh now"
+msgstr "立即刷新"
+
+msgid "Refresh on boot"
+msgstr "启动时刷新"
+
+msgid "Refresh the Hub artifact after boot when the existing successful refresh is no longer recent."
+msgstr "当上次成功刷新不再是最新时，在启动后刷新 Hub 产物。"
+
+msgid "Refresh was not started: %s"
+msgstr "刷新未启动：%s"
+
+msgid "Reject an artifact when the generated dnsmasq rule count is below this value."
+msgstr "当生成的 dnsmasq 规则数低于此值时拒绝产物。"
+
+msgid "Require WAN"
+msgstr "需要 WAN"
+
+msgid "Require WAN before refresh"
+msgstr "刷新前需要 WAN"
+
+msgid "Resolved"
+msgstr "已解析"
+
+msgid "Restart dnsmasq before install"
+msgstr "安装前重启 dnsmasq"
+
+msgid "Restart dnsmasq before installing a newly downloaded artifact. Normally this should stay disabled."
+msgstr "在安装新下载的产物前重启 dnsmasq。通常应保持禁用。"
+
+msgid "Rules"
+msgstr "规则"
+
+msgid "Run dnsmasq sanity check"
+msgstr "运行 dnsmasq 健全性检查"
+
+msgid "Runtime"
+msgstr "运行时"
+
+msgid "Runtime profile"
+msgstr "运行时配置文件"
+
+msgid "SafeShield"
+msgstr "SafeShield"
+
+msgid "SafeShield accepted the request but runtime convergence was not observed within 15 seconds. Status polling will continue."
+msgstr "SafeShield 已接受请求，但在 15 秒内未观察到运行时状态收敛。将继续轮询状态。"
+
+msgid "SafeShield applies rule edits using the cached Hub artifact, then atomically rebuilds the active dnsmasq blocklist and verifies DNS. A full artifact refresh is only used as a fallback when the cached Hub artifact is unavailable."
+msgstr "SafeShield 使用缓存的 Hub 产物应用规则编辑，然后原子性地重建活跃的 dnsmasq 拦截列表并验证 DNS。仅当缓存的 Hub 产物不可用时，才会完整刷新产物作为备选。"
+
+msgid "SafeShield is disabled and stopped."
+msgstr "SafeShield 已禁用并停止。"
+
+msgid "SafeShield is enabled and running."
+msgstr "SafeShield 已启用并运行中。"
+
+msgid "SafeShield is idle."
+msgstr "SafeShield 处于空闲状态。"
+
+msgid "SafeShield is ready."
+msgstr "SafeShield 已就绪。"
+
+msgid "SafeShield is refreshing the blocklist."
+msgstr "SafeShield 正在刷新拦截列表。"
+
+msgid "SafeShield is running with degraded protection."
+msgstr "SafeShield 正在降级保护状态下运行。"
+
+msgid "SafeShield encountered an error."
+msgstr "SafeShield 遇到错误。"
+
+msgid "SafeShield is paused."
+msgstr "SafeShield 已暂停。"
+
+msgid "SafeShield is disabled."
+msgstr "SafeShield 已禁用。"
+
+msgid "SafeShield local rules"
+msgstr "SafeShield 本地规则"
+
+msgid "SafeShield owns enable/disable lifecycle. LuCI uses safeshield.set_enabled rather than writing UCI directly."
+msgstr "SafeShield 拥有启用/禁用生命周期。LuCI 使用 safeshield.set_enabled 而非直接写入 UCI。"
+
+msgid "SafeShield refresh request failed."
+msgstr "SafeShield 刷新请求失败。"
+
+msgid "SafeShield refresh started."
+msgstr "SafeShield 刷新已启动。"
+
+msgid "SafeShield rejected the lifecycle request."
+msgstr "SafeShield 拒绝了生命周期请求。"
+
+msgid "SafeShield request failed."
+msgstr "SafeShield 请求失败。"
+
+msgid "SafeShield rule request failed."
+msgstr "SafeShield 规则请求失败。"
+
+msgid "SafeShield settings"
+msgstr "SafeShield 设置"
+
+msgid "SafeShield settings saved. The service was restarted and a refresh was requested where applicable."
+msgstr "SafeShield 设置已保存。服务已重启，并在适用时请求了刷新。"
+
+msgid "Save settings"
+msgstr "保存设置"
+
+msgid "Schedule"
+msgstr "计划"
+
+msgid "Schema"
+msgstr "模式"
+
+msgid "seconds"
+msgstr "秒"
+
+msgid "Service state"
+msgstr "服务状态"
+
+msgid "SHA-256"
+msgstr "SHA-256"
+
+msgid "Size"
+msgstr "大小"
+
+msgid "%s must be an integer."
+msgstr "%s 必须为整数。"
+
+msgid "%s must be at least %d."
+msgstr "%s 不能小于 %d。"
+
+msgid "%s must not exceed %d."
+msgstr "%s 不能超过 %d。"
+
+msgid "Sources"
+msgstr "源"
+
+msgid "Stage"
+msgstr "阶段"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Summary"
+msgstr "摘要"
+
+msgid "Test domain"
+msgstr "测试域名"
+
+msgid "Test domain success"
+msgstr "测试域名成功"
+
+msgid "The license key is unchanged."
+msgstr "许可证密钥未更改。"
+
+msgid "The raw license key is never returned by the SafeShield API."
+msgstr "SafeShield API 不会返回原始许可证密钥。"
+
+msgid "The rule was saved and local apply was accepted, but completion was not observed before the UI timeout. SafeShield may still be applying it."
+msgstr "规则已保存且本地应用已接受，但在界面超时前未观察到完成。SafeShield 可能仍在应用中。"
+
+msgid "The rule was saved, but local overrides are disabled so it is not active."
+msgstr "规则已保存，但本地覆盖已禁用，因此规则未生效。"
+
+msgid "The rule was saved, but SafeShield is disabled so it is not active yet."
+msgstr "规则已保存，但 SafeShield 已禁用，因此规则尚未生效。"
+
+msgid "The rule was saved, but SafeShield reported a local apply failure. Check Overview and system logs."
+msgstr "规则已保存，但 SafeShield 报告本地应用失败。请检查概览和系统日志。"
+
+msgid "The rule was saved, but the local DNS apply request was not accepted: %s"
+msgstr "规则已保存，但本地 DNS 应用请求未被接受：%s"
+
+msgid "The rule was saved, but the SafeShield service is stopped."
+msgstr "规则已保存，但 SafeShield 服务已停止。"
+
+msgid "The rule was saved without requesting a DNS apply."
+msgstr "规则已保存，但未请求 DNS 应用。"
+
+msgid "The %s rule was already in the requested state."
+msgstr "%s 规则已处于请求的状态。"
+
+msgid "The %s rule was saved and applied to DNS."
+msgstr "%s 规则已保存并应用到 DNS。"
+
+msgid "This page uses the public SafeShield ubus API. UCI, local rule files, service lifecycle and license storage remain owned by the safeshield package."
+msgstr "此页面使用公共 SafeShield ubus API。UCI、本地规则文件、服务生命周期和许可证存储仍由 safeshield 软件包管理。"
+
+msgid "Tier"
+msgstr "等级"
+
+msgid "Timeout used for Hub resolve and artifact downloads."
+msgstr "用于 Hub 解析和产物下载的超时时间。"
+
+msgid "Unique domains"
+msgstr "唯一域名数"
+
+msgid "unknown reason"
+msgstr "未知原因"
+
+msgid "Update license"
+msgstr "更新许可证"
+
+msgid "Validate dnsmasq state after installing or applying the blocklist."
+msgstr "安装或应用拦截列表后验证 dnsmasq 状态。"
+
+msgid "Valid rules"
+msgstr "有效规则"
+
+msgid "Vendor"
+msgstr "厂商"
+
+msgid "Verification OK"
+msgstr "验证通过"
+
+msgid "Version"
+msgstr "版本"
+
+msgid "Wait for WAN connectivity before resolving and downloading Hub artifacts."
+msgstr "在解析和下载 Hub 产物前等待 WAN 连接。"
+
+msgid "Warnings"
+msgstr "警告"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "Idle"
+msgstr "空闲"
+
+msgid "Waiting for scheduled refresh"
+msgstr "等待计划刷新"
+
+msgid "Waiting after boot"
+msgstr "启动后等待"
+
+msgid "Applying local rules"
+msgstr "应用本地规则"
+
+msgid "Merging local rules"
+msgstr "合并本地规则"
+
+msgid "Restarting DNS service"
+msgstr "重启 DNS 服务"
+
+msgid "Checking DNS service"
+msgstr "检查 DNS 服务"
+
+msgid "Verifying blocklist"
+msgstr "校验拦截列表"
+
+msgid "OK"
+msgstr "正常"
+
+msgid "Ready"
+msgstr "就绪"
+
+msgid "Success"
+msgstr "成功"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Refreshing"
+msgstr "刷新中"
+
+msgid "Pending"
+msgstr "等待中"
+
+msgid "Notice"
+msgstr "通知"
+
+msgid "Warning"
+msgstr "警告"
+
+msgid "Degraded"
+msgstr "降级"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Failed"
+msgstr "失败"
+
+msgid "Failure"
+msgstr "失败"
+
+msgid "Expired"
+msgstr "已过期"
+
+msgid "Revoked"
+msgstr "已撤销"
+
+msgid "Suspended"
+msgstr "已暂停"
+
+msgid "Free"
+msgstr "免费"
+
+msgid "Unlicensed"
+msgstr "未授权"
+
+msgid "Licensed"
+msgstr "已授权"
+
+msgid "Light"
+msgstr "轻量版"
+
+msgid "Standard"
+msgstr "标准版"
+
+msgid "Full"
+msgstr "完整版"
+
+msgid "Block"
+msgstr "拦截"
+
+msgid "Allow"
+msgstr "放行"

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Configure high-performance OpenVPN servers & clients on OpenWrt instantly with luci-app-openvpn-plus. Features DCO support, QR-code export, setup wizards, and Flood Guard.">
+    <meta name="keywords" content="openwrt, luci, openvpn, openvpn-dco, vpn-wizard, network-security, double-nat, duckdns">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook / Discord (Für schöne Link-Vorschauen) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ihre-domain.com">
+    <meta property="og:title" content="luci-app-openvpn-plus - OpenWrt Web Interface">
+    <meta property="og:description" content="A modern, all-in-one web interface to configure OpenVPN with kernel acceleration (DCO) and QR-code profile export.">
+    <meta property="og:image" content="https://ihre-domain.comscreenshots/status-dark.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="luci-app-openvpn-plus - OpenWrt Web Interface">
+    <meta name="twitter:description" content="A modern, all-in-one web interface to configure OpenVPN with kernel acceleration (DCO).">
+    <meta name="twitter:image" content="https://ihre-domain.comscreenshots/status-dark.png">
+
+    <title>luci-app-openvpn-plus - OpenWrt Web Interface</title>
+    <!-- Tailwind CSS for modern styling -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        .custom-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+    <!-- Header / Hero Section -->
+    <header class="custom-gradient text-white py-16 px-4 border-b border-slate-700">
+        <div class="max-w-5xl mx-auto text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-teal-400">
+                luci-app-openvpn-plus
+            </h1>
+            <p class="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto font-light">
+                Modern and easy web interface to configure OpenVPN servers and clients on OpenWrt.
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-5xl mx-auto px-4 py-12 space-y-16">
+
+        <!-- Description Section -->
+        <section id="description" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-bold mb-6 text-slate-900 border-b border-slate-100 pb-3">Description</h2>
+            <div class="space-y-4 text-slate-600 leading-relaxed text-base">
+                <p>
+                    This package provides a modern, all-in-one web interface to configure OpenVPN servers and clients quickly. Featuring a built-in key generator, setup wizard, Flood Guard protocol protection, DDNS, SSL-VPN, and profile import/export via QR-code, your VPN is ready to use immediately.
+                </p>
+                <p>
+                    Thanks to this simple application, <strong class="text-slate-900 font-semibold">anyone can build a professional SSL/TLS-VPN network now</strong>. You do not need to understand complex crypto keys or write config files. The app does all the hard background work for you. With the step-by-step wizard, you can create secure VPN connections for travel and mobile devices in seconds.
+                </p>
+                <p>
+                    Setting up your mobile phone is incredibly easy—just scan the secure QR-code on your screen with your smartphone camera. In the past, running a VPN behind internet provider modems was very complex. To fix this, the app includes smart Double-NAT detection and automated live port checking. This makes the installation completely effortless and brings professional, enterprise-grade VPN features straight to standard OpenWrt routers.
+                </p>
+                <p class="bg-teal-50/50 border-l-4 border-teal-500 p-4 rounded-r-lg text-slate-700 mt-6">
+                    <strong class="text-teal-900 font-bold">High Performance for Affordable Hardware:</strong> You don't need expensive enterprise equipment. Thanks to native <strong class="font-semibold text-slate-900">OpenVPN Data Channel Offload (DCO)</strong> integration and our automatic MTU engine, the app achieves outstanding throughput rates—matching the speed of Wireguard even on budget-friendly wireless access points.
+                </p>
+            </div>
+        </section>
+
+        <!-- Benchmarks Section -->
+        <section id="benchmarks" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-bold mb-4 text-slate-900 flex items-center gap-2">
+                <span>📊</span> Real-World Performance Benchmarks (iperf3)
+            </h2>
+            <p class="text-slate-600 mb-6">
+                We tested the real-world performance of <code class="bg-slate-100 px-1.5 py-0.5 rounded text-sm text-pink-600 font-mono">luci-app-openvpn-plus</code> using two affordable <strong class="text-slate-900 font-semibold">Zyxel NWA50AX Pro</strong> wireless access points. Both devices run as pure APs behind standard internet provider modems.
+            </p>
+            <p class="text-slate-600 mb-8">
+                Even though the traffic has to pass through <strong class="text-slate-900 font-semibold">Double-NAT</strong> and simple port forwardings, the performance matches expensive enterprise hardware:
+            </p>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Test A -->
+                <div class="border border-slate-200 rounded-xl p-6 bg-slate-50/50 hover:border-slate-300 transition-colors">
+                    <h3 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <span class="text-blue-500">🔹</span> Test A: Site-to-Site Tunnel (UDP Mode)
+                    </h3>
+                    <ul class="space-y-2 text-sm text-slate-600 mb-4">
+                        <li><strong class="text-slate-800">Setup:</strong> Zyxel AP ↔️ WAN Router ↔️ Internet ↔️ WAN Router ↔️ Zyxel AP</li>
+                        <li><strong class="text-slate-800">Network Status:</strong> Both routers are behind Double-NAT.</li>
+                        <li class="pt-2 text-base"><strong class="text-slate-800">Benchmark Result:</strong> <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">450+ Mbit/s 🚀</span></li>
+                    </ul>
+                    <p class="text-xs italic text-slate-500 border-t border-slate-200 pt-3">
+                        The crypto load is perfectly split across multiple CPU cores thanks to OpenVPN DCO and our automatic MTU engine.
+                    </p>
+                </div>
+
+                <!-- Test B -->
+                <div class="border border-slate-200 rounded-xl p-6 bg-slate-50/50 hover:border-slate-300 transition-colors">
+                    <h3 class="text-lg font-bold text-slate-900 mb-3 flex items-center gap-2">
+                        <span class="text-amber-500">🔸</span> Test B: Mobile Client / Roadwarrior (TCP / SSL-VPN Mode)
+                    </h3>
+                    <ul class="space-y-2 text-sm text-slate-600 mb-4">
+                        <li><strong class="text-slate-800">Setup:</strong> Zyxel AP ↔️ WAN Router ↔️ Internet ↔️ Smartphone with OpenVPN App</li>
+                        <li><strong class="text-slate-800">Network Status:</strong> The server AP is behind Double-NAT</li>
+                        <li class="pt-2 text-base"><strong class="text-slate-800">Benchmark Result:</strong> <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">200+ Mbit/s 📱</span></li>
+                    </ul>
+                    <p class="text-xs italic text-slate-500 border-t border-slate-200 pt-3">
+                        This is the absolute maximum for a single CPU core under TCP. It bypasses strict public firewalls easily while keeping your smartphone connection incredibly fast.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+<!-- Features Section -->
+        <section id="features" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-bold mb-6 text-slate-900 border-b border-slate-100 pb-3">Features</h2>
+            <ul class="grid sm:grid-cols-1 md:grid-cols-2 gap-4">
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Easy Setup:</strong> Build fully working OpenVPN servers or clients in seconds.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Connection Wizard:</strong> Simple step-by-step setup for mobile phones, laptops, and router-to-router networks (Site-to-Site).</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Enterprise-Grade Speeds:</strong> Out-of-the-box support for OpenVPN Data Channel Offload (DCO) to match Wireguard performance.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Smart MTU Engine:</strong> Automatically calculates and tunes packet sizes to eliminate fragmentation and balance multi-core CPU load.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Secure Site-to-Site Routing:</strong> Built-in iroute() hook with dynamic Anti-Loop Prevention to prevent kernel freezes.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Instant Mobile QR Scan:</strong> Instantly import configurations into the OpenVPN Mobile Connect app via QR-code.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Effortless Installation:</strong> Smart Double-NAT detection and automated live port-open checking.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">OpenVPN over TCP 443 (SSL-VPN):</strong> Special travel presets to bypass strict public firewalls by hiding traffic as HTTPS.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Built-in DDNS Daemon:</strong> Automatic dynamic DNS support for DuckDNS, IPv64, dynv6, Dynu, and No-IP.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Flood Guard Protection:</strong> Detects and blocks malicious requests and port scanners directly in the Linux kernel.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Automated Firewall Zones:</strong> Automatic creation of all required firewall zones, traffic rules, and forwardings.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">High-Security Keygen:</strong> Automatic generation of RSA-2048/ECC-Prime256, DH params, and TLS-crypt-v2.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Hardware Crypto Optimization:</strong> Smart auto-cipher selection (AES-GCM for new chips, ChaCha20 for older hardware).</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Integrated Key Editor:</strong> View, edit, and check key files or expiration dates directly in your browser.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Profile Import & Export:</strong> Upload existing .ovpn files or multi-key configurations instantly.</div></li>
+                <li class="flex items-start gap-3 text-slate-600"><span class="text-teal-500 font-bold">✓</span><div><strong class="text-slate-900 font-medium">Clear Status Table:</strong> Quick overview of active tunnels, PIDs, ciphers, and live bandwidth usage.</div></li>
+            </ul>
+        </section>
+
+        <!-- Screenshots Section -->
+        <section id="screenshots" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-bold mb-6 text-slate-900 border-b border-slate-100 pb-3">Screenshots</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/server.png')">
+                    <img src="screenshots/server.png" alt="Server/Client View" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Server/Client View</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/status-dark.png')">
+                    <img src="screenshots/status-dark.png" alt="Status View" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Status View</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/client.png')">
+                    <img src="screenshots/client.png" alt="Client View" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Client View</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/qr-client-export.png')">
+                    <img src="screenshots/qr-client-export.png" alt="QR Export" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">QR Export</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/wizard-mobile-server-01.png')">
+                    <img src="screenshots/wizard-mobile-server-01.png" alt="Wizard Mobile Start" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Mobile Start</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/wizard-mobile-server-02.png')">
+                    <img src="screenshots/wizard-mobile-server-02.png" alt="Wizard Mobile Tunnel" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Mobile Tunnel</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/wizard-mobile-server-03.png')">
+                    <img src="screenshots/wizard-mobile-server-03.png" alt="Wizard Mobile IP Setup" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Mobile IP Setup</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/wizard-mobile-server-04.png')">
+                    <img src="screenshots/wizard-mobile-server-04.png" alt="Wizard DDNS Setup" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard DDNS Setup</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/wizard-main-office-01.png')">
+                    <img src="screenshots/wizard-main-office-01.png" alt="Wizard Site-To-Site Start" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Site-To-Site Start</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/wizard-main-office-02.png')">
+                    <img src="screenshots/wizard-main-office-02.png" alt="Wizard Site-To-Site Routing" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Site-To-Site Routing</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/port-forward.png')">
+                    <img src="screenshots/port-forward.png" alt="Wizard Port Forwarding" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Port Forwarding</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/add-instance.png')">
+                    <img src="screenshots/add-instance.png" alt="Wizard Add Instance" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Add Instance</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/keyview.png')">
+                    <img src="screenshots/keyview.png" alt="Wizard Key View" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard Key View</div>
+                </div>
+                <div class="group relative border border-slate-200 rounded-lg overflow-hidden cursor-pointer" onclick="openLightbox('screenshots/keygen.png')">
+                    <img src="screenshots/keygen.png" alt="Wizard KeyGen" class="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-200">
+                    <div class="absolute bottom-0 inset-x-0 bg-slate-900/70 text-white text-xs p-2 text-center">Wizard KeyGen</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="configuration" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-bold mb-6 text-slate-900 border-b border-slate-100 pb-3">Configuration Layout</h2>
+            <p class="text-slate-600 mb-4">The application manages settings inside <code class="bg-slate-100 px-1.5 py-0.5 rounded text-sm text-pink-600 font-mono">/etc/config/openvpn</code>:</p>
+            <pre class="bg-slate-900 text-slate-200 p-5 rounded-xl font-mono text-sm overflow-x-auto shadow-inner leading-relaxed"><code><span class="text-teal-400">config</span> openvpn <span class="text-amber-400">'instance1'</span>
+	<span class="text-teal-400">option</span> enabled <span class="text-amber-400">'0'</span>
+	<span class="text-teal-400">option</span> role <span class="text-amber-400">'server'</span>
+	<span class="text-teal-400">option</span> config <span class="text-amber-400">'/etc/openvpn/luci/instance1.conf'</span></code></pre>
+        </section>
+
+        <section id="structure" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
+            <h2 class="text-2xl font-bold mb-6 text-slate-900 border-b border-slate-100 pb-3">Directory Structure</h2>
+            <pre class="bg-slate-900 text-slate-300 p-5 rounded-xl font-mono text-xs md:text-sm overflow-x-auto shadow-inner leading-normal">luci-app-openvpn-plus/
+├── Makefile
+├── LICENSE
+├── README.md
+├── po/
+│   ├── de/
+│   │   └── luci-app-openvpn-plus.po
+│   ├── zh-cn/
+│   │   └── luci-app-openvpn-plus.po
+├── screenshots/
+└── root/
+	├── etc/
+	│   ├── config/
+	│   └── hotplug.d/
+	│   │   ├── iface/
+	│   │   │   └── 35-luci-app-openvpn-plus-bootup
+	│   │   └── openvpn/
+	│   │       └── 35-luci-app-openvpn-plus-lifecycle
+	│   ├── openvpn/
+	│   │   ├── keys/
+	│   │   └── luci/
+	│   │       ├── default.nft
+	│   │       ├── client.default.conf
+	│   │       └── server.default.conf
+	├── usr/
+	│   ├── libexec/
+	│   │   └── luci-app-openvpn-plus
+	│   └── share/
+	│       ├── luci/menu.d/
+	│       │   └── luci-app-openvpn-plus.json
+	│       └── rpcd/acl.d/
+	│           ├── luci-app-openvpn-plus.json
+	│           └── luci-app-openvpn-plus-status.json
+	└── www/
+		└── luci-static/resources/view/
+			├── status/include/
+			│   └── 35_openvpn.js
+			└── vpn/
+				├── openvpn.js
+				├── openvpn-keygen.js
+				├── openvpn-status.js
+				└── openvpn-wizard.js</pre>
+        </section>
+
+    <footer class="bg-slate-900 text-slate-400 text-center py-8 mt-16 text-sm border-t border-slate-800">
+        <p class="mb-2">Licensed under the Apache License 2.0.</p>
+        <p class="text-xs text-slate-600">&copy; 2026 luci-app-openvpn-plus Project.</p>
+    </footer>
+
+    <div id="lightbox" class="fixed inset-0 bg-black/80 hidden z-50 flex items-center justify-center p-4" onclick="closeLightbox()">
+        <div class="relative max-w-4xl max-h-full">
+            <img id="lightbox-img" src="" alt="Enlarged screenshot" class="max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain border border-slate-700">
+            <button class="absolute -top-10 right-0 text-white text-3xl font-bold hover:text-slate-300 focus:outline-none">&times;</button>
+        </div>
+    </div>
+
+    <script>
+        function openLightbox(src) {
+            const lightbox = document.getElementById('lightbox');
+            const img = document.getElementById('lightbox-img');
+            img.src = src;
+            lightbox.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLightbox() {
+            const lightbox = document.getElementById('lightbox');
+            lightbox.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeLightbox();
+        });
+    </script>
+</body>
+</html>
+				

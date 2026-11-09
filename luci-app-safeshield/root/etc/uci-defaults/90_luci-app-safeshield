@@ -1,0 +1,9 @@
+#!/bin/sh
+
+rm -rf /tmp/luci-modulecache
+rm -f /tmp/luci-indexcache
+
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload
+[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload
+
+exit 0

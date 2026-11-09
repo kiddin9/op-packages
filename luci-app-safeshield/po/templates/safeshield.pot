@@ -1,0 +1,701 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: luci-app-safeshield\n"
+"PO-Revision-Date: 2026-01-01 00:00+0000\n"
+"Last-Translator: SafeShield Translators\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Action"
+msgstr ""
+
+msgid "Actions"
+msgstr ""
+
+msgid "Active"
+msgstr ""
+
+msgid "Add allow rule"
+msgstr ""
+
+msgid "Add block rule"
+msgstr ""
+
+msgid "allow"
+msgstr ""
+
+msgid "Allow list"
+msgstr ""
+
+msgid "Allowlist path"
+msgstr ""
+
+msgid "Apply local allow/block rules"
+msgstr ""
+
+msgid "Apply local rules on top of the cached Hub artifact. Rule files are managed through the SafeShield rule API."
+msgstr ""
+
+msgid "Architecture"
+msgstr ""
+
+msgid "Artifact and runtime safety"
+msgstr ""
+
+msgid "Artifact download"
+msgstr ""
+
+msgid "Artifact metadata resolve"
+msgstr ""
+
+msgid "Artifact SHA-256"
+msgstr ""
+
+msgid "A SafeShield refresh is already running."
+msgstr ""
+
+msgid "block"
+msgstr ""
+
+msgid "Block list"
+msgstr ""
+
+msgid "Blocklist"
+msgstr ""
+
+msgid "Blocklist path"
+msgstr ""
+
+msgid "Blocklist verify"
+msgstr ""
+
+msgid "Boot start delay"
+msgstr ""
+
+msgid "Clear license"
+msgstr ""
+
+msgid "Clear the configured SafeShield license key?"
+msgstr ""
+
+msgid "Compress blocklist"
+msgstr ""
+
+msgid "Compressed"
+msgstr ""
+
+msgid "Config loaded"
+msgstr ""
+
+msgid "Configured"
+msgstr ""
+
+msgid "Configured physical fingerprint"
+msgstr ""
+
+msgid "Configured state"
+msgstr ""
+
+msgid "Current stage"
+msgstr ""
+
+msgid "Current status"
+msgstr ""
+
+msgid "Debug"
+msgstr ""
+
+msgid "Delay before SafeShield performs boot-time work."
+msgstr ""
+
+msgid "Delete"
+msgstr ""
+
+msgid "Delete %s from the %s list?"
+msgstr ""
+
+msgid "Device"
+msgstr ""
+
+msgid "Device identity and profile fields are owned by SafeShield and are not editable from LuCI."
+msgstr ""
+
+msgid "Device (read only)"
+msgstr ""
+
+msgid "Diagnostics"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Disable request accepted."
+msgstr ""
+
+msgid "Disable request accepted. Runtime convergence is asynchronous; check Overview for the live state."
+msgstr ""
+
+msgid "Disable SafeShield"
+msgstr ""
+
+msgid "dnsmasq binary"
+msgstr ""
+
+msgid "dnsmasq confdir"
+msgstr ""
+
+msgid "dnsmasq running"
+msgstr ""
+
+msgid "DNS runtime"
+msgstr ""
+
+msgid "DNS runtime OK"
+msgstr ""
+
+msgid "Domain"
+msgstr ""
+
+msgid "Domains in this list are always added to the final SafeShield blocklist."
+msgstr ""
+
+msgid "Domains in this list are removed from the final SafeShield blocklist."
+msgstr ""
+
+msgid "Domains / lines"
+msgstr ""
+
+msgid "Download retries"
+msgstr ""
+
+msgid "Download timeout"
+msgstr ""
+
+msgid "Download URL present"
+msgstr ""
+
+msgid "Enable additional debug output for troubleshooting."
+msgstr ""
+
+msgid "Enabled"
+msgstr ""
+
+msgid "Enable debug logging"
+msgstr ""
+
+msgid "Enable/disable and refresh actions use the public SafeShield ubus API. Enable/disable convergence is asynchronous and is verified through safeshield.status."
+msgstr ""
+
+msgid "Enable request accepted."
+msgstr ""
+
+msgid "Enable request accepted. Runtime convergence is asynchronous; check Overview for the live state."
+msgstr ""
+
+msgid "Enable SafeShield"
+msgstr ""
+
+msgid "Enter a domain name first."
+msgstr ""
+
+msgid "Enter a license key first. Use Clear license to remove the current key."
+msgstr ""
+
+msgid "Enter a new key to replace the configured key"
+msgstr ""
+
+msgid "Enter license key"
+msgstr ""
+
+msgid "Errors"
+msgstr ""
+
+msgid "Errors only"
+msgstr ""
+
+msgid "File size"
+msgstr ""
+
+msgid "Final dnsmasq restart"
+msgstr ""
+
+msgid "General"
+msgstr ""
+
+msgid "Generated at"
+msgstr ""
+
+msgid "Health"
+msgstr ""
+
+msgid "Health checks"
+msgstr ""
+
+msgid "Hub artifact"
+msgstr ""
+
+msgid "Info"
+msgstr ""
+
+msgid "Initial dnsmasq restart"
+msgstr ""
+
+msgid "Installed"
+msgstr ""
+
+msgid "Interval between successful Hub artifact refreshes."
+msgstr ""
+
+msgid "KB"
+msgstr ""
+
+msgid "Keep disabled unless the SafeShield runtime explicitly supports compressed dnsmasq blocklists."
+msgstr ""
+
+msgid "Last attempt"
+msgstr ""
+
+msgid "Last error code"
+msgstr ""
+
+msgid "Last failure"
+msgstr ""
+
+msgid "Last local apply"
+msgstr ""
+
+msgid "Last local apply failure"
+msgstr ""
+
+msgid "Last result"
+msgstr ""
+
+msgid "Last success"
+msgstr ""
+
+msgid "License"
+msgstr ""
+
+msgid "License key cleared. SafeShield will use the unlicensed/free artifact path."
+msgstr ""
+
+msgid "License key updated. SafeShield requested an artifact refresh."
+msgstr ""
+
+msgid "Local allow and block rules are managed through the public SafeShield rule API. LuCI never edits /etc/safeshield files directly."
+msgstr ""
+
+msgid "Local apply status"
+msgstr ""
+
+msgid "Local overrides"
+msgstr ""
+
+msgid "Local overrides enabled"
+msgstr ""
+
+msgid "Local rules"
+msgstr ""
+
+msgid "Local Rules"
+msgstr ""
+
+msgid "Log verbosity"
+msgstr ""
+
+msgid "Masked key"
+msgstr ""
+
+msgid "Maximum accepted final blocklist size."
+msgstr ""
+
+msgid "Maximum blocklist size"
+msgstr ""
+
+msgid "Maximum duration used by the SafeShield pause command."
+msgstr ""
+
+msgid "Maximum file size"
+msgstr ""
+
+msgid "Maximum retry count for artifact downloads."
+msgstr ""
+
+msgid "Memory"
+msgstr ""
+
+msgid "Minimum valid rule count"
+msgstr ""
+
+msgid "Mode / action"
+msgstr ""
+
+msgid "Model"
+msgstr ""
+
+msgid "Name"
+msgstr ""
+
+msgid "New license key"
+msgstr ""
+
+msgid "Next refresh"
+msgstr ""
+
+msgid "Next refresh in"
+msgstr ""
+
+msgid "No"
+msgstr ""
+
+msgid "No local rules in this list."
+msgstr ""
+
+msgid "No SafeShield settings changed."
+msgstr ""
+
+msgid "No sources reported by SafeShield."
+msgstr ""
+
+msgid "Path"
+msgstr ""
+
+msgid "Pause timeout"
+msgstr ""
+
+msgid "Physical fingerprint"
+msgstr ""
+
+msgid "Plan"
+msgstr ""
+
+msgid "Previous backup available"
+msgstr ""
+
+msgid "Refresh daemon running"
+msgstr ""
+
+msgid "Refresh interval"
+msgstr ""
+
+msgid "Refresh now"
+msgstr ""
+
+msgid "Refresh on boot"
+msgstr ""
+
+msgid "Refresh the Hub artifact after boot when the existing successful refresh is no longer recent."
+msgstr ""
+
+msgid "Refresh was not started: %s"
+msgstr ""
+
+msgid "Reject an artifact when the generated dnsmasq rule count is below this value."
+msgstr ""
+
+msgid "Require WAN"
+msgstr ""
+
+msgid "Require WAN before refresh"
+msgstr ""
+
+msgid "Resolved"
+msgstr ""
+
+msgid "Restart dnsmasq before install"
+msgstr ""
+
+msgid "Restart dnsmasq before installing a newly downloaded artifact. Normally this should stay disabled."
+msgstr ""
+
+msgid "Rules"
+msgstr ""
+
+msgid "Run dnsmasq sanity check"
+msgstr ""
+
+msgid "Runtime"
+msgstr ""
+
+msgid "Runtime profile"
+msgstr ""
+
+msgid "SafeShield"
+msgstr ""
+
+msgid "SafeShield accepted the request but runtime convergence was not observed within 15 seconds. Status polling will continue."
+msgstr ""
+
+msgid "SafeShield applies rule edits using the cached Hub artifact, then atomically rebuilds the active dnsmasq blocklist and verifies DNS. A full artifact refresh is only used as a fallback when the cached Hub artifact is unavailable."
+msgstr ""
+
+msgid "SafeShield is disabled and stopped."
+msgstr ""
+
+msgid "SafeShield is enabled and running."
+msgstr ""
+
+msgid "SafeShield is idle."
+msgstr ""
+
+msgid "SafeShield is ready."
+msgstr ""
+
+msgid "SafeShield is refreshing the blocklist."
+msgstr ""
+
+msgid "SafeShield is running with degraded protection."
+msgstr ""
+
+msgid "SafeShield encountered an error."
+msgstr ""
+
+msgid "SafeShield is paused."
+msgstr ""
+
+msgid "SafeShield is disabled."
+msgstr ""
+
+msgid "SafeShield local rules"
+msgstr ""
+
+msgid "SafeShield owns enable/disable lifecycle. LuCI uses safeshield.set_enabled rather than writing UCI directly."
+msgstr ""
+
+msgid "SafeShield refresh request failed."
+msgstr ""
+
+msgid "SafeShield refresh started."
+msgstr ""
+
+msgid "SafeShield rejected the lifecycle request."
+msgstr ""
+
+msgid "SafeShield request failed."
+msgstr ""
+
+msgid "SafeShield rule request failed."
+msgstr ""
+
+msgid "SafeShield settings"
+msgstr ""
+
+msgid "SafeShield settings saved. The service was restarted and a refresh was requested where applicable."
+msgstr ""
+
+msgid "Save settings"
+msgstr ""
+
+msgid "Schedule"
+msgstr ""
+
+msgid "Schema"
+msgstr ""
+
+msgid "seconds"
+msgstr ""
+
+msgid "Service state"
+msgstr ""
+
+msgid "SHA-256"
+msgstr ""
+
+msgid "Size"
+msgstr ""
+
+msgid "%s must be an integer."
+msgstr ""
+
+msgid "%s must be at least %d."
+msgstr ""
+
+msgid "%s must not exceed %d."
+msgstr ""
+
+msgid "Sources"
+msgstr ""
+
+msgid "Stage"
+msgstr ""
+
+msgid "Status"
+msgstr ""
+
+msgid "Summary"
+msgstr ""
+
+msgid "Test domain"
+msgstr ""
+
+msgid "Test domain success"
+msgstr ""
+
+msgid "The license key is unchanged."
+msgstr ""
+
+msgid "The raw license key is never returned by the SafeShield API."
+msgstr ""
+
+msgid "The rule was saved and local apply was accepted, but completion was not observed before the UI timeout. SafeShield may still be applying it."
+msgstr ""
+
+msgid "The rule was saved, but local overrides are disabled so it is not active."
+msgstr ""
+
+msgid "The rule was saved, but SafeShield is disabled so it is not active yet."
+msgstr ""
+
+msgid "The rule was saved, but SafeShield reported a local apply failure. Check Overview and system logs."
+msgstr ""
+
+msgid "The rule was saved, but the local DNS apply request was not accepted: %s"
+msgstr ""
+
+msgid "The rule was saved, but the SafeShield service is stopped."
+msgstr ""
+
+msgid "The rule was saved without requesting a DNS apply."
+msgstr ""
+
+msgid "The %s rule was already in the requested state."
+msgstr ""
+
+msgid "The %s rule was saved and applied to DNS."
+msgstr ""
+
+msgid "This page uses the public SafeShield ubus API. UCI, local rule files, service lifecycle and license storage remain owned by the safeshield package."
+msgstr ""
+
+msgid "Tier"
+msgstr ""
+
+msgid "Timeout used for Hub resolve and artifact downloads."
+msgstr ""
+
+msgid "Unique domains"
+msgstr ""
+
+msgid "unknown reason"
+msgstr ""
+
+msgid "Update license"
+msgstr ""
+
+msgid "Validate dnsmasq state after installing or applying the blocklist."
+msgstr ""
+
+msgid "Valid rules"
+msgstr ""
+
+msgid "Vendor"
+msgstr ""
+
+msgid "Verification OK"
+msgstr ""
+
+msgid "Version"
+msgstr ""
+
+msgid "Wait for WAN connectivity before resolving and downloading Hub artifacts."
+msgstr ""
+
+msgid "Warnings"
+msgstr ""
+
+msgid "Yes"
+msgstr ""
+
+msgid "Idle"
+msgstr ""
+
+msgid "Waiting for scheduled refresh"
+msgstr ""
+
+msgid "Waiting after boot"
+msgstr ""
+
+msgid "Applying local rules"
+msgstr ""
+
+msgid "Merging local rules"
+msgstr ""
+
+msgid "Restarting DNS service"
+msgstr ""
+
+msgid "Checking DNS service"
+msgstr ""
+
+msgid "Verifying blocklist"
+msgstr ""
+
+msgid "OK"
+msgstr ""
+
+msgid "Ready"
+msgstr ""
+
+msgid "Success"
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Refreshing"
+msgstr ""
+
+msgid "Pending"
+msgstr ""
+
+msgid "Notice"
+msgstr ""
+
+msgid "Warning"
+msgstr ""
+
+msgid "Degraded"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Failed"
+msgstr ""
+
+msgid "Failure"
+msgstr ""
+
+msgid "Expired"
+msgstr ""
+
+msgid "Revoked"
+msgstr ""
+
+msgid "Suspended"
+msgstr ""
+
+msgid "Free"
+msgstr ""
+
+msgid "Unlicensed"
+msgstr ""
+
+msgid "Licensed"
+msgstr ""
+
+msgid "Light"
+msgstr ""
+
+msgid "Standard"
+msgstr ""
+
+msgid "Full"
+msgstr ""
+
+msgid "Block"
+msgstr ""
+
+msgid "Allow"
+msgstr ""
