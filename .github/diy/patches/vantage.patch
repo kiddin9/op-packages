@@ -79,8 +79,8 @@
  	--fs-sm: 12px;
  	--fs-base: 13px;
  	--fs-md: 14px;
-@@ -37,7 +37,7 @@
- 	--r-lg: 8px;
+@@ -50,7 +50,7 @@
+ 	--r-xl: 12px;
  
  	--rail-w: 56px;
 -	--rail-w-pinned: 224px;
@@ -88,7 +88,7 @@
  	--top-h: 52px;
  	--ctl-h: 36px;              /* every control: inputs, selects, buttons, tabs, chips */
  	--label-w: 180px;           /* form label column */
-@@ -328,7 +328,7 @@ html[data-darkmode="true"] .vt-brand-tile { fill: #16181b; }
+@@ -427,7 +427,7 @@ html[data-rail="pinned"] .vt-brand-name:not([hidden]) { display: block; }
  	white-space: nowrap;
  }
  .vt-rail-link svg { flex: none; width: 20px; height: 20px; }
@@ -97,7 +97,7 @@
  .vt-rail-caret { display: none; width: 14px; height: 14px; color: var(--text-3); transition: transform .15s; }
  
  .vt-rail-link:hover, .vt-rail-item.is-open > .vt-rail-link { background: var(--s3); color: var(--text); }
-@@ -371,7 +371,7 @@ html[data-rail="pinned"] .vt-frame { margin-left: var(--rail-w-pinned); }
+@@ -469,7 +469,7 @@ html[data-rail="pinned"] .vt-frame { margin-left: var(--rail-w-pinned); }
  	padding: 5px 10px;
  	border-left: 1px solid var(--line-2);
  	color: var(--text-2);
@@ -106,7 +106,16 @@
  	white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
  	text-decoration: none !important;
  }
-@@ -778,6 +778,12 @@ a.vt-crumb:hover { color: var(--text); }
+@@ -635,7 +635,7 @@ a.vt-crumb:hover { color: var(--text); }
+ /* where the picks are kept, when not for every browser */
+ .vt-appear-note { max-width: 32ch; margin: 0; color: var(--text-3); font-size: var(--fs-sm); line-height: 1.4; }
+ .vt-appear-note[hidden] { display: none; }
+-.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); }
++.vt-appear-ver { margin: 0; color: var(--text-3); font-size: var(--fs-micro); display:none; }
+ .vt-appear-num { font-family: var(--mono); }
+ .vt-appear-check { margin: 0; padding: 0; border: 0; background: none; color: var(--accent-text); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+ .vt-appear-check[aria-disabled="true"] { color: var(--text-3); cursor: default; text-decoration: none; }
+@@ -883,6 +883,12 @@ html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-
  	border-radius: var(--r-lg);
  	box-shadow: var(--v-shadow);
  	min-width: 0;
@@ -119,7 +128,7 @@
  }
  /* Card padding supplies the space after the final paragraph. */
  .cbi-section > p:last-child { margin-bottom: 0; }
-@@ -1982,7 +1988,25 @@ html:not([data-darkmode="true"]) .vt-login-page {
+@@ -2621,7 +2627,25 @@ html:not([data-darkmode="true"]) .vt-login-page {
  }
  /* the backdrop (login.js: packets or starfield), between the grid and the card */
  .vt-login-sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -146,7 +155,7 @@
  .vt-login-card {
  	padding: var(--sp-6);
  	background: var(--s1);
-@@ -2051,7 +2075,7 @@ html:not([data-darkmode="true"]) .vt-login-page {
+@@ -2691,7 +2715,7 @@ body[data-page="admin-statistics-graphs"] p.controls > .nowrap > .cbi-button { m
  .cbi-section-table .ifacebox-body img { width: 18px; height: 18px; }
  [id$="-ifc-description"], .cbi-value-field > div[id$="-ifc-description"] {
  	display: flex; flex-wrap: wrap; align-items: flex-start;
