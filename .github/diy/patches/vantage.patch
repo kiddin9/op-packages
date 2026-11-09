@@ -1,3 +1,11 @@
+--- a/luci-theme-vantage/root/etc/config/vantage_theme
++++ b/luci-theme-vantage/root/etc/config/vantage_theme
+@@ -13,3 +13,4 @@
+ # the same with _wired), which are best changed there.
+ 
+ config appearance 'appearance'
++	option brand 'hostname'
+
 --- a/luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js
 +++ b/luci-app-vantage/htdocs/luci-static/resources/view/vantage/overview.js
 @@ -583,8 +583,8 @@ return view.extend({
