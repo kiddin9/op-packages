@@ -230,6 +230,7 @@ jobs:
         (
         git_clone https://github.com/Arthur97172/luci-app-substore
         git_clone https://github.com/Junatum/safeshield
+        git_clone https://github.com/Junatum/luci-app-safeshield
         git_clone https://github.com/Junatum/luci-app-smartsafehub
         git_clone https://github.com/dellzou/luci-app-dnsguard
         git_clone https://github.com/meow-rs/meow-rs && mv -f meow-rs/openwrt/*meow ./;rm -rf meow-rs
