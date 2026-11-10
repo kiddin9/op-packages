@@ -55,7 +55,7 @@ fi
 endef
 
 # The official tarball has one top-level dir, strip it so files land in PKG_BUILD_DIR
-#define Build/Prepare
+define Build/Prepare
 	mkdir -p $(PKG_BUILD_DIR)
 	$(TAR) --strip-components=1 -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
 endef
