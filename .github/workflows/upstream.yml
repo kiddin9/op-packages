@@ -409,6 +409,7 @@ jobs:
         git_clone https://github.com/Zesuy/UA-Mask && cp -rf UA-Mask/openwrt/package/Makefile UA-Mask/
         git_clone https://github.com/wrttools/luci-app-liteportal
         git_clone https://github.com/matthewlu070111/smart-srun
+        git_clone https://github.com/amrfateem/luci-V2raya-NextGen && mv -f luci-V2raya-NextGen/*v2raya* ./;rm -rf luci-V2raya-NextGen
         ) &
         (
         git_sparse_clone revision https://github.com/Self-Hosting-Group/luci applications/luci-app-upnp
