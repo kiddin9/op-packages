@@ -1,0 +1,12 @@
+--- a/UA-Mask/Makefile
++++ b/UA-Mask/Makefile
+@@ -1,8 +1,6 @@
+ include $(TOPDIR)/rules.mk
+ 
+-PACKAGE_DIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+-OPENWRT_DIR:=$(abspath $(PACKAGE_DIR)/..)
+-REPO_ROOT:=$(abspath $(OPENWRT_DIR)/..)
++REPO_ROOT:=$(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+ UAMASK_SOURCE_DIR?=$(REPO_ROOT)
+ UAMASK_VERSION?=$(strip $(shell cat $(UAMASK_SOURCE_DIR)/VERSION))
+ 
