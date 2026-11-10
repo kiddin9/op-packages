@@ -106,6 +106,7 @@ jobs:
         git_clone https://github.com/kiddin9/luci-app-vsftpd
         git_clone https://github.com/kiddin9/openwrt-subconverter && mvdir openwrt-subconverter
         git_clone https://github.com/kiddin9/luci-app-syncdial
+        git_clone https://github.com/kiddin9/openwrt-gately && mvdir openwrt-gately
         ) &
         (
         git_clone https://github.com/Openwrt-Passwall/openwrt-passwall && mvdir openwrt-passwall
@@ -178,7 +179,7 @@ jobs:
         git_clone https://github.com/nikkinikki-org/OpenWrt-nikki && mv -f OpenWrt-nikki/{luci-app-nikki,nikki,mihomo*} ./;rm -rf OpenWrt-nikki
         git_clone https://github.com/nikkinikki-org/OpenWrt-momo && mv -f OpenWrt-momo/{luci-app-momo,momo} ./;rm -rf OpenWrt-momo
         git_clone https://github.com/fcshark-org/openwrt-fchomo && mvdir openwrt-fchomo
-        git clone https://github.com/fw876/helloworld -b dev && mvdir helloworld
+        git clone https://github.com/fw876/helloworld -b dev; rm -rf helloworld/v2raya;mvdir helloworld
         git_clone https://github.com/umk0/openwrt-luci-haproxy-manager && mv -f openwrt-luci-haproxy-manager/luci-app-haproxy-manager ./;rm -rf openwrt-luci-haproxy-manager
         ) &
         (
@@ -405,7 +406,6 @@ jobs:
         git_clone https://github.com/Tokisaki-Galaxy/luci-app-tailscale-community tailscalec && mv -f tailscalec/luci-app* ./;rm -rf tailscalec
         git_clone https://github.com/szwjp/luci-app-ipsec-vpnd
         git_clone https://github.com/arafatrahmanzami/luci-app-easymesh;rm -rf luci-app-easymesh/meta-packages
-        git_clone https://github.com/kiddin9/openwrt-gately && mvdir openwrt-gately
         git_clone https://github.com/Zesuy/UA-Mask && cp -rf UA-Mask/openwrt/package/Makefile UA-Mask/
         git_clone https://github.com/wrttools/luci-app-liteportal
         git_clone https://github.com/matthewlu070111/smart-srun
@@ -559,7 +559,8 @@ jobs:
 
         (
         for pkg in $(ls -d */ | grep -v "naiveproxy" | grep -v "luci-app-store" | grep -v "luci-app-quickstart"); do
-        if [[ $pkg == luci-* ]]; then
+        pkg="${pkg%/}"
+        if [[ $pkg == luci-app-v2raya ]]; then
           sed -i '/^[[:space:]]*PKG_\(VERSION\|RELEASE\):*=/d' $pkg/Makefile || true
         else
           if [[ "$(grep "PKG_VERSION" $pkg/Makefile)" && ! "$(grep "PKG_RELEASE" $pkg/Makefile)" ]]; then
