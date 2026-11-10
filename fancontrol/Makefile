@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=fancontrol
-PKG_VERSION:=2.0.0
-PKG_RELEASE:=2
+PKG_VERSION:=2.2.0
+PKG_RELEASE:=3
 
 PKG_LICENSE:=MIT
 PKG_LICENSE_FILES:=LICENSE
@@ -20,6 +20,10 @@ endef
 
 define Package/fancontrol/description
   Temperature-based continuous PWM fan controller using the Linux hwmon ABI.
+endef
+
+define Package/fancontrol/conffiles
+/etc/config/fancontrol
 endef
 
 define Build/Prepare

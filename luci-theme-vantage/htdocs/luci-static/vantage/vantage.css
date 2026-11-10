@@ -2656,7 +2656,7 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 .vt-login-head { display: flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-6); }
 .vt-login-mark { flex: none; }
 .vt-login-title { margin: 0; font-size: var(--fs-lg); font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
-.vt-login-error {
+.vt-login-error, .vt-login-info {
 	margin: 0 0 var(--sp-4);
 	padding: var(--sp-2) var(--sp-3);
 	border: 1px solid color-mix(in srgb, var(--err) 45%, transparent);
@@ -2664,6 +2664,11 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 	background: var(--err-soft);
 	border-radius: var(--r);
 	font-size: var(--fs-sm);
+}
+.vt-login-info {
+	border-color: color-mix(in srgb, var(--info) 45%, transparent);
+	border-left-color: var(--info);
+	background: var(--info-soft);
 }
 .vt-login-form { display: flex; flex-direction: column; gap: var(--sp-4); }
 .vt-field { display: flex; flex-direction: column; gap: 6px; }

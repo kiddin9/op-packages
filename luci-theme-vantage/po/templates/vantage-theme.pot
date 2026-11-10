@@ -76,7 +76,7 @@ msgctxt "vantage-theme"
 msgid "Appearance"
 msgstr ""
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:50
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:52
 msgid "Authorization Required"
 msgstr ""
 
@@ -296,7 +296,7 @@ msgctxt "vantage-theme"
 msgid "Input"
 msgstr ""
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:54
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:56
 msgid "Invalid username and/or password! Please try again."
 msgstr ""
 
@@ -314,8 +314,8 @@ msgctxt "vantage-theme"
 msgid "Light"
 msgstr ""
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:30
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:66
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:32
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:85
 msgid "Log in"
 msgstr ""
 
@@ -441,7 +441,7 @@ msgctxt "vantage-theme"
 msgid "Passes unmatched"
 msgstr ""
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:63
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:65
 msgid "Password"
 msgstr ""
 
@@ -590,7 +590,7 @@ msgstr ""
 msgid "Used"
 msgstr ""
 
-#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:59
+#: luci-theme-vantage/ucode/template/themes/vantage/sysauth.ut:61
 msgid "Username"
 msgstr ""
 

@@ -67,6 +67,11 @@ return baseclass.extend({
 
 		luciversion = luciversion.branch;
 
+		var cpuUsageText = cpuusage.cpuusage;
+		if (L.hasSystemFeature('zte_npu'))
+			cpuUsageText = (cpuUsageText || '?') + ', NPU: ' + (cpuusage.flows?.hw || 0) +
+				', Flow: ' + (cpuusage.flows?.sw || 0);
+
 		var datestr = null;
 
 		if (unixtime) {

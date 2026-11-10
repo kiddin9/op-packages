@@ -19,6 +19,8 @@
 	const look_theme = look('theme', [ 'auto', 'light', 'dark' ]);
 	const look_login = look('login', [ 'grid', 'stars', 'none' ]);
 	const host = (() => { const h = uci.get_first('system', 'system', 'hostname'); return (type(h) == 'string' && length(h)) ? substr(h, 0, 63) : null; })();
+	// A pending challenge is guidance until the user submits a response.
+	const auth_failed = auth_plugin && length(filter(auth_fields ?? [], field => length(http.formvalue(field.name) ?? '')));
 -%}
 <!DOCTYPE html>
 <html lang="{{ entityencode(dispatcher.lang ?? 'en', true) }}" data-darkmode="true" data-vt-look-theme="{{ look_theme }}" data-vt-look-login="{{ look_login }}">
@@ -57,27 +59,44 @@
 			<h1 class="vt-login-title">{{ entityencode(host ?? _('Authorization Required'), true) }}</h1>
 		</div>
 
-{% if (fuser): %}
+{% if (fuser && !auth_plugin): %}
 		<div class="vt-login-error" role="alert">{{ entityencode(_('Invalid username and/or password! Please try again.'), true) }}</div>
 {% endif %}
 
 		<form method="post" class="vt-login-form" data-https-ports="{{ entityencode(sprintf('%J', tls_ports), true) }}" data-https-probe="{{ entityencode(resource + '/icons/loading.svg', true) }}">
-			<label class="vt-field">
+			<label class="vt-field" for="luci_username">
 				<span class="vt-field-label">{{ entityencode(_('Username'), true) }}</span>
-				<input class="cbi-input-text" type="text" name="luci_username" autocomplete="username" autocapitalize="off" spellcheck="false" required value="{{ entityencode(duser ?? '', true) }}">
+				<input class="cbi-input-text" id="luci_username" type="text" name="luci_username" autocomplete="username" autocapitalize="off" spellcheck="false" required value="{{ entityencode(duser ?? '', true) }}">
 			</label>
-			<label class="vt-field">
+			<label class="vt-field" for="luci_password">
 				<span class="vt-field-label">{{ entityencode(_('Password'), true) }}</span>
-				<input class="cbi-input-password" type="password" name="luci_password" autocomplete="current-password" autofocus>
+				<input class="cbi-input-password" id="luci_password" type="password" name="luci_password" autocomplete="current-password">
 			</label>
+{% if (auth_fields): %}
+{% for (let field in auth_fields): %}
+			<label class="vt-field" for="{{ entityencode(field.name, true) }}">
+				<span class="vt-field-label">{{ entityencode(_(field.label ?? field.name), true) }}</span>
+				<input class="cbi-input-text" id="{{ entityencode(field.name, true) }}" type="{{ entityencode(field.type ?? 'text', true) }}" name="{{ entityencode(field.name, true) }}"
+					{% if (field.placeholder): %}placeholder="{{ entityencode(field.placeholder, true) }}"{% endif %}
+					{% if (field.inputmode): %}inputmode="{{ entityencode(field.inputmode, true) }}"{% endif %}
+					{% if (field.pattern): %}pattern="{{ entityencode(field.pattern, true) }}"{% endif %}
+					{% if (field.maxlength): %}maxlength="{{ entityencode('' + field.maxlength, true) }}"{% endif %}
+					{% if (field.autocomplete): %}autocomplete="{{ entityencode(field.autocomplete, true) }}"{% endif %}
+					{% if (field.required): %}required{% endif %}>
+			</label>
+{% endfor %}
+{% endif %}
+{% if (auth_message): %}
+			<div class="{{ auth_failed ? 'vt-login-error' : 'vt-login-info' }}" role="{{ auth_failed ? 'alert' : 'status' }}">{{ entityencode(auth_message, true) }}</div>
+{% endif %}
 			<button type="submit" class="btn cbi-button cbi-button-apply vt-login-submit">{{ entityencode(_('Log in'), true) }}</button>
 		</form>
 	</div>
 </main>
 <script>
 (function (form) {
-	var pw = document.querySelector('input[name="luci_password"]');
-	if (pw) pw.focus();
+	var input = form && form.querySelector('input[name="luci_password"]');
+	if (input) input.focus();
 	if (!form || location.protocol === 'https:') return;
 	var ports = [];
 	try { ports = JSON.parse(form.getAttribute('data-https-ports') || '[]'); } catch (e) {}

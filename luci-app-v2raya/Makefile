@@ -11,8 +11,6 @@ LUCI_DEPENDS:=+luci-base +v2raya
 LUCI_PKGARCH:=all
 LUCI_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
 
-PKG_VERSION:=2.5.13
-PKG_RELEASE:=1
 
 PKG_LICENSE:=Apache-2.0
 CONFLICTS:=luci-app-v2raya-nextgen
