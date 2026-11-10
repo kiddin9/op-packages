@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mwgp
 PKG_VERSION:=2.1.7
-PKG_RELEASE:=5
+PKG_RELEASE:=6
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/apernet/mwgp
@@ -44,7 +44,7 @@ GO_PKG_LDFLAGS:=-s -w
 # instead of falling back to running a standard Makefile 'make' loop.
 define Build/Compile
 	$(call GoPackage/Golang/Build/Compile)
-enddefine
+endef
 
 define Package/mwgp/install
 	$(INSTALL_DIR) $(1)/usr/bin
