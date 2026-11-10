@@ -559,13 +559,16 @@ jobs:
 
         (
         for pkg in $(ls -d */ | grep -v "naiveproxy" | grep -v "luci-app-store" | grep -v "luci-app-quickstart"); do
+        if [[ $pkg == luci-* ]]; then
+          sed -i '/^[[:space:]]*PKG_\(VERSION\|RELEASE\):*=/d' $pkg/Makefile || true
+        else
           if [[ "$(grep "PKG_VERSION" $pkg/Makefile)" && ! "$(grep "PKG_RELEASE" $pkg/Makefile)" ]]; then
-            sed -i "s/\(PKG_VERSION:=.*\)/\1\nPKG_RELEASE:=/" $pkg/Makefile || true
+        	  sed -i "s/\(PKG_VERSION:=.*\)/\1\nPKG_RELEASE:=/" $pkg/Makefile || true
           fi
           if [ "$(grep "PKG_RELEASE" $pkg/Makefile)" ]; then
             sed -i "s/PKG_RELEASE:=.*/PKG_RELEASE:=$(git rev-list --count main $pkg)/" $pkg/Makefile || true
-          fi
-
+        	fi
+        fi
         done
         touch /tmp/ok2
         ) &
