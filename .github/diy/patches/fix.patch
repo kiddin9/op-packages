@@ -1,0 +1,35 @@
+--- a/sunpanel/Makefile
++++ b/sunpanel/Makefile
+@@ -55,7 +55,7 @@ fi
+ endef
+ 
+ # The official tarball has one top-level dir, strip it so files land in PKG_BUILD_DIR
+-#define Build/Prepare
++define Build/Prepare
+ 	mkdir -p $(PKG_BUILD_DIR)
+ 	$(TAR) --strip-components=1 -xzf $(DL_DIR)/$(PKG_SOURCE) -C $(PKG_BUILD_DIR)
+ endef
+
+--- a/grpcurl/Makefile
++++ b/grpcurl/Makefile
+@@ -32,7 +32,7 @@ GO_PKG_LDFLAGS:=-s -w
+ GO_PKG_TAGS:=master
+ 
+ include $(INCLUDE_DIR)/package.mk
+-include ../golang/golang-package.mk
++include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk
+ 
+ define Package/grpcurl
+   TITLE:=grpcurl is a command-line tool that lets you interact with gRPC servers
+
+--- a/openwrt-mwgp/Makefile
++++ b/openwrt-mwgp/Makefile
+@@ -44,7 +44,7 @@ GO_PKG_LDFLAGS:=-s -w
+ # instead of falling back to running a standard Makefile 'make' loop.
+ define Build/Compile
+ 	$(call GoPackage/Golang/Build/Compile)
+-enddefine
++endef
+ 
+ define Package/mwgp/install
+ 	$(INSTALL_DIR) $(1)/usr/bin
