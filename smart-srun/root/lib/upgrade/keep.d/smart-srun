@@ -1,0 +1,4 @@
+# User-created v2 data only. No cache, defaults, credentials from the build host,
+# runtime state, or unfinished recovery transaction belongs in a firmware backup.
+/etc/smart-srun/config.json
+/etc/smart-srun/user-presets.json

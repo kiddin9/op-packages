@@ -1,0 +1,60 @@
+# 换行与文本/二进制判定。
+#
+# 本仓库此前只有 CRLF 工作区 + 全局 core.autocrlf=true：索引里存的是 LF，
+# 检出后却变成 CRLF。对本项目这不是 cosmetic 问题——
+#   * root/etc/init.d/liteportal 变成 CRLF 后，设备上会 `bad interpreter: /bin/sh^M`；
+#   * htdocs/ 下的 JS 变成 CRLF 后，LuCI 仍能跑，但 diff 全是噪声。
+# 因此这里显式声明，覆盖全局 autocrlf。
+
+# 默认：文本自动判定，库内与工作区一律 LF
+* text=auto eol=lf
+
+# 脚本必须 LF（设备上由 /bin/sh 解释）
+*.sh    text eol=lf
+*.uc    text eol=lf
+*.js    text eol=lf
+
+# 无扩展名或易被误判的文本文件，显式声明
+LICENSE         text eol=lf
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+Makefile        text eol=lf
+*.json          text eol=lf
+*.css           text eol=lf
+*.html          text eol=lf
+*.po            text eol=lf
+*.pot           text eol=lf
+
+# Windows 专属文件需要 CRLF（本项目当前没有，留作后续扩展）
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# 二进制：禁止换行转换与文本 diff
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.webp   binary
+*.ico    binary
+*.icns   binary
+*.pdf    binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.apk    binary
+*.ipk    binary
+*.zip    binary
+*.gz     binary
+*.zst    binary
+*.xz     binary
+*.tar.gz binary
+*.tar.zst binary
+*.tar.xz binary
+*.exe    binary
+*.dll    binary
+*.so     binary
+*.dylib  binary
+*.lib    binary
+*.a      binary

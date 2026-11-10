@@ -1,0 +1,46 @@
+# --- Build artefacts (SDK / buildroot output) ---
+/bin/
+/build_dir/
+/staging_dir/
+/tmp/
+/dl/
+/feeds/
+/logs/
+# local scratch for an out-of-tree SDK build and the device test script
+/.build/
+.config
+.config.old
+.config.orig
+*.o
+*.so
+*.a
+# ucode compiles to a binary beside the source when built by hand
+uc.out
+
+# --- Package output ---
+*.apk
+*.ipk
+*.tar.gz
+*.tar.zst
+*.tar.xz
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# --- WorkBuddy / local scratch ---
+.workbuddy/
+# freedesktop trash created by `gio trash` inside the tree
+.Trash-*/
+
+# --- Secrets (never commit) ---
+*.key
+*.pem
+.env
+.env.*
+!.env.example
+!*.env.example

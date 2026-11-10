@@ -1,0 +1,178 @@
+local fs = require "nixio.fs"
+local nixio = require "nixio"
+
+local OPKG_STATUS_FILE = "/usr/lib/opkg/status"
+local APK_STATUS_FILE = "/lib/apk/db/installed"
+local DEFAULT_VERSION = "v0.0.0"
+
+local M = {}
+
+M.POINTER_KEYS = {
+    "active_campus_id", "default_campus_id",
+    "active_hotspot_id", "default_hotspot_id",
+}
+M.LIST_KEYS = { "campus_accounts", "hotspot_profiles" }
+M.SCHOOL_EXTRA_KEY = "school_extra"
+
+function M.normalize_ap_selection(value, bssid)
+    local policy = tostring(value or ""):match("^%s*(.-)%s*$"):lower()
+    if policy == "auto" or policy == "strongest" or policy == "fixed" then
+        return policy
+    end
+    return tostring(bssid or ""):match("^%s*(.-)%s*$") ~= "" and "fixed" or "auto"
+end
+
+function M.is_valid_bssid(value)
+    local address = tostring(value or ""):match("^%s*(.-)%s*$"):lower()
+    if not address:match("^%x%x:%x%x:%x%x:%x%x:%x%x:%x%x$") then return false end
+    return address ~= "00:00:00:00:00:00" and tonumber(address:sub(1, 2), 16) % 2 == 0
+end
+
+function M.ap_selection_label(policy)
+    local labels = { auto = "系统自动", strongest = "连接时信号优先", fixed = "固定 BSSID" }
+    return labels[tostring(policy or "")] or "未知"
+end
+
+local POINTER_KEY_SET = {}
+for _, key in ipairs(M.POINTER_KEYS) do
+    POINTER_KEY_SET[key] = true
+end
+
+local LIST_KEY_SET = {}
+for _, key in ipairs(M.LIST_KEYS) do
+    LIST_KEY_SET[key] = true
+end
+
+-- load_defaults prefers the daemon's own schema.
+--
+-- Spec 02 gives Go the types, defaults, bounds and choices and leaves the page
+-- its labels, so that the two cannot disagree about what a valid value is. The
+-- page reports a stopped/unavailable service when schema cannot be read; it
+-- never falls back to an obsolete 1.x configuration file.
+local function load_defaults()
+    -- One pcall around both the load and the call: on a host without nixio, or
+    -- with the service stopped, this must fall back rather than take the page
+    -- down with it.
+    local ok, parsed = pcall(function()
+        return require("luci.smart_srun.bridge").defaults()
+    end)
+    if not ok or type(parsed) ~= "table" then
+        parsed = {}
+    end
+    if parsed.school == nil then
+        parsed.school = "default"
+    end
+
+    local defaults = {}
+    for key, value in pairs(parsed) do
+        if not POINTER_KEY_SET[key] and not LIST_KEY_SET[key] then
+            defaults[key] = tostring(value or "")
+        end
+    end
+    return defaults
+end
+
+M.SCALAR_DEFAULTS = load_defaults()
+M.GLOBAL_SCALAR_KEYS = {}
+for key, _ in pairs(M.SCALAR_DEFAULTS) do
+    M.GLOBAL_SCALAR_KEYS[#M.GLOBAL_SCALAR_KEYS + 1] = key
+end
+table.sort(M.GLOBAL_SCALAR_KEYS)
+
+function M.global_scalar_key_set()
+    local key_set = {}
+    for _, key in ipairs(M.GLOBAL_SCALAR_KEYS) do
+        key_set[key] = true
+    end
+    return key_set
+end
+
+function M.with_file_lock(path, callback)
+    local oflags = nixio.open_flags("wronly", "creat")
+    local lock, _, msg = nixio.open(tostring(path) .. ".lock", oflags)
+    if not lock then
+        error("Open lock failed: " .. tostring(msg or "unknown"))
+    end
+
+    local ok, _, lock_msg = lock:lock("lock")
+    if not ok then
+        lock:close()
+        error("Lock failed: " .. tostring(lock_msg or "unknown"))
+    end
+
+    local call_ok, a, b, c = pcall(callback)
+    lock:lock("ulock")
+    lock:close()
+    if not call_ok then
+        error(a)
+    end
+    return a, b, c
+end
+
+local function normalize_version_string(raw)
+    local value = tostring(raw or "")
+	-- opkg and APK use different native RC separators; the UI uses the same
+	-- display version as the Go binary and the release tag.
+	value = value:gsub("~rc", "rc"):gsub("_rc", "rc")
+    local version = value:match("^v?([0-9][%w%._%-]*)%-r?%d+$") or value:match("^v?([0-9][%w%._%-]*)$")
+    if version and version ~= "" then
+        version = version:gsub("_", "-")
+        local base, beta = version:match("^(.+)%-beta%.?(%d+)$")
+        if base and beta then
+            version = base .. "-b" .. beta
+        end
+        return string.format("v%s", version)
+    end
+    return DEFAULT_VERSION
+end
+
+local function read_package_status()
+    local text = fs.readfile(OPKG_STATUS_FILE)
+    if text and text ~= "" then
+        return text
+    end
+    return fs.readfile(APK_STATUS_FILE) or ""
+end
+
+local function package_versions()
+    local versions = {}
+    local text = read_package_status() .. "\n\n"
+    for block in text:gmatch("(.-)\n\n") do
+        local package_name = block:match("\n?Package:%s*([^\r\n]+)")
+            or block:match("\n?P:%s*([^\r\n]+)")
+            or block:match("^Package:%s*([^\r\n]+)")
+            or block:match("^P:%s*([^\r\n]+)")
+        if package_name then
+            versions[package_name] =
+                block:match("\n?Version:%s*([^\r\n]+)")
+                or block:match("\n?V:%s*([^\r\n]+)")
+                or block:match("^Version:%s*([^\r\n]+)")
+                or block:match("^V:%s*([^\r\n]+)")
+                or ""
+        end
+    end
+    return versions
+end
+
+function M.installed_package_name()
+    local versions = package_versions()
+    if versions["luci-app-smart-srun-bundle"] then
+        return "luci-app-smart-srun-bundle"
+    end
+    if versions["luci-app-smart-srun"] then
+        return "luci-app-smart-srun"
+    end
+    return "smart-srun"
+end
+
+function M.installed_package_display_text()
+    local versions = package_versions()
+    local package_name = M.installed_package_name()
+    local label = package_name == "luci-app-smart-srun-bundle" and "Bundle 版"
+        or package_name == "luci-app-smart-srun" and "标准版"
+        or "CLI 版"
+    local version = normalize_version_string(versions[package_name] or "")
+    return string.format("%s %s", label, version)
+end
+
+return M
