@@ -406,7 +406,7 @@ jobs:
         git_clone https://github.com/szwjp/luci-app-ipsec-vpnd
         git_clone https://github.com/arafatrahmanzami/luci-app-easymesh;rm -rf luci-app-easymesh/meta-packages
         git_clone https://github.com/kiddin9/openwrt-gately && mvdir openwrt-gately
-        git_clone https://github.com/Zesuy/UA-Mask
+        git_clone https://github.com/Zesuy/UA-Mask && cp -rf UA-Mask/openwrt/package/Makefile UA-Mask/
         git_clone https://github.com/wrttools/luci-app-liteportal
         git_clone https://github.com/matthewlu070111/smart-srun
         ) &
