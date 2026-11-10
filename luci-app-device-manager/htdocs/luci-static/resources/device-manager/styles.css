@@ -35,7 +35,9 @@ body.dark-mode .dm-status-dot-unknown { background-color:#fdd663; box-shadow:0 0
 .dm-table .dm-action-link:focus-visible { outline:2px solid currentColor; outline-offset:2px; border-radius:2px; }
 
 .dm-status-tab:focus-visible { outline:2px solid #1a73e8; outline-offset:2px; }
-.dm-source-warning { overflow-wrap:anywhere; }
+.dm-source-warning { overflow-wrap:anywhere; align-items:flex-start; gap:12px; }
+.dm-warning-message { flex:1; min-width:0; }
+.dm-warning-close { flex-shrink:0; margin-left:auto; }
 
 .dm-type-th { width: 56px; text-align: center; }
 .dm-type-cell { text-align: center; vertical-align: middle; padding: 6px 8px; }

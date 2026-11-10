@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 'use strict';
+/* global snapshotCache */
 'require baseclass';
 'require rpc';
 'require uci';
 'require fs';
 'require device-manager.model as model';
+'require device-manager.snapshot-cache as snapshotCache';
 
 const CONFIG = 'device_manager';
 const callHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', reject: true });
@@ -13,6 +15,7 @@ const callNeighbors = rpc.declare({ object: 'luci.device-manager', method: 'get_
 const callScan = rpc.declare({ object: 'luci.device-manager', method: 'scan_devices', reject: true });
 const callPing = rpc.declare({ object: 'luci.device-manager', method: 'ping_device', params: [ 'mac' ], reject: true });
 const callWireless = rpc.declare({ object: 'luci-rpc', method: 'getWirelessDevices', reject: true });
+const callNetworkDevices = rpc.declare({ object: 'luci-rpc', method: 'getNetworkDevices', reject: true });
 const callAssoc = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: [ 'device' ], reject: true });
 const callCommit = rpc.declare({ object: 'uci', method: 'commit', params: [ 'config' ], reject: true });
 const callRevert = rpc.declare({ object: 'uci', method: 'revert', params: [ 'config' ], reject: true });
@@ -28,7 +31,7 @@ function readSource(name, read) {
 }
 
 function wifiStations() {
-	return callWireless().then(requireObject).then(radios => {
+	return Promise.all([ callWireless().then(requireObject), callNetworkDevices().then(requireObject) ]).then(([ radios, devices ]) => {
 		const interfaces = new Set();
 		for (const radio of Object.values(radios)) {
 			for (const iface of radio.interfaces || []) {
@@ -38,7 +41,9 @@ function wifiStations() {
 				for (const vlan of iface.vlans || []) if (vlan.ifname) interfaces.add(vlan.ifname);
 			}
 		}
-		return Promise.all(Array.from(interfaces).map(device => readSource(device, () => callAssoc(device).then(reply => {
+		// netifd may retain an ifname after the actual wireless device has disappeared.
+		const present = Array.from(interfaces).filter(device => Object.prototype.hasOwnProperty.call(devices, device));
+		return Promise.all(present.map(device => readSource(device, () => callAssoc(device).then(reply => {
 			if (!Array.isArray(requireObject(reply).results)) throw new Error(_('Invalid discovery response'));
 			return reply.results.map(station => ({ mac: station.mac, dev: device }));
 		})))).then(results => ({
@@ -75,7 +80,7 @@ function requireGroup(id) {
 return baseclass.extend({
 	scanDevices: function() {
 		if (L.hasViewPermission() !== true) return Promise.reject(new Error(_('Read-only access')));
-		return this.queue(() => callScan().then(reply => {
+		return this.queue(() => snapshotCache.clear().then(() => callScan()).then(reply => {
 			if (requireObject(reply).ok !== true)
 				throw new Error(_('LAN scanning is unavailable. Check the selected interfaces and probe dependencies.'));
 		}));
@@ -136,9 +141,15 @@ return baseclass.extend({
 						data.errors.push(...result.value.errors);
 					} else data[result.name] = result.value;
 				}
-				return data;
+				return snapshotCache.save(data).then(() => data);
 			});
 		}));
+	},
+	loadCached: function(cacheOnly) {
+		return snapshotCache.load().then(entry => entry
+			? { snapshot: entry.snapshot, cached: true }
+			: cacheOnly ? { snapshot: null, cached: false }
+				: this.load().then(snapshot => ({ snapshot: snapshot, cached: false })));
 	},
 	recoverPending: function() {
 		if (!this.rollbackPending) return Promise.resolve();
@@ -148,7 +159,7 @@ return baseclass.extend({
 		return this.queue(() => {
 			if (L.hasViewPermission() !== true) throw new Error(_('Read-only access'));
 			let staged = false;
-			return this.recoverPending().then(reloadConfig).then(change).then(() => {
+			return this.recoverPending().then(() => snapshotCache.clear()).then(reloadConfig).then(change).then(() => {
 				staged = true;
 				return uci.save();
 			}).then(() => callCommit(CONFIG)).catch(error => {

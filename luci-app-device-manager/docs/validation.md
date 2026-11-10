@@ -1,5 +1,27 @@
 # Local upstream-readiness validation
 
+## Loading and online-status updates: 2026-11-10
+
+- Node regression suite: 124 passed, including cold/expired-cache loading,
+  cached-empty lists, sequential unknown-device checks and stale-reply handling.
+- Python regression suite: 8 passed.
+- Official LuCI ESLint configuration, native message extraction and GNU gettext
+  checks passed; shell/JavaScript syntax and whitespace checks passed.
+- Chromium tests used synthetic RPC data to verify the installed legacy-version
+  compatibility patches: the page renders before slow discovery, empty messages
+  wait for online checks, failed loading can be retried, and source warnings close
+  manually or after 12 seconds. These are fixture-based browser results.
+- Targeted frontend compatibility patches were installed on OpenWrt 23.05.5 at
+  192.168.1.1. Served resources matched the validated patch files. Hash checks
+  confirmed network, wireless and device-manager configuration files were intact.
+  The stale wlan0 discovery failure was reproduced using live RPC data and fixed.
+
+The router runs an older development version with the targeted compatibility
+patches; it is not a full-package acceptance test of the current upstream export.
+SDK packaging, package upgrades, account enforcement and physical browser/theme
+acceptance have not been rerun for this revision. Earlier SDK evidence below
+belongs to the dated snapshots and does not validate the new revision.
+
 ## PR review follow-up: 2026-10-11
 
 Addressed the dependency, license installation, redundant initializer and

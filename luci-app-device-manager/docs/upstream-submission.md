@@ -40,9 +40,11 @@ Save names, remarks, groups and manual type overrides by MAC address.
 Unlike the existing host list, this application maintains custom device
 metadata and groups, including saved devices that are currently offline.
 
-Keep ordinary refreshes passive. Provide an explicit write-authorized scan
-limited to configured netifd interfaces and their actual IPv4 prefixes.
-Bound concurrent probes, scan duration and the shared scan cooldown.
+Render the page before discovery completes and cache snapshots per session.
+Confirm unknown devices with bounded sequential Pings to known hosts.
+Provide a separate write-authorized scan limited to configured netifd
+interfaces and their actual IPv4 prefixes, with bounded concurrency,
+duration and a shared scan cooldown.
 
 Use native LuCI message extraction and separately built translation packages.
 Include pinned Material Design Icons attribution and Apache-2.0 notices.
@@ -62,23 +64,27 @@ Add a LAN device manager with MAC-keyed custom names, remarks, groups and
 manual device types. Discovery combines native LuCI host/lease/wireless RPCs
 with kernel neighbor data and distinguishes online, offline and unknown.
 
-Refresh is passive. An explicit Scan LAN operation requires write permission
-and scopes ICMP probes to configured netifd interfaces and actual prefixes.
+Render the interface before discovery and show list loading and retry states.
+Cache snapshots for five minutes per browser tab, session and access level.
+Refresh live data in the background and confirm unknown devices with known
+IP addresses using sequential Pings, capped at 16 checks and about 12 seconds
+per pass. Unanswered Pings remain unknown; stale replies are ignored.
+
+An explicit Scan LAN operation requires write permission and scopes ICMP
+probes to configured netifd interfaces and actual prefixes.
 Chinese translations are built by luci.mk; other languages use native LuCI
 catalogues and English fallback.
 
 Validation:
-- 100 Node and 8 Python regression tests passed.
-- 33 RPC regressions passed with SDK-native jshn and isolated network inputs.
+- 124 Node and 8 Python regression tests passed.
 - Official LuCI message extraction, gettext checks and ESLint passed.
-- Built main and Chinese language APKs in the official x86/64 SNAPSHOT SDK.
-- Verified official SNAPSHOT and 24.10.4 BusyBox ip/flock compatibility;
-  33 RPC regressions passed with each binary and SDK-native jshn.
-- Checked resolved dependencies without extra ip or flock packages.
-- Checked package license texts, configuration preservation metadata and LMO.
+- Chromium fixture checks covered cold and expired-cache loading, background
+  refresh, online confirmation, empty-state timing and notification dismissal.
 
-Real-router installation, upgrades, account enforcement, UI acceptance and
-a stable-release SDK build remain unverified.
+Targeted compatibility patches were applied to an OpenWrt 23.05.5 router.
+Full-package upgrade, account enforcement and a new SDK build remain to be
+verified for this revision. Earlier SDK results are recorded separately in
+the independent repository's docs/validation.md.
 ```
 
 Review the recorded validation results before sending the PR.

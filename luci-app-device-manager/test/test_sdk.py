@@ -132,6 +132,7 @@ class SDKTests(unittest.TestCase):
 
     def test_scan_acl_requires_write_permission_but_keeps_passive_discovery_readable(self):
         acl = json.loads((ROOT / "root/usr/share/rpcd/acl.d/luci-app-device-manager.json").read_text())["luci-app-device-manager"]
+        self.assertIn("getNetworkDevices", acl["read"]["ubus"]["luci-rpc"])
         self.assertIn("get_online_status", acl["read"]["ubus"]["luci.device-manager"])
         self.assertNotIn("scan_devices", acl["read"]["ubus"]["luci.device-manager"])
         self.assertIn("scan_devices", acl["write"]["ubus"]["luci.device-manager"])

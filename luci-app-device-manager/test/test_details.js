@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { environment, loadModule, backend } = require('./helpers/runtime');
+const { environment, loadModule, backend, renderLoadedPage } = require('./helpers/runtime');
 const mac = 'AA:BB:CC:11:22:33';
 const attack = '<img src=x onerror="window.auditFlag=1">';
 
@@ -20,7 +20,7 @@ async function context() {
     ] };
     const env = environment(mocks);
     const page = loadModule('view.device-manager.devices', env);
-    const node = page.render(await page.load());
+    const node = await renderLoadedPage(page);
     return Object.assign({ env, page, node, dev: page.devices[0] }, mocks);
 }
 

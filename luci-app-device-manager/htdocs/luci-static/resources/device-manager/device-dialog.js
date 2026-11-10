@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 'use strict';
+/* global feedback */
+'require device-manager.feedback as feedback';
 'require baseclass';
 'require ui';
 'require device-manager.model as model';
@@ -252,7 +254,7 @@ return baseclass.extend({
 							})
 							.catch(function(err) {
 								ui.hideModal();
-								ui.addNotification(null, E('p', [ _('Clear failed: %s').format(err.message || err) ]), 'danger');
+								feedback.notify(_('Clear failed: %s').format(err.message || err), 'danger');
 							}).finally(function() {
 							button.classList.remove('spinning');
 							button.disabled = false;
@@ -265,6 +267,7 @@ return baseclass.extend({
 
 	showDetailModal: function(dev) {
 		const self = this;
+		const hero = deviceHero(dev);
 		const addresses = key => (dev[key + 'Addresses'] || []).length
 			? dev[key + 'Addresses'].join('\n') : dev[key];
 		const pingStatus = E('strong', { 'class': 'dm-ping-status', 'role': 'status', 'aria-live': 'polite' }, [ _('Probing…') ]);
@@ -284,6 +287,10 @@ return baseclass.extend({
 			pingDetail.textContent = _('Sending one Ping from the router to this device.');
 			pingLog.style.display = 'none';
 			pending = Promise.resolve().then(() => self.handlePingDevice(dev)).then(reply => {
+				const status = hero.querySelector('.dm-dialog-status');
+				for (const value of [ 'online', 'offline', 'unknown' ]) status.classList.remove('dm-dialog-status-' + value);
+				status.classList.add('dm-dialog-status-' + dev.status);
+				status.textContent = statusLabel(dev.status);
 				pingStatus.textContent = reply.reachable ? _('Online · Ping replied') : _('No Ping reply');
 				pingStatus.classList.add(reply.reachable ? 'dm-ping-success' : 'dm-ping-warning');
 				pingDetail.textContent = _('Probe address: %s').format(reply.ip + (reply.interface ? ' (' + reply.interface + ')' : '')) +
@@ -311,7 +318,7 @@ return baseclass.extend({
 		const neighbors = (dev.neighbors || []).map(neighbor => [ neighbor.ip, neighbor.dev, neighbor.state ].filter(Boolean).join(' · ')).join('\n');
 		ui.showModal(_('Device details'), [ E('div', { 'class': 'dm-dialog' }, [
 			closeButton(),
-			deviceHero(dev),
+			hero,
 			E('section', { 'class': 'dm-ping-card' }, [
 				E('div', { 'class': 'dm-ping-heading' }, [ pingStatus, pingButton ]), pingDetail, pingLog
 			]),

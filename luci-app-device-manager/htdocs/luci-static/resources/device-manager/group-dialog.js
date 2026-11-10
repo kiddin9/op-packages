@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
 'use strict';
+/* global feedback */
+'require device-manager.feedback as feedback';
 'require baseclass';
 'require ui';
 'require device-manager.model as model';
@@ -226,7 +228,7 @@ return baseclass.extend({
 							})
 							.catch(function(err) {
 								ui.hideModal();
-								ui.addNotification(null, E('p', [ _('Could not delete group: %s').format(err.message || err) ]), 'danger');
+								feedback.notify(_('Could not delete group: %s').format(err.message || err), 'danger');
 							}).finally(function() {
 							button.classList.remove('spinning');
 							button.disabled = false;

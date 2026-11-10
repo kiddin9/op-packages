@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const { environment, loadModule, backend, root } = require('./helpers/runtime');
+const { environment, loadModule, backend, root, renderLoadedPage } = require('./helpers/runtime');
 
 function catalogue() {
     const messages = {};
@@ -30,7 +30,7 @@ function context(translate = text => text, initial = []) {
     const page = loadModule('view.device-manager.devices', env);
     return { mocks, env, page };
 }
-async function render(ctx) { return ctx.page.render(await ctx.page.load()); }
+async function render(ctx) { return await renderLoadedPage(ctx.page); }
 function button(node, label) { return node.querySelectorAll('button').find(item => item.textContent === label); }
 
 test('native LuCI catalogue translates the page, sort titles, types and dialogs', async () => {
@@ -90,7 +90,7 @@ test('read-only users cannot start scans and scan failures restore the control',
     assert.ok(!ctx.mocks.state.calls.some(call => call.key.endsWith('.scan_devices')));
     ctx.env.L.hasViewPermission = () => true;
     ctx.page.readonly = false;
-    const writable = ctx.page.render(await ctx.page.load());
+    const writable = await renderLoadedPage(ctx.page);
     ctx.mocks.replies['luci.device-manager.scan_devices'] = { ok: false };
     await button(writable, 'Scan LAN').click();
     assert.equal(button(writable, 'Scan LAN').disabled, false);

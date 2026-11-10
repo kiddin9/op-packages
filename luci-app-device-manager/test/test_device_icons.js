@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
-const { environment, loadModule, backend, root } = require('./helpers/runtime');
+const { environment, loadModule, backend, root, renderLoadedPage } = require('./helpers/runtime');
 
 const EXPECTED_ICONS = [
 	'computer.svg', 'laptop.svg', 'phone.svg', 'tablet.svg',
@@ -120,8 +120,7 @@ test('device table renders the device icon after the row number', async () => {
 		[nasMac]: { name: 'Synology-NAS', ipaddrs: ['192.168.1.50'] }
 	};
 
-	const data = await ctx.page.load();
-	const viewNode = ctx.page.render(data);
+	const viewNode = await renderLoadedPage(ctx.page);
 
 	// Check table thead has type column
 	const table = viewNode.querySelector('#device_manager_table');
@@ -153,8 +152,7 @@ test('custom device type override can be saved and displayed', async () => {
 		ok: true,
 		neighbors: [{ mac: customMac, state: 'REACHABLE' }]
 	};
-	const data = await ctx.page.load();
-	const viewNode = ctx.page.render(data);
+	const viewNode = await renderLoadedPage(ctx.page);
 
 	const row = viewNode.querySelector('#device_manager_tbody').querySelectorAll('tr')[0];
 	const iconImg = row.querySelectorAll('td')[1].querySelector('img');

@@ -45,6 +45,7 @@ class Node extends EventTarget {
     }
     querySelector(selector) { return this.querySelectorAll(selector)[0] || null; }
     focus() { this.focused = true; }
+    remove() { this.removed = true; }
     getAttribute(name) { return this.attrs[name]; }
     click() {
         if (this.disabled) return Promise.resolve();
@@ -55,6 +56,8 @@ class Node extends EventTarget {
 
 function environment(extra = {}) {
     const htmlSinks = [], notifications = [];
+    const timeouts = new Map(), session = new Map();
+    let nextTimeout = 1;
     const E = (tag, attrs, children) => {
         if (!attrs || typeof attrs !== 'object' || Array.isArray(attrs)) { children = attrs; attrs = {}; }
         const node = new Node(tag, attrs);
@@ -76,14 +79,23 @@ function environment(extra = {}) {
         modal: null,
         showModal(title, children) { this.modal = E('modal', { title }, children); },
         hideModal() { ui.modal = null; },
-        addNotification(title, content, level) { notifications.push({ content, level }); }
+        addNotification(title, content, level) {
+            const node = new Node('notification');
+            notifications.push({ content, level, node });
+            return node;
+        }
     };
     return Object.assign({
         baseclass: { extend: value => value }, view: { extend: value => value }, E, dom, ui,
         rpc: { declare: () => () => Promise.resolve({ language: 'auto' }) },
-        _: value => value, htmlSinks, notifications,
+        _: value => value, htmlSinks, notifications, timeouts,
+        setTimeout: (callback, delay) => { const id = nextTimeout++; timeouts.set(id, { callback, delay }); return id; },
+        clearTimeout: id => timeouts.delete(id),
         L: { hasViewPermission: () => true, resource: value => '/resources/' + value },
-        window: { localStorage: { getItem: () => null, setItem() {} } }
+        window: {
+            localStorage: { getItem: () => null, setItem() {} },
+            sessionStorage: { getItem: key => session.get(key) || null, setItem: (key, value) => session.set(key, value), removeItem: key => session.delete(key) }
+        }
     }, extra);
 }
 
@@ -125,12 +137,13 @@ function backend(initial = []) {
         'luci-rpc.getHostHints': {},
         'luci-rpc.getDHCPLeases': { dhcp_leases: [], dhcp6_leases: [] },
         'luci-rpc.getWirelessDevices': {},
+        'luci-rpc.getNetworkDevices': {},
         'luci.device-manager.get_online_status': { ok: true, neighbors: [] },
         'luci.device-manager.scan_devices': { ok: true },
         'luci.device-manager.ping_device': { ok: true, ip: '192.168.1.20', interface: 'br-lan', reachable: true, output: '1 packets transmitted, 1 packets received' },
         'iwinfo.assoclist': { results: [] }
     };
-    const rpc = { declare(options) {
+    const rpc = { getSessionID: () => state.session || 'test-session', declare(options) {
         state.declarations.push(options);
         return (...args) => {
             const key = options.object + '.' + options.method;
@@ -152,4 +165,10 @@ function backend(initial = []) {
     return { state, uci, rpc, replies, fs: { read: () => Promise.resolve('IP address HW type Flags HW address Mask Device\n') } };
 }
 
-module.exports = { root, Node, environment, loadModule, backend };
+async function renderLoadedPage(page) {
+    const node = page.render(await page.load());
+    if (page.initialLoading) await page.refresh();
+    return node;
+}
+
+module.exports = { root, Node, environment, loadModule, backend, renderLoadedPage };

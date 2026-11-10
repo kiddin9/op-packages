@@ -9,28 +9,28 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:69
+#: htdocs/luci-static/resources/view/device-manager/devices.js:83
 msgid "#"
 msgstr "序号"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:38
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:40
 msgid "%d devices"
 msgstr "%d 台设备"
 
-#: htdocs/luci-static/resources/device-manager/service.js:158
+#: htdocs/luci-static/resources/device-manager/service.js:169
 msgid "%s; failed to discard pending changes: %s"
 msgstr "%s；清理待提交配置失败：%s"
 
-#: htdocs/luci-static/resources/device-manager/service.js:172
+#: htdocs/luci-static/resources/device-manager/service.js:183
 msgid "A conflicting configuration record exists"
 msgstr "存在冲突的配置记录"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:70
-#: htdocs/luci-static/resources/device-manager/service.js:67
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:72
+#: htdocs/luci-static/resources/device-manager/service.js:72
 msgid "A group with this name already exists"
 msgstr "已存在同名分组，请使用其他名称"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:309
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:316
 msgid "ARP"
 msgstr "ARP 表"
 
@@ -42,8 +42,8 @@ msgstr "存在 ARP 记录，缺少近期活动证据"
 msgid "Access point"
 msgstr "无线接入点"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:106
-#: htdocs/luci-static/resources/view/device-manager/devices.js:80
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:108
+#: htdocs/luci-static/resources/view/device-manager/devices.js:94
 msgid "Actions"
 msgstr "操作"
 
@@ -55,12 +55,12 @@ msgstr "Wi-Fi 活跃连接"
 msgid "Active network neighbor (%s)"
 msgstr "网络邻居活跃 (%s)"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:55
-#: htdocs/luci-static/resources/view/device-manager/devices.js:131
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:57
+#: htdocs/luci-static/resources/view/device-manager/devices.js:146
 msgid "Add device"
 msgstr "手动添加设备"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:96
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:98
 msgid "Add group"
 msgstr "添加分组"
 
@@ -80,19 +80,19 @@ msgstr "全部设备"
 msgid "All groups"
 msgstr "全部分组"
 
-#: htdocs/luci-static/resources/device-manager/service.js:89
+#: htdocs/luci-static/resources/device-manager/service.js:94
 msgid "Another device is being probed. Please retry."
 msgstr "另一个设备正在探测，请稍后重试。"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:93
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:95
 msgid "Auto (detect by MAC)"
 msgstr "自动识别"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:323
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:330
 msgid "Automatic"
 msgstr "自动识别"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:131
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:133
 msgid "Automatically detected from names and MAC address, or customize manually"
 msgstr "根据名称和 MAC 地址推测类型，也可手动指定"
 
@@ -100,37 +100,38 @@ msgstr "根据名称和 MAC 地址推测类型，也可手动指定"
 msgid "Camera"
 msgstr "摄像头"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:161
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:238
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:160
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:211
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:163
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:240
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:162
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:213
 msgid "Cancel"
 msgstr "取消"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:255
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:257
 msgid "Clear failed: %s"
 msgstr "清空失败：%s"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:212
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:232
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:214
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:234
 msgid "Clear record"
 msgstr "清空记录"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:235
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:237
 msgid "Clear the saved record for \"%s\" (%s)?"
 msgstr "确定清空设备【%s】（%s）的保存记录吗？"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:236
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:238
 msgid "Clears the custom name, remarks, group and device type. The device remains discoverable on the network."
 msgstr "将清空自定义名称、备注、分组和设备类型设置。设备仍可在网络中被发现。"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:60
+#: htdocs/luci-static/resources/view/device-manager/devices.js:74
 msgid "Click to sort by %s"
 msgstr "点击按%s排序"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:13
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:331
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:123
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:15
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:338
+#: htdocs/luci-static/resources/device-manager/feedback.js:23
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:125
 msgid "Close"
 msgstr "关闭"
 
@@ -142,64 +143,68 @@ msgstr "台式电脑"
 msgid "Computers"
 msgstr "电脑设备"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:261
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:263
 msgid "Confirm clear"
 msgstr "确认清空"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:235
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:237
 msgid "Confirm delete"
 msgstr "确认删除"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:88
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:90
 msgid "Could not create group: %s"
 msgstr "创建分组失败: %s"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:229
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:231
 msgid "Could not delete group: %s"
 msgstr "删除分组失败: %s"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:245
+#: htdocs/luci-static/resources/device-manager/table.js:138
+msgid "Could not load the device list."
+msgstr "设备列表加载失败。"
+
+#: htdocs/luci-static/resources/view/device-manager/devices.js:311
 msgid "Could not refresh the device list: %s"
 msgstr "刷新设备列表失败：%s"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:234
+#: htdocs/luci-static/resources/view/device-manager/devices.js:279
 msgid "Could not scan LAN devices: %s"
 msgstr "无法扫描局域网设备：%s"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:220
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:222
 msgid "Current IP address"
 msgstr "当前 IP 地址"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:148
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:150
 msgid "Current group name"
 msgstr "原分组名称"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:220
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:222
 msgid "Current status"
 msgstr "当前在线状态"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:143
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:320
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:145
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:327
 msgid "Custom name"
 msgstr "设备显示名称"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:308
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:315
 msgid "DHCP"
 msgstr "DHCP 租约"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:33
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:35
 msgid "Delete"
 msgstr "删除"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:207
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:209
 msgid "Delete group"
 msgstr "确认删除分组"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:208
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:210
 msgid "Delete group \"%s\"?"
 msgstr "确定要删除分组【%s】吗？"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:189
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:191
 msgid "Device \"%s\" saved."
 msgstr "设备【%s】信息已保存并生效！"
 
@@ -207,73 +212,73 @@ msgstr "设备【%s】信息已保存并生效！"
 msgid "Device Manager"
 msgstr "设备管理"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:105
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:107
 msgid "Device count"
 msgstr "包含设备数"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:312
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:319
 msgid "Device details"
 msgstr "设备详情"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:136
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:320
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:138
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:327
 msgid "Device group"
 msgstr "所属分组"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:98
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:100
 msgid "Device groups"
 msgstr "设备分组管理"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:72
+#: htdocs/luci-static/resources/view/device-manager/devices.js:86
 msgid "Device name"
 msgstr "设备名称"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:150
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:328
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:152
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:335
 msgid "Device remarks"
 msgstr "设备备注"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:93
+#: htdocs/luci-static/resources/view/device-manager/devices.js:108
 msgid "Device status"
 msgstr "设备状态"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:127
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:129
 msgid "Device type"
 msgstr "设备类型"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:88
+#: htdocs/luci-static/resources/view/device-manager/devices.js:102
 msgid "Discover network devices and save custom names, remarks and groups by MAC address."
 msgstr "自动识别局域网设备在线状态，支持按 MAC 地址自定义显示名称、备注和自定义设备分组，配置永久保存。"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:325
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:332
 msgid "Discovered on network"
 msgstr "网络已发现"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:326
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:333
 msgid "Discovery sources"
 msgstr "发现来源"
 
-#: htdocs/luci-static/resources/device-manager/table.js:257
+#: htdocs/luci-static/resources/device-manager/table.js:270
 msgid "Edit"
 msgstr "编辑"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:54
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:56
 msgid "Edit device"
 msgstr "编辑设备"
 
-#: htdocs/luci-static/resources/device-manager/service.js:85
-#: htdocs/luci-static/resources/device-manager/service.js:91
-#: htdocs/luci-static/resources/device-manager/service.js:166
+#: htdocs/luci-static/resources/device-manager/service.js:90
+#: htdocs/luci-static/resources/device-manager/service.js:96
+#: htdocs/luci-static/resources/device-manager/service.js:177
 msgid "Enter a valid MAC address"
 msgstr "请输入有效的 MAC 地址"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:171
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:173
 msgid "Enter a valid MAC address (e.g. AA:BB:CC:11:22:33)"
 msgstr "请输入有效的 MAC 地址（格式如：AA:BB:CC:11:22:33）"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:62
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:168
-#: htdocs/luci-static/resources/device-manager/service.js:65
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:64
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:170
+#: htdocs/luci-static/resources/device-manager/service.js:70
 msgid "Enter a valid group name"
 msgstr "请输入有效的分组名称"
 
@@ -285,71 +290,71 @@ msgstr "游戏机"
 msgid "Grant access to LAN device manager"
 msgstr "允许访问局域网设备管理"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:75
+#: htdocs/luci-static/resources/view/device-manager/devices.js:89
 msgid "Group"
 msgstr "分组"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:82
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:84
 msgid "Group \"%s\" created."
 msgstr "成功创建分组【%s】！"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:222
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:224
 msgid "Group \"%s\" deleted. Its devices are now ungrouped."
 msgstr "分组【%s】已删除，所属设备已转为未分组。"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:104
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:106
 msgid "Group ID"
 msgstr "分组标识"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:103
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:105
 msgid "Group name"
 msgstr "分组名称"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:115
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:117
 msgid "Group names support Unicode text and common symbols"
 msgstr "分组名称支持中文、英文及常用符号，稳定保存"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:184
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:186
 msgid "Group renamed to \"%s\"."
 msgstr "分组已成功重命名为【%s】！"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:75
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:77
 msgid "Hardware address; colon or hyphen separators are accepted"
 msgstr "设备的物理硬件地址，支持冒号或短横线分隔（不区分大小写）"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:141
-#: htdocs/luci-static/resources/view/device-manager/devices.js:221
+#: htdocs/luci-static/resources/view/device-manager/devices.js:156
+#: htdocs/luci-static/resources/view/device-manager/devices.js:265
 msgid "Hide info"
 msgstr "隐藏信息"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:135
+#: htdocs/luci-static/resources/view/device-manager/devices.js:150
 msgid "Hide/Show MAC and IPv6"
 msgstr "隐藏或显示 MAC 和 IPv6 地址"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:308
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:315
 msgid "Host hints"
 msgstr "主机提示"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:73
+#: htdocs/luci-static/resources/view/device-manager/devices.js:87
 msgid "IP address"
 msgstr "IP 地址"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:321
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:328
 msgid "IPv4 addresses"
 msgstr "IPv4 地址"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:321
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:328
 msgid "IPv6 addresses"
 msgstr "IPv6 地址"
 
-#: htdocs/luci-static/resources/device-manager/service.js:59
+#: htdocs/luci-static/resources/device-manager/service.js:64
 msgid "Input is too long"
 msgstr "输入内容超出长度限制"
 
-#: htdocs/luci-static/resources/device-manager/service.js:21
-#: htdocs/luci-static/resources/device-manager/service.js:42
-#: htdocs/luci-static/resources/device-manager/service.js:100
-#: htdocs/luci-static/resources/device-manager/service.js:119
+#: htdocs/luci-static/resources/device-manager/service.js:24
+#: htdocs/luci-static/resources/device-manager/service.js:47
+#: htdocs/luci-static/resources/device-manager/service.js:105
+#: htdocs/luci-static/resources/device-manager/service.js:124
 msgid "Invalid discovery response"
 msgstr "设备发现接口返回无效数据"
 
@@ -357,11 +362,11 @@ msgstr "设备发现接口返回无效数据"
 msgid "Known device without recent activity evidence"
 msgstr "已知设备，缺少近期活动证据"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:87
+#: htdocs/luci-static/resources/view/device-manager/devices.js:101
 msgid "LAN Device Management"
 msgstr "局域网设备管理"
 
-#: htdocs/luci-static/resources/device-manager/service.js:80
+#: htdocs/luci-static/resources/device-manager/service.js:85
 msgid "LAN scanning is unavailable. Check the selected interfaces and probe dependencies."
 msgstr "局域网扫描不可用，请检查所选接口及探测依赖。"
 
@@ -369,22 +374,26 @@ msgstr "局域网扫描不可用，请检查所选接口及探测依赖。"
 msgid "Laptop"
 msgstr "笔记本"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:146
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:148
 msgid "Leave empty to display the default hostname"
 msgstr "自定义设备显示名称。若留空则恢复默认主机名"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:70
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:219
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:319
-#: htdocs/luci-static/resources/view/device-manager/devices.js:74
+#: htdocs/luci-static/resources/device-manager/table.js:138
+msgid "Loading list..."
+msgstr "正在加载列表……"
+
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:72
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:221
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:326
+#: htdocs/luci-static/resources/view/device-manager/devices.js:88
 msgid "MAC address"
 msgstr "MAC 地址"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:126
+#: htdocs/luci-static/resources/view/device-manager/devices.js:141
 msgid "Manage groups"
 msgstr "分组管理"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:323
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:330
 msgid "Manual"
 msgstr "手动指定"
 
@@ -392,11 +401,11 @@ msgstr "手动指定"
 msgid "NAS"
 msgstr "网络存储"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:328
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:335
 msgid "Neighbor records"
 msgstr "邻居记录"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:309
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:316
 msgid "Neighbor table"
 msgstr "邻居表"
 
@@ -408,7 +417,7 @@ msgstr "网络设备"
 msgid "Network devices"
 msgstr "网络设备"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:322
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:329
 msgid "Network interfaces"
 msgstr "网络接口"
 
@@ -416,52 +425,52 @@ msgstr "网络接口"
 msgid "Network neighbor probe failed (FAILED)"
 msgstr "网络邻居探测失败 (FAILED)"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:111
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:113
 msgid "New group"
 msgstr "新增分组"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:152
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:154
 msgid "New group name"
 msgstr "新分组名称"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:324
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:325
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:331
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:332
 msgid "No"
 msgstr "否"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:290
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:297
 msgid "No ICMP reply was received. The device may block Ping; this does not confirm it is offline."
 msgstr "未收到 ICMP 回复。设备可能禁用 Ping，不能据此确认设备已离线。"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:287
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:294
 msgid "No Ping reply"
 msgstr "Ping 未响应"
 
-#: htdocs/luci-static/resources/device-manager/table.js:136
+#: htdocs/luci-static/resources/device-manager/table.js:149
 msgid "No devices found. Refresh the list to try again."
 msgstr "暂无局域网设备数据，点击右上角【刷新】重试或【+ 手动添加设备】"
 
-#: htdocs/luci-static/resources/device-manager/table.js:146
+#: htdocs/luci-static/resources/device-manager/table.js:159
 msgid "No devices in this group"
 msgstr "当前分组下暂无设备记录"
 
-#: htdocs/luci-static/resources/device-manager/table.js:138
+#: htdocs/luci-static/resources/device-manager/table.js:151
 msgid "No devices match \"%s\""
 msgstr "未找到与 “%s” 匹配的设备记录"
 
-#: htdocs/luci-static/resources/device-manager/table.js:144
+#: htdocs/luci-static/resources/device-manager/table.js:157
 msgid "No devices with unknown status"
 msgstr "当前没有状态未知的设备"
 
-#: htdocs/luci-static/resources/device-manager/service.js:88
+#: htdocs/luci-static/resources/device-manager/service.js:93
 msgid "No known IP address for this device"
 msgstr "暂无该设备的已知 IP 地址，无法 Ping。"
 
-#: htdocs/luci-static/resources/device-manager/table.js:142
+#: htdocs/luci-static/resources/device-manager/table.js:155
 msgid "No offline devices"
 msgstr "当前没有离线设备"
 
-#: htdocs/luci-static/resources/device-manager/table.js:140
+#: htdocs/luci-static/resources/device-manager/table.js:153
 msgid "No online devices"
 msgstr "当前没有在线设备"
 
@@ -469,12 +478,12 @@ msgstr "当前没有在线设备"
 msgid "No recent activity confirmed (%s)"
 msgstr "无法确认近期活动 (%s)"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:47
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:49
 msgid "Not detected"
 msgstr "未检测到"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:8
-#: htdocs/luci-static/resources/device-manager/table.js:190
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:10
+#: htdocs/luci-static/resources/device-manager/table.js:203
 msgid "Offline"
 msgstr "离线"
 
@@ -482,8 +491,8 @@ msgstr "离线"
 msgid "Offline devices"
 msgstr "离线设备"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:8
-#: htdocs/luci-static/resources/device-manager/table.js:187
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:10
+#: htdocs/luci-static/resources/device-manager/table.js:200
 msgid "Online"
 msgstr "在线"
 
@@ -491,11 +500,12 @@ msgstr "在线"
 msgid "Online devices"
 msgstr "在线设备"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:287
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:294
+#: htdocs/luci-static/resources/view/device-manager/devices.js:229
 msgid "Online · Ping replied"
 msgstr "在线 · Ping 已响应"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:139
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:141
 msgid "Organize this device by purpose or location"
 msgstr "为设备指定业务或摆放区域分类"
 
@@ -511,19 +521,19 @@ msgstr "手机"
 msgid "Phones"
 msgstr "手机设备"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:306
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:313
 msgid "Ping again"
 msgstr "重新 Ping"
 
-#: htdocs/luci-static/resources/device-manager/service.js:95
+#: htdocs/luci-static/resources/device-manager/service.js:100
 msgid "Ping could not be completed"
 msgstr "Ping 执行失败。"
 
-#: htdocs/luci-static/resources/device-manager/service.js:90
+#: htdocs/luci-static/resources/device-manager/service.js:95
 msgid "Ping is unavailable"
 msgstr "路由器未提供 Ping 命令。"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:274
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:277
 msgid "Ping output"
 msgstr "查看 Ping 输出"
 
@@ -531,33 +541,33 @@ msgstr "查看 Ping 输出"
 msgid "Printer"
 msgstr "打印机"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:289
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:296
 msgid "Probe address: %s"
 msgstr "探测地址：%s"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:159
+#: htdocs/luci-static/resources/view/device-manager/devices.js:174
 msgid "Probe devices on the configured LAN interfaces"
 msgstr "探测所配置的局域网接口中的设备"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:294
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:301
 msgid "Probe unavailable"
 msgstr "无法完成探测"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:270
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:283
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:273
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:286
 msgid "Probing…"
 msgstr "正在探测…"
 
-#: htdocs/luci-static/resources/device-manager/service.js:77
-#: htdocs/luci-static/resources/device-manager/service.js:149
+#: htdocs/luci-static/resources/device-manager/service.js:82
+#: htdocs/luci-static/resources/device-manager/service.js:160
 msgid "Read-only access"
 msgstr "仅有只读权限"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:153
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:155
 msgid "Record the location, purpose or owner of this device"
 msgstr "记录设备位置、用途、所有者等备注信息"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:154
+#: htdocs/luci-static/resources/view/device-manager/devices.js:169
 msgid "Refresh list"
 msgstr "刷新列表"
 
@@ -565,43 +575,47 @@ msgstr "刷新列表"
 msgid "Refrigerator"
 msgstr "冰箱"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:77
+#: htdocs/luci-static/resources/view/device-manager/devices.js:91
 msgid "Remarks"
 msgstr "备注"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:28
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:30
 msgid "Rename"
 msgstr "重命名"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:190
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:192
 msgid "Rename failed: %s"
 msgstr "重命名失败: %s"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:144
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:146
 msgid "Rename group"
 msgstr "重命名分组"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:155
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:157
 msgid "Renaming preserves the group ID and all device assignments"
 msgstr "重命名不会改变分组 ID，已关联该分组的设备保持关联不变"
+
+#: htdocs/luci-static/resources/device-manager/table.js:142
+msgid "Retry"
+msgstr "重试"
 
 #: htdocs/luci-static/resources/device-manager/model.js:29
 msgid "Router"
 msgstr "路由器"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:68
+#: htdocs/luci-static/resources/view/device-manager/devices.js:82
 msgid "Row number"
 msgstr "序号"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:201
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:203
 msgid "Save"
 msgstr "保存"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:198
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:200
 msgid "Save changes"
 msgstr "保存修改"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:193
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:195
 msgid "Save failed: %s"
 msgstr "保存失败: %s"
 
@@ -609,23 +623,23 @@ msgstr "保存失败: %s"
 msgid "Saved device not found in the current network"
 msgstr "未在当前网络发现（已保存记录）"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:324
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:331
 msgid "Saved record"
 msgstr "已保存记录"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:250
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:252
 msgid "Saved record for \"%s\" cleared."
 msgstr "设备【%s】的保存记录已清空。"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:169
+#: htdocs/luci-static/resources/view/device-manager/devices.js:184
 msgid "Scan LAN"
 msgstr "扫描局域网"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:102
+#: htdocs/luci-static/resources/view/device-manager/devices.js:117
 msgid "Search names, IP, MAC, remarks or groups..."
 msgstr "搜索设备名称、主机名、IP、MAC、备注、分组..."
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:284
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:287
 msgid "Sending one Ping from the router to this device."
 msgstr "正在从路由器向该设备发送一次 Ping。"
 
@@ -637,10 +651,14 @@ msgstr "传感器"
 msgid "Server"
 msgstr "服务器"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:141
-#: htdocs/luci-static/resources/view/device-manager/devices.js:221
+#: htdocs/luci-static/resources/view/device-manager/devices.js:156
+#: htdocs/luci-static/resources/view/device-manager/devices.js:265
 msgid "Show info"
 msgstr "显示信息"
+
+#: htdocs/luci-static/resources/view/device-manager/devices.js:271
+msgid "Showing cached device data. Refresh to retry."
+msgstr "当前显示缓存数据，刷新未成功，请重试。"
 
 #: htdocs/luci-static/resources/device-manager/model.js:10
 #: htdocs/luci-static/resources/device-manager/model.js:36
@@ -655,7 +673,7 @@ msgstr "智能灯"
 msgid "Smart plug"
 msgstr "智能插座"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:226
+#: htdocs/luci-static/resources/device-manager/feedback.js:29
 msgid "Some device data could not be read. Unconfirmed devices are shown as unknown: %s"
 msgstr "部分设备数据读取失败，无法确认的设备显示为状态未知：%s"
 
@@ -667,7 +685,7 @@ msgstr "部分设备发现数据源不可用"
 msgid "Speaker"
 msgstr "音箱"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:327
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:334
 msgid "Status evidence"
 msgstr "状态依据"
 
@@ -675,8 +693,8 @@ msgstr "状态依据"
 msgid "Switch"
 msgstr "交换机"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:219
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:319
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:221
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:326
 msgid "System hostname"
 msgstr "系统主机名"
 
@@ -692,45 +710,45 @@ msgstr "电视盒子"
 msgid "Tablet"
 msgstr "平板"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:209
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:211
 msgid "The %d devices in this group will become ungrouped. Their names, MAC addresses and remarks will be preserved."
 msgstr "删除分组后，该组下的 %d 台设备将自动转为【未分组】。设备名称、MAC 及备注将被完整保留，绝不删除设备。"
 
-#: htdocs/luci-static/resources/device-manager/service.js:72
+#: htdocs/luci-static/resources/device-manager/service.js:77
 msgid "This group no longer exists"
 msgstr "该分组已不存在"
 
-#: htdocs/luci-static/resources/view/device-manager/devices.js:71
+#: htdocs/luci-static/resources/view/device-manager/devices.js:85
 msgid "Type"
 msgstr "类型"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:323
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:330
 msgid "Type detection"
 msgstr "类型识别"
 
-#: htdocs/luci-static/resources/device-manager/service.js:92
+#: htdocs/luci-static/resources/device-manager/service.js:97
 msgid "Unable to read the kernel neighbor table"
 msgstr "无法读取内核邻居表。"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:48
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:50
 msgid "Unavailable"
 msgstr "未获取"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:82
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:84
 #: htdocs/luci-static/resources/device-manager/model.js:130
 #: htdocs/luci-static/resources/device-manager/table.js:82
 msgid "Ungrouped"
 msgstr "未分组"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:8
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:10
 #: htdocs/luci-static/resources/device-manager/model.js:46
 #: htdocs/luci-static/resources/device-manager/table.js:26
-#: htdocs/luci-static/resources/device-manager/table.js:183
+#: htdocs/luci-static/resources/device-manager/table.js:196
 msgid "Unknown"
 msgstr "状态未知"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:24
-#: htdocs/luci-static/resources/device-manager/table.js:179
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:26
+#: htdocs/luci-static/resources/device-manager/table.js:192
 msgid "Unknown device"
 msgstr "未知设备"
 
@@ -742,7 +760,7 @@ msgstr "VR 设备"
 msgid "Vehicle"
 msgstr "汽车"
 
-#: htdocs/luci-static/resources/device-manager/table.js:256
+#: htdocs/luci-static/resources/device-manager/table.js:269
 msgid "View"
 msgstr "查看"
 
@@ -758,27 +776,31 @@ msgstr "手表"
 msgid "Water purifier"
 msgstr "净水器"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:308
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:315
 msgid "Wi-Fi"
 msgstr "Wi-Fi 连接"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:324
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:325
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:331
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:332
 msgid "Yes"
 msgstr "是"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:64
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:66
 msgid "e.g. AA:BB:CC:11:22:33"
 msgstr "例如：AA:BB:CC:11:22:33"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:113
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:115
 msgid "e.g. Living room TV"
 msgstr "例如：55寸安卓电视，安装在客厅"
 
-#: htdocs/luci-static/resources/device-manager/device-dialog.js:105
+#: htdocs/luci-static/resources/device-manager/device-dialog.js:107
 msgid "e.g. Living room TV, work computer"
 msgstr "例如：客厅电视、主力工作电脑"
 
-#: htdocs/luci-static/resources/device-manager/group-dialog.js:46
+#: htdocs/luci-static/resources/device-manager/group-dialog.js:48
 msgid "e.g. Media devices, office devices"
 msgstr "例如：智能影音、办公设备"
+
+
+#~ msgid "Showing cached device data. Updating..."
+#~ msgstr "当前显示缓存数据，正在更新……"

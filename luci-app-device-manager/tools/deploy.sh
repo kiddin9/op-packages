@@ -131,7 +131,7 @@ if [[ ! -f "${PROJECT_ROOT}/root/usr/share/rpcd/acl.d/luci-app-device-manager.js
     exit 1
 fi
 
-for resource in model.js service.js preferences.js table.js device-dialog.js group-dialog.js styles.css; do
+for resource in model.js service.js snapshot-cache.js feedback.js online-check.js preferences.js table.js device-dialog.js group-dialog.js styles.css; do
     if [[ ! -f "${PROJECT_ROOT}/htdocs/luci-static/resources/device-manager/${resource}" ]]; then
         print_error "Missing frontend resource: device-manager/${resource}"
         exit 1

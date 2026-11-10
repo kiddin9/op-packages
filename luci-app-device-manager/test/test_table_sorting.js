@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { environment, loadModule, backend } = require('./helpers/runtime');
+const { environment, loadModule, backend, renderLoadedPage } = require('./helpers/runtime');
 
 const model = loadModule('device-manager.model', environment());
 
@@ -93,8 +93,7 @@ test('clicking the IP column header sorts devices in the table', async () => {
 	const env = environment(mocks);
 	const page = loadModule('view.device-manager.devices', env);
 
-	const data = await page.load();
-	const viewNode = page.render(data);
+	const viewNode = await renderLoadedPage(page);
 
 	const table = viewNode.querySelector('#device_manager_table');
 	const thList = table.querySelectorAll('th');
@@ -175,8 +174,7 @@ test('status indicator renders as a small dot without text, and default tab is O
 	const env = environment(mocks);
 	const page = loadModule('view.device-manager.devices', env);
 
-	const data = await page.load();
-	const viewNode = page.render(data);
+	const viewNode = await renderLoadedPage(page);
 
 	// Check tabs order: 0 is online, 1 is all
 	const tabs = viewNode.querySelector('#dm-tabs-container').children;
@@ -215,8 +213,7 @@ test('table row display omits no-hostname subtitle, prefix from hostname subtitl
 	const env = environment(mocks);
 	const page = loadModule('view.device-manager.devices', env);
 
-	const data = await page.load();
-	const viewNode = page.render(data);
+	const viewNode = await renderLoadedPage(page);
 
 	const rows = viewNode.querySelector('#device_manager_tbody').querySelectorAll('tr');
 	assert.equal(rows.length, 2);
@@ -265,8 +262,7 @@ test('mask/show info button toggles MAC and IPv6 masking with asterisks and reme
 	}));
 	const page = loadModule('view.device-manager.devices', env);
 
-	const data = await page.load();
-	const viewNode = page.render(data);
+	const viewNode = await renderLoadedPage(page);
 
 	// By default maskInfo is false: MAC and IPv6 are unmasked
 	let row = viewNode.querySelector('#device_manager_tbody').querySelectorAll('tr')[0];
@@ -297,8 +293,7 @@ test('mask/show info button toggles MAC and IPv6 masking with asterisks and reme
 
 	// Test persistence on page reload
 	const pageReload = loadModule('view.device-manager.devices', env);
-	const reloadedData = await pageReload.load();
-	const reloadedView = pageReload.render(reloadedData);
+	const reloadedView = await renderLoadedPage(pageReload);
 	assert.equal(pageReload.maskInfo, true);
 
 	row = reloadedView.querySelector('#device_manager_tbody').querySelectorAll('tr')[0];

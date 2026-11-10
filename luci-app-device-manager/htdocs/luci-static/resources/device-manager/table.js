@@ -127,10 +127,23 @@ return baseclass.extend({
 	renderTable: function() {
 		if (!this.tableBodyNode) return;
 		dom.content(this.tableBodyNode, null);
-
 		const filtered = this.devices.filter(device =>
 			(this.activeTab === 'all' || device.status === this.activeTab) &&
 			model.matchesDevice(device, this.groups, this.activeGroup, this.filterText));
+		const loading = this.initialLoading || this.listRefreshing || this.checkingOnline || (this.showingCache && !this.cacheRefreshFailed);
+		if (!filtered.length && (loading || this.loadFailed)) {
+			this.tableBodyNode.appendChild(E('tr', { 'class': 'tr' }, [
+				E('td', { 'class': 'td', 'colspan': 8, 'style': 'text-align:center; padding:36px 16px;' }, [
+					E('span', { 'class': loading ? 'spinning' : '', 'role': 'status' }, [
+						loading ? _('Loading list...') : _('Could not load the device list.')
+					]),
+					...(loading ? [] : [ E('button', {
+						'type': 'button', 'class': 'cbi-button', 'style': 'margin-left:12px;', 'click': () => this.refresh()
+					}, [ _('Retry') ]) ])
+				])
+			]));
+			return;
+		}
 
 		if (filtered.length === 0) {
 			let emptyMsg = _('No devices found. Refresh the list to try again.');

@@ -1,7 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { environment, loadModule, backend } = require('./helpers/runtime');
+const { environment, loadModule, backend, renderLoadedPage } = require('./helpers/runtime');
 const mac = 'AA:BB:CC:11:22:33', other = 'AA:BB:CC:44:55:66';
 const model = loadModule('device-manager.model', environment());
 const device = { '.type': 'device', '.name': 'dev_aabbcc112233', mac, name: 'TV', remark: 'Living room' };
@@ -167,6 +167,7 @@ test('discovery errors are reported and do not turn saved devices offline', asyn
 });
 test('partial Wi-Fi RPC failure preserves active stations and VLAN discovery', async () => {
     const ctx = service([]);
+    ctx.replies['luci-rpc.getNetworkDevices'] = { wlan0: {}, wlan1: {}, 'wlan0.10': {} };
     ctx.replies['luci-rpc.getWirelessDevices'] = { radio0: { interfaces: [
         { ifname: 'wlan0', config: { mode: 'ap' }, vlans: [{ ifname: 'wlan0.10' }] },
         { ifname: 'wlan1', config: { mode: 'ap' } }, { ifname: 'uplink', config: { mode: 'sta' } }
@@ -176,6 +177,50 @@ test('partial Wi-Fi RPC failure preserves active stations and VLAN discovery', a
     assert.equal(snapshot.discoveryComplete, false); assert.equal(model.parseDevices(snapshot, [])[0].status, 'online');
     assert.ok(ctx.state.calls.some(call => call.key === 'iwinfo.assoclist' && call.args[0] === 'wlan0.10'));
     assert.ok(!ctx.state.calls.some(call => call.args[0] === 'uplink'));
+});
+
+test('stale wireless status does not query interfaces missing from the kernel', async () => {
+    const ctx = service([device]);
+    ctx.replies['luci-rpc.getWirelessDevices'] = { radio0: { up: true, disabled: false,
+        interfaces: [{ ifname: 'wlan0', config: { mode: 'ap' } }] } };
+    ctx.replies['luci-rpc.getNetworkDevices'] = { 'br-lan': {}, eth0: {} };
+    ctx.replies['iwinfo.assoclist'] = new Error('ubus code 4: Not found');
+    const snapshot = await ctx.service.load();
+    assert.equal(snapshot.discoveryComplete, true);
+    assert.deepEqual(snapshot.errors, []);
+    assert.deepEqual(snapshot.wifi, []);
+    assert.equal(model.parseDevices(snapshot, [])[0].status, 'offline');
+    assert.ok(!ctx.state.calls.some(call => call.key === 'iwinfo.assoclist'));
+});
+
+test('only existing AP and VLAN interfaces are queried and each refresh rechecks them', async () => {
+    const ctx = service([]);
+    ctx.replies['luci-rpc.getWirelessDevices'] = { radio0: { interfaces: [
+        { ifname: 'wlan0', config: { mode: 'ap' }, vlans: [{ ifname: 'wlan0.10' }, { ifname: 'wlan0.20' }] },
+        { ifname: 'wlan1', config: { mode: 'ap' } }
+    ] } };
+    ctx.replies['luci-rpc.getNetworkDevices'] = { wlan0: {}, 'wlan0.10': {} };
+    ctx.replies['iwinfo.assoclist'] = { results: [{ mac }] };
+    const snapshot = await ctx.service.load();
+    assert.deepEqual(snapshot.wifi, [{ mac, dev: 'wlan0' }, { mac, dev: 'wlan0.10' }]);
+    assert.equal(snapshot.discoveryComplete, true);
+    assert.deepEqual(ctx.state.calls.filter(call => call.key === 'iwinfo.assoclist').map(call => call.args[0]), ['wlan0', 'wlan0.10']);
+    ctx.replies['luci-rpc.getNetworkDevices'] = {};
+    assert.deepEqual((await ctx.service.load()).wifi, []);
+    ctx.replies['luci-rpc.getNetworkDevices'] = { wlan1: {} };
+    assert.deepEqual((await ctx.service.load()).wifi, [{ mac, dev: 'wlan1' }]);
+});
+
+test('failed or invalid kernel device discovery stays visible and keeps unconfirmed devices unknown', async () => {
+    for (const response of [new Error('access denied'), 4, null, []]) {
+        const ctx = service([device]);
+        ctx.replies['luci-rpc.getNetworkDevices'] = response;
+        const snapshot = await ctx.service.load();
+        assert.equal(snapshot.discoveryComplete, false);
+        assert.ok(snapshot.errors.length > 0);
+        assert.equal(model.parseDevices(snapshot, [])[0].status, 'unknown');
+        assert.ok(!ctx.state.calls.some(call => call.key === 'iwinfo.assoclist'));
+    }
 });
 
 test('preference corruption and inaccessible storage safely fall back', async () => {
@@ -201,7 +246,7 @@ function pageContext(initial = []) {
     return Object.assign({ env, page: loadModule('view.device-manager.devices', env) }, mocks);
 }
 async function renderPage(ctx) {
-    const node = ctx.page.render(await ctx.page.load());
+    const node = await renderLoadedPage(ctx.page);
     return node;
 }
 function button(node, label) { return node.querySelectorAll('button').find(item => item.textContent === label); }
@@ -320,6 +365,7 @@ test('tab counts match group/search filters and tabs support keyboard activation
     const ctx = pageContext([group, Object.assign({}, device, { group: 'home' })]);
     ctx.replies['iwinfo.assoclist'] = { results: [{ mac: other }] };
     ctx.replies['luci-rpc.getWirelessDevices'] = { radio0: { interfaces: [{ ifname: 'wlan0' }] } };
+    ctx.replies['luci-rpc.getNetworkDevices'] = { wlan0: {} };
     const node = await renderPage(ctx);
     const tabs = node.querySelector('#dm-tabs-container').children;
     assert.equal(tabs[0].textContent, 'Online devices1'); assert.equal(tabs[1].textContent, 'All devices2');
