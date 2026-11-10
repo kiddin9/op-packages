@@ -2,19 +2,31 @@
 	"luci-app-tailscale-ng": {
 		"description": "Grant access to Tailscale NG configuration",
 		"read": {
+			"cgi-io": [ "download" ],
 			"file": {
 				"/sys/class/net/tailscale0/*": [ "read" ],
 				"/sbin/ip": [ "exec" ],
+				"/tmp/tailscale-auth-state.download": [ "read" ],
 				"/usr/sbin/tailscale": [ "exec" ]
 			},
 			"ubus": {
 				"luci": [ "getInitList", "setInitAction" ],
-				"service": [ "list" ]
+				"service": [ "list" ],
+				"system": [ "board" ]
 			},
 			"uci": [ "tailscale", "luci-app-tailscale-ng" ]
 		},
 		"write": {
+			"cgi-io": [ "upload" ],
+			"file": {
+				"/tmp/tailscale-auth-state.download": [ "write" ],
+				"/tmp/tailscale-auth-state.upload": [ "write" ],
+				"/usr/libexec/luci-app-tailscale-ng-state prepare-download": [ "exec" ],
+				"/usr/libexec/luci-app-tailscale-ng-state restore-upload": [ "exec" ],
+				"/usr/libexec/luci-app-tailscale-ng-state validate-upload": [ "exec" ]
+			},
 			"ubus": {
+				"file": [ "exec", "remove" ],
 				"luci": [ "setInitAction" ]
 			},
 			"uci": [ "tailscale", "luci-app-tailscale-ng" ]

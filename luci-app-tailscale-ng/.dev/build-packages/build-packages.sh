@@ -23,9 +23,9 @@ case "$format" in
   *) printf 'Usage: %s [apk|ipk]\n' "$0" >&2; exit 1 ;;
 esac
 
-source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cache_dir="${BUILD_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/luci-app-tailscale-ng}"
-output_dir="${OUTPUT_DIR:-$source_dir/artifacts/$format}"
+output_dir="${OUTPUT_DIR:-$source_dir/.dev/build-packages/artifacts/$format}"
 jobs="${JOBS:-$(nproc)}"
 
 if [[ "$(id -u)" == 0 ]]; then

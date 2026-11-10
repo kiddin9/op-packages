@@ -30,11 +30,61 @@ const callInitAction = rpc.declare({
 	expect: { result: false }
 });
 
+const callSystemBoard = rpc.declare({
+	object: 'system',
+	method: 'board',
+	expect: { '': {} }
+});
+
 // Helpers
 
 // Cached service list result to avoid duplicate calls
 let cachedServiceList = null;
 let latestTsInfo = null;
+
+const APP_VERSION = '@APP_VERSION@';
+const STATE_HELPER = '/usr/libexec/luci-app-tailscale-ng-state';
+const STATE_DOWNLOAD_FILE = '/tmp/tailscale-auth-state.download';
+const STATE_UPLOAD_FILE = '/tmp/tailscale-auth-state.upload';
+
+function isNewerAppVersion(candidate, current) {
+	const pattern = /^v?(\d+)\.(\d+)\.(\d+)$/;
+	const candidateParts = pattern.exec(candidate);
+	const currentParts = pattern.exec(current);
+	if (!candidateParts || !currentParts)
+		return false;
+
+	for (let i = 1; i <= 3; i++) {
+		const next = Number(candidateParts[i]);
+		const previous = Number(currentParts[i]);
+		if (next !== previous)
+			return next > previous;
+	}
+	return false;
+}
+
+async function getAvailableAppUpdate() {
+	const controller = new AbortController();
+	const timeout = setTimeout(function() { controller.abort(); }, 10000);
+	try {
+		const response = await fetch('https://api.github.com/repos/vad-b/luci-app-tailscale-ng/releases/latest', {
+			'credentials': 'omit',
+			'referrerPolicy': 'no-referrer',
+			'signal': controller.signal
+		});
+		if (!response.ok)
+			throw new Error('GitHub HTTP ' + response.status);
+		const release = await response.json();
+		if (release.draft || release.prerelease || !isNewerAppVersion(release.tag_name, APP_VERSION))
+			return null;
+		return {
+			version: release.tag_name.replace(/^v/, ''),
+			url: 'https://github.com/vad-b/luci-app-tailscale-ng/releases/tag/' + encodeURIComponent(release.tag_name)
+		};
+	} finally {
+		clearTimeout(timeout);
+	}
+}
 
 async function getServiceStatus() {
 	try {
@@ -71,12 +121,13 @@ async function getInterfaceSubnets() {
 	}
 }
 
-async function getTailscaleInfo(isRunning) {
+async function getTailscaleInfo(isRunning, systemHostname) {
 	const info = {
 		isRunning: isRunning,
 		backendState: undefined,
 		authURL: undefined,
 		displayName: undefined,
+		nodeName: systemHostname,
 		onlineExitNodes: [],
 		subnetRoutes: []
 	};
@@ -92,6 +143,13 @@ async function getTailscaleInfo(isRunning) {
 
 			info.backendState = status.BackendState;
 			info.authURL = status.AuthURL;
+			if (status.Self) {
+				const tailscaleNodeName = status.Self.HostName ||
+					(status.Self.DNSName ? status.Self.DNSName.replace(/\.$/, '').split('.')[0] : undefined);
+
+				if (tailscaleNodeName)
+					info.nodeName = tailscaleNodeName;
+			}
 
 			if (info.backendState === 'Running' && status.Self && status.User) {
 				info.displayName = status.User[status.Self.UserID]?.DisplayName;
@@ -154,10 +212,173 @@ async function getStatusData() {
 	return data;
 }
 
+function stateOperationError(res, fallback) {
+	if (res && res.code === 0)
+		return null;
+
+	const helperMessages = {
+		10: _('The configured Tailscale state file path must be absolute.'),
+		11: _('The Tailscale state file was not found.'),
+		12: _('The Tailscale state file is empty.'),
+		13: _('The Tailscale state file exceeds the 8 MiB size limit.'),
+		14: _('The Tailscale state file must contain a valid JSON object.'),
+		15: _('The Tailscale state file does not contain a machine key.')
+	};
+
+	if (res && typeof(res.code) === 'number' && Object.prototype.hasOwnProperty.call(helperMessages, res.code))
+		return new Error(helperMessages[res.code]);
+
+	const error = new Error(fallback);
+	const detail = res && (res.stderr || res.stdout);
+	error.details = typeof(detail) === 'string' ? detail.trim() : '';
+	return error;
+}
+
+function sanitizeFilenamePart(value, fallback) {
+	const sanitized = String(value || '')
+		.replace(/[^A-Za-z0-9._-]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 64);
+
+	return sanitized || fallback;
+}
+
+function buildStateDownloadName(info) {
+	const now = new Date();
+	const pad = function(value) { return String(value).padStart(2, '0'); };
+	const stamp = String(now.getUTCFullYear()) +
+		pad(now.getUTCMonth() + 1) +
+		pad(now.getUTCDate()) + '-' +
+		pad(now.getUTCHours()) +
+		pad(now.getUTCMinutes()) +
+		pad(now.getUTCSeconds());
+	const nodeName = sanitizeFilenamePart(info?.nodeName, 'openwrt');
+
+	return 'tailscale-auth-state-' + nodeName + '-' + stamp + '.state';
+}
+
+async function handleDownloadAuthenticationState(info) {
+	ui.showModal(_('Preparing Tailscale state file...'), [
+		E('p', { 'class': 'spinning' }, _('The download will start when the Tailscale state file is ready.'))
+	]);
+
+	try {
+		const prepareRes = await fs.exec(STATE_HELPER, ['prepare-download']);
+		const prepareError = stateOperationError(prepareRes, _('Unable to prepare the Tailscale state file.'));
+		if (prepareError)
+			throw prepareError;
+
+		const blob = await fs.read_direct(STATE_DOWNLOAD_FILE, 'blob');
+		const url = URL.createObjectURL(blob);
+		const link = E('a', {
+			'href': url,
+			'download': buildStateDownloadName(info),
+			'style': 'display:none'
+		});
+
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+		ui.hideModal();
+	} catch (e) {
+		ui.hideModal();
+		ui.addNotification(null, [
+			E('p', {}, [_('Download failed: %s').format(e.message)]),
+			e.details ? E('pre', {}, [e.details]) : ''
+		], 'error');
+	} finally {
+		await L.resolveDefault(fs.remove(STATE_DOWNLOAD_FILE));
+	}
+}
+
+async function handleUploadAuthenticationState() {
+	try {
+		const upload = ui.uploadFile(STATE_UPLOAD_FILE);
+		const uploadPrompt = document.querySelector('.modal p');
+		if (uploadPrompt) {
+			uploadPrompt.insertAdjacentElement('afterend', E('p', {}, [
+				_('Select a Tailscale authentication state file. This device\'s current Tailscale authentication state will only be replaced after confirmation.')
+			]));
+		}
+		await upload;
+
+		const validateRes = await fs.exec(STATE_HELPER, ['validate-upload']);
+		const validateError = stateOperationError(validateRes, _('The uploaded file is not a valid Tailscale authentication state file.'));
+		if (validateError)
+			throw validateError;
+
+		if (!confirm(_('Replace this device\'s current Tailscale authentication state with this file? The Tailscale settings saved on this router will be applied. If "Tailscale Enabled" is off, the service will remain stopped. Do not use the same Tailscale state file on two devices at once.')))
+			return;
+
+		ui.showModal(_('Restoring Tailscale state...'), [
+			E('p', { 'class': 'spinning' }, _('Replacing this device\'s Tailscale authentication state and applying the Tailscale settings saved on this router.'))
+		]);
+
+		const restoreRes = await fs.exec(STATE_HELPER, ['restore-upload']);
+		const restoreError = stateOperationError(restoreRes, _('Unable to restore the Tailscale state file.'));
+		if (restoreError)
+			throw restoreError;
+
+		location.reload();
+	} catch (e) {
+		ui.hideModal();
+		if (e.message !== _('Upload has been cancelled')) {
+			ui.addNotification(null, [
+				E('p', {}, [_('Restore failed: %s').format(e.message)]),
+				e.details ? E('pre', {}, [e.details]) : ''
+			], 'error');
+		}
+	} finally {
+		await L.resolveDefault(fs.remove(STATE_UPLOAD_FILE));
+	}
+}
+
 async function handleServiceAction(action, message) {
 	ui.showModal(null, [E('p', { 'class': 'spinning' }, message)]);
 	await callInitAction('luci-app-tailscale-ng', action);
 	location.reload();
+}
+
+function handleStartService(enabledOption, sectionId) {
+	if (enabledOption.cfgvalue(sectionId) === '1')
+		return handleServiceAction('start', _('Starting Tailscale service...'));
+
+	const enabledWidget = enabledOption.getUIElement(sectionId);
+	const enabledCheckbox = enabledWidget?.node?.querySelector('input[type="checkbox"]');
+	const canEnable = !!(enabledCheckbox && !enabledCheckbox.disabled);
+
+	const buttons = [
+		E('button', {
+			'type': 'button',
+			'class': 'btn',
+			'click': ui.hideModal
+		}, _('Cancel'))
+	];
+
+	if (canEnable) {
+		buttons.push(E('button', {
+			'type': 'button',
+			'class': 'btn cbi-button-positive',
+			'click': function() {
+				ui.hideModal();
+				if (!enabledCheckbox.checked)
+					enabledCheckbox.click();
+				enabledCheckbox.focus();
+			}
+		}, _('Enable Tailscale')));
+	}
+
+	ui.showModal(_('Tailscale is disabled'), [
+		E('p', {}, [
+			_('The Tailscale service is disabled in the saved configuration.'),
+			E('br'),
+			_('Turn on "Tailscale Enabled", then click "Save & Apply" to start the service.')
+		]),
+		E('div', { 'class': 'right' }, buttons)
+	]);
+
+	return Promise.resolve();
 }
 
 function handleLogoutAndClean() {
@@ -256,6 +477,7 @@ const icons = {
 
 function renderIconButton(icon, text, className, onClick) {
 	return E('button', {
+		'type': 'button',
 		'class': 'btn ' + className,
 		'click': onClick,
 		'style': 'display: inline-flex; align-items: center;'
@@ -293,8 +515,9 @@ const ServiceStatusValue = form.DummyValue.extend({
 	__name__: 'ServiceStatusValue',
 	isRunning: false,
 	tsInfo: null,
+	enabledOption: null,
 
-	renderWidget: function() {
+	renderWidget: function(sectionId) {
 		const isRunning = this.isRunning;
 		const info = this.tsInfo || null;
 
@@ -325,7 +548,7 @@ const ServiceStatusValue = form.DummyValue.extend({
 			buttonsDiv.appendChild(renderIconButton(
 				icons.start(), _('Start'), 'cbi-button-positive',
 				ui.createHandlerFn(this, function() {
-					return handleServiceAction('start', _('Starting Tailscale service...'));
+					return handleStartService(this.enabledOption, sectionId);
 				})
 			));
 		}
@@ -462,16 +685,84 @@ const DynamicLogoutButton = form.Button.extend({
 	}
 });
 
+function showAppUpdate(update) {
+	const installCommand = 'wget -qO- https://raw.githubusercontent.com/vad-b/luci-app-tailscale-ng/main/install.sh | sh';
+	const commandBlock = E('pre', {
+		'style': 'white-space:pre-wrap;overflow-wrap:anywhere;box-sizing:border-box;margin:0;padding:12px 48px 12px 12px'
+	}, [installCommand]);
+	const copyIcon = createIcon([
+		svgEl('rect', { 'x': '9', 'y': '9', 'width': '13', 'height': '13', 'rx': '2' }),
+		svgEl('path', { 'd': 'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1' })
+	]);
+	copyIcon.setAttribute('aria-hidden', 'true');
+	const copyButton = E('button', {
+		'type': 'button',
+		'class': 'btn',
+		'title': _('Copy command'),
+		'aria-label': _('Copy command'),
+		'style': 'position:absolute;top:6px;right:6px;width:28px;height:28px;padding:4px;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center',
+		'click': async function(ev) {
+			const button = ev.currentTarget;
+			let copied = false;
+			try {
+				await navigator.clipboard.writeText(installCommand);
+				copied = true;
+			} catch (e) {}
+			if (!copied) {
+				const selection = window.getSelection();
+				const range = document.createRange();
+				range.selectNodeContents(commandBlock);
+				selection.removeAllRanges();
+				selection.addRange(range);
+				try {
+					copied = document.execCommand('copy');
+				} catch (e) {}
+			}
+			button.textContent = copied ? '✓' : '!';
+			button.setAttribute('title', copied ? _('Copied') : _('Copy manually'));
+			button.setAttribute('aria-label', copied ? _('Copied') : _('Copy manually'));
+		}
+	}, [copyIcon]);
+	const modal = ui.showModal(_('Update available'), [
+		E('p', {}, [_('Current version'), ': ', E('strong', {}, ['v' + APP_VERSION])]),
+		E('p', {}, [
+			_('New version'), ': ', E('strong', {}, ['v' + update.version]), ' · ',
+			E('a', {
+				'href': update.url,
+				'target': '_blank',
+				'rel': 'noopener'
+			}, [_('Release notes'), ' ↗'])
+		]),
+		E('p', {}, [_('To update, run this command as root in an SSH session on your router:')]),
+		E('div', { 'style': 'position:relative;margin-bottom:1em' }, [commandBlock, copyButton]),
+		E('div', { 'class': 'right' }, [
+			E('button', {
+				'type': 'button',
+				'class': 'btn',
+				'click': ui.hideModal
+			}, _('Close'))
+		])
+	]);
+	modal.style.maxWidth = '560px';
+}
+
 // Main view
 
 return view.extend({
 	load: function() {
-		return getServiceStatus().then(function(isRunning) {
+		return Promise.all([
+			getServiceStatus(),
+			L.resolveDefault(callSystemBoard(), {})
+		]).then(function(results) {
+			const isRunning = results[0];
+			const systemHostname = results[1]?.hostname;
+
 			return Promise.all([
 				Promise.resolve(isRunning),
-				getTailscaleInfo(isRunning),
+				getTailscaleInfo(isRunning, systemHostname),
 				getInterfaceSubnets(),
-				fs.exec('/usr/sbin/tailscale', ['version'])
+				fs.exec('/usr/sbin/tailscale', ['version']),
+				Promise.resolve(systemHostname)
 			]);
 		});
 	},
@@ -482,6 +773,7 @@ return view.extend({
 		latestTsInfo = tsInfo;
 		const interfaceSubnets = data[2];
 		const versionRes = data[3];
+		const systemHostname = data[4];
 		const tsVersion = (versionRes && versionRes.code === 0 && versionRes.stdout)
 			? versionRes.stdout.trim().split('\n')[0]
 			: null;
@@ -500,14 +792,15 @@ return view.extend({
 		s.anonymous = true;
 		s.addremove = false;
 
-		o = s.option(form.Flag, 'enabled', _('Tailscale Enabled'));
-		o.description = _('Start Tailscale service on boot.');
-		o.default = '0';
-		o.rmempty = false;
+		const enabledOption = s.option(form.Flag, 'enabled', _('Tailscale Enabled'));
+		enabledOption.description = _('Start Tailscale service on boot.');
+		enabledOption.default = '0';
+		enabledOption.rmempty = false;
 
 		o = s.option(ServiceStatusValue, '_service_status', _('Tailscale Status'));
 		o.isRunning = isRunning;
 		o.tsInfo = tsInfo;
+		o.enabledOption = enabledOption;
 
 		o = s.option(form.DummyValue, '_tailscale_version', _('Tailscale Version'));
 		o.renderWidget = function() {
@@ -553,6 +846,26 @@ return view.extend({
 		o.tsInfo = tsInfo;
 		o.onclick = function() {
 			return handleLogoutAndClean();
+		};
+
+		// Authentication state backup and restore
+		o = s.taboption('auth', SectionTitle, '_auth_state_title');
+		o.title = _('Authentication State');
+
+		o = s.taboption('auth', form.Button, '_download_state', _('Download State'));
+		o.inputtitle = _('Download');
+		o.inputstyle = 'action';
+		o.description = _('Download this device\'s Tailscale authentication state file. It contains credentials, so keep it secure.');
+		o.onclick = function() {
+			return handleDownloadAuthenticationState(latestTsInfo || tsInfo);
+		};
+
+		o = s.taboption('auth', form.Button, '_restore_state', _('Restore State'));
+		o.inputtitle = _('Upload & Restore');
+		o.inputstyle = 'negative';
+		o.description = _('Replace this device\'s Tailscale authentication state with an uploaded file. The Tailscale settings saved on this router will then be applied. If "Tailscale Enabled" is off, the service will remain stopped. Do not use the same Tailscale state file on two devices at once.');
+		o.onclick = function() {
+			return handleUploadAuthenticationState();
 		};
 
 		// Settings tab: General
@@ -714,7 +1027,7 @@ return view.extend({
 		// Poll service status and login status
 		poll.add(async function() {
 			const running = await getServiceStatus();
-			const info = await getTailscaleInfo(running);
+			const info = await getTailscaleInfo(running, systemHostname);
 			latestTsInfo = info;
 
 			// Update service status display
@@ -743,6 +1056,43 @@ return view.extend({
 		}, 15);
 
 		return m.render().then(function(mapNode) {
+			const heading = mapNode.querySelector('h2');
+			if (heading) {
+				const githubIcon = svgEl('svg', {
+					'width': '14',
+					'height': '14',
+					'viewBox': '0 0 16 16',
+					'fill': 'currentColor',
+					'aria-hidden': 'true',
+					'style': 'vertical-align:-0.125em;margin-right:0.3em'
+				}, [svgEl('path', {
+					'd': 'M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656'
+				})]);
+				const metadata = E('span', {
+					'style': 'display:inline-block;margin-left:16px;font-size:13px;font-weight:400;line-height:18px;white-space:nowrap'
+				}, [
+					'v' + APP_VERSION + ' · ',
+					E('a', {
+						'href': 'https://github.com/vad-b/luci-app-tailscale-ng',
+						'target': '_blank',
+						'rel': 'noopener'
+					}, [githubIcon, 'GitHub'])
+				]);
+				heading.appendChild(metadata);
+				getAvailableAppUpdate().then(function(update) {
+					if (!update)
+						return;
+					metadata.appendChild(document.createTextNode(' · '));
+					metadata.appendChild(E('button', {
+						'type': 'button',
+						'style': 'display:inline-block;padding:1px 7px;border:1px solid #fcd34d;border-radius:4px;background:#fef3c7;color:#713f12;font-family:inherit;font-size:12px;font-weight:400;line-height:18px;vertical-align:baseline;cursor:pointer',
+						'click': function() { showAppUpdate(update); }
+					}, [_('Update available: %s').format('v' + update.version)]));
+				}).catch(function(error) {
+					console.warn('Unable to check for application updates:', error);
+				});
+			}
+
 			// Start loading status data immediately in background (fire and forget)
 			loadStatusData();
 			updateExitNodeOptions(tsInfo);
@@ -752,7 +1102,7 @@ return view.extend({
 			// This handles the case when service just started
 			if (tsInfo.backendState !== 'Running' && isRunning) {
 				const quickUpdateLogin = async function() {
-					const info = await getTailscaleInfo(true);
+					const info = await getTailscaleInfo(true, systemHostname);
 					latestTsInfo = info;
 
 					// Keep service status block in sync with quick login updates.

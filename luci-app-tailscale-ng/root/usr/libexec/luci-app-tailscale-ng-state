@@ -1,0 +1,131 @@
+#!/bin/sh
+
+# Copyright (C) 2026 vad-b
+# SPDX-License-Identifier: GPL-3.0-only
+
+set -eu
+umask 077
+
+DOWNLOAD_FILE='/tmp/tailscale-auth-state.download'
+UPLOAD_FILE='/tmp/tailscale-auth-state.upload'
+DEFAULT_STATE_FILE='/etc/tailscale/tailscaled.state'
+MAX_UPLOAD_SIZE=8388608
+TEMP_FILE=''
+
+fail() {
+	local code="$1"
+	shift
+	printf '%s\n' "$*" >&2
+	exit "$code"
+}
+
+run() {
+	"$@" >&2 || fail 1 OPERATION_FAILED
+}
+
+cleanup() {
+	if [ -n "$TEMP_FILE" ]; then
+		rm -f "$TEMP_FILE" || true
+	fi
+}
+
+trap cleanup EXIT
+trap 'exit 1' INT TERM
+
+get_state_file() {
+	local state_file code
+
+	if state_file="$(uci -q get tailscale.settings.state_file)"; then
+		:
+	else
+		code="$?"
+		[ "$code" -eq 1 ] || fail 1 STATE_CONFIG_READ_FAILED
+	fi
+	[ -n "$state_file" ] || state_file="$DEFAULT_STATE_FILE"
+
+	case "$state_file" in
+		/*) ;;
+		*) fail 10 STATE_PATH_INVALID ;;
+	esac
+
+	printf '%s\n' "$state_file"
+}
+
+validate_state_file() {
+	local file size first_char code machine_key_type machine_key
+	file="$1"
+
+	[ -f "$file" ] || fail 11 STATE_NOT_FOUND
+	[ -s "$file" ] || fail 12 STATE_EMPTY
+	[ -r "$file" ] || fail 1 STATE_READ_FAILED
+
+	size="$(wc -c < "$file")" || fail 1 STATE_READ_FAILED
+	[ "$size" -le "$MAX_UPLOAD_SIZE" ] || fail 13 STATE_TOO_LARGE
+
+	first_char="$(LC_ALL=C sed -n '/[^[:space:]]/ { s/^[[:space:]]*\(.\).*/\1/; p; q; }' "$file")" || fail 1 STATE_READ_FAILED
+	[ "$first_char" = "{" ] || fail 14 STATE_JSON_INVALID
+	command -v jsonfilter >/dev/null 2>&1 || fail 1 JSONFILTER_NOT_FOUND
+	if jsonfilter -i "$file" -e '@' >/dev/null 2>&1; then
+		:
+	else
+		code="$?"
+		case "$code" in
+			1|126) fail 14 STATE_JSON_INVALID ;;
+			*) fail 1 JSONFILTER_FAILED ;;
+		esac
+	fi
+
+	machine_key_type="$(jsonfilter -q -i "$file" -t '@._machinekey')" || fail 15 STATE_MACHINE_KEY_MISSING
+	[ "$machine_key_type" = 'string' ] || fail 15 STATE_MACHINE_KEY_MISSING
+	machine_key="$(jsonfilter -q -i "$file" -e '@._machinekey')" || fail 1 JSONFILTER_FAILED
+	[ -n "$machine_key" ] || fail 15 STATE_MACHINE_KEY_MISSING
+}
+
+prepare_download() {
+	local state_file
+	state_file="$(get_state_file)"
+
+	validate_state_file "$state_file"
+
+	TEMP_FILE="${DOWNLOAD_FILE}.$$"
+	run rm -f "$TEMP_FILE"
+	run cp "$state_file" "$TEMP_FILE"
+	run chmod 600 "$TEMP_FILE"
+	run mv -f "$TEMP_FILE" "$DOWNLOAD_FILE"
+	TEMP_FILE=''
+}
+
+validate_upload() {
+	validate_state_file "$UPLOAD_FILE"
+}
+
+restore_upload() {
+	local state_file state_dir
+
+	validate_state_file "$UPLOAD_FILE"
+	state_file="$(get_state_file)"
+	state_dir="${state_file%/*}"
+	[ -n "$state_dir" ] || state_dir='/'
+
+	[ -d "$state_dir" ] || run mkdir -p "$state_dir"
+	TEMP_FILE="$state_dir/.tailscaled.state.restore.$$"
+
+	run cp "$UPLOAD_FILE" "$TEMP_FILE"
+	run chmod 600 "$TEMP_FILE"
+	run chown 0:0 "$TEMP_FILE"
+
+	run /etc/init.d/tailscale stop
+	run mv -f "$TEMP_FILE" "$state_file"
+	TEMP_FILE=''
+	run rm -f "$UPLOAD_FILE" "$DOWNLOAD_FILE"
+	run /etc/init.d/luci-app-tailscale-ng start
+}
+
+[ "$#" -eq 1 ] || fail 2 "Usage: $0 {prepare-download|validate-upload|restore-upload}"
+
+case "${1:-}" in
+	prepare-download) prepare_download ;;
+	validate-upload) validate_upload ;;
+	restore-upload) restore_upload ;;
+	*) fail 2 "Usage: $0 {prepare-download|validate-upload|restore-upload}" ;;
+esac

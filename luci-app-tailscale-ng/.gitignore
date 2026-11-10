@@ -1,4 +1,10 @@
-.deploy/target.env
-.deploy/.ssh/
-.private
-/artifacts/
+# Development tooling
+/.dev/build-packages/artifacts/
+/.dev/capture-screenshots/node_modules/
+/.dev/capture-screenshots/report.json
+/.dev/capture-screenshots/*-debug.log*
+/.dev/**/target.env
+/.dev/**/.ssh/
+
+# Local files
+/.private

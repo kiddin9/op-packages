@@ -4,5 +4,5 @@
 /etc/init.d/luci-app-tailscale-ng enable
 /etc/init.d/luci-app-tailscale-ng start >/dev/null 2>&1 || true
 
-rm -f /tmp/luci-indexcache
+rm -f /tmp/luci-indexcache*
 exit 0

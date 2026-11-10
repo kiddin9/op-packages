@@ -1,0 +1,16 @@
+# local_path_from_deploy_dir<TAB+>remote_absolute_path<TAB+>mode<TAB+>policy
+#
+# Formatting: keep columns left-aligned — space-pad each to its widest value, then one tab (loader trims). Re-align all rows after editing.
+#
+# Policies:
+# - overwrite: always copy local file over remote file
+# - keep-if-exists: copy only when remote file does not exist
+
+../../htdocs/luci-static/resources/view/tailscale-ng/index.js	/www/luci-static/resources/view/tailscale-ng/index.js	644	overwrite
+../../root/usr/share/luci/menu.d/luci-app-tailscale-ng.json  	/usr/share/luci/menu.d/luci-app-tailscale-ng.json    	644	overwrite
+../../root/usr/share/rpcd/acl.d/luci-app-tailscale-ng.json   	/usr/share/rpcd/acl.d/luci-app-tailscale-ng.json     	644	overwrite
+../../root/usr/libexec/luci-app-tailscale-ng-state           	/usr/libexec/luci-app-tailscale-ng-state             	755	overwrite
+../../root/etc/init.d/luci-app-tailscale-ng                  	/etc/init.d/luci-app-tailscale-ng                    	755	overwrite
+../../root/etc/hotplug.d/iface/40-luci-app-tailscale-ng      	/etc/hotplug.d/iface/40-luci-app-tailscale-ng        	755	overwrite
+../../root/etc/uci-defaults/40_luci-app-tailscale-ng         	/etc/uci-defaults/40_luci-app-tailscale-ng           	755	overwrite
+../../root/etc/config/luci-app-tailscale-ng                  	/etc/config/luci-app-tailscale-ng                    	644	keep-if-exists
