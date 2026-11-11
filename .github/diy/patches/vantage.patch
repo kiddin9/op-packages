@@ -51,7 +51,7 @@
 
 --- a/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
 +++ b/luci-app-vantage/htdocs/luci-static/resources/vantage/app.css
-@@ -568,6 +568,12 @@ html[data-darkmode="true"] .vt-app {
+@@ -568,6 +568,15 @@ html[data-darkmode="true"] .vt-app {
  	display: flex; align-items: center; gap: 14px;
  	margin: 2px 0 var(--vt-sp-4);
  }
@@ -60,6 +60,9 @@
 +}
 +h2, h3{
 +	background-color:transparent;
++}
++header.bg-primary {
++    background:none !important;
 +}
  .vt-app .vt-orb {
  	position: relative; flex: none;
