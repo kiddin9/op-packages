@@ -508,14 +508,3 @@ index 000000000000..a00fff9c79b3
  msgid "Auto"
  msgstr "自动"
  
---- a/luci-app-passwall/luasrc/view/passwall/cbi/nodes_listvalue_com.htm
-+++ b/luci-app-passwall/luasrc/view/passwall/cbi/nodes_listvalue_com.htm
-@@ -256,7 +256,7 @@
- 			document.head.appendChild(styleNode)
- 			// trace back from option -> select -> body for background color
- 			const panelRadius = styleSelect.borderRadius;
--			const optionColor = !lv_isTransparent(styleOption.backgroundColor) ? styleOption.backgroundColor : !lv_isTransparent(styleSelect.backgroundColor) ? styleSelect.backgroundColor : styleBody.backgroundColor
-+			const optionColor = !lv_isTransparent(styleSelect.backgroundColor) ? styleSelect.backgroundColor : !lv_isTransparent(styleOption.backgroundColor) ? styleOption.backgroundColor : styleBody.backgroundColor
- 			const titleColor = lv_getColorSchema(optionColor) === "light" ? lv_darker(optionColor, 30) : lv_lighter(optionColor, 30)
- 			// 自带箭头已占据布局空间，右内边距使用主题的左内边距
- 			const selectStyleCSS = [`#${CSS.escape(cbid + ".display")} {`, lv_style2Css(styleSelect, styleNames), lv_style2Css(styleSelect, ["backgroundColor"]), `padding-right: ${styleSelect.paddingLeft} !important;`, "}"]
