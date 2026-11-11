@@ -119,6 +119,34 @@ Describe 'SafeShield statistics behavior'
 		The error should equal ''
 	End
 
+	It '잘못된 과거 통계 한 시간이 전체 업로드와 재시작 복구를 막지 않는다'
+		When call ss_case_statistics_historical_inconsistency_recovery
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
+	It 'dnsmasq 카운터가 과대 집계되면 해당 회차만 격리하고 다음 수집을 재개한다'
+		When call ss_case_statistics_source_delta_overrun_guard
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
+	It '여러 기기의 합계 및 차단 수 이상이 정상 시간대를 오염시키지 않는다'
+		When call ss_case_statistics_aggregate_hour_guard
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
+	It '기기 수 초과 집계가 잘못된 장치 식별자로 업로드되지 않는다'
+		When call ss_case_statistics_overflow_identity_projection
+		The status should be success
+		The output should equal ''
+		The error should equal ''
+	End
+
 	It 'prunes expired statistics while preserving the short upload window'
 		When call ss_case_statistics_retention_cache
 		The status should be success

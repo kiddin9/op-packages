@@ -12,7 +12,60 @@ function statistics_first_hour(now,    current_hour, cutoff, first_hour) {
 }
 
 function is_unknown_output_device(key) {
-	return (key == "unknown" || (device_mac[key] == "" && key ~ /^ip:/))
+	return (key == "unknown" || key == "other" || (device_mac[key] == "" && key ~ /^ip:/))
+}
+
+# Never let one stale/corrupt per-client hour block a whole cloud reconciliation.
+# This is a projection only: raw hourly counters and flash state are untouched.
+# Suppress all client attribution for an inconsistent hour rather than guessing
+# which client was wrong or inventing replacement counts. Router totals survive.
+function prepare_safe_hourly(first_hour, last_hour,    bucket, composite, parts, key, client_queries, client_blocked) {
+	sanitized_hour_count = 0
+	for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
+		delete masked_hour[bucket]
+		attributed_hour_queries[bucket] = 0
+		attributed_hour_blocked[bucket] = 0
+		safe_hour_blocked[bucket] = blocked[bucket] + 0
+		if (safe_hour_blocked[bucket] > queries[bucket] + 0) {
+			safe_hour_blocked[bucket] = queries[bucket] + 0
+			masked_hour[bucket] = 1
+		}
+	}
+
+	for (composite in device_hour_queries) {
+		split(composite, parts, SUBSEP)
+		key = parts[1]
+		bucket = parts[2] + 0
+		if (!(key in device_seen) || bucket < first_hour || bucket > last_hour) {
+			continue
+		}
+		client_queries = device_hour_queries[composite] + 0
+		client_blocked = device_hour_blocked[composite] + 0
+		attributed_hour_queries[bucket] += client_queries
+		attributed_hour_blocked[bucket] += client_blocked
+		if (client_blocked > client_queries) {
+			masked_hour[bucket] = 1
+		}
+	}
+
+	for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
+		if (attributed_hour_queries[bucket] > queries[bucket] + 0 || \
+			attributed_hour_blocked[bucket] > safe_hour_blocked[bucket]) {
+			masked_hour[bucket] = 1
+		}
+		if (masked_hour[bucket]) {
+			sanitized_hour_count++
+		}
+	}
+}
+
+function clear_safe_hourly(first_hour, last_hour,    bucket) {
+	for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
+		delete masked_hour[bucket]
+		delete attributed_hour_queries[bucket]
+		delete attributed_hour_blocked[bucket]
+		delete safe_hour_blocked[bucket]
+	}
 }
 
 function save_json_range(path, now, first_hour, last_hour, include_empty_devices,    tmp, bucket, comma, key, identified, device_comma, identity_comma, composite, device_first_hour, device_last_hour, persistence_enabled, persistent, healthy, volatile_state, storage, persistence_mode, truncated, range_queries, range_blocked, device_range_queries, device_range_blocked, device_has_rows, unknown_has_rows, unknown_queries, unknown_blocked) {
@@ -32,12 +85,18 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 	storage = (persistence_enabled == "true") ? "tmpfs+flash" : "tmpfs"
 	persistence_mode = (persistent_journal_file != "") ? "journal" : ((persistent_state_file != "") ? "snapshot" : "none")
 	truncated = devices_truncated ? "true" : "false"
+	# Keep malformed source metadata from invalidating an otherwise sound upload.
+	safe_untracked_blocked = source_untracked_blocked
+	if (safe_untracked_blocked > source_untracked_queries) {
+		safe_untracked_blocked = source_untracked_queries
+	}
+	prepare_safe_hourly(first_hour, last_hour)
 
 	range_queries = 0
 	range_blocked = 0
 	for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
 		range_queries += queries[bucket] + 0
-		range_blocked += blocked[bucket] + 0
+		range_blocked += safe_hour_blocked[bucket]
 		delete unknown_hour_queries[bucket]
 		delete unknown_hour_blocked[bucket]
 	}
@@ -60,6 +119,9 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 			continue
 		}
 		for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
+			if (masked_hour[bucket]) {
+				continue
+			}
 			composite = device_bucket_key(key, bucket)
 			if (!((composite in device_hour_queries) || (composite in device_hour_blocked))) {
 				continue
@@ -87,9 +149,9 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 		json_escape(source_instance_id), json_escape(source_transport_scope) >> tmp
 	printf "\"client_capacity\":%d,\"tracked_clients\":%d,\"untracked_queries\":%d,", \
 		source_client_capacity, source_tracked_clients, source_untracked_queries >> tmp
-	printf "\"untracked_blocked\":%d,", source_untracked_blocked >> tmp
-	printf "\"poll_error_count\":%d,\"last_error_at\":%d},", \
-		source_error_count, source_last_error_at >> tmp
+	printf "\"untracked_blocked\":%d,", safe_untracked_blocked >> tmp
+	printf "\"poll_error_count\":%d,\"last_error_at\":%d,\"sanitized_hours\":%d},", \
+		source_error_count, source_last_error_at, sanitized_hour_count >> tmp
 	printf "\"started_at\":%d,\"session_started_at\":%d,\"updated_at\":%d,", started_at, session_started_at, now >> tmp
 	printf "\"retention_hours\":%d,", retention_hours >> tmp
 	printf "\"device_limit\":%d,\"devices_truncated\":%s,", max_devices, truncated >> tmp
@@ -98,7 +160,7 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 
 	comma = ""
 	for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
-		printf "%s{\"bucket_start\":%d,\"queries\":%d,\"blocked\":%d}", comma, bucket, queries[bucket] + 0, blocked[bucket] + 0 >> tmp
+		printf "%s{\"bucket_start\":%d,\"queries\":%d,\"blocked\":%d}", comma, bucket, queries[bucket] + 0, safe_hour_blocked[bucket] >> tmp
 		comma = ","
 	}
 	printf "],\"devices\":[" >> tmp
@@ -122,6 +184,9 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 		device_has_rows = 0
 		if (device_first_hour <= device_last_hour) {
 			for (bucket = device_first_hour; bucket <= device_last_hour; bucket += 3600) {
+				if (masked_hour[bucket]) {
+					continue
+				}
 				composite = device_bucket_key(key, bucket)
 				if (!((composite in device_hour_queries) || (composite in device_hour_blocked))) {
 					continue
@@ -166,6 +231,9 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 		device_comma = ""
 		if (device_first_hour <= device_last_hour) {
 			for (bucket = device_first_hour; bucket <= device_last_hour; bucket += 3600) {
+				if (masked_hour[bucket]) {
+					continue
+				}
 				composite = device_bucket_key(key, bucket)
 				if (!((composite in device_hour_queries) || (composite in device_hour_blocked))) {
 					continue
@@ -184,7 +252,7 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 			comma, unknown_queries, unknown_blocked >> tmp
 		device_comma = ""
 		for (bucket = first_hour; bucket <= last_hour; bucket += 3600) {
-			if (!((bucket in unknown_hour_queries) || (bucket in unknown_hour_blocked))) {
+			if (masked_hour[bucket] || !((bucket in unknown_hour_queries) || (bucket in unknown_hour_blocked))) {
 				continue
 			}
 			printf "%s{\"bucket_start\":%d,\"queries\":%d,\"blocked\":%d}", \
@@ -201,6 +269,7 @@ function save_json_range(path, now, first_hour, last_hour, include_empty_devices
 		delete unknown_hour_queries[bucket]
 		delete unknown_hour_blocked[bucket]
 	}
+	clear_safe_hourly(first_hour, last_hour)
 	return replace_file(tmp, path)
 }
 

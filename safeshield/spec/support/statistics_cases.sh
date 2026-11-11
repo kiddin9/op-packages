@@ -1306,3 +1306,148 @@ DATA
 	! grep -F 'bucket' "$STATE" | grep -F '1787950800' >/dev/null
 	ss_spec_assert_file_contains "$STATE" "$(printf 'bucket\t1787958000\t1\t0')"
 )
+
+# A corrupt historical client bucket must never hold newer valid router data
+# hostage during a full cloud upload. The raw state stays available to debug.
+ss_case_statistics_historical_inconsistency_recovery() (
+	set -eu
+	TMP="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP"' EXIT HUP INT TERM
+	STATE="$TMP/state.tsv"
+	JSON="$TMP/statistics.json"
+	UPLOAD="$TMP/upload.json"
+	LEASES="$TMP/leases"
+	: >"$LEASES"
+	cat >"$STATE" <<'STATE'
+meta	1794034800	1794389700	10	2	0	0	6	1794389700	1	0	0	0	0	generation-recovery	135290	135290
+bucket	1794034800	0	0
+bucket	1794387600	10	2
+device	aa:bb:cc:dd:ee:ff	aa:bb:cc:dd:ee:ff	192.168.1.20	phone	10	3	*	*
+device_bucket	aa:bb:cc:dd:ee:ff	1794034800	6	2
+device_bucket	aa:bb:cc:dd:ee:ff	1794387600	4	1
+device	ip:192.168.1.30	*	192.168.1.30	*	3	1	*	*
+device_bucket	ip:192.168.1.30	1794387600	3	1
+STATE
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v upload_json_file="$UPLOAD" -v lease_file="$LEASES" \
+		-v snapshot_interval=60 -v retention_hours=168 \
+		-v upload_window_hours=2 -v fixed_now=1794389810 </dev/null
+
+	ss_spec_assert_file_contains "$JSON" '"totals":{"queries":10,"blocked":2}'
+	ss_spec_assert_file_contains "$JSON" '"sanitized_hours":1'
+	ss_spec_assert_file_contains "$UPLOAD" '"sanitized_hours":0'
+	ss_spec_assert_file_contains "$JSON" '"bucket_start":1794034800,"queries":0,"blocked":0'
+	ss_spec_assert_file_contains "$JSON" '"id":"aa:bb:cc:dd:ee:ff","mac":"aa:bb:cc:dd:ee:ff","ip":"192.168.1.20","hostname":"phone","identified":true,"queries":4,"blocked":1'
+	ss_spec_assert_file_contains "$JSON" '"id":"unknown","mac":"","ip":"","hostname":"Unknown devices","identified":false,"queries":3,"blocked":1'
+	ss_spec_assert_file_contains "$UPLOAD" '"totals":{"queries":10,"blocked":2}'
+	ss_spec_assert_file_contains "$STATE" "$(printf 'device_bucket\taa:bb:cc:dd:ee:ff\t1794034800\t6\t2')"
+	! grep -F '"bucket_start":1794034800,"queries":6' "$JSON" >/dev/null
+	# Restarting while the same bad flash-backed hour remains still produces
+	# a valid full snapshot. No manual reset or 7-day wait is necessary.
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v upload_json_file="$UPLOAD" -v lease_file="$LEASES" \
+		-v snapshot_interval=60 -v retention_hours=168 \
+		-v upload_window_hours=2 -v fixed_now=1794389870 </dev/null
+	ss_spec_assert_file_contains "$JSON" '"sanitized_hours":1'
+	ss_spec_assert_file_contains "$JSON" '"totals":{"queries":10,"blocked":2}'
+)
+
+# A source client can return with an older counter baseline than the global
+# dnsmasq epoch. Skip that poll's attribution and resume on the next good poll.
+ss_case_statistics_source_delta_overrun_guard() (
+	set -eu
+	TMP="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP"' EXIT HUP INT TERM
+	STATE="$TMP/state.tsv"
+	JSON="$TMP/statistics.json"
+	UPLOAD="$TMP/upload.json"
+	LEASES="$TMP/leases"
+	INPUT="$TMP/poll.tsv"
+	printf '%s\n' '1789000000 aa:bb:cc:dd:ee:ff 192.168.1.20 phone *' >"$LEASES"
+	cat >"$INPUT" <<'DATA'
+snapshot	one-epoch	udp	128	1	0	0	10	2
+client	192.168.1.20	4	1
+commit
+DATA
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v upload_json_file="$UPLOAD" -v lease_file="$LEASES" \
+		-v fixed_now=1787950800 <"$INPUT"
+	cat >"$INPUT" <<'DATA'
+snapshot	one-epoch	udp	128	1	0	0	20	5
+client	192.168.1.20	22	7
+commit
+DATA
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v upload_json_file="$UPLOAD" -v lease_file="$LEASES" \
+		-v fixed_now=1787950860 <"$INPUT"
+	ss_spec_assert_file_contains "$JSON" '"totals":{"queries":10,"blocked":3}'
+	ss_spec_assert_file_contains "$JSON" '"sanitized_hours":0'
+	! grep -F '"queries":18,"blocked":6' "$STATE" >/dev/null
+	cat >"$INPUT" <<'DATA'
+snapshot	one-epoch	udp	128	1	0	0	27	7
+client	192.168.1.20	26	8
+commit
+DATA
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v upload_json_file="$UPLOAD" -v lease_file="$LEASES" \
+		-v fixed_now=1787950920 <"$INPUT"
+	ss_spec_assert_file_contains "$JSON" '"totals":{"queries":17,"blocked":5}'
+	ss_spec_assert_file_contains "$JSON" '"id":"aa:bb:cc:dd:ee:ff","mac":"aa:bb:cc:dd:ee:ff","ip":"192.168.1.20","hostname":"phone","identified":true,"queries":4,"blocked":1'
+	ss_spec_assert_file_contains "$JSON" '"sanitized_hours":0'
+)
+
+# Two individually valid clients can jointly exceed the router count, and an
+# invalid blocked total must not break the JSON schema or poison other hours.
+ss_case_statistics_aggregate_hour_guard() (
+	set -eu
+	TMP="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP"' EXIT HUP INT TERM
+	STATE="$TMP/state.tsv"
+	JSON="$TMP/statistics.json"
+	LEASES="$TMP/leases"
+	: >"$LEASES"
+	cat >"$STATE" <<'STATE'
+meta	1787950800	1787954400	7	9	0	0	6	1787954400
+bucket	1787950800	2	5
+bucket	1787954400	5	4
+device	aa:bb:cc:dd:ee:ff	aa:bb:cc:dd:ee:ff	192.168.1.20	phone	4	2	*	*
+device_bucket	aa:bb:cc:dd:ee:ff	1787950800	2	1
+device_bucket	aa:bb:cc:dd:ee:ff	1787954400	2	1
+device	11:22:33:44:55:66	11:22:33:44:55:66	192.168.1.30	laptop	5	2	*	*
+device_bucket	11:22:33:44:55:66	1787950800	1	1
+device_bucket	11:22:33:44:55:66	1787954400	4	1
+STATE
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v lease_file="$LEASES" -v fixed_now=1787954400 </dev/null
+	ss_spec_assert_file_contains "$JSON" '"totals":{"queries":7,"blocked":6}'
+	ss_spec_assert_file_contains "$JSON" '"bucket_start":1787950800,"queries":2,"blocked":2'
+	ss_spec_assert_file_contains "$JSON" '"sanitized_hours":2'
+	# The second hour has six client queries but only five router queries.
+	# Both affected hours must be isolated without changing router counters.
+	! grep -F '"bucket_start":1787950800,"queries":2,"blocked":1' "$JSON" >/dev/null
+)
+
+# Capacity overflow is an anonymous aggregate, not an invalid non-MAC client.
+ss_case_statistics_overflow_identity_projection() (
+	set -eu
+	TMP="$(ss_spec_tmpdir)"
+	trap 'rm -rf "$TMP"' EXIT HUP INT TERM
+	STATE="$TMP/state.tsv"
+	JSON="$TMP/statistics.json"
+	LEASES="$TMP/leases"
+	: >"$LEASES"
+	cat >"$STATE" <<'STATE'
+meta	1787950800	1787950800	10	3	0	0	6	1787950800
+device	other	*	*	Other devices	4	1	*	*
+device_bucket	other	1787950800	4	1
+bucket	1787950800	10	3
+source	epoch	udp	128	1	0	10	3	1	0	0	5
+STATE
+	ss_statistics_awk -v state_file="$STATE" -v json_file="$JSON" \
+		-v lease_file="$LEASES" -v fixed_now=1787950800 </dev/null
+	ss_spec_assert_file_contains "$JSON" '"id":"unknown","mac":"","ip":"","hostname":"Unknown devices","identified":false,"queries":4,"blocked":1'
+	ss_spec_assert_file_not_contains "$JSON" '"id":"other"'
+	ss_spec_assert_file_contains "$JSON" '"sanitized_hours":0'
+	ss_spec_assert_file_contains "$JSON" '"untracked_queries":0,"untracked_blocked":0'
+	ss_spec_assert_file_contains "$STATE" "$(printf 'source\tepoch\tudp\t128\t1\t0\t10\t3\t1\t0\t0\t5')"
+)

@@ -487,6 +487,19 @@ consistent two-hour projection of the local hourly data. A full retained snapsho
 is sent on initial synchronization, after a failed upload has recovered, and
 periodically (approximately every 12 hours) to reconcile any missed window.
 
+To avoid one malformed historical client hour blocking the entire retained
+statistics upload, the collector checks per-client dnsmasq deltas against the
+router-wide delta before recording them. A poll with inconsistent attribution
+keeps the router counters but skips that poll's untrustworthy client breakdown.
+When exporting JSON, any retained hour with client attribution exceeding the
+router counters (or blocked counts exceeding queries) is projected with router
+hourly totals intact and the affected hour's client attribution omitted. This
+also repairs the cloud projection of previously stored inconsistent hours after
+upgrade without deleting or rewriting the raw TSV/journal history. The optional
+`source.sanitized_hours` field counts hours handled this way in each JSON
+projection. Only the affected client-hour breakdown is unavailable; the other
+hours and router totals remain intact. Schema v3 and upload ordering are unchanged.
+
 The uploader preserves the exact pending JSON across network retries. If the Hub
 committed a request but the HTTP acknowledgement was lost, retrying the same
 `generation_id` and `snapshot_seq` is therefore idempotent. An HTTP 401 clears

@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.27-r1] - 2026-11-11
+
+- Bump version for release.
+
+## [0.3.26-r2] - 2026-11-11
+
+### Fixed
+
+- Fixed an issue where an error in per-device statistics for a single historical hour could block the upload of all router protection statistics.
+- Added safeguards to prevent incorrect per-device statistics from accumulating when DNS counters change unexpectedly.
+
+### Improved
+
+- Preserved router-wide statistics while excluding only the affected per-device details from uploads. The original stored statistics remain unchanged.
+- Added the number of sanitized hourly buckets to the upload JSON for easier troubleshooting.
+
+### Tests
+
+- Added tests covering historical statistics errors, excessive per-device counter values, preservation of valid statistics, recovery after restarts, and anonymous device aggregation.
+
 ## [0.3.26-r1] - 2026-11-02
 
 - Bump version for release.
