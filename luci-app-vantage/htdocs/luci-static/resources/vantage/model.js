@@ -216,9 +216,12 @@ return baseclass.extend({
 		return Math.max(0, Math.min(100, (1 - di / dt) * 100));
 	},
 
-	/* { pct, cores: [ pct, ... ] } between two parseStat() results */
+	/* { pct, cores: [ pct, ... ] } between two parseStat() results; null
+	   for samples under a second apart (100 ticks a core), which would read
+	   a burst, such as the router building the page, as the load */
 	cpuUsage: function(prev, cur) {
 		if (!prev || !cur) return null;
+		if (cur.all.total - prev.all.total < 100 * Math.max(1, cur.cores.length)) return null;
 		var self = this, pct = this.cpuPercent(prev.all, cur.all);
 		if (pct == null) return null;
 		return { pct: pct, cores: cur.cores.map(function(c, i) { return self.cpuPercent(prev.cores[i], c); }) };
@@ -647,10 +650,13 @@ return baseclass.extend({
 			ifs.forEach(function(i) {
 				var ic = obj(i.config), ifname = typeof i.ifname === 'string' ? i.ifname : null;
 				/* luci.vantage wireless has no iwinfo part: the view's
-				   per-interface iwinfo info replies stand in for it */
+				   iwinfo info replies stand in for it, and for a network
+				   without one (the view asks once a radio), hostapd's
+				   get_status gives the same BSSID and SSID */
 				var iiw = obj(i.iwinfo || (ifname && own(iw, ifname) ? iw[ifname] : null));
 				if (ifname) { radio.ifnames.push(ifname); wlNames.push(ifname); }
 				var st = ifname ? obj(hstat[ifname]) : {};
+				var stText = function(v) { return typeof v === 'string' ? v : ''; };
 				var air = obj(st.airtime);
 				if (num(air.time) > 0 || num(air.utilization) > 0)
 					radio.airtime = Math.max(radio.airtime || 0, Math.min(100, num(air.utilization) / 2.55));
@@ -660,13 +666,13 @@ return baseclass.extend({
 					section: typeof i.section === 'string' ? i.section : null,
 					radio: rname,
 					band: band,
-					ssid: fmt.safeText(ic.ssid || iiw.ssid || '', 32),
+					ssid: fmt.safeText(ic.ssid || iiw.ssid || stText(st.ssid) || '', 32),
 					mode: ic.mode || 'ap',
 					hidden: ic.hidden === true || ic.hidden === '1',
 					security: wifi.security(ic.encryption),
 					pmf: +ic.ieee80211w || 0,
 					networks: arr(ic.network),
-					bssid: fmt.mac(iiw.bssid || ic.macaddr || ''),
+					bssid: fmt.mac(iiw.bssid || stText(st.bssid) || ic.macaddr || ''),
 					up: radio.up && !!ifname && (!devs[ifname] || devs[ifname].up !== false),
 					clients: 0
 				};

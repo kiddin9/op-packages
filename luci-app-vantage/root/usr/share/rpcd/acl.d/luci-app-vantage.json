@@ -30,7 +30,7 @@
 		}
 	},
 	"luci-app-vantage-names": {
-		"description": "Vantage dashboard: name stations (luci.vantage set_alias: validated names in /etc/config/vantage only, at most 512)",
+		"description": "Vantage dashboard: name stations and keep a station's weak signal out of the warnings (luci.vantage set_alias and set_quiet: validated names and quiet MACs in /etc/config/vantage only, at most 512 each)",
 		"read": {
 			"ubus": {
 				"uci": [ "get" ]
@@ -39,7 +39,7 @@
 		},
 		"write": {
 			"ubus": {
-				"luci.vantage": [ "set_alias" ]
+				"luci.vantage": [ "set_alias", "set_quiet" ]
 			}
 		}
 	}

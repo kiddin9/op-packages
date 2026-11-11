@@ -86,7 +86,7 @@ return baseclass.extend({
 		}
 
 		/* radios and signal; neither applies to a wired-only device */
-		if (!model.wired) this.wifiHealth(model, out);
+		if (!model.wired) this.wifiHealth(model, out, live.quiet);
 
 		/* storage */
 		var root = (dev.storage || [])[0];
@@ -98,24 +98,28 @@ return baseclass.extend({
 
 	/* the Wi-Fi and Signal checks, appended to out; an SSID without
 	   clients is idle, not a fault */
-	wifiHealth: function(model, out) {
+	wifiHealth: function(model, out, quietMacs) {
 		var radios = model.radios || [], nSsid = (model.ssids || []).length;
 		var off = radios.filter(function(r) { return r.disabled; }), down = radios.filter(function(r) { return !r.disabled && !r.up; });
 		var idle = (model.ssids || []).filter(function(s) { return s.up && !s.clients; });
 		if (!radios.length) out.push({ id: 'radios', level: 'info', title: _('Wi-Fi'), value: _('None'), reason: _('No radios reported'), detail: _('This device reports no radios'), page: PAGES.wireless });
 		else if (down.length) out.push({ id: 'radios', level: 'err', title: _('Wi-Fi'), value: fmt.N_(down.length, '%d radio down', '%d radios down').format(down.length), reason: _('%s is not up').format(down[0].bandLabel),
 			detail: _('%s (%s) is enabled but not up').format(down[0].id, down[0].bandLabel), page: PAGES.wireless });
-		else if (off.length) out.push({ id: 'radios', level: 'warn', title: _('Wi-Fi'), value: fmt.N_(off.length, '%d radio off', '%d radios off').format(off.length), reason: _('%s is disabled').format(off[0].bandLabel),
+		/* a radio switched off in the configuration is a choice, not a
+		   fault: shown, never tinted or counted as needing attention */
+		else if (off.length) out.push({ id: 'radios', level: 'info', title: _('Wi-Fi'), value: fmt.N_(off.length, '%d radio off', '%d radios off').format(off.length), reason: _('%s is disabled').format(off[0].bandLabel),
 			detail: _('%s (%s) is disabled').format(off[0].id, off[0].bandLabel), page: PAGES.wireless });
 		else out.push({ id: 'radios', level: 'ok', title: _('Wi-Fi'), value: fmt.N_(radios.length, '%d radio up', '%d radios up').format(radios.length),
 			reason: idle.length ? fmt.N_(nSsid, '%d SSID · %d idle', '%d SSIDs · %d idle').format(nSsid, idle.length) : fmt.N_(nSsid, '%d SSID on air', '%d SSIDs on air').format(nSsid),
 			detail: idle.length ? fmt.N_(nSsid, '%d SSID broadcasting, %d idle', '%d SSIDs broadcasting, %d idle').format(nSsid, idle.length) : fmt.N_(nSsid, '%d SSID broadcasting', '%d SSIDs broadcasting').format(nSsid),
 			page: PAGES.wireless });
 
-		/* signal */
-		var clients = model.clients || [];
-		var weak = clients.filter(function(c) { return c.signal != null && c.signal < WEAK_DBM; }).sort(function(a, b) { return a.signal - b.signal; });
-		var heard = clients.filter(function(c) { return c.signal != null; }).sort(function(a, b) { return a.signal - b.signal; });
+		/* signal; a station set quiet (#110: far away on purpose) is left
+		   out, of the warning and of the weakest */
+		var clients = model.clients || [], quiet = quietMacs || {};
+		var counted = clients.filter(function(c) { return !quiet[c.mac]; });
+		var weak = counted.filter(function(c) { return c.signal != null && c.signal < WEAK_DBM; }).sort(function(a, b) { return a.signal - b.signal; });
+		var heard = counted.filter(function(c) { return c.signal != null; }).sort(function(a, b) { return a.signal - b.signal; });
 		if (!clients.length) out.push({ id: 'signal', level: 'info', title: _('Signal'), value: _('No clients'), reason: '', detail: _('No stations are associated right now'), page: PAGES.wireless });
 		else if (weak.length) out.push({ id: 'signal', level: 'warn', title: _('Signal'), value: _('%d weak').format(weak.length),
 			/* the level stays in one piece when the line wraps */
@@ -125,6 +129,8 @@ return baseclass.extend({
 			   (the weakest's details where the layout hides that list) */
 			client: weak[0].mac, list: weak.length > 1 ? 'weak' : null });
 		/* all fine: the weakest, which is how close the network is to a problem */
+		else if (!counted.length) out.push({ id: 'signal', level: 'ok', title: _('Signal'), value: fmt.DASH,
+			reason: _('No warnings asked for'), detail: _('Every client here is set not to warn about its signal'), page: PAGES.wireless });
 		else out.push({ id: 'signal', level: 'ok', title: _('Signal'), value: heard.length ? fmt.dbm(heard[0].signal) : fmt.DASH,
 			reason: !heard.length ? _('Not reported by the driver') : heard.length === 1 ? _('The only measured client')
 				: fmt.N_(heard.length, 'Weakest of %d client', 'Weakest of %d clients').format(heard.length),
@@ -252,7 +258,7 @@ return baseclass.extend({
 		(radios || []).forEach(function(r) {
 			var v = own(rates, r.id) ? num(rates[r.id].rx) + num(rates[r.id].tx) : 0;
 			var notes = [];
-			if (r.disabled) notes.push({ level: 'warn', text: _('Radio is disabled') });
+			if (r.disabled) notes.push({ level: 'info', text: _('Radio is disabled') });
 			else if (!r.up) notes.push({ level: 'err', text: _('Radio is enabled but not up') });
 			if (top === r.id && sum > 0 && (radios.length > 1)) notes.push({ level: 'info', text: _('Busiest radio: %s of Wi-Fi traffic').format(fmt.pct(v / sum * 100)) });
 			if (r.legacy) notes.push({ level: 'info', text: r.legacy === 1 ? _('1 older device (Wi-Fi 4 or earlier) slows airtime') : _('%d older devices (Wi-Fi 4 or earlier) slow airtime').format(r.legacy) });

@@ -804,7 +804,7 @@ eq(fmt.euiccText({ sgp32: true, ipae_supported: true, svn: '2.5.0', ipa: 'ipae' 
 eq(fmt.euiccText({ sgp32: false, svn: '2.2.2' }), 'SGP.22 2.2.2', 'euicc: an SGP.22 card');
 eq(fmt.euiccText(null), null, 'euicc: nothing read, nothing said');
 eq(fmt.ipaText({ sgp32: true, ipae_supported: true, ipa: 'ipae' }),
-   'in the card (IPAe) — the card and its eIM manage the profiles; the router has no ES10 access',
+   'in the card (IPAe) — the card and its eIM manage the profiles; the router has no ES10 access (modem setting “SGP.32 IPA” hands it over)',
    'ipa: the card runs itself');
 eq(fmt.ipaText({ sgp32: true, ipae_supported: true, ipa: 'ipad' }),
    'on the device (IPAd); the card could also run its own', 'ipa: device IPA on a card that has its own');

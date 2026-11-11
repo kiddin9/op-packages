@@ -592,7 +592,8 @@ h2, h3{
 	animation: vt-ring-soft 5s ease-out infinite;
 }
 .vt-app .vt-orb-warn::after, .vt-app .vt-orb-err::after { animation: vt-ring 2.6s ease-out infinite; }
-/* paused (overview.js setMotion): the ring stands still */
+/* paused, or another window has the focus (overview.js setMotion): the
+   ring stands still */
 .vt-app.vt-still .vt-orb::after { animation: none; }
 .vt-app .vt-orb-core { width: 14px; height: 14px; border-radius: 50%; background: var(--vt-oc); box-shadow: 0 0 0 4px color-mix(in oklab, var(--vt-oc) 22%, transparent); }
 .vt-app .vt-orb-warn { --vt-oc: var(--vt-warn); }
@@ -628,6 +629,12 @@ h2, h3{
 .vt-app .vt-live-err .vt-live-beat { --vt-beat-c: var(--vt-warn); }
 .vt-app .vt-live-ok .vt-live-beat::after { animation: vt-beat-soft 5s ease-out infinite; }
 .vt-app .vt-live-err .vt-live-beat::after { animation: vt-beat 2s ease-out infinite; }
+.vt-app.vt-still .vt-live-beat::after { animation: none; }
+/* the client drawer's "Don't warn about its signal" (#110) */
+.vt-app .vt-quiet { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 var(--vt-sp-3); font-size: var(--vt-fs-sm); color: var(--vt-text-2); }
+.vt-app .vt-quiet input { margin: 0; }
+.vt-app .vt-quiet-err { color: var(--vt-err); }
+.vt-app .vt-quiet-err:empty { display: none; }
 @keyframes vt-beat { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(2.75); opacity: 0; } }
 @keyframes vt-beat-soft { 0% { transform: scale(1); opacity: .6; } 70%, 100% { transform: scale(2.2); opacity: 0; } }
 
@@ -1058,6 +1065,8 @@ h2, h3{
 .vt-app .vt-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--vt-ok); }
 .vt-app .vt-status-warn::before { background: var(--vt-warn); }
 .vt-app .vt-status-err::before { background: var(--vt-err); }
+/* a radio switched off on purpose: grey, not a warning */
+.vt-app .vt-status-off::before { background: var(--vt-text-3); }
 .vt-app .vt-icon-action {
 	display: inline-flex; align-items: center; justify-content: center; flex: none;
 	width: var(--vt-ctl); height: var(--vt-ctl); padding: 0; margin: 0; border: 0; border-radius: var(--vt-r-ctl);
@@ -1578,3 +1587,7 @@ h2, h3{
 	.vt-app .vt-flow-3.vt-flow-on { stroke-width: 3; }
 	.vt-app .vt-flows { display: none; }
 }
+/* Low-power router (overview.js applyPower): the same still picture */
+.vt-app.vt-low .vt-flow-on { opacity: .8; }
+.vt-app.vt-low .vt-flow-3.vt-flow-on { stroke-width: 3; }
+.vt-app.vt-low .vt-flows { display: none; }

@@ -7,7 +7,8 @@
  * from before; menu-vantage.js lookValue). One canvas, no libraries: a
  * frame is a handful of batched draws, at most about 60 a second, and nothing runs while the
  * window is in the background. With reduced motion it draws one still
- * frame. Logging in speeds it up while the form posts.
+ * frame, with Low-power router (Appearance, picked the same way) none: the
+ * page grid alone. Logging in speeds it up while the form posts.
  *
  * This page means there is no session, so it also drops the history the
  * dashboard kept in this tab (overview.js STORE_KEY): station MACs and samples
@@ -19,7 +20,10 @@
 	var v = [ null, document.documentElement.getAttribute('data-vt-look-login'), null ], ok = [ 'grid', 'stars', 'none' ], pick = 'grid', i;
 	try { v[0] = localStorage.getItem('vantage.login.own'); v[2] = localStorage.getItem('vantage.login'); } catch (e) {}
 	for (i = 2; i >= 0; i--) if (ok.indexOf(v[i]) >= 0) pick = v[i];
-	if (pick === 'none') return;
+	var p = [ null, document.documentElement.getAttribute('data-vt-look-power'), null ], power = 'normal';
+	try { p[0] = localStorage.getItem('vantage.power.own'); p[2] = localStorage.getItem('vantage.power'); } catch (e) {}
+	for (i = 2; i >= 0; i--) if (p[i] === 'normal' || p[i] === 'low') power = p[i];
+	if (pick === 'none' || power === 'low') return;
 	var cv = document.createElement('canvas'), ctx = cv.getContext && cv.getContext('2d');
 	if (!ctx || typeof Path2D !== 'function') return;
 	cv.className = 'vt-login-sky';

@@ -28,6 +28,9 @@ var NAME_MAX = 48;
 /* client sections read from /etc/config/vantage; the rpcd plugin refuses
    to store more */
 var ALIAS_MAX = 512;
+/* quiet sections (#110: a station whose weak signal stays out of the
+   warnings), likewise */
+var QUIET_MAX = 512;
 
 /* C0 (incl. tab, CR, LF), DEL and C1 controls */
 var CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
@@ -66,6 +69,7 @@ function str(v) { return typeof v === 'string' ? v : ''; }
 return baseclass.extend({
 	NAME_MAX: NAME_MAX,
 	ALIAS_MAX: ALIAS_MAX,
+	QUIET_MAX: QUIET_MAX,
 	SOURCES: SOURCES,
 	ICONS: ICONS,
 
@@ -181,6 +185,19 @@ return baseclass.extend({
 			var mac = self.normMac(s.mac), v = self.validateAlias(s.name);
 			if (!mac || out[mac] || !v.ok || !v.value) return;
 			out[mac] = { sid: str(s['.name']), name: v.value, icon: self.validIcon(s.icon) };
+		});
+		return out;
+	},
+
+	/* quiet sections of /etc/config/vantage -> { mac: true }, the stations
+	   whose weak signal the dashboard leaves out of its warnings; past
+	   QUIET_MAX are ignored */
+	quietSet: function(sections) {
+		var out = Object.create(null), self = this, n = 0;
+		(Array.isArray(sections) ? sections : []).forEach(function(s) {
+			if (!s || s['.type'] !== 'quiet' || ++n > QUIET_MAX) return;
+			var mac = self.normMac(s.mac);
+			if (mac) out[mac] = true;
 		});
 		return out;
 	},

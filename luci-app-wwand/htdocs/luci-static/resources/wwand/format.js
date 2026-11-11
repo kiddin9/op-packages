@@ -288,7 +288,7 @@ return baseclass.extend({
 			return null;
 
 		if (e.ipa == 'ipae')
-			return _('in the card (IPAe) — the card and its eIM manage the profiles; the router has no ES10 access');
+			return _('in the card (IPAe) — the card and its eIM manage the profiles; the router has no ES10 access (modem setting “SGP.32 IPA” hands it over)');
 
 		if (e.ipa == 'ipad')
 			return e.ipae_supported

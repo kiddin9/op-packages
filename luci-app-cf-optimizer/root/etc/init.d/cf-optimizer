@@ -21,12 +21,11 @@ start_service() {
 	procd_set_param respawn 3600 5 0
 	procd_set_param stdout 1
 	procd_set_param stderr 1
-	procd_set_param pidfile /var/run/cf-optimizer/cf-optimizer.pid
 	procd_close_instance
 }
 
 stop_service() {
-	rm -f /var/run/cf-optimizer/cf-optimizer.pid
+	:
 }
 
 service_stopped() {
@@ -39,10 +38,8 @@ service_stopped() {
 }
 
 reload_service() {
-	"$PROG" sync-hosts >/dev/null 2>&1
 	stop
 	start
-	"$PROG" run >/dev/null 2>&1 &
 }
 
 service_triggers() {

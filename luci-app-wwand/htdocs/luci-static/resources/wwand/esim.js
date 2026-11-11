@@ -17,7 +17,7 @@
    view — `esimSlot` is the physical slot its eSIM reads were made against, so
    this panel acts on the card it listed. */
 
-var callSwitchSlot = wrpc.switchSlot;
+var callSwitchSlot = wrpc.switchSlotAsk;
 var callPinLock = wrpc.pinLock;
 var callEsim = wrpc.esim;
 

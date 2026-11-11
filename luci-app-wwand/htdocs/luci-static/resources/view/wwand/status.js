@@ -20,7 +20,7 @@ var callDatapath = wrpc.datapath;
 var callGps = wrpc.gps;
 var callCtxStatus = wrpc.ctxStatus;
 var callSlots = wrpc.slots;
-var callSwitchSlot = wrpc.switchSlot;
+var callSwitchSlot = wrpc.switchSlotAsk;
 
 /* value formatters live in the shared wwand.format module */
 var fmtList = fmt.fmtList;
@@ -99,6 +99,17 @@ function renderConnections(details) {
 			   markup. */
 			[ _('State'), E('strong', { 'style': 'color:%s'.format(st == 'CONNECTED' ? '#3c3' : '#da3') }, [ st ]) ]
 		];
+		/* `option iccid`: the card this connection needs and where its switch
+		   stands (daemon sim_binding). Text children only — the reason is
+		   daemon text. */
+		var sb = d.st.sim || d.cfg.sim;
+		if (sb && sb.want) {
+			var sbs = { ok: _('in use'), switching: _('switching to it'), refused: _('not available'),
+			            failed: _('switch failed'), released: _('the modem runs another card') }[sb.state] || '';
+			var bad = (sb.state == 'refused' || sb.state == 'failed' || sb.state == 'released');
+			rows.push([ _('SIM card'), E('span', bad ? { 'style': 'color:#e33' } : {},
+				[ sb.want + (sbs ? ' · ' + sbs : '') + (sb.reason && sb.state != 'ok' ? ' — ' + sb.reason : '') ]) ]);
+		}
 		if (v4) {
 			rows.push([ _('IPv4'), '%s/%d'.format(v4.addr, v4.prefix) ]);
 			rows.push([ _('IPv4 gateway'), v4.gateway || '—' ]);

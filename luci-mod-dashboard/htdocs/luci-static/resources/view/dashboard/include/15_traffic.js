@@ -3,18 +3,21 @@
 'require view.dashboard.lib.charts as charts';
 'require view.dashboard.lib.history as history';
 
-const NET = 4;
+const NET = 4, WAN = 5;
 
-function rate(cur, prev, seconds, name, index) {
+function rate(cur, prev, seconds, index) {
+	const name = cur?.[WAN];
+	if (!name || name !== prev?.[WAN])
+		return null;
+
 	const a = prev?.[NET]?.[name];
 	const b = cur?.[NET]?.[name];
 
 	if (!Array.isArray(a) || !Array.isArray(b) || !Number.isFinite(seconds) || seconds <= 0)
 		return null;
 
-	// Older rpcd instances provide only two fields. Crossing to the new
-	// format, like a change of ifindex, starts a fresh pair of samples.
-	if (a[2] !== b[2] || a[2] === null || b[2] === null)
+	// Do not calculate rates across a device recreation or an uncertain read.
+	if (a[2] == null || a[2] !== b[2])
 		return null;
 
 	for (let i = 0; i < 2; i++)
@@ -24,15 +27,8 @@ function rate(cur, prev, seconds, name, index) {
 	return (b[index] - a[index]) * 8 / seconds;
 }
 
-function selectedRate(cur, prev, seconds, index) {
-	const current = cur?.[5]?.devices, previous = prev?.[5]?.devices;
-	if (current?.length !== 1 || previous?.length !== 1 || current[0] !== previous[0])
-		return null;
-	return rate(cur, prev, seconds, current[0], index);
-}
-
 function points(index) {
-	const points = history.series((cur, prev, seconds) => selectedRate(cur, prev, seconds, index));
+	const points = history.series((cur, prev, seconds) => rate(cur, prev, seconds, index));
 	const last = points[points.length - 1];
 	if (last && history.now - last.t > history.step * 2.5)
 		points.push({ t: history.now, v: null });
@@ -57,11 +53,12 @@ return baseclass.extend({
 		const available = down.some(p => p.v != null) || up.some(p => p.v != null);
 		const current = last(down) != null && last(up) != null;
 		const sample = history.samples[history.samples.length - 1];
-		const device = sample?.[5]?.devices?.[0];
+		const device = sample?.[WAN];
 		const body = [];
 
 		if (available) {
-			body.push(charts.lines({
+			body.push(this.plot = charts.lines({
+				node: this.plot,
 				span: history.span(),
 				max: scale.max,
 				ticks: scale.ticks,
@@ -73,14 +70,15 @@ return baseclass.extend({
 			]));
 		}
 		if (!current)
-			body.push(charts.empty(history.failed || !sample?.[5]?.devices?.length
-				? _('No data received') : available ? _('Waiting for a new sample...') : history.status()));
+			body.push(charts.empty(history.failed ? _('No data received')
+				: !sample ? history.status() : !device ? _('Not connected') : available ? _('Waiting for a new sample...') : history.status()));
 
 		// No null children: older LuCI DOM helpers render them as literal text.
-		return { charts: [ { id: 'wan', node: charts.card({
+		return { charts: [ { id: 'wan', node: this.chart = charts.card({
+			node: this.chart,
 			title: this.title,
 			desc: device ? device + ' · ' + scale.unit : scale.unit,
-			body: [ E('section', { 'class': 'dashboard-traffic-source' }, body) ]
+			body: body
 		}) } ] };
 	}
 });

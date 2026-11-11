@@ -433,7 +433,8 @@ return baseclass.extend({
 		bind(o);
 
 		o = s.taboption(tab, form.Value, 'sim_slot', _('SIM slot'),
-			_('Physical SIM slot to activate on multi-slot / eSIM modems (0 = leave as-is). The list shows the slots the modem reports.'));
+			_('Physical SIM slot to activate on multi-slot / eSIM modems (0 = leave as-is). The list shows the slots the modem reports.') + ' ' +
+			_('An interface bound to a SIM card (its “SIM card” setting) overrides this: its start switches to the slot or eSIM profile that holds the card, and the modem comes up on that slot already when the interface starts automatically. The slot set here applies only while no such interface needs another card.'));
 		o.placeholder = '0';
 		o.datatype = 'uinteger';
 		bind(o);
@@ -519,6 +520,16 @@ return baseclass.extend({
 				this.vallist = allVals;
 			}
 		};
+
+		/* opt-in, never automatic: declaring a device IPA switches the card's
+		   own IPA (IPAe) off, and a fleet may rely on that IPA polling its eIM
+		   (wwand docs/reference.md, "SGP.32 IoT cards") */
+		o = s.taboption(tab, form.ListValue, 'ipa_mode', _('SGP.32 IPA'),
+			_('Who runs an SGP.32 IoT eUICC that also has its own IPA (IPAe). By default the card keeps its own IPA, and the router has no access to the card\'s profiles. "Router (IPAd)" makes the router announce its own IPA to the card. The card then turns its own IPA off and lets the router manage the profiles: eSIM page, lpac, eIM plugin.'));
+		o.value('', _('Card (IPAe, default)'));
+		o.value('ipad', _('Router (IPAd)'));
+		o.optional = true;
+		bind(o);
 
 		o = s.taboption(tab, form.Value, 'pincode', _('SIM PIN'),
 			_('Default SIM PIN for this modem, entered on each start. Empty = unlocked SIM. Per-card overrides live in the SIMs list.'));

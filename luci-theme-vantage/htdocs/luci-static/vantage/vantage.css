@@ -55,7 +55,11 @@
 	--ctl-h: 36px;              /* every control: inputs, selects, buttons, tabs, chips */
 	--label-w: 180px;           /* form label column */
 	--field-max: 360px;         /* widest single-line field */
-	--content-max: 1320px;
+	--content-max: 1320px;      /* content column, on windows up to ~1920px */
+	--content-wide: 2400px;     /* wider windows: the column grows to this */
+	/* the column's width with its padding: grows with the window past
+	   1920px, ~200px clear each side, so 2K and 4K screens at 100% fill */
+	--main-max: clamp(calc(var(--content-max) + 2 * var(--sp-6)), 100% - 400px, calc(var(--content-wide) + 2 * var(--sp-6)));
 
 	/* light: cool paper grey, olive accent text */
 	--bg: #e9ecef;
@@ -620,7 +624,7 @@ a.vt-crumb:hover { color: var(--text); }
 .vt-icon-btn .vt-fill, .vt-pal .vt-fill, .vt-appearance .vt-fill { fill: currentColor; stroke: none; }
 .vt-icon-btn[aria-expanded="true"] { background: var(--s3); color: var(--text); border-color: var(--line); }
 
-/* Appearance (menu-vantage.js), under the colour-theme button: each
+/* Appearance (menu-vantage.js), under the gear button: each
    setting a native radio group drawn as segments, like the page tabs */
 .vt-appearance {
 	position: fixed; z-index: 1100;
@@ -668,7 +672,10 @@ a.vt-crumb:hover { color: var(--text); }
 	color: var(--text-2);
 	font-size: var(--fs-sm);
 	white-space: nowrap;
+	text-decoration: none !important;
 }
+/* a link to Status → Overview (header.ut), drawn like the icon buttons */
+.vt-host:hover { background: var(--s3); border-color: var(--line-2); }
 .vt-host b { color: var(--text); font-weight: 600; }
 .vt-host span { overflow: hidden; text-overflow: ellipsis; }
 .vt-host-sep { color: var(--text-3); }
@@ -717,6 +724,8 @@ html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-
 	html[data-vt-live="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::before, html[data-vt-alert="warn"] #indicators > span[data-indicator="poll-status"][data-style="active"]::before { background: var(--warn); }
 	html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::before { background: var(--err); }
 }
+/* another window has the focus, or Low-power router is on (menu-vantage.js): no pulse */
+:is(html[data-vt-blur], html[data-vt-power="low"]) #indicators > span[data-indicator="poll-status"][data-style="active"]::after { animation: none; }
 @keyframes vt-live-soft { 0% { transform: scale(1); opacity: .6; } 70%, 100% { transform: scale(2.2); opacity: 0; } }
 @keyframes vt-live { 0% { transform: scale(1); opacity: 1; } 70%, 100% { transform: scale(2.7); opacity: 0; } }
 #indicators > span[data-indicator="poll-status"][data-style="inactive"]::before {
@@ -746,7 +755,7 @@ html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-
    level (.vt-pagetabs shares the .cbi-tabmenu rules below). They scroll with
    the page; the current crumb in the top bar switches between them. */
 .vt-tabs {
-	width: 100%; max-width: calc(var(--content-max) + 2 * var(--sp-6));
+	width: 100%; max-width: var(--main-max);
 	margin: 0 auto; padding: var(--sp-6) var(--sp-6) 0;
 }
 .vt-tabs:not([hidden]) + .vt-main { padding-top: var(--sp-5); }
@@ -755,7 +764,7 @@ html[data-vt-alert="err"] #indicators > span[data-indicator="poll-status"][data-
 .vt-main {
 	flex: 1 1 auto;
 	width: 100%;
-	max-width: calc(var(--content-max) + 2 * var(--sp-6));
+	max-width: var(--main-max);
 	padding: var(--sp-6);
 	margin: 0 auto;
 }
@@ -1237,7 +1246,9 @@ input[readonly] { cursor: default; }
 	   one under the pointer or the keyboard on --s4, the keyboard's with
 	   the accent bar */
 	:is(.vt-main, .modal) select:not([multiple], [size], [style*="width:auto"], .vt-app *) option::checkmark { display: none; }
-	:is(.vt-main, .modal) select:not([multiple], [size], [style*="width:auto"], .vt-app *) option:checked { color: var(--accent-text); font-weight: 600; background: var(--accent-soft); }
+	/* the tint over an opaque fill: apps that copy a select's option colour
+	   onto their own list (PassWall's node picker) would get a see-through one */
+	:is(.vt-main, .modal) select:not([multiple], [size], [style*="width:auto"], .vt-app *) option:checked { color: var(--accent-text); font-weight: 600; background: linear-gradient(var(--accent-soft) 0 0) var(--s2); }
 	:is(.vt-main, .modal) select:not([multiple], [size], [style*="width:auto"], .vt-app *) option:is(:hover, :focus-visible) { background: var(--s4); color: var(--text); outline: none; }
 	:is(.vt-main, .modal) select:not([multiple], [size], [style*="width:auto"], .vt-app *) option:focus-visible { box-shadow: inset 2px 0 0 var(--accent-text); }
 	:is(.vt-main, .modal) select:not([multiple], [size], [style*="width:auto"], .vt-app *) option:disabled { color: var(--text-3); background: none; cursor: not-allowed; }
@@ -2671,6 +2682,8 @@ html:not([data-darkmode="true"]) .vt-login-page::before {
 	background: var(--info-soft);
 }
 .vt-login-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* a plugin's guidance (sysauth.ut) sits in the form, spaced by its gap */
+.vt-login-form > :is(.vt-login-error, .vt-login-info) { margin: 0; }
 .vt-field { display: flex; flex-direction: column; gap: 6px; }
 .vt-field-label { color: var(--text-3); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .vt-field input {

@@ -32,6 +32,8 @@ function checked(decl) {
 	};
 }
 
+var callSwitchSlot = checked({ object: 'wwand', method: 'modem_sim_switch_slot', params: [ 'modem', 'slot', 'force' ], expect: {} });
+
 return baseclass.extend({
 	/* --- status flavours -------------------------------------------------
 	   `status` unwraps the modems map (what the views iterate);
@@ -78,7 +80,21 @@ return baseclass.extend({
 
 	/* --- SIM / eSIM ------------------------------------------------------ */
 	slots:      rpc.declare({ object: 'wwand', method: 'modem_sim_slots', params: [ 'modem' ], expect: {} }),
-	switchSlot: checked({ object: 'wwand', method: 'modem_sim_switch_slot', params: [ 'modem', 'slot' ], expect: {} }),
+	switchSlot: callSwitchSlot,
+	/* A slot switch from a button: the daemon refuses one that would pull
+	   the card from under an interface bound to it (`option iccid`), naming
+	   the interface — asked here, and forced only on a yes. */
+	switchSlotAsk: function(modem, slot) {
+		return callSwitchSlot(modem, slot, false).then(function(r) {
+			if (!(r && r.error == 'sim_in_use'))
+				return r;
+
+			if (!confirm(_('Interface %s is bound to the SIM card in use. Switching takes it down; it stays down until its next start, which switches back to its card. Switch anyway?').format(r.interface || '?')))
+				return r;
+
+			return callSwitchSlot(modem, slot, true);
+		});
+	},
 	pinVerify:  checked({ object: 'wwand', method: 'modem_sim_pin_verify', params: [ 'modem', 'pin' ], expect: {} }),
 	simPuk:     checked({ object: 'wwand', method: 'modem_sim_puk', params: [ 'modem', 'puk', 'new_pin' ], expect: {} }),
 	pinLock:    checked({ object: 'wwand', method: 'modem_sim_pin_lock', params: [ 'modem', 'pin', 'enable' ], expect: {} }),
