@@ -8,7 +8,21 @@
  
  extra_command "uciadd" "<ignored> <device> <zone> Add docker bridge configuration to firewall uci config"
  extra_command "ucidel" "<ignored> <device> <zone> Delete docker bridge configuration from firewall uci config"
-@@ -238,6 +239,8 @@ start_service() {
+@@ -214,6 +215,13 @@ start_service() {
+ 
+ 	process_config
+ 
++	config_load 'dockerd'
++	config_get data_root globals data_root "/opt/docker/"
++	if df -h "${data_root%/}" | grep -qs "overlayfs:/overlay";then
++		mkdir -p /overlay${data_root%/} ${data_root%/}
++		mount --bind /overlay${data_root%/} ${data_root%/}
++	fi
++
+ 	procd_open_instance
+ 	procd_set_param stderr 1
+ 	if [ -z "${DOCKERD_CONF}" ]; then
+@@ -222,6 +230,8 @@ start_service() {
  		procd_set_param command /usr/bin/dockerd --config-file="${DOCKERD_CONF}"
  	fi
  	procd_set_param limits nofile="${nofile} ${nofile}"
@@ -17,7 +31,7 @@
  	procd_close_instance
  }
  
-@@ -293,8 +296,50 @@ iptables_add_blocking_rule() {
+@@ -285,8 +295,50 @@ iptables_add_blocking_rule() {
  	config_list_foreach "${cfg}" blocked_interfaces handle_iptables_rule "${device}" "${extra_iptables_args}"
  }
  
@@ -71,3 +85,4 @@
 +	kill -KILL "${STOP_SUBSCRIBER}" 2> /dev/null
 +	rm -f "${STOP_EVENTS}"
  }
+
