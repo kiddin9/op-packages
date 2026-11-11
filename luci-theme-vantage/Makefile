@@ -11,7 +11,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-theme-vantage
 PKG_VERSION:=1.0.19
-PKG_RELEASE:=42
+PKG_RELEASE:=43
 PKG_LICENSE:=GPL-3.0-or-later
 
 LUCI_TITLE:=Vantage theme
