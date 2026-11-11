@@ -126,14 +126,10 @@ function startService(button) {
 	uci.set('v2raya', 'config', 'enabled', '1');
 
 	return L.resolveDefault(uci.save(), null).then(function () {
-		return runAction('start', button);
-	}).then(function () {
-		/*
-		 * Persist enabled=1 so the service also starts after a reboot.
-		 * The resulting config.change event may cause one more restart;
-		 * that is expected after an apply and the page polls the state.
-		 */
+		/* Commit before starting: the init script reads enabled from UCI. */
 		return L.resolveDefault(uci.apply(), null);
+	}).then(function () {
+		return runAction('start', button);
 	});
 }
 
@@ -231,7 +227,7 @@ return view.extend({
 		return E('div', { class: 'cbi-map' }, [
 			E('h2', {}, _('v2rayA')),
 			E('div', { class: 'cbi-map-descr' }, [
-				_('A web client for its own Xray-based core, with transparent proxy support.'),
+				_('A web client for its bundled v2raya_core, with transparent proxy support.'),
 				' ',
 				E('a', { href: weburl, target: '_blank', rel: 'noreferrer noopener' }, weburl)
 			]),

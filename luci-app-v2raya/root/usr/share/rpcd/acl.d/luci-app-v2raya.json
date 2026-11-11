@@ -3,7 +3,6 @@
 		"description": "Grant access to the v2rayA service and configuration",
 		"read": {
 			"file": {
-				"/etc/init.d/v2raya": [ "exec" ],
 				"/usr/bin/v2raya": [ "exec" ],
 				"/usr/bin/v2raya_core": [ "exec" ],
 				"/usr/libexec/v2raya-detect": [ "exec" ],
@@ -16,7 +15,9 @@
 		},
 		"write": {
 			"file": {
-				"/etc/init.d/v2raya": [ "exec" ],
+				"/etc/init.d/v2raya start": [ "exec" ],
+				"/etc/init.d/v2raya stop": [ "exec" ],
+				"/etc/init.d/v2raya restart": [ "exec" ],
 				"/var/log/v2raya/v2raya.log": [ "write" ]
 			},
 			"uci": [ "v2raya" ]

@@ -2,7 +2,6 @@
 'use strict';
 'require form';
 'require uci';
-'require ui';
 'require view';
 
 return view.extend({
@@ -147,22 +146,5 @@ return view.extend({
 		o.description = _('Maximum open file descriptors. 16384 is plenty for a home router and bounds a connection flood.');
 
 		return m.render();
-	},
-
-	handleSaveApply: function (ev, mode) {
-		/*
-		 * Applying the UCI delta emits a config.change event; the init
-		 * script's procd reload trigger restarts the service with the new
-		 * values.  Restarting here as well would stop and start it twice.
-		 */
-		return this.handleSave(ev).then(function () {
-			return uci.apply();
-		}).then(function () {
-			ui.addNotification(null, E('p', {},
-				_('Settings applied. The service is restarting.')), 'info');
-		}).catch(function (err) {
-			ui.addNotification(null, E('p', {},
-				_('The configuration was not applied: %s').format(err)), 'danger');
-		});
 	}
 });

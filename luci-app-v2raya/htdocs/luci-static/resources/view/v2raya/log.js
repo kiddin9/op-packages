@@ -8,6 +8,7 @@
 
 var LOG_PATH = '/var/log/v2raya/v2raya.log';
 var MAX_LINES = 500;
+var POLL_INTERVAL = 5;
 
 return view.extend({
 	render: function () {
@@ -56,13 +57,13 @@ return view.extend({
 		});
 
 		refresh();
-		poll.add(refresh, 5);
+		poll.add(refresh, POLL_INTERVAL);
 
 		return E('div', { class: 'cbi-map' }, [
 			E('h2', {}, _('v2rayA log')),
 			E('div', { class: 'cbi-map-descr' },
 				_('Showing the last %d lines of %s. Refreshes every %d seconds.')
-					.format(MAX_LINES, LOG_PATH, L.env.pollinterval || 5)),
+					.format(MAX_LINES, LOG_PATH, POLL_INTERVAL)),
 			E('div', { class: 'cbi-section' }, [
 				logEl,
 				E('div', { style: 'margin-top:8px' }, [ refreshBtn, ' ', clearBtn ])

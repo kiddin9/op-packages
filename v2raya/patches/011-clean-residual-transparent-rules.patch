@@ -1,0 +1,37 @@
+From 14c682ddbca62226c4ca453fcac2d28fae6109c8 Mon Sep 17 00:00:00 2001
+From: Amr Fateem <amr.fateem@yahoo.com>
+Date: Wed, 11 Nov 2026 19:56:35 +0200
+Subject: [PATCH] openwrt: clean residual transparent-proxy rules on stop
+
+When a core process stops, the in-memory transparentOn flag may be
+false even though tproxy rules from an earlier process are still
+installed.  The early return then leaves those rules and the policy
+route behind, so all traffic is blackholed once the core is gone.
+
+Delete the residual rules before returning.  The normal path still runs
+the transparent-proxy hooks and removes the rules as before.
+
+Signed-off-by: Amr Fateem <amr.fateem@yahoo.com>
+---
+ kernel/v2ray/processManager.go | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+--- a/kernel/v2ray/processManager.go
++++ b/kernel/v2ray/processManager.go
+@@ -170,9 +170,13 @@ func (m *CoreProcessManager) CheckAndSto
+ 
+ func (m *CoreProcessManager) checkAndStopTransparentProxy(setting *configure.Setting) {
+ 	if !m.transparentOn.Swap(false) {
+-		// Nothing installed by this process, so nothing to remove and no hook
+-		// to run. Rules left behind by an earlier process are removed by
+-		// cleanupResidualTransparentProxyRules when the rules are set up.
++		// Clean residual rules from an earlier process too: after a
++		// restart the in-memory flag is false while the tproxy rules
++		// may still be installed, which blackholes all traffic when
++		// the core stops.
++		if setting != nil && setting.Transparent != configure.TransparentClose {
++			deleteTransparentProxyRules()
++		}
+ 		return
+ 	}
+ 	if setting == nil {
