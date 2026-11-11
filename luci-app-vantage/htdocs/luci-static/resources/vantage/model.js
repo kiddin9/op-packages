@@ -588,6 +588,18 @@ return baseclass.extend({
 		return out;
 	},
 
+	/* iwinfo survey [ { mhz, noise, ... } ] -> the noise floor (dBm) on the
+	   channel at mhz, or null. Drivers send it as a signed byte, some as an
+	   unsigned one (ath12k: 146 for -110 dBm), and 0 when they have none */
+	surveyNoise: function(entries, mhz) {
+		if (!mhz) return null;
+		var e = arr(entries).filter(function(x) { return x && num(x.mhz) === mhz; })[0];
+		var v = e ? num(e.noise) : 0;
+		if (!v || v % 1) return null;
+		if (v > 127 && v < 256) v -= 256;
+		return v < 0 && v >= -128 ? v : null;
+	},
+
 	/* ------------------------------------------------------------ model */
 
 	/* raw: { board, info, ifaces, devs, wifi, iwinfo: { ifname: info },
@@ -618,6 +630,12 @@ return baseclass.extend({
 			var ht = wifi.htmode(htmode);
 			var chan = num(info0.channel || rIw.channel || cfg.channel) || null;
 			var live = ifs.some(function(i) { return typeof i.ifname === 'string' && own(iw, i.ifname) && num(obj(iw[i.ifname]).channel) > 0; });
+			/* the noise floor every poll from the survey, on the channel
+			   hostapd says the radio is on (iwinfo info's may be 30 s old) */
+			var svIf = ifs.filter(function(i) { return i.ifname && raw.survey && own(raw.survey, i.ifname); })[0];
+			var stIf = ifs.filter(function(i) { return i.ifname && own(hstat, i.ifname) && num(obj(hstat[i.ifname]).freq) > 0; })[0];
+			var svNoise = svIf ? self.surveyNoise(raw.survey[svIf.ifname], num(stIf ? obj(hstat[stIf.ifname]).freq : 0) || num(info0.frequency || rIw.frequency)) : null;
+			var noiseRaw = svNoise != null ? svNoise : (finite(info0.noise) ? info0.noise : (finite(rIw.noise) ? rIw.noise : null));
 			var radio = {
 				id: rname,
 				band: band,
@@ -635,8 +653,8 @@ return baseclass.extend({
 				htmode: htmode,
 				txpower: finite(info0.txpower) ? info0.txpower : (finite(rIw.txpower) ? rIw.txpower : null),
 				txpowerCfg: cfg.txpower != null && isFinite(+cfg.txpower) ? +cfg.txpower : null,
-				noise: wifi.noise(finite(info0.noise) ? info0.noise : rIw.noise),
-				noiseRaw: finite(info0.noise) ? info0.noise : (finite(rIw.noise) ? rIw.noise : null),
+				noise: wifi.noise(noiseRaw),
+				noiseRaw: noiseRaw,
 				country: cfg.country || rIw.country || null,
 				hwmodes: arr(rIw.hwmodes || info0.hwmodes).join('/'),
 				airtime: null,
@@ -685,6 +703,19 @@ return baseclass.extend({
 		var kernel = Array.isArray(raw.routes) ? raw.routes : null;
 		var uplink = this.resolveUplink(raw.ifaces, devs, wlNames, null, kernel);
 		var subnets = uplink ? uplink.ipv4 : [];
+		/* a station's addresses are in its network's subnets (the SSID's
+		   network, 'lan'), not the uplink's: on a router the uplink is the
+		   WAN, and its subnet would leave a station only its IPv6 ones */
+		var netSubnets = Object.create(null);
+		arr(raw.ifaces).forEach(function(i) {
+			if (i && typeof i.interface === 'string' && !netSubnets[i.interface])
+				netSubnets[i.interface] = arr(i['ipv4-address']).map(function(a) { return a && a.address ? a.address + '/' + a.mask : null; }).filter(Boolean);
+		});
+		function ssidSubnets(ss) {
+			var out = [];
+			arr(ss.networks).forEach(function(n) { arr(netSubnets[n]).forEach(function(s) { if (out.indexOf(s) < 0) out.push(s); }); });
+			return out.length ? out : subnets;
+		}
 
 		function hintOf(mac) { return obj(hints[mac.toUpperCase()] || hints[mac]); }
 
@@ -693,7 +724,7 @@ return baseclass.extend({
 		ssids.forEach(function(ss) {
 			if (ss.ifname) arr(assoc[ss.ifname]).forEach(function(s) {
 				var mac = s && names.normMac(s.mac);
-				if (mac) everyone.push({ mac: mac, ips: self.hintAddrs(hintOf(mac), subnets) });
+				if (mac) everyone.push({ mac: mac, ips: self.hintAddrs(hintOf(mac), ssidSubnets(ss)) });
 			});
 		});
 		/* wired hosts: what the bridges learned on ports that are not
@@ -751,7 +782,7 @@ return baseclass.extend({
 				if (!mac) return;
 				var h = hmap[mac] || {}, rx = obj(s.rx), tx = obj(s.tx);
 				var hint = hintOf(mac);
-				var ips = self.hintAddrs(hint, subnets);
+				var ips = self.hintAddrs(hint, ssidSubnets(ss));
 				var std = wifi.clientStd(rx, tx, h);
 				var alias = raw.aliases && raw.aliases[mac];
 				var nm = names.resolve({

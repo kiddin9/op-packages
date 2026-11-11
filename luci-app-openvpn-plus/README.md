@@ -2,6 +2,10 @@
 
 Modern and easy web interface to configure OpenVPN servers and clients on OpenWrt.
 
+> Designed for simplicity, this app makes secure OpenVPN configurations accessible to every user. Our goal is to make the internet a bit safer for everyone without complex infrastructure, fully carrying forward the core philosophy of OpenWrt.
+
+[Offical Help and Step-by-Step instructions: OpenVPN (Wizard)](https://openwrt.org/docs/guide-user/services/vpn/openvpn/wizard-luci/start)
+
 ## Description
 
 This package provides a modern, all-in-one web interface to configure OpenVPN servers and clients quickly. Featuring a built-in key generator, setup wizard, Flood Guard protocol protection, DDNS, SSL-VPN, and profile import/export via QR-code, your VPN is ready to use immediately.

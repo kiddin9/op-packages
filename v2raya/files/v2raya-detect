@@ -85,9 +85,9 @@ if pkg_has v2raya; then
 	version_lt "$(pkg_version v2raya)" "2.5" && old_v2raya_pkg=1
 fi
 
-# The upstream packages install to /usr/share/v2ray, while this feed uses
-# /usr/share/v2raya.  Check the configured directory first, then both
-# well-known paths, so the report is correct with either package set.
+# The service may use /usr/share/v2ray or the older /usr/share/v2raya.
+# Check the configured directory first, then both well-known paths, so
+# the report is correct with either package set.
 assets_dirs=""
 configured_assets=$(uci -q get v2raya.config.v2ray_assetsdir 2>/dev/null) || configured_assets=""
 [ -n "$configured_assets" ] && assets_dirs="$configured_assets "

@@ -13,7 +13,7 @@
 				"luci-rpc": [ "getHostHints" ],
 				"luci": [ "getSwconfigPortState" ],
 				"luci.vantage": [ "routes", "thermal", "wired", "wireless" ],
-				"iwinfo": [ "assoclist", "info" ],
+				"iwinfo": [ "assoclist", "info", "survey" ],
 				"hostapd.*": [ "get_clients", "get_status" ],
 				"umdns": [ "hosts" ],
 				"uci": [ "get" ]

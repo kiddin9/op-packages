@@ -35,6 +35,16 @@ const BACKDROP_EVENT = 'vantage:backdrop';
    login page either); the dashboard reads data-vt-power and listens for
    POWER_EVENT */
 const POWER_EVENT = 'vantage:power';
+/* The refresh dot's pulse is a CSS animation; running on the compositor it
+   makes the browser draw a frame on every display refresh, sixty a second,
+   on every page that polls, for a pulse five seconds long. Paused through
+   the Web Animations API and stepped MOTION_MS apart instead, the page
+   draws 15 frames a second. The dashboard moves more (its ring, flow dots
+   and backdrop) on a clock of its own and sends each tick as MOTION_EVENT:
+   while those arrive the dot follows them, so the page still draws one set
+   of frames */
+const MOTION_MS = 66;
+const MOTION_EVENT = 'vantage:tick';
 /* Appearance for every browser: saved on the router, in
    /etc/config/vantage_theme (section appearance), by whoever may (rpcd
    group luci-theme-vantage); header.ut and sysauth.ut hand its values over
@@ -46,7 +56,7 @@ const POWER_EVENT = 'vantage:power';
    key, also what the dashboard reads under another theme) counts until
    the router has one. */
 /* this package's version, as its Makefile has it (tests/version.test.js) */
-const VERSION = '1.0.18';
+const VERSION = '1.0.19';
 /* Check for updates (Appearance): when asked, never on its own, the browser
    reads the project's 24.10 package list on GitHub Pages (the same release
    as 25.12's), without cookies or a referrer. Only a version number passes;
@@ -1640,7 +1650,7 @@ return baseclass.extend({
 	},
 
 	loginNames() {
-		return { grid: _('Grid packets'), stars: _('Starfield'), none: _('None', 'vantage-theme') };
+		return { grid: _('Grid'), stars: _('Starfield'), none: _('None', 'vantage-theme') };
 	},
 
 	setLoginPref(pref) {
@@ -1769,7 +1779,9 @@ return baseclass.extend({
 				input.addEventListener('change', () => { if (input.checked) set(o[0]); });
 				/* the checked option fires no change: after a failed save, this is the retry */
 				input.addEventListener('click', () => { if (input.checked && (this.lookFailed || {})[look]) set(o[0]); });
-				return E('label', { 'class': 'vt-appear-opt' }, [ input ].concat(o[2] ? [ svg(o[2], 16) ] : [], [ E('span', {}, [ o[1] ]) ]));
+				/* data-text: the label's bold width kept (vantage.css), so
+				   a pick changes no column */
+				return E('label', { 'class': 'vt-appear-opt' }, [ input ].concat(o[2] ? [ svg(o[2], 16) ] : [], [ E('span', { 'data-text': o[1] }, [ o[1] ]) ]));
 			}))
 		]);
 	},
@@ -1982,6 +1994,78 @@ return baseclass.extend({
 		window.addEventListener('blur', focus);
 		window.addEventListener('focus', focus);
 		focus();
+		this.setupMotionClock(box);
+	},
+
+	/* ------------------------------------------------- motion clock */
+
+	/* the dot's pulse (vt-live, vt-live-soft; vantage.css) paused as it
+	   starts and stepped from here; one CSS takes away (blur, Low-power
+	   router, the poll stopped) goes idle and is dropped */
+	setupMotionClock(box) {
+		const c = this.clock = { anims: [], raf: 0, timer: 0, last: 0, appAt: 0, watchdog: 0 };
+		box.addEventListener('animationstart', ev => {
+			if (!/^vt-live/.test(ev.animationName || '') || typeof ev.target.getAnimations !== 'function') return;
+			ev.target.getAnimations({ subtree: true }).forEach(a => {
+				if (!a.effect || !/^vt-live/.test(a.animationName || '') || a.playState !== 'running' || c.anims.some(x => x.a === a)) return;
+				a.pause();
+				const tm = a.effect.getTiming();
+				c.anims.push({ a, dur: typeof tm.duration === 'number' && tm.duration > 0 ? tm.duration : 0, at: 0 });
+			});
+			this.kickMotion();
+		});
+		/* one CSS took away (blur, Low-power router, the poll stopped, the
+		   dot's state changed) or ended (reduced motion switched on: it
+		   turns finite, and a paused one stays "paused") is dropped on its
+		   event, the animation the event is for and any other cancelled
+		   one; at the next step (stepPulses) when that comes first */
+		const isFor = (a, ev) => !!a.effect && a.effect.target === ev.target && (a.effect.pseudoElement || '') === (ev.pseudoElement || '') && a.animationName === ev.animationName;
+		const drop = ev => { if (/^vt-live/.test(ev.animationName || '')) c.anims = c.anims.filter(x => !isFor(x.a, ev) && x.a.playState !== 'idle'); };
+		box.addEventListener('animationcancel', drop);
+		box.addEventListener('animationend', drop);
+		/* the dashboard's clock: its frames are this page's */
+		window.addEventListener(MOTION_EVENT, ev => {
+			c.appAt = performance.now();
+			if (c.timer) { window.clearTimeout(c.timer); c.timer = 0; }
+			if (c.raf) { window.cancelAnimationFrame(c.raf); c.raf = 0; }
+			this.stepPulses(ev.detail && +ev.detail.dt || 0);
+			/* and when they stop, this page's own again */
+			if (c.watchdog) window.clearTimeout(c.watchdog);
+			c.watchdog = window.setTimeout(() => { c.watchdog = 0; c.appAt = 0; c.last = 0; this.kickMotion(); }, 4 * MOTION_MS);
+		});
+	},
+
+	stepPulses(dt) {
+		const c = this.clock;
+		/* one CSS cancelled since the last step is dropped, not stepped: a
+		   time written to a cancelled animation brings it back, paused,
+		   with nothing left to stop it (its animationcancel comes after).
+		   Asking brings the style up to date once a step, the first time */
+		c.anims = c.anims.filter(x => x.a.playState !== 'idle');
+		/* the time is kept here, never read back: reading a CSS animation's
+		   currentTime makes the browser bring the style up to date first */
+		c.anims.forEach(x => {
+			let t = x.at + dt;
+			if (x.dur > 0 && t >= x.dur) t -= Math.floor(t / x.dur) * x.dur;
+			x.at = t;
+			x.a.currentTime = t;
+		});
+	},
+
+	kickMotion() {
+		const c = this.clock;
+		if (!c || c.raf || c.timer || c.appAt || !c.anims.length) return;
+		c.last = 0;
+		c.raf = window.requestAnimationFrame(t => this.tickMotion(t));
+	},
+
+	tickMotion(t) {
+		const c = this.clock;
+		c.raf = 0;
+		if (!c.anims.length || c.appAt) { c.last = 0; return; }
+		this.stepPulses(c.last ? Math.min(t - c.last, 4 * MOTION_MS) : 0);
+		c.last = t;
+		c.timer = window.setTimeout(() => { c.timer = 0; if (!c.raf) c.raf = window.requestAnimationFrame(t => this.tickMotion(t)); }, MOTION_MS - 12);
 	},
 
 	/* ------------------------------------------ technical numerals */

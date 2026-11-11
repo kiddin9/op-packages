@@ -590,6 +590,7 @@ h2, h3{
 	content: ""; position: absolute; inset: 0; border-radius: 50%;
 	border: 2px solid var(--vt-oc); opacity: .35;
 	animation: vt-ring-soft 5s ease-out infinite;
+	will-change: transform, opacity;
 }
 .vt-app .vt-orb-warn::after, .vt-app .vt-orb-err::after { animation: vt-ring 2.6s ease-out infinite; }
 /* paused, or another window has the focus (overview.js setMotion): the
@@ -624,6 +625,7 @@ h2, h3{
 	content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 50%;
 	background: color-mix(in oklab, var(--vt-beat-c, var(--vt-ok)) 45%, transparent);
 	opacity: 0;
+	will-change: transform, opacity;
 }
 .vt-app .vt-live-paused .vt-live-beat { --vt-beat-c: var(--vt-text-3); }
 .vt-app .vt-live-err .vt-live-beat { --vt-beat-c: var(--vt-warn); }
@@ -765,7 +767,10 @@ h2, h3{
 .vt-app .vt-fwire { opacity: 0; transition: opacity .4s; }
 .vt-app .vt-fwire-on { opacity: .95; }
 /* a 1.5 px dash with round caps of the 2.4 px stroke, centred on its point */
-.vt-app .vt-fdot { position: absolute; left: -1.95px; top: -1.2px; width: 3.9px; height: 2.4px; border-radius: 1.2px; background: var(--vt-accent-line); }
+/* will-change: the dots and the pulses keep their compositor layers while
+   their animations stand paused between the clock's ticks (overview.js
+   stepMotion), so each tick is a transform update, not a repaint */
+.vt-app .vt-fdot { position: absolute; left: -1.95px; top: -1.2px; width: 3.9px; height: 2.4px; border-radius: 1.2px; background: var(--vt-accent-line); will-change: transform; }
 .vt-app .vt-fwire-3 .vt-fdot { left: -2.25px; top: -1.5px; width: 4.5px; height: 3px; border-radius: 1.5px; }
 
 .vt-app .vt-node {

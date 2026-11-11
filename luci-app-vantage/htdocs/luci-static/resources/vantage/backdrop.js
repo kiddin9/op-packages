@@ -230,8 +230,13 @@ function starfield(env) {
 /* ---------------------------------------------------------- the canvas */
 
 /* host: the tile (the canvas covers its padding box, as the dot grid);
-   band: the element whose height it draws over; style: one of STYLES */
-function mount(host, band, style) {
+   band: the element whose height it draws over; style: one of STYLES.
+   opts.external: no frame loop of its own; the caller's clock asks for
+   each frame with frame(t) and takes the rate from period(), so the
+   backdrop, the flow dots and the pulses share one frame (overview.js
+   tickMotion) */
+function mount(host, band, style, opts) {
+	var external = !!(opts && opts.external), live = false;
 	var cv = document.createElement('canvas'), ctx = cv.getContext && cv.getContext('2d');
 	var env = { w: 0, h: 0, box: { t: 0, b: 0 }, origin: { x: 0, y: 0 }, count: 2, speed: packetSpeed(0), share: 0.7, frame: frameMs(0), colour: '#7a9a3a', muted: '#8a9099' };
 	var down = null, up = null, originEl = null;
@@ -241,7 +246,7 @@ function mount(host, band, style) {
 
 	cv.className = 'vt-backdrop';
 	cv.setAttribute('aria-hidden', 'true');
-	if (!ctx || typeof Path2D !== 'function') return { style: function() {}, update: function() {}, stop: function() {}, canvas: null };
+	if (!ctx || typeof Path2D !== 'function') return { style: function() {}, update: function() {}, stop: function() {}, canvas: null, frame: function() { return false; }, wants: function() { return false; }, period: function() { return 50; } };
 	host.insertBefore(cv, host.firstChild);
 
 	if (window.matchMedia) {
@@ -362,8 +367,21 @@ function mount(host, band, style) {
 		raf = timer = 0;
 	}
 	function run() {
+		/* on the caller's clock: only whether the next frame(t) draws */
+		if (external) { var on = running(); if (on && !live) last = performance.now(); live = on; return; }
 		if (running()) { if (!raf && !timer) { last = performance.now(); raf = requestAnimationFrame(tick); } }
 		else halt();
+	}
+	/* one frame at the caller's time t (external); false when there is
+	   nothing to draw, so the caller's clock can rest */
+	function frame(t) {
+		if (!running()) { live = false; return false; }
+		if (!live) { live = true; last = t; }
+		if (stale) refit();
+		scene.step(clamp((t - last) / 1000, 0, .1));
+		last = t;
+		paint();
+		return true;
 	}
 
 	function setStyle(s) {
@@ -418,12 +436,19 @@ function mount(host, band, style) {
 			if (o.origin !== undefined) originEl = o.origin;
 			stale = true;
 			if (!coloured) colours();
-			/* a still frame: now; nothing to draw (none, folded, out of
-			   view): nothing read, the resize observer measures */
-			if (still && scene) refit();
+			/* a still frame: at the next frame, after the poll's own DOM
+			   writes (measuring here would lay the page out an extra
+			   time); nothing to draw (none, folded, out of view): nothing
+			   read, the resize observer measures */
+			if (still && scene && !raf) raf = requestAnimationFrame(function() { raf = 0; if (still && scene && stale) refit(); });
 			run();
 		},
 		running: running,
+		/* external: draw one frame now; whether the next one is wanted;
+		   ms between frames at the current rate */
+		frame: frame,
+		wants: running,
+		period: function() { return env.frame; },
 		/* the page's refresh is paused: the last frame stays */
 		pause: function(on) { paused = !!on; run(); },
 		stop: function() {

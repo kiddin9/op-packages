@@ -19,7 +19,12 @@
 //              when the bridges hold FDB_LIMIT entries or more between
 //              them, counted first through sysfs without reading further: a flood of
 //              made-up addresses must not make rpcd build the whole
-//              table. Where a port is a VLAN on a swconfig switch
+//              table. The dump also has a switch driver read its chip's
+//              own table (29 ms a dump on a MediaTek MT7981 router, #101),
+//              so it is taken again only when sysfs brforward, read every
+//              call, shows a host arrive, leave or change port, or after
+//              FDB_DUMP_S; in between, the last dump's hosts with
+//              brforward's times since heard. Where a port is a VLAN on a swconfig switch
 //              (eth1.1), also which switch ports that VLAN has
 //              (switches): from /etc/board.json (the CPU port's network
 //              device, the ports' roles) and the switch_vlan sections of
@@ -74,6 +79,8 @@ const PROBE6 = '2001:db8::1';
 const NET = '/sys/class/net';
 const FDB_LIMIT = 4096;           // forwarding entries, all bridges together, before wired() lists none
 const FDB_ENTRY = 16;             // sizeof(struct __fdb_entry), brforward's record
+const FDB_DUMP_S = 30;            // the netlink dump at least this often (VLANs, static entries)
+const FDB_PARSE = 512;            // brforward records read one by one, all bridges; above: the dump each call
 const NETWORK = 'network';        // read only, by switches(): switch_vlan sections
 const BOARD = '/etc/board.json';
 const BOARD_MAX = 65536;          // bytes read of it
@@ -519,24 +526,71 @@ function netdev(v) {
 	return type(v) == 'string' && match(v, RE_NETDEV) ? v : null;
 }
 
-// true when the bridges hold FDB_LIMIT forwarding entries or more
-// between them (one dump returns them all): each sysfs brforward lists
-// its bridge's as FDB_ENTRY-byte records, and the kernel fills only as
-// many as asked for, so no more than the budget left is read
-function crowded() {
+// The last netlink dump: { at, sig, hosts } (at: monotonic seconds; sig:
+// the brforward identity it was taken with), and the byte order of
+// brforward's ageing field (the host's: true little-endian), learned
+// from the first dump that pairs a record with a time since heard.
+// rpcd keeps this module, these with it, between calls.
+let fdb_last = null;
+let fdb_le = null;
+
+// The bridges' sysfs brforward tables: FDB_ENTRY-byte records (MAC, port
+// number, is_local, ageing in 1/100 s, the port number's high byte),
+// and the kernel fills only as many as asked for, so no more than the
+// budget left is read. null when the bridges hold FDB_LIMIT entries or
+// more between them (one dump returns them all); else { sig, ages,
+// multi }: sig names each learned entry (bridge, MAC, port) in the
+// kernel's order, which holds while the entries do; ages[bridge|mac] its
+// ageing field read both ways, [ little-endian, big-endian ], the
+// youngest of a MAC there more than once (on several VLANs); multi: a
+// MAC on two ports of one bridge, whose ages one key cannot tell apart.
+// Over FDB_PARSE records between them, { sig: null }: the records are
+// only counted, as before, and the caller dumps (a host making up
+// addresses near FDB_LIMIT must not make every call parse them all)
+function bridge_table() {
 	let left = FDB_LIMIT * FDB_ENTRY;
+	let sig = '', ages = {}, ports = {}, multi = false, tables = [];
 
 	for (let n in (lsdir(NET) ?? [])) {
 		let b = netdev(n) ? readfile(NET + '/' + n + '/brforward', left) : null;
 
-		if (type(b) == 'string')
-			left -= length(b);
+		if (type(b) != 'string')
+			continue;
+
+		left -= length(b);
 
 		if (left <= 0)
-			return true;
+			return null;
+
+		push(tables, [ n, b ]);
 	}
 
-	return false;
+	if (FDB_LIMIT * FDB_ENTRY - left > FDB_PARSE * FDB_ENTRY)
+		return { sig: null, ages, multi };
+
+	for (let t in tables) {
+		let n = t[0], b = t[1];
+
+		for (let o = 0; o + FDB_ENTRY <= length(b); o += FDB_ENTRY) {
+			if (ord(b, o + 7))
+				continue;
+
+			let k = n + '|' + sprintf('%02x:%02x:%02x:%02x:%02x:%02x', ord(b, o), ord(b, o + 1), ord(b, o + 2), ord(b, o + 3), ord(b, o + 4), ord(b, o + 5));
+			let le = ord(b, o + 8) | (ord(b, o + 9) << 8) | (ord(b, o + 10) << 16) | (ord(b, o + 11) << 24);
+			let be = (ord(b, o + 8) << 24) | (ord(b, o + 9) << 16) | (ord(b, o + 10) << 8) | ord(b, o + 11);
+			let a = ages[k], port = ord(b, o + 12) * 256 + ord(b, o + 6);
+
+			sig += k + '/' + port + ',';
+			ages[k] = a ? [ min(a[0], le), min(a[1], be) ] : [ le, be ];
+
+			if (ports[k] != null && ports[k] != port)
+				multi = true;
+
+			ports[k] = port;
+		}
+	}
+
+	return { sig, ages, multi };
 }
 
 // [ { mac, port, bridge, vlan, seen } ] in dump order, at most MAX_HOSTS
@@ -546,8 +600,21 @@ function crowded() {
 // bridge last heard from the host (the kernel counts in 1/100 s), null
 // for a static entry. null when a bridge is crowded.
 function wired() {
-	if (crowded())
+	let tb = bridge_table();
+
+	if (tb == null)
 		return null;
+
+	let now = clock(true)?.[0] ?? 0;
+
+	// the same hosts on the same ports: the last dump's, heard as now
+	// (not when a MAC sits on two ports: each row's own time is the dump's)
+	if (fdb_last && tb.sig != null && !tb.multi && fdb_last.sig === tb.sig && now - fdb_last.at < FDB_DUMP_S)
+		return map(fdb_last.hosts, h => {
+			let a = (h.seen != null && fdb_le != null) ? tb.ages[h.bridge + '|' + h.mac] : null;
+
+			return { mac: h.mac, port: h.port, bridge: h.bridge, vlan: h.vlan, seen: a ? int(a[fdb_le ? 0 : 1] / 100) : h.seen };
+		});
 
 	let fdb = rtnl.request(rtnl.const.RTM_GETNEIGH, rtnl.const.NLM_F_DUMP, { family: rtnl.const.AF_BRIDGE });
 	let out = [], per = {};
@@ -566,15 +633,27 @@ function wired() {
 		per[n.dev] = (per[n.dev] ?? 0) + 1;
 
 		let upd = n.cacheinfo?.updated;
+		let heard = !(n.state & rtnl.const.NUD_NOARP) && type(upd) == 'int' && upd >= 0;
 
 		push(out, {
 			mac,
 			port: n.dev,
 			bridge: n.master,
 			vlan: (type(n.vlan) == 'int' && n.vlan > 0 && n.vlan < 4095) ? n.vlan : null,
-			seen: (!(n.state & rtnl.const.NUD_NOARP) && type(upd) == 'int' && upd >= 0) ? int(upd / 100) : null
+			seen: heard ? int(upd / 100) : null
 		});
+
+		// brforward's byte order: the reading nearer the dump's own
+		let a = (heard && fdb_le == null) ? tb.ages[n.master + '|' + mac] : null;
+
+		if (a && a[0] != a[1]) {
+			let dl = a[0] - upd, db = a[1] - upd;
+
+			fdb_le = (dl < 0 ? -dl : dl) <= (db < 0 ? -db : db);
+		}
 	}
+
+	fdb_last = (type(fdb) == 'array') ? { at: now, sig: tb.sig, hosts: out } : null;
 
 	return out;
 }

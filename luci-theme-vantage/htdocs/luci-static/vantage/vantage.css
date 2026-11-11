@@ -646,16 +646,24 @@ a.vt-crumb:hover { color: var(--text); }
 .vt-appear-update { display: block; margin-top: 4px; color: var(--text-2); }
 .vt-appear-update[hidden] { display: none; }
 .vt-appear-set > legend { margin: 0 0 6px; padding: 0; color: var(--text-3); font-size: var(--fs-micro); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-.vt-appear-track { display: flex; background: var(--seg-bg); border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line); }
+.vt-appear-track {
+	/* every option one column of the same width, the widest label's: the
+	   panel is as wide as the row that needs most */
+	display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+	background: var(--seg-bg); border-radius: var(--r-lg); box-shadow: inset 0 0 0 1px var(--line);
+}
 .vt-appear-opt {
-	position: relative; flex: 1 1 0;
+	position: relative;
 	display: flex; align-items: center; justify-content: center; gap: 6px;
-	min-height: var(--ctl-h); padding: 0 12px;
+	min-height: var(--ctl-h); padding: 0 6px;
 	border: 3px solid transparent; background-clip: padding-box;
 	border-radius: calc(var(--r) + 3px);
 	color: var(--text-2); font-weight: 500; white-space: nowrap;
 	cursor: pointer;
 }
+/* each label as wide as it is bold, picked: a pick changes no width */
+.vt-appear-opt > span { display: inline-flex; flex-direction: column; align-items: center; }
+.vt-appear-opt > span::after { content: attr(data-text) / ""; height: 0; overflow: hidden; visibility: hidden; font-weight: 600; pointer-events: none; user-select: none; }
 .vt-appear-opt:hover { color: var(--text); }
 .vt-appear-opt > input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
 .vt-appear-opt:has(> input:checked) { background-color: var(--seg-on); color: var(--accent-text); font-weight: 600; box-shadow: var(--seg-on-ring); }
@@ -711,6 +719,9 @@ a.vt-crumb:hover { color: var(--text); }
 	background: color-mix(in oklab, var(--ok) 50%, transparent);
 	opacity: 0; pointer-events: none;
 	animation: vt-live-soft 5s ease-out infinite;
+	/* its layer stays while the animation stands paused between the
+	   theme's clock ticks (menu-vantage.js stepPulses) */
+	will-change: transform, opacity;
 }
 html[data-vt-live="err"] #indicators > span[data-indicator="poll-status"][data-style="active"]::after, html[data-vt-alert="warn"] #indicators > span[data-indicator="poll-status"][data-style="active"]::after {
 	background: color-mix(in oklab, var(--warn) 50%, transparent);
