@@ -1,0 +1,276 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: cs\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=((n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2);\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Wi-Fi pro hosty"
+
+msgid "Guest networks"
+msgstr "Sítě pro hosty"
+
+msgid "Add new guest network..."
+msgstr "Přidat novou síť pro hosty..."
+
+msgid "General"
+msgstr "Obecné"
+
+msgid "Security"
+msgstr "Zabezpečení"
+
+msgid "Network & DHCP"
+msgstr "Síť a DHCP"
+
+msgid "Firewall"
+msgstr "Firewall"
+
+msgid "Enabled"
+msgstr "Povoleno"
+
+msgid "Network name (SSID)"
+msgstr "Název sítě (SSID)"
+
+msgid "Radio"
+msgstr "Rádio"
+
+msgid "Interface IP address"
+msgstr "IP adresa rozhraní"
+
+msgid "Netmask"
+msgstr "Maska sítě"
+
+msgid "DHCP range start"
+msgstr "Začátek rozsahu DHCP"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Nejnižší zapůjčená adresa, jako posun (offset) od adresy sítě."
+
+msgid "DHCP client limit"
+msgstr "Limit klientů DHCP"
+
+msgid "Maximum number of leased addresses."
+msgstr "Maximální počet zapůjčených adres."
+
+msgid "DHCP lease time"
+msgstr "Doba zapůjčení DHCP"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "Např. „1h“, „30m“, „12h“. Minimum je „2m“."
+
+msgid "Encryption"
+msgstr "Šifrování"
+
+msgid "No encryption (open network)"
+msgstr "Bez šifrování (otevřená síť)"
+
+msgid "Password"
+msgstr "Heslo"
+
+msgid "Client isolation"
+msgstr "Izolace klientů"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Blokuje komunikaci mezi klienty v této síti pro hosty."
+
+msgid "Yes"
+msgstr "Ano"
+
+msgid "No"
+msgstr "Ne"
+
+msgid "Forwarding destination zone"
+msgstr "Cílová zóna přesměrování"
+
+msgid "DHCP rule ports"
+msgstr "Porty pravidla DHCP"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "Rozsah portů UDP pro provoz DHCP, např. „67-68“."
+
+msgid "DNS rule port"
+msgstr "Port pravidla DNS"
+
+msgid "Error saving configuration:"
+msgstr "Chyba při ukládání konfigurace:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"Uživatelské rozhraní pro snadné vytváření a správu izolovaných Wi-Fi sítí "
+"pro hosty, z nichž každá má vlastní přístupový bod, DHCP a pravidla firewallu."
+
+msgid "Enable guest network."
+msgstr "Povolit síť pro hosty."
+
+msgid "The radio on which the guest network will work."
+msgstr "Rádio, na kterém bude síť pro hosty fungovat."
+
+msgid "MAC address"
+msgstr "MAC adresa"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Přepsat výchozí MAC adresu – rozsah použitelných adres může být omezen ovladačem"
+
+msgid "randomly generated"
+msgstr "náhodně generováno"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"Adresa %s se již používá a v rozsahu 172.16.0.1 - 172.31.0.1 není k dispozici "
+"žádná volná adresa."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "Heslo musí mít délku alespoň 8 znaků (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "WEP Otevřený systém"
+
+msgid "WEP Shared Key"
+msgstr "WEP Sdílený klíč"
+
+msgid "Mixed Mode"
+msgstr "Smíšený režim"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"WPA2-PSK je doporučeno pro většinu zařízení. WPA3-SAE nabízí nejsilnější "
+"zabezpečení, ale vyžaduje klienty podporující WPA3."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"Klíč WEP musí mít 5 nebo 13 znaků ASCII, nebo 10 nebo 26 hexadecimálních číslic."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Zóna firewallu, do které je směrován provoz hostů (obvykle „wan“). Vyberte "
+"existující zónu ze seznamu nebo vyplňte pole <em>-- vlastní --</em> pro ruční zadání."
+
+msgid "Input"
+msgstr "Vstup"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Provoz od hostů do samotného routeru (např. LuCI, SSH)."
+
+msgid "Output"
+msgstr "Výstup"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Provoz ze samotného routeru k hostům. Doporučuje se AKCEPTOVAT (ACCEPT), aby "
+"služby routeru (DHCP, DNS) nadále fungovaly."
+
+msgid "Forward"
+msgstr "Přesměrování"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Provoz procházející mezi hosty a ostatními sítěmi/zónami (např. LAN). Ponechte "
+"ODMÍTNOUT (REJECT) nebo ZAHODIT (DROP) pro izolaci hostů od vaší sítě LAN. "
+"AKCEPTOVAT (ACCEPT) by hostům umožnilo přístup k ostatním sítím."
+
+msgid "accept"
+msgstr "akceptovat"
+
+msgid "reject"
+msgstr "odmítnout"
+
+msgid "drop"
+msgstr "zahodit"
+
+msgid "driver default"
+msgstr "výchozí ovladače"
+
+msgid "Password length"
+msgstr "Délka hesla"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "Minimální délka je 8 znaků, doporučeno 13."
+
+msgid "Password composition"
+msgstr "Skladba hesla"
+
+msgid "Character types to use when generating a password."
+msgstr "Typy znaků použité při generování hesla."
+
+msgid "Uppercase letters"
+msgstr "Velká písmena"
+
+msgid "Lowercase letters"
+msgstr "Malá písmena"
+
+msgid "Digits"
+msgstr "Číslice"
+
+msgid "Special characters"
+msgstr "Speciální znaky"
+
+msgid "Select password components..."
+msgstr "Vyberte složky hesla..."
+
+msgid "Generate password"
+msgstr "Generování hesla"
+
+msgid "Generate"
+msgstr "Generovat"
+
+msgid "QR Code"
+msgstr "QR kód"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"Vygeneruje QR kód s údaji hostovské sítě (SSID, šifrování, heslo), díky "
+"kterému může klientské zařízení naskenovat kód a připojit se."
+
+msgid "QR Error Correction Code Level"
+msgstr "Úroveň korekce chyb QR kódu"
+
+msgid "Low"
+msgstr "Nízká"
+
+msgid "Medium"
+msgstr "Střední"
+
+msgid "Quartile"
+msgstr "Kvartilní"
+
+msgid "High"
+msgstr "Vysoká"
+
+msgid "Scan this QR code with the client device."
+msgstr "Naskenujte tento QR kód klientským zařízením."
+
+msgid "Generate guest WiFi QR…"
+msgstr "Generování QR kódu hostovské Wi-Fi…"
+
+msgid "Back to settings"
+msgstr "Zpět na nastavení"
+
+msgid "Generate QR…"
+msgstr "Generovat QR kód…"

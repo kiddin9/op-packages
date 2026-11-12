@@ -1,0 +1,175 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: fr\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+
+msgid "Edit Port Label"
+msgstr "Modifier l'étiquette du port"
+
+msgid "Enter new label for this port:"
+msgstr "Entrez une nouvelle étiquette pour ce port :"
+
+msgid "Device"
+msgstr "Périphérique"
+
+msgid "Original label"
+msgstr "Étiquette d'origine"
+
+msgid "Restore Original"
+msgstr "Restaurer l'original"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Port configuration saved successfully"
+msgstr "Configuration du port enregistrée avec succès"
+
+msgid "Port order saved"
+msgstr "Ordre des ports enregistré"
+
+msgid "Click to edit label"
+msgstr "Cliquez pour modifier l'étiquette"
+
+msgid "Hold to drag and reorder"
+msgstr "Maintenez enfoncé pour faire glisser et réorganiser"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Étiquette max. 9 caractères, description max. 50 caractères."
+
+msgid "Enter description (optional):"
+msgstr "Entrez la description (facultatif) :"
+
+msgid "Optional description"
+msgstr "Description facultative"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Les paramètres utilisateur sont enregistrés dans le fichier /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "Fichier de configuration téléchargé"
+
+msgid "Configuration file not found"
+msgstr "Fichier de configuration introuvable"
+
+msgid "Download error: %s"
+msgstr "Erreur de téléchargement : %s"
+
+msgid "Invalid configuration format"
+msgstr "Format de configuration non valide"
+
+msgid "Restore configuration"
+msgstr "Restaurer la configuration"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Cela écrasera la configuration actuelle des ports. Continuer ?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Configuration restaurée avec succès. Rechargement..."
+
+msgid "File restore failed: %s"
+msgstr "Échec de la restauration du fichier : %s"
+
+msgid "Save .json file"
+msgstr "Enregistrer le fichier .json"
+
+msgid "Upload .json file"
+msgstr "Téléverser le fichier .json"
+
+msgid "Cannot save empty configuration"
+msgstr "Impossible d'enregistrer une configuration vide"
+
+msgid "Cannot save port configuration. "
+msgstr "Impossible d'enregistrer la configuration des ports. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "Le répertoire /etc est peut-être en lecture seule ou les permissions sont insuffisantes. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Essayez d'exécuter : chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Erreur d'enregistrement"
+
+msgid "Original error: %s"
+msgstr "Erreur d'origine : %s"
+
+msgid "Restore from backup"
+msgstr "Restaurer à partir de la sauvegarde"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Restaurer la configuration à partir du fichier de sauvegarde ? Cela écrasera les paramètres actuels."
+
+msgid "Backup contains:"
+msgstr "La sauvegarde contient :"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Configuration restaurée à partir de la sauvegarde. Rechargement..."
+
+msgid "Restore failed: %s"
+msgstr "Échec de la restauration : %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "Le fichier de sauvegarde est corrompu : %s"
+
+msgid "Error reading backup: %s"
+msgstr "Erreur de lecture de la sauvegarde : %s"
+
+msgid "Restore backup .bak"
+msgstr "Restaurer la sauvegarde .bak"
+
+msgid "Change port state"
+msgstr "Changer l'état du port"
+
+msgid "Enable this port"
+msgstr "Activer ce port"
+
+msgid "Enable port"
+msgstr "Activer le port"
+
+msgid "Disable this port"
+msgstr "Désactiver ce port"
+
+msgid "Disable port"
+msgstr "Désactiver le port"
+
+msgid "Down"
+msgstr "inactif"
+
+msgid "Disabled"
+msgstr "désactivé"
+
+msgid "Idle"
+msgstr "inactif"
+
+msgid "Active"
+msgstr "actif"
+
+msgid "Unknown"
+msgstr "inconnu"
+
+msgid "No config file to backup"
+msgstr "Aucun fichier de configuration à sauvegarder"
+
+msgid "Config file is corrupted, cannot create backup"
+msgstr "Le fichier de configuration est corrompu, impossible de créer une sauvegarde"
+
+msgid "Backup file created: %s"
+msgstr "Fichier de sauvegarde créé : %s"
+
+msgid "Backup write verification failed!"
+msgstr "Échec de la vérification de l'écriture de la sauvegarde !"
+
+msgid "Backup creation failed: %s"
+msgstr "Échec de la création de la sauvegarde : %s"
+
+msgid "Error reading config: %s"
+msgstr "Erreur lors de la lecture de la configuration : %s"
+
+msgid "Create backup .bak"
+msgstr "Créer une sauvegarde .bak"

@@ -1,0 +1,280 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: nl\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Gast-wifi"
+
+msgid "Guest networks"
+msgstr "Gastnetwerken"
+
+msgid "Add new guest network..."
+msgstr "Nieuw gastnetwerk toevoegen..."
+
+msgid "General"
+msgstr "Algemeen"
+
+msgid "Security"
+msgstr "Beveiliging"
+
+msgid "Network & DHCP"
+msgstr "Netwerk & DHCP"
+
+msgid "Firewall"
+msgstr "Firewall"
+
+msgid "Enabled"
+msgstr "Ingeschakeld"
+
+msgid "Network name (SSID)"
+msgstr "Netwerknaam (SSID)"
+
+msgid "Radio"
+msgstr "Radio"
+
+msgid "Interface IP address"
+msgstr "IP-adres van interface"
+
+msgid "Netmask"
+msgstr "Netmasker"
+
+msgid "DHCP range start"
+msgstr "Start DHCP-bereik"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Laagste geleased adres, als offset van het netwerkadres."
+
+msgid "DHCP client limit"
+msgstr "DHCP-clientlimiet"
+
+msgid "Maximum number of leased addresses."
+msgstr "Maximaal aantal geleasde adressen."
+
+msgid "DHCP lease time"
+msgstr "DHCP-leasetijd"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "Bijv. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+
+msgid "Encryption"
+msgstr "Versleuteling"
+
+msgid "No encryption (open network)"
+msgstr "Geen versleuteling (open netwerk)"
+
+msgid "Password"
+msgstr "Wachtwoord"
+
+msgid "Client isolation"
+msgstr "Client-isolatie"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Blokkeert communicatie tussen clients op dit gastnetwerk."
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "No"
+msgstr "Nee"
+
+msgid "Forwarding destination zone"
+msgstr "Doelzone voor doorsturen"
+
+msgid "DHCP rule ports"
+msgstr "DHCP-regelpoorten"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "UDP-poortbereik voor DHCP-verkeer, bijv. \"67-68\"."
+
+msgid "DNS rule port"
+msgstr "DNS-regelpoort"
+
+msgid "Error saving configuration:"
+msgstr "Fout bij opslaan van configuratie:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"Een gebruikersinterface om eenvoudig geïsoleerde wifi-netwerken voor gasten "
+"aan te maken en te beheren, elk met een eigen toegangspunt, DHCP en firewallregels."
+
+msgid "Enable guest network."
+msgstr "Gastnetwerk inschakelen."
+
+msgid "The radio on which the guest network will work."
+msgstr "De radio waarop het gastnetwerk zal werken."
+
+msgid "MAC address"
+msgstr "MAC-adres"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Standaard MAC-adres overschrijven - het bereik van bruikbare adressen kan "
+"beperkt zijn door het stuurprogramma"
+
+msgid "randomly generated"
+msgstr "willekeurig gegenereerd"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"Het adres %s is al in gebruik en er is geen vrij adres beschikbaar in het "
+"bereik 172.16.0.1 - 172.31.0.1."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr ""
+"Wachtwoord moet minstens 8 tekens lang zijn (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "WEP Open Systeem"
+
+msgid "WEP Shared Key"
+msgstr "WEP Gedeelde Sleutel"
+
+msgid "Mixed Mode"
+msgstr "Gemengde Modus"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"WPA2-PSK wordt aanbevolen voor de meeste apparaten. WPA3-SAE biedt de sterkste "
+"beveiliging, maar vereist clients die WPA3 ondersteunen."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP-sleutel moet 5 of 13 ASCII-tekens zijn, of 10 of 26 hexadecimale cijfers."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Firewallzone waarnaar gastverkeer wordt doorgestuurd (meestal \"wan\"). Kies een "
+"bestaande zone uit de lijst of vul het veld <em>-- aangepast --</em> in om er "
+"handmatig een in te voeren."
+
+msgid "Input"
+msgstr "Inkomend"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Verkeer van gasten naar de router zelf (bijv. LuCI, SSH)."
+
+msgid "Output"
+msgstr "Uitgaand"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Verkeer van de router zelf naar gasten. ACCEPTEREN (ACCEPT) wordt aanbevolen "
+"zodat routerdiensten (DHCP, DNS) blijven werken."
+
+msgid "Forward"
+msgstr "Doorsturen"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Verkeer tussen gasten en andere netwerken/zones (bijv. LAN). Houd dit op "
+"WEIGEREN (REJECT) of VERWERPEN (DROP) om gasten van uw LAN te isoleren. "
+"ACCEPTEREN zou gasten toegang geven tot andere netwerken."
+
+msgid "accept"
+msgstr "accepteren"
+
+msgid "reject"
+msgstr "weigeren"
+
+msgid "drop"
+msgstr "verwerpen"
+
+msgid "driver default"
+msgstr "standaard van stuurprogramma"
+
+msgid "Password length"
+msgstr "Wachtwoordlengte"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "De minimale lengte is 8 tekens, 13 tekens aanbevolen."
+
+msgid "Password composition"
+msgstr "Samenstelling van het wachtwoord"
+
+msgid "Character types to use when generating a password."
+msgstr "Tekentypen om te gebruiken bij het genereren van een wachtwoord."
+
+msgid "Uppercase letters"
+msgstr "Hoofdletters"
+
+msgid "Lowercase letters"
+msgstr "Kleine letters"
+
+msgid "Digits"
+msgstr "Cijfers"
+
+msgid "Special characters"
+msgstr "Speciale tekens"
+
+msgid "Select password components..."
+msgstr "Selecteer wachtwoordonderdelen..."
+
+msgid "Generate password"
+msgstr "Wachtwoord genereren"
+
+msgid "Generate"
+msgstr "Genereren"
+
+msgid "QR Code"
+msgstr "QR-code"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"Genereert een QR-code met de gegevens van het gastnetwerk (SSID, "
+"versleuteling, wachtwoord) zodat een clientapparaat kan scannen en "
+"verbinding maken."
+
+msgid "QR Error Correction Code Level"
+msgstr "Foutcorrectieniveau van de QR-code"
+
+msgid "Low"
+msgstr "Laag"
+
+msgid "Medium"
+msgstr "Gemiddeld"
+
+msgid "Quartile"
+msgstr "Kwartiel"
+
+msgid "High"
+msgstr "Hoog"
+
+msgid "Scan this QR code with the client device."
+msgstr "Scan deze QR-code met het clientapparaat."
+
+msgid "Generate guest WiFi QR…"
+msgstr "QR-code voor gast-wifi genereren…"
+
+msgid "Back to settings"
+msgstr "Terug naar instellingen"
+
+msgid "Generate QR…"
+msgstr "QR-code genereren…"

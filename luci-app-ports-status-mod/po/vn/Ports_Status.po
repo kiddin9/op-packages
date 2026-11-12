@@ -1,0 +1,122 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Edit Port Label"
+msgstr "Chỉnh sửa nhãn cổng"
+
+msgid "Enter new label for this port:"
+msgstr "Nhập nhãn mới cho cổng này:"
+
+msgid "Device"
+msgstr "Thiết bị"
+
+msgid "Original label"
+msgstr "Nhãn gốc"
+
+msgid "Restore Original"
+msgstr "Khôi phục gốc"
+
+msgid "Cancel"
+msgstr "Hủy"
+
+msgid "Save"
+msgstr "Lưu"
+
+msgid "Port configuration saved successfully"
+msgstr "Cấu hình cổng đã được lưu thành công"
+
+msgid "Port order saved"
+msgstr "Thứ tự cổng đã được lưu"
+
+msgid "Click to edit label"
+msgstr "Nhấp để chỉnh sửa nhãn"
+
+msgid "Hold to drag and reorder"
+msgstr "Giữ để kéo và sắp xếp lại"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Nhãn tối đa 9 ký tự, mô tả tối đa 50 ký tự."
+
+msgid "Enter description (optional):"
+msgstr "Nhập mô tả (tùy chọn):"
+
+msgid "Optional description"
+msgstr "Mô tả tùy chọn"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Cài đặt người dùng được lưu vào tệp /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "Đã tải xuống tệp cấu hình"
+
+msgid "Configuration file not found"
+msgstr "Không tìm thấy tệp cấu hình"
+
+msgid "Download error: %s"
+msgstr "Lỗi tải xuống: %s"
+
+msgid "Invalid configuration format"
+msgstr "Định dạng cấu hình không hợp lệ"
+
+msgid "Restore configuration"
+msgstr "Khôi phục cấu hình"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Thao tác này sẽ ghi đè cấu hình cổng hiện tại. Tiếp tục?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Cấu hình đã được khôi phục thành công. Đang tải lại..."
+
+msgid "File restore failed: %s"
+msgstr "Khôi phục tệp không thành công: %s"
+
+msgid "Save .json file"
+msgstr "Lưu tệp .json"
+
+msgid "Upload .json file"
+msgstr "Tải lên tệp .json"
+
+msgid "Cannot save empty configuration"
+msgstr "Không thể lưu cấu hình trống"
+
+msgid "Cannot save port configuration. "
+msgstr "Không thể lưu cấu hình cổng. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "Thư mục /etc có thể chỉ đọc hoặc không đủ quyền. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Thử chạy: chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Lỗi lưu"
+
+msgid "Original error: %s"
+msgstr "Lỗi gốc: %s"
+
+msgid "Restore from backup"
+msgstr "Khôi phục từ bản sao lưu"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Khôi phục cấu hình từ tệp sao lưu? Thao tác này sẽ ghi đè các cài đặt hiện tại."
+
+msgid "Backup contains:"
+msgstr "Bản sao lưu chứa:"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Cấu hình đã được khôi phục từ bản sao lưu. Đang tải lại..."
+
+msgid "Restore failed: %s"
+msgstr "Khôi phục không thành công: %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "Tệp sao lưu bị hỏng: %s"
+
+msgid "Error reading backup: %s"
+msgstr "Lỗi đọc bản sao lưu: %s"
+
+msgid "Restore backup .bak"
+msgstr "Khôi phục bản sao lưu .bak"
+
+msgid ""
+msgstr ""

@@ -1,0 +1,281 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: lt\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"(n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Wi-Fi ospiti"
+
+msgid "Guest networks"
+msgstr "Reti ospiti"
+
+msgid "Add new guest network..."
+msgstr "Aggiungi nuova rete ospiti..."
+
+msgid "General"
+msgstr "Generale"
+
+msgid "Security"
+msgstr "Sicurezza"
+
+msgid "Network & DHCP"
+msgstr "Rete & DHCP"
+
+msgid "Firewall"
+msgstr "Firewall"
+
+msgid "Enabled"
+msgstr "Abilitato"
+
+msgid "Network name (SSID)"
+msgstr "Nome della rete (SSID)"
+
+msgid "Radio"
+msgstr "Radio"
+
+msgid "Interface IP address"
+msgstr "Indirizzo IP dell'interfaccia"
+
+msgid "Netmask"
+msgstr "Maschera di rete"
+
+msgid "DHCP range start"
+msgstr "Inizio intervallo DHCP"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Indirizzo assegnato più basso, come scostamento (offset) dall'indirizzo di rete."
+
+msgid "DHCP client limit"
+msgstr "Limite client DHCP"
+
+msgid "Maximum number of leased addresses."
+msgstr "Numero massimo di indirizzi assegnati."
+
+msgid "DHCP lease time"
+msgstr "Tempo di concessione DHCP"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "Es. \"1h\", \"30m\", \"12h\". Il minimo è \"2m\"."
+
+msgid "Encryption"
+msgstr "Crittografia"
+
+msgid "No encryption (open network)"
+msgstr "Nessuna crittografia (rete aperta)"
+
+msgid "Password"
+msgstr "Password"
+
+msgid "Client isolation"
+msgstr "Isolamento client"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Blocca la comunicazione tra i client su questa rete ospiti."
+
+msgid "Yes"
+msgstr "Sì"
+
+msgid "No"
+msgstr "No"
+
+msgid "Forwarding destination zone"
+msgstr "Zona di destinazione del port forwarding"
+
+msgid "DHCP rule ports"
+msgstr "Porte della regola DHCP"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "Intervallo di porte UDP per il traffico DHCP, es. \"67-68\"."
+
+msgid "DNS rule port"
+msgstr "Porta della regola DNS"
+
+msgid "Error saving configuration:"
+msgstr "Errore durante il salvataggio della configurazione:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"Un'interfaccia utente per creare e gestire facilmente reti Wi-Fi isolate "
+"per gli ospiti, ciascuna con il proprio punto di accesso, DHCP e regole del firewall."
+
+msgid "Enable guest network."
+msgstr "Abilita rete ospiti."
+
+msgid "The radio on which the guest network will work."
+msgstr "La radio su cui funzionerà la rete ospiti."
+
+msgid "MAC address"
+msgstr "Indirizzo MAC"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Sostituisci l'indirizzo MAC predefinito - l'intervallo di indirizzi utilizzabili "
+"potrebbe essere limitato dal driver"
+
+msgid "randomly generated"
+msgstr "generato casualmente"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"L'indirizzo %s è già in uso e nessun indirizzo libero è disponibile nell'intervallo "
+"172.16.0.1 - 172.31.0.1."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr ""
+"La password deve contenere almeno 8 caratteri (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "Sistema aperto WEP"
+
+msgid "WEP Shared Key"
+msgstr "Chiave condivisa WEP"
+
+msgid "Mixed Mode"
+msgstr "Modalità mista"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"WPA2-PSK è consigliato per la maggior parte dei dispositivi. WPA3-SAE offre la "
+"sicurezza più forte ma richiede client compatibili con WPA3."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"La chiave WEP deve essere composta da 5 o 13 caratteri ASCII, oppure da 10 o 26 cifre esadecimali."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Zona del firewall a cui viene inoltrato il traffico degli ospiti (di solito \"wan\"). "
+"Scegli una zona esistente dall'elenco o compila il campo <em>-- personalizzato --</em> "
+"per inserirne una manualmente."
+
+msgid "Input"
+msgstr "Ingresso"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Traffico dagli ospiti verso il router stesso (es. LuCI, SSH)."
+
+msgid "Output"
+msgstr "Uscita"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Traffico dal router stesso verso gli ospiti. Si raccomanda ACCETTA (ACCEPT) in modo che "
+"i servizi del router (DHCP, DNS) continuino a funzionare."
+
+msgid "Forward"
+msgstr "Inoltro"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Traffico che passa tra gli ospiti e altre reti/zone (es. LAN). Mantieni su "
+"RESPINGI (REJECT) o SCARTA (DROP) per isolare gli ospiti dalla tua LAN. ACCETTA "
+"consentirebbe agli ospiti di raggiungere altre reti."
+
+msgid "accept"
+msgstr "accetta"
+
+msgid "reject"
+msgstr "respingi"
+
+msgid "drop"
+msgstr "scarta"
+
+msgid "driver default"
+msgstr "predefinito del driver"
+
+msgid "Password length"
+msgstr "Lunghezza della password"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "La lunghezza minima è di 8 caratteri, consigliati 13."
+
+msgid "Password composition"
+msgstr "Composizione della password"
+
+msgid "Character types to use when generating a password."
+msgstr "Tipi di caratteri da usare durante la generazione di una password."
+
+msgid "Uppercase letters"
+msgstr "Lettere maiuscole"
+
+msgid "Lowercase letters"
+msgstr "Lettere minuscole"
+
+msgid "Digits"
+msgstr "Cifre"
+
+msgid "Special characters"
+msgstr "Caratteri speciali"
+
+msgid "Select password components..."
+msgstr "Seleziona i componenti della password..."
+
+msgid "Generate password"
+msgstr "Genera password"
+
+msgid "Generate"
+msgstr "Genera"
+
+msgid "QR Code"
+msgstr "Codice QR"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"Genera un codice QR con i dati della rete ospiti (SSID, crittografia, "
+"password) in modo che un dispositivo client possa scansionarlo e "
+"connettersi."
+
+msgid "QR Error Correction Code Level"
+msgstr "Livello di correzione degli errori del codice QR"
+
+msgid "Low"
+msgstr "Basso"
+
+msgid "Medium"
+msgstr "Medio"
+
+msgid "Quartile"
+msgstr "Quartile"
+
+msgid "High"
+msgstr "Alto"
+
+msgid "Scan this QR code with the client device."
+msgstr "Scansiona questo codice QR con il dispositivo client."
+
+msgid "Generate guest WiFi QR…"
+msgstr "Generazione del codice QR della Wi-Fi ospiti…"
+
+msgid "Back to settings"
+msgstr "Torna alle impostazioni"
+
+msgid "Generate QR…"
+msgstr "Genera codice QR…"

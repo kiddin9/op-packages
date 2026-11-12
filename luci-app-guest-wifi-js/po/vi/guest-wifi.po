@@ -1,0 +1,278 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: vi\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Wi-Fi khách"
+
+msgid "Guest networks"
+msgstr "Mạng khách"
+
+msgid "Add new guest network..."
+msgstr "Thêm mạng khách mới..."
+
+msgid "General"
+msgstr "Chung"
+
+msgid "Security"
+msgstr "Bảo mật"
+
+msgid "Network & DHCP"
+msgstr "Mạng & DHCP"
+
+msgid "Firewall"
+msgstr "Tường lửa"
+
+msgid "Enabled"
+msgstr "Đã bật"
+
+msgid "Network name (SSID)"
+msgstr "Tên mạng (SSID)"
+
+msgid "Radio"
+msgstr "Sóng vô tuyến"
+
+msgid "Interface IP address"
+msgstr "Địa chỉ IP giao diện"
+
+msgid "Netmask"
+msgstr "Mặt nạ mạng"
+
+msgid "DHCP range start"
+msgstr "Bắt đầu dải DHCP"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Địa chỉ cho thuê thấp nhất, dưới dạng khoảng bù (offset) từ địa chỉ mạng."
+
+msgid "DHCP client limit"
+msgstr "Giới hạn thiết bị DHCP"
+
+msgid "Maximum number of leased addresses."
+msgstr "Số lượng địa chỉ cho thuê tối đa."
+
+msgid "DHCP lease time"
+msgstr "Thời gian thuê DHCP"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "Ví dụ: \"1h\", \"30m\", \"12h\". Tối thiểu là \"2m\"."
+
+msgid "Encryption"
+msgstr "Mã hóa"
+
+msgid "No encryption (open network)"
+msgstr "Không mã hóa (mạng mở)"
+
+msgid "Password"
+msgstr "Mật khẩu"
+
+msgid "Client isolation"
+msgstr "Cách ly thiết bị"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Chặn giao tiếp giữa các thiết bị khách trong mạng này."
+
+msgid "Yes"
+msgstr "Có"
+
+msgid "No"
+msgstr "Không"
+
+msgid "Forwarding destination zone"
+msgstr "Vùng đích chuyển tiếp"
+
+msgid "DHCP rule ports"
+msgstr "Cổng quy tắc DHCP"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "Dải cổng UDP cho lưu lượng DHCP, ví dụ: \"67-68\"."
+
+msgid "DNS rule port"
+msgstr "Cổng quy tắc DNS"
+
+msgid "Error saving configuration:"
+msgstr "Lỗi khi lưu cấu hình:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"Giao diện người dùng để dễ dàng tạo và quản lý các mạng Wi-Fi tách biệt cho khách, "
+"mỗi mạng có điểm truy cập, DHCP và các quy tắc tường lửa riêng."
+
+msgid "Enable guest network."
+msgstr "Bật mạng khách."
+
+msgid "The radio on which the guest network will work."
+msgstr "Băng tần sóng vô tuyến mà mạng khách sẽ hoạt động."
+
+msgid "MAC address"
+msgstr "Địa chỉ MAC"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Ghi đè địa chỉ MAC mặc định - dải địa chỉ có thể sử dụng có thể bị giới hạn bởi trình điều khiển"
+
+msgid "randomly generated"
+msgstr "được tạo ngẫu nhiên"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"Địa chỉ %s đã được sử dụng và không có địa chỉ nào còn trống trong dải "
+"172.16.0.1 - 172.31.0.1."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr ""
+"Mật khẩu phải dài ít nhất 8 ký tự (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "Hệ thống mở WEP"
+
+msgid "WEP Shared Key"
+msgstr "Khóa chia sẻ WEP"
+
+msgid "Mixed Mode"
+msgstr "Chế độ hỗn hợp"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"WPA2-PSK được khuyến nghị cho hầu hết các thiết bị. WPA3-SAE cung cấp mức độ bảo mật "
+"cao nhất nhưng yêu cầu thiết bị khách hỗ trợ WPA3."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"Khóa WEP phải gồm 5 hoặc 13 ký tự ASCII, hoặc 10 hoặc 26 chữ số thập lục phân."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Vùng tường lửa mà lưu lượng mạng khách được chuyển tiếp đến (thường là \"wan\"). "
+"Chọn một vùng hiện có từ danh sách hoặc điền vào trường <em>-- tùy chỉnh --</em> "
+"để nhập thủ công."
+
+msgid "Input"
+msgstr "Đầu vào"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Lưu lượng truy cập từ khách đến chính bộ định tuyến (ví dụ: LuCI, SSH)."
+
+msgid "Output"
+msgstr "Đầu ra"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Lưu lượng truy cập từ chính bộ định tuyến đến khách. Khuyến nghị chọn ACCEPT (CHẤP NHẬN) "
+"để các dịch vụ của bộ định tuyến (DHCP, DNS) tiếp tục hoạt động."
+
+msgid "Forward"
+msgstr "Chuyển tiếp"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Lưu lượng truyền qua lại giữa khách và các mạng/vùng khác (ví dụ: LAN). Giữ nguyên "
+"REJECT (TỪ CHỐI) hoặc DROP (HỦY BỎ) để cách ly khách khỏi mạng LAN của bạn. "
+"ACCEPT sẽ cho phép khách truy cập vào các mạng khác."
+
+msgid "accept"
+msgstr "chấp nhận"
+
+msgid "reject"
+msgstr "từ chối"
+
+msgid "drop"
+msgstr "hủy bỏ"
+
+msgid "driver default"
+msgstr "mặc định của trình điều khiển"
+
+msgid "Password length"
+msgstr "Độ dài mật khẩu"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "Độ dài tối thiểu là 8 ký tự, khuyến nghị 13 ký tự."
+
+msgid "Password composition"
+msgstr "Thành phần mật khẩu"
+
+msgid "Character types to use when generating a password."
+msgstr "Các loại ký tự được sử dụng khi tạo mật khẩu."
+
+msgid "Uppercase letters"
+msgstr "Chữ hoa"
+
+msgid "Lowercase letters"
+msgstr "Chữ thường"
+
+msgid "Digits"
+msgstr "Chữ số"
+
+msgid "Special characters"
+msgstr "Ký tự đặc biệt"
+
+msgid "Select password components..."
+msgstr "Chọn các thành phần mật khẩu..."
+
+msgid "Generate password"
+msgstr "Tạo mật khẩu"
+
+msgid "Generate"
+msgstr "Tạo"
+
+msgid "QR Code"
+msgstr "Mã QR"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"Tạo mã QR chứa dữ liệu mạng khách (SSID, mã hóa, mật khẩu) để thiết bị "
+"khách có thể quét và kết nối."
+
+msgid "QR Error Correction Code Level"
+msgstr "Mức độ sửa lỗi mã QR"
+
+msgid "Low"
+msgstr "Thấp"
+
+msgid "Medium"
+msgstr "Trung bình"
+
+msgid "Quartile"
+msgstr "Phần tư"
+
+msgid "High"
+msgstr "Cao"
+
+msgid "Scan this QR code with the client device."
+msgstr "Quét mã QR này bằng thiết bị khách."
+
+msgid "Generate guest WiFi QR…"
+msgstr "Đang tạo mã QR Wi-Fi khách…"
+
+msgid "Back to settings"
+msgstr "Quay lại cài đặt"
+
+msgid "Generate QR…"
+msgstr "Tạo mã QR…"

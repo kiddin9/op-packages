@@ -1,0 +1,170 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Edit Port Label"
+msgstr "Edytuj etykietę portu"
+
+msgid "Enter new label for this port:"
+msgstr "Wprowadź nową etykietę dla tego portu:"
+
+msgid "Device"
+msgstr "Urządzenie"
+
+msgid "Original label"
+msgstr "Oryginalna etykieta"
+
+msgid "Restore Original"
+msgstr "Przywróć oryginalną"
+
+msgid "Cancel"
+msgstr "Anuluj"
+
+msgid "Save"
+msgstr "Zapisz"
+
+msgid "Port configuration saved successfully"
+msgstr "Konfiguracja portu została poprawnie zapisana"
+
+msgid "Port order saved"
+msgstr "Zapisano kolejność portu"
+
+msgid "Click to edit label"
+msgstr "Kliknij aby edytować etykietę"
+
+msgid "Hold to drag and reorder"
+msgstr "Przytrzymaj aby przeciągnąć i zmienić kolejność"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Etykieta to maksymalnie 9 znaków, limit dla opisu wynosi 50 znaków."
+
+msgid "Enter description (optional):"
+msgstr "Dodaj opis (opcjonalnie):"
+
+msgid "Optional description"
+msgstr "Opcjonalny opis portu"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Ustawienia użytkownika zapisywane są w pliku /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "Pobrano plik z ustawieniami"
+
+msgid "Configuration file not found"
+msgstr "Nie znaleziono pliku z ustawieniami"
+
+msgid "Download error: %s"
+msgstr "Błąd pobierania: %s"
+
+msgid "Invalid configuration format"
+msgstr "Niewłaściwy format pliku"
+
+msgid "Restore configuration"
+msgstr "Przywracanie ustawień"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Operacja nadpisze bieżącą konfigurację portów. Kontynuować?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Konfiguracja została pomyślnie przywrócona. Odświeżanie..."
+
+msgid "File restore failed: %s"
+msgstr "Przywracanie pliku nie powiodło się: %s"
+
+msgid "Save .json file"
+msgstr "Zapisz plik .json"
+
+msgid "Upload .json file"
+msgstr "Załaduj plik .json"
+
+msgid "Cannot save empty configuration"
+msgstr "Nie można zapisać pustej konfiguracji"
+
+msgid "Cannot save port configuration. "
+msgstr "Nie można zapisać konfiguracji portów. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "Katalog /etc może być tylko do odczytu lub mieć niewystarczające uprawnienia. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Spróbuj uruchomić: chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Błąd zapisu"
+
+msgid "Original error: %s"
+msgstr "Oryginalny błąd: %s"
+
+msgid "Restore from backup"
+msgstr "Przywróć z kopii zapasowej"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Przywrócić konfigurację z pliku kopii zapasowej? Spowoduje to nadpisanie bieżących ustawień."
+
+msgid "Backup contains:"
+msgstr "Kopia zapasowa zawiera:"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Konfiguracja przywrócona z kopii zapasowej. Odświeżanie..."
+
+msgid "Restore failed: %s"
+msgstr "Przywracanie nie powiodło się: %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "Plik kopii zapasowej jest uszkodzony: %s"
+
+msgid "Error reading backup: %s"
+msgstr "Błąd odczytu kopii zapasowej: %s"
+
+msgid "Restore backup .bak"
+msgstr "Przywróć kopię .bak"
+
+msgid "Change port state"
+msgstr "Zmień stan portu"
+
+msgid "Enable this port"
+msgstr "Włącz ten port"
+
+msgid "Enable port"
+msgstr "Włącz port"
+
+msgid "Disable this port"
+msgstr "Wyłącz ten port"
+
+msgid "Disable port"
+msgstr "Wyłącz port"
+
+msgid "Down"
+msgstr "nieaktywny"
+
+msgid "Disabled"
+msgstr "wyłączony"
+
+msgid "Idle"
+msgstr "bezczynny"
+
+msgid "Active"
+msgstr "aktywny"
+
+msgid "Unknown"
+msgstr "nieznany"
+
+msgid "No config file to backup"
+msgstr "Brak pliku konfiguracji do utworzenia kopii zapasowej"
+
+msgid "Config file is corrupted, cannot create backup"
+msgstr "Plik konfiguracji jest uszkodzony, nie można utworzyć kopii zapasowej"
+
+msgid "Backup file created: %s"
+msgstr "Plik kopii zapasowej został utworzony: %s"
+
+msgid "Backup write verification failed!"
+msgstr "Weryfikacja zapisu kopii zapasowej nie powiodła się!"
+
+msgid "Backup creation failed: %s"
+msgstr "Tworzenie kopii zapasowej nie powiodło się: %s"
+
+msgid "Error reading config: %s"
+msgstr "Błąd odczytu konfiguracji: %s"
+
+msgid "Create backup .bak"
+msgstr "Utwórz kopię .bak"

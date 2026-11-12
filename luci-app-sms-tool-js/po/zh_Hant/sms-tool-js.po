@@ -1,0 +1,967 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: zh_Hant\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "SMS Messages"
+msgstr "簡訊訊息"
+
+msgid "Received Messages"
+msgstr "已接收的訊息"
+
+msgid "Send Messages"
+msgstr "傳送訊息"
+
+msgid "USSD"
+msgstr "USSD"
+
+msgid "Sender"
+msgstr "寄件人"
+
+msgid "Received"
+msgstr "已接收"
+
+msgid "Message"
+msgstr "訊息"
+
+msgid "Configuration"
+msgstr "設定"
+
+msgid "AT Commands"
+msgstr "AT指令"
+
+msgid "Configuration"
+msgstr "組態"
+
+msgid "Please enter phone number"
+msgstr "請輸入電話號碼"
+
+msgid "Please enter a message text"
+msgstr "請輸入訊息內容"
+
+msgid "Reply"
+msgstr "回覆"
+
+msgid "Please enter a USSD code"
+msgstr "請輸入要傳送的代碼"
+
+msgid "USSD Codes"
+msgstr "USSD代碼"
+
+msgid "Send to"
+msgstr "傳送至"
+
+msgid "Message text"
+msgstr "訊息內容"
+
+msgid "Send"
+msgstr "傳送"
+
+msgid "Send to number"
+msgstr "傳送至號碼"
+
+msgid "to number"
+msgstr "至號碼"
+
+msgid "to group"
+msgstr "至群組"
+
+msgid "SMS sent sucessfully"
+msgstr "簡訊已傳送"
+
+msgid "Code to send"
+msgstr "要傳送的代碼"
+
+msgid "Send code"
+msgstr "傳送代碼"
+
+msgid "SMS Settings"
+msgstr "簡訊訊息設定"
+
+msgid "USSD Codes Settings"
+msgstr "USSD代碼設定"
+
+msgid "SMS reading port"
+msgstr "簡訊讀取埠"
+
+msgid "SMS sending port"
+msgstr "簡訊傳送埠"
+
+msgid "AT commands sending port"
+msgstr "AT指令傳送埠"
+
+msgid "AT Commands Settings"
+msgstr "AT指令設定"
+
+msgid "Merge split messages"
+msgstr "合併拆分的訊息"
+
+msgid "Checking this option will make it easier to read the messages, but it will cause a discrepancy in the number of messages shown and received."
+msgstr "拆分的訊息將被合併。選取此選項將使閱讀簡訊更容易，但會導致顯示和接收的訊息數量不一致。"
+
+msgid "USSD sending port"
+msgstr "USSD代碼傳送埠"
+
+msgid "Sending USSD code in plain text"
+msgstr "以純文字形式傳送USSD代碼"
+
+msgid "Receive message without PDU decoding"
+msgstr "接收訊息而不進行PDU解碼"
+
+msgid "Send the USSD code in plain text. Command is not being coded to the PDU."
+msgstr "以純文字形式傳送USSD代碼。指令不會被解碼為PDU。"
+
+msgid "Receive and display the message without decoding it as a PDU."
+msgstr "接收到的訊息將不進行PDU解碼而顯示。"
+
+msgid "Explanation of number and prefix"
+msgstr "關於號碼和字首的說明"
+
+msgid "In the tab for sending SMSes, show an explanation of the prefix and the correct phone number."
+msgstr "在允許傳送簡訊的選項卡中顯示關於字首和正確電話號碼的說明。"
+
+msgid "The phone number should be preceded by the country prefix (for Poland it is 48, without '+'). If the number is 5, 4 or 3 characters, it is treated as 'short' and should not be preceded by a country prefix."
+msgstr "電話號碼前應加上國家字首（對於波蘭是48，不帶'+'號）。如果號碼是5、4或3個字元，則視為「短號碼」，不應加國家字首。"
+
+msgid "The phone number should be preceded by the country prefix (for Poland it is 48, without +). If the number is 5, 4 or 3 characters, it is treated as.. short and should not be preceded by a country prefix."
+msgstr "電話號碼前應加上國家字首（對於波蘭是48，不帶+號）。如果號碼是5、4或3個字元，則視為短號碼，不應加國家字首。"
+
+msgid "Add prefix to phone number"
+msgstr "為電話號碼新增字首"
+
+msgid "Automatically add prefix to the phone number field."
+msgstr "自動在電話號碼欄位中新增字首。"
+
+msgid "Prefix number"
+msgstr "字首號碼"
+
+msgid "Please specify the command to send"
+msgstr "請指定要傳送的指令"
+
+msgid "Please specify the code to send"
+msgstr "請指定要傳送的代碼"
+
+msgid "Please set the port for communication with the modem"
+msgstr "請指定與數據機通訊的埠"
+
+msgid "User AT commands"
+msgstr "使用者AT指令"
+
+msgid "Command to send"
+msgstr "要傳送的指令"
+
+msgid "Clear form"
+msgstr "清除表單"
+
+msgid "Send command"
+msgstr "傳送指令"
+
+msgid "Send code"
+msgstr "傳送代碼"
+
+msgid "Reply"
+msgstr "回覆"
+
+msgid "Message storage area"
+msgstr "訊息儲存區域"
+
+msgid "Messages are stored in a specific location (for example, on the SIM card or modem memory), but other areas may also be available depending on the type of device."
+msgstr "訊息儲存在特定位置（例如在SIM卡或數據機記憶體中），但根據裝置類型，也可能有其他區域可用。"
+
+msgid "SIM card"
+msgstr "SIM卡"
+
+msgid "Modem memory"
+msgstr "數據機記憶體"
+
+msgid "Storage used / Total capacity"
+msgstr "已使用的儲存 / 總容量"
+
+msgid "Delete selected"
+msgstr "刪除所選"
+
+msgid "Delete"
+msgstr "刪除"
+
+msgid "Delete all"
+msgstr "全部刪除"
+
+msgid "Refresh"
+msgstr "重新整理"
+
+msgid "Please select the message(s) to be deleted"
+msgstr "請選擇要刪除的訊息"
+
+msgid "Delete selected message(s)?"
+msgstr "刪除所選訊息？"
+
+msgid "Delete all the messages?"
+msgstr "刪除所有訊息？"
+
+msgid "User interface for reading messages using sms-tool. More information about the sms-tool on the %seko.one.pl forum%s."
+msgstr "用於使用sms-tool讀取簡訊訊息的使用者介面。有關sms-tool程式的更多資訊，請訪問%seko.one.pl論壇%s。"
+
+msgid "User interface for sending messages using sms-tool. More information about the sms-tool on the %seko.one.pl forum%s."
+msgstr "用於使用sms-tool傳送簡訊訊息的使用者介面。有關sms-tool程式的更多資訊，請訪問%seko.one.pl論壇%s。"
+
+msgid "User interface for sending AT commands using sms-tool. More information about the sms-tool on the %seko.one.pl forum%s."
+msgstr "用於使用sms-tool傳送AT指令的使用者介面。有關sms-tool程式的更多資訊，請訪問%seko.one.pl論壇%s。"
+
+msgid "User interface for sending USSD codes using sms-tool. More information about the sms-tool on the %seko.one.pl forum%s."
+msgstr "用於使用sms-tool傳送USSD代碼的使用者介面。有關sms-tool程式的更多資訊，請訪問%seko.one.pl論壇%s。"
+
+msgid "Configuration sms-tool"
+msgstr "組態sms-tool"
+
+msgid "Configuration panel for sms-tool and gui application."
+msgstr "sms-tool程式和使用者介面的設定面板。"
+
+msgid "Port for communication with the modem"
+msgstr "與數據機通訊的埠"
+
+msgid "Select one of the available ttyUSBX ports."
+msgstr "選擇一個可用的ttyUSBX埠。"
+
+msgid "Please select a port"
+msgstr "請選擇埠"
+
+msgid "User contacts"
+msgstr "使用者聯絡人"
+
+msgid "Enable group messaging"
+msgstr "啟用群組訊息"
+
+msgid "This option allows you to send one message to all contacts in the user's contact list."
+msgstr "此選項允許向使用者聯絡人清單中的所有聯絡人傳送一條訊息。"
+
+msgid "Message sending delay"
+msgstr "訊息傳送延遲"
+
+msgid "[Bot] Message sent to number:"
+msgstr "[機器人] 訊息已傳送至號碼："
+
+msgid "User USSD codes"
+msgstr "使用者USSD代碼"
+
+msgid "Each line must have the following format: 'Contact name;phone number'. For user convenience, the file is saved to the location <code>/etc/modem/phonebook.user</code>."
+msgstr "每行必須具有以下格式：'聯絡人姓名;電話號碼'。為方便使用者，聯絡人儲存在檔案<code>/etc/modem/phonebook.user</code>中。"
+
+msgid "Each line must have the following format: 'At command description;AT command'. For user convenience, the file is saved to the location <code>/etc/modem/atcmmds.user</code>."
+msgstr "每行必須具有以下格式：'AT指令描述;AT指令'。為方便使用者，指令儲存在檔案<code>/etc/modem/atcmmds.user</code>中。"
+
+msgid "Each line must have the following format: 'Code description;code'. For user convenience, the file is saved to the location <code>/etc/modem/ussdcodes.user</code>."
+msgstr "每行必須具有以下格式：'代碼描述;代碼'。為方便使用者，代碼儲存在檔案<code>/etc/modem/ussdcodes.user</code>中。"
+
+msgid "Display new messages notification on login page"
+msgstr "在登入頁面上顯示新訊息通知"
+
+msgid "Display notification when new messages arrive in the selected message area."
+msgstr "當新訊息到達所選訊息區域時顯示通知。"
+
+msgid "new message"
+msgstr "新訊息"
+
+msgid "new messages"
+msgstr "新訊息"
+
+msgid "All"
+msgstr "全部"
+
+msgid "Show"
+msgstr "顯示"
+
+msgid "Read"
+msgstr "已讀"
+
+msgid "Unread"
+msgstr "未讀"
+
+msgid "All / Read / Unread"
+msgstr "全部 / 已讀 / 未讀"
+
+msgid "Show all, read or unread messages"
+msgstr "顯示所有、已讀或未讀訊息"
+
+msgid "Show system messages in the message list"
+msgstr "在訊息清單中顯示系統訊息"
+
+msgid "Mark as read"
+msgstr "標記為已讀"
+
+msgid "Mark as unread"
+msgstr "標記為未讀"
+
+msgid "Please select the message(s) to be marked as read"
+msgstr "請選擇要標記為已讀的訊息"
+
+msgid "Please select the message(s) to be marked as unread"
+msgstr "請選擇要標記為未讀的訊息"
+
+msgid "Mark selected message(s) as read?"
+msgstr "將所選訊息標記為已讀？"
+
+msgid "Mark selected message(s) as unread?"
+msgstr "將所選訊息標記為未讀？"
+
+msgid "Message marked as read"
+msgstr "訊息已標記為已讀"
+
+msgid "Messages marked as read"
+msgstr "訊息已標記為已讀"
+
+msgid "Message marked as unread"
+msgstr "訊息已標記為未讀"
+
+msgid "Messages marked as unread"
+msgstr "訊息已標記為未讀"
+
+msgid "System messages"
+msgstr "系統訊息"
+
+msgid "Diode"
+msgstr "二極體"
+
+msgid "New messages notification LED"
+msgstr "新訊息通知LED"
+
+msgid "Enable SMS notification LED on new message"
+msgstr "在新訊息時啟用簡訊通知LED"
+
+msgid "Enable notification LED when new messages arrive in the selected message area."
+msgstr "當新訊息到達所選訊息區域時啟用通知LED。"
+
+msgid "Selected LED"
+msgstr "所選LED"
+
+msgid "Select an LED diode for new message notification. The selection is made from the available LEDs in the system."
+msgstr "選擇用於新訊息通知的LED二極體。從系統中可用的LED中進行選擇。"
+
+msgid "Automatically select LED"
+msgstr "自動選擇LED"
+
+msgid "Automatically select the first available LED."
+msgstr "自動選擇第一個可用的LED。"
+
+msgid "Advanced settings"
+msgstr "進階設定"
+
+msgid "LED Flashing interval (in seconds)"
+msgstr "LED閃爍間隔（秒）"
+
+msgid "Set the LED flashing interval (in seconds)."
+msgstr "設定LED閃爍間隔（秒）。"
+
+msgid "Flashing duration (in seconds)"
+msgstr "閃爍持續時間（秒）"
+
+msgid "Set the flashing duration (in seconds). Set to 0 for infinite duration (LED will flash until messages are marked as read)."
+msgstr "設定閃爍持續時間（秒）。設定為0表示無限持續時間（LED將閃爍直到訊息被標記為已讀）。"
+
+msgid "Please wait... Saving SMS messages to a text file."
+msgstr "請稍候...正在將簡訊訊息儲存到文字檔案。"
+
+msgid "This option allows to backup SMS messages or, for example, save messages that are not supported by the sms-tool."
+msgstr "此選項允許備份簡訊訊息或例如儲存sms-tool不支援的訊息。"
+
+msgid "Delete all messages"
+msgstr "刪除所有訊息"
+
+msgid "This option allows you to delete all SMS messages when they are not visible in the 'Received Messages' tab."
+msgstr "此選項允許在「已接收的訊息」選項卡中不可見時刪除所有簡訊訊息。"
+
+msgid "Saving SMS messages to a file failed. Please try again."
+msgstr "將簡訊訊息儲存到檔案失敗。請重試。"
+
+msgid "PDU decoding scheme"
+msgstr "PDU解碼方案"
+
+msgid "Autodetect"
+msgstr "自動偵測"
+
+msgid "Keep the previous reply when sending a new USSD code."
+msgstr "傳送新USSD代碼時保留之前的回覆。"
+
+msgid "Check this option if you need to use the menu built on USSD codes"
+msgstr "如果您需要使用基於USSD代碼建構的選單，請選取此選項"
+
+msgid "Turn over the replies."
+msgstr "翻轉回覆。"
+
+msgid "View new reply from top"
+msgstr "從上往下顯示新回覆"
+
+msgid "Please wait... deleted"
+msgstr "請稍候...已刪除"
+
+msgid "of"
+msgstr "在"
+
+msgid "selected messages"
+msgstr "所選訊息中"
+
+msgid ""
+"The package requires user configuration. <br /><br /><b>The following "
+"need to be set:</b> <ul><li>1. All ports for communication with the modem.</li><li>2. Additional "
+"options specific to the given modem (for handling USSD codes).</li><li> 3. Notification LED (optional).</li><li><ul>"
+
+msgstr ""
+"該軟體套件需要使用者組態。<br /><br /><b>需要"
+"設定：</b> <ul><li>1. 所有與數據機通訊的埠。</li><li>2. 針對給定數據機的附加"
+"選項（用於處理USSD代碼）。</li><li> 3. 通知LED（選用）。</li><li><ul>"
+
+msgid "Any change in the area from which SMS messages will be read requires refreshing the messages"
+msgstr "讀取簡訊的區域發生任何變更都需要重新整理訊息"
+
+msgid "Characters remaining:"
+msgstr "剩餘字元："
+
+msgid "Encoding standard"
+msgstr "編碼標準"
+
+msgid "GSM-7 (160 characters)"
+msgstr "GSM-7（160個字元）"
+
+msgid "Unicode (70 characters)"
+msgstr "Unicode（70個字元）"
+
+msgid "GSM-7 encoding (160 characters)"
+msgstr "GSM-7編碼（160個字元）"
+
+msgid "Unicode encoding (70 characters), does not support sending national characters (in utf8) - only ascii"
+msgstr "Unicode編碼（70個字元），不支援傳送國家字元（utf8格式）– 僅限ASCII"
+
+msgid "The tab allows users to support the package."
+msgstr "此選項卡允許使用者支援該軟體套件"
+
+msgid "Luci-app-sms-tool-js Info"
+msgstr "關於luci-app-sms-tool-js軟體套件的資訊"
+
+msgid "Report a bug"
+msgstr "報告錯誤"
+
+msgid "Write in the topic of the package on the forum eko.one.pl"
+msgstr "在eko.one.pl論壇的軟體套件主題中發帖"
+
+msgid "Write on forum"
+msgstr "在論壇上發帖"
+
+msgid "Report a bug on the package Github page"
+msgstr "在軟體套件的Github頁面上報告錯誤"
+
+msgid "Open a package discussion on Github"
+msgstr "在Github上開啟軟體套件討論"
+
+msgid "Open discussion"
+msgstr "開啟討論"
+
+msgid "Buy a coffee if you want to support the development of the project and the author"
+msgstr "如果您想支援專案和作者的發展，請請喝杯咖啡"
+
+msgid "Buy a coffee"
+msgstr "請喝咖啡"
+
+msgid "Become a sponsor if you want to support the development of the project and the author"
+msgstr "如果您想支援專案和作者的發展，請成為贊助商"
+
+msgid "Become a sponsor"
+msgstr "成為贊助商"
+
+msgid "Package Info"
+msgstr "軟體套件資訊"
+
+msgid "Author (package maintainer)"
+msgstr "作者（軟體套件維護者）"
+
+msgid "Package update and support"
+msgstr "軟體套件更新和支援"
+
+msgid "SMS Forwarding to E-mail Settings"
+msgstr "簡訊轉發到電子郵件設定"
+
+msgid "An e-mail will be sent.."
+msgstr "將傳送電子郵件.."
+
+msgid "Enable message forwarding"
+msgstr "啟用訊息轉發"
+
+msgid "E-mail settings"
+msgstr "電子郵件設定"
+
+msgid "Select a predefined e-mail settings or enter settings manually."
+msgstr "選擇預定義的電子郵件設定或手動輸入設定。"
+
+msgid "Recipient"
+msgstr "收件人"
+
+msgid "E-mail address of the recipient."
+msgstr "收件人的電子郵件地址。"
+
+msgid "Sender"
+msgstr "寄件人"
+
+msgid "E-mail address of the sender."
+msgstr "寄件人的電子郵件地址。"
+
+msgid "User"
+msgstr "使用者"
+
+msgid "Username for SMTP authentication."
+msgstr "SMTP身分驗證的使用者名稱。"
+
+msgid "Password"
+msgstr "密碼"
+
+msgid "Google app password / Password for SMTP authentication."
+msgstr "Google應用程式密碼 / SMTP身分驗證密碼。"
+
+msgid "SMTP server"
+msgstr "SMTP伺服器"
+
+msgid "Hostname/IP address of the SMTP server."
+msgstr "SMTP伺服器的主機名稱/IP位址。"
+
+msgid "SMTP server port"
+msgstr "SMTP伺服器埠"
+
+msgid "Security"
+msgstr "安全性"
+
+msgid "TLS: use STARTTLS if the server supports it."
+msgstr "TLS：如果伺服器支援，使用STARTTLS。"
+
+msgid "SSL: SMTP over SSL."
+msgstr "SSL：透過SSL的SMTP。"
+
+msgid "Required Package"
+msgstr "必需的軟體套件"
+
+msgid "The SMS forwarding option requires the mailsend package to be installed."
+msgstr "簡訊轉發選項需要安裝mailsend軟體套件。"
+
+msgid "Check required packages"
+msgstr "檢查所需軟體套件"
+
+msgid "Check"
+msgstr "檢查"
+
+msgid "Mailsend Package"
+msgstr "mailsend軟體套件"
+
+msgid "Loading package data…"
+msgstr "正在載入軟體套件資料…"
+
+msgid "Installed"
+msgstr "已安裝"
+
+msgid "Install…"
+msgstr "安裝…"
+
+msgid "Mailsend Package"
+msgstr "mailsend軟體套件"
+
+msgid "Please select exactly one message to forward"
+msgstr "請準確選擇一條訊息進行轉發"
+
+msgid "Forward selected message to e-mail?"
+msgstr "將所選訊息轉發到電子郵件？"
+
+msgid "Sending e-mail..."
+msgstr "正在傳送電子郵件..."
+
+msgid "Message forwarded successfully"
+msgstr "訊息已成功轉發"
+
+msgid "Failed to forward message: %s"
+msgstr "轉發訊息失敗：%s"
+
+msgid "Error: %s"
+msgstr "錯誤：%s"
+
+msgid "user define"
+msgstr "使用者設定"
+
+msgid "Forward"
+msgstr "轉發"
+
+msgid "Please select the message(s) to be forwarded"
+msgstr "選擇您想要轉發的訊息"
+
+msgid "SMS forwarding function is not enabled. Please configure it first"
+msgstr "簡訊轉發功能未啟用。請先進行設定"
+
+msgid "My Router"
+msgstr "我的路由器"
+
+msgid "Forward SMS to E-mail"
+msgstr "將簡訊訊息轉發到電子郵件"
+
+msgid "Subject:"
+msgstr "主題："
+
+msgid "Message text:"
+msgstr "訊息內容："
+
+msgid "Send"
+msgstr "傳送"
+
+msgid "Subject and body cannot be empty"
+msgstr "主題和內容不能為空"
+
+msgid "Package mailsend is not installed. Please install it first using the Install... button below"
+msgstr "mailsend軟體套件未安裝。請先使用下面的「安裝...」按鈕進行安裝"
+
+msgid "Select modem"
+msgstr "選擇數據機"
+
+msgid "Changing a modem requires refreshing the messages"
+msgstr "變更數據機需要重新整理訊息"
+
+msgid "Defined AT command files"
+msgstr "已定義的AT命令檔案"
+
+msgid "Defined USSD code files"
+msgstr "已定義的 USSD 代碼檔案"
+
+msgid "File uploaded and saved to"
+msgstr "檔案已上傳並儲存至"
+
+msgid "Unable to upload file"
+msgstr "無法上傳檔案"
+
+msgid "Phonebook saved successfully"
+msgstr "電話簿儲存成功"
+
+msgid "Unable to save the file"
+msgstr "無法儲存檔案"
+
+msgid "filename.user"
+msgstr "檔案名稱.user"
+
+msgid "Select or create a file to edit..."
+msgstr "選擇或建立要編輯的檔案..."
+
+msgid "Please enter a file name"
+msgstr "請輸入檔案名稱"
+
+msgid "File created successfully"
+msgstr "檔案建立成功"
+
+msgid "Unable to create file"
+msgstr "無法建立檔案"
+
+msgid "Please select a file to delete"
+msgstr "請選擇要刪除的檔案"
+
+msgid "Are you sure you want to delete this file?"
+msgstr "您確定要刪除此檔案嗎？"
+
+msgid "File deleted successfully"
+msgstr "檔案刪除成功"
+
+msgid "Select or create a file to edit..."
+msgstr "選擇或建立要編輯的檔案..."
+
+msgid "Unable to delete file"
+msgstr "無法刪除檔案"
+
+msgid "Please select or create a file first"
+msgstr "請先選擇或建立檔案"
+
+msgid "File saved successfully"
+msgstr "檔案儲存成功"
+
+msgid "Unable to save file"
+msgstr "無法儲存檔案"
+
+msgid "Load .user file"
+msgstr "載入.user檔案"
+
+msgid "Save .user file"
+msgstr "儲存.user檔案"
+
+msgid "Please select a file to delete"
+msgstr "請選擇要刪除的檔案"
+
+msgid "Manage contacts"
+msgstr "管理聯絡人"
+
+msgid "Edit User Contacts"
+msgstr "編輯使用者聯絡人"
+
+msgid "Manage USSD codes"
+msgstr "管理USSD代碼"
+
+msgid "Manage User USSD Codes"
+msgstr "管理使用者USSD代碼"
+
+msgid "Each line must have the following format: 'Code description;code'. For user convenience, the file is saved to the location <code>/etc/modem/ussdcodes/</code>."
+msgstr "每行必須採用以下格式：'代碼描述;代碼'。為方便使用者，檔案儲存在<code>/etc/modem/ussdcodes/</code>位置。"
+
+msgid "Each line must have the following format: 'AT command description;AT command'. For user convenience, the file is saved to the location <code>/etc/modem/atcmmds/</code>."
+msgstr "每行必須採用以下格式：'AT命令描述;AT命令'。為方便使用者，檔案儲存在<code>/etc/modem/atcmmds/</code>位置。"
+
+msgid "Manage AT commands"
+msgstr "管理AT命令"
+
+msgid "Manage User AT Commands"
+msgstr "管理使用者AT命令"
+
+msgid "-- Select file --"
+msgstr "-- 選擇檔案 --"
+
+msgid "Select file"
+msgstr "選擇檔案"
+
+msgid "New file name"
+msgstr "新檔案名稱"
+
+msgid "Delete selected file"
+msgstr "刪除所選檔案"
+
+msgid "Select file with AT commands to load"
+msgstr "選擇要載入的AT命令檔案"
+
+msgid "Error loading AT commands file: "
+msgstr "載入AT命令檔案時發生錯誤："
+
+msgid "No AT commands available"
+msgstr "沒有可用的AT命令"
+
+msgid "Error loading initial AT commands file:"
+msgstr "載入初始AT命令檔案時發生錯誤："
+
+msgid "Error loading USSD codes file: "
+msgstr "載入USSD代碼檔案時發生錯誤："
+
+msgid "Error loading initial USSD file:"
+msgstr "載入初始USSD檔案時發生錯誤："
+
+msgid "Select file with USSD codes to load"
+msgstr "選擇要載入的USSD代碼檔案"
+
+msgid "No USSD codes available"
+msgstr "沒有可用的USSD代碼"
+
+msgid "Show notification icon"
+msgstr "顯示通知圖示"
+
+msgid "Show the new message notification icon on the status overview page."
+msgstr "在狀態總覽頁面上顯示新訊息通知圖示。"
+
+msgid "Loading..."
+msgstr "載入中…"
+
+msgid "Modem"
+msgstr "數據機"
+
+msgid "Modems"
+msgstr "數據機"
+
+msgid "Signal Quality"
+msgstr "訊號品質"
+
+msgid "Align preview to:"
+msgstr "將預覽對齊至："
+
+msgid "Left"
+msgstr "左"
+
+msgid "Center"
+msgstr "置中"
+
+msgid "Right"
+msgstr "右"
+
+msgid "New message information block settings"
+msgstr "新訊息資訊區塊設定"
+
+msgid "Alignment settings saved successfully"
+msgstr "對齊設定已成功儲存"
+
+msgid "SMS Info"
+msgstr "簡訊資訊"
+
+msgid "New SMS"
+msgstr "新簡訊"
+
+msgid "No new SMS"
+msgstr "沒有新簡訊"
+
+msgid "Deleting files"
+msgstr "正在刪除檔案"
+
+msgid "Delete all files"
+msgstr "刪除所有檔案"
+
+msgid "Load .gz archive"
+msgstr "載入 .gz 封存檔"
+
+msgid "Save .gz archive"
+msgstr "儲存 .gz 封存檔"
+
+msgid "File uploaded and saved to"
+msgstr "檔案已上傳並儲存至"
+
+msgid "Failed to extract archive"
+msgstr "無法解壓封存檔"
+
+msgid "Archive extracted to"
+msgstr "封存檔已解壓至"
+
+msgid "Upload error"
+msgstr "上傳錯誤"
+
+msgid "Failed to create archive"
+msgstr "無法建立封存檔"
+
+msgid "Failed to read archive"
+msgstr "無法讀取封存檔"
+
+msgid "Are you sure you want to delete all files in the folder?"
+msgstr "確定要刪除資料夾中的所有檔案嗎？"
+
+msgid "All files deleted successfully"
+msgstr "所有檔案已成功刪除"
+
+msgid "Call Log"
+msgstr "通話紀錄"
+
+msgid "Clear all call log entries?"
+msgstr "清除所有通話紀錄？"
+
+msgid "No call log entries found"
+msgstr "未找到通話紀錄"
+
+msgid "No matching call log entries found"
+msgstr "未找到符合的通話紀錄"
+
+msgid "User interface for viewing call logs. The log is collected by a background daemon."
+msgstr "用於查看通話紀錄的使用者介面。紀錄由背景守護行程收集。"
+
+msgid "Call log daemon is disabled. Please enable it in the configuration to start collecting logs."
+msgstr "通話紀錄守護行程已停用。請在設定中將其啟用以開始收集紀錄。"
+
+msgid "Filter call type"
+msgstr "過濾通話類型"
+
+msgid "All calls"
+msgstr "所有通話"
+
+msgid "Missed calls"
+msgstr "未接來電"
+
+msgid "Received calls"
+msgstr "已接來電"
+
+msgid "Dialed calls"
+msgstr "已撥電話"
+
+msgid "Refresh"
+msgstr "重新整理"
+
+msgid "Clear Log"
+msgstr "清除紀錄"
+
+msgid "Date"
+msgstr "日期"
+
+msgid "Type"
+msgstr "類型"
+
+msgid "Number"
+msgstr "號碼"
+
+msgid "Duration"
+msgstr "通話時長"
+
+msgid "Name"
+msgstr "姓名"
+
+msgid "Call log reading port"
+msgstr "通話紀錄讀取連接埠"
+
+msgid "Select one of the available ttyUSBX ports."
+msgstr "請選擇一個可用的 ttyUSBX 連接埠。"
+
+msgid "Please select a port"
+msgstr "請選擇連接埠"
+
+msgid "Enable call log daemon"
+msgstr "啟用通話紀錄守護行程"
+
+msgid "Background process to log incoming and missed calls."
+msgstr "用於記錄來電與未接來電的背景程序。"
+
+msgid "Forward SMS"
+msgstr "轉寄簡訊"
+
+msgid "Calls"
+msgstr "通話"
+
+msgid "Notification Settings"
+msgstr "通知設定"
+
+msgid "The LED informs about a new message. Before activating this function, please config and save the SMS reading port, time to check SMS inbox and select the notification LED."
+msgstr "LED 指示燈用於通知新訊息。在啟用此功能之前，請設定並儲存簡訊讀取連接埠、簡訊收件匣檢查時間並選擇通知 LED。"
+
+msgid "Check inbox every minute(s)"
+msgstr "每分鐘檢查一次收件匣"
+
+msgid "Specify how many minutes you want your inbox to be checked."
+msgstr "指定檢查收件匣的時間間隔（分鐘）。"
+
+msgid "Notification LED"
+msgstr "通知 LED"
+
+msgid "Select the notification LED."
+msgstr "選擇通知 LED。"
+
+msgid "Notify new messages"
+msgstr "新訊息通知"
+
+msgid "Restart the inbox checking process every"
+msgstr "重新啟動收件匣檢查程序，每隔"
+
+msgid "The process will restart at the selected time interval. This will eliminate the delay in checking your inbox."
+msgstr "該程序將按選定的時間間隔重新啟動。這將消除檢查收件匣時的延遲。"
+
+msgid "4h"
+msgstr "4小時"
+
+msgid "6h"
+msgstr "6小時"
+
+msgid "8h"
+msgstr "8小時"
+
+msgid "12h"
+msgstr "12小時"
+
+msgid "The diode is dedicated only to these notifications"
+msgstr "該指示燈僅用於此類通知"
+
+msgid "Select 'No' in case the router has only one LED or if the LED is multi-tasking. <br /><br /><b>Important</b> <br />This option requires LED to be defined in the system (if possible) to work properly. This requirement applies when the diode supports multiple tasks."
+msgstr "如果路由器只有一個 LED 或 LED 是多功能的，請選擇「否」。<br /><br /><b>重要提示</b> <br />此選項要求在系統中定義 LED（如果可能）才能正常運作。當指示燈支援多個任務時，此要求適用。"
+
+msgid "Call Log Settings"
+msgstr "通話紀錄設定"
+
+msgid "Background process to log incoming and missed calls. <br /><br /><b>Important</b> <br />Option dedicated to Qualcomm modems that do not have internal call history memory and do not support the standard AT+CPBR command. Enabling this option adds a new tab. If dedicated tab does not appear, clear your browser cache and restart the router."
+msgstr "用於記錄來電和未接來電的背景程序。<br /><br /><b>重要</b> <br />此選項專為沒有內部通話記錄記憶體且不支援標準AT+CPBR指令的高通數據機所設計。啟用此選項將新增一個新分頁。如果專用分頁未出現，請清除瀏覽器快取並重新啟動路由器。"
+
+msgid "Force EHLO"
+msgstr "強制使用 EHLO"
+
+msgid "Forces mailsend to always use EHLO instead of auto-detecting HELO/EHLO. <br />Enable only if forwarding fails, since some servers (e.g. corporate gateways, Microsoft 365 / Exchange Online Protection) don't properly advertise ESMTP support, which breaks STARTTLS/authentication."
+msgstr "強制 mailsend 一律使用 EHLO,而不是自動偵測 HELO/EHLO。<br />僅在轉發失敗時才啟用此選項,因為某些伺服器(例如企業閘道、Microsoft 365 / Exchange Online Protection)未正確宣告支援 ESMTP,導致 STARTTLS/驗證無法正常運作。"
+
+msgid "Unicode encoding (70 characters by default) supports the transmission of national characters and multipart sms messages"
+msgstr "Unicode 編碼(預設70個字元)支援傳輸國家字元及多部分簡訊"
+
+msgid "Not applicable"
+msgstr "不適用"
+
+

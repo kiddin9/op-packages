@@ -7,12 +7,224 @@
 'require view';
 
 /*
-	Copyright 2022-2025 Rafał Wabik - IceG - From eko.one.pl forum
-
+	Copyright 2022-2026 Rafał Wabik - IceG - From eko.one.pl forum
+	
 	Licensed to the GNU General Public License v3.0.
 */
 
 return view.extend({
+
+	isUnicode: function(text) {
+		// Chars GSM-7
+		const gsm7chars = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
+		const gsm7extended = '^{}\\[~]|€';
+		
+		for (let i = 0; i < text.length; i++) {
+			let char = text.charAt(i);
+			if (gsm7chars.indexOf(char) === -1 && gsm7extended.indexOf(char) === -1) {
+				return true; // None GSM-7
+			}
+		}
+		return false; // All GSM-7
+	},
+
+	getGSM7Length: function(text) {
+		const gsm7extended = '^{}\\[~]|€';
+		let length = 0;
+		
+		for (let i = 0; i < text.length; i++) {
+			let char = text.charAt(i);
+			if (gsm7extended.indexOf(char) !== -1) {
+				length += 2;
+			} else {
+				length += 1;
+			}
+		}
+		return length;
+	},
+
+	getUnicodeLength: function(text) {
+		let length = 0;
+		
+		for (let i = 0; i < text.length; i++) {
+			let charCode = text.charCodeAt(i);
+			
+			if (charCode >= 0xD800 && charCode <= 0xDBFF) {
+				length += 2;
+				i++;
+			} else {
+				length += 1;
+			}
+		}
+		return length;
+	},
+
+	normalizeToGSM7: function(text) {
+		return text
+			// PL
+			.replace(/ą/g, 'a').replace(/Ą/g, 'A')
+			.replace(/ć/g, 'c').replace(/Ć/g, 'C')
+			.replace(/ę/g, 'e').replace(/Ę/g, 'E')
+			.replace(/ł/g, 'l').replace(/Ł/g, 'L')
+			.replace(/ń/g, 'n').replace(/Ń/g, 'N')
+			.replace(/ó/g, 'o').replace(/Ó/g, 'O')
+			.replace(/ś/g, 's').replace(/Ś/g, 'S')
+			.replace(/ż/g, 'z').replace(/Ż/g, 'Z')
+			.replace(/ź/g, 'z').replace(/Ź/g, 'Z')
+			// EU
+			.replace(/á/g, 'a').replace(/Á/g, 'A')
+			.replace(/â/g, 'a').replace(/Â/g, 'A')
+			.replace(/ã/g, 'a').replace(/Ã/g, 'A')
+			.replace(/ā/g, 'a').replace(/Ā/g, 'A')
+			.replace(/č/g, 'c').replace(/Č/g, 'C')
+			.replace(/ď/g, 'd').replace(/Ď/g, 'D')
+			.replace(/đ/g, 'd').replace(/Đ/g, 'D')
+			.replace(/é/g, 'e').replace(/É/g, 'E')
+			.replace(/ě/g, 'e').replace(/Ě/g, 'E')
+			.replace(/ë/g, 'e').replace(/Ë/g, 'E')
+			.replace(/ê/g, 'e').replace(/Ê/g, 'E')
+			.replace(/ē/g, 'e').replace(/Ē/g, 'E')
+			.replace(/í/g, 'i').replace(/Í/g, 'I')
+			.replace(/î/g, 'i').replace(/Î/g, 'I')
+			.replace(/ï/g, 'i').replace(/Ï/g, 'I')
+			.replace(/ī/g, 'i').replace(/Ī/g, 'I')
+			.replace(/ľ/g, 'l').replace(/Ľ/g, 'L')
+			.replace(/ň/g, 'n').replace(/Ň/g, 'N')
+			.replace(/ô/g, 'o').replace(/Ô/g, 'O')
+			.replace(/õ/g, 'o').replace(/Õ/g, 'O')
+			.replace(/ö/g, 'o').replace(/Ö/g, 'O')
+			.replace(/ő/g, 'o').replace(/Ő/g, 'O')
+			.replace(/ř/g, 'r').replace(/Ř/g, 'R')
+			.replace(/š/g, 's').replace(/Š/g, 'S')
+			.replace(/ş/g, 's').replace(/Ş/g, 'S')
+			.replace(/ť/g, 't').replace(/Ť/g, 'T')
+			.replace(/ú/g, 'u').replace(/Ú/g, 'U')
+			.replace(/ů/g, 'u').replace(/Ů/g, 'U')
+			.replace(/û/g, 'u').replace(/Û/g, 'U')
+			.replace(/ü/g, 'u').replace(/Ü/g, 'U')
+			.replace(/ű/g, 'u').replace(/Ű/g, 'U')
+			.replace(/ý/g, 'y').replace(/Ý/g, 'Y')
+			.replace(/ÿ/g, 'y').replace(/Ÿ/g, 'Y')
+			.replace(/ž/g, 'z').replace(/Ž/g, 'Z')
+			// SPECIAL
+			.replace(/–/g, '-').replace(/—/g, '-')
+			.replace(/'/g, '\'').replace(/'/g, '\'')
+			.replace(/"/g, '"').replace(/"/g, '"')
+			.replace(/„/g, '"').replace(/"/g, '"')
+			.replace(/«/g, '"').replace(/»/g, '"')
+			.replace(/…/g, '...').replace(/·/g, '.')
+			.replace(/•/g, '*').replace(/‣/g, '*')
+			.replace(/°/g, 'o').replace(/º/g, 'o')
+			.replace(/†/g, '+').replace(/‡/g, '+')
+			.replace(/¹/g, '1').replace(/²/g, '2').replace(/³/g, '3')
+			.replace(/¼/g, '1/4').replace(/½/g, '1/2').replace(/¾/g, '3/4')
+			.replace(/×/g, 'x').replace(/÷/g, '/')
+			.replace(/±/g, '+/-')
+			.replace(/≈/g, '~').replace(/≠/g, '!=')
+			.replace(/≤/g, '<=').replace(/≥/g, '>=')
+			.replace(/←/g, '<-').replace(/→/g, '->')
+			.replace(/↑/g, '^').replace(/↓/g, 'v')
+			// Emoji, etc.
+			.replace(/[\u{1F600}-\u{1F64F}]/gu, ':)')
+			.replace(/[\u{1F300}-\u{1F5FF}]/gu, '')
+			.replace(/[\u{1F680}-\u{1F6FF}]/gu, '')
+			.replace(/[\u{1F700}-\u{1F77F}]/gu, '')
+			.replace(/[\u{1F780}-\u{1F7FF}]/gu, '')
+			.replace(/[\u{1F800}-\u{1F8FF}]/gu, '')
+			.replace(/[\u{1F900}-\u{1F9FF}]/gu, '')
+			.replace(/[\u{1FA00}-\u{1FA6F}]/gu, '')
+			.replace(/[\u{1FA70}-\u{1FAFF}]/gu, '')
+			.replace(/[\u{2600}-\u{26FF}]/gu, '')
+			.replace(/[\u{2700}-\u{27BF}]/gu, '')
+			// UNSUPPORTED
+			.replace(/[^\x00-\x7F@£$¥èéùìòÇØøÅåΔΦΓΛΩΠΨΣΘΞÆæßÉ¡¤§¿äöñüà^{}\\[\]~|€]/g, '');
+	},
+
+	updateMessageCounter: function() {
+		let textarea = document.getElementById('smstext');
+		let text = textarea.value;
+		let counter = document.getElementById('counter');
+		let gsm7Radio = document.querySelector('input[name="encoding_type"][value="gsm7"]');
+		let unicodeRadio = document.querySelector('input[name="encoding_type"][value="unicode"]');
+		
+		if (this.isUnicode(text)) {
+			unicodeRadio.checked = true;
+			let maxLength = 70;
+			let currentLength = this.getUnicodeLength(text);
+			
+			if (currentLength > maxLength) {
+				// Multipart SMS
+				counter.innerHTML = _('Not applicable');
+			} else {
+				counter.innerHTML = (maxLength - currentLength);
+			}
+		} else {
+			gsm7Radio.checked = true;
+			let maxLength = 160;
+			let currentLength = this.getGSM7Length(text);
+			counter.innerHTML = (maxLength - currentLength);
+			
+			if (currentLength > maxLength) {
+				let newText = '';
+				let length = 0;
+				for (let i = 0; i < text.length; i++) {
+					let char = text.charAt(i);
+					let charLength = ('^{}\\[~]|€'.indexOf(char) !== -1) ? 2 : 1;
+					if (length + charLength <= maxLength) {
+						newText += char;
+						length += charLength;
+					} else {
+						break;
+					}
+				}
+				textarea.value = newText;
+				counter.innerHTML = (maxLength - length);
+			}
+		}
+	},
+
+	handleEncodingChange: function(ev) {
+		let textarea = document.getElementById('smstext');
+		let text = textarea.value;
+		let encodingType = ev.target.value;
+		let counter = document.getElementById('counter');
+		
+		if (encodingType === 'gsm7') {
+			textarea.value = this.normalizeToGSM7(text);
+			let currentLength = this.getGSM7Length(textarea.value);
+			let maxLength = 160;
+			
+			if (currentLength > maxLength) {
+				let newText = '';
+				let length = 0;
+				for (let i = 0; i < textarea.value.length; i++) {
+					let char = textarea.value.charAt(i);
+					let charLength = ('^{}\\[~]|€'.indexOf(char) !== -1) ? 2 : 1;
+					if (length + charLength <= maxLength) {
+						newText += char;
+						length += charLength;
+					} else {
+						break;
+					}
+				}
+				textarea.value = newText;
+				currentLength = this.getGSM7Length(textarea.value);
+			}
+			counter.innerHTML = (maxLength - currentLength);
+		} else {
+			let maxLength = 70;
+			let currentLength = this.getUnicodeLength(textarea.value);
+			
+			if (currentLength > maxLength) {
+				// Multipart SMS
+				counter.innerHTML = _('Not applicable');
+			} else {
+				counter.innerHTML = (maxLength - currentLength);
+			}
+		}
+		this.updateMessageCounter();
+	},
+
 	handleCommand: function(exec, args) {
 		let buttons = document.querySelectorAll('.cbi-button');
 
@@ -26,14 +238,14 @@ return view.extend({
 			res.stdout = res.stdout?.replace(/^(?=\n)$|^\s*|\s*$|\n\n+/gm, "") || '';
 			res.stderr = res.stderr?.replace(/^(?=\n)$|^\s*|\s*$|\n\n+/gm, "") || '';
 
-	 		let cut = res.stdout;
-			cut = cut.substr(0, 20);
-			if ( cut == "sms sent sucessfully" ) {
-        		res.stdout = _('SMS sent sucessfully');
+			let match = res.stdout.match(/^sms sent suc{1,2}essfully(?:\s*:\s*(\d+))?/i);
+			if ( match ) {
+				let digit = match[1];
+				res.stdout = _('SMS sent sucessfully') + (digit ? ':' + ' ' + digit : '');
 			}
 
 			dom.content(out, [ res.stdout || '', res.stderr || '' ]);
-
+			
 		}).catch(function(err) {
 			ui.addNotification(null, E('p', [ err ]))
 		}).finally(function() {
@@ -72,7 +284,6 @@ return view.extend({
 						    return false;
 						}
 						else {
-						    // sms_tool -d /dev/ttyUSB1 send 48500500500 "MSG"
 						    return this.handleCommand('sms_tool', [ '-d' , port , 'send' , phn , get_smstxt ]);
 						}
 					}
@@ -97,7 +308,6 @@ return view.extend({
 					return false;
 				}
 				else {
-				// sms_tool -d /dev/ttyUSB1 send 48500500500 "MSG"
 				   		let xs = document.getElementById('pb');
 
     						let phone, i;
@@ -105,7 +315,7 @@ return view.extend({
 
 							for (let i = 0; i < xs.length; i++) {
   								(function(i) {
-    								setTimeout(function() {
+    								setTimeout(function() { 
 		    						phone = xs.options[i].value;
 
 									let out = document.querySelector('.smscommand-output');
@@ -116,8 +326,8 @@ return view.extend({
 									res.stdout += (i+1)+_('/')+xs.length+' * '+_('[Bot] Message sent to number:') + ' ' + phone +'\n';
 									res.stdout = res.stdout.replace(/undefined/g, "");
 
-									dom.content(out, [ res.stdout || '' ]);
-
+									dom.content(out, [ res.stdout || '' ]);		
+						
 									}, dx * i);
 								})(i);
 							}
@@ -136,6 +346,10 @@ return view.extend({
 		ov2.value = '';
 
 		document.getElementById('counter').innerHTML = '160';
+
+		// Reset to GSM-7
+		let gsm7Radio = document.querySelector('input[name="encoding_type"][value="gsm7"]');
+		if (gsm7Radio) gsm7Radio.checked = true;
 
 		let prefixnum, sections = uci.sections('sms_tool_js');
 		let addprefix = sections[0].prefix;
@@ -161,16 +375,52 @@ return view.extend({
 		ov.value = x;
 	},
 
+	handleModemChange: function(ev) {
+		let sections = uci.sections('defmodems', 'defmodems');
+		if (!sections || sections.length === 0) return;
+		
+		let serialModems = sections.filter(function(s) {
+			return s.modemdata === 'serial';
+		});
+		
+		if (serialModems.length === 0) return;
+		
+		let currentPort = uci.get('sms_tool_js', '@sms_tool_js[0]', 'sendport');
+		let currentIndex = serialModems.findIndex(function(s) {
+			return s.comm_port === currentPort;
+		});
+		
+		if (currentIndex === -1) currentIndex = 0;
+		
+		let direction = ev.currentTarget.classList.contains('next') ? 1 : -1;
+		let newIndex = (currentIndex + direction + serialModems.length) % serialModems.length;
+		let newModem = serialModems[newIndex];
+		
+		if (newModem && newModem.comm_port) {
+			uci.set('sms_tool_js', '@sms_tool_js[0]', 'sendport', newModem.comm_port);
+			uci.save();
+			uci.apply().then(function() {
+				let modemText = document.querySelector('.modem-display-text');
+				if (modemText) {
+					let label = newModem.modem + (newModem.user_desc ? ' (' + newModem.user_desc + ')' : '');
+					modemText.textContent = label;
+				}
+			});
+		}
+	},
+
 	load: function() {
 		return Promise.all([
 			L.resolveDefault(fs.read_direct('/etc/modem/phonebook.user'), null),
-			uci.load('sms_tool_js')
+			uci.load('sms_tool_js'),
+			L.resolveDefault(uci.load('defmodems'))
 		]);
 	},
 
 	render: function (loadResults) {
 
 	let group, prefixnum, sections = uci.sections('sms_tool_js');
+	let self = this;
 
 	if ( sections[0].sendingroup == '1' )
 		{
@@ -179,22 +429,71 @@ return view.extend({
 	else {
 	group = '';
 	}
-
-	if ( sections[0].prefix == '1' ) {
+	
+	if ( sections[0].prefix == '1' ) {	
 		prefixnum = sections[0].pnumber;
 	}
 	if ( sections[0].information == '1' ) {
 		ui.addNotification(null, E('p', _('The phone number should be preceded by the country prefix (for Poland it is 48, without +). If the number is 5, 4 or 3 characters, it is treated as.. short and should not be preceded by a country prefix.') ), 'info');
 	}
-
+	
 		let info = _('User interface for sending messages using sms-tool. More information about the sms-tool on the %seko.one.pl forum%s.').format('<a href="https://eko.one.pl/?p=openwrt-sms_tool" target="_blank">', '</a>');
-
+		
+		let modemSections = uci.sections('defmodems', 'defmodems');
+		let serialModems = [];
+		
+		if (modemSections && modemSections.length > 0) {
+			serialModems = modemSections.filter(function(s) {
+				return s.modemdata === 'serial';
+			});
+		}
+		
+		let currentPort = uci.get('sms_tool_js', '@sms_tool_js[0]', 'sendport');
+		let currentModem = serialModems.find(function(s) {
+			return s.comm_port === currentPort;
+		});
+		
+		if (!currentModem && serialModems.length > 0) currentModem = serialModems[0];
+	
 		return E('div', { 'class': 'cbi-map', 'id': 'map' }, [
 				E('h2', {}, [ _('SMS Messages') ]),
 				E('div', { 'class': 'cbi-map-descr'}, info),
 				E('hr'),
 				E('div', { 'class': 'cbi-section' }, [
 					E('div', { 'class': 'cbi-section-node' }, [
+						(function() {
+							if (serialModems.length > 0) {
+								let label = currentModem.modem + (currentModem.user_desc ? ' (' + currentModem.user_desc + ')' : '');
+								let buttonsDisabled = (serialModems.length > 1) ? null : true;
+								
+								return E('div', { 'class': 'cbi-value' }, [
+									E('label', { 'class': 'cbi-value-title' }, [ _('Select modem') ]),
+									E('div', { 'class': 'cbi-value-field' }, [
+										E('div', { 'class': 'controls' }, [
+											E('div', { 'class': 'pager center', 'style': 'display: flex; align-items: center; gap: 10px;' }, [
+												E('button', { 
+													'class': 'btn cbi-button-neutral prev', 
+													'aria-label': _('Previous modem'), 
+													'click': ui.createHandlerFn(this, 'handleModemChange'),
+													'style': 'min-width: 40px;',
+													'disabled': buttonsDisabled
+												}, [ ' ◄ ' ]),
+												E('div', { 'class': 'text modem-display-text', 'style': 'flex: 1; text-align: center;' }, [ label ]),
+												E('button', { 
+													'class': 'btn cbi-button-neutral next', 
+													'aria-label': _('Next modem'), 
+													'click': ui.createHandlerFn(this, 'handleModemChange'),
+													'style': 'min-width: 40px;',
+													'disabled': buttonsDisabled
+												}, [ ' ► ' ])
+											])
+										])
+									])
+								]);
+							} else {
+								return E('div');
+							}
+						}.bind(this))(),
 						E('div', { 'class': 'cbi-value' }, [
 							E('label', { 'class': 'cbi-value-title' }, [ _('User contacts') ]),
 							E('div', { 'class': 'cbi-value-field' }, [
@@ -211,7 +510,7 @@ return view.extend({
                                     return E('option', { 'value': code }, name );
                                     })
 								)
-							])
+							]) 
 						]),
 						E('div', { 'class': 'cbi-value' }, [
 							E('label', { 'class': 'cbi-value-title' }, [ _('Send to') ]),
@@ -224,7 +523,7 @@ return view.extend({
 								'oninput': "this.value = this.value.replace(/[^0-9.]/g, '');",
 								'data-tooltip': _('Press [Delete] to delete the phone number'),
 								'keydown': function(ev) {
-									 if (ev.keyCode === 46)
+									 if (ev.keyCode === 46)  
 										{
 										let del = document.getElementById('phonenumber');
 											if (del) {
@@ -242,8 +541,41 @@ return view.extend({
 												document.getElementById('phonenumber').focus();
 											}
 										}
-								},
+								},																													
 								}),
+							])
+						]),
+						E('div', { 'class': 'cbi-value' }, [
+							E('label', { 'class': 'cbi-value-title' }, [ _('Encoding standard') ]),
+							E('div', { 'class': 'cbi-value-field', 'style': 'text-align: left;' }, [
+								E('div', { 'style': 'margin: 1px 0; display: inline-block;' }, [
+									E('label', {
+										'data-tooltip': _('GSM-7 encoding (160 characters)')
+									}, [
+										E('input', {
+											'type': 'radio',
+											'name': 'encoding_type',
+											'value': 'gsm7',
+											'change': ui.createHandlerFn(this, 'handleEncodingChange'),
+											'checked': true
+										}),
+										' ',
+										_('GSM-7 (160 characters)')
+									]),
+									' \u00a0\u00a0\u00a0 ',
+									E('label', {
+										'data-tooltip': _('Unicode encoding (70 characters by default) supports the transmission of national characters and multipart sms messages')
+									}, [
+										E('input', {
+											'type': 'radio',
+											'name': 'encoding_type',
+											'value': 'unicode',
+											'change': ui.createHandlerFn(this, 'handleEncodingChange')
+										}),
+										' ',
+										_('Unicode (70 characters)')
+									])
+								])
 							])
 						]),
 						E('div', { 'class': 'cbi-value' }, [
@@ -255,35 +587,32 @@ return view.extend({
 								'wrap': 'on',
 								'rows': '3',
 								'placeholder': _(''),
-								'maxlength': '160',
 								'data-tooltip': _('Press [Delete] to delete the content of the message'),
 								'keydown': function(ev) {
-									 if (ev.keyCode === 46)
+									 if (ev.keyCode === 46)  
 										{
 										let del = document.getElementById('smstext');
 											if (del) {
 												let ovtxt = document.getElementById('smstext');
 												ovtxt.value = '';
+												document.getElementById('counter').innerHTML = '160';
+												// Reset to GSM-7
+												let gsm7Radio = document.querySelector('input[name="encoding_type"][value="gsm7"]');
+												if (gsm7Radio) gsm7Radio.checked = true;
 												document.getElementById('smstext').focus();
 											}
 										}
 								},
 								'keyup': function(ev) {
-										document.getElementById('counter').innerHTML = (160 - document.getElementById('smstext').value.length);
-
-											    this.value = this.value.replace(/ą/g, 'a').replace(/Ą/g, 'A');
-        										this.value = this.value.replace(/ć/g, 'c').replace(/Ć/g, 'C');
-        										this.value = this.value.replace(/ę/g, 'e').replace(/Ę/g, 'E');
-        										this.value = this.value.replace(/ł/g, 'l').replace(/Ł/g, 'L');
-        										this.value = this.value.replace(/ń/g, 'n').replace(/Ń/g, 'N');
-        										this.value = this.value.replace(/ó/g, 'o').replace(/Ó/g, 'O');
-        										this.value = this.value.replace(/ś/g, 's').replace(/Ś/g, 'S');
-        										this.value = this.value.replace(/ż/g, 'z').replace(/Ż/g, 'Z');
-        										this.value = this.value.replace(/ź/g, 'z').replace(/Ź/g, 'Z');
-									}
-								}),
+									self.updateMessageCounter();
+								},
+								'input': function(ev) {
+									self.updateMessageCounter();
+								}
+							}),
 								E('div', { 'class': 'left' }, [
 								E('br'),
+								E('label', {}, [ _('Characters remaining:')+' ' ]),
 								E('label', { 'id': 'counter' }, [ _('160') ])
 								])
 							]),
@@ -306,24 +635,23 @@ return view.extend({
 							}, {
 								'click': ui.createHandlerFn(this, 'handleGo'),
 								'id': 'execute',
-								'classes': {
-									'send': 'cbi-button cbi-button-action important',
-									'sendg': 'cbi-button cbi-button-action important',
-								},
-								'id': 'execute',
-							}).render() : E('button', {
-								'class': 'cbi-button cbi-button-action important',
-								'id': 'execute',
-								'click': ui.createHandlerFn(this, 'handleGo')
-							}, [ _('Send to number') ]),
-						]),
-				]),
-				E('p', _('Status')),
-				E('pre', { 'class': 'smscommand-output', 'id': 'ans', 'style': 'display:none; border: 1px solid var(--border-color-medium); border-radius: 5px; font-family: monospace' }),
-		]);
-	},
+								'classes': {'send': 'cbi-button cbi-button-action important',
+                                            'sendg': 'cbi-button cbi-button-action important',
+                            },
+                                'id': 'execute',
+                            }).render() : E('button', {
+                                'class': 'cbi-button cbi-button-action important',
+                                'id': 'execute',
+                                'click': ui.createHandlerFn(this, 'handleGo')
+                            }, [ _('Send to number') ]),
+                        ]),
+                    ]),
+                E('p', _('Status')),
+                    E('pre', { 'class': 'smscommand-output', 'id': 'ans', 'style': 'display:none; border: 1px solid var(--border-color-medium); border-radius: 5px; font-family: monospace' }),
+                ]);
+            },
 
-	handleSaveApply: null,
-	handleSave: null,
-	handleReset: null
-})
+    handleSaveApply: null,
+    handleSave: null,
+    handleReset: null
+});

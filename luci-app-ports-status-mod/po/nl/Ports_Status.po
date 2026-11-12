@@ -1,0 +1,175 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: nl\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+msgid "Edit Port Label"
+msgstr "Poortlabel bewerken"
+
+msgid "Enter new label for this port:"
+msgstr "Voer nieuw label in voor deze poort:"
+
+msgid "Device"
+msgstr "Apparaat"
+
+msgid "Original label"
+msgstr "Oorspronkelijk label"
+
+msgid "Restore Original"
+msgstr "Oorspronkelijke herstellen"
+
+msgid "Cancel"
+msgstr "Annuleren"
+
+msgid "Save"
+msgstr "Opslaan"
+
+msgid "Port configuration saved successfully"
+msgstr "Poortconfiguratie succesvol opgeslagen"
+
+msgid "Port order saved"
+msgstr "Poortvolgorde opgeslagen"
+
+msgid "Click to edit label"
+msgstr "Klik om label te bewerken"
+
+msgid "Hold to drag and reorder"
+msgstr "Vasthouden om te slepen en de volgorde te wijzigen"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Label max. 9 tekens, beschrijving max. 50 tekens."
+
+msgid "Enter description (optional):"
+msgstr "Voer beschrijving in (optioneel):"
+
+msgid "Optional description"
+msgstr "Optionele beschrijving"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Gebruikersinstellingen worden opgeslagen in het bestand /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "Configuratiebestand gedownload"
+
+msgid "Configuration file not found"
+msgstr "Configuratiebestand niet gevonden"
+
+msgid "Download error: %s"
+msgstr "Downloadfout: %s"
+
+msgid "Invalid configuration format"
+msgstr "Ongeldig configuratieformaat"
+
+msgid "Restore configuration"
+msgstr "Configuratie herstellen"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Dit zal de huidige poortconfiguratie overschrijven. Doorgaan?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Configuratie succesvol hersteld. Herladen..."
+
+msgid "File restore failed: %s"
+msgstr "Bestandsherstel mislukt: %s"
+
+msgid "Save .json file"
+msgstr "JSON-bestand opslaan"
+
+msgid "Upload .json file"
+msgstr "JSON-bestand uploaden"
+
+msgid "Cannot save empty configuration"
+msgstr "Kan geen lege configuratie opslaan"
+
+msgid "Cannot save port configuration. "
+msgstr "Kan poortconfiguratie niet opslaan. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "De map /etc is mogelijk alleen-lezen of heeft onvoldoende rechten. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Probeer het volgende uit te voeren: chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Opslagfout"
+
+msgid "Original error: %s"
+msgstr "Oorspronkelijke fout: %s"
+
+msgid "Restore from backup"
+msgstr "Herstellen van back-up"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Configuratie herstellen van back-upbestand? Dit zal de huidige instellingen overschrijven."
+
+msgid "Backup contains:"
+msgstr "Back-up bevat:"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Configuratie hersteld van back-up. Herladen..."
+
+msgid "Restore failed: %s"
+msgstr "Herstel mislukt: %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "Back-upbestand is beschadigd: %s"
+
+msgid "Error reading backup: %s"
+msgstr "Fout bij lezen van back-up: %s"
+
+msgid "Restore backup .bak"
+msgstr ".bak-back-up herstellen"
+
+msgid "Change port state"
+msgstr "Poortstatus wijzigen"
+
+msgid "Enable this port"
+msgstr "Deze poort inschakelen"
+
+msgid "Enable port"
+msgstr "Poort inschakelen"
+
+msgid "Disable this port"
+msgstr "Deze poort uitschakelen"
+
+msgid "Disable port"
+msgstr "Poort uitschakelen"
+
+msgid "Down"
+msgstr "down"
+
+msgid "Disabled"
+msgstr "uitgeschakeld"
+
+msgid "Idle"
+msgstr "onactief"
+
+msgid "Active"
+msgstr "actief"
+
+msgid "Unknown"
+msgstr "onbekend"
+
+msgid "No config file to backup"
+msgstr "Geen configuratiebestand om back-up van te maken"
+
+msgid "Config file is corrupted, cannot create backup"
+msgstr "Configuratiebestand is beschadigd, kan geen back-up maken"
+
+msgid "Backup file created: %s"
+msgstr "Back-upbestand aangemaakt: %s"
+
+msgid "Backup write verification failed!"
+msgstr "Schrijfverificatie van back-up mislukt!"
+
+msgid "Backup creation failed: %s"
+msgstr "Aanmaken van back-up mislukt: %s"
+
+msgid "Error reading config: %s"
+msgstr "Fout bij lezen van configuratie: %s"
+
+msgid "Create backup .bak"
+msgstr ".bak-back-up maken"

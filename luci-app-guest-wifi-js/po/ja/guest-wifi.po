@@ -1,0 +1,276 @@
+msgid ""
+msgstr ""
+"Language: ja\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Guest Wi-Fi"
+msgstr "ゲスト Wi-Fi"
+
+msgid "Guest networks"
+msgstr "ゲスト ネットワーク"
+
+msgid "Add new guest network..."
+msgstr "新しいゲスト ネットワークを追加..."
+
+msgid "General"
+msgstr "全般設定"
+
+msgid "Security"
+msgstr "セキュリティ設定"
+
+msgid "Network & DHCP"
+msgstr "ネットワーク & DHCP"
+
+msgid "Firewall"
+msgstr "ファイアウォール"
+
+msgid "Enabled"
+msgstr "有効"
+
+msgid "Network name (SSID)"
+msgstr "ネットワーク名 (SSID)"
+
+msgid "Radio"
+msgstr "無線インターフェース"
+
+msgid "Interface IP address"
+msgstr "インターフェース IP アドレス"
+
+msgid "Netmask"
+msgstr "ネットマスク"
+
+msgid "DHCP range start"
+msgstr "DHCP 割り当て開始アドレス"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "ネットワーク アドレスからのオフセット値となる、割り当て最小アドレスです。"
+
+msgid "DHCP client limit"
+msgstr "DHCP クライアント上限数"
+
+msgid "Maximum number of leased addresses."
+msgstr "割り当て可能な最大アドレス数です。"
+
+msgid "DHCP lease time"
+msgstr "DHCP リース時間"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "例: \"1h\"（1時間）、\"30m\"（30分）、\"12h\"（12時間）。最小値は \"2m\" です。"
+
+msgid "Encryption"
+msgstr "暗号化方式"
+
+msgid "No encryption (open network)"
+msgstr "暗号化なし (オープン ネットワーク)"
+
+msgid "Password"
+msgstr "パスワード"
+
+msgid "Client isolation"
+msgstr "クライアントの隔離"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "このゲスト ネットワーク内のクライアント間の通信をブロックします。"
+
+msgid "Yes"
+msgstr "はい"
+
+msgid "No"
+msgstr "いいえ"
+
+msgid "Forwarding destination zone"
+msgstr "転送先ゾーン"
+
+msgid "DHCP rule ports"
+msgstr "DHCP ルール ポート"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "DHCP トラフィック用の UDP ポート範囲（例: \"67-68\"）です。"
+
+msgid "DNS rule port"
+msgstr "DNS ルール ポート"
+
+msgid "Error saving configuration:"
+msgstr "設定の保存中にエラーが発生しました:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"ゲスト用の隔離された Wi-Fi ネットワークを簡単に作成・管理するためのユーザー インター"
+"フェースです。それぞれに独自のアクセス ポイント、DHCP、およびファイアウォール ルールが適用されます。"
+
+msgid "Enable guest network."
+msgstr "ゲスト ネットワークを有効にする。"
+
+msgid "The radio on which the guest network will work."
+msgstr "ゲスト ネットワークが動作する無線インターフェースです。"
+
+msgid "MAC address"
+msgstr "MAC アドレス"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"デフォルトの MAC アドレスを上書きします - 使用可能なアドレス範囲は"
+"ドライバーによって制限される場合があります"
+
+msgid "randomly generated"
+msgstr "ランダム生成"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"アドレス %s はすでに使用されています。また、172.16.0.1 - 172.31.0.1 の"
+"範囲内に利用可能な空きアドレスがありません。"
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "パスワードは8文字以上である必要があります (WPA-PSK/WPA2-PSK/WPA3-SAE)。"
+
+msgid "WEP Open System"
+msgstr "WEP オープンシステム"
+
+msgid "WEP Shared Key"
+msgstr "WEP 共有キー"
+
+msgid "Mixed Mode"
+msgstr "ミックス モード"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"ほとんどのデバイスには WPA2-PSK が推奨されます。WPA3-SAE は最も強力な"
+"セキュリティを提供しますが、WPA3 対応のクライアントが必要です。"
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP キーは、5文字もしくは13文字の ASCII 文字、または10桁もしくは26桁の16進数である必要があります。"
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"ゲスト トラフィックの転送先となるファイアウォール ゾーン（通常は \"wan\"）です。"
+"リストから既存のゾーンを選択するか、<em>-- カスタム --</em> フィールドに入力して手動で設定してください。"
+
+msgid "Input"
+msgstr "インバウンド (受信)"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "ゲストからルーター自体へのトラフィック（例: LuCI、SSH）です。"
+
+msgid "Output"
+msgstr "アウトバウンド (送信)"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"ルーター自体からゲストへのトラフィックです。ルーターのサービス（DHCP、DNS）を"
+"正常に機能させるため、ACCEPT（許可）を推奨します。"
+
+msgid "Forward"
+msgstr "フォワード (転送)"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"ゲストと他のネットワーク/ゾーン（例: LAN）の間を通過するトラフィックです。"
+"ゲストを LAN から隔離するには、REJECT（拒否）または DROP（破棄）のままにしてください。"
+"ACCEPT（許可）にすると、ゲストが他のネットワークにアクセスできるようになります。"
+
+msgid "accept"
+msgstr "accept (許可)"
+
+msgid "reject"
+msgstr "reject (拒否)"
+
+msgid "drop"
+msgstr "drop (破棄)"
+
+msgid "driver default"
+msgstr "ドライバーのデフォルト値"
+
+msgid "Password length"
+msgstr "パスワードの長さ"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "最小長は8文字です。13文字を推奨します。"
+
+msgid "Password composition"
+msgstr "パスワードの構成"
+
+msgid "Character types to use when generating a password."
+msgstr "パスワード生成時に使用する文字の種類。"
+
+msgid "Uppercase letters"
+msgstr "大文字"
+
+msgid "Lowercase letters"
+msgstr "小文字"
+
+msgid "Digits"
+msgstr "数字"
+
+msgid "Special characters"
+msgstr "特殊文字"
+
+msgid "Select password components..."
+msgstr "パスワードの構成要素を選択..."
+
+msgid "Generate password"
+msgstr "パスワードの生成"
+
+msgid "Generate"
+msgstr "生成"
+
+msgid "QR Code"
+msgstr "QRコード"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"ゲストネットワークのデータ(SSID、暗号化方式、パスワード)を含むQRコードを"
+"生成し、クライアント端末でスキャンして接続できるようにします。"
+
+msgid "QR Error Correction Code Level"
+msgstr "QRコードの誤り訂正レベル"
+
+msgid "Low"
+msgstr "低"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "Quartile"
+msgstr "四分位"
+
+msgid "High"
+msgstr "高"
+
+msgid "Scan this QR code with the client device."
+msgstr "クライアント端末でこのQRコードをスキャンしてください。"
+
+msgid "Generate guest WiFi QR…"
+msgstr "ゲストWi-Fi用QRコードを生成中…"
+
+msgid "Back to settings"
+msgstr "設定に戻る"
+
+msgid "Generate QR…"
+msgstr "QRコードを生成…"

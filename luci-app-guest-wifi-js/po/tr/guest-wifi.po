@@ -1,0 +1,278 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: tr\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Misafir Wi-Fi"
+
+msgid "Guest networks"
+msgstr "Misafir ağları"
+
+msgid "Add new guest network..."
+msgstr "Yeni misafir ağı ekle..."
+
+msgid "General"
+msgstr "Genel"
+
+msgid "Security"
+msgstr "Güvenlik"
+
+msgid "Network & DHCP"
+msgstr "Ağ & DHCP"
+
+msgid "Firewall"
+msgstr "Güvenlik Duvarı"
+
+msgid "Enabled"
+msgstr "Etkinleştirildi"
+
+msgid "Network name (SSID)"
+msgstr "Ağ adı (SSID)"
+
+msgid "Radio"
+msgstr "Radyo"
+
+msgid "Interface IP address"
+msgstr "Arayüz IP adresi"
+
+msgid "Netmask"
+msgstr "Ağ maskesi"
+
+msgid "DHCP range start"
+msgstr "DHCP aralığı başlangıcı"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Ağ adresinden uzaklık (offset) olarak kiralanan en düşük adres."
+
+msgid "DHCP client limit"
+msgstr "DHCP istemci sınırı"
+
+msgid "Maximum number of leased addresses."
+msgstr "Kiralanabilecek maksimum adres sayısı."
+
+msgid "DHCP lease time"
+msgstr "DHCP kiralama süresi"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "Örn. \"1h\", \"30m\", \"12h\". Minimum \"2m\"dir."
+
+msgid "Encryption"
+msgstr "Şifreleme"
+
+msgid "No encryption (open network)"
+msgstr "Şifreleme yok (açık ağ)"
+
+msgid "Password"
+msgstr "Şifre"
+
+msgid "Client isolation"
+msgstr "İstemci izolasyonu"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Bu misafir ağındaki istemciler arasındaki iletişimi engeller."
+
+msgid "Yes"
+msgstr "Evet"
+
+msgid "No"
+msgstr "Hayır"
+
+msgid "Forwarding destination zone"
+msgstr "Yönlendirme hedef bölgesi"
+
+msgid "DHCP rule ports"
+msgstr "DHCP kural bağlantı noktaları"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "DHCP trafiği için UDP bağlantı noktası aralığı, örn. \"67-68\"."
+
+msgid "DNS rule port"
+msgstr "DNS kural bağlantı noktası"
+
+msgid "Error saving configuration:"
+msgstr "Yapılandırma kaydedilirken hata oluştu:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"Her biri kendi erişim noktasına, DHCP'sine ve güvenlik duvarı kurallarına sahip, "
+"misafirler için yalıtılmış Wi-Fi ağlarını kolayca oluşturmak ve yönetmek için bir kullanıcı arayüzü."
+
+msgid "Enable guest network."
+msgstr "Misafir ağını etkinleştir."
+
+msgid "The radio on which the guest network will work."
+msgstr "Misafir ağının çalışacağı radyo bandı."
+
+msgid "MAC address"
+msgstr "MAC adresi"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Varsayılan MAC adresini geçersiz kıl - kullanılabilir adreslerin aralığı "
+"sürücü tarafından sınırlandırılabilir"
+
+msgid "randomly generated"
+msgstr "rastgele oluşturulmuş"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"%s adresi zaten kullanımda ve 172.16.0.1 - 172.31.0.1 aralığında boş "
+"adres yok."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "Şifre en az 8 karakter uzunluğunda olmalıdır (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "WEP Açık Sistem"
+
+msgid "WEP Shared Key"
+msgstr "WEP Paylaşılan Anahtar"
+
+msgid "Mixed Mode"
+msgstr "Karışık Mod"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"Çoğu cihaz için WPA2-PSK önerilir. WPA3-SAE en güçlü güvenliği sunar ancak "
+"WPA3 özellikli istemciler gerektirir."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP anahtarı 5 veya 13 ASCII karakteri ya da 10 veya 26 onaltılık (hexadecimal) basamak olmalıdır."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Misafir trafiğinin yönlendirildiği güvenlik duvarı bölgesi (genellikle \"wan\"). "
+"Listeden mevcut bir bölge seçin veya manuel olarak girmek için <em>-- özel --</em> alanını doldurun."
+
+msgid "Input"
+msgstr "Giriş"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Misafirlerden yönlendiricinin (router) kendisine gelen trafik (örn. LuCI, SSH)."
+
+msgid "Output"
+msgstr "Çıkış"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Yönlendiricinin kendisinden misafirlere giden trafik. Yönlendirici servislerinin "
+"(DHCP, DNS) çalışmaya devam etmesi için KABUL ET (ACCEPT) önerilir."
+
+msgid "Forward"
+msgstr "Yönlendirme"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Misafirler ile diğer ağlar/bölgeler (örn. LAN) arasında geçen trafik. Misafirleri "
+"LAN'ınızdan yalıtmak için bunu REDDET (REJECT) veya DÜŞÜR (DROP) olarak tutun. KABUL ET, "
+"misafirlerin diğer ağlara ulaşmasına izin verir."
+
+msgid "accept"
+msgstr "kabul et"
+
+msgid "reject"
+msgstr "reddet"
+
+msgid "drop"
+msgstr "düşür"
+
+msgid "driver default"
+msgstr "sürücü varsayılanı"
+
+msgid "Password length"
+msgstr "Parola uzunluğu"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "Minimum uzunluk 8 karakterdir, 13 karakter önerilir."
+
+msgid "Password composition"
+msgstr "Parola bileşimi"
+
+msgid "Character types to use when generating a password."
+msgstr "Parola oluştururken kullanılacak karakter türleri."
+
+msgid "Uppercase letters"
+msgstr "Büyük harfler"
+
+msgid "Lowercase letters"
+msgstr "Küçük harfler"
+
+msgid "Digits"
+msgstr "Rakamlar"
+
+msgid "Special characters"
+msgstr "Özel karakterler"
+
+msgid "Select password components..."
+msgstr "Parola bileşenlerini seçin..."
+
+msgid "Generate password"
+msgstr "Parola oluştur"
+
+msgid "Generate"
+msgstr "Oluştur"
+
+msgid "QR Code"
+msgstr "QR Kodu"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"İstemci cihazın tarayıp bağlanabilmesi için misafir ağı verileriyle "
+"(SSID, şifreleme, parola) bir QR kodu oluşturur."
+
+msgid "QR Error Correction Code Level"
+msgstr "QR Kodu Hata Düzeltme Seviyesi"
+
+msgid "Low"
+msgstr "Düşük"
+
+msgid "Medium"
+msgstr "Orta"
+
+msgid "Quartile"
+msgstr "Çeyreklik"
+
+msgid "High"
+msgstr "Yüksek"
+
+msgid "Scan this QR code with the client device."
+msgstr "Bu QR kodunu istemci cihazla tarayın."
+
+msgid "Generate guest WiFi QR…"
+msgstr "Misafir Wi-Fi QR kodu oluşturuluyor…"
+
+msgid "Back to settings"
+msgstr "Ayarlara dön"
+
+msgid "Generate QR…"
+msgstr "QR kodu oluştur…"

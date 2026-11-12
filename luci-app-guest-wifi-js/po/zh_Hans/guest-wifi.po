@@ -1,0 +1,273 @@
+msgid ""
+msgstr ""
+"Last-Translator: \n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Guest Wi-Fi"
+msgstr "访客 Wi-Fi"
+
+msgid "Guest networks"
+msgstr "访客网络"
+
+msgid "Add new guest network..."
+msgstr "添加新的访客网络..."
+
+msgid "General"
+msgstr "基本设置"
+
+msgid "Security"
+msgstr "安全设置"
+
+msgid "Network & DHCP"
+msgstr "网络与 DHCP"
+
+msgid "Firewall"
+msgstr "防火墙"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Network name (SSID)"
+msgstr "网络名称 (SSID)"
+
+msgid "Radio"
+msgstr "无线射频"
+
+msgid "Interface IP address"
+msgstr "接口 IP 地址"
+
+msgid "Netmask"
+msgstr "网络掩码"
+
+msgid "DHCP range start"
+msgstr "DHCP 分配起始地址"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "最低的租用地址，作为网络地址的偏移量。"
+
+msgid "DHCP client limit"
+msgstr "DHCP 客户端限制"
+
+msgid "Maximum number of leased addresses."
+msgstr "最大可租用的地址数量。"
+
+msgid "DHCP lease time"
+msgstr "DHCP 租用时间"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "例如：\"1h\"（1小时）、\"30m\"（30分钟）、\"12h\"（12小时）。最小值为 \"2m\"。"
+
+msgid "Encryption"
+msgstr "加密方式"
+
+msgid "No encryption (open network)"
+msgstr "不加密（开放网络）"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "Client isolation"
+msgstr "客户端隔离"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "阻止此访客网络中客户端之间的互相通信。"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "No"
+msgstr "否"
+
+msgid "Forwarding destination zone"
+msgstr "转发目标区域"
+
+msgid "DHCP rule ports"
+msgstr "DHCP 规则端口"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "DHCP 流量的 UDP 端口范围，例如：\"67-68\"。"
+
+msgid "DNS rule port"
+msgstr "DNS 规则端口"
+
+msgid "Error saving configuration:"
+msgstr "保存配置时出错："
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"一个方便创建和管理隔离的访客 Wi-Fi 网络的图形界面，每个网络都有独立的"
+"接入点、DHCP 和防火墙规则。"
+
+msgid "Enable guest network."
+msgstr "启用访客网络。"
+
+msgid "The radio on which the guest network will work."
+msgstr "访客网络将工作的无线射频。"
+
+msgid "MAC address"
+msgstr "MAC 地址"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"重写默认 MAC 地址 - 可用地址的范围可能会受到驱动程序的限制"
+
+msgid "randomly generated"
+msgstr "随机生成"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"地址 %s 已在使用中，且在 172.16.0.1 - 172.31.0.1 范围内没有可用的空闲地址。"
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "密码长度必须至少为 8 个字符 (WPA-PSK/WPA2-PSK/WPA3-SAE)。"
+
+msgid "WEP Open System"
+msgstr "WEP 开放系统"
+
+msgid "WEP Shared Key"
+msgstr "WEP 共享密钥"
+
+msgid "Mixed Mode"
+msgstr "混合模式"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"推荐大多数设备使用 WPA2-PSK。WPA3-SAE 提供了最强的安全性，但需要客户端支持 WPA3。"
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP 密钥必须是 5 或 13 个 ASCII 字符，或者是 10 或 26 个十六进制数字。"
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"访客流量转发到的防火墙区域（通常为 \"wan\"）。从列表中选择一个现有区域，"
+"或者填写 <em>-- 自定义 --</em> 字段以手动输入。"
+
+msgid "Input"
+msgstr "入站数据"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "从访客到路由器本身的流量（例如：LuCI、SSH）。"
+
+msgid "Output"
+msgstr "出站数据"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"从路由器本身到访客的流量。建议设为 接受(ACCEPT)，以确保路由器服务（DHCP、DNS）正常工作。"
+
+msgid "Forward"
+msgstr "转发数据"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"访客与其他网络/区域（如 LAN）之间通过的流量。请保持为 拒绝(REJECT) 或 丢弃(DROP) "
+"以将访客与您的 LAN 隔离。设为 接受(ACCEPT) 将允许访客访问其他网络。"
+
+msgid "accept"
+msgstr "接受"
+
+msgid "reject"
+msgstr "拒绝"
+
+msgid "drop"
+msgstr "丢弃"
+
+msgid "driver default"
+msgstr "驱动默认"
+
+msgid "Password length"
+msgstr "密码长度"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "最小长度为8个字符,建议使用13个字符。"
+
+msgid "Password composition"
+msgstr "密码组成"
+
+msgid "Character types to use when generating a password."
+msgstr "生成密码时使用的字符类型。"
+
+msgid "Uppercase letters"
+msgstr "大写字母"
+
+msgid "Lowercase letters"
+msgstr "小写字母"
+
+msgid "Digits"
+msgstr "数字"
+
+msgid "Special characters"
+msgstr "特殊字符"
+
+msgid "Select password components..."
+msgstr "选择密码组成部分..."
+
+msgid "Generate password"
+msgstr "生成密码"
+
+msgid "Generate"
+msgstr "生成"
+
+msgid "QR Code"
+msgstr "二维码"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"生成包含访客网络数据(SSID、加密方式、密码)的二维码,以便客户端设备扫描"
+"并连接。"
+
+msgid "QR Error Correction Code Level"
+msgstr "二维码纠错级别"
+
+msgid "Low"
+msgstr "低"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "Quartile"
+msgstr "四分位"
+
+msgid "High"
+msgstr "高"
+
+msgid "Scan this QR code with the client device."
+msgstr "请使用客户端设备扫描此二维码。"
+
+msgid "Generate guest WiFi QR…"
+msgstr "正在生成访客 Wi-Fi 二维码…"
+
+msgid "Back to settings"
+msgstr "返回设置"
+
+msgid "Generate QR…"
+msgstr "生成二维码…"

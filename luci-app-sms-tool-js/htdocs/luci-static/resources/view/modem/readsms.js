@@ -5,12 +5,19 @@
 'require ui';
 'require uci';
 'require view';
+'require rpc';
 
 /*
-	Copyright 2022-2025 Rafał Wabik - IceG - From eko.one.pl forum
-
+	Copyright 2022-2026 Rafał Wabik - IceG - From eko.one.pl forum
+	
 	Licensed to the GNU General Public License v3.0.
 */
+
+var callForwardSMS = rpc.declare({
+    object: 'sms_forward',
+    method: 'forward',
+    params: ['subject', 'message']
+});
 
 document.head.append(E('style', {'type': 'text/css'},
 `
@@ -57,6 +64,15 @@ td input[type="checkbox"] {
 #smsTable .message {
   width: 88% !important;
 }
+
+.sms-row-icon {
+  position: relative;
+  display: inline-block;
+}
+
+:root[data-darkmode="true"] .sms-row-icon {
+  opacity: 0.5;
+}
 `));
 
 function msg_bar(v, m) {
@@ -69,6 +85,114 @@ pg.firstElementChild.style.width = pc + '%';
 pg.setAttribute('title', '%s'.format(v) + ' / ' + '%s'.format(m) + ' ('+ pc + '%)');
 }
 
+function popTimeout(a, message, timeout, severity) {
+    ui.addTimeLimitedNotification(a, message, timeout, severity);
+}
+
+
+function format_with_modem_index(value) {
+	return uci.load('defmodems').then(function() {
+		var defmodemSections = uci.sections('defmodems', 'defmodems');
+		
+		if (!defmodemSections || defmodemSections.length === 0) {
+			// old format
+			return value;
+		}
+		
+		var serialModems = defmodemSections.filter(function(s) {
+			return s.modemdata === 'serial';
+		});
+		
+		if (serialModems.length === 0) {
+			// old format
+			return value;
+		}
+		
+		var currentPort = uci.get('sms_tool_js', '@sms_tool_js[0]', 'readport');
+		
+		var modemIndex = -1;
+		for (var i = 0; i < serialModems.length; i++) {
+			if (serialModems[i].comm_port === currentPort) {
+				modemIndex = i + 1;
+				break;
+			}
+		}
+		
+		if (modemIndex === -1) {
+			// old format
+			return value;
+		}
+		
+		return 'dfm' + modemIndex + '_' + value;
+		
+	}).catch(function() {
+		// old format
+		return value;
+	});
+}
+
+function update_sms_count_for_modem(newValue) {
+	return uci.load('defmodems').then(function() {
+		var defmodemSections = uci.sections('defmodems', 'defmodems');
+		
+		if (!defmodemSections || defmodemSections.length === 0) {
+			// old format
+			return newValue;
+		}
+		
+		var serialModems = defmodemSections.filter(function(s) {
+			return s.modemdata === 'serial';
+		});
+		
+		if (serialModems.length === 0) {
+			// old format
+			return newValue;
+		}
+		
+		var currentPort = uci.get('sms_tool_js', '@sms_tool_js[0]', 'readport');
+		var currentModemIndex = -1;
+		
+		for (var i = 0; i < serialModems.length; i++) {
+			if (serialModems[i].comm_port === currentPort) {
+				currentModemIndex = i + 1;
+				break;
+			}
+		}
+		
+		if (currentModemIndex === -1) {
+			// old format
+			return newValue;
+		}
+		
+		var existingSmsCount = uci.get('sms_tool_js', '@sms_tool_js[0]', 'sms_count') || '';
+		var parts = existingSmsCount.split(' ').filter(function(p) { return p.trim() !== ''; });
+		
+		var updated = {};
+		parts.forEach(function(part) {
+			var match = part.match(/^dfm(\d+)_(\d+)$/);
+			if (match) {
+				var modemIdx = parseInt(match[1]);
+				if (modemIdx > 0 && modemIdx <= serialModems.length) {
+					updated[modemIdx] = match[2];
+				}
+			}
+		});
+		
+		updated[currentModemIndex] = newValue;
+		
+		var result = [];
+		for (var i = 1; i <= serialModems.length; i++) {
+			var count = updated[i] || '0';
+			result.push('dfm' + i + '_' + count);
+		}
+		
+		return result.join(' ');
+		
+	}).catch(function() {
+		// old format
+		return newValue;
+	});
+}
 
 function save_count() {
 	uci.load('sms_tool_js').then(function() {
@@ -83,9 +207,12 @@ function save_count() {
 								var t = total.replace ( /[^\d.]/g, '' );
 								var used = res.substring(17, res.indexOf("total"));
 								var u = used.replace ( /[^\d.]/g, '' );
-								uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', L.toArray(u).join(' '));
-								uci.save();
-								uci.apply();
+								
+								update_sms_count_for_modem(u).then(function(updatedValue) {
+									uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', updatedValue);
+									uci.save();
+									uci.apply();
+								});
 							}
 			});
 	});
@@ -93,7 +220,44 @@ function save_count() {
 
 return view.extend({
 	load: function() {
-		uci.load('sms_tool_js');
+		return Promise.all([
+			uci.load('sms_tool_js'),
+			L.resolveDefault(uci.load('defmodems'))
+		]);
+	},
+
+	handleModemChange: function(ev) {
+		var sections = uci.sections('defmodems', 'defmodems');
+		if (!sections || sections.length === 0) return;
+		
+		var serialModems = sections.filter(function(s) {
+			return s.modemdata === 'serial';
+		});
+		
+		if (serialModems.length === 0) return;
+		
+		var currentPort = uci.get('sms_tool_js', '@sms_tool_js[0]', 'readport');
+		var currentIndex = serialModems.findIndex(function(s) {
+			return s.comm_port === currentPort;
+		});
+		
+		if (currentIndex === -1) currentIndex = 0;
+		
+		var direction = ev.currentTarget.classList.contains('next') ? 1 : -1;
+		var newIndex = (currentIndex + direction + serialModems.length) % serialModems.length;
+		var newModem = serialModems[newIndex];
+		
+		if (newModem && newModem.comm_port) {
+			uci.set('sms_tool_js', '@sms_tool_js[0]', 'readport', newModem.comm_port);
+			uci.save();
+			uci.apply().then(function() {
+				var modemText = document.querySelector('.modem-display-text');
+				if (modemText) {
+					var label = newModem.modem + (newModem.user_desc ? ' (' + newModem.user_desc + ')' : '');
+					modemText.textContent = label;
+				}
+			});
+		}
 	},
 
 	handleSWarea: function(ev) {
@@ -111,9 +275,142 @@ return view.extend({
 		}
 	},
 
+    handleForward: function(ev) {
+	    var checked = document.querySelectorAll('input[name="smsn"]:checked');
+	    
+	    if (checked.length === 0) {
+		    ui.addNotification(null, E('p', _('Please select the message(s) to be forwarded')), 'info');
+		    return;
+	    }
+	    
+	    var self = this;
+	    
+	    uci.load('sms_tool_js').then(function() {
+		    var fwdEnabled = uci.get('sms_tool_js', '@sms_tool_js[0]', 'forward_sms_enabled');
+		    
+		    if (fwdEnabled !== '1') {
+			    ui.addNotification(null, E('p', _('SMS forwarding function is not enabled')), 'info');
+			    return;
+		    }
+		    
+		    var emailSubject = '';
+		    var emailBody = '';
+
+		    if (checked.length === 1) {
+			    var row = checked[0].closest('tr');
+			    var cells = row.cells;
+			    
+			    var sender = cells[1].textContent.trim();
+			    var timestamp = cells[2].textContent.trim();
+			    var message = cells[3].textContent.trim();
+			    
+			    emailSubject = 'SMS ' + timestamp + ' - ' + sender;
+			    emailBody = message;
+			    
+			    self.showEmailModal(emailSubject, emailBody);
+		    } 
+		    else {
+			    uci.load('system').then(function() {
+				    var hostname = uci.get('system', '@system[0]', 'hostname') || _('My Router');
+				    
+				    var messages = [];
+				    checked.forEach(function(checkbox) {
+					    var row = checkbox.closest('tr');
+					    var cells = row.cells;
+					    
+					    var timestamp = cells[2].textContent.trim();
+					    var sender = cells[1].textContent.trim();
+					    var message = cells[3].textContent.trim();
+					    
+					    messages.push(timestamp + ' - ' + sender + '\n' + message);
+				    });
+				    
+				    var emailBody = messages.join('\n\n');
+				    
+				    self.showEmailModal(hostname, emailBody);
+			    });
+		    }
+	    });
+    },
+
+    showEmailModal: function(defaultSubject, defaultBody) {
+	    var self = this;
+	    
+	    ui.showModal(_('Forward SMS to E-mail'), [
+		    E('p', _('Subject:')),
+		    E('input', {
+			    'type': 'text',
+			    'id': 'email-subject',
+			    'class': 'cbi-input-text',
+			    'style': 'width: 100% !important; margin-bottom: 15px;',
+			    'value': defaultSubject
+		    }),
+		    E('p', _('Message text:')),
+		    E('textarea', {
+			    'id': 'email-body',
+			    'class': 'cbi-input-textarea',
+			    'style': 'width: 100% !important; height: 30vh; min-height: 250px;',
+			    'wrap': 'off',
+			    'spellcheck': 'false'
+		    }, defaultBody),
+		    E('div', { 'class': 'right' }, [
+			    E('button', {
+				    'class': 'btn',
+				    'click': ui.hideModal
+			    }, _('Cancel')), ' ',
+			    E('button', {
+				    'class': 'cbi-button cbi-button-action important',
+				    'click': ui.createHandlerFn(this, 'sendEmailFromModal')
+			    }, _('Send'))
+		    ])
+	    ], 'cbi-modal');
+    },
+
+    sendEmailFromModal: function() {
+	    var subject = document.getElementById('email-subject').value;
+	    var body = document.getElementById('email-body').value;
+	    
+	    if (!subject || !body) {
+		    ui.addNotification(null, E('p', _('Subject and body cannot be empty')), 'error');
+		    return;
+	    }
+	    
+	    var self = this;
+	    
+	    ui.hideModal();
+	    
+	    var contentArea = document.getElementById('forward-status');
+	    contentArea.style.display = 'block';
+	    contentArea.innerHTML = '';
+	    contentArea.appendChild(E('div', {'class': 'alert alert-info'}, 
+		    E('span', {'class': 'spinning'}, _('Sending e-mail...'))
+	    ));
+	    
+	    callForwardSMS(subject, body).then(function(response) {
+		    contentArea.innerHTML = '';
+		    if (response.success) {
+			    popTimeout(null, E('p', _('Message forwarded successfully')), 5000, 'info');
+			    setTimeout(function() {
+				    if (contentArea) {
+					    contentArea.innerHTML = '';
+					    contentArea.style.display = 'none';
+				    }
+			    }, 5000);
+		    } else {
+			    contentArea.innerHTML = '';
+			    contentArea.style.display = 'none';
+			    ui.addNotification(null, E('p', _('Failed to forward message: %s').format(response.error || 'Unknown error')), 'error');
+		    }
+	    }).catch(function(err) {
+		    contentArea.innerHTML = '';
+		    contentArea.style.display = 'none';
+		    ui.addNotification(null, E('p', _('Error: %s').format(err.message)), 'error');
+	    });
+    },
+
 	handleDelete: function(ev) {
 		if (document.querySelectorAll('input[name="smsn"]:checked').length == 0){
-		ui.addNotification(null, E('p', _('Please select the message(s) to be deleted')), 'info');
+		ui.addNotification(null, E('p', _('Please select the message(s) to be deleted')), 'info');   
 		}
 		else {
 			if (document.querySelectorAll('input[name="smsn"]:checked').length === document.querySelectorAll('input[name="smsn"]').length) {
@@ -194,14 +491,14 @@ return view.extend({
         								inumber = false;
     								}
 							}
-
+	
 							var deletelabel = document.getElementById("deleteinfo");
 							deletelabel.style.display = 'block';
 
 								for (var i=0; i < smsnr.length + 2; i++)
 									{
 									(function(i) {
-    									setTimeout(function() {
+    									setTimeout(function() { 
     									smsnr[i] = parseInt(smsnr[i], 10);
 
 									if (!Number.isNaN(smsnr[i]))
@@ -216,10 +513,11 @@ return view.extend({
 											var used = res.substring(17, res.indexOf("total"));
 											var u = used.replace ( /[^\d.]/g, '' );
 											msg_bar(Math.floor(u), t);
-											deletelabel.innerHTML = _('Please wait... deleted')+' '+smsdeleted+' '+_('of')+' '+smsdelcount+' '+_('selected messages');
+											deletelabel.innerHTML = '';
+											deletelabel.appendChild(E('span', {'class': 'spinning', 'style': 'font-size: inherit;'}, _('Please wait... deleted')+' '+smsdeleted+' '+_('of')+' '+smsdelcount+' '+_('selected messages')));
 										}
 										});
-
+				
 										}
 										L.resolveDefault(fs.exec_direct('/usr/bin/sms_tool', [ '-s' , storeL , '-d' , portR , 'status' ]))
 										.then(function(res) {
@@ -229,14 +527,34 @@ return view.extend({
 											var used = res.substring(17, res.indexOf("total"));
 											var u = used.replace ( /[^\d.]/g, '' );
 											msg_bar(Math.floor(u), t);
-											deletelabel.innerHTML = _('Please wait... deleted')+' '+smsdeleted+' '+_('of')+' '+smsdelcount+' '+_('selected messages');
+											deletelabel.innerHTML = '';
+											deletelabel.appendChild(E('span', {'class': 'spinning', 'style': 'font-size: inherit;'}, _('Please wait... deleted')+' '+smsdeleted+' '+_('of')+' '+smsdelcount+' '+_('selected messages')));
 										}
 										});
 
 										if (smsdelcount == smsdeleted) {
 											setTimeout(function() {
 											var hidecount = document.getElementById('deleteinfo');
-    											hidecount.style.display = 'none';
+											uci.load('sms_tool_js').then(function() {
+												var savedCount = uci.get('sms_tool_js', '@sms_tool_js[0]', 'sms_count') || '';
+												L.resolveDefault(fs.exec_direct('/usr/bin/sms_tool', [ '-s' , storeL , '-d' , portR , 'status' ]))
+												.then(function(verifyRes) {
+													if (verifyRes) {
+														var verifyUsed = verifyRes.substring(17, verifyRes.indexOf("total"));
+														var verifyU = verifyUsed.replace( /[^\d.]/g, '' );
+														var savedMatch = savedCount.match(/(?:dfm\d+_)?(\d+)(?:\s|$)/);
+														var savedNum = savedMatch ? savedMatch[1] : savedCount.replace(/[^\d]/g, '');
+														if (savedNum !== verifyU) {
+															update_sms_count_for_modem(verifyU).then(function(correctedValue) {
+																uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', correctedValue);
+																uci.save();
+																uci.apply();
+															});
+														}
+													}
+													hidecount.style.display = 'none';
+												});
+											});
 											    save_count();
 											}, 7000);
 										}
@@ -250,7 +568,8 @@ return view.extend({
 											var used = res.substring(17, res.indexOf("total"));
 											var u = used.replace ( /[^\d.]/g, '' );
 											msg_bar(Math.floor(u), t);
-											deletelabel.innerHTML = _('Please wait... deleted')+' '+smsdeleted+' '+_('of')+' '+smsdelcount+' '+_('selected messages');
+											deletelabel.innerHTML = '';
+											deletelabel.appendChild(E('span', {'class': 'spinning', 'style': 'font-size: inherit;'}, _('Please wait... deleted')+' '+smsdeleted+' '+_('of')+' '+smsdelcount+' '+_('selected messages')));
 										}
 										});
 								}
@@ -271,23 +590,21 @@ return view.extend({
 			    }
 		}
 	},
-
-
+                                                                                                                                              
 	handleRefresh: function(ev) {
 		window.location.reload();
 	},
 
-
 	handleSelect: function(ev) {
 		var checkBox = document.getElementById("ch-all");
-		var checkBoxes = document.querySelectorAll('input[type="checkbox"]');
+		var checkBoxes = document.querySelectorAll('input[name="smsn"]');
 
   		if (checkBox.checked == true){
 			for (var i = 0; i < checkBoxes.length; i++)
-				checkBoxes[i].setAttribute('checked', 'true');
+				checkBoxes[i].checked = true;
   		} else {
 			for (var i = 0; i < checkBoxes.length; i++)
-				checkBoxes[i].removeAttribute('checked');
+				checkBoxes[i].checked = false;
   		}
 	},
 
@@ -313,7 +630,7 @@ return view.extend({
 					<ul><li>1. All ports for communication with the modem.</li><li>2. Additional options specific to the given modem (for handling USSD codes).</li><li> \
 					3. Notification LED (optional).</li><li><ul>')), 'info');
 		}
-
+		
 		var sections = uci.sections('sms_tool_js');
 		var led = sections[0].smsled;
 
@@ -348,7 +665,7 @@ return view.extend({
 								if (res2) {
 
  									var table = document.getElementById('smsTable');
-									while (table.rows.length > 1) { table.deleteRow(1); }
+									while (table.rows.length > 1) { table.deleteRow(1); }					
 
 									var start = res2.substring(7);
 									var end = start.substring(0,start.length-2);
@@ -409,7 +726,8 @@ return view.extend({
     													combinedjson[newkey] = { sender, timestamp, total, content, index };
   													}
 												}
-												var result = Object.values(combinedjson);											}
+												var result = Object.values(combinedjson);
+											}
 
 											if (algo == "Simple")
 											{
@@ -422,7 +740,7 @@ return view.extend({
         													return;
     														}
 														if (this[o.sender].total == o.total && this[o.sender].timestamp == o.timestamp && this[o.sender].sender == o.sender && this[o.sender].part > 0) {
-    														this[o.sender].index += '-' + o.index;
+    														this[o.sender].index += '-' + o.index;    			
 														this[o.sender].content += o.content;}
 														else {
 															this[o.sender] = { index: o.index, sender: o.sender, timestamp: o.timestamp, part: o.part, total: o.total, content: o.content };
@@ -432,8 +750,7 @@ return view.extend({
 												}, Object.create(null));
 											}
 													if (u){
-															var Lres = L.resource('icons/newdelsms.png');
-															var iconz = String.format('<img style="width: 24px; height: 24px; "src="%s"/>', Lres);
+															var Lres = L.resource('icons/redrawsms.svg');
 
 															for (var i = 0; i < result.length; i++) {
             													var row = table.insertRow(-1);
@@ -441,14 +758,27 @@ return view.extend({
   																var cell2 = row.insertCell(0);
   																var cell3 = row.insertCell(0);
   																var cell4 = row.insertCell(0);
-																cell4.innerHTML = "<input type='checkbox' name='smsn' id="+result[i].index+","+" />"+iconz;
+																
+																var checkbox = E('input', {
+																	'type': 'checkbox',
+																	'name': 'smsn',
+																	'id': result[i].index + ','
+																});
+																var icon = E('span', { 'class': 'sms-row-icon' }, [
+																	E('img', {
+																		'src': Lres,
+																		'style': 'width: 24px; height: 24px;'
+																	})
+																]);
+																cell4.appendChild(checkbox);
+																cell4.appendChild(icon);
 																	if (result[i].sender.includes(hide)) {
 																		var removeLast5 = result[i].sender.slice(0, -5);
 																		cell3.innerHTML = removeLast5 + '#####';
 																	} else {
  				 													cell3.innerHTML = result[i].sender;
 																	}
-
+																	
   																cell2.innerHTML = result[i].timestamp;
     															cell1.innerHTML = result[i].content.replace(/\s+/g, ' ').trim();
 																aidx.push(result[i].index+'-');
@@ -458,10 +788,18 @@ return view.extend({
 															axx = axx.replace(/,/g, ' ');
 															axx = axx.replace(/-/g, ' ');
 
-															uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count_index', L.toArray(axx).join(' '));
-															uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', L.toArray(u).join(' '));
-															uci.save();
-															uci.apply();
+															var axx = aidx.toString();
+															axx = axx.replace(/,/g, ' ');
+															axx = axx.replace(/-/g, ' ');
+
+															format_with_modem_index(axx).then(function(formattedIndex) {
+																update_sms_count_for_modem(u).then(function(updatedCount) {
+																	uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count_index', formattedIndex);
+																	uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', updatedCount);
+																	uci.save();
+																	uci.apply();
+																});
+															});
 											}
 
 										}
@@ -469,7 +807,7 @@ return view.extend({
 
 									/* No merging messages */
 									if (smsM == "0") {
-
+									
 										/* Sorting messages by delivery time */
 										var sortbyTime = json.sort((function (a, b) { return new Date(b.timestamp) - new Date(a.timestamp) }));
 
@@ -484,16 +822,28 @@ return view.extend({
 
 										if (u){
 
-											var Lres = L.resource('icons/newdelsms.png');
-											var iconz = String.format('<img style="width: 24px; height: 24px; "src="%s"/>', Lres);
+											var Lres = L.resource('icons/redrawsms.svg');
 
 											for (var i = 0; i < sortedData.length; i++) {
-            								var row = table.insertRow(-1);
+                                            var row = table.insertRow(-1);
   											var cell1 = row.insertCell(0);
   											var cell2 = row.insertCell(0);
   											var cell3 = row.insertCell(0);
   											var cell4 = row.insertCell(0);
-											cell4.innerHTML = "<input type='checkbox' name='smsn' id="+sortedData[i].index+","+" />"+iconz;
+											
+											var checkbox = E('input', {
+												'type': 'checkbox',
+												'name': 'smsn',
+												'id': sortedData[i].index + ','
+											});
+											var icon = E('span', { 'class': 'sms-row-icon' }, [
+												E('img', {
+													'src': Lres,
+													'style': 'width: 24px; height: 24px;'
+												})
+											]);
+											cell4.appendChild(checkbox);
+											cell4.appendChild(icon);
 												if (sortedData[i].sender.includes(hide)) {
 													var removeLast5 = sortedData[i].sender.slice(0, -5);
 													cell3.innerHTML = removeLast5 + '#####';
@@ -503,17 +853,21 @@ return view.extend({
   											cell2.innerHTML = sortedData[i].timestamp;
     										cell1.innerHTML = sortedData[i].content.replace(/\s+/g, ' ').trim();
 											aidx.push(sortedData[i].index+'-');
-
+										
 											}
-
+											
 											var axx = aidx.toString();
 											axx = axx.replace(/,/g, ' ');
 											axx = axx.replace(/-/g, ' ');
 
-											uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count_index', L.toArray(axx).join(' '));
-											uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', L.toArray(u).join(' '));
-											uci.save();
-											uci.apply();
+											format_with_modem_index(axx).then(function(formattedIndex) {
+												update_sms_count_for_modem(u).then(function(updatedCount) {
+													uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count_index', formattedIndex);
+													uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', updatedCount);
+													uci.save();
+													uci.apply();
+												});
+											});
 									}
 
 								}
@@ -539,8 +893,60 @@ return view.extend({
 
 			E('h3', _('Received Messages')),
 			E('table', { 'class': 'table' }, [
-    					E('tr', { 'class': 'tr' }, [
-        					E('td', { 'class': 'td left', 'width': '33%' }, [ _('Message storage area') ]),
+				(function() {
+					var sections = uci.sections('defmodems', 'defmodems');
+					var serialModems = [];
+					
+					if (sections && sections.length > 0) {
+						serialModems = sections.filter(function(s) {
+							return s.modemdata === 'serial';
+						});
+					}
+					
+					if (serialModems.length > 0) {
+						var currentPort = uci.get('sms_tool_js', '@sms_tool_js[0]', 'readport');
+						var currentModem = serialModems.find(function(s) {
+							return s.comm_port === currentPort;
+						});
+						
+						if (!currentModem) currentModem = serialModems[0];
+						
+						var label = currentModem.modem + (currentModem.user_desc ? ' (' + currentModem.user_desc + ')' : '');
+						
+						var buttonsDisabled = (serialModems.length > 1) ? null : true;
+						
+						return E('tr', { 'class': 'tr' }, [
+							E('td', { 'class': 'td left', 'width': '33%' }, [ _('Select modem') ]),
+							E('td', { 'class': 'td' }, [
+								E('div', { 'class': 'controls' }, [
+									E('div', { 'class': 'pager center', 'style': 'display: flex; align-items: center; gap: 10px;' }, [
+										E('button', { 
+											'class': 'btn cbi-button-neutral prev', 
+											'aria-label': _('Previous modem'), 
+											'click': ui.createHandlerFn(this, 'handleModemChange'),
+											'data-tooltip': _('Changing a modem requires refreshing the messages'),
+											'style': 'min-width: 40px;',
+											'disabled': buttonsDisabled
+										}, [ ' ◄ ' ]),
+										E('div', { 'class': 'text modem-display-text', 'style': 'flex: 1; text-align: center;' }, [ label ]),
+										E('button', { 
+											'class': 'btn cbi-button-neutral next', 
+											'aria-label': _('Next modem'), 
+											'click': ui.createHandlerFn(this, 'handleModemChange'),
+											'data-tooltip': _('Changing a modem requires refreshing the messages'),
+											'style': 'min-width: 40px;',
+											'disabled': buttonsDisabled
+										}, [ ' ► ' ])
+									])
+								])
+							])
+						]);
+					} else {
+						return E('div', { 'style': 'display: none;' });
+					}
+				}.bind(this))(),
+    				E('tr', { 'class': 'tr' }, [
+        				E('td', { 'class': 'td left', 'width': '33%' }, [ _('Message storage area') ]),
         					E('td', { 'class': 'td' }, [
 							E('div', [
 							E('label', {
@@ -592,19 +998,26 @@ return view.extend({
     		]),
 		]),
 
+				E('div', {'id': 'forward-status', 'style': 'margin: 10px 0; display: none;'}),
+
 				E('div', { 'class': 'right' }, [
 					E('button', {
-						//'class': 'cbi-button cbi-button-negative important',
+						'class': 'cbi-button cbi-button-apply',
+						'id': 'forward',
+						'click': ui.createHandlerFn(this, 'handleForward')
+					}, [ _('Forward SMS') ]),
+					'\xa0\xa0\xa0',
+					E('button', {
 						'class': 'cbi-button cbi-button-remove',
 						'id': 'execute',
 						'click': ui.createHandlerFn(this, 'handleDelete')
-					}, [ _('Delete message(s)') ]),
+					}, [ _('Delete') ]),
 					'\xa0\xa0\xa0',
 					E('button', {
 						'class': 'cbi-button cbi-button-add',
 						'id': 'clr',
 						'click': ui.createHandlerFn(this, 'handleRefresh')
-					}, [ _('Refresh messages') ]),
+					}, [ _('Refresh') ]),
 
 			]),
 
@@ -612,7 +1025,7 @@ return view.extend({
 
 			E('table', { 'class': 'table' , 'id' : 'smsTable' }, [
 				E('tr', { 'class': 'tr table-titles' }, [
-					E('th', { 'class': 'th checker' },
+					E('th', { 'class': 'th checker' }, 
 					E('input', {
 						'id': 'ch-all',
 						'type': 'checkbox',
@@ -622,13 +1035,18 @@ return view.extend({
 						'click': ui.createHandlerFn(this, 'handleSelect')
 					}), '',
 					),
-					E('th', { 'class': 'th from' }, _('From')),
+					E('th', { 'class': 'th from' }, _('Sender')),
 					E('th', { 'class': 'th received' }, _('Received')),
 					E('th', { 'class': 'th center message' }, _('Message'))
 				])
 			]),
 		]);
+		
 		return v;
+	},
+
+	popTimeout: function(a, message, timeout, severity) {
+		ui.addTimeLimitedNotification(a, message, timeout, severity);
 	},
 
 	handleSaveApply: null,

@@ -1,0 +1,175 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: vi\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Edit Port Label"
+msgstr "Chỉnh sửa nhãn cổng"
+
+msgid "Enter new label for this port:"
+msgstr "Nhập nhãn mới cho cổng này:"
+
+msgid "Device"
+msgstr "Thiết bị"
+
+msgid "Original label"
+msgstr "Nhãn gốc"
+
+msgid "Restore Original"
+msgstr "Khôi phục gốc"
+
+msgid "Cancel"
+msgstr "Hủy"
+
+msgid "Save"
+msgstr "Lưu"
+
+msgid "Port configuration saved successfully"
+msgstr "Đã lưu cấu hình cổng thành công"
+
+msgid "Port order saved"
+msgstr "Đã lưu thứ tự cổng"
+
+msgid "Click to edit label"
+msgstr "Nhấp để chỉnh sửa nhãn"
+
+msgid "Hold to drag and reorder"
+msgstr "Giữ để kéo và sắp xếp lại"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Nhãn tối đa 9 ký tự, mô tả tối đa 50 ký tự."
+
+msgid "Enter description (optional):"
+msgstr "Nhập mô tả (tùy chọn):"
+
+msgid "Optional description"
+msgstr "Mô tả tùy chọn"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Cài đặt người dùng được lưu vào tệp /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "Đã tải xuống tệp cấu hình"
+
+msgid "Configuration file not found"
+msgstr "Không tìm thấy tệp cấu hình"
+
+msgid "Download error: %s"
+msgstr "Lỗi tải xuống: %s"
+
+msgid "Invalid configuration format"
+msgstr "Định dạng cấu hình không hợp lệ"
+
+msgid "Restore configuration"
+msgstr "Khôi phục cấu hình"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Thao tác này sẽ ghi đè cấu hình cổng hiện tại. Tiếp tục?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Đã khôi phục cấu hình thành công. Đang tải lại..."
+
+msgid "File restore failed: %s"
+msgstr "Khôi phục tệp không thành công: %s"
+
+msgid "Save .json file"
+msgstr "Lưu tệp .json"
+
+msgid "Upload .json file"
+msgstr "Tải lên tệp .json"
+
+msgid "Cannot save empty configuration"
+msgstr "Không thể lưu cấu hình trống"
+
+msgid "Cannot save port configuration. "
+msgstr "Không thể lưu cấu hình cổng. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "Thư mục /etc có thể chỉ đọc hoặc không đủ quyền. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Thử chạy: chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Lỗi lưu"
+
+msgid "Original error: %s"
+msgstr "Lỗi gốc: %s"
+
+msgid "Restore from backup"
+msgstr "Khôi phục từ bản sao lưu"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Khôi phục cấu hình từ tệp sao lưu? Thao tác này sẽ ghi đè cài đặt hiện tại."
+
+msgid "Backup contains:"
+msgstr "Bản sao lưu chứa:"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Đã khôi phục cấu hình từ bản sao lưu. Đang tải lại..."
+
+msgid "Restore failed: %s"
+msgstr "Khôi phục không thành công: %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "Tệp sao lưu bị hỏng: %s"
+
+msgid "Error reading backup: %s"
+msgstr "Lỗi đọc bản sao lưu: %s"
+
+msgid "Restore backup .bak"
+msgstr "Khôi phục bản sao lưu .bak"
+
+msgid "Change port state"
+msgstr "Thay đổi trạng thái cổng"
+
+msgid "Enable this port"
+msgstr "Bật cổng này"
+
+msgid "Enable port"
+msgstr "Bật cổng"
+
+msgid "Disable this port"
+msgstr "Tắt cổng này"
+
+msgid "Disable port"
+msgstr "Tắt cổng"
+
+msgid "Down"
+msgstr "không hoạt động"
+
+msgid "Disabled"
+msgstr "đã tắt"
+
+msgid "Idle"
+msgstr "rảnh rỗi"
+
+msgid "Active"
+msgstr "hoạt động"
+
+msgid "Unknown"
+msgstr "không rõ"
+
+msgid "No config file to backup"
+msgstr "Không có tệp cấu hình để sao lưu"
+
+msgid "Config file is corrupted, cannot create backup"
+msgstr "Tệp cấu hình bị hỏng, không thể tạo bản sao lưu"
+
+msgid "Backup file created: %s"
+msgstr "Đã tạo tệp sao lưu: %s"
+
+msgid "Backup write verification failed!"
+msgstr "Xác minh ghi bản sao lưu thất bại!"
+
+msgid "Backup creation failed: %s"
+msgstr "Tạo bản sao lưu thất bại: %s"
+
+msgid "Error reading config: %s"
+msgstr "Lỗi khi đọc cấu hình: %s"
+
+msgid "Create backup .bak"
+msgstr "Tạo bản sao lưu .bak"

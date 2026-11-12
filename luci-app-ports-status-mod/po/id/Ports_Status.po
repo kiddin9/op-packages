@@ -1,0 +1,122 @@
+msgid ""
+msgstr "Content-Type: text/plain; charset=UTF-8"
+
+msgid "Edit Port Label"
+msgstr "Edit Label Port"
+
+msgid "Enter new label for this port:"
+msgstr "Masukkan label baru untuk port ini:"
+
+msgid "Device"
+msgstr "Perangkat"
+
+msgid "Original label"
+msgstr "Label asli"
+
+msgid "Restore Original"
+msgstr "Pulihkan Asli"
+
+msgid "Cancel"
+msgstr "Batal"
+
+msgid "Save"
+msgstr "Simpan"
+
+msgid "Port configuration saved successfully"
+msgstr "Konfigurasi port berhasil disimpan"
+
+msgid "Port order saved"
+msgstr "Urutan port tersimpan"
+
+msgid "Click to edit label"
+msgstr "Klik untuk mengedit label"
+
+msgid "Hold to drag and reorder"
+msgstr "Tahan untuk menyeret dan mengurutkan ulang"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Label maks. 9 karakter, deskripsi maks. 50 karakter."
+
+msgid "Enter description (optional):"
+msgstr "Masukkan deskripsi (opsional):"
+
+msgid "Optional description"
+msgstr "Deskripsi opsional"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Pengaturan pengguna disimpan ke file /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "File konfigurasi berhasil diunduh"
+
+msgid "Configuration file not found"
+msgstr "File konfigurasi tidak ditemukan"
+
+msgid "Download error: %s"
+msgstr "Kesalahan unduh: %s"
+
+msgid "Invalid configuration format"
+msgstr "Format konfigurasi tidak valid"
+
+msgid "Restore configuration"
+msgstr "Pulihkan konfigurasi"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Ini akan menimpa konfigurasi port saat ini. Lanjutkan?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Konfigurasi berhasil dipulihkan. Memuat ulang..."
+
+msgid "File restore failed: %s"
+msgstr "Pemulihan file gagal: %s"
+
+msgid "Save .json file"
+msgstr "Simpan file .json"
+
+msgid "Upload .json file"
+msgstr "Unggah file .json"
+
+msgid "Cannot save empty configuration"
+msgstr "Tidak dapat menyimpan konfigurasi kosong"
+
+msgid "Cannot save port configuration. "
+msgstr "Tidak dapat menyimpan konfigurasi port. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "Direktori /etc mungkin hanya-baca atau izin tidak mencukupi. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Coba jalankan: chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Kesalahan Penyimpanan"
+
+msgid "Original error: %s"
+msgstr "Kesalahan asli: %s"
+
+msgid "Restore from backup"
+msgstr "Pulihkan dari cadangan"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Pulihkan konfigurasi dari file cadangan? Ini akan menimpa pengaturan saat ini."
+
+msgid "Backup contains:"
+msgstr "Cadangan berisi:"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Konfigurasi dipulihkan dari cadangan. Memuat ulang..."
+
+msgid "Restore failed: %s"
+msgstr "Pemulihan gagal: %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "File cadangan rusak: %s"
+
+msgid "Error reading backup: %s"
+msgstr "Kesalahan membaca cadangan: %s"
+
+msgid "Restore backup .bak"
+msgstr "Pulihkan cadangan .bak"
+
+msgid ""
+msgstr ""

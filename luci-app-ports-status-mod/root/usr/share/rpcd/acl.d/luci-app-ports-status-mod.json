@@ -1,0 +1,34 @@
+{
+  "luci-ports": {
+    "description": "Access to custom Ports Status",
+    "read": {
+      "uci": [ "*" ],
+      "ubus": {
+        "luci": [ "getBuiltinEthernetPorts" ],
+        "ports-status-mod": [ "getPortsStatus" ],
+        "file": [ "read" ]
+      },
+      "file": {
+        "/etc/user_defined_ports.json": [ "read" ],
+        "/etc/user_defined_ports.json.bak": [ "read" ],
+        "/www/luci-static/resources/view/status/include/29_ports.js": [ "read" ]
+      }
+    },
+    "write": {
+      "file": {
+        "/etc/user_defined_ports.json": [ "write" ],
+        "/etc/user_defined_ports.json.bak": [ "write" ]
+      },
+      "ubus": {
+        "file": [ "write", "exec" ],
+        "luci": [ "getBuiltinEthernetPorts" ],
+        "ports-status-mod": [ "setPortStatus" ]
+      },
+      "exec": {
+        "/usr/bin/stat": [ "*" ],
+        "/bin/chmod": [ "*" ],
+        "/bin/sh": [ "*" ]
+      }
+    }
+  }
+}

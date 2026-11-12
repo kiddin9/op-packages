@@ -1,16 +1,1082 @@
 'use strict';
+'require baseclass';
 'require form';
 'require fs';
 'require view';
 'require uci';
 'require ui';
+'require rpc';
 'require tools.widgets as widgets'
 
 /*
-	Copyright 2022-2025 Rafał Wabik - IceG - From eko.one.pl forum
+	Copyright 2022-2026 Rafał Wabik - IceG - From eko.one.pl forum
 
 	Licensed to the GNU General Public License v3.0.
 */
+
+function popTimeout(a, message, timeout, severity) {
+    ui.addTimeLimitedNotification(a, message, timeout, severity);
+}
+
+function getDateTimeSuffix() {
+	let now = new Date();
+	let pad = function(n) { return String(n).padStart(2, '0'); };
+	return now.getFullYear() + '-' +
+		   pad(now.getMonth() + 1) + '-' +
+		   pad(now.getDate()) + '_' +
+		   pad(now.getHours()) + '-' +
+		   pad(now.getMinutes()) + '-' +
+		   pad(now.getSeconds());
+}
+
+function update_sms_count_for_modem_sync(newValue, currentPort) {
+	return uci.load('defmodems').then(function() {
+		let defmodemSections = uci.sections('defmodems', 'defmodems');
+		
+		if (!defmodemSections || defmodemSections.length === 0) {
+			// old format
+			return newValue;
+		}
+		
+		let serialModems = defmodemSections.filter(function(s) {
+			return s.modemdata === 'serial';
+		});
+		
+		if (serialModems.length === 0) {
+			// old format
+			return newValue;
+		}
+		
+		let currentModemIndex = -1;
+		
+		for (let i = 0; i < serialModems.length; i++) {
+			if (serialModems[i].comm_port === currentPort) {
+				currentModemIndex = i + 1;
+				break;
+			}
+		}
+		
+		if (currentModemIndex === -1) {
+			// old format
+			return newValue;
+		}
+		
+		let existingSmsCount = uci.get('sms_tool_js', '@sms_tool_js[0]', 'sms_count') || '';
+		let parts = existingSmsCount.split(' ').filter(function(p) { return p.trim() !== ''; });
+		
+		let updated = {};
+		parts.forEach(function(part) {
+			let match = part.match(/^dfm(\d+)_(\d+)$/);
+			if (match) {
+				updated[match[1]] = match[2];
+			}
+		});
+		
+		updated[currentModemIndex] = newValue;
+		
+		let result = [];
+		for (let key in updated) {
+			if (updated.hasOwnProperty(key)) {
+				result.push('dfm' + key + '_' + updated[key]);
+			}
+		}
+		
+		return result.join(' ');
+		
+	}).catch(function() {
+		// old format
+		return newValue;
+	});
+}
+
+var pkg = {
+    get Name() { return 'mailsend'; },
+    get URL()  { return 'https://openwrt.org/packages/pkgdata/' + this.Name + '/'; },
+    get pkgMgrURINew() { return 'admin/system/package-manager'; },
+    get pkgMgrURIOld() { return 'admin/system/opkg'; },
+    bestPkgMgrURI: function () {
+        return L.resolveDefault(
+            fs.stat('/www/luci-static/resources/view/system/package-manager.js'), null
+        ).then(function (st) {
+            if (st && st.type === 'file')
+                return 'admin/system/package-manager';
+            return L.resolveDefault(fs.stat('/usr/libexec/package-manager-call'), null)
+                .then(function (st2) {
+                    return st2 ? 'admin/system/package-manager' : 'admin/system/opkg';
+                });
+        }).catch(function () { return 'admin/system/opkg'; });
+    },
+    openInstallerSearch: function (query) {
+        let self = this;
+        return self.bestPkgMgrURI().then(function (uri) {
+            let q = query ? ('?query=' + encodeURIComponent(query)) : '';
+            window.open(L.url(uri) + q, '_blank', 'noopener');
+        });
+    },
+    checkPackages: function() {
+        return fs.exec_direct('/usr/bin/opkg', ['list-installed'], 'text')
+            .catch(function () {
+                return fs.exec_direct('/usr/libexec/opkg-call', ['list-installed'], 'text')
+                    .catch(function () {
+                        return fs.exec_direct('/usr/libexec/package-manager-call', ['list-installed'], 'text')
+                            .catch(function () {
+                                return '';
+                            });
+                    });
+            })
+            .then(function (data) {
+                data = (data || '').trim();
+                return data ? data.split('\n') : [];
+            });
+    },
+    _isPackageInstalled: function(pkgName) {
+        return this.checkPackages().then(function(installedPackages) {
+            return installedPackages.some(function(pkg) {
+                return pkg.includes(pkgName);
+            });
+        });
+    }
+};
+
+let phonebookEditorDialog = baseclass.extend({
+	__init__: function(title, content) {
+		this.title = title;
+		this.content = content || '';
+	},
+
+	render: function() {
+		let self = this;
+
+		ui.showModal(this.title, [
+			E('textarea', {
+				'id': 'phonebook_modal_editor',
+				'class': 'cbi-input-textarea',
+				'style': 'width:100% !important; height:50vh; min-height:300px;',
+				'wrap': 'off',
+				'spellcheck': 'false'
+			}, this.content.trim()),
+			E('p', {'style': 'margin-top: 10px; font-size: 12px; color: var(--text-color-secondary)'}),
+
+			E('div', {'style': 'display: flex; justify-content: space-between; align-items: center; margin-top: 10px;'}, [
+				E('div', {}, [
+					E('button', {
+						'class': 'btn',
+						'click': ui.hideModal
+					}, _('Close'))
+				]),
+				E('div', {'style': 'display: flex; gap: 10px; align-items: center;'}, [
+					(function() {
+						var comboBtn = new ui.ComboButton('_load_user', {
+							'_load_user': _('Load .user file'),
+							'_save_user': _('Save .user file')
+						}, {
+							'click': function(ev, name) {
+								if (name === '_load_user') {
+									let input = document.createElement('input');
+									input.type = 'file';
+									input.accept = '.user';
+									input.onchange = function(e) {
+										let file = e.target.files[0];
+										if (!file) return;
+										let reader = new FileReader();
+										reader.onload = function(event) {
+											let content = event.target.result;
+											let targetPath = '/etc/modem/phonebook.user';
+											fs.write(targetPath, content)
+												.then(function() {
+													popTimeout(null, E('p', {}, _('File uploaded and saved to') + ' ' + targetPath), 5000, 'info');
+													return fs.read(targetPath);
+												})
+												.then(function(savedContent) {
+													let textarea = document.getElementById('phonebook_modal_editor');
+													if (textarea) {
+														textarea.value = savedContent;
+													}
+												})
+												.catch(function(e) {
+													ui.addNotification(null, E('p', {}, _('Unable to upload file') + ': ' + e.message), 'error');
+												});
+										};
+										reader.readAsText(file);
+									};
+									input.click();
+								} else if (name === '_save_user') {
+									let textarea = document.getElementById('phonebook_modal_editor');
+									let content = textarea ? textarea.value : '';
+									let blob = new Blob([content], { type: 'text/plain' });
+									let link = document.createElement('a');
+									link.download = 'phonebook_' + getDateTimeSuffix() + '.user';
+									link.href = URL.createObjectURL(blob);
+									link.click();
+									URL.revokeObjectURL(link.href);
+								}
+							},
+							'classes': {
+								'_load_user': 'cbi-button cbi-button-action important',
+								'_save_user': 'cbi-button cbi-button-neutral'
+							}
+						});
+						return comboBtn.render();
+					})(),
+					E('button', {
+						'class': 'btn cbi-button-save',
+						'click': ui.createHandlerFn(this, function() {
+							let textarea = document.getElementById('phonebook_modal_editor');
+							let newContent = textarea.value.trim().replace(/\r\n/g, '\n') + '\n';
+							
+							fs.write('/etc/modem/phonebook.user', newContent)
+								.then(function() {
+									popTimeout(null, E('p', {}, _('Phonebook saved successfully')), 5000, 'info');
+									ui.hideModal();
+								})
+								.catch(function(e) {
+									ui.addNotification(null, E('p', {}, _('Unable to save the file') + ': ' + e.message), 'error');
+								});
+						})
+					}, _('Save'))
+				])
+			])
+		], 'cbi-modal');
+	},
+
+	show: function() {
+		this.render();
+	}
+});
+
+let ussdCodesManagerDialog = baseclass.extend({
+	__init__: function(title) {
+		this.title = title;
+		this.baseDir = '/etc/modem/ussdcodes';
+		this.fallbackFile = '/etc/modem/ussdcodes.user';
+		this.currentFile = null;
+	},
+
+	loadFileList: function() {
+		return fs.exec('/bin/sh', ['-c', 'ls ' + this.baseDir + '/*.user 2>/dev/null || true'])
+			.then(function(res) {
+				let files = (res.stdout || '').trim().split('\n').filter(f => f);
+				let fileNames = files.map(f => f.replace(this.baseDir + '/', ''));
+				fileNames.sort();
+				return fileNames;
+			}.bind(this))
+			.catch(function() {
+				return [];
+			});
+	},
+
+	loadInitialContent: function() {
+		let self = this;
+		return this.loadFileList().then(function(files) {
+			if (files.length > 0) {
+				self.currentFile = files[0];
+				return fs.read(self.baseDir + '/' + files[0])
+					.then(function(content) {
+						return { files: files, content: content || '', selectedFile: files[0] };
+					})
+					.catch(function() {
+						return { files: files, content: '', selectedFile: files[0] };
+					});
+			} else {
+				return fs.read(self.fallbackFile)
+					.then(function(content) {
+						return { files: [], content: content || '', selectedFile: '' };
+					})
+					.catch(function() {
+						return { files: [], content: '', selectedFile: '' };
+					});
+			}
+		});
+	},
+
+	render: function() {
+		let self = this;
+
+		this.loadInitialContent().then(function(data) {
+			ui.showModal(self.title, [
+				E('div', {'class': 'cbi-section'}, [
+					E('div', {'class': 'cbi-value'}, [
+						E('label', {'class': 'cbi-value-title'}, _('Select file')),
+						E('div', {'class': 'cbi-value-field'}, [
+							E('select', {
+								'class': 'cbi-input-select',
+								'id': 'ussd_file_select',
+								'style': 'width: 100%;',
+								'change': function() {
+									let fileName = this.value;
+									if (fileName) {
+										self.currentFile = fileName;
+										self.loadFileContent(fileName);
+									}
+								}
+							}, [
+								E('option', {'value': ''}, _('-- Select file --'))
+							].concat(data.files.map(f => E('option', {'value': f}, f))))
+						])
+					]),
+					E('div', {'class': 'cbi-value'}, [
+						E('label', {'class': 'cbi-value-title'}, _('New file name')),
+						E('div', {'class': 'cbi-value-field'}, [
+							E('div', {'style': 'display: flex; gap: 10px;'}, [
+								E('input', {
+									'class': 'cbi-input-text',
+									'id': 'ussd_new_filename',
+									'type': 'text',
+									'placeholder': _('filename.user'),
+									'style': 'flex: 1;'
+								}),
+								E('button', {
+									'class': 'btn cbi-button-add',
+									'click': ui.createHandlerFn(self, self.createNewFile)
+								}, _('Create'))
+							])
+						])
+					]),
+					E('div', {'class': 'cbi-value'}, [
+						E('label', {'class': 'cbi-value-title'}, _('Deleting files')),
+						E('div', {'class': 'cbi-value-field'}, [
+							(function() {
+								var delCombo = new ui.ComboButton('_delete_selected', {
+									'_delete_selected': _('Delete selected file'),
+									'_delete_all':      _('Delete all files')
+								}, {
+									'click': function(ev, name) {
+										if (name === '_delete_selected') {
+											self.deleteFile();
+										} else if (name === '_delete_all') {
+											self.deleteAllFiles();
+										}
+									},
+									'classes': {
+										'_delete_selected': 'cbi-button cbi-button-remove',
+										'_delete_all':      'cbi-button cbi-button-remove'
+									}
+								});
+								return delCombo.render();
+							})()
+						])
+					])
+				]),
+				E('textarea', {
+					'id': 'ussd_modal_editor',
+					'class': 'cbi-input-textarea',
+					'style': 'width:100% !important; height:40vh; min-height:250px; margin-top: 10px;',
+					'wrap': 'off',
+					'spellcheck': 'false',
+					'placeholder': _('Select or create a file to edit...')
+				}, data.content),
+
+				E('div', {'style': 'display: flex; justify-content: space-between; align-items: center; margin-top: 10px;'}, [
+					E('div', {}, [
+						E('button', {
+							'class': 'btn',
+							'click': ui.hideModal
+						}, _('Close'))
+					]),
+					E('div', {'style': 'display: flex; gap: 10px; align-items: center;'}, [
+						(function() {
+							var comboBtn = new ui.ComboButton('_load_user', {
+								'_load_user':    _('Load .user file'),
+								'_save_user':    _('Save .user file'),
+								'_load_gz':      _('Load .gz archive'),
+								'_save_gz':      _('Save .gz archive')
+							}, {
+								'click': function(ev, name) {
+									if (name === '_load_user') {
+										let input = document.createElement('input');
+										input.type = 'file';
+										input.accept = '.user';
+										input.onchange = function(e) {
+											let file = e.target.files[0];
+											if (!file) return;
+											let reader = new FileReader();
+											reader.onload = function(event) {
+												let content = event.target.result;
+												let fileName = file.name;
+												let targetPath = self.baseDir + '/' + fileName;
+												fs.write(targetPath, content)
+													.then(function() {
+														popTimeout(null, E('p', {}, _('File uploaded and saved to') + ' ' + targetPath), 5000, 'info');
+														self.currentFile = fileName;
+														return self.loadFileList();
+													})
+													.then(function(files) {
+														let select = document.getElementById('ussd_file_select');
+														if (select) {
+															while (select.options.length > 1) select.remove(1);
+															files.forEach(function(f) {
+																let opt = document.createElement('option');
+																opt.value = f;
+																opt.text = f;
+																if (f === fileName) opt.selected = true;
+																select.appendChild(opt);
+															});
+														}
+														return fs.read(targetPath);
+													})
+													.then(function(savedContent) {
+														let textarea = document.getElementById('ussd_modal_editor');
+														if (textarea) textarea.value = savedContent;
+													})
+													.catch(function(e) {
+														ui.addNotification(null, E('p', {}, _('Unable to upload file') + ': ' + e.message), 'error');
+													});
+											};
+											reader.readAsText(file);
+										};
+										input.click();
+									} else if (name === '_save_user') {
+										let textarea = document.getElementById('ussd_modal_editor');
+										let content = textarea ? textarea.value : '';
+										let baseName = (self.currentFile || 'ussdcodes.user').replace(/\.user$/, '');
+										let fileName = baseName + '_' + getDateTimeSuffix() + '.user';
+										let blob = new Blob([content], { type: 'text/plain' });
+										let link = document.createElement('a');
+										link.download = fileName;
+										link.href = URL.createObjectURL(blob);
+										link.click();
+										URL.revokeObjectURL(link.href);
+									} else if (name === '_load_gz') {
+										let tmpPath = '/tmp/ussdcodes_upload.tar.gz';
+										ui.uploadFile(tmpPath).then(function() {
+												return fs.exec('/bin/tar', ['-xzf', tmpPath, '-C', self.baseDir]);
+											}).then(function(res) {
+												if (res.code !== 0) {
+													ui.addNotification(null, E('p', {}, _('Failed to extract archive') + ': ' + (res.stderr || '')), 'error');
+													return;
+												}
+												return fs.remove(tmpPath).then(function() {
+													popTimeout(null, E('p', {}, _('Archive extracted to') + ' ' + self.baseDir), 5000, 'info');
+													return self.loadFileList();
+												}).then(function(files) {
+													let select = document.getElementById('ussd_file_select');
+													if (select) {
+														while (select.options.length > 1) select.remove(1);
+														files.forEach(function(f) {
+															let opt = document.createElement('option');
+															opt.value = f;
+															opt.text = f;
+															select.appendChild(opt);
+														});
+													}
+												});
+											}).catch(function(e) {
+												ui.addNotification(null, E('p', {}, _('Upload error') + ': ' + e.message), 'error');
+											});
+									} else if (name === '_save_gz') {
+										let tmpGz = '/tmp/ussdcodes.tar.gz';
+										fs.exec('/bin/tar', ['-czf', tmpGz, '-C', self.baseDir, '.'])
+											.then(function(res) {
+												if (res.code !== 0) {
+													ui.addNotification(null, E('p', {}, _('Failed to create archive') + ': ' + (res.stderr || '')), 'error');
+													return;
+												}
+												return L.resolveDefault(fs.read_direct(tmpGz, 'blob'), null).then(function(blob) {
+													if (blob) {
+														let link = document.createElement('a');
+														link.download = 'ussdcodes_' + getDateTimeSuffix() + '.tar.gz';
+														link.href = URL.createObjectURL(blob);
+														link.click();
+														URL.revokeObjectURL(link.href);
+													} else {
+														ui.addNotification(null, E('p', {}, _('Failed to read archive')), 'error');
+													}
+													return fs.remove(tmpGz);
+												});
+											}).catch(function(e) {
+												ui.addNotification(null, E('p', {}, _('Error') + ': ' + e.message), 'error');
+											});
+									}
+								},
+								'classes': {
+									'_load_user': 'cbi-button cbi-button-action important',
+									'_save_user': 'cbi-button cbi-button-neutral',
+									'_load_gz':   'cbi-button cbi-button-action important',
+									'_save_gz':   'cbi-button cbi-button-neutral'
+								}
+							});
+							return comboBtn.render();
+						})(),
+						E('button', {
+							'class': 'btn cbi-button-save',
+							'id': 'ussd_save_btn',
+							'click': ui.createHandlerFn(self, self.saveFile)
+						}, _('Save'))
+					])
+				])
+			], 'cbi-modal');
+			
+			setTimeout(function() {
+				let select = document.getElementById('ussd_file_select');
+				if (select && data.selectedFile) {
+					select.value = data.selectedFile;
+				}
+			}, 0);
+		});
+	},
+
+	loadFileContent: function(fileName) {
+		let filePath = this.baseDir + '/' + fileName;
+		fs.read(filePath)
+			.then(function(content) {
+				let textarea = document.getElementById('ussd_modal_editor');
+				if (textarea) {
+					textarea.value = content || '';
+				}
+			})
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to load file') + ': ' + e.message), 'error');
+			});
+	},
+
+	createNewFile: function() {
+		let input = document.getElementById('ussd_new_filename');
+		let fileName = input.value.trim();
+
+		if (!fileName) {
+			ui.addNotification(null, E('p', {}, _('Please enter a file name')), 'warning');
+			return;
+		}
+
+		if (!fileName.endsWith('.user')) {
+			fileName += '.user';
+		}
+
+		let filePath = this.baseDir + '/' + fileName;
+
+		fs.exec('/bin/sh', ['-c', 'mkdir -p ' + this.baseDir])
+			.then(function() {
+				return fs.write(filePath, '');
+			}.bind(this))
+			.then(function() {
+				return fs.exec('/bin/chmod', ['644', filePath]);
+			})
+			.then(function() {
+				popTimeout(null, E('p', {}, _('File created successfully')), 5000, 'info');
+				this.currentFile = fileName;
+				input.value = '';
+				
+				let select = document.getElementById('ussd_file_select');
+				let option = E('option', {'value': fileName, 'selected': 'selected'}, fileName);
+				select.appendChild(option);
+				select.value = fileName;
+				
+				let textarea = document.getElementById('ussd_modal_editor');
+				if (textarea) {
+					textarea.value = '';
+					textarea.placeholder = '';
+				}
+			}.bind(this))
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to create file') + ': ' + e.message), 'error');
+			});
+	},
+
+	deleteFile: function() {
+		let select = document.getElementById('ussd_file_select');
+		let fileName = select.value;
+
+		if (!fileName) {
+			ui.addNotification(null, E('p', {}, _('Please select a file to delete')), 'warning');
+			return;
+		}
+
+		if (!confirm(_('Are you sure you want to delete this file?') + '\n' + fileName)) {
+			return;
+		}
+
+		let filePath = this.baseDir + '/' + fileName;
+
+		fs.exec('/bin/rm', ['-f', filePath])
+			.then(function() {
+				popTimeout(null, E('p', {}, _('File deleted successfully')), 5000, 'info');
+				
+				let option = select.querySelector('option[value="' + fileName + '"]');
+				if (option) {
+					option.remove();
+				}
+				select.value = '';
+				this.currentFile = null;
+				
+				let textarea = document.getElementById('ussd_modal_editor');
+				if (textarea) {
+					textarea.value = '';
+					textarea.placeholder = _('Select or create a file to edit...');
+				}
+			}.bind(this))
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to delete file') + ': ' + e.message), 'error');
+			});
+	},
+
+	deleteAllFiles: function() {
+		if (!confirm(_('Are you sure you want to delete all files in the folder?') + '\n' + this.baseDir)) {
+			return;
+		}
+
+		let self = this;
+		fs.exec('/bin/sh', ['-c', 'rm -f ' + this.baseDir + '/*.user'])
+			.then(function() {
+				popTimeout(null, E('p', {}, _('All files deleted successfully')), 5000, 'info');
+
+				let select = document.getElementById('ussd_file_select');
+				if (select) {
+					while (select.options.length > 1) select.remove(1);
+					select.value = '';
+				}
+				self.currentFile = null;
+
+				let textarea = document.getElementById('ussd_modal_editor');
+				if (textarea) {
+					textarea.value = '';
+					textarea.placeholder = _('Select or create a file to edit...');
+				}
+			})
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to delete files') + ': ' + e.message), 'error');
+			});
+	},
+
+	saveFile: function() {
+		if (!this.currentFile) {
+			ui.addNotification(null, E('p', {}, _('Please select or create a file first')), 'warning');
+			return;
+		}
+
+		let textarea = document.getElementById('ussd_modal_editor');
+		let content = textarea.value.trim().replace(/\r\n/g, '\n') + '\n';
+		let filePath = this.baseDir + '/' + this.currentFile;
+
+		fs.write(filePath, content)
+			.then(function() {
+				popTimeout(null, E('p', {}, _('File saved successfully')), 5000, 'info');
+			})
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to save file') + ': ' + e.message), 'error');
+			});
+	},
+
+	show: function() {
+		this.render();
+	}
+});
+
+let atCommandsManagerDialog = baseclass.extend({
+	__init__: function(title) {
+		this.title = title;
+		this.baseDir = '/etc/modem/atcmmds';
+		this.fallbackFile = '/etc/modem/atcmmds.user';
+		this.currentFile = null;
+	},
+
+	loadFileList: function() {
+		return fs.exec('/bin/sh', ['-c', 'ls ' + this.baseDir + '/*.user 2>/dev/null || true'])
+			.then(function(res) {
+				let files = (res.stdout || '').trim().split('\n').filter(f => f);
+				let fileNames = files.map(f => f.replace(this.baseDir + '/', ''));
+				fileNames.sort();
+				return fileNames;
+			}.bind(this))
+			.catch(function() {
+				return [];
+			});
+	},
+
+	loadInitialContent: function() {
+		let self = this;
+		return this.loadFileList().then(function(files) {
+			if (files.length > 0) {
+				self.currentFile = files[0];
+				return fs.read(self.baseDir + '/' + files[0])
+					.then(function(content) {
+						return { files: files, content: content || '', selectedFile: files[0] };
+					})
+					.catch(function() {
+						return { files: files, content: '', selectedFile: files[0] };
+					});
+			} else {
+				return fs.read(self.fallbackFile)
+					.then(function(content) {
+						return { files: [], content: content || '', selectedFile: '' };
+					})
+					.catch(function() {
+						return { files: [], content: '', selectedFile: '' };
+					});
+			}
+		});
+	},
+
+	render: function() {
+		let self = this;
+
+		this.loadInitialContent().then(function(data) {
+			ui.showModal(self.title, [
+				E('div', {'class': 'cbi-section'}, [
+					E('div', {'class': 'cbi-value'}, [
+						E('label', {'class': 'cbi-value-title'}, _('Select file')),
+						E('div', {'class': 'cbi-value-field'}, [
+							E('select', {
+								'class': 'cbi-input-select',
+								'id': 'at_file_select',
+								'style': 'width: 100%;',
+								'change': function() {
+									let fileName = this.value;
+									if (fileName) {
+										self.currentFile = fileName;
+										self.loadFileContent(fileName);
+									}
+								}
+							}, [
+								E('option', {'value': ''}, _('-- Select file --'))
+							].concat(data.files.map(f => E('option', {'value': f}, f))))
+						])
+					]),
+					E('div', {'class': 'cbi-value'}, [
+						E('label', {'class': 'cbi-value-title'}, _('New file name')),
+						E('div', {'class': 'cbi-value-field'}, [
+							E('div', {'style': 'display: flex; gap: 10px;'}, [
+								E('input', {
+									'class': 'cbi-input-text',
+									'id': 'at_new_filename',
+									'type': 'text',
+									'placeholder': _('filename.user'),
+									'style': 'flex: 1;'
+								}),
+								E('button', {
+									'class': 'btn cbi-button-add',
+									'click': ui.createHandlerFn(self, self.createNewFile)
+								}, _('Create'))
+							])
+						])
+					]),
+					E('div', {'class': 'cbi-value'}, [
+						E('label', {'class': 'cbi-value-title'}, _('Deleting files')),
+						E('div', {'class': 'cbi-value-field'}, [
+							(function() {
+								var delCombo = new ui.ComboButton('_delete_selected', {
+									'_delete_selected': _('Delete selected file'),
+									'_delete_all':      _('Delete all files')
+								}, {
+									'click': function(ev, name) {
+										if (name === '_delete_selected') {
+											self.deleteFile();
+										} else if (name === '_delete_all') {
+											self.deleteAllFiles();
+										}
+									},
+									'classes': {
+										'_delete_selected': 'cbi-button cbi-button-remove',
+										'_delete_all':      'cbi-button cbi-button-remove'
+									}
+								});
+								return delCombo.render();
+							})()
+						])
+					])
+				]),
+				E('textarea', {
+					'id': 'at_modal_editor',
+					'class': 'cbi-input-textarea',
+					'style': 'width:100% !important; height:40vh; min-height:250px; margin-top: 10px;',
+					'wrap': 'off',
+					'spellcheck': 'false',
+					'placeholder': _('Select or create a file to edit...')
+				}, data.content),
+
+				E('div', {'style': 'display: flex; justify-content: space-between; align-items: center; margin-top: 10px;'}, [
+					E('div', {}, [
+						E('button', {
+							'class': 'btn',
+							'click': ui.hideModal
+						}, _('Close'))
+					]),
+					E('div', {'style': 'display: flex; gap: 10px; align-items: center;'}, [
+						(function() {
+							var comboBtn = new ui.ComboButton('_load_user', {
+								'_load_user':    _('Load .user file'),
+								'_save_user':    _('Save .user file'),
+								'_load_gz':      _('Load .gz archive'),
+								'_save_gz':      _('Save .gz archive')
+							}, {
+								'click': function(ev, name) {
+									if (name === '_load_user') {
+										let input = document.createElement('input');
+										input.type = 'file';
+										input.accept = '.user';
+										input.onchange = function(e) {
+											let file = e.target.files[0];
+											if (!file) return;
+											let reader = new FileReader();
+											reader.onload = function(event) {
+												let content = event.target.result;
+												let fileName = file.name;
+												let targetPath = self.baseDir + '/' + fileName;
+												fs.write(targetPath, content)
+													.then(function() {
+														popTimeout(null, E('p', {}, _('File uploaded and saved to') + ' ' + targetPath), 5000, 'info');
+														self.currentFile = fileName;
+														return self.loadFileList();
+													})
+													.then(function(files) {
+														let select = document.getElementById('at_file_select');
+														if (select) {
+															while (select.options.length > 1) select.remove(1);
+															files.forEach(function(f) {
+																let opt = document.createElement('option');
+																opt.value = f;
+																opt.text = f;
+																if (f === fileName) opt.selected = true;
+																select.appendChild(opt);
+															});
+														}
+														return fs.read(targetPath);
+													})
+													.then(function(savedContent) {
+														let textarea = document.getElementById('at_modal_editor');
+														if (textarea) textarea.value = savedContent;
+													})
+													.catch(function(e) {
+														ui.addNotification(null, E('p', {}, _('Unable to upload file') + ': ' + e.message), 'error');
+													});
+											};
+											reader.readAsText(file);
+										};
+										input.click();
+									} else if (name === '_save_user') {
+										let textarea = document.getElementById('at_modal_editor');
+										let content = textarea ? textarea.value : '';
+										let baseName = (self.currentFile || 'atcmmds.user').replace(/\.user$/, '');
+										let fileName = baseName + '_' + getDateTimeSuffix() + '.user';
+										let blob = new Blob([content], { type: 'text/plain' });
+										let link = document.createElement('a');
+										link.download = fileName;
+										link.href = URL.createObjectURL(blob);
+										link.click();
+										URL.revokeObjectURL(link.href);
+									} else if (name === '_load_gz') {
+										let tmpPath = '/tmp/atcmmds_upload.tar.gz';
+										ui.uploadFile(tmpPath).then(function() {
+												return fs.exec('/bin/tar', ['-xzf', tmpPath, '-C', self.baseDir]);
+											}).then(function(res) {
+												if (res.code !== 0) {
+													ui.addNotification(null, E('p', {}, _('Failed to extract archive') + ': ' + (res.stderr || '')), 'error');
+													return;
+												}
+												return fs.remove(tmpPath).then(function() {
+													popTimeout(null, E('p', {}, _('Archive extracted to') + ' ' + self.baseDir), 5000, 'info');
+													return self.loadFileList();
+												}).then(function(files) {
+													let select = document.getElementById('at_file_select');
+													if (select) {
+														while (select.options.length > 1) select.remove(1);
+														files.forEach(function(f) {
+															let opt = document.createElement('option');
+															opt.value = f;
+															opt.text = f;
+															select.appendChild(opt);
+														});
+													}
+												});
+											}).catch(function(e) {
+												ui.addNotification(null, E('p', {}, _('Upload error') + ': ' + e.message), 'error');
+											});
+									} else if (name === '_save_gz') {
+										let tmpGz = '/tmp/atcmmds.tar.gz';
+										fs.exec('/bin/tar', ['-czf', tmpGz, '-C', self.baseDir, '.'])
+											.then(function(res) {
+												if (res.code !== 0) {
+													ui.addNotification(null, E('p', {}, _('Failed to create archive') + ': ' + (res.stderr || '')), 'error');
+													return;
+												}
+												return L.resolveDefault(fs.read_direct(tmpGz, 'blob'), null).then(function(blob) {
+													if (blob) {
+														let link = document.createElement('a');
+														link.download = 'atcmmds_' + getDateTimeSuffix() + '.tar.gz';
+														link.href = URL.createObjectURL(blob);
+														link.click();
+														URL.revokeObjectURL(link.href);
+													} else {
+														ui.addNotification(null, E('p', {}, _('Failed to read archive')), 'error');
+													}
+													return fs.remove(tmpGz);
+												});
+											}).catch(function(e) {
+												ui.addNotification(null, E('p', {}, _('Error') + ': ' + e.message), 'error');
+											});
+									}
+								},
+								'classes': {
+									'_load_user': 'cbi-button cbi-button-action important',
+									'_save_user': 'cbi-button cbi-button-neutral',
+									'_load_gz':   'cbi-button cbi-button-action important',
+									'_save_gz':   'cbi-button cbi-button-neutral'
+								}
+							});
+							return comboBtn.render();
+						})(),
+						E('button', {
+							'class': 'btn cbi-button-save',
+							'id': 'at_save_btn',
+							'click': ui.createHandlerFn(self, self.saveFile)
+						}, _('Save'))
+					])
+				])
+			], 'cbi-modal');
+			
+			setTimeout(function() {
+				let select = document.getElementById('at_file_select');
+				if (select && data.selectedFile) {
+					select.value = data.selectedFile;
+				}
+			}, 0);
+		});
+	},
+
+	loadFileContent: function(fileName) {
+		let filePath = this.baseDir + '/' + fileName;
+		fs.read(filePath)
+			.then(function(content) {
+				let textarea = document.getElementById('at_modal_editor');
+				if (textarea) {
+					textarea.value = content || '';
+				}
+			})
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to load file') + ': ' + e.message), 'error');
+			});
+	},
+
+	createNewFile: function() {
+		let input = document.getElementById('at_new_filename');
+		let fileName = input.value.trim();
+
+		if (!fileName) {
+			ui.addNotification(null, E('p', {}, _('Please enter a file name')), 'warning');
+			return;
+		}
+
+		if (!fileName.endsWith('.user')) {
+			fileName += '.user';
+		}
+
+		let filePath = this.baseDir + '/' + fileName;
+
+		fs.exec('/bin/sh', ['-c', 'mkdir -p ' + this.baseDir])
+			.then(function() {
+				return fs.write(filePath, '');
+			}.bind(this))
+			.then(function() {
+				return fs.exec('/bin/chmod', ['644', filePath]);
+			})
+			.then(function() {
+				popTimeout(null, E('p', {}, _('File created successfully')), 5000, 'info');
+				this.currentFile = fileName;
+				input.value = '';
+				
+				let select = document.getElementById('at_file_select');
+				let option = E('option', {'value': fileName, 'selected': 'selected'}, fileName);
+				select.appendChild(option);
+				select.value = fileName;
+				
+				let textarea = document.getElementById('at_modal_editor');
+				if (textarea) {
+					textarea.value = '';
+					textarea.placeholder = '';
+				}
+			}.bind(this))
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to create file') + ': ' + e.message), 'error');
+			});
+	},
+
+	deleteFile: function() {
+		let select = document.getElementById('at_file_select');
+		let fileName = select.value;
+
+		if (!fileName) {
+			ui.addNotification(null, E('p', {}, _('Please select a file to delete')), 'warning');
+			return;
+		}
+
+		if (!confirm(_('Are you sure you want to delete this file?') + '\n' + fileName)) {
+			return;
+		}
+
+		let filePath = this.baseDir + '/' + fileName;
+
+		fs.exec('/bin/rm', ['-f', filePath])
+			.then(function() {
+				popTimeout(null, E('p', {}, _('File deleted successfully')), 5000, 'info');
+				
+				let option = select.querySelector('option[value="' + fileName + '"]');
+				if (option) {
+					option.remove();
+				}
+				select.value = '';
+				this.currentFile = null;
+				
+				let textarea = document.getElementById('at_modal_editor');
+				if (textarea) {
+					textarea.value = '';
+					textarea.placeholder = _('Select or create a file to edit...');
+				}
+			}.bind(this))
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to delete file') + ': ' + e.message), 'error');
+			});
+	},
+
+	deleteAllFiles: function() {
+		if (!confirm(_('Are you sure you want to delete all files in the folder?') + '\n' + this.baseDir)) {
+			return;
+		}
+
+		let self = this;
+		fs.exec('/bin/sh', ['-c', 'rm -f ' + this.baseDir + '/*.user'])
+			.then(function() {
+				popTimeout(null, E('p', {}, _('All files deleted successfully')), 5000, 'info');
+
+				let select = document.getElementById('at_file_select');
+				if (select) {
+					while (select.options.length > 1) select.remove(1);
+					select.value = '';
+				}
+				self.currentFile = null;
+
+				let textarea = document.getElementById('at_modal_editor');
+				if (textarea) {
+					textarea.value = '';
+					textarea.placeholder = _('Select or create a file to edit...');
+				}
+			})
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to delete files') + ': ' + e.message), 'error');
+			});
+	},
+
+	saveFile: function() {
+		if (!this.currentFile) {
+			ui.addNotification(null, E('p', {}, _('Please select or create a file first')), 'warning');
+			return;
+		}
+
+		let textarea = document.getElementById('at_modal_editor');
+		let content = textarea.value.trim().replace(/\r\n/g, '\n') + '\n';
+		let filePath = this.baseDir + '/' + this.currentFile;
+
+		fs.write(filePath, content)
+			.then(function() {
+				popTimeout(null, E('p', {}, _('File saved successfully')), 5000, 'info');
+			})
+			.catch(function(e) {
+				ui.addNotification(null, E('p', {}, _('Unable to save file') + ': ' + e.message), 'error');
+			});
+	},
+
+	show: function() {
+		this.render();
+	}
+});
 
 return view.extend({
 	load: function() {
@@ -33,7 +1099,7 @@ return view.extend({
 		s.tab('smstab' , _('SMS Settings'));
 		s.anonymous = true;
 
-		o = s.taboption('smstab' , form.Value, 'readport', _('SMS reading port'),
+		o = s.taboption('smstab' , form.Value, 'readport', _('SMS reading port'), 
 			_('Select one of the available ttyUSBX ports.'));
 		devs.sort((a, b) => a.name > b.name);
 		devs.forEach(dev => o.value('/dev/' + dev.name));
@@ -46,25 +1112,34 @@ return view.extend({
 		o.value('SM', _('SIM card'));
 		o.value('ME', _('Modem memory'));
 		o.default = 'SM';
+		o.rmempty = false;
 
 		o = s.taboption('smstab', form.Flag, 'mergesms', _('Merge split messages'),
 		_('Checking this option will make it easier to read the messages, but it will cause a discrepancy in the number of messages shown and received.')
 		);
 		o.rmempty = false;
 
-		o = s.taboption('smstab' , form.ListValue, 'algorithm', _('Merge algorithm'),
-			_(''));
-		o.value('Simple', _('Simple (merge without sorting)'));
-		o.value('Advanced', _('Advanced (merges with sorting)'));
-		o.default = 'Advanced';
-		o.depends('mergesms', '1');
+        o = s.taboption('smstab', form.ListValue, 'algorithm', _('Merge algorithm'), _(''));
+        o.value('Simple', _('Simple (merge without sorting)'));
+        o.value('Advanced', _('Advanced (merges with sorting)'));
+        o.depends('mergesms', '1');
+        o.default = 'Simple';
+        o.rmempty = false;
+        o.write = function(section_id, value) {
+	        if (value != 'Simple' && value != 'Advanced') {
+		        value = this.default;
+	        }
+
+	        return form.ListValue.prototype.write.apply(this, [section_id, value]);
+        };
 
 		o = s.taboption('smstab' , form.ListValue, 'direction', _('Direction of message merging'),
 			_(''));
 		o.value('Start', _('From beginning to end'));
 		o.value('End', _('From end to beginning'));
-		o.default = 'Start';
 		o.depends('algorithm', 'Advanced');
+		o.default = 'Start';
+		o.rmempty = false;
 
 		o = s.taboption('smstab', form.Value, 'bnumber', _('Phone number to be blurred'),
 		_('The last 5 digits of this number will be blurred.')
@@ -132,7 +1207,7 @@ return view.extend({
 			}
 		};
 
-		o = s.taboption('smstab', form.Value, 'sendport', _('SMS sending port'),
+		o = s.taboption('smstab', form.Value, 'sendport', _('SMS sending port'), 
 			_("Select one of the available ttyUSBX ports."));
 		devs.sort((a, b) => a.name > b.name);
 		devs.forEach(dev => o.value('/dev/' + dev.name));
@@ -162,7 +1237,7 @@ return view.extend({
 		o.rmempty = false;
 		o.default = false;
 
-		o = s.taboption('smstab', form.Value, 'delay', _('Message sending delay'),
+		o = s.taboption('smstab', form.Value, 'delay', _('Message sending delay'), 
 			_("[3 - 59] second(s) \
 			<br /><br /><b>Important</b> \
 				<br />Messages are sent without verification and confirmation delivery of the message. \
@@ -185,22 +1260,276 @@ return view.extend({
 		o.rmempty = false;
 		//o.default = true;
 
-		o = s.taboption('smstab', form.TextValue, '_tmp2', _('User contacts'),
-			_("Each line must have the following format: 'Contact name;phone number'. For user convenience, the file is saved to the location <code>/etc/modem/phonebook.user</code>."));
-		o.rows = 7;
-		o.cfgvalue = function(section_id) {
-			return fs.trimmed('/etc/modem/phonebook.user');
+		o = s.taboption('smstab', form.Button, '_phonebook_edit');
+		o.title = _('User contacts');
+		o.description = _("Each line must have the following format: 'Contact name;phone number'. For user convenience, the file is saved to the location <code>/etc/modem/phonebook.user</code>.");
+		o.inputtitle = _('Manage contacts');
+		o.onclick = function() {
+			return fs.trimmed('/etc/modem/phonebook.user').then(function(content) {
+				let dialog = new phonebookEditorDialog(_('Edit User Contacts'), content || '');
+				dialog.show();
+			}).catch(function(e) {
+				let dialog = new phonebookEditorDialog(_('Edit User Contacts'), '');
+				dialog.show();
+			});
 		};
-		o.write = function(section_id, formvalue) {
-			return fs.write('/etc/modem/phonebook.user', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
+
+		//TAB FORWARD SMS by E-MAIL
+
+		s.tab('email', _('SMS Forwarding to E-mail Settings'));
+		s.anonymous = true;
+
+        var emailProviders = {
+	        'custom': {
+		        name: _('user define'),
+		        smtp: '',
+		        port: '',
+		        security: 'tls'
+	        },
+	        'gmail': {
+		        name: 'Gmail',
+		        smtp: 'smtp.gmail.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'outlook': {
+		        name: 'Outlook.com / Hotmail',
+		        smtp: 'smtp-mail.outlook.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'yahoo': {
+		        name: 'Yahoo Mail',
+		        smtp: 'smtp.mail.yahoo.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'icloud': {
+		        name: 'iCloud Mail',
+		        smtp: 'smtp.mail.me.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'aol': {
+		        name: 'AOL Mail',
+		        smtp: 'smtp.aol.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'zoho': {
+		        name: 'Zoho Mail',
+		        smtp: 'smtp.zoho.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'mailru': {
+		        name: 'Mail.ru',
+		        smtp: 'smtp.mail.ru',
+		        port: '465',
+		        security: 'ssl'
+	        },
+	        'yandex': {
+		        name: 'Yandex.Mail',
+		        smtp: 'smtp.yandex.com',
+		        port: '465',
+		        security: 'ssl'
+	        },
+	        'gmx': {
+		        name: 'GMX Mail',
+		        smtp: 'smtp.gmx.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'mailcom': {
+		        name: 'Mail.com',
+		        smtp: 'smtp.mail.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'fastmail': {
+		        name: 'FastMail',
+		        smtp: 'smtp.fastmail.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'sina': {
+		        name: 'Sina Mail',
+		        smtp: 'smtp.sina.com',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'mailboxorg': {
+		        name: 'Mailbox.org',
+		        smtp: 'smtp.mailbox.org',
+		        port: '587',
+		        security: 'tls'
+	        },
+	        'o2pl': {
+		        name: 'o2.pl',
+		        smtp: 'poczta.o2.pl',
+		        port: '465',
+		        security: 'ssl'
+	        },
+	        'wppl': {
+		        name: 'wp.pl',
+		        smtp: 'smtp.wp.pl',
+		        port: '465',
+		        security: 'ssl'
+	        },
+	        'interia': {
+		        name: 'interia.pl',
+		        smtp: 'poczta.interia.pl',
+		        port: '465',
+		        security: 'ssl'
+	        }
+        };
+
+        o = s.taboption('email', form.Flag, 'forward_sms_enabled',
+	        _('Enable message forwarding'));
+        o.rmempty = false;
+        o.modalonly = true;
+
+        o.write = function(section_id, value) {
+	        if (value === '1') {
+		        return pkg._isPackageInstalled('mailsend').then(function(isInstalled) {
+			        if (!isInstalled) {
+				        ui.addNotification(null, E('p', {}, _('Package mailsend is not installed. Please install it first using the Install... button below')), 'info');
+				        return form.Flag.prototype.write.apply(this, [section_id, '0']);
+			        } else {
+				        return form.Flag.prototype.write.apply(this, [section_id, value]);
+			        }
+		        }.bind(this));
+	        }
+	        return form.Flag.prototype.write.apply(this, [section_id, value]);
+        };
+		
+		o = s.taboption('email', form.ListValue, 'emailprovider', _('E-mail settings'),
+			_('Select a predefined e-mail settings or enter settings manually.'));
+		
+		for (var key in emailProviders) {
+			o.value(key, emailProviders[key].name);
+		}
+		o.default = 'custom';
+		o.modalonly = true;
+		
+		o.onchange = function(ev, section_id, value) {
+			var provider = emailProviders[value] || emailProviders['custom'];
+			var map = this.map;
+			
+			// SMTP server
+			var smtpField = map.lookupOption('forward_sms_mail_smtp', section_id);
+			if (smtpField && smtpField[0]) {
+				smtpField[0].getUIElement(section_id).setValue(provider.smtp);
+			}
+			
+			// Update port
+			var portField = map.lookupOption('forward_sms_mail_smtp_port', section_id);
+			if (portField && portField[0]) {
+				portField[0].getUIElement(section_id).setValue(provider.port);
+			}
+			
+			// Update security
+			var securityField = map.lookupOption('forward_sms_mail_security', section_id);
+			if (securityField && securityField[0]) {
+				securityField[0].getUIElement(section_id).setValue(provider.security);
+			}
 		};
+	
+		o = s.taboption('email', form.Value,
+			'forward_sms_mail_recipient', _('Recipient'));
+		o.description = _('E-mail address of the recipient.');
+		o.modalonly   = true;
+
+		o = s.taboption('email', form.Value,
+			'forward_sms_mail_sender', _('Sender'));
+		o.description = _('E-mail address of the sender.');
+		o.modalonly   = true;
+
+		o = s.taboption('email', form.Value,
+		'forward_sms_mail_user', _('User'));
+		o.description = _('Username for SMTP authentication.');
+		o.modalonly   = true;
+
+		o = s.taboption('email', form.Value,
+			'forward_sms_mail_password', _('Password'));
+		o.description = _('Google app password / Password for SMTP authentication.');
+		o.password    = true;
+		o.modalonly   = true;
+
+		o = s.taboption('email', form.Value,
+			'forward_sms_mail_smtp', _('SMTP server'));
+		o.description = _('Hostname/IP address of the SMTP server.');
+		o.datatype    = 'host';
+		o.modalonly   = true;
+
+		o = s.taboption('email', form.Value,
+			'forward_sms_mail_smtp_port', _('SMTP server port'));
+		o.datatype  = 'port';
+		o.modalonly = true;
+
+		o = s.taboption('email', form.ListValue,
+			'forward_sms_mail_security', _('Security'));
+		o.description = '%s<br />%s'.format(
+			_('TLS: use STARTTLS if the server supports it.'),
+			_('SSL: SMTP over SSL.'),
+		);
+		o.value('tls', 'TLS');
+		o.value('ssl', 'SSL');
+		o.default   = 'tls';
+		o.modalonly = true;
+
+		o = s.taboption('email', form.Flag, 'forward_sms_mail_ehlo', _('Force EHLO'));
+		o.description = _('Forces mailsend to always use EHLO instead of auto-detecting HELO/EHLO. \
+			<br />Enable only if forwarding fails, since some servers (e.g. corporate gateways, Microsoft 365 / Exchange Online Protection) don\'t properly advertise ESMTP support, which breaks STARTTLS/authentication.');
+		o.rmempty  = false;
+		o.default  = '0';
+		o.modalonly = true;
+
+		o = s.taboption('email', form.DummyValue, '_dummy_mailsend');
+		o.rawhtml = true;
+		o.render = function() {
+			return E('div', {}, [
+				E('h3', {}, _('Required Package')),
+				E('div', { 'class': 'cbi-map-descr' }, _('The SMS forwarding option requires the mailsend package to be installed.'))
+			]);
+		};
+
+        o = s.taboption('email', form.DummyValue, '_mailsend_status', _('mailsend package'));
+        o.rawhtml = true;
+        o.cfgvalue = function(section_id) {
+	        return '';
+        };
+        o.render = function(option_index, section_id, in_table) {
+	        return pkg._isPackageInstalled('mailsend').then(function(isInstalled) {
+		        var content;
+		        
+		        if (isInstalled) {
+			        content = E('span', {
+				        'class': 'cbi-value-field',
+				        'style': 'font-style: italic;'
+			        }, _('Installed'));
+		        } else {
+			        content = E('button', {
+				        'class': 'cbi-button cbi-button-action',
+				        'click': function() {
+					        pkg.openInstallerSearch('mailsend');
+				        }
+			        }, _('Install…'));
+		        }
+		        
+		        return E('div', { 'class': 'cbi-value' }, [
+			        E('label', { 'class': 'cbi-value-title' }, _('mailsend')),
+			        E('div', { 'class': 'cbi-value-field' }, content)
+		        ]);
+	        });
+        };
 
 		//TAB USSD
 
 		s.tab('ussd', _('USSD Codes Settings'));
 		s.anonymous = true;
 
-		o = s.taboption('ussd', form.Value, 'ussdport', _('USSD sending port'),
+		o = s.taboption('ussd', form.Value, 'ussdport', _('USSD sending port'), 
 			_('Select one of the available ttyUSBX ports.'));
 		devs.sort((a, b) => a.name > b.name);
 		devs.forEach(dev => o.value('/dev/' + dev.name));
@@ -224,14 +1553,13 @@ return view.extend({
 		o.value('2', _('UCS2'));
 		o.default = 'auto';
 
-		o = s.taboption('ussd', form.TextValue, '_tmp4', _('User USSD codes'),
-			_("Each line must have the following format: 'Code description;code'. For user convenience, the file is saved to the location <code>/etc/modem/ussdcodes.user</code>."));
-		o.rows = 7;
-		o.cfgvalue = function(section_id) {
-			return fs.trimmed('/etc/modem/ussdcodes.user');
-		};
-		o.write = function(section_id, formvalue) {
-			return fs.write('/etc/modem/ussdcodes.user', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
+		o = s.taboption('ussd', form.Button, '_ussd_manage');
+		o.title = _('User USSD codes');
+		o.description = _("Each line must have the following format: 'Code description;code'. For user convenience, the file is saved to the location <code>/etc/modem/ussdcodes/</code>.");
+		o.inputtitle = _('Manage USSD codes');
+		o.onclick = function() {
+			let dialog = new ussdCodesManagerDialog(_('Manage User USSD Codes'));
+			dialog.show();
 		};
 
 		//TAB AT
@@ -239,7 +1567,7 @@ return view.extend({
 		s.tab('attab', _('AT Commands Settings'));
 		s.anonymous = true;
 
-		o = s.taboption('attab' , form.Value, 'atport', _('AT commands sending port'),
+		o = s.taboption('attab' , form.Value, 'atport', _('AT commands sending port'), 
 			_('Select one of the available ttyUSBX ports.'));
 		devs.sort((a, b) => a.name > b.name);
 		devs.forEach(dev => o.value('/dev/' + dev.name));
@@ -247,15 +1575,59 @@ return view.extend({
 		o.placeholder = _('Please select a port');
 		o.rmempty = false;
 
-		o = s.taboption('attab' , form.TextValue, '_tmp6', _('User AT commands'),
-			_("Each line must have the following format: 'At command description;AT command'. For user convenience, the file is saved to the location <code>/etc/modem/atcmmds.user</code>."));
-		o.rows = 20;
-		o.cfgvalue = function(section_id) {
-			return fs.trimmed('/etc/modem/atcmmds.user');
+		o = s.taboption('attab', form.Button, '_at_manage');
+		o.title = _('User AT commands');
+		o.description = _("Each line must have the following format: 'AT command description;AT command'. For user convenience, the file is saved to the location <code>/etc/modem/atcmmds/</code>.");
+		o.inputtitle = _('Manage AT commands');
+		o.onclick = function() {
+			let dialog = new atCommandsManagerDialog(_('Manage User AT Commands'));
+			dialog.show();
 		};
-		o.write = function(section_id, formvalue) {
-			return fs.write('/etc/modem/atcmmds.user', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
-		};
+		
+        //TAB CALL LOG
+
+		s.tab('calllogtab', _('Call Log Settings'));
+
+		o = s.taboption('calllogtab' , form.Value, 'callport', _('Call log reading port'),
+			_('Select one of the available ttyUSBX ports.'));
+		devs.sort((a, b) => a.name > b.name);
+		devs.forEach(dev => o.value('/dev/' + dev.name));
+
+		o.placeholder = _('Please select a port');
+		o.rmempty = false;
+		
+        o = s.taboption('calllogtab', form.Flag, 'calllog_enabled', _('Enable call log daemon'),
+			_('Background process to log incoming and missed calls. \
+			<br /><br /><b>Important</b> \
+			<br />Option dedicated to Qualcomm modems that do not have internal call history memory and do not support the standard AT+CPBR command. \
+			Enabling this option adds a new tab. If dedicated tab does not appear, clear your browser cache and restart the router.'));
+        o.rmempty = false;
+        o.default = '0';
+        o.write = function(section_id, value) {
+            return uci.load('sms_tool_js').then(function() {
+                if (value == '1') {
+                    uci.set('sms_tool_js', '@sms_tool_js[0]', 'calllog_enabled', '1');
+                    return uci.save().then(function() {
+                        return fs.exec_direct('/etc/init.d/sms_tool_calllogd', ['enable']);
+                    }).then(function() {
+                        return fs.exec_direct('/etc/init.d/sms_tool_calllogd', ['start']);
+                    });
+                }
+                
+                if (value == '0') {
+                    uci.set('sms_tool_js', '@sms_tool_js[0]', 'calllog_enabled', '0');
+                    return uci.save().then(function() {
+                        return fs.exec_direct('/etc/init.d/sms_tool_calllogd', ['stop']);
+                    }).then(function() {
+                        return fs.exec_direct('/etc/init.d/sms_tool_calllogd', ['disable']);
+                    }).then(function() {
+                        return fs.exec_direct('/bin/rm', ['-f', '/tmp/sms_tool_call_log.json']);
+                    });
+                }
+            }.bind(this)).then(function() {
+                return form.Flag.prototype.write.apply(this, [section_id, value]);
+            }.bind(this));
+        };
 
 		//TAB INFO
 
@@ -267,53 +1639,89 @@ return view.extend({
 		);
 		o.rmempty = false;
 		o.default = true;
-		o.write = function(section_id, value) {
-
-			uci.load('sms_tool_js').then(function() {
-				let storeL = (uci.get('sms_tool_js', '@sms_tool_js[0]', 'storage'));
-				let portR = (uci.get('sms_tool_js', '@sms_tool_js[0]', 'readport'));
-				let dsled = (uci.get('sms_tool_js', '@sms_tool_js[0]', 'ledtype'));
-
-					L.resolveDefault(fs.exec_direct('/usr/bin/sms_tool', [ '-s' , storeL , '-d' , portR , 'status' ]))
-						.then(function(res) {
-							if (res) {
-								let total = res.substring(res.indexOf('total'));
-								let t = total.replace ( /[^\d.]/g, '' );
-								let used = res.substring(17, res.indexOf('total'));
-								let u = used.replace ( /[^\d.]/g, '' );
-
-								let sections = uci.sections('sms_tool_js');
-								let led = sections[0].smsled;
-
-								if (value == '1') {
-									uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', L.toArray(u).join(' '));
-									uci.set('sms_tool_js', '@sms_tool_js[0]', 'lednotify', "1");
-									uci.save();
-									fs.exec_direct('/sbin/new_cron_sync.sh');
-									fs.exec_direct('/etc/init.d/my_new_sms', [ 'enable' ]);
-									fs.exec('sleep 2');
-									fs.exec_direct('/etc/init.d/my_new_sms', [ 'start' ]);
-								}
-
-								if (value == '0') {
-									uci.set('sms_tool_js', '@sms_tool_js[0]', 'lednotify', "0");
-									uci.save();
-									fs.exec_direct('/sbin/new_cron_sync.sh');
-									fs.exec_direct('/etc/init.d/my_new_sms', [ 'stop' ]);
-									fs.exec('sleep 2');
-									fs.exec_direct('/etc/init.d/my_new_sms', [ 'disable' ]);
-									fs.exec_direct('/etc/init.d/my_new_sms', [ 'disable' ]);
-
-									if (dsled == 'D') {
-										fs.write('/sys/class/leds/'+led+'/brightness', '0');
-									}
-								}
-							}
-					});
-			});
-
-			return form.Flag.prototype.write.apply(this, [section_id, value]);
-		};
+        o.write = function(section_id, value) {
+	        return uci.load('sms_tool_js').then(function() {
+		        let storeL = uci.get('sms_tool_js', '@sms_tool_js[0]', 'storage');
+		        let portR  = uci.get('sms_tool_js', '@sms_tool_js[0]', 'readport');
+		        let dsled  = uci.get('sms_tool_js', '@sms_tool_js[0]', 'ledtype');
+		        
+		        if (!portR) {
+			        ui.addNotification(null, E('p', {}, _('Please configure SMS reading port first')), 'info');
+			        return form.Flag.prototype.write.apply(this, [section_id, value]);
+		        }
+		        
+		        return L.resolveDefault(fs.exec_direct('/usr/bin/sms_tool', ['-s', storeL, '-d', portR, 'status']))
+			        .then(function(res) {
+				        if (!res) return;
+				        
+				        let total = res.substring(res.indexOf('total'));
+				        let t = total.replace(/[^\d.]/g, '');
+				        let used = res.substring(17, res.indexOf('total'));
+				        let u = used.replace(/[^\d.]/g, '');
+				        
+				        if (value == '1') {
+					        return update_sms_count_for_modem_sync(u, portR).then(function(updatedValue) {
+						        uci.set('sms_tool_js', '@sms_tool_js[0]', 'sms_count', updatedValue);
+						        uci.set('sms_tool_js', '@sms_tool_js[0]', 'lednotify', '1');
+						        let PTR = uci.get('sms_tool_js', '@sms_tool_js[0]', 'prestart');
+						        return uci.save().then(function() {
+							        return L.resolveDefault(fs.read('/etc/crontabs/root'), '');
+						        }).then(function(crontab) {
+							        let lines = (crontab || '').trim().replace(/\r\n/g, '\n').split('\n');
+							        let filteredLines = lines.filter(function(line) {
+								        return line.trim() !== '' && !line.includes('my_new_sms');
+							        });
+							        let cronEntry = '1 */' + PTR + ' * * * /etc/init.d/my_new_sms enable && /etc/init.d/my_new_sms restart';
+							        filteredLines.push(cronEntry);
+							        let newCrontab = filteredLines.join('\n') + '\n';
+							        return fs.write('/etc/crontabs/root', newCrontab);
+						        }).then(function() {
+							        return fs.exec_direct('/etc/init.d/cron', ['restart']);
+						        }).then(function() {
+							        return fs.exec_direct('/etc/init.d/my_new_sms', ['enable']);
+						        }).then(function() {
+							        return fs.exec_direct('/etc/init.d/my_new_sms', ['start']);
+						        });
+					        });
+				        }
+				        
+				        if (value == '0') {
+					        uci.set('sms_tool_js', '@sms_tool_js[0]', 'lednotify', '0');
+					        return uci.save().then(function() {
+						        return L.resolveDefault(fs.read('/etc/crontabs/root'), '');
+					        }).then(function(crontab) {
+						        let lines = (crontab || '').trim().replace(/\r\n/g, '\n').split('\n');
+						        let filteredLines = lines.filter(function(line) {
+							        return line.trim() !== '' && !line.includes('my_new_sms');
+						        });
+						        let newCrontab = filteredLines.join('\n') + '\n';
+						        return fs.write('/etc/crontabs/root', newCrontab);
+					        }).then(function() {
+						        return fs.exec_direct('/etc/init.d/cron', ['restart']);
+					        }).then(function() {
+						        return fs.exec_direct('/etc/init.d/my_new_sms', ['stop']);
+					        }).then(function() {
+						        return fs.exec_direct('/etc/init.d/my_new_sms', ['disable']);
+					        }).then(function() {
+						        if (dsled == 'D') {
+							        let led = uci.get('sms_tool_js', '@sms_tool_js[0]', 'smsled');
+							        if (led) {
+								        return fs.write('/sys/class/leds/' + led + '/brightness', '0');
+							        }
+						        }
+					        });
+				        }
+			        }.bind(this));
+	        }.bind(this)).then(function() {
+		        return form.Flag.prototype.write.apply(this, [section_id, value]);
+	        }.bind(this));
+        };
+		
+		o = s.taboption('notifytab', form.Flag, 'ontopsms', _('Show notification icon'),
+		_('Show the new message notification icon on the status overview page.')
+		);
+		o.rmempty = false;
+        //o.depends('lednotify', '1');
 
 		o = s.taboption('notifytab', form.Value, 'checktime', _('Check inbox every minute(s)'),
 			_('Specify how many minutes you want your inbox to be checked.'));

@@ -1,0 +1,273 @@
+msgid ""
+msgstr ""
+"Last-Translator: \n"
+"Language-Team: Chinese (Traditional)\n"
+"Language: zh_Hant\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Guest Wi-Fi"
+msgstr "訪客 Wi-Fi"
+
+msgid "Guest networks"
+msgstr "訪客網路"
+
+msgid "Add new guest network..."
+msgstr "新增訪客網路..."
+
+msgid "General"
+msgstr "基本設定"
+
+msgid "Security"
+msgstr "安全設定"
+
+msgid "Network & DHCP"
+msgstr "網路与 DHCP"
+
+msgid "Firewall"
+msgstr "防火牆"
+
+msgid "Enabled"
+msgstr "已啟用"
+
+msgid "Network name (SSID)"
+msgstr "網路名稱 (SSID)"
+
+msgid "Radio"
+msgstr "無線射頻"
+
+msgid "Interface IP address"
+msgstr "介面 IP 位址"
+
+msgid "Netmask"
+msgstr "網路遮罩"
+
+msgid "DHCP range start"
+msgstr "DHCP 分配起始位址"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "最低的租用位址，作為網路位址的偏移量。"
+
+msgid "DHCP client limit"
+msgstr "DHCP 用戶端限制"
+
+msgid "Maximum number of leased addresses."
+msgstr "最大可租用的位址數量。"
+
+msgid "DHCP lease time"
+msgstr "DHCP 租期"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "例如：\"1h\"（1小時）、\"30m\"（30分鐘）、\"12h\"（12小時）。最小值为 \"2m\"。"
+
+msgid "Encryption"
+msgstr "加密方式"
+
+msgid "No encryption (open network)"
+msgstr "不加密（開放網路）"
+
+msgid "Password"
+msgstr "密碼"
+
+msgid "Client isolation"
+msgstr "用戶端隔離"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "阻止此訪客網路中用戶端之間的互相通訊。"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "No"
+msgstr "否"
+
+msgid "Forwarding destination zone"
+msgstr "轉發目標區域"
+
+msgid "DHCP rule ports"
+msgstr "DHCP 規則埠"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "DHCP 流量的 UDP 埠範圍，例如：\"67-68\"。"
+
+msgid "DNS rule port"
+msgstr "DNS 規則埠"
+
+msgid "Error saving configuration:"
+msgstr "儲存設定時出錯："
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"一個方便建立和管理隔離的訪客 Wi-Fi 網路的圖形介面，每個網路都有獨立的"
+"存取點、DHCP 和防火牆規則。"
+
+msgid "Enable guest network."
+msgstr "啟用訪客網路。"
+
+msgid "The radio on which the guest network will work."
+msgstr "訪客網路將運作的無線射頻。"
+
+msgid "MAC address"
+msgstr "MAC 位址"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"覆寫預設 MAC 位址 - 可用位址的範圍可能會受到驅動程式的限制"
+
+msgid "randomly generated"
+msgstr "隨機產生"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"位址 %s 已在使用中，且在 172.16.0.1 - 172.31.0.1 範圍內沒有可用的空閒位址。"
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "密碼長度必須至少為 8 個字元 (WPA-PSK/WPA2-PSK/WPA3-SAE)。"
+
+msgid "WEP Open System"
+msgstr "WEP 開放系統"
+
+msgid "WEP Shared Key"
+msgstr "WEP 共用金鑰"
+
+msgid "Mixed Mode"
+msgstr "混合模式"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"推薦大多數裝置使用 WPA2-PSK。WPA3-SAE 提供了最強的安全性，但需要用戶端支援 WPA3。"
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP 金鑰必須是 5 或 13 個 ASCII 字元，或者是 10 或 26 個十六進位數字。"
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"訪客流量轉發到的防火牆區域（通常為 \"wan\"）。從列表中選擇一个現有區域，"
+"或者填寫 <em>-- 自訂 --</em> 欄位以手動輸入。"
+
+msgid "Input"
+msgstr "入站數據"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "從訪客到路由器本身的流量（例如：LuCI、SSH）。"
+
+msgid "Output"
+msgstr "出站數據"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"從路由器本身到訪客的流量。建議設為 接受(ACCEPT)，以確保路由器服務（DHCP、DNS）正常運作。"
+
+msgid "Forward"
+msgstr "轉發數據"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"訪客與其他網路/區域（如 LAN）之間通過的流量。請保持為 拒絕(REJECT) 或 丟棄(DROP) "
+"以將訪客與您的 LAN 隔離。設為 接受(ACCEPT) 將允許訪客存取其他網路。"
+
+msgid "accept"
+msgstr "接受"
+
+msgid "reject"
+msgstr "拒絕"
+
+msgid "drop"
+msgstr "丟棄"
+
+msgid "driver default"
+msgstr "驅動程式預設"
+
+msgid "Password length"
+msgstr "密碼長度"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "最小長度為8個字元,建議使用13個字元。"
+
+msgid "Password composition"
+msgstr "密碼組成"
+
+msgid "Character types to use when generating a password."
+msgstr "產生密碼時使用的字元類型。"
+
+msgid "Uppercase letters"
+msgstr "大寫字母"
+
+msgid "Lowercase letters"
+msgstr "小寫字母"
+
+msgid "Digits"
+msgstr "數字"
+
+msgid "Special characters"
+msgstr "特殊字元"
+
+msgid "Select password components..."
+msgstr "選擇密碼組成部分..."
+
+msgid "Generate password"
+msgstr "產生密碼"
+
+msgid "Generate"
+msgstr "產生"
+
+msgid "QR Code"
+msgstr "QR code"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"產生包含訪客網路資料(SSID、加密方式、密碼)的 QR code,以便客戶端裝置"
+"掃描並連線。"
+
+msgid "QR Error Correction Code Level"
+msgstr "QR code 錯誤更正等級"
+
+msgid "Low"
+msgstr "低"
+
+msgid "Medium"
+msgstr "中"
+
+msgid "Quartile"
+msgstr "四分位"
+
+msgid "High"
+msgstr "高"
+
+msgid "Scan this QR code with the client device."
+msgstr "請使用客戶端裝置掃描此 QR code。"
+
+msgid "Generate guest WiFi QR…"
+msgstr "正在產生訪客 Wi-Fi QR code…"
+
+msgid "Back to settings"
+msgstr "返回設定"
+
+msgid "Generate QR…"
+msgstr "產生 QR code…"

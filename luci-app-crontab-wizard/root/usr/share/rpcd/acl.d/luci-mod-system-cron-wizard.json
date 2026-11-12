@@ -1,0 +1,22 @@
+{
+  "luci-app-crontab-wizard": {
+	"description": "Grant access to luci-app-crontab-wizard",
+		"read": {
+			"file": {
+				"/etc/crontabs/root": [ "read" ]
+			},
+			"ubus": {
+				"file": [ "read" ]
+			}
+		},
+		"write": {
+			"file": {
+				"/etc/crontabs/root": [ "write" ],
+				"/etc/init.d/cron reload": [ "exec" ]
+			},
+			"ubus": {
+				"file": [ "write" ]
+			}
+		}
+	}
+}

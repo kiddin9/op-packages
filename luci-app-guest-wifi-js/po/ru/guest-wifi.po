@@ -1,0 +1,280 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Гостевой Wi-Fi"
+
+msgid "Guest networks"
+msgstr "Гостевые сети"
+
+msgid "Add new guest network..."
+msgstr "Добавить новую гостевую сеть..."
+
+msgid "General"
+msgstr "Общие настройки"
+
+msgid "Security"
+msgstr "Безопасность"
+
+msgid "Network & DHCP"
+msgstr "Сеть и DHCP"
+
+msgid "Firewall"
+msgstr "Межсетевой экран"
+
+msgid "Enabled"
+msgstr "Включено"
+
+msgid "Network name (SSID)"
+msgstr "Имя сети (SSID)"
+
+msgid "Radio"
+msgstr "Радиоинтерфейс"
+
+msgid "Interface IP address"
+msgstr "IP-адрес интерфейса"
+
+msgid "Netmask"
+msgstr "Маска сети"
+
+msgid "DHCP range start"
+msgstr "Начало диапазона DHCP"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Наименьший арендуемый адрес, как смещение от сетевого адреса."
+
+msgid "DHCP client limit"
+msgstr "Лимит клиентов DHCP"
+
+msgid "Maximum number of leased addresses."
+msgstr "Максимальное количество арендуемых адресов."
+
+msgid "DHCP lease time"
+msgstr "Время аренды DHCP"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "Например, «1h», «30m», «12h». Ми its — «2m»."
+
+msgid "Encryption"
+msgstr "Шифрование"
+
+msgid "No encryption (open network)"
+msgstr "Без шифрования (открытая сеть)"
+
+msgid "Password"
+msgstr "Пароль"
+
+msgid "Client isolation"
+msgstr "Изоляция клиентов"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Блокирует связь между клиентами в этой гостевой сети."
+
+msgid "Yes"
+msgstr "Да"
+
+msgid "No"
+msgstr "Нет"
+
+msgid "Forwarding destination zone"
+msgstr "Зона назначения перенаправления"
+
+msgid "DHCP rule ports"
+msgstr "Порты правила DHCP"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "Диапазон портов UDP для DHCP-трафика, например, «67-68»."
+
+msgid "DNS rule port"
+msgstr "Порт правила DNS"
+
+msgid "Error saving configuration:"
+msgstr "Ошибка при сохранении конфигурации:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"Пользовательский интерфейс для простого создания и управления изолированными "
+"сетями Wi-Fi для гостей, каждая из которых имеет собственную точку доступа, DHCP "
+"и правила межсетевого экрана."
+
+msgid "Enable guest network."
+msgstr "Включить гостевую сеть."
+
+msgid "The radio on which the guest network will work."
+msgstr "Радиоинтерфейс, на котором будет работать гостевая сеть."
+
+msgid "MAC address"
+msgstr "MAC-адрес"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Переопределить исходный MAC-адрес (диапазон доступных адресов может быть "
+"ограничен драйвером)"
+
+msgid "randomly generated"
+msgstr "сгенерирован случайно"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"Адрес %s уже используется, и в диапазоне 172.16.0.1 - 172.31.0.1 нет "
+"свободных адресов."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "Пароль должен быть длиной не менее 8 символов (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "WEP Открытая система"
+
+msgid "WEP Shared Key"
+msgstr "WEP Общий ключ"
+
+msgid "Mixed Mode"
+msgstr "Смешанный режим"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"WPA2-PSK рекомендуется для большинства устройств. WPA3-SAE обеспечивает максимальную "
+"безопасность, но требует поддержки со стороны клиентов."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"Ключ WEP должен состоять из 5 или 13 символов ASCII, либо из 10 или 26 шестнадцатеричных цифр."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Зона межсетевого экрана, в которую перенаправляется гостевой трафик (обычно «wan»). "
+"Выберите существующую зону из списка или заполните поле <em>-- своё --</em>, "
+"чтобы ввести её вручную."
+
+msgid "Input"
+msgstr "Входной"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Транзит трафика от гостей к самому роутеру (например, LuCI, SSH)."
+
+msgid "Output"
+msgstr "Выходной"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Трафик от самого роутера к гостям. Рекомендуется ПРИНИМАТЬ (ACCEPT), чтобы "
+"службы роутера (DHCP, DNS) продолжали работать."
+
+msgid "Forward"
+msgstr "Перенаправление"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Трафик, проходящий между гостями и другими сетями/зонами (например, LAN). "
+"Установите ОТКЛОНЯТЬ (REJECT) или СБРАСЫВАТЬ (DROP), чтобы изолировать гостей от вашей LAN. "
+"ПРИНИМАТЬ (ACCEPT) позволит гостям получать доступ к другим сетям."
+
+msgid "accept"
+msgstr "принимать"
+
+msgid "reject"
+msgstr "отклонять"
+
+msgid "drop"
+msgstr "сбрасывать"
+
+msgid "driver default"
+msgstr "по умолчанию для драйвера"
+
+msgid "Password length"
+msgstr "Длина пароля"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "Минимальная длина — 8 символов, рекомендуется 13."
+
+msgid "Password composition"
+msgstr "Состав пароля"
+
+msgid "Character types to use when generating a password."
+msgstr "Типы символов, используемые при генерации пароля."
+
+msgid "Uppercase letters"
+msgstr "Заглавные буквы"
+
+msgid "Lowercase letters"
+msgstr "Строчные буквы"
+
+msgid "Digits"
+msgstr "Цифры"
+
+msgid "Special characters"
+msgstr "Специальные символы"
+
+msgid "Select password components..."
+msgstr "Выберите составляющие пароля..."
+
+msgid "Generate password"
+msgstr "Генерация пароля"
+
+msgid "Generate"
+msgstr "Сгенерировать"
+
+msgid "QR Code"
+msgstr "QR-код"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"Создаёт QR-код с данными гостевой сети (SSID, шифрование, пароль), чтобы "
+"клиентское устройство могло отсканировать его и подключиться."
+
+msgid "QR Error Correction Code Level"
+msgstr "Уровень коррекции ошибок QR-кода"
+
+msgid "Low"
+msgstr "Низкий"
+
+msgid "Medium"
+msgstr "Средний"
+
+msgid "Quartile"
+msgstr "Квартильный"
+
+msgid "High"
+msgstr "Высокий"
+
+msgid "Scan this QR code with the client device."
+msgstr "Отсканируйте этот QR-код с помощью клиентского устройства."
+
+msgid "Generate guest WiFi QR…"
+msgstr "Создание QR-кода гостевой Wi-Fi сети…"
+
+msgid "Back to settings"
+msgstr "Вернуться к настройкам"
+
+msgid "Generate QR…"
+msgstr "Создать QR-код…"

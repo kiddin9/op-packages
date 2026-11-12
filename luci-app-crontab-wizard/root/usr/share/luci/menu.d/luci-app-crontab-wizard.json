@@ -1,0 +1,37 @@
+{
+	"admin/system/crontab": {
+		"title": "Scheduled Tasks",
+		"order": 46,
+		"action": {
+			"type": "view",
+			"path": "system/crontab"
+		},
+		"depends": {
+			"acl": [ "luci-mod-system-cron" ]
+		}
+	},
+
+	"admin/system/crontab/crontab": {
+	    "title": "Scheduled Tasks",
+	    "order": 46,
+	    		"action": {
+			"type": "view",
+			"path": "system/crontab"
+		},
+		"depends": {
+			"acl": [ "luci-mod-system-cron" ]
+		}
+	},
+
+	"admin/system/crontab/wizard": {
+	    "title": "Crontab Configurator",
+	    "order": 47,
+	    	    	"action": {
+			"type": "view",
+			"path": "system/crontab_wizard"
+		},
+		"depends": {
+			"acl": [ "luci-app-crontab-wizard" ]
+		}
+	}
+}

@@ -1,0 +1,176 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Edit Port Label"
+msgstr "Редактировать метку порта"
+
+msgid "Enter new label for this port:"
+msgstr "Введите новую метку для этого порта:"
+
+msgid "Device"
+msgstr "Устройство"
+
+msgid "Original label"
+msgstr "Исходная метка"
+
+msgid "Restore Original"
+msgstr "Восстановить исходную"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Port configuration saved successfully"
+msgstr "Конфигурация порта успешно сохранена"
+
+msgid "Port order saved"
+msgstr "Порядок портов сохранен"
+
+msgid "Click to edit label"
+msgstr "Нажмите, чтобы изменить метку"
+
+msgid "Hold to drag and reorder"
+msgstr "Удерживайте, чтобы перетащить и изменить порядок"
+
+msgid "Label max 9 chars, description max 50 chars."
+msgstr "Метка макс. 9 символов, описание макс. 50 символов."
+
+msgid "Enter description (optional):"
+msgstr "Введите описание (необязательно):"
+
+msgid "Optional description"
+msgstr "Необязательное описание"
+
+msgid "User settings are saved to the /etc/user_defined_ports.json file."
+msgstr "Пользовательские настройки сохраняются в файле /etc/user_defined_ports.json."
+
+msgid "Configuration file downloaded"
+msgstr "Файл конфигурации загружен"
+
+msgid "Configuration file not found"
+msgstr "Файл конфигурации не найден"
+
+msgid "Download error: %s"
+msgstr "Ошибка загрузки: %s"
+
+msgid "Invalid configuration format"
+msgstr "Неверный формат конфигурации"
+
+msgid "Restore configuration"
+msgstr "Восстановление конфигурации"
+
+msgid "This will overwrite current ports configuration. Continue?"
+msgstr "Это перезапишет текущую конфигурацию портов. Продолжить?"
+
+msgid "Configuration restored successfully. Reloading..."
+msgstr "Конфигурация успешно восстановлена. Перезагрузка..."
+
+msgid "File restore failed: %s"
+msgstr "Не удалось восстановить файл: %s"
+
+msgid "Save .json file"
+msgstr "Сохранить файл .json"
+
+msgid "Upload .json file"
+msgstr "Загрузить файл .json"
+
+msgid "Cannot save empty configuration"
+msgstr "Невозможно сохранить пустую конфигурацию"
+
+msgid "Cannot save port configuration. "
+msgstr "Невозможно сохранить конфигурацию портов. "
+
+msgid "Directory /etc may be read-only or insufficient permissions. "
+msgstr "Каталог /etc может быть доступен только для чтения или иметь недостаточные права доступа. "
+
+msgid "Try running: chmod 755 /etc && touch %s && chmod 644 %s"
+msgstr "Попробуйте выполнить: chmod 755 /etc && touch %s && chmod 644 %s"
+
+msgid "Save Error"
+msgstr "Ошибка сохранения"
+
+msgid "Original error: %s"
+msgstr "Исходная ошибка: %s"
+
+msgid "Restore from backup"
+msgstr "Восстановить из резервной копии"
+
+msgid "Restore configuration from backup file? This will overwrite current settings."
+msgstr "Восстановить конфигурацию из файла резервной копии? Это перезапишет текущие настройки."
+
+msgid "Backup contains:"
+msgstr "Резервная копия содержит:"
+
+msgid "Configuration restored from backup. Reloading..."
+msgstr "Конфигурация восстановлена из резервной копии. Перезагрузка..."
+
+msgid "Restore failed: %s"
+msgstr "Восстановление не удалось: %s"
+
+msgid "Backup file is corrupted: %s"
+msgstr "Файл резервной копии поврежден: %s"
+
+msgid "Error reading backup: %s"
+msgstr "Ошибка чтения резервной копии: %s"
+
+msgid "Restore backup .bak"
+msgstr "Восстановить резервную копию .bak"
+
+msgid "Change port state"
+msgstr "Изменить состояние порта"
+
+msgid "Enable this port"
+msgstr "Включить этот порт"
+
+msgid "Enable port"
+msgstr "Включить порт"
+
+msgid "Disable this port"
+msgstr "Отключить этот порт"
+
+msgid "Disable port"
+msgstr "Отключить порт"
+
+msgid "Down"
+msgstr "неактивен"
+
+msgid "Disabled"
+msgstr "отключен"
+
+msgid "Idle"
+msgstr "простаивает"
+
+msgid "Active"
+msgstr "активен"
+
+msgid "Unknown"
+msgstr "неизвестно"
+
+msgid "No config file to backup"
+msgstr "Нет файла конфигурации для резервного копирования"
+
+msgid "Config file is corrupted, cannot create backup"
+msgstr "Файл конфигурации повреждён, создание резервной копии невозможно"
+
+msgid "Backup file created: %s"
+msgstr "Резервный файл создан: %s"
+
+msgid "Backup write verification failed!"
+msgstr "Проверка записи резервной копии не удалась!"
+
+msgid "Backup creation failed: %s"
+msgstr "Создание резервной копии не удалось: %s"
+
+msgid "Error reading config: %s"
+msgstr "Ошибка чтения конфигурации: %s"
+
+msgid "Create backup .bak"
+msgstr "Создать резервную копию .bak"

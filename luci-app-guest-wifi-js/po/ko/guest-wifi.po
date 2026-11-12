@@ -1,0 +1,275 @@
+msgid ""
+msgstr ""
+"Language: ko\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Guest Wi-Fi"
+msgstr "게스트 Wi-Fi"
+
+msgid "Guest networks"
+msgstr "게스트 네트워크"
+
+msgid "Add new guest network..."
+msgstr "새 게스트 네트워크 추가..."
+
+msgid "General"
+msgstr "일반 설정"
+
+msgid "Security"
+msgstr "보안 설정"
+
+msgid "Network & DHCP"
+msgstr "네트워크 및 DHCP"
+
+msgid "Firewall"
+msgstr "방화벽"
+
+msgid "Enabled"
+msgstr "활성화됨"
+
+msgid "Network name (SSID)"
+msgstr "네트워크 이름 (SSID)"
+
+msgid "Radio"
+msgstr "무선 디바이스"
+
+msgid "Interface IP address"
+msgstr "인터페이스 IP 주소"
+
+msgid "Netmask"
+msgstr "넷마스크"
+
+msgid "DHCP range start"
+msgstr "DHCP 할당 시작 주소"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "네트워크 주소로부터의 오프셋 값으로 계산되는 가장 낮은 임대 주소입니다."
+
+msgid "DHCP client limit"
+msgstr "DHCP 클라이언트 제한"
+
+msgid "Maximum number of leased addresses."
+msgstr "임대 가능한 최대 주소 수입니다."
+
+msgid "DHCP lease time"
+msgstr "DHCP 임대 시간"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "예: \"1h\", \"30m\", \"12h\". 최소값은 \"2m\"입니다."
+
+msgid "Encryption"
+msgstr "암호화 방식"
+
+msgid "No encryption (open network)"
+msgstr "암호화 없음 (개방형 네트워크)"
+
+msgid "Password"
+msgstr "비밀번호"
+
+msgid "Client isolation"
+msgstr "클라이언트 격리"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "이 게스트 네트워크에 연결된 클라이언트 간의 통신을 차단합니다."
+
+msgid "Yes"
+msgstr "예"
+
+msgid "No"
+msgstr "아니요"
+
+msgid "Forwarding destination zone"
+msgstr "전달 대상 구역"
+
+msgid "DHCP rule ports"
+msgstr "DHCP 규칙 포트"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "DHCP 트래픽용 UDP 포트 범위 (예: \"67-68\")."
+
+msgid "DNS rule port"
+msgstr "DNS 규칙 포트"
+
+msgid "Error saving configuration:"
+msgstr "설정 저장 중 오류 발생:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"각각 독립된 액세스 포인트, DHCP 및 방화벽 규칙을 갖는 게스트용 격리 무선 "
+"네트워크를 쉽게 생성하고 관리할 수 있는 사용자 인터페이스입니다."
+
+msgid "Enable guest network."
+msgstr "게스트 네트워크를 활성화합니다."
+
+msgid "The radio on which the guest network will work."
+msgstr "게스트 네트워크가 동작할 무선 디바이스입니다."
+
+msgid "MAC address"
+msgstr "MAC 주소"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"기본 MAC 주소 재정의 - 사용 가능한 주소 범위가 드라이버에 의해 제한될 수 있습니다"
+
+msgid "randomly generated"
+msgstr "무작위로 생성됨"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"주소 %s은(는) 이미 사용 중이며 172.16.0.1 - 172.31.0.1 범위 내에 사용할 수 있는 "
+"빈 주소가 없습니다."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "비밀번호는 최소 8자 이상이어야 합니다 (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "WEP 오픈 시스템"
+
+msgid "WEP Shared Key"
+msgstr "WEP 공유 키"
+
+msgid "Mixed Mode"
+msgstr "혼합 모드"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"대부분의 기기에는 WPA2-PSK를 권장합니다. WPA3-SAE는 가장 강력한 보안을 제공하지만 "
+"WPA3을 지원하는 클라이언트가 필요합니다."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP 키는 5자 또는 13자의 ASCII 문자이거나, 10자리 또는 26자리의 16진수여야 합니다."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"게스트 트래픽이 전달될 방화벽 구역입니다 (보통 \"wan\"). 목록에서 기존 구역을 "
+"선택하거나 <em>-- 사용자 정의 --</em> 필드를 작성하여 수동으로 입력하십시오."
+
+msgid "Input"
+msgstr "입력 (Inbound)"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "게스트로부터 라우터 자체로 향하는 트래픽입니다 (예: LuCI, SSH)."
+
+msgid "Output"
+msgstr "출력 (Outbound)"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"라우터 자체에서 게스트로 향하는 트래픽입니다. 라우터 서비스(DHCP, DNS)가 정상적으로 "
+"작동할 수 있도록 허용(ACCEPT)을 권장합니다."
+
+msgid "Forward"
+msgstr "전달 (Forward)"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"게스트와 다른 네트워크/구역(예: LAN) 간에 통과하는 트래픽입니다. 게스트를 LAN으로부터 "
+"격리하려면 거부(REJECT) 또는 버림(DROP)으로 유지하십시오. 허용(ACCEPT)으로 설정하면 "
+"게스트가 다른 네트워크에 접근할 수 있습니다."
+
+msgid "accept"
+msgstr "허용 (accept)"
+
+msgid "reject"
+msgstr "거부 (reject)"
+
+msgid "drop"
+msgstr "버림 (drop)"
+
+msgid "driver default"
+msgstr "드라이버 기본값"
+
+msgid "Password length"
+msgstr "비밀번호 길이"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "최소 길이는 8자이며, 13자를 권장합니다."
+
+msgid "Password composition"
+msgstr "비밀번호 구성"
+
+msgid "Character types to use when generating a password."
+msgstr "비밀번호를 생성할 때 사용할 문자 유형입니다."
+
+msgid "Uppercase letters"
+msgstr "대문자"
+
+msgid "Lowercase letters"
+msgstr "소문자"
+
+msgid "Digits"
+msgstr "숫자"
+
+msgid "Special characters"
+msgstr "특수 문자"
+
+msgid "Select password components..."
+msgstr "비밀번호 구성 요소 선택..."
+
+msgid "Generate password"
+msgstr "비밀번호 생성"
+
+msgid "Generate"
+msgstr "생성"
+
+msgid "QR Code"
+msgstr "QR 코드"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"클라이언트 기기가 스캔하여 연결할 수 있도록 게스트 네트워크 데이터(SSID, "
+"암호화, 비밀번호)가 포함된 QR 코드를 생성합니다."
+
+msgid "QR Error Correction Code Level"
+msgstr "QR 코드 오류 수정 수준"
+
+msgid "Low"
+msgstr "낮음"
+
+msgid "Medium"
+msgstr "보통"
+
+msgid "Quartile"
+msgstr "사분위"
+
+msgid "High"
+msgstr "높음"
+
+msgid "Scan this QR code with the client device."
+msgstr "클라이언트 기기로 이 QR 코드를 스캔하세요."
+
+msgid "Generate guest WiFi QR…"
+msgstr "게스트 Wi-Fi QR 코드 생성 중…"
+
+msgid "Back to settings"
+msgstr "설정으로 돌아가기"
+
+msgid "Generate QR…"
+msgstr "QR 코드 생성…"

@@ -1,0 +1,200 @@
+msgid "Graphical Crontab Configurator"
+msgstr "Graficzny konfigurator crontab"
+
+msgid "Crontab Configurator"
+msgstr "Konfigurator crontab"
+
+msgid "Minute"
+msgstr "Minuta"
+
+msgid "Hour"
+msgstr "Godzina"
+
+msgid "Day"
+msgstr "Dzień"
+
+msgid "Month"
+msgstr "Miesiąc"
+
+msgid "Weekday"
+msgstr "Dzień tygodnia"
+
+msgid "Command to execute:"
+msgstr "Polecenie do wykonania:"
+
+msgid "Command preview:"
+msgstr "Wizualizacja polecenia:"
+
+msgid "Generated cron command:"
+msgstr "Wygenerowane polecenie cron:"
+
+msgid "Move to crontab"
+msgstr "Przenieś do crontab"
+
+msgid "Reset changes"
+msgstr "Resetuj zmiany"
+
+msgid "every specified minute period"
+msgstr "co podany okres minut"
+
+msgid "every specified hour period"
+msgstr "co podany okres godzin"
+
+msgid "every specified day period"
+msgstr "co podany okres dni"
+
+msgid "January"
+msgstr "Styczeń"
+
+msgid "February"
+msgstr "Luty"
+
+msgid "March"
+msgstr "Marzec"
+
+msgid "April"
+msgstr "Kwiecień"
+
+msgid "May"
+msgstr "Maj"
+
+msgid "June"
+msgstr "Czerwiec"
+
+msgid "July"
+msgstr "Lipiec"
+
+msgid "August"
+msgstr "Sierpień"
+
+msgid "September"
+msgstr "Wrzesień"
+
+msgid "October"
+msgstr "Październik"
+
+msgid "November"
+msgstr "Listopad"
+
+msgid "December"
+msgstr "Grudzień"
+
+msgid "Sunday"
+msgstr "Niedziela"
+
+msgid "Monday"
+msgstr "Poniedziałek"
+
+msgid "Tuesday"
+msgstr "Wtorek"
+
+msgid "Wednesday"
+msgstr "Środa"
+
+msgid "Thursday"
+msgstr "Czwartek"
+
+msgid "Friday"
+msgstr "Piątek"
+
+msgid "Saturday"
+msgstr "Sobota"
+
+msgid "A super simple graphical configurator for crontab."
+msgstr "Bardzo prosty graficzny konfigurator dla crontab."
+
+msgid "Please enter the command"
+msgstr "Proszę podać polecenie"
+
+msgid "Check the cron entry, it must contain (time + command)"
+msgstr "Sprawdź wpis crona, musi zawierać (czas + polecenie)"
+
+msgid "This entry already exists in cron"
+msgstr "Wpis już istnieje w cronie"
+
+msgid "This entry already exists in cron"
+msgstr "Wpis już istnieje w cronie"
+
+msgid "Added entry to cron"
+msgstr "Dodano wpis do crona"
+
+msgid "Error: %s"
+msgstr "Błąd: %s"
+
+msgid "Add to cron"
+msgstr "Dodaj do crona"
+
+msgid "Cron command for copying"
+msgstr "Polecenie cron do skopiowania"
+
+msgid "minute"
+msgstr "minuta"
+
+msgid "minutes"
+msgstr "minut(-y)"
+
+msgid "hour"
+msgstr "godzina"
+
+msgid "hours"
+msgstr "godzin(-y)"
+
+msgid "day"
+msgstr "dzień"
+
+msgid "days"
+msgstr "dni(-ach)"
+
+msgid "month"
+msgstr "miesiąc"
+
+msgid "months"
+msgstr "miesiące(-ęcy)"
+
+msgid "Description:"
+msgstr "Opis:"
+
+msgid "at time: %s"
+msgstr "o godzinie: %s"
+
+msgid "at times: %s"
+msgstr "o czasie: %s"
+
+msgid "runs every %d %s"
+msgstr "działa z okresem %d %s"
+
+msgid "in minutes: %s"
+msgstr "w minutach: %s"
+
+msgid "in hours: %s"
+msgstr "w godzinach: %s"
+
+msgid "runs every %d %s of the month"
+msgstr "z okresem co %d %s dni w miesiącu"
+
+msgid "on day(s): %s"
+msgstr "w dniu(-ach): %s"
+
+msgid "runs every %d month(s)"
+msgstr "z okresem co %d miesiąc(-ęcy)"
+
+msgid "in month(s): %s"
+msgstr "w miesiącu(-ach): %s"
+
+msgid "runs every %d day of the week"
+msgstr "działa każdego %d dnia tygodnia"
+
+msgid "on weekday(s): %s"
+msgstr "w dni(-u) tygodnia: %s"
+
+msgid "Command \"%s\" "
+msgstr "Polecenie \"%s\" "
+
+msgid "Command"
+msgstr "Polecenie"
+
+msgid "Command will run"
+msgstr "Polecenie zostanie wykonane"
+
+msgid "Command \"%s\" will run"
+msgstr "Polecenie \"%s\" zostanie wykonane"

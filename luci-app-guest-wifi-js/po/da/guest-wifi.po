@@ -1,0 +1,279 @@
+msgid ""
+msgstr ""
+"Language-Team: Rafał Wabik (IceG)\n"
+"Language: da\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n != 1;\n"
+
+msgid "Guest Wi-Fi"
+msgstr "Gæste-wi-fi"
+
+msgid "Guest networks"
+msgstr "Gæstenetværk"
+
+msgid "Add new guest network..."
+msgstr "Tilføj nyt gæstenetværk..."
+
+msgid "General"
+msgstr "Generelt"
+
+msgid "Security"
+msgstr "Sikkerhed"
+
+msgid "Network & DHCP"
+msgstr "Netværk & DHCP"
+
+msgid "Firewall"
+msgstr "Firewall"
+
+msgid "Enabled"
+msgstr "Aktiveret"
+
+msgid "Network name (SSID)"
+msgstr "Netværksnavn (SSID)"
+
+msgid "Radio"
+msgstr "Radio"
+
+msgid "Interface IP address"
+msgstr "Grænseflade-IP-adresse"
+
+msgid "Netmask"
+msgstr "Netmaske"
+
+msgid "DHCP range start"
+msgstr "DHCP-intervalstart"
+
+msgid "Lowest leased address, as offset from the network address."
+msgstr "Laveste leasede adresse, som offset fra netværksadressen."
+
+msgid "DHCP client limit"
+msgstr "DHCP-klientgrænse"
+
+msgid "Maximum number of leased addresses."
+msgstr "Maksimalt antal leasede adresser."
+
+msgid "DHCP lease time"
+msgstr "DHCP-leasingperiode"
+
+msgid "E.g. \"1h\", \"30m\", \"12h\". Minimum is \"2m\"."
+msgstr "F.eks. \"1h\", \"30m\", \"12h\". Minimum er \"2m\"."
+
+msgid "Encryption"
+msgstr "Kryptering"
+
+msgid "No encryption (open network)"
+msgstr "Ingen kryptering (åbent netværk)"
+
+msgid "Password"
+msgstr "Adgangskode"
+
+msgid "Client isolation"
+msgstr "Klientisolering"
+
+msgid "Blocks communication between clients on this guest network."
+msgstr "Blokerer kommunikation mellem klienter på dette gæstenetværk."
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "No"
+msgstr "Nej"
+
+msgid "Forwarding destination zone"
+msgstr "Viderestillingsmålzone"
+
+msgid "DHCP rule ports"
+msgstr "DHCP-regelporte"
+
+msgid "UDP port range for DHCP traffic, e.g. \"67-68\"."
+msgstr "UDP-portinterval til DHCP-trafik, f.eks. \"67-68\"."
+
+msgid "DNS rule port"
+msgstr "DNS-regelport"
+
+msgid "Error saving configuration:"
+msgstr "Fejl under lagring af konfiguration:"
+
+msgid ""
+"A user interface for easily creating and management isolated Wi-Fi "
+"networks for guests, each with its own access point, DHCP, and firewall "
+"rules."
+msgstr ""
+"En brugergrænseflade til nemt at oprette og administrere isolerede wi-fi-"
+"netværk til gæster, hver med sit eget adgangspunkt, DHCP og firewallregler."
+
+msgid "Enable guest network."
+msgstr "Aktiver gæstenetværk."
+
+msgid "The radio on which the guest network will work."
+msgstr "Den radio, som gæstenetværket vil fungere på."
+
+msgid "MAC address"
+msgstr "MAC-adresse"
+
+msgid ""
+"Override default MAC address - the range of usable addresses might be "
+"limited by the driver"
+msgstr ""
+"Tilsidesæt standard MAC-adresse - intervallet for anvendelige adresser kan "
+"være begrænset af driveren"
+
+msgid "randomly generated"
+msgstr "tilfældigt genereret"
+
+msgid ""
+"The address %s is already in use and no free address is available in the "
+"172.16.0.1 - 172.31.0.1 range."
+msgstr ""
+"Adressen %s er allerede i brug, og der er ingen ledig adresse tilgængelig i "
+"intervallet 172.16.0.1 - 172.31.0.1."
+
+msgid ""
+"Password must be at least 8 characters long (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+msgstr "Adgangskoden skal være mindst 8 tegn lang (WPA-PSK/WPA2-PSK/WPA3-SAE)."
+
+msgid "WEP Open System"
+msgstr "WEP Open System"
+
+msgid "WEP Shared Key"
+msgstr "WEP Shared Key"
+
+msgid "Mixed Mode"
+msgstr "Mixed Mode"
+
+msgid "Enhanced Open"
+msgstr "Enhanced Open"
+
+msgid ""
+"WPA2-PSK is recommended for most devices. WPA3-SAE offers the strongest "
+"security but requires WPA3-capable clients."
+msgstr ""
+"WPA2-PSK anbefales til de fleste enheder. WPA3-SAE giver den stærkeste "
+"sikkerhed, men kræver WPA3-kompatible klienter."
+
+msgid ""
+"WEP key must be 5 or 13 ASCII characters, or 10 or 26 hexadecimal digits."
+msgstr ""
+"WEP-nøglen skal være 5 eller 13 ASCII-tegn eller 10 eller 26 heksadecimale "
+"cifre."
+
+msgid ""
+"Firewall zone guest traffic is forwarded to (usually \"wan\"). Pick an "
+"existing zone from the list or fill out the <em>-- custom --</em> field to enter "
+"one manually."
+msgstr ""
+"Firewall-zone som gæstetrafik viderestilles til (normalt \"wan\"). Vælg en "
+"eksisterende zone fra listen eller udfyld feltet <em>-- brugerdefineret --</em> "
+"for at indtaste en manuelt."
+
+msgid "Input"
+msgstr "Input"
+
+msgid "Traffic from guests to the router itself (e.g. LuCI, SSH)."
+msgstr "Trafik fra gæster til selve routeren (f.eks. LuCI, SSH)."
+
+msgid "Output"
+msgstr "Output"
+
+msgid ""
+"Traffic from the router itself to guests. ACCEPT is recommended so router "
+"services (DHCP, DNS) keep working."
+msgstr ""
+"Trafik fra selve routeren til gæster. ACCEPT anbefales, så routertjenester "
+"(DHCP, DNS) fortsat fungerer."
+
+msgid "Forward"
+msgstr "Viderestilling"
+
+msgid ""
+"Traffic passing between guests and other networks/zones (e.g. LAN). Keep "
+"this REJECT or DROP to isolate guests from your LAN. ACCEPT would allow "
+"guests to reach other networks."
+msgstr ""
+"Trafik, der passerer mellem gæster og andre netværk/zoner (f.eks. LAN). Behold "
+"dette på REJECT eller DROP for at isolere gæster fra dit LAN. ACCEPT vil "
+"tillade gæster at nå andre netværk."
+
+msgid "accept"
+msgstr "accepter"
+
+msgid "reject"
+msgstr "afvis"
+
+msgid "drop"
+msgstr "drop"
+
+msgid "driver default"
+msgstr "driverstandard"
+
+msgid "Password length"
+msgstr "Adgangskodelængde"
+
+msgid "Minimum length is 8 characters, 13 characters recommended."
+msgstr "Minimumslængden er 8 tegn, 13 tegn anbefales."
+
+msgid "Password composition"
+msgstr "Adgangskodesammensætning"
+
+msgid "Character types to use when generating a password."
+msgstr "Tegntyper der bruges ved generering af en adgangskode."
+
+msgid "Uppercase letters"
+msgstr "Store bogstaver"
+
+msgid "Lowercase letters"
+msgstr "Små bogstaver"
+
+msgid "Digits"
+msgstr "Tal"
+
+msgid "Special characters"
+msgstr "Specialtegn"
+
+msgid "Select password components..."
+msgstr "Vælg adgangskodekomponenter..."
+
+msgid "Generate password"
+msgstr "Generer adgangskode"
+
+msgid "Generate"
+msgstr "Generer"
+
+msgid "QR Code"
+msgstr "QR-kode"
+
+msgid ""
+"Generates a QR code with the guest network data (SSID, encryption, "
+"password) so a client device can scan and connect."
+msgstr ""
+"Genererer en QR-kode med gæstenetværkets data (SSID, kryptering, "
+"adgangskode), så en klientenhed kan scanne og oprette forbindelse."
+
+msgid "QR Error Correction Code Level"
+msgstr "Fejlkorrektionsniveau for QR-kode"
+
+msgid "Low"
+msgstr "Lav"
+
+msgid "Medium"
+msgstr "Middel"
+
+msgid "Quartile"
+msgstr "Kvartil"
+
+msgid "High"
+msgstr "Høj"
+
+msgid "Scan this QR code with the client device."
+msgstr "Scan denne QR-kode med klientenheden."
+
+msgid "Generate guest WiFi QR…"
+msgstr "Genererer QR-kode til gæste-WiFi…"
+
+msgid "Back to settings"
+msgstr "Tilbage til indstillinger"
+
+msgid "Generate QR…"
+msgstr "Generer QR-kode…"
