@@ -14,7 +14,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya
 PKG_VERSION:=2.5.14
-PKG_RELEASE:=6
+PKG_RELEASE:=7
 
 PKG_SOURCE:=v2rayA-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/v2rayA/v2rayA/tar.gz/v$(PKG_VERSION)?
@@ -141,13 +141,11 @@ define Build/Prepare
 	$(SED) '/if setting.DnsHijack == ""/,/}/ s/setting.DnsHijack = Yes/setting.DnsHijack = No/' \
 		$(PKG_BUILD_DIR)/db/configure/migrate_dns.go
 
-	# Router defaults: warn-level logging reduces flash writes, QUIC
-	# sniffing is pointless when the LAN QUIC block is in place, and the
-	# DNS cache is bounded for the case where a user enables the DNS
-	# module later.
+	# Router defaults: warn-level logging reduces flash writes and the DNS
+	# cache is bounded for the case where a user enables the DNS module
+	# later.  QUIC sniffing stays enabled so HTTP/3 traffic still matches
+	# domain routing rules.
 	$(SED) 's/LogLevel: *"info"/LogLevel:                           "warn"/' \
-		$(PKG_BUILD_DIR)/db/configure/setting.go
-	$(SED) 's/InboundSniffing: *"http,tls,quic"/InboundSniffing:                    "http,tls"/' \
 		$(PKG_BUILD_DIR)/db/configure/setting.go
 	$(SED) 's/DnsCacheSize: *4096/DnsCacheSize:     1024/' \
 		$(PKG_BUILD_DIR)/db/configure/setting.go
