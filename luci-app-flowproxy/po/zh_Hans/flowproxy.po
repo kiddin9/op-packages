@@ -250,3 +250,9 @@ msgstr "RPC 错误: %s"
 msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
 msgstr "代理服务器 IP 地址必须在所选网络接口的子网网段之内 (%s)。"
 
+msgid "Enable proxy server monitoring"
+msgstr "启用代理服务器监控"
+
+msgid "degraded (direct fallback)"
+msgstr "已降级 (回退直连状态)"
+

@@ -43,6 +43,16 @@
 //              when a lookup could not be sent. One lookup a family, so
 //              the work does not grow with the routing table. Read group
 //              luci-app-vantage.
+//   survey     { device }: the channel survey of one Wi-Fi interface, for
+//              the noise floor: { mhz, noise } (dBm) for each channel the
+//              driver gives a noise value, at most MAX_SURVEY: one
+//              read-only NL80211 survey dump. Not through rpcd's iwinfo
+//              survey: libiwinfo has a survey for its NL80211 backend
+//              only, and for any other (the MediaTek mtwifi backend of
+//              the mt798x builds) rpcd calls the missing function and
+//              dies (#124). Only an interface that cfg80211 drives (a
+//              phy80211 link in sysfs) is asked; any other device: no
+//              channels. Read group luci-app-vantage.
 //   set_alias  { mac, name, icon }: name one station, or remove its name
 //              with name ''. Validated here, whatever the browser did, and
 //              written to /etc/config/vantage only. Write group
@@ -60,8 +70,9 @@
 
 import { cursor } from 'uci';
 import { connect } from 'ubus';
-import { lsdir, readfile } from 'fs';
+import { access, lsdir, readfile } from 'fs';
 import * as rtnl from 'rtnl';
+import * as nl80211 from 'nl80211';
 
 const CONFIG = 'vantage';
 const WIRELESS = 'wireless';      // read only, by wireless_from_config()
@@ -85,11 +96,13 @@ const NETWORK = 'network';        // read only, by switches(): switch_vlan secti
 const BOARD = '/etc/board.json';
 const BOARD_MAX = 65536;          // bytes read of it
 const MAX_SWITCH_VLANS = 64;
+const MAX_SURVEY = 256;          // channels in a survey reply (a tri-band wiphy has about 100)
+const MAX_MHZ = 100000;          // a channel's frequency, MHz (60 GHz is 70200)
 
 // Patterns, compiled once: ucode compiles a regular expression literal each
 // time the code reaches it, and a counted repeat ({1,64}) costs musl
 // milliseconds to compile on a router (8.5 ms against 0.07 ms for the same
-// test with the pattern compiled once, on an ARM access point). rpcd keeps
+// test with the pattern compiled once, on an ARM Wi-Fi AP). rpcd keeps
 // this module loaded, these with it, between calls.
 const RE_MAC_COLON = /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/;
 const RE_MAC_DASH = /^[0-9a-f]{2}(-[0-9a-f]{2}){5}$/;
@@ -683,6 +696,39 @@ function routes() {
 	return out;
 }
 
+/* ------------------------------------------------------------- survey */
+
+// The channel survey of one Wi-Fi interface: [ { mhz, noise } ] for each
+// channel the driver reports with a noise value (dBm, a signed byte as
+// NL80211 carries it; 0 is "none"), at most MAX_SURVEY. Asked of the
+// kernel only for an interface cfg80211 drives (its phy80211 link): any
+// other device would be refused by the kernel anyway, and is not asked.
+// The reply of a dump is an array of messages; null when it had none or
+// failed, false when it was cut short.
+function survey(dev) {
+	let out = [];
+
+	if (!netdev(dev) || dev == '.' || dev == '..' || !access(NET + '/' + dev + '/phy80211'))
+		return out;
+
+	let res = nl80211.request(nl80211.const.NL80211_CMD_GET_SURVEY, nl80211.const.NLM_F_DUMP, { dev });
+
+	for (let m in ((type(res) == 'array') ? res : ((type(res) == 'object') ? [ res ] : []))) {
+		let s = (type(m) == 'object' && type(m.survey_info) == 'object') ? m.survey_info : null;
+		let mhz = s?.frequency, noise = s?.noise;
+
+		if (type(mhz) != 'int' || mhz <= 0 || mhz > MAX_MHZ || type(noise) != 'int' || noise == 0 || noise < -128 || noise > 127)
+			continue;
+
+		push(out, { mhz, noise });
+
+		if (length(out) >= MAX_SURVEY)
+			break;
+	}
+
+	return out;
+}
+
 // a switch port's number (0..63), or null
 function switch_port(v) {
 	return (type(v) == 'int' && v >= 0 && v < 64) ? v : null;
@@ -839,6 +885,13 @@ const methods = {
 	routes: {
 		call: function() {
 			return { routes: routes() };
+		}
+	},
+
+	survey: {
+		args: { device: 'device' },
+		call: function(request) {
+			return { results: survey(request.args?.device) };
 		}
 	},
 

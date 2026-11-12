@@ -38,8 +38,8 @@ var LOW_IDLE_POLL_MS = 30 * 1000;
    IWINFO_MS, or at once when the interface's state moved (its radio up,
    down, pending or reconfigured in luci.vantage wireless; its channel,
    frequency, BSSID or SSID in hostapd's get_status, asked every poll).
-   The noise floor, which moves, comes every poll from iwinfo survey
-   (1.5-2 ms a radio), its entry for the radio's channel */
+   The noise floor, which moves, comes every poll from luci.vantage
+   survey (1.5-2.5 ms a radio), its entry for the radio's channel */
 var IWINFO_MS = 30 * 1000;
 /* luci-rpc getHostHints reads the DHCP leases and the ARP table: asked
    again after HINTS_MS, and on each of the HINTS_HOT polls after a
@@ -70,7 +70,7 @@ var GONE_KEEP_MS = 5 * 60 * 1000;     /* disconnected stations stay listed */
 var TALKERS = 3;                      /* top talkers shown; the tile keeps room for all */
 var SWITCH_MS = 30 * 1000;            /* LuCI runs swconfig for each switch's link state: at most this often */
 var STORE_KEY = 'vantage.hist.v1';
-var VERSION = '1.0.19';               /* this package's, as its Makefile has it (tests/version.test.js) */
+var VERSION = '1.0.20';               /* this package's, as its Makefile has it (tests/version.test.js) */
 var SVGNS = 'http://www.w3.org/2000/svg';
 var HOSTAPD_OBJ = /^[A-Za-z0-9_.-]{1,64}$/;
 
@@ -98,8 +98,11 @@ var callHints = rpc.declare({ object: 'luci-rpc', method: 'getHostHints', expect
 var callIwInfo = rpc.declare({ object: 'iwinfo', method: 'info', params: [ 'device' ], expect: { '': {} } });
 var callAssoc = rpc.declare({ object: 'iwinfo', method: 'assoclist', params: [ 'device' ], expect: { results: [] } });
 /* the channels' survey: the noise floor of the radio's own (model.js
-   surveyNoise); null when the call fails */
-var callSurvey = rpc.declare({ object: 'iwinfo', method: 'survey', params: [ 'device' ], expect: { results: [] } });
+   surveyNoise); null when the call fails. The plugin's, read through
+   nl80211, not iwinfo's: rpcd's iwinfo survey crashes rpcd on every
+   iwinfo backend but nl80211's (MediaTek's mtwifi in the mt798x builds,
+   #124) */
+var callSurvey = rpc.declare({ object: 'luci.vantage', method: 'survey', params: [ 'device' ], expect: { results: [] } });
 var callRrdns = rpc.declare({ object: 'network.rrdns', method: 'lookup', params: [ 'addrs', 'timeout', 'limit' ], expect: { '': {} } });
 var callMdns = rpc.declare({ object: 'umdns', method: 'hosts' });
 var callUciGet = rpc.declare({ object: 'uci', method: 'get', params: [ 'config' ], expect: { values: {} } });
@@ -2147,7 +2150,15 @@ return view.extend({
 			cell.check = c;
 			txt(cell.title, c.title);
 			txt(cell.value, c.value);
-			txt(cell.reason, c.reason);
+			/* the reason in its " · " parts: a part that does not fit goes
+			   whole to the next line, without its dot (app.css), so "1 Gbit/s
+			   link" never breaks after its "/" or inside a word (#122) */
+			var reason = c.reason == null ? '' : String(c.reason);
+			if (cell.reasonText !== reason) {
+				cell.reasonText = reason;
+				dom.content(cell.reason, reason === '' ? [] : E('span', { 'class': 'vt-parts' },
+					reason.split(' · ').map(function(p) { return E('span', { 'class': 'vt-part' }, [ p ]); })));
+			}
 			setTitle(cell.el, c.detail || c.reason);
 			patch(cell.viz, self.checkPicture(c));
 		});

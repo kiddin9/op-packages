@@ -75,12 +75,21 @@ return L.view.extend({
         return callGetStatus().then(L.bind(function(status) {
             if (!status) return;
             var isRunning = (status.running == 1);
+            var isDegraded = (status.degraded == 1);
             var container = node || document;
             
             var statusEl = container.querySelector('#service-status');
             if (statusEl) {
                 var content = [];
-                if (isRunning) {
+                if (isRunning && isDegraded) {
+                    content.push(E('span', { 'style': 'color: #FF9800; font-weight: bold;' }, [ _('degraded (direct fallback)') ]));
+                    content.push(' ');
+                    content.push(E('button', {
+                        'class': 'btn cbi-button cbi-button-apply',
+                        'style': 'margin-left: 10px;',
+                        'click': ui.createHandlerFn(this, 'handleRestart')
+                    }, [ _('Restart') ]));
+                } else if (isRunning) {
                     var chains = [];
                     if (status.nft && status.nft.tcp) chains.push('TCP');
                     if (status.nft && status.nft.udp) chains.push('UDP');
@@ -187,6 +196,9 @@ return L.view.extend({
 
         s.taboption('settings', form.Flag, 'enabled', _('Enable FlowProxy')).rmempty = false;
         s.taboption('settings', form.Flag, 'dns_proxy_enabled', _('Force upstream DNS to proxy server')).rmempty = false;
+        o = s.taboption('settings', form.Flag, 'monitor_enabled', _('Enable proxy server monitoring'));
+        o.default = '0';
+        o.rmempty = false;
 
         o = s.taboption('settings', form.Value, 'proxy_server_ip_addr', _('Proxy server IP address'));
         o.datatype = 'ip4addr'; o.rmempty = true;

@@ -6,6 +6,7 @@ import { connect } from 'ubus';
 
 const UCI_CONFIG = 'flowproxy';
 const STATE_FILE = '/var/run/flowproxy.running';
+const DEGRADED_FILE = '/var/run/flowproxy.degraded';
 const IP_CACHE = '/tmp/flowproxy/lan_ip.cache';
 const LOG_FILE = '/var/log/flowproxy.log';
 const NFT_TABLE = 'flowproxy';
@@ -20,6 +21,7 @@ const methods = {
         call: function() {
             // 1. 快速探测
             let is_running = access(STATE_FILE, 'f');
+            let is_degraded = access(DEGRADED_FILE, 'f');
             
             // 2. 自愈：检查内核状态并同步标记文件
             let tcp_active = (system('nft list chain inet ' + NFT_TABLE + ' LAN_MARKFLOW_TCP >/dev/null 2>&1') === 0);
@@ -28,7 +30,7 @@ const methods = {
 
             if (real_running && !is_running) {
                 try { writefile(STATE_FILE, ''); } catch(e) {}
-            } else if (!real_running && is_running) {
+            } else if (!real_running && is_running && !is_degraded) {
                 try { system('rm -f ' + STATE_FILE); } catch(e) {}
             }
 
@@ -67,11 +69,15 @@ const methods = {
 
             let proxy_server_ip_addr = uci_cursor.get(UCI_CONFIG, 'global', 'proxy_server_ip_addr') || '';
             let dns_running = (uci_cursor.get(UCI_CONFIG, 'dns_backup') ? 1 : 0);
+            let monitor_enabled = int(uci_cursor.get(UCI_CONFIG, 'global', 'monitor_enabled') || '0');
+            let degraded_active = (is_degraded && is_running && !real_running) ? 1 : 0;
             
             return {
-                running: real_running ? 1 : 0,
+                running: (real_running || degraded_active) ? 1 : 0,
+                degraded: degraded_active,
                 dns_running: dns_running,
                 enabled: int(uci_cursor.get(UCI_CONFIG, 'global', 'enabled') || '0'),
+                monitor_enabled: monitor_enabled,
                 proxy_server_ip_addr: proxy_server_ip_addr,
                 proxy_server_dns_port: uci_cursor.get(UCI_CONFIG, 'global', 'proxy_server_dns_port') || '5353',
                 lan_ip: safe_trim(lan_ip),

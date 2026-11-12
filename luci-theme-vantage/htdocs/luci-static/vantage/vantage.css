@@ -1939,6 +1939,10 @@ div.right > .btn, div.right > .cbi-button, div.right > button { margin-left: 0; 
 .ifacebadge img { width: 16px; height: 16px; }
 .ifacebadge.large { padding: 6px 10px; gap: 8px; font-size: var(--fs-base); }
 .ifacebadge.large img { width: 20px; height: 20px; }
+/* a network's status (Wireless, its dialog): the signal beside the details
+   keeps one width, wide enough for "-100/-110 dBm", so the details do not
+   move as the reading changes (#122) */
+.ifacebadge.large > small:first-child { flex: none; min-width: 8.5em; text-align: center; }
 .ifacebadge-active { border-color: var(--accent-line); box-shadow: inset 0 0 0 1px var(--accent-line); }
 /* the device details tooltip (Interfaces): icon beside the details */
 .cbi-tooltip.ifacebadge { display: inline-grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; }
@@ -2403,6 +2407,10 @@ body.modal-overlay-active #modal_overlay { display: block; }
 #view .cbi-section > .cbi-title:has(+ div > .table:first-child),
 #view > .cbi-section > h3:first-child:has(+ div > .table:first-child),
 #view .cbi-section:not(.cbi-tblsection, .cbi-section .cbi-section) > h3:first-child:has(+ .table) { margin-bottom: 0; }
+/* a table section whose table starts with its rows, no column titles
+   (Network -> Wireless): the band read as a taller first row (#122).
+   LuCI 25.12 adds a thead only for titles; 24.10 puts rows in the table */
+#view .cbi-tblsection:not(.cbi-section .cbi-section) > h3:first-child:has(+ .table > :is(tbody, .tbody):first-child, + .table > .tr:first-child:not(.cbi-section-table-titles, .table-titles)) { margin-bottom: 0; }
 #view > h2:not(:first-child), #view > h3:not(:first-child) { margin-top: var(--sp-6); }
 .cbi-section > .table + h3, .cbi-section > .table + .cbi-title, .cbi-section > div + h3 { margin-top: var(--sp-6); }
 .includes { margin-top: var(--sp-4); }
@@ -2757,18 +2765,23 @@ body[data-page="admin-statistics-graphs"] p.controls > .nowrap > .cbi-button { m
 
 /* Network -> Wireless: radios as group headers, networks as rows */
 .td[data-name="_badge"] > .center { text-align: left; }
+/* the space between items is each item's own margin, not a gap: a
+   hidden " | " is still a flex item, and a gap around it indented a line
+   that starts with one (a network's second line, #122) */
 .td[data-name="_stat"] > div, .td[data-name="_stat"] > div > div {
-	display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px;
+	display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 0;
 	font-size: 0;                         /* hides the " | " separators */
 }
 .td[data-name="_stat"] > div > br, .td[data-name="_stat"] > div > div > br { display: none; }
-.td[data-name="_stat"] .nowrap { display: inline-flex; align-items: baseline; gap: 6px; font-size: var(--fs-base); }
+.td[data-name="_stat"] .nowrap { display: inline-flex; align-items: baseline; gap: 6px; margin-inline-end: 20px; font-size: var(--fs-base); }
 .td[data-name="_stat"] > div > big { flex-basis: 100%; font-size: var(--fs-md); }
 .td[data-name="_stat"] > div > div { flex-basis: 100%; }
-.td[data-name="_stat"] > div > .nowrap:first-child { flex-basis: 100%; font-size: var(--fs-md); font-weight: 600; }
+.td[data-name="_stat"] > div > .nowrap:first-child { flex-basis: 100%; margin-inline-end: 0; font-size: var(--fs-md); font-weight: 600; }
 .td[data-name="_stat"] > div > .nowrap:first-child > strong { display: none; }
-.cbi-section-table-row:has(> .td[data-name="_stat"] big) > .td { background: var(--s2); border-top: 1px solid var(--line-2); }
-.cbi-section-table-row:has(> .td[data-name="_stat"] big):first-child > .td { border-top: 0; }
+.cbi-section-table-row:has(> .td[data-name="_stat"] big) > .td { background: var(--s2); }
+/* the darker line above a radio is the row above's own bottom border:
+   a top border of its own stacked under it as a double line (#122) */
+.cbi-section-table-row:has(+ .cbi-section-table-row > .td[data-name="_stat"] big) > .td { border-bottom-color: var(--line-2); }
 .cbi-section-table-row:not(:has(big)) > .td[data-name="_badge"] { padding-left: calc(var(--card-px) + 16px); }
 
 /* progress bars (their text only exists in title): a thin track, the

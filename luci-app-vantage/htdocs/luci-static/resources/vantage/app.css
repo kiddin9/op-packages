@@ -729,6 +729,13 @@ header.bg-primary {
 	font-size: var(--vt-fs-sm); color: var(--vt-text-2); margin-top: 2px;
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* a health card's reason in its parts (overview.js): each part stays
+   whole, and its dot sits in the .9em before it (" · " is .89em). The
+   parts start .9em further left, under the clip, so a part that begins
+   a line hides its dot (#122) */
+.vt-app .vt-chip-reason > .vt-parts { display: block; margin-inline-start: -.9em; }
+.vt-app .vt-chip-reason .vt-part { display: inline-block; }
+.vt-app .vt-chip-reason .vt-part::before { content: "·"; display: inline-block; width: .9em; text-align: center; }
 
 /* -------------------------------------------------- 5. hero: network path */
 
@@ -892,12 +899,24 @@ header.bg-primary {
 .vt-app .vt-branch-ssids .vt-node { max-width: 260px; }
 /* a network has no second column: its rates take that room */
 .vt-app .vt-branch > .vt-node-net { grid-column: 1 / -1; justify-self: start; width: 100%; max-width: 260px; }
+/* with subgrid every branch shares one radio column: 172px, or wider up
+   to 240px when the widest radio's own text needs it, so "Ch 128 · 160
+   MHz" in a wider font or a larger text size no longer ends in "…"
+   (#122). Without subgrid, the fixed column above. Narrower windows lay
+   the branches out as below. */
+@supports (grid-template-columns: subgrid) {
+	.vt-app .vt-branches { display: grid; grid-template-columns: minmax(172px, max-content) minmax(0, 1fr); column-gap: 34px; row-gap: 18px; align-content: space-between; }
+	.vt-app .vt-branches > * { grid-column: 1 / -1; }
+	.vt-app .vt-branch { grid-template-columns: subgrid; }
+	.vt-app .vt-branch > .vt-node:first-child:not(.vt-node-net) { max-width: 240px; }
+}
 
 /* medium widths: the rates need their column, and the branches have room
    to give; what a radio or the Wired node leads to goes under it, too
    narrow beside it */
 @container vthero (max-width: 1020px) {
 	.vt-app .vt-path { grid-template-columns: minmax(150px, 1.05fr) minmax(136px, .9fr) minmax(190px, 1.1fr) minmax(204px, 2fr); }
+	.vt-app .vt-branches { display: flex; }
 	.vt-app .vt-branch { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
 	.vt-app .vt-branch > .vt-node { justify-self: start; min-width: min(200px, 100%); }
 	.vt-app .vt-branch-ssids { padding-left: 34px; }

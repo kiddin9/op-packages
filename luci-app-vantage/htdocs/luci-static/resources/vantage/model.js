@@ -588,9 +588,10 @@ return baseclass.extend({
 		return out;
 	},
 
-	/* iwinfo survey [ { mhz, noise, ... } ] -> the noise floor (dBm) on the
-	   channel at mhz, or null. Drivers send it as a signed byte, some as an
-	   unsigned one (ath12k: 146 for -110 dBm), and 0 when they have none */
+	/* luci.vantage survey [ { mhz, noise } ] -> the noise floor (dBm) on
+	   the channel at mhz, or null. A signed byte, as nl80211 carries it;
+	   rpcd's iwinfo survey (1.0.19) gave some drivers' as an unsigned one
+	   (ath12k: 146 for -110 dBm); 0 when the driver has none */
 	surveyNoise: function(entries, mhz) {
 		if (!mhz) return null;
 		var e = arr(entries).filter(function(x) { return x && num(x.mhz) === mhz; })[0];
