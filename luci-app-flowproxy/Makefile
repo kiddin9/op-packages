@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-flowproxy
 PKG_VERSION:=1.0.3
-PKG_RELEASE:=7
+PKG_RELEASE:=8
 
 LUCI_TITLE:=LuCI Support for FlowProxy Traffic Diversion
 LUCI_DEPENDS:=+luci-base +nftables +ip-full +iputils-arping
@@ -16,6 +16,8 @@ define Package/$(PKG_NAME)/postinst
 #!/bin/sh
 [ -n "$${IPKG_INSTROOT}" ] || {
 	/etc/init.d/rpcd restart
+	/etc/init.d/flowproxy enable >/dev/null 2>&1
+	/etc/init.d/flowproxy start >/dev/null 2>&1
 }
 exit 0
 endef

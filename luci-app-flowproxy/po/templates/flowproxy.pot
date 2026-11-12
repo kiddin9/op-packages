@@ -232,3 +232,42 @@ msgstr ""
 msgid "degraded (direct fallback)"
 msgstr ""
 
+msgid "Probe interval (seconds)"
+msgstr ""
+
+msgid "Failure threshold"
+msgstr ""
+
+msgid "Recovery threshold"
+msgstr ""
+
+msgid "Proxy server interface"
+msgstr ""
+
+msgid "Rule Priority"
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Restarting FlowProxy service..."
+msgstr ""
+
+msgid "FlowProxy service restarted successfully."
+msgstr ""
+
+msgid "Failed to restart FlowProxy service."
+msgstr ""
+
+msgid "RPC error: %s"
+msgstr ""
+
+msgid "The proxy server IP address must be within the subnet of the selected interface (%s)."
+msgstr ""
+
+msgid "The proxy server IP address must be within a local interface subnet (%s)."
+msgstr ""
+
+msgid "Auto detect"
+msgstr ""
+

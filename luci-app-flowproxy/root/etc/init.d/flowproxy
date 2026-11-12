@@ -8,14 +8,55 @@ USE_PROCD=1
 . /usr/share/flowproxy/common.sh
 
 _stop_unlocked() {
+	local mode="$1"
 	log_msg info "Stopping FlowProxy..."
+	local wd_pid=$(cat "$WD_PID_FILE" 2>/dev/null)
 	# 强制先移除标记，防止状态误报及旧守护进程继续动作
-	rm -f "$STATE_FILE" "$DEGRADED_FILE" "$GEN_FILE"
+	rm -f "$STATE_FILE" "$DEGRADED_FILE" "$GEN_FILE" "$TARGET_FILE" "$WD_CFG_FILE" "$WD_PID_FILE"
+	if [ -n "$wd_pid" ] && kill -0 "$wd_pid" 2>/dev/null; then
+		kill -TERM "$wd_pid" 2>/dev/null
+	fi
 	delete_route
 	delete_nft
-	cleanup_dns
+	if [ "$mode" != "preserve_dns" ]; then
+		cleanup_dns
+	fi
 	rm -f "$NFT_CONF"
 	log_msg info "FlowProxy service stopped"
+}
+
+_get_watchdog_gen() {
+	local force_new="$1"
+	local proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
+	local probe_iface=$(resolve_proxy_iface "" "$proxy_ip")
+	local interval=$(uci -q get "$UCI_CONFIG.global.monitor_interval" || echo 5)
+	local fail_th=$(uci -q get "$UCI_CONFIG.global.monitor_fail_threshold" || echo 3)
+	local rec_th=$(uci -q get "$UCI_CONFIG.global.monitor_recover_threshold" || echo 2)
+
+	local cur_cfg="${proxy_ip}|${probe_iface}|${interval}|${fail_th}|${rec_th}"
+	local old_cfg=$(cat "$WD_CFG_FILE" 2>/dev/null)
+	local old_gen=$(cat "$GEN_FILE" 2>/dev/null)
+
+	if [ "$force_new" != "1" ] && [ -n "$old_gen" ] && [ "$cur_cfg" = "$old_cfg" ]; then
+		echo "$old_gen"
+		return
+	fi
+
+	local new_gen="$(date +%s)-$$"
+	echo "$cur_cfg" > "$WD_CFG_FILE"
+	echo "$new_gen" > "$GEN_FILE"
+	echo "$new_gen"
+}
+
+_register_watchdog_instance() {
+	local gen="$1"
+	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
+	if [ "$monitor_enabled" = "1" ]; then
+		procd_open_instance "watchdog"
+		procd_set_param command /usr/share/flowproxy/watchdog.sh "$gen"
+		procd_set_param respawn 3600 5 0
+		procd_close_instance
+	fi
 }
 
 _start_unlocked() {
@@ -27,59 +68,136 @@ _start_unlocked() {
 		return 0
 	fi
 
+	check_env || { _stop_unlocked; return 1; }
+	check_config || { _stop_unlocked; return 1; }
+
+	local proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
+	local probe_iface=$(resolve_proxy_iface "" "$proxy_ip")
+	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
+	local dns_proxy_enabled=$(uci -q get "$UCI_CONFIG.global.dns_proxy_enabled" || echo 0)
+
+	local cur_target="${proxy_ip}|${probe_iface}"
+	local old_target=$(cat "$TARGET_FILE" 2>/dev/null)
+	local is_reload="${FLOWPROXY_RELOAD:-0}"
+	local force_gen="1"
+	[ "$is_reload" = "1" ] && force_gen="0"
+
+	# 1. 热降级状态下的 reload（且目标旁路由 IP 与接口未变更）：保持直连回退，仅刷新缓存与同步 DNS 开关
+	if [ "$is_reload" = "1" ] && [ "$monitor_enabled" = "1" ] && [ -f "$DEGRADED_FILE" ] && [ -f "$STATE_FILE" ] && [ "$cur_target" = "$old_target" ]; then
+		log_msg info "Reload triggered while in hot-degraded mode; preserving direct fallback and refreshing rule cache"
+		generate_nft_cache || rm -f "$NFT_CONF"
+		delete_route "quiet"
+		delete_nft
+		if [ "$dns_proxy_enabled" = "1" ]; then
+			_backup_dns_if_needed
+		else
+			cleanup_dns
+		fi
+
+		local gen=$(_get_watchdog_gen "0")
+		_register_watchdog_instance "$gen"
+		return 0
+	fi
+
+	# 2. 开启监控时的启动/重启/目标变更预探测：若旁路由当前不可达，直接进入热降级直连待命，避免启动制造断网黑洞
+	local need_initial_probe=1
+	if [ "$is_reload" = "1" ] && [ -f "$STATE_FILE" ] && [ ! -f "$DEGRADED_FILE" ] && [ "$cur_target" = "$old_target" ]; then
+		need_initial_probe=0
+	fi
+
+	if [ "$monitor_enabled" = "1" ] && [ "$need_initial_probe" = "1" ]; then
+		if ! check_proxy_alive "$proxy_ip" "$probe_iface"; then
+			log_msg warn "Proxy server $proxy_ip unreachable via $probe_iface; entering hot-degraded mode (direct fallback)"
+			generate_nft_cache || { _stop_unlocked; return 1; }
+			echo "$cur_target" > "$TARGET_FILE"
+			touch "$DEGRADED_FILE" "$STATE_FILE"
+			delete_route "quiet"
+			delete_nft
+			if [ "$dns_proxy_enabled" = "1" ]; then
+				_backup_dns_if_needed || { _stop_unlocked; return 1; }
+				restore_dnsmasq_from_backup || { _stop_unlocked; return 1; }
+			else
+				cleanup_dns
+			fi
+
+			local gen=$(_get_watchdog_gen "$force_gen")
+			_register_watchdog_instance "$gen"
+			return 0
+		fi
+	fi
+
+	# 3. 常规激活启动或在线重载
 	log_msg info "Starting FlowProxy..."
 
-	check_env || return 1
-	check_config || return 1
-	apply_nft_rules || return 1
-	add_route || { delete_nft; return 1; }
-	setup_dns
+	apply_nft_rules || { _stop_unlocked; return 1; }
+	add_route || { _stop_unlocked; return 1; }
+	setup_dns || { _stop_unlocked; return 1; }
 
 	rm -f "$DEGRADED_FILE"
+	echo "$cur_target" > "$TARGET_FILE"
 	touch "$STATE_FILE"
 
-	local gen="$(date +%s)-$$"
-	echo "$gen" > "$GEN_FILE"
-
-	local monitor_enabled=$(uci -q get "$UCI_CONFIG.global.monitor_enabled" || echo 0)
-	if [ "$monitor_enabled" = "1" ]; then
-		procd_open_instance "watchdog"
-		procd_set_param command /usr/share/flowproxy/watchdog.sh "$gen"
-		procd_set_param respawn 3600 5 5
-		procd_close_instance
-	fi
+	local gen=$(_get_watchdog_gen "$force_gen")
+	_register_watchdog_instance "$gen"
 
 	log_msg info "FlowProxy service started successfully"
 	return 0
 }
 
 start_service() {
-	acquire_lock
+	acquire_lock || { FLOWPROXY_START_RET=1; return 1; }
 	_start_unlocked
 	local ret=$?
+	FLOWPROXY_START_RET=$ret
 	release_lock
 	return $ret
 }
 
 stop_service() {
-	acquire_lock
-	_stop_unlocked
+	acquire_lock || return 1
+	if [ "${FLOWPROXY_PRESERVE_DNS:-0}" = "1" ]; then
+		_stop_unlocked "preserve_dns"
+	else
+		_stop_unlocked
+	fi
 	local ret=$?
 	release_lock
 	return $ret
 }
 
-restart_service() {
-	acquire_lock
-	_stop_unlocked
-	_start_unlocked
-	local ret=$?
-	release_lock
-	return $ret
+restart() {
+	trap '' TERM
+	FLOWPROXY_PRESERVE_DNS=1
+	export FLOWPROXY_PRESERVE_DNS
+	stop "$@"
+	FLOWPROXY_PRESERVE_DNS=0
+	FLOWPROXY_START_RET=0
+	start "$@"
+	return ${FLOWPROXY_START_RET:-0}
 }
 
 reload_service() {
-	restart_service
+	FLOWPROXY_RELOAD=1
+	export FLOWPROXY_RELOAD
+	FLOWPROXY_START_RET=0
+	start "$@"
+	local ret=${FLOWPROXY_START_RET:-$?}
+	FLOWPROXY_RELOAD=0
+	return $ret
+}
+
+service_stopped() {
+	# 正常停止服务后重新注册空 procd 服务对象，确保 LuCI 保存配置时的 config.change 触发器不丢失
+	if [ "${FLOWPROXY_PRESERVE_DNS:-0}" != "1" ]; then
+		local i=0
+		while [ "$i" -lt 20 ]; do
+			ubus call service list '{"name":"flowproxy"}' 2>/dev/null | grep -q '"running":[[:space:]]*true' || break
+			usleep 50000 2>/dev/null || sleep 1
+			i=$((i + 1))
+		done
+		procd_open_service "$(basename ${basescript:-$initscript})" "$initscript"
+		procd_close_service
+	fi
 }
 
 service_triggers() {

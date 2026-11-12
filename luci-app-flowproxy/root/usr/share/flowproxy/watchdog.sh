@@ -27,16 +27,6 @@ interruptible_sleep() {
 	return 0
 }
 
-resolve_probe_iface() {
-	local iface="$1"
-	if [ -L "/sys/class/net/$iface/master" ]; then
-		local master_path=$(readlink "/sys/class/net/$iface/master" 2>/dev/null)
-		local master_name=$(basename "$master_path" 2>/dev/null)
-		[ -n "$master_name" ] && { echo "$master_name"; return; }
-	fi
-	echo "$iface"
-}
-
 get_uint_or_default() {
 	local val="$1"
 	local def="$2"
@@ -56,41 +46,12 @@ is_context_valid() {
 	return 0
 }
 
-check_proxy_alive() {
-	local ip="$1"
-	local iface="$2"
-
-	# 1. ICMP Ping (首次成功即毫秒级返回；失败则补测一次防单包抖动)
-	if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
-		return 0
-	fi
-	if [ "$STOP_REQUESTED" -eq 1 ]; then
-		return 0
-	fi
-	if ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1; then
-		return 0
-	fi
-
-	# 2. ARP 互补探测 (防止旁路由禁 Ping 误报)
-	if command -v arping >/dev/null 2>&1; then
-		if arping -f -q -c 2 -w 1 -I "$iface" "$ip" >/dev/null 2>&1; then
-			return 0
-		fi
-	else
-		ip neigh flush to "$ip" dev "$iface" >/dev/null 2>&1
-		ping -c 1 -W 1 -I "$iface" "$ip" >/dev/null 2>&1
-		if ip neigh show to "$ip" dev "$iface" 2>/dev/null | grep -qE "REACHABLE|DELAY|PROBE"; then
-			return 0
-		fi
-	fi
-
-	return 1
+is_nft_active() {
+	nft list tables inet 2>/dev/null | grep -q "^table inet ${UCI_CONFIG}$"
 }
 
 proxy_ip=$(uci -q get "$UCI_CONFIG.global.proxy_server_ip_addr")
-conf_iface=$(uci -q get "$UCI_CONFIG.global.interface")
-conf_iface="${conf_iface:-br-lan}"
-probe_iface=$(resolve_probe_iface "$conf_iface")
+probe_iface=$(resolve_proxy_iface "" "$proxy_ip")
 
 interval=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monitor_interval")" 5 2)
 fail_threshold=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monitor_fail_threshold")" 3 1)
@@ -98,9 +59,10 @@ recover_threshold=$(get_uint_or_default "$(uci -q get "$UCI_CONFIG.global.monito
 
 [ -z "$proxy_ip" ] && exit 0
 
+echo "$$" > "$WD_PID_FILE"
 log_msg info "Watchdog started (target=$proxy_ip, iface=$probe_iface, interval=${interval}s, fail=$fail_threshold, recover=$recover_threshold)"
 
-# 启动后先等待一个探测周期，确保主服务完全进入稳定运行态
+# 启动阶段已由 init 完成首次状态建立，进入常规周期轮询
 interruptible_sleep "$interval" || exit 0
 
 [ -f "$DEGRADED_FILE" ] && state="degraded" || state="online"
@@ -108,33 +70,48 @@ fail_count=0
 ok_count=0
 
 while is_context_valid; do
+	[ -f "$DEGRADED_FILE" ] && state="degraded" || state="online"
+	probe_start=$(date +%s)
 	if check_proxy_alive "$proxy_ip" "$probe_iface"; then
 		fail_count=0
 		if [ "$state" = "degraded" ]; then
 			ok_count=$((ok_count + 1))
 			log_msg debug "Watchdog: probe succeeded ($ok_count/$recover_threshold)"
 			if [ "$ok_count" -ge "$recover_threshold" ]; then
-				acquire_lock
-				if ! is_context_valid; then
-					release_lock
-					break
-				fi
-				if [ -f "$DEGRADED_FILE" ]; then
-					if do_recover; then
+				if acquire_lock 0; then
+					if ! is_context_valid; then
+						release_lock
+						break
+					fi
+					if [ -f "$DEGRADED_FILE" ]; then
+						if do_recover; then
+							state="online"
+							ok_count=0
+							fail_count=0
+						else
+							log_msg error "Watchdog: recovery failed, staying in degraded mode"
+						fi
+					else
 						state="online"
 						ok_count=0
-						fail_count=0
-					else
-						log_msg error "Watchdog: recovery failed, staying in degraded mode"
 					fi
+					release_lock
 				else
-					state="online"
-					ok_count=0
+					log_msg warn "Watchdog: failed to acquire lock for recovery, retrying next cycle"
 				fi
-				release_lock
 			fi
 		else
 			ok_count=0
+			# 在线状态下若内核 nft 表被外部清空，自动自愈恢复
+			if ! is_nft_active; then
+				if acquire_lock 0; then
+					if is_context_valid && [ ! -f "$DEGRADED_FILE" ] && ! is_nft_active; then
+						log_msg warn "Watchdog: nftables table missing while online, restoring rules..."
+						restore_nft_rules && add_route
+					fi
+					release_lock
+				fi
+			fi
 		fi
 	else
 		[ "$STOP_REQUESTED" -eq 1 ] && break
@@ -143,29 +120,38 @@ while is_context_valid; do
 			fail_count=$((fail_count + 1))
 			log_msg warn "Watchdog: probe failed ($fail_count/$fail_threshold) for $proxy_ip via $probe_iface"
 			if [ "$fail_count" -ge "$fail_threshold" ]; then
-				acquire_lock
-				if ! is_context_valid; then
+				if acquire_lock 0; then
+					if ! is_context_valid; then
+						release_lock
+						break
+					fi
+					if [ ! -f "$DEGRADED_FILE" ]; then
+						do_degrade
+						state="degraded"
+						fail_count=0
+						ok_count=0
+					else
+						state="degraded"
+						fail_count=0
+					fi
 					release_lock
-					break
-				fi
-				if [ ! -f "$DEGRADED_FILE" ]; then
-					do_degrade
-					state="degraded"
-					fail_count=0
-					ok_count=0
 				else
-					state="degraded"
-					fail_count=0
+					log_msg warn "Watchdog: failed to acquire lock for degrade, retrying next cycle"
 				fi
-				release_lock
 			fi
 		else
 			fail_count=0
 		fi
 	fi
 
-	interruptible_sleep "$interval" || break
+	probe_end=$(date +%s)
+	elapsed=$((probe_end - probe_start))
+	[ "$elapsed" -lt 0 ] && elapsed=0
+	sleep_secs=$((interval - elapsed))
+	[ "$sleep_secs" -lt 1 ] && sleep_secs=1
+	interruptible_sleep "$sleep_secs" || break
 done
 
+[ "$(cat "$WD_PID_FILE" 2>/dev/null)" = "$$" ] && rm -f "$WD_PID_FILE"
 log_msg info "Watchdog stopped"
 exit 0

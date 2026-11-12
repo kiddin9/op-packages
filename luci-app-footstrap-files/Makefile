@@ -17,7 +17,7 @@ LUCI_NAME:=luci-app-footstrap-files
 FOOTSTRAP_VERSION?=
 ifneq ($(FOOTSTRAP_VERSION),)
 PKG_VERSION:=$(FOOTSTRAP_VERSION)
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 endif
 
 LUCI_TITLE:=A file manager for the Footstrap theme

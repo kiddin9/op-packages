@@ -256,3 +256,18 @@ msgstr "启用代理服务器监控"
 msgid "degraded (direct fallback)"
 msgstr "已降级 (回退直连状态)"
 
+msgid "Probe interval (seconds)"
+msgstr "探测间隔 (秒)"
+
+msgid "Failure threshold"
+msgstr "故障判定次数"
+
+msgid "Recovery threshold"
+msgstr "恢复判定次数"
+
+msgid "Auto detect"
+msgstr "自动检测"
+
+msgid "The proxy server IP address must be within a local interface subnet (%s)."
+msgstr "代理服务器 IP 地址必须在本地网络接口的子网网段之内 (%s)。"
+

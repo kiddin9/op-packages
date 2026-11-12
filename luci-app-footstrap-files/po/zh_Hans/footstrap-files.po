@@ -1,0 +1,409 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1694
+msgid "%d item(s) to copy"
+msgstr "要复制 %d 个项目"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1694
+msgid "%d item(s) to move"
+msgstr "要移动 %d 个项目"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1279
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1706
+msgid "%d selected"
+msgstr "已选择 %d 个"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:987
+msgid "%s could not be removed (%s). Delete it and everything inside?"
+msgstr "%s 无法移除（%s）。要删除它及其内部的所有内容吗？"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:978
+msgid "%s is a directory. Delete it and everything inside?"
+msgstr "%s 是一个目录。要删除它及其内部的所有内容吗？"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:608
+msgid "%s is not text; opening it as hex."
+msgstr "%s 不是文本文件；将以十六进制方式打开。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1168
+msgid "%s was not moved"
+msgstr "%s 未被移动"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:931
+msgid "%s was not pasted"
+msgstr "%s 未被粘贴"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:947
+msgid "A name may not contain a slash."
+msgstr "名称不能包含斜杠。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:449
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:508
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:559
+msgid "Actions"
+msgstr "操作"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:864
+msgid "Apply"
+msgstr "应用"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:852
+msgid "Apply to everything inside"
+msgstr "应用到内部所有内容"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:856
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1696
+msgid "Cancel"
+msgstr "取消"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:883
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:884
+msgid "Cannot change %s"
+msgstr "无法更改 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:874
+msgid "Cannot change permissions"
+msgstr "无法更改权限"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1002
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1003
+msgid "Cannot create directory"
+msgstr "无法创建目录"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1011
+msgid "Cannot create file"
+msgstr "无法创建文件"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:991
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:992
+msgid "Cannot delete %s"
+msgstr "无法删除 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:574
+msgid "Cannot download %s"
+msgstr "无法下载 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:589
+msgid "Cannot edit %s"
+msgstr "无法编辑 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1171
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1172
+msgid "Cannot move %s"
+msgstr "无法移动 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:747
+msgid "Cannot open %s"
+msgstr "无法打开 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:695
+msgid "Cannot open the editor"
+msgstr "无法打开编辑器"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:923
+msgid "Cannot paste"
+msgstr "无法粘贴"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:934
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:935
+msgid "Cannot paste %s"
+msgstr "无法粘贴 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:349
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:368
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:696
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:777
+msgid "Cannot read %s"
+msgstr "无法读取 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:947
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:951
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:952
+msgid "Cannot rename %s"
+msgstr "无法重命名 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:807
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:826
+msgid "Cannot save %s"
+msgstr "无法保存 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1035
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1038
+msgid "Cannot upload %s"
+msgstr "无法上传 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:661
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:769
+msgid "Close"
+msgstr "关闭"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1280
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1301
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1708
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1722
+msgid "Copy"
+msgstr "复制"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:517
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1283
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1304
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1710
+msgid "Delete"
+msgstr "删除"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:976
+msgid "Delete %d item(s)? This cannot be undone."
+msgstr "删除 %d 个项目？此操作无法撤销。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1724
+msgid "Delete selected"
+msgstr "删除所选"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:445
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:498
+msgid "Directory"
+msgstr "目录"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1711
+msgid "Done"
+msgstr "完成"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:511
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1292
+msgid "Download"
+msgstr "下载"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:509
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1287
+msgid "Edit"
+msgstr "编辑"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:498
+msgid "File"
+msgstr "文件"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1783
+msgid "Files"
+msgstr "文件"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:649
+msgid "Find and replace"
+msgstr "查找和替换"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1686
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1717
+msgid "Go"
+msgstr "前往"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1770
+msgid "List"
+msgstr "列表"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1740
+msgid "Long press a file for actions"
+msgstr "长按文件以进行操作"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:448
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:504
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:558
+msgid "Modified"
+msgstr "修改时间"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1281
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1302
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1709
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1723
+msgid "Move"
+msgstr "移动"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1162
+msgid "Move %d item(s) to %s?"
+msgstr "要将 %d 个项目移动到 %s 吗？"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1163
+msgid "Moving %d item(s)…"
+msgstr "正在移动 %d 个项目…"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:440
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:481
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:554
+msgid "Name"
+msgstr "名称"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:999
+msgid "New directory name:"
+msgstr "新目录名称："
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1317
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1721
+msgid "New file"
+msgstr "新建文件"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1007
+msgid "New file name:"
+msgstr "新文件名称："
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1316
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1720
+msgid "New folder"
+msgstr "新建文件夹"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:894
+msgid "Nothing selected"
+msgstr "未选择任何内容"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1287
+msgid "Open"
+msgstr "打开"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1291
+msgid "Open as hex"
+msgstr "以十六进制打开"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:848
+msgid "Owner (user:group)"
+msgstr "所有者（用户:组）"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1318
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1695
+msgid "Paste here"
+msgstr "粘贴到此处"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1748
+msgid "Path"
+msgstr "路径"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:447
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:500
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:557
+msgid "Permissions"
+msgstr "权限"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:844
+msgid "Permissions (octal)"
+msgstr "权限（八进制）"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:874
+msgid "Permissions must be three or four octal digits, e.g. 644."
+msgstr "权限必须为三到四位八进制数字，例如 644。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:513
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1294
+msgid "Properties"
+msgstr "属性"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:842
+msgid "Properties of %s"
+msgstr "%s 的属性"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1321
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1719
+msgid "Refresh"
+msgstr "刷新"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:515
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1293
+msgid "Rename"
+msgstr "重命名"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:945
+msgid "Rename \"%s\" to:"
+msgstr "将“%s”重命名为："
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:656
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:764
+msgid "Save"
+msgstr "保存"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:805
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:823
+msgid "Saved."
+msgstr "已保存。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:788
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:817
+msgid "Saving…"
+msgstr "正在保存…"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:797
+msgid "Saving… %d%%"
+msgstr "正在保存… %d%%"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1298
+msgid "Select"
+msgstr "选择"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:487
+msgid "Select %s"
+msgstr "选择 %s"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1299
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1320
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1707
+msgid "Select all"
+msgstr "全选"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:446
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:499
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:556
+msgid "Size"
+msgstr "大小"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:932
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1169
+msgid "Something with that name is already here, and nothing is overwritten."
+msgstr "已存在同名项目，且未覆盖任何内容。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:923
+msgid "Source and destination are the same directory."
+msgstr "源目录和目标目录相同。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:590
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:748
+msgid "The file is %.1f MB; this editor opens files up to 1 MB."
+msgstr "该文件为 %.1f MB；此编辑器最多可打开 1 MB 的文件。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:532
+msgid "This directory is empty."
+msgstr "此目录为空。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:894
+msgid "Tick the files you want first."
+msgstr "请先勾选您需要的文件。"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1770
+msgid "Tiles"
+msgstr "平铺"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:445
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:498
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:555
+msgid "Type"
+msgstr "类型"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1687
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1718
+msgid "Up"
+msgstr "上级"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1728
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1731
+msgid "Upload"
+msgstr "上传"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1037
+msgid "Uploaded %d of %d…"
+msgstr "已上传 %d/%d…"
+
+#: htdocs/luci-static/resources/view/footstrap-files/browser.js:1026
+msgid "Uploading %d file(s)…"
+msgstr "正在上传 %d 个文件…"

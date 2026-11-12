@@ -7,7 +7,11 @@
 
 CONFIG="flowproxy"
 NFT_TABLE="flowproxy"
-OUTPUT_FILE="/tmp/flowproxy/nft.conf"
+if [ "$FLOWPROXY_PREVIEW" = "1" ]; then
+	OUTPUT_FILE="/tmp/flowproxy/nft.preview.conf"
+else
+	OUTPUT_FILE="/tmp/flowproxy/nft.conf"
+fi
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 
