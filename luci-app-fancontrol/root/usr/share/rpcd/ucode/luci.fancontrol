@@ -1,0 +1,223 @@
+'use strict';
+
+import { access, readfile, writefile, stat, popen } from 'fs';
+import { cursor } from 'uci';
+import { connect } from 'ubus';
+
+const UCI_CONFIG = 'fancontrol';
+const LOG_FILE = '/var/log/fancontrol.log';
+const THERMAL_ZONE_TEMP = '/sys/class/thermal/thermal_zone0/temp';
+const COOLING_DEV_CUR = '/sys/class/thermal/cooling_device0/cur_state';
+const HWMON_PWM = '/sys/class/hwmon/hwmon1/pwm1';
+
+function get_procd_status() {
+	let u = connect();
+	if (!u) return { running: false, pid: null, state: 'stopped' };
+
+	let res = u.call('service', 'list', { name: 'fancontrol' });
+	u.disconnect();
+
+	if (res && res['fancontrol'] && res['fancontrol'].instances) {
+		let instances = res['fancontrol'].instances;
+		for (let name in instances) {
+			let inst = instances[name];
+			if (inst && inst.running) {
+				return { running: true, pid: inst.pid, state: 'managed' };
+			}
+		}
+	}
+
+	// 检查是否有残留孤儿进程
+	let p = popen('pidof /usr/sbin/fancontrold', 'r');
+	if (p) {
+		let pid_str = p.read('all');
+		p.close();
+		if (pid_str && length(trim(pid_str)) > 0) {
+			let pids = split(trim(pid_str), /\s+/);
+			if (length(pids) > 0 && pids[0] != '') {
+				return { running: true, pid: int(pids[0]), state: 'unmanaged' };
+			}
+		}
+	}
+
+	return { running: false, pid: null, state: 'stopped' };
+}
+
+function get_hardware_info() {
+	let temp_c = 0.0;
+	if (access(THERMAL_ZONE_TEMP, 'r')) {
+		let raw_t = readfile(THERMAL_ZONE_TEMP);
+		if (raw_t) {
+			let raw_val = int(trim(raw_t));
+			temp_c = sprintf('%.1f', raw_val / 1000.0);
+		}
+	}
+
+	let cur_level = 0;
+	if (access(COOLING_DEV_CUR, 'r')) {
+		let raw_lvl = readfile(COOLING_DEV_CUR);
+		if (raw_lvl) cur_level = int(trim(raw_lvl));
+	}
+
+	let pwm_val = 0;
+	if (access(HWMON_PWM, 'r')) {
+		let raw_pwm = readfile(HWMON_PWM);
+		if (raw_pwm) pwm_val = int(trim(raw_pwm));
+	} else {
+		// 依据档位估算
+		if (cur_level == 1) pwm_val = 80;
+		else if (cur_level == 2) pwm_val = 128;
+		else if (cur_level == 3) pwm_val = 255;
+	}
+
+	return {
+		temp: temp_c,
+		level: cur_level,
+		pwm: pwm_val
+	};
+}
+
+const methods = {
+	get_status: {
+		call: function() {
+			let proc = get_procd_status();
+			let hw = get_hardware_info();
+			let uci_c = cursor();
+			let enabled = int(uci_c.get(UCI_CONFIG, 'global', 'enabled') || '0');
+			let mode = uci_c.get(UCI_CONFIG, 'global', 'mode') || 'auto';
+			let interval = int(uci_c.get(UCI_CONFIG, 'global', 'interval') || '5');
+
+			let start_spin = int(uci_c.get(UCI_CONFIG, 'global', 'start_spin') || '1');
+			let temp_low = int(uci_c.get(UCI_CONFIG, 'global', 'temp_low') || '45');
+			let temp_med = int(uci_c.get(UCI_CONFIG, 'global', 'temp_med') || '60');
+			let temp_high = int(uci_c.get(UCI_CONFIG, 'global', 'temp_high') || '75');
+			let hysteresis = int(uci_c.get(UCI_CONFIG, 'global', 'hysteresis') || '3');
+			let manual_level = int(uci_c.get(UCI_CONFIG, 'global', 'manual_level') || '2');
+
+			return {
+				running: proc.running,
+				state: proc.state,
+				pid: proc.pid,
+				enabled: enabled,
+				mode: mode,
+				interval: interval,
+				start_spin: start_spin,
+				temp_low: temp_low,
+				temp_med: temp_med,
+				temp_high: temp_high,
+				hysteresis: hysteresis,
+				manual_level: manual_level,
+				temp: hw.temp,
+				level: hw.level,
+				pwm: hw.pwm
+			};
+		}
+	},
+
+	set_level: {
+		args: { level: 0 },
+		call: function(req) {
+			let lvl = int(req.args?.level ?? 0);
+			if (lvl < 0) lvl = 0;
+			if (lvl > 3) lvl = 3;
+
+			let applied = false;
+			if (access(COOLING_DEV_CUR, 'w')) {
+				try {
+					writefile(COOLING_DEV_CUR, lvl + "\n");
+					applied = true;
+				} catch (e) {}
+			}
+
+			if (!applied && access(HWMON_PWM, 'w')) {
+				let pwm_val = 0;
+				if (lvl == 1) pwm_val = 80;
+				else if (lvl == 2) pwm_val = 128;
+				else if (lvl == 3) pwm_val = 255;
+				try {
+					writefile(HWMON_PWM, pwm_val + "\n");
+					applied = true;
+				} catch (e) {}
+			}
+
+			// 记录测试日志
+			try {
+				let p = popen('date "+%Y-%m-%d %H:%M:%S"', 'r');
+				let ts = p ? trim(p.read('all')) : '';
+				if (p) p.close();
+				let line = ts + ' [测试] 手动即时下发风扇档位: ' + lvl + ' 级\n';
+				let old_content = readfile(LOG_FILE) || '';
+				writefile(LOG_FILE, old_content + line);
+			} catch (e) {}
+
+			return { success: applied, level: lvl };
+		}
+	},
+
+	get_logs: {
+		args: { lines: 100 },
+		call: function(req) {
+			let lines_limit = int(req.args?.lines ?? 100);
+			let logs = [];
+			try {
+				if (access(LOG_FILE, 'r')) {
+					let log_stat = stat(LOG_FILE);
+					let content = '';
+					if (log_stat && log_stat.size > 65536) {
+						let fd = popen('tail -c 65536 ' + LOG_FILE, 'r');
+						if (fd) {
+							content = fd.read('all');
+							fd.close();
+						}
+					} else {
+						content = readfile(LOG_FILE);
+					}
+					if (content) {
+						let all_lines = split(content, "\n");
+						let total = length(all_lines);
+						let start = (total > lines_limit) ? (total - lines_limit) : 0;
+						for (let i = start; i < total; i++) {
+							if (all_lines[i] && length(trim(all_lines[i])) > 0) {
+								push(logs, all_lines[i]);
+							}
+						}
+					}
+				}
+			} catch (e) {}
+			return { logs: logs };
+		}
+	},
+
+	clear_logs: {
+		call: function() {
+			try {
+				writefile(LOG_FILE, '');
+				return { success: true };
+			} catch (e) {
+				return { success: false, error: e };
+			}
+		}
+	},
+
+	service: {
+		args: { action: 'restart' },
+		call: function(req) {
+			let action = req.args?.action || 'restart';
+			if (action != 'start' && action != 'stop' && action != 'restart') {
+				return { success: false, error: 'Invalid action' };
+			}
+
+			if (action == 'restart' || action == 'stop') {
+				// 强杀孤儿残留进程
+				let p = popen('killall -9 fancontrold', 'r');
+				if (p) p.close();
+			}
+
+			let rc = system('/etc/init.d/fancontrol ' + action + ' >/dev/null 2>&1');
+			system('sleep 1');
+			return { success: (rc === 0) };
+		}
+	}
+};
+
+return { 'luci.fancontrol': methods };
