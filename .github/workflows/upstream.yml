@@ -220,13 +220,20 @@ jobs:
         git_clone https://github.com/honwen/luci-app-shadowsocks-rust
         git_clone https://github.com/Hyy2001X/AutoBuild-Packages && rm -rf AutoBuild-Packages/luci-app-adguardhome && mvdir AutoBuild-Packages
         # git_clone https://github.com/lazywalker/mmdvm-openwrt && rm -rf mmdvm-openwrt/misc && mvdir mmdvm-openwrt
-        git_clone https://github.com/4IceG/luci-app-at-socat at-socat && mvdir at-socat
-        git_clone https://github.com/4IceG/luci-app-easyconfig-transfer easyconfig && mvdir easyconfig
-        git_clone https://github.com/4IceG/luci-app-atcommands atcommands && mvdir atcommands
         git_clone https://github.com/wukongdaily/luci-app-run run1 && mvdir run1
         git_clone https://github.com/szwjp/luci-app-homeproxy
         git_clone https://github.com/szwjp/luci-app-homeproxy-pro
         git_clone https://github.com/weicaixian86/luci-app-pingpacket pingpacket && mv -f pingpacket/luci* ./;rm -rf pingpacket
+        ) &
+        (
+        git_clone https://github.com/4IceG/luci-app-easyconfig-transfer easyconfig && mvdir easyconfig
+        git_clone https://github.com/4IceG/luci-app-guest-wifi-js guest-wifi-js && mvdir guest-wifi-js
+        git_clone https://github.com/4IceG/luci-app-ports-status-mod ports-status-mod && mvdir ports-status-mod
+        git_clone https://github.com/4IceG/luci-app-modemdata modemdata && mvidir modemdata
+        git_clone https://github.com/4IceG/luci-app-sms-tool-js sms-tool-js && mvdir sms-tool-js
+        git_clone https://github.com/4IceG/luci-app-crontab-wizard crontab-wizard && mvdir crontab-wizard
+        git_clone https://github.com/4IceG/luci-app-lite-watchdog lite-watchdog && mvdir lite-watchdog
+        
         ) &
         (
         git_clone https://github.com/Arthur97172/luci-app-substore
@@ -333,7 +340,6 @@ jobs:
         ) &
         (
         git_clone https://github.com/leochien0102/luci-app-accesscontrol-plus accesscontrol-plus && mvdir accesscontrol-plus
-        git_clone https://github.com/4IceG/luci-app-lite-watchdog lite-watchdog && mv lite-watchdog/luci-app-lite-watchdog ./;rm -rf lite-watchdog
         git_clone https://github.com/Mitsuhaxy/luci-app-miniproxy
         git_clone https://github.com/tkmsst/luci-app-cellularstatus cellularstatus && mv cellularstatus/luci/applications/* ./;rm -rf cellularstatus
         # git_clone https://github.com/tracemouse/luci-app-coredns coredns && mv coredns/luci-app-coredns ./;rm -rf coredns
