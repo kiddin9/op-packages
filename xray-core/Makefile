@@ -74,17 +74,6 @@ ifeq ($(GO_ARCH),arm64)
   endef
 endif
 
-# Compress once per build, not once per package/rootfs installation.
-# Keep Go's output intact and let the .built stamp guard the packed copy.
-define Build/Install
-	$(INSTALL_DIR) $(PKG_BUILD_DIR)/.upx
-	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/main $(PKG_BUILD_DIR)/.upx/xray
-	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(PKG_BUILD_DIR)/.upx/xray
-endef
-
-# Go's -s -w flags strip the binary before UPX; do not strip it again.
-RSTRIP:=:
-
 define Package/xray-core
   TITLE:=A platform for building proxies to bypass network restrictions
   SECTION:=net
@@ -100,7 +89,7 @@ define Package/xray-core/config
     depends on (aarch64 || arm || i386 || x86_64 || mipsel || riscv64 || loongarch64)
     depends on (USE_MUSL || USE_GLIBC)
     depends on !arm || (arm_v7 && HAS_FPU)
-    default $(if $(filter Linux-x86_64,$(HOST_OS)-$(HOST_ARCH)),y,n)
+    default n
     help
       Link Chromium/Cronet for NaiveProxy HTTP/2 and HTTP/3 outbounds.
       Requires an x86_64 Linux build host and adds a native library to Xray.
