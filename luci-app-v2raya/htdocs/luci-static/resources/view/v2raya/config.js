@@ -111,7 +111,6 @@ return view.extend({
 
 		o = s.taboption('advanced', form.Value, 'v2ray_assetsdir', _('Rule data directory'));
 		o.placeholder = '/usr/share/v2raya';
-		o.default = '/usr/share/v2raya';
 		o.description = _('Directory containing geoip.dat and geosite.dat. Leave empty for auto-detection.');
 
 		o = s.taboption('advanced', form.Value, 'v2ray_bin', _('Core binary (v2raya_core only)'));

@@ -1,6 +1,7 @@
 #!/bin/sh /etc/rc.common
 # SPDX-License-Identifier: GPL-3.0-only
 #
+# Copyright (C) 2021 Tianling Shen <cnsztl@immortalwrt.org>
 # Copyright (C) 2026 Amr Fateem <amr.fateem@yahoo.com>
 #
 # procd init script for v2rayA.
@@ -109,6 +110,7 @@ stop_service() {
 	# process or a proxy-only stop can leave them behind.  Remove any
 	# residual state so stopping the service always restores connectivity.
 	nft delete table inet v2raya 2>/dev/null
+	nft delete table inet v2raya_dns 2>/dev/null
 	ip rule del fwmark 0x40/0xc0 table 100 2>/dev/null
 	ip -6 rule del fwmark 0x40/0xc0 table 100 2>/dev/null
 	ip route flush table 100 2>/dev/null

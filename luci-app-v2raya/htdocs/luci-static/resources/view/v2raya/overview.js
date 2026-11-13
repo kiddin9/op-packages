@@ -123,13 +123,23 @@ function runAction(action, button) {
 }
 
 function startService(button) {
-	uci.set('v2raya', 'config', 'enabled', '1');
+	setBusy(button, true);
 
-	return L.resolveDefault(uci.save(), null).then(function () {
-		/* Commit before starting: the init script reads enabled from UCI. */
-		return L.resolveDefault(uci.apply(), null);
-	}).then(function () {
-		return runAction('start', button);
+	return fs.exec('/usr/libexec/luci-app-v2raya/enable', []).then(function (res) {
+		if (!res || res.code !== 0) {
+			setBusy(button, false);
+			ui.addNotification(null, E('p', {},
+				(res && (res.stderr || res.stdout)) || _('Could not enable the service.')), 'danger');
+			return;
+		}
+
+		uci.unload('v2raya');
+		return uci.load('v2raya').then(function () {
+			return runAction('start', button);
+		});
+	}).catch(function (err) {
+		setBusy(button, false);
+		ui.addNotification(null, E('p', {}, _('Could not enable the service: %s').format(err)), 'danger');
 	});
 }
 

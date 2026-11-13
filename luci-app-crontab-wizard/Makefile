@@ -12,7 +12,7 @@ MAINTAINER:=Rafał Wabik <4Rafal@gmail.com>
 LUCI_DESCRIPTION:=Super simple graphical configurator for crontab.
 LUCI_DEPENDS:=
 PKG_VERSION:=1.0.4
-PKG_RELEASE:=1
+PKG_RELEASE:=2
 LUCI_PKGARCH:=all
 
 include $(TOPDIR)/feeds/luci/luci.mk
