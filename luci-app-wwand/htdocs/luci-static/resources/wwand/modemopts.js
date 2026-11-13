@@ -554,6 +554,20 @@ return baseclass.extend({
 		o.value('cdma', 'CDMA');
 		bind(o);
 
+		/* NSA vs SA is a switch of its own, not part of "Radio technology":
+		   the modem's vendor AT setting, which wwand knows only for the
+		   Foxconn T99W175 and the Quectel RG50xQ/RM5xxQ (wwand atcmd.uc
+		   nr5g_mode_commands); elsewhere the daemon reports it as not
+		   applied */
+		o = s.taboption(tab, form.ListValue, 'nr5g_mode', _('5G NR mode'),
+			_('Which kind of 5G the modem may use: non-standalone (5G on an LTE anchor), standalone (5G core), or both. Separate from "Radio technology", which only allows 5G at all. Set over QMI on Qualcomm modems (QMI, or MBIM with the QMI passthrough), otherwise over AT on the Foxconn T99W175 and Quectel RG50xQ/RM5xxQ. With "5G NR" alone, "NSA only" finds no network, because NSA needs LTE.'));
+		o.value('', _('Leave modem setting unchanged'));
+		o.value('both', _('NSA and SA'));
+		o.value('nsa', _('NSA only'));
+		o.value('sa', _('SA only'));
+		o.optional = true;
+		bind(o);
+
 		/* the names are config_check / nas.uc RAT_ORDER_IDS; the daemon drops
 		   an unknown or repeated one with a warning, so it is refused here
 		   before it gets that far */
