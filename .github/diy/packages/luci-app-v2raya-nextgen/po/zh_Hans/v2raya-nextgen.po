@@ -1,13 +1,13 @@
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
-"Project-Id-Version: luci-app-v2raya\n"
+"Project-Id-Version: luci-app-v2raya-nextgen\n"
 "Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: luci-app-v2raya/root/usr/share/luci/menu.d/luci-app-v2raya.json
+#: luci-app-v2raya-nextgen/root/usr/share/luci/menu.d/luci-app-v2raya.json
 msgid "v2rayA"
 msgstr "v2rayA"
 
@@ -20,7 +20,7 @@ msgstr "设置"
 msgid "Log"
 msgstr "日志"
 
-#: luci-app-v2raya/htdocs/luci-static/resources/view/v2raya/overview.js
+#: luci-app-v2raya-nextgen/htdocs/luci-static/resources/view/v2raya/overview.js
 msgid "A web client for its bundled v2raya_core, with transparent proxy support."
 msgstr "专为内置 v2raya_core 打造的 Web 客户端，支持透明代理。"
 
@@ -150,7 +150,7 @@ msgstr "无法启用服务。"
 msgid "Could not enable the service: %s"
 msgstr "无法启用服务：%s"
 
-#: luci-app-v2raya/htdocs/luci-static/resources/view/v2raya/config.js
+#: luci-app-v2raya-nextgen/htdocs/luci-static/resources/view/v2raya/config.js
 msgid "Settings for the v2rayA service. Save & Apply restarts the service so the new values take effect. v2rayA 2.5.x uses only its bundled v2raya_core; Xray-core and sing-box are not supported backends."
 msgstr "v2rayA 服务参数设置。“保存并应用”后将自动重启服务以使新配置生效。v2rayA 2.5.x 仅支持其内置的 v2raya_core，不支持将 Xray-core 或 sing-box 作为后端内核。"
 
@@ -331,7 +331,7 @@ msgstr "最大打开文件数 (nofile)"
 msgid "Maximum open file descriptors. 16384 is plenty for a home router and bounds a connection flood."
 msgstr "进程允许打开的最大文件描述符数量（ulimit -n）。16384 足以满足家用路由器需求，并能防止异常连接洪水耗尽资源。"
 
-#: luci-app-v2raya/htdocs/luci-static/resources/view/v2raya/log.js
+#: luci-app-v2raya-nextgen/htdocs/luci-static/resources/view/v2raya/log.js
 msgid "v2rayA log"
 msgstr "v2rayA 运行日志"
 
