@@ -1,0 +1,366 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: luci-app-v2raya\n"
+"Language: zh_Hans\n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: luci-app-v2raya/root/usr/share/luci/menu.d/luci-app-v2raya.json
+msgid "v2rayA"
+msgstr "v2rayA"
+
+msgid "Overview"
+msgstr "概览"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Log"
+msgstr "日志"
+
+#: luci-app-v2raya/htdocs/luci-static/resources/view/v2raya/overview.js
+msgid "A web client for its bundled v2raya_core, with transparent proxy support."
+msgstr "专为内置 v2raya_core 打造的 Web 客户端，支持透明代理。"
+
+msgid "Service"
+msgstr "运行状态"
+
+msgid "Checking…"
+msgstr "正在检查…"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped"
+msgstr "已停止"
+
+msgid "v2rayA version"
+msgstr "v2rayA 版本"
+
+msgid "v2raya_core version"
+msgstr "v2raya_core 版本"
+
+msgid "not detected"
+msgstr "未检测到"
+
+msgid "Listening address"
+msgstr "监听地址"
+
+msgid "Web interface"
+msgstr "Web 管理界面"
+
+msgid "Open v2rayA"
+msgstr "打开 v2rayA"
+
+msgid "Detected cores and proxy services"
+msgstr "已检测到的内核与代理服务"
+
+msgid "v2rayA 2.5.x runs only its bundled v2raya_core. Existing Xray-core, v2ray and sing-box installations are detected here so they are not duplicated or replaced; they are never used as the v2rayA backend."
+msgstr "v2rayA 2.5.x 仅运行其内置的 v2raya_core。此处检测系统中已有的 Xray-core、v2ray 和 sing-box 仅用于避免重复安装或覆盖，它们绝不会被用作 v2rayA 的后端内核。"
+
+msgid "v2raya_core (required)"
+msgstr "v2raya_core（必需）"
+
+msgid "This is the only core v2rayA 2.5.x supports."
+msgstr "这是 v2rayA 2.5.x 唯一支持的内核。"
+
+msgid "Xray-core"
+msgstr "Xray-core"
+
+msgid "Left untouched. Do not point the core binary setting at this."
+msgstr "保持原样，请勿将核心二进制文件路径指向此处。"
+
+msgid "v2ray-core"
+msgstr "v2ray-core"
+
+msgid "sing-box"
+msgstr "sing-box"
+
+msgid "Left untouched. sing-box uses a different configuration format and cannot run v2rayA configs."
+msgstr "保持原样。sing-box 使用不同的配置格式，无法运行 v2rayA 生成的配置。"
+
+msgid "Detected"
+msgstr "已检测到"
+
+msgid "Not installed"
+msgstr "未安装"
+
+msgid "Package installed"
+msgstr "已通过软件包安装"
+
+msgid "Rule data"
+msgstr "规则数据"
+
+msgid "geoip.dat and geosite.dat are installed"
+msgstr "已安装 geoip.dat 和 geosite.dat"
+
+msgid "Missing. v2rayA downloads the data on first start and needs internet access; install v2raya-geoip and v2raya-geosite for offline use."
+msgstr "缺失。v2rayA 首次启动时需联网自动下载这些数据；如需离线使用，请提前安装 v2raya-geoip 和 v2raya-geosite 软件包。"
+
+msgid "Other proxy services"
+msgstr "其他代理服务"
+
+msgid "None detected"
+msgstr "未检测到"
+
+msgid "Core and service detection is unavailable. The installed v2raya package does not provide the detection helper; version 2.5.x and later install it."
+msgstr "内核与服务检测不可用。当前安装的 v2raya 软件包未提供检测辅助工具（2.5.x 及更高版本已内置）。"
+
+msgid "v2raya_core is missing. Install the v2raya-core package."
+msgstr "缺少 v2raya_core，请安装 v2raya-core 软件包。"
+
+msgid "An older v2raya package is still installed. Remove it to avoid duplicate services."
+msgstr "系统中仍安装有旧版 v2raya 软件包，请将其卸载以避免服务冲突。"
+
+msgid "These proxy services are enabled at boot: %s. Run only one transparent-proxy stack, otherwise duplicate firewall rules will conflict."
+msgstr "以下代理服务已设为开机自启：%s。请仅运行一套透明代理方案，否则重复的防火墙规则将产生冲突。"
+
+msgid "Actions"
+msgstr "服务控制"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "These buttons control the background service. Connecting the proxy is done in the v2rayA web UI with the Connect button."
+msgstr "以上按钮仅用于控制后台服务进程；如需连接节点并开启代理，请进入 v2rayA Web 管理界面点击连接按钮（Connect）。"
+
+msgid "This independent, community-run packaging project is not affiliated with the upstream v2rayA authors. It is AI-assisted and human-maintained."
+msgstr "本软件包为独立的社区维护项目，与上游 v2rayA 官方作者无关联。项目由 AI 辅助构建并由人工维护。"
+
+msgid "The service command failed."
+msgstr "服务命令执行失败。"
+
+msgid "Service action \"%s\" completed."
+msgstr "服务操作“%s”已完成。"
+
+msgid "Unable to run the service command: %s"
+msgstr "无法执行服务命令：%s"
+
+msgid "Could not enable the service."
+msgstr "无法启用服务。"
+
+msgid "Could not enable the service: %s"
+msgstr "无法启用服务：%s"
+
+#: luci-app-v2raya/htdocs/luci-static/resources/view/v2raya/config.js
+msgid "Settings for the v2rayA service. Save & Apply restarts the service so the new values take effect. v2rayA 2.5.x uses only its bundled v2raya_core; Xray-core and sing-box are not supported backends."
+msgstr "v2rayA 服务参数设置。“保存并应用”后将自动重启服务以使新配置生效。v2rayA 2.5.x 仅支持其内置的 v2raya_core，不支持将 Xray-core 或 sing-box 作为后端内核。"
+
+msgid "General"
+msgstr "常规设置"
+
+msgid "Transparent proxy"
+msgstr "透明代理"
+
+msgid "The transparent proxy mode, routing rules and nodes are configured in the v2rayA web interface. These options control core start-up and hooks."
+msgstr "透明代理模式、分流规则及代理节点均在 v2rayA Web 管理界面中配置。此处的选项用于控制内核启动参数及生命周期钩子脚本。"
+
+msgid "Logging"
+msgstr "日志设置"
+
+msgid "Advanced"
+msgstr "高级设置"
+
+msgid "Enable service"
+msgstr "启用服务"
+
+msgid "Start v2rayA at boot. You can also start or stop it from the overview page."
+msgstr "开机自动启动 v2rayA 服务。你也可以在“概览”页面手动启动或停止服务。"
+
+msgid "An address is required."
+msgstr "必须填写监听地址。"
+
+msgid "Enter an address and port, for example 0.0.0.0:2017 or [::]:2017."
+msgstr "请输入有效的地址和端口，例如 0.0.0.0:2017 或 [::]:2017。"
+
+msgid "The web interface listens on this address. Use 127.0.0.1:2017 to keep it off the LAN."
+msgstr "Web 管理界面监听的 IP 地址与端口。若设为 127.0.0.1:2017，则仅允许本机访问（禁止局域网其他设备访问）。"
+
+msgid "Base URL"
+msgstr "基础路径 (Base URL)"
+
+msgid "URL prefix when v2rayA runs behind a reverse proxy."
+msgstr "当 v2rayA 运行在反向代理后端时使用的 URL 前缀。"
+
+msgid "The base URL must start with /."
+msgstr "基础路径必须以 / 开头。"
+
+msgid "IPv6 support"
+msgstr "IPv6 支持"
+
+msgid "Auto"
+msgstr "自动"
+
+msgid "On"
+msgstr "开启"
+
+msgid "Off"
+msgstr "关闭"
+
+msgid "Make sure IPv6 connectivity works before forcing it on."
+msgstr "强制开启前，请确保路由器及网络环境已具备正常的 IPv6 连通性。"
+
+msgid "nftables support"
+msgstr "nftables 支持"
+
+msgid "nftables is the default firewall backend on OpenWrt 22.03 and later."
+msgstr "nftables 是 OpenWrt 22.03 及更高版本的默认防火墙后端。"
+
+msgid "Core startup timeout"
+msgstr "内核启动超时"
+
+msgid "Seconds to wait for v2raya_core to start. Raise this on slow MIPS routers."
+msgstr "等待 v2raya_core 启动的最长时间（秒）。性能较弱的 MIPS 架构路由器可适当调高此值。"
+
+msgid "Respect bound devices in redirect mode"
+msgstr "Redirect 模式下放行绑定网卡的流量"
+
+msgid "Let sockets bound to a device bypass the proxy. Requires Linux 5.14 or later and cgroup v2."
+msgstr "允许已绑定到特定网络接口（SO_BINDTODEVICE）的套接字绕过透明代理。需要 Linux 5.14 及以上内核并启用 cgroup v2。"
+
+msgid "Transparent proxy hook"
+msgstr "透明代理钩子脚本"
+
+msgid "Executable called around transparent proxy setup and teardown."
+msgstr "在配置或清理透明代理规则前后调用的可执行脚本路径。"
+
+msgid "Core life-cycle hook"
+msgstr "内核生命周期钩子脚本"
+
+msgid "Executable called around v2raya_core start and stop."
+msgstr "在启动或停止 v2raya_core 前后调用的可执行脚本路径。"
+
+msgid "Plugin manager"
+msgstr "插件管理器"
+
+msgid "Executable used to parse protocols that v2rayA does not know natively."
+msgstr "用于解析 v2rayA 原生不支持的代理协议的可执行文件路径。"
+
+msgid "Log level"
+msgstr "日志级别"
+
+msgid "Trace"
+msgstr "追踪 (Trace)"
+
+msgid "Debug"
+msgstr "调试 (Debug)"
+
+msgid "Info"
+msgstr "信息 (Info)"
+
+msgid "Warning"
+msgstr "警告 (Warning)"
+
+msgid "Error"
+msgstr "错误 (Error)"
+
+msgid "Warning keeps flash writes down. Use Info while debugging."
+msgstr "设为“警告 (Warning)”可减少对路由器闪存的写入损耗；排查故障时可临时改为“信息 (Info)”。"
+
+msgid "Keep logs for"
+msgstr "日志保留天数"
+
+msgid "Number of days to keep rotated log files."
+msgstr "轮转日志文件的保留天数。"
+
+msgid "Disable colours in the log"
+msgstr "禁用日志颜色代码"
+
+msgid "The log file is plain text, so colours are not useful there."
+msgstr "日志文件为纯文本格式，禁用 ANSI 颜色代码可避免出现乱码字符。"
+
+msgid "Disable timestamps in the log"
+msgstr "禁用日志时间戳"
+
+msgid "Only relevant when v2rayA writes to syslog or journald."
+msgstr "仅在 v2rayA 将日志输出至系统日志（syslog 或 journald）时生效。"
+
+msgid "Rule data directory"
+msgstr "规则数据目录"
+
+msgid "Directory containing geoip.dat and geosite.dat. Leave empty for auto-detection."
+msgstr "存放 geoip.dat 和 geosite.dat 规则文件的目录路径，留空则自动检测。"
+
+msgid "Core binary (v2raya_core only)"
+msgstr "内核二进制文件（仅限 v2raya_core）"
+
+msgid "Auto-detect"
+msgstr "自动检测"
+
+msgid "Path to v2raya_core. Leave empty to use the binary next to v2raya or in PATH. Only the matching v2raya_core is supported; Xray-core and sing-box use incompatible configuration formats."
+msgstr "v2raya_core 可执行文件的路径。留空则自动使用与 v2raya 同目录或系统 PATH 中的程序。仅支持版本匹配的 v2raya_core，Xray-core 和 sing-box 因配置格式不兼容而无法使用。"
+
+msgid "Extra configuration directory"
+msgstr "额外配置目录"
+
+msgid "None"
+msgstr "无"
+
+msgid "Additional v2ray configuration files merged into the generated configuration."
+msgstr "存放额外 V2Ray 配置文件的目录，其中的配置将合并到自动生成的最终配置中。"
+
+msgid "Go memory limit"
+msgstr "Go 内存限制 (GOMEMLIMIT)"
+
+msgid "Soft memory limit for both v2raya and v2raya_core (GOMEMLIMIT). Use 0 to disable, or 96MiB on a larger router."
+msgstr "v2raya 与 v2raya_core 各自的 Go 运行时软内存上限（GOMEMLIMIT）。设为 0 表示不限制，大内存路由器可设为 96MiB。"
+
+msgid "Go scheduler threads"
+msgstr "Go 调度线程数 (GOMAXPROCS)"
+
+msgid "GOMAXPROCS. 0 uses every CPU core; 2 is enough for most routers."
+msgstr "设置 Go 运行时最大并发线程数（GOMAXPROCS）。设为 0 表示使用全部 CPU 核心；大多数路由器保持默认 2 即可。"
+
+msgid "Go GC percent"
+msgstr "Go 垃圾回收阈值 (GOGC)"
+
+msgid "GOGC. 0 keeps the Go default; lower values use less memory and more CPU."
+msgstr "设置 Go 垃圾回收触发百分比（GOGC）。设为 0 表示保持 Go 默认值；调低数值可降低内存占用，但会增加 CPU 开销。"
+
+msgid "Open file limit"
+msgstr "最大打开文件数 (nofile)"
+
+msgid "Maximum open file descriptors. 16384 is plenty for a home router and bounds a connection flood."
+msgstr "进程允许打开的最大文件描述符数量（ulimit -n）。16384 足以满足家用路由器需求，并能防止异常连接洪水耗尽资源。"
+
+#: luci-app-v2raya/htdocs/luci-static/resources/view/v2raya/log.js
+msgid "v2rayA log"
+msgstr "v2rayA 运行日志"
+
+msgid "Showing the last %d lines of %s. Refreshes every %d seconds."
+msgstr "显示最新 %d 行日志（%s），每 %d 秒自动刷新。"
+
+msgid "Loading…"
+msgstr "正在加载…"
+
+msgid "The log file does not exist yet. Start the service and try again."
+msgstr "日志文件尚未生成，请先启动服务后再试。"
+
+msgid "The log is empty."
+msgstr "日志为空。"
+
+msgid "Unable to read the log: %s"
+msgstr "无法读取日志：%s"
+
+msgid "Refresh"
+msgstr "刷新"
+
+msgid "Clear log"
+msgstr "清空日志"
+
+msgid "Clear the v2rayA log file?"
+msgstr "确定要清空 v2rayA 日志文件吗？"
+
+msgid "Unable to clear the log file."
+msgstr "无法清空日志文件。"
+
+msgid "Log file cleared."
+msgstr "日志文件已清空。"
