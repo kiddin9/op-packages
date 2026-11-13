@@ -124,6 +124,7 @@ v2ray_path=$v2ray_bin
 v2ray_version=$(version_line "$v2ray_bin" version)
 v2ray_package=$v2ray_pkg
 old_v2raya_package=$old_v2raya_pkg
+v2raya_package=$(pkg_version v2raya)
 geoip_present=$geoip_present
 geosite_present=$geosite_present
 services_present=$present

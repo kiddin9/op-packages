@@ -143,13 +143,25 @@ function startService(button) {
 	});
 }
 
+var FEED_LATEST = 'https://raw.githubusercontent.com/AmrFateem/luci-V2raya-NextGen/main/feed/latest';
+
+function latestRelease() {
+	return L.resolveDefault(fetch(FEED_LATEST)
+		.then(function (res) { return res.ok ? res.text() : null; })
+		.then(function (text) {
+			var line = text ? text.split('\n').filter(function (l) { return l.indexOf('v2raya=') === 0; })[0] : null;
+			return line ? line.substring('v2raya='.length).trim() : null;
+		}), null);
+}
+
 return view.extend({
 	load: function () {
 		return Promise.all([
 			uci.load('v2raya'),
 			commandVersion('/usr/bin/v2raya', [ '--version' ]),
 			commandVersion('/usr/bin/v2raya_core', [ 'version' ]),
-			detectBackends()
+			detectBackends(),
+			latestRelease()
 		]);
 	},
 
@@ -165,6 +177,12 @@ return view.extend({
 		var serviceVersion = data[1] || _('not detected');
 		var coreVersion = data[2] || _('not detected');
 		var backends = data[3] || {};
+		var latestVersion = data[4] || null;
+		var installedPackage = backends.v2raya_package || null;
+		var packageStatus = !installedPackage ? _('not detected')
+			: (latestVersion && latestVersion !== installedPackage)
+				? _('%s, update available: run "apk update && apk upgrade"').format(installedPackage)
+				: installedPackage;
 		var detectAvailable = Object.keys(backends).length > 0;
 		var enabledServices = (backends.services_enabled || '').split(',').filter(function (name) {
 			return name && name !== 'v2raya';
@@ -245,6 +263,10 @@ return view.extend({
 				E('div', { class: 'cbi-value' }, [
 					E('label', { class: 'cbi-value-title' }, _('Service')),
 					E('div', { class: 'cbi-value-field' }, status)
+				]),
+				E('div', { class: 'cbi-value' }, [
+					E('label', { class: 'cbi-value-title' }, _('Package')),
+					E('div', { class: 'cbi-value-field' }, packageStatus)
 				]),
 				E('div', { class: 'cbi-value' }, [
 					E('label', { class: 'cbi-value-title' }, _('v2rayA version')),

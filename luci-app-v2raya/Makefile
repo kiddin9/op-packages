@@ -11,6 +11,9 @@ LUCI_DEPENDS:=+luci-base +v2raya
 LUCI_PKGARCH:=all
 LUCI_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
 
+# Date-based version (YY.DDD), the same scheme as the OpenWrt LuCI packages.
+# OpenWrt's luci-app-v2raya is newer than 2.5.13 by version comparison, so
+# this version must stay ahead of it. Re-date it when OpenWrt passes it.
 
 PKG_LICENSE:=Apache-2.0
 CONFLICTS:=luci-app-v2raya-nextgen
