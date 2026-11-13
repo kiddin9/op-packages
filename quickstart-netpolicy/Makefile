@@ -7,8 +7,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=quickstart-netpolicy
-PKG_VERSION:=fastnet-runtime-v0.8.9
-PKG_RELEASE:=1
+PKG_VERSION:=0.2.1-rc20261113
+PKG_RELEASE:=2
 NETPOLICY_TARGET_x86_64:=x86_64-unknown-linux-musl
 NETPOLICY_TARGET_aarch64:=aarch64-unknown-linux-musl
 NETPOLICY_TARGET:=$(NETPOLICY_TARGET_$(ARCH))
@@ -20,7 +20,7 @@ PKG_HASH:=skip
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 
 ifeq ($(CONFIG_USE_APK),y)
-PKG_VERSION:=fastnet-runtime-v0.8.9
+PKG_VERSION:=$(subst -rc,_rc,$(PKG_VERSION))
 endif
 
 PKG_BUILD_PARALLEL:=1
