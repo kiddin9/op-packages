@@ -1,0 +1,47 @@
+--- a/xray-core/Makefile
++++ b/xray-core/Makefile
+@@ -13,7 +13,7 @@ PKG_LICENSE:=MPL-2.0 GPL-3.0-or-later MIT
+ PKG_LICENSE_FILES:=LICENSE proxy/anytls/LICENSE.sing-anytls proxy/naive/LICENSE.sing-box proxy/shadowsocksr/LICENSE proxy/tuic/LICENSE.mihomo proxy/snell/LICENSE.mihomo transport/internet/shadowtls/LICENSE.mihomo transport/internet/kcptun/LICENSE.mihomo transport/internet/kcptun/LICENSE.kcptun
+ 
+ PKG_BUILD_DIR:=$(BUILD_DIR)/Xray-core-$(PKG_VERSION)
+-PKG_BUILD_DEPENDS:=golang/host upx/host
++PKG_BUILD_DEPENDS:=golang/host
+ PKG_CONFIG_DEPENDS:=CONFIG_XRAY_CORE_NAIVE
+ PKG_BUILD_PARALLEL:=1
+ PKG_USE_MIPS16:=0
+@@ -74,17 +74,6 @@ ifeq ($(GO_ARCH),arm64)
+   endef
+ endif
+ 
+-# Compress once per build, not once per package/rootfs installation.
+-# Keep Go's output intact and let the .built stamp guard the packed copy.
+-define Build/Install
+-	$(INSTALL_DIR) $(PKG_BUILD_DIR)/.upx
+-	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/main $(PKG_BUILD_DIR)/.upx/xray
+-	$(STAGING_DIR_HOST)/bin/upx --lzma --best $(PKG_BUILD_DIR)/.upx/xray
+-endef
+-
+-# Go's -s -w flags strip the binary before UPX; do not strip it again.
+-RSTRIP:=:
+-
+ define Package/xray-core
+   TITLE:=A platform for building proxies to bypass network restrictions
+   SECTION:=net
+@@ -100,7 +89,7 @@ define Package/xray-core/config
+     depends on (aarch64 || arm || i386 || x86_64 || mipsel || riscv64 || loongarch64)
+     depends on (USE_MUSL || USE_GLIBC)
+     depends on !arm || (arm_v7 && HAS_FPU)
+-    default $(if $(filter Linux-x86_64,$(HOST_OS)-$(HOST_ARCH)),y,n)
++    default n
+     help
+       Link Chromium/Cronet for NaiveProxy HTTP/2 and HTTP/3 outbounds.
+       Requires an x86_64 Linux build host and adds a native library to Xray.
+@@ -115,7 +104,7 @@ endef
+ 
+ define Package/xray-core/install
+ 	$(INSTALL_DIR) $(1)/usr/bin
+-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/.upx/xray $(1)/usr/bin/xray
++	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/main $(1)/usr/bin/xray
+ endef
+ 
+ $(eval $(call BuildPackage,xray-core))
