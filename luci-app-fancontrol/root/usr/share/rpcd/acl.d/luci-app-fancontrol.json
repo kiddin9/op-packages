@@ -1,17 +1,21 @@
 {
 	"luci-app-fancontrol": {
-		"description": "Grant access to Fan Control",
+		"description": "Grant access to BPI-R4 fan control procedures",
 		"read": {
-			"uci": [ "fancontrol" ],
 			"ubus": {
-				"service": [ "list" ]
+				"luci.fancontrol": [ "*" ]
 			},
-			"file": {
-				"/var/run/fancontrol.status": [ "read" ]
-			}
+			"uci": [
+				"fancontrol"
+			]
 		},
 		"write": {
-			"uci": [ "fancontrol" ]
+			"ubus": {
+				"luci.fancontrol": [ "*" ]
+			},
+			"uci": [
+				"fancontrol"
+			]
 		}
 	}
 }
