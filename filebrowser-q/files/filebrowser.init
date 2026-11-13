@@ -25,24 +25,29 @@ start_service() {
     if [ ! -f "$CONF_PATH" ]; then
         mkdir -p "$(dirname "$CONF_PATH")"
         cat <<EOF > "$CONF_PATH"
-server:
+http:
   port: $listen_port
-  database: "$DB_PATH"
+server:
+  database:
+    path: "$DB_PATH"
   sources:
     - path: "$root_path"
       name: "$root_name"
       config:
         defaultEnabled: true
 auth:
-  adminUsername: "admin"
-  adminPassword: "admin"
+  methods:
+    password:
+      enabled: true
+      adminUsername: "admin"
+      adminPassword: "admin"
 userDefaults:
   ui:
     locale: "zhCN"
 EOF
     else
         grep -q " name:" "$CONF_PATH" || sed -i "s,.*- path:.*,&\n      name: \"\"," "$CONF_PATH"
-        sed -e "s/ port:.*/ port: $listen_port/" \
+        sed -e "s/^  port:.*/  port: $listen_port/" \
             -e "s, - path:.*, - path: \"$root_path\"," \
             -e "s/      name: \".*\"/      name: \"$root_name\"/" \
             -i "$CONF_PATH"
