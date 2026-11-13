@@ -80,7 +80,7 @@ version_lt() {
 old_v2raya_pkg=0
 pkg_has v2raya-nextgen && old_v2raya_pkg=1
 pkg_has v2raya-core-nextgen && old_v2raya_pkg=1
-pkg_has luci-app-v2raya-nextgen && old_v2raya_pkg=1
+pkg_has luci-app-v2raya && old_v2raya_pkg=1
 if pkg_has v2raya; then
 	version_lt "$(pkg_version v2raya)" "2.5" && old_v2raya_pkg=1
 fi

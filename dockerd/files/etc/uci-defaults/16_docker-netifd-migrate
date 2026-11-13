@@ -11,3 +11,5 @@ if [ -n "$DOCKER0_DEVICE" ]; then
 fi
 uci -q delete network.docker
 uci commit
+
+exit 0

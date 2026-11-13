@@ -166,7 +166,7 @@ process_config() {
 	config_get https_proxy proxies https_proxy "${https_proxy}"
 	config_get no_proxy proxies no_proxy "${no_proxy}"
 	config_get storage_driver globals storage_driver ""
-	config_get max_concurrent_downloads globals max_concurrent_downloads ""
+	config_get max_concurrent_downloads globals max_concurrent_downloads "0"
 
 	. /usr/share/libubox/jshn.sh
 	json_init
@@ -198,7 +198,7 @@ process_config() {
 	fi
 	[ -z "${storage_driver}" ] || json_add_string "storage-driver" "${storage_driver}"
 
-	[ "${max_concurrent_downloads:-0}" -eq "0" ] || json_add_int "max-concurrent-downloads" "${max_concurrent_downloads}"
+	[ "${max_concurrent_downloads}" -eq "0" ] || json_add_int "max-concurrent-downloads" "${max_concurrent_downloads}"
 	json_add_string "log-driver" "json-file"
 	json_add_object "log-opts"
 	json_add_string "max-size" "50m"

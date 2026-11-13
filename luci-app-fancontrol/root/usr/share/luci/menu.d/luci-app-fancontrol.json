@@ -1,37 +1,13 @@
 {
-	"admin/system/fancontrol": {
-		"title": "风扇控制",
-		"order": 65,
+	"admin/services/fancontrol": {
+		"title": "Fan Control",
+		"order": 90,
 		"action": {
-			"type": "firstchild"
+			"type": "view",
+			"path": "fancontrol"
 		},
 		"depends": {
-			"acl": [ "luci-app-fancontrol" ],
-			"uci": { "fancontrol": true }
-		}
-	},
-	"admin/system/fancontrol/overview": {
-		"title": "状态概览",
-		"order": 10,
-		"action": {
-			"type": "view",
-			"path": "fancontrol/overview"
-		}
-	},
-	"admin/system/fancontrol/settings": {
-		"title": "温控配置",
-		"order": 20,
-		"action": {
-			"type": "view",
-			"path": "fancontrol/settings"
-		}
-	},
-	"admin/system/fancontrol/log": {
-		"title": "运行日志",
-		"order": 30,
-		"action": {
-			"type": "view",
-			"path": "fancontrol/log"
+			"acl": [ "luci-app-fancontrol" ]
 		}
 	}
 }

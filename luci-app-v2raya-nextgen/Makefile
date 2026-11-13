@@ -6,17 +6,17 @@
 
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=LuCI support for v2rayA
+LUCI_TITLE:=LuCI support for v2rayA (NextGen)
 LUCI_DEPENDS:=+luci-base +v2raya
 LUCI_PKGARCH:=all
 LUCI_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
 
 # Date-based version (YY.DDD), the same scheme as the OpenWrt LuCI packages.
-# OpenWrt's luci-app-v2raya is newer than 2.5.13 by version comparison, so
-# this version must stay ahead of it. Re-date it when OpenWrt passes it.
+PKG_VERSION:=26.317.1
+PKG_RELEASE:=1
 
 PKG_LICENSE:=Apache-2.0
-CONFLICTS:=luci-app-v2raya-nextgen
+CONFLICTS:=luci-app-v2raya
 
 include $(TOPDIR)/feeds/luci/luci.mk
 
