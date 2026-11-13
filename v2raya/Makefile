@@ -14,11 +14,14 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya
 PKG_VERSION:=2.5.15
-PKG_RELEASE:=10
+PKG_RELEASE:=11
 
 PKG_SOURCE:=v2rayA-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/v2rayA/v2rayA/tar.gz/v$(PKG_VERSION)?
 PKG_HASH:=skip
+
+WEB_FILE:=v2raya-web-$(PKG_VERSION).tar.gz
+WEB_HASH:=76774f195ee74604fbc43a48fe74e5f3363e81ec68af02d1c26feeeacc0f63ae
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/v2rayA-$(PKG_VERSION)/service
 
@@ -117,12 +120,6 @@ define Package/v2raya/prerm
 }
 endef
 
-# v2rayA publishes the built web UI as web.tar.gz on its releases.  The
-# GitHub release CDN has been returning 504/404 for it, which makes every
-# matrix build fail.  Keep the 871 KiB asset in the package instead; the
-# hash of the upstream v2.5.13 asset is
-# 76774f195ee74604fbc43a48fe74e5f3363e81ec68af02d1c26feeeacc0f63ae.
-
 define Build/Prepare
 	$(call Build/Prepare/Default)
 
@@ -156,7 +153,7 @@ define Build/Prepare
 
 	( \
 		mkdir -p $(PKG_BUILD_DIR)/server/router/web ; \
-		gzip -dc $(CURDIR)/files/web.tar.gz | $(HOST_TAR) -C $(PKG_BUILD_DIR)/server/router/web $(TAR_OPTIONS) ; \
+		gzip -dc $(DL_DIR)/$(WEB_FILE) | $(HOST_TAR) -C $(PKG_BUILD_DIR)/server/router/web $(TAR_OPTIONS) ; \
 	)
 endef
 
@@ -184,5 +181,13 @@ define Package/v2raya/install
 	$(INSTALL_DIR) $(1)/usr/share/v2raya
 endef
 
+define Download/v2raya-web
+	URL:=https://github.com/v2rayA/v2rayA/releases/download/v$(PKG_VERSION)/
+	URL_FILE:=web.tar.gz
+	FILE:=$(WEB_FILE)
+	HASH:=skip
+endef
+
+$(eval $(call Download,v2raya-web))
 $(eval $(call GoBinPackage,v2raya))
 $(eval $(call BuildPackage,v2raya))
