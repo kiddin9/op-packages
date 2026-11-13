@@ -14,7 +14,7 @@
  	+PACKAGE_$(PKG_NAME)_INCLUDE_ChinaDNS_NG:chinadns-ng \
  	+PACKAGE_$(PKG_NAME)_INCLUDE_MosDNS:mosdns \
  	+PACKAGE_$(PKG_NAME)_INCLUDE_Shadow_TLS:shadow-tls \
-@@ -106,8 +112,7 @@ choice
+@@ -106,7 +112,6 @@ choice
  
  	config PACKAGE_$(PKG_NAME)_INCLUDE_Xray
  	bool "Xray-core"
