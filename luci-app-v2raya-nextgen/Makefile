@@ -13,7 +13,7 @@ LUCI_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
 
 # Date-based version (YY.DDD), the same scheme as the OpenWrt LuCI packages.
 PKG_VERSION:=26.317.1
-PKG_RELEASE:=2
+PKG_RELEASE:=3
 
 PKG_LICENSE:=Apache-2.0
 CONFLICTS:=luci-app-v2raya

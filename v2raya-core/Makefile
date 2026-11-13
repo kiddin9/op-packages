@@ -11,7 +11,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya-core
 PKG_VERSION:=2.5.15
-PKG_RELEASE:=3
+PKG_RELEASE:=4
 
 PKG_SOURCE:=v2rayA-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/v2rayA/v2rayA/tar.gz/v$(PKG_VERSION)?
@@ -68,6 +68,8 @@ define Package/v2raya-core/install
 
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/bin/main $(1)/usr/bin/v2raya_core
+	$(INSTALL_DIR) $(1)/usr/share/licenses/v2raya-core
+	$(INSTALL_DATA) $(CURDIR)/files/LICENSE $(1)/usr/share/licenses/v2raya-core/LICENSE
 endef
 
 $(eval $(call GoBinPackage,v2raya-core))

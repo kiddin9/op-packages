@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=xray-core
 PKG_VERSION:=26.11.9
-PKG_RELEASE:=31
+PKG_RELEASE:=33
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/XTLS/Xray-core/tar.gz/v$(PKG_VERSION)?
@@ -13,7 +13,7 @@ PKG_LICENSE:=MPL-2.0 GPL-3.0-or-later MIT
 PKG_LICENSE_FILES:=LICENSE proxy/anytls/LICENSE.sing-anytls proxy/naive/LICENSE.sing-box proxy/shadowsocksr/LICENSE proxy/tuic/LICENSE.mihomo proxy/snell/LICENSE.mihomo transport/internet/shadowtls/LICENSE.mihomo transport/internet/kcptun/LICENSE.mihomo transport/internet/kcptun/LICENSE.kcptun
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/Xray-core-$(PKG_VERSION)
-PKG_BUILD_DEPENDS:=golang/host upx/host
+PKG_BUILD_DEPENDS:=golang/host
 PKG_CONFIG_DEPENDS:=CONFIG_XRAY_CORE_NAIVE
 PKG_BUILD_PARALLEL:=1
 PKG_USE_MIPS16:=0
@@ -104,7 +104,7 @@ endef
 
 define Package/xray-core/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/.upx/xray $(1)/usr/bin/xray
+	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/main $(1)/usr/bin/xray
 endef
 
 $(eval $(call BuildPackage,xray-core))

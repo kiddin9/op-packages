@@ -14,7 +14,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya
 PKG_VERSION:=2.5.15
-PKG_RELEASE:=13
+PKG_RELEASE:=14
 
 PKG_SOURCE:=v2rayA-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/v2rayA/v2rayA/tar.gz/v$(PKG_VERSION)?
@@ -179,6 +179,8 @@ define Package/v2raya/install
 	$(INSTALL_DATA) $(CURDIR)/files/v2raya.keep $(1)/lib/upgrade/keep.d/v2raya
 
 	$(INSTALL_DIR) $(1)/usr/share/v2raya
+	$(INSTALL_DIR) $(1)/usr/share/licenses/v2raya
+	$(INSTALL_DATA) $(CURDIR)/files/LICENSE $(1)/usr/share/licenses/v2raya/LICENSE
 endef
 
 define Download/v2raya-web

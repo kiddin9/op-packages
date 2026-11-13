@@ -297,7 +297,15 @@ return view.extend({
 			]),
 			E('div', { class: 'cbi-section' }, [
 				E('p', { class: 'cbi-section-descr' },
-					_('This independent, community-run packaging project is not affiliated with the upstream v2rayA authors. It is AI-assisted and human-maintained.'))
+					_('This independent, community-run packaging project is not affiliated with the upstream v2rayA authors. It is AI-assisted and human-maintained.')),
+				E('p', { class: 'cbi-section-descr' }, [
+					_('Source and licenses: '),
+					E('a', {
+						href: 'https://github.com/AmrFateem/luci-V2raya-NextGen',
+						target: '_blank',
+						rel: 'noreferrer noopener'
+					}, 'github.com/AmrFateem/luci-V2raya-NextGen')
+				])
 			])
 		]);
 	},
