@@ -1,443 +1,482 @@
 msgid ""
 msgstr ""
-"Content-Type: text/plain; charset=UTF-8\n"
 "Project-Id-Version: luci-app-upnp\n"
+"POT-Creation-Date: 2026-11-13 00:00+0000\n"
+"PO-Revision-Date: 2026-11-13 23:30+0800\n"
+"Last-Translator: OpenWrt LuCI Localization\n"
+"Language-Team: Chinese (Simplified)\n"
 "Language: zh_Hans\n"
 "MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "Unknown"
-msgstr "未知"
+#: applications/luci-app-upnp/root/usr/share/luci/menu.d/luci-app-upnp.json:3
+msgid "UPnP IGD & PCP"
+msgstr "UPnP IGD 与 PCP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "Delete"
-msgstr "删除"
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:24
+msgid "Active UPnP IGD & PCP/NAT-PMP Port Maps"
+msgstr "已生效的 UPnP IGD 与 PCP/NAT-PMP 端口映射"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "Not yet deletable; UPnP IGDv2 IPv6 port maps expire sooner, have no description"
-msgstr "暂不可删除；UPnP IGDv2 IPv6 端口映射过期更快且无描述信息"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "No active IPv4/IPv6 port maps"
-msgstr "没有活动的 IPv4/IPv6 端口映射"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgctxt "%s & %s/%s (%s = UPnP IGD, %s = PCP, %s = NAT-PMP)"
-msgid "%s & %s/%s"
-msgstr "%s & %s/%s"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "UPnP IGD & PCP/NAT-PMP Service"
-msgstr "UPnP IGD & PCP/NAT-PMP 服务"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgctxt "The %s (%s = UPnP IGD & PCP/NAT-PMP) protocols/service enable permitted devices on local networks to autonomously set up IPv4/IPv6 port maps/forwards on this router."
-msgid "The %s protocols/service enable permitted devices on local networks to autonomously set up IPv4/IPv6 port maps/forwards on this router."
-msgstr "%s 协议/服务允许本地网络中受许可的设备在此路由器上自动建立 IPv4/IPv6 端口映射/转发。"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "No suitable configuration was found!"
-msgstr "未找到合适的配置文件！"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "No suitable config (LuCI app %s) found in %s. A related package update (daemon or LuCI app) may be missing."
-msgstr "未找到适配的配置（LuCI 应用 %s，路径 %s）。可能缺少相关的软件包更新（守护进程或 LuCI 应用）。"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "Use the software package manager, update lists, and install the related update. Config is migrated with the daemon package update."
-msgstr "请使用软件包管理器更新列表并安装相关更新。配置文件将随守护进程软件包更新自动迁移。"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgid "Go to package manager…"
-msgstr "前往软件包管理器…"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:35
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:76
 msgid "Hostname"
 msgstr "主机名"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:36
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:77
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:322
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:330
 msgid "IP address"
 msgstr "IP 地址"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:37
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:78
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:338
 msgid "Port"
-msgstr "端口"
+msgstr "内部端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:38
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:79
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:345
 msgid "External port"
 msgstr "外部端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:39
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:80
 msgid "Protocol"
 msgstr "协议"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:40
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:81
 msgid "Expires"
-msgstr "剩余时间"
+msgstr "剩余有效期"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:41
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:82
 msgid "Added via / description"
 msgstr "添加方式 / 描述"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:62
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:37
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:90
+msgid "Unknown"
+msgstr "未知"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:72
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:73
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:78
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:47
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:48
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:53
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:100
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:101
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:106
+msgid "Delete"
+msgstr "删除"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:76
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:51
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:104
+msgid "Not yet deletable; UPnP IGDv2 IPv6 port maps expire sooner, have no description"
+msgstr "暂不支持手动删除；UPnP IGDv2 的 IPv6 端口映射无描述信息且会较快自动过期"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js:82
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:57
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:110
+msgid "No active IPv4/IPv6 port maps"
+msgstr "当前没有活动的 IPv4/IPv6 端口映射"
+
+#. %s & %s/%s (%s = UPnP IGD, %s = PCP, %s = NAT-PMP)
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:62
+msgid "%s & %s/%s"
+msgstr "%s 与 %s/%s"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:63
+msgid "UPnP IGD & PCP/NAT-PMP Service"
+msgstr "UPnP IGD 与 PCP/NAT-PMP 服务"
+
+#. The %s (%s = UPnP IGD & PCP/NAT-PMP) protocols/service enable permitted devices on local networks to autonomously set up IPv4/IPv6 port maps/forwards on this router.
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:64
+msgid "The %s protocols/service enable permitted devices on local networks to autonomously set up IPv4/IPv6 port maps/forwards on this router."
+msgstr "%s 协议与服务允许局域网内获准的设备在此路由器上自动配置 IPv4/IPv6 端口映射与转发规则。"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:67
+msgid "No suitable configuration was found!"
+msgstr "未找到适用的配置文件！"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:68
+msgid "No suitable config (LuCI app %s) found in %s. A related package update (daemon or LuCI app) may be missing."
+msgstr "在 %2$s 中未找到适用于当前前端（LuCI 应用 %1$s）的配置，可能缺少相关软件包（后端守护进程或 LuCI 应用）更新。"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:69
+msgid "Use the software package manager, update lists, and install the related update. Config is migrated with the daemon package update."
+msgstr "请前往软件包管理器刷新列表并安装相关更新。更新后端守护进程软件包时会自动迁移配置文件。"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:70
+msgid "Go to package manager…"
+msgstr "前往软件包管理器…"
+
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:112
 msgid "Active Port Maps"
-msgstr "活动端口映射"
+msgstr "已生效的端口映射"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/status/include/80_upnp.js
-msgid "Active UPnP IGD & PCP/NAT-PMP Port Maps"
-msgstr "活动的 UPnP IGD & PCP/NAT-PMP 端口映射"
-
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:116
 msgid "Service Settings"
 msgstr "服务设置"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:119
 msgid "Service Setup"
 msgstr "基本设置"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:120
 msgid "Access Control"
 msgstr "访问控制"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:121
 msgid "Advanced Settings"
 msgstr "高级设置"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:122
 msgid "UPnP IGD Adjustments"
-msgstr "UPnP IGD 调整"
+msgstr "UPnP IGD 参数调整"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:124
 msgid "Enable service"
 msgstr "启用服务"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:125
 msgid "Enable the autonomous port mapping service"
 msgstr "启用自动端口映射服务"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:128
 msgid "Enable protocols"
 msgstr "启用协议"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:129
 msgid "All protocols"
 msgstr "所有协议"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:130
 msgid "UPnP IGD"
 msgstr "UPnP IGD"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:131
 msgid "PCP and NAT-PMP"
-msgstr "PCP 和 NAT-PMP"
+msgstr "PCP 与 NAT-PMP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:135
 msgid "Enable networks"
-msgstr "启用网络"
+msgstr "启用网络接口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:136
 msgid "Select local/internal (LAN) network interfaces to enable the service for"
-msgstr "选择要启用此服务的本地/内部（LAN）网络接口"
+msgstr "选择要启用此服务的本地内网（LAN）接口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:146
 msgid "UPnP IGD compatibility"
-msgstr "UPnP IGD 兼容性"
+msgstr "UPnP IGD 兼容模式"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:147
 msgid "Set compatibility mode (act as device) to workaround IGDv2-incompatible clients; %s are known to only work with %s (or) <br />Emulate/report a specific/different device to workaround/support/handle/bypass/assist/mitigate... (Alternative text welcome)"
-msgstr "设置兼容模式（作为特定设备运行）以兼容不支持 IGDv2 的客户端；已知 %s 仅适用于 %s"
+msgstr "设置协议兼容模式以适配不支持 IGDv2 的客户端；已知 %s 仅在 %s 模式下正常工作"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:149
 msgid "IGDv1 (IPv4 only)"
-msgstr "IGDv1（仅 IPv4）"
+msgstr "IGDv1（仅限 IPv4）"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:150
 msgid "IGDv2 (with workarounds)"
-msgstr "IGDv2（含兼容处理）"
+msgstr "IGDv2（启用兼容修正）"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:155
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:173
 msgid "Access defaults"
 msgstr "默认访问策略"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:156
 msgid "Set access control defaults for ports that all devices can map"
-msgstr "设置所有设备均可映射的端口默认访问控制策略"
+msgstr "设置默认允许所有内网设备映射的端口范围"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:157
 msgid "None / accept extra ports only"
-msgstr "无 / 仅允许额外指定端口"
+msgstr "无（仅允许下方额外指定的端口）"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:158
 msgid "Accept ports >= 1024"
-msgstr "允许端口 >= 1024"
+msgstr "允许 1024 及以上端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:159
 msgid "Accept HTTP/HTTPS + ports >= 1024"
-msgstr "允许 HTTP/HTTPS + 端口 >= 1024"
+msgstr "允许 HTTP/HTTPS 及 1024 以上端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:160
 msgid "Accept HTTP/HTTPS ports"
-msgstr "允许 HTTP/HTTPS 端口"
+msgstr "仅允许 HTTP/HTTPS 端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:161
 msgid "Accept all ports"
 msgstr "允许所有端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:163
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:173
 msgid "Accept extra ports"
 msgstr "允许额外端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:166
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:173
 msgid "Reject ports"
 msgstr "拒绝端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:167
 msgid "Reject unsafe/insecure/risky FTP/Telnet/DCE/NetBIOS/SMB/RDP ports by default; overrides other settings; use %s for none"
-msgstr "默认拒绝不安全的 FTP/Telnet/DCE/NetBIOS/SMB/RDP 端口；此项优先于其他设置；填 %s 表示不拒绝任何端口"
+msgstr "默认拒绝存在安全风险的 FTP/Telnet/DCE/NetBIOS/SMB/RDP 等高危端口；优先级高于其他设置；若不限制请填 %s"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:171
 msgid "Check ACL"
-msgstr "检查访问控制列表（ACL）"
+msgstr "启用 ACL 检查"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:172
 msgid "Extend or override access defaults by device-specific permissions using the access control list (ACL)"
-msgstr "使用访问控制列表（ACL）按设备权限扩展或覆盖默认访问策略"
+msgstr "使用访问控制列表（ACL）按设备细分权限，以扩展或覆盖默认访问策略"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:173
 msgid "Sequence:"
 msgstr "匹配顺序："
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:173
 msgid "ACL entries (if checked)"
-msgstr "ACL 条目（若已勾选）"
+msgstr "ACL 条目（若启用）"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:179
 msgid "Disable IPv6 mapping"
-msgstr "禁用 IPv6 映射"
+msgstr "禁用 IPv6 端口映射"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:180
 msgid "IPv6 is currently always accepted unless disabled"
-msgstr "除非禁用，否则当前默认始终允许 IPv6 映射"
+msgstr "除非勾选禁用，否则当前默认允许所有 IPv6 映射请求"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgctxt "Allow %s/%s (%s = CGNAT, %s = STUN)"
+#. Allow %s/%s (%s = CGNAT, %s = STUN)
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:183
 msgid "Allow %s/%s"
 msgstr "允许 %s/%s"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:186
 msgid "Allow use of unrestricted endpoint-independent (1:1) CGNATs and detect the public IPv4"
-msgstr "允许在无限制端点无关型（1:1）CGNAT 环境下使用并检测公网 IPv4"
+msgstr "允许在无限制的端点无关型（Full Cone / 1:1）CGNAT 网络下运行，并通过 STUN 探测公网 IPv4 地址"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:187
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:190
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:207
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:358
 msgid "Disabled"
-msgstr "禁用"
+msgstr "已禁用"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:187
 msgid "Manually override external IPv4 with public"
-msgstr "手动指定外部公网 IPv4 地址"
+msgstr "可手动指定公网 IPv4 地址以覆盖外部地址"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:188
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:189
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:208
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:209
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:210
 msgid "Enabled"
-msgstr "启用"
+msgstr "已启用"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:188
 msgid "Filtering test currently requires an extra firewall rule"
-msgstr "过滤测试目前需要额外的防火墙规则"
+msgstr "NAT 过滤类型检测目前需要额外配置防火墙规则"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:189
 msgid "allow filtered"
-msgstr "允许过滤型"
+msgstr "忽略过滤检测"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:189
 msgid "Workaround filtered IPv4 CGNAT test result"
-msgstr "绕过过滤型 IPv4 CGNAT 检测限制"
+msgstr "跳过或忽略受限型 IPv4 CGNAT 的过滤检测结果"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:190
 msgid "report private IPv4, avoid"
-msgstr "上报私有 IPv4，不推荐"
+msgstr "直接通告私网 IPv4，不推荐"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:190
 msgid "No STUN public IPv4 detection; client issues"
-msgstr "不通过 STUN 检测公网 IPv4；可能导致客户端异常"
+msgstr "不通过 STUN 探测公网 IPv4；可能导致客户端连接异常"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:193
 msgid "STUN server"
 msgstr "STUN 服务器"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:200
 msgid "Override external IPv4"
-msgstr "覆盖外部 IPv4"
+msgstr "指定外部 IPv4 地址"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:201
 msgid "Report custom public/external (WAN) IPv4 address"
-msgstr "通告自定义公网/外部（WAN）IPv4 地址"
+msgstr "向客户端通告自定义的公网/外部（WAN）IPv4 地址"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:205
 msgid "Allow third-party mapping"
 msgstr "允许第三方映射"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:206
 msgid "Allow adding port maps for non-requesting IP addresses; use with care"
-msgstr "允许为非请求方 IP 地址添加端口映射；请谨慎使用"
+msgstr "允许设备为其他内网 IP 地址代为添加端口映射；请谨慎启用"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:207
 msgid "recommended"
 msgstr "推荐"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:209
 msgid "UPnP IGD only"
-msgstr "仅 UPnP IGD"
+msgstr "仅限 UPnP IGD"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:210
 msgid "PCP only"
-msgstr "仅 PCP"
+msgstr "仅限 PCP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:212
 msgid "Report system instead of service uptime"
-msgstr "报告系统运行时间而非服务运行时间"
+msgstr "通告系统运行时间而非服务运行时间"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:217
 msgid "Log level"
 msgstr "日志级别"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:218
 msgid "Default"
 msgstr "默认"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:219
 msgid "Info"
-msgstr "信息"
+msgstr "信息 (Info)"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:220
 msgid "Debug"
-msgstr "调试"
+msgstr "调试 (Debug)"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:224
 msgid "Service lease file"
 msgstr "服务租约文件"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:228
 msgid "Download speed"
-msgstr "下载速度"
+msgstr "下行速率"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:229
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:237
 msgid "Report maximum connection speed in kbit/s"
-msgstr "报告最大连接速度（kbit/s）"
+msgstr "向客户端通告的最大连接速率（单位：kbit/s）"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:231
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:239
 msgid "Default interface link speed"
-msgstr "默认接口链路速度"
+msgstr "默认使用接口协商速率"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:236
 msgid "Upload speed"
-msgstr "上传速度"
+msgstr "上行速率"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:244
 msgid "Router/friendly name"
-msgstr "路由器/友好名称"
+msgstr "路由器友好名称"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:250
 msgid "Announced model number"
-msgstr "通告的型号"
+msgstr "通告设备型号"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:256
 msgid "Announced serial number"
-msgstr "通告的序列号"
+msgstr "通告序列号"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:262
 msgid "Router/presentation URL"
-msgstr "路由器/管理页面 URL"
+msgstr "路由器管理页面 URL"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:263
 msgid "Report custom router web interface URL"
-msgstr "通告自定义路由器 Web 管理界面 URL"
+msgstr "向客户端通告自定义的路由器 Web 管理界面地址"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:269
 msgid "Device UUID"
 msgstr "设备 UUID"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:275
 msgid "SOAP/HTTP port"
 msgstr "SOAP/HTTP 端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:282
 msgid "Notify interval"
-msgstr "通知间隔"
+msgstr "通告间隔"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
-msgctxt "A 900 s interval sends %s (%s = SSDP) announcements with the minimum %s (%s = Cache-Control: max-age=1800) header"
+#. A 900 s interval sends %s (%s = SSDP) announcements with the minimum %s (%s = Cache-Control: max-age=1800) header
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:283
 msgid "A 900 s interval sends %s announcements with the minimum %s header"
-msgstr "900 秒的间隔将发送 %s 通告，并附带最小 %s 标头"
+msgstr "设为 900 秒间隔时，将以最小有效期标头（%2$s）发送 %1$s 服务通告"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:294
 msgid "Access Control List"
-msgstr "访问控制列表"
+msgstr "访问控制列表 (ACL)"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:295
 msgid "The access control list (ACL) specifies which IPv4 addresses and ports can be mapped."
-msgstr "访问控制列表（ACL）用于指定允许映射的 IPv4 地址和端口。"
+msgstr "访问控制列表（ACL）用于指定允许或禁止哪些内网 IPv4 地址及端口进行映射。"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:296
 msgid "ACL entries are checked in order, then rejected if not matched and not accepted by access defaults. (To do: should be part of access control tab)"
-msgstr "ACL 条目按顺序进行匹配；若未匹配且未被默认访问策略允许，则拒绝映射。"
+msgstr "ACL 条目按顺序依次匹配；若均未命中且不符合默认访问策略，则拒绝该请求。"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:301
 msgid "UPnP IGD & PCP/NAT-PMP"
-msgstr "UPnP IGD & PCP/NAT-PMP"
+msgstr "UPnP IGD 与 PCP/NAT-PMP"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:301
 msgid "Edit ACL Entry"
 msgstr "编辑 ACL 条目"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:319
 msgid "Comment"
 msgstr "备注"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:320
 msgid "unspecified"
 msgstr "未指定"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:331
 msgid "Enter device's IPv4 address, or an address and netmask"
-msgstr "输入设备的 IPv4 地址，或带子网掩码的地址"
+msgstr "输入设备的 IPv4 地址，或输入 IPv4 网段与子网掩码"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:340
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:347
 msgid "any port"
 msgstr "任意端口"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:351
 msgid "Description filter"
-msgstr "描述过滤器"
+msgstr "描述过滤规则"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:352
 msgid "Regular expression to check description of UPnP IGD IPv4 port maps"
-msgstr "用于匹配 UPnP IGD IPv4 端口映射描述的正则表达式"
+msgstr "用于匹配和检查 UPnP IGD IPv4 端口映射描述的正则表达式"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:353
 msgid "any description"
 msgstr "任意描述"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:355
 msgid "Action"
 msgstr "动作"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:356
 msgid "Accept"
 msgstr "允许"
 
-#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js
+#: applications/luci-app-upnp/htdocs/luci-static/resources/view/upnp/upnp.js:357
 msgid "Reject"
 msgstr "拒绝"
+
+#: applications/luci-app-upnp/root/usr/share/rpcd/acl.d/luci-app-upnp.json:3
+msgid "Grant access to UPnP IGD & PCP"
+msgstr "授予访问 UPnP IGD 与 PCP 的权限"
