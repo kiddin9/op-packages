@@ -232,6 +232,7 @@ jobs:
         git_clone https://github.com/4IceG/luci-app-sms-tool-js sms-tool-js && mvdir sms-tool-js
         git_clone https://github.com/4IceG/luci-app-crontab-wizard crontab-wizard && mvdir crontab-wizard
         git_clone https://github.com/4IceG/luci-app-lite-watchdog lite-watchdog && mvdir lite-watchdog
+        git_clone https://github.com/itsmaiGe/luci-theme-7dollar
         
         ) &
         (
