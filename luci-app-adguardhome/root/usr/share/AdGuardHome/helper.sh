@@ -10,7 +10,7 @@
 # ever handed to a shell. VALUE reaches awk through the environment (no -v escape
 # processing) and the rewrite is done by awk itself, not by system("sed ...").
 config_editor() {
-	local key="$1" value="$2" file="$3" ro="$4" tmp nl
+	local key="$1" value="$2" file="$3" ro="$4" tmp new nl
 	nl='
 '
 	[ -f "$file" ] && [ ! -L "$file" ] || return 1
@@ -27,8 +27,19 @@ config_editor() {
 
 	tmp="$(mktemp /tmp/agh_yaml.XXXXXX)" || return 1
 	if AGH_VALUE="$value" awk -v yaml="$key" -v ro="" "$AGH_YAML_AWK" "$file" > "$tmp" && [ -s "$tmp" ]; then
-		# Write through the existing file so owner and mode are preserved.
-		cat "$tmp" > "$file"
+		# Replace the file atomically: AdGuardHome may be (re)starting right now,
+		# and truncating it in place lets it read an empty file and overwrite the
+		# whole config with defaults. mktemp (O_EXCL) in the same directory gives
+		# a rename on the same filesystem and cannot be redirected by a symlink.
+		new="$(mktemp "$file.XXXXXX")" || { rm -f "$tmp"; return 1; }
+		if cat "$tmp" > "$new" \
+			&& chown "$(ls -ln "$file" | awk '{print $3":"$4}')" "$new" \
+			&& chmod "$(ls -l "$file" | awk '{m=0; s=substr($1,2,9); for(i=1;i<=9;i++) if(substr(s,i,1)!="-") m+=2^(9-i); printf "%o", m}')" "$new" \
+			&& mv -f "$new" "$file"; then
+			:
+		else
+			rm -f "$new"
+		fi
 	fi
 	rm -f "$tmp"
 }

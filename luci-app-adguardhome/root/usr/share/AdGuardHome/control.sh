@@ -250,9 +250,20 @@ _do_redirect() {
         fi
     fi
 
+    # In exchange mode old_port is compared later against the port dnsmasq
+    # holds (the AdGuardHome port before the swap). If the swap is already in
+    # place (yaml 53, dnsmasq elsewhere), record dnsmasq's port, otherwise the
+    # next run sees a bogus change and tears the swap down and rebuilds it.
+    local state_port="$adguardhome_PORT"
+    if [ "$redirect" = "exchange" ] && [ "$enabled" = "1" ] && [ "$adguardhome_PORT" = "53" ]; then
+        local dp
+        dp="$(uci -q get dhcp.@dnsmasq[0].port)"
+        is_port "$dp" && [ "$dp" != "53" ] && state_port="$dp"
+    fi
+
     # All three values are validated above, so this is plain data.
     printf 'old_redirect="%s"\nold_port="%s"\nold_enabled="%s"\n' \
-        "$redirect" "$adguardhome_PORT" "$enabled" > "$STATE_FILE"
+        "$redirect" "$state_port" "$enabled" > "$STATE_FILE"
 
     if [ "$enabled" = "0" ] || [ "$adguardhome_PORT" = "0" ]; then
         printf '%s' "0" > /var/run/AdGredir

@@ -4,17 +4,19 @@ Date: Sun, 25 Oct 2026 15:13:27 +0800
 Subject: [PATCH] Add helper script for YAML configuration management
 
 This script provides auxiliary functions for reading and writing YAML configuration files, including a secure method for editing keys and values.
+
+config_editor replaces the file atomically (mktemp in the same directory, owner and mode kept, then rename) so AdGuard Home can never read a truncated file while it is being edited.
 ---
- root/usr/share/AdGuardHome/helper.sh | 65 ++++++++++++++++++++++++++++
- 1 file changed, 65 insertions(+)
+ root/usr/share/AdGuardHome/helper.sh | 76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 76 insertions(+)
  create mode 100644 root/usr/share/AdGuardHome/helper.sh
 
 diff --git a/root/usr/share/AdGuardHome/helper.sh b/root/usr/share/AdGuardHome/helper.sh
 new file mode 100644
-index 0000000..ddc401f
+index 0000000..fdff92b
 --- /dev/null
 +++ b/root/usr/share/AdGuardHome/helper.sh
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,76 @@
 +#!/bin/sh
 +# Auxiliary functions specially used for reading and writing YAML
 +#
@@ -27,7 +29,7 @@ index 0000000..ddc401f
 +# ever handed to a shell. VALUE reaches awk through the environment (no -v escape
 +# processing) and the rewrite is done by awk itself, not by system("sed ...").
 +config_editor() {
-+	local key="$1" value="$2" file="$3" ro="$4" tmp nl
++	local key="$1" value="$2" file="$3" ro="$4" tmp new nl
 +	nl='
 +'
 +	[ -f "$file" ] && [ ! -L "$file" ] || return 1
@@ -44,8 +46,19 @@ index 0000000..ddc401f
 +
 +	tmp="$(mktemp /tmp/agh_yaml.XXXXXX)" || return 1
 +	if AGH_VALUE="$value" awk -v yaml="$key" -v ro="" "$AGH_YAML_AWK" "$file" > "$tmp" && [ -s "$tmp" ]; then
-+		# Write through the existing file so owner and mode are preserved.
-+		cat "$tmp" > "$file"
++		# Replace the file atomically: AdGuardHome may be (re)starting right now,
++		# and truncating it in place lets it read an empty file and overwrite the
++		# whole config with defaults. mktemp (O_EXCL) in the same directory gives
++		# a rename on the same filesystem and cannot be redirected by a symlink.
++		new="$(mktemp "$file.XXXXXX")" || { rm -f "$tmp"; return 1; }
++		if cat "$tmp" > "$new" \
++			&& chown "$(ls -ln "$file" | awk '{print $3":"$4}')" "$new" \
++			&& chmod "$(ls -l "$file" | awk '{m=0; s=substr($1,2,9); for(i=1;i<=9;i++) if(substr(s,i,1)!="-") m+=2^(9-i); printf "%o", m}')" "$new" \
++			&& mv -f "$new" "$file"; then
++			:
++		else
++			rm -f "$new"
++		fi
 +	fi
 +	rm -f "$tmp"
 +}
