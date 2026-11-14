@@ -1,0 +1,75 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# luci-app-ipsec-vpnd 运行时依赖自检。
+#
+# 由两处共用：
+#   - /etc/init.d/ipsec-vpnd：缺依赖时拒绝启动并写明确日志（避免只看到 NOT RUNNING）
+#   - /usr/libexec/rpcd/ipsec-vpnd：LuCI 页面的依赖诊断面板
+#
+# 用法：
+#   luci-ipsec-vpnd-deps files   文件类依赖检查（starter / charon / 插件）
+#   luci-ipsec-vpnd-deps pkgs    软件包安装状态
+#
+# 输出格式（每行一条，'|' 分隔）：
+#   <key>|<status>|<detail>
+#   status: ok | missing
+#   detail: ok 时为路径或版本号；missing 时为处理建议
+#
+# 退出码：全部就绪 0；存在缺失 1。
+
+PKGS="strongswan-minimal strongswan-charon strongswan-mod-stroke strongswan-mod-xauth-generic strongswan-mod-kernel-libipsec strongswan-mod-des kmod-tun"
+
+MISSING=0
+
+check_file() {
+	# $1=key  $2=路径  $3=缺失时的处理建议
+	if [ -e "$2" ]; then
+		printf '%s|ok|%s\n' "$1" "$2"
+	else
+		MISSING=1
+		printf '%s|missing|%s\n' "$1" "$3"
+	fi
+}
+
+files() {
+	check_file starter /usr/lib/ipsec/starter \
+		"缺少 strongSwan 启动器 /usr/lib/ipsec/starter（由 strongswan-mod-stroke 提供，随 strongswan-minimal 一并安装）"
+	check_file charon /usr/lib/ipsec/charon \
+		"缺少 IKE 守护进程 /usr/lib/ipsec/charon（需安装 strongswan-charon）"
+	check_file xauth /etc/strongswan.d/charon/xauth-generic.conf \
+		"缺少 xauth-generic 插件（需安装 strongswan-mod-xauth-generic，否则 XAuth 账号无法认证）"
+	check_file libipsec /etc/strongswan.d/charon/kernel-libipsec.conf \
+		"缺少 kernel-libipsec 插件（需安装 strongswan-mod-kernel-libipsec）"
+	check_file des /etc/strongswan.d/charon/des.conf \
+		"缺少 des 插件（需安装 strongswan-mod-des，否则本包声明的 3DES 提案不可用）"
+}
+
+# 取已安装包的版本号；apk 与 opkg 两种包管理器都支持
+pkg_version() {
+	if command -v apk >/dev/null 2>&1; then
+		apk list --installed "$1" 2>/dev/null | awk 'NR==1{print $1}'
+	elif command -v opkg >/dev/null 2>&1; then
+		opkg list-installed "$1" 2>/dev/null | awk 'NR==1{print $3}'
+	fi
+}
+
+pkgs() {
+	for p in $PKGS; do
+		v="$(pkg_version "$p")"
+		if [ -n "$v" ]; then
+			printf '%s|ok|%s\n' "$p" "$v"
+		else
+			MISSING=1
+			printf '%s|missing|not installed\n' "$p"
+		fi
+	done
+}
+
+case "${1:-files}" in
+	files) files ;;
+	pkgs) pkgs ;;
+	*) files ;;
+esac
+
+exit $MISSING

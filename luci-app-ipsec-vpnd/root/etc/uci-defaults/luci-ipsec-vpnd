@@ -7,8 +7,15 @@
 # 在 conffiles 中，包升级和 sysupgrade 都会保留，标记不会丢失。
 [ "$(uci -q get ipsec-vpnd.ipsec.initialized)" = "1" ] && exit 0
 
-# 禁用 strongswan 自带的 ipsec 服务，避免与 ipsec-vpnd 共用 charon 冲突
-[ -x /etc/init.d/ipsec ] && /etc/init.d/ipsec disable
+# charon 交由 strongSwan 原生的 `ipsec` 服务托管（strongswan-ipsec 包提供），
+# 本包不再自建服务实例 —— 两个服务同时跑会抢 UDP 500/4500，后启动的那个
+# 会静默退出，LuCI 上显示成"未运行"却查不到原因。这里按 enabled 决定
+# 它是否开机自启（enabled 是总开关，关掉时服务也不该跑）。
+if [ "$(uci -q get ipsec-vpnd.ipsec.enabled)" = "1" ]; then
+	[ -x /etc/init.d/ipsec ] && /etc/init.d/ipsec enable
+else
+	[ -x /etc/init.d/ipsec ] && { /etc/init.d/ipsec disable; /etc/init.d/ipsec stop; }
+fi
 
 uci -q batch <<-EOF >/dev/null
 	delete firewall.ipsecd
@@ -93,6 +100,22 @@ EOF
 # 记录初始化标记，避免升级时重复执行破坏性操作
 uci -q set ipsec-vpnd.ipsec.initialized='1'
 uci -q commit ipsec-vpnd
+
+# UCI 配置里明文存着 XAuth 密码与 PSK，收紧到 0600
+chmod 600 /etc/config/ipsec-vpnd 2>/dev/null
+
+# 清理旧版本自建的 ipsec-vpnd 服务残留（升级路径）。新的版本不再提供服务实例，
+# charon 统一由 strongSwan 的 ipsec 服务托管。
+/etc/init.d/ipsec-vpnd stop >/dev/null 2>&1
+/etc/init.d/ipsec-vpnd disable >/dev/null 2>&1
+rm -f /etc/rc.d/S*ipsec-vpnd /etc/rc.d/K*ipsec-vpnd
+
+# 生成初始 strongSwan 配置
+/usr/lib/ipsec/luci-ipsec-vpnd-render >/dev/null 2>&1
+
+# 立即拉起 VPN 网关接口。ipsec0 由 charon 启动后才出现，netifd 会等设备
+# 就绪后重试，这样装完就能用，不必手动 ifup VPN。
+/sbin/ifup VPN >/dev/null 2>&1
 
 rm -f /tmp/luci-indexcache
 exit 0

@@ -37,7 +37,7 @@ flock_unlock() {
 }
 
 list_methods() {
-	printf '%s\n' '{"sessions":{},"clear_history":{}}'
+	printf '%s\n' '{"sessions":{},"clear_history":{},"deps":{},"apply":{},"status":{}}'
 }
 
 json_err() {
@@ -92,6 +92,18 @@ BEGIN { n = 0; last = "" }
 				ip = rest
 			}
 			remote[sa] = ip
+
+			# 远端 IKE ID：形如 192.168.1.100[testuser]。
+			# strongSwan 只有在 IKE ID 与 XAuth 用户名不同时才打印
+			# "Remote XAuth identity:"，所以拿不到该行时可以用 IKE ID 兜底，
+			# 两者一致 —— 这样与 updown 钩子记录的 key 也能对上，
+			# 不会在客户端列表里出现同一客户端的两行。
+			if (match(rest, /\[[^][]*\]/)) {
+				id = substr(rest, RSTART + 1, RLENGTH - 2)
+				gsub(/^[ \t"'"'"']+|[ \t"'"'"']+$/, "", id)
+				gsub(/[[:cntrl:]]/, "", id)
+				if (id != "") remoteid[sa] = id
+			}
 		}
 		next
 	}
@@ -101,6 +113,9 @@ BEGIN { n = 0; last = "" }
 		if (sa != "" && (sa in est) && !(sa in user)) {
 			v = substr(line, index(line, "identity:") + 9)
 			gsub(/^[ \t"'"'"']+|[ \t"'"'"']+$/, "", v)
+			# 用户名完全由客户端可控（任何能连到 UDP 500 的人）。控制字符
+			# 会把 TSV 行撕开、字段错位并被持久化到历史文件里，这里统一剔除。
+			gsub(/[[:cntrl:]]/, "", v)
 			if (v != "") user[sa] = v
 		}
 		next
@@ -127,6 +142,7 @@ END {
 	for (k = 1; k <= n; k++) {
 		sa = order[k]
 		u = user[sa]; r = remote[sa]; v = vip[sa]; a = age[sa]
+		if (u == "") u = remoteid[sa]
 		if (u == "") u = "-"
 		if (r == "") r = "-"
 		printf "%s|%s\t%s\t%s\t%s\t%s\n", u, r, u, r, v, a
@@ -139,7 +155,11 @@ sessions() {
 	local online_tmp="/tmp/.luci-app-ipsec-vpnd-online.tsv"
 
 	# ensure the history file exists so awk can always read it as first input
-	[ -f "$STATE_FILE" ] || : > "$STATE_FILE"
+	# 文件里有客户端用户名与公网 IP，一开始就建成 0600
+	if [ ! -f "$STATE_FILE" ]; then
+		( umask 077; : > "$STATE_FILE" )
+	fi
+	chmod 600 "$STATE_FILE" 2>/dev/null
 
 	# current online clients as TSV
 	/usr/sbin/ipsec statusall 2>/dev/null | parse_statusall > "$online_tmp"
@@ -147,7 +167,7 @@ sessions() {
 	# serialize read/merge/write with the updown hook
 	flock_lock
 
-	awk -F'\t' -v now="$now" -v state_tmp="$SESSIONS_TMP" -v state="$STATE_FILE" '
+	awk -F'\t' -v now="$now" -v MAXROWS=200 -v state_tmp="$SESSIONS_TMP" -v state="$STATE_FILE" '
 function jesc(s) {
 	gsub(/\\/, "\\\\", s)
 	gsub(/"/, "\\\"", s)
@@ -156,19 +176,28 @@ function jesc(s) {
 BEGIN { n = 0 }
 FILENAME == state {
 	# history rows: key user remote vip age last_seen
+	# 字段数不对的行是旧版本被恶意用户名污染过的脏行，直接丢掉
+	if (NF != 6) next
 	key = $1
 	if (key == "") next
+	gsub(/[[:cntrl:]]/, "", key)
 	if (!(key in seen)) { seen[key] = 1; order[++n] = key }
 	hu[key] = $2; hr[key] = $3; hv[key] = $4; ha[key] = $5; hl[key] = $6
+	gsub(/[[:cntrl:]]/, "", hu[key]); gsub(/[[:cntrl:]]/, "", hr[key])
+	gsub(/[[:cntrl:]]/, "", hv[key]); gsub(/[[:cntrl:]]/, "", ha[key])
 	next
 }
 {
 	# online rows: key user remote vip age
+	if (NF != 5) next
 	key = $1
 	if (key == "") next
+	gsub(/[[:cntrl:]]/, "", key)
 	active[key] = 1
 	if (!(key in seen)) { seen[key] = 1; order[++n] = key }
 	hu[key] = $2; hr[key] = $3; hv[key] = $4; ha[key] = $5; hl[key] = now
+	gsub(/[[:cntrl:]]/, "", hu[key]); gsub(/[[:cntrl:]]/, "", hr[key])
+	gsub(/[[:cntrl:]]/, "", hv[key]); gsub(/[[:cntrl:]]/, "", ha[key])
 }
 END {
 	# build output order: online first (kept), then offline by last_seen desc
@@ -185,6 +214,10 @@ END {
 			}
 	for (i = 1; i <= oc; i++) out[++nc] = off[i]
 
+	# 历史上限：在线的永远保留，离线的按最近使用排序后只留前 MAX 条。
+	# 避免状态文件无限膨胀、每次轮询都把全部历史塞进 JSON。
+	if (nc > MAXROWS) nc = MAXROWS
+
 	# JSON response
 	printf "{\"code\":0,\"sessions\":["
 	first = 1
@@ -192,15 +225,21 @@ END {
 		k = out[i]
 		if (!first) printf ","
 		first = 0
-		printf "{\"user\":\"%s\",\"remote\":\"%s\",\"vip\":\"%s\",\"age\":\"%s\",\"online\":%s}",
+		printf "{\"user\":\"%s\",\"remote\":\"%s\",\"vip\":\"%s\",\"age\":\"%s\",\"online\":%s",
 			jesc(hu[k]), jesc(hr[k]), jesc(hv[k]), jesc(ha[k]),
 			(active[k] ? "true" : "false")
+		# 在线但没拿到地址：CHILD_SA 还没装好，或解析不到 /32 选择器。
+		# 给前端一个明确标记，避免和"没有地址"混为一谈。
+		if (active[k] && hv[k] == "")
+			printf ",\"vip_pending\":true"
+		printf "}"
 	}
 	printf "]}\n"
 
 	# rewrite persisted history (drop online flag; recomputed each call)
-	for (i = 1; i <= n; i++) {
-		k = order[i]
+	# 只写保留下来的行，超出的旧记录就此淘汰。
+	for (i = 1; i <= nc; i++) {
+		k = out[i]
 		printf "%s\t%s\t%s\t%s\t%s\t%s\n", k, hu[k], hr[k], hv[k], ha[k], hl[k] > state_tmp
 	}
 }' "$STATE_FILE" "$online_tmp"
@@ -213,8 +252,121 @@ END {
 		mv "$SESSIONS_TMP" "$STATE_FILE"
 	fi
 	rm -f "$SESSIONS_TMP"
+	# 状态文件里有客户端用户名与公网 IP，权限收紧到 0600
+	chmod 600 "$STATE_FILE" 2>/dev/null
 	flock_unlock
 	return $rc
+}
+
+apply() {
+	# 把 UCI 配置渲染成 strongSwan 配置，然后按 enabled 启停服务。
+	# charon 由 strongSwan 原生的 `ipsec` 服务托管，本包不再自建服务实例。
+	local render_out render_rc enabled
+	render_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-render 2>&1)"
+	render_rc=$?
+	if [ "$render_rc" -ne 0 ]; then
+		json_err "failed to render ipsec.conf: $render_out"
+		return 1
+	fi
+
+	if [ ! -x /etc/init.d/ipsec ]; then
+		json_err "strongSwan 的 ipsec 服务不存在（缺 strongswan-ipsec 包）"
+		return 1
+	fi
+
+	# enabled 是总开关：关掉时连服务一起停，否则页面上开关是"关"、
+	# 服务却还在跑，charon 也不会因为配置里没有 conn 就自己退出。
+	enabled="$(uci -q get ipsec-vpnd.ipsec.enabled)"
+	if [ "$enabled" = "1" ]; then
+		/etc/init.d/ipsec enable >/dev/null 2>&1
+		# 只有配置真的变了才重启服务：别的页面触发一次 apply 不应该
+		# 把正在跑的 VPN 连接踢掉。
+		if [ "$render_out" = "changed" ] || ! /etc/init.d/ipsec status >/dev/null 2>&1; then
+			/etc/init.d/ipsec restart >/dev/null 2>&1
+		fi
+	else
+		/etc/init.d/ipsec disable >/dev/null 2>&1
+		/etc/init.d/ipsec stop >/dev/null 2>&1
+	fi
+
+	json_init
+	json_add_int code 0
+	json_add_string message "applied"
+	json_dump
+}
+
+status() {
+	# 页面状态用：enabled 来自 UCI，running 来自系统 ipsec 服务。
+	# 两者分开报，前端才能区分"没启用"和"启用了但没跑起来"。
+	local enabled running=0
+	enabled="$(uci -q get ipsec-vpnd.ipsec.enabled)"
+	[ "$enabled" = "1" ] || enabled="0"
+
+	if [ -x /etc/init.d/ipsec ]; then
+		/etc/init.d/ipsec status >/dev/null 2>&1 && running=1
+	fi
+
+	json_init
+	json_add_int code 0
+	json_add_string enabled "$enabled"
+	json_add_int running "$running"
+	json_dump
+}
+
+deps() {
+	# 运行时依赖自检：文件类依赖 + 软件包安装状态。
+	# 结果给 LuCI 的依赖诊断面板用；缺失时 init 脚本也会拒绝启动。
+	local files_out files_rc pkgs_out pkgs_rc
+	files_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-deps files)"
+	files_rc=$?
+	pkgs_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-deps pkgs)"
+	pkgs_rc=$?
+
+	local ok=1
+	[ "$files_rc" -eq 0 ] || ok=0
+	[ "$pkgs_rc" -eq 0 ] || ok=0
+
+	json_init
+	json_add_int code 0
+	json_add_int ok "$ok"
+
+	# 包管理器名：安装命令要用对应的那个（apk / opkg）
+	local pkg_mgr="apk"
+	if ! command -v apk >/dev/null 2>&1 && command -v opkg >/dev/null 2>&1; then
+		pkg_mgr="opkg"
+	fi
+	json_add_string pkg_mgr "$pkg_mgr"
+
+	local oldifs="$IFS"
+	local line key rest st det
+	IFS='
+'
+	json_add_array files
+	for line in $files_out; do
+		[ -z "$line" ] && continue
+		key="${line%%|*}"; rest="${line#*|}"; st="${rest%%|*}"; det="${rest#*|}"
+		json_add_object ""
+		json_add_string key "$key"
+		json_add_string status "$st"
+		json_add_string detail "$det"
+		json_close_object
+	done
+	json_close_array
+
+	json_add_array packages
+	for line in $pkgs_out; do
+		[ -z "$line" ] && continue
+		key="${line%%|*}"; rest="${line#*|}"; st="${rest%%|*}"; det="${rest#*|}"
+		json_add_object ""
+		json_add_string key "$key"
+		json_add_string status "$st"
+		json_add_string detail "$det"
+		json_close_object
+	done
+	json_close_array
+	IFS="$oldifs"
+
+	json_dump
 }
 
 clear_history() {
@@ -236,6 +388,9 @@ main() {
 			case "$2" in
 				sessions) sessions ;;
 				clear_history) clear_history ;;
+				deps) deps ;;
+				apply) apply ;;
+				status) status ;;
 				*) json_err "unknown method" ;;
 			esac
 			;;

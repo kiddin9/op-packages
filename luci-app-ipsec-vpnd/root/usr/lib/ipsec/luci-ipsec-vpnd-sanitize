@@ -1,0 +1,13 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# 去掉输入里的所有控制字符（\t \n \r 等）。
+#
+# 为什么需要：XAuth 用户名由客户端完全可控（任何能连到 UDP 500 的人都能影响它），
+# 控制字符会把 TSV 记录撕开、字段错位并被持久化到历史文件里。
+#
+# 实现说明：**不要用 `tr -d '[:cntrl:]'`** —— busybox 的 tr 不认字符类，
+# 会把字面字符 : [ c n t r o l ] 全部删掉（实测 "testuser" 被删成 "esuse"）。
+# busybox 的 sed / awk 认 POSIX 字符类，用 sed 最稳。
+
+sed 's/[[:cntrl:]]//g'

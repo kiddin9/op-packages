@@ -47,6 +47,17 @@ now="$(date +%s)"
 user="${PLUTO_XAUTH_ID:-}"
 remote="${PLUTO_PEER:-}"
 
+# 用户名与对端地址都来自网络侧（任何能连到 UDP 500 的人都能影响它们）。
+# 控制字符会把 TSV 行撕开，导致历史文件字段错位并被持久化，这里统一剔除。
+SANITIZE=/usr/lib/ipsec/luci-ipsec-vpnd-sanitize
+if [ -x "$SANITIZE" ]; then
+	user="$(printf '%s' "$user" | "$SANITIZE")"
+	remote="$(printf '%s' "$remote" | "$SANITIZE")"
+else
+	user="$(printf '%s' "$user" | sed 's/[[:cntrl:]]//g')"
+	remote="$(printf '%s' "$remote" | sed 's/[[:cntrl:]]//g')"
+fi
+
 # assigned client IP: the responder-sent virtual IP, then the /32 selector
 vip="${PLUTO_PEER_SOURCEIP%%/*}"
 [ -n "$vip" ] || vip="${PLUTO_MY_SOURCEIP%%/*}"
@@ -58,7 +69,9 @@ vip="${PLUTO_PEER_SOURCEIP%%/*}"
 
 key="$user|$remote"
 
-[ -f "$STATE_FILE" ] || : > "$STATE_FILE"
+[ -f "$STATE_FILE" ] || ( umask 077; : > "$STATE_FILE" )
+# 状态文件里有客户端用户名与公网 IP，只允许 root 读
+chmod 600 "$STATE_FILE" 2>/dev/null
 
 # serialize read/merge/write with the rpcd backend
 flock_lock
@@ -82,5 +95,7 @@ END {
 
 [ -s "$UP_TMP" ] && mv "$UP_TMP" "$STATE_FILE"
 rm -f "$UP_TMP"
+# mv 会把临时文件的权限带过来，这里再收紧一次
+chmod 600 "$STATE_FILE" 2>/dev/null
 flock_unlock
 exit 0

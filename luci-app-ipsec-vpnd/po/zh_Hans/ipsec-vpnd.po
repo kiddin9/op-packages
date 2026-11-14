@@ -16,6 +16,10 @@ msgstr "账户"
 msgid "Assigned IP"
 msgstr "分配的 IP"
 
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:186
+msgid "Assigned IP pending"
+msgstr "分配地址未就绪"
+
 #: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:162
 msgid "Clear all client history records?"
 msgstr "确定要清除所有客户端历史记录吗？"
@@ -87,6 +91,10 @@ msgstr "当前没有 VPN 客户端在线"
 msgid "NOT RUNNING"
 msgstr "未运行"
 
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:53
+msgid "DISABLED"
+msgstr "已停用"
+
 #: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:99
 msgid "Password"
 msgstr "密码"
@@ -122,3 +130,11 @@ msgstr "VPN客户端DNS服务器"
 #: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:86
 msgid "VPN Client IP"
 msgstr "VPN客户端地址段"
+
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:120
+msgid "Install the missing packages with:"
+msgstr "请先安装缺失的软件包："
+
+#: applications/luci-app-ipsec-vpnd/htdocs/luci-static/resources/view/ipsec-vpnd.js:119
+msgid "Missing dependencies"
+msgstr "缺少依赖"

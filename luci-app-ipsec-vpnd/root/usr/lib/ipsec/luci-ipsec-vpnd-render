@@ -1,0 +1,137 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# 从 /etc/config/ipsec-vpnd 渲染 strongSwan 的 ipsec.conf / ipsec.secrets。
+#
+# 本包不自己启动 charon —— charon 由 strongSwan 原生的 `ipsec` 服务托管
+# （/etc/init.d/ipsec，来自 strongswan-ipsec 包），避免两个服务抢 UDP 500/4500
+# 导致其中一个无声退出。本脚本只负责把 UCI 配置翻译成 strongSwan 配置。
+#
+# 调用方：rpcd 的 apply 方法、uci-defaults、post-install/post-upgrade。
+# 未启用服务（enabled=0）时不写文件，保留用户已有配置。
+
+. "${IPKG_INSTROOT:-}/lib/functions.sh"
+
+# 依赖自检：strongSwan 运行时不全时不要生成一份"看着能起、实际连不上"的配置，
+# 直接报错，由调用方（rpcd apply / postinst）把原因透出来。
+if [ -x /usr/lib/ipsec/luci-ipsec-vpnd-deps ]; then
+	deps_out="$(/usr/lib/ipsec/luci-ipsec-vpnd-deps files)"
+	if [ $? -ne 0 ]; then
+		oldifs="$IFS"
+		IFS='
+'
+		for line in $deps_out; do
+			case "$line" in
+				*'|missing|'*) logger -t ipsec-vpnd "依赖缺失: ${line#*|missing|}" ;;
+			esac
+		done
+		IFS="$oldifs"
+		logger -t ipsec-vpnd "strongSwan 运行时不完整，未生成 ipsec.conf。请先 apk update，再安装 strongswan-minimal strongswan-mod-xauth-generic strongswan-mod-kernel-libipsec strongswan-mod-des"
+		exit 1
+	fi
+fi
+
+config_load ipsec-vpnd
+
+vt_enabled=0
+config_get vt_enabled "ipsec" "enabled" "0"
+
+vt_clientip="10.9.8.10/24"
+vt_clientdns="10.9.8.1"
+vt_account="vpnuser"
+vt_password="changeme"
+vt_secret="changeme"
+config_get vt_clientip "ipsec" "clientip" "$vt_clientip"
+config_get vt_clientdns "ipsec" "clientdns" "$vt_clientdns"
+config_get vt_account "ipsec" "account" "$vt_account"
+config_get vt_password "ipsec" "password" "$vt_password"
+config_get vt_secret "ipsec" "secret" "$vt_secret"
+
+# 先写到临时文件，再和现有文件比对：内容没变就不动文件。
+# 这样 rpcd 的 apply 才知道要不要重启服务 —— 别的页面触发一次 apply
+# 不应该把正在跑的 VPN 连接踢掉。
+TMP_CONF="$(mktemp /tmp/.ipsec.conf.XXXXXX)"
+TMP_SECRETS="$(mktemp /tmp/.ipsec.secrets.XXXXXX)"
+
+cat > "$TMP_CONF" <<EOF
+# ipsec.conf - strongSwan IPsec configuration file
+#
+# 由 luci-app-ipsec-vpnd 自动生成，请勿手工修改：
+# 改动请在 LuCI 的 "VPN → IPSec VPN Server" 里做。
+
+# basic configuration
+
+config setup
+    # strictcrlpolicy=yes
+    uniqueids=never
+
+# Add connections here.
+EOF
+
+if [ "$vt_enabled" = "1" ]; then
+	cat >> "$TMP_CONF" <<EOF
+
+conn xauth_psk
+	keyexchange=ikev1
+	ike=aes128-sha1-modp2048,aes128-sha1-modp1024,3des-sha1-modp1024,3des-sha1-modp1536
+	esp=aes128-sha1,3des-sha1
+	left=%defaultroute
+	leftauth=psk
+	leftsubnet=0.0.0.0/0
+	right=%any
+	rightauth=psk
+	rightauth2=xauth
+	rightsourceip=$vt_clientip
+	rightdns=$vt_clientdns
+	leftupdown=/usr/lib/ipsec/luci-ipsec-vpnd-updown
+	auto=add
+EOF
+else
+	# 服务停用时也要把 conn 拿掉：charon 由系统 ipsec 服务托管，配置是全局的，
+	# 残留的 conn 会让服务在"已停用"状态下依然接受连接。
+	logger -t ipsec-vpnd "服务未启用，生成的 ipsec.conf 不含 conn"
+fi
+
+if [ "$vt_enabled" = "1" ]; then
+	# secrets 含 PSK 与 XAUTH 密码，用 177 umask 创建并收紧权限，避免本地用户读取
+	umask 177
+	cat > "$TMP_SECRETS" <<EOF
+# /etc/ipsec.secrets - strongSwan IPsec secrets file
+# 由 luci-app-ipsec-vpnd 自动生成，请勿手工修改。
+: PSK "$vt_secret"
+$vt_account : XAUTH "$vt_password"
+EOF
+	umask 022
+else
+	# 停用时清掉遗留的凭据，避免旧口令继续留在磁盘上
+	: > "$TMP_SECRETS"
+fi
+
+changed=0
+if ! cmp -s "$TMP_CONF" /etc/ipsec.conf; then
+	changed=1
+fi
+if [ "$vt_enabled" = "1" ]; then
+	if ! cmp -s "$TMP_SECRETS" /etc/ipsec.secrets; then
+		changed=1
+	fi
+elif [ -e /etc/ipsec.secrets ]; then
+	# 停用状态下要把遗留的凭据文件清掉
+	changed=1
+fi
+
+if [ "$changed" = "1" ]; then
+	cat "$TMP_CONF" > /etc/ipsec.conf
+	if [ "$vt_enabled" = "1" ]; then
+		cat "$TMP_SECRETS" > /etc/ipsec.secrets
+		chmod 600 /etc/ipsec.secrets
+	else
+		rm -f /etc/ipsec.secrets
+	fi
+	echo "changed"
+else
+	echo "unchanged"
+fi
+
+rm -f "$TMP_CONF" "$TMP_SECRETS"
+exit 0
