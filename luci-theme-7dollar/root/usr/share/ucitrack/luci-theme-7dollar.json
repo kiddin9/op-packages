@@ -1,0 +1,4 @@
+{
+	"config": "luci",
+	"exec": "/bin/touch -c /usr/share/luci/menu.d/luci-theme-7dollar.json"
+}

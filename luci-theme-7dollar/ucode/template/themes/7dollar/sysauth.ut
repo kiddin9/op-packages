@@ -1,0 +1,79 @@
+{#
+ 7Dollar — login page
+ Licensed to the public under the Apache License 2.0.
+-#}
+
+{% include('header', { blank_page: true }) %}
+
+{%
+	import { model } from 'luci.7dollar';
+
+	const board = ubus.call('system', 'board') ?? {};
+	const zh = !!match(dispatcher.lang ?? '', /^zh/);
+	const T = (z, e) => zh ? z : e;
+	const sprite = `${media}/icons.svg`;
+	const user = duser ?? 'root';
+	const custom = fuser && fuser != user;
+-%}
+
+<div class="td-login">
+	<div class="glow"></div>
+	<svg class="arcs" viewBox="0 0 600 600" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="600" cy="600" r="160"/><circle cx="600" cy="600" r="250"/><circle cx="600" cy="600" r="340"/><circle cx="600" cy="600" r="430"/><circle cx="600" cy="600" r="520"/></svg>
+
+	<form class="td-lbox" method="post" id="td-login">
+		<h1 class="td-serif">{{ T('欢迎回来', 'Welcome back') }}</h1>
+		<p class="td-sub">{{ striptags(board.hostname ?? 'OpenWrt') }} · {{ striptags(model(board)) }}</p>
+
+		{% if (fuser): %}
+		<div class="td-lerr" role="alert">{{ T('密码不正确，请再试一次。', 'Wrong password, please try again.') }}</div>
+		{% endif %}
+
+		<label class="td-field" id="td-ufield"{% if (!custom): %} hidden{% endif %}>
+			<svg class="i" aria-hidden="true"><use href="{{ sprite }}#devices"></use></svg>
+			<input name="luci_username" id="luci_username" type="text" autocomplete="username" value="{{ entityencode(custom ? fuser : user, true) }}" placeholder="{{ T('用户名', 'Username') }}" autocapitalize="off" spellcheck="false">
+		</label>
+
+		<label class="td-field">
+			<svg class="i" aria-hidden="true"><use href="{{ sprite }}#lock"></use></svg>
+			<input name="luci_password" id="luci_password" type="password" autocomplete="current-password" placeholder="{{ T('管理密码', 'Password') }}" autofocus>
+			<button class="eye" type="button" id="td-eye" title="{{ T('显示密码', 'Show password') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#eye"></use></svg></button>
+		</label>
+
+		<button class="btn primary" type="submit" id="td-go">{{ T('进入', 'Sign in') }} <svg class="i" aria-hidden="true"><use href="{{ sprite }}#arrow"></use></svg></button>
+
+		<p class="td-luser" id="td-luser"{% if (custom): %} hidden{% endif %}>{{ T('将以', 'Signing in as') }} <b>{{ entityencode(user) }}</b> {{ T('身份登录', '') }} · <button type="button" id="td-switch">{{ T('换个用户', 'Other user') }}</button></p>
+	</form>
+
+	<div class="td-lfoot">{{ version.distname }} {{ version.distversion }} · {{ T('仅限局域网访问', 'Local network only') }}</div>
+</div>
+
+<script>
+	(function() {
+		var pw = document.getElementById('luci_password'),
+		    eye = document.getElementById('td-eye'),
+		    form = document.getElementById('td-login'),
+		    go = document.getElementById('td-go');
+
+		eye.addEventListener('click', function() {
+			pw.type = (pw.type == 'password') ? 'text' : 'password';
+			pw.focus();
+		});
+
+		document.getElementById('td-switch').addEventListener('click', function() {
+			document.getElementById('td-ufield').hidden = false;
+			document.getElementById('td-luser').hidden = true;
+			var u = document.getElementById('luci_username');
+			u.value = '';
+			u.focus();
+		});
+
+		form.addEventListener('submit', function() {
+			go.disabled = true;
+			go.classList.add('spinning');
+		});
+
+		pw.focus();
+	})();
+</script>
+
+{% include('footer', { blank_page: true }) %}

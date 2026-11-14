@@ -1,0 +1,19 @@
+#!/bin/sh
+# Register the 7Dollar theme and make it the active one, except on an upgrade where it was
+# already registered: then the user's own theme choice stays. (Packages up to 1.0.7 unregister
+# the theme when upgraded, so upgrading from those still lands on 7Dollar, as before.)
+
+[ -f /etc/config/7dollar ] || printf "\nconfig theme 'main'\n\toption palette 'clay'\n\toption mode 'auto'\n" > /etc/config/7dollar
+
+uci -q delete 7dollar.main.plugin_openclash && uci commit 7dollar   # replaced by the apps card in 1.0.12
+
+[ "$PKG_UPGRADE" = 1 ] && uci -q get luci.themes.7Dollar >/dev/null || uci -q set luci.main.mediaurlbase=/luci-static/7dollar
+uci -q set luci.themes.7Dollar=/luci-static/7dollar
+uci -q commit luci
+
+# LuCI caches the menu, and our pages depend on the active theme: when the theme is switched
+# (Language and Style), touching our menu file makes LuCI rebuild it. 24.10+ (ucitrack).
+[ -x /etc/init.d/ucitrack ] && /etc/init.d/ucitrack reload >/dev/null 2>&1
+
+rm -rf /tmp/luci-indexcache* /tmp/luci-modulecache/ 2>/dev/null
+exit 0

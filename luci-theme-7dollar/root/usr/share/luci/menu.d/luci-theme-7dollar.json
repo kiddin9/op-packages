@@ -1,0 +1,67 @@
+{
+	"admin/home": {
+		"title": "Home",
+		"order": 0,
+		"action": {
+			"type": "view",
+			"path": "7dollar/home"
+		},
+		"depends": {
+			"acl": [ "luci-theme-7dollar" ],
+			"uci": {
+				"luci": {
+					"main": {
+						"mediaurlbase": "/luci-static/7dollar"
+					}
+				}
+			}
+		}
+	},
+	"admin/clients": {
+		"title": "Devices",
+		"order": 2,
+		"action": {
+			"type": "view",
+			"path": "7dollar/devices"
+		},
+		"depends": {
+			"acl": [ "luci-theme-7dollar" ],
+			"uci": {
+				"luci": {
+					"main": {
+						"mediaurlbase": "/luci-static/7dollar"
+					}
+				}
+			}
+		}
+	},
+	"admin/apps": {
+		"title": "Apps",
+		"order": 39,
+		"action": {
+			"type": "view",
+			"path": "7dollar/apps"
+		},
+		"depends": {
+			"acl": [ "luci-theme-7dollar" ],
+			"uci": {
+				"luci": {
+					"main": {
+						"mediaurlbase": "/luci-static/7dollar"
+					}
+				}
+			}
+		}
+	},
+	"admin/system/appearance": {
+		"title": "Appearance",
+		"order": 3,
+		"action": {
+			"type": "view",
+			"path": "7dollar/appearance"
+		},
+		"depends": {
+			"acl": [ "luci-theme-7dollar" ]
+		}
+	}
+}

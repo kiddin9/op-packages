@@ -1,0 +1,96 @@
+{#
+ 7Dollar — an elegant LuCI theme
+ Licensed to the public under the Apache License 2.0.
+-#}
+
+{%
+	import { getuid, getspnam } from 'luci.core';
+	import { model as boardModel } from 'luci.7dollar';
+
+	const boardinfo = ubus.call('system', 'board') ?? {};
+	const conf = uci.get_all('7dollar', 'main') ?? {};
+	const palette = (conf.palette in [ 'clay', 'celadon', 'mist', 'dusk', 'graphite' ]) ? conf.palette : 'clay';
+	const mode = (conf.mode in [ 'light', 'dark', 'auto' ]) ? conf.mode : 'auto';
+	const zh = !!match(dispatcher.lang ?? '', /^zh/);
+	const T = (z, e) => zh ? z : e;
+	const ver = '1.0.16';
+	const hostname = striptags(boardinfo.hostname ?? 'OpenWrt');
+	const model = striptags(boardModel(boardinfo));
+	const sprite = `${media}/icons.svg`;
+
+	http.prepare_content('text/html; charset=UTF-8');
+-%}
+
+<!DOCTYPE html>
+<html lang="{{ dispatcher.lang }}" data-palette="{{ palette }}" data-mode="{{ mode }}"{% if (mode != 'auto'): %} data-theme="{{ mode }}" data-darkmode="{{ mode == 'dark' ? 'true' : 'false' }}"{% endif %}>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+		<title>{{ striptags(`${hostname}${node ? ` · ${node.title}` : ''}`) }}</title>
+		<script>
+			(function(r){if(r.getAttribute('data-mode')!=='auto')return;var d=window.matchMedia('(prefers-color-scheme: dark)').matches;r.setAttribute('data-theme',d?'dark':'light');r.setAttribute('data-darkmode',d)})(document.documentElement);
+		</script>
+		<link rel="stylesheet" href="{{ media }}/cascade.css?v={{ ver }}">
+		<link rel="icon" href="{{ media }}/logo.svg?v={{ ver }}" type="image/svg+xml">
+		<link rel="apple-touch-icon" href="{{ media }}/logo.svg?v={{ ver }}">
+		{% if (node?.css): %}
+		<link rel="stylesheet" href="{{ resource }}/{{ node.css }}">
+		{% endif %}
+		{% if (css): %}
+		<style title="text/css">{{ css }}</style>
+		{% endif %}
+		<script src="{{ dispatcher.build_url('admin/translations', dispatcher.lang) }}"></script>
+		<script src="{{ resource }}/cbi.js?v={{ version.luciversion }}"></script>
+	</head>
+
+	<body class="lang_{{ dispatcher.lang }} {{ entityencode(striptags(node?.title ?? ''), true) }}" data-page="{{ entityencode(join('-', ctx.request_path), true) }}">
+		{% if (!blank_page): %}
+		<div class="td-app">
+			<aside class="td-side">
+				<a class="td-brand" href="{{ dispatcher.build_url('admin') }}">
+					<b>{{ hostname }}</b><small>{{ model }}</small>
+				</a>
+				<button class="td-search" type="button" id="td-search" title="{{ T('搜索', 'Search') }}">
+					<svg class="i" aria-hidden="true"><use href="{{ sprite }}#search"></use></svg>
+					<span>{{ T('搜索功能或设置', 'Search settings') }}</span><kbd>⌘K</kbd>
+				</button>
+				<nav class="td-nav" id="td-nav" aria-label="{{ T('主菜单', 'Main menu') }}"></nav>
+				<div class="td-side-foot">
+					<button class="td-icon-btn" type="button" id="td-mode" title="{{ T('切换深浅色', 'Toggle dark mode') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#moon"></use></svg></button>
+					<a class="td-icon-btn" href="{{ dispatcher.build_url('admin/logout') }}" title="{{ T('退出登录', 'Log out') }}"><svg class="i" aria-hidden="true"><use href="{{ sprite }}#logout"></use></svg></a>
+				</div>
+			</aside>
+
+			<main class="td-main">
+				<div id="maincontent">
+					<div class="td-top"><div class="td-pills" id="td-pills"></div><div id="indicators"></div></div>
+
+					{% if (getuid() == 0 && getspnam('root')?.pwdp === ''): %}
+					<div class="alert-message warning">
+						<h4>{{ _('No password set!') }}</h4>
+						<p>{{ _('There is no password set on this router. Please configure a root password to protect the web interface.') }}</p>
+						{% if (dispatcher.lookup("admin/system/admin")): %}
+						<div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/admin") }}">{{ _('Go to password configuration...') }}</a></div>
+						{% endif %}
+					</div>
+					{% endif %}
+
+					{% if (boardinfo.rootfs_type == "initramfs"): %}
+					<div class="alert-message warning">
+						<h4>{{ _('System running in recovery (initramfs) mode.') }}</h4>
+						<p>{{ _('No changes to settings will be stored and are lost after rebooting. This mode should only be used to install a firmware upgrade') }}</p>
+						{% if (dispatcher.lookup("admin/system/flash")): %}
+						<div class="right"><a class="btn" href="{{ dispatcher.build_url("admin/system/flash") }}">{{ _('Go to firmware upgrade...') }}</a></div>
+						{% endif %}
+					</div>
+					{% endif %}
+
+					<noscript>
+						<div class="alert-message warning">
+							<h4>{{ _('JavaScript required!') }}</h4>
+							<p>{{ _('You must enable JavaScript in your browser or LuCI will not work properly.') }}</p>
+						</div>
+					</noscript>
+
+					<div id="tabmenu" style="display:none"></div>
+		{% endif %}

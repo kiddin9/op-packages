@@ -1,0 +1,49 @@
+{
+	"luci-theme-7dollar": {
+		"description": "Grant access to the 7Dollar theme dashboard and appearance settings",
+		"read": {
+			"ubus": {
+				"luci-rpc": [ "getDHCPLeases", "getHostHints", "getWirelessDevices", "getNetworkDevices" ],
+				"iwinfo": [ "assoclist" ],
+				"network.interface": [ "dump" ],
+				"system": [ "board", "info" ],
+				"service": [ "list" ],
+				"luci": [ "getMountPoints" ],
+				"uci": [ "get" ],
+				"file": [ "read", "exec" ]
+			},
+			"file": {
+				"/proc/stat": [ "read" ],
+				"/proc/net/dev": [ "read" ],
+				"/proc/net/route": [ "read" ],
+				"/proc/net/arp": [ "read" ],
+				"/sys/class/net/*/brforward": [ "read" ],
+				"/sys/devices/virtual/net/*/brforward": [ "read" ],
+				"/proc/sys/net/ipv4/tcp_congestion_control": [ "read" ],
+				"/sys/class/thermal": [ "list" ],
+				"/sys/class/hwmon": [ "list" ],
+				"/sys/class/thermal/thermal_zone*/type": [ "read" ],
+				"/sys/class/thermal/thermal_zone*/temp": [ "read" ],
+				"/sys/class/hwmon/hwmon*/name": [ "read" ],
+				"/sys/class/hwmon/hwmon*/temp1_input": [ "read" ],
+				"/proc/[0-9]*/net/dev": [ "read" ],
+				"/proc/[0-9]*/net/route": [ "read" ],
+				"/proc/[0-9]*/net/arp": [ "read" ],
+				"/sys/devices/*/thermal_zone*/type": [ "read" ],
+				"/sys/devices/*/thermal_zone*/temp": [ "read" ],
+				"/sys/devices/*/hwmon*/name": [ "read" ],
+				"/sys/devices/*/hwmon*/temp1_input": [ "read" ],
+				"/sys/module/mt79*e/parameters/wed_enable": [ "read" ],
+				"/opt/open-box/data/panel-port": [ "read" ],
+				"/bin/ping": [ "exec" ]
+			},
+			"uci": [ "7dollar", "firewall", "luci", "AdGuardHome", "bandix", "homeproxy", "ksmbd", "mosdns", "nikki", "openclash", "passwall", "passwall2", "samba4", "shadowsocksr", "smartdns" ]
+		},
+		"write": {
+			"ubus": {
+				"uci": [ "add", "set", "delete", "commit" ]
+			},
+			"uci": [ "7dollar", "luci" ]
+		}
+	}
+}
