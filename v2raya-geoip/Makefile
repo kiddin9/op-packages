@@ -9,8 +9,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya-geoip
-PKG_VERSION:=202611050539
-PKG_RELEASE:=1
+PKG_VERSION:=202611080027
+PKG_RELEASE:=2
 
 PKG_LICENSE:=CC-BY-SA-4.0
 PKG_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>

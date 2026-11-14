@@ -14,14 +14,14 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya
 PKG_VERSION:=2.5.15
-PKG_RELEASE:=14
+PKG_RELEASE:=15
 
 PKG_SOURCE:=v2rayA-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/v2rayA/v2rayA/tar.gz/v$(PKG_VERSION)?
 PKG_HASH:=skip
 
 WEB_FILE:=v2raya-web-$(PKG_VERSION).tar.gz
-WEB_HASH:=76774f195ee74604fbc43a48fe74e5f3363e81ec68af02d1c26feeeacc0f63ae
+WEB_HASH:=5e4dc08ca1dd89d3cc627d951018739c753ced272bd698d8778bed3bba2197e7
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/v2rayA-$(PKG_VERSION)/service
 
@@ -37,7 +37,7 @@ PKG_BUILD_FLAGS:=no-mips16
 # shipped by older OpenWrt releases is older than that, so let GOTOOLCHAIN
 # fetch the matching toolchain from proxy.golang.org during the build.
 # scripts/update-version.sh refreshes this after a major Go bump.
-V2RAYA_GO_TOOLCHAIN?=go1.27.3+auto
+V2RAYA_GO_TOOLCHAIN?=go1.27.4+auto
 
 GO_PKG:=github.com/v2rayA/v2rayA
 GO_PKG_BUILD_PKG:=github.com/v2rayA/v2rayA
@@ -123,11 +123,9 @@ endef
 define Build/Prepare
 	$(call Build/Prepare/Default)
 
-	# OpenWrt's LAN is a bridge (br-lan). v2rayA 2.5.x defaults to excluding
-	# br-* from transparent proxy, which silently bypasses every LAN client.
-	# The old OpenWrt package removed that exclusion with TproxyNotSkipBr;
-	# 2.5.x moved it into this stored default, so strip it here as well.
-	$(SED) 's/,br-\*"/"/' $(PKG_BUILD_DIR)/db/configure/setting.go
+	# v2rayA 2.5.15 includes LAN bridges in TPROXY on OpenWrt by default
+	# (upstream PR #2057). The historical br-* exclusion is migrated in
+	# MigrateOpenWrtBridgeExclusion, so no rewrite is needed here.
 
 	# v2rayA 2.2.7 (the old OpenWrt package) did not hijack DNS. 2.5.x turns
 	# DNS interception on by default and sends queries through the proxy. With

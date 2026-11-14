@@ -50,12 +50,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=wwand
-PKG_VERSION:=1.9.0_pre20
-PKG_RELEASE:=93
+PKG_VERSION:=1.9.0_pre27
+PKG_RELEASE:=94
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/ddimension/wwand.git
-PKG_SOURCE_VERSION:=b646c9ec93928e8a8e57356551cfa7717d7171b6
+PKG_SOURCE_VERSION:=069546e1c817cac4c3936a1b98057b27cad7fd80
 PKG_MIRROR_HASH:=skip
 
 PKG_LICENSE:=GPL-2.0-only
@@ -473,15 +473,16 @@ define Package/wwand-mhi
   SUBMENU:=WWAN
   TITLE:=PCIe/MHI transport + drivers for wwand
   DEPENDS:=+wwand +kmod-mhi-pci-generic +kmod-mhi-wwan-ctrl \
-	+kmod-mhi-wwan-mbim +kmod-mhi-net
+	+kmod-mhi-wwan-mbim +kmod-mhi-net +kmod-qrtr-mhi
 endef
 
 define Package/wwand-mhi/description
   Support for cellular modems attached over PCIe/MHI (Foxconn T99W175 and
   similar), whose control ports appear on the kernel wwan subsystem. Pulls the
-  MHI bus/PCI/control/data drivers and installs the wwan-subsystem hotplug so
-  wwand binds these modems on boot. Install together with a control backend
-  (wwand-qmi or wwand-mbim).
+  MHI bus/PCI/control/data drivers and the MHI IPC-router channel (for
+  modems whose QMI lives only on the QRTR bus, option device 'qrtr'), and
+  installs the wwan-subsystem hotplug so wwand binds these modems on boot.
+  Install together with a control backend (wwand-qmi or wwand-mbim).
 
   Adding wwand-mbim is worth weighing on a QMI-driven MHI modem: many of them
   expose no DUN channel and therefore no AT port at all, and wwand can then

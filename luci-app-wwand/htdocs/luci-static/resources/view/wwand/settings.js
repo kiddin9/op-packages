@@ -1248,6 +1248,11 @@ return view.extend({
 			(proto ? ' (' + String(proto).toUpperCase() + ')' : '');
 
 		var warns = renderWarnings(data.info && data.info.config_warnings);
+		var modesSid = self.modemSid(data.modem);
+		/* as the daemon reads it (qmi_backend.uc parse_modes): an empty value
+		   and a uci list apply no mask, so only a non-empty string is pinned */
+		var cfgModes = modesSid ? uci.get('network', modesSid, 'modes') : null;
+		var pinnedModes = (typeof cfgModes == 'string' && cfgModes != '') ? cfgModes : null;
 
 		/* multi-modem: one tab per live modem; a tab reloads the page with
 		   ?modem=<name> so every tool section below targets that modem */
@@ -1290,10 +1295,21 @@ return view.extend({
 				(settable && settable.length == 0)
 					? E('p', {}, E('em', {}, [ s.settable_note || _('This modem\'s bands cannot be changed from here right now.') ]))
 					: '',
-				row(_('Radio technologies'), E('div', {}, modeBoxes),
+				row(_('Radio technologies'), E('div', {}, modeBoxes), [
 					can('mode_preference')
 						? _('Which generations the modem may use. Unchecking one stops it being used at all — a modem restricted to 5G will not fall back to LTE where 5G is absent, so leave everything the network offers checked unless you are deliberately pinning a technology.')
-						: _('Shown, not set: this modem picks its technologies with its own RAT setting, and a band edit keeps it as it is.')),
+						: _('Shown, not set: this modem picks its technologies with its own RAT setting, and a band edit keeps it as it is.'),
+					/* A change here goes to the modem only, while a configured
+					   `modes` is applied again at every modem start (wwand
+					   modem_init_qmi step_confnet_apply, modem_mbim sync_modes):
+					   without this note a power cycle silently undid the edit
+					   (evidence: ddimension/wwand#75, 2026-11-13: LTE + NR5G
+					   ticked here, modes 'nr5g' configured, LTE gone after it) */
+					pinnedModes ? E('div', { 'style': 'margin-top:4px' }, [
+						E('strong', {}, _('Lasts until the next modem start:')), ' ',
+						_('this modem\'s settings fix "Radio technology" at "%s", and wwand applies that again whenever the modem starts. To keep a change, make it there.').format(pinnedModes),
+					]) : '',
+				]),
 				orderPicker ? row(_('RAT priority'), orderPicker,
 					_('The order in which the modem searches the radio technologies, first row first. Only ticked ones are searched: a technology allowed above but unticked here may never be used — a modem with 5G enabled and NR5G missing from this list may never try 5G standalone. Applying a change re-attaches the modem, so its connections drop briefly. Kept in the modem\'s own memory; to have wwand restore it on every start, set "RAT priority" on the modem page.')) : '',
 				can('usage_preference') ? row(_('UE usage'), usageSel,

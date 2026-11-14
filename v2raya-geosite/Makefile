@@ -10,8 +10,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=v2raya-geosite
-PKG_VERSION:=20261107053621
-PKG_RELEASE:=1
+PKG_VERSION:=20261112220449
+PKG_RELEASE:=2
 
 PKG_LICENSE:=MIT
 PKG_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
@@ -19,7 +19,7 @@ PKG_MAINTAINER:=Amr Fateem <amr.fateem@yahoo.com>
 include $(INCLUDE_DIR)/package.mk
 
 GEOSITE_FILE:=dlc.dat.$(PKG_VERSION)
-GEOSITE_HASH:=f110a7b96b3e3ed9c19cf18ae0ac5f8c46de54fa778863609c0a3b8f1738b58c
+GEOSITE_HASH:=02ad51927d05608b672bbcdf37f37b94ce1fdb7dcd10852f367ed457ad56280b
 
 define Download/geosite
 	URL:=https://github.com/v2fly/domain-list-community/releases/download/$(PKG_VERSION)/
