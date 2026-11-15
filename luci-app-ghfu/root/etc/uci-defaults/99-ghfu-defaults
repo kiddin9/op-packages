@@ -1,21 +1,5 @@
 #!/bin/sh
 
-uci -q get ghfu.main >/dev/null || {
-    uci -q batch <<EOF
-set ghfu.main=ghfu
-set ghfu.main.selected_release=''
-set ghfu.main.keep_config='1'
-set ghfu.main.retain_packages='0'
-EOF
-    uci commit ghfu
-}
-
-if [ -f /etc/config/luci ]; then
-    uci -q get luci.main.autoupgrade_fm >/dev/null || {
-        uci -q set luci.main.autoupgrade_fm='1'
-        uci commit luci
-    }
-fi
 
 grep -q "opkg-upgrade" /etc/crontabs/root 2>/dev/null || {
     hour="$(grep -m1 -ao '[4-6]' /dev/urandom 2>/dev/null | head -n1)"

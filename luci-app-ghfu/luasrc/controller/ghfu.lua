@@ -1177,7 +1177,7 @@ function index()
         return
     end
 
-    entry({"admin", "system", "ghfu"}, call("action_index"), _("System Online Upgrade"), 65)
+    entry({"admin", "system", "ghfu"}, call("action_index"), _("System Online Upgrade"), 2)
     entry({"admin", "system", "ghfu", "status"}, call("action_status")).leaf = true
     entry({"admin", "system", "ghfu", "local_status"}, call("action_local_status")).leaf = true
     entry({"admin", "system", "ghfu", "sysversion_check"}, call("action_sysversion_check")).leaf = true
@@ -1469,8 +1469,8 @@ function action_download()
         "fi\n",
     })
 
-    logs[#logs + 1] = tr("Downloading firmware: ") .. clean_name
-    local start_cmd = "sh -c " .. util.shellquote("(" .. shell_script .. ") >/dev/null 2>&1 &")
+    logs[#logs + 1] = tr("Downloading firmware:") .. " " .. clean_name
+    local start_cmd = "sh -c " .. util.shellquote("(" .. shell_script .. ") </dev/null >/dev/null 2>&1 &")
     local rc = sys.call(start_cmd)
     if rc ~= 0 then
         logs[#logs + 1] = tr("Firmware download failed, please check network connection")
@@ -1531,23 +1531,23 @@ function action_download_status()
         if pct then
             local speed_text = human_bytes(rate) .. "/s"
             if tonumber(total) and tonumber(total) > 0 then
-                logs[#logs + 1] = tr("Download progress: ") .. pct .. "% (" .. human_bytes(size) .. "/" .. human_bytes(total) .. "), " .. tr("Speed: ") .. speed_text
+                logs[#logs + 1] = tr("Download progress:") .. " " .. pct .. "% (" .. human_bytes(size) .. "/" .. human_bytes(total) .. "), " .. tr("Speed:") .. " " .. speed_text
             else
-                logs[#logs + 1] = tr("Download progress: ") .. human_bytes(size) .. ", " .. tr("Speed: ") .. speed_text
+                logs[#logs + 1] = tr("Download progress:") .. " " .. human_bytes(size) .. ", " .. tr("Speed:") .. " " .. speed_text
             end
         else
             local status2, done_size, done_total, target2 = line:match("^DONE|([A-Z]+)|(%d+)|(%d+)|(.+)$")
             if status2 then
                 if status2 == "OK" then
                     if tonumber(done_total) and tonumber(done_total) > 0 then
-                        logs[#logs + 1] = tr("Download finished: ") .. human_bytes(done_size) .. "/" .. human_bytes(done_total)
+                        logs[#logs + 1] = tr("Download finished:") .. " " .. human_bytes(done_size) .. "/" .. human_bytes(done_total)
                     else
-                        logs[#logs + 1] = tr("Download finished: ") .. human_bytes(done_size)
+                        logs[#logs + 1] = tr("Download finished:") .. " " .. human_bytes(done_size)
                     end
 
                     local name2 = tostring(target2 or ""):match("/tmp/ghfu_(.+)$")
                     if name2 and name2 ~= "" then
-                        logs[#logs + 1] = name2 .. tr(" downloaded successfully")
+                        logs[#logs + 1] = name2 .. " " .. tr("downloaded successfully")
                     end
                 else
                     logs[#logs + 1] = tr("Firmware download failed, please check network connection")
@@ -1555,13 +1555,13 @@ function action_download_status()
             else
                 local sha256ok_hash = line:match("^SHA256OK|([a-f0-9]+)$")
                 if sha256ok_hash then
-                    logs[#logs + 1] = tr("SHA256 verification passed: ") .. sha256ok_hash
+                    logs[#logs + 1] = tr("SHA256 verification passed:") .. " " .. sha256ok_hash
                 else
                     local comp, exp = line:match("^SHA256FAIL|([a-f0-9]+)|([a-f0-9]+)$")
                     if comp then
                         logs[#logs + 1] = tr("SHA256 verification failed, upgrade cancelled")
-                        logs[#logs + 1] = tr("  Expected: ") .. exp
-                        logs[#logs + 1] = tr("  Got:      ") .. comp
+                        logs[#logs + 1] = "  " .. tr("Expected:") .. " " .. exp
+                        logs[#logs + 1] = "  " .. tr("Got:") .. " " .. comp
                     else
                         local err_line = line:match("^ERR|(.+)$")
                         if err_line and trim(err_line) ~= "" then
@@ -1580,7 +1580,7 @@ function action_download_status()
         if validation.valid then
             logs[#logs + 1] = tr("Firmware image validation passed")
         else
-            logs[#logs + 1] = tr("Image check failed: ") .. (validation.message ~= "" and validation.message or tr("The uploaded image file does not contain a supported format."))
+            logs[#logs + 1] = tr("Image check failed:") .. " " .. (validation.message ~= "" and validation.message or tr("The uploaded image file does not contain a supported format."))
         end
     end
 
@@ -1688,7 +1688,7 @@ function action_upgrade()
         logs[#logs + 1] = tr("Package mode: retain installed packages (-k)")
     end
 
-    local bg = string.format("(sleep 2; %s >/tmp/ghfu-upgrade.log 2>&1) &", up_cmd)
+    local bg = "sh -c " .. util.shellquote(string.format("(sleep 2; %s) </dev/null >/tmp/ghfu-upgrade.log 2>&1 &", up_cmd))
     sys.call(bg)
 
     json_resp({

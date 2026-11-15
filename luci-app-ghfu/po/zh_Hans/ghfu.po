@@ -67,11 +67,11 @@ msgstr "正在检查最新固件"
 msgid "Check failed"
 msgstr "检查失败"
 
-msgid "Request failed: "
-msgstr "请求失败: "
+msgid "Request failed:"
+msgstr "请求失败："
 
-msgid "Latest version: "
-msgstr "最新版本: "
+msgid "Latest version:"
+msgstr "最新版本："
 
 msgid "Status updated"
 msgstr "状态已更新"
@@ -109,11 +109,11 @@ msgstr "请选择要升级的固件"
 msgid "Please select a firmware asset"
 msgstr "请选择固件下载项"
 
-msgid "Upgrade request failed: "
-msgstr "升级请求失败: "
+msgid "Upgrade request failed:"
+msgstr "升级请求失败："
 
-msgid "Selected firmware: "
-msgstr "已选择固件: "
+msgid "Selected firmware:"
+msgstr "已选择固件："
 
 msgid "New firmware is available"
 msgstr "检测到新固件，可升级"
@@ -123,6 +123,12 @@ msgstr "当前系统已是最新版本"
 
 msgid "New version available"
 msgstr "新版本可用"
+
+msgid "Upgrade Now"
+msgstr "前往更新"
+
+msgid "Close"
+msgstr "关闭"
 
 msgid "Formal Release"
 msgstr "正式版"
@@ -148,20 +154,20 @@ msgstr "服务端返回了无效的 JSON 响应"
 msgid "Invalid firmware URL, only https://dl.openwrt.ai/firmware is supported"
 msgstr "固件下载地址非法，仅支持 https://dl.openwrt.ai/firmware 官方源"
 
-msgid "Downloading firmware: "
-msgstr "正在下载固件: "
+msgid "Downloading firmware:"
+msgstr "正在下载固件："
 
-msgid "Download progress: "
-msgstr "下载进度: "
+msgid "Download progress:"
+msgstr "下载进度："
 
-msgid "Speed: "
-msgstr "速率: "
+msgid "Speed:"
+msgstr "速率："
 
-msgid "Download finished: "
-msgstr "下载完成: "
+msgid "Download finished:"
+msgstr "下载完成："
 
-msgid " downloaded successfully"
-msgstr " 下载成功"
+msgid "downloaded successfully"
+msgstr "下载成功"
 
 msgid "Verifying firmware image format..."
 msgstr "正在校验固件镜像格式与设备兼容性..."
@@ -169,7 +175,7 @@ msgstr "正在校验固件镜像格式与设备兼容性..."
 msgid "Firmware image validation passed"
 msgstr "固件镜像格式与设备兼容性校验通过"
 
-msgid "Image check failed: "
+msgid "Image check failed:"
 msgstr "固件镜像校验未通过："
 
 msgid "The uploaded image file does not contain a supported format."
@@ -236,7 +242,7 @@ msgid "Backup failed"
 msgstr "备份失败"
 
 msgid "Download Backup"
-msgstr "下载配置备份"
+msgstr "下载备份"
 
 msgid "Upgrading System"
 msgstr "正在升级系统"
@@ -253,14 +259,11 @@ msgstr "固件下载完成"
 msgid "Firmware is ready. System upgrade will start in %d seconds. Please do not leave this page."
 msgstr "固件已就绪，系统将在 %d 秒后开始刷入。请勿离开当前页面。"
 
-msgid "Starting download: "
-msgstr "开始下载: "
+msgid "Starting download:"
+msgstr "开始下载："
 
-msgid "System upgrade will start in "
-msgstr "系统将在 "
-
-msgid " seconds"
-msgstr " 秒后开始刷入"
+msgid "System upgrade will start in %d seconds"
+msgstr "系统将在 %d 秒后开始刷入"
 
 msgid "Flashing..."
 msgstr "正在刷入固件..."
@@ -295,14 +298,14 @@ msgstr "已自动匹配并选中最新固件：%s"
 msgid "Upgrade workflow is running, please wait until current operation finishes"
 msgstr "升级流程正在执行，请等待当前操作完成"
 
-msgid "SHA256 verification passed: "
+msgid "SHA256 verification passed:"
 msgstr "SHA256 校验通过："
 
 msgid "SHA256 verification failed, upgrade cancelled"
 msgstr "SHA256 校验失败，已取消升级"
 
-msgid "  Expected: "
-msgstr "  期望值："
+msgid "Expected:"
+msgstr "期望值："
 
-msgid "  Got:      "
-msgstr "  实际值："
+msgid "Got:"
+msgstr "实际值："

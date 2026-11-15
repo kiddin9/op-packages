@@ -820,7 +820,6 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         keepLabel: '<%:Keep Configuration%>',
         retainPkgLabel: '<%:Retain Installed Packages%>',
         statusLabel: '<%:System and Firmware Status%>',
-        assetsLabel: '<%:Available Firmware%>',
         assetsLabelWithCount: '<%:Available Firmware (%d)%>',
         logLabel: '<%:Logs%>',
         changelogLabel: '<%:Firmware Changelog%>',
@@ -829,12 +828,11 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         flashLatestBtn: '<%:Flash this latest firmware%>',
         reflashLatestBtn: '<%:Already latest version, sure to reflash this version?%>',
         flashOldBtn: '<%:Sure to flash this older version?%>',
-        waitingStatus: '<%:Waiting to check firmware%>',
         noMatch: '<%:No matching firmware%>',
         beginFetch: '<%:Checking latest firmware%>',
         fetchFailed: '<%:Check failed%>',
-        requestFailed: '<%:Request failed: %>',
-        latestRelease: '<%:Latest version: %>',
+        requestFailed: '<%:Request failed:%>',
+        latestRelease: '<%:Latest version:%>',
         statusUpdated: '<%:Status updated%>',
         currentVersion: '<%:Current system version%>',
         currentDevice: '<%:Current device%>',
@@ -846,16 +844,15 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         fetchFieldFailed: '<%:Fetch failed%>',
         chooseFirmware: '<%:Please select firmware to upgrade%>',
         chooseAsset: '<%:Please select a firmware asset%>',
-        upgradeReqFailed: '<%:Upgrade request failed: %>',
-        selectedFirmware: '<%:Selected firmware: %>',
-        unknown: '<%:unknown%>',
+        upgradeReqFailed: '<%:Upgrade request failed:%>',
+        selectedFirmware: '<%:Selected firmware:%>',
         backupBtn: '<%:Download Backup%>',
         upgradingTitle: '<%:Upgrading System%>',
         upgradingMsg: '<%:Upgrade successful, Waiting for device...%>',
         unreachableMsg: '<%:Device unreachable! Still waiting for device...%>',
-        beginDownload: '<%:Starting download: %>',
-        countdownPrefix: '<%:System upgrade will start in %>',
-        countdownSuffix: '<%: seconds%>',
+        beginDownload: '<%:Starting download:%>',
+        countdownLogMsg: '<%:System upgrade will start in %d seconds%>',
+        startingSystemUpgrade: '<%:Starting system upgrade%>',
         startingUpgrade: '<%:Flashing...%>',
         countdownLockTitle: '<%:Firmware Download Completed%>',
         countdownLockMsg: '<%:Firmware is ready. System upgrade will start in %d seconds. Please do not leave this page.%>',
@@ -875,14 +872,15 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         valTitle: '<%:Firmware Image Check Failed%>',
         valSummary: '<%:The uploaded image file does not contain a supported format. Make sure that you choose the generic image format for your platform.%>',
         valForceLabel: '<%:Force upgrade%>',
-        valForceDesc: '<%:Select \'Force upgrade\' to flash the image even if the image format check fails. Use only if you are sure that the firmware is correct and meant for your device!%>',
+        valForceDesc: "<%:Select 'Force upgrade' to flash the image even if the image format check fails. Use only if you are sure that the firmware is correct and meant for your device!%>",
         valNotForceable: '<%:Force upgrade is disallowed for this image by the system validator.%>',
         valNoBackupWarn: '<%:The image does not support keeping current configuration; configuration retention will be disabled (-n).%>',
         valCancelBtn: '<%:Cancel%>',
         valContinueBtn: '<%:Force Flash%>',
         valCancelledLog: '<%:Upgrade cancelled by user after firmware check warning%>',
         sizeLabel: '<%:Size%>',
-        sha256Label: '<%:SHA256%>'
+        sha256Label: '<%:SHA256%>',
+        invalidJsonResp: '<%:Server returned invalid JSON response%>'
     };
 
     var BUILTIN_VALID_EXTS = ['.img.gz', '.img', '.bin', '.tar.gz', '.tar', '.itb', '.trx', '.chk', '.dlf', '.ari'];
@@ -1064,7 +1062,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         renderAssets();
         updateUpgradeButtonText();
         if (!silent) {
-            appendLog(t('selectedFirmware') + (asset.name || ''));
+            appendLog(t('selectedFirmware') + ' ' + (asset.name || ''));
         }
     }
 
@@ -1297,7 +1295,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             try {
                 return JSON.parse(txt);
             } catch (e) {
-                throw new Error('Server returned invalid JSON response');
+                throw new Error(t('invalidJsonResp'));
             }
         });
     }
@@ -1653,7 +1651,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
                 pollDownloadProgress(keepConfig, retainPkg, resp.next_offset || 0);
             }, 1000);
         }).catch(function(err) {
-            appendLog(t('requestFailed') + err);
+            appendLog(t('requestFailed') + ' ' + err);
             restoreButtonsAfterDownload();
             stopDownloadPolling();
         });
@@ -1764,7 +1762,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
                 lastFlashedRaw: (resp.config && resp.config.selected_release) || lastFlashedFirmwareText
             });
 
-            appendLog(t('latestRelease') + ((resp.latest && resp.latest.release_name) || '-'));
+            appendLog(t('latestRelease') + ' ' + ((resp.latest && resp.latest.release_name) || '-'));
             appendLog(resp.msg || t('statusUpdated'));
 
             syncInteractiveState();
@@ -1786,7 +1784,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             if (err && err.name === 'AbortError') {
                 appendLog(t('fetchTimedOut'));
             } else {
-                appendLog(t('requestFailed') + err);
+                appendLog(t('requestFailed') + ' ' + err);
             }
         });
     }
@@ -1824,7 +1822,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         setUpgradeWorkflowBusy(true);
         stopDownloadPolling();
 
-        appendLog(t('beginDownload') + (selectedAsset.name || selectedRelease));
+        appendLog(t('beginDownload') + ' ' + (selectedAsset.name || selectedRelease));
 
         request('<%=url([[admin]], [[system]], [[ghfu]], [[download]])%>', {
             selected_release: selectedRelease,
@@ -1853,7 +1851,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
                 restoreButtonsAfterDownload();
             }
         }).catch(function(err) {
-            appendLog(t('upgradeReqFailed') + err);
+            appendLog(t('upgradeReqFailed') + ' ' + err);
             restoreButtonsAfterDownload();
         });
     }
@@ -1863,7 +1861,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         var sec = 5;
         activeCountdownFwName = fwName;
         showUpgradeModal('countdown', sec);
-        appendLog(t('countdownPrefix') + sec + t('countdownSuffix'));
+        appendLog(t('countdownLogMsg').replace('%d', String(sec)));
         countdownTimer = setInterval(function() {
             sec--;
             if (sec <= 0) {
@@ -1874,7 +1872,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
                 doUpgradeRequest(fwName, keepConfig, retainPkg, forceUpgrade);
             } else {
                 showUpgradeModal('countdown', sec);
-                appendLog(t('countdownPrefix') + sec + t('countdownSuffix'));
+                appendLog(t('countdownLogMsg').replace('%d', String(sec)));
             }
         }, 1000);
     }
@@ -1894,13 +1892,13 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
     }
 
     function doUpgradeRequest(fwName, keepConfig, retainPkg, forceUpgrade) {
-        request('<%=url([[admin]], [[system]], [[ghfu]], [[upgrade]])%>', {
+        requestWithTimeout('<%=url([[admin]], [[system]], [[ghfu]], [[upgrade]])%>', {
             fw_name: fwName,
             selected_release: trim(selectedReleaseText || fwName),
             keep_config: keepConfig,
             retain_packages: retainPkg,
             force: forceUpgrade ? '1' : '0'
-        }).then(function(resp) {
+        }, 25000).then(function(resp) {
             var lines = normalizeLogLines(resp.logs);
             lines.forEach(appendLog);
             if (resp.ok && resp.rebooting) {
@@ -1916,9 +1914,10 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
             }
             restoreButtonsAfterDownload();
         }).catch(function(err) {
-            appendLog(t('upgradeReqFailed') + err);
-            hideUpgradeModal();
-            restoreButtonsAfterDownload();
+            // sysupgrade may terminate uhttpd or drop the connection before HTTP response finishes
+            appendLog(t('startingSystemUpgrade'));
+            showUpgradeModal('upgrading');
+            pollForReboot();
         });
     }
 
@@ -1992,29 +1991,47 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
         var poll = function() {
             rebootPollTimer = setTimeout(function() {
                 rebootPollAttempts++;
-                if (rebootPollAttempts >= 30 && byId('ghfu_modal_msg')) {
+                if (rebootPollAttempts >= 60 && byId('ghfu_modal_msg')) {
                     byId('ghfu_modal_msg').textContent = t('unreachableMsg');
                 }
 
+                var settled = false;
                 var img = new Image();
+                var probeTimeout = setTimeout(function() {
+                    if (settled) { return; }
+                    settled = true;
+                    img.onload = null;
+                    img.onerror = null;
+                    rebootSeenOffline = true;
+                    poll();
+                }, 3500);
+
                 img.onload = function() {
-                    if (!rebootSeenOffline && rebootPollAttempts < 3) {
+                    if (settled) { return; }
+                    settled = true;
+                    clearTimeout(probeTimeout);
+                    if (!rebootSeenOffline && rebootPollAttempts < 12) {
                         poll();
                         return;
                     }
                     clearTimeout(rebootPollTimer);
-                    hideUpgradeModal();
-                    window.location.href = adminHomeUrl;
+                    setTimeout(function() {
+                        hideUpgradeModal();
+                        window.location.href = adminHomeUrl;
+                    }, 2000);
                 };
                 img.onerror = function() {
+                    if (settled) { return; }
+                    settled = true;
+                    clearTimeout(probeTimeout);
                     rebootSeenOffline = true;
                     poll();
                 };
                 img.src = pingUrl + '?_=' + Date.now();
-            }, 3000);
+            }, 4000);
         };
 
-        rebootPollTimer = setTimeout(poll, 6000);
+        rebootPollTimer = setTimeout(poll, 15000);
     }
 
     function blockNavigationWhileUpgrading(evt) {
