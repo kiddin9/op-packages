@@ -4,14 +4,14 @@ msgstr "Content-Type: text/plain; charset=UTF-8\n"
 msgid "System Online Upgrade"
 msgstr "系统在线更新"
 
-msgid "One-click firmware upgrade assistant powered by dl.openwrt.ai/firmware with automatic device adaptation."
-msgstr "基于 dl.openwrt.ai/firmware 的智能设备识别一键系统升级助手。"
+msgid "One-click firmware upgrade assistant powered by Kwrt with automatic device adaptation."
+msgstr "适用于 Kwrt 的一键系统升级助手。"
 
 msgid "Warning: Custom firmware with modified root partition size should use"
 msgstr "注意：修改过根目录大小的定制固件请使用"
 
-msgid "or luci-app-attendedsysupgrade to rebuild, otherwise direct online upgrade will reset partitions and lose configuration."
-msgstr "或安装 luci-app-attendedsysupgrade 重新生成定制固件，直接用此在线更新会重置分区、丢失配置。"
+msgid "to build custom firmware, otherwise direct online upgrade will reset partitions and lose configuration."
+msgstr "生成定制固件，直接用此在线更新会重置分区、丢失配置。"
 
 msgid "Warning: There are unsaved changes that will get lost on reboot!"
 msgstr "警告：有未保存的 UCI 配置更改，重启后将会丢失！"
@@ -245,7 +245,7 @@ msgid "Backup failed"
 msgstr "备份失败"
 
 msgid "Download Backup"
-msgstr "下载备份"
+msgstr "下载配置备份"
 
 msgid "Upgrading System"
 msgstr "正在升级系统"

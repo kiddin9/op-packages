@@ -362,8 +362,6 @@ local function detect_device_info()
     end
 
     if target_dash ~= "" then
-        add_candidate(target_dash .. "/generic")
-        add_candidate(target_dash .. "/box")
         add_candidate(target_dash)
     end
 

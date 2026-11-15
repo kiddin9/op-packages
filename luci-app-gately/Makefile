@@ -1,8 +1,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-gately
-PKG_VERSION:=0.6.6.4
-PKG_RELEASE:=6
+PKG_VERSION:=0.6.6.6
+PKG_RELEASE:=7
 
 PKG_MAINTAINER:=wangwanjie <https://github.com/wangwanjie/gately>
 PKG_LICENSE:=Apache-2.0

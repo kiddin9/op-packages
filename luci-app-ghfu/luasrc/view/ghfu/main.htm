@@ -709,7 +709,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
 
     <div id="ghfu_uci_warn" class="ghfu-alert-banner" style="display:none;"></div>
     <div id="ghfu_custom_part_warn" class="ghfu-alert-banner" style="display:none;">
-        <%:Warning: Custom firmware with modified root partition size should use%> <a target="_blank" href="https://openwrt.ai">openwrt.ai</a> <%:or luci-app-attendedsysupgrade to rebuild, otherwise direct online upgrade will reset partitions and lose configuration.%>
+        <%:Warning: Custom firmware with modified root partition size should use%> <a target="_blank" href="https://openwrt.ai">openwrt.ai</a> <%:to build custom firmware, otherwise direct online upgrade will reset partitions and lose configuration.%>
     </div>
 
     <div class="cbi-section ghfu-layout">
@@ -813,7 +813,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
 (function() {
     var I18N = {
         title: '<%:System Online Upgrade%>',
-        subtitle: '<%:One-click firmware upgrade assistant powered by dl.openwrt.ai/firmware with automatic device adaptation.%>',
+        subtitle: '<%:One-click firmware upgrade assistant powered by Kwrt with automatic device adaptation.%>',
         searchLabel: '<%:Firmware Fuzzy Search%>',
         searchPlaceholder: '<%:Enter keyword to filter firmware names%>',
         lastFlashedLabel: '<%:Last Flashed Firmware%>',
@@ -918,7 +918,7 @@ Adapted exclusively for https://dl.openwrt.ai/firmware with built-in firmware fi
     }
 
     function updateTitle() {
-        byId('ghfu_title').textContent = appVersion ? (t('title') + ' v' + appVersion) : t('title');
+        byId('ghfu_title').textContent = t('title');
     }
 
     function isAssetLatest(asset) {
