@@ -25,9 +25,6 @@ msgstr "输入关键字筛选固件名"
 msgid "Last Flashed Firmware"
 msgstr "当前使用固件"
 
-msgid "Selected Firmware"
-msgstr "当前选定固件"
-
 msgid "Keep Configuration"
 msgstr "保留配置升级"
 
@@ -36,9 +33,6 @@ msgstr "保留已安装软件包"
 
 msgid "System and Firmware Status"
 msgstr "系统与固件状态"
-
-msgid "Available Firmware"
-msgstr "可选固件"
 
 msgid "Available Firmware (%d)"
 msgstr "可选固件 (%d个)"
@@ -63,9 +57,6 @@ msgstr "已是最新版,确定要重刷此版本?"
 
 msgid "Sure to flash this older version?"
 msgstr "确定要刷入此老版本?"
-
-msgid "Waiting to check firmware"
-msgstr "等待检查更新"
 
 msgid "No matching firmware"
 msgstr "没有匹配的固件"
@@ -124,9 +115,6 @@ msgstr "升级请求失败: "
 msgid "Selected firmware: "
 msgstr "已选择固件: "
 
-msgid "unknown"
-msgstr "未知"
-
 msgid "New firmware is available"
 msgstr "检测到新固件，可升级"
 
@@ -153,6 +141,9 @@ msgstr "文件大小"
 
 msgid "SHA256"
 msgstr "SHA256"
+
+msgid "Server returned invalid JSON response"
+msgstr "服务端返回了无效的 JSON 响应"
 
 msgid "Invalid firmware URL, only https://dl.openwrt.ai/firmware is supported"
 msgstr "固件下载地址非法，仅支持 https://dl.openwrt.ai/firmware 官方源"
